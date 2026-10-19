@@ -153,9 +153,8 @@ class gosRenderer {
         }
 
         gosRenderMaterial* getRenderMaterial(const char* name) {
-
-            uint32_t flags = getFlagsFromStates();
-            return materialDB_[name][flags];
+            // Generic GL materials have no native consumer.
+            return nullptr;
         }
 
         gosTextAttribs& getTextAttributes() { return curTextAttribs_; }
@@ -716,9 +715,6 @@ class gosRenderer {
         std::vector<gosBuffer*> bufferList_;
         std::vector<gosVertexDeclaration*> vertexDeclarationList_;
         std::vector<gosRenderMaterial*> materialList_;
-		using MaterialDBValue_t = std::map<uint32_t, gosRenderMaterial*>;
-		using MaterialDB_t = std::map<std::string, MaterialDBValue_t>;
-        MaterialDB_t materialDB_;
 
         DWORD reqWidth;
         DWORD reqPhysWidth = 0;   // WINDOWED-8006-1: physical window size (logical may be clamped)
@@ -778,12 +774,7 @@ class gosRenderer {
 		vec4 render_viewport_;
         
         gosMesh* text_;
-        gosRenderMaterial* basic_material_;
-        gosRenderMaterial* basic_tex_material_;
-        gosRenderMaterial* text_material_;
 
-        gosRenderMaterial* basic_lighted_material_;
-        gosRenderMaterial* basic_tex_lighted_material_;
         //
         uint32_t num_draw_calls_;
         uint32_t num_draw_calls_to_draw_;
@@ -1169,7 +1160,6 @@ class gosRenderer {
             unsigned int vertCount;
         };
         struct OverlayBatch_ {
-            GLuint vbo = 0, vao = 0;
             std::vector<WorldOverlayVert> verts;
             std::vector<OverlayBatchEntry_> draws;
         };
@@ -1177,60 +1167,9 @@ class gosRenderer {
         OverlayBatch_ terrainOverlayBatch_;
         OverlayBatch_ decalBatch_;
 
-        glsl_program* overlayProg_ = nullptr;  // terrain_overlay.vert + terrain_overlay.frag
-        glsl_program* decalProg_   = nullptr;  // terrain_overlay.vert + decal.frag
-
-        struct OverlayUniformLocs_ {
-            GLint terrainMVP     = -1;
-            GLint mvp            = -1;
-            GLint tex1           = -1;
-            GLint fog_color      = -1;
-            GLint time           = -1;
-            GLint cameraPos      = -1;
-            GLint surfaceDebugMode = -1;
-            GLint pathTint        = -1;  // MC2_SHADER_PATH_TINT debug
-            GLint terrainLightDir = -1;
-            GLint mapHalfExtent  = -1;
-            // TERRAIN-DECAL-LIGHTING-1a: shared terrain-lighting uniforms on
-            // the cement overlay program. Cached for both overlayProg_ and
-            // decalProg_ via the same lambda — decalProg_'s shader doesn't
-            // declare these, so glGetUniformLocation returns -1 there and
-            // the helper skips them (no behavioral change to decal path).
-            GLint terrainHeightTex                   = -1;
-            GLint terrainHeightParams                = -1;
-            GLint terrainCliffShadowFloor            = -1;
-            // CEMENT-NIGHT-LIGHT-1: mission flat-pad light (overlayProg_ only;
-            // decal.frag does not declare it -> stays -1 -> skipped).
-            GLint missionFlatLight                   = -1;  // vec3
-            // OVERLAY-BIAS-LINEARIZE-1: bias-mode selector (terrain_overlay.vert,
-            // declared on BOTH overlayProg_ and decalProg_ — shared VS).
-            GLint overlayBiasLegacy                  = -1;  // int
-            // NIGHT-LIGHT-POOLS-2b: light-pool uniforms (terrain_overlay.frag
-            // only; decal.frag leaves these -1 -> skipped).
-            GLint numPoolLights                      = -1;  // int
-            GLint lightPoolSoft                      = -1;  // int
-            GLint lightPoolMoverDim                  = -1;  // float
-            GLint lightPoolCompress                  = -1;  // int (NIGHT-LIGHT-POOLS-3)
-            GLint lightPoolMoverScale                = -1;  // float (NIGHT-LIGHT-POOLS-4)
-            GLint lightPoolMoverMax                  = -1;  // int (NIGHT-LIGHT-POOLS-4)
-            // PAD-AREA-GLOW-1: pad-area night lift (terrain_overlay.frag only;
-            // decal.frag leaves these -1 -> skipped).
-            GLint padGlow                            = -1;  // vec3 (premultiplied)
-            GLint padGlowSpill                       = -1;  // float (wu)
-            GLint padGlowMapSide                     = -1;  // int (0 = grid absent)
-            GLint overlayCementAdopt                 = -1;  // OVERLAY-CEMENT-ADOPT-1
-            GLint cementAtlasOv                      = -1;  // OVERLAY-CEMENT-ADOPT-1
-            GLint cementGridSideOv                   = -1;  // OVERLAY-CEMENT-ADOPT-1
-            GLint cementWUPTOv                       = -1;  // OVERLAY-CEMENT-ADOPT-1
-            GLint cementSeamFixOv                    = -1;  // OVERLAY-CEMENT-SEAM-PARITY-1
-            GLint padGlowHalfMap                     = -1;  // float (wu)
-        };
-        OverlayUniformLocs_ overlayLocs_;
-        OverlayUniformLocs_ decalLocs_;
         uint64_t timeStart_ = 0;          // shared epoch for all time-animated shaders
 
         void pushToOverlayBatch_(OverlayBatch_& b, const WorldOverlayVert* v3, unsigned int texHandle);
-        void uploadOverlayUniforms_(GLuint shp, const OverlayUniformLocs_& L, float elapsed, const float* terrainMvpOverride = nullptr);
 };
 
 #endif // GAMEOS_GRAPHICS_RENDERER_INTERNAL_H

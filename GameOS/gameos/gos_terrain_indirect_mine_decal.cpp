@@ -775,18 +775,6 @@ void BuildDecalStaticVBO() {
     }
 #endif
 
-    if (g_decalStaticVBO_GL == 0) glGenBuffers(1, &g_decalStaticVBO_GL);
-    glBindBuffer(GL_ARRAY_BUFFER, g_decalStaticVBO_GL);
-    MC2_GL_BufferData(GL_ARRAY_BUFFER,
-                 (GLsizeiptr)(verts.size() * sizeof(DecalVert)),
-                 verts.empty() ? nullptr : verts.data(),
-                 GL_STATIC_DRAW);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-    if (IsTraceEnabled()) {
-        mc2::fmt::print_out("[TERRAIN_OVERLAY v1] event=decal_vbo_built tris={:d} verts={:d} ranges={:d} vbo_gl={:d}\n", mc2::fmt::as_i32(g_decalVertCount / 3), mc2::fmt::as_i32(g_decalVertCount), mc2::fmt::as_i32((int)g_decalDrawRanges.size()), mc2::fmt::as_u32((unsigned)g_decalStaticVBO_GL));
-        fflush(stdout);
-    }
 }
 
 // Mirror RebuildMineStaticVBOIfDirty (no texture-array first-build step —
@@ -828,25 +816,8 @@ bool DrawDecalStatic() {
         return true;
     }
 #endif
-    const bool ok = gos_terrain_bridge_drawDecalStatic(
-        g_decalStaticVBO_GL,
-        reinterpret_cast<const GosDecalStaticDraw*>(g_decalDrawRanges.data()),
-        (int)g_decalDrawRanges.size());
-    if (ok) {
-        Counters_AddDecalStaticTrisDrawn((long long)(g_decalVertCount / 3));
-        if (IsTraceEnabled()) {
-            static bool s_firstDraw = true;
-            if (s_firstDraw) {
-                mc2::fmt::print_out("[TERRAIN_OVERLAY v1] event=decal_first_draw tris={:d}\n", mc2::fmt::as_i32(g_decalVertCount / 3));
-                fflush(stdout);
-                s_firstDraw = false;
-            }
-        }
-    } else if (IsTraceEnabled()) {
-        mc2::fmt::print_out("[TERRAIN_OVERLAY v1] event=decal_draw_fallback reason=bridge_returned_false verts={:d}\n", mc2::fmt::as_i32(g_decalVertCount));
-        fflush(stdout);
-    }
-    return ok;
+    return false;
+
 }
 
 }  // namespace gos_terrain_indirect

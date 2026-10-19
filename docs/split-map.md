@@ -37,7 +37,7 @@ Split commit: `f0521b300`.
 | Piece | What it holds |
 |---|---|
 | `gos_particle_bridge.cpp` | keeps the billboard state, init, the particle flush and the VFX tuning accessors |
-| `gos_particle_bridge_tube.cpp` | GPU particle bridge: the MC2_VFX_ORACLE_TUBE ribbon bridge: ribbon program / buffers, gos_tube_ribbon_flush, enqueue and the deferred flush. |
+| `gos_particle_bridge_tube.cpp` | Native ribbon submission; the queue preserves the post-renderLists drain order. |
 | `gos_particle_bridge_internal.h` | shared include bundle, extern globals and declarations of the pieces |
 
 ## `GameOS/gameos/gos_postprocess.cpp`

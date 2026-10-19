@@ -126,15 +126,7 @@ void gosRenderer::drawText(const char* text) {
     if(beforeDrawCall()) return;
 
     const int count = (int)strlen(text);  
-/*
-    if(text_->getNumVertices() + count > text_->getCapacity()) {
-        applyRenderStates();
-        gosRenderMaterial* mat = 
-            curStates_[gos_State_Texture]!=0 ? basic_tex_material_ : basic_material_;
-        text_->draw(mat);
-        text_->rewind();
-    } 
-*/
+
 
     // TODO: take text region into account!!!!
     

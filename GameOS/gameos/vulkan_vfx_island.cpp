@@ -12,9 +12,8 @@
 // SCOPE (honest): textured — each group samples its sprite page (imported once per
 // gos texture handle from the texels the GL path uploads) times the per-particle
 // tint. Two blend pipelines (alpha + additive) mirror the GL particle bridge's
-// per-group blend. DEFERRED remainder (documented): the tube-ribbon beam path
-// (gos_tube_ribbon_flush_deferred), and the gosFX MESH shapes
-// (gos_vfx_mesh_flush). The whole TU compiles to nothing unless
+// per-group blend. Native geometry also covers tube ribbons and effect meshes.
+// The whole TU compiles to nothing unless
 // MC2_VULKAN_ISLAND is defined (same discipline as the other island TUs).
 
 #ifdef MC2_VULKAN_ISLAND
@@ -42,6 +41,7 @@
 #include "vulkan_shared_scene_depth.h"
 #include "vk_shared_gbuffer_gate.h"
 #include "vulkan_vfx_island.h"
+#include "vulkan_vfx_geometry.h"
 #include "texture_decode.h"   // gos_GetTextureTexels
 
 #include <tracy/Tracy.hpp>   // VK-ISLAND-TRACY-1: per-frame CPU attribution zones
@@ -72,6 +72,7 @@ struct VfxIslandHealth {
     unsigned long groups      = 0;
 };
 VfxIslandHealth g_health;
+GosTexels vegetationAtlas;
 
 void setFallback(const char* reason) {
     std::strncpy(g_health.fallbackReason, reason ? reason : "",
@@ -155,6 +156,7 @@ struct VfxIsland : mc2vk::IslandState {
     mc2vk::OwnedPipelineLayout playout;
     mc2vk::OwnedPipeline alphaPipe;
     mc2vk::OwnedPipeline addPipe;
+    mc2vk::OwnedPipeline vegetationPipe;
     mc2vk::OwnedPipeline oneOnePipe;   // GL OneOne: (ONE, ONE), alpha ignored
     mc2vk::OwnedCommandPool cpool;
     VkCommandBuffer  cbuf[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE};   // one per parity slot
@@ -245,8 +247,16 @@ bool upload_page(VfxIsland* s, SpritePage& page, const GosTexels& t) {
 // replaced; null while the texture is not resident (the group is skipped this frame, as the GL path does).
 // Call before recording the frame.
 const SpritePage* get_page(VfxIsland* s, uint32_t handle) {
-    if (handle == 0 || handle == 0xffffffffu) return nullptr;
-    const GosTexels t = gos_GetTextureTexels(handle);
+    if (handle == 0xffffffffu) return nullptr;
+    GosTexels t;
+    if (handle == kVfxVegetationAtlas) t = vegetationAtlas;
+    else if (handle == 0) {
+        static const auto white = std::make_shared<const std::vector<uint8_t>>(4, 255u);
+        t.status = GosTexels::Status::Ready;
+        t.width = t.height = 1;
+        t.vkFormat = mc2tex::kVkFormatRgba8Unorm;
+        t.bytes = white;
+    } else t = gos_GetTextureTexels(handle);
     if (t.status != GosTexels::Status::Ready || !t.bytes || t.width == 0 || t.height == 0 || t.width > 8192 || t.height > 8192) return nullptr;
     auto it = s->pages.find(handle);
     if (it != s->pages.end() && it->second.source == t.bytes) return &it->second;
@@ -292,7 +302,7 @@ const SpritePage* get_page(VfxIsland* s, uint32_t handle) {
 // VfxDrawGroup::additive values (LOCKSTEP with ADDITIVE_* in shaders/vulkan/vfx_particle.vert).
 enum : uint32_t { VFX_ADD_ALPHA = 0, VFX_ADD_SRC_ALPHA = 1, VFX_ADD_ONE_ONE = 2 };
 
-mc2vk::OwnedPipeline make_pipeline(VfxIsland* s, int w, int h, bool additive, bool oneOne = false) {
+mc2vk::OwnedPipeline make_pipeline(VfxIsland* s, int w, int h, bool additive, bool oneOne = false, bool vegetation = false) {
     VkPipelineVertexInputStateCreateInfo vin{};
     vin.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;  // procedural
     VkPipelineInputAssemblyStateCreateInfo ia{};
@@ -310,12 +320,12 @@ mc2vk::OwnedPipeline make_pipeline(VfxIsland* s, int w, int h, bool additive, bo
     ds.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
     ds.depthTestEnable = VK_TRUE;
     ds.depthWriteEnable = VK_FALSE;
-    ds.depthCompareOp = VK_COMPARE_OP_GREATER_OR_EQUAL;
+    ds.depthCompareOp = vegetation ? VK_COMPARE_OP_GREATER : VK_COMPARE_OP_GREATER_OR_EQUAL;
     // color0: straight-alpha (FS emits straight rgb,a; src-alpha factor premults in HW).
     //   alpha    = SRC_ALPHA / ONE_MINUS_SRC_ALPHA  (GL alpha groups)
     //   additive = SRC_ALPHA / ONE                  (GL additive groups)
     VkPipelineColorBlendAttachmentState cba[2]{};
-    cba[0].blendEnable = VK_TRUE;
+    cba[0].blendEnable = vegetation ? VK_FALSE : VK_TRUE;
     cba[0].srcColorBlendFactor = oneOne ? VK_BLEND_FACTOR_ONE : VK_BLEND_FACTOR_SRC_ALPHA;
     cba[0].dstColorBlendFactor = additive ? VK_BLEND_FACTOR_ONE : VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
     cba[0].colorBlendOp = VK_BLEND_OP_ADD;
@@ -325,7 +335,7 @@ mc2vk::OwnedPipeline make_pipeline(VfxIsland* s, int w, int h, bool additive, bo
     cba[0].colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
                             VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
     cba[1].blendEnable = VK_FALSE;   // shared normal target left untouched
-    cba[1].colorWriteMask = 0;
+    cba[1].colorWriteMask = vegetation ? cba[0].colorWriteMask : 0;
     VkPipelineColorBlendStateCreateInfo cb{};
     cb.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
     cb.attachmentCount = 2; cb.pAttachments = cba;
@@ -500,10 +510,11 @@ bool init_island(VfxIsland* s, int w, int h) {
         const VkPushConstantRange pcr{ VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(VfxGroupPush) };
         plci.pushConstantRangeCount = 1; plci.pPushConstantRanges = &pcr;
         if (!mc2vk::create(s->playout, s->device, [&](VkPipelineLayout* o) { return vkCreatePipelineLayout(s->device, &plci, nullptr, o); })) { vlog("vkCreatePipelineLayout failed."); return false; }
+        s->vegetationPipe = make_pipeline(s, w, h, false, false, true);
         s->alphaPipe = make_pipeline(s, w, h, /*additive=*/false);
         s->addPipe   = make_pipeline(s, w, h, /*additive=*/true);
         s->oneOnePipe = make_pipeline(s, w, h, /*additive=*/true, /*oneOne=*/true);
-        if (!s->alphaPipe || !s->addPipe || !s->oneOnePipe) { setFallback("pipeline_create_failed"); return false; }
+        if (!s->alphaPipe || !s->addPipe || !s->oneOnePipe || !s->vegetationPipe) { setFallback("pipeline_create_failed"); return false; }
     }
 
     // Command pool + two command buffers (one per parity slot; the slot is reused once its last submit completed, a timeline ticket, no island fence).
@@ -589,7 +600,8 @@ extern "C" int mc2_vk_vfx_island_run(
     // Resolve every group's sprite page first: an import records and waits on its own submit.
     std::vector<const SpritePage*> groupPage(drawCount, nullptr);
     for (uint32_t gi = 0; gi < drawCount; ++gi) {
-        if (draws[gi].count != 0) groupPage[gi] = get_page(s, draws[gi].texture);
+        if (draws[gi].count != 0 && (draws[gi].texture != 0 || draws[gi].atlasColumns == kVfxGeometryAtlas))
+            groupPage[gi] = get_page(s, draws[gi].texture);
     }
     if (s->disabled) return 0;
 
@@ -617,12 +629,13 @@ extern "C" int mc2_vk_vfx_island_run(
         if (d.count == 0) continue;
         if ((uint64_t)d.start + d.count > particleCount) continue;   // clamp bad ranges
         if (!groupPage[gi]) continue;   // no resident texture: skipped, as the GL path does
-        VkPipeline want = d.additive == VFX_ADD_ONE_ONE ? s->oneOnePipe.get() : d.additive == VFX_ADD_SRC_ALPHA ? s->addPipe.get() : s->alphaPipe.get();
+        VkPipeline want = d.atlasColumns == kVfxVegetationAtlas ? s->vegetationPipe.get() : d.additive == VFX_ADD_ONE_ONE ? s->oneOnePipe.get() : d.additive == VFX_ADD_SRC_ALPHA ? s->addPipe.get() : s->alphaPipe.get();
         if (want != bound) { vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, want); bound = want; }
         vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 1, 1, &groupPage[gi]->set, 0, nullptr);
         const VfxGroupPush push{ {d.u0, d.v0}, {d.us, d.vs}, d.atlasColumns, d.additive == VFX_ADD_ONE_ONE ? 1u : 0u };
         vkCmdPushConstants(cb, s->playout.get(), VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(push), &push);
-        vkCmdDraw(cb, d.count * 6u, 1, d.start * 6u, 0);
+        const uint32_t expansion = d.atlasColumns == kVfxVegetationAtlas ? 36u : d.atlasColumns == kVfxGeometryAtlas ? 1u : 6u;
+        vkCmdDraw(cb, d.count * expansion, 1, d.start * expansion, 0);
         ++groupsDrawn;
     }
     vkCmdEndRenderPass(cb);
@@ -653,6 +666,8 @@ extern "C" int mc2_vk_vfx_island_run(
     }
     return 1;
 }
+
+void mc2_vk_vfx_vegetation_atlas(const GosTexels& atlas) { vegetationAtlas = atlas; }
 
 extern "C" void mc2_vk_vfx_island_destroy() {
     vlog("[VK_VFX] vulkan_available=%d used_vulkan=%lu vk_draws=%lu particles=%lu groups=%lu "

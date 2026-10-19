@@ -19,8 +19,71 @@ layout(location = 2) flat in uint v_flags;   // bit 0 = head sprite, bit 1 = pur
 layout(location = 0) out vec4 o_color;   // shared scene color0
 layout(location = 1) out vec4 o_normal;  // shared scene normal (writemask 0 -> inert)
 
+layout(location = 3) in vec4 v_vegData;
+layout(location = 4) in vec2 v_vegAux;
 void main() {
-    vec4 tex = textureLod(uAtlas, v_uv, 0.0);
+    if ((v_flags & 16u) != 0u) {
+    // Unified Bayer gate: gate = lodFade * distFade.
+    //   LOD0 near  (gate=1.0): never discard — full density.
+    //   LOD1 near  (gate=0.4): discard ~60% → sparser beyond block LOD boundary.
+    //   LOD0 far   (gate<1.0): progressive discard → smooth fade to invisible.
+    //   LOD1 far   (gate~0.2): very sparse — thin out then gone.
+    // Shimmer note: screen-space Bayer shifts with camera motion. Accepted for v1;
+    // instance-stable hash dithering is planned for v2.
+    float gate = v_vegAux.x;
+    const float bayer[16] = float[16](
+         0.0/16.0,  8.0/16.0,  2.0/16.0, 10.0/16.0,
+        12.0/16.0,  4.0/16.0, 14.0/16.0,  6.0/16.0,
+         3.0/16.0, 11.0/16.0,  1.0/16.0,  9.0/16.0,
+        15.0/16.0,  7.0/16.0, 13.0/16.0,  5.0/16.0
+    );
+    int bx = int(gl_FragCoord.x) & 3;
+    int by = int(gl_FragCoord.y) & 3;
+    if (gate < bayer[by * 4 + bx]) discard;
+
+    // LOD bias -1.5 applied at bind site.
+    vec4 col = texture(uAtlas, v_uv);
+
+    // Alpha test: top/cap cards use softer threshold (0.25) for wispy edges.
+    float alphaThresh = mix(0.50, 0.25, v_vegData.z);
+    if (col.a < alphaThresh) discard;
+
+    // Desaturate to reduce uniform vivid-green look.
+    float lum = dot(col.rgb, vec3(0.299, 0.587, 0.114));
+    col.rgb = mix(col.rgb, vec3(lum), 0.30);
+
+    // Per-instance warmth variation: some cards yellower, some cooler.
+    col.r += (v_vegData.x - 0.5) * 0.07;
+    col.b -= v_vegData.x * 0.05;
+
+    // Lighting. Top/cap cards are slightly darker: horizontal face = less direct sun.
+    float NdotL = v_vegData.w;
+    float topDim = mix(1.0, 0.80, v_vegData.z);
+    col.rgb *= (0.60 + 0.38 * NdotL) * topDim;
+
+    // Root lift.
+    col.rgb += vec3(v_vegData.y * 0.08);
+
+    col.rgb = min(vec3(1.0), col.rgb);
+
+    o_color = vec4(col.rgb, 1.0);
+    // Sets GBuffer1.a > 0.5 so post-screen-shadow pass skips vegetation.
+    o_normal = vec4(0.5,0.5,1.0,1.0);
+        return;
+    }
+    vec4 tex = (v_flags & 32u) != 0u ? vec4(1.0) : textureLod(uAtlas, v_uv, 0.0);
+    if ((v_flags & 12u) != 0u) {
+        vec4 c = tex * v_color;
+        if ((v_flags & 8u) != 0u) {
+            if ((v_flags & 2u) != 0u) {
+                if (max(max(c.r, c.g), c.b) <= 0.0001) discard;
+            } else if (c.a <= 0.0039) discard;
+        }
+        // Mesh SRC_ALPHA/ONE keeps its authored alpha. Tube ONE/ONE uses RGB.
+        o_color = c;
+        o_normal = vec4(0.0);
+        return;
+    }
     // MC2 sprite pages mark transparent texels with magenta (0xFF00FF).
     if (tex.r > 0.9 && tex.g < 0.1 && tex.b > 0.9) discard;
     vec4 c = tex * v_color;

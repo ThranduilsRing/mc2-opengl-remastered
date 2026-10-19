@@ -192,7 +192,7 @@ uint32_t gos_GetGLTextureId(uint32_t gosHandle);
 class gosBuffer {
 	friend class gosRenderer;
 public:
-	GLuint buffer_;
+	std::vector<uint8_t> bytes_;
 	int element_size_;
 	uint32_t count_;
 	gosBUFFER_TYPE type_;
@@ -230,26 +230,6 @@ public:
 		delete vdecl;
 	}
 
-	void apply() {
-
-		for (uint32_t i = 0; i < count_; ++i) {
-
-			gosVERTEX_FORMAT_RECORD* rec = vf_ + i;
-
-			GLuint type = getGLVertexAttribType(rec->type);
-
-			glEnableVertexAttribArray(rec->index);
-			glVertexAttribPointer(rec->index, rec->num_components, type, rec->normalized ? GL_TRUE : GL_FALSE, rec->stride, BUFFER_OFFSET(rec->offset));
-		}
-	}
-
-	void end() {
-
-		for (uint32_t i = 0; i < count_; ++i) {
-			gosVERTEX_FORMAT_RECORD* rec = vf_ + i;
-			glDisableVertexAttribArray(rec->index);
-		}
-	}
 
 };
 

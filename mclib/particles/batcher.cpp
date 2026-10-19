@@ -163,9 +163,9 @@ bool Batcher::is_oracle_tube_enabled() {
     static bool s_init = false;
     static bool s_val  = false;
     if (!s_init) {
-        s_val = mc2::gate::get<"MC2_VFX_ORACLE_TUBE">();    // REVERTED: DEFAULT-OFF (legacy MLR tubes); =1 opts into GPU
+        s_val = mc2::gate::get<"MC2_VFX_ORACLE_TUBE">();    // native Vulkan ribbons; =0 is the legacy MLR kill-switch
         s_init = true;
-        MC2_DIAGFE(stderr, "[VFX_ORACLE_TUBE v1] gate=%s (default-off; =1 enables GPU)\n",
+        MC2_DIAGFE(stderr, "[VFX_ORACLE_TUBE v1] gate=%s (default-on; =0 uses legacy MLR)\n",
                      s_val ? "on" : "off");
         std::fflush(stderr);
     }

@@ -5,7 +5,7 @@
 generator_version: "3.0.0"
 gate_count: 935
 registry_entry_count: 188
-verified_count: 887
+verified_count: 884
 flags:
   - name: MC2_3DVIEW_DIAG
     kind: Bool
@@ -3682,7 +3682,6 @@ flags:
     owner: gameos
     doc: ""
     smoke_passthrough: true
-    verified: true
   - name: MC2_OVERLAY_TILE_HIRES
     kind: String
     default: ""
@@ -6202,8 +6201,8 @@ flags:
     verified: true
   - name: MC2_VEGETATION_CARDS
     kind: Bool
-    default: false
-    rule: Lead0
+    default: true
+    rule: DefOnLead0
     owner: gameos
     doc: ""
     smoke_passthrough: true
@@ -6351,8 +6350,8 @@ flags:
     registry: {feature_id: MC2_FEATURE_VFX_ORACLE_RENDER, kind: Feature, order: 15, default_on: false}
   - name: MC2_VFX_ORACLE_SHAPE
     kind: Bool
-    default: false
-    rule: Lead1
+    default: true
+    rule: DefOnLead0
     owner: code
     doc: ""
     verified: true
@@ -6365,19 +6364,18 @@ flags:
     verified: true
   - name: MC2_VFX_ORACLE_TUBE
     kind: Bool
-    default: false
-    rule: Lead1
+    default: true
+    rule: DefOnLead0
     owner: code
     doc: "GOSFX-TUBE-RIBBON-1: route supported gosFX Tube trails (MissileSmoke alpha, PPC additive, polygon) through the swept-quad ribbon oracle submit path instead..."
     verified: true
-    registry: {feature_id: MC2_VFX_ORACLE_TUBE, kind: Feature, order: -1, default_on: false}
+    registry: {feature_id: MC2_VFX_ORACLE_TUBE, kind: Feature, order: -1, default_on: true}
   - name: MC2_VFX_ORACLE_TUBE_COVERAGE
     kind: Bool
     default: false
     rule: Lead1
     owner: gameos
     doc: "GOSFX-TUBE-RIBBON-1: wrap the deferred ribbon draw in a GL_SAMPLES_PASSED occlusion query; logs [VFX_ORACLE_TUBE coverage] ribbons/samples/fbo/sceneDrawBufs..."
-    verified: true
     registry: {feature_id: MC2_VFX_ORACLE_TUBE_COVERAGE, kind: Trace, order: -1, default_on: false}
   - name: MC2_VFX_SCENECOLOR_GRAB
     kind: Bool
@@ -6392,7 +6390,6 @@ flags:
     rule: Lead0
     owner: gameos
     doc: ""
-    verified: true
   - name: MC2_VIEWMODE_FRAMEWORK
     kind: Bool
     default: false

@@ -53,13 +53,13 @@ set(SOURCES ${SOURCES}
     gos_particle_bridge.cpp
     gos_particle_bridge_tube.cpp
     gos_vfx_mesh_bridge.cpp
+    gos_vegetation.cpp
     gos_cardcloud_sim.cpp
     gos_materials.cpp
     gos_mech_batcher.cpp
     gos_mech_batcher_geometry.cpp
     gos_mech_batcher_flush.cpp
     gos_mech_batcher_api.cpp
-    gos_vegetation.cpp
     gos_object_recon_tracy.cpp
     gos_terrain_patch_stream.cpp
     gos_terrain_water_stream.cpp
