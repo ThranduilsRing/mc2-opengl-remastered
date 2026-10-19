@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Reject runtime OpenGL shader compilers in owned application sources.
+"""Reject the retired GL backend, headers, dynamic loader and link dependencies.
 
-Vendor SDK backends are checked when their host integrations are retired.
-Vulkan shader compilation and GLSL source assets are outside this check.
+The historical script name remains compatible with the compiler-retirement row.
+GLSL assets and vendor platform SDKs are outside the owned application census.
 """
 from pathlib import Path
 import re
@@ -11,9 +11,14 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 ROOTS = ('GameOS', 'RenderCore', 'RenderWorld', 'GameAdapters', 'mclib',
-         'code', 'gui', 'editor', 'text_tool', 'ui_editor', 'tools')
-CALL = re.compile(r'\bgl(?:CreateShader(?:Programv)?|CreateProgram|CompileShader|'
-                  r'LinkProgram|ShaderSource|ShaderBinary|SpecializeShader)\w*\s*\(')
+         'code', 'gui', 'GuiRuntime', 'EditorBridge', 'editor', 'text_tool', 'ui_editor', 'tools', 'data_tools')
+CALL = re.compile(r'\b(?:gl[A-Z]\w*|glew\w*|wgl\w*|SDL_GL_\w*|ImGui_ImplOpenGL\w*)\s*\(')
+TYPE = re.compile(r'\b(?:SDL_GLContext|SDL_WINDOW_OPENGL|HGLRC|GLuint|GLenum|GLsizei|GLint|GLboolean|GLsync)\b')
+HEADER = re.compile(r'^\s*#\s*include\s*[<"](?:GL/|SDL_opengl|imgui_impl_opengl|tracy/TracyOpenGL)', re.M)
+LINK = re.compile(r'OpenGL::|GLEW::|find_package\s*\(\s*(?:OpenGL|GLEW)|glew32|opengl32|imgui_impl_opengl')
+LOADER = re.compile(r'(?:LoadLibrary(?:Ex)?[AW]?|SDL_LoadObject)\s*\([^;]*(?:opengl32|glew32)|'
+                    r'GetProcAddress\s*\([^;]*"(?:gl[A-Z]|glew|wgl)', re.S)
+
 
 
 def code(source):
@@ -24,17 +29,23 @@ def code(source):
 def audit(files):
     failures = []
     for path, source in files.items():
-        for match in CALL.finditer(code(source)):
-            line = code(source)[:match.start()].count('\n') + 1
-            failures.append(f'{path}:{line}: retired GL compiler: {match[0]}')
+        if path.endswith(('CMakeLists.txt', '.cmake')):
+            matches = list(LINK.finditer(re.sub(r'#[^\n]*', '', source)))
+        else:
+            tokens = code(source)
+            matches = list(CALL.finditer(tokens)) + list(TYPE.finditer(tokens)) + list(HEADER.finditer(source))
+            # Module observation (GetModuleHandle) is allowed; driver loading/resolution is not.
+            matches += list(LOADER.finditer(re.sub(r'//[^\n]*|/\*.*?\*/', '', source, flags=re.S)))
+        for match in matches:
+            failures.append(f'{path}: retired GL dependency: {match[0]}')
     return failures
 
 
 def snapshot(root=ROOT):
-    names = subprocess.check_output(['git', 'ls-files', '--', *ROOTS], cwd=root,
+    names = subprocess.check_output(['git', 'ls-files', '--', *ROOTS, 'CMakeLists.txt', '3rdparty/imgui/CMakeLists.txt'], cwd=root,
                                     text=True).splitlines()
     return {name: (root / name).read_text(encoding='utf-8') for name in names
-            if Path(name).suffix in ('.cpp', '.c', '.h', '.hpp') and (root / name).is_file()}
+            if (Path(name).suffix in ('.cpp', '.c', '.h', '.hpp', '.cmake') or Path(name).name == 'CMakeLists.txt') and (root / name).is_file()}
 
 
 def main():
@@ -42,7 +53,7 @@ def main():
     for failure in failures:
         print('[no-gl-compiler] FAIL: ' + failure, file=sys.stderr)
     if not failures and '--quiet' not in sys.argv:
-        print('[no-gl-compiler] PASS: owned runtime GL shader compiler census zero')
+        print('[no-gl-compiler] PASS: owned GL calls/headers/loader/link census zero')
     return bool(failures)
 
 
