@@ -10,13 +10,13 @@ extern DWORD gShowBirdView, gEnableDetailTexture, gEnableMultiTexture, gEnableLi
 
 DrawShapeInformation::DrawShapeInformation()
 {
-	shape = NULL;
+	shape = nullptr;
     // sebi, MLRState has default constructor no need to do this crap here
 	//state = NULL;
-	shapeToWorld = NULL;
-	worldToShape = NULL;
+	shapeToWorld = nullptr;
+	worldToShape = nullptr;
 
-	activeLights = NULL;
+	activeLights = nullptr;
 	nrOfActiveLights = 0;
 
 	clippingFlags.SetClippingState(0);
@@ -24,20 +24,20 @@ DrawShapeInformation::DrawShapeInformation()
 
 DrawScalableShapeInformation::DrawScalableShapeInformation() : DrawShapeInformation()
 {
-	scaling = NULL;
+	scaling = nullptr;
 
-	paintMe = NULL;
+	paintMe = nullptr;
 }
 
 DrawEffectInformation::DrawEffectInformation()
 {
-	effect = NULL;
+	effect = nullptr;
     // sebi, MLRState has default constructor no need to do this crap here
 	//state = NULL;
-	effectToWorld = NULL;
+	effectToWorld = nullptr;
 
 #if 0	
-	activeLights = NULL;
+	activeLights = nullptr;
 	nrOfActiveLights = 0;
 #endif
 
@@ -46,10 +46,10 @@ DrawEffectInformation::DrawEffectInformation()
 
 DrawScreenQuadsInformation::DrawScreenQuadsInformation()
 {
-	coords = NULL;
-	colors = NULL;
-	texCoords = NULL;
-	onOrOff = NULL;
+	coords = nullptr;
+	colors = nullptr;
+	texCoords = nullptr;
+	onOrOff = nullptr;
 
 	nrOfQuads = 0;
 };
@@ -59,7 +59,7 @@ DrawScreenQuadsInformation::DrawScreenQuadsInformation()
 //#############################################################################
 
 MLRClipper::ClassData*
-	MLRClipper::DefaultData = NULL;
+	MLRClipper::DefaultData = nullptr;
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
@@ -84,7 +84,7 @@ void
 {
 	Unregister_Object(DefaultData);
 	delete DefaultData;
-	DefaultData = NULL;
+	DefaultData = nullptr;
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -231,7 +231,7 @@ void
 			y_delta;
 		DWORD
 			buttons;
-		gos_GetMouseInfo(NULL, NULL, &x_delta, &y_delta, NULL, &buttons);
+		gos_GetMouseInfo(nullptr, nullptr, &x_delta, &y_delta, nullptr, &buttons);
 		Scalar
 			x_speed = x_delta * 0.01f,
 			y_speed = y_delta * 0.01f;
@@ -417,7 +417,7 @@ void
 
 	gos_PushCurrentHeap(Heap);
 	MLRShape *shape = dInfo->shape;
-	MLRPrimitiveBase *primitive = NULL;
+	MLRPrimitiveBase *primitive = nullptr;
 
 	if(dInfo->nrOfActiveLights > Limits::Max_Number_Of_Lights_Per_Primitive)
 	{
@@ -580,7 +580,7 @@ void
 //
 
 	MLRShape *shape = dInfo->shape;
-	MLRPrimitiveBase *primitive = NULL;
+	MLRPrimitiveBase *primitive = nullptr;
 
 	shape->shapeToClipMatrix = *dInfo->shapeToWorld * worldToClipMatrix;
 
@@ -588,7 +588,7 @@ void
 
 	shape->InitializePrimitives(true, dInfo->state, 1);
 
-	if(dInfo->scaling != NULL)
+	if(dInfo->scaling != nullptr)
 	{
 		glm::mat4 scale = glm::mat4(1.0f);
 
@@ -605,7 +605,7 @@ void
 		shape->shapeToClipMatrix = *dInfo->shapeToWorld * worldToClipMatrix;
 	}
 
-	shape->worldToShape = NULL;
+	shape->worldToShape = nullptr;
 
 	int i;
 

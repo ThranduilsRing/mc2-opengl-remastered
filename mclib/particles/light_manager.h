@@ -32,7 +32,7 @@ public:
     static LightManager* Instance;
 
     virtual gosFX::Light*
-        MakePointLight(const char* light_map = NULL);
+        MakePointLight(const char* light_map = nullptr);
 
     struct Info {
         Stuff::RGBColor

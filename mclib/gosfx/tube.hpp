@@ -155,8 +155,8 @@ namespace gosFX
 		static ClassData
 			*DefaultData;
 
-		typedef Tube__Specification Specification;
-		typedef Tube__Profile Profile;
+		using Specification = Tube__Specification;
+		using Profile = Tube__Profile;
 
 	protected:
 		int

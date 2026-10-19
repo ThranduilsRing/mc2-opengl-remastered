@@ -27,21 +27,21 @@
 //---------------------
 // DEFINITION structure
 
-typedef union {
+union Value {
 	int         integer;
 	char		character;
 	float		real;
 	char*		stringPtr;
-} Value;
+};
 
-typedef enum {
+enum VariableType {
 	VAR_TYPE_NORMAL,
 	VAR_TYPE_STATIC,
 	VAR_TYPE_ETERNAL,
 	VAR_TYPE_REGISTERED
-} VariableType;
+};
 
-typedef enum {
+enum DefinitionType {
 	DFN_UNDEFINED,
 	DFN_CONST,
 	DFN_TYPE,
@@ -51,9 +51,9 @@ typedef enum {
 	DFN_MODULE,
 	DFN_PROCEDURE,
 	DFN_FUNCTION
-} DefinitionType;
+};
 
-typedef enum {
+enum RoutineKey {
 	RTN_DECLARED,
 	RTN_FORWARD,
 	RTN_RETURN,
@@ -63,31 +63,31 @@ typedef enum {
 	RTN_ASSERT,
 	RTN_FATAL,
 	NUM_ABL_ROUTINES
-} RoutineKey;
+};
 // NOTE: NUMBER OF ROUTINEKEYS IS LIMITED TO 256!
 
-typedef struct _SymTableNode*	SymTableNodePtr;
-typedef	struct _Type*			TypePtr;
+using SymTableNodePtr = struct _SymTableNode*;
+using TypePtr = struct _Type*;
 
 void ablRememberSymbolInsertion(SymTableNodePtr* slot);
 void ablRememberTypeUse(TypePtr type);
 
-typedef struct {
+struct Constant {
 	Value					value;
-} Constant;
+};
 
-typedef struct {
+struct StateHandleInfo {
 	char					name[128];
 	SymTableNodePtr			state;
-} StateHandleInfo;
+};
 
-typedef StateHandleInfo* StateHandleInfoPtr;
+using StateHandleInfoPtr = StateHandleInfo*;
 
 #define	ROUTINE_FLAG_ORDER	1
 #define	ROUTINE_FLAG_FSM	2
 #define	ROUTINE_FLAG_STATE	4
 
-typedef struct _Routine {
+struct _Routine {
 	RoutineKey				key;
 	unsigned char			flags;
 	unsigned short			orderCallIndex;
@@ -100,32 +100,32 @@ typedef struct _Routine {
 	SymTableNodePtr			localSymTable;
 	char*					codeSegment;
 	long					codeSegmentSize;
-} Routine;
+}; using Routine = _Routine;
 
-typedef struct {
+struct Data {
 	VariableType			varType;
 	long					offset;
 	void*					registeredData;
 	//SymTableNodePtr			recordIdPtr;		// Currently not implementing record structures...
-} Data;
+};
 
-typedef union {
+union DefinitionInfo {
 	Constant				constant;
 	Routine					routine;
 	Data					data;
-} DefinitionInfo;
+};
 
-typedef struct {
+struct Definition {
 	DefinitionType			key;
 	DefinitionInfo			info;
-} Definition;
+};
 
 //***************************************************************************
 
 //------------------
 // SYMBOL TABLE node	
 
-typedef struct _SymTableNode {
+struct _SymTableNode {
 	SymTableNodePtr		left;
 	SymTableNodePtr		parent;
 	SymTableNodePtr		right;
@@ -137,9 +137,9 @@ typedef struct _SymTableNode {
 	ABLModulePtr		library;
 	unsigned char		level;
 	long				labelIndex;		// really for compiling only...
-} SymTableNode;
+}; using SymTableNode = _SymTableNode;
 
-typedef enum {
+enum FunctionParamType {
 	PARAM_TYPE_ANYTHING,
 	PARAM_TYPE_CHAR,
 	PARAM_TYPE_INTEGER,
@@ -151,15 +151,15 @@ typedef enum {
 	PARAM_TYPE_REAL_ARRAY,
 	PARAM_TYPE_BOOLEAN_ARRAY,
 	NUM_PARAM_TYPES
-} FunctionParamType;
+};
 
-typedef enum {
+enum FunctionReturnType {
 	RETURN_TYPE_NONE,
 	RETURN_TYPE_INTEGER,
 	RETURN_TYPE_REAL,
 	RETURN_TYPE_BOOLEAN,
 	NUM_RETURN_TYPES
-} FunctionReturnType;
+};
 
 // Raised 256 -> 512 for Omnitech ABL stubs. Baseline MC2 needs ~256; our
 // 40+11 Omnitech tier-1/2 extensions push registrations to ~313. Overflowing
@@ -169,31 +169,31 @@ typedef enum {
 #define	MAX_STANDARD_FUNCTIONS	512
 #define	MAX_FUNCTION_PARAMS		20
 
-typedef struct {
+struct StandardFunctionInfo {
 	SymTableNodePtr			symbol;
 	long					numParams;
 	FunctionParamType		params[MAX_FUNCTION_PARAMS];
 	FunctionReturnType		returnType;
-} StandardFunctionInfo;
+};
 
 //***************************************************************************
 
 //---------------
 // TYPE structure
 
-typedef enum {
+enum FormType {
 	FRM_NONE,
 	FRM_SCALAR,
 	FRM_ENUM,
 	FRM_ARRAY
 	//FRM_RECORD
-} FormType;
+};
 
 //---------------------------------------------------------------------
 // Currently, we are only supporting the basic types: arrays and simple
 // variables.
 
-typedef struct _Type {
+struct _Type {
 	long							numInstances;
 	FormType						form;
 	long							size;
@@ -213,7 +213,7 @@ typedef struct _Type {
 		//	SymTableNodePtr		fieldSymTable;
 		//} record;
 	} info;
-} Type;	
+}; using Type = _Type;
 
 
 //***************************************************************************

@@ -39,10 +39,10 @@ inline constexpr int GENERIC_APPR_TYPE = 0x14;
 // Class definitions
 
 class AppearanceType;
-typedef AppearanceType *AppearanceTypePtr;
+using AppearanceTypePtr = AppearanceType*;
 
 class AppearanceTypeList;
-typedef AppearanceTypeList *AppearanceTypeListPtr;
+using AppearanceTypeListPtr = AppearanceTypeList*;
 
 //---------------------------------------------------------------------------
 #endif

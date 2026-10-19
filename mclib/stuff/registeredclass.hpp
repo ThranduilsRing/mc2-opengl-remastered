@@ -36,8 +36,8 @@ namespace Stuff {
 	// ClassID enumeration
 	//
 	public:
-		typedef int ClassID;
-		typedef RegisteredClass__ClassData ClassData;
+		using ClassID = int;
+		using ClassData = RegisteredClass__ClassData;
 
 	//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	// Construction, destruction, saving
@@ -129,7 +129,7 @@ namespace Stuff {
 		RegisteredClass__ClassData(
 			RegisteredClass::ClassID class_id,
 			const char *class_name,
-			RegisteredClass__ClassData *parent = NULL
+			RegisteredClass__ClassData *parent = nullptr
 		);
 
 		~RegisteredClass__ClassData();

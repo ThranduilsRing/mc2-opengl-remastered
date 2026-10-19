@@ -312,7 +312,7 @@ class UserInput
 			mouseLeftHeldTime = 0.f;
 			mouseRightHeldTime = 0.f;
 
-			cursors = NULL;
+			cursors = nullptr;
 		}
 
 		void initMouseCursors (const char *mouseFile);
@@ -322,7 +322,7 @@ class UserInput
 			if ( cursors )
 			{
 				delete cursors;
-				cursors = NULL;
+				cursors = nullptr;
 			}
 
 			init();

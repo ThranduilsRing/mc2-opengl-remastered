@@ -88,7 +88,7 @@ namespace Stuff {
 	//~~~~~~~~~~~~~~~~~~~~~~~~~~~ TreeNodeOf templates ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	template <class V> MemoryBlock*
-		TreeNodeOf<V>::allocatedMemory = NULL;
+		TreeNodeOf<V>::allocatedMemory = nullptr;
 	template <class V> CollectionSize
 		TreeNodeOf<V>::allocationCount = 0;
 
@@ -138,7 +138,7 @@ namespace Stuff {
 		{
 			Unregister_Object(allocatedMemory);
 			delete allocatedMemory;
-			allocatedMemory = NULL;
+			allocatedMemory = nullptr;
 		}
 		Verify(allocationCount >= 0);
 	}

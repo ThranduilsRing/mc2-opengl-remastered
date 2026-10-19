@@ -289,7 +289,7 @@ namespace Stuff {
 		MStringRepresentation
 			GetNthToken(
 				size_t nth_token,
-				char *delimiters=NULL
+				char *delimiters=nullptr
 			) const;
 
 		//
@@ -384,7 +384,7 @@ namespace Stuff {
 	{
 		Check_Object(this);
 		Verify(
-			(stringText != NULL) ? 
+			(stringText != nullptr) ?
 				(stringLength == strlen(stringText)) : 
 				(stringLength == 0)
 		);
@@ -659,7 +659,7 @@ namespace Stuff {
 		MString
 			GetNthToken(
 				size_t nth_token,
-				char *delimiters=NULL
+				char *delimiters=nullptr
 			) const;
 
 		//

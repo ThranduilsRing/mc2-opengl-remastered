@@ -81,7 +81,7 @@ class AppearanceType
 			numUsers = 0;
 			appearanceNum = 0xffffffff;
 
-			name = NULL;
+			name = nullptr;
 
 			typeUpperLeft = glm::vec3(0.0f);
 			typeLowerRight = glm::vec3(0.0f);

@@ -116,13 +116,13 @@ inline constexpr int TEAM8 = 7;
 
 //---------------------------------------------------------------------------
 // Used by the object system to load the objects on the terrain.
-typedef struct _ObjBlockInfo
+struct _ObjBlockInfo
 {
 	bool		active;
 	long		numCollidableObjects;
 	long		numObjects;					// includes collidable objects
 	long		firstHandle;				// collidables, followed by non
-} ObjBlockInfo;
+}; using ObjBlockInfo = _ObjBlockInfo;
 
 //---------------------------------------------------------------------------
 // Terrain LOD chunk — Phase 1: per-block AABB + superchunk metadata.
@@ -272,7 +272,7 @@ class Terrain
 
 		float getTerrainElevation (const glm::vec3 &position);
 		short getTerrainType (const glm::vec3 &position);
-		float getTerrainAngle (const glm::vec3 &position, glm::vec3* normal = NULL);
+		float getTerrainAngle (const glm::vec3 &position, glm::vec3* normal = nullptr);
 		glm::vec3 getTerrainNormal (const glm::vec3 &position);
 		float getTerrainLight (const glm::vec3& position);
 		bool isVisible (const glm::vec3 &looker, const glm::vec3 &looked_at);
@@ -460,7 +460,7 @@ class Terrain
 		void initMaterialProfile();
 };
 
-typedef Terrain *TerrainPtr;
+using TerrainPtr = Terrain*;
 
 extern TerrainPtr land;
 

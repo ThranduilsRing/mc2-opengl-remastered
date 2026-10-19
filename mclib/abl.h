@@ -69,9 +69,9 @@ void ABLi_setRealParam (ABLParamPtr paramList, int index, float value);
 void ABLi_deleteParamList (ABLParamPtr paramList);
 
 int32_t ABLi_preProcess (const char* sourceFileName,
-					  long* numErrors = NULL,
-					  long* numLinesProcessed = NULL,
-					  long* numFilesProcessed = NULL,
+					  long* numErrors = nullptr,
+					  long* numLinesProcessed = nullptr,
+					  long* numFilesProcessed = nullptr,
 					  bool printLines = false);
 
 // Execution guard for modules carrying a compile-error count. New compiles reject
@@ -79,16 +79,16 @@ int32_t ABLi_preProcess (const char* sourceFileName,
 bool ablSkipErroredModulesEnabled (void);
 
 ABLModulePtr ABLi_loadLibrary (const char* sourceFileName,
-					   long* numErrors = NULL,
-					   long* numLinesProcessed = NULL,
-					   long* numFilesProcessed = NULL,
+					   long* numErrors = nullptr,
+					   long* numLinesProcessed = nullptr,
+					   long* numFilesProcessed = nullptr,
 					   bool printLines = false,
 					   bool createInstance = true);
 
 long ABLi_execute (SymTableNodePtr moduleIdPtr,
-				   SymTableNodePtr functionIdPtr = NULL,
-				   ABLParamPtr paramList = NULL,
-				   StackItemPtr returnVal = NULL);
+				   SymTableNodePtr functionIdPtr = nullptr,
+				   ABLParamPtr paramList = nullptr,
+				   StackItemPtr returnVal = nullptr);
 
 long ABLi_deleteModule (SymTableNodePtr moduleIdPtr);
 

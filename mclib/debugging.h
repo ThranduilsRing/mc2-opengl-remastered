@@ -84,7 +84,7 @@ class GameDebugWindow {
 			if (font) 
 			{
 				gos_DeleteFont(font);
-				font = NULL;
+				font = nullptr;
 			}
 		}
 		

@@ -21,7 +21,7 @@
 
 //***************************************************************************
 
-typedef enum {
+enum DebugCommandCode {
 	DEBUG_COMMAND_SET_MODULE,
 	DEBUG_COMMAND_TRACE,
 	DEBUG_COMMAND_STEP,
@@ -34,19 +34,19 @@ typedef enum {
 	DEBUG_COMMAND_HELP,
 	DEBUG_COMMAND_INFO,
 	NUM_DEBUG_COMMANDS
-} DebugCommandCode;
+};
 
 //***************************************************************************
 
-typedef struct _Watch {
+struct _Watch {
 	SymTableNodePtr		idPtr;
 	bool				store;
 	bool				breakOnStore;
 	bool				fetch;
 	bool				breakOnFetch;
-} Watch;
+}; using Watch = _Watch;
 
-typedef Watch* WatchPtr;
+using WatchPtr = Watch*;
 
 class WatchManager {
 
@@ -65,7 +65,7 @@ class WatchManager {
 		void init (void) {
 			maxWatches = 0;
 			maxWatches = 0;
-			watches = NULL;
+			watches = nullptr;
 		}
 
 		long init (long max);
@@ -116,7 +116,7 @@ class BreakPointManager {
 		void init (void) {
 			maxBreakPoints = 0;
 			numBreakPoints = 0;
-			breakPoints = NULL;
+			breakPoints = nullptr;
 		}
 
 		long init (long max);
@@ -179,9 +179,9 @@ class Debugger {
 		void operator delete (void* us);
 
 		void init (void) {
-			module = NULL;
-			watchManager = NULL;
-			breakPointManager = NULL;
+			module = nullptr;
+			watchManager = nullptr;
+			breakPointManager = nullptr;
 			debugModule = module;
 			enabled = false;
 			debugCommand = false;
@@ -190,7 +190,7 @@ class Debugger {
 			step = false;
 			traceEntry = false;
 			traceExit = false;
-			printCallback = NULL;
+			printCallback = nullptr;
 		}
 
 		long init (void (*callback)(const char* s), ABLModulePtr _module);

@@ -13,9 +13,9 @@ namespace Stuff {
 
 	//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Iterator ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-	typedef int CollectionSize;
+	using CollectionSize = int;
     // sebi
-	typedef int IteratorPosition;
+	using IteratorPosition = int;
 #ifndef LINUX_BUILD
 	class _declspec(novtable) Iterator
 #else

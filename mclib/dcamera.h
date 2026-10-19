@@ -14,7 +14,7 @@
 //---------------------------------------------------------------------------
 // Class Definitions
 class Camera;
-typedef Camera *CameraPtr;
+using CameraPtr = Camera*;
 
 //---------------------------------------------------------------------------
 // Macro Definitions

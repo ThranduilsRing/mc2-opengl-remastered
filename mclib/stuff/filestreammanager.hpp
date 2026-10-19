@@ -88,8 +88,7 @@ namespace Stuff {
 	// Private data
 	//
 	protected:
-		typedef Stuff::PlugOf<__int64>
-			FileStatPlug;
+		using FileStatPlug = Stuff::PlugOf<__int64>;
 		Stuff::TreeOf<FileStatPlug*, Stuff::MString>
 			compareCache;
 	};

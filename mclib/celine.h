@@ -37,7 +37,7 @@ class LineElement : public Element
 		endPos.x = endPos.y = endPos.z = endPos.w = 0.0f;
 		color = 0;
 		endColor = -1;
-		fadeTable = NULL;
+		fadeTable = nullptr;
 	}
 
 	LineElement (Stuff::Vector4D &pos1, Stuff::Vector4D &pos2, long clr, MemoryPtr fTable, long endClr = -1);

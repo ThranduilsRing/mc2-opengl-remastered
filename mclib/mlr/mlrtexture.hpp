@@ -56,7 +56,7 @@ namespace MidLevelRenderer {
 			Save(Stuff::MemoryStream *stream);
 
 		GOSImage*
-			GetImage(int *h=NULL)
+			GetImage(int *h=nullptr)
 				{ Check_Object(this); if(h) { *h = hint; } return image; }
 
 		const char*

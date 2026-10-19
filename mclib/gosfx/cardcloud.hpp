@@ -98,8 +98,8 @@ namespace gosFX
 		static void InitializeClass();
 		static void	TerminateClass();
 
-		typedef CardCloud__Specification Specification;
-		typedef CardCloud__Particle Particle;
+		using Specification = CardCloud__Specification;
+		using Particle = CardCloud__Particle;
 
 	public:
 		enum {

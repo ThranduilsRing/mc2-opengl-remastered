@@ -44,14 +44,14 @@ inline constexpr int INFANTRY_BLOOD_EFFECT = 82;
 
 extern char mc2_word_none[];
 
-typedef struct _EffectData
+struct _EffectData
 {
 	char effectName[50];
 	char muzzleFlashName[50];
 	char hitEffectName[50];
 	char missEffectName[50];
 	long effectObjNum;
-} EffectData;
+}; using EffectData = _EffectData;
 
 class WeaponEffects
 {
@@ -77,7 +77,7 @@ class WeaponEffects
 		
 		void init (void)
 		{
-			effects = NULL;
+			effects = nullptr;
 			numEffects = 0;
 		}
 		

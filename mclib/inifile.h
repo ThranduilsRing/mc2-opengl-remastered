@@ -77,7 +77,7 @@ class FitIniFile : public File
 		long afterOpen (void);
 		void atClose (void);
 		
-		long findNextBlockStart (char *line = NULL, unsigned long lineLen = 0);
+		long findNextBlockStart (char *line = nullptr, unsigned long lineLen = 0);
 		long countBlocks (void);
 		
 		long getNextWord (char *&line, char *buffer, unsigned long bufLen);

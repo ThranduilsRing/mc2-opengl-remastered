@@ -40,7 +40,7 @@
 //-------------------------------------------------------------------------------
 // Structs used by layer.
 //
-typedef struct _GestureData
+struct _GestureData
 {
 	float			startVel;				//Gesture Starts at this speed
 	float			endVel;					//Gesture Ends at this speed
@@ -50,7 +50,7 @@ typedef struct _GestureData
 	long			rightFootDownFrame1;	//Sometimes the foot's down twice.
 	long			leftFootDownFrame0;		//When should the left foot make a poof and print?
 	long			leftFootDownFrame1;		//Sometimes the foot's down twice.
-} GestureData;
+}; using GestureData = _GestureData;
 
 //-------------------------------------------------------------------------------
 // Macro Definitions
@@ -163,12 +163,12 @@ class Mech3DAppearanceType: public AppearanceType
 			long i=0;
 			for (i=0;i<MAX_LODS;i++)
 			{
-				mechShape[i] = NULL;
+				mechShape[i] = nullptr;
 				lodDistance[i] = 0.0f;			
 			}
 		
 			for (i=0;i<MAX_MECH_ANIMATIONS;i++)
-				mechAnim[i] = NULL;
+				mechAnim[i] = nullptr;
 
 			rightFootprintType = leftFootprintType = -1;
 
@@ -176,17 +176,17 @@ class Mech3DAppearanceType: public AppearanceType
 
 			textureSide = 128;								//For stupid shadows if we need to draw them.
 			
-			nodeData = NULL;
+			nodeData = nullptr;
 			numSmokeNodes = numWeaponNodes = numJumpNodes = 0;
 
 			// PRESENTATION-SOCKET-PROFILE-1: no declared sockets by default.
 			numPresentationSockets = 0;
 
-			mechShadowShape = NULL;
+			mechShadowShape = nullptr;
     
             //sebi: init to not contain garbage
- 		    mechForwardDmgShape = mechBackwardDmgShape = NULL;
-            leftArm = rightArm = NULL;
+		    mechForwardDmgShape = mechBackwardDmgShape = nullptr;
+            leftArm = rightArm = nullptr;
             numFootNodes = 0;
             MemSet(gestures, 0);
 		}
@@ -255,11 +255,11 @@ class Mech3DAppearanceType: public AppearanceType
 		}
 };
 
-typedef Mech3DAppearanceType *Mech3DAppearanceTypePtr;
+using Mech3DAppearanceTypePtr = Mech3DAppearanceType*;
 
 inline constexpr int MAX_DUST_POOFS = 3;
 //-------------------------------------------------------------------------------
-typedef struct _MechAppearanceData
+struct _MechAppearanceData
 {
 	float						frameNum;
 	float						mechFrameRate;
@@ -309,7 +309,7 @@ typedef struct _MechAppearanceData
 	bool						fallDust;
 	bool						isHelicopter;
 
-} MechAppearanceData;
+}; using MechAppearanceData = _MechAppearanceData;
 
 class Mech3DAppearance: public ObjectAppearance
 {
@@ -535,7 +535,7 @@ class Mech3DAppearance: public ObjectAppearance
 
 		virtual void destroy (void);
 
-		virtual void init (AppearanceTypePtr tree = NULL, GameObjectPtr obj = NULL);
+		virtual void init (AppearanceTypePtr tree = nullptr, GameObjectPtr obj = nullptr);
 
 		virtual void initFX (void);
 

@@ -15,13 +15,13 @@
 
 #define	MAX_MOVERS		255	// Should probably equal that in Collision System
 
-typedef struct _PathQueueRec* PathQueueRecPtr;
+using PathQueueRecPtr = struct _PathQueueRec*;
 
 class MoveMap;
-typedef MoveMap* MoveMapPtr;
+using MoveMapPtr = MoveMap*;
 
 class MovePathManager;
-typedef MovePathManager* MovePathManagerPtr;
+using MovePathManagerPtr = MovePathManager*;
 
 #endif
 

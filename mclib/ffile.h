@@ -35,22 +35,20 @@ inline constexpr int FASTFILE_ENTRY_TABLE_START = 8; //sebi
 
 
 #pragma pack(1)
-typedef struct 
-{
+struct FILEENTRY {
     DWORD	offset;
     DWORD	size;						//LZ Compressed Size
 	DWORD	realSize;					//Uncompressed Size
 	DWORD	hash;						//Hash Compare to weed out stinky files faster then StrCmp
     char	name[MAX_FILENAME_SIZE];
-} FILEENTRY;
+};
 #pragma pack()
 
-typedef struct 
-{
+struct FILE_HANDLE {
     DWORD       inuse;
     DWORD       pos;
     FILEENTRY	*pfe;
-} FILE_HANDLE;
+};
 
 //---------------------------------------------------------------------------
 // Class FastFile
@@ -87,7 +85,7 @@ class FastFile
 
 		bool isOpen (void)
 		{
-			return (handle != NULL);
+			return (handle != nullptr);
 		}
 
 		long fileSize (void)

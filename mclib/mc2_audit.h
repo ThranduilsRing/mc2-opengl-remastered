@@ -40,5 +40,5 @@ bool mc2AuditOnce(const char* tag, unsigned long long key);
 
 // Optional diagnostic mirror (weak coupling — see header comment). The sink
 // receives the raw marker line (no trailing newline). Pass nullptr to clear.
-typedef void (*Mc2AuditSink)(const char* line);
+using Mc2AuditSink = void(*)(const char* line);
 void mc2AuditSetSink(Mc2AuditSink sink);

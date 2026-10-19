@@ -93,22 +93,22 @@ class BldgAppearanceType : public AppearanceType
 			long i=0;
 			for (i=0;i<MAX_LODS;i++)
 			{
-				bldgShape[i] = NULL;
+				bldgShape[i] = nullptr;
 				lodDistance[i] = 0.0f;
 			}
 
-			bldgRenderShape = NULL;   // MODEL-OVERRIDE dual-shape: no override by default
+			bldgRenderShape = nullptr;   // MODEL-OVERRIDE dual-shape: no override by default
 			buildingPbrEnabled = false;
 			buildingPbrPreserveLegacyAlpha = false;
 			buildingFootprintShadowEnabled = false;
 			buildingFootprintShadowStrength = 0.0f;
 			buildingFootprintShadowSoftness = 0.0f;
 			buildingFootprintShadowHeightBias = 0.05f;
-			bldgDmgShape = NULL;
+			bldgDmgShape = nullptr;
 			
 			for (i=0;i<MAX_BD_ANIMATIONS;i++)
             {
-				bdAnimData[i] = NULL;
+				bdAnimData[i] = nullptr;
 
                 //sebi: init so will not contain garbage
                 bdAnimLoop[i] = false;
@@ -123,7 +123,7 @@ class BldgAppearanceType : public AppearanceType
 			spinMe = false;
 
             //sebi: init so will not contain garbage
-            nodeData = NULL;
+            nodeData = nullptr;
             numWeaponNodes = 0;
             isForestClump = false;
             MemSet(rotationalNodeId, 0);//sebi
@@ -337,7 +337,7 @@ class BldgAppearance : public ObjectAppearance
 
  	public:
 
-		virtual void init (AppearanceTypePtr tree = NULL, GameObjectPtr obj = NULL);
+		virtual void init (AppearanceTypePtr tree = nullptr, GameObjectPtr obj = nullptr);
 
 		virtual AppearanceTypePtr getAppearanceType (void)
 		{
@@ -427,7 +427,7 @@ class BldgAppearance : public ObjectAppearance
 
 		virtual void markTerrain(_ScenarioMapCellInfo* pInfo, int type, int counter);
 		
-		virtual long markMoveMap (bool passable, long* lineOfSightRect, bool useheight = false, short* cellList = NULL);
+		virtual long markMoveMap (bool passable, long* lineOfSightRect, bool useheight = false, short* cellList = nullptr);
 
 		virtual void markLOS (bool clearIt = false);
 		
@@ -508,7 +508,7 @@ class BldgAppearance : public ObjectAppearance
 
 		virtual bool hasAnimationData (long gestureId)
 		{
-			return (appearType->bdAnimData[gestureId] != NULL);
+			return (appearType->bdAnimData[gestureId] != nullptr);
 		}
 
 		virtual glm::vec3 getNodeIdPosition (long nodeId);
@@ -550,18 +550,18 @@ class TreeAppearanceType : public AppearanceType
 			long i=0;
 			for (i=0;i<MAX_LODS;i++)
 			{
-				treeShape[i] = NULL;
+				treeShape[i] = nullptr;
 				lodDistance[i] = 0.0f;
 			}
 
 			for (i=0;i<MAX_BD_ANIMATIONS;i++)
-				treeAnimData[i] = NULL;
+				treeAnimData[i] = nullptr;
 
 			// TREE-OVERRIDE-LOD-MVP Task 1: no override by default; all LODs NULL.
 			for (i=0;i<MAX_LODS;i++)
-				treeRenderShape[i] = NULL;
+				treeRenderShape[i] = nullptr;
 			treeRenderShapeLodCount = 0;
-			treeDmgShape = NULL;
+			treeDmgShape = nullptr;
 		}
 	
 		TreeAppearanceType (void)
@@ -657,7 +657,7 @@ class TreeAppearance : public ObjectAppearance
 
 	public:
 
-		virtual void init (AppearanceTypePtr tree = NULL, GameObjectPtr obj = NULL);
+		virtual void init (AppearanceTypePtr tree = nullptr, GameObjectPtr obj = nullptr);
 
 		virtual AppearanceTypePtr getAppearanceType (void)
 		{

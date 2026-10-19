@@ -12,8 +12,8 @@
 class ABLModule;
 class UserFile;
 
-typedef ABLModule* ABLModulePtr;
-typedef UserFile* UserFilePtr;
+using ABLModulePtr = ABLModule*;
+using UserFilePtr = UserFile*;
 
 #endif
 

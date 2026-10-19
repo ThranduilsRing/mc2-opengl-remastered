@@ -86,8 +86,8 @@ namespace gosFX
 		static void InitializeClass();
 		static void	TerminateClass();
 
-		typedef ShardCloud__Specification Specification;
-		typedef ShardCloud__Particle Particle;
+		using Specification = ShardCloud__Specification;
+		using Particle = ShardCloud__Particle;
 
 		enum {
 			ParticleSize =

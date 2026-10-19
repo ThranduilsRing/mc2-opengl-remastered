@@ -89,7 +89,7 @@ inline constexpr int MC2_ISWATERDETAIL = 4096;
 class MC_TextureManager;
 
 //---------------------------------------------------------------------------
-typedef struct _MC_VertexArrayNode
+struct _MC_VertexArrayNode
 {
 	friend class MC_TextureManager;
 
@@ -105,14 +105,14 @@ typedef struct _MC_VertexArrayNode
 		flags = 0;
 		numVertices = 0;
 		currentVertex = 0;
-		vertices = NULL;
+		vertices = nullptr;
 		textureIndex = 0;
 	}
 
-} MC_VertexArrayNode;
+}; using MC_VertexArrayNode = _MC_VertexArrayNode;
 
 class TG_RenderShape;
-typedef struct _MC_HardwareVertexArrayNode
+struct _MC_HardwareVertexArrayNode
 {
 	friend class MC_TextureManager;
 
@@ -128,13 +128,13 @@ public:
 		flags = 0;
 		numShapes = 0;
 		currentShape = 0;
-		shapes = NULL;
+		shapes = nullptr;
 		textureIndex = 0;
 	}
 
 	void destroy(void) {};							//Frees all blocks, free GOS_TextureHandle, blank all data.
 
-} MC_HardwareVertexArrayNode;
+}; using MC_HardwareVertexArrayNode = _MC_HardwareVertexArrayNode;
 
 //----------------------------------------------------------------------
 struct MC_TextureNode
@@ -183,8 +183,8 @@ struct MC_TextureNode
 	{
 		gosTextureHandle = 0xffffffff;
 		numUsers = 0;
-		nodeName = NULL;
-		textureData = NULL;
+		nodeName = nullptr;
+		textureData = nullptr;
 		lastUsed = -1;							//NEVER been used.
 		key = gos_Texture_Solid;
 		hints = gosHint_DisableMipmap;
@@ -192,17 +192,17 @@ struct MC_TextureNode
 		uniqueInstance = 0x0;
 		neverFLUSH = false;
 		pinRefCount = 0;
-		vertexData = NULL;
-		vertexData2 = NULL;
-		vertexData3 = NULL;
+		vertexData = nullptr;
+		vertexData2 = nullptr;
+		vertexData3 = nullptr;
 		lzCompSize = 0xffffffff;
 		uvScale = 1;
 		logicalWidth = 0;
 		logicalHeight = 0;
 
-		hardwareVertexData = NULL;
-		hardwareVertexData2 = NULL;
-		hardwareVertexData3 = NULL;
+		hardwareVertexData = nullptr;
+		hardwareVertexData2 = nullptr;
+		hardwareVertexData3 = nullptr;
 	}
 
 	DWORD findFirstAvailableBlock (void);
@@ -444,24 +444,24 @@ class MC_TextureManager
 
 		void init (void)
 		{
-			masterTextureNodes = NULL;
+			masterTextureNodes = nullptr;
 
-			textureCacheHeap = NULL;
-			textureStringHeap = NULL;
+			textureCacheHeap = nullptr;
+			textureStringHeap = nullptr;
 			textureManagerInstrumented = false;
 			totalCacheMisses = 0;
 			currentUsedTextures = 0;
 			peakUsedTextures = 0;
-			indexArray = NULL;
+			indexArray = nullptr;
 			
-			masterVertexNodes = NULL;
+			masterVertexNodes = nullptr;
 			nextAvailableVertexNode = 0;
 
-			masterHardwareVertexNodes = NULL;
+			masterHardwareVertexNodes = nullptr;
 			nextAvailableHardwareVertexNode = 0;
 			
-			vertexData = vertexData2 = vertexData3 = vertexData4 = vertexData5 = NULL;
-			hardwareVertexData = hardwareVertexData2 = hardwareVertexData3 = hardwareVertexData4 = hardwareVertexData5 = NULL;
+			vertexData = vertexData2 = vertexData3 = vertexData4 = vertexData5 = nullptr;
+			hardwareVertexData = hardwareVertexData2 = hardwareVertexData3 = hardwareVertexData4 = hardwareVertexData5 = nullptr;
 
             lightDataStructuresCapacity = 0;
             lightDataStructuresCount = 0;
@@ -639,7 +639,7 @@ class MC_TextureManager
 				{
 					masterTextureNodes[nodeId].hardwareVertexData = &(masterHardwareVertexNodes[nextAvailableHardwareVertexNode]);
 					gosASSERT(masterTextureNodes[nodeId].hardwareVertexData->numShapes == 0);
-					gosASSERT(masterTextureNodes[nodeId].hardwareVertexData->shapes == NULL);
+					gosASSERT(masterTextureNodes[nodeId].hardwareVertexData->shapes == nullptr);
 
 					nextAvailableHardwareVertexNode++;
 					masterTextureNodes[nodeId].hardwareVertexData->flags = flags;
@@ -651,7 +651,7 @@ class MC_TextureManager
 				{
 					masterTextureNodes[nodeId].hardwareVertexData2 = &(masterHardwareVertexNodes[nextAvailableHardwareVertexNode]);
 					gosASSERT(masterTextureNodes[nodeId].hardwareVertexData2->numShapes == 0);
-					gosASSERT(masterTextureNodes[nodeId].hardwareVertexData2->shapes == NULL);
+					gosASSERT(masterTextureNodes[nodeId].hardwareVertexData2->shapes == nullptr);
 
 					nextAvailableHardwareVertexNode++;
 					masterTextureNodes[nodeId].hardwareVertexData2->flags = flags;
@@ -670,7 +670,7 @@ class MC_TextureManager
 				{
 					masterTextureNodes[nodeId].hardwareVertexData3 = &(masterHardwareVertexNodes[nextAvailableHardwareVertexNode]);
 					gosASSERT(masterTextureNodes[nodeId].hardwareVertexData3->numShapes == 0);
-					gosASSERT(masterTextureNodes[nodeId].hardwareVertexData3->shapes == NULL);
+					gosASSERT(masterTextureNodes[nodeId].hardwareVertexData3->shapes == nullptr);
 
 					nextAvailableHardwareVertexNode++;
 					masterTextureNodes[nodeId].hardwareVertexData3->flags = flags;
@@ -697,7 +697,7 @@ class MC_TextureManager
 				{
 					hardwareVertexData = &(masterHardwareVertexNodes[nextAvailableHardwareVertexNode]);
 					gosASSERT(hardwareVertexData->numShapes == 0);
-					gosASSERT(hardwareVertexData->shapes == NULL);
+					gosASSERT(hardwareVertexData->shapes == nullptr);
 
 					nextAvailableHardwareVertexNode++;
 					hardwareVertexData->flags = flags;
@@ -708,7 +708,7 @@ class MC_TextureManager
 				{
 					hardwareVertexData2 = &(masterHardwareVertexNodes[nextAvailableHardwareVertexNode]);
 					gosASSERT(hardwareVertexData2->numShapes == 0);
-					gosASSERT(hardwareVertexData2->shapes == NULL);
+					gosASSERT(hardwareVertexData2->shapes == nullptr);
 
 					nextAvailableHardwareVertexNode++;
 					hardwareVertexData2->flags = flags;
@@ -720,7 +720,7 @@ class MC_TextureManager
 				{
 					hardwareVertexData3 = &(masterHardwareVertexNodes[nextAvailableHardwareVertexNode]);
 					gosASSERT(hardwareVertexData3->numShapes == 0);
-					gosASSERT(hardwareVertexData3->shapes == NULL);
+					gosASSERT(hardwareVertexData3->shapes == nullptr);
 
 					nextAvailableHardwareVertexNode++;
 					hardwareVertexData3->flags = flags;
@@ -733,7 +733,7 @@ class MC_TextureManager
 				{
 					hardwareVertexData4 = &(masterHardwareVertexNodes[nextAvailableHardwareVertexNode]);
 					gosASSERT(hardwareVertexData4->numShapes == 0);
-					gosASSERT(hardwareVertexData4->shapes == NULL);
+					gosASSERT(hardwareVertexData4->shapes == nullptr);
 
 					nextAvailableHardwareVertexNode++;
 					hardwareVertexData4->flags = flags;
@@ -747,7 +747,7 @@ class MC_TextureManager
 				{
 					hardwareVertexData5 = &(masterHardwareVertexNodes[nextAvailableHardwareVertexNode]);
 					gosASSERT(hardwareVertexData5->numShapes == 0);
-					gosASSERT(hardwareVertexData5->shapes == NULL);
+					gosASSERT(hardwareVertexData5->shapes == nullptr);
 
 					nextAvailableHardwareVertexNode++;
 					hardwareVertexData5->flags = flags;
@@ -780,7 +780,7 @@ class MC_TextureManager
 				{
 					masterTextureNodes[nodeId].vertexData = &(masterVertexNodes[nextAvailableVertexNode]);
 					gosASSERT(masterTextureNodes[nodeId].vertexData->numVertices == 0);
-					gosASSERT(masterTextureNodes[nodeId].vertexData->vertices == NULL); 
+					gosASSERT(masterTextureNodes[nodeId].vertexData->vertices == nullptr);
 
 					nextAvailableVertexNode++;
 					masterTextureNodes[nodeId].vertexData->flags = flags;
@@ -792,7 +792,7 @@ class MC_TextureManager
 				{
 					masterTextureNodes[nodeId].vertexData2 = &(masterVertexNodes[nextAvailableVertexNode]);
 					gosASSERT(masterTextureNodes[nodeId].vertexData2->numVertices == 0);
-					gosASSERT(masterTextureNodes[nodeId].vertexData2->vertices == NULL); 
+					gosASSERT(masterTextureNodes[nodeId].vertexData2->vertices == nullptr);
 
 					nextAvailableVertexNode++;
 					masterTextureNodes[nodeId].vertexData2->flags = flags;
@@ -806,7 +806,7 @@ class MC_TextureManager
 				{
 					masterTextureNodes[nodeId].vertexData3 = &(masterVertexNodes[nextAvailableVertexNode]);
 					gosASSERT(masterTextureNodes[nodeId].vertexData3->numVertices == 0);
-					gosASSERT(masterTextureNodes[nodeId].vertexData3->vertices == NULL); 
+					gosASSERT(masterTextureNodes[nodeId].vertexData3->vertices == nullptr);
 
 					nextAvailableVertexNode++;
 					masterTextureNodes[nodeId].vertexData3->flags = flags;
@@ -833,7 +833,7 @@ class MC_TextureManager
 				{
 					vertexData = &(masterVertexNodes[nextAvailableVertexNode]);
 					gosASSERT(vertexData->numVertices == 0);
-					gosASSERT(vertexData->vertices == NULL); 
+					gosASSERT(vertexData->vertices == nullptr);
 
 					nextAvailableVertexNode++;
 					vertexData->flags = flags;
@@ -844,7 +844,7 @@ class MC_TextureManager
 				{
 					vertexData2 = &(masterVertexNodes[nextAvailableVertexNode]);
 					gosASSERT(vertexData2->numVertices == 0);
-					gosASSERT(vertexData2->vertices == NULL); 
+					gosASSERT(vertexData2->vertices == nullptr);
 
 					nextAvailableVertexNode++;
 					vertexData2->flags = flags;
@@ -856,7 +856,7 @@ class MC_TextureManager
 				{
 					vertexData3 = &(masterVertexNodes[nextAvailableVertexNode]);
 					gosASSERT(vertexData3->numVertices == 0);
-					gosASSERT(vertexData3->vertices == NULL); 
+					gosASSERT(vertexData3->vertices == nullptr);
 
 					nextAvailableVertexNode++;
 					vertexData3->flags = flags;
@@ -869,7 +869,7 @@ class MC_TextureManager
 				{
 					vertexData4 = &(masterVertexNodes[nextAvailableVertexNode]);
 					gosASSERT(vertexData4->numVertices == 0);
-					gosASSERT(vertexData4->vertices == NULL); 
+					gosASSERT(vertexData4->vertices == nullptr);
 
 					nextAvailableVertexNode++;
 					vertexData4->flags = flags;
@@ -883,7 +883,7 @@ class MC_TextureManager
 				{
 					vertexData5 = &(masterVertexNodes[nextAvailableVertexNode]);
 					gosASSERT(vertexData5->numVertices == 0);
-					gosASSERT(vertexData5->vertices == NULL);
+					gosASSERT(vertexData5->vertices == nullptr);
 
 					nextAvailableVertexNode++;
 					vertexData5->flags = flags;
@@ -931,7 +931,7 @@ class MC_TextureManager
 				{
 					masterTextureNodes[nodeId].vertexData = &(masterVertexNodes[nextAvailableVertexNode]);
 					gosASSERT(masterTextureNodes[nodeId].vertexData->numVertices == 0);
-					gosASSERT(masterTextureNodes[nodeId].vertexData->vertices == NULL);
+					gosASSERT(masterTextureNodes[nodeId].vertexData->vertices == nullptr);
 
 					nextAvailableVertexNode++;
 					masterTextureNodes[nodeId].vertexData->flags = flags;
@@ -943,7 +943,7 @@ class MC_TextureManager
 				{
 					masterTextureNodes[nodeId].vertexData2 = &(masterVertexNodes[nextAvailableVertexNode]);
 					gosASSERT(masterTextureNodes[nodeId].vertexData2->numVertices == 0);
-					gosASSERT(masterTextureNodes[nodeId].vertexData2->vertices == NULL);
+					gosASSERT(masterTextureNodes[nodeId].vertexData2->vertices == nullptr);
 
 					nextAvailableVertexNode++;
 					masterTextureNodes[nodeId].vertexData2->flags = flags;
@@ -957,7 +957,7 @@ class MC_TextureManager
 				{
 					masterTextureNodes[nodeId].vertexData3 = &(masterVertexNodes[nextAvailableVertexNode]);
 					gosASSERT(masterTextureNodes[nodeId].vertexData3->numVertices == 0);
-					gosASSERT(masterTextureNodes[nodeId].vertexData3->vertices == NULL);
+					gosASSERT(masterTextureNodes[nodeId].vertexData3->vertices == nullptr);
 
 					nextAvailableVertexNode++;
 					masterTextureNodes[nodeId].vertexData3->flags = flags;
@@ -1267,17 +1267,17 @@ class MC_TextureManager
 		{
 			for (long i=0;i<MC_MAXTEXTURES;i++)
 			{
-				masterTextureNodes[i].vertexData = NULL;
-				masterTextureNodes[i].vertexData2 = NULL;
-				masterTextureNodes[i].vertexData3 = NULL;
+				masterTextureNodes[i].vertexData = nullptr;
+				masterTextureNodes[i].vertexData2 = nullptr;
+				masterTextureNodes[i].vertexData3 = nullptr;
 
-				masterTextureNodes[i].hardwareVertexData = NULL;
-				masterTextureNodes[i].hardwareVertexData2 = NULL;
-				masterTextureNodes[i].hardwareVertexData3 = NULL;
+				masterTextureNodes[i].hardwareVertexData = nullptr;
+				masterTextureNodes[i].hardwareVertexData2 = nullptr;
+				masterTextureNodes[i].hardwareVertexData3 = nullptr;
 			}
 
-			vertexData = vertexData2 = vertexData3 = vertexData4 = vertexData5 = NULL;
-			hardwareVertexData = hardwareVertexData2 = hardwareVertexData3 = hardwareVertexData4 = hardwareVertexData5 = NULL;
+			vertexData = vertexData2 = vertexData3 = vertexData4 = vertexData5 = nullptr;
+			hardwareVertexData = hardwareVertexData2 = hardwareVertexData3 = hardwareVertexData4 = hardwareVertexData5 = nullptr;
 
 			memset(masterVertexNodes,0,sizeof(MC_VertexArrayNode)*MC_MAXTEXTURES);
 			memset(masterHardwareVertexNodes,0,sizeof(MC_HardwareVertexArrayNode)*MC_MAXTEXTURES);

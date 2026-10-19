@@ -13,12 +13,12 @@
 
 //---------------------------------------------------------------------------
 
-typedef long FileHandle;
-typedef long FilePos;
+using FileHandle = long;
+using FilePos = long;
 //---------------------------------------------------------------------------
 
 class File;
-typedef File *FilePtr;
+using FilePtr = File*;
 
 //---------------------------------------------------------------------------
 #endif // DFILE_H

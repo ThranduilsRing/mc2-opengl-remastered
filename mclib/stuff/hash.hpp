@@ -220,7 +220,7 @@ namespace Stuff {
 			for (int i = 0; i < hashTableSize; i++)
 			{
 				Check_Pointer(hashTable);
-				if (hashTable[i] != NULL)
+				if (hashTable[i] != nullptr)
 				{
 					Check_Object(hashTable[i]);
 					SortedChainIteratorOf<T, V> 

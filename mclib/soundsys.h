@@ -220,13 +220,13 @@ class SoundSystem
 			stream3Active = false;
 			
 			numBettySamples = 0;
-			bettyHandle = NULL;
+			bettyHandle = nullptr;
 
 			supportSoundBite.clear();
 			lastSupportId = -1;
 			
 			numSupportSamples = 0;
-			supportHandle = NULL;
+			supportHandle = nullptr;
 			
 			isRaining = oldRaining = 0;
 			sensorBeepUpdateTime = 0.0f;
@@ -255,7 +255,7 @@ class SoundSystem
 		void stopBettySample (void);
 
 		
-		long playSupportSample (unsigned long supportSampleId, const char* fileName = NULL);
+		long playSupportSample (unsigned long supportSampleId, const char* fileName = nullptr);
 		
  		void stopDigitalSample (unsigned long sampleHandleNumber);
 		void stopDigitalMusic (void);

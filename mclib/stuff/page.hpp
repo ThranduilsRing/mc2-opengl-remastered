@@ -71,13 +71,13 @@ namespace Stuff {
 
 		bool
 			DoesNoteExist(const char *entryname)
-				{Check_Object(this); return FindNote(entryname) != NULL;}
+				{Check_Object(this); return FindNote(entryname) != nullptr;}
 		Note*
 			FindNote(const char *entryname);
 		Note*
 			GetNote(unsigned index);
 
-		typedef ChainIteratorOf<Note*> NoteIterator;
+		using NoteIterator = ChainIteratorOf<Note* >;
 		NoteIterator*
 			MakeNoteIterator()
 				{Check_Object(this); return new NoteIterator(&m_notes);}

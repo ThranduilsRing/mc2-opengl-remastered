@@ -24,16 +24,16 @@
 
 //***************************************************************************
 
-typedef enum {
+enum UseType {
 	USE_EXPR,
 	USE_TARGET,
 	USE_REFPARAM
-} UseType;
+};
 
-typedef enum {
+enum BlockType {
 	BLOCK_MODULE,
 	BLOCK_ROUTINE
-} BlockType;
+};
 
 //***************************************************************************
 

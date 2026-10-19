@@ -23,7 +23,7 @@ namespace MidLevelRenderer {
 	class SortData {
 	public:
 		SortData () 
-			{ vertices = NULL; numVertices = 0; indices = NULL; 
+			{ vertices = nullptr; numVertices = 0; indices = nullptr;
 			  numIndices = 0; type = TriList; texture2 = 0; }
 
 		void DrawTriList();
@@ -47,8 +47,8 @@ namespace MidLevelRenderer {
 			LastMode
 		};
 
-		typedef void (SortData::* DrawFunc)();
-		typedef int (SortData::* LoadSortAlphaFunc)(SortAlpha**);
+		using DrawFunc = void (SortData::*)();
+		using LoadSortAlphaFunc = int (SortData::*)(SortAlpha**);
 
 		static DrawFunc Draw[LastMode];
 		static LoadSortAlphaFunc LoadSortAlpha[LastMode];

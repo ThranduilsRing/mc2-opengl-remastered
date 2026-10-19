@@ -37,7 +37,7 @@
 //------------
 // TOKEN CODES
 
-typedef enum {
+enum TokenCodeType {
 	TKN_NONE,
 	TKN_IDENTIFIER,
 	TKN_NUMBER,
@@ -115,40 +115,40 @@ typedef enum {
 	TKN_STATEMENT_MARKER,
 	TKN_ADDRESS_MARKER,
 	NUM_TOKENS
-} TokenCodeType;
+};
 
-typedef enum {
+enum CharCodeType {
 	CHR_LETTER,
 	CHR_DIGIT,
 	CHR_DQUOTE,
 	CHR_SPECIAL,
 	CHR_EOF
-} CharCodeType;
+};
 
-typedef struct {
+struct ReservedWord {
 	const char*			string;
 	TokenCodeType	tokenCode;
-} ReservedWord;
+};
 
 //***************************************************************************
 
 //------------------
 // LITERAL structure
 
-typedef enum {
+enum LiteralType {
 	LIT_INTEGER,
 	LIT_REAL,
 	LIT_STRING
-} LiteralType;
+};
 
-typedef struct {
+struct Literal {
 	LiteralType		type;
 	struct {
 		int         integer;
 		float		real;
 		char		string[MAXLEN_TOKENSTRING];
 	} value;
-} Literal;
+};
 
 //---------------------------------------------------------------------------
 
@@ -158,7 +158,7 @@ typedef struct CaseItem {
 	struct CaseItem*	next;
 } CaseItem;
 
-typedef CaseItem* CaseItemPtr;
+using CaseItemPtr = CaseItem*;
 
 //***************************************************************************
 

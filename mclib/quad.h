@@ -25,15 +25,15 @@
 #endif
 
 //---------------------------------------------------------------------------
-typedef struct _TerrainUVData
+struct _TerrainUVData
 {
 	float	minU;
 	float	minV;
 	float	maxU;
 	float 	maxV;
-} TerrainUVData;
+}; using TerrainUVData = _TerrainUVData;
 
-typedef struct _MineResult
+struct _MineResult
 {
 	DWORD mineData;
 	
@@ -54,7 +54,7 @@ typedef struct _MineResult
 		return result;
 	}
 	
-} MineResult;
+}; using MineResult = _MineResult;
 
 // Phase-helper state of TerrainQuad::draw (defined in quad_draw.cpp).
 struct QuadDrawFrame;
@@ -98,7 +98,7 @@ class TerrainQuad
 		void init (void)
 		{
 			for (int i=0;i<4;i++)
-				vertices[i] = NULL;
+				vertices[i] = nullptr;
 			
 			terrainHandle = 0xffffffff;
 			terrainDetailHandle = 0xffffffff;

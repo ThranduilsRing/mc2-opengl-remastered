@@ -180,33 +180,33 @@ class TerrainTextures
 	
 		void init (void)
 		{
-			tileHeap = NULL;
-			tileRAMHeap = NULL;
+			tileHeap = nullptr;
+			tileRAMHeap = nullptr;
 
 			//----------------------------------------------
 			// Stores composited and raw textures in VidMem
 			numTxms = MC_MAX_TERRAIN_TXMS;
 			nextAvailable = 0;
-			textures = NULL;
+			textures = nullptr;
 			firstTransition = -1;
 
 			//--------------------------------------------------
 			// Stores Base Terrain Textures and Masks in SysMem
 			numTypes = 0;
-			types = NULL;
+			types = nullptr;
 
 			//----------------------------------------------------------
 			// Stores Overlay Terrain Textures in VidMem and MLR Shapes
 			numOverlays = 0;
-			overlays = NULL;
+			overlays = nullptr;
 
 			numDetails = 0;
-			details = NULL;
+			details = nullptr;
 			
 			//--------------------------------------------------------
 			// Stores Transition Texture in VidMem.
 			numTransitions = 0;
-			transitions = NULL;
+			transitions = nullptr;
 			nextTransition = 0;
 			
 			//------------------------------------------------------
@@ -216,7 +216,7 @@ class TerrainTextures
 			//---------------------------------------------------------------------------------
 			//Checks for list o magic textures and then checks that each magic texture exists. 
 			quickLoad = false;
-			localBaseName = NULL;
+			localBaseName = nullptr;
 		}
 
 		TerrainTextures (void)

@@ -86,7 +86,7 @@ namespace Stuff {
 	//~~~~~~~~~~~~~~~~~~~~~~~~~~ SortedChainLinkOf templates ~~~~~~~~~~~~~~~~~~~~~~~~
 
 	template <class V> MemoryBlock*
-		SortedChainLinkOf<V>::allocatedMemory = NULL;
+		SortedChainLinkOf<V>::allocatedMemory = nullptr;
 	template <class V> CollectionSize
 		SortedChainLinkOf<V>::allocationCount = 0;
 
@@ -136,7 +136,7 @@ namespace Stuff {
 		{
 			Unregister_Object(allocatedMemory);
 			delete allocatedMemory;
-			allocatedMemory = NULL;
+			allocatedMemory = nullptr;
 		}
 		Verify(allocationCount >= 0);
 	}
@@ -330,7 +330,7 @@ namespace Stuff {
 	//~~~~~~~~~~~~~~~~~~~~~~~~~~~ SortedChainOf templates ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 	template <class T, class V> MemoryBlock*
-		SortedChainOf<T, V>::allocatedMemory = NULL;
+		SortedChainOf<T, V>::allocatedMemory = nullptr;
 	template <class T, class V> CollectionSize
 		SortedChainOf<T, V>::allocationCount = 0;
 
@@ -416,7 +416,7 @@ namespace Stuff {
 		{
 			Unregister_Object(allocatedMemory);
 			delete allocatedMemory;
-			allocatedMemory = NULL;
+			allocatedMemory = nullptr;
 		}
 		Verify(allocationCount >= 0);
 	}

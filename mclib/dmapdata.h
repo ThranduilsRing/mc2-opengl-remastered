@@ -18,8 +18,7 @@
 
 //---------------------------------------------------------------------------
 // Macro Definitions
-typedef enum
-{
+enum TerrainType {
 	MC_BLUEWATER_TYPE,
 	MC_GREEN_WATER_TYPE,
 	MC_MUD_TYPE,
@@ -42,15 +41,15 @@ typedef enum
 	MC_CEMENT8_TYPE,
 	MC_NONE_TYPE,
 	NUM_TERRAIN_TYPES
-} TerrainType;
+};
 
 //---------------------------------------------------------------------------
 // Class Definitions
 struct PostcompVertex;
-typedef PostcompVertex *PostcompVertexPtr;
+using PostcompVertexPtr = PostcompVertex*;
 
 class MapData;
-typedef MapData *MapDataPtr;
+using MapDataPtr = MapData*;
 
 //---------------------------------------------------------------------------
 #endif

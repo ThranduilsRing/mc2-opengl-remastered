@@ -27,7 +27,7 @@
 
 namespace MidLevelRenderer {
 
-	typedef int AndyDisplay;
+	using AndyDisplay = int;
 
 	class DrawShapeInformation
 		#if defined(_ARMOR)

@@ -17,7 +17,7 @@ namespace Stuff {
     class HSVAColor;
     class HSVColor;
 
-	typedef float Scalar; // scalar.hpp
+	using Scalar = float; // scalar.hpp
 
 
 

@@ -170,7 +170,7 @@ class FloatHelp
 		}
 };
 
-typedef FloatHelp* FloatHelpPtr;
+using FloatHelpPtr = FloatHelp*;
 
 //-----------------------------------------------------------------------------------------
 #endif
