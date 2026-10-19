@@ -18,6 +18,8 @@ import os
 import subprocess
 import sys
 
+import console_child  # same directory: python puts the script dir on sys.path even under -S -E
+
 PREFIX = b"Note: including file:"
 
 
@@ -81,7 +83,7 @@ def main():
     own, sccache, cmd = sys.argv[1], sys.argv[2], sys.argv[3:]
     roots = roots_from_env(own)
     incs = include_dirs(cmd)
-    proc = subprocess.run([sccache] + cmd, stdout=subprocess.PIPE)
+    proc = subprocess.run([sccache] + cmd, stdout=subprocess.PIPE, **console_child.child_kwargs(redirected=True))
     out = proc.stdout
     if PREFIX in out and roots:
         lines = out.split(b"\n")
