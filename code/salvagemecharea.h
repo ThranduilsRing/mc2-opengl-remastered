@@ -8,6 +8,7 @@ SalvageMechArea.h			: Interface for the SalvageMechArea component.
 \*************************************************************************************************/
 
 //*************************************************************************************************
+#include <memory>
 #include"asystem.h"
 #include"simplecomponentlistbox.h"
 #include"attributemeter.h"
@@ -99,18 +100,18 @@ public:
 	SalvageListItem( BattleMech* pUnit );
 
 private:
-	static aAnimButton*	templateCheckButton;
-	static aText*		mechNameText;
-	static aText*		variantNameText;
-	static aText*		weightText;
-	static aText*		costText;
-	static aObject*		cBillsIcon;
-	static aObject*		weightIcon;
+	static std::unique_ptr<aAnimButton>	templateCheckButton;
+	static std::unique_ptr<aText>		mechNameText;
+	static std::unique_ptr<aText>		variantNameText;
+	static std::unique_ptr<aText>		weightText;
+	static std::unique_ptr<aText>		costText;
+	static std::unique_ptr<aObject>		cBillsIcon;
+	static std::unique_ptr<aObject>		weightIcon;
 	static GUI_RECT		iconRect;
 	static GUI_RECT		rect;
-	static aAnimation*	s_pressedAnim;
-	static aAnimation*	s_highlightAnim;
-	static aAnimation*	s_normalAnim;
+	static std::unique_ptr<aAnimation>	s_pressedAnim;
+	static std::unique_ptr<aAnimation>	s_highlightAnim;
+	static std::unique_ptr<aAnimation>	s_normalAnim;
 
 	aAnimation			pressedAnim;
 	aAnimation			highlightAnim;

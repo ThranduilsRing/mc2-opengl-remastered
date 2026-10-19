@@ -388,7 +388,7 @@ TEST_CASE("LogisticsTeardown/the tutorial brain is freed before ABL closes (BUGS
     }
     // The shutdown order (mechcmd2_frame.cpp): Logistics::releaseAblModules, Mission::destroy (closeABL), Logistics::destroy.
     struct FrontEnd : Logistics {
-        void install(MissionBegin* begin) { missionBegin = begin; }
+        void install(MissionBegin* begin) { missionBegin.reset(begin); }
     };
     auto* frontEnd = new FrontEnd;
     auto* begin = new MissionBegin;
