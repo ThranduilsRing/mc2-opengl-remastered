@@ -41,7 +41,7 @@ long BldgAppearance::update (bool animate)
    	{
    		if (!pointLight)
    		{
-   			pointLight = (TG_LightPtr)malloc(sizeof(TG_Light));
+			pointLight = static_cast<TG_LightPtr>(malloc(sizeof(TG_Light)));
    			pointLight->init(TG_LIGHT_TERRAIN);
    			lightId = eye->addWorldLight(pointLight);
    	
@@ -114,7 +114,7 @@ long BldgAppearance::update (bool animate)
 				long nodeId = bldgShape->GetNodeNameId(nodeName);
 				if (nodeId == -1) continue;
 
-				TG_LightPtr light = (TG_LightPtr)malloc(sizeof(TG_Light));
+				TG_LightPtr light = static_cast<TG_LightPtr>(malloc(sizeof(TG_Light)));
 				light->init(TG_LIGHT_POINT);            // v1 — POINT (OQ2)
 				light->SetaRGB(0xffe8c870);             // OQ3 warm hardcoded
 				light->SetIntensity(0.5f);              // OQ4 initial
@@ -137,8 +137,8 @@ long BldgAppearance::update (bool animate)
 			// nodeName misses; honest enough for the H1 disambiguation).
 			diagOverflow = diagSpotlightsFound - diagRegistered;
 			if (diagOverflow < 0) diagOverflow = 0;
-			s_spotDiagBldgRegistered += (unsigned long)diagRegistered;
-			s_spotDiagBldgOverflows  += (unsigned long)diagOverflow;
+			s_spotDiagBldgRegistered += static_cast<unsigned long>(diagRegistered);
+			s_spotDiagBldgOverflows  += static_cast<unsigned long>(diagOverflow);
 			++s_spotDiagBldgActors;
 			// First-hit per actor — always-on (one stderr line per actor that
 			// walks lazy-init, regardless of env). Cap noise by emitting only
@@ -148,7 +148,7 @@ long BldgAppearance::update (bool animate)
 				MC2_DIAGFE(stderr,
 					"[SPOT_DIAG v1] event=first_register sample=first8_actors class=bldg actor_id=%p "
 					"children_walked=%d spotlights_found=%d registered=%d overflow=%d\n",
-					(void*)this, diagChildrenWalked, diagSpotlightsFound,
+					static_cast<void*>(this), diagChildrenWalked, diagSpotlightsFound,
 					diagRegistered, diagOverflow);
 				std::fflush(stderr);
 			}
@@ -198,7 +198,7 @@ long BldgAppearance::update (bool animate)
 					static unsigned long s_r = 0;
 					if (s_reach && (s_r++ % 600) < 6)
 					{
-						mc2::fmt::print_err("[CONE_SPILL_REACH v1] bldg lights={:d} k={:d} nodeId={:d} haveAim={:d} coneLen={:.1f}\n", mc2::fmt::as_u32((unsigned)spotlightLights_.size()), mc2::fmt::as_u32((unsigned)k), mc2::fmt::as_i32((long)spotlightNodeIds_[k]), mc2::fmt::as_i32(haveAim ? 1 : 0), coneLen);
+						mc2::fmt::print_err("[CONE_SPILL_REACH v1] bldg lights={:d} k={:d} nodeId={:d} haveAim={:d} coneLen={:.1f}\n", mc2::fmt::as_u32(static_cast<unsigned>(spotlightLights_.size())), mc2::fmt::as_u32(static_cast<unsigned>(k)), mc2::fmt::as_i32(static_cast<long>(spotlightNodeIds_[k])), mc2::fmt::as_i32(haveAim ? 1 : 0), coneLen);
 						std::fflush(stderr);
 					}
 				}
@@ -561,7 +561,7 @@ long BldgAppearance::update (bool animate)
 		// unless MC2_LIGHT_ROW_PURE / _VERIFY is on; reproduces that mutation
 		// exactly, and lets the verify gate prove the declaration still matches.
 		mc2PublishObjectLightPolicy(/*kClassBuilding*/1,
-		                            /*sunRecolour*/true, (uint32_t)lightRGB,
+		                            /*sunRecolour*/true, static_cast<uint32_t>(lightRGB),
 		                            /*sunDisabled*/false,
 		                            /*ambientRecolour*/false, 0u,
 		                            position.x, position.y, position.z,

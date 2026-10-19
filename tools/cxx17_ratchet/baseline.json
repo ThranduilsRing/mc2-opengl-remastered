@@ -193,7 +193,7 @@
    "LG06": 666,
    "LG07": 0,
    "LG08": 70,
-   "LG09": 1918,
+   "LG09": 1607,
    "LG10": 33,
    "LG11": 67,
    "LG12a": 169,
@@ -203,7 +203,7 @@
    "LG15": 0,
    "LG16": 156,
    "LG17": 95,
-   "LG18": 9,
+   "LG18": 15,
    "LG19": 0,
    "LG20": 10
   },
@@ -2712,7 +2712,6 @@
   },
   "mclib/abldbug.cpp": {
    "LG06": 2,
-   "LG09": 13,
    "LG12b": 7,
    "LG17": 1
   },
@@ -2723,22 +2722,19 @@
    "LG17": 1
   },
   "mclib/abldbug_print.cpp": {
-   "LG09": 22,
    "LG11": 1,
-   "LG12b": 20
-  },
-  "mclib/abldecl.cpp": {
-   "LG09": 5
+   "LG12b": 20,
+   "LG18": 2
   },
   "mclib/ablenv.cpp": {
    "LG03": 12,
    "LG06": 10,
    "LG08": 1,
-   "LG09": 36,
    "LG11": 1,
    "LG12a": 1,
    "LG12b": 18,
-   "LG17": 4
+   "LG17": 4,
+   "LG18": 2
   },
   "mclib/ablenv.h": {
    "LG06": 7,
@@ -2753,9 +2749,6 @@
    "LG13": 2,
    "LG14": 2
   },
-  "mclib/ablexec.cpp": {
-   "LG09": 17
-  },
   "mclib/ablexec.h": {
    "LG04": 2,
    "LG13": 5,
@@ -2763,8 +2756,7 @@
    "LG18": 2
   },
   "mclib/ablexpr.cpp": {
-   "LG06": 1,
-   "LG09": 1
+   "LG06": 1
   },
   "mclib/ablfile.cpp": {
    "LG05": 2,
@@ -2783,12 +2775,10 @@
    "LG05": 1,
    "LG06": 13,
    "LG08": 2,
-   "LG09": 20,
    "LG17": 5
   },
   "mclib/ablscan.cpp": {
    "LG06": 1,
-   "LG09": 7,
    "LG11": 1,
    "LG12a": 2,
    "LG12b": 1
@@ -2804,12 +2794,10 @@
    "LG04": 1
   },
   "mclib/ablstmt.cpp": {
-   "LG06": 1,
-   "LG09": 1
+   "LG06": 1
   },
   "mclib/ablsymt.cpp": {
    "LG06": 10,
-   "LG09": 6,
    "LG12a": 1,
    "LG12b": 1
   },
@@ -2821,22 +2809,18 @@
    "LG18": 1
   },
   "mclib/ablxexpr.cpp": {
-   "LG09": 13
-  },
-  "mclib/ablxstd.cpp": {
-   "LG04": 2,
-   "LG09": 5
-  },
-  "mclib/ablxstd_stack.cpp": {
-   "LG09": 13,
    "LG18": 1
   },
+  "mclib/ablxstd.cpp": {
+   "LG04": 2
+  },
+  "mclib/ablxstd_stack.cpp": {
+   "LG18": 2
+  },
   "mclib/ablxstd_std.cpp": {
-   "LG09": 25,
    "LG10": 1
   },
   "mclib/ablxstmt.cpp": {
-   "LG09": 9,
    "LG12a": 1
   },
   "mclib/alloc_probe.cpp": {
@@ -2845,7 +2829,6 @@
   "mclib/anim_override_registry.cpp": {
    "LG05": 3,
    "LG06": 6,
-   "LG09": 7,
    "LG11": 4
   },
   "mclib/anim_override_registry.h": {
@@ -2860,8 +2843,7 @@
   "mclib/apprtype.cpp": {
    "LG03": 3,
    "LG05": 1,
-   "LG06": 3,
-   "LG09": 4
+   "LG06": 3
   },
   "mclib/apprtype.h": {
    "LG06": 2,
@@ -2872,7 +2854,6 @@
    "LG05": 11,
    "LG06": 8,
    "LG08": 15,
-   "LG09": 24,
    "LG11": 1,
    "LG12a": 2
   },
@@ -2882,67 +2863,47 @@
   "mclib/bdactor.cpp": {
    "LG03": 2,
    "LG05": 1,
-   "LG06": 4,
-   "LG09": 1
+   "LG06": 4
   },
   "mclib/bdactor.h": {
    "LG06": 3,
    "LG10": 1,
    "LG13": 1
   },
-  "mclib/bdactor_diag.cpp": {
-   "LG09": 7
-  },
   "mclib/bdactor_internal.h": {
    "LG06": 5,
    "LG13": 2
   },
-  "mclib/bdactor_lightbake.cpp": {
-   "LG09": 4
-  },
   "mclib/bdactor_render.cpp": {
-   "LG09": 18,
    "LG20": 2
   },
   "mclib/bdactor_sidecar.cpp": {
    "LG05": 5,
    "LG06": 12,
-   "LG09": 6,
    "LG10": 2,
    "LG11": 2,
    "LG20": 8
   },
   "mclib/bdactor_static.cpp": {
-   "LG03": 1,
-   "LG09": 9
+   "LG03": 1
   },
   "mclib/bdactor_terrain.cpp": {
    "LG03": 11,
-   "LG09": 4,
    "LG13": 1
   },
   "mclib/bdactor_tree.cpp": {
    "LG03": 5,
-   "LG09": 3,
    "LG10": 1
   },
   "mclib/bdactor_tree_static.cpp": {
-   "LG03": 1,
-   "LG09": 9
+   "LG03": 1
   },
   "mclib/bdactor_type.cpp": {
    "LG03": 25,
-   "LG06": 2,
-   "LG09": 1
-  },
-  "mclib/bdactor_update.cpp": {
-   "LG09": 7
+   "LG06": 2
   },
   "mclib/burnin_jpeg_decode.cpp": {
    "LG17": 1
-  },
-  "mclib/camera.cpp": {
-   "LG09": 14
   },
   "mclib/camera.h": {
    "LG05": 2,
@@ -4439,7 +4400,7 @@
    "LG20": 3
   }
  },
- "head": "f3065d4e8",
+ "head": "85a9c4935",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

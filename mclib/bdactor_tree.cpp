@@ -7,7 +7,7 @@
 void TreeAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 {
 	Appearance::init(tree,obj);
-	appearType = (TreeAppearanceType *)tree;
+	appearType = static_cast<TreeAppearanceType *>(tree);
 
 	shapeMin.x = shapeMin.y = -25;
 	shapeMax.x = shapeMax.y = 50;
@@ -151,7 +151,7 @@ void TreeAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 		// types keep the full MAX_LODS loop: getTreeRenderShape(i) returns the
 		// distinct stock treeShape[i] per LOD, all of which must register.
 		const bool _treeIsOverride = (appearType->treeRenderShapeLodCount > 0);
-		const int _treeRegLods = _treeIsOverride ? (int)appearType->treeRenderShapeLodCount : MAX_LODS;
+		const int _treeRegLods = _treeIsOverride ? static_cast<int>(appearType->treeRenderShapeLodCount) : MAX_LODS;
 		for (int i = 0; i < _treeRegLods; ++i)
 			GpuStaticPropBatcher::instance().registerMultiShape(appearType->getTreeRenderShape(i), _treeIsOverride);
 		GpuStaticPropBatcher::instance().registerMultiShape(appearType->treeDmgShape);
@@ -473,7 +473,7 @@ long TreeAppearance::update (bool animate)
 		mc2PublishObjectLightPolicy(/*kClassTree*/2,
 		                            /*sunRecolour*/false, 0u,
 		                            /*sunDisabled*/true,
-		                            /*ambientRecolour*/true, (uint32_t)lightRGB,
+		                            /*ambientRecolour*/true, static_cast<uint32_t>(lightRGB),
 		                            position.x, position.y, position.z,
 		                            /*terrainSample*/1.0f);
 

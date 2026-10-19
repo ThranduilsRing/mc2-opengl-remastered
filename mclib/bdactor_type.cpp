@@ -157,7 +157,7 @@ void BldgAppearanceType::init (const char * fileName)
 		FullPathFileName sidecarName;
 		sidecarName.init(tglPath, importSourceBase, ".mcasset.json");
 		if (!loadBuildingPbrFromSidecar(this, sidecarName)) {
-			mc2::fmt::print_err("[BUILDING_PBR] disabled for import '{}' sidecar={}\n", mc2::fmt::safe(importSourceBase), mc2::fmt::safe((const char*)sidecarName));
+			mc2::fmt::print_err("[BUILDING_PBR] disabled for import '{}' sidecar={}\n", mc2::fmt::safe(importSourceBase), mc2::fmt::safe(static_cast<const char*>(sidecarName)));
 			fflush(stderr);
 		}
 	}
