@@ -55,7 +55,7 @@ bool ComputePreflight() {
     everArmed = everArmed || frameArmed;
     if (frameArmed && g_loadRaceTrace) {
         g_loadRaceLastTerrainPath = 1;
-        if (g_loadRaceArmFirstFrame < 0) g_loadRaceArmFirstFrame = (long)g_mc2FrameCounter;
+        if (g_loadRaceArmFirstFrame < 0) g_loadRaceArmFirstFrame = static_cast<long>(g_mc2FrameCounter);
     }
     return frameArmed;
 }

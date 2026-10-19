@@ -36,6 +36,6 @@ void gosPostProcess::renderHdriSkybox(const float* viewMat, const float* projMat
         yaw += hdriBakedSunAz_ - atan2f(ly, -lx);
     }
     skyYaw_ = yaw;
-    mc2_vk_sky_submit(invProjArray, invViewRot, yaw, (unsigned int)hdriTex_);
+    mc2_vk_sky_submit(invProjArray, invViewRot, yaw, static_cast<unsigned int>(hdriTex_));
 #endif
 }

@@ -210,7 +210,7 @@ const SpritePage* get_page(VfxIsland* s,uint32_t handle,uint32_t par) {
             if (vkAllocateDescriptorSets(s->device,&alloc,page.set)!=VK_SUCCESS) return nullptr;
         }
         it=s->pages.emplace(id,page).first;
-        vlog("sprite page identity: source=%u texture=%llu (%zu/%u).",handle,(unsigned long long)id,s->pages.size(),kMaxSpritePages);
+        vlog("sprite page identity: source=%u texture=%llu (%zu/%u).",handle,static_cast<unsigned long long>(id),s->pages.size(),kMaxSpritePages);
     }
     auto& page=it->second;
     // Invalid/missing pages get the visible placeholder; eventual uploads change this view.

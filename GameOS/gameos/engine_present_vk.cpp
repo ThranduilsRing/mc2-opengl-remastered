@@ -1439,7 +1439,7 @@ ImTextureID imguiTexResolve(EnginePresentVk::Impl& s, VkCommandBuffer cb, uint64
         const auto view=textures.view(handle);
         auto it=s.imguiTex.find(textureId);
         if (it!=s.imguiTex.end()) {
-            if (it->second.serviceView==view) { it->second.lastUsedFrame=s.imguiTexFrame; return (ImTextureID)it->second.set; }
+            if (it->second.serviceView==view) { it->second.lastUsedFrame=s.imguiTexFrame; return reinterpret_cast<ImTextureID>(it->second.set); }
             imguiTexRetire(s,it);
         }
         if (!imguiTexMakeRoom(s)) return 0;
@@ -1452,7 +1452,7 @@ ImTextureID imguiTexResolve(EnginePresentVk::Impl& s, VkCommandBuffer cb, uint64
         e.serviceTexture=handle; e.serviceView=view; e.serviceImage=textures.imageOwner(handle); e.lastUsedFrame=s.imguiTexFrame;
         e.set=ImGui_ImplVulkan_AddTexture(s.imguiTexSampler.get(),view,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
         if (!e.set) return 0;
-        const auto set=(ImTextureID)e.set; s.imguiTex.emplace(textureId,std::move(e)); return set;
+        const auto set=reinterpret_cast<ImTextureID>(e.set); s.imguiTex.emplace(textureId,std::move(e)); return set;
     }
     const uint32_t glName=uint32_t(textureId);
     auto it = s.imguiTex.find(glName);

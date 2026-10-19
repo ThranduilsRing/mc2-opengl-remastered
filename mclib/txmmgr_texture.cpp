@@ -370,7 +370,7 @@ DWORD MC_TextureManager::loadTexture (const char *textureFullPathName, gos_Textu
 				else
 					masterTextureNodes[i].gosTextureHandle = 0;
 				mc2::fmt::print_out("[TEXMGR_KTX_PRIMARY] {} -> RGBA8 {:d}x{:d} (ktx2 CPU decode)\n", mc2::fmt::safe(sidecar), mc2::fmt::as_i32(kw), mc2::fmt::as_i32(kh)); fflush(stdout);
-				txmIdentityAcquire(masterTextureNodes[i], i, (uint32_t)kw, (uint32_t)kh);
+				txmIdentityAcquire(masterTextureNodes[i], i, static_cast<uint32_t>(kw), static_cast<uint32_t>(kh));
 		return(i);
 			}
 		}
@@ -734,7 +734,7 @@ std::optional<UiTextureSource> snapshotUiTexture(const MC_TextureNode& n) {
     source.width=n.logicalWidth; source.height=n.logicalHeight; source.key=n.key; source.hints=n.hints;
     source.file=kind==MC_TEXCACHE_FILE_LZ || kind==MC_TEXCACHE_FILE_RAW;
     if (kind==MC_TEXCACHE_FILE_RAW || kind==MC_TEXCACHE_MEM_RAW) memcpy(source.bytes.data(),n.textureData,count);
-    else if (LZDecomp(source.bytes.data(),(MemoryPtr)n.textureData,n.lzCompSize,count)!=count) return {};
+    else if (LZDecomp(source.bytes.data(),reinterpret_cast<MemoryPtr>(n.textureData),n.lzCompSize,count)!=count) return {};
     return source;
 }
 std::shared_ptr<const RenderCore::KtxImage> decodeUiTexture(UiTextureSource source) {
