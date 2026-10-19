@@ -2,7 +2,7 @@
 // Declared in the class headers; shared names in gos_static_prop_batcher_internal.h.
 #include "gos_static_prop_batcher_internal.h"
 #include "mc2fmt.h"
-#include "view_uniforms_gl.h"   // RenderCore::getCurrentView: the eye position of the VK prop specular
+#include "view_registry.h"
 #include "../../RenderCore/FramePackets.h"
 
 void GpuStaticPropBatcher::setDebugAddrMode(int mode) { debugAddrMode_ = mode; }

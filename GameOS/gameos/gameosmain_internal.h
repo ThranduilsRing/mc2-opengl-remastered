@@ -68,7 +68,7 @@
 #include "gpu_cull_record.h"       // C0-1: GpuActorRecord schema selftest
 #include "gpu_cull_readback.h"    // C2: async readback ring buffer selftest
 #include "object_admission_predicate.h"  // Track A1: init probe + selftest gate
-#include "view_uniforms_gl.h"                     // getCurrentView (unconditional: used by debug_state_dump)
+#include "view_registry.h"
 #include "debug_state_dump.h"                     // DEBUG-STATE-DUMP-1
 // TerrainPatchStream accessors feed the unconditional RenderSnapshot terrain-
 // pass fill (TERRAIN-PASS-PACKET-0) below, so this header must NOT be gated on

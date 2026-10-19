@@ -10,7 +10,7 @@
 #include "../mclib/dynamic_decal_ring.h"  // MC2_DYNAMIC_DECALS live count
 
 #include "../GameOS/gameos/gos_postprocess.h"
-#include "../GameOS/gameos/view_uniforms_gl.h"
+#include "../GameOS/gameos/view_registry.h"
 #include "../RenderCore/RenderResourceRegistry.h"
 #include "gameos.hpp"
 #include "../GameOS/gameos/gos_static_prop_killswitch.h"

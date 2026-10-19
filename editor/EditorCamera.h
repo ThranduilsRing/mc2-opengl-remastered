@@ -23,7 +23,7 @@ EditorCamera.h			: Interface for the EditorCamera component.
 #include "../EditorBridge/EditorRenderBridge.h"  // GPU batcher/registry lifecycle (firewall)
 #include <GL/glew.h>                              // GLint/GL_VIEWPORT/glGetIntegerv for the
                                                   // throttled [PICKW] viewport diagnostics.
-#include "../GameOS/gameos/view_uniforms_gl.h"  // setCurrentView + uploadViewUniforms
+#include "../GameOS/gameos/view_registry.h"
 #include "../RenderCore/FramePackets.h"        // the frame packets the batchers read
 #include "EditorGpuTimer.h"                      // MC2_EDITOR_GPU_TIMERS per-pass GPU timing
 #include "AuthoredMissionState.h"
@@ -241,10 +241,6 @@ public:
 					}
 				}
 
-				static const bool s_vuOn = mc2::gate::get<"MC2_VIEW_UNIFORMS">();
-				if (s_vuOn) {
-					RenderCore::uploadViewUniforms(vu);
-				}
 			}
 
 			// The terrain shader needs camera position (distance LOD in TCS)

@@ -30,7 +30,7 @@
 
 #include "../GameOS/gameos/gos_postprocess.h"
 #include "../GameOS/gameos/vk_scene_readback.h"
-#include "../GameOS/gameos/view_uniforms_gl.h"
+#include "../GameOS/gameos/view_registry.h"
 
 // M2-pre: forward-declare the gameplay-pick self-test entry point.
 // Lives in code/gameplay_pick.h; full include would drag the game-side

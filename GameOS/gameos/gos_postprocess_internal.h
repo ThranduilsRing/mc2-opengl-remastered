@@ -18,7 +18,7 @@
 #include "../../RenderWorld/RenderWorld.h"  // M1.5: IsObjectIdBufferEnabled
 #include "../../RenderCore/RenderResourceRegistry.h"
 #include "../../RenderCore/EngineView.h"
-#include "view_uniforms_gl.h"
+#include "view_registry.h"
 #include "../../RenderCore/PipelineRegistry.h"  // POSTPROCESS-COMPOSITE-REGISTRATION-1
 #include "render_frame_plan.h"                   // RENDER-FRAME-PLAN-SCAFFOLD-1
 #ifdef MC2_VULKAN_ISLAND

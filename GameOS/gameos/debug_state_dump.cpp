@@ -4,7 +4,7 @@
 #include "gos_postprocess.h"
 #include "gos_static_prop_batcher.h"
 #include "render_snapshot.h"
-#include "view_uniforms_gl.h"
+#include "view_registry.h"
 #include "../../RenderCore/RendererFeatureRegistry.h"
 #include "../../RenderCore/RenderResourceRegistry.h"
 #include "gos_frame_pass_stats.h"   // [FRAME_PASS_STATS v1] additive JSON section

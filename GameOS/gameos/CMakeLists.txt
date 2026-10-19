@@ -105,7 +105,7 @@ set(SOURCES ${SOURCES}
     vk_render_pass_timer.cpp
     gos_frame_pass_stats.cpp
     draw_packet_emitter.cpp
-    view_uniforms_gl.cpp
+    view_registry.cpp
     debug_state_dump.cpp
     dbg_asset_globals.cpp
     diagnostic_trace.cpp
