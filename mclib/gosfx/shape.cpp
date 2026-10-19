@@ -411,12 +411,12 @@ void gosFX::Shape::Draw(DrawInfo *info)
 			for (int c = 0; c < 3; ++c)
 			{
 				for (int k = 0; k < 3; ++k)
-					m2w[k*4 + c] = (float)local_to_world[c][k];
-				m2w[3*4 + c] = (float)local_to_world[c][3];  // translation
+					m2w[k*4 + c] = static_cast<float>(local_to_world[c][k]);
+				m2w[3*4 + c] = static_cast<float>(local_to_world[c][3]);  // translation
 			}
 			m2w[3*4 + 3] = 1.0f;
 
-			const uint64_t meshId = (uint64_t)(uintptr_t)shape;
+			const uint64_t meshId = static_cast<uint64_t>(reinterpret_cast<uintptr_t>(shape));
 			const bool needUpload = (g_uploadedShapeIds.find(meshId) ==
 									 g_uploadedShapeIds.end());
 
@@ -464,21 +464,21 @@ void gosFX::Shape::Draw(DrawInfo *info)
 						harvestOk = false;
 						break;
 					}
-					const uint16_t base = (uint16_t)(pos.size() / 3);
+					const uint16_t base = static_cast<uint16_t>((pos.size() / 3));
 					for (int v = 0; v < nCoords; ++v)
 					{
-						pos.push_back((float)coords[v].x);
-						pos.push_back((float)coords[v].y);
-						pos.push_back((float)coords[v].z);
+						pos.push_back(static_cast<float>(coords[v].x));
+						pos.push_back(static_cast<float>(coords[v].y));
+						pos.push_back(static_cast<float>(coords[v].z));
 						if (texc && v < nTex)
 						{
-							uv.push_back((float)texc[v][0]);
-							uv.push_back((float)texc[v][1]);
+							uv.push_back(static_cast<float>(texc[v][0]));
+							uv.push_back(static_cast<float>(texc[v][1]));
 						}
 						else { uv.push_back(0.0f); uv.push_back(0.0f); }
 					}
 					for (int e = 0; e < nIdx; ++e)
-						idx.push_back((uint16_t)(base + indices[e]));
+						idx.push_back(static_cast<uint16_t>((base + indices[e])));
 				}
 			}
 
@@ -489,17 +489,17 @@ void gosFX::Shape::Draw(DrawInfo *info)
 				up.positions   = needUpload ? pos.data() : nullptr;
 				up.uvs         = needUpload ? uv.data()  : nullptr;
 				up.indices     = needUpload ? idx.data() : nullptr;
-				up.vertexCount = needUpload ? (uint32_t)(pos.size()/3) : 0u;
-				up.indexCount  = needUpload ? (uint32_t)idx.size()     : 0u;
+				up.vertexCount = needUpload ? static_cast<uint32_t>((pos.size()/3)) : 0u;
+				up.indexCount  = needUpload ? static_cast<uint32_t>(idx.size())     : 0u;
 
 				GosVfxMeshInstance inst;
 				inst.meshId = meshId;
 				for (int e = 0; e < 16; ++e) inst.modelToWorld[e] = m2w[e];
-				inst.scale        = (float)m_scale;
-				inst.rgba[0]      = (float)m_color.red;
-				inst.rgba[1]      = (float)m_color.green;
-				inst.rgba[2]      = (float)m_color.blue;
-				inst.rgba[3]      = (float)m_color.alpha;
+				inst.scale        = static_cast<float>(m_scale);
+				inst.rgba[0]      = static_cast<float>(m_color.red);
+				inst.rgba[1]      = static_cast<float>(m_color.green);
+				inst.rgba[2]      = static_cast<float>(m_color.blue);
+				inst.rgba[3]      = static_cast<float>(m_color.alpha);
 				inst.gosTexHandle = firstTexHandle;
 				inst.blendMode    = blendMode;
 
@@ -513,7 +513,7 @@ void gosFX::Shape::Draw(DrawInfo *info)
 				if (logOn && !g_shp_firstHarvest)
 				{
 					g_shp_firstHarvest = true;
-					mc2::fmt::print_err("[VFX_MESH v1] event=FIRST_HARVEST(shape) meshId={:d} prims={:d} verts={:d} indices={:d} tex={:d} blend={} scale={:.3f}\n", mc2::fmt::as_u64((unsigned long long)meshId), mc2::fmt::as_i32(numPrim), mc2::fmt::as_u32(up.vertexCount), mc2::fmt::as_u32(up.indexCount), mc2::fmt::as_u32(firstTexHandle), mc2::fmt::safe(blendMode == 1 ? "additive" : "alpha"), (double)m_scale);
+					mc2::fmt::print_err("[VFX_MESH v1] event=FIRST_HARVEST(shape) meshId={:d} prims={:d} verts={:d} indices={:d} tex={:d} blend={} scale={:.3f}\n", mc2::fmt::as_u64(static_cast<unsigned long long>(meshId)), mc2::fmt::as_i32(numPrim), mc2::fmt::as_u32(up.vertexCount), mc2::fmt::as_u32(up.indexCount), mc2::fmt::as_u32(firstTexHandle), mc2::fmt::safe(blendMode == 1 ? "additive" : "alpha"), static_cast<double>(m_scale));
 					std::fflush(stderr);
 				}
 			}
@@ -543,7 +543,7 @@ void gosFX::Shape::Draw(DrawInfo *info)
 		static unsigned long long s_calls = 0;
 		if ((++s_calls % 240ull) == 0ull)
 		{
-			mc2::fmt::print_err("[VFX_MESH v1] event=summary(shape) calls={:d} submitted={:d} fallback={:d} unsupported={:d} missingMesh={:d} missingMat={:d} drawCalls={:d} meshesCached={:d}\n", mc2::fmt::as_u64(s_calls), mc2::fmt::as_u64(g_shp_submitted), mc2::fmt::as_u64(g_shp_fallback), mc2::fmt::as_u64(g_shp_unsupported), mc2::fmt::as_u64(g_shp_missingMesh), mc2::fmt::as_u64(g_shp_missingMat), mc2::fmt::as_u64(g_shp_drawCalls), mc2::fmt::as_u32((unsigned)g_uploadedShapeIds.size()));
+			mc2::fmt::print_err("[VFX_MESH v1] event=summary(shape) calls={:d} submitted={:d} fallback={:d} unsupported={:d} missingMesh={:d} missingMat={:d} drawCalls={:d} meshesCached={:d}\n", mc2::fmt::as_u64(s_calls), mc2::fmt::as_u64(g_shp_submitted), mc2::fmt::as_u64(g_shp_fallback), mc2::fmt::as_u64(g_shp_unsupported), mc2::fmt::as_u64(g_shp_missingMesh), mc2::fmt::as_u64(g_shp_missingMat), mc2::fmt::as_u64(g_shp_drawCalls), mc2::fmt::as_u32(static_cast<unsigned>(g_uploadedShapeIds.size())));
 			std::fflush(stderr);
 		}
 	}

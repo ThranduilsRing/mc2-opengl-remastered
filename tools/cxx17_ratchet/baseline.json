@@ -193,7 +193,7 @@
    "LG06": 666,
    "LG07": 0,
    "LG08": 70,
-   "LG09": 1607,
+   "LG09": 1363,
    "LG10": 33,
    "LG11": 67,
    "LG12a": 169,
@@ -2911,7 +2911,6 @@
    "LG14": 1
   },
   "mclib/camera_daylight.cpp": {
-   "LG09": 13,
    "LG10": 6
   },
   "mclib/camera_frustum_math.h": {
@@ -2926,32 +2925,24 @@
    "LG13": 2
   },
   "mclib/camera_matrix.cpp": {
-   "LG09": 17,
    "LG12a": 3,
    "LG12b": 1
   },
   "mclib/camera_project.cpp": {
-   "LG05": 2,
-   "LG09": 17
+   "LG05": 2
   },
   "mclib/camera_update.cpp": {
    "LG05": 1,
-   "LG09": 1,
    "LG10": 2
   },
-  "mclib/cellip.cpp": {
-   "LG09": 8
-  },
   "mclib/cident.cpp": {
-   "LG06": 2,
-   "LG09": 1
+   "LG06": 2
   },
   "mclib/cident.h": {
    "LG06": 8
   },
   "mclib/cmponent.cpp": {
    "LG06": 2,
-   "LG09": 6,
    "LG12b": 72
   },
   "mclib/cmponent.h": {
@@ -2963,21 +2954,18 @@
    "LG17": 2
   },
   "mclib/color.cpp": {
-   "LG09": 3,
    "LG12b": 2
   },
   "mclib/cone_glow.cpp": {
    "LG05": 4,
    "LG06": 3,
-   "LG09": 26,
    "LG10": 1
   },
   "mclib/control_map_png_decode.cpp": {
    "LG17": 1
   },
   "mclib/cpu_proj_cost_split.cpp": {
-   "LG06": 2,
-   "LG09": 5
+   "LG06": 2
   },
   "mclib/cpu_proj_cost_split.h": {
    "LG06": 2,
@@ -2986,7 +2974,6 @@
   "mclib/crater.cpp": {
    "LG03": 4,
    "LG06": 1,
-   "LG09": 7,
    "LG12b": 1
   },
   "mclib/crater.h": {
@@ -2996,7 +2983,6 @@
   "mclib/csvfile.cpp": {
    "LG05": 3,
    "LG06": 1,
-   "LG09": 5,
    "LG17": 2
   },
   "mclib/csvfile.h": {
@@ -3037,9 +3023,6 @@
    "LG01": 1,
    "LG13": 5
   },
-  "mclib/dynamic_decal_ring.cpp": {
-   "LG09": 9
-  },
   "mclib/err.cpp": {
    "LG06": 2
   },
@@ -3050,7 +3033,6 @@
    "LG03": 2,
    "LG05": 2,
    "LG06": 2,
-   "LG09": 1,
    "LG11": 1,
    "LG13": 1
   },
@@ -3061,7 +3043,6 @@
    "LG03": 7,
    "LG05": 4,
    "LG06": 4,
-   "LG09": 19,
    "LG12a": 1,
    "LG12b": 4,
    "LG17": 2
@@ -3075,7 +3056,6 @@
    "LG05": 15,
    "LG06": 24,
    "LG08": 24,
-   "LG09": 34,
    "LG11": 17,
    "LG12a": 31,
    "LG12b": 17,
@@ -3097,7 +3077,6 @@
   },
   "mclib/fst_hash.cpp": {
    "LG06": 3,
-   "LG09": 3,
    "LG11": 3
   },
   "mclib/fst_hash.h": {
@@ -3107,14 +3086,10 @@
    "LG05": 3,
    "LG06": 9,
    "LG08": 2,
-   "LG09": 4,
    "LG11": 1
   },
   "mclib/fx_def_registry.h": {
    "LG06": 3,
-   "LG09": 1
-  },
-  "mclib/fx_trace/fx_cost_split.cpp": {
    "LG09": 1
   },
   "mclib/fx_trace/fx_cost_split.h": {
@@ -3138,8 +3113,7 @@
   },
   "mclib/genactor.cpp": {
    "LG03": 7,
-   "LG06": 1,
-   "LG09": 1
+   "LG06": 1
   },
   "mclib/genactor.h": {
    "LG06": 1,
@@ -3150,12 +3124,10 @@
    "LG13": 1
   },
   "mclib/gosfx/card.cpp": {
-   "LG03": 4,
-   "LG09": 2
+   "LG03": 4
   },
   "mclib/gosfx/cardcloud.cpp": {
-   "LG03": 4,
-   "LG09": 2
+   "LG03": 4
   },
   "mclib/gosfx/cardcloud.hpp": {
    "LG14": 1
@@ -3165,8 +3137,7 @@
   },
   "mclib/gosfx/effect.cpp": {
    "LG03": 6,
-   "LG06": 1,
-   "LG09": 1
+   "LG06": 1
   },
   "mclib/gosfx/effect.hpp": {
    "LG14": 1
@@ -3187,8 +3158,7 @@
    "LG14": 1
   },
   "mclib/gosfx/fcurve.cpp": {
-   "LG05": 3,
-   "LG09": 27
+   "LG05": 3
   },
   "mclib/gosfx/fcurve.hpp": {
    "LG09": 2,
@@ -3198,8 +3168,7 @@
    "LG14": 2
   },
   "mclib/gosfx/particlecloud.cpp": {
-   "LG03": 2,
-   "LG09": 3
+   "LG03": 2
   },
   "mclib/gosfx/pertcloud.cpp": {
    "LG03": 4
@@ -3214,8 +3183,7 @@
    "LG03": 4
   },
   "mclib/gosfx/shape.cpp": {
-   "LG03": 4,
-   "LG09": 18
+   "LG03": 4
   },
   "mclib/gosfx/shapecloud.cpp": {
    "LG03": 4
@@ -3227,16 +3195,13 @@
    "LG14": 1
   },
   "mclib/gosfx/singleton.cpp": {
-   "LG03": 2,
-   "LG09": 1
+   "LG03": 2
   },
   "mclib/gosfx/spinningcloud.cpp": {
-   "LG03": 2,
-   "LG09": 1
+   "LG03": 2
   },
   "mclib/gosfx/tube.cpp": {
    "LG03": 4,
-   "LG09": 6,
    "LG18": 2
   },
   "mclib/gosfx/tube.hpp": {
@@ -3246,7 +3211,6 @@
    "LG03": 14,
    "LG05": 2,
    "LG06": 2,
-   "LG09": 2,
    "LG12a": 1,
    "LG13": 1
   },
@@ -4400,7 +4364,7 @@
    "LG20": 3
   }
  },
- "head": "85a9c4935",
+ "head": "ce990fd00",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
