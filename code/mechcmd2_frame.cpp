@@ -1,6 +1,7 @@
 // Game main: the per-frame renderer update, engine termination and DoGameLogic.
 // Declared in the class headers; shared names in mechcmd2_internal.h.
 #include "mechcmd2_internal.h"
+#include "render_resource_owners.h"
 #include "Gates/gate.h"
 #include "mc2fmt.h"
 #ifdef MC2_ALLOC_STATS
@@ -244,7 +245,7 @@ void __stdcall TerminateGameEngine()
             // textureCacheHeap will be NULL
 			//mcTextureManager->destroy();
 
-			delete mcTextureManager;
+			ownedTextureManager.reset();
 			mcTextureManager = nullptr;
 		}
 

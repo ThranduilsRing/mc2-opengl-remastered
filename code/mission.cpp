@@ -11,6 +11,7 @@
 //----------------------------------------------------------------------------------
 
 #include "mission_internal.h"
+#include "render_resource_owners.h"
 #include "mc2fmt.h"
 #include "../GameOS/gameos/gos_dev_shell.h"
 #include <algorithm>
@@ -1049,7 +1050,7 @@ void Mission::destroy (bool initLogistics)
 	if (weaponEffects)
 		weaponEffects->destroy();
 
-	delete weaponEffects;
+	ownedWeaponEffects.reset();
 	weaponEffects = nullptr;
 
 	if ( craterManager )

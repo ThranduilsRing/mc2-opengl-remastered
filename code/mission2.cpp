@@ -7,7 +7,12 @@ mission2.cpp			: The parts of mission.cpp that we need for the mech viewer
 \*************************************************************************************************/
 
 #include"mission.h"
+#include "render_resource_owners.h"
+
 #include"gos_profiler.h"
+
+std::unique_ptr<MC_TextureManager> ownedTextureManager;
+std::unique_ptr<WeaponEffects> ownedWeaponEffects;
 
 bool Mission::statisticsInitialized = 0;
 
@@ -102,7 +107,8 @@ void Mission::initBareMinimum()
 
 	if ( !mcTextureManager )
 	{
-		mcTextureManager = new MC_TextureManager;
+		ownedTextureManager = std::make_unique_for_overwrite<MC_TextureManager>();
+		mcTextureManager = ownedTextureManager.get();
 		mcTextureManager->start();
 
 	}
@@ -124,7 +130,8 @@ void Mission::initBareMinimum()
 
 	if ( !weaponEffects )
 	{
-		weaponEffects = new WeaponEffects;
+		ownedWeaponEffects = std::make_unique_for_overwrite<WeaponEffects>();
+		weaponEffects = ownedWeaponEffects.get();
 		weaponEffects->init("Effects");
 	}
 

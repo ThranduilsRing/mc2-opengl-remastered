@@ -7,6 +7,7 @@
 //===========================================================================//
 
 #include "mechcmd2_internal.h"
+#include "render_resource_owners.h"
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"   // str<>()
 #include "mc2fmt.h"
@@ -1090,7 +1091,8 @@ void __stdcall InitializeGameEngine()
 		//------------------------------------------------
 		// Fire up the MC Texture Manager.
 		{ ZoneScopedN("InitializeGameEngine textureManager");
-		mcTextureManager = new MC_TextureManager;
+		ownedTextureManager = std::make_unique_for_overwrite<MC_TextureManager>();
+		mcTextureManager = ownedTextureManager.get();
 		mcTextureManager->start();
 		}
 	
