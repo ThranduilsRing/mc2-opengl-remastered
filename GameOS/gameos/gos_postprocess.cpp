@@ -251,7 +251,6 @@ void gosPostProcess::init(int w, int h)
 
     createFBOs(w, h);
     createFullscreenQuad();
-    createBoxDecalCube();   // BT2018-BOX-DECAL-1
 
     // Load shaders — version provided via prefix (shader files must NOT have #version).
     // 4.3 matches the GL context requirement (SSBO + std430 used by the static-prop
