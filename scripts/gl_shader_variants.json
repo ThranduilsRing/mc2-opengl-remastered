@@ -3,19 +3,6 @@
  "schema": 1,
  "variants": [
   {
-   "assemble": "raw",
-   "defines": [],
-   "id": "cardcloud_sim",
-   "key": "cardcloud_sim",
-   "optional_groups_on": [],
-   "prefix": "#version 430\n",
-   "raw_note": "loaded as plain text (no engine include flattening)",
-   "source": "GameOS/gameos/gos_cardcloud_sim.cpp:77",
-   "stages": {
-    "comp": "shaders/cardcloud_sim.comp"
-   }
-  },
-  {
    "assemble": "engine",
    "defines": [],
    "id": "gos_terrain",

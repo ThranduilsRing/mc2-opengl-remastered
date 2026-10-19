@@ -75,13 +75,6 @@ class Batcher {
     // per-particle arrays into GPU records instead of the placeholder Spawn().
     static bool is_oracle_render_enabled();
 
-    // VFX-GPU-SIM-CARDCLOUD-BUFFER-1: compare-only GPU sim gates (default OFF).
-    // _cardcloud = gather CardCloud live state into the persistent GPU sim SSBO
-    // (observe-only handoff, no integration/readback/render). _compare = emit
-    // the [VFX_GPU_SIM v1] integrity/compare logs.
-    static bool is_gpu_sim_cardcloud_enabled();
-    static bool is_gpu_sim_compare_enabled();
-
     // MC2_VFX_ORACLE_TUBE slice 1: gosFX Tube swept-quad ribbon oracle gate
     // (default OFF). When ON, supported Tube kinds (MissileSmoke / alpha
     // ribbon, vertex_count==2) submit their already-built swept-quad mesh via

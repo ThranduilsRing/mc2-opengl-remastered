@@ -16,7 +16,6 @@ set(SOURCES ${SOURCES}
     gameos_graphics_texture.cpp
     texture_decode.cpp
     terrain_field_store.cpp
-    gameos_graphics_light_ssbo.cpp
     gameos_graphics_params.cpp
     gameos_res.cpp
     MC2Strings.cpp
@@ -52,7 +51,6 @@ set(SOURCES ${SOURCES}
     gos_particle_bridge_tube.cpp
     gos_vfx_mesh_bridge.cpp
     gos_vegetation.cpp
-    gos_cardcloud_sim.cpp
     gos_materials.cpp
     gos_mech_batcher.cpp
     gos_mech_batcher_geometry.cpp

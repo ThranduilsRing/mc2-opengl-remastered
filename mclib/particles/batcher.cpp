@@ -121,30 +121,6 @@ bool Batcher::is_oracle_render_enabled() {
     return s_val;
 }
 
-// VFX-GPU-SIM-CARDCLOUD-BUFFER-1: compare-only GPU sim gates. Default OFF.
-// _cardcloud gates the CardCloud GPU-sim buffer handoff (gather + SSBO
-// upload); _compare gates the [VFX_GPU_SIM v1] integrity/compare logs.
-// Neither renders or alters the frame. Read once, process-lifetime.
-bool Batcher::is_gpu_sim_cardcloud_enabled() {
-    static bool s_init = false;
-    static bool s_val  = false;
-    if (!s_init) {
-        s_val = mc2::gate::get<"MC2_VFX_GPU_SIM_CARDCLOUD">();
-        s_init = true;
-    }
-    return s_val;
-}
-
-bool Batcher::is_gpu_sim_compare_enabled() {
-    static bool s_init = false;
-    static bool s_val  = false;
-    if (!s_init) {
-        s_val = mc2::gate::get<"MC2_VFX_GPU_SIM_COMPARE">();
-        s_init = true;
-    }
-    return s_val;
-}
-
 // MC2_VFX_ORACLE_TUBE slice 1: Tube swept-quad ribbon oracle gate.
 // DEFAULT-ON 2026-06-15. The 2026-06-11 stopgap ("oracle submits but pixels
 // never reach the composited frame") was STALE — the deferred-flush +
@@ -296,18 +272,7 @@ void Batcher::ResolveTextures()
     }
 }
 
-// VFX-GPU-SIM-CARDCLOUD-COMPUTE-1: per-frame flush of the CardCloud GPU-sim
-// accumulator (GameOS bridge). Declared here to avoid pulling the GL header.
-extern "C" void gos_cardcloud_sim_flush(void);
-
 void Batcher::Flush() {
-    // Flush the CardCloud GPU-sim accumulator once per frame, BEFORE both the
-    // is_enabled() and empty-staging early-returns — the sim accumulates
-    // independently of the particle staging buffer. No-op when nothing was
-    // accumulated. Placed first so the accumulator can never grow unbounded
-    // even if MC2_GPU_PARTICLES is off or a future caller submits without the
-    // particle path enabled.
-    gos_cardcloud_sim_flush();
     if (!is_enabled()) return;
     ++g_flush_total;
     if (impl_->staging.empty()) {

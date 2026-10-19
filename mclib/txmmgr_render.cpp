@@ -103,7 +103,6 @@ void MC_TextureManager::renderLists (void)
 	// the object render pass, before renderLists). See mclib/cone_glow.cpp.
 	mc2_cone_glow::FlushFrame();
 	renderListsPreamble();
-	renderListsLightDataUpload();
 	renderListsSceneDataUpload();
 	renderListsObjects3D();
 	renderListsPostObjectsStateRestore();

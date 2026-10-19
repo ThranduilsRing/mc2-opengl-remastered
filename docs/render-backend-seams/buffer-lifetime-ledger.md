@@ -27,7 +27,6 @@ The table below is parsed: `| symbol | class | producer | sync | TU |` (one buff
 | `g_recipeBuffer` (water) | C | CPU | static-mission | gos_terrain_water_stream.cpp |
 | `g_thinBuffer` (water) | A | CPU/GPU | ring3+fence | gos_terrain_water_stream.cpp |
 | `g_waterIndirectCmdBuffer` | B | GPU-atomicAdd | COMMAND barrier+clear | gos_terrain_water_stream.cpp |
-| `lightData_` | D | CPU-upload | IMPLICIT-SYNC | txmmgr.cpp |
 | `s_ssbo` (particle) | D | CPU-glBufferData | IMPLICIT-SYNC | gos_particle_bridge.cpp |
 | `s_tubePosSsbo` | D | CPU-glBufferData | IMPLICIT-SYNC | gos_particle_bridge.cpp |
 | `s_indirectCmdBuf` (terrain-mask) | D | CPU-glBufferData | orphan-then-upload (VK-OPT-4) | gameos_graphics.cpp |
@@ -35,6 +34,10 @@ The table below is parsed: `| symbol | class | producer | sync | TU |` (one buff
 
 Terrain GL recipe/thin/command buffers were retired in s65. The terrain path now
 captures CPU MVP inputs for Vulkan; it produces no GL indirect commands to fence.
+
+The GL light-data buffer and its dirty-prefix/orphan uploads are retired. The
+native light feed still reads the CPU table and its live row count directly.
+CardCloud CPU simulation remains authoritative; the unused GL compare oracle is gone.
 
 Actor-cull GL indirect buckets, visible-ID scatter and sticky block output were
 retired after their last draw consumer. Only actor visibility had a live CPU
@@ -59,7 +62,7 @@ consumer; it now uses native compute, copied actor IDs and lagged CPU history.
 ## Open (next slices)
 
 - STALE-COUNTER-RETIRE-1 (make gpu_drawn_instances honest).
-- LIGHT-BUFFER-BARRIER-VERIFY-1 / PARTICLE-BUFFER-LIFETIME-1 (class-D: confirm/insert the
+- PARTICLE-BUFFER-LIFETIME-1 (class-D: confirm/insert the
   explicit barrier or ring; freshest highest-touch risk).
 
 ## VK-OPT-4 — class-D terrain-mask orphan mitigation (2026-07-04)

@@ -100,18 +100,6 @@ void MC_TextureManager::start (void)
     lightDataStructuresCapacity = 128;
     lightDataStructuresCount = 0;
     lightData_.assign(lightDataStructuresCapacity, TG_HWLightsData());
-	// [LIGHTSSBO v1] EAGER create+bind here (not lazy). The old UBO was
-	// created in this constructor so SSBO/UBO binding always had a valid
-	// buffer for EVERY consumer regardless of frame phase — notably the
-	// GPU static-prop/mech batcher, which reads LightsData via explicit
-	// layout(binding=20) and runs in a different phase than the txmmgr
-	// per-frame upload site. Lazy-create broke that lifetime invariant
-	// (batcher drew before first upload -> binding 20 empty -> black
-	// props). Allocate-once/update-many is the correct lifetime model.
-	gos_LightDataSsbo_Upload(
-		lightData_.data(),
-		(size_t)lightDataStructuresCapacity * sizeof(TG_HWLightsData));
-
 
 	initTexResolveTable();
 }
@@ -157,7 +145,6 @@ void MC_TextureManager::destroy (void)
 	
 
 
-	gos_LightDataSsbo_Destroy();  // [LIGHTSSBO v1]
 
     std::vector<TG_HWLightsData>().swap(lightData_);
 

@@ -71,7 +71,7 @@ def native_cull_hazards(source: str) -> list[str]:
 
 
 # class-D members that must stay declared (Vulkan-debt visibility)
-REQUIRED_CLASS_D = {"lightData_", "s_ssbo"}
+REQUIRED_CLASS_D = {"s_ssbo"}
 
 
 def main() -> int:
