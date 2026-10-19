@@ -81,6 +81,7 @@
 #include <cstring>
 #include <chrono>
 #include <string>
+#include <string_view>
 #include <vector>
 
 extern void gos_GetTerrainLightDir(float* x, float* y, float* z);
@@ -139,7 +140,7 @@ float shadow_softness_default() {
 
 std::string spv_dir() { return vk_island_util::spvDir(); }
 
-VkShaderModule load_spv(VkDevice device, const std::string& path) {
+VkShaderModule load_spv(VkDevice device, std::string_view path) {
     return vk_island_util::loadSpv(device, path, vlog);
 }
 

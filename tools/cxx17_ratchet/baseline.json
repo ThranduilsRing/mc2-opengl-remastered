@@ -52,7 +52,7 @@
    "LG03": 257,
    "LG04": 5,
    "LG05": 137,
-   "LG06": 441,
+   "LG06": 437,
    "LG07": 0,
    "LG08": 234,
    "LG09": 0,
@@ -300,7 +300,7 @@
   },
   "GameOS/gameos/asset_scale.cpp": {
    "LG05": 2,
-   "LG06": 10,
+   "LG06": 7,
    "LG08": 5,
    "LG11": 1,
    "LG12a": 1
@@ -1038,7 +1038,7 @@
   },
   "GameOS/gameos/vulkan_post_screenfx_native.cpp": {
    "LG03": 3,
-   "LG06": 3,
+   "LG06": 2,
    "LG13": 2
   },
   "GameOS/gameos/vulkan_shadow_island_live.cpp": {
@@ -3978,7 +3978,7 @@
    "LG20": 3
   }
  },
- "head": "91d6c732b",
+ "head": "a83b93aa4",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
