@@ -333,7 +333,7 @@
    "key": "gpu_cull#C1a#READBACK{READBACK_SSBO_BINDING=14,GPU_CULL_C2_READBACK}",
    "optional_groups_on": [],
    "prefix": "#version 430\n#define READBACK_SSBO_BINDING 14\n#define GPU_CULL_C2_READBACK 1\n",
-   "source": "GameOS/gameos/gpu_cull_compute.cpp:248",
+   "source": "GameOS/gameos/gpu_cull_compute.cpp:246",
    "splice": {
     "file": "shaders/gpu_cull_predicate.glsl",
     "include_line": "#include <gpu_cull_predicate.glsl>"
@@ -351,7 +351,7 @@
    "key": "gpu_cull#C1a{READBACK_SSBO_BINDING=14}",
    "optional_groups_on": [],
    "prefix": "#version 430\n#define READBACK_SSBO_BINDING 14\n",
-   "source": "GameOS/gameos/gpu_cull_compute.cpp:248",
+   "source": "GameOS/gameos/gpu_cull_compute.cpp:246",
    "splice": {
     "file": "shaders/gpu_cull_predicate.glsl",
     "include_line": "#include <gpu_cull_predicate.glsl>"
@@ -371,7 +371,7 @@
    "key": "gpu_cull#C1b#READBACK{READBACK_SSBO_BINDING=14,GPU_CULL_C1B_INDIRECT,GPU_CULL_C2_READBACK}",
    "optional_groups_on": [],
    "prefix": "#version 430\n#define READBACK_SSBO_BINDING 14\n#define GPU_CULL_C1B_INDIRECT 1\n#define GPU_CULL_C2_READBACK 1\n",
-   "source": "GameOS/gameos/gpu_cull_compute.cpp:248",
+   "source": "GameOS/gameos/gpu_cull_compute.cpp:246",
    "splice": {
     "file": "shaders/gpu_cull_predicate.glsl",
     "include_line": "#include <gpu_cull_predicate.glsl>"
@@ -390,7 +390,7 @@
    "key": "gpu_cull#C1b{READBACK_SSBO_BINDING=14,GPU_CULL_C1B_INDIRECT}",
    "optional_groups_on": [],
    "prefix": "#version 430\n#define READBACK_SSBO_BINDING 14\n#define GPU_CULL_C1B_INDIRECT 1\n",
-   "source": "GameOS/gameos/gpu_cull_compute.cpp:248",
+   "source": "GameOS/gameos/gpu_cull_compute.cpp:246",
    "splice": {
     "file": "shaders/gpu_cull_predicate.glsl",
     "include_line": "#include <gpu_cull_predicate.glsl>"
@@ -406,21 +406,9 @@
    "key": "gpu_cull_block_rollup",
    "optional_groups_on": [],
    "prefix": "#version 430\n",
-   "source": "GameOS/gameos/gpu_cull_compute.cpp:415",
+   "source": "GameOS/gameos/gpu_cull_compute.cpp:402",
    "stages": {
     "comp": "shaders/gpu_cull_block_rollup.comp"
-   }
-  },
-  {
-   "assemble": "raw",
-   "defines": [],
-   "id": "gpu_cull_patch",
-   "key": "gpu_cull_patch",
-   "optional_groups_on": [],
-   "prefix": "#version 430\n",
-   "source": "GameOS/gameos/gpu_cull_compute.cpp:404",
-   "stages": {
-    "comp": "shaders/gpu_cull_patch.comp"
    }
   },
   {

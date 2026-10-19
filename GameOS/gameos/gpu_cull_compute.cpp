@@ -86,10 +86,8 @@ static uint32_t  s_dispatchFrames    = 0;
 // Module state — C1b
 // ---------------------------------------------------------------------------
 static GLuint    s_c1bCullProgram    = 0;  // cull shader with GPU_CULL_C1B_INDIRECT define
-static GLuint    s_patchProgram      = 0;  // patch dispatch
 static GLuint    s_rollupProgram     = 0;  // block-active rollup
 
-static GLuint    s_indirectCmdBuf    = 0;  // GL_DRAW_INDIRECT_BUFFER
 static GLuint    s_visibleIdsBuf     = 0;  // visibleIds[] SSBO (binding 9 in C1b)
 static GLuint    s_bucketCountsBuf   = 0;  // perBucketCount[] + overflowCount (binding 10)
 static GLuint    s_bucketCapsBuf     = 0;  // bucketCapacity[] + bucketBase[] (binding 11)
@@ -399,17 +397,6 @@ bool compute_init() {
         s_c1bCullProgram = prog;
     }
 
-    // --- Patch shader (gpu_cull_patch.comp) ---
-    {
-        GLuint prog = build_compute_program_from_file("shaders/gpu_cull_patch.comp",
-                                                       nullptr, 0, "patch");
-        if (!prog) {
-            MC2_DIAGF("[GPU_CULL v1] event=patch_compile_fail — C1b patch disabled\n");
-            fflush(stdout);
-        }
-        s_patchProgram = prog;
-    }
-
     // --- Rollup shader (gpu_cull_block_rollup.comp) ---
     {
         GLuint prog = build_compute_program_from_file("shaders/gpu_cull_block_rollup.comp",
@@ -502,14 +489,12 @@ void compute_shutdown() {
     if (!compute_isEnabled()) return;
 
     // --- C1b buffers ---
-    if (s_indirectCmdBuf) { glDeleteBuffers(1, &s_indirectCmdBuf); s_indirectCmdBuf = 0; }
     if (s_visibleIdsBuf)  { glDeleteBuffers(1, &s_visibleIdsBuf);  s_visibleIdsBuf  = 0; }
     if (s_bucketCountsBuf){ glDeleteBuffers(1, &s_bucketCountsBuf);s_bucketCountsBuf= 0; }
     if (s_bucketCapsBuf)  { glDeleteBuffers(1, &s_bucketCapsBuf);  s_bucketCapsBuf  = 0; }
     if (s_actorVisBuf)    { glDeleteBuffers(1, &s_actorVisBuf);    s_actorVisBuf    = 0; }
     if (s_blockVisBuf)    { glDeleteBuffers(1, &s_blockVisBuf);    s_blockVisBuf    = 0; }
     if (s_c1bCullProgram) { glDeleteProgram(s_c1bCullProgram);     s_c1bCullProgram = 0; }
-    if (s_patchProgram)   { glDeleteProgram(s_patchProgram);       s_patchProgram   = 0; }
     if (s_rollupProgram)  { glDeleteProgram(s_rollupProgram);      s_rollupProgram  = 0; }
     s_bucketCount      = 0;
     s_blockCount       = 0;
@@ -544,7 +529,7 @@ void compute_shutdown() {
 // ---------------------------------------------------------------------------
 bool compute_buildIndirectBuffer(uint32_t typeCount) {
     if (!compute_isEnabled() || !s_initialized) return false;
-    if (!s_c1bCullProgram || !s_patchProgram) {
+    if (!s_c1bCullProgram) {
         MC2_DIAGF("[GPU_CULL v1] event=c1b_build_skip reason=shaders_missing\n");
         fflush(stdout);
         return false;
@@ -571,7 +556,6 @@ bool compute_buildIndirectBuffer(uint32_t typeCount) {
     }
 
     // Free any previous allocation (e.g., from a previous mission).
-    if (s_indirectCmdBuf) { glDeleteBuffers(1, &s_indirectCmdBuf); s_indirectCmdBuf = 0; }
     if (s_visibleIdsBuf)  { glDeleteBuffers(1, &s_visibleIdsBuf);  s_visibleIdsBuf  = 0; }
     if (s_bucketCountsBuf){ glDeleteBuffers(1, &s_bucketCountsBuf);s_bucketCountsBuf= 0; }
     if (s_bucketCapsBuf)  { glDeleteBuffers(1, &s_bucketCapsBuf);  s_bucketCapsBuf  = 0; }
@@ -736,17 +720,6 @@ bool compute_buildIndirectBuffer(uint32_t typeCount) {
 
     const uint32_t totalVisibleSlots = cumBase;  // sum of all per-type visibleIds caps
 
-    // --- Indirect command buffer (GL_DRAW_INDIRECT_BUFFER, GL_DYNAMIC_DRAW) ---
-    // instanceCount is overwritten every frame by the patch dispatch.
-    // 2026-05-11: cmds.size() is now per-packet under coalesce-armed (per-type
-    // under coalesce-disarmed/natural). Use cmds.size() instead of typeCount.
-    const GLsizeiptr indirectBytes = static_cast<GLsizeiptr>(cmds.size() * sizeof(DrawCmd));
-    // TIER2-EXCLUDED: substrate-gated
-    glGenBuffers(1, &s_indirectCmdBuf);
-    glBindBuffer(GL_DRAW_INDIRECT_BUFFER, s_indirectCmdBuf);
-    glBufferData(GL_DRAW_INDIRECT_BUFFER, indirectBytes, cmds.data(), GL_DYNAMIC_DRAW);
-    glBindBuffer(GL_DRAW_INDIRECT_BUFFER, 0);
-
     // --- VisibleIds SSBO (binding 9 in C1b cull shader) ---
     // Sized: sum of all per-type instance caps × sizeof(uint32_t).
     // Written per-frame by the cull scatter shader (atomicAdd-based slot
@@ -833,13 +806,13 @@ bool compute_buildIndirectBuffer(uint32_t typeCount) {
            " typeCount=%u totalVisSlots=%u"
            " indirectBytes=%lld visIdsBytes=%lld\n",
            typeCount, totalVisibleSlots,
-           (long long)indirectBytes, (long long)visIdsBytes);
+           0LL, (long long)visIdsBytes);
     fflush(stdout);
     return true;
 }
 
 GLuint compute_getIndirectCmdBuf() {
-    return s_indirectCmdBuf;
+    return 0; // Compatibility query: Vulkan owns prop draw counts; no GL command buffer exists.
 }
 
 GLuint compute_getBucketCountsBuf() {
@@ -1003,7 +976,7 @@ void compute_dispatch() {
 
     const uint32_t cullGroups = (recordCount + 63u) / 64u;
 
-    if (s_c1bInitialized && s_c1bCullProgram && s_patchProgram) {
+    if (s_c1bInitialized && s_c1bCullProgram) {
         // ========================================================
         // C1b path: full indirect draw authority
         // ========================================================
@@ -1156,100 +1129,8 @@ void compute_dispatch() {
             }
         }
 
-        // 4. Patch dispatch: perBucketCount[] → cmds[].instanceCount
-        {
-            glBindBufferBase(GL_SHADER_STORAGE_BUFFER, BUCKET_COUNTS_BINDING, s_bucketCountsBuf);
-            // Bind indirect cmd buf as SSBO for patch shader (binding 11).
-            // The patch shader writes via binding 11; the draw later uses
-            // GL_DRAW_INDIRECT_BUFFER binding. Both can alias the same buffer.
-            glBindBufferBase(GL_SHADER_STORAGE_BUFFER, INDIRECT_CMD_BINDING, s_indirectCmdBuf);
-
-            // ---- Plan v3.8 Step 10.3: slot-15 save → bind → dispatch → restore ----
-            // Slot 15 history: 13 collided with BlockVis at
-            // gpu_cull_block_rollup.comp:58; 14 collided with the
-            // diagnostic readback at :855 (READBACK_SSBO_BINDING). Slot
-            // 15 is private to gpu_cull_patch.comp; this rebind is
-            // mandatory for legacy-fallback correctness (patch shader
-            // writes through permutation[] in both armed and disarmed
-            // modes, so the permutation SSBO must be bound every patch
-            // dispatch). The save/restore envelope honors spec §3.X /
-            // §9 binding hygiene at the slot-15 mutation site — the
-            // draw branch in flush() does NOT bind slot 15, so its
-            // 11.7.a/j envelope covers slot 4 + 2D_ARRAY only.
-            //
-            // No per-frame barrier needed for the permutation SSBO:
-            // s_permutationSsbo is finalize-uploaded by Step 2.6's
-            // glBufferData (and at most overwritten once by Step 5.12's
-            // glBufferSubData in the same finalize pass) and is read-only
-            // thereafter. GL ordering guarantees the upload is visible to
-            // all subsequent dispatches without an explicit
-            // glMemoryBarrier. The cull→patch barrier above (line 848) and
-            // the post-patch barrier below cover bucketCountData[] /
-            // cmds[].instanceCount cross-dispatch ordering; do not add a
-            // GL_BUFFER_UPDATE_BARRIER_BIT for permutation.
-            // GlStateGuard slice 1: scoped restore of slot 15 (was hand-rolled
-            // prevSsbo15 glGetIntegeri_v + rebind at block end). Destructs at the
-            // enclosing block's '}' — same restore point, same value, no behavior
-            // change.
-            mc2gl::GlScopedSsboBinding guardSsbo15(15);
-            glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 15, batcher_getPermutationSsbo());
-
-            // 2026-05-11 per-packet rework: bind cmd_to_bucket SSBO at
-            // binding 7 and run patch in per-packet mode when batcher's
-            // packet-layout is built. Falls back to legacy per-type when
-            // unavailable (coalesce-disarmed flow).
-            // GlStateGuard slice 1: scoped restore of slot 7. Captures the
-            // current binding unconditionally; the original only restored slot 7
-            // when perPacketPatch rebound it, but restoring an unchanged slot to
-            // its captured value is a no-op rebind — GL-identical.
-            mc2gl::GlScopedSsboBinding guardSsbo7(7);
-            const GLuint cmdToBucketSsbo = batcher_getCmdToBucketSsbo();
-            const uint32_t pktCmdCount   = batcher_getSortedPacketCount();
-            const bool perPacketPatch    = (cmdToBucketSsbo != 0u && pktCmdCount > 0u);
-            if (perPacketPatch) {
-                glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 7, cmdToBucketSsbo);
-            }
-
-            // Step 4.2 — bind base-instance SSBO at slot 16 BEFORE glUseProgram
-            // (buffer bind is program-independent; uniform must be after).
-            batcher_bindBaseInstanceByCmdSsboForPatch();
-
-            glUseProgram(s_patchProgram);
-            const GLint locNBuckets        = glGetUniformLocation(s_patchProgram, "u_nBuckets");
-            const GLint locNCmds           = glGetUniformLocation(s_patchProgram, "u_nCmds");
-            const GLint locUseCmdToBucket  = glGetUniformLocation(s_patchProgram, "u_useCmdToBucket");
-            if (locNBuckets >= 0)
-                glUniform1i(locNBuckets, (int)s_bucketCount);
-            if (locNCmds >= 0)
-                glUniform1i(locNCmds, (int)(perPacketPatch ? pktCmdCount : s_bucketCount));
-            if (locUseCmdToBucket >= 0)
-                glUniform1i(locUseCmdToBucket, perPacketPatch ? 1 : 0);
-            // Step 4.2 — u_legacyBaseInstance MUST be after glUseProgram (operates on bound program).
-            {
-                const GLint locLegacy = glGetUniformLocation(s_patchProgram, "u_legacyBaseInstance");
-                const bool  isLegacy  = batcher_isGlobalPoolLegacy();
-                if (locLegacy >= 0) {
-                    glUniform1i(locLegacy, isLegacy ? 1 : 0);
-                }
-            }
-            const uint32_t patchInvocations =
-                perPacketPatch ? pktCmdCount : s_bucketCount;
-            const uint32_t patchGroups = (patchInvocations + 63u) / 64u;
-            { TracyGpuZone("Cull.PatchShader"); glDispatchCompute(patchGroups, 1, 1); }
-            glUseProgram(0);
-
-            batcher_unbindBaseInstanceByCmdSsboForPatch();  // restore slot 16
-
-            // Slots 7 and 15 are restored here by guardSsbo7 / guardSsbo15
-            // destructing at this closing brace (reverse construction order:
-            // 7 then 15 — same order as the prior hand-rolled restores).
-        }
-
-        // 5. Barrier: indirect command buffer ready for draw + SSBO writes visible.
-        // GL_COMMAND_BARRIER_BIT: ensures cmds[].instanceCount writes are visible to
-        // glMultiDrawElementsIndirect (Q12: first GL_COMMAND_BARRIER_BIT in engine).
-        // DO NOT add GL_ATOMIC_COUNTER_BARRIER_BIT (Q12 contract).
-        glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_COMMAND_BARRIER_BIT);
+        // Native prop color owns draw counts. GL cull still supplies actor/block visibility.
+        glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 
         // C2 immediate post-dispatch diagnostic (C1b path) — env-gated.
         // Reads from GPU SSBO directly (after SHADER_STORAGE barrier above).
