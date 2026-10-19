@@ -6,6 +6,7 @@
 #include "UnitBrainPanel.h"
 #include "InspectorPanel.h"
 #include "AssetBrowser.h"
+#include "MapGeneratorDialog.h"
 #include "campaignData.h"
 #include <memory>
 #include <array>
@@ -257,4 +258,6 @@ void EditorInterface::runWorkflowSmoke(const char* campaignPath)
 		linked = linked && campaign == beforeCampaign;
 	}
 	EditorSmokePanelFact("campaign_links", "CampaignOverview", linked, true);
+	MapGeneratorDialog::Open();
+	MapGeneratorDialog::ExecutePreview();
 }

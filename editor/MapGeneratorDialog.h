@@ -11,9 +11,6 @@
 #ifndef MAP_GENERATOR_DIALOG_H
 #define MAP_GENERATOR_DIALOG_H
 
-// Forward-declare OpenGL type to avoid GL header pollution in this header.
-using GLuint = unsigned int;
-
 namespace MapGeneratorDialog {
 
     // Pending deferred action requested by the dialog (set each frame; acted

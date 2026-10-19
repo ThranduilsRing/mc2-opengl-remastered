@@ -5,7 +5,7 @@
 
 enum class MaterialSlotKind { BaseColor, Normal, Orm, Emissive };
 
-// Decodes an image file (PNG/JPG/BMP/TGA via stb_image) and uploads it to a Vulkan
+// Decodes an image file (KTX2 via RenderCore; PNG/JPG/BMP/TGA via stb_image) and uploads it to a Vulkan
 // texture with a SLOT-AWARE internalformat:
 //   BaseColor/Emissive -> R8G8B8A8_SRGB (the sampler linearizes on sample)
 //   Normal/Orm         -> R8G8B8A8_UNORM (linear)

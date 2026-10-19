@@ -32,10 +32,10 @@ Ktx2DecodedImage loadKtx2Image(const std::string& path)
         r.error = "Supercompressed KTX2 (Basis) not supported yet.";
         return r;
     }
-    const bool known = (vkFormat == 37 || vkFormat == 43 || vkFormat == 145 || vkFormat == 146);
+    const bool known = (vkFormat == 37 || vkFormat == 43 || ((vkFormat >= 131 && vkFormat <= 134) || vkFormat == 137 || vkFormat == 138) || vkFormat == 141 || vkFormat == 145 || vkFormat == 146);
     if (!known) {
         r.error = "Unsupported KTX2 format (vkFormat=" + std::to_string(vkFormat)
-                + "). Viewer supports RGBA8 and BC7.";
+                + "). Viewer supports RGBA8, BC1, BC3, BC5 and BC7.";
         return r;
     }
 
@@ -81,31 +81,39 @@ DecodedTexture Ktx2Decoder::load(const std::string& path) const
     d.mipCount      = img.mipCount;
     d.isCompressed  = img.isCompressed;
 
-    if (!img.isCompressed) {
-        d.texId = toolvk::createTexture(img.width, img.height,
-                                        img.isSrgb ? toolvk::TexFormat::Rgba8Srgb : toolvk::TexFormat::Rgba8Unorm,
-                                        img.pixels.data() + img.mipByteOffsets[0], {}, false, false);
-        d.formatLabel = img.isSrgb ? "RGBA8 (sRGB)" : "RGBA8";
-    } else {
-        if (!toolvk::hasBc7()) {
-            d.error = "BC7 preview requires textureCompressionBC, unavailable on this GPU.";
-            return d;
-        }
-        std::vector<toolvk::MipLevel> levels;
-        for (int lvl = 0; lvl < img.mipCount; ++lvl) {
-            const uint64_t off  = img.mipByteOffsets[lvl];
-            const uint64_t next = (lvl + 1 < img.mipCount) ? img.mipByteOffsets[lvl + 1] : (uint64_t)img.pixels.size();
-            levels.push_back({(size_t)off, (size_t)(next - off)});
-        }
-        d.texId = toolvk::createTexture(img.width, img.height,
-                                        img.isSrgb ? toolvk::TexFormat::Bc7Srgb : toolvk::TexFormat::Bc7Unorm,
-                                        img.pixels.data(), levels, false, false);
-        char buf[64];
-        std::snprintf(buf, sizeof(buf), "BC7%s, %d mip%s",
-                      img.isSrgb ? " (sRGB)" : "", img.mipCount, img.mipCount > 1 ? "s" : "");
-        d.formatLabel = buf;
-    }
-    if (!d.texId) { d.error = "Vulkan texture upload failed for " + path; return d; }
+    d.texId = uploadKtx2Image(img, img.isSrgb, false);
+    const char* format = img.vkFormat >= 131 && img.vkFormat <= 134 ? "BC1"
+                       : img.vkFormat == 137 || img.vkFormat == 138 ? "BC3"
+                       : img.vkFormat == 141 ? "BC5"
+                       : img.isCompressed ? "BC7" : "RGBA8";
+    d.formatLabel = std::string(format) + (img.isSrgb ? " (sRGB)" : "") + ", " + std::to_string(img.mipCount) + " mips";
+    if (!d.texId) { d.error = "Vulkan texture upload or shared block decode failed for " + path; return d; }
     d.ownsTexture = true;
     return d;
+}
+
+uint32_t uploadKtx2Image(const RenderCore::KtxImage& img, bool srgb, bool repeat)
+{
+    // Tool residency is local to its Vulkan shell. Parsing and block decoding use
+    // RenderCore's device-free contract, without a game TextureService/device.
+    const bool bc7 = img.vkFormat == 145 || img.vkFormat == 146;
+    const bool native = bc7 && toolvk::hasBc7();
+    std::vector<uint8_t> rgba;
+    std::vector<toolvk::MipLevel> levels;
+    for (int level=0; level<img.mipCount; ++level) {
+        if (img.isCompressed && !native) {
+            std::vector<uint8_t> mip;
+            if (!RenderCore::ktxDecodeBlocksToRgba8(img, level, mip)) return 0;
+            levels.push_back({rgba.size(), mip.size()});
+            rgba.insert(rgba.end(), mip.begin(), mip.end());
+        } else {
+            const size_t off = img.mipByteOffsets[level];
+            const size_t next = level+1<img.mipCount ? img.mipByteOffsets[level+1] : img.pixels.size();
+            levels.push_back({off, next-off});
+        }
+    }
+    const auto format = native ? (srgb ? toolvk::TexFormat::Bc7Srgb : toolvk::TexFormat::Bc7Unorm)
+                               : (srgb ? toolvk::TexFormat::Rgba8Srgb : toolvk::TexFormat::Rgba8Unorm);
+    return toolvk::createTexture(img.width, img.height, format,
+        rgba.empty() ? img.pixels.data() : rgba.data(), levels, false, repeat);
 }

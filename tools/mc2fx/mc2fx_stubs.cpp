@@ -120,7 +120,7 @@ void __stdcall gos_RenderIndexedArray(gos_VERTEX*, DWORD, WORD*, DWORD) {}
 void __stdcall gos_RenderIndexedArray(gos_VERTEX_2UV*, DWORD, WORD*, DWORD) {}
 void __stdcall gos_SetRenderState(gos_RenderState, int) {}
 void __stdcall gos_GetViewport(float*, float*, float*, float*) {}
-void __stdcall gos_LockTexture(DWORD, DWORD, bool, TEXTUREPTR*) {}
+void __stdcall gos_LockTexture(DWORD, DWORD, bool, TEXTUREPTR* out) { if (out) *out = {}; }
 void __stdcall gos_UnLockTexture(DWORD) {}
 
 // ---------------------------------------------------------------------------
@@ -133,15 +133,9 @@ int S_strnicmp(const char* a, const char* b, size_t n) { return _strnicmp(a, b, 
 // MC_TextureManager / MC_TextureNode — GPU texture metadata. The GOSImage /
 // MLR state path references these but never touches GL on the LOAD path.
 // ---------------------------------------------------------------------------
-// On the .fx LOAD path, MLRState::Load resolves texture NAMES into the
-// MLRTexturePool, which constructs GOSImage objects whose ctor calls
-// mcTextureManager->loadTexture(...). The methods below ignore `this` (they are
-// pure no-ops returning dummy handles), so a non-null sentinel buffer is a safe
-// stand-in — no GL, no real MC_TextureManager construction. NULL would crash the
-// GOSImage ctor's unconditional deref.
-static unsigned char s_textureManagerSentinel[sizeof(MC_TextureManager)] = {0};
-MC_TextureManager* mcTextureManager =
-    reinterpret_cast<MC_TextureManager*>(s_textureManagerSentinel);
+// Offline GOSImage keeps names with an invalid node when no manager exists.
+// The load/save closure never constructs a service, renderer, or game device.
+MC_TextureManager* mcTextureManager = nullptr;
 DWORD MC_TextureManager::loadTexture(const char*, gos_TextureFormat, DWORD, DWORD, DWORD) { return 0; }
 void  MC_TextureManager::releaseNode(DWORD) {}
 DWORD MC_TextureNode::get_gosTextureHandle() { return 0; }

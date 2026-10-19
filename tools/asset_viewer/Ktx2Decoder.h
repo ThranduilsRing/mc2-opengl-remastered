@@ -15,6 +15,8 @@ struct Ktx2DecodedImage {
 };
 
 Ktx2DecodedImage loadKtx2Image(const std::string& path);
+// Upload the full supplied chain; material slots choose colour space, UI honours source metadata.
+uint32_t uploadKtx2Image(const RenderCore::KtxImage& img, bool srgb, bool repeat);
 
 // The .ktx2 decoder. Uploads through toolvk::createTexture.
 class Ktx2Decoder : public ITextureDecoder {

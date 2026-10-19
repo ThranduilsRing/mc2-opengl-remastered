@@ -18,7 +18,7 @@
 * EditorData::MapSizeToCellSide() / MapSizeToVertexSide() for all conversions.
 *
 * Recipe JSON is written to terrain_gen_out/genmap_recipe.json.
-* Preview PNG is loaded from terrain_gen_out/genmap.preview.png into a GL
+* Preview PNG is loaded from terrain_gen_out/genmap.preview.png into a service
 * texture and displayed via ImGui::Image.
 *
 * DATE: 2026-06-05
@@ -32,24 +32,7 @@
 // ImGui
 #include "imgui.h"
 
-// GL for preview texture
-#include <GL/glew.h>
-
-// stb_image — single-header PNG loader for the editor preview texture.
-//
-// burnin_jpeg_decode.cpp (mclib) owns STB_IMAGE_IMPLEMENTATION (JPEG-only,
-// STBI_NO_STDIO) in a different archive.  We define our own isolated copy
-// here using STB_IMAGE_STATIC so all stbi_* symbols become file-static,
-// eliminating any ODR clash at the link step when the editor links mclib.
-// STBI_ONLY_PNG: we only load the preview thumbnail (PNG), keeping the
-// implementation small and avoiding JPEG codec duplication with mclib.
-#define STB_IMAGE_STATIC
-#define STB_IMAGE_IMPLEMENTATION
-#define STBI_ONLY_PNG
-#pragma warning(push)
-#pragma warning(disable: 4244 4996)
-#include "../3rdparty/stb/stb_image.h"
-#pragma warning(pop)
+#include "EditorTexture.h"
 
 #include "MapGeneratorDialog.h"
 #include "EditorData.h"    // EditorData::generateFromDialogParams declaration
@@ -164,8 +147,8 @@ struct DialogState {
     unsigned long seed   = 0;    // 0 = randomise each run
     bool  randomSeed     = true;
 
-    // Preview texture (GL)
-    GLuint previewTexID  = 0;
+    // Preview texture (session service)
+    RenderCore::ServiceTextureRef previewTexture;
     int    previewW      = 0;
     int    previewH      = 0;
 
@@ -358,41 +341,21 @@ static bool BrowseForFile(const char* filter, char* dst, size_t dstLen) {
 
 // Free the existing preview texture (if any).
 static void FreePreviewTexture() {
-    if (s_state.previewTexID) {
-        glDeleteTextures(1, &s_state.previewTexID);
-        s_state.previewTexID = 0;
-        s_state.previewW = 0;
-        s_state.previewH = 0;
-    }
+    s_state.previewTexture = {};
+    s_state.previewW = s_state.previewH = 0;
 }
 
-// Load terrain_gen_out/genmap.preview.png into a GL texture.
+// The generator output is a new source version each time it changes.
 static void LoadPreviewPNG() {
     FreePreviewTexture();
-    const char* pngPath = "terrain_gen_out\\genmap.preview.png";
-    int w = 0, h = 0, channels = 0;
-    unsigned char* data = stbi_load(pngPath, &w, &h, &channels, 4 /*RGBA*/);
-    if (!data) {
-        snprintf(s_state.statusMsg, sizeof(s_state.statusMsg),
-            "Preview: failed to load %s", pngPath);
+    s_state.previewTexture = loadEditorTexture("terrain_gen_out/genmap.preview.png");
+    if (!s_state.previewTexture.get().isValid()) {
+        snprintf(s_state.statusMsg, sizeof(s_state.statusMsg), "Preview: failed to load generator output");
         return;
     }
-    GLuint tex = 0;
-    glGenTextures(1, &tex);
-    glBindTexture(GL_TEXTURE_2D, tex);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0,
-                 GL_RGBA, GL_UNSIGNED_BYTE, data);
-    glBindTexture(GL_TEXTURE_2D, 0);
-    stbi_image_free(data);
-    s_state.previewTexID = tex;
-    s_state.previewW     = w;
-    s_state.previewH     = h;
-    snprintf(s_state.statusMsg, sizeof(s_state.statusMsg),
-        "Preview ready (%dx%d)", w, h);
+    const auto dimensions = RenderCore::textureService().dimensions(s_state.previewTexture.get());
+    s_state.previewW = dimensions.width; s_state.previewH = dimensions.height;
+    snprintf(s_state.statusMsg, sizeof(s_state.statusMsg), "Preview ready (%dx%d)", s_state.previewW, s_state.previewH);
 }
 
 } // anonymous namespace
@@ -585,13 +548,13 @@ void MapGeneratorDialog::Draw() {
     ImGui::Separator();
     // --- Preview thumbnail ---
     const float previewDisplayW = 256.f * sc;
-    if (s_state.previewTexID) {
+    if (s_state.previewTexture.get().isValid()) {
         ImGui::Text("Preview:");
         float aspect = (s_state.previewH > 0)
                        ? (float)s_state.previewW / (float)s_state.previewH
                        : 1.f;
         float dh = previewDisplayW / aspect;
-        ImGui::Image((ImTextureID)(uintptr_t)s_state.previewTexID,
+        ImGui::Image((ImTextureID)RenderCore::uiTextureId(s_state.previewTexture.get()),
                      ImVec2(previewDisplayW, dh));
     } else {
         ImGui::Dummy(ImVec2(previewDisplayW, previewDisplayW * 0.4f));
@@ -945,7 +908,7 @@ bool MapGeneratorDialog::ApplyPendingGenerate() {
 }
 
 // Preview: run the generator (async) then load the thumbnail PNG on success.
-// The success callback runs on the MAIN thread (glGenTextures is main-thread only).
+// The success callback publishes the service image on the main thread.
 void MapGeneratorDialog::ExecutePreview() {
     if (EditorTaskRunner::HasActiveTasks()) {
         snprintf(s_state.statusMsg, sizeof(s_state.statusMsg),
@@ -963,7 +926,7 @@ void MapGeneratorDialog::ExecutePreview() {
     spec.name        = "Preview terrain";
     spec.commandLine = BuildTerrainGenCmd(/*preview=*/true);
     spec.onSuccessMainThread = [](const EditorTaskRunner::TaskResult&) {
-        LoadPreviewPNG();   // main thread: creates GL texture, sets statusMsg
+        LoadPreviewPNG();   // main thread: publishes service image, sets statusMsg
     };
     spec.onFailureMainThread = [](const EditorTaskRunner::TaskResult& r) {
         snprintf(s_state.statusMsg, sizeof(s_state.statusMsg),

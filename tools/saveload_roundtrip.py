@@ -39,7 +39,7 @@ import save_inspect as si  # noqa: E402
 import savegame_backup  # noqa: E402
 import sim_determinism as sd  # noqa: E402
 
-SAVE_AT, LOAD_AT = "1000", "1250"
+SAVE_AT, LOAD_AT = "1000", "1400"
 ENV = dict(sd.GATES, MC2_SMOKE_FREEZE_ANIM="1", MC2_FIXTURE_ORDER_LIVENESS="1", MC2_SIM_IDENTITY_TRACE_DETAIL="1",
            MC2_BOOT_QUICKSAVE_AT=SAVE_AT, MC2_BOOT_QUICKLOAD_AT=LOAD_AT)
 _LINE = re.compile(r"\[SIMID v1\] simframe=(\d+) t=([\d.]+) ([^\r\n\[]*)")
@@ -239,14 +239,12 @@ def run(mission: str, frames: int, deploy: bool, out: str | None, install: str =
     if deploy:
         sd.build_and_deploy(install)
     env = dict(os.environ, **ENV)
+    if mission != "mc2_16":
+        env.pop("MC2_FIXTURE_ORDER_LIVENESS", None)  # this fixture/summary belongs to mc2_16 only
     with savegame_backup.guarded(save_dir):
         r = subprocess.run([sys.executable, os.path.join(ROOT, "scripts", "run_smoke.py"), "--mission", mission, "--duration", "28", *smoke_target(install, ref_exe, ref_commit),
                             "--keep-logs", *speed_args(sim_speed)], env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, errors="replace",
                            **console_child.child_kwargs(redirected=True))
-    # WHY: run_smoke exits non-zero on a crash or a failed smoke gate; its log can still hold a clock jump, so the verdict must not ignore it.
-    if r.returncode:
-        return False, [f"the smoke run failed (rc={r.returncode}): the quickload did not complete, so there is no round trip to judge\n"
-                       + "\n".join(r.stdout.splitlines()[-8:])]
     arts = sorted(glob.glob(os.path.join(ROOT, "tests", "smoke", "artifacts", "20*")), key=os.path.getmtime)
     if not arts or not os.path.exists(os.path.join(arts[-1], mission + ".log")):
         sys.exit("saveload_roundtrip: the smoke run produced no log:\n" + "\n".join(r.stdout.splitlines()[-8:]))
@@ -254,7 +252,11 @@ def run(mission: str, frames: int, deploy: bool, out: str | None, install: str =
     shutil.copytree(arts[-1], os.path.join(dest, "run"), dirs_exist_ok=True)
     log = os.path.join(dest, "run", mission + ".log")
     with open(log, encoding="utf-8", errors="replace") as fh:
-        return analyze(fh.read().splitlines(), frames)
+        ok, report = analyze(fh.read().splitlines(), frames)
+    # A clock rewind alone cannot excuse a failed smoke gate; retain its evidence even on failure.
+    if r.returncode:
+        return False, [f"the smoke run failed (rc={r.returncode})", *r.stdout.splitlines()[-8:], *report]
+    return ok, report
 
 
 #: Where recorded round-trip digests live, one JSON file per mission.
