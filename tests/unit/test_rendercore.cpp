@@ -215,7 +215,7 @@ TEST_CASE("validateRenderResourceLifetimes ignores invalid (gated-absent) slots"
     // A registered-but-invalid slot with Unset lifetime is NOT an error:
     // gated-absent is separate from lifetime.
     RenderResourceDesc inv{};
-    inv.id = RenderResourceId::SsaoOcclusion; inv.valid = false;
+    inv.id = RenderResourceId::HzbPyramid; inv.valid = false;
     registerOrUpdateRenderResource(inv);
     CHECK(validateRenderResourceLifetimes(nullptr));
     CHECK(getRenderResourceCount() == 0);
@@ -370,7 +370,6 @@ TEST_CASE("RendererFeatureRegistry Track V post/grounding gates are registered d
     // this guardrail trips on accidental flips and forces explicit review.
     struct Row { RendererFeature f; const char* env; };
     const Row trackV[] = {
-        { RendererFeature::Ssao,        "MC2_SSAO" },
     };
     for (const Row& r : trackV) {
         const EnvVarDesc& e = kFeatureTable[static_cast<int>(r.f)];

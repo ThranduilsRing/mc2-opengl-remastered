@@ -13,13 +13,13 @@ using namespace RenderCore::vulkan;
 TEST_SUITE("SubgraphContiguity") {
 
 TEST_CASE("canonical order matches endScene() and the enum") {
-    CHECK(kPostprocessSubPassOrderCount == 8);
+    CHECK(kPostprocessSubPassOrderCount == 6);
     CHECK(postprocessSubPassOrderMatchesEnum());
     CHECK(kPostprocessSubPassOrder[0] == PostprocessSubPassId::ScreenShadow);
     CHECK(kPostprocessSubPassOrder[1] == PostprocessSubPassId::CloudShadow);
-    CHECK(kPostprocessSubPassOrder[5] == PostprocessSubPassId::EdgeFog);
-    CHECK(kPostprocessSubPassOrder[6] == PostprocessSubPassId::OobFog);
-    CHECK(kPostprocessSubPassOrder[7] == PostprocessSubPassId::Composite);
+    CHECK(kPostprocessSubPassOrder[3] == PostprocessSubPassId::EdgeFog);
+    CHECK(kPostprocessSubPassOrder[4] == PostprocessSubPassId::OobFog);
+    CHECK(kPostprocessSubPassOrder[5] == PostprocessSubPassId::Composite);
 }
 
 TEST_CASE("POSITIVE: shipped EdgeFog+OobFog fusion is contiguous") {
@@ -43,8 +43,8 @@ TEST_CASE("POSITIVE: order-insensitive (OobFog listed before EdgeFog) still cont
     CHECK(vkSubgraphIsContiguous(fused, 2));
 }
 
-TEST_CASE("NEGATIVE: CloudShadow+EdgeFog is NOT contiguous (Shoreline/SSAO/BoxDecals intervene)") {
-    // The Cloud-Shadow fork: fusing CloudShadow into the fog subgraph skips 3 passes.
+TEST_CASE("NEGATIVE: CloudShadow+EdgeFog is NOT contiguous (Shoreline intervenes)") {
+    // The Cloud-Shadow fork: fusing CloudShadow into the fog subgraph skips Shoreline.
     const PostprocessSubPassId fused[] = {
         PostprocessSubPassId::CloudShadow, PostprocessSubPassId::EdgeFog };
     CHECK_FALSE(vkSubgraphIsContiguous(fused, 2));
@@ -56,18 +56,17 @@ TEST_CASE("NEGATIVE: ScreenShadow+Shoreline is NOT contiguous (CloudShadow inter
     CHECK_FALSE(vkSubgraphIsContiguous(fused, 2));
 }
 
-TEST_CASE("NEGATIVE: three passes skipping one (Shoreline..EdgeFog missing BoxDecals) rejected") {
-    // Shoreline(2), SSAO(3), EdgeFog(5) -> skips BoxDecals(4): span 3 != count 3-1.
+TEST_CASE("NEGATIVE: three passes skipping one (Shoreline..OobFog missing EdgeFog) rejected") {
     const PostprocessSubPassId fused[] = {
-        PostprocessSubPassId::Shoreline, PostprocessSubPassId::SSAO,
-        PostprocessSubPassId::EdgeFog };
+        PostprocessSubPassId::Shoreline, PostprocessSubPassId::EdgeFog,
+        PostprocessSubPassId::Composite };
     CHECK_FALSE(vkSubgraphIsContiguous(fused, 3));
 }
 
-TEST_CASE("POSITIVE: three fully-adjacent passes (SSAO..EdgeFog) contiguous") {
+TEST_CASE("POSITIVE: three fully-adjacent passes (Shoreline..OobFog) contiguous") {
     const PostprocessSubPassId fused[] = {
-        PostprocessSubPassId::SSAO, PostprocessSubPassId::BoxDecals,
-        PostprocessSubPassId::EdgeFog };
+        PostprocessSubPassId::Shoreline, PostprocessSubPassId::EdgeFog,
+        PostprocessSubPassId::OobFog };
     CHECK(vkSubgraphIsContiguous(fused, 3));
 }
 

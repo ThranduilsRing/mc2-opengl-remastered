@@ -896,7 +896,7 @@ TEST_CASE("the VK opt-in and kill-switch rows read like the envTriState expressi
         return v[0] == '1' ? 1 : v[0] == '0' ? 0 : -1;
     };
     constexpr const char* kProbe[] = {nullptr, "", "0", "false", "1", "yes", "10", "2.5", "00", "0x", "01"};
-    const char* exact1[] = {"MC2_VK_POST_HZB", "MC2_VK_POST_SSAO",
+    const char* exact1[] = {"MC2_VK_POST_HZB",
                             "MC2_VK_TERRAIN_LODFADE",
                             "MC2_VK_TERRAIN_VISUALDISPLACE_FAR"};
     const char* killSwitch[] = {"MC2_VK_LIGHTFEED_DEDUP", "MC2_VK_MECH_FENCE_DEFER", "MC2_VK_POST_SCREENFX", "MC2_VK_POST_SCREENFX_CLOUD",
