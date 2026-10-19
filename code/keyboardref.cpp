@@ -14,10 +14,10 @@ KeyboardRef.cpp			: Implementation of the KeyboardRef component.
 #include "../GameOS/gameos/utils/mc2log.h"
 #include "mc2fmt.h"
 
-#define CTRL	0x10000000
-#define SHIFT	0x01000000
-#define ALT		0x00100000
-#define WAYPT	0x20000000
+constexpr auto CTRL = 0x10000000;
+constexpr auto SHIFT = 0x01000000;
+constexpr auto ALT = 0x00100000;
+constexpr auto WAYPT = 0x20000000;
 
 
 KeyboardRef::KeyboardRef(  )

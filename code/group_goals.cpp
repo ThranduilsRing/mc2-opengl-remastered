@@ -13,8 +13,8 @@ inline bool inMapBounds (long r, long c, long mapHeight, long mapWidth) {
 
 //---------------------------------------------------------------------------
 
-#define	JUMPMAP_TILE_DIM	3
-#define	JUMPMAP_CELL_DIM	MAPCELL_DIM * JUMPMAP_TILE_DIM
+constexpr auto JUMPMAP_TILE_DIM = 3;
+constexpr auto JUMPMAP_CELL_DIM = MAPCELL_DIM * JUMPMAP_TILE_DIM;
 
 char CellSpiralIncrement[JUMPMAP_CELL_DIM * JUMPMAP_CELL_DIM * 2] = {
 	-1, 0,

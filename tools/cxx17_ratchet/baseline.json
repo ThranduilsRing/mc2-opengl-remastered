@@ -152,7 +152,7 @@
    "LG11": 102,
    "LG12a": 100,
    "LG12b": 341,
-   "LG13": 244,
+   "LG13": 182,
    "LG14": 123,
    "LG15": 0,
    "LG16": 6,
@@ -1378,8 +1378,7 @@
   "code/artlry.cpp": {
    "LG01": 10,
    "LG03": 1,
-   "LG12b": 8,
-   "LG13": 12
+   "LG12b": 8
   },
   "code/artlry.h": {
    "LG02": 1,
@@ -1393,8 +1392,7 @@
    "LG06": 1
   },
   "code/bldng.cpp": {
-   "LG03": 1,
-   "LG13": 2
+   "LG03": 1
   },
   "code/bldng.h": {
    "LG13": 4,
@@ -1451,8 +1449,7 @@
   },
   "code/carnage.cpp": {
    "LG01": 1,
-   "LG03": 2,
-   "LG13": 1
+   "LG03": 2
   },
   "code/carnage.h": {
    "LG01": 6,
@@ -1604,7 +1601,6 @@
    "LG11": 2,
    "LG12a": 23,
    "LG12b": 5,
-   "LG13": 1,
    "LG17": 2
   },
   "code/gameobj.cpp": {
@@ -1646,13 +1642,11 @@
   },
   "code/group_goals.cpp": {
    "LG12b": 2,
-   "LG13": 2,
    "LG16": 4
   },
   "code/gvehicl.cpp": {
    "LG03": 1,
-   "LG12b": 5,
-   "LG13": 1
+   "LG12b": 5
   },
   "code/gvehicl.h": {
    "LG14": 3
@@ -1714,8 +1708,7 @@
    "LG06": 2
   },
   "code/keyboardref.cpp": {
-   "LG03": 2,
-   "LG13": 4
+   "LG03": 2
   },
   "code/light.cpp": {
    "LG03": 2
@@ -1925,8 +1918,7 @@
    "LG03": 7,
    "LG11": 8,
    "LG12a": 2,
-   "LG12b": 1,
-   "LG13": 2
+   "LG12b": 1
   },
   "code/mechcmd2_cmdline.cpp": {
    "LG06": 2
@@ -2004,9 +1996,6 @@
    "LG03": 1,
    "LG04": 2
   },
-  "code/mission_init_parts.cpp": {
-   "LG13": 2
-  },
   "code/mission_internal.h": {
    "LG06": 1,
    "LG12a": 1,
@@ -2079,7 +2068,6 @@
   },
   "code/missiongui_update.cpp": {
    "LG11": 1,
-   "LG13": 11,
    "LG20": 1
   },
   "code/missionresults.cpp": {
@@ -2128,22 +2116,19 @@
   },
   "code/mpconnectiontype.cpp": {
    "LG05": 1,
-   "LG12b": 1,
-   "LG13": 1
+   "LG12b": 1
   },
   "code/mpgamebrowser.cpp": {
    "LG05": 2,
    "LG06": 2,
-   "LG12b": 3,
-   "LG13": 1
+   "LG12b": 3
   },
   "code/mpgamebrowser.h": {
    "LG06": 2
   },
   "code/mphostgame.cpp": {
    "LG05": 1,
-   "LG06": 1,
-   "LG13": 1
+   "LG06": 1
   },
   "code/mphostgame.h": {
    "LG06": 1
@@ -2154,7 +2139,6 @@
    "LG06": 3,
    "LG11": 4,
    "LG12b": 3,
-   "LG13": 1,
    "LG17": 1
   },
   "code/mploadmap.h": {
@@ -2165,8 +2149,7 @@
    "LG03": 14,
    "LG05": 3,
    "LG06": 8,
-   "LG12b": 25,
-   "LG13": 1
+   "LG12b": 25
   },
   "code/mpparameterscreen.h": {
    "LG06": 8
@@ -2187,8 +2170,7 @@
    "LG03": 3,
    "LG05": 1,
    "LG06": 3,
-   "LG10": 3,
-   "LG13": 1
+   "LG10": 3
   },
   "code/mpsetuparea.h": {
    "LG06": 3
@@ -2281,8 +2263,7 @@
    "LG05": 2,
    "LG06": 2,
    "LG12a": 1,
-   "LG12b": 5,
-   "LG13": 4
+   "LG12b": 5
   },
   "code/optionsarea.h": {
    "LG06": 2
@@ -2302,8 +2283,7 @@
   },
   "code/pilotreviewarea.cpp": {
    "LG03": 83,
-   "LG12b": 20,
-   "LG13": 7
+   "LG12b": 20
   },
   "code/prefs.cpp": {
    "LG05": 1,
@@ -2319,8 +2299,7 @@
    "LG03": 9,
    "LG05": 1,
    "LG12a": 1,
-   "LG12b": 8,
-   "LG13": 7
+   "LG12b": 8
   },
   "code/save_archive.cpp": {
    "LG11": 2
@@ -3958,7 +3937,7 @@
    "LG20": 3
   }
  },
- "head": "e48c87273",
+ "head": "847d12b5a",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

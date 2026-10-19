@@ -86,7 +86,7 @@
 #include "../resource.h"
 #include "gos_static_prop_killswitch.h"  // g_useGpuStaticProps
 
-#define BLIP_FRAME_RATE		0.067
+constexpr auto BLIP_FRAME_RATE = 0.067;
 //extern unsigned long NextIdNumber;
 extern float worldUnitsPerMeter;
 bool drawExtents = false;
@@ -123,7 +123,7 @@ DWORD WallType[18] =
 	26,125,152,154,156,158,160,161,162,202,204,206,231,232,233,286,287,288
 };
 
-#define BRIDGE_TYPE		607
+constexpr auto BRIDGE_OBJECT_TYPE_ID = 607;
 
 //---------------------------------------------------------------------------
 // class BuildingType
@@ -315,7 +315,7 @@ long BuildingType::init (FilePtr objFile, unsigned long fileSize) {
 		}
 	}
 
-	if (objTypeNum == BRIDGE_TYPE)
+	if (objTypeNum == BRIDGE_OBJECT_TYPE_ID)
 		setSubType(BUILDING_SUBTYPE_LANDBRIDGE);
 
 	return(result);

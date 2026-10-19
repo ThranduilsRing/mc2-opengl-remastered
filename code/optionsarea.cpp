@@ -88,10 +88,10 @@ constexpr int MSG_LEFT_CLICK = 407;
 constexpr int MSG_SAVE_TRANSCRIPT = 408;
 constexpr int MSG_TUTORIALS = 409;
 
-#define CTRL	0x10000000
-#define SHIFT	0x01000000
-#define ALT		0x00100000
-#define WAYPT	0x20000000
+constexpr auto CTRL = 0x10000000;
+constexpr auto SHIFT = 0x01000000;
+constexpr auto ALT = 0x00100000;
+constexpr auto WAYPT = 0x20000000;
 
 HotKeyListItem*		HotKeyListItem::s_item = nullptr;
 

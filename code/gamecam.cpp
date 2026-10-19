@@ -196,7 +196,7 @@ extern bool DisplayCameraAngle;
 
 extern MidLevelRenderer::MLRClipper * theClipper;
 
-#define MAX_SHADOW_PITCH_CHANGE	(5.0f)
+constexpr auto MAX_SHADOW_PITCH_CHANGE = (5.0f);
 
 extern bool drawOldWay;
 
