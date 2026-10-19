@@ -150,9 +150,19 @@ vec3 applyTonemap(vec3 c) {
     return c;
 }
 
+// Interleaved gradient noise: two deterministic per-pixel hashes (no frame term), combined into zero-mean triangular noise over [-1,1].
+// Applied after the tonemap in display encoding so the 8-bit present store breaks the sky gradient's 1/255 contour bands.
+float ignTriangle(vec2 p) {
+    const vec2 magic = vec2(0.06711056, 0.00583715);
+    float n0 = fract(52.9829189 * fract(dot(p, magic)));
+    float n1 = fract(52.9829189 * fract(dot(p + vec2(37.0, 17.0), magic)));
+    return n0 + n1 - 1.0;
+}
+
 void main() {
     vec3 color = (u.p1.w != 0.0) ? casFilter(TexCoord) : gradeColor(TexCoord);
     color = applyTonemap(color);
+    color = clamp(color + ignTriangle(floor(gl_FragCoord.xy)) / 255.0, 0.0, 1.0);
 
     int viewMode = int(u.p2.x + 0.5);
     if (viewMode == 1) {
