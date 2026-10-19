@@ -12,8 +12,8 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'scripts'))
 import console_child
-CALL = re.compile(r'\b(?:TracyGpu\w*|gl[A-Z]\w*|glew\w*|wgl\w*|SDL_GL_\w*|ImGui_ImplOpenGL\w*)\s*\(')
-TYPE = re.compile(r'\b(?:SDL_GLContext|SDL_WINDOW_OPENGL|HGLRC|GLuint|GLenum|GLsizei|GLint|GLboolean|GLsync)\b')
+CALL = re.compile(r'\b(?:TracyGpu\w*|gl[A-Z]\w*|glew\w*|wgl\w*|SDL_GL_\w*|ImGui_ImplOpenGL\w*|ImGui_ImplSDL2_InitForOpenGL|SwapBuffers|ChoosePixelFormat|SetPixelFormat)\s*\(')
+TYPE = re.compile(r'\b(?:SDL_GLContext|SDL_WINDOW_OPENGL|HGLRC|PIXELFORMATDESCRIPTOR|GLuint|GLenum|GLsizei|GLint|GLboolean|GLsync)\b')
 HEADER = re.compile(r'^\s*#\s*include\s*[<"](?:GL/|SDL_opengl|imgui_impl_opengl|tracy/TracyOpenGL)', re.M)
 LINK = re.compile(r'OpenGL::|GLEW::|find_package\s*\(\s*(?:OpenGL|GLEW)|glew32|opengl32|imgui_impl_opengl')
 LOADER = re.compile(r'(?:LoadLibrary(?:Ex)?[AW]?|SDL_LoadObject)\s*\([^;]*(?:opengl32|glew32)|'
@@ -53,6 +53,10 @@ def snapshot(root=ROOT):
     names = [name for name in names if Path(name).parts[0] not in ('3rdparty', 'DirectX8')
              or name == '3rdparty/imgui/CMakeLists.txt'
              or name.startswith(('3rdparty/include/GL/', '3rdparty/imgui/backends/imgui_impl_opengl'))
+             or name in ('3rdparty/imgui/backends/imgui_impl_sdl2.cpp',
+                         '3rdparty/imgui/backends/imgui_impl_sdl2.h',
+                         '3rdparty/imgui/backends/imgui_impl_vulkan.cpp',
+                         '3rdparty/imgui/backends/imgui_impl_vulkan.h')
              or name == '3rdparty/tracy/tracy/TracyOpenGL.hpp']
     return {name: (root / name).read_text(encoding='utf-8', errors='replace') for name in names
             if (Path(name).suffix in ('.cpp', '.c', '.h', '.hpp', '.cmake', '.vert', '.frag', '.comp', '.geom', '.tesc', '.tese') or Path(name).name == 'CMakeLists.txt') and (root / name).is_file()}

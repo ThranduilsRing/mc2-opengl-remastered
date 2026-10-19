@@ -27,7 +27,9 @@ def test_current_owned_sources_have_no_gl_compiler():
 
 
 @pytest.mark.parametrize('source', ['TracyGpuZone("render");', 'glReadPixels(0);', 'glewInit();', 'wglCreateContext(dc);',
-    'SDL_GL_CreateContext(window);', 'ImGui_ImplOpenGL3_RenderDrawData(draw);',
+    'SDL_GL_CreateContext(window);', 'ImGui_ImplSDL2_InitForOpenGL(window, context);',
+    'SwapBuffers(dc);', 'ChoosePixelFormat(dc, desc);', 'SetPixelFormat(dc, 1, desc);',
+    'PIXELFORMATDESCRIPTOR desc;', 'ImGui_ImplOpenGL3_RenderDrawData(draw);',
     '#include <GL/glew.h>', '#include "imgui_impl_opengl3.h"',
     'SDL_GLContext context;', 'auto flags = SDL_WINDOW_OPENGL;',
     'LoadLibraryW(L"opengl32.dll");', 'GetProcAddress(module, "glBindTexture");'])
@@ -61,4 +63,13 @@ def test_retired_vendor_loader_or_renderer_source_cannot_return():
 def test_legacy_encoded_owned_header_is_still_audited(tmp_path, monkeypatch):
     (tmp_path / 'legacy.cpp').write_bytes(b'// old quote: \x92\nvoid f() { glBindTexture(0); }')
     monkeypatch.setattr(checker.subprocess, 'check_output', lambda *a, **kw: 'legacy.cpp\n')
+    assert checker.audit(checker.snapshot(tmp_path))
+
+
+def test_active_sdl_platform_backend_cannot_escape_the_snapshot(tmp_path, monkeypatch):
+    name = '3rdparty/imgui/backends/imgui_impl_sdl2.cpp'
+    path = tmp_path / name
+    path.parent.mkdir(parents=True)
+    path.write_text('void swap() { SDL_GL_SwapWindow(window); }', encoding='utf-8')
+    monkeypatch.setattr(checker.subprocess, 'check_output', lambda *a, **kw: name + '\n')
     assert checker.audit(checker.snapshot(tmp_path))
