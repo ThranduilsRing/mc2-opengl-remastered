@@ -73,3 +73,11 @@ TEST_CASE("mech_texname_harness/demo_intentional_fail" * doctest::should_fail())
 }
 
 }
+
+TEST_CASE("mech texture names consume bounded views") {
+    const char raw[] = {'d','/','B','o','d','y','.','p','n','g','!'};
+    const std::string_view path(raw, 10);
+    CHECK(mech_texname::stripPath(path) == "Body.png");
+    CHECK(mech_texname::deriveName(path, false) == "body.tga");
+    CHECK(mech_texname::deriveName(std::string_view{}, false).empty());
+}

@@ -96,3 +96,13 @@ TEST_CASE("precedence: resolveWinningOrder picks the max (last-loaded)") {
     const int one[] = {5};
     CHECK(resolveWinningOrder(one, 1) == 5);
 }
+
+TEST_CASE("qualified IDs consume bounded views") {
+    const char raw[] = {'M', 'o', 'd', ':', 'A', 't', 'l', 'a', 's', '!'};
+    const std::string_view id(raw, 9);
+    CHECK(canonicalizeQualifiedId(id) == "mod:atlas");
+    CHECK(isValidQualifiedId(id));
+    CHECK(isModAuthorable(id));
+    CHECK_FALSE(isValidQualifiedId(std::string_view(raw, sizeof(raw))));
+    CHECK_FALSE(isValidQualifiedId(std::string_view{}));
+}

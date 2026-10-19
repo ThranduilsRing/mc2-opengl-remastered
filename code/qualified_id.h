@@ -34,6 +34,7 @@
 //   canonical string. This mirrors qualified_id.py's precedence exactly.
 
 #include <string>
+#include <string_view>
 
 namespace mc2id {
 
@@ -64,7 +65,7 @@ inline char idToLower(char c) {
 // Validate a namespace or name segment against its charset + length rule.
 // `maxLen` is 32 for namespace, 64 for name. The segment must already be
 // lowercase-canonical (call canonicalize first if unsure). Empty -> invalid.
-inline bool isValidSegment(const std::string& seg, size_t maxLen) {
+inline bool isValidSegment(std::string_view seg, size_t maxLen) {
     if (seg.empty() || seg.size() > maxLen) return false;
     if (!idIsLowerAlpha(seg[0])) return false;   // must start with a letter
     for (size_t i = 1; i < seg.size(); ++i) {
@@ -73,8 +74,8 @@ inline bool isValidSegment(const std::string& seg, size_t maxLen) {
     return true;
 }
 
-inline bool isValidNamespace(const std::string& ns) { return isValidSegment(ns, 32); }
-inline bool isValidName(const std::string& nm)      { return isValidSegment(nm, 64); }
+inline bool isValidNamespace(std::string_view ns) { return isValidSegment(ns, 32); }
+inline bool isValidName(std::string_view nm)      { return isValidSegment(nm, 64); }
 
 // --- parse / canonicalize ---------------------------------------------------
 
@@ -99,7 +100,7 @@ struct QualifiedId {
 //   "hunchback"           -> {core, hunchback}    (bare name -> core: reserved)
 //   ""  / "a:b:c" / bad-charset / over-length -> valid=false
 // At most ONE ':' is allowed. Leading/trailing/empty segments are invalid.
-inline QualifiedId parseQualifiedId(const std::string& raw) {
+inline QualifiedId parseQualifiedId(std::string_view raw) {
     QualifiedId q;
     if (raw.empty()) return q;
 
@@ -132,19 +133,19 @@ inline QualifiedId parseQualifiedId(const std::string& raw) {
 }
 
 // True iff `raw` is a well-formed qualified id (bare names accepted -> core:).
-inline bool isValidQualifiedId(const std::string& raw) {
+inline bool isValidQualifiedId(std::string_view raw) {
     return parseQualifiedId(raw).valid;
 }
 
 // Canonical form of `raw`, or empty string when invalid.
-inline std::string canonicalizeQualifiedId(const std::string& raw) {
+inline std::string canonicalizeQualifiedId(std::string_view raw) {
     return parseQualifiedId(raw).str();
 }
 
 // A mod authoring into `core:` is a policy violation (stock is reserved). This
 // is the single predicate every author-time validator / modlint should call.
 // Returns true when the id is valid AND does NOT sit in the reserved namespace.
-inline bool isModAuthorable(const std::string& raw) {
+inline bool isModAuthorable(std::string_view raw) {
     QualifiedId q = parseQualifiedId(raw);
     return q.valid && !q.isCore();
 }

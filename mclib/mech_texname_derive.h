@@ -19,18 +19,19 @@
 
 #include <cstring>
 #include <string>
+#include <string_view>
 
 namespace mech_texname {
 
 // Strip directory to the basename (last '/' or '\\'). Replica of StripPath.
-inline std::string stripPath(const std::string& p) {
+inline std::string stripPath(std::string_view p) {
     const size_t s1 = p.rfind('/');
     const size_t s2 = p.rfind('\\');
     size_t pos;
     if (s1 == std::string::npos) pos = s2;
     else if (s2 == std::string::npos) pos = s1;
     else pos = (s1 > s2) ? s1 : s2;
-    return (pos == std::string::npos) ? p : p.substr(pos + 1);
+    return std::string((pos == std::string::npos) ? p : p.substr(pos + 1));
 }
 
 // Damage/destruction/UI parts dropped from the intact bind-pose import. Replica
@@ -49,7 +50,7 @@ inline bool isDroppedMeshName(const char* n) {
 // lowercase, clamp so stem+".tga"+NUL fits textureName[256], append ".tga", and
 // (if wantAlpha) prefix "a_" (re-clamped). Returns "" if the sanitized stem is
 // empty (caller treats as no-texture). Byte-identical to the original tail.
-inline std::string deriveName(const std::string& src, bool wantAlpha) {
+inline std::string deriveName(std::string_view src, bool wantAlpha) {
     std::string stem = stripPath(src);
     const size_t dot = stem.find_last_of('.');
     if (dot != std::string::npos) stem.erase(dot);

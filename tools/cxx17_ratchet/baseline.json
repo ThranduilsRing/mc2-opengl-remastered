@@ -144,7 +144,7 @@
    "LG03": 458,
    "LG04": 20,
    "LG05": 198,
-   "LG06": 472,
+   "LG06": 448,
    "LG07": 2,
    "LG08": 17,
    "LG09": 0,
@@ -190,7 +190,7 @@
    "LG03": 999,
    "LG04": 15,
    "LG05": 135,
-   "LG06": 666,
+   "LG06": 661,
    "LG07": 0,
    "LG08": 70,
    "LG09": 0,
@@ -1574,7 +1574,7 @@
   },
   "code/equipment_registry.h": {
    "LG05": 1,
-   "LG06": 13,
+   "LG06": 10,
    "LG08": 3,
    "LG11": 1,
    "LG14": 3
@@ -1595,12 +1595,12 @@
    "LG14": 1
   },
   "code/fitblockwriter.cpp": {
-   "LG06": 11,
+   "LG06": 4,
    "LG10": 1,
    "LG11": 1
   },
   "code/fitblockwriter.h": {
-   "LG06": 11
+   "LG06": 4
   },
   "code/forcegroupbar.cpp": {
    "LG03": 5,
@@ -2332,7 +2332,6 @@
    "LG06": 4
   },
   "code/qualified_id.h": {
-   "LG06": 7,
    "LG17": 1
   },
   "code/salvagemecharea.cpp": {
@@ -3150,7 +3149,7 @@
    "LG17": 1
   },
   "mclib/mech_texname_derive.h": {
-   "LG06": 3,
+   "LG06": 1,
    "LG11": 1
   },
   "mclib/memfunc.h": {
@@ -3377,7 +3376,6 @@
    "LG06": 1
   },
   "mclib/mod_conflict.h": {
-   "LG06": 3,
    "LG14": 1
   },
   "mclib/model_override_registry.cpp": {
@@ -3982,7 +3980,7 @@
    "LG20": 3
   }
  },
- "head": "79768312b",
+ "head": "1d3d0d157",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

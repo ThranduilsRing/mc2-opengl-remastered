@@ -33,25 +33,25 @@ void FitBlockWriter::endBlock() {
     appendLine("}");
 }
 
-void FitBlockWriter::writeInlineBlock(const std::string& name, const std::string& contents) {
-    appendLine(name + " { " + contents + " }");
+void FitBlockWriter::writeInlineBlock(std::string_view name, std::string_view contents) {
+    appendLine(std::string(name) + " { " + std::string(contents) + " }");
 }
 
-void FitBlockWriter::writeString(const std::string& key, const std::string& value) {
-    appendLine(key + " = \"" + value + "\"");
+void FitBlockWriter::writeString(std::string_view key, std::string_view value) {
+    appendLine(std::string(key) + " = \"" + std::string(value) + "\"");
 }
 
-void FitBlockWriter::writeToken(const std::string& key, const std::string& token) {
-    appendLine(key + " = " + token);
+void FitBlockWriter::writeToken(std::string_view key, std::string_view token) {
+    appendLine(std::string(key) + " = " + std::string(token));
 }
 
-void FitBlockWriter::writeLong(const std::string& key, long v) {
+void FitBlockWriter::writeLong(std::string_view key, long v) {
     char buf[32];
     mc2::fmt::to_buf(buf, "{:d}", mc2::fmt::as_i32(v));
     writeToken(key, buf);
 }
 
-void FitBlockWriter::writeFloat(const std::string& key, float v, int precision) {
+void FitBlockWriter::writeFloat(std::string_view key, float v, int precision) {
     if (precision < 0)  precision = 0;
     if (precision > 9)  precision = 9;
     char buf[48];
@@ -59,12 +59,12 @@ void FitBlockWriter::writeFloat(const std::string& key, float v, int precision) 
     writeToken(key, buf);
 }
 
-void FitBlockWriter::writeBool(const std::string& key, bool v) {
+void FitBlockWriter::writeBool(std::string_view key, bool v) {
     writeToken(key, v ? "true" : "false");
 }
 
-void FitBlockWriter::writeComment(const std::string& text) {
-    appendLine("; " + text);
+void FitBlockWriter::writeComment(std::string_view text) {
+    appendLine(std::string("; ") + std::string(text));
 }
 
 void FitBlockWriter::writeRaw(const std::string& lineText) {

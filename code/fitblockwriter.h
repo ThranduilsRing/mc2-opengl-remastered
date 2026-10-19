@@ -30,6 +30,7 @@
 //    Brain{} golden-string compare; unbalanced-save negative test.)
 
 #include <string>
+#include <string_view>
 #include <vector>
 
 class FitBlockWriter {
@@ -42,21 +43,21 @@ public:
     void endBlock();
 
     // Single-line nested block:  <indent>name { contents }
-    void writeInlineBlock(const std::string& name, const std::string& contents);
+    void writeInlineBlock(std::string_view name, std::string_view contents);
 
     // Quoted string field:  <indent>key = "value"
-    void writeString(const std::string& key, const std::string& value);
+    void writeString(std::string_view key, std::string_view value);
 
     // Bare token field (enums, numbers already formatted):  <indent>key = token
-    void writeToken(const std::string& key, const std::string& token);
+    void writeToken(std::string_view key, std::string_view token);
 
     // Numeric fields.
-    void writeLong(const std::string& key, long v);
-    void writeFloat(const std::string& key, float v, int precision = 2);
-    void writeBool(const std::string& key, bool v);   // key = true / false
+    void writeLong(std::string_view key, long v);
+    void writeFloat(std::string_view key, float v, int precision = 2);
+    void writeBool(std::string_view key, bool v);   // key = true / false
 
     // Comment line:  <indent>; text
-    void writeComment(const std::string& text);
+    void writeComment(std::string_view text);
 
     // Verbatim line at the current indent (Body DO-verbs, WAIT/STOP, FITini header).
     void writeRaw(const std::string& lineText);

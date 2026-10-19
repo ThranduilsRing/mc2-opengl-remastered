@@ -145,3 +145,12 @@ TEST_CASE("mod_conflict: zero findings -> summary line only") {
     REQUIRE(lines.size() == 1);
     CHECK(lines[0].find("conflict report: 0 finding(s)") != std::string::npos);
 }
+
+TEST_CASE("mod conflict keys consume bounded views") {
+    const char key[] = "data/defs/equipment/core/laser/equipmentdef.fit!";
+    const std::string_view view(key, sizeof(key) - 2);
+    CHECK(modKeyIsDef(view));
+    CHECK(modKeyUsesReservedCoreNamespace(view));
+    CHECK(modDefQualifiedId(view) == "core:laser");
+    CHECK_FALSE(modKeyIsDef(std::string_view{}));
+}
