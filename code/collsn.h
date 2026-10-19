@@ -123,8 +123,6 @@ class CollisionGrid
 	//-----------------
 	public:
 
-		void * operator new (size_t mySize);
-		void operator delete (void *us);
 		
 		void init (void)
 		{
@@ -204,8 +202,6 @@ class CollisionSystem
 
 	public:
 	
-		void * operator new (size_t mySize);
-		void operator delete (void *us);
 		
 		void init (void)
 		{

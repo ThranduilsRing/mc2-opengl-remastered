@@ -65,15 +65,9 @@ bool MultiPlayer::waitTillStartLoading() { return false; }
 
 // The class allocators (the stock ones route through systemHeap); only `delete MPlayer` sites link against them here and
 // MPlayer is null at every one of them.
-void* MultiPlayer::operator new (size_t ourSize)
-{
-	return ::operator new(ourSize);
-}
 
-void MultiPlayer::operator delete (void* us)
-{
-	::operator delete(us);
-}
+
+
 
 // The engine's startup and shutdown hooks (code/mechcmd2.cpp); the stock body returns false too (no transport was ever live).
 bool StartupNetworking (void)

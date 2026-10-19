@@ -416,11 +416,7 @@ void __stdcall InitializeGameEngine()
 		// Start the SystemHeap and globalHeapList
 		{
 			ZoneScopedN("InitializeGameEngine heaps");
-			globalHeapList = new HeapList;
-			gosASSERT(globalHeapList != nullptr);
 		
-			globalHeapList->init();
-			globalHeapList->update();		//Run Instrumentation into GOS Debugger Screen
 		
 			systemHeap = new UserHeap;
 			gosASSERT(systemHeap != nullptr);

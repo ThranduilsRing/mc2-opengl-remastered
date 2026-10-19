@@ -246,19 +246,11 @@ void IfaceCallStrike (long strikeID,
 // ARTILLERY CHUNK
 //***************************************************************************
 
-void* ArtilleryChunk::operator new (size_t ourSize) {
 
-	void* result;
-	result = systemHeap->Malloc(ourSize);
-	return(result);
-}
 
 //---------------------------------------------------------------------------
 
-void ArtilleryChunk::operator delete (void* us) {
 
-	systemHeap->Free(us);
-}	
 
 //---------------------------------------------------------------------------
 

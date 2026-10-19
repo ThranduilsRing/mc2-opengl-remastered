@@ -324,19 +324,11 @@ void WeaponShotInfo::setEntryAngle (float _entryAngle) {
 
 //---------------------------------------------------------------------------
 
-void* WeaponFireChunk::operator new (size_t ourSize) {
 
-	void* result;
-	result = systemHeap->Malloc(ourSize);
-	return(result);
-}
 
 //---------------------------------------------------------------------------
 
-void WeaponFireChunk::operator delete (void* us) {
 
-	systemHeap->Free(us);
-}
 	
 
 //---------------------------------------------------------------------------
@@ -1129,18 +1121,11 @@ void DebugWeaponHitChunk (WeaponHitChunkPtr chunk1, WeaponHitChunkPtr chunk2) {
 
 //---------------------------------------------------------------------------
 
-void* WeaponHitChunk::operator new (size_t ourSize) {
 
-	void* result = systemHeap->Malloc(ourSize);
-	return(result);
-}
 
 //---------------------------------------------------------------------------
 
-void WeaponHitChunk::operator delete (void* us) {
 
-	systemHeap->Free(us);
-}	
 
 //---------------------------------------------------------------------------
 

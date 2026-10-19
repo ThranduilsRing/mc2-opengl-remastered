@@ -133,9 +133,7 @@ class WeaponFireChunk {
 
 	public:
 
-		void* operator new (size_t mySize);
 
-		void operator delete (void* us);
 		
 		void init (void) {
 			targetType = 0;
@@ -214,9 +212,7 @@ class WeaponHitChunk {
 
 	public:
 
-		void* operator new (size_t mySize);
 
-		void operator delete (void* us);
 		
 		void init (void) {
 			targetType = 0;

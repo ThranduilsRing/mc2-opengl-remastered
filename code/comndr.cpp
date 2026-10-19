@@ -46,18 +46,11 @@ CommanderPtr		Commander::home = nullptr;
 // COMMANDER class
 //***************************************************************************
 
-void* Commander::operator new (size_t ourSize) {
 
-	void* result = systemHeap->Malloc(ourSize);
-	return(result);
-}
 
 //---------------------------------------------------------------------------
 
-void Commander::operator delete (void* us) {
 
-	systemHeap->Free(us);
-}	
 
 //---------------------------------------------------------------------------
 

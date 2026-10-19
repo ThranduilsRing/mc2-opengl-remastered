@@ -45,18 +45,11 @@ long recurseCount = 0;
 
 //***************************************************************************
 
-void* GoalObject::operator new (size_t ourSize) {
 
-	void *result = missionHeap->Malloc(ourSize);
-	return(result);
-}
 
 //---------------------------------------------------------------------------
 
-void GoalObject::operator delete (void* us) {
 
-	missionHeap->Free(us);
-}
 
 //---------------------------------------------------------------------------
 
@@ -114,18 +107,11 @@ void GoalObject::addController (GoalObjectPtr gobject) {
 
 //#ifdef USE_REGION_MAP
 
-void* GoalManager::operator new (size_t ourSize) {
 
-	void *result = missionHeap->Malloc(ourSize);
-	return(result);
-}
 
 //---------------------------------------------------------------------------
 
-void GoalManager::operator delete (void* us) {
 
-	missionHeap->Free(us);
-}
 
 //---------------------------------------------------------------------------
 

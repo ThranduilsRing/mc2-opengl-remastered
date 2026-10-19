@@ -54,9 +54,7 @@ class MovePathManager {
 
 	public:
 
-		void* operator new (size_t ourSize);
 
-		void operator delete (void* us);
 		
 		MovePathManager (void) {
 			init();

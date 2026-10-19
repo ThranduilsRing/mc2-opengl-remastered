@@ -183,9 +183,7 @@ class MoveChunk {
 
 	public:
 
-		void* operator new (size_t mySize);
 
-		void operator delete (void* us);
 		
 		void init (void) {
 			stepPos[0][0] = 0xFFFFFFFF;
@@ -568,9 +566,7 @@ class StatusChunk {
 
 	public:
 
-		void* operator new (size_t mySize);
 
-		void operator delete (void* us);
 		
 		void init (void) {
 			bodyState = 0;

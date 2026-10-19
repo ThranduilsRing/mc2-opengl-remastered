@@ -39,18 +39,11 @@ GoalMapNode* MoverGroup::goalMap = nullptr;
 // MOVERGROUP class
 //***************************************************************************
 
-void* MoverGroup::operator new (size_t ourSize) {
 
-	void* result = systemHeap->Malloc(ourSize);
-	return(result);
-}
 
 //---------------------------------------------------------------------------
 
-void MoverGroup::operator delete (void* us) {
 
-	systemHeap->Free(us);
-}	
 
 //---------------------------------------------------------------------------
 

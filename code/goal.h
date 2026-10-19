@@ -82,9 +82,7 @@ class GoalObject {
 
 	public:
 
-		void* operator new (size_t ourSize);
 
-		void operator delete (void* us);
 		
 		void init (void);
 
@@ -122,9 +120,7 @@ class GoalManager {
 
 	public:
 
-		void* operator new (size_t ourSize);
 
-		void operator delete (void* us);
 		
 		void init (void);
 

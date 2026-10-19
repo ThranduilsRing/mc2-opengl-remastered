@@ -267,13 +267,7 @@ void __stdcall TerminateGameEngine()
 			guiHeap = nullptr;
 		}
 
-		if (globalHeapList)
-		{
-			globalHeapList->destroy();
 
-			delete globalHeapList;
-			globalHeapList = nullptr;
-		}
 
 		gos_PushCurrentHeap(gosFX::Heap);
 

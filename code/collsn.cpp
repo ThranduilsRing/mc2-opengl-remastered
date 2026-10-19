@@ -141,22 +141,10 @@ void GlobalCollisionAlert::purgeRecords (void)
 
 //------------------------------------------------------------------------------
 // class CollisionGrid 
-void * CollisionGrid::operator new (size_t mySize)
-{
-	void *result = nullptr;
-	
-	if (CollisionSystem::collisionHeap && CollisionSystem::collisionHeap->heapReady())
-		result = CollisionSystem::collisionHeap->Malloc(mySize);
-	
-	return(result);
-}
+
 
 //------------------------------------------------------------------------------
-void CollisionGrid::operator delete (void *us)
-{
-	if (CollisionSystem::collisionHeap && CollisionSystem::collisionHeap->heapReady())
-		CollisionSystem::collisionHeap->Free(us);
-}
+
 
 //------------------------------------------------------------------------------
 long CollisionGrid::init (glm::vec3 &newOrigin)
@@ -400,20 +388,10 @@ void CollisionGrid::checkGrid (GameObjectPtr obj1, CollisionGridNodePtr area)
 
 //------------------------------------------------------------------------------
 // class CollisionSystem
-void * CollisionSystem::operator new (size_t mySize)
-{
-	void *result = nullptr;
-	
-	result = systemHeap->Malloc(mySize);
-	
-	return(result);
-}
+
 
 //------------------------------------------------------------------------------
-void CollisionSystem::operator delete (void *us)
-{
-	systemHeap->Free(us);
-}
+
 
 //------------------------------------------------------------------------------
 long CollisionSystem::init (FitIniFile *scenarioFile)

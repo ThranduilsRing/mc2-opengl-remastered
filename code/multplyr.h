@@ -346,9 +346,7 @@ class WorldChunk {
 
 	public:
 
-		void* operator new (size_t mySize);
 
-		void operator delete (void* us);
 		
 		void init (void) {
 			type = -1;
@@ -1444,9 +1442,7 @@ class MultiPlayer {
 
 	public:
 
-		void* operator new (size_t mySize);
 
-		void operator delete (void* us);
 		
 		void init (void);
 
