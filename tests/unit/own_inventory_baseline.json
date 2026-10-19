@@ -1211,10 +1211,10 @@
    "delete_array": 0,
    "files": {
     "code/componentlistbox.cpp": {
-     "new": 2
+     "new": 1
     }
    },
-   "new": 2,
+   "new": 1,
    "new_array": 0,
    "owners": []
   },
@@ -1900,21 +1900,15 @@
    "owners": []
   },
   "FloatHelp": {
-   "delete": 2,
+   "delete": 1,
    "delete_array": 0,
    "files": {
-    "code/mechcmd2.cpp": {
-     "new": 1
-    },
-    "code/mechcmd2_frame.cpp": {
-     "delete": 1
-    },
     "editor/Editor.cpp": {
      "delete": 1,
      "new": 1
     }
    },
-   "new": 2,
+   "new": 1,
    "new_array": 0,
    "owners": [
     ""
@@ -1992,26 +1986,6 @@
    "new_array": 0,
    "owners": []
   },
-  "GameCamera": {
-   "delete": 1,
-   "delete_array": 0,
-   "files": {
-    "code/mission.cpp": {
-     "delete": 1
-    },
-    "code/mission_init_load.cpp": {
-     "new": 1
-    },
-    "code/saveload_load.cpp": {
-     "new": 1
-    }
-   },
-   "new": 2,
-   "new_array": 0,
-   "owners": [
-    "Mission"
-   ]
-  },
   "GameDebugWindow": {
    "delete": 0,
    "delete_array": 0,
@@ -2069,23 +2043,6 @@
    "new_array": 0,
    "owners": [
     "Mission"
-   ]
-  },
-  "GameSoundSystem": {
-   "delete": 1,
-   "delete_array": 0,
-   "files": {
-    "code/mechcmd2.cpp": {
-     "new": 1
-    },
-    "code/mechcmd2_frame.cpp": {
-     "delete": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": [
-    ""
    ]
   },
   "Gate": {
@@ -2251,21 +2208,15 @@
    "owners": []
   },
   "HeapList": {
-   "delete": 2,
+   "delete": 1,
    "delete_array": 0,
    "files": {
-    "code/mechcmd2.cpp": {
-     "new": 1
-    },
-    "code/mechcmd2_frame.cpp": {
-     "delete": 1
-    },
     "editor/Editor.cpp": {
      "delete": 1,
      "new": 1
     }
    },
-   "new": 2,
+   "new": 1,
    "new_array": 0,
    "owners": [
     ""
@@ -2409,40 +2360,11 @@
    "new_array": 0,
    "owners": []
   },
-  "Logistics": {
-   "delete": 1,
-   "delete_array": 0,
-   "files": {
-    "code/mechcmd2.cpp": {
-     "new": 1
-    },
-    "code/mechcmd2_frame.cpp": {
-     "delete": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": [
-    ""
-   ]
-  },
   "LogisticsChassis": {
    "delete": 0,
    "delete_array": 0,
    "files": {
     "code/logisticsdata_init.cpp": {
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": []
-  },
-  "LogisticsLegalDialog": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/logisticsdialog.cpp": {
      "new": 1
     }
    },
@@ -2503,30 +2425,6 @@
     "LogisticsData"
    ]
   },
-  "LogisticsOKDialog": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/logisticsdialog.cpp": {
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": []
-  },
-  "LogisticsOneButtonDialog": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/logisticsdialog.cpp": {
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": []
-  },
   "LogisticsPilot": {
    "delete": 1,
    "delete_array": 0,
@@ -2546,26 +2444,11 @@
    "delete": 0,
    "delete_array": 0,
    "files": {
-    "code/logisticspilotlistbox.cpp": {
-     "new": 1
-    },
     "code/pilotreadyscreen.cpp": {
      "new": 3
     }
    },
-   "new": 4,
-   "new_array": 0,
-   "owners": []
-  },
-  "LogisticsSaveDialog": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/logisticsdialog.cpp": {
-     "new": 1
-    }
-   },
-   "new": 1,
+   "new": 3,
    "new_array": 0,
    "owners": []
   },
@@ -2609,9 +2492,6 @@
    "delete": 4,
    "delete_array": 0,
    "files": {
-    "code/forcegroupbar.cpp": {
-     "new": 1
-    },
     "code/logistics.cpp": {
      "delete": 2,
      "new": 1
@@ -2624,7 +2504,7 @@
      "new": 1
     }
    },
-   "new": 4,
+   "new": 3,
    "new_array": 0,
    "owners": [
     "Logistics",
@@ -2632,24 +2512,15 @@
    ]
   },
   "MC_TextureManager": {
-   "delete": 2,
+   "delete": 1,
    "delete_array": 0,
    "files": {
-    "code/mechcmd2.cpp": {
-     "new": 1
-    },
-    "code/mechcmd2_frame.cpp": {
-     "delete": 1
-    },
-    "code/mission2.cpp": {
-     "new": 1
-    },
     "editor/Editor.cpp": {
      "delete": 1,
      "new": 1
     }
    },
-   "new": 3,
+   "new": 1,
    "new_array": 0,
    "owners": [
     ""
@@ -3367,14 +3238,11 @@
     "code/mechbayscreen_update.cpp": {
      "new": 2
     },
-    "code/mechlistbox.cpp": {
-     "new": 1
-    },
     "code/mechpurchasescreen.cpp": {
      "new": 3
     }
    },
-   "new": 8,
+   "new": 7,
    "new_array": 0,
    "owners": []
   },
@@ -3619,23 +3487,6 @@
    "new": 1,
    "new_array": 0,
    "owners": []
-  },
-  "Mission": {
-   "delete": 1,
-   "delete_array": 0,
-   "files": {
-    "code/mechcmd2.cpp": {
-     "new": 1
-    },
-    "code/mechcmd2_frame.cpp": {
-     "delete": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": [
-    ""
-   ]
   },
   "MissionBriefingScreen": {
    "delete": 0,
@@ -3943,21 +3794,6 @@
    "new_array": 0,
    "owners": []
   },
-  "OptionsScreenWrapper": {
-   "delete": 1,
-   "delete_array": 0,
-   "files": {
-    "code/mechcmd2_frame.cpp": {
-     "delete": 1,
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": [
-    ""
-   ]
-  },
   "OptionsXScreen": {
    "delete": 1,
    "delete_array": 0,
@@ -3984,26 +3820,6 @@
    "new": 1,
    "new_array": 0,
    "owners": []
-  },
-  "PANE": {
-   "delete": 2,
-   "delete_array": 0,
-   "files": {
-    "code/mechcmd2.cpp": {
-     "new": 1
-    },
-    "code/mechcmd2_frame.cpp": {
-     "delete": 1
-    },
-    "editor/Editor.cpp": {
-     "delete": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": [
-    ""
-   ]
   },
   "Page": {
    "delete": 2,
@@ -4487,15 +4303,12 @@
    "delete": 0,
    "delete_array": 1,
    "files": {
-    "code/mechicon.cpp": {
-     "new": 1
-    },
     "mclib/userinput.cpp": {
      "delete_array": 1,
      "new_array": 1
     }
    },
-   "new": 1,
+   "new": 0,
    "new_array": 1,
    "owners": [
     "MouseCursorData"
@@ -4943,21 +4756,15 @@
    ]
   },
   "TimerManager": {
-   "delete": 2,
+   "delete": 1,
    "delete_array": 0,
    "files": {
-    "code/mechcmd2.cpp": {
-     "new": 1
-    },
-    "code/mechcmd2_frame.cpp": {
-     "delete": 1
-    },
     "editor/Editor.cpp": {
      "delete": 1,
      "new": 1
     }
    },
-   "new": 2,
+   "new": 1,
    "new_array": 0,
    "owners": [
     ""
@@ -5137,18 +4944,12 @@
    ]
   },
   "UserHeap": {
-   "delete": 10,
+   "delete": 8,
    "delete_array": 0,
    "files": {
     "code/collsn.cpp": {
      "delete": 1,
      "new": 1
-    },
-    "code/mechcmd2.cpp": {
-     "new": 2
-    },
-    "code/mechcmd2_frame.cpp": {
-     "delete": 2
     },
     "code/mission.cpp": {
      "delete": 1
@@ -5178,7 +4979,7 @@
      "new": 2
     }
    },
-   "new": 11,
+   "new": 9,
    "new_array": 0,
    "owners": [
     "",
@@ -5190,21 +4991,15 @@
    ]
   },
   "UserInput": {
-   "delete": 2,
+   "delete": 1,
    "delete_array": 0,
    "files": {
-    "code/mechcmd2.cpp": {
-     "new": 1
-    },
-    "code/mechcmd2_frame.cpp": {
-     "delete": 1
-    },
     "editor/Editor.cpp": {
      "delete": 1,
      "new": 1
     }
    },
-   "new": 2,
+   "new": 1,
    "new_array": 0,
    "owners": [
     ""
@@ -5393,26 +5188,6 @@
    "new_array": 0,
    "owners": []
   },
-  "WINDOW": {
-   "delete": 2,
-   "delete_array": 0,
-   "files": {
-    "code/mechcmd2.cpp": {
-     "new": 1
-    },
-    "code/mechcmd2_frame.cpp": {
-     "delete": 1
-    },
-    "editor/Editor.cpp": {
-     "delete": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": [
-    ""
-   ]
-  },
   "WatchManager": {
    "delete": 1,
    "delete_array": 0,
@@ -5462,45 +5237,18 @@
    "owners": []
   },
   "WeaponEffects": {
-   "delete": 2,
+   "delete": 1,
    "delete_array": 0,
    "files": {
-    "code/mission.cpp": {
-     "delete": 1
-    },
-    "code/mission2.cpp": {
-     "new": 1
-    },
     "editor/Editor.cpp": {
      "delete": 1,
      "new": 1
     }
    },
-   "new": 2,
+   "new": 1,
    "new_array": 0,
    "owners": [
-    "",
-    "Mission"
-   ]
-  },
-  "Weather": {
-   "delete": 1,
-   "delete_array": 0,
-   "files": {
-    "code/mission.cpp": {
-     "delete": 1
-    },
-    "code/mission_init_load.cpp": {
-     "new": 1
-    },
-    "code/saveload_load.cpp": {
-     "new": 1
-    }
-   },
-   "new": 2,
-   "new_array": 0,
-   "owners": [
-    "Mission"
+    ""
    ]
   },
   "aAnimButton": {
@@ -5611,24 +5359,6 @@
    "owners": [
     "LogisticsScreen"
    ]
-  },
-  "aFont": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/forcegroupbar.cpp": {
-     "new": 1
-    },
-    "code/mechicon.cpp": {
-     "new": 1
-    },
-    "code/objective.cpp": {
-     "new": 1
-    }
-   },
-   "new": 3,
-   "new_array": 0,
-   "owners": []
   },
   "aInsigniaListItem": {
    "delete": 0,
@@ -6683,22 +6413,20 @@
   "GameOS/gameos/vulkan_post_fog_native.cpp": 1,
   "GameOS/gameos/vulkan_post_hzb_native.cpp": 1,
   "GameOS/gameos/vulkan_post_screenfx_native.cpp": 1,
-  "code/componentlistbox.cpp": 1,
-  "code/forcegroupbar.cpp": 5,
+  "code/forcegroupbar.cpp": 3,
   "code/gamesound.cpp": 1,
   "code/infowindow.cpp": 1,
   "code/loadscreen.cpp": 7,
   "code/logistics.cpp": 1,
   "code/logisticsdata_modify.cpp": 3,
-  "code/logisticspilotlistbox.cpp": 2,
+  "code/logisticspilotlistbox.cpp": 1,
   "code/logisticsvariant.cpp": 2,
   "code/mainmenu.cpp": 2,
   "code/mech_move.cpp": 2,
-  "code/mechcmd2_debugwins.cpp": 5,
-  "code/mechcmd2_frame.cpp": 4,
-  "code/mechicon.cpp": 5,
-  "code/mechlistbox.cpp": 1,
-  "code/mission.cpp": 4,
+  "code/mechcmd2_debugwins.cpp": 1,
+  "code/mechcmd2_frame.cpp": 3,
+  "code/mechicon.cpp": 2,
+  "code/mission.cpp": 3,
   "code/mission_init.cpp": 1,
   "code/missionbegin.cpp": 4,
   "code/missionbriefingscreen.cpp": 1,
@@ -6708,7 +6436,7 @@
   "editor/BuildingBrush.cpp": 2,
   "editor/BuildingSettingsDlg.cpp": 1,
   "editor/DlgFileOpen.cpp": 1,
-  "editor/Editor.cpp": 2,
+  "editor/Editor.cpp": 4,
   "editor/EditorData_tacmap.cpp": 1,
   "editor/EditorInterface_editor.cpp": 1,
   "editor/EditorMFC.cpp": 1,

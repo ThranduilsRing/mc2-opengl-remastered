@@ -462,6 +462,7 @@ float minFrameLength = 1.0/4.0;
 long MissionStartTime =	0;			//No Idea
 
 Mission *mission = nullptr;
+std::unique_ptr<Weather> missionWeather;
 std::unique_ptr<Camera> missionCamera;
 unsigned long scenarioResult = mis_PLAYING;
 long scenarioEndTurn = -1;
@@ -1024,7 +1025,7 @@ void Mission::destroy (bool initLogistics)
 
 	MechWarrior::shutdown();
 
-	delete weather;
+	missionWeather.reset();
 	weather = nullptr;
 
 	if (land)

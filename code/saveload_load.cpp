@@ -487,7 +487,8 @@ void Mission::loadWeatherCamera(MissionLoadFrame& f) {
 	//----------------------------
 	// Create and load the Weather
 	loadProgress = 92.f;
-	weather = new Weather;
+	missionWeather = std::make_unique_for_overwrite<Weather>();
+	weather = missionWeather.get();
 	weather->init(&missionFile);
 	
 	loadProgress = 95.0;

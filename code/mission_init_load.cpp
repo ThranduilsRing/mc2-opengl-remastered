@@ -883,7 +883,8 @@ void Mission::initWeatherCamera(MissionInitFrame& f) {
 	gameSystemFile->close();
 	gameSystemFile.reset();
 
-	weather = new Weather;
+	missionWeather = std::make_unique_for_overwrite<Weather>();
+	weather = missionWeather.get();
 	weather->init(missionFile);
 	
 	missionCamera = std::make_unique_for_overwrite<GameCamera>();
