@@ -18,12 +18,11 @@ void RenderCore::registerOrUpdateView(const RenderCore::EngineView& view) {
             return;
         }
     }
-    if (s_viewCount < kMaxRegisteredViews) {
-        MC2_DIAGFE(stderr, "[ENGINE_VIEW_REGISTRY v1] registered id=%u name=%s count=%u\n",
-                view.id, view.debugName ? view.debugName : "?", s_viewCount + 1u);
-        fflush(stderr);
-        s_viewRegistry[s_viewCount++] = view;
-    }
+    if (s_viewCount >= kMaxRegisteredViews) return;
+    MC2_DIAGFE(stderr, "[ENGINE_VIEW_REGISTRY v1] registered id=%u name=%s count=%u\n",
+            view.id, view.debugName ? view.debugName : "?", s_viewCount + 1u);
+    fflush(stderr);
+    s_viewRegistry[s_viewCount++] = view;
 }
 
 void RenderCore::setCurrentView(const RenderCore::EngineView& view) {

@@ -86,11 +86,13 @@ void TextureSources::release(const std::shared_ptr<TextureSource>& source) {
 }
 void TextureSources::flush(bool all) {
     uint64_t encoded=0, owned=0, roots=0; uint32_t live=0;
-    std::unordered_set<const Bytes*> unique;
+    // Membership only: retain buffer owners while counting physical storage.
+    // This set is never traversed and cannot determine submission order.
+    std::unordered_set<std::shared_ptr<const Bytes>> unique;
     for (const auto& weak : assets_) if (auto source=weak.lock()) {
         if (!RenderCore::textureService().isLive(source->handle)) continue;
         ++live; owned+=source->ownedReferences; roots+=source->users-source->ownedReferences;
-        if (source->bytes && unique.insert(source->bytes.get()).second) encoded+=source->bytes->size();
+        if (source->bytes && unique.insert(source->bytes).second) encoded+=source->bytes->size();
         if (!all && source->lifetime) continue;
         const DWORD drop=all ? source->users : source->users-source->ownedReferences;
         for (DWORD i=0;i<drop;++i) RenderCore::textureService().dropRef(source->asset);
