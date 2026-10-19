@@ -71,6 +71,29 @@ void flush(std::span<const GosVfxMeshUpload> uploads, std::span<const GosVfxMesh
 }
 }
 
+extern "C" void gos_vfx_mesh_fixture(const float origin[3]) {
+    constexpr float positions[] = {-20, 0, 0, 20, 0, 0, 0, 35, 0};
+    constexpr float uvs[] = {0, 0, 1, 0, 0.5f, 1};
+    constexpr uint16_t indices[] = {0, 1, 2};
+    constexpr uint64_t id = UINT64_MAX;
+    const GosVfxMeshUpload upload{id, positions, uvs, indices, 3, 3};
+    GosVfxMeshInstance instances[2]{};
+    for (unsigned i = 0; i < 2; ++i) {
+        auto& inst = instances[i];
+        inst.meshId = id;
+        inst.modelToWorld[0] = inst.modelToWorld[5] = inst.modelToWorld[10] = inst.modelToWorld[15] = 1;
+        std::copy_n(origin, 3, inst.modelToWorld + 12);
+        inst.modelToWorld[12] += i == 0 ? -30.0f : 30.0f;
+        inst.scale = i == 0 ? 1.0f : 0.75f;
+        inst.rgba[0] = i == 0 ? 1.0f : 0.0f;
+        inst.rgba[1] = i == 0 ? 0.0f : 1.0f;
+        inst.rgba[2] = 1.0f;
+        inst.rgba[3] = 0.75f;
+        inst.blendMode = static_cast<int>(i);
+    }
+    gos_vfx_mesh_flush(&upload, 1, instances, 2);
+}
+
 // Preserve the existing C ABI at the boundary; the native implementation uses spans.
 extern "C" void gos_vfx_mesh_flush(const GosVfxMeshUpload* uploads,
                                    unsigned int numUploads,
