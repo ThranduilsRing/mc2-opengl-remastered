@@ -83,7 +83,7 @@ const uint32_t kMaxTextures  = 192;      // descriptor-set budget (x2 parity)
 
 // The view is declared after the image so it is released first.
 struct TexEntry {
-    mc2vk::ResidentTextureRef texture;
+    mc2vk::ResidentTextureRef texture, pending;
     std::weak_ptr<const std::vector<uint8_t>> source;
     VkImageView bound[2] = {};
     VkDescriptorSet set[2] = {};   // allocated from the island's pool, freed with it
@@ -177,14 +177,22 @@ TexEntry* get_tex(Island* s, uint32_t texNode, uint32_t gosHandle) {
     if (gosHandle == 0 || gosHandle == 0xffffffffu) return &s->dummyTex;
     auto it = s->texs.find(texNode);
     if (it != s->texs.end()) {
+        auto& e=it->second;
+        auto& textures=mc2vk::getOrCreateEngineVulkanContext().textures();
+        auto& service=RenderCore::textureService();
+        if (e.pending && !service.isLive(e.pending.get())) e.pending={};
+        if (e.texture && !service.isLive(e.texture.get())) e.texture={};
+        if (e.pending && textures.ready(e.pending.get())) e.texture=std::move(e.pending);
         const auto current=gos_GetTextureTexels(gosHandle);
-        if (current.status==GosTexels::Status::Ready && current.bytes && it->second.source.lock()!=current.bytes) {
-            mc2vk::getOrCreateEngineVulkanContext().retire(std::move(it->second.texture));
-            if (!upload_image(s,it->second,current.width,current.height,mc2vk::texelFormat(current.vkFormat),
-                              current.bytes->data(),current.bytes->size())) return &s->dummyTex;
-            it->second.source=current.bytes;
+        if (current.status==GosTexels::Status::Ready && current.bytes && !e.pending &&
+            (!e.texture || e.source.lock()!=current.bytes)) {
+            TexEntry next;
+            if (upload_image(s,next,current.width,current.height,mc2vk::texelFormat(current.vkFormat),
+                             current.bytes->data(),current.bytes->size())) {
+                e.pending=std::move(next.texture); e.source=current.bytes;
+            }
         }
-        return &it->second;
+        return &e;
     }
     if (s->untexturedNodes.contains(texNode)) return &s->dummyTex;
     if (s->texs.size() >= kMaxTextures) return &s->dummyTex;
@@ -479,7 +487,8 @@ extern "C" int mc2_vk_legacy_shape_island_run(int w, int h, const Mc2LegacyMlrFr
     if ((!g_previewDispatch && draws.empty()) || w <= 0 || h <= 0) return 0;
 
     mc2vk::VulkanContext& slotCtx = mc2vk::getOrCreateEngineVulkanContext();
-    if (const Island* parked = parkedIsland(); parked && (parked->w != w || parked->h != h)) slotCtx.retireIsland(g_previewDispatch ? mc2vk::IslandSlot::Preview : mc2vk::IslandSlot::LegacyShape);
+    if (const Island* parked = parkedIsland(); parked && (parked->w != w || parked->h != h ||
+        (parked->preview && !RenderCore::textureService().isLive(parked->previewColor.get())))) slotCtx.retireIsland(g_previewDispatch ? mc2vk::IslandSlot::Preview : mc2vk::IslandSlot::LegacyShape);
     if (!islandSlot()) {
         auto fresh = std::make_unique<Island>();
         fresh->preview=g_previewDispatch;

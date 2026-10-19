@@ -73,11 +73,15 @@ uint64_t TextureResidency::legacyUiId(uint32_t gosHandle, uint32_t width, uint32
                                      std::shared_ptr<const std::vector<uint8_t>> bytes) {
     if (!bytes) return 0;
     auto& e=legacyUi_[gosHandle];
-    if (e.source.lock()!=bytes || !service_.isLive(e.texture.get())) {
-        if (format==VK_FORMAT_BC7_SRGB_BLOCK) format=VK_FORMAT_BC7_UNORM_BLOCK; // display-space UI
-        e.texture=acquireLegacy(width,height,format,bytes->data(),bytes->size()); e.source=bytes;
+    if (e.pending && !service_.isLive(e.pending.get())) e.pending={};
+    if (e.texture && !service_.isLive(e.texture.get())) e.texture={};
+    if (e.pending && ready(e.pending.get())) e.texture=std::move(e.pending);
+    // Dynamic pages keep the last completed frame. Replacing a pending frame every tick could cancel every upload before publication.
+    if (!e.pending && (e.source.lock()!=bytes || !e.texture)) {
+        if (format==VK_FORMAT_BC7_SRGB_BLOCK) format=VK_FORMAT_BC7_UNORM_BLOCK;
+        e.pending=acquireLegacy(width,height,format,bytes->data(),bytes->size()); e.source=bytes;
     }
-    return RenderCore::uiTextureId(e.texture.get());
+    return RenderCore::uiTextureId(e.texture ? e.texture.get() : e.pending.get());
 }
 
 bool TextureResidency::init() {

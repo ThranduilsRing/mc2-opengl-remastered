@@ -95,7 +95,7 @@ private:
     std::shared_ptr<Image> placeholder_, arrayPlaceholder_;
     std::unordered_map<uint32_t, Resident> residents_;
     std::array<Flight, 2> flights_;
-    struct LegacyUi { std::weak_ptr<const std::vector<uint8_t>> source; ResidentTextureRef texture; };
+    struct LegacyUi { std::weak_ptr<const std::vector<uint8_t>> source; ResidentTextureRef texture, pending; };
     std::unordered_map<uint32_t, LegacyUi> legacyUi_;
     uint64_t targetSerial_ = 0;
     RenderCore::TextureStagingBudget budget_;
