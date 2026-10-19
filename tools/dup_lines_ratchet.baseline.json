@@ -8,7 +8,7 @@
   "RenderWorld": 0,
   "code": 14514,
   "mclib": 29456,
-  "shaders": 3078
+  "shaders": 3020
  },
  "dirs": [
   "code",
@@ -556,7 +556,7 @@
   "shaders/gos_terrain_thin.vert": 29,
   "shaders/gos_terrain_water_fast.vert": 174,
   "shaders/gos_terrain_water_fast_mdi.vert": 179,
-  "shaders/gos_terrain_water_mdi.frag": 113,
+  "shaders/gos_terrain_water_mdi.frag": 105,
   "shaders/gos_tex_vertex.frag": 28,
   "shaders/gos_tex_vertex.vert": 10,
   "shaders/gos_tex_vertex_lighted.frag": 9,
@@ -591,10 +591,11 @@
   "shaders/static_prop.frag": 63,
   "shaders/static_prop.vert": 19,
   "shaders/static_prop_depth.frag": 43,
-  "shaders/terrain_lod_chunk.frag": 63,
+  "shaders/terrain_lod_chunk.frag": 34,
   "shaders/terrain_overlay.frag": 21,
   "shaders/vulkan/cloud_shadow.frag": 61,
-  "shaders/vulkan/color_prop_tier1.frag": 10,
+  "shaders/vulkan/color_prop_tier1.frag": 18,
+  "shaders/vulkan/color_prop_tier1.vert": 8,
   "shaders/vulkan/edge_fog.frag": 40,
   "shaders/vulkan/fog_oob.frag": 40,
   "shaders/vulkan/hud_color.vert": 14,
@@ -614,14 +615,14 @@
   "shaders/vulkan/ssao.frag": 37,
   "shaders/vulkan/terrain_decal_tier1.frag": 24,
   "shaders/vulkan/terrain_overlay_tier1.frag": 24,
-  "shaders/vulkan/terrain_tier1.frag": 53,
+  "shaders/vulkan/terrain_tier1.frag": 24,
   "shaders/vulkan/terrain_tier1.vert": 78,
   "shaders/vulkan/terrain_tier1_skirt.vert": 78,
-  "shaders/vulkan/water_geom.frag": 85,
+  "shaders/vulkan/water_geom.frag": 77,
   "shaders/vulkan/water_geom.vert": 48
  },
- "head": "2d523287b",
+ "head": "c042a8a23",
  "n": 8,
- "total": 52399,
+ "total": 52341,
  "version": 1
 }
