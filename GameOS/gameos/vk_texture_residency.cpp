@@ -36,12 +36,12 @@ void attachUiImage(RenderCore::TextureHandle handle, std::shared_ptr<const Rende
     getOrCreateEngineVulkanContext().textures().attach(handle,std::move(image));
 }
 
-VkImageView ResidentTextureRef::view() const { return owner_ ? owner_->view(handle_) : VK_NULL_HANDLE; }
+VkImageView ResidentTextureRef::view() const { return owner_ ? owner_->view(handle_,arrayView_) : VK_NULL_HANDLE; }
 ResidentTextureRef::~ResidentTextureRef() { if (owner_) owner_->release(handle_); }
 ResidentTextureRef::ResidentTextureRef(ResidentTextureRef&& o) noexcept
-    : owner_(std::exchange(o.owner_, nullptr)), handle_(o.handle_) {}
+    : owner_(std::exchange(o.owner_, nullptr)), handle_(o.handle_), arrayView_(o.arrayView_) {}
 ResidentTextureRef& ResidentTextureRef::operator=(ResidentTextureRef&& o) noexcept {
-    if (this != &o) { if (owner_) owner_->release(handle_); owner_ = std::exchange(o.owner_, nullptr); handle_ = o.handle_; }
+    if (this != &o) { if (owner_) owner_->release(handle_); owner_ = std::exchange(o.owner_, nullptr); handle_ = o.handle_; arrayView_=o.arrayView_; }
     return *this;
 }
 TextureResidency::TextureResidency(VulkanContext& ctx, RenderCore::TextureService& service) : ctx_(ctx), service_(service) {
@@ -188,11 +188,11 @@ std::shared_ptr<TextureResidency::Image> TextureResidency::upload(const RenderCo
 ResidentTextureRef TextureResidency::acquire(const RenderCore::TextureKey& key, const RenderCore::KtxImage& image, RenderCore::TextureDimensions dimensions, uint32_t layers, bool arrayView) {
     auto handle=service_.acquire(key,RenderCore::kNoTextureNode,dimensions);
     if (!handle.isValid()) return {};
-    if (residents_.contains(handle.raw())) return ResidentTextureRef(*this,handle);
+    if (residents_.contains(handle.raw())) return ResidentTextureRef(*this,handle,arrayView);
     residents_.emplace(handle.raw(),Resident{{},0,mc2tex::wantsMipmaps(key.hints),layers,arrayView});
     residents_.at(handle.raw()).contentVersion=service_.contentVersion(handle);
     pending_.push_back({handle,std::make_shared<RenderCore::KtxImage>(image),service_.contentVersion(handle)});
-    return ResidentTextureRef(*this,handle);
+    return ResidentTextureRef(*this,handle,arrayView);
 }
 ResidentTextureRef TextureResidency::requestKtx(const RenderCore::TextureKey& key, std::vector<uint8_t> bytes,
                                                RenderCore::TextureDimensions dimensions) {
@@ -278,12 +278,12 @@ ResidentTextureRef TextureResidency::acquirePixels(uint32_t width,uint32_t heigh
             current=std::move(next); w=std::max(1u,w/2);h=std::max(1u,h/2);
         }
     }
-    auto ref=acquire(key,image,{width,height,width,height});
+    auto ref=acquire(key,image,{width,height,width,height},layers,arrayView);
     if (ref) { auto& r=residents_.at(ref.get().raw()); r.layers=layers; r.arrayView=arrayView; }
     return ref;
 }
 ResidentTextureRef TextureResidency::retain(RenderCore::TextureHandle handle) {
-    return residents_.contains(handle.raw()) && service_.retain(handle) ? ResidentTextureRef(*this,handle) : ResidentTextureRef{};
+    return residents_.contains(handle.raw()) && service_.retain(handle) ? ResidentTextureRef(*this,handle,residents_.at(handle.raw()).arrayView) : ResidentTextureRef{};
 }
 void TextureResidency::release(RenderCore::TextureHandle handle) {
     if (!service_.release(handle)) return;
@@ -297,8 +297,8 @@ void TextureResidency::release(RenderCore::TextureHandle handle) {
         }
     }
 }
-VkImageView TextureResidency::view(RenderCore::TextureHandle handle) const {
-    auto it=residents_.find(handle.raw()); return it!=residents_.end() && it->second.image && service_.isLive(handle) ? it->second.image->view.get() : (it!=residents_.end() && it->second.arrayView ? arrayPlaceholder_->view.get() : placeholder_->view.get());
+VkImageView TextureResidency::view(RenderCore::TextureHandle handle, bool arrayView) const {
+    auto it=residents_.find(handle.raw()); return it!=residents_.end() && it->second.image && service_.isLive(handle) ? it->second.image->view.get() : (arrayView || (it!=residents_.end() && it->second.arrayView) ? arrayPlaceholder_->view.get() : placeholder_->view.get());
 }
 VkDescriptorSet TextureResidency::descriptors() {
     auto& flight=flights_[ctx_.frameContext().slot];

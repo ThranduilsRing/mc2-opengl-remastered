@@ -24,9 +24,10 @@ public:
     VkImageView view() const;
 private:
     friend class TextureResidency;
-    ResidentTextureRef(TextureResidency& owner, RenderCore::TextureHandle handle) : owner_(&owner), handle_(handle) {}
+    ResidentTextureRef(TextureResidency& owner, RenderCore::TextureHandle handle, bool arrayView = false) : owner_(&owner), handle_(handle), arrayView_(arrayView) {}
     TextureResidency* owner_ = nullptr;
     RenderCore::TextureHandle handle_;
+    bool arrayView_ = false;
 };
 
 // Vulkan residency of the existing session TextureService. Context-owned, destroyed after islands and before VMA.
@@ -57,7 +58,7 @@ public:
     ResidentTextureRef acquireLegacy(uint32_t width, uint32_t height, VkFormat format, const void* bytes, size_t count);
     ResidentTextureRef retain(RenderCore::TextureHandle handle);
     void release(RenderCore::TextureHandle handle);
-    VkImageView view(RenderCore::TextureHandle handle) const;
+    VkImageView view(RenderCore::TextureHandle handle, bool arrayView = false) const;
     // Call only in the open engine frame. An immutable per-flight table is written after its previous ticket completes.
     VkDescriptorSet descriptors();
     uint32_t descriptorIndex(RenderCore::TextureHandle handle) const;
