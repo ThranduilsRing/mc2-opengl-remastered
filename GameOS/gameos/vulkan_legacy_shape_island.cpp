@@ -178,7 +178,10 @@ TexEntry* get_tex(Island* s,uint32_t texNode,uint32_t gosHandle) {
     const auto handle=RenderCore::uiTextureHandle(gos_GetMaterialTextureId(gosHandle));
     if (!handle.isValid()) return &s->dummyTex;
     if (auto it=s->texs.find(texNode);it!=s->texs.end()) {
-        if (it->second.texture.get()!=handle) it->second.texture=textures.retain(handle);
+        if (it->second.texture.get()!=handle) {
+            it->second.texture=textures.retain(handle);
+            it->second.bound[0]=it->second.bound[1]=VK_NULL_HANDLE; // recycled VkImageView names still require fresh descriptors
+        }
         return &it->second;
     }
     if (s->texs.size()>=kMaxTextures) return &s->dummyTex;

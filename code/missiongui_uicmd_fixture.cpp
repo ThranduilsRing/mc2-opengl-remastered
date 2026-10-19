@@ -3,6 +3,7 @@
 #include "missiongui_internal.h"
 #include "Gates/gate.h"
 #include "mc2fmt.h"
+#include "../RenderCore/TextureService.h"
 
 //--------------------------------------------------------------------------
 // FREEZE-MOVERS-1 (GAMEPLAY-DRIVER-3): deterministic mover freeze.
@@ -122,6 +123,23 @@ bool MissionInterfaceManager::uiCmdFixture(UiCmdCtx& c)
 	std::string& note = c.note;
 	std::string& extra = c.extra;
 
+    if (line.rfind("texture_retire ",0)==0) {
+        unsigned long long id=0;
+        auto& service=RenderCore::textureService();
+        if (!mc2::gate::get<"MC2_TEST_SPAWN">()) { result="blocked";note="needs MC2_TEST_SPAWN=1"; }
+        else if (sscanf(line.c_str()+15,"%llu",&id)!=1) note="texture_retire <service UI id>";
+        else {
+            const auto handle=RenderCore::uiTextureHandle(id);
+            // Fault injection is restricted to one service-owned page: never steal a manager/node reference.
+            if (!service.isLive(handle) || service.nodeOf(handle)!=RenderCore::kNoTextureNode || service.users(handle)!=1) {
+                result="blocked";note="needs a live sole-owned page; users="+std::to_string(service.users(handle));
+            } else {
+                result=service.release(handle) && !service.isLive(handle) ? "ok" : "blocked";
+                note="page retired; live producer must request a new generation";
+            }
+        }
+        return true;
+    }
     if (line.rfind("paint ",0)==0) {
         long id=0; unsigned r=0,g=0,b=0;
         if (!mc2::gate::get<"MC2_TEST_SPAWN">()) { result="blocked";note="needs MC2_TEST_SPAWN=1"; }
