@@ -164,7 +164,7 @@ struct EnginePresentVk::Impl {
     // GL texture name (the ImTextureID the game passes) -> a Vulkan image and the descriptor set ImGui_ImplVulkan binds for it.
     // Members release in reverse order: view, image, memory. The upload's staging bytes live in the frame ring.
     struct ImguiTexEntry {
-        mc2vk::ResidentTextureRef serviceTexture;
+        RenderCore::TextureHandle serviceTexture; // descriptor cache borrows identity; GPU retirement retains its image
         VkImageView serviceView=VK_NULL_HANDLE;
         mc2vk::OwnedDeviceMemory memory;
         mc2vk::OwnedRawImage image;
@@ -1391,7 +1391,7 @@ void imguiTexSweep(EnginePresentVk::Impl& s) {
     const uint64_t now = ++s.imguiTexFrame;
     for (auto it = s.imguiTex.begin(); it != s.imguiTex.end();) {
         auto& e = it->second;
-        if (RenderCore::isUiTextureId(it->first) ? !RenderCore::textureService().isLive(e.serviceTexture.get()) : e.src.expired()) {   // the texture was released or recreated: retire the set, destroy it once the GPU is done with it
+        if (RenderCore::isUiTextureId(it->first) ? !RenderCore::textureService().isLive(e.serviceTexture) : e.src.expired()) {   // the texture was released or recreated: retire the set, destroy it once the GPU is done with it
             s.ctx->retire(std::make_unique<ImguiTexRetired>(std::move(e)));
             it = s.imguiTex.erase(it);
         } else {
@@ -1427,7 +1427,7 @@ ImTextureID imguiTexResolve(EnginePresentVk::Impl& s, VkCommandBuffer cb, uint64
             if (!mc2vk::create(s.imguiTexSampler,s.dev,[&](VkSampler* h){return vkCreateSampler(s.dev,&sci,nullptr,h);})) return 0;
         }
         EnginePresentVk::Impl::ImguiTexEntry e;
-        e.serviceTexture=textures.retain(handle); e.serviceView=view; e.lastUsedFrame=s.imguiTexFrame;
+        e.serviceTexture=handle; e.serviceView=view; e.lastUsedFrame=s.imguiTexFrame;
         e.set=ImGui_ImplVulkan_AddTexture(s.imguiTexSampler.get(),view,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
         if (!e.set) return 0;
         const auto set=(ImTextureID)e.set; s.imguiTex.emplace(textureId,std::move(e)); return set;
