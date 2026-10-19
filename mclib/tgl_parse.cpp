@@ -661,7 +661,7 @@ int TG_TypeShape::LoadTGShapeFromASE (const char *fileName)
 			numTextures += atol(numberData);
 		}
 
-		aseBuffer = static_cast<unsigned char *>(textureData);
+		aseBuffer = reinterpret_cast<unsigned char *>(textureData);
 	}
 
 	tinyTextureStore.assign(numTextures, TG_TinyTexture{});
