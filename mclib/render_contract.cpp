@@ -17,6 +17,7 @@
 // See: docs/superpowers/specs/2026-04-26-render-contract-registry-design.md
 
 #include "render_contract.h"
+#include "../GameOS/gameos/native_render_state.h"
 
 // GL access for assertPassContract. Only called from render paths,
 // well after glewInit(); glGetIntegerv/glGetBooleanv extension pointers
@@ -718,11 +719,10 @@ void dryrunEnsureFrameInit() {
 void dryrunRecordPass(RenderCore::RenderPassId id) {
     if (id == RenderCore::RenderPassId::None) return;   // tags with no owner lane
     dryrunEnsureFrameInit();
-    // Resolve the bound draw FBO to a logical target via the existing ledger (no new sampling).
-    GLint bound = 0;
-    glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &bound);
-    const RenderCore::RenderResourceId fbo =
-        RenderCore::framegraph::fboLedger().resolve(static_cast<unsigned>(bound));
+    // A native pass has no ambient framebuffer binding. The trace records
+    // whether its declared logical destination has a live native owner.
+    const auto declared=RenderCore::framegraph::declaredFboTarget(id);
+    const auto fbo=mc2vk::nativeRenderTargetAvailable(declared) ? declared : RenderCore::RenderResourceId::Unknown;
     recordPassFired(g_dryrunTrace, id, fbo,
                     RenderCore::kFramePassOrder, RenderCore::kFramePassOrderCount);
 }
@@ -1037,24 +1037,18 @@ void ambientProbeAtPassBegin(RenderCore::RenderPassId id) {
         }
     }
 
-    // --- FBO target (FRAME-GRAPH-FBO-LEDGER-1) -----------------------------------
-    // Independent of the ambient contract: a pass may declare an FBO target but no
-    // ambient row (e.g. TerrainOverlay/Decal). Sample the bound draw FBO, resolve it to
-    // a logical target via the ledger, compare to the pass's declared target.
+    // Native destination readiness. The legacy fbo_* dump keys retain their
+    // wire format; the samples check real image/present owners, not GL bindings.
     const RenderCore::RenderResourceId fboDecl =
         RenderCore::framegraph::declaredFboTarget(id);
     if (fboDecl != RenderCore::RenderResourceId::Unknown) {
         ++g_fboSamples;
-        GLint bound = 0;
-        glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &bound);
-        const RenderCore::RenderResourceId actual =
-            RenderCore::framegraph::fboLedger().resolve(static_cast<unsigned>(bound));
-        if (RenderCore::framegraph::fboMismatch(fboDecl, actual)) {
+        if (!mc2vk::nativeRenderTargetAvailable(fboDecl)) {
             ++g_fboMismatchCount;
             static unsigned s_fboLogged = 0;
             if (s_fboLogged < 32u) {
                 ++s_fboLogged;
-                mc2::fmt::print_err("[FBO_GUARD] phase=begin passId={:d} declTarget={:d} actualTarget={:d} boundFbo={:d}\n", mc2::fmt::as_u32((unsigned)id), mc2::fmt::as_u32((unsigned)fboDecl), mc2::fmt::as_u32((unsigned)actual), mc2::fmt::as_i32((int)bound));
+                mc2::fmt::print_err("[NATIVE_TARGET_GUARD] phase=begin passId={:d} unavailableTarget={:d}\n", mc2::fmt::as_u32((unsigned)id), mc2::fmt::as_u32((unsigned)fboDecl));
                 fflush(stderr);
             }
             if (s_fatal) abort();
@@ -1391,7 +1385,7 @@ bool topLevelExecutorEnabled() {
 }
 
 // g_validatedTopLevel: End reached (begin+end structurally complete) — optimistic count.
-// g_topLevelFailures: ambient or FBO mismatch, or glGetError != NO_ERROR.
+// g_topLevelFailures: missing native target or unhealthy Vulkan context.
 // g_skippedDeferred: deferred pass Begin calls seen (Shadow/Mech/Water/VFX/UI).
 unsigned long g_validatedTopLevel  = 0;
 unsigned long g_topLevelFailures   = 0;
@@ -1410,97 +1404,39 @@ bool isTopLevelExecutorEnabled() {
 
 void executorOwnBeginTopLevel(PassIdentity passId, const char* callerHint) {
     if (!topLevelExecutorEnabled()) return;
-
-    const RenderCore::RenderPassId id = toRenderPassId(passId);
-    const RenderCore::framegraph::TopLevelPassContract* c =
-        RenderCore::framegraph::findTopLevelExecutorPass(id);
-    if (!c) {
-        // Deferred pass (Shadow/Mech/Water/VFX/UI) — count but do nothing.
-        ++g_skippedDeferred;
-        return;
+    const auto id=toRenderPassId(passId);
+    const auto* c=RenderCore::framegraph::findTopLevelExecutorPass(id);
+    if (!c) { ++g_skippedDeferred; return; }
+    if (c->validateNativeContext && !mc2vk::nativeRenderHealthy()) {
+        ++g_topLevelFailures;
+        if (g_topLevelFailures<=kMaxTopLevelFailureLog)
+            mc2::fmt::print_err("[EXECUTOR_TOPLEVEL v1] BEGIN FAIL nativeContext pass={} hint={}\n",mc2::fmt::safe(c->note),mc2::fmt::safe(callerHint ? callerHint : "?"));
     }
-
-    // --- Ambient precondition (ONLY where declared, reusing same sampler helpers) ---
-    if (c->validateAmbient) {
-        if (const RenderCore::framegraph::AmbientContract* decl =
-                RenderCore::framegraph::findAmbient(id)) {
-            RenderCore::framegraph::AmbientSample live;
-            live.colorMask  = sampleColorMask();
-            live.depthFunc  = sampleDepthFunc();
-            live.blend      = sampleBlend();
-            live.depthWrite = sampleDepthWrite();
-            const RenderCore::framegraph::AmbientMismatch mm =
-                RenderCore::framegraph::compareAmbient(*decl, live);
-            if (mm.any()) {
-                ++g_topLevelFailures;
-                if (g_topLevelFailures <= kMaxTopLevelFailureLog)
-                    mc2::fmt::print_err("[EXECUTOR_TOPLEVEL v1] BEGIN FAIL ambient pass={} hint={} cmMiss={:d} dfMiss={:d} dwMiss={:d} failures={:d}\n", mc2::fmt::safe(c->note), mc2::fmt::safe(callerHint ? callerHint : "?"), mc2::fmt::as_i32((int)mm.colorMask), mc2::fmt::as_i32((int)mm.depthFunc), mc2::fmt::as_i32((int)mm.depthWrite), mc2::fmt::as_u32(g_topLevelFailures));
-            }
-        }
+    const auto target=RenderCore::framegraph::declaredFboTarget(id);
+    if (c->validateNativeTarget && target!=RenderCore::RenderResourceId::Unknown && !mc2vk::nativeRenderTargetAvailable(target)) {
+        ++g_topLevelFailures;
+        if (g_topLevelFailures<=kMaxTopLevelFailureLog)
+            mc2::fmt::print_err("[EXECUTOR_TOPLEVEL v1] BEGIN FAIL nativeTarget pass={} hint={} target={:d}\n",mc2::fmt::safe(c->note),mc2::fmt::safe(callerHint ? callerHint : "?"),mc2::fmt::as_u32(unsigned(target)));
     }
-
-    // --- FBO precondition (ONLY where declared, reusing same FBO ledger helpers) ---
-    if (c->validateFbo) {
-        const RenderCore::RenderResourceId fboDecl =
-            RenderCore::framegraph::declaredFboTarget(id);
-        if (fboDecl != RenderCore::RenderResourceId::Unknown) {
-            GLint bound = 0;
-            glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &bound);
-            const RenderCore::RenderResourceId actual =
-                RenderCore::framegraph::fboLedger().resolve(static_cast<unsigned>(bound));
-            if (RenderCore::framegraph::fboMismatch(fboDecl, actual)) {
-                ++g_topLevelFailures;
-                if (g_topLevelFailures <= kMaxTopLevelFailureLog)
-                    mc2::fmt::print_err("[EXECUTOR_TOPLEVEL v1] BEGIN FAIL fbo pass={} hint={} declFbo={:d} actualFbo={:d} boundFbo={:d} failures={:d}\n", mc2::fmt::safe(c->note), mc2::fmt::safe(callerHint ? callerHint : "?"), mc2::fmt::as_u32((unsigned)fboDecl), mc2::fmt::as_u32((unsigned)actual), mc2::fmt::as_i32((int)bound), mc2::fmt::as_u32(g_topLevelFailures));
-            }
-        }
-    }
-
-    // PIN INVARIANT: no GL state change, no reorder, no scheduling.
-    // The body runs UNCHANGED between this call and executorOwnEndTopLevel.
 }
 
 void executorOwnEndTopLevel(PassIdentity passId, const char* callerHint) {
     if (!topLevelExecutorEnabled()) return;
-
-    const RenderCore::RenderPassId id = toRenderPassId(passId);
-    const RenderCore::framegraph::TopLevelPassContract* c =
-        RenderCore::framegraph::findTopLevelExecutorPass(id);
-    if (!c) return;  // deferred pass; Begin already counted it
-
-    // --- Postcondition: glGetError must be GL_NO_ERROR ---
-    {
-        const GLenum err = glGetError();
-        if (err != GL_NO_ERROR) {
-            ++g_topLevelFailures;
-            if (g_topLevelFailures <= kMaxTopLevelFailureLog)
-                mc2::fmt::print_err("[EXECUTOR_TOPLEVEL v1] END FAIL glGetError pass={} hint={} err=0x{:x} failures={:d}\n", mc2::fmt::safe(c->note), mc2::fmt::safe(callerHint ? callerHint : "?"), mc2::fmt::as_u32((unsigned)err), mc2::fmt::as_u32(g_topLevelFailures));
-            // Clear the error state so downstream code doesn't trip on our sample.
-            while (glGetError() != GL_NO_ERROR) {}
-        }
+    const auto id=toRenderPassId(passId);
+    const auto* c=RenderCore::framegraph::findTopLevelExecutorPass(id);
+    if (!c) return;
+    if (!mc2vk::nativeRenderHealthy()) {
+        ++g_topLevelFailures;
+        if (g_topLevelFailures<=kMaxTopLevelFailureLog)
+            mc2::fmt::print_err("[EXECUTOR_TOPLEVEL v1] END FAIL nativeContext pass={} hint={}\n",mc2::fmt::safe(c->note),mc2::fmt::safe(callerHint ? callerHint : "?"));
     }
-
-    // --- FBO postcondition (ONLY where declared) ---
-    if (c->validateFbo) {
-        const RenderCore::RenderResourceId fboDecl =
-            RenderCore::framegraph::declaredFboTarget(id);
-        if (fboDecl != RenderCore::RenderResourceId::Unknown) {
-            GLint bound = 0;
-            glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &bound);
-            const RenderCore::RenderResourceId actual =
-                RenderCore::framegraph::fboLedger().resolve(static_cast<unsigned>(bound));
-            if (RenderCore::framegraph::fboMismatch(fboDecl, actual)) {
-                ++g_topLevelFailures;
-                if (g_topLevelFailures <= kMaxTopLevelFailureLog)
-                    mc2::fmt::print_err("[EXECUTOR_TOPLEVEL v1] END FAIL fbo pass={} hint={} declFbo={:d} actualFbo={:d} boundFbo={:d} failures={:d}\n", mc2::fmt::safe(c->note), mc2::fmt::safe(callerHint ? callerHint : "?"), mc2::fmt::as_u32((unsigned)fboDecl), mc2::fmt::as_u32((unsigned)actual), mc2::fmt::as_i32((int)bound), mc2::fmt::as_u32(g_topLevelFailures));
-            }
-        }
+    const auto target=RenderCore::framegraph::declaredFboTarget(id);
+    if (c->validateNativeTarget && target!=RenderCore::RenderResourceId::Unknown && !mc2vk::nativeRenderTargetAvailable(target)) {
+        ++g_topLevelFailures;
+        if (g_topLevelFailures<=kMaxTopLevelFailureLog)
+            mc2::fmt::print_err("[EXECUTOR_TOPLEVEL v1] END FAIL nativeTarget pass={} hint={} target={:d}\n",mc2::fmt::safe(c->note),mc2::fmt::safe(callerHint ? callerHint : "?"),mc2::fmt::as_u32(unsigned(target)));
     }
-
-    // Count every completed end (optimistic; failures separately surfaced in dump).
-    // Matches the sub-stage island model in gos_postprocess.cpp.
     ++g_validatedTopLevel;
-    // PIN INVARIANT: no GL state change, no reorder, no scheduling.
 }
 
 extern "C" unsigned long mc2_framegraph_executor_validated_top_level_passes() {

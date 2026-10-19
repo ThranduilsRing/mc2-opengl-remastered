@@ -1139,65 +1139,65 @@ TEST_CASE("top-level executor (d): ambient + FBO flags match declared ledger dec
     // ledger (ShadowDynamicMap). MechOpaque has AmbientContract (SceneGEqual) + FBO (MainColor).
     const TopLevelPassContract* shadow = findTopLevelExecutorPass(RenderPassId::Shadow);
     REQUIRE(shadow != nullptr);
-    CHECK(shadow->validateAmbient == false);   // AmbientContract: ShadowLess + ShadowMap viewport
-    CHECK(shadow->validateFbo     == false);   // FBO ledger: ShadowDynamicMap
+    CHECK(shadow->validateNativeContext == false);   // AmbientContract: ShadowLess + ShadowMap viewport
+    CHECK(shadow->validateNativeTarget     == false);   // FBO ledger: ShadowDynamicMap
 
     const TopLevelPassContract* mech = findTopLevelExecutorPass(RenderPassId::MechOpaque);
     REQUIRE(mech != nullptr);
-    CHECK(mech->validateAmbient == true);     // AmbientContract: SceneGEqual + MainScene viewport
-    CHECK(mech->validateFbo     == true);     // FBO ledger: MainColor
+    CHECK(mech->validateNativeContext == true);     // AmbientContract: SceneGEqual + MainScene viewport
+    CHECK(mech->validateNativeTarget     == true);     // FBO ledger: MainColor
 
     // StaticPropOpaque and Terrain have AmbientContract + FBO ledger rows.
     const TopLevelPassContract* sp = findTopLevelExecutorPass(RenderPassId::StaticPropOpaque);
     REQUIRE(sp != nullptr);
-    CHECK(sp->validateAmbient == true);  // AmbientContract row exists
-    CHECK(sp->validateFbo     == true);  // FBO ledger declares MainColor
+    CHECK(sp->validateNativeContext == true);  // AmbientContract row exists
+    CHECK(sp->validateNativeTarget     == true);  // FBO ledger declares MainColor
 
     const TopLevelPassContract* terrain = findTopLevelExecutorPass(RenderPassId::Terrain);
     REQUIRE(terrain != nullptr);
-    CHECK(terrain->validateAmbient == true);
-    CHECK(terrain->validateFbo     == true);
+    CHECK(terrain->validateNativeContext == true);
+    CHECK(terrain->validateNativeTarget     == true);
 
     // TerrainOverlay and TerrainDecal have FBO ledger but no AmbientContract row.
     const TopLevelPassContract* overlay = findTopLevelExecutorPass(RenderPassId::TerrainOverlay);
     REQUIRE(overlay != nullptr);
-    CHECK(overlay->validateAmbient == false);
-    CHECK(overlay->validateFbo     == true);
+    CHECK(overlay->validateNativeContext == false);
+    CHECK(overlay->validateNativeTarget     == true);
 
     const TopLevelPassContract* decal = findTopLevelExecutorPass(RenderPassId::TerrainDecal);
     REQUIRE(decal != nullptr);
-    CHECK(decal->validateAmbient == false);
-    CHECK(decal->validateFbo     == true);
+    CHECK(decal->validateNativeContext == false);
+    CHECK(decal->validateNativeTarget     == true);
 
     // Water has AmbientContract (SceneGEqual/depthWrite On) + FBO ledger (MainColor).
     const TopLevelPassContract* water = findTopLevelExecutorPass(RenderPassId::Water);
     REQUIRE(water != nullptr);
-    CHECK(water->validateAmbient == false);
-    CHECK(water->validateFbo     == false);
+    CHECK(water->validateNativeContext == false);
+    CHECK(water->validateNativeTarget     == false);
 
     // VegetationCards has neither AmbientContract row nor FBO ledger target.
     const TopLevelPassContract* veg = findTopLevelExecutorPass(RenderPassId::VegetationCards);
     REQUIRE(veg != nullptr);
-    CHECK(veg->validateAmbient == false);
-    CHECK(veg->validateFbo     == false);
+    CHECK(veg->validateNativeContext == false);
+    CHECK(veg->validateNativeTarget     == false);
 
     // VFX has FBO ledger (MainColor) but NO AmbientContract row
     // (note seam fires pre-body in a different TU -> ambient not honestly declarable).
     const TopLevelPassContract* vfx = findTopLevelExecutorPass(RenderPassId::VFX);
     REQUIRE(vfx != nullptr);
-    CHECK(vfx->validateAmbient == false);
-    CHECK(vfx->validateFbo     == true);
+    CHECK(vfx->validateNativeContext == false);
+    CHECK(vfx->validateNativeTarget     == true);
 
     // UI has FBO ledger (Backbuffer) but NO AmbientContract row
     // (UI ambient is per-draw legacy gos dynamic state -> DO_NOT_MODEL).
     const TopLevelPassContract* ui = findTopLevelExecutorPass(RenderPassId::UI);
     REQUIRE(ui != nullptr);
-    CHECK(ui->validateAmbient == false);
-    CHECK(ui->validateFbo     == true);
+    CHECK(ui->validateNativeContext == false);
+    CHECK(ui->validateNativeTarget     == true);
 }
 
 TEST_CASE("top-level executor (e): ambient ledger cross-check — Shadow/MechOpaque/StaticProp/Terrain have AmbientContract; TerrainOverlay/Decal/Veg do not") {
-    // Verifies the validateAmbient flags are backed by actual ambient_contract.h rows.
+    // Verifies the validateNativeContext flags are backed by actual ambient_contract.h rows.
     CHECK(findAmbient(RenderPassId::Shadow)           != nullptr);  // ShadowLess+ShadowMap
     CHECK(findAmbient(RenderPassId::MechOpaque)       != nullptr);  // SceneGEqual+MainScene
     CHECK(findAmbient(RenderPassId::StaticPropOpaque) != nullptr);

@@ -99,6 +99,7 @@ set(SOURCES ${SOURCES}
     gpu_cull_compute.cpp
     vk_actor_cull_native.cpp
     vk_scene_readback.cpp
+    native_render_state.cpp
     gpu_cull_readback.cpp
     render_snapshot.cpp
     gos_render_pass_timer.cpp
