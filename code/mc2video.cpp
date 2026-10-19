@@ -1,6 +1,7 @@
 //=============================================================================
 // FFmpeg-backed video decoder — sole translation unit with FFmpeg symbols.
 //=============================================================================
+#include <memory>
 #include "mc2video.h"
 #include "gos_crashbundle.h"
 
@@ -345,32 +346,33 @@ VideoSession* video_open(const VideoOpenParams& p, VideoOpenResult* out)
     if (out) memset(out, 0, sizeof(*out));
     if (!g_ffmpegAvailable || !p.resolvedPath) return nullptr;
 
-    VideoSession* s = new VideoSession();
+    auto sessionOwner = std::make_unique<VideoSession>();
+    auto* s = sessionOwner.get();
 
     s->objectiveReceipt.capture(p.resolvedPath);
 
     if (avformat_open_input(&s->fmt, p.resolvedPath, nullptr, nullptr) < 0) {
         VIDEO_LOG("avformat_open_input failed for '%s'", p.resolvedPath);
-        video_close(s); return nullptr;
+        video_close(sessionOwner.release()); return nullptr;
     }
     if (avformat_find_stream_info(s->fmt, nullptr) < 0) {
         VIDEO_LOG("avformat_find_stream_info failed for '%s'", p.resolvedPath);
-        video_close(s); return nullptr;
+        video_close(sessionOwner.release()); return nullptr;
     }
 
     s->vStream = av_find_best_stream(s->fmt, AVMEDIA_TYPE_VIDEO, -1, -1, nullptr, 0);
     if (s->vStream < 0) {
         VIDEO_LOG("no video stream in '%s'", p.resolvedPath);
-        video_close(s); return nullptr;
+        video_close(sessionOwner.release()); return nullptr;
     }
     AVStream* vst = s->fmt->streams[s->vStream];
     const AVCodec* vcodec = avcodec_find_decoder(vst->codecpar->codec_id);
-    if (!vcodec) { video_close(s); return nullptr; }
+    if (!vcodec) { video_close(sessionOwner.release()); return nullptr; }
     s->vCodec = avcodec_alloc_context3(vcodec);
     avcodec_parameters_to_context(s->vCodec, vst->codecpar);
     if (avcodec_open2(s->vCodec, vcodec, nullptr) < 0) {
         VIDEO_LOG("video decoder open failed");
-        video_close(s); return nullptr;
+        video_close(sessionOwner.release()); return nullptr;
     }
 
     s->srcW = s->vCodec->width;
@@ -385,7 +387,7 @@ VideoSession* video_open(const VideoOpenParams& p, VideoOpenResult* out)
     s->sws = sws_getContext(s->srcW, s->srcH, s->vCodec->pix_fmt,
                              s->srcW, s->srcH, AV_PIX_FMT_BGRA,
                              SWS_BILINEAR, nullptr, nullptr, nullptr);
-    if (!s->sws) { video_close(s); return nullptr; }
+    if (!s->sws) { video_close(sessionOwner.release()); return nullptr; }
 
     s->vFrame = av_frame_alloc();
     s->pkt    = av_packet_alloc();
@@ -396,7 +398,7 @@ VideoSession* video_open(const VideoOpenParams& p, VideoOpenResult* out)
                                         gosHint_DisableMipmap);
     if (s->texHandle == 0) {
         VIDEO_LOG("gos_NewEmptyTexture failed %dx%d", s->srcW, s->srcH);
-        video_close(s); return nullptr;
+        video_close(sessionOwner.release()); return nullptr;
     }
 
     // Briefing panels and pilot cameras require the destination origin.
@@ -450,11 +452,12 @@ VideoSession* video_open(const VideoOpenParams& p, VideoOpenResult* out)
     s->clockStart   = (double)av_gettime() / 1000000.0;
     s->presentedPTS = -1.0;
 
-    return s;
+    return sessionOwner.release();
 }
 
 void video_close(VideoSession* s)
 {
+    std::unique_ptr<VideoSession> sessionOwner(s);
     if (!s) return;
     if (s->audioStreamStarted && soundSystem) {
         reinterpret_cast<SoundSystem*>(soundSystem)->endVideoPCMStream();
@@ -471,7 +474,7 @@ void video_close(VideoSession* s)
     if (s->aCodec)  { avcodec_free_context(&s->aCodec); }
     if (s->swr)     { swr_free(&s->swr); }
     if (s->fmt)     { avformat_close_input(&s->fmt); }
-    delete s;
+    sessionOwner.reset();
 }
 
 //-----------------------------------------------------------------------------

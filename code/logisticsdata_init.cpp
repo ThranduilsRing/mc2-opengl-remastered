@@ -1,5 +1,6 @@
 // LogisticsData: the front-end data load (components, pilots, variants, vehicles), the smart-load gate and the mission availability queries.
 // Declared in the class headers; shared names in logisticsdata_internal.h.
+#include <memory>
 #include "logisticsdata_internal.h"
 #include "mc2fmt.h"
 #include "../GameOS/gameos/utils/mc2log.h"
@@ -137,13 +138,13 @@ void LogisticsData::initComponents()
 		componentFile.open( componentPath );
 	gosASSERT( result == NO_ERR );
 
-	BYTE* data = new BYTE[componentFile.getLength()];
+	auto data = std::make_unique_for_overwrite<BYTE[]>(componentFile.getLength());
 
-	componentFile.read( data, componentFile.getLength() );
+	componentFile.read( data.get(), componentFile.getLength() );
 
 
 	File dataFile;
-	dataFile.open( (char*)data, componentFile.getLength() );
+	dataFile.open( (char*)data.get(), componentFile.getLength() );
 
 	componentFile.close();
 	
@@ -188,8 +189,7 @@ void LogisticsData::initComponents()
 		}
 	}
 
-	delete [] data;
-	data = nullptr;
+	data.reset();
 
 	// EQUIP-ADD-FILL-1 (S2): second consumer of the ADD pass -- the filled rows
 	// are NOT in compbas.csv, so append them here too (gate OFF -> empty list).

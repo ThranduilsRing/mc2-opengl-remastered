@@ -1,3 +1,4 @@
+#include <memory>
 #include "mc2str.h"
 #define MPPREFS_CPP
 /*************************************************************************************************\
@@ -312,13 +313,13 @@ void MPPrefs::update()
 		file.open( path );
 		long size = file.getLength();
 
-		unsigned char* pData = new unsigned char[size];
+		auto pData = std::make_unique_for_overwrite<unsigned char[]>(size);
 
-		file.read( pData, size );
-		MPlayer->sendPlayerInsignia( (char*)pName, pData, size );
+		file.read( pData.get(), size );
+		MPlayer->sendPlayerInsignia( (char*)pName, pData.get(), size );
 		MPlayer->insigniaList[MPlayer->commanderID] = 1;
 
-		delete[] pData;
+		pData.reset();
 	}
 
 	if ( userInput->isLeftClick() && !bExpanded )

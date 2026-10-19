@@ -19,7 +19,7 @@ MechBayScreen::MechBayScreen() : mechListBox( 1, 0 )
 	status = LogisticsScreen::RUNNING;
 	s_instance = this;
 	forceGroupCount = 0;
-	mechCamera = new SimpleCamera;
+	mechCamera = std::make_unique_for_overwrite<SimpleCamera>();
 
 	addWeightAmount = 0;
 	removeWeightAmount = 0;
@@ -33,7 +33,7 @@ MechBayScreen::MechBayScreen() : mechListBox( 1, 0 )
 MechBayScreen::~MechBayScreen()
 {
 	if ( mechCamera )
-		delete mechCamera;
+		mechCamera.reset();
 
 	if ( pIcons )
 		delete[] pIcons;

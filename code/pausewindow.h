@@ -13,6 +13,7 @@ struct ButtonData;
 class StaticInfo;
 class FitIniFile;
 
+#include <memory>
 #include"utilities.h"
 
 #ifndef AFONT_H
@@ -83,10 +84,10 @@ class PauseWindow
 
 	private:
 
-		ControlButton* buttons;
-		ButtonData* buttonData;
+		std::unique_ptr<ControlButton[]> buttons;
+		std::unique_ptr<ButtonData[]> buttonData;
 		long		buttonCount;
-		StaticInfo* statics;
+		std::unique_ptr<StaticInfo[]> statics;
 		long		staticCount;
 		GUI_RECT	backgrounds[2];
 

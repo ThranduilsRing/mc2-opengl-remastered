@@ -1334,30 +1334,30 @@ bool C_RemoveStructure::Read( FitIniFile* missionFile )
 	return true;
 }
 
-CObjectiveCondition *CObjective::new_CObjectiveCondition(condition_species_type conditionSpecies, int alignment) {
-	CObjectiveCondition *retval = nullptr;
+std::unique_ptr<CObjectiveCondition> CObjective::new_CObjectiveCondition(condition_species_type conditionSpecies, int alignment) {
+	std::unique_ptr<CObjectiveCondition> retval;
 	switch (conditionSpecies) {
-	case DESTROY_ALL_ENEMY_UNITS: retval = new CDestroyAllEnemyUnits(alignment); break;
-	case DESTROY_NUMBER_OF_ENEMY_UNITS: retval = new CDestroyNumberOfEnemyUnits(alignment); break;
-	case DESTROY_SPECIFIC_ENEMY_UNIT: retval = new CDestroySpecificEnemyUnit(alignment); break;
-	case DESTROY_SPECIFIC_STRUCTURE: retval = new CDestroySpecificStructure(alignment); break;
-	case CAPTURE_OR_DESTROY_ALL_ENEMY_UNITS: retval = new CCaptureOrDestroyAllEnemyUnits(alignment); break;
-	case CAPTURE_OR_DESTROY_NUMBER_OF_ENEMY_UNITS: retval = new CCaptureOrDestroyNumberOfEnemyUnits(alignment); break;
-	case CAPTURE_OR_DESTROY_SPECIFIC_ENEMY_UNIT: retval = new CCaptureOrDestroySpecificEnemyUnit(alignment); break;
-	case CAPTURE_OR_DESTROY_SPECIFIC_STRUCTURE: retval = new CCaptureOrDestroySpecificStructure(alignment); break;
-	case DEAD_OR_FLED_ALL_ENEMY_UNITS: retval = new CDeadOrFledAllEnemyUnits(alignment); break;
-	case DEAD_OR_FLED_NUMBER_OF_ENEMY_UNITS: retval = new CDeadOrFledNumberOfEnemyUnits(alignment); break;
-	case DEAD_OR_FLED_SPECIFIC_ENEMY_UNIT: retval = new CDeadOrFledSpecificEnemyUnit(alignment); break;
-	case CAPTURE_UNIT: retval = new CCaptureUnit(alignment); break;
-	case CAPTURE_STRUCTURE: retval = new CCaptureStructure(alignment); break;
-	case GUARD_SPECIFIC_UNIT: retval = new CGuardSpecificUnit(alignment); break;
-	case GUARD_SPECIFIC_STRUCTURE: retval = new CGuardSpecificStructure(alignment); break;
-	case MOVE_ANY_UNIT_TO_AREA: retval = new CMoveAnyUnitToArea(alignment); break;
-	case MOVE_ALL_UNITS_TO_AREA: retval = new CMoveAllUnitsToArea(alignment); break;
-	case MOVE_ALL_SURVIVING_UNITS_TO_AREA: retval = new CMoveAllSurvivingUnitsToArea(alignment); break;
-	case MOVE_ALL_SURVIVING_MECHS_TO_AREA: retval = new CMoveAllSurvivingMechsToArea(alignment); break;
-	case BOOLEAN_FLAG_IS_SET: retval = new CBooleanFlagIsSet(alignment); break;
-	case ELAPSED_MISSION_TIME: retval = new CElapsedMissionTime(alignment); break;
+	case DESTROY_ALL_ENEMY_UNITS: retval = std::make_unique<CDestroyAllEnemyUnits>(alignment); break;
+	case DESTROY_NUMBER_OF_ENEMY_UNITS: retval = std::make_unique<CDestroyNumberOfEnemyUnits>(alignment); break;
+	case DESTROY_SPECIFIC_ENEMY_UNIT: retval = std::make_unique<CDestroySpecificEnemyUnit>(alignment); break;
+	case DESTROY_SPECIFIC_STRUCTURE: retval = std::make_unique<CDestroySpecificStructure>(alignment); break;
+	case CAPTURE_OR_DESTROY_ALL_ENEMY_UNITS: retval = std::make_unique<CCaptureOrDestroyAllEnemyUnits>(alignment); break;
+	case CAPTURE_OR_DESTROY_NUMBER_OF_ENEMY_UNITS: retval = std::make_unique<CCaptureOrDestroyNumberOfEnemyUnits>(alignment); break;
+	case CAPTURE_OR_DESTROY_SPECIFIC_ENEMY_UNIT: retval = std::make_unique<CCaptureOrDestroySpecificEnemyUnit>(alignment); break;
+	case CAPTURE_OR_DESTROY_SPECIFIC_STRUCTURE: retval = std::make_unique<CCaptureOrDestroySpecificStructure>(alignment); break;
+	case DEAD_OR_FLED_ALL_ENEMY_UNITS: retval = std::make_unique<CDeadOrFledAllEnemyUnits>(alignment); break;
+	case DEAD_OR_FLED_NUMBER_OF_ENEMY_UNITS: retval = std::make_unique<CDeadOrFledNumberOfEnemyUnits>(alignment); break;
+	case DEAD_OR_FLED_SPECIFIC_ENEMY_UNIT: retval = std::make_unique<CDeadOrFledSpecificEnemyUnit>(alignment); break;
+	case CAPTURE_UNIT: retval = std::make_unique<CCaptureUnit>(alignment); break;
+	case CAPTURE_STRUCTURE: retval = std::make_unique<CCaptureStructure>(alignment); break;
+	case GUARD_SPECIFIC_UNIT: retval = std::make_unique<CGuardSpecificUnit>(alignment); break;
+	case GUARD_SPECIFIC_STRUCTURE: retval = std::make_unique<CGuardSpecificStructure>(alignment); break;
+	case MOVE_ANY_UNIT_TO_AREA: retval = std::make_unique<CMoveAnyUnitToArea>(alignment); break;
+	case MOVE_ALL_UNITS_TO_AREA: retval = std::make_unique<CMoveAllUnitsToArea>(alignment); break;
+	case MOVE_ALL_SURVIVING_UNITS_TO_AREA: retval = std::make_unique<CMoveAllSurvivingUnitsToArea>(alignment); break;
+	case MOVE_ALL_SURVIVING_MECHS_TO_AREA: retval = std::make_unique<CMoveAllSurvivingMechsToArea>(alignment); break;
+	case BOOLEAN_FLAG_IS_SET: retval = std::make_unique<CBooleanFlagIsSet>(alignment); break;
+	case ELAPSED_MISSION_TIME: retval = std::make_unique<CElapsedMissionTime>(alignment); break;
 	default:
 		// CRASH-HARDEN-OBJECTIVE-ICON-1: a bad/mod .fit can map to a condition
 		// species with no factory case (e.g. *_ENEMY_UNIT_GROUP). assert() is a
@@ -1370,18 +1370,18 @@ CObjectiveCondition *CObjective::new_CObjectiveCondition(condition_species_type 
 	return retval;
 }
 
-CObjectiveAction *CObjective::new_CObjectiveAction(action_species_type actionSpecies, int alignment) {
-	CObjectiveAction *retval = nullptr;
+std::unique_ptr<CObjectiveAction> CObjective::new_CObjectiveAction(action_species_type actionSpecies, int alignment) {
+	std::unique_ptr<CObjectiveAction> retval;
 	switch (actionSpecies) {
-	case PLAY_BIK: retval = new CPlayBIK(alignment); break;
-	case PLAY_WAV: retval = new CPlayWAV(alignment); break;
-	case DISPLAY_TEXT_MESSAGE: retval = new CDisplayTextMessage(alignment); break;
-	case DISPLAY_RESOURCE_TEXT_MESSAGE: retval = new CDisplayResourceTextMessage(alignment); break;
-	case SET_BOOLEAN_FLAG: retval = new CSetBooleanFlag(alignment); break;
-	case MAKE_NEW_TECHNOLOGY_AVAILABLE: retval = new CMakeNewTechnologyAvailable(alignment); break;
+	case PLAY_BIK: retval = std::make_unique<CPlayBIK>(alignment); break;
+	case PLAY_WAV: retval = std::make_unique<CPlayWAV>(alignment); break;
+	case DISPLAY_TEXT_MESSAGE: retval = std::make_unique<CDisplayTextMessage>(alignment); break;
+	case DISPLAY_RESOURCE_TEXT_MESSAGE: retval = std::make_unique<CDisplayResourceTextMessage>(alignment); break;
+	case SET_BOOLEAN_FLAG: retval = std::make_unique<CSetBooleanFlag>(alignment); break;
+	case MAKE_NEW_TECHNOLOGY_AVAILABLE: retval = std::make_unique<CMakeNewTechnologyAvailable>(alignment); break;
 
 	//ONLY used for in-mission saveLoad to avoid calling ReadNavMarkers
-	case _REMOVE_STRUCTURE: retval = new C_RemoveStructure(alignment); break;
+	case _REMOVE_STRUCTURE: retval = std::make_unique<C_RemoveStructure>(alignment); break;
 	default:
 		assert(false);
 		retval = nullptr;
@@ -1450,11 +1450,11 @@ CObjective &CObjective::operator=(const CObjective &master) {
 	{
 		for (auto* const pItem : master.m_conditionList) {
 			condition_species_type conditionSpecies = pItem->Species();
-			CObjectiveCondition *pTmpCondition = new_CObjectiveCondition(conditionSpecies, m_alignment);
+			auto pTmpCondition = new_CObjectiveCondition(conditionSpecies, m_alignment);
 			// Unimplemented species have no runtime instance to copy.
 			if (pTmpCondition) {
 				(*pTmpCondition).CastAndCopy(pItem);
-				m_conditionList.Append(pTmpCondition);
+				m_conditionList.Append(std::move(pTmpCondition));
 			}
 		}
 	}
@@ -1462,11 +1462,11 @@ CObjective &CObjective::operator=(const CObjective &master) {
 	{
 		for (auto* const pItem : master.m_actionList) {
 			action_species_type actionSpecies = pItem->Species();
-			CObjectiveAction *pTmpAction = new_CObjectiveAction(actionSpecies, m_alignment);
+			auto pTmpAction = new_CObjectiveAction(actionSpecies, m_alignment);
 			// An action species the factory does not implement yields null: skip it, as the condition copies do.
 			if (pTmpAction) {
 				(*pTmpAction).CastAndCopy(pItem);
-				m_actionList.Append(pTmpAction);
+				m_actionList.Append(std::move(pTmpAction));
 			}
 		}
 	}
@@ -1474,11 +1474,11 @@ CObjective &CObjective::operator=(const CObjective &master) {
 	{
 		for (auto* const pItem : master.m_failureConditionList) {
 			condition_species_type conditionSpecies = pItem->Species();
-			CObjectiveCondition *pTmpCondition = new_CObjectiveCondition(conditionSpecies, m_alignment);
+			auto pTmpCondition = new_CObjectiveCondition(conditionSpecies, m_alignment);
 			// Unimplemented species have no runtime instance to copy.
 			if (pTmpCondition) {
 				(*pTmpCondition).CastAndCopy(pItem);
-				m_failureConditionList.Append(pTmpCondition);
+				m_failureConditionList.Append(std::move(pTmpCondition));
 			}
 		}
 	}
@@ -1486,11 +1486,11 @@ CObjective &CObjective::operator=(const CObjective &master) {
 	{
 		for (auto* const pItem : master.m_failureActionList) {
 			action_species_type actionSpecies = pItem->Species();
-			CObjectiveAction *pTmpAction = new_CObjectiveAction(actionSpecies, m_alignment);
+			auto pTmpAction = new_CObjectiveAction(actionSpecies, m_alignment);
 			// An action species the factory does not implement yields null: skip it, as the condition copies do.
 			if (pTmpAction) {
 				(*pTmpAction).CastAndCopy(pItem);
-				m_failureActionList.Append(pTmpAction);
+				m_failureActionList.Append(std::move(pTmpAction));
 			}
 		}
 	}
@@ -1659,11 +1659,11 @@ bool CObjective::Read( FitIniFile* missionFile, int objectiveNum, int version, i
 				species = ConditionSpeciesMap(speciesText->c_str());
 			}
 
-			CObjectiveCondition *pNewObjectiveCondition = new_CObjectiveCondition(species, m_alignment);
-			if (!pNewObjectiveCondition) { assert(false); delete pNewObjectiveCondition; continue; }
+			auto pNewObjectiveCondition = new_CObjectiveCondition(species, m_alignment);
+			if (!pNewObjectiveCondition) { assert(false); pNewObjectiveCondition.reset(); continue; }
 			bool bresult = pNewObjectiveCondition->Read(missionFile);
-			if (true != bresult) { assert(false); delete pNewObjectiveCondition; continue; }
-			m_conditionList.Append(pNewObjectiveCondition);
+			if (true != bresult) { assert(false); pNewObjectiveCondition.reset(); continue; }
+			m_conditionList.Append(std::move(pNewObjectiveCondition));
 		}
 	}
 
@@ -1677,12 +1677,12 @@ bool CObjective::Read( FitIniFile* missionFile, int objectiveNum, int version, i
 			if (!speciesText) { assert(false); continue; }
 			species = ActionSpeciesMap(speciesText->c_str());
 
-			CObjectiveAction *pNewObjectiveAction = new_CObjectiveAction(species, m_alignment);
-			if (!pNewObjectiveAction) { assert(false); delete pNewObjectiveAction; continue; }
+			auto pNewObjectiveAction = new_CObjectiveAction(species, m_alignment);
+			if (!pNewObjectiveAction) { assert(false); pNewObjectiveAction.reset(); continue; }
 			bool bresult = pNewObjectiveAction->Read(missionFile);
-			if (true != bresult) { assert(false); delete pNewObjectiveAction; continue; }
+			if (true != bresult) { assert(false); pNewObjectiveAction.reset(); continue; }
 			pNewObjectiveAction->observationOrdinal = i;
-			m_actionList.Append(pNewObjectiveAction);
+			m_actionList.Append(std::move(pNewObjectiveAction));
 		}
 	}
 
@@ -1696,11 +1696,11 @@ bool CObjective::Read( FitIniFile* missionFile, int objectiveNum, int version, i
 			if (!speciesText) { assert(false); continue; }
 			species = ConditionSpeciesMap(speciesText->c_str());
 
-			CObjectiveCondition *pNewObjectiveFailureCondition = new_CObjectiveCondition(species, m_alignment);
-			if (!pNewObjectiveFailureCondition) { assert(false); delete pNewObjectiveFailureCondition; continue; }
+			auto pNewObjectiveFailureCondition = new_CObjectiveCondition(species, m_alignment);
+			if (!pNewObjectiveFailureCondition) { assert(false); pNewObjectiveFailureCondition.reset(); continue; }
 			bool bresult = pNewObjectiveFailureCondition->Read(missionFile);
-			if (true != bresult) { assert(false); delete pNewObjectiveFailureCondition; continue; }
-			m_failureConditionList.Append(pNewObjectiveFailureCondition);
+			if (true != bresult) { assert(false); pNewObjectiveFailureCondition.reset(); continue; }
+			m_failureConditionList.Append(std::move(pNewObjectiveFailureCondition));
 		}
 	}
 
@@ -1714,12 +1714,12 @@ bool CObjective::Read( FitIniFile* missionFile, int objectiveNum, int version, i
 			if (!speciesText) { assert(false); continue; }
 			species = ActionSpeciesMap(speciesText->c_str());
 
-			CObjectiveAction *pNewObjectiveFailureAction = new_CObjectiveAction(species, m_alignment);
-			if (!pNewObjectiveFailureAction) { assert(false); delete pNewObjectiveFailureAction; continue; }
+			auto pNewObjectiveFailureAction = new_CObjectiveAction(species, m_alignment);
+			if (!pNewObjectiveFailureAction) { assert(false); pNewObjectiveFailureAction.reset(); continue; }
 			bool bresult = pNewObjectiveFailureAction->Read(missionFile);
-			if (true != bresult) { assert(false); delete pNewObjectiveFailureAction; continue; }
+			if (true != bresult) { assert(false); pNewObjectiveFailureAction.reset(); continue; }
 			pNewObjectiveFailureAction->observationOrdinal = i;
-			m_failureActionList.Append(pNewObjectiveFailureAction);
+			m_failureActionList.Append(std::move(pNewObjectiveFailureAction));
 		}
 	}
 	return true;
@@ -1898,9 +1898,9 @@ CObjectives &CObjectives::operator=(const CObjectives &master) {
 	Clear();
 	for (auto* const pItem : master) {
 		//CObjective *tmpObjective = new CObjective(*pItem);
-		CObjective *tmpObjective = new CObjective(m_alignment);
+		auto tmpObjective = std::make_unique<CObjective>(m_alignment);
 		(*tmpObjective) = (*pItem);
-		m_list.Append(tmpObjective);
+		m_list.Append(std::move(tmpObjective));
 	}
 	return (*this);
 }
@@ -1969,7 +1969,7 @@ bool CObjectives::Read( FitIniFile* missionFile )
 			                                                       : std::format("Team{}Objective{}", Alignment(), i);
 			result = missionFile->seekBlock(blockName.c_str());
 			if (NO_ERR != result) { assert(false); continue; }
-			CObjective *pNewObjective = new CObjective(m_alignment);
+			auto pNewObjective = std::make_unique<CObjective>(m_alignment);
 			bool bresult = pNewObjective->Read(missionFile, i, objectivesVersion, markerI, secondaryMarkers);
 			
 			if ( 1 == pNewObjective->Priority() )
@@ -1977,8 +1977,8 @@ bool CObjectives::Read( FitIniFile* missionFile )
 			else
 				secondaryMarkers++;
 			
-			if (true != bresult) { assert(false); delete pNewObjective; continue; }
-			m_list.Append(pNewObjective);
+			if (true != bresult) { assert(false); pNewObjective.reset(); continue; }
+			m_list.Append(std::move(pNewObjective));
 		}
 	}
 	return true;
@@ -2181,7 +2181,7 @@ bool ReadNavMarkers( FitIniFile* missionFile, CObjectives &objectives )
 	for (i = 0; i < numNavMarkers; i += 1) {
 		result = missionFile->seekBlock(std::format("NavMarker{}", i).c_str());
 		if (NO_ERR != result) { assert(false); continue; }
-		CObjective *pNewObjective = new CObjective(objectives.Alignment());
+		auto pNewObjective = std::make_unique<CObjective>(objectives.Alignment());
 
 		pNewObjective->Title(std::format("Nav Marker {}", i));
 		pNewObjective->Priority(2);
@@ -2190,24 +2190,24 @@ bool ReadNavMarkers( FitIniFile* missionFile, CObjectives &objectives )
 
 		float targetCenterX, targetCenterY, targetRadius;
 		result = sReadIdFloat(missionFile, "xPos", targetCenterX);
-		if (NO_ERR != result) { assert(false); delete pNewObjective; continue; }
+		if (NO_ERR != result) { assert(false); pNewObjective.reset(); continue; }
 		result = sReadIdFloat(missionFile, "yPos", targetCenterY);
-		if (NO_ERR != result) { assert(false); delete pNewObjective; continue; }
+		if (NO_ERR != result) { assert(false); pNewObjective.reset(); continue; }
 		result = sReadIdFloat(missionFile, "radius", targetRadius);
-		if (NO_ERR != result) { assert(false); delete pNewObjective; continue; }
+		if (NO_ERR != result) { assert(false); pNewObjective.reset(); continue; }
 		pNewObjective->MarkerX( targetCenterX );
 		pNewObjective->MarkerY( targetCenterY );
 
-		CMoveAnyUnitToArea *pCondition = new CMoveAnyUnitToArea(pNewObjective->Alignment());
+		auto pCondition = std::make_unique<CMoveAnyUnitToArea>(pNewObjective->Alignment());
 		pCondition->SetParams(targetCenterX, targetCenterY, targetRadius);
-		pNewObjective->m_conditionList.Append(pCondition);
+		pNewObjective->m_conditionList.Append(std::move(pCondition));
 
-		C_RemoveStructure *pAction = new C_RemoveStructure(pNewObjective->Alignment());
+		auto pAction = std::make_unique<C_RemoveStructure>(pNewObjective->Alignment());
 		bool bresult = pAction->SetParams(targetCenterX, targetCenterY);
-		if (true != bresult) { assert(false); delete pAction; delete pNewObjective; continue; }
-		pNewObjective->m_actionList.Append(pAction);
+		if (true != bresult) { assert(false); pAction.reset(); pNewObjective.reset(); continue; }
+		pNewObjective->m_actionList.Append(std::move(pAction));
 
-		objectives.Append(pNewObjective);
+		objectives.Append(std::move(pNewObjective));
 	}
 	return true;
 }

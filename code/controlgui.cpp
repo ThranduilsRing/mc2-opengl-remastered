@@ -139,7 +139,7 @@ ControlGui::ControlGui()
 	curOrder = 0;
 	fireFromCurrentPos = 0;
 
-	pauseWnd = new PauseWindow;
+	pauseWnd = std::make_unique_for_overwrite<PauseWindow>();
 
 	renderStatusInfo = 0;
 	missionStatusInfos = nullptr;
@@ -151,7 +151,7 @@ ControlGui::ControlGui()
 
 	if ( !infoWnd )
 	{
-		infoWnd = new InfoWindow;
+		infoWnd = std::make_unique_for_overwrite<InfoWindow>();
 	}
 
 	objectiveInfos = nullptr;
@@ -181,22 +181,22 @@ ControlGui::ControlGui()
 ControlGui::~ControlGui()
 {
 	if ( staticInfos )
-		delete [] staticInfos;
+		staticInfos.reset();
 	staticInfos = nullptr;
 
 	if ( videoInfos )
-		delete [] videoInfos;
+		videoInfos.reset();
 
 	if ( objectiveInfos )
-		delete [] objectiveInfos;
+		objectiveInfos.reset();
 
 	if ( timerInfos )
-		delete [] timerInfos;
+		timerInfos.reset();
 
 	timerInfos = nullptr;
 
 	if ( rectInfos )
-		delete [] rectInfos;
+		rectInfos.reset();
 	rectInfos = nullptr;
 
 	if ( buttonData )
@@ -204,19 +204,19 @@ ControlGui::~ControlGui()
 	buttonData = nullptr;
 
 	if ( buttons )
-		delete [] buttons;
+		buttons.reset();
 	buttons = nullptr;
 
 	if ( infoWnd )
-		delete infoWnd;
+		infoWnd.reset();
 	infoWnd = nullptr;
 
 	if ( pauseWnd )
-		delete pauseWnd;
+		pauseWnd.reset();
 	pauseWnd = nullptr;
 
 	if ( vehicleButtons )
-		delete [] vehicleButtons;
+		vehicleButtons.reset();
 	vehicleButtons = nullptr;
 
 	if ( vehicleData )
@@ -224,7 +224,7 @@ ControlGui::~ControlGui()
 	vehicleData = nullptr;
 
 	if ( missionStatusInfos )
-		delete [] missionStatusInfos;
+		missionStatusInfos.reset();
 
 	missionStatusInfos = nullptr;
 	instance = nullptr;

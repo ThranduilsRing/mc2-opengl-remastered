@@ -167,26 +167,26 @@ void ControlGui::initStatics( FitIniFile& file )
 		infoWnd->setUnit( nullptr );
 
 	if ( staticInfos )
-		delete [] staticInfos;
+		staticInfos.reset();
 	staticInfos = nullptr;
 
 	if ( objectiveInfos )
-		delete [] objectiveInfos;
+		objectiveInfos.reset();
 
 	objectiveInfos = nullptr;
 
 	if ( videoInfos )
-		delete [] videoInfos;
+		videoInfos.reset();
 
 	videoInfos = nullptr;
 
 	if ( timerInfos )
-		delete [] timerInfos;
+		timerInfos.reset();
 
 	timerInfos = nullptr;
 
 	if ( missionStatusInfos )
-		delete [] missionStatusInfos;
+		missionStatusInfos.reset();
 
 	missionStatusInfos = nullptr;
 
@@ -200,7 +200,7 @@ void ControlGui::initStatics( FitIniFile& file )
 	if ( !staticCount )
 		return;
 
-	staticInfos = new StaticInfo[staticCount];
+	staticInfos = std::make_unique_for_overwrite<StaticInfo[]>(staticCount);
 
 	for ( int i = 0; i < staticCount; i++ )
 	{
@@ -269,7 +269,7 @@ void ControlGui::initStatics( FitIniFile& file )
 	file.readIdLong( "HeaderLeft", 	OBJECTIVEHEADERLEFT );
 	file.readIdLong( "HeaderTop", 	OBJECTIVESTOP );
 
-	objectiveInfos = new StaticInfo[objectiveInfoCount + 3];
+	objectiveInfos = std::make_unique_for_overwrite<StaticInfo[]>(objectiveInfoCount + 3);
 	i = 0;
 	for (; i < objectiveInfoCount; i++ )
 	{
@@ -314,7 +314,7 @@ void ControlGui::initStatics( FitIniFile& file )
 
 	if ( videoInfoCount )
 	{
-		videoInfos = new StaticInfo[videoInfoCount];
+		videoInfos = std::make_unique_for_overwrite<StaticInfo[]>(videoInfoCount);
 		for ( i = 0; i < videoInfoCount; i++ )
 		{
 			mc2::fmt::to_buf(blockName, "VideoStatic{:d}", mc2::fmt::as_i32(i));
@@ -337,7 +337,7 @@ void ControlGui::initStatics( FitIniFile& file )
 
 		if ( timerInfoCount )
 		{
-			timerInfos = new StaticInfo[timerInfoCount];
+			timerInfos = std::make_unique_for_overwrite<StaticInfo[]>(timerInfoCount);
 			for ( i = 0; i < timerInfoCount; i++ )
 			{
 				mc2::fmt::to_buf(blockName, "TimerStatic{:d}", mc2::fmt::as_i32(i)); 
@@ -352,7 +352,7 @@ void ControlGui::initStatics( FitIniFile& file )
 		file.readIdLong( "ResultsStaticCount", missionStatusInfoCount );
 		if ( missionStatusInfoCount )
 		{
-			missionStatusInfos = new StaticInfo[missionStatusInfoCount ];
+			missionStatusInfos = std::make_unique_for_overwrite<StaticInfo[]>(missionStatusInfoCount );
 			for ( i = 0; i < missionStatusInfoCount; i++ )
 			{
 				mc2::fmt::to_buf(blockName, "ResultsStatic{:d}", mc2::fmt::as_i32(i));
@@ -409,7 +409,7 @@ void ControlGui::initRects( FitIniFile& file )
 {
 	ZoneScopedN("ControlGui::initRects");
 	if ( rectInfos )
-		delete[] rectInfos;
+		rectInfos.reset();
 
 	rectInfos = nullptr;
 	rectCount = 0;
@@ -424,7 +424,7 @@ void ControlGui::initRects( FitIniFile& file )
 
 	if ( rectCount )
 	{
-		rectInfos = new RectInfo[rectCount];
+		rectInfos = std::make_unique_for_overwrite<RectInfo[]>(rectCount);
 		char buffer[32];
 		for ( int i = 0; i < rectCount; i++ )
 		{
@@ -604,13 +604,13 @@ void ControlGui::swapResolutions( int resolutionX, int resolutionY )
 	}
 
 	if ( !buttons )
-		buttons = new ControlButton[buttonCount];
+		buttons = std::make_unique_for_overwrite<ControlButton[]>(buttonCount);
 	if ( !buttonData )
 		buttonData = new ButtonData[buttonCount];
 	
 	memset( buttonData, 0, buttonCount * sizeof( ButtonData ) );
 
-	ControlButton::initButtons( buttonFile, buttonCount, buttons, buttonData, "Button" );
+	ControlButton::initButtons( buttonFile, buttonCount, buttons.get(), buttonData, "Button" );
 
 	//getButton( REPAIR )->setColor( 0 );
 	getButton( SALVAGE )->setColor( 0 );
@@ -625,12 +625,12 @@ void ControlGui::swapResolutions( int resolutionX, int resolutionY )
 	 Assert( buttonCount == 8, buttonCount, "wrong number of vehicle buttons" );
 
 	 if ( !vehicleButtons )
-		vehicleButtons = new ControlButton[buttonCount];
+		vehicleButtons = std::make_unique_for_overwrite<ControlButton[]>(buttonCount);
 	 if ( !vehicleData )
 		vehicleData = new ButtonData[buttonCount];
 	 memset( vehicleData, 0, buttonCount * sizeof( ButtonData ) );
 
-	ControlButton::initButtons( buttonFile, buttonCount, vehicleButtons, vehicleData, "Vehicle" );
+	ControlButton::initButtons( buttonFile, buttonCount, vehicleButtons.get(), vehicleData, "Vehicle" );
 	
 	getButton( TACMAP_TAB )->press( true );
 

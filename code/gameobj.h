@@ -363,7 +363,7 @@ class GameObject {
 		void operator delete (void *us);
 
 		// B7o.2/B7o.3: sole writers of `appearance`; adopt takes ownership (a previous appearance is freed), release frees now.
-		void adoptAppearance (AppearancePtr newAppearance);
+		void adoptAppearance (std::unique_ptr<Appearance> newAppearance);
 		void releaseAppearance (void);
 		void verifyAppearanceView (const char* where);	// logs one line if the view and the owner diverged (no assert, G12)
 

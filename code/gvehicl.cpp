@@ -692,7 +692,7 @@ void GroundVehicle::init (bool create, ObjectTypePtr objType) {
 
 	if ((appearanceType>>24) == GV_TYPE)
 	{
-		adoptAppearance(new GVAppearance);
+		adoptAppearance(std::make_unique_for_overwrite<GVAppearance>());
 		if (!appearance)
 			Fatal(0, " GroundVehicle.init: unable to create appearance ");
 

@@ -9,7 +9,7 @@ std::unique_ptr<BldgAppearance> MechWarrior::getWayPointMarker( const glm::vec3&
 	int appearanceType = (BLDG_TYPE << 24);
 	AppearanceTypePtr buildingAppearanceType = appearanceTypeList->getAppearance(appearanceType, name );
 
-	BldgAppearance* appearance = new BldgAppearance;
+	auto appearance = std::make_unique_for_overwrite<BldgAppearance>();
 	gosASSERT(appearance != nullptr);
 
 	// The only appearance type for buildings is MLR_APPEARANCE.
@@ -30,9 +30,9 @@ std::unique_ptr<BldgAppearance> MechWarrior::getWayPointMarker( const glm::vec3&
 	// call site; legacy recipe index propagated via OUT param.
 	int32_t lateRecipe = -1;
 	(void)GameAdapters::StaticProp::syncStaticPropLateSpawn(
-		appearance, &lateRecipe);
+		appearance.get(), &lateRecipe);
 
-	return std::unique_ptr<BldgAppearance>(appearance);
+	return appearance;
 }
 
 long MechWarrior::calcTacOrder (long goalAction,

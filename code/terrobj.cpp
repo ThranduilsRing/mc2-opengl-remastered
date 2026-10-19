@@ -1157,7 +1157,7 @@ void TerrainObject::init (bool create, ObjectTypePtr objType) {
 			gosASSERT(terrainObjectAppearanceType != NULL);
 		}
 		  
-	   	adoptAppearance(new TreeAppearance);
+		adoptAppearance(std::make_unique_for_overwrite<TreeAppearance>());
 		gosASSERT(appearance != NULL);
 
 		appearance->init((TreeAppearanceType*)terrainObjectAppearanceType, (GameObjectPtr)this);
@@ -1185,7 +1185,7 @@ void TerrainObject::init (bool create, ObjectTypePtr objType) {
 			terrainObjectAppearanceType = appearanceTypeList->getAppearance(appearanceType,"TESTOBJ");
 		}
 	  
-	   	adoptAppearance(new BldgAppearance);
+		adoptAppearance(std::make_unique_for_overwrite<BldgAppearance>());
 		gosASSERT(appearance != NULL);
 
 		//--------------------------------------------------------------
