@@ -70,15 +70,6 @@ void gos_terrain_bridge_bindUniforms(gosRenderMaterial* material) {
 // gos_terrain_bridge_applyVertexDeclaration deleted by TERRAIN-BRIDGE-BODY-DELETE-2:
 // callerless after TerrainPatchStream::flush() retired (TERRAIN-BRIDGE-BODY-DELETE-1).
 
-unsigned int gos_terrain_bridge_glTextureForGosHandle(unsigned int gosHandle) {
-    if (!g_gos_renderer) return 0;
-    if (gosHandle == 0u || gosHandle == INVALID_TEXTURE_ID) return 0;
-    gosTexture* tex = g_gos_renderer->getTexture(gosHandle);
-    if (!tex) return 0;
-    return (unsigned int)tex->getTextureId();
-}
-
-
 unsigned int gos_terrain_bridge_getThinShaderProgram() {
     if (!g_gos_renderer) return 0u;
     glsl_program* p = g_gos_renderer->getThinTerrainProgram();

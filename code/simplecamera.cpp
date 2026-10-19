@@ -442,9 +442,9 @@ void SimpleCamera::drawPreviewToPanel( float panelX, float panelY, float panelW,
 {
 #ifdef MC2_IMGUI
 	#ifdef MC2_VULKAN_ISLAND
-    const uint64_t tex=mc2vk::uiTextureServiceReady() ? mc2_vk_preview_texture() : gos_GetCameraPreviewTexture();
+    const uint64_t tex=mc2vk::uiTextureServiceReady() ? mc2_vk_preview_texture() : 0;
 #else
-    const uint64_t tex=gos_GetCameraPreviewTexture();
+    const uint64_t tex=0;
 #endif
 	const float u1 = bounds[0] / 800.f;
 	const float u2 = bounds[2] / 800.f;

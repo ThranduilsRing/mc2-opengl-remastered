@@ -475,23 +475,12 @@ void gos_RendererHandleEvents() {
 // Resolve a gosTextureHandle to the underlying raw GL texture name for
 // consumers outside this TU (gos_static_prop_batcher). Returns 0 on
 // invalid handle — caller should treat 0 as "unbind / default white".
-uint32_t gos_GetGLTextureId(uint32_t gosHandle) {
-    if (gosHandle == INVALID_TEXTURE_ID || !g_gos_renderer) return 0;
-    // Reject uninitialized / sentinel handles (seen in the wild on
-    // TG_TinyTexture entries that were never loaded: 0xFFFFFFFF).
-    // Bound by the current texture list size to avoid the hard assert
-    // inside gosRenderer::getTexture(texture_id >= list size).
-    if (gosHandle >= g_gos_renderer->getTextureListSize()) return 0;
-    gosTexture* tex = g_gos_renderer->getTexture(gosHandle);
-    return tex ? tex->getTextureId() : 0;
-}
-
 GosTexels gos_GetTextureTexels(uint32_t gosHandle) {
     GosTexels out;
     if (gosHandle == INVALID_TEXTURE_ID || !g_gos_renderer) return out;
     if (gosHandle >= g_gos_renderer->getTextureListSize()) return out;
     gosTexture* tex = g_gos_renderer->getTexture(gosHandle);
-    if (!tex || tex->getTextureId() == 0) return out;   // not loaded yet: the caller retries next frame
+    if (!tex) return out;
     gosTextureInfo info;
     tex->getTextureInfo(&info);
     out.width = (uint32_t)info.width_;
@@ -514,26 +503,19 @@ GosTexels gos_GetTextureTexels(uint32_t gosHandle) {
     return out;
 }
 
-GosTexels gos_GetTextureTexelsByGlName(uint32_t glName) {
-    if (glName == 0 || !g_gos_renderer) return {};
-    if (GosTexels pv = gos_GetCameraPreviewTexels(glName); pv.status == GosTexels::Status::Ready) return pv;
-    const uint32_t h = g_gos_renderer->findTextureHandleByGlName(glName);
-    return h == INVALID_TEXTURE_ID ? GosTexels{} : gos_GetTextureTexels(h);
-}
-
 // P1-1: FX-GPU-1 Phase 1 — narrow GL-name resolver for the GPU particle
 // bridge. Declared in GameOS/include/gameos.hpp and called at flush time.
 // Delegates to gos_GetGLTextureId; the DWORD parameter matches the GOS
 // texture handle convention used by gosFX/MLR.
 uint64_t gos_GetUiTextureId(DWORD handle) {
 #ifdef MC2_VULKAN_ISLAND
-    if (!mc2vk::uiTextureServiceReady()) return gos_GetGLTextureId(handle);
+    if (!mc2vk::uiTextureServiceReady()) return 0;
     const auto source=gos_GetTextureTexels(handle);
     if (source.status!=GosTexels::Status::Ready) return 0;
     return mc2vk::getOrCreateEngineVulkanContext().textures().legacyUiId(handle,source.width,source.height,
         mc2vk::texelFormat(source.vkFormat),source.bytes);
 #else
-    return gos_GetGLTextureId(handle);
+    return 0;
 #endif
 }
 uint64_t gos_GetMaterialTextureId(DWORD handle) {
@@ -548,10 +530,6 @@ uint64_t gos_GetMaterialTextureId(DWORD handle) {
 #endif
 }
 
-
-unsigned int gos_GetGLTextureName(DWORD handle) {
-    return gos_GetGLTextureId(static_cast<uint32_t>(handle));
-}
 
 const float* gos_GetProj2ScreenMat4() {
     if (!g_gos_renderer) return nullptr;

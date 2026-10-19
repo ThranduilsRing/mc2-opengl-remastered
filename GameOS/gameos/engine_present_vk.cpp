@@ -167,18 +167,10 @@ struct EnginePresentVk::Impl {
         RenderCore::TextureHandle serviceTexture; // descriptor cache borrows identity; GPU retirement retains its image
         VkImageView serviceView=VK_NULL_HANDLE;
         std::shared_ptr<const void> serviceImage; // owns this exact view until the retired set is freed
-        mc2vk::OwnedDeviceMemory memory;
-        mc2vk::OwnedRawImage image;
-        mc2vk::OwnedImageView view;
         VkDescriptorSet set = VK_NULL_HANDLE;
-        std::weak_ptr<const std::vector<uint8_t>> src;   // expires when the texture is released or its content re-published
-        uint64_t uploadFrame = 0;
-        const void* srcPtr = nullptr;   // identity of the uploaded texel vector, compared with the live texture once per frame
-        uint64_t checkedFrame = 0;      // last frame srcPtr was compared
         uint64_t lastUsedFrame = 0;
     };
     std::unordered_map<uint64_t, ImguiTexEntry> imguiTex;
-    std::unordered_map<uint32_t, uint64_t> imguiTexRetryAt;   // GL names with no texels: next frame to ask again
     mc2vk::OwnedSampler imguiTexSampler;
     uint64_t imguiTexFrame = 0;
     // SINGLE-FRAME-IN-FLIGHT DEPENDENCY (VK-PRESENT-SINGLESUBMIT-1 audit note): the
@@ -1384,7 +1376,6 @@ void imguiTexReleaseAll(EnginePresentVk::Impl& s) {
     const bool live = imguiBackendLive();
     for (auto& kv : s.imguiTex) imguiTexDestroy(kv.second, live);
     s.imguiTex.clear();
-    s.imguiTexRetryAt.clear();
     s.ctx->drainDeferred("present_imgui_release");   // the retired entries return their sets while the backend is still up
 }
 
@@ -1394,7 +1385,7 @@ void imguiTexSweep(EnginePresentVk::Impl& s) {
         auto& e = it->second;
         const bool staleService = RenderCore::isUiTextureId(it->first) &&
             (!RenderCore::textureService().isLive(e.serviceTexture) || e.serviceView != s.ctx->textures().view(e.serviceTexture));
-        if (RenderCore::isUiTextureId(it->first) ? staleService : e.src.expired()) {   // the texture was released or recreated: retire the set, destroy it once the GPU is done with it
+        if (staleService) {   // the texture was released or recreated: retire the set, destroy it once the GPU is done with it
             s.ctx->retire(std::make_unique<ImguiTexRetired>(std::move(e)));
             it = s.imguiTex.erase(it);
         } else {
@@ -1454,127 +1445,7 @@ ImTextureID imguiTexResolve(EnginePresentVk::Impl& s, VkCommandBuffer cb, uint64
         if (!e.set) return 0;
         const auto set=(ImTextureID)e.set; s.imguiTex.emplace(textureId,std::move(e)); return set;
     }
-    const uint32_t glName=uint32_t(textureId);
-    auto it = s.imguiTex.find(glName);
-    if (it != s.imguiTex.end()) {
-        auto& e = it->second;
-        if (e.checkedFrame == s.imguiTexFrame) {
-            e.lastUsedFrame = s.imguiTexFrame;
-            return (ImTextureID)e.set;
-        }
-        // Once per frame: the cached image must still be the texture's CURRENT content. Pointer identity of the published texel
-        // vector tracks content (a re-publish or a reused GL name gives a different vector), and an expired weak_ptr covers a
-        // released one. Other caches holding the old vector alive do not matter: the comparison is against the live texture.
-        const GosTexels cur = gos_GetTextureTexelsByGlName(glName);
-        if (cur.status == GosTexels::Status::Ready && cur.bytes && cur.bytes.get() == e.srcPtr && !e.src.expired()) {
-            e.checkedFrame = s.imguiTexFrame;
-            e.lastUsedFrame = s.imguiTexFrame;
-            return (ImTextureID)e.set;
-        }
-        imguiTexRetire(s, it);
-    }
-    auto miss = s.imguiTexRetryAt.find(glName);
-    if (miss != s.imguiTexRetryAt.end() && miss->second > s.imguiTexFrame)
-        return 0;
-    constexpr uint64_t kRetryFrames = 120;
-    auto fail = [&]() -> ImTextureID { s.imguiTexRetryAt[glName] = s.imguiTexFrame + kRetryFrames; return 0; };
-    if (!imguiTexMakeRoom(s)) return fail();
-    const GosTexels texels = gos_GetTextureTexelsByGlName(glName);
-    if (texels.status != GosTexels::Status::Ready || !texels.bytes || texels.width == 0 || texels.height == 0 ||
-        texels.width > 8192 || texels.height > 8192)
-        return fail();
-    VkFormat fmt = mc2vk::texelFormat(texels.vkFormat);
-    // ImGui writes display-space values into a UNORM target: a BC7 sRGB image would be decoded to linear and come out dark, so UI
-    // images sample BC7 as UNORM, which equals what the RGBA8 mirrors give.
-    if (fmt == VK_FORMAT_BC7_SRGB_BLOCK)
-        fmt = VK_FORMAT_BC7_UNORM_BLOCK;
-    const VkDeviceSize bytes = (VkDeviceSize)texels.bytes->size();
-    const bool bc7 = fmt == VK_FORMAT_BC7_UNORM_BLOCK;
-    const VkDeviceSize need = bc7 ? (VkDeviceSize)((texels.width + 3u) / 4u) * ((texels.height + 3u) / 4u) * 16u
-                                  : (VkDeviceSize)texels.width * texels.height * 4u;
-    if (bytes < need)
-        return fail();
-
-    EnginePresentVk::Impl::ImguiTexEntry e;
-    // The staging bytes are this frame's transient memory: the copy below is recorded into `cb`, which submits this frame.
-    const mc2vk::FrameAlloc stage = s.ctx->frameAlloc(need, 16);
-    if (!stage)
-        return fail();
-    std::memcpy(stage.ptr, texels.bytes->data(), (size_t)need);
-
-    VkImageCreateInfo ici{VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO};
-    ici.imageType = VK_IMAGE_TYPE_2D;
-    ici.format = fmt;
-    ici.extent = {texels.width, texels.height, 1};
-    ici.mipLevels = 1;
-    ici.arrayLayers = 1;
-    ici.samples = VK_SAMPLE_COUNT_1_BIT;
-    ici.tiling = VK_IMAGE_TILING_OPTIMAL;
-    ici.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
-    ici.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-    ici.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    if (!mc2vk::create(e.image, s.dev, [&](auto* h) { return vkCreateImage(s.dev, &ici, nullptr, h); }))
-        return fail();
-    VkMemoryRequirements req{};
-    vkGetImageMemoryRequirements(s.dev, e.image.get(), &req);
-    uint32_t memType = findMemoryType(s.phys, req.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-    if (memType == UINT32_MAX) memType = findMemoryType(s.phys, req.memoryTypeBits, 0);
-    if (memType == UINT32_MAX)
-        return fail();
-    VkMemoryAllocateInfo mai{VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO};
-    mai.allocationSize = req.size;
-    mai.memoryTypeIndex = memType;
-    if (!mc2vk::create(e.memory, s.dev, [&](auto* h) { return vkAllocateMemory(s.dev, &mai, nullptr, h); }) ||
-        vkBindImageMemory(s.dev, e.image.get(), e.memory.get(), 0) != VK_SUCCESS)
-        return fail();
-    VkImageViewCreateInfo vci{VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO};
-    vci.image = e.image.get();
-    vci.viewType = VK_IMAGE_VIEW_TYPE_2D;
-    vci.format = fmt;
-    vci.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
-    if (!mc2vk::create(e.view, s.dev, [&](auto* h) { return vkCreateImageView(s.dev, &vci, nullptr, h); }))
-        return fail();
-    if (!s.imguiTexSampler.get()) {
-        VkSamplerCreateInfo sci{VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO};
-        sci.magFilter = sci.minFilter = VK_FILTER_LINEAR;
-        sci.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
-        sci.addressModeU = sci.addressModeV = sci.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-        if (!mc2vk::create(s.imguiTexSampler, s.dev, [&](auto* h) { return vkCreateSampler(s.dev, &sci, nullptr, h); }))
-            return fail();
-    }
-
-    // The descriptor set is the last thing that can fail; the vendored backend returns null when the pool is exhausted.
-    e.set = ImGui_ImplVulkan_AddTexture(s.imguiTexSampler.get(), e.view.get(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-    if (!e.set) {
-        static bool s_logged = false;
-        if (!s_logged) {
-            s_logged = true;
-            std::fprintf(stderr, "[VK_IMGUI] descriptor pool exhausted (live=%zu retired=%zu): image draws skipped until sets retire\n",
-                         s.imguiTex.size(), g_imguiTexRetiredPending);
-        }
-        return fail();
-    }
-
-    // No failure past this point.
-    barrier(cb, e.image.get(), VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 0, VK_ACCESS_TRANSFER_WRITE_BIT,
-            VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
-    VkBufferImageCopy region{};
-    region.bufferOffset = stage.offset;
-    region.imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
-    region.imageExtent = {texels.width, texels.height, 1};
-    vkCmdCopyBufferToImage(cb, stage.buffer, e.image.get(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
-    barrier(cb, e.image.get(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-            VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
-
-    e.src = texels.bytes;
-    e.srcPtr = texels.bytes.get();
-    e.uploadFrame = s.imguiTexFrame;
-    e.checkedFrame = s.imguiTexFrame;
-    e.lastUsedFrame = s.imguiTexFrame;
-    const ImTextureID id = (ImTextureID)e.set;
-    s.imguiTexRetryAt.erase(glName);
-    s.imguiTex.emplace(glName, std::move(e));
-    return id;
+    return 0;
 }
 
 bool recordPendingImgui(EnginePresentVk::Impl& s, VkCommandBuffer cb) {
@@ -2335,7 +2206,7 @@ bool EnginePresentVk::queueHudVulkanFrame(std::vector<VkHudDraw>&& draws,
     health_.hud_vk_textured_last = 0;
     health_.hud_vk_serialized_last = 0;
     for (const VkHudDraw& d : s.pendingHudDraws) {
-        if (d.textureHandle != 0 && d.glTextureId != 0 && d.textureWidth != 0 && d.textureHeight != 0) {
+        if (d.textureHandle != 0 && d.textureRgba && d.textureWidth != 0 && d.textureHeight != 0) {
             ++health_.hud_vk_textured_last;
             if (d.textureSerial != 0)
                 ++health_.hud_vk_serialized_last;

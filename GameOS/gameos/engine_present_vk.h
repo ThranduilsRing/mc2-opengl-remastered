@@ -115,7 +115,6 @@ struct VkHudVertex {
 struct VkHudDraw {
     uint32_t kind = 0;
     uint32_t textureHandle = 0;
-    uint32_t glTextureId = 0;
     uint32_t textureWidth = 0;
     uint32_t textureHeight = 0;
     uint32_t textureFormat = 0;

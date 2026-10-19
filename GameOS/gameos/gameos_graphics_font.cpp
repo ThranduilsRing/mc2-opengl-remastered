@@ -9,7 +9,6 @@
 
 #include "platform_str.h"
 
-#include <GL/glew.h>
 
 #include <algorithm>
 #include <cctype>
@@ -131,20 +130,6 @@ gosFont* gosFont::load(const char* fontFile) {
                 delete[] atlas.pixels;
                 atlas.pixels = nullptr;
 
-                GLuint gl_id = gos_GetTextureGLId(tex_id);
-                glBindTexture(GL_TEXTURE_2D, gl_id);
-                // Save/restore GL_UNPACK_ALIGNMENT — it's global state
-                // and a later texture upload may rely on a different
-                // value (driver default is 4, but other code paths set
-                // it to 1 for tightly-packed sources).
-                GLint prev_unpack_alignment = 0;
-                glGetIntegerv(GL_UNPACK_ALIGNMENT, &prev_unpack_alignment);
-                glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
-                glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0,
-                                atlas.width, atlas.height,
-                                GL_RGBA, GL_UNSIGNED_BYTE, rgba);
-                glPixelStorei(GL_UNPACK_ALIGNMENT, prev_unpack_alignment);
-                glBindTexture(GL_TEXTURE_2D, 0);
                 if(gosTexture* tex = gosRendererGetTexture(tex_id)) {
                     tex->setRgbaMirror(atlas.width, atlas.height, TF_RGBA8, rgba);
                     tex->markContentMutated();

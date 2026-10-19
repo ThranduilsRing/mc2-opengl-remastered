@@ -127,17 +127,6 @@ void gosRenderer::applyRenderStates() {
             fflush(stdout);
         }
         if (equal) {
-            // Resolved-handle parity: check the underlying GL texture id, not the
-            // gos handle slot (handles mutate per-frame via tex_resolve).
-            uint32_t tex_states[] = { gos_State_Texture, gos_State_Texture2, gos_State_Texture3 };
-            for (int i = 0; i < 3 && equal; ++i) {
-                DWORD h = renderStates_[tex_states[i]];
-                gosTexture* tex = (h == INVALID_TEXTURE_ID) ? nullptr : this->getTexture(h);
-                uint32_t glId = tex ? tex->getTextureId() : 0u;
-                if (glId != cachedResolvedTexId_[i]) { equal = false; break; }
-                if (curStates_[tex_states[i]] != h) { equal = false; break; }
-            }
-            if (equal) {
                 // Skip GL work. Still run auto-reset bookkeeping so Terrain/Water
                 // intent bits don't bleed into the next frame.
                 curStates_[gos_State_Terrain] = renderStates_[gos_State_Terrain];
@@ -147,7 +136,6 @@ void gosRenderer::applyRenderStates() {
                 curStates_[gos_State_Overlay] = renderStates_[gos_State_Overlay];
                 rsSkipped_++;
                 return;
-            }
         }
     }
 
@@ -243,34 +231,6 @@ void gosRenderer::applyRenderStates() {
        renderStates_[gos_State_TextureAddress] == gos_TextureWrap ? TAM_REPEAT : TAM_CLAMP_TO_EDGE;
    // in this case does not necessarily mean, that state was set, because in OpenGL this is binded to texture (unless separate sampler state extension is used, which is not currently)
    curStates_[gos_State_TextureAddress] = renderStates_[gos_State_TextureAddress];
-
-   uint32_t tex_states[] = { gos_State_Texture, gos_State_Texture2, gos_State_Texture3 };
-   for(int i=0; i<sizeof(tex_states) / sizeof(tex_states[0]); ++i) {
-       DWORD gosTextureHandle = renderStates_[tex_states[i]];
-
-       glActiveTexture(GL_TEXTURE0 + i);
-
-       gosTexture* tex = gosTextureHandle == INVALID_TEXTURE_ID ? nullptr : this->getTexture(gosTextureHandle);
-       if(tex) {
-           const uint32_t glId = tex->getTextureId();
-           glBindTexture(GL_TEXTURE_2D, glId);
-           setSamplerParams(tex->getTextureType(), address_mode, filter);
-           cachedResolvedTexId_[i] = glId;
-
-           gosTextureInfo texinfo;
-           tex->getTextureInfo(&texinfo);
-           if(renderStates_[gos_State_TextureMapBlend] == gos_BlendDecal && texinfo.format_ == gos_Texture_Alpha)
-           {
-               PAUSE((""));
-           }
-
-       } else {
-           glBindTexture(GL_TEXTURE_2D, 0);
-           cachedResolvedTexId_[i] = 0u;
-       }
-       curStates_[tex_states[i]] = gosTextureHandle;
-   }
-
    ////////////////////////////////////////////////////////////////////////////////
    // RENDER_STATES v1: snapshot the full renderStates_ array into curStates_ so
    // the equality check has a coherent "last applied" reference for ALL state

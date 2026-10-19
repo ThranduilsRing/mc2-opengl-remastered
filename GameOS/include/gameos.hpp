@@ -1024,7 +1024,7 @@ void __stdcall gos_TextVisualBounds( DWORD* Width, int* Top, int* Bottom, const 
 //
 typedef struct gos_FontAtlasDesc
 {
-    uint32_t glTexId;      // GL texture name of the font atlas
+    uint64_t textureId;    // generation-tagged service identity of the font atlas
     int      texWidth;     // atlas dimensions in texels
     int      texHeight;
     int      lineSkip;     // line advance (gosFont::getMaxCharHeight)
@@ -2562,7 +2562,6 @@ void gos_SetShadowMode(bool enable);
 // handle.  Returns 0 if the handle is 0, out-of-bounds, or the slot is null
 // (texture evicted or not yet uploaded).  Read-only: no ref-count side
 // effects, no eviction, no async work.
-unsigned int gos_GetGLTextureName(DWORD handle);
 
 //
 // Set a renderstate
@@ -3035,7 +3034,6 @@ bool __stdcall gos_ProbeDrawableSize( int* w, int* h );
 // needed at the call site -- ImGui's own image draw handles that.
 void __stdcall gos_BeginCameraPreviewRender();
 void __stdcall gos_EndCameraPreviewRender();
-unsigned int __stdcall gos_GetCameraPreviewTexture();   // GLuint, avoids a GL include here
 
 //
 // This API sets the current gamma correction value. The default value is 1.0 (no correction applied). All color values are effected by (value/255 ^ (1.0/gamma)).
@@ -3232,7 +3230,6 @@ void __stdcall gos_UnLockTexture( DWORD Handle );
 // the handle is invalid. Used by the D3F font loader to bind atlases via
 // raw GL calls rather than the gos texture-state machine.
 //
-uint32_t __stdcall gos_GetTextureGLId( DWORD Handle );
 
 //
 // Converts from 32bpp source to subrect of n-bpp dest, bypassing intermediate 32bpp buffer

@@ -20,7 +20,7 @@
 DWORD gosRendererAddFontBmpTexture(const char* textureName)
 {
     gosTexture* ptex = new gosTexture(gos_Texture_Alpha, textureName, 0, nullptr, 0, false);
-    if(!ptex || !ptex->createHardwareTexture()) {
+    if(!ptex || !ptex->prepareSource()) {
         STOP(("Failed to create font texture: %s\n", textureName));
     }
     return getGosRenderer()->addTexture(ptex);
@@ -111,28 +111,15 @@ bool __stdcall gos_FontGetAtlasDesc( HGOSFONT3D FontHandle, gos_FontAtlasDesc* O
     gosTextureInfo ti;
     tex->getTextureInfo(&ti);
 
-    Out->glTexId    = tex->getTextureId();
+    Out->textureId  = gos_GetUiTextureId(tex_id);
     Out->texWidth   = ti.width_;
     Out->texHeight  = ti.height_;
     Out->lineSkip   = font->getMaxCharHeight();
     Out->ascent     = font->getFontAscent();
     Out->maxAdvance = font->getMaxCharWidth();
 
-    if(Out->glTexId == 0 || Out->texWidth <= 0 || Out->texHeight <= 0)
+    if(Out->textureId == 0 || Out->texWidth <= 0 || Out->texHeight <= 0)
         return false;
-
-    // Pin the atlas sampling params to what every legacy text draw sets
-    // (gos_FilterNone -> NEAREST, gos_TextureClamp -> CLAMP_TO_EDGE). The
-    // legacy path re-applies these per draw via applyRenderStates; the
-    // ImGui path binds the texture directly, so make them sticky here.
-    GLint prev_bound = 0;
-    glGetIntegerv(GL_TEXTURE_BINDING_2D, &prev_bound);
-    glBindTexture(GL_TEXTURE_2D, Out->glTexId);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glBindTexture(GL_TEXTURE_2D, (GLuint)prev_bound);
 
     return true;
 }
@@ -170,7 +157,7 @@ DWORD __stdcall gos_NewEmptyTexture( gos_TextureFormat Format, const char* Name,
     }
     gosTexture* ptex = new gosTexture(Format, Hints, w, h, Name);
 
-    if(!ptex->createHardwareTexture()) {
+    if(!ptex->prepareSource()) {
         STOP(("Failed to create texture\n"));
         return INVALID_TEXTURE_ID;
     }
@@ -182,7 +169,7 @@ DWORD __stdcall gos_NewTextureFromMemory( gos_TextureFormat Format, const char* 
     gosASSERT(pFunc == 0);
 
     gosTexture* ptex = new gosTexture(Format, FileName, Hints, pBitmap, Size, true);
-    if(!ptex->createHardwareTexture()) {
+    if(!ptex->prepareSource()) {
         STOP(("Failed to create texture\n"));
         return INVALID_TEXTURE_ID;
     }
@@ -215,37 +202,7 @@ DWORD __stdcall gos_NewCompressedTexture2D( uint32_t glInternalFormat, int w, in
     const uint32_t blockVkFormat =
         glInternalFormat == GL_COMPRESSED_SRGB_ALPHA_BPTC_UNORM ? mc2tex::kVkFormatBc7Srgb : mc2tex::kVkFormatBc7Unorm;
 
-    while(glGetError() != GL_NO_ERROR) { /* drain */ }
-
-    GLuint texID = 0;
-    // TEX-CLASS: asset-pool -- gos_NewCompressedTexture2D content factory (BC7)
-    glGenTextures(1, &texID);
-    if(texID == 0)
-        return INVALID_TEXTURE_ID;
-    glBindTexture(GL_TEXTURE_2D, texID);
-
-    // data/textures BC7 sidecars are single-level (DisableMipmap); match the
-    // RGBA8 path's filtering (GL_LINEAR/no-mip) and cap the mip ladder.
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
-
-    glCompressedTexImage2D(GL_TEXTURE_2D, 0, (GLenum)glInternalFormat,
-                           w, h, 0, (GLsizei)byteLen, blockData);
-
-    GLenum err = glGetError();
-    glBindTexture(GL_TEXTURE_2D, 0);
-    if(err != GL_NO_ERROR) {
-        mc2::fmt::print_out("[TEXMGR_BC7] glCompressedTexImage2D failed name={} {:d}x{:d} fmt=0x{:x} err={}\n", mc2::fmt::safe(name ? name : "<null>"), mc2::fmt::as_i32(w), mc2::fmt::as_i32(h), mc2::fmt::as_u32(glInternalFormat), mc2::fmt::safe(ogl_get_error_code_str(err)));
-        glDeleteTextures(1, &texID);
-        return INVALID_TEXTURE_ID;
-    }
-
     Texture tex;
-    tex.id = texID;
     tex.w = w;
     tex.h = h;
     tex.fmt_ = TF_NONE;          // block-compressed; not one of the RGBA8 TexFormats
@@ -264,11 +221,7 @@ DWORD gos_NewTerrainNormalTexture(const unsigned char* rgbaData, int width)
         MC2_LOG(Core, Warn, "[TEXTURE_DECODE v1] rejected terrain normal texture: width {:d}", mc2::fmt::as_i32(width));
         return INVALID_TEXTURE_ID;
     }
-    const unsigned int id = gos_CreateTerrainNormalTexture(rgbaData, width);
-    if(id == 0)
-        return INVALID_TEXTURE_ID;
     Texture tex;
-    tex.id = id;
     tex.w = width;
     tex.h = width;
     tex.fmt_ = TF_RGBA8;
@@ -284,7 +237,7 @@ DWORD gos_NewTerrainNormalTexture(const unsigned char* rgbaData, int width)
 DWORD __stdcall gos_NewTextureFromFile( gos_TextureFormat Format, const char* FileName, DWORD Hints/*=0*/, gos_RebuildFunction pFunc/*=0*/, void *pInstance/*=0*/)
 {
     gosTexture* ptex = new gosTexture(Format, FileName, Hints, nullptr, 0, false);
-    if(!ptex->createHardwareTexture()) {
+    if(!ptex->prepareSource()) {
         STOP(("Failed to create texture\n"));
         return INVALID_TEXTURE_ID;
     }
@@ -336,20 +289,6 @@ void __stdcall gos_UnLockTexture( DWORD Handle )
     ptex->Unlock();
 
 }
-
-uint32_t __stdcall gos_GetTextureGLId( DWORD Handle )
-{
-    // gosRenderer::getTexture asserts on INVALID_TEXTURE_ID and
-    // out-of-range handles; in release builds gosASSERT is a no-op so
-    // the out-of-range case is UB. Pre-validate the obvious invalid
-    // cases so the documented "returns 0 for invalid handle" contract
-    // holds for callers that may probe with a sentinel.
-    if(!g_gos_renderer || Handle == INVALID_TEXTURE_ID)
-        return 0;
-    gosTexture* tex = g_gos_renderer->getTexture( Handle );
-    return tex ? tex->getTextureId() : 0;
-}
-
 
 void __stdcall gos_PushRenderStates()
 {
@@ -730,84 +669,7 @@ void __stdcall gos_PrepareForPostImGuiRender() {
 // are unaffected by the scene's reverse-Z depth state or gosPostProcess
 // lifecycle.
 //
-// PREVIEW-FBO-FIXED-800x600-1: the FBO is a FIXED 800x600 (the legacy 2D
-// UI's native virtual canvas), NOT the real drawable size. The legacy MLR
-// mech-preview draw (SimpleCamera::render(), gos_GetViewport(), TG_Shape's
-// screen-space math) is written entirely in terms of that 800x600 canvas
-// and Environment.screenWidth/Height (which stays 800x600 by design -- see
-// g_hudResClampEnabled above; do not "fix" that to real resolution, it desyncs
-// other legacy tuned-resolution code). Rendering into an 800x600 FBO means
-// none of that legacy math needs to know or care about the real window size
-// at all -- it draws exactly as it always has. The caller then samples just
-// the small preview rect (in 0..800/0..600 UV space) out of this texture and
-// draws it, scaled to fit, as a normal ImGui image in the real-resolution
-// defs UI panel (see GuiRuntime::DrawUiImage + gos_GetCameraPreviewTexture
-// below, wired from SimpleCamera::render()/mechlopedia.cpp/mechbayscreen.cpp).
-// This avoids EVERY resolution-mismatch class of bug the direct-draw
-// approach hit: no real-vs-800 scale math, no glViewport scoping, no
-// depth-state-after-ImGui issues (the FBO gets its own clean depth buffer
-// every frame).
-// ---------------------------------------------------------------------------
-namespace {
-    GLuint s_camPreviewFbo = 0;
-    GLuint s_camPreviewColorTex = 0;
-    GLuint s_camPreviewDepthRbo = 0;
-    int    s_camPreviewW = 0;
-    int    s_camPreviewH = 0;
-    GLuint s_camPreviewTexelsName = 0;   // GL name the published preview texels belong to (VK-PREVIEW-READBACK-1)
-
-    void ensureCamPreviewFbo(int w, int h)
-    {
-        if (s_camPreviewFbo && s_camPreviewW == w && s_camPreviewH == h)
-            return;
-
-        if (s_camPreviewFbo)
-        {
-            glDeleteFramebuffers(1, &s_camPreviewFbo);
-            glDeleteTextures(1, &s_camPreviewColorTex);
-            glDeleteRenderbuffers(1, &s_camPreviewDepthRbo);
-            s_camPreviewFbo = s_camPreviewColorTex = s_camPreviewDepthRbo = 0;
-            s_camPreviewTexelsName = 0;   // the deleted name may be reused by an ordinary texture
-        }
-
-        glGenFramebuffers(1, &s_camPreviewFbo);
-        glBindFramebuffer(GL_FRAMEBUFFER, s_camPreviewFbo);
-
-        glGenTextures(1, &s_camPreviewColorTex);
-        glBindTexture(GL_TEXTURE_2D, s_camPreviewColorTex);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
-        // PREVIEW-SUPERSAMPLE-1: LINEAR, not NEAREST — the panel crop is a small
-        // sub-rect scaled up to the real-resolution ImGui panel; NEAREST is what
-        // made the preview look chunky even before supersampling.
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, s_camPreviewColorTex, 0);
-
-        // TEX-CLASS: render-target -- camera-preview FBO depth renderbuffer
-        glGenRenderbuffers(1, &s_camPreviewDepthRbo);
-        glBindRenderbuffer(GL_RENDERBUFFER, s_camPreviewDepthRbo);
-        glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT32F, w, h);
-        glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, s_camPreviewDepthRbo);
-
-        glBindTexture(GL_TEXTURE_2D, 0);
-        glBindRenderbuffer(GL_RENDERBUFFER, 0);
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
-        s_camPreviewW = w;
-        s_camPreviewH = h;
-    }
-}
-
-// Bind the offscreen preview FBO (fixed 800x600, the legacy 2D UI's native
-// canvas) and prepare it for a fresh mech render. Must be paired with
-// gos_EndCameraPreviewRender(). See PREVIEW-FBO-FIXED-800x600-1 above for why
-// this is fixed-size rather than drawable-size.
-// PREVIEW-SUPERSAMPLE-1: raster scale for the preview FBO. The legacy math
-// stays in its 800x600 virtual canvas — the ortho projection maps 0..800/0..600
-// to NDC regardless of viewport size, so an NxN-scaled FBO + viewport simply
-// rasterizes the same geometry at N-times the resolution (free supersampling;
-// the ImGui composite crops in normalized UV space, unaffected). Default 4x
-// (3200x2400 RGBA8 ~= 30 MB, one instance); MC2_PREVIEW_FBO_SCALE overrides 1-8.
+// Native previews retain the legacy virtual canvas and explicit raster scale.
 static int camPreviewScale()
 {
     static int s_scale = -1;
@@ -828,104 +690,12 @@ void __stdcall gos_BeginCameraPreviewRender()
 #ifdef MC2_VULKAN_ISLAND
     if (mc2vk::uiTextureServiceReady()) { mc2_vk_preview_begin(800*sc,600*sc); return; }
 #endif
-    ensureCamPreviewFbo(800 * sc, 600 * sc);
-
-    static bool s_once = false;
-    if (!s_once) {
-        s_once = true;
-        GLenum status = GL_FRAMEBUFFER_UNDEFINED;
-        if (s_camPreviewFbo) {
-            glBindFramebuffer(GL_FRAMEBUFFER, s_camPreviewFbo);
-            status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
-        }
-        mc2::fmt::print_err("[3DVIEW_DIAG v2] BeginCameraPreviewRender: fbo={:d} 800x600 status=0x{:x}\n", mc2::fmt::as_u32(s_camPreviewFbo), mc2::fmt::as_u32(status));
-    }
-
-    glBindFramebuffer(GL_FRAMEBUFFER, s_camPreviewFbo);
-    glViewport(0, 0, 800 * sc, 600 * sc);
-    glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-    glDepthMask(GL_TRUE);
-    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-    glClearDepth(0.0);  // reverse-Z: far=0, near=1
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-    if (g_gos_renderer) g_gos_renderer->invalidateRenderStateCache();
+    // Preview callers wait for the native renderer to be ready.
 }
 
-// VK-PREVIEW-READBACK-1: under the Vulkan backend the ImGui layer is drawn by a Vulkan pass that cannot sample the GL FBO colour
-// texture. After each preview render the FBO is downscaled to the 800x600 virtual canvas (the panel UV crop is canvas-relative, so the
-// scale does not matter), read back, and published as the texels of that GL texture name: gos_GetTextureTexelsByGlName hands them to
-// the ImGui bridge, which uploads them to a VK image. A fresh vector each render is the bridge's content-change signal.
-namespace {
-    GLuint s_camPreviewDownFbo = 0;
-    GLuint s_camPreviewDownTex = 0;
-    std::shared_ptr<const std::vector<uint8_t>> s_camPreviewTexels;
-    // The down FBO/texture live for the process (no rebuild on context loss).
-
-    void publishCamPreviewTexels()
-    {
-        constexpr int kW = 800, kH = 600;
-        if (!s_camPreviewFbo || !s_camPreviewColorTex) return;
-        if (!s_camPreviewDownFbo) {
-            glGenFramebuffers(1, &s_camPreviewDownFbo);
-            glGenTextures(1, &s_camPreviewDownTex);
-            GLint prevTex = 0;   // restore the active unit's 2D binding
-            glGetIntegerv(GL_TEXTURE_BINDING_2D, &prevTex);
-            glBindTexture(GL_TEXTURE_2D, s_camPreviewDownTex);
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, kW, kH, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
-            glBindTexture(GL_TEXTURE_2D, (GLuint)prevTex);
-            glBindFramebuffer(GL_FRAMEBUFFER, s_camPreviewDownFbo);
-            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, s_camPreviewDownTex, 0);
-        }
-        glBindFramebuffer(GL_READ_FRAMEBUFFER, s_camPreviewFbo);
-        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, s_camPreviewDownFbo);
-        glBlitFramebuffer(0, 0, s_camPreviewW, s_camPreviewH, 0, 0, kW, kH, GL_COLOR_BUFFER_BIT, GL_LINEAR);
-        glBindFramebuffer(GL_READ_FRAMEBUFFER, s_camPreviewDownFbo);
-        glBindBuffer(GL_PIXEL_PACK_BUFFER, 0);
-        GLint prevPack = 4;
-        glGetIntegerv(GL_PACK_ALIGNMENT, &prevPack);
-        glPixelStorei(GL_PACK_ALIGNMENT, 1);
-        auto px = std::make_shared<std::vector<uint8_t>>((size_t)kW * kH * 4u);
-        glReadPixels(0, 0, kW, kH, GL_RGBA, GL_UNSIGNED_BYTE, px->data());
-        glPixelStorei(GL_PACK_ALIGNMENT, prevPack);
-        s_camPreviewTexels = std::move(px);
-        s_camPreviewTexelsName = s_camPreviewColorTex;
-    }
-}
-
-GosTexels gos_GetCameraPreviewTexels(uint32_t glName)
-{
-    GosTexels out;
-    if (glName == 0 || glName != s_camPreviewTexelsName || !s_camPreviewTexels) return out;
-    out.status = GosTexels::Status::Ready;
-    out.width = 800;
-    out.height = 600;
-    out.vkFormat = mc2tex::kVkFormatRgba8Unorm;
-    out.bytes = s_camPreviewTexels;
-    return out;
-}
-
-// Restore the default framebuffer (and its real-resolution glViewport) after
-// camera preview rendering.
 void __stdcall gos_EndCameraPreviewRender()
 {
 #ifdef MC2_VULKAN_ISLAND
     if (mc2_vk_preview_active()) { mc2_vk_preview_end(); return; }
 #endif
-    publishCamPreviewTexels();
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    if (g_gos_renderer) {
-        glViewport(0, 0, g_gos_renderer->getWidth(), g_gos_renderer->getHeight());
-        g_gos_renderer->invalidateRenderStateCache();
-    }
-}
-
-// GL texture name of the 800x600 preview color attachment, for a caller to
-// wrap as an ImTextureID and draw via GuiRuntime::DrawUiImage with UV
-// cropping -- the composite-to-real-screen step happens entirely in ImGui
-// space, not via glBlitFramebuffer, so no resolution/scale math is needed
-// here at all.
-GLuint __stdcall gos_GetCameraPreviewTexture()
-{
-    return s_camPreviewColorTex;
 }

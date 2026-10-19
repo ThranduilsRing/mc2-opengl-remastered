@@ -185,7 +185,6 @@ static_assert(kTerrainMatNormalUnits[4] < 16,
 // that need to turn a gosTextureHandle into a raw GL texture name. Declared
 // here so local code can reference it; defined at end of this file after
 // the gosRenderer / gosTexture class bodies are in scope.
-uint32_t gos_GetGLTextureId(uint32_t gosHandle);
 
 
 

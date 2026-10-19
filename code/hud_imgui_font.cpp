@@ -81,7 +81,7 @@ void drawLine( ImDrawList* dl, HGOSFONT3D font, const gos_FontAtlasDesc& ad,
 {
 	const float ooW = 1.0f / (float)ad.texWidth;
 	const float ooH = 1.0f / (float)ad.texHeight;
-	const ImTextureID tex = (ImTextureID)(intptr_t)ad.glTexId;
+	const ImTextureID tex = (ImTextureID)(intptr_t)ad.textureId;
 
 	float penX = x;
 	for ( int i = 0; i < count && text[i] && text[i] != '\n'; ++i )

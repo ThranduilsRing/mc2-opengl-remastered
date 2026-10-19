@@ -27,18 +27,6 @@ void gos_terrain_bridge_bindUniforms(gosRenderMaterial* material);
 // and gos_terrain_bridge_end deleted by TERRAIN-BRIDGE-BODY-DELETE-1/2
 // (flush-exclusive; flush retired in PATCHSTREAM-THIN-RETIRE-1, 026e7276).
 
-// Translate engine gosTextureHandle → actual GL texture object name.
-//
-// CRITICAL: tex_resolve(textureIndex) returns the engine's gosTextureHandle
-// (e.g. 56), NOT the GL texture name. They are NOT the same number. The
-// engine's applyRenderStates() at gameos_graphics.cpp:2129–2135 always
-// converts gos→GL via getTexture(gosHandle)->getTextureId() before
-// glBindTexture. PatchStream must do the same.
-//
-// Returns 0 (the default no-texture) for INVALID_TEXTURE_ID, gosHandle==0,
-// or any case where the texture isn't resident.
-unsigned int gos_terrain_bridge_glTextureForGosHandle(unsigned int gosHandle);
-
 // gos_terrain_bridge_drawPatchStreamBucket, gos_terrain_bridge_beginBucketLoop,
 // gos_terrain_bridge_drawSingleBucket, gos_terrain_bridge_endBucketLoop deleted by
 // TERRAIN-BRIDGE-BODY-DELETE-1/2: callerless after TerrainPatchStream::flush() retired

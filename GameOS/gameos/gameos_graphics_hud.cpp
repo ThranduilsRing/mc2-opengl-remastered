@@ -255,7 +255,7 @@ static bool vkHudDrawRepresentable(const mc2vk::VkHudDraw& draw)
         return false;
     const bool textured = draw.textureHandle != 0 && draw.textureHandle != INVALID_TEXTURE_ID;
     if (textured) {
-        if (draw.glTextureId == 0 || draw.textureWidth == 0 || draw.textureHeight == 0 ||
+        if (draw.textureWidth == 0 || draw.textureHeight == 0 ||
             draw.textureSerial == 0 || !draw.textureRgba || draw.textureRgba->empty())
             return false;
         if (draw.kind == kHudQuadBatch)
@@ -567,7 +567,6 @@ void gosRenderer::flushHUDBatch()
                 if (gosTexture* tex = getTexture(draw.textureHandle)) {
                     gosTextureInfo ti;
                     tex->getTextureInfo(&ti);
-                    draw.glTextureId = tex->getTextureId();
                     draw.textureWidth = (uint32_t)ti.width_;
                     draw.textureHeight = (uint32_t)ti.height_;
                     draw.textureFormat = (uint32_t)ti.format_;
@@ -619,7 +618,7 @@ void gosRenderer::flushHUDBatch()
             if (!drawRepresentable) {
                 static unsigned s_nativeHudDeclineLogs = 0;
                 if (s_nativeHudDeclineLogs < 16) {
-                    mc2::fmt::print_err("[VK_HUD_SKIP_DECLINE v1] kind={:d} tex={:d} gl={:d} wh={:d}x{:d} serial={:d} rgba={:d} alpha={:d} verts={:d}\n", mc2::fmt::as_u32(draw.kind), mc2::fmt::as_u32(draw.textureHandle), mc2::fmt::as_u32(draw.glTextureId), mc2::fmt::as_u32(draw.textureWidth), mc2::fmt::as_u32(draw.textureHeight), mc2::fmt::as_u32(draw.textureSerial), mc2::fmt::as_size(draw.textureRgba ? draw.textureRgba->size() : (size_t)0), mc2::fmt::as_u32(draw.alphaMode), mc2::fmt::as_size(draw.vertices.size()));
+                    mc2::fmt::print_err("[VK_HUD_SKIP_DECLINE v1] kind={:d} tex={:d} wh={:d}x{:d} serial={:d} rgba={:d} alpha={:d} verts={:d}\n", mc2::fmt::as_u32(draw.kind), mc2::fmt::as_u32(draw.textureHandle), mc2::fmt::as_u32(draw.textureWidth), mc2::fmt::as_u32(draw.textureHeight), mc2::fmt::as_u32(draw.textureSerial), mc2::fmt::as_size(draw.textureRgba ? draw.textureRgba->size() : (size_t)0), mc2::fmt::as_u32(draw.alphaMode), mc2::fmt::as_size(draw.vertices.size()));
                     ++s_nativeHudDeclineLogs;
                 }
             }

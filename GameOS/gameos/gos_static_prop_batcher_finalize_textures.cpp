@@ -40,7 +40,7 @@ bool GpuStaticPropBatcher::buildTextureArrays(StaticPropFinalizeFrame& f) {
     uvScaleYByPacket.assign(s_packets.size(), 1.0f);
 
     struct UniqueTex {
-        GLuint glTexId;
+        GLuint sourceHandle;
         GLint  w;
         GLint  h;
         DWORD  nodeIdx;   // MC_TextureManager node index for KTX2 sidecar lookup
@@ -354,14 +354,14 @@ bool GpuStaticPropBatcher::buildTextureArrays(StaticPropFinalizeFrame& f) {
         GLuint& outArray = (group == 0u) ? s_texArrayOff : s_texArrayOn;
 
         std::vector<UniqueTex> uniques;             // unique textures in this group
-        std::unordered_map<GLuint, int32_t> glTexIdToLayer;
+        std::unordered_map<GLuint, int32_t> sourceToLayer;
         // Track packets that landed in this group, for the second-pass uvScale
         // assignment. Each entry: { globalPacketIdx, layer }.
         std::vector<std::pair<uint32_t, int32_t>> packetsInGroup;
 
         // 5.10.a — walk types in sorted order belonging to this group; for
         // each type, walk ALL its packets. Each packet gets its own layer
-        // (deduped by glTexId) — this is the per-packet rework's core change.
+        // (deduped by sourceHandle) — this is the per-packet rework's core change.
         for (uint32_t i = 0; i < s_sortedTypeOrder.size(); ++i) {
             const uint32_t typeID = s_sortedTypeOrder[i];
             auto& type = s_types[typeID];
@@ -412,10 +412,10 @@ bool GpuStaticPropBatcher::buildTextureArrays(StaticPropFinalizeFrame& f) {
                 auto rgba = texels.bytes;
                 if (rgba && (texels.vkFormat == mc2tex::kVkFormatBc7Unorm || texels.vkFormat == mc2tex::kVkFormatBc7Srgb))
                     rgba = std::make_shared<const std::vector<uint8_t>>(mc2tex::decodeBc7(*rgba, texels.width, texels.height));
-                const GLuint glTexId = static_cast<GLuint>(gos_GetGLTextureId(gosHandle));
+                const uint32_t sourceHandle = static_cast<uint32_t>(gosHandle);
 
-                auto it = glTexIdToLayer.find(glTexId);
-                if (it != glTexIdToLayer.end()) {
+                auto it = sourceToLayer.find(sourceHandle);
+                if (it != sourceToLayer.end()) {
                     layerForPacket[globalPktIdx] = it->second;
                     // VK-P11 MATERIAL FIX: FIRST-VALID-LAYER-WINS (was pIdx==0 only).
                     // A multi-packet type whose packet 0 hit the no-dims skip left
@@ -437,10 +437,10 @@ bool GpuStaticPropBatcher::buildTextureArrays(StaticPropFinalizeFrame& f) {
             // degradation: other valid packets still arm.
             if (W <= 0 || H <= 0) {
                 COALESCE_TRACE("skip_packet type=%u pkt=%u group=%s reason=no_dims "
-                               "nodeIdx=%lu gosHandle=%lu glTexId=%u",
+                               "nodeIdx=%lu gosHandle=%lu sourceHandle=%u",
                                typeID, pIdx, group == 0u ? "off" : "on",
                                (unsigned long)nodeIdx,
-                               (unsigned long)gosHandle, glTexId);
+                               (unsigned long)gosHandle, sourceHandle);
                 // [SEAMPROBE] stage 10: layer-assignment census. When the
                 // override prop/tree packets land here, they get layer=-1 and
                 // are dropped from the multidraw (the bdactor.cpp:262 skip
@@ -449,7 +449,7 @@ bool GpuStaticPropBatcher::buildTextureArrays(StaticPropFinalizeFrame& f) {
                     static int s_seamLayerSkip = 0;
                     if (mc2::gate::get<"MC2_MODOVERRIDE_TRACE">() && s_seamLayerSkip < 200) {
                         ++s_seamLayerSkip;
-                        mc2::fmt::print_err("[SEAMPROBE] sample=first200 layer=-1 SKIP type={:d} pkt={:d} nodeIdx={:d} gosHandle={:d} glTexId={:d} W={:d} H={:d} override={:d} uniques={:d}\n", mc2::fmt::as_u32(typeID), mc2::fmt::as_u32(pIdx), mc2::fmt::as_u32((unsigned long)nodeIdx), mc2::fmt::as_u32((unsigned long)gosHandle), mc2::fmt::as_u32(glTexId), mc2::fmt::as_i32((int)W), mc2::fmt::as_i32((int)H), mc2::fmt::as_i32((int)type.isOverride), mc2::fmt::as_size(uniques.size()));
+                        mc2::fmt::print_err("[SEAMPROBE] sample=first200 layer=-1 SKIP type={:d} pkt={:d} nodeIdx={:d} gosHandle={:d} sourceHandle={:d} W={:d} H={:d} override={:d} uniques={:d}\n", mc2::fmt::as_u32(typeID), mc2::fmt::as_u32(pIdx), mc2::fmt::as_u32((unsigned long)nodeIdx), mc2::fmt::as_u32((unsigned long)gosHandle), mc2::fmt::as_u32(sourceHandle), mc2::fmt::as_i32((int)W), mc2::fmt::as_i32((int)H), mc2::fmt::as_i32((int)type.isOverride), mc2::fmt::as_size(uniques.size()));
                         std::fflush(stderr);
                     }
                 }
@@ -495,8 +495,8 @@ bool GpuStaticPropBatcher::buildTextureArrays(StaticPropFinalizeFrame& f) {
             // v3.8 mixed-size: append unique with its actual W,H.
             // Array allocation uses max(W,H) across all uniques.
             const int32_t layer = static_cast<int32_t>(uniques.size());
-            uniques.push_back({glTexId, W, H, nodeIdx, std::move(rgba)});
-            glTexIdToLayer[glTexId] = layer;
+            uniques.push_back({sourceHandle, W, H, nodeIdx, std::move(rgba)});
+            sourceToLayer[sourceHandle] = layer;
             layerForPacket[globalPktIdx] = layer;
             if (layerForType[typeID] < 0) layerForType[typeID] = layer; // VK-P11: first-valid wins
             packetsInGroup.emplace_back(globalPktIdx, layer);

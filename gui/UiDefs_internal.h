@@ -40,7 +40,6 @@
 // name that ImGui's OpenGL backend can draw.  This keeps art loading under
 // the existing GameOS/mcTextureManager path while making the new UI layer a
 // proper ImGui HUD.
-extern unsigned int gos_GetGLTextureName(DWORD handle);
 // Legacy global help-caption id (gui/asystem.cpp). A hovered defs-page element
 // publishes its help id here; LogisticsScreen::update() consumes and clears it.
 extern long helpTextID;

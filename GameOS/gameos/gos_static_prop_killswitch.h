@@ -16,7 +16,6 @@ extern bool g_useGpuObjects;
 // texture name. Returns 0 if the handle is INVALID_TEXTURE_ID or the
 // underlying gosTexture is gone. Implemented in gameos_graphics.cpp where
 // the gosRenderer class is visible.
-uint32_t gos_GetGLTextureId(uint32_t gosHandle);
 
 // Accessors for the terrain projection chain uniforms used by the static
 // prop shader. These replicate the terrain/overlay projection pattern

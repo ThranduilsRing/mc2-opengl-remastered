@@ -772,7 +772,7 @@ uint64_t MC_TextureManager::getUiTextureId(DWORD nodeId)
 {
     if (nodeId>=MC_MAXTEXTURES || !masterTextureNodes[nodeId].numUsers) return 0;
 #ifdef MC2_VULKAN_ISLAND
-    if (!mc2vk::uiTextureServiceReady()) return gos_GetGLTextureName(get_gosTextureHandle(nodeId));
+    if (!mc2vk::uiTextureServiceReady()) return 0;
     auto& service=RenderCore::textureService();
     auto handle=service.handleOfNode(nodeId);
     if (!handle.isValid()) {
@@ -788,7 +788,7 @@ uint64_t MC_TextureManager::getUiTextureId(DWORD nodeId)
     }
     return RenderCore::uiTextureId(handle);
 #else
-    return gos_GetGLTextureName(get_gosTextureHandle(nodeId));
+    return 0;
 #endif
 }
 
