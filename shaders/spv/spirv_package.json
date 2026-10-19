@@ -17,7 +17,6 @@
   "pilot_families": [
     "postprocess",
     "mech",
-    "ssao",
     "hzb_reduce"
   ],
   "excluded_families": [
@@ -83,19 +82,6 @@
           "stages": {
             "vert": "mech.vert.objectid_viewuniforms.02236e66.spv",
             "frag": "mech.frag.objectid_viewuniforms.02236e66.spv"
-          }
-        }
-      ]
-    },
-    {
-      "base": "ssao",
-      "variants": [
-        {
-          "name": "default",
-          "defines": [],
-          "variantId": "cb20e1310521",
-          "stages": {
-            "frag": "ssao.frag.default.cb20e131.spv"
           }
         }
       ]

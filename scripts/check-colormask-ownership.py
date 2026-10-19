@@ -24,13 +24,12 @@ BINDER = ROOT / "GameOS" / "gameos" / "pipeline_binder.cpp"
 # Composite re-opts-in: (the beginScene all-TRUE keystone heals
 # its set-only leak each frame). This checker is the black-frame guard: an opted-in row
 # masking color0 (the scene color attachment) OFF would draw black -> FAIL.
-# The surviving GL composite and SSAO rows opt in. Each modulates
+# The surviving GL composite row opts in. It modulates
 # the scene color attachment (color0) only; registry rows are {true,false,false} so color0
 # stays true (no black frame) and 1/2 OFF protects the GBuffer. Keep in sync with
 # rowOwnsColorMask() in pipeline_binder.cpp.
 OPTED_IN = {
     "PostProcessComposite",
-    "PostProcessSsaoApply",
 }
 
 ROW_HEADER = re.compile(r"//\s*\[(\d+)\]\s*([A-Za-z]\w+)\b")

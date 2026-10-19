@@ -102,7 +102,7 @@ static constexpr VkImageLayoutChain kVkImageLayoutChains[] = {
       "scene depth; sampled by Water/Veg/VFX/PostProcess (soft depth) -> DEPTH_READ_ONLY" },
     { RenderResourceId::MainNormal, VkImageLayoutRead::ShaderReadOnly,
       RenderPassId::StaticPropOpaque, RenderPassId::PostProcess,
-      "GBuffer1 normal (attach1); sampled by PostProcess SSAO/Shoreline/ScreenShadow "
+      "GBuffer1 normal (attach1); sampled by PostProcess Shoreline/ScreenShadow "
       "-> SHADER_READ_ONLY" },
 };
 

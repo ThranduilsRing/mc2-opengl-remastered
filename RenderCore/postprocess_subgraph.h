@@ -13,15 +13,13 @@
 //   ScreenShadow       (:2451) — SUBGRAPH-2: draw (sceneFBO_), default-ON in-mission, not executor-owned
 //   CloudShadow        (:2458) — SUBGRAPH-1: draw (sceneFBO_), default-OFF
 //   Shoreline          (:2464) — SUBGRAPH-1: draw (sceneFBO_), default-ON in-mission
-//   Ssao               (:2468) — SUBGRAPH-2: two-pass draw (ssaoFBO_+sceneFBO_), default-OFF
-//   BoxDecals          (:2472) — SUBGRAPH-2: draw (sceneFBO_), reads SceneDepthCopy (external), default-OFF
 //   EdgeFog            (:2477) — SUBGRAPH-1: draw (sceneFBO_), default-ON in-mission
 //   FogOob             (:2484) — SUBGRAPH-1: draw (sceneFBO_), default-ON in-mission
 //   Composite          (:2489) — SUBGRAPH-1: SUBGRAPH OUTPUT EDGE (binds FBO 0)
 //   ShadowDebugOverlay (:2653) — SUBGRAPH-1: debug overlay on FBO 0 (post-composite)
 //
 // POSTPROCESS-SUBGRAPH-2 (Slice 2): HzbReduce, HzbProbe, ClusterDepthPyramid, LightgridBuild,
-//   PostprocessComputeBlur, ScreenShadow, SSAO, BoxDecals — all 8 remaining rows added here.
+//   PostprocessComputeBlur, ScreenShadow — all 8 remaining rows added here.
 // DEFERRED (HIGH-3): top-level kRenderPassContracts PostProcess row MainNormal producer.
 //
 // INVARIANTS:
@@ -262,64 +260,6 @@ static constexpr PostProcessSubpass kPostProcessSubpasses[] = {
                            "Writes MainColor via sceneFBO_.",
     },
     // -----------------------------------------------------------------------
-    // 9. Ssao (call-site :2468) — POSTPROCESS-SUBGRAPH-2
-    //    Gate: ssaoEnabled_ && sceneHasTerrain_ (MC2_SSAO, default OFF)
-    //    Two-pass internally:
-    //      Pass 1: reads MainDepth(unit0)+MainNormal(unit1). Writes SsaoOcclusion via ssaoFBO_.
-    //      Pass 2/apply: reads SsaoOcclusion(unit0). Writes MainColor via sceneFBO_.
-    //    Both passes modeled as a single subpass row (single reads[]/writes[] union).
-    // -----------------------------------------------------------------------
-    {
-        /*id*/             ExecutorIslandId::Ssao,
-        /*name*/           "Ssao",
-        /*reads*/          { RenderResourceId::MainDepth,
-                             RenderResourceId::MainNormal,
-                             RenderResourceId::SsaoOcclusion,
-                             RenderResourceId::Unknown },
-        /*writes*/         { RenderResourceId::SsaoOcclusion,
-                             RenderResourceId::MainColor,
-                             RenderResourceId::Unknown },
-        /*fboTarget*/      RenderResourceId::MainColor,
-        /*conditional*/    true,
-        /*ownedByExecutor*/false,
-        /*isCompute*/      false,
-        /*note*/           "SUBGRAPH-2. GTAO-lite two-pass AO. "
-                           "Pass1: reads MainDepth(unit0)+MainNormal(unit1), writes SsaoOcclusion "
-                           "via ssaoFBO_ (half-res). Pass2/apply: reads SsaoOcclusion(unit0), "
-                           "writes MainColor via sceneFBO_ (multiply AO). "
-                           "Single row models both passes (reads[]/writes[] are the union). "
-                           "SsaoOcclusion is an intra-endScene intermediate (not frame-persistent). "
-                           "MC2_SSAO default-OFF. NOT executor-owned.",
-    },
-    // -----------------------------------------------------------------------
-    // 10. BoxDecals (call-site :2472) — POSTPROCESS-SUBGRAPH-2
-    //     Gate: projectedDecalsEnabled_ && sceneHasTerrain_ (MC2_PROJECTED_DECALS, default OFF)
-    //     Reads SceneDepthCopy(unit0) + MainNormal(unit1). Writes MainColor via sceneFBO_.
-    //     SceneDepthCopy is a CROSS-BOUNDARY resource (producer = VFX pass via
-    //     copySceneDepthForParticles(), OUTSIDE endScene). It is in the external set.
-    // -----------------------------------------------------------------------
-    {
-        /*id*/             ExecutorIslandId::BoxDecals,
-        /*name*/           "BoxDecals",
-        /*reads*/          { RenderResourceId::SceneDepthCopy,
-                             RenderResourceId::MainNormal,
-                             RenderResourceId::Unknown },
-        /*writes*/         { RenderResourceId::MainColor,
-                             RenderResourceId::Unknown },
-        /*fboTarget*/      RenderResourceId::MainColor,
-        /*conditional*/    true,
-        /*ownedByExecutor*/false,
-        /*isCompute*/      false,
-        /*note*/           "SUBGRAPH-2. Screen-space box decal (draw, sceneFBO_ SingleColor). "
-                           "Reads SceneDepthCopy (unit0, sceneDepthCopyTex_ — the depth COPY, "
-                           "not the live attachment) + MainNormal (unit1, sceneNormalTex_). "
-                           "Writes MainColor (alpha-blend decal). "
-                           "CROSS-BOUNDARY: SceneDepthCopy producer is the VFX pass "
-                           "(copySceneDepthForParticles(), gos_particle_bridge.cpp:1068) — "
-                           "it is in the external set, not produced by any PP subpass. "
-                           "MC2_PROJECTED_DECALS default-OFF. NOT executor-owned.",
-    },
-    // -----------------------------------------------------------------------
     // 11. EdgeFog (call-site :2477) — POSTPROCESS-SUBGRAPH-1
     //     Gate: edgeFogEnabled_ && mapHalfExtent_ > 0 && sceneHasTerrain_ (default ON)
     //     Reads sceneDepthTex_ (unit 0). Writes sceneFBO_.COLOR0 (alpha-blend fog).
@@ -419,7 +359,7 @@ static constexpr unsigned kPostProcessSubpassCount =
 
 // Verify count at compile time.
 // POSTPROCESS-SUBGRAPH-2: 14 total rows (6 Slice-1 + 8 Slice-2).
-static_assert(kPostProcessSubpassCount == 14,
+static_assert(kPostProcessSubpassCount == 12,
     "POSTPROCESS-SUBGRAPH-2: expected 14 rows (6 Slice-1 + 8 Slice-2)");
 
 // ---------------------------------------------------------------------------
@@ -532,19 +472,13 @@ inline PostProcessValidationResult validatePostProcessSubgraph(
 //                      COLOR_ATTACHMENT2); produced externally by MechOpaque+StaticPropOpaque
 //                      geometry passes (conditional on IsObjectIdBufferEnabled); read by
 //                      Composite (unit2, effectiveMode==1).
-//   SsaoOcclusion    — POSTPROCESS-SUBGRAPH-2 self-loop: produced by Ssao pass1 and read
-//                      by Ssao pass2 within the same single subpass row. The validator
-//                      checks reads before marking writes (single-row model limitation), so
-//                      SsaoOcclusion must be seeded as external to avoid a false failure.
-//                      This is a modeling artifact of collapsing two-pass SSAO into one row.
 inline PostProcessValidationResult validateShippedPostProcessSubgraph() {
     static const RenderResourceId kExternal[] = {
         RenderResourceId::MainColor,
         RenderResourceId::MainDepth,
         RenderResourceId::MainNormal,
-        RenderResourceId::SceneDepthCopy,  // POSTPROCESS-SCENEDEPTHCOPY-RESOURCE-1: VFX producer, BoxDecals (SUBGRAPH-2) consumer
+        RenderResourceId::SceneDepthCopy,  // POSTPROCESS-SCENEDEPTHCOPY-RESOURCE-1: VFX producer (SUBGRAPH-2) consumer
         RenderResourceId::SceneObjectId,   // POSTPROCESS-SCENEOBJECTID-RESOURCE-1: MechOpaque+StaticPropOpaque producer, Composite consumer
-        RenderResourceId::SsaoOcclusion,   // POSTPROCESS-SUBGRAPH-2 self-loop: Ssao pass1 writes, pass2 reads within same row; seeded external to avoid false failure in single-row model
         RenderResourceId::Unknown,
     };
     constexpr int kExternalCount = sizeof(kExternal) / sizeof(kExternal[0]) - 1;  // excludes the Unknown terminator

@@ -33,7 +33,6 @@ set(MC2_PCH_SKIP_gameos
     "GameOS/gameos/vulkan_post_fog_native.cpp"
     "GameOS/gameos/vulkan_post_hzb_native.cpp"
     "GameOS/gameos/vulkan_post_screenfx_native.cpp"
-    "GameOS/gameos/vulkan_post_ssao_native.cpp"
     "GameOS/gameos/vulkan_shadow_island_live.cpp"
     "GameOS/gameos/vulkan_sky_island.cpp"
     "GameOS/gameos/vulkan_terrain_island.cpp"

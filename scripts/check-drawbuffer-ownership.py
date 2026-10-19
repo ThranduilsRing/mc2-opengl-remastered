@@ -42,7 +42,6 @@ NAME_MAP = {
     "VfxBillboardAlpha": "VfxBillboard", "VfxBillboardAdditive": "VfxBillboard",
     "VfxTubeAlpha": "VfxTube", "VfxTubeAdditive": "VfxTube",
     "VfxMeshAlpha": "VfxMesh", "VfxMeshAdditive": "VfxMesh",
-    "PostProcessSsaoApply": "SsaoApply", "PostProcessScreenShadow": "ScreenShadow",
     "PostProcessCloudShadow": "CloudShadow", "PostProcessShoreline": "Shoreline",
     "PostProcessEdgeFog": "EdgeFog", "PostProcessFogOob": "FogOob",
     "PostProcessComposite": "Composite",

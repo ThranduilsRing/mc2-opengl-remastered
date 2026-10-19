@@ -96,14 +96,6 @@
       ]
     },
     {
-      "key": "ssao|frag|",
-      "artifact": "ssao.frag.default.cb20e131.spv",
-      "variantId": "cb20e1310521",
-      "base": "ssao",
-      "stage": "frag",
-      "defines": []
-    },
-    {
       "key": "hzb_reduce|frag|",
       "artifact": "hzb_reduce.frag.default.ae9dd014.spv",
       "variantId": "ae9dd0144f82",

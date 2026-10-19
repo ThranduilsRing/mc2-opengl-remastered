@@ -5,19 +5,6 @@
   {
    "assemble": "engine",
    "defines": [],
-   "id": "box_decal",
-   "key": "box_decal",
-   "optional_groups_on": [],
-   "prefix": "#version 430\n",
-   "source": "GameOS/gameos/gos_postprocess.cpp:368",
-   "stages": {
-    "frag": "shaders/box_decal.frag",
-    "vert": "shaders/box_decal.vert"
-   }
-  },
-  {
-   "assemble": "engine",
-   "defines": [],
    "id": "building_pbr",
    "key": "building_pbr",
    "optional_groups_on": [],
@@ -2605,7 +2592,7 @@
    "key": "hdri_skybox",
    "optional_groups_on": [],
    "prefix": "#version 430\n",
-   "source": "GameOS/gameos/gos_postprocess.cpp:327",
+   "source": "GameOS/gameos/gos_postprocess.cpp:293",
    "stages": {
     "frag": "shaders/hdri_skybox.frag",
     "vert": "shaders/hdri_skybox.vert"
@@ -2631,7 +2618,7 @@
    "key": "hzb_reduce",
    "optional_groups_on": [],
    "prefix": "#version 430\n",
-   "source": "GameOS/gameos/gos_postprocess.cpp:483",
+   "source": "GameOS/gameos/gos_postprocess.cpp:402",
    "stages": {
     "frag": "shaders/hzb_reduce.frag",
     "vert": "shaders/postprocess.vert"
@@ -2676,7 +2663,7 @@
    "key": "postprocess",
    "optional_groups_on": [],
    "prefix": "#version 430\n",
-   "source": "GameOS/gameos/gos_postprocess.cpp:296",
+   "source": "GameOS/gameos/gos_postprocess.cpp:262",
    "stages": {
     "frag": "shaders/postprocess.frag",
     "vert": "shaders/postprocess.vert"
@@ -2740,49 +2727,10 @@
    "key": "skybox",
    "optional_groups_on": [],
    "prefix": "#version 430\n",
-   "source": "GameOS/gameos/gos_postprocess.cpp:307",
+   "source": "GameOS/gameos/gos_postprocess.cpp:273",
    "stages": {
     "frag": "shaders/skybox.frag",
     "vert": "shaders/skybox.vert"
-   }
-  },
-  {
-   "assemble": "engine",
-   "defines": [],
-   "id": "ssao",
-   "key": "ssao",
-   "optional_groups_on": [],
-   "prefix": "#version 430\n",
-   "source": "GameOS/gameos/gos_postprocess.cpp:352",
-   "stages": {
-    "frag": "shaders/ssao.frag",
-    "vert": "shaders/postprocess.vert"
-   }
-  },
-  {
-   "assemble": "engine",
-   "defines": [],
-   "id": "ssao_apply",
-   "key": "ssao_apply",
-   "optional_groups_on": [],
-   "prefix": "#version 430\n",
-   "source": "GameOS/gameos/gos_postprocess.cpp:356",
-   "stages": {
-    "frag": "shaders/ssao_apply.frag",
-    "vert": "shaders/postprocess.vert"
-   }
-  },
-  {
-   "assemble": "engine",
-   "defines": [],
-   "id": "ssao_blur",
-   "key": "ssao_blur",
-   "optional_groups_on": [],
-   "prefix": "#version 430\n",
-   "source": "GameOS/gameos/gos_postprocess.cpp:361",
-   "stages": {
-    "frag": "shaders/ssao_blur.frag",
-    "vert": "shaders/postprocess.vert"
    }
   },
   {
