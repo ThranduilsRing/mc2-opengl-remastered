@@ -279,7 +279,7 @@ struct _TG_Light
 		DWORD r,g,b;
 		r = intensity * ((OEMaRGB >> 16) & 0x000000ff);
 		g = intensity * ((OEMaRGB >> 8) & 0x000000ff);
-		b = intensity * ((OEMaRGB) & 0x000000ff);
+		b = intensity * (OEMaRGB & 0x000000ff);
 
 		aRGB = (0xff << 24) + (r << 16) + (g << 8) + (b);
 	}

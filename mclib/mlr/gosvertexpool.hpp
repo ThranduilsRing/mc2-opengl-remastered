@@ -185,9 +185,9 @@ namespace MidLevelRenderer {
 
         //sebi !NB
         // TODO: add alignment method to DynamicArray
-		vertexAlignment=32-( static_cast<size_t>((static_cast<void*>(vertices.GetData()))) & 31 );
-		vertexAlignment2uv=32-( static_cast<size_t>((static_cast<void*>(vertices2uv.GetData()))) & 31 );
-		indicesAlignment=32-( static_cast<size_t>((static_cast<void*>(indices.GetData()))) & 31 );
+		vertexAlignment=32-( reinterpret_cast<size_t>((static_cast<void*>(vertices.GetData()))) & 31 );
+		vertexAlignment2uv=32-( reinterpret_cast<size_t>((static_cast<void*>(vertices2uv.GetData()))) & 31 );
+		indicesAlignment=32-( reinterpret_cast<size_t>((static_cast<void*>(indices.GetData()))) & 31 );
 	}
 
 
