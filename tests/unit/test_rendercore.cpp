@@ -145,12 +145,10 @@ TEST_CASE("RenderResourceRegistry compute-intermediate ids register and invalida
     RenderResourceDesc d{};
     d.id        = RenderResourceId::ClusterDepthPyramid;
     d.kind      = RenderResourceKind::Texture2D;
-    d.glName    = 4242;
     d.valid     = true;
     registerOrUpdateRenderResource(d);
     const RenderResourceDesc* got = getRenderResource(RenderResourceId::ClusterDepthPyramid);
     REQUIRE(got != nullptr);
-    CHECK(got->glName == 4242);
     CHECK((got->id == RenderResourceId::ClusterDepthPyramid));
 
     RenderResourceDesc inv{};
@@ -559,8 +557,7 @@ namespace {
 // Field-by-field equality. PipelineDesc deliberately has NO operator== (the
 // conversion substrate changes the struct by zero bytes); the test owns comparison.
 bool pipelineDescEqual(const PipelineDesc& a, const PipelineDesc& b) {
-    return a.glProgramName        == b.glProgramName
-        && a.blend                == b.blend
+    return a.blend                == b.blend
         && a.depthTestEnable      == b.depthTestEnable
         && a.depthWriteEnable     == b.depthWriteEnable
         && a.depthFunc            == b.depthFunc
@@ -593,7 +590,6 @@ TEST_SUITE("RenderCore") {
 
 TEST_CASE("PipelineDesc value-init zeroes every field") {
     PipelineDesc d{};
-    CHECK(d.glProgramName == 0u);
     CHECK((d.blend == BlendMode::Opaque));            // enum value 0
     CHECK(d.depthTestEnable  == false);
     CHECK(d.depthWriteEnable == false);
@@ -619,7 +615,6 @@ TEST_CASE("pipelineDescFromPassContract converts a representative pass contract"
     render_contract::PassStateContract c = makeStaticPropContract();
     PipelineDesc d = render_contract::pipelineDescFromPassContract(
         c,
-        /*glProgramName*/ 42u,
         /*depthFunc*/     DepthFunc::GreaterEqual,
         /*cullMode*/      CullMode::Back,
         /*objectIdWrite*/ true,
@@ -634,7 +629,6 @@ TEST_CASE("pipelineDescFromPassContract converts a representative pass contract"
     CHECK(d.colorAttachments.color2 == true);
 
     // Passed through explicitly (PassStateContract carries none of these).
-    CHECK(d.glProgramName == 42u);
     CHECK((d.depthFunc == DepthFunc::GreaterEqual));
     CHECK((d.cullMode  == CullMode::Back));
     CHECK(d.objectIdWriteEnabled == true);
@@ -648,7 +642,6 @@ TEST_CASE("pipelineDescFromPassContract applies documented MC2 defaults") {
     c.attachments = render_contract::RequiredAttachments{true, false, false};
 
     PipelineDesc d = render_contract::pipelineDescFromPassContract(c);
-    CHECK(d.glProgramName == 0u);                       // unregistered
     CHECK((d.depthFunc == DepthFunc::GreaterEqual));     // reverse-Z default
     CHECK((d.cullMode  == CullMode::Back));              // opaque-geometry default
     CHECK(d.objectIdWriteEnabled == false);

@@ -1,6 +1,6 @@
 // RenderCore/PipelineDesc.h
 //
-// Non-owning description of all fixed-function GL pipeline state a draw call
+// Description of the fixed-function pipeline requirements a draw call
 // requires. Header-only; no runtime dispatch yet.
 //
 // Purpose: name the implicit render contracts so future DrawPacket sorting
@@ -91,11 +91,6 @@ enum class DrawBufferSet : uint8_t {
 };
 
 struct PipelineDesc {
-    // GL program object name (same underlying type as GLuint). Non-owning.
-    // Zero = unset / invalid. Matches DrawPacket::pipelineId when used as
-    // a cache key (DrawPacket sorts by this in the upper bits of sortKey).
-    uint32_t            glProgramName;
-
     BlendMode           blend;
     bool                depthTestEnable;
     bool                depthWriteEnable;
@@ -134,12 +129,8 @@ struct PipelineDesc {
     uint32_t            ssboBindingsMask;
 };
 
-// v1 added DepthFunc (1 byte after depthWriteEnable) which pushes
-// ssboBindingsMask to offset 16 after natural padding.  FrontFace (v2),
-// polygonOffsetEnable (v3) and drawBuffers (v4, DRAWBUFFER-OWNERSHIP-1) all drop
-// into that same padding window, so the struct stays at 20 bytes — the intentional
-// budget. All 3 padding bytes (frontFace + polygonOffsetEnable + drawBuffers) are
-// now used; a further field needs a repack or a struct-size bump.
+// P9 removed the unused driver program name. The remaining fields describe
+// render intent; native pipelines own their executable shader handles.
 static_assert(sizeof(PipelineDesc) <= 20,
               "PipelineDesc must stay small; it lives in hot-path cache entries.");
 

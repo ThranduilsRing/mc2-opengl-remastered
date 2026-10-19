@@ -425,7 +425,6 @@ std::string buildSnapshotJson(const RenderSnapshot& snap,
     s << "    \"viewId\": " << view.id << ",\n";
     s << "    \"viewKind\": \"" << viewKindForId(view.id) << "\",\n";
     s << "    \"viewMode\": \"" << RenderCore::toString(view.mode) << "\",\n";
-    s << "    \"viewUniformsBinding\": " << RenderCore::kViewUniformsBinding << ",\n";
     s << "    \"viewport\": [" << view.viewport[0] << ", " << view.viewport[1] << ", "
       << view.viewport[2] << ", " << view.viewport[3] << "]\n";
     s << "  },\n";
@@ -597,7 +596,6 @@ std::string buildSnapshotJson(const RenderSnapshot& snap,
             s << "      \"height\": "  << r->height  << ",\n";
             s << "      \"layers\": "  << r->layers  << ",\n";
             s << "      \"samples\": " << r->samples << ",\n";
-            s << "      \"glName\": "  << r->glName  << ",\n";
             s << "      \"sizeBytes\": " << static_cast<unsigned long long>(r->sizeBytes) << ",\n";
             s << "      \"valid\": true\n";
             s << "    }" << (i + 1 < count ? "," : "") << "\n";

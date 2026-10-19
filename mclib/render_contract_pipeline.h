@@ -3,17 +3,13 @@
 // PIPELINE-DESC-SCAFFOLD-1: GL-free adapter that lowers a PassStateContract
 // (mclib/render_contract.h -- the *requirements* surface, "what a pass needs")
 // into a RenderCore::PipelineDesc (RenderCore/PipelineDesc.h -- the
-// *engine-owned GL-state* surface, "the typed handle applyPipeline() consumes").
+// *engine-owned render-intent* surface).
 //
 // Track R item 12 (render contracts): until now the two surfaces existed side
 // by side but nothing connected them. This is the one place they are
 // reconciled. It adds NO new state and replaces NO draw dispatch.
 //
-// Why a separate header (not render_contract.cpp): render_contract.cpp pulls
-// <GL/glew.h> for assertPassContract(), which the GL-free unit-test target
-// (tests/unit/CMakeLists.txt) deliberately excludes. Keeping the adapter
-// header-only inline lets rendercore_tests cover it with no GL context and no
-// new translation unit.
+// The adapter is header-only and independent of driver handles.
 //
 // Layering: lives mclib-side. mclib MAY depend on RenderCore (e.g. mech3d.h
 // includes ../RenderCore/Handle.h); RenderCore must NOT depend on mclib --
@@ -31,7 +27,6 @@
 //   attachments        -> colorAttachments (field-for-field)
 // Everything else is an explicit argument with a documented current-MC2
 // default, because PassStateContract has no data for it:
-//   glProgramName        runtime GL handle; 0 = unregistered (applyPipeline skips)
 //   depthFunc            GreaterEqual = MC2 reverse-Z default
 //   cullMode             Back = standard opaque-geometry cull
 //   objectIdWriteEnabled lives in ShaderOutputContract.writesLocation2, not here
@@ -65,18 +60,15 @@ static_assert(static_cast<int>(PassStateContract::BlendMode::Additive)
               "PassStateContract::BlendMode::Additive must match RenderCore::BlendMode::Additive");
 
 // Lower a PassStateContract's requirements into an engine-owned PipelineDesc.
-// Pure; no GL calls; safe to call before a GL context exists.
+// Pure; safe to call before renderer initialization.
 inline RenderCore::PipelineDesc pipelineDescFromPassContract(
     const PassStateContract& contract,
-    std::uint32_t            glProgramName        = 0u,
     RenderCore::DepthFunc    depthFunc            = RenderCore::DepthFunc::GreaterEqual,
     RenderCore::CullMode     cullMode             = RenderCore::CullMode::Back,
     bool                     objectIdWriteEnabled = false,
     std::uint32_t            ssboBindingsMask     = 0u)
 {
     RenderCore::PipelineDesc desc{};
-
-    desc.glProgramName = glProgramName;
 
     // Explicit switch rather than a raw cast: the static_asserts above prove
     // the values match today, but the switch keeps the mapping auditable and

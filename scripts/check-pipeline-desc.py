@@ -14,7 +14,7 @@ What it asserts (FAIL):
      (PipelineRegistry.cpp) have the same row count — mirrors the C++
      static_assert at check time so a stale/unregistered extra row fails here.
   2. Every non-Invalid s_descs row declares ALL of PipelineDesc's declarative
-     fields (glProgramName, blend, depthTest/Write/Func, cullMode,
+     fields (blend, depthTest/Write/Func, cullMode,
      colorAttachments, objectIdWriteEnabled, frontFace, polygonOffsetEnable,
      ssboBindingsMask). A row missing a field fails — the "planted missing field"
      gate.
@@ -45,7 +45,6 @@ import checklib  # noqa: E402
 # Each non-Invalid registry row MUST initialize exactly these (a missing field
 # is the planted-failure gate). colorAttachments is one field (a {a,b,c} brace).
 PIPELINE_DESC_FIELDS = [
-    "glProgramName",
     "blend",
     "depthTestEnable",
     "depthWriteEnable",
@@ -71,7 +70,7 @@ MISSING_OR_DESCRIPTIVE_AXES = [
      "note": "colorAttachments documents required attachments; applyPipeline does "
              "not reconfigure draw buffers (depth-prepass masks color via glColorMask)"},
     {"axis": "runtimeShaderDefineSetIdentity", "status": "MISSING (BLOCKER)",
-     "note": "glProgramName is a runtime GL name, not a stable variant id; "
+     "note": "executable shader handles belong to native pipeline owners; "
              "#define injection in makeShader is non-enumerable — see recon DEFER"},
     {"axis": "materialVariationDefineSetIdentity", "status": "MISSING (BLOCKER)",
      "note": "gosMaterialVariation injects an open-ended per-material define set; "

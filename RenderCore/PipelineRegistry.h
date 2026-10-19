@@ -4,12 +4,8 @@
 // Not consumed by live render paths yet — exists so DrawPacket emitters
 // can carry a typed identity instead of pipelineId=0.
 //
-// Lifecycle:
-//   1. Engine reads getPipelineDesc(id) for static GL-state contracts
-//      (blend, depth, cull, attachments, ssboBindingsMask) at any time.
-//   2. Renderer calls bindProgram(id, glName) once during GL init to wire
-//      the actual program object into the table.
-//   3. DrawPacket::pipelineId = static_cast<uint32_t>(PipelineId::Foo).
+// Lifecycle: engine code reads the static intent contracts and DrawPacket
+// carries the corresponding PipelineId. Native pipelines own shader handles.
 //
 // Extending: add enum values before Count_, then add a matching row to
 // the s_descs initializer in PipelineRegistry.cpp. The static_assert in
@@ -55,15 +51,9 @@ enum class VertexLayoutId : uint32_t {
 // pipeline-key schema). Returns "" for Invalid / out-of-range.
 const char* vertexLayoutName(VertexLayoutId id);
 
-// Return the static GL-state contract for id.
-// glProgramName is 0 until bindProgram() is called for that id.
+// Return the static pipeline-intent contract for id.
 // Out-of-range or Invalid returns a zeroed sentinel (all false, all 0).
 const PipelineDesc& getPipelineDesc(PipelineId id);
-
-// Wire in the actual GL program object name from the renderer at GL init.
-// Must be called before any DrawPacket using this id is dispatched.
-// No-op (with assert) if id is Invalid or out-of-range.
-void bindProgram(PipelineId id, uint32_t glProgramName);
 
 // SPIRV-MECHOPAQUE-PIPELINEKEY-INTEGRATION-1: record the selected logical
 // shader-variant identity (the canonical define-set key, e.g.

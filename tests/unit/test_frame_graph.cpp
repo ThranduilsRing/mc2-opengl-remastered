@@ -217,21 +217,6 @@ TEST_CASE("AMBIENT-VIEWPORT-PROBE-1: classifyViewport + viewport axis cross-chec
     CHECK(compareAmbient(noDecl, leak).viewport == false);
 }
 
-TEST_CASE("fbo ledger: register/resolve + default-FBO + unregistered") {
-    FboLedger led;
-    led.reset();
-    led.registerFbo(7u, RenderResourceId::MainColor);
-    led.registerFbo(10u, RenderResourceId::SceneDepthCopy);
-    auto rid = [](RenderResourceId r){ return static_cast<unsigned>(r); };
-    CHECK(rid(led.resolve(7u))  == rid(RenderResourceId::MainColor));
-    CHECK(rid(led.resolve(10u)) == rid(RenderResourceId::SceneDepthCopy));
-    CHECK(rid(led.resolve(0u))  == rid(RenderResourceId::Backbuffer));   // default framebuffer
-    CHECK(rid(led.resolve(99u)) == rid(RenderResourceId::Unknown));      // unregistered -> skipped
-    // re-register updates in place
-    led.registerFbo(7u, RenderResourceId::WaterReflectionColor);
-    CHECK(rid(led.resolve(7u))  == rid(RenderResourceId::WaterReflectionColor));
-}
-
 TEST_CASE("fbo ledger: mismatch logic skips Unknown on either side") {
     // declared==actual -> ok; differ -> mismatch; Unknown either side -> skipped.
     CHECK(fboMismatch(RenderResourceId::MainColor, RenderResourceId::MainColor)        == false);

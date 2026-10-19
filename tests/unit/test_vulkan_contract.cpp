@@ -51,8 +51,8 @@ TEST_CASE("coverage aggregate + no duplicate ids (matches the header static_asse
 }
 
 TEST_CASE("descriptor-class totals match the inventory (Part-1/Part-2 enum-backed live set)") {
-    CHECK(kVkResourceContractCount == 16);
-    CHECK(vkCountByClass(VkDescriptorClass::UniformBuffer) == 1);
+    CHECK(kVkResourceContractCount == 15);
+    CHECK(vkCountByClass(VkDescriptorClass::UniformBuffer) == 0);
     CHECK(vkCountByClass(VkDescriptorClass::StorageBuffer) == 11);
     // 4 FBO-backed samplers + POSTPROCESS-VK-IMAGE-OWNERSHIP-1 subgraph depth = 5.
     CHECK(vkCountByClass(VkDescriptorClass::CombinedImageSampler) == 4);
