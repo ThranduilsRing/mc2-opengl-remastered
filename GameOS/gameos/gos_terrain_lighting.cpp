@@ -18,6 +18,7 @@
 // tl_ prefix (terrain_lighting) on private compile helpers to avoid ODR conflicts
 // with identical statics in gpu_cull_compute.cpp (design doc Q1).
 
+#include <memory>
 #include "gos_terrain_lighting.h"
 #include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
 #include "utils/mc2log.h"       // LOGGING-FACADE-P2: MC2_EVENT for the structured [TAG vN] lines
@@ -452,18 +453,19 @@ static std::vector<gos_terrain_lighting::GpuTerrainLightingOutput> s_dramShadow;
 // Private shader-compile helpers (tl_ prefix — mirrors gpu_cull_compute.cpp:145-231
 // privately; design doc Q1: copy, don't factor until a third module appears)
 // ---------------------------------------------------------------------------
-static char* tl_load_text_file(const char* fname) {
+static std::unique_ptr<char[]> tl_load_text_file(const char* fname) {
     FILE* f = fopen(fname, "rb");
     if (!f) return nullptr;
     fseek(f, 0, SEEK_END);
     long sz = ftell(f);
     fseek(f, 0, SEEK_SET);
     if (sz <= 0) { fclose(f); return nullptr; }
-    char* buf = new char[sz + 1];
+    auto bufOwner = std::make_unique_for_overwrite<char[]>(sz + 1);
+    char* buf = bufOwner.get();
     fread(buf, 1, sz, f);
     buf[sz] = '\0';
     fclose(f);
-    return buf;
+    return bufOwner;
 }
 
 static GLuint tl_compile_compute_shader(const char** strings, int count) {
@@ -479,11 +481,12 @@ static GLuint tl_compile_compute_shader(const char** strings, int count) {
         GLint logLen = 0;
         glGetShaderiv(sh, GL_INFO_LOG_LENGTH, &logLen);
         if (logLen > 0) {
-            char* log = new char[logLen];
+            auto logOwner = std::make_unique_for_overwrite<char[]>(logLen);
+            char* log = logOwner.get();
             glGetShaderInfoLog(sh, logLen, nullptr, log);
             MC2_DIAGF("[TERRAIN_LIGHTING_GPU v1] compute shader compile error:\n%s\n", log);
             fflush(stdout);
-            delete[] log;
+            logOwner.reset();
         }
         glDeleteShader(sh);
         return 0;
@@ -504,11 +507,12 @@ static GLuint tl_link_compute_program(GLuint shader) {
         GLint logLen = 0;
         glGetProgramiv(prog, GL_INFO_LOG_LENGTH, &logLen);
         if (logLen > 0) {
-            char* log = new char[logLen];
+            auto logOwner = std::make_unique_for_overwrite<char[]>(logLen);
+            char* log = logOwner.get();
             glGetProgramInfoLog(prog, logLen, nullptr, log);
             MC2_DIAGF("[TERRAIN_LIGHTING_GPU v1] compute program link error:\n%s\n", log);
             fflush(stdout);
-            delete[] log;
+            logOwner.reset();
         }
         glDeleteProgram(prog);
         return 0;
@@ -522,13 +526,15 @@ static GLuint tl_build_terrain_lighting_program(const char* compFname,
                                                  const char* sharedFname,
                                                  const char* debugName)
 {
-    char* fileSrc    = tl_load_text_file(compFname);
-    char* sharedSrc  = tl_load_text_file(sharedFname);
+    auto fileSrcOwner = tl_load_text_file(compFname);
+    char* fileSrc = fileSrcOwner.get();
+    auto sharedSrcOwner = tl_load_text_file(sharedFname);
+    char* sharedSrc = sharedSrcOwner.get();
 
     if (!fileSrc) {
         MC2_DIAGF("[TERRAIN_LIGHTING_GPU v1] event=shader_load_fail source_missing=%s\n", compFname);
         fflush(stdout);
-        delete[] sharedSrc;
+        sharedSrcOwner.reset();
         return 0;
     }
 
@@ -556,8 +562,8 @@ static GLuint tl_build_terrain_lighting_program(const char* compFname,
         fullSrc = fileSrc;
     }
 
-    delete[] fileSrc;
-    delete[] sharedSrc;
+    fileSrcOwner.reset();
+    sharedSrcOwner.reset();
 
     const char* kVersion = "#version 430\n";
     std::vector<const char*> srcStrs;

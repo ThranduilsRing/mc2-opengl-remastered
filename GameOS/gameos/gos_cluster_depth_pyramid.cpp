@@ -1,5 +1,6 @@
 // CLUSTER-DEPTH-PYRAMID-NATIVE-1 — see gos_cluster_depth_pyramid.h for intent.
 
+#include <memory>
 #include "gos_cluster_depth_pyramid.h"
 #include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
 #include "gos_gpu_sync.h"
@@ -54,22 +55,24 @@ constexpr GLuint kTileImageUnit = 0;
 // Texture unit for the input depth sampler.
 constexpr GLuint kDepthTexUnit  = 0;
 
-char* loadTextFile(const char* fname) {
+std::unique_ptr<char[]> loadTextFile(const char* fname) {
     FILE* f = fopen(fname, "rb");
     if (!f) return nullptr;
     fseek(f, 0, SEEK_END);
     long sz = ftell(f);
     fseek(f, 0, SEEK_SET);
     if (sz <= 0) { fclose(f); return nullptr; }
-    char* buf = new char[sz + 1];
-    if (static_cast<long>(fread(buf, 1, sz, f)) != sz) { fclose(f); delete[] buf; return nullptr; }
+    auto bufOwner = std::make_unique_for_overwrite<char[]>(sz + 1);
+    char* buf = bufOwner.get();
+    if (static_cast<long>(fread(buf, 1, sz, f)) != sz) { fclose(f); bufOwner.reset(); return nullptr; }
     buf[sz] = '\0';
     fclose(f);
-    return buf;
+    return bufOwner;
 }
 
 GLuint buildProgram() {
-    char* fileSrc = loadTextFile("shaders/cluster_depth_pyramid.comp");
+    auto fileSrcOwner = loadTextFile("shaders/cluster_depth_pyramid.comp");
+    char* fileSrc = fileSrcOwner.get();
     if (!fileSrc) {
         MC2_DIAGFE(stderr, "[CLUSTER_DEPTH_PYRAMID v1] shader source not found: "
                         "shaders/cluster_depth_pyramid.comp\n");
@@ -86,7 +89,7 @@ GLuint buildProgram() {
     GLuint sh = glCreateShader(GL_COMPUTE_SHADER);
     glShaderSource(sh, 3, strs, nullptr);
     glCompileShader(sh);
-    delete[] fileSrc;
+    fileSrcOwner.reset();
 
     GLint ok = 0;
     glGetShaderiv(sh, GL_COMPILE_STATUS, &ok);

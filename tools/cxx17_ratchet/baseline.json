@@ -49,9 +49,9 @@
   "GameOS": {
    "LG01": 6,
    "LG02": 172,
-   "LG03": 257,
+   "LG03": 219,
    "LG04": 5,
-   "LG05": 137,
+   "LG05": 123,
    "LG06": 431,
    "LG07": 0,
    "LG08": 234,
@@ -472,13 +472,9 @@
    "LG12a": 2
   },
   "GameOS/gameos/gos_cardcloud_sim.cpp": {
-   "LG03": 6,
-   "LG05": 2,
    "LG06": 1
   },
   "GameOS/gameos/gos_cluster_depth_pyramid.cpp": {
-   "LG03": 3,
-   "LG05": 3,
    "LG06": 1,
    "LG11": 1
   },
@@ -537,8 +533,6 @@
    "LG14": 1
   },
   "GameOS/gameos/gos_lightgrid_build.cpp": {
-   "LG03": 3,
-   "LG05": 3,
    "LG06": 1,
    "LG11": 2
   },
@@ -579,8 +573,6 @@
    "LG06": 1
   },
   "GameOS/gameos/gos_postprocess_blur.cpp": {
-   "LG03": 3,
-   "LG05": 3,
    "LG06": 2,
    "LG11": 2
   },
@@ -721,7 +713,6 @@
    "LG08": 2
   },
   "GameOS/gameos/gos_terrain_lighting.cpp": {
-   "LG03": 8,
    "LG04": 1,
    "LG05": 6,
    "LG06": 4,
@@ -791,8 +782,6 @@
    "LG06": 1
   },
   "GameOS/gameos/gpu_cull_compute.cpp": {
-   "LG03": 11,
-   "LG05": 3,
    "LG06": 1,
    "LG11": 1,
    "LG12a": 2,
@@ -816,9 +805,6 @@
   },
   "GameOS/gameos/gpu_cull_substrate.h": {
    "LG17": 1
-  },
-  "GameOS/gameos/gpu_driven_common.cpp": {
-   "LG03": 4
   },
   "GameOS/gameos/mc2_verify.cpp": {
    "LG06": 6,
@@ -3975,7 +3961,7 @@
    "LG20": 3
   }
  },
- "head": "17c061d99",
+ "head": "5a951f3e4",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
