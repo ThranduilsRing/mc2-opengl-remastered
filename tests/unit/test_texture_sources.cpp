@@ -99,7 +99,7 @@ TEST_CASE("a retained service reference keeps source bytes after the final raw r
     const auto replacement=s.add("retained");
     CHECK(replacement!=id);
     CHECK(s.handle(replacement)!=h);
-    CHECK_FALSE(s.index->get(id));
+    CHECK_FALSE(static_cast<bool>(s.index->get(id)));
 }
 
 TEST_CASE("registration pins retain payloads independently of mission roots") {
@@ -118,7 +118,7 @@ TEST_CASE("variants share immutable input bytes but own separate source identiti
     const auto a=s.add("paint-mask",1), b=s.add("paint-mask",2);
     CHECK(a!=b);
     CHECK(s.handle(a)!=s.handle(b));
-    CHECK(s.index->get(a)->bytes==s.index->get(b)->bytes);
+    CHECK((s.index->get(a)->bytes==s.index->get(b)->bytes));
     CHECK(mc2::textures::findAndRetain("paint-mask",gos_Texture_Solid,0,2)==b);
     CHECK(s.index->get(b)->users==2);
 }
