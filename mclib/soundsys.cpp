@@ -28,6 +28,7 @@
 #include <algorithm>
 #include <string>
 #include <vector>
+#include <format>
 #include "../GameOS/gameos/utils/mc2log.h"
 
 bool objectiveObservationEnabled();
@@ -184,7 +185,8 @@ long SoundSystem::init (const char *soundFileName)
 		for (long i=0;i<static_cast<long>(numSoundBites);i++)
 		{
 			char biteBlock[20];
-			sprintf(biteBlock,"SoundBite%d",i);
+			auto biteBlockEnd = std::format_to_n(biteBlock, sizeof(biteBlock) - 1, "SoundBite{}", i).out;
+			*biteBlockEnd = '\0';
 			
 			result = soundFile.seekBlock(biteBlock);
 			gosASSERT(result == NO_ERR);
@@ -231,13 +233,16 @@ long SoundSystem::init (const char *soundFileName)
 		for (int i=0;i<numDMS;i++)
 		{
 			char digitalMSId[20];
-			sprintf(digitalMSId,"DMS%d",i);
+			auto digitalMSIdEnd = std::format_to_n(digitalMSId, sizeof(digitalMSId) - 1, "DMS{}", i).out;
+			*digitalMSIdEnd = '\0';
 
 			char digitalMSBId[20];
-			sprintf(digitalMSBId,"DMSLoop%d",i);
+			auto digitalMSBIdEnd = std::format_to_n(digitalMSBId, sizeof(digitalMSBId) - 1, "DMSLoop{}", i).out;
+			*digitalMSBIdEnd = '\0';
 
 			char digitalMSVId[25];
-			sprintf(digitalMSVId,"DMSVolume%d",i);
+			auto digitalMSVIdEnd = std::format_to_n(digitalMSVId, sizeof(digitalMSVId) - 1, "DMSVolume{}", i).out;
+			*digitalMSVIdEnd = '\0';
 
 			char musicName[30];
 			result = soundFile.readIdString(digitalMSId,musicName,29);

@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in camera_internal.h.
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "camera_internal.h"
+#include <format>
 namespace {
 // XFORM-CONVENTION-HARNESS-1: the two canonical clip-space convention
 // matrices used to live here as anonymous-namespace free functions. They were
@@ -174,11 +175,12 @@ void Camera::setOrthogonal(void)
 				if (fabsf(height2width - expectedH2W) >= 1e-3f)
 				{
 					char resDetail[192];
-					snprintf(resDetail, sizeof(resDetail),
-						"h2w=%.5f expected=%.5f drawable=%dx%d screen=%dx%d",
+					auto resDetailEnd = std::format_to_n(resDetail, sizeof(resDetail) - 1,
+						"h2w={:.5f} expected={:.5f} drawable={}x{} screen={}x{}",
 						static_cast<double>(height2width), static_cast<double>(expectedH2W),
 						Environment.drawableWidth, Environment.drawableHeight,
-						Environment.screenWidth, Environment.screenHeight);
+						Environment.screenWidth, Environment.screenHeight).out;
+					*resDetailEnd = '\0';
 					mc2res::violation("camera_aspect", resDetail);
 				}
 			}

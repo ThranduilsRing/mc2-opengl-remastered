@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in mech3d_internal.h.
 #include "mech3d_internal.h"
 #include "../RenderCore/axis_convert.h"
+#include <format>
 
 constexpr int MAX_ANIMATION_FILES = 25;
 const char* MechAnimationNames[MaxGestures+2] = 
@@ -52,7 +53,8 @@ void Mech3DAppearanceType::init (const char * fileName)
 	for (long i=0;i<MaxGestures;i++)
 	{
 		char blockId[256];
-		sprintf(blockId,"Gestures%d",i);
+		auto blockIdEnd = std::format_to_n(blockId, sizeof(blockId) - 1, "Gestures{}", i).out;
+		*blockIdEnd = '\0';
 
 		result = mechFile.seekBlock(blockId);
 
@@ -119,8 +121,10 @@ void Mech3DAppearanceType::init (const char * fileName)
 		{
 			char baseName[256];
 			char baseLODDist[256];
-			sprintf(baseName,"FileName%d",i);
-			sprintf(baseLODDist,"Distance%d",i);
+			auto baseNameEnd = std::format_to_n(baseName, sizeof(baseName) - 1, "FileName{}", i).out;
+			*baseNameEnd = '\0';
+			auto baseLODDistEnd = std::format_to_n(baseLODDist, sizeof(baseLODDist) - 1, "Distance{}", i).out;
+			*baseLODDistEnd = '\0';
 			
 			result = mechFile.readIdString(baseName,aseFileName,511);
 			if (result == NO_ERR)
@@ -208,13 +212,15 @@ void Mech3DAppearanceType::init (const char * fileName)
 	}
 
 	char leftArmName[1024];
-	sprintf(leftArmName,"%sLeftArm",fileName);
+	auto leftArmNameEnd = std::format_to_n(leftArmName, sizeof(leftArmName) - 1, "{}LeftArm", fileName).out;
+	*leftArmNameEnd = '\0';
 	
 	FullPathFileName mechLeftArmName;
 	mechLeftArmName.init(tglPath,leftArmName,".ase");
 
 	char rightArmName[1024];
-	sprintf(rightArmName,"%sRightArm",fileName);
+	auto rightArmNameEnd = std::format_to_n(rightArmName, sizeof(rightArmName) - 1, "{}RightArm", fileName).out;
+	*rightArmNameEnd = '\0';
 	
 	FullPathFileName mechRightArmName;
 	mechRightArmName.init(tglPath,rightArmName,".ase");
@@ -242,10 +248,12 @@ void Mech3DAppearanceType::init (const char * fileName)
 	// Load Damaged States
 	// They are named mechnamefallForward and mechnameFallBackward
 	char forwardName[1024];
-	sprintf(forwardName,"%sFallForwardDam",fileName);
+	auto forwardNameEnd = std::format_to_n(forwardName, sizeof(forwardName) - 1, "{}FallForwardDam", fileName).out;
+	*forwardNameEnd = '\0';
 
 	char backwardName[1024];
-	sprintf(backwardName,"%sFallForwardDam",fileName);
+	auto backwardNameEnd = std::format_to_n(backwardName, sizeof(backwardName) - 1, "{}FallForwardDam", fileName).out;
+	*backwardNameEnd = '\0';
 
 	{
 		FullPathFileName dmgName;
@@ -282,7 +290,8 @@ void Mech3DAppearanceType::init (const char * fileName)
 		for (int i=0;i<MAX_ANIMATION_FILES;i++)
 		{
 			char animName[512];
-			sprintf(animName,"%s%s",fileName,MechAnimationNames[i]);
+			auto animNameEnd = std::format_to_n(animName, sizeof(animName) - 1, "{}{}", fileName, MechAnimationNames[i]).out;
+			*animNameEnd = '\0';
 
 			FullPathFileName animPath;
 			FullPathFileName otherPath;
@@ -376,7 +385,8 @@ void Mech3DAppearanceType::init (const char * fileName)
 		for (int i=0;i<numSmokeNodes;i++)
 		{
 			char blockId[512];
-			sprintf(blockId,"SmokeNode%d",i);
+			auto blockIdEnd = std::format_to_n(blockId, sizeof(blockId) - 1, "SmokeNode{}", i).out;
+			*blockIdEnd = '\0';
 			result = mechFile.seekBlock(blockId);
 			gosASSERT(result == NO_ERR);
 			
@@ -391,7 +401,8 @@ void Mech3DAppearanceType::init (const char * fileName)
 		for (int i=0;i<numWeaponNodes;i++)
 		{
 			char blockId[512];
-			sprintf(blockId,"WeaponNode%d",i);
+			auto blockIdEnd = std::format_to_n(blockId, sizeof(blockId) - 1, "WeaponNode{}", i).out;
+			*blockIdEnd = '\0';
 			result = mechFile.seekBlock(blockId);
 			gosASSERT(result == NO_ERR);
 			
@@ -411,7 +422,8 @@ void Mech3DAppearanceType::init (const char * fileName)
 		for (int i=0;i<numJumpNodes;i++)
 		{
 			char blockId[512];
-			sprintf(blockId,"JumpJetNode%d",i);
+			auto blockIdEnd = std::format_to_n(blockId, sizeof(blockId) - 1, "JumpJetNode{}", i).out;
+			*blockIdEnd = '\0';
 			result = mechFile.seekBlock(blockId);
 			gosASSERT(result == NO_ERR);
 			
@@ -426,7 +438,8 @@ void Mech3DAppearanceType::init (const char * fileName)
 		for (int i=0;i<numFootNodes;i++)
 		{
 			char blockId[512];
-			sprintf(blockId,"FootNode%d",i);
+			auto blockIdEnd = std::format_to_n(blockId, sizeof(blockId) - 1, "FootNode{}", i).out;
+			*blockIdEnd = '\0';
 			result = mechFile.seekBlock(blockId);
 			gosASSERT(result == NO_ERR);
 			
@@ -499,7 +512,8 @@ void Mech3DAppearanceType::init (const char * fileName)
 		for (long si = 0; si < numSockets; si++)
 		{
 			char blockId[64];
-			sprintf(blockId, "Socket%ld", si);
+			auto blockIdEnd = std::format_to_n(blockId, sizeof(blockId) - 1, "Socket{}", si).out;
+			*blockIdEnd = '\0';
 			if (mechFile.seekBlock(blockId) != NO_ERR)
 				continue;
 			char socketName[PRESENTATION_SOCKET_NAME_CAP] = "";
