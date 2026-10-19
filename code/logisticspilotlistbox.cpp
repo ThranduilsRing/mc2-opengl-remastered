@@ -33,8 +33,8 @@ void LogisticsPilotListBox::update()
 
 	for ( int i = 0; i < itemCount; i++ )
 	{
-		if ( ((LogisticsPilotListBoxItem*)items[i])->getPilot() && 
-			((LogisticsPilotListBoxItem*)items[i])->getPilot()->isUsed() )
+		if ( (static_cast<LogisticsPilotListBoxItem*>(items[i]))->getPilot() &&
+			(static_cast<LogisticsPilotListBoxItem*>(items[i]))->getPilot()->isUsed() )
 		{
 			RemoveItem( items[i], true );
 			i--;
@@ -104,8 +104,8 @@ LogisticsPilotListBoxItem::LogisticsPilotListBoxItem( LogisticsPilot* pNewPilot 
 		if ( mcTextureManager &&
 		     mcTextureManager->tryGetTextureLogicalSize( rankIcon.getTextureHandle(), aw, ah ) )
 		{
-			if ( aw > 0 ) rankIcon.setFileWidth( (float)aw );
-			if ( ah > 0 ) rankIcon.setFileHeight( (float)ah );
+			if ( aw > 0 ) rankIcon.setFileWidth( static_cast<float>(aw) );
+			if ( ah > 0 ) rankIcon.setFileHeight( static_cast<float>(ah) );
 		}
 	}
 	rankIcon.setUVs( rank * 15, 96, rank * 15 + 15, 96 + 15 );
@@ -285,7 +285,7 @@ void LogisticsPilotListBox::makeUVs( LogisticsPilot* pPilot, aObject& icon )
 		float fw = 256.f;
 		if ( mcTextureManager &&
 		     mcTextureManager->tryGetTextureLogicalSize( icon.getTextureHandle(), aw, ah ) && aw > 0 )
-			fw = (float)aw;
+			fw = static_cast<float>(aw);
 		icon.setFileWidth( fw );
 	}
 	icon.setUVs( u, v, u2, v2 );

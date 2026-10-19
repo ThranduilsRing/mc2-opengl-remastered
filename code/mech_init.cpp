@@ -116,7 +116,7 @@ void BattleMech::init (bool create, ObjectTypePtr _type) {
 
 	setTangible(true);
 
-	BattleMechTypePtr mechT = (BattleMechTypePtr)_type;
+	BattleMechTypePtr mechT = static_cast<BattleMechTypePtr>(_type);
 	for (long curLocation = 0; curLocation < NUM_BODY_LOCATIONS; curLocation++)
 		body[curLocation].maxInternalStructure = mechT->maxInternalStructure[curLocation];
 
@@ -130,7 +130,7 @@ void BattleMech::init (bool create, ObjectTypePtr _type) {
 
 	control.init();
 
-	dynamics = ((BattleMechTypePtr)_type)->dynamics;
+	dynamics = (static_cast<BattleMechTypePtr>(_type))->dynamics;
 
 	char *appearanceName = _type->getAppearanceTypeName();
 
@@ -166,7 +166,7 @@ void BattleMech::init (bool create, ObjectTypePtr _type) {
 
 	// The only kind of appearanceType the mechs currently know how
 	// to work with is a spriteTree.  Anything else is wrong.
-	appearance->init((Mech3DAppearanceTypePtr)mechAppearanceType, this);
+	appearance->init(static_cast<Mech3DAppearanceTypePtr>(mechAppearanceType), this);
 	appearance->initFX();
 	// M2: RenderWorld spawn route. Called AFTER initFX() so the appearance
 	// is fully initialized before the adapter records the handle.
@@ -218,7 +218,7 @@ float BattleMech::getStatusRating (void) {
 				
 	float pilotWoundTable[7] = {1.00f, 0.95f, 0.85f, 0.75f, 0.50f, 0.30f, 0.00f};
 	// Wounds accumulate past 6 (a dead pilot) and the table has 7 entries: clamp so a dead pilot reads the last one.
-	const long woundIndex = std::clamp((long)getPilot()->getWounds(), 0L, 6L);
+	const long woundIndex = std::clamp(static_cast<long>(getPilot()->getWounds()), 0L, 6L);
 	float pilotEffect = pilotWoundTable[woundIndex];
 	if (isDestroyed() || isDisabled())
 		pilotEffect = 0.0;
@@ -334,7 +334,7 @@ long BattleMech::init (FitIniFile* mechFile) {
 	result = mechFile->readIdUChar("HeatBuildUp", heat);
 	if (result != NO_ERR)
 		return(result);
-	heat = (float)heat;
+	heat = static_cast<float>(heat);
 
 	disabledHeatSinks = 0;
 	curLegHeatSinks = 0;
@@ -349,7 +349,7 @@ long BattleMech::init (FitIniFile* mechFile) {
 	result = mechFile->readIdUChar("MaxRunSpeed", speed);
 	if (result != NO_ERR)
 		return(result);
-	maxMoveSpeed = (float)speed;
+	maxMoveSpeed = static_cast<float>(speed);
 
 	result = mechFile->seekBlock("MovementSystem");
 	if (result == NO_ERR) {
@@ -568,8 +568,8 @@ long BattleMech::init (FitIniFile* mechFile) {
 		inventory[curItem].ammoIndex = -1;
 		inventory[curItem].readyTime = 0.0;
 		inventory[curItem].bodyLocation = 255;
-		inventory[curItem].effectiveness = (short)(MasterComponent::masterList[inventory[curItem].masterID].getWeaponDamage() * 10.0 /	// damage over 10 seconds
-										   MasterComponent::masterList[inventory[curItem].masterID].getWeaponRecycleTime());
+		inventory[curItem].effectiveness = static_cast<short>((MasterComponent::masterList[inventory[curItem].masterID].getWeaponDamage() * 10.0 /	// damage over 10 seconds
+										   MasterComponent::masterList[inventory[curItem].masterID].getWeaponRecycleTime()));
 		inventory[curItem].effectiveness *= WeaponRanges[MasterComponent::masterList[inventory[curItem].masterID].getWeaponRange()][1] / 24;
 
 		
@@ -780,7 +780,7 @@ long BattleMech::init (FitIniFile* mechFile) {
 
 	for (long item = numOther; item < (numOther + numWeapons); item++) {
 		for (long ammoIndex = 0; ammoIndex < numAmmoTypes; ammoIndex++) {
-			if ((long)MasterComponent::masterList[inventory[item].masterID].getWeaponAmmoMasterId() == ammoTypeTotal[ammoIndex].masterId) {
+			if (static_cast<long>(MasterComponent::masterList[inventory[item].masterID].getWeaponAmmoMasterId()) == ammoTypeTotal[ammoIndex].masterId) {
 				inventory[item].ammoIndex = ammoIndex;
 				break;
 			}
@@ -801,7 +801,7 @@ long BattleMech::init (FitIniFile* mechFile) {
 	for (int item = 0; item < numOther; item++) {
 		if ((inventory[item].masterID == MasterComponent::clanAntiMissileSystemID) || (inventory[item].masterID == MasterComponent::innerSphereAntiMissileSystemID)) {
 			for (long ammoIndex = 0; ammoIndex < numAmmoTypes; ammoIndex++) {
-				if ((long)MasterComponent::masterList[inventory[item].masterID].getWeaponAmmoMasterId() == ammoTypeTotal[ammoIndex].masterId) {
+				if (static_cast<long>(MasterComponent::masterList[inventory[item].masterID].getWeaponAmmoMasterId()) == ammoTypeTotal[ammoIndex].masterId) {
 					inventory[item].ammoIndex = ammoIndex;
 					break;
 				}

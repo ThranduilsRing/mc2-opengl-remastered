@@ -420,7 +420,7 @@ void parallel_for_blocks(
     if (batch < 1) batch = 1;
 
     // (a) Per-invocation adaptive fallback — small counts never pay the barrier.
-    if ((int64_t)count * (int64_t)estCostPerItemNs < kDispatchFloorNs) {
+    if (static_cast<int64_t>(count) * static_cast<int64_t>(estCostPerItemNs) < kDispatchFloorNs) {
         runBlocksSerial(count, batch, blockBody);
         return;
     }

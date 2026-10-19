@@ -109,7 +109,7 @@ long Light::update (void) {
 	if (!getFlag(OBJECT_FLAG_DONE)) {
 		//----------------------------------
 		//-- Always force position altitude 'cause set every frame.
-		position.z += ((LightTypePtr)getObjectType())->altitudeOffset;
+		position.z += (static_cast<LightTypePtr>(getObjectType()))->altitudeOffset;
 		setPosition(position);
 	
 		if (getFlag(OBJECT_FLAG_JUSTCREATED)) {
@@ -123,7 +123,7 @@ long Light::update (void) {
 		bool inView = onScreen();
 		lightAppearance->setInView(inView);
 		long result = lightAppearance->update();
-		if (!result && ((LightTypePtr)getObjectType())->oneShotFlag)
+		if (!result && (static_cast<LightTypePtr>(getObjectType()))->oneShotFlag)
 			setFlag(OBJECT_FLAG_DONE, true);
 #endif
 	}
@@ -179,7 +179,7 @@ void Light::init (bool create, ObjectTypePtr _type) {
 		if (!lightAppearance)
 			return(NO_APPEARANCE_FOR_EXPL);
 
-		result = lightAppearance->init((VFXAppearanceType *)lightAppearanceType, (GameObjectPtr)this);
+		result = lightAppearance->init(static_cast<VFXAppearanceType *>(lightAppearanceType), static_cast<GameObjectPtr>(this));
 		if (result != NO_ERR)
 			return(result);
 	}

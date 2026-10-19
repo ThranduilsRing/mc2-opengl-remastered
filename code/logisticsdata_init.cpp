@@ -40,7 +40,7 @@ void LogisticsData::init()
 #define LOG_INIT_TIME(label) do { \
 	if ( mc2::gate::get<"MC2_LOG_LOGISTICS">() ) { \
 		ULONGLONG _t = GetTickCount64(); \
-		printf("[LOGISTICS_INIT] " label " t=%llums\n", (unsigned long long)_t); fflush(stdout); \
+		printf("[LOGISTICS_INIT] " label " t=%llums\n", static_cast<unsigned long long>(_t)); fflush(stdout); \
 	} } while(0)
 
 	LOG_INIT_TIME("begin");
@@ -144,12 +144,12 @@ void LogisticsData::initComponents()
 
 
 	File dataFile;
-	dataFile.open( (char*)data.get(), componentFile.getLength() );
+	dataFile.open( reinterpret_cast<char*>(data.get()), componentFile.getLength() );
 
 	componentFile.close();
 	
 	BYTE line[1024];
-	char* pLine = (char*)line;
+	char* pLine = reinterpret_cast<char*>(line);
 
 	// skip the first line
 	dataFile.readLine(line, 1024);
@@ -172,7 +172,7 @@ void LogisticsData::initComponents()
 
 		if ( -1 == tmp.init( pLine ) ) // failure
 		{
-			Ammo[counter] = (long)tmp.getRecycleTime();
+			Ammo[counter] = static_cast<long>(tmp.getRecycleTime());
 			components.pop_back();
 		}
 
@@ -295,7 +295,7 @@ void LogisticsData::initPilots()
 		LogisticsPilot& pilot = pilots.back();
 		pilot.id = id;
 
-		if ( -1 == pilot.init( (char*)pilotFileName ) )
+		if ( -1 == pilot.init( reinterpret_cast<char*>(pilotFileName) ) )
 			pilots.pop_back();
 
 		id++;
@@ -308,7 +308,7 @@ void LogisticsData::initPilots()
 	// the campaign/compat roster won over base stock.
 	if ( mc2::gate::get<"MC2_LOG_PILOTS">() )
 	{
-		mc2::fmt::print_out("[PILOTS] loaded={:d} roster={}\n", mc2::fmt::as_i32((int)std::ssize(pilots)), mc2::fmt::safe(pilotPath));
+		mc2::fmt::print_out("[PILOTS] loaded={:d} roster={}\n", mc2::fmt::as_i32(static_cast<int>(std::ssize(pilots))), mc2::fmt::safe(pilotPath));
 		fflush(stdout);
 	}
 }
@@ -340,7 +340,7 @@ void LogisticsData::initVariants()
 		unsigned long fsz = (csvOpenResult == NO_ERR) ? variantFile.fileSize() : 0;
 		LOG_LOGISTICS("initVariants: buildings.csv open=%s size=%lu tier=%s",
 			(csvOpenResult == NO_ERR) ? "OK" : "FAIL",
-			(unsigned long)fsz,
+			static_cast<unsigned long>(fsz),
 			modOwner ? modOwner : "base-or-fastfile");
 	}
 
@@ -352,7 +352,7 @@ void LogisticsData::initVariants()
 	if ( NO_ERR !=pakFile.open( pakPath ) )
 	{
 		char errorStr[256];
-		mc2::fmt::to_buf(errorStr, "couldn't open file {}", mc2::fmt::safe((const char*)pakPath));
+		mc2::fmt::to_buf(errorStr, "couldn't open file {}", mc2::fmt::safe(static_cast<const char*>(pakPath)));
 		Assert( 0, 0, errorStr );
 	}
 

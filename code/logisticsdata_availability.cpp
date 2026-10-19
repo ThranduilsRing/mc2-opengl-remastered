@@ -57,7 +57,7 @@ long LogisticsData::updateAvailability()
 	{
 		LOG_LOGISTICS_UA("updateAvailability: purchase file OPEN FAILED");
 		const std::string error = std::format( "Couldn't open {}", purchaseFileName );
-		PAUSE(((char*)error.c_str() ));
+		PAUSE((const_cast<char*>(error.c_str()) ));
 		return NO_PURCHASE_FILE;
 	}
 	LOG_LOGISTICS_UA("updateAvailability: purchase file open OK");
@@ -322,7 +322,7 @@ void LogisticsData::dumpFrontEndState( const char* screenName )
 	// Inventory (owned mechs).
 	{
 		const MechList inv = getInventory();
-		j += ",\"inventoryCount\":" + std::to_string( (int)std::ssize(inv) );
+		j += ",\"inventoryCount\":" + std::to_string( static_cast<int>(std::ssize(inv)) );
 		j += ",\"inventory\":[";
 		int i = 0;
 		for ( auto it = inv.begin(); it != inv.end() && i < 64; ++it, ++i ) {
@@ -335,7 +335,7 @@ void LogisticsData::dumpFrontEndState( const char* screenName )
 	// Force group (the deployed loadout / launch roster).
 	{
 		const MechList fg = getForceGroup();
-		j += ",\"forceGroupCount\":" + std::to_string( (int)std::ssize(fg) );
+		j += ",\"forceGroupCount\":" + std::to_string( static_cast<int>(std::ssize(fg)) );
 		j += ",\"forceGroup\":[";
 		int i = 0;
 		for ( auto it = fg.begin(); it != fg.end() && i < 24; ++it, ++i ) {
@@ -353,7 +353,7 @@ void LogisticsData::dumpFrontEndState( const char* screenName )
 		int avail = 0;
 		for ( long i = 0; i < pcount; ++i )
 			if ( pp[i] && pp[i]->isAvailable() ) ++avail;
-		j += ",\"pilotCount\":" + std::to_string( (int)pcount );
+		j += ",\"pilotCount\":" + std::to_string( static_cast<int>(pcount) );
 		j += ",\"pilotsAvailable\":" + std::to_string( avail );
 		j += ",\"pilots\":[";
 		long lim = pcount < 48 ? pcount : 48;
@@ -370,7 +370,7 @@ void LogisticsData::dumpFrontEndState( const char* screenName )
 		const char* mn[256];
 		long mc = 256;
 		getCurrentMissions( mn, mc );
-		j += ",\"missionListCount\":" + std::to_string( (int)mc );
+		j += ",\"missionListCount\":" + std::to_string( static_cast<int>(mc) );
 		j += ",\"missionList\":[";
 		long lim = mc < 48 ? mc : 48;
 		for ( long i = 0; i < lim; ++i ) {

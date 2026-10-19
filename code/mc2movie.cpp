@@ -143,7 +143,7 @@ void MC2Movie::init (const char *MC2Name, RECT mRect, bool useWaveFile)
         if (m_session) {
             stillPlaying = true;
 			objectiveObservationSink("movie", "decoder", "accepted", resolvedPath);
-            mc2::fmt::print_out("[VIDEO] init: opened {} ({:d}x{:d}, fps={:.2f}, audio={:d})\n", mc2::fmt::safe(resolvedPath), mc2::fmt::as_i32(r.srcW), mc2::fmt::as_i32(r.srcH), r.fps, mc2::fmt::as_i32((int)r.hasAudio));
+            mc2::fmt::print_out("[VIDEO] init: opened {} ({:d}x{:d}, fps={:.2f}, audio={:d})\n", mc2::fmt::safe(resolvedPath), mc2::fmt::as_i32(r.srcW), mc2::fmt::as_i32(r.srcH), r.fps, mc2::fmt::as_i32(static_cast<int>(r.hasAudio)));
             return;
         }
 

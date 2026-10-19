@@ -147,7 +147,7 @@
    "LG06": 472,
    "LG07": 2,
    "LG08": 17,
-   "LG09": 1641,
+   "LG09": 1358,
    "LG10": 20,
    "LG11": 103,
    "LG12a": 100,
@@ -157,7 +157,7 @@
    "LG15": 0,
    "LG16": 6,
    "LG17": 48,
-   "LG18": 4,
+   "LG18": 5,
    "LG19": 0,
    "LG20": 1
   },
@@ -1880,7 +1880,6 @@
   },
   "code/hudimguipanel.cpp": {
    "LG06": 1,
-   "LG09": 13,
    "LG10": 1,
    "LG12a": 2
   },
@@ -1903,7 +1902,6 @@
    "LG03": 3,
    "LG05": 1,
    "LG06": 2,
-   "LG09": 78,
    "LG10": 1,
    "LG12b": 2,
    "LG13": 1
@@ -1917,7 +1915,6 @@
   },
   "code/job_system.cpp": {
    "LG03": 4,
-   "LG09": 1,
    "LG10": 1
   },
   "code/jobs_fatal.cpp": {
@@ -1932,28 +1929,24 @@
    "LG13": 4
   },
   "code/light.cpp": {
-   "LG03": 2,
-   "LG09": 3
+   "LG03": 2
   },
   "code/loadscreen.cpp": {
-   "LG03": 12,
-   "LG09": 24
+   "LG03": 12
   },
   "code/locomotion_facet.h": {
    "LG06": 3
   },
   "code/logistics.cpp": {
    "LG03": 4,
-   "LG06": 2,
-   "LG09": 1
+   "LG06": 2
   },
   "code/logistics.h": {
    "LG06": 3
   },
   "code/logistics_begin.cpp": {
    "LG03": 1,
-   "LG06": 2,
-   "LG09": 13
+   "LG06": 2
   },
   "code/logistics_csv.h": {
    "LG09": 2
@@ -1980,14 +1973,12 @@
   },
   "code/logisticsdata_availability.cpp": {
    "LG06": 5,
-   "LG09": 5,
    "LG11": 12,
    "LG12a": 2
   },
   "code/logisticsdata_init.cpp": {
    "LG03": 6,
    "LG06": 4,
-   "LG09": 8,
    "LG12a": 4
   },
   "code/logisticsdata_inventory.cpp": {
@@ -1998,20 +1989,17 @@
   "code/logisticsdata_modify.cpp": {
    "LG03": 6,
    "LG05": 5,
-   "LG06": 6,
-   "LG09": 7
+   "LG06": 6
   },
   "code/logisticsdata_save.cpp": {
    "LG03": 6,
    "LG05": 15,
    "LG06": 4,
-   "LG09": 11,
    "LG11": 3
   },
   "code/logisticsdialog.cpp": {
    "LG03": 7,
    "LG06": 7,
-   "LG09": 44,
    "LG11": 13,
    "LG12b": 15,
    "LG17": 1
@@ -2025,13 +2013,11 @@
   },
   "code/logisticsmechdisplay.cpp": {
    "LG06": 1,
-   "LG09": 2,
    "LG12b": 1
   },
   "code/logisticsmechicon.cpp": {
    "LG03": 1,
-   "LG05": 1,
-   "LG09": 5
+   "LG05": 1
   },
   "code/logisticsmissioninfo.cpp": {
    "LG03": 1,
@@ -2052,35 +2038,30 @@
   },
   "code/logisticspilot.cpp": {
    "LG03": 4,
-   "LG05": 1,
-   "LG09": 3
+   "LG05": 1
   },
   "code/logisticspilot.h": {
    "LG14": 1
   },
   "code/logisticspilotlistbox.cpp": {
    "LG03": 1,
-   "LG05": 1,
-   "LG09": 5
+   "LG05": 1
   },
   "code/logisticsvariant.cpp": {
    "LG03": 2,
-   "LG05": 4,
-   "LG09": 2
+   "LG05": 4
   },
   "code/logisticsvariant.h": {
    "LG09": 2,
    "LG14": 1
   },
   "code/logisticsvariant_stats.cpp": {
-   "LG05": 4,
-   "LG09": 3
+   "LG05": 4
   },
   "code/mainmenu.cpp": {
    "LG03": 7,
    "LG05": 1,
    "LG06": 1,
-   "LG09": 4,
    "LG11": 1,
    "LG12a": 1,
    "LG12b": 8
@@ -2090,7 +2071,6 @@
   },
   "code/mc2movie.cpp": {
    "LG06": 2,
-   "LG09": 1,
    "LG11": 1
   },
   "code/mc2movie.h": {
@@ -2099,15 +2079,12 @@
   "code/mc2video.cpp": {
    "LG05": 2,
    "LG06": 5,
-   "LG09": 26,
    "LG12a": 2,
-   "LG12b": 2
+   "LG12b": 2,
+   "LG18": 1
   },
   "code/mc2video.h": {
    "LG06": 2
-  },
-  "code/mech.cpp": {
-   "LG09": 9
   },
   "code/mech.h": {
    "LG02": 1,
@@ -2119,11 +2096,7 @@
    "LG06": 4
   },
   "code/mech_damage.cpp": {
-   "LG04": 1,
-   "LG09": 6
-  },
-  "code/mech_init.cpp": {
-   "LG09": 9
+   "LG04": 1
   },
   "code/mech_loadout.cpp": {
    "LG05": 5,
@@ -4626,7 +4599,7 @@
    "LG20": 3
   }
  },
- "head": "e5d4d3127",
+ "head": "9d88a13bf",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

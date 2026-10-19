@@ -325,20 +325,20 @@ static void computeLetterboxQuad(int srcW, int srcH, double sar,
                                  float& x0, float& y0, float& x1, float& y1)
 {
     if (rectW <= 0 || rectH <= 0 || srcW <= 0 || srcH <= 0) {
-        x0 = (float)rectX; y0 = (float)rectY;
-        x1 = (float)(rectX + rectW); y1 = (float)(rectY + rectH);
+        x0 = static_cast<float>(rectX); y0 = static_cast<float>(rectY);
+        x1 = static_cast<float>((rectX + rectW)); y1 = static_cast<float>((rectY + rectH));
         return;
     }
-    double srcAspectW = (double)srcW * sar;
-    double scale = std::min((double)rectW / srcAspectW, (double)rectH / srcH);
+    double srcAspectW = static_cast<double>(srcW) * sar;
+    double scale = std::min(static_cast<double>(rectW) / srcAspectW, static_cast<double>(rectH) / srcH);
     double quadW = srcAspectW * scale;
     double quadH = srcH * scale;
     double cx = rectX + rectW * 0.5;
     double cy = rectY + rectH * 0.5;
-    x0 = (float)(cx - quadW * 0.5);
-    y0 = (float)(cy - quadH * 0.5);
-    x1 = (float)(cx + quadW * 0.5);
-    y1 = (float)(cy + quadH * 0.5);
+    x0 = static_cast<float>((cx - quadW * 0.5));
+    y0 = static_cast<float>((cy - quadH * 0.5));
+    x1 = static_cast<float>((cx + quadW * 0.5));
+    y1 = static_cast<float>((cy + quadH * 0.5));
 }
 
 VideoSession* video_open(const VideoOpenParams& p, VideoOpenResult* out)
@@ -394,7 +394,7 @@ VideoSession* video_open(const VideoOpenParams& p, VideoOpenResult* out)
 
     s->texHandle = gos_NewEmptyTexture(gos_Texture_Alpha,
                                         "mc2video",
-                                        RECT_TEX((DWORD)s->srcW, (DWORD)s->srcH),
+                                        RECT_TEX(static_cast<DWORD>(s->srcW), static_cast<DWORD>(s->srcH)),
                                         gosHint_DisableMipmap);
     if (s->texHandle == 0) {
         VIDEO_LOG("gos_NewEmptyTexture failed %dx%d", s->srcW, s->srcH);
@@ -447,9 +447,9 @@ VideoSession* video_open(const VideoOpenParams& p, VideoOpenResult* out)
     }
 
     VIDEO_LOG("init: opened '%s' (%dx%d, sar=%.3f, fps=%.2f, audio=%d)",
-              p.resolvedPath, s->srcW, s->srcH, s->sar, s->fps, (int)(s->aStream >= 0));
+              p.resolvedPath, s->srcW, s->srcH, s->sar, s->fps, static_cast<int>((s->aStream >= 0)));
 
-    s->clockStart   = (double)av_gettime() / 1000000.0;
+    s->clockStart   = static_cast<double>(av_gettime()) / 1000000.0;
     s->presentedPTS = -1.0;
 
     return sessionOwner.release();
@@ -482,7 +482,7 @@ void video_close(VideoSession* s)
 //-----------------------------------------------------------------------------
 static double nowSeconds()
 {
-    return (double)av_gettime() / 1000000.0;
+    return static_cast<double>(av_gettime()) / 1000000.0;
 }
 
 // Path B: consumed-frame counter is a monotonic sample-count in
@@ -492,7 +492,7 @@ static double audioMasterClock(const VideoSession* s)
     if (!soundSystem) return 0.0;
     int frames = reinterpret_cast<SoundSystem*>(soundSystem)->videoPCMSamplesConsumed();
     int rate   = s->aOutRate > 0 ? s->aOutRate : 44100;
-    return (double)frames / (double)rate;
+    return static_cast<double>(frames) / static_cast<double>(rate);
 }
 
 // Anchor the wall-clock baseline at the current audio PTS so
@@ -568,15 +568,15 @@ static int decodeNextVideoFrame(VideoSession* s)
             AVFrame* af = av_frame_alloc();
             int recvRet;
             while ((recvRet = avcodec_receive_frame(s->aCodec, af)) == 0) {
-                int outSamplesMax = (int)av_rescale_rnd(
+                int outSamplesMax = static_cast<int>(av_rescale_rnd(
                     swr_get_delay(s->swr, s->aCodec->sample_rate) + af->nb_samples,
-                    s->aOutRate, s->aCodec->sample_rate, AV_ROUND_UP);
+                    s->aOutRate, s->aCodec->sample_rate, AV_ROUND_UP));
                 int outBytes = av_samples_get_buffer_size(
                     nullptr, s->aOutChannels, outSamplesMax, AV_SAMPLE_FMT_S16, 1);
-                uint8_t* outBuf = (uint8_t*)av_malloc(outBytes);
+                uint8_t* outBuf = static_cast<uint8_t*>(av_malloc(outBytes));
                 uint8_t* outPtr = outBuf;
                 int outSamples = swr_convert(s->swr, &outPtr, outSamplesMax,
-                                             (const uint8_t**)af->data, af->nb_samples);
+                                             const_cast<const uint8_t**>(af->data), af->nb_samples);
                 if (outSamples < 0) {
                     // swr_convert failure — stall the audio clock.
                     av_free(outBuf);
@@ -585,7 +585,7 @@ static int decodeNextVideoFrame(VideoSession* s)
                 }
                 if (outSamples > 0 && soundSystem) {
                     reinterpret_cast<SoundSystem*>(soundSystem)->pushVideoPCMSamples(
-                        (const int16_t*)outBuf, outSamples);
+                        reinterpret_cast<const int16_t*>(outBuf), outSamples);
                 }
                 av_free(outBuf);
             }
@@ -615,8 +615,8 @@ static void uploadFrameToTexture(VideoSession* s)
 
     // sws_scale directly into the locked buffer.
     // For a DWORD* BGRA buffer, bytes per row = Width * 4.
-    uint8_t* dst[4]     = { (uint8_t*)td.pTexture, nullptr, nullptr, nullptr };
-    int      dstLine[4] = { (int)(td.Width * 4), 0, 0, 0 };
+    uint8_t* dst[4]     = { reinterpret_cast<uint8_t*>(td.pTexture), nullptr, nullptr, nullptr };
+    int      dstLine[4] = { static_cast<int>((td.Width * 4)), 0, 0, 0 };
     sws_scale(s->sws,
               s->vFrame->data, s->vFrame->linesize,
               0, s->srcH,
@@ -677,7 +677,7 @@ unsigned int video_get_texture(VideoSession* s)
 {
     if (!s || !s->frameReady || s->texHandle == 0)
         return 0;
-    return (unsigned int)s->texHandle;
+    return static_cast<unsigned int>(s->texHandle);
 }
 
 bool video_get_layout(VideoSession* s,
@@ -716,8 +716,8 @@ void video_render(VideoSession* s)
     // video quad does not fully cover MC2Rect.
     const bool needsLetterbox = (s->quadX0 > (float)s->rectX)
                              || (s->quadY0 > (float)s->rectY)
-                             || (s->quadX1 < (float)(s->rectX + s->rectW))
-                             || (s->quadY1 < (float)(s->rectY + s->rectH));
+                             || (s->quadX1 < static_cast<float>((s->rectX + s->rectW)))
+                             || (s->quadY1 < static_cast<float>((s->rectY + s->rectH)));
     if (needsLetterbox) {
         gos_SetRenderState( gos_State_Texture, 0 );   // untextured
         gos_VERTEX bg[4];
@@ -727,10 +727,10 @@ void video_render(VideoSession* s)
             v.frgb = 0;
             v.u = 0.0f; v.v = 0.0f;
         };
-        fillBg(bg[0], (float)s->rectX,                      (float)s->rectY);
-        fillBg(bg[1], (float)(s->rectX + s->rectW),         (float)s->rectY);
-        fillBg(bg[2], (float)(s->rectX + s->rectW),         (float)(s->rectY + s->rectH));
-        fillBg(bg[3], (float)s->rectX,                      (float)(s->rectY + s->rectH));
+        fillBg(bg[0], static_cast<float>(s->rectX),                      static_cast<float>(s->rectY));
+        fillBg(bg[1], static_cast<float>((s->rectX + s->rectW)),         static_cast<float>(s->rectY));
+        fillBg(bg[2], static_cast<float>((s->rectX + s->rectW)),         static_cast<float>((s->rectY + s->rectH)));
+        fillBg(bg[3], static_cast<float>(s->rectX),                      static_cast<float>((s->rectY + s->rectH)));
         gos_DrawQuads(bg, 4);
     }
 
