@@ -8,10 +8,12 @@ std::vector<MineVert> g_mineVerts;
 int g_mineVertCount = 0;
 bool g_mineVBODirty = true;
 bool g_mineTextureArrayReady = false;
+int fixtureRow = -1, fixtureCol = -1;
+unsigned long fixturePrevious[2]{};
 }
 namespace gos_terrain_indirect {
 void MarkMineDirty() { g_mineVBODirty = true; }
-void ResetMineStaticVBO() { g_mineVerts.clear(); g_mineVertCount = 0; g_mineVBODirty = true; }
+void ResetMineStaticVBO() { g_mineVerts.clear(); g_mineVertCount = 0; g_mineVBODirty = true; fixtureRow = fixtureCol = -1; }
 void ResetMineTextureArray() { g_mineTextureArrayReady = false; }
 void BuildMineTextureArray() {
     g_mineTextureArrayReady = TerrainQuad::mineTextureHandle != 0xffffffffu &&
@@ -105,8 +107,14 @@ bool DrawMineStatic() {
     if (mc2::gate::is<"MC2_FX_FORCE_SPAWN", "9">() && eye && land && GameMap) {
         int row = 0, col = 0;
         land->worldToCell(eye->getPosition(), row, col);
-        if (GameMap->inBounds(row, col + 1) &&
-            (GameMap->getMine(row, col) != 1 || GameMap->getMine(row, col + 1) != 2)) {
+        if ((row != fixtureRow || col != fixtureCol) && GameMap->inBounds(row, col + 1)) {
+            if (fixtureRow >= 0 && GameMap->inBounds(fixtureRow, fixtureCol + 1)) {
+                GameMap->setMine(fixtureRow, fixtureCol, fixturePrevious[0]);
+                GameMap->setMine(fixtureRow, fixtureCol + 1, fixturePrevious[1]);
+            }
+            fixtureRow = row; fixtureCol = col;
+            fixturePrevious[0] = GameMap->getMine(row, col);
+            fixturePrevious[1] = GameMap->getMine(row, col + 1);
             GameMap->setMine(row, col, 1);
             GameMap->setMine(row, col + 1, 2);
         }

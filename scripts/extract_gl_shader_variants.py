@@ -951,11 +951,15 @@ def collect_gpu_cull(world: World, out: list):
 
 def collect_terrain_lighting(world: World, out: list):
     s = world.src(GAMEOS / "gos_terrain_lighting.cpp")
+    m = re.search(r'tl_build_terrain_lighting_program\(\s*"([^"]+)",\s*"([^"]+)"', s.t)
+    if m is None:
+        if 'tl_build_terrain_lighting_program' in s.t:
+            raise ExtractError("terrain_lighting loader call shape changed; update extractor")
+        return  # Native CPU producer has no GL compiler or runtime variant.
     if 'kBeginMarker' not in s.raw:
         raise ExtractError("terrain_lighting splice shape changed; update extractor")
     b = re.search(r'kBeginMarker\s*=\s*"([^"]*)"', s.raw).group(1)
     e = re.search(r'kEndMarker\s*=\s*"([^"]*)"', s.raw).group(1)
-    m = re.search(r'tl_build_terrain_lighting_program\(\s*"([^"]+)",\s*"([^"]+)"', s.t)
     out.append({
         "id": "terrain_lighting", "source": f"{s.rel}:{line_of(s.t, m.start())}",
         "stages": {"comp": m.group(1)}, "assemble": "raw", "optional_groups_on": [],

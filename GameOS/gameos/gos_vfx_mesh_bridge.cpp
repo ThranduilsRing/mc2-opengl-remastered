@@ -72,7 +72,7 @@ void flush(std::span<const GosVfxMeshUpload> uploads, std::span<const GosVfxMesh
 }
 
 extern "C" void gos_vfx_mesh_fixture(const float origin[3]) {
-    constexpr float positions[] = {-20, 0, 0, 20, 0, 0, 0, 0, 35};
+    constexpr float positions[] = {-20, 0, 0, 20, 0, 0, 0, 35, 0};
     constexpr float uvs[] = {0, 0, 1, 0, 0.5f, 1};
     constexpr uint16_t indices[] = {0, 1, 2};
     constexpr uint64_t id = UINT64_MAX;

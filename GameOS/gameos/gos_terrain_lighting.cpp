@@ -1,23 +1,4 @@
-// gos_terrain_lighting.cpp — Phase 1 Stage 3: terrain lighting GPU compute — GPU authoritative.
-//
-// Design doc: docs/superpowers/specs/2026-05-10-quadsetuptextures-gpu-compute-port-design.md (ac7c492)
-// Plan:       docs/superpowers/plans/2026-05-10-quadsetuptextures-gpu-compute-port.md (2a5ba54)
-//
-// Stage 3: GPU path authoritative.
-//   CopyResultsToVertexPool: 3-slot T1/T2/T3 non-blocking tryConsume; copies
-//     GPU lightRGB/fogRGB into vertices[i] before setupTextures loop.
-//   CPU lighting block in quad.cpp:1266-1891 gated off via s_lightingGpuAuth.
-//   CostSplitLightingScope bracket retained as retirement telemetry (~0 us post-flip).
-//   Parity mode: CopyResultsToVertexPool returns early; CPU body still authoritative.
-//   MC2_TERRAIN_LIGHTING_GPU=0 to force legacy CPU path (default-on as of
-//   Stage 5 flip 2026-05-11; any other value, including unset, opts in).
-//
-// 3-slot ring pattern mirrors gpu_cull_readback.cpp (RING_FRAMES=3, dual-buffer,
-// glCopyBufferSubData VRAM→BAR, timeout=0 always on hot path).
-//
-// tl_ prefix (terrain_lighting) on private compile helpers to avoid ODR conflicts
-// with identical statics in gpu_cull_compute.cpp (design doc Q1).
-
+// CPU terrain-lighting inputs for NativeProducers; shared light-pool uploads remain for their retained GL bindings.
 #include "gos_terrain_lighting.h"
 #include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
 #include "utils/mc2log.h"       // LOGGING-FACADE-P2: MC2_EVENT for the structured [TAG vN] lines
@@ -68,36 +49,11 @@ static uint64_t s_hazeParitySummaryFrames = 0;
 // ---------------------------------------------------------------------------
 namespace gos_terrain_lighting {
 
-// Phase 1 Stage 5 — DEFAULT-ON flip (2026-05-11).
-//
-// Bisection guide for future lighting issues:
-//   - Set MC2_TERRAIN_LIGHTING_GPU=0 in env to force the legacy CPU lighting
-//     path (quad.cpp:1267-1890 runs; GPU pipeline dormant).
-//   - Set MC2_TERRAIN_LIGHTING_PARITY=1 to force dual-run mode: CPU body
-//     authoritative + GPU compute compared per-vertex; mismatches print to
-//     stderr as [TERRAIN_LIGHTING_PARITY v1] event=mismatch ...
-//   - Killswitch-off (env="0") was bit-identical to pre-Phase-1 at flip time;
-//     any visual regression that disappears with env="0" is THIS slice.
-//   - Killswitch-off that still shows the regression is unrelated.
-//
-// Stage 4 soak was skipped at user's direction (Tracy delta empirically
-// validated: 7.24 ms → 1.87 ms mean on quadSetupTextures at mc2_10 wolfman,
-// 4.2× σ compression, 0 parity mismatches across 64M vertex comparisons,
-// tier1 5/5 PASS both env states — strong enough perf+parity evidence to
-// flip without the 7-day burn-in window).
-//
-// Phase 1 commit chain for bisection: 4fa7a9a (recon) → 594add9 (Stage 1
-// scaffold) → eda2431 (Stage 2 parity-clean math) → ff8de07 (Stage 3
-// consumer flip) → THIS COMMIT (Stage 5 default-on).
 bool IsEnabled() {
     static const bool s_enabled = mc2::gate::get<"MC2_TERRAIN_LIGHTING_GPU">();
     return s_enabled;
 }
 
-bool IsParityCheckEnabled() {
-    static const bool s_parity = mc2::gate::get<"MC2_TERRAIN_LIGHTING_PARITY">();
-    return s_parity;
-}
 
 } // namespace gos_terrain_lighting
 
@@ -106,55 +62,7 @@ namespace {
 // ---------------------------------------------------------------------------
 // Private file-scope constants
 // ---------------------------------------------------------------------------
-static constexpr uint32_t RING_FRAMES = 3u;  // matches gpu_cull_readback.cpp:40
-
-// SSBO binding slots (must match gos_terrain_lighting.comp)
-static constexpr uint32_t TL_VERTEX_INPUT_BINDING = 0u;
-static constexpr uint32_t TL_LIGHT_INPUT_BINDING  = 1u;
-static constexpr uint32_t TL_OUTPUT_BINDING        = 2u;
-
-// Uniform slot indices — used to index s_uniformLocs[].
-// Resolved at shader-compile time via glGetUniformLocation (NOT layout qualifiers —
-// explicit layout(location=N) on compute uniforms is unreliable on AMD RX 7900 XTX;
-// all other compute shaders in this codebase use glGetUniformLocation exclusively).
-static constexpr int TL_UNI_NUM_VERTICES    = 0;
-static constexpr int TL_UNI_NUM_LIGHTS      = 1;
-static constexpr int TL_UNI_SUN_LIGHT_DIR   = 2;
-static constexpr int TL_UNI_LIGHT_RED       = 3;
-static constexpr int TL_UNI_LIGHT_GREEN     = 4;
-static constexpr int TL_UNI_LIGHT_BLUE      = 5;
-static constexpr int TL_UNI_AMBIENT_RED     = 6;
-static constexpr int TL_UNI_AMBIENT_GREEN   = 7;
-static constexpr int TL_UNI_AMBIENT_BLUE    = 8;
-static constexpr int TL_UNI_BASE_COLOR_R    = 9;
-static constexpr int TL_UNI_BASE_COLOR_G    = 10;
-static constexpr int TL_UNI_BASE_COLOR_B    = 11;
-static constexpr int TL_UNI_RAIN_LEVEL      = 12;
-static constexpr int TL_UNI_LIGHTNING_LEVEL = 13;
-static constexpr int TL_UNI_FOG_START       = 14;
-static constexpr int TL_UNI_FOG_FULL        = 15;
-static constexpr int TL_UNI_USE_FOG         = 16;
-static constexpr int TL_UNI_RENDERER_SW     = 17;
-// Step 7 (VPL retirement): inline-worldPos hazeFactor uniforms.
-static constexpr int TL_UNI_PLAY_AREA       = 18;
-static constexpr int TL_UNI_CAM_WORLD_POS   = 19;
-static constexpr int TL_UNI_MIN_HAZE        = 20;
-static constexpr int TL_UNI_MAX_CLIP        = 21;
-static constexpr int TL_UNI_DIST_FACTOR     = 22;
-// Visible-window dispatch: offset (packMinVN) added to gl_GlobalInvocationID.x in shader.
-// Limits dispatch groups to the ~200x200 camera window instead of the full terrain.
-static constexpr int TL_UNI_VERTEX_OFFSET   = 23;
-static constexpr int TL_UNI_COUNT           = 24;
-
-// Runtime-resolved uniform locations (populated once after shader compile).
-static GLint s_uniformLocs[TL_UNI_COUNT];
-
-// ---------------------------------------------------------------------------
-// Private GL state
-// ---------------------------------------------------------------------------
 static bool     s_initialized  = false;
-static bool     s_shaderBad    = false;   // sticky disable on compile failure
-static GLuint   s_program      = 0;
 
 static uint32_t s_numVertices  = 0;
 // STEP 3.4P: this frame's producer inputs for the native Vulkan lighting compute (see GetVkProducerSnapshot).
@@ -162,38 +70,12 @@ static gos_terrain_lighting::VkProducerSnapshot s_vkSnap{};
 static bool s_vkSnapValid = false;
 static uint32_t s_maxLights    = 0;
 
-// GPU-side SSBOs (compute reads/writes; no persistent map needed)
-// TERRAIN-LIGHTING-SSBO-OWNER-1: the 3 non-ring compute SSBOs are narrowed behind
-// GpuBufferOwner identity records (logical id + lifetime + debug name + GLuint
-// value). GL gen/bind/bufferStorage/delete happen at the same sites with the same
-// args/order/flags/binding-slots; the raw handle is reached only via owner.backendHandle.
-// Lifetime Mission: created in mission_init, destroyed in mission_shutdown, rebuilt
-// per mission load. The s_stagingRing[RING_FRAMES] below is Tier-2 (persistent-mapped
-// BAR ring) and stays a raw GLuint array — intentionally NOT owned.
-static RenderCore::GpuBufferOwner s_vertexInputSsbo{   // GpuTerrainVertexInput per vertex (binding 0)
-    RenderCore::RenderResourceId::TerrainLightVertexInputSsbo,
-    RenderCore::RenderResourceLifetime::Mission,
-    "TerrainLightVertexInputSsbo",
-    0u};
+// Shared GL light-pool binding; native consumers stage the CPU array directly.
 static RenderCore::GpuBufferOwner s_lightInputSsbo{    // GpuTerrainLight per light slot (binding 1)
     RenderCore::RenderResourceId::TerrainLightInputSsbo,
     RenderCore::RenderResourceLifetime::Mission,
     "TerrainLightInputSsbo",
     0u};
-static RenderCore::GpuBufferOwner s_computeOutputSsbo{ // GpuTerrainLightingOutput per vertex (binding 2)
-    RenderCore::RenderResourceId::TerrainLightComputeOutputSsbo,
-    RenderCore::RenderResourceLifetime::Mission,
-    "TerrainLightComputeOutputSsbo",
-    0u};
-
-// 3-slot staging ring (CPU-readable persistent map) matching gpu_cull_readback pattern
-static GLuint   s_stagingRing[RING_FRAMES]   = {};
-static void*    s_stagingMapped[RING_FRAMES] = {};
-static GLsync   s_stagingFence[RING_FRAMES]  = {};
-static uint32_t s_currentSlot               = 0;
-
-// Output slot bytes (numVertices * sizeof(GpuTerrainLightingOutput))
-static size_t   s_outputSlotBytes = 0;
 
 static uint64_t s_frameIndex = 0;
 
@@ -269,19 +151,6 @@ static uint32_t LightGridDimEnv() {
     static const uint32_t s_dim = static_cast<uint32_t>(mc2::gate::get<"MC2_LIGHT_GRID_DIM">());
     return s_dim;
 }
-
-// Stage 3: tryConsume fallback telemetry counters (mirrors readback_fallback_n2 /
-// readback_fallback_conservative pattern from gpu_cull_readback.cpp)
-static uint64_t s_lightingFallbackN1          = 0;  // consumed N-1 (production path)
-static uint64_t s_lightingFallbackN2          = 0;  // used N-2 fallback
-static uint64_t s_lightingFallbackConservative = 0; // skipped update (both not ready)
-static uint64_t s_fallbackSummaryFrames        = 0; // frames since last summary
-
-// Parity state
-static int       s_parityMismatchesThisFrame = 0;
-static long long s_paritySummaryFrames       = 0;
-static long long s_paritySummaryVerts        = 0;
-static long long s_paritySummaryMismatches   = 0;
 
 // Dense vertex pack buffer (persistent across frames to avoid per-frame alloc)
 static std::vector<gos_terrain_lighting::GpuTerrainVertexInput> s_packBuf;
@@ -440,155 +309,12 @@ static void BuildAndUploadLightGrid(uint32_t numLights) {
 }
 
 
-// DRAM-side shadow copy of the last-consumed staging ring slot.
-// BAR memory (s_stagingMapped) is WC (write-combining) — reads from it bypass
-// CPU caches and go over PCIe, which is ~100-1000× slower than DRAM reads for
-// random-access patterns. Reading 14K entries indexed by vertexNum from BAR
-// causes severe perf regression. Fix: memcpy the entire staging slot from BAR
-// to DRAM once per frame (sequential, WC-read-friendly), then index from DRAM.
-static std::vector<gos_terrain_lighting::GpuTerrainLightingOutput> s_dramShadow;
-
-// ---------------------------------------------------------------------------
-// Private shader-compile helpers (tl_ prefix — mirrors gpu_cull_compute.cpp:145-231
-// privately; design doc Q1: copy, don't factor until a third module appears)
-// ---------------------------------------------------------------------------
-static char* tl_load_text_file(const char* fname) {
-    FILE* f = fopen(fname, "rb");
-    if (!f) return nullptr;
-    fseek(f, 0, SEEK_END);
-    long sz = ftell(f);
-    fseek(f, 0, SEEK_SET);
-    if (sz <= 0) { fclose(f); return nullptr; }
-    char* buf = new char[sz + 1];
-    fread(buf, 1, sz, f);
-    buf[sz] = '\0';
-    fclose(f);
-    return buf;
-}
-
-static GLuint tl_compile_compute_shader(const char** strings, int count) {
-    GLuint sh = glCreateShader(GL_COMPUTE_SHADER);
-    if (!sh) return 0;
-
-    glShaderSource(sh, count, strings, nullptr);
-    glCompileShader(sh);
-
-    GLint status = 0;
-    glGetShaderiv(sh, GL_COMPILE_STATUS, &status);
-    if (!status) {
-        GLint logLen = 0;
-        glGetShaderiv(sh, GL_INFO_LOG_LENGTH, &logLen);
-        if (logLen > 0) {
-            char* log = new char[logLen];
-            glGetShaderInfoLog(sh, logLen, nullptr, log);
-            MC2_DIAGF("[TERRAIN_LIGHTING_GPU v1] compute shader compile error:\n%s\n", log);
-            fflush(stdout);
-            delete[] log;
-        }
-        glDeleteShader(sh);
-        return 0;
-    }
-    return sh;
-}
-
-static GLuint tl_link_compute_program(GLuint shader) {
-    GLuint prog = glCreateProgram();
-    if (!prog) return 0;
-
-    glAttachShader(prog, shader);
-    glLinkProgram(prog);
-
-    GLint status = 0;
-    glGetProgramiv(prog, GL_LINK_STATUS, &status);
-    if (!status) {
-        GLint logLen = 0;
-        glGetProgramiv(prog, GL_INFO_LOG_LENGTH, &logLen);
-        if (logLen > 0) {
-            char* log = new char[logLen];
-            glGetProgramInfoLog(prog, logLen, nullptr, log);
-            MC2_DIAGF("[TERRAIN_LIGHTING_GPU v1] compute program link error:\n%s\n", log);
-            fflush(stdout);
-            delete[] log;
-        }
-        glDeleteProgram(prog);
-        return 0;
-    }
-    return prog;
-}
-
-// Build compute program from file with shared-header inlining.
-// "#version 430\n" is always the first string (per CLAUDE.md Critical Rules).
-static GLuint tl_build_terrain_lighting_program(const char* compFname,
-                                                 const char* sharedFname,
-                                                 const char* debugName)
-{
-    char* fileSrc    = tl_load_text_file(compFname);
-    char* sharedSrc  = tl_load_text_file(sharedFname);
-
-    if (!fileSrc) {
-        MC2_DIAGF("[TERRAIN_LIGHTING_GPU v1] event=shader_load_fail source_missing=%s\n", compFname);
-        fflush(stdout);
-        delete[] sharedSrc;
-        return 0;
-    }
-
-    // Inline terrain_lighting_shared.hglsl by replacing the marker block in the .comp file.
-    static const char* kBeginMarker = "// --- begin terrain_lighting_shared.hglsl ---";
-    static const char* kEndMarker   = "// --- end terrain_lighting_shared.hglsl ---";
-    std::string fullSrc;
-
-    if (sharedSrc) {
-        char* beginPos = strstr(fileSrc, kBeginMarker);
-        char* endPos   = beginPos ? strstr(beginPos, kEndMarker) : nullptr;
-        if (beginPos && endPos) {
-            fullSrc.append(fileSrc, beginPos - fileSrc);
-            fullSrc += "\n// --- begin terrain_lighting_shared.hglsl (inlined) ---\n";
-            fullSrc += sharedSrc;
-            fullSrc += "\n// --- end terrain_lighting_shared.hglsl (inlined) ---\n";
-            const char* afterEnd = endPos + strlen(kEndMarker);
-            fullSrc += afterEnd;
-        } else {
-            fullSrc = fileSrc;
-        }
-    } else {
-        MC2_DIAGF("[TERRAIN_LIGHTING_GPU v1] event=shader_load_warn shared_missing=%s\n", sharedFname);
-        fflush(stdout);
-        fullSrc = fileSrc;
-    }
-
-    delete[] fileSrc;
-    delete[] sharedSrc;
-
-    const char* kVersion = "#version 430\n";
-    std::vector<const char*> srcStrs;
-    srcStrs.push_back(kVersion);
-    srcStrs.push_back(fullSrc.c_str());
-
-    GLuint sh = tl_compile_compute_shader(srcStrs.data(), (int)srcStrs.size());
-    if (!sh) {
-        MC2_DIAGF("[TERRAIN_LIGHTING_GPU v1] event=shader_load_fail compile_failed=%s\n", debugName);
-        fflush(stdout);
-        return 0;
-    }
-    GLuint prog = tl_link_compute_program(sh);
-    glDeleteShader(sh);
-    if (!prog) {
-        MC2_DIAGF("[TERRAIN_LIGHTING_GPU v1] event=shader_load_fail link_failed=%s\n", debugName);
-        fflush(stdout);
-    }
-    return prog;
-}
-
 } // anonymous namespace
 
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
 namespace gos_terrain_lighting {
-
-GLuint GetOutputSsbo() {
-    return static_cast<GLuint>(s_computeOutputSsbo.backendHandle);
-}
 
 // NIGHT-LIGHT-POOLS-1: forward-consumer accessors for the per-frame light pool.
 GLuint GetLightPoolSsbo() {
@@ -714,83 +440,6 @@ void UploadObjectLightPoolUniforms(unsigned int program) {
 void mission_init(uint32_t numVertices, uint32_t maxLights) {
     if (!IsEnabled()) return;
 
-    // Compile shader on first call (lazy, single process lifetime)
-    if (!s_program && !s_shaderBad) {
-        s_program = tl_build_terrain_lighting_program(
-            "shaders/gos_terrain_lighting.comp",
-            "shaders/include/terrain_lighting_shared.hglsl",
-            "terrain_lighting");
-        if (!s_program) {
-            s_shaderBad = true;
-            MC2_DIAGF("[TERRAIN_LIGHTING_GPU v1] event=shader_load_fail sticky_disable\n");
-            fflush(stdout);
-            return;
-        }
-        // Resolve all uniform locations once — no explicit layout qualifiers in shader
-        // (AMD RX 7900 XTX doesn't honor layout(location=N) for compute uniforms reliably).
-        s_uniformLocs[TL_UNI_NUM_VERTICES]    = glGetUniformLocation(s_program, "u_numVertices");
-        s_uniformLocs[TL_UNI_NUM_LIGHTS]      = glGetUniformLocation(s_program, "u_numLights");
-        s_uniformLocs[TL_UNI_SUN_LIGHT_DIR]   = glGetUniformLocation(s_program, "u_sunLightDir");
-        s_uniformLocs[TL_UNI_LIGHT_RED]       = glGetUniformLocation(s_program, "u_lightRed");
-        s_uniformLocs[TL_UNI_LIGHT_GREEN]     = glGetUniformLocation(s_program, "u_lightGreen");
-        s_uniformLocs[TL_UNI_LIGHT_BLUE]      = glGetUniformLocation(s_program, "u_lightBlue");
-        s_uniformLocs[TL_UNI_AMBIENT_RED]     = glGetUniformLocation(s_program, "u_ambientRed");
-        s_uniformLocs[TL_UNI_AMBIENT_GREEN]   = glGetUniformLocation(s_program, "u_ambientGreen");
-        s_uniformLocs[TL_UNI_AMBIENT_BLUE]    = glGetUniformLocation(s_program, "u_ambientBlue");
-        s_uniformLocs[TL_UNI_BASE_COLOR_R]    = glGetUniformLocation(s_program, "u_baseVertexColorR");
-        s_uniformLocs[TL_UNI_BASE_COLOR_G]    = glGetUniformLocation(s_program, "u_baseVertexColorG");
-        s_uniformLocs[TL_UNI_BASE_COLOR_B]    = glGetUniformLocation(s_program, "u_baseVertexColorB");
-        s_uniformLocs[TL_UNI_RAIN_LEVEL]      = glGetUniformLocation(s_program, "u_rainLightLevel");
-        s_uniformLocs[TL_UNI_LIGHTNING_LEVEL] = glGetUniformLocation(s_program, "u_lighteningLevel");
-        s_uniformLocs[TL_UNI_FOG_START]       = glGetUniformLocation(s_program, "u_fogStart");
-        s_uniformLocs[TL_UNI_FOG_FULL]        = glGetUniformLocation(s_program, "u_fogFull");
-        s_uniformLocs[TL_UNI_USE_FOG]         = glGetUniformLocation(s_program, "u_useFog");
-        s_uniformLocs[TL_UNI_RENDERER_SW]     = glGetUniformLocation(s_program, "u_rendererSW");
-        // Step 7 (VPL retirement): inline-worldPos hazeFactor uniforms.
-        s_uniformLocs[TL_UNI_PLAY_AREA]       = glGetUniformLocation(s_program, "g_playAreaBounds");
-        s_uniformLocs[TL_UNI_CAM_WORLD_POS]   = glGetUniformLocation(s_program, "u_cameraWorldPos");
-        s_uniformLocs[TL_UNI_MIN_HAZE]        = glGetUniformLocation(s_program, "g_minHazeDistance");
-        s_uniformLocs[TL_UNI_MAX_CLIP]        = glGetUniformLocation(s_program, "g_maxClipDistance");
-        s_uniformLocs[TL_UNI_DIST_FACTOR]     = glGetUniformLocation(s_program, "g_distanceFactor");
-        s_uniformLocs[TL_UNI_VERTEX_OFFSET]   = glGetUniformLocation(s_program, "u_vertexOffset");
-        // Always-on diagnostic: print all resolved locations so black-terrain debug
-        // can immediately see which (if any) came back -1 (uniform not found).
-        MC2_DIAGF("[TERRAIN_LIGHTING_GPU v1] event=uniform_locs "
-               "numVerts=%d numLights=%d sunDir=%d "
-               "lightR=%d lightG=%d lightB=%d "
-               "ambR=%d ambG=%d ambB=%d "
-               "baseR=%d baseG=%d baseB=%d "
-               "rain=%d lightning=%d fogStart=%d fogFull=%d "
-               "useFog=%d rendSW=%d "
-               "playArea=%d camWorldPos=%d minHaze=%d maxClip=%d distFactor=%d vertexOffset=%d\n",
-               s_uniformLocs[TL_UNI_NUM_VERTICES],
-               s_uniformLocs[TL_UNI_NUM_LIGHTS],
-               s_uniformLocs[TL_UNI_SUN_LIGHT_DIR],
-               s_uniformLocs[TL_UNI_LIGHT_RED],
-               s_uniformLocs[TL_UNI_LIGHT_GREEN],
-               s_uniformLocs[TL_UNI_LIGHT_BLUE],
-               s_uniformLocs[TL_UNI_AMBIENT_RED],
-               s_uniformLocs[TL_UNI_AMBIENT_GREEN],
-               s_uniformLocs[TL_UNI_AMBIENT_BLUE],
-               s_uniformLocs[TL_UNI_BASE_COLOR_R],
-               s_uniformLocs[TL_UNI_BASE_COLOR_G],
-               s_uniformLocs[TL_UNI_BASE_COLOR_B],
-               s_uniformLocs[TL_UNI_RAIN_LEVEL],
-               s_uniformLocs[TL_UNI_LIGHTNING_LEVEL],
-               s_uniformLocs[TL_UNI_FOG_START],
-               s_uniformLocs[TL_UNI_FOG_FULL],
-               s_uniformLocs[TL_UNI_USE_FOG],
-               s_uniformLocs[TL_UNI_RENDERER_SW],
-               s_uniformLocs[TL_UNI_PLAY_AREA],
-               s_uniformLocs[TL_UNI_CAM_WORLD_POS],
-               s_uniformLocs[TL_UNI_MIN_HAZE],
-               s_uniformLocs[TL_UNI_MAX_CLIP],
-               s_uniformLocs[TL_UNI_DIST_FACTOR],
-               s_uniformLocs[TL_UNI_VERTEX_OFFSET]);
-        fflush(stdout);
-    }
-    if (s_shaderBad) return;
-
     // Teardown previous mission's SSBOs if they exist
     mission_shutdown();
 
@@ -819,19 +468,11 @@ void mission_init(uint32_t numVertices, uint32_t maxLights) {
         if (want > s_maxLights) s_maxLights = want;
     }
 
-    const GLsizeiptr vertInputBytes  = static_cast<GLsizeiptr>(numVertices * sizeof(GpuTerrainVertexInput));
     const GLsizeiptr lightInputBytes = static_cast<GLsizeiptr>(s_maxLights * sizeof(GpuTerrainLight));
-    const GLsizeiptr outputBytes     = static_cast<GLsizeiptr>(numVertices * sizeof(GpuTerrainLightingOutput));
-    s_outputSlotBytes = static_cast<size_t>(outputBytes);
 
     // Pre-size pack buffers
     s_packBuf.assign(numVertices, GpuTerrainVertexInput{});
     s_lightBuf.resize(s_maxLights);
-    // DRAM shadow of staging ring: initialized to all-white (lightRGB/fogRGB=0xFFFFFFFF)
-    // so that T3 (conservative, no update) leaves existing vertex colors unchanged on
-    // first-frame startup (vertex pool already initialized to 0xFFFFFFFF at vertex.h:122).
-    s_dramShadow.assign(numVertices, GpuTerrainLightingOutput{0xFFFFFFFFu, 0xFFFFFFFFu});
-
     // TERRAIN-LIGHTING-SSBO-OWNER-1: register a live owner in the resource registry
     // (observe-only metadata; never read by the compute/draw path). Called at create
     // (byte size known here) and invalidated in mission_shutdown.
@@ -849,19 +490,6 @@ void mission_init(uint32_t numVertices, uint32_t maxLights) {
         RenderCore::registerOrUpdateRenderResource(d);
     };
 
-    // --- Vertex input SSBO (GPU-write from CPU pack; no persistent map) ---
-    {
-        GLuint local = 0;
-        glGenBuffers(1, &local);
-        s_vertexInputSsbo.backendHandle = static_cast<uint32_t>(local);
-    }
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, static_cast<GLuint>(s_vertexInputSsbo.backendHandle));
-    glBufferStorage(GL_SHADER_STORAGE_BUFFER, vertInputBytes, nullptr,
-                    GL_DYNAMIC_STORAGE_BIT | GL_MAP_WRITE_BIT);
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
-    registerLightingSsbo(s_vertexInputSsbo.id, s_vertexInputSsbo.debugName,
-                         static_cast<GLuint>(s_vertexInputSsbo.backendHandle), vertInputBytes);
-
     // --- Light input SSBO ---
     {
         GLuint local = 0;
@@ -875,65 +503,11 @@ void mission_init(uint32_t numVertices, uint32_t maxLights) {
     registerLightingSsbo(s_lightInputSsbo.id, s_lightInputSsbo.debugName,
                          static_cast<GLuint>(s_lightInputSsbo.backendHandle), lightInputBytes);
 
-    // --- Compute output SSBO (GPU writes here; no persistent map — pure VRAM) ---
-    {
-        GLuint local = 0;
-        glGenBuffers(1, &local);
-        s_computeOutputSsbo.backendHandle = static_cast<uint32_t>(local);
-    }
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, static_cast<GLuint>(s_computeOutputSsbo.backendHandle));
-    glBufferStorage(GL_SHADER_STORAGE_BUFFER, outputBytes, nullptr, GL_DYNAMIC_STORAGE_BIT);
-    // glBufferStorage leaves VRAM UNINITIALISED. The lighting compute only writes
-    // the visible vertex window [packMinVN, packMaxVN]; full-recipe-authoritative
-    // water (gpu_driven_water.comp) reads lighting[vn].lightRGB for water quads
-    // map-wide, including out-of-window vertices. On AMD fresh pages read back
-    // ~zero (benign); NVIDIA hands back arbitrary prior-tenant VRAM → per-quad
-    // green/blue "streaks" that re-roll each launch (restart appears to fix it).
-    // Clear to 0xFFFFFFFF — the engine "no-tint" white sentinel, identical to the
-    // CPU DRAM shadow init (s_dramShadow, ~line 447) and the vertex-pool default
-    // (vertex.h:122). Cleared while still bound (glClearBufferData targets the
-    // bound buffer); per-mission realloc means this one-time clear suffices.
-    {
-        const uint32_t kWhite = 0xFFFFFFFFu;
-        glClearBufferData(GL_SHADER_STORAGE_BUFFER, GL_R32UI, GL_RED_INTEGER, GL_UNSIGNED_INT, &kWhite);
-    }
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
-    registerLightingSsbo(s_computeOutputSsbo.id, s_computeOutputSsbo.debugName,
-                         static_cast<GLuint>(s_computeOutputSsbo.backendHandle), outputBytes);
-
-    // --- 3-slot staging ring (CPU-readable persistent map, BAR memory) ---
-    // Pattern from gpu_cull_readback.cpp:230-235.
-    const GLbitfield stageStorageFlags = GL_MAP_READ_BIT | GL_MAP_WRITE_BIT
-                                       | GL_MAP_PERSISTENT_BIT
-                                       | GL_MAP_COHERENT_BIT;
-    const GLbitfield stageMapFlags     = GL_MAP_READ_BIT | GL_MAP_WRITE_BIT
-                                       | GL_MAP_PERSISTENT_BIT
-                                       | GL_MAP_COHERENT_BIT;
-
-    glGenBuffers(RING_FRAMES, s_stagingRing);
-    for (uint32_t i = 0; i < RING_FRAMES; ++i) {
-        glBindBuffer(GL_COPY_WRITE_BUFFER, s_stagingRing[i]);
-        glBufferStorage(GL_COPY_WRITE_BUFFER, outputBytes, nullptr, stageStorageFlags);
-        s_stagingMapped[i] = glMapBufferRange(GL_COPY_WRITE_BUFFER, 0, outputBytes, stageMapFlags);
-        glBindBuffer(GL_COPY_WRITE_BUFFER, 0);
-
-        if (!s_stagingMapped[i]) {
-            MC2_DIAGFE(stderr, "[TERRAIN_LIGHTING_GPU v1] FATAL: staging persistent map failed slot=%u\n", i);
-            fflush(stderr);
-            s_shaderBad = true;
-            mission_shutdown();
-            return;
-        }
-        memset(s_stagingMapped[i], 0, static_cast<size_t>(outputBytes));
-        s_stagingFence[i] = nullptr;
-    }
-
-    s_currentSlot  = 0;
     s_frameIndex   = 0;
     s_initialized  = true;
 
-    MC2_DIAGF("[TERRAIN_LIGHTING_GPU v1] event=mission_init verts=%u lights=%u outputSlotKB=%zu\n",
-           numVertices, s_maxLights, s_outputSlotBytes / 1024u);
+    MC2_DIAGF("[TERRAIN_LIGHTING_GPU v1] event=mission_init verts=%u lights=%u native_inputs=1\n",
+           numVertices, s_maxLights);
     fflush(stdout);
 }
 
@@ -943,28 +517,6 @@ void mission_init(uint32_t numVertices, uint32_t maxLights) {
 void mission_shutdown() {
     if (!s_initialized) return;
 
-    // Wait for all in-flight fences before releasing (GL_TIMEOUT_IGNORED OK in teardown).
-    for (uint32_t i = 0; i < RING_FRAMES; ++i) {
-        if (s_stagingFence[i]) {
-            glClientWaitSync(s_stagingFence[i], GL_SYNC_FLUSH_COMMANDS_BIT, GL_TIMEOUT_IGNORED);
-            glDeleteSync(s_stagingFence[i]);
-            s_stagingFence[i] = nullptr;
-        }
-    }
-
-    // Unmap and release staging ring
-    for (uint32_t i = 0; i < RING_FRAMES; ++i) {
-        if (s_stagingRing[i] && s_stagingMapped[i]) {
-            glBindBuffer(GL_COPY_WRITE_BUFFER, s_stagingRing[i]);
-            glUnmapBuffer(GL_COPY_WRITE_BUFFER);
-            glBindBuffer(GL_COPY_WRITE_BUFFER, 0);
-            s_stagingMapped[i] = nullptr;
-        }
-    }
-    glDeleteBuffers(RING_FRAMES, s_stagingRing);
-    memset(s_stagingRing, 0, sizeof(s_stagingRing));
-
-
     // TERRAIN-LIGHTING-SSBO-OWNER-1: delete via owner.backendHandle + mark the registry slot
     // unavailable (valid=false) on teardown. Same delete order as before.
     auto invalidateLightingSsbo = [](RenderCore::RenderResourceId id) {
@@ -972,23 +524,11 @@ void mission_shutdown() {
         invalid.id = id;
         RenderCore::registerOrUpdateRenderResource(invalid);
     };
-    if (s_computeOutputSsbo.backendHandle) {
-        GLuint buf = static_cast<GLuint>(s_computeOutputSsbo.backendHandle);
-        glDeleteBuffers(1, &buf);
-        s_computeOutputSsbo.backendHandle = 0;
-        invalidateLightingSsbo(s_computeOutputSsbo.id);
-    }
     if (s_lightInputSsbo.backendHandle) {
         GLuint buf = static_cast<GLuint>(s_lightInputSsbo.backendHandle);
         glDeleteBuffers(1, &buf);
         s_lightInputSsbo.backendHandle = 0;
         invalidateLightingSsbo(s_lightInputSsbo.id);
-    }
-    if (s_vertexInputSsbo.backendHandle) {
-        GLuint buf = static_cast<GLuint>(s_vertexInputSsbo.backendHandle);
-        glDeleteBuffers(1, &buf);
-        s_vertexInputSsbo.backendHandle = 0;
-        invalidateLightingSsbo(s_vertexInputSsbo.id);
     }
 
     // LIGHT-CLUSTER-PERF-1: release the light-grid SSBOs. Rebuilt lazily on the
@@ -1013,19 +553,18 @@ void mission_shutdown() {
 
     s_numVertices     = 0;
     s_maxLights       = 0;
-    s_outputSlotBytes = 0;
-    s_currentSlot     = 0;
     s_frameIndex      = 0;
     s_initialized     = false;
+    s_vkSnap = {};
+    s_vkSnapValid = false;
     s_lastNumLights   = 0;  // NIGHT-LIGHT-POOLS-1: no pool lights across mission boundary
-    s_dramShadow.clear();
 
     MC2_DIAGF("[TERRAIN_LIGHTING_GPU v1] event=mission_shutdown\n");
     fflush(stdout);
 }
 
 // ---------------------------------------------------------------------------
-// BeginFrame — advance ring slot
+// BeginFrame and native snapshot access
 // ---------------------------------------------------------------------------
 bool GetVkProducerSnapshot(VkProducerSnapshot& out) {
     if (!s_vkSnapValid) return false;
@@ -1033,27 +572,17 @@ bool GetVkProducerSnapshot(VkProducerSnapshot& out) {
     return true;
 }
 
-bool ReadbackOutputForParity(uint32_t first, uint32_t count, GpuTerrainLightingOutput* dst) {
-    if (!dst || count == 0 || !s_initialized || first + count > s_numVertices) return false;
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, static_cast<GLuint>(s_computeOutputSsbo.backendHandle));
-    glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, static_cast<GLintptr>(first) * sizeof(GpuTerrainLightingOutput),
-                       static_cast<GLsizeiptr>(count) * sizeof(GpuTerrainLightingOutput), dst);
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
-    return true;
-}
-
 void BeginFrame() {
     s_vkSnapValid = false;   // STEP 3.4P: set again by this frame's PackAndDispatch
-    if (!IsEnabled() || !s_initialized || s_shaderBad) return;
-    s_currentSlot = (s_currentSlot + 1u) % RING_FRAMES;
+    if (!IsEnabled() || !s_initialized) return;
     ++s_frameIndex;
 }
 
 // ---------------------------------------------------------------------------
-// PackAndDispatch — pack vertex + light SSBOs, dispatch compute, barrier, copy, fence
+// PackAndDispatch: CPU inputs for the native compute dispatch
 // ---------------------------------------------------------------------------
 void PackAndDispatch() {
-    if (!IsEnabled() || !s_initialized || s_shaderBad) return;
+    if (!IsEnabled() || !s_initialized) return;
 
     ZoneScopedN("Terrain::TerrainLightingDispatch");
 
@@ -1169,17 +698,7 @@ void PackAndDispatch() {
             }
         }
 
-        // Upload only the visible window range [packMinVN, packMaxVN].
-        // For a 1k map (N=1020) with a 200-vertex view window this is ~6.5 MB
-        // instead of the previous ~32 MB full-buffer upload.
-        if (packMinVN <= packMaxVN) {
-            const GLintptr  uploadOffset = static_cast<GLintptr >(packMinVN * sizeof(GpuTerrainVertexInput));
-            const GLsizeiptr uploadBytes = static_cast<GLsizeiptr>((packMaxVN - packMinVN + 1) * sizeof(GpuTerrainVertexInput));
-            glBindBuffer(GL_SHADER_STORAGE_BUFFER, static_cast<GLuint>(s_vertexInputSsbo.backendHandle));
-            glBufferSubData(GL_SHADER_STORAGE_BUFFER, uploadOffset, uploadBytes,
-                            s_packBuf.data() + packMinVN);
-            glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
-        }
+
     }
 
     // --- Pack light input SSBO (lights starting at index 2 — first two factored into sun) ---
@@ -1389,8 +908,7 @@ void PackAndDispatch() {
     // consumer (LOD-chunk terrain per-fragment light loop).
     s_lastNumLights = numLights;
 
-    // STEP 3.4P: publish the exact inputs this frame's GL dispatch uses for the native Vulkan producer. The scalar block mirrors the uniform
-    // uploads below value for value.
+    // Publish the current visible window and lighting scalars for the native Vulkan producer.
     {
         VkProducerSnapshot& sn = s_vkSnap;
         sn = VkProducerSnapshot{};
@@ -1423,327 +941,6 @@ void PackAndDispatch() {
         s_vkSnapValid = true;
     }
 
-    // --- Dispatch compute ---
-    glUseProgram(s_program);
-
-    // Bind SSBOs
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, TL_VERTEX_INPUT_BINDING, static_cast<GLuint>(s_vertexInputSsbo.backendHandle));
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, TL_LIGHT_INPUT_BINDING,  static_cast<GLuint>(s_lightInputSsbo.backendHandle));
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, TL_OUTPUT_BINDING,        static_cast<GLuint>(s_computeOutputSsbo.backendHandle));
-
-    // Set per-frame uniforms via runtime-resolved locations.
-    glUniform1i(s_uniformLocs[TL_UNI_NUM_VERTICES], static_cast<GLint>(s_numVertices));
-    glUniform1i(s_uniformLocs[TL_UNI_NUM_LIGHTS],   static_cast<GLint>(numLights));
-
-    if (eye) {
-        // Sun direction (eye->lightDirection — already computed by camera each frame)
-        glUniform3f(s_uniformLocs[TL_UNI_SUN_LIGHT_DIR],
-                    eye->lightDirection.x,
-                    eye->lightDirection.y,
-                    eye->lightDirection.z);
-        // getLightRed/Green/Blue channels (unsigned char, 0-255)
-        glUniform1i(s_uniformLocs[TL_UNI_LIGHT_RED],    static_cast<GLint>(eye->lightRed));
-        glUniform1i(s_uniformLocs[TL_UNI_LIGHT_GREEN],  static_cast<GLint>(eye->lightGreen));
-        glUniform1i(s_uniformLocs[TL_UNI_LIGHT_BLUE],   static_cast<GLint>(eye->lightBlue));
-        glUniform1i(s_uniformLocs[TL_UNI_AMBIENT_RED],  static_cast<GLint>(eye->ambientRed));
-        glUniform1i(s_uniformLocs[TL_UNI_AMBIENT_GREEN],static_cast<GLint>(eye->ambientGreen));
-        glUniform1i(s_uniformLocs[TL_UNI_AMBIENT_BLUE], static_cast<GLint>(eye->ambientBlue));
-        // Fog parameters
-        glUniform1f(s_uniformLocs[TL_UNI_FOG_START], eye->fogStart);
-        glUniform1f(s_uniformLocs[TL_UNI_FOG_FULL],  eye->fogFull);
-    }
-
-    // BaseVertexColor (DWORD 0xAARRGGBB)
-    glUniform1i(s_uniformLocs[TL_UNI_BASE_COLOR_R], static_cast<GLint>((BaseVertexColor >> 16) & 0xFFu));
-    glUniform1i(s_uniformLocs[TL_UNI_BASE_COLOR_G], static_cast<GLint>((BaseVertexColor >>  8) & 0xFFu));
-    glUniform1i(s_uniformLocs[TL_UNI_BASE_COLOR_B], static_cast<GLint>( BaseVertexColor        & 0xFFu));
-
-    // rainLightLevel + lighteningLevel (TerrainQuad statics)
-    glUniform1f(s_uniformLocs[TL_UNI_RAIN_LEVEL],      TerrainQuad::rainLightLevel);
-    glUniform1i(s_uniformLocs[TL_UNI_LIGHTNING_LEVEL], static_cast<GLint>(TerrainQuad::lighteningLevel));
-
-    // useFog (terrain.cpp global)
-    glUniform1i(s_uniformLocs[TL_UNI_USE_FOG], useFog ? 1 : 0);
-
-    // Environment.Renderer == 3 => software renderer (skip lighting)
-    glUniform1i(s_uniformLocs[TL_UNI_RENDERER_SW], (Environment.Renderer == 3) ? 1 : 0);
-
-    // Step 7 (VPL retirement): inline-worldPos hazeFactor uniforms.
-    // Play-area bounds == Terrain::IsGameSelectTerrainPosition (terrain.cpp:687-700).
-    // Camera world pos swizzle matches terrain.cpp:1417-1419 exactly:
-    //   cameraPos.x = -getCameraOrigin().x; .y = getCameraOrigin().z; .z = getCameraOrigin().y
-    {
-        const float m = Terrain::worldUnitsMapSide / 2.0f - Terrain::worldUnitsPerVertex * 2.0f;
-        glUniform4f(s_uniformLocs[TL_UNI_PLAY_AREA], -m, -m, m, m);
-        if (eye) {
-            glUniform3f(s_uniformLocs[TL_UNI_CAM_WORLD_POS],
-                        -eye->getCameraOrigin().x,
-                         eye->getCameraOrigin().z,
-                         eye->getCameraOrigin().y);
-        }
-        glUniform1f(s_uniformLocs[TL_UNI_MIN_HAZE],    Camera::MinHazeDistance);
-        glUniform1f(s_uniformLocs[TL_UNI_MAX_CLIP],    Camera::MaxClipDistance);
-        glUniform1f(s_uniformLocs[TL_UNI_DIST_FACTOR], Camera::DistanceFactor);
-    }
-
-    // PERF-FIX: limit dispatch to the visible window [packMinVN, packMaxVN].
-    // Previously dispatched for all s_numVertices (e.g. 16,257 groups for a 1020-map).
-    // Now dispatches only for the ~200x200 visible window range (~3,200 groups, 5x fewer).
-    // The shader adds u_vertexOffset to gl_GlobalInvocationID.x so it still maps to the
-    // correct SSBO indices.  u_numVertices remains the absolute upper-bound guard.
-    const uint32_t dispatchStart = (packMinVN <= packMaxVN) ? packMinVN : 0u;
-    const uint32_t dispatchCount = (packMinVN <= packMaxVN) ? (packMaxVN - packMinVN + 1u) : 0u;
-    const uint32_t numGroups     = (dispatchCount + 63u) / 64u;
-
-    if (numGroups > 0) {
-        glUniform1i(s_uniformLocs[TL_UNI_VERTEX_OFFSET], static_cast<GLint>(dispatchStart));
-        glDispatchCompute(numGroups, 1, 1);
-    }
-
-    glUseProgram(0);
-
-    // First-frame always-on diagnostic — prints once per process to confirm
-    // ambient/light values are non-zero and the range-dispatch looks sane.
-    if (s_frameIndex <= 1) {
-        MC2_DIAGF("[TERRAIN_LIGHTING_GPU v1] event=first_dispatch "
-               "frame=%llu totalVerts=%u dispatchRange=[%u,%u] numGroups=%u "
-               "eye=%s ambR=%d ambG=%d ambB=%d lightR=%d lightG=%d lightB=%d\n",
-               (unsigned long long)s_frameIndex, s_numVertices,
-               dispatchStart, dispatchStart + dispatchCount, numGroups,
-               eye ? "ok" : "NULL",
-               eye ? (int)eye->ambientRed   : -1,
-               eye ? (int)eye->ambientGreen : -1,
-               eye ? (int)eye->ambientBlue  : -1,
-               eye ? (int)eye->lightRed     : -1,
-               eye ? (int)eye->lightGreen   : -1,
-               eye ? (int)eye->lightBlue    : -1);
-        fflush(stdout);
-    }
-
-    // --- Memory barrier: ensure compute shader writes complete ---
-    glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
-
-    // --- Copy compute output → staging ring slot (VRAM→BAR) ---
-    const GLintptr  slotOff = 0;
-    const GLsizeiptr slotSz = static_cast<GLsizeiptr>(s_outputSlotBytes);
-    glBindBuffer(GL_COPY_READ_BUFFER,  static_cast<GLuint>(s_computeOutputSsbo.backendHandle));
-    glBindBuffer(GL_COPY_WRITE_BUFFER, s_stagingRing[s_currentSlot]);
-    glCopyBufferSubData(GL_COPY_READ_BUFFER, GL_COPY_WRITE_BUFFER, slotOff, slotOff, slotSz);
-    glBindBuffer(GL_COPY_READ_BUFFER,  0);
-    glBindBuffer(GL_COPY_WRITE_BUFFER, 0);
-
-    // --- Make persistent-map copy visible to CPU ---
-    glMemoryBarrier(GL_CLIENT_MAPPED_BUFFER_BARRIER_BIT);
-
-    // --- Delete any prior fence for this slot, then place new fence ---
-    if (s_stagingFence[s_currentSlot]) {
-        glDeleteSync(s_stagingFence[s_currentSlot]);
-        s_stagingFence[s_currentSlot] = nullptr;
-    }
-    s_stagingFence[s_currentSlot] = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
-}
-
-// ---------------------------------------------------------------------------
-// CopyResultsToVertexPool — Stage 3: 3-slot T1/T2/T3 non-blocking tryConsume.
-// Copies GPU staging ring → vertices[i]->lightRGB / ->fogRGB.
-//
-// Under parity mode (IsParityCheckEnabled()==true): returns early.
-//   The comparator (Parity_CompareFrame) reads GPU values from the mapped ring
-//   slot directly via GetMappedOutputForParity() with GL_TIMEOUT_IGNORED.
-//   CPU body runs authoritative for vertices[i] in parity mode.
-//   (plan v2 MIN-2 fold — avoid CPU-overwrites-GPU dataflow ambiguity.)
-//
-// Under authoritative mode (IsEnabled() && !IsParityCheckEnabled()):
-//   Non-blocking tryConsume with three-tier fallback (design doc Q2):
-//     T1: N-1 fence signaled → copy (1-frame latency, normal case).
-//     T2: N-2 fence signaled → copy (2-frame latency, emit N2 counter).
-//     T3: neither ready → skip (retain prior-frame values, emit conservative counter).
-//   glClientWaitSync timeout is ALWAYS 0 on hot path. Never GL_TIMEOUT_IGNORED.
-// ---------------------------------------------------------------------------
-void CopyResultsToVertexPool(TerrainQuad* quadList, int numberQuads) {
-    if (!IsEnabled() || !s_initialized || s_shaderBad) return;
-
-    // Under parity mode: do NOT write GPU output into vertex pool.
-    // Parity_CompareFrame reads the mapped ring directly.
-    if (IsParityCheckEnabled()) return;
-
-    // ---------------------------------------------------------------------------
-    // Non-blocking tryConsume (T1/T2/T3) — timeout=0 always.
-    // Mirrors readback_tryConsume() pattern in gpu_cull_readback.cpp:317-424.
-    // ---------------------------------------------------------------------------
-    const uint32_t n1Slot = (s_currentSlot + RING_FRAMES - 1u) % RING_FRAMES;
-    const uint32_t n2Slot = (s_currentSlot + RING_FRAMES - 2u) % RING_FRAMES;
-
-    // Helper: non-blocking fence check (timeout=0).
-    auto isFenceReady = [](uint32_t slot) -> bool {
-        if (!s_stagingFence[slot]) return false;
-        GLenum result = glClientWaitSync(s_stagingFence[slot], 0, 0);
-        return (result == GL_ALREADY_SIGNALED || result == GL_CONDITION_SATISFIED);
-    };
-
-    uint32_t readSlot = RING_FRAMES;  // sentinel: no slot selected
-    bool     isN2     = false;
-
-    if (isFenceReady(n1Slot)) {
-        glDeleteSync(s_stagingFence[n1Slot]);
-        s_stagingFence[n1Slot] = nullptr;
-        readSlot = n1Slot;
-        isN2     = false;
-    } else if (isFenceReady(n2Slot)) {
-        glDeleteSync(s_stagingFence[n2Slot]);
-        s_stagingFence[n2Slot] = nullptr;
-        readSlot = n2Slot;
-        isN2     = true;
-    }
-
-    ++s_fallbackSummaryFrames;
-
-    if (readSlot == RING_FRAMES) {
-        // T3: neither slot ready — retain prior DRAM shadow, vertex pool not updated.
-        ++s_lightingFallbackConservative;
-    } else {
-        // T1 or T2: memcpy BAR staging slot → DRAM shadow (sequential WC read, fast),
-        // then scatter DRAM shadow values into vertex pool (DRAM→DRAM, cached, fast).
-        //
-        // WHY: BAR persistent-mapped memory is WC (write-combining) on x86/AMD.
-        // Random-indexed reads from WC memory bypass CPU caches and cause PCIe
-        // round-trips. At 14K quad × 4 vertices × indexed reads = ~56K random WC reads
-        // → massive perf regression. Sequential memcpy from WC is stream-friendly (WC
-        // read coalesces naturally at 64B cache-line granularity) and is 100-1000× faster
-        // than random indexed WC reads. After memcpy, all indexing is in DRAM.
-        const GpuTerrainLightingOutput* barSrc =
-            static_cast<const GpuTerrainLightingOutput*>(s_stagingMapped[readSlot]);
-
-        if (barSrc && !s_dramShadow.empty()) {
-            // Step 1: sequential BAR → DRAM copy (stream-friendly WC read).
-            memcpy(s_dramShadow.data(), barSrc, s_numVertices * sizeof(GpuTerrainLightingOutput));
-
-            // Step 2: scatter DRAM shadow into vertex pool (DRAM→DRAM, cached).
-            const GpuTerrainLightingOutput* src = s_dramShadow.data();
-            for (int q = 0; q < numberQuads; ++q) {
-                const TerrainQuad& quad = quadList[q];
-                for (int vi = 0; vi < 4; ++vi) {
-                    Vertex* v = quad.vertices[vi];
-                    if (!v) continue;
-                    if (v->vertexNum < 0 || static_cast<uint32_t>(v->vertexNum) >= s_numVertices) continue;
-                    const GpuTerrainLightingOutput& out = src[v->vertexNum];
-                    v->lightRGB = out.lightRGB;
-                    v->fogRGB   = out.fogRGB;
-                }
-            }
-        }
-
-        if (isN2) {
-            ++s_lightingFallbackN2;
-        } else {
-            ++s_lightingFallbackN1;
-        }
-    }
-
-    // 600-frame fallback summary.
-    if (s_fallbackSummaryFrames % 600 == 0) {
-        MC2_DIAGF("[TERRAIN_LIGHTING_GPU v1] event=fallback_summary frames=%llu "
-               "n1=%llu n2=%llu conservative=%llu\n",
-               (unsigned long long)s_fallbackSummaryFrames,
-               (unsigned long long)s_lightingFallbackN1,
-               (unsigned long long)s_lightingFallbackN2,
-               (unsigned long long)s_lightingFallbackConservative);
-        fflush(stdout);
-    }
-}
-
-// ---------------------------------------------------------------------------
-// Parity_CompareFrame — Stage 2 implementation
-// Design doc Q3: walk quadList, filter calcThisFrame&1, index outputs[vertexNum].
-// ---------------------------------------------------------------------------
-
-// Kept out of line: inlined into the per-vertex compare loop, the format call's template body costs the
-// parity pass about a third of its frame rate.
-[[msvc::noinline]] static void Parity_PrintMismatch(uint64_t frame, int vn, const char* field,
-                                 uint32_t legacy, uint32_t gpu)
-{
-    if (s_parityMismatchesThisFrame >= 16) return;  // throttle 16/frame
-    ++s_parityMismatchesThisFrame;
-    ++s_paritySummaryMismatches;
-    MC2_EVENT(Terrain, "TERRAIN_LIGHTING_PARITY", 1,
-              "event=mismatch frame={} vertex={} field={} legacy=0x{:08X} gpu=0x{:08X}",
-              static_cast<unsigned long long>(frame), vn, field ? field : "?", legacy, gpu);
-    fflush(stderr);
-}
-
-void Parity_CompareFrame(TerrainQuad* quadList, int numberQuads,
-                         const GpuTerrainLightingOutput* mappedOutput)
-{
-    if (!IsParityCheckEnabled() || !mappedOutput) return;
-
-    // Reset per-frame mismatch counter for this new frame
-    s_parityMismatchesThisFrame = 0;
-    ++s_paritySummaryFrames;
-
-    long long vertsChecked = 0;
-
-    for (int q = 0; q < numberQuads; ++q) {
-        const TerrainQuad& quad = quadList[q];
-        for (int i = 0; i < 4; ++i) {
-            const Vertex* v = quad.vertices[i];
-            if (!v) continue;
-            if (v->vertexNum < 0) continue;       // off-map vertex
-            if (!(v->calcThisFrame & 1)) continue; // CPU didn't write this vertex this frame
-
-            const int vn = v->vertexNum;
-            ++vertsChecked;
-
-            // Compare lightRGB
-            uint32_t legacyLight = v->lightRGB;
-            uint32_t gpuLight    = mappedOutput[vn].lightRGB;
-            if (legacyLight != gpuLight) {
-                Parity_PrintMismatch(s_frameIndex, vn, "lightRGB", legacyLight, gpuLight);
-            }
-
-            // Compare fogRGB
-            uint32_t legacyFog = v->fogRGB;
-            uint32_t gpuFog    = mappedOutput[vn].fogRGB;
-            if (legacyFog != gpuFog) {
-                Parity_PrintMismatch(s_frameIndex, vn, "fogRGB", legacyFog, gpuFog);
-            }
-        }
-    }
-
-    s_paritySummaryVerts += vertsChecked;
-
-    // 600-frame summary (mirrors gos_terrain_indirect.cpp:291 pattern)
-    if (s_paritySummaryFrames % 600 == 0) {
-        MC2_EVENT(Terrain, "TERRAIN_LIGHTING_PARITY", 1,
-                  "event=summary frames={} verts_checked={} total_mismatches={}",
-                  static_cast<long long>(s_paritySummaryFrames), static_cast<long long>(s_paritySummaryVerts),
-                  static_cast<long long>(s_paritySummaryMismatches));
-        fflush(stderr);
-    }
-}
-
-// Helper: synchronously wait and return mapped output for parity comparison.
-// ONLY called from terrain.cpp parity path — uses GL_TIMEOUT_IGNORED.
-// Production hot path NEVER calls this.
-const GpuTerrainLightingOutput* GetMappedOutputForParity()
-{
-    if (!IsParityCheckEnabled() || !s_initialized) return nullptr;
-
-    // Synchronously wait on current frame's fence (parity mode — stall OK)
-    if (s_stagingFence[s_currentSlot]) {
-        glClientWaitSync(s_stagingFence[s_currentSlot],
-                         GL_SYNC_FLUSH_COMMANDS_BIT,
-                         GL_TIMEOUT_IGNORED);
-    }
-    return static_cast<const GpuTerrainLightingOutput*>(s_stagingMapped[s_currentSlot]);
 }
 
 } // namespace gos_terrain_lighting
-
-// Slice B4 Stage 1b — C-linkage accessor for the per-vertex lighting output SSBO.
-// Used by gos_terrain_mask_dispatch::DrawMaskSolid() to bind at binding=2.
-// Defined in the same TU as s_computeOutputSsbo (which has internal linkage
-// via the anonymous namespace); the implicit using-directive makes the name
-// visible by unqualified lookup at file scope.
-extern "C" GLuint gos_terrain_lighting_getOutputSSBO() {
-    return static_cast<GLuint>(s_computeOutputSsbo.backendHandle);
-}

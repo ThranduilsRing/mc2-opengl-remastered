@@ -1016,7 +1016,7 @@ L(Exact1, "MC2_TERRAIN_INDIRECT_PARITY_CHECK", Bool, false, "terrain", "", "", p
 L(Presence, "MC2_TERRAIN_INDIRECT_THINEMIT_TRACE", Bool, false, "terrain", "", "Step 1b-1 (cpu-pack-retirement plan ?2 A1): the M2 thin-record emit scope is orphaned by Fix B (commit 005ebc7) - the GPU compute shader...", verified),
 L(Exact1, "MC2_TERRAIN_INDIRECT_TRACE", Bool, false, "terrain", "", "", passthrough | verified),
 L(Lead0Kill, "MC2_TERRAIN_LIGHTING_GPU", Bool, true, "terrain", "", "", passthrough | verified),
-L(Presence, "MC2_TERRAIN_LIGHTING_PARITY", Bool, false, "terrain", "", "", passthrough | verified),
+L(Presence, "MC2_TERRAIN_LIGHTING_PARITY", Bool, false, "terrain", "", "", passthrough),
 // NIGHT-LIGHT-POOLS-1: the LOD-chunk terrain consumes the per-frame terrain
 // light pool (gos_terrain_lighting PackAndDispatch light SSBO) per-fragment,
 // restoring stock-style night up-lighting on ground + cement pads.

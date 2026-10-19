@@ -5,7 +5,7 @@
 generator_version: "3.0.0"
 gate_count: 935
 registry_entry_count: 188
-verified_count: 875
+verified_count: 874
 flags:
   - name: MC2_3DVIEW_DIAG
     kind: Bool
@@ -5465,7 +5465,6 @@ flags:
     owner: terrain
     doc: ""
     smoke_passthrough: true
-    verified: true
   - name: MC2_TERRAIN_LOD_CHECKER_DIAG
     kind: Bool
     default: true

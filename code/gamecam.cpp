@@ -987,8 +987,8 @@ void GameCamera::render (void)
                 // Headless mesh coverage uses the production upload/cache/instance boundary.
                 if (mc2::gate::is<"MC2_FX_FORCE_SPAWN", "9">()) {
                     glm::vec3 center;
-                    center = getPosition();
-                    const float origin[3] = {center.x, center.y, center.z + 45.0f};
+                    mc2ToRender(center, getPosition());
+                    const float origin[3] = {center.x, center.y + 45.0f, center.z};
                     gos_vfx_mesh_fixture(origin);
                 }
 				gos_ClearActiveCamera();

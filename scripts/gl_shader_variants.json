@@ -857,23 +857,6 @@
     "frag": "shaders/static_prop.frag",
     "vert": "shaders/static_prop.vert"
    }
-  },
-  {
-   "assemble": "raw",
-   "defines": [],
-   "id": "terrain_lighting",
-   "key": "terrain_lighting",
-   "optional_groups_on": [],
-   "prefix": "#version 430\n",
-   "source": "GameOS/gameos/gos_terrain_lighting.cpp:719",
-   "splice": {
-    "begin_marker": "// --- begin terrain_lighting_shared.hglsl ---",
-    "end_marker": "// --- end terrain_lighting_shared.hglsl ---",
-    "file": "shaders/include/terrain_lighting_shared.hglsl"
-   },
-   "stages": {
-    "comp": "shaders/gos_terrain_lighting.comp"
-   }
   }
  ]
 }
