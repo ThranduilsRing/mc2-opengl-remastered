@@ -33,18 +33,9 @@ Pilot::PilotInfo Pilot::s_GoodPilots[MAX_PILOT] = { nullptr };
 long	Pilot::goodCount = 0;
 long	Pilot::badCount = 0;
 
-void *EditorObject::operator new (size_t mySize)
-{
-	void *result = nullptr;
-	result = systemHeap->Malloc(mySize);
-	
-	return(result);
-}
 
-void EditorObject::operator delete (void *us)
-{
-	systemHeap->Free(us);
-}
+
+
 
 EditorObject::EditorObject()
 {

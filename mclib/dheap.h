@@ -15,11 +15,7 @@
 //---------------------------------------------------------------------------
 // Class declarations
 
-struct HeapBlock;
-using HeapBlockPtr = HeapBlock*;
 
-class HeapManager;
-using HeapManagerPtr = HeapManager*;
 
 class UserHeap;
 using UserHeapPtr = UserHeap*;

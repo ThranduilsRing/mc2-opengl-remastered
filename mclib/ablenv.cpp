@@ -257,21 +257,11 @@ void ABL_AddToProfileLog (char* profileString) {
 // USER FILE routines
 //***************************************************************************
 
-void* UserFile::operator new (size_t mySize) {
 
-	void* result = nullptr;
-	
-	result = ::operator new(mySize);
-	
-	return(result);
-}
 
 //---------------------------------------------------------------------------
 
-void UserFile::operator delete (void* us) {
 
-	::operator delete(us);
-}
 
 //---------------------------------------------------------------------------
 
@@ -475,21 +465,11 @@ void destroyLibraryRegistry (void) {
 // ABLMODULE class
 //***************************************************************************
 
-void* ABLModule::operator new (size_t mySize) {
 
-	void* result = nullptr;
-	
-	result = ::operator new(mySize);
-	
-	return(result);
-}
 
 //---------------------------------------------------------------------------
 
-void ABLModule::operator delete (void* us) {
 
-	::operator delete(us);
-}
 
 //---------------------------------------------------------------------------
 long ABLi_getNumModuleInstances (void) {

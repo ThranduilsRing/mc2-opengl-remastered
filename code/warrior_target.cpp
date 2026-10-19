@@ -6,16 +6,9 @@
 
 
 
-void* TargetPriorityList::operator new (size_t mySize) {
 
-	void *result = missionHeap->Malloc(mySize);
-	return(result);
-}
 
-void TargetPriorityList::operator delete (void* us) {
 
-	missionHeap->Free(us);
-}
 
 void TargetPriorityList::init (void) {
 

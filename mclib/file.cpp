@@ -1037,20 +1037,10 @@ bool file1OlderThan2 (const char* file1, const char* file2)
 
 //---------------------------------------------------------------------------
 //	class File member functions
-void *File::operator new (size_t mySize)
-{
-	void *result = nullptr;
-	
-	result = systemHeap->Malloc(mySize);
-	
-	return(result);
-}
+
 
 //---------------------------------------------------------------------------
-void File::operator delete (void *us)
-{
-	systemHeap->Free(us);
-}
+
 
 //---------------------------------------------------------------------------
 File::File (void)

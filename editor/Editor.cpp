@@ -189,8 +189,7 @@ void DoGameLogic()
 	}
 
 
-	if (globalHeapList)
-		globalHeapList->update();
+
 
 	if (justResaveAllMaps)
 	{
@@ -275,11 +274,7 @@ void InitializeGameEngine()
 		CDInstallPath[lastCharacter+2] = 0;
 	}
 
-	globalHeapList = new HeapList;
-	gosASSERT(globalHeapList != nullptr);
 
-	globalHeapList->init();
-		globalHeapList->update();		//Run Instrumentation into GOS Debugger Screen
 
 	systemHeap = new UserHeap;
 	gosASSERT(systemHeap != nullptr);
@@ -755,7 +750,6 @@ else
 	if (!statisticsInitialized)
 	{
 		statisticsInitialized = true;
-		HeapList::initializeStatistics();
 	}
 
 	InitDW();
@@ -878,13 +872,7 @@ void TerminateGameEngine()
 		systemHeap = nullptr;
 	}
 
-	if (globalHeapList)
-	{
-		globalHeapList->destroy();
 
-		delete globalHeapList;
-		globalHeapList = nullptr;
-	}
 
 
 	gos_DeleteFont(gosFontHandle);

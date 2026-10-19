@@ -40,8 +40,6 @@ public:
 	virtual void CastAndCopy(const EditorObject &master) { (*this) = master; }
 	virtual EditorObject *Clone() { return(new EditorObject(*this)); }
 
-	void *operator new (size_t mySize);
-	void operator delete (void *us);
 
 	void				select( bool bSelect );
 	inline bool			isSelected() const { return appearance() && appearance()->selected ? true : false; }

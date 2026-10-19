@@ -180,9 +180,7 @@ class MasterComponent {
 
 	public:
 
-		void* operator new (size_t mySize);
 
-		void operator delete (void* us);
 
 		void destroy (void);
 

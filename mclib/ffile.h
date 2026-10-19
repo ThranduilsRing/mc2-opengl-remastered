@@ -77,8 +77,6 @@ class FastFile
 		FastFile (void);
 		~FastFile (void);
 
-		void *operator new (size_t mySize);
-		void operator delete (void *us);
 
 		long open (const char* fName);
 		void close (void);

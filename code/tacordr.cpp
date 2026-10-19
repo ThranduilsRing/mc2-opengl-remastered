@@ -151,18 +151,11 @@ long AttitudeEffectOnMovePath[NUM_ATTITUDES][3] = {
 // TACTICAL ORDER class
 //***************************************************************************
 
-void* TacticalOrder::operator new (size_t mySize) {
 
-	void *result = systemHeap->Malloc(mySize);
-	return(result);
-}
 
 //---------------------------------------------------------------------------
 
-void TacticalOrder::operator delete (void* us) {
 
-	systemHeap->Free(us);
-}
 
 //---------------------------------------------------------------------------
 

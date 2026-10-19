@@ -68,9 +68,7 @@ class UserFile {
 
 	public:
 
-		void* operator new (size_t mySize);
 
-		void operator delete (void* us);
 			
 		void init (void) {
 			handle = -1;
@@ -179,8 +177,6 @@ class ABLModule {
 
 	public:
 
-		void* operator new (size_t mySize);
-		void operator delete (void* us);
 			
 		void init (void) {
 			id = -1;

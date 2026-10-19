@@ -87,23 +87,11 @@ bool moverInList (long blockNum)
 //* GAMEOBJECT MANAGER class
 //***************************************************************************
 
-void* GameObjectManager::operator new (size_t ourSize) {
 
-	void* result = systemHeap->Malloc(ourSize);
-	if (!result) 
-	{
-		Fatal(0, " GameObjectManager.new: unable to create GameObject Manager ");
-	}
-
-	return(result);
-}
 
 //---------------------------------------------------------------------------
 
-void GameObjectManager::operator delete (void* us) {
 
-	systemHeap->Free(us);
-}
 
 //---------------------------------------------------------------------------
 

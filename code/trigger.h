@@ -50,9 +50,7 @@ class TriggerAreaManager {
 		
 	public:
 
-		void* operator new (size_t mySize);
 
-		void operator delete (void* us);
 			
 		void init (void) {
 			for (long i = 0; i < MAX_TRIGGER_AREAS; i++)

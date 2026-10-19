@@ -67,18 +67,11 @@ constexpr int COMPONENT_ABBR_START = 33000;
 // MASTER COMPONENT routines
 //******************************************************************************************
 
-void* MasterComponent::operator new (size_t mySize) {
 
-	void* result = systemHeap->Malloc(mySize);
-	return(result);
-}
 
 //******************************************************************************************
 
-void MasterComponent::operator delete (void* us) {
 
-	systemHeap->Free(us);
-}
 
 //******************************************************************************************
 
