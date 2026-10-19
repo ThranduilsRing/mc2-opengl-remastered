@@ -84,12 +84,36 @@ layout(push_constant) uniform PacketLayerPC {
     float packetUvScaleX;
     float packetUvScaleY;
     int   packetAlphaTest;
+    int   coverageFringePass;   // PROP-COVERAGE-1: 0 = core (cutout) pass, 1 = blended fringe pass
 } uPacket;
 
 layout(location = 0) out vec4 oColor;     // MRT0 lit color
 layout(location = 1) out vec4 oGBuffer1;  // MRT1 normal + shadow class
 
-#include "../include/prop_dither.hglsl"
+// PROP-COVERAGE-1: partial alpha (tree cards, fences, alpha-mixed buildings) is resolved by a two-pass
+// draw, not by the Bayer 4x4 screen-door dither this island used to share with GL static_prop.frag. The
+// stipple read as a fixed checkerboard over every partly covered texel (leaf edges, and at distance
+// whole canopies and lattices, whose box-filtered mips average to mid alpha), and nothing in the VK
+// chain (no MSAA, no TAA) resolves it.
+//   core pass   (coverageFringePass 0): hard cutout at kCoverCut, opaque, writes depth and GBuffer1.
+//   fringe pass (coverageFringePass 1): drawn after every core, alpha-tested packets only. The fragments
+//     the core cut are alpha-blended over the scene with alpha a/kCoverCut (continuous at the cut);
+//     the pipeline depth-tests without writing depth and masks GBuffer1, so a fringe never punches
+//     a hole in what is behind it and never rewrites the normal or shadow class.
+// The cut rises with the mip level: at mip 0 alpha is the authored cutout (crisp 0.5 edge); once
+// the texture is minified, alpha is box-filtered COVERAGE (a chain-link fence at distance averages
+// to ~0.5-0.7), and a 0.5 cut would turn it into a solid slab -- so minified partial coverage goes
+// to the blended fringe at close to its true alpha instead.
+const float kCoverMin = 0.02;   // below this a fringe is invisible; skip the blend
+float propCoverage(float a, float lod) {
+    float cut = mix(0.5, 0.9, clamp(lod * 0.5, 0.0, 1.0));
+    if (uPacket.coverageFringePass == 0) {
+        if (a < cut) discard;
+        return 1.0;
+    }
+    if (a >= cut || a < kCoverMin) discard;
+    return a / cut;
+}
 #include "../include/axis.hglsl"
 
 // Night light pools: CPU copy of the GL binding-28 pool array (GpuTerrainLight, 48B), the same set GL static_prop.frag reads.
@@ -139,6 +163,7 @@ void main() {
     // Set true by the alpha-ON branch below -- see the oGBuffer1 write at the end
     // of main() for why the distinction exists and what its granularity is.
     bool alphaTestClass = false;
+    float cover = 1.0;   // PROP-COVERAGE-1 blend alpha (1 in the core pass)
     if (uFrame.materialReadyOn != 0 && vLayerOn >= 0) {
         alphaTestClass = true;
         // ALPHA-ON group (alpha-MIXED buildings): sample the alpha-ON array and apply the
@@ -157,10 +182,7 @@ void main() {
         float lodOn = 0.5 * log2(max(max(dot(duv1, duv1), dot(duv2, duv2)), 1e-12));
         lodOn = max(lodOn, 0.0);
         vec4 texc = textureLod(uAlbedoOn, vec3(uvSampledOn, float(vLayerOn)), lodOn);
-        // BUILDING-GLASS-1 parity with GL static_prop.frag: Bayer 4x4 ordered dither
-        // (thresholds (index+0.5)/16, gl_FragCoord-based) so partial-alpha leaf/edge
-        // texels stipple instead of hard-cutting at 0.5.
-        if (propBayerDitherDiscard(texc.a, gl_FragCoord.xy)) discard;
+        cover = propCoverage(texc.a, lodOn);   // PROP-COVERAGE-1 (replaces the Bayer screen-door dither)
         // ★VK-FLIP-FIELD-REPORT-1 BLACK-FENCE FIX: the alpha-ON group is the ALPHA_TEST
         // class (tree cards / fences / foliage). GL static_prop.frag:339 floors their lit
         // color at max(litRgb, vec3(0.5)) so the dark, light-facing-falloff side doesn't
@@ -185,7 +207,7 @@ void main() {
         // A packet GL alpha-tests although its type sits in the alpha-OFF group (its texture's alpha flag is set after the arrays
         // were built, e.g. the hex lattice props): GL's dither discard, its alpha-test light floor and its alpha-test shadow class.
         if (uPacket.packetAlphaTest != 0) {
-            if (propBayerDitherDiscard(texOff.a, gl_FragCoord.xy)) discard;
+            cover = propCoverage(texOff.a, textureQueryLod(uAlbedo, fract(vUv) * vUvScale).y);   // PROP-COVERAGE-1
             rgb = albedo * max(vArgb, vec3(0.5));
             alphaTestClass = true;
         }
@@ -196,7 +218,9 @@ void main() {
         // Fail-soft flat teal placeholder. IN-PLACE opaque write.
         rgb = vec3(0.35, 0.62, 0.68) * (0.6 + 0.4 * vUv.x);
     }
-    oColor = vec4(rgb, 1.0);
+    // PROP-COVERAGE-1: an opaque (non-alpha-tested) fragment belongs to the core pass only.
+    if (uPacket.coverageFringePass != 0 && !alphaTestClass) discard;
+    oColor = vec4(rgb, cover);
 
     // location 1: GBuffer1 — bit-adjacent to static_prop.frag:657-661, which selects
     // between TWO shadow classes off the packet's alpha-test bit:

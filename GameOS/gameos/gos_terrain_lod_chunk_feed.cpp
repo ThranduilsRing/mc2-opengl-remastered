@@ -295,6 +295,16 @@ extern "C" int mc2_terrain_tier1_get_frame_feed(Mc2TerrainTier1Feed* out)
         out->shorelineMaskVersion = have ? mask.version : 0;
         const float* b = gos_TerrainLodChunk_ShorelineMaskBounds();
         for (int i = 0; i < 4; ++i) out->shorelineBounds[i] = b ? b[i] : 0.0f;
+        // SHORE-FIELD-1: the water's smooth shore field, so the coastal colormap follows the drawn coast.
+        extern int gos_WaterShoreMode();
+        const auto& sf = fields->waterShoreHeight();
+        const bool haveSf = gos_WaterShoreMode() == 3 && !sf.texels.empty() && sf.width > 1 && sf.height > 1;
+        out->shoreFieldTexels  = haveSf ? sf.texels.data() : nullptr;
+        out->shoreFieldW       = haveSf ? sf.width : 0;
+        out->shoreFieldH       = haveSf ? sf.height : 0;
+        out->shoreFieldVersion = haveSf ? sf.version : 0;
+        const float* sb = gos_TerrainLodChunk_WaterShoreHeightBounds();
+        for (int i = 0; i < 4; ++i) out->shoreFieldBounds[i] = sb ? sb[i] : 0.0f;
     }
     {
         float fr = 1.f, fg = 1.f, fb = 1.f;

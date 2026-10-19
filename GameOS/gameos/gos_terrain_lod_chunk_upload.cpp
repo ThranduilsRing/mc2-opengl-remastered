@@ -413,11 +413,13 @@ int gos_WaterShoreMode()
         if (mc2::gate::is<"MC2_WATER_SHORE_MODE", "0">()) return 0;
         if (mc2::gate::is<"MC2_WATER_SHORE_MODE", "1">()) return 1;
         if (mc2::gate::is<"MC2_WATER_SHORE_MODE", "2">()) return 2;
-        if (mc2::gate::is<"MC2_WATER_SHORE_MODE", "3">()) return 3;   // GL-only smooth-shore prototype
+        if (mc2::gate::is<"MC2_WATER_SHORE_MODE", "3">()) return 3;
         // Back-compat killswitch: MC2_WATER_SHORE_MASK=0 predates the mode
         // gate and meant "full legacy ramp"; keep that meaning.
         const bool shoreMaskOn = mc2::gate::get<"MC2_WATER_SHORE_MASK">();  // default ON
-        return shoreMaskOn ? 2 : 0;   // default: per-fragment signed height
+        // SHORE-FIELD-1: default is mode 3 -- edge AND depth tint from the smooth field
+        // (cooked shore_field.r16f, else visual_height_4x; no sidecar -> the FS falls back to 2/1/0).
+        return shoreMaskOn ? 3 : 0;
     }();
     return s_mode;
 }

@@ -38,6 +38,48 @@
 #include "include/terrain_frame_vk.glsl"   // TerrainFrameUBO + set-0 resources + CSM shadow helpers
 #include "../include/axis.hglsl"   // mc2ToRender: the POM view vector is built in the MC2 world frame
 #include "../include/edge_haze.hglsl"   // edgeHazeAmount + EDGE_HAZE_SKY, shared with GL
+#include "../include/water_shore_edge.hglsl"   // SHORE-FIELD-1: wse_bicubicHeight (the water's shore field reconstruction)
+
+// SHORE-FIELD-1 (owner: "colormap tint for now"): binding 15 is the water's smooth shore field. Inside the coastal
+// band the stock colormap's water paint (teal staircase corners baked from the coarse 128 wu grid) is made to follow
+// the smoothed coast: where the field says land but the colormap texel is painted as water, the colour is taken from
+// the land side (re-sampled uphill along the field gradient); where the field says shallow water but the texel is
+// painted as land, from the water side. Heights and the mesh are untouched.
+layout(set = 0, binding = 15) uniform sampler2D u_shoreField;
+
+vec3 sfColormapAt(vec2 worldXY) {
+    vec2 uv = vec2((worldXY.x - uT.atlasTopLeftX) * uT.atlasOneOverWorldUnits,
+                   (uT.atlasTopLeftY - worldXY.y) * uT.atlasOneOverWorldUnits);
+    return textureLod(u_colormap, uv, 0.0).rgb;
+}
+float sfWaterPaint(vec3 c) { return smoothstep(0.0, 0.08, min(c.g, c.b) - c.r); }   // same test as the material weights
+
+vec3 sfFollowCoast(vec3 base, vec3 wp) {
+    vec2 hn = vec2((wp.x - uT.shoreFieldBoundsX) / max(uT.shoreFieldBoundsW, 1e-5),
+                   (uT.shoreFieldBoundsY - wp.y) / max(uT.shoreFieldBoundsH, 1e-5));
+    if (any(lessThan(hn, vec2(0.0))) || any(greaterThan(hn, vec2(1.0)))) return base;
+    float thick = uT.shorelineWaterElev - wse_bicubicHeight(u_shoreField, hn);   // > 0: the field says water
+    const float kBandWu = 24.0;   // depth/height band around the waterline the colour follow acts in
+    if (abs(thick) > kBandWu) return base;
+    float paint = sfWaterPaint(base);
+    bool fieldWater = thick > 0.0;
+    float want = fieldWater ? 1.0 - paint : paint;   // how wrong the painted side is
+    if (want < 0.02) return base;
+    // Uphill direction of the field in world XY (texel-step central differences; hn.y runs north->south).
+    vec2 e = 1.0 / vec2(textureSize(u_shoreField, 0) - ivec2(1));
+    float gx = wse_bicubicHeight(u_shoreField, hn + vec2(e.x, 0.0)) - wse_bicubicHeight(u_shoreField, hn - vec2(e.x, 0.0));
+    float gy = wse_bicubicHeight(u_shoreField, hn - vec2(0.0, e.y)) - wse_bicubicHeight(u_shoreField, hn + vec2(0.0, e.y));
+    vec2 dir = vec2(gx, gy);
+    if (dot(dir, dir) < 1e-10) return base;
+    dir = normalize(dir) * (fieldWater ? -1.0 : 1.0);   // land: step uphill; water: step downhill
+    vec3 found = base;
+    for (int k = 1; k <= 4; ++k) {
+        vec3 c = sfColormapAt(wp.xy + dir * (40.0 * float(k)));
+        float p = sfWaterPaint(c);
+        if (fieldWater ? (p > 0.5) : (p < 0.5)) { found = c; break; }
+    }
+    return mix(base, found, want);
+}
 
 layout(location = 0) in vec3 v_worldPos;
 
@@ -388,6 +430,13 @@ vec3 mv_detailNormal(vec4 w, float snowWeight, vec2 worldXY, float lodNear, floa
     return dN * lodNear;
 }
 
+// CEMENT-MIP-EDGE-1: antialiased "x < 0.5" for the cement transition cut; fw = the cut form's
+// per-pixel footprint, so the edge is one pixel of coverage at any distance instead of a hard stair.
+float cCutLt(float x, float fw) {
+    float w = max(fw, 1e-4);
+    return 1.0 - smoothstep(0.5 - w, 0.5 + w, x);
+}
+
 void main() {
     vec3 base;
     // VK-TERRAIN-LIGHTING: track whether this fragment resolved to a solid cement slab.
@@ -415,6 +464,7 @@ void main() {
              + texture(u_colormap, uv + vec2( CMAP_R2, -CMAP_R2)).rgb
              + texture(u_colormap, uv + vec2(-CMAP_R2, -CMAP_R2)).rgb;
         base /= 9.0;
+        if (uT.shoreFieldOn != 0) base = sfFollowCoast(base, v_worldPos);   // SHORE-FIELD-1
     } else {
         // Fail-soft olive placeholder (colormap not importable/ready this frame).
         float hMod = clamp(v_worldPos.z / 512.0 + 0.5, 0.35, 1.0);
@@ -429,6 +479,24 @@ void main() {
     // uT.useCement==0 (gate off / atlas or words not ready) -> whole block skipped ->
     // colormap base only, byte-identical to the colormap-only frame.
     if (uT.useCement != 0) {
+        // CEMENT-MIP-EDGE-1: the road "outline". The atlas was sampled with texture() on a fract()ed
+        // tile UV inside a per-fragment branch: at every tile wrap the implicit derivatives blow up
+        // and the sampler drops to the atlas-wide average mip (a dark 1 px seam along every cement
+        // tile edge and across roads), and at distance the half-texel inset only guarded mip 0, so
+        // the neighbouring atlas cells bled into each road/apron cell's border texels (a dark halo
+        // along both road edges on far hills). Derivatives now come from the CONTINUOUS tile UV,
+        // here in uniform control flow; the LOD is explicit, capped so a cell keeps >= 2 texels,
+        // and the inset is half a texel AT that LOD.
+        vec2  cCont    = vec2(v_worldPos.x, -v_worldPos.y) / uT.cementWUPT;
+        vec2  cGx      = dFdx(cCont), cGy = dFdy(cCont);
+        float cCellTex = max(float(textureSize(u_cementAtlas, 0).x) / float(max(uT.cementGridSide, 1)), 1.0);
+        float cLod     = 0.5 * log2(max(max(dot(cGx, cGx), dot(cGy, cGy)) * cCellTex * cCellTex, 1e-12));
+        cLod = clamp(cLod, 0.0, min(max(log2(cCellTex) - 1.0, 0.0), float(textureQueryLevels(u_cementAtlas) - 1)));
+        float cInsetLod = min(0.5 * exp2(cLod) / cCellTex, 0.25);
+        // CEMENT-MIP-EDGE-1: per-pixel tile-UV footprint, for the antialiased transition cut below
+        // (the marching-squares cut was binary, a hard aliased stair along every road side).
+        float cFu = abs(cGx.x) + abs(cGy.x);
+        float cFv = abs(cGx.y) + abs(cGy.y);
         int  ctX = clamp(int(floor((v_worldPos.x + uT.halfMap) / 128.0)), 0, uT.mapSide - 1);
         int  ctY = clamp(int(floor((uT.halfMap - v_worldPos.y) / 128.0)), 0, uT.mapSide - 1);
         uint cw  = uC.cementWordsF[ctX + ctY * uT.mapSide];
@@ -443,17 +511,16 @@ void main() {
             // CEMENT-ATLAS-SEAM-1 (terrain_lod_chunk.frag): half-texel inset for sampling only; the
             // transition mask below keeps the true intra-tile position cTileUV.
             vec2 cSampleUV = cTileUV;
-            if (uT.cementAtlasSeamFix != 0) {
-                float cInset = 0.5 / max(float(textureSize(u_cementAtlas, 0).x) / float(cGridSide), 1.0);
-                cSampleUV = clamp(cTileUV, vec2(cInset), vec2(1.0 - cInset));
-            }
+            if (uT.cementAtlasSeamFix != 0)
+                cSampleUV = clamp(cTileUV, vec2(cInsetLod), vec2(1.0 - cInsetLod));   // CEMENT-MIP-EDGE-1
             vec2 cAtlasUV = (vec2(float(cCol), float(cRow)) + cSampleUV) / float(cGridSide);
-            vec3 cementColor = texture(u_cementAtlas, cAtlasUV).rgb * vec3(uT.missionFlatR, uT.missionFlatG, uT.missionFlatB);  // CEMENT-NIGHT-LIGHT-1
+            vec4 cementTexel = textureLod(u_cementAtlas, cAtlasUV, cLod);
+            vec3 cementColor = cementTexel.rgb * vec3(uT.missionFlatR, uT.missionFlatG, uT.missionFlatB);  // CEMENT-NIGHT-LIGHT-1
             // CEMENT-ALPHA-LAND-1 (terrain_lod_chunk.frag:1009-1015): OWN_ALPHA transition.
             // Word bit23 => the atlas cell carries its own coverage in alpha; composite OVER base.
             bool cementOwnAlpha = (cw & 0x00800000u) != 0u;
             if (isTransition && cementOwnAlpha) {
-                float cOwnA = texture(u_cementAtlas, cAtlasUV).a;
+                float cOwnA = cementTexel.a;
                 base = mix(base, cementColor, cOwnA);
                 if (cOwnA > 0.5) { cementHit = true; pureConcrete = true; }
             } else if (isTransition) {
@@ -484,33 +551,33 @@ void main() {
                     } else if (cfg == 15) {
                         alpha = 1.0;
                     } else if (cfg == 8) {        // cTL only
-                        alpha = (u + v < 0.5) ? 1.0 : 0.0;
+                        alpha = cCutLt(u + v, cFu + cFv);
                     } else if (cfg == 4) {        // cTR only
-                        alpha = ((1.0 - u) + v < 0.5) ? 1.0 : 0.0;
+                        alpha = cCutLt((1.0 - u) + v, cFu + cFv);
                     } else if (cfg == 2) {        // cBR only
-                        alpha = ((1.0 - u) + (1.0 - v) < 0.5) ? 1.0 : 0.0;
+                        alpha = cCutLt((1.0 - u) + (1.0 - v), cFu + cFv);
                     } else if (cfg == 1) {        // cBL only
-                        alpha = (u + (1.0 - v) < 0.5) ? 1.0 : 0.0;
+                        alpha = cCutLt(u + (1.0 - v), cFu + cFv);
                     } else if (cfg == 7) {        // missing cTL
-                        alpha = (u + v >= 0.5) ? 1.0 : 0.0;
+                        alpha = (1.0 - cCutLt(u + v, cFu + cFv));
                     } else if (cfg == 11) {       // missing cTR
-                        alpha = ((1.0 - u) + v >= 0.5) ? 1.0 : 0.0;
+                        alpha = (1.0 - cCutLt((1.0 - u) + v, cFu + cFv));
                     } else if (cfg == 13) {       // missing cBR
-                        alpha = ((1.0 - u) + (1.0 - v) >= 0.5) ? 1.0 : 0.0;
+                        alpha = (1.0 - cCutLt((1.0 - u) + (1.0 - v), cFu + cFv));
                     } else if (cfg == 14) {       // missing cBL
-                        alpha = (u + (1.0 - v) >= 0.5) ? 1.0 : 0.0;
+                        alpha = (1.0 - cCutLt(u + (1.0 - v), cFu + cFv));
                     } else if (cfg == 12) {       // cTL+cTR, top
-                        alpha = (v < 0.5) ? 1.0 : 0.0;
+                        alpha = cCutLt(v, cFv);
                     } else if (cfg == 6) {        // cTR+cBR, right
-                        alpha = (u >= 0.5) ? 1.0 : 0.0;
+                        alpha = (1.0 - cCutLt(u, cFu));
                     } else if (cfg == 3) {        // cBR+cBL, bottom
-                        alpha = (v >= 0.5) ? 1.0 : 0.0;
+                        alpha = (1.0 - cCutLt(v, cFv));
                     } else if (cfg == 9) {        // cBL+cTL, left
-                        alpha = (u < 0.5) ? 1.0 : 0.0;
+                        alpha = cCutLt(u, cFu);
                     } else if (cfg == 10) {       // cTL+cBR
-                        alpha = ((u + v < 0.5) || ((1.0 - u) + (1.0 - v) < 0.5)) ? 1.0 : 0.0;
+                        alpha = max(cCutLt(u + v, cFu + cFv), cCutLt((1.0 - u) + (1.0 - v), cFu + cFv));
                     } else if (cfg == 5) {        // cTR+cBL
-                        alpha = (((1.0 - u) + v < 0.5) || (u + (1.0 - v) < 0.5)) ? 1.0 : 0.0;
+                        alpha = max(cCutLt((1.0 - u) + v, cFu + cFv), cCutLt(u + (1.0 - v), cFu + cFv));
                     }
                     base = mix(base, cementColor, alpha);
                     if (alpha > 0.5) { cementHit = true; pureConcrete = true; }
@@ -538,13 +605,11 @@ void main() {
                     uint dLayerIdx = dnw & 0xFFFFu;
                     int  dCol = int(dLayerIdx) % dGridSide;
                     int  dRow = int(dLayerIdx) / dGridSide;
-                    vec2 dSampleUV = dTileUV;   // CEMENT-ATLAS-SEAM-1: same inset as the main cement branch
-                    if (uT.cementAtlasSeamFix != 0) {
-                        float dInset = 0.5 / max(float(textureSize(u_cementAtlas, 0).x) / float(dGridSide), 1.0);
-                        dSampleUV = clamp(dTileUV, vec2(dInset), vec2(1.0 - dInset));
-                    }
+                    vec2 dSampleUV = dTileUV;   // CEMENT-ATLAS-SEAM-1 / CEMENT-MIP-EDGE-1: same inset + LOD as the main branch
+                    if (uT.cementAtlasSeamFix != 0)
+                        dSampleUV = clamp(dTileUV, vec2(cInsetLod), vec2(1.0 - cInsetLod));
                     vec2 dAtlasUV = (vec2(float(dCol), float(dRow)) + dSampleUV) / float(dGridSide);
-                    base = texture(u_cementAtlas, dAtlasUV).rgb * vec3(uT.missionFlatR, uT.missionFlatG, uT.missionFlatB);  // CEMENT-NIGHT-LIGHT-1
+                    base = textureLod(u_cementAtlas, dAtlasUV, cLod).rgb * vec3(uT.missionFlatR, uT.missionFlatG, uT.missionFlatB);  // CEMENT-NIGHT-LIGHT-1
                     pureConcrete = true;
                     cementHit = true;   // as GL's diag-connect branch
                 }

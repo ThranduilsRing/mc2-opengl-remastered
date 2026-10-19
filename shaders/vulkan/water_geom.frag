@@ -173,15 +173,32 @@ void main(void)
     PREC vec2  q1 = WorldPos.xy * WAVE_FREQ * 1.70 + vec2(-0.80, -1.10) * sc;
     PREC float nz = (fbm3(q0) + fbm3(q1)) - 0.875;
 
-    PREC float trans    = clamp(exp(-WaterThickness * ABSORPTION_DENSITY), 0.0, 1.0);
+    // SHORE-FIELD-1: deep/shallow tint from the smooth shore field (mode 3), not the coarse
+    // per-vertex thickness -- no more deep-water diamonds around single low vertices.
+    // Evaluated for every fragment (uniform control flow) so its screen derivative is defined.
+    float fieldThick;
+    const bool hasField = wse_fieldThickness(int(F.f4.x + 0.5), int(F.f4.y + 0.5), u_shoreHeightTex, F.f5,
+                                             WorldPos.xy, F.f7.x, fieldThick);
+    const float fieldThickFw = fwidth(fieldThick);
+    PREC float tintThick = hasField ? max(fieldThick, 0.0) : WaterThickness;
+    PREC float trans    = clamp(exp(-tintThick * ABSORPTION_DENSITY), 0.0, 1.0);
     PREC vec3  waterCol = mix(DEEP_COLOR, SHALLOW_COLOR, trans);
 
     PREC float shoreBlend = max(alphaDepth, 1.0);
     PREC float shore = smoothstep(-shoreBlend * 0.5, shoreBlend, WaterThickness);
     // WATER-SHORE-EDGE-1 / WATER-SHORE-MASK-1: shared with the GL FS.
-    shore = wse_shoreFeather(shore, int(F.f4.x + 0.5), int(F.f4.y + 0.5), int(F.f4.z + 0.5),
-                             u_shoreHeightTex, u_shoreMask, F.f5, F.f6, F.f4.w,
-                             WorldPos.xy, F.f7.x);
+    if (hasField) {
+        // SHORE-FIELD-1: the coast is the field's zero crossing as a crisp ~3 px antialiased edge.
+        // The old depth feather (smoothstep over featherWu of DEPTH) spread hundreds of wu wide on
+        // gentle shelves (mc2_17) and let coarse terrain decide the visible line elsewhere. Shallow
+        // water keeps some translucency through a 0.55..1 depth softness floor.
+        float edgeAA = smoothstep(0.0, max(3.0 * fieldThickFw, 1e-3), fieldThick);
+        shore = edgeAA * mix(0.55, 1.0, smoothstep(0.0, max(F.f4.w, 0.5), fieldThick));
+    } else {
+        shore = wse_shoreFeather(shore, int(F.f4.x + 0.5), int(F.f4.y + 0.5), int(F.f4.z + 0.5),
+                                 u_shoreHeightTex, u_shoreMask, F.f5, F.f6, F.f4.w,
+                                 WorldPos.xy, F.f7.x);
+    }
     if (shore <= 0.0) discard;
 
     PREC vec3  vertexLightRGB = Color.bgra.rgb;

@@ -242,6 +242,36 @@ bool ensure_dummy_shore_mask(TerrainIsland* s) {
     return true;
 }
 
+// SHORE-FIELD-1: binding 15 is always valid; the 1x1 dummy is unused while uT.shoreFieldOn is 0. The FS reads it with
+// texelFetch only (Catmull-Rom), so the sampler's filter never applies to the R32F texels.
+bool ensure_dummy_shore_field(TerrainIsland* s) {
+    if (!create_colormap_sampler(s)) return false;
+    if (s->shoreFieldView) return true;
+    const float px[1] = {0.0f};
+    if (!upload_sampled_image(s, s->shoreFieldImg, s->shoreFieldView, VK_FORMAT_R32_SFLOAT, 1, 1, px, sizeof(px))) return false;
+    s->shoreFieldReady = false;
+    return true;
+}
+
+// Copy-once import of the water shore field from the terrain field store, again whenever its version changes.
+void import_shore_field(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
+    if (!feed.shoreFieldTexels || feed.shoreFieldW <= 1 || feed.shoreFieldH <= 1 || feed.shoreFieldVersion == 0) return;
+    if (feed.shoreFieldVersion == s->shoreFieldVersionImported) return;
+    s->shoreFieldVersionImported = feed.shoreFieldVersion;
+    const auto w = static_cast<uint32_t>(feed.shoreFieldW), h = static_cast<uint32_t>(feed.shoreFieldH);
+    if (upload_sampled_image(s, s->shoreFieldImg, s->shoreFieldView, VK_FORMAT_R32_SFLOAT, w, h,
+                             feed.shoreFieldTexels, static_cast<VkDeviceSize>(w) * h * 4u)) {
+        s->shoreFieldReady = true;
+        vlog("SHORE-FIELD: imported the shore field %ux%u for the coastal colormap (version %llu).", w, h,
+             static_cast<unsigned long long>(feed.shoreFieldVersion));
+    } else {
+        s->shoreFieldReady = false;
+        vlog("SHORE-FIELD: shore field %ux%u upload failed; coastal colormap unchanged.", w, h);
+        ensure_dummy_shore_field(s);
+    }
+    write_descriptors(s);
+}
+
 // Copy-once import of the mission's shoreline mask sidecar from the terrain field store, again whenever its version changes.
 // A mission without a sidecar keeps the dummy (pure elevation bands, as GL without one).
 void import_shore_mask(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {

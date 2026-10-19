@@ -188,6 +188,11 @@ struct TerrainIsland : mc2vk::IslandState {
     mc2vk::OwnedImageView   shoreMaskView;
     uint64_t      shoreMaskVersionImported = 0;   // field-store mask version last imported (0 = none)
     bool          shoreMaskReady = false;         // the bound mask is the mission's, not the dummy
+    // SHORE-FIELD-1: binding 15, the water shore field the coastal colormap follows.
+    mc2vk::OwnedImage       shoreFieldImg;
+    mc2vk::OwnedImageView   shoreFieldView;
+    uint64_t      shoreFieldVersionImported = 0;
+    bool          shoreFieldReady = false;
     mc2vk::OwnedBuffer      cementBuf;
     VkDeviceSize  cementCapBytes = 0;
     uint64_t      cementVersionCopied = UINT64_MAX; // last snapshotted cement-word version
@@ -354,6 +359,8 @@ bool ensure_dummy_cement(TerrainIsland* s);
 void import_cement(TerrainIsland* s, const Mc2TerrainTier1Feed& feed);
 bool ensure_dummy_shore_mask(TerrainIsland* s);
 void import_shore_mask(TerrainIsland* s, const Mc2TerrainTier1Feed& feed);
+bool ensure_dummy_shore_field(TerrainIsland* s);
+void import_shore_field(TerrainIsland* s, const Mc2TerrainTier1Feed& feed);
 bool snapshot_cement(TerrainIsland* s, const Mc2TerrainTier1Feed& feed);
 bool ensure_shadow_sampler(TerrainIsland* s);
 bool ensure_dummy_shadow(TerrainIsland* s);
