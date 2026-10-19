@@ -45,9 +45,9 @@ int gos_getDynShadowMapSize() {
     gosPostProcess* pp = getGosPostProcess();
     return pp ? pp->getDynamicShadowMapSize() : 0;
 }
-unsigned int gos_GetTerrainNormalArrayTex() {
+uint64_t gos_GetTerrainMaterialNormalVersion() {
     gosRenderer* r = getGosRenderer();
-    return r ? r->getTerrainNormalArrayTexEnsureBuilt() : 0u;
+    return r ? r->getTerrainMaterialNormalVersion() : 0;
 }
 uint32_t gos_GetTerrainMaterialNormalHandle(int slot) {
     gosRenderer* r = getGosRenderer();

@@ -65,7 +65,7 @@ extern "C" const float* gos_terrain_indirect_getDispatchMvp16();
 
 #endif
 
-extern unsigned int gos_GetTerrainNormalArrayTex();
+extern uint64_t gos_GetTerrainMaterialNormalVersion();
 // The gos texture handle of detail-normal slot `slot` (0-8), one layer source of that array; INVALID_TEXTURE_ID when absent.
 uint32_t gos_GetTerrainMaterialNormalHandle(int slot);
 
@@ -112,14 +112,12 @@ extern void  gos_GetTerrainCameraPos(float*, float*, float*);
 extern int   g_terrainMaterialProfile;   // global; 0 = legacy
 
 // Step 5c: cement catalog atlas (tex3) accessors from gos_terrain_indirect.cpp.
-extern unsigned int gos_terrain_indirect_getCementAtlasGLTex();
 
 extern int          gos_terrain_indirect_getCementAtlasGridSide();
 
 extern bool         gos_terrain_indirect_isCementAtlasReady();
 
 // Stage B: transition mask array (GL_TEXTURE_2D_ARRAY, unit 11).
-extern GLuint gos_terrain_indirect_getTransitionMaskArrayGL();
 
 extern bool   gos_terrain_indirect_isTransitionMaskReady();
 
@@ -137,7 +135,6 @@ extern float gos_GetTerrainDetailStrength();
 // Phase 10: colormap atlas accessors (defined in gos_terrain_indirect.cpp,
 // global free functions). Same atlas tex1 + UV params the legacy gos_terrain.frag
 // useAtlasColormap path consumes.
-extern GLuint gos_terrain_indirect_getAtlasGLTex();
 
 extern float  gos_terrain_indirect_getAtlasMapTopLeftX();
 

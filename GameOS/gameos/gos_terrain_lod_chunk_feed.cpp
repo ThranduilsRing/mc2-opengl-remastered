@@ -52,7 +52,6 @@ extern "C" int mc2_terrain_tier1_get_frame_feed(Mc2TerrainTier1Feed* out)
     out->heightVersion = fields->heightVersion();
     // COLORMAP-BASE sub-slice: hand the GL colormap atlas tex + UV params to the
     // island so it can copy-once import the colormap and sample the REAL base color.
-    out->glColormapTex          = static_cast<uint32_t>(gos_terrain_indirect_getAtlasGLTex());
     {
         const mc2terrain::ColormapAtlas& cm = fields->colormapAtlas();
         const bool have = !cm.bytes.empty();
@@ -71,8 +70,7 @@ extern "C" int mc2_terrain_tier1_get_frame_feed(Mc2TerrainTier1Feed* out)
     // SSBO + the cement uniforms the GL LOD-chunk frag reads. useCement mirrors the GL
     // gate (gos_terrain_lod_chunk.cpp:1122-1124): atlas ready AND cement SSBO live.
     const bool cementReady = gos_terrain_indirect_isCementAtlasReady();
-    const bool cementLive  = cementReady && s_cementSsbo.created();
-    out->glCementAtlasTex   = static_cast<uint32_t>(gos_terrain_indirect_getCementAtlasGLTex());
+    const bool cementLive  = cementReady && !fields->cementWords().empty();
     out->cementGridSide     = gos_terrain_indirect_getCementAtlasGridSide();
     {
         const auto& atlas = fields->cementAtlas();
@@ -249,7 +247,7 @@ extern "C" int mc2_terrain_tier1_get_frame_feed(Mc2TerrainTier1Feed* out)
     // detailEnabled=0 -> VK N stays flat-up, byte-identical to the lighting-only frame).
     {
         out->detailEnabled       = 1;
-        out->glMatNormalArrayTex = (uint32_t)gos_GetTerrainNormalArrayTex();
+        out->matNormalVersion   = gos_GetTerrainMaterialNormalVersion();
         for (int slot = 0; slot < 9; ++slot)
             out->matNormalHandles[slot] = gos_GetTerrainMaterialNormalHandle(slot);
         // GL uniform values (gameos_graphics.cpp member defaults; all 1.0). The VK frag

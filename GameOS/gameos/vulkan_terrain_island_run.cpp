@@ -409,7 +409,7 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     }
 
     // VK-TERRAIN-DETAIL: copy-once import of the GL material detail-normal 2D_ARRAY. No-op
-    // once imported / while the gate is off (feed.glMatNormalArrayTex==0). Fail-soft: leaves
+    // once imported / while the gate is off (feed.matNormalVersion==0). Fail-soft: leaves
     // the flat-normal dummy bound (matNormalReady=false) -> FS uses macro-slope-only normal.
     import_matnormal(s, feed);
     }   // VK-FLIP-FIELD-REPORT-1: close VK-terrain-interop-copies zone

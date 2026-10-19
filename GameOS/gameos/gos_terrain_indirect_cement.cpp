@@ -5,12 +5,7 @@
 
 
 // ---------------------------------------------------------------------------
-// Colormap atlas — single GL texture covering the full merged colormap.
-//
-// cpuColorMap (terrtxm2.h:93) already holds the entire RGBA atlas in CPU
-// memory, retained at mission load.  We upload it once as a plain
-// GL_TEXTURE_2D so gos_terrain_bridge_drawIndirect can bind it at unit 0
-// instead of per-bucket tile binds.
+// Colormap atlas metadata; image bytes live in TerrainFieldStore.
 //
 // Atlas UV formula (mirrors terrtxm2.cpp:resolveTextureHandle):
 //   posX  = (worldX - mapTopLeft3d.x) * oneOverWorldUnitsMapSide
@@ -25,7 +20,6 @@
 
 namespace gos_terrain_indirect_detail {
 
-GLuint  g_atlasGLTex              = 0;
 int     g_atlasSize               = 0;
 float   g_atlasNumTexturesAcross  = 0.f;
 float   g_atlasMapTopLeftX        = 0.f;
@@ -33,17 +27,12 @@ float   g_atlasMapTopLeftY        = 0.f;
 float   g_atlasOneOverWorldUnits  = 0.f;
 
 // ---------------------------------------------------------------------------
-// Cement catalog atlas — single GL_TEXTURE_2D, packed grid of N cement tile
-// textures.  Built once per mission at BuildDenseRecipe() time via GPU
-// readback from already-resident catalog textures (textureData[0] in
-// tileRAMHeap is dead in stock gameplay — quickLoad gates the RAM path at
-// terrtxm.cpp:561).  Bound at unit 3 by gos_terrain_bridge_drawIndirect.
+// Cement atlas metadata; retained catalog source pixels feed TerrainFieldStore.
 //
 // LAYER MAP: keyed by mcTextureNodeIndex (NOT textures[] slot).
 //   q.terrainHandle returned by quad.cpp:546 (getTextureHandle) is the
 //   nodeIdx, NOT the slot — see V22 in Verification Appendix.
 // ---------------------------------------------------------------------------
-GLuint  g_cementAtlasGLTex          = 0;
 int     g_cementAtlasGridSide       = 0;   // cells per row/col (power of 2)
 int     g_cementAtlasTileCount      = 0;   // distinct cement entries enumerated
 bool    g_cementLayerMapReady       = false;
@@ -68,11 +57,7 @@ uint16_t g_cementLayerIndexBySlot[MC_MAX_TERRAIN_TXMS];
 static constexpr uint32_t kCementTransitionBit = 0x40000000u;  // IS_TRANSITION in cementWord
 static constexpr uint32_t kCementMaskIdShift    = 24u;         // bits 29:24 = maskId
 static constexpr uint32_t kCementMaskIdMask     = 0x3Fu;       // 6 bits (14 shapes used)
-static constexpr int      kTransitionMaskLayers = 14;
-static constexpr int      kTransitionMaskSize   = 256;
 
-GLuint g_transitionMaskArrayGL = 0;
-bool   g_transitionMaskReady   = false;
 
 // binNumber = (c0?8:0)|(c1?4:0)|(c2?2:0)|(c3?1:0); 0 and 15 are degenerate.
 // maskId = binNumber - 1 (0..13).
@@ -553,67 +538,6 @@ bool TileRoadAdjacent8(long r, long c, long mapSide, PostcompVertexPtr blocks) {
             if (TileIsRoadArt(r + dr, c + dc, mapSide, blocks)) return true;
         }
     return false;
-}
-
-// Build 14-layer R8 GL_TEXTURE_2D_ARRAY procedurally (bilinear weights + smoothstep).
-// Called once at end of BuildCementCatalogAtlas().
-void BuildTransitionMaskArray() {
-    const int N = kTransitionMaskLayers;
-    const int S = kTransitionMaskSize;
-    std::vector<uint8_t> buf((size_t)N * S * S, 0u);
-    for (int k = 0; k < N; ++k) {
-        const uint32_t bn = (uint32_t)(k + 1);
-        const bool c0 = (bn & 8u) != 0u;
-        const bool c1 = (bn & 4u) != 0u;
-        const bool c2 = (bn & 2u) != 0u;
-        const bool c3 = (bn & 1u) != 0u;
-        uint8_t* layer = &buf[(size_t)k * S * S];
-        for (int py = 0; py < S; ++py) {
-            for (int px = 0; px < S; ++px) {
-                const float u  = (float(px) + 0.5f) / float(S);
-                const float v  = (float(py) + 0.5f) / float(S);
-                const float w0 = (1.f - u) * (1.f - v);  // corner 0: UV(0,0)
-                const float w1 =        u  * (1.f - v);  // corner 1: UV(1,0)
-                const float w2 =        u  *        v;   // corner 2: UV(1,1)
-                const float w3 = (1.f - u) *        v;   // corner 3: UV(0,1)
-                float cov = (c0 ? w0 : 0.f) + (c1 ? w1 : 0.f)
-                          + (c2 ? w2 : 0.f) + (c3 ? w3 : 0.f);
-                cov = cov * cov * (3.f - 2.f * cov);  // smoothstep sharpening
-                layer[py * S + px] = (uint8_t)(std::min(cov, 1.f) * 255.f + 0.5f);
-            }
-        }
-    }
-    // TEX-CLASS: asset-pool -- terrain transition-mask 2D_ARRAY (content)
-    if (g_transitionMaskArrayGL == 0) glGenTextures(1, &g_transitionMaskArrayGL);
-    glBindTexture(GL_TEXTURE_2D_ARRAY, g_transitionMaskArrayGL);
-    glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, GL_R8, S, S, N, 0, GL_RED, GL_UNSIGNED_BYTE, buf.data());
-    glGenerateMipmap(GL_TEXTURE_2D_ARRAY);
-    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glBindTexture(GL_TEXTURE_2D_ARRAY, 0);
-    g_transitionMaskReady = true;
-
-    // REGISTRY-TERRAIN-SSBO-1: register the transition-mask 2D_ARRAY (observe-only).
-    {
-        RenderCore::RenderResourceDesc d;
-        d.id        = RenderCore::RenderResourceId::TransitionMaskArray;
-        d.kind      = RenderCore::RenderResourceKind::Texture2DArray;
-        d.lifetime  = RenderCore::RenderResourceLifetime::Mission;  // rebuilt per mission load
-        d.format    = RenderCore::RenderResourceFormat::RGBA8;  // R8 storage; closest enum slot
-        d.debugName = "TransitionMaskArray";
-        d.width     = static_cast<uint32_t>(S);
-        d.height    = static_cast<uint32_t>(S);
-        d.layers    = static_cast<uint32_t>(N);
-        d.glName    = static_cast<uint32_t>(g_transitionMaskArrayGL);
-        d.sizeBytes = static_cast<uint64_t>(N) * static_cast<uint64_t>(S) * static_cast<uint64_t>(S);
-        d.valid     = true;
-        RenderCore::registerOrUpdateRenderResource(d);
-    }
-
-    MC2_DIAGF("[CEMENT_ATLAS v1] event=transition_mask_array_built layers=%d size=%dx%d\n", N, S, S);
-    fflush(stdout);
 }
 
 // ---------------------------------------------------------------------------

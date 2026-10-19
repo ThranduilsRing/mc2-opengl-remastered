@@ -71,10 +71,7 @@ struct Mc2TerrainTier1Feed {
     const float*                heightCpu;         // terrain field store: mapSide^2 heights (the GL binding-23 bytes)
     uint64_t                    heightBytes;       // mapSide*mapSide*sizeof(float)
     uint64_t                    heightVersion;     // bumps when the height field changes (snapshot key)
-    // COLORMAP-BASE sub-slice: the GL colormap atlas texture (g_atlasGLTex) the VK
-    // island imports copy-once, plus the atlas-UV reconstruction params (same source
-    // as the GL LOD-chunk u_colormap / u_atlasTopLeftX/Y / u_atlasOneOverWorldUnits).
-    uint32_t                    glColormapTex;         // GL name of g_atlasGLTex (0 = not built yet)
+    // Versioned CPU colormap and the atlas UV reconstruction parameters.
     const uint8_t*              colormapBytes;         // the field store's colormap atlas (RGBA8 or BC7 level 0); null = none
     size_t                      colormapByteCount;
     int32_t                     colormapWidth;
@@ -84,13 +81,7 @@ struct Mc2TerrainTier1Feed {
     float                       atlasTopLeftX;
     float                       atlasTopLeftY;
     float                       atlasOneOverWorldUnits;
-    // CEMENT/ROAD atlas sub-slice: the GL cement/road overlay atlas (g_cementAtlasGLTex,
-    // runtime-assembled RGBA8, GL_REPEAT wrap) the VK island imports copy-once into a
-    // REPEAT-sampled image, plus the per-vertex cement-word SSBO (GL binding 25) it
-    // snapshots (map-load, same as the height SSBO), plus the cement uniforms the GL
-    // LOD-chunk frag reads (gos_terrain_lod_chunk.cpp:1122-1143). All 0/false when the
-    // cement atlas isn't ready -> VK frag falls back to the colormap base (no hole).
-    uint32_t                    glCementAtlasTex;      // GL name of g_cementAtlasGLTex (0 = not ready)
+    // Versioned cement/road atlas, per-vertex cement words and sampling parameters.
     const uint8_t*              cementAtlasRgba;       // the field store's CPU atlas (RGBA8, side^2 texels); null = none
     int32_t                     cementAtlasSide;
     uint64_t                    cementAtlasVersion;    // changes on every rebuild; the island re-imports on a change
@@ -128,7 +119,7 @@ struct Mc2TerrainTier1Feed {
     // (requires MC2_VK_TERRAIN_LIGHTING). detailEnabled=0 -> VK terrain N stays flat-up
     // (byte-identical to the lighting-only frame).
     int32_t                     detailEnabled;         // 1 iff MC2_VK_TERRAIN_DETAIL gate on
-    uint32_t                    glMatNormalArrayTex;   // GL name of terrain_normal_array_tex_ (0 = not built); the island's re-import key
+    uint64_t                    matNormalVersion;      // source replacement version (0 until slots 0-4 exist)
     uint32_t                    matNormalHandles[9];   // gos texture handle per array layer (0 = absent slot)
     float                       nfhStrength;           // terrainNormalsFromHeightStrength (GL default 1.0)
     float                       detailTiling;          // detailNormalTiling.x (GL default 1.0)

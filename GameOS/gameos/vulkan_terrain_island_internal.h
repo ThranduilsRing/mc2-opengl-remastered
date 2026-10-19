@@ -256,8 +256,8 @@ struct TerrainIsland : mc2vk::IslandState {
     // 1-layer until the real array imports (matNormalReady gates the FS sample).
     mc2vk::ResidentTextureRef matNormalTexture;
     mc2vk::OwnedSampler     matNormalSamp;   // REPEAT/LINEAR (GL_REPEAT wrap)
-    uint32_t      matNormalTexImported = 0;          // GL array tex name last imported (0 = none)
-    uint32_t      matNormalTexRejected = 0;          // GL array tex name whose slot texels were rejected (logged once)
+    uint64_t      matNormalVersionImported = 0;      // last source version imported
+    uint64_t      matNormalVersionRejected = 0;      // rejected source version, logged once
     uint32_t      matNormalLayers = 0;               // layer count of the imported array
     bool          matNormalReady = false;            // set once the real array is live
 

@@ -49,9 +49,9 @@ const uint32_t* SolidWindowStagingData(uint32_t* outCount) {
 bool ComputePreflight() {
     frameArmed = false;
     if (!IsEnabled() || !IsDenseRecipeReady() || InMissionTransition()) return false;
-    if (s_loadRaceDelayAtlas && g_atlasGLTex == 0) BuildColormapAtlas();
+    if (s_loadRaceDelayAtlas && g_atlasSize == 0) BuildColormapAtlas();
     frameArmed = gos_terrain_arm::ShouldArmGpuTerrain(
-        gpu_driven::IsTerrainSolidEnabled(), !g_uniqueTerrainNodeIds.empty(), g_atlasGLTex != 0);
+        gpu_driven::IsTerrainSolidEnabled(), !g_uniqueTerrainNodeIds.empty(), g_atlasSize > 0);
     everArmed = everArmed || frameArmed;
     if (frameArmed && g_loadRaceTrace) {
         g_loadRaceLastTerrainPath = 1;

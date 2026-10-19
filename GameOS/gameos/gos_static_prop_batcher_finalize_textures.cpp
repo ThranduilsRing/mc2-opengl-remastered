@@ -44,6 +44,7 @@ bool GpuStaticPropBatcher::buildTextureArrays(StaticPropFinalizeFrame& f) {
         GLint  w;
         GLint  h;
         DWORD  nodeIdx;   // MC_TextureManager node index for KTX2 sidecar lookup
+        std::shared_ptr<const std::vector<uint8_t>> rgba;
     };
 
     // COMPRESSION-BC7-STATICPROP-2 — bucket bookkeeping is rebuilt every
@@ -170,11 +171,10 @@ bool GpuStaticPropBatcher::buildTextureArrays(StaticPropFinalizeFrame& f) {
                 }
             }
             if (!ktxUsed) {
-                glBindTexture(GL_TEXTURE_2D, u.glTexId);
-                glGetTexImage(GL_TEXTURE_2D, 0, GL_BGRA, GL_UNSIGNED_BYTE, pixelBuf.data());
+                pixelBuf.assign(u.rgba->begin(), u.rgba->end());
                 glBindTexture(GL_TEXTURE_2D_ARRAY, arr);
                 glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, static_cast<GLint>(k),
-                                u.w, u.h, 1, GL_BGRA, GL_UNSIGNED_BYTE, pixelBuf.data());
+                                u.w, u.h, 1, GL_RGBA, GL_UNSIGNED_BYTE, pixelBuf.data());
                 outBytes += static_cast<size_t>(bw) * bh * 4u;
             }
         }
@@ -408,6 +408,10 @@ bool GpuStaticPropBatcher::buildTextureArrays(StaticPropFinalizeFrame& f) {
                     type.lastSeenGosHandle = gosHandle;
                 }
 
+                const auto texels = gos_GetTextureTexels(gosHandle);
+                auto rgba = texels.bytes;
+                if (rgba && (texels.vkFormat == mc2tex::kVkFormatBc7Unorm || texels.vkFormat == mc2tex::kVkFormatBc7Srgb))
+                    rgba = std::make_shared<const std::vector<uint8_t>>(mc2tex::decodeBc7(*rgba, texels.width, texels.height));
                 const GLuint glTexId = static_cast<GLuint>(gos_GetGLTextureId(gosHandle));
 
                 auto it = glTexIdToLayer.find(glTexId);
@@ -423,24 +427,12 @@ bool GpuStaticPropBatcher::buildTextureArrays(StaticPropFinalizeFrame& f) {
                     continue;
                 }
 
-            // v3.8 dimension fetch: use mcTextureManager metadata first
-            // (avoids the lazy-GL-upload trap where glGetTexLevelParameteriv
-            // returns 0x0 for textures that have a handle but haven't been
-            // glTexImage2D'd yet). MC2 textures are square (only a single
-            // `width` field exists in MC_TextureNode). Fall back to GL if
-            // metadata is unavailable.
-            GLint W = (mcTextureManager && nodeIdx != 0xFFFFFFFFu)
-                ? static_cast<GLint>(mcTextureManager->getWidth(nodeIdx))
-                : 0;
-            GLint H = W;
-            if (W <= 0) {
-                glBindTexture(GL_TEXTURE_2D, glTexId);
-                glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH,  &W);
-                glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &H);
-            }
-            // If both metadata AND GL fail, the texture is genuinely
+            GLint W = texels.status == GosTexels::Status::Ready && rgba &&
+                rgba->size() == size_t(texels.width) * texels.height * 4 ? static_cast<GLint>(texels.width) : 0;
+            GLint H = W > 0 ? static_cast<GLint>(texels.height) : 0;
+            // If the retained source has no pixels, the texture is genuinely
             // unavailable at finalize-time (no MC node, never cached,
-            // and no GL upload). Skip this packet via layer=-1 sentinel
+            // and no decoded source). Skip this packet via layer=-1 sentinel
             // rather than disarming the whole coalesce build — graceful
             // degradation: other valid packets still arm.
             if (W <= 0 || H <= 0) {
@@ -503,7 +495,7 @@ bool GpuStaticPropBatcher::buildTextureArrays(StaticPropFinalizeFrame& f) {
             // v3.8 mixed-size: append unique with its actual W,H.
             // Array allocation uses max(W,H) across all uniques.
             const int32_t layer = static_cast<int32_t>(uniques.size());
-            uniques.push_back({glTexId, W, H, nodeIdx});
+            uniques.push_back({glTexId, W, H, nodeIdx, std::move(rgba)});
             glTexIdToLayer[glTexId] = layer;
             layerForPacket[globalPktIdx] = layer;
             if (layerForType[typeID] < 0) layerForType[typeID] = layer; // VK-P11: first-valid wins
@@ -804,9 +796,7 @@ bool GpuStaticPropBatcher::buildTextureArrays(StaticPropFinalizeFrame& f) {
                 }
             }
             if (!ktxUsed) {
-                pixelBuf.assign(static_cast<size_t>(u.w) * static_cast<size_t>(u.h) * 4u, 0);
-                glBindTexture(GL_TEXTURE_2D, u.glTexId);
-                glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixelBuf.data());
+                pixelBuf.assign(u.rgba->begin(), u.rgba->end());
                 blitRows(layerTexels[k], cpuArray.width, pixelBuf.data(), static_cast<uint32_t>(u.w), static_cast<uint32_t>(u.h));
             }
         }

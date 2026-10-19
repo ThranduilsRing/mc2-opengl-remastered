@@ -484,147 +484,14 @@ class gosRenderer {
             if (terrain_mat_normal_handle_[idx] != INVALID_TEXTURE_ID && terrain_mat_normal_handle_[idx] != handle)
                 deleteTexture(terrain_mat_normal_handle_[idx]);
             terrain_mat_normal_handle_[idx] = valid ? handle : INVALID_TEXTURE_ID;
-            terrain_mat_normal_[idx] = valid ? textureList_[handle]->getTextureId() : 0;
-            terrain_normal_array_dirty_ = true;
+            static uint64_t nextVersion = 0;
+            terrain_normal_version_ = ++nextVersion;
         }
         DWORD getTerrainMaterialNormalHandle(int idx) const { return idx >= 0 && idx < 9 ? terrain_mat_normal_handle_[idx] : INVALID_TEXTURE_ID; }
-        void buildTerrainNormalArray() {
-            // Require slots 0-4 (rock/grass/dirt/concrete/snow). Slots 5-8 are optional.
-            for (int i = 0; i < 5; ++i) {
-                if (terrain_mat_normal_[i] == 0) {
-                    static bool s_warned = false;
-                    if (!s_warned) {
-                        s_warned = true;
-                        MC2_LOG(Render, Debug, "buildTerrainNormalArray: slot {:d} is zero -- deferring build until slots 0-4 are set", mc2::fmt::as_i32(i));
-                    }
-                    return;
-                }
-            }
-
-            GlPixelStoreGuard guard;  // saves and restores pixel-store, PBO, active tex, bindings
-
-            GLint refW = 0, refH = 0, refFmt = 0;
-            GLint baseLevel = 0, maxLevel = 0;
-            glBindTexture(GL_TEXTURE_2D, terrain_mat_normal_[0]);
-            glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH,           &refW);
-            glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT,          &refH);
-            glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_INTERNAL_FORMAT, &refFmt);
-            glGetTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, &baseLevel);
-            glGetTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL,  &maxLevel);
-            glBindTexture(GL_TEXTURE_2D, 0);
-
-            if (refW <= 0 || refH <= 0)
-                STOP(("buildTerrainNormalArray: slot 0 has invalid size %dx%d", refW, refH));
-
-            for (int i = 1; i < 9; ++i) {
-                if (terrain_mat_normal_[i] == 0) continue;  // optional slot absent
-                GLint wi = 0, hi = 0, fmti = 0;
-                glBindTexture(GL_TEXTURE_2D, terrain_mat_normal_[i]);
-                glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH,           &wi);
-                glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT,          &hi);
-                glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_INTERNAL_FORMAT, &fmti);
-                glBindTexture(GL_TEXTURE_2D, 0);
-                if (wi != refW || hi != refH)
-                    STOP(("buildTerrainNormalArray: slot %d size %dx%d != slot 0 size %dx%d",
-                          i, wi, hi, refW, refH));
-                if (fmti != refFmt)
-                    STOP(("buildTerrainNormalArray: slot %d internal format 0x%X != slot 0 format 0x%X",
-                          i, fmti, refFmt));
-            }
-
-            int numLevels = maxLevel - baseLevel + 1;
-            if (numLevels < 1) numLevels = 1;
-            {
-                int maxPossible = 0, d = (refW > refH ? refW : refH);
-                while (d > 0) { ++maxPossible; d >>= 1; }
-                if (numLevels > maxPossible) numLevels = maxPossible;
-            }
-
-            if (terrain_normal_array_tex_ != 0) {
-                glDeleteTextures(1, &terrain_normal_array_tex_);
-                terrain_normal_array_tex_ = 0;
-            }
-
-            // Allocate 9-layer GL_TEXTURE_2D_ARRAY (slots 0-4 required, 5-8 optional).
-            // glGetTexImage always decompresses if the source is compressed; we
-            // receive RGBA8 regardless of the source internal format.
-            // TEX-CLASS: asset-pool -- terrain per-material normal-map 2D_ARRAY (content)
-            glGenTextures(1, &terrain_normal_array_tex_);
-            glBindTexture(GL_TEXTURE_2D_ARRAY, terrain_normal_array_tex_);
-            glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, GL_RGBA8,
-                         refW, refH, 9 /*layers*/,
-                         0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
-
-            // Copy all mip levels from each source texture into the array.
-            // Normal-map mips are authored — do not use glGenerateMipmap here
-            // (averaging would shorten normals; hardware-generated mips differ
-            // from the source importer's output).
-            // Missing optional slots (terrain_mat_normal_[i] == 0) get a flat
-            // neutral normal (128,128,255,255) so sampling them is always valid.
-            std::vector<uint8_t> pixels;
-            int levelsCopied = 0;
-            for (int level = baseLevel; level < baseLevel + numLevels; ++level) {
-                GLint mipW = 0, mipH = 0;
-                glBindTexture(GL_TEXTURE_2D, terrain_mat_normal_[0]);
-                glGetTexLevelParameteriv(GL_TEXTURE_2D, level, GL_TEXTURE_WIDTH,  &mipW);
-                glGetTexLevelParameteriv(GL_TEXTURE_2D, level, GL_TEXTURE_HEIGHT, &mipH);
-                glBindTexture(GL_TEXTURE_2D, 0);
-                if (mipW <= 0 || mipH <= 0) break;
-                ++levelsCopied;
-
-                glBindTexture(GL_TEXTURE_2D_ARRAY, terrain_normal_array_tex_);
-                glTexImage3D(GL_TEXTURE_2D_ARRAY, level, GL_RGBA8,
-                             mipW, mipH, 9, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
-
-                const size_t mipBytes = (size_t)mipW * mipH * 4;
-                pixels.resize(mipBytes);
-
-                for (int layer = 0; layer < 9; ++layer) {
-                    if (terrain_mat_normal_[layer] != 0) {
-                        glBindTexture(GL_TEXTURE_2D, terrain_mat_normal_[layer]);
-                        glGetTexImage(GL_TEXTURE_2D, level, GL_RGBA, GL_UNSIGNED_BYTE, pixels.data());
-                        glBindTexture(GL_TEXTURE_2D, 0);
-                    } else {
-                        // Flat neutral normal (128,128,255,255) for absent optional slot.
-                        auto* p32 = reinterpret_cast<uint32_t*>(pixels.data());
-                        std::fill(p32, p32 + mipW * mipH, 0xFFFF8080u);
-                    }
-
-                    glBindTexture(GL_TEXTURE_2D_ARRAY, terrain_normal_array_tex_);
-                    glTexSubImage3D(GL_TEXTURE_2D_ARRAY, level,
-                                    0, 0, layer,
-                                    mipW, mipH, 1,
-                                    GL_RGBA, GL_UNSIGNED_BYTE, pixels.data());
-                }
-            }
-
-            // Sampling params. CRITICAL: MAX_LEVEL must match the levels ACTUALLY
-            // copied, not the pre-computed numLevels. The copy loop breaks early
-            // when a source mip is absent; if we declare more levels than exist,
-            // the array is mip-INCOMPLETE -> every sample returns black under a
-            // mipmap min filter (the chunk material-detail "all black" bug). If
-            // only level 0 exists, drop to a non-mip filter so it stays complete.
-            if (levelsCopied < 1) levelsCopied = 1;
-            glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_BASE_LEVEL, baseLevel);
-            glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAX_LEVEL,  baseLevel + levelsCopied - 1);
-            glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER,
-                            (levelsCopied > 1) ? GL_LINEAR_MIPMAP_LINEAR : GL_LINEAR);
-            glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-            glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_REPEAT);
-            glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_REPEAT);
-            glBindTexture(GL_TEXTURE_2D_ARRAY, 0);
-
-            terrain_normal_array_dirty_ = false;
-        }
-        // Phase 10 Step 5: expose the merged material normal sampler2DArray so the
-        // terrain LOD chunk path (a bolt-on draw) can bind the SAME texture the
-        // legacy terrain uses. Builds lazily if dirty/never-built; returns 0 until
-        // required slots 0-4 are populated (slots 5-8 optional). GL context assumed
-        // live (call from a draw, like the legacy bind sites).
-        GLuint getTerrainNormalArrayTexEnsureBuilt() {
-            if (terrain_normal_array_dirty_ || terrain_normal_array_tex_ == 0)
-                buildTerrainNormalArray();
-            return terrain_normal_array_tex_;
+        uint64_t getTerrainMaterialNormalVersion() const {
+            for (int i = 0; i < 5; ++i)
+                if (terrain_mat_normal_handle_[i] == INVALID_TEXTURE_ID) return 0;
+            return terrain_normal_version_;
         }
         void setTerrainCellBombParams(float s, float j, float r) { terrain_cell_scale_ = s; terrain_cell_jitter_ = j; terrain_cell_rotation_ = r; }
         void setTerrainPOMParams(float scale, float, float) { terrain_pom_scale_ = scale; }
@@ -834,9 +701,7 @@ class gosRenderer {
         vec4 terrain_mission_flat_light_ = vec4(1.0f, 1.0f, 1.0f, 0.0f);
         float terrain_detail_tiling_ = 1.0f;
         float terrain_detail_strength_ = 1.0f;  // global detail-normal multiplier; was 4.0 (too loud, carpet at distance)
-        GLuint terrain_mat_normal_[9] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
-        GLuint terrain_normal_array_tex_   = 0;     // GL_TEXTURE_2D_ARRAY; 0 = not built
-        bool   terrain_normal_array_dirty_ = false; // rebuild needed at next bind
+        uint64_t terrain_normal_version_ = 0;
         DWORD  terrain_mat_normal_handle_[9] = {INVALID_TEXTURE_ID, INVALID_TEXTURE_ID, INVALID_TEXTURE_ID, INVALID_TEXTURE_ID,
                                                 INVALID_TEXTURE_ID, INVALID_TEXTURE_ID, INVALID_TEXTURE_ID, INVALID_TEXTURE_ID,
                                                 INVALID_TEXTURE_ID};   // the gos textures behind terrain_mat_normal_

@@ -344,11 +344,6 @@ void gosRenderer::destroy() {
     terrain_extra_data_ = nullptr;
     if (terrain_extra_vb_) { glDeleteBuffers(1, &terrain_extra_vb_); terrain_extra_vb_ = 0; }
     if (terrain_material_) { gosRenderMaterial::destroy(terrain_material_); terrain_material_ = nullptr; }
-    if (terrain_normal_array_tex_ != 0) {
-        glDeleteTextures(1, &terrain_normal_array_tex_);
-        terrain_normal_array_tex_ = 0;
-    }
-
     glDeleteVertexArrays(1, &gVAO);
 
 }

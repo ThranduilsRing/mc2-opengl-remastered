@@ -185,7 +185,7 @@ void BuildColormapAtlas() {
     ZoneScopedN("Terrain::IndirectAtlasUpload");
     // Negative control (MC2_LOAD_RACE_DELAY_ATLAS): defer the real upload for
     // ~30s of scenario time so the atlas is genuinely absent. ComputePreflight()
-    // re-invokes this each frame while g_atlasGLTex == 0. One-shot log on release.
+    // re-invokes this each frame while g_atlasSize == 0. One-shot log on release.
     if (s_loadRaceDelayAtlas) {
         static bool s_delayReleased = false;
         if (!s_delayReleased) {
@@ -196,7 +196,7 @@ void BuildColormapAtlas() {
                     mc2::fmt::print_err("[LOADRACE] NEG-CONTROL atlas upload DEFERRED (scenarioTime={:.2f} < 30) frame={:d}\n", scenarioTime, mc2::fmt::as_u32(g_mc2FrameCounter));
                     fflush(stderr);
                 }
-                return;   // leave g_atlasGLTex == 0
+                return;   // leave g_atlasSize == 0
             }
             s_delayReleased = true;
             if (g_loadRaceTrace) {
@@ -218,35 +218,21 @@ void BuildColormapAtlas() {
     // Precedes the cpuColorMap early-return so the KTX2 path fires even when
     // cpuColorMap was never allocated (e.g. future "skip-cpu-alloc" optimization).
     // cpuColorMap is always populated as RGBA8 fallback (in case BPTC cap absent).
-    if (tcm->ktx2ColormapPath[0] != '\0' && GLEW_ARB_texture_compression_bptc) {
+    if (tcm->ktx2ColormapPath[0] != '\0') {
         RenderCore::KtxImage img;
         if (RenderCore::ktxLoadRgba8(tcm->ktx2ColormapPath, img) &&
             img.isCompressed && (img.vkFormat == 145 || img.vkFormat == 146)) {
 
-            GLenum glIF = (img.vkFormat == 146) ? GL_COMPRESSED_SRGB_ALPHA_BPTC_UNORM
-                                                 : GL_COMPRESSED_RGBA_BPTC_UNORM;
             // Mip 0 only: colormap is sampled at a fixed world-space scale, no LOD.
             size_t mip0Bytes = (img.mipCount > 1 && img.mipByteOffsets.size() > 1)
                 ? (size_t)img.mipByteOffsets[1]
                 : img.pixels.size();
 
-            // TEX-CLASS: asset-pool -- terrain colormap atlas (content)
-            if (g_atlasGLTex == 0) glGenTextures(1, &g_atlasGLTex);
-            MC2_GL_BindTexture(GL_TEXTURE_2D, g_atlasGLTex);
-            glCompressedTexImage2D(GL_TEXTURE_2D, 0, glIF,
-                                   img.width, img.height, 0,
-                                   (GLsizei)mip0Bytes, img.pixels.data());
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-            MC2_GL_BindTexture(GL_TEXTURE_2D, 0);
-
             atlasSizeCapture = img.width;
             atlasBuilt = true;
             keepColormapAtlas(std::span<const uint8_t>(img.pixels.data(), mip0Bytes), img.width, img.height, img.vkFormat);
 
-            mc2::fmt::print_out("[COLORMAP] COLORMAP-BC7-KTX2-1: uploaded {:d}x{:d} BC7 fmt=0x{:x} bytes={:d} gltex={:d}\n", mc2::fmt::as_i32(img.width), mc2::fmt::as_i32(img.height), mc2::fmt::as_u32((unsigned)glIF), mc2::fmt::as_size(mip0Bytes), mc2::fmt::as_u32((unsigned)g_atlasGLTex));
+            mc2::fmt::print_out("[COLORMAP] retained {:d}x{:d} BC7 format={:d} bytes={:d}\n", img.width, img.height, img.vkFormat, mip0Bytes);
 
             // KTX2 path succeeded — retire CPU copies (same as RETIRE-1, but
             // also clear the path so we don't attempt a second upload).
@@ -261,10 +247,6 @@ void BuildColormapAtlas() {
             mc2::fmt::print_out("[COLORMAP] COLORMAP-BC7-KTX2-1: KTX2 load failed or wrong format ({}), falling back to RGBA8\n", mc2::fmt::safe(tcm->ktx2ColormapPath));
             tcm->ktx2ColormapPath[0] = '\0';
         }
-    } else if (tcm->ktx2ColormapPath[0] != '\0' && !GLEW_ARB_texture_compression_bptc) {
-        // BPTC cap absent — log once and fall through to RGBA8.
-        mc2::fmt::print_out("[COLORMAP] COLORMAP-BC7-KTX2-1: BPTC unsupported, using RGBA8 fallback\n");
-        tcm->ktx2ColormapPath[0] = '\0';
     }
 
     // --- RGBA8 fallback (pre-existing path) ---
@@ -273,21 +255,6 @@ void BuildColormapAtlas() {
             if (traceOn()) MC2_DIAGF("[TERRAIN_INDIRECT v1] event=atlas_skip reason=no_cpuColorMap\n");
             return;
         }
-
-        // TEX-CLASS: asset-pool -- terrain colormap atlas (content, alt path)
-        if (g_atlasGLTex == 0) glGenTextures(1, &g_atlasGLTex);
-        MC2_GL_BindTexture(GL_TEXTURE_2D, g_atlasGLTex);
-        // cpuColorMap is BGRA-in-memory (mc2_argb_packing memory note: MC2's
-        // textures are BGRA). Upload format param = GL_BGRA so the driver swizzles
-        // to RGBA8 storage at upload time.
-        MC2_GL_TexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8,
-                     tcm->cpuColorMapSize, tcm->cpuColorMapSize,
-                     0, GL_BGRA, GL_UNSIGNED_BYTE, tcm->cpuColorMap);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-        MC2_GL_BindTexture(GL_TEXTURE_2D, 0);
 
         atlasSizeCapture = tcm->cpuColorMapSize;
         {
@@ -316,9 +283,9 @@ void BuildColormapAtlas() {
     }
 
     // MC2_LOAD_RACE_TRACE: latch the frame the colormap atlas first exists.
-    if (g_loadRaceTrace && g_atlasGLTex != 0 && g_loadRaceAtlasFirstFrame < 0) {
+    if (g_loadRaceTrace && atlasSizeCapture > 0 && g_loadRaceAtlasFirstFrame < 0) {
         g_loadRaceAtlasFirstFrame = (long)g_mc2FrameCounter;
-        mc2::fmt::print_err("[LOADRACE] atlas first-resident frame={:d} gltex={:d} scenarioTime={:.2f}\n", mc2::fmt::as_i32(g_loadRaceAtlasFirstFrame), mc2::fmt::as_u32((unsigned)g_atlasGLTex), scenarioTime);
+        mc2::fmt::print_err("[LOADRACE] atlas first-resident frame={:d} atlas_side={:d} scenarioTime={:.2f}\n", mc2::fmt::as_i32(g_loadRaceAtlasFirstFrame), mc2::fmt::as_i32(atlasSizeCapture), scenarioTime);
         fflush(stderr);
     }
 
@@ -330,11 +297,11 @@ void BuildColormapAtlas() {
 
     if (traceOn()) {
         MC2_DIAGF("[TERRAIN_INDIRECT v1] event=atlas_built size=%d numTilesAcross=%.4f "
-               "mapTopLeftX=%.3f mapTopLeftY=%.3f oneOverWorldUnits=%.9f gltex=%u "
+               "mapTopLeftX=%.3f mapTopLeftY=%.3f oneOverWorldUnits=%.9f atlas_side=%u "
                "bc7=%s\n",
                g_atlasSize, g_atlasNumTexturesAcross,
                g_atlasMapTopLeftX, g_atlasMapTopLeftY, g_atlasOneOverWorldUnits,
-               (unsigned)g_atlasGLTex, atlasBuilt ? "yes" : "no");
+               (unsigned)g_atlasSize, atlasBuilt ? "yes" : "no");
         fflush(stdout);
     }
 }
@@ -343,16 +310,16 @@ void BuildColormapAtlas() {
 // gos_terrain_bridge.h, included above).  Implemented at
 // GameOS/gameos/gameos_graphics.cpp:1775-1781.
 
-// BuildCementCatalogAtlas — GPU readback path (B1 of plan v2.1).
+// BuildCementCatalogAtlas: retained source pixels, no graphics readback.
 // Runs at BuildDenseRecipe() time.  Walks textures[0..nextAvailable-1],
-// filters by isCement(slot), reads each cement tile via glGetTexImage,
-// blits into a packed grid atlas, uploads as a single GL_TEXTURE_2D.
+// filters by isCement(slot), decodes each retained source,
+// and publishes a packed grid atlas to the terrain field store.
 //
 // quickLoad-safe: does not depend on tileRAMHeap textureData[0] (which
 // is NULL in stock gameplay per terrtxm.cpp:561 enclosing gate).
 //
-// NO MIPMAPS: cement atlas cells are packed without inter-cell gutters,
-// so glGenerateMipmap would bleed neighboring cells.  Sampler is GL_LINEAR
+// No mipmaps: cement atlas cells are packed without inter-cell gutters,
+// so whole-atlas mip generation would bleed neighboring cells. Sampling is linear
 // min/mag; potential shimmer at distance/oblique angles is accepted —
 // Gate A includes a distance/oblique screenshot to surface this.  Per-cell
 // mip generation with gutters is a follow-up slice.
@@ -372,7 +339,7 @@ void BuildCementCatalogAtlas() {
         return;
     }
 
-    // Pass 1: enumerate cement slots, resolve each to (nodeIdx, GLuint).
+    // Pass 1: enumerate cement slots, resolve each to its retained source pixels.
     std::vector<int>    cementSlots;
     // CEMENT-UNIFORM-2 fix: parallel "this cell came from the ALPHA pass" flag.
     // cementSlots feeds BOTH the atlas cell list AND the SOLID slot->layer map
@@ -381,10 +348,10 @@ void BuildCementCatalogAtlas() {
     // a valid solid layer for a transition slot and bakes an opaque slab.
     std::vector<uint8_t> cementSlotIsAlpha;
     std::vector<DWORD>  cementNodeIndices;
-    std::vector<GLuint> cementGLTextures;
+    std::vector<std::shared_ptr<const RenderCore::KtxImage>> cementImages;
     cementSlots.reserve(64);
     cementNodeIndices.reserve(64);
-    cementGLTextures.reserve(64);
+    cementImages.reserve(64);
     bool truncated = false;
 
     // CEMENT_DIAG (temporary, gated by MC2_TERRAIN_INDIRECT_TRACE).
@@ -416,10 +383,9 @@ void BuildCementCatalogAtlas() {
             }
             continue;
         }
-        const DWORD gosHandle = tex_resolve(nodeIdx);
-        if (gosHandle == 0u) continue;
-        const GLuint glTex = gos_terrain_bridge_glTextureForGosHandle((unsigned)gosHandle);
-        if (glTex == 0) continue;
+        auto image = mcTextureManager->textureImage(nodeIdx);
+        if (!image || image->width != txmSize || image->height != txmSize ||
+            image->vkFormat != 37 || image->pixels.size() != size_t(txmSize) * txmSize * 4) continue;
         // Record-but-don't-break past atlas budget cap: we still want the
         // diag totals to reflect TRUE counts for tier1.  Atlas allocation
         // gated on size below to avoid memory blowup.
@@ -430,7 +396,7 @@ void BuildCementCatalogAtlas() {
             cementSlots.push_back((int)slot);
             cementSlotIsAlpha.push_back(0u);
             cementNodeIndices.push_back(nodeIdx);
-            cementGLTextures.push_back(glTex);
+            cementImages.push_back(std::move(image));
         } else {
             truncated = true;
         }
@@ -451,10 +417,9 @@ void BuildCementCatalogAtlas() {
             if (!tt->isAlpha((DWORD)slot)) continue;   // alpha/transition slots only
             const DWORD nodeIdx = tt->peekTextureHandle((DWORD)slot);
             if (nodeIdx == 0xffffffffu || nodeIdx >= (DWORD)MC_MAXTEXTURES) { ++alphaSkipped; continue; }
-            const DWORD gosHandle = tex_resolve(nodeIdx);
-            if (gosHandle == 0u) { ++alphaSkipped; continue; }
-            const GLuint glTex = gos_terrain_bridge_glTextureForGosHandle((unsigned)gosHandle);
-            if (glTex == 0) { ++alphaSkipped; continue; }
+            auto image = mcTextureManager->textureImage(nodeIdx);
+            if (!image || image->width != txmSize || image->height != txmSize ||
+                image->vkFormat != 37 || image->pixels.size() != size_t(txmSize) * txmSize * 4) { ++alphaSkipped; continue; }
             if (cementNodeIndices.size() >= 1024) { truncated = true; ++alphaSkipped; continue; }
             if (slot >= 0 && slot < MC_MAX_TERRAIN_TXMS) {
                 g_cementAlphaLayerIndexBySlot[slot] = (uint16_t)cementNodeIndices.size();
@@ -462,7 +427,7 @@ void BuildCementCatalogAtlas() {
             cementSlots.push_back((int)slot);
             cementSlotIsAlpha.push_back(1u);   // CEMENT-UNIFORM-2: keep out of the SOLID map
             cementNodeIndices.push_back(nodeIdx);
-            cementGLTextures.push_back(glTex);
+            cementImages.push_back(std::move(image));
             alphaCementSlots.push_back((int)slot);
             ++alphaAdmitted;
         }
@@ -517,21 +482,11 @@ void BuildCementCatalogAtlas() {
     std::vector<uint32_t> atlasBuf((size_t)atlasPixelSide * atlasPixelSide, 0u);
     std::vector<uint32_t> tileBuf((size_t)txmSize * txmSize, 0u);
 
-    GLint savedActive = GL_TEXTURE0;
-    glGetIntegerv(GL_ACTIVE_TEXTURE, &savedActive);
-    glActiveTexture(GL_TEXTURE0);
-    GLint savedTex0Binding = 0;
-    glGetIntegerv(GL_TEXTURE_BINDING_2D, &savedTex0Binding);
-    GLint savedPackAlign = 4;
-    glGetIntegerv(GL_PACK_ALIGNMENT, &savedPackAlign);
-    GLint savedUnpackAlign = 4;
-    glGetIntegerv(GL_UNPACK_ALIGNMENT, &savedUnpackAlign);
-    glPixelStorei(GL_PACK_ALIGNMENT, 4);
-    glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
-
     for (int k = 0; k < N; ++k) {
-        MC2_GL_BindTexture(GL_TEXTURE_2D, cementGLTextures[k]);
-        glGetTexImage(GL_TEXTURE_2D, 0, GL_BGRA, GL_UNSIGNED_BYTE, tileBuf.data());
+        const auto& pixels = cementImages[k]->pixels;
+        for (size_t i = 0; i < tileBuf.size(); ++i)
+            tileBuf[i] = (uint32_t(pixels[i*4+3]) << 24) | (uint32_t(pixels[i*4]) << 16) |
+                         (uint32_t(pixels[i*4+1]) << 8) | uint32_t(pixels[i*4+2]);
 
         const int col  = k % gridSide;
         const int row  = k / gridSide;
@@ -671,23 +626,7 @@ void BuildCementCatalogAtlas() {
         }
     }
 
-    // TEX-CLASS: asset-pool -- cement/road overlay atlas (content)
-    if (g_cementAtlasGLTex == 0) glGenTextures(1, &g_cementAtlasGLTex);
-    MC2_GL_BindTexture(GL_TEXTURE_2D, g_cementAtlasGLTex);
-    MC2_GL_TexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8,
-                 atlasPixelSide, atlasPixelSide, 0,
-                 GL_BGRA, GL_UNSIGNED_BYTE, atlasBuf.data());
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);  // no mips — see header comment
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-
-    glPixelStorei(GL_PACK_ALIGNMENT, savedPackAlign);
-    glPixelStorei(GL_UNPACK_ALIGNMENT, savedUnpackAlign);
-    MC2_GL_BindTexture(GL_TEXTURE_2D, (GLuint)savedTex0Binding);
-    glActiveTexture((GLenum)savedActive);
-
-    // The CPU copy the Vulkan terrain island imports (RGBA order; the GL upload above swizzles the same BGRA words).
+    // The terrain field store owns the published RGBA atlas.
     if (mc2terrain::TerrainFieldStore* store = gos_TerrainFieldStore()) {
         std::vector<uint8_t> rgba(atlasBuf.size() * 4u);
         for (size_t i = 0; i < atlasBuf.size(); ++i) {
@@ -716,7 +655,6 @@ void BuildCementCatalogAtlas() {
         d.debugName = "CementAtlas";
         d.width     = static_cast<uint32_t>(atlasPixelSide);
         d.height    = static_cast<uint32_t>(atlasPixelSide);
-        d.glName    = static_cast<uint32_t>(g_cementAtlasGLTex);
         d.sizeBytes = static_cast<uint64_t>(atlasPixelSide) * static_cast<uint64_t>(atlasPixelSide) * 4ull;
         d.valid     = true;
         RenderCore::registerOrUpdateRenderResource(d);
@@ -724,10 +662,10 @@ void BuildCementCatalogAtlas() {
 
     if (traceOn()) {
         MC2_DIAGF("[TERRAIN_INDIRECT v1] event=cement_catalog_built tile_count=%d "
-               "atlas_size=%dx%d grid_side=%d gltex=%u truncated=%d "
+               "atlas_size=%dx%d grid_side=%d atlas_side=%u truncated=%d "
                "unmapped_pack_count=%u\n",
                N, atlasPixelSide, atlasPixelSide, gridSide,
-               (unsigned)g_cementAtlasGLTex,
+               (unsigned)atlasPixelSide,
                g_cementCatalogTruncated,
                g_cementPackUnmappedCount);
         if (truncated) {
@@ -736,8 +674,6 @@ void BuildCementCatalogAtlas() {
         fflush(stdout);
     }
 
-    // Stage B: build procedural 14-layer transition mask array alongside the atlas.
-    BuildTransitionMaskArray();
 }
 
 }  // namespace gos_terrain_indirect_detail
@@ -747,19 +683,16 @@ namespace gos_terrain_indirect {
 }  // namespace gos_terrain_indirect
 
 // Bridge accessors — declared extern in gameos_graphics.cpp.
-GLuint gos_terrain_indirect_getAtlasGLTex()            { return g_atlasGLTex; }
 float  gos_terrain_indirect_getNumTexturesAcross()     { return g_atlasNumTexturesAcross; }
 float  gos_terrain_indirect_getAtlasMapTopLeftX()      { return g_atlasMapTopLeftX; }
 float  gos_terrain_indirect_getAtlasMapTopLeftY()      { return g_atlasMapTopLeftY; }
 float  gos_terrain_indirect_getAtlasOneOverWorldUnits(){ return g_atlasOneOverWorldUnits; }
 
-GLuint gos_terrain_indirect_getCementAtlasGLTex()    { return g_cementAtlasGLTex; }
 int    gos_terrain_indirect_getCementAtlasGridSide() { return g_cementAtlasGridSide; }
-bool   gos_terrain_indirect_isCementAtlasReady()     { return g_cementLayerMapReady && g_cementAtlasGLTex != 0; }
+bool   gos_terrain_indirect_isCementAtlasReady()     { return g_cementLayerMapReady && g_cementAtlasTileCount > 0; }
 float  gos_terrain_indirect_getWorldUnitsPerVertex() { return Terrain::worldUnitsPerVertex; }
 
-GLuint gos_terrain_indirect_getTransitionMaskArrayGL() { return g_transitionMaskArrayGL; }
-bool   gos_terrain_indirect_isTransitionMaskReady()    { return g_transitionMaskReady && g_transitionMaskArrayGL != 0; }
+bool   gos_terrain_indirect_isTransitionMaskReady()    { return g_cementLayerMapReady && g_cementAtlasTileCount > 0; }
 
 
 namespace gos_terrain_indirect {
@@ -811,11 +744,6 @@ void ResetDenseRecipe() {
     s_firstDrawPrintedThisMission = false;
     // Mirrors WaterStream::Reset() pattern.
 
-    // Tear down the atlas GL texture (per-mission; rebuilt by BuildColormapAtlas).
-    if (g_atlasGLTex != 0) {
-        glDeleteTextures(1, &g_atlasGLTex);
-        g_atlasGLTex = 0;
-    }
     g_atlasSize              = 0;
     g_atlasNumTexturesAcross = 0.f;
     g_atlasMapTopLeftX       = 0.f;
@@ -824,19 +752,12 @@ void ResetDenseRecipe() {
     // Clear stale nodeIds so the GPU path guard doesn't fire from a prior mission.
     g_uniqueTerrainNodeIds.clear();
 
-    // Cement catalog atlas teardown — mirror g_atlasGLTex pattern.
-    if (g_cementAtlasGLTex != 0) {
-        glDeleteTextures(1, &g_cementAtlasGLTex);
-        g_cementAtlasGLTex = 0;
-
-        // REGISTRY-TERRAIN-SSBO-1: mark the cement atlas slot unavailable on teardown.
-        RenderCore::RenderResourceDesc invalid;
-        invalid.id = RenderCore::RenderResourceId::CementAtlas;
-        RenderCore::registerOrUpdateRenderResource(invalid);
-    }
     g_cementAtlasGridSide    = 0;
     g_cementAtlasTileCount   = 0;
     g_cementLayerMapReady    = false;
+    RenderCore::RenderResourceDesc invalid;
+    invalid.id = RenderCore::RenderResourceId::CementAtlas;
+    RenderCore::registerOrUpdateRenderResource(invalid);
     g_cementCatalogTruncated = 0;
     g_cementPackUnmappedCount = 0;
     memset(g_cementLayerIndexByNodeIdx, 0xFF, sizeof(g_cementLayerIndexByNodeIdx));

@@ -300,10 +300,10 @@ bool ensure_dummy_matnormal(TerrainIsland* s) {
 // change key). Absent optional slots get the flat normal, as in GL's array. The VK detail port samples no anti-tile mips.
 // Fail-soft: a slot that is not RGBA8 at slot 0's size is rejected with a log line and the dummy stays bound.
 void import_matnormal(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
-    const uint32_t glTex = feed.glMatNormalArrayTex;
-    if (glTex == 0) return;                        // array not built yet -> macro-slope only
-    if (glTex == s->matNormalTexImported && s->matNormalReady) return; // already imported
-    if (glTex == s->matNormalTexRejected) return;
+    const uint64_t version = feed.matNormalVersion;
+    if (version == 0) return;                        // array not built yet -> macro-slope only
+    if (version == s->matNormalVersionImported && s->matNormalReady) return; // already imported
+    if (version == s->matNormalVersionRejected) return;
     constexpr uint32_t kSlots = 9;
     GosTexels slots[kSlots];
     for (uint32_t i = 0; i < kSlots; ++i) {
@@ -321,7 +321,7 @@ void import_matnormal(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
             slots[i].bytes->size() != layerBytes) {
             vlog("VK-TERRAIN-DETAIL: detail-normal slot %u rejected (%ux%u fmt=%u, slot 0 %ux%u); macro slope only.",
                  i, slots[i].width, slots[i].height, slots[i].vkFormat, w, h);
-            s->matNormalTexRejected = glTex;
+            s->matNormalVersionRejected = version;
             return;
         }
     }
@@ -336,7 +336,7 @@ void import_matnormal(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
     }
     if (upload_sampled_image_array(s, s->matNormalTexture, VK_FORMAT_R8G8B8A8_UNORM, w, h, kSlots, px.data(),
                                    (VkDeviceSize)px.size())) {
-        s->matNormalTexImported = glTex;
+        s->matNormalVersionImported = version;
         s->matNormalLayers = kSlots;
         s->matNormalReady = true;
         write_descriptors(s);

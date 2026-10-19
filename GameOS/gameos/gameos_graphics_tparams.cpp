@@ -183,22 +183,6 @@ void gosRenderer::terrainBindUniformsForPatchStream(gosRenderMaterial* material)
         glUniform1f(tl.time, elapsed);
     }
 
-    if (terrainNormalArrayEnabled()) {
-        if (terrain_normal_array_dirty_) buildTerrainNormalArray();
-        if (terrain_normal_array_tex_ != 0 && tl.matNormalArray >= 0) {
-            glUniform1i(tl.matNormalArray, kTerrainTexUnitNormalArray);
-            glActiveTexture(GL_TEXTURE0 + kTerrainTexUnitNormalArray);
-            glBindTexture(GL_TEXTURE_2D_ARRAY, terrain_normal_array_tex_);
-        }
-    } else {
-        for (int i = 0; i < 5; i++) {
-            if (terrain_mat_normal_[i] != 0 && tl.matNormal[i] >= 0) {
-                glUniform1i(tl.matNormal[i], kTerrainMatNormalUnits[i]);
-                glActiveTexture(GL_TEXTURE0 + kTerrainMatNormalUnits[i]);
-                glBindTexture(GL_TEXTURE_2D, terrain_mat_normal_[i]);
-            }
-        }
-    }
     bindTerrainHeightTexUniforms(tl.terrainHeightTex, tl.terrainHeightParams,
                                  tl.terrainCliffShadowFloor,
                                  terrain_cliff_shadow_floor_);
@@ -292,22 +276,6 @@ int gosRenderer::terrainBindThinUniformsForPatchStream(glsl_program* overridePro
         glUniform1f(tl.time, elapsed);
     }
     if (tl.tex1 >= 0) glUniform1i(tl.tex1, 0);
-    if (terrainNormalArrayEnabled()) {
-        if (terrain_normal_array_dirty_) buildTerrainNormalArray();
-        if (terrain_normal_array_tex_ != 0 && tl.matNormalArray >= 0) {
-            glUniform1i(tl.matNormalArray, kTerrainTexUnitNormalArray);
-            glActiveTexture(GL_TEXTURE0 + kTerrainTexUnitNormalArray);
-            glBindTexture(GL_TEXTURE_2D_ARRAY, terrain_normal_array_tex_);
-        }
-    } else {
-        for (int i = 0; i < 5; i++) {
-            if (terrain_mat_normal_[i] != 0 && tl.matNormal[i] >= 0) {
-                glUniform1i(tl.matNormal[i], kTerrainMatNormalUnits[i]);
-                glActiveTexture(GL_TEXTURE0 + kTerrainMatNormalUnits[i]);
-                glBindTexture(GL_TEXTURE_2D, terrain_mat_normal_[i]);
-            }
-        }
-    }
     bindTerrainHeightTexUniforms(tl.terrainHeightTex, tl.terrainHeightParams,
                                  tl.terrainCliffShadowFloor,
                                  terrain_cliff_shadow_floor_);
