@@ -1,6 +1,7 @@
 // TG shapes: ASE file parsing and shape loading (TG_TypeShape::ParseASEFile, LoadTGShapeFromASE), textures, imported meshes, camera/fog/light setup.
 // Declared in the class headers; shared names in tgl_internal.h.
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
+#include "texture_assets.h"
 #include "tgl_internal.h"
 #include "mc2fmt.h"
 
@@ -720,7 +721,7 @@ long TG_TypeShape::SetTextureHandle (DWORD textureNum, DWORD gosTextureHandle)
 		return(-1);
 
 	listOfTextures[textureNum].mcTextureNodeIndex = gosTextureHandle;
-	listOfTextures[textureNum].gosTextureHandle = mcTextureManager->get_gosTextureHandle(gosTextureHandle);
+	listOfTextures[textureNum].gosTextureHandle = mc2::textures::sourceId(gosTextureHandle);
 
 	return(0);
 }	

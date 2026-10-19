@@ -6,6 +6,7 @@ Utilities.cpp			: Implementation of the Utilities component.
 //===========================================================================//
 \*************************************************************************************************/
 #include"utilities.h"
+#include "texture_assets.h"
 
 #include"txmmgr.h"
 #include"inifile.h"
@@ -173,12 +174,12 @@ void drawEmptyRect( const GUI_RECT& area, unsigned long leftTopBorderColor,
 StaticInfo::~StaticInfo()
 {
 	if (mcTextureManager && textureHandle)
-		mcTextureManager->releaseNode( textureHandle );
+		mc2::textures::release( textureHandle );
 }
 
 void StaticInfo::render()
 {
-	unsigned long gosID = mcTextureManager->get_gosTextureHandle( textureHandle );	
+	unsigned long gosID = mc2::textures::sourceId( textureHandle );
 	gos_SetRenderState( gos_State_Texture, gosID );
 	gos_SetRenderState(gos_State_Filter, gos_FilterNone);
 	gos_SetRenderState( gos_State_AlphaMode, gos_Alpha_AlphaInvAlpha );
@@ -222,7 +223,7 @@ void StaticInfo::getData(unsigned char * buffer)
 	}
 	
     memset(buffer,0,sizeof(DWORD)*32*32);
-    const auto image=mcTextureManager->textureImage(textureHandle);
+    const auto image=mc2::textures::image(textureHandle);
     if (!image || image->vkFormat!=37) return;
     const auto x0=DWORD(location[0].u*image->width), y0=DWORD(location[0].v*image->height);
     if (x0+uWidth>DWORD(image->width) || y0+vHeight>DWORD(image->height)) return;
@@ -276,12 +277,12 @@ void StaticInfo::init( FitIniFile& file, const char* blockName, long hiResOffset
 		int ID;
 		{
 			ZoneScopedN("StaticInfo::init loadTexture");
-			ID = mcTextureManager->loadTexture( fullPath, gos_Texture_Alpha, 0, 0, neverFlush );
+			ID = mc2::textures::load( fullPath, gos_Texture_Alpha, 0, 0, neverFlush );
 		}
 		textureHandle = ID;
 		DWORD logicalWidth = 0;
 		DWORD logicalHeight = 0;
-		if ( mcTextureManager->tryGetTextureLogicalSize( ID, logicalWidth, logicalHeight ) )
+		if ( mc2::textures::logicalSize( ID, logicalWidth, logicalHeight ) )
 			textureWidth = logicalWidth;
 		else
 		{

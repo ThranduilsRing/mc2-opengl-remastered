@@ -10,6 +10,7 @@
 
 #include "txmmgr_internal.h"
 #include "texture_ref.h"
+#include "texture_assets.h"
 #include "../RenderCore/TextureService.h"
 #include "../GameOS/gameos/utils/mc2log.h"
 
@@ -513,9 +514,9 @@ void MC_TextureManager::releaseNode (DWORD textureNode)
 		node.destroy();
 }
 
-void mc2::ManagerTextureRelease::operator() (std::uint32_t node) const noexcept
+void mc2::TextureSourceRelease::operator() (std::uint32_t node) const noexcept
 {
-	mc2::releaseThrough(mcTextureManager, node);
+	mc2::textures::release(node);
 }
 
 constexpr int cache_Threshold = 150;

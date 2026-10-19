@@ -16,6 +16,7 @@
 
 #define _CRT_SECURE_NO_WARNINGS
 #include <cstdio>
+#include "texture_assets.h"
 #include <cstdlib>
 #include <cstring>
 #include <cstdarg>
@@ -136,9 +137,9 @@ int S_strnicmp(const char* a, const char* b, size_t n) { return _strnicmp(a, b, 
 // Offline GOSImage keeps names with an invalid node when no manager exists.
 // The load/save closure never constructs a service, renderer, or game device.
 MC_TextureManager* mcTextureManager = nullptr;
-DWORD MC_TextureManager::loadTexture(const char*, gos_TextureFormat, DWORD, DWORD, DWORD) { return 0; }
-void  MC_TextureManager::releaseNode(DWORD) {}
-DWORD MC_TextureNode::get_gosTextureHandle() { return 0; }
+namespace mc2::textures { DWORD load(const char*, gos_TextureFormat, DWORD, DWORD, DWORD) { return 0; } }
+namespace mc2::textures { void release(DWORD) {} }
+namespace mc2::textures { DWORD sourceId(DWORD) { return 0; } }
 
 // ---------------------------------------------------------------------------
 // MLR global limit flag (mlrclipper et al.).

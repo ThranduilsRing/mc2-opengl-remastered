@@ -12,7 +12,7 @@ namespace mc2
 // The manager's "no node" value (MC_TextureNode index); a holder that owns nothing carries it.
 inline constexpr std::uint32_t kNoTextureNode = 0xffffffffu;
 
-// Releaser is a default-constructible function object taking the node index; the engine's is ManagerTextureRelease, a test passes its own.
+// Releaser is a default-constructible function object taking the node index; the engine's is TextureSourceRelease, a test passes its own.
 template <class Releaser>
 class BasicTextureRef
 {
@@ -57,19 +57,11 @@ private:
 	std::uint32_t node_ = kNoTextureNode;
 };
 
-// Releases `node` through `manager`; a no-op when there is no manager (the process is shutting down and the manager is already gone).
-template <class Manager>
-void releaseThrough (Manager* manager, std::uint32_t node) noexcept
-{
-	if (manager)
-		manager->releaseNode(node);
-}
-
-// The engine's release: MC_TextureManager::releaseNode on the global manager.
-struct ManagerTextureRelease
+// The engine releases through the texture source API; it tolerates teardown.
+struct TextureSourceRelease
 {
 	void operator() (std::uint32_t node) const noexcept;
 };
 
-using TextureRef = BasicTextureRef<ManagerTextureRelease>;
+using TextureRef = BasicTextureRef<TextureSourceRelease>;
 } // namespace mc2

@@ -10,6 +10,7 @@
 #pragma once
 
 #include "txmmgr.h"   // for MC_MAXTEXTURES, mcTextureManager
+#include "texture_assets.h"
 #include "dstd.h"     // DWORD
 
 struct TexResolveTable {
@@ -64,7 +65,7 @@ inline DWORD tex_resolve(DWORD nodeId)
     // (mission-load / UI / non-terrain inline-accessor caller). Fall through
     // to legacy with bit-exact semantics.
     if (!g_texResolveTable.enabled || !g_texResolveTable.frameActive) {
-        return mcTextureManager->get_gosTextureHandle(nodeId);
+        return mc2::textures::sourceId(nodeId);
     }
     if (nodeId == 0xFFFFFFFFu) {
         return nodeId;   // matches MC_TextureManager::get_gosTextureHandle wrapper at txmmgr.h:528–531
@@ -73,7 +74,7 @@ inline DWORD tex_resolve(DWORD nodeId)
     // index off the end of handles[]. Fall through to legacy and log once.
     if (nodeId >= MC_MAXTEXTURES) {
         texResolveLogOOB(nodeId);
-        return mcTextureManager->get_gosTextureHandle(nodeId);
+        return mc2::textures::sourceId(nodeId);
     }
 
     if (g_texResolveTable.validate) {
@@ -82,7 +83,7 @@ inline DWORD tex_resolve(DWORD nodeId)
         // stale-memoization caused by §7.2 out-of-scope legacy callsites
         // triggering CACHED_OUT_HANDLE eviction on a node we already memoized.
         // Performance does not matter in validate mode.
-        DWORD legacy = mcTextureManager->get_gosTextureHandle(nodeId);
+        DWORD legacy = mc2::textures::sourceId(nodeId);
         DWORD memo   = g_texResolveTable.handles[nodeId];
         if (memo == TexResolveTable::kSentinel) {
             // First touch this frame — store and continue.
@@ -100,7 +101,7 @@ inline DWORD tex_resolve(DWORD nodeId)
     if (h != TexResolveTable::kSentinel) {
         return h;   // memoized hit
     }
-    h = mcTextureManager->get_gosTextureHandle(nodeId);
+    h = mc2::textures::sourceId(nodeId);
     g_texResolveTable.handles[nodeId] = h;
     g_texResolveTable.resolvedThisFrame++;
     return h;

@@ -1,6 +1,7 @@
 // TerrainColorMap: getScaledColorMap and TerrainColorMap::init(fileName): the mission colormap load.
 // Declared in the class headers; shared names in terrtxm2_internal.h.
 #include "terrtxm2_internal.h"
+#include "texture_assets.h"
 #include "mc2fmt.h"
 #include "tga_scratch.h"
 
@@ -172,7 +173,7 @@ long TerrainColorMap::init (char *fileName)
 		if (fileExists(detailFile))		//Otherwise, its already 0xffffffff!!
 		{
 			ZoneScopedN("TerrainColorMap::init detailTexture");
-			detailTextureNodeIndex.reset(mcTextureManager->loadTexture(detailFile,gos_Texture_Alpha,gosHint_DontShrink, 0, 0x1));
+			detailTextureNodeIndex.reset(mc2::textures::load(detailFile,gos_Texture_Alpha,gosHint_DontShrink, 0, 0x1));
 		}
 		else
 			gosASSERT(false);
@@ -195,7 +196,7 @@ long TerrainColorMap::init (char *fileName)
 		if (fileExists(waterFile))
 		{
 			ZoneScopedN("TerrainColorMap::init waterTexture");
-			waterTextureNodeIndex.reset(mcTextureManager->loadTexture(waterFile,gos_Texture_Solid,0, 0, 0x1));
+			waterTextureNodeIndex.reset(mc2::textures::load(waterFile,gos_Texture_Solid,0, 0, 0x1));
 		}
 		else
 			gosASSERT(false);
@@ -296,8 +297,8 @@ long TerrainColorMap::init (char *fileName)
 						}
 						{
 							ZoneScopedN("TerrainColorMap::init jpgColorMap tileCache");
-							textures[i].mcTextureNodeIndex.reset(mcTextureManager->textureFromMemoryRaw((DWORD *)txmRAM[i].ourRAM,gos_Texture_Solid,gosHint_DontShrink,COLOR_MAP_TEXTURE_SIZE));
-							mcTextureManager->setTextureNeverFlush(textures[i].mcTextureNodeIndex.get(), 0x1);
+							textures[i].mcTextureNodeIndex.reset(mc2::textures::fromRawPixels((DWORD *)txmRAM[i].ourRAM,gos_Texture_Solid,gosHint_DontShrink,COLOR_MAP_TEXTURE_SIZE));
+							mc2::textures::setSessionLifetime(textures[i].mcTextureNodeIndex.get(), 0x1);
 						}
 					}
 				}
@@ -437,8 +438,8 @@ long TerrainColorMap::init (char *fileName)
 							}
 							{
 								ZoneScopedN("TerrainColorMap::init colorMap tileCache");
-								textures[i].mcTextureNodeIndex.reset(mcTextureManager->textureFromMemoryRaw((DWORD *)txmRAM[i].ourRAM,gos_Texture_Solid,gosHint_DontShrink,COLOR_MAP_TEXTURE_SIZE));
-								mcTextureManager->setTextureNeverFlush(textures[i].mcTextureNodeIndex.get(), 0x1);
+								textures[i].mcTextureNodeIndex.reset(mc2::textures::fromRawPixels((DWORD *)txmRAM[i].ourRAM,gos_Texture_Solid,gosHint_DontShrink,COLOR_MAP_TEXTURE_SIZE));
+								mc2::textures::setSessionLifetime(textures[i].mcTextureNodeIndex.get(), 0x1);
 							}
 							if (i % 50 == 0)
 							{
@@ -586,9 +587,9 @@ long TerrainColorMap::init (char *fileName)
 
 						{
 							ZoneScopedN("TerrainColorMap::init normalMap tileCache");
-							normalMapTextures[i].mcTextureNodeIndex.reset(mcTextureManager->textureFromMemoryRaw(
+							normalMapTextures[i].mcTextureNodeIndex.reset(mc2::textures::fromRawPixels(
 								(DWORD *)tileRAM, gos_Texture_Solid, gosHint_DontShrink, COLOR_MAP_TEXTURE_SIZE));
-							mcTextureManager->setTextureNeverFlush(normalMapTextures[i].mcTextureNodeIndex.get(), 0x1);
+							mc2::textures::setSessionLifetime(normalMapTextures[i].mcTextureNodeIndex.get(), 0x1);
 						}
 					}
 					}

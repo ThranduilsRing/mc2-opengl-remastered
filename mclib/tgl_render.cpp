@@ -1,6 +1,7 @@
 // TG shapes: TG_Shape::Render, per-poly selection and the render-shape PBR override.
 // Declared in the class headers; shared names in tgl_internal.h.
 #include "tgl_internal.h"
+#include "texture_assets.h"
 #include "Gates/gate.h"
 
 
@@ -192,7 +193,7 @@ void TG_Shape::Render (float forceZ, bool isHudElement, BYTE alphaValue, bool is
 						s_seenNodes[s_seenCount++] = nodeIdx;
 						if ( FILE* f = fopen("preview_debug.log","a") )
 						{
-							const char* nm = mcTextureManager ? mcTextureManager->getTextureName(nodeIdx) : nullptr;
+							const char* nm = mcTextureManager ? mc2::textures::name(nodeIdx) : nullptr;
 							fprintf(f,"[PREVIEW-TEX] local=%ld node=%lu gosHandle=%lu alpha=%d name=%s\n",
 								(long)triType.localTextureHandle,
 								(unsigned long)nodeIdx,
