@@ -1439,6 +1439,8 @@ void executorOwnEndTopLevel(PassIdentity passId, const char* callerHint) {
     ++g_validatedTopLevel;
 }
 
+extern "C" unsigned long mc2_framegraph_executor_top_level_failures() { return g_topLevelFailures; }
+
 extern "C" unsigned long mc2_framegraph_executor_validated_top_level_passes() {
     return g_validatedTopLevel;
 }

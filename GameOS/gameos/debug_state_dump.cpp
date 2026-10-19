@@ -31,6 +31,7 @@ extern "C" unsigned long mc2_framegraph_executor_owned_passes();
 extern "C" unsigned long mc2_framegraph_executor_validation_failures();
 // SAME-ORDER-EXECUTOR-VALIDATE-1: split top-level executor metrics (default-OFF gate).
 extern "C" unsigned long mc2_framegraph_executor_validated_top_level_passes();
+extern "C" unsigned long mc2_framegraph_executor_top_level_failures();
 extern "C" unsigned long mc2_framegraph_executor_apply_state_passes();
 // PER-PASS-APPLY-COUNTERS-1: per-pass apply-state getter (sum == aggregate above).
 extern "C" unsigned long mc2_framegraph_executor_apply_state_by_pass(unsigned id);
@@ -355,6 +356,7 @@ std::string buildSnapshotJson(const RenderSnapshot& snap,
         // executor_skipped_deferred_passes: deferred top-level passes seen per process (Shadow/Mech/Water/VFX/UI).
         s << "    \"executor_owned_wrappers\": " << mc2_framegraph_executor_owned_passes() << ",\n";
         s << "    \"executor_validated_top_level_passes\": " << mc2_framegraph_executor_validated_top_level_passes() << ",\n";
+        s << "    \"executor_top_level_failures\": " << mc2_framegraph_executor_top_level_failures() << ",\n";
         s << "    \"executor_apply_state_passes\": " << mc2_framegraph_executor_apply_state_passes() << ",\n";
         // PER-PASS-APPLY-COUNTERS-1: per-pass breakdown (aggregate above == sum of these).
         s << "    \"executor_apply_state_by_pass\": {";
