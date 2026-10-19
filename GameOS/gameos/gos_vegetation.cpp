@@ -16,6 +16,11 @@
 extern const float* gos_GetTerrainMVPMat4();
 namespace {
 std::vector<GosVegetation::Instance> instances;
+struct Region { size_t begin, end; float x, y, z, radius; };
+std::vector<Region> regions;
+auto cell(const GosVegetation::Instance& i) {
+    return std::pair{int(std::floor(i.x/128.0f)),int(std::floor(i.y/128.0f))};
+}
 std::vector<uint32_t> visibility(1024, 2u);
 bool initialized = false, atlasReady = false, summaryEmitted = false;
 uint32_t peak = 0;
@@ -91,6 +96,7 @@ void GosVegetation::init() {
 void GosVegetation::shutdown() {
     emitSummary();
     instances.clear();
+    regions.clear();
     visibility.assign(1024, 2u);
     initialized = atlasReady = false;
     peak = 0;
@@ -102,6 +108,23 @@ void GosVegetation::uploadInstances(const Instance* data, uint32_t count) {
     if (!initialized) return;
     instances.clear();
     if (data && count) instances.assign(data, data+count);
+    // Placement is immutable between uploads. Group nearby clumps once so the
+    // frame walk rejects regions instead of revisiting the whole map.
+    std::sort(instances.begin(),instances.end(),[](const auto& a,const auto& b) { return cell(a)<cell(b); });
+    regions.clear();
+    for (size_t begin=0; begin<instances.size();) {
+        size_t end=begin+1;
+        const auto key=cell(instances[begin]);
+        while (end<instances.size() && cell(instances[end])==key) ++end;
+        float lo=instances[begin].z,hi=lo,pad=0.0f;
+        for (size_t j=begin;j<end;++j) {
+            lo=std::min(lo,instances[j].z); hi=std::max(hi,instances[j].z);
+            pad=std::max(pad,1.5f*instances[j].scale);
+        }
+        regions.push_back({begin,end,(key.first+0.5f)*128.0f,(key.second+0.5f)*128.0f,
+            (lo+hi)*0.5f,std::sqrt(2.0f*64.0f*64.0f+(hi-lo)*(hi-lo)*0.25f)+pad});
+        begin=end;
+    }
     peak = std::max(peak, static_cast<uint32_t>(instances.size()));
 }
 void GosVegetation::setBlockVisibility(const uint32_t* data, uint32_t count) {
@@ -131,7 +154,16 @@ void GosVegetation::flush(float lx, float ly, float lz, float lw, float time,
         planes[plane][4]=std::sqrt(p[0]*p[0]+p[1]*p[1]+p[2]*p[2]);
     }
     const float pixelScale=0.5f*pp->getHeight()*std::sqrt(mvp[1]*mvp[1]+mvp[5]*mvp[5]+mvp[9]*mvp[9]);
-    for (const auto& i : instances) {
+    for (const auto& region : regions) {
+        if (!force) {
+            bool outside=false;
+            for (const auto& p : planes)
+                if (p[0]*region.x+p[1]*region.y+p[2]*region.z+p[3] < -region.radius*p[4]) { outside=true; break; }
+            const float dx=region.x-cx,dy=region.y-cy,range=maxDist+region.radius;
+            if (outside || dx*dx+dy*dy>range*range) continue;
+        }
+        for (size_t index=region.begin;index<region.end;++index) {
+        const auto& i=instances[index];
         const uint32_t role=(i.atlasFrame>>4u)&3u;
         const float scale=i.scale*(role==3u ? 0.25f : role==2u ? 0.6f : 1.0f);
         if (!force) {
@@ -156,7 +188,7 @@ void GosVegetation::flush(float lx, float ly, float lz, float lw, float time,
             const float clipW=mvp[3]*i.x+mvp[7]*i.y+mvp[11]*i.z+mvp[15];
             if (clipW<=0.001f) continue;
             const float pixels=scale*pixelScale/clipW;
-            const float density=smooth(1.0f,6.0f,pixels)*(vis>=2 ? 1.0f : 0.4f);
+            const float density=smooth(3.0f,12.0f,pixels)*(vis>=2 ? 1.0f : 0.4f);
             const float seed=i.seed*17.371f+0.137f;
             if (seed-std::floor(seed)>=density) continue;
         }
@@ -169,6 +201,7 @@ void GosVegetation::flush(float lx, float ly, float lz, float lw, float time,
         v.extra[2]=1.0f; // whole-clump LOD replaces screen-space Bayer thinning
         v.extra[3]=1.0f-smooth(fadeStart*0.8f,fadeStart,dist3);
         vertices.push_back(v);
+        }
     }
     VfxParticleDraw draw{};
     draw.count=static_cast<uint32_t>(vertices.size());
