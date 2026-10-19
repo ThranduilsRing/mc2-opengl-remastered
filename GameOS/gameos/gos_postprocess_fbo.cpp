@@ -632,6 +632,8 @@ void gosPostProcess::copySceneColorForVfx()
 void gosPostProcess::destroyFBOs()
 {
 #ifdef MC2_VULKAN_ISLAND
+    // Retire depth sampling views before the shared depth image.
+    destroyVkPostHzbNative();
     // VK-POST-FOG-NATIVE-1: torn down FIRST — it borrows the shared scene
     // color0/depth resources destroyed below (framebuffer/view over their
     // VkImages must not outlive them). Rebuilt lazily at the next fog site.
@@ -754,9 +756,6 @@ void gosPostProcess::destroyFBOs()
     }
     // HZB-DEPTH-PYRAMID-MVP-1: free the per-level pyramid textures + FBO
     // (resize re-allocates if the gate is on).
-#ifdef MC2_VULKAN_ISLAND
-    destroyVkPostHzbNative();
-#endif
     bool hzbHadBase = (hzbLevelTex_[0] != 0);
     for (int i = 0; i < kHzbMaxLevels; ++i) {
         if (hzbLevelTex_[i]) { glDeleteTextures(1, &hzbLevelTex_[i]); hzbLevelTex_[i] = 0; }

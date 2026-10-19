@@ -449,10 +449,7 @@ bool build_state(gosPostProcess::VkPostHzbNative* s, int w, int h, int mipCount)
                 params.srcTexel[1] = 1.0f / static_cast<float>(prev.h);
                 params.reduce = 1;
             }
-            if (void* p = lv.ubo.map()) {
-                std::memcpy(p, &params, sizeof(params));
-                lv.ubo.unmap();
-            } else {
+            if (!lv.ubo.upload(&params, sizeof(params))) {
                 vlog("vmaMapMemory(ubo level %d) failed.", level);
                 return false;
             }
