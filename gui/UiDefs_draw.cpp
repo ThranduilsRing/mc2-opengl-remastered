@@ -142,8 +142,11 @@ static void ensureTexture(UiElement& e)
     std::string loadName = onDisk ? p.string() : e.texturePath;
     // Generated pages name optional PNG exports and retain their original atlas key.
     // Resolve that key through File/VFS when the export is absent, including FST mods.
-    if (!onDisk && !fileExists(loadName.c_str()) && !e.legacyTexture.empty()) {
-        const std::string legacyName=std::string(artPath)+e.legacyTexture+".tga";
+    std::string legacyKey=e.legacyTexture;
+    if (legacyKey.empty() && e.texturePath.rfind("data/art/gui/",0)==0)
+        legacyKey=std::filesystem::path(e.texturePath).stem().string();
+    if (!onDisk && !fileExists(loadName.c_str()) && !legacyKey.empty()) {
+        const std::string legacyName=std::string(artPath)+legacyKey+".tga";
         if (fileExists(legacyName.c_str())) {
             loadName=legacyName;
             e.textureWidth=e.textureHeight=0;
