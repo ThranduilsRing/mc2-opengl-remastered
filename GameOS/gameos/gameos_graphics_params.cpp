@@ -136,12 +136,12 @@ void gos_HudInverseMousePoint(float& x, float& y) {
         int bx = 0, by = 0, bw = 0, bh = 0;
         if (gos_ComputeHudCanvasBox(Environment.drawableWidth, Environment.drawableHeight,
                                     &bx, &by, &bw, &bh)) {
-            const float dw = (float)Environment.drawableWidth;
-            const float dh = (float)Environment.drawableHeight;
-            const float fx = (float)bw / dw;
-            const float fy = (float)bh / dh;
-            const float lx = (float)gosRendererLogicalWidth()  * ((float)bx / dw);
-            const float ly = (float)gosRendererLogicalHeight() * ((float)by / dh);
+            const float dw = static_cast<float>(Environment.drawableWidth);
+            const float dh = static_cast<float>(Environment.drawableHeight);
+            const float fx = static_cast<float>(bw) / dw;
+            const float fy = static_cast<float>(bh) / dh;
+            const float lx = static_cast<float>(gosRendererLogicalWidth())  * (static_cast<float>(bx) / dw);
+            const float ly = static_cast<float>(gosRendererLogicalHeight()) * (static_cast<float>(by) / dh);
             if (fx > 0.0f) x = (x - lx) / fx;
             if (fy > 0.0f) y = (y - ly) / fy;
         }
@@ -150,8 +150,8 @@ void gos_HudInverseMousePoint(float& x, float& y) {
     // sync with gosRenderer::flushHUDBatch() above.
     const float scale = s_hud_scale;
     if (!s_hud_scale_active || scale > 0.999f || gosRendererLogicalWidth() <= 0) return;
-    const float sw = (float)gosRendererLogicalWidth();
-    const float sh = (float)gosRendererLogicalHeight();
+    const float sw = static_cast<float>(gosRendererLogicalWidth());
+    const float sh = static_cast<float>(gosRendererLogicalHeight());
     const float bottomBand = sh * 0.60f;
     const float renderedBandTop = sh + (bottomBand - sh) * scale;
     if (y < renderedBandTop) return;

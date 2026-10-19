@@ -135,13 +135,13 @@ bool __stdcall gos_FontGetGlyphDesc( HGOSFONT3D FontHandle, int Char, gos_FontGl
 
     const gosFont* font = FontHandle;
     const gosGlyphInfo& gi = font->getGlyphInfo();
-    const int pos = Char - (int)gi.start_glyph_;
-    if(pos < 0 || pos >= (int)gi.num_glyphs_)
+    const int pos = Char - static_cast<int>(gi.start_glyph_);
+    if(pos < 0 || pos >= static_cast<int>(gi.num_glyphs_))
         return false;
 
     const gosGlyphMetrics& gm = gi.glyphs_[pos];
     Out->offX    = gm.minx;
-    Out->offY    = (int)gi.font_ascent_ - gm.maxy;
+    Out->offY    = static_cast<int>(gi.font_ascent_) - gm.maxy;
     Out->width   = gm.maxx - gm.minx;
     Out->height  = gm.maxy - gm.miny;
     Out->u       = gm.u;
@@ -197,7 +197,7 @@ DWORD __stdcall gos_NewCompressedTexture2D( uint32_t glInternalFormat, int w, in
 {
     const bool bc7 = glInternalFormat == GL_COMPRESSED_RGBA_BPTC_UNORM || glInternalFormat == GL_COMPRESSED_SRGB_ALPHA_BPTC_UNORM;
     if(!blockData || !bc7 || w <= 0 || h <= 0 || w > (int)RenderCore::kKtxMaxEdge || h > (int)RenderCore::kKtxMaxEdge ||
-       byteLen != mc2tex::bc7LevelBytes((uint32_t)w, (uint32_t)h)) {
+       byteLen != mc2tex::bc7LevelBytes(static_cast<uint32_t>(w), static_cast<uint32_t>(h))) {
         MC2_LOG(Core, Warn, "[TEXTURE_DECODE v1] rejected compressed texture {}: format 0x{:x}, {:d}x{:d}, {:d} bytes",
                 mc2::fmt::safe(name ? name : "<null>"), mc2::fmt::as_u32(glInternalFormat), mc2::fmt::as_i32(w),
                 mc2::fmt::as_i32(h), mc2::fmt::as_size(byteLen));
@@ -268,7 +268,7 @@ DWORD gos_NewTerrainNormalTexture(const unsigned char* rgbaData, int width)
     tex.has_mipmaps = false;
     gosTexture* ptex = new gosTexture(tex, gos_Texture_Alpha, "terrain_detail_normal", 0u, nullptr);
     // The texels are the Vulkan terrain island's upload source and nothing else reads them.
-    ptex->adoptRgbaMirror(width, width, std::vector<uint8_t>(rgbaData, rgbaData + (size_t)width * (size_t)width * 4u));
+    ptex->adoptRgbaMirror(width, width, std::vector<uint8_t>(rgbaData, rgbaData + static_cast<size_t>(width) * static_cast<size_t>(width) * 4u));
     return g_gos_renderer->addTexture(ptex);
 }
 
@@ -307,7 +307,7 @@ void __stdcall gos_LockTexture( DWORD Handle, DWORD MipMapSize, bool ReadOnly, T
     ptex->getTextureInfo(&info);
     BYTE* pdata = ptex->Lock(mip_level, ReadOnly, &pitch);
 
-    TextureInfo->pTexture = (DWORD*)pdata;
+    TextureInfo->pTexture = reinterpret_cast<DWORD*>(pdata);
     TextureInfo->Width = info.width_;
     TextureInfo->Height = info.height_;
     TextureInfo->Pitch = pitch;
@@ -538,7 +538,7 @@ size_t __stdcall gos_GetMachineInformation( MachineInfo mi, int Param1/*=0*/, in
     if(mi == gos_Info_NumberDevices)
         return 1;
     if(mi == gos_Info_GetDeviceName)
-        return (size_t)glGetString(GL_RENDERER);
+        return reinterpret_cast<size_t>(glGetString(GL_RENDERER));
     if(mi == gos_Info_ValidMode) {
         int xres = Param2;
         int yres = Param3;
@@ -818,7 +818,7 @@ void __stdcall gos_PrepareForPostImGuiRender() {
             GLboolean depthMask = GL_FALSE; glGetBooleanv(GL_DEPTH_WRITEMASK, &depthMask);
             GLboolean cm[4] = {}; glGetBooleanv(GL_COLOR_WRITEMASK, cm);
             GLint vp[4] = {}; glGetIntegerv(GL_VIEWPORT, vp);
-            mc2::fmt::print_err("[3DVIEW_DIAG v1] post-imgui: fbo={:d} depthTest={:d} depthFunc=0x{:x} depthMask={:d} scissor={:d} colorMask={:d}{:d}{:d}{:d} vp=[{:d},{:d},{:d},{:d}]\n", mc2::fmt::as_i32(fbo), mc2::fmt::as_i32((int)depthTest), mc2::fmt::as_u32(depthFunc), mc2::fmt::as_i32((int)depthMask), mc2::fmt::as_i32((int)scissor), mc2::fmt::as_i32((int)cm[0]), mc2::fmt::as_i32((int)cm[1]), mc2::fmt::as_i32((int)cm[2]), mc2::fmt::as_i32((int)cm[3]), mc2::fmt::as_i32(vp[0]), mc2::fmt::as_i32(vp[1]), mc2::fmt::as_i32(vp[2]), mc2::fmt::as_i32(vp[3]));
+            mc2::fmt::print_err("[3DVIEW_DIAG v1] post-imgui: fbo={:d} depthTest={:d} depthFunc=0x{:x} depthMask={:d} scissor={:d} colorMask={:d}{:d}{:d}{:d} vp=[{:d},{:d},{:d},{:d}]\n", mc2::fmt::as_i32(fbo), mc2::fmt::as_i32(static_cast<int>(depthTest)), mc2::fmt::as_u32(depthFunc), mc2::fmt::as_i32(static_cast<int>(depthMask)), mc2::fmt::as_i32(static_cast<int>(scissor)), mc2::fmt::as_i32(static_cast<int>(cm[0])), mc2::fmt::as_i32(static_cast<int>(cm[1])), mc2::fmt::as_i32(static_cast<int>(cm[2])), mc2::fmt::as_i32(static_cast<int>(cm[3])), mc2::fmt::as_i32(vp[0]), mc2::fmt::as_i32(vp[1]), mc2::fmt::as_i32(vp[2]), mc2::fmt::as_i32(vp[3]));
             fflush(stderr);
         }
     }
@@ -982,7 +982,7 @@ namespace {
         GLint prevPack = 4;
         glGetIntegerv(GL_PACK_ALIGNMENT, &prevPack);
         glPixelStorei(GL_PACK_ALIGNMENT, 1);
-        auto px = std::make_shared<std::vector<uint8_t>>((size_t)kW * kH * 4u);
+        auto px = std::make_shared<std::vector<uint8_t>>(static_cast<size_t>(kW) * kH * 4u);
         glReadPixels(0, 0, kW, kH, GL_RGBA, GL_UNSIGNED_BYTE, px->data());
         glPixelStorei(GL_PACK_ALIGNMENT, prevPack);
         s_camPreviewTexels = std::move(px);

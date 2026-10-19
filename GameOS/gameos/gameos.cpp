@@ -94,7 +94,7 @@ static void mc2_log_exit_caller(const char* fn)
     USHORT n = CaptureStackBackTrace(1, 32, frames, nullptr);
     for (USHORT i = 0; i < n; ++i) {
         char symBuf[sizeof(SYMBOL_INFO) + 512];
-        SYMBOL_INFO* sym = (SYMBOL_INFO*)symBuf;
+        SYMBOL_INFO* sym = reinterpret_cast<SYMBOL_INFO*>(symBuf);
         sym->SizeOfStruct = sizeof(SYMBOL_INFO);
         sym->MaxNameLen = 512;
         DWORD64 disp64 = 0;
@@ -147,7 +147,7 @@ double __stdcall gos_GetElapsedTime( int RealTime )
 
 #ifdef PLATFORM_WINDOWS
 	uint64_t ticks = timing::gettickcount();
-	return (double)timing::ticks2ms(ticks) / 1000.0;
+	return static_cast<double>(timing::ticks2ms(ticks)) / 1000.0;
 #else
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC_RAW, &ts);
@@ -164,10 +164,10 @@ double __stdcall gos_GetHiResTime()
 #ifdef PLATFORM_LINUX
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC_RAW, &ts);
-    double time_sec = ts.tv_sec + ((double)ts.tv_nsec)/10.0e+9;
+    double time_sec = ts.tv_sec + (static_cast<double>(ts.tv_nsec))/10.0e+9;
     return time_sec;
 #else
-	return ((double)timeGetTime()) * 0.001;
+	return (static_cast<double>(timeGetTime())) * 0.001;
 #endif
 }
 
@@ -183,7 +183,7 @@ HGOSHEAP __stdcall gos_CreateMemoryHeap(char const* HeapName, DWORD MaximumSize/
     gos_Heap* pheap = new gos_Heap();
     memset(pheap, 0, sizeof(gos_Heap));
     pheap->pParent = parentHeap;
-    pheap->Magic = (DWORD)(reinterpret_cast<size_t>(HeapName) & 0xffffffff);
+    pheap->Magic = static_cast<DWORD>((reinterpret_cast<size_t>(HeapName) & 0xffffffff));
     if(HeapName) {
         strncpy(pheap->Name, HeapName, sizeof(pheap->Name)-1);
         pheap->Name[sizeof(pheap->Name)-1] = '\0';
@@ -323,7 +323,7 @@ static inline bool gos_detRngEnabled()
 void __stdcall gos_srand(unsigned int seed)
 {
     if (gos_detRngEnabled()) {
-        s_lcg_state = (uint32_t)seed;
+        s_lcg_state = static_cast<uint32_t>(seed);
         return;
     }
     return srand(seed);
@@ -332,7 +332,7 @@ void __stdcall gos_srand(unsigned int seed)
 int __stdcall gos_rand()
 {
     if (gos_detRngEnabled()) {
-        const int result = (int)mc2_det_rng::next15(s_lcg_state);
+        const int result = static_cast<int>(mc2_det_rng::next15(s_lcg_state));
         // Trace is gated twice: compile-time MC2_RNG_TRACE define AND the
         // runtime "RNG" tag whitelist. Default builds pay nothing.
 #ifdef MC2_RNG_TRACE
@@ -533,12 +533,12 @@ __int64 __stdcall gos_GetDriveFreeSpace( char* Path )
 		// to remove. The fallback answers for the WRONG VOLUME, so the line
 		// has to survive to stderr.
 		const DWORD err = GetLastError();
-		mc2::fmt::print_err("[DISK_GUARD] gos_GetDriveFreeSpace: GetDiskFreeSpaceEx failed for '{}' (err {:d}); falling back to CURRENT DRIVE -- the figure below may describe a different volume\n", mc2::fmt::safe(Path ? Path : "(null)"), mc2::fmt::as_u32((unsigned long)err));
+		mc2::fmt::print_err("[DISK_GUARD] gos_GetDriveFreeSpace: GetDiskFreeSpaceEx failed for '{}' (err {:d}); falling back to CURRENT DRIVE -- the figure below may describe a different volume\n", mc2::fmt::safe(Path ? Path : "(null)"), mc2::fmt::as_u32(static_cast<unsigned long>(err)));
 		fflush(stderr);
 		freeBytesAvailable.QuadPart = 0;
 		if (!GetDiskFreeSpaceEx(nullptr, &freeBytesAvailable, nullptr, nullptr))
 		{
-			mc2::fmt::print_err("[DISK_GUARD] gos_GetDriveFreeSpace: current-drive fallback also failed (err {:d}); returning 0 so callers take the out-of-space branch\n", mc2::fmt::as_u32((unsigned long)GetLastError()));
+			mc2::fmt::print_err("[DISK_GUARD] gos_GetDriveFreeSpace: current-drive fallback also failed (err {:d}); returning 0 so callers take the out-of-space branch\n", mc2::fmt::as_u32(static_cast<unsigned long>(GetLastError())));
 			fflush(stderr);
 			return 0;
 		}

@@ -54,7 +54,7 @@ std::string canonicalize(const char* raw) {
     std::replace(s.begin(), s.end(), '\\', '/');
     // lowercase
     std::transform(s.begin(), s.end(), s.begin(),
-                   [](unsigned char c){ return (char)std::tolower(c); });
+                   [](unsigned char c){ return static_cast<char>(std::tolower(c)); });
     // strip leading "./"
     while (s.size() >= 2 && s[0] == '.' && s[1] == '/') s.erase(0, 2);
     // strip leading "data/"
@@ -71,8 +71,8 @@ std::string canonicalize(const char* raw) {
 // Trim leading/trailing whitespace.
 std::string trim(const std::string& s) {
     size_t a = 0, b = s.size();
-    while (a < b && std::isspace((unsigned char)s[a])) ++a;
-    while (b > a && std::isspace((unsigned char)s[b-1])) --b;
+    while (a < b && std::isspace(static_cast<unsigned char>(s[a]))) ++a;
+    while (b > a && std::isspace(static_cast<unsigned char>(s[b-1]))) --b;
     return s.substr(a, b - a);
 }
 
@@ -107,14 +107,14 @@ bool parseLine(const std::string& raw, std::string& path,
     if (end == hs.c_str() || hl <= 0) return false;
 
     path = canonicalize(p.c_str());
-    w = (uint32_t)wl;
-    h = (uint32_t)hl;
+    w = static_cast<uint32_t>(wl);
+    h = static_cast<uint32_t>(hl);
     // Tokenize flags on whitespace/comma; accept "chrome" as the one defined flag.
     chrome = false;
     {
         std::string f = flags;
         std::transform(f.begin(), f.end(), f.begin(),
-                       [](unsigned char c){ return (char)std::tolower(c); });
+                       [](unsigned char c){ return static_cast<char>(std::tolower(c)); });
         if (f.find("chrome") != std::string::npos) chrome = true;
     }
     return true;
@@ -131,8 +131,8 @@ void loadManifest(const char* manifestPath) {
     long sz = std::ftell(f);
     std::fseek(f, 0, SEEK_SET);
     std::string buf;
-    buf.resize(sz > 0 ? (size_t)sz : 0);
-    if (sz > 0) std::fread(&buf[0], 1, (size_t)sz, f);
+    buf.resize(sz > 0 ? static_cast<size_t>(sz) : 0);
+    if (sz > 0) std::fread(&buf[0], 1, static_cast<size_t>(sz), f);
     std::fclose(f);
 
     int lineno = 0;
@@ -214,29 +214,29 @@ bool runOneScale(uint32_t nominalSize, uint32_t actualSize, const char* tag,
     AssetKey k = key(testKey.c_str());
 
     const int nominalCell = 32;
-    const int cellsPerRow = (int)nominalSize / nominalCell;
+    const int cellsPerRow = static_cast<int>(nominalSize) / nominalCell;
 
     for (int y = 0; y < cellsPerRow; ++y) {
         for (int x = 0; x < cellsPerRow; ++x) {
             IRect r = nominalToActualRect(k, actualSize, actualSize,
-                                          (float)(x * nominalCell),
-                                          (float)(y * nominalCell),
-                                          (float)nominalCell,
-                                          (float)nominalCell,
+                                          static_cast<float>((x * nominalCell)),
+                                          static_cast<float>((y * nominalCell)),
+                                          static_cast<float>(nominalCell),
+                                          static_cast<float>(nominalCell),
                                           "selftest");
             // Inside actual bounds.
             if (r.x < 0 || r.y < 0 ||
-                (uint32_t)(r.x + r.w) > actualSize ||
-                (uint32_t)(r.y + r.h) > actualSize) {
+                static_cast<uint32_t>((r.x + r.w)) > actualSize ||
+                static_cast<uint32_t>((r.y + r.h)) > actualSize) {
                 mc2::fmt::to_buf_n(detailBuf, detailLen, "OOB at cell ({:d},{:d}): rect=({:d},{:d},{:d},{:d}) actual={:d}", mc2::fmt::as_i32(x), mc2::fmt::as_i32(y), mc2::fmt::as_i32(r.x), mc2::fmt::as_i32(r.y), mc2::fmt::as_i32(r.w), mc2::fmt::as_i32(r.h), mc2::fmt::as_u32(actualSize));
                 return false;
             }
             // Adjacent-cell overlap <= 1px (intentional seam protection).
             if (x + 1 < cellsPerRow) {
                 IRect rNext = nominalToActualRect(k, actualSize, actualSize,
-                    (float)((x + 1) * nominalCell),
-                    (float)(y * nominalCell),
-                    (float)nominalCell, (float)nominalCell, "selftest");
+                    static_cast<float>(((x + 1) * nominalCell)),
+                    static_cast<float>((y * nominalCell)),
+                    static_cast<float>(nominalCell), static_cast<float>(nominalCell), "selftest");
                 int overlap = (r.x + r.w) - rNext.x;
                 if (overlap < 0 || overlap > 1) {
                     mc2::fmt::to_buf_n(detailBuf, detailLen, "X overlap {:d} at cell ({:d},{:d}): rect=({:d},{:d},{:d},{:d}) next=({:d},{:d},{:d},{:d})", mc2::fmt::as_i32(overlap), mc2::fmt::as_i32(x), mc2::fmt::as_i32(y), mc2::fmt::as_i32(r.x), mc2::fmt::as_i32(r.y), mc2::fmt::as_i32(r.w), mc2::fmt::as_i32(r.h), mc2::fmt::as_i32(rNext.x), mc2::fmt::as_i32(rNext.y), mc2::fmt::as_i32(rNext.w), mc2::fmt::as_i32(rNext.h));
@@ -333,7 +333,7 @@ Vec2 factorFor(const AssetKey& k, uint32_t actualW, uint32_t actualH,
     ++st.cFactorLookups;
     const NominalDims* nd = lookupNominal(st, k);
     if (!nd || nd->w == 0 || nd->h == 0) return {1.f, 1.f};
-    return { (float)actualW / (float)nd->w, (float)actualH / (float)nd->h };
+    return { static_cast<float>(actualW) / static_cast<float>(nd->w), static_cast<float>(actualH) / static_cast<float>(nd->h) };
 }
 
 Vec2 blitFactorFor(const AssetKey& k, uint32_t actualW, uint32_t actualH,
@@ -359,14 +359,14 @@ int nominalToActualAxis(const AssetKey& k, int n, Axis axis,
                         const char* callerTag) {
     Vec2 f = factorFor(k, actualW, actualH, callerTag);
     float scaled = (axis == Axis::X) ? n * f.x : n * f.y;
-    return (int)std::floor(scaled);
+    return static_cast<int>(std::floor(scaled));
 }
 
 IVec2 nominalToActual(const AssetKey& k, int nx, int ny,
                       uint32_t actualW, uint32_t actualH,
                       const char* callerTag) {
     Vec2 f = factorFor(k, actualW, actualH, callerTag);
-    return { (int)std::floor(nx * f.x), (int)std::floor(ny * f.y) };
+    return { static_cast<int>(std::floor(nx * f.x)), static_cast<int>(std::floor(ny * f.y)) };
 }
 
 IRect nominalToActualRect(const AssetKey& k,
@@ -377,20 +377,20 @@ IRect nominalToActualRect(const AssetKey& k,
     Vec2 f = factorFor(k, actualW, actualH, callerTag);
 
     // Rounding policy: floor-origin, ceil-extent.
-    int sx = (int)std::floor(nx * f.x);
-    int sy = (int)std::floor(ny * f.y);
-    int sw = (int)std::ceil (nw * f.x);
-    int sh = (int)std::ceil (nh * f.y);
+    int sx = static_cast<int>(std::floor(nx * f.x));
+    int sy = static_cast<int>(std::floor(ny * f.y));
+    int sw = static_cast<int>(std::ceil (nw * f.x));
+    int sh = static_cast<int>(std::ceil (nh * f.y));
 
     // OOB clamp.
     int cx = sx, cy = sy, cw = sw, ch = sh;
     bool clamped = false;
     if (cx < 0)                                  { cw += cx; cx = 0; clamped = true; }
     if (cy < 0)                                  { ch += cy; cy = 0; clamped = true; }
-    if ((uint32_t)cx > actualW)                  { cx = (int)actualW; cw = 0; clamped = true; }
-    if ((uint32_t)cy > actualH)                  { cy = (int)actualH; ch = 0; clamped = true; }
-    if ((uint32_t)(cx + cw) > actualW)           { cw = (int)actualW - cx; clamped = true; }
-    if ((uint32_t)(cy + ch) > actualH)           { ch = (int)actualH - cy; clamped = true; }
+    if (static_cast<uint32_t>(cx) > actualW)                  { cx = static_cast<int>(actualW); cw = 0; clamped = true; }
+    if (static_cast<uint32_t>(cy) > actualH)                  { cy = static_cast<int>(actualH); ch = 0; clamped = true; }
+    if (static_cast<uint32_t>((cx + cw)) > actualW)           { cw = static_cast<int>(actualW) - cx; clamped = true; }
+    if (static_cast<uint32_t>((cy + ch)) > actualH)           { ch = static_cast<int>(actualH) - cy; clamped = true; }
     if (cw < 0) { cw = 0; clamped = true; }
     if (ch < 0) { ch = 0; clamped = true; }
 

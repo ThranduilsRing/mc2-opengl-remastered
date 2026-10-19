@@ -21,9 +21,9 @@ void initDpiAwareness() {
             typedef BOOL (WINAPI *SetDpiCtxFn)(void*);
             HMODULE u32 = LoadLibraryA("user32.dll");
             SetDpiCtxFn setCtx = u32
-                ? (SetDpiCtxFn)GetProcAddress(u32, "SetProcessDpiAwarenessContext") : nullptr;
+                ? reinterpret_cast<SetDpiCtxFn>(GetProcAddress(u32, "SetProcessDpiAwarenessContext")) : nullptr;
             // DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2 == (HANDLE)-4
-            if (!setCtx || !setCtx((void*)-4))
+            if (!setCtx || !setCtx(reinterpret_cast<void*>(-4)))
                 SetProcessDPIAware();
         }
     }
@@ -121,7 +121,7 @@ void initLauncherEnv() {
                     if (!keyEnd) break;
                     p = keyEnd + 1;
                     char key[128];
-                    size_t klen = (size_t)(keyEnd - keyStart);
+                    size_t klen = static_cast<size_t>((keyEnd - keyStart));
                     if (klen == 0 || klen >= sizeof(key)) continue;
                     memcpy(key, keyStart, klen); key[klen] = '\0';
                     const char* c = p;
@@ -132,7 +132,7 @@ void initLauncherEnv() {
                     if (!valEnd) break;
                     p = valEnd + 1;
                     char val[256];
-                    size_t vlen = (size_t)(valEnd - valStart);
+                    size_t vlen = static_cast<size_t>((valEnd - valStart));
                     if (vlen >= sizeof(val)) continue;
                     memcpy(val, valStart, vlen); val[vlen] = '\0';
                     if (!val[0]) continue;        // "" = unset (launcher semantics)
@@ -222,7 +222,7 @@ void initInstrBanner() {
             const bool matGpuOn = mc2::gate::get<"MC2_MATERIAL_GPU">();
             const bool matSampleOn = mc2::gate::get<"MC2_MATERIAL_GPU_SAMPLE">();
             char buf[96];
-            mc2::fmt::to_buf(buf, "[MATERIAL_GPU v4] enabled={:d} sample={:d} binding=5 (default-ON; MC2_MATERIAL_GPU=0 disables)\n", mc2::fmt::as_i32((int)matGpuOn), mc2::fmt::as_i32((int)matSampleOn));
+            mc2::fmt::to_buf(buf, "[MATERIAL_GPU v4] enabled={:d} sample={:d} binding=5 (default-ON; MC2_MATERIAL_GPU=0 disables)\n", mc2::fmt::as_i32(static_cast<int>(matGpuOn)), mc2::fmt::as_i32(static_cast<int>(matSampleOn)));
             MC2_DIAG_FPUTS(buf, stderr);
         }
 
@@ -338,7 +338,7 @@ void initResolutionFromConfig() {
                     if (beforeEq <= 0 || beforeEq >= 63)
                         continue;
                     char before[64] = {};
-                    std::strncpy(before, line, (size_t)beforeEq);
+                    std::strncpy(before, line, static_cast<size_t>(beforeEq));
 
                     // The key is the last whitespace-delimited token before '='
                     char* tok = std::strtok(before, " \t");

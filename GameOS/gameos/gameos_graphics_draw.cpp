@@ -387,8 +387,8 @@ void gosRenderer::handleEvents()
         // x = 1/w; x =2*x - 1;
         // y = 1/h; y= 1- y; y =2*y - 1;
         // z = z;
-        projection_ = mat4(2.0f / (float)width_, 0, 0.0f, -1.0f,
-                0, -2.0f / (float)height_, 0.0f, 1.0f,
+        projection_ = mat4(2.0f / static_cast<float>(width_), 0, 0.0f, -1.0f,
+                0, -2.0f / static_cast<float>(height_), 0.0f, 1.0f,
                 0, 0, 1.0f, 0.0f,
                 0, 0, 0.0f, 1.0f);
 
@@ -399,7 +399,7 @@ void gosRenderer::handleEvents()
         if (reqPhysWidth > 0 && reqPhysHeight > 0)
         {
             ZoneScopedN("gosRenderer::handleEvents resizeWindow");
-            windowOk = graphics::resize_window(win_h_, (int)reqPhysWidth, (int)reqPhysHeight);
+            windowOk = graphics::resize_window(win_h_, static_cast<int>(reqPhysWidth), static_cast<int>(reqPhysHeight));
         }
         {
         if(windowOk)
@@ -530,7 +530,7 @@ void gosRenderer::drawTris(gos_VERTEX* vertices, int count) {
     if ( mc2::gate::get<"MC2_LOG_PREVIEW">() ) {
         GLint curFbo = 0; glGetIntegerv(GL_FRAMEBUFFER_BINDING, &curFbo);
         FILE* f = fopen("preview_debug.log","a");
-        if (f) { mc2::fmt::print(f, "[PREVIEW] drawTris count={:d} isHUD={:d} curFbo={:d}\n", mc2::fmt::as_i32(count), mc2::fmt::as_i32((int)renderStates_[gos_State_IsHUD]), mc2::fmt::as_i32(curFbo)); fflush(f); fclose(f); }
+        if (f) { mc2::fmt::print(f, "[PREVIEW] drawTris count={:d} isHUD={:d} curFbo={:d}\n", mc2::fmt::as_i32(count), mc2::fmt::as_i32(static_cast<int>(renderStates_[gos_State_IsHUD])), mc2::fmt::as_i32(curFbo)); fflush(f); fclose(f); }
     }
     if (renderStates_[gos_State_IsHUD]) {
         if (hudFlushed_) {
@@ -577,7 +577,7 @@ void gosRenderer::drawTris(gos_VERTEX* vertices, int count) {
             {
                 bool sameSideOk = true;
                 if (s_hud_scale_active && s_hud_scale < 0.999f && !s_hud_scale_exempt) {
-                    const float bottomBand = (float)height_ * 0.60f;
+                    const float bottomBand = static_cast<float>(height_) * 0.60f;
                     const float cyBack = (back.vertices[0].y + back.vertices[1].y + back.vertices[2].y) / 3.0f;
                     const float cyNew  = (vertices[0].y + vertices[1].y + vertices[2].y) / 3.0f;
                     sameSideOk = (cyBack >= bottomBand) == (cyNew >= bottomBand);
@@ -636,10 +636,10 @@ void gosRenderer::drawIndexedTris(gos_VERTEX* vertices, int num_vertices, WORD* 
     // route through drawTris' IsHUD batching, same as the non-indexed effect draws.
     if (renderStates_[gos_State_IsHUD] && num_indices > 0) {
         std::vector<gos_VERTEX> expanded;
-        expanded.reserve((size_t)num_indices);
+        expanded.reserve(static_cast<size_t>(num_indices));
         for (int i = 0; i < num_indices; ++i)
             expanded.push_back(vertices[indices[i]]);
-        drawTris(expanded.data(), (int)expanded.size());
+        drawTris(expanded.data(), static_cast<int>(expanded.size()));
         return;
     }
 

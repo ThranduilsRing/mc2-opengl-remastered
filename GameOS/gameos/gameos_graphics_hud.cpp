@@ -11,10 +11,10 @@ static int get_next_break(const char* text) {
     do {
         char c = *text;
         if(c==' ' || c=='\n')
-            return (int32_t)(text - start);
+            return static_cast<int32_t>((text - start));
     } while(*text++);
 
-    return (int32_t)(text - start - 1);
+    return static_cast<int32_t>((text - start - 1));
 }
 
 int findTextBreak(const char* text, const int count, const gosFont* font, const int region_width, int* out_str_width) {
@@ -125,7 +125,7 @@ void gosRenderer::drawText(const char* text) {
 
     if(beforeDrawCall()) return;
 
-    const int count = (int)strlen(text);  
+    const int count = static_cast<int>(strlen(text));
 /*
     if(text_->getNumVertices() + count > text_->getCapacity()) {
         applyRenderStates();
@@ -142,7 +142,7 @@ void gosRenderer::drawText(const char* text) {
 
     int ix, iy;
     getTextPos(ix, iy);
-	float x = (float)ix, y = (float)iy;
+	float x = static_cast<float>(ix), y = static_cast<float>(iy);
     const float start_x = x;
 
     const gosTextAttribs& ta = g_gos_renderer->getTextAttributes();
@@ -152,8 +152,8 @@ void gosRenderer::drawText(const char* text) {
     const gosTexture* tex = getTexture(tex_id);
     gosTextureInfo ti;
     tex->getTextureInfo(&ti);
-    const float oo_tex_width = 1.0f / (float)ti.width_;
-    const float oo_tex_height = 1.0f / (float)ti.height_;
+    const float oo_tex_width = 1.0f / static_cast<float>(ti.width_);
+    const float oo_tex_height = 1.0f / static_cast<float>(ti.height_);
     
     const int font_height = font->getMaxCharHeight();
     const int font_ascent = font->getFontAscent();
@@ -194,7 +194,7 @@ void gosRenderer::drawText(const char* text) {
             // entry at index 10, so the old path drew nothing visible;
             // D3F atlases ship a placeholder glyph there that would
             // appear as a square at end-of-line and on \n\n blank lines.
-            if((unsigned char)c < 0x20) {
+            if(static_cast<unsigned char>(c) < 0x20) {
                 continue;
             }
 
@@ -213,10 +213,10 @@ void gosRenderer::drawText(const char* text) {
             uint32_t iu1 = iu0 + char_w;
             uint32_t iv1 = iv0 + char_h;
 
-            float u0 = (float)iu0 * oo_tex_width;
-            float v0 = (float)iv0 * oo_tex_height;
-            float u1 = (float)iu1 * oo_tex_width;
-            float v1 = (float)iv1 * oo_tex_height;
+            float u0 = static_cast<float>(iu0) * oo_tex_width;
+            float v0 = static_cast<float>(iv0) * oo_tex_height;
+            float u1 = static_cast<float>(iu1) * oo_tex_width;
+            float v1 = static_cast<float>(iv1) * oo_tex_height;
 
             addCharacter(text_, u0, v0, u1, v1, (x + char_off_x), (y + char_off_y), (x + char_off_x + char_w), (y + char_off_y + char_h));
 
@@ -372,7 +372,7 @@ void gosRenderer::flushHUDBatch()
                     ++nv;
                 }
             if (FILE* hf = fopen("preview_debug.log", "a")) {
-                mc2::fmt::print(hf, "[HUDSCALE] active={:d} scale={:.2f} rendererWH={:d}x{:d} batch={:d} verts={:d} vertY=[{:.0f}..{:.0f}] vertXmax={:.0f} band={:.0f}\n", mc2::fmt::as_i32((int)s_hud_scale_active), scale, mc2::fmt::as_i32(width_), mc2::fmt::as_i32(height_), mc2::fmt::as_size(hudBatch_.size()), mc2::fmt::as_size(nv), ymin, ymax, xmax, (float)height_ * 0.60f);
+                mc2::fmt::print(hf, "[HUDSCALE] active={:d} scale={:.2f} rendererWH={:d}x{:d} batch={:d} verts={:d} vertY=[{:.0f}..{:.0f}] vertXmax={:.0f} band={:.0f}\n", mc2::fmt::as_i32(static_cast<int>(s_hud_scale_active)), scale, mc2::fmt::as_i32(width_), mc2::fmt::as_i32(height_), mc2::fmt::as_size(hudBatch_.size()), mc2::fmt::as_size(nv), ymin, ymax, xmax, static_cast<float>(height_) * 0.60f);
                 fclose(hf);
             }
         }
@@ -384,8 +384,8 @@ void gosRenderer::flushHUDBatch()
         // under the ui-phase1 HUD-RES-CLAMP) — using the renderer's physical
         // size here put the 60% band at 1296px against 800-space verts, so no
         // HUD centroid ever entered the band and the shrink silently no-opped.
-        const float sw = (Environment.screenWidth  > 0) ? (float)Environment.screenWidth  : (float)width_;
-        const float sh = (Environment.screenHeight > 0) ? (float)Environment.screenHeight : (float)height_;
+        const float sw = (Environment.screenWidth  > 0) ? static_cast<float>(Environment.screenWidth)  : static_cast<float>(width_);
+        const float sh = (Environment.screenHeight > 0) ? static_cast<float>(Environment.screenHeight) : static_cast<float>(height_);
         const float bottomBand = sh * 0.60f;
         const float ax = sw * 0.5f;
         const float ay = sh;
@@ -395,7 +395,7 @@ void gosRenderer::flushHUDBatch()
             if (call.scaleExempt) { ++skippedExempt; continue; }   // cursor + modal dialogs: never shrink
             float cy = 0.0f;
             for (const gos_VERTEX& v : call.vertices) cy += v.y;
-            cy /= (float)call.vertices.size();
+            cy /= static_cast<float>(call.vertices.size());
             if (cy < bottomBand) { ++skippedBand; continue; }
             ++scaled;
             for (gos_VERTEX& v : call.vertices) {
@@ -440,12 +440,12 @@ void gosRenderer::flushHUDBatch()
             Environment.drawableWidth, Environment.drawableHeight, &bx, &by, &bw, &bh);
         if (menuCanvas || hudCanvas)
         {
-            const float dw = (float)Environment.drawableWidth;
-            const float dh = (float)Environment.drawableHeight;
-            const float fx = (float)bw / dw;
-            const float fy = (float)bh / dh;
-            const float lx = (float)width_  * ((float)bx / dw);
-            const float ly = (float)height_ * ((float)by / dh);
+            const float dw = static_cast<float>(Environment.drawableWidth);
+            const float dh = static_cast<float>(Environment.drawableHeight);
+            const float fx = static_cast<float>(bw) / dw;
+            const float fy = static_cast<float>(bh) / dh;
+            const float lx = static_cast<float>(width_)  * (static_cast<float>(bx) / dw);
+            const float ly = static_cast<float>(height_) * (static_cast<float>(by) / dh);
             for (HudDrawCall& call : hudBatch_) {
                 if (hudCanvas && call.canvasExempt)
                     continue;   // cursor, world-anchored overlays, modals stay full-space
@@ -479,26 +479,26 @@ void gosRenderer::flushHUDBatch()
                 mc2::fmt::to_buf(resDetail, "box={:d},{:d} {:d}x{:d} drawable={:d}x{:d}", mc2::fmt::as_i32(rbx), mc2::fmt::as_i32(rby), mc2::fmt::as_i32(rbw), mc2::fmt::as_i32(rbh), mc2::fmt::as_i32(Environment.drawableWidth), mc2::fmt::as_i32(Environment.drawableHeight));
                 mc2res::violation("hud_canvas_bounds", resDetail);
             } else {
-                const float rdw = (float)Environment.drawableWidth;
-                const float rdh = (float)Environment.drawableHeight;
-                const float rfx = (float)rbw / rdw;
-                const float rfy = (float)rbh / rdh;
-                const float rlx = (float)width_  * ((float)rbx / rdw);
-                const float rly = (float)height_ * ((float)rby / rdh);
+                const float rdw = static_cast<float>(Environment.drawableWidth);
+                const float rdh = static_cast<float>(Environment.drawableHeight);
+                const float rfx = static_cast<float>(rbw) / rdw;
+                const float rfy = static_cast<float>(rbh) / rdh;
+                const float rlx = static_cast<float>(width_)  * (static_cast<float>(rbx) / rdw);
+                const float rly = static_cast<float>(height_) * (static_cast<float>(rby) / rdh);
                 // Probe pair: one above the hud-scale bottom band, one inside
                 // it (exercises the shrink∘canvas composition when the HUD
                 // shrink is active — a canvas-only probe false-passes there).
                 const float probePts[2][2] = {
-                    { (float)width_ * 0.5f, (float)height_ * 0.25f },
-                    { (float)width_ * 0.5f, (float)height_ * 0.95f },
+                    { static_cast<float>(width_) * 0.5f, static_cast<float>(height_) * 0.25f },
+                    { static_cast<float>(width_) * 0.5f, static_cast<float>(height_) * 0.95f },
                 };
                 for (int rp = 0; rp < 2; ++rp) {
                     float px = probePts[rp][0];
                     float py = probePts[rp][1];
                     const float hudScale = gos_GetHudScale();
                     if (gos_GetHudScaleActive() && hudScale <= 0.999f) {
-                        const float sw = (float)width_;
-                        const float sh = (float)height_;
+                        const float sw = static_cast<float>(width_);
+                        const float sh = static_cast<float>(height_);
                         if (py >= sh * 0.60f) {   // bottom band, as above
                             const float ax = sw * 0.5f;
                             const float ay = sh;
@@ -511,7 +511,7 @@ void gosRenderer::flushHUDBatch()
                     gos_HudInverseMousePoint(px, py);
                     if (fabsf(px - probePts[rp][0]) > 0.5f ||
                         fabsf(py - probePts[rp][1]) > 0.5f) {
-                        mc2::fmt::to_buf(resDetail, "probe=({:.1f},{:.1f}) roundtrip=({:.2f},{:.2f}) box={:d},{:d} {:d}x{:d} scale={:.3f}", (double)probePts[rp][0], (double)probePts[rp][1], (double)px, (double)py, mc2::fmt::as_i32(rbx), mc2::fmt::as_i32(rby), mc2::fmt::as_i32(rbw), mc2::fmt::as_i32(rbh), (double)gos_GetHudScale());
+                        mc2::fmt::to_buf(resDetail, "probe=({:.1f},{:.1f}) roundtrip=({:.2f},{:.2f}) box={:d},{:d} {:d}x{:d} scale={:.3f}", static_cast<double>(probePts[rp][0]), static_cast<double>(probePts[rp][1]), static_cast<double>(px), static_cast<double>(py), mc2::fmt::as_i32(rbx), mc2::fmt::as_i32(rby), mc2::fmt::as_i32(rbw), mc2::fmt::as_i32(rbh), static_cast<double>(gos_GetHudScale()));
                         mc2res::violation("hud_roundtrip", resDetail);
                     }
                 }
@@ -541,19 +541,19 @@ void gosRenderer::flushHUDBatch()
         unsigned alphaModes[8] = {};
         unsigned totalVertices = 0;
         for (const HudDrawCall& call : hudBatch_) {
-            const unsigned kind = (unsigned)call.kind;
+            const unsigned kind = static_cast<unsigned>(call.kind);
             if (kind < 4) ++calls[kind];
             if (call.stateSnapshot[gos_State_Texture] != 0 || call.kind == kHudTextQuadBatch)
                 ++textured;
             const unsigned alpha = call.stateSnapshot[gos_State_AlphaMode];
             if (alpha < 8) ++alphaModes[alpha];
-            totalVertices += (unsigned)call.vertices.size();
+            totalVertices += static_cast<unsigned>(call.vertices.size());
         }
 
         static unsigned s_hudMeasureFrames = 0;
         ++s_hudMeasureFrames;
         if (s_hudMeasureFrames <= 10 || (s_hudMeasureFrames % 120) == 0) {
-            mc2::fmt::print_err("[VK_HUD_AUDIT v1] frame={:d} calls={:d} quads={:d} lines={:d} tris={:d} text={:d} textured={:d} vertices={:d} alpha0={:d} alpha1={:d} alpha2={:d} alpha3={:d}\n", mc2::fmt::as_u32(s_hudMeasureFrames), mc2::fmt::as_u32((unsigned)hudBatch_.size()), mc2::fmt::as_u32(calls[0]), mc2::fmt::as_u32(calls[1]), mc2::fmt::as_u32(calls[2]), mc2::fmt::as_u32(calls[3]), mc2::fmt::as_u32(textured), mc2::fmt::as_u32(totalVertices), mc2::fmt::as_u32(alphaModes[0]), mc2::fmt::as_u32(alphaModes[1]), mc2::fmt::as_u32(alphaModes[2]), mc2::fmt::as_u32(alphaModes[3]));
+            mc2::fmt::print_err("[VK_HUD_AUDIT v1] frame={:d} calls={:d} quads={:d} lines={:d} tris={:d} text={:d} textured={:d} vertices={:d} alpha0={:d} alpha1={:d} alpha2={:d} alpha3={:d}\n", mc2::fmt::as_u32(s_hudMeasureFrames), mc2::fmt::as_u32(static_cast<unsigned>(hudBatch_.size())), mc2::fmt::as_u32(calls[0]), mc2::fmt::as_u32(calls[1]), mc2::fmt::as_u32(calls[2]), mc2::fmt::as_u32(calls[3]), mc2::fmt::as_u32(textured), mc2::fmt::as_u32(totalVertices), mc2::fmt::as_u32(alphaModes[0]), mc2::fmt::as_u32(alphaModes[1]), mc2::fmt::as_u32(alphaModes[2]), mc2::fmt::as_u32(alphaModes[3]));
         }
     }
 
@@ -567,18 +567,18 @@ void gosRenderer::flushHUDBatch()
         nativeDraws.reserve(hudBatch_.size());
         for (const HudDrawCall& call : hudBatch_) {
             mc2vk::VkHudDraw draw;
-            draw.kind = (uint32_t)call.kind;
+            draw.kind = static_cast<uint32_t>(call.kind);
             draw.textureHandle = (call.kind == kHudTextQuadBatch)
-                ? (uint32_t)call.fontTexId
-                : (uint32_t)call.stateSnapshot[gos_State_Texture];
+                ? static_cast<uint32_t>(call.fontTexId)
+                : static_cast<uint32_t>(call.stateSnapshot[gos_State_Texture]);
             if (draw.textureHandle != 0 && draw.textureHandle != INVALID_TEXTURE_ID) {
                 if (gosTexture* tex = getTexture(draw.textureHandle)) {
                     gosTextureInfo ti;
                     tex->getTextureInfo(&ti);
                     draw.glTextureId = tex->getTextureId();
-                    draw.textureWidth = (uint32_t)ti.width_;
-                    draw.textureHeight = (uint32_t)ti.height_;
-                    draw.textureFormat = (uint32_t)ti.format_;
+                    draw.textureWidth = static_cast<uint32_t>(ti.width_);
+                    draw.textureHeight = static_cast<uint32_t>(ti.height_);
+                    draw.textureFormat = static_cast<uint32_t>(ti.format_);
                     draw.textureSerial = tex->getContentSerial();
                     // Pre-compressed textures (BC7 .ktx2 sidecars: effect sprites) get their RGBA8 mirror decoded from
                     // their blocks on first use, so textured beams / effects composite instead of self-declining.
@@ -596,7 +596,7 @@ void gosRenderer::flushHUDBatch()
             // round-3 proven beam look) instead of self-declining — a weapon
             // beam must never vanish outright over a missing texture mirror.
             {
-                if (draw.kind == (uint32_t)kHudTriBatch &&
+                if (draw.kind == static_cast<uint32_t>(kHudTriBatch) &&
                     (draw.alphaMode == 4 || draw.alphaMode == 2) &&
                     draw.textureHandle != 0 && draw.textureHandle != INVALID_TEXTURE_ID &&
                     (!draw.textureRgba || draw.textureRgba->empty()))
@@ -627,7 +627,7 @@ void gosRenderer::flushHUDBatch()
             if (!drawRepresentable) {
                 static unsigned s_nativeHudDeclineLogs = 0;
                 if (s_nativeHudDeclineLogs < 16) {
-                    mc2::fmt::print_err("[VK_HUD_SKIP_DECLINE v1] kind={:d} tex={:d} gl={:d} wh={:d}x{:d} serial={:d} rgba={:d} alpha={:d} verts={:d}\n", mc2::fmt::as_u32(draw.kind), mc2::fmt::as_u32(draw.textureHandle), mc2::fmt::as_u32(draw.glTextureId), mc2::fmt::as_u32(draw.textureWidth), mc2::fmt::as_u32(draw.textureHeight), mc2::fmt::as_u32(draw.textureSerial), mc2::fmt::as_size(draw.textureRgba ? draw.textureRgba->size() : (size_t)0), mc2::fmt::as_u32(draw.alphaMode), mc2::fmt::as_size(draw.vertices.size()));
+                    mc2::fmt::print_err("[VK_HUD_SKIP_DECLINE v1] kind={:d} tex={:d} gl={:d} wh={:d}x{:d} serial={:d} rgba={:d} alpha={:d} verts={:d}\n", mc2::fmt::as_u32(draw.kind), mc2::fmt::as_u32(draw.textureHandle), mc2::fmt::as_u32(draw.glTextureId), mc2::fmt::as_u32(draw.textureWidth), mc2::fmt::as_u32(draw.textureHeight), mc2::fmt::as_u32(draw.textureSerial), mc2::fmt::as_size(draw.textureRgba ? draw.textureRgba->size() : static_cast<size_t>(0)), mc2::fmt::as_u32(draw.alphaMode), mc2::fmt::as_size(draw.vertices.size()));
                     ++s_nativeHudDeclineLogs;
                 }
             }
@@ -650,7 +650,7 @@ void gosRenderer::flushHUDBatch()
         // in (width_/height_ == Environment.screenWidth/Height) so the VK tail maps them
         // to NDC correctly even when the present image (physical drawable) differs.
         nativeHudQueued = mc2vk::getOrCreateEnginePresentVk().queueHudVulkanFrame(
-            std::move(nativeDraws), (uint32_t)width_, (uint32_t)height_);
+            std::move(nativeDraws), static_cast<uint32_t>(width_), static_cast<uint32_t>(height_));
     }
 #endif
 
@@ -666,7 +666,7 @@ void gosRenderer::flushHUDBatch()
         static unsigned s_nativeHudSkipFrames = 0;
         ++s_nativeHudSkipFrames;
         if (mc2DiagVerbose() && (s_nativeHudSkipFrames <= 10 || (s_nativeHudSkipFrames % 120) == 0)) {
-            mc2::fmt::print_err("[VK_HUD_SKIP v1] frame={:d} draws={:d} reason=\"native_full_coverage\"\n", mc2::fmt::as_u32(s_nativeHudSkipFrames), mc2::fmt::as_u32((unsigned)hudBatch_.size()));
+            mc2::fmt::print_err("[VK_HUD_SKIP v1] frame={:d} draws={:d} reason=\"native_full_coverage\"\n", mc2::fmt::as_u32(s_nativeHudSkipFrames), mc2::fmt::as_u32(static_cast<unsigned>(hudBatch_.size())));
         }
         hudFlushed_ = true;
         s_hud_scale_exempt = false;
@@ -681,7 +681,7 @@ void gosRenderer::flushHUDBatch()
         static unsigned s_hudDeclineLogs = 0;
         if (s_hudDeclineLogs < 4) {
             ++s_hudDeclineLogs;
-            mc2::fmt::print_err("[VK_HUD_DECLINE v1] draws={:d} native tail declined the frame; the HUD batch is dropped\n", mc2::fmt::as_u32((unsigned)hudBatch_.size()));
+            mc2::fmt::print_err("[VK_HUD_DECLINE v1] draws={:d} native tail declined the frame; the HUD batch is dropped\n", mc2::fmt::as_u32(static_cast<unsigned>(hudBatch_.size())));
         }
     }
     hudFlushed_ = true;
@@ -737,8 +737,8 @@ void __stdcall gos_TextDrawBackground( int Left, int Top, int Right, int Bottom,
 
 
     gos_VERTEX v[4];
-    v[0].x = (float)Left;
-    v[0].y = (float)Top;
+    v[0].x = static_cast<float>(Left);
+    v[0].y = static_cast<float>(Top);
     v[0].z = 0;
 	v[0].argb = Color;
 	v[0].frgb = 0;
@@ -747,15 +747,15 @@ void __stdcall gos_TextDrawBackground( int Left, int Top, int Right, int Bottom,
     memcpy(&v[1], &v[0], sizeof(gos_VERTEX));
     memcpy(&v[2], &v[0], sizeof(gos_VERTEX));
     memcpy(&v[3], &v[0], sizeof(gos_VERTEX));
-    v[1].x = (float)Right;
+    v[1].x = static_cast<float>(Right);
     v[1].u = 1.0f;
 
-    v[2].x = (float)Right;
-    v[2].y = (float)Bottom;
+    v[2].x = static_cast<float>(Right);
+    v[2].y = static_cast<float>(Bottom);
     v[2].u = 1.0f;
     v[2].v = 0.0f;
 
-    v[1].y = (float)Bottom;
+    v[1].y = static_cast<float>(Bottom);
     v[1].v = 1.0f;
 
     if(g_disable_quads == false )
@@ -891,7 +891,7 @@ void __stdcall gos_TextVisualBounds( DWORD* Width, int* Top, int* Bottom, const 
     // first-line-ink bookkeeping would otherwise emit a Top that
     // ignores the line offset.
     for(const char* p = text; ; ++p) {
-        unsigned char c = (unsigned char)*p;
+        unsigned char c = static_cast<unsigned char>(*p);
         if(c == '\n' || c == '\0') {
             if(cur_width > max_width) max_width = cur_width;
             if(c == '\0') break;
@@ -902,15 +902,15 @@ void __stdcall gos_TextVisualBounds( DWORD* Width, int* Top, int* Bottom, const 
         cur_width += font->getCharAdvance(c);
         if(gi.ink_valid_ && c < gi.num_glyphs_ && gi.ink_valid_[c]) {
             int base = line_index * line_skip;
-            int t = base + (int)gi.ink_top_[c];
-            int b = base + (int)gi.ink_bot_[c];
+            int t = base + static_cast<int>(gi.ink_top_[c]);
+            int b = base + static_cast<int>(gi.ink_bot_[c]);
             if(t < min_top) min_top = t;
             if(b > max_bot) max_bot = b;
             any_ink = true;
         }
     }
 
-    *Width = (DWORD)max_width;
+    *Width = static_cast<DWORD>(max_width);
 
     if(any_ink) {
         *Top    = min_top;

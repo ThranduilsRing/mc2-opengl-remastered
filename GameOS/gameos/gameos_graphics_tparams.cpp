@@ -97,11 +97,11 @@ void gosRenderer::terrainBindUniformsForPatchStream(gosRenderMaterial* material)
     if (tl.tessLevel >= 0)         glUniform4fv(tl.tessLevel, 1, tessParams);
     if (tl.tessDistanceRange >= 0) glUniform4fv(tl.tessDistanceRange, 1, tessDist);
     if (tl.tessDisplace >= 0)      glUniform4fv(tl.tessDisplace, 1, tessDisp);
-    if (tl.cameraPos >= 0)         glUniform4fv(tl.cameraPos, 1, (const float*)&terrain_camera_pos_);
+    if (tl.cameraPos >= 0)         glUniform4fv(tl.cameraPos, 1, reinterpret_cast<const float*>(&terrain_camera_pos_));
     float debugMode = terrain_debug_mode_;
     if (mc2::gate::isSet<"MC2_TERRAIN_DEBUG_MODE">())
         debugMode = mc2::gate::get<"MC2_TERRAIN_DEBUG_MODE">();
-    { int lvm = mc2LightingDebugMode(); if (lvm >= 0) debugMode = (float)lvm; }  // LIGHTING-DEBUG-VIEWS-1A
+    { int lvm = mc2LightingDebugMode(); if (lvm >= 0) debugMode = static_cast<float>(lvm); }  // LIGHTING-DEBUG-VIEWS-1A
     float tessDebugVec[4] = { debugMode, 0.0f, 0.0f, 0.0f };
     if (tl.tessDebug >= 0)         glUniform4fv(tl.tessDebug, 1, tessDebugVec);
     if (tl.pathTint >= 0)          glUniform1i(tl.pathTint, mc2ShaderPathTint());  // MC2_SHADER_PATH_TINT
@@ -128,7 +128,7 @@ void gosRenderer::terrainBindUniformsForPatchStream(gosRenderMaterial* material)
         }
     }
     if (terrain_mvp_valid_ && tl.terrainMVP >= 0)
-        glUniformMatrix4fv(tl.terrainMVP, 1, GL_FALSE, (const float*)&terrain_mvp_);
+        glUniformMatrix4fv(tl.terrainMVP, 1, GL_FALSE, reinterpret_cast<const float*>(&terrain_mvp_));
     // F1 Task 7b: probe-only worldToClipGL flat-uniform fallback path.
     // Kept for non-AMD or future driver fixes; SSBO path (binding 23) is
     // the reliable transport on AMD TES stages (proven: loc=-1 from driver
@@ -138,7 +138,7 @@ void gosRenderer::terrainBindUniformsForPatchStream(gosRenderMaterial* material)
     if (probeWorldToClipGLValid_ && tl.worldToClipGL >= 0)
         glUniformMatrix4fv(tl.worldToClipGL, 1, GL_FALSE, probeWorldToClipGL_);
 
-    if (tl.terrainLightDir >= 0)        glUniform4fv(tl.terrainLightDir, 1, (const float*)&terrain_light_dir_);
+    if (tl.terrainLightDir >= 0)        glUniform4fv(tl.terrainLightDir, 1, reinterpret_cast<const float*>(&terrain_light_dir_));
     float tiling[4]      = { terrain_detail_tiling_, 0.0f, 0.0f, 0.0f };
     const float* _datYZW = mc2_detailAntiTileYZW();  // TERRAIN-DETAIL-ANTI-TILE-1 (yzw=0 when gate OFF)
     float strength[4]    = { terrain_detail_strength_, _datYZW[0], _datYZW[1], _datYZW[2] };
@@ -178,8 +178,8 @@ void gosRenderer::terrainBindUniformsForPatchStream(gosRenderMaterial* material)
     if (tl.controlAlbedoStrength >= 0) glUniform1f(tl.controlAlbedoStrength, terrain_control_albedo_strength_);
     if (tl.time >= 0) {
         float elapsed = SmokeMode::fixedTimestepEnabled()
-                        ? (float)SmokeMode::fixedClockSeconds()
-                        : (float)(timing::get_wall_time_ms() - timeStart_) / 1000.0f;
+                        ? static_cast<float>(SmokeMode::fixedClockSeconds())
+                        : static_cast<float>((timing::get_wall_time_ms() - timeStart_)) / 1000.0f;
         glUniform1f(tl.time, elapsed);
     }
 
@@ -219,25 +219,25 @@ int gosRenderer::terrainBindThinUniformsForPatchStream(glsl_program* overridePro
     const auto& tl = thinTerrainLocs_;
 
     if (terrain_mvp_valid_ && tl.terrainMVP >= 0)
-        glUniformMatrix4fv(tl.terrainMVP, 1, GL_FALSE, (const float*)&terrain_mvp_);
+        glUniformMatrix4fv(tl.terrainMVP, 1, GL_FALSE, reinterpret_cast<const float*>(&terrain_mvp_));
     // projection_: row-major Stuff matrix — upload GL_TRUE (column-major interpretation).
     // All other projection_ upload sites (shadow line ~2737, material setTransform) use GL_TRUE.
     // terrainMVP stays GL_FALSE — its D3D chain math cancels the implicit transpose.
     if (tl.mvp >= 0)
-        glUniformMatrix4fv(tl.mvp, 1, GL_TRUE, (const float*)&projection_);
+        glUniformMatrix4fv(tl.mvp, 1, GL_TRUE, reinterpret_cast<const float*>(&projection_));
 
     static const bool s_thinDebug   = mc2::gate::get<"MC2_THIN_DEBUG">();
     static bool       s_thinDbgDone = false;
     if (s_thinDebug && !s_thinDbgDone && terrain_mvp_valid_) {
         s_thinDbgDone = true;
-        const float* p = (const float*)&projection_;
-        const float* m = (const float*)&terrain_mvp_;
+        const float* p = reinterpret_cast<const float*>(&projection_);
+        const float* m = reinterpret_cast<const float*>(&terrain_mvp_);
         mc2::fmt::print_err("[THIN_DEBUG v1] event=thin_uniforms_bound proj_row0=[{:.5f},{:.5f},{:.5f},{:.5f}] proj_row1=[{:.5f},{:.5f},{:.5f},{:.5f}] tmvp_diag=[{:.5f},{:.5f},{:.5f},{:.5f}]\n", p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], m[0], m[5], m[10], m[15]);
         fflush(stderr);
     }
 
-    if (tl.cameraPos >= 0)        glUniform4fv(tl.cameraPos, 1, (const float*)&terrain_camera_pos_);
-    if (tl.terrainLightDir >= 0)  glUniform4fv(tl.terrainLightDir, 1, (const float*)&terrain_light_dir_);
+    if (tl.cameraPos >= 0)        glUniform4fv(tl.cameraPos, 1, reinterpret_cast<const float*>(&terrain_camera_pos_));
+    if (tl.terrainLightDir >= 0)  glUniform4fv(tl.terrainLightDir, 1, reinterpret_cast<const float*>(&terrain_light_dir_));
     // tessDebug: matches non-thin path (line ~4080). The thin path historically
     // omitted this — debug-viz modes 1..8 in gos_terrain.frag therefore could
     // not fire on the indirect/substrate draw, which silently broke the entire
@@ -247,7 +247,7 @@ int gosRenderer::terrainBindThinUniformsForPatchStream(glsl_program* overridePro
         float debugMode = terrain_debug_mode_;
         if (mc2::gate::isSet<"MC2_TERRAIN_DEBUG_MODE">())
             debugMode = mc2::gate::get<"MC2_TERRAIN_DEBUG_MODE">();
-        { int lvm = mc2LightingDebugMode(); if (lvm >= 0) debugMode = (float)lvm; }  // LIGHTING-DEBUG-VIEWS-1A
+        { int lvm = mc2LightingDebugMode(); if (lvm >= 0) debugMode = static_cast<float>(lvm); }  // LIGHTING-DEBUG-VIEWS-1A
         float tessDebugVec[4] = { debugMode, 0.0f, 0.0f, 0.0f };
         if (tl.tessDebug >= 0) glUniform4fv(tl.tessDebug, 1, tessDebugVec);
         if (tl.pathTint >= 0)  glUniform1i(tl.pathTint, mc2ShaderPathTint());  // MC2_SHADER_PATH_TINT
@@ -287,8 +287,8 @@ int gosRenderer::terrainBindThinUniformsForPatchStream(glsl_program* overridePro
     if (tl.controlAlbedoStrength >= 0) glUniform1f(tl.controlAlbedoStrength, terrain_control_albedo_strength_);
     if (tl.time >= 0) {
         float elapsed = SmokeMode::fixedTimestepEnabled()
-                        ? (float)SmokeMode::fixedClockSeconds()
-                        : (float)(timing::get_wall_time_ms() - timeStart_) / 1000.0f;
+                        ? static_cast<float>(SmokeMode::fixedClockSeconds())
+                        : static_cast<float>((timing::get_wall_time_ms() - timeStart_)) / 1000.0f;
         glUniform1f(tl.time, elapsed);
     }
     if (tl.tex1 >= 0) glUniform1i(tl.tex1, 0);
@@ -461,7 +461,7 @@ static bool  g_havePrevPublishedWtc = false;
 void __stdcall gos_SetWorldToClipGL(const glm::mat4& mat)
 {
     if (!g_gos_renderer) return;
-    const float* col = (const float*)&mat;
+    const float* col = reinterpret_cast<const float*>(&mat);
     #define WTC(r,c) col[(c)*4 + (r)]
     // Repackage column-major Stuff -> row-major M (same convention as
     // the legacy terrain upload; consumers see GL_FALSE-interpretation
@@ -494,7 +494,7 @@ void __stdcall gos_SetWorldToClipGL(const glm::mat4& mat)
         g_mvpDiagFrame == 30 || g_mvpDiagFrame == 120) {
         MC2_DIAGFE(stderr,
                 "[MVP_DIAG v1] event=set_mvp frame=%ld renderer=%p row0=[%g %g %g %g]\n",
-                g_mvpDiagFrame, (void*)g_gos_renderer,
+                g_mvpDiagFrame, static_cast<void*>(g_gos_renderer),
                 M[0], M[1], M[2], M[3]);
         fflush(stderr);
     }

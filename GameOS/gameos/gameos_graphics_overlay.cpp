@@ -95,7 +95,7 @@ void bindBatchTextureOrFallback(gosTexture* t, DWORD texHandle, const char* batc
     ++g_overlayTexStats.bound_zero_prevented;   // the bug this guard prevents
     ++g_overlayTexStats.fallback_bound;
     if (!overlayHandleAlreadyLogged(texHandle)) {
-        mc2::fmt::print_err("[OVERLAY_TEXTURE v1] event=resolve_fail batch={} texHandle={:d} fallback_bound=1 texture=<1x1 magenta debug> reason={}\n", mc2::fmt::safe(batchName), mc2::fmt::as_u32((unsigned)texHandle), mc2::fmt::safe((t && id == 0u) ? "resolved_but_gl_id_0" : "null_or_invalid_handle"));
+        mc2::fmt::print_err("[OVERLAY_TEXTURE v1] event=resolve_fail batch={} texHandle={:d} fallback_bound=1 texture=<1x1 magenta debug> reason={}\n", mc2::fmt::safe(batchName), mc2::fmt::as_u32(static_cast<unsigned>(texHandle)), mc2::fmt::safe((t && id == 0u) ? "resolved_but_gl_id_0" : "null_or_invalid_handle"));
         fflush(stderr);
     }
     glBindTexture(GL_TEXTURE_2D, getOverlayFallbackTexture());
@@ -109,7 +109,7 @@ void overlayTexTraceSummary() {
     static uint64_t s_tick = 0;
     ++s_tick;
     if ((s_tick % 300u) != 1u) return;
-    mc2::fmt::print_err("[OVERLAY_TEXTURE v1] event=summary tick={:d} pushes={:d} resolved={:d} resolve_failed={:d} bound_zero_prevented={:d} fallback_bound={:d}\n", mc2::fmt::as_u64((unsigned long long)s_tick), mc2::fmt::as_u64((unsigned long long)g_overlayTexStats.pushes), mc2::fmt::as_u64((unsigned long long)g_overlayTexStats.resolved), mc2::fmt::as_u64((unsigned long long)g_overlayTexStats.resolve_failed), mc2::fmt::as_u64((unsigned long long)g_overlayTexStats.bound_zero_prevented), mc2::fmt::as_u64((unsigned long long)g_overlayTexStats.fallback_bound));
+    mc2::fmt::print_err("[OVERLAY_TEXTURE v1] event=summary tick={:d} pushes={:d} resolved={:d} resolve_failed={:d} bound_zero_prevented={:d} fallback_bound={:d}\n", mc2::fmt::as_u64(static_cast<unsigned long long>(s_tick)), mc2::fmt::as_u64(static_cast<unsigned long long>(g_overlayTexStats.pushes)), mc2::fmt::as_u64(static_cast<unsigned long long>(g_overlayTexStats.resolved)), mc2::fmt::as_u64(static_cast<unsigned long long>(g_overlayTexStats.resolve_failed)), mc2::fmt::as_u64(static_cast<unsigned long long>(g_overlayTexStats.bound_zero_prevented)), mc2::fmt::as_u64(static_cast<unsigned long long>(g_overlayTexStats.fallback_bound)));
     fflush(stderr);
 }
 } // anonymous namespace (OMT-1)
@@ -128,7 +128,7 @@ void gosRenderer::pushToOverlayBatch_(OverlayBatch_& b,
     } else {
         OverlayBatchEntry_ entry;
         entry.texHandle = texHandle;
-        entry.firstVert = (unsigned int)b.verts.size();
+        entry.firstVert = static_cast<unsigned int>(b.verts.size());
         entry.vertCount = 3;
         b.draws.push_back(entry);
     }
@@ -156,7 +156,7 @@ static void setupOverlayShadowsForShp(GLuint shp)
 
     GLint loc;
     loc = glGetUniformLocation(shp, "terrainLightDir");
-    if (loc >= 0) glUniform4fv(loc, 1, (const float*)&g_gos_renderer->getTerrainLightDir());
+    if (loc >= 0) glUniform4fv(loc, 1, reinterpret_cast<const float*>(&g_gos_renderer->getTerrainLightDir()));
 
     // The shadow maps are Vulkan images the GL shaders cannot sample: the GL overlay runs shadow-free.
     loc = glGetUniformLocation(shp, "enableShadows");
@@ -170,18 +170,18 @@ void gosRenderer::uploadOverlayUniforms_(GLuint shp, const OverlayUniformLocs_& 
     if (L.terrainMVP >= 0) {
         const float* tmvp = terrainMvpOverride
                                 ? terrainMvpOverride
-                                : (const float*)&getTerrainMVP();
+                                : reinterpret_cast<const float*>(&getTerrainMVP());
         glUniformMatrix4fv(L.terrainMVP, 1, GL_FALSE, tmvp);
     }
     // projection_: row-major Stuff matrix — upload GL_TRUE (column-major interpretation)
     if (L.mvp >= 0)
-        glUniformMatrix4fv(L.mvp, 1, GL_TRUE, (const float*)&getProj2Screen());
+        glUniformMatrix4fv(L.mvp, 1, GL_TRUE, reinterpret_cast<const float*>(&getProj2Screen()));
     if (L.fog_color >= 0)
-        glUniform4fv(L.fog_color, 1, (const float*)&getFogColor());
+        glUniform4fv(L.fog_color, 1, reinterpret_cast<const float*>(&getFogColor()));
     if (L.time >= 0)
         glUniform1f(L.time, elapsed);
     if (L.cameraPos >= 0)
-        glUniform4fv(L.cameraPos, 1, (const float*)&getTerrainCameraPos());
+        glUniform4fv(L.cameraPos, 1, reinterpret_cast<const float*>(&getTerrainCameraPos()));
     if (L.surfaceDebugMode >= 0)
         glUniform1i(L.surfaceDebugMode, (GLint)terrain_debug_mode_);
     if (L.pathTint >= 0)
@@ -373,9 +373,9 @@ void gosRenderer::drawTerrainOverlays()
     if (mc2_vk_overlay_enabled()) {
         static_assert(sizeof(OverlayBatchEntry_) == sizeof(Mc2VkOverlayDraw),
                       "OverlayBatchEntry_ must layout-match Mc2VkOverlayDraw");
-        mc2_vk_overlay_submit(0u, terrainOverlayBatch_.verts.data(), (uint32_t)terrainOverlayBatch_.verts.size(),
+        mc2_vk_overlay_submit(0u, terrainOverlayBatch_.verts.data(), static_cast<uint32_t>(terrainOverlayBatch_.verts.size()),
                               reinterpret_cast<const Mc2VkOverlayDraw*>(terrainOverlayBatch_.draws.data()),
-                              (uint32_t)terrainOverlayBatch_.draws.size(), 0);
+                              static_cast<uint32_t>(terrainOverlayBatch_.draws.size()), 0);
         terrainOverlayBatch_.verts.clear();
         terrainOverlayBatch_.draws.clear();
         return;
@@ -430,8 +430,8 @@ void gosRenderer::drawTerrainOverlays()
 
     glUseProgram(overlayProg_->shp_);
     float elapsed = SmokeMode::fixedTimestepEnabled()
-                        ? (float)SmokeMode::fixedClockSeconds()
-                        : (float)(timing::get_wall_time_ms() - timeStart_) / 1000.0f;
+                        ? static_cast<float>(SmokeMode::fixedClockSeconds())
+                        : static_cast<float>((timing::get_wall_time_ms() - timeStart_)) / 1000.0f;
     const float* fixBMvpOverlay =
         gos_terrain_indirect::IsFrameSolidArmed()
             ? gos_terrain_indirect_getDispatchMvp16()  // TERRAIN-PHASE-RAW-MVP-OK
@@ -514,7 +514,7 @@ bool gosRenderer::drawDecalStaticBatch(unsigned int vboGL,
     static const bool s_decalGlProbe = mc2::gate::get<"MC2_DECAL_GLPROBE">();
     #define DECAL_GLPROBE(tag) do { if (s_decalGlProbe) { \
         GLenum e; while ((e = glGetError()) != GL_NO_ERROR) \
-            printf("[DECAL_GLPROBE] at=%s err=0x%x\n", tag, (unsigned)e); \
+            printf("[DECAL_GLPROBE] at=%s err=0x%x\n", tag, static_cast<unsigned>(e)); \
         fflush(stdout); } } while(0)
     DECAL_GLPROBE("entry");
 
@@ -539,10 +539,10 @@ bool gosRenderer::drawDecalStaticBatch(unsigned int vboGL,
         constexpr int kStride = 28;  // sizeof(WorldOverlayVert) — mirror makeOverlayVAO
         glBindVertexArray(s_decalStaticVAO);
         glBindBuffer(GL_ARRAY_BUFFER, (GLuint)vboGL);
-        glVertexAttribPointer(0, 3, GL_FLOAT,         GL_FALSE, kStride, (void*)0);
-        glVertexAttribPointer(1, 2, GL_FLOAT,         GL_FALSE, kStride, (void*)12);
-        glVertexAttribPointer(2, 1, GL_FLOAT,         GL_FALSE, kStride, (void*)20);
-        glVertexAttribPointer(3, 4, GL_UNSIGNED_BYTE, GL_TRUE,  kStride, (void*)24);
+        glVertexAttribPointer(0, 3, GL_FLOAT,         GL_FALSE, kStride, static_cast<void*>(0));
+        glVertexAttribPointer(1, 2, GL_FLOAT,         GL_FALSE, kStride, reinterpret_cast<void*>(12));
+        glVertexAttribPointer(2, 1, GL_FLOAT,         GL_FALSE, kStride, reinterpret_cast<void*>(20));
+        glVertexAttribPointer(3, 4, GL_UNSIGNED_BYTE, GL_TRUE,  kStride, reinterpret_cast<void*>(24));
         glEnableVertexAttribArray(0);
         glEnableVertexAttribArray(1);
         glEnableVertexAttribArray(2);
@@ -580,8 +580,8 @@ bool gosRenderer::drawDecalStaticBatch(unsigned int vboGL,
     DECAL_GLPROBE("after_state_block");
     glUseProgram(overlayProg_->shp_);
     float elapsed = SmokeMode::fixedTimestepEnabled()
-                        ? (float)SmokeMode::fixedClockSeconds()
-                        : (float)(timing::get_wall_time_ms() - timeStart_) / 1000.0f;
+                        ? static_cast<float>(SmokeMode::fixedClockSeconds())
+                        : static_cast<float>((timing::get_wall_time_ms() - timeStart_)) / 1000.0f;
     const float* fixBMvpDecalStatic =
         gos_terrain_indirect::IsFrameSolidArmed()
             ? gos_terrain_indirect_getDispatchMvp16()  // TERRAIN-PHASE-RAW-MVP-OK
@@ -637,9 +637,9 @@ void gosRenderer::drawDecals()
 #ifdef MC2_VULKAN_ISLAND
     // VK-PARITY-OVERLAY-1: see drawTerrainOverlays. Decal pass -> VK kind 1.
     if (mc2_vk_overlay_enabled()) {
-        mc2_vk_overlay_submit(1u, decalBatch_.verts.data(), (uint32_t)decalBatch_.verts.size(),
+        mc2_vk_overlay_submit(1u, decalBatch_.verts.data(), static_cast<uint32_t>(decalBatch_.verts.size()),
                               reinterpret_cast<const Mc2VkOverlayDraw*>(decalBatch_.draws.data()),
-                              (uint32_t)decalBatch_.draws.size(), 0);
+                              static_cast<uint32_t>(decalBatch_.draws.size()), 0);
         decalBatch_.verts.clear();
         decalBatch_.draws.clear();
         return;
@@ -695,8 +695,8 @@ void gosRenderer::drawDecals()
 
     glUseProgram(decalProg_->shp_);
     float elapsed = SmokeMode::fixedTimestepEnabled()
-                        ? (float)SmokeMode::fixedClockSeconds()
-                        : (float)(timing::get_wall_time_ms() - timeStart_) / 1000.0f;
+                        ? static_cast<float>(SmokeMode::fixedClockSeconds())
+                        : static_cast<float>((timing::get_wall_time_ms() - timeStart_)) / 1000.0f;
     const float* fixBMvpDecals =
         gos_terrain_indirect::IsFrameSolidArmed()
             ? gos_terrain_indirect_getDispatchMvp16()  // TERRAIN-PHASE-RAW-MVP-OK
@@ -747,7 +747,7 @@ void gosRenderer::executorApplyTerrainDecalState()
 {
     pipeline_binder::applyPipeline(
         RenderCore::getPipelineDesc(RenderCore::PipelineId::TerrainDecal), "TerrainDecal");
-    mc2_framegraph_executor_bump_apply_state((unsigned)RenderCore::framegraph::ApplyPassId::TerrainDecal);
+    mc2_framegraph_executor_bump_apply_state(static_cast<unsigned>(RenderCore::framegraph::ApplyPassId::TerrainDecal));
     decalStateAppliedByExecutor_ = true;
 }
 
@@ -763,7 +763,7 @@ void gosRenderer::executorApplyTerrainOverlayState()
 {
     pipeline_binder::applyPipeline(
         RenderCore::getPipelineDesc(RenderCore::PipelineId::TerrainOverlay), "TerrainOverlay");
-    mc2_framegraph_executor_bump_apply_state((unsigned)RenderCore::framegraph::ApplyPassId::TerrainOverlay);
+    mc2_framegraph_executor_bump_apply_state(static_cast<unsigned>(RenderCore::framegraph::ApplyPassId::TerrainOverlay));
     overlayStateAppliedByExecutor_ = true;
 }
 

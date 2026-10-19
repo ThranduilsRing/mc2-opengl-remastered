@@ -25,7 +25,7 @@ void bindTerrainHeightTexUniforms(GLint heightTexLoc, GLint paramsLoc,
         const float wuPerVert = gos_terrainHeightWorldUnitsPerVertex();
         const float invWu = (wuPerVert > 0.0f) ? (1.0f / wuPerVert) : 0.0f;
         const float p[4] = {
-            (float)gos_terrainHeightTexSide(),
+            static_cast<float>(gos_terrainHeightTexSide()),
             invWu,
             gos_terrainHeightMapTopLeftX(),
             gos_terrainHeightMapTopLeftY(),
@@ -106,7 +106,7 @@ void __stdcall gos_SetupObjectShadows(HGOSRENDERMATERIAL material)
 			// MC2_PROP_FIXB_MVP gate.
 			static const bool s_objShadowFixB = mc2::gate::get<"MC2_PROP_FIXB_MVP">();
 			const float* mvp = gos_GetObjectDrawMVP(s_objShadowFixB);
-			if (!mvp) mvp = (const float*)&g_gos_renderer->getTerrainMVP();
+			if (!mvp) mvp = reinterpret_cast<const float*>(&g_gos_renderer->getTerrainMVP());
 			glUniformMatrix4fv(mvpLoc, 1, GL_FALSE, mvp);
 		}
 	}
@@ -114,7 +114,7 @@ void __stdcall gos_SetupObjectShadows(HGOSRENDERMATERIAL material)
 	// Terrain light direction (needed for shadow bias calculations)
 	GLint loc = glGetUniformLocation(shp, "terrainLightDir");
 	if (loc >= 0)
-		glUniform4fv(loc, 1, (const float*)&g_gos_renderer->getTerrainLightDir());
+		glUniform4fv(loc, 1, reinterpret_cast<const float*>(&g_gos_renderer->getTerrainLightDir()));
 
 	// The shadow maps are Vulkan images the GL shaders cannot sample: the GL object material runs shadow-free.
 	loc = glGetUniformLocation(shp, "enableShadows");

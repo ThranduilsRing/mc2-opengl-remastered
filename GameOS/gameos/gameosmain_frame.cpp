@@ -321,19 +321,19 @@ void frameEmitDrawPackets(RenderSnapshot& snap) {
             // GL state touched, no VFX mutation, no object-IDs.
             {
                 EditorInspector::VfxPassSnapshot vs;
-                vs.particleProgramId          = (uint32_t)gos_vfx_getParticleProgramId();
+                vs.particleProgramId          = static_cast<uint32_t>(gos_vfx_getParticleProgramId());
                 vs.gpuParticlesEnabled        = (mc2_vfx_isEnabled() != 0);
                 vs.gpuParticlesLogEnabled     = (mc2_vfx_isLogEnabled() != 0);
                 vs.initFailed                 = (gos_vfx_getInitFailed() != 0);
                 vs.cameraSetThisFrame         = (gos_vfx_getCameraSetThisFrame() != 0);
-                vs.perFrameBudget             = (uint32_t)mc2_vfx_getBudget();
-                vs.ssboCapacityRecords        = (uint32_t)gos_vfx_getSsboCapacity();
+                vs.perFrameBudget             = static_cast<uint32_t>(mc2_vfx_getBudget());
+                vs.ssboCapacityRecords        = static_cast<uint32_t>(gos_vfx_getSsboCapacity());
                 vs.overflowReported           = (mc2_vfx_getOverflowReported() != 0);
                 vs.emitTotal                  = mc2_vfx_getEmitTotal();
                 vs.flushTotal                 = mc2_vfx_getFlushTotal();
                 vs.nonemptyFlushTotal         = mc2_vfx_getNonemptyFlushTotal();
                 vs.recordsFlushedTotal        = mc2_vfx_getRecordsFlushedTotal();
-                vs.recordsPerFlushMax         = (uint32_t)mc2_vfx_getRecordsPerFlushMax();
+                vs.recordsPerFlushMax         = static_cast<uint32_t>(mc2_vfx_getRecordsPerFlushMax());
                 vs.trailSpawnTotal            = mc2_vfx_getTrailSpawnTotal();
                 vs.trailHeadTotal             = mc2_vfx_getTrailHeadTotal();
                 // v1: VFX shaders do not consume ViewUniforms (binding=3).
@@ -350,7 +350,7 @@ void frameEmitDrawPackets(RenderSnapshot& snap) {
             // draw_screen); advisory, not gated.
             if (gos_frame_pass_stats::Enabled()) {
                 extern uint64_t batcher_getLastFlushSubmitCount(); // gos_mech_batcher
-                const uint32_t mechInst = (uint32_t)batcher_getLastFlushSubmitCount();
+                const uint32_t mechInst = static_cast<uint32_t>(batcher_getLastFlushSubmitCount());
                 const uint32_t spSlots  = batcher_getDrawSlotCount();
 
                 gos_frame_pass_stats::FrameAggregates agg;
@@ -387,7 +387,7 @@ void frameScreenshotOracle() {
             static const long s_ssFrame = static_cast<long>(mc2::gate::get<"MC2_SCREENSHOT_AT_FRAME">());
             static bool s_ssDone = false;
             if (s_ssPath && s_ssFrame >= 0 && !s_ssDone
-                && (long)g_mc2FrameCounter >= s_ssFrame) {
+                && static_cast<long>(g_mc2FrameCounter) >= s_ssFrame) {
                 // The finished frame is read back by the Vulkan present path; the request completes on that frame.
                 gos::screenshot::request(s_ssPath);
                 s_ssDone = true;   // one attempt: a rejected request logs why and is not retried every frame
@@ -419,7 +419,7 @@ void frameLoadRaceVerdict() {
                     mc2::gate::isSet<"MC2_LOAD_RACE_VERDICT_FRAME">() ? mc2::gate::get<"MC2_LOAD_RACE_VERDICT_FRAME">()
                                                                       : mc2::gate::get<"MC2_SCREENSHOT_AT_FRAME">());
                 static bool s_vDone = false;
-                if (s_vFrame >= 0 && !s_vDone && (long)g_mc2FrameCounter >= s_vFrame) {
+                if (s_vFrame >= 0 && !s_vDone && static_cast<long>(g_mc2FrameCounter) >= s_vFrame) {
                     s_vDone = true;
                     // A run is "degraded" if a REAL world actor lost its shape
                     // (mech_degrade_real>0) or terrain never became resident.
@@ -490,7 +490,7 @@ void frameLoadRaceProbes() {
                 }();
                 static size_t s_nextProbe = 0;
                 if (s_nextProbe < s_probeFrames.size() &&
-                    (long)g_mc2FrameCounter >= s_probeFrames[s_nextProbe]) {
+                    static_cast<long>(g_mc2FrameCounter) >= s_probeFrames[s_nextProbe]) {
                     const long pf = s_probeFrames[s_nextProbe];
                     ++s_nextProbe;
 
@@ -511,8 +511,8 @@ void frameLoadRaceProbes() {
                         glBindFramebuffer(GL_READ_FRAMEBUFFER, lrFbo);
                         glReadBuffer(GL_COLOR_ATTACHMENT0);
                         for (int i = 0; i < 3; ++i) {
-                            int sx = (int)(ptsN[i][0] * lrW);
-                            int sy = (int)(ptsN[i][1] * lrH);
+                            int sx = static_cast<int>((ptsN[i][0] * lrW));
+                            int sy = static_cast<int>((ptsN[i][1] * lrH));
                             glReadPixels(sx, sy, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, px[i]);
                         }
                         glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
@@ -558,7 +558,7 @@ void frameLoadRaceProbes() {
                         "atlas_texel[%s]=%u,%u,%u,%u\n";
                     fprintf(stderr, fmt,
                         g_mc2FrameCounter, pf, scenarioTime,
-                        pathStr, (unsigned)atlasTex, g_loadRaceAtlasFirstFrame,
+                        pathStr, static_cast<unsigned>(atlasTex), g_loadRaceAtlasFirstFrame,
                         g_loadRaceArmFirstFrame, g_loadRaceTerrainFirstResidentFrame,
                         g_loadRaceTerrainResidentNow ? "Y" : "N", g_loadRaceMechDegradeReal,
                         px[0][0],px[0][1],px[0][2], px[1][0],px[1][1],px[1][2], px[2][0],px[2][1],px[2][2],
@@ -566,7 +566,7 @@ void frameLoadRaceProbes() {
                     fflush(stderr);
                     printf(fmt,
                         g_mc2FrameCounter, pf, scenarioTime,
-                        pathStr, (unsigned)atlasTex, g_loadRaceAtlasFirstFrame,
+                        pathStr, static_cast<unsigned>(atlasTex), g_loadRaceAtlasFirstFrame,
                         g_loadRaceArmFirstFrame, g_loadRaceTerrainFirstResidentFrame,
                         g_loadRaceTerrainResidentNow ? "Y" : "N", g_loadRaceMechDegradeReal,
                         px[0][0],px[0][1],px[0][2], px[1][0],px[1][1],px[1][2], px[2][0],px[2][1],px[2][2],
@@ -637,8 +637,8 @@ void frameSwapWindow(graphics::RenderWindowHandle win) {
             {
                 static uint64_t s_lastFrameT = SDL_GetPerformanceCounter();
                 uint64_t now = SDL_GetPerformanceCounter();
-                double ms = 1000.0 * (double)(now - s_lastFrameT) /
-                            (double)SDL_GetPerformanceFrequency();
+                double ms = 1000.0 * static_cast<double>((now - s_lastFrameT)) /
+                            static_cast<double>(SDL_GetPerformanceFrequency());
                 s_lastFrameT = now;
                 SmokeMode::samplePerf(ms);
             }
@@ -651,11 +651,11 @@ void frameSwapWindow(graphics::RenderWindowHandle win) {
                 static int s_hb_frame = 0;
                 static uint64_t s_hb_last_ms = 0;
                 s_hb_frame++;
-                uint64_t now_ms = (uint64_t)(SDL_GetTicks64());
+                uint64_t now_ms = static_cast<uint64_t>((SDL_GetTicks64()));
                 if (s_hb_last_ms == 0) s_hb_last_ms = now_ms;
                 if (now_ms - s_hb_last_ms >= 1000) {
                     char _cbbuf[192];
-                    mc2::fmt::to_buf(_cbbuf, "[HEARTBEAT] frames={:d} elapsed_ms={:d} fps={:.1f}", mc2::fmt::as_i32(s_hb_frame), mc2::fmt::as_u64((unsigned long long)(now_ms - s_hb_last_ms)), (double)s_hb_frame * 1000.0 / (double)(now_ms - s_hb_last_ms));
+                    mc2::fmt::to_buf(_cbbuf, "[HEARTBEAT] frames={:d} elapsed_ms={:d} fps={:.1f}", mc2::fmt::as_i32(s_hb_frame), mc2::fmt::as_u64(static_cast<unsigned long long>((now_ms - s_hb_last_ms))), static_cast<double>(s_hb_frame) * 1000.0 / static_cast<double>((now_ms - s_hb_last_ms)));
                     mc2::fmt::print_err("{}\n", mc2::fmt::safe(_cbbuf));
                     crashbundle_append(_cbbuf);
                     fflush(stderr);
@@ -677,18 +677,18 @@ void frameFrameCap(bool s_vsync_active, int s_fps_cap_mission, int s_fps_cap_men
             static bool s_capTraceLast = !inMission;
             static const bool s_capTrace = mc2::gate::get<"MC2_FRAMECAP_TRACE">();
             if (s_capTrace && s_capTraceLast != inMission) {
-                mc2::fmt::print_err("[FRAMECAP] cap switched: inMission={:d} cap={:d}\n", mc2::fmt::as_i32((int)inMission), mc2::fmt::as_i32(cap));
+                mc2::fmt::print_err("[FRAMECAP] cap switched: inMission={:d} cap={:d}\n", mc2::fmt::as_i32(static_cast<int>(inMission)), mc2::fmt::as_i32(cap));
                 fflush(stderr);
                 s_capTraceLast = inMission;
             }
             if (cap > 0) {
                 ZoneScopedN("Frame.FrameCap");
-                uint64_t target_ms = 1000u / (uint64_t)cap;
+                uint64_t target_ms = 1000u / static_cast<uint64_t>(cap);
                 uint64_t now = timing::gettickcount();
                 uint64_t elapsed_ms = timing::ticks2ms(now - start_tick);
                 if (elapsed_ms < target_ms) {
                     mc2_hitch::HitchScope _hitchCap(mc2_hitch::HitchSpanKind::PhaseCap);
-                    timing::sleep((unsigned int)((target_ms - elapsed_ms) * 1000000u));
+                    timing::sleep(static_cast<unsigned int>(((target_ms - elapsed_ms) * 1000000u)));
                 }
             }
         }

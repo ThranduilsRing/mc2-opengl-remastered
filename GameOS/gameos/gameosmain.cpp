@@ -40,7 +40,7 @@ static LONG WINAPI mc2_unhandled_exception_filter(EXCEPTION_POINTERS* ep)
         fprintf(stderr, "[CRASH] %s violation at 0x%p\n",
             ep->ExceptionRecord->ExceptionInformation[0] == 0 ? "READ" :
             ep->ExceptionRecord->ExceptionInformation[0] == 1 ? "WRITE" : "EXEC",
-            (void*)ep->ExceptionRecord->ExceptionInformation[1]);
+            reinterpret_cast<void*>(ep->ExceptionRecord->ExceptionInformation[1]));
     }
 
     HANDLE proc = GetCurrentProcess();
@@ -75,7 +75,7 @@ static LONG WINAPI mc2_unhandled_exception_filter(EXCEPTION_POINTERS* ep)
         if (frame.AddrPC.Offset == 0) break;
 
         char symBuf[sizeof(SYMBOL_INFO) + 512];
-        SYMBOL_INFO* sym = (SYMBOL_INFO*)symBuf;
+        SYMBOL_INFO* sym = reinterpret_cast<SYMBOL_INFO*>(symBuf);
         sym->SizeOfStruct = sizeof(SYMBOL_INFO);
         sym->MaxNameLen = 512;
         DWORD64 disp64 = 0;
@@ -93,7 +93,7 @@ static LONG WINAPI mc2_unhandled_exception_filter(EXCEPTION_POINTERS* ep)
             lineNum = line.LineNumber;
         }
         fprintf(stderr, "  #%02d 0x%016llX  %s  (%s:%u)\n",
-            i, (unsigned long long)frame.AddrPC.Offset, symName, fileName, lineNum);
+            i, static_cast<unsigned long long>(frame.AddrPC.Offset), symName, fileName, lineNum);
     }
     fflush(stderr);
     SymCleanup(proc);
@@ -273,8 +273,8 @@ static void handle_key_down( SDL_Keysym* keysym ) {
             break;
         case SDLK_8:
             if (alt_debug) {
-                int mode = ((int)gos_GetTerrainDebugMode() + 1) % 8;
-                gos_SetTerrainDebugMode((float)mode);
+                int mode = (static_cast<int>(gos_GetTerrainDebugMode()) + 1) % 8;
+                gos_SetTerrainDebugMode(static_cast<float>(mode));
                 switch (mode) {
                     case 0: fprintf(stderr, "Surface Debug: OFF\n"); break;
                     case 1: fprintf(stderr, "Surface Debug: DEPTH (R=actual G=undisplaced)\n"); break;
@@ -407,8 +407,8 @@ void process_events( void ) {
             switch (event.window.event) {
             case SDL_WINDOWEVENT_RESIZED:
             case SDL_WINDOWEVENT_SIZE_CHANGED: {
-                float w = (float)event.window.data1;
-                float h = (float)event.window.data2;
+                float w = static_cast<float>(event.window.data1);
+                float h = static_cast<float>(event.window.data2);
                 glViewport(0, 0, (GLsizei)w, (GLsizei)h);
                 // FREE-RESIZE-1: refresh the physical drawable size — every
                 // per-frame consumer (postprocess FBO resize in draw_screen,
@@ -719,8 +719,8 @@ extern float frameRate;
     Uint64 g_startup_t0 = 0;
     double startup_elapsed() {
         const Uint64 now = SDL_GetPerformanceCounter();
-        const double freq = (double)SDL_GetPerformanceFrequency();
-        return (double)(now - g_startup_t0) / freq;
+        const double freq = static_cast<double>(SDL_GetPerformanceFrequency());
+        return static_cast<double>((now - g_startup_t0)) / freq;
     }
     void startup_phase(std::string_view name) {
         const std::string nameZ(name);   // printf / emitTiming take a NUL-terminated string
@@ -755,7 +755,7 @@ namespace {
 extern "C" void mission_phase_begin()
 {
     g_mission_t0 = SDL_GetPerformanceCounter();
-    const double freq = (double)SDL_GetPerformanceFrequency();
+    const double freq = static_cast<double>(SDL_GetPerformanceFrequency());
     (void)freq; // suppress unused-var if compiler gets clever
     printf("[MISSION] t=  0.00s  phase=mission_load_start\n");
     g_loadPhaseCount = 0;
@@ -764,8 +764,8 @@ extern "C" void mission_phase_begin()
 extern "C" void mission_phase_mark(const char* name)
 {
     const Uint64 now = SDL_GetPerformanceCounter();
-    const double freq = (double)SDL_GetPerformanceFrequency();
-    const double elapsed = (double)(now - g_mission_t0) / freq;
+    const double freq = static_cast<double>(SDL_GetPerformanceFrequency());
+    const double elapsed = static_cast<double>((now - g_mission_t0)) / freq;
     printf("[MISSION] t=%6.2fs  phase=%s\n", elapsed, name);
 
     if (g_loadPhaseCount < kMaxLoadPhaseSamples) {
@@ -787,7 +787,7 @@ extern "C" void mission_phase_report()
     const double total_ms = (g_loadPhaseCount > 0) ? g_loadPhaseSamples[g_loadPhaseCount - 1].t_ms : 0.0;
 
     off += snprintf(buf + off, sizeof(buf) - off, "[LOAD_PHASES v1] total=%.1fms", total_ms);
-    for (int i = 0; i < g_loadPhaseCount && off < (int)sizeof(buf); i++) {
+    for (int i = 0; i < g_loadPhaseCount && off < static_cast<int>(sizeof(buf)); i++) {
         const double delta_ms = g_loadPhaseSamples[i].t_ms - prev_ms;
         off += snprintf(buf + off, sizeof(buf) - off, " phase%d=%s:%.1fms",
                          i + 1, g_loadPhaseSamples[i].name, delta_ms);
@@ -1027,7 +1027,7 @@ int main(int argc, char** argv)
         return 1;
     }
 
-    const char* glsl_version = (const char*)glGetString(GL_SHADING_LANGUAGE_VERSION);
+    const char* glsl_version = reinterpret_cast<const char*>(glGetString(GL_SHADING_LANGUAGE_VERSION));
     MC2_LOG(Render, Debug, "GLSL version supported: {}", mc2::fmt::safe(glsl_version));
 
     int glsl_maj = 0, glsl_min = 0;
@@ -1155,7 +1155,7 @@ int main(int argc, char** argv)
         // [FRAME_PASS_STATS v1] frame boundary: promote this frame's per-pass
         // rows + aggregates, emit the summary line at cadence, reset. Placed
         // after the timer FrameEnd; advisory, OFF=zero cost.
-        gos_frame_pass_stats::FrameEnd((unsigned long)g_mc2FrameCounter);
+        gos_frame_pass_stats::FrameEnd(static_cast<unsigned long>(g_mc2FrameCounter));
 
     frameSwapWindow(win);   // the shared host present also ends the Vulkan frame and advances the handle-slot clock
     frameFrameCap(s_vsync_active, s_fps_cap_mission, s_fps_cap_menu, start_tick);
@@ -1182,13 +1182,13 @@ int main(int argc, char** argv)
 		if (SmokeMode::fixedTimestepEnabled())
 			frameRate = 30.0f;
 		else
-			frameRate = dt ? (1000.0f / (float)dt) : 0.0f;
+			frameRate = dt ? (1000.0f / static_cast<float>(dt)) : 0.0f;
         mc2_hitch::EndFrame(s_hitchFrame, static_cast<double>(dt));
         ++s_hitchFrame;
 
         // Validation mode: record frame and check exit condition
         if (getValidateConfig().enabled) {
-            validateRecordFrame((float)dt);
+            validateRecordFrame(static_cast<float>(dt));
             if (validateShouldExit()) {
                 validateWriteResults();
                 break;

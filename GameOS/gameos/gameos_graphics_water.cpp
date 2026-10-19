@@ -145,7 +145,7 @@ float gos_GetWaterSpecIntensity()
         const bool on = (!v.empty() && v[0] != '0');   // canonical default-OFF opt-in
         float s = 0.0f;
         if (on) {
-            const float f = (float)atof(v.c_str());
+            const float f = static_cast<float>(atof(v.c_str()));
             s = (f > 0.0f) ? f : 0.25f;               // non-numeric truthy ("on", "yes") -> 0.25
         }
         g_waterSpecIntensity = s;
@@ -273,7 +273,7 @@ void gosRenderer::renderWaterFastPath(
     if (!WaterStream::CaptureVkNativeInputs(frameCos)) return;
     WaterStream::VkNativeInputs vkNat{};
     if (!WaterStream::GetVkNativeInputs(vkNat)) return;
-    const void*    vkRecipes = (const void*)WaterStream::GetRecipes();
+    const void*    vkRecipes = static_cast<const void*>(WaterStream::GetRecipes());
     const uint32_t vkRecipeN = WaterStream::GetRecipeCount();
     gosPostProcess* ppVk = getGosPostProcess();
     if (!vkRecipes || vkRecipeN == 0 || !ppVk) return;
@@ -301,8 +301,8 @@ void gosRenderer::renderWaterFastPath(
     // WATER_DEPTH_FUDGE_FAST — LOCKSTEP with mclib/terrain_depth_bias.h (mc2depth::WATER_DEPTH_FUDGE_FAST) +
     // shaders/include/terrain_depth_bias.hglsl (WATER_DEPTH_FUDGE_FAST). The VS applies clip.z += this * clip.w.
     vsP.p2[0]=cloudOffsetY; vsP.p2[1]=0.00025f;
-    vsP.p2[2]=(float)alphaEdgeByte; vsP.p2[3]=(float)alphaMiddleByte;
-    vsP.p3[0]=(float)alphaDeepByte;
+    vsP.p2[2]=static_cast<float>(alphaEdgeByte); vsP.p2[3]=static_cast<float>(alphaMiddleByte);
+    vsP.p3[0]=static_cast<float>(alphaDeepByte);
     // Mode 3 lifts the Vulkan shore plane toward the camera by a bounded world distance.
     vsP.p3[2]=20.0f;
     {
@@ -310,8 +310,8 @@ void gosRenderer::renderWaterFastPath(
         memcpy(fsP.fog, &waterFog, 4*sizeof(float));
     }
     fsP.f0[0]= SmokeMode::fixedTimestepEnabled()
-                 ? (float)SmokeMode::fixedClockSeconds()
-                 : (float)((double)(timing::get_wall_time_ms() - timeStart_) / 1000.0);
+                 ? static_cast<float>(SmokeMode::fixedClockSeconds())
+                 : static_cast<float>((static_cast<double>((timing::get_wall_time_ms() - timeStart_)) / 1000.0));
     fsP.f0[1]=camMC2.x; fsP.f0[2]=camMC2.y; fsP.f0[3]=camMC2.z;
     fsP.f1[0]=alphaDepth; fsP.f1[1]=g_waterAbsorptionDensity;
     fsP.f1[2]=g_waterMaxAlpha; fsP.f1[3]=g_waterRippleGain;
@@ -322,8 +322,8 @@ void gosRenderer::renderWaterFastPath(
         fsP.f2[1] = gos_GetWaterReflStrength();                       // u_waterReflStrength
         fsP.f2[2] = vkHdriAvail ? ppVk->getSkyYaw() : 0.0f;           // u_skyYaw
         fsP.f2[3] = vkHdriAvail ? mc2WaterHdriLodDefault() : -1.0f;   // u_waterHdriLod
-        fsP.f3[0] = (float)ppVk->getWidth();                          // u_waterScreenSize
-        fsP.f3[1] = (float)ppVk->getHeight();
+        fsP.f3[0] = static_cast<float>(ppVk->getWidth());                          // u_waterScreenSize
+        fsP.f3[1] = static_cast<float>(ppVk->getHeight());
     }
     memcpy(fsP.deep,    g_waterDeepColor,    3*sizeof(float));
     memcpy(fsP.shallow, g_waterShallowColor, 3*sizeof(float));
@@ -333,7 +333,7 @@ void gosRenderer::renderWaterFastPath(
         extern int          gos_WaterShoreMode();
         extern const float* gos_TerrainLodChunk_ShorelineMaskBounds();
         extern const float* gos_TerrainLodChunk_WaterShoreHeightBounds();
-        fsP.f4[0] = (float)gos_WaterShoreMode();     // u_shoreMode
+        fsP.f4[0] = static_cast<float>(gos_WaterShoreMode());     // u_shoreMode
         fsP.f4[3] = mc2WaterShoreFeatherWu();        // u_shoreFeatherWu
         memcpy(fsP.f5, gos_TerrainLodChunk_WaterShoreHeightBounds(), 4*sizeof(float)); // u_shoreHeightBounds
         memcpy(fsP.f6, gos_TerrainLodChunk_ShorelineMaskBounds(),    4*sizeof(float)); // u_shoreMaskBounds
@@ -345,8 +345,8 @@ void gosRenderer::renderWaterFastPath(
         static const float s_vkWEdgeFeatherStr = mc2::gate::get<"MC2_WATER_EDGE_FEATHER_STRENGTH">();
         extern bool g_cameraProjAspectNative;
         const float vkVpAspect = ppVk->getHeight() > 0
-            ? (float)ppVk->getWidth() / (float)ppVk->getHeight() : (4.0f / 3.0f);
-        fsP.f8[0] = (float)s_vkWEdgeFeather;
+            ? static_cast<float>(ppVk->getWidth()) / static_cast<float>(ppVk->getHeight()) : (4.0f / 3.0f);
+        fsP.f8[0] = static_cast<float>(s_vkWEdgeFeather);
         fsP.f8[1] = s_vkWEdgeFeatherStr;
         fsP.f8[2] = ppVk->getMapHalfExtent();
         fsP.f8[3] = gos_GetWaterSkyTintStrength();
@@ -354,11 +354,11 @@ void gosRenderer::renderWaterFastPath(
         fsP.f9[3] = g_cameraProjAspectNative ? vkVpAspect : (4.0f / 3.0f);
     }
     (void)mc2_vk_water_island_run(
-        (unsigned int)ppVk->getSceneColorTexture(),
-        (unsigned int)ppVk->getSceneDepthTexture(),
+        static_cast<unsigned int>(ppVk->getSceneColorTexture()),
+        static_cast<unsigned int>(ppVk->getSceneDepthTexture()),
         ppVk->getWidth(), ppVk->getHeight(),
         vkRecipes, vkRecipeN, &vsP, &fsP,
-        ppVk->isHdriReady() ? (unsigned int)ppVk->getHdriTex() : 0u,
+        ppVk->isHdriReady() ? static_cast<unsigned int>(ppVk->getHdriTex()) : 0u,
         &vkNat);
 #else
     (void)waterElevation; (void)alphaDepth; (void)alphaEdgeByte; (void)alphaMiddleByte; (void)alphaDeepByte;

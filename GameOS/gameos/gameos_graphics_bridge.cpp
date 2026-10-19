@@ -13,19 +13,19 @@ uint32_t gos_getTerrainSurfaceProgramId() {
     gosRenderer* r = getGosRenderer();
     if (!r) return 0u;
     glsl_program* p = r->getTerrainSurfaceProgram();
-    return (p && p->shp_) ? (uint32_t)p->shp_ : 0u;
+    return (p && p->shp_) ? static_cast<uint32_t>(p->shp_) : 0u;
 }
 uint32_t gos_getThinTerrainProgramId() {
     gosRenderer* r = getGosRenderer();
     if (!r) return 0u;
     glsl_program* p = r->getThinTerrainProgram();
-    return (p && p->shp_) ? (uint32_t)p->shp_ : 0u;
+    return (p && p->shp_) ? static_cast<uint32_t>(p->shp_) : 0u;
 }
 uint32_t gos_getTerrainOverlayProgramId() {
     gosRenderer* r = getGosRenderer();
     if (!r) return 0u;
     glsl_program* p = r->getTerrainOverlayProgram();
-    return (p && p->shp_) ? (uint32_t)p->shp_ : 0u;
+    return (p && p->shp_) ? static_cast<uint32_t>(p->shp_) : 0u;
 }
 
 // SHADOW-SPINE-0: read-only program-id accessor for the static-prop shadow
@@ -56,7 +56,7 @@ unsigned int gos_GetTerrainNormalArrayTex() {
 }
 uint32_t gos_GetTerrainMaterialNormalHandle(int slot) {
     gosRenderer* r = getGosRenderer();
-    return r ? (uint32_t)r->getTerrainMaterialNormalHandle(slot) : (uint32_t)INVALID_TEXTURE_ID;
+    return r ? static_cast<uint32_t>(r->getTerrainMaterialNormalHandle(slot)) : static_cast<uint32_t>(INVALID_TEXTURE_ID);
 }
 
 // ─── gos_terrain_bridge implementation ────────────────────────────────────
@@ -80,7 +80,7 @@ unsigned int gos_terrain_bridge_glTextureForGosHandle(unsigned int gosHandle) {
     if (gosHandle == 0u || gosHandle == INVALID_TEXTURE_ID) return 0;
     gosTexture* tex = g_gos_renderer->getTexture(gosHandle);
     if (!tex) return 0;
-    return (unsigned int)tex->getTextureId();
+    return static_cast<unsigned int>(tex->getTextureId());
 }
 
 
@@ -100,7 +100,7 @@ static GLuint s_terrainBucketSampler = 0;
 unsigned int gos_terrain_bridge_getThinShaderProgram() {
     if (!g_gos_renderer) return 0u;
     glsl_program* p = g_gos_renderer->getThinTerrainProgram();
-    return (p && p->shp_) ? (unsigned int)p->shp_ : 0u;
+    return (p && p->shp_) ? static_cast<unsigned int>(p->shp_) : 0u;
 }
 // gos_terrain_indirect_getDispatchMvp16 and gos_GetTerrainMVPMat4 are declared
 // TU-wide near the top of this file (after g_terrainMaterialProfile) so that
@@ -192,8 +192,8 @@ void gos_terrain_surface_bridge_draw()
         TS_TRACE("event=ssbo_upload epoch=%u verts=%u indices=%u vb=%u ib=%u "
                  "tb=%u",
                  epoch, vertCount, indexCount,
-                 (unsigned)s_surfaceVB, (unsigned)s_surfaceIB,
-                 (unsigned)s_surfaceTB);
+                 static_cast<unsigned>(s_surfaceVB), static_cast<unsigned>(s_surfaceIB),
+                 static_cast<unsigned>(s_surfaceTB));
     }
 
     GLint     savedProgram   = 0; glGetIntegerv(GL_CURRENT_PROGRAM,    &savedProgram);
@@ -317,7 +317,7 @@ void gos_terrain_surface_bridge_draw()
         TS_TRACE("event=first_surface_draw verts=%u indices=%u "
                  "armed=%d screen_agnostic=1 fork_v=ssbo "
                  "lod=uniform_finest fork_d=clip_pre_divide",
-                 vertCount, indexCount, (int)armed);
+                 vertCount, indexCount, static_cast<int>(armed));
     }
 
     // ---- Reset shared-frag flags so legacy/indirect path doesn't inherit --
@@ -584,7 +584,7 @@ bool gos_terrain_bridge_drawIndirect(int cmdCount, unsigned int recipeSSBO,
         const size_t kMaxRecs   = 65536u;
         const GLintptr offset   = (GLintptr)(slot * kMaxRecs * kRecordSz);
         const GLsizeiptr sz     = (GLsizeiptr)(kMaxRecs * kRecordSz);
-        gpuBindSsboRange(2, (GLuint)thinRecordSSBO, (long long)offset, (long long)sz,
+        gpuBindSsboRange(2, (GLuint)thinRecordSSBO, static_cast<long long>(offset), static_cast<long long>(sz),
                          "gameos.thinRecord");
     }
 
@@ -620,10 +620,10 @@ bool gos_terrain_bridge_drawIndirect(int cmdCount, unsigned int recipeSSBO,
                     // Probe 8b: read back compute-time matrix bytes for byte-level verification.
                     float dispatchFloats[4] = { 0, 0, 0, 0 };
                     gos_terrain_indirect_getDispatchMvpFloats4(dispatchFloats);
-                    mc2::fmt::print_err("[RING_MVP_DELTA v1] bridge_frame={:d} dispatch_frame={:d} dispatch_fp=0x{:08x} draw_fp=0x{:08x} count={:d} disp_mvp[0..3]=[{:.6f},{:.6f},{:.6f},{:.6f}] draw_mvp[0..3]=[{:.6f},{:.6f},{:.6f},{:.6f}]\n", mc2::fmt::as_u64((unsigned long long)s_bridgeFrame), mc2::fmt::as_u64((unsigned long long)dispatchFrame), mc2::fmt::as_u32(dispatchFp), mc2::fmt::as_u32(drawFp), mc2::fmt::as_u32(s_mvpMismatchCount), dispatchFloats[0], dispatchFloats[1], dispatchFloats[2], dispatchFloats[3], drawMvp[0], drawMvp[1], drawMvp[2], drawMvp[3]);
+                    mc2::fmt::print_err("[RING_MVP_DELTA v1] bridge_frame={:d} dispatch_frame={:d} dispatch_fp=0x{:08x} draw_fp=0x{:08x} count={:d} disp_mvp[0..3]=[{:.6f},{:.6f},{:.6f},{:.6f}] draw_mvp[0..3]=[{:.6f},{:.6f},{:.6f},{:.6f}]\n", mc2::fmt::as_u64(static_cast<unsigned long long>(s_bridgeFrame)), mc2::fmt::as_u64(static_cast<unsigned long long>(dispatchFrame)), mc2::fmt::as_u32(dispatchFp), mc2::fmt::as_u32(drawFp), mc2::fmt::as_u32(s_mvpMismatchCount), dispatchFloats[0], dispatchFloats[1], dispatchFloats[2], dispatchFloats[3], drawMvp[0], drawMvp[1], drawMvp[2], drawMvp[3]);
                     fflush(stderr);
                     if (s_probeSink2) {
-                        mc2::fmt::print(s_probeSink2, "[RING_MVP_DELTA v1] bridge_frame={:d} dispatch_frame={:d} dispatch_fp=0x{:08x} draw_fp=0x{:08x} count={:d} disp_mvp[0..3]=[{:.6f},{:.6f},{:.6f},{:.6f}] draw_mvp[0..3]=[{:.6f},{:.6f},{:.6f},{:.6f}]\n", mc2::fmt::as_u64((unsigned long long)s_bridgeFrame), mc2::fmt::as_u64((unsigned long long)dispatchFrame), mc2::fmt::as_u32(dispatchFp), mc2::fmt::as_u32(drawFp), mc2::fmt::as_u32(s_mvpMismatchCount), dispatchFloats[0], dispatchFloats[1], dispatchFloats[2], dispatchFloats[3], drawMvp[0], drawMvp[1], drawMvp[2], drawMvp[3]);
+                        mc2::fmt::print(s_probeSink2, "[RING_MVP_DELTA v1] bridge_frame={:d} dispatch_frame={:d} dispatch_fp=0x{:08x} draw_fp=0x{:08x} count={:d} disp_mvp[0..3]=[{:.6f},{:.6f},{:.6f},{:.6f}] draw_mvp[0..3]=[{:.6f},{:.6f},{:.6f},{:.6f}]\n", mc2::fmt::as_u64(static_cast<unsigned long long>(s_bridgeFrame)), mc2::fmt::as_u64(static_cast<unsigned long long>(dispatchFrame)), mc2::fmt::as_u32(dispatchFp), mc2::fmt::as_u32(drawFp), mc2::fmt::as_u32(s_mvpMismatchCount), dispatchFloats[0], dispatchFloats[1], dispatchFloats[2], dispatchFloats[3], drawMvp[0], drawMvp[1], drawMvp[2], drawMvp[3]);
                         fflush(s_probeSink2);
                     }
                 }
@@ -655,7 +655,7 @@ bool gos_terrain_bridge_drawIndirect(int cmdCount, unsigned int recipeSSBO,
     const bool indirectWireframe = g_gos_renderer->getTerrainWireframe();
     if (indirectWireframe) glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
     glMultiDrawArraysIndirect(GL_TRIANGLES, nullptr, (GLsizei)cmdCount, 0);
-    mdi_submit::trace("TerrainSolid", "MultiDrawArraysIndirect", (int)cmdCount,
+    mdi_submit::trace("TerrainSolid", "MultiDrawArraysIndirect", static_cast<int>(cmdCount),
                       "GPU", "g_indirectCmdBuffer", false);
     if (indirectWireframe) glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
@@ -761,7 +761,7 @@ bool gos_terrain_bridge_drawMineStatic(int          vertCount,
         const GLint loc = glGetUniformLocation(prog, "u_worldToClipGL");
         if (loc >= 0)
             glUniformMatrix4fv(loc, 1, GL_FALSE,
-                               (const float*)&g_gos_renderer->getTerrainMVP());
+                               reinterpret_cast<const float*>(&g_gos_renderer->getTerrainMVP()));
     }
 
     {
@@ -777,11 +777,11 @@ bool gos_terrain_bridge_drawMineStatic(int          vertCount,
     glBindBuffer(GL_ARRAY_BUFFER, (GLuint)vboGL);
     constexpr GLsizei kStride = 24;  // sizeof(MineVert)
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer (0, 3, GL_FLOAT, GL_FALSE, kStride, (const void*)0);
+    glVertexAttribPointer (0, 3, GL_FLOAT, GL_FALSE, kStride, reinterpret_cast<const void*>(0));
     glEnableVertexAttribArray(1);
-    glVertexAttribPointer (1, 2, GL_FLOAT, GL_FALSE, kStride, (const void*)12);
+    glVertexAttribPointer (1, 2, GL_FLOAT, GL_FALSE, kStride, reinterpret_cast<const void*>(12));
     glEnableVertexAttribArray(2);
-    glVertexAttribIPointer(2, 1, GL_UNSIGNED_INT,    kStride, (const void*)20);
+    glVertexAttribIPointer(2, 1, GL_UNSIGNED_INT,    kStride, reinterpret_cast<const void*>(20));
 
     glActiveTexture(GL_TEXTURE5);
     glBindSampler(5, 0);  // use the texture's own params (NEAREST/CLAMP_TO_EDGE)
