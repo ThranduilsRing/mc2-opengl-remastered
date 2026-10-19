@@ -3,6 +3,7 @@
 // Declared in the class headers; shared names in gos_mech_batcher_internal.h.
 #include "gos_mech_batcher_internal.h"
 #include "mc2fmt.h"
+#include "ui_texture.h"
 
 // ---------------------------------------------------------------------------
 // submitActor (Task 6) — bone staging + texture capture
@@ -96,10 +97,8 @@ bool GpuMechBatcher::submitActor(const GpuMechSubmitDesc& desc) {
         const GpuMechPacket& pkt = s_packets[rec.firstPacket + p];
         if (pkt.textureSlot == 0) {
             ps.packetTexHandles[p] = desc.slot0TexHandle;
-        } else if (pkt.owningTypeShape && pkt.owningTypeShape->listOfTextures &&
-                   pkt.textureSlot < (uint32_t)pkt.owningTypeShape->numTextures) {
-            ps.packetTexHandles[p] =
-                pkt.owningTypeShape->listOfTextures[pkt.textureSlot].gosTextureHandle;
+        } else if (pkt.textureSlot < static_cast<uint32_t>(desc.mechShape->GetNumTextures())) {
+            ps.packetTexHandles[p]=mcTextureManager->get_gosTextureHandle(desc.mechShape->GetTextureHandle(pkt.textureSlot));
         }
     }
 
@@ -440,12 +439,12 @@ void MechFlushFrame::collectRuns() {
         run.instanceBase  = dc.instanceBase;
         run.instanceCount = dc.instanceCount;
         run.materialFlags = dc.materialFlags;
-        run.slot0Tex      = (uint32_t)liveGosHandle;   // LIVE per-actor paint scheme this frame
+        run.slot0Tex      = gos_GetMaterialTextureId(liveGosHandle);   // LIVE per-actor paint scheme this frame
         // VK-PARITY-MECH-1: per-type AO / normal maps.
         run.aoTex = (dc.aoTexHandle != 0u && dc.aoTexHandle != 0xFFFFFFFFu && mcTextureManager)
-            ? (uint32_t)mcTextureManager->get_gosTextureHandle(dc.aoTexHandle) : 0u;
+            ? gos_GetMaterialTextureId(mcTextureManager->get_gosTextureHandle(dc.aoTexHandle)) : 0u;
         run.normalTex = (dc.normalTexHandle != 0u && dc.normalTexHandle != 0xFFFFFFFFu && mcTextureManager)
-            ? (uint32_t)mcTextureManager->get_gosTextureHandle(dc.normalTexHandle) : 0u;
+            ? gos_GetMaterialTextureId(mcTextureManager->get_gosTextureHandle(dc.normalTexHandle)) : 0u;
         s_vkMechRunSnapshot.push_back(run);
         ++drawnCalls;
     }

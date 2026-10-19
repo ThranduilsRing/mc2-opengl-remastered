@@ -165,3 +165,26 @@ def test_a_baseline_without_runs_cannot_pass_a_check(tmp_path):
     assert not ok and "no packets" in " ".join(lines)
     ok, lines = rt.check_baseline_record(rec, dict(rec, runs=[], packets=0))
     assert not ok and "no packets" in " ".join(lines)
+
+
+def test_default_run_has_at_least_300_frames_between_save_and_load():
+    assert int(rt.LOAD_AT) - int(rt.SAVE_AT) >= 300
+
+
+def test_run_retains_failed_smoke_evidence_and_limits_liveness_fixture(tmp_path, monkeypatch):
+    import subprocess
+    from contextlib import nullcontext
+    artifact = tmp_path / "tests/smoke/artifacts/2026-fixture"
+    artifact.mkdir(parents=True)
+    (artifact / "mc2_01.log").write_text("fixture did not load")
+    monkeypatch.setattr(rt, "ROOT", str(tmp_path))
+    monkeypatch.setattr(rt.savegame_backup, "guarded", lambda path: nullcontext())
+    observed = []
+    def smoke(*args, **kwargs):
+        observed.append(kwargs["env"])
+        return subprocess.CompletedProcess(args, 1, "failed gate")
+    monkeypatch.setattr(rt.subprocess, "run", smoke)
+    ok, report = rt.run("mc2_01", 300, False, str(tmp_path / "out"), "lane3")
+    assert not ok and "failed gate" in report and any("no load found" in line for line in report)
+    assert "MC2_FIXTURE_ORDER_LIVENESS" not in observed[0]
+    assert (tmp_path / "out/run/mc2_01.log").read_text() == "fixture did not load"

@@ -110,7 +110,7 @@ void GuiRuntime::PopUiClipRect()
         drawList->PopClipRect();
 }
 
-bool GuiRuntime::DrawUiImage(unsigned int glTextureName,
+bool GuiRuntime::DrawUiImage(std::uint64_t glTextureName,
                              float x,
                              float y,
                              float w,

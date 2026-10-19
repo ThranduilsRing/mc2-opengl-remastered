@@ -24,8 +24,9 @@
 // Panel state
 // ---------------------------------------------------------------------------
 static bool s_open = false;
+static bool s_focusRequested = false;
 
-void AssetBrowser::Open()   { s_open = true; }
+void AssetBrowser::Open()   { s_open = true; s_focusRequested = true; }
 void AssetBrowser::Close()  { s_open = false; }
 void AssetBrowser::Toggle() { s_open = !s_open; }
 bool AssetBrowser::IsOpen() { return s_open; }
@@ -90,6 +91,7 @@ void AssetBrowser::Draw()
         return;
 
     ImGui::SetNextWindowSize(ImVec2(280.f, 420.f), ImGuiCond_FirstUseEver);
+    if (s_focusRequested) { ImGui::SetNextWindowFocus(); s_focusRequested = false; }
     if (!ImGui::Begin("Asset Browser", &s_open))
     {
         ImGui::End();
@@ -153,7 +155,7 @@ void AssetBrowser::Draw()
         char header[128];
         std::snprintf(header, sizeof(header), "%s (%d)###grp%d",
                       (groupName && groupName[0]) ? groupName : "(group)", count, g);
-        if (!ImGui::CollapsingHeader(header))
+        if (!ImGui::CollapsingHeader(header, g == 0 ? ImGuiTreeNodeFlags_DefaultOpen : 0))
             continue;
 
         for (int i = 0; i < n; ++i)

@@ -231,3 +231,27 @@ TEST_CASE("TG_ShapeRec: repeated teardown destroys nothing twice and the repeate
 	CHECK(g_shapeDestroys == 34);
 	CHECK(leak.delta() == 0);
 }
+
+
+namespace {
+struct TextureBorrowProbe : TG_Shape {
+    static const TG_TinyTexture*& slots(TG_Shape& shape) { return shape.*&TextureBorrowProbe::instanceTextures_; }
+};
+}
+
+TEST_CASE("TG_ShapeRec: detach immediately borrows the destination texture slots")
+{
+    std::vector<TG_TinyTexture> source(1), detached;
+    source[0].mcTextureNodeIndex=7;
+    TG_ShapeRec from{}, to{};
+    from.node=std::make_unique<TG_Shape>();
+    TextureBorrowProbe::slots(*from.node)=source.data();
+    detached=source;
+    to.transferFrom(from,detached.data()); // the production Detach transfer
+    source.clear(); source.shrink_to_fit();
+    REQUIRE(TextureBorrowProbe::slots(*to.node)==detached.data());
+    CHECK(TextureBorrowProbe::slots(*to.node)[0].mcTextureNodeIndex==7);
+    detached[0].mcTextureNodeIndex=19;
+    CHECK(TextureBorrowProbe::slots(*to.node)[0].mcTextureNodeIndex==19);
+    CHECK_FALSE(from.node);
+}

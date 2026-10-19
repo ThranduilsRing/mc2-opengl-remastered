@@ -1,3 +1,4 @@
+#include "../GameOS/gameos/ui_texture.h"
 // ControlGui: objective start, results, the ImGui objectives / timer / video panels and the legacy objective rows.
 // Declared in the class headers; shared names in controlgui_internal.h.
 #include "controlgui_internal.h"
@@ -256,12 +257,12 @@ void ControlGui::renderObjectivesImGui()
 		s_frameMcH = mcTextureManager->loadTexture(
 			"data\\art\\gui\\mc2_obj_frame.png", gos_Texture_Alpha, 0, 0, 0x1 );
 	}
-	unsigned s_frameGlTex = 0;
+	uint64_t s_frameGlTex = 0;
 	if ( s_frameMcH )
 	{
 		DWORD gosID = mcTextureManager->get_gosTextureHandle( s_frameMcH );
 		if ( gosID && gosID != 0xffffffff )
-			s_frameGlTex = gos_GetGLTextureName( gosID );
+			s_frameGlTex = gos_GetUiTextureId( gosID );
 	}
 
 	ImGui::SetNextWindowPos( ImVec2( (float)bx, (float)by ) );
@@ -299,7 +300,7 @@ void ControlGui::renderObjectivesImGui()
 		DWORD gosID = mcTextureManager->get_gosTextureHandle( st.textureHandle );
 		if ( !gosID || gosID == 0xffffffff )
 			return;
-		unsigned glTex = gos_GetGLTextureName( gosID );
+		uint64_t glTex = gos_GetUiTextureId( gosID );
 		if ( !glTex )
 			return;
 		dl->AddImage( (ImTextureID)(intptr_t)glTex,
@@ -521,7 +522,7 @@ void ControlGui::renderTimerImGui( const char* buffer, unsigned long color )
 		DWORD gosID = mcTextureManager->get_gosTextureHandle( st.textureHandle );
 		if ( !gosID || gosID == 0xffffffff )
 			continue;
-		unsigned glTex = gos_GetGLTextureName( gosID );
+		uint64_t glTex = gos_GetUiTextureId( gosID );
 		if ( !glTex )
 			continue;
 		dl->AddImage( (ImTextureID)(intptr_t)glTex,
@@ -580,7 +581,7 @@ void ControlGui::renderVideoImGui()
 		DWORD gosID = mcTextureManager->get_gosTextureHandle( st.textureHandle );
 		if ( !gosID || gosID == 0xffffffff )
 			continue;
-		unsigned glTex = gos_GetGLTextureName( gosID );
+		uint64_t glTex = gos_GetUiTextureId( gosID );
 		if ( !glTex )
 			continue;
 		dl->AddImage( (ImTextureID)(intptr_t)glTex,
@@ -607,7 +608,7 @@ void ControlGui::renderVideoImGui()
 					ImVec2( AX( (float)rx ), AY( (float)ry ) ),
 					ImVec2( AX( (float)( rx + rw ) ), AY( (float)( ry + rh ) ) ),
 					IM_COL32( 0, 0, 0, 255 ) );
-			unsigned glTex = gos_GetGLTextureName( gosTex );
+			uint64_t glTex = gos_GetUiTextureId( gosTex );
 			if ( glTex )
 				dl->AddImage( (ImTextureID)(intptr_t)glTex,
 					ImVec2( AX( qx0 ), AY( qy0 ) ),

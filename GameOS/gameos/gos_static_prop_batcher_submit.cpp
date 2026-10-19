@@ -10,7 +10,7 @@ bool GpuStaticPropBatcher::submit(TG_Shape* shape,
                                   uint32_t fogARGB,
                                   uint32_t flags,
                                   uint32_t lightDataIndex) {
-    if (!shape || s_fatalRegistrationFailure) return false;
+    if (!shape || !shape->matchesTypeMaterials() || s_fatalRegistrationFailure) return false;
     if (s_programLoadFailed) return false;
 
     // TG_Shape::myType is a TG_TypeNodePtr; for SHAPE_NODE leaves it's a TG_TypeShape.
@@ -255,7 +255,7 @@ bool GpuStaticPropBatcher::submitMultiShape(TG_MultiShape* multi,
     // on the trace flag: with MC2_TREE_DIAG_TRACE unset nothing is written and
     // this function's behaviour is unchanged.
     if (s_treeDiagTrace) s_currentSubmitPop = pop;
-    if (!multi || s_fatalRegistrationFailure) {
+    if (!multi || !multi->usesTypeMaterials() || s_fatalRegistrationFailure) {
         return false;
     }
     if (s_programLoadFailed || s_staticPropProgram == 0) {

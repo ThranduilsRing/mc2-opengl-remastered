@@ -202,3 +202,44 @@ TEST_CASE("texture array level sizes: every layer per level, RGBA8 and BC7, unkn
     a.vkFormat = 0;
     CHECK(mc2tex::textureArrayLevelBytes(a, 0) == 0);
 }
+
+TEST_CASE("texture decode: stored KTX preserves mip colour and alpha policy") {
+    std::vector<uint8_t> b(128, 0);
+    const uint8_t magic[] = {0xab,0x4b,0x54,0x58,0x20,0x32,0x30,0xbb,0x0d,0x0a,0x1a,0x0a};
+    std::copy(std::begin(magic),std::end(magic),b.begin());
+    auto put=[&](int at,uint32_t v){ for(int j=0;j<4;++j)b[at+j]=uint8_t(v>>(j*8)); };
+    put(12,134); put(16,1); put(20,4); put(24,4); put(36,1); put(40,1);
+    put(80,104); put(88,8); put(96,8); b.resize(112);
+    std::fill(b.begin()+104,b.end(),255); b[104]=b[105]=0;
+    auto t=mc2tex::decodeMemory(b.data(),b.size(),"only.ktx2",gos_Texture_Detect,gosHint_MipmapFilter0);
+    REQUIRE(t); CHECK(t->isSrgb); CHECK(t->sourceAlpha==RenderCore::KtxAlpha::Cutout);
+    CHECK(t->format==gos_Texture_Alpha); CHECK(t->mipLevels.size()==1); CHECK(t->pixels[3]==0);
+    t=mc2tex::decodeMemory(b.data(),b.size(),"only.ktx2",gos_Texture_Solid,0);
+    REQUIRE(t); CHECK(t->pixels[3]==255);
+    const char* path="test_texture_decode_stored.ktx2";
+    FILE* file=std::fopen(path,"wb"); REQUIRE(file);
+    REQUIRE(std::fwrite(b.data(),1,b.size(),file)==b.size()); std::fclose(file);
+    t=mc2tex::decodeFile(path,gos_Texture_Detect,0);
+    REQUIRE(t); CHECK(t->sourceVkFormat==134); CHECK(t->pixels[3]==0);
+    std::remove(path);
+    b.resize(144); std::fill(b.begin()+104,b.begin()+128,0); put(40,2); put(80,128); put(104,136); put(112,8); put(120,8);
+    std::fill(b.begin()+128,b.end(),255); b[136]=0; b[137]=0xf8; b[138]=b[139]=0;
+    std::fill(b.begin()+140,b.end(),0);
+    t=mc2tex::decodeMemory(b.data(),b.size(),"mips.ktx2",gos_Texture_Detect,gosHint_MipmapFilter0);
+    REQUIRE(t); REQUIRE(t->mipLevels.size()==2); CHECK(t->mipLevels[1].size()==16); CHECK(t->mipLevels[1][0]==255);
+    t=mc2tex::decodeMemory(b.data(),b.size(),"mips.ktx2",gos_Texture_Detect,gosHint_MipmapFilter0|gosHint_DisableMipmap);
+    REQUIRE(t); CHECK(t->mipLevels.size()==1);
+}
+
+TEST_CASE("mod-sized RGBA mip chains preserve constant colour through rectangular and thin levels") {
+    for (const auto shape : {std::pair<uint32_t,uint32_t>{64,64},{128,64},{1,64},{64,1},{65,33}}) {
+        uint32_t w=shape.first,h=shape.second;
+        std::vector<uint8_t> level(size_t(w)*h*4,127);
+        while (w>1 || h>1) {
+            level=mc2tex::boxDownsampleRgba8(level,w,h);
+            w=std::max(1u,w/2);h=std::max(1u,h/2);
+            REQUIRE(level.size()==size_t(w)*h*4);
+            for (auto pixel:level) CHECK(pixel==127);
+        }
+    }
+}

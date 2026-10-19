@@ -58,6 +58,7 @@ long TG_MultiShape::TransformMultiShape (glm::vec3 *pos, glm::quat *rot)
     mc2::math::buildRotation(shadowOrigin, mc2::math::Euler(-angles.pitch,0.0f,0.0f));
     mc2::math::buildTranslation(shadowOrigin, *pos);
 
+    BindMaterials();
     long i=0;
     glm::vec3 camPosition;
     // Guard null — s_cameraOrigin is unset during Mission::init (before first Camera::update).
@@ -82,11 +83,7 @@ long TG_MultiShape::TransformMultiShape (glm::vec3 *pos, glm::quat *rot)
     {
         //----------------------------------------------
         // Must set each transform!  Animating Textures!
-        for (long j=0;j<myMultiType->numTextures;j++)
-        {
-            listOfShapes[i].node->myType->SetTextureHandle(j,myMultiType->listOfTextures[j].mcTextureNodeIndex);
-            listOfShapes[i].node->myType->SetTextureAlpha(j,myMultiType->listOfTextures[j].textureAlpha); 
-        }
+
 
         //-----------------------------------------------------------------
         // Heirarchy Animation Code.

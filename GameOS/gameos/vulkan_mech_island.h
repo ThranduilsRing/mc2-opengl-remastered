@@ -48,9 +48,9 @@ struct Mc2MechDrawRun {
     uint32_t instanceBase;  // first instance index into the instance SSBO snapshot
     uint32_t instanceCount;
     uint32_t materialFlags; // bit0: ALPHA_TEST
-    uint32_t slot0Tex;      // LIVE gos texture handle of this run's paint scheme (0 = none)
-    uint32_t aoTex;         // gos texture handle of the per-type AO map (0 = none)
-    uint32_t normalTex;     // gos texture handle of the per-type normal map (0 = none)
+    uint64_t slot0Tex;      // LIVE service texture ID of this run's paint scheme (0 = none)
+    uint64_t aoTex;         // service texture ID of the per-type AO map (0 = none)
+    uint64_t normalTex;     // service texture ID of the per-type normal map (0 = none)
 };
 
 // Copy-once geometry feed: the batcher's CPU bytes of this map's mech VBO / IBO (the exact bytes the GL buffers were

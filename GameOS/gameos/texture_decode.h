@@ -16,12 +16,17 @@
 #include <vector>
 
 #include "gameos.hpp"
+#include "../../RenderCore/KtxLoader.h"
 
 namespace mc2tex {
 
 enum class PixelLayout : uint8_t { RGB8, RGBA8 };
 
 struct DecodedTexture {
+    bool isSrgb = false;
+    uint32_t sourceVkFormat = 0;
+    RenderCore::KtxAlpha sourceAlpha = RenderCore::KtxAlpha::Straight;
+    std::vector<std::vector<uint8_t>> mipLevels; // RGBA8 levels after alpha policy; pixels remains mip zero
     int width = 0;
     int height = 0;
     PixelLayout layout = PixelLayout::RGBA8;

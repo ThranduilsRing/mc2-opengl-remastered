@@ -45,6 +45,7 @@ ISLANDS = {
     "light_feed": ["vk_shared_light_feed"],
     "owners": ["vk_owned"],
     "context": ["vulkan_context"],
+    "textures": ["vk_texture_residency"],
 }
 
 CREATE_RE = re.compile(r"\b(vkCreate|vkAllocate|vmaCreate)([A-Za-z0-9_]+)\s*\(")

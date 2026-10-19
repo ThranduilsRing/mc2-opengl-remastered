@@ -155,19 +155,19 @@ void TG_Shape::Render (float forceZ, bool isHudElement, BYTE alphaValue, bool is
 			if (drawOldWay)
 			{
 			
-				if (theShape->listOfTextures && 
-					(theShape->listOfTextures[triType.localTextureHandle].gosTextureHandle != 0xffffffff))
+				if (materialTextures() &&
+					(materialTextures()[triType.localTextureHandle].gosTextureHandle != 0xffffffff))
 				{
-					if (theShape->listOfTextures[triType.localTextureHandle].gosTextureHandle != lastTextureUsed)
+					if (materialTextures()[triType.localTextureHandle].gosTextureHandle != lastTextureUsed)
 					{
-						gos_SetRenderState( gos_State_Texture, theShape->listOfTextures[triType.localTextureHandle].gosTextureHandle );
-						if (theShape->listOfTextures[triType.localTextureHandle].textureAlpha)
+						gos_SetRenderState( gos_State_Texture, materialTextures()[triType.localTextureHandle].gosTextureHandle );
+						if (materialTextures()[triType.localTextureHandle].textureAlpha)
 						{
 							gos_SetRenderState( gos_State_AlphaMode, gos_Alpha_AlphaInvAlpha);
 							gos_SetRenderState( gos_State_AlphaTest, true);
 						}
 						
-						lastTextureUsed = theShape->listOfTextures[triType.localTextureHandle].gosTextureHandle;
+						lastTextureUsed = materialTextures()[triType.localTextureHandle].gosTextureHandle;
 					}
 				}
 				else
@@ -179,11 +179,11 @@ void TG_Shape::Render (float forceZ, bool isHudElement, BYTE alphaValue, bool is
 				// handle 0 / 0xffffffff = untextured, valid handle with no
 				// pixel data = cold source (smart-load deferred mount).
 				if ( mc2::gate::get<"MC2_LOG_PREVIEW">() && g_mechPreviewRenderDepth > 0
-					&& theShape->listOfTextures )
+					&& materialTextures() )
 				{
 					static DWORD s_seenNodes[64];
 					static int   s_seenCount = 0;
-					DWORD nodeIdx = theShape->listOfTextures[triType.localTextureHandle].mcTextureNodeIndex;
+					DWORD nodeIdx = materialTextures()[triType.localTextureHandle].mcTextureNodeIndex;
 					bool seen = false;
 					for ( int si = 0; si < s_seenCount; si++ )
 						if ( s_seenNodes[si] == nodeIdx ) { seen = true; break; }
@@ -196,8 +196,8 @@ void TG_Shape::Render (float forceZ, bool isHudElement, BYTE alphaValue, bool is
 							fprintf(f,"[PREVIEW-TEX] local=%ld node=%lu gosHandle=%lu alpha=%d name=%s\n",
 								(long)triType.localTextureHandle,
 								(unsigned long)nodeIdx,
-								(unsigned long)theShape->listOfTextures[triType.localTextureHandle].gosTextureHandle,
-								(int)theShape->listOfTextures[triType.localTextureHandle].textureAlpha,
+								(unsigned long)materialTextures()[triType.localTextureHandle].gosTextureHandle,
+								(int)materialTextures()[triType.localTextureHandle].textureAlpha,
 								nm ? nm : "(null)");
 							fclose(f);
 						}
@@ -277,16 +277,16 @@ void TG_Shape::Render (float forceZ, bool isHudElement, BYTE alphaValue, bool is
 						//--------------------------------------------------
 						// Any sorting we need to do occurs in here as well!
 						// So, find out what texture this face is using and mark that texture as needing 3 more vertices.
-						if (theShape->listOfTextures[triType.localTextureHandle].textureAlpha || (alphaValue != 0xff))
+						if (materialTextures()[triType.localTextureHandle].textureAlpha || (alphaValue != 0xff))
 						{
-							mcTextureManager->addVertices(theShape->listOfTextures[triType.localTextureHandle].mcTextureNodeIndex,gVertex,MC2_DRAWALPHA | addFlags);
+							mcTextureManager->addVertices(materialTextures()[triType.localTextureHandle].mcTextureNodeIndex,gVertex,MC2_DRAWALPHA | addFlags);
 						}
 						else
 						{
 							// [UI-PHASE1] carried from mc2r_ui_phase1: read by SimpleCamera
 							// to tell "transformed but not drawn" apart from "not transformed".
 							++g_previewDrawTris;
-							mcTextureManager->addVertices(theShape->listOfTextures[triType.localTextureHandle].mcTextureNodeIndex,gVertex,MC2_DRAWSOLID | addFlags);
+							mcTextureManager->addVertices(materialTextures()[triType.localTextureHandle].mcTextureNodeIndex,gVertex,MC2_DRAWSOLID | addFlags);
 						}
 					}
 				}
@@ -315,7 +315,7 @@ void TG_Shape::Render (float forceZ, bool isHudElement, BYTE alphaValue, bool is
 
 	// FIXME: this (listOfTypeTriangles[0]) is not correct if model has more than 1 texture!
 	const TG_TypeTriangle firstTriType = theShape->listOfTypeTriangles[0];
-	const bool firstTextureAlpha = theShape->listOfTextures[firstTriType.localTextureHandle].textureAlpha;
+	const bool firstTextureAlpha = materialTextures()[firstTriType.localTextureHandle].textureAlpha;
 	const bool pbrOverrideActive = s_renderShapePbrOverrideActive;
 	if (!isSpotlight && !isWindow && (!firstTextureAlpha || pbrOverrideActive) && (alphaValue == 0xff))
 	{
@@ -367,7 +367,7 @@ void TG_Shape::Render (float forceZ, bool isHudElement, BYTE alphaValue, bool is
 			}
             rs.isHudElement_ = isHudElement;
 
-			const DWORD texNode = theShape->listOfTextures[triType.localTextureHandle].mcTextureNodeIndex;
+			const DWORD texNode = materialTextures()[triType.localTextureHandle].mcTextureNodeIndex;
 			const DWORD renderFlags = MC2_DRAWSOLID | addFlags |
 				((pbrOverrideActive && firstTextureAlpha) ? MC2_ALPHATEST : 0);
 			if (pbrOverrideActive && firstTextureAlpha)
@@ -394,7 +394,7 @@ void TG_Shape::Render (float forceZ, bool isHudElement, BYTE alphaValue, bool is
 		fprintf(stderr,
 			"[BUILDING_PBR_TRACE] TG_Shape::Render skip indexed shape=%p spot=%d window=%d alpha=%d alphaValue=%u localTex=%lu\n",
 			this, (int)isSpotlight, (int)isWindow,
-			(int)theShape->listOfTextures[triType.localTextureHandle].textureAlpha,
+			(int)materialTextures()[triType.localTextureHandle].textureAlpha,
 			(unsigned)alphaValue, (unsigned long)triType.localTextureHandle);
 		fflush(stderr);
 	}

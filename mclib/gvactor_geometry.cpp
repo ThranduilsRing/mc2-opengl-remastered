@@ -166,9 +166,9 @@ void GVAppearance::resetPaintScheme (DWORD red, DWORD green, DWORD blue)
 	{
 		if (S_strnicmp(txmName,"a_",2) == 0)
 		{
-			DWORD textureInstanceAlreadyExists = mcTextureManager->textureInstanceExists(textureName,gos_Texture_Solid,gosHint_DisableMipmap | gosHint_DontShrink,paintInstance);
+			DWORD textureInstanceAlreadyExists = mcTextureManager->textureInstanceExists(textureName,gos_Texture_Solid,gosHint_MipmapFilter0 | gosHint_DontShrink,paintInstance);
 			if (!textureInstanceAlreadyExists)
-				localTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Alpha,gosHint_DisableMipmap | gosHint_DontShrink,paintInstance);
+				localTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Alpha,gosHint_MipmapFilter0 | gosHint_DontShrink,paintInstance);
 			else
 				localTextureHandle = textureInstanceAlreadyExists;
 				
@@ -188,9 +188,9 @@ void GVAppearance::resetPaintScheme (DWORD red, DWORD green, DWORD blue)
 		}
 		else
 		{
-			DWORD textureInstanceAlreadyExists = mcTextureManager->textureInstanceExists(textureName,gos_Texture_Solid,gosHint_DisableMipmap | gosHint_DontShrink,paintInstance);
+			DWORD textureInstanceAlreadyExists = mcTextureManager->textureInstanceExists(textureName,gos_Texture_Solid,gosHint_MipmapFilter0 | gosHint_DontShrink,paintInstance);
 			if (!textureInstanceAlreadyExists)
-				localTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Solid,gosHint_DisableMipmap | gosHint_DontShrink,paintInstance);
+				localTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Solid,gosHint_MipmapFilter0 | gosHint_DontShrink,paintInstance);
 			else
 				localTextureHandle = textureInstanceAlreadyExists;
 				

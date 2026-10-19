@@ -18,6 +18,7 @@
 #include <volk.h>
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"   // str<>()
+#include "ui_texture.h"
 #include "texture_decode.h"   // gos_GetTextureTexels
 
 #define VMA_STATIC_VULKAN_FUNCTIONS 0
@@ -28,6 +29,7 @@
 #include "vk_island_util.h"
 #include "vk_one_shot.h"
 #include "vulkan_context.h"
+#include "vk_texture_residency.h"
 #include "vulkan_legacy_shape_island.h"
 #include "../../RenderCore/gpu_abi/GpuLegacyFrameUBO.h"  // single-source per-frame UBO
 #include "vk_shared_gbuffer_gate.h"
@@ -82,15 +84,19 @@ const uint32_t kMaxTextures  = 192;      // descriptor-set budget (x2 parity)
 
 // The view is declared after the image so it is released first.
 struct TexEntry {
-    mc2vk::OwnedImage img;
-    mc2vk::OwnedImageView view;
+    mc2vk::ResidentTextureRef texture;
+    VkImageView bound[2] = {};
     VkDescriptorSet set[2] = {};   // allocated from the island's pool, freed with it
 };
 
 // Owned objects are declared in creation order and released in reverse by the destructor, while the device is alive (the engine context releases the
 // parked island ahead of the device).
 struct Island : mc2vk::IslandState {
-    bool inited = false, disabled = false;
+    bool inited = false, disabled = false, preview = false, previewPublished = false;
+    mc2vk::GpuTicket previewTicket;
+    mc2vk::ResidentTextureRef previewColor;
+    mc2vk::OwnedImage previewNormal, previewDepth;
+    mc2vk::OwnedImageView previewNormalView, previewDepthView;
     int  w = 0, h = 0;
     VkInstance instance = VK_NULL_HANDLE; VkPhysicalDevice phys = VK_NULL_HANDLE;
     VkDevice device = VK_NULL_HANDLE; uint32_t gfxFamily = UINT32_MAX;
@@ -114,95 +120,31 @@ struct Island : mc2vk::IslandState {
     mc2vk::OwnedDescriptorPool pool;
     TexEntry dummyTex;                                  // 1x1 white (untextured / failed import)
     std::unordered_map<uint32_t, TexEntry> texs;        // keyed on mcTextureManager node
-    std::unordered_set<uint32_t> untexturedNodes;       // nodes whose texture has no CPU texels: drawn with the dummy
     mc2vk::OwnedShaderModule vert, frag;
     mc2vk::OwnedPipelineLayout playout;
     mc2vk::OwnedPipeline pipes[MC2_LEGACY_PASS_COUNT];
 };
 
+bool g_previewDispatch=false, g_previewActive=false;
+int g_previewW=800,g_previewH=600;
+std::vector<Mc2LegacyMlrDraw> g_previewPending;
+std::vector<std::vector<uint8_t>> g_previewVertices;
+
 // The island lives in the engine context's slot: the context releases it ahead of the device whatever path ends the process.
 std::unique_ptr<mc2vk::IslandState>& islandSlot() {
-    return mc2vk::getOrCreateEngineVulkanContext().islandSlot(mc2vk::IslandSlot::LegacyShape);
+    return mc2vk::getOrCreateEngineVulkanContext().islandSlot(g_previewDispatch ? mc2vk::IslandSlot::Preview : mc2vk::IslandSlot::LegacyShape);
 }
 Island* parkedIsland() { return static_cast<Island*>(islandSlot().get()); }
 bool g_sessionDeclined = false;
 int  g_initReachedBuild = 0;
 std::vector<Mc2LegacyMlrDraw> g_pending;
 
-bool make_buffer(Island* s, mc2vk::OwnedBuffer& out, VkDeviceSize size, VkBufferUsageFlags usage, bool hostVisible,
-                 std::string_view name, int i0 = -1, int i1 = -1) {
-    VkBufferCreateInfo bci{};
-    bci.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-    bci.size = size ? size : 16; bci.usage = usage;
-    VmaAllocationCreateInfo aci{};
-    aci.usage = VMA_MEMORY_USAGE_AUTO;
-    aci.flags = hostVisible ? VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT : 0;
-    if (!out.create(s->allocator, s->device, bci, aci, name, i0, i1)) {
-        vlog("buffer creation failed (%.*s).", static_cast<int>(name.size()), name.data()); return false;
-    }
-    return true;
-}
-
-bool upload_host(const mc2vk::OwnedBuffer& buffer, const void* data, size_t bytes) {
-    void* p = buffer.map();
-    if (!p) return false;
-    std::memcpy(p, data, bytes);
-    buffer.unmap();
-    return true;
-}
-
-// --- one-shot command helpers (copy-once texture import) --------------------
-VkCommandBuffer cp_begin(Island* s) {
-    VkCommandBufferAllocateInfo cbi{};
-    cbi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-    cbi.commandPool = s->cpool.get(); cbi.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; cbi.commandBufferCount = 1;
-    VkCommandBuffer cb = VK_NULL_HANDLE;
-    if (vkAllocateCommandBuffers(s->device, &cbi, &cb) != VK_SUCCESS) return VK_NULL_HANDLE;
-    VkCommandBufferBeginInfo bi{}; bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-    bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-    vkBeginCommandBuffer(cb, &bi);
-    return cb;
-}
-void cp_end(Island* s, VkCommandBuffer cb) {
-    vkEndCommandBuffer(cb);
-    VkSubmitInfo si{}; si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    si.commandBufferCount = 1; si.pCommandBuffers = &cb;
-    mc2vk::submitAndWait(mc2vk::getOrCreateEngineVulkanContext(), si, 5ull * 1000 * 1000 * 1000, "legacy shape copy-once");
-    vkFreeCommandBuffers(s->device, s->cpool.get(), 1, &cb);
-}
-
 // One level of RGBA8 or BC7 texels, copied as they are into a sampled image of `fmt`.
 bool upload_image(Island* s, TexEntry& e, uint32_t w, uint32_t h, VkFormat fmt, const void* bytes, VkDeviceSize byteCount) {
-    mc2vk::OwnedBuffer stg;   // released on return; cp_end has waited for the copy by then
-    if (!make_buffer(s, stg, byteCount, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, true, "legacyshape.staging")) return false;
-    if (!upload_host(stg, bytes, (size_t)byteCount)) return false;
-
-    if (!e.img.createSampled2D(s->allocator, s->device, fmt, w, h, 1, 0, "legacyshape.texture")) return false;
-    VkCommandBuffer cb = cp_begin(s);
-    if (cb == VK_NULL_HANDLE) return false;
-    VkImageMemoryBarrier bar{};
-    bar.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-    bar.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED; bar.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-    bar.srcQueueFamilyIndex = bar.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED; bar.image = e.img.get();
-    bar.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
-    bar.srcAccessMask = 0; bar.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-    vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
-                         0, 0, nullptr, 0, nullptr, 1, &bar);
-    VkBufferImageCopy r{};
-    r.imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
-    r.imageExtent = {w, h, 1};
-    vkCmdCopyBufferToImage(cb, stg.get(), e.img.get(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &r);
-    bar.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL; bar.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-    bar.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT; bar.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-    vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-                         0, 0, nullptr, 0, nullptr, 1, &bar);
-    cp_end(s, cb);
-
-    VkImageViewCreateInfo vci{};
-    vci.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-    vci.image = e.img.get(); vci.viewType = VK_IMAGE_VIEW_TYPE_2D; vci.format = fmt;
-    vci.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
-    return mc2vk::create(e.view, s->device, [&](VkImageView* h) { return vkCreateImageView(s->device, &vci, nullptr, h); });
+    // Explicit legacy producer boundary: CPU/gos bytes stay legacy-owned; the service owns their Vulkan image.
+    auto& textures=mc2vk::getOrCreateEngineVulkanContext().textures();
+    e.texture=textures.acquireLegacy(w,h,fmt,bytes,size_t(byteCount));
+    return bool(e.texture);
 }
 
 // Per-parity descriptor set for one texture: 0 = frame UBO, 1 = albedo.
@@ -214,11 +156,12 @@ bool alloc_tex_sets(Island* s, TexEntry& t) {
     if (vkAllocateDescriptorSets(s->device, &dsai, t.set) != VK_SUCCESS) return false;
     for (uint32_t par = 0; par < 2; ++par) {
         VkDescriptorImageInfo ii{};
-        ii.sampler = s->samp.get(); ii.imageView = t.view.get(); ii.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        ii.sampler = s->samp.get(); ii.imageView = mc2vk::getOrCreateEngineVulkanContext().textures().view(t.texture.get()); ii.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         VkWriteDescriptorSet w[1]{};
         w[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[0].dstSet = t.set[par]; w[0].dstBinding = 1;
         w[0].descriptorCount = 1; w[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; w[0].pImageInfo = &ii;
         vkUpdateDescriptorSets(s->device, 1, w, 0, nullptr);
+        t.bound[par]=ii.imageView;
         // Binding 0 (the frame UBO) at the ring's current buffer; the parity is re-pointed at its next frame.
         if (const VkBuffer ring = mc2vk::getOrCreateEngineVulkanContext().frameRingBuffer())
             mc2vk::writeDynamicBinding(s->device, t.set[par], 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, ring, sizeof(LegacyFrameUBO));
@@ -227,34 +170,25 @@ bool alloc_tex_sets(Island* s, TexEntry& t) {
     return true;
 }
 
-// Resolve (importing copy-once on first sight) the texture entry for a node.
-// Called BEFORE recording (the import records its own one-shot upload); never inside the VK command buffer.
-TexEntry* get_tex(Island* s, uint32_t texNode, uint32_t gosHandle) {
-    if (gosHandle == 0 || gosHandle == 0xffffffffu) return &s->dummyTex;
-    auto it = s->texs.find(texNode);
-    if (it != s->texs.end()) return &it->second;
-    if (s->untexturedNodes.contains(texNode)) return &s->dummyTex;
-    if (s->texs.size() >= kMaxTextures) return &s->dummyTex;
-    const GosTexels texels = gos_GetTextureTexels(gosHandle);
-    if (texels.status == GosTexels::Status::Unavailable) {   // will never have texels: stop asking
-        s->untexturedNodes.insert(texNode);
-        return &s->dummyTex;
+// World GV/variant materials share the mech source/repaint adapter, including mip regeneration.
+// Preview uses the same image identity with its sampler clamped to level zero.
+TexEntry* get_tex(Island* s,uint32_t texNode,uint32_t gosHandle) {
+    if (!gosHandle || gosHandle==0xffffffffu) return &s->dummyTex;
+    auto& textures=mc2vk::getOrCreateEngineVulkanContext().textures();
+    const auto handle=RenderCore::uiTextureHandle(gos_GetMaterialTextureId(gosHandle));
+    if (!handle.isValid()) return &s->dummyTex;
+    if (auto it=s->texs.find(texNode);it!=s->texs.end()) {
+        if (it->second.texture.get()!=handle) {
+            it->second.texture=textures.retain(handle);
+            it->second.bound[0]=it->second.bound[1]=VK_NULL_HANDLE; // recycled VkImageView names still require fresh descriptors
+        }
+        return &it->second;
     }
-    if (texels.status != GosTexels::Status::Ready) return &s->dummyTex;    // not resident yet; retry next frame
-    const uint32_t w = texels.width, h = texels.height;
-    if (w == 0 || h == 0 || w > 8192 || h > 8192) return &s->dummyTex;
-
-    TexEntry t;
-    if (!upload_image(s, t, w, h, mc2vk::texelFormat(texels.vkFormat), texels.bytes->data(),
-                      (VkDeviceSize)texels.bytes->size()) ||
-        !alloc_tex_sets(s, t)) {
-        return &s->dummyTex;   // `t` releases whatever it created
-    }
+    if (s->texs.size()>=kMaxTextures) return &s->dummyTex;
+    TexEntry entry;entry.texture=textures.retain(handle);
+    if (!entry.texture || !alloc_tex_sets(s,entry)) return &s->dummyTex;
     ++g_health.texUploads;
-    auto ins = s->texs.emplace(texNode, std::move(t));
-    vlog("texture cached: node=%u handle=%u %ux%u format=%u (%zu/%u).", texNode, gosHandle, w, h, texels.vkFormat,
-         s->texs.size(), kMaxTextures);
-    return &ins.first->second;
+    return &s->texs.emplace(texNode,std::move(entry)).first->second;
 }
 
 bool init_island(Island* s, int w, int h) {
@@ -276,7 +210,22 @@ bool init_island(Island* s, int w, int h) {
     s->colorRes  = mc2SharedSceneColorGetResource(MC2_SHARED_SCENE_COLOR0);
     s->normalRes = mc2SharedSceneColorGetResource(MC2_SHARED_SCENE_NORMAL);
     s->depthRes  = mc2SharedSceneDepthGetResource();
-    if (!s->colorRes || !s->normalRes || !s->depthRes) { setFallback("shared_gbuffer_not_ready"); return false; }
+    if (!s->preview && (!s->colorRes || !s->normalRes || !s->depthRes)) { setFallback("shared_gbuffer_not_ready"); return false; }
+    if (s->preview) {
+        s->previewColor=ctx.textures().createRenderTarget(uint32_t(w),uint32_t(h));
+        if (!s->previewColor) return false;
+        if (!s->previewNormal.createSampled2D(ctx.allocator(),s->device,VK_FORMAT_R8G8B8A8_UNORM,w,h,1,
+                                              VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,"ui.preview.normal") ||
+            !s->previewDepth.createSampled2D(ctx.allocator(),s->device,VK_FORMAT_D32_SFLOAT,w,h,1,
+                                             VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,"ui.preview.depth")) return false;
+        auto view=[&](VkImage image,VkFormat format,VkImageAspectFlags aspect,mc2vk::OwnedImageView& out) {
+            VkImageViewCreateInfo vi{VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO}; vi.image=image;
+            vi.viewType=VK_IMAGE_VIEW_TYPE_2D; vi.format=format; vi.subresourceRange={aspect,0,1,0,1};
+            return mc2vk::create(out,s->device,[&](VkImageView* v){return vkCreateImageView(s->device,&vi,nullptr,v);});
+        };
+        if (!view(s->previewNormal.get(),VK_FORMAT_R8G8B8A8_UNORM,VK_IMAGE_ASPECT_COLOR_BIT,s->previewNormalView) ||
+            !view(s->previewDepth.get(),VK_FORMAT_D32_SFLOAT,VK_IMAGE_ASPECT_DEPTH_BIT,s->previewDepthView)) return false;
+    }
     g_initReachedBuild = 1;   // readiness gates passed: failures past here are PERMANENT
 
     {   // command pool + per-parity command buffers
@@ -291,11 +240,11 @@ bool init_island(Island* s, int w, int h) {
         if (vkAllocateCommandBuffers(s->device, &cbi, s->cbuf) != VK_SUCCESS) { setFallback("cmdbuf_failed"); return false; }
     }
 
-    {   // sampler (REPEAT / LINEAR, no mips -- the FS uses textureLod(..., 0))
+    {   // World materials use full regenerated mips; preview stays clamped to level zero.
         VkSamplerCreateInfo sci{};
         sci.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
         sci.magFilter = VK_FILTER_LINEAR; sci.minFilter = VK_FILTER_LINEAR;
-        sci.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
+        sci.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR; sci.maxLod=s->preview ? 0.0f : VK_LOD_CLAMP_NONE;
         sci.addressModeU = sci.addressModeV = sci.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
         if (!mc2vk::create(s->samp, s->device, [&](VkSampler* h) { return vkCreateSampler(s->device, &sci, nullptr, h); })) { setFallback("sampler_failed"); return false; }
     }
@@ -305,19 +254,23 @@ bool init_island(Island* s, int w, int h) {
         VkImageResource* normalRes = reinterpret_cast<VkImageResource*>(s->normalRes);
         VkImageResource* depthRes  = reinterpret_cast<VkImageResource*>(s->depthRes);
         VkAttachmentDescription att[3]{};
-        att[0].format = colorRes->format;  att[0].samples = VK_SAMPLE_COUNT_1_BIT;
+        att[0].format = s->preview ? VK_FORMAT_R8G8B8A8_UNORM : colorRes->format;  att[0].samples = VK_SAMPLE_COUNT_1_BIT;
         att[0].loadOp = VK_ATTACHMENT_LOAD_OP_LOAD; att[0].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
         att[0].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE; att[0].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
         att[0].initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL; att[0].finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-        att[1].format = normalRes->format; att[1].samples = VK_SAMPLE_COUNT_1_BIT;
+        att[1].format = s->preview ? VK_FORMAT_R8G8B8A8_UNORM : normalRes->format; att[1].samples = VK_SAMPLE_COUNT_1_BIT;
         att[1].loadOp = VK_ATTACHMENT_LOAD_OP_LOAD; att[1].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
         att[1].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE; att[1].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
         att[1].initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL; att[1].finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-        att[2].format = depthRes->format;  att[2].samples = VK_SAMPLE_COUNT_1_BIT;
+        att[2].format = s->preview ? VK_FORMAT_D32_SFLOAT : depthRes->format;  att[2].samples = VK_SAMPLE_COUNT_1_BIT;
         att[2].loadOp = VK_ATTACHMENT_LOAD_OP_LOAD; att[2].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
         att[2].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_LOAD; att[2].stencilStoreOp = VK_ATTACHMENT_STORE_OP_STORE;
         att[2].initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL; att[2].finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
+        if (s->preview) {
+            for (auto& a : att) { a.loadOp=VK_ATTACHMENT_LOAD_OP_CLEAR; a.initialLayout=VK_IMAGE_LAYOUT_UNDEFINED; }
+            att[0].finalLayout=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        }
         VkAttachmentReference colorRefs[2] = {
             {0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL}, {1, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL} };
         VkAttachmentReference depthRef{2, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL};
@@ -336,7 +289,8 @@ bool init_island(Island* s, int w, int h) {
         deps[1].srcSubpass = 0; deps[1].dstSubpass = VK_SUBPASS_EXTERNAL;
         deps[1].srcStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
         deps[1].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-        deps[1].dstStageMask  = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT; deps[1].dstAccessMask = 0;
+        deps[1].dstStageMask = s->preview ? VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT : VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+        deps[1].dstAccessMask = s->preview ? VK_ACCESS_SHADER_READ_BIT : 0;
 
         VkRenderPassCreateInfo rpci{};
         rpci.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
@@ -344,7 +298,9 @@ bool init_island(Island* s, int w, int h) {
         rpci.subpassCount = 1; rpci.pSubpasses = &sub;
         rpci.dependencyCount = 2; rpci.pDependencies = deps;
         if (!mc2vk::create(s->rpass, s->device, [&](VkRenderPass* h) { return vkCreateRenderPass(s->device, &rpci, nullptr, h); })) { setFallback("renderpass_failed"); return false; }
-        VkImageView fbViews[3] = { colorRes->view.get(), normalRes->view.get(), depthRes->view.get() };
+        VkImageView fbViews[3] = {s->preview ? ctx.textures().view(s->previewColor.get()) : colorRes->view.get(),
+            s->preview ? s->previewNormalView.get() : normalRes->view.get(),
+            s->preview ? s->previewDepthView.get() : depthRes->view.get()};
         VkFramebufferCreateInfo fci{};
         fci.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
         fci.renderPass = s->rpass.get(); fci.attachmentCount = 3; fci.pAttachments = fbViews;
@@ -498,19 +454,21 @@ extern "C" int mc2_vk_legacy_shape_island_run(int w, int h, const Mc2LegacyMlrFr
     ZoneScopedN("VK-legacy-shape-island");
     // Always consume the queue (even on failure) so it can never grow across frames.
     std::vector<Mc2LegacyMlrDraw> draws;
-    draws.swap(g_pending);
-    if (g_sessionDeclined || !frame) return 0;
-    if (draws.empty() || w <= 0 || h <= 0) return 0;
+    draws.swap(g_previewDispatch ? g_previewPending : g_pending);
+    if ((!g_previewDispatch && g_sessionDeclined) || !frame) return 0;
+    if ((!g_previewDispatch && draws.empty()) || w <= 0 || h <= 0) return 0;
 
     mc2vk::VulkanContext& slotCtx = mc2vk::getOrCreateEngineVulkanContext();
-    if (const Island* parked = parkedIsland(); parked && (parked->w != w || parked->h != h)) slotCtx.retireIsland(mc2vk::IslandSlot::LegacyShape);
+    if (const Island* parked = parkedIsland(); parked && (parked->w != w || parked->h != h ||
+        (parked->preview && !RenderCore::textureService().isLive(parked->previewColor.get())))) slotCtx.retireIsland(g_previewDispatch ? mc2vk::IslandSlot::Preview : mc2vk::IslandSlot::LegacyShape);
     if (!islandSlot()) {
         auto fresh = std::make_unique<Island>();
+        fresh->preview=g_previewDispatch;
         if (!init_island(fresh.get(), w, h)) {
             const bool permanent = (g_initReachedBuild != 0);
             slotCtx.waitIdle("legacy_shape_init_failure");   // objects made before the failure may have been submitted
             if (permanent) {
-                g_sessionDeclined = true;
+                if (!g_previewDispatch) g_sessionDeclined = true;
                 vlog("boot-level decline: permanent init failure (%s) -- legacy shapes will not draw under VK.",
                      g_health.fallbackReason);
             } else {
@@ -544,7 +502,13 @@ extern "C" int mc2_vk_legacy_shape_island_run(int w, int h, const Mc2LegacyMlrFr
 
     VkImageResource* colorRes = reinterpret_cast<VkImageResource*>(s->colorRes);
     VkFrameSync fsC{};
-    { ZoneScopedN("VKIsl.Legacy.FenceWait"); fsC = vkImageResourceBeginFrame(colorRes); }
+    if (s->preview) {
+        // The UI samples this target after the preview submit; wait the preceding sealed frame before overwriting it.
+        const auto frameNo=rctx.tracker().frameNo();
+        const auto sampled=frameNo>1 ? rctx.tracker().frameTicket(frameNo-1) : mc2vk::GpuTicket{};
+        if (!rctx.wait(mc2vk::GpuTicket::both(sampled,s->previewTicket),5000000000ull,"preview target reuse")) return 0;
+        fsC.parity=rctx.frameContext().slot;
+    } else { ZoneScopedN("VKIsl.Legacy.FenceWait"); fsC=vkImageResourceBeginFrame(colorRes); }
     const uint32_t par = fsC.parity & 1u;
 
     {   // per-frame vertex stream + UBO
@@ -554,8 +518,19 @@ extern "C" int mc2_vk_legacy_shape_island_run(int w, int h, const Mc2LegacyMlrFr
         LegacyFrameUBO u{};
         const float* proj = gos_GetProj2ScreenMat4();
         if (proj) std::memcpy(u.proj, proj, sizeof(u.proj));
+        if (s->preview) { std::memset(u.proj,0,sizeof(u.proj)); u.proj[0]=2.0f/800; u.proj[3]=-1;
+            u.proj[5]=-2.0f/600; u.proj[7]=1; u.proj[10]=1; u.proj[15]=1; }
         for (int k = 0; k < 4; ++k) u.fogColor[k] = frame->fogColor[k];
         std::memcpy(base, &u, sizeof(u));
+    }
+    for (const auto& r : list) {
+        const auto view=rctx.textures().view(r.t->texture.get());
+        if (r.t->bound[par]==view) continue;
+        VkDescriptorImageInfo ii{s->samp.get(),view,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
+        VkWriteDescriptorSet w{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
+        w.dstSet=r.t->set[par]; w.dstBinding=1; w.descriptorCount=1;
+        w.descriptorType=VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; w.pImageInfo=&ii;
+        vkUpdateDescriptorSets(s->device,1,&w,0,nullptr); r.t->bound[par]=view;
     }
     // Every texture set of this parity follows the ring buffer the span came from; the draw passes the UBO offset.
     if (s->ringBound[par] != span.buffer) {
@@ -577,6 +552,9 @@ extern "C" int mc2_vk_legacy_shape_island_run(int w, int h, const Mc2LegacyMlrFr
     rbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
     rbi.renderPass = s->rpass.get(); rbi.framebuffer = s->fb.get();
     rbi.renderArea = {{0, 0}, {(uint32_t)w, (uint32_t)h}};
+    VkClearValue clears[3]{}; clears[0].color.float32[3]=1;
+    clears[1].color.float32[0]=0.5f; clears[1].color.float32[1]=0.5f; clears[1].color.float32[2]=1;
+    if (s->preview) { rbi.clearValueCount=3; rbi.pClearValues=clears; }
     vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
     VkViewport vp{0.0f, 0.0f, (float)w, (float)h, 0.0f, 1.0f};
     VkRect2D scissor{{0, 0}, {(uint32_t)w, (uint32_t)h}};
@@ -616,6 +594,7 @@ extern "C" int mc2_vk_legacy_shape_island_run(int w, int h, const Mc2LegacyMlrFr
     { ZoneScopedN("VKIsl.Legacy.Submit");
       if (mc2vk::submitGraphics(si, fsC.fence) != VK_SUCCESS) { setFallback("submit_failed"); s->disabled = true; return 0; } }
 
+    if (s->preview) { s->previewPublished=true; s->previewTicket=rctx.tracker().now(); }
     g_health.nodesDrawn += drawn;
     g_health.vertsDrawn += verts;
     ++g_health.usedVulkan;
@@ -627,27 +606,55 @@ extern "C" int mc2_vk_legacy_shape_island_run(int w, int h, const Mc2LegacyMlrFr
     return 1;
 }
 
+extern "C" int mc2_vk_preview_active() { return g_previewActive ? 1 : 0; }
+extern "C" void mc2_vk_preview_begin(int width,int height) {
+    g_previewW=width; g_previewH=height; g_previewPending.clear(); g_previewVertices.clear(); g_previewActive=true;
+}
+extern "C" void mc2_vk_preview_capture(const Mc2LegacyMlrDraw* draw) {
+    if (!draw || !draw->vertices || draw->vertexCount<3) return;
+    auto& bytes=g_previewVertices.emplace_back(size_t(draw->vertexCount)*kVertexStride);
+    std::memcpy(bytes.data(),draw->vertices,bytes.size());
+    auto d=*draw; d.vertices=bytes.data(); g_previewPending.push_back(d);
+}
+extern "C" void mc2_vk_preview_end() {
+    g_previewActive=false; g_previewDispatch=true;
+    Mc2LegacyMlrFrame frame{};
+    mc2_vk_legacy_shape_island_run(g_previewW,g_previewH,&frame);
+    g_previewDispatch=false; g_previewVertices.clear();
+}
+extern "C" uint64_t mc2_vk_preview_texture() {
+    auto* island=static_cast<Island*>(mc2vk::getOrCreateEngineVulkanContext().islandSlot(mc2vk::IslandSlot::Preview).get());
+    return island && island->inited && island->previewPublished ? RenderCore::uiTextureId(island->previewColor.get()) : 0;
+}
+
 extern "C" void mc2_vk_legacy_shape_island_reset() {
-    g_pending.clear();
-    Island* s = parkedIsland();
-    if (!s || !s->inited) return;
-    // Texture node indices are reused by the next mission: drop the copy-once cache.
-    mc2vk::getOrCreateEngineVulkanContext().waitIdle("legacy_shape_reset");
-    s->texs.clear();
-    s->untexturedNodes.clear();
-    // The pool has no FREE_DESCRIPTOR_SET bit: reset it and re-create the dummy sets.
-    if (s->pool) vkResetDescriptorPool(s->device, s->pool.get(), 0);
-    s->dummyTex.set[0] = s->dummyTex.set[1] = VK_NULL_HANDLE;
-    s->ringBound[0] = s->ringBound[1] = VK_NULL_HANDLE;
-    if (!alloc_tex_sets(s, s->dummyTex)) { s->disabled = true; vlog("reset: dummy sets failed -- island disabled."); }
-    vlog("texture cache reset on mission unload.");
+    g_pending.clear(); g_previewPending.clear(); g_previewVertices.clear();
+    auto& ctx=mc2vk::getOrCreateEngineVulkanContext();
+    const auto legacy=mc2vk::IslandSlot::LegacyShape, preview=mc2vk::IslandSlot::Preview;
+    auto* world=static_cast<Island*>(ctx.islandSlot(legacy).get());
+    auto* bay=static_cast<Island*>(ctx.islandSlot(preview).get());
+    if ((!world || !world->inited) && (!bay || !bay->inited)) return;
+    ctx.waitIdle("legacy_shape_reset");
+    for (const auto slot : {mc2vk::IslandSlot::LegacyShape, mc2vk::IslandSlot::Preview}) {
+        auto* s=static_cast<Island*>(ctx.islandSlot(slot).get());
+        if (!s || !s->inited) continue;
+        const auto before=s->texs.size();
+        s->texs.clear();
+        // Neither pool frees individual sets: reset it and restore its dummy pair.
+        if (s->pool) vkResetDescriptorPool(s->device,s->pool.get(),0);
+        s->dummyTex.set[0]=s->dummyTex.set[1]=VK_NULL_HANDLE;
+        s->ringBound[0]=s->ringBound[1]=VK_NULL_HANDLE;
+        s->previewPublished=false;
+        if (!alloc_tex_sets(s,s->dummyTex)) { s->disabled=true; vlog("reset: dummy sets failed -- island disabled."); }
+        vlog("texture cache reset slot=%s entries_before=%zu entries_after=%zu",s->preview ? "preview" : "legacy",before,s->texs.size());
+    }
 }
 
 extern "C" void mc2_vk_legacy_shape_island_destroy() {
     vlog("used_vulkan=%lu nodes_drawn=%lu verts_drawn=%lu tex_uploads=%lu fallback_reason=\"%s\"",
          g_health.usedVulkan, g_health.nodesDrawn, g_health.vertsDrawn, g_health.texUploads,
          g_health.fallbackReason);
-    mc2vk::getOrCreateEngineVulkanContext().retireIsland(mc2vk::IslandSlot::LegacyShape);
+    mc2vk::getOrCreateEngineVulkanContext().retireIsland(g_previewDispatch ? mc2vk::IslandSlot::Preview : mc2vk::IslandSlot::LegacyShape);
 }
 
 #endif // MC2_VULKAN_ISLAND

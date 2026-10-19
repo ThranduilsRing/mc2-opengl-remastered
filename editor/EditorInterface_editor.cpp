@@ -1,6 +1,7 @@
 // Editor: the Editor object (init, destroy, resave-all, render, update), the message map, the New menu and mission open/save prompts.
 // Declared in the class headers; shared names in EditorInterface_internal.h.
 #include "EditorInterface_internal.h"
+#include "MapGeneratorDialog.h"
 
 
 
@@ -289,6 +290,7 @@ void Editor::init( char* loader )
 void Editor::destroy (void)
 {
 	EditorShutdownTrace("[EDITOR_SHUTDOWN] phase=Editor_destroy_enter");
+	MapGeneratorDialog::Close();
 
 	if (EditorInterface::instance())
 	{

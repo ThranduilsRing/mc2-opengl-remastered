@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in gos_terrain_indirect_internal.h.
 #include "gos_terrain_indirect_internal.h"
 #include "mc2fmt.h"
+#include "texture_decode.h"
 
 
 // ---------------------------------------------------------------------------
@@ -93,45 +94,56 @@ void BuildMineTextureArray() {
     const DWORD blownGosHandle = tex_resolve(blownSlot);
     if (mineGosHandle == 0u || blownGosHandle == 0u) return;
 
-    const GLuint mineGLTex  = gos_terrain_bridge_glTextureForGosHandle((unsigned)mineGosHandle);
-    const GLuint blownGLTex = gos_terrain_bridge_glTextureForGosHandle((unsigned)blownGosHandle);
-    if (mineGLTex == 0 || blownGLTex == 0) return;
-
-    constexpr int kW = 16;
-    constexpr int kH = 16;
-    std::vector<uint32_t> mineBuf((size_t)kW * kH, 0u);
-    std::vector<uint32_t> blownBuf((size_t)kW * kH, 0u);
-
-    GLint savedActive = GL_TEXTURE0;
-    glGetIntegerv(GL_ACTIVE_TEXTURE, &savedActive);
-    glActiveTexture(GL_TEXTURE0);
-    GLint savedTex0 = 0;
-    glGetIntegerv(GL_TEXTURE_BINDING_2D, &savedTex0);
-    GLint savedPackAlign = 4;
-    glGetIntegerv(GL_PACK_ALIGNMENT, &savedPackAlign);
-    GLint savedUnpackAlign = 4;
-    glGetIntegerv(GL_UNPACK_ALIGNMENT, &savedUnpackAlign);
-    glPixelStorei(GL_PACK_ALIGNMENT, 4);
-    glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
-
-    MINE_GLPROBE("before_getteximage");
-    MC2_GL_BindTexture(GL_TEXTURE_2D, mineGLTex);
-    glGetTexImage(GL_TEXTURE_2D, 0, GL_BGRA, GL_UNSIGNED_BYTE, mineBuf.data());
-    MINE_GLPROBE("after_getteximage_mine");
-    MC2_GL_BindTexture(GL_TEXTURE_2D, blownGLTex);
-    glGetTexImage(GL_TEXTURE_2D, 0, GL_BGRA, GL_UNSIGNED_BYTE, blownBuf.data());
-    MINE_GLPROBE("after_getteximage_blown");
+    // Mod mine sprites can exceed the stock 16x16. Read immutable published
+    // texels rather than letting an unbounded GL readback overwrite a stock-size buffer.
+    const auto mine = gos_GetTextureTexels(mineGosHandle);
+    const auto blown = gos_GetTextureTexels(blownGosHandle);
+    auto rgba = [](const GosTexels& source) -> std::vector<uint8_t> {
+        if (source.status != GosTexels::Status::Ready || !source.bytes ||
+            !source.width || !source.height || source.width > 16384 || source.height > 16384) return {};
+        if (source.vkFormat == mc2tex::kVkFormatRgba8Unorm) {
+            if (source.bytes->size() != size_t(source.width)*source.height*4) return {};
+            return *source.bytes;
+        }
+        if (source.vkFormat == mc2tex::kVkFormatBc7Unorm || source.vkFormat == mc2tex::kVkFormatBc7Srgb)
+            return mc2tex::decodeBc7(*source.bytes,source.width,source.height);
+        return {};
+    };
+    auto minePixels=rgba(mine), blownPixels=rgba(blown);
+    if (minePixels.empty() || blownPixels.empty()) return;
+    const int kW=int(std::max(mine.width,blown.width)), kH=int(std::max(mine.height,blown.height));
+    auto layer = [kW,kH](const GosTexels& source,const std::vector<uint8_t>& pixels) {
+        std::vector<uint8_t> result(size_t(kW)*kH*4);
+        for (int y=0;y<kH;++y) for (int x=0;x<kW;++x) {
+            const size_t src=(size_t(uint64_t(y)*source.height/kH)*source.width+uint64_t(x)*source.width/kW)*4;
+            std::copy_n(pixels.data()+src,4,result.data()+(size_t(y)*kW+x)*4);
+        }
+        return result;
+    };
+    const auto mineBuf=layer(mine,minePixels), blownBuf=layer(blown,blownPixels);
+    GLint savedActive=GL_TEXTURE0,savedArray=0,savedUnpackBuffer=0;
+    GLint savedUnpackAlign=4,savedRowLength=0,savedSkipRows=0,savedSkipPixels=0;
+    glGetIntegerv(GL_ACTIVE_TEXTURE,&savedActive); glActiveTexture(GL_TEXTURE0);
+    glGetIntegerv(GL_TEXTURE_BINDING_2D_ARRAY,&savedArray);
+    glGetIntegerv(GL_PIXEL_UNPACK_BUFFER_BINDING,&savedUnpackBuffer);
+    glGetIntegerv(GL_UNPACK_ALIGNMENT,&savedUnpackAlign);
+    glGetIntegerv(GL_UNPACK_ROW_LENGTH,&savedRowLength);
+    glGetIntegerv(GL_UNPACK_SKIP_ROWS,&savedSkipRows);
+    glGetIntegerv(GL_UNPACK_SKIP_PIXELS,&savedSkipPixels);
+    glBindBuffer(GL_PIXEL_UNPACK_BUFFER,0);
+    glPixelStorei(GL_UNPACK_ALIGNMENT,1); glPixelStorei(GL_UNPACK_ROW_LENGTH,0);
+    glPixelStorei(GL_UNPACK_SKIP_ROWS,0); glPixelStorei(GL_UNPACK_SKIP_PIXELS,0);
 
     // TEX-CLASS: asset-pool -- minefield 2D_ARRAY (content)
     if (g_mineTextureArrayGL == 0) glGenTextures(1, &g_mineTextureArrayGL);
     MC2_GL_BindTexture(GL_TEXTURE_2D_ARRAY, g_mineTextureArrayGL);
     // Allocate 2-layer storage. glTexImage3D with NULL data orphans / reserves.
     glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, GL_RGBA8, kW, kH, 2,
-                 0, GL_BGRA, GL_UNSIGNED_BYTE, nullptr);
+                 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
     glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, /*layer=*/0, kW, kH, 1,
-                    GL_BGRA, GL_UNSIGNED_BYTE, mineBuf.data());
+                    GL_RGBA, GL_UNSIGNED_BYTE, mineBuf.data());
     glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, /*layer=*/1, kW, kH, 1,
-                    GL_BGRA, GL_UNSIGNED_BYTE, blownBuf.data());
+                    GL_RGBA, GL_UNSIGNED_BYTE, blownBuf.data());
     // NEAREST filter, no mips — matches gosHint_DisableMipmap | DontShrink at
     // quad.cpp:524, :531. CLAMP_TO_EDGE: sprite UVs are 0..1, no edge-bleed risk.
     glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
@@ -141,10 +153,13 @@ void BuildMineTextureArray() {
     MC2_GL_BindTexture(GL_TEXTURE_2D_ARRAY, 0);
     MINE_GLPROBE("after_teximage3d");
 
-    glPixelStorei(GL_PACK_ALIGNMENT, savedPackAlign);
-    glPixelStorei(GL_UNPACK_ALIGNMENT, savedUnpackAlign);
-    MC2_GL_BindTexture(GL_TEXTURE_2D, (GLuint)savedTex0);
-    glActiveTexture((GLenum)savedActive);
+    glPixelStorei(GL_UNPACK_ALIGNMENT,savedUnpackAlign);
+    glPixelStorei(GL_UNPACK_ROW_LENGTH,savedRowLength);
+    glPixelStorei(GL_UNPACK_SKIP_ROWS,savedSkipRows);
+    glPixelStorei(GL_UNPACK_SKIP_PIXELS,savedSkipPixels);
+    glBindBuffer(GL_PIXEL_UNPACK_BUFFER,GLuint(savedUnpackBuffer));
+    MC2_GL_BindTexture(GL_TEXTURE_2D_ARRAY,GLuint(savedArray));
+    glActiveTexture(GLenum(savedActive));
 
     g_mineTextureArrayReady = true;
     MINE_GLPROBE("atlas_exit");

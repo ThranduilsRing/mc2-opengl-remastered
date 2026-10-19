@@ -12,6 +12,7 @@
 
 #include "EditorData_internal.h"
 #include "Gates/gate.h"
+#include "AssetThumbnailCache.h"
 
 
 // Patch savefix: MOVE packet readiness is tracked separately from terrain readiness.
@@ -91,6 +92,7 @@ EditorData::~EditorData()
 //-------------------------------------------------------------------------------------------------
 bool EditorData::clear()
 {
+	AssetThumbnailCache::clear();
 	EditorResetMissionCamera();
 	gEditorDataMoveDataReadyForFullSave = false;
 	EditorDataTrace("EditorData::clear: move data marked not ready");

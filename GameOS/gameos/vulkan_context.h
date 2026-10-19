@@ -48,7 +48,10 @@
 struct VmaAllocator_T;
 typedef struct VmaAllocator_T* VmaAllocator;
 
+namespace RenderCore { class TextureService; }
+
 namespace mc2vk {
+class TextureResidency;
 
 // Health snapshot for the [VK_ENGINE_CONTEXT] diagnostic line + fail-soft trace.
 struct EngineContextHealth {
@@ -69,7 +72,7 @@ struct IslandState {
     virtual ~IslandState() = default;
 };
 // One slot per island that has been moved under the context; the next converted island adds its name here.
-enum class IslandSlot : size_t { Vfx, Sky, LegacyShape, Mech, ColorProp, Water, Shadow, Terrain, PassTimer, Count };
+enum class IslandSlot : size_t { Vfx, Sky, LegacyShape, Preview, Mech, ColorProp, Water, Shadow, Terrain, PassTimer, Count };
 #endif
 
 // The standalone shared engine Vulkan context. Owns instance + physical device
@@ -78,8 +81,8 @@ enum class IslandSlot : size_t { Vfx, Sky, LegacyShape, Mech, ColorProp, Water, 
 // getOrCreateEngineVulkanContext().
 class VulkanContext {
 public:
-    VulkanContext() = default;
-    ~VulkanContext() { destroy(); }
+    VulkanContext();
+    ~VulkanContext();
 
     VulkanContext(const VulkanContext&) = delete;
     VulkanContext& operator=(const VulkanContext&) = delete;
@@ -146,6 +149,7 @@ public:
 #ifdef MC2_VULKAN_ISLAND
     // The ring of per-frame LightsData buffers the mech and color-prop islands share. It lives here because it belongs to no island: destroy() frees it
     // ahead of the allocator and the device it was made on.
+    TextureResidency& textures() { return *textures_; }
     SharedLightFeed& lightFeed() { return lightFeed_; }
 
     // The slot an island parks its state in. The island creates and fills it; destroy() idles the GPU and releases every parked island, in slot order.
@@ -248,6 +252,8 @@ private:
 
     EngineContextHealth health_;
 #ifdef MC2_VULKAN_ISLAND
+    std::unique_ptr<RenderCore::TextureService> textureServiceOwner_;
+    std::unique_ptr<TextureResidency> textures_;
     SharedLightFeed lightFeed_;
     std::array<std::unique_ptr<IslandState>, static_cast<size_t>(IslandSlot::Count)> islands_;
 #endif

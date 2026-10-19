@@ -1,3 +1,5 @@
+#include "../GameOS/gameos/ui_texture.h"
+#include "../GameOS/gameos/vulkan_legacy_shape_island.h"
 /*************************************************************************************************\
 SimpleCamera.cpp	: Implementation of the SimpleCamera component.
 //---------------------------------------------------------------------------//
@@ -439,7 +441,11 @@ void SimpleCamera::render(long xOffset, long yOffset)
 void SimpleCamera::drawPreviewToPanel( float panelX, float panelY, float panelW, float panelH ) const
 {
 #ifdef MC2_IMGUI
-	const unsigned int tex = gos_GetCameraPreviewTexture();
+	#ifdef MC2_VULKAN_ISLAND
+    const uint64_t tex=mc2vk::uiTextureServiceReady() ? mc2_vk_preview_texture() : gos_GetCameraPreviewTexture();
+#else
+    const uint64_t tex=gos_GetCameraPreviewTexture();
+#endif
 	const float u1 = bounds[0] / 800.f;
 	const float u2 = bounds[2] / 800.f;
 	const float v1 = 1.f - bounds[1] / 600.f;   // top    -> flipped
@@ -448,7 +454,7 @@ void SimpleCamera::drawPreviewToPanel( float panelX, float panelY, float panelW,
 	{
 		FILE* f = fopen("preview_debug.log","a");
 		if (f) {
-			mc2::fmt::print(f, "[PREVIEW] drawPreviewToPanel tex={:d} panel=[{:.1f},{:.1f},{:.1f},{:.1f}] uv=[{:.3f},{:.3f},{:.3f},{:.3f}] readyForUi={:d}\n", mc2::fmt::as_u32(tex), panelX, panelY, panelW, panelH, u1, v1, u2, v2, mc2::fmt::as_i32((int)GuiRuntime::IsReadyForUiText()));
+			mc2::fmt::print(f, "[PREVIEW] drawPreviewToPanel tex={:d} panel=[{:.1f},{:.1f},{:.1f},{:.1f}] uv=[{:.3f},{:.3f},{:.3f},{:.3f}] readyForUi={:d}\n", mc2::fmt::as_u64(tex), panelX, panelY, panelW, panelH, u1, v1, u2, v2, mc2::fmt::as_i32((int)GuiRuntime::IsReadyForUiText()));
 			fflush(f); fclose(f);
 		}
 	}

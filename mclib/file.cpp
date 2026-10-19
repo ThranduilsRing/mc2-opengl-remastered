@@ -102,6 +102,7 @@ static std::unordered_map<std::string, ModFileEntry> g_modIndex;
 // Built alongside g_modIndex in IndexModData; queried at level-2 emit.
 static std::unordered_map<std::string, std::vector<std::string>> g_shadowedBy;
 static std::string g_activeModId;
+static std::unordered_map<std::string, int> g_modPriority;
 // logFileResolve: 0=off, 1=level-1 stdout tags, 2=level-1+JSONL trace
 static int logFileResolve = 0;
 
@@ -637,6 +638,12 @@ static bool TryModOpen(const char* fileName, int* outHandle, const char* req = n
 
 // Returns the owning mod id for a given data path (normalized), or nullptr if not in mod index.
 // Used for diagnostic logging only — O(1) lookup.
+int LookupModPriority(const char* dataPath) {
+    const char* owner = LookupModOwner(dataPath);
+    auto it = owner ? g_modPriority.find(owner) : g_modPriority.end();
+    return it == g_modPriority.end() ? 1000000 : it->second;
+}
+
 const char* LookupModOwner(const char* dataPath) {
     if (g_modIndex.empty()) return nullptr;
     std::string key = NormalizeKey(dataPath);
@@ -691,6 +698,7 @@ void EnumerateModFitFiles(const char* keyPrefix, ModFitCallback cb, void* userDa
 
 void InitModSearchPaths(const char* modsRoot) {
     g_modIndex.clear();
+    g_modPriority.clear();
     g_shadowedBy.clear();
     g_activeModId.clear();
 
@@ -829,6 +837,8 @@ void InitModSearchPaths(const char* modsRoot) {
         fflush(stdout);
     }
 
+    g_modPriority[modId] = 0;
+    for (size_t i = 0; i < deps.size(); ++i) g_modPriority.try_emplace(deps[i], int(i + 1));
     // Index active mod first (highest priority). Skipped entirely in stock mode.
     char activeDataDir[MAX_PATH];
     _snprintf(activeDataDir, sizeof(activeDataDir), "%s%s/data/", absRoot, envMod);

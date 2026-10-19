@@ -22,6 +22,7 @@
 #include <vk_mem_alloc.h>
 
 #include "vk_image_resource.h"
+#include "vk_texture_residency.h"
 #include "vk_island_util.h"
 #include "vk_hdri_source.h"
 #include "vk_native_producers.h"   // STEP 3.4P: native compute producers
@@ -198,13 +199,13 @@ struct WaterIsland : mc2vk::IslandState {
     mc2vk::OwnedFramebuffer fb;
     mc2vk::OwnedDescriptorSetLayout dsl;
     mc2vk::OwnedDescriptorPool pool;
-    mc2vk::OwnedImage     hdriImage;
-    mc2vk::OwnedImageView hdriView;
+    bool imageDescriptorsDirty[2]={true,true};
+    std::array<VkImageView,3> boundTextures[2]{};
+    bool hdriSourceReal=false,shHSourceReal=false,shMSourceReal=false;
+    mc2vk::ResidentTextureRef hdriTexture;
     mc2vk::OwnedSampler   hdriSampler;
-    mc2vk::OwnedImage     shHImage;
-    mc2vk::OwnedImageView shHView;
-    mc2vk::OwnedImage     shMImage;
-    mc2vk::OwnedImageView shMView;
+    mc2vk::ResidentTextureRef shHTexture;
+    mc2vk::ResidentTextureRef shMTexture;
     mc2vk::OwnedShaderModule vert, frag;
     mc2vk::OwnedPipelineLayout playout;
     mc2vk::OwnedPipeline pipe;
@@ -247,8 +248,7 @@ bool ensure_thin_capacity(WaterIsland* s, uint32_t par, VkDeviceSize bytes);
 bool upload_recipes_device(WaterIsland* s, const void* recipes, uint32_t recipeCount);
 bool submit_once(WaterIsland* s, const std::function<void(VkCommandBuffer)>& record);
 bool ensure_hdri(WaterIsland* s, unsigned int hdriGlTex);
-bool import_shore_tex(WaterIsland* s, const void* texels, int texelsW, int texelsH, bool isFloat, mc2vk::OwnedImage& img,
-                      mc2vk::OwnedImageView& view, bool* real);
+bool import_shore_tex(WaterIsland* s, const void* texels, int texelsW, int texelsH, bool isFloat, mc2vk::ResidentTextureRef& texture, bool* real);
 bool ensure_shore(WaterIsland* s);
 bool init_island(WaterIsland* s, int w, int h);
 }  // namespace vk_water_detail

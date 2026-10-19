@@ -31,6 +31,7 @@ code and the proof of a finished conversion, not a leak detector.
 | shared_scene | 6 | 0 | 0 | +0 | 0 | - |
 | light_feed | 2 | 0 | 0 | +0 | 0 | - |
 | context | 2 | 1 | 1 | +0 | 2 | - |
+| textures | 2 | 0 | 0 | +0 | 0 | - |
 
 Total over all islands: created 1, released 1, imbalance +0.
 
@@ -42,7 +43,7 @@ Total over all islands: created 1, released 1, imbalance +0.
 
 ## Conversion order
 
-Converted (the shared context is the root owner of the instance, device and allocator and is not an island): color_prop, image_resource, legacy_shape, light_feed, mech, post_fog, post_hzb, post_screenfx, post_ssao, present, shadow, shared_scene, sky, terrain, vfx, water. Remaining, smallest hand-written footprint first (the batch list of the ownership rewrite):
+Converted (the shared context is the root owner of the instance, device and allocator and is not an island): color_prop, image_resource, legacy_shape, light_feed, mech, post_fog, post_hzb, post_screenfx, post_ssao, present, shadow, shared_scene, sky, terrain, textures, vfx, water. Remaining, smallest hand-written footprint first (the batch list of the ownership rewrite):
 
 
 ## Owner types (`vk_owned.h/.cpp`)
@@ -76,9 +77,9 @@ Release tokens inside the destructors of the owner types: every one runs once, f
 |---|---|---:|---:|
 | color_prop | CommandBuffers | 2 | 1 |
 | color_prop | DescriptorSets | 1 | 0 |
-| legacy_shape | CommandBuffers | 2 | 1 |
+| legacy_shape | CommandBuffers | 1 | 0 |
 | legacy_shape | DescriptorSets | 1 | 0 |
-| mech | CommandBuffers | 2 | 1 |
+| mech | CommandBuffers | 1 | 0 |
 | mech | DescriptorSets | 1 | 0 |
 | post_fog | CommandBuffers | 1 | 0 |
 | post_fog | DescriptorSets | 1 | 0 |
@@ -93,7 +94,7 @@ Release tokens inside the destructors of the owner types: every one runs once, f
 | terrain | CommandBuffers | 3 | 1 |
 | terrain | DescriptorSets | 2 | 0 |
 | vfx | CommandBuffers | 1 | 0 |
-| vfx | DescriptorSets | 2 | 2 |
+| vfx | DescriptorSets | 2 | 0 |
 | water | CommandBuffers | 2 | 1 |
 | water | DescriptorSets | 1 | 0 |
 | present | CommandBuffers | 3 | 0 |
@@ -101,3 +102,4 @@ Release tokens inside the destructors of the owner types: every one runs once, f
 | context | Allocator | 1 | 1 |
 | context | Device | 1 | 1 |
 | context | Instance | 1 | 1 |
+| textures | DescriptorSets | 1 | 0 |

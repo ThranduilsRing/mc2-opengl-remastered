@@ -74,8 +74,8 @@ void main() {
     vec3 Nshade = normalize(vNormalGL);
     vec3 rgb;
     if (uFrame.materialReady != 0) {
-        // textureLod(...,0): AMD mip strict-fail avoidance (mech.frag:175).
-        vec4 tex_color = textureLod(uAlbedo, vUv, 0.0);
+        // Service images expose a complete mip chain for regenerated paint.
+        vec4 tex_color = texture(uAlbedo, vUv);
         if ((uRun.materialFlags & 1u) != 0u && tex_color.a < 0.5) discard;
         if (vImportedMech != 0u)
             tex_color.rgb = msh_importedAlbedo(tex_color.rgb, uFrame.shadeB.z, uFrame.shadeB.w);

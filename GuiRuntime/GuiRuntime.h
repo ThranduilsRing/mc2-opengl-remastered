@@ -94,7 +94,7 @@ namespace GuiRuntime {
     bool PushUiClipRect(float x, float y, float w, float h);
     void PopUiClipRect();
 
-    bool DrawUiImage(unsigned int glTextureName,
+    bool DrawUiImage(std::uint64_t glTextureName,
                      float x,
                      float y,
                      float w,

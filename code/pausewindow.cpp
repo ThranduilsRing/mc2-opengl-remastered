@@ -1,3 +1,4 @@
+#include "../GameOS/gameos/ui_texture.h"
 #define PAUSEWINDOW_CPP
 /*************************************************************************************************\
 PauseWindow.cpp			: Implementation of the PauseWindow component.
@@ -346,12 +347,12 @@ bool PauseWindow::renderImGui()
 		s_frameMcH = mcTextureManager->loadTexture(
 			"data\\art\\gui\\mc2_pause_frame.png", gos_Texture_Alpha, 0, 0, 0x1 );
 	}
-	unsigned s_frameGlTex = 0;
+	uint64_t s_frameGlTex = 0;
 	if ( s_frameMcH )
 	{
 		DWORD gosID = mcTextureManager->get_gosTextureHandle( s_frameMcH );
 		if ( gosID && gosID != 0xffffffff )
-			s_frameGlTex = gos_GetGLTextureName( gosID );
+			s_frameGlTex = gos_GetUiTextureId( gosID );
 	}
 
 	// POLISH-IMGUI-SLICE-1 note: a PRESSED-state bake was evaluated (fit
@@ -538,12 +539,12 @@ void PauseWindow::renderImGuiConfirm()
 		s_dlgFrameMcH = mcTextureManager->loadTexture(
 			"data\\art\\gui\\mc2_dialog_frame.png", gos_Texture_Alpha, 0, 0, 0x1 );
 	}
-	unsigned dlgTex = 0;
+	uint64_t dlgTex = 0;
 	if ( s_dlgFrameMcH )
 	{
 		DWORD gosID = mcTextureManager->get_gosTextureHandle( s_dlgFrameMcH );
 		if ( gosID && gosID != 0xffffffff )
-			dlgTex = gos_GetGLTextureName( gosID );
+			dlgTex = gos_GetUiTextureId( gosID );
 	}
 
 	// POLISH-IMGUI-SLICE-1 note: a PRESSED-state bake was evaluated (fit

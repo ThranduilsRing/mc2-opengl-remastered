@@ -2,8 +2,13 @@
 // Declared in the class headers; shared names in txmmgr_internal.h.
 #include "txmmgr_internal.h"
 #include "mc2fmt.h"
+#include "fastfile.h"
 #include "../RenderCore/TextureService.h"
 #include <algorithm>
+#include "../GameOS/gameos/texture_decode.h"
+#ifdef MC2_VULKAN_ISLAND
+#include "../GameOS/gameos/ui_texture.h"
+#endif
 
 DWORD actualTextureSize = 0;
 DWORD compressedTextureSize = 0;
@@ -15,7 +20,7 @@ static const DWORD MC_TEXCACHE_MEM_RAW = 0xD0000000;
 static const DWORD MC_TEXCACHE_SIZE_MASK = 0x0FFFFFFF;
 static const long MC_TEXCACHE_RAW_THRESHOLD = 256 * 1024;
 
-static bool tryReadTgaLogicalSize(File& textureFile, DWORD uvScale, DWORD& logicalWidth, DWORD& logicalHeight)
+static bool tryReadTgaLogicalSize(File& textureFile, const char* name, DWORD& uvScale, DWORD& logicalWidth, DWORD& logicalHeight)
 {
 	logicalWidth = 0;
 	logicalHeight = 0;
@@ -61,6 +66,25 @@ static bool tryReadTgaLogicalSize(File& textureFile, DWORD uvScale, DWORD& logic
 	if (header.width <= 0 || header.height <= 0)
 		return false;
 
+    // A loose stock atlas is not necessarily upscaled. Use the archive's authored
+    // extent when available; this only reads metadata and never changes VFS precedence.
+    if (textureFile.isLoadedFromDisk() && name && (strstr(name,"/art/") || strstr(name,"\\art\\"))) {
+        long member=-1;
+        if (auto* archive=FastFileFind(name,member)) {
+            const long count=archive->sizeFast(member);
+            if (count>=sizeof(TGAFileHeader) && count<MAX_LZ_BUFFER_SIZE) {
+                std::vector<uint8_t> bytes(static_cast<size_t>(count));
+                if (archive->readFast(member,bytes.data(),count)==count) {
+                    TGAFileHeader authored{}; memcpy(&authored,bytes.data(),sizeof(authored));
+                    if (authored.width>0 && authored.height>0) {
+                        const DWORD sx=header.width/authored.width, sy=header.height/authored.height;
+                        uvScale=(sx && sx==sy && header.width%authored.width==0 && header.height%authored.height==0) ? sx : 1;
+                    }
+                }
+            }
+            archive->closeFast(member);
+        }
+    }
 	const DWORD scale = uvScale ? uvScale : 1;
 	logicalWidth = static_cast<DWORD>(header.width) / scale;
 	logicalHeight = static_cast<DWORD>(header.height) / scale;
@@ -138,6 +162,8 @@ DWORD MC_TextureManager::textureFromMemory (DWORD *data, gos_TextureFormat key, 
 	return(i);
 }
 
+static void txmIdentityAcquire(const MC_TextureNode& n, long node, uint32_t physicalWidth = 0, uint32_t physicalHeight = 0);
+
 DWORD MC_TextureManager::textureInstanceExists (const char *textureFullPathName, gos_TextureFormat key, DWORD hints, DWORD uniqueInstance, DWORD nFlush)
 {
 	long i=0;
@@ -151,6 +177,7 @@ DWORD MC_TextureManager::textureInstanceExists (const char *textureFullPathName,
 				if (uniqueInstance == masterTextureNodes[i].uniqueInstance)
 				{
 					masterTextureNodes[i].numUsers++;
+					txmIdentityAcquire(masterTextureNodes[i], i);
 					return(i);							//Return the texture Node Id Now.
 				}
 				else
@@ -165,16 +192,49 @@ DWORD MC_TextureManager::textureInstanceExists (const char *textureFullPathName,
 	return 0;
 }
 
+// Synchronous VFS extraction: File/FastFile scratch is never used by a worker. P3 owns asynchronous readers.
+static bool txmLoadCooked(const char* source, const char* sidecar, bool prefer, RenderCore::KtxImage& out)
+{
+    File cooked;
+    if (cooked.open(sidecar) != NO_ERR) return false;
+    File original;
+    const bool exists = original.open(source) == NO_ERR;
+    const int sourceRank = LookupModPriority(source) + (exists && !original.isLoadedFromDisk() ? 1 : 0);
+    const int cookedRank = LookupModPriority(sidecar) + (!cooked.isLoadedFromDisk() ? 1 : 0);
+    if (!RenderCore::preferCookedSource(exists, sourceRank, cookedRank, prefer)) return false;
+    const long size = cooked.fileSize();
+    if (size <= 0 || size > 256 * 1024 * 1024) return false;
+    std::vector<uint8_t> bytes(size);
+    if (cooked.read(bytes.data(), size) != size) return false;
+    const char* mod = LookupModOwner(sidecar);
+    const std::string provider = mod ? std::string("mod:") + mod : cooked.isLoadedFromDisk() ? "base-loose" : "fst";
+    RenderCore::TextureKey key;
+    key.source = RenderCore::makeTextureSourceId(provider, sidecar, RenderCore::textureContentHash(bytes.data(), bytes.size()));
+    auto& service = RenderCore::textureService();
+    if (auto cached = service.cooked(key)) { out = *cached; return true; }
+    auto parsed = RenderCore::ktxParse(bytes);
+    if (!parsed.image) return false;
+    out = std::move(*parsed.image);
+    service.cacheCooked(key, std::make_shared<const RenderCore::KtxImage>(out));
+    return true;
+}
+
 // P4a: the named node is reported to the texture service (key <-> handle <-> node). The key is built from the node's own fields, so a cache hit with
 // different caller hints still resolves to the first load's identity, exactly as the manager dedupes. No behavior change.
-static void txmIdentityAcquire (const MC_TextureNode& n, long node)
+static void txmIdentityAcquire (const MC_TextureNode& n, long node, uint32_t physicalWidth, uint32_t physicalHeight)
 {
 	RenderCore::TextureKey k;
-	k.source = RenderCore::makeTextureSourceId("txmmgr", n.nodeName ? n.nodeName : "", 0);
+	auto& service = RenderCore::textureService();
+    if (service.retainNode((uint32_t)node)) return;
+    const char* mod = n.nodeName ? LookupModOwner(n.nodeName) : nullptr;
+    k.source = RenderCore::makeTextureSourceId(mod ? mod : "legacy-vfs", n.nodeName ? n.nodeName : "",
+        n.textureData ? RenderCore::textureContentHash((const uint8_t*)n.textureData, n.lzCompSize) : 0);
 	k.variant = (uint32_t)n.uniqueInstance;
 	k.format = (uint32_t)n.key;
 	k.hints = (uint32_t)n.hints;
-	RenderCore::textureService().acquire(k, (uint32_t)node);
+	const uint32_t scale = n.uvScale ? n.uvScale : 1;
+	RenderCore::textureService().acquire(k, (uint32_t)node,
+		{physicalWidth ? physicalWidth : n.logicalWidth * scale, physicalHeight ? physicalHeight : n.logicalHeight * scale, n.logicalWidth, n.logicalHeight});
 }
 
 DWORD MC_TextureManager::loadTexture (const char *textureFullPathName, gos_TextureFormat key, DWORD hints, DWORD uniqueInstance, DWORD nFlush)
@@ -251,7 +311,6 @@ DWORD MC_TextureManager::loadTexture (const char *textureFullPathName, gos_Textu
 	masterTextureNodes[i].hints = hints;
 	masterTextureNodes[i].uniqueInstance = uniqueInstance;
 	masterTextureNodes[i].neverFLUSH = nFlush;
-	txmIdentityAcquire(masterTextureNodes[i], i);
 	masterTextureNodes[i].logicalWidth = 0;
 	masterTextureNodes[i].logicalHeight = 0;
 
@@ -275,7 +334,7 @@ DWORD MC_TextureManager::loadTexture (const char *textureFullPathName, gos_Textu
 	// tools/fst_repack_drop.py) the .ktx2 is decoded on demand. Set =0 to force
 	// the legacy "tga or bust" behavior.
 	static const int s_ktxPrimaryMode = mc2::gate::get<"MC2_TEXMGR_KTX_PRIMARY">();
-	if (s_ktxPrimaryMode == 2 || (s_ktxPrimaryMode == 1 && textureFileOpenResult != NO_ERR))
+	if (s_ktxPrimaryMode != 0)
 	{
 		{
 			char sidecar[1024];
@@ -288,9 +347,8 @@ DWORD MC_TextureManager::loadTexture (const char *textureFullPathName, gos_Textu
 			RenderCore::KtxImage img;
 			std::vector<uint8_t> rgba;
 			int kw = 0, kh = 0;
-			if (RenderCore::ktxLoadRgba8(sidecar, img) && img.isCompressed &&
-				(img.vkFormat == 145 || img.vkFormat == 146) && img.width == img.height &&
-				RenderCore::ktxDecodeBc7ToRgba8(img, 0, rgba, &kw, &kh) && kw == kh && kw > 0)
+			if (txmLoadCooked(textureFullPathName, sidecar, s_ktxPrimaryMode == 2, img) && img.isCompressed && img.width == img.height &&
+				RenderCore::ktxDecodeBlocksToRgba8(img, 0, rgba, &kw, &kh) && kw == kh && kw > 0)
 			{
 				const DWORD txmSize = (DWORD)(kw * kh * 4);
 				masterTextureNodes[i].uvScale = 4;
@@ -320,7 +378,8 @@ DWORD MC_TextureManager::loadTexture (const char *textureFullPathName, gos_Textu
 				else
 					masterTextureNodes[i].gosTextureHandle = 0;
 				mc2::fmt::print_out("[TEXMGR_KTX_PRIMARY] {} -> RGBA8 {:d}x{:d} (ktx2 CPU decode)\n", mc2::fmt::safe(sidecar), mc2::fmt::as_i32(kw), mc2::fmt::as_i32(kh)); fflush(stdout);
-				return(i);
+				txmIdentityAcquire(masterTextureNodes[i], i, (uint32_t)kw, (uint32_t)kh);
+		return(i);
 			}
 		}
 	}
@@ -329,7 +388,7 @@ DWORD MC_TextureManager::loadTexture (const char *textureFullPathName, gos_Textu
 		// A layout or object file can name a texture that is in no archive or
 		// loose tree (a stale mod or install). The node must still be a valid
 		// texture so every consumer (gos_LockTexture, UV math) stays safe: bind a
-		// transparent 1x1 to this node and say so once per node. Nodes are per
+		// visible magenta 1x1 to this node and say so once per node. Nodes are per
 		// (name, uniqueInstance), so there is no shared placeholder: each paint
 		// instance gets its own 1x1 and its own writable surface. gosASSERT is a no-op in this build, so
 		// the old assert let the unopened File reach fileSize() and a null texture.
@@ -345,9 +404,10 @@ DWORD MC_TextureManager::loadTexture (const char *textureFullPathName, gos_Textu
 		compressedTextureSize += txmSize;
 		masterTextureNodes[i].textureData = static_cast<DWORD *>(textureCacheHeap->Malloc(txmSize));
 		if (masterTextureNodes[i].textureData)
-			*masterTextureNodes[i].textureData = 0;
+			*masterTextureNodes[i].textureData = 0xffff00ffu;
 		else
 			masterTextureNodes[i].gosTextureHandle = 0;
+		txmIdentityAcquire(masterTextureNodes[i], i);
 		return(i);
 	}
 
@@ -394,7 +454,7 @@ DWORD MC_TextureManager::loadTexture (const char *textureFullPathName, gos_Textu
 		masterTextureNodes[i].uvScale = isNativeResUiAtlas ? 1 : 4;
 	}
 
-	tryReadTgaLogicalSize(textureFile, masterTextureNodes[i].uvScale,
+	tryReadTgaLogicalSize(textureFile, textureFullPathName, masterTextureNodes[i].uvScale,
 		masterTextureNodes[i].logicalWidth, masterTextureNodes[i].logicalHeight);
 
 	long txmSize = textureFile.fileSize();
@@ -459,6 +519,7 @@ DWORD MC_TextureManager::loadTexture (const char *textureFullPathName, gos_Textu
 		masterTextureNodes[i].width = MC_TEXCACHE_FILE_LZ + txmSize;
 	}
 
+	txmIdentityAcquire(masterTextureNodes[i], i);
 	return(i);
 }
 
@@ -543,6 +604,13 @@ long MC_TextureManager::refreshTexturesByName (const char *substring, long &skip
 		node.lzCompSize = cacheBytes;
 		node.width = (storeRawFileData ? MC_TEXCACHE_FILE_RAW : MC_TEXCACHE_FILE_LZ) + txmSize;
 
+        auto identity=RenderCore::textureService().handleOfNode(uint32_t(i));
+        if (identity.isValid()) {
+            RenderCore::textureService().rebind(identity,uint32_t(i));
+#ifdef MC2_VULKAN_ISLAND
+            mc2vk::invalidateUiImage(identity);
+#endif
+        }
 		// Force re-upload: destroy the resident gos texture (same cache-out
 		// dance as flushCache) so the next get_gosTextureHandle() re-creates
 		// it from the fresh bytes.
@@ -655,12 +723,90 @@ long MC_TextureManager::saveTexture (DWORD textureIndex, const char *textureFull
 	return NO_ERR;
 }
 
+namespace {
+struct UiTextureSource {
+    std::vector<uint8_t> bytes;
+    std::string name;
+    uint32_t width=0,height=0;
+    gos_TextureFormat key=gos_Texture_Alpha;
+    DWORD hints=0;
+    bool file=false;
+};
+std::optional<UiTextureSource> snapshotUiTexture(const MC_TextureNode& n) {
+    if (!n.numUsers || !n.textureData) return {};
+    const DWORD kind=n.width & 0xf0000000u;
+    const size_t count=(kind==MC_TEXCACHE_FILE_LZ || kind==MC_TEXCACHE_FILE_RAW || kind==MC_TEXCACHE_MEM_RAW)
+        ? n.width & MC_TEXCACHE_SIZE_MASK : size_t(n.width)*n.width*4;
+    if (!count || count>=MAX_LZ_BUFFER_SIZE) return {};
+    UiTextureSource source; source.bytes.resize(count); source.name=n.nodeName ? n.nodeName : "";
+    source.width=n.logicalWidth; source.height=n.logicalHeight; source.key=n.key; source.hints=n.hints;
+    source.file=kind==MC_TEXCACHE_FILE_LZ || kind==MC_TEXCACHE_FILE_RAW;
+    if (kind==MC_TEXCACHE_FILE_RAW || kind==MC_TEXCACHE_MEM_RAW) memcpy(source.bytes.data(),n.textureData,count);
+    else if (LZDecomp(source.bytes.data(),(MemoryPtr)n.textureData,n.lzCompSize,count)!=count) return {};
+    return source;
+}
+std::shared_ptr<const RenderCore::KtxImage> decodeUiTexture(UiTextureSource source) {
+    auto image=std::make_shared<RenderCore::KtxImage>();
+    if (source.file) {
+        auto decoded=mc2tex::decodeMemory(source.bytes.data(),source.bytes.size(),source.name.c_str(),source.key,source.hints);
+        if (!decoded) return {};
+        image->width=decoded->width; image->height=decoded->height;
+        if (decoded->layout==mc2tex::PixelLayout::RGB8) {
+            image->pixels.resize(size_t(image->width)*image->height*4);
+            for (size_t i=0,j=0;i<decoded->pixels.size() && j<image->pixels.size();i+=3,j+=4) {
+                if (i+2>=decoded->pixels.size()) break;
+                std::copy_n(decoded->pixels.data()+i,3,image->pixels.data()+j); image->pixels[j+3]=255;
+            }
+        } else image->pixels=std::move(decoded->pixels);
+    } else {
+        image->width=source.width; image->height=source.height;
+        if (source.bytes.size()!=size_t(image->width)*image->height*4) return {};
+        image->pixels=std::move(source.bytes);
+        for (size_t i=0;i<image->pixels.size();i+=4) {
+            std::swap(image->pixels[i],image->pixels[i+2]); // packed ARGB -> RGBA
+            if (source.key==gos_Texture_Solid) image->pixels[i+3]=255;
+        }
+    }
+    image->vkFormat=37; image->mipCount=1; image->mipByteOffsets={0};
+    return image;
+}
+}
+std::shared_ptr<const RenderCore::KtxImage> MC_TextureManager::textureImage(DWORD nodeId) {
+    if (nodeId>=MC_MAXTEXTURES) return {};
+    auto source=snapshotUiTexture(masterTextureNodes[nodeId]);
+    return source ? decodeUiTexture(std::move(*source)) : nullptr;
+}
+uint64_t MC_TextureManager::getUiTextureId(DWORD nodeId)
+{
+    if (nodeId>=MC_MAXTEXTURES || !masterTextureNodes[nodeId].numUsers) return 0;
+#ifdef MC2_VULKAN_ISLAND
+    if (!mc2vk::uiTextureServiceReady()) return gos_GetGLTextureName(get_gosTextureHandle(nodeId));
+    auto& service=RenderCore::textureService();
+    auto handle=service.handleOfNode(nodeId);
+    if (!handle.isValid()) {
+        const auto& n=masterTextureNodes[nodeId];
+        txmIdentityAcquire(n,nodeId,n.logicalWidth,n.logicalHeight);
+        handle=service.handleOfNode(nodeId);
+    }
+    // Device access stays behind the GameOS consumer boundary.
+    if (!mc2vk::hasUiImage(handle)) {
+        auto source=snapshotUiTexture(masterTextureNodes[nodeId]);
+        if (source) mc2vk::requestUiImage(handle,[source=std::move(*source)]() mutable { return decodeUiTexture(std::move(source)); });
+        else mc2vk::attachUiImage(handle,{});
+    }
+    return RenderCore::uiTextureId(handle);
+#else
+    return gos_GetGLTextureName(get_gosTextureHandle(nodeId));
+#endif
+}
+
 DWORD MC_TextureManager::copyTexture( DWORD texNodeID )
 {
 	gosASSERT( texNodeID < MC_MAXTEXTURES );
-	if ( masterTextureNodes[texNodeID].gosTextureHandle != -1 )
+	if ( masterTextureNodes[texNodeID].numUsers && masterTextureNodes[texNodeID].gosTextureHandle != -1 )
 	{
 		masterTextureNodes[texNodeID].numUsers++;
+        RenderCore::textureService().retain(RenderCore::textureService().handleOfNode(texNodeID));
 		return texNodeID;
 	}
 	else
@@ -814,15 +960,17 @@ DWORD MC_TextureNode::get_gosTextureHandle (void)	//If texture is not in VidRAM,
 						if (haveRoom)
 						{
 							// Disk-only probe (std::fopen, NOT File/FastFile).
-							FILE* probe = std::fopen(sidecar, "rb");
+							File probeFile;
+                            const bool allowed = probeFile.open(sidecar) == NO_ERR;
+                            const bool probe = allowed;
 							if (!probe)
 							{
 							}
 							else
 							{
-								std::fclose(probe);
+								probeFile.close();
 								RenderCore::KtxImage img;
-								if (RenderCore::ktxLoadRgba8(sidecar, img) &&
+								if (txmLoadCooked(nodeName, sidecar, true, img) &&
 									img.isCompressed &&
 									(img.vkFormat == 145 || img.vkFormat == 146))
 								{

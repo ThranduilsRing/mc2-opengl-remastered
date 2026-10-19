@@ -1,3 +1,4 @@
+#include "../GameOS/gameos/ui_texture.h"
 #define INFOWINDOW_CPP
 /*************************************************************************************************\
 InfoWindow.cpp			: Implementation of the InfoWindow component.
@@ -595,7 +596,7 @@ void InfoWindow::renderImGui()
 			// the first scrolling section, not pinned chrome.
 			if ( icon )
 			{
-				unsigned int iconTex = 0;
+				uint64_t iconTex = 0;
 				float u0, v0, u1, v1;
 				const float dollTop = ImGui::GetCursorScreenPos().y;
 				const float dollBot = dollTop + (float)MECHHEIGHT * sy;
@@ -665,7 +666,7 @@ void InfoWindow::renderImGui()
 				if ( icon )
 				{
 					const float rowTop = ImGui::GetCursorScreenPos().y;
-					unsigned int pTex = 0;
+					uint64_t pTex = 0;
 					float pu0, pv0, pu1, pv1;
 					if ( pilot.active && icon->getPilotIconTexUV( pTex, pu0, pv0, pu1, pv1 ) )
 					{
@@ -711,8 +712,8 @@ void InfoWindow::renderImGui()
 					{
 						DWORD gosID = mcTextureManager->get_gosTextureHandle(
 							skillInfos[currentSkill].textureHandle );
-						unsigned glTex = ( gosID && gosID != 0xffffffff )
-							? gos_GetGLTextureName( gosID ) : 0;
+						uint64_t glTex = ( gosID && gosID != 0xffffffff )
+							? gos_GetUiTextureId( gosID ) : 0;
 						if ( glTex )
 							cdl->AddImage( (ImTextureID)(intptr_t)glTex,
 								ImVec2( AX( loc[0].x ), rowTop ),
@@ -860,7 +861,7 @@ void InfoWindow::renderImGui()
 			DWORD gosID = mcTextureManager->get_gosTextureHandle( buttonData[i].textureHandle );
 			if ( !gosID || gosID == 0xffffffff )
 				continue;
-			unsigned glTex = gos_GetGLTextureName( gosID );
+			uint64_t glTex = gos_GetUiTextureId( gosID );
 			if ( !glTex )
 				continue;
 			const gos_VERTEX* loc = buttons[i].location;

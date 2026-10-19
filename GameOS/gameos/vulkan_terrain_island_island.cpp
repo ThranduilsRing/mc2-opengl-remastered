@@ -156,14 +156,11 @@ const SkirtMesh* getOrBuildSkirtMesh(TerrainIsland* s, int qcX, int qcY, int lod
 // draw time, while the island's own copies are transitioned to SHADER_READ_ONLY.
 constexpr VkImageLayout kDirectShadowLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
 
-void write_descriptors(TerrainIsland* s) {
-    // VK-TERRAIN-FENCE-DEFER-1: write BOTH parity sets (set[i] binds ubo[i]; every
-    // other binding is identical single-instance state). Callers must guarantee no
-    // in-flight command buffer can be using either set during the update: buffer-grow
-    // callers vkDeviceWaitIdle first, copy-once importers run right after an inline
-    // one-shot fence wait (which retires ALL earlier submission-order work on the
-    // queue), and the per-frame bound-view switch in run() device-idles (rare).
-    for (int i = 0; i < 2; ++i) {
+void write_descriptors(TerrainIsland* s, int parity) {
+    if (parity<0) { s->descriptorsDirty[0]=s->descriptorsDirty[1]=true; return; }
+    // Only the retired parity is written; upload requests mark both parities dirty.
+    for (int i = parity; i <= parity; ++i) {
+    s->descriptorsDirty[i]=false;
     if (s->set[i] == VK_NULL_HANDLE) continue;
     // binding 0 = dynamic UBO (per-patch frame block); binding 1 = height SSBO;
     // binding 2 = colormap combined-image-sampler (COLORMAP-BASE, only when live).
@@ -184,8 +181,9 @@ void write_descriptors(TerrainIsland* s) {
     w[n].dstBinding = 1; w[n].descriptorCount = 1;
     w[n].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; w[n].pBufferInfo = &hInfo; ++n;
     VkDescriptorImageInfo cmInfo{};
-    if (s->colormapReady && s->colormapView && s->colormapSamp) {
-        cmInfo.sampler = s->colormapSamp.get(); cmInfo.imageView = s->colormapView.get();
+    // The dummy is a valid binding even when the real atlas is absent on editor reopen.
+    if (s->colormapTexture && s->colormapSamp) {
+        cmInfo.sampler = s->colormapSamp.get(); cmInfo.imageView = s->colormapTexture.view();
         cmInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = s->set[i];
         w[n].dstBinding = 2; w[n].descriptorCount = 1;
@@ -193,8 +191,8 @@ void write_descriptors(TerrainIsland* s) {
     }
     // CEMENT: binding 3 sampler — always written (dummy 1x1 until the real atlas imports).
     VkDescriptorImageInfo ceInfo{};
-    if (s->cementView && s->cementSamp) {
-        ceInfo.sampler = s->cementSamp.get(); ceInfo.imageView = s->cementView.get();
+    if (s->cementTexture && s->cementSamp) {
+        ceInfo.sampler = s->cementSamp.get(); ceInfo.imageView = s->cementTexture.view();
         ceInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = s->set[i];
         w[n].dstBinding = 3; w[n].descriptorCount = 1;
@@ -221,8 +219,8 @@ void write_descriptors(TerrainIsland* s) {
     // VK-TERRAIN-DETAIL: binding 6 material detail-normal sampler2DArray — always written
     // once the (dummy 1x1x1 or real) array image + sampler exist (uT.detailReady gates use).
     VkDescriptorImageInfo mnInfo{};
-    if (s->matNormalView && s->matNormalSamp) {
-        mnInfo.sampler = s->matNormalSamp.get(); mnInfo.imageView = s->matNormalView.get();
+    if (s->matNormalTexture && s->matNormalSamp) {
+        mnInfo.sampler = s->matNormalSamp.get(); mnInfo.imageView = s->matNormalTexture.view();
         mnInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = s->set[i];
         w[n].dstBinding = 6; w[n].descriptorCount = 1;
@@ -279,8 +277,8 @@ void write_descriptors(TerrainIsland* s) {
     // VK-PARITY-TERRAIN-2: bindings 11/12/13 light pool / grid header / grid indices are the ring bindings written above.
     // TERRAIN-SHORELINE-V3: binding 14 shoreline mask (dummy until a mission ships one; uT.shorelineHasMask gates use).
     VkDescriptorImageInfo smInfo{};
-    if (s->shoreMaskView && s->colormapSamp) {
-        smInfo.sampler = s->colormapSamp.get(); smInfo.imageView = s->shoreMaskView.get();
+    if (s->shoreMaskTexture && s->colormapSamp) {
+        smInfo.sampler = s->colormapSamp.get(); smInfo.imageView = s->shoreMaskTexture.view();
         smInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = s->set[i];
         w[n].dstBinding = 14; w[n].descriptorCount = 1;

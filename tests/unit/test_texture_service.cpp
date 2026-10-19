@@ -4,6 +4,9 @@
 #include "doctest.h"
 #include "MaterialRegistry.h"
 #include "TextureService.h"
+#include "TextureStream.h"
+#include <future>
+#include "../../GameOS/gameos/vk_completion_tracker.h"
 
 using namespace RenderCore;
 
@@ -28,6 +31,36 @@ TEST_CASE("the same key is one handle; a second acquire raises the user count an
     CHECK(s.users(a) == 2);
     CHECK(s.nodeOf(a) == 7);
     CHECK(s.liveCount() == 1);
+}
+
+TEST_CASE("shared-key node aliases survive canonical destruction without leaking users") {
+    TextureService s;
+    const auto key=keyOf("base","data/art/foo.tga",17);
+    const auto first=s.acquire(key,7);
+    REQUIRE(s.acquire(key,9)==first);
+    CHECK(s.handleOfNode(7)==first); CHECK(s.handleOfNode(9)==first);
+    REQUIRE(s.retainNode(9)); CHECK(s.users(first)==3);
+    s.dropRef(9); CHECK(s.users(first)==2);
+    s.onNodeDestroyed(7);
+    CHECK(s.isLive(first)); CHECK(s.nodeOf(first)==9); CHECK(s.users(first)==1);
+    CHECK_FALSE(s.handleOfNode(7).isValid());
+    const auto replacement=s.acquire(keyOf("base","other",19),7);
+    CHECK(replacement!=first); CHECK(s.handleOfNode(9)==first);
+    s.dropRef(9); CHECK(s.users(first)==0); CHECK(s.isLive(first));
+    s.onNodeDestroyed(9); CHECK_FALSE(s.isLive(first));
+    CHECK(s.isLive(replacement));
+}
+
+TEST_CASE("shared-key aliases remain indexed across rebind and clear") {
+    TextureService s;
+    const auto key=keyOf("base","a",1);
+    const auto h=s.acquire(key,1); REQUIRE(s.acquire(key,2)==h);
+    REQUIRE(s.rebind(h,3));
+    CHECK_FALSE(s.handleOfNode(1).isValid());
+    CHECK(s.handleOfNode(2)==h); CHECK(s.handleOfNode(3)==h);
+    s.onNodeDestroyed(2); CHECK(s.isLive(h)); CHECK(s.users(h)==1);
+    s.clear();
+    CHECK_FALSE(s.handleOfNode(3).isValid()); CHECK_FALSE(s.isLive(h));
 }
 
 TEST_CASE("path spelling is folded: case and separators do not make a new key") {
@@ -186,4 +219,167 @@ TEST_CASE("handles and set refs the registry did not issue are refused") {
     CHECK_FALSE(r.materialOfSetSlot(big, 3).isValid());
 }
 
+
+TEST_CASE("TXM material slots reject registration snapshots after replacement and node reuse") {
+    TextureService service;
+    TextureKey source; source.source="mod:props/a.tga";
+    const auto a=service.acquire(source,7);
+    source.source="mod:props/b.tga"; const auto b=service.acquire(source,8);
+    auto& materials=service.materials();
+    auto bind=[&](TextureHandle texture) { return materials.acquireSet({materials.acquire(matKey(0x1234,0,texture))}); };
+    auto textureOf=[&](MaterialSetRef set) { return materials.keyOf(materials.materialOfSetSlot(set,0))->albedo; };
+    const auto first=bind(a), sibling=bind(b);
+    CHECK_FALSE(first==sibling);
+    CHECK(textureOf(first)==a); CHECK(textureOf(sibling)==b);
+    const auto registrationSnapshot=first;
+    const auto replaced=bind(b);
+    CHECK(replaced==sibling);
+    CHECK_FALSE(textureOf(registrationSnapshot)==textureOf(replaced)); // negative control must reject the cached registration handle
+    service.release(a);
+    CHECK(service.isLive(a)); // node identity remains live until the manager destroys its node
+    service.onNodeDestroyed(7);
+    source.source="mod:props/damage.tga"; const auto damage=service.acquire(source,7);
+    CHECK(damage!=a); CHECK_FALSE(service.isLive(textureOf(registrationSnapshot)));
+    CHECK(textureOf(bind(damage))==damage);
+    CHECK(textureOf(sibling)==b); // late spawn / damage swap never mutates the sibling
+    service.clear();
+    CHECK_FALSE(service.isLive(damage)); CHECK_FALSE(service.isLive(b));
+}
+
 }  // TEST_SUITE
+
+// Keep MSVC from expanding the generation-exhaustion loop into the test body.
+DOCTEST_NOINLINE bool recycleTexture(TextureService& service, const TextureKey& key) {
+    return service.release(service.acquire(key));
+}
+
+TEST_CASE("TextureService: adopt retain dimensions and generation exhaustion") {
+    TextureService s;
+    const auto h = s.acquire(keyOf("base", "ui.tga", 1), kNoTextureNode, {256, 128, 64, 32});
+    {
+        auto a = ServiceTextureRef::adopt(s, h);
+        { auto b = ServiceTextureRef::retain(s, h); CHECK(s.users(h) == 2); }
+        CHECK(s.users(h) == 1);
+        CHECK(s.dimensions(h).logicalHeight == 32);
+    }
+    CHECK_FALSE(s.isLive(h));
+    CHECK_FALSE(s.retain(h));
+    CHECK(s.dimensions(h).logicalWidth == 16);
+    for (int i = 0; i < 4095; ++i) {
+        REQUIRE(recycleTexture(s,keyOf("base", "ui.tga", 1)));
+    }
+    auto fresh = s.acquire(keyOf("base", "ui.tga", 1));
+    CHECK_FALSE(s.isLive(h));
+    CHECK(fresh.index() != h.index());
+}
+
+TEST_CASE("TextureService: provider precedence and cooked cache versions") {
+    CHECK_FALSE(preferCookedSource(true, 0, 1000000, true)); // mod TGA beats base KTX
+    CHECK(preferCookedSource(false, 1000000, 1000001, false)); // FST KTX only
+    CHECK(preferCookedSource(true, 3, 0, false)); // active mod KTX beats dependency source
+    CHECK_FALSE(preferCookedSource(true, 0, 1, true)); // dependency KTX cannot outrank active TGA
+    TextureService s;
+    auto key = keyOf("mod:Exodus", "skin.ktx2", 5);
+    auto img = std::make_shared<KtxImage>(); img->width=8;
+    s.cacheCooked(key,img); CHECK(s.cooked(key)->width==8);
+    ++key.cookVersion; CHECK_FALSE(bool(s.cooked(key)));
+    key=keyOf("base", "skin.ktx2",5); CHECK_FALSE(bool(s.cooked(key)));
+    key=keyOf("mod:Exodus", "skin.ktx2",6); CHECK_FALSE(bool(s.cooked(key)));
+}
+
+TEST_CASE("TextureService: last reference during flight and descriptor reuse") {
+    TextureService service;
+    TextureDescriptorTable table(2);
+    int destroyed=0;
+    auto make=[&]{return std::shared_ptr<void>(new int(1),[&](void* p){delete static_cast<int*>(p);++destroyed;});};
+    const auto old=service.acquire(keyOf("base","a",1));
+    auto owner=make(); CHECK_FALSE(table.full());
+    const auto slot=table.insert(old,owner); REQUIRE(slot==1); CHECK(table.full());
+    auto inFlight=table.snapshot(); owner.reset();
+    CHECK(table.insert(service.acquire(keyOf("base","b",2)),make())==0); // capacity exhaustion
+    CHECK(service.release(old)); CHECK(table.erase(old));
+    CHECK(destroyed==1); // only the rejected allocation, never the submitted image
+    auto next=service.acquire(keyOf("base","c",3));
+    CHECK(table.insert(next,make())==slot);
+    CHECK(table.index(old)==0); CHECK_FALSE(table.erase(old));
+    auto nextFlight=table.snapshot();
+    CHECK(inFlight[slot].handle==old); CHECK(nextFlight[slot].handle==next);
+    CHECK_FALSE(service.retain(old)); // stale generation cannot name the replacement
+    inFlight.clear(); CHECK(destroyed==2);
+    CHECK(table.erase(next)); nextFlight.clear(); CHECK(destroyed==3);
+}
+
+TEST_CASE("TextureService: delayed streaming staging cancellation and reload") {
+    TextureService service;
+    TextureDescriptorTable table(3);
+    TextureStagingBudget budget{16};
+    mc2vk::CompletionTracker tracker;
+    const auto old=service.acquire(keyOf("base","stream",1));
+    const mc2vk::GpuTicket ticket{tracker.noteSubmit(mc2vk::QueueKind::Graphics),0};
+    REQUIRE(budget.reserve(16));
+    CHECK_FALSE(budget.reserve(1)); // exhausted staging defers work, never waits
+    CHECK(table.index(old)==0); // delayed uploads stay visibly pending
+    REQUIRE(service.release(old));
+    const auto fresh=service.acquire(keyOf("base","stream",1));
+    CHECK(old!=fresh);
+    CHECK_FALSE(tracker.isComplete(ticket));
+    tracker.setCompleted(mc2vk::QueueKind::Graphics,ticket.gfx);
+    REQUIRE(tracker.isComplete(ticket)); budget.complete(16);
+    CHECK_FALSE(service.isLive(old)); // cancelled result cannot attach to the reused slot
+    REQUIRE(budget.reserve(16));
+    CHECK(table.insert(fresh,std::make_shared<int>(1))==1); // eventual art after completion
+    CHECK(table.index(old)==0);
+    budget.complete(16); CHECK(budget.used==0);
+}
+
+TEST_CASE("TextureService: UI ids retain every generation bit and signal node retirement") {
+    const auto high=TextureHandle::make(0xfffffu,0xfffu);
+    CHECK(uiTextureHandle(uiTextureId(high))==high);
+    CHECK_FALSE(isUiTextureId(42));
+    CHECK_FALSE(uiTextureHandle(42).isValid());
+    TextureService service;
+    TextureHandle retired;
+    service.onRetired=[&](TextureHandle h) { retired=h; };
+    const auto original=service.acquire(keyOf("base","cursor",1),7,{256,128,64,32});
+    REQUIRE(service.retain(original)); // copying then releasing the original keeps dimensions
+    REQUIRE(service.release(original));
+    CHECK(service.dimensions(original).logicalHeight==32);
+    CHECK(service.users(original)==1);
+    service.onNodeDestroyed(7);
+    CHECK(retired==original);
+    CHECK_FALSE(service.isLive(uiTextureHandle(uiTextureId(original))));
+}
+
+TEST_CASE("TextureService: owned decode worker and oversized staging admission") {
+    TextureDecodeWorker worker;
+    std::promise<bool> decoded;
+    auto result=decoded.get_future();
+    std::vector<uint8_t> bytes={1,2,3,255};
+    worker.request(TextureHandle::make(1,1),[owned=std::move(bytes),&decoded] {
+        auto image=std::make_shared<KtxImage>(); image->pixels=owned;
+        decoded.set_value(owned==std::vector<uint8_t>{1,2,3,255});
+        return image;
+    });
+    REQUIRE(result.get());
+    TextureStagingBudget budget{16};
+    REQUIRE(budget.reserve(32)); // one large atlas can make progress
+    CHECK_FALSE(budget.reserve(1));
+    budget.complete(32); REQUIRE(budget.reserve(16)); budget.complete(16);
+    CHECK(budget.used==0);
+}
+
+TEST_CASE("TextureService: reload keeps identity and rejects an older decoded result") {
+    TextureService service;
+    TextureDecodeWorker worker;
+    const auto handle=service.acquire(keyOf("base","reload",1),7);
+    std::promise<void> allow,drained;
+    auto gate=allow.get_future().share(); auto done=drained.get_future();
+    worker.request(handle,[gate] { gate.wait(); return std::make_shared<const KtxImage>(); },service.contentVersion(handle));
+    worker.request(TextureHandle::make(99,1),[&drained] { drained.set_value(); return std::shared_ptr<const KtxImage>{}; });
+    REQUIRE(service.rebind(handle,7));
+    allow.set_value(); done.get(); // the single worker published the first result before starting the second
+    auto results=worker.take();
+    REQUIRE_FALSE(results.empty()); CHECK(results.front().handle==handle);
+    CHECK(service.isLive(handle));
+    CHECK(results.front().contentVersion!=service.contentVersion(handle));
+}

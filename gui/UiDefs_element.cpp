@@ -187,6 +187,7 @@ UiElement makeElement(const Block& b)
     if (e.legacySection.empty())
         e.legacySection = field(b.fields, "sourceControlType");
     e.texturePath = field(b.fields, "texture");
+    e.legacyTexture = field(b.fields, "legacyTexture");
     e.textKey = !field(b.fields, "textKey").empty() ? field(b.fields, "textKey") : field(b.fields, "proposedTextKey");
     e.text = resolvedText(b.fields);
 

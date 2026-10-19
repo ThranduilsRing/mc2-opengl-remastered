@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in msl_internal.h.
 #include "msl_internal.h"
 #include "mc2fmt.h"
+#include "../RenderCore/TextureService.h"
 
 
 //-------------------------------------------------------------------------------
@@ -43,6 +44,7 @@ long TG_TypeMultiShape::SetTextureHandle (DWORD textureNum, DWORD gosTextureHand
 	if (textureNum >= numTextures)
 		return(-1);
 
+    materialDefaultsDefined_.resize(numTextures); materialDefaultsDefined_[textureNum]|=1;
 	listOfTextures[textureNum].mcTextureNodeIndex = gosTextureHandle;
 	listOfTextures[textureNum].gosTextureHandle = 0xffffffff;
 
@@ -89,6 +91,7 @@ long TG_TypeMultiShape::SetTextureAlpha (DWORD textureNum, bool alphaFlag)
 	if (textureNum >= numTextures)
 		return(-1);
 
+    materialDefaultsDefined_.resize(numTextures); materialDefaultsDefined_[textureNum]|=2;
 	listOfTextures[textureNum].textureAlpha = alphaFlag;
 
 	// 2026-05-11 leaf propagation: TG_TypeShape leaves carry their own
@@ -287,20 +290,11 @@ glm::quat moveem;
 //gos_DrawTriangle.
 void TG_MultiShape::Render (bool refreshTextures, float forceZ)
 {
+    BindMaterials();
 	for (long i=0;i<numTG_Shapes;i++)
 	{
 		if (listOfShapes[i].processMe && listOfShapes[i].node)
 		{
-			//-------------------------------------------------------
-			// Only need to due for unique instance items like mechs
-			if (refreshTextures)
-			{
-				for (long j=0;j<myMultiType->numTextures;j++)
-				{
-					listOfShapes[i].node->myType->SetTextureHandle(j,myMultiType->listOfTextures[j].mcTextureNodeIndex);
-					listOfShapes[i].node->myType->SetTextureAlpha(j,myMultiType->listOfTextures[j].textureAlpha); 
-				}
-			}
 
 			glm::mat4  shapeToClip;
 			shapeToClip = listOfShapes[i].shapeToWorld * TG_Shape::s_worldToClip;
@@ -316,21 +310,12 @@ void TG_MultiShape::Render (bool refreshTextures, float forceZ)
 //gos_DrawTriangle.
 void TG_MultiShape::RenderShadows (bool refreshTextures)
 {
+    BindMaterials();
 	long start = 0;
 	for (long i=0;i<numTG_Shapes;i++)
 	{
 		if (listOfShapes[i].processMe && listOfShapes[i].node)
 		{
-			//-------------------------------------------------------
-			// Only need to due for unique instance items like mechs
-			if (refreshTextures)
-			{
-				for (long j=0;j<myMultiType->numTextures;j++)
-				{
-					listOfShapes[i].node->myType->SetTextureHandle(j,myMultiType->listOfTextures[j].mcTextureNodeIndex);
-					listOfShapes[i].node->myType->SetTextureAlpha(j,myMultiType->listOfTextures[j].textureAlpha); 
-				}
-			}
 
 			start = listOfShapes[i].node->RenderShadows(start);
 		}
@@ -433,6 +418,9 @@ TG_MultiShapePtr TG_MultiShape::Detach (const char *nodeName)
 	//Then, create a new TG_MultiShape and stuff it with the shapes found.
 	TG_MultiShapePtr resultShape = new TG_MultiShape;
 	resultShape->myMultiType = myMultiType;
+    resultShape->instanceTextures_=instanceTextures_;
+    resultShape->instanceMaterials_=instanceMaterials_;
+    resultShape->materialSet_=materialSet_;
 	resultShape->numTG_Shapes = curShape;
 	
 	std::vector<TG_ShapeRec>(curShape).swap(resultShape->shapeRecStore);
@@ -442,7 +430,7 @@ TG_MultiShapePtr TG_MultiShape::Detach (const char *nodeName)
 	
 	for (i=0;i<curShape;i++)
 	{
-		resultShape->listOfShapes[i].transferFrom(*detachables[i]);
+		resultShape->listOfShapes[i].transferFrom(*detachables[i],resultShape->instanceTextures_.data());
 		
 		if (S_stricmp(resultShape->listOfShapes[i].node->getNodeName(),nodeName) == 0)
 			resultShape->listOfShapes[i].parentNode = nullptr;		//Set new top O heirarchy.
@@ -538,4 +526,60 @@ bool TG_MultiShape::isChildOf (const char *nodeName, const char* parentName)
 	}
 	
 	return false;
+}
+
+void TG_MultiShape::initMaterialSlots() {
+    if (!instanceTextures_.empty() || !myMultiType) return;
+    instanceTextures_.resize(myMultiType->numTextures);
+    for (DWORD i=0;i<myMultiType->numTextures;++i) {
+        const auto& src=myMultiType->listOfTextures[i];
+        instanceTextures_[i]={src.mcTextureNodeIndex,src.gosTextureHandle,src.textureAlpha};
+    }
+}
+long TG_MultiShape::SetTextureHandle(DWORD slot,DWORD node) {
+    if (!myMultiType || slot>=myMultiType->numTextures) return -1;
+    if (myMultiType->materialDefaultsDefined_.size()!=myMultiType->numTextures)
+        myMultiType->materialDefaultsDefined_.resize(myMultiType->numTextures);
+    if (!(myMultiType->materialDefaultsDefined_[slot]&1)) myMultiType->SetTextureHandle(slot,node);
+    initMaterialSlots(); instanceTextures_[slot].mcTextureNodeIndex=node; return 0;
+}
+long TG_MultiShape::SetTextureAlpha(DWORD slot,bool alpha) {
+    if (!myMultiType || slot>=myMultiType->numTextures) return -1;
+    if (myMultiType->materialDefaultsDefined_.size()!=myMultiType->numTextures)
+        myMultiType->materialDefaultsDefined_.resize(myMultiType->numTextures);
+    if (!(myMultiType->materialDefaultsDefined_[slot]&2)) myMultiType->SetTextureAlpha(slot,alpha);
+    initMaterialSlots(); instanceTextures_[slot].textureAlpha=alpha; return 0;
+}
+DWORD TG_MultiShape::GetTextureHandle(DWORD slot) const {
+    if (!myMultiType || slot>=myMultiType->numTextures) return 0xffffffffu;
+    return instanceTextures_.empty() ? myMultiType->listOfTextures[slot].mcTextureNodeIndex : instanceTextures_[slot].mcTextureNodeIndex;
+}
+bool TG_MultiShape::usesTypeMaterials() const {
+    if (!myMultiType) return false;
+    for (DWORD i=0;i<instanceTextures_.size();++i)
+        if (instanceTextures_[i].mcTextureNodeIndex!=myMultiType->listOfTextures[i].mcTextureNodeIndex ||
+            instanceTextures_[i].textureAlpha!=myMultiType->listOfTextures[i].textureAlpha) return false;
+    return true;
+}
+void TG_MultiShape::BindMaterials() {
+    initMaterialSlots();
+    if (instanceTextures_.empty()) return;
+    auto& service=RenderCore::textureService(); auto& registry=service.materials();
+    bool changed=instanceMaterials_.size()!=instanceTextures_.size();
+    instanceMaterials_.resize(instanceTextures_.size());
+    for (DWORD i=0;i<instanceTextures_.size();++i) {
+        auto& texture=instanceTextures_[i];
+        RenderCore::MaterialKey key;
+        key.meshKey=reinterpret_cast<uintptr_t>(myMultiType); key.slot=i;
+        key.albedo=service.handleOfNode(texture.mcTextureNodeIndex);
+        key.passClass=texture.textureAlpha ? 1u : 0u;
+        const auto* old=registry.keyOf(instanceMaterials_[i]);
+        if (!old || !(*old==key)) { instanceMaterials_[i]=registry.acquire(key); changed=true; }
+        // The material stores generation identity; gos is resolved only at the legacy producer boundary.
+        const DWORD node=key.albedo.isValid() ? service.nodeOf(key.albedo) : texture.mcTextureNodeIndex;
+        texture.gosTextureHandle=mcTextureManager && node!=0xffffffffu ? mcTextureManager->get_gosTextureHandle(node) : 0xffffffffu;
+    }
+    if (changed || !materialSet_.valid()) materialSet_=registry.acquireSet(instanceMaterials_);
+    for (long i=0;i<numTG_Shapes;++i)
+        if (listOfShapes[i].node) listOfShapes[i].node->instanceTextures_=instanceTextures_.data();
 }

@@ -77,6 +77,8 @@ void ActivateModForMission(const char* missionFitKey);
 void DeactivateMod();
 // Diagnostic: returns owning mod id for a data path, or nullptr if not in mod index.
 const char* LookupModOwner(const char* dataPath);
+// Lower values win; follows the same active/dependency order as File::open.
+int LookupModPriority(const char* dataPath);
 // Enumerate data/campaign/*.fit files from the active mod (for campaign list UI).
 using ModCampaignCallback = void(*)(const char* fitFileName, const char* fullPath, void* userData);
 void EnumerateModCampaignFiles(ModCampaignCallback cb, void* userData);

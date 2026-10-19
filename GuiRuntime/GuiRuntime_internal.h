@@ -142,13 +142,13 @@ inline ImU32 argbToImU32(std::uint32_t argb)
 // commonly use void*.  Keep the UI image path source-compatible with both
 // without pulling in backend-specific casts at call sites.
 template <typename T>
-inline typename std::enable_if<std::is_pointer<T>::value, T>::type makeImTextureID(unsigned int glTextureName)
+inline typename std::enable_if<std::is_pointer<T>::value, T>::type makeImTextureID(std::uint64_t glTextureName)
 {
     return reinterpret_cast<T>(static_cast<intptr_t>(glTextureName));
 }
 
 template <typename T>
-inline typename std::enable_if<!std::is_pointer<T>::value, T>::type makeImTextureID(unsigned int glTextureName)
+inline typename std::enable_if<!std::is_pointer<T>::value, T>::type makeImTextureID(std::uint64_t glTextureName)
 {
     return static_cast<T>(glTextureName);
 }

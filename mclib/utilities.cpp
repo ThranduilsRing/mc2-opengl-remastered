@@ -221,41 +221,17 @@ void StaticInfo::getData(unsigned char * buffer)
 		return;
 	}
 	
-	unsigned long gosID = mcTextureManager->get_gosTextureHandle( textureHandle );
-	if (gosID)
-	{
-		TEXTUREPTR textureData;
-		gos_LockTexture( gosID, 0, 0, &textureData );
-	
-		DWORD *bufMem = (DWORD *)buffer;
-		DWORD localU = location[0].u * textureData.Width;
-		DWORD localV = location[0].v * textureData.Width;
+    memset(buffer,0,sizeof(DWORD)*32*32);
+    const auto image=mcTextureManager->textureImage(textureHandle);
+    if (!image || image->vkFormat!=37) return;
+    const auto x0=DWORD(location[0].u*image->width), y0=DWORD(location[0].v*image->height);
+    if (x0+uWidth>DWORD(image->width) || y0+vHeight>DWORD(image->height)) return;
+    auto* out=reinterpret_cast<DWORD*>(buffer);
+    for (long y=0;y<vHeight;++y) for (long x=0;x<uWidth;++x) {
+        const auto* pixel=image->pixels.data()+4*(x0+x+(y0+y)*image->width);
+        *out++=(DWORD(pixel[3])<<24)|(DWORD(pixel[0])<<16)|(DWORD(pixel[1])<<8)|pixel[2];
+    }
 
-		//Make sure we don't fall off of the texture!
-		if ((localU > textureData.Width) ||
-			((localU + uWidth) > textureData.Width) ||
-			(localV > textureData.Width) ||
-			((localV + vHeight) > textureData.Width))
-		{
-			memset(buffer,0,sizeof(DWORD) * 32 * 32);
-			gos_UnLockTexture( gosID );
-			return;
-		}
-
-		for (long y=0;y<vHeight;y++)
-		{
-			DWORD *textureMemory = textureData.pTexture + (localU + ((localV+y) * textureData.Width));
-		
-			for (long x=0;x<uWidth;x++)
-			{
-				*bufMem = *textureMemory;
-				bufMem++;
-				textureMemory++;
-			}
-		}
-
-		gos_UnLockTexture( gosID );
-	}
 }
 
 void StaticInfo::init( FitIniFile& file, const char* blockName, long hiResOffsetX, long hiResOffsetY, DWORD neverFlush )
@@ -309,21 +285,7 @@ void StaticInfo::init( FitIniFile& file, const char* blockName, long hiResOffset
 			textureWidth = logicalWidth;
 		else
 		{
-			unsigned long gosID;
-			{
-				ZoneScopedN("StaticInfo::init get_gosTextureHandle");
-				gosID = mcTextureManager->get_gosTextureHandle( ID );
-			}
-			TEXTUREPTR textureData;
-			{
-				ZoneScopedN("StaticInfo::init gos_LockTexture");
-				gos_LockTexture( gosID, 0, 0, 	&textureData );
-			}
-			textureWidth = textureData.Width / mcTextureManager->getUVScale(ID);
-			{
-				ZoneScopedN("StaticInfo::init gos_UnLockTexture");
-				gos_UnLockTexture( gosID );
-			}
+            textureWidth=RenderCore::textureService().dimensions(RenderCore::textureService().handleOfNode(ID)).logicalWidth;
 		}
 	}
 

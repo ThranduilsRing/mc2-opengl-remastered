@@ -33,7 +33,10 @@
 
 namespace RenderCore {
 
+enum class KtxAlpha : uint8_t { Opaque, Cutout, Straight };
+
 struct KtxImage {
+    KtxAlpha alpha = KtxAlpha::Straight;
     // Pixel data. Holds the FULL mip chain concatenated, level 0 first.
     // For RGBA8 this is raw RGBA bytes; for BC7 this is the stored block stream.
     // Legacy callers that read only mip 0 use pixels.data() (== offset 0),
@@ -84,6 +87,9 @@ bool ktxLoadRgba8(const char* path, KtxImage& out);
 //
 // Returns false (and leaves outRgba untouched) on any precondition failure.
 // GL-free, allocation only via the supplied vector, no global state.
+// Stored BC1 RGB/RGBA, BC3, BC5 UNORM (linear RG, B=0), or BC7. Keeps encoded colour bytes.
+bool ktxDecodeBlocksToRgba8(const KtxImage& img, int level, std::vector<uint8_t>& outRgba,
+                          int* outW = nullptr, int* outH = nullptr);
 bool ktxDecodeBc7ToRgba8(const KtxImage& img, int level,
                          std::vector<uint8_t>& outRgba,
                          int* outW = nullptr, int* outH = nullptr);

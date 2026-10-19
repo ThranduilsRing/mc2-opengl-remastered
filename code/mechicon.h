@@ -48,7 +48,7 @@ public:
 	// INFO-IMGUI-SLICE-2: GL texture name + UV sub-rect of this pilot photo so
 	// the ImGui info panel can AddImage/Image it (same math as render()). Returns
 	// false when the pilot atlas isn't resident. Read-only.
-	bool getTexUV( unsigned int& glTex, float& u0, float& v0, float& u1, float& v1 ) const;
+	bool getTexUV( uint64_t& glTex, float& u0, float& v0, float& u1, float& v1 ) const;
 
 
 private:
@@ -87,9 +87,9 @@ public:
 		// quads issued during ImGui building would composite UNDER the panel).
 		// Return false when the icon atlas isn't resident. No render-state
 		// side effects.
-		bool getUnitIconTexUV( unsigned int& glTex, float& u0, float& v0, float& u1, float& v1 ) const;
-		virtual bool getUnitIconBackTexUV( unsigned int& glTex, float& u0, float& v0, float& u1, float& v1 ) const;
-		bool getPilotIconTexUV( unsigned int& glTex, float& u0, float& v0, float& u1, float& v1 ) const;
+		bool getUnitIconTexUV( uint64_t& glTex, float& u0, float& v0, float& u1, float& v1 ) const;
+		virtual bool getUnitIconBackTexUV( uint64_t& glTex, float& u0, float& v0, float& u1, float& v1 ) const;
+		bool getPilotIconTexUV( uint64_t& glTex, float& u0, float& v0, float& u1, float& v1 ) const;
 		virtual bool			init( Mover* pMover ){ return false; }
 		void init();
 
