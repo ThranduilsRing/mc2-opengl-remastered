@@ -953,7 +953,7 @@ if(MC2_BUILD_TESTS)
     add_executable(mc2_authored_order_seam EXCLUDE_FROM_ALL
         $<TARGET_OBJECTS:mc2> tests/unit/test_authored_order_seam.cpp
         tests/unit/test_authored_movement_fixture.cpp tests/unit/test_globalmap_init_refusal.cpp
-        tests/unit/test_combat_retirement_seam.cpp)
+        tests/unit/test_combat_retirement_seam.cpp tests/unit/test_movepath_save_padding.cpp)
     target_compile_definitions(mc2_authored_order_seam PRIVATE $<TARGET_PROPERTY:mc2,COMPILE_DEFINITIONS>)
     target_include_directories(mc2_authored_order_seam PRIVATE
         $<TARGET_PROPERTY:mc2,INCLUDE_DIRECTORIES> "${CMAKE_SOURCE_DIR}/tests/unit")

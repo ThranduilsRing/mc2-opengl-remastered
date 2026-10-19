@@ -532,6 +532,9 @@ struct _SaveableMoveOrders {
 		curGlobalStep = orders.curGlobalStep;
 		path[0] = *(orders.path[0]);
 		path[1] = *(orders.path[1]);
+		// The record is written raw: its padding must be zero however the live MovePath was built, copied or loaded.
+		mc2CanonicalizeMovePathRecord(path[0]);
+		mc2CanonicalizeMovePathRecord(path[1]);
 		timeOfLastStep = orders.timeOfLastStep;
 		moveState = orders.moveState;
 		moveStateGoal = orders.moveStateGoal;

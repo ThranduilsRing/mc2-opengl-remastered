@@ -38,6 +38,7 @@
 #endif
 
 #include<gameos.hpp>
+#include<cstddef>
 #include<cstdint>
 #include<cstring>
 #include<vector>
@@ -1075,6 +1076,38 @@ class MovePath {
 			return(cost);
 		}
 };
+
+//---------------------------------------------------------------------------
+// Save-record canonicalization. A MovePath is written to a save as a raw image, and copy/assignment is member-wise, so the padding bytes are
+// not guaranteed to copy and a record loaded from an old save can carry nonzero padding. The save write point calls this on the staged copy.
+// The static_asserts pin the layout the offsets below assume: a layout change fails the build here instead of changing the save format.
+// (64-bit MSVC layout, like save_layout_guard.h.)
+#if defined(_MSC_VER) && defined(_WIN64)
+static_assert(sizeof(PathStep) == 24, "PathStep is written raw into saves");
+static_assert(offsetof(PathStep, direction) == 20 && offsetof(PathStep, area) == 22, "PathStep padding byte sits at offset 21");
+static_assert(offsetof(PathStep, direction) + sizeof(char) < offsetof(PathStep, area), "PathStep has one gap byte after direction");
+static_assert(offsetof(PathStep, area) + sizeof(short) == sizeof(PathStep), "PathStep has no tail padding");
+static_assert(offsetof(PathStep, distanceToGoal) == offsetof(PathStep, cell) + sizeof(short) * 2, "PathStep: no gap before distanceToGoal");
+static_assert(offsetof(PathStep, destination) == offsetof(PathStep, distanceToGoal) + sizeof(float), "PathStep: no gap before destination");
+static_assert(offsetof(PathStep, direction) == offsetof(PathStep, destination) + sizeof(glm::vec3), "PathStep: no gap before direction");
+static_assert(sizeof(MovePath) == 4848, "MovePath is written raw into saves");
+static_assert(offsetof(MovePath, stepList) == 40, "MovePath: stepList offset");
+static_assert(offsetof(MovePath, stepList) == offsetof(MovePath, cost) + sizeof(long), "MovePath: no gap before stepList");
+static_assert(offsetof(MovePath, marked) == offsetof(MovePath, stepList) + sizeof(PathStep) * MAX_STEPS_PER_MOVEPATH, "MovePath: no gap before marked");
+static_assert(offsetof(MovePath, marked) == 4840 && offsetof(MovePath, globalStep) == 4844, "MovePath: 3 padding bytes follow marked");
+static_assert(offsetof(MovePath, globalStep) + sizeof(long) == sizeof(MovePath), "MovePath has no tail padding");
+#endif
+
+inline void mc2CanonicalizeMovePathRecord (MovePath& record) {
+	unsigned char* raw = reinterpret_cast<unsigned char*>(&record);
+	for (int i = 0; i < MAX_STEPS_PER_MOVEPATH; i++) {
+		unsigned char* step = raw + offsetof(MovePath, stepList) + sizeof(PathStep) * i;
+		std::memset(step + offsetof(PathStep, direction) + sizeof(char), 0, offsetof(PathStep, area) - (offsetof(PathStep, direction) + sizeof(char)));
+		std::memset(step + offsetof(PathStep, area) + sizeof(short), 0, sizeof(PathStep) - (offsetof(PathStep, area) + sizeof(short)));
+	}
+	std::memset(raw + offsetof(MovePath, marked) + sizeof(bool), 0, offsetof(MovePath, globalStep) - (offsetof(MovePath, marked) + sizeof(bool)));
+	std::memset(raw + offsetof(MovePath, globalStep) + sizeof(long), 0, sizeof(MovePath) - (offsetof(MovePath, globalStep) + sizeof(long)));
+}
 
 //******************************************************************************************
 
