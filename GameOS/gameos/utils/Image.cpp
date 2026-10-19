@@ -1,4 +1,5 @@
 #include "utils/Image.h"
+#include <memory>
 
 #include <stdio.h>
 #include <cstring>
@@ -250,12 +251,13 @@ bool Image::loadWICFromMemory(const unsigned char* mem, size_t len)
 	{
 		const UINT stride = decodedWidth * 4;
 		const UINT imageBytes = stride * decodedHeight;
-		unsigned char* decodedPixels = new unsigned char[imageBytes];
+		auto decodedPixelsOwner = std::make_unique_for_overwrite<unsigned char[]>(imageBytes);
+		unsigned char* decodedPixels = decodedPixelsOwner.get();
 
 		hr = converter->CopyPixels(nullptr, stride, imageBytes, decodedPixels);
 		if (SUCCEEDED(hr))
 		{
-			pixels = decodedPixels;
+			pixels = decodedPixelsOwner.release();
 			width = decodedWidth;
 			height = decodedHeight;
 			format = FORMAT_RGBA8;
@@ -263,7 +265,7 @@ bool Image::loadWICFromMemory(const unsigned char* mem, size_t len)
 		}
 		else
 		{
-			delete[] decodedPixels;
+			decodedPixelsOwner.reset();
 		}
 	}
 
@@ -303,10 +305,11 @@ bool Image::loadWIC(const char *fileName)
 	if (wideLength <= 0)
 		return false;
 
-	wchar_t* wideFileName = new wchar_t[wideLength];
+	auto wideFileNameOwner = std::make_unique_for_overwrite<wchar_t[]>(wideLength);
+	wchar_t* wideFileName = wideFileNameOwner.get();
 	if (MultiByteToWideChar(codePage, 0, fileName, -1, wideFileName, wideLength) <= 0)
 	{
-		delete[] wideFileName;
+		wideFileNameOwner.reset();
 		return false;
 	}
 
@@ -317,7 +320,7 @@ bool Image::loadWIC(const char *fileName)
 
 	if (FAILED(comInit))
 	{
-		delete[] wideFileName;
+		wideFileNameOwner.reset();
 		return false;
 	}
 
@@ -366,12 +369,13 @@ bool Image::loadWIC(const char *fileName)
 	{
 		const UINT stride = decodedWidth * 4;
 		const UINT imageBytes = stride * decodedHeight;
-		unsigned char* decodedPixels = new unsigned char[imageBytes];
+		auto decodedPixelsOwner = std::make_unique_for_overwrite<unsigned char[]>(imageBytes);
+		unsigned char* decodedPixels = decodedPixelsOwner.get();
 
 		hr = converter->CopyPixels(nullptr, stride, imageBytes, decodedPixels);
 		if (SUCCEEDED(hr))
 		{
-			pixels = decodedPixels;
+			pixels = decodedPixelsOwner.release();
 			width = decodedWidth;
 			height = decodedHeight;
 			format = FORMAT_RGBA8;
@@ -379,7 +383,7 @@ bool Image::loadWIC(const char *fileName)
 		}
 		else
 		{
-			delete[] decodedPixels;
+			decodedPixelsOwner.reset();
 		}
 	}
 
@@ -391,7 +395,7 @@ bool Image::loadWIC(const char *fileName)
 	if (shouldUninitializeCom)
 		CoUninitialize();
 
-	delete[] wideFileName;
+	wideFileNameOwner.reset();
 	return ok;
 #else
 	(void)fileName;
@@ -419,12 +423,14 @@ bool Image::loadTGA(FILE* file)
 	int pixelSize = header.bpp / 8;
 
 	bool rv = false;
+	std::unique_ptr<unsigned char[]> readPixelsOwner;
 	unsigned char *readPixels = nullptr;
 
 	if (header.imageType == static_cast<unsigned char>(TGADataType::kUncompressedRGB)) {
 
 		int size = header.width * header.height * pixelSize;
-		readPixels = new unsigned char[size];
+		readPixelsOwner = std::make_unique_for_overwrite<unsigned char[]>(size);
+		readPixels = readPixelsOwner.get();
 		fread(readPixels, size, 1, file);
 
 		rv = loadTGA(&header, readPixels);
@@ -436,14 +442,15 @@ bool Image::loadTGA(FILE* file)
 		size_t fsize = ftell(file) - fpos;
 		fseek(file, static_cast<long>(fpos), SEEK_SET);
 
-		readPixels = new unsigned char[fsize];
+		readPixelsOwner = std::make_unique_for_overwrite<unsigned char[]>(fsize);
+		readPixels = readPixelsOwner.get();
 		fread(readPixels, fsize, 1, file);
 
 		rv = loadCompressedTGA(&header, readPixels, fsize);
 	}
 
 	fclose(file);
-	delete[] readPixels;
+	readPixelsOwner.reset();
 
     return rv;
 }
@@ -468,16 +475,18 @@ bool Image::loadTGA(const unsigned char* mem, size_t len)
 	unsigned int pixelSize = header.bpp / 8;
 	int size = header.width * header.height * pixelSize;
 
+	std::unique_ptr<unsigned char[]> readPixelsOwner;
 	unsigned char *readPixels = nullptr;
 	bool rv = false;
 
 
 	if (header.imageType == static_cast<unsigned char>(TGADataType::kUncompressedRGB)) {
 		assert(len >= header.width * header.height * pixelSize);
-		readPixels = new unsigned char[size];
+		readPixelsOwner = std::make_unique_for_overwrite<unsigned char[]>(size);
+		readPixels = readPixelsOwner.get();
 		memcpy(readPixels, mem, size);
 		rv = loadTGA(&header, readPixels);
-		delete[] readPixels;
+		readPixelsOwner.reset();
 	}
 	else if(header.imageType == static_cast<unsigned char>(TGADataType::kRLERGB)) {
 		rv = loadCompressedTGA(&header, mem, len);
@@ -668,7 +677,7 @@ bool Image::loadBMP(FILE* file)
 	height   = header.biHeight;
 
 	switch (header.biBitCount){
-		case 8:
+		case 8: {
 			// No support for RLE compressed bitmaps
 			if (header.biCompression){
 				fclose(file);
@@ -681,8 +690,8 @@ bool Image::loadBMP(FILE* file)
 			fread(palette, sizeof(palette), 1, file);
 
 			// 8-bit paletted bitmap
-			unsigned char *tmp;
-			tmp = new unsigned char[width];
+			auto tmpOwner = std::make_unique_for_overwrite<unsigned char[]>(width);
+			unsigned char *tmp = tmpOwner.get();
 			for (int i = height - 1; i >= 0; i--){
 				unsigned char *dest = pixels + i * width * 3;
 				fread(tmp, width, 1, file);
@@ -695,8 +704,9 @@ bool Image::loadBMP(FILE* file)
 				} while (--len);
 				tmp -= width;
 			}
-			delete[] tmp;
+			tmpOwner.reset();
 			break;
+		}
 		case 24:
 		case 32:
 			int nChannels;
