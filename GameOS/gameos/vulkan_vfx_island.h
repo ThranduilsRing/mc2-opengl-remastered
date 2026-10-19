@@ -16,7 +16,7 @@
 // One contiguous same-blend sub-range of the particle array (mirrors the fields
 // of mc2::particles::GroupInfo). start/count are in PARTICLES (the island
 // multiplies by 6 for billboards). Geometry mode sentinels and the 64-byte input
-// record are declared in vulkan_vfx_geometry.h; vegetation expands 36 vertices per instance.
+// record are declared in vulkan_vfx_geometry.h; vegetation uses two eight-vertex instanced strips.
 struct VfxParticleDraw {
     uint32_t start;      // index of first particle in the flat array
     uint32_t count;      // number of particles in this group

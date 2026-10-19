@@ -1,14 +1,12 @@
 // Native crossed-card geometry. Instance culling uses the same CPU block/distance inputs.
 #include "../../include/terrain_depth_bias.hglsl"
 void mc2VegetationVertex() {
-    const uint indices[36] = uint[](0,1,2,1,3,2,2,3,4,3,5,4,4,5,6,5,7,6,
-                                   8,9,10,9,11,10,10,11,12,11,13,12,12,13,14,13,15,14);
-    Particle p = particles[uint(gl_VertexIndex)/36u];
-    uint vi = indices[uint(gl_VertexIndex)%36u];
+    Particle p = particles[gl_InstanceIndex];
+    uint vi = uint(gl_VertexIndex);
     uint row = (vi%8u)/2u;
-    const float heights[4] = float[](0.0,0.333333,0.666667,1.0);
-    vec3 a_card = vec3((vi&1u)==0u ? -0.5 : 0.5,heights[row],vi>=8u ? 1.5707963 : 0.0);
-    vec2 a_uv = vec2((vi&1u)==0u ? 0.0 : 1.0,heights[row]);
+    float height = float(row) / 3.0;
+    vec3 a_card = vec3((vi&1u)==0u ? -0.5 : 0.5,height,vi>=8u ? 1.5707963 : 0.0);
+    vec2 a_uv = vec2((vi&1u)==0u ? 0.0 : 1.0,height);
     vec3 i_worldPos=p.position;
     float i_yaw=p._pad0,i_scale=p.color.x,i_seed=p.color.y;
     uint i_atlasFrame=p.kind_flags;

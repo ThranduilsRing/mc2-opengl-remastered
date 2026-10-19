@@ -309,7 +309,7 @@ mc2vk::OwnedPipeline make_pipeline(VfxIsland* s, int w, int h, bool additive, bo
     vin.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;  // procedural
     VkPipelineInputAssemblyStateCreateInfo ia{};
     ia.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-    ia.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+    ia.topology = vegetation ? VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP : VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
     VkPipelineRasterizationStateCreateInfo rs{};
     rs.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
     rs.polygonMode = VK_POLYGON_MODE_FILL; rs.cullMode = VK_CULL_MODE_NONE;   // double-sided
@@ -644,11 +644,17 @@ extern "C" int mc2_vk_vfx_island_run(
         vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 1, 1, &groupPage[gi]->set, 0, nullptr);
         const VfxGroupPush push{ {d.u0, d.v0}, {d.us, d.vs}, d.atlasColumns, d.additive == VFX_ADD_ONE_ONE ? 1u : 0u };
         vkCmdPushConstants(cb, s->playout.get(), VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(push), &push);
-        const uint32_t expansion = d.atlasColumns == kVfxVegetationAtlas ? 36u : d.atlasColumns == kVfxGeometryAtlas ? 1u : 6u;
-        vkCmdDraw(cb, d.count * expansion, 1, d.start * expansion, 0);
-        ++groupsDrawn;
-        if (d.atlasColumns == kVfxVegetationAtlas) ++vegetationDraws;
-        else if (d.atlasColumns == kVfxGeometryAtlas) {
+        if (d.atlasColumns == kVfxVegetationAtlas) {
+            vkCmdDraw(cb, 8u, d.count, 0u, d.start);
+            vkCmdDraw(cb, 8u, d.count, 8u, d.start);
+            groupsDrawn+=2;
+            vegetationDraws+=2;
+        } else {
+            const uint32_t expansion = d.atlasColumns == kVfxGeometryAtlas ? 1u : 6u;
+            vkCmdDraw(cb, d.count * expansion, 1, d.start * expansion, 0);
+            ++groupsDrawn;
+        }
+        if (d.atlasColumns == kVfxGeometryAtlas) {
             const auto flags = static_cast<const VfxGeometryVertex*>(particles)[d.start].flags;
             if ((flags & VfxGeometryMesh) != 0u) ++meshDraws;
             if ((flags & VfxGeometryTube) != 0u) ++tubeDraws;
