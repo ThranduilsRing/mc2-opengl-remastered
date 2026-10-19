@@ -15,13 +15,22 @@
 namespace mc2vk {
 bool uiTextureServiceReady() { return engineVulkanContextValid() && getOrCreateEnginePresentVk().valid(); }
 bool hasUiImage(RenderCore::TextureHandle handle) { return engineVulkanContextValid() && getOrCreateEngineVulkanContext().textures().contains(handle); }
+void invalidateUiImage(RenderCore::TextureHandle handle) {
+    if (engineVulkanContextValid()) getOrCreateEngineVulkanContext().textures().invalidate(handle);
+}
+void TextureResidency::invalidate(RenderCore::TextureHandle handle) {
+    table_->erase(handle);
+    auto it=residents_.find(handle.raw());
+    if (it!=residents_.end()) { if (it->second.image) ctx_.retire(std::move(it->second.image)); residents_.erase(it); }
+}
 void requestUiImage(RenderCore::TextureHandle handle, std::function<std::shared_ptr<const RenderCore::KtxImage>()> decode) {
     getOrCreateEngineVulkanContext().textures().requestDecoded(handle,std::move(decode));
 }
 void TextureResidency::requestDecoded(RenderCore::TextureHandle handle, std::function<std::shared_ptr<const RenderCore::KtxImage>()> decode) {
     if (!service_.isLive(handle) || residents_.contains(handle.raw())) return;
     auto [it,inserted]=residents_.emplace(handle.raw(),Resident{{},0,false});
-    it->second.highPriority=true; worker_.request(handle,std::move(decode));
+    it->second.highPriority=true; it->second.contentVersion=service_.contentVersion(handle);
+    worker_.request(handle,std::move(decode),it->second.contentVersion);
 }
 void attachUiImage(RenderCore::TextureHandle handle, std::shared_ptr<const RenderCore::KtxImage> image) {
     getOrCreateEngineVulkanContext().textures().attach(handle,std::move(image));
@@ -42,7 +51,8 @@ TextureResidency::~TextureResidency() { service_.onRetired={}; }
 void TextureResidency::attach(RenderCore::TextureHandle handle, std::shared_ptr<const RenderCore::KtxImage> image, bool useMips) {
     if (!service_.isLive(handle) || residents_.contains(handle.raw())) return;
     residents_.emplace(handle.raw(),Resident{{},0,useMips});
-    if (image) pending_.push_back({handle,std::move(image)});
+    residents_.at(handle.raw()).contentVersion=service_.contentVersion(handle);
+    if (image) pending_.push_back({handle,std::move(image),service_.contentVersion(handle)});
 }
 
 ResidentTextureRef TextureResidency::createRenderTarget(uint32_t width, uint32_t height) {
@@ -174,7 +184,8 @@ ResidentTextureRef TextureResidency::acquire(const RenderCore::TextureKey& key, 
     if (!handle.isValid()) return {};
     if (residents_.contains(handle.raw())) return ResidentTextureRef(*this,handle);
     residents_.emplace(handle.raw(),Resident{{},0,mc2tex::wantsMipmaps(key.hints)});
-    pending_.push_back({handle,std::make_shared<RenderCore::KtxImage>(image)});
+    residents_.at(handle.raw()).contentVersion=service_.contentVersion(handle);
+    pending_.push_back({handle,std::make_shared<RenderCore::KtxImage>(image),service_.contentVersion(handle)});
     return ResidentTextureRef(*this,handle);
 }
 ResidentTextureRef TextureResidency::requestKtx(const RenderCore::TextureKey& key, std::vector<uint8_t> bytes,
@@ -183,7 +194,8 @@ ResidentTextureRef TextureResidency::requestKtx(const RenderCore::TextureKey& ke
     if (!handle.isValid()) return {};
     if (!residents_.contains(handle.raw())) {
         residents_.emplace(handle.raw(),Resident{{},0,mc2tex::wantsMipmaps(key.hints)});
-        worker_.request(handle,std::move(bytes));
+        residents_.at(handle.raw()).contentVersion=service_.contentVersion(handle);
+        worker_.request(handle,std::move(bytes),service_.contentVersion(handle));
     }
     return ResidentTextureRef(*this,handle);
 }
@@ -197,8 +209,8 @@ void TextureResidency::pump() {
     }
     for (auto& result : worker_.take()) {
         auto it=residents_.find(result.handle.raw());
-        if (!result.image || !service_.isLive(result.handle) || it==residents_.end()) continue;
-        Pending pending{result.handle,std::move(result.image)};
+        if (!result.image || !service_.isLive(result.handle) || it==residents_.end() || result.contentVersion!=it->second.contentVersion) continue;
+        Pending pending{result.handle,std::move(result.image),result.contentVersion};
         if (it->second.highPriority) pending_.push_front(std::move(pending));
         else pending_.push_back(std::move(pending));
     }
@@ -206,7 +218,7 @@ void TextureResidency::pump() {
     while (!uploading_.empty() && ctx_.isComplete(uploading_.front().ticket)) {
         auto& upload=uploading_.front();
         auto it=residents_.find(upload.handle.raw());
-        if (it!=residents_.end() && service_.isLive(upload.handle)) {
+        if (it!=residents_.end() && service_.isLive(upload.handle) && it->second.contentVersion==upload.contentVersion) {
             const auto slot=table_->insert(upload.handle,upload.image);
             if (slot) { it->second.image=std::move(upload.image); it->second.descriptor=slot; }
         }
@@ -215,10 +227,10 @@ void TextureResidency::pump() {
     while (!pending_.empty()) {
         auto& p=pending_.front();
         auto it=residents_.find(p.handle.raw());
-        if (it==residents_.end() || !service_.isLive(p.handle)) { pending_.pop_front(); continue; }
+        if (it==residents_.end() || !service_.isLive(p.handle) || it->second.contentVersion!=p.contentVersion) { pending_.pop_front(); continue; }
         const size_t bytes=p.image->pixels.size();
         if (table_->full() || !budget_.reserve(bytes)) break;
-        Upload upload; upload.handle=p.handle; upload.bytes=bytes;
+        Upload upload; upload.handle=p.handle; upload.bytes=bytes; upload.contentVersion=p.contentVersion;
         if (this->upload(*p.image,it->second.useMips,&upload,it->second.layers,it->second.arrayView)) uploading_.push_back(std::move(upload));
         else budget_.complete(bytes);
         pending_.pop_front();

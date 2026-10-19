@@ -584,6 +584,13 @@ long MC_TextureManager::refreshTexturesByName (const char *substring, long &skip
 		node.lzCompSize = cacheBytes;
 		node.width = (storeRawFileData ? MC_TEXCACHE_FILE_RAW : MC_TEXCACHE_FILE_LZ) + txmSize;
 
+        auto identity=RenderCore::textureService().handleOfNode(uint32_t(i));
+        if (identity.isValid()) {
+            RenderCore::textureService().rebind(identity,uint32_t(i));
+#ifdef MC2_VULKAN_ISLAND
+            mc2vk::invalidateUiImage(identity);
+#endif
+        }
 		// Force re-upload: destroy the resident gos texture (same cache-out
 		// dance as flushCache) so the next get_gosTextureHandle() re-creates
 		// it from the fresh bytes.

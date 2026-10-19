@@ -1,6 +1,7 @@
 // VK water island: the HDRI environment and shore height / mask texture imports.
 // Declared in the class headers; shared names in vulkan_water_island_internal.h.
 #include "vulkan_water_island_internal.h"
+#include "gameos.hpp"
 
 #ifdef MC2_VULKAN_ISLAND
 

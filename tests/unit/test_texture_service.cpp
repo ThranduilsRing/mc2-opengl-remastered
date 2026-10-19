@@ -310,3 +310,19 @@ TEST_CASE("TextureService: owned decode worker and oversized staging admission")
     budget.complete(32); REQUIRE(budget.reserve(16)); budget.complete(16);
     CHECK(budget.used==0);
 }
+
+TEST_CASE("TextureService: reload keeps identity and rejects an older decoded result") {
+    TextureService service;
+    TextureDecodeWorker worker;
+    const auto handle=service.acquire(keyOf("base","reload",1),7);
+    std::promise<void> allow,drained;
+    auto gate=allow.get_future().share(); auto done=drained.get_future();
+    worker.request(handle,[gate] { gate.wait(); return std::make_shared<const KtxImage>(); },service.contentVersion(handle));
+    worker.request(TextureHandle::make(99,1),[&drained] { drained.set_value(); return std::shared_ptr<const KtxImage>{}; });
+    REQUIRE(service.rebind(handle,7));
+    allow.set_value(); done.get(); // the single worker published the first result before starting the second
+    auto results=worker.take();
+    REQUIRE_FALSE(results.empty()); CHECK(results.front().handle==handle);
+    CHECK(service.isLive(handle));
+    CHECK(results.front().contentVersion!=service.contentVersion(handle));
+}

@@ -49,6 +49,7 @@ public:
     ResidentTextureRef requestKtx(const RenderCore::TextureKey& key, std::vector<uint8_t> bytes,
                                   RenderCore::TextureDimensions dimensions);
     void pump();
+    void invalidate(RenderCore::TextureHandle handle);
     void requestDecoded(RenderCore::TextureHandle handle, std::function<std::shared_ptr<const RenderCore::KtxImage>()> decode);
     bool ready(RenderCore::TextureHandle handle) const;
     ResidentTextureRef acquirePixels(uint32_t width, uint32_t height, VkFormat format, const void* bytes, size_t count,
@@ -65,8 +66,8 @@ public:
     void sealFrame();
 private:
     struct Image { OwnedImage image; OwnedImageView view; };
-    struct Resident { std::shared_ptr<Image> image; uint32_t descriptor = 0; bool useMips = true; uint32_t layers = 1; bool arrayView = false; bool highPriority = false; };
-    struct Pending { RenderCore::TextureHandle handle; std::shared_ptr<const RenderCore::KtxImage> image; };
+    struct Resident { std::shared_ptr<Image> image; uint32_t descriptor = 0; bool useMips = true; uint32_t layers = 1; bool arrayView = false; bool highPriority = false; uint32_t contentVersion=0; };
+    struct Pending { RenderCore::TextureHandle handle; std::shared_ptr<const RenderCore::KtxImage> image; uint32_t contentVersion=0; };
     struct Upload {
         RenderCore::TextureHandle handle;
         std::shared_ptr<Image> image;
@@ -74,6 +75,7 @@ private:
         OwnedCommandPool pool;
         GpuTicket ticket;
         size_t bytes = 0;
+        uint32_t contentVersion=0;
     };
     struct Flight {
         VkDescriptorSet set = VK_NULL_HANDLE;
