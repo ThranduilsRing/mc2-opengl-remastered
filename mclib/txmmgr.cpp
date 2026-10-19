@@ -253,52 +253,81 @@ void MC_TextureManager::addRenderShape(DWORD nodeId, TG_RenderShape* render_shap
 	if (nodeId < mc2::textures::kTextureAssetLimit)
 	{
         auto& textureNode = textureBin(nodeId);
+		if (textureNode.hardwareVertexData &&
+			textureNode.hardwareVertexData->flags == flags)
 		{
+			TG_RenderShape* shapes = textureNode.hardwareVertexData->currentShape;
+			if (!shapes && !textureNode.hardwareVertexData->shapes)
 			{
+				textureNode.hardwareVertexData->currentShape =
 					shapes =
+					textureNode.hardwareVertexData->shapes =
+					rsManager->getBlock(textureNode.hardwareVertexData->numShapes);
 			}
 
+			if (shapes && shapes < (textureNode.hardwareVertexData->shapes + textureNode.hardwareVertexData->numShapes))
 			{
 				*shapes = *render_shape;
 				shapes++;
 			}
 
+			textureNode.hardwareVertexData->currentShape = shapes;
 		}
+		else if (textureNode.hardwareVertexData2 &&
+			textureNode.hardwareVertexData2->flags == flags)
 		{
+			TG_RenderShape* shapes = textureNode.hardwareVertexData2->currentShape;
 
 			//sebi: looks like assert may happen if more vertices added than was calculated on stage when addTriange was called. As one can see in (*) first time we go here, we allocate enough memory for all potential vertices, but if it is not enough this assert will trigger
 #if defined( _DEBUG) || defined(_ARMOR)
 			TG_RenderShape* oldShapes = shapes;
+			TG_RenderShape* oldStart = (textureNode.hardwareVertexData2->shapes + textureNode.hardwareVertexData2->numShapes);
 #endif
 			gosASSERT(oldShapes < oldStart);
 
 			// (*)
+			if (!shapes && !textureNode.hardwareVertexData2->shapes)
 			{
+				textureNode.hardwareVertexData2->currentShape =
 					shapes =
+					textureNode.hardwareVertexData2->shapes =
+					rsManager->getBlock(textureNode.hardwareVertexData2->numShapes);
 			}
 
+			if (shapes && shapes < (textureNode.hardwareVertexData2->shapes + textureNode.hardwareVertexData2->numShapes))
 			{
 				*shapes = *render_shape;
 				shapes++;
 			}
 
+			textureNode.hardwareVertexData2->currentShape = shapes;
 		}
+		else if (textureNode.hardwareVertexData3 &&
+			textureNode.hardwareVertexData3->flags == flags)
 		{
+			TG_RenderShape * shapes = textureNode.hardwareVertexData3->currentShape;
 
 #if defined(_DEBUG) || defined(_ARMOR)
 			TG_RenderShape * oldShapes = shapes;
+			TG_RenderShape * oldStart = (textureNode.hardwareVertexData3->shapes + textureNode.hardwareVertexData3->numShapes);
 #endif
 			gosASSERT(oldShapes < oldStart);
 
+			if (!shapes && !textureNode.hardwareVertexData3->shapes)
 			{
+				textureNode.hardwareVertexData3->currentShape =
 					shapes =
+					textureNode.hardwareVertexData3->shapes =
+					rsManager->getBlock(textureNode.hardwareVertexData3->numShapes);
 			}
 
+			if (shapes && shapes < (textureNode.hardwareVertexData3->shapes + textureNode.hardwareVertexData3->numShapes))
 			{
 				*shapes = *render_shape;
 				shapes++;
 			}
 
+			textureNode.hardwareVertexData3->currentShape = shapes;
 		}
 		else	//If we got here, something is really wrong
 		{
