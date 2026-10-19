@@ -2098,20 +2098,6 @@
    "ver": -1,
    "stream": "stdout",
    "keys": [
-    "event",
-    "nonzero",
-    "firstVn",
-    "firstWp3",
-    "sizeof_recipe",
-    "wp3_offset"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "CEMENT_DIAG",
-   "ver": -1,
-   "stream": "stdout",
-   "keys": [
     "mission",
     "total_cement",
     "base",
@@ -2131,18 +2117,6 @@
     "isBase",
     "firstTransition",
     "nextAvailable"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "CEMENT_FRAME",
-   "ver": 1,
-   "stream": "stdout",
-   "keys": [
-    "frame",
-    "packed_total",
-    "cement_mapped",
-    "concrete_all_corners"
    ],
    "count": 1
   },
@@ -2543,30 +2517,6 @@
     "clipwMin",
     "clipwAvg",
     "clipwMax"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "DEPTH_TRANSITION",
-   "ver": 1,
-   "stream": "stdout",
-   "keys": [
-    "kind",
-    "f",
-    "maxMvpDelta",
-    "z_terr",
-    "z_cpuw",
-    "z_gpuw",
-    "z_decal",
-    "dz_cpuw",
-    "dz_gpuw",
-    "dz_decal",
-    "cpuw_fresh",
-    "cpuw_any",
-    "cpuw_stamp",
-    "cpuw_stamp_delta",
-    "decal_ok",
-    "decal_z_approx"
    ],
    "count": 1
   },
@@ -3656,7 +3606,7 @@
     "owned",
     "failures"
    ],
-   "count": 2
+   "count": 1
   },
   {
    "tag": "EXECUTOR",
@@ -3976,20 +3926,6 @@
     "actual"
    ],
    "count": 8
-  },
-  {
-   "tag": "GEOMORPH",
-   "ver": 1,
-   "stream": "stdout",
-   "keys": [
-    "active",
-    "mipFloats",
-    "kill",
-    "locMips",
-    "locMorph",
-    "locLodStep"
-   ],
-   "count": 1
   },
   {
    "tag": "GEOM_PHASE_SPIKE",
@@ -4674,18 +4610,6 @@
     "path",
     "rc",
     "err"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "HDRI_SUN_SYNC",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "valid",
-    "antiSolarAz",
-    "sunAzGL",
-    "skyYaw"
    ],
    "count": 1
   },
@@ -5535,18 +5459,6 @@
     "frame",
     "gltex",
     "scenarioTime"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "LOADRACE",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "frame",
-    "scenarioTime",
-    "atlasTex",
-    "nodeIds"
    ],
    "count": 1
   },
@@ -8201,90 +8113,6 @@
    "count": 1
   },
   {
-   "tag": "RING",
-   "ver": 1,
-   "stream": "stdout",
-   "keys": [
-    "frame",
-    "slot",
-    "fence",
-    "wait",
-    "wait_us",
-    "mvpFp"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "RING",
-   "ver": 1,
-   "stream": "stdout",
-   "keys": [
-    "frame",
-    "slot",
-    "fence",
-    "wait",
-    "wait_us",
-    "prev_visible",
-    "near_w",
-    "peak",
-    "peakNearW",
-    "mvpFp"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "RING_CMDFIELDS",
-   "ver": 1,
-   "stream": "file",
-   "keys": [
-    "count",
-    "inst",
-    "first",
-    "base",
-    "bad_count"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "RING_CMDFIELDS",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "count",
-    "inst",
-    "first",
-    "base",
-    "bad_count"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "RING_MVP_DELTA",
-   "ver": 1,
-   "stream": "file",
-   "keys": [
-    "bridge_frame",
-    "dispatch_frame",
-    "dispatch_fp",
-    "draw_fp",
-    "count"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "RING_MVP_DELTA",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "bridge_frame",
-    "dispatch_frame",
-    "dispatch_fp",
-    "draw_fp",
-    "count"
-   ],
-   "count": 1
-  },
-  {
    "tag": "ROUTE_EXECUTION",
    "ver": 1,
    "stream": "stderr",
@@ -9706,23 +9534,6 @@
    "count": 1
   },
   {
-   "tag": "TERRAIN_AMBIENT_FLOOR",
-   "ver": 2,
-   "stream": "stderr",
-   "keys": [
-    "floor",
-    "dayGate",
-    "raw_dayGate",
-    "night_floor",
-    "night_env_set",
-    "floor_env_set",
-    "runtime_isNight",
-    "runtime_nightFactor",
-    "runtime_lightDirZ"
-   ],
-   "count": 1
-  },
-  {
    "tag": "TERRAIN_CONTROLMAP",
    "ver": 1,
    "stream": "stderr",
@@ -9872,16 +9683,6 @@
   {
    "tag": "TERRAIN_INDIRECT",
    "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "event",
-    "reason"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "TERRAIN_INDIRECT",
-   "ver": 1,
    "stream": "stdout",
    "keys": [
     "event",
@@ -9914,17 +9715,6 @@
     "armed",
     "gate",
     "note"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "TERRAIN_INDIRECT",
-   "ver": 1,
-   "stream": "stdout",
-   "keys": [
-    "event",
-    "path",
-    "gate"
    ],
    "count": 1
   },
@@ -10185,42 +9975,6 @@
     "path",
     "read",
     "want"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "TERRAIN_SOLID_WINDOW",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "event",
-    "dropped",
-    "frame"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "TERRAIN_SOLID_WINDOW",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "event",
-    "frame",
-    "window",
-    "ref_visible",
-    "dropped"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "TERRAIN_SOLID_WINDOW",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "event",
-    "frames",
-    "max_window",
-    "total_dropped"
    ],
    "count": 1
   },
@@ -12037,20 +11791,6 @@
    "count": 1
   },
   {
-   "tag": "VK_TERRAIN_ALL_LODS",
-   "ver": -1,
-   "stream": "stdout",
-   "keys": [
-    "submit",
-    "feedValid",
-    "active",
-    "allLods",
-    "vkPatches",
-    "lodStep1"
-   ],
-   "count": 1
-  },
-  {
    "tag": "VK_TERRAIN_COPY_STATS",
    "ver": -1,
    "stream": "stderr",
@@ -12069,13 +11809,6 @@
     "csmFullMapDirect"
    ],
    "count": 1
-  },
-  {
-   "tag": "VK_TERRAIN_ISLAND",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [],
-   "count": 2
   },
   {
    "tag": "VK_TERRAIN_LODFADE_DIAG",
@@ -12414,39 +12147,6 @@
     "thickness_min",
     "thickness_max",
     "waterElevation"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "WATER_REFL_RT",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "frame",
-    "gate",
-    "fbo",
-    "dims",
-    "drew",
-    "mirrored_cmd_count"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "WATER_REFL_RT",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "frame",
-    "gate",
-    "fbo",
-    "dims",
-    "drew",
-    "mirrored_cmd_count",
-    "coverage",
-    "alpha_cov",
-    "max_luma",
-    "avg_luma",
-    "gl_err"
    ],
    "count": 1
   },
