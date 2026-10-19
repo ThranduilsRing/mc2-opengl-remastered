@@ -16,7 +16,7 @@
 
 #include"soundsys.h"
 
-extern SoundSystem *sndSystem;
+#include "sound.h"
 
 #include"mclib.h"
 #include "../GuiRuntime/GuiRuntime.h"
@@ -168,7 +168,7 @@ void aListBox::update()
 				{
 					iSel = i;
 					if ( items[i]->getState() != aListItem::SELECTED )
-						sndSystem->playDigitalSample( clickSFX );
+						mc2::gui::playSound( clickSFX );
 				}
 				else 
 				{
@@ -197,7 +197,7 @@ void aListBox::update()
 			else if ( iHighlight == i && items[i]->getState() != aListItem::SELECTED )
 			{
 				if ( items[i]->getState() != aListItem::HIGHLITE )
-						sndSystem->playDigitalSample( highlightSFX );
+						mc2::gui::playSound( highlightSFX );
 				items[i]->setState( aListItem::HIGHLITE );				
 			}
 			else if ( (iSel != -1 || items[i]->getState() != aListItem::SELECTED)

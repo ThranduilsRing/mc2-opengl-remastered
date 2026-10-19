@@ -475,8 +475,6 @@ void usage(const char* program_name)
 //-----------------------------
 int main(int argc, char** argv)
 {
-	globalHeapList = new HeapList;
-	assert(globalHeapList != NULL);
 
 
 

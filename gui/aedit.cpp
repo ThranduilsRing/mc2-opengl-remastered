@@ -27,7 +27,7 @@ static long acp = 0;
 static bool g_bUseLangDll;
 static gosIME_Appearance g_ia;
 
-extern SoundSystem *sndSystem;
+#include "sound.h"
 
 
 aEdit::aEdit(  )
@@ -259,7 +259,7 @@ void aEdit::handleKeyboard()
 			// is there space to insert a character?
 			if (static_cast<int>(text.size()) - labs( nInsertion2 - nInsertion1 ) + (key2 ? 1 : 0) >= nLimit)
 			{
-				sndSystem->playDigitalSample( LOG_WRONGBUTTON );
+				mc2::gui::playSound( LOG_WRONGBUTTON );
 				gos_FinalizeStringIME();
 				gos_KeyboardFlush();
 				return;

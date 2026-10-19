@@ -11,6 +11,7 @@
 // Include files
 #ifndef GAMESOUND_H
 #include"gamesound.h"
+#include "../gui/sound.h"
 
 #include"../GameOS/gameos/utils/mc2log.h"
 #endif
@@ -27,6 +28,11 @@
 
 //---------------------------------------------------------------------------
 GameSoundSystem *soundSystem = nullptr;
+namespace mc2::gui {
+void playSound(long sampleId) {
+    if (soundSystem) soundSystem->playDigitalSample(sampleId);
+}
+}
 
 bool friendlyDestroyed = false;
 bool enemyDestroyed = false;
