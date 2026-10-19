@@ -1155,7 +1155,7 @@ void Mission::destroy (bool initLogistics)
 
 	if (CObjective::s_markerFont)
 	{
-		delete CObjective::s_markerFont;
+		CObjective::s_markerFont.reset();
 		CObjective::s_markerFont = nullptr;
 	}
 

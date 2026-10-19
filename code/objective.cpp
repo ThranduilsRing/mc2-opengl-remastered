@@ -236,7 +236,7 @@ void CObjective::Dispatch(CObjectiveAction& action, const char* list) {
 float CObjective::s_blinkLength = .5;
 float CObjective::s_lastBlinkTime = 0.f;
 unsigned long CObjective::s_blinkColor = SB_YELLOW;
-aFont* CObjective::s_markerFont = nullptr;
+std::unique_ptr<aFont> CObjective::s_markerFont = nullptr;
 float MaxExtractUnitDistance = 0.0f;
 
 
@@ -1568,7 +1568,7 @@ bool CObjective::Read( FitIniFile* missionFile, int objectiveNum, int version, i
 
 	if ( !s_markerFont )
 	{
-		s_markerFont = new aFont;
+		s_markerFont = std::make_unique_for_overwrite<aFont>();
 		s_markerFont->init( IDS_OBJECTIVE_MARKER_FONT );
 	}
 
