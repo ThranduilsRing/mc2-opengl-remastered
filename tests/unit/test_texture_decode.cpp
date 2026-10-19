@@ -230,3 +230,16 @@ TEST_CASE("texture decode: stored KTX preserves mip colour and alpha policy") {
     t=mc2tex::decodeMemory(b.data(),b.size(),"mips.ktx2",gos_Texture_Detect,gosHint_MipmapFilter0|gosHint_DisableMipmap);
     REQUIRE(t); CHECK(t->mipLevels.size()==1);
 }
+
+TEST_CASE("mod-sized RGBA mip chains preserve constant colour through rectangular and thin levels") {
+    for (const auto shape : {std::pair<uint32_t,uint32_t>{64,64},{128,64},{1,64},{64,1},{65,33}}) {
+        uint32_t w=shape.first,h=shape.second;
+        std::vector<uint8_t> level(size_t(w)*h*4,127);
+        while (w>1 || h>1) {
+            level=mc2tex::boxDownsampleRgba8(level,w,h);
+            w=std::max(1u,w/2);h=std::max(1u,h/2);
+            REQUIRE(level.size()==size_t(w)*h*4);
+            for (auto pixel:level) CHECK(pixel==127);
+        }
+    }
+}
