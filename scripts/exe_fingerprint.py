@@ -22,7 +22,8 @@ the binary.
 WHAT THE TRUTH IS
 -----------------
 cmake/GenerateBuildFingerprint.cmake stamps generated/build_fingerprint.h at
-build time and code/mechcmd2.cpp compiles those macros into the binary:
+build time for deploy tooling. generated/build_fingerprint.cpp compiles the identity
+values and startup banner into the binary (cmake/build_fingerprint.cpp.in):
 
     printf("[BUILD_FINGERPRINT v1] sha=%s dirty=%d branch=%s built=%s src=%s\\n",
            MC2_BUILD_GIT_SHA, MC2_BUILD_GIT_DIRTY, MC2_BUILD_GIT_BRANCH,
@@ -69,7 +70,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-# The exact format literal emitted by code/mechcmd2.cpp. Trailing NUL pins it to
+# The exact format literal emitted by cmake/build_fingerprint.cpp.in. Trailing NUL pins it to
 # a complete .rdata string rather than a prefix of something longer.
 BANNER_FMT = (b"[BUILD_FINGERPRINT v1] sha=%s dirty=%d branch=%s built=%s "
               b"src=%s\n\x00")

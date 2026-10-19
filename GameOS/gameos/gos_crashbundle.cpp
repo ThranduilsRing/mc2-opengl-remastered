@@ -11,7 +11,7 @@
 
 #include "gos_crashbundle.h"
 #include "Gates/gate.h"
-#include "build_fingerprint.h"  // MC2_BUILD_GIT_SHA (real macro; MC2_BUILD_HASH never defined)
+#include "build_identity.h"  // Stable build identity declarations
 #include "mc2fmt.h"
 
 #ifndef _WIN32

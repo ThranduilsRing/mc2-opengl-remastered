@@ -397,13 +397,14 @@ void gos_CreateRenderer(graphics::RenderContextHandle ctx_h, graphics::RenderWin
     {
         char buf[512];
         snprintf(buf, sizeof(buf),
-            "{\"commit\":\"" MC2_BUILD_GIT_SHA "\","
+            "{\"commit\":\"%s\","
             "\"dirty\":%s,"
-            "\"branch\":\"" MC2_BUILD_GIT_BRANCH "\","
-            "\"build_time\":\"" MC2_BUILD_TIME_ISO "\","
+            "\"branch\":\"%s\","
+            "\"build_time\":\"%s\","
             "\"config\":\"" MC2_DIAG_BUILD_CONFIG "\","
             "\"platform\":\"windows\"}",
-            MC2_BUILD_GIT_DIRTY ? "true" : "false");
+            MC2_BUILD_GIT_SHA, MC2_BUILD_GIT_DIRTY ? "true" : "false",
+            MC2_BUILD_GIT_BRANCH, MC2_BUILD_TIME_ISO);
         mc2_diag::writeEvent("BUILD", 1, 0, buf);
     }
 

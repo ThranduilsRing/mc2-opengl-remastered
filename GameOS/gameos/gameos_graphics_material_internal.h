@@ -78,7 +78,7 @@
 namespace gosFX { void DiagFrameTick(); }
 #include "debug_state_dump.h"    // mc2_debug_state::getSessionId, writeShutdownState
 #include "diagnostic_trace.h"   // mc2_diag::init, shutdown
-#include "build_fingerprint.h"  // MC2_BUILD_GIT_SHA/BRANCH/DIRTY/TIME_ISO
+#include "build_identity.h"  // MC2_BUILD_GIT_SHA/BRANCH/DIRTY/TIME_ISO
 #include <process.h>             // _getpid()
 
 #if defined(_DEBUG)

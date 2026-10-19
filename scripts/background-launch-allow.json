@@ -25,6 +25,7 @@
   "tools/tracy_capture_compare.py": "engine launcher through nofocus.spawn/run (vetted by exe_guard); launch-site audit 2026-10-10"
  },
  "direct_spawn": {
+  "scripts/tests/test_fingerprint.py": "fingerprint generator tests invoke git in tmp_path and CMake -P through console_child.child_kwargs; no game or window is launched",
   "scripts/cc_launcher.py": "compiler launcher: runs sccache (argv passed through, so not a literal program; no window, no game) with captured stdout through console_child.child_kwargs(redirected=True); merged from allbuild-speed 2026-10-18",
   "tools/shader_offline_build/slang_compile.py": "runs slangc (Vulkan SDK shader compiler console tool: no window, no game) with captured output through console_child.child_kwargs(redirected=True); merged from the Slang toolchain 2026-10-17",
   "tools/visual_verify/quickload_cement_check.py": "runs scripts/run_visual_capture.py under the current interpreter (the harness owns the game launch, lease and window policy; this file never starts the exe) through console_child.child_kwargs; merged from the cement quickload fix 2026-10-17",

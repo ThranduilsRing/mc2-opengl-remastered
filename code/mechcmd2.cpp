@@ -212,19 +212,7 @@ void __stdcall InitializeGameEngine()
 {
 	ZoneScopedN("InitializeGameEngine");
 
-	// Deploy fingerprint banner (unconditional, one line). Embedded at build
-	// time via cmake/GenerateBuildFingerprint.cmake; asserted by
-	// scripts/run_smoke.py to catch stale-exe deploys. Do not reformat: the
-	// harness parses this exact "[BUILD_FINGERPRINT v1]" line.
-	// Stays a printf: scripts/exe_fingerprint.py reads this format string and the operands pushed for it out of the exe image (captures
-	// identify the exe that made them without launching it), so the literal's bytes and the call shape are a binary contract.
-	printf("[BUILD_FINGERPRINT v1] sha=%s dirty=%d branch=%s built=%s src=%s\n",
-		MC2_BUILD_GIT_SHA, MC2_BUILD_GIT_DIRTY, MC2_BUILD_GIT_BRANCH,
-		MC2_BUILD_TIME_ISO, MC2_BUILD_SRC_WORKTREE);
-#if MC2_BUILD_GIT_DIRTY
-	printf("[BUILD_FINGERPRINT v1] WARNING: BUILT-FROM-DIRTY-TREE\n");
-#endif
-	fflush(stdout);
+	mc2PrintBuildFingerprint();
     // sebi WTF? do we ned to do it for InitDW?
 	//__asm push esi;
 
