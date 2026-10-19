@@ -126,3 +126,14 @@ TEST_CASE("EQUIP-ENABLE-WIRE-1: equipmentEnableWireShouldForce combo grid") {
     // ENABLE-ONLY contract: false result means "leave available[] alone", never
     // "clear it" -- there is no disabling combo by construction (pure predicate).
 }
+
+TEST_CASE("equipment registry looks up bounded IDs") {
+    EquipmentRegistry reg;
+    reg.add("core:laser", 7, EQ_OTHER, true);
+    const char raw[] = {'c','o','r','e',':','l','a','s','e','r','!'};
+    const std::string_view id(raw, 10);
+    CHECK(reg.byQualifiedId(id) != nullptr);
+    CHECK(reg.legacyMasterIdFor(id) == 7);
+    CHECK(reg.byQualifiedId(std::string_view(raw, sizeof(raw))) == nullptr);
+    CHECK(equipmentDefPathForQualifiedId(id) == "data/defs/equipment/core/laser/equipmentdef.fit");
+}

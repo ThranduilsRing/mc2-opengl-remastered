@@ -15,6 +15,7 @@
 
 #include <array>
 #include <string>
+#include <string_view>
 #include <vector>
 
 struct aiScene;  // fwd; full def only in the .cpp
@@ -46,7 +47,7 @@ void BuildSkeleton(const aiScene* scene,
 // their rest (node default) transform. Returns false if the clip is missing.
 // outTimeTicks/outDurTicks (optional) report the sampled time and clip length.
 bool EvaluateClipGpuBones(const aiScene* scene,
-                          const std::string& clip,
+                          std::string_view clip,
                           float frame,
                           const std::vector<std::string>& boneNames,
                           std::vector<GpuBone>& out,

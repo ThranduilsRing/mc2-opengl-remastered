@@ -31,6 +31,7 @@
 #include <fstream>
 #include <map>
 #include <string>
+#include <string_view>
 #include <vector>
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"   // str<>()
@@ -116,7 +117,7 @@ namespace
         MC2_LOG(Ui, Info, "strings: {}", line);
     }
 
-    std::string Trim(const std::string& value)
+    std::string Trim(std::string_view value)
     {
         std::string::size_type begin = 0;
         while (begin < value.size() && std::isspace(static_cast<unsigned char>(value[begin])))
@@ -126,7 +127,7 @@ namespace
         while (end > begin && std::isspace(static_cast<unsigned char>(value[end - 1])))
             --end;
 
-        return value.substr(begin, end - begin);
+        return std::string(value.substr(begin, end - begin));
     }
 
     std::string ToLower(std::string value)
@@ -137,7 +138,7 @@ namespace
         return value;
     }
 
-    bool IsNumeric(const std::string& value)
+    bool IsNumeric(std::string_view value)
     {
         const std::string v = Trim(value);
         if (v.empty())
@@ -159,7 +160,7 @@ namespace
         return true;
     }
 
-    long ToLong(const std::string& value, long fallback = 0)
+    long ToLong(std::string_view value, long fallback = 0)
     {
         const std::string trimmed = Trim(value);
         if (trimmed.empty())
@@ -173,7 +174,7 @@ namespace
         return result;
     }
 
-    std::string Unescape(const std::string& value)
+    std::string Unescape(std::string_view value)
     {
         std::string out;
         out.reserve(value.size());
@@ -207,7 +208,7 @@ namespace
         return out;
     }
 
-    std::string Unquote(const std::string& value)
+    std::string Unquote(std::string_view value)
     {
         const std::string trimmed = Trim(value);
         if (trimmed.size() >= 2 && trimmed[0] == '"' && trimmed[trimmed.size() - 1] == '"')
@@ -237,7 +238,7 @@ namespace
         return true;
     }
 
-    bool IsBlockTypeStart(const std::string& text, std::string::size_type pos)
+    bool IsBlockTypeStart(std::string_view text, std::string::size_type pos)
     {
         /*
             Typed-block FIT files generated for data/defs put block declarations
@@ -259,7 +260,7 @@ namespace
         return true;
     }
 
-    bool FindNextTypedBlock(const std::string& text,
+    bool FindNextTypedBlock(std::string_view text,
                             std::string::size_type& searchPos,
                             std::string& blockType,
                             std::string& blockBody)
@@ -301,7 +302,7 @@ namespace
                    (std::isalnum(static_cast<unsigned char>(text[pos])) || text[pos] == '_'))
                 ++pos;
 
-            std::string type = text.substr(typeStart, pos - typeStart);
+            std::string type(text.substr(typeStart, pos - typeStart));
 
             while (pos < text.size() && std::isspace(static_cast<unsigned char>(text[pos])))
                 ++pos;
@@ -375,7 +376,7 @@ namespace
         return false;
     }
 
-    bool ReadField(const std::string& blockBody, const char* fieldName, std::string& out)
+    bool ReadField(std::string_view blockBody, std::string_view fieldName, std::string& out)
     {
         out.clear();
 
@@ -511,7 +512,7 @@ namespace
 #endif
     }
 
-    std::string JoinPath(const std::string& a, const char* b)
+    std::string JoinPath(std::string_view a, std::string_view b)
     {
 #ifdef PLATFORM_WINDOWS
         const char sep = '\\';
@@ -519,15 +520,15 @@ namespace
         const char sep = '/';
 #endif
         if (a.empty())
-            return b;
+            return std::string(b);
 
         if (a[a.size() - 1] == '/' || a[a.size() - 1] == '\\')
-            return a + b;
+            return std::string(a).append(b);
 
-        return a + sep + b;
+        return std::string(a).append(1, sep).append(b);
     }
 
-    bool SourceIsMC2Res(const std::string& source)
+    bool SourceIsMC2Res(std::string_view source)
     {
         return ToLower(Trim(source)) == "mc2res";
     }
@@ -590,7 +591,7 @@ namespace
         }
     }
 
-    void StoreResourceAlias(const std::string& resourceId, const std::string& textKey)
+    void StoreResourceAlias(std::string_view resourceId, std::string_view textKey)
     {
         if (resourceId.empty() || textKey.empty())
             return;
@@ -603,11 +604,11 @@ namespace
         }
         else
         {
-            State().keyByResourceSymbol[resourceId] = textKey;
+            State().keyByResourceSymbol[std::string(resourceId)] = textKey;
         }
     }
 
-    void StoreLegacyAlias(const std::string& legacyId, const std::string& textKey)
+    void StoreLegacyAlias(std::string_view legacyId, std::string_view textKey)
     {
         if (legacyId.empty() || textKey.empty())
             return;
@@ -717,9 +718,9 @@ namespace
                   stringCount, aliasCount, legacyAliasCount, menuCount, path.c_str());
     }
 
-    bool TryLoadDirectory(const std::string& rawDirectory)
+    bool TryLoadDirectory(std::string_view rawDirectory)
     {
-        std::string directory = rawDirectory;
+        std::string directory(rawDirectory);
         NormalizePath(directory);
 
         std::vector<std::string> files;
@@ -745,7 +746,7 @@ namespace
         return "en_us";
     }
 
-    void AddTextRootCandidates(std::vector<std::string>& dirs, const std::string& root, const char* locale)
+    void AddTextRootCandidates(std::vector<std::string>& dirs, std::string_view root, const char* locale)
     {
         if (root.empty() || !locale || !locale[0])
             return;
@@ -754,7 +755,7 @@ namespace
         dirs.push_back(JoinPath(root, (std::string("data/defs/text/") + locale).c_str()));
     }
 
-    void AddEngineSupportRootCandidates(std::vector<std::string>& dirs, const std::string& root)
+    void AddEngineSupportRootCandidates(std::vector<std::string>& dirs, std::string_view root)
     {
         if (root.empty())
             return;
@@ -767,7 +768,7 @@ namespace
         dirs.push_back(JoinPath(root, "data/defs/menus/viewer"));
     }
 
-    void AddDefsRootCandidates(std::vector<std::string>& dirs, const std::string& root)
+    void AddDefsRootCandidates(std::vector<std::string>& dirs, std::string_view root)
     {
         AddTextRootCandidates(dirs, root, ActiveLocale());
         AddEngineSupportRootCandidates(dirs, root);

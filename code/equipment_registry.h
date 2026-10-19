@@ -30,6 +30,7 @@
 #include "equipment_definition.h"  // EquipmentKind + component-form mapping target
 
 #include <string>
+#include <string_view>
 #include "Gates/gate.h"
 #include <vector>
 #include <map>
@@ -285,7 +286,7 @@ public:
     }
 
     // --- Query API ---
-    const EquipmentRegistryEntry* byQualifiedId(const std::string& id) const {
+    const EquipmentRegistryEntry* byQualifiedId(std::string_view id) const {
         auto it = byId_.find(id);
         return (it == byId_.end()) ? nullptr : &entries_[it->second];
     }
@@ -300,7 +301,7 @@ public:
         return (it == byOrdinal_.end()) ? std::string() : it->second;
     }
     // Ordinal for a qualified id (-1 if none).
-    long legacyMasterIdFor(const std::string& id) const {
+    long legacyMasterIdFor(std::string_view id) const {
         const EquipmentRegistryEntry* e = byQualifiedId(id);
         return e ? e->legacyMasterId : -1;
     }
@@ -323,7 +324,7 @@ public:
 
 private:
     std::vector<EquipmentRegistryEntry> entries_;
-    std::map<std::string, size_t>       byId_;      // qualifiedId -> entry index
+    std::map<std::string, size_t, std::less<>> byId_;      // qualifiedId -> entry index
     std::map<long, std::string>         byOrdinal_; // legacyMasterId -> qualifiedId
 };
 
@@ -433,8 +434,8 @@ inline bool mc2EquipmentAddEnabled() {
 //   "sample:plasma_rifle" -> "data/defs/equipment/sample/plasma_rifle/equipmentdef.fit"
 //   "core:laser"          -> "data/defs/equipment/core/laser/equipmentdef.fit"
 //   no ':' at all         -> treated as core/<ref> (defensive; ids always have one)
-inline std::string equipmentDefPathForQualifiedId(const std::string& qid) {
-    std::string ns = "core", slug = qid;
+inline std::string equipmentDefPathForQualifiedId(std::string_view qid) {
+    std::string ns = "core", slug(qid);
     size_t colon = qid.find(':');
     if (colon != std::string::npos) {
         ns   = qid.substr(0, colon);

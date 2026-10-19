@@ -1,6 +1,7 @@
 // BldgAppearance / TreeAppearance: building PBR sidecar loaders, footprint shadow and override render-shape texture residency.
 // Declared in the class headers; shared names in bdactor_internal.h.
 #include "bdactor_internal.h"
+#include <string_view>
 #include "mc2fmt.h"
 
 bool buildingPbrGateEnabled()
@@ -19,7 +20,7 @@ static bool readTextFile(const char* path, std::string& out)
 	return true;
 }
 
-static bool extractJsonString(const std::string& text, const char* key, std::string& out)
+static bool extractJsonString(std::string_view text, std::string_view key, std::string& out)
 {
 	std::string needle = "\"";
 	needle += key;
@@ -40,7 +41,7 @@ static bool extractJsonString(const std::string& text, const char* key, std::str
 	return true;
 }
 
-static bool extractJsonNumber(const std::string& text, const char* key, float fallback, float& out)
+static bool extractJsonNumber(const std::string& text, std::string_view key, float fallback, float& out)
 {
 	out = fallback;
 	std::string needle = "\"";
@@ -58,7 +59,7 @@ static bool extractJsonNumber(const std::string& text, const char* key, float fa
 	return end != start;
 }
 
-static bool extractJsonObject(const std::string& text, const char* key, std::string& out)
+static bool extractJsonObject(std::string_view text, std::string_view key, std::string& out)
 {
 	std::string needle = "\"";
 	needle += key;
@@ -84,7 +85,7 @@ static bool extractJsonObject(const std::string& text, const char* key, std::str
 	return false;
 }
 
-static bool extractJsonBool(const std::string& text, const char* key, bool fallback, bool& out)
+static bool extractJsonBool(const std::string& text, std::string_view key, bool fallback, bool& out)
 {
 	out = fallback;
 	std::string needle = "\"";
@@ -212,15 +213,15 @@ static std::string pathDir(const char* path)
 	return (p == std::string::npos) ? std::string() : s.substr(0, p + 1);
 }
 
-static std::string joinSidecarPath(const std::string& sidecarDir, const std::string& p)
+static std::string joinSidecarPath(std::string_view sidecarDir, std::string_view p)
 {
 	if (p.size() > 2 && p[1] == ':')
-		return p;
+		return std::string(p);
 	if (p.compare(0, 5, "data/") == 0 || p.compare(0, 5, "data\\") == 0)
-		return p;
+		return std::string(p);
 	if (!p.empty() && (p[0] == '/' || p[0] == '\\'))
-		return p;
-	std::string joined = sidecarDir + p;
+		return std::string(p);
+	std::string joined = std::string(sidecarDir).append(p);
 	for (size_t i = 0; i < joined.size(); ++i)
 		if (joined[i] == '/')
 			joined[i] = '\\';

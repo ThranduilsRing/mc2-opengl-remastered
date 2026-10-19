@@ -1,5 +1,6 @@
 // GameOS/gameos/asset_scale.cpp
 #include "asset_scale.h"
+#include <string_view>
 
 #include <algorithm>
 #include <cctype>
@@ -69,15 +70,15 @@ std::string canonicalize(const char* raw) {
 }
 
 // Trim leading/trailing whitespace.
-std::string trim(const std::string& s) {
+std::string trim(std::string_view s) {
     size_t a = 0, b = s.size();
     while (a < b && std::isspace(static_cast<unsigned char>(s[a]))) ++a;
     while (b > a && std::isspace(static_cast<unsigned char>(s[b-1]))) --b;
-    return s.substr(a, b - a);
+    return std::string(s.substr(a, b - a));
 }
 
 // Parse one CSV line "path,w,h". Returns true on success.
-bool parseLine(const std::string& raw, std::string& path,
+bool parseLine(std::string_view raw, std::string& path,
                uint32_t& w, uint32_t& h, bool& chrome) {
     // Skip comments and blank.
     std::string s = trim(raw);
@@ -204,11 +205,11 @@ const NominalDims* lookupNominal(State& st, const AssetKey& k) {
 // rect covers the expected cell.
 struct TestResult { const char* name; bool pass; const char* detail; };
 
-bool runOneScale(uint32_t nominalSize, uint32_t actualSize, const char* tag,
+bool runOneScale(uint32_t nominalSize, uint32_t actualSize, std::string_view tag,
                  char* detailBuf, size_t detailLen) {
     // Inject a synthetic manifest entry without going through CSV.
     State& st = state();
-    const std::string testKey = std::string("test/") + tag + ".tga";
+    const std::string testKey = std::string("test/").append(tag).append(".tga");
     st.manifest[testKey] = NominalDims{ nominalSize, nominalSize, false };
 
     AssetKey k = key(testKey.c_str());

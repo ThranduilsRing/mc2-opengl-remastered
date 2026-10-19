@@ -6,6 +6,7 @@
 // gameos_graphics_internal.h (the earlier extraction shim header) is included below, unchanged.
 #ifndef GAMEOS_GRAPHICS_MATERIAL_INTERNAL_H
 #define GAMEOS_GRAPHICS_MATERIAL_INTERNAL_H
+#include <string_view>
 
 #include <vector>
 #include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
@@ -470,20 +471,20 @@ class gosRenderMaterial {
             }
         }
 
-        bool setSamplerUnit(const std::string& sampler_name, uint32_t unit) {
+        bool setSamplerUnit(std::string_view sampler_name, uint32_t unit) {
             gosASSERT(!sampler_name.empty());
             // TODO: may also check that current program is equal to our program
-            if(program_->samplers_.count(sampler_name)) {
-                glUniform1i(program_->samplers_[sampler_name]->index_, unit);
+            if(auto it = program_->samplers_.find(sampler_name); it != program_->samplers_.end()) {
+                glUniform1i(it->second->index_, unit);
                 return true;
             }
             return false;
         }
 
-        bool setUniformBlock(const std::string& uniform_block_name, uint32_t unit) {
+        bool setUniformBlock(std::string_view uniform_block_name, uint32_t unit) {
             gosASSERT(!uniform_block_name.empty());
-            if(program_->uniform_blocks_.count(uniform_block_name)) {
-				glUniformBlockBinding(program_->shp_, program_->uniform_blocks_[uniform_block_name]->index_, unit);
+            if(auto it = program_->uniform_blocks_.find(uniform_block_name); it != program_->uniform_blocks_.end()) {
+				glUniformBlockBinding(program_->shp_, it->second->index_, unit);
                 return true;
             }
             return false;

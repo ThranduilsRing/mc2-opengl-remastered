@@ -127,8 +127,8 @@ void CObjectives::Observation::Begin(FitIniFile& file) {
 	for (auto byte : mc2::save::sha256(bytes)) { missionHash += std::format("{:02x}", byte); }
 }
 
-unsigned long long CObjectives::Observation::Emit(const char* kind, unsigned long long cause,
-                                                 const std::string& data, unsigned long long id) {
+unsigned long long CObjectives::Observation::Emit(std::string_view kind, unsigned long long cause,
+                                                 std::string_view data, unsigned long long id) {
 	if (!objectiveObservationEnabled() || completed || rejected || missionHash.empty()) { return 0; }
 	const double time = mission ? mission->actualTime : 0;
 	if (!std::isfinite(time) || time < 0 || turn < 0) {
@@ -157,7 +157,7 @@ unsigned long long CObjectives::Observation::Emit(const char* kind, unsigned lon
 }
 
 void CObjectives::Observation::SinkResult(const char* sink, const char* stage, const char* result,
-                                          const std::string& payload, unsigned long long cause) {
+                                          std::string_view payload, unsigned long long cause) {
 	if (!cause) { cause = dispatch; }
 	if (!cause || rejected) { return; }
 	const std::string data = std::format("{{\"sink\":{},\"stage\":{},\"result\":{},\"payload\":{}}}",

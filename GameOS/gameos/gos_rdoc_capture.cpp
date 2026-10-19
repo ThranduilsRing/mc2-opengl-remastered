@@ -9,6 +9,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <string>
+#include <string_view>
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"   // str<>()
 #include "mc2fmt.h"
@@ -69,8 +70,8 @@ State s_state;
 std::string expandCaptureTemplate(const char* raw) {
     std::string out(raw);
 
-    auto replaceAll = [&out](const char* token, const std::string& value) {
-        const std::string tok(token);
+    auto replaceAll = [&out](std::string_view token, std::string_view value) {
+        const std::string_view tok(token);
         for (std::string::size_type p = out.find(tok);
              p != std::string::npos;
              p = out.find(tok, p + value.size())) {

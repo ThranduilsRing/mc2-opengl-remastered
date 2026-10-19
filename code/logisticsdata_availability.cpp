@@ -379,7 +379,7 @@ void LogisticsData::dumpFrontEndState( const char* screenName )
 void LogisticsData::appendAvailability(const char* pFileName, bool* availableArray )
 {
 	auto* observation = objectiveObservation();
-	auto accepted = [&](const char* stage, const char* result, const std::string& payload) {
+	auto accepted = [&](const char* stage, const char* result, std::string_view payload) {
 		if (!observation) { return; }
 		for (const auto& technology : observation->technologies) {
 			if (technology.path == pFileName) {

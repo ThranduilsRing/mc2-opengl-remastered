@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <string_view>
 #include <vector>
 #include <map>
 #include "utils/graphics.h"
@@ -110,9 +111,9 @@ struct glsl_program {
 	glsl_shader* gsh_;
     char* prefix_;
 
-    using UniArr_t = std::map<std::string, glsl_uniform*>;
-	using SamplerArr_t = std::map<std::string, glsl_sampler*>;
-    using UniBlockArr_t = std::map<std::string, glsl_uniform_block*>;
+    using UniArr_t = std::map<std::string, glsl_uniform*, std::less<>>;
+	using SamplerArr_t = std::map<std::string, glsl_sampler*, std::less<>>;
+    using UniBlockArr_t = std::map<std::string, glsl_uniform_block*, std::less<>>;
     UniArr_t uniforms_;
 	UniBlockArr_t uniform_blocks_;
 	SamplerArr_t samplers_;
@@ -120,19 +121,17 @@ struct glsl_program {
     bool reload();
     void apply();
 
-    bool setFloat(const char* name, const float v);
-    bool setFloat2(const char* name, const float v[2]);
-    bool setFloat3(const char* name, const float v[3]);
-    bool setFloat4(const char* name, const float v[4]);
-	bool setFloat4(const std::string& name, const float v[4]);
-	bool setInt(const char* name, const int v);
-    bool setInt2(const char* name, const int v[2]);
-    bool setInt3(const char* name, const int v[3]);
-    bool setInt4(const char* name, const int v[4]);
-    bool setMat2(const char* name, const float v[4]);
-    bool setMat3(const char* name, const float v[9]);
-    bool setMat4(const char* name, const float v[16]);
-    bool setMat4(const std::string& name , const float v[16]);
+    bool setFloat(std::string_view name, const float v);
+    bool setFloat2(std::string_view name, const float v[2]);
+    bool setFloat3(std::string_view name, const float v[3]);
+    bool setFloat4(std::string_view name, const float v[4]);
+	bool setInt(std::string_view name, const int v);
+    bool setInt2(std::string_view name, const int v[2]);
+    bool setInt3(std::string_view name, const int v[3]);
+    bool setInt4(std::string_view name, const int v[4]);
+    bool setMat2(std::string_view name, const float v[4]);
+    bool setMat3(std::string_view name, const float v[9]);
+    bool setMat4(std::string_view name, const float v[16]);
    
     bool is_valid();
 

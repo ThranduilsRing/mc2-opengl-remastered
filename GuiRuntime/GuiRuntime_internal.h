@@ -24,6 +24,7 @@
 #include <filesystem>
 #include <functional>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 #include <type_traits>
 #include <vector>
@@ -70,9 +71,9 @@ inline std::string lower(std::string v)
     return v;
 }
 
-inline std::string canonicalFamily(const char* family)
+inline std::string canonicalFamily(std::string_view family)
 {
-    const std::string f = lower(family ? family : "");
+    const std::string f = lower(std::string(family));
     if (f.find("agency") != std::string::npos) {
         if (f.find("bold") != std::string::npos) return "agency_bold";
         return "agency";
@@ -103,9 +104,9 @@ inline int normalizeSize(int size)
     return size;
 }
 
-inline std::string fontKey(const std::string& family, int size)
+inline std::string fontKey(std::string_view family, int size)
 {
-    return family + ":" + std::to_string(size);
+    return std::string(family) + ":" + std::to_string(size);
 }
 
 inline ImFont* findUiFont(const char* family, int requestedSize)
@@ -113,7 +114,7 @@ inline ImFont* findUiFont(const char* family, int requestedSize)
     if (!g_imguiInitialized || !ImGui::GetCurrentContext())
         return nullptr;
 
-    const std::string fam = canonicalFamily(family);
+    const std::string fam = canonicalFamily(family ? family : "");
     const int wanted = normalizeSize(requestedSize);
     const int sizes[] = {8, 10, 12, 14, 16, 17, 18, 20, 22, 24, 28, 32, 36, 48};
 

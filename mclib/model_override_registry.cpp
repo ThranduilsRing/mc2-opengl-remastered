@@ -13,43 +13,43 @@
 
 using nlohmann::json;
 
-static void logDrop(const char* why, const std::string& key) {
-    mc2::fmt::print_err("[MODOVERRIDE] dropped '{}': {}\n", key.c_str(), mc2::fmt::safe(why));
+static void logDrop(std::string_view why, std::string_view key) {
+    mc2::fmt::print_err("[MODOVERRIDE] dropped '{}': {}\n", key.substr(0, key.find('\0')), why.substr(0, why.find('\0')));
     fflush(stderr);
 }
 
-static std::string normalizeKey(const std::string& s) {
+static std::string normalizeKey(std::string_view s) {
     size_t b = 0, e = s.size();
     while (b < e && std::isspace(static_cast<unsigned char>(s[b]))) ++b;
     while (e > b && std::isspace(static_cast<unsigned char>(s[e - 1]))) --e;
-    std::string out = s.substr(b, e - b);
+    std::string out(s.substr(b, e - b));
     for (char& c : out) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
     return out;
 }
 
-static bool isSafeSource(const std::string& s) {
+static bool isSafeSource(std::string_view s) {
     if (s.empty()) return false;
     if (s[0] == '/' || s[0] == '\\') return false;
     if (s.size() >= 2 && s[1] == ':') return false;
     // conservative: rejects any "..", including the rare literal "a..b.glb"; traversal safety > that edge case.
     if (s.find("..") != std::string::npos) return false;
-    std::string low = s; for (char& c : low) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+    std::string low(s); for (char& c : low) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
     const bool glb  = low.size() >= 4 && low.compare(low.size() - 4, 4, ".glb")  == 0;
     const bool gltf = low.size() >= 5 && low.compare(low.size() - 5, 5, ".gltf") == 0;
     return glb || gltf;
 }
 
-static std::string trimSource(const std::string& s) {
+static std::string trimSource(std::string_view s) {
     size_t b = 0, en = s.size();
     while (b < en && std::isspace(static_cast<unsigned char>(s[b]))) ++b;
     while (en > b && std::isspace(static_cast<unsigned char>(s[en - 1]))) --en;
-    return s.substr(b, en - b);
+    return std::string(s.substr(b, en - b));
 }
 
 // Parse manifestPath and return all valid records stamped with dir.
 // No duplicate-key check here — callers apply their own policy.
 static std::vector<ModelOverrideRecord> parseManifest(
-        const std::string& manifestPath, const std::string& dir) {
+        const std::string& manifestPath, std::string_view dir) {
     std::vector<ModelOverrideRecord> out;
 
     std::ifstream in(manifestPath.c_str());
@@ -138,7 +138,7 @@ static std::vector<ModelOverrideRecord> parseManifest(
 }
 
 int ModelOverrideRegistry::loadFromFile(const std::string& manifestPath,
-                                        const std::string& manifestDir) {
+                                        std::string_view manifestDir) {
     records_.clear();
     manifestDir_ = manifestDir;
 
@@ -156,7 +156,7 @@ int ModelOverrideRegistry::loadFromFile(const std::string& manifestPath,
 }
 
 int ModelOverrideRegistry::mergeFromFile(const std::string& manifestPath,
-                                         const std::string& manifestDir) {
+                                         std::string_view manifestDir) {
     auto parsed = parseManifest(manifestPath, manifestDir);
     int merged = 0;
     for (auto& rec : parsed) {

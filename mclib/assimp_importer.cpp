@@ -26,6 +26,7 @@
 
 #include <vector>
 #include <string>
+#include <string_view>
 #include <set>
 #include <map>
 #include <array>
@@ -826,7 +827,7 @@ inline void aiToRowMajor(const aiMatrix4x4& M, float* out16) {
 }
 
 // Clip loop length in seconds, or -1 if the scene has no such clip.
-float clipDurationSec(const aiScene* scene, const std::string& clip) {
+float clipDurationSec(const aiScene* scene, std::string_view clip) {
     for (unsigned a = 0; a < scene->mNumAnimations; ++a) {
         const aiAnimation* an = scene->mAnimations[a];
         if (clip == an->mName.C_Str()) {

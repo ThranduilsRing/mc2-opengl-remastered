@@ -31,6 +31,7 @@
 // is a no-op and the loaded blob is byte-identical to stock.
 #pragma once
 #include <string>
+#include <string_view>
 #include <unordered_map>
 #include <vector>
 
@@ -69,12 +70,12 @@ class EffectDefRegistry {
 public:
     // Clears registry then loads every *.fxdef.json in dir (non-recursive).
     // Returns count of valid defs loaded. Malformed files are logged+skipped.
-    int loadFromDir(const std::string& dir);
+    int loadFromDir(std::string_view dir);
 
     // Additive: loads dir without clearing; entries WIN on dup effectKey
     // (mod overlay semantics — same as AnimOverrideRegistry::mergeFromFile).
     // Returns count merged in (not total).
-    int mergeFromDir(const std::string& dir);
+    int mergeFromDir(std::string_view dir);
 
     // Returns the def for effectName (case-insensitive), or nullptr.
     const EffectDef* resolve(const char* effectName) const;

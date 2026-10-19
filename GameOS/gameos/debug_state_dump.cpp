@@ -130,6 +130,7 @@ extern "C" void mc2_render_backend_mech_region_health(
 #include <process.h>   // for _getpid()
 #include <sstream>
 #include <string>
+#include <string_view>
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include "Gates/gate.h"
@@ -204,9 +205,9 @@ static int s_pid() {
 }
 
 bool writeFileAtomic(const std::filesystem::path& dir,
-                     const std::string& finalName,
-                     const std::string& content) {
-    const std::string tmpName = finalName + ".tmp." + std::to_string(static_cast<long long>(_getpid()));
+                     std::string_view finalName,
+                     std::string_view content) {
+    const std::string tmpName = std::string(finalName) + ".tmp." + std::to_string(static_cast<long long>(_getpid()));
     const std::filesystem::path tmpPath  = dir / tmpName;
     const std::filesystem::path finalPath = dir / finalName;
 
@@ -1012,7 +1013,7 @@ std::string buildSnapshotJson(const RenderSnapshot& snap,
     return s.str();
 }
 
-bool writeFile(const std::filesystem::path& path, const std::string& content) {
+bool writeFile(const std::filesystem::path& path, std::string_view content) {
     std::ofstream f(path, std::ios::out | std::ios::trunc);
     if (!f) return false;
     f << content;

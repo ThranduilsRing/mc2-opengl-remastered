@@ -4,6 +4,7 @@
 //===========================================================================//
 
 #include <memory>
+#include <string_view>
 #include"missionbriefingscreen.h"
 #include "../GuiRuntime/GuiRuntime.h"
 #include "gos_crashbundle.h"
@@ -45,13 +46,13 @@ std::string cleanBriefingText( const char* text )
 // colour) to the parallel lists the defs GuiList renders (its rows are fixed one-line
 // height, so long items must be pre-wrapped). Existing '\n' breaks are preserved.
 void appendWrapped( std::vector<std::string>& lines, std::vector<unsigned int>& colors,
-	const std::string& text, unsigned int color, size_t maxChars )
+	std::string_view text, unsigned int color, size_t maxChars )
 {
 	size_t start = 0;
 	for ( ;; )
 	{
 		size_t nl = text.find( '\n', start );
-		std::string seg = text.substr( start, nl == std::string::npos ? std::string::npos : nl - start );
+		std::string seg(text.substr( start, nl == std::string::npos ? std::string::npos : nl - start ));
 		if ( seg.empty() )
 		{
 			lines.push_back( std::string() );

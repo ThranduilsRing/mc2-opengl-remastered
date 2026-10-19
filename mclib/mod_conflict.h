@@ -22,6 +22,7 @@
 // probes); this header only classifies + formats. No IO, no engine includes —
 // doctest-covered and shared with the standalone modlint CLI.
 #include <string>
+#include <string_view>
 #include <vector>
 
 // One indexed overlay file, as facts.
@@ -58,7 +59,7 @@ struct ModConflictFinding {
 
 // --- def-key helpers --------------------------------------------------------
 // True for keys under the generated-definition roots.
-inline bool modKeyIsDef(const std::string& key) {
+inline bool modKeyIsDef(std::string_view key) {
     return key.rfind("data/defs/units/", 0) == 0 ||
            key.rfind("data/defs/equipment/", 0) == 0;
 }
@@ -67,17 +68,17 @@ inline bool modKeyIsDef(const std::string& key) {
 //   data/defs/equipment/<ns>/<slug>/equipmentdef.fit      -> ns:slug
 //   data/defs/units/<ns>/<chassis>/<variant>/unit.fit     -> ns:chassis_variant
 // Empty string for non-def keys or malformed paths.
-inline std::string modDefQualifiedId(const std::string& key) {
+inline std::string modDefQualifiedId(std::string_view key) {
     if (!modKeyIsDef(key)) return std::string();
     const size_t nsStart = (key.rfind("data/defs/units/", 0) == 0)
         ? sizeof("data/defs/units/") - 1
         : sizeof("data/defs/equipment/") - 1;
     size_t nsEnd = key.find('/', nsStart);
     if (nsEnd == std::string::npos) return std::string();
-    std::string ns = key.substr(nsStart, nsEnd - nsStart);
+    std::string ns(key.substr(nsStart, nsEnd - nsStart));
     size_t lastSlash = key.rfind('/');
     if (lastSlash <= nsEnd) return std::string();
-    std::string mid = key.substr(nsEnd + 1, lastSlash - nsEnd - 1);  // dirs between ns and filename
+    std::string mid(key.substr(nsEnd + 1, lastSlash - nsEnd - 1));  // dirs between ns and filename
     if (mid.empty()) return std::string();
     for (char& c : mid) if (c == '/') c = '_';
     return ns + ":" + mid;
@@ -85,7 +86,7 @@ inline std::string modDefQualifiedId(const std::string& key) {
 
 // Reserved namespace: mods must not squat `core:` for NEW content; shipping a
 // core: def path is only legitimate as a deliberate stock override.
-inline bool modKeyUsesReservedCoreNamespace(const std::string& key) {
+inline bool modKeyUsesReservedCoreNamespace(std::string_view key) {
     return key.rfind("data/defs/units/core/", 0) == 0 ||
            key.rfind("data/defs/equipment/core/", 0) == 0;
 }

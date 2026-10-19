@@ -15,35 +15,35 @@
 
 using nlohmann::json;
 
-static void animLogDrop(const char* why, const std::string& key) {
-    mc2::fmt::print_err("[ANIMOVERRIDE] dropped '{}': {}\n", key.c_str(), mc2::fmt::safe(why));
+static void animLogDrop(std::string_view why, std::string_view key) {
+    mc2::fmt::print_err("[ANIMOVERRIDE] dropped '{}': {}\n", key.substr(0, key.find('\0')), why.substr(0, why.find('\0')));
     fflush(stderr);
 }
 
-static std::string animNormalizeKey(const std::string& s) {
+static std::string animNormalizeKey(std::string_view s) {
     size_t b = 0, e = s.size();
     while (b < e && std::isspace(static_cast<unsigned char>(s[b]))) ++b;
     while (e > b && std::isspace(static_cast<unsigned char>(s[e - 1]))) --e;
-    std::string out = s.substr(b, e - b);
+    std::string out(s.substr(b, e - b));
     for (char& c : out) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
     return out;
 }
 
-static std::string animTrim(const std::string& s) {
+static std::string animTrim(std::string_view s) {
     size_t b = 0, en = s.size();
     while (b < en && std::isspace(static_cast<unsigned char>(s[b]))) ++b;
     while (en > b && std::isspace(static_cast<unsigned char>(s[en - 1]))) --en;
-    return s.substr(b, en - b);
+    return std::string(s.substr(b, en - b));
 }
 
 // Safe relative .ase/.agl source. Rejects absolute paths, drive letters, and any
 // ".." (traversal). Returns the basename WITHOUT extension in `baseOut`.
-static bool animSafeSource(const std::string& s, std::string& baseOut) {
+static bool animSafeSource(std::string_view s, std::string& baseOut) {
     if (s.empty()) return false;
     if (s[0] == '/' || s[0] == '\\') return false;
     if (s.size() >= 2 && s[1] == ':') return false;
     if (s.find("..") != std::string::npos) return false;
-    std::string low = s; for (char& c : low) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+    std::string low(s); for (char& c : low) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
     const bool ase = low.size() >= 4 && low.compare(low.size() - 4, 4, ".ase") == 0;
     const bool agl = low.size() >= 4 && low.compare(low.size() - 4, 4, ".agl") == 0;
     if (!ase && !agl) return false;
@@ -53,7 +53,7 @@ static bool animSafeSource(const std::string& s, std::string& baseOut) {
 }
 
 static std::vector<AnimOverrideRecord> animParseManifest(
-        const std::string& manifestPath, const std::string& dir) {
+        const std::string& manifestPath, std::string_view dir) {
     std::vector<AnimOverrideRecord> out;
 
     std::ifstream in(manifestPath.c_str());
@@ -109,7 +109,7 @@ static std::vector<AnimOverrideRecord> animParseManifest(
 }
 
 int AnimOverrideRegistry::loadFromFile(const std::string& manifestPath,
-                                       const std::string& manifestDir) {
+                                       std::string_view manifestDir) {
     records_.clear();
     manifestDir_ = manifestDir;
 
@@ -125,7 +125,7 @@ int AnimOverrideRegistry::loadFromFile(const std::string& manifestPath,
 }
 
 int AnimOverrideRegistry::mergeFromFile(const std::string& manifestPath,
-                                        const std::string& manifestDir) {
+                                        std::string_view manifestDir) {
     auto parsed = animParseManifest(manifestPath, manifestDir);
     int merged = 0;
     for (auto& rec : parsed) {

@@ -19,6 +19,7 @@
 #include <fstream>
 #include <mutex>
 #include <utility>
+#include <string_view>
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"
 #include "mc2fmt.h"
@@ -29,22 +30,22 @@ namespace mc2fxdefs {
 
 namespace {
 
-void fxdefLog(const char* why, const std::string& key) {
-    mc2::fmt::print_err("[FXDEF] {}: {}\n", mc2::fmt::safe(why), key.c_str());
+void fxdefLog(std::string_view why, std::string_view key) {
+    mc2::fmt::print_err("[FXDEF] {}: {}\n", why.substr(0, why.find('\0')), key.substr(0, key.find('\0')));
     fflush(stderr);
 }
 
-std::string fxdefLower(const std::string& s) {
-    std::string out = s;
+std::string fxdefLower(std::string_view s) {
+    std::string out(s);
     for (char& c : out) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
     return out;
 }
 
-std::string fxdefTrim(const std::string& s) {
+std::string fxdefTrim(std::string_view s) {
     size_t b = 0, e = s.size();
     while (b < e && std::isspace(static_cast<unsigned char>(s[b]))) ++b;
     while (e > b && std::isspace(static_cast<unsigned char>(s[e - 1]))) --e;
-    return s.substr(b, e - b);
+    return std::string(s.substr(b, e - b));
 }
 
 // Parse ONE *.fxdef.json file. Returns false on hard parse failure (file
@@ -162,7 +163,7 @@ bool fxdefParseOne(const std::string& path, EffectDef& out) {
     return true;
 }
 
-std::vector<EffectDef> fxdefParseDir(const std::string& dir) {
+std::vector<EffectDef> fxdefParseDir(std::string_view dir) {
     std::vector<EffectDef> out;
     std::error_code ec;
     if (!std::filesystem::is_directory(dir, ec)) return out;
@@ -186,7 +187,7 @@ std::vector<EffectDef> fxdefParseDir(const std::string& dir) {
 
 }  // namespace
 
-int EffectDefRegistry::loadFromDir(const std::string& dir) {
+int EffectDefRegistry::loadFromDir(std::string_view dir) {
     defs_.clear();
     byKey_.clear();
     auto parsed = fxdefParseDir(dir);
@@ -202,7 +203,7 @@ int EffectDefRegistry::loadFromDir(const std::string& dir) {
     return static_cast<int>(defs_.size());
 }
 
-int EffectDefRegistry::mergeFromDir(const std::string& dir) {
+int EffectDefRegistry::mergeFromDir(std::string_view dir) {
     auto parsed = fxdefParseDir(dir);
     int merged = 0;
     for (auto& def : parsed) {
@@ -231,7 +232,7 @@ namespace {
 // scoped to the schema-v1 field set (alpha/red/green/blue/scale/lifeSpan).
 // Returns true if the field was recognized+applied for this spec's classID.
 bool fxdefSetCurveByName(gosFX::Effect__Specification* spec, unsigned classID,
-                          const std::string& field, double v) {
+                          std::string_view field, double v) {
     Stuff::Scalar val = static_cast<Stuff::Scalar>(v);
     auto setConst = [&](gosFX::ConstantCurve& c) { c.m_value = val; };
     auto setComplex = [&](gosFX::ComplexCurve& c) { c.SetCurve(val); };
