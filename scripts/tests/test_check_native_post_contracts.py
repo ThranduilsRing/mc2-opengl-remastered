@@ -22,3 +22,22 @@ def test_color_mask_rejects_missing_channel_and_extra_attachment():
     assert not checker.validate_native_color_mask(text)
     assert checker.validate_native_color_mask(text.replace("VK_COLOR_COMPONENT_B_BIT |", ""))
     assert checker.validate_native_color_mask(text.replace("cb.attachmentCount = 1;", "cb.attachmentCount = 2;"))
+
+
+def test_color_mask_attachment_checker_rejects_native_composite_regression(tmp_path, monkeypatch):
+    import shutil
+    import sys
+    checker = load("check-pass-attachment-contract")
+    native = tmp_path / "GameOS/gameos"
+    native.mkdir(parents=True)
+    (tmp_path / "scripts").mkdir()
+    shutil.copyfile(ROOT / "scripts/check-colormask-ownership.py", tmp_path / "scripts/check-colormask-ownership.py")
+    for name in ("vulkan_post_screenfx_native.cpp", "vulkan_post_fog_native.cpp", "engine_present_vk.cpp"):
+        shutil.copyfile(ROOT / "GameOS/gameos" / name, native / name)
+    monkeypatch.setattr(checker, "ROOT", tmp_path)
+    monkeypatch.setattr(sys, "argv", ["check", "--quiet"])
+    assert checker.main() == 0
+    composite = native / "engine_present_vk.cpp"
+    source = composite.read_text(encoding="utf-8")
+    composite.write_text(source.replace("VK_COLOR_COMPONENT_B_BIT |", "", 1), encoding="utf-8")
+    assert checker.main() == 1

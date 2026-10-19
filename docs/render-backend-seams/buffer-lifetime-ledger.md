@@ -25,9 +25,6 @@ The table below is parsed: `| symbol | class | producer | sync | TU |` (one buff
 | `s_actorVisBuf` | B | GPU-atomicOr | SSBO barrier+clear | gpu_cull_compute.cpp |
 | `s_blockVisBuf` | E | GPU-atomicOr | mission-clear+SSBO barrier | gpu_cull_compute.cpp |
 | `s_bucketCapsBuf` | C | CPU-glBufferData | static | gpu_cull_compute.cpp |
-| `g_recipeSSBO` | C | CPU | static-mission | gos_terrain_indirect.cpp |
-| `g_thinRecordSSBO` | A | CPU/GPU | ring3+thinRingFences | gos_terrain_indirect.cpp |
-| `g_indirectCmdBuffer` | B | GPU-atomicAdd | COMMAND barrier+clear | gos_terrain_indirect.cpp |
 | `s_heightSsbo` | C | CPU | static-mission | gos_terrain_lod_chunk.cpp |
 | `g_recipeBuffer` (water) | C | CPU | static-mission | gos_terrain_water_stream.cpp |
 | `g_thinBuffer` (water) | A | CPU/GPU | ring3+fence | gos_terrain_water_stream.cpp |
@@ -38,6 +35,9 @@ The table below is parsed: `| symbol | class | producer | sync | TU |` (one buff
 | `s_indirectCmdBuf` (terrain-mask) | D | CPU-glBufferData | orphan-then-upload (VK-OPT-4) | gameos_graphics.cpp |
 | `s_waterIndirectCmdBuf` (terrain-mask) | D | CPU-glBufferData | orphan-then-upload (VK-OPT-4) | gameos_graphics.cpp |
 
+Terrain GL recipe/thin/command buffers were retired in s65. The terrain path now
+captures CPU MVP inputs for Vulkan; it produces no GL indirect commands to fence.
+
 ## Known stale telemetry
 
 - `gpu_drawn_instances` — reads CPU-side count that is 0 under live GPU-authority path;
@@ -47,9 +47,8 @@ The table below is parsed: `| symbol | class | producer | sync | TU |` (one buff
 ## What the checker enforces (FAIL)
 
 1. Every ledger row declares a class in {A,B,C,D,E}.
-2. **Class-B COMMAND barrier presence** — `gpu_cull_compute.cpp` and
-   `gos_terrain_indirect.cpp` each contain a `GL_COMMAND_BARRIER_BIT` glMemoryBarrier
-   (removing the barrier that fences GPU-produced indirect buffers → FAIL).
+2. **Class-B COMMAND barrier presence**: `gpu_cull_compute.cpp` contains a
+   `GL_COMMAND_BARRIER_BIT` glMemoryBarrier (removing it fails the check).
 3. **Class-D Vulkan-debt declared** — at least the known class-D buffers are listed so the
    implicit-sync migration debt stays visible.
 4. **Stale counter declared** — `gpu_drawn_instances` is documented as known-stale.

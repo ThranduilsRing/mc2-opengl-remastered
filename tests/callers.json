@@ -455,6 +455,13 @@
           "evidence": "command",
           "reference": "scripts/check-colormask-ownership.py",
           "text": "run_check \"colormask_ownership\"    \"py -3 scripts/check-colormask-ownership.py --quiet && py -3 -B -m pytest scripts/tests/test_check_native_post_contracts.py -k color_mask -q -p no:cacheprovider\""
+        },
+        {
+          "path": "scripts/check-pass-attachment-contract.py",
+          "line": 89,
+          "evidence": "load module",
+          "reference": "A:\\Games\\mc2-lane2/scripts/check-colormask-ownership.py",
+          "text": "spec = importlib.util.spec_from_file_location(\"native_masks\", ROOT / \"scripts/check-colormask-ownership.py\")"
         }
       ],
       "callers_by_stem": []
@@ -5748,7 +5755,7 @@
         },
         {
           "path": "tests/smoke/test_runner.py",
-          "line": 4,
+          "line": 5,
           "evidence": "import",
           "reference": "scripts.smoke_lib.runner",
           "text": "from scripts.smoke_lib.runner import run_one, RunConfig"
@@ -9526,7 +9533,7 @@
       "callers_by_basename": [
         {
           "path": "GameOS/gameos/CMakeLists.txt",
-          "line": 463,
+          "line": 460,
           "evidence": "cmake command",
           "reference": "${CMAKE_SOURCE_DIR}/tools/shader_offline_build/slang_compile.py",
           "text": "COMMAND \"${Python3_EXECUTABLE}\""

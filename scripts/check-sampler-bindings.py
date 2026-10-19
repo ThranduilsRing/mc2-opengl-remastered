@@ -97,10 +97,9 @@ MODE_ALTERNATE_PAIRS = [frozenset({"dynamicShadowArray", "dynamicShadowMap"})]
 # a future change makes an anchored name multiplexed (a 2nd decl file or 2nd
 # receiver appears), the equality guards below FAIL loudly, forcing the author
 # to remove it from this table rather than silently passing a now-unsafe anchor.
-HARD_ANCHORS = {
-    # name: (expected_unit, glsl_file_substr, cpp_receiver)
-    "sceneTex": (0, "shaders/postprocess.frag", "compositeProg_"),
-}
+# GL composite is retired; native composite descriptor bindings are checked by
+# check-vulkan-bindings.py. No live GL receiver remains for sceneTex.
+HARD_ANCHORS = {}
 
 # ---------------------------------------------------------------------------
 # Multiplex anchors

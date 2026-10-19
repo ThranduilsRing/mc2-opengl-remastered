@@ -788,13 +788,9 @@ void BuildDenseRecipe() {
     // Build cement catalog atlas via GPU readback — populates g_cementLayerIndexBySlot.
     BuildCementCatalogAtlas();
 
-    // Bake cementWord into _wp3 now that g_cementLayerIndexBySlot is ready.
-    // Must run BEFORE glBufferData so the cement words are included in the initial
-    // GPU upload and don't require a FlushDirtyRecipeSlotsToGPU on frame 1.
+    // Bake cementWord into the CPU recipe before publishing native readiness.
     PopulateRecipeCementWords();
 
-    // Full GPU upload on mission load — includes _wp3 cement words from above.
-    // TIER2-EXCLUDED: dead-path
     g_recipeReady = true;
     CollectUniqueNodeIds();
 }

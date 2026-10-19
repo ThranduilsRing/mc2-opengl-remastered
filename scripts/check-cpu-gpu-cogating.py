@@ -152,8 +152,10 @@ PAIRS = [
             "absence_proof": [
                 ("GameOS/gameos/gameos_graphics_draw.cpp",
                  r"TERRAIN-DEADCODE-DELETE-1: gosRenderer::terrainDrawIndexedPatches deleted"),
-                ("GameOS/gameos/gos_terrain_lod_chunk.cpp",
-                 r'"shaders/terrain_lod_chunk\.vert"'),
+                # GL LOD shader setup is retired. Native terrain still has only
+                # vertex/fragment stages, so the TES Phong mirror remains absent.
+                ("GameOS/gameos/vulkan_terrain_island_island.cpp",
+                 r"gp\.stageCount\s*=\s*2;\s*gp\.pStages\s*=\s*stages;"),
             ],
             # The orphaned counterpart, kept named so the pair stays legible.
             "orphan_of": ("shaders/gos_terrain.tese", r"Phong tessellation smoothing"),
@@ -317,6 +319,10 @@ def check(root: Path, quiet: bool = False) -> list[str]:
 # should trust.
 # --------------------------------------------------------------------------
 INJECTIONS = [
+    ("R4: native terrain gains a tessellation stage",
+     "GameOS/gameos/vulkan_terrain_island_island.cpp",
+     "gp.stageCount = 2; gp.pStages = stages;",
+     "gp.stageCount = 3; gp.pStages = stages;"),
     ("R3: un-gate the CPU Phong term (the original defect)",
      "mclib/mapdata.cpp",
      "if (!s_retireCpuPhong && phongAlpha > 0.0f) {",
