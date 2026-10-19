@@ -1,7 +1,7 @@
+#include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "utils/mc2log.h"
 // Mech3DAppearance: bounds recalculation, render and renderShadows, with the MLR draw / light-row / FX-count counters they feed.
 // Declared in the class headers; shared names in mech3d_internal.h.
-#include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "mech3d_internal.h"
 #include "../RenderCore/axis_convert.h"
 #include "mc2fmt.h"

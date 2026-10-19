@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in missiongui_shared_internal.h.
 #include "missiongui_shared_internal.h"
 #include "mc2fmt.h"
+#include "Gates/render_options_cfg.h"
 
 
 int MissionInterfaceManager::quickDebugInfo() {

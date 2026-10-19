@@ -1,5 +1,5 @@
-#include "utils/mc2log.h"
-﻿#define MECHLISTBOX_CPP
+﻿#include "utils/mc2log.h"
+#define MECHLISTBOX_CPP
 /*************************************************************************************************\
 MechListBox.cpp			: Implementation of the MechListBox component.
 //---------------------------------------------------------------------------//

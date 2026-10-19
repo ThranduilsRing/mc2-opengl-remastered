@@ -1,3 +1,4 @@
+#include "mc2fmt.h"
 #include "utils/mc2log.h"
 // TG shapes: TG_Shape::Render, per-poly selection and the render-shape PBR override.
 // Declared in the class headers; shared names in tgl_internal.h.
