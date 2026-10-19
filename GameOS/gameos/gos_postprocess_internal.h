@@ -26,9 +26,6 @@
 #include "../../RenderCore/PipelineRegistry.h"  // POSTPROCESS-COMPOSITE-REGISTRATION-1
 #include "pipeline_binder.h"                     // applyPipeline — composite FF state
 #include "render_frame_plan.h"                   // RENDER-FRAME-PLAN-SCAFFOLD-1
-#include "gos_cluster_depth_pyramid.h"  // CLUSTER-DEPTH-PYRAMID-NATIVE-1 (gated substrate)
-#include "gos_lightgrid_build.h"         // MC2-LIGHTGRID-BUILD-NATIVE-1 (gated, inert)
-#include "gos_postprocess_blur.h"        // POSTPROCESS-COMPUTE-BLUR-1 (gated substrate)
 #ifdef MC2_VULKAN_ISLAND
 #include "vk_shared_gbuffer_gate.h"     // VK-P14 GATE-CONSOLIDATION-1 umbrella resolver
 #include "vulkan_shared_scene_depth.h"  // VK-TIER1 SHARED SCENE DEPTH substrate (gated)

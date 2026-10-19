@@ -521,31 +521,6 @@ void gosPostProcess::endScene()
     GLint prevVAO = 0;
     glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &prevVAO);
 
-    // CLUSTER-DEPTH-PYRAMID-NATIVE-1: build a per-tile (min,max) depth image
-    // from the resolved scene depth, here where depth is fully populated and
-    // before any post pass. Gated (MC2_CLUSTER_DEPTH_PYRAMID, default OFF) ->
-    // no-op + byte-identical when OFF. Substrate only: no consumer of the
-    // output exists yet (no lighting / decal / material reader).
-    cluster_depth_pyramid::Run(sceneDepthTex_, width_, height_);
-
-    // MC2-LIGHTGRID-BUILD-NATIVE-1: build a per-tile light-bin grid from a native
-    // sphere cull-geometry buffer (derived from ObjectLights @ binding 20) and the
-    // depth pyramid's per-tile (min,max) image. Runs AFTER the depth pyramid (it
-    // samples that tile texture) and AFTER the light SSBO upload. Gated
-    // (MC2_LIGHTGRID_BUILD, default OFF) -> no-op + byte-identical when OFF.
-    // INERT: no shading consumer reads the grid; zero visual change.
-    lightgrid_build::Run(inverseViewProj_, width_, height_);
-
-    // POSTPROCESS-COMPUTE-BLUR-1: greenfield GPU compute downsample + separable
-    // Gaussian blur SUBSTRATE (Vulkan-prep: typed-sync + ping-pong pattern).
-    // Runs after the other compute passes. Gated (MC2_POSTPROCESS_COMPUTE_BLUR,
-    // default OFF) -> no-op + byte-identical when OFF. INERT: NO bloom/glow/DOF
-    // consumer reads the blurred output; zero visual change. When ON, the live
-    // path blurs the feedback-safe scene-color copy if present (substrate only);
-    // the VERIFY sub-gate always proves CPU-vs-GPU parity on a controlled test
-    // pattern, independent of any consumer.
-    postprocess_blur::Run(getSceneColorCopyTexture(), width_, height_);
-
 #ifdef MC2_VULKAN_ISLAND
     // VK-POST-SCREENFX-NATIVE-1: the screen-space shadow receiver, the cloud shadow and the shoreline foam render natively on the shared engine
     // context (one submit each, multiplied into the shared colour in place); the GL passes are gone, a decline leaves the pass out for the frame.

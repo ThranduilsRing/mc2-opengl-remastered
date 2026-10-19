@@ -16,21 +16,6 @@
    }
   },
   {
-   "assemble": "raw",
-   "defines": [
-    "TILE_SIZE=32"
-   ],
-   "id": "cluster_depth_pyramid",
-   "key": "cluster_depth_pyramid{TILE_SIZE=32}",
-   "optional_groups_on": [],
-   "prefix": "#version 430\n#define TILE_SIZE 32\n",
-   "raw_note": "loaded as plain text (no engine include flattening)",
-   "source": "GameOS/gameos/gos_cluster_depth_pyramid.cpp:72",
-   "stages": {
-    "comp": "shaders/cluster_depth_pyramid.comp"
-   }
-  },
-  {
    "assemble": "engine",
    "defines": [],
    "id": "gos_terrain",
@@ -409,89 +394,6 @@
    "source": "GameOS/gameos/gpu_cull_compute.cpp:402",
    "stages": {
     "comp": "shaders/gpu_cull_block_rollup.comp"
-   }
-  },
-  {
-   "assemble": "raw",
-   "defines": [
-    "LIGHTGRID_STAGE=0",
-    "LIGHTGRID_MAX_LIGHTS=32"
-   ],
-   "id": "lightgrid_build#0",
-   "key": "lightgrid_build#0{LIGHTGRID_STAGE=0,LIGHTGRID_MAX_LIGHTS=32}",
-   "optional_groups_on": [],
-   "prefix": "#version 430\n#define LIGHTGRID_STAGE 0\n#define LIGHTGRID_MAX_LIGHTS 32\n",
-   "raw_note": "loaded as plain text (no engine include flattening)",
-   "source": "GameOS/gameos/gos_lightgrid_build.cpp:113",
-   "stages": {
-    "comp": "shaders/lightgrid_build.comp"
-   }
-  },
-  {
-   "assemble": "raw",
-   "defines": [
-    "LIGHTGRID_STAGE",
-    "LIGHTGRID_MAX_LIGHTS=32"
-   ],
-   "id": "lightgrid_build#1",
-   "key": "lightgrid_build#1{LIGHTGRID_STAGE,LIGHTGRID_MAX_LIGHTS=32}",
-   "optional_groups_on": [],
-   "prefix": "#version 430\n#define LIGHTGRID_STAGE 1\n#define LIGHTGRID_MAX_LIGHTS 32\n",
-   "raw_note": "loaded as plain text (no engine include flattening)",
-   "source": "GameOS/gameos/gos_lightgrid_build.cpp:113",
-   "stages": {
-    "comp": "shaders/lightgrid_build.comp"
-   }
-  },
-  {
-   "assemble": "raw",
-   "defines": [
-    "TILE_X=8",
-    "TILE_Y=8",
-    "MODE_BLUR_H"
-   ],
-   "id": "postprocess_blur#MODE_BLUR_H",
-   "key": "postprocess_blur#MODE_BLUR_H{TILE_X=8,TILE_Y=8,MODE_BLUR_H}",
-   "optional_groups_on": [],
-   "prefix": "#version 430\n#define TILE_X 8\n#define TILE_Y 8\n#define MODE_BLUR_H 1\n",
-   "raw_note": "loaded as plain text (no engine include flattening)",
-   "source": "GameOS/gameos/gos_postprocess_blur.cpp:88",
-   "stages": {
-    "comp": "shaders/postprocess_blur.comp"
-   }
-  },
-  {
-   "assemble": "raw",
-   "defines": [
-    "TILE_X=8",
-    "TILE_Y=8",
-    "MODE_BLUR_V"
-   ],
-   "id": "postprocess_blur#MODE_BLUR_V",
-   "key": "postprocess_blur#MODE_BLUR_V{TILE_X=8,TILE_Y=8,MODE_BLUR_V}",
-   "optional_groups_on": [],
-   "prefix": "#version 430\n#define TILE_X 8\n#define TILE_Y 8\n#define MODE_BLUR_V 1\n",
-   "raw_note": "loaded as plain text (no engine include flattening)",
-   "source": "GameOS/gameos/gos_postprocess_blur.cpp:88",
-   "stages": {
-    "comp": "shaders/postprocess_blur.comp"
-   }
-  },
-  {
-   "assemble": "raw",
-   "defines": [
-    "TILE_X=8",
-    "TILE_Y=8",
-    "MODE_DOWNSAMPLE"
-   ],
-   "id": "postprocess_blur#MODE_DOWNSAMPLE",
-   "key": "postprocess_blur#MODE_DOWNSAMPLE{TILE_X=8,TILE_Y=8,MODE_DOWNSAMPLE}",
-   "optional_groups_on": [],
-   "prefix": "#version 430\n#define TILE_X 8\n#define TILE_Y 8\n#define MODE_DOWNSAMPLE 1\n",
-   "raw_note": "loaded as plain text (no engine include flattening)",
-   "source": "GameOS/gameos/gos_postprocess_blur.cpp:88",
-   "stages": {
-    "comp": "shaders/postprocess_blur.comp"
    }
   },
   {

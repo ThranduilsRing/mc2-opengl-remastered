@@ -46,18 +46,6 @@ void gosPostProcess::destroy()
     destroyVkPostHzbNative();
 #endif
 
-    // CLUSTER-DEPTH-PYRAMID-NATIVE-1: release the gated pass's GL resources.
-    // No-op when the gate was never enabled (nothing was allocated).
-    cluster_depth_pyramid::Shutdown();
-
-    // MC2-LIGHTGRID-BUILD-NATIVE-1: release the gated light-grid builder's GL
-    // resources. No-op when the gate was never enabled.
-    lightgrid_build::Shutdown();
-
-    // POSTPROCESS-COMPUTE-BLUR-1: release the gated blur substrate's GL
-    // resources. No-op when the gate was never enabled.
-    postprocess_blur::Shutdown();
-
     hdriCpu_.reset();
     hdriReady_ = false;
     hdriEnabled_ = false;
