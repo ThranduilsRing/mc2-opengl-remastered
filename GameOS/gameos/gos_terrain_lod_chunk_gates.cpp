@@ -72,3 +72,23 @@ extern const float kTglcEdgeFeatherStr    = mc2::gate::get<"MC2_TERRAIN_EDGE_FEA
 // TERRAIN-MATERIAL-TEXTURES-1: per-layer PBR albedo array gate (default OFF ->
 // u_useMatAlbedo uploads 0 -> frag composition verbatim -> byte-identical).
 extern const bool  kTglcMatAlbedo         = mc2::gate::get<"MC2_TERRAIN_MATERIAL_TEXTURES">();
+
+TerrainShorelineKnobs gos_TerrainShorelineKnobs() {
+    TerrainShorelineKnobs k;
+    k.on = gos_TerrainShorelineGateOn();
+    // The water plane the bands are placed against: the same source as the water fast path (Terrain::waterElevation,
+    // mirrored into gosPostProcess at mission load).
+    if (gosPostProcess* pp = getGosPostProcess()) k.waterElevation = pp->getWaterElevation();
+    k.timeSeconds  = gos_GetShaderClockSeconds();
+    k.strength     = mc2::gate::get<"MC2_TERRAIN_SHORELINE_STRENGTH">();
+    k.foamStrength = mc2::gate::get<"MC2_TERRAIN_SHORELINE_FOAM">();
+    // Band widths are HORIZONTAL runs from the waterline (wet 16 wu, foam 5 wu by default); the legacy _HEIGHT names
+    // are aliases read only while the _RUN name is unset.
+    k.wetRun  = mc2::gate::isSet<"MC2_TERRAIN_SHORELINE_WET_RUN">()  ? mc2::gate::get<"MC2_TERRAIN_SHORELINE_WET_RUN">()
+                                                                     : mc2::gate::get<"MC2_TERRAIN_SHORELINE_WET_HEIGHT">();
+    k.foamRun = mc2::gate::isSet<"MC2_TERRAIN_SHORELINE_FOAM_RUN">() ? mc2::gate::get<"MC2_TERRAIN_SHORELINE_FOAM_RUN">()
+                                                                     : mc2::gate::get<"MC2_TERRAIN_SHORELINE_FOAM_HEIGHT">();
+    // Static world-XY jitter on the run so the lobes stop tracing the mesh waterline's straight segments; 0 = exact contour.
+    k.edgeJitter = mc2::gate::get<"MC2_TERRAIN_SHORELINE_EDGE_JITTER">();
+    return k;
+}

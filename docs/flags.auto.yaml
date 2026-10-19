@@ -5,7 +5,7 @@
 generator_version: "3.0.0"
 gate_count: 935
 registry_entry_count: 188
-verified_count: 889
+verified_count: 896
 flags:
   - name: MC2_3DVIEW_DIAG
     kind: Bool
@@ -5770,6 +5770,7 @@ flags:
     owner: terrain
     doc: ""
     range: {lo: 0, hi: 32, style: clamp}
+    verified: true
   - name: MC2_TERRAIN_SHORELINE_FILE
     kind: String
     default: ""
@@ -5785,6 +5786,7 @@ flags:
     owner: terrain
     doc: ""
     range: {lo: 0, hi: 2, style: clamp}
+    verified: true
   - name: MC2_TERRAIN_SHORELINE_FOAM_HEIGHT
     kind: Float
     default: 5
@@ -5792,6 +5794,7 @@ flags:
     owner: terrain
     doc: ""
     range: {lo: 0, hi: 3.4028234663852886e+38, style: reject, lo_exclusive: true}
+    verified: true
   - name: MC2_TERRAIN_SHORELINE_FOAM_RUN
     kind: Float
     default: 5
@@ -5799,6 +5802,7 @@ flags:
     owner: terrain
     doc: ""
     range: {lo: 0, hi: 3.4028234663852886e+38, style: reject, lo_exclusive: true}
+    verified: true
   - name: MC2_TERRAIN_SHORELINE_STRENGTH
     kind: Float
     default: 1
@@ -5806,6 +5810,7 @@ flags:
     owner: terrain
     doc: ""
     range: {lo: 0, hi: 2, style: clamp}
+    verified: true
   - name: MC2_TERRAIN_SHORELINE_WET_HEIGHT
     kind: Float
     default: 16
@@ -5813,6 +5818,7 @@ flags:
     owner: terrain
     doc: ""
     range: {lo: 0, hi: 3.4028234663852886e+38, style: reject, lo_exclusive: true}
+    verified: true
   - name: MC2_TERRAIN_SHORELINE_WET_RUN
     kind: Float
     default: 16
@@ -5820,6 +5826,7 @@ flags:
     owner: terrain
     doc: ""
     range: {lo: 0, hi: 3.4028234663852886e+38, style: reject, lo_exclusive: true}
+    verified: true
   - name: MC2_TERRAIN_SLOPE_BIAS
     kind: Bool
     default: false
