@@ -6,8 +6,8 @@
   "HostServices": 0,
   "RenderCore": 425,
   "RenderWorld": 0,
-  "code": 14504,
-  "mclib": 29204,
+  "code": 14485,
+  "mclib": 29185,
   "shaders": 1685
  },
  "dirs": [
@@ -138,7 +138,6 @@
   "code/gametacmap.cpp": 26,
   "code/gate.cpp": 63,
   "code/gate.h": 30,
-  "code/ground_contact_blob.cpp": 8,
   "code/group_goals.cpp": 8,
   "code/gvehicl.cpp": 92,
   "code/gvehicl.h": 66,
@@ -227,7 +226,7 @@
   "code/mpsetuparea.h": 8,
   "code/mpstats.cpp": 34,
   "code/object_walk_trace.h": 8,
-  "code/objective.cpp": 470,
+  "code/objective.cpp": 459,
   "code/objmgr.cpp": 96,
   "code/objmgr.h": 29,
   "code/objmgr_io.cpp": 276,
@@ -307,7 +306,6 @@
   "mclib/crater.cpp": 38,
   "mclib/csvfile.cpp": 250,
   "mclib/csvfile.h": 9,
-  "mclib/dynamic_decal_ring.cpp": 8,
   "mclib/ffile.cpp": 55,
   "mclib/file.cpp": 212,
   "mclib/fit_number.h": 64,
@@ -511,7 +509,7 @@
   "mclib/terrain_render.cpp": 34,
   "mclib/terrtxm.cpp": 194,
   "mclib/terrtxm2_bake.cpp": 139,
-  "mclib/terrtxm2_load.cpp": 97,
+  "mclib/terrtxm2_load.cpp": 86,
   "mclib/tgainfo.cpp": 88,
   "mclib/tgl.h": 166,
   "mclib/tgl_parse.cpp": 137,
@@ -584,8 +582,8 @@
   "shaders/vulkan/terrain_tier1.vert": 78,
   "shaders/vulkan/terrain_tier1_skirt.vert": 78
  },
- "head": "8064c6930",
+ "head": "21694ac1c",
  "n": 8,
- "total": 48973,
+ "total": 48935,
  "version": 1
 }
