@@ -49,7 +49,7 @@
   "GameOS": {
    "LG01": 6,
    "LG02": 172,
-   "LG03": 187,
+   "LG03": 175,
    "LG04": 5,
    "LG05": 123,
    "LG06": 431,
@@ -336,7 +336,7 @@
    "LG10": 2
   },
   "GameOS/gameos/gameos.cpp": {
-   "LG03": 11,
+   "LG03": 8,
    "LG06": 8,
    "LG11": 2,
    "LG17": 1
@@ -374,7 +374,7 @@
    "LG17": 5
   },
   "GameOS/gameos/gameos_graphics_font.cpp": {
-   "LG03": 31,
+   "LG03": 24,
    "LG05": 3,
    "LG06": 2,
    "LG11": 1
@@ -455,7 +455,6 @@
   },
   "GameOS/gameos/gameosmain.cpp": {
    "LG01": 5,
-   "LG03": 2,
    "LG04": 1,
    "LG06": 1,
    "LG12a": 30,
@@ -3961,7 +3960,7 @@
    "LG20": 3
   }
  },
- "head": "b5ab3738c",
+ "head": "854115117",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

@@ -1,3 +1,4 @@
+#include <memory>
 #include "gameos.hpp"
 #include "toolos.hpp"
 #include "memorymanager.hpp" // gos_Heap
@@ -682,7 +683,8 @@ bool __stdcall gos_GetUserDataDirectory(char* user_dir, const int len)
 
     // 1 + 1 =  for \0 and /
     const size_t confDirBytes = strlen(cfg_dir) + strlen(g_user_config_dir) + 1 + 1;
-    char* mc2_conf_dir = new char[confDirBytes];
+    auto mc2_conf_dirOwner = std::make_unique_for_overwrite<char[]>(confDirBytes);
+    char* mc2_conf_dir = mc2_conf_dirOwner.get();
     mc2::fmt::to_buf_n(mc2_conf_dir, confDirBytes, "{}/{}", cfg_dir, g_user_config_dir);
 
     // if directory does not exist create it
@@ -697,7 +699,7 @@ bool __stdcall gos_GetUserDataDirectory(char* user_dir, const int len)
         if(-1 == mkdir(mc2_conf_dir, permissions)) {
 #endif
             MC2_LOG(Core, Debug, "stat: {}", mc2::fmt::safe(strerror(errno)));
-            delete[] mc2_conf_dir;
+            mc2_conf_dirOwner.reset();
             return false;
         }
     }
@@ -707,7 +709,7 @@ bool __stdcall gos_GetUserDataDirectory(char* user_dir, const int len)
 
     strncpy(user_dir, mc2_conf_dir, conf_len);
     user_dir[conf_len] = '\0';
-    delete[] mc2_conf_dir;
+    mc2_conf_dirOwner.reset();
     return true;
 }
 
