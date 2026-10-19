@@ -49,23 +49,23 @@
   "GameOS": {
    "LG01": 6,
    "LG02": 172,
-   "LG03": 257,
+   "LG03": 249,
    "LG04": 5,
-   "LG05": 133,
-   "LG06": 485,
+   "LG05": 130,
+   "LG06": 482,
    "LG07": 0,
-   "LG08": 254,
-   "LG09": 1486,
-   "LG10": 41,
+   "LG08": 241,
+   "LG09": 1430,
+   "LG10": 40,
    "LG11": 89,
-   "LG12a": 80,
+   "LG12a": 79,
    "LG12b": 30,
    "LG13": 318,
    "LG14": 61,
    "LG15": 0,
    "LG16": 6,
    "LG17": 80,
-   "LG18": 9,
+   "LG18": 5,
    "LG19": 1,
    "LG20": 8
   },
@@ -370,7 +370,7 @@
    "LG17": 1
   },
   "GameOS/gameos/gameos_graphics_bridge.cpp": {
-   "LG09": 11
+   "LG09": 5
   },
   "GameOS/gameos/gameos_graphics_capi.cpp": {
    "LG03": 8,
@@ -698,20 +698,6 @@
    "LG08": 13,
    "LG09": 7
   },
-  "GameOS/gameos/gos_static_prop_batcher_flush.cpp": {
-   "LG08": 2,
-   "LG09": 19,
-   "LG18": 2
-  },
-  "GameOS/gameos/gos_static_prop_batcher_flush_dispatch.cpp": {
-   "LG08": 4,
-   "LG09": 5,
-   "LG18": 2
-  },
-  "GameOS/gameos/gos_static_prop_batcher_flush_prep.cpp": {
-   "LG08": 3,
-   "LG09": 8
-  },
   "GameOS/gameos/gos_static_prop_batcher_internal.h": {
    "LG06": 2,
    "LG11": 2,
@@ -741,8 +727,8 @@
    "LG09": 13
   },
   "GameOS/gameos/gos_static_prop_batcher_submit.cpp": {
-   "LG08": 6,
-   "LG09": 11
+   "LG08": 2,
+   "LG09": 9
   },
   "GameOS/gameos/gos_static_prop_registry.cpp": {
    "LG05": 14,
@@ -795,22 +781,18 @@
   },
   "GameOS/gameos/gos_terrain_indirect_mine_decal.cpp": {
    "LG08": 3,
-   "LG09": 21,
-   "LG10": 1,
-   "LG12a": 1
+   "LG09": 20
   },
   "GameOS/gameos/gos_terrain_lighting.cpp": {
-   "LG03": 8,
    "LG04": 1,
-   "LG05": 6,
-   "LG06": 4,
+   "LG05": 4,
+   "LG06": 1,
    "LG08": 1,
-   "LG09": 12,
    "LG10": 1,
    "LG16": 1
   },
   "GameOS/gameos/gos_terrain_lighting.h": {
-   "LG05": 4,
+   "LG05": 3,
    "LG13": 8
   },
   "GameOS/gameos/gos_terrain_lod_chunk.h": {
@@ -883,7 +865,7 @@
    "LG03": 11,
    "LG05": 3,
    "LG06": 1,
-   "LG09": 23,
+   "LG09": 21,
    "LG11": 1,
    "LG12a": 2,
    "LG17": 1
@@ -1222,7 +1204,7 @@
   },
   "GameOS/gameos/vulkan_terrain_island_overlay.cpp": {
    "LG08": 7,
-   "LG09": 13
+   "LG09": 12
   },
   "GameOS/gameos/vulkan_terrain_island_run.cpp": {
    "LG06": 1,
@@ -4681,7 +4663,7 @@
    "LG20": 3
   }
  },
- "head": "89f051a47",
+ "head": "8064c6930",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

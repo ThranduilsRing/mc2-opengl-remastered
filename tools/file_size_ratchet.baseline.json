@@ -14,7 +14,6 @@
  ],
  "files_over_1500": {
   "GameOS/gameos/engine_present_vk.cpp": 2936,
-  "GameOS/gameos/gos_terrain_lighting.cpp": 1749,
   "GameOS/gameos/utils/shader_builder.cpp": 1538,
   "GameOS/gameos/vulkan_color_prop_island.cpp": 1731,
   "GameOS/gameos/vulkan_shadow_island_live.cpp": 1544,
@@ -23,7 +22,7 @@
   "code/artlry.cpp": 1841,
   "code/bldng.cpp": 1691,
   "code/brain_special_dispatch.cpp": 2770,
-  "code/gamecam.cpp": 1607,
+  "code/gamecam.cpp": 1616,
   "code/gameobj.cpp": 2255,
   "code/infowindow.cpp": 1729,
   "code/logisticsdialog.cpp": 2148,
@@ -60,17 +59,17 @@
   "mclib/tgl.h": 1799,
   "shaders/terrain_lod_chunk.frag": 2096
  },
- "head": "89f051a47",
+ "head": "8064c6930",
  "per_dir": {
   "GameAdapters": {
    "files": 9,
    "files_over_1500": 0,
    "files_over_3000": 0,
-   "max_lines": 487
+   "max_lines": 466
   },
   "GameOS": {
-   "files": 360,
-   "files_over_1500": 6,
+   "files": 357,
+   "files_over_1500": 5,
    "files_over_3000": 1,
    "max_lines": 3730
   },
@@ -250,8 +249,8 @@
   }
  ],
  "total": {
-  "files": 1872,
-  "files_over_1500": 46,
+  "files": 1869,
+  "files_over_1500": 45,
   "files_over_3000": 1,
   "max_lines": 3730
  },
