@@ -55,7 +55,7 @@
 #include <atomic>   // FRAME-JOBS-2 precondition: g_numShadowShapes
 #include <mutex>    // FRAME-JOBS-2 precondition: s_lightDataMapMu
 #include <chrono>   // [LIGHTBRIDGE v1] coarse per-frame populate sizing
-#include <utils/gl_utils.h>
+#include <utils/color_utils.h>
 #include <GL/glew.h>                 // TEXMGR-COMPRESSED-UPLOAD-1: BPTC cap + GL_COMPRESSED_* enums
 #include "../RenderCore/KtxLoader.h" // TEXMGR-COMPRESSED-UPLOAD-1: BC7 .ktx2 sidecar loader
 #include "gos_postprocess.h"

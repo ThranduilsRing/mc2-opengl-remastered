@@ -13,7 +13,6 @@
 
 #include <gameos.hpp>
 #include <GL/glew.h>
-#include "utils/shader_builder.h"
 #include "../../RenderCore/PipelineRegistry.h"  // VFX-APPLYPIPELINE-ROUTING-1
 #include "pipeline_binder.h"                    // applyPipeline — VFX per-group blend
 #include "gos_postprocess.h"  // VFX-SOFT-PARTICLES-MVP-1: scene-depth copy + invViewProj

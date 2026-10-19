@@ -110,8 +110,7 @@ static LONG WINAPI mc2_unhandled_exception_filter(EXCEPTION_POINTERS* ep)
 #include <SDL2/SDL.h>
 #include "gos_input.h"
 
-#include "utils/shader_builder.h"
-#include "utils/gl_utils.h"
+#include "utils/color_utils.h"
 #include "utils/timing.h"
 #include "gos_postprocess.h"
 #include "gos_validate.h"
@@ -611,7 +610,6 @@ static void draw_screen( void )
     glLoadTransposeMatrixf((const float*)viewM);
 	*/
 
-    CHECK_GL_ERROR;
 
     // TODO: reset all states to sane defaults!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     glDepthMask(GL_TRUE);
@@ -697,7 +695,7 @@ static void draw_screen( void )
 
     // Replay buffered HUD draws to FB 0 (after post-process)
     gos_RendererFlushHUDBatch();
-    //CHECK_GL_ERROR;
+
 #ifdef MC2_IMGUI
     // FB 0 depth starts at 1.0 (GL default); only sceneFBO_ gets cleared during
     // draw_screen().  Post-ImGui 3D camera renders (encyclopedia mech viewer) use

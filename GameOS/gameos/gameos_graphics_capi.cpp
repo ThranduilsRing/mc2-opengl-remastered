@@ -202,12 +202,10 @@ DWORD __stdcall gos_NewCompressedTexture2D( uint32_t vkFormat, int w, int h,
     const uint32_t blockVkFormat =
         vkFormat;
 
-    Texture tex;
+    CpuTextureDesc tex;
     tex.w = w;
     tex.h = h;
     tex.fmt_ = TF_NONE;          // block-compressed; not one of the RGBA8 TexFormats
-    tex.type_ = TT_2D;
-    tex.format = 0;
     tex.has_mipmaps = false;
 
     auto blocks = std::make_shared<const std::vector<uint8_t>>(blockData, blockData + byteLen);
@@ -221,12 +219,10 @@ DWORD gos_NewTerrainNormalTexture(const unsigned char* rgbaData, int width)
         MC2_LOG(Core, Warn, "[TEXTURE_DECODE v1] rejected terrain normal texture: width {:d}", mc2::fmt::as_i32(width));
         return INVALID_TEXTURE_ID;
     }
-    Texture tex;
+    CpuTextureDesc tex;
     tex.w = width;
     tex.h = width;
     tex.fmt_ = TF_RGBA8;
-    tex.type_ = TT_2D;
-    tex.format = GL_RGBA8;
     tex.has_mipmaps = false;
     gosTexture* ptex = new gosTexture(tex, gos_Texture_Alpha, "terrain_detail_normal", 0u, nullptr);
     // The texels are the Vulkan terrain island's upload source and nothing else reads them.

@@ -16,8 +16,6 @@
 #include <map>
 #include <string>
 
-#include "utils/shader_builder.h"
-#include "utils/graphics.h"
 #include "gos_screenshot.h"
 #include "gos_postprocess.h"
 #include "gos_frame_pass_stats.h"
@@ -192,47 +190,8 @@ std::string cmdPing(uint32_t frame)
     return makeReply(true, "", "{\"frame\":" + std::to_string(frame) + "}");
 }
 
-// Iterate the global program registry. Default: reload only programs whose
-// source timestamps changed (needsReload). params: {"force":true} reloads
-// everything, {"name":"..."} restricts to one program. Full compile/link
-// error text is returned in the reply; on failure the previous program stays
-// live (stated explicitly — no silent stale state).
-std::string cmdReloadShaders(const std::string& req)
-{
-    const bool force = jsonGetBool(req, "force", false);
-    const std::string only = jsonGetString(req, "name");
 
-    int reloaded = 0, failed = 0, skipped = 0;
-    std::string results = "[";
-    std::string firstError;
-    for (auto& kv : glsl_program::s_programs) {
-        glsl_program* prog = kv.second;
-        if (!prog) continue;
-        if (!only.empty() && kv.first != only) continue;
-        const char* action;
-        std::string err;
-        if (force || prog->needsReload()) {
-            if (prog->reload()) { action = "reloaded"; ++reloaded; }
-            else {
-                action = "failed_stale_program_preserved";
-                err = prog->reload_log_;
-                if (firstError.empty())
-                    firstError = kv.first + ": " + (err.empty() ? "see console" : err);
-                ++failed;
-            }
-        } else { action = "unchanged"; ++skipped; }
-        if (results.size() > 1) results += ',';
-        results += "{\"program\":\"" + jsonEscape(kv.first) + "\",\"action\":\"" + action + "\"";
-        if (!err.empty()) results += ",\"error\":\"" + jsonEscape(err) + "\"";
-        results += "}";
-    }
-    results += "]";
-    std::string data = "{\"reloaded\":" + std::to_string(reloaded)
-        + ",\"failed\":" + std::to_string(failed)
-        + ",\"unchanged\":" + std::to_string(skipped)
-        + ",\"programs\":" + results + "}";
-    return makeReply(failed == 0, firstError, data);
-}
+
 
 // Hard path safety: caller supplies a NAME, never a path. Anything that
 // looks like traversal or a separator is stripped to a flat basename and
@@ -431,7 +390,6 @@ std::string dispatch(const std::string& req, uint32_t frame, bool* quitOut)
 {
     const std::string type = jsonGetString(req, "type");
     if (type == "ping")            return cmdPing(frame);
-    if (type == "reload_shaders")  return cmdReloadShaders(req);
     if (type == "screenshot")      return cmdScreenshot(req, frame);
     if (type == "last_screenshot") return cmdLastScreenshot();
     if (type == "framegraph")      return cmdFramegraph(req);

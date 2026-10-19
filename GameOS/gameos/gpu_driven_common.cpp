@@ -15,17 +15,9 @@
 
 #include "gpu_driven_common.h"
 
-#include <cstdio>
-#include <cstdlib>
-#include <cstring>
-#include <string>
-#include <vector>
 
-#include <GL/glew.h>
 
-#include "utils/shader_builder.h"  // load_shader — engine #include resolver
 #include "Gates/gate.h"
-#include "mc2fmt.h"
 
 namespace gpu_driven {
 
@@ -66,100 +58,6 @@ bool IsOverlayEnabled() {
         return mc2::gate::get<"MC2_GPU_DRIVEN_OVERLAY">();
     }();
     return s_enabled;
-}
-
-// ---------------------------------------------------------------------------
-// Shared compute program builder
-// ---------------------------------------------------------------------------
-
-namespace {
-
-static GLuint gpu_driven_compile_compute_shader(const char** strings, int count) {
-    GLuint sh = glCreateShader(GL_COMPUTE_SHADER);
-    if (!sh) return 0;
-    glShaderSource(sh, count, strings, nullptr);
-    glCompileShader(sh);
-    GLint status = 0;
-    glGetShaderiv(sh, GL_COMPILE_STATUS, &status);
-    if (!status) {
-        GLint logLen = 0;
-        glGetShaderiv(sh, GL_INFO_LOG_LENGTH, &logLen);
-        if (logLen > 0) {
-            char* log = new char[logLen];
-            glGetShaderInfoLog(sh, logLen, nullptr, log);
-            mc2::fmt::print_err("[GPU_DRIVEN v1] compute shader compile error:\n{}\n", mc2::fmt::safe(log));
-            fflush(stderr);
-            delete[] log;
-        }
-        glDeleteShader(sh);
-        return 0;
-    }
-    return sh;
-}
-
-static GLuint gpu_driven_link_compute_program(GLuint shader) {
-    GLuint prog = glCreateProgram();
-    if (!prog) return 0;
-    glAttachShader(prog, shader);
-    glLinkProgram(prog);
-    GLint status = 0;
-    glGetProgramiv(prog, GL_LINK_STATUS, &status);
-    if (!status) {
-        GLint logLen = 0;
-        glGetProgramiv(prog, GL_INFO_LOG_LENGTH, &logLen);
-        if (logLen > 0) {
-            char* log = new char[logLen];
-            glGetProgramInfoLog(prog, logLen, nullptr, log);
-            mc2::fmt::print_err("[GPU_DRIVEN v1] compute program link error:\n{}\n", mc2::fmt::safe(log));
-            fflush(stderr);
-            delete[] log;
-        }
-        glDeleteProgram(prog);
-        return 0;
-    }
-    return prog;
-}
-
-}  // namespace
-
-GLuint gpu_driven::BuildComputeProgramFromFile(
-        const char* fname,
-        const std::string* preambles, int nPreambles,
-        const char* debugName)
-{
-    // Resolve #include directives through the engine's own recursive
-    // preprocessor (the makeProgram path), NOT the GL driver — neither
-    // GL_ARB_shading_language_include nor GL_GOOGLE_include_directive is
-    // requested, so an unresolved #include is a hard compile error.
-    // resolvedSource must outlive the glShaderSource call below.
-    std::string resolvedSource;
-    std::vector<std::string> includes;
-    if (!load_shader(fname, resolvedSource, includes)) {
-        mc2::fmt::print_err("[GPU_DRIVEN v1] {} source load/parse failed: {}\n", mc2::fmt::safe(debugName), mc2::fmt::safe(fname));
-        fflush(stderr);
-        return 0;
-    }
-
-    const char* kVersionPrefix = "#version 430\n";
-    std::vector<const char*> srcStrs;
-    srcStrs.push_back(kVersionPrefix);
-    for (int j = 0; j < nPreambles; ++j)
-        srcStrs.push_back(preambles[j].c_str());
-    srcStrs.push_back(resolvedSource.c_str());
-
-    GLuint sh = gpu_driven_compile_compute_shader(srcStrs.data(), (int)srcStrs.size());
-    if (!sh) {
-        mc2::fmt::print_err("[GPU_DRIVEN v1] {} compile failed\n", mc2::fmt::safe(debugName));
-        fflush(stderr);
-        return 0;
-    }
-    GLuint prog = gpu_driven_link_compute_program(sh);
-    glDeleteShader(sh);
-    if (!prog) {
-        mc2::fmt::print_err("[GPU_DRIVEN v1] {} link failed\n", mc2::fmt::safe(debugName));
-        fflush(stderr);
-    }
-    return prog;
 }
 
 }  // namespace gpu_driven

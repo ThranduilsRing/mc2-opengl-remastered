@@ -40,8 +40,7 @@
 #include "platform_stdlib.h"
 #include "platform_str.h"
 
-#include "utils/shader_builder.h"
-#include "utils/gl_utils.h"
+#include "utils/color_utils.h"
 
 #ifdef MC2_IMGUI
 #include "../../GuiRuntime/GuiRuntime.h"
@@ -99,7 +98,6 @@ namespace gosFX { void DiagFrameTick(); }
 #include "gos_terrain_water_stream.h"
 #include "gpu_driven_common.h"
 #include "mc2_hitch_trace.h"  // GPU-UPDATE-BUFFER-COUNTER-1: MC2_GL_BufferData_Owner (include LAST, after all GL headers)
-#include "utils/gpu_ring_buffer.h"  // GPU-BUFFER-WRAPPER-TIER0-HUD-1: gated HUD/gosMesh persistent-coherent ring
 #ifdef MC2_VULKAN
 #include "engine_present_vk.h"
 #endif

@@ -33,8 +33,7 @@
 #include <SDL2/SDL.h>
 #include "gos_input.h"
 
-#include "utils/shader_builder.h"
-#include "utils/gl_utils.h"
+#include "utils/color_utils.h"
 #include "utils/timing.h"
 #include "gos_postprocess.h"
 #include "gos_validate.h"

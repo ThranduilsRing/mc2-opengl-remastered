@@ -11,11 +11,10 @@
 #include "gameos.hpp"
 #include "gos_font.h"
 #include "texture_decode.h"   // mc2tex::decodeBc7 for the pre-compressed RGBA8 mirror
-#include "utils/gl_utils.h"
+#include "utils/texture_format.h"
 #include "utils/Image.h"
 #include "utils/mc2log.h"
 
-#include <GL/glew.h>
 #include <cstring>
 
 #include <cstdint>
@@ -91,9 +90,9 @@ class gosTexture {
             mirror_h_ = 0;
         }
 
-        // A pre-compressed texture (gos_NewCompressedTexture2D, BC7 .ktx2 sidecars): the GL object arrives ready, and the
-        // level-0 blocks it was uploaded from stay with the handle as its CPU texels (vkFormat 145 / 146).
-        gosTexture(const Texture& prebuilt, gos_TextureFormat fmt, const char* name, uint32_t blockVkFormat,
+        // Pre-compressed BC7 source: retain its CPU descriptor and immutable
+        // level-0 blocks for the native consumer (vkFormat 145 / 146).
+        gosTexture(const CpuTextureDesc& prebuilt, gos_TextureFormat fmt, const char* name, uint32_t blockVkFormat,
                    std::shared_ptr<const std::vector<uint8_t>> blocks)
             : blocks_(std::move(blocks)), block_vk_format_(blockVkFormat)
         {
@@ -278,7 +277,7 @@ class gosTexture {
         BYTE* pcompdata_;
         BYTE* plocked_area_;
         DWORD size_;
-        Texture tex_;
+        CpuTextureDesc tex_;
 
         gos_TextureFormat format_;
         char* filename_;

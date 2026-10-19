@@ -119,11 +119,9 @@ set(SOURCES ${SOURCES}
     render_backend_select.cpp
 
     utils/stream.cpp
-    utils/gl_utils.cpp
-    utils/gl_render_constants.cpp
+    utils/color_utils.cpp
     utils/Image.cpp
     utils/mc2log.cpp
-    utils/shader_builder.cpp
     utils/vec.cpp
     utils/timing.cpp
     ${CMAKE_SOURCE_DIR}/3rdparty/tracy/TracyClient.cpp

@@ -1,8 +1,6 @@
 #pragma once
-#include <GL/glew.h>  // for GLuint (matches gpu_cull_compute.h, gpu_cull_substrate.h)
 
 #include <cstdint>
-#include <string>
 
 namespace gpu_driven {
 
@@ -25,16 +23,5 @@ bool IsTraceEnabled();         // MC2_GPU_DRIVEN_TRACE: == "1" -> true (default 
 bool IsWaterEnabled();         // MC2_GPU_DRIVEN_WATER: unset OR != "0" -> true AND IsGlobalEnabled()
 bool IsTerrainSolidEnabled();  // MC2_GPU_DRIVEN_TERRAIN_SOLID: same pattern
 bool IsOverlayEnabled();       // MC2_GPU_DRIVEN_OVERLAY: same pattern
-
-// Build a compute program from a shader source file, with optional preamble
-// strings prepended before the file content. A "#version 430\n" prefix is
-// always prepended first. Returns 0 on any failure (file not found, compile
-// error, link error). Mirrors the static build_compute_program_from_file in
-// gpu_cull_compute.cpp but is accessible across all Phase C translation units.
-// debugName is used for error log messages only.
-GLuint BuildComputeProgramFromFile(
-        const char* fname,
-        const std::string* preambles, int nPreambles,
-        const char* debugName);
 
 }  // namespace gpu_driven
