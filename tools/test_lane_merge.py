@@ -452,3 +452,33 @@ def test_dry_run_with_blocking_conflict_returns_5(env):
     commit_all(repo, "main a")
     rc, out, err = merge(env, "--dry-run")
     assert rc == 5 and "blocking=1" in out
+
+
+@pytest.mark.parametrize("deleted", [False, True])
+def test_explicit_conflict_resolution(env, tmp_path, deleted):
+    repo, _ = env
+    lane_branch(repo, {"a.txt": "lane a\n"})
+    if deleted:
+        git(repo, "rm", "a.txt")
+        git(repo, "commit", "-q", "-m", "main deletion")
+    else:
+        write(repo, "a.txt", "main a\n")
+        commit_all(repo, "main edits")
+    result = tmp_path / "resolved.txt"
+    result.write_bytes(b"combined\r\n")
+    spec = "a.txt=" + ("-" if deleted else str(result))
+    assert merge(env, "--dry-run", "--resolution", spec)[0] == 0
+    rc, out, err = merge(env, "--resolution", spec)
+    assert rc == 0, err
+    assert len(parents(repo)) == 2
+    assert not (repo / "a.txt").exists() if deleted else (repo / "a.txt").read_bytes() == b"combined\r\n"
+
+
+@pytest.mark.parametrize("spec", ["../a.txt=-", "/a.txt=-", ".git/config=-", "b.txt=-"])
+def test_invalid_resolution_does_not_start_merge(env, spec):
+    repo, _ = env
+    lane_branch(repo, {"a.txt": "lane a\n"})
+    head = git(repo, "rev-parse", "HEAD")
+    rc, _, _ = merge(env, "--resolution", spec)
+    assert rc == 5
+    assert git(repo, "rev-parse", "HEAD") == head

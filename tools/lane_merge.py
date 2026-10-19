@@ -11,6 +11,7 @@ Usage:
   py -3 tools/lane_merge.py <sha-or-branch> [--message "..."] [--dry-run]
   --message   merge commit subject (default: "merge lane: <subject of the lane tip>")
   --dry-run   print the plan (base, file counts, overlap, predicted conflicts); change nothing
+  --resolution PATH=FILE  apply a reviewed conflict result (FILE - means deletion; repeatable)
   --root DIR  repo to operate on (default: this checkout)
   --tools-dir DIR  where the ratchet scripts live (default: <root>/tools); same relative layout
 
@@ -186,8 +187,30 @@ def wait_for_lock(lock_path: str, wait_s: float, sleep=time.sleep, clock=time.mo
     return True
 
 
+def load_resolutions(specs: list[str]) -> dict[str, bytes | None]:
+    """Read explicit conflict results before starting a merge; '-' means a reviewed deletion."""
+    results = {}
+    for spec in specs:
+        path, sep, source = spec.partition("=")
+        if (not sep or not path or "\\" in path or ":" in path or path.startswith("/")
+                or any(part in ("", ".", "..", ".git") for part in path.split("/")) or path in results):
+            raise Stop(5, f"invalid or duplicate conflict resolution: {spec}")
+        if source == "-":
+            results[path] = None
+        else:
+            try:
+                with open(source, "rb") as f:
+                    results[path] = f.read()
+            except OSError as e:
+                raise Stop(5, f"cannot read conflict resolution {source}: {e}") from e
+        if results[path] is not None and any(line.startswith((b"<<<<<<< ", b"=======", b">>>>>>> "))
+                                             for line in results[path].splitlines()):
+            raise Stop(5, f"conflict markers remain in resolution for {path}")
+    return results
+
+
 def do_merge(root: str, sha: str, message: str, lane_files=(), lock_path: str | None = None, lock_wait_s: float = 600,
-             sleep=time.sleep, clock=time.monotonic) -> None:
+             sleep=time.sleep, clock=time.monotonic, resolutions=None) -> None:
     """Merge --no-ff; auto-resolve regenerable conflicts to the lane's side, abort on anything else.
 
     A failure that is not a conflict is cleaned up (see abort_and_clean). When git says a file could not be replaced and a tidy run holds
@@ -206,6 +229,24 @@ def do_merge(root: str, sha: str, message: str, lane_files=(), lock_path: str | 
             continue
         raise Stop(5, "merge failed before it started" + note + ":\n" + r.stdout.strip())
     conflicted = lines(git(root, "diff", "--name-only", "--diff-filter=U").stdout)
+    resolutions = resolutions or {}
+    if set(resolutions) - set(conflicted):
+        abort_and_clean(root, lane_files)
+        raise Stop(5, "resolution paths do not match actual conflicts; merge aborted")
+    for path, data in resolutions.items():
+        try:
+            if data is None:
+                result = git(root, "rm", "--", path)
+            else:
+                with open(os.path.join(root, path), "wb") as f:
+                    f.write(data)
+                result = git(root, "add", "--", path)
+            if result.returncode:
+                raise OSError(result.stdout.strip())
+        except OSError as e:
+            abort_and_clean(root, lane_files)
+            raise Stop(5, f"cannot apply resolution for {path}; merge aborted: {e}") from e
+    conflicted = [p for p in conflicted if p not in resolutions]
     tables = [p for p in conflicted if p in BUG_TABLES]
     conflicted = [p for p in conflicted if p not in BUG_TABLES]
     for p in tables:
@@ -214,7 +255,7 @@ def do_merge(root: str, sha: str, message: str, lane_files=(), lock_path: str | 
             raise Stop(5, f"{p}: both sides changed the same row or the text outside the rows; it cannot be merged mechanically "
                           "(keep both and renumber by hand); merge aborted")
     foreign = [p for p in conflicted if p not in REGENERABLE]
-    if foreign or not (conflicted or tables):
+    if foreign or not (conflicted or tables or resolutions):
         abort_and_clean(root, lane_files)
         what = foreign or ["(merge failed without conflicts)"]
         raise Stop(5, "conflicts outside the regenerable set; merge aborted:\n  " + "\n  ".join(what)
@@ -374,6 +415,8 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--root", default=os.path.abspath(os.path.join(HERE, "..")))
     ap.add_argument("--tools-dir")
+    ap.add_argument("--resolution", action="append", default=[], metavar="PATH=FILE",
+                    help="explicit reviewed conflict result; FILE '-' preserves a deletion (repeatable)")
     ap.add_argument("--verify", choices=["build", "full", "none"], default="build",
                     help="what to run on the merged tree: build + doctest (default), full = also the contracts board, none")
     ap.add_argument("--no-verify", action="store_true", help="same as --verify none")
@@ -388,6 +431,11 @@ def main(argv: list[str] | None = None) -> int:
     tools_dir = args.tools_dir or os.path.join(root, "tools")
     try:
         p = plan(root, args.ref)
+        resolutions = load_resolutions(args.resolution)
+        if resolutions:
+            predicted = predicted_conflicts(root, p["sha"])
+            if predicted is None or set(resolutions) - set(predicted):
+                raise Stop(5, "resolution paths must be predicted conflicts at this HEAD")
         message = args.message or f"merge lane: {tip_subject(root, p['sha'])}"
         if args.dry_run:
             would_abort = False
@@ -404,11 +452,11 @@ def main(argv: list[str] | None = None) -> int:
                     print("PLAN conflicts: unknown (git merge-tree unavailable)")
                 else:
                     regen = [c for c in conf if c in REGENERABLE or c in BUG_TABLES]
-                    other = [c for c in conf if c not in REGENERABLE and c not in BUG_TABLES]
+                    other = [c for c in conf if c not in REGENERABLE and c not in BUG_TABLES and c not in resolutions]
                     print(f"PLAN conflicts={len(conf)} regenerable={len(regen)} blocking={len(other)}"
                           + ("" if not other else " (merge would abort): " + ", ".join(other)))
                 print(f'PLAN merge --no-ff -m "{message}"')
-                if [c for c in (conf or []) if c not in REGENERABLE and c not in BUG_TABLES]:
+                if [c for c in (conf or []) if c not in REGENERABLE and c not in BUG_TABLES and c not in resolutions]:
                     would_abort = True
             print("PLAN then: " + ", ".join(label for label, _, _ in RATCHETS)
                   + "; follow-up commit of tightened baselines only")
@@ -423,7 +471,7 @@ def main(argv: list[str] | None = None) -> int:
             raise Stop(4, "lane files are also dirty in the worktree; no merge attempted:\n  "
                        + "\n  ".join(p["overlap"]))
         pre_dirty = {path for _, path in status_entries(root)}
-        do_merge(root, p["sha"], message, lane_files=p["lane_files"])
+        do_merge(root, p["sha"], message, lane_files=p["lane_files"], resolutions=resolutions)
         merge_sha = git_out(root, "rev-parse", "--short=9", "HEAD")
         results = run_ratchets(root, tools_dir)
         follow = commit_tightened(root, pre_dirty)
