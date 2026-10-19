@@ -861,7 +861,13 @@ def collect_strs_compute(world: World, out: list):
             arr = re.search(r"const\s+char\s*\*\s*(\w+)\s*\[\s*\d*\s*\]\s*=\s*\{([^}]*)\}\s*;", fbody)
             if not arr:
                 continue   # not the strs[] shape (gpu_cull handled separately)
-            fvar = re.search(r"char\s*\*\s*(\w+)\s*=\s*(?:loadTextFile|load_text_file)\s*\(", fbody).group(1)
+            fm_raw = re.search(r"char\s*\*\s*(\w+)\s*=\s*(?:loadTextFile|load_text_file)\s*\(", fbody)
+            if fm_raw:
+                fvar = fm_raw.group(1)
+            else:
+                # smart-pointer loader: `auto xOwner = loadTextFile(..); char* x = xOwner.get();`
+                own = re.search(r"auto\s+(\w+)\s*=\s*(?:loadTextFile|load_text_file)\s*\(", fbody).group(1)
+                fvar = re.search(r"char\s*\*\s*(\w+)\s*=\s*" + re.escape(own) + r"\.get\s*\(\s*\)", fbody).group(1)
             fm = re.search(r"(\w+)\s*\(([^)]*)\)\s*$", hdr)
             fname = fm.group(1)
             params = [x.strip().split()[-1].lstrip("*") for x in fm.group(2).split(",") if x.strip()]

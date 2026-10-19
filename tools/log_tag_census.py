@@ -41,7 +41,7 @@ PRINTF_LIKE = {
     "fprintf": (0, 1, None), "fputs": (None, 0, "file"), "vfprintf": (0, 1, None),
     "OutputDebugStringA": (None, 0, "debugger"), "OutputDebugString": (None, 0, "debugger"),
     "snprintf": (None, 2, "buffer"), "_snprintf": (None, 2, "buffer"), "sprintf": (None, 1, "buffer"),
-    "_snprintf_s": (None, 3, "buffer"), "to_buf": (None, 1, "buffer"), "to_buf_n": (None, 2, "buffer"),
+    "_snprintf_s": (None, 3, "buffer"), "to_buf": (None, 1, "buffer"), "to_buf_n": (None, 2, "buffer"), "format_to_n": (None, 2, "buffer"),
     "print_err": (None, 0, "stderr"), "print_out": (None, 0, "stdout"), "print": (0, 1, None),
 }
 EVENT_MACROS = {"MC2_EVENT": "stderr", "MC2_EVENT_OUT": "stdout", "MC2_EVENT_NOVER": "stderr", "MC2_EVENT_NOVER_OUT": "stdout"}
@@ -58,7 +58,7 @@ _PRINTF_FIELD = re.compile(r"%%|%[-+ #0-9.*]*(?:hh|h|ll|l|z|j|t|L|I64|I32)?[A-Za
 _STD_FIELD = re.compile(r"\{\{|\}\}|\{[^{}]*\}")
 _LITERAL = {"%%": "%", "{{": "{", "}}": "}"}
 #: callees whose format is a std::format string; every other format in the census is a printf one (a `{` in it is just a brace)
-STD_FORMAT_CALLEES = {"to_buf", "to_buf_n", "print_err", "print_out", "print"} | LOG_MACROS
+STD_FORMAT_CALLEES = {"to_buf", "to_buf_n", "format_to_n", "print_err", "print_out", "print"} | LOG_MACROS
 _NAME_RE = "|".join(sorted(list(PRINTF_LIKE) + list(EVENT_MACROS) + sorted(LOG_MACROS) + ["SPEW"], key=len, reverse=True))
 _EVENT_TMPL = re.compile(r'event\s*<\s*"([A-Z][A-Z0-9_]*)"\s*,\s*(-?\d+)\s*>\s*\(\s*(?:::)?(?:mc2::log::)?Stream::(Err|Out|Dbg)\s*,\s*((?:"(?:\\.|[^"\\\n])*"\s*)+)')
 
