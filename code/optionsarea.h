@@ -16,6 +16,7 @@ OptionsArea.h			: Interface for the OptionsArea component.
 #include"simplecamera.h"
 #endif
 
+#include <memory>
 #include"alistbox.h"
 #include"attributemeter.h"
 
@@ -46,7 +47,7 @@ private:
 
 	int indexOfButtonWithID(int id);
 
-	LogisticsScreen*		tabAreas[4];
+	std::unique_ptr<LogisticsScreen>		tabAreas[4];
 	int						curTab;
 	bool			bShowWarning;
 
@@ -119,8 +120,8 @@ private:
 	aDropList		cardList;
 	bool			bExpanded;
 
-    ResModes        *resolutionModes;
-    char            **resolutionModesStr;
+    std::unique_ptr<ResModes[]> resolutionModes;
+    std::unique_ptr<std::unique_ptr<char[]>[]> resolutionModesStr;
     int             numResolutionModes;
 
 };

@@ -1,5 +1,6 @@
 #ifndef MAINMENU_H
 #define MAINMENU_H
+#include <memory>
 /*************************************************************************************************\
 MainMenu.h			: Interface for the MainMenu component.
 //---------------------------------------------------------------------------//
@@ -105,7 +106,7 @@ class MainMenu: public LogisticsScreen
 		aAnimation	beginAnim;
 		aAnimation	endAnim;
 
-		OptionsScreenWrapper*	optionsScreenWrapper;
+		std::unique_ptr<OptionsScreenWrapper>	optionsScreenWrapper;
 		Mechlopedia*			mechlopedia;
 		SplashIntro				intro;
 		bool					introOver;
