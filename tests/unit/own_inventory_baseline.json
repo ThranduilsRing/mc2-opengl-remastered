@@ -6243,7 +6243,6 @@
   "mclib/stuff/hash.cpp": 1,
   "mclib/stuff/memoryblock.cpp": 5,
   "mclib/stuff/memorystream.cpp": 5,
-  "mclib/stuff/mstring.cpp": 5,
   "mclib/stuff/mstring.hpp": 1,
   "mclib/stuff/node.cpp": 1,
   "mclib/stuff/plug.cpp": 4,

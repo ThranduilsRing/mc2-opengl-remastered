@@ -57,15 +57,15 @@ MStringRepresentation::MStringRepresentation(const MStringRepresentation &str)
 	stringLength = str.stringLength;
 	stringSize = str.stringSize;
 
-	if (str.stringText == nullptr)
+	if (str.stringText.get() == nullptr)
 	{
 		stringText = nullptr;
 	}
 	else
 	{
-		stringText = new char[stringSize];
-		Register_Pointer(stringText);
-		Mem_Copy(stringText, str.stringText, stringLength + 1, stringSize);
+		stringText = std::make_unique_for_overwrite<char[]>(stringSize);
+		Register_Pointer(stringText.get());
+		Mem_Copy(stringText.get(), str.stringText.get(), stringLength + 1, stringSize);
 	}
 	referenceCount = 0;
 }
@@ -87,9 +87,9 @@ MStringRepresentation::MStringRepresentation(const char *cstr)
 		stringLength = static_cast<uint32_t>(strlen(cstr));
 		stringSize = CalculateSize(stringLength);
 
-		stringText = new char [stringSize];
-		Register_Pointer(stringText);
-		Mem_Copy(stringText, cstr, stringLength + 1, stringSize);
+		stringText = std::make_unique_for_overwrite<char[]>(stringSize);
+		Register_Pointer(stringText.get());
+		Mem_Copy(stringText.get(), cstr, stringLength + 1, stringSize);
 	}
 	referenceCount = 0;
 }
@@ -100,13 +100,13 @@ MStringRepresentation::MStringRepresentation(const char *cstr)
 //
 MStringRepresentation::~MStringRepresentation()
 {
-	if (stringText != nullptr)
+	if (stringText.get() != nullptr)
 	{
 		#if defined(_ARMOR)
-			memset(stringText, DELETE_FILL_CHAR, stringSize);
+			memset(stringText.get(), DELETE_FILL_CHAR, stringSize);
 		#endif
-		Unregister_Pointer(stringText);
-		delete[] stringText;
+		Unregister_Pointer(stringText.get());
+		stringText.reset();
 	}
 }
 
@@ -118,10 +118,10 @@ void
 	MStringRepresentation::TestInstance() const
 {
 #if 0
-	if (stringLength > 0 || stringText != nullptr)
+	if (stringLength > 0 || stringText.get() != nullptr)
 	{
-		Check_Pointer(stringText);
-		size_t str_len = strlen(stringText);
+		Check_Pointer(stringText.get());
+		size_t str_len = strlen(stringText.get());
 		Verify(stringLength == str_len);
 	}
 #endif
@@ -136,13 +136,13 @@ void
 {
 	Check_Object(this);
 
-	if (stringText != nullptr)
+	if (stringText.get() != nullptr)
 	{
       #if defined(_ARMOR)
-			memset(stringText, DELETE_FILL_CHAR, stringSize);
+			memset(stringText.get(), DELETE_FILL_CHAR, stringSize);
 		#endif
-		Unregister_Pointer(stringText);
-		delete[] stringText;
+		Unregister_Pointer(stringText.get());
+		stringText.reset();
 	}
 
 	if (!length)
@@ -155,8 +155,8 @@ void
 	{
 		stringLength = static_cast<uint32_t>(length);
 		stringSize = CalculateSize(stringLength);
-		stringText = new char [stringSize];
-		Register_Pointer(stringText);
+		stringText = std::make_unique_for_overwrite<char[]>(stringSize);
+		Register_Pointer(stringText.get());
 	}
 }
 
@@ -172,13 +172,13 @@ MStringRepresentation
 	if (this == &str)
 		return *this;
 
-	if (stringText != nullptr)
+	if (stringText.get() != nullptr)
 	{
       #if defined(_ARMOR)
-			memset(stringText, DELETE_FILL_CHAR, stringSize);
+			memset(stringText.get(), DELETE_FILL_CHAR, stringSize);
 		#endif
-		Unregister_Pointer(stringText);
-		delete[] stringText;
+		Unregister_Pointer(stringText.get());
+		stringText.reset();
 	}
 
    Check_Object(&str);
@@ -191,9 +191,9 @@ MStringRepresentation
    }
 	else
 	{
-		stringText = new char[stringSize];
-		Register_Pointer(stringText);
-		Mem_Copy(stringText, str.stringText, stringLength + 1, stringSize);
+		stringText = std::make_unique_for_overwrite<char[]>(stringSize);
+		Register_Pointer(stringText.get());
+		Mem_Copy(stringText.get(), str.stringText.get(), stringLength + 1, stringSize);
 	}
 
 	return *this;
@@ -208,13 +208,13 @@ MStringRepresentation
 {
 	Check_Object(this);
 
-	if (stringText != nullptr)
+	if (stringText.get() != nullptr)
 	{
       #if defined(_ARMOR)
-			memset(stringText, DELETE_FILL_CHAR, stringSize);
+			memset(stringText.get(), DELETE_FILL_CHAR, stringSize);
 		#endif
-		Unregister_Pointer(stringText);
-		delete[] stringText;
+		Unregister_Pointer(stringText.get());
+		stringText.reset();
 	}
 
 	if ((cstr == nullptr) || (cstr[0] == '\x00'))
@@ -228,9 +228,9 @@ MStringRepresentation
 		stringLength = static_cast<uint32_t>(strlen(cstr));
 		stringSize = CalculateSize(stringLength);
 
-		stringText = new char [stringSize];
-		Register_Pointer(stringText);
-		Mem_Copy(stringText, cstr, stringLength + 1, stringSize);
+		stringText = std::make_unique_for_overwrite<char[]>(stringSize);
+		Register_Pointer(stringText.get());
+		Mem_Copy(stringText.get(), cstr, stringLength + 1, stringSize);
 	}
 
 	return *this;
@@ -261,24 +261,24 @@ MStringRepresentation
 
 	temp.stringLength = 0;
 	temp.stringSize = MStringRepresentation::CalculateSize(static_cast<size_t>(totalLen));
-	temp.stringText = new char[temp.stringSize];
-	Register_Pointer(temp.stringText);
+	temp.stringText = std::make_unique_for_overwrite<char[]>(temp.stringSize);
+	Register_Pointer(temp.stringText.get());
 
    Verify(temp.stringSize >= 1);
 	temp.stringText[0] = '\000';
 
-	if (str1.stringText != nullptr)
+	if (str1.stringText.get() != nullptr)
 	{
-		Mem_Copy(temp.stringText, str1.stringText, str1.stringLength + 1, temp.stringSize);
+		Mem_Copy(temp.stringText.get(), str1.stringText.get(), str1.stringLength + 1, temp.stringSize);
 		temp.stringLength = str1.stringLength;
 	}
 
-	if (str2.stringText != nullptr)
+	if (str2.stringText.get() != nullptr)
 	{
 		Verify(temp.stringLength < temp.stringSize);
 		Mem_Copy(
 			&temp.stringText[temp.stringLength],
-			str2.stringText,
+			str2.stringText.get(),
 			str2.stringLength + 1,
 			temp.stringSize - temp.stringLength
 		);
@@ -300,12 +300,12 @@ MStringRepresentation
 
 	MStringRepresentation temp;
 
-	if (str.stringText == nullptr)
+	if (str.stringText.get() == nullptr)
 	{
 		temp.stringLength = 1;
 		temp.stringSize = MStringRepresentation::allocationIncrement;
-		temp.stringText = new char [temp.stringSize];
-		Register_Pointer(temp.stringText);
+		temp.stringText = std::make_unique_for_overwrite<char[]>(temp.stringSize);
+		Register_Pointer(temp.stringText.get());
 
 		Verify(temp.stringSize >= 2);
 		temp.stringText[0] = ch;
@@ -322,9 +322,9 @@ MStringRepresentation
 		else
 			temp.stringSize = str.stringSize;
 
-		temp.stringText = new char[temp.stringSize];
-		Register_Pointer(temp.stringText);
-		Mem_Copy(temp.stringText, str.stringText, str.stringLength, temp.stringSize);
+		temp.stringText = std::make_unique_for_overwrite<char[]>(temp.stringSize);
+		Register_Pointer(temp.stringText.get());
+		Mem_Copy(temp.stringText.get(), str.stringText.get(), str.stringLength, temp.stringSize);
 
 		Verify(str.stringLength < temp.stringSize);
 		Verify(temp.stringLength < temp.stringSize);
@@ -347,19 +347,19 @@ int
 	Check_Object(&str);
 
 	// handle special cases where one string is empty
-	if (stringText == nullptr)
+	if (stringText.get() == nullptr)
 	{
-		if (str.stringText == nullptr)
+		if (str.stringText.get() == nullptr)
 			return 0;
 		else
 			return -1;
 	}
-	if (str.stringText == nullptr)
+	if (str.stringText.get() == nullptr)
    {
 		return 1;
    }
 
-	return strcmp(stringText, str.stringText);
+	return strcmp(stringText.get(), str.stringText.get());
 }
 
 //
@@ -390,7 +390,7 @@ MStringRepresentation
    //
 	MStringRepresentation temp(*this);
 
-   if (temp.stringText == nullptr)
+   if (temp.stringText.get() == nullptr)
 		return temp;
 
    //
@@ -399,8 +399,8 @@ MStringRepresentation
 	size_t i;
 	char *ptr;
 
-	Check_Pointer(temp.stringText);
-	ptr = strtok(temp.stringText, delimter_string);
+	Check_Pointer(temp.stringText.get());
+	ptr = strtok(temp.stringText.get(), delimter_string);
 	for (i = 0; i < nth_token; i++)
 	{
 		if ((ptr = strtok(nullptr, delimter_string)) == nullptr)
@@ -424,7 +424,7 @@ void
 	MStringRepresentation::ToUpper()
 {
 	Check_Object(this);
-	if (stringText != nullptr)
+	if (stringText.get() != nullptr)
 	{
 		for (int i = 0; i < stringLength; i++)
 		{
@@ -440,9 +440,9 @@ void
 void MStringRepresentation::ToLower()
 {
 	Check_Object(this);
-	if (stringText != nullptr)
+	if (stringText.get() != nullptr)
 	{
-		CharLower(stringText);
+		CharLower(stringText.get());
 	}
 }
 
@@ -466,14 +466,15 @@ MemoryStream&
 	Read(stream, &string_length);
 	if (string_length > 0)
 	{
-		char *ptr = new char[string_length + 1];
+		auto ptrOwner = std::make_unique_for_overwrite<char[]>(string_length + 1);
+		char *ptr = ptrOwner.get();
 		Register_Pointer(ptr);
 		stream->ReadBytes(ptr, string_length + 1);
 
 		*str = ptr;
 
 		Unregister_Pointer(ptr);
-		delete[] ptr;
+		ptrOwner.reset();
 	}
 
 	Check_Object(str);
@@ -496,7 +497,7 @@ MemoryStream&
 	Write(stream, &str.stringLength);
 	if (str.stringLength > 0)
 	{
-		stream->WriteBytes(str.stringText, str.stringLength + 1);
+		stream->WriteBytes(str.stringText.get(), str.stringLength + 1);
 	}
 	return *stream;
 }

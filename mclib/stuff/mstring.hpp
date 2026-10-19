@@ -6,6 +6,7 @@
 //===========================================================================//
 
 #pragma once
+#include <memory>
 
 #include"stuff.hpp"
 #include"hash.hpp"
@@ -366,8 +367,7 @@ namespace Stuff {
 		//size_t
         uint32_t
 			stringLength;
-		char
-			*stringText;
+		std::unique_ptr<char[]> stringText;
 
 		//
 		// reference count
@@ -384,8 +384,8 @@ namespace Stuff {
 	{
 		Check_Object(this);
 		Verify(
-			(stringText != nullptr) ?
-				(stringLength == strlen(stringText)) : 
+			(stringText.get() != nullptr) ?
+				(stringLength == strlen(stringText.get())) :
 				(stringLength == 0)
 		);
 		return stringLength;
@@ -397,7 +397,7 @@ namespace Stuff {
 		Check_Object(this);
 		Verify(length < GetSize());
 		stringLength = static_cast<uint32_t>(length);
-		Verify(strlen(stringText) == stringLength);
+		Verify(strlen(stringText.get()) == stringLength);
 	}
 
 	inline size_t
@@ -413,8 +413,8 @@ namespace Stuff {
 		MStringRepresentation::operator char*() const
    {
       Check_Object(this);
-//		Verify(stringText != NULL);
-		return stringText;
+//		Verify(stringText.get() != NULL);
+		return stringText.get();
    }
 
 	// concatenation methods
@@ -521,7 +521,7 @@ namespace Stuff {
 		// bits, which is what the arithmetic shift always compiled to (a count of 32 or more is undefined in C++).
 		for(i=0;i<len;i++)
 		{
-			memcpy(&r, stringText + 4 * i, sizeof(r));
+			memcpy(&r, stringText.get() + 4 * i, sizeof(r));
 			r = r >> (i & 31);
 			ret += r;
 		}
@@ -532,7 +532,7 @@ namespace Stuff {
 		if (tailBytes)
 		{
 			int tail = 0;
-			memcpy(&tail, stringText + 4 * i, tailBytes);
+			memcpy(&tail, stringText.get() + 4 * i, tailBytes);
 			ret += tail;
 		}
 
@@ -794,8 +794,8 @@ namespace Stuff {
 		MString::operator char*() const
 	{
 		Check_Object(representation);
-//		Verify(representation->stringText != NULL);
-		return representation->stringText;
+//		Verify(representation->stringText.get() != NULL);
+		return representation->stringText.get();
 	}
 
 	// concatenation methods
@@ -808,7 +808,7 @@ namespace Stuff {
 		Check_Object(&str1);
 		Check_Object(&str2);
 		MStringRepresentation temp = *str1.representation + *str2.representation;
-		return MString(temp.stringText);
+		return MString(temp.stringText.get());
 	}
 
 	inline MString
@@ -819,7 +819,7 @@ namespace Stuff {
 	{
 		Check_Object(&str1);
 		MStringRepresentation temp = *str1.representation + ch;
-		return MString(temp.stringText);
+		return MString(temp.stringText.get());
 	}
 
 	inline void
@@ -905,7 +905,7 @@ namespace Stuff {
 		Check_Object(representation);
 		MStringRepresentation temp =
 			representation->GetNthToken(nth_token, delimiters);
-		return MString(temp.stringText);
+		return MString(temp.stringText.get());
 	}
 
 }
@@ -919,7 +919,7 @@ namespace Stuff {
 		)
 	{
 		Check_Object(&string);
-		SPEW((group, string.stringText));
+		SPEW((group, string.stringText.get()));
 	}
 
 	inline void
