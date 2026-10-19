@@ -1079,16 +1079,16 @@ TEST_CASE("G6 string and presence rows") {
 }
 
 TEST_CASE("raw<> echoes the environment text, nullptr when unset, without caching") {
-    EnvVar env("MC2_BOX_DECAL");
+    EnvVar env("MC2_FXAA");
     env.set(nullptr);
-    CHECK(gate::raw<"MC2_BOX_DECAL">() == nullptr);
+    CHECK(gate::raw<"MC2_FXAA">() == nullptr);
     env.set("");
-    gate::invalidate("MC2_BOX_DECAL");
-    CHECK(gate::get<"MC2_BOX_DECAL">() == false);
+    gate::invalidate("MC2_FXAA");
+    CHECK(gate::get<"MC2_FXAA">() == false);
     env.set("yes");
-    CHECK(std::string(gate::raw<"MC2_BOX_DECAL">()) == "yes");   // fresh even though get<> cached
+    CHECK(std::string(gate::raw<"MC2_FXAA">()) == "yes");   // fresh even though get<> cached
     env.set(nullptr);
-    gate::invalidate("MC2_BOX_DECAL");
+    gate::invalidate("MC2_FXAA");
 }
 
 // ---------------------------------------------------------------------------
@@ -1187,11 +1187,11 @@ TEST_CASE("G5 gameosmain rows and the runtime-name reader") {
     CHECK(g1b::rowNamed("MC2_SCREENSHOT_PATH").kind == Kind::String);
     CHECK(g1b::rowNamed("MC2_LOAD_RACE_PROBE_FRAMES").kind == Kind::String);
 
-    EnvVar env("MC2_BOX_DECAL");   // envText reads any name at run time, uncached
+    EnvVar env("MC2_FXAA");   // envText reads any name at run time, uncached
     env.set(nullptr);
-    CHECK(gate::envText("MC2_BOX_DECAL") == nullptr);
+    CHECK(gate::envText("MC2_FXAA") == nullptr);
     env.set("1");
-    CHECK(std::string(gate::envText("MC2_BOX_DECAL")) == "1");
+    CHECK(std::string(gate::envText("MC2_FXAA")) == "1");
     env.set(nullptr);
 }
 
