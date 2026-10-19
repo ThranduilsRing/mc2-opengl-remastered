@@ -549,7 +549,7 @@ void freeLocal (SymTableNodePtr idPtr) {
 			// free() faults in RtlFreeHeap (routineExit -> UserHeap::Free). Every real
 			// ABLStackMalloc pointer is heap-aligned and non-null, so skip the free for
 			// any null / unaligned / all-ones-low-word pointer instead of crashing.
-			unsigned long long a = static_cast<unsigned long long>(itemPtr->address);
+			unsigned long long a = reinterpret_cast<unsigned long long>(itemPtr->address);
 			bool plausible = (a != 0ull)
 			              && ((a & 0x7ull) == 0ull)                 // 8-byte aligned
 			              && ((a & 0xFFFFFFFFull) != 0xFFFFFFFFull); // not the -1 sentinel

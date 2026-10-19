@@ -1511,7 +1511,7 @@ void ABLi_loadEnvironment (ABLFile* ablFile, bool malloc) {
 		}
 		if (malloc) {
 			long numErrors, numLinesProcessed;
-			ABLModulePtr library = ABLi_loadLibrary(static_cast<const char*>(fileName), &numErrors, &numLinesProcessed, nullptr, false, false);
+			ABLModulePtr library = ABLi_loadLibrary(reinterpret_cast<const char*>(fileName), &numErrors, &numLinesProcessed, nullptr, false, false);
 			if (!library) {
 				char err[255];
 				sprintf(err, "ABLi_loadEnvironment: Unable to load library [Module %d]", i);
@@ -1532,7 +1532,7 @@ void ABLi_loadEnvironment (ABLFile* ablFile, bool malloc) {
 		}
 		long numErrors, numLinesProcessed;
 		if (malloc) {
-			int handle = ABLi_preProcess(static_cast<const char*>(fileName), &numErrors, &numLinesProcessed);
+			int handle = ABLi_preProcess(reinterpret_cast<const char*>(fileName), &numErrors, &numLinesProcessed);
 			if (handle < 0) {
 				char err[255];
 				sprintf(err, "ABLi_loadEnvironment: Unable to preprocess [Module %d]", i);
