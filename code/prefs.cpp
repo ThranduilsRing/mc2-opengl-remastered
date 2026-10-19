@@ -4,6 +4,7 @@
 
 #include"platform_io.h" // for _chmod()
 
+#include <cstring>
 #include"prefs.h"
 #include"gamesound.h"
 #include"missiongui.h"

@@ -9,7 +9,7 @@
 #include"mclib.h"
 #endif
 
-#include "Gates/preferences_cfg.h"
+#include "Gates/preferences_types.h"
 
 
 class CPrefs : public mc2::options::Preferences {

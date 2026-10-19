@@ -24,7 +24,7 @@ TEST_CASE("Preferences/unchanged options.cfg retains every byte") {
     const std::string text = source ? mc2::options::cfg::readTextFile(source) :
         "FITini \r\n\r\n[MechCommander2]\r\n// player comment\r\n"
         "l DigitalMasterVolume = 192\r\nl MusicVolume = 64\r\n"
-        "b Shadows = false\r\nst PlayerName0 = \"Pilot\"\r\n"
+        "b Shadows = false\r\nST PlayerName0 = \"Pilot\"\r\n"
         "st IPAddress0 = \"127.0.0.1\"\r\nf ScrollSpeedMult = 2.000000\r\n"
         "b PostCAS = FALSE\r\nf PostCASSharpness = 0.500000\r\n"
         "st ModOwned = \"keep me\"\r\n[Keyboard]\r\nl Key0 = 123\r\nFITend \r\n";
@@ -47,7 +47,7 @@ TEST_CASE("Preferences/unchanged options.cfg retains every byte") {
     CHECK(mc2::options::rewritePreferences(updated, snapshot, snapshot) == updated);
 }
 TEST_CASE("Preferences/string edits and newly created files retain the FIT grammar") {
-    const std::string text = "FITini\n[MechCommander2]\nst PlayerName0 = \"Before\"\n[Keyboard]\nl Key0 = 7\nFITend\n";
+    const std::string text = "FITini\n[MechCommander2]\nST PlayerName0 = \"Before\"\n[Keyboard]\nl Key0 = 7\nFITend\n";
     Preferences settings; RenderOptions render;
     load(text, settings, render);
     auto before = mc2::options::preferenceSnapshot(settings, render);
@@ -140,7 +140,7 @@ TEST_CASE("Preferences/real CPrefs load-save is byte identical and publishes sta
 }
 
 TEST_CASE("Preferences/explicit empty indexed names override the legacy fallback") {
-    const std::string text = "FITini\n[MechCommander2]\nst PlayerName0 = \"\"\nst PlayerName = \"Legacy\"\nFITend\n";
+    const std::string text = "FITini\n[MechCommander2]\nST PlayerName0 = \"\"\nst PlayerName = \"Legacy\"\nFITend\n";
     Preferences settings; RenderOptions render;
     load(text, settings, render);
     CHECK(std::string(settings.playerName[0]).empty());

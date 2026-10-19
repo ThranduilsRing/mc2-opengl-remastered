@@ -1,6 +1,6 @@
 // The preferences schema and lossless options.cfg editor. File IO belongs to CPrefs.
 #pragma once
-#include "preferences_values.h"
+#include "preferences_types.h"
 #include "render_options_cfg.h"
 #include <cstring>
 namespace mc2::options {
@@ -73,11 +73,6 @@ template<class File, class P> void loadPreferences(File& file, P& p) {
         file.readIdString("UnitName", p.unitName[0], sizeof(p.unitName[0]) - 1);
     }
 }
-struct PreferenceValue {
-    std::string key, text;
-    char type;
-    bool operator==(const PreferenceValue&) const = default;
-};
 template<class T> std::string preferenceText(const T& value, char type) {
     if constexpr (std::is_array_v<T>) return "\"" + std::string(value) + "\"";
     else if constexpr (std::is_same_v<T, bool>) return type == 'b' ? (value ? "TRUE" : "FALSE") : (value ? "1" : "0");

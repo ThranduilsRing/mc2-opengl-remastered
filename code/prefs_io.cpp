@@ -2,6 +2,7 @@
 #include "platform_io.h"
 #include "platform_str.h"
 #include "prefs.h"
+#include "Gates/preferences_cfg.h"
 #include "Gates/render_options_publish.h"
 extern int loadPreferenceHotKeys(FitIniFile&);
 extern int savePreferenceHotKeys(std::string&);

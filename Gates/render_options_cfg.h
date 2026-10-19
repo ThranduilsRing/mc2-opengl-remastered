@@ -47,7 +47,7 @@ inline bool parseLine(std::string_view line, char& type, std::string_view& key, 
     if (gap == std::string_view::npos) return false;
     const auto prefix = line.substr(0, gap);
     if (prefix.size() == 1) type = prefix[0];
-    else if (prefix == "st") type = 's';
+    else if (opt_detail::equalsNoCase(prefix, "st")) type = 's';
     else return false;
     std::string_view rest = opt_detail::trim(line.substr(gap));
     std::size_t k = 0;
