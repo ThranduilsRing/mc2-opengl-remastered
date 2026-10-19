@@ -56,7 +56,7 @@ int gpu_cull_record_selftest() {
         }
     }
     MC2_DIAGF("[GPU_CULL v1] event=selftest_summary pass=%d fail=%d\n",
-           (int)(sizeof(checks)/sizeof(checks[0])) + 2 - failures, failures);
+           static_cast<int>((sizeof(checks)/sizeof(checks[0]))) + 2 - failures, failures);
     fflush(stdout);
     return failures;
 }

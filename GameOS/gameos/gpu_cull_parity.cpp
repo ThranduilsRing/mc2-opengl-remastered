@@ -56,9 +56,9 @@ void parity_flushSummary() {
     ++s_flushCount;
     if ((s_flushCount % 600) == 1 || s_flushCount == 1) {
         MC2_DIAGF("[GPU_CULL v1] event=parity_summary mismatches=%llu total=%llu flush=%llu\n",
-               (unsigned long long)s_mismatches,
-               (unsigned long long)s_totalChecked,
-               (unsigned long long)s_flushCount);
+               static_cast<unsigned long long>(s_mismatches),
+               static_cast<unsigned long long>(s_totalChecked),
+               static_cast<unsigned long long>(s_flushCount));
         fflush(stdout);
     }
 }

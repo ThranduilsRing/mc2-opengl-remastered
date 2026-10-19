@@ -77,17 +77,17 @@ void EndFrame(uint32_t frame, double dtMs) {
     // per-frame orphan-on-write churn is reported every frame.
     if (g_mc2GpuBufCounter) {
         using O = GpuBufOwner;
-        const unsigned gos = (unsigned)O::GosUpdateBuffer;
-        const unsigned hud = (unsigned)O::Hud;
-        const unsigned lit = (unsigned)O::LightSsbo;
-        const unsigned sps = (unsigned)O::StaticPropShadow;
+        const unsigned gos = static_cast<unsigned>(O::GosUpdateBuffer);
+        const unsigned hud = static_cast<unsigned>(O::Hud);
+        const unsigned lit = static_cast<unsigned>(O::LightSsbo);
+        const unsigned sps = static_cast<unsigned>(O::StaticPropShadow);
         uint32_t totCalls = 0;
         uint64_t totBytes = 0;
-        for (unsigned i = 0; i < (unsigned)O::kCount; ++i) {
+        for (unsigned i = 0; i < static_cast<unsigned>(O::kCount); ++i) {
             totCalls += a.gpuBufOrphanCalls[i];
             totBytes += a.gpuBufOrphanBytes[i];
         }
-        mc2::fmt::print_err("[GPUBUF v1] frame={:d} orphan_calls={:d} orphan_bytes={:d} by_owner=gos_UpdateBuffer:{:d}/{:d},hud:{:d}/{:d},light:{:d}/{:d},sp_shadow:{:d}/{:d}\n", mc2::fmt::as_u32(frame), mc2::fmt::as_u32(totCalls), mc2::fmt::as_u64((unsigned long long)totBytes), mc2::fmt::as_u32(a.gpuBufOrphanCalls[gos]), mc2::fmt::as_u64((unsigned long long)a.gpuBufOrphanBytes[gos]), mc2::fmt::as_u32(a.gpuBufOrphanCalls[hud]), mc2::fmt::as_u64((unsigned long long)a.gpuBufOrphanBytes[hud]), mc2::fmt::as_u32(a.gpuBufOrphanCalls[lit]), mc2::fmt::as_u64((unsigned long long)a.gpuBufOrphanBytes[lit]), mc2::fmt::as_u32(a.gpuBufOrphanCalls[sps]), mc2::fmt::as_u64((unsigned long long)a.gpuBufOrphanBytes[sps]));
+        mc2::fmt::print_err("[GPUBUF v1] frame={:d} orphan_calls={:d} orphan_bytes={:d} by_owner=gos_UpdateBuffer:{:d}/{:d},hud:{:d}/{:d},light:{:d}/{:d},sp_shadow:{:d}/{:d}\n", mc2::fmt::as_u32(frame), mc2::fmt::as_u32(totCalls), mc2::fmt::as_u64(static_cast<unsigned long long>(totBytes)), mc2::fmt::as_u32(a.gpuBufOrphanCalls[gos]), mc2::fmt::as_u64(static_cast<unsigned long long>(a.gpuBufOrphanBytes[gos])), mc2::fmt::as_u32(a.gpuBufOrphanCalls[hud]), mc2::fmt::as_u64(static_cast<unsigned long long>(a.gpuBufOrphanBytes[hud])), mc2::fmt::as_u32(a.gpuBufOrphanCalls[lit]), mc2::fmt::as_u64(static_cast<unsigned long long>(a.gpuBufOrphanBytes[lit])), mc2::fmt::as_u32(a.gpuBufOrphanCalls[sps]), mc2::fmt::as_u64(static_cast<unsigned long long>(a.gpuBufOrphanBytes[sps])));
         fflush(stderr);
     }
 
@@ -99,10 +99,10 @@ void EndFrame(uint32_t frame, double dtMs) {
     mc2::fmt::print_err("[HITCH] frame={:d} dt={:.2f} terrainSolid={:.2f} staticFlush={:.2f} staticSnapshot={:.2f} water={:.2f} glBufData={:d} glBufBytes={:d} glBufSubData={:d} glBufSubBytes={:d} glMapBuf={:d} glTexImage={:d} glTexImageBytes={:d} glBindTex={:d} glUseProgram={:d} fenceWaitMs={:.2f} fenceWaits={:d}\n",
         mc2::fmt::as_u32(frame), dtMs,
         a.terrainSolidMs, a.staticFlushMs, a.staticSnapshotMs, a.waterMs,
-        mc2::fmt::as_u32(a.glBufferDataCalls),    mc2::fmt::as_u64((unsigned long long)a.glBufferDataBytes),
-        mc2::fmt::as_u32(a.glBufferSubDataCalls), mc2::fmt::as_u64((unsigned long long)a.glBufferSubDataBytes),
+        mc2::fmt::as_u32(a.glBufferDataCalls),    mc2::fmt::as_u64(static_cast<unsigned long long>(a.glBufferDataBytes)),
+        mc2::fmt::as_u32(a.glBufferSubDataCalls), mc2::fmt::as_u64(static_cast<unsigned long long>(a.glBufferSubDataBytes)),
         mc2::fmt::as_u32(a.glMapBufferCalls),
-        mc2::fmt::as_u32(a.glTexImageCalls), mc2::fmt::as_u64((unsigned long long)a.glTexImageBytes),
+        mc2::fmt::as_u32(a.glTexImageCalls), mc2::fmt::as_u64(static_cast<unsigned long long>(a.glTexImageBytes)),
         mc2::fmt::as_u32(a.glBindTextureCalls), mc2::fmt::as_u32(a.glUseProgramCalls),
         a.vkFence.totalMs, mc2::fmt::as_u32(a.vkFence.count));
 
@@ -113,12 +113,12 @@ void EndFrame(uint32_t frame, double dtMs) {
 
     // Detail line: static-prop flush.
     if (a.staticFlushMs > 0.0 || a.staticRecords) {
-        mc2::fmt::print_err("[HITCH_STATIC_FLUSH] flushMs={:.2f} records={:d} draws={:d} bufferBytes={:d} realloc={:d} map={:d} subData={:d}\n", a.staticFlushMs, mc2::fmt::as_u32(a.staticRecords), mc2::fmt::as_u32(a.staticDrawCmds), mc2::fmt::as_u64((unsigned long long)a.staticBufferBytes), mc2::fmt::as_u32(a.staticRealloc), mc2::fmt::as_u32(a.glMapBufferCalls), mc2::fmt::as_u32(a.glBufferSubDataCalls)); // glMapBufferCalls = global approx; staticMap reserved
+        mc2::fmt::print_err("[HITCH_STATIC_FLUSH] flushMs={:.2f} records={:d} draws={:d} bufferBytes={:d} realloc={:d} map={:d} subData={:d}\n", a.staticFlushMs, mc2::fmt::as_u32(a.staticRecords), mc2::fmt::as_u32(a.staticDrawCmds), mc2::fmt::as_u64(static_cast<unsigned long long>(a.staticBufferBytes)), mc2::fmt::as_u32(a.staticRealloc), mc2::fmt::as_u32(a.glMapBufferCalls), mc2::fmt::as_u32(a.glBufferSubDataCalls)); // glMapBufferCalls = global approx; staticMap reserved
     }
 
     // Detail line: water.
     if (a.waterCalled) {
-        mc2::fmt::print_err("[HITCH_WATER] called={:d} waterPresent={:d} earlyOut={:d} glCalls={:d}\n", mc2::fmt::as_u32((unsigned)a.waterCalled), mc2::fmt::as_u32((unsigned)a.waterPresent), mc2::fmt::as_u32((unsigned)a.waterEarlyOut), mc2::fmt::as_u32(a.waterGlCalls));
+        mc2::fmt::print_err("[HITCH_WATER] called={:d} waterPresent={:d} earlyOut={:d} glCalls={:d}\n", mc2::fmt::as_u32(static_cast<unsigned>(a.waterCalled)), mc2::fmt::as_u32(static_cast<unsigned>(a.waterPresent)), mc2::fmt::as_u32(static_cast<unsigned>(a.waterEarlyOut)), mc2::fmt::as_u32(a.waterGlCalls));
         // H1b detail — only when water actually ran with measurable time
         if (a.waterMs > 0.5) {
             mc2::fmt::print_err("[HITCH_WATER_DETAIL] waterMs={:.2f} guards={:.2f} recipe={:.2f} buildWindow={:.2f} upload={:.2f} dispatch={:.2f} recipes={:d} window={:d} narrow={:d} recipeUploaded={:d}\n", a.waterMs, a.waterGuardsMs, a.waterRecipeMs, a.waterBuildWindowMs, a.waterUploadMs, a.waterDispatchMs, mc2::fmt::as_u32(a.waterRecipeCount), mc2::fmt::as_u32(a.waterWindowCount), mc2::fmt::as_u32(a.waterNarrowCount), mc2::fmt::as_u32(a.waterRecipeUploaded));
@@ -127,11 +127,11 @@ void EndFrame(uint32_t frame, double dtMs) {
 
     // Detail line: GL totals.
     mc2::fmt::print_err("[HITCH_GL] glBufferData={:d} glBufferDataBytes={:d} glBufferSubData={:d} glBufferSubDataBytes={:d} glMapBuffer={:d} glTexImage={:d} glTexImageBytes={:d} glTexSubImage={:d} glTexSubImageBytes={:d} glBindTexture={:d} glUseProgram={:d}\n",
-        mc2::fmt::as_u32(a.glBufferDataCalls),    mc2::fmt::as_u64((unsigned long long)a.glBufferDataBytes),
-        mc2::fmt::as_u32(a.glBufferSubDataCalls), mc2::fmt::as_u64((unsigned long long)a.glBufferSubDataBytes),
+        mc2::fmt::as_u32(a.glBufferDataCalls),    mc2::fmt::as_u64(static_cast<unsigned long long>(a.glBufferDataBytes)),
+        mc2::fmt::as_u32(a.glBufferSubDataCalls), mc2::fmt::as_u64(static_cast<unsigned long long>(a.glBufferSubDataBytes)),
         mc2::fmt::as_u32(a.glMapBufferCalls),
-        mc2::fmt::as_u32(a.glTexImageCalls), mc2::fmt::as_u64((unsigned long long)a.glTexImageBytes),
-        mc2::fmt::as_u32(a.glTexSubImageCalls), mc2::fmt::as_u64((unsigned long long)a.glTexSubImageBytes),
+        mc2::fmt::as_u32(a.glTexImageCalls), mc2::fmt::as_u64(static_cast<unsigned long long>(a.glTexImageBytes)),
+        mc2::fmt::as_u32(a.glTexSubImageCalls), mc2::fmt::as_u64(static_cast<unsigned long long>(a.glTexSubImageBytes)),
         mc2::fmt::as_u32(a.glBindTextureCalls), mc2::fmt::as_u32(a.glUseProgramCalls));
 
     // Detail line: Vulkan frame-fence waits.

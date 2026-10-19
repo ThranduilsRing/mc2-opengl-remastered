@@ -284,12 +284,12 @@ bool readback_init(uint32_t maxActors) {
 
     MC2_DIAGF("[GPU_CULL v1] event=readback_init maxActors=%u slotBytes=%zu totalBytes=%lld"
            " ssboAlignment=%d binding=%u forceNotReady=%d dual_buf=1\n",
-           maxActors, s_slotBytes, (long long)totalBytes,
-           ssboAlignment, READBACK_SSBO_BINDING, (int)s_forceNotReady);
+           maxActors, s_slotBytes, static_cast<long long>(totalBytes),
+           ssboAlignment, READBACK_SSBO_BINDING, static_cast<int>(s_forceNotReady));
     fflush(stdout);
     if (mc2_diag::tagEnabled("GPU_CULL")) {
         char diag_buf[256];
-        mc2::fmt::to_buf(diag_buf, "{{\"event\":\"readback_init\",\"maxActors\":{:d},\"slotBytes\":{:d},\"totalBytes\":{:d},\"ssboAlignment\":{:d},\"binding\":{:d},\"forceNotReady\":{:d},\"dual_buf\":1}}", mc2::fmt::as_u32(maxActors), mc2::fmt::as_size(s_slotBytes), mc2::fmt::as_i64((long long)totalBytes), mc2::fmt::as_i32(ssboAlignment), mc2::fmt::as_u32(READBACK_SSBO_BINDING), mc2::fmt::as_i32((int)s_forceNotReady));
+        mc2::fmt::to_buf(diag_buf, "{{\"event\":\"readback_init\",\"maxActors\":{:d},\"slotBytes\":{:d},\"totalBytes\":{:d},\"ssboAlignment\":{:d},\"binding\":{:d},\"forceNotReady\":{:d},\"dual_buf\":1}}", mc2::fmt::as_u32(maxActors), mc2::fmt::as_size(s_slotBytes), mc2::fmt::as_i64(static_cast<long long>(totalBytes)), mc2::fmt::as_i32(ssboAlignment), mc2::fmt::as_u32(READBACK_SSBO_BINDING), mc2::fmt::as_i32(static_cast<int>(s_forceNotReady)));
         mc2_diag::writeEvent("GPU_CULL", 1, 0, diag_buf);
     }
 
@@ -417,8 +417,8 @@ ReadbackTier readback_tryConsume() {
         // Tracy plots.
         {
             const uint32_t cpuVis = substrate_getCpuVisibleCount();
-            TracyPlot("GPU.VisibleCount.GPU", (int64_t)s_lastGoodVisibleCount);
-            TracyPlot("GPU.VisibleCount.CPU", (int64_t)cpuVis);
+            TracyPlot("GPU.VisibleCount.GPU", static_cast<int64_t>(s_lastGoodVisibleCount));
+            TracyPlot("GPU.VisibleCount.CPU", static_cast<int64_t>(cpuVis));
         }
 
         s_staleFrameCount = 0u;  // M-4: fence ready — staleness cleared
@@ -458,8 +458,8 @@ ReadbackTier readback_tryConsume() {
         // Tracy plots (T2 — 2 frames stale, still useful).
         {
             const uint32_t cpuVis = substrate_getCpuVisibleCount();
-            TracyPlot("GPU.VisibleCount.GPU", (int64_t)s_lastGoodVisibleCount);
-            TracyPlot("GPU.VisibleCount.CPU", (int64_t)cpuVis);
+            TracyPlot("GPU.VisibleCount.GPU", static_cast<int64_t>(s_lastGoodVisibleCount));
+            TracyPlot("GPU.VisibleCount.CPU", static_cast<int64_t>(cpuVis));
         }
 
         s_staleFrameCount = 0u;  // M-4: fence ready — staleness cleared
@@ -563,7 +563,7 @@ void readback_selftest() {
             ++pass;
         } else {
             ++fail;
-            MC2_DIAGF("[GPU_CULL v1] event=readback_selftest FAIL tier3 expected got=%d\n", (int)t);
+            MC2_DIAGF("[GPU_CULL v1] event=readback_selftest FAIL tier3 expected got=%d\n", static_cast<int>(t));
             fflush(stdout);
         }
         s_forceNotReady = savedForce;
@@ -589,7 +589,7 @@ void readback_selftest() {
             ++pass;
         } else {
             ++fail;
-            MC2_DIAGF("[GPU_CULL v1] event=readback_selftest FAIL tier2 expected got=%d\n", (int)t);
+            MC2_DIAGF("[GPU_CULL v1] event=readback_selftest FAIL tier2 expected got=%d\n", static_cast<int>(t));
             fflush(stdout);
         }
 
@@ -613,7 +613,7 @@ void readback_selftest() {
             ++pass;
         } else {
             ++fail;
-            MC2_DIAGF("[GPU_CULL v1] event=readback_selftest FAIL tier1 expected got=%d\n", (int)t);
+            MC2_DIAGF("[GPU_CULL v1] event=readback_selftest FAIL tier1 expected got=%d\n", static_cast<int>(t));
             fflush(stdout);
         }
 
@@ -653,7 +653,7 @@ void readback_selftest() {
         } else {
             ++fail;
             MC2_DIAGF("[GPU_CULL v1] event=readback_selftest FAIL or_merge actor1=%u actor2=%u flips=%u\n",
-                   (unsigned)s_actorVis[1], (unsigned)s_actorVis[2], orFlipsTest);
+                   static_cast<unsigned>(s_actorVis[1]), static_cast<unsigned>(s_actorVis[2]), orFlipsTest);
             fflush(stdout);
         }
         memcpy(s_actorVis, saved, sizeof(saved));
@@ -815,9 +815,9 @@ void readback_buildActorVisSnapshot(uint32_t maxActorHandle) {
             s_motionTolFirstDone = true;
             MC2_DIAGF("[GPU_CULL v1] event=motion_tolerance frames=%u dilated_admits=%llu conservative_or_admits=%llu or_enabled=%d\n",
                    s_motionTolFrames,
-                   (unsigned long long)s_accDilatedAdmits,
-                   (unsigned long long)s_accConservativeOrAdmits,
-                   (int)useOr);
+                   static_cast<unsigned long long>(s_accDilatedAdmits),
+                   static_cast<unsigned long long>(s_accConservativeOrAdmits),
+                   static_cast<int>(useOr));
             fflush(stdout);
         }
         s_accDilatedAdmits        = 0u;
