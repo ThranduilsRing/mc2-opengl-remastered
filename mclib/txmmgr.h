@@ -441,7 +441,6 @@ class MC_TextureManager
 		// the fresh pixels. Node INDEX is stable (widgets keep their ids).
 		// FST-only textures (no loose disk file) are skipped and counted in
 		// skippedNoFile. Returns number of nodes refreshed.
-		long refreshTexturesByName (const char *substring, long &skippedNoFile);
 
 		
         void resetLightData();

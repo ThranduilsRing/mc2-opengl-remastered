@@ -338,7 +338,7 @@ void MC_TextureManager::renderListsTerrainSolid (void)
 							masterVertexNodes[ti].vertices)
 						{
 							++terrTotal;
-							if (isTextureNodeResident(masterVertexNodes[ti].textureIndex))
+							if (mc2::textures::isDecoded(masterVertexNodes[ti].textureIndex))
 								++terrResident;
 						}
 					}
