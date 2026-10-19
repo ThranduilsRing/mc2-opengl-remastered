@@ -328,7 +328,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 - Header: `GameOS/gameos/engine_present_vk.h:253`
 - Class: `EnginePresentVk`  (data-member)
-- Member: `SDL_Window* glWindow_ = nullptr;`
+- Member: `SDL_Window* window_ = nullptr;`
 - Consuming targets: gameos, gameos_main, gui_runtime
 - Reached by define: gameos[gameos(PRIVATE)], gameos_main[gameos_main(PRIVATE)], gui_runtime[gui_runtime(PRIVATE)]
 

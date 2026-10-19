@@ -44,7 +44,6 @@
 #include "imgui.h"
 #include "imgui_impl_vulkan.h"
 
-#include <GL/glew.h>   // copy-1 GL blit (FBO-0 -> shared GL texture)
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_vulkan.h>
 #include <SDL2/SDL_syswm.h>   // P13b: SDL_GetWindowWMInfo -> HWND / HINSTANCE

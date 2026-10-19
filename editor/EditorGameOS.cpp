@@ -55,7 +55,6 @@
 
 #ifdef TRACY_ENABLE
 #  include "tracy/Tracy.hpp"
-#  include "tracy/TracyOpenGL.hpp"
 #endif
 
 extern uint32_t g_mc2FrameCounter;   // engine logic-pass epoch (mclib/tgl.cpp), advanced by gos::host::advanceFrameCounter
@@ -99,9 +98,7 @@ namespace graphics {
 
 
 #ifdef PLATFORM_WINDOWS
-#include <GL/glew.h>
 #else
-#include <GL/glew.h>
 #endif
 
 namespace graphics { void limit_editor_frame(); }
