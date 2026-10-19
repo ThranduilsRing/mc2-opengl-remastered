@@ -299,13 +299,7 @@ long BldgAppearance::render (long depthFixup)
 			if (buildingPbrOverrideActive)
 				submitBuildingFootprintShadow(this);
 			if (buildingPbrOverrideActive) {
-				TG_SetRenderShapePbrOverride(appearType->buildingPbrProgram,
-					appearType->buildingPbrNormalTexture,
-					appearType->buildingPbrOrmTexture,
-					appearType->buildingPbrMaterialSsbo,
-					appearType->buildingPbrTileScale,
-					appearType->buildingPbrRoughnessBias,
-					appearType->buildingPbrMetallicInfluence);
+				TG_SetRenderShapePbrOverride();
 			}
 			if (appearType->spinMe)
 				bldgShape->Render(false,0.00001f);

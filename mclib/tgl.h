@@ -1220,13 +1220,8 @@ public:
 };
 ////////////////////////////////////////////////////////////////////////////////
 
-void TG_SetRenderShapePbrOverride(HGOSRENDERMATERIAL program,
-                                  DWORD normalTexture,
-                                  DWORD ormTexture,
-                                  DWORD materialSsbo,
-                                  float tileScale,
-                                  float roughnessBias,
-                                  float metallicInfluence);
+// CPU routing for sidecar override shapes; no GL material is involved.
+void TG_SetRenderShapePbrOverride();
 void TG_ClearRenderShapePbrOverride();
 
 

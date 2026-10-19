@@ -227,16 +227,10 @@ static std::string joinSidecarPath(const std::string& sidecarDir, const std::str
 	return joined;
 }
 
-static DWORD uploadBuildingPbrKtx2(const char* path, bool srgb)
+static bool validateBuildingPbrKtx2(const char* path)
 {
 	RenderCore::KtxImage img;
-	if (!RenderCore::ktxLoadRgba8(path, img) || !img.isCompressed || !GLEW_ARB_texture_compression_bptc)
-		return 0;
-	uint32_t fmt = srgb ? GL_COMPRESSED_SRGB_ALPHA_BPTC_UNORM : GL_COMPRESSED_RGBA_BPTC_UNORM;
-	size_t mip0Bytes = img.pixels.size();
-	if (img.mipByteOffsets.size() > 1)
-		mip0Bytes = (size_t)img.mipByteOffsets[1];
-	return gos_NewCompressedTexture2D(fmt, img.width, img.height, img.pixels.data(), mip0Bytes, path);
+	return RenderCore::ktxLoadRgba8(path, img) && img.isCompressed;
 }
 
 bool loadBuildingPbrFromSidecar(BldgAppearanceType* type, const char* sidecarPath)
@@ -269,41 +263,11 @@ bool loadBuildingPbrFromSidecar(BldgAppearanceType* type, const char* sidecarPat
 	const std::string dir = pathDir(sidecarPath);
 	const std::string normalFull = joinSidecarPath(dir, normalPath);
 	const std::string ormFull = joinSidecarPath(dir, ormPath);
-	DWORD normalHandle = uploadBuildingPbrKtx2(normalFull.c_str(), false);
-	DWORD ormHandle = uploadBuildingPbrKtx2(ormFull.c_str(), false);
-	if (!normalHandle || !ormHandle)
+	// Validate sidecar images on the CPU before enabling native shape routing.
+	if (!validateBuildingPbrKtx2(normalFull.c_str()) ||
+	    !validateBuildingPbrKtx2(ormFull.c_str()))
 		return false;
 
-	RenderCore::MaterialGpu material = {};
-	material.albedoTex = RenderCore::kMaterialTexAbsent;
-	material.normalTex = 1;
-	material.metallicRoughnessTex = 2;
-	material.emissiveTex = RenderCore::kMaterialTexAbsent;
-	material.flags = RenderCore::MaterialFlags::kNormalMap |
-	                 RenderCore::MaterialFlags::kMetallicRoughness;
-	material.baseColorFactor = 1.0f;
-	material.metallicFactor = metallicInfluence;
-	material.roughnessFactor = 1.0f + roughnessBias;
-
-	GLuint ssbo = 0;
-	glGenBuffers(1, &ssbo);
-	if (ssbo == 0)
-		return false;
-	glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo);
-	glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(material), &material, GL_STATIC_DRAW);
-	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
-
-	type->buildingPbrProgram = gos_getRenderMaterial("building_pbr");
-	if (!type->buildingPbrProgram) {
-		glDeleteBuffers(1, &ssbo);
-		return false;
-	}
-	type->buildingPbrNormalTexture = normalHandle;
-	type->buildingPbrOrmTexture = ormHandle;
-	type->buildingPbrMaterialSsbo = (DWORD)ssbo;
-	type->buildingPbrTileScale = tileScale;
-	type->buildingPbrRoughnessBias = roughnessBias;
-	type->buildingPbrMetallicInfluence = metallicInfluence;
 	bool preserveLegacyAlpha = false;
 	if (extractJsonBool(text, "preserve_legacy_alpha", false, preserveLegacyAlpha))
 		type->buildingPbrPreserveLegacyAlpha = preserveLegacyAlpha;

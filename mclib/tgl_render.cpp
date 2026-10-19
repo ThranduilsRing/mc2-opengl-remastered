@@ -4,27 +4,16 @@
 #include "Gates/gate.h"
 
 
-struct TG_RenderShapePbrOverrideState {
-	HGOSRENDERMATERIAL program = nullptr;
+static bool s_renderShapePbrOverrideActive = false;
 
-};
-
-static TG_RenderShapePbrOverrideState s_activeRenderShapePbrOverride;
-
-void TG_SetRenderShapePbrOverride(HGOSRENDERMATERIAL program,
-                                  DWORD normalTexture,
-                                  DWORD ormTexture,
-                                  DWORD materialSsbo,
-                                  float tileScale,
-                                  float roughnessBias,
-                                  float metallicInfluence)
+void TG_SetRenderShapePbrOverride()
 {
-	s_activeRenderShapePbrOverride.program = program;
+	s_renderShapePbrOverrideActive = true;
 }
 
 void TG_ClearRenderShapePbrOverride()
 {
-	s_activeRenderShapePbrOverride = TG_RenderShapePbrOverrideState();
+	s_renderShapePbrOverrideActive = false;
 }
 
 // (Removed dead #define TERRAIN_DEPTH_FUDGE (0.000f) 2026-05-16: zero
@@ -40,7 +29,7 @@ void TG_ClearRenderShapePbrOverride()
 //   tgl.cpp:2700-2730. Phase 1 documents only; centralization is F4.
 void TG_Shape::Render (float forceZ, bool isHudElement, BYTE alphaValue, bool isClamped, const Stuff::Matrix4D* shapeToClip, const Stuff::Matrix4D* shapeToWorld)
 {
-	const bool traceBuildingPbr = s_activeRenderShapePbrOverride.program && mc2::gate::get<"MC2_BUILDING_PBR_TRACE">();
+	const bool traceBuildingPbr = s_renderShapePbrOverrideActive && mc2::gate::get<"MC2_BUILDING_PBR_TRACE">();
 	if (traceBuildingPbr) {
 		static int s_pbrRenderTrace = 0;
 		if (s_pbrRenderTrace < 64) {
@@ -327,7 +316,7 @@ void TG_Shape::Render (float forceZ, bool isHudElement, BYTE alphaValue, bool is
 	// FIXME: this (listOfTypeTriangles[0]) is not correct if model has more than 1 texture!
 	const TG_TypeTriangle firstTriType = theShape->listOfTypeTriangles[0];
 	const bool firstTextureAlpha = theShape->listOfTextures[firstTriType.localTextureHandle].textureAlpha;
-	const bool pbrOverrideActive = s_activeRenderShapePbrOverride.program != nullptr;
+	const bool pbrOverrideActive = s_renderShapePbrOverrideActive;
 	if (!isSpotlight && !isWindow && (!firstTextureAlpha || pbrOverrideActive) && (alphaValue == 0xff))
 	{
 		DWORD addFlags = 0;
