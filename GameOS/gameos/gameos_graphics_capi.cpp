@@ -553,10 +553,7 @@ void __stdcall gos_DestroyBuffer(gosBuffer* buffer)
     delete buffer;
 }
 
-void __stdcall gos_BindBufferBase(gosBuffer* buffer, uint32_t slot)
-{
-    // The retired hardware draw has no native buffer-binding consumer.
-}
+
 
 void __stdcall gos_UpdateBuffer(HGOSBUFFER buffer, void* data, size_t offset, size_t num_bytes)
 {

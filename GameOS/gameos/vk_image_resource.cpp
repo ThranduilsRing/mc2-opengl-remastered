@@ -112,17 +112,11 @@ bool vkImageResourceCreate(VkImageResource* r, VkDevice device, VkPhysicalDevice
     if (!mc2vk::create(r->view, device, [&](VkImageView* out) { return vkCreateImageView(device, &vci, nullptr, out); })) return fail("vkCreateImageView");
 
     // ---- double-buffered binary semaphore pairs + per-frame fences (blocker #4) ----
-    // ITEM-2: plain (NON-exported) binary semaphores. Their Win32 export half was the
-    // exportable machinery only the deleted GL<->VK signal/wait handoff imported; nobody
-    // signals/waits these now. Kept as the shared all-island beginFrame ABI (fence+parity).
-    VkSemaphoreCreateInfo sci{VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};
     // Fence starts SIGNALED so the first vkImageResourceBeginFrame wait returns
     // immediately (no submit has retired on this slot yet).
     VkFenceCreateInfo fci{VK_STRUCTURE_TYPE_FENCE_CREATE_INFO};
     fci.flags = VK_FENCE_CREATE_SIGNALED_BIT;
     for (int i = 0; i < 2; ++i) {
-        if (!mc2vk::create(r->glToVkSem[i], device, [&](VkSemaphore* out) { return vkCreateSemaphore(device, &sci, nullptr, out); })) return fail("vkCreateSemaphore(glToVk)");
-        if (!mc2vk::create(r->vkToGlSem[i], device, [&](VkSemaphore* out) { return vkCreateSemaphore(device, &sci, nullptr, out); })) return fail("vkCreateSemaphore(vkToGl)");
         if (!mc2vk::create(r->frameFence[i], device, [&](VkFence* out) { return vkCreateFence(device, &fci, nullptr, out); })) return fail("vkCreateFence");
     }
 
@@ -148,15 +142,14 @@ int vkImageResourceLiveCount() { return g_liveImages.load(std::memory_order_rela
 VkFrameSync vkImageResourceBeginFrame(VkImageResource* r) {
     const RenderCore::FrameFenceCore::Begin slot = r->frames.begin();
     // A disabled resource (a failed CancelFrame) has a reset fence nothing will signal: wait on nothing and hand back a null fence.
-    if (!slot.mayWait) return VkFrameSync{VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, slot.slot};
+    if (!slot.mayWait) return VkFrameSync{VK_NULL_HANDLE, slot.slot};
     const uint32_t p = slot.slot;
     // Blocker #4: guarantee the prior submit on this slot retired before its binary
     // semaphore is re-signalled. Fence created SIGNALED so frame 0 does not block.
     const VkFence fence = r->frameFence[p].get();
     vkWaitForFences(r->device, 1, &fence, VK_TRUE, UINT64_MAX);
     vkResetFences(r->device, 1, &fence);
-    // signal = GL->VK sem (submit waits it); vk2gl = VK->GL sem (submit signals it, P1.5).
-    return VkFrameSync{r->frameFence[p].get(), r->glToVkSem[p].get(), r->vkToGlSem[p].get(), p};
+    return VkFrameSync{r->frameFence[p].get(), p};
 }
 
 bool vkImageResourceCancelFrame(VkImageResource* r, const VkFrameSync& sync) {

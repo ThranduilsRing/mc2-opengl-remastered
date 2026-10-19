@@ -14,7 +14,6 @@ void EditorInterface::handleLeftButtonDown( int PosX, int PosY )
 
 	// RTT: viewport-local coords for the press pick + drag origin, so they live in
 	// the same space as handleMouseMove (which also offsets). No-op when RTT off.
-	EditorRttClientToViewport( PosX, PosY );
 
 	glm::vec3 vector;
 	Stuff::Vector2DOf<long> v2( PosX, PosY );
@@ -137,7 +136,6 @@ void EditorInterface::handleMouseMove( int PosX, int PosY )
 	// every screen->world unproject below (ground-plane, drag jacobian) matches the
 	// rect the scene is actually drawn in. No-op when RTT off. Camera-rotate/drag
 	// deltas are offset-invariant, so this is safe for all consumers here.
-	EditorRttClientToViewport( PosX, PosY );
 
 	glm::vec3 vector;
 	Stuff::Vector2DOf<long> v2( PosX, PosY );
@@ -580,7 +578,7 @@ EditorObject* EditorInterface_PickObjectAtScreenPoint(int screenX, int screenY)
 // SAME way the Select tool does -- GPU ObjectID readback primary (pixel-exact: handles a
 // zoomed-in click on a prop's edge, which the CPU center+tolerance picker misses), with
 // CPU forward-projection fallback. screenX/screenY must be viewport-local (the brush
-// dispatch already applies EditorRttClientToViewport before paint, like the Select path).
+// coordinates use the full client scene viewport, like the Select path).
 EditorObject* EditorPickObjectAtScreen(int screenX, int screenY)
 {
 	return EditorInterface_PickObjectAtScreenPoint(screenX, screenY);
@@ -707,7 +705,6 @@ void EditorInterface::OnLButtonUp(UINT nFlags, CPoint point)
 		// not depend on the old terrain inverse-project path.
 		// RTT: the picker unprojects, so feed it viewport-local coords.
 		int selX = (int)point.x, selY = (int)point.y;
-		EditorRttClientToViewport( selX, selY );
 		if (EditorInterface_SelectObjectAtScreenPoint(selX, selY, toggle))
 		{
 			if (EditorInterface_ShouldOpenSettingsForClick(selX, selY))
@@ -747,21 +744,10 @@ void EditorInterface::OnLButtonUp(UINT nFlags, CPoint point)
 		// full-window width onto the shrunk scene and diverges (the "2x" bug). When
 		// RTT is off the rect is the full window, so this reduces to the old math.
 		int pickPx = (int)point.x, pickPy = (int)point.y;
-		EditorRttClientToViewport( pickPx, pickPy );
-		int normW = 0, normH = 0;
-		if ( g_imguiInitialized && GuiRuntime::RttEnabled()
-			&& GuiRuntime::ViewportRectW() > 0 && GuiRuntime::ViewportRectH() > 0 )
-		{
-			normW = GuiRuntime::ViewportRectW();
-			normH = GuiRuntime::ViewportRectH();
-		}
-		else
-		{
-			CRect clientRect;
-			GetClientRect(&clientRect);
-			normW = clientRect.Width()  > 0 ? clientRect.Width()  : 1;
-			normH = clientRect.Height() > 0 ? clientRect.Height() : 1;
-		}
+		CRect clientRect;
+		GetClientRect(&clientRect);
+		const int normW = std::max(1, int(clientRect.Width()));
+		const int normH = std::max(1, int(clientRect.Height()));
 		const int winW = normW, winH = normH;
 
 		GameplayPickRequest req{};

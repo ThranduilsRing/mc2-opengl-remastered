@@ -2477,13 +2477,9 @@ void gos_SetTerrainMaterialNormal(int index, DWORD handle);
 void gos_SetTerrainWorldScale(float scale);
 void gos_SetTerrainCellBombParams(float scale, float jitter, float rotation);
 void gos_SetTerrainPOMParams(float scale, float minLayers, float maxLayers);
-unsigned int gos_CreateTerrainNormalTexture(const unsigned char* rgbaData, int width);
 // A width x width RGBA8 detail-normal texture as a gos texture handle (REPEAT, linear, no mips); its texels stay with the handle
 // while the Vulkan umbrella is armed, for the Vulkan terrain island. INVALID_TEXTURE_ID on failure.
 DWORD gos_NewTerrainNormalTexture(const unsigned char* rgbaData, int width);
-void gos_SetTerrainDetailNormalTexture(unsigned int glTexId);
-void gos_SetTerrainDisplacementTexture(unsigned int glTexId);
-void gos_SetTerrainViewDir(float x, float y, float z);
 
 // CPU displacement query API
 float gos_GetTerrainPhongAlpha();
@@ -2867,7 +2863,6 @@ void __stdcall gos_LightDataSsbo_Upload(const void* data, size_t bytes);
 void __stdcall gos_LightDataSsbo_UploadSplit(const void* data, size_t prefixBytes,
                                              size_t totalBytes, bool prefixDirty);
 void __stdcall gos_LightDataSsbo_Destroy();
-void __stdcall gos_BindLightDataStorageBlock(HGOSRENDERMATERIAL material);
 // VEHICLE-LIGHTING-PATH-1: night light-pool bind/upload for material-only
 // callers (mclib ShapeRenderer). No-op-safe when the pool gates are off.
 void __stdcall gos_UploadObjectLightPools(HGOSRENDERMATERIAL material);
@@ -2958,7 +2953,6 @@ struct gosVERTEX_FORMAT_RECORD {
 HGOSBUFFER __stdcall gos_CreateBuffer(gosBUFFER_TYPE type, gosBUFFER_USAGE usage, int element_size, uint32_t count, void* pdata);
 void __stdcall gos_DestroyBuffer(HGOSBUFFER buffer);
 void __stdcall gos_UpdateBuffer(HGOSBUFFER buffer, void* data, size_t offset, size_t num_bytes);
-void __stdcall gos_BindBufferBase(HGOSBUFFER buffer, uint32_t slot);
 
 uint32_t gos_GetBufferSizeBytes(HGOSBUFFER buffer);
 

@@ -1054,7 +1054,6 @@ void EditorInterface::render()
 		// coords. Offset a copy; the edge-scroll logic below stays in full-window
 		// space (it compares against Width()).
 		int brushX = (int)pt.x, brushY = (int)pt.y;
-		EditorRttClientToViewport( brushX, brushY );
 		curBrush->render( brushX, brushY );
 		renderTerrainSelection();
 

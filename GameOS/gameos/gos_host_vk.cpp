@@ -45,15 +45,12 @@ extern "C" void mc2_vk_shadow_island_destroy();
 bool gos_IsNvidiaGPU() {
 #ifdef MC2_VULKAN
     if (!mc2vk::engineVulkanContextValid()) return false;
-    const VkPhysicalDevice device = mc2vk::getOrCreateEngineVulkanContext().physicalDevice();
-    static VkPhysicalDevice cached = VK_NULL_HANDLE;
-    static bool nvidia = false;
-    if (device != cached) {
+    // A process chooses one physical device. Local-static initialization is thread safe.
+    static const bool nvidia = [] {
         VkPhysicalDeviceProperties properties{};
-        vkGetPhysicalDeviceProperties(device, &properties);
-        nvidia = properties.vendorID == 0x10de;
-        cached = device;
-    }
+        vkGetPhysicalDeviceProperties(mc2vk::getOrCreateEngineVulkanContext().physicalDevice(), &properties);
+        return properties.vendorID == 0x10de;
+    }();
     return nvidia;
 #else
     return false;
@@ -68,12 +65,7 @@ unsigned g_vkPresentRetryFails = 0;
 
 // Birth the engine Vulkan context and present path when the Vulkan backend is selected.
 void initVulkanBackend(graphics::RenderWindowHandle win, int w, int h) {
-    // VK-P13-SELECTOR-1 / T2+T4: birth the standalone shared engine Vulkan
-    // context when MC2_RENDER_BACKEND=vulkan. The GL window + GL context above
-    // are UNTOUCHED (approach A'); this only additionally stands up the shared
-    // VK device that P6/P8/P9/P14 will reuse. Present is still GL swap (T3 wires
-    // the VK present intercept later). On =gl/unset this whole block is skipped
-    // -> byte-identical GL behavior.
+    // Both hosts create the same native device and present owner on their SDL window.
     mc2::noteBackendEnv();
     {
 #ifdef MC2_VULKAN
