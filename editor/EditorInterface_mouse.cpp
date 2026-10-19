@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in EditorInterface_internal.h.
 #include "EditorInterface_internal.h"
 #include "Gates/gate.h"
+#include "../GameOS/gameos/vk_scene_readback.h"
 #include "../RenderCore/axis_convert.h"
 
 
@@ -803,62 +804,20 @@ void EditorInterface::OnLButtonUp(UINT nFlags, CPoint point)
 				result.lookup.rawObjectId,
 				result.lookup.lookupFailReason ? result.lookup.lookupFailReason : "(none)");
 
-			// Scan the OID attachment at a 32x32 grid across the whole FBO.
-			// Reports: whether the FBO / tex exist, and first nonzero pixel found.
-			// Answers definitively: "is the draw path writing object IDs at all?"
-			gosPostProcess* pp_scan = getGosPostProcess();
-			const GLuint scanFBO = pp_scan ? pp_scan->getSceneFBO()        : 0u;
-			const GLuint scanTex = pp_scan ? pp_scan->getSceneObjectIdTex(): 0u;
-			std::fprintf(stderr,
-				"[EDITOR_PICK scan] pp=%p sceneFBO=%u oidTex=%u\n",
-				(void*)pp_scan, scanFBO, scanTex);
-
-			if (scanFBO && scanTex) {
-				const int dw = result.ctx.drawableWidth;
-				const int dh = result.ctx.drawableHeight;
-				if (dw > 0 && dh > 0) {
-					GLint prevReadFbo = 0;
-					glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING, &prevReadFbo);
-					glBindFramebuffer(GL_READ_FRAMEBUFFER, scanFBO);
-					glReadBuffer(GL_COLOR_ATTACHMENT2);
-
-					const int steps = 32;
-					uint32_t firstNonzeroVal = 0u;
-					int firstNonzeroX = -1, firstNonzeroY = -1;
-					int totalNonzero = 0;
-					for (int gy = 0; gy < steps && firstNonzeroX < 0; ++gy) {
-						for (int gx = 0; gx < steps; ++gx) {
-							const int px = gx * (dw - 1) / (steps - 1);
-							const int py = gy * (dh - 1) / (steps - 1);
-							uint32_t pval = 0u;
-							glReadPixels(px, py, 1, 1, GL_RED_INTEGER, GL_UNSIGNED_INT, &pval);
-							if (pval != 0u) {
-								if (firstNonzeroX < 0) {
-									firstNonzeroX = px;
-									firstNonzeroY = py;
-									firstNonzeroVal = pval;
-								}
-								++totalNonzero;
-							}
-						}
-					}
-
-					glBindFramebuffer(GL_READ_FRAMEBUFFER, static_cast<GLuint>(prevReadFbo));
-
-					if (firstNonzeroX >= 0) {
-						std::fprintf(stderr,
-							"[EDITOR_PICK scan] OID attachment HAS data: "
-							"first nonzero at GL(%d,%d)=0x%08X totalNonzero=%d/%d\n",
-							firstNonzeroX, firstNonzeroY, firstNonzeroVal,
-							totalNonzero, steps * steps);
-					} else {
-						std::fprintf(stderr,
-							"[EDITOR_PICK scan] OID attachment ALL ZERO across %dx%d grid "
-							"(dWH=%dx%d) — draw path not writing object IDs\n",
-							steps, steps, dw, dh);
-					}
-				}
-			}
+            // One native sparse read, rather than a wait for every grid point.
+            int dw=0,dh=0;
+            if (mc2vk::sceneReadbackExtent(dw,dh,mc2vk::SceneObjectId)) {
+                mc2vk::ScenePoint points[32*32];
+                mc2vk::ScenePixel pixels[32*32];
+                for (int gy=0;gy<32;++gy) for (int gx=0;gx<32;++gx)
+                    points[gy*32+gx]={gx*(dw-1)/31,gy*(dh-1)/31};
+                if (mc2vk::readSceneSamples(points,32*32,mc2vk::SceneObjectId,pixels)) {
+                    int first=-1,total=0;
+                    for (int i=0;i<32*32;++i) if (pixels[i].objectId) { if(first<0) first=i; ++total; }
+                    std::fprintf(stderr,"[EDITOR_PICK scan] native samples=1024 nonzero=%d first=(%d,%d) id=0x%08X\n",
+                        total,first<0 ? -1 : points[first].x,first<0 ? -1 : points[first].y,first<0 ? 0u : pixels[first].objectId);
+                }
+            }
 		}
 
 		if (result.outcome == GameplayPickResult::Outcome::hit ||

@@ -72,8 +72,8 @@ struct EnginePresentHealth {
     unsigned long long last_readback_checksum = 0;
     unsigned long long prev_readback_checksum = 0;
     bool        readback_changed  = false; // last != prev at least once
-    uint32_t    direct_fbo_requests = 0;   // presentDirectFbo() calls from endScene
-    uint32_t    direct_fbo_grants   = 0;   // calls that returned the shared FBO
+    uint32_t    native_composite_requests = 0;   // native composite attempts
+    uint32_t    native_composite_grants   = 0;   // attempts accepted by the native owner
     uint32_t    copy1_blit_frames   = 0;   // legacy FBO-0 -> shared-image blit
     uint32_t    copy1_skip_frames   = 0;   // direct shared-FBO frames
     uint32_t    gl_handoff_skip_frames = 0;// explicit VK-owned present-image frames
@@ -92,7 +92,7 @@ struct EnginePresentHealth {
     uint32_t    hud_vk_textured_draws_last = 0;
     uint32_t    hud_vk_texture_uploads = 0;
     bool        imgui_vk_ready      = false;
-    unsigned int last_direct_fbo    = 0;   // last shared FBO id granted
+    bool native_composite_armed = false;   // most recent native composite readiness
     // VK-QWI-TO-FENCE-1 / VK-PRESENT-SINGLESUBMIT-1: water-style us_fence_wait
     // telemetry around the present path's ONLY CPU wait. History: QWI drain after
     // the composite submit -> per-submit compositeFence wait -> (single-submit) the
@@ -172,31 +172,9 @@ public:
 
     bool valid() const { return created_; }
 
-    // VK-P14b (MC2_VK_PRESENT_DIRECT_FBO, copy-1 elimination): the GL FBO id that
-    // wraps the shared exportable present image (COLOR_ATTACHMENT, FRAMEBUFFER_
-    // COMPLETE). When the direct-composite gate is ON and the present path is up,
-    // endScene binds THIS instead of FBO-0 so the whole composite+pillarbox+HUD+
-    // ImGui renders straight into the shared image, and presentGLFrame then SKIPS
-    // copy-1 (the FBO-0->shared blit). Returns 0 when: the present path isn't
-    // valid, the gate is OFF, or the FBO isn't available -> caller falls back to
-    // the normal FBO-0 bind + copy-1 (fail-soft, no crash). Reading this also
-    // arms presentGLFrame's copy-1 skip for the frame (single source of truth:
-    // whichever branch endScene took, presentGLFrame mirrors it via directFbo_).
-    // Return type is a bare `unsigned int` (== GLuint) to keep this header free of
-    // any GL include; the impl casts to/from GLuint at the .cpp boundary.
-    unsigned int presentDirectFbo();
-
-    // VK-only strict/native present path: arms the same copy-1-skip contract as
-    // presentDirectFbo(), but without exposing a GL FBO. Valid only when the
-    // present image was allocated without GL import and native composite/HUD/ImGui
-    // will produce all tail pixels.
-    bool presentDirectVkOnly();
-
-    // Rung 8.6b seam: true only after this frame's endScene() successfully armed
-    // the direct-present shared FBO. Future native HUD/ImGui tail work must use
-    // this as its precondition; it is not permission to begin a second VK write
-    // by itself, because presentGLFrame() still owns the GL->VK semaphore handoff.
-    bool directPresentFrameArmed() const { return created_ && directFbo_ != 0; }
+    // Start this frame's native composite only when the present image exists.
+    bool beginNativeComposite();
+    bool directPresentFrameArmed() const { return created_ && nativeCompositeArmed_; }
 
     // Rung 8.6 native ImGui renderer seam. These stay VK-header-free so
     // GuiRuntime can hand draw data to the present owner without learning Vulkan.
@@ -261,12 +239,8 @@ private:
     void drainReadbackBeforeImageDestroy();
 
     bool created_ = false;
-    // VK-P14b: last FBO id handed out by presentDirectFbo() this frame (0 == none
-    // -> presentGLFrame runs copy-1 as usual; non-0 -> endScene rendered straight
-    // into the shared image so presentGLFrame SKIPS copy-1 and Y-flips in copy-2).
-    unsigned int directFbo_ = 0;
-    // True only when a native VK path wrote the shared present image after the
-    // current frame armed directFbo_. Cleared at each presentDirectFbo() grant.
+    bool nativeCompositeArmed_ = false;
+    // The composite/HUD tail must actually write the image before presentation.
     bool presentImageVkOwned_ = false;
     // VK-RUNG8-ITEM8: consecutive presented-frame attempts where the present image
     // was NOT VK-owned (native composite declined). Reset to 0 on any owned frame.

@@ -546,12 +546,10 @@ TEST_CASE("executor island (b): findIslandContract(PostProcess) returns non-null
     CHECK(c != nullptr);
     if (c) {
         CHECK(c->requiresProgramValid    == false);
-        CHECK(c->requiresSceneColorTex   == true);
-        CHECK(c->requiresSceneDepthTex   == false);
+        CHECK(c->requiresSceneColor   == true);
+        CHECK(c->requiresSceneDepth   == false);
         CHECK(c->warnIfNoTerrainLatch    == true);
-        CHECK(c->postRequiresDefaultFbo  == true);
-        CHECK(c->postRequiresBlendDisabled   == false);
-        CHECK(c->postRequiresActiveTexture0  == false);
+        CHECK(c->postRequiresNativeComposite  == true);
     }
 }
 

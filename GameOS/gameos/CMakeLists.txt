@@ -29,7 +29,7 @@ set(SOURCES ${SOURCES}
     gos_hdri.cpp
     gos_postprocess.cpp
     gos_postprocess_gates.cpp
-    gos_postprocess_fbo.cpp
+    gos_postprocess_targets.cpp
     gos_postprocess_skybox.cpp
     gos_postprocess_shadow.cpp
     gos_postprocess_executor.cpp

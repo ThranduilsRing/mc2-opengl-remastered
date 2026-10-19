@@ -16,15 +16,13 @@
 //   vsP/fsP — the packed uniform params (LOCKSTEP with water_geom.{vert,frag}).
 // Returns 1 if the VK water pass rendered this frame; 0 = declined (no water this frame: the GL water draw is gone).
 extern "C" int mc2_vk_water_island_run(
-    unsigned int sceneColorTex, unsigned int sceneDepthTex, int w, int h,
+    int w, int h,
     const void* recipes, unsigned int recipeCount,
     const void* vsParams, const void* fsParams,
     uint64_t hdriGeneration,
     const void* nativeInputsIn) {
     if (!nativeInputsIn || recipeCount == 0 || w <= 0 || h <= 0) return 0;
     ZoneScopedN("VKIsl.Water.Run");   // VK-ISLAND-TRACY-1 per-frame island total (CPU)
-    (void)sceneColorTex;
-    (void)sceneDepthTex;
 
     using clk = std::chrono::steady_clock;
     auto usSince = [](clk::time_point t0){ return std::chrono::duration<double, std::micro>(clk::now() - t0).count(); };

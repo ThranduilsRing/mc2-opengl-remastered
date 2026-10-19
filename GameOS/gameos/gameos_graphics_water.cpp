@@ -194,7 +194,7 @@ void gos_terrain_bridge_renderWaterFast(
 // namespace scope, not inside a function body).
 extern "C" int mc2_vk_water_island_enabled();
 extern "C" int mc2_vk_water_island_run(
-    unsigned int sceneColorTex, unsigned int sceneDepthTex, int w, int h,
+    int w, int h,
     const void* recipes, unsigned int recipeCount,
     const void* vsParams, const void* fsParams,
     uint64_t hdriGeneration,
@@ -354,8 +354,6 @@ void gosRenderer::renderWaterFastPath(
         fsP.f9[3] = g_cameraProjAspectNative ? vkVpAspect : (4.0f / 3.0f);
     }
     (void)mc2_vk_water_island_run(
-        (unsigned int)ppVk->getSceneColorTexture(),
-        (unsigned int)ppVk->getSceneDepthTexture(),
         ppVk->getWidth(), ppVk->getHeight(),
         vkRecipes, vkRecipeN, &vsP, &fsP,
         ppVk->isHdriReady() ? ppVk->getHdriGeneration() : 0,

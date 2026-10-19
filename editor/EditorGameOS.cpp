@@ -689,7 +689,6 @@ DWORD __stdcall RunGameOSLogic()
     // sentinel before any draws run. Required by render-contract coherence
     // guarantee (docs/superpowers/specs/render-contract-f3-report.md §5A).
     if (pp_editor) {
-        pp_editor->clearGBuffer1();
     }
 
     gos_RendererHandleEvents();

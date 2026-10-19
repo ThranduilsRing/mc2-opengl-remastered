@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in gos_postprocess_internal.h.
 #include "gos_postprocess_internal.h"
 #include "mc2fmt.h"
+#include "vulkan_context.h"
 
 
 // ============================================================================
@@ -17,9 +18,9 @@
 // ============================================================================
 
 
-bool gosPostProcess::executorSceneColorTexValid() const
+bool gosPostProcess::executorSceneColorReady() const
 {
-    return sceneColorTex_ != 0;
+    return sceneColorReady();
 }
 
 static bool executorEnabled()
@@ -68,9 +69,9 @@ static void executorOwnBegin(gosPostProcess* pp)
     bool ok = true;
 
     // 2. Scene color texture must be populated.
-    if (c->requiresSceneColorTex && !pp->executorSceneColorTexValid()) {
+    if (c->requiresSceneColor && !pp->executorSceneColorReady()) {
         if (g_executorValidationFailures < kMaxExecutorFailureLog)
-            mc2::fmt::print_err("[EXECUTOR v1] FAIL island=PostProcess check=sceneColorTex_valid owned={:d} failures={:d}\n", mc2::fmt::as_u32(g_executorOwnedPasses), mc2::fmt::as_u32(g_executorValidationFailures + 1));
+            mc2::fmt::print_err("[EXECUTOR v1] FAIL island=PostProcess check=sceneColorReady owned={:d} failures={:d}\n", mc2::fmt::as_u32(g_executorOwnedPasses), mc2::fmt::as_u32(g_executorValidationFailures + 1));
         ++g_executorValidationFailures;
         ok = false;
     }
@@ -110,26 +111,16 @@ static void executorOwnEnd(gosPostProcess* /*pp*/)
 
     bool postOk = true;
 
-    // 1. Default FBO must be bound after composite blit.
-    if (c->postRequiresDefaultFbo) {
-        GLint bound = 0;
-        glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &bound);
-        if (bound != 0) {
-            if (g_executorValidationFailures < kMaxExecutorFailureLog)
-                mc2::fmt::print_err("[EXECUTOR v1] FAIL island=PostProcess postcond=defaultFbo bound={:d} (expected 0) owned={:d} failures={:d}\n", mc2::fmt::as_i32((int)bound), mc2::fmt::as_u32(g_executorOwnedPasses), mc2::fmt::as_u32(g_executorValidationFailures + 1));
-            ++g_executorValidationFailures;
-            postOk = false;
-        }
+    if (c->postRequiresNativeComposite && !mc2vk::getOrCreateEnginePresentVk().directPresentFrameArmed()) {
+        if (g_executorValidationFailures < kMaxExecutorFailureLog)
+            mc2::fmt::print_err("[EXECUTOR v1] FAIL island=PostProcess postcond=nativeCompositeReady\n");
+        ++g_executorValidationFailures; postOk=false;
     }
-
-    {
-        const GLenum err = glGetError();
-        if (err != GL_NO_ERROR) {
-            if (g_executorValidationFailures < kMaxExecutorFailureLog)
-                mc2::fmt::print_err("[EXECUTOR v1] FAIL island=PostProcess postcond=glNoError err=0x{:X} owned={:d} failures={:d}\n", mc2::fmt::as_u32((unsigned)err), mc2::fmt::as_u32(g_executorOwnedPasses), mc2::fmt::as_u32(g_executorValidationFailures + 1));
-            ++g_executorValidationFailures;
-            postOk = false;
-        }
+    const auto errors=mc2vk::getOrCreateEngineVulkanContext().health().validationErrors.load();
+    if (errors != 0) {
+        if (g_executorValidationFailures < kMaxExecutorFailureLog)
+            mc2::fmt::print_err("[EXECUTOR v1] FAIL island=PostProcess postcond=nativeValidationClean errors={:d}\n",mc2::fmt::as_u32(errors));
+        ++g_executorValidationFailures; postOk=false;
     }
 
     if (postOk)

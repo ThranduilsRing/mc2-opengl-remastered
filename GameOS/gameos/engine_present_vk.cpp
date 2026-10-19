@@ -1958,36 +1958,14 @@ bool EnginePresentVk::init(VulkanContext& ctx, SDL_Window* glWindow, uint32_t w,
     return true;
 }
 
-// VK-RUNG8-ITEM8: the GL copy FBO is deleted, so this always returns 0 (endScene
-// never GL-renders into the present image). Kept as a stable no-op so endScene's
-// call site and the direct_fbo_requests counter are unchanged; the live arming is
-// presentDirectVkOnly() below.
-unsigned int EnginePresentVk::presentDirectFbo() {
-    ++health_.direct_fbo_requests;
-    // VK-RUNG8-ITEM8 (stage 2): the GL copy FBO wrapping the present image is
-    // deleted. There is no GL FBO to hand endScene any more -- the present image
-    // is written only by the native VK composite (via presentDirectVkOnly). This
-    // always returns 0 so endScene never GL-renders into the present image.
-    directFbo_ = 0;
+// Arm the native composite against the present owner's actual image readiness.
+bool EnginePresentVk::beginNativeComposite() {
+    ++health_.native_composite_requests;
+    nativeCompositeArmed_ = created_ && impl_ && impl_->sharedImg.image.get() != VK_NULL_HANDLE;
     presentImageVkOwned_ = false;
-    return 0;
-}
-
-bool EnginePresentVk::presentDirectVkOnly() {
-    // Arms the VK-only present image for this frame: endScene skips its own GL
-    // composite bind and the native VK composite (renderNativeCompositeVisual)
-    // renders the present image instead. directFbo_ is a sentinel (1u == "native
-    // present armed"), not a GL FBO name.
-    if (!created_ || !impl_ || impl_->sharedImg.image.get() == VK_NULL_HANDLE) {
-        directFbo_ = 0;
-        presentImageVkOwned_ = false;
-        return false;
-    }
-    directFbo_ = 1u;
-    presentImageVkOwned_ = false;
-    ++health_.direct_fbo_grants;
-    health_.last_direct_fbo = directFbo_;
-    return true;
+    health_.native_composite_armed = nativeCompositeArmed_;
+    if (nativeCompositeArmed_) ++health_.native_composite_grants;
+    return nativeCompositeArmed_;
 }
 
 bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
@@ -2002,7 +1980,7 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
                                                   bool casEnabled, float casSharpness, int tonemapMode,
                                                   int viewportX, int viewportY,
                                                   int viewportW, int viewportH) {
-    if (!created_ || !impl_ || directFbo_ == 0)
+    if (!created_ || !impl_ || !nativeCompositeArmed_)
         return false;
     Impl& s = *impl_;
     if (viewportW <= 0 || viewportH <= 0 ||
@@ -2153,7 +2131,7 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
 }
 
 bool EnginePresentVk::renderNativeCsmShadowDebugOverlay(void* csmArrayView, int layer) {
-    if (!created_ || !impl_ || directFbo_ == 0)
+    if (!created_ || !impl_ || !nativeCompositeArmed_)
         return false;
     Impl& s = *impl_;
     VkImageView arrayView = reinterpret_cast<VkImageView>(csmArrayView);
@@ -2288,7 +2266,7 @@ bool EnginePresentVk::presentGLFrameBody(uint32_t glDrawableW, uint32_t glDrawab
     // Resize: if the GL drawable changed, rebuild the shared image + swapchain to
     // match the game window's new size (OS-driven resize / DPI change).
     if (glDrawableW != s.imgW || glDrawableH != s.imgH) {
-        const bool hadDirectFbo = (directFbo_ != 0);
+        const bool hadNativeComposite = (nativeCompositeArmed_);
         // VK-PRESENT-SINGLESUBMIT-1: (a) retire any in-flight prior submit before
         // buildSharedImage destroys the image it may still reference (the old
         // composite-time queue drain used to provide this incidentally; the wait is
@@ -2315,8 +2293,8 @@ bool EnginePresentVk::presentGLFrameBody(uint32_t glDrawableW, uint32_t glDrawab
         ++health_.resize_count;
         health_.extent_w = s.scExtent.width;
         health_.extent_h = s.scExtent.height;
-        if (hadDirectFbo) {
-            directFbo_ = 0;
+        if (hadNativeComposite) {
+            nativeCompositeArmed_ = false;
             presentImageVkOwned_ = false;
             return true;
         }
@@ -2767,7 +2745,7 @@ void EnginePresentVk::destroy() {
 }
 
 void EnginePresentVk::logHealth() const {
-    mc2::fmt::print_err("[VK_PRESENT] created={:d} attempted={:d} present_frames={:d} resize_count={:d} resize_recreate_ok={:d} resize_recreate_retries={:d} resize_recreate_failsoft={:d} validation_errors={:d} extent={:d}x{:d} present_mode={} readback_changed={:d} last_checksum=0x{:x} direct_fbo_requests={:d} direct_fbo_grants={:d} copy1_blit_frames={:d} copy1_skip_frames={:d} gl_handoff_skip_frames={:d} tail_hook_frames={:d} composite_vk_frames={:d} shadow_debug_vk_frames={:d} hud_vk_queued_frames={:d} hud_vk_consumed_frames={:d} hud_vk_draws_last={:d} hud_vk_textured_last={:d} hud_vk_serialized_last={:d} hud_vk_color_frames={:d} hud_vk_color_draws_last={:d} hud_vk_textured_frames={:d} hud_vk_textured_draws_last={:d} hud_vk_texture_uploads={:d} imgui_vk_ready={:d} imgui_vk_frames={:d} last_direct_fbo={:d} composite_wait_us_last={:.1f} composite_wait_us_avg={:.1f} composite_wait_samples={:d} fallback_reason=\"{}\"\n",
+    mc2::fmt::print_err("[VK_PRESENT] created={:d} attempted={:d} present_frames={:d} resize_count={:d} resize_recreate_ok={:d} resize_recreate_retries={:d} resize_recreate_failsoft={:d} validation_errors={:d} extent={:d}x{:d} present_mode={} readback_changed={:d} last_checksum=0x{:x} native_composite_requests={:d} native_composite_grants={:d} copy1_blit_frames={:d} copy1_skip_frames={:d} gl_handoff_skip_frames={:d} tail_hook_frames={:d} composite_vk_frames={:d} shadow_debug_vk_frames={:d} hud_vk_queued_frames={:d} hud_vk_consumed_frames={:d} hud_vk_draws_last={:d} hud_vk_textured_last={:d} hud_vk_serialized_last={:d} hud_vk_color_frames={:d} hud_vk_color_draws_last={:d} hud_vk_textured_frames={:d} hud_vk_textured_draws_last={:d} hud_vk_texture_uploads={:d} imgui_vk_ready={:d} imgui_vk_frames={:d} native_composite_armed={:d} composite_wait_us_last={:.1f} composite_wait_us_avg={:.1f} composite_wait_samples={:d} fallback_reason=\"{}\"\n",
         mc2::fmt::as_i32(health_.created ? 1 : 0), mc2::fmt::as_i32(health_.attempted ? 1 : 0),
         mc2::fmt::as_u32(health_.present_frames), mc2::fmt::as_u32(health_.resize_count),
         mc2::fmt::as_u32(health_.resize_recreate_ok), mc2::fmt::as_u32(health_.resize_recreate_retries),
@@ -2776,7 +2754,7 @@ void EnginePresentVk::logHealth() const {
         health_.present_mode_name.empty() ? "?" : health_.present_mode_name.c_str(),
         mc2::fmt::as_i32(health_.readback_changed ? 1 : 0),
         mc2::fmt::as_u64((unsigned long long)health_.last_readback_checksum),
-        mc2::fmt::as_u32(health_.direct_fbo_requests), mc2::fmt::as_u32(health_.direct_fbo_grants),
+        mc2::fmt::as_u32(health_.native_composite_requests), mc2::fmt::as_u32(health_.native_composite_grants),
         mc2::fmt::as_u32(health_.copy1_blit_frames), mc2::fmt::as_u32(health_.copy1_skip_frames),
         mc2::fmt::as_u32(health_.gl_handoff_skip_frames),
         mc2::fmt::as_u32(health_.tail_hook_frames),
@@ -2788,7 +2766,7 @@ void EnginePresentVk::logHealth() const {
         mc2::fmt::as_u32(health_.hud_vk_textured_frames), mc2::fmt::as_u32(health_.hud_vk_textured_draws_last),
         mc2::fmt::as_u32(health_.hud_vk_texture_uploads),
         mc2::fmt::as_i32(health_.imgui_vk_ready ? 1 : 0), mc2::fmt::as_u32(health_.imgui_vk_frames),
-        mc2::fmt::as_u32(health_.last_direct_fbo),
+        mc2::fmt::as_u32(health_.native_composite_armed),
         health_.composite_wait_us_last,
         health_.composite_wait_samples
             ? health_.composite_wait_us_accum / (double)health_.composite_wait_samples : 0.0,

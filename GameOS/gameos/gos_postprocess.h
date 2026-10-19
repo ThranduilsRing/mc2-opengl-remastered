@@ -3,12 +3,13 @@
 
 #include <cstdint>
 #include <memory>
-#include "utils/gl_utils.h"
+#include <cstring>
 
 struct HdriCpuImage;   // gos_hdri.h
 #include "../../RenderCore/RenderResourceRegistry.h"   // RenderCore::RenderResourceId (relative: reachable from every TU that includes this header, incl. RenderWorld)
 
-struct glsl_program;
+struct Mc2SharedSceneDepth;
+struct Mc2SharedSceneColor;
 
 struct Mc2ColorPropFeed;
 
@@ -21,7 +22,7 @@ public:
     void destroy();
     void resize(int w, int h);
 
-    // Bind the HDR scene FBO so all rendering goes into it
+    // Begin CPU scene bookkeeping; native owners clear their attachments.
     void beginScene();
 
     // Composite the HDR scene into the Vulkan present image
@@ -35,7 +36,7 @@ public:
     // wrapper (executorOwnBegin / executorOwnEnd) in gos_postprocess.cpp to
     // validate pre/postconditions without touching private members from outside
     // the class. These expose only what the executor's IslandContract checks.
-    bool executorSceneColorTexValid()    const;   // sceneColorTex_ != 0
+    bool executorSceneColorReady()    const;   // actual native color image readiness
     bool executorSceneHasTerrain()       const { return sceneHasTerrain_; }
 
     float  getSkyYaw()    const { return skyYaw_; }    // WATER-HDRI-REFL-1: cached per-frame
@@ -60,45 +61,9 @@ public:
     // Shadow mapping
     void initShadows();
     void destroyShadows();
-    GLuint getSceneNormalTexture() const { return sceneNormalTex_; }
-    GLuint getSceneDepthTexture() const { return sceneDepthTex_; }
-    GLuint getSceneColorTexture() const { return sceneColorTex_; }
-    GLuint getSceneFBO() const { return sceneFBO_; }
-    // VFX-SOFT-PARTICLES-MVP-1: a copy of the resolved scene depth, taken
-    // before the in-scene particle flush so particle shaders can sample it
-    // WITHOUT a read-from-bound-attachment feedback loop (sceneDepthTex_ is the
-    // active depth attachment during the flush). Lazily allocated on the first
-    // copy (gated by the VfxSoftParticles option at the bridge) -> reads 0 and costs
-    // nothing until then. DEPTH24_STENCIL8, full-res, matches sceneDepthTex_ so
-    // glCopyImageSubData is a same-format copy.
-    GLuint getSceneDepthCopyTexture() const { return sceneDepthCopyTex_; }
-    void   copySceneDepthForParticles();
-    // VFX-SCENECOLOR-GRAB-1: a feedback-safe copy of the resolved scene COLOR,
-    // taken in the same frame window as the depth copy (after the opaque scene
-    // color is resolved, before the in-scene VFX/transparent flush that would
-    // sample it — sceneColorTex_ is the active color attachment during the
-    // flush). FRAME_RESOURCE_SUBSTRATE: no consumer yet (distortion/refraction/
-    // soft-color particles are future slices). Gated by MC2_VFX_SCENECOLOR_GRAB
-    // at the bridge; lazily allocated on the first copy -> reads 0 and costs
-    // nothing until then. RGBA16F, full-res, matches sceneColorTex_ so
-    // glCopyImageSubData is a same-internalformat copy.
-    GLuint getSceneColorCopyTexture() const { return sceneColorCopyTex_; }
-    void   copySceneColorForVfx();
-    // M1.5: readback hook for RenderWorld::lookupAtPixel.
-    GLuint getSceneObjectIdTex() const { return sceneObjectIdTex_; }
-    // WATER-REFLECTION-RESOURCE-1: 1/4-res reflection target (substrate only;
-    // no producer renders into it until Phase C -> the texture reads black).
-    GLuint getWaterReflectionTexture() const { return waterReflColorTex_; }
-    GLuint getWaterReflectionFBO()     const { return waterReflFBO_; }
-    int    getWaterReflectionWidth()   const { return waterReflW_; }
-    int    getWaterReflectionHeight()  const { return waterReflH_; }
-    // F3: explicit sentinel clear for GBuffer1 (attachment 1).
-    // Sets attachment 1 to (0.5, 0.5, 1.0, 0.0) — flat-up encoded normal,
-    // alpha = 0.0 (post-shadow eligible). Must be called while MRT is bound
-    // (i.e., after beginScene's glDrawBuffers(2)). Defense-in-depth: every
-    // visible pixel either gets overwritten by an explicit rc_gbuffer1_*
-    // writer or inherits this sentinel.
-    void clearGBuffer1();
+    bool sceneColorReady() const;
+    bool sceneNormalReady() const;
+    bool sceneObjectIdReady() const;
     const float* getLightSpaceMatrix() const { return staticLightSpaceMatrix_; }
     int getShadowMapSize() const { return shadowMapSize_; }
     bool shadowsEnabled_;
@@ -262,28 +227,12 @@ public:
     float edgeFogMax_      = 0.92f;    // max opacity
 
 #ifdef MC2_VULKAN_ISLAND
-    // VK-TIER1 SHARED SCENE DEPTH: when MC2_VK_SHARED_SCENE_DEPTH is ON and the
-    // shared VK image was built + imported at createFBOs, this owns the VK
-    // exportable D32S8 image + its GL import view; sceneDepthTex_ then points at
-    // the imported GL_DEPTH24_STENCIL8 texture instead of a plain GL alloc. Torn
-    // down + rebuilt with the FBOs on resize (destroyFBOs). nullptr => the plain
-    // GL depth alloc is live (gate OFF / interop fell back). Opaque pointer only
-    // (no Vulkan header leaks into this header). Defined in
-    // vulkan_shared_scene_depth.cpp.
-    struct Mc2SharedSceneDepth* sharedSceneDepth_ = nullptr;
-
-    // VK-P11 TIER-1 SHARED SCENE COLOR/NORMAL: when MC2_VK_PROP_COLOR_TIER1 is ON
-    // (and MC2_VK_SHARED_SCENE_DEPTH provides the shared depth), sceneColorTex_
-    // (MRT0) and sceneNormalTex_ (MRT1) are each backed by a VK-built exportable
-    // RGBA16F image imported into GL as GL_RGBA16F, so the VK prop island can
-    // co-write props into the SAME GBuffer attachments in-place. Torn down + rebuilt
-    // with the FBOs on resize. nullptr => the plain GL alloc is live for that slot
-    // (gate OFF / interop fell back). Opaque pointers; defined in
-    // vulkan_shared_scene_color.cpp.
-    struct Mc2SharedSceneColor* sharedSceneColor_  = nullptr;   // MRT0 sceneColorTex_
-    struct Mc2SharedSceneColor* sharedSceneNormal_ = nullptr;   // MRT1 sceneNormalTex_
-    struct Mc2SharedSceneColor* sharedSceneObjectId_ = nullptr; // MRT2 sceneObjectIdTex_
-
+    // Native scene image owners, rebuilt together on resize. Their registry
+    // entries are the only images the islands and explicit readbacks consume.
+    Mc2SharedSceneDepth* sharedSceneDepth_ = nullptr;
+    Mc2SharedSceneColor* sharedSceneColor_ = nullptr;
+    Mc2SharedSceneColor* sharedSceneNormal_ = nullptr;
+    Mc2SharedSceneColor* sharedSceneObjectId_ = nullptr;
 
     // VK-POST-FOG-NATIVE-1 (rung 8.1, .claude/VK-RUNG8-LADDER-1.md): the fog pair
     // (edge + oob) rendered NATIVELY on the shared engine VulkanContext, sampling
@@ -388,37 +337,8 @@ public:
     int getHeight() const { return height_; }
 
 private:
-    void createFBOs(int w, int h);
-    void destroyFBOs();
-    void createFullscreenQuad();
-    void destroyFullscreenQuad();
-
-    // Scene FBO (full resolution, HDR)
-    GLuint sceneFBO_;
-    GLuint sceneColorTex_;
-    GLuint sceneDepthTex_;
-    // SKYBOX-FOG-EXCLUDE-1: stencil-only view onto sceneDepthTex_'s storage
-    // (GL_DEPTH_STENCIL_TEXTURE_MODE=GL_STENCIL_INDEX baked in via glTextureView,
-    // so it can be sampled in the same draw as the depth-mode sceneDepthTex_
-    // binding without per-bind mode toggling). Lazily created.
-    GLuint sceneStencilViewTex_ = 0;
-    GLuint sceneNormalTex_;
-    GLuint sceneObjectIdTex_ = 0;   // M1.5 R32UI MRT attachment-2 (gated on MC2_OBJECT_ID_BUFFER)
-    GLuint sceneDepthCopyTex_ = 0;  // VFX-SOFT-PARTICLES-MVP-1 lazy depth copy (DEPTH24_STENCIL8)
-    GLuint sceneColorCopyTex_ = 0;  // VFX-SCENECOLOR-GRAB-1 lazy color copy (RGBA16F)
-
-    // WATER-REFLECTION-RESOURCE-1: quarter-res reflection target (color + depth).
-    // Allocated in createFBOs, freed in destroyFBOs, registered in
-    // RenderResourceRegistry. No producer until Phase C (reads black).
-    GLuint waterReflFBO_      = 0;
-    GLuint waterReflColorTex_ = 0;
-    GLuint waterReflDepthTex_ = 0;
-    int    waterReflW_        = 0;
-    int    waterReflH_        = 0;
-
-    // Fullscreen quad
-    GLuint quadVAO_;
-    GLuint quadVBO_;
+    void createSceneTargets(int w, int h);
+    void destroySceneTargets();
 
     // HDRI-SKY-1: background sky from a single equirect HDRI.
     // All HDRI state is null/false when MC2_HDRI_SKY=0 or load fails.

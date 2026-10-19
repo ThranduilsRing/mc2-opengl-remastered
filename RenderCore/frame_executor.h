@@ -51,12 +51,10 @@ enum class ExecutorIslandId : uint8_t {
 struct IslandContract {
     ExecutorIslandId id;
     bool requiresProgramValid;      // assert program is compiled+valid before call
-    bool requiresSceneColorTex;     // assert sceneColorTex_ != 0 before call
-    bool requiresSceneDepthTex;     // assert sceneDepthTex_ != 0 before call (EdgeFog/FogOob)
+    bool requiresSceneColor;     // require the native scene color image before call
+    bool requiresSceneDepth;     // require the native scene depth image before call
     bool warnIfNoTerrainLatch;      // warn (non-fatal) if sceneHasTerrain_==false
-    bool postRequiresDefaultFbo;    // assert GL_DRAW_FRAMEBUFFER_BINDING==0 after call
-    bool postRequiresBlendDisabled; // assert GL_BLEND disabled after call
-    bool postRequiresActiveTexture0;// assert active texture unit == GL_TEXTURE0 after call
+    bool postRequiresNativeComposite;    // assert the native present image was armed after call
 };
 
 // Compile-time table of owned islands.
@@ -64,12 +62,10 @@ static constexpr IslandContract kExecutorIslands[] = {
     {
         /*id*/                      ExecutorIslandId::PostProcess,
         /*requiresProgramValid*/    false, // native pipelines are created on demand
-        /*requiresSceneColorTex*/   true,
-        /*requiresSceneDepthTex*/   false,
+        /*requiresSceneColor*/   true,
+        /*requiresSceneDepth*/   false,
         /*warnIfNoTerrainLatch*/    true,   // sub-stages bail gracefully; WARN not FATAL
-        /*postRequiresDefaultFbo*/  true,   // composite blit explicitly binds FBO 0 at end
-        /*postRequiresBlendDisabled*/false, // PostProcess end-state not asserted (composite varies)
-        /*postRequiresActiveTexture0*/false,
+        /*postRequiresNativeComposite*/  true,   // the native present owner must accept the composite
     },
 };
 static constexpr unsigned kExecutorIslandCount =
