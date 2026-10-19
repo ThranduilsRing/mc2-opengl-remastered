@@ -92,10 +92,10 @@ VK_PROP = "shaders/vulkan/color_prop_tier1.frag"
 # and the two shoreline shaders that read the same channel continuously.
 CONTRACT_FILES = [
     HEADER,
-    "shaders/shadow_screen.frag",
+    "shaders/vulkan/screen_shadow_static.frag",
+    "shaders/vulkan/screen_shadow_csm.frag",
     "shaders/static_prop.frag",
     VK_PROP,
-    "shaders/shoreline.frag",
     "shaders/vulkan/shoreline.frag",
 ]
 

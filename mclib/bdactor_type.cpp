@@ -445,22 +445,6 @@ void BldgAppearanceType::destroy (void)
 		delete bldgRenderShape;
 		bldgRenderShape = nullptr;
 	}
-	if (buildingPbrMaterialSsbo)
-	{
-		GLuint ssbo = (GLuint)buildingPbrMaterialSsbo;
-		glDeleteBuffers(1, &ssbo);
-		buildingPbrMaterialSsbo = 0;
-	}
-	if (buildingPbrNormalTexture)
-	{
-		gos_DestroyTexture(buildingPbrNormalTexture);
-		buildingPbrNormalTexture = 0;
-	}
-	if (buildingPbrOrmTexture)
-	{
-		gos_DestroyTexture(buildingPbrOrmTexture);
-		buildingPbrOrmTexture = 0;
-	}
 	buildingPbrEnabled = false;
 
  	if (bldgDmgShape)

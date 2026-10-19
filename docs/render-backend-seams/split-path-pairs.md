@@ -28,12 +28,7 @@ The stamp is a claim that parity was RE-VERIFIED.
 
 ## Pairs
 
-| Pair | Members | Contract | Parity evidence |
-|---|---|---|---|
-| `edge_fog_frag` | `shaders/edge_fog.frag` ↔ `shaders/vulkan/edge_fog.frag` | same fog math on GL and VK paths | VK pixel-parity convention (RendererFeatureRegistry.h "pixel-parity-proven vs the GL path"); capture-baseline compare |
-| `fog_oob_frag` | `shaders/fog_oob.frag` ↔ `shaders/vulkan/fog_oob.frag` | same out-of-bounds fog on GL and VK paths | same as above |
-| `water_fast_vs` | `gos_terrain_water_fast.vert` ↔ `gos_terrain_water_fast_mdi.vert` | identical water surface math, MDI vs non-MDI submission | water A/B smoke + visual capture (INDEX-TERRAIN water-v2 slices) Re-stamped 2026-10-09 (3af9c6737): shore mode 3 depth lift (u_shoreFlat/u_shoreDepthK) is MDI-only by design; the non-MDI vert has no shore-flat uniform. |
-| `shadow_terrain_paths` | `shadow_terrain.tesc` + `shadow_terrain.tese` ↔ `shadow_terrain.vert` | tess and non-tess shadow-terrain emit the same depth | nightly `MC2_TERRAIN_TESS=0/1` A/B leg (Probe-B recipe, ISSUE-FIXES-STATUS.md) with `MC2_SPLIT_PATH_PARITY_TRACE=1` |
+No active pairs remain. The GL fog, water and shadow counterparts were retired in s63; the native Vulkan passes remain. The checker retains its synthetic negative-test pair and island-only reasons.
 
 ### Re-stamp log
 

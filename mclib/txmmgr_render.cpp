@@ -102,18 +102,6 @@ void MC_TextureManager::renderLists (void)
 	// and AFTER every legacy addVertices for the frame (all of which happen in
 	// the object render pass, before renderLists). See mclib/cone_glow.cpp.
 	mc2_cone_glow::FlushFrame();
-	RenderListsFrame st;
-#ifdef MC2_VULKAN_ISLAND
-	// VK-PARITY-F1: ground vehicles (and every other TG_Shape on the CPU-transformed
-	// gos_VERTEX path) are flushed by the legacy masterVertexNodes loops below (solid,
-	// blob-shadow, alpha, additive effects / spotlight cones). Under the VK umbrella the
-	// native VK composite is the sole present producer, so those GL draws would land in a
-	// DISCARDED GL backbuffer and the objects would vanish. When the VK legacy-shape island
-	// is armed, each loop queues its nodes for the island (run right after the loop group)
-	// instead of drawing them here. Gate off (default GL) -> vkLegacyOn == false -> every
-	// loop is byte-identical.
-	st.vkLegacyOn = (mc2_vk_legacy_shape_island_enabled() != 0);
-#endif
 	renderListsPreamble();
 	renderListsLightDataUpload();
 	renderListsSceneDataUpload();
@@ -122,8 +110,8 @@ void MC_TextureManager::renderLists (void)
 	renderListsStaticShadowBuild();
 	renderListsStaticPropRegistryFlush();
 	renderListsDynamicShadowPass();
-	renderListsTerrainSolid(st);
+	renderListsTerrainSolid();
 	renderListsGpuStaticProps();
 	renderListsOverlayBatches();
-	renderListsOverlaysOld(st);
+	renderListsOverlaysOld();
 }

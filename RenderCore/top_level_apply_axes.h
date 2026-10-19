@@ -14,7 +14,6 @@
 // touched, per the EXTEND design.
 //
 // Cross-TU shared (not inlined per-pass) so the upcoming Shadow slice reuses the SAME helper
-// (it declares fboTarget=ShadowDynamicMap / viewport=ShadowMap / clear=DepthForwardZ).
 
 #include "RenderCore/top_level_pass_executor.h"  // TopLevelStateDesc, ClearSpec
 

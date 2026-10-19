@@ -41,16 +41,16 @@ static void test_correct_order_no_violation() {
 static void test_missing_writer_fires_violation() {
     render_contract::frameBegin();
     // MechOpaque reads ShadowDynamicMap -- not yet written (Shadow not called)
-    render_contract::beginPass(RenderCore::RenderPassId::MechOpaque);
-    render_contract::endPass(RenderCore::RenderPassId::MechOpaque);
+    render_contract::beginPass(RenderCore::RenderPassId::VFX);
+    render_contract::endPass(RenderCore::RenderPassId::VFX);
     RC3_CHECK(render_contract::getFrameViolationCount() == 1);
     printf("PASS: missing_writer_fires_violation\n");
 }
 
 static void test_framebegin_resets_violations() {
     render_contract::frameBegin();
-    render_contract::beginPass(RenderCore::RenderPassId::MechOpaque); // violation
-    render_contract::endPass(RenderCore::RenderPassId::MechOpaque);
+    render_contract::beginPass(RenderCore::RenderPassId::VFX); // violation
+    render_contract::endPass(RenderCore::RenderPassId::VFX);
     RC3_CHECK(render_contract::getFrameViolationCount() == 1);
     render_contract::frameBegin(); // reset
     RC3_CHECK(render_contract::getFrameViolationCount() == 0);

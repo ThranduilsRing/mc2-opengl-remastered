@@ -405,7 +405,7 @@ class gosRenderMaterial {
                 sh_name.append(mvar.getUniqueSuffix());
 
             // Terrain gets TCS/TES for tessellation
-            if (strcmp(shader, "gos_terrain") == 0 || strcmp(shader, "shadow_terrain") == 0) {
+            if (strcmp(shader, "gos_terrain") == 0) {
                 char tcs[256], tes[256];
                 StringFormat(tcs, 255, "shaders/%s.tesc", shader);
                 StringFormat(tes, 255, "shaders/%s.tese", shader);
@@ -584,151 +584,32 @@ class gosRenderMaterial {
 // Cached once on first query (single predicted-false branch when unset).
 // SPLIT-1 slice 4: gosLightGrowOnceEnabled moved to gameos_graphics_light_ssbo.cpp.
 
+// CPU glyph staging for native HUD batches. No GL buffers or draw ownership.
 class gosMesh {
-    public:
-        using INDEX_TYPE = WORD;
+public:
+    static gosMesh* makeMesh(int capacity) { return new gosMesh(capacity); }
+    static void destroy(gosMesh* mesh) { delete mesh; }
+    ~gosMesh() { delete[] vertices_; }
 
-        static gosMesh* makeMesh(gosPRIMITIVETYPE prim_type, int vertex_capacity, int index_capacity = 0) {
-            GLuint vb = makeBuffer(GL_ARRAY_BUFFER, nullptr, sizeof(gos_VERTEX)*vertex_capacity, GL_DYNAMIC_DRAW);
-            if(!vb)
-                return nullptr;
+    bool addVertices(gos_VERTEX* vertices, int count) {
+        if (size_ + count > capacity_) return false;
+        memcpy(vertices_ + size_, vertices, sizeof(gos_VERTEX) * count);
+        size_ += count;
+        return true;
+    }
+    int getVertexCapacity() const { return capacity_; }
+    int getNumVertices() const { return size_; }
+    const gos_VERTEX* getVertices() const { return vertices_; }
+    void rewind() { size_ = 0; }
 
-            GLuint ib = 0;
-            if(index_capacity > 0) {
-                ib = makeBuffer(GL_ELEMENT_ARRAY_BUFFER, nullptr, sizeof(INDEX_TYPE)*index_capacity, GL_DYNAMIC_DRAW);
-                if(!ib)
-                    return nullptr;
-            }
+    static const std::string s_tex1;
 
-            gosMesh* mesh = new gosMesh(prim_type, vertex_capacity, index_capacity);
-            mesh->vb_ = vb;
-            mesh->ib_ = ib;
-            mesh->pvertex_data_ = new gos_VERTEX[vertex_capacity];
-            mesh->pindex_data_ = new INDEX_TYPE[index_capacity];
-            return mesh;
-        }
-
-        static void destroy(gosMesh* pmesh) {
-
-            gosASSERT(pmesh);
-
-            // GPU-BUFFER-WRAPPER-TIER0-HUD-1 (WATCHPOINT 4): drain + unmap +
-            // delete the ring buffers before the mesh goes away. ~GpuMeshRing
-            // does this; explicit delete keeps the lifetime obvious and ensures
-            // no GL buffer leaks across renderer teardown / device reset.
-            delete pmesh->ring_;
-            pmesh->ring_ = nullptr;
-
-            delete[] pmesh->pvertex_data_;
-            delete[] pmesh->pindex_data_;
-
-            GLuint b[] = {pmesh->vb_, pmesh->ib_};
-            glDeleteBuffers(sizeof(b)/sizeof(b[0]), b);
-        }
-
-        // Lazily create (gate ON) and return the persistent-coherent ring for
-        // this mesh, or nullptr if creation/mapping failed (caller falls back to
-        // the legacy orphan path). Sized to this mesh's FIXED capacity x N slots.
-        mc2gpu::GpuMeshRing* ensureRing() {
-            if (ring_) return ring_->valid() ? ring_ : nullptr;
-            ring_ = new mc2gpu::GpuMeshRing();
-            char tag[48];
-            std::snprintf(tag, sizeof(tag), "gosMesh_p%d_v%d",
-                          (int)prim_type_, vertex_capacity_);
-            if (!ring_->create(tag,
-                               (uint32_t)sizeof(gos_VERTEX), (uint32_t)vertex_capacity_,
-                               (uint32_t)sizeof(INDEX_TYPE), (uint32_t)index_capacity_)) {
-                delete ring_;
-                ring_ = nullptr;
-                return nullptr;
-            }
-            return ring_;
-        }
-
-        mc2gpu::GpuMeshRing* ringIfLive() const { return ring_; }
-
-        bool addVertices(gos_VERTEX* vertices, int count) {
-            if(num_vertices_ + count <= vertex_capacity_) {
-                memcpy(pvertex_data_ + num_vertices_, vertices, sizeof(gos_VERTEX)*count);
-                num_vertices_ += count;
-                return true;
-            }
-            return false;
-        }
-
-        bool addIndices(INDEX_TYPE* indices, int count) {
-            if(num_indices_ + count <= index_capacity_) {
-                memcpy(pindex_data_ + num_indices_, indices, sizeof(INDEX_TYPE)*count);
-                num_indices_ += count;
-                return true;
-            }
-            return false;
-        }
-
-        int getVertexCapacity() const { return vertex_capacity_; }
-        int getIndexCapacity() const { return index_capacity_; }
-        int getNumVertices() const { return num_vertices_; }
-        int getNumIndices() const { return num_indices_; }
-        const gos_VERTEX* getVertices() const { return pvertex_data_; }
-        const WORD* getIndices() const { return pindex_data_; }
-
-        int getIndexSizeBytes() const { return sizeof(INDEX_TYPE); }
-
-        GLuint getVB() const { return vb_; }
-        GLuint getIB() const { return ib_; }
-
-        void uploadBuffers() {
-            if (num_vertices_ > 0) {
-                updateBuffer(vb_, GL_ARRAY_BUFFER, pvertex_data_,
-                    num_vertices_ * sizeof(gos_VERTEX), GL_DYNAMIC_DRAW);
-            }
-            if (num_indices_ > 0) {
-                updateBuffer(ib_, GL_ELEMENT_ARRAY_BUFFER, pindex_data_,
-                    num_indices_ * sizeof(INDEX_TYPE), GL_DYNAMIC_DRAW);
-            }
-        }
-
-        void rewind() { num_vertices_ = 0; num_indices_ = 0; }
-
-        void draw(gosRenderMaterial* material) const;
-        void drawIndexed(gosRenderMaterial* material) const;
-
-		static void drawIndexed(HGOSBUFFER ib, HGOSBUFFER vb, HGOSVERTEXDECLARATION vdecl, gosRenderMaterial* material);
-		static void drawIndexed(HGOSBUFFER ib, HGOSBUFFER vb, HGOSVERTEXDECLARATION vdecl);
-
-		static const std::string s_tex1;
-
-    private:
-
-        gosMesh(gosPRIMITIVETYPE prim_type, int vertex_capacity, int index_capacity)
-            : vertex_capacity_(vertex_capacity)
-            , index_capacity_(index_capacity)
-            , num_vertices_(0)
-            , num_indices_(0)
-            , pvertex_data_(nullptr)    
-            , pindex_data_(nullptr)    
-            , prim_type_(prim_type)
-            , vb_(-1)
-            ,ib_(-1)
-            , ring_(nullptr)
-         {
-         }
-
-        int vertex_capacity_;
-        int index_capacity_;
-        int num_vertices_;
-        int num_indices_;
-        gos_VERTEX* pvertex_data_;
-        INDEX_TYPE* pindex_data_;
-        gosPRIMITIVETYPE prim_type_;
-
-        GLuint vb_;
-        GLuint ib_;
-
-        // GPU-BUFFER-WRAPPER-TIER0-HUD-1: lazily-created persistent-coherent ring
-        // (gate ON only). Owned by this mesh; destroyed in destroy(). nullptr =>
-        // legacy orphan path.
-        mc2gpu::GpuMeshRing* ring_;
+private:
+    explicit gosMesh(int capacity)
+        : capacity_(capacity), vertices_(new gos_VERTEX[capacity]) {}
+    int capacity_;
+    int size_ = 0;
+    gos_VERTEX* vertices_;
 };
 
 

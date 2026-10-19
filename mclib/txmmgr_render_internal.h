@@ -6,20 +6,8 @@
 
 #include "txmmgr_internal.h"
 
-// Maximum vertices sent down per draw call by the legacy masterVertexNodes loops.
-inline constexpr int MAX_SENDDOWN = 10002;
-
 // Number of shadow-shape slots reserved this frame (see addShadowShape).
 extern std::atomic<int> g_numShadowShapes;
 
-mat4 gos2my(const glm::mat4& m);
-
-// Per-frame state the renderLists phases share.
-struct MC_TextureManager::RenderListsFrame
-{
-#ifdef MC2_VULKAN_ISLAND
-	bool vkLegacyOn = false;   // VK legacy-shape island armed for this frame
-#endif
-};
 
 #endif  // TXMMGR_RENDER_INTERNAL_H

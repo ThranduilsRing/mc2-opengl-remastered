@@ -293,21 +293,18 @@ def sync_verified(root, outdir=None):
 
 
 def persistent_build_dir(root):
-    """A per-worktree gate_dump build tree under the git dir. Configured once; later runs are a no-op configure
-    plus an incremental build (exact header deps), so the compile verdict is unchanged but an untouched tree costs
-    seconds instead of a fresh configure + full compile. Falls back to a temp dir when git cannot place one."""
+    """Keep the incremental check build inside its worktree, including linked checkouts.
+
+    A linked checkout's git metadata can be outside the lane's writable root.
+    Use ignored scratch instead; fall back to temp if the worktree is read-only.
+    """
     import tempfile
+    p = os.path.join(os.path.abspath(root), "scratch", "gate-dump-check")
     try:
-        r = subprocess.run(["git", "rev-parse", "--git-path", "mc2_gate_dump_build"], cwd=root,
-                           capture_output=True, text=True, **nofocus.hidden_kwargs())
-        p = r.stdout.strip()
-        if r.returncode == 0 and p:
-            p = os.path.normpath(p if os.path.isabs(p) else os.path.join(root, p))
-            os.makedirs(p, exist_ok=True)
-            return p
+        os.makedirs(p, exist_ok=True)
+        return p
     except OSError:
-        pass
-    return tempfile.mkdtemp(prefix="gate_dump_")
+        return tempfile.mkdtemp(prefix="gate_dump_")
 
 
 def build_gate_dump(root, outdir):
@@ -324,7 +321,7 @@ def build_gate_dump(root, outdir):
     if r.returncode != 0:
         print((r.stdout + r.stderr)[-2000:])
         return None
-    r = subprocess.run([cm, "--build", outdir, "--config", "RelWithDebInfo"], capture_output=True, text=True,
+    r = subprocess.run([cm, "--build", outdir, "--config", "RelWithDebInfo", "--parallel", "2"], capture_output=True, text=True,
                        **nofocus.hidden_kwargs())
     if r.returncode != 0:
         print((r.stdout + r.stderr)[-4000:])
@@ -355,7 +352,11 @@ def check(root, rebuild=False):
         fails.append("%s is stale against %s: run py -3 tools/gate_gen.py --write" % (INDEX_REL, TABLE_JSON_REL))
     seed = _load_json(root, SEED_REL)
     if seed is not None:
-        missing = sorted(set(g["name"] for g in seed["gates"]) - set(names))
+        retired = set(_load_json(root, "Gates/retired_names.json") or [])
+        active_retired = sorted(retired & set(names))
+        if active_retired:
+            fails.append("retired gate(s) still in the live table: " + ", ".join(active_retired))
+        missing = sorted(set(g["name"] for g in seed["gates"]) - set(names) - retired)
         if missing:
             fails.append("%d seed gate(s) are not in the table: %s" % (len(missing), ", ".join(missing[:6])))
     # a registered Bool gate's feature default must equal the row's own default, unless the seed notes a deliberate

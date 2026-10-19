@@ -966,9 +966,9 @@ run_check "pipeline_desc"          "py -3 scripts/check-pipeline-desc.py --quiet
 # measured numbers that would justify promoting it.
 run_check "shader_injectors"       "py -3 scripts/check-shader-injectors.py --quiet"
 run_check "pipeline_key"           "py -3 scripts/check-pipeline-key.py --quiet"
-run_check "vfx_blend_distinction"  "py -3 scripts/check-vfx-blend-distinction.py --quiet"
-run_check "multiply_blend"         "py -3 scripts/check-multiply-blend.py --quiet"
-run_check "colormask_ownership"    "py -3 scripts/check-colormask-ownership.py --quiet"
+run_check "vfx_blend_distinction"  "py -3 scripts/check-vfx-blend-distinction.py --quiet && py -3 -B -m pytest scripts/tests/test_check_vfx_blend_distinction.py -q -p no:cacheprovider"
+run_check "multiply_blend"         "py -3 scripts/check-multiply-blend.py --quiet && py -3 -B -m pytest scripts/tests/test_check_native_post_contracts.py -k multiply -q -p no:cacheprovider"
+run_check "colormask_ownership"    "py -3 scripts/check-colormask-ownership.py --quiet && py -3 -B -m pytest scripts/tests/test_check_native_post_contracts.py -k color_mask -q -p no:cacheprovider"
 run_check "pass_attachment"        "py -3 scripts/check-pass-attachment-contract.py --quiet"
 run_check "frame_feedback"         "py -3 scripts/check-frame-resource-feedback.py --quiet"
 run_check "drawbuffer_ownership"   "py -3 scripts/check-drawbuffer-ownership.py --quiet"
@@ -984,7 +984,7 @@ run_check "shader_variant"         "py -3 scripts/check-shader-variant.py --quie
 # GL-VARIANT-MATRIX-1: every GL program variant the C++ can build (manifest re-extracted
 # from GameOS/gameos and diffed) is assembled like shader_builder and glslang compile+LINKED;
 # also proves it catches the static_prop.frag include-splice regression. ~6s, offline.
-run_check "gl_shader_variants"     "py -3 scripts/check-gl-shader-variants.py --quiet"
+run_check "gl_shader_variants"     "py -3 scripts/check-gl-shader-variants.py --quiet && py -3 -B -m pytest scripts/tests/test_extract_gl_shader_variants.py -q -p no:cacheprovider"
 run_check "spirv_artifacts"        "py -3 scripts/check-spirv-artifacts.py --quiet"
 # SLANG-TOOLCHAIN-1: .slang -> SPIR-V through build_variants.py (fixtures only; no shipped Slang yet).
 run_check "slang_build"            "py -3 -B -m pytest scripts/tests/test_slang_build.py -q -p no:cacheprovider"

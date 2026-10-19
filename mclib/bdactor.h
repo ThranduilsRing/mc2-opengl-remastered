@@ -57,13 +57,6 @@ class BldgAppearanceType : public AppearanceType
 		// Collision/damage NEVER read this; they read bldgShape[lod] directly.
 		TG_TypeMultiShapePtr		bldgRenderShape;
 		bool						buildingPbrEnabled;
-		HGOSRENDERMATERIAL			buildingPbrProgram;
-		DWORD						buildingPbrNormalTexture;
-		DWORD						buildingPbrOrmTexture;
-		DWORD						buildingPbrMaterialSsbo;
-		float						buildingPbrTileScale;
-		float						buildingPbrRoughnessBias;
-		float						buildingPbrMetallicInfluence;
 		bool						buildingPbrPreserveLegacyAlpha;
 		bool						buildingFootprintShadowEnabled;
 		float						buildingFootprintShadowStrength;
@@ -106,13 +99,6 @@ class BldgAppearanceType : public AppearanceType
 
 			bldgRenderShape = NULL;   // MODEL-OVERRIDE dual-shape: no override by default
 			buildingPbrEnabled = false;
-			buildingPbrProgram = NULL;
-			buildingPbrNormalTexture = 0;
-			buildingPbrOrmTexture = 0;
-			buildingPbrMaterialSsbo = 0;
-			buildingPbrTileScale = 1.0f;
-			buildingPbrRoughnessBias = 0.0f;
-			buildingPbrMetallicInfluence = 0.0f;
 			buildingPbrPreserveLegacyAlpha = false;
 			buildingFootprintShadowEnabled = false;
 			buildingFootprintShadowStrength = 0.0f;

@@ -452,23 +452,22 @@ TEST_CASE("RenderPassContract pipelineDescRegistered matches current shipped tru
                                c.id == RenderPassId::Terrain ||
                                c.id == RenderPassId::TerrainDecal ||
                                c.id == RenderPassId::TerrainOverlay ||
-                               c.id == RenderPassId::Water ||
                                c.id == RenderPassId::VFX ||
                                c.id == RenderPassId::PostProcess);
         CHECK(c.pipelineDescRegistered == expected);
         if (c.pipelineDescRegistered) ++trueCount;
     }
     // Eight passes route through applyPipeline() (see list above).
-    CHECK(trueCount == 8);
+    CHECK(trueCount == 7);
 }
 
 TEST_CASE("RenderPassContract: PipelineId-family passes back their flag with a real enumerator") {
     // PipelineRegistry registers the static-prop family + MechOpaque
     // plus a set of DESCRIPTIVE-ONLY rows (shadow casters,
     // terrain overlay/decal, water, VFX, post-process) that are NOT routed through
-    // applyPipeline. The enum has Count_=25:
+    // applyPipeline. The enum has Count_=14:
     //   0 Invalid, 1 StaticPropOpaque, 2 StaticPropAlphaTest, 3 MechOpaque,
-    //   4 StaticPropDepth, 5..24 descriptive-only families, 25 Count_.
+    //   4 StaticPropDepth, 5..13 surviving GL families, 14 Count_.
     //
     // pipelineDescRegistered means "routes through applyPipeline()", which is
     // BROADER than "owns a dedicated PipelineId enumerator":
@@ -481,7 +480,7 @@ TEST_CASE("RenderPassContract: PipelineId-family passes back their flag with a r
     //
     // Count_ is hardcoded as a tripwire: bump it (and re-examine the family set
     // below) every time a PipelineId enumerator is added.
-    CHECK(static_cast<uint32_t>(PipelineId::Count_) == 25u);
+    CHECK(static_cast<uint32_t>(PipelineId::Count_) == 14u);
     CHECK(static_cast<uint32_t>(PipelineId::Invalid) == 0u);
 
     for (int i = 0; i < kRenderPassContractCount; ++i) {
@@ -510,6 +509,7 @@ TEST_CASE("RenderPassContract: non-applyPipeline lanes stay unregistered") {
     for (int i = 0; i < kRenderPassContractCount; ++i) {
         const RenderPassContract& c = kRenderPassContracts[i];
         if (c.id != RenderPassId::Shadow &&
+            c.id != RenderPassId::Water &&
             c.id != RenderPassId::VegetationCards &&
             c.id != RenderPassId::UI) continue;
         CHECK_FALSE(c.pipelineDescRegistered);
@@ -534,7 +534,7 @@ TEST_CASE("RenderPassContract: 6 new lanes resolve to contract rows with current
     //   registered=false: VegetationCards, UI
     struct LaneExpect { RenderPassId id; bool registered; };
     const LaneExpect newIds[] = {
-        { RenderPassId::Water,           true  },
+        { RenderPassId::Water,           false },
         { RenderPassId::PostProcess,     true  },
         { RenderPassId::VegetationCards, false },
         { RenderPassId::TerrainDecal,    true  },

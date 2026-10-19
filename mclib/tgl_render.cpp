@@ -4,38 +4,16 @@
 #include "Gates/gate.h"
 
 
-struct TG_RenderShapePbrOverrideState {
-	HGOSRENDERMATERIAL program = nullptr;
-	DWORD normalTexture = 0;
-	DWORD ormTexture = 0;
-	DWORD materialSsbo = 0;
-	float tileScale = 1.0f;
-	float roughnessBias = 0.0f;
-	float metallicInfluence = 0.0f;
-};
+static bool s_renderShapePbrOverrideActive = false;
 
-static TG_RenderShapePbrOverrideState s_activeRenderShapePbrOverride;
-
-void TG_SetRenderShapePbrOverride(HGOSRENDERMATERIAL program,
-                                  DWORD normalTexture,
-                                  DWORD ormTexture,
-                                  DWORD materialSsbo,
-                                  float tileScale,
-                                  float roughnessBias,
-                                  float metallicInfluence)
+void TG_SetRenderShapePbrOverride()
 {
-	s_activeRenderShapePbrOverride.program = program;
-	s_activeRenderShapePbrOverride.normalTexture = normalTexture;
-	s_activeRenderShapePbrOverride.ormTexture = ormTexture;
-	s_activeRenderShapePbrOverride.materialSsbo = materialSsbo;
-	s_activeRenderShapePbrOverride.tileScale = tileScale;
-	s_activeRenderShapePbrOverride.roughnessBias = roughnessBias;
-	s_activeRenderShapePbrOverride.metallicInfluence = metallicInfluence;
+	s_renderShapePbrOverrideActive = true;
 }
 
 void TG_ClearRenderShapePbrOverride()
 {
-	s_activeRenderShapePbrOverride = TG_RenderShapePbrOverrideState();
+	s_renderShapePbrOverrideActive = false;
 }
 
 // (Removed dead #define TERRAIN_DEPTH_FUDGE (0.000f) 2026-05-16: zero
@@ -51,7 +29,7 @@ void TG_ClearRenderShapePbrOverride()
 //   tgl.cpp:2700-2730. Phase 1 documents only; centralization is F4.
 void TG_Shape::Render (float forceZ, bool isHudElement, BYTE alphaValue, bool isClamped, const glm::mat4* shapeToClip, const glm::mat4* shapeToWorld)
 {
-	const bool traceBuildingPbr = s_activeRenderShapePbrOverride.program && mc2::gate::get<"MC2_BUILDING_PBR_TRACE">();
+	const bool traceBuildingPbr = s_renderShapePbrOverrideActive && mc2::gate::get<"MC2_BUILDING_PBR_TRACE">();
 	if (traceBuildingPbr) {
 		static int s_pbrRenderTrace = 0;
 		if (s_pbrRenderTrace < 64) {
@@ -67,24 +45,7 @@ void TG_Shape::Render (float forceZ, bool isHudElement, BYTE alphaValue, bool is
 
 	if (!numVertices)		//WE are the root Shape which may have no shape or a helper shape which defintely has no shape!
 	{
-		// MERGE-CONFLICT-UI-PHASE1: theirs (mc2r_ui_phase1) adds a hardware-only-shape
-		// emission branch here (numVertices==0 but ib_/vb_ populated by the Assimp
-		// import path — root/helper node repurposed by MultiTransformShape's new
-		// GPU-only-shape branch above, gated by bShadersDrawPathEnabled).
-		// NOT applied: ours already has a richer TG_RenderShape emission block further
-		// down this function (~tgl.cpp:3319-3344, the `theShape->ib_ && theShape->vb_`
-		// branch) carrying PBR-override fields (programOverride_/pbrNormalTexture_/
-		// pbrOrmTexture_/pbrMaterialSsbo_/pbrTileScale_/pbrRoughnessBias_/
-		// pbrMetallicInfluence_) and the LcsScope<LcsBucket::C2> light-cost-split
-		// wrapper that theirs' plain patch (built against the pre-PBR-override,
-		// pre-LCS base) does not know about. Porting their numVertices==0 branch
-		// verbatim would emit TG_RenderShape structs missing those fields (silently
-		// defaulting the PBR override off / skipping LCS accounting) — needs a
-		// deliberate port that reuses the existing field set, not a blind copy.
-		// Their source (base->theirs hunk, tgl.cpp:2979+) for reference:
-		//   TG_TypeShapePtr hwType = (myType && myType->GetNodeType()==SHAPE_NODE) ? (TG_TypeShapePtr)myType : nullptr;
-		//   if (hwType && hwType->ib_ && hwType->vb_ && hwType->listOfTypeTriangles &&
-		//       hwType->listOfTextures && shapeToClip && shapeToWorld && (lastTurnTransformed==turn)) { ...addRenderShape(&rs)... }
+		// Root/helper nodes have no CPU triangles to submit.
 		return;
 	}
 
@@ -355,7 +316,7 @@ void TG_Shape::Render (float forceZ, bool isHudElement, BYTE alphaValue, bool is
 	// FIXME: this (listOfTypeTriangles[0]) is not correct if model has more than 1 texture!
 	const TG_TypeTriangle firstTriType = theShape->listOfTypeTriangles[0];
 	const bool firstTextureAlpha = theShape->listOfTextures[firstTriType.localTextureHandle].textureAlpha;
-	const bool pbrOverrideActive = s_activeRenderShapePbrOverride.program != nullptr;
+	const bool pbrOverrideActive = s_renderShapePbrOverrideActive;
 	if (!isSpotlight && !isWindow && (!firstTextureAlpha || pbrOverrideActive) && (alphaValue == 0xff))
 	{
 		DWORD addFlags = 0;
@@ -400,13 +361,6 @@ void TG_Shape::Render (float forceZ, bool isHudElement, BYTE alphaValue, bool is
             rs.mvp_ = mvp;
 			rs.mw_ = *shapeToWorld;
 			memcpy(rs.viewport_, cur_viewport, 4 * sizeof(float));
-			rs.programOverride_ = s_activeRenderShapePbrOverride.program;
-			rs.pbrNormalTexture_ = s_activeRenderShapePbrOverride.normalTexture;
-			rs.pbrOrmTexture_ = s_activeRenderShapePbrOverride.ormTexture;
-			rs.pbrMaterialSsbo_ = s_activeRenderShapePbrOverride.materialSsbo;
-			rs.pbrTileScale_ = s_activeRenderShapePbrOverride.tileScale;
-			rs.pbrRoughnessBias_ = s_activeRenderShapePbrOverride.roughnessBias;
-			rs.pbrMetallicInfluence_ = s_activeRenderShapePbrOverride.metallicInfluence;
 			{
 				LcsScope<LcsBucket::C2> _lcs;
 				rs.light_data_buffer_index_ = mcTextureManager->addLightDataStructure(&lightData_);

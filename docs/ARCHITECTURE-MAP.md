@@ -68,12 +68,12 @@ Islands share color/depth/GBuffer via `vulkan_shared_scene_color.cpp`, `vulkan_s
 |---|---|
 | Terrain draw / LOD / tessellation | `GameOS/gameos/gos_terrain_lod_chunk.cpp`, `gos_terrain_indirect.cpp`, `shaders/gos_terrain.frag` (+ `.tesc/.tese/.vert`) |
 | Terrain data / textures / lighting | `mclib/terrain.cpp`, `mclib/quad.cpp`, `gos_terrain_lighting.cpp`, `terrain_material_lib.cpp` |
-| Water | `gos_terrain_water_stream.cpp`, `shaders/gos_terrain_water_mdi.frag`, `shaders/gpu_driven_water.comp` |
+| Water | `gos_terrain_water_stream.cpp`, `shaders/vulkan/water_geom.frag`, `shaders/vulkan/water_cull_pack.comp.slang` |
 | Props / buildings | `gos_static_prop_batcher.cpp`, `gos_static_prop_registry.cpp`, `GameAdapters/StaticPropRenderAdapter.cpp`, `code/bldng.cpp` |
 | Trees / foliage | `gos_vegetation.cpp`, `GameAdapters/VegetationAdapter.cpp` |
 | Mechs | `gos_mech_batcher.cpp`, `GameAdapters/MechRenderAdapter.cpp`, `code/mech.cpp`; memory `INDEX-MECH.md` |
-| Shadows | `mclib/txmmgr.cpp` (caster pass), `GameOS/gameos/vulkan_shadow_island_live.cpp` (the shadow maps), `shaders/shadow_mech.vert`; memory `shadow_coordinate_spaces`, `csm_dynamic_shadow_architecture` |
-| Fog / sky | `shaders/edge_fog.frag`, `shaders/fog_oob.frag`, `shaders/hdri_skybox.frag`, `gos_hdri.cpp`, `SkyRenderAdapter.cpp` |
+| Shadows | `mclib/txmmgr.cpp` (caster pass), `GameOS/gameos/vulkan_shadow_island_live.cpp` (the shadow maps), `shaders/vulkan/shadow_mech.vert`; memory `shadow_coordinate_spaces`, `csm_dynamic_shadow_architecture` |
+| Fog / sky | `shaders/vulkan/edge_fog.frag`, `shaders/vulkan/fog_oob.frag`, `shaders/hdri_skybox.frag`, `gos_hdri.cpp`, `SkyRenderAdapter.cpp` |
 | Post-process | `gos_postprocess.cpp`, `RenderCore/postprocess_subgraph.h` |
 | HUD / UI | `gos_RendererFlushHUDBatch` in `gameos_graphics.cpp`; `code/missiongui.cpp`, `gui/`, `GuiRuntime/` |
 | Camera | `code/gamecam.cpp`, `mclib/camera.cpp`, `mclib/camera_frustum_math.h` |

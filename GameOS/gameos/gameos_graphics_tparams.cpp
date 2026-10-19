@@ -365,14 +365,9 @@ void __stdcall gos_SetTerrainBatchExtras(const gos_TERRAIN_EXTRA* extras, int co
 bool __stdcall gos_IsTerrainTessellationActive() {
     return g_gos_renderer && g_gos_renderer->getTerrainMaterial() != nullptr;
 }
-// ISSUE-34: "modern shadow/render path active" — true when the shadow_terrain
-// material loaded. Shadow-pass builds (txmmgr.cpp) and the blob-shadow
-// suppression / GPU transform skips (mech3d.cpp, gvactor.cpp) key on THIS,
-// not on the tessellation material: when tess is off (TCS/TES compile failure
-// or MC2_TERRAIN_TESS=0) CSM/static shadows stay on and the legacy pz-gated
-// CPU blob shadows stay off, keeping near-plane clipping behavior uniform.
+// Vulkan owns the shadow maps independently of the old GL shader programs.
 bool __stdcall gos_IsModernShadowPathActive() {
-    return g_gos_renderer && g_gos_renderer->getShadowTerrainMaterial() != nullptr;
+    return g_gos_renderer != nullptr;
 }
 
 void gos_SetShadowMode(bool enable) {

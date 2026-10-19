@@ -25,17 +25,15 @@
 # (Expected to be EMPTY forever. Adding an entry means you read the
 # allowlist header and accept the documented trap. See the header.)
 #
-# Scan set: VFX shader basenames. At M4 ship time the only VFX shader pair
-# is shaders/particle_billboard.{vert,frag}. Extend BASENAMES below when
-# adding a new VFX shader file. See M4 spec §6 (surface table) + §12
-# trap 3 (scan-set drift risk).
+# Scan set: native billboard and surviving GL mesh/tube shader pairs.
+# Extend BASENAMES when a new VFX shader is added.
 #
 # Negative-test (to verify the script catches violations):
 #   1. Temporarily add `layout(location=2) out uint v_test;` to
-#      shaders/particle_billboard.frag (the declaration alone is enough;
+#      shaders/vulkan/vfx_particle.frag (the declaration alone is enough;
 #      no need to write to it).
 #   2. Run this script. Expect exit 1 + the file:line reported.
-#   3. Revert the injection (`git checkout shaders/particle_billboard.frag`).
+#   3. Revert the injection (`git checkout shaders/vulkan/vfx_particle.frag`).
 #   4. Re-run. Expect exit 0.
 #
 # Exit 0 = clean (zero non-allowlisted matches across scan set)
@@ -47,8 +45,12 @@ cd "$ROOT"
 # VFX shader basenames. Hand-maintained; reviewers must flag any new
 # shader file in shaders/ that renders particles/effects.
 BASENAMES="
-particle_billboard.vert
-particle_billboard.frag
+vulkan/vfx_particle.vert
+vulkan/vfx_particle.frag
+vfx_mesh.vert
+vfx_mesh.frag
+tube_ribbon.vert
+tube_ribbon.frag
 "
 
 ALLOWLIST="scripts/check-vfx-no-objectid.allowlist"

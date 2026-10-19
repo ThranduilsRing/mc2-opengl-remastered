@@ -454,20 +454,6 @@ void gosPostProcess::init(int w, int h)
             edgeFogEnabled_ ? 1 : 0, edgeFogStart_, edgeFogHeight_, edgeFogMax_);
     }
 
-    // BACKDROP-BLIT-ATTRIB-1: night-dim gate for the horizon cloud bank. RenderDoc
-    // pixel-history on the pre-composite HDR scene FBO pinned the mc2_10 night
-    // "white horizon band" to this edge-fog pass painting the hardcoded bright grey
-    // edgeFogColor_ (never night-dimmed). Default-OFF -> unscaled -> byte-identical.
-    {
-        nightFogDimEnabled_ = mc2::gate::get<"MC2_NIGHT_FOG_DIM">();
-        if (mc2::gate::isNonEmpty<"MC2_NIGHT_FOG_DIM_SCALE">()) {
-            float s = mc2::gate::get<"MC2_NIGHT_FOG_DIM_SCALE">();
-            if (s < 0.0f) s = 0.0f;
-            nightFogDimScale_ = s;
-        }
-        mc2::fmt::print_err("[NIGHT_FOG_DIM] enabled={:d} scale={:.3f}\n", mc2::fmt::as_i32(nightFogDimEnabled_ ? 1 : 0), nightFogDimScale_);
-    }
-
     // FOG-HORIZON-CLAMP-1: elevation profile shared by OOB + edge fog. Rides the
     // existing (default-ON) fog gates -- this is a tuning of the fog's SHAPE, not
     // a new feature. The band is in DEGREES of elevation above the horizon

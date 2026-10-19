@@ -10,6 +10,7 @@ multiply row, so the gate FAILS the moment any of them is conflated:
     screenShadow / cloudShadow / shoreline / ssaoApply = DST_COLOR / ZERO
         -> BlendMode::Multiply
 
+Checks the surviving GL SSAO row and the native screen/cloud/shoreline builder.
 Parses RenderCore/PipelineRegistry.cpp s_descs rows by their `// [N] <Name>` header
 + the row's `/* blend */ BlendMode::<X>` initializer. Exit 0 = PASS.
 """
@@ -24,9 +25,6 @@ REGISTRY = ROOT / "RenderCore" / "PipelineRegistry.cpp"
 
 # The contract. Any of these as non-Multiply (additive/alpha/opaque) FAILS.
 EXPECTED = {
-    "PostProcessScreenShadow": "Multiply",
-    "PostProcessCloudShadow":  "Multiply",
-    "PostProcessShoreline":    "Multiply",
     "PostProcessSsaoApply":    "Multiply",
 }
 
@@ -50,6 +48,17 @@ def parse_blends(text: str) -> dict[str, str]:
     return found
 
 
+def validate_native_multiply(text: str) -> list[str]:
+    code = re.sub(r"/\*.*?\*/|//[^\n]*", "", text, flags=re.S)
+    required = {
+        "blendEnable": "VK_TRUE", "srcColorBlendFactor": "VK_BLEND_FACTOR_DST_COLOR",
+        "dstColorBlendFactor": "VK_BLEND_FACTOR_ZERO", "colorBlendOp": "VK_BLEND_OP_ADD",
+    }
+    return ["native screen/cloud/shoreline multiply: wrong " + name
+            for name, value in required.items()
+            if not re.search(r"\bcba\." + name + r"\s*=\s*" + value + r"\s*;", code)]
+
+
 def main() -> int:
     quiet = "--quiet" in sys.argv
     if not REGISTRY.exists():
@@ -57,7 +66,8 @@ def main() -> int:
         return 2
     found = parse_blends(REGISTRY.read_text(encoding="utf-8", errors="replace"))
 
-    fails = []
+    native = ROOT / "GameOS/gameos/vulkan_post_screenfx_native.cpp"
+    fails = validate_native_multiply(native.read_text(encoding="utf-8"))
     for name, want in EXPECTED.items():
         got = found.get(name)
         if got is None:
@@ -72,8 +82,8 @@ def main() -> int:
             print(f"  - {f}", file=sys.stderr)
         return 1
     if not quiet:
-        print("[mul-blend] PASS — 4 post-fx multiply rows = BlendMode::Multiply "
-              "(DST_COLOR/ZERO): screenShadow, cloudShadow, shoreline, ssaoApply.")
+        print("[mul-blend] PASS — GL SSAO and native screen/cloud/shoreline multiply "
+              "(DST_COLOR/ZERO).")
     return 0
 
 

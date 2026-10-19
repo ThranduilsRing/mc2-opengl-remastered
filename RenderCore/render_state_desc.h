@@ -149,7 +149,7 @@ static constexpr RenderStateDesc kPassRenderState[] = {
     // fbo: not in kPassFboTarget -> Unknown.
     {
         RenderPassId::Water,
-        RenderCore::PipelineId::WaterArmed,
+        RenderCore::PipelineId::Invalid,
         ColorMaskState::Inherit,
         DepthWriteState::Inherit,
         DepthFuncState::Inherit,

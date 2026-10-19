@@ -2315,8 +2315,6 @@ void __stdcall gos_RenderIndexedArray( gos_VERTEX_2UV* pVertexArray, DWORD Numbe
 void __stdcall gos_RenderIndexedArray( gos_VERTEX_3UV* pVertexArray, DWORD NumberVertices, WORD* lpwIndices, DWORD NumberIndices );
 
 
-void __stdcall gos_RenderIndexedArray(HGOSBUFFER ib, HGOSBUFFER vb, HGOSVERTEXDECLARATION vdecl, const float* mvp); //sebi
-void __stdcall gos_RenderIndexedArray(HGOSBUFFER ib, HGOSBUFFER vb, HGOSVERTEXDECLARATION vdecl); //sebi
 
 
 void __stdcall gos_SetRenderViewport(float x, float y, float w, float h);

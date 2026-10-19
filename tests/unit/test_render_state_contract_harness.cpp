@@ -97,7 +97,7 @@ TEST_CASE_FIXTURE(RenderContractFixture, "render_state_contract_harness/order_co
 
 TEST_CASE_FIXTURE(RenderContractFixture, "render_state_contract_harness/order_missing_writer_violation") {
     rc::frameBegin();
-    rc::beginPass(RPI::MechOpaque); rc::endPass(RPI::MechOpaque);
+    rc::beginPass(RPI::VFX); rc::endPass(RPI::VFX);
     CHECK((rc::getFrameViolationCount() == 1));
     return;
 }

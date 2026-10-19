@@ -16,7 +16,7 @@ using namespace RenderCore::vulkan;
 TEST_SUITE("VulkanLayoutChain") {
 
 TEST_CASE("row count is pinned and every row is well-formed (matches header static_asserts)") {
-    CHECK(kVkImageLayoutChainCount == 4);
+    CHECK(kVkImageLayoutChainCount == 3);
     CHECK(vkLayoutChainRowsWellFormed());
     CHECK(vkLayoutChainNoDuplicateIds());
     for (int i = 0; i < kVkImageLayoutChainCount; ++i) {
@@ -41,11 +41,6 @@ TEST_CASE("I4: every sampled image has an upstream producer or an external lifet
 }
 
 TEST_CASE("layout derivation: shadow is a compare sampler, color is shader-read, depth is depth-read") {
-    const VkImageLayoutChain* shadow = vkFindLayoutChain(RenderResourceId::ShadowDynamicMap);
-    REQUIRE(shadow != nullptr);
-    CHECK(shadow->sampledAsLayout == VkImageLayoutRead::DepthStencilReadOnly);
-    CHECK(shadow->producerPass == RenderPassId::Shadow);
-
     const VkImageLayoutChain* color = vkFindLayoutChain(RenderResourceId::MainColor);
     REQUIRE(color != nullptr);
     CHECK(color->sampledAsLayout == VkImageLayoutRead::ShaderReadOnly);

@@ -126,64 +126,7 @@ static std::array<PipelineDesc, static_cast<size_t>(PipelineId::Count_)> s_descs
         /* ssboBindingsMask    */ kStaticPropSsbos,
     },
 
-    // [5] ShadowTerrain — terrain -> static shadow map (shadow_terrain).
-    // SHADOW-CASTER-PIPELINE-REGISTRATION-1: DESCRIPTIVE row — states the truth
-    // but is NOT applyPipeline-driven (the pass bracket in gameos_graphics.cpp
-    // sets this state by hand; glProgramName stays 0, bindProgram wiring deferred
-    // to the active-routing slice). Forward-Z GL_LESS (opposite the scene's
-    // reverse-Z), depth-only, cull DISABLED, no polygon offset.
-    {
-        /* glProgramName       */ 0u,              // descriptive; not yet wired
-        /* blend               */ BlendMode::Opaque, // depth-only; GL_BLEND off
-        /* depthTestEnable     */ true,
-        /* depthWriteEnable    */ true,
-        /* depthFunc           */ DepthFunc::Less, // shadow map = forward-Z GL_LESS
-        /* cullMode            */ CullMode::None,  // shadow bracket disables cull
-        /* colorAttachments    */ { false, false, false }, // pure depth (dummy R8 never written)
-        /* objectIdWriteEnabled*/ false,
-        /* frontFace           */ FrontFace::Ccw,  // no glFrontFace in shadow; ambient default
-        /* polygonOffsetEnable */ false,           // terrain caster: no polygon offset
-        /* drawBuffers         */ DrawBufferSet::ShadowDepthOnly,
-        /* ssboBindingsMask    */ 0u,              // descriptive; pass binds its own
-    },
-
-    // [6] ShadowStaticProp — static/dynamic props -> shadow map (shadow_static_prop).
-    // The ONLY shadow caster that enables GL_POLYGON_OFFSET_FILL (gos_static_prop_
-    // batcher.cpp:7639/7787, factor/units 2.0/4.0 set by hand, ImGui-mutable — the
-    // magnitude is dynamic state, NOT modeled here). DESCRIPTIVE.
-    {
-        /* glProgramName       */ 0u,
-        /* blend               */ BlendMode::Opaque,
-        /* depthTestEnable     */ true,
-        /* depthWriteEnable    */ true,
-        /* depthFunc           */ DepthFunc::Less,
-        /* cullMode            */ CullMode::None,
-        /* colorAttachments    */ { false, false, false },
-        /* objectIdWriteEnabled*/ false,
-        /* frontFace           */ FrontFace::Ccw,
-        /* polygonOffsetEnable */ true,            // prop caster: polygon offset ON
-        /* drawBuffers         */ DrawBufferSet::ShadowDepthOnly,
-        /* ssboBindingsMask    */ 0u,
-    },
-
-    // [7] ShadowMech — mech -> dynamic shadow map (shadow_mech;
-    // GpuMechBatcher::flushShadow). DESCRIPTIVE; no polygon offset.
-    {
-        /* glProgramName       */ 0u,
-        /* blend               */ BlendMode::Opaque,
-        /* depthTestEnable     */ true,
-        /* depthWriteEnable    */ true,
-        /* depthFunc           */ DepthFunc::Less,
-        /* cullMode            */ CullMode::None,
-        /* colorAttachments    */ { false, false, false },
-        /* objectIdWriteEnabled*/ false,
-        /* frontFace           */ FrontFace::Ccw,
-        /* polygonOffsetEnable */ false,           // mech caster: no polygon offset
-        /* drawBuffers         */ DrawBufferSet::ShadowDepthOnly,
-        /* ssboBindingsMask    */ 0u,
-    },
-
-    // [8] TerrainOverlay — cement/perimeter overlay (terrain_overlay.{vert,frag}).
+    // [5] TerrainOverlay — cement/perimeter overlay (terrain_overlay.{vert,frag}).
     // TERRAIN-OVERLAY-DECAL-PIPELINE-REGISTRATION-1: DESCRIPTIVE — states the truth
     // (gosRenderer::drawTerrainOverlays/drawDecalStaticBatch set this by hand) but
     // is NOT applyPipeline-driven; glProgramName stays 0. Opaque, reverse-Z GEQUAL,
@@ -204,7 +147,7 @@ static std::array<PipelineDesc, static_cast<size_t>(PipelineId::Count_)> s_descs
         /* ssboBindingsMask    */ 0u,              // binds its own VBO/texture; no SSBO
     },
 
-    // [9] TerrainDecal — bomb craters + mech footprints (terrain_overlay.vert +
+    // [6] TerrainDecal — bomb craters + mech footprints (terrain_overlay.vert +
     // decal.frag). DESCRIPTIVE; gosRenderer::drawDecals sets this by hand. The
     // FIRST AlphaBlend pipeline row: GL_BLEND on, SRC_ALPHA/ONE_MINUS_SRC_ALPHA
     // (BlendMode::AlphaBlend), depth-test on but depth-WRITE OFF (decals must not
@@ -223,72 +166,7 @@ static std::array<PipelineDesc, static_cast<size_t>(PipelineId::Count_)> s_descs
         /* drawBuffers         */ DrawBufferSet::MainSceneMRT,
         /* ssboBindingsMask    */ 0u,
     },
-
-    // [10] WaterArmed — the ARMED water fast-path base (renderWaterFastPath:
-    // gos_terrain_water_fast.vert + gos_tex_vertex.frag). DESCRIPTIVE;
-    // gosRenderer::renderWaterFastPath sets this by hand (and save/restores it).
-    // Source-verified state (gameos_graphics.cpp:3275-3288): GL_CULL_FACE DISABLED
-    // (CINEMATIC-WATER-CULL-1 — flat overlay mesh, must not be backface-culled),
-    // AlphaBlend (SRC_ALPHA/ONE_MINUS_SRC_ALPHA), depth-test on + reverse-Z GEQUAL,
-    // depth-WRITE ON by default (OOB-FOG-WATER-DEPTH-1; only MC2_WATER_NO_DEPTH_WRITE
-    // debug-gate flips it off). frag writes color0 + color1. NOTE: the legacy quad
-    // fallback and the GPU-driven MDI sub-variant are NOT modeled by this row.
-    {
-        /* glProgramName       */ 0u,
-        /* blend               */ BlendMode::AlphaBlend, // SRC_ALPHA / ONE_MINUS_SRC_ALPHA
-        /* depthTestEnable     */ true,
-        /* depthWriteEnable    */ true,            // default armed (MC2_WATER_NO_DEPTH_WRITE = debug A/B only)
-        /* depthFunc           */ DepthFunc::GreaterEqual, // reverse-Z (scene water)
-        /* cullMode            */ CullMode::None,  // water explicitly disables cull
-        /* colorAttachments    */ { true, true, false },
-        /* objectIdWriteEnabled*/ false,
-        /* frontFace           */ FrontFace::Ccw,
-        /* polygonOffsetEnable */ false,
-        /* drawBuffers         */ DrawBufferSet::MainSceneMRT,
-        /* ssboBindingsMask    */ 0u,              // armed base binds its own buffers; MDI sub-path SSBOs not modeled
-    },
-
-    // [11-16] VFX family — VFX-PIPELINE-REGISTRATION-1. DESCRIPTIVE (glProgramName=0,
-    // NOT routed; gos_particle_bridge.cpp / gos_vfx_mesh_bridge.cpp hand-set state).
-    // Shared invariant (source-verified): depthTest on, depth-WRITE OFF, reverse-Z
-    // GEQUAL, cull None (double-sided), frontFace Ccw, color0 only (all 3 VFX frags
-    // write a single output; no objectID — see vfx_no_objectid contract), FUNC_ADD.
-    // The ONLY variable is blend. BlendMode::Additive is COARSE: it cannot encode
-    // the SRC_ALPHA/ONE (billboard/mesh) vs ONE/ONE (tube) divergence — the SCHEMA
-    // blendState carries the exact src/dst and the checker enforces it. Until
-    // BLENDMODE-ADDITIVE-VOCABULARY-1 splits the enum, do NOT route these.
-
-    // [11] VfxBillboardAlpha — particle_billboard, SRC_ALPHA/ONE_MINUS_SRC_ALPHA
-    {
-        /* glProgramName       */ 0u,
-        /* blend               */ BlendMode::AlphaBlend,
-        /* depthTestEnable     */ true,
-        /* depthWriteEnable    */ false,
-        /* depthFunc           */ DepthFunc::GreaterEqual,
-        /* cullMode            */ CullMode::None,
-        /* colorAttachments    */ { true, false, false },
-        /* objectIdWriteEnabled*/ false,
-        /* frontFace           */ FrontFace::Ccw,
-        /* polygonOffsetEnable */ false,
-        /* drawBuffers         */ DrawBufferSet::MainSceneMRT,
-        /* ssboBindingsMask    */ 0u,
-    },
-    // [12] VfxBillboardAdditive — particle_billboard, SRC_ALPHA/ONE (schema-exact)
-    {
-        /* glProgramName       */ 0u,
-        /* blend               */ BlendMode::AdditiveSrcAlphaOne, // SRC_ALPHA/ONE
-        /* depthTestEnable     */ true,
-        /* depthWriteEnable    */ false,
-        /* depthFunc           */ DepthFunc::GreaterEqual,
-        /* cullMode            */ CullMode::None,
-        /* colorAttachments    */ { true, false, false },
-        /* objectIdWriteEnabled*/ false,
-        /* frontFace           */ FrontFace::Ccw,
-        /* polygonOffsetEnable */ false,
-        /* drawBuffers         */ DrawBufferSet::MainSceneMRT,
-        /* ssboBindingsMask    */ 0u,
-    },
-    // [13] VfxTubeAlpha — tube_ribbon, SRC_ALPHA/ONE_MINUS_SRC_ALPHA
+    // [7] VfxTubeAlpha — tube_ribbon, SRC_ALPHA/ONE_MINUS_SRC_ALPHA
     {
         /* glProgramName       */ 0u,
         /* blend               */ BlendMode::AlphaBlend,
@@ -303,7 +181,7 @@ static std::array<PipelineDesc, static_cast<size_t>(PipelineId::Count_)> s_descs
         /* drawBuffers         */ DrawBufferSet::SingleColor0,
         /* ssboBindingsMask    */ 0u,
     },
-    // [14] VfxTubeAdditive — tube_ribbon, ONE/ONE (DIFFERS from billboard/mesh; schema-exact)
+    // [8] VfxTubeAdditive — tube_ribbon, ONE/ONE (DIFFERS from billboard/mesh; schema-exact)
     {
         /* glProgramName       */ 0u,
         /* blend               */ BlendMode::AdditiveOneOne, // ONE/ONE (differs from billboard/mesh)
@@ -318,7 +196,7 @@ static std::array<PipelineDesc, static_cast<size_t>(PipelineId::Count_)> s_descs
         /* drawBuffers         */ DrawBufferSet::SingleColor0,
         /* ssboBindingsMask    */ 0u,
     },
-    // [15] VfxMeshAlpha — vfx_mesh, SRC_ALPHA/ONE_MINUS_SRC_ALPHA
+    // [9] VfxMeshAlpha — vfx_mesh, SRC_ALPHA/ONE_MINUS_SRC_ALPHA
     {
         /* glProgramName       */ 0u,
         /* blend               */ BlendMode::AlphaBlend,
@@ -333,7 +211,7 @@ static std::array<PipelineDesc, static_cast<size_t>(PipelineId::Count_)> s_descs
         /* drawBuffers         */ DrawBufferSet::MainSceneMRT,
         /* ssboBindingsMask    */ 0u,
     },
-    // [16] VfxMeshAdditive — vfx_mesh, SRC_ALPHA/ONE (schema-exact)
+    // [10] VfxMeshAdditive — vfx_mesh, SRC_ALPHA/ONE (schema-exact)
     {
         /* glProgramName       */ 0u,
         /* blend               */ BlendMode::AdditiveSrcAlphaOne, // SRC_ALPHA/ONE (same as billboard)
@@ -348,7 +226,7 @@ static std::array<PipelineDesc, static_cast<size_t>(PipelineId::Count_)> s_descs
         /* drawBuffers         */ DrawBufferSet::MainSceneMRT,
         /* ssboBindingsMask    */ 0u,
     },
-    // [17] PostProcessComposite — endScene final composite (postprocess.frag).
+    // [11] PostProcessComposite — endScene final composite (postprocess.frag).
     // Opaque (force no blend; fully overwrites the backbuffer), depth test+write
     // OFF, cull None, color0 only. glProgramName=0 -> the call site keeps binding
     // compositeProg_; applyPipeline only sets the fixed-function state.
@@ -366,39 +244,7 @@ static std::array<PipelineDesc, static_cast<size_t>(PipelineId::Count_)> s_descs
         /* drawBuffers         */ DrawBufferSet::SingleColor0,
         /* ssboBindingsMask    */ 0u,
     },
-    // [18] PostProcessEdgeFog — runEdgeFog (edge_fog.frag). AlphaBlend
-    // (SRC_ALPHA/ONE_MINUS_SRC_ALPHA), depth test+write OFF, cull None, color0.
-    // glProgramName=0 -> call site keeps binding edgeFogProg_.
-    {
-        /* glProgramName       */ 0u,
-        /* blend               */ BlendMode::AlphaBlend,
-        /* depthTestEnable     */ false,
-        /* depthWriteEnable    */ false,
-        /* depthFunc           */ DepthFunc::Always,
-        /* cullMode            */ CullMode::None,
-        /* colorAttachments    */ { true, false, false },
-        /* objectIdWriteEnabled*/ false,
-        /* frontFace           */ FrontFace::Ccw,
-        /* polygonOffsetEnable */ false,
-        /* drawBuffers         */ DrawBufferSet::SingleColor0,
-        /* ssboBindingsMask    */ 0u,
-    },
-    // [19] PostProcessFogOob — runFogOob (fog_oob.frag). Same state as EdgeFog.
-    {
-        /* glProgramName       */ 0u,
-        /* blend               */ BlendMode::AlphaBlend,
-        /* depthTestEnable     */ false,
-        /* depthWriteEnable    */ false,
-        /* depthFunc           */ DepthFunc::Always,
-        /* cullMode            */ CullMode::None,
-        /* colorAttachments    */ { true, false, false },
-        /* objectIdWriteEnabled*/ false,
-        /* frontFace           */ FrontFace::Ccw,
-        /* polygonOffsetEnable */ false,
-        /* drawBuffers         */ DrawBufferSet::SingleColor0,
-        /* ssboBindingsMask    */ 0u,
-    },
-    // [20] TerrainSolid — main solid terrain (live = GPU-indirect thin MDI,
+    // [12] TerrainSolid — main solid terrain (live = GPU-indirect thin MDI,
     // gos_terrain_thin.vert + gos_terrain.frag). DESCRIPTIVE ONLY (glProgramName=0,
     // NOT routed — state still hand-set in gos_terrain_bridge_drawIndirect). Opaque,
     // depthTest+write ON, GEQUAL reverse-Z. cullMode=None / frontFace=Ccw are
@@ -420,56 +266,7 @@ static std::array<PipelineDesc, static_cast<size_t>(PipelineId::Count_)> s_descs
         /* drawBuffers         */ DrawBufferSet::MainSceneMRT,
         /* ssboBindingsMask    */ 0u,
     },
-    // [21-24] PostProcess MULTIPLY passes — runScreenShadow / runCloudShadow /
-    // runShoreline / runSSAO-apply. All identical state: Multiply (DST_COLOR/ZERO,
-    // scene *= mask), depth test+write OFF, cull None, color0 only. glProgramName=0
-    // -> each call site keeps binding its own program. State recon-proven.
-    // [21] PostProcessScreenShadow
-    {
-        /* glProgramName       */ 0u,
-        /* blend               */ BlendMode::Multiply,
-        /* depthTestEnable     */ false,
-        /* depthWriteEnable    */ false,
-        /* depthFunc           */ DepthFunc::Always,
-        /* cullMode            */ CullMode::None,
-        /* colorAttachments    */ { true, false, false },
-        /* objectIdWriteEnabled*/ false,
-        /* frontFace           */ FrontFace::Ccw,
-        /* polygonOffsetEnable */ false,
-        /* drawBuffers         */ DrawBufferSet::SingleColor0,
-        /* ssboBindingsMask    */ 0u,
-    },
-    // [22] PostProcessCloudShadow
-    {
-        /* glProgramName       */ 0u,
-        /* blend               */ BlendMode::Multiply,
-        /* depthTestEnable     */ false,
-        /* depthWriteEnable    */ false,
-        /* depthFunc           */ DepthFunc::Always,
-        /* cullMode            */ CullMode::None,
-        /* colorAttachments    */ { true, false, false },
-        /* objectIdWriteEnabled*/ false,
-        /* frontFace           */ FrontFace::Ccw,
-        /* polygonOffsetEnable */ false,
-        /* drawBuffers         */ DrawBufferSet::SingleColor0,
-        /* ssboBindingsMask    */ 0u,
-    },
-    // [23] PostProcessShoreline
-    {
-        /* glProgramName       */ 0u,
-        /* blend               */ BlendMode::Multiply,
-        /* depthTestEnable     */ false,
-        /* depthWriteEnable    */ false,
-        /* depthFunc           */ DepthFunc::Always,
-        /* cullMode            */ CullMode::None,
-        /* colorAttachments    */ { true, false, false },
-        /* objectIdWriteEnabled*/ false,
-        /* frontFace           */ FrontFace::Ccw,
-        /* polygonOffsetEnable */ false,
-        /* drawBuffers         */ DrawBufferSet::SingleColor0,
-        /* ssboBindingsMask    */ 0u,
-    },
-    // [24] PostProcessSsaoApply
+    // [13] PostProcessSsaoApply
     {
         /* glProgramName       */ 0u,
         /* blend               */ BlendMode::Multiply,

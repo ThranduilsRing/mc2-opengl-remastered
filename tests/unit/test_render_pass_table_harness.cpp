@@ -148,14 +148,14 @@ TEST_CASE("render_pass_table_harness/every_read_has_static_writer") {
 
 TEST_CASE("render_pass_table_harness/producer_consumer_closure_for_contract3") {
     const std::set<uint32_t> written = collectWrittenResources();
-    const uint32_t shadowDyn = (uint32_t)rc::RenderResourceId::ShadowDynamicMap;
+    const uint32_t mainDepth = (uint32_t)rc::RenderResourceId::MainDepth;
 
     bool readSomewhere = false;
     for (int i = 0; i < kPassCount && !readSomewhere; ++i)
         for (int j = 0; j < 4; ++j)
-            if (rid(kPasses[i].reads[j]) == shadowDyn) { readSomewhere = true; break; }
+            if (rid(kPasses[i].reads[j]) == mainDepth) { readSomewhere = true; break; }
     if (readSomewhere)
-        CHECK((written.count(shadowDyn) > 0));
+        CHECK((written.count(mainDepth) > 0));
 
     for (int i = 0; i < kPassCount; ++i)
         for (int j = 0; j < 4; ++j) {

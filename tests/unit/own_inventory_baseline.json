@@ -2476,18 +2476,6 @@
    "new_array": 0,
    "owners": []
   },
-  "INDEX_TYPE": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "GameOS/gameos/gameos_graphics_material_internal.h": {
-     "new_array": 1
-    }
-   },
-   "new": 0,
-   "new_array": 1,
-   "owners": []
-  },
   "Image": {
    "delete": 1,
    "delete_array": 0,
@@ -3373,9 +3361,12 @@
    "owners": []
   },
   "MLR_I_TMesh": {
-   "delete": 0,
+   "delete": 1,
    "delete_array": 0,
    "files": {
+    "GameOS/gameos/gameos_graphics_material_internal.h": {
+     "delete": 1
+    },
     "mclib/mlr/mlr_i_tmesh.cpp": {
      "new": 1
     },
@@ -3388,7 +3379,9 @@
    },
    "new": 3,
    "new_array": 0,
-   "owners": []
+   "owners": [
+    ""
+   ]
   },
   "MPConnectionType": {
    "delete": 0,
@@ -5162,21 +5155,6 @@
    "owners": [
     "",
     "Mission"
-   ]
-  },
-  "TG_HWSceneData": {
-   "delete": 1,
-   "delete_array": 0,
-   "files": {
-    "mclib/txmmgr.cpp": {
-     "delete": 1,
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": [
-    "MC_TextureManager"
    ]
   },
   "TG_HWTypeVertex": {
@@ -7197,21 +7175,6 @@
     "MC_TextureManager"
    ]
   },
-  "mc2gpu::GpuMeshRing": {
-   "delete": 1,
-   "delete_array": 0,
-   "files": {
-    "GameOS/gameos/gameos_graphics_material_internal.h": {
-     "delete": 1,
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": [
-    ""
-   ]
-  },
   "mcScrollBar": {
    "delete": 2,
    "delete_array": 0,
@@ -7262,7 +7225,7 @@
   "GameOS/gameos/gameos_graphics_capi.cpp": 1,
   "GameOS/gameos/gameos_graphics_font.cpp": 18,
   "GameOS/gameos/gameos_graphics_internal.h": 4,
-  "GameOS/gameos/gameos_graphics_material_internal.h": 8,
+  "GameOS/gameos/gameos_graphics_material_internal.h": 6,
   "GameOS/gameos/gameos_graphics_renderer_internal.h": 1,
   "GameOS/gameos/gameos_sound.cpp": 6,
   "GameOS/gameos/gameosmain.cpp": 1,

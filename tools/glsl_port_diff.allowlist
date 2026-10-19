@@ -3,4 +3,3 @@
 # These are REAL VK gaps, not noise. The row stays green only while the diff is byte-for-byte
 # what is pinned here: a port that goes verbatim (stale entry) or drifts further fails.
 # Re-pin with: py -3 tools/glsl_port_diff.py --all --print-hashes
-waterBaseColor	shaders/vulkan/water_geom.frag	ebaedbe99e28	VK uses the cooked shore field for depth tint and antialiased shoreline coverage; GL retains WaterThickness tint and the procedural shore-meander block.

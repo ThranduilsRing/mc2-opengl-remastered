@@ -307,12 +307,6 @@ public:
     float edgeFogHeight_   = 2000.0f;  // cloud bank top in world Z (MC2_EDGE_FOG_HEIGHT)
     float edgeFogMax_      = 0.92f;    // max opacity
 
-    // BACKDROP-BLIT-ATTRIB-1: night dimming for the horizon cloud bank. The knob has no reader since the GL fog passes went (the native fog
-    // does not apply it); MC2_NIGHT_FOG_DIM is a parsed no-op.
-    bool  nightFogDimEnabled_ = false;
-    float nightFogDimScale_   = 0.35f;   // measured mc2_10 night HDRI-sky ~0.28 / 0.80
-
-
 #ifdef MC2_VULKAN_ISLAND
     // VK-TIER1 SHARED SCENE DEPTH: when MC2_VK_SHARED_SCENE_DEPTH is ON and the
     // shared VK image was built + imported at createFBOs, this owns the VK

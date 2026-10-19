@@ -1,7 +1,7 @@
 #pragma once
 // FRAME-GRAPH-FBO-LEDGER-1 — map live framebuffer GLuints to LOGICAL render targets.
 //
-// An executor must own render targets as logical resources (MainColor, ShadowDynamicMap,
+// An executor must own render targets as logical resources (MainColor,
 // Backbuffer, ...), not anonymous GLuints. Today every FBO is an anonymous GLuint in
 // gos_postprocess and the RenderResourceRegistry glName is never populated. This ledger
 // closes that: FBO owners REGISTER their GLuint->RenderResourceId at creation, the
@@ -56,12 +56,6 @@ inline bool fboMismatch(RenderResourceId declared, RenderResourceId actual) {
 // the probe will tell us before we declare it, the same discipline that caught blend).
 struct PassFboTarget { RenderPassId id; RenderResourceId target; };
 static constexpr PassFboTarget kPassFboTarget[] = {
-    // SAME-ORDER-EXECUTOR-SLICE-2: Shadow and MechOpaque added now that their
-    // noteRenderPass seams are at the correct draw sites (SHADOW-OBSERVE-3 +
-    // MECHOPAQUE-NOTE-RELOCATE-1): Shadow fires inside beginDynamicShadowPass
-    // after glBindFramebuffer(ShadowFBO); MechOpaque fires before
-    // GpuMechBatcher::flush() inside the scene FBO (MainColor).
-    { RenderPassId::Shadow,           RenderResourceId::ShadowDynamicMap },
     { RenderPassId::MechOpaque,       RenderResourceId::MainColor },
     // WATER-SAME-ORDER-VALIDATE-1: water fast path renders into the scene FBO (MainColor).
     { RenderPassId::Water,            RenderResourceId::MainColor },

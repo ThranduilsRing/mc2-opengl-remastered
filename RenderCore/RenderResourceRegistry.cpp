@@ -45,10 +45,8 @@ const char* toString(RenderResourceId id) {
         case RenderResourceId::Unknown:              return "Unknown";
         case RenderResourceId::MainColor:            return "MainColor";
         case RenderResourceId::MainDepth:            return "MainDepth";
-        case RenderResourceId::ShadowStaticMap:      return "ShadowStaticMap";
         case RenderResourceId::TerrainHeightTexture: return "TerrainHeightTexture";
         case RenderResourceId::MaterialGpuBuffer:    return "MaterialGpuBuffer";
-        case RenderResourceId::ShadowDynamicMap:     return "ShadowDynamicMap";
         case RenderResourceId::WaterReflectionColor: return "WaterReflectionColor";
         case RenderResourceId::WaterReflectionDepth: return "WaterReflectionDepth";
         case RenderResourceId::Backbuffer:           return "Backbuffer";

@@ -187,7 +187,7 @@ def esc_attr(s: str) -> str:
 
 
 def gate_lookup_key(gate_label: str) -> str:
-    """'MC2_NIGHT_FOG_DIM (+_SCALE)' -> 'MC2_NIGHT_FOG_DIM'."""
+    """'MC2_EDGE_FOG (+_HEIGHT)' -> 'MC2_EDGE_FOG'."""
     m = re.search(r"MC2_[A-Z0-9_]+", gate_label)
     return m.group(0) if m else gate_label.strip()
 
@@ -769,7 +769,7 @@ def selftest_registry_guard(registry_path: str) -> int:
 
     orig = open(registry_path, "rb").read()
     txt = orig.decode("utf-8")
-    anchor = '"name": "MC2_NIGHT_FOG_DIM"'
+    anchor = '"name": "MC2_EDGE_FOG"'
     if anchor not in txt:
         print("SELF-TEST INCONCLUSIVE: anchor gate not in %s -- pick another and "
               "re-verify the arms" % registry_path, file=sys.stderr)
@@ -778,7 +778,7 @@ def selftest_registry_guard(registry_path: str) -> int:
     arms = [
         ("torn read (prefix of the file)", orig[:24000], "not valid JSON"),
         ("undecodable byte inside a gate name",
-         orig.replace(b'"MC2_NIGHT_FOG_DIM"', b'"MC2_NIGHT_F\xffG_DIM"', 1), "not valid UTF-8"),
+         orig.replace(b'"MC2_EDGE_FOG"', b'"MC2_EDGE_F\xffG"', 1), "not valid UTF-8"),
         ("count field disagrees with the rows",
          txt.replace('"count": ', '"count": 1', 1).encode("utf-8"), "not a complete gate table"),
         ("truncated at a row boundary",

@@ -74,7 +74,7 @@ inline ValidationResult validateReadsSatisfied(
 //   strictly temporal / cross-frame N-1 / externally-owned (the two water
 //   reflection targets). But a resource can also be readable without an in-frame
 //   producer because it is SEEDED (Mission: TerrainHeightTexture) or built
-//   outside the dynamic order (Persistent: ShadowStaticMap, MaterialGpuBuffer).
+//   outside the dynamic order (Persistent: MaterialGpuBuffer).
 //   So lifetime==External is a SUBSET of kExternalResources, not equal to it.
 //   The single-source-of-truth invariant we CAN enforce (and a doctest in
 //   tests/unit/test_rendercore.cpp does): every resource registered with
@@ -84,7 +84,7 @@ inline ValidationResult validateReadsSatisfied(
 //   a follow-up — the two concepts genuinely differ today.
 static constexpr RenderResourceId kExternalResources[] = {
     RenderResourceId::TerrainHeightTexture,  // static height upload (lifetime Mission)
-    RenderResourceId::ShadowStaticMap,       // built outside the dynamic frame order (lifetime Persistent)
+    // built outside the dynamic frame order (lifetime Persistent)
     RenderResourceId::WaterReflectionColor,  // temporal N-1 (lifetime External)
     RenderResourceId::WaterReflectionDepth,  // temporal N-1 (lifetime External)
     RenderResourceId::MaterialGpuBuffer,     // persistent material table, not a pass output (lifetime Persistent)

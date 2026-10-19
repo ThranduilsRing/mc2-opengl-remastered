@@ -173,7 +173,7 @@ static constexpr RenderPassContract kRenderPassContracts[] = {
         "Reference path: snapshot-owned v6 DrawPacket+meta dispatch default-on (STATIC-PROP-V3-FLIP 2a88a5a8). "
         "POSTPROCESS-SCENEOBJECTID-RESOURCE-1: SceneObjectId write is conditional on RenderWorld::IsObjectIdBufferEnabled() "
         "(static_prop.frag layout location=2 out uint v_objectId; only emitted when MRT 3-entry draw-buffer set is active).",
-        /* reads[4]    */ { RenderResourceId::ShadowDynamicMap },
+        /* reads[4]    */ { },
         /* writes[4]   */ { RenderResourceId::MainColor, RenderResourceId::MainDepth, RenderResourceId::MainNormal, RenderResourceId::SceneObjectId },
         /* barrierAfter */ BarrierKind::Framebuffer
     },
@@ -189,7 +189,7 @@ static constexpr RenderPassContract kRenderPassContracts[] = {
         "Terrain Pass##tp",
         nullptr,
         "TerrainPassFacts row landed in RenderSnapshot at 1d7b9ea6 as passive recorder; not yet authoritative.",
-        /* reads[4]    */ { RenderResourceId::ShadowDynamicMap },
+        /* reads[4]    */ { },
         /* writes[4]   */ { RenderResourceId::MainColor, RenderResourceId::MainDepth, RenderResourceId::MainNormal },
         /* barrierAfter */ BarrierKind::Framebuffer
     },
@@ -206,7 +206,7 @@ static constexpr RenderPassContract kRenderPassContracts[] = {
         "+ ViewUniforms UBO consumer default-on (MECH-VIEWUNIFORMS). "
         "POSTPROCESS-SCENEOBJECTID-RESOURCE-1: SceneObjectId write is conditional on RenderWorld::IsObjectIdBufferEnabled() "
         "(mech.frag layout location=2 out uint v_objectId; only emitted when MRT 3-entry draw-buffer set is active).",
-        /* reads[4]    */ { RenderResourceId::ShadowDynamicMap },
+        /* reads[4]    */ { },
         /* writes[4]   */ { RenderResourceId::MainColor, RenderResourceId::MainDepth, RenderResourceId::MainNormal, RenderResourceId::SceneObjectId },
         /* barrierAfter */ BarrierKind::Framebuffer
     },
@@ -225,7 +225,7 @@ static constexpr RenderPassContract kRenderPassContracts[] = {
         nullptr,
         "Three shadow lanes (terrain/mech/static-prop); counters live-read from inspectors.",
         /* reads[4]    */ {},
-        /* writes[4]   */ { RenderResourceId::ShadowDynamicMap },
+        /* writes[4]   */ { },
         /* barrierAfter */ BarrierKind::TextureFetch,
         // Depth-only pass: clears its depth target, and the resulting depth map
         // is SAMPLED by later geometry/post passes -> ShaderReadOnly final layout.
@@ -266,7 +266,7 @@ static constexpr RenderPassContract kRenderPassContracts[] = {
         "Water",
         "quad.cpp / renderWaterFastPath",
         /*viewUniformsBound*/        false,
-        /*pipelineDescRegistered*/   true,  // FRAMEGRAPH-STATEPACK-SKELETON-1: armed water fast path
+        /*pipelineDescRegistered*/   false, // native Vulkan water; GL pipeline retired
                                             // routes through applyPipeline(WaterArmed) in
                                             // gameos_graphics.cpp:3287. Was false — stale.
         /*snapshotRowAuthoritative*/ false,
@@ -294,7 +294,7 @@ static constexpr RenderPassContract kRenderPassContracts[] = {
         nullptr,
         "Composite chain after gos_RendererEndFrame: HZB/SSAO/screen-shadow/shoreline/godrays/composite. "
         "Samples GBuffer normal (sceneNormalTex_ / MainNormal) for SSAO, Shoreline, ScreenShadow, BoxDecals sub-stages.",
-        /* reads[4]    */ { RenderResourceId::MainColor, RenderResourceId::MainDepth, RenderResourceId::ShadowDynamicMap, RenderResourceId::MainNormal },
+        /* reads[4]    */ { RenderResourceId::MainColor, RenderResourceId::MainDepth, RenderResourceId::MainNormal },
         /* writes[4]   */ { RenderResourceId::MainColor },
         /* barrierAfter */ BarrierKind::Framebuffer,
         // Final on-screen pass -> color attachment ends in Present layout.
@@ -315,7 +315,7 @@ static constexpr RenderPassContract kRenderPassContracts[] = {
         "Vegetation##veg",
         "MC2_VEGETATION_CARDS",
         "Instanced crossed-quad billboards, alpha-discard; post-renderLists.",
-        /* reads[4]    */ { RenderResourceId::MainDepth, RenderResourceId::ShadowDynamicMap },
+        /* reads[4]    */ { RenderResourceId::MainDepth, },
         /* writes[4]   */ { RenderResourceId::MainColor, RenderResourceId::MainDepth },
         /* barrierAfter */ BarrierKind::Framebuffer
     },
@@ -377,9 +377,7 @@ static_assert(
 // ---------------------------------------------------------------------------
 // Logical dependency skeleton (RENDER-PASS-DAG-CONTRACT-1)
 // ---------------------------------------------------------------------------
-// kFramePassOrder encodes the LOGICAL dependency ordering of passes — Shadow must
-// produce ShadowDynamicMap before geometry reads it, etc. It is NOT a literal
-// "the order passes hit GL" timeline: the 2026-06-09 LOD-chunk terrain hoist moved
+// kFramePassOrder encodes logical observation order rather than the draw timeline: the 2026-06-09 LOD-chunk terrain hoist moved
 // the default terrain draw to gamecam.cpp:508 BEFORE renderLists(), so Terrain
 // actually fires before StaticPropOpaque at runtime (even though it is listed after
 // it here). This is a config-variable draw-site: LOD-chunk=Gamecam (pre-renderLists),
@@ -390,9 +388,8 @@ static_assert(
 // Do NOT reorder this array to match the LOD-chunk runtime sequence — that would
 // break the other three non-default branches whose draw-site IS renderLists.
 //
-// Shadow resolves FIRST inside renderLists() even though shadow-caster enqueue
-// happens after geometry enqueue — frameBegin() pre-seeds ShadowDynamicMap to
-// paper over that. Edges are DERIVED from reads[]/writes[] against this order
+// Native shadow image barriers belong to the Vulkan island. Remaining resource
+// edges are derived from reads[]/writes[] against this order
 // (see render_pass_table_harness), not stored per-row, to avoid a second source
 // of truth that can rot.
 static constexpr RenderPassId kFramePassOrder[] = {

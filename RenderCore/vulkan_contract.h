@@ -149,9 +149,6 @@ static constexpr VkResourceContract kVkResourceContracts[] = {
     { RenderResourceId::MainNormal, RenderResourceKind::Texture2D,
       VkDescriptorClass::CombinedImageSampler, VkResourceFreq::PerFrame,
       "GBuffer1 normal (attach1); sampled by SSAO/Shoreline/ScreenShadow/BoxDecals" },
-    { RenderResourceId::ShadowDynamicMap, RenderResourceKind::Texture2D,
-      VkDescriptorClass::CombinedImageSampler, VkResourceFreq::PerFrame,
-      "dynamic shadow depth; sampled by StaticProp/Terrain/Mech/PostProcess (compare sampler)" },
 
     // --- POSTPROCESS-VK-IMAGE-OWNERSHIP-1: Layer-4 subgraph owned intermediate images ---
     // The subgraph owns a COLOR and a DEPTH intermediate. Only the DEPTH image is a
@@ -255,7 +252,7 @@ constexpr int vkCountByClass(VkDescriptorClass c) {
 // Compile-time guards (fire at build time, not just test run) — mirrors
 // RenderPassContract.h's static_assert(kRenderPassContractCount == ...).
 // ---------------------------------------------------------------------------
-static_assert(kVkResourceContractCount == 17,
+static_assert(kVkResourceContractCount == 16,
               "kVkResourceContracts row count changed; update the slice-1 total or re-review "
               "(POSTPROCESS-VK-IMAGE-OWNERSHIP-1 added PostprocessSubgraphDepth; the sibling "
               "PostprocessSubgraphColor is intentionally NOT a descriptor row — see note above)");
@@ -267,7 +264,7 @@ static_assert(vkCountByClass(VkDescriptorClass::UniformBuffer) == 1,
               "expected 1 UniformBuffer row (ViewUniformsUbo; CullUBO not enum-backed)");
 static_assert(vkCountByClass(VkDescriptorClass::StorageBuffer) == 11,
               "expected 11 StorageBuffer rows (inventory Part-1 live owned SSBOs, enum-backed)");
-static_assert(vkCountByClass(VkDescriptorClass::CombinedImageSampler) == 5,
+static_assert(vkCountByClass(VkDescriptorClass::CombinedImageSampler) == 4,
               "expected 5 CombinedImageSampler rows (inventory Part-2 sampled FBO images + "
               "the subgraph-owned PostprocessSubgraphDepth, enum-backed)");
 

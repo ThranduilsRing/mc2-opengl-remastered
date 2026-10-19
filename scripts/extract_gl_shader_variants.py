@@ -740,6 +740,14 @@ def _merged_material_src(core: Src, hdr: Src) -> Src:
     return s
 
 
+def material_tess_shaders(text):
+    """Read the finite material-loader tessellation condition, including one remaining shader."""
+    m = re.search(r'if\s*\((\s*strcmp\(shader,\s*"\w+"\)\s*==\s*0(?:\s*\|\|\s*strcmp\(shader,\s*"\w+"\)\s*==\s*0)*)\s*\)', text)
+    if not m:
+        raise ExtractError("material tessellation condition changed; update extractor")
+    return set(re.findall(r'strcmp\(shader,\s*"(\w+)"\)', m.group(1)))
+
+
 def collect_materials(world: World, out: list):
     p = GAMEOS / "gameos_graphics.cpp"
     s = _merged_material_src(world.src(p), world.src(GAMEOS / "gameos_graphics_material_internal.h"))
@@ -765,8 +773,7 @@ def collect_materials(world: World, out: list):
     # extra material loads with an empty flag set
     extra = sorted(set(re.findall(r'gosRenderMaterial::load\(\s*"(\w+)"', s.t)))
     # tess shaders
-    m = re.search(r'if\s*\(\s*strcmp\(shader,\s*"(\w+)"\)\s*==\s*0\s*\|\|\s*strcmp\(shader,\s*"(\w+)"\)\s*==\s*0', s.t)
-    tess = {m.group(1), m.group(2)}
+    tess = material_tess_shaders(s.t)
     # the variation composer
     fn = re.search(r"void\s+getMaterialVariation\s*\([^)]*\)\s*\{", s.t)
     fo = fn.end() - 1

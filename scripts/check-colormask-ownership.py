@@ -24,18 +24,13 @@ BINDER = ROOT / "GameOS" / "gameos" / "pipeline_binder.cpp"
 # Composite re-opts-in: (the beginScene all-TRUE keystone heals
 # its set-only leak each frame). This checker is the black-frame guard: an opted-in row
 # masking color0 (the scene color attachment) OFF would draw black -> FAIL.
-# The whole PostProcess-phase family opts in. Each modulates
+# The surviving GL composite and SSAO rows opt in. Each modulates
 # the scene color attachment (color0) only; registry rows are {true,false,false} so color0
 # stays true (no black frame) and 1/2 OFF protects the GBuffer. Keep in sync with
 # rowOwnsColorMask() in pipeline_binder.cpp.
 OPTED_IN = {
     "PostProcessComposite",
     "PostProcessSsaoApply",
-    "PostProcessScreenShadow",
-    "PostProcessCloudShadow",
-    "PostProcessShoreline",
-    "PostProcessEdgeFog",
-    "PostProcessFogOob",
 }
 
 ROW_HEADER = re.compile(r"//\s*\[(\d+)\]\s*([A-Za-z]\w+)\b")
@@ -59,6 +54,17 @@ def parse_color_attachments(text: str) -> dict[str, tuple[str, str, str]]:
     return found
 
 
+def validate_native_color_mask(text: str) -> list[str]:
+    code = re.sub(r"/\*.*?\*/|//[^\n]*", "", text, flags=re.S)
+    match = re.search(r"\bcba\.colorWriteMask\s*=\s*([^;]+);", code)
+    bits = set(re.findall(r"VK_COLOR_COMPONENT_[RGBA]_BIT", match[1])) if match else set()
+    expected = {"VK_COLOR_COMPONENT_" + c + "_BIT" for c in "RGBA"}
+    fails = [] if bits == expected else ["native post pipeline must write scene RGBA"]
+    if not re.search(r"\bcb\.attachmentCount\s*=\s*1\s*;", code):
+        fails.append("native post pipeline must bind only scene color0")
+    return fails
+
+
 def main() -> int:
     quiet = "--quiet" in sys.argv
     if not REGISTRY.exists():
@@ -76,6 +82,9 @@ def main() -> int:
                          f"rowOwnsColorMask — OPTED_IN out of sync")
 
     fails = []
+    for filename in ["vulkan_post_screenfx_native.cpp", "vulkan_post_fog_native.cpp"]:
+        source = ROOT / "GameOS/gameos" / filename
+        fails.extend(filename + ": " + f for f in validate_native_color_mask(source.read_text(encoding="utf-8")))
     for name in OPTED_IN:
         att = found.get(name)
         if att is None:

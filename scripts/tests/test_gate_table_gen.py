@@ -1,6 +1,7 @@
 """tools/gate_table_gen.py and tools/gate_registry_gen.py: index rendering, the derived registry rows and yaml,
 and the stage-A checks; scripts/gate_table_reader.py: the JSON reader the Python tools share."""
 import json
+from pathlib import Path
 import os
 import sys
 
@@ -209,3 +210,35 @@ def test_enum_names_are_emitted_and_checked_against_the_table():
         grg.patch_header(HEADER.replace("// MC2_B_GATE", "// MC2_SOMETHING_ELSE"), ents)
     with pytest.raises(SystemExit):
         grg.patch_header(HEADER.replace("    B = 1,   // MC2_B_GATE\n", ""), ents)
+
+
+def test_declared_retirement_keeps_the_seed_historical(tmp_path):
+    root = _tree(tmp_path)
+    tools_dir = tmp_path / "tools"
+    tools_dir.mkdir()
+    (tools_dir / "gate_table.seed.json").write_text(json.dumps({"gates": [{"name": "MC2_RETIRED"}]}), encoding="utf-8")
+    assert any("seed gate" in f for f in tg.check(root))
+    (tmp_path / "Gates" / "retired_names.json").write_text('["MC2_RETIRED"]', encoding="utf-8")
+    assert not any("seed gate" in f for f in tg.check(root))
+
+
+def test_retired_name_cannot_remain_a_live_gate(tmp_path):
+    root = _tree(tmp_path)
+    tools_dir = tmp_path / "tools"
+    tools_dir.mkdir()
+    (tools_dir / "gate_table.seed.json").write_text(json.dumps({"gates": [{"name": "MC2_A"}]}), encoding="utf-8")
+    (tmp_path / "Gates" / "retired_names.json").write_text('["MC2_A"]', encoding="utf-8")
+    assert any("retired gate(s) still" in f for f in tg.check(root))
+
+
+def test_linked_worktree_check_build_stays_inside_lane(tmp_path, monkeypatch):
+    # Git metadata may live in a different checkout: never use it for builds.
+    outside = tmp_path / "other_checkout" / ".git" / "gate_build"
+    monkeypatch.setattr(tg.subprocess, "run", lambda *a, **kw: type("Result", (), {
+        "returncode": 0, "stdout": str(outside)})())
+    root = tmp_path / "lane"
+    result = Path(tg.persistent_build_dir(str(root)))
+    assert result.is_relative_to(root)
+    assert result.is_dir()
+    assert tg.persistent_build_dir(str(root)) == str(result)
+    assert not outside.exists()
