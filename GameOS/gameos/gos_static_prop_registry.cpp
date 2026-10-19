@@ -1,4 +1,5 @@
 #include "gos_static_prop_registry_internal.h"
+#include "../../mclib/texture_assets.h"
 
 namespace GpuStaticPropRegistry {
 const bool s_trace = mc2::gate::get<"MC2_STATIC_PROP_TRACE">();
@@ -248,11 +249,11 @@ static void releasePinsForRange(RecipeRange& rng) {
     if (rng.pinsReleased) return;
     if (mcTextureManager) {
         for (DWORD nodeIdx : rng.pinnedTextureNodes) {
-            mcTextureManager->unpinNode(nodeIdx);
+            mc2::textures::unpin(nodeIdx);
             ++s_totalUnpinCalls;
             TEX_LC_PIN("event=unpin nodeIdx=%lu refcount=%lu",
                        (unsigned long)nodeIdx,
-                       (unsigned long)mcTextureManager->getPinCount(nodeIdx));
+                       (unsigned long)mc2::textures::pinCount(nodeIdx));
         }
     }
     rng.pinnedTextureNodes.clear();
@@ -485,12 +486,12 @@ int32_t registerRecipe(TG_MultiShape* multi,
         for (long j = 0; j < numTex; ++j) {
             const DWORD nodeIdx = multi->GetTextureHandle(j);
             if (nodeIdx != 0xffffffff) {
-                mcTextureManager->pinNode(nodeIdx);
+                mc2::textures::pin(nodeIdx);
                 storedRng.pinnedTextureNodes.push_back(nodeIdx);
                 ++s_totalPinCalls;
                 TEX_LC_PIN("event=pin nodeIdx=%lu refcount=%lu regIdx=%d multi=%p",
                            (unsigned long)nodeIdx,
-                           (unsigned long)mcTextureManager->getPinCount(nodeIdx),
+                           (unsigned long)mc2::textures::pinCount(nodeIdx),
                            regIdx, (void*)multi);
             }
         }

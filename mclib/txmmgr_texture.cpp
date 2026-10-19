@@ -1,6 +1,7 @@
 // MC_TextureManager: texture load/save/copy and MC_TextureNode (KTX route-2 and compressed upload).
 // Declared in the class headers; shared names in txmmgr_internal.h.
 #include "txmmgr_internal.h"
+#include "texture_assets.h"
 #include "mc2fmt.h"
 #include "../RenderCore/TextureService.h"
 #include <algorithm>
@@ -1044,3 +1045,34 @@ DWORD MC_TextureNode::get_gosTextureHandle (void)	//If texture is not in VidRAM,
 		}
 	}
 }
+
+namespace mc2::textures {
+DWORD load(const char* path, gos_TextureFormat format, DWORD hints, DWORD variant, DWORD lifetime) {
+    return mcTextureManager->loadTexture(path,format,hints,variant,lifetime);
+}
+DWORD findAndRetain(const char* path, gos_TextureFormat format, DWORD hints, DWORD variant, DWORD lifetime) {
+    return mcTextureManager->textureInstanceExists(path,format,hints,variant,lifetime);
+}
+DWORD retain(DWORD asset) { return mcTextureManager->copyTexture(asset); }
+void release(DWORD asset) { if (mcTextureManager) mcTextureManager->releaseNode(asset); }
+DWORD sourceId(DWORD asset) { return mcTextureManager->get_gosTextureHandle(asset); }
+DWORD fromPixels(DWORD* pixels, gos_TextureFormat format, DWORD hints, DWORD width, DWORD bytesPerPixel) {
+    return mcTextureManager->textureFromMemory(pixels,format,hints,width,bytesPerPixel);
+}
+DWORD fromRawPixels(DWORD* pixels, gos_TextureFormat format, DWORD hints, DWORD width, DWORD bytesPerPixel) {
+    return mcTextureManager->textureFromMemoryRaw(pixels,format,hints,width,bytesPerPixel);
+}
+long save(DWORD asset,const char* path) { return mcTextureManager->saveTexture(asset,path); }
+long refresh(const char* match,long& missing) { return mcTextureManager->refreshTexturesByName(match,missing); }
+DWORD uvScale(DWORD asset) { return mcTextureManager->getUVScale(asset); }
+bool logicalSize(DWORD asset,DWORD& w,DWORD& h) { return mcTextureManager->tryGetTextureLogicalSize(asset,w,h); }
+const char* name(DWORD asset) { return mcTextureManager->getTextureName(asset); }
+bool isDecoded(DWORD asset) { return mcTextureManager->isTextureNodeResident(asset); }
+void setSessionLifetime(DWORD asset,DWORD value) { mcTextureManager->setTextureNeverFlush(asset,value); }
+void pin(DWORD asset) { mcTextureManager->pinNode(asset); }
+void unpin(DWORD asset) { mcTextureManager->unpinNode(asset); }
+DWORD pinCount(DWORD asset) { return mcTextureManager->getPinCount(asset); }
+uint64_t uiId(DWORD asset) { return mcTextureManager->getUiTextureId(asset); }
+std::shared_ptr<const RenderCore::KtxImage> image(DWORD asset) { return mcTextureManager->textureImage(asset); }
+DWORD storageWidth(DWORD asset) { return mcTextureManager->getWidth(asset); }
+} // namespace mc2::textures

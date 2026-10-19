@@ -1,6 +1,7 @@
 // GpuStaticPropBatcher: StaticPropViewToShaderMode, onMapLoad, setMissionForIbl, onMapUnload, registerType and registerMultiShape.
 // Declared in the class headers; shared names in gos_static_prop_batcher_internal.h.
 #include "gos_static_prop_batcher_internal.h"
+#include "../../mclib/texture_assets.h"
 #include "mc2fmt.h"
 
 
@@ -142,7 +143,7 @@ void GpuStaticPropBatcher::onMapUnload() {
     // Idempotent via vector clear — rebuild populates fresh on next finalize.
     if (mcTextureManager) {
         for (DWORD nodeIdx : s_coalescePinnedNodes) {
-            mcTextureManager->unpinNode(nodeIdx);
+            mc2::textures::unpin(nodeIdx);
         }
     }
     s_coalescePinnedNodes.clear();

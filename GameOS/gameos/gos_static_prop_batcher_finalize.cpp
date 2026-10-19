@@ -1,6 +1,7 @@
 // GpuStaticPropBatcher: GpuStaticPropBatcher::finalizeGeometry -- the orchestrator and every phase except the texture arrays.
 // Declared in the class headers; shared names in gos_static_prop_batcher_internal.h.
 #include "gos_static_prop_batcher_internal.h"
+#include "../../mclib/texture_assets.h"
 #include <cstring>
 #include "gos_static_prop_finalize_frame.h"
 #include "vulkan_color_prop_island.h"   // mc2_static_prop_geometry_cpu
@@ -607,13 +608,13 @@ void GpuStaticPropBatcher::buildPerPacketDrawTables(StaticPropFinalizeFrame& f) 
                                     src->listOfTextures[pkt.textureSlot].mcTextureNodeIndex;
                                 inv.nodeIdx = static_cast<uint32_t>(nodeIdx);
                                 if (mcTextureManager && nodeIdx != 0xFFFFFFFFu) {
-                                    const char* nm = mcTextureManager->getTextureName(nodeIdx);
+                                    const char* nm = mc2::textures::name(nodeIdx);
                                     if (nm && *nm) {
                                         mc2::fmt::to_buf_n(inv.textureName, sizeof(inv.textureName), "{}", mc2::fmt::safe(nm));
                                     } else {
                                         mc2::fmt::to_buf_n(inv.textureName, sizeof(inv.textureName), "(unnamed)");
                                     }
-                                    const DWORD w = mcTextureManager->getWidth(nodeIdx);
+                                    const DWORD w = mc2::textures::storageWidth(nodeIdx);
                                     if (w != 0xFFFFFFFFu) {
                                         inv.textureWidth  = static_cast<uint32_t>(w);
                                         inv.textureHeight = static_cast<uint32_t>(w);

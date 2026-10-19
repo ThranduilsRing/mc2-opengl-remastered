@@ -7,6 +7,7 @@ MechListBox.cpp			: Implementation of the MechListBox component.
 \*************************************************************************************************/
 
 #include <cstdio>
+#include "../mclib/texture_assets.h"
 #include "Gates/gate.h"
 #include <cstdlib>
 #include"mechlistbox.h"
@@ -519,7 +520,7 @@ void MechListBox::initIcon( LogisticsMech* pMech, aObject& mechIcon )
 	DWORD atlasW = 0, atlasH = 0;
 	float fileW = 256.f, fileH = 256.f;
 	if ( mcTextureManager &&
-	     mcTextureManager->tryGetTextureLogicalSize( mechIcon.getTextureHandle(), atlasW, atlasH ) )
+	     mc2::textures::logicalSize( mechIcon.getTextureHandle(), atlasW, atlasH ) )
 	{
 		if ( atlasW > 0 ) fileW = (float)atlasW;
 		if ( atlasH > 0 ) fileH = (float)atlasH;

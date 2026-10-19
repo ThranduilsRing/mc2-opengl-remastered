@@ -1,6 +1,7 @@
 // GpuMechBatcher: the VK island feed accessors, the render-snapshot compare and the extern C tuning / debug setters and getters.
 // Declared in the class headers; shared names in gos_mech_batcher_internal.h.
 #include "gos_mech_batcher_internal.h"
+#include "../../mclib/texture_assets.h"
 #include "mc2fmt.h"
 #include "../../RenderCore/FramePackets.h"
 #include "gos_terrain_lighting.h"      // GetObjectLightPoolParams
@@ -186,7 +187,7 @@ extern "C" uint32_t gos_getMechShadowInstDrawn() {
 }
 extern "C" const char* gos_getMechTextureNameByNodeIdx(uint32_t nodeIdx) {
     if (nodeIdx == 0xFFFFFFFFu || !mcTextureManager) return nullptr;
-    return mcTextureManager->getTextureName((DWORD)nodeIdx);
+    return mc2::textures::name((DWORD)nodeIdx);
 }
 
 // MECH-NORMALS-FIX-1: runtime getter/setter API for the normals mode and

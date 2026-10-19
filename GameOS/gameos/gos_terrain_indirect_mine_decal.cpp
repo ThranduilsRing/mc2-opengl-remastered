@@ -1,5 +1,6 @@
 // Native mine bake and cement overlay producer. Texture data stays in the shared GOS cache.
 #include "gos_terrain_indirect_internal.h"
+#include "../../mclib/texture_assets.h"
 #include "mc2fmt.h"
 #include "texture_decode.h"
 
@@ -445,9 +446,9 @@ void BuildDecalStaticVBO() {
             if (MC2_OverlayTileHiresSize() > 0)
             {
                 DWORD ovLogicalW = 0, ovLogicalH = 0;
-                if (mcTextureManager->tryGetTextureLogicalSize(overlayHandle, ovLogicalW, ovLogicalH))
+                if (mc2::textures::logicalSize(overlayHandle, ovLogicalW, ovLogicalH))
                 {
-                    const DWORD ovEdge = ovLogicalW * mcTextureManager->getUVScale(overlayHandle);
+                    const DWORD ovEdge = ovLogicalW * mc2::textures::uvScale(overlayHandle);
                     if (ovEdge > 0)
                     {
                         tileMinU = tileMinV = 0.5f / (float)ovEdge;

@@ -1,6 +1,7 @@
 // Mover: Mover::loadGameSystem, set, init and release.
 // Declared in mover.h; shared names in mover_internal.h.
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
+#include "../mclib/texture_assets.h"
 #include "mover_internal.h"
 #include "mc2fmt.h"
 
@@ -551,7 +552,7 @@ void Mover::init (bool create) {
 		FullPathFileName path;
 		path.init( artPath, "blip", ".tga" );
 		
-		holdFireIconHandle = mcTextureManager->loadTexture( path, gos_Texture_Alpha, gosHint_DisableMipmap | gosHint_DontShrink );
+		holdFireIconHandle = mc2::textures::load( path, gos_Texture_Alpha, gosHint_DisableMipmap | gosHint_DontShrink );
 	}
 }
 

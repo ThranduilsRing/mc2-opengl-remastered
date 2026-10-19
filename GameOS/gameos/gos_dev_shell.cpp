@@ -4,6 +4,7 @@
 // request gets an error reply; an oversized request drops the connection.
 
 #include "gos_dev_shell.h"
+#include "../../mclib/texture_assets.h"
 
 #ifdef _WIN32
 #include <winsock2.h>
@@ -312,7 +313,7 @@ std::string cmdTextureRefresh(const std::string& req)
     if (name.empty()) return makeReply(false, "texture_refresh: missing name (substring of texture path)", "");
     if (!mcTextureManager) return makeReply(false, "texture_refresh: texture manager not initialized yet", "");
     long skippedNoFile = 0;
-    const long refreshed = mcTextureManager->refreshTexturesByName(name.c_str(), skippedNoFile);
+    const long refreshed = mc2::textures::refresh(name.c_str(), skippedNoFile);
     return makeReply(true, "",
         "{\"refreshed\":" + std::to_string(refreshed)
         + ",\"skipped_no_file\":" + std::to_string(skippedNoFile)

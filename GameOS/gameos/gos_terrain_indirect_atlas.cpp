@@ -1,6 +1,7 @@
 // gos_terrain_indirect: dense recipe storage, recipe slot build/flush, colormap atlas and cement catalog atlas upload.
 // Declared in the class headers; shared names in gos_terrain_indirect_internal.h.
 #include "gos_terrain_indirect_internal.h"
+#include "../../mclib/texture_assets.h"
 #include "mc2fmt.h"
 #include "terrain_field_store.h"
 
@@ -383,7 +384,7 @@ void BuildCementCatalogAtlas() {
             }
             continue;
         }
-        auto image = mcTextureManager->textureImage(nodeIdx);
+        auto image = mc2::textures::image(nodeIdx);
         if (!image || image->width != txmSize || image->height != txmSize ||
             image->vkFormat != 37 || image->pixels.size() != size_t(txmSize) * txmSize * 4) continue;
         // Record-but-don't-break past atlas budget cap: we still want the
@@ -417,7 +418,7 @@ void BuildCementCatalogAtlas() {
             if (!tt->isAlpha((DWORD)slot)) continue;   // alpha/transition slots only
             const DWORD nodeIdx = tt->peekTextureHandle((DWORD)slot);
             if (nodeIdx == 0xffffffffu || nodeIdx >= (DWORD)MC_MAXTEXTURES) { ++alphaSkipped; continue; }
-            auto image = mcTextureManager->textureImage(nodeIdx);
+            auto image = mc2::textures::image(nodeIdx);
             if (!image || image->width != txmSize || image->height != txmSize ||
                 image->vkFormat != 37 || image->pixels.size() != size_t(txmSize) * txmSize * 4) { ++alphaSkipped; continue; }
             if (cementNodeIndices.size() >= 1024) { truncated = true; ++alphaSkipped; continue; }

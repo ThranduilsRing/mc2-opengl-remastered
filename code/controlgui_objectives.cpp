@@ -1,4 +1,5 @@
 #include "../GameOS/gameos/ui_texture.h"
+#include "../mclib/texture_assets.h"
 // ControlGui: objective start, results, the ImGui objectives / timer / video panels and the legacy objective rows.
 // Declared in the class headers; shared names in controlgui_internal.h.
 #include "controlgui_internal.h"
@@ -254,13 +255,13 @@ void ControlGui::renderObjectivesImGui()
 	if ( !s_frameTried )
 	{
 		s_frameTried = true;
-		s_frameMcH = mcTextureManager->loadTexture(
+		s_frameMcH = mc2::textures::load(
 			"data\\art\\gui\\mc2_obj_frame.png", gos_Texture_Alpha, 0, 0, 0x1 );
 	}
 	uint64_t s_frameGlTex = 0;
 	if ( s_frameMcH )
 	{
-		DWORD gosID = mcTextureManager->get_gosTextureHandle( s_frameMcH );
+		DWORD gosID = mc2::textures::sourceId( s_frameMcH );
 		if ( gosID && gosID != 0xffffffff )
 			s_frameGlTex = gos_GetUiTextureId( gosID );
 	}
@@ -297,7 +298,7 @@ void ControlGui::renderObjectivesImGui()
 	// legacy status tiles (PrimaryObjBox/Check/X StaticInfos): AddImage from
 	// their atlas with the UVs StaticInfo::init resolved into the vertices.
 	auto StaticTile = [&]( StaticInfo& st, float axPos, float ayPos ){
-		DWORD gosID = mcTextureManager->get_gosTextureHandle( st.textureHandle );
+		DWORD gosID = mc2::textures::sourceId( st.textureHandle );
 		if ( !gosID || gosID == 0xffffffff )
 			return;
 		uint64_t glTex = gos_GetUiTextureId( gosID );
@@ -519,7 +520,7 @@ void ControlGui::renderTimerImGui( const char* buffer, unsigned long color )
 	for ( long i = 0; i < timerInfoCount; i++ )
 	{
 		StaticInfo& st = timerInfos[i];
-		DWORD gosID = mcTextureManager->get_gosTextureHandle( st.textureHandle );
+		DWORD gosID = mc2::textures::sourceId( st.textureHandle );
 		if ( !gosID || gosID == 0xffffffff )
 			continue;
 		uint64_t glTex = gos_GetUiTextureId( gosID );
@@ -578,7 +579,7 @@ void ControlGui::renderVideoImGui()
 	for ( int i = 0; i < videoInfoCount; i++ )
 	{
 		StaticInfo& st = videoInfos[i];
-		DWORD gosID = mcTextureManager->get_gosTextureHandle( st.textureHandle );
+		DWORD gosID = mc2::textures::sourceId( st.textureHandle );
 		if ( !gosID || gosID == 0xffffffff )
 			continue;
 		uint64_t glTex = gos_GetUiTextureId( gosID );

@@ -1,6 +1,7 @@
 // GpuStaticPropBatcher: the shared GPU buffer, ring, program-location, coalesce and static-draw state, the IBL helpers and the material and base-instance bookkeeping.
 // Declared in the class headers; shared names in gos_static_prop_batcher_internal.h.
 #include "gos_static_prop_batcher_internal.h"
+#include "../../mclib/texture_assets.h"
 #include "Gates/render_options.h"
 
 
@@ -829,7 +830,7 @@ void coalesceRollbackTexBuild(std::vector<DWORD>& tempPins) {
     staticPropReleaseBuckets();
     if (mcTextureManager) {
         for (DWORD nodeIdx : tempPins) {
-            mcTextureManager->unpinNode(nodeIdx);
+            mc2::textures::unpin(nodeIdx);
         }
     }
     tempPins.clear();
