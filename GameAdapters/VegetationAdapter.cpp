@@ -5,6 +5,7 @@
 // (mclib/) and engine-side headers (GameOS/gameos/).
 
 #include "VegetationAdapter.h"
+#include "vegetation_budget.h"
 #include "mc2_diag_verbose.h"
 #include "Gates/gate.h"
 
@@ -195,6 +196,7 @@ void GameAdapters::Vegetation::missionLoaded(Terrain* land, MissionMap* gameMap)
     const float originX = Terrain::mapTopLeft3d.x;
     const float originY = Terrain::mapTopLeft3d.y;   // max world-Y
     const float mapSpan = Terrain::worldUnitsMapSide;
+    const float gridStep = mc2::vegetation::placementStep(mapSpan, kGridStep, density, maxInst);
 
     std::vector<GosVegetation::Instance> instances;
     instances.reserve(static_cast<size_t>(maxInst));
@@ -210,17 +212,17 @@ void GameAdapters::Vegetation::missionLoaded(Terrain* land, MissionMap* gameMap)
     int instTriedTotal = 0, instRejWater = 0, instRejHard = 0, instRejNoneFringe = 0,
         instRejOverlay = 0, instRejSlope = 0;
 
-    // Walk the map in world-space steps of kGridStep.
+    // Walk the map in world-space steps of gridStep.
     // wy decreases (southward) because MissionMap row increases as Y decreases.
-    for (float wy = originY - kGridStep * 0.5f;
-         wy > (originY - mapSpan + kGridStep);
-         wy -= kGridStep)
+    for (float wy = originY - gridStep * 0.5f;
+         wy > (originY - mapSpan + gridStep);
+         wy -= gridStep)
     {
         if (static_cast<int>(instances.size()) >= maxInst) break;
 
-        for (float wx = originX + kGridStep * 0.5f;
-             wx < (originX + mapSpan - kGridStep);
-             wx += kGridStep)
+        for (float wx = originX + gridStep * 0.5f;
+             wx < (originX + mapSpan - gridStep);
+             wx += gridStep)
         {
             if (static_cast<int>(instances.size()) >= maxInst) break;
 
@@ -275,8 +277,8 @@ void GameAdapters::Vegetation::missionLoaded(Terrain* land, MissionMap* gameMap)
             const float mapHalf = mapSpan * 0.5f;
 
             // Jitter clump centre by half grid step — breaks visible 32 WU rows.
-            const float jx = (hashf(wx * 0.017f, wy * 0.013f + 1234.0f) - 0.5f) * kGridStep;
-            const float jy = (hashf(wy * 0.019f, wx * 0.023f + 5678.0f) - 0.5f) * kGridStep;
+            const float jx = (hashf(wx * 0.017f, wy * 0.013f + 1234.0f) - 0.5f) * gridStep;
+            const float jy = (hashf(wy * 0.019f, wx * 0.023f + 5678.0f) - 0.5f) * gridStep;
             const float clumpCx = wx + jx;
             const float clumpCy = wy + jy;
 
