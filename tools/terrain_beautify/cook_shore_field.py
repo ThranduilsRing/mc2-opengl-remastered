@@ -60,6 +60,11 @@ from mission_terrain_analyzer import (  # noqa: E402
     read_packets, locate_mapdata, extract_layers, read_water_elevation,
 )
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "mc2data"))
+from stock_missions import (  # noqa: E402
+    StockDataError, add_allow_nonstock_arg, verify_pak_from_args,
+)
+
 WORLD_UNITS_PER_VERTEX = 128.0
 FIELD_NAME = "shore_field.r16f"
 
@@ -251,6 +256,11 @@ def _vh_for(pak: Path, beauty_root: Path | None) -> Path:
 
 
 def cmd_cook(args) -> int:
+    try:
+        verify_pak_from_args(args, args.pak)
+    except StockDataError as e:
+        print(f"[shore-field] ERROR {e}", file=sys.stderr)
+        return 4
     pak = Path(args.pak)
     vh = Path(args.visual_height) if args.visual_height else _vh_for(pak, None)
     res = cook_field(pak, vh, **_tuning(args))
@@ -290,6 +300,11 @@ def cmd_all(args) -> int:
 
 
 def cmd_preview(args) -> int:
+    try:
+        verify_pak_from_args(args, args.pak)
+    except StockDataError as e:
+        print(f"[shore-field] ERROR {e}", file=sys.stderr)
+        return 4
     pak = Path(args.pak)
     if args.visual_height:
         vh = Path(args.visual_height)
@@ -320,6 +335,7 @@ def main() -> int:
 
     p = sub.add_parser("cook"); tuning(p)
     p.add_argument("--pak", required=True); p.add_argument("--visual-height"); p.add_argument("--out", required=True)
+    add_allow_nonstock_arg(p)
     p.set_defaults(fn=cmd_cook)
     p = sub.add_parser("all-missions"); tuning(p)
     p.add_argument("--missions-dir", required=True); p.add_argument("--beauty-root")
@@ -328,6 +344,7 @@ def main() -> int:
     p = sub.add_parser("preview"); tuning(p)
     p.add_argument("--pak", required=True); p.add_argument("--visual-height"); p.add_argument("--beauty-root")
     p.add_argument("--png", required=True); p.add_argument("--crop"); p.add_argument("--scale", type=int, default=1)
+    add_allow_nonstock_arg(p)
     p.set_defaults(fn=cmd_preview)
     args = ap.parse_args()
     return args.fn(args)
