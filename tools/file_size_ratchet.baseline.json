@@ -23,7 +23,7 @@
   "code/artlry.cpp": 1841,
   "code/bldng.cpp": 1691,
   "code/brain_special_dispatch.cpp": 2770,
-  "code/gamecam.cpp": 1614,
+  "code/gamecam.cpp": 1607,
   "code/gameobj.cpp": 2255,
   "code/infowindow.cpp": 1728,
   "code/logisticsdialog.cpp": 2148,
@@ -60,7 +60,7 @@
   "mclib/tgl.h": 1775,
   "shaders/terrain_lod_chunk.frag": 2096
  },
- "head": "7ffe6c175",
+ "head": "ba7766427",
  "per_dir": {
   "GameAdapters": {
    "files": 8,
@@ -69,7 +69,7 @@
    "max_lines": 485
   },
   "GameOS": {
-   "files": 359,
+   "files": 356,
    "files_over_1500": 6,
    "files_over_3000": 1,
    "max_lines": 3730
@@ -250,7 +250,7 @@
   }
  ],
  "total": {
-  "files": 1866,
+  "files": 1863,
   "files_over_1500": 46,
   "files_over_3000": 1,
   "max_lines": 3730

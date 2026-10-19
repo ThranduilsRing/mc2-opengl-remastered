@@ -52,13 +52,13 @@
    "LG03": 257,
    "LG04": 5,
    "LG05": 137,
-   "LG06": 494,
+   "LG06": 492,
    "LG07": 0,
-   "LG08": 235,
-   "LG09": 1660,
-   "LG10": 39,
+   "LG08": 232,
+   "LG09": 1552,
+   "LG10": 38,
    "LG11": 89,
-   "LG12a": 88,
+   "LG12a": 81,
    "LG12b": 30,
    "LG13": 316,
    "LG14": 61,
@@ -367,7 +367,7 @@
    "LG17": 1
   },
   "GameOS/gameos/gameos_graphics_bridge.cpp": {
-   "LG09": 15
+   "LG09": 11
   },
   "GameOS/gameos/gameos_graphics_capi.cpp": {
    "LG03": 8,
@@ -619,7 +619,7 @@
   },
   "GameOS/gameos/gos_postprocess.cpp": {
    "LG06": 1,
-   "LG09": 7,
+   "LG09": 3,
    "LG20": 4
   },
   "GameOS/gameos/gos_postprocess.h": {
@@ -780,7 +780,7 @@
    "LG06": 1
   },
   "GameOS/gameos/gos_terrain_indirect_atlas.cpp": {
-   "LG09": 44
+   "LG09": 41
   },
   "GameOS/gameos/gos_terrain_indirect_cement.cpp": {
    "LG05": 3,
@@ -788,31 +788,21 @@
    "LG10": 2,
    "LG16": 1
   },
-  "GameOS/gameos/gos_terrain_indirect_compute.cpp": {
-   "LG06": 1,
-   "LG09": 27
-  },
   "GameOS/gameos/gos_terrain_indirect_diag.cpp": {
    "LG06": 1,
    "LG09": 3
   },
   "GameOS/gameos/gos_terrain_indirect_dispatch.cpp": {
-   "LG09": 14,
-   "LG12a": 5
+   "LG09": 5
   },
   "GameOS/gameos/gos_terrain_indirect_internal.h": {
    "LG09": 1,
-   "LG10": 1,
-   "LG12a": 2
+   "LG10": 1
   },
   "GameOS/gameos/gos_terrain_indirect_mine_decal.cpp": {
    "LG08": 3,
    "LG09": 26,
    "LG12a": 1
-  },
-  "GameOS/gameos/gos_terrain_indirect_pack.cpp": {
-   "LG08": 2,
-   "LG09": 23
   },
   "GameOS/gameos/gos_terrain_lighting.cpp": {
    "LG03": 8,
@@ -828,15 +818,8 @@
    "LG05": 4,
    "LG13": 8
   },
-  "GameOS/gameos/gos_terrain_lod_chunk.cpp": {
-   "LG09": 4
-  },
   "GameOS/gameos/gos_terrain_lod_chunk.h": {
    "LG17": 2
-  },
-  "GameOS/gameos/gos_terrain_lod_chunk_draw.cpp": {
-   "LG09": 5,
-   "LG10": 1
   },
   "GameOS/gameos/gos_terrain_lod_chunk_feed.cpp": {
    "LG09": 7
@@ -845,10 +828,6 @@
    "LG05": 2,
    "LG06": 3,
    "LG11": 1
-  },
-  "GameOS/gameos/gos_terrain_lod_chunk_patch.cpp": {
-   "LG08": 1,
-   "LG09": 29
   },
   "GameOS/gameos/gos_terrain_lod_chunk_upload.cpp": {
    "LG09": 14,
@@ -963,7 +942,7 @@
    "LG09": 1
   },
   "GameOS/gameos/pipeline_binder.cpp": {
-   "LG06": 2
+   "LG06": 1
   },
   "GameOS/gameos/pipeline_binder.h": {
    "LG06": 1
@@ -4713,7 +4692,7 @@
    "LG20": 3
   }
  },
- "head": "8e4168d40",
+ "head": "ba7766427",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
