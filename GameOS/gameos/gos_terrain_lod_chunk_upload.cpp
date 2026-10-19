@@ -406,13 +406,12 @@ void gos_TerrainLodChunk_UploadWaterShoreSdf(const float* heights, int w, int h,
                                               float boundsTopLeftX, float boundsTopLeftY,
                                               float boundsSizeX, float boundsSizeY)
 {
-    mc2terrain::TerrainFieldStore* store = gos_TerrainFieldStore();
-    if (!store)
-        return;
-    const float* stored = store->waterShoreHeight().texels.data();
-    gos_TerrainLodChunk_UploadWaterShoreHeight(stored, w, h, boundsTopLeftX, boundsTopLeftY,
+    // Upload the caller's texels (never the store's own buffer: setWaterShoreHeight may
+    // reallocate it), then re-tag the stored copy as a real shore SDF.
+    gos_TerrainLodChunk_UploadWaterShoreHeight(heights, w, h, boundsTopLeftX, boundsTopLeftY,
                                                boundsSizeX, boundsSizeY);
-    store->setWaterShoreHeight(stored, w, h, mc2terrain::WaterShoreHeightKind::ShoreSdf);
+    if (mc2terrain::TerrainFieldStore* store = gos_TerrainFieldStore())
+        store->setWaterShoreHeight(heights, w, h, mc2terrain::WaterShoreHeightKind::ShoreSdf);
 }
 
 // WATER-SHORE-EDGE-1: single engine-wide resolution of the water shore-edge
