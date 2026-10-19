@@ -527,7 +527,6 @@ mat4 cubemapProjectionMatrix(const float zNear, const float zFar, const bool d3d
 mat4 lookAt(const vec3 &from, const vec3 &at);
 
 /** Converts a column-major 4x4 matrix to a row-major 4x4 matrix */
-mat4 glToD3DProjectionMatrix(const mat4 &m);
 
 /** Pegs the geometry to the far clipping plane. Useful for instance for skyboxes. */
 mat4 pegToFarPlane(const mat4 &m);

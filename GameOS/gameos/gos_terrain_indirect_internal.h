@@ -47,7 +47,6 @@ extern long g_viewContentEpoch;   // VIEW-EPOCH-DEDUPE-1 semantic view-content e
 
 #include <intrin.h>   // __rdtsc -- [LIGHT_COST_SPLIT v1]
 
-#include <GL/glew.h>
 
 // MC2 types — resolve relative path from GameOS/gameos/
 #include "../../mclib/terrain.h"

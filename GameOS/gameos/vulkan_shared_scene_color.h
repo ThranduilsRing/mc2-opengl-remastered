@@ -27,7 +27,6 @@
 
 #ifdef MC2_VULKAN_ISLAND
 
-#include <GL/glew.h>
 
 // Which scene GBuffer slot a shared-color owner backs (also the island lookup key).
 enum Mc2SharedSceneColorSlot {

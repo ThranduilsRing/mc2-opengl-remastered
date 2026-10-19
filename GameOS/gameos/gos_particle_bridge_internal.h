@@ -12,7 +12,6 @@
 #include "particles/batcher.h"  // GroupInfo
 
 #include <gameos.hpp>
-#include <GL/glew.h>
 #include "../../RenderCore/PipelineRegistry.h"  // VFX-APPLYPIPELINE-ROUTING-1
 #include "gos_postprocess.h"  // VFX-SOFT-PARTICLES-MVP-1: scene-depth copy + invViewProj
 #include "../../mclib/camera.h"  // VFX-LIT-PARTICLES-MVP-1: eye->light*/ambient* (same source as terrain)

@@ -18,7 +18,6 @@
 
 #ifdef MC2_VULKAN_ISLAND
 
-#include <GL/glew.h>
 
 // Opaque owner of the VK-only D32S8 image the islands share. The struct body lives
 // in the .cpp so no Vulkan header leaks into GL TUs. gos_postprocess holds a

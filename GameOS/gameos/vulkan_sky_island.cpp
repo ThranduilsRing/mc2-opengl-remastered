@@ -10,7 +10,6 @@
 #include <volk.h>
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"   // str<>()
-#include <GL/glew.h>
 
 #define VMA_STATIC_VULKAN_FUNCTIONS 0
 #define VMA_DYNAMIC_VULKAN_FUNCTIONS 0

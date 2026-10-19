@@ -28,7 +28,6 @@
 #include <type_traits>
 #include <vector>
 
-#include <GL/glew.h>  // glGetError, glGetIntegerv for Render() diagnostics
 
 #include "../GameOS/gameos/gos_render.h"
 #include "../GameOS/gameos/gos_input.h"

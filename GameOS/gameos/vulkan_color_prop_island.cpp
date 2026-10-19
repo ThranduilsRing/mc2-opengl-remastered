@@ -21,7 +21,6 @@
 
 #include <span>
 #include <volk.h>
-#include <GL/glew.h>
 #include "Gates/gate_cold.h"   // gate::get<>() and str<>()
 #include "vk_render_pass_timer.h"
 
@@ -63,13 +62,6 @@ extern const float* gos_GetTerrainMVPMat4();   // live camera matrix (matrix dia
 #include <algorithm>
 #include <tracy/Tracy.hpp>   // VK-FLIP-FIELD-REPORT-1: coarse per-region frame zones
 
-// VK-P11 STATIC-PROP MATERIAL: BC7 internalformat enums (fallback if GLEW headers lack).
-#ifndef GL_COMPRESSED_RGBA_BPTC_UNORM
-#define GL_COMPRESSED_RGBA_BPTC_UNORM        0x8E8C
-#endif
-#ifndef GL_COMPRESSED_SRGB_ALPHA_BPTC_UNORM
-#define GL_COMPRESSED_SRGB_ALPHA_BPTC_UNORM  0x8E8D
-#endif
 
 namespace {
 

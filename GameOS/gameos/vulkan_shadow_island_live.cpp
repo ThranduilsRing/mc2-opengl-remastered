@@ -39,7 +39,6 @@
 #endif
 
 #include <volk.h>
-#include <GL/glew.h>
 #include "Gates/gate.h"
 #include "vk_render_pass_timer.h"
 #include "Gates/gate_cold.h"   // str<>()

@@ -13,7 +13,6 @@
 #endif
 
 #include <volk.h>
-#include <GL/glew.h>
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"   // str<>()
 
