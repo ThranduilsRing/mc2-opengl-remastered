@@ -23,13 +23,15 @@ import sys
 import tempfile
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-CAMERA = os.path.join(REPO, "mclib", "camera_internal.h")   # the NIGHT_* defines moved there with the camera split
+CAMERA = os.path.join(REPO, "mclib", "camera_internal.h")   # the NIGHT_* constants moved there with the camera split
 HEADER = os.path.join(REPO, "GameOS", "gameos", "utils", "terrain_daylight.h")
 
-# camera.cpp: #define NIGHT_START_PITCH		(25.0f)
+# Camera constants retain the same values when a macro becomes constexpr.
 CAM_RE = {
-    "NIGHT_START_PITCH": re.compile(r"^\s*#define\s+NIGHT_START_PITCH\s*\(\s*([0-9.]+)f?\s*\)", re.M),
-    "NIGHT_LIGHT_PITCH": re.compile(r"^\s*#define\s+NIGHT_LIGHT_PITCH\s*\(\s*([0-9.]+)f?\s*\)", re.M),
+    name: re.compile(
+        rf"^\s*(?:#define\s+{name}\s+|(?:inline\s+)?constexpr\s+float\s+{name}\s*=\s*)"
+        r"\(\s*([0-9.]+)f?\s*\)", re.M)
+    for name in ("NIGHT_START_PITCH", "NIGHT_LIGHT_PITCH")
 }
 # header: constexpr float kNightStartDeg = 25.0f;
 HDR_RE = {
@@ -82,6 +84,25 @@ def self_test():
         return 1
     src = open(HEADER, encoding="utf-8").read()
     ok = True
+    hdr = extract(HEADER, HDR_RE, "terrain_daylight.h")
+    if hdr is None:
+        return 1
+    # Both declaration forms must stay readable and reject a changed camera value.
+    with tempfile.TemporaryDirectory() as directory:
+        path = os.path.join(directory, "camera.h")
+        for form in ("#define {} ({}f)", "inline constexpr float {} = ({}f);"):
+            for drift in (None, *cam):
+                text = "\n".join(form.format(name, value + (1 if name == drift else 0))
+                                 for name, value in cam.items())
+                with open(path, "w", encoding="utf-8") as fixture:
+                    fixture.write(text)
+                parsed = extract(path, CAM_RE, "injected camera")
+                rc = 1 if parsed is None else compare(parsed, hdr, quiet=True)
+                expected = int(drift is not None)
+                passed = parsed is not None and rc == expected
+                print(f"  self-test {form.split()[0]} {drift or 'clean'}: "
+                      f"{'PASS' if passed else 'FAIL'}")
+                ok = ok and passed
 
     for label, old, new in [
         ("kNightFullDeg drift",  "kNightFullDeg  = 10.0f",  "kNightFullDeg  = 12.0f"),
@@ -115,7 +136,7 @@ def self_test():
         ok = False
 
     print("check-terrain-daylight-constants --self-test: "
-          + ("PASS (green on tree, red on both injected drifts)" if ok else "FAIL"))
+          + ("PASS (green on both forms/tree, red on camera/header drifts)" if ok else "FAIL"))
     return 0 if ok else 1
 
 
