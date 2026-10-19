@@ -9,6 +9,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <map>
+#include <string_view>
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"
 #include "mc2fmt.h"
@@ -126,7 +127,7 @@ void computeGlobals(const aiNode* n, const aiMatrix4x4& parent,
 }
 
 // Map node name -> parent node name across the whole tree.
-void mapParents(const aiNode* n, const std::string& parent,
+void mapParents(const aiNode* n, std::string_view parent,
                 std::map<std::string, std::string>& out) {
     out[n->mName.C_Str()] = parent;
     for (unsigned i = 0; i < n->mNumChildren; ++i)
@@ -173,7 +174,7 @@ void BuildSkeleton(const aiScene* scene,
 }
 
 bool EvaluateClipGpuBones(const aiScene* scene,
-                          const std::string& clip,
+                          std::string_view clip,
                           float frame,
                           const std::vector<std::string>& boneNames,
                           std::vector<GpuBone>& out,
@@ -205,7 +206,7 @@ bool EvaluateClipGpuBones(const aiScene* scene,
         if (clipDiag) {
             static int miss = 0;
             if (miss++ < 12) {
-                mc2::fmt::print_err("[CLIP-DIAG] NOT FOUND clip='{}' (scene has {:d} anims; first few:", clip.c_str(), mc2::fmt::as_u32(scene->mNumAnimations));
+                mc2::fmt::print_err("[CLIP-DIAG] NOT FOUND clip='{}' (scene has {:d} anims; first few:", clip.substr(0, clip.find('\0')), mc2::fmt::as_u32(scene->mNumAnimations));
                 for (unsigned a = 0; a < scene->mNumAnimations && a < 4; ++a)
                     mc2::fmt::print_err(" '{}'", mc2::fmt::safe(scene->mAnimations[a]->mName.C_Str()));
                 mc2::fmt::print_err(")\n");
@@ -221,7 +222,7 @@ bool EvaluateClipGpuBones(const aiScene* scene,
     if (clipDiag) {
         static int hit = 0;
         if (hit++ < 12)
-            mc2::fmt::print_err("[CLIP-DIAG] FOUND clip='{}' frame={:.2f} t={:.2f} dur={:.2f} rotOnly={:d}\n", clip.c_str(), static_cast<double>(frame), t, anim->mDuration, mc2::fmt::as_i32(static_cast<int>(rotationOnlyEnabled())));
+            mc2::fmt::print_err("[CLIP-DIAG] FOUND clip='{}' frame={:.2f} t={:.2f} dur={:.2f} rotOnly={:d}\n", clip.substr(0, clip.find('\0')), static_cast<double>(frame), t, anim->mDuration, mc2::fmt::as_i32(static_cast<int>(rotationOnlyEnabled())));
     }
     if (outTimeTicks) *outTimeTicks = t;
     if (outDurTicks) *outDurTicks = anim->mDuration;
