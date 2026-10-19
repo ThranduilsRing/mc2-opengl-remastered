@@ -362,24 +362,6 @@ TEST_CASE("RendererFeatureRegistry TerrainTessellation is a default-ON killswitc
     CHECK(std::strcmp(e.envVar, "MC2_TERRAIN_TESS") == 0);
 }
 
-TEST_CASE("RendererFeatureRegistry Track V post/grounding gates are registered default-OFF") {
-    // Every experimental Track V visual gate
-    // MUST be a Feature-kind entry that defaults OFF, so a fresh checkout or a
-    // CI run never silently enables a visual feature. Promoting one to
-    // default-ON is a deliberate edit in RendererFeatureRegistry.h AND here --
-    // this guardrail trips on accidental flips and forces explicit review.
-    struct Row { RendererFeature f; const char* env; };
-    const Row trackV[] = {
-    };
-    for (const Row& r : trackV) {
-        const EnvVarDesc& e = kFeatureTable[static_cast<int>(r.f)];
-        CHECK((e.kind == EnvVarKind::Feature));
-        CHECK(e.defaultOn == false);
-        REQUIRE(e.envVar != nullptr);
-        CHECK(std::strcmp(e.envVar, r.env) == 0);
-    }
-}
-
 TEST_CASE("RendererFeatureRegistry Retired entries have Retired kind") {
     CHECK((kFeatureTable[static_cast<int>(RendererFeature::GpuMechs)].kind              == EnvVarKind::Retired));
     CHECK((kFeatureTable[static_cast<int>(RendererFeature::StaticPropIndirect)].kind   == EnvVarKind::Retired));

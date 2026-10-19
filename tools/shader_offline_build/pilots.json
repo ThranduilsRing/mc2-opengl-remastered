@@ -50,19 +50,6 @@
       ]
     },
     {
-      "program": "ssao",
-      "note": "SPIRV-POSTPROCESS-FAMILY-1: frag-only (postprocess.vert + ssao.frag, gos_postprocess.cpp:548). No material bindings.",
-      "stages": {
-        "frag": "shaders/ssao.frag"
-      },
-      "variants": [
-        {
-          "name": "default",
-          "defines": []
-        }
-      ]
-    },
-    {
       "program": "hzb_reduce",
       "note": "SPIRV-POSTPROCESS-FAMILY-1: frag-only (postprocess.vert + hzb_reduce.frag, gos_postprocess.cpp:607). No material bindings.",
       "stages": {
