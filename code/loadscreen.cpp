@@ -1,3 +1,4 @@
+#include "utils/mc2log.h"
 #define LOADSCREEN_CPP
 /*************************************************************************************************\
 LoadScreen.cpp			: Implementation of the LoadScreen component.
@@ -588,10 +589,10 @@ void ProgressTimer(	RECT& WinRect,DDSURFACEDESC2& mouseSurfaceDesc )
 		static int s_bannerTick = 0;
 		if ( (s_bannerTick++ % 30) == 0 )
 		{
-			if ( FILE* f = fopen("preview_debug.log","a") )
+			if ( bool f = mc2::log::enabled(mc2::log::Cat::Ui, mc2::log::Level::Info) )
 			{
-				mc2::fmt::print(f, "[LOAD-BANNER] ProgressTimer draw loadProgress={:.1f}\n", loadProgress);
-				fclose(f);
+				MC2_LOG(Ui, Info, "[LOAD-BANNER] ProgressTimer draw loadProgress={:.1f}", loadProgress);
+
 			}
 		}
 	}

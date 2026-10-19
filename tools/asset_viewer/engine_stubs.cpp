@@ -44,20 +44,8 @@
 // (1) Engine heap. TG shapes allocate with plain new; only the global
 //     `systemHeap` needs a CRT-backed stand-in.
 // ===========================================================================
-static UserHeapPtr systemHeapForSpike = nullptr;
 
-void InstallTglHeap()
-{
-    // mclib/file.cpp allocates the filename buffer from the global `systemHeap`
-    // (heap.cpp defaults it to NULL — the game's heap init normally fills it).
-    // Without it File::open dereferences NULL. Back it with a CRT UserHeap.
-    if (!systemHeap)
-    {
-        systemHeapForSpike = new UserHeap();
-        systemHeapForSpike->init(8u * 1024u * 1024u, "spikeSys", false);
-        systemHeap = systemHeapForSpike;
-    }
-}
+void InstallTglHeap() {}
 
 // ===========================================================================
 // (2) GameOS globals (normally defined in gameos.cpp / the platform layer).

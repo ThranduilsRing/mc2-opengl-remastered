@@ -145,7 +145,6 @@ extern NETMESSAGE ReceiveMsg;
 extern GameLog* CombatLog;
 extern GameLog* NetLog;
 extern bool LaunchedFromLobby;
-extern UserHeapPtr systemHeap;
 extern char* startupPakFile;
 extern void SortMoverList (long numMovers, MoverPtr* moverList, glm::vec3 dest);
 extern void killTheGame(void);

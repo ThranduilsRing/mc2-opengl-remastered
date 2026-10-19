@@ -1,3 +1,4 @@
+#include "Gates/preferences_legacy.h"
 //-------------------------------------------------------------------------------
 //
 // Tiny Geometry Layer
@@ -62,7 +63,6 @@ float g_previewBoundsMaxY = -1e9f;
 // (render gate / cull) apart from "not transformed".
 int   g_previewDrawTris = 0;
 bool drawOldWay = false;
-bool useLocalShadows = false;
 
 bool renderTGLShapes = true;
 

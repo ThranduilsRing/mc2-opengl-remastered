@@ -11,6 +11,7 @@
 // Include files
 #ifndef GAMESOUND_H
 #include"gamesound.h"
+#include "../gui/sound.h"
 
 #include"../GameOS/gameos/utils/mc2log.h"
 #endif
@@ -27,6 +28,11 @@
 
 //---------------------------------------------------------------------------
 GameSoundSystem *soundSystem = nullptr;
+namespace mc2::gui {
+void playSound(long sampleId) {
+    if (soundSystem) soundSystem->playDigitalSample(sampleId);
+}
+}
 
 bool friendlyDestroyed = false;
 bool enemyDestroyed = false;
@@ -42,7 +48,7 @@ void GameSoundSystem::purgeSoundSystem (void)
 	messagesInQueue = 0;
 	currentFragment = 0;
 	playingNoise = false;
-	radioHandle = nullptr;
+	gosAudio_DestroyResource(&radioHandle);
 	//------------------------------------------------------------
 	// dump the Radio Message Queue.
 	messagesInQueue = 0;
@@ -56,7 +62,7 @@ void GameSoundSystem::purgeSoundSystem (void)
 	// Toss everybody's radio.  This MUST happen AFTER
 	// all of the currently queued radio messages are dumped.
 	// The warriors are already gone (Mission::destroy shuts them down first), so free each Radio here,
-	// exactly once, while the Radio Heap is still alive.  Deleting the heap alone runs no destructor.
+	// exactly once, before releasing the packet files they referenced.
 	for (long i=0;i<MAX_RADIOS;i++)
 	{
 		delete Radio::radioList[i];
@@ -65,7 +71,6 @@ void GameSoundSystem::purgeSoundSystem (void)
 		Radio::messagesFile[i] = nullptr; 
 	}
 
-	Radio::radioHeap.reset();
 		
 	radioNoiseFile.reset();
 	Radio::noiseFile = nullptr;
@@ -184,6 +189,7 @@ void GameSoundSystem::removeCurrentMessage(void)
 	}
 
 	gosAudio_SetChannelPlayMode(RADIO_CHANNEL, gosAudio_Stop);
+	gosAudio_DestroyResource(&radioHandle);
 	wholeMsgDone = TRUE;
 }
 
@@ -273,6 +279,7 @@ long i;
 // damaged radio file silences that sample instead of reading past the buffer.
 bool GameSoundSystem::playClip (const RadioClip& clip)
 {
+	gosAudio_DestroyResource(&radioHandle);
 	if (!createWaveResource(&radioHandle,clip.bytes))
 		return false;
 	

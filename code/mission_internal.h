@@ -1,3 +1,4 @@
+#include "Gates/preferences_legacy.h"
 // Shared surface of the mission.cpp translation units (mission.cpp, mission_{update,movers,init}.cpp).
 //
 // mission.cpp keeps the mission globals, render, difficulty setup, start/destroy and the objective timers; the rest of
@@ -169,7 +170,6 @@ extern long MissionStartTime;
 extern Mission *mission;
 extern unsigned long scenarioResult;
 extern long scenarioEndTurn;
-extern long GameDifficulty;
 extern long MechSalvageChance;
 extern long globalPlayerSkills[4];;
 extern long globalPlayerWeapons[4];
@@ -186,7 +186,6 @@ extern glm::vec3 debugGVActorPosition;
 extern GameObjectFootPrint* tempSpecialAreaFootPrints;
 extern long tempNumSpecialAreas;
 extern DWORD ServerPlayerNum;
-extern bool useNonWeaponEffects;
 extern unsigned long elementHeapSize;
 extern unsigned long maxElements;
 extern unsigned long maxGroups;
@@ -199,12 +198,10 @@ extern long	CurMultiplayParam;
 extern bool quitGame;
 extern float MaxExtractUnitDistance;
 extern bool useFog;
-extern bool useShadows;
 extern bool inViewMode;
 extern unsigned long viewObject;
 extern float loadProgress;
 extern char TeamRelations[MAX_TEAMS][MAX_TEAMS];
-extern UserHeapPtr missionHeap;
 extern unsigned int MultiPlayTeamId;
 extern unsigned int MultiPlayCommanderId;
 extern bool useSensors;
@@ -230,9 +227,6 @@ extern long GameVisibleVertices;
 extern float BaseHeadShotElevation;
 extern bool DisplayCameraAngle;
 extern long MaxResourcePoints;
-extern long resolutionX;
-extern long resolutionY;
-extern long renderer;
 extern bool loadInMissionSave;
 extern bool saveInMissionSave;
 extern bool g_resaveAfterQuickload;

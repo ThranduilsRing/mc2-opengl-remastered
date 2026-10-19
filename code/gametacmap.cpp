@@ -1,3 +1,4 @@
+#include "Gates/preferences_legacy.h"
 #include "../GameOS/gameos/ui_texture.h"
 /*************************************************************************************************\
 gameTacMap.cpp			: Implementation of the gameTacMap component.
@@ -47,7 +48,6 @@ gameTacMap.cpp			: Implementation of the gameTacMap component.
 #include <stdint.h>   // intptr_t (ImTextureID cast)
 #include "Gates/gate.h"
 extern unsigned char godMode;
-extern bool useLeftRightMouseProfile;
 
 constexpr int SQUARE_BLIP = 0;
 constexpr int DOT_BLIP = 1;

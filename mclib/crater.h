@@ -64,8 +64,6 @@ class CraterManager
 	//-------------
 	protected:
 		
-		HeapManagerPtr		craterPosHeap;
-		UserHeapPtr			craterShpHeap;
 		
 		unsigned long		craterPosHeapSize;
 		unsigned long		craterShpHeapSize;
@@ -89,8 +87,6 @@ class CraterManager
 	
 		void init (void)
 		{
-			craterPosHeap = nullptr;
-			craterShpHeap = nullptr;
 
 			craterPosHeapSize = craterShpHeapSize = 0;
 			

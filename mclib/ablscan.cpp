@@ -309,18 +309,11 @@ extern ABLModulePtr	CurLibrary;
 // ABL FILE routines
 //***************************************************************************
 
-void* ABLFile::operator new (size_t ourSize) {
 
-	void* result = ::operator new(ourSize);
-	return(result);
-}
 
 //---------------------------------------------------------------------------
 
-void ABLFile::operator delete (void* us) {
 
-	::operator delete(us);
-}	
 
 //---------------------------------------------------------------------------
 

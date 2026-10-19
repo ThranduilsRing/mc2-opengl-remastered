@@ -92,37 +92,37 @@ void FireType::destroy (void)
 {
 	if (fireOffsetX) 
 	{
-		systemHeap->Free(fireOffsetX);
+		std::free(fireOffsetX);
 		fireOffsetX = nullptr;
 	}
 
 	if (fireOffsetY) 
 	{
-		systemHeap->Free(fireOffsetY);
+		std::free(fireOffsetY);
 		fireOffsetY = nullptr;
 	}
 	
 	if (fireDelay) 
 	{
-		systemHeap->Free(fireDelay);
+		std::free(fireDelay);
 		fireDelay = nullptr;
 	}
 
 	if (fireRandomOffsetX) 
 	{
-		systemHeap->Free(fireRandomOffsetX);
+		std::free(fireRandomOffsetX);
 		fireRandomOffsetX = nullptr;
 	}
 
 	if (fireRandomOffsetY) 
 	{
-		systemHeap->Free(fireRandomOffsetY);
+		std::free(fireRandomOffsetY);
 		fireRandomOffsetY = nullptr;
 	}
 
 	if (fireRandomDelay) 
 	{
-		systemHeap->Free(fireRandomDelay);
+		std::free(fireRandomDelay);
 		fireRandomDelay = nullptr;
 	}
 
@@ -633,7 +633,7 @@ void Carnage::finishNow (void)
 		if (pointLight)
 		{
 			eye->removeWorldLight(lightId,pointLight);
-			systemHeap->Free(pointLight);
+			std::free(pointLight);
 			pointLight = nullptr;
 		}
 
@@ -690,7 +690,7 @@ long Carnage::update (void)
 			{
 				// Explosion Has Point Light Source
 				// Make and Init it here.
-				pointLight = static_cast<TG_LightPtr>(systemHeap->Malloc(sizeof(TG_Light)));
+				pointLight = static_cast<TG_LightPtr>(std::malloc(sizeof(TG_Light)));
 				pointLight->init(TG_LIGHT_POINT);
 
 				pointLight->SetaRGB((static_cast<ExplosionTypePtr>(getObjectType()))->lightRGB);
@@ -707,7 +707,7 @@ long Carnage::update (void)
 				{
 					//NO LIGHT ALLOWED!  TOO Many in World!
 					// LightId is now -1 which will cause this to NEVER make a light!
-					systemHeap->Free(pointLight);
+					std::free(pointLight);
 					pointLight = nullptr;
 					duration = 0.0f;
 				}
@@ -754,7 +754,7 @@ long Carnage::update (void)
 			else
 			{
 				eye->removeWorldLight(lightId,pointLight);
-				systemHeap->Free(pointLight);
+				std::free(pointLight);
 				pointLight = nullptr;
 			}
 		}
@@ -797,7 +797,7 @@ long Carnage::update (void)
 				if (pointLight)
 				{
 					eye->removeWorldLight(lightId,pointLight);
-					systemHeap->Free(pointLight);
+					std::free(pointLight);
 					pointLight = nullptr;
 				}
 		
@@ -809,7 +809,7 @@ long Carnage::update (void)
 			if (pointLight)
 			{
 				eye->removeWorldLight(lightId,pointLight);
-				systemHeap->Free(pointLight);
+				std::free(pointLight);
 				pointLight = nullptr;
 			}
 
@@ -895,7 +895,7 @@ void Carnage::destroy (void)
 		{
 			if (eye)
 				eye->removeWorldLight(lightId,pointLight);
-			systemHeap->Free(pointLight);
+			std::free(pointLight);
 			pointLight = nullptr;
 		}
 	}

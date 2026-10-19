@@ -18,7 +18,6 @@
 
 #include<string.h>
 
-extern UserHeapPtr systemHeap;
 
 HGOSFONT3D GameDebugWindow::font = nullptr;
 long GameDebugWindow::fontHeight = 0;
@@ -27,18 +26,11 @@ long GameDebugWindow::fontHeight = 0;
 //	GAME DEBUG WINDOW class
 //***************************************************************************
 
-void* GameDebugWindow::operator new (size_t ourSize) {
 
-	void* result = systemHeap->Malloc(ourSize);
-	return(result);
-}
 
 //---------------------------------------------------------------------------
 
-void GameDebugWindow::operator delete (void* us) {
 
-	systemHeap->Free(us);
-}	
 
 //---------------------------------------------------------------------------
 

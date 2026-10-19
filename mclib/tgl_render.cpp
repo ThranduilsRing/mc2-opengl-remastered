@@ -1,3 +1,5 @@
+#include "mc2fmt.h"
+#include "utils/mc2log.h"
 // TG shapes: TG_Shape::Render, per-poly selection and the render-shape PBR override.
 // Declared in the class headers; shared names in tgl_internal.h.
 #include "tgl_internal.h"
@@ -190,16 +192,11 @@ void TG_Shape::Render (float forceZ, bool isHudElement, BYTE alphaValue, bool is
 					if ( !seen && s_seenCount < 64 )
 					{
 						s_seenNodes[s_seenCount++] = nodeIdx;
-						if ( FILE* f = fopen("preview_debug.log","a") )
+						if ( bool f = mc2::log::enabled(mc2::log::Cat::Render, mc2::log::Level::Info) )
 						{
 							const char* nm = mcTextureManager ? mcTextureManager->getTextureName(nodeIdx) : nullptr;
-							fprintf(f,"[PREVIEW-TEX] local=%ld node=%lu gosHandle=%lu alpha=%d name=%s\n",
-								static_cast<long>(triType.localTextureHandle),
-								static_cast<unsigned long>(nodeIdx),
-								static_cast<unsigned long>(materialTextures()[triType.localTextureHandle].gosTextureHandle),
-								static_cast<int>(materialTextures()[triType.localTextureHandle].textureAlpha),
-								nm ? nm : "(null)");
-							fclose(f);
+							MC2_LOG(Render, Info, "[PREVIEW-TEX] local={:d} node={:d} gosHandle={:d} alpha={:d} name={}", mc2::fmt::as_i32(static_cast<long>(triType.localTextureHandle)), mc2::fmt::as_u32(static_cast<unsigned long>(nodeIdx)), mc2::fmt::as_u32(static_cast<unsigned long>(materialTextures()[triType.localTextureHandle].gosTextureHandle)), mc2::fmt::as_i32(static_cast<int>(materialTextures()[triType.localTextureHandle].textureAlpha)), mc2::fmt::safe(nm ? nm : "(null)"));
+
 						}
 					}
 				}
@@ -211,14 +208,10 @@ void TG_Shape::Render (float forceZ, bool isHudElement, BYTE alphaValue, bool is
 					static int s_vlog = 0;
 					if ( (s_vlog++ % 500) < 3 )
 					{
-						if ( FILE* f = fopen("preview_debug.log","a") )
+						if ( bool f = mc2::log::enabled(mc2::log::Cat::Render, mc2::log::Level::Info) )
 						{
-							fprintf(f,"[PREVIEW] drawOldWay vtx (%.1f,%.1f,%.4f) (%.1f,%.1f,%.4f) (%.1f,%.1f,%.4f) argb=%08X\n",
-								gVertex[0].x,gVertex[0].y,gVertex[0].z,
-								gVertex[1].x,gVertex[1].y,gVertex[1].z,
-								gVertex[2].x,gVertex[2].y,gVertex[2].z,
-								gVertex[0].argb);
-							fclose(f);
+							MC2_LOG(Render, Info, "[PREVIEW] drawOldWay vtx ({:.1f},{:.1f},{:.4f}) ({:.1f},{:.1f},{:.4f}) ({:.1f},{:.1f},{:.4f}) argb={:08X}", gVertex[0].x, gVertex[0].y, gVertex[0].z, gVertex[1].x, gVertex[1].y, gVertex[1].z, gVertex[2].x, gVertex[2].y, gVertex[2].z, mc2::fmt::as_u32(gVertex[0].argb));
+
 						}
 					}
 				}
@@ -239,11 +232,10 @@ void TG_Shape::Render (float forceZ, bool isHudElement, BYTE alphaValue, bool is
 					static int s_zrej = 0;
 					if ( (s_zrej++ % 500) == 0 )
 					{
-						if ( FILE* f = fopen("preview_debug.log","a") )
+						if ( bool f = mc2::log::enabled(mc2::log::Cat::Render, mc2::log::Level::Info) )
 						{
-							fprintf(f,"[PREVIEW] drawOldWay Z-REJECT z=(%.4f,%.4f,%.4f)\n",
-								gVertex[0].z,gVertex[1].z,gVertex[2].z);
-							fclose(f);
+							MC2_LOG(Render, Info, "[PREVIEW] drawOldWay Z-REJECT z=({:.4f},{:.4f},{:.4f})", gVertex[0].z, gVertex[1].z, gVertex[2].z);
+
 						}
 					}
 				}

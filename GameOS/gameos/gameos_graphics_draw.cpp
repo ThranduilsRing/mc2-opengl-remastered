@@ -538,8 +538,8 @@ void gosRenderer::drawTris(gos_VERTEX* vertices, int count) {
 #endif
     if ( mc2::gate::get<"MC2_LOG_PREVIEW">() ) {
         GLint curFbo = 0; glGetIntegerv(GL_FRAMEBUFFER_BINDING, &curFbo);
-        FILE* f = fopen("preview_debug.log","a");
-        if (f) { mc2::fmt::print(f, "[PREVIEW] drawTris count={:d} isHUD={:d} curFbo={:d}\n", mc2::fmt::as_i32(count), mc2::fmt::as_i32(static_cast<int>(renderStates_[gos_State_IsHUD])), mc2::fmt::as_i32(curFbo)); fflush(f); fclose(f); }
+        bool f = mc2::log::enabled(mc2::log::Cat::Render, mc2::log::Level::Info);
+        if (f) { MC2_LOG(Render, Info, "[PREVIEW] drawTris count={:d} isHUD={:d} curFbo={:d}", mc2::fmt::as_i32(count), mc2::fmt::as_i32(static_cast<int>(renderStates_[gos_State_IsHUD])), mc2::fmt::as_i32(curFbo));   }
     }
     if (renderStates_[gos_State_IsHUD]) {
         if (hudFlushed_) {

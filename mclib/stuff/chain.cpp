@@ -9,46 +9,6 @@
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ChainLink ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-MemoryBlock*
-	ChainLink::AllocatedMemory = nullptr;
-
-//
-//#############################################################################
-//#############################################################################
-//
-void
-	ChainLink::InitializeClass(
-		size_t block_count,
-		size_t block_delta
-	)
-{
-	Verify(!AllocatedMemory);
-	AllocatedMemory =
-		new MemoryBlock(
-			sizeof(ChainLink),
-			block_count,
-			block_delta,
-			"Stuff::ChainLink",
-			ConnectionEngineHeap
-		);
-}
-
-//
-//#############################################################################
-//#############################################################################
-//
-void
-	ChainLink::TerminateClass()
-{
-	delete AllocatedMemory;
-	AllocatedMemory = nullptr;
-}
-
-//
-//#############################################################################
-// ChainLink
-//#############################################################################
-//
 ChainLink::ChainLink(
 	Chain *chain,
 	Plug *plug,

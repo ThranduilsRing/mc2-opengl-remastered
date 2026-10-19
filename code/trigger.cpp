@@ -12,18 +12,11 @@
 
 //***************************************************************************
 
-void* TriggerAreaManager::operator new (size_t ourSize) {
 
-	void* result = systemHeap->Malloc(ourSize);
-	return(result);
-}
 
 //---------------------------------------------------------------------------
 
-void TriggerAreaManager::operator delete (void* us) {
 
-	systemHeap->Free(us);
-}	
 
 //---------------------------------------------------------------------------
 

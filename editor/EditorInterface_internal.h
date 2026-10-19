@@ -1,3 +1,4 @@
+#include "Gates/preferences_legacy.h"
 // Shared surface of the EditorInterface translation units (EditorInterface*.cpp).
 //
 // EditorInterface.cpp keeps key handling, camera input, painting, save/erase and the per-frame update/render;
@@ -255,8 +256,6 @@ extern bool drawEditorPassability;
 extern bool drawLOSGrid;
 extern bool useClouds;
 extern bool	useFog;
-extern bool useShadows;
-extern bool useWaterInterestTexture;
 extern long lightState;
 extern bool useFaceLighting;
 extern bool useVertexLighting;

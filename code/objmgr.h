@@ -325,9 +325,7 @@ class GameObjectManager {
 
 	public:
 
-		void* operator new (size_t mySize);
 
-		void operator delete (void* us);
 		
 		void init (void);
 		

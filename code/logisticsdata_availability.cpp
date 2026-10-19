@@ -1,3 +1,4 @@
+#include "utils/mc2log.h"
 // LogisticsData: updateAvailability, the front-end state dump and the availability append.
 // Declared in the class headers; shared names in logisticsdata_internal.h.
 #include "logisticsdata_internal.h"
@@ -10,15 +11,8 @@
 
 long LogisticsData::updateAvailability()
 {
-	static FILE* s_logFileUA = nullptr;
-	if ( mc2::gate::get<"MC2_LOG_LOGISTICS">() && !s_logFileUA ) {
-		s_logFileUA = fopen("logistics_debug.log", "a");
-	}
-#define LOG_LOGISTICS_UA(fmt, ...) do { \
-	if ( mc2::gate::get<"MC2_LOG_LOGISTICS">() ) { \
-		printf("[LOGISTICS] " fmt "\n", ##__VA_ARGS__); fflush(stdout); \
-		if (s_logFileUA) { fprintf(s_logFileUA, "[LOGISTICS] " fmt "\n", ##__VA_ARGS__); fflush(s_logFileUA); } \
-	} } while(0)
+
+
 
 	bNewWeapons = 0;
 
@@ -50,17 +44,17 @@ long LogisticsData::updateAvailability()
 		(*pIter).setAvailable( 0 );
 	}
 
-	LOG_LOGISTICS_UA("updateAvailability: purchaseFile='%s'", purchaseFileName.c_str());
+	do { if (mc2::gate::get<"MC2_LOG_LOGISTICS">()) MC2_LOG(Ui, Info, "[LOGISTICS] updateAvailability: purchaseFile='{}'", purchaseFileName.c_str()); } while (0);
 
 	FitIniFile file;
 	if ( NO_ERR != file.open( purchaseFileName.c_str() ) )
 	{
-		LOG_LOGISTICS_UA("updateAvailability: purchase file OPEN FAILED");
+		do { if (mc2::gate::get<"MC2_LOG_LOGISTICS">()) MC2_LOG(Ui, Info, "[LOGISTICS] updateAvailability: purchase file OPEN FAILED"); } while (0);
 		const std::string error = std::format( "Couldn't open {}", purchaseFileName );
 		PAUSE((const_cast<char*>(error.c_str()) ));
 		return NO_PURCHASE_FILE;
 	}
-	LOG_LOGISTICS_UA("updateAvailability: purchase file open OK");
+	do { if (mc2::gate::get<"MC2_LOG_LOGISTICS">()) MC2_LOG(Ui, Info, "[LOGISTICS] updateAvailability: purchase file open OK"); } while (0);
 
 	// Master-list additions can arrive after component initialization.
 	appendEquipmentAddFillComponents();
@@ -133,7 +127,7 @@ long LogisticsData::updateAvailability()
 		missionInfo->getAllPurchaseFiles( allPF, pfCount );
 		for ( long i = 0; i < pfCount && i < 1024; i++ )
 			appendAvailability( allPF[i], available );
-		LOG_LOGISTICS_UA( "updateAvailability: MC2_PURCHASE_ALL campaign-wide (%ld purchase files)", pfCount );
+		do { if (mc2::gate::get<"MC2_LOG_LOGISTICS">()) MC2_LOG(Ui, Info, "[LOGISTICS] updateAvailability: MC2_PURCHASE_ALL campaign-wide ({:d} purchase files)", mc2::fmt::as_i32(pfCount)); } while (0);
 	}
 
 	// Explicit equipment availability also permits variants that use those components.
@@ -141,7 +135,7 @@ long LogisticsData::updateAvailability()
 		size_t enableWireForced = applyEquipmentEnableWireIfEnabled( available, 255 );
 		if ( enableWireForced > 0 )
 		{
-			LOG_LOGISTICS_UA( "updateAvailability: enable-wire forced %zu component(s)", enableWireForced );
+			do { if (mc2::gate::get<"MC2_LOG_LOGISTICS">()) MC2_LOG(Ui, Info, "[LOGISTICS] updateAvailability: enable-wire forced {:d} component(s)", mc2::fmt::as_size(enableWireForced)); } while (0);
 			for ( auto cIter = components.begin(); cIter != components.end(); ++cIter )
 			{
 				if ( available[(*cIter).getID()] && !(*cIter).isAvailable() )
@@ -173,7 +167,7 @@ long LogisticsData::updateAvailability()
 		mc2::fmt::to_buf(tmp, "Mech{:d}", mc2::fmt::as_i32(i));
 		if ( NO_ERR != file.readIdString( tmp, chassisFileName, 254 ) )
 			break;
-		LOG_LOGISTICS_UA("updateAvailability: [Mechs] Mech%d='%s'", i, chassisFileName);
+		do { if (mc2::gate::get<"MC2_LOG_LOGISTICS">()) MC2_LOG(Ui, Info, "[LOGISTICS] updateAvailability: [Mechs] Mech{:d}='{}'", mc2::fmt::as_i32(i), mc2::fmt::safe(chassisFileName)); } while (0);
 
 		for ( auto vIter = variants.begin(); vIter != variants.end(); ++vIter )
 		{
@@ -243,9 +237,7 @@ long LogisticsData::updateAvailability()
 	else
 		bNewPilots = 0;
 
-	LOG_LOGISTICS_UA("updateAvailability: newMechAvailableCount=%d oldMechAvailableCount=%d",
-		newMechAvailableCount, oldMechAvailableCount);
-#undef LOG_LOGISTICS_UA
+	do { if (mc2::gate::get<"MC2_LOG_LOGISTICS">()) MC2_LOG(Ui, Info, "[LOGISTICS] updateAvailability: newMechAvailableCount={:d} oldMechAvailableCount={:d}", mc2::fmt::as_i32(newMechAvailableCount), mc2::fmt::as_i32(oldMechAvailableCount)); } while (0);
 
 	if (auto* observation = objectiveObservation()) { observation->Finish(); }
 	return 0;

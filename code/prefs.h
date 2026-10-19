@@ -9,12 +9,12 @@
 #include"mclib.h"
 #endif
 
-#include "Gates/render_options.h"
+#include "Gates/preferences_types.h"
 
 
-class CPrefs {
+class CPrefs : public mc2::options::Preferences {
 public:
-	CPrefs();
+	CPrefs() = default;
 	int load( const char* pFileName = "options");
 	int save();
 	int applyPrefs(bool bApplyResolution = 1);
@@ -23,65 +23,14 @@ public:
 	void setNewUnit( const char* pNewUnit );
 	void setNewIP( const char* pNewIP );
 
-public:
-	long DigitalMasterVolume;
-	long MusicVolume;
-	long sfxVolume;
-	long RadioVolume;
-	long BettyVolume;
-
-	bool useShadows;
-	bool useWaterInterestTexture;
-	bool useHighObjectDetail;
-
-	long GameDifficulty;
-	bool useUnlimitedAmmo;
-
-	long renderer;
-	//long resolution;
-    int resolutionX;
-    int resolutionY;
-
-	bool fullScreen;
-	long gammaLevel;
-	bool useLeftRightMouseProfile; // if false, use old style commands
-	long baseColor;
-	long highlightColor;
-	long faction;
-	char insigniaFile[256];
-	char unitName[10][256];
-	char playerName[10][256];
-	char ipAddresses[10][24];
-
-	bool	pilotVideos;
-	bool	UseUpscaledVideos;
-	bool	useNonWeaponEffects;
-	bool	useLocalShadows;
-	bool	asyncMouse;
-	long	fogPos;
-	char	bitDepth; // 0 == 16, 1 == 32
-
-	bool	saveTranscripts;
-	bool	tutorials;
-
-	// TODO(options-screen): expose these as sliders in the Options screen.
-	// Range suggestion: 0.5x–4.0x. Hook up to the Camera Speed / Zoom Speed
-	// sliders once UI controls are added in the CPrefs options panel.
-	float	scrollSpeedMult;  // camera pan speed multiplier (edge scroll + arrow keys)
-	float	zoomSpeedMult;    // zoom in/out speed multiplier (scroll wheel + +/-)
-
 	// Player render options (the options.cfg keys listed in Gates/render_options.h). load() validates them, applyPrefs() publishes them.
 	mc2::options::RenderOptions render;
 
-#if 0
-	long FilterState;
-	long TERRAIN_TXM_SIZE;
-	long ObjectTextureSize;
-	bool	useRealLOS;
-	float doubleClickThreshold;
-	long dragThreshold;
-	DWORD BaseVertexColor;		//This color is applied to all vertices in game as Brightness correction.
-#endif
+private:
+    bool loadedDefault_ = false;
+    std::string sourceText_;
+    std::vector<mc2::options::PreferenceValue> loadedValues_;
+    unsigned long long loadedKeyboard_ = 0;
 };
 
 extern CPrefs prefs;

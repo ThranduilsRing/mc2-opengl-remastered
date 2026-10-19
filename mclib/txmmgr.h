@@ -219,12 +219,13 @@ struct MC_TextureNode
 };
 
 //---------------------------------------------------------------------------
-class gos_VERTEXManager : public HeapManager
+class gos_VERTEXManager
 {
 	//Data Members
 	//-------------
 	protected:
 	
+		void* storage = nullptr;
 		long						totalVertices;		//Total number of vertices in pool.
 		long						currentVertex;		//Pointer to next available vertex in pool.
 
@@ -234,20 +235,21 @@ class gos_VERTEXManager : public HeapManager
 
 		void init (void)
 		{
-			HeapManager::init();
+			storage = nullptr;
 
 			totalVertices = 0;
 			currentVertex = 0;
 		}
 
-		gos_VERTEXManager (void) : HeapManager()
+		gos_VERTEXManager (void)
 		{
 			init();
 		}
 
 		void destroy (void)
 		{
-			HeapManager::destroy();
+			std::free(storage);
+			storage = nullptr;
 			reset();
 			totalVertices = 0;
 		}
@@ -261,8 +263,9 @@ class gos_VERTEXManager : public HeapManager
 		{
 			totalVertices = maxVertices;
 			DWORD heapSize = totalVertices * sizeof(gos_VERTEX);
-			createHeap(heapSize);
-			commitHeap();
+			std::free(storage);
+			storage = std::calloc(1, heapSize);
+			gosASSERT(storage != nullptr);
 			reset();
 		}
 		
@@ -279,7 +282,7 @@ class gos_VERTEXManager : public HeapManager
 							numVertices, currentVertex, totalVertices);
 				return nullptr;
 			}
-			gos_VERTEX *start = reinterpret_cast<gos_VERTEX *>(getHeapPtr());
+			gos_VERTEX *start = reinterpret_cast<gos_VERTEX *>(storage);
 			start = &(start[currentVertex]);
 			currentVertex += numVertices;
 			return start;
@@ -293,12 +296,13 @@ class gos_VERTEXManager : public HeapManager
 
 //---------------------------------------------------------------------------
 template<typename T>
-class gos_RenderShapeManager : public HeapManager
+class gos_RenderShapeManager
 {
 	//Data Members
 	//-------------
 protected:
 
+	void* storage = nullptr;
 	long						count;		//Total number of vertices in pool.
 	long						current;	//Pointer to next available vertex in pool.
 
@@ -306,20 +310,21 @@ public:
 
 	void init(void)
 	{
-		HeapManager::init();
+		storage = nullptr;
 
 		count = 0;
 		current = 0;
 	}
 
-	gos_RenderShapeManager(void) : HeapManager()
+	gos_RenderShapeManager(void)
 	{
 		init();
 	}
 
 	void destroy(void)
 	{
-		HeapManager::destroy();
+		std::free(storage);
+		storage = nullptr;
 		reset();
 		count = 0;
 	}
@@ -333,8 +338,9 @@ public:
 	{
 		count = maxShapes;
 		DWORD heapSize = count * sizeof(T);
-		createHeap(heapSize);
-		commitHeap();
+		std::free(storage);
+		storage = std::calloc(1, heapSize);
+		gosASSERT(storage != nullptr);
 		reset();
 	}
 
@@ -350,7 +356,7 @@ public:
 						num, current, count);
 			return nullptr;
 		}
-		T *start = reinterpret_cast<T*>(getHeapPtr());
+		T *start = reinterpret_cast<T*>(storage);
 		start = &(start[current]);
 		current += num;
 		return start;
@@ -395,8 +401,6 @@ class MC_TextureManager
 		// calls addTriangle while holding the lock (same thread, same mutex).
 		mutable std::recursive_mutex	m_vertexNodeMu;
 													
-		UserHeapPtr						textureCacheHeap;			//Heap used to cache textures from vidCard to system RAM.
-		UserHeapPtr						textureStringHeap;			//Heap used to store filenames of textures so no dupes.
 		bool 							textureManagerInstrumented;	//Texture Manager Instrumented.
 		long							totalCacheMisses;			//NUmber of times flush has been called.
 		
@@ -447,8 +451,6 @@ class MC_TextureManager
 		{
 			masterTextureNodes = nullptr;
 
-			textureCacheHeap = nullptr;
-			textureStringHeap = nullptr;
 			textureManagerInstrumented = false;
 			totalCacheMisses = 0;
 			currentUsedTextures = 0;
@@ -1356,15 +1358,7 @@ class MC_TextureManager
 		void  unpinNode  (DWORD nodeIdx);
 		DWORD getPinCount(DWORD nodeIdx) const;
 
-		bool checkCacheHeap (void)
-		{
-			if (textureCacheHeap->totalCoreLeft() <= (TEXTURE_CACHE_SIZE - MAX_CACHE_SIZE))
-			{
-				return false;
-			}
-			
-			return true;
-		}
+		bool checkCacheHeap(void) { return false; }
 		
 };
 

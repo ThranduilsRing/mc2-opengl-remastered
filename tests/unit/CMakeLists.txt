@@ -458,3 +458,26 @@ if(TARGET glm::glm)
 else()
     message(WARNING "Stuff/GLM bit-identity corpus NOT BUILT: vendor GLM 1.0.1; sim migration NOT PROVEN")
 endif()
+
+# Preferences use real disk IO; keyboard application remains an engine adapter.
+target_sources(mc2_tests PRIVATE
+    test_preferences.cpp
+    ${MC2_WORKTREE_ROOT}/code/prefs_io.cpp
+    ${MC2_WORKTREE_ROOT}/mclib/gamelog.cpp
+)
+set_source_files_properties(${MC2_WORKTREE_ROOT}/code/prefs_io.cpp test_preferences.cpp PROPERTIES
+    INCLUDE_DIRECTORIES "${MC2_WORKTREE_ROOT}/gui;${MC2_WORKTREE_ROOT}/netlib;${MC2_WORKTREE_ROOT}/3rdparty/tracy")
+
+# Exercise the shipped mixer with SDL's dummy device: no game, window, or hardware audio.
+find_package(SDL2_mixer REQUIRED)
+target_sources(mc2_tests PRIVATE
+    test_audio_backend.cpp
+    ${MC2_WORKTREE_ROOT}/GameOS/gameos/gameos_sound.cpp
+)
+target_link_libraries(mc2_tests PRIVATE SDL2_mixer::SDL2_mixer)
+if(WIN32)
+    add_custom_command(TARGET mc2_tests POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "$<TARGET_FILE:SDL2_mixer::SDL2_mixer>" "$<TARGET_FILE_DIR:mc2_tests>"
+        VERBATIM)
+endif()

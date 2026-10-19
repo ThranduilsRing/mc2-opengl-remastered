@@ -1,4 +1,5 @@
-﻿#define MECHLABSCREEN_CPP
+﻿#include "Gates/preferences_legacy.h"
+#define MECHLABSCREEN_CPP
 /*************************************************************************************************\
 MechLabScreen.cpp			: Implementation of the MechLabScreen component.
 //---------------------------------------------------------------------------//
@@ -25,7 +26,6 @@ MechLabScreen.cpp			: Implementation of the MechLabScreen component.
 static bool cheatInfiniteMoney() { static const bool on = mc2::gate::get<"MC2_CHEAT_INFINITE_MONEY">(); return on; }
 #include"chatwindow.h"
 #include"multplyr.h"
-extern bool useUnlimitedAmmo;
 #include"prefs.h"
 #include"../GuiRuntime/GuiRuntime.h"
 #include "mc2fmt.h"

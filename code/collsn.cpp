@@ -42,7 +42,6 @@ namespace mc2_collision_trace { Counters g_counters = {false,0,0,0,0,0,0}; }
 // Static globals
 //CollisionSystem *collisionSystem = NULL;
 GlobalCollisionAlert *globalCollisionAlert = nullptr;
-UserHeapPtr CollisionSystem::collisionHeap = nullptr;
 unsigned long CollisionSystem::maxObjects = 0;
 unsigned long CollisionSystem::gridRadius = 0;
 unsigned long CollisionSystem::xGridSize = 0;
@@ -141,22 +140,10 @@ void GlobalCollisionAlert::purgeRecords (void)
 
 //------------------------------------------------------------------------------
 // class CollisionGrid 
-void * CollisionGrid::operator new (size_t mySize)
-{
-	void *result = nullptr;
-	
-	if (CollisionSystem::collisionHeap && CollisionSystem::collisionHeap->heapReady())
-		result = CollisionSystem::collisionHeap->Malloc(mySize);
-	
-	return(result);
-}
+
 
 //------------------------------------------------------------------------------
-void CollisionGrid::operator delete (void *us)
-{
-	if (CollisionSystem::collisionHeap && CollisionSystem::collisionHeap->heapReady())
-		CollisionSystem::collisionHeap->Free(us);
-}
+
 
 //------------------------------------------------------------------------------
 long CollisionGrid::init (glm::vec3 &newOrigin)
@@ -400,20 +387,10 @@ void CollisionGrid::checkGrid (GameObjectPtr obj1, CollisionGridNodePtr area)
 
 //------------------------------------------------------------------------------
 // class CollisionSystem
-void * CollisionSystem::operator new (size_t mySize)
-{
-	void *result = nullptr;
-	
-	result = systemHeap->Malloc(mySize);
-	
-	return(result);
-}
+
 
 //------------------------------------------------------------------------------
-void CollisionSystem::operator delete (void *us)
-{
-	systemHeap->Free(us);
-}
+
 
 //------------------------------------------------------------------------------
 long CollisionSystem::init (FitIniFile *scenarioFile)
@@ -426,10 +403,8 @@ long CollisionSystem::init (FitIniFile *scenarioFile)
 	warningDist = 250.0;                       //This is in world Units!!!
 	alertTime = 2.5;                                     //This is in seconds
 		
-	collisionHeap = new UserHeap;
-	gosASSERT(collisionHeap != nullptr);
 		
-	long result = collisionHeap->init(65535);
+	long result = NO_ERR;
 	gosASSERT(result == NO_ERR);
 	
 	collisionGrid = new CollisionGrid;
@@ -811,8 +786,6 @@ void CollisionSystem::destroy (void)
 	delete collisionGrid;
     collisionGrid = nullptr;
 
-	delete collisionHeap;
-    collisionHeap = nullptr;
 	
 	delete globalCollisionAlert;
 	globalCollisionAlert = nullptr;

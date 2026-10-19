@@ -10,7 +10,7 @@
 #include"stuff.hpp"
 #include"node.hpp"
 #include"sortedsocket.hpp"
-#include"memoryblock.hpp"
+
 
 namespace Stuff {
 
@@ -62,10 +62,7 @@ namespace Stuff {
 		);
 		~SortedChainLinkOf();
 
-		void*
-			operator new(size_t);
-		void
-			operator delete(void *where);
+
 
 		V
 			GetValue()
@@ -75,20 +72,14 @@ namespace Stuff {
 				{return &value;}
 
 	private:
-		static MemoryBlock
-			*allocatedMemory;
-		static CollectionSize
-			allocationCount;
+
 
 		V value;
 	};
 
 	//~~~~~~~~~~~~~~~~~~~~~~~~~~ SortedChainLinkOf templates ~~~~~~~~~~~~~~~~~~~~~~~~
 
-	template <class V> MemoryBlock*
-		SortedChainLinkOf<V>::allocatedMemory = nullptr;
-	template <class V> CollectionSize
-		SortedChainLinkOf<V>::allocationCount = 0;
+
 
 	template <class V>
 		SortedChainLinkOf<V>::SortedChainLinkOf(
@@ -106,40 +97,9 @@ namespace Stuff {
 	{
 	}
 
-	template <class V> void*
-		SortedChainLinkOf<V>::operator new(size_t)
-	{
-		Verify(allocationCount >= 0);
-		if (allocationCount++ == 0)
-		{
-			allocatedMemory =
-				new MemoryBlock(
-					sizeof(SortedChainLinkOf<V>),
-					VChainLink_Memoryblock_Allocation,
-					VChainLink_Memoryblock_Allocation,
-					"Stuff::SortedChainLinkOf",
-					Stuff::ConnectionEngineHeap
-				);
-			Register_Object(allocatedMemory);
-		}
-		Verify(allocationCount < INT_MAX);
-		Check_Object(allocatedMemory);
-		return allocatedMemory->New();
-	}
 
-	template <class V> void
-		SortedChainLinkOf<V>::operator delete(void *where)
-	{
-		Check_Object(allocatedMemory);
-		allocatedMemory->Delete(where);
-		if (--allocationCount == 0)
-		{
-			Unregister_Object(allocatedMemory);
-			delete allocatedMemory;
-			allocatedMemory = nullptr;
-		}
-		Verify(allocationCount >= 0);
-	}
+
+
 
 	//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ SortedChain ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -259,10 +219,7 @@ namespace Stuff {
 		);
 		~SortedChainOf();
 
-		void*
-			operator new(size_t);
-		void
-			operator delete(void *where);
+
 
 		//
 		//--------------------------------------------------------------------
@@ -321,18 +278,12 @@ namespace Stuff {
 		//--------------------------------------------------------------------
 		//--------------------------------------------------------------------
 		//
-		static MemoryBlock
-			*allocatedMemory;
-		static CollectionSize
-			allocationCount;
+
 	};
 
 	//~~~~~~~~~~~~~~~~~~~~~~~~~~~ SortedChainOf templates ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-	template <class T, class V> MemoryBlock*
-		SortedChainOf<T, V>::allocatedMemory = nullptr;
-	template <class T, class V> CollectionSize
-		SortedChainOf<T, V>::allocationCount = 0;
+
 
 	template <class T, class V>
 		SortedChainOf<T, V>::SortedChainOf(
@@ -386,40 +337,9 @@ namespace Stuff {
 			return (*Cast_Pointer(const V*, value) > *ptr) ? 1 : -1;
 	}
 
-	template <class T, class V> void*
-		SortedChainOf<T, V>::operator new(size_t)
-	{
-		Verify(allocationCount >= 0);
-		if (allocationCount++ == 0)
-		{
-			allocatedMemory =
-				new MemoryBlock(
-					sizeof(SortedChainOf<T, V>),
-					VChain_Memoryblock_Allocation,
-					VChain_Memoryblock_Allocation,
-					"Stuff::SortedChainOf",
-					Stuff::ConnectionEngineHeap
-				);
-			Register_Object(allocatedMemory);
-		}
-		Verify(allocationCount < INT_MAX);
-		Check_Object(allocatedMemory);
-		return allocatedMemory->New();
-	}
 
-	template <class T, class V> void
-		SortedChainOf<T, V>::operator delete(void *where)
-	{
-		Check_Object(allocatedMemory);
-		allocatedMemory->Delete(where);
-		if (--allocationCount == 0)
-		{
-			Unregister_Object(allocatedMemory);
-			delete allocatedMemory;
-			allocatedMemory = nullptr;
-		}
-		Verify(allocationCount >= 0);
-	}
+
+
 
 	//~~~~~~~~~~~~~~~~~~~~~~~~~~~~ SortedChainIterator ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

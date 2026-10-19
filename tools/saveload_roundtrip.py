@@ -337,7 +337,7 @@ def resave_verdict(first: str | None, second: str | None, rc: int | None = None)
     if not first:
         return False, ["no quicksave was written: the quicksave fixture did not fire (SAVE_AT is a render frame; the run may have ended first)"]
     if not second:
-        return False, ["no re-save was written: the quickload did not run or failed (see the run log and saveload_trace.log)"]
+        return False, ["no re-save was written: the quickload did not run or failed (see the run log)"]
     reason = save_evidence(first, "quicksave") or save_evidence(second, "re-save")
     if reason:
         return False, [reason]

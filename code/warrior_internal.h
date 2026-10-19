@@ -174,7 +174,6 @@ extern float KillSkill[6];
 extern float WeaponHit;
 extern float SensorSkill;
 extern long RamObjectWID;
-extern UserHeapPtr missionHeap;
 extern GameObjectPtr LastCoreAttackTarget;
 extern const char* pilotAlarmFunctionName[NUM_PILOT_ALARMS];
 void SeedRandomNumbers (void);

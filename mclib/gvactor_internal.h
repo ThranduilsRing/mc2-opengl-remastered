@@ -1,3 +1,4 @@
+#include "Gates/preferences_legacy.h"
 // Shared surface of the GVAppearance translation units (gvactor*.cpp).
 //
 // gvactor.cpp keeps the type, node lookups, init and setObjStatus plus the lifecycle trace gate; every other gate cache
@@ -93,14 +94,11 @@ inline constexpr int MAX_FOOT_NODES = 2;
 extern float	worldUnitsPerMeter;
 extern bool 	drawTerrainGrid;
 extern bool		useFog;
-extern bool 	useShadows;
 extern int		ObjectTextureSize;
 extern bool reloadBounds;
 extern MidLevelRenderer::MLRClipper * theClipper;
 extern bool MLRVertexLimitReached;
 extern bool InEditor;
-extern bool useNonWeaponEffects;
-extern bool useHighObjectDetail;
 extern glm::vec3 debugGVActorPosition;
 extern float vehicleDebugAngle;
 extern float turretDebugAngle;

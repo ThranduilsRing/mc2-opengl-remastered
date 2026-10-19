@@ -327,12 +327,6 @@ int main(int argc, char** argv)
         return 1;
     }
 
-    systemHeap = new UserHeap();
-    if(!systemHeap) {
-        STOP(("Failed to initialize system heap"));
-        return -1;
-    }
-    systemHeap->init(32*1024*1024);
 
     bool b_unpack = false;
     bool b_compress = false;

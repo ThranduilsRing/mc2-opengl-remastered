@@ -1,3 +1,4 @@
+#include "utils/mc2log.h"
 //******************************************************************************************
 // logistics.cpp - This file contains the logistics class header
 //
@@ -101,8 +102,8 @@ void Logistics::start (long startMode)
 	// Record the inherited cursor state to diagnose missing cursors after loading.
 	if ( mc2::gate::get<"MC2_LOG_CURSOR">() )
 	{
-		FILE* f = fopen("cursor_debug.log", "a");
-		if (f) { mc2::fmt::print(f, "[CURSOR] Logistics::start startMode={:d} drawMouse={:d}\n", mc2::fmt::as_i32(startMode), mc2::fmt::as_i32(static_cast<int>(UserInput::drawMouse))); fflush(f); fclose(f); }
+		bool f = mc2::log::enabled(mc2::log::Cat::Ui, mc2::log::Level::Info);
+		if (f) { MC2_LOG(Ui, Info, "[CURSOR] Logistics::start startMode={:d} drawMouse={:d}", mc2::fmt::as_i32(startMode), mc2::fmt::as_i32(static_cast<int>(UserInput::drawMouse)));   }
 	}
 
 	// Campaigns without intro videos still need a cursor after the load screen hides it.

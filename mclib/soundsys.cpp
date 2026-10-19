@@ -1,3 +1,4 @@
+#include "Gates/preferences_legacy.h"
 //---------------------------------------------------------------------------
 // soundsys.cpp - This file is the sound system code
 //
@@ -37,11 +38,6 @@ void objectiveObservationWav(const char*, const char*, int, const char*, bool);
 bool useSound = TRUE;
 bool useMusic = TRUE;
 
-long DigitalMasterVolume = 0;
-long MusicVolume = 0;
-long sfxVolume = 0;
-long RadioVolume = 0;
-long BettyVolume = 0;
 
 constexpr float MAX_SENSOR_UPDATE_TIME = 5.0f;	//Seconds
 
@@ -102,6 +98,9 @@ constexpr long MAX_SOUND_PACKET_BYTES = 64l * 1024l * 1024l;
 //---------------------------------------------------------------------------
 void SoundSystem::destroy (void)
 {
+    for (auto& sound : sounds) gosAudio_DestroyResource(&sound.resourceHandle);
+    for (HGOSAUDIO* handle : {&stream1Handle, &stream2Handle, &stream3Handle, &bettyHandle, &supportHandle})
+        gosAudio_DestroyResource(handle);
 	sounds.clear();
 	digitalMusic.clear();
 	bettySoundBite.clear();
@@ -428,7 +427,7 @@ void SoundSystem::preloadSoundBite (long soundId)
 	if (packetSize > 0)
 	{
 		SoundBite *thisSoundBite = (&(sounds[soundId]));
-		thisSoundBite->resourceHandle = nullptr;
+		gosAudio_DestroyResource(&thisSoundBite->resourceHandle);
 			
 		if (packetSize > MAX_SOUND_PACKET_BYTES)
 		{

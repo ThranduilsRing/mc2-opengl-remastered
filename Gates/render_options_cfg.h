@@ -43,9 +43,13 @@ inline Line lineAt(std::string_view text, std::size_t pos) {
 // "<type> <key> = <value>" -> true with the pieces; the key match is case-insensitive like the engine's reader.
 inline bool parseLine(std::string_view line, char& type, std::string_view& key, std::string_view& value) {
     line = opt_detail::trim(line);
-    if (line.size() < 5 || (line[1] != ' ' && line[1] != '\t')) return false;
-    type = line[0];
-    std::string_view rest = opt_detail::trim(line.substr(2));
+    const auto gap = line.find_first_of(" \t");
+    if (gap == std::string_view::npos) return false;
+    const auto prefix = line.substr(0, gap);
+    if (prefix.size() == 1) type = prefix[0];
+    else if (opt_detail::equalsNoCase(prefix, "st")) type = 's';
+    else return false;
+    std::string_view rest = opt_detail::trim(line.substr(gap));
     std::size_t k = 0;
     while (k < rest.size() && rest[k] != ' ' && rest[k] != '\t' && rest[k] != '=') ++k;
     key = rest.substr(0, k);
@@ -90,8 +94,8 @@ inline char typeLetter(const Option& opt) {
 // `text` with the line of `opt` set to `value` (already validated by the caller, e.g. "TRUE", "1", "0.45"). An existing line is replaced in
 // place with its own line ending; a missing one is added at the end of the [MechCommander2] block. A file without that block is returned
 // unchanged: the launcher must not invent an options.cfg whose missing resolution lines would change how the game boots.
-inline std::string set(std::string text, const Option& opt, std::string_view value) {
-    const std::string newLine = std::string(1, typeLetter(opt)) + " " + opt.key + " = " + std::string(value);
+inline std::string setRaw(std::string text, std::string_view block, std::string_view key, char type, std::string_view value) {
+    const std::string newLine = (type == 's' ? std::string("st") : std::string(1, type)) + " " + std::string(key) + " = " + std::string(value);
     const std::string eol = (text.find("\r\n") != std::string::npos) ? "\r\n" : "\n";
     bool inBlock = false;
     bool sawBlock = false;
@@ -100,26 +104,42 @@ inline std::string set(std::string text, const Option& opt, std::string_view val
         const detail::Line l = detail::lineAt(text, pos);
         pos = l.next;
         const std::string_view line = opt_detail::trim(std::string_view(text).substr(l.begin, l.end - l.begin));
+        if (opt_detail::equalsNoCase(line, "FITend")) { inBlock = false; continue; }
         if (!line.empty() && line[0] == '[') {
-            inBlock = opt_detail::equalsNoCase(line, "[MechCommander2]");
+            inBlock = opt_detail::equalsNoCase(line, "[" + std::string(block) + "]");
             if (inBlock) { sawBlock = true; blockEnd = l.next; }
             continue;
         }
         if (!inBlock) continue;
         char type = 0;
         std::string_view k, v;
-        if (detail::parseLine(line, type, k, v) && opt_detail::equalsNoCase(k, opt.key)) {
+        if (detail::parseLine(line, type, k, v) && opt_detail::equalsNoCase(k, key)) {
             text.replace(l.begin, l.end - l.begin, newLine);
             return text;
         }
         if (!line.empty()) blockEnd = l.next;   // keep the add point after the last non-blank line of the block
     }
-    if (!sawBlock) return text;
+    if (!sawBlock) {
+        const auto end = text.find("FITend");
+        text.insert(end == std::string::npos ? text.size() : end, "[" + std::string(block) + "]" + eol + newLine + eol);
+        return text;
+    }
     if (blockEnd == std::string::npos) blockEnd = text.size();
     std::string add = newLine + eol;
     if (blockEnd > 0 && blockEnd <= text.size() && text[blockEnd - 1] != '\n') add = eol + add;   // the block's last line had no line break
     text.insert(blockEnd, add);
     return text;
+}
+
+inline std::string set(std::string text, const Option& opt, std::string_view value) {
+    bool sawBlock = false;
+    for (std::size_t pos = 0; pos < text.size();) {
+        const auto line = detail::lineAt(text, pos); pos = line.next;
+        if (opt_detail::equalsNoCase(opt_detail::trim(std::string_view(text).substr(line.begin, line.end - line.begin)), "[MechCommander2]")) {
+            sawBlock = true; break;
+        }
+    }
+    return sawBlock ? setRaw(std::move(text), "MechCommander2", opt.key, typeLetter(opt), value) : text;
 }
 
 // Fill `o` from every key of the table that `text` has, under the one strict value grammar of setFromText (booleans TRUE/FALSE/1/0 in any case,

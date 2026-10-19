@@ -456,7 +456,7 @@ long Mission::addMover (MoverInitData* moveSpec, LogisticsMech* mechData)
 	
 	if ( totalComponents )
 	{
-		componentList = static_cast<long *>(systemHeap->Malloc(sizeof(long) * totalComponents));
+		componentList = static_cast<long *>(std::malloc(sizeof(long) * totalComponents));
 	
 		long otherCount = totalComponents;
 		mechData->getComponents(otherCount, componentList);

@@ -30,7 +30,6 @@
 #include"mclib.h"
 #include <new>
 
-extern UserHeapPtr missionHeap;
 
 //***************************************************************************
 
@@ -45,18 +44,11 @@ long recurseCount = 0;
 
 //***************************************************************************
 
-void* GoalObject::operator new (size_t ourSize) {
 
-	void *result = missionHeap->Malloc(ourSize);
-	return(result);
-}
 
 //---------------------------------------------------------------------------
 
-void GoalObject::operator delete (void* us) {
 
-	missionHeap->Free(us);
-}
 
 //---------------------------------------------------------------------------
 
@@ -99,7 +91,7 @@ void GoalObject::destroy (void) {
 
 void GoalObject::addLink (GoalObjectPtr gobject, GoalLinkType type) {
 
-	GoalLinkPtr newLink = static_cast<GoalLink*>(missionHeap->Malloc(sizeof(GoalLink)));
+	GoalLinkPtr newLink = static_cast<GoalLink*>(std::malloc(sizeof(GoalLink)));
 	
 }
 
@@ -114,18 +106,11 @@ void GoalObject::addController (GoalObjectPtr gobject) {
 
 //#ifdef USE_REGION_MAP
 
-void* GoalManager::operator new (size_t ourSize) {
 
-	void *result = missionHeap->Malloc(ourSize);
-	return(result);
-}
 
 //---------------------------------------------------------------------------
 
-void GoalManager::operator delete (void* us) {
 
-	missionHeap->Free(us);
-}
 
 //---------------------------------------------------------------------------
 
@@ -154,7 +139,7 @@ void GoalManager::destroy (void) {
 	if (goalObjectPool) {
 		for (long i = 0; i < goalObjectPoolSize; ++i)
 			goalObjectPool[i].~GoalObject();
-		missionHeap->Free(goalObjectPool);
+		std::free(goalObjectPool);
 		goalObjectPool = nullptr;
 	}
 	numGoalObjects = 0;
@@ -203,7 +188,7 @@ void GoalManager::setup (long poolSize) {
 	if (goalObjectPoolSize  < 10)
 		Fatal(0, " GoalManager.setup: goalObjectPoolSize must be greater than 10 ");
 
-	goalObjectPool = static_cast<GoalObjectPtr>(missionHeap->Malloc(sizeof(GoalObject) * goalObjectPoolSize));
+	goalObjectPool = static_cast<GoalObjectPtr>(std::malloc(sizeof(GoalObject) * goalObjectPoolSize));
 	for (long i = 0; i < goalObjectPoolSize; ++i)
 		::new (static_cast<void*>(&goalObjectPool[i])) GoalObject;
 	clear();

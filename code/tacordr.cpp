@@ -127,7 +127,6 @@ constexpr int TACORDERCHUNK_TRAIN_MASK = 0x000000FF;
 constexpr int TACORDERCHUNK_TRAINCAR_MASK = 0x000000FF;
 
 extern TeamPtr homeTeam;
-extern UserHeapPtr systemHeap;
 extern float scenarioTime;
 extern float FireArc;
 extern long LastMoveCalcErr;
@@ -151,18 +150,11 @@ long AttitudeEffectOnMovePath[NUM_ATTITUDES][3] = {
 // TACTICAL ORDER class
 //***************************************************************************
 
-void* TacticalOrder::operator new (size_t mySize) {
 
-	void *result = systemHeap->Malloc(mySize);
-	return(result);
-}
 
 //---------------------------------------------------------------------------
 
-void TacticalOrder::operator delete (void* us) {
 
-	systemHeap->Free(us);
-}
 
 //---------------------------------------------------------------------------
 

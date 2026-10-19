@@ -123,8 +123,6 @@ class CollisionGrid
 	//-----------------
 	public:
 
-		void * operator new (size_t mySize);
-		void operator delete (void *us);
 		
 		void init (void)
 		{
@@ -194,7 +192,6 @@ class CollisionSystem
 		float					warningDist;		//Distance to worry about short term collision avoidance (in World Units!!)
 		float					alertTime;			//Time to worry about short term collision avoidance.
 		
-		static UserHeapPtr		collisionHeap;
 	
 	//Member Functions
 	//-----------------
@@ -204,8 +201,6 @@ class CollisionSystem
 
 	public:
 	
-		void * operator new (size_t mySize);
-		void operator delete (void *us);
 		
 		void init (void)
 		{

@@ -8,7 +8,6 @@ set(SOURCES ${SOURCES}
     random.cpp
     scalar.cpp
     vector4d.cpp
-    memoryblock.cpp
     mstring.cpp
     chain.cpp
     hash.cpp

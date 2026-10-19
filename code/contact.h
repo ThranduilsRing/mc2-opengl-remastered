@@ -59,9 +59,7 @@ class ContactInfo {
 
 	public:
 
-		void* operator new (size_t mySize);
 
-		void operator delete (void* us);
 
 		void destroy (void) {
 		}
@@ -162,9 +160,7 @@ class SensorSystem {
 
 	public:
 
-		void* operator new (size_t ourSize);
 		
-		void operator delete (void* us);
 		
 		void init (void);
 
@@ -282,9 +278,7 @@ class TeamSensorSystem {
 
 	public:
 
-		void* operator new (size_t ourSize);
 		
-		void operator delete (void* us);
 		
 		void init (void);
 
@@ -370,8 +364,6 @@ class SensorSystemManager {
 	
 	public:
 
-		void* operator new (size_t ourSize);
-		void operator delete (void* us);
 		
 		SensorSystemManager (void) {
 			init();

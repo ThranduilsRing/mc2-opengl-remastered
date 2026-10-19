@@ -1,3 +1,4 @@
+#include "Gates/preferences_legacy.h"
 //***************************************************************************
 //
 //	artlry.cpp -- File contains the Artillery Strike Object code
@@ -87,7 +88,6 @@
 #define ARTILLERYCHUNK_SECONDS_MASK				0x0000003F
 
 extern MidLevelRenderer::MLRClipper * theClipper;
-extern bool useShadows;
 
 #define	AIRSTRIKE_NAME							"airstrikemarker"
 #define SENSOR_NAME								"sensormarker"
@@ -246,19 +246,11 @@ void IfaceCallStrike (long strikeID,
 // ARTILLERY CHUNK
 //***************************************************************************
 
-void* ArtilleryChunk::operator new (size_t ourSize) {
 
-	void* result;
-	result = systemHeap->Malloc(ourSize);
-	return(result);
-}
 
 //---------------------------------------------------------------------------
 
-void ArtilleryChunk::operator delete (void* us) {
 
-	systemHeap->Free(us);
-}	
 
 //---------------------------------------------------------------------------
 
@@ -372,19 +364,19 @@ void ArtilleryType::destroy (void)
 {
 	if (explosionOffsetX) 
 	{
-		systemHeap->Free(explosionOffsetX);
+		std::free(explosionOffsetX);
 		explosionOffsetX = nullptr;
 	}
 
 	if (explosionOffsetY) 
 	{
-		systemHeap->Free(explosionOffsetY);
+		std::free(explosionOffsetY);
 		explosionOffsetY = nullptr;
 	}
 
 	if (explosionDelay) 
 	{
-		systemHeap->Free(explosionDelay);
+		std::free(explosionDelay);
 		explosionDelay = nullptr;
 	}
 
@@ -483,13 +475,13 @@ long ArtilleryType::init (FilePtr objFile, unsigned long fileSize) {
 		if (result != NO_ERR)
 			return(result);
 			
-		explosionOffsetX = static_cast<float *>(systemHeap->Malloc(sizeof(float)*numExplosions));
+		explosionOffsetX = static_cast<float *>(std::malloc(sizeof(float)*numExplosions));
 		gosASSERT(explosionOffsetX != NULL);
 
-		explosionOffsetY = static_cast<float *>(systemHeap->Malloc(sizeof(float)*numExplosions));
+		explosionOffsetY = static_cast<float *>(std::malloc(sizeof(float)*numExplosions));
 		gosASSERT(explosionOffsetY != NULL);
 
-		explosionDelay   = static_cast<float *>(systemHeap->Malloc(sizeof(float)*numExplosions));
+		explosionDelay   = static_cast<float *>(std::malloc(sizeof(float)*numExplosions));
 		gosASSERT(explosionDelay != NULL);
 
 		for (long i=0;i<numExplosions;i++)

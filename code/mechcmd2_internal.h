@@ -1,3 +1,4 @@
+#include "Gates/preferences_legacy.h"
 // Shared surface of the game-main translation units (mechcmd2*.cpp).
 //
 // mechcmd2.cpp keeps the global tables and InitializeGameEngine (which prints the build fingerprint); debug windows,
@@ -103,27 +104,12 @@ inline constexpr int MAX_HARDWARE_CARDS = 5;
 inline constexpr int NUM_DEBUG_WINDOWS = 4;
 
 // Globals defined in mechcmd2.cpp (or elsewhere in the engine) that the split pieces share.
-extern UserHeapPtr guiHeap;
-extern long GameDifficulty;
-extern long gammaLevel;
-extern long DigitalMasterVolume;
-extern long MusicVolume;
-extern long sfxVolume;
-extern long RadioVolume;
-extern long BettyVolume;
-extern long resolutionX;
-extern long resolutionY;
-extern long renderer;
 extern long FilterState;
 extern bool quitGame;
 extern bool justStartMission;
 extern bool gamePaused;
 extern bool hasGuardBand;
 extern bool canMultiTextureDetail;
-extern bool useUnlimitedAmmo;
-extern bool useLeftRightMouseProfile;
-extern bool useWaterInterestTexture;
-extern bool useShadows;
 extern bool aborted;
 extern bool gotBombData;
 extern TimerManagerPtr timerManager;
@@ -180,7 +166,6 @@ extern bool	useRealLOS;
 extern long DrawDebugCells;
 extern long GameVisibleVertices;
 extern bool EULAShown;
-extern SoundSystem* sndSystem;
 extern bool gNoDialogs;
 extern TG_MultiShape testShape[36];
 extern TG_AnimateShape testAnim[36];

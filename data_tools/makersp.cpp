@@ -99,12 +99,6 @@ int main(int argc, char** argv)
         return 1;
     }
 
-    systemHeap = new UserHeap();
-    if(!systemHeap) {
-        STOP(("Failed to initialize system heap"));
-        return -1;
-    }
-    systemHeap->init(32*1024*1024);
 
 	const char* base_path = nullptr;
     std::queue<const char*> wildcards;

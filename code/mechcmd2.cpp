@@ -1,3 +1,4 @@
+#include "Gates/preferences_legacy.h"
 //--------------------------------------------------------------------------
 //
 // And away we go.  MechCommander 2 -- Electric Boogaloo
@@ -23,34 +24,23 @@
 //------------------------------------------------------------------------------------------------------------
 // MechCmdr2 Global Instances of Things
 // NS3: systemHeap defined in mclib/heap.cpp (engine boundary).
-UserHeapPtr guiHeap = nullptr;
 
 std::unique_ptr<UserInput> ownedUserInput;
 std::unique_ptr<FloatHelp> ownedFloatHelp;
 std::unique_ptr<PANE> ownedPane;
 std::unique_ptr<WINDOW> ownedWindow;
-std::unique_ptr<HeapList> ownedHeapList;
-std::unique_ptr<UserHeap> ownedSystemHeap;
-std::unique_ptr<UserHeap> ownedGuiHeap;
 std::unique_ptr<TimerManager> ownedTimerManager;
 std::unique_ptr<GameSoundSystem> ownedSoundSystem;
 
 
 // NS3: fastFiles/numFastFiles/maxFastFiles defined in mclib/fastfile.cpp (engine boundary).
 
-long GameDifficulty = 0;
-long gammaLevel = 0;
-long resolutionX = 0;
-long resolutionY = 0;
-long renderer = 0;
 long FilterState = gos_FilterNone;
 bool quitGame = FALSE;
 bool justStartMission = FALSE;
 bool gamePaused = FALSE;
 bool hasGuardBand = false;
 bool canMultiTextureDetail = false;
-bool useUnlimitedAmmo = true;
-bool useLeftRightMouseProfile = true; // if false, use old style commands
 bool gotBombData = false;
 
 TimerManagerPtr timerManager = nullptr;
@@ -107,7 +97,6 @@ char* ExceptionGameMsg = nullptr;
 char buildNumber[80];
 
 bool EULAShown = false;
-SoundSystem* sndSystem;
 
 // sebi: donot know where it used, probably in some closed source linked lib
 //extern bool gNoDialogs;
@@ -429,18 +418,9 @@ void __stdcall InitializeGameEngine()
 		// Start the SystemHeap and globalHeapList
 		{
 			ZoneScopedN("InitializeGameEngine heaps");
-			ownedHeapList = std::make_unique_for_overwrite<HeapList>();
-			globalHeapList = ownedHeapList.get();
-			gosASSERT(globalHeapList != nullptr);
 		
-			globalHeapList->init();
-			globalHeapList->update();		//Run Instrumentation into GOS Debugger Screen
 		
-			ownedSystemHeap = std::make_unique_for_overwrite<UserHeap>();
-			systemHeap = ownedSystemHeap.get();
-			gosASSERT(systemHeap != nullptr);
 		
-			systemHeap->init(systemHeapSize,"SYSTEM");
 		}
 	
 		//Start finding the Leaks
@@ -1053,7 +1033,7 @@ void __stdcall InitializeGameEngine()
 			STOP(("Could not find MC2.fx"));
 			
 		long effectsSize = effectFile.fileSize();
-		MemoryPtr effectsData = static_cast<MemoryPtr>(systemHeap->Malloc(effectsSize));
+		MemoryPtr effectsData = static_cast<MemoryPtr>(std::malloc(effectsSize));
 		effectFile.read(effectsData,effectsSize);
 		effectFile.close();
 		
@@ -1074,18 +1054,14 @@ void __stdcall InitializeGameEngine()
 	
 		gos_PopCurrentHeap();
 	
-		systemHeap->Free(effectsData);
+		std::free(effectsData);
 		}
 		
 	
 		//--------------------------------------------------------------
 		// Start the GUI Heap.
 		{ ZoneScopedN("InitializeGameEngine guiHeap");
-		ownedGuiHeap = std::make_unique_for_overwrite<UserHeap>();
-		guiHeap = ownedGuiHeap.get();
-		gosASSERT(guiHeap != nullptr);
 		
-		guiHeap->init(guiHeapSize,"GUI");
 		}
 		
 		//------------------------------------------------
@@ -1111,7 +1087,6 @@ void __stdcall InitializeGameEngine()
 		soundSystem = ownedSoundSystem.get();
 		soundSystem->init();
 		(static_cast<SoundSystem *>(soundSystem))->init("sound");
-		sndSystem = soundSystem; // for things in the lib that use sound
 		}
 		
 		//-----------------------------------------------

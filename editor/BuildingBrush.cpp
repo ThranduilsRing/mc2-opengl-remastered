@@ -7,6 +7,7 @@ BuildingBrush.cpp	: Implementation of the BuildingBrush component.
 \*************************************************************************************************/
 
 #include "stdafx.h"
+#include <malloc.h> // _msize: capacity of the standard CRT terrain allocation
 #include "BuildingBrush.h"
 
 #ifndef EDITOROBJECTMGR_H
@@ -50,17 +51,14 @@ BuildingBrush.cpp	: Implementation of the BuildingBrush component.
 // and is deliberately left untouched; we guard entirely on the editor side.)
 //
 // editorTerrainMeshReady(): the mesh array is live and large enough to index.
-// NOTE checking MapData::blocks != NULL is NOT sufficient -- MapData::destroy()
-// frees the heap (HeapManager::destroy -> VirtualFree + init()) but does NOT null
-// `blocks`, so getBlocks() can be a DANGLING pointer. getHeapPtr() is the reliable
-// "live heap" signal (init() zeroes it on destroy); `blocks` is always set to
-// getHeapPtr() in newInit(). We also require the heap to cover realVerticesMapSide^2.
+// MapData::destroy now clears blocks on teardown. The CRT owns the allocation;
+// retain the capacity guard without the retired HeapManager interface.
 static inline bool editorTerrainMeshReady()
 {
 	if ( land == nullptr || Terrain::mapData == nullptr )
 		return false;
 
-	if ( Terrain::mapData->getHeapPtr() == nullptr || Terrain::mapData->getBlocks() == nullptr )
+	if ( Terrain::mapData->getBlocks() == nullptr )
 		return false;
 
 	if ( Terrain::realVerticesMapSide <= 0 )
@@ -69,7 +67,7 @@ static inline bool editorTerrainMeshReady()
 	const size_t neededBytes = (size_t)Terrain::realVerticesMapSide
 	                         * (size_t)Terrain::realVerticesMapSide
 	                         * sizeof(PostcompVertex);
-	return (size_t)Terrain::mapData->tSize() >= neededBytes;
+	return _msize(Terrain::mapData->getBlocks()) >= neededBytes;
 }
 
 // editorElevationSampleSafe(): mirror MapData::terrainElevation()'s meshOffset

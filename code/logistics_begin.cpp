@@ -177,7 +177,7 @@ int _stdcall Logistics::beginMission(void*, int, void*[])
 				mechData.designerMech = (*iter)->getVariant()->isDesignerMech();
 				mechData.numComponents = (*iter)->getComponentCount();
 				if (mechData.numComponents)	{
-					long* componentList = static_cast<long*>(systemHeap->Malloc(sizeof(long) * mechData.numComponents));
+					long* componentList = static_cast<long*>(std::malloc(sizeof(long) * mechData.numComponents));
 					long otherCount = mechData.numComponents;
 					(*iter)->getComponents(otherCount, componentList);
 					if (otherCount != mechData.numComponents)

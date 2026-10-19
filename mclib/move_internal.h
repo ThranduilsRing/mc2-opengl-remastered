@@ -50,7 +50,6 @@ extern void memclear(void *Dest,int Length);
 inline constexpr int NUM_CELL_OFFSETS = 128;
 
 // Globals defined in move.cpp (or elsewhere in the engine) that the split pieces share.
-extern UserHeapPtr systemHeap;
 extern float metersPerWorldUnit;
 extern char* ExceptionGameMsg;
 extern char ChunkDebugMsg[5120];

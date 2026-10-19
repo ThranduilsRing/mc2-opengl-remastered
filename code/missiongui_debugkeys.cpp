@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in missiongui_shared_internal.h.
 #include "missiongui_shared_internal.h"
 #include "mc2fmt.h"
+#include "Gates/render_options_cfg.h"
 
 
 int MissionInterfaceManager::quickDebugInfo() {
@@ -501,23 +502,22 @@ bool MissionInterfaceManager::selectionIsHelicopters( )
 	return true;
 }
 
-int MissionInterfaceManager::saveHotKeys( FitIniFile& file )
-{
-	file.writeBlock( "Keyboard" );
-	// Version sentinel so stale saves from a different MAX_COMMAND are rejected on load.
-	file.writeIdLong( "KeyboardVersion", MAX_COMMAND );
-	for ( int i = 0; i < MAX_COMMAND; i++ )
-	{
-		char header[256];
-		mc2::fmt::to_buf(header, "Key{:d}", mc2::fmt::as_i32(i));
-		file.writeIdLong( header, commands[i].key );
-	}
-
-	file.writeIdLong( "WayPointKey", WAYPOINT_KEY );
-	file.writeIdBoolean( "UseLeftRightMouseProfile", useLeftRightMouseProfile );
-
-	return 0;
-
+unsigned long long MissionInterfaceManager::hotKeysFingerprint() {
+    unsigned long long hash = 14695981039346656037ull;
+    auto add = [&](unsigned long long value) { hash ^= value; hash *= 1099511628211ull; };
+    for (int i = 0; i < MAX_COMMAND; ++i) add(commands[i].key);
+    add(WAYPOINT_KEY); add(useLeftRightMouseProfile);
+    return hash;
+}
+int MissionInterfaceManager::saveHotKeys(std::string& text) {
+    auto set = [&](const auto& key, char type, const auto& value) {
+        text = mc2::options::cfg::setRaw(std::move(text), "Keyboard", key, type, std::string(value));
+    };
+    set("KeyboardVersion", 'l', std::to_string(MAX_COMMAND));
+    for (int i = 0; i < MAX_COMMAND; ++i) set("Key" + std::to_string(i), 'l', std::to_string(static_cast<long>(commands[i].key)));
+    set("WayPointKey", 'l', std::to_string(static_cast<long>(WAYPOINT_KEY)));
+    set("UseLeftRightMouseProfile", 'b', useLeftRightMouseProfile ? "TRUE" : "FALSE");
+    return 0;
 }
 int MissionInterfaceManager::loadHotKeys( FitIniFile& file )
 {
@@ -778,3 +778,7 @@ int	MissionInterfaceManager::handleTeamChatKey()
 	controlGui.toggleChat(1);
 	return 1;
 }
+
+int loadPreferenceHotKeys(FitIniFile& file) { return MissionInterfaceManager::loadHotKeys(file); }
+int savePreferenceHotKeys(std::string& text) { return MissionInterfaceManager::saveHotKeys(text); }
+unsigned long long preferenceHotKeysFingerprint() { return MissionInterfaceManager::hotKeysFingerprint(); }

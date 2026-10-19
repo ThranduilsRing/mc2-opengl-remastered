@@ -726,6 +726,5 @@ extern unsigned char godMode;
 extern Mission *mission;
 extern unsigned long scenarioResult;
 
-extern UserHeapPtr missionHeap;
 //----------------------------------------------------------------------------------
 #endif

@@ -1,3 +1,4 @@
+#include "Gates/preferences_legacy.h"
 //---------------------------------------------------------------------
 //
 // crater.cpp -- Crater/footprint manager for MechCommander 2
@@ -47,7 +48,6 @@
 CraterManagerPtr craterManager = nullptr;
 extern bool useFog;
 extern bool drawOldWay;
-extern bool useNonWeaponEffects;
 
 constexpr int MAX_CRATER_TEXTURES = 2;
 constexpr int MAX_FOOTPRINTS = 64;
@@ -127,18 +127,9 @@ long CraterManager::init (long numCraters, unsigned long craterTypeSize, const c
 	//-----------------------------------------------------
 	// Allocate Heap to store crater Info
 	maxCraters = numCraters;
-	craterPosHeapSize = numCraters * (sizeof(CraterData) + allocatedBlockSize);
-	
-	//-----------------------------------------------------
-	// create Heaps
-	craterPosHeap = new HeapManager;
-	gosASSERT(craterPosHeap != nullptr);
-	
-	long result = craterPosHeap->createHeap(craterPosHeapSize);
-	gosASSERT(result == NO_ERR);
-		
-	result = craterPosHeap->commitHeap(craterPosHeapSize);
-	gosASSERT(result == NO_ERR);
+	craterPosHeapSize = numCraters * sizeof(CraterData);
+	craterList = static_cast<CraterDataPtr>(std::malloc(craterPosHeapSize));
+	gosASSERT(craterList != nullptr);
 
 	numCraterTextures = MAX_CRATER_TEXTURES;
 	//---------------------------------------------------------
@@ -166,8 +157,8 @@ long CraterManager::init (long numCraters, unsigned long craterTypeSize, const c
 
 	//-----------------------------------------------------
 	// Setup pointer and initial values
-	craterList = reinterpret_cast<CraterDataPtr>(craterPosHeap->getHeapPtr());
-	memset(craterPosHeap->getHeapPtr(),-1,craterPosHeapSize);
+
+	memset(craterList,-1,craterPosHeapSize);
 
 	return(NO_ERR);
 }	
@@ -185,11 +176,7 @@ void CraterManager::destroy (void)
 	
 	//----------------------------------------------
 	// Whack the Happy Crater Heaps
-	delete craterShpHeap;
-	craterShpHeap = nullptr;
-	
-	delete craterPosHeap;
-	craterPosHeap = nullptr;
+	std::free(craterList);
 	
 	craterPosHeapSize = craterShpHeapSize = 0;
 	craterList = nullptr;

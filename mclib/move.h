@@ -553,8 +553,6 @@ class MissionMap {
 
 	public:
 
-		void* operator new (size_t mySize);
-		void operator delete (void* us);
 
 		void init (void) {
 			map.clear();
@@ -990,8 +988,6 @@ class MovePath {
 		
 	public:
 	
-		void* operator new (size_t mySize);
-		void operator delete (void* us);
 		
 		void init (void) {
 			goal = glm::vec3(0.0f);
@@ -1329,8 +1325,6 @@ class GlobalMap {
 
 	public:
 
-		void* operator new (size_t mySize);
-		void operator delete (void* us);
 		
 		void init (void) {
 			height = 0;
@@ -1687,8 +1681,6 @@ class MoveMap {
 		
 	public:
 
-		void* operator new (size_t mySize);
-		void operator delete (void* us);
 		
 		void init (void) {
 			ULr = 0;

@@ -360,26 +360,26 @@ long Camera::init (FitIniFilePtr cameraFile )
 	//Replace with TGL
 	if ( !worldLights ) // only do the alloc once
 	{
-		worldLights = static_cast<TG_LightPtr *>(systemHeap->Malloc(sizeof(TG_LightPtr) * MAX_LIGHTS_IN_WORLD));
+		worldLights = static_cast<TG_LightPtr *>(std::malloc(sizeof(TG_LightPtr) * MAX_LIGHTS_IN_WORLD));
 		memset(worldLights,0,sizeof(TG_LightPtr) * MAX_LIGHTS_IN_WORLD);
 		numLights = 2;
 
 		//---------------------------------------------------------
 		// First light is sun.
-		worldLights[0] = static_cast<TG_LightPtr>(systemHeap->Malloc(sizeof(TG_Light)));
+		worldLights[0] = static_cast<TG_LightPtr>(std::malloc(sizeof(TG_Light)));
 		worldLights[0]->init(TG_LIGHT_INFINITE);
 	}
 	
 	if ( !activeLights ) // only do the alloc once
 	{
-		activeLights = static_cast<TG_LightPtr *>(systemHeap->Malloc(sizeof(TG_LightPtr) * MAX_LIGHTS_IN_WORLD));
+		activeLights = static_cast<TG_LightPtr *>(std::malloc(sizeof(TG_LightPtr) * MAX_LIGHTS_IN_WORLD));
 		memset(activeLights,0,sizeof(TG_LightPtr) * MAX_LIGHTS_IN_WORLD);
 		numActiveLights = 0;
 	}
 	
 	if ( !terrainLights ) // only do the alloc once
 	{
-		terrainLights = static_cast<TG_LightPtr *>(systemHeap->Malloc(sizeof(TG_LightPtr) * MAX_LIGHTS_IN_WORLD));
+		terrainLights = static_cast<TG_LightPtr *>(std::malloc(sizeof(TG_LightPtr) * MAX_LIGHTS_IN_WORLD));
 		memset(terrainLights,0,sizeof(TG_LightPtr) * MAX_LIGHTS_IN_WORLD);
 		numTerrainLights = 0;
 	}
@@ -393,7 +393,7 @@ long Camera::init (FitIniFilePtr cameraFile )
 
 	//---------------------------------------------------------
 	// Second light is ambient.
-	worldLights[1] = static_cast<TG_LightPtr>(systemHeap->Malloc(sizeof(TG_Light)));
+	worldLights[1] = static_cast<TG_LightPtr>(std::malloc(sizeof(TG_Light)));
 	worldLights[1]->init(TG_LIGHT_AMBIENT);
 
 	//---------------------
@@ -494,25 +494,25 @@ void Camera::destroy (void)
 {
 	if (worldLights)
 	{
-		systemHeap->Free(worldLights[1]);
+		std::free(worldLights[1]);
 		worldLights[1] = nullptr;
 
-		systemHeap->Free(worldLights[0]);
+		std::free(worldLights[0]);
 		worldLights[0] = nullptr;
 
-		systemHeap->Free(worldLights);
+		std::free(worldLights);
 		worldLights = nullptr;
 	}
 	
 	if (activeLights)
 	{
-		systemHeap->Free(activeLights);
+		std::free(activeLights);
 		activeLights = nullptr;
 	}
 	
 	if (terrainLights)
 	{
-		systemHeap->Free(terrainLights);
+		std::free(terrainLights);
 		terrainLights = nullptr;
 	}
 }

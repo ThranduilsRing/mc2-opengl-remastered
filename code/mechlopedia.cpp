@@ -1,3 +1,5 @@
+#include "mc2fmt.h"
+#include "utils/mc2log.h"
 #define MECHLOPEDIA_CPP
 /*************************************************************************************************\
 Mechlopedia.cpp			: Implementation of the Mechlopedia component.
@@ -356,10 +358,8 @@ void Mechlopedia::MechScreen::init()
 		float sy = (Environment.screenHeight > 0) ? static_cast<float>(Environment.screenHeight) / 600.f : 1.f;
 		if ( mc2::gate::get<"MC2_LOG_PREVIEW">() )
 		{
-			FILE* f = fopen("preview_debug.log","a");
-			if (f) { fprintf(f,"[PREVIEW] MechScreen::init DEFS-BRANCH screenW=%d screenH=%d sx=%.4f sy=%.4f bounds=[%.1f,%.1f,%.1f,%.1f]\n",
-				Environment.screenWidth, Environment.screenHeight, sx, sy,
-				(12+285)*sx, (43+58)*sy, (12+154+285)*sx, (43+191+58)*sy); fflush(f); fclose(f); }
+			bool f = mc2::log::enabled(mc2::log::Cat::Ui, mc2::log::Level::Info);
+			if (f) { MC2_LOG(Ui, Info, "[PREVIEW] MechScreen::init DEFS-BRANCH screenW={:d} screenH={:d} sx={:.4f} sy={:.4f} bounds=[{:.1f},{:.1f},{:.1f},{:.1f}]", mc2::fmt::as_i32(Environment.screenWidth), mc2::fmt::as_i32(Environment.screenHeight), sx, sy, (12+285)*sx, (43+58)*sy, (12+154+285)*sx, (43+191+58)*sy);   }
 		}
 		camera.init( (12 + 285) * sx, (43 + 58) * sy,
 		             (12 + 154 + 285) * sx, (43 + 191 + 58) * sy );
@@ -565,11 +565,10 @@ void Mechlopedia::MechScreen::select( aTextListItem* pItem )
 		// ENCYCLO-3D-1 diagnostic: is the select→variant→camera chain intact?
 		if ( mc2::gate::get<"MC2_LOG_PREVIEW">() )
 		{
-			if ( FILE* f = fopen("preview_debug.log","a") )
+			if ( bool f = mc2::log::enabled(mc2::log::Cat::Ui, mc2::log::Level::Info) )
 			{
-				fprintf(f,"[ENCYCLO] select mech text='%s' lookup='%s' variant=%p\n",
-					pText, name.c_str(), static_cast<void*>(pChassis));
-				fclose(f);
+				MC2_LOG(Ui, Info, "[ENCYCLO] select mech text='{}' lookup='{}' variant={:016X}", mc2::fmt::safe(pText), name.c_str(), mc2::fmt::as_ptr(static_cast<void*>(pChassis)));
+
 			}
 		}
 		setMech( pChassis, 1 );
@@ -819,12 +818,10 @@ void Mechlopedia::MechScreen::setMech( LogisticsVariant* pChassis, bool bShowJum
 	// ENCYCLO-3D-2 diagnostic: is the chassis scale real here on fresh boot?
 	if ( mc2::gate::get<"MC2_LOG_PREVIEW">() )
 	{
-		if ( FILE* f = fopen("preview_debug.log","a") )
+		if ( bool f = mc2::log::enabled(mc2::log::Cat::Ui, mc2::log::Level::Info) )
 		{
-			fprintf(f,"[ENCYCLO] setMech '%s' chassisScale=%.3f file=%s\n",
-				name, pChassis->getChassis()->getScale(),
-				pChassis->getFileName().c_str());
-			fclose(f);
+			MC2_LOG(Ui, Info, "[ENCYCLO] setMech '{}' chassisScale={:.3f} file={}", mc2::fmt::safe(name), pChassis->getChassis()->getScale(), pChassis->getFileName().c_str());
+
 		}
 	}
 

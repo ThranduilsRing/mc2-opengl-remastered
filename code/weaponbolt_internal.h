@@ -1,3 +1,4 @@
+#include "Gates/preferences_legacy.h"
 // Shared surface of the WeaponBolt translation units (weaponbolt*.cpp).
 //
 // weaponbolt.cpp keeps WeaponBoltType, init/destroy, state accessors and Save/Load; the per-frame update and the
@@ -57,7 +58,6 @@ extern bool hasGuardBand;
 extern MidLevelRenderer::MLRClipper * theClipper;
 extern bool drawOldWay;
 extern float BaseHeadShotElevation;
-extern bool useNonWeaponEffects;
 extern bool MLRVertexLimitReached;
 
 #endif // WEAPONBOLT_INTERNAL_H

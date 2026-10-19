@@ -87,23 +87,11 @@ bool moverInList (long blockNum)
 //* GAMEOBJECT MANAGER class
 //***************************************************************************
 
-void* GameObjectManager::operator new (size_t ourSize) {
 
-	void* result = systemHeap->Malloc(ourSize);
-	if (!result) 
-	{
-		Fatal(0, " GameObjectManager.new: unable to create GameObject Manager ");
-	}
-
-	return(result);
-}
 
 //---------------------------------------------------------------------------
 
-void GameObjectManager::operator delete (void* us) {
 
-	systemHeap->Free(us);
-}
 
 //---------------------------------------------------------------------------
 
@@ -391,7 +379,7 @@ void GameObjectManager::setNumObjects (long nMechs,
 	}
 
 	useMoverLineOfSightTable = true;
-	moverLineOfSightTable = static_cast<char*>(systemHeap->Malloc(maxMovers * maxMovers));
+	moverLineOfSightTable = static_cast<char*>(std::malloc(maxMovers * maxMovers));
 	if (!moverLineOfSightTable)
 		Fatal(numGates, " GameObjectManager.setNumObjects: cannot malloc moverLineOfSightTable ");
 
@@ -1089,7 +1077,7 @@ void GameObjectManager::destroy (void)
 	delete collisionSystem;
 	collisionSystem = nullptr;
 
-	systemHeap->Free(moverLineOfSightTable);
+	std::free(moverLineOfSightTable);
 	moverLineOfSightTable = nullptr;
 }
 

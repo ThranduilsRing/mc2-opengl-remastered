@@ -466,12 +466,12 @@ void MOVE_buildData (long height, long width, MissionMapCellInfo* mapData, long 
 	printf("[MOVE_BD] offMap loop done numOffMap=%ld\n", numOffMap); fflush(stdout);
 
 	if (tempSpecialAreaFootPrints) {
-		systemHeap->Free(tempSpecialAreaFootPrints);
+		std::free(tempSpecialAreaFootPrints);
 		tempSpecialAreaFootPrints = nullptr;
 	}
 	tempNumSpecialAreas = numSpecialAreas;
 	if (tempNumSpecialAreas) {
-		tempSpecialAreaFootPrints = static_cast<GameObjectFootPrint*>(systemHeap->Malloc(sizeof(GameObjectFootPrint) * tempNumSpecialAreas));
+		tempSpecialAreaFootPrints = static_cast<GameObjectFootPrint*>(std::malloc(sizeof(GameObjectFootPrint) * tempNumSpecialAreas));
 		memcpy(tempSpecialAreaFootPrints, specialAreaFootPrints, sizeof(GameObjectFootPrint) * tempNumSpecialAreas);
 	}
 	if (!PathFindMap[SECTOR_PATHMAP])
@@ -622,7 +622,7 @@ long MOVE_readData (PacketFile* packetFile, long whichPacket) {
 		if (numBytes <= 0)
 			Fatal(numBytes, " MOVE_readData: Unable to read num special areas ");
 		if (tempSpecialAreaFootPrints) {
-			systemHeap->Free(tempSpecialAreaFootPrints);
+			std::free(tempSpecialAreaFootPrints);
 			tempSpecialAreaFootPrints = nullptr;
 		}
 		if (tempNumSpecialAreas > 0) {
@@ -638,7 +638,7 @@ long MOVE_readData (PacketFile* packetFile, long whichPacket) {
 			size_t packetSize = static_cast<size_t>(packetFile->getPacketSize());
 			size_t expectedSize = sizeof(GameObjectFootPrint) * static_cast<size_t>(tempNumSpecialAreas);
 			size_t allocSize = (packetSize > expectedSize) ? packetSize : expectedSize;
-			tempSpecialAreaFootPrints = static_cast<GameObjectFootPrint*>(systemHeap->Malloc(allocSize));
+			tempSpecialAreaFootPrints = static_cast<GameObjectFootPrint*>(std::malloc(allocSize));
 			numBytes = packetFile->readPacket(footprintPkt, reinterpret_cast<unsigned char*>(tempSpecialAreaFootPrints));
 			if (numBytes <= 0)
 				Fatal(numBytes, " MOVE_readData: Unable to read num special areas ");
@@ -702,16 +702,9 @@ void MOVE_cleanup (void) {
 	}
 }
 
-void* MissionMap::operator new (size_t ourSize) {
 
-	void* result = systemHeap->Malloc(ourSize);
-	return(result);
-}
 
-void MissionMap::operator delete (void* us) {
 
-	systemHeap->Free(us);
-}	
 
 void MissionMap::init (long h, long w) {
 
@@ -1029,17 +1022,9 @@ void MissionMap::destroy (void) {
 
 // MOVE PATH class
 
-void* MovePath::operator new (size_t ourSize) {
 
-	void* result;
-	result = systemHeap->Malloc(ourSize);
-	return(result);
-}
 
-void MovePath::operator delete (void* us) {
 
-	systemHeap->Free(us);
-}	
 
 long MovePath::init (long numberOfSteps) {
 

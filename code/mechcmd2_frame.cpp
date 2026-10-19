@@ -252,29 +252,11 @@ void __stdcall TerminateGameEngine()
 		ownedFloatHelp.reset();
 		globalFloatHelp = nullptr;
 
-		if (systemHeap)
-		{
-			systemHeap->destroy();
 
-			ownedSystemHeap.reset();
-			systemHeap = nullptr;
-		}
 
-		if (guiHeap)
-		{
-			guiHeap->destroy();
 
-			ownedGuiHeap.reset();
-			guiHeap = nullptr;
-		}
 
-		if (globalHeapList)
-		{
-			globalHeapList->destroy();
 
-			ownedHeapList.reset();
-			globalHeapList = nullptr;
-		}
 
 		gos_PushCurrentHeap(gosFX::Heap);
 

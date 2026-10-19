@@ -1,3 +1,4 @@
+#include "Gates/preferences_legacy.h"
 #define OPTIONSAREA_CPP
 /*************************************************************************************************\
 OptionsArea.cpp			: Implementation of the OptionsArea component.
@@ -44,17 +45,11 @@ static bool bDetailTexture = true;
 static int objectDetail = 0;
 static int difficulty = 0;
 static bool bUnLimitedAmmo = false;
-static long DigitalMasterVolume = 255;
-static long MusicVolume = 64;
-static long sfxVolume = 64;
-static long RadioVolume = 64;
-static long BettyVolume = 64;
 CPrefs prefs;
 CPrefs originalSettings;
 
 #include"mission.h"
 
-extern SoundSystem *sndSystem;
 
 constexpr int MSB_TAB0 = 200;
 constexpr int MSB_TAB1 = 201;
@@ -892,13 +887,13 @@ void OptionsAudio::update()
 		prefs.BettyVolume = scrollBars[4].GetScrollPos();
 	}
 
-	if (sndSystem)
+	if (soundSystem)
 	{
-		sndSystem->setDigitalMasterVolume(prefs.DigitalMasterVolume);
-		sndSystem->setSFXVolume(prefs.sfxVolume);
-		sndSystem->setRadioVolume(prefs.RadioVolume);
-		sndSystem->setMusicVolume(prefs.MusicVolume);
-		sndSystem->setBettyVolume(prefs.BettyVolume);
+		soundSystem->setDigitalMasterVolume(prefs.DigitalMasterVolume);
+		soundSystem->setSFXVolume(prefs.sfxVolume);
+		soundSystem->setRadioVolume(prefs.RadioVolume);
+		soundSystem->setMusicVolume(prefs.MusicVolume);
+		soundSystem->setBettyVolume(prefs.BettyVolume);
 	}
 }
 

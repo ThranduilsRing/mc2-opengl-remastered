@@ -1,3 +1,5 @@
+#include "utils/mc2log.h"
+#include "Gates/preferences_legacy.h"
 #include "../GameOS/gameos/ui_texture.h"
 #include "../GameOS/gameos/vulkan_legacy_shape_island.h"
 /*************************************************************************************************\
@@ -24,7 +26,6 @@ SimpleCamera.cpp	: Implementation of the SimpleCamera component.
 #include "Gates/gate.h"
 #include "mc2fmt.h"
 
-extern bool useShadows;
 extern bool drawOldWay;
 extern bool useFog;
 
@@ -134,8 +135,8 @@ void SimpleCamera::render(long xOffset, long yOffset)
 
 	if ( mc2::gate::get<"MC2_LOG_PREVIEW">() )
 	{
-		FILE* f = fopen("preview_debug.log","a");
-		if (f) { mc2::fmt::print(f, "[PREVIEW] SimpleCamera::render pObject={:016X} bIsComponent={:d}\n", mc2::fmt::as_ptr(static_cast<void*>(pObject.get())), mc2::fmt::as_i32(static_cast<int>(bIsComponent))); fflush(f); fclose(f); }
+		bool f = mc2::log::enabled(mc2::log::Cat::Ui, mc2::log::Level::Info);
+		if (f) { MC2_LOG(Ui, Info, "[PREVIEW] SimpleCamera::render pObject={:016X} bIsComponent={:d}", mc2::fmt::as_ptr(static_cast<void*>(pObject.get())), mc2::fmt::as_i32(static_cast<int>(bIsComponent)));   }
 	}
 
 	if ( pObject )
@@ -155,8 +156,8 @@ void SimpleCamera::render(long xOffset, long yOffset)
 			if ( mc2::gate::get<"MC2_LOG_PREVIEW">() )
 			{
 				GLint fboAfterBegin = 0; glGetIntegerv(GL_FRAMEBUFFER_BINDING, &fboAfterBegin);
-				FILE* f = fopen("preview_debug.log","a");
-				if (f) { mc2::fmt::print(f, "[PREVIEW] fboAfterBegin={:d}\n", mc2::fmt::as_i32(fboAfterBegin)); fflush(f); fclose(f); }
+				bool f = mc2::log::enabled(mc2::log::Cat::Ui, mc2::log::Level::Info);
+				if (f) { MC2_LOG(Ui, Info, "[PREVIEW] fboAfterBegin={:d}", mc2::fmt::as_i32(fboAfterBegin));   }
 			}
 		}
 
@@ -193,8 +194,8 @@ void SimpleCamera::render(long xOffset, long yOffset)
 		gos_GetViewport(&viewMulX, &viewMulY, &viewAddX, &viewAddY);
 		if ( mc2::gate::get<"MC2_LOG_PREVIEW">() )
 		{
-			FILE* f = fopen("preview_debug.log","a");
-			if (f) { mc2::fmt::print(f, "[PREVIEW] gos_GetViewport viewMul={:.1f},{:.1f} viewAdd={:.1f},{:.1f} EnvScreen={:d},{:d} bounds=[{:.1f},{:.1f},{:.1f},{:.1f}]\n", viewMulX, viewMulY, viewAddX, viewAddY, mc2::fmt::as_i32(Environment.screenWidth), mc2::fmt::as_i32(Environment.screenHeight), bounds[0], bounds[1], bounds[2], bounds[3]); fflush(f); fclose(f); }
+			bool f = mc2::log::enabled(mc2::log::Cat::Ui, mc2::log::Level::Info);
+			if (f) { MC2_LOG(Ui, Info, "[PREVIEW] gos_GetViewport viewMul={:.1f},{:.1f} viewAdd={:.1f},{:.1f} EnvScreen={:d},{:d} bounds=[{:.1f},{:.1f},{:.1f},{:.1f}]", viewMulX, viewMulY, viewAddX, viewAddY, mc2::fmt::as_i32(Environment.screenWidth), mc2::fmt::as_i32(Environment.screenHeight), bounds[0], bounds[1], bounds[2], bounds[3]);   }
 		}
 
 		//--------------------------------------------------------
@@ -247,10 +248,10 @@ void SimpleCamera::render(long xOffset, long yOffset)
 			TG_Shape::SetCameraMatrices(&cameraOrigin, &cameraToClip);
 			if ( mc2::gate::get<"MC2_LOG_PREVIEW">() )
 			{
-				FILE* f = fopen("preview_debug.log","a");
+				bool f = mc2::log::enabled(mc2::log::Cat::Ui, mc2::log::Level::Info);
 				if (f) {
-					mc2::fmt::print(f, "[PREVIEW] cameraToClip=[{:.3f} {:.3f} {:.3f} {:.3f} / {:.3f} {:.3f} {:.3f} {:.3f} / {:.3f} {:.3f} {:.3f} {:.3f} / {:.3f} {:.3f} {:.3f} {:.3f}]\n", cameraToClip[0][0], cameraToClip[1][0], cameraToClip[2][0], cameraToClip[3][0], cameraToClip[0][1], cameraToClip[1][1], cameraToClip[2][1], cameraToClip[3][1], cameraToClip[0][2], cameraToClip[1][2], cameraToClip[2][2], cameraToClip[3][2], cameraToClip[0][3], cameraToClip[1][3], cameraToClip[2][3], cameraToClip[3][3]);
-					fflush(f); fclose(f);
+					MC2_LOG(Ui, Info, "[PREVIEW] cameraToClip=[{:.3f} {:.3f} {:.3f} {:.3f} / {:.3f} {:.3f} {:.3f} {:.3f} / {:.3f} {:.3f} {:.3f} {:.3f} / {:.3f} {:.3f} {:.3f} {:.3f}]", cameraToClip[0][0], cameraToClip[1][0], cameraToClip[2][0], cameraToClip[3][0], cameraToClip[0][1], cameraToClip[1][1], cameraToClip[2][1], cameraToClip[3][1], cameraToClip[0][2], cameraToClip[1][2], cameraToClip[2][2], cameraToClip[3][2], cameraToClip[0][3], cameraToClip[1][3], cameraToClip[2][3], cameraToClip[3][3]);
+
 				}
 			}
 			theClipper->StartDraw(cameraOrigin, cameraToClip, fColor, &fColor, default_state, &z);
@@ -310,10 +311,10 @@ void SimpleCamera::render(long xOffset, long yOffset)
 				GLint cullMode = 0; glGetIntegerv(GL_CULL_FACE_MODE, &cullMode);
 				GLint vp[4] = {}; glGetIntegerv(GL_VIEWPORT, vp);
 				GLint fbo = 0; glGetIntegerv(GL_FRAMEBUFFER_BINDING, &fbo);
-				FILE* f = fopen("preview_debug.log","a");
+				bool f = mc2::log::enabled(mc2::log::Cat::Ui, mc2::log::Level::Info);
 				if (f) {
-					mc2::fmt::print(f, "[PREVIEW] pre-draw fbo={:d} depthTest={:d} depthMask={:d} cullFace={:d} frontFace=0x{:X} cullMode=0x{:X} vp=[{:d},{:d},{:d},{:d}] globalScaleFactor={:.4f} bounds=[{:.0f},{:.0f},{:.0f},{:.0f}]\n", mc2::fmt::as_i32(fbo), mc2::fmt::as_i32(static_cast<int>(depthTest)), mc2::fmt::as_i32(static_cast<int>(depthMask)), mc2::fmt::as_i32(static_cast<int>(cullFace)), mc2::fmt::as_u32(static_cast<unsigned>(frontFace)), mc2::fmt::as_u32(static_cast<unsigned>(cullMode)), mc2::fmt::as_i32(vp[0]), mc2::fmt::as_i32(vp[1]), mc2::fmt::as_i32(vp[2]), mc2::fmt::as_i32(vp[3]), globalScaleFactor, bounds[0], bounds[1], bounds[2], bounds[3]);
-					fflush(f); fclose(f);
+					MC2_LOG(Ui, Info, "[PREVIEW] pre-draw fbo={:d} depthTest={:d} depthMask={:d} cullFace={:d} frontFace=0x{:X} cullMode=0x{:X} vp=[{:d},{:d},{:d},{:d}] globalScaleFactor={:.4f} bounds=[{:.0f},{:.0f},{:.0f},{:.0f}]", mc2::fmt::as_i32(fbo), mc2::fmt::as_i32(static_cast<int>(depthTest)), mc2::fmt::as_i32(static_cast<int>(depthMask)), mc2::fmt::as_i32(static_cast<int>(cullFace)), mc2::fmt::as_u32(static_cast<unsigned>(frontFace)), mc2::fmt::as_u32(static_cast<unsigned>(cullMode)), mc2::fmt::as_i32(vp[0]), mc2::fmt::as_i32(vp[1]), mc2::fmt::as_i32(vp[2]), mc2::fmt::as_i32(vp[3]), globalScaleFactor, bounds[0], bounds[1], bounds[2], bounds[3]);
+
 				}
 			}
 			// PREVIEW-DRAWOLDWAY-1 (THE blank-panel root cause): with drawOldWay
@@ -368,10 +369,10 @@ void SimpleCamera::render(long xOffset, long yOffset)
 						}
 					}
 				}
-				FILE* f = fopen("preview_debug.log","a");
+				bool f = mc2::log::enabled(mc2::log::Cat::Ui, mc2::log::Level::Info);
 				if (f) {
-					mc2::fmt::print(f, "[PREVIEW] post-draw glErr=0x{:X} centerPx({:d},{:d})=RGBA({:d},{:d},{:d},{:d}) cornerPx(10,10)=RGBA({:d},{:d},{:d},{:d}) nonBgCount={:d} bbox=[{:d},{:d},{:d},{:d}]\n", mc2::fmt::as_u32(static_cast<unsigned>(err)), mc2::fmt::as_i32(cx), mc2::fmt::as_i32(cy), mc2::fmt::as_i32(centerPx[0]), mc2::fmt::as_i32(centerPx[1]), mc2::fmt::as_i32(centerPx[2]), mc2::fmt::as_i32(centerPx[3]), mc2::fmt::as_i32(cornerPx[0]), mc2::fmt::as_i32(cornerPx[1]), mc2::fmt::as_i32(cornerPx[2]), mc2::fmt::as_i32(cornerPx[3]), mc2::fmt::as_i32(nonBgCount), mc2::fmt::as_i32(minX), mc2::fmt::as_i32(minY), mc2::fmt::as_i32(maxX), mc2::fmt::as_i32(maxY));
-					fflush(f); fclose(f);
+					MC2_LOG(Ui, Info, "[PREVIEW] post-draw glErr=0x{:X} centerPx({:d},{:d})=RGBA({:d},{:d},{:d},{:d}) cornerPx(10,10)=RGBA({:d},{:d},{:d},{:d}) nonBgCount={:d} bbox=[{:d},{:d},{:d},{:d}]", mc2::fmt::as_u32(static_cast<unsigned>(err)), mc2::fmt::as_i32(cx), mc2::fmt::as_i32(cy), mc2::fmt::as_i32(centerPx[0]), mc2::fmt::as_i32(centerPx[1]), mc2::fmt::as_i32(centerPx[2]), mc2::fmt::as_i32(centerPx[3]), mc2::fmt::as_i32(cornerPx[0]), mc2::fmt::as_i32(cornerPx[1]), mc2::fmt::as_i32(cornerPx[2]), mc2::fmt::as_i32(cornerPx[3]), mc2::fmt::as_i32(nonBgCount), mc2::fmt::as_i32(minX), mc2::fmt::as_i32(minY), mc2::fmt::as_i32(maxX), mc2::fmt::as_i32(maxY));
+
 				}
 			}
 			// PREVIEW-FBO-FIXED-800x600-1: end the offscreen preview render and
@@ -452,10 +453,10 @@ void SimpleCamera::drawPreviewToPanel( float panelX, float panelY, float panelW,
 	const float v2 = 1.f - bounds[3] / 600.f;   // bottom -> flipped
 	if ( mc2::gate::get<"MC2_LOG_PREVIEW">() )
 	{
-		FILE* f = fopen("preview_debug.log","a");
+		bool f = mc2::log::enabled(mc2::log::Cat::Ui, mc2::log::Level::Info);
 		if (f) {
-			mc2::fmt::print(f, "[PREVIEW] drawPreviewToPanel tex={:d} panel=[{:.1f},{:.1f},{:.1f},{:.1f}] uv=[{:.3f},{:.3f},{:.3f},{:.3f}] readyForUi={:d}\n", mc2::fmt::as_u64(tex), panelX, panelY, panelW, panelH, u1, v1, u2, v2, mc2::fmt::as_i32(static_cast<int>(GuiRuntime::IsReadyForUiText())));
-			fflush(f); fclose(f);
+			MC2_LOG(Ui, Info, "[PREVIEW] drawPreviewToPanel tex={:d} panel=[{:.1f},{:.1f},{:.1f},{:.1f}] uv=[{:.3f},{:.3f},{:.3f},{:.3f}] readyForUi={:d}", mc2::fmt::as_u64(tex), panelX, panelY, panelW, panelH, u1, v1, u2, v2, mc2::fmt::as_i32(static_cast<int>(GuiRuntime::IsReadyForUiText())));
+
 		}
 	}
 	if ( !tex )
@@ -464,8 +465,8 @@ void SimpleCamera::drawPreviewToPanel( float panelX, float panelY, float panelW,
 	bool ok = GuiRuntime::DrawUiImage( tex, panelX, panelY, panelW, panelH, u1, v1, u2, v2, 0xffffffff );
 	if ( mc2::gate::get<"MC2_LOG_PREVIEW">() )
 	{
-		FILE* f = fopen("preview_debug.log","a");
-		if (f) { mc2::fmt::print(f, "[PREVIEW] DrawUiImage returned {:d}\n", mc2::fmt::as_i32(static_cast<int>(ok))); fflush(f); fclose(f); }
+		bool f = mc2::log::enabled(mc2::log::Cat::Ui, mc2::log::Level::Info);
+		if (f) { MC2_LOG(Ui, Info, "[PREVIEW] DrawUiImage returned {:d}", mc2::fmt::as_i32(static_cast<int>(ok)));   }
 	}
 #else
 	(void)panelX; (void)panelY; (void)panelW; (void)panelH;
@@ -555,8 +556,8 @@ long SimpleCamera::update()
 
 		if ( mc2::gate::get<"MC2_LOG_PREVIEW">() )
 		{
-			FILE* f = fopen("preview_debug.log","a");
-			if (f) { mc2::fmt::print(f, "[PREVIEW] update bounds=[{:.0f},{:.0f},{:.0f},{:.0f}] viewMul={:.0f},{:.0f} off={:.1f},{:.1f} scale={:.3f} Alt={:.0f} mechPos={:.1f},{:.1f},{:.1f}\n", bounds[0], bounds[1], bounds[2], bounds[3], viewMulX, viewMulY, offsetX, offsetY, shapeScale, AltitudeTight, mechPos.x, mechPos.y, mechPos.z); fflush(f); fclose(f); }
+			bool f = mc2::log::enabled(mc2::log::Cat::Ui, mc2::log::Level::Info);
+			if (f) { MC2_LOG(Ui, Info, "[PREVIEW] update bounds=[{:.0f},{:.0f},{:.0f},{:.0f}] viewMul={:.0f},{:.0f} off={:.1f},{:.1f} scale={:.3f} Alt={:.0f} mechPos={:.1f},{:.1f},{:.1f}", bounds[0], bounds[1], bounds[2], bounds[3], viewMulX, viewMulY, offsetX, offsetY, shapeScale, AltitudeTight, mechPos.x, mechPos.y, mechPos.z);   }
 		}
 
 		eye = oldCam;

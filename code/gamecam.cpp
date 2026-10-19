@@ -1,3 +1,4 @@
+#include "Gates/preferences_legacy.h"
 //---------------------------------------------------------------------------
 //
 // GameCam.h -- File contains the Game camera class definitions
@@ -190,7 +191,6 @@ void mc2SceneLightingTrace()
     }
 }
 
-extern bool useShadows;
 extern bool useFog;
 extern bool DisplayCameraAngle;
 
@@ -200,7 +200,6 @@ extern MidLevelRenderer::MLRClipper * theClipper;
 
 extern bool drawOldWay;
 
-extern bool useNonWeaponEffects;
 
 // DEBUG-STATE-ASSETS: globals read by GameOS/gameos/debug_state_dump.cpp via extern.
 // LINK-CONFIG-FIX: definitions moved to GameOS/gameos/dbg_asset_globals.cpp so that

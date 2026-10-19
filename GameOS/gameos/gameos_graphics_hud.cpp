@@ -363,9 +363,9 @@ void gosRenderer::flushHUDBatch()
                     if (v.x > xmax) xmax = v.x;
                     ++nv;
                 }
-            if (FILE* hf = fopen("preview_debug.log", "a")) {
-                mc2::fmt::print(hf, "[HUDSCALE] active={:d} scale={:.2f} rendererWH={:d}x{:d} batch={:d} verts={:d} vertY=[{:.0f}..{:.0f}] vertXmax={:.0f} band={:.0f}\n", mc2::fmt::as_i32(static_cast<int>(s_hud_scale_active)), scale, mc2::fmt::as_i32(width_), mc2::fmt::as_i32(height_), mc2::fmt::as_size(hudBatch_.size()), mc2::fmt::as_size(nv), ymin, ymax, xmax, static_cast<float>(height_) * 0.60f);
-                fclose(hf);
+            if (bool hf = mc2::log::enabled(mc2::log::Cat::Render, mc2::log::Level::Info)) {
+                MC2_LOG(Render, Info, "[HUDSCALE] active={:d} scale={:.2f} rendererWH={:d}x{:d} batch={:d} verts={:d} vertY=[{:.0f}..{:.0f}] vertXmax={:.0f} band={:.0f}", mc2::fmt::as_i32(static_cast<int>(s_hud_scale_active)), scale, mc2::fmt::as_i32(width_), mc2::fmt::as_i32(height_), mc2::fmt::as_size(hudBatch_.size()), mc2::fmt::as_size(nv), ymin, ymax, xmax, static_cast<float>(height_) * 0.60f);
+
             }
         }
     }
@@ -401,9 +401,9 @@ void gosRenderer::flushHUDBatch()
                 float sampleY = -1.f;
                 for (const HudDrawCall& c : hudBatch_)
                     if (!c.vertices.empty() && !c.scaleExempt) { sampleY = c.vertices[0].y; break; }
-                if (FILE* hf = fopen("preview_debug.log", "a")) {
-                    mc2::fmt::print(hf, "[HUDSCALE] apply sw={:.0f} sh={:.0f} band={:.0f} scaled={:d} skipBand={:d} skipExempt={:d} firstVertYafter={:.0f}\n", sw, sh, bottomBand, mc2::fmt::as_i32(scaled), mc2::fmt::as_i32(skippedBand), mc2::fmt::as_i32(skippedExempt), sampleY);
-                    fclose(hf);
+                if (bool hf = mc2::log::enabled(mc2::log::Cat::Render, mc2::log::Level::Info)) {
+                    MC2_LOG(Render, Info, "[HUDSCALE] apply sw={:.0f} sh={:.0f} band={:.0f} scaled={:d} skipBand={:d} skipExempt={:d} firstVertYafter={:.0f}", sw, sh, bottomBand, mc2::fmt::as_i32(scaled), mc2::fmt::as_i32(skippedBand), mc2::fmt::as_i32(skippedExempt), sampleY);
+
                 }
             }
         }

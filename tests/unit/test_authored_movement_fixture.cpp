@@ -111,16 +111,11 @@ TEST_CASE("ObjectiveObservation/replay preserves causes; decoded frames emit onc
 
     auto run = [&](bool enabled) {
         mc2::gate::ScopedOverride<"MC2_DIAG_TAGS"> mode(enabled ? "OBJECTIVES" : "none");
-        UserHeap heap;
-        heap.init(1024 * 1024, "objective-observation");
-        auto* previousHeap = systemHeap;
-        systemHeap = &heap;
         auto* previousTeam = Team::teams[0];
         const auto previousTeamCount = Team::numTeams;
         const auto previousTurn = turn;
         turn = 40;
         struct Restore {
-            UserHeap* heap;
             Team* team;
             long count, frame;
             GameSoundSystem* sound;
@@ -129,13 +124,13 @@ TEST_CASE("ObjectiveObservation/replay preserves causes; decoded frames emit onc
             std::string path = missionPath;
             std::filesystem::path cwd = std::filesystem::current_path();
             ~Restore() {
-                systemHeap = heap; Team::teams[0] = team; Team::numTeams = count; turn = frame;
+                Team::teams[0] = team; Team::numTeams = count; turn = frame;
                 soundSystem = sound; useSound = audio;
                 LogisticsData::instance = logistics;
                 std::strcpy(missionPath, path.c_str());
                 std::filesystem::current_path(cwd);
             }
-        } restore{previousHeap, previousTeam, previousTeamCount, previousTurn, soundSystem, useSound,
+        } restore{previousTeam, previousTeamCount, previousTurn, soundSystem, useSound,
                   LogisticsData::instance};
         ObjectiveObservationFixture marker;
         GameSoundSystem controlledSound;
@@ -318,7 +313,6 @@ struct MovingPilot : MechWarrior {
 };
 
 struct MovementWorld {
-    UserHeap heap;
     SavedGlobals saved;
     std::unique_ptr<Terrain> terrain;
     std::unique_ptr<FlatMesh> mesh;
@@ -332,11 +326,10 @@ struct MovementWorld {
     std::unique_ptr<MovePathManager> queue;
 
     MovementWorld() {
-        REQUIRE(Terrain::terrainHeap == nullptr);
         REQUIRE(Terrain::terrainTextures == nullptr);
         REQUIRE(Terrain::terrainTextures2 == nullptr);
         REQUIRE(Terrain::objBlockInfo == nullptr);
-        saved.keep(systemHeap); saved.keep(missionHeap); saved.keep(land);
+        saved.keep(land);
         saved.keep(GameMap); saved.keep(GlobalMoveMap); saved.keep(PathFindMap);
         saved.keep(PathManager); saved.keep(ObjectManager);
         saved.keep(Mover::triggerAreaMgr);
@@ -350,7 +343,7 @@ struct MovementWorld {
         saved.keep(GlobalMap::log); saved.keep(GlobalMap::logEnabled);
         saved.keep(GlobalMap::minRow); saved.keep(GlobalMap::maxRow);
         saved.keep(GlobalMap::minCol); saved.keep(GlobalMap::maxCol);
-        saved.keep(Terrain::terrainHeap); saved.keep(Terrain::mapData);
+        saved.keep(Terrain::mapData);
         saved.keep(Terrain::realVerticesMapSide); saved.keep(Terrain::halfVerticesMapSide);
         saved.keep(Terrain::blocksMapSide); saved.keep(Terrain::visibleVerticesPerSide);
         saved.keep(Terrain::worldUnitsMapSide); saved.keep(Terrain::mapTopLeft3d);
@@ -371,8 +364,6 @@ struct MovementWorld {
         saved.keep(DebugMovePathType); saved.keep(RamObjectWID); saved.keep(LastMoveCalcErr);
         saved.keep(numNodesVisited); saved.keep(topOpenNodes);
         saved.keep(goalMap); saved.keep(goalMapRowStart); saved.keep(goalMapRowCol);
-        heap.init(16 * 1024 * 1024, "offline-movement");
-        systemHeap = missionHeap = &heap;
         GameObject::initialize = true;
         Mover::holdFireIconHandle = 1;
         scenarioTime = 1.0f;
@@ -383,8 +374,6 @@ struct MovementWorld {
         Terrain::blocksMapSide = 3;
         Terrain::worldUnitsMapSide = 60 * Terrain::worldUnitsPerVertex;
         Terrain::mapTopLeft3d = glm::vec3(-Terrain::worldUnitsMapSide / 2, Terrain::worldUnitsMapSide / 2, 0);
-        Terrain::terrainHeap = new UserHeap;
-        Terrain::terrainHeap->init(1024 * 1024, "offline-terrain");
         Terrain::tileRowToWorldCoord = Terrain::tileColToWorldCoord = nullptr;
         Terrain::cellRowToWorldCoord = Terrain::cellColToWorldCoord = Terrain::cellToWorldCoord = nullptr;
         terrain->initMapCellArrays();
@@ -397,7 +386,7 @@ struct MovementWorld {
         for (int col = 35; col <= 145; ++col) cells->setPassable(90, col, true);
         PathFindMap[0] = PathFindMap[1] = nullptr;
         GlobalMoveMap[0] = GlobalMoveMap[1] = GlobalMoveMap[2] = nullptr;
-        Terrain::objBlockInfo = static_cast<ObjBlockInfo*>(Terrain::terrainHeap->Malloc(9 * sizeof(ObjBlockInfo)));
+        Terrain::objBlockInfo = static_cast<ObjBlockInfo*>(std::malloc(9 * sizeof(ObjBlockInfo)));
         objects = std::make_unique<Watches>();
         ObjectManager = objects.get();
         pilot = std::make_unique<MovingPilot>();
@@ -538,10 +527,10 @@ void consumeActive(MovementWorld& world, std::vector<int>& visited) {
     world.pilot->clearMovePath(0);
     world.pilot->getMovePath();
 }
-std::array<const void*, 19> bindings() {
-    return {systemHeap, missionHeap, land, GameMap, GlobalMoveMap[0], GlobalMoveMap[1], GlobalMoveMap[2],
+std::array<const void*, 16> bindings() {
+    return {land, GameMap, GlobalMoveMap[0], GlobalMoveMap[1], GlobalMoveMap[2],
         PathFindMap[0], PathFindMap[1], ObjectManager, PathManager,
-        Terrain::mapData, Terrain::terrainHeap, Terrain::tileRowToWorldCoord, Terrain::tileColToWorldCoord,
+        Terrain::mapData, Terrain::tileRowToWorldCoord, Terrain::tileColToWorldCoord,
         Terrain::cellRowToWorldCoord, Terrain::cellColToWorldCoord, Terrain::objBlockInfo, Mover::triggerAreaMgr};
 }
 

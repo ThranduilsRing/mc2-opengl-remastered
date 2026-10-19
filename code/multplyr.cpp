@@ -78,18 +78,11 @@ void ShutdownNetworking (void) {
 // WORLD CHUNK class
 //***************************************************************************
 
-void* WorldChunk::operator new (size_t ourSize) {
 
-	void* result = systemHeap->Malloc(ourSize);
-	return(result);
-}
 
 //---------------------------------------------------------------------------
 
-void WorldChunk::operator delete (void* us) {
 
-	systemHeap->Free(us);
-}	
 
 //---------------------------------------------------------------------------
 
@@ -183,18 +176,11 @@ bool WorldChunk::equalTo (WorldChunkPtr chunk) {
 // MULTIPLAYER class
 //***************************************************************************
 
-void* MultiPlayer::operator new (size_t ourSize) {
 
-	void* result = systemHeap->Malloc(ourSize);
-	return(result);
-}
 
 //---------------------------------------------------------------------------
 
-void MultiPlayer::operator delete (void* us) {
 
-	systemHeap->Free(us);
-}	
 
 //---------------------------------------------------------------------------
 

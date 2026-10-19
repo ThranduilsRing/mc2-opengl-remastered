@@ -24,16 +24,9 @@ constexpr int MOVECHUNK_STEP_MASK = 0x00000007;
 
 constexpr int MOVECHUNK_NUM_STEPS = 3;
 
-void* MoveChunk::operator new (size_t ourSize) {
 
-	void* result = systemHeap->Malloc(ourSize);
-	return(result);
-}
 
-void MoveChunk::operator delete (void* us) {
 
-	systemHeap->Free(us);
-}	
 
 inline void getAdjCell (long row,
 						long col,
@@ -383,17 +376,9 @@ void Mover::setMoveChunk (MovePathPtr path, MoveChunkPtr chunk) {
 	path->globalStep = -1;
 }	
 
-void* StatusChunk::operator new (size_t ourSize) {
 
-	void* result;
-	result = systemHeap->Malloc(ourSize);
-	return(result);
-}
 
-void StatusChunk::operator delete (void* us) {
 
-	systemHeap->Free(us);
-}	
 
 void StatusChunk::build (MoverPtr mover) {
 

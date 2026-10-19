@@ -3,6 +3,7 @@
 #include <SDL2/SDL_mixer.h>
 #include <vector>
 #include <algorithm>
+#include <cmath>
 #include "utils/vec.h"
 #include "mc2fmt.h"
 #include "utils/mc2log.h"
@@ -376,27 +377,23 @@ void __stdcall gosAudio_CreateResource( HGOSAUDIO* hgosaudio, enum gosAudio_Reso
 //  stopped.
 //  Any memory the SoundAPI associated with the resource will be freed.
 //
-void __stdcall gosAudio_DestroyResource( HGOSAUDIO* hgosaudio )
+void __stdcall gosAudio_DestroyResource(HGOSAUDIO* handle)
 {
-    gosASSERT(g_sound_engine && hgosaudio);
-
-    gosAudio* audio = static_cast<gosAudio*>(*hgosaudio);
-    gosAudio_ChannelInfo* pci = g_sound_engine->getChannelsInfo();
-    if(!audio)
-        return;
-
-    *hgosaudio = nullptr;
-
-    for(int i=0; i<g_sound_engine->NUM_CHANNELS;++i) {
-        if(pci[i].hAudio == audio) {
+    if (!handle || !*handle) return;
+    auto* audio = static_cast<gosAudio*>(*handle);
+    *handle = nullptr;
+    // Engine shutdown already freed its complete resource list.
+    if (!g_sound_engine) return;
+    auto* channels = g_sound_engine->getChannelsInfo();
+    for (int i = 0; i < SoundEngine::NUM_CHANNELS; ++i) {
+        if (channels[i].hAudio == audio) {
             Mix_HaltChannel(i);
-            pci[i].hAudio = nullptr;
-            pci[i].ePlayMode = gosAudio_Stop;
-
-            g_sound_engine->deleteAudio(audio);
-            break;
+            channels[i].hAudio = nullptr;
+            channels[i].ePlayMode = gosAudio_Stop;
         }
     }
+    // Resources may be unbound, or shared by several channels. Free exactly once.
+    g_sound_engine->deleteAudio(audio);
 }
 
 //////////////////////////////////////////////////////////////////////////////////
@@ -455,20 +452,13 @@ void __stdcall gosAudio_SetChannelSlider( int Channel, enum gosAudio_Properties 
         }
         case gosAudio_Panning:
         {
-            ci->fPanning = value1; // -1 ... +1
-            // TODO: looks like panning sets level of volume in channels (like max. posssible)
-            // so if we set Panning(0,0) and then changes volume, we will not hear anyting!
-            // probably we need to uodate panning each time we set volume...  
-            // like check dwProperties if panning property allocated and then do our dirty stuff
-            /*
-            uint8_t cur_volume = (uint8_t)(2*ci->fVolume * MAX_VOLUME);
-            float t = (0.5f * ci->fPanning + 0.5f);
-            t = t < 0.0f ? 0.0f : t;
-            t = t > 1.0f ? 1.0f : t;
-            uint8_t right = (uint8_t)(t*cur_volume);
-            Mix_SetPanning(Channel, cur_volume - right, right);
-            printf("Mix_SetPanning(%d, %d, %d)\n", Channel, cur_volume-right, right);
-            */
+            const float pan = std::isfinite(value1) ? std::clamp(value1, -1.0f, 1.0f) : 0.0f;
+            ci->fPanning = pan;
+            // SDL panning attenuates stereo sides independently of Mix_Volume.
+            // Center leaves both sides at full gain; either extreme silences only its opposite side.
+            const auto left = static_cast<Uint8>(255.0f * (pan > 0.0f ? 1.0f - pan : 1.0f));
+            const auto right = static_cast<Uint8>(255.0f * (pan < 0.0f ? 1.0f + pan : 1.0f));
+            Mix_SetPanning(Channel, left, right);
             break;
         }
         case gosAudio_Frequency:
@@ -494,7 +484,7 @@ void __stdcall gosAudio_GetChannelSlider( int Channel, enum gosAudio_Properties 
     switch(prop) {
         case gosAudio_Common: break; //?
         case gosAudio_Volume: *value1 = ci->fVolume; break;
-        case gosAudio_Panning: *value1 = ci->fPanning; // -1 ... +1
+        case gosAudio_Panning: *value1 = ci->fPanning; break; // -1 ... +1
         case gosAudio_Frequency:
         {
             PAUSE(("Cannot change frequency on a specific channel\n"));
@@ -526,6 +516,8 @@ void __stdcall gosAudio_SetChannelPlayMode( int Channel, enum gosAudio_PlayMode 
             if(audio) {
                 int loops = ci->ePlayMode == gosAudio_Loop  ? -1 : 0;
                 Mix_PlayChannel(Channel, &audio->mix_chunk_, loops);
+                // SDL removes effects when a chunk finishes or is halted; GOS sliders persist.
+                gosAudio_SetChannelSlider(Channel, gosAudio_Panning, ci->fPanning);
             }
             break;
         }

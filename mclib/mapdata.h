@@ -62,7 +62,7 @@ enum  Overlays
 
 //---------------------------------------------------------------------------
 // Classes
-class MapData : public HeapManager
+class MapData
 {
 	//Data Members
 	//-------------
@@ -142,12 +142,10 @@ class MapData : public HeapManager
 	//-----------------
 	public:
 
-		void *operator new (size_t mySize);
-		void operator delete (void *us);
 		
 		void init (void)
 		{
-			HeapManager::init();
+
 
 			topLeftVertex.Zero();			
 
@@ -165,7 +163,7 @@ class MapData : public HeapManager
 			WaterTXMData = 0xffffffff;
 		}
 
-		MapData (void) : HeapManager()
+		MapData (void)
 		{
 			init();
 		}

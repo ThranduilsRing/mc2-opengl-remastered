@@ -38,7 +38,6 @@ RadioPtr	  		Radio::radioList[MAX_RADIOS];	//Warriors no longer delete their rad
 bool				Radio::radioListGo = false;
 bool				Radio::messageInfoLoaded = false;
 long				Radio::currentRadio = 0;
-std::unique_ptr<UserHeap>	Radio::radioHeap;
 PacketFilePtr		Radio::messagesFile[MAX_RADIOS];
 
 RadioMessageInfo	messageInfo[RADIO_MESSAGE_COUNT];
@@ -46,7 +45,7 @@ RadioMessageInfo	messageInfo[RADIO_MESSAGE_COUNT];
 //------------------------------------------------------------------------------------------
 // Class Radio
 //------------------------------------------------------------------------------------------
-void *Radio::operator new (size_t mySize)
+Radio::Radio()
 {
 	if (!radioListGo)
 	{
@@ -59,20 +58,13 @@ void *Radio::operator new (size_t mySize)
 		
 		currentRadio = 0;
 		
-		radioHeap = std::make_unique<UserHeap>();
-		radioHeap->init((4096 * 51)-1,"Radios");
-		radioHeap->setMallocFatals(false);
 	}
 
-	void *result = radioHeap->Malloc(mySize);
-	return result;
+	init();
 }
- 
+
 //-------------------------------------------------------------------------------
-void Radio::operator delete (void *us)
-{
-	radioHeap->Free(us);
-}
+
 
 //-------------------------------------------------------------------------------
 long Radio::init (char *fileName, unsigned long heapSize, char *movie)

@@ -1037,20 +1037,10 @@ bool file1OlderThan2 (const char* file1, const char* file2)
 
 //---------------------------------------------------------------------------
 //	class File member functions
-void *File::operator new (size_t mySize)
-{
-	void *result = nullptr;
-	
-	result = systemHeap->Malloc(mySize);
-	
-	return(result);
-}
+
 
 //---------------------------------------------------------------------------
-void File::operator delete (void *us)
-{
-	systemHeap->Free(us);
-}
+
 
 //---------------------------------------------------------------------------
 File::File (void)
@@ -1983,16 +1973,16 @@ long File::read (MemoryPtr buffer, long length)
 }
 
 //---------------------------------------------------------------------------
-long File::readRAW (DWORD* &buffer, UserHeapPtr heap)
+long File::readRAW (DWORD* &buffer)
 {
 	long result = 0;
 	
-	if (fastFile && heap && fastFile->isLZCompressed())
+	if (fastFile && fastFile->isLZCompressed())
 	{
 		long lzSizeNeeded = fastFile->lzSizeFast(fastFileHandle);
         // sebi
-		//buffer = (unsigned long *)heap->Malloc(lzSizeNeeded);
-		buffer = static_cast<DWORD*>(heap->Malloc(lzSizeNeeded));
+		//buffer = (unsigned long *)std::malloc(lzSizeNeeded);
+		buffer = static_cast<DWORD*>(std::malloc(lzSizeNeeded));
 
 		result = fastFile->readFastRAW(fastFileHandle,buffer,lzSizeNeeded);
 		logicalPosition += result;

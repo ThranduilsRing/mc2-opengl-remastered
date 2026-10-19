@@ -1,3 +1,4 @@
+#include "Gates/preferences_legacy.h"
 // Shared surface of the mech3d translation units (mech3d*.cpp).
 // mech3d.cpp keeps the shared globals, the accessors and destroy/copy code; the rest of the
 // Mech3DAppearance implementation is split by responsibility (see DOC in each piece).
@@ -109,11 +110,8 @@ extern float worldUnitsPerMeter;
 extern bool useFog;
 extern float metersPerWorldUnit;
 extern MidLevelRenderer::MLRClipper * theClipper;
-extern bool useNonWeaponEffects;
-extern bool useHighObjectDetail;
 extern bool InEditor;
 extern bool MLRVertexLimitReached;
-extern bool useShadows;
 extern char MechStateByGesture[MAX_MECH_ANIMATIONS];
 extern bool reloadBounds;
 extern int ObjectTextureSize;

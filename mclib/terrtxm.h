@@ -120,6 +120,7 @@ struct TransitionType
 //---------------------------------------------------------------------------
 class TerrainTextures
 {
+	bool metadataLoaded = false;
 	//Data Members
 	//-------------
 	protected:
@@ -142,8 +143,6 @@ class TerrainTextures
 		TransitionTypePtr	transitions;
 		long				nextTransition;
 
-		UserHeapPtr			tileHeap;
-		UserHeapPtr			tileRAMHeap;
 
 		long				globalMipLevel;
 		long				firstOverlay;
@@ -180,8 +179,6 @@ class TerrainTextures
 	
 		void init (void)
 		{
-			tileHeap = nullptr;
-			tileRAMHeap = nullptr;
 
 			//----------------------------------------------
 			// Stores composited and raw textures in VidMem

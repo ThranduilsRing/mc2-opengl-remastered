@@ -1,3 +1,4 @@
+#include "Gates/preferences_legacy.h"
 // Shared surface of the saveload*.cpp pieces: the include bundle and the file-scope declarations Mission::save and
 // the Mission::load phases use.
 #ifndef CODE_SAVELOAD_INTERNAL_H
@@ -139,7 +140,6 @@ void MouseTimerKill();
 void ProgressTimer(	RECT& WinRect,DDSURFACEDESC2& mouseSurfaceDesc );
 
 extern volatile bool mc2IsInDisplayBackBuffer;
-extern volatile bool mc2UseAsyncMouse;
 extern volatile bool mc2IsInMouseTimer;
 extern void (*AsynFunc)(RECT& WinRect,DDSURFACEDESC2& mouseSurfaceDesc );
 

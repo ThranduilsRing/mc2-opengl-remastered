@@ -185,7 +185,6 @@ void Mission::initializeStatistics()
 
 	statisticsInitialized = true;
 
-	HeapList::initializeStatistics();
 	TerrainTextures::initializeStatistics();
 
 #endif

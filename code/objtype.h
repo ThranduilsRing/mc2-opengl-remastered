@@ -60,7 +60,6 @@ class ObjectType {
 
 	public:
 
-		void* operator new (size_t ourSize);
 		void operator delete (void *us);
 			
 		void init (void) {
@@ -131,7 +130,7 @@ class ObjectType {
 
 		// Mod-tolerance: back-fill appearance name for stub ObjectTypes created
 		// when a mission-referenced ObjectNumber doesn't exist in the pak.
-		// Allocates with the class operator new like the normal init path.
+		// Stores the name in the same owned string as the normal init path.
 		void setAppearanceTypeName (const char* name);
 			
 		bool getPotentialContact (void) {

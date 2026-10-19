@@ -1,3 +1,4 @@
+#include "Gates/preferences_legacy.h"
 /***************************************************************
 * FILENAME: Editor.cpp
 * DESCRIPTION: Implements core Editor startup, update, and subsystem coordination.
@@ -33,7 +34,6 @@ gosRenderer* getGosRenderer();
 extern void InitWLib(void);
 
 
-UserHeapPtr guiHeap = nullptr;
 
 
 extern Stuff::MemoryStream *effectStream;	// NS3: def in mclib/txmmgr.cpp
@@ -46,7 +46,6 @@ unsigned long systemHeapSize = 128 * 1024 * 1024;
 unsigned long guiHeapSize = 1023999;
 
 
-long gammaLevel = 0;
 bool hasGuardBand = false;
 extern long terrainLineChanged; // the terrain uses this
 extern float frameRate; // tiny geometry needs this
@@ -189,8 +188,7 @@ void DoGameLogic()
 	}
 
 
-	if (globalHeapList)
-		globalHeapList->update();
+
 
 	if (justResaveAllMaps)
 	{
@@ -275,16 +273,9 @@ void InitializeGameEngine()
 		CDInstallPath[lastCharacter+2] = 0;
 	}
 
-	globalHeapList = new HeapList;
-	gosASSERT(globalHeapList != nullptr);
 
-	globalHeapList->init();
-		globalHeapList->update();		//Run Instrumentation into GOS Debugger Screen
 
-	systemHeap = new UserHeap;
-	gosASSERT(systemHeap != nullptr);
 
-	systemHeap->init(systemHeapSize,"SYSTEM");
 
 	Stuff::InitializeClasses();
 		MidLevelRenderer::InitializeClasses(1024);
@@ -327,7 +318,7 @@ void InitializeGameEngine()
 	}
 
 	// effectsData is a global so it outlives effectStream (freed at shutdown alongside it).
-	effectsData = (MemoryPtr)systemHeap->Malloc(effectsSize);
+	effectsData = (MemoryPtr)std::malloc(effectsSize);
 	effectFile.read(effectsData,effectsSize);
 	effectFile.close();
 
@@ -755,7 +746,6 @@ else
 	if (!statisticsInitialized)
 	{
 		statisticsInitialized = true;
-		HeapList::initializeStatistics();
 	}
 
 	InitDW();
@@ -852,7 +842,7 @@ void TerminateGameEngine()
 	// Now safe to free the backing buffer -- effectStream no longer holds a pointer into it.
 	if (effectsData)
 	{
-		systemHeap->Free(effectsData);
+		std::free(effectsData);
 		effectsData = nullptr;
 	}
 	delete gosFX::LightManager::Instance;
@@ -870,21 +860,9 @@ void TerminateGameEngine()
 	MidLevelRenderer::TerminateClasses();
 	Stuff::TerminateClasses();
 
-	if (systemHeap)
-	{
-		systemHeap->destroy();
 
-		delete systemHeap;
-		systemHeap = nullptr;
-	}
 
-	if (globalHeapList)
-	{
-		globalHeapList->destroy();
 
-		delete globalHeapList;
-		globalHeapList = nullptr;
-	}
 
 
 	gos_DeleteFont(gosFontHandle);

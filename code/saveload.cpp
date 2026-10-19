@@ -1,3 +1,4 @@
+#include "utils/mc2log.h"
 //******************************************************************************************
 //	saveload.cpp - This file contains the mission Save Load class code
 //		Missions are what scenarios were in MechCommander 1.
@@ -57,14 +58,8 @@ void Part::Save (FitIniFilePtr file, long partNum)
 // so a bad slot/ordering is diagnosable after the fact.
 static void saveloadTrace(const char* op, const char* file, const char* missionFile)
 {
-	extern char savePath[];
-	char tracePath[1024];
-	S_snprintf(tracePath, sizeof(tracePath), "%s" PATH_SEPARATOR "saveload_trace.log", savePath);
-	if (FILE* tf = fopen(tracePath, "a")) {
-		fprintf(tf, "[SAVELOAD] op=%s file=%s mission=%s\n",
-			op, file ? file : "(null)", missionFile ? missionFile : "(null)");
-		fclose(tf);
-	}
+    MC2_LOG(Io, Info, "[SAVELOAD] op={} file={} mission={}",
+            op, file ? file : "(null)", missionFile ? missionFile : "(null)");
 }
 
 void Mission::save (const char *saveFileName)
@@ -499,10 +494,7 @@ void Mission::loadGameSystemRanges(MissionLoadFrame& f) {
 	auto& result = f.result; FitIniFile* const gameSystemFile = &f.gameSystemFile; auto& forestMoveCost = f.forestMoveCost;
 	//--------------------------------------------------------------
 	// Start the Mission Heap
-	missionHeap = new UserHeap;
-	gosASSERT(missionHeap != nullptr);
 	
-	missionHeap->init(missionHeapSize,"MISSION");
 	
 	//--------------------------
 	// Load Game System stuff...

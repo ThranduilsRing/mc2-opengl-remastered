@@ -51,18 +51,11 @@ long MovePathManager_getFrameCounter (void) { return s_pathFrameCounter; }
 // PATH MANAGER class
 //***************************************************************************
 
-void* MovePathManager::operator new (size_t mySize) {
 
-	void *result = systemHeap->Malloc(mySize);
-	return(result);
-}
 
 //---------------------------------------------------------------------------
 
-void MovePathManager::operator delete (void* us) {
 
-	systemHeap->Free(us);
-}
 
 //---------------------------------------------------------------------------
 

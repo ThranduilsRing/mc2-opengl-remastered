@@ -29,7 +29,7 @@ void Mission::initPartsHeader(MissionInitFrame& f) {
 
 	result = missionFile->readIdULong("NumParts",numParts);
 	// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1):
-	// numParts sizes missionHeap->Malloc(sizeof(Part)*(numParts+1)) below and
+	// numParts sizes std::malloc(sizeof(Part)*(numParts+1)) below and
 	// bounds every part loop; a failed read leaves it uninitialized.
 	MC2_VERIFY(result == NO_ERR, "Mission::init: [Parts] NumParts read failed (load pass)");
 
@@ -55,7 +55,7 @@ void Mission::initPartsLoad(long loadType, long dropZoneID, glm::vec3* dropZoneL
 	{
 		//-----------------------------------------------------
 		// Since we leave part 0 unused, malloc numParts + 1...
-		parts = static_cast<PartPtr>(missionHeap->Malloc(sizeof(Part) * (numParts + 1)));
+		parts = static_cast<PartPtr>(std::malloc(sizeof(Part) * (numParts + 1)));
 		gosASSERT(parts != nullptr);
 
 		memset(parts,0,sizeof(Part) * (numParts + 1));

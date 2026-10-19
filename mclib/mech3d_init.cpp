@@ -1,6 +1,8 @@
+#include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
+#include "mc2fmt.h"
+#include "utils/mc2log.h"
 // Mech3DAppearance: Mech3DAppearance::init, initFX, hit reactions, paint schemata and paint scheme.
 // Declared in the class headers; shared names in mech3d_internal.h.
-#include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "mech3d_internal.h"
 #include "appearance_rng.h"
 
@@ -684,18 +686,14 @@ void Mech3DAppearance::setPaintScheme (void)
 		// A zeroed lock buffer here means the paint pass writes black back up.
 		if ( mc2::gate::get<"MC2_LOG_PREVIEW">() )
 		{
-			if ( FILE* f = fopen("preview_debug.log","a") )
+			if ( bool f = mc2::log::enabled(mc2::log::Cat::Render, mc2::log::Level::Info) )
 			{
 				// The surface can be empty or the 1x1 missing-texture placeholder: read only pixels that exist.
 				const DWORD* p = textureData.pTexture;
 				const long long pixelCount = static_cast<long long>(textureData.Width) * static_cast<long long>(textureData.Height);
 				auto px = [&](long long idx) -> unsigned long { return (p && idx < pixelCount) ? static_cast<unsigned long>(p[idx]) : 0ul; };
-				fprintf(f,"[PREVIEW-PAINT] lock gosHandle=%lu %ldx%ld pitch=%ld px0=%08lX px1=%08lX pxMid=%08lX\n",
-					static_cast<unsigned long>(gosHandle),
-					static_cast<long>(textureData.Width),static_cast<long>(textureData.Height),static_cast<long>(textureData.Pitch),
-					px(0),px(1),
-					px(static_cast<long long>(textureData.Height/2)*textureData.Width + textureData.Width/2));
-				fclose(f);
+				MC2_LOG(Render, Info, "[PREVIEW-PAINT] lock gosHandle={:d} {:d}x{:d} pitch={:d} px0={:08X} px1={:08X} pxMid={:08X}", mc2::fmt::as_u32(static_cast<unsigned long>(gosHandle)), mc2::fmt::as_i32(static_cast<long>(textureData.Width)), mc2::fmt::as_i32(static_cast<long>(textureData.Height)), mc2::fmt::as_i32(static_cast<long>(textureData.Pitch)), mc2::fmt::as_u32(px(0)), mc2::fmt::as_u32(px(1)), mc2::fmt::as_u32(px(static_cast<long long>(textureData.Height/2)*textureData.Width + textureData.Width/2)));
+
 			}
 		}
 

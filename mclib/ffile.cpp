@@ -55,19 +55,10 @@ char MissingTitleString[256];
 //---------------------------------------------------------------------------
 //	class FastFile member functions
 //---------------------------------------------------------------------------
-void *FastFile::operator new (size_t mySize)
-{
-	void *result = nullptr;
-	result = malloc(mySize);
-	
-	return(result);
-}
+
 
 //---------------------------------------------------------------------------
-void FastFile::operator delete (void *us)
-{
-	::free(us);
-}
+
 
 //---------------------------------------------------------------------------
 FastFile::FastFile (void)

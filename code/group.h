@@ -87,8 +87,6 @@ class MoverGroup {
 
 	public:
 
-		void* operator new (size_t ourSize);
-		void operator delete (void* us);
 
 		virtual void init (void) {
 			id = -1;

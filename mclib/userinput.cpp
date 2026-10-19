@@ -1,3 +1,4 @@
+#include "utils/mc2log.h"
 //---------------------------------------------------------------------------
 //
 // MechCommander 2
@@ -126,14 +127,14 @@ void MouseCursorData::initCursors (const char *cursorFileName)
 	// (the smoking gun for an invisible-but-positioned cursor quad).
 	if (mc2::gate::get<"MC2_LOG_CURSOR">())
 	{
-		FILE* f = fopen("cursor_debug.log", "a");
+		bool f = mc2::log::enabled(mc2::log::Cat::Ui, mc2::log::Level::Info);
 		if (f)
 		{
-			mc2::fmt::print(f, "[CURSOR] initCursors name='{}' realHack='{}' fitPath='{}' fitOpen={:d} numCursors={:d} screenW={:d}\n", mc2::fmt::safe(cursorFileName), mc2::fmt::safe(realHackName), mc2::fmt::safe(static_cast<const char*>(cursorName)), mc2::fmt::as_i32(openResult), mc2::fmt::as_i32(numCursors), mc2::fmt::as_i32(static_cast<long>(Environment.screenWidth)));
+			MC2_LOG(Ui, Info, "[CURSOR] initCursors name='{}' realHack='{}' fitPath='{}' fitOpen={:d} numCursors={:d} screenW={:d}", mc2::fmt::safe(cursorFileName), mc2::fmt::safe(realHackName), mc2::fmt::safe(static_cast<const char*>(cursorName)), mc2::fmt::as_i32(openResult), mc2::fmt::as_i32(numCursors), mc2::fmt::as_i32(static_cast<long>(Environment.screenWidth)));
 			for (long s = 0; s < numCursors; s++)
-				mc2::fmt::print(f, "[CURSOR]   cursor[{:d}] texHandle={:d} texWidth={:d}\n", mc2::fmt::as_i32(s), mc2::fmt::as_u32(cursorInfos[s].textureHandle), mc2::fmt::as_u32(cursorInfos[s].textureWidth));
-			fflush(f);
-			fclose(f);
+				MC2_LOG(Ui, Info, "[CURSOR]   cursor[{:d}] texHandle={:d} texWidth={:d}", mc2::fmt::as_i32(s), mc2::fmt::as_u32(cursorInfos[s].textureHandle), mc2::fmt::as_u32(cursorInfos[s].textureWidth));
+
+
 		}
 	}
 
@@ -550,16 +551,15 @@ void UserInput::render (void)						//Last thing rendered.  Draws Mouse.
 	// numCursors, and the resolved texture handle for the current state.
 	if (mc2::gate::get<"MC2_LOG_CURSOR">())
 	{
-		static FILE* s_curLog = nullptr;
-		if (!s_curLog) s_curLog = fopen("cursor_debug.log", "a");
+
 		static int s_frame = 0;
-		if (s_curLog && (s_frame++ % 60) == 0)
+		if ((s_frame++ % 60) == 0)
 		{
 			long nc = cursors ? cursors->numCursors : -1;
 			long th = (cursors && mouseState >= 0 && mouseState < nc)
 			          ? cursors->cursorInfos[mouseState].textureHandle : -999;
-			mc2::fmt::print(s_curLog, "[CURSOR] f={:d} drawMouse={:d} mouseState={:d} numCursors={:d} texHandle={:d} screenW={:d}\n", mc2::fmt::as_i32(s_frame), mc2::fmt::as_i32(static_cast<int>(drawMouse)), mc2::fmt::as_i32(mouseState), mc2::fmt::as_i32(nc), mc2::fmt::as_i32(th), mc2::fmt::as_i32(static_cast<long>(Environment.screenWidth)));
-			fflush(s_curLog);
+			MC2_LOG(Ui, Info, "[CURSOR] f={:d} drawMouse={:d} mouseState={:d} numCursors={:d} texHandle={:d} screenW={:d}", mc2::fmt::as_i32(s_frame), mc2::fmt::as_i32(static_cast<int>(drawMouse)), mc2::fmt::as_i32(mouseState), mc2::fmt::as_i32(nc), mc2::fmt::as_i32(th), mc2::fmt::as_i32(static_cast<long>(Environment.screenWidth)));
+
 		}
 	}
 

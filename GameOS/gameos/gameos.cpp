@@ -173,11 +173,6 @@ double __stdcall gos_GetHiResTime()
 
 ////////////////////////////////////////////////////////////////////////////////
 
-static const int g_hepsStackSize = 128;
-static gos_Heap* g_heapsStack[g_hepsStackSize];
-static int g_heapStackPointer = -1;
-
-////////////////////////////////////////////////////////////////////////////////
 HGOSHEAP __stdcall gos_CreateMemoryHeap(char const* HeapName, DWORD MaximumSize/* = 0*/, HGOSHEAP parentHeap/* = ParentClientHeap*/)
 {
     gos_Heap* pheap = new gos_Heap();
@@ -202,23 +197,9 @@ void __stdcall gos_DestroyMemoryHeap(HGOSHEAP Heap, bool shouldBeEmpty/* = true*
     delete Heap;
     Heap = nullptr;
 }
-void __stdcall gos_PushCurrentHeap(HGOSHEAP Heap)
-{
-    gosASSERT(g_heapStackPointer < g_hepsStackSize);
-    g_heapsStack[++g_heapStackPointer] = Heap;
-}
-void __stdcall gos_PopCurrentHeap()
-{
-    gosASSERT(g_heapStackPointer >= 0 && g_heapStackPointer < g_hepsStackSize);
-    g_heapsStack[g_heapStackPointer--] = nullptr;
-}
-
-HGOSHEAP __stdcall gos_GetCurrentHeap()
-{
-    if(g_heapStackPointer == -1)
-        return nullptr;
-    return g_heapsStack[g_heapStackPointer];
-}
+void __stdcall gos_PushCurrentHeap(HGOSHEAP) {}
+void __stdcall gos_PopCurrentHeap() {}
+HGOSHEAP __stdcall gos_GetCurrentHeap() { return nullptr; }
 
 void __stdcall gos_WalkMemoryHeap(HGOSHEAP pHeap, bool vociferous/* = false*/)
 {

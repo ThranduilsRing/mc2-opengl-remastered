@@ -40,8 +40,6 @@ public:
 	virtual void CastAndCopy(const EditorObject &master) { (*this) = master; }
 	virtual EditorObject *Clone() { return(new EditorObject(*this)); }
 
-	void *operator new (size_t mySize);
-	void operator delete (void *us);
 
 	void				select( bool bSelect );
 	inline bool			isSelected() const { return appearance() && appearance()->selected ? true : false; }
@@ -100,7 +98,7 @@ protected:
 		void *operator new (size_t mySize)
 		{
 			void *result = nullptr;
-			result = systemHeap->Malloc(mySize);
+			result = std::malloc(mySize);
 			
 			return(result);
 		
@@ -108,7 +106,7 @@ protected:
 
 		void operator delete (void *us)
 		{
-			systemHeap->Free(us);
+			std::free(us);
 		}
 
 		AppearanceInfo& operator=( const AppearanceInfo& src );

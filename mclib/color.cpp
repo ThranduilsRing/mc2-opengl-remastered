@@ -49,7 +49,7 @@ void initColorTables (void)
 	result = colorFile.readIdLong("NumTables",numColorRGBTables);
 	gosASSERT(result == NO_ERR);
 
-	colorRGBLookup = static_cast<DWORD **>(systemHeap->Malloc(sizeof(DWORD *) * numColorRGBTables));
+	colorRGBLookup = static_cast<DWORD **>(std::malloc(sizeof(DWORD *) * numColorRGBTables));
 	gosASSERT(colorRGBLookup != nullptr);
 
 	memset(colorRGBLookup,0,sizeof(DWORD *) * numColorRGBTables);
@@ -62,7 +62,7 @@ void initColorTables (void)
 		result = colorFile.seekBlock(tableBlock);
 		gosASSERT(result == NO_ERR);
 
-		colorRGBLookup[i] = static_cast<DWORD *>(systemHeap->Malloc(sizeof(DWORD) * MAX_COLOR_ENTRIES));
+		colorRGBLookup[i] = static_cast<DWORD *>(std::malloc(sizeof(DWORD) * MAX_COLOR_ENTRIES));
 		gosASSERT(colorRGBLookup[i] != nullptr);
 
 		DWORD *table = colorRGBLookup[i];
@@ -88,12 +88,12 @@ void destroyColorTables (void)
 {
 	for (long i=0;i<numColorRGBTables;i++)
 	{
-		systemHeap->Free(colorRGBLookup[i]);
+		std::free(colorRGBLookup[i]);
 		colorRGBLookup[i] = nullptr;
 	}
 
 	if ( colorRGBLookup )
-		systemHeap->Free(colorRGBLookup);
+		std::free(colorRGBLookup);
 	colorRGBLookup = nullptr;
 }	
 

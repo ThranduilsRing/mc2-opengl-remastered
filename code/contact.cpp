@@ -63,7 +63,6 @@ bool						TeamSensorSystem::homeTeamInContact = false;
 bool						SensorSystemManager::enemyInLOS = true;
 
 extern float scenarioTime;
-extern UserHeapPtr missionHeap;
 
 constexpr int VISUAL_CONTACT_FLAG = 0x8000;
 
@@ -71,40 +70,21 @@ constexpr int VISUAL_CONTACT_FLAG = 0x8000;
 // CONTACT INFO class
 //***************************************************************************
 
-void* ContactInfo::operator new (size_t ourSize) {
 
-	void* result;
-	result = missionHeap->Malloc(ourSize);
-	return(result);
-}
 
 //---------------------------------------------------------------------------
 
-void ContactInfo::operator delete (void* us) {
 
-	missionHeap->Free(us);
-}	
 
 //***************************************************************************
 // SENSOR SYSTEM routines
 //***************************************************************************
 
-void* SensorSystem::operator new (size_t mySize) {
 
-	void *result = missionHeap->Malloc(mySize);
-	return(result);
-}
 
 //---------------------------------------------------------------------------
 
-void SensorSystem::operator delete (void* us) {
 
-	// SensorManager is a global unique_ptr: at process exit (or after a load error that skipped Mission::destroy) the heap is already gone.
-	// Exit-path containment only: normal teardown resets the sensors before the heap is deleted, so a null heap here means the block was
-	// abandoned on purpose (the process is ending) and the leak is accepted rather than dereferencing a dead heap.
-	if (missionHeap)
-		missionHeap->Free(us);
-}
 
 //---------------------------------------------------------------------------
 
@@ -693,22 +673,11 @@ long SensorSystem::getTeamContacts (int* contactList, int contactCriteria, int s
 // TEAM SENSOR SYSTEM class
 //***************************************************************************
 
-void* TeamSensorSystem::operator new (size_t mySize) {
 
-	void *result = missionHeap->Malloc(mySize);
-	return(result);
-}
 
 //---------------------------------------------------------------------------
 
-void TeamSensorSystem::operator delete (void* us) {
 
-	// SensorManager is a global unique_ptr: at process exit (or after a load error that skipped Mission::destroy) the heap is already gone.
-	// Exit-path containment only: normal teardown resets the sensors before the heap is deleted, so a null heap here means the block was
-	// abandoned on purpose (the process is ending) and the leak is accepted rather than dereferencing a dead heap.
-	if (missionHeap)
-		missionHeap->Free(us);
-}
 
 //---------------------------------------------------------------------------
 
@@ -1140,22 +1109,11 @@ void TeamSensorSystem::updateEcmEffects (void) {
 // SENSOR SYSTEM MANAGER class
 //***************************************************************************
 
-void* SensorSystemManager::operator new (size_t mySize) {
 
-	void *result = missionHeap->Malloc(mySize);
-	return(result);
-}
 
 //---------------------------------------------------------------------------
 
-void SensorSystemManager::operator delete (void* us) {
 
-	// SensorManager is a global unique_ptr: at process exit (or after a load error that skipped Mission::destroy) the heap is already gone.
-	// Exit-path containment only: normal teardown resets the sensors before the heap is deleted, so a null heap here means the block was
-	// abandoned on purpose (the process is ending) and the leak is accepted rather than dereferencing a dead heap.
-	if (missionHeap)
-		missionHeap->Free(us);
-}
 
 //---------------------------------------------------------------------------
 
@@ -1164,7 +1122,7 @@ long SensorSystemManager::init (bool debug) {
 	if (MAX_SENSORS < 2)
 		Fatal(0, " Way too few sensors in Sensor System Manager! ");
 
-	sensorPool = static_cast<SensorSystemPtr*>(missionHeap->Malloc(MAX_SENSORS * sizeof(SensorSystemPtr)));
+	sensorPool = static_cast<SensorSystemPtr*>(std::malloc(MAX_SENSORS * sizeof(SensorSystemPtr)));
 	gosASSERT(sensorPool!=nullptr);
 
 	for (long i = 0; i < MAX_SENSORS; i++)
@@ -1282,8 +1240,7 @@ void SensorSystemManager::destroy (void) {
 		}
 		
 		// Exit-path containment: normal teardown destroys the sensors while the heap is alive; a null heap means the process is ending.
-		if (missionHeap)
-			missionHeap->Free(sensorPool);
+		std::free(sensorPool);
 		sensorPool = nullptr;
 	}
 
