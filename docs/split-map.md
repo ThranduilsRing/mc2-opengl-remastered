@@ -57,14 +57,14 @@ Split commit: `f0521b300`.
 | Piece | What it holds |
 |---|---|
 | `gos_static_prop_batcher.cpp` | keeps what the pieces below did not take |
-| `gos_static_prop_batcher_finalize.cpp` | GpuStaticPropBatcher: GpuStaticPropBatcher::finalizeGeometry -- the orchestrator and every phase except the texture arrays. |
-| `gos_static_prop_batcher_finalize_textures.cpp` | GpuStaticPropBatcher: the texture-array phase of finalizeGeometry -- per-group array build, the BC7 / ORM bucket arrays and the per-packet layer tables. The orchestrator is in gos_static_prop_batcher_finalize.cpp. |
+| `gos_static_prop_batcher_finalize.cpp` | Finalize native prop geometry, CPU material sources and packet metadata once per mission. |
+| `gos_static_prop_batcher_finalize_textures.cpp` | Assemble CPU albedo arrays and per-packet layers for native prop consumers. |
 | `gos_static_prop_batcher_flush.cpp` | Native static-prop color dispatch. CPU feeds and bucket lifetime remain shared. |
 | `gos_static_prop_batcher_mapload.cpp` | GpuStaticPropBatcher: StaticPropViewToShaderMode, onMapLoad, setMissionForIbl, onMapUnload, registerType and registerMultiShape. |
-| `gos_static_prop_batcher_program.cpp` | GpuStaticPropBatcher: loadProgramsIfNeeded, ring capacity, light-freshness gate and the late-register / submit telemetry. |
+| `gos_static_prop_batcher_program.cpp` | Native prop readiness, registration diagnostics and submission counters. |
 | `gos_static_prop_batcher_seam.cpp` | GpuStaticPropBatcher: eligibility, persistent static instances, cached-instance submits, the batcher_* RenderCore seam accessors and the base-instance table. |
 | `gos_static_prop_batcher_shadow.cpp` | GpuStaticPropBatcher: the VK shadow-island geometry feed and the colour-prop island feeds (the GL prop shadow draws are gone). |
-| `gos_static_prop_batcher_state.cpp` | GpuStaticPropBatcher: the shared GPU buffer, ring, program-location, coalesce and static-draw state, the IBL helpers and the material and base-instance bookkeeping. |
+| `gos_static_prop_batcher_state.cpp` | CPU static-prop geometry/material ownership, persistent instance tables and IBL tuning. |
 | `gos_static_prop_batcher_submit.cpp` | GpuStaticPropBatcher: submit, submitMultiShape, the bucket upload, the V6 array build, the depth prepass and the executor apply-state hook. |
 | `gos_static_prop_batcher_internal.h` | shared include bundle, extern globals and declarations of the pieces |
 

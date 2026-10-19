@@ -1,64 +1,22 @@
-// GpuStaticPropBatcher: the shared GPU buffer, ring, program-location, coalesce and static-draw state, the IBL helpers and the material and base-instance bookkeeping.
+// CPU static-prop geometry/material ownership, persistent instance tables and IBL tuning.
 // Declared in the class headers; shared names in gos_static_prop_batcher_internal.h.
 #include "gos_static_prop_batcher_internal.h"
 #include "../../mclib/texture_assets.h"
 #include "Gates/render_options.h"
 
-
 namespace gos_static_prop_batcher_detail {
 
-// Slice 1 (global instance pool). Default global cap and base-instance SSBO binding.
 constexpr uint32_t STATIC_PROP_GLOBAL_CAP_DEFAULT = 131072u;
 
 // Immutable per-map geometry.
-GLuint s_sharedVbo = 0;
-GLuint s_sharedIbo = 0;
-// VK-P8a SHADOW-INTEROP: byte sizes of the shared immutable VBO/IBO, captured at
-// finalize BEFORE the CPU staging vectors are freed (line ~2532). The Vulkan shadow
-// island reads these + the GL handles to copy the caster geometry ONCE per map
-// (the CPU staging is gone by then). 0 until finalized / after unmap.
 uint64_t s_sharedVboBytes = 0;
 uint64_t s_sharedIboBytes = 0;
-GLuint s_sharedVao = 0;
 
-// Slice 2 (object-offload) — Stage 2.C.2: per-type hot-color SSBO.
-// Holds {hotPinkRGB, hotYellowRGB, hotGreenRGB} per registered TG_TypeShape,
-// indexed by inst.typeID at draw time. Built once at finalizeGeometry from
-// TG_TypeShape::hotPinkRGB/hotYellowRGB/hotGreenRGB (mclib/tgl.h:575-577) and
-// uploaded as immutable storage. Consumed by static_prop.vert via std430
-// binding 2 to feed get_base_light()'s per-type magic-color parameters.
-// 48 bytes per type × ~50 types ≈ 2.4 KB total.
-GLuint s_perTypeSsbo = 0;
-
-GLuint   s_instanceSsbo = 0;
-GLuint   s_colorSsbo    = 0;
-// VK-SHADOW-RING-OWNER-1: parallel GpuBufferOwner identity records for the two ring
-// SSBOs. The raw GLuint globals above are UNCHANGED so every gen/bind/map/delete site
-// keeps its exact GL args/order; the owner's backendHandle is written from the freshly
-// gen'd handle (pattern (b), mirrors view_uniforms). Registered at create, invalidated
-// on destroy (grow-realloc). Lifetime Persistent: persistent-mapped ring, realloc-on-grow.
-RenderCore::GpuBufferOwner s_instanceSsboOwner{
-    RenderCore::RenderResourceId::StaticPropInstanceRingSsbo,
-    RenderCore::RenderResourceLifetime::Persistent,
-    "StaticPropInstanceRingSsbo",
-    0u};
-RenderCore::GpuBufferOwner s_colorSsboOwner{
-    RenderCore::RenderResourceId::StaticPropColorRingSsbo,
-    RenderCore::RenderResourceLifetime::Persistent,
-    "StaticPropColorRingSsbo",
-    0u};
-void*    s_instanceMap  = nullptr;
-void*    s_colorMap     = nullptr;
-GLsync   s_fence[RING_FRAMES] = {0};
 uint32_t s_frameSlot = 0;
 size_t   s_instanceCapacity = 0;
 size_t   s_colorCapacity    = 0;
 
 std::unordered_map<uint32_t, PerTypeBucket> s_bucketsByType;
-
-// The per-instance Colors SSBO (binding 1) is read by NO production shader (static_prop.vert declares colors_ but
-// never uses it, firstColorOffset is unused, and the coalesce multidraw never binds binding 1), so the
-// per-static-instance colors zero-fill is skipped; the dynamic submit()/submitMultiShape path is untouched.
 
 // 2b Stage 2 (Mechanism B-reinject): persistent per-type static instance store,
 // rebuilt only when the registry generation changes. Each frame the registry
@@ -101,29 +59,17 @@ std::vector<uint32_t> s_perTypePeak;
 // in onMapLoad() for hygiene.
 uint32_t s_coalesceFrameSlot = 0;
 
-
 std::vector<uint8_t>  s_stagingVbo;
 std::vector<uint32_t> s_stagingIbo;
 
 bool s_geometryFinalized = false;
 bool s_fatalRegistrationFailure = false;
 
-// Main static-prop program (Task 9). Lazy-loaded on first flush()/flushShadow().
-// We keep a glsl_program* around for any future uniform-introspection needs,
-// but most call sites will read the raw GL handle via s_staticPropProgram.
-glsl_program* s_staticPropProgramObj = nullptr;
-GLuint        s_staticPropProgram    = 0;
-
 // Latched once a compile/link attempt has failed. We never retry inside a
 // session because shader source can only change between runs. With this
 // latched true, submit() returns false (so callers CPU-fallback), and
 // flush()/flushShadow() short-circuit immediately. The user can keep the
 // killswitch ON or OFF with no behavioral difference until the next build.
-bool s_programLoadTried  = false;
-bool s_programLoadFailed = false;
-
-GLuint s_coalesceInstanceSsbo      = 0;  // ring-buffered, persistent-mapped
-GLuint s_perDrawSsbo               = 0;  // PerDrawEntry per type, sorted (binding 4)
 
 // MaterialGpu-2 sidecar — active by default (v5: default-ON).
 // No shader consumer until MaterialGpu-3.
@@ -131,9 +77,6 @@ GLuint s_perDrawSsbo               = 0;  // PerDrawEntry per type, sorted (bindi
 // to its entry in s_materialGpuTable.
 // Size invariant: s_packetMaterialIdx.size() == s_sortedPacketOrder.size().
 
-// MC2_MATERIAL_GPU — defaults ON.
-// Set MC2_MATERIAL_GPU=0 to disable table upload, SSBO bind, and compare.
-// Upload gate: active by default; powers compare invariant (albedoTex == texArrayLayer).
 extern const bool s_materialGpuEnabled = mc2::gate::get<"MC2_MATERIAL_GPU">();
 
 // MC2_MATERIAL_GPU_SAMPLE — defaults ON (shader sampling active by default).
@@ -296,61 +239,6 @@ extern const bool s_viewUniformsDisabled = !mc2::gate::get<"MC2_VIEW_UNIFORMS">(
 //     in IblShRegistry.h) and falls back to "default" for unknown names.
 extern const RenderCore::IblShSet* s_currentShSet = &RenderCore::kIblShSets[0];
 
-// ── IBL-SUN-ROTATE-1 ────────────────────────────────────────────────────────
-// Rotate the SH-IBL ambient probe about world-up so its bright lobe lands on
-// the MISSION SUN, instead of staying pinned wherever the source HDRI's own sun
-// happened to be.
-//
-// THE DEFECT, measured offline in tools/class_light_band_harness Stage F (no
-// launch, no capture -- it is arithmetic over the shipped tables):
-//   - There is ONE coefficient set for the whole game. RenderCore/
-//     IblShRegistry.h kIblShSetCount == 1, and kMissionShMap[] holds a single
-//     {nullptr,nullptr} placeholder -- so its COUNT IS 1, not 0, and every one
-//     of the 24 shipping missions resolves to "default" through lookupShSet().
-//   - Its bright axis is therefore a constant: the L1 band IS the radiance's
-//     first directional moment, so the axis is normalize([3],[1],[2]) under the
-//     shader's binding = Stuff azimuth +0.344 deg on every mission.
-//   - The MEDIAN mission misses that axis by 106 deg; the worst is mc2_14 at
-//     176.7 deg. On 17 of the 24 the probe is strictly BRIGHTER on the wall
-//     facing AWAY from the sun than on the wall facing it. The swing it is
-//     mis-aiming is 21.05:1 across the sphere.
-//
-// WHY THIS IS AN OVERSIGHT AND NOT A DESIGN CHOICE. The VISIBLE skybox drawn
-// from the SAME HDRI is already sun-synced: gos_postprocess.cpp:5201-5218 scans
-// the EXR for its baked sun azimuth (gos_hdri.cpp) and sets
-// `skyYaw = hdriBakedSunAz_ - sunAzGL` so the HDRI's sun lands on the mission
-// sun. The probe DERIVED FROM THAT SKY is the one consumer that skips the step.
-// IblShRegistry.h's own creating commit says future slices would populate
-// kMissionShMap; none ever did, and the V-IBL default-ON flip (2026-05-27) made
-// the unrotated probe live behaviour on every mission.
-//
-// WHY THE FIX IS HERE AND NOT IN THE SHADER. A rotation about the basis POLE is
-// the closed-form case of SH rotation -- no Wigner matrices. Grouping
-// static_prop.vert::evalShL2's terms by their (x,z) angular dependence, with
-// x = s*cos(a), z = s*sin(a):
-//     m=0, INVARIANT : [0] L00, [1] L1-1 (the POLE term under the Y-up
-//                      binding: evalShL2 multiplies u_iblSh[1] by n.y), [6] L20
-//     m=1, angle  t  : ([3] L11 ~ x, [2] L10 ~ z) and ([4] L2-2 ~ xy, [5] L2-1 ~ yz)
-//     m=2, angle 2t  : ([8] L22 ~ x^2-z^2, [7] L21 ~ xz)
-//   each pair mixing as (A,B) -> (A cos mt - B sin mt, A sin mt + B cos mt).
-// tools/class_light_band_harness test_sh_y_rotation_equals_rotating_the_normal
-// proves to 1e-12 that this equals counter-rotating the NORMAL, so the whole
-// fix is nine CPU-side coefficient updates once per sun change -- zero
-// per-vertex cost, and shaders/static_prop.vert is not touched at all.
-//
-// DEFAULT OFF, deliberately. Nobody has seen this render: engine launches are
-// hard-blocked in this lane. It moves the clamped prop multiplier by up to
-// -0.70 on shadow-side walls (see the floor below), which is a large visible
-// change that wants a graded A/B before it ships on.
-//
-// GRADE IT ON mc2_17 (mean move 0.181, 54.6% of wall azimuths unclamped -- the
-// most headroom in tier1) or mc2_24 (0.231, the largest tier1 move). NOT on
-// mc2_10 or mc2_22: both are ambient-192 AND sun-192, so ~91% of wall azimuths
-// are already at the clamp and the rotation moves a mean of 0.0037 / 0.0123 --
-// one byte. mc2_05 moves most overall (0.358) but its sun is below the horizon,
-// where "aim at the sun" is not a well-posed request.
-// Canonical DEFAULT-OFF opt-in reader.
-// Read at first use, see staticPropAmbientV1Enabled().
 static bool iblSunRotateEnabled() {
     static const bool on = mc2::options::current().staticPropIblSunRotate;
     return on;
@@ -585,14 +473,6 @@ std::vector<StaticPropMaterialInventoryEntry> s_materialInventory;
 // Copied from layerForPacket[] in finalizeGeometry() before that local is discarded.
 // Valid until next finalizeGeometry() or onMapUnload(). -1 for unavailable packets.
 std::vector<int32_t> s_packetTexArrayLayer;
-// FENCE-UVSCALE-1: per-packet uvScaleX/Y sidecar, same indexing/lifetime as
-// s_packetTexArrayLayer above. Copied from uvScaleXByPacket/uvScaleYByPacket
-// in finalizeGeometry() (already computed there for the GL PerDrawEntry path,
-// gos_static_prop_batcher.h uvScaleX/Y) so the VK color-prop island can sample
-// the same texture sub-region GL does instead of assuming 1.0 (ADJUDICATION-1
-// FOLLOW-UP fence residual: narrow/gapped panels vs GL's continuous ribbon).
-// Also consumed by SHADOW-PROP-ALPHA-ATLAS-1 (atlas-variant prop shadow bind:
-// shadow alpha-test samples the same array sub-region as the color pass).
 std::vector<float> s_packetUvScaleX;
 std::vector<float> s_packetUvScaleY;
 // VK-P11 STATIC-PROP MATERIAL: per-type group-relative albedo layer + alpha-class,
@@ -602,8 +482,6 @@ std::vector<float> s_packetUvScaleY;
 // onMapUnload(). -1 = type has no alpha-OFF albedo texture.
 std::vector<int32_t> s_typeAlbedoLayer;
 std::vector<int32_t> s_typeAlphaClass;
-// Per-type hot-colour night emission colours (12 floats per type: pink, yellow, green RGBA), the CPU copy of the GL per-type SSBO for the Vulkan prop island.
-// Populated with the SSBO at finalize, cleared in onMapUnload().
 std::vector<float> s_typeHotColors;
 // v2.1: per-type instance count snapshot from the most recent flush().
 // Keyed by typeID. Cleared in onMapUnload().
@@ -611,22 +489,7 @@ std::vector<float> s_typeHotColors;
 //   flush(frame N) snapshots -> extraction(frame N+1) reads -> 0 on frame 1.
 std::unordered_map<uint32_t, uint32_t> s_typeInstanceCountPrevFrame;
 bool s_reinjectedThisFrame = false;  // item-4 once-per-frame guard
-// STATICPROP-MATERIAL-SSBO-OWNER-1: static-prop MaterialGpu table SSBO (binding 5),
-// narrowed behind a GpuBufferOwner identity record (logical id + lifetime + debug
-// name + GLuint value). GL calls happen at the same sites with the same
-// args/order/flags/slot; the raw handle is reached only via owner.backendHandle.
-// Lifetime Mission: created in finalizeGeometry(), torn down on onMapUnload();
-// rebuilt per map. Registered at create (upload), invalidated on destroy.
-RenderCore::GpuBufferOwner           s_materialGpuSsbo{
-    RenderCore::RenderResourceId::StaticPropMaterialGpuBuffer,
-    RenderCore::RenderResourceLifetime::Mission,
-    "StaticPropMaterialGpuBuffer",
-    0u};
 
-GLuint s_texArrayOff               = 0;  // alpha-OFF group GL_TEXTURE_2D_ARRAY
-GLuint s_texArrayOn                = 0;  // alpha-ON  group GL_TEXTURE_2D_ARRAY
-std::vector<GLuint>               s_bucketArrays;       // owns GL handles (delete all on teardown)
-std::vector<StaticPropBucketInfo> s_bucketInfo;
 std::vector<int32_t>              s_packetBucketIndex;  // per global packet; -1 if unassigned
 std::vector<uint8_t>              s_slotBucketIndex;    // per sorted draw slot
 std::vector<uint32_t>             s_bucketCmdCount;     // per bucket, in sorted-slot order
@@ -639,23 +502,7 @@ std::vector<uint32_t>             s_bucketCmdCount;     // per bucket, in sorted
 // replicated neutral (255,255,255,255) texel. s_ormLayerHasMap[b][k] records
 // whether bucket b layer k had a REAL ORM map (drives the material flag).
 // All three vectors stay empty when the gate (s_ormSlotsEnabled) is OFF.
-std::vector<GLuint>               s_ormBucketArrays;    // owns GL handles (delete all on teardown)
 std::vector<std::vector<bool>>    s_ormLayerHasMap;     // per bucket, per bucket-relative layer
-GLuint s_permutationSsbo           = 0;  // sortedSlot[typeID] mapping (binding 15)
-GLuint s_staticPropProgramCoalesce = 0;  // coalesce variant (Step 7.5)
-
-// FOLIAGE-STATICPROP-DEPTH-PREPASS-1: depth-prepass program object — same
-// static_prop.vert (invariant gl_Position), but the cheap static_prop_depth.frag
-// that does ONLY the alpha-test discard (no color/lighting/object-id). It is a
-// DISTINCT GL program object, so its uniform locations differ from the color
-// program's — the prepass must use THIS program's u_drawIDBase, not the color
-// program's. 0 = the program failed to link this session → flushDepthPrepass()
-// must no-op (color path unaffected).
-GLuint s_staticPropDepthProgram = 0;
-DepthCoalesceLocs s_locsDepthCoalesce;
-
-void*  s_coalesceInstanceMap = nullptr;
-GLsync s_coalesceFence[RING_FRAMES] = {};
 
 std::vector<uint32_t> s_sortedTypeOrder;
 uint32_t s_alphaOffCount = 0;
@@ -664,23 +511,9 @@ size_t   s_offGroupTotalBytes = 0;
 size_t   s_onGroupTotalBytes  = 0;
 size_t   s_coalescePerFrameInstanceBytes = 0;  // populated in Step 5.7
 
-// 2026-05-11 per-packet rework (multi-packet correctness fix). Each indirect
-// draw command corresponds to ONE packet (not one type). Multi-packet types
-// in stock content (S_admin_Core has 44 packets, fences/doors with separate
-// alpha-mesh and frame packets) need per-packet textures and per-packet
-// alpha-test bits — the previous per-type architecture collapsed all packets
-// to the first packet's texture, dropping detail and alpha. See
-// memory/substrate_coalesce_armed_multi_packet_limitation.md.
-//
-// Sorted-packet order: alpha-OFF packets first, alpha-ON packets second.
-// A packet's alpha-class group comes from its TYPE's alphaClass (OR-reduce
-// of its packets' alpha-test bits) — all packets of one type render in the
-// same group so they can read instance data from the same per-group SSBO
-// range; the fragment's per-packet materialFlags then drives discard.
 std::vector<uint32_t> s_sortedPacketOrder;     // global packet indices in [OFF | ON] order
 uint32_t s_alphaOffCmdCount = 0;               // number of packets in alpha-OFF group
 uint32_t s_alphaOnCmdCount  = 0;               // number of packets in alpha-ON group
-GLuint   s_cmdToBucketSsbo  = 0;               // uint typeID per cmd (binding 7, patch shader)
 
 std::vector<DWORD> s_coalescePinnedNodes;
 
@@ -690,11 +523,7 @@ bool s_coalesceArmed       = false;
 
 bool s_coalesceFirstFlushDone = false;
 
-// Step 2.1 — env-resolved-once + extension-probe-persisting flags.
-// Set inside coalesce_resetEnvOnce() / loadProgramsIfNeeded(), never cleared
-// across mission loads (process-lifetime values).
 bool s_coalesceEnvDisabled = false;
-bool s_hasShaderDrawParams = false;
 CoalesceForceDisarm s_coalesceForceDisarm = CoalesceForceDisarm::None;
 
 // Step 12.1 — trace gate for noisy non-lifecycle COALESCE diagnostics.
@@ -702,13 +531,6 @@ CoalesceForceDisarm s_coalesceForceDisarm = CoalesceForceDisarm::None;
 // are always-on; future per-frame diagnostics gated behind this env.
 extern const bool s_coalesceTrace = mc2::gate::get<"MC2_SUBSTRATE_COALESCE_TRACE">();
 
-// --- Global instance pool (slice 1, plan v3.8 step group 3). ---
-// s_globalInstanceCap: per-ring-frame instance capacity for the global pool.
-// Override via MC2_STATIC_PROP_GLOBAL_CAP env; defaults to STATIC_PROP_GLOBAL_CAP_DEFAULT.
-// s_baseInstanceByCmdSsbo: persistent-mapped SSBO, one uint32_t baseInstance per
-// draw command per ring frame. Binding BASE_INSTANCE_SSBO_BINDING (16).
-// Allocated inside finalizeGeometry under !s_globalPoolLegacy after the per-packet
-// sort builds s_alphaOffCmdCount + s_alphaOnCmdCount.
 extern const uint32_t s_globalInstanceCap = []() {
     if (mc2::gate::isNonEmpty<"MC2_STATIC_PROP_GLOBAL_CAP">()) {
         const uint32_t cap = static_cast<uint32_t>(mc2::gate::get<"MC2_STATIC_PROP_GLOBAL_CAP">());
@@ -717,22 +539,13 @@ extern const uint32_t s_globalInstanceCap = []() {
     return STATIC_PROP_GLOBAL_CAP_DEFAULT;
 }();
 
-// M2a POPULATION-SPLIT state (defined early so onMapUnload :1729 can tear the
-// SSBO down; the build/fill helpers + accessors live near s_baseInstanceForType).
 std::vector<uint32_t> s_staticBaseInstanceForType;
 uint64_t              s_staticBaseBuiltGen     = 0xFFFFFFFFFFFFFFFFull;
-GLuint                s_staticInstanceSsbo     = 0;
-void*                 s_staticInstanceMap      = nullptr;   // GL_MAP_PERSISTENT|COHERENT
-size_t                s_staticInstanceBytes    = 0;         // == cap * sizeof(instance)
-uint64_t              s_staticInstanceFillGen  = 0xFFFFFFFFFFFFFFFFull;
-GLuint                       s_staticIndirectCmdBuf = 0;
 std::vector<StaticDrawCmd>   s_staticDrawCmds;          // CPU mirror
-uint64_t                     s_staticCmdBuiltGen = 0xFFFFFFFFFFFFFFFFull;
 // Task 4 criterion 2: fence covering the last StaticPopulation draw. The single-
 // region s_staticInstanceSsbo is overwritten in place on a dirty fill; wait on
 // this before overwriting so a prior frame's in-flight draw has finished reading
 // (GPU executes in submission order -> the latest fence covers all earlier).
-GLsync                       s_staticDrawFence = nullptr;
 
 // Gate: MC2_STATIC_POP_SPLIT env AND the G2 frozen-records path armed. Defined
 // early (before onMapUnload / the draw / reinject) so all use sites resolve.
@@ -741,41 +554,10 @@ bool staticPopSplitArmed() {
     return s_on && GpuStaticPropRegistry::frozenRecordsArmed();
 }
 
-GLuint   s_baseInstanceByCmdSsbo          = 0;
-void*    s_baseInstanceByCmdMap           = nullptr;
-size_t   s_baseInstanceByCmdBytesPerFrame = 0;
-
 uint32_t s_offGroupCountThisFrame  = 0;
 size_t   s_offGroupBytesThisFrame  = 0;
 size_t   s_onGroupBytesThisFrame   = 0;
 size_t   s_totalUsedBytesThisFrame = 0;
-
-ProgramLocs s_locsLegacy;
-ProgramLocs s_locsCoalesce;
-
-// --- Step 2.6: identity-permutation alloc helper (plan v3.8). ---
-// Called UNCONDITIONALLY by Step 5.4 before the Step 5.5 early-return so
-// that even disarmed missions have a non-zero s_permutationSsbo with
-// identity contents. Step 10.3 binds slot 15 every patch dispatch
-// regardless of armed state; an identity permutation makes legacy fallback
-// behave as if no remapping happened.
-//
-// Lifecycle: GL_STATIC_DRAW (matches spec §9 lifecycle table). The buffer
-// is finalize-uploaded; Step 5.12 may overwrite it once via glBufferSubData
-// in the same finalize pass, then it is read-only thereafter.
-void allocPermutationSsboAsIdentity(uint32_t typeCount) {
-    if (typeCount == 0) return;
-    std::vector<uint32_t> identity(typeCount);
-    for (uint32_t i = 0; i < typeCount; ++i) identity[i] = i;
-    // TIER2-EXCLUDED: dead-path
-    if (s_permutationSsbo == 0) glGenBuffers(1, &s_permutationSsbo);
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, s_permutationSsbo);
-    MC2_GL_BufferData(GL_SHADER_STORAGE_BUFFER,
-                 typeCount * sizeof(uint32_t),
-                 identity.data(),
-                 GL_STATIC_DRAW);
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
-}
 
 // --- Step 5.10.c rollback helper (plan v3.7). ---
 // Factored out of finalizeGeometry()'s per-group texture-array build so
@@ -798,41 +580,13 @@ void allocPermutationSsboAsIdentity(uint32_t typeCount) {
 // STATICPROP-MATERIAL-ORM-1 — pick the BPTC internalformat. Albedo arrays are
 // sRGB; ORM arrays are LINEAR data (occlusion/roughness/metallic are not color)
 // so they MUST use the non-sRGB variant or the values would be gamma-decoded.
-GLenum bptcInternalFormatFor(bool isSrgb) {
-    return isSrgb ? GL_COMPRESSED_SRGB_ALPHA_BPTC_UNORM
-                  : GL_COMPRESSED_RGBA_BPTC_UNORM;
-}
 
 // COMPRESSION-BC7-STATICPROP-2 — release all bucketed arrays + reset the
 // bucket bookkeeping vectors. No-op (vectors empty) when the gate is OFF, so
 // gate-OFF teardown is byte-identical.
-void staticPropReleaseBuckets() {
-    for (GLuint a : s_bucketArrays) {
-        if (a) glDeleteTextures(1, &a);
-    }
-    s_bucketArrays.clear();
-    s_bucketInfo.clear();
-    s_packetBucketIndex.clear();
-    s_slotBucketIndex.clear();
-    s_bucketCmdCount.clear();
-    // STATICPROP-MATERIAL-ORM-1 — release the per-bucket ORM sibling arrays.
-    // Empty (no-op) when the gate is OFF.
-    for (GLuint a : s_ormBucketArrays) {
-        if (a) glDeleteTextures(1, &a);
-    }
-    s_ormBucketArrays.clear();
-    s_ormLayerHasMap.clear();
-}
 
 void coalesceRollbackTexBuild(std::vector<DWORD>& tempPins) {
-    if (s_texArrayOff) { glDeleteTextures(1, &s_texArrayOff); s_texArrayOff = 0; }
-    if (s_texArrayOn)  { glDeleteTextures(1, &s_texArrayOn);  s_texArrayOn  = 0; }
-    staticPropReleaseBuckets();
-    if (mcTextureManager) {
-        for (DWORD nodeIdx : tempPins) {
-            mc2::textures::unpin(nodeIdx);
-        }
-    }
+    for (DWORD nodeIdx : tempPins) mc2::textures::unpin(nodeIdx);
     tempPins.clear();
 }
 }  // namespace gos_static_prop_batcher_detail

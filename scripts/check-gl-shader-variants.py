@@ -20,9 +20,8 @@ What it does (all offline; no GL context, no build):
                  i.e. compile every stage under desktop GLSL AND LINK them, so
                  vert<->frag interface mismatches fail too.  Diagnostics are
                  mapped back to real shaders/ file:line through #line ids.
-  3. REGRESSION  proves the matrix is not blind: re-introduces the historical
-                 static_prop.frag splice bug into a temp copy of shaders/ and
-                 requires the matrix to FAIL on it (and pass on the real file).
+  3. REGRESSION  proves the matrix rejects a malformed directive in a live
+                 fragment, after the unmodified control compiled successfully.
 
 Limit: glslang is not an NVIDIA/AMD driver; it will not see driver-specific
 quirks.  Exit 0 = all variants link; 1 = any failure / stale manifest / tool
@@ -54,7 +53,6 @@ import shader_common  # noqa: E402
 import extract_gl_shader_variants as extractor  # noqa: E402
 
 MANIFEST = extractor.MANIFEST
-FIXTURE = ROOT / "tests" / "shader_variants" / "static_prop.frag.splice-regression"
 EXT_BY_STAGE = {v: k for k, v in shader_common.STAGE_BY_EXT.items()}
 _LINE_RE = re.compile(r"^#line (\d+) // (.*)$", re.M)
 
@@ -230,38 +228,39 @@ def run_matrix(glslang: str, shaders_dir: Path, variants: list, jobs: int,
 # ---------------------------------------------------------------------------
 # Regression proof
 # ---------------------------------------------------------------------------
+def regression_target(variants: list) -> tuple[str, list]:
+    """Use a fragment the current C++ actually loads; retirement cannot orphan the probe."""
+    fragment = next((v["stages"]["frag"] for v in variants if "frag" in v["stages"]), None)
+    if fragment is None:
+        raise ValueError("the live GL matrix has no fragment for its negative compile probe")
+    return fragment, [v for v in variants if fragment in v["stages"].values()]
+
+
 def selftest(glslang: str, variants: list, jobs: int) -> list[str]:
-    """Return a list of problems (empty = the matrix demonstrably catches the bug)."""
-    problems = []
-    if not FIXTURE.exists():
-        return [f"missing regression fixture {FIXTURE.relative_to(ROOT)}"]
-    targets = [v for v in variants
-               if "shaders/static_prop.frag" in v["stages"].values()]
-    if not targets:
-        return ["no manifest variant uses shaders/static_prop.frag (extractor lost it?)"]
+    """Control must compile; an unterminated directive must fail every selected variant."""
+    try:
+        fragment, targets = regression_target(variants)
+    except ValueError as error:
+        return [str(error)]
     with tempfile.TemporaryDirectory(prefix="glvariants_") as td:
-        t = Path(td)
-        mirror = t / "shaders"
+        t = Path(td); mirror = t / "shaders"
         shutil.copytree(ROOT / "shaders", mirror,
                         ignore=shutil.ignore_patterns("vulkan", "spv", "fixtures"))
-        (t / "work").mkdir()
-        # control: the unmodified mirror must pass for these variants
-        ctl = run_matrix(glslang, mirror, targets, jobs, t / "work")
-        if ctl:
-            # the real static_prop.frag is itself broken: the regression proof is moot
-            # but not our bug; report the real failure rather than hide it.
-            problems.append("control run (real static_prop.frag) already fails: " +
-                            ctl[0][0]["key"])
-        shutil.copyfile(FIXTURE, mirror / "static_prop.frag")
+        control = run_matrix(glslang, mirror, targets, jobs, t / "work")
+        if control:
+            return ["control run (live fragment) already fails: " + control[0][0]["key"]]
+        mutated = mirror / fragment.removeprefix("shaders/")
+        with mutated.open("a", encoding="utf-8", newline="\n") as output:
+            output.write("\n#ifdef MC2_UNTERMINATED_MATRIX_PROBE\n")
         bad = run_matrix(glslang, mirror, targets, jobs, t / "work2")
-        failed = {v["key"] for v, _ in bad}
-        missed = [v["key"] for v in targets if v["key"] not in failed]
+        failed = {variant["key"] for variant, _ in bad}
+        missed = [variant["key"] for variant in targets if variant["key"] not in failed]
         if missed:
-            problems.append("regression NOT caught for: " + ", ".join(missed[:4]))
-        elif not any("MC2_COALESCE" in " ".join(d) or "region" in " ".join(d) or "#ifdef" in " ".join(d)
-                     or "static_prop.frag" in " ".join(d) for _, d in bad):
-            problems.append("regression failed but diagnostics do not point at static_prop.frag")
-    return problems
+            return ["malformed live fragment NOT caught for: " + ", ".join(missed[:4])]
+        if not any(Path(fragment).name in " ".join(diag) or "#ifdef" in " ".join(diag)
+                   for _, diag in bad):
+            return ["negative compile failed without pointing at the live fragment/directive"]
+    return []
 
 
 # ---------------------------------------------------------------------------

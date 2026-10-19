@@ -54,3 +54,8 @@ def test_live_terrain_loader_still_rejects_unknown_splice(monkeypatch, source):
     monkeypatch.setattr(world, "src", lambda _: SimpleNamespace(raw=source, t=source))
     with pytest.raises(extractor.ExtractError):
         extractor.collect_terrain_lighting(world, [])
+
+
+def test_retired_static_prop_programs_have_no_gl_variants():
+    records = extractor.extract()["variants"]
+    assert not any("static_prop" in stage for record in records for stage in record["stages"].values())

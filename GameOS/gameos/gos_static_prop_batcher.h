@@ -6,7 +6,6 @@
 #include <atomic>
 #include <vector>
 #include <unordered_map>
-#include <GL/glew.h>
 #include "Stuff/Stuff.hpp"
 #include "tgl.h"
 #include "msl.h"
@@ -18,19 +17,8 @@
 namespace RenderCore { struct MaterialGpu; }
 namespace RenderCore { struct StaticPropTypeDesc; }
 
-// Per-instance shader-visible struct: GpuStaticPropInstance (112 B, std430).
-// SINGLE SOURCE OF TRUTH is RenderCore/gpu_abi/GpuStaticPropInstance.h; the
-// shader-side struct is generated into shaders/include/gpu_abi_static_prop_instance.gen.hglsl
-// (tools/gpu_abi_gen.py --write). Do not re-declare it.
 #include "../../RenderCore/gpu_abi/GpuStaticPropInstance.h"
 
-// Substrate-coalesce per-draw entry (plan v3.8 Step 2.5).
-// Layout mirror of the GLSL std430 struct in the coalesce static_prop variant.
-// One PerDrawEntry per registered type, ordered by sortedTypeOrder; consumed
-// by the coalesce fragment shader via slot 4 (PerDrawData block, §5.3).
-// CHANGING THIS STRUCT REQUIRES CHANGING THE SHADER IN LOCKSTEP
-// (cpp_glsl_ubo_struct_lockstep.md — extending one side without the other
-// corrupts per-element stride for arr[i>0]).
 struct PerDrawEntry {
     int32_t packetID;          //  0 — index into s_packets[]
     int32_t materialFlags;     //  4 — 0 or STATIC_PROP_FLAG_ALPHA_TEST
@@ -53,7 +41,6 @@ static_assert(offsetof(PerDrawEntry, uvScaleY)         == 20, "uvScaleY offset")
 static_assert(offsetof(PerDrawEntry, objectIdRaw)      == 24, "objectIdRaw offset");
 static_assert(offsetof(PerDrawEntry, materialIdx)      == 28, "materialIdx offset");
 
-// Packet descriptor (CPU-side only -- not uploaded as an SSBO).
 struct GpuStaticPropPacket {
     uint32_t firstIndex;     // into shared IBO
     uint32_t indexCount;
@@ -175,23 +162,18 @@ private:
     // GpuStaticPropBatcher::finalizeGeometry phases (gos_static_prop_batcher_finalize*.cpp); callers use finalizeGeometry().
     static bool packetHasAlpha(const GpuStaticPropPacket& pkt, const TG_TypeShape* src);
     void finalizePrologue();
-    void createSharedBuffers();
-    void uploadPerTypeAndPublish();
-    bool layoutCoalesce(StaticPropFinalizeFrame& f);
+    void publishGeometry();
+    bool prepareMaterialLayout(StaticPropFinalizeFrame& f);
     bool buildTextureArrays(StaticPropFinalizeFrame& f);
     void buildPerPacketDrawTables(StaticPropFinalizeFrame& f);
-    bool reportMaterialCacheAndBaseInstances(StaticPropFinalizeFrame& f);
+    bool reportMaterialCache(StaticPropFinalizeFrame& f);
     void armCoalesce(StaticPropFinalizeFrame& f);
-    // The CPU copy of the alpha-OFF (0) and alpha-ON (1) albedo arrays of the RGBA8 group path, per map; empty when a group has
-    // no array or its array came from the BC7 path. The Vulkan prop island copies it instead of reading the GL arrays back.
     std::array<mc2tex::TextureArrayCpu, 2> albedoArrays_;
     // Per group: 0 until the group array of this map is built, then a serial that is new for every build (the change key of the island's copy).
     std::array<uint32_t, 2> albedoKey_{};
 public:
     uint32_t albedoKey(uint32_t group) const { return albedoKey_[group & 1u]; }
     const mc2tex::TextureArrayCpu& albedoArray(uint32_t group) const { return albedoArrays_[group & 1u]; }
-    // True when GL alpha-tests packet `packet` of the shared geometry this frame: its material's ALPHA_TEST bit or its texture's live alpha
-    // flag (set after load for some textures, so it can differ from the packet's group).
     bool packetAlphaTest(uint32_t packet) const;
 
     // Per-frame submission. shape->listOfColors must be fresh (set by
@@ -293,11 +275,6 @@ public:
     // to snapshot the registration batch immediately after submission.
     const std::vector<GpuStaticPropInstance>& getLastBuiltBatch() const;
 
-    // Stage 3.C: inject a pre-built instance into the per-type bucket
-    // without running the compute path. Called by GpuStaticPropRegistry::flush()
-    // before batcher flush(). Updates firstColorOffset for this frame's bucket
-    // position; pushes zero-fill colors (debug only; normal render ignores
-    // the Colors SSBO binding 1).
     void submitCachedInstance(const GpuStaticPropInstance& inst);
 
     // 2b Stage 2 (Mechanism B-reinject): persistent static instance store.
@@ -308,12 +285,6 @@ public:
     void     appendPersistentStaticRange(const GpuStaticPropInstance* arr, uint32_t count);
     void     reinjectPersistentStatic();
 
-    // Track B: pure recipe-construction path, side-effect-free.
-    // Builds a GpuStaticPropInstance from static per-shape inputs.
-    // Does NOT touch per-frame state (no bucket/SSBO writes).
-    // Returns false if shape's TG_TypeShape is not registered yet.
-    // firstColorOffset and lightDataIndex are placeholders (0 / 0xFFFFFFFF);
-    // submitCachedInstance patches them per-frame at draw time.
     [[nodiscard]] bool buildRecipeFromShape(
             TG_Shape* shape,
             const glm::mat4& shapeToWorld,
@@ -386,7 +357,6 @@ const uint32_t* batcher_getSortedPacketOrder();
 uint32_t batcher_getSortedPacketCount();
 uint32_t batcher_getAlphaOffCmdCount();   // packet count in alpha-OFF group
 uint32_t batcher_getAlphaOnCmdCount();    // packet count in alpha-ON group
-GLuint   batcher_getCmdToBucketSsbo();    // uint typeID per cmd (binding 7)
 // Per-packet draw info (for the per-packet indirect cmd build).
 bool batcher_getPacketDrawInfo(uint32_t globalPacketIdx,
                                 uint32_t* outIndexCount,
@@ -415,25 +385,12 @@ uint32_t batcher_getTypeUploadedInstanceCount(uint32_t typeID);
 // batcher_isBaseInstanceTableReady). global_slot(typeID, rank) = base + rank.
 uint32_t batcher_getBaseInstanceForType(uint32_t typeID);
 
-// M2a POPULATION-SPLIT (gate MC2_STATIC_POP_SPLIT). Static-only per-type base
-// (prefix-sum over persistent-static counts; excludes dynamics) and the handle
-// of the StaticPopulation instance SSBO (front-packed, frozen, dirty-filled).
 uint32_t batcher_getStaticBaseInstanceForType(uint32_t typeID);
-GLuint   batcher_getStaticInstanceSsbo();
-GLuint   batcher_getStaticIndirectCmdBuf();   // Task 3: CPU-written static cmds
 
 // True when the per-type base table is valid this frame (global-pool armed and
 // prepareBaseInstanceTable has run). The golden static cull-record build gates
 // on this so it only scatters when the binding-0 slot layout is well-defined.
 bool batcher_isBaseInstanceTableReady();
-
-// GL handles for the coalesce-path SSBOs and texture arrays. 0 before
-// finalize, or if coalesce is disabled/disarmed.
-GLuint batcher_getCoalesceInstanceSsbo();   // ring-buffered, persistent-mapped
-GLuint batcher_getPerDrawSsbo();            // one PerDrawEntry per type, sorted
-GLuint batcher_getTexArrayOff();            // alpha-OFF group GL_TEXTURE_2D_ARRAY
-GLuint batcher_getTexArrayOn();             // alpha-ON  group GL_TEXTURE_2D_ARRAY
-GLuint batcher_getPermutationSsbo();        // sortedSlot[typeID] mapping (slot 15)
 
 // Total instance bytes for ONE ring frame (off-group + on-group). size_t so
 // sub-4GB ring totals carry without truncation.
@@ -447,17 +404,11 @@ bool batcher_isCoalesceArmed();
 // mission load. Slice-1 NOT consumed (foundation for slice 2 GPU-emit).
 uint32_t batcher_getPerTypePeakCount(uint32_t typeID);
 
-// true when MC2_STATIC_PROP_GLOBAL_POOL_LEGACY=1 — keeps legacy per-type-cap layout.
 bool batcher_isGlobalPoolLegacy();
 // Per-ring-frame instance capacity for the global pool (slice 1).
 uint32_t batcher_getGlobalInstanceCap();
 // Current coalesce ring frame slot (diagnostic only; NOT the legacy s_frameSlot).
 uint32_t batcher_getCoalesceFrameSlot();
-
-// Bind/unbind the base-instance SSBO at slot BASE_INSTANCE_SSBO_BINDING (16) for the
-// patch shader. Both are no-ops under legacy mode.
-void batcher_bindBaseInstanceByCmdSsboForPatch();
-void batcher_unbindBaseInstanceByCmdSsboForPatch();
 
 // Called from txmmgr.cpp between GpuStaticPropRegistry::flush() and compute_dispatch().
 // Non-legacy mode: advances s_coalesceFrameSlot, waits prior-frame fence, computes
@@ -515,12 +466,6 @@ struct StaticPropMaterialInventoryEntry {
     float    roughnessFactor;
 };
 
-// V-MATERIAL-PBR-1 guardrail: pin the layout the inspector's forward-decl
-// in GuiRuntime/EditorInspector.cpp duplicates. If you add/reorder fields
-// here, also update that dup decl + bump these asserts in lockstep. The
-// material-mirror validator (scripts/check-material-gpu-mirror.sh) covers
-// MaterialGpu's C++/GLSL mirror but NOT this struct; these asserts are the
-// only safety net against silent inspector mis-reads.
 static_assert(sizeof(StaticPropMaterialInventoryEntry) == 108,
               "StaticPropMaterialInventoryEntry size changed; update "
               "GuiRuntime/EditorInspector.cpp forward-decl in lockstep.");
@@ -609,14 +554,6 @@ struct StaticPropOpaqueDebugState {
 
 void batcher_getStaticPropOpaqueDebugState(StaticPropOpaqueDebugState* out);
 
-// ---------------------------------------------------------------------------
-// Type-desc table accessors (v0: CPU-side only, no SSBO).
-// All functions return safe sentinels (0 / nullptr / false) before
-// GpuStaticPropBatcher::finalizeGeometry() runs or after onMapUnload().
-// See: RenderCore/StaticPropTypeDesc.h for struct definition.
-// See: docs/observations/2026-05-25-static-prop-type-table-design.md
-// ---------------------------------------------------------------------------
-
 // Number of entries in the type desc table (equals batcher_getTypeCount() post-finalize).
 // Returns 0 if geometry not yet finalized.
 uint32_t batcher_getStaticPropTypeDescCount();
@@ -632,12 +569,6 @@ bool batcher_getStaticPropTypeDesc(uint32_t typeId, RenderCore::StaticPropTypeDe
 // Returns nullptr if geometry not finalized or table is empty.
 const RenderCore::StaticPropTypeDesc* batcher_getStaticPropTypeDescTable(uint32_t* outCount);
 
-// Emit candidate draw log derived from the type desc table.
-// Per-frame: always logs a one-line [DRAW_CAND v0] summary (emitted/invalid/expected).
-// Detailed per-packet [DRAW_CAND v0 detail] lines: first-frame only,
-// OR every frame when MC2_TYPE_TABLE_CAND_VERBOSE=1.
-// Does NOT issue GL calls; does NOT modify any state.
-// gate: MC2_TYPE_TABLE_CAND_LOG=1
 void batcher_buildCandidateLog();
 
 // DEBUG-VIEW-REGISTRY-1: runtime getter/setter for the static-prop fragment debug mode.
@@ -653,4 +584,3 @@ int  batcher_getDebugMaterialMode();
 // integer (0..6). Single authoritative table — avoids duplicate switch statements.
 int             StaticPropViewToShaderMode(RenderDebugView view);
 RenderDebugView StaticPropShaderModeToView(int shaderMode);
-

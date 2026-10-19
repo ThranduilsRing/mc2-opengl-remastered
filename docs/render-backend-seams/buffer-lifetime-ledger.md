@@ -17,13 +17,9 @@ The table below is parsed: `| symbol | class | producer | sync | TU |` (one buff
 |---|---|---|---|---|
 | `s_boneSsbo` | A | CPU-map | ring3+fence | gos_mech_batcher.cpp |
 | `s_instanceSsbo` (mech) | A | CPU-map | ring3+fence | gos_mech_batcher.cpp |
-| `s_coalesceInstanceSsbo` | A | CPU-map | ring+coalesceFence | gos_static_prop_batcher.cpp |
-| `s_staticInstanceSsbo` | C | CPU-map | dirty-gated+staticDrawFence | gos_static_prop_batcher.cpp |
-| `s_staticIndirectCmdBuf` | C | CPU-glBufferData | dirty-gated | gos_static_prop_batcher.cpp |
 | `NativeCull::Slot::records/params` | A | CPU-upload | ring3+completed-ticket before upload/reuse | vk_actor_cull_native.cpp |
 | `NativeCull::Slot::output` | B | VK compute | buffer compute-write -> transfer-read | vk_actor_cull_native.cpp |
 | `NativeCull::Slot::staging` | B | VK transfer | buffer transfer-write -> host-read + completed-ticket before map | vk_actor_cull_native.cpp |
-| `s_heightSsbo` | C | CPU | static-mission | gos_terrain_lod_chunk.cpp |
 | `g_recipeBuffer` (water) | C | CPU | static-mission | gos_terrain_water_stream.cpp |
 | `g_thinBuffer` (water) | A | CPU/GPU | ring3+fence | gos_terrain_water_stream.cpp |
 | `g_waterIndirectCmdBuffer` | B | GPU-atomicAdd | COMMAND barrier+clear | gos_terrain_water_stream.cpp |
@@ -38,6 +34,10 @@ captures CPU MVP inputs for Vulkan; it produces no GL indirect commands to fence
 The GL light-data buffer and its dirty-prefix/orphan uploads are retired. The
 native light feed still reads the CPU table and its live row count directly.
 CardCloud CPU simulation remains authoritative; the unused GL compare oracle is gone.
+
+Static-prop geometry, albedo layers, material rows and cull identity mappings now
+remain CPU-owned until native consumers copy them; their GL buffers and fences are
+retired. Terrain height/type/cement/sidecar sources are CPU-owned as well.
 
 Actor-cull GL indirect buckets, visible-ID scatter and sticky block output were
 retired after their last draw consumer. Only actor visibility had a live CPU

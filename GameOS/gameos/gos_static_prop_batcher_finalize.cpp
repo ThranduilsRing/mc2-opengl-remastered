@@ -1,4 +1,4 @@
-// GpuStaticPropBatcher: GpuStaticPropBatcher::finalizeGeometry -- the orchestrator and every phase except the texture arrays.
+// Finalize native prop geometry, CPU material sources and packet metadata once per mission.
 // Declared in the class headers; shared names in gos_static_prop_batcher_internal.h.
 #include "gos_static_prop_batcher_internal.h"
 #include "../../mclib/texture_assets.h"
@@ -13,8 +13,6 @@ bool GpuStaticPropBatcher::packetHasAlpha(const GpuStaticPropPacket& pkt, const 
            (src && src->listOfTextures && pkt.textureSlot < src->numTextures && src->listOfTextures[pkt.textureSlot].textureAlpha);
 }
 
-
-
 // Log the texture tier, clear the per-packet side tables and load the programs.
 void GpuStaticPropBatcher::finalizePrologue() {
     // One-shot log: always emit so the log confirms which tier is active.
@@ -26,59 +24,10 @@ void GpuStaticPropBatcher::finalizePrologue() {
     s_packetUvScaleX.clear();       // SHADOW-PROP-ALPHA-ATLAS-1: repopulated below
     s_packetUvScaleY.clear();
 
-    // Compile shader programs NOW, at map-load time, while we're on the
-    // same code path that compiles every other engine shader. Doing it
-    // from inside a mid-render submit() triggers a crash somewhere inside
-    // shader_builder — possibly related to the shadow_screen compile
-    // failure also seen at map load. Mid-render compile is not a pattern
-    // this engine is tested for, so we hoist it here.
-    loadProgramsIfNeeded();
+    coalesce_resetEnvOnce();
 }
 
-// Create the shared VAO, VBO and IBO and set the vertex attributes.
-void GpuStaticPropBatcher::createSharedBuffers() {
-    glGenVertexArrays(1, &s_sharedVao);
-    glBindVertexArray(s_sharedVao);
-
-    glGenBuffers(1, &s_sharedVbo);
-    glBindBuffer(GL_ARRAY_BUFFER, s_sharedVbo);
-    glBufferStorage(GL_ARRAY_BUFFER,
-                    static_cast<GLsizeiptr>(s_stagingVbo.size()),
-                    s_stagingVbo.data(),
-                    0);  // flags=0 -> fully immutable, GPU-only (AMD-safe)
-
-    glGenBuffers(1, &s_sharedIbo);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, s_sharedIbo);
-    glBufferStorage(GL_ELEMENT_ARRAY_BUFFER,
-                    static_cast<GLsizeiptr>(s_stagingIbo.size() * sizeof(uint32_t)),
-                    s_stagingIbo.data(),
-                    0);
-
-    // Vertex attribute layout -- position MUST be location 0 (AMD invariant 1).
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 3, GL_FLOAT,    GL_FALSE, kVertexStride, (void*) 0);
-    glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 3, GL_FLOAT,    GL_FALSE, kVertexStride, (void*)12);
-    glEnableVertexAttribArray(2);
-    glVertexAttribPointer(2, 2, GL_FLOAT,    GL_FALSE, kVertexStride, (void*)24);
-    glEnableVertexAttribArray(3);
-    glVertexAttribIPointer(3, 1, GL_UNSIGNED_INT,      kVertexStride, (void*)32);
-    // Slice 2 (object-offload) — Stage 2.C.2: per-vertex aRGBLight tag at
-    // offset 36, written by registerType from TG_TypeVertex::aRGBLight.
-    // Consumed by static_prop.vert -> get_base_light() to decode the
-    // hot-color magic and emit per-vertex base lighting before calc_light.
-    glEnableVertexAttribArray(4);
-    glVertexAttribIPointer(4, 1, GL_UNSIGNED_INT,      kVertexStride, (void*)36);
-
-    glBindVertexArray(0);
-}
-
-// Upload the per-type SSBO, record the buffer sizes, free the staging data and mark the geometry finalized.
-void GpuStaticPropBatcher::uploadPerTypeAndPublish() {
-    // Slice 2 (object-offload) — Stage 2.C.2: build per-type hot-color SSBO.
-    // 3 vec4 per type, 48 B per type. Decoded from TG_TypeShape::hotPinkRGB
-    // (DWORD ARGB) into vec3 + 0 padding (std430 vec4 alignment). Indexed
-    // in the shader by inst.typeID — entry 0 corresponds to s_types[0].
+void GpuStaticPropBatcher::publishGeometry() {
     {
         struct PerTypeShaderData {
             float hotPinkRGB[4];
@@ -113,19 +62,8 @@ void GpuStaticPropBatcher::uploadPerTypeAndPublish() {
         s_typeHotColors.resize(s_types.size() * 12);
         for (size_t i = 0; i < s_types.size(); ++i)
             std::memcpy(&s_typeHotColors[i * 12], &perTypeBlob[i], sizeof(PerTypeShaderData));
-        // TIER2-EXCLUDED: dead-path
-        glGenBuffers(1, &s_perTypeSsbo);
-        glBindBuffer(GL_SHADER_STORAGE_BUFFER, s_perTypeSsbo);
-        glBufferStorage(GL_SHADER_STORAGE_BUFFER,
-                        static_cast<GLsizeiptr>(perTypeBlob.size() * sizeof(PerTypeShaderData)),
-                        perTypeBlob.data(),
-                        0);
-        glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
     }
 
-    // The staging bytes stay for the map's lifetime: they are the CPU copy of the shared VBO / IBO the Vulkan islands build
-    // their own buffers from (mc2_static_prop_geometry_cpu); onMapLoad clears them. GL-only runs keep them too: an accepted
-    // cost (the size is in the finalize line below) because GL is deleted once the Vulkan port reaches parity.
     s_sharedVboBytes = (uint64_t)s_stagingVbo.size();
     s_sharedIboBytes = (uint64_t)s_stagingIbo.size() * sizeof(uint32_t);
     s_stagingVbo.shrink_to_fit();
@@ -155,41 +93,13 @@ void GpuStaticPropBatcher::uploadPerTypeAndPublish() {
 }
 
 // Decide whether coalesce is wanted and lay out the permutation, the group ranges and the instance pool.
-bool GpuStaticPropBatcher::layoutCoalesce(StaticPropFinalizeFrame& f) {
+bool GpuStaticPropBatcher::prepareMaterialLayout(StaticPropFinalizeFrame& f) {
     auto& coalesceStart = f.coalesceStart; auto& typeCount = f.typeCount;
     coalesceStart = std::chrono::steady_clock::now();
 
-    // Step 5.3 — env decision (defensive idempotent guard; loadProgramsIfNeeded
-    // already called this once before the latch — Step 7.2 wires that).
     coalesce_resetEnvOnce();
     const bool coalesceWanted =
-        !s_coalesceEnvDisabled && s_hasShaderDrawParams;
-
-    // Step 5.4 — ALWAYS alloc identity permutation FIRST, before any
-    // not-wanted return. Patch shader (Step 10.3) binds slot 15 every
-    // dispatch regardless of armed state.
-    allocPermutationSsboAsIdentity(static_cast<uint32_t>(s_types.size()));
-
-    // Step 12.5 — readback the identity permutation when forced-disarm is
-    // active so smoke can verify the slot-15 buffer holds [0,1,2,3,...]
-    // even after the disarm path runs. Bounded to 16 bytes per mission
-    // load when forced; zero cost when env unset.
-    if (s_coalesceForceDisarm != CoalesceForceDisarm::None) {
-        uint32_t first4[4] = { 0xAAAAAAAAu, 0xAAAAAAAAu, 0xAAAAAAAAu, 0xAAAAAAAAu };
-        const uint32_t want = std::min<uint32_t>(4u, static_cast<uint32_t>(s_types.size()));
-        if (s_permutationSsbo && want > 0u) {
-            glBindBuffer(GL_SHADER_STORAGE_BUFFER, s_permutationSsbo);
-            glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0,
-                               static_cast<GLsizeiptr>(want * sizeof(uint32_t)),
-                               first4);
-            glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
-        }
-        MC2_DIAGFE(stderr, "[COALESCE v1] event=permutation_state ssbo=%u "
-                     "typeCount=%zu first4=%u,%u,%u,%u\n",
-                     s_permutationSsbo, s_types.size(),
-                     first4[0], first4[1], first4[2], first4[3]);
-        std::fflush(stderr);
-    }
+        !s_coalesceEnvDisabled;
 
     // Step 5.NEW — alpha-class OR-reduce: unconditional (emitter/v0 prerequisite in all modes).
     // Malformed types disarm coalesce when coalesceWanted; in legacy-only mode, alphaClass=0
@@ -353,151 +263,17 @@ bool GpuStaticPropBatcher::layoutCoalesce(StaticPropFinalizeFrame& f) {
             static_cast<size_t>(s_globalInstanceCap) * sizeof(GpuStaticPropInstance);
     }
 
-    // Step 5.8 — alignment asserts (§3.Z). The std430 stride is 112 bytes
-    // for GpuStaticPropInstance (compile-time static_assert in the header),
-    // which is a multiple of 16 on every driver we target. The runtime
-    // glBindBufferRange offset alignment can be stricter — query and
-    // disarm if our group-base alignment is insufficient.
-    {
-        GLint ssboAlign = 0;
-        glGetIntegerv(GL_SHADER_STORAGE_BUFFER_OFFSET_ALIGNMENT, &ssboAlign);
-        if (ssboAlign <= 0) ssboAlign = 16;  // safety floor
-        const auto isAligned = [&](size_t v) {
-            return (v % static_cast<size_t>(ssboAlign)) == 0;
-        };
-        if (!isAligned(sizeof(GpuStaticPropInstance)) ||
-            !isAligned(s_offGroupTotalBytes) ||
-            !isAligned(s_coalescePerFrameInstanceBytes)) {
-            MC2_DIAGFE(stderr,
-                "[COALESCE v1] event=disarmed reason=alloc_failed "
-                "(alignment: ssboAlign=%d sizeofInst=%zu offTotal=%zu perFrame=%zu)\n",
-                ssboAlign,
-                sizeof(GpuStaticPropInstance),
-                s_offGroupTotalBytes,
-                s_coalescePerFrameInstanceBytes);
-            s_coalesceLayoutReady = false;
-            s_coalesceEnabled     = false;
-            s_coalesceArmed       = false;
-            return true;
-        }
-    }
-
-    {
-        // SSBO-BIND-ALIGN: pad the per-frame ring stride to the SSBO offset
-        // alignment IDENTICALLY to batcher_getCoalescePerFrameInstanceBytes() (which
-        // drives the per-slot bind offset fr_off_bytes_d), so slot offsets are
-        // aligned AND never overrun this allocation.
-        const size_t alignedPerFrame = (size_t)gpuAlignUp(
-            (unsigned long long)s_coalescePerFrameInstanceBytes,
-            (unsigned long long)gpuSsboOffsetAlignment());
-        const size_t totalBytes =
-            static_cast<size_t>(RING_FRAMES) * alignedPerFrame;
-        // TIER2-EXCLUDED: ring
-        glGenBuffers(1, &s_coalesceInstanceSsbo);
-        glBindBuffer(GL_SHADER_STORAGE_BUFFER, s_coalesceInstanceSsbo);
-        const GLbitfield mapFlags =
-            GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT;
-        // Drain any pre-existing GL error so our check is clean.
-        while (glGetError() != GL_NO_ERROR) {}
-        glBufferStorage(GL_SHADER_STORAGE_BUFFER, totalBytes, nullptr, mapFlags);
-        const GLenum storageErr = glGetError();
-        if (storageErr != GL_NO_ERROR) {
-            glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
-            glDeleteBuffers(1, &s_coalesceInstanceSsbo);
-            s_coalesceInstanceSsbo = 0;
-            MC2_DIAGFE(stderr, "[COALESCE v1] event=disarmed reason=alloc_failed "
-                                 "(glBufferStorage err=0x%04x bytes=%zu)\n",
-                         storageErr, totalBytes);
-            s_coalesceLayoutReady = false;
-            s_coalesceEnabled     = false;
-            s_coalesceArmed       = false;
-            return true;
-        }
-        s_coalesceInstanceMap = MC2_GL_MapBufferRange(
-            GL_SHADER_STORAGE_BUFFER, 0, totalBytes, mapFlags);
-        glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
-        if (!s_coalesceInstanceMap) {
-            // Step 4.3 handles "buffer alloc'd, map failed" via inner null
-            // check on s_coalesceInstanceMap; leave the buffer for unload
-            // to release.
-            MC2_DIAGFE(stderr, "[COALESCE v1] event=disarmed reason=alloc_failed "
-                                 "(glMapBufferRange returned null)\n");
-            s_coalesceLayoutReady = false;
-            s_coalesceEnabled     = false;
-            s_coalesceArmed       = false;
-            return true;
-        }
-
-        // Plan v3.8 Step 12B.3 — alloc_failed forced-disarm hook. Fires
-        // AFTER the real alloc completes successfully, then simulates the
-        // failure by tearing down the resources we just allocated. Mirrors
-        // the partial-failure cleanup path in Step 4.3 / above.
-        if (s_coalesceForceDisarm == CoalesceForceDisarm::AllocFailed) {
-            if (s_coalesceInstanceMap) {
-                glBindBuffer(GL_SHADER_STORAGE_BUFFER, s_coalesceInstanceSsbo);
-                glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
-                glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
-                s_coalesceInstanceMap = nullptr;
-            }
-            if (s_coalesceInstanceSsbo) {
-                glDeleteBuffers(1, &s_coalesceInstanceSsbo);
-                s_coalesceInstanceSsbo = 0;
-            }
-            MC2_DIAGFE(stderr, "[COALESCE v1] event=disarmed reason=alloc_failed (forced)\n");
-            s_coalesceLayoutReady = false;
-            s_coalesceEnabled     = false;
-            s_coalesceArmed       = false;
-            return true;
-        }
-    }
-
     s_coalesceLayoutReady = true;
     return false;
 }
 
-// Sort the packets and build the per-draw and command-to-bucket SSBOs.
 void GpuStaticPropBatcher::buildPerPacketDrawTables(StaticPropFinalizeFrame& f) {
     auto& layerForPacket = f.layerForPacket; auto& uvScaleXByPacket = f.uvScaleXByPacket; auto& uvScaleYByPacket = f.uvScaleYByPacket;
     {
-        // 2026-05-11 packet-skip rule: only enroll packets whose texture-
-        // array layer was successfully assigned. Damage-shape leaves
-        // (bldgDmgShape) typically have nodeIdx=0xFFFFFFFF at finalize
-        // because their textures are loaded only at destruction time per-
-        // instance — they end up with layerForPacket=-1. Without skipping,
-        // the indirect cmd still emits, the fragment samples layer 0 of
-        // the array, and a wrong-texture (orange-rectangle) ghost renders
-        // at the prop's location. Skipping leaves their geometry out of
-        // the multidraw entirely.
-        // COMPRESSION-BC7-STATICPROP-2: when the gate is ON, sorted slots must
-        // be grouped into contiguous per-bucket RUNS so each dispatch can bind
-        // one bucket array and draw its run. We order buckets ascending by
-        // GLOBAL bucket index — and group buckets carry the alpha group in
-        // s_bucketInfo, with all alpha-OFF buckets built before alpha-ON ones
-        // (the build walks group 0 then group 1) → bucket index order already
-        // respects alpha order (OFF runs precede ON runs). s_slotBucketIndex /
-        // s_bucketCmdCount are populated in lockstep. Gate-OFF leaves both
-        // empty and uses the original 2-group emission below (byte-identical).
         s_slotBucketIndex.clear();
-        s_bucketCmdCount.assign(s_bucketArrays.size(), 0u);
+        s_bucketCmdCount.clear();
         for (uint8_t group = 0; group <= 1; ++group) {
-            if (s_staticPropBc7Enabled) {
-                for (uint32_t b = 0; b < s_bucketInfo.size(); ++b) {
-                    if (s_bucketInfo[b].group != group) continue;
-                    for (uint32_t i = 0; i < s_sortedTypeOrder.size(); ++i) {
-                        const uint32_t typeID = s_sortedTypeOrder[i];
-                        const auto& type = s_types[typeID];
-                        if (type.alphaClass != group) continue;
-                        for (uint32_t pIdx = 0; pIdx < type.packetCount; ++pIdx) {
-                            const uint32_t globalPktIdx = type.firstPacket + pIdx;
-                            if (layerForPacket[globalPktIdx] < 0) continue;
-                            if (s_packetBucketIndex[globalPktIdx] != static_cast<int32_t>(b)) continue;
-                            s_sortedPacketOrder.push_back(globalPktIdx);
-                            s_slotBucketIndex.push_back(static_cast<uint8_t>(b));
-                            ++s_bucketCmdCount[b];
-                        }
-                    }
-                }
-            } else {
+
                 for (uint32_t i = 0; i < s_sortedTypeOrder.size(); ++i) {
                     const uint32_t typeID = s_sortedTypeOrder[i];
                     const auto& type = s_types[typeID];
@@ -508,7 +284,7 @@ void GpuStaticPropBatcher::buildPerPacketDrawTables(StaticPropFinalizeFrame& f) 
                         s_sortedPacketOrder.push_back(globalPktIdx);
                     }
                 }
-            }
+
             if (group == 0u) {
                 s_alphaOffCmdCount = static_cast<uint32_t>(s_sortedPacketOrder.size());
             } else {
@@ -634,74 +410,7 @@ void GpuStaticPropBatcher::buildPerPacketDrawTables(StaticPropFinalizeFrame& f) 
                 s_packetMaterialIdx.push_back(it->second);
             }
 
-            // --- Upload ---
-            // GL_STATIC_DRAW: table is mission/map lifetime, not per-frame.
-            // Guard byteSize > 0: some drivers misbehave on a zero-byte glBufferData.
-            // When no static props exist, s_materialGpuSsbo stays 0 and flush() skips the bind.
-            const size_t byteSize =
-                s_materialGpuTable.size() * sizeof(RenderCore::MaterialGpu);
-
-            if (byteSize > 0) {
-                // Idempotent: delete any buffer from a prior finalizeGeometry call.
-                // finalizeGeometry() should be once-per-map, but defensive cleanup
-                // prevents leaks if it is ever called again (partial reinit, hot-reload, etc.).
-                if (s_materialGpuSsbo.backendHandle != 0) {
-                    GLuint local = static_cast<GLuint>(s_materialGpuSsbo.backendHandle);
-                    glDeleteBuffers(1, &local);
-                    s_materialGpuSsbo.backendHandle = 0;
-                }
-                while (glGetError() != GL_NO_ERROR) {}  // drain stale BEFORE operation
-                {
-                    GLuint local = 0;
-                    glGenBuffers(1, &local);
-                    s_materialGpuSsbo.backendHandle = static_cast<uint32_t>(local);
-                }
-                glBindBuffer(GL_SHADER_STORAGE_BUFFER, static_cast<GLuint>(s_materialGpuSsbo.backendHandle));
-                MC2_GL_BufferData(GL_SHADER_STORAGE_BUFFER,
-                             static_cast<GLsizeiptr>(byteSize),
-                             s_materialGpuTable.data(),
-                             GL_STATIC_DRAW);
-                glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
-                const GLenum uploadErr = glGetError();  // sample THIS operation AFTER
-                if (uploadErr != GL_NO_ERROR) {
-                    char buf[128];
-                    mc2::fmt::to_buf(buf, "[MATERIAL_GPU v4] GL ERROR after upload: 0x{:x} — buffer deleted, sampling disabled\n", mc2::fmt::as_u32(uploadErr));
-                    MC2_DIAG_FPUTS(buf, stderr);
-                    // Delete the corrupt/incomplete buffer so s_materialGpuSsbo returns to 0.
-                    // sampleOn checks s_materialGpuSsbo.backendHandle != 0, so this guarantees sampling is
-                    // disabled without needing a separate s_materialGpuSidecarValid invalidation.
-                    GLuint local = static_cast<GLuint>(s_materialGpuSsbo.backendHandle);
-                    glDeleteBuffers(1, &local);
-                    s_materialGpuSsbo.backendHandle = 0;
-
-                    // STATICPROP-MATERIAL-SSBO-OWNER-1: corrupt buffer dropped — keep slot unregistered.
-                    RenderCore::RenderResourceDesc invalid;
-                    invalid.id    = RenderCore::RenderResourceId::StaticPropMaterialGpuBuffer;
-                    invalid.valid = false;
-                    RenderCore::registerOrUpdateRenderResource(invalid);
-                } else {
-                    // STATICPROP-MATERIAL-SSBO-OWNER-1: register the live material SSBO
-                    // (observe-only metadata; never read by the draw path). Registered at
-                    // create, since the byte size is known once the table is uploaded.
-                    RenderCore::RenderResourceDesc d;
-                    d.id        = s_materialGpuSsbo.id;
-                    d.kind      = RenderCore::RenderResourceKind::Buffer;
-                    d.lifetime  = s_materialGpuSsbo.lifetime;
-                    d.format    = RenderCore::RenderResourceFormat::BufferRaw;
-                    d.debugName = s_materialGpuSsbo.debugName;
-                    d.glName    = static_cast<GLuint>(s_materialGpuSsbo.backendHandle);
-                    d.sizeBytes = static_cast<uint64_t>(byteSize);
-                    d.valid     = true;
-                    RenderCore::registerOrUpdateRenderResource(d);
-                }
-            }
-            // s_materialGpuSsbo remains 0 when byteSize == 0.
-
-            {
-                char buf[160];
-                mc2::fmt::to_buf(buf, "[MATERIAL_GPU v4] event=table_upload materials={:d} bytes={:d} emitted={:d}\n", mc2::fmt::as_size(s_materialGpuTable.size()), mc2::fmt::as_size(byteSize), mc2::fmt::as_u32(emittedCount));
-                MC2_DIAG_FPUTS(buf, stderr);
-            }
+            const size_t byteSize = s_materialGpuTable.size() * sizeof(RenderCore::MaterialGpu);
 
             // --- Debug compare ---
             // Load-bearing invariant check: MaterialGpu[materialIdx].albedoTex == texArrayLayer.
@@ -874,34 +583,11 @@ void GpuStaticPropBatcher::buildPerPacketDrawTables(StaticPropFinalizeFrame& f) 
             MC2_DIAG_FPUTS(buf, stderr);
         }
 
-        // TIER2-EXCLUDED: dead-path
-        glGenBuffers(1, &s_perDrawSsbo);
-        glBindBuffer(GL_SHADER_STORAGE_BUFFER, s_perDrawSsbo);
-        MC2_GL_BufferData(GL_SHADER_STORAGE_BUFFER,
-                     static_cast<GLsizeiptr>(entries.size() * sizeof(PerDrawEntry)),
-                     entries.data(),
-                     GL_STATIC_DRAW);
-        glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
-
-        // Cmd-to-bucket SSBO (binding 7 in patch shader): each cmd index
-        // maps to its parent typeID so the patch shader can write the
-        // type's instanceCount into all cmds (= all packets) of that type.
-        if (s_cmdToBucketSsbo == 0) {
-            // TIER2-EXCLUDED: dead-path
-            glGenBuffers(1, &s_cmdToBucketSsbo);
-        }
-        glBindBuffer(GL_SHADER_STORAGE_BUFFER, s_cmdToBucketSsbo);
-        MC2_GL_BufferData(GL_SHADER_STORAGE_BUFFER,
-                     static_cast<GLsizeiptr>(cmdToBucket.size() * sizeof(uint32_t)),
-                     cmdToBucket.data(),
-                     GL_STATIC_DRAW);
-        glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
     }
 }
 
 // Report the material cache and allocate the base-instance table and permutation.
-bool GpuStaticPropBatcher::reportMaterialCacheAndBaseInstances(StaticPropFinalizeFrame& f) {
-    auto& typeCount = f.typeCount;
+bool GpuStaticPropBatcher::reportMaterialCache(StaticPropFinalizeFrame& f) {
     {
         GpuStaticPropRegistry::MaterialCacheStats mcs{};
         GpuStaticPropRegistry::staticPropGetMaterialCacheStats(&mcs);
@@ -910,79 +596,6 @@ bool GpuStaticPropBatcher::reportMaterialCacheAndBaseInstances(StaticPropFinaliz
             mc2::fmt::as_u32(mcs.multiPacket), mc2::fmt::as_u32(mcs.alphaOnFallback), mc2::fmt::as_u32(mcs.noPrimary));
     }
 
-    // Slice 1 step group 3 — allocate base-instance table under !s_globalPoolLegacy.
-    // Must come after the per-packet sort (lines above) so s_alphaOffCmdCount /
-    // s_alphaOnCmdCount are valid. One uint32_t per draw command per ring frame.
-    if (!s_globalPoolLegacy) {
-        const uint32_t totalCmds = s_alphaOffCmdCount + s_alphaOnCmdCount;
-        // SSBO-BIND-ALIGN: this per-frame byte count is used as a ring-slot
-        // glBindBufferRange offset (slot * stride) at
-        // batcher_bindBaseInstanceByCmdSsboForPatch. totalCmds*4 is not generally
-        // a multiple of GL_SHADER_STORAGE_BUFFER_OFFSET_ALIGNMENT, so slots 1+ would
-        // misalign and the bind would fail on NVIDIA (GL_INVALID_VALUE). Pad the
-        // per-frame stride; alloc (RING_FRAMES*stride), CPU write (slot*stride) and
-        // bind all read this same value so they stay consistent.
-        s_baseInstanceByCmdBytesPerFrame = static_cast<size_t>(gpuAlignUp(
-            static_cast<unsigned long long>(totalCmds) * sizeof(uint32_t),
-            static_cast<unsigned long long>(gpuSsboOffsetAlignment())));
-        const size_t totalBytes =
-            static_cast<size_t>(RING_FRAMES) * s_baseInstanceByCmdBytesPerFrame;
-        if (totalBytes > 0) {
-            // TIER2-EXCLUDED: dead-path
-            glGenBuffers(1, &s_baseInstanceByCmdSsbo);
-            glBindBuffer(GL_SHADER_STORAGE_BUFFER, s_baseInstanceByCmdSsbo);
-            const GLbitfield mapFlags =
-                GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT;
-            while (glGetError() != GL_NO_ERROR) {}
-            glBufferStorage(GL_SHADER_STORAGE_BUFFER, totalBytes, nullptr, mapFlags);
-            const GLenum storageErr = glGetError();
-            if (storageErr != GL_NO_ERROR) {
-                glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
-                glDeleteBuffers(1, &s_baseInstanceByCmdSsbo);
-                s_baseInstanceByCmdSsbo          = 0;
-                s_baseInstanceByCmdBytesPerFrame = 0;
-                MC2_DIAGFE(stderr,
-                    "[COALESCE v1] event=disarmed reason=alloc_failed "
-                    "(baseInstanceByCmdSsbo glBufferStorage err=0x%04x bytes=%zu)\n",
-                    storageErr, totalBytes);
-                s_coalesceLayoutReady = false;
-                s_coalesceEnabled     = false;
-                s_coalesceArmed       = false;
-                return true;
-            }
-            s_baseInstanceByCmdMap = MC2_GL_MapBufferRange(
-                GL_SHADER_STORAGE_BUFFER, 0, totalBytes, mapFlags);
-            glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
-            if (!s_baseInstanceByCmdMap) {
-                MC2_DIAGFE(stderr,
-                    "[COALESCE v1] event=disarmed reason=alloc_failed "
-                    "(baseInstanceByCmdSsbo glMapBufferRange returned null)\n");
-                s_coalesceLayoutReady = false;
-                s_coalesceEnabled     = false;
-                s_coalesceArmed       = false;
-                return true;
-            }
-            MC2_DIAGFE(stderr,
-                "[COALESCE v1] event=baseInstance_buffer_ok cmds=%u "
-                "bytes_per_frame=%zu total_bytes=%zu\n",
-                totalCmds, s_baseInstanceByCmdBytesPerFrame, totalBytes);
-        }
-    }
-
-    // Step 5.12 — sort permutation overwrite (LAST step on success). The
-    // identity from Step 5.4 stays if any earlier step returned.
-    {
-        std::vector<uint32_t> permutation(typeCount, 0u);
-        for (uint32_t i = 0; i < s_sortedTypeOrder.size(); ++i) {
-            const uint32_t typeID = s_sortedTypeOrder[i];
-            permutation[typeID] = i;  // typeID → sortedSlot
-        }
-        glBindBuffer(GL_SHADER_STORAGE_BUFFER, s_permutationSsbo);
-        MC2_GL_BufferSubData(GL_SHADER_STORAGE_BUFFER, 0,
-                        static_cast<GLsizeiptr>(permutation.size() * sizeof(uint32_t)),
-                        permutation.data());
-        glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
-    }
     return false;
 }
 
@@ -1031,8 +644,7 @@ void GpuStaticPropBatcher::finalizeGeometry() {
 
     StaticPropFinalizeFrame f;
     finalizePrologue();
-    createSharedBuffers();
-    uploadPerTypeAndPublish();
+    publishGeometry();
 
     //
     // Step 5.1 — §CRITICAL-C invariant (pure documentation):
@@ -1055,12 +667,12 @@ void GpuStaticPropBatcher::finalizeGeometry() {
     // touched — that's the whole point of §5.0's "legacy first" rule.
     // =======================================================================
 
-    if (layoutCoalesce(f)) return;
+    if (prepareMaterialLayout(f)) return;
 
     if (buildTextureArrays(f)) return;
     buildPerPacketDrawTables(f);
 
-    if (reportMaterialCacheAndBaseInstances(f)) return;
+    if (reportMaterialCache(f)) return;
 
     armCoalesce(f);
 }

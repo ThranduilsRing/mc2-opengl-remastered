@@ -1,4 +1,4 @@
-// GpuStaticPropBatcher: the texture-array phase of finalizeGeometry -- per-group array build, the BC7 / ORM bucket arrays
+// Assemble CPU albedo arrays and per-packet layers for native prop consumers.
 // and the per-packet layer tables. The orchestrator is in gos_static_prop_batcher_finalize.cpp.
 #include "gos_static_prop_batcher_internal.h"
 #include "../../mclib/texture_assets.h"
@@ -7,26 +7,10 @@
 
 #include <cstring>
 
-
 // Build the per-group texture arrays and publish the per-packet and per-type layer tables.
 bool GpuStaticPropBatcher::buildTextureArrays(StaticPropFinalizeFrame& f) {
     auto& typeCount = f.typeCount; auto& layerForType = f.layerForType; auto& layerForPacket = f.layerForPacket; auto& uvScaleXByPacket = f.uvScaleXByPacket;
     auto& uvScaleYByPacket = f.uvScaleYByPacket;
-    // Step 5.10 — build per-group GL_TEXTURE_2D_ARRAY (§5.4).
-    // layerForType[typeID] = group-relative layer in {s_texArrayOff,
-    // s_texArrayOn}; -1 sentinel for zero-packet / no-dim types
-    // (Step 5.11 emits a no-op draw entry but keeps array indexing
-    // aligned).
-    //
-    // v3.8 mixed-size handling: stock content has both 32x32 and 64x64
-    // textures in the same alpha group. Strict same-size assertion
-    // would disarm coalesce on every mc2_NN mission. Instead, allocate
-    // the array at MAX dimensions across the group's uniques and blit
-    // each smaller texture into the upper-left sub-region (0,0,W,H) of
-    // its layer. Per-type uvScaleX/Y in PerDrawEntry (§5.4) maps
-    // [0,1] UV → the actual texture sub-region in the larger layer.
-    // Shader applies `fract(v_uv) * uvScale` before sampling so
-    // GL_REPEAT semantics work for tiling textures.
     layerForType.assign(typeCount, -1);
     for (auto& a : albedoArrays_) a = {};
     albedoKey_ = {};
@@ -41,321 +25,19 @@ bool GpuStaticPropBatcher::buildTextureArrays(StaticPropFinalizeFrame& f) {
     uvScaleYByPacket.assign(s_packets.size(), 1.0f);
 
     struct UniqueTex {
-        GLuint sourceHandle;
-        GLint  w;
-        GLint  h;
+        uint32_t sourceHandle;
+        int  w;
+        int  h;
         DWORD  nodeIdx;   // MC_TextureManager node index for KTX2 sidecar lookup
         std::shared_ptr<const std::vector<uint8_t>> rgba;
     };
 
-    // COMPRESSION-BC7-STATICPROP-2 — bucket bookkeeping is rebuilt every
-    // finalizeGeometry() under the gate. Release any prior arrays + size the
-    // per-packet bucket index now (parallel to layerForPacket). Gate-OFF leaves
-    // all of this empty (and untouched below), preserving byte-identical output.
-    staticPropReleaseBuckets();
-    if (s_staticPropBc7Enabled) {
-        s_packetBucketIndex.assign(s_packets.size(), -1);
-    }
-
-    // COMPRESSION-BC7-STATICPROP-2 — build ONE uniform-dim GL_TEXTURE_2D_ARRAY
-    // from a list of same-dimension uniques. Tries BC7 first (all-or-nothing per
-    // array — a GL array has a single internalformat); falls back to the RGBA8
-    // upload path on any condition miss. Returns the GL handle (0 on hard
-    // failure) and sets outIsBc7. This is the per-bucket equivalent of the
-    // group-level BC7/RGBA8 logic below; bucketDims == every layer's dims so
-    // uvScale is always 1.0 and no sub-region blits occur.
-    auto buildBucketArray =
-        [&](const std::vector<UniqueTex>& bUniques, GLint bw, GLint bh,
-            uint8_t group, bool& outIsBc7, size_t& outBytes) -> GLuint {
-        outIsBc7 = false;
-        outBytes = 0;
-        GLuint arr = 0;
-
-        if (s_materialKtxEnabled && mcTextureManager &&
-            GLEW_ARB_texture_compression_bptc) {
-            std::vector<RenderCore::KtxImage> bc7Imgs(bUniques.size());
-            bool bc7Ok = true;
-            const char* failReason = nullptr;
-            int bc7MipCount = 0;
-            uint32_t bc7VkFormat = 0;
-            for (size_t k = 0; bc7Ok && k < bUniques.size(); ++k) {
-                const auto& u = bUniques[k];
-                if (u.nodeIdx == 0xFFFFFFFFu) { bc7Ok = false; failReason = "load_fail"; break; }
-                const char* srcName = mc2::textures::name(u.nodeIdx);
-                if (!srcName || !*srcName) { bc7Ok = false; failReason = "load_fail"; break; }
-                const std::string ktxPath = deriveTieredKtxPath(srcName, texTier());
-                if (!RenderCore::ktxLoadRgba8(ktxPath.c_str(), bc7Imgs[k])) {
-                    bc7Ok = false; failReason = "load_fail"; break;
-                }
-                const RenderCore::KtxImage& img = bc7Imgs[k];
-                if (!img.isCompressed ||
-                    (img.vkFormat != 145u && img.vkFormat != 146u)) {
-                    bc7Ok = false; failReason = "not_all_bc7"; break;
-                }
-                if (img.width != bw || img.height != bh) {
-                    bc7Ok = false; failReason = "dim_mismatch"; break;
-                }
-                if (k == 0) { bc7VkFormat = img.vkFormat; bc7MipCount = img.mipCount; }
-                if (img.mipCount != bc7MipCount) { bc7Ok = false; failReason = "dim_mismatch"; break; }
-            }
-            if (bc7Ok) {
-                // linear BC7 (UNORM): matches GL_RGBA8 baseline; engine has no GL_FRAMEBUFFER_SRGB
-                const GLenum internalformat = GL_COMPRESSED_RGBA_BPTC_UNORM;
-                const int levels = (bc7MipCount > 0) ? bc7MipCount : 1;
-                // TEX-CLASS: asset-pool -- static-prop BC7 albedo 2D_ARRAY (content)
-                glGenTextures(1, &arr);
-                glBindTexture(GL_TEXTURE_2D_ARRAY, arr);
-                glTexStorage3D(GL_TEXTURE_2D_ARRAY, levels, internalformat,
-                               bw, bh, static_cast<GLsizei>(bUniques.size()));
-                for (size_t k = 0; k < bUniques.size(); ++k) {
-                    const RenderCore::KtxImage& img = bc7Imgs[k];
-                    for (int lvl = 0; lvl < levels; ++lvl) {
-                        const int lw = (bw >> lvl) ? (bw >> lvl) : 1;
-                        const int lh = (bh >> lvl) ? (bh >> lvl) : 1;
-                        const GLsizei imageSize =
-                            static_cast<GLsizei>(((lw + 3) / 4) * ((lh + 3) / 4) * 16);
-                        glCompressedTexSubImage3D(
-                            GL_TEXTURE_2D_ARRAY, lvl, 0, 0, static_cast<GLint>(k),
-                            lw, lh, 1, internalformat, imageSize,
-                            img.pixels.data() +
-                                img.mipByteOffsets[static_cast<size_t>(lvl)]);
-                        outBytes += static_cast<size_t>(imageSize);
-                    }
-                }
-                glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAX_LEVEL,  levels - 1);
-                glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S,     GL_CLAMP_TO_EDGE);
-                glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T,     GL_CLAMP_TO_EDGE);
-                glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-                glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-                glBindTexture(GL_TEXTURE_2D_ARRAY, 0);
-                outIsBc7 = true;
-                mc2::fmt::print_err("[STATICPROP_BC7] bucket group={:d} dims={:d}x{:d} layers={:d} format=BC7 levels={:d} srcVkFormat={:d} bytes={:d}\n", mc2::fmt::as_u32((unsigned)group), mc2::fmt::as_i32(bw), mc2::fmt::as_i32(bh), mc2::fmt::as_size(bUniques.size()), mc2::fmt::as_i32(levels), mc2::fmt::as_u32(bc7VkFormat), mc2::fmt::as_size(outBytes));
-                std::fflush(stderr);
-                return arr;
-            } else {
-                mc2::fmt::print_err("[STATICPROP_BC7] bucket fallback group={:d} dims={:d}x{:d} reason={}\n", mc2::fmt::as_u32((unsigned)group), mc2::fmt::as_i32(bw), mc2::fmt::as_i32(bh), mc2::fmt::safe(failReason ? failReason : "unknown"));
-                std::fflush(stderr);
-            }
-        }
-
-        // ---- RGBA8 fallback (mirrors the group-level RGBA8 path; uniform-dim
-        //      so every layer fills the whole level → no sub-region blits) ----
-        // TEX-CLASS: asset-pool -- static-prop albedo/normal 2D_ARRAY (content)
-        glGenTextures(1, &arr);
-        glBindTexture(GL_TEXTURE_2D_ARRAY, arr);
-        glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, GL_RGBA8, bw, bh,
-                     static_cast<GLsizei>(bUniques.size()),
-                     0, GL_BGRA, GL_UNSIGNED_BYTE, nullptr);
-        std::vector<uint8_t> pixelBuf(static_cast<size_t>(bw) * bh * 4u);
-        std::vector<std::pair<size_t, RenderCore::KtxImage>> ktxMipLayers;
-        for (size_t k = 0; k < bUniques.size(); ++k) {
-            const auto& u = bUniques[k];
-            bool ktxUsed = false;
-            if (s_materialKtxEnabled && u.nodeIdx != 0xFFFFFFFFu && mcTextureManager) {
-                const char* srcName = mc2::textures::name(u.nodeIdx);
-                if (srcName && *srcName) {
-                    const std::string ktxPath = deriveTieredKtxPath(srcName, texTier());
-                    RenderCore::KtxImage ktxImg;
-                    const bool ktxOk = RenderCore::ktxLoadRgba8(ktxPath.c_str(), ktxImg);
-                    // Reject compressed sidecars here — block bytes are not RGBA8.
-                    const bool dimOk = ktxOk && !ktxImg.isCompressed &&
-                                       ktxImg.width == u.w && ktxImg.height == u.h;
-                    if (dimOk) {
-                        glBindTexture(GL_TEXTURE_2D_ARRAY, arr);
-                        glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, static_cast<GLint>(k),
-                                        u.w, u.h, 1, GL_RGBA, GL_UNSIGNED_BYTE,
-                                        ktxImg.pixels.data());
-                        ktxUsed = true;
-                        outBytes += ktxImg.pixels.size();
-                        if (ktxImg.mipCount > 1) ktxMipLayers.emplace_back(k, std::move(ktxImg));
-                    }
-                }
-            }
-            if (!ktxUsed) {
-                pixelBuf.assign(u.rgba->begin(), u.rgba->end());
-                glBindTexture(GL_TEXTURE_2D_ARRAY, arr);
-                glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, static_cast<GLint>(k),
-                                u.w, u.h, 1, GL_RGBA, GL_UNSIGNED_BYTE, pixelBuf.data());
-                outBytes += static_cast<size_t>(bw) * bh * 4u;
-            }
-        }
-        glBindTexture(GL_TEXTURE_2D_ARRAY, arr);
-        glGenerateMipmap(GL_TEXTURE_2D_ARRAY);
-        GLint maxLevel = 0;
-        { GLint w = bw, h = bh; while (w > 1 || h > 1) { ++maxLevel; if (w>1) w>>=1; if (h>1) h>>=1; } }
-        if (s_materialKtxEnabled && !ktxMipLayers.empty()) {
-            for (const auto& lm : ktxMipLayers) {
-                const size_t layerK = lm.first;
-                const RenderCore::KtxImage& img = lm.second;
-                const int lastLvl = (img.mipCount - 1 < maxLevel) ? (img.mipCount - 1) : maxLevel;
-                for (int lvl = 1; lvl <= lastLvl; ++lvl) {
-                    int lw = img.width  >> lvl; if (lw < 1) lw = 1;
-                    int lh = img.height >> lvl; if (lh < 1) lh = 1;
-                    glTexSubImage3D(GL_TEXTURE_2D_ARRAY, lvl, 0, 0, static_cast<GLint>(layerK),
-                                    lw, lh, 1, GL_RGBA, GL_UNSIGNED_BYTE,
-                                    img.pixels.data() +
-                                        img.mipByteOffsets[static_cast<size_t>(lvl)]);
-                }
-            }
-        }
-        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAX_LEVEL,  maxLevel);
-        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S,     GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T,     GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        glBindTexture(GL_TEXTURE_2D_ARRAY, 0);
-        glBindTexture(GL_TEXTURE_2D, 0);
-        mc2::fmt::print_err("[STATICPROP_BC7] bucket group={:d} dims={:d}x{:d} layers={:d} format=RGBA8 bytes={:d}\n", mc2::fmt::as_u32((unsigned)group), mc2::fmt::as_i32(bw), mc2::fmt::as_i32(bh), mc2::fmt::as_size(bUniques.size()), mc2::fmt::as_size(outBytes));
-        std::fflush(stderr);
-        return arr;
-    };
-
-    // STATICPROP-MATERIAL-ORM-1 — build the per-bucket LINEAR ORM sibling array.
-    // bUniques / bw / bh are the SAME inputs the albedo buildBucketArray got, so
-    // ORM layer k corresponds to albedo layer k (the layer-alignment invariant).
-    // Tries a BC7-linear fast path (all-or-nothing per array — a GL array has a
-    // single internalformat) when every layer has a compressed sidecar matching
-    // bw x bh with identical mipCount; otherwise an RGBA8 array where each layer
-    // is either the loaded uncompressed sidecar (dims must equal bw x bh) or a
-    // 1x1-replicated neutral (255,255,255,255) texel so the array stays DENSE/
-    // bindable. outHasMap[k] = true only where layer k got a REAL ORM map.
-    // ORM is LINEAR: bptcInternalFormatFor(false) for BC7, GL_RGBA8 otherwise.
-    auto buildOrmBucketArray =
-        [&](const std::vector<UniqueTex>& bUniques, GLint bw, GLint bh,
-            uint8_t group, std::vector<bool>& outHasMap) -> GLuint {
-        outHasMap.assign(bUniques.size(), false);
-        GLuint arr = 0;
-        const size_t layerCount = bUniques.size();
-
-        if (mcTextureManager && GLEW_ARB_texture_compression_bptc) {
-            std::vector<RenderCore::KtxImage> imgs(layerCount);
-            bool ok = true;
-            int  mipCount = 0;
-            for (size_t k = 0; ok && k < layerCount; ++k) {
-                const auto& u = bUniques[k];
-                if (u.nodeIdx == 0xFFFFFFFFu) { ok = false; break; }
-                const char* srcName = mc2::textures::name(u.nodeIdx);
-                if (!srcName || !*srcName) { ok = false; break; }
-                const std::string ormPath = deriveOrmSidecar(srcName);
-                if (!RenderCore::ktxLoadRgba8(ormPath.c_str(), imgs[k])) { ok = false; break; }
-                const RenderCore::KtxImage& img = imgs[k];
-                if (!img.isCompressed ||
-                    (img.vkFormat != 145u && img.vkFormat != 146u)) { ok = false; break; }
-                if (img.width != bw || img.height != bh) { ok = false; break; }
-                if (k == 0) mipCount = img.mipCount;
-                if (img.mipCount != mipCount) { ok = false; break; }
-            }
-            if (ok) {
-                const GLenum internalformat = bptcInternalFormatFor(false); // LINEAR
-                const int levels = (mipCount > 0) ? mipCount : 1;
-                // TEX-CLASS: asset-pool -- static-prop albedo/normal 2D_ARRAY (content)
-                glGenTextures(1, &arr);
-                glBindTexture(GL_TEXTURE_2D_ARRAY, arr);
-                glTexStorage3D(GL_TEXTURE_2D_ARRAY, levels, internalformat,
-                               bw, bh, static_cast<GLsizei>(layerCount));
-                for (size_t k = 0; k < layerCount; ++k) {
-                    const RenderCore::KtxImage& img = imgs[k];
-                    for (int lvl = 0; lvl < levels; ++lvl) {
-                        const int lw = (bw >> lvl) ? (bw >> lvl) : 1;
-                        const int lh = (bh >> lvl) ? (bh >> lvl) : 1;
-                        const GLsizei imageSize =
-                            static_cast<GLsizei>(((lw + 3) / 4) * ((lh + 3) / 4) * 16);
-                        glCompressedTexSubImage3D(
-                            GL_TEXTURE_2D_ARRAY, lvl, 0, 0, static_cast<GLint>(k),
-                            lw, lh, 1, internalformat, imageSize,
-                            img.pixels.data() +
-                                img.mipByteOffsets[static_cast<size_t>(lvl)]);
-                    }
-                    outHasMap[k] = true;
-                }
-                glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAX_LEVEL,  levels - 1);
-                glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S,     GL_CLAMP_TO_EDGE);
-                glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T,     GL_CLAMP_TO_EDGE);
-                glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-                glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-                glBindTexture(GL_TEXTURE_2D_ARRAY, 0);
-                mc2::fmt::print_err("[STATICPROP_ORM] bucket group={:d} dims={:d}x{:d} layers={:d} format=BC7-linear levels={:d} realMaps={:d}\n", mc2::fmt::as_u32((unsigned)group), mc2::fmt::as_i32(bw), mc2::fmt::as_i32(bh), mc2::fmt::as_size(layerCount), mc2::fmt::as_i32(levels), mc2::fmt::as_size(layerCount));
-                std::fflush(stderr);
-                return arr;
-            }
-        }
-
-        // ---- RGBA8 fallback (per-layer: real sidecar or neutral fill) ----
-        // TEX-CLASS: asset-pool -- static-prop albedo/normal 2D_ARRAY (content)
-        glGenTextures(1, &arr);
-        glBindTexture(GL_TEXTURE_2D_ARRAY, arr);
-        glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, GL_RGBA8, bw, bh,
-                     static_cast<GLsizei>(layerCount),
-                     0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
-        std::vector<uint8_t> neutral(static_cast<size_t>(bw) * bh * 4u, 255u);
-        size_t realMaps = 0;
-        std::vector<std::pair<size_t, RenderCore::KtxImage>> ormMipLayers;
-        for (size_t k = 0; k < layerCount; ++k) {
-            const auto& u = bUniques[k];
-            bool used = false;
-            if (u.nodeIdx != 0xFFFFFFFFu && mcTextureManager) {
-                const char* srcName = mc2::textures::name(u.nodeIdx);
-                if (srcName && *srcName) {
-                    const std::string ormPath = deriveOrmSidecar(srcName);
-                    RenderCore::KtxImage img;
-                    const bool loadOk = RenderCore::ktxLoadRgba8(ormPath.c_str(), img);
-                    // Reject compressed sidecars (block bytes are not RGBA8) and
-                    // dim mismatches (must equal the albedo unique's dims).
-                    const bool dimOk = loadOk && !img.isCompressed &&
-                                       img.width == bw && img.height == bh;
-                    if (loadOk && !dimOk) {
-                        mc2::fmt::print_err("[STATICPROP_ORM] reject layer={:d} group={:d} sidecar={} reason={} got={:d}x{:d} want={:d}x{:d}\n", mc2::fmt::as_size(k), mc2::fmt::as_u32((unsigned)group), ormPath.c_str(), mc2::fmt::safe(img.isCompressed ? "compressed_in_rgba8_path" : "dim_mismatch"), mc2::fmt::as_i32(img.width), mc2::fmt::as_i32(img.height), mc2::fmt::as_i32(bw), mc2::fmt::as_i32(bh));
-                        std::fflush(stderr);
-                    }
-                    if (dimOk) {
-                        glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, static_cast<GLint>(k),
-                                        bw, bh, 1, GL_RGBA, GL_UNSIGNED_BYTE,
-                                        img.pixels.data());
-                        used = true;
-                        outHasMap[k] = true;
-                        ++realMaps;
-                        if (img.mipCount > 1) ormMipLayers.emplace_back(k, std::move(img));
-                    }
-                }
-            }
-            if (!used) {
-                glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, static_cast<GLint>(k),
-                                bw, bh, 1, GL_RGBA, GL_UNSIGNED_BYTE, neutral.data());
-            }
-        }
-        glGenerateMipmap(GL_TEXTURE_2D_ARRAY);
-        GLint maxLevel = 0;
-        { GLint w = bw, h = bh; while (w > 1 || h > 1) { ++maxLevel; if (w>1) w>>=1; if (h>1) h>>=1; } }
-        for (const auto& lm : ormMipLayers) {
-            const size_t layerK = lm.first;
-            const RenderCore::KtxImage& img = lm.second;
-            const int lastLvl = (img.mipCount - 1 < maxLevel) ? (img.mipCount - 1) : maxLevel;
-            for (int lvl = 1; lvl <= lastLvl; ++lvl) {
-                int lw = img.width  >> lvl; if (lw < 1) lw = 1;
-                int lh = img.height >> lvl; if (lh < 1) lh = 1;
-                glTexSubImage3D(GL_TEXTURE_2D_ARRAY, lvl, 0, 0, static_cast<GLint>(layerK),
-                                lw, lh, 1, GL_RGBA, GL_UNSIGNED_BYTE,
-                                img.pixels.data() +
-                                    img.mipByteOffsets[static_cast<size_t>(lvl)]);
-            }
-        }
-        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAX_LEVEL,  maxLevel);
-        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S,     GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T,     GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        glBindTexture(GL_TEXTURE_2D_ARRAY, 0);
-        mc2::fmt::print_err("[STATICPROP_ORM] bucket group={:d} dims={:d}x{:d} layers={:d} format=RGBA8 realMaps={:d}\n", mc2::fmt::as_u32((unsigned)group), mc2::fmt::as_i32(bw), mc2::fmt::as_i32(bh), mc2::fmt::as_size(layerCount), mc2::fmt::as_size(realMaps));
-        std::fflush(stderr);
-        return arr;
-    };
-
+    static uint32_t s_albedoKeySerial = 0;
     for (uint8_t group = 0; group <= 1; ++group) {
         std::vector<DWORD> newlyPinnedThisBuild;
-        GLuint& outArray = (group == 0u) ? s_texArrayOff : s_texArrayOn;
 
         std::vector<UniqueTex> uniques;             // unique textures in this group
-        std::unordered_map<GLuint, int32_t> sourceToLayer;
+        std::unordered_map<uint32_t, int32_t> sourceToLayer;
         // Track packets that landed in this group, for the second-pass uvScale
         // assignment. Each entry: { globalPacketIdx, layer }.
         std::vector<std::pair<uint32_t, int32_t>> packetsInGroup;
@@ -428,9 +110,9 @@ bool GpuStaticPropBatcher::buildTextureArrays(StaticPropFinalizeFrame& f) {
                     continue;
                 }
 
-            GLint W = texels.status == GosTexels::Status::Ready && rgba &&
-                rgba->size() == size_t(texels.width) * texels.height * 4 ? static_cast<GLint>(texels.width) : 0;
-            GLint H = W > 0 ? static_cast<GLint>(texels.height) : 0;
+            int W = texels.status == GosTexels::Status::Ready && rgba &&
+                rgba->size() == size_t(texels.width) * texels.height * 4 ? static_cast<int>(texels.width) : 0;
+            int H = W > 0 ? static_cast<int>(texels.height) : 0;
             // If the retained source has no pixels, the texture is genuinely
             // unavailable at finalize-time (no MC node, never cached,
             // and no decoded source). Skip this packet via layer=-1 sentinel
@@ -454,19 +136,6 @@ bool GpuStaticPropBatcher::buildTextureArrays(StaticPropFinalizeFrame& f) {
                         std::fflush(stderr);
                     }
                 }
-                // MODEL-OVERRIDE-GPU-BATCHER-SEAM-PROBE-1 fix: a modder glTF
-                // render-override imports with unresolved "NULLTXM" texture
-                // handles (nodeIdx=0xFFFFFFFF, no GL upload -> W<=0 here). The
-                // stock skip rule (layer=-1 -> dropped from the coalesce
-                // multidraw, see bdactor.cpp:262) makes the override geometry
-                // invisible. For override-backed types ONLY, route the packet
-                // to an already-built valid layer in this group (layer 0) so it
-                // RASTERIZES with that texture (wrong albedo, but visible) —
-                // the MVP success criterion is a box that draws, not correct
-                // texturing. Stock/damage-shape packets are UNAFFECTED: they
-                // keep the layer=-1 skip (no isOverride flag), so the orange-
-                // ghost destroyed-building regression cannot recur. If no valid
-                // layer exists yet in this group, fall through to the skip.
                 if (type.isOverride && !uniques.empty()) {
                     layerForPacket[globalPktIdx] = 0;
                     if (layerForType[typeID] < 0) layerForType[typeID] = 0; // VK-P11: first-valid wins
@@ -519,98 +188,12 @@ bool GpuStaticPropBatcher::buildTextureArrays(StaticPropFinalizeFrame& f) {
         // array, same semantics the shader already consumes). uvScale = 1.0.
         // The gate-OFF group-build below is left UNTOUCHED and never runs here.
         // ====================================================================
-        if (s_staticPropBc7Enabled) {
-            struct DimKey { GLint w, h; };
-            std::vector<DimKey>               dimKeys;       // unique dims, stable order of first appearance
-            std::vector<std::vector<int32_t>> bucketLayers;  // per dim: list of group-relative layer indices
-            std::vector<int32_t>              layerToBucketLocal(uniques.size(), -1);   // group-rel layer -> local bucket
-            std::vector<int32_t>              layerToBucketRelLayer(uniques.size(), -1); // group-rel layer -> bucket-relative layer
-
-            for (size_t lyr = 0; lyr < uniques.size(); ++lyr) {
-                const GLint w = uniques[lyr].w, h = uniques[lyr].h;
-                int found = -1;
-                for (size_t b = 0; b < dimKeys.size(); ++b) {
-                    if (dimKeys[b].w == w && dimKeys[b].h == h) { found = static_cast<int>(b); break; }
-                }
-                if (found < 0) {
-                    found = static_cast<int>(dimKeys.size());
-                    dimKeys.push_back({w, h});
-                    bucketLayers.emplace_back();
-                }
-                layerToBucketLocal[lyr]    = found;
-                layerToBucketRelLayer[lyr] = static_cast<int32_t>(bucketLayers[found].size());
-                bucketLayers[found].push_back(static_cast<int32_t>(lyr));
-            }
-
-            // Build one GL array per dim bucket; record into the global vectors.
-            // localBucketToGlobal maps this group's local bucket index -> global
-            // s_bucketArrays index (used to tag packets).
-            std::vector<int32_t> localBucketToGlobal(dimKeys.size(), -1);
-            size_t groupTotalBytes = 0;
-            for (size_t b = 0; b < dimKeys.size(); ++b) {
-                std::vector<UniqueTex> sub;
-                sub.reserve(bucketLayers[b].size());
-                for (int32_t lyr : bucketLayers[b]) sub.push_back(uniques[static_cast<size_t>(lyr)]);
-
-                bool isBc7 = false; size_t bytes = 0;
-                const GLuint arr = buildBucketArray(sub, dimKeys[b].w, dimKeys[b].h,
-                                                    group, isBc7, bytes);
-                groupTotalBytes += bytes;
-
-                const int32_t globalBucket = static_cast<int32_t>(s_bucketArrays.size());
-                localBucketToGlobal[b] = globalBucket;
-                s_bucketArrays.push_back(arr);
-                StaticPropBucketInfo info{};
-                info.group      = group;
-                info.w          = static_cast<uint16_t>(dimKeys[b].w);
-                info.h          = static_cast<uint16_t>(dimKeys[b].h);
-                info.layerCount = static_cast<uint32_t>(sub.size());
-                info.isBc7      = isBc7;
-                info.glArray    = arr;
-                s_bucketInfo.push_back(info);
-
-                // STATICPROP-MATERIAL-ORM-1 — build the layer-aligned ORM sibling
-                // for THIS bucket from the SAME `sub` uniques, so ORM array index
-                // == albedo array index (globalBucket) and ORM layer k == albedo
-                // layer k. Gate-OFF builds nothing (vectors stay empty); gate-ON
-                // keeps s_ormBucketArrays.size() == s_bucketArrays.size().
-                if (s_ormSlotsEnabled) {
-                    std::vector<bool> ormHasMap;
-                    const GLuint ormArr = buildOrmBucketArray(sub, dimKeys[b].w, dimKeys[b].h,
-                                                              group, ormHasMap);
-                    s_ormBucketArrays.push_back(ormArr);
-                    s_ormLayerHasMap.push_back(std::move(ormHasMap));
-                }
-            }
-
-            // Reassign layerForPacket -> bucket-relative layer, tag each packet
-            // with its global bucket index, and set uvScale = 1.0 (uniform-dim).
-            for (const auto& kv : packetsInGroup) {
-                const uint32_t globalPktIdx = kv.first;
-                const int32_t  grpLayer     = kv.second;   // group-relative layer
-                if (grpLayer < 0) continue;
-                const int32_t localB   = layerToBucketLocal[static_cast<size_t>(grpLayer)];
-                const int32_t relLayer = layerToBucketRelLayer[static_cast<size_t>(grpLayer)];
-                layerForPacket[globalPktIdx]      = relLayer;            // bucket-relative
-                s_packetBucketIndex[globalPktIdx] = localBucketToGlobal[static_cast<size_t>(localB)];
-                uvScaleXByPacket[globalPktIdx]    = 1.0f;
-                uvScaleYByPacket[globalPktIdx]    = 1.0f;
-            }
-
-            mc2::fmt::print_err("[STATICPROP_BC7] group={:d} buckets={:d} total_bytes={:d}\n", mc2::fmt::as_u32((unsigned)group), mc2::fmt::as_size(dimKeys.size()), mc2::fmt::as_size(groupTotalBytes));
-            std::fflush(stderr);
-
-            s_coalescePinnedNodes.insert(s_coalescePinnedNodes.end(),
-                                          newlyPinnedThisBuild.begin(),
-                                          newlyPinnedThisBuild.end());
-            continue;
-        }
 
         // 5.10.d — find max dimensions across the group's uniques.
         // The texture array is allocated at maxW × maxH; smaller
         // textures get blitted into upper-left sub-region of their
         // layer; per-type uvScale maps [0,1] UV → sub-region.
-        GLint maxW = 0, maxH = 0;
+        int maxW = 0, maxH = 0;
         for (const auto& u : uniques) {
             if (u.w > maxW) maxW = u.w;
             if (u.h > maxH) maxH = u.h;
@@ -627,15 +210,6 @@ bool GpuStaticPropBatcher::buildTextureArrays(StaticPropFinalizeFrame& f) {
             return true;
         }
 
-        // -------------------------------------------------------------------
-        // COMPRESSION-BC7-STATICPROP-1 — BC7-compressed array fast path.
-        // Gate: MC2_MATERIAL_KTX=1 AND MC2_STATICPROP_BC7=1.
-        // A GL array has ONE internalformat, so BC7 is ALL-OR-NOTHING per
-        // array. Additionally we require the group to be UNIFORM-DIM (every
-        // layer fills the whole level) so compressed sub-region uploads never
-        // violate 4x4 block alignment at small mips. If any condition fails we
-        // fall through to the existing RGBA8 path below, byte-identical.
-        // -------------------------------------------------------------------
         if (s_materialKtxEnabled && s_staticPropBc7Enabled && mcTextureManager) {
             std::vector<RenderCore::KtxImage> bc7Imgs(uniques.size());
             bool bc7Ok      = true;
@@ -671,20 +245,9 @@ bool GpuStaticPropBatcher::buildTextureArrays(StaticPropFinalizeFrame& f) {
                 if (img.mipCount != bc7MipCount) { bc7Ok = false; failReason = "dim_mismatch"; break; }
             }
 
-            if (bc7Ok && !GLEW_ARB_texture_compression_bptc) {
-                bc7Ok = false; failReason = "no_bptc_support";
-            }
-
             if (bc7Ok) {
-                // linear BC7 (UNORM): matches GL_RGBA8 baseline; engine has no GL_FRAMEBUFFER_SRGB
-                const GLenum internalformat = GL_COMPRESSED_RGBA_BPTC_UNORM;
+                const uint32_t sourceFormat = mc2tex::kVkFormatBc7Unorm;
                 const int levels = (bc7MipCount > 0) ? bc7MipCount : 1;
-
-                // TEX-CLASS: asset-pool -- static-prop material 2D_ARRAY (content)
-                glGenTextures(1, &outArray);
-                glBindTexture(GL_TEXTURE_2D_ARRAY, outArray);
-                glTexStorage3D(GL_TEXTURE_2D_ARRAY, levels, internalformat,
-                               maxW, maxH, static_cast<GLsizei>(uniques.size()));
 
                 mc2tex::TextureArrayCpu& cpuArray = albedoArrays_[group];
                 cpuArray = {};
@@ -699,29 +262,13 @@ bool GpuStaticPropBatcher::buildTextureArrays(StaticPropFinalizeFrame& f) {
                     for (int lvl = 0; lvl < levels; ++lvl) {
                         const int lw = (maxW >> lvl) ? (maxW >> lvl) : 1;
                         const int lh = (maxH >> lvl) ? (maxH >> lvl) : 1;
-                        const GLsizei imageSize =
-                            static_cast<GLsizei>(((lw + 3) / 4) * ((lh + 3) / 4) * 16);
-                        glCompressedTexSubImage3D(
-                            GL_TEXTURE_2D_ARRAY, lvl,
-                            0, 0, static_cast<GLint>(k),
-                            lw, lh, 1,
-                            internalformat, imageSize,
-                            img.pixels.data() +
-                                img.mipByteOffsets[static_cast<size_t>(lvl)]);
+                        const int imageSize =
+                            static_cast<int>(((lw + 3) / 4) * ((lh + 3) / 4) * 16);
                         const uint8_t* blocks = img.pixels.data() + img.mipByteOffsets[static_cast<size_t>(lvl)];
                         cpuArray.levels[static_cast<size_t>(lvl)].insert(cpuArray.levels[static_cast<size_t>(lvl)].end(), blocks, blocks + imageSize);
                         bc7TotalBytes += static_cast<size_t>(imageSize);
                     }
                 }
-
-                // Sampler: match the RGBA8 path. NO glGenerateMipmap (compressed
-                // mips come straight from the cooked KTX). MAX_LEVEL = levels-1.
-                glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAX_LEVEL,  levels - 1);
-                glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S,     GL_CLAMP_TO_EDGE);
-                glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T,     GL_CLAMP_TO_EDGE);
-                glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-                glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-                glBindTexture(GL_TEXTURE_2D_ARRAY, 0);
 
                 for (const auto& kv : packetsInGroup) {
                     const uint32_t globalPktIdx = kv.first;
@@ -730,7 +277,7 @@ bool GpuStaticPropBatcher::buildTextureArrays(StaticPropFinalizeFrame& f) {
                     uvScaleYByPacket[globalPktIdx] = 1.0f;
                 }
 
-                mc2::fmt::print_err("[STATICPROP_BC7] group={:d} layers={:d} dims={:d}x{:d} levels={:d} internalformat=0x{:x} bytes={:d}\n", mc2::fmt::as_u32((unsigned)group), mc2::fmt::as_size(uniques.size()), mc2::fmt::as_i32(maxW), mc2::fmt::as_i32(maxH), mc2::fmt::as_i32(levels), mc2::fmt::as_u32((unsigned)internalformat), mc2::fmt::as_size(bc7TotalBytes));
+                mc2::fmt::print_err("[STATICPROP_BC7] group={:d} layers={:d} dims={:d}x{:d} levels={:d} internalformat=0x{:x} bytes={:d}\n", mc2::fmt::as_u32((unsigned)group), mc2::fmt::as_size(uniques.size()), mc2::fmt::as_i32(maxW), mc2::fmt::as_i32(maxH), mc2::fmt::as_i32(levels), mc2::fmt::as_u32(sourceFormat), mc2::fmt::as_size(bc7TotalBytes));
                 mc2::fmt::print_err("[STATICPROP_BC7] summary group={:d} built BC7 array (srcVkFormat={:d}, {:d} layers)\n", mc2::fmt::as_u32((unsigned)group), mc2::fmt::as_u32(bc7VkFormat), mc2::fmt::as_size(uniques.size()));
                 std::fflush(stderr);
 
@@ -738,6 +285,7 @@ bool GpuStaticPropBatcher::buildTextureArrays(StaticPropFinalizeFrame& f) {
                                group == 0u ? "off" : "on",
                                uniques.size(), maxW, maxH, levels);
 
+                albedoKey_[group] = ++s_albedoKeySerial;
                 s_coalescePinnedNodes.insert(s_coalescePinnedNodes.end(),
                                               newlyPinnedThisBuild.begin(),
                                               newlyPinnedThisBuild.end());
@@ -748,10 +296,6 @@ bool GpuStaticPropBatcher::buildTextureArrays(StaticPropFinalizeFrame& f) {
             }
         }
 
-        // The group's array is assembled on the CPU (RGBA8, R first, every level): GL uploads every level from it and the Vulkan prop
-        // island copies the same bytes. Each unique fills the upper-left (W x H) of its layer; the rest of the layer stays zero, and the
-        // shader's uvScale keeps sampling inside the sub-region. The chain is the box filter of the whole layer (glGenerateMipmap's
-        // filter on this format), then the pre-baked .ktx2 levels replace it on the layers that carry them.
         mc2tex::TextureArrayCpu& cpuArray = albedoArrays_[group];
         cpuArray = {};
         cpuArray.width = static_cast<uint32_t>(maxW);
@@ -802,9 +346,9 @@ bool GpuStaticPropBatcher::buildTextureArrays(StaticPropFinalizeFrame& f) {
             }
         }
 
-        GLint maxLevel = 0;
+        int maxLevel = 0;
         {
-            GLint w = maxW, h = maxH;
+            int w = maxW, h = maxH;
             while (w > 1 || h > 1) {
                 ++maxLevel;
                 if (w > 1) w >>= 1;
@@ -844,25 +388,7 @@ bool GpuStaticPropBatcher::buildTextureArrays(StaticPropFinalizeFrame& f) {
         if (!ktxMipLayers.empty())
             mc2::fmt::print_err("[KTX2_MIP] summary: {:d} KTX layers, {:d} pre-baked mips used\n", mc2::fmt::as_size(ktxMipLayers.size()), mc2::fmt::as_i32(bakedLevels));
 
-        { static uint32_t s_albedoKeySerial = 0; albedoKey_[group] = ++s_albedoKeySerial; }
-        // TEX-CLASS: asset-pool -- static-prop material 2D_ARRAY (content)
-        glGenTextures(1, &outArray);
-        glBindTexture(GL_TEXTURE_2D_ARRAY, outArray);
-        for (uint32_t lvl = 0; lvl < levelCount; ++lvl)
-            glTexImage3D(GL_TEXTURE_2D_ARRAY, static_cast<GLint>(lvl), GL_RGBA8,
-                         static_cast<GLsizei>(mc2tex::mipExtent(cpuArray.width, lvl)), static_cast<GLsizei>(mc2tex::mipExtent(cpuArray.height, lvl)),
-                         static_cast<GLsizei>(cpuArray.layers), 0, GL_RGBA, GL_UNSIGNED_BYTE, cpuArray.levels[lvl].data());
-
-        // GL_CLAMP_TO_EDGE: a sub-region texture must not bleed into the unused area at the layer edge; tiling textures rely on the
-        // shader's `fract(v_uv) * uvScale`.
-        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAX_LEVEL,  maxLevel);
-        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S,     GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T,     GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        glBindTexture(GL_TEXTURE_2D_ARRAY, 0);
-        glBindTexture(GL_TEXTURE_2D, 0);
-
+        albedoKey_[group] = ++s_albedoKeySerial;
         // 2026-05-11 per-packet rework: uvScale is per-PACKET, derived from
         // each packet's unique texture dimensions vs the array max dims.
         const float invMaxW = 1.0f / static_cast<float>(maxW);
