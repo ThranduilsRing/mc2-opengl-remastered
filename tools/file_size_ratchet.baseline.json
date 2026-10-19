@@ -19,47 +19,47 @@
   "GameOS/gameos/vulkan_shadow_island_live.cpp": 1544,
   "GameOS/include/gameos.hpp": 3730,
   "RenderCore/RendererFeatureRegistry.h": 1610,
-  "code/artlry.cpp": 1841,
+  "code/artlry.cpp": 1833,
   "code/bldng.cpp": 1691,
   "code/brain_special_dispatch.cpp": 2770,
-  "code/gamecam.cpp": 1616,
-  "code/gameobj.cpp": 2255,
+  "code/gamecam.cpp": 1615,
+  "code/gameobj.cpp": 2240,
   "code/infowindow.cpp": 1729,
   "code/logisticsdialog.cpp": 2148,
   "code/mechicon.cpp": 1977,
   "code/mechlabscreen.cpp": 1952,
-  "code/mechlopedia.cpp": 1626,
+  "code/mechlopedia.cpp": 1623,
   "code/missionbegin.cpp": 2166,
-  "code/mover.h": 1906,
+  "code/mover.h": 1902,
   "code/mpparameterscreen.cpp": 2408,
-  "code/multplyr.h": 1849,
+  "code/multplyr.h": 1845,
   "code/objective.cpp": 2437,
-  "code/optionsarea.cpp": 1842,
+  "code/optionsarea.cpp": 1837,
   "code/pilotreviewarea.cpp": 1843,
-  "code/tacordr.cpp": 2117,
+  "code/tacordr.cpp": 2109,
   "code/terrobj.cpp": 1722,
   "code/turret.cpp": 2337,
   "code/warrior.cpp": 2691,
-  "code/warrior.h": 2179,
+  "code/warrior.h": 2177,
   "editor/tests/test_objectives.cpp": 1996,
   "gui/alistbox.cpp": 1513,
-  "mclib/ablenv.cpp": 1601,
+  "mclib/ablenv.cpp": 1581,
   "mclib/ablrtn.cpp": 1798,
   "mclib/assimp_importer.cpp": 1576,
   "mclib/camera.h": 1815,
-  "mclib/file.cpp": 2626,
+  "mclib/file.cpp": 2616,
   "mclib/gosfx/fcurve.cpp": 1923,
-  "mclib/mapdata.cpp": 2538,
+  "mclib/mapdata.cpp": 2522,
   "mclib/mlr/mlrlightmap.cpp": 1648,
   "mclib/mlr/mlrprimitiveclipping.hpp": 1722,
   "mclib/mlr/mlrtriangleclipping.hpp": 2112,
-  "mclib/move.h": 1896,
+  "mclib/move.h": 1888,
   "mclib/render_contract.cpp": 1526,
-  "mclib/terrtxm.cpp": 1823,
+  "mclib/terrtxm.cpp": 1815,
   "mclib/tgl.h": 1799,
   "shaders/terrain_lod_chunk.frag": 2096
  },
- "head": "9dcfb088f",
+ "head": "4fb668731",
  "per_dir": {
   "GameAdapters": {
    "files": 9,
@@ -92,7 +92,7 @@
    "max_lines": 1040
   },
   "code": {
-   "files": 409,
+   "files": 410,
    "files_over_1500": 22,
    "files_over_3000": 0,
    "max_lines": 2770
@@ -104,16 +104,16 @@
    "max_lines": 1996
   },
   "gui": {
-   "files": 25,
+   "files": 26,
    "files_over_1500": 1,
    "files_over_3000": 0,
    "max_lines": 1513
   },
   "mclib": {
-   "files": 563,
+   "files": 561,
    "files_over_1500": 14,
    "files_over_3000": 0,
-   "max_lines": 2626
+   "max_lines": 2616
   },
   "shaders": {
    "files": 140,
@@ -145,11 +145,11 @@
   },
   {
    "file": "mclib/file.cpp",
-   "lines": 2626
+   "lines": 2616
   },
   {
    "file": "mclib/mapdata.cpp",
-   "lines": 2538
+   "lines": 2522
   },
   {
    "file": "code/objective.cpp",
@@ -165,11 +165,11 @@
   },
   {
    "file": "code/gameobj.cpp",
-   "lines": 2255
+   "lines": 2240
   },
   {
    "file": "code/warrior.h",
-   "lines": 2179
+   "lines": 2177
   },
   {
    "file": "code/missionbegin.cpp",
@@ -180,12 +180,12 @@
    "lines": 2148
   },
   {
-   "file": "code/tacordr.cpp",
-   "lines": 2117
-  },
-  {
    "file": "mclib/mlr/mlrtriangleclipping.hpp",
    "lines": 2112
+  },
+  {
+   "file": "code/tacordr.cpp",
+   "lines": 2109
   },
   {
    "file": "shaders/terrain_lod_chunk.frag",
@@ -209,15 +209,15 @@
   },
   {
    "file": "code/mover.h",
-   "lines": 1906
+   "lines": 1902
   },
   {
    "file": "mclib/move.h",
-   "lines": 1896
+   "lines": 1888
   },
   {
    "file": "code/multplyr.h",
-   "lines": 1849
+   "lines": 1845
   },
   {
    "file": "code/pilotreviewarea.cpp",
@@ -225,18 +225,18 @@
   },
   {
    "file": "code/optionsarea.cpp",
-   "lines": 1842
+   "lines": 1837
   },
   {
    "file": "code/artlry.cpp",
-   "lines": 1841
-  },
-  {
-   "file": "mclib/terrtxm.cpp",
-   "lines": 1823
+   "lines": 1833
   },
   {
    "file": "mclib/camera.h",
+   "lines": 1815
+  },
+  {
+   "file": "mclib/terrtxm.cpp",
    "lines": 1815
   },
   {
