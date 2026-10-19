@@ -18,6 +18,7 @@
 #include <volk.h>
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"   // str<>()
+#include "ui_texture.h"
 #include "texture_decode.h"   // gos_GetTextureTexels
 
 #define VMA_STATIC_VULKAN_FUNCTIONS 0
@@ -83,8 +84,7 @@ const uint32_t kMaxTextures  = 192;      // descriptor-set budget (x2 parity)
 
 // The view is declared after the image so it is released first.
 struct TexEntry {
-    mc2vk::ResidentTextureRef texture, pending;
-    std::weak_ptr<const std::vector<uint8_t>> source;
+    mc2vk::ResidentTextureRef texture;
     VkImageView bound[2] = {};
     VkDescriptorSet set[2] = {};   // allocated from the island's pool, freed with it
 };
@@ -120,7 +120,6 @@ struct Island : mc2vk::IslandState {
     mc2vk::OwnedDescriptorPool pool;
     TexEntry dummyTex;                                  // 1x1 white (untextured / failed import)
     std::unordered_map<uint32_t, TexEntry> texs;        // keyed on mcTextureManager node
-    std::unordered_set<uint32_t> untexturedNodes;       // nodes whose texture has no CPU texels: drawn with the dummy
     mc2vk::OwnedShaderModule vert, frag;
     mc2vk::OwnedPipelineLayout playout;
     mc2vk::OwnedPipeline pipes[MC2_LEGACY_PASS_COUNT];
@@ -171,52 +170,22 @@ bool alloc_tex_sets(Island* s, TexEntry& t) {
     return true;
 }
 
-// Resolve (importing copy-once on first sight) the texture entry for a node.
-// Called BEFORE recording (the import records its own one-shot upload); never inside the VK command buffer.
-TexEntry* get_tex(Island* s, uint32_t texNode, uint32_t gosHandle) {
-    if (gosHandle == 0 || gosHandle == 0xffffffffu) return &s->dummyTex;
-    auto it = s->texs.find(texNode);
-    if (it != s->texs.end()) {
-        auto& e=it->second;
-        auto& textures=mc2vk::getOrCreateEngineVulkanContext().textures();
-        auto& service=RenderCore::textureService();
-        if (e.pending && !service.isLive(e.pending.get())) e.pending={};
-        if (e.texture && !service.isLive(e.texture.get())) e.texture={};
-        if (e.pending && textures.ready(e.pending.get())) e.texture=std::move(e.pending);
-        const auto current=gos_GetTextureTexels(gosHandle);
-        if (current.status==GosTexels::Status::Ready && current.bytes && !e.pending &&
-            (!e.texture || e.source.lock()!=current.bytes)) {
-            TexEntry next;
-            if (upload_image(s,next,current.width,current.height,mc2vk::texelFormat(current.vkFormat),
-                             current.bytes->data(),current.bytes->size())) {
-                e.pending=std::move(next.texture); e.source=current.bytes;
-            }
-        }
-        return &e;
+// World GV/variant materials share the mech source/repaint adapter, including mip regeneration.
+// Preview uses the same image identity with its sampler clamped to level zero.
+TexEntry* get_tex(Island* s,uint32_t texNode,uint32_t gosHandle) {
+    if (!gosHandle || gosHandle==0xffffffffu) return &s->dummyTex;
+    auto& textures=mc2vk::getOrCreateEngineVulkanContext().textures();
+    const auto handle=RenderCore::uiTextureHandle(gos_GetMaterialTextureId(gosHandle));
+    if (!handle.isValid()) return &s->dummyTex;
+    if (auto it=s->texs.find(texNode);it!=s->texs.end()) {
+        if (it->second.texture.get()!=handle) it->second.texture=textures.retain(handle);
+        return &it->second;
     }
-    if (s->untexturedNodes.contains(texNode)) return &s->dummyTex;
-    if (s->texs.size() >= kMaxTextures) return &s->dummyTex;
-    const GosTexels texels = gos_GetTextureTexels(gosHandle);
-    if (texels.status == GosTexels::Status::Unavailable) {   // will never have texels: stop asking
-        s->untexturedNodes.insert(texNode);
-        return &s->dummyTex;
-    }
-    if (texels.status != GosTexels::Status::Ready) return &s->dummyTex;    // not resident yet; retry next frame
-    const uint32_t w = texels.width, h = texels.height;
-    if (w == 0 || h == 0 || w > 8192 || h > 8192) return &s->dummyTex;
-
-    TexEntry t;
-    if (!upload_image(s, t, w, h, mc2vk::texelFormat(texels.vkFormat), texels.bytes->data(),
-                      (VkDeviceSize)texels.bytes->size()) ||
-        !alloc_tex_sets(s, t)) {
-        return &s->dummyTex;   // `t` releases whatever it created
-    }
-    t.source=texels.bytes;
+    if (s->texs.size()>=kMaxTextures) return &s->dummyTex;
+    TexEntry entry;entry.texture=textures.retain(handle);
+    if (!entry.texture || !alloc_tex_sets(s,entry)) return &s->dummyTex;
     ++g_health.texUploads;
-    auto ins = s->texs.emplace(texNode, std::move(t));
-    vlog("texture cached: node=%u handle=%u %ux%u format=%u (%zu/%u).", texNode, gosHandle, w, h, texels.vkFormat,
-         s->texs.size(), kMaxTextures);
-    return &ins.first->second;
+    return &s->texs.emplace(texNode,std::move(entry)).first->second;
 }
 
 bool init_island(Island* s, int w, int h) {
@@ -268,11 +237,11 @@ bool init_island(Island* s, int w, int h) {
         if (vkAllocateCommandBuffers(s->device, &cbi, s->cbuf) != VK_SUCCESS) { setFallback("cmdbuf_failed"); return false; }
     }
 
-    {   // sampler (REPEAT / LINEAR, no mips -- the FS uses textureLod(..., 0))
+    {   // World materials use full regenerated mips; preview stays clamped to level zero.
         VkSamplerCreateInfo sci{};
         sci.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
         sci.magFilter = VK_FILTER_LINEAR; sci.minFilter = VK_FILTER_LINEAR;
-        sci.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
+        sci.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR; sci.maxLod=s->preview ? 0.0f : VK_LOD_CLAMP_NONE;
         sci.addressModeU = sci.addressModeV = sci.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
         if (!mc2vk::create(s->samp, s->device, [&](VkSampler* h) { return vkCreateSampler(s->device, &sci, nullptr, h); })) { setFallback("sampler_failed"); return false; }
     }
@@ -662,7 +631,6 @@ extern "C" void mc2_vk_legacy_shape_island_reset() {
     // Texture node indices are reused by the next mission: drop the copy-once cache.
     mc2vk::getOrCreateEngineVulkanContext().waitIdle("legacy_shape_reset");
     s->texs.clear();
-    s->untexturedNodes.clear();
     // The pool has no FREE_DESCRIPTOR_SET bit: reset it and re-create the dummy sets.
     if (s->pool) vkResetDescriptorPool(s->device, s->pool.get(), 0);
     s->dummyTex.set[0] = s->dummyTex.set[1] = VK_NULL_HANDLE;

@@ -24,7 +24,7 @@ layout(location = 0) out vec4 oColor;     // MRT0
 layout(location = 1) out vec4 oGBuffer1;  // MRT1
 
 void main() {
-    vec4 tex = textureLod(uAlbedo, vUv, 0.0);
+    vec4 tex = texture(uAlbedo, vUv);
     if ((pc.flags & 1u) != 0u && tex.a < 0.5) discard;        // ALPHA_TEST variant
     vec4 c = vColor * tex;
     if ((pc.flags & 2u) == 0u &&
