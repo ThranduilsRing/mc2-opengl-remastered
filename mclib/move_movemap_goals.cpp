@@ -54,7 +54,7 @@ void MoveMap::init (long maxW, long maxH) {
 	for (long i = 0; i < DISTANCE_TABLE_DIM; i++)
 		for (long j = 0; j < DISTANCE_TABLE_DIM; j++) {
 			distanceFloat[i][j] = agsqrt(i, j) * cellLength;
-			distanceInt[i][j] = (int)distanceFloat[i][j];
+			distanceInt[i][j] = static_cast<int>(distanceFloat[i][j]);
 		}
 
 	clear();

@@ -108,12 +108,12 @@ void MouseTimerInit()
 	// For now, create a 32Bit buffer and convert as needed.  If speed is an
 	// issue on low end stuff, change it out.
 	//
-	mouseBuffer = (MemoryPtr)malloc(sizeof(DWORD) * MOUSE_WIDTH * MOUSE_WIDTH);
+	mouseBuffer = static_cast<MemoryPtr>(malloc(sizeof(DWORD) * MOUSE_WIDTH * MOUSE_WIDTH));
 	memset(mouseBuffer,0,sizeof(DWORD) * MOUSE_WIDTH * MOUSE_WIDTH);
 	
 	if (!mc2MouseData)
 	{
-		mc2MouseData = (MemoryPtr)malloc(sizeof(DWORD) * MOUSE_WIDTH * MOUSE_WIDTH);
+		mc2MouseData = static_cast<MemoryPtr>(malloc(sizeof(DWORD) * MOUSE_WIDTH * MOUSE_WIDTH));
 		memset(mc2MouseData,0,sizeof(DWORD) * MOUSE_WIDTH * MOUSE_WIDTH);
 	}
 	
@@ -253,7 +253,7 @@ void CALLBACK MouseTimer(UINT wTimerID, UINT msg, DWORD dwUser, DWORD dw1, DWORD
 
 					for (long y=mouseWASInRect.top;y<mouseWASInRect.bottom;y++)
 					{
-						MemoryPtr screenPos = (MemoryPtr)mouseSurfaceDesc.lpSurface +
+						MemoryPtr screenPos = static_cast<MemoryPtr>(mouseSurfaceDesc.lpSurface) +
 												((mouseWASInRect.left << 1) +
 												(y * mouseSurfaceDesc.lPitch));
 
@@ -292,7 +292,7 @@ void CALLBACK MouseTimer(UINT wTimerID, UINT msg, DWORD dwUser, DWORD dw1, DWORD
 					MemoryPtr mBuffer = mouseBuffer;
 					for (long y=mouseWASInRect.top;y<mouseWASInRect.bottom;y++)
 					{
-						MemoryPtr screenPos = (MemoryPtr)mouseSurfaceDesc.lpSurface +
+						MemoryPtr screenPos = static_cast<MemoryPtr>(mouseSurfaceDesc.lpSurface) +
 												((mouseWASInRect.left * 3) +
 												(y * mouseSurfaceDesc.lPitch));
 
@@ -340,7 +340,7 @@ void CALLBACK MouseTimer(UINT wTimerID, UINT msg, DWORD dwUser, DWORD dw1, DWORD
 					MemoryPtr mBuffer = mouseBuffer;
 					for (long y=mouseWASInRect.top;y<mouseWASInRect.bottom;y++)
 					{
-						MemoryPtr screenPos = (MemoryPtr)mouseSurfaceDesc.lpSurface +
+						MemoryPtr screenPos = static_cast<MemoryPtr>(mouseSurfaceDesc.lpSurface) +
 												((mouseWASInRect.left << 2) +
 												(y * mouseSurfaceDesc.lPitch));
 
@@ -515,7 +515,7 @@ void CALLBACK MouseTimer(UINT wTimerID, UINT msg, DWORD dwUser, DWORD dw1, DWORD
 				MemoryPtr mBuffer = mouseBuffer;
 				for (long y=mouseWASInRect.top;y<mouseWASInRect.bottom;y++)
 				{
-					MemoryPtr screenPos = (MemoryPtr)mouseSurfaceDesc.lpSurface +
+					MemoryPtr screenPos = static_cast<MemoryPtr>(mouseSurfaceDesc.lpSurface) +
 											((mouseWASInRect.left << 1) +
 											(y * mouseSurfaceDesc.lPitch));
 											
@@ -554,7 +554,7 @@ void CALLBACK MouseTimer(UINT wTimerID, UINT msg, DWORD dwUser, DWORD dw1, DWORD
 				MemoryPtr mBuffer = mouseBuffer;
 				for (long y=mouseWASInRect.top;y<mouseWASInRect.bottom;y++)
 				{
-					MemoryPtr screenPos = (MemoryPtr)mouseSurfaceDesc.lpSurface +
+					MemoryPtr screenPos = static_cast<MemoryPtr>(mouseSurfaceDesc.lpSurface) +
 											((mouseWASInRect.left * 3) +
 											(y * mouseSurfaceDesc.lPitch));
 											
@@ -602,7 +602,7 @@ void CALLBACK MouseTimer(UINT wTimerID, UINT msg, DWORD dwUser, DWORD dw1, DWORD
 				MemoryPtr mBuffer = mouseBuffer;
 				for (long y=mouseWASInRect.top;y<mouseWASInRect.bottom;y++)
 				{
-					MemoryPtr screenPos = (MemoryPtr)mouseSurfaceDesc.lpSurface +
+					MemoryPtr screenPos = static_cast<MemoryPtr>(mouseSurfaceDesc.lpSurface) +
 											((mouseWASInRect.left << 2) +
 											(y * mouseSurfaceDesc.lPitch));
 											
@@ -682,10 +682,10 @@ void CALLBACK MouseTimer(UINT wTimerID, UINT msg, DWORD dwUser, DWORD dw1, DWORD
 
 				if (mouseSurfaceDesc.ddpfPixelFormat.dwRGBBitCount == 16)
 				{
-					DWORD * mData = (DWORD *)mc2MouseData;
+					DWORD * mData = reinterpret_cast<DWORD *>(mc2MouseData);
 					for (long y=mouseWASInRect.top;y<mouseWASInRect.bottom;y++)
 					{
-						MemoryPtr screenPos = (MemoryPtr)mouseSurfaceDesc.lpSurface +
+						MemoryPtr screenPos = static_cast<MemoryPtr>(mouseSurfaceDesc.lpSurface) +
 												((mouseWASInRect.left << 1) +
 												(y * mouseSurfaceDesc.lPitch));
 												
@@ -744,10 +744,10 @@ void CALLBACK MouseTimer(UINT wTimerID, UINT msg, DWORD dwUser, DWORD dw1, DWORD
 				}
 				else if (mouseSurfaceDesc.ddpfPixelFormat.dwRGBBitCount == 24) 
 				{
-					DWORD * mData = (DWORD *)mc2MouseData;
+					DWORD * mData = reinterpret_cast<DWORD *>(mc2MouseData);
 					for (long y=mouseWASInRect.top;y<mouseWASInRect.bottom;y++)
 					{
-						MemoryPtr screenPos = (MemoryPtr)mouseSurfaceDesc.lpSurface +
+						MemoryPtr screenPos = static_cast<MemoryPtr>(mouseSurfaceDesc.lpSurface) +
 												((mouseWASInRect.left * 3) +
 												(y * mouseSurfaceDesc.lPitch));
 												
@@ -795,10 +795,10 @@ void CALLBACK MouseTimer(UINT wTimerID, UINT msg, DWORD dwUser, DWORD dw1, DWORD
 				}
 				else if (mouseSurfaceDesc.ddpfPixelFormat.dwRGBBitCount == 32) 
 				{
-					DWORD * mData = (DWORD *)mc2MouseData;
+					DWORD * mData = reinterpret_cast<DWORD *>(mc2MouseData);
 					for (long y=mouseWASInRect.top;y<mouseWASInRect.bottom;y++)
 					{
-						MemoryPtr screenPos = (MemoryPtr)mouseSurfaceDesc.lpSurface +
+						MemoryPtr screenPos = static_cast<MemoryPtr>(mouseSurfaceDesc.lpSurface) +
 												((mouseWASInRect.left << 2) +
 												(y * mouseSurfaceDesc.lPitch));
 												

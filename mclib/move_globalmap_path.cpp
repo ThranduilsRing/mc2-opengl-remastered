@@ -300,8 +300,8 @@ long GlobalMap::calcPath (long startArea,
 	std::chrono::steady_clock::time_point _ag_pro0;
 	if (g_moveReconEnabled) {
 		_ag_pro0 = std::chrono::steady_clock::now();
-		if ((uint64_t)numDoors > g_moveRecon_ag_maxNumDoors) g_moveRecon_ag_maxNumDoors = (uint64_t)numDoors;
-		if ((uint64_t)numAreas > g_moveRecon_ag_maxNumAreas) g_moveRecon_ag_maxNumAreas = (uint64_t)numAreas;
+		if (static_cast<uint64_t>(numDoors) > g_moveRecon_ag_maxNumDoors) g_moveRecon_ag_maxNumDoors = static_cast<uint64_t>(numDoors);
+		if (static_cast<uint64_t>(numAreas) > g_moveRecon_ag_maxNumAreas) g_moveRecon_ag_maxNumAreas = static_cast<uint64_t>(numAreas);
 	}
 
 	long initHPrime = ZeroHPrime ? 0 : HPRIME_NOT_CALCED;
@@ -351,7 +351,7 @@ long GlobalMap::calcPath (long startArea,
 	std::chrono::steady_clock::time_point _ag_srch0;
 	if (g_moveReconEnabled) {
 		auto _now = std::chrono::steady_clock::now();
-		uint64_t _pro = (uint64_t)std::chrono::duration_cast<std::chrono::nanoseconds>(_now - _ag_pro0).count();
+		uint64_t _pro = static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::nanoseconds>(_now - _ag_pro0).count());
 		g_moveRecon_ag_prologue_ns += _pro;
 		if (_pro > g_moveRecon_ag_max_prologue_ns) g_moveRecon_ag_max_prologue_ns = _pro;
 		_ag_srch0 = _now;
@@ -476,8 +476,8 @@ long GlobalMap::calcPath (long startArea,
 
 	// MC2_MOVE_RECON: close search timer.
 	if (g_moveReconEnabled) {
-		uint64_t _srch = (uint64_t)std::chrono::duration_cast<std::chrono::nanoseconds>(
-			std::chrono::steady_clock::now() - _ag_srch0).count();
+		uint64_t _srch = static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::nanoseconds>(
+			std::chrono::steady_clock::now() - _ag_srch0).count());
 		g_moveRecon_ag_search_ns += _srch;
 		if (_srch > g_moveRecon_ag_max_search_ns) g_moveRecon_ag_max_search_ns = _srch;
 	}

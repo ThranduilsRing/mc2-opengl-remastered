@@ -392,7 +392,7 @@ void
     {
         // sebi ???
 		//gos_SetRenderState(	gos_State_Fog, (int)&fogColor);
-		gos_SetRenderState(	gos_State_Fog, (int)fogColor);
+		gos_SetRenderState(	gos_State_Fog, static_cast<int>(fogColor));
 	}
 	else
 	{

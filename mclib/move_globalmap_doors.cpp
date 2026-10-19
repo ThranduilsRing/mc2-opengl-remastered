@@ -106,7 +106,7 @@ void GlobalMap::calcAreaDoors (void) {
 		numDoorInfos += areas[area].numDoors;
 	}
 	// One pool for all areas, each area viewing its own run: the layout the packet-load path builds.
-	doorInfos = mc2::globalmap::ownZeroed(doorInfosStore, (size_t)numDoorInfos);
+	doorInfos = mc2::globalmap::ownZeroed(doorInfosStore, static_cast<size_t>(numDoorInfos));
 	long nextDoorInfo = 0;
 	for (long area = 0; area < numAreas; area++) {
 		if (areas[area].numDoors) {
@@ -260,7 +260,7 @@ void GlobalMap::calcDoorLinks (void) {
 				maxDoors = areaNumDoors;
 		}
 	linkTotal += 2 * (maxDoors + NUM_EXTRA_DOOR_LINKS) + 2 * NUM_EXTRA_DOOR_LINKS;
-	doorLinks = mc2::globalmap::ownZeroed(doorLinksStore, (size_t)linkTotal);
+	doorLinks = mc2::globalmap::ownZeroed(doorLinksStore, static_cast<size_t>(linkTotal));
 	long nextLink = 0;
 	auto takeRun = [&](long count) {
 		DoorLinkPtr run = &doorLinks[nextLink];
@@ -446,8 +446,8 @@ glm::vec3 GlobalMap::getDoorWorldPos (long area, long door, long* prevGoalCell) 
 	cellC = prevGoalCell[1];// += adjTile[areas[area].doors[door].direction][1];
 	glm::vec3 pos;
 	pos = glm::vec3(0.0f);
-	pos.x = (float)cellC * Terrain::worldUnitsPerCell + Terrain::worldUnitsPerCell / 2 - Terrain::worldUnitsMapSide / 2;
-	pos.y = (Terrain::worldUnitsMapSide / 2) - ((float)cellR * Terrain::worldUnitsPerCell) - Terrain::worldUnitsPerCell / 2;
+	pos.x = static_cast<float>(cellC) * Terrain::worldUnitsPerCell + Terrain::worldUnitsPerCell / 2 - Terrain::worldUnitsMapSide / 2;
+	pos.y = (Terrain::worldUnitsMapSide / 2) - (static_cast<float>(cellR) * Terrain::worldUnitsPerCell) - Terrain::worldUnitsPerCell / 2;
 	pos.z = land->getTerrainElevation(pos); // How do we get the elevation for this point? Do we care?
 	return(pos);
 }
@@ -470,7 +470,7 @@ long GlobalMap::build (MissionMapCellInfo* mapData) {
 	numSpecialAreas = 0;
 	specialAreas = nullptr;
 	if (mapData) {
-		specialAreas = mc2::globalmap::ownZeroed(specialAreasStore, (size_t)MAX_SPECIAL_AREAS);
+		specialAreas = mc2::globalmap::ownZeroed(specialAreasStore, static_cast<size_t>(MAX_SPECIAL_AREAS));
 		calcSpecialAreas(mapData);
 	}
 

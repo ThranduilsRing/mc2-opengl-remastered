@@ -176,8 +176,8 @@ void
 
 	spreadAngle = radian;
 
-	tanSpreadAngle = (Scalar)tan(spreadAngle);
-	cosSpreadAngle = (Scalar)cos(spreadAngle);
+	tanSpreadAngle = static_cast<Scalar>(tan(spreadAngle));
+	cosSpreadAngle = static_cast<Scalar>(cos(spreadAngle));
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

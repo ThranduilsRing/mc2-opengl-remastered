@@ -185,8 +185,8 @@ int
 		startClip.Clip4dVertex(v4d+i);
 		endClip.Clip4dVertex(v4d+i+1);
 
-		theAnd = *(int *)&startClip & *(int *)&endClip;
-		theOr = *(int *)&startClip | *(int *)&endClip;
+		theAnd = *reinterpret_cast<int *>(&startClip) & *reinterpret_cast<int *>(&endClip);
+		theOr = *reinterpret_cast<int *>(&startClip) | *reinterpret_cast<int *>(&endClip);
 
 		theAnd = theOr = 0;		//ASSUME NO CLIPPING NEEDED FOR MC2.  Its just not done here!
 
@@ -368,7 +368,7 @@ int
 					}
 				}
 
-				if(*(int *)&startClip & *(int *)&endClip)
+				if(*reinterpret_cast<int *>(&startClip) & *reinterpret_cast<int *>(&endClip))
 				{
 					break;
 				}
