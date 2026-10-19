@@ -403,11 +403,11 @@ MLRShape*
 		Register_Pointer(collapsedCoords);
 	}
 
-	DynamicArrayOf<Vector2DScalar *> texCoords(nrOfPasses);
+	auto texCoords = std::make_unique<std::unique_ptr<Vector2DScalar[]>[]>(nrOfPasses);
 	for(i=0;i<nrOfPasses;i++)
 	{
-		texCoords[i] = new Vector2DScalar[nrTri*3];
-		Register_Pointer(texCoords[i]);
+		texCoords[i] = std::make_unique_for_overwrite<Vector2DScalar[]>(nrTri*3);
+		Register_Pointer(texCoords[i].get());
 	}
 
 	auto indexOwner = std::make_unique_for_overwrite<unsigned short[]>(nrTri*3);
@@ -504,7 +504,7 @@ MLRShape*
 						);
 				}
 			}
-			mesh->SetTexCoordData(texCoords[j], uniquePoints, j);
+			mesh->SetTexCoordData(texCoords[j].get(), uniquePoints, j);
 		}
 
 		for(i=0;i<nrOfPasses;i++)
@@ -518,8 +518,8 @@ MLRShape*
 
 	for(i=0;i<nrOfPasses;i++)
 	{
-		Unregister_Pointer(texCoords[i]);
-		delete [] texCoords[i];
+		Unregister_Pointer(texCoords[i].get());
+		texCoords[i].reset();
 	}
 
 	Unregister_Pointer(index);

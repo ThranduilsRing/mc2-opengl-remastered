@@ -4383,21 +4383,6 @@
     "Mission"
    ]
   },
-  "TG_HWTypeVertex": {
-   "delete": 0,
-   "delete_array": 1,
-   "files": {
-    "mclib/tgl_types.cpp": {
-     "delete_array": 1,
-     "new_array": 1
-    }
-   },
-   "new": 0,
-   "new_array": 1,
-   "owners": [
-    "TG_TypeShape"
-   ]
-  },
   "TG_MultiShape": {
    "delete": 0,
    "delete_array": 0,
@@ -4959,26 +4944,6 @@
    "new_array": 0,
    "owners": []
   },
-  "Vector2DScalar": {
-   "delete": 0,
-   "delete_array": 2,
-   "files": {
-    "mclib/mlr/mlr_i_mt_pmesh.cpp": {
-     "delete_array": 1,
-     "new_array": 1
-    },
-    "mclib/mlr/mlr_i_tmesh_cast.cpp": {
-     "delete_array": 1,
-     "new_array": 1
-    }
-   },
-   "new": 0,
-   "new_array": 2,
-   "owners": [
-    "",
-    "MLR_I_MT_PMesh"
-   ]
-  },
   "VehicleIcon": {
    "delete": 0,
    "delete_array": 0,
@@ -5439,21 +5404,15 @@
   },
   "glm::vec3": {
    "delete": 0,
-   "delete_array": 2,
+   "delete_array": 0,
    "files": {
     "editor/LinkBrush.cpp": {
      "new_array": 1
-    },
-    "mclib/mlr/mlr_i_tmesh_cast.cpp": {
-     "delete_array": 2,
-     "new_array": 2
     }
    },
    "new": 0,
-   "new_array": 3,
-   "owners": [
-    ""
-   ]
+   "new_array": 1,
+   "owners": []
   },
   "glsl_program": {
    "delete": 1,
@@ -6252,7 +6211,6 @@
   "mclib/mlr/mlr_i_mt_pmesh.cpp": 1,
   "mclib/mlr/mlr_i_pmesh.cpp": 1,
   "mclib/mlr/mlr_i_tmesh.cpp": 1,
-  "mclib/mlr/mlr_i_tmesh_cast.cpp": 1,
   "mclib/mlr/mlrambientlight.cpp": 1,
   "mclib/mlr/mlrcardcloud.cpp": 1,
   "mclib/mlr/mlrclipper.cpp": 2,
@@ -6264,7 +6222,7 @@
   "mclib/mlr/mlrlight.cpp": 1,
   "mclib/mlr/mlrlightmap.cpp": 2,
   "mclib/mlr/mlrlinecloud.cpp": 1,
-  "mclib/mlr/mlrlookuplight.cpp": 6,
+  "mclib/mlr/mlrlookuplight.cpp": 5,
   "mclib/mlr/mlrngoncloud.cpp": 1,
   "mclib/mlr/mlrpointcloud.cpp": 1,
   "mclib/mlr/mlrpointlight.cpp": 1,
@@ -6299,7 +6257,6 @@
   "mclib/stuff/tree.cpp": 2,
   "mclib/stuff/tree.hpp": 1,
   "mclib/terrain.cpp": 4,
-  "mclib/tgl_types.cpp": 1,
   "mclib/txmmgr.cpp": 6,
   "mclib/userinput.h": 1
  }

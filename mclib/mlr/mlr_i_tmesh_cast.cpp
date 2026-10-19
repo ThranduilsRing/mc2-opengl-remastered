@@ -1,6 +1,7 @@
 // MLR_I_TMesh: the CreateIndexedTri* test shapes (CastRay, which had no caller, went at step 5 S5.11).
 // Declared in the class headers; shared names in mlr_i_tmesh_internal.h.
 #include "mlr_i_tmesh_internal.h"
+#include <memory>
 
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -35,19 +36,24 @@ MLRShape*
 		nrTri = Limits::Max_Number_Vertices_Per_Mesh/3;
 	}
 
-	glm::vec3 *coords = new glm::vec3 [nrTri*3];
+	auto coordsOwner = std::make_unique_for_overwrite<glm::vec3[]>(nrTri*3);
+	glm::vec3* coords = coordsOwner.get();
 	Register_Pointer(coords);
 	
+	std::unique_ptr<glm::vec3[]> collapsedCoordsOwner;
 	glm::vec3 *collapsedCoords = nullptr;
 	if(icoInfo.indexed==true)
 	{
-		collapsedCoords = new glm::vec3 [nrTri*3];
+		collapsedCoordsOwner = std::make_unique_for_overwrite<glm::vec3[]>(nrTri*3);
+		collapsedCoords = collapsedCoordsOwner.get();
 		Register_Pointer(collapsedCoords);
 	}
 
-	unsigned short	*index = new unsigned short [nrTri*3];
+	auto indexOwner = std::make_unique_for_overwrite<unsigned short[]>(nrTri*3);
+	unsigned short* index = indexOwner.get();
 	Register_Pointer(index);
-	Vector2DScalar *texCoords = new Vector2DScalar[nrTri*3];
+	auto texCoordsOwner = std::make_unique_for_overwrite<Vector2DScalar[]>(nrTri*3);
+	Vector2DScalar* texCoords = texCoordsOwner.get();
 	Register_Pointer(texCoords);
 
 	int uniquePoints = 0;
@@ -165,19 +171,19 @@ MLRShape*
 	}
 
 	Unregister_Pointer(texCoords);
-	delete [] texCoords;
+	texCoordsOwner.reset();
 
 	Unregister_Pointer(index);
-	delete [] index;
+	indexOwner.reset();
 
 	if(icoInfo.indexed==true)
 	{
 		Unregister_Pointer(collapsedCoords);
-		delete [] collapsedCoords;
+		collapsedCoordsOwner.reset();
 	}
 	
 	Unregister_Pointer(coords);
-	delete [] coords;
+	coordsOwner.reset();
 
 	gos_PopCurrentHeap();
 	return ret;

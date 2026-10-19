@@ -1,5 +1,6 @@
 // TG shapes: ASE number/name helpers and the TG_TypeNode / TG_TypeShape / TG_Shape lifecycle, binary copy and creation.
 // Declared in the class headers; shared names in tgl_internal.h.
+#include <memory>
 #include "tgl_internal.h"
 #include "mc2fmt.h"
 
@@ -444,8 +445,10 @@ bool TG_TypeShape::LoadBinaryCopy (File &binFile)
 		uint32_t num_vertices = numTypeTriangles * 3;
 		uint32_t num_indices = numTypeTriangles * 3;
 
-		uint16_t* ib = new uint16_t[num_indices];
-		TG_HWTypeVertex* vb = new TG_HWTypeVertex[num_vertices];
+		auto ibOwner = std::make_unique_for_overwrite<uint16_t[]>(num_indices);
+		uint16_t* ib = ibOwner.get();
+		auto vbOwner = std::make_unique_for_overwrite<TG_HWTypeVertex[]>(num_vertices);
+		TG_HWTypeVertex* vb = vbOwner.get();
 
 		// sebi 2026-04-22: bounds-check triangle vertex indices. Wolfman
 		// MC2X mech .tgl binaries sometimes have out-of-range Vertices[j]
@@ -487,8 +490,8 @@ bool TG_TypeShape::LoadBinaryCopy (File &binFile)
 		ib_ = gos_CreateBuffer(gosBUFFER_TYPE::INDEX, gosBUFFER_USAGE::STATIC_DRAW, sizeof(uint16_t), num_indices, ib);
 		vb_ = gos_CreateBuffer(gosBUFFER_TYPE::VERTEX, gosBUFFER_USAGE::STATIC_DRAW, sizeof(TG_HWTypeVertex), num_vertices, vb);
 
-		delete[] ib;
-		delete[] vb;
+		ibOwner.reset();
+		vbOwner.reset();
 	}
 
 

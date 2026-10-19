@@ -3,6 +3,7 @@
 //===========================================================================//
 
 #include"mlrheaders.hpp"
+#include <memory>
 #include "mc2fmt.h"
 //#############################################################################
 //#########################    MLRLookUpLight    ################################
@@ -235,7 +236,8 @@ bool
 
 	Stuff::FileStream element_stream(mapName);
 
-	unsigned char *map = new unsigned char [mapZoneCountX*mapZoneCountZ*256*256];
+	auto mapOwner = std::make_unique_for_overwrite<unsigned char[]>(mapZoneCountX*mapZoneCountZ*256*256);
+	unsigned char* map = mapOwner.get();
 	Check_Pointer(map);
 	element_stream.ReadBytes(map, mapZoneCountX*mapZoneCountZ*256*256);
 
@@ -270,7 +272,7 @@ bool
 	}
 
 	Check_Pointer(map);
-	delete[] map;
+	mapOwner.reset();
 
 	return false;
 }
