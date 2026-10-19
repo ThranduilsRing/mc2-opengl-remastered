@@ -228,6 +228,7 @@ bool ensure_shore(WaterIsland* s) {
     const mc2terrain::TerrainFieldStore* store = gos_TerrainFieldStore();
     const mc2terrain::FieldImage<float>* height = store && r32Linear ? &store->waterShoreHeight() : nullptr;
     const mc2terrain::FieldImage<uint8_t>* mask = store ? &store->shorelineMask() : nullptr;
+    s->shHSdf = store != nullptr && store->waterShoreHeightKind() == mc2terrain::WaterShoreHeightKind::ShoreSdf;
     if (!import_shore_tex(s, height && !height->texels.empty() ? height->texels.data() : nullptr, height ? height->width : 0,
                           height ? height->height : 0, true, s->shHImage, s->shHView, &s->shHReal))
         return false;

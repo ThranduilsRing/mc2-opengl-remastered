@@ -402,6 +402,19 @@ void gos_TerrainLodChunk_UploadWaterShoreHeight(const float* heights, int w, int
     fflush(stderr);
 }
 
+void gos_TerrainLodChunk_UploadWaterShoreSdf(const float* heights, int w, int h,
+                                              float boundsTopLeftX, float boundsTopLeftY,
+                                              float boundsSizeX, float boundsSizeY)
+{
+    mc2terrain::TerrainFieldStore* store = gos_TerrainFieldStore();
+    if (!store)
+        return;
+    const float* stored = store->waterShoreHeight().texels.data();
+    gos_TerrainLodChunk_UploadWaterShoreHeight(stored, w, h, boundsTopLeftX, boundsTopLeftY,
+                                               boundsSizeX, boundsSizeY);
+    store->setWaterShoreHeight(stored, w, h, mc2terrain::WaterShoreHeightKind::ShoreSdf);
+}
+
 // WATER-SHORE-EDGE-1: single engine-wide resolution of the water shore-edge
 // mode (see header). Same lazy-once idiom as gos_TerrainShorelineGateOn so the
 // loader (mclib/terrain.cpp) and the draw path (gameos_graphics.cpp) can never

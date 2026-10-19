@@ -103,8 +103,9 @@ static_assert(offsetof(TerrainFrameUBO, shorelineBoundsY) == 820, "shorelineBoun
 static_assert(offsetof(TerrainFrameUBO, shorelineBoundsW) == 824, "shorelineBoundsW offset");
 static_assert(offsetof(TerrainFrameUBO, shorelineBoundsH) == 828, "shorelineBoundsH offset");
 static_assert(offsetof(TerrainFrameUBO, shoreFieldOn) == 832, "shoreFieldOn offset");
-static_assert(offsetof(TerrainFrameUBO, shoreFieldBoundsX) == 836, "shoreFieldBoundsX offset");
-static_assert(offsetof(TerrainFrameUBO, shoreFieldBoundsY) == 840, "shoreFieldBoundsY offset");
-static_assert(offsetof(TerrainFrameUBO, shoreFieldBoundsW) == 844, "shoreFieldBoundsW offset");
-static_assert(offsetof(TerrainFrameUBO, shoreFieldBoundsH) == 848, "shoreFieldBoundsH offset");
-static_assert(offsetof(TerrainFrameUBO, _pad) == 852, "_pad offset");
+static_assert(offsetof(TerrainFrameUBO, shoreFieldIsSdf) == 836, "shoreFieldIsSdf offset");
+static_assert(offsetof(TerrainFrameUBO, shoreFieldBoundsX) == 840, "shoreFieldBoundsX offset");
+static_assert(offsetof(TerrainFrameUBO, shoreFieldBoundsY) == 844, "shoreFieldBoundsY offset");
+static_assert(offsetof(TerrainFrameUBO, shoreFieldBoundsW) == 848, "shoreFieldBoundsW offset");
+static_assert(offsetof(TerrainFrameUBO, shoreFieldBoundsH) == 852, "shoreFieldBoundsH offset");
+static_assert(offsetof(TerrainFrameUBO, _pad) == 856, "_pad offset");

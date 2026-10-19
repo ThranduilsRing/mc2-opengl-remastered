@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import sys
+import struct
 from pathlib import Path
 
 import numpy as np
@@ -82,3 +83,43 @@ def test_write_field_float16_roundtrip(tmp_path):
     assert welev == 80.0
     assert np.allclose(back, f, atol=0.5)
     assert abs(back[4, 4] - 80.003) < 1e-4
+
+
+def _pack_packet(data: bytes) -> bytes:
+    entries = [len(data)]
+    return struct.pack("<II", 0xFEEDFACE, 1) + struct.pack("<I", 0x20000000 | 16) + data
+
+
+def _write_fst(path: Path, entries: dict[str, bytes]) -> None:
+    table = b""
+    offset = 8 + 266 * len(entries)
+    payloads = b""
+    for name, content in entries.items():
+        table += struct.pack("<IIII250s", offset, len(content), len(content), 0,
+                            name.encode("ascii") + b"\x00")
+        payloads += content
+        offset += len(content)
+    path.write_bytes(struct.pack("<II", 0xCADDECAF, len(entries)) + table + payloads)
+
+
+def test_archive_missions_and_open_do_not_touch_install(tmp_path):
+    install = tmp_path / "install"
+    missions = install / "data" / "missions"
+    missions.mkdir(parents=True)
+    pak = _pack_packet(b"payload")
+    _write_fst(install / "mission.fst", {
+        "data/missions\\mission.pak": pak,
+        "data/missions\\other.fit": b"[Water]\n",
+    })
+    before = {p: p.stat().st_mtime_ns for p in install.rglob("*")}
+
+    archive = csf._find_mission_fst(missions)
+    assert archive == install / "mission.fst"
+    assert csf._archive_missions(archive) == [("mission", "data/missions\\mission.pak")]
+    out_root = tmp_path / "cook"
+    with csf._open_mission_pak("mission", archive, "data/missions\\mission.pak", out_root) as opened:
+        assert opened.read_bytes() == pak
+        assert not opened.is_relative_to(install)
+        assert opened.is_relative_to(out_root)
+
+    assert {p: p.stat().st_mtime_ns for p in install.rglob("*")} == before

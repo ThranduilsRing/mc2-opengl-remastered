@@ -576,6 +576,9 @@ void Terrain::destroy (void)
 	// commit). blocks[] is one-shot repopulated at next MapData::newInit.
 	gos_ResetStaticLightMatrix();
 
+	mc2terrain::TerrainFieldStore* fieldStore = gos_TerrainFieldStore();
+	if (fieldStore) fieldStore->clearShoreFields();
+
 	// Per-mission dense recipe teardown (Stage 2 indirect-terrain PR1).
 	// Called from Mission::destroy → land->destroy() once per mission exit.
 	// CPU-clears state; GL buffer is kept for reuse by next mission's Build.

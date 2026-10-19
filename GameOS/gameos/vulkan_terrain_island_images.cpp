@@ -255,8 +255,21 @@ bool ensure_dummy_shore_field(TerrainIsland* s) {
 
 // Copy-once import of the water shore field from the terrain field store, again whenever its version changes.
 void import_shore_field(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
-    if (!feed.shoreFieldTexels || feed.shoreFieldW <= 1 || feed.shoreFieldH <= 1 || feed.shoreFieldVersion == 0) return;
+    if (!feed.shoreFieldTexels || feed.shoreFieldW <= 1 || feed.shoreFieldH <= 1 || feed.shoreFieldVersion == 0) {
+        if (!s->shoreFieldReady && s->shoreFieldVersionImported == 0) return;
+        s->shoreFieldVersionImported = 0;
+        s->shoreFieldReady = false;
+        if (s->shoreFieldView) {
+            mc2vk::getOrCreateEngineVulkanContext().waitIdle("terrain_shore_field_clear");
+            s->shoreFieldView.reset();
+            s->shoreFieldImg.reset();
+        }
+        ensure_dummy_shore_field(s);
+        write_descriptors(s);
+        return;
+    }
     if (feed.shoreFieldVersion == s->shoreFieldVersionImported) return;
+    mc2vk::getOrCreateEngineVulkanContext().waitIdle("terrain_shore_field_reimport");
     s->shoreFieldVersionImported = feed.shoreFieldVersion;
     const auto w = static_cast<uint32_t>(feed.shoreFieldW), h = static_cast<uint32_t>(feed.shoreFieldH);
     if (upload_sampled_image(s, s->shoreFieldImg, s->shoreFieldView, VK_FORMAT_R32_SFLOAT, w, h,

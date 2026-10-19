@@ -652,7 +652,9 @@ bool loadShoreField(const char* stem, int mapSide, std::vector<float>& out, int&
 	const bool hdrOk = fread(magic, 1, 4, f) == 4 && std::memcmp(magic, "SHF1", 4) == 0 &&
 	                   fread(&hdrSide, 4, 1, f) == 1 && fread(&hdrWater, 4, 1, f) == 1 && fread(&hdrPad, 4, 1, f) == 1;
 	const int s = (int)hdrSide;
-	if (!hdrOk || s < 2 || (long)s * (long)s * 2 + 16 != bytes || mapSide < 2 || (s - 1) % (mapSide - 1) != 0) {
+	const uint64_t expectedBytes = 16ull + 2ull * (uint64_t)hdrSide * (uint64_t)hdrSide;
+	if (!hdrOk || !std::isfinite(hdrWater) || s < 2 || expectedBytes != (uint64_t)bytes ||
+	    mapSide < 2 || (s - 1) % (mapSide - 1) != 0) {
 		mc2::fmt::print_out("[WATER_SHORE_EDGE v1] shore field {} does not fit the map (bytes={:d} mapSide={:d}) -- ignored\n",
 		                    mc2::fmt::safe(path), mc2::fmt::as_i32(bytes), mc2::fmt::as_i32(mapSide));
 		fclose(f);
@@ -663,7 +665,14 @@ bool loadShoreField(const char* stem, int mapSide, std::vector<float>& out, int&
 	fclose(f);
 	if (rd != halves.size()) return false;
 	out.resize(halves.size());
-	for (size_t i = 0; i < halves.size(); ++i) out[i] = shoreFieldHalfToFloat(halves[i]) + hdrWater;
+	for (size_t i = 0; i < halves.size(); ++i) {
+		out[i] = shoreFieldHalfToFloat(halves[i]) + hdrWater;
+		if (!std::isfinite(out[i])) {
+			mc2::fmt::print_out("[WATER_SHORE_EDGE v1] shore field {} contains a non-finite value at texel {:d} -- ignored\n",
+			                    mc2::fmt::safe(path), mc2::fmt::as_size(i));
+			return false;
+		}
+	}
 	side = s;
 	MC2_DIAGF("[WATER_SHORE_EDGE v1] LOADED shore field path=%s side=%d\n", path, s);
 	return true;
@@ -712,7 +721,7 @@ void Terrain::lodWaterShore() {
 				std::vector<float> sf;
 				int sfSide = 0;
 				if (loadShoreField(stem, wsMapSide, sf, sfSide)) {
-					gos_TerrainLodChunk_UploadWaterShoreHeight(sf.data(), sfSide, sfSide, -wsHalfF, wsHalfF, wsSpanF, wsSpanF);
+					gos_TerrainLodChunk_UploadWaterShoreSdf(sf.data(), sfSide, sfSide, -wsHalfF, wsHalfF, wsSpanF, wsSpanF);
 					return;
 				}
 				mc2::fmt::to_buf(wsPath, "data/missions/{}.beauty/visual_height_4x.r32", mc2::fmt::safe(stem));

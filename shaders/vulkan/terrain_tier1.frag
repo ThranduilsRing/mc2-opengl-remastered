@@ -464,7 +464,7 @@ void main() {
              + texture(u_colormap, uv + vec2( CMAP_R2, -CMAP_R2)).rgb
              + texture(u_colormap, uv + vec2(-CMAP_R2, -CMAP_R2)).rgb;
         base /= 9.0;
-        if (uT.shoreFieldOn != 0) base = sfFollowCoast(base, v_worldPos);   // SHORE-FIELD-1
+        if (uT.shoreFieldOn != 0 && uT.shoreFieldIsSdf != 0) base = sfFollowCoast(base, v_worldPos);   // SHORE-FIELD-1
     } else {
         // Fail-soft olive placeholder (colormap not importable/ready this frame).
         float hMod = clamp(v_worldPos.z / 512.0 + 0.5, 0.35, 1.0);

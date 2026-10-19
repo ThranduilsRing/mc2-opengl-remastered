@@ -178,6 +178,7 @@ struct WaterIsland : mc2vk::IslandState {
     // (new mission). A 1x1 dummy keeps the statically-used binding valid when the
     // GL texture is absent; has*=false makes the FS degrade 2 -> 1 -> 0 like GL.
     bool          shHReal = false, shMReal = false;   // real data imported (not dummy)
+    bool          shHSdf = false;                     // the real height field is a cooked shore SDF
     bool          shoreAttempted = false;
     unsigned int  shoreGen = 0;
 

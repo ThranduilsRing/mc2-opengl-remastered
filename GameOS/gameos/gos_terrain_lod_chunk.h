@@ -218,6 +218,9 @@ int gos_WaterShoreMode();
 void gos_TerrainLodChunk_UploadWaterShoreHeight(const float* heights, int w, int h,
                                                  float boundsTopLeftX, float boundsTopLeftY,
                                                  float boundsSizeX, float boundsSizeY);
+void gos_TerrainLodChunk_UploadWaterShoreSdf(const float* heights, int w, int h,
+                                              float boundsTopLeftX, float boundsTopLeftY,
+                                              float boundsSizeX, float boundsSizeY);
 unsigned int gos_TerrainLodChunk_WaterShoreHeightTex();
 const float* gos_TerrainLodChunk_WaterShoreHeightBounds();
 // VK-PARITY-WATER-SHORE-1: monotonic counter bumped by every shoreline-mask /

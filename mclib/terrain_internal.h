@@ -41,6 +41,7 @@
 #include"../GameOS/gameos/gos_terrain_lighting.h"
 #include"../GameOS/gameos/gos_terrain_height_tex.h"  // TERRAIN-NORMALS-FROM-HEIGHT-1
 #include"../GameOS/gameos/gos_terrain_lod_chunk.h"   // Terrain LOD chunk Phase 1
+#include"../GameOS/gameos/terrain_field_store.h"    // mission shore-field teardown
 #include"../GameOS/gameos/gos_render_pass_timer.h"   // [RENDER_PASS_TIME v1] chunk-terrain scope
 #include"../GameOS/gameos/gos_frame_pass_stats.h"     // [FRAME_PASS_STATS v1] chunk draw count
 #include"terrain_admission_mode.h"  // F6 T2: shared isModern() flag for terrain.cpp + quad.cpp

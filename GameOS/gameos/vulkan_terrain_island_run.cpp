@@ -298,7 +298,8 @@ void fill_frame_ubo(TerrainIsland* s, const Mc2TerrainTier1Feed& feed,
     u.shorelineBoundsX = feed.shorelineBounds[0]; u.shorelineBoundsY = feed.shorelineBounds[1];
     u.shorelineBoundsW = feed.shorelineBounds[2]; u.shorelineBoundsH = feed.shorelineBounds[3];
     // SHORE-FIELD-1: coastal colormap follows the water's smooth shore field.
-    u.shoreFieldOn = s->shoreFieldReady ? 1 : 0;
+    u.shoreFieldOn = s->shoreFieldReady && feed.shoreFieldTexels ? 1 : 0;
+    u.shoreFieldIsSdf = feed.shoreFieldIsSdf;
     u.shoreFieldBoundsX = feed.shoreFieldBounds[0]; u.shoreFieldBoundsY = feed.shoreFieldBounds[1];
     u.shoreFieldBoundsW = feed.shoreFieldBounds[2]; u.shoreFieldBoundsH = feed.shoreFieldBounds[3];
 }

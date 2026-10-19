@@ -34,6 +34,11 @@ struct ColormapAtlas {
     uint64_t version = 0;
 };
 
+enum class WaterShoreHeightKind : int32_t {
+    RawHeight = 0,
+    ShoreSdf = 1,
+};
+
 class TerrainFieldStore {
 public:
     // Whole-map writes. Return false (with a log line) and keep the previous field on a null / empty / oversized input.
@@ -58,12 +63,18 @@ public:
     int visualMipFloats() const { return visualMipFloats_; }
     uint64_t visualHeightVersion() const { return visualVersion_; }
 
+    // Clear the previous mission's shore data. The GL texture keeps its name; mission
+    // draw paths must not read it while the store is empty.
+    void clearShoreFields();
+
     // The water shore sidecars of the loaded mission: the shoreline mask (RGBA8: signed distance, wet, foam, valid) and the
     // hi-res shore height (R32F). Rejected (with a log line, previous image kept) on a null or out-of-range size.
     bool setShorelineMask(const uint8_t* rgba, int width, int height);
     bool setWaterShoreHeight(const float* heights, int width, int height);
+    bool setWaterShoreHeight(const float* heights, int width, int height, WaterShoreHeightKind kind);
     const FieldImage<uint8_t>& shorelineMask() const { return shorelineMask_; }   // 4 bytes a texel
     const FieldImage<float>& waterShoreHeight() const { return waterShoreHeight_; }
+    WaterShoreHeightKind waterShoreHeightKind() const { return waterShoreHeightKind_; }
 
     // The cement / road overlay atlas of the loaded mission (RGBA8, R first), as the GL atlas was uploaded. Rejected (with a log
     // line, previous image kept) on a null or out-of-range size.
@@ -87,6 +98,7 @@ private:
     uint64_t visualVersion_ = 0;
     FieldImage<uint8_t> shorelineMask_;
     FieldImage<float> waterShoreHeight_;
+    WaterShoreHeightKind waterShoreHeightKind_ = WaterShoreHeightKind::RawHeight;
     FieldImage<uint8_t> cementAtlas_;
     ColormapAtlas colormapAtlas_;
 };

@@ -49,6 +49,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from contextlib import contextmanager
 from pathlib import Path
 
 import numpy as np
@@ -56,9 +57,11 @@ from PIL import Image
 from scipy import ndimage
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "mc2x_import"))
 from mission_terrain_analyzer import (  # noqa: E402
     read_packets, locate_mapdata, extract_layers, read_water_elevation,
 )
+import fst as fst_reader  # noqa: E402
 
 WORLD_UNITS_PER_VERTEX = 128.0
 FIELD_NAME = "shore_field.r16f"
@@ -250,6 +253,42 @@ def _vh_for(pak: Path, beauty_root: Path | None) -> Path:
     return (beauty_root if beauty_root else pak.parent) / f"{pak.stem}.beauty" / "visual_height_4x.r32"
 
 
+def _archive_key(name: str) -> str:
+    return name.replace("\\", "/").lower()
+
+
+def _find_mission_fst(missions_dir: Path) -> Path | None:
+    for directory in (missions_dir, *missions_dir.parents):
+        archive = directory / "mission.fst"
+        if archive.is_file():
+            return archive
+    return None
+
+
+def _archive_missions(archive: Path) -> list[tuple[str, str]]:
+    prefix = "data/missions/"
+    suffix = ".pak"
+    missions = []
+    for _offset, _comp, _real, name, _is_lz, _data in fst_reader.fst_entries(archive):
+        key = _archive_key(name)
+        if key.startswith(prefix) and key.endswith(suffix):
+            missions.append((key[len(prefix):-len(suffix)], name))
+    return sorted(missions)
+
+
+@contextmanager
+def _open_mission_pak(mission: str, archive: Path | None, archive_name: str | None, out_root: Path):
+    if archive is None:
+        yield Path(mission)
+        return
+    temp_dir = out_root / ".extracted"
+    temp_dir.mkdir(parents=True, exist_ok=True)
+    extracted = temp_dir / f"{mission}.pak"
+    if not fst_reader.extract_fst_file(archive, archive_name, extracted):
+        raise RuntimeError(f"{archive}: missing mission {archive_name!r}")
+    yield extracted
+
+
 def cmd_cook(args) -> int:
     pak = Path(args.pak)
     vh = Path(args.visual_height) if args.visual_height else _vh_for(pak, None)
@@ -263,14 +302,22 @@ def cmd_all(args) -> int:
     mdir = Path(args.missions_dir)
     beauty_root = Path(args.beauty_root) if args.beauty_root else None
     out_root = Path(args.out_root)
-    census = {"missions_dir": str(mdir), "tuning": _tuning(args), "cooked": [], "skipped": []}
-    for pak in sorted(mdir.glob("*.pak")):
-        stem = pak.stem
+    archive = _find_mission_fst(mdir)
+    archive_missions = _archive_missions(archive) if archive else []
+    census = {"missions_dir": str(mdir), "mission_fst": str(archive) if archive else None,
+              "tuning": _tuning(args), "cooked": [], "skipped": []}
+    loose_missions = [(pak.stem, str(pak)) for pak in sorted(mdir.glob("*.pak"))]
+    loose_stems = {stem for stem, _pak in loose_missions}
+    all_missions = loose_missions + [mission for mission in archive_missions
+                                     if mission[0] not in loose_stems]
+    for stem, pak in all_missions:
+        archive_name = next((name for mission, name in archive_missions if mission == stem), None)
         try:
-            vh = _vh_for(pak, beauty_root)
+            vh = _vh_for(Path(pak), beauty_root)
             if not vh.is_file():
-                vh = _vh_for(pak, None)
-            res = cook_field(pak, vh if vh.is_file() else None, **_tuning(args))
+                vh = _vh_for(Path(pak), None)
+            with _open_mission_pak(pak, archive, archive_name, out_root) as pak_data:
+                res = cook_field(pak_data, vh if vh.is_file() else None, **_tuning(args))
         except Exception as e:  # noqa: BLE001 -- one bad pak must not stop the batch
             census["skipped"].append({"mission": stem, "reason": str(e)})
             print(f"[shore-field] skip {stem}: {e}")

@@ -164,12 +164,14 @@ extern "C" int mc2_vk_water_island_run(
         uint8_t* const base = static_cast<uint8_t*>(uboSpan.ptr);
         WaterVsParams vsLocal;
         std::memcpy(&vsLocal, vsParams, sizeof(WaterVsParams));
-        // Shore mode 3: flat water plane in the VS only when the hi-res height sidecar
-        // is really imported (mirrors GL u_shoreFlat = mode==3 && shTex != 0).
-        vsLocal.p3[1] = (((int)(((const WaterFsParams*)fsParams)->f4[0] + 0.5f) == 3) && s->shHReal) ? 1.0f : 0.0f;
-        std::memcpy(base, &vsLocal, sizeof(WaterVsParams));
         WaterFsParams fsLocal;
         std::memcpy(&fsLocal, fsParams, sizeof(WaterFsParams));
+        // Shore mode 3: flat water plane in the VS only when the hi-res height sidecar
+        // is really imported (mirrors GL u_shoreFlat = mode==3 && shTex != 0).
+        const bool shoreSdf = static_cast<int>(fsLocal.f4[0] + 0.5f) == 3 &&
+                              s->shHReal && s->shHSdf;
+        vsLocal.p3[1] = shoreSdf ? 1.0f : 0.0f;
+        std::memcpy(base, &vsLocal, sizeof(WaterVsParams));
         // RUNG-6.5 fail-soft: if the real HDRI bytes aren't imported (dummy
         // bound), force u_waterHdriLod (f2.w, offset 60) to -1 so the FS
         // takes the SH-L2 fallback -- same semantics as GL !isHdriReady().
@@ -177,8 +179,8 @@ extern "C" int mc2_vk_water_island_run(
         // VK-PARITY-WATER-SHORE-1: GL sets u_hasShoreHeight = (mode==2 && tex)
         // and u_hasShoreMask = (mode>=1 && tex); the island owns the textures.
         {
-            const int shMode = (int)(fsLocal.f4[0] + 0.5f);
-            fsLocal.f4[1] = (shMode >= 2 && s->shHReal) ? 1.0f : 0.0f;
+            const int shMode = static_cast<int>(fsLocal.f4[0] + 0.5f);
+            fsLocal.f4[1] = (shMode >= 2 && shoreSdf) ? 1.0f : 0.0f;
             fsLocal.f4[2] = (shMode >= 1 && s->shMReal) ? 1.0f : 0.0f;
         }
         std::memcpy(base + fsUboOff, &fsLocal, sizeof(WaterFsParams));
