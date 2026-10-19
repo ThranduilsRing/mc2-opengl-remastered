@@ -413,7 +413,7 @@ void Terrain::geometry (void)
 		{ GeoScope _gsLC(GP_LIGHTCOPY); gos_terrain_lighting::CopyResultsToVertexPool(quadList, numberQuads); }
 		// Phase C: SOLID compute dispatch. MUST be AFTER PackAndDispatch above
 		// so Phase 1's post-dispatch barrier has published the lighting SSBO.
-		{ GeoScope _gsIC(GP_INDIRECT); gos_terrain_indirect::ComputeDispatch(); }
+		{ GeoScope _gsIC(GP_INDIRECT); gos_terrain_indirect::CaptureFrameInputs(); }
 		// S6 coarse cost A/B instrument: ONE QPC pair around the WHOLE
 		// per-frame setupTextures loop (NOT per-quad - the per-quad
 		// std::chrono COST_SPLIT scopes are observer-effect-poisoned and

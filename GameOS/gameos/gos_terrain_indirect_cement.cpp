@@ -778,7 +778,6 @@ void PopulateRecipeCementWords() {
             }
         }
         memcpy(&g_denseRecipes[vn]._wp3, &cementWord, 4);
-        g_denseRecipeDirty[vn]  = true;
         if (vn < chunkCementWords.size()) chunkCementWords[vn] = cementWord;
     }
     // CEMENT-TRANSITION-FALLBACK-1: census (always) + gated repair of the tiles
@@ -889,7 +888,6 @@ void PopulateRecipeCementWords() {
             const uint32_t word = chunkCementWords[vn] | kCementAuthoredArtBit;
             chunkCementWords[vn] = word;
             memcpy(&g_denseRecipes[vn]._wp3, &word, 4);
-            g_denseRecipeDirty[vn] = true;
             ++authoredArtMarked;
             if (ovT != INVALID_OVERLAY) {
                 ++overlayIdSubset;
@@ -947,13 +945,11 @@ void PopulateRecipeCementWords() {
             }
             chunkCementWords[vn] = word;
             memcpy(&g_denseRecipes[vn]._wp3, &word, 4);
-            g_denseRecipeDirty[vn] = true;
         }
         mc2::fmt::print_out("[PAVED_OVERLAY_CLASS v1] event=applied mission={} mode={:d} flat_baked={:d} albedo_baked={:d} global_layer={:d}\n", mc2::fmt::safe((::missionName[0] ? ::missionName : "unknown")), mc2::fmt::as_i32(mode), mc2::fmt::as_i32(pavedFlatBaked), mc2::fmt::as_i32(pavedAlbedoBaked), mc2::fmt::as_i32((globalCementLayer == 0xFFFFu) ? -1 : (int)globalCementLayer));
         fflush(stdout);
     }
 
-    g_denseRecipeAnyDirty = true;
     // Push to the chunk renderer (no-op if its SSBO/Init has not run yet).
     gos_TerrainLodChunk_UploadCementWordsFull(
         chunkCementWords.data(), (int)chunkCementWords.size(), (int)mapSide);

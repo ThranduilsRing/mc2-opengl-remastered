@@ -14,7 +14,6 @@ namespace gos_terrain_indirect_detail {
 // Module-private: dense recipe array indexed by vertexNum (= mx + my * mapSide).
 // Sized mapSide² when built; cleared on ResetDenseRecipe.
 std::vector<TerrainQuadRecipe> g_denseRecipes;
-std::vector<bool>              g_denseRecipeDirty;
 
 // ---------------------------------------------------------------------------
 // Camera-windowed solid dispatch (Approach A: GPU windowed-index buffer).
@@ -31,12 +30,8 @@ std::vector<bool>              g_denseRecipeDirty;
 // Declared here (not with the other Stage-3 GLuint state) so the per-mission
 // ResetDenseRecipe() below can clear the staging + high-water mark (MAJOR-1).
 std::vector<uint32_t> g_solidWindowStaging;
-GLuint   g_solidQuadWindowSsbo     = 0;   // per-frame: recipe indices in camera window
-uint32_t g_solidQuadWindowCapacity = 0;   // CPU-side mirror of allocated size (bytes); NO readback
 uint32_t g_solidWindowMaxSeen      = 0;   // high-water mark for reserve sizing
 
-bool                           g_denseRecipeAnyDirty = false;
-GLuint                         g_recipeSSBO          = 0;
 int32_t                        g_recipeMapSide       = 0;
 bool                           g_recipeReady         = false;
 
@@ -777,8 +772,6 @@ void BuildDenseRecipe() {
     const size_t N  = (size_t)g_recipeMapSide * (size_t)g_recipeMapSide;
 
     g_denseRecipes.assign(N, TerrainQuadRecipe{});
-    g_denseRecipeDirty.assign(N, false);
-    g_denseRecipeAnyDirty        = false;
     g_recipeReady                = false;
     s_firstDrawPrintedThisMission = false;
 
@@ -802,81 +795,14 @@ void BuildDenseRecipe() {
 
     // Full GPU upload on mission load — includes _wp3 cement words from above.
     // TIER2-EXCLUDED: dead-path
-    if (g_recipeSSBO == 0) glGenBuffers(1, &g_recipeSSBO);
-    // Pre-upload audit: dumps how many recipes have a non-zero _wp3 (i.e.,
-    // valid cement word) in the CPU memory glBufferData is about to upload.
-    // Gated on MC2_TERRAIN_INDIRECT_TRACE; left in-tree as a tripwire because
-    // a mismatch between this count and the subsequent `cement_words_baked`
-    // count (also gated) is the canary for cement-bake regressions like the
-    // InvalidateAllRecipes bug that motivated this audit.
-    if (traceOn()) {
-        long preUploadNonzero = 0;
-        uint32_t firstNonzeroWp3 = 0;
-        size_t firstNonzeroVn = (size_t)-1;
-        for (size_t vn = 0; vn < N; ++vn) {
-            uint32_t w;
-            memcpy(&w, &g_denseRecipes[vn]._wp3, 4);
-            if (w != 0u) {
-                ++preUploadNonzero;
-                if (firstNonzeroVn == (size_t)-1) {
-                    firstNonzeroVn = vn;
-                    firstNonzeroWp3 = w;
-                }
-            }
-        }
-        mc2::fmt::print_out("[CEMENT_DIAG] event=pre_upload_wp3_audit nonzero={:d} firstVn={:d} firstWp3=0x{:08x} sizeof_recipe={:d} wp3_offset={:d}\n", mc2::fmt::as_i32(preUploadNonzero), mc2::fmt::as_i64((long long)firstNonzeroVn), mc2::fmt::as_u32(firstNonzeroWp3), mc2::fmt::as_size(sizeof(TerrainQuadRecipe)), mc2::fmt::as_size((size_t)((const char*)&g_denseRecipes[0]._wp3 - (const char*)&g_denseRecipes[0])));
-        fflush(stdout);
-    }
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, g_recipeSSBO);
-    MC2_GL_BufferData(GL_SHADER_STORAGE_BUFFER,
-                 (GLsizeiptr)(N * sizeof(TerrainQuadRecipe)),
-                 g_denseRecipes.data(),
-                 GL_DYNAMIC_DRAW);
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
-
-    // REGISTRY-TERRAIN-SSBO-1: register the dense recipe SSBO (observe-only).
-    {
-        RenderCore::RenderResourceDesc d;
-        d.id        = RenderCore::RenderResourceId::TerrainRecipeBuffer;
-        d.kind      = RenderCore::RenderResourceKind::Buffer;
-        d.lifetime  = RenderCore::RenderResourceLifetime::Mission;  // rebuilt per mission load
-        d.format    = RenderCore::RenderResourceFormat::BufferRaw;
-        d.debugName = "TerrainRecipeBuffer";
-        d.glName    = static_cast<uint32_t>(g_recipeSSBO);
-        d.sizeBytes = static_cast<uint64_t>(N) * sizeof(TerrainQuadRecipe);
-        d.valid     = true;
-        RenderCore::registerOrUpdateRenderResource(d);
-    }
-
-    // Clear dirty flags — data already in GPU from glBufferData above.
-    g_denseRecipeDirty.assign(N, false);
-    g_denseRecipeAnyDirty = false;
-
     g_recipeReady = true;
-
-    if (traceOn()) {
-        MC2_DIAGF("[TERRAIN_INDIRECT v1] event=recipe_build mapSide=%d entries=%zu "
-               "bytes=%zu ssbo=%u\n",
-               g_recipeMapSide, N, N * sizeof(TerrainQuadRecipe),
-               (unsigned)g_recipeSSBO);
-        fflush(stdout);
-    }
-
-    // Collect unique terrain texture nodeIds for per-frame LUT upload.
     CollectUniqueNodeIds();
 }
 
 void ResetDenseRecipe() {
     ZoneScopedN("Terrain::IndirectRecipeReset");
 
-    if (traceOn()) {
-        MC2_DIAGF("[TERRAIN_INDIRECT v1] event=recipe_reset ssbo=%u\n",
-               (unsigned)g_recipeSSBO);
-        fflush(stdout);
-    }
-
     g_denseRecipes.clear();
-    g_denseRecipeDirty.clear();
     // MAJOR-1 (Approach A): the camera-window staging + its monotonic high-
     // water mark are per-mission state — clear them here alongside the recipe
     // reset.  Without this, g_solidWindowMaxSeen carries a previous (larger)
@@ -884,11 +810,9 @@ void ResetDenseRecipe() {
     // could be uploaded on the first frame before the slim loop runs.
     g_solidWindowStaging.clear();
     g_solidWindowMaxSeen         = 0;
-    g_denseRecipeAnyDirty        = false;
     g_recipeMapSide              = 0;
     g_recipeReady                = false;
     s_firstDrawPrintedThisMission = false;
-    // g_recipeSSBO stays allocated — reused by next mission's BuildDenseRecipe.
     // Mirrors WaterStream::Reset() pattern.
 
     // Tear down the atlas GL texture (per-mission; rebuilt by BuildColormapAtlas).
@@ -929,7 +853,7 @@ void ResetDenseRecipe() {
 }
 
 bool IsDenseRecipeReady() {
-    return g_recipeReady && g_recipeSSBO != 0;
+    return g_recipeReady && !g_denseRecipes.empty();
 }
 
 const TerrainQuadRecipe* RecipeForVertexNum(int32_t vn) {
@@ -949,8 +873,6 @@ void InvalidateRecipeForVertexNum(int32_t vn) {
     // whole-grid; cheap (~10k simple iterations) and only fires on the rare
     // invalidate events (shadow recalc, light-dir change, normal recompute).
     PopulateRecipeCementWords();
-    g_denseRecipeDirty[vn] = true;
-    g_denseRecipeAnyDirty  = true;
     if (traceOn()) {
         MC2_DIAGF("[TERRAIN_INDIRECT v1] event=invalidate vn=%d\n", vn);
         fflush(stdout);
@@ -963,33 +885,16 @@ void InvalidateAllRecipes() {
     const size_t N = g_denseRecipes.size();
     for (size_t vn = 0; vn < N; ++vn) {
         buildRecipeSlot((int32_t)vn, g_denseRecipes[vn]);
-        g_denseRecipeDirty[vn] = true;
     }
     // Re-bake cement words: buildRecipeSlot zeroed _wp3 on every slot above.
     // Without this, FlushDirtyRecipeSlotsToGPU uploads zeroed _wp3 for all
     // cement quads and the GPU compute shader's read of r.pos3.w returns 0,
     // making cement pads render as bare colormap (the original cement bug).
     PopulateRecipeCementWords();
-    g_denseRecipeAnyDirty = true;
     if (traceOn()) {
         MC2_DIAGF("[TERRAIN_INDIRECT v1] event=invalidate_all entries=%zu\n", N);
         fflush(stdout);
     }
 }
 
-void FlushDirtyRecipeSlotsToGPU() {
-    if (!g_denseRecipeAnyDirty || g_recipeSSBO == 0) return;
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, g_recipeSSBO);
-    const size_t N = g_denseRecipes.size();
-    for (size_t vn = 0; vn < N; ++vn) {
-        if (!g_denseRecipeDirty[vn]) continue;
-        MC2_GL_BufferSubData(GL_SHADER_STORAGE_BUFFER,
-                        (GLintptr)(vn * sizeof(TerrainQuadRecipe)),
-                        sizeof(TerrainQuadRecipe),
-                        &g_denseRecipes[vn]);
-        g_denseRecipeDirty[vn] = false;
-    }
-    g_denseRecipeAnyDirty = false;
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
-}
 }  // namespace gos_terrain_indirect

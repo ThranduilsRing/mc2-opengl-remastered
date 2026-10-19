@@ -67,9 +67,7 @@ set(SOURCES ${SOURCES}
     gos_terrain_indirect_diag.cpp
     gos_terrain_indirect_atlas.cpp
     gos_terrain_indirect_cement.cpp
-    gos_terrain_indirect_pack.cpp
     gos_terrain_indirect_dispatch.cpp
-    gos_terrain_indirect_compute.cpp
     gos_terrain_indirect_mine_decal.cpp
     gos_terrain_surface.cpp
     gos_terrain_lighting.cpp
@@ -77,7 +75,6 @@ set(SOURCES ${SOURCES}
     gos_terrain_lod_chunk.cpp
     gos_terrain_lod_chunk_gates.cpp
     gos_terrain_lod_chunk_matalbedo.cpp
-    gos_terrain_lod_chunk_patch.cpp
     gos_terrain_lod_chunk_feed.cpp
     gos_terrain_lod_chunk_draw.cpp
     gos_terrain_lod_chunk_upload.cpp

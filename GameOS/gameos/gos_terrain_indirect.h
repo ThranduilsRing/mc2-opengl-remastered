@@ -369,7 +369,7 @@ void      Counters_AddLegacyDrawAlphaDetailQuad();
 long long Counters_GetLegacyDrawAlphaDetailQuads();
 
 // ---------------------------------------------------------------------------
-// Stage 2: dense recipe SSBO build / lifecycle / per-entry invalidation.
+// Stage 2: CPU recipe cache build / lifecycle / per-entry invalidation.
 //
 // Dense recipe indexing convention (Option A):
 //   vn (vertexNum) ∈ [0, mapSide²)  → g_denseRecipes[vn] is the slot.
@@ -391,33 +391,12 @@ void RebuildCementAtlas();                                 // (re)build GPU ceme
 void MarkCementAtlasDirty();                                // schedule a deferred cement-atlas rebuild (debounced)
 void RebuildCementAtlasIfDirty();                           // frame-start safe point: rebuild if marked dirty (no mid-frame readback)
 
-// Internal helper used by Stage 3's preflight too
-void FlushDirtyRecipeSlotsToGPU();  // glBufferSubData per dirty slot
-
 // Stage 2 parity body — walks live quadList, byte-compares recipe against
 // per-quad legacy-equivalent computation. Returns quads_checked count.
 int  ParityCompareRecipeFrame();
 
 // ---------------------------------------------------------------------------
-// Stage 3: per-frame indirect SOLID draw.
-//
-// Public API (callers: terrain.cpp, txmmgr.cpp, gameos_graphics.cpp,
-// quad.cpp gate-off helpers):
-//
-//   ComputePreflight()      — call ONCE per frame BEFORE the setupTextures
-//                             loop. Packs thin records, builds indirect cmds,
-//                             sets IsFrameSolidArmed(). Safe when disabled.
-//   IsFrameSolidArmed()     — true IFF preflight armed this frame. Read by the
-//                             SOLID gate-off helpers in quad.cpp and the txmmgr
-//                             hook. Result is stable for the rest of the frame.
-//   DrawIndirect()          — thin executor: calls the bridge, handles hard
-//                             failure (logs, ForceDisableArmingForProcess).
-//                             Returns false if not armed or bridge fails.
-//   ForceDisableArmingForProcess() — sticky process-wide latch. Once set,
-//                             IsFrameSolidArmed() always returns false until
-//                             process exit. Documented recovery = restart with
-//                             MC2_TERRAIN_INDIRECT=0.
-// ---------------------------------------------------------------------------
+// Native frame readiness and the shared camera snapshot.
 void BeginFrame();              // reset armed flag; call unconditionally once per frame
 // Approach A: camera-windowed solid dispatch collector.  Structural twin of
 // WaterStream::BeginFrameNarrow / AppendNarrowCandidate.  BeginFrameSolidWindow
@@ -429,17 +408,11 @@ void BeginFrameSolidWindow();
 void AppendSolidWindowCandidate(int32_t vn0);
 // Phase 8b A/B: read-only snapshot of this frame's legacy solid-window staging
 // (the vns slimReduce appended). Returns data ptr + count; ptr null when empty.
-// Valid between the slim-loop fill and ComputeDispatch consume. Does NOT mutate.
+// CPU diagnostic view; valid until the next BeginFrameSolidWindow call.
 const uint32_t* SolidWindowStagingData(uint32_t* outCount);
 bool ComputePreflight();
-// v4 split: ComputePreflight() does arming gates only. ComputeDispatch()
-// runs after Phase 1's PackAndDispatch at terrain.cpp so it can read
-// gos_terrain_lighting::GetOutputSsbo() with same-frame data.
-// No-op when MC2_GPU_DRIVEN_TERRAIN_SOLID is unset or 0, or when not armed.
-void ComputeDispatch();
-// VPL parity-infra retirement (cpu-pack-retirement plan §7 OQ-2): the
-// gos_terrain_indirect:: ComputeDispatchParity_Check declaration is removed
-// (zero consumers post Step 4 2e11617; txmmgr caller removed same commit).
+// Capture the CPU camera snapshot used by the native terrain and water feeds.
+void CaptureFrameInputs();
 bool IsFrameSolidArmed();
 // Process-sticky cousin of IsFrameSolidArmed(); true once preflight has
 // armed at least one frame this process. Consumed by VisualDiff to gate
@@ -447,13 +420,6 @@ bool IsFrameSolidArmed();
 // the per-frame arm is reset by gosRenderer::endFrame() before the
 // VisualDiff post-PP hook fires, so a sticky-once cousin is needed.
 bool WasEverFrameSolidArmed();
-bool DrawIndirect();
-void ForceDisableArmingForProcess();
-// WATER-TERRAIN-REFLECTION-1 (Phase C1): mirrored terrain-only render into the
-// quarter-res water reflection RT. Gate MC2_WATER_REFLECTION_RT default OFF
-// (no-op when unset). Call AFTER renderLists, BEFORE water. Saves/restores the
-// terrain MVP + FBO/viewport internally. Terrain only; no clip plane.
-void RenderWaterReflectionPass();
 // Single-source water fast-path gate: true iff all conditions that allow
 // renderWater() to skip the legacy loop are satisfied. Defined in
 // terrain.cpp (the only TU that sees WaterStream + gpu_driven symbols).

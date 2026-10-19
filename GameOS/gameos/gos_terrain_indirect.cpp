@@ -164,7 +164,6 @@ bool IsOverlayParityCheckEnabled() {
 // (diagnostic for the corrupt-recipeIdx grey-triangle bug). Default OFF — it is a
 // per-frame ~80KB glGetBufferSubData readback + CPU compare and must not run in
 // production. Kill-switch restores it for diagnosis.
-extern const bool s_thinCanaryEnabled = mc2::gate::get<"MC2_THIN_CANARY">();
 
 // Slice A — wire the real predicate (replaces the Stage 0b/1b/2b always-false
 // stub). Mirrors IsFrameMineArmed() == IsMineEnabled() EXACTLY: arming is
