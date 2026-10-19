@@ -121,10 +121,7 @@ bool make_buffer(WaterIsland* s, mc2vk::OwnedBuffer& out, VkDeviceSize size, VkB
 // in init_island covers the initial bind; later reallocs re-write with a valid set.
 void write_descriptors(WaterIsland* s, int only) {
     if (only<0) { s->imageDescriptorsDirty[0]=s->imageDescriptorsDirty[1]=true; return; }
-    // VK-WATER-FENCE-DEFER-1: write BOTH parity sets (set[i] binds buffers[i]) unless `only` names one slot (the caller then owns
-    // that slot's retirement: the per-frame feed rebind runs after the slot fence wait).
-    // Callers (re)allocating any bound buffer are vkDeviceWaitIdle-guarded, so no
-    // in-flight command buffer can be using either set during the update.
+    // Resource changes mark both slots dirty; each slot is written only after its fence.
     for (int i = 0; i < 2; ++i) {
         if (i!=only) continue;
         s->imageDescriptorsDirty[i]=false;

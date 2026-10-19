@@ -76,8 +76,7 @@ bool ensure_hdri(WaterIsland* s, unsigned int hdriGlTex) {
     if (!texture) return false;
     s->hdriTexture=std::move(texture); s->hdriSourceReal=haveReal;
     s->hdriRealImported=false;
-    // VK-WATER-FENCE-DEFER-1: with the deferred retire, a prior water submit may still be in
-    // flight — device-idle first (rare: at most twice per island, dummy -> real).
+    // Real art is published after the service upload ticket; descriptors follow the retired slot.
     write_descriptors(s);   // binding 2 now valid
     vlog("hdri %s import: %dx%d fmt=%d mips=%u glTex=%u (copy-once, zero per-frame cost).",
          haveReal ? "REAL" : "DUMMY", w, h, (int)fmt, mips, hdriGlTex);
@@ -86,7 +85,7 @@ bool ensure_hdri(WaterIsland* s, unsigned int hdriGlTex) {
 
 // VK-PARITY-WATER-SHORE-1: copy-once import of one shore sidecar (R32F height or RGBA8 mask, 4 bytes a texel) from the
 // terrain field store's CPU copy into a sampled VK image. With no texels (no sidecar, or height disabled) a 1x1 zero dummy is
-// created instead and *real is false. Caller device-idles beforehand.
+// created instead and *real is false. The service owns copy completion and retirement.
 bool import_shore_tex(WaterIsland* s, const void* texels, int texelsW, int texelsH, bool isFloat,
                       mc2vk::ResidentTextureRef& texture, bool* real) {
     const bool have=texels && texelsW>0 && texelsH>0;

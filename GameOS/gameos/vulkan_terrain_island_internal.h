@@ -413,7 +413,7 @@ bool ensure_csm_array_image(TerrainIsland* s, uint32_t dim, uint32_t layers);
 void ovl_destroy_tex(OvlTex& t);
 void ovl_destroy(TerrainIsland* s);
 bool ovl_alloc_tex_set(TerrainIsland* s, OvlState* o, OvlTex& t);
-bool ovl_upload_tex(TerrainIsland* s, OvlTex& e, uint32_t w, uint32_t h, const void* bytes, VkDeviceSize byteCount);
+bool ovl_upload_tex(TerrainIsland* s, OvlTex& e, uint32_t w, uint32_t h, VkFormat fmt, const void* bytes, VkDeviceSize byteCount);
 OvlTex* ovl_get_tex(TerrainIsland* s, OvlState* o, uint32_t gosHandle);
 bool ovl_init(TerrainIsland* s, OvlState* o, int w, int h);
 }  // namespace vk_terrain_detail

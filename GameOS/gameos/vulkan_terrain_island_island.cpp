@@ -158,12 +158,7 @@ constexpr VkImageLayout kDirectShadowLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ
 
 void write_descriptors(TerrainIsland* s, int parity) {
     if (parity<0) { s->descriptorsDirty[0]=s->descriptorsDirty[1]=true; return; }
-    // VK-TERRAIN-FENCE-DEFER-1: write BOTH parity sets (set[i] binds ubo[i]; every
-    // other binding is identical single-instance state). Callers must guarantee no
-    // in-flight command buffer can be using either set during the update: buffer-grow
-    // callers vkDeviceWaitIdle first, copy-once importers run right after an inline
-    // one-shot fence wait (which retires ALL earlier submission-order work on the
-    // queue), and the per-frame bound-view switch in run() device-idles (rare).
+    // Only the retired parity is written; upload requests mark both parities dirty.
     for (int i = parity; i <= parity; ++i) {
     s->descriptorsDirty[i]=false;
     if (s->set[i] == VK_NULL_HANDLE) continue;
