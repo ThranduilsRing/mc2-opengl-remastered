@@ -60,7 +60,7 @@
    "LG11": 86,
    "LG12a": 88,
    "LG12b": 30,
-   "LG13": 316,
+   "LG13": 312,
    "LG14": 61,
    "LG15": 0,
    "LG16": 6,
@@ -152,7 +152,7 @@
    "LG11": 102,
    "LG12a": 100,
    "LG12b": 341,
-   "LG13": 182,
+   "LG13": 26,
    "LG14": 123,
    "LG15": 0,
    "LG16": 6,
@@ -897,7 +897,6 @@
    "LG12a": 2
   },
   "GameOS/gameos/utils/render_constants.h": {
-   "LG13": 1,
    "LG14": 5
   },
   "GameOS/gameos/utils/shader_builder.cpp": {
@@ -1093,7 +1092,7 @@
    "LG04": 2,
    "LG06": 43,
    "LG12a": 3,
-   "LG13": 7,
+   "LG13": 4,
    "LG14": 37,
    "LG17": 5,
    "LG18": 1
@@ -1372,7 +1371,7 @@
   },
   "code/actor.h": {
    "LG01": 5,
-   "LG13": 2,
+   "LG13": 1,
    "LG14": 1
   },
   "code/artlry.cpp": {
@@ -1382,8 +1381,7 @@
   },
   "code/artlry.h": {
    "LG02": 1,
-   "LG04": 1,
-   "LG13": 3
+   "LG04": 1
   },
   "code/attributemeter.cpp": {
    "LG06": 1
@@ -1395,7 +1393,6 @@
    "LG03": 1
   },
   "code/bldng.h": {
-   "LG13": 4,
    "LG14": 1
   },
   "code/brain_archetype.h": {
@@ -1488,7 +1485,6 @@
   },
   "code/controlgui.h": {
    "LG06": 4,
-   "LG13": 1,
    "LG14": 3,
    "LG17": 2
   },
@@ -1536,7 +1532,6 @@
    "LG14": 2
   },
   "code/dmultplyr.h": {
-   "LG13": 38,
    "LG14": 1
   },
   "code/dobjtype.h": {
@@ -1866,7 +1861,6 @@
   },
   "code/mech.h": {
    "LG02": 1,
-   "LG13": 16,
    "LG14": 6
   },
   "code/mech_brain_runtime.h": {
@@ -1980,7 +1974,6 @@
   },
   "code/mission.h": {
    "LG06": 4,
-   "LG13": 21,
    "LG14": 1
   },
   "code/mission2.cpp": {
@@ -1999,8 +1992,7 @@
   "code/mission_internal.h": {
    "LG06": 1,
    "LG12a": 1,
-   "LG12b": 1,
-   "LG13": 1
+   "LG12b": 1
   },
   "code/mission_movers.cpp": {
    "LG05": 1,
@@ -2032,12 +2024,10 @@
    "LG11": 1,
    "LG12a": 2,
    "LG12b": 4,
-   "LG13": 3,
    "LG18": 2
   },
   "code/missionbriefingscreen.h": {
-   "LG06": 2,
-   "LG13": 3
+   "LG06": 2
   },
   "code/missiongui.cpp": {
    "LG06": 1,
@@ -2057,7 +2047,6 @@
   },
   "code/missiongui_shared_internal.h": {
    "LG06": 1,
-   "LG13": 4,
    "LG14": 1
   },
   "code/missiongui_support.cpp": {
@@ -2083,14 +2072,12 @@
   "code/mover.cpp": {
    "LG03": 1,
    "LG05": 1,
-   "LG06": 1,
-   "LG13": 2
+   "LG06": 1
   },
   "code/mover.h": {
    "LG04": 2,
    "LG05": 3,
    "LG06": 3,
-   "LG13": 17,
    "LG14": 8,
    "LG17": 3
   },
@@ -2190,7 +2177,7 @@
   },
   "code/multplyr.h": {
    "LG06": 3,
-   "LG13": 33,
+   "LG13": 1,
    "LG14": 7,
    "LG17": 2
   },
@@ -2315,9 +2302,6 @@
    "LG12a": 2,
    "LG12b": 5
   },
-  "code/saveload_internal.h": {
-   "LG13": 1
-  },
   "code/saveload_load.cpp": {
    "LG03": 8,
    "LG11": 3
@@ -2390,7 +2374,6 @@
    "LG17": 1
   },
   "code/turret.h": {
-   "LG13": 4,
    "LG17": 1
   },
   "code/ui_profile.h": {
@@ -2409,9 +2392,6 @@
   },
   "code/unit_profile_validator.h": {
    "LG14": 1
-  },
-  "code/unitdesg.h": {
-   "LG13": 3
   },
   "code/unitprofile.cpp": {
    "LG06": 4
@@ -2432,7 +2412,7 @@
    "LG04": 1,
    "LG05": 3,
    "LG06": 2,
-   "LG13": 3,
+   "LG13": 1,
    "LG14": 19,
    "LG18": 1
   },
@@ -3937,7 +3917,7 @@
    "LG20": 3
   }
  },
- "head": "847d12b5a",
+ "head": "1a9dbb878",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

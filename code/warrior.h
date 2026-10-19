@@ -11,6 +11,8 @@
 #ifndef WARRIOR_H
 #define	WARRIOR_H
 
+#include "object_shared_constants.h"
+
 #ifndef MCLIB_H
 #include"mclib.h"
 #endif
@@ -96,8 +98,6 @@ inline constexpr int MAX_WARRIORS = 120;
 inline constexpr unsigned int MOVEGOAL_NONE = 0xFFFFFFFF;
 inline constexpr int MOVEGOAL_LOCATION = 0x00000000;
 
-#define CLAN_SEEN_FLAG				2
-#define IS_SEEN_FLAG				1
 
 inline constexpr int NUM_WEAPON_TYPE_AFFINITIES = 2;
 

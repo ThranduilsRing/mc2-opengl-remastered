@@ -64,7 +64,7 @@ inline constexpr int MAX_REINFORCEMENT_PART_ID = 3550;	//Only 1500 reinforcement
 inline constexpr int MAX_MOVER_PART_ID = 4095;	//MIN_MOVER_PART_ID +
 											//MAX_COMMANDERS * MAX_MOVERGROUPS * MAX_MOVERGROUP_COUNT_START
 
-#define	MIN_TERRAIN_PART_ID		4096
+inline constexpr auto MIN_TERRAIN_PART_ID = 4096;
 inline constexpr int MAX_TERRAIN_PART_ID = 464895;		//MIN_TERRAIN_PART_ID +
 											//block * (MAX_TERRAIN_BLOCK_VERTICES * MAX_TERRAIN_TILE_ITEMS) +
 											//vertex * MAX_TERRAIN_TILE_ITEMS +
@@ -78,10 +78,10 @@ inline constexpr int MAX_TRAIN_PART_ID = 521999;		//MIN_TRAIN_PART_ID +
 inline constexpr int MIN_CAMERA_DRONE_ID = 525000;
 inline constexpr int MAX_CAMERA_DRONE_ID = 525999;		//MIN_CAMERA_DRONE_ID + cameraDrone
 
-#define	MAX_COMMANDERS				8
+inline constexpr auto MAX_COMMANDERS = 8;
 inline constexpr int MAX_MOVERGROUPS = 16;
 inline constexpr int MAX_MOVERGROUP_COUNT_START = 12;
-#define MAX_MOVERGROUP_COUNT		16
+inline constexpr auto MAX_MOVERGROUP_COUNT = 16;
 inline constexpr int MAX_TRAIN_CARS = 100;
 inline constexpr int MAX_TERRAIN_BLOCKS = 144;
 inline constexpr int MAX_TERRAIN_BLOCK_VERTICES = 400;

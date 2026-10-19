@@ -34,7 +34,7 @@
 #define NO_ERR						0
 #endif
 
-#define MAX_TREES		20
+inline constexpr auto MAX_TREES = 20;
 
 enum ActorState
 {

@@ -124,21 +124,21 @@ inline constexpr int IS_DAMAGE_DESTROYED = 2;
 
 inline constexpr int UNLIMITED_SHOTS = 9999;
 
-#define NO_APPEARANCE_FOR_MECH			0xFFFA0001
-#define	NO_RAM_FOR_DYNAMICS_TYPE		0xFFFA0002
-#define	INVALID_DYNAMICS_TYPE			0xFFFA0003
-#define	NO_RAM_FOR_CONTROL				0xFFFA0004
-#define	INVALID_CONTROL_TYPE			0xFFFA0005
-#define	NO_RAM_FOR_CONTROL_DATA			0xFFFA0006
-#define	INVALID_CONTROL_DATA_TYPE		0xFFFA0007
-#define	NO_RAM_FOR_DYNAMICS				0xFFFA0008
-#define	NO_APPEARANCE_TYPE_FOR_MECH		0xFFFA0009
-#define	APPEARANCE_NOT_SPRITE_TREE		0xFFFA000A
-#define NO_RAM_FOR_FOOT_HS				0xFFFA000B
-#define NO_RAM_FOR_WEAPON_HS			0xFFFA000C
-#define FOOT_HS_WRONG_SIZE				0xFFFA000D
-#define BAD_HS_PACKET					0xFFFA000E
-#define NO_RAM_FOR_XLAT_HS				0xFFFA000F
+inline constexpr auto NO_APPEARANCE_FOR_MECH = 0xFFFA0001;
+inline constexpr auto NO_RAM_FOR_DYNAMICS_TYPE = 0xFFFA0002;
+inline constexpr auto INVALID_DYNAMICS_TYPE = 0xFFFA0003;
+inline constexpr auto NO_RAM_FOR_CONTROL = 0xFFFA0004;
+inline constexpr auto INVALID_CONTROL_TYPE = 0xFFFA0005;
+inline constexpr auto NO_RAM_FOR_CONTROL_DATA = 0xFFFA0006;
+inline constexpr auto INVALID_CONTROL_DATA_TYPE = 0xFFFA0007;
+inline constexpr auto NO_RAM_FOR_DYNAMICS = 0xFFFA0008;
+inline constexpr auto NO_APPEARANCE_TYPE_FOR_MECH = 0xFFFA0009;
+inline constexpr auto APPEARANCE_NOT_SPRITE_TREE = 0xFFFA000A;
+inline constexpr auto NO_RAM_FOR_FOOT_HS = 0xFFFA000B;
+inline constexpr auto NO_RAM_FOR_WEAPON_HS = 0xFFFA000C;
+inline constexpr auto FOOT_HS_WRONG_SIZE = 0xFFFA000D;
+inline constexpr auto BAD_HS_PACKET = 0xFFFA000E;
+inline constexpr auto NO_RAM_FOR_XLAT_HS = 0xFFFA000F;
 
 //------------------------------------------------------------------------------
 // Enums
@@ -617,9 +617,9 @@ inline constexpr int MAX_MOVER_INVENTORY_ITEMS = 72;
 inline constexpr int MAXLEN_NET_PLAYER_NAME = 256;
 inline constexpr int MAXLEN_MECH_LONGNAME = 35;
 
-#define	MAX_ATTACK_CELLRANGE		30
+inline constexpr auto MAX_ATTACK_CELLRANGE = 30;
 inline constexpr int MAX_ATTACK_INCREMENTS = 32;
-#define	RANGED_CELLS_DIM			(MAX_ATTACK_CELLRANGE * 2 + 1) * (MAX_ATTACK_CELLRANGE * 2 + 1)
+inline constexpr auto RANGED_CELLS_DIM = (MAX_ATTACK_CELLRANGE * 2 + 1) * (MAX_ATTACK_CELLRANGE * 2 + 1);
 
 struct _MoverData : public GameObjectData
 {

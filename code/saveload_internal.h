@@ -131,7 +131,6 @@ struct DDSURFACEDESC2 {
 
 //----------------------------------------------------------------------------------------------------
 // Globals
-#define DEFAULT_SKY			1
 extern float loadProgress;
 
 void MouseTimerInit();

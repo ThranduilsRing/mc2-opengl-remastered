@@ -9,7 +9,7 @@
 #include "utils/graphics.h"
 
 inline constexpr int DEPTH_NONE = 0;        /**< Disable depthstencil. */
-#define BLEND_NONE (-1)     /**< Disable blending. */
+inline constexpr auto BLEND_NONE = (-1);     /**< Disable blending. */
 
 enum TexType {
     TT_NONE,

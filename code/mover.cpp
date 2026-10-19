@@ -6,6 +6,8 @@
 
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "mover_internal.h"
+
+#include "object_shared_constants.h"
 #include "mc2fmt.h"
 
 
@@ -236,8 +238,6 @@ long MoveChunk::err = 0;
 float MaxStationaryTime = 0.0;
 float MaxTimeRevealed = 0.0f;
 
-#define CLAN_SEEN_FLAG		2
-#define IS_SEEN_FLAG		1
 char Mover::optimalCells[MAX_ATTACK_CELLRANGE][MAX_ATTACK_INCREMENTS][2];
 long Mover::numOptimalIncrements = 0;
 short Mover::rangedCellsIndices[MAX_ATTACK_CELLRANGE][2];

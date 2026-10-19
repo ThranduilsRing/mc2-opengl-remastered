@@ -67,7 +67,6 @@ struct ObjectiveUiRow
 //*************************************************************************************************
 
 
-#define LAST_VEHICLE MAX_VEHICLE - LARGE_AIRSTRIKE
 inline constexpr int OBJECTVE_MOVE_COUNT = 2;
 inline constexpr int RESULTS_MOVE_COUNT = 3;
 inline constexpr int MAX_CHAT_COUNT = 5;
@@ -241,6 +240,8 @@ class ControlGui
 			STOP_VEHICLE,
 			MAX_VEHICLE
 		};
+
+		inline static constexpr auto LAST_VEHICLE = MAX_VEHICLE - LARGE_AIRSTRIKE;
 
 		bool	isDefaultSpeed();
 		void	toggleDefaultSpeed( );

@@ -11,6 +11,8 @@
 #ifndef ARTLRY_H
 #define ARTLRY_H
 
+#include "object_shared_constants.h"
+
 //---------------------------------------------------------------------------
 
 #ifndef DARTLRY_H
@@ -38,10 +40,7 @@ inline constexpr unsigned int NO_RAM_FOR_ARTY_SHAPES = 0xDEFD0001;
 inline constexpr unsigned int NO_RAM_FOR_ARTILLERY = 0xDEFD0002;
 inline constexpr unsigned int NO_APPEARANCE_TYPE_FOR_ARTY = 0xDEFD0003;
 inline constexpr unsigned int NO_APPEARANCE_FOR_ARTY = 0xDEFD0004;
-#define APPEARANCE_NOT_VFX_APPEAR		0xDCDC0009
 
-#define CLAN_SEEN_FLAG				2
-#define IS_SEEN_FLAG				1
 
 inline constexpr int MAX_ARTILLERY_EXPLOSIONS = 32;
 

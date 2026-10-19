@@ -98,9 +98,9 @@ extern float CheatHitDamage;
 //class MissionInterfaceManager : public InterfaceManager
 //--------------------------------------------------------------------------------------
 
-#define CTRL	0x10000000
-#define SHIFT	0x01000000
-#define ALT		0x00100000
-#define WAYPT	0x20000000
+inline constexpr auto CTRL = 0x10000000;
+inline constexpr auto SHIFT = 0x01000000;
+inline constexpr auto ALT = 0x00100000;
+inline constexpr auto WAYPT = 0x20000000;
 
 #endif // MISSIONGUI_SHARED_INTERNAL_H
