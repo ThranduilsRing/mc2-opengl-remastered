@@ -1,12 +1,11 @@
 // GameOS/gameos/gpu_memory_report.cpp -- see gpu_memory_report.h.
 #include "gpu_memory_report.h"
 
-#include "gos_profiler.h"          // GLEW + Tracy (TracyPlot)
+#include "gos_profiler.h"          // TracyPlot
 #include "gos_smoke.h"
 #include "mc2_diag_verbose.h"
 #include "render_backend_select.h"
 
-#include <SDL2/SDL.h>
 
 #include <cstdio>
 #include <cstring>
@@ -25,15 +24,7 @@ namespace mc2::gpumem {
 
 namespace {
 
-bool hasGlExtension(std::string_view name) {
-    GLint n = 0;
-    glGetIntegerv(GL_NUM_EXTENSIONS, &n);
-    for (GLint i = 0; i < n; ++i) {
-        const GLubyte* e = glGetStringi(GL_EXTENSIONS, static_cast<GLuint>(i));
-        if (e && name == reinterpret_cast<const char*>(e)) return true;
-    }
-    return false;
-}
+
 
 #ifdef MC2_VULKAN
 void readVulkan(Snapshot& s) {
@@ -48,27 +39,14 @@ void readVulkan(Snapshot& s) {
 #endif
 
 #ifdef _WIN32
-// GL_EXT_memory_object_win32: the LUID of the device the current GL context renders on.
-constexpr GLenum kGlDeviceLuidExt = 0x9599;                 // GL_DEVICE_LUID_EXT
-using PfnGetUnsignedBytevExt = void(APIENTRY*)(GLenum, GLubyte*);
-
-// The LUID of the adapter the engine renders on: the Vulkan device when the shared context is live, else the GL context's device when the driver
-// implements GL_EXT_memory_object_win32. False when neither says (the caller then falls back to the adapter with the most dedicated memory).
 bool renderAdapterLuid(uint8_t (&luid)[8]) {
 #ifdef MC2_VULKAN
     if (mc2vk::engineVulkanContextValid()) return mc2vk::getOrCreateEngineVulkanContext().adapterLuid(luid);
 #endif
-    if (!SDL_GL_GetCurrentContext() || !hasGlExtension("GL_EXT_memory_object_win32")) return false;
-    auto get = reinterpret_cast<PfnGetUnsignedBytevExt>(SDL_GL_GetProcAddress("glGetUnsignedBytevEXT"));
-    if (!get) return false;
-    while (glGetError() != GL_NO_ERROR) {}
-    GLubyte bytes[8] = {0, 0, 0, 0, 0, 0, 0, 0};
-    get(kGlDeviceLuidExt, bytes);
-    if (glGetError() != GL_NO_ERROR) return false;
-    for (size_t i = 0; i < sizeof(luid); ++i) luid[i] = bytes[i];
-    return true;
+    return false;
 }
 
+// Match the actual native adapter when its LUID is available.
 const char* g_adapterRule = "unresolved";                    // "luid", "most_dedicated" (the driver gave no LUID) or "most_dedicated_luid_unmatched": which rule picked the DXGI adapter (printed once by log())
 
 // The DXGI adapter the engine renders on, found once; queried per call. Matched by LUID to the Vulkan device or the GL context's device; when the
@@ -151,7 +129,7 @@ std::string format(std::string_view phase, const Snapshot& s) {
     std::snprintf(buf, sizeof(buf),
                   "[VRAM v1] phase=%s backend=%s vk_budget_mb=%lld vk_usage_mb=%lld vk_allocated_mb=%lld adapter_dedicated_mb=%lld "
                   "proc_dedicated_mb=%lld proc_budget_mb=%lld",
-                  std::string(phase).c_str(), s.backend ? s.backend : "gl",
+                  std::string(phase).c_str(), s.backend ? s.backend : "unavailable",
                   static_cast<long long>(bytesToMib(s.vkBudgetBytes)), static_cast<long long>(bytesToMib(s.vkUsageBytes)), static_cast<long long>(bytesToMib(s.vkAllocatedBytes)),
                   static_cast<long long>(bytesToMib(s.dxgiAdapterDedicatedBytes)), static_cast<long long>(bytesToMib(s.dxgiProcessUsageBytes)),
                   static_cast<long long>(bytesToMib(s.dxgiProcessBudgetBytes)));
@@ -163,7 +141,7 @@ std::string toJson(const Snapshot& s) {
     std::snprintf(buf, sizeof(buf),
                   "{\"backend\": \"%s\", \"vk_budget_mb\": %lld, \"vk_usage_mb\": %lld, \"vk_allocated_mb\": %lld, "
                   "\"adapter_dedicated_mb\": %lld, \"proc_dedicated_mb\": %lld, \"proc_budget_mb\": %lld}",
-                  s.backend ? s.backend : "gl",
+                  s.backend ? s.backend : "unavailable",
                   static_cast<long long>(bytesToMib(s.vkBudgetBytes)), static_cast<long long>(bytesToMib(s.vkUsageBytes)), static_cast<long long>(bytesToMib(s.vkAllocatedBytes)),
                   static_cast<long long>(bytesToMib(s.dxgiAdapterDedicatedBytes)), static_cast<long long>(bytesToMib(s.dxgiProcessUsageBytes)),
                   static_cast<long long>(bytesToMib(s.dxgiProcessBudgetBytes)));

@@ -91,7 +91,6 @@ set(SOURCES ${SOURCES}
     gos_font.cpp
     gos_input.cpp
     asset_scale.cpp
-    gos_gpu_sync.cpp
     gpu_driven_common.cpp
     gpu_cull_record.cpp
     gpu_cull_substrate.cpp
@@ -106,9 +105,7 @@ set(SOURCES ${SOURCES}
     vk_render_pass_timer.cpp
     gos_frame_pass_stats.cpp
     draw_packet_emitter.cpp
-    pipeline_binder.cpp
     view_uniforms_gl.cpp
-    gpu_buffer_gl.cpp
     debug_state_dump.cpp
     dbg_asset_globals.cpp
     diagnostic_trace.cpp

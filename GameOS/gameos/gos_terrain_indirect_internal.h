@@ -19,7 +19,6 @@
 #include "../../mclib/terrain_material.h"  // single-sourced terrain type -> material
 #include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
 
-#include "gos_gpu_sync.h"               // GPU-SYNC-CONTRACT typed barrier helper
 #include "gos_terrain_patch_stream.h"  // TerrainQuadRecipe
 #include "gpu_driven_common.h"         // gpu_driven::IsTerrainSolidEnabled
 #include "gos_terrain_lighting.h"      // gos_terrain_lighting::GetOutputSsbo()

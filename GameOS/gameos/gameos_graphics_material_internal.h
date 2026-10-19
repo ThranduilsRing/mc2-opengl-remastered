@@ -51,14 +51,11 @@
 #include "utils/timing.h"
 #include "gos_render.h"
 #include "../../RenderCore/PipelineRegistry.h"   // SHADOW-CASTER-APPLYPIPELINE-ROUTING-1
-#include "pipeline_binder.h"                      // applyPipeline — shadow bracket FF state
 #include "render_frame_plan.h"                    // RENDER-FRAME-PLAN-SCAFFOLD-1
 #include "mdi_submit.h"                            // MDI-SUBMISSION-SCAFFOLD-1
 #include "gos_postprocess.h"
 #include "gos_profiler.h"
-#include "gos_gpu_sync.h"
 #include "gos_validate.h"  // validation entry points
-#include "gl_state_guard.h"  // GlScopedTextureUnit (GLSTATE-TEXTURE-UNIT0-RESTORE-1)
 #include "gos_visual_capture.h"   // VISUAL-CAPTURE-CLEAN-1
 #include "gos_smoke.h"     // S9E: SmokeMode fixed deterministic render-shader clock
 #include "../../mclib/cpu_proj_cost_split.h"  // F3 CPU projection cost-baseline
@@ -66,7 +63,6 @@
 #include "../../mclib/render_contract.h"      // [RENDER_PASS v1] noteRenderPass
 #include "../../mclib/mc2_audit.h"            // META-FIX INFRA-1 gated audit emitter
 #include "RenderCore/top_level_pass_executor.h" // APPLY-STATE-TERRAINDECAL-1: findTopLevelStateDesc
-#include "RenderCore/top_level_apply_axes.h"   // FRAMEGRAPH-APPLY-STATE-EXTEND-1: applyTopLevelGenericAxes
 #include "RenderCore/ResolutionContract.h"     // META-FIX design D: MC2_RES_ASSERT audit
 #include "../../RenderCore/frame_executor.h"     // PER-PASS-APPLY-COUNTERS-1: ApplyPassId
 #include "Stuff/Stuff.hpp"                     // Stuff::Matrix4D for gos_SetWorldToClipGL (full chain required; matrix.hpp alone creates circular include ordering)

@@ -330,7 +330,7 @@ if(MSVC)
     target_compile_options(mc2_modlint PRIVATE /W4 /WX-)
 endif()
 
-# The former contract executables share doctest; the GL guard cases retain a real hidden context.
+# The former contract executables share doctest.
 target_sources(mc2_tests PRIVATE
     test_contract_smoke_harness.cpp
     test_shader_contract_harness.cpp
@@ -347,7 +347,6 @@ target_sources(mc2_tests PRIVATE
     test_terrain_daylight_harness.cpp
     test_object_light_row_harness.cpp
     test_class_light_band_harness.cpp
-    test_glstate_guard_harness.cpp
     ${MC2_WORKTREE_ROOT}/mclib/render_contract.cpp
     ${MC2_WORKTREE_ROOT}/GameOS/gameos/native_render_state.cpp
     gos_counter_stubs.cpp
