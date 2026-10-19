@@ -23,3 +23,7 @@ shadowLocs_.mvp
 # Pre-existing gos_terrain.vert uses bare 'mvp' for a draw path orthogonal
 # to F1 (cleanup tracked separately).
 shaders/gos_terrain.vert
+
+# The water depth-lift guard rejects near-zero perspective denominators.
+# Its depth division keeps signed clipL.w; no screen-coordinate round trip.
+shaders/vulkan/water_geom.vert:            if (abs(clipL.w) > 1e-5)
