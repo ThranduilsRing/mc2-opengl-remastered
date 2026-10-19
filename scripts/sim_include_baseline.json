@@ -2641,7 +2641,7 @@
       ],
       "rule": "rng",
       "subject": "srand",
-      "evidence": "srand((unsigned)time(nullptr));",
+      "evidence": "srand(static_cast<unsigned>(time(nullptr)));",
       "occurrence": 1
     },
     {
@@ -2652,7 +2652,7 @@
       ],
       "rule": "wall-clock",
       "subject": "time",
-      "evidence": "srand((unsigned)time(nullptr));",
+      "evidence": "srand(static_cast<unsigned>(time(nullptr)));",
       "occurrence": 1
     },
     {
@@ -3327,7 +3327,7 @@
       ],
       "rule": "wall-clock",
       "subject": "timeGetTime",
-      "evidence": "uint64_t nowMs = (uint64_t)timeGetTime();",
+      "evidence": "uint64_t nowMs = static_cast<uint64_t>(timeGetTime());",
       "occurrence": 1
     },
     {
