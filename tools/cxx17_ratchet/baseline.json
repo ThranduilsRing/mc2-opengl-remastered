@@ -52,7 +52,7 @@
    "LG03": 257,
    "LG04": 5,
    "LG05": 137,
-   "LG06": 432,
+   "LG06": 431,
    "LG07": 0,
    "LG08": 234,
    "LG09": 0,
@@ -190,7 +190,7 @@
    "LG03": 999,
    "LG04": 15,
    "LG05": 135,
-   "LG06": 648,
+   "LG06": 640,
    "LG07": 0,
    "LG08": 70,
    "LG09": 0,
@@ -319,7 +319,7 @@
    "LG06": 1
   },
   "GameOS/gameos/debug_state_dump.cpp": {
-   "LG06": 2,
+   "LG06": 1,
    "LG11": 2
   },
   "GameOS/gameos/diagnostic_trace.cpp": {
@@ -2890,12 +2890,12 @@
   },
   "mclib/fx_def_registry.cpp": {
    "LG05": 3,
-   "LG06": 9,
+   "LG06": 3,
    "LG08": 2,
    "LG11": 1
   },
   "mclib/fx_def_registry.h": {
-   "LG06": 3
+   "LG06": 1
   },
   "mclib/fx_trace/fx_cost_split.h": {
    "LG14": 1
@@ -3975,7 +3975,7 @@
    "LG20": 3
   }
  },
- "head": "3d5545b26",
+ "head": "16699f607",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
