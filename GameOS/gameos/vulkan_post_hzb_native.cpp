@@ -655,6 +655,12 @@ bool gosPostProcess::runVkPostHzbNative(const Mc2ColorPropFeed& feed, uint32_t g
     g_health.runtimeGate = hzbEnabled_ ? 1 : 0;
     if (maskBuffer) *maskBuffer = nullptr;
     if (!hzbEnabled_ || !maskBuffer || !feed.instances112 || !feed.count || feed.count > 131072) return false;
+    // Small feeds cannot amortize the pyramid and dispatches. A null mask means
+    // the color pass keeps every instance, including after a larger prior frame.
+    if (feed.count < 1024) {
+        setFallback("low_candidate_count");
+        return false;
+    }
     int levels = 1;
     for (int size = (std::max)(width_, height_); size > 1; size = (size+1)/2) ++levels;
     hzbW_ = width_; hzbH_ = height_; hzbMipCount_ = levels;

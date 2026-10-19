@@ -49,7 +49,7 @@ Split commit: `f0521b300`.
 | `gos_postprocess_fbo.cpp` | gosPostProcess: gosPostProcess teardown, resize, scene/post FBO creation and destruction, and the particle/VFX scene copies. |
 | `gos_postprocess_gates.cpp` | gosPostProcess: gate readers for the shared-scene, Vulkan tier-1 and shadow knobs, scene placeholder textures, and the skybox-fog and screen-shadow canary gates. |
 | `gos_postprocess_shadow.cpp` | gosPostProcess: shadow debug overlay, static and cascaded shadow maps and their light matrices. |
-| `gos_postprocess_skybox.cpp` | gosPostProcess: skybox and HDRI skybox rendering. |
+| `gos_postprocess_skybox.cpp` | Native HDRI sky submission; the terrain pass draws it behind its depth. |
 | `gos_postprocess_internal.h` | shared include bundle, extern globals and declarations of the pieces |
 
 ## `GameOS/gameos/gos_static_prop_batcher.cpp`
@@ -89,7 +89,7 @@ Split commit: `f0521b300`.
 | Piece | What it holds |
 |---|---|
 | `gos_terrain_lod_chunk.cpp` | keeps the program and uniform-location state, Init/Destroy and the SSBO state |
-| `gos_terrain_lod_chunk_draw.cpp` | gos_terrain_lod_chunk: gos_TerrainLodChunk_SubmitDrawCommands, the uniform mirroring it uses and the eager draw tuning caches. |
+| `gos_terrain_lod_chunk_draw.cpp` | Native terrain patch capture and submission; GL scene draws have no present consumer. |
 | `gos_terrain_lod_chunk_feed.cpp` | gos_terrain_lod_chunk: VK tier-1 terrain frame feed (mc2_terrain_tier1_get_frame_feed) and its version counters. |
 | `gos_terrain_lod_chunk_gates.cpp` | gos_terrain_lod_chunk: eager tuning caches (kTglc*) the draw path and the light-pool uploads read, and the GlStateGuard kill-switch. |
 | `gos_terrain_lod_chunk_matalbedo.cpp` | gos_terrain_lod_chunk: terrain material albedo texture array: setters from terrain_material_lib.cpp and the lazy BC7 array load. |

@@ -2586,32 +2586,6 @@
    }
   },
   {
-   "assemble": "engine",
-   "defines": [],
-   "id": "hdri_skybox",
-   "key": "hdri_skybox",
-   "optional_groups_on": [],
-   "prefix": "#version 430\n",
-   "source": "GameOS/gameos/gos_postprocess.cpp:292",
-   "stages": {
-    "frag": "shaders/hdri_skybox.frag",
-    "vert": "shaders/hdri_skybox.vert"
-   }
-  },
-  {
-   "assemble": "engine",
-   "defines": [],
-   "id": "hdri_skybox_stencil_tag",
-   "key": "hdri_skybox_stencil_tag",
-   "optional_groups_on": [],
-   "prefix": "#version 430\n",
-   "source": "GameOS/gameos/gos_postprocess_skybox.cpp:250",
-   "stages": {
-    "frag": "shaders/hdri_skybox_stencil_tag.frag",
-    "vert": "shaders/hdri_skybox.vert"
-   }
-  },
-  {
    "assemble": "raw",
    "defines": [
     "LIGHTGRID_STAGE=0",
@@ -2641,19 +2615,6 @@
    "source": "GameOS/gameos/gos_lightgrid_build.cpp:113",
    "stages": {
     "comp": "shaders/lightgrid_build.comp"
-   }
-  },
-  {
-   "assemble": "engine",
-   "defines": [],
-   "id": "postprocess",
-   "key": "postprocess",
-   "optional_groups_on": [],
-   "prefix": "#version 430\n",
-   "source": "GameOS/gameos/gos_postprocess.cpp:261",
-   "stages": {
-    "frag": "shaders/postprocess.frag",
-    "vert": "shaders/postprocess.vert"
    }
   },
   {
@@ -2705,19 +2666,6 @@
    "source": "GameOS/gameos/gos_postprocess_blur.cpp:88",
    "stages": {
     "comp": "shaders/postprocess_blur.comp"
-   }
-  },
-  {
-   "assemble": "engine",
-   "defines": [],
-   "id": "skybox",
-   "key": "skybox",
-   "optional_groups_on": [],
-   "prefix": "#version 430\n",
-   "source": "GameOS/gameos/gos_postprocess.cpp:272",
-   "stages": {
-    "frag": "shaders/skybox.frag",
-    "vert": "shaders/skybox.vert"
    }
   },
   {

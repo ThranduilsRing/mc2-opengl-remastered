@@ -29,25 +29,6 @@ void renderHdri(const float* viewMat, const float* projMat)
     pp->renderHdriSkybox(viewMat, projMat);
 }
 
-void renderHdriBasis(const float* camFwd, const float* camRight,
-                     const float* camUp, float tHX, float tHY)
-{
-    gosPostProcess* pp = getGosPostProcess();
-    if (!pp || !pp->isHdriReady()) {
-        return;  // no-op: black sky baseline
-    }
-    pp->renderHdriSkyboxBasis(camFwd, camRight, camUp, tHX, tHY);
-}
-
-void renderHdriInvVP(const float* invVP16)
-{
-    gosPostProcess* pp = getGosPostProcess();
-    if (!pp || !pp->isHdriReady()) {
-        return;  // no-op: black sky baseline
-    }
-    pp->renderHdriSkyboxInvVP(invVP16);
-}
-
 void setSkyNumber(int skyNumber)
 {
     gosPostProcess* pp = getGosPostProcess();

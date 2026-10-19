@@ -104,7 +104,7 @@ void gosPostProcess::setSkyNumber(int skyNumber)
         hdriBakedSunValid_ = newSunValid;
         std::strncpy(hdriCurrentPath_, newPath, sizeof(hdriCurrentPath_) - 1);
         hdriCurrentPath_[sizeof(hdriCurrentPath_) - 1] = '\0';
-        hdriReady_ = (hdriSkyboxProg_ != nullptr) && hdriSkyboxProg_->is_valid();
+        hdriReady_ = true;
     } else {
         // Load failed — keep hdriReady_=false so sky renders black rather than crash.
         hdriReady_ = false;
@@ -187,8 +187,6 @@ gosPostProcess::gosPostProcess()
     , sceneNormalTex_(0)
     , quadVAO_(0)
     , quadVBO_(0)
-    , compositeProg_(nullptr)
-    , skyboxProg_(nullptr)
     , width_(0)
     , height_(0)
     , initialized_(false)
@@ -252,28 +250,6 @@ void gosPostProcess::init(int w, int h)
     createFBOs(w, h);
     createFullscreenQuad();
 
-    // Load shaders — version provided via prefix (shader files must NOT have #version).
-    // 4.3 matches the GL context requirement (SSBO + std430 used by the static-prop
-    // renderer); using a lower version here worked on AMD but broke on NVIDIA which
-    // defaults to GLSL 1.10 when the context/shader versions disagree at the boundary.
-    static const char* kShaderPrefix = "#version 430\n";
-
-    compositeProg_ = glsl_program::makeProgram(
-        "postprocess",
-        "shaders/postprocess.vert",
-        "shaders/postprocess.frag",
-        kShaderPrefix
-    );
-
-    if (!compositeProg_ || !compositeProg_->is_valid()) {
-        mc2::fmt::print_err("gosPostProcess: failed to compile postprocess shader\n");
-    }
-
-    skyboxProg_ = glsl_program::makeProgram("skybox",
-        "shaders/skybox.vert", "shaders/skybox.frag", kShaderPrefix);
-    if (!skyboxProg_ || !skyboxProg_->is_valid())
-        mc2::fmt::print_err("gosPostProcess: failed to compile skybox shader\n");
-
     // HDRI-SKY-1 init. Gate read once; default enabled unless env var == "0".
     {
         hdriEnabled_ = mc2::gate::get<"MC2_HDRI_SKY">();
@@ -289,24 +265,8 @@ void gosPostProcess::init(int w, int h)
                 hdriCurrentPath_[sizeof(hdriCurrentPath_) - 1] = '\0';
             }
 
-            hdriSkyboxProg_ = glsl_program::makeProgram(
-                "hdri_skybox",
-                "shaders/hdri_skybox.vert",
-                "shaders/hdri_skybox.frag",
-                kShaderPrefix
-            );
+            hdriReady_ = hdriTex_ != 0;
 
-            hdriReady_ = (hdriTex_ != 0)
-                      && (hdriSkyboxProg_ != nullptr)
-                      && hdriSkyboxProg_->is_valid();
-
-            if (!hdriReady_) {
-                MC2_DIAGFE(stderr,
-                    "[HDRI_SKY v1] enabled=0 reason=init_failed "
-                    "tex=%u prog=%p valid=%d\n",
-                    hdriTex_, (void*)hdriSkyboxProg_,
-                    hdriSkyboxProg_ ? (int)hdriSkyboxProg_->is_valid() : 0);
-            }
         } else {
             MC2_DIAGFE(stderr,
                 "[HDRI_SKY v1] enabled=0 reason=env_gate MC2_HDRI_SKY=0\n");
@@ -674,33 +634,14 @@ void gosPostProcess::endScene()
         }
     }
 
-    // POSTPROCESS-COMPOSITE-REGISTRATION-1: drive the fullscreen-quad fixed-function
-    // state from the PostProcessComposite pipeline row instead of hand-setting it.
-    // Byte-identical to the prior hand-set: depth test OFF, depth-write OFF (mask
-    // FALSE), cull None, and Opaque = GL_BLEND OFF. The "force opaque" matters
-    // because gosFX/MLR additive draws (gos_Alpha_OneOne) leak GL_BLEND+ONE/ONE into
-    // the composite; with an RGBA8 backbuffer that clamps at 1.0 the additive
-    // accumulation saturates to white over ~1s (pylon power-generator canary on
-    // mc2_05/mc2_24). Composite must fully overwrite the backbuffer. glProgramName=0
-    // in the row, so compositeProg_->apply() below still binds the program;
-    // applyPipeline only sets the fixed-function state. (The binder also sets a
-    // neutral glBlendFunc(ONE,ZERO) + frontFace Ccw + depthFunc Always — all inert
-    // for this blend-off, cull-off, depth-off draw.)
-    pipeline_binder::applyPipeline(
-        RenderCore::getPipelineDesc(RenderCore::PipelineId::PostProcessComposite),
-        "PostProcessComposite");
-    render_frame_plan::trace(render_frame_plan::Phase::PostProcess, "Composite",
-        render_frame_plan::PathKind::ApplyPipeline, 1, "PostProcessComposite");
-
-    bool nativeCompositeDone = false;
+    // Every view mode uses the native composite. Modes 2/4 retain the Visual
+    // presentation until their sensor overlays provide distinct shader branches.
     int effectiveModeForComposite = gos_GetSelectedViewMode();
     if (effectiveModeForComposite == 1 && sceneObjectIdTex_ == 0)
         effectiveModeForComposite = 0;
 #ifdef MC2_VULKAN
-    if ((directFbo != 0 || directVkOnly) &&
-        (effectiveModeForComposite == 0 || effectiveModeForComposite == 1 ||
-         effectiveModeForComposite == 3 || effectiveModeForComposite == 5)) {
-        nativeCompositeDone = mc2vk::getOrCreateEnginePresentVk().renderNativeCompositeVisual(
+    if (directFbo != 0 || directVkOnly) {
+        (void)mc2vk::getOrCreateEnginePresentVk().renderNativeCompositeVisual(
             exposure_, fxaaEnabled_, fxaaSubpix_, fxaaEdgeThreshold_, fxaaEdgeThresholdMin_,
             effectiveModeForComposite,
             sceneObjectIdTex_ != 0 ? (int)RenderWorld::MechHandleIndexBase() : 0,
@@ -709,117 +650,6 @@ void gosPostProcess::endScene()
             compositeVpX, compositeVpY, compositeVpW, compositeVpH);
     }
 #endif
-
-    // Draw fullscreen quad with composite shader
-    if (!nativeCompositeDone && compositeProg_ && compositeProg_->is_valid()) {
-        // Set uniforms BEFORE apply() — apply() binds program + flushes dirty uniforms
-        compositeProg_->setInt("sceneTex", 0);
-        // The unconditional sunset grade + exposure in postprocess.frag are the
-        // pre-existing default look and are untouched.
-        compositeProg_->setFloat("exposure", exposure_);
-
-        float invSize[2] = { 1.0f / (float)width_, 1.0f / (float)height_ };
-        compositeProg_->setFloat2("inverseScreenSize", invSize);
-
-        // POST-FX-FXAA-1: gate + tunables. enabled=0 -> shader single-taps the
-        // scene (byte-identical). Set before apply() like the others.
-        compositeProg_->setInt  ("u_fxaaEnabled",        fxaaEnabled_ ? 1 : 0);
-        compositeProg_->setFloat("u_fxaaSubpix",         fxaaSubpix_);
-        compositeProg_->setFloat("u_fxaaEdgeThreshold",  fxaaEdgeThreshold_);
-        compositeProg_->setFloat("u_fxaaEdgeThresholdMin", fxaaEdgeThresholdMin_);
-
-        // POST-FX-CAS-1: gate + sharpness. enabled=0 -> shader skips CAS entirely
-        // (byte-identical). Set before apply() like the others.
-        compositeProg_->setInt  ("u_casEnabled",   casEnabled_ ? 1 : 0);
-        compositeProg_->setFloat("u_casSharpness", casSharpness_);
-        // POST-FX-TONEMAP-V2: 0 = no-op branch in the shader (byte-identical).
-        compositeProg_->setInt  ("u_tonemapMode",  tonemapMode_);
-
-        // VIEWMODE-POSTPROCESS-PRESENTATION-1: resolve effective view mode.
-        // Gate OFF -> forced 0 (Visual). ObjectIdDebug requires sceneObjectIdTex_;
-        // if it is 0 (MC2_OBJECT_ID_BUFFER not set) we fall back to Visual and
-        // warn once so the caller knows why the debug view is blank.
-        int effectiveMode = effectiveModeForComposite;
-        if (effectiveMode == 1 && sceneObjectIdTex_ == 0) {
-            static bool s_warnedOidMissing = false;
-            if (!s_warnedOidMissing) {
-                MC2_DIAGFE(stderr,
-                    "[VIEWMODE v1] ObjectIdDebug requested but sceneObjectIdTex_=0 "
-                    "(MC2_OBJECT_ID_BUFFER not set); falling back to Visual\n");
-                s_warnedOidMissing = true;
-            }
-            effectiveMode = 0;
-        }
-        compositeProg_->setInt("u_viewMode", effectiveMode);
-
-        // u_objectIdTex is always declared in the shader at unit 2.
-        // The sampler is only read when effectiveMode==1 (and sceneObjectIdTex_ != 0).
-        // In the Visual path the sampler goes unread, so the unit-2 binding
-        // does not matter — but we still set the uniform to keep drivers happy.
-        compositeProg_->setInt("u_objectIdTex", 2);
-
-        // GAMEADAPTERS-VISUAL-STATE-BRIDGE: Thermal (mode 3) reads hot for
-        // engine-bearing units. Mech handles occupy index >= kMechHandleBase;
-        // static props/terrain are below it (RenderWorld invariant). Pass the
-        // base so the shader classifies object-ID pixels. 0 = OID buffer
-        // unavailable -> Thermal falls back to luminance-only (placeholder).
-        // Vehicles render via the static-prop batcher and are NOT yet
-        // distinguishable; vehicles-hot is a documented follow-up.
-        //
-        // FIREWALL NOTE (manual review — GameOS/ is OUTSIDE the
-        // check-include-firewall.sh SCOPE_DIRS, so the CI script does NOT police
-        // this call): RenderWorld::MechHandleIndexBase() is a deliberate,
-        // RenderWorld-owned classification API (RenderWorld owns the handle
-        // partition; see RenderWorld.h). RenderWorld.h was already included here
-        // (M1.5 IsObjectIdBufferEnabled) — no new engine header crosses a seam.
-        // The numeric threshold must reach the GPU as a uniform; there is no
-        // per-pixel C++ classifier path. Reviewed clean (render-spine advisor M2).
-        compositeProg_->setInt("u_engineIdxBase",
-            sceneObjectIdTex_ != 0 ? (int)RenderWorld::MechHandleIndexBase() : 0);
-
-        // LOWLIGHT-NIGHTVISION-MVP-1: night-vision tunables (read only by the
-        // shader when effectiveMode == 5; harmless no-op uniforms otherwise).
-        compositeProg_->setFloat("u_lowLightGain", lowLightGain_);
-        compositeProg_->setFloat3("u_lowLightTint", lowLightTint_);
-
-        compositeProg_->apply();
-
-        // GLSTATE-GUARD-ADOPTION-1: the composite is the LAST tex-binding draw
-        // before gos_InvalidateRenderStateCache() (line ~2281). That invalidate
-        // does NOT track texture-unit state (see gl_state_guard.h L160-177), so
-        // the unit-0/unit-2 bindings set below otherwise leak past endScene into
-        // the next renderer (HUD/menu) — the reported "post-fx textures bleed
-        // into menus" symptom. These guards snapshot the prior unit-0/unit-2
-        // GL_TEXTURE_2D bindings + active unit on construction and restore them
-        // when this block exits at the closing brace below — which is BEFORE the
-        // invalidate call, satisfying the header's block-scope requirement.
-        // Restore-previous is behavior-neutral for the composite's own draw.
-        mc2gl::GlScopedTextureUnit unit0Guard(0);
-        mc2gl::GlScopedTextureUnit unit2Guard(2);
-
-        // Bind scene color texture to unit 0
-        // FEEDBACK-SAFE: composite resolve — the draw target is the backbuffer (FBO 0,
-        // bound earlier in endScene), NOT sceneFBO_, so sampling sceneColorTex_ here
-        // reads the resolved scene into a different target. Not a feedback loop.
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, sceneColorTex_);
-
-        // Bind object-ID texture to unit 2 (GL_R32UI; read only in ObjectIdDebug mode).
-        // Only bind when the texture exists — if sceneObjectIdTex_==0 effectiveMode
-        // was already forced back to 0 above so the usampler2D goes unread.
-        // Do NOT bind a mismatched type (float tex to usampler2D) as that causes GL errors.
-        if (sceneObjectIdTex_ != 0) {
-            glActiveTexture(GL_TEXTURE2);
-            glBindTexture(GL_TEXTURE_2D, sceneObjectIdTex_);
-        }
-
-        // Draw the fullscreen quad
-        glBindVertexArray(quadVAO_);
-        glDrawArrays(GL_TRIANGLES, 0, 6);
-        glBindVertexArray(0);
-
-        glActiveTexture(GL_TEXTURE0);
-    }
 
     // Shadow debug overlay (draws on top of composite)
     drawShadowDebugOverlay();

@@ -391,8 +391,8 @@ L(Presence, "MC2_HAZE_PARITY", Bool, false, "terrain", "", "Step 7 (VPL retireme
 L(Lead0Kill, "MC2_HDRI_BC6H", Bool, true, "gameos", "", "", verified),
 L(Lead0Kill, "MC2_HDRI_SKY", Bool, true, "post", "", "", verified),
 P("MC2_HDRI_SKY_AZ_OFFSET", Float, 0.0, "post", "", "", verified),
-L(Lead0P, "MC2_HDRI_SKY_FRAME_FIX", Bool, false, "post", "", "", verified),
-L(Lead0P, "MC2_HDRI_SKY_UV_DEBUG", Bool, false, "post", "", "", verified),
+L(Lead0P, "MC2_HDRI_SKY_FRAME_FIX", Bool, false, "post", "", ""),
+L(Lead0P, "MC2_HDRI_SKY_UV_DEBUG", Bool, false, "post", "", ""),
 L(Presence, "MC2_HEARTBEAT", Bool, false, "gameos", "", "", passthrough | verified),
 P("MC2_HEIGHT", Int, 0, "gameos", "", "", passthrough | verified),
 P("MC2_HITCH_MS", Float, 0.0, "gameos", "", "", passthrough | verified),  // default not derivable from the tree
@@ -968,7 +968,7 @@ P("MC2_TERRAIN_AMBIENT_FLOOR", Float, 0.35, "terrain", "", "TERRAIN-AMBIENT-FLOO
 // history: docs/gate-history.md#MC2_TERRAIN_AMBIENT_FLOOR_NIGHT
 P("MC2_TERRAIN_AMBIENT_FLOOR_NIGHT", Float, 0.0, "terrain", "", "TERRAIN-AMBIENT-FLOOR-NIGHT-1: 0..1 FLOOR under TERRAIN-AMBIENT-FLOOR-2's daylight gate; the uploaded gate becomes max(dayGate, floor).", passthrough | registry(Feature, "MC2_FEATURE_TERRAIN_AMBIENT_FLOOR_NIGHT", -1, false) | clampRange(0.0, 1.0) | verified),
 // history: docs/gate-history.md#MC2_TERRAIN_AMBIENT_FLOOR_TRACE
-L(Presence, "MC2_TERRAIN_AMBIENT_FLOOR_TRACE", Bool, false, "terrain", "", "TERRAIN-AMBIENT-FLOOR-2 trace: prints ONE line at the first terrain-chunk uniform upload giving the resolved floor strength, the daylight gate ACTUALLY...", passthrough | registry(Trace, "MC2_TRACE_TERRAIN_AMBIENT_FLOOR", -1, false) | verified),
+L(Presence, "MC2_TERRAIN_AMBIENT_FLOOR_TRACE", Bool, false, "terrain", "", "TERRAIN-AMBIENT-FLOOR-2 trace: prints ONE line at the first terrain-chunk uniform upload giving the resolved floor strength, the daylight gate ACTUALLY...", passthrough | registry(Trace, "MC2_TRACE_TERRAIN_AMBIENT_FLOOR", -1, false)),
 L(Lead0, "MC2_TERRAIN_CEMENT_DIAG_CONNECT", Bool, false, "terrain", "", "", verified),
 // history: docs/gate-history.md#MC2_TERRAIN_CLIFF_DISPLACE
 L(Lead0, "MC2_TERRAIN_CLIFF_DISPLACE", Bool, false, "terrain", "", "SLICE 3: near-field cliff tessellation on the LOD-chunk terrain path.", passthrough | registry(Feature, "MC2_FEATURE_TERRAIN_CLIFF_DISPLACE", -1, false) | verified),
@@ -1033,8 +1033,8 @@ L(Presence, "MC2_TERRAIN_LOD_CHUNK_NO_CULL", Bool, false, "terrain", "", "Diagno
 L(Presence, "MC2_TERRAIN_LOD_CHUNK_NO_SKIRTS", Bool, false, "terrain", "", "", verified),
 L(Presence, "MC2_TERRAIN_LOD_CHUNK_NO_STITCH", Bool, false, "terrain", "", "Phase 10.2b: PER-EDGE mask.", verified),
 P("MC2_TERRAIN_LOD_CHUNK_SKIRT_MAX", Float, 256.0, "terrain", "", "", verified),
-L(Presence, "MC2_TERRAIN_LOD_DEPTH_ALWAYS", Bool, false, "terrain", "", "Phase 10.3: chunk terrain is OPAQUE and must EXPLICITLY own depth/blend/ cull state.", verified),
-L(Lead0Kill, "MC2_TERRAIN_LOD_GEOMORPH", Bool, true, "terrain", "", "", verified),
+L(Presence, "MC2_TERRAIN_LOD_DEPTH_ALWAYS", Bool, false, "terrain", "", "Phase 10.3: chunk terrain is OPAQUE and must EXPLICITLY own depth/blend/ cull state."),
+L(Lead0Kill, "MC2_TERRAIN_LOD_GEOMORPH", Bool, true, "terrain", "", ""),
 P("MC2_TERRAIN_LOD_MORPH_START", Float, 0.6, "terrain", "", "", clampRange(0.0, 0.95) | verified),
 L(Lead0, "MC2_TERRAIN_MACRO_VARIATION", Bool, false, "terrain", "", "", verified),
 P("MC2_TERRAIN_MACRO_VARIATION_STRENGTH", Float, 1.0, "terrain", "", "", rangeAbove(0.0, 3.4028234663852886e38) | verified),
@@ -1051,7 +1051,7 @@ G("MC2_TERRAIN_MATERIAL_LIB_FILE", String, "", "terrain", "", "", passthrough | 
 // history: docs/gate-history.md#MC2_TERRAIN_MATERIAL_TEXTURES
 L(Lead0, "MC2_TERRAIN_MATERIAL_TEXTURES", Bool, false, "terrain", "", "TERRAIN-MATERIAL-TEXTURES-1: 6-layer BC7 sRGB GL_TEXTURE_2D_ARRAY albedo (rock/grass/dirt/concrete/snow/cliff from...", passthrough | registry(Feature, "MC2_FEATURE_TERRAIN_MATERIAL_TEXTURES", -1, false) | verified),
 // history: docs/gate-history.md#MC2_TERRAIN_MATERIAL_TEXTURES_STRENGTH
-P("MC2_TERRAIN_MATERIAL_TEXTURES_STRENGTH", Float, -1.0, "terrain", "", "TERRAIN-MATERIAL-TEXTURES-1 knob: albedo mix strength override (float, clamped 0..1).", passthrough | clampRange(0.0, 1.0) | registry(Trace, "MC2_TUNE_TERRAIN_MATERIAL_TEXTURES_STRENGTH", -1, false) | verified),
+P("MC2_TERRAIN_MATERIAL_TEXTURES_STRENGTH", Float, -1.0, "terrain", "", "TERRAIN-MATERIAL-TEXTURES-1 knob: albedo mix strength override (float, clamped 0..1).", passthrough | clampRange(0.0, 1.0) | registry(Trace, "MC2_TUNE_TERRAIN_MATERIAL_TEXTURES_STRENGTH", -1, false)),
 L(Presence, "MC2_TERRAIN_MINE_AB", Bool, false, "terrain", "", "", verified),
 L(Lead0Kill, "MC2_TERRAIN_NORMAL_ARRAY", Bool, true, "gameos", "", "", verified),
 // TERRAIN-OVERLAY-V2-PARITY-1: authored cement/pad/runway overlay sidecar.
@@ -1076,14 +1076,14 @@ L(Lead1, "MC2_TERRAIN_RUNTIME_PARITY", Bool, false, "terrain", "", "", verified)
 // history: docs/gate-history.md#MC2_TERRAIN_SHADOW_GUARD_CLAMPED_SUN
 L(Lead0Kill, "MC2_TERRAIN_SHADOW_GUARD_CLAMPED_SUN", Bool, true, "gameos", "", "TERRAIN-SHADOW-GUARD-1: the TERRAIN-side twin of SHADOW-SUNCLAMP-1, and the one that actually moves world pixels.", passthrough | registry(Feature, "MC2_FEATURE_TERRAIN_SHADOW_GUARD_CLAMPED_SUN", -1, true) | verified),
 L(Lead0Kill, "MC2_TERRAIN_SHORELINE", Bool, true, "terrain", "", "", passthrough | verified),
-P("MC2_TERRAIN_SHORELINE_EDGE_JITTER", Float, 4.0, "terrain", "", "", clampRange(0.0, 32.0) | verified),
+P("MC2_TERRAIN_SHORELINE_EDGE_JITTER", Float, 4.0, "terrain", "", "", clampRange(0.0, 32.0)),
 G("MC2_TERRAIN_SHORELINE_FILE", String, "", "terrain", "", "", passthrough | verified),
-P("MC2_TERRAIN_SHORELINE_FOAM", Float, 1.0, "terrain", "", "", clampRange(0.0, 2.0) | verified),
-P("MC2_TERRAIN_SHORELINE_FOAM_HEIGHT", Float, 5.0, "terrain", "", "", rangeAbove(0.0, 3.4028234663852886e38) | verified),
-P("MC2_TERRAIN_SHORELINE_FOAM_RUN", Float, 5.0, "terrain", "", "", rangeAbove(0.0, 3.4028234663852886e38) | verified),
-P("MC2_TERRAIN_SHORELINE_STRENGTH", Float, 1.0, "terrain", "", "", clampRange(0.0, 2.0) | verified),
-P("MC2_TERRAIN_SHORELINE_WET_HEIGHT", Float, 16.0, "terrain", "", "", rangeAbove(0.0, 3.4028234663852886e38) | verified),
-P("MC2_TERRAIN_SHORELINE_WET_RUN", Float, 16.0, "terrain", "", "", rangeAbove(0.0, 3.4028234663852886e38) | verified),
+P("MC2_TERRAIN_SHORELINE_FOAM", Float, 1.0, "terrain", "", "", clampRange(0.0, 2.0)),
+P("MC2_TERRAIN_SHORELINE_FOAM_HEIGHT", Float, 5.0, "terrain", "", "", rangeAbove(0.0, 3.4028234663852886e38)),
+P("MC2_TERRAIN_SHORELINE_FOAM_RUN", Float, 5.0, "terrain", "", "", rangeAbove(0.0, 3.4028234663852886e38)),
+P("MC2_TERRAIN_SHORELINE_STRENGTH", Float, 1.0, "terrain", "", "", clampRange(0.0, 2.0)),
+P("MC2_TERRAIN_SHORELINE_WET_HEIGHT", Float, 16.0, "terrain", "", "", rangeAbove(0.0, 3.4028234663852886e38)),
+P("MC2_TERRAIN_SHORELINE_WET_RUN", Float, 16.0, "terrain", "", "", rangeAbove(0.0, 3.4028234663852886e38)),
 L(Lead0, "MC2_TERRAIN_SLOPE_BIAS", Bool, false, "terrain", "", "", verified),
 P("MC2_TERRAIN_SLOPE_BIAS_STRENGTH", Float, 1.0, "terrain", "", "", rangeAbove(0.0, 3.4028234663852886e38) | verified),
 P("MC2_TERRAIN_SNOW_BRIGHTNESS_DAMPEN", Float, 0.78, "terrain", "", "Snow brightness dampen: <1 darkens detected-snow fragments.", verified),

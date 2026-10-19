@@ -5,7 +5,7 @@
 generator_version: "3.0.0"
 gate_count: 935
 registry_entry_count: 188
-verified_count: 902
+verified_count: 889
 flags:
   - name: MC2_3DVIEW_DIAG
     kind: Bool
@@ -2148,14 +2148,12 @@ flags:
     rule: Lead0P
     owner: post
     doc: ""
-    verified: true
   - name: MC2_HDRI_SKY_UV_DEBUG
     kind: Bool
     default: false
     rule: Lead0P
     owner: post
     doc: ""
-    verified: true
   - name: MC2_HEARTBEAT
     kind: Bool
     default: false
@@ -5259,7 +5257,6 @@ flags:
     owner: terrain
     doc: "TERRAIN-AMBIENT-FLOOR-2 trace: prints ONE line at the first terrain-chunk uniform upload giving the resolved floor strength, the daylight gate ACTUALLY..."
     smoke_passthrough: true
-    verified: true
     registry: {feature_id: MC2_TRACE_TERRAIN_AMBIENT_FLOOR, kind: Trace, order: -1, default_on: false}
   - name: MC2_TERRAIN_CEMENT_DIAG_CONNECT
     kind: Bool
@@ -5579,14 +5576,12 @@ flags:
     rule: Presence
     owner: terrain
     doc: "Phase 10.3: chunk terrain is OPAQUE and must EXPLICITLY own depth/blend/ cull state."
-    verified: true
   - name: MC2_TERRAIN_LOD_GEOMORPH
     kind: Bool
     default: true
     rule: Lead0Kill
     owner: terrain
     doc: ""
-    verified: true
   - name: MC2_TERRAIN_LOD_MORPH_START
     kind: Float
     default: 0.600000024
@@ -5668,7 +5663,6 @@ flags:
     doc: "TERRAIN-MATERIAL-TEXTURES-1 knob: albedo mix strength override (float, clamped 0..1)."
     range: {lo: 0, hi: 1, style: clamp}
     smoke_passthrough: true
-    verified: true
     registry: {feature_id: MC2_TUNE_TERRAIN_MATERIAL_TEXTURES_STRENGTH, kind: Trace, order: -1, default_on: false}
   - name: MC2_TERRAIN_MINE_AB
     kind: Bool
@@ -5776,7 +5770,6 @@ flags:
     owner: terrain
     doc: ""
     range: {lo: 0, hi: 32, style: clamp}
-    verified: true
   - name: MC2_TERRAIN_SHORELINE_FILE
     kind: String
     default: ""
@@ -5792,7 +5785,6 @@ flags:
     owner: terrain
     doc: ""
     range: {lo: 0, hi: 2, style: clamp}
-    verified: true
   - name: MC2_TERRAIN_SHORELINE_FOAM_HEIGHT
     kind: Float
     default: 5
@@ -5800,7 +5792,6 @@ flags:
     owner: terrain
     doc: ""
     range: {lo: 0, hi: 3.4028234663852886e+38, style: reject, lo_exclusive: true}
-    verified: true
   - name: MC2_TERRAIN_SHORELINE_FOAM_RUN
     kind: Float
     default: 5
@@ -5808,7 +5799,6 @@ flags:
     owner: terrain
     doc: ""
     range: {lo: 0, hi: 3.4028234663852886e+38, style: reject, lo_exclusive: true}
-    verified: true
   - name: MC2_TERRAIN_SHORELINE_STRENGTH
     kind: Float
     default: 1
@@ -5816,7 +5806,6 @@ flags:
     owner: terrain
     doc: ""
     range: {lo: 0, hi: 2, style: clamp}
-    verified: true
   - name: MC2_TERRAIN_SHORELINE_WET_HEIGHT
     kind: Float
     default: 16
@@ -5824,7 +5813,6 @@ flags:
     owner: terrain
     doc: ""
     range: {lo: 0, hi: 3.4028234663852886e+38, style: reject, lo_exclusive: true}
-    verified: true
   - name: MC2_TERRAIN_SHORELINE_WET_RUN
     kind: Float
     default: 16
@@ -5832,7 +5820,6 @@ flags:
     owner: terrain
     doc: ""
     range: {lo: 0, hi: 3.4028234663852886e+38, style: reject, lo_exclusive: true}
-    verified: true
   - name: MC2_TERRAIN_SLOPE_BIAS
     kind: Bool
     default: false

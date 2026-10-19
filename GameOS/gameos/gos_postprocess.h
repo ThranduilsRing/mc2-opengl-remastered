@@ -24,10 +24,8 @@ public:
     // Bind the HDR scene FBO so all rendering goes into it
     void beginScene();
 
-    // Composite the HDR scene onto the default framebuffer via fullscreen quad
+    // Composite the HDR scene into the Vulkan present image
     void endScene();
-
-    void renderSkybox(float sunDirX, float sunDirY, float sunDirZ);
 
     bool   isHdriReady()  const { return hdriReady_; }
     GLuint getHdriTex()   const { return hdriTex_; }   // WATER-HDRI-REFL-1
@@ -37,7 +35,6 @@ public:
     // wrapper (executorOwnBegin / executorOwnEnd) in gos_postprocess.cpp to
     // validate pre/postconditions without touching private members from outside
     // the class. These expose only what the executor's IslandContract checks.
-    bool executorCompositeProgramValid() const;   // compositeProg_ && is_valid()
     bool executorSceneColorTexValid()    const;   // sceneColorTex_ != 0
     bool executorSceneHasTerrain()       const { return sceneHasTerrain_; }
 
@@ -56,25 +53,9 @@ public:
     }
 
     // Renders the HDRI background as a fullscreen triangle.
-    // Assumes scene FBO is bound. Writes only color attachment 0.
+    // The Vulkan terrain pass consumes the queued sky after drawing terrain.
     // viewMat, projMat are column-major 4x4 floats (16 floats each).
     void renderHdriSkybox(const float* viewMat, const float* projMat);
-
-    // HDRI-SKY frame fix (MC2_HDRI_SKY_FRAME_FIX ON path): renders the HDRI
-    // background reconstructing the world ray directly from the camera's
-    // WORLD-space basis (raw MC2 frame x=east, y=north, z=elevation) instead
-    // of inverting view+proj. camFwd/camRight/camUp are float[3]; tHX/tHY are
-    // tan(halfFOV) horizontal / vertical.
-    void renderHdriSkyboxBasis(const float* camFwd, const float* camRight,
-                               const float* camUp, float tHX, float tHY);
-
-    // HDRI-SKY frame fix (MC2_HDRI_SKY_FRAME_FIX ON path, one-proven-matrix).
-    // Unprojects NDC through the inverse of worldToClipGL (the EXACT matrix
-    // the GPU rasterizes terrain with) to reconstruct the sky ray in the raw
-    // MC2 world frame (x=east, y=north, z=elevation, Z-up). No camera-basis,
-    // no FOV, no handedness guessing. invVP16 is column-major 16 floats =
-    // inverse(worldToClipGL), uploaded verbatim (same convention as invProj).
-    void renderHdriSkyboxInvVP(const float* invVP16);
 
     // Shadow mapping
     void initShadows();
@@ -439,12 +420,6 @@ private:
     GLuint quadVAO_;
     GLuint quadVBO_;
 
-    // Composite shader
-    glsl_program* compositeProg_;
-
-    // Skybox
-    glsl_program* skyboxProg_;
-
     // HDRI-SKY-1: background sky from a single equirect HDRI.
     // All HDRI state is null/false when MC2_HDRI_SKY=0 or load fails.
     GLuint        hdriTex_         = 0;
@@ -452,13 +427,8 @@ private:
     std::shared_ptr<struct HdriCpuImage> hdriCpu_;
     uint64_t      hdriCpuGeneration_ = 0;
     void          loadHdri(const char* path, float* outSunAz, bool* outSunValid);   // sets hdriTex_ and hdriCpu_
-    glsl_program* hdriSkyboxProg_  = nullptr;
     bool          hdriEnabled_     = false;  // resolved once from env at init
-    bool          hdriReady_       = false;  // true iff tex + program both valid
-    GLuint        hdriDummyVao_    = 0;      // fallback when quadVAO_ unavailable
-    // SKYBOX-FOG-EXCLUDE-1: stencil-only tag pass program (hdri_skybox_stencil_tag.frag).
-    // Compiled lazily on first use.
-    glsl_program* hdriSkyboxStencilTagProg_ = nullptr;
+    bool          hdriReady_       = false;  // HDRI source is available to Vulkan
     // HDRI-SKY Item 2: GL-equirect azimuth (radians) of the baked sun in the
     // EXR, derived at load time by luminance-weighted centroid of the brightest
     // above-horizon texels. NaN => scan unavailable (sun-sync stays disabled).

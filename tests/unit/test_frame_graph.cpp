@@ -545,7 +545,7 @@ TEST_CASE("executor island (b): findIslandContract(PostProcess) returns non-null
     const IslandContract* c = findIslandContract(ExecutorIslandId::PostProcess);
     CHECK(c != nullptr);
     if (c) {
-        CHECK(c->requiresProgramValid    == true);
+        CHECK(c->requiresProgramValid    == false);
         CHECK(c->requiresSceneColorTex   == true);
         CHECK(c->requiresSceneDepthTex   == false);
         CHECK(c->warnIfNoTerrainLatch    == true);
