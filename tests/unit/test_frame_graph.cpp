@@ -1036,18 +1036,18 @@ TEST_CASE("statepack (f): routed passes have non-Invalid pipelineId; non-routed 
     const RenderPassId routed[] = {
         RenderPassId::StaticPropOpaque,
         RenderPassId::MechOpaque,
-        RenderPassId::Terrain,
         RenderPassId::TerrainOverlay,
         RenderPassId::TerrainDecal,
     };
-    for (int i = 0; i < 5; ++i) {
-        const RenderStateDesc* r = findPassRenderState(routed[i]);
+    for (RenderPassId id : routed) {
+        const RenderStateDesc* r = findPassRenderState(id);
         REQUIRE(r != nullptr);
         CHECK(static_cast<unsigned>(r->pipelineId) != static_cast<unsigned>(RenderCore::PipelineId::Invalid));
-        CHECK(passHasStaticPipeline(routed[i]) == true);
+        CHECK(passHasStaticPipeline(id) == true);
     }
     // Passes with no single PipelineId (multi-pipeline, descriptive-only, or no routing):
     const RenderPassId invalid[] = {
+        RenderPassId::Terrain,
         RenderPassId::Water,
         RenderPassId::Shadow,
         RenderPassId::VegetationCards,
@@ -1055,8 +1055,8 @@ TEST_CASE("statepack (f): routed passes have non-Invalid pipelineId; non-routed 
         RenderPassId::UI,
         RenderPassId::PostProcess,
     };
-    for (int i = 0; i < 6; ++i) {
-        CHECK(passHasStaticPipeline(invalid[i]) == false);
+    for (RenderPassId id : invalid) {
+        CHECK(passHasStaticPipeline(id) == false);
     }
 }
 

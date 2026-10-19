@@ -834,6 +834,7 @@ bool gosPostProcess::runVkPostHzbNative(const Mc2ColorPropFeed& feed, uint32_t g
     g_health.vkDraws = static_cast<unsigned long>(s->mipCount);
     ++g_health.usedVulkan;
     g_health.renderUs = std::chrono::duration<double, std::micro>(clk::now() - t0).count();
+    setFallback("");
     return true;
 }
 
