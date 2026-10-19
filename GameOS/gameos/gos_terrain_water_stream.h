@@ -75,61 +75,9 @@ static_assert(sizeof(WaterRecipe) == 64,
 constexpr uint32_t kFlagBitUvModeBottomLeft = 0x1u;
 constexpr uint32_t kFlagBitHasDetail        = 0x2u;
 
-// Per-frame thin record (mirrors M1d/M1g terrain thin-record pattern).
-// Built each frame from the current quadList window. Each entry points to
-// a stable WaterRecipe via recipeIdx and carries the per-frame mutable state.
-//
-// 48 B/record. flags layout (mirrors gos_terrain_thin.vert flags):
-//   bit 0: pzTri1Valid (corners 0,1,2 — or 0,1,3 for BOTTOMLEFT — all pass `wz ∈ [0,1)`)
-//   bit 1: pzTri2Valid (corners 0,2,3 — or 1,2,3 for BOTTOMLEFT — all pass `wz ∈ [0,1)`)
-//
-// The per-triangle pz gate is THE LOAD-BEARING CPU PRE-CULL per
-// memory:terrain_tes_projection.md: "There is no homogeneous clip-space test
-// the GPU clipper can do to distinguish 'valid visible vert' from
-// 'behind-camera vert that should be rejected.'" wz comes from the per-frame
-// water projection in setupTextures (quad.cpp:715-722) — exactly the same
-// post-perspective-divide z the legacy water emit gate at quad.cpp:2812 uses.
-struct alignas(16) WaterThinRecord {
-    uint32_t recipeIdx;     // index into WaterRecipe array (stable, map-keyed)
-    uint32_t flags;         // bit 0 = pzTri1Valid, bit 1 = pzTri2Valid
-    uint32_t _pad0, _pad1;
-    uint32_t lightRGB0, lightRGB1, lightRGB2, lightRGB3; // ARGB per corner
-    uint32_t fogRGB0,   fogRGB1,   fogRGB2,   fogRGB3;   // fogRGB.w = FogValue
-};
-static_assert(sizeof(WaterThinRecord) == 48,
-              "WaterThinRecord must be 48 bytes for std430 alignment");
-
-constexpr uint32_t kWaterThinFlagPzTri1Valid = 0x1u;
-constexpr uint32_t kWaterThinFlagPzTri2Valid = 0x2u;
-
-// --- Narrow-walk fast path -------------------------------------------------
-//
-// Default-on (env-gate `MC2_WATER_UPLOAD_NARROW=0` to opt out and fall back
-// to the legacy full-quadList walk). The narrow walk lets the caller append
-// candidates during the same `setupTextures()` loop the engine already runs,
-// reducing UploadAndBindThinRecords' iteration count from `numberQuads`
-// (camera window, ~14K-40K) to only the water-bearing subset (typically
-// hundreds). Eligibility test must match UploadThin's exactly.
-//
-// Contract:
-//   1. BeginFrameNarrow() at the top of the per-frame setupTextures loop —
-//      clears the candidate vector, reserves prior-frame max + 10% slack.
-//   2. AppendNarrowCandidate(&q) immediately after `q.setupTextures()` for
-//      every quad whose corners + waterHandle pass the same predicate
-//      UploadAndBindThinRecords applies. O(1), no allocation in the hot
-//      path after the BeginFrameNarrow reserve.
-//   3. UploadAndBindThinRecords reads the candidate vector if narrow mode
-//      is on; otherwise falls back to the full quadList walk.
-bool NarrowEnabled();
-void BeginFrameNarrow();
-struct NarrowCandidate {
-    const void* quadPtr; // TerrainQuadPtr — opaque to keep the header lean
-};
-void AppendNarrowCandidate(const void* quadPtr);
-
 // WATER-GPU-FULL-RECIPE-CULL-1B: true when authoritative full-recipe GPU cull is
-// enabled (MC2_WATER_GPU_FULL_RECIPE_AUTHORITATIVE, default-OFF). When true the CPU
-// narrow walk is skipped and the GPU culls the whole world-indexed recipe set
+// enabled (MC2_WATER_GPU_FULL_RECIPE_AUTHORITATIVE, default-ON). The native
+// GPU culls the whole world-indexed recipe set
 // directly into the draw-feeding thin buffer.
 bool IsFullRecipeAuthoritative();
 
@@ -200,10 +148,8 @@ float EffAlphaDepth(float baseAlphaDepth);
 //   ShoreMeanderWu()   : amplitude in wu (0 if unset/<=0 -> disabled).
 //   ShoreMeanderFreq() : spatial frequency in cycles/wu (MC2_WATER_SHORE_MEANDER_FREQ).
 //   EffShoreExt(base)  : the SINGLE source of truth for the tile-admission
-//                        shore extent, shared by all four predicate mirrors
-//                        (this .cpp, both mclib/terrain.cpp narrow-append
-//                        branches, and the u_shoreExt fed to
-//                        gpu_driven_water.comp). It widens by the meander
+//                        shore extent, shared by recipe building and the native cull
+//                        through VkNativeInputs::shoreExt. It widens by the meander
 //                        amplitude so geometry exists wherever the meander
 //                        can push water landward — otherwise the contour
 //                        would be clipped back to a tile edge and the step
@@ -226,6 +172,10 @@ struct VkNativeInputs {
     uint32_t recipeCount;
 };
 bool GetVkNativeInputs(VkNativeInputs& out);
+
+// Readiness of the native input source, usable before the water pass captures
+// its per-frame MVP/scalars. Does not read a previous frame's captured snapshot.
+bool NativeInputSourceReady();
 
 // Captures the per-frame native-producer scalars at the water pass (the GL compute dispatch, the CPU thin pack, the GL draw and the readback
 // feed are gone). False = no water this frame.

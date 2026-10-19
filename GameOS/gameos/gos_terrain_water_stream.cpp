@@ -1,10 +1,8 @@
 // GameOS/gameos/gos_terrain_water_stream.cpp
 //
-// Stage 2 of the renderWater architectural slice (CPU→GPU offload).
-// Builds a static, map-keyed CPU-side recipe array describing every
-// water-bearing terrain quad in the mission. Each frame, walks the live
-// (camera-windowed) quadList and emits a thin record per in-window water
-// quad, looked up by stable map vertexNum → recipe-index hash.
+// Native water input source: mission-static recipes plus per-frame scalars.
+// The Vulkan producer culls the recipe population and emits thin records.
+// No CPU candidate walk or GL upload remains.
 //
 // Why the indirection: `Terrain::quadList` is rebuilt every frame as a
 // camera-relative window (mapdata.cpp:1072 makeLists), so a "static recipe
@@ -23,7 +21,6 @@ extern int gos_WaterShoreMode();
 #include "gpu_driven_common.h"
 #include "gos_static_prop_killswitch.h"  // gos_GetTerrainMVPMat4()
 #include "gos_terrain_indirect.h"        // IsFrameSolidArmed()
-#include <algorithm>                     // std::sort -- surfaced by MC2_ASAN build (Tracy-disabled config drops the transitive include)
 #include <cassert>
 
 // WATER-BIAS-LINEARIZE-1 (gameos.hpp): FAST-water bias mode (0 = proportional
@@ -37,8 +34,6 @@ extern int mc2WaterBiasLegacy();
 #include <cstring>
 #include <cmath>
 #include <string>
-
-#include <GL/glew.h>
 
 #include "../../mclib/terrain.h"
 #include "../../mclib/quad.h"
@@ -157,20 +152,6 @@ std::vector<WaterRecipe> g_recipes;
 std::unordered_map<uint32_t, uint32_t> g_vertexNumToRecipe;
 bool g_ready = false;
 
-// Narrow-walk candidate vector. Populated by AppendNarrowCandidate during
-// the per-frame setupTextures loop (only when the full-recipe path is off, which now means no water);
-// nothing reads it since the CPU thin pack went (mclib quad setup still keys on NarrowEnabled()).
-std::vector<TerrainQuadPtr> g_narrowQuadsThisFrame;
-uint32_t g_narrowMaxSeen = 0;
-bool s_narrowEnabledKnown = false;
-bool s_narrowEnabled = true;
-inline bool NarrowEnabledImpl() {
-    if (!s_narrowEnabledKnown) {
-        s_narrowEnabled = mc2::gate::get<"MC2_WATER_UPLOAD_NARROW">();
-        s_narrowEnabledKnown = true;
-    }
-    return s_narrowEnabled;
-}
 bool s_debugEnabledKnown = false;
 bool s_debugEnabled = false;
 bool DebugOn() {
@@ -197,20 +178,10 @@ void Reset() {
     g_recipes.shrink_to_fit();
     g_vertexNumToRecipe.clear();
     g_ready = false;
-    g_narrowQuadsThisFrame.clear();
-    g_narrowQuadsThisFrame.shrink_to_fit();
-    g_narrowMaxSeen = 0;
 }
 
-bool NarrowEnabled() {
-    return NarrowEnabledImpl();
-}
-
-// WATER-GPU-FULL-RECIPE-CULL-1B: authoritative full-recipe GPU cull. When ON, the
-// compute path culls the whole world-indexed recipe set directly (no CPU candidate
-// window), its output FEEDS THE DRAW, and the CPU narrow walk is skipped. Default-OFF
-// (only literal "0" disambiguates the off-with-value case). Proven byte-identical to
-// the candidate path by 1A parity across tier1 + a camera-pan-across-water-edge check.
+// Default-on native full-recipe GPU cull. Disabling it produces no water;
+// the retired CPU candidate path is not a fallback.
 bool IsFullRecipeAuthoritative() {
     static bool s_known = false, s_val = false;
     if (!s_known) {
@@ -221,27 +192,6 @@ bool IsFullRecipeAuthoritative() {
         s_known = true;
     }
     return s_val;
-}
-
-void BeginFrameNarrow() {
-    if (!NarrowEnabledImpl()) return;
-    // Reserve last-frame max + 10% slack, capped at recipe count (the hard
-    // upper bound — every map water quad simultaneously). vector::clear is
-    // O(n) destructor-call here but TerrainQuadPtr is a trivial pointer, so
-    // it's effectively a size reset. No allocation in the hot loop.
-    const size_t reserve = (size_t)(g_narrowMaxSeen + (g_narrowMaxSeen / 10) + 64);
-    if (g_narrowQuadsThisFrame.capacity() < reserve)
-        g_narrowQuadsThisFrame.reserve(reserve);
-    g_narrowQuadsThisFrame.clear();
-}
-
-void AppendNarrowCandidate(const void* quadPtr) {
-    // Caller asserts the quad already passed the same predicate
-    // UploadAndBindThinRecords applies (corners non-null, vertexNum >= 0,
-    // waterHandle != 0xffffffff). The Upload loop re-checks defensively.
-    g_narrowQuadsThisFrame.push_back((TerrainQuadPtr)quadPtr);
-    if (g_narrowQuadsThisFrame.size() > g_narrowMaxSeen)
-        g_narrowMaxSeen = (uint32_t)g_narrowQuadsThisFrame.size();
 }
 
 void Build() {
@@ -435,15 +385,21 @@ const WaterRecipe* RecipeForVertexNum(int32_t vn) {
     return &g_recipes[it->second];
 }
 
+bool NativeInputSourceReady() {
+#ifdef MC2_VULKAN_ISLAND
+    return gpu_driven::IsWaterEnabled() && g_ready && !g_recipes.empty() && IsFullRecipeAuthoritative();
+#else
+    return false;
+#endif
+}
+
 // STEP 3.4P: the native Vulkan cull/pack produces the thin records on the GPU (the GL compute dispatch, the CPU thin pack, the GL thin ring,
 // the GL indirect draw and the GL readback feed were deleted in s62). This captures, once per frame at the water pass, the scalars the native
 // producers read. False = no water this frame (MC2_GPU_DRIVEN_WATER=0 or MC2_WATER_GPU_FULL_RECIPE_AUTHORITATIVE=0 kill it, no recipes, no MVP).
 bool CaptureVkNativeInputs(float frameCos) {
     g_vkNativeValid = false;
 #ifdef MC2_VULKAN_ISLAND
-    if (!gpu_driven::IsWaterEnabled()) return false;
-    if (!g_ready || g_recipes.empty()) return false;
-    if (!IsFullRecipeAuthoritative()) return false;
+    if (!NativeInputSourceReady()) return false;
     const float* nmvp = gos_terrain_indirect::IsFrameSolidArmed() ? gos_terrain_indirect_getDispatchMvp16() : gos_GetTerrainMVPMat4();
     if (!nmvp) nmvp = gos_GetTerrainMVPMat4();
     if (!nmvp) return false;

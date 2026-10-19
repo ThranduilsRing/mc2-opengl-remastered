@@ -5,7 +5,7 @@
 generator_version: "3.0.0"
 gate_count: 945
 registry_entry_count: 191
-verified_count: 913
+verified_count: 912
 flags:
   - name: MC2_3DVIEW_DIAG
     kind: Bool
@@ -7256,7 +7256,6 @@ flags:
     rule: Lead0Kill
     owner: terrain
     doc: ""
-    verified: true
   - name: MC2_WIDTH
     kind: Int
     default: 0

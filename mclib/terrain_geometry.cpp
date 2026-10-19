@@ -414,18 +414,6 @@ void Terrain::geometry (void)
 		// Phase C: SOLID compute dispatch. MUST be AFTER PackAndDispatch above
 		// so Phase 1's post-dispatch barrier has published the lighting SSBO.
 		{ GeoScope _gsIC(GP_INDIRECT); gos_terrain_indirect::ComputeDispatch(); }
-		// Water-fast-path narrow walk: reset the candidate vector once per
-		// frame, then append every quad that passes UploadThin's eligibility
-		// gate immediately after setupTextures() establishes waterHandle.
-		// Predicate MUST match UploadThin's exactly — see
-		// gos_terrain_water_stream.cpp:UploadAndBindThinRecords.
-		WaterStream::BeginFrameNarrow();
-		// WATER-GPU-FULL-RECIPE-CULL-1B: when authoritative full-recipe GPU cull owns
-		// the water draw, the GPU culls the whole world-indexed recipe set directly and
-		// the CPU narrow candidate walk feeds nothing — skip it (this is the ~0.16ms
-		// per-frame walk this lane set out to retire). Proven byte-identical by 1A parity.
-		const bool s_waterNarrowOn =
-			WaterStream::NarrowEnabled() && !WaterStream::IsFullRecipeAuthoritative();
 		// S6 coarse cost A/B instrument: ONE QPC pair around the WHOLE
 		// per-frame setupTextures loop (NOT per-quad - the per-quad
 		// std::chrono COST_SPLIT scopes are observer-effect-poisoned and
@@ -448,19 +436,17 @@ void Terrain::geometry (void)
 		// (draw()/drawWater(), the recipe + mine-enqueue blocks, clipInfo) are
 		// all either skipped or self-gated to no-op when armed, and decals/mines
 		// come from the static bakes (DrawDecalStatic/DrawMineStatic, default-ON
-		// since 2026-05-17). The water producer is the narrow-candidate walk
-		// below, which reads pVertex directly under the fast path and does NOT
-		// need setupTextures. Picking is independent (Camera::inverseProject
+		// since 2026-05-17). The native water producer reads mission recipes and
+		// per-frame native scalars; it does not need setupTextures.
+		// Picking is independent (Camera::inverseProject
 		// forward-projects fresh from vx/vy/elevation — Task 0 verified: zero
-		// wx/wy/wz/clipInfo dependency). The narrow walk MUST still run every
-		// frame because quadList is a camera-relative sliding window (its slots
-		// remap to different world tiles as the view pans), so the eligible-water
-		// set is NOT cacheable across frames. Gate MC2_QUADSETUP_ARMED_SKIP is
+		// wx/wy/wz/clipInfo dependency). Native water recipes are keyed by map
+		// coordinates and do not depend on the camera-relative quadList window.
 		// DEFAULT-ON: only literal "0" opts out, UNSET opts IN. (This sentence read
 		// "Gate default-OFF; ... unset/\"0\" = OFF kill-switch" until ENV-DROP-CLOSE-1,
 		// 2026-07-30 -- contradicting both the DEFAULT-ON line three rows below it
-		// and the reader below that.) NarrowEnabled() is
-		// in the predicate so we only skip when the pVertex water producer is live.
+		// and the reader below that.) NativeInputSourceReady() is
+		// in the predicate so we only skip when the native recipe producer is ready.
 		// DEFAULT-ON since 2026-06-03 (clean Tracy mc2_01 1.01ms->372us, tier1 5/5,
 		// water/mines/decals/picking user-verified): only literal "0" opts out
 		// (bisection / revert escape hatch), any other value INCLUDING UNSET opts in.
@@ -472,7 +458,7 @@ void Terrain::geometry (void)
 			gos_terrain_indirect::WaterFastPathOwnsArmedDraw() &&
 			(Terrain::terrainTextures2 != nullptr) &&
 			!drawTerrainGrid &&
-			WaterStream::NarrowEnabled();
+			WaterStream::NativeInputSourceReady();
 		const bool skipSetup = s_armedSkipOn && fullyArmed;
 
 		// [FASTPATH_DROP] transition log. Default OFF (MC2_FASTPATH_DROP_LOG=1 to enable).
@@ -508,8 +494,8 @@ void Terrain::geometry (void)
 							reason = "T11_NO_TEXTURES2";
 						else if (drawTerrainGrid)
 							reason = "T13_DRAW_TERRAIN_GRID";
-						else if (!WaterStream::NarrowEnabled())
-							reason = "T14_NARROW_DISABLED";
+						else if (!WaterStream::NativeInputSourceReady())
+							reason = "T14_NATIVE_WATER_INPUT_UNAVAILABLE";
 						else
 							reason = "T15_OR_OTHER_SKIP_OFF";
 					}
@@ -532,15 +518,15 @@ void Terrain::geometry (void)
 			}
 		}
 
-		GeoScope _gsQuadSetup(GP_QUADSETUP);  // setup loop + water narrow walk (GPU dispatches timed separately above)
+		GeoScope _gsQuadSetup(GP_QUADSETUP);  // setup loop (GPU dispatches timed separately above)
 		long quadsSkipped = 0;
-		long waterCandidates = 0;
-		// Both per-quad bodies are no-ops in the default-ON steady state (Slice A
-		// skips setupTextures() + 1B's GPU water cull owns selection so the narrow
-		// walk is off): the loop would iterate ~40K quads doing nothing. Skip it
+		constexpr long waterCandidates = 0; // native GPU cull owns selection
+		// The setupTextures body is a no-op in the default-ON steady state:
+		// native water culling owns selection and Slice A skips setupTextures().
+		// The loop would iterate ~40K quads doing nothing. Skip it
 		// whole — retires the residual ~32µs bare-iteration cost. currentQuad is a
 		// pure cursor with no post-loop reader, so it need not advance here.
-		if (skipSetup && !s_waterNarrowOn)
+		if (skipSetup)
 		{
 			quadsSkipped = numberQuads;
 		}
@@ -559,64 +545,6 @@ void Terrain::geometry (void)
 				// (the loud-fail T16/T19 path surfaces a real GL/init failure).
 				++quadsSkipped;
 #endif
-			if (s_waterNarrowOn) {
-				const TerrainQuad& q = *currentQuad;
-				if (q.vertices[0] && q.vertices[1] &&
-				    q.vertices[2] && q.vertices[3] &&
-				    q.vertices[0]->vertexNum >= 0 &&
-				    q.vertices[1]->vertexNum >= 0 &&
-				    q.vertices[2]->vertexNum >= 0 &&
-				    q.vertices[3]->vertexNum >= 0) {
-					bool append;
-					if (gos_terrain_indirect::WaterFastPathOwnsArmedDraw()) {
-						// Water fast path owns this frame (solid+water armed, or water-only intro).
-						// draw-side (ii) is skipped in setupTextures() so waterHandle IS 0xffffffff;
-						// use the vertex water-tile predicate to avoid stale-sentinel false negatives.
-						// Fix A (staircase): also include submerged tiles that lack water&1.
-						// UploadAndBindThinRecords mirrors this predicate exactly.
-						const bool waterFlagged =
-						    (q.vertices[0]->pVertex->water & 1) ||
-						    (q.vertices[1]->pVertex->water & 1) ||
-						    (q.vertices[2]->pVertex->water & 1) ||
-						    (q.vertices[3]->pVertex->water & 1);
-						const float we = Terrain::waterElevation;
-						// Shore-extension: include tiles slightly ABOVE waterElevation.
-						// VS positions them at terrain surface; FS fades via negative-WT smoothstep.
-						// SHORELINE-STAIRCASE-1 (feather floor) + SHORELINE-GEOMETRY-1
-						// (meander widening) via EffShoreExt. NOT default-OFF:
-						// AUDIT-TRUTH-1 (cdd91ad7) made MC2_WATER_SHORE_MEANDER
-						// default 75 wu, so EffShoreExt returns base+75 unless the
-						// gate is explicitly set to 0.
-						const float shoreExt = WaterStream::EffShoreExt(MapData::alphaDepth);
-						const bool submergedSand = !waterFlagged && (
-						    q.vertices[0]->pVertex->elevation < we + shoreExt ||
-						    q.vertices[1]->pVertex->elevation < we + shoreExt ||
-						    q.vertices[2]->pVertex->elevation < we + shoreExt ||
-						    q.vertices[3]->pVertex->elevation < we + shoreExt);
-						append = waterFlagged || submergedSand;
-					} else {
-						// Legacy path: waterHandle is set by setupTextures for water&1 tiles.
-						const bool waterHandleSet = (q.waterHandle != 0xffffffffu);
-						const float we = Terrain::waterElevation;
-						// SHORELINE-STAIRCASE-1 (feather floor) + SHORELINE-GEOMETRY-1
-						// (meander widening) via EffShoreExt. NOT default-OFF:
-						// AUDIT-TRUTH-1 (cdd91ad7) made MC2_WATER_SHORE_MEANDER
-						// default 75 wu, so EffShoreExt returns base+75 unless the
-						// gate is explicitly set to 0.
-						const float shoreExt = WaterStream::EffShoreExt(MapData::alphaDepth);
-						const bool submergedSand = !waterHandleSet && (
-						    q.vertices[0]->pVertex->elevation < we + shoreExt ||
-						    q.vertices[1]->pVertex->elevation < we + shoreExt ||
-						    q.vertices[2]->pVertex->elevation < we + shoreExt ||
-						    q.vertices[3]->pVertex->elevation < we + shoreExt);
-						append = waterHandleSet || submergedSand;
-					}
-					if (append) {
-						WaterStream::AppendNarrowCandidate(currentQuad);
-						++waterCandidates;
-					}
-				}
-			}
 			currentQuad++;
 		}
 		// QUADSETUP-ARMED-SKIP-WALK-1 bounded telemetry (every 600 frames, only

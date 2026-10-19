@@ -1343,7 +1343,7 @@ G("MC2_WATER_SHORE_MODE", Enum, "", "terrain", "", "", tokens("|0|1|2|3") | veri
 L(Lead0, "MC2_WATER_SKYTINT", Bool, false, "gameos", "", "", verified),
 L(Presence, "MC2_WATER_STREAM_DEBUG", Bool, false, "terrain", "", "", passthrough | verified),
 L(Lead1, "MC2_WATER_THINRING_TRACE", Bool, false, "terrain", "", "", passthrough),
-L(Lead0Kill, "MC2_WATER_UPLOAD_NARROW", Bool, true, "terrain", "", "", verified),
+L(Lead0Kill, "MC2_WATER_UPLOAD_NARROW", Bool, true, "terrain", "", ""),
 P("MC2_WIDTH", Int, 0, "gameos", "", "(c) #49 windowed-resolution oracle.", passthrough | verified),
 L(Lead0, "MC2_WINDOWED", Bool, false, "gameos", "", "", passthrough | verified),
 // ── NOFOCUS-HARDEN-1 ───────────────────────────────────────────────────
