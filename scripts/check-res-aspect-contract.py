@@ -183,6 +183,14 @@ GRAPHICS_EVENTS = "GameOS/gameos/gameos_graphics_draw.cpp"    # gosRenderer::han
 CAMERA = "mclib/camera_matrix.cpp"   # Camera::setOrthogonal (the drawable-aspect override) lives in the matrix piece
 
 
+DRAWABLE_ASPECT_RE = re.compile(
+    r"(?:\(\s*float\s*\)\s*Environment\.drawableHeight|"
+    r"static_cast\s*<\s*float\s*>\s*\(\s*Environment\.drawableHeight\s*\))"
+    r"\s*/\s*"
+    r"(?:\(\s*float\s*\)\s*Environment\.drawableWidth|"
+    r"static_cast\s*<\s*float\s*>\s*\(\s*Environment\.drawableWidth\s*\))")
+
+
 def rule_c(ctx: Ctx) -> list[str]:
     problems = []
 
@@ -237,8 +245,7 @@ def rule_c(ctx: Ctx) -> list[str]:
 
     # (iv) drawable-aspect override in Camera::setOrthogonal
     cam_norm = checklib.normalize_ws(checklib.strip_comments(ctx.read(CAMERA)))
-    if not re.search(r"Environment\.drawableHeight\s*/\s*\(\s*float\s*\)\s*"
-                     r"Environment\.drawableWidth", cam_norm):
+    if not DRAWABLE_ASPECT_RE.search(cam_norm):
         problems.append("RULE C(iv): #45 drawable-aspect override "
                         "`Environment.drawableHeight / (float)Environment."
                         "drawableWidth` missing from %s — the perspective "
@@ -319,9 +326,12 @@ def self_test() -> int:
     failures.append(("RULE C(iii) #49 guard", run_all(Ctx({GRAPHICS_EVENTS: t}), True)))
 
     # RULE C(iv): drawable-aspect override reverted.
-    t = checklib.read_text(CAMERA).replace(
-        "(float)Environment.drawableHeight / (float)Environment.drawableWidth",
-        "(float)Environment.screenHeight / (float)Environment.screenWidth")
+    t, replacements = DRAWABLE_ASPECT_RE.subn(
+        "static_cast<float>(Environment.screenHeight) / static_cast<float>(Environment.screenWidth)",
+        checklib.read_text(CAMERA))
+    if not replacements:
+        print("res-aspect-contract --self-test: FAIL (aspect fixture matched nothing)", file=sys.stderr)
+        return EXIT_VIOLATION
     failures.append(("RULE C(iv) #45 revert", run_all(Ctx({CAMERA: t}), True)))
 
     bad = [name for name, rc in failures if rc == EXIT_OK]

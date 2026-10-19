@@ -3,7 +3,6 @@
   "GameOS/gameos/gameos_graphics_hud.cpp": 4,
   "GameOS/gameos/gameos_input.cpp": 2,
   "GameOS/gameos/gameosmain.cpp": 12,
-  "GameOS/gameos/gameosmain_frame.cpp": 2,
   "GameOS/gameos/gameosmain_init.cpp": 10,
   "GameOS/gameos/gos_postprocess.cpp": 2,
   "mclib/camera_matrix.cpp": 13,
