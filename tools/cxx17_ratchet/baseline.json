@@ -193,7 +193,7 @@
    "LG06": 666,
    "LG07": 0,
    "LG08": 70,
-   "LG09": 1363,
+   "LG09": 1139,
    "LG10": 33,
    "LG11": 67,
    "LG12a": 169,
@@ -3221,20 +3221,17 @@
   "mclib/gvactor_geometry.cpp": {
    "LG03": 2,
    "LG06": 1,
-   "LG09": 18,
    "LG10": 1
   },
   "mclib/gvactor_internal.h": {
    "LG13": 3
   },
   "mclib/gvactor_update.cpp": {
-   "LG03": 4,
-   "LG09": 4
+   "LG03": 4
   },
   "mclib/heap.cpp": {
    "LG05": 1,
    "LG06": 1,
-   "LG09": 11,
    "LG12b": 1,
    "LG17": 1
   },
@@ -3244,7 +3241,6 @@
   },
   "mclib/inifile.cpp": {
    "LG06": 28,
-   "LG09": 38,
    "LG17": 3
   },
   "mclib/inifile.h": {
@@ -3254,12 +3250,10 @@
   },
   "mclib/inifile_arrays.cpp": {
    "LG06": 15,
-   "LG09": 23,
    "LG17": 1
   },
   "mclib/inifile_read.cpp": {
    "LG06": 14,
-   "LG09": 13,
    "LG11": 1
   },
   "mclib/lzcomp.cpp": {
@@ -3269,14 +3263,12 @@
   "mclib/lzdecomp.cpp": {
    "LG01": 1,
    "LG05": 1,
-   "LG09": 11,
    "LG13": 6,
    "LG14": 2
   },
   "mclib/mapdata.cpp": {
    "LG03": 2,
    "LG05": 2,
-   "LG09": 15,
    "LG10": 1,
    "LG13": 1,
    "LG16": 4,
@@ -3304,7 +3296,6 @@
   },
   "mclib/mech3d.cpp": {
    "LG03": 6,
-   "LG09": 7,
    "LG13": 1
   },
   "mclib/mech3d.h": {
@@ -3315,14 +3306,12 @@
   },
   "mclib/mech3d_geometry.cpp": {
    "LG03": 2,
-   "LG09": 7,
    "LG12a": 1,
    "LG12b": 1,
    "LG13": 1
   },
   "mclib/mech3d_init.cpp": {
    "LG06": 1,
-   "LG09": 30,
    "LG10": 1,
    "LG12a": 3,
    "LG12b": 7,
@@ -3335,25 +3324,21 @@
   "mclib/mech3d_render.cpp": {
    "LG03": 2,
    "LG08": 1,
-   "LG09": 15,
    "LG14": 1
   },
   "mclib/mech3d_type.cpp": {
    "LG03": 22,
    "LG05": 4,
    "LG06": 3,
-   "LG09": 3,
    "LG12a": 2,
    "LG12b": 13
   },
   "mclib/mech3d_update.cpp": {
-   "LG08": 1,
-   "LG09": 5
+   "LG08": 1
   },
   "mclib/mech_skel_import.cpp": {
    "LG06": 1,
    "LG08": 4,
-   "LG09": 5,
    "LG10": 1,
    "LG17": 1
   },
@@ -3366,8 +3351,7 @@
    "LG17": 2
   },
   "mclib/mlr/gosimage.cpp": {
-   "LG06": 2,
-   "LG09": 1
+   "LG06": 2
   },
   "mclib/mlr/gosimage.hpp": {
    "LG06": 1,
@@ -3378,9 +3362,6 @@
   },
   "mclib/mlr/gosimagepool.hpp": {
    "LG06": 3
-  },
-  "mclib/mlr/gosvertex.cpp": {
-   "LG09": 3
   },
   "mclib/mlr/gosvertex.hpp": {
    "LG09": 2
@@ -3400,56 +3381,43 @@
    "LG14": 3
   },
   "mclib/mlr/mlr_i_c_det_pmesh.cpp": {
-   "LG03": 30,
-   "LG09": 1
+   "LG03": 30
   },
   "mclib/mlr/mlr_i_c_det_tmesh.cpp": {
-   "LG03": 17,
-   "LG09": 1
+   "LG03": 17
   },
   "mclib/mlr/mlr_i_c_dt_pmesh.cpp": {
-   "LG03": 30,
-   "LG09": 1
+   "LG03": 30
   },
   "mclib/mlr/mlr_i_c_dt_tmesh.cpp": {
-   "LG03": 17,
-   "LG09": 1
+   "LG03": 17
   },
   "mclib/mlr/mlr_i_c_pmesh.cpp": {
-   "LG03": 42,
-   "LG09": 1
+   "LG03": 42
   },
   "mclib/mlr/mlr_i_c_tmesh.cpp": {
-   "LG03": 17,
-   "LG09": 1
+   "LG03": 17
   },
   "mclib/mlr/mlr_i_det_pmesh.cpp": {
-   "LG03": 26,
-   "LG09": 1
+   "LG03": 26
   },
   "mclib/mlr/mlr_i_det_tmesh.cpp": {
-   "LG03": 15,
-   "LG09": 1
+   "LG03": 15
   },
   "mclib/mlr/mlr_i_dt_pmesh.cpp": {
-   "LG03": 30,
-   "LG09": 2
+   "LG03": 30
   },
   "mclib/mlr/mlr_i_dt_tmesh.cpp": {
-   "LG03": 19,
-   "LG09": 2
+   "LG03": 19
   },
   "mclib/mlr/mlr_i_l_det_pmesh.cpp": {
-   "LG03": 21,
-   "LG09": 1
+   "LG03": 21
   },
   "mclib/mlr/mlr_i_l_det_tmesh.cpp": {
-   "LG03": 19,
-   "LG09": 1
+   "LG03": 19
   },
   "mclib/mlr/mlr_i_l_dt_pmesh.cpp": {
-   "LG03": 21,
-   "LG09": 1
+   "LG03": 21
   },
   "mclib/mlr/mlr_i_l_dt_tmesh.cpp": {
    "LG03": 19,
@@ -4364,7 +4332,7 @@
    "LG20": 3
   }
  },
- "head": "ce990fd00",
+ "head": "188efc9b5",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

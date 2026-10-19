@@ -185,7 +185,7 @@ void
 
 	Verify(coords.GetLength() == 0 || dataSize == 2*coords.GetLength());
 
-	texCoords.AssignData((Vector2DScalar *)data, dataSize);
+	texCoords.AssignData(const_cast<Vector2DScalar *>(data), dataSize);
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -254,7 +254,7 @@ MLRShape*
 	Register_Object(ret);
 
 	int i, j, k;
-	long    nrTri = (long) ceil (icoInfo.all * pow (4.0f, icoInfo.depth));
+	long    nrTri = static_cast<long>(ceil (icoInfo.all * pow (4.0f, icoInfo.depth)));
 	glm::vec3 v[3];
 
 	if(3*nrTri >= Limits::Max_Number_Vertices_Per_Mesh)
