@@ -48,7 +48,7 @@ public:
     int count() const { return static_cast<int>(records_.size()); }
     // Manifest dir the records were loaded from; override source paths are
     // resolved relative to it (avoids hardcoding the literal at call sites).
-    std::string_view manifestDir() const { return manifestDir_; }
+    const std::string& manifestDir() const { return manifestDir_; }
     static ModelOverrideRegistry& instance();
 private:
     std::vector<ModelOverrideRecord> records_;
