@@ -882,6 +882,7 @@ class TG_Shape
 	// Transforms, lights, clips and renders the shape.
 
 	friend class TG_MultiShape;
+	friend struct _TG_ShapeRec;
 	friend class TG_TypeShape;
 	friend class TG_TypeNode;
 	friend class TG_TypeMultiShape;
