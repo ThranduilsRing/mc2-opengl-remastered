@@ -170,7 +170,7 @@ struct TerrainIsland : mc2vk::IslandState {
     // (g_atlasGLTex). Sampled image + view + sampler; binding 2. Keyed by the GL tex
     // name so a re-built atlas (per-mission) re-imports.
     bool descriptorsDirty[2] = {true,true};
-    std::array<VkImageView,4> boundTextures[2]{};
+    std::array<VkImageView,5> boundTextures[2]{};
     mc2vk::ResidentTextureRef colormapTexture;
     mc2vk::OwnedSampler     colormapSamp;
     uint64_t      colormapVersionImported = 0;   // field-store colormap version last imported (0 = none yet)
@@ -189,8 +189,7 @@ struct TerrainIsland : mc2vk::IslandState {
     uint64_t      shoreMaskVersionImported = 0;   // field-store mask version last imported (0 = none)
     bool          shoreMaskReady = false;         // the bound mask is the mission's, not the dummy
     // SHORE-FIELD-1: binding 15, the water shore field the coastal colormap follows.
-    mc2vk::OwnedImage       shoreFieldImg;
-    mc2vk::OwnedImageView   shoreFieldView;
+    mc2vk::ResidentTextureRef shoreFieldTexture;
     uint64_t      shoreFieldVersionImported = 0;
     bool          shoreFieldReady = false;
     mc2vk::OwnedBuffer      cementBuf;

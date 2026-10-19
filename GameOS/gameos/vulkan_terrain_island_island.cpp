@@ -286,8 +286,8 @@ void write_descriptors(TerrainIsland* s, int parity) {
     }
     // SHORE-FIELD-1: binding 15 water shore field (dummy until imported; uT.shoreFieldOn gates use).
     VkDescriptorImageInfo sfInfo{};
-    if (s->shoreFieldView && s->colormapSamp) {
-        sfInfo.sampler = s->colormapSamp.get(); sfInfo.imageView = s->shoreFieldView.get();
+    if (s->shoreFieldTexture && s->colormapSamp) {
+        sfInfo.sampler = s->colormapSamp.get(); sfInfo.imageView = s->shoreFieldTexture.view();
         sfInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = s->set[i];
         w[n].dstBinding = 15; w[n].descriptorCount = 1;

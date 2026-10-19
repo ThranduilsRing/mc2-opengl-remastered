@@ -199,9 +199,9 @@ bool ensure_dummy_shore_mask(TerrainIsland* s) {
 // texelFetch only (Catmull-Rom), so the sampler's filter never applies to the R32F texels.
 bool ensure_dummy_shore_field(TerrainIsland* s) {
     if (!create_colormap_sampler(s)) return false;
-    if (s->shoreFieldView) return true;
+    if (s->shoreFieldTexture) return true;
     const float px[1] = {0.0f};
-    if (!upload_sampled_image(s, s->shoreFieldImg, s->shoreFieldView, VK_FORMAT_R32_SFLOAT, 1, 1, px, sizeof(px))) return false;
+    if (!upload_sampled_image(s, s->shoreFieldTexture, VK_FORMAT_R32_SFLOAT, 1, 1, px, sizeof(px))) return false;
     s->shoreFieldReady = false;
     return true;
 }
@@ -212,10 +212,9 @@ void import_shore_field(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
         if (!s->shoreFieldReady && s->shoreFieldVersionImported == 0) return;
         s->shoreFieldVersionImported = 0;
         s->shoreFieldReady = false;
-        if (s->shoreFieldView) {
+        if (s->shoreFieldTexture) {
             mc2vk::getOrCreateEngineVulkanContext().waitIdle("terrain_shore_field_clear");
-            s->shoreFieldView.reset();
-            s->shoreFieldImg.reset();
+            s->shoreFieldTexture = {};
         }
         ensure_dummy_shore_field(s);
         write_descriptors(s);
@@ -225,7 +224,7 @@ void import_shore_field(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
     mc2vk::getOrCreateEngineVulkanContext().waitIdle("terrain_shore_field_reimport");
     s->shoreFieldVersionImported = feed.shoreFieldVersion;
     const auto w = static_cast<uint32_t>(feed.shoreFieldW), h = static_cast<uint32_t>(feed.shoreFieldH);
-    if (upload_sampled_image(s, s->shoreFieldImg, s->shoreFieldView, VK_FORMAT_R32_SFLOAT, w, h,
+    if (upload_sampled_image(s, s->shoreFieldTexture, VK_FORMAT_R32_SFLOAT, w, h,
                              feed.shoreFieldTexels, static_cast<VkDeviceSize>(w) * h * 4u)) {
         s->shoreFieldReady = true;
         vlog("SHORE-FIELD: imported the shore field %ux%u for the coastal colormap (version %llu).", w, h,
