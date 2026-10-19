@@ -366,7 +366,7 @@ void gosRenderer::destroy() {
 
     gosMesh::destroy(text_);
 
-    for(size_t i=0; i<fontList_.size(); i++) {
+    for(size_t i=0; i<materialList_.size(); i++) {
         gosRenderMaterial::destroy(materialList_[i]);
     }
     materialList_.clear();

@@ -136,7 +136,6 @@ float computeBakedShadow(vec3 worldPos, vec3 normal, vec3 lightDir,
     float bias = max(0.005 * (1.0 - NdotL), 0.002);
     float currentDepth = projCoords.z - bias;
 
-    // Per-pixel rotation to break banding (stratified sampling).
     // A fixed receiver kernel avoids unfiltered per-pixel noise on thin palm shadows.
     float angle = 0.0;
     float ca = cos(angle), sa = sin(angle);

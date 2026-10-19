@@ -70,6 +70,7 @@ struct VfxIslandHealth {
     unsigned long vkDraws     = 0;   // per-group draws issued (last frame)
     unsigned long particles   = 0;   // particles uploaded (last frame)
     unsigned long groups      = 0;
+    unsigned long nativeMeshDraws = 0, nativeTubeDraws = 0, nativeVegetationDraws = 0;
 };
 VfxIslandHealth g_health;
 GosTexels vegetationAtlas;
@@ -146,6 +147,7 @@ struct VfxIsland : mc2vk::IslandState {
     VkBuffer         ringBound[2][2] = {};
     mc2vk::OwnedShaderModule vert, frag;
     mc2vk::OwnedSampler samp;
+    mc2vk::OwnedSampler vegetationSampler;
     mc2vk::OwnedDescriptorSetLayout spriteDsl;
     mc2vk::OwnedDescriptorPool spritePool;
     std::unordered_map<uint32_t, SpritePage> pages;   // keyed on gos texture handle; after the pool so pages release first
@@ -194,7 +196,7 @@ struct RetiredSprite {
 };
 
 // Copy one level of RGBA8 / BC7 texels into `page.img` and point `page.set` at it. The copy is queued in the context's upload batch (no CPU wait).
-bool upload_page(VfxIsland* s, SpritePage& page, const GosTexels& t) {
+bool upload_page(VfxIsland* s, SpritePage& page, const GosTexels& t, bool vegetation) {
     // Sprite texels are sampled as stored (BC7 sRGB read as UNORM): the MLR sprites the VFX arm must match are
     // blended on the displayed values, and decoding to linear here crushed the soft halos to near black.
     const VkFormat fmt = mc2vk::texelFormat(t.vkFormat == mc2tex::kVkFormatBc7Srgb ? mc2tex::kVkFormatBc7Unorm : t.vkFormat);
@@ -210,7 +212,7 @@ bool upload_page(VfxIsland* s, SpritePage& page, const GosTexels& t) {
     vci.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
     if (!mc2vk::create(page.view, s->device, [&](VkImageView* h) { return vkCreateImageView(s->device, &vci, nullptr, h); })) return false;
 
-    VkDescriptorImageInfo ii{ s->samp.get(), page.view.get(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL };
+    VkDescriptorImageInfo ii{ vegetation ? s->vegetationSampler.get() : s->samp.get(), page.view.get(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL };
     VkWriteDescriptorSet w{};
     w.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w.dstSet = page.set; w.dstBinding = 0; w.descriptorCount = 1;
     w.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; w.pImageInfo = &ii;
@@ -282,7 +284,7 @@ const SpritePage* get_page(VfxIsland* s, uint32_t handle) {
         dsai.pSetLayouts = &dsl;
         if (vkAllocateDescriptorSets(s->device, &dsai, &page.set) != VK_SUCCESS) return nullptr;
     }
-    if (!upload_page(s, page, t)) {
+    if (!upload_page(s, page, t, handle == kVfxVegetationAtlas)) {
         vlog("sprite import failed: handle=%u %ux%u.", handle, t.width, t.height);
         s->failedSource[handle] = t.bytes;
         vkFreeDescriptorSets(s->device, s->spritePool.get(), 1, &page.set);   // the failed vector is not retried, and the slot returns to the pool
@@ -489,6 +491,10 @@ bool init_island(VfxIsland* s, int w, int h) {
         sci.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
         sci.addressModeU = sci.addressModeV = sci.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
         if (!mc2vk::create(s->samp, s->device, [&](VkSampler* o) { return vkCreateSampler(s->device, &sci, nullptr, o); })) { vlog("vkCreateSampler failed."); return false; }
+        sci.magFilter = sci.minFilter = VK_FILTER_NEAREST;
+        sci.addressModeU = sci.addressModeV = sci.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+        if (!mc2vk::create(s->vegetationSampler, s->device, [&](VkSampler* o) { return vkCreateSampler(s->device, &sci, nullptr, o); })) return false;
+
         VkDescriptorSetLayoutBinding sb{};
         sb.binding = 0; sb.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         sb.descriptorCount = 1; sb.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
@@ -602,6 +608,10 @@ extern "C" int mc2_vk_vfx_island_run(
     for (uint32_t gi = 0; gi < drawCount; ++gi) {
         if (draws[gi].count != 0 && (draws[gi].texture != 0 || draws[gi].atlasColumns == kVfxGeometryAtlas))
             groupPage[gi] = get_page(s, draws[gi].texture);
+        // The mesh bridge drew unresolved textures as white; preserve that fallback.
+        if (!groupPage[gi] && draws[gi].atlasColumns == kVfxGeometryAtlas && draws[gi].start < particleCount &&
+            (static_cast<const VfxGeometryVertex*>(particles)[draws[gi].start].flags & VfxGeometryMesh) != 0u)
+            groupPage[gi] = get_page(s, 0);
     }
     if (s->disabled) return 0;
 
@@ -622,7 +632,7 @@ extern "C" int mc2_vk_vfx_island_run(
     rbi.clearValueCount = 3; rbi.pClearValues = clears;
     vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
     vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 0, 1, &s->set[par], 2, dynOffsets);
-    unsigned long groupsDrawn = 0;
+    unsigned long groupsDrawn = 0, meshDraws = 0, tubeDraws = 0, vegetationDraws = 0;
     VkPipeline bound = VK_NULL_HANDLE;
     for (uint32_t gi = 0; gi < drawCount; ++gi) {
         const VfxParticleDraw& d = draws[gi];
@@ -637,6 +647,12 @@ extern "C" int mc2_vk_vfx_island_run(
         const uint32_t expansion = d.atlasColumns == kVfxVegetationAtlas ? 36u : d.atlasColumns == kVfxGeometryAtlas ? 1u : 6u;
         vkCmdDraw(cb, d.count * expansion, 1, d.start * expansion, 0);
         ++groupsDrawn;
+        if (d.atlasColumns == kVfxVegetationAtlas) ++vegetationDraws;
+        else if (d.atlasColumns == kVfxGeometryAtlas) {
+            const auto flags = static_cast<const VfxGeometryVertex*>(particles)[d.start].flags;
+            if ((flags & VfxGeometryMesh) != 0u) ++meshDraws;
+            if ((flags & VfxGeometryTube) != 0u) ++tubeDraws;
+        }
     }
     vkCmdEndRenderPass(cb);
     vk_render_pass_timer::End(cb, gos_render_pass_timer::Pass_AlphaVfx);
@@ -653,6 +669,12 @@ extern "C" int mc2_vk_vfx_island_run(
       s->ticket[par] = value; }
     timerGuard.submitted();
 
+    if (meshDraws && !g_health.nativeMeshDraws) vlog("native_geometry kind=mesh draws=%lu", meshDraws);
+    if (tubeDraws && !g_health.nativeTubeDraws) vlog("native_geometry kind=tube draws=%lu", tubeDraws);
+    if (vegetationDraws && !g_health.nativeVegetationDraws) vlog("native_geometry kind=vegetation draws=%lu", vegetationDraws);
+    g_health.nativeMeshDraws += meshDraws;
+    g_health.nativeTubeDraws += tubeDraws;
+    g_health.nativeVegetationDraws += vegetationDraws;
     g_health.vkDraws = groupsDrawn;
     g_health.particles = particleCount;
     g_health.groups = drawCount;
@@ -670,6 +692,8 @@ extern "C" int mc2_vk_vfx_island_run(
 void mc2_vk_vfx_vegetation_atlas(const GosTexels& atlas) { vegetationAtlas = atlas; }
 
 extern "C" void mc2_vk_vfx_island_destroy() {
+    vlog("native_mesh_draws=%lu native_tube_draws=%lu native_vegetation_draws=%lu",
+         g_health.nativeMeshDraws, g_health.nativeTubeDraws, g_health.nativeVegetationDraws);
     vlog("[VK_VFX] vulkan_available=%d used_vulkan=%lu vk_draws=%lu particles=%lu groups=%lu "
          "fallback_reason=\"%s\"",
          g_health.vulkanAvailable, g_health.usedVulkan, g_health.vkDraws,
