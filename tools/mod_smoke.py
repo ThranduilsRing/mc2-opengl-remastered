@@ -23,6 +23,9 @@ import subprocess
 import sys
 from pathlib import Path
 
+sys.path.append(str(Path(__file__).resolve().parent.parent / "scripts"))
+import console_child  # noqa: E402  (windowless console children)
+
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_INSTALL_ROOT = Path('A:/Games/mc2-opengl')
 DEFAULT_BATTERY_ROOT = Path('G:/mc2-battery/mod_smoke')
@@ -238,7 +241,8 @@ def run_mod(staged: Path, stem: str, duration: int, timeout: int) -> dict:
     print('[mod_smoke] run:', ' '.join(cmd), flush=True)
     try:
         proc = subprocess.run(cmd, cwd=str(ROOT), capture_output=True,
-                              text=True, timeout=timeout)
+                              text=True, timeout=timeout,
+                              **console_child.child_kwargs(redirected=True))
         output = (proc.stdout or '') + (proc.stderr or '')
         rc = proc.returncode
     except subprocess.TimeoutExpired as exc:

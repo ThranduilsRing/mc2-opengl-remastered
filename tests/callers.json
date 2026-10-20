@@ -49,6 +49,20 @@
           "evidence": "import",
           "reference": "bootstrap_worktree_build",
           "text": "from bootstrap_worktree_build import cache_args"
+        },
+        {
+          "path": "tools/reload_leak.py",
+          "line": 51,
+          "evidence": "import",
+          "reference": "bootstrap_worktree_build",
+          "text": "from bootstrap_worktree_build import cache_args  # noqa: E402"
+        },
+        {
+          "path": "tools/sim_trace_diff.py",
+          "line": 134,
+          "evidence": "import",
+          "reference": "bootstrap_worktree_build",
+          "text": "import bootstrap_worktree_build as bootstrap"
         }
       ]
     },
@@ -2213,6 +2227,13 @@
           "text": "from configure_ninja import NINJA, under_vcvars, DEFAULT_TREE"
         },
         {
+          "path": "tools/reload_leak.py",
+          "line": 50,
+          "evidence": "import",
+          "reference": "configure_ninja",
+          "text": "from configure_ninja import NINJA, find_cmake, under_vcvars  # noqa: E402"
+        },
+        {
           "path": "tools/tidy/run_tidy_headers.py",
           "line": 39,
           "evidence": "import",
@@ -2823,6 +2844,13 @@
           "text": "import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)"
         },
         {
+          "path": "tools/battery.py",
+          "line": 36,
+          "evidence": "import",
+          "reference": "console_child",
+          "text": "import console_child  # noqa: E402  (stdio-inheriting children keep their output; scripts/console_child.py)"
+        },
+        {
           "path": "tools/blender_pipeline/asset_edit.py",
           "line": 46,
           "evidence": "import",
@@ -3047,6 +3075,13 @@
           "text": "import console_child"
         },
         {
+          "path": "tools/mod_smoke.py",
+          "line": 27,
+          "evidence": "import",
+          "reference": "console_child",
+          "text": "import console_child  # noqa: E402  (windowless console children)"
+        },
+        {
           "path": "tools/phase/asm_dead_strip.py",
           "line": 22,
           "evidence": "import",
@@ -3073,6 +3108,13 @@
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child  # noqa: E402  (windowless console children without a conhost each)"
+        },
+        {
+          "path": "tools/reload_leak.py",
+          "line": 48,
+          "evidence": "import",
+          "reference": "console_child",
+          "text": "import console_child  # noqa: E402  (windowless console children that still print)"
         },
         {
           "path": "tools/renderdoc/_rdcommon.py",
@@ -3115,6 +3157,20 @@
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child  # noqa: E402"
+        },
+        {
+          "path": "tools/sim_trace_diff.py",
+          "line": 31,
+          "evidence": "import",
+          "reference": "console_child",
+          "text": "import console_child  # noqa: E402  (windowless console children)"
+        },
+        {
+          "path": "tools/sound_smoke.py",
+          "line": 24,
+          "evidence": "import",
+          "reference": "console_child",
+          "text": "import console_child  # noqa: E402  (windowless console children)"
         },
         {
           "path": "tools/split/post_split.py",
@@ -3262,6 +3318,13 @@
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child  # noqa: E402"
+        },
+        {
+          "path": "tools/tools_smoke.py",
+          "line": 24,
+          "evidence": "import",
+          "reference": "console_child",
+          "text": "import console_child  # noqa: E402  (windowless console children)"
         },
         {
           "path": "tools/unit_converter/test_equipment_converter.py",
@@ -3857,7 +3920,15 @@
       "path": "scripts/ninja_build.py",
       "basename": "ninja_build.py",
       "stem": "ninja_build",
-      "callers_by_basename": [],
+      "callers_by_basename": [
+        {
+          "path": "tools/tools_smoke.py",
+          "line": 84,
+          "evidence": "command",
+          "reference": "A:/Games/mc2-main/scripts/ninja_build.py",
+          "text": "proc = subprocess.run(cmd, capture_output=True, text=True, cwd=str(ROOT), env=env,"
+        }
+      ],
       "callers_by_stem": []
     },
     {
@@ -4180,6 +4251,27 @@
           "evidence": "command",
           "reference": "A:/Games/mc2-main/scripts/run_smoke.py",
           "text": "with subprocess.Popen(command, cwd=ROOT, env=env, **console_child.child_kwargs()) as smoke:"
+        },
+        {
+          "path": "tools/mod_smoke.py",
+          "line": 243,
+          "evidence": "command",
+          "reference": "A:/Games/mc2-main/scripts/run_smoke.py",
+          "text": "proc = subprocess.run(cmd, cwd=str(ROOT), capture_output=True,"
+        },
+        {
+          "path": "tools/sim_trace_diff.py",
+          "line": 220,
+          "evidence": "command",
+          "reference": "A:/Games/mc2-main/scripts/run_smoke.py",
+          "text": "proc = subprocess.run(cmd, cwd=str(ROOT), env=env, capture_output=True,"
+        },
+        {
+          "path": "tools/sound_smoke.py",
+          "line": 111,
+          "evidence": "command",
+          "reference": "A:/Games/mc2-main/scripts/run_smoke.py",
+          "text": "proc = subprocess.run(cmd, capture_output=True, text=True, env=env, cwd=str(ROOT),"
         }
       ],
       "callers_by_stem": [
@@ -6688,6 +6780,13 @@
       "callers_by_stem": []
     },
     {
+      "path": "tools/battery.py",
+      "basename": "battery.py",
+      "stem": "battery",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
       "path": "tools/blender_cmd.py",
       "basename": "blender_cmd.py",
       "stem": "blender_cmd",
@@ -8395,6 +8494,13 @@
           "text": "import fst  # noqa: E402"
         },
         {
+          "path": "tools/mod_smoke.py",
+          "line": 204,
+          "evidence": "import_module",
+          "reference": "fst",
+          "text": "fst_lib = importlib.import_module('fst')"
+        },
+        {
           "path": "tools/overlay_upscale/overlay_tile_upscale.py",
           "line": 62,
           "evidence": "import",
@@ -8633,6 +8739,13 @@
       "path": "tools/mod_install/test_dotdir_skip.py",
       "basename": "test_dotdir_skip.py",
       "stem": "test_dotdir_skip",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "tools/mod_smoke.py",
+      "basename": "mod_smoke.py",
+      "stem": "mod_smoke",
       "callers_by_basename": [],
       "callers_by_stem": []
     },
@@ -8946,6 +9059,13 @@
           "text": "from build_index import ("
         }
       ]
+    },
+    {
+      "path": "tools/reload_leak.py",
+      "basename": "reload_leak.py",
+      "stem": "reload_leak",
+      "callers_by_basename": [],
+      "callers_by_stem": []
     },
     {
       "path": "tools/renderdoc/_rdcommon.py",
@@ -9419,7 +9539,7 @@
       "callers_by_stem": [
         {
           "path": "tools/campaign_save_roundtrip.py",
-          "line": 35,
+          "line": 36,
           "evidence": "import",
           "reference": "save_inspect",
           "text": "import save_inspect as si  # noqa: E402"
@@ -9456,10 +9576,17 @@
       "callers_by_stem": [
         {
           "path": "tools/campaign_save_roundtrip.py",
-          "line": 36,
+          "line": 37,
           "evidence": "import",
           "reference": "savegame_backup",
           "text": "import savegame_backup  # noqa: E402"
+        },
+        {
+          "path": "tools/reload_leak.py",
+          "line": 49,
+          "evidence": "import",
+          "reference": "savegame_backup",
+          "text": "import savegame_backup  # noqa: E402  (back the owner's quicksave up around the fixture)"
         },
         {
           "path": "tools/saveload_roundtrip.py",
@@ -9646,6 +9773,13 @@
           "text": "import sim_determinism as sd  # noqa: E402"
         },
         {
+          "path": "tools/battery.py",
+          "line": 91,
+          "evidence": "import",
+          "reference": "sim_determinism",
+          "text": "from sim_determinism import smoke_target as _target"
+        },
+        {
           "path": "tools/saveload_roundtrip.py",
           "line": 40,
           "evidence": "import",
@@ -9674,6 +9808,20 @@
           "text": "import sim_determinism as sim"
         }
       ]
+    },
+    {
+      "path": "tools/sim_trace_diff.py",
+      "basename": "sim_trace_diff.py",
+      "stem": "sim_trace_diff",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "tools/sound_smoke.py",
+      "basename": "sound_smoke.py",
+      "stem": "sound_smoke",
+      "callers_by_basename": [],
+      "callers_by_stem": []
     },
     {
       "path": "tools/split/cpp_units.py",
@@ -11490,6 +11638,13 @@
           "text": "import vs_trees"
         }
       ]
+    },
+    {
+      "path": "tools/tools_smoke.py",
+      "basename": "tools_smoke.py",
+      "stem": "tools_smoke",
+      "callers_by_basename": [],
+      "callers_by_stem": []
     },
     {
       "path": "tools/tracy_capture_compare.py",

@@ -20,6 +20,9 @@ import subprocess
 import sys
 from pathlib import Path
 
+sys.path.append(str(Path(__file__).resolve().parent.parent / "scripts"))
+import console_child  # noqa: E402  (windowless console children)
+
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
 CAPTURE = ROOT / "scripts" / "run_tool_capture.py"
@@ -78,7 +81,8 @@ def _build(tree: str, jobs: int) -> tuple[bool, str]:
     env = dict(os.environ)
     env["MC2_NINJA_TREE"] = tree
     try:
-        proc = subprocess.run(cmd, capture_output=True, text=True, cwd=str(ROOT), env=env)
+        proc = subprocess.run(cmd, capture_output=True, text=True, cwd=str(ROOT), env=env,
+                              **console_child.child_kwargs(redirected=True))
     except FileNotFoundError:
         return False, f"could not run {NINJA_BUILD}"
     return proc.returncode == 0, (proc.stdout or "") + (proc.stderr or "")
@@ -155,7 +159,8 @@ def main() -> int:
         out = stage / f"{tool}.png"
         argv = _capture_argv(tool, out, a)
         print(f"[tools_smoke] {tool}: {' '.join(argv)}", flush=True)
-        proc = subprocess.run(argv, capture_output=True, text=True, cwd=str(ROOT))
+        proc = subprocess.run(argv, capture_output=True, text=True, cwd=str(ROOT),
+                              **console_child.child_kwargs(redirected=True))
         sys.stdout.write(proc.stdout or "")
         sys.stderr.write(proc.stderr or "")
         results.append((tool, proc.returncode))

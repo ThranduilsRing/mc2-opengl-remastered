@@ -27,6 +27,9 @@ import subprocess
 import sys
 from pathlib import Path
 
+sys.path.append(str(Path(__file__).resolve().parent.parent / "scripts"))
+import console_child  # noqa: E402  (windowless console children)
+
 ROOT = Path(__file__).resolve().parents[1]
 BATTERY_ROOT = Path("G:/mc2-battery")
 STAGE_ROOT = BATTERY_ROOT / "simtrace"
@@ -60,7 +63,8 @@ def _run(argv: list[str], *, cwd: Path | None = None, env: dict | None = None,
     print(f"[sim_trace_diff] {shown}", flush=True)
     try:
         proc = subprocess.run(argv, cwd=str(cwd) if cwd else None, env=env,
-                              capture_output=True, text=True, errors="replace")
+                              capture_output=True, text=True, errors="replace",
+                              **console_child.child_kwargs(redirected=True))
     except OSError as exc:
         raise SetupError(f"{shown} could not start: {exc}") from exc
     if proc.returncode:
@@ -144,7 +148,8 @@ def _cmake_env() -> dict:
         raise SetupError(f"vcvars64.bat not found at {VCVARS}")
     try:
         out = subprocess.run(["cmd", "/d", "/c", f'call "{VCVARS}" >nul && set'],
-                             capture_output=True, text=True, errors="replace")
+                             capture_output=True, text=True, errors="replace",
+                             **console_child.child_kwargs(redirected=True))
     except OSError as exc:
         raise SetupError(f"could not start vcvars64.bat: {exc}") from exc
     if out.returncode:
@@ -213,7 +218,7 @@ def _run_smoke(exe: Path, mission: str, duration: int) -> Path:
     print(f"[sim_trace_diff] smoke {exe.parent} ({mission}, {duration}s)", flush=True)
     try:
         proc = subprocess.run(cmd, cwd=str(ROOT), env=env, capture_output=True,
-                              text=True, errors="replace")
+                              text=True, errors="replace", **console_child.child_kwargs(redirected=True))
     except OSError as exc:
         raise SetupError(f"could not start run_smoke.py: {exc}") from exc
     output = (proc.stdout or "") + (proc.stderr or "")

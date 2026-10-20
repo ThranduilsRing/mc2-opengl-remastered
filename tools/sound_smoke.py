@@ -20,6 +20,9 @@ import subprocess
 import sys
 from pathlib import Path
 
+sys.path.append(str(Path(__file__).resolve().parent.parent / "scripts"))
+import console_child  # noqa: E402  (windowless console children)
+
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
 RUN_SMOKE = ROOT / "scripts" / "run_smoke.py"
@@ -105,7 +108,8 @@ def _run(a) -> tuple[int, str, Path | None]:
     else:
         cmd += ["--deploy", a.deploy]
     print(f"[sound_smoke] SDL_AUDIODRIVER={a.audio_driver}: {' '.join(cmd)}", flush=True)
-    proc = subprocess.run(cmd, capture_output=True, text=True, env=env, cwd=str(ROOT))
+    proc = subprocess.run(cmd, capture_output=True, text=True, env=env, cwd=str(ROOT),
+                          **console_child.child_kwargs(redirected=True))
     text = (proc.stdout or "") + (proc.stderr or "")
     m = ARTIFACTS_RE.search(text)
     return proc.returncode, text, (Path(m.group("dir").strip()) if m else None)
