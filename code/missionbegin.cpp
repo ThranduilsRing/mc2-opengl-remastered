@@ -66,7 +66,6 @@ MissionBegin::MissionBegin()
 {
 	s_devShellMissionBegin = this;
 	memset( screens, 0, sizeof( screens));
-	memset( singlePlayerScreens, 0, sizeof(singlePlayerScreens));
 	memset( multiplayerScreens, 0, sizeof( multiplayerScreens));
 
 	curScreenX = -1;
@@ -89,11 +88,7 @@ MissionBegin::~MissionBegin()
 	{
 		for ( int j = 0; j < 3; j++ )
 		{
-			if ( singlePlayerScreens[i][j] )
-			{
-				delete singlePlayerScreens[i][j];
-				singlePlayerScreens[i][j] = nullptr;
-			}
+			singlePlayerScreens[i][j].reset();
 			if ( multiplayerScreens[i][j] )
 			{
 				delete multiplayerScreens[i][j];
@@ -151,7 +146,7 @@ bool MissionBegin::reloadCurrentScreenLayout( std::string& infoOut, std::string&
 	}
 	// skipLogistics reroutes substitute grid cells (e.g. screens[3][1] becomes
 	// MissionSelection) — the static_cast per cell below would then be wrong.
-	if ( screens[curScreenX][curScreenY] != singlePlayerScreens[curScreenX][curScreenY] )
+	if ( screens[curScreenX][curScreenY] != singlePlayerScreens[curScreenX][curScreenY].get() )
 	{
 		errOut = "active cell is substituted (skipLogistics reroute); reload unsupported";
 		return false;
@@ -419,7 +414,7 @@ void MissionBegin::begin()
 		// =TRUE / PlaySelection=FALSE -> never clobbered), so byte-identical there.
 		for (int ri = 0; ri < 5; ri += 1)
 			for (int rj = 0; rj < 3; rj += 1)
-				screens[ri][rj] = singlePlayerScreens[ri][rj];
+				screens[ri][rj] = singlePlayerScreens[ri][rj].get();
 
 		if ( LogisticsData::instance->skipLogistics() )
 		{
@@ -428,7 +423,7 @@ void MissionBegin::begin()
 			{
 				curScreenX = 3;
 				curScreenY = 1;
-				screens[3][1] = singlePlayerScreens[0][1];
+				screens[3][1] = singlePlayerScreens[0][1].get();
 			}
 		}
 
@@ -443,21 +438,13 @@ void MissionBegin::begin()
 		return;
 	}
 	
-	MissionSelectionScreen*		pMissionSelectionScreen;
-	MechBayScreen*				pMechBayScreen;
-	PilotReadyScreen*			pPilotSelectionScreen;
-	MechLabScreen*				pMechLabScreen;
-	MechPurchaseScreen*			pPurchaseMechScreen;
-	MissionBriefingScreen*		pBriefingScreen;
-	LoadScreenWrapper*			pLoadScreen;
-
-	pMissionSelectionScreen = nullptr;
-	pMechBayScreen = nullptr;
-	pPilotSelectionScreen = nullptr;
-	pMechLabScreen = nullptr;
-	pPurchaseMechScreen = nullptr;
-	pBriefingScreen = nullptr;
-	pLoadScreen = nullptr;
+	std::unique_ptr<MissionSelectionScreen>		pMissionSelectionScreen;
+	std::unique_ptr<MechBayScreen>				pMechBayScreen;
+	std::unique_ptr<PilotReadyScreen>			pPilotSelectionScreen;
+	std::unique_ptr<MechLabScreen>				pMechLabScreen;
+	std::unique_ptr<MechPurchaseScreen>			pPurchaseMechScreen;
+	std::unique_ptr<MissionBriefingScreen>		pBriefingScreen;
+	std::unique_ptr<LoadScreenWrapper>			pLoadScreen;
 
 	bDone = 0;
 
@@ -493,7 +480,7 @@ void MissionBegin::begin()
 	
 	// initialize mission selection
 	{ ZoneScopedN("MissionBegin::begin missionSelection");
-	pMissionSelectionScreen = new MissionSelectionScreen();
+	pMissionSelectionScreen = std::make_unique<MissionSelectionScreen>();
 	strcpy( path, artPath );
 	strcat( path, "mcl_cm_layout.fit" );
 	if ( NO_ERR != file.open( path ) )
@@ -511,7 +498,7 @@ void MissionBegin::begin()
 
 	// initialize mission briefing
 	{ ZoneScopedN("MissionBegin::begin missionBriefing");
-	pBriefingScreen = new MissionBriefingScreen();
+	pBriefingScreen = std::make_unique<MissionBriefingScreen>();
 	strcpy( path, artPath );
 	strcat( path, "mcl_mn.fit" );
 	
@@ -531,7 +518,7 @@ void MissionBegin::begin()
 	strcpy( path, artPath );
 	strcat( path, "mcl_mb_layout.fit" );
 	
-	pMechBayScreen = new MechBayScreen();
+	pMechBayScreen = std::make_unique<MechBayScreen>();
 	if ( NO_ERR != file.open( path ) )
 	{
 		char error[256];
@@ -569,7 +556,7 @@ void MissionBegin::begin()
 
 
 	// initialize pilot ready
-	pPilotSelectionScreen = new PilotReadyScreen;
+	pPilotSelectionScreen = std::make_unique<PilotReadyScreen>();
 	pPilotSelectionScreen->init( &file );
 
 	file.close();
@@ -578,7 +565,7 @@ void MissionBegin::begin()
 
 	// initalize purchase pilot
 	{ ZoneScopedN("MissionBegin::begin mechPurchase");
-	pPurchaseMechScreen = new MechPurchaseScreen;
+	pPurchaseMechScreen = std::make_unique<MechPurchaseScreen>();
 
 	strcpy( path, artPath );
 	strcat( path, "mcl_m$.fit" );
@@ -597,7 +584,7 @@ void MissionBegin::begin()
 
 	// initialize mech lab
 	{ ZoneScopedN("MissionBegin::begin mechLab");
-	pMechLabScreen = new MechLabScreen;
+	pMechLabScreen = std::make_unique<MechLabScreen>();
 
 	strcpy( path, artPath );
 	strcat( path, "mcl_mc.fit" );
@@ -615,7 +602,7 @@ void MissionBegin::begin()
 
 	// initialize mech lab
 	{ ZoneScopedN("MissionBegin::begin loadScreen");
-	pLoadScreen = new LoadScreenWrapper;
+	pLoadScreen = std::make_unique<LoadScreenWrapper>();
 
 	strcpy( path, artPath );
 	strcat( path, "mcl_loadingscreen.fit" );
@@ -631,13 +618,13 @@ void MissionBegin::begin()
 	file.close();
 	}
 
-	singlePlayerScreens[0][1] = pMissionSelectionScreen;
-	singlePlayerScreens[1][1] = pBriefingScreen;
-	singlePlayerScreens[2][1] = pMechBayScreen;
-	singlePlayerScreens[3][1] = pPilotSelectionScreen;
-	singlePlayerScreens[2][0] = pPurchaseMechScreen;
-	singlePlayerScreens[2][2] = pMechLabScreen;
-	singlePlayerScreens[4][1] = pLoadScreen;
+	singlePlayerScreens[0][1] = std::move(pMissionSelectionScreen);
+	singlePlayerScreens[1][1] = std::move(pBriefingScreen);
+	singlePlayerScreens[2][1] = std::move(pMechBayScreen);
+	singlePlayerScreens[3][1] = std::move(pPilotSelectionScreen);
+	singlePlayerScreens[2][0] = std::move(pPurchaseMechScreen);
+	singlePlayerScreens[2][2] = std::move(pMechLabScreen);
+	singlePlayerScreens[4][1] = std::move(pLoadScreen);
 
 	for ( int i = 0; i < DIM_SCREEN_X; i++ )
 	{
@@ -665,11 +652,11 @@ void MissionBegin::begin()
 		int j;
 		for (j = 0; j < 3/*dim screen Y*/; j += 1)
 		{
-			screens[i][j] = singlePlayerScreens[i][j];
+			screens[i][j] = singlePlayerScreens[i][j].get();
 		}
 	}
 
-	pMissionSelectionScreen->begin();
+	singlePlayerScreens[0][1]->begin();
 
 }
 
@@ -772,7 +759,7 @@ bool MissionBegin::updateSplash() {
 					int j;
 					for (j = 0; j < 3/*dim screen Y*/; j += 1)
 					{
-						screens[i][j] = singlePlayerScreens[i][j];
+						screens[i][j] = singlePlayerScreens[i][j].get();
 					}
 				}
 				if ( LogisticsData::instance->skipLogistics() )
@@ -781,7 +768,7 @@ bool MissionBegin::updateSplash() {
 					{
 						curScreenX = 3;
 						curScreenY = 1;
-						screens[3][1] = singlePlayerScreens[0][1];
+						screens[3][1] = singlePlayerScreens[0][1].get();
 						screens[curScreenX][curScreenY]->begin();
 					}
 					else
@@ -850,7 +837,7 @@ bool MissionBegin::updateSplash() {
 					int j;
 					for (j = 0; j < 3/*dim screen Y*/; j += 1)
 					{
-						screens[i][j] = singlePlayerScreens[i][j];
+						screens[i][j] = singlePlayerScreens[i][j].get();
 					}
 				}
 				curScreenX = 1;
@@ -2069,7 +2056,7 @@ void MissionBegin::setUpMultiplayerLogisticsScreens()
 		int j;
 		for (j = 0; j < 3/*dim screen Y*/; j += 1)
 		{
-			screens[i][j] = singlePlayerScreens[i][j];
+			screens[i][j] = singlePlayerScreens[i][j].get();
 		}
 	}
 	curScreenX = 0;

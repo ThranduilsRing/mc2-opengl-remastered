@@ -28,7 +28,6 @@
 
 
 void Image::clear(){
-	delete[] pixels;
 	pixels = nullptr;
 	width = height = 0;
 	format = FORMAT_NONE;
@@ -124,7 +123,6 @@ Image::Image(void)
 
 Image::~Image(void)
 {
-	delete[] pixels;
 }
 
 unsigned char *Image::create(const FORMAT fmt, const int w, const int h){
@@ -133,10 +131,9 @@ unsigned char *Image::create(const FORMAT fmt, const int w, const int h){
 	height = h;
 
 	int size = w*h;
-	delete[] pixels;
-	pixels = new unsigned char[size];
+	pixels = std::make_unique_for_overwrite<unsigned char[]>(size);
 
-	return pixels;
+	return pixels.get();
 }
 
 bool Image::loadFromFile(const char *fileName){
@@ -257,7 +254,7 @@ bool Image::loadWICFromMemory(const unsigned char* mem, size_t len)
 		hr = converter->CopyPixels(nullptr, stride, imageBytes, decodedPixels);
 		if (SUCCEEDED(hr))
 		{
-			pixels = decodedPixelsOwner.release();
+			pixels = std::move(decodedPixelsOwner);
 			width = decodedWidth;
 			height = decodedHeight;
 			format = FORMAT_RGBA8;
@@ -375,7 +372,7 @@ bool Image::loadWIC(const char *fileName)
 		hr = converter->CopyPixels(nullptr, stride, imageBytes, decodedPixels);
 		if (SUCCEEDED(hr))
 		{
-			pixels = decodedPixelsOwner.release();
+			pixels = std::move(decodedPixelsOwner);
 			width = decodedWidth;
 			height = decodedHeight;
 			format = FORMAT_RGBA8;
@@ -509,7 +506,8 @@ bool Image::loadTGA(const TGAHeader* header, unsigned char* readPixels)
 	int x, y;
 	switch (header->bpp) {
 		case 8:
-			dest = pixels = new unsigned char[width * height];
+			pixels = std::make_unique_for_overwrite<unsigned char[]>(width * height);
+			dest = pixels.get();
 			for (y = 0; y < height; y++){
 				memcpy(dest, src, width);
 				dest += width;
@@ -517,7 +515,8 @@ bool Image::loadTGA(const TGAHeader* header, unsigned char* readPixels)
 			}
 			break;
 		case 16:
-			dest = pixels = new unsigned char[width * height * 4];
+			pixels = std::make_unique_for_overwrite<unsigned char[]>(width * height * 4);
+			dest = pixels.get();
 			for (y = 0; y < height; y++){
 				for (x = 0; x < width; x++){
 					unsigned short tempPixel = *(reinterpret_cast<unsigned short *>(src));
@@ -533,7 +532,8 @@ bool Image::loadTGA(const TGAHeader* header, unsigned char* readPixels)
 			}
 			break;
 		case 24:
-			dest = pixels = new unsigned char[width * height * 3];
+			pixels = std::make_unique_for_overwrite<unsigned char[]>(width * height * 3);
+			dest = pixels.get();
 			for (y = 0; y < height; y++){
 				for (x = 0; x < width; x++){
 					*dest++ = src[2];
@@ -545,7 +545,8 @@ bool Image::loadTGA(const TGAHeader* header, unsigned char* readPixels)
 			}
 			break;
 		case 32:
-			dest = pixels = new unsigned char[width * height * 4];
+			pixels = std::make_unique_for_overwrite<unsigned char[]>(width * height * 4);
+			dest = pixels.get();
 			for (y = 0; y < height; y++){
 				for (x = 0; x < width; x++){
 					*dest++ = src[2];
@@ -603,8 +604,7 @@ bool Image::loadCompressedTGA(const TGAHeader* header, const unsigned char* mem,
 	int offset = 0;
 	const size_t num_pixels = width * height;
 
-	delete[] pixels;
-	pixels = new unsigned char[width * height * pixelSize];
+	pixels = std::make_unique_for_overwrite<unsigned char[]>(width * height * pixelSize);
 
 	while (num_read_pixels < num_pixels) {
 
@@ -684,7 +684,7 @@ bool Image::loadBMP(FILE* file)
 				return false;
 			}
 			format = FORMAT_RGB8;
-			pixels = new unsigned char[width * height * 3];
+			pixels = std::make_unique_for_overwrite<unsigned char[]>(width * height * 3);
 
 			unsigned char palette[1024];
 			fread(palette, sizeof(palette), 1, file);
@@ -693,7 +693,7 @@ bool Image::loadBMP(FILE* file)
 			auto tmpOwner = std::make_unique_for_overwrite<unsigned char[]>(width);
 			unsigned char *tmp = tmpOwner.get();
 			for (int i = height - 1; i >= 0; i--){
-				unsigned char *dest = pixels + i * width * 3;
+				unsigned char *dest = pixels.get() + i * width * 3;
 				fread(tmp, width, 1, file);
 				int len = width;
 				do {
@@ -717,9 +717,9 @@ bool Image::loadBMP(FILE* file)
 				nChannels = 4;
 				format = FORMAT_RGBA8;
 			}
-			pixels = new unsigned char[width * height * nChannels];
+			pixels = std::make_unique_for_overwrite<unsigned char[]>(width * height * nChannels);
 			for (int i = height - 1; i >= 0; i--){
-				unsigned char *dest = pixels + i * width * nChannels;
+				unsigned char *dest = pixels.get() + i * width * nChannels;
 				fread(dest, width * nChannels, 1, file);
 				swapChannels(dest, width, nChannels, 0, 2);
 			}
@@ -738,14 +738,13 @@ bool Image::loadBMP(FILE* file)
 bool Image::flip(){
 
 	int lineWidth = getBytesPerPixel(format) * width;
-	unsigned char *newPixels = new unsigned char[lineWidth * height];
+	auto newPixels = std::make_unique_for_overwrite<unsigned char[]>(lineWidth * height);
 
 	for (int i = 0; i < height; i++){
-		memcpy(newPixels + i * lineWidth, pixels + (height - 1 - i) * lineWidth, lineWidth);
+		memcpy(newPixels.get() + i * lineWidth, pixels.get() + (height - 1 - i) * lineWidth, lineWidth);
 	}
 
-	delete[] pixels;
-	pixels = newPixels;
+	pixels = std::move(newPixels);
 
 	return true;
 }

@@ -16,6 +16,7 @@ OptionsScreenWrapper:
 
 #include"asystem.h"
 #include"alistbox.h"
+#include <memory>
 
 
 class OptionsXScreen;
@@ -46,7 +47,7 @@ class OptionsScreenWrapper
 
 	private:
 
-		OptionsXScreen*		pOptionsScreen;
+		std::unique_ptr<OptionsXScreen>	pOptionsScreen;
 		bool		isActive;
 
 };

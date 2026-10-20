@@ -15,6 +15,7 @@
 #include"mclib.h"
 #endif
 
+#include<memory>
 #include<vector>
 
 #ifndef DCOLLSN_H
@@ -178,7 +179,7 @@ class CollisionSystem
 	//-------------
 	protected:
 
-		CollisionGridPtr		collisionGrid;
+		std::unique_ptr<CollisionGrid>		collisionGrid;
 		
 	public:
 	

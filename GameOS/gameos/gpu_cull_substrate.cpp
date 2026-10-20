@@ -1,6 +1,7 @@
 #include "gpu_cull_substrate.h"
 #include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
 #include "gpu_cull_parity.h"
+#include <memory>
 #include <vector>
 #include <cstddef>
 #include <cstdio>
@@ -67,7 +68,7 @@ static size_t    s_slotBytes      = 0;
 // substrate_rebuildStaticPrefix on dirty) before the gate may be turned on;
 // otherwise statics would be double-counted (prefix + per-frame append).
 static const bool s_staticFrozen = mc2::gate::get<"MC2_GPU_CULL_STATIC_FROZEN_RECORDS">();
-static GpuActorRecord* s_staticRecords            = nullptr;  // golden copy, sized maxActors
+static std::unique_ptr<GpuActorRecord[]> s_staticRecords;  // golden copy, sized maxActors (POD: safe at static teardown)
 static uint32_t        s_staticPrefixCount        = 0u;       // S
 static uint32_t        s_staticPrefixVisibleCount = 0u;       // # prevVisibilityBit==1 in [0,S)
 static uint32_t        s_staticDirty[RING_FRAMES] = {0u, 0u, 0u};  // per-slot: refill needed
@@ -121,7 +122,7 @@ void substrate_init(uint32_t maxActors) {
     s_recordData=s_recordStorage.data();
 
     // M1: golden copy for the frozen static-prop record prefix (sized maxActors).
-    s_staticRecords = new GpuActorRecord[maxActors]();
+    s_staticRecords = std::make_unique<GpuActorRecord[]>(maxActors);
 
     s_initialized = true;
 
@@ -141,8 +142,7 @@ void substrate_shutdown() {
     s_recordData=nullptr;
     std::vector<RecordBlock>().swap(s_recordStorage);
     // M1: free the frozen static-prop golden copy.
-    delete[] s_staticRecords;
-    s_staticRecords            = nullptr;
+    s_staticRecords.reset();
     s_staticPrefixCount        = 0u;
     s_staticPrefixVisibleCount = 0u;
     for (uint32_t i = 0u; i < RING_FRAMES; ++i) s_staticDirty[i] = 0u;
@@ -184,7 +184,7 @@ void substrate_frameBegin() {
             const size_t slotOffset = s_frameSlot * s_slotBytes;
             char* recBase = static_cast<char*>(s_recordData) + slotOffset
                             + sizeof(GpuActorRecordHeader);
-            memcpy(recBase, s_staticRecords,
+            memcpy(recBase, s_staticRecords.get(),
                    static_cast<size_t>(S) * sizeof(GpuActorRecord));
             s_staticDirty[s_frameSlot] = 0u;
         }

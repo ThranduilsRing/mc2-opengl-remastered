@@ -1,5 +1,6 @@
 #ifndef MISSIONBRIEFINGSCREEN_H
 #define MISSIONBRIEFINGSCREEN_H
+#include <memory>
 //===========================================================================//
 // Copyright (C) Microsoft Corporation. All rights reserved.                 //
 //===========================================================================//
@@ -56,7 +57,7 @@ class MissionBriefingScreen: public LogisticsScreen
 
 	private:
 
-	aObject*		objectiveButtons[MAX_OBJECTIVES];
+	std::unique_ptr<aObject>	objectiveButtons[MAX_OBJECTIVES];
 	float			objMarkerFx[MAX_OBJECTIVES];   // objective marker map-fraction (0..1)
 	float			objMarkerFy[MAX_OBJECTIVES];
 	float			dropZoneFx, dropZoneFy;        // drop-zone marker map-fraction (0..1)

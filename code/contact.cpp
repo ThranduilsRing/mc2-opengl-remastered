@@ -1152,13 +1152,10 @@ long SensorSystemManager::init (bool debug) {
 	freeList = sensorPool[0];
 	freeSensors = MAX_SENSORS;
 
-	for (int i = 0; i < MAX_TEAMS; i++)
-		teamSensors[i] = nullptr;
-
 	Assert (!debug || (Team::numTeams > 0), 0, " SensorSystemManager.init: 0 teams ");
 
 	for (int i = 0; i < Team::numTeams; i++) {
-		teamSensors[i] = new TeamSensorSystem;
+		teamSensors[i] = std::make_unique<TeamSensorSystem>();
 		teamSensors[i]->teamId = i;
 	}
 
@@ -1251,8 +1248,7 @@ void SensorSystemManager::destroy (void) {
 
 	for (long i = 0; i < Team::numTeams; i++) 
 	{
-		delete teamSensors[i];
-		teamSensors[i] = nullptr;
+		teamSensors[i].reset();
 	}
 }
 
@@ -1263,7 +1259,7 @@ void SensorSystemManager::addTeamSensor (long teamId, SensorSystemPtr sensor)
 	if ((teamId > -1) && (teamId < Team::numTeams))
 	{
 		teamSensors[teamId]->addSensor(sensor);
-		sensor->setMaster(teamSensors[teamId]);
+		sensor->setMaster(teamSensors[teamId].get());
 	}
 }
 
