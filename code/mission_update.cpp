@@ -3,7 +3,6 @@
 #include "mission_internal.h"
 #include <utility>
 #include "../GameOS/gameos/utils/mc2log.h"
-#include "mc2fmt.h"
 
 
 // FREEZE-MOVERS-1: ONE predicate for "the simulation tick is suspended".

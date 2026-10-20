@@ -20,6 +20,12 @@
 Stuff::MemoryStream *effectStream = nullptr;
 static std::unique_ptr<Stuff::MemoryStream> s_effectStreamOwner;
 
+void InstallEffectStream(const void *data, size_t size)
+{
+	s_effectStreamOwner = std::make_unique<Stuff::MemoryStream>(const_cast<void *>(data), static_cast<DWORD>(size));
+	effectStream = s_effectStreamOwner.get();
+}
+
 // static globals
 MC_TextureManager *mcTextureManager = nullptr;
 gos_VERTEXManager *MC_TextureManager::gvManager = nullptr;
@@ -226,8 +232,7 @@ void MC_TextureManager::flush (bool justTextures)
 	effectFile.read(effectsData.data(),effectsSize);
 	effectFile.close();
 	
-	s_effectStreamOwner = std::make_unique<Stuff::MemoryStream>(effectsData.data(),effectsSize);
-	effectStream = s_effectStreamOwner.get();
+	InstallEffectStream(effectsData.data(), static_cast<size_t>(effectsSize));
 	gosFX::EffectLibrary::Instance->Load(effectStream);
 	
 	gosFX::LightManager::Instance = new gosFX::LightManager();

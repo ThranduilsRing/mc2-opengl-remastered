@@ -1025,7 +1025,7 @@ void __stdcall InitializeGameEngine()
 		effectFile.read(effectsData,effectsSize);
 		effectFile.close();
 		
-		effectStream = new Stuff::MemoryStream(effectsData,effectsSize);
+		InstallEffectStream(effectsData, static_cast<size_t>(effectsSize));
 		gosFX::EffectLibrary::Instance->Load(effectStream);
 
 		// FX-DEFS-SIDECAR-1: overlay data/effects/defs/<Name>.fxdef.json (+

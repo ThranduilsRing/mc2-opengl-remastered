@@ -31,7 +31,8 @@
 #include <cstdlib>
 #include <chrono>
 #include <algorithm>
-#include "mc2fmt.h"
+#include <cstdint>
+#include <format>
 
 namespace mc2_abl_trace {
 
@@ -116,7 +117,7 @@ struct FireScope {
 		char buf[256];
 		(*std::format_to_n(buf, (sizeof(buf)) - 1,
 			"{{\"ev\":\"fire\",\"who\":\"{}\",\"wid\":{:d},\"stmts\":{:d},\"us\":{:.2f},\"depth\":{:d},\"states\":{:d}}}",
-			mc2::fmt::safe(who), mc2::fmt::as_i32(wid), mc2::fmt::as_i32(stmts), us, mc2::fmt::as_i32(depth), mc2::fmt::as_i32(states)).out = '\0');
+			who ? who : "(null)", static_cast<int32_t>(wid), static_cast<int32_t>(stmts), us, static_cast<int32_t>(depth), static_cast<int32_t>(states)).out = '\0');
 		mc2_diag::writeEvent("ABL", 1, 0, buf);
 	}
 };
@@ -134,8 +135,8 @@ inline void flushFrame(unsigned long frame, unsigned long tick) {
 		char buf[224];
 		(*std::format_to_n(buf, (sizeof(buf)) - 1,
 			"{{\"ev\":\"frame\",\"tick\":{:d},\"fires\":{:d},\"stmts\":{:d},\"us\":{:.2f},\"maxDepth\":{:d},\"states\":{:d}}}",
-			mc2::fmt::as_u32(tick), mc2::fmt::as_i32(g_frame.fires), mc2::fmt::as_i32(g_frame.stmts), g_frame.us,
-			mc2::fmt::as_i32(g_frame.maxDepth), mc2::fmt::as_i32(g_frame.states)).out = '\0');
+			static_cast<uint32_t>(tick), static_cast<int32_t>(g_frame.fires), static_cast<int32_t>(g_frame.stmts), g_frame.us,
+			static_cast<int32_t>(g_frame.maxDepth), static_cast<int32_t>(g_frame.states)).out = '\0');
 		mc2_diag::writeEvent("ABL", 1, frame, buf);
 	}
 	g_frame.reset();
