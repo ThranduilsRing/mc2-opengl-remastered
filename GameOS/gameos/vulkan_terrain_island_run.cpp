@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in vulkan_terrain_island_internal.h.
 #include "vulkan_terrain_island_internal.h"
 #include "vk_render_pass_timer.h"
+#include "vk_gpu_profile.h"   // VK-GPU-ZONES: MC2_VK_GPU_SCOPE
 #include "mc2fmt.h"
 
 #ifdef MC2_VULKAN_ISLAND
@@ -515,6 +516,7 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     rbi.renderPass = s->rpass.get(); rbi.framebuffer = s->fb.get();
     rbi.renderArea = {{0, 0}, {static_cast<uint32_t>(w), static_cast<uint32_t>(h)}};
     rbi.clearValueCount = 3; rbi.pClearValues = clears;
+    MC2_VK_GPU_SCOPE(gpuScope, cb, "VKIsl.Terrain");
     vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
 
     VkViewport vp{0.0f, 0.0f, static_cast<float>(w), static_cast<float>(h), 0.0f, 1.0f};
@@ -564,6 +566,7 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     }
 
     vkCmdEndRenderPass(cb);
+    gpuScope.end();
     // VK-DRAW-PERF-1: stamp pass-end (gap 1->2 = all patch/skirt draws).
     s->gpuTimer.write(cb, 2);
     vk_render_pass_timer::End(cb, gos_render_pass_timer::Pass_TerrainChunk);
@@ -663,8 +666,10 @@ extern "C" int mc2_vk_scene_clear(int w, int h) {
     rbi.renderPass = s->rpass.get(); rbi.framebuffer = s->fb.get();
     rbi.renderArea = {{0, 0}, {static_cast<uint32_t>(w), static_cast<uint32_t>(h)}};
     rbi.clearValueCount = 3; rbi.pClearValues = clears;
+    MC2_VK_GPU_SCOPE(gpuScope, cb, "VKIsl.SceneClear");
     vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
     vkCmdEndRenderPass(cb);
+    gpuScope.end();
     if (vkEndCommandBuffer(cb) != VK_SUCCESS) { setFallback("clear_record_failed"); s->disabled = true; return 0; }
     VkSubmitInfo si{};
     si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;

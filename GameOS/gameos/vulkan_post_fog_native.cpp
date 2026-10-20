@@ -33,6 +33,7 @@
 
 #include "gos_postprocess.h"
 #include "vk_render_pass_timer.h"
+#include "vk_gpu_profile.h"   // VK-GPU-ZONES: MC2_VK_GPU_SCOPE
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"   // str<>()
 
@@ -621,6 +622,7 @@ bool gosPostProcess::runVkPostFogNative()
     rbi.renderPass = s->rpass.get(); rbi.framebuffer = s->fb.get();
     rbi.renderArea = {{0, 0}, {static_cast<uint32_t>(s->width), static_cast<uint32_t>(s->height)}};
     rbi.clearValueCount = 0; // LOAD, no clear
+    MC2_VK_GPU_SCOPE(gpuScope, cb, "VKIsl.Post.Fog");
     vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
     const auto fogDraws=fog.record([&](RenderCore::vulkan::PostprocessSubPassId pass) {
         const bool edge=pass==RenderCore::vulkan::PostprocessSubPassId::EdgeFog;
@@ -631,6 +633,7 @@ bool gosPostProcess::runVkPostFogNative()
         vkCmdDraw(cb, 3, 1, 0, 0);
     });
     vkCmdEndRenderPass(cb);
+    gpuScope.end();
 
     // Depth back to the GL hand-off layout (layout-stable across the boundary).
     depthBarrier(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,

@@ -39,6 +39,7 @@
 #include <volk.h>
 #include "Gates/gate.h"
 #include "vk_render_pass_timer.h"
+#include "vk_gpu_profile.h"   // VK-GPU-ZONES: MC2_VK_GPU_SCOPE
 #include "Gates/gate_cold.h"   // str<>()
 #include "Gates/render_options.h"   // options.cfg SunAxisFix
 
@@ -899,6 +900,7 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
     rbi.renderPass = s->rpass.get(); rbi.framebuffer = s->fb.get();
     rbi.renderArea = {{0, 0}, {static_cast<uint32_t>(w), static_cast<uint32_t>(h)}};
     rbi.clearValueCount = 0; rbi.pClearValues = nullptr;   // all LOAD
+    MC2_VK_GPU_SCOPE(gpuScope, cb, "VKIsl.Mech");
     vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
 
     VkViewport vp{0.0f, 0.0f, static_cast<float>(w), static_cast<float>(h), 0.0f, 1.0f};
@@ -939,6 +941,7 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
     g_health.runs = runs;
 
     vkCmdEndRenderPass(cb);
+    gpuScope.end();
     // VK-DRAW-PERF-1: stamp pass-end (gap 1->2 = mech instanced draws).
     s->gpuTimer.write(cb, 2);
     vk_render_pass_timer::End(cb, gos_render_pass_timer::Pass_Mechs);

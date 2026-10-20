@@ -27,6 +27,7 @@
 #include "mc2_diag_verbose.h"
 #include "diagnostic_trace.h"
 #include "vk_device_profile.h"
+#include "vk_gpu_profile.h"
 #include "vk_validation_line.h"
 #ifdef MC2_VULKAN_ISLAND
 #include "vk_image_resource.h"
@@ -248,6 +249,24 @@ bool VulkanContext::init(bool wantPresent) {
         }
     }
 
+    // VK-GPU-ZONES: VK_EXT_debug_utils whenever the loader offers it (a validation run already added it above), so command-buffer labels and
+    // object names reach RGP / RenderDoc / Nsight in a normal run. Absent extension = no labels, no names.
+    bool debugUtilsExt = false;
+    for (const char* e : instExts) if (std::strcmp(e, VK_EXT_DEBUG_UTILS_EXTENSION_NAME) == 0) debugUtilsExt = true;
+    if (!debugUtilsExt) {
+        uint32_t extCount = 0;
+        vkEnumerateInstanceExtensionProperties(nullptr, &extCount, nullptr);
+        std::vector<VkExtensionProperties> availExts(extCount);
+        if (extCount) vkEnumerateInstanceExtensionProperties(nullptr, &extCount, availExts.data());
+        for (const auto& ep : availExts) {
+            if (std::strcmp(ep.extensionName, VK_EXT_DEBUG_UTILS_EXTENSION_NAME) == 0) {
+                instExts.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+                debugUtilsExt = true;
+                break;
+            }
+        }
+    }
+
     // ---- Instance ----
     VkApplicationInfo app{};
     app.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
@@ -272,6 +291,7 @@ bool VulkanContext::init(bool wantPresent) {
     r = vkCreateInstance(&ici, nullptr, &instance_);
     if (r != VK_SUCCESS) return fail("vkCreateInstance failed");
     volkLoadInstance(instance_);
+    if (debugUtilsExt && vkSetDebugUtilsObjectNameEXT) g_debugNames = true;   // names and labels need only the extension, not the messenger
 
     // ---- debug messenger ----
     if (wantValidation) {
@@ -468,6 +488,9 @@ bool VulkanContext::init(bool wantPresent) {
 #endif
     health_.created = true;
     health_.fallbackReason.clear();
+#ifdef MC2_VULKAN_ISLAND
+    gpuprof::init(*this);   // Tracy GPU context + debug labels + MC2_VK_GPU_TIMESTAMPS ring, on the one graphics queue
+#endif
     ctxlog("engine Vulkan device created: device_name=\"%s\" present=%d validation=%s.",
            health_.deviceName, wantPresent ? 1 : 0, valPreset);
     return true;
@@ -650,6 +673,9 @@ void VulkanContext::endFrame() {
 }
 
 void VulkanContext::destroy() {
+#ifdef MC2_VULKAN_ISLAND
+    gpuprof::shutdown(*this);
+#endif
     g_debugNames = false;
     if (device_ != VK_NULL_HANDLE) { waitIdle("teardown"); deferred_.drainAll(); }   // parked owners go ahead of the allocator and the device
 #ifdef MC2_VULKAN_ISLAND

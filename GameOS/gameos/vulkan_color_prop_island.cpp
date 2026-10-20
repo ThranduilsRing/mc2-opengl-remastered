@@ -23,6 +23,7 @@
 #include <volk.h>
 #include "Gates/gate_cold.h"   // gate::get<>() and str<>()
 #include "vk_render_pass_timer.h"
+#include "vk_gpu_profile.h"   // VK-GPU-ZONES: MC2_VK_GPU_SCOPE
 
 #define VMA_STATIC_VULKAN_FUNCTIONS 0
 #define VMA_DYNAMIC_VULKAN_FUNCTIONS 0
@@ -1513,6 +1514,7 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
         rbi.renderPass = s->t1_rpass.get(); rbi.framebuffer = s->t1_fb.get();
         rbi.renderArea = {{0, 0}, {static_cast<uint32_t>(w), static_cast<uint32_t>(h)}};
         rbi.clearValueCount = 0; rbi.pClearValues = nullptr;
+        MC2_VK_GPU_SCOPE(gpuScope, cb, "VKIsl.Props");
         vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
 
         VkViewport vp{0.0f, 0.0f, static_cast<float>(w), static_cast<float>(h), 0.0f, 1.0f};
@@ -1602,6 +1604,7 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
         g_health.typeRuns = typeRuns;
 
         vkCmdEndRenderPass(cb);
+        gpuScope.end();
         vk_render_pass_timer::End(cb, gos_render_pass_timer::Pass_SpColor);
         if (vkEndCommandBuffer(cb) != VK_SUCCESS) { setFallback("record_failed"); s->disabled = true; return 0; }
 

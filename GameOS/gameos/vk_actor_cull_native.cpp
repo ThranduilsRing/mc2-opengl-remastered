@@ -2,6 +2,7 @@
 #include "vk_actor_cull_native.h"
 #include "vk_compute_pipeline.h"
 #include "vk_one_shot.h"
+#include "vk_gpu_profile.h"   // VK-GPU-ZONES: MC2_VK_GPU_SCOPE
 #include "vk_island_util.h"
 #include "vulkan_context.h"
 #include "mc2_diag_verbose.h"
@@ -143,7 +144,10 @@ NativeCullSubmit nativeCullSubmit(uint32_t i, std::span<const GpuActorRecord> re
         vkCmdResetQueryPool(slot.cb,slot.queries.get(),0,2);
         vkCmdWriteTimestamp(slot.cb,VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,slot.queries.get(),0);
     }
-    s->pipeline.bind(slot.cb,s->sets.set(i)); s->pipeline.dispatch(slot.cb,(params.counts[0]+63)/64);
+    {
+        MC2_VK_GPU_SCOPE(gpuCull, slot.cb, "VKIsl.ActorCull");
+        s->pipeline.bind(slot.cb,s->sets.set(i)); s->pipeline.dispatch(slot.cb,(params.counts[0]+63)/64);
+    }
     if (s->timed) vkCmdWriteTimestamp(slot.cb,VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,slot.queries.get(),1);
     bufferBarrier(slot.cb,slot.output.get(),VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,VK_ACCESS_SHADER_WRITE_BIT,
                   VK_PIPELINE_STAGE_TRANSFER_BIT,VK_ACCESS_TRANSFER_READ_BIT);
