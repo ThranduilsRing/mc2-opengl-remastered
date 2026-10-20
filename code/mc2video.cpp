@@ -49,36 +49,13 @@ static const bool s_videoTrace = mc2::gate::get<"MC2_DEBUG_VIDEO">();
 template <class... Args>
 void VIDEO_TRACE(std::format_string<Args...> fmt, Args&&... args)
 {
-    if (!s_videoTrace) return;
-    char buf[512];
-    try {
-        const std::string text = "[VIDEO] " + std::vformat(fmt.get(), std::make_format_args(args...));
-        const size_t n = text.size() < sizeof(buf) - 1 ? text.size() : sizeof(buf) - 1;
-        std::memcpy(buf, text.data(), n);
-        buf[n] = '\0';
-    } catch (...) {
-        buf[0] = '\0';
-    }
-    puts(buf);
-    fflush(stdout);
-    crashbundle_append(buf);
+    if (s_videoTrace) crashbundle_printf<512>("[VIDEO] ", fmt, std::forward<Args>(args)...);
 }
 
 template <class... Args>
 void VIDEO_LOG(std::format_string<Args...> fmt, Args&&... args)
 {
-    char buf[512];
-    try {
-        const std::string text = "[VIDEO] " + std::vformat(fmt.get(), std::make_format_args(args...));
-        const size_t n = text.size() < sizeof(buf) - 1 ? text.size() : sizeof(buf) - 1;
-        std::memcpy(buf, text.data(), n);
-        buf[n] = '\0';
-    } catch (...) {
-        buf[0] = '\0';
-    }
-    puts(buf);
-    fflush(stdout);
-    crashbundle_append(buf);
+    crashbundle_printf<512>("[VIDEO] ", fmt, std::forward<Args>(args)...);
 }
 
 #if defined(_WIN32)

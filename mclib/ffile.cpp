@@ -22,18 +22,7 @@ namespace {
 template <class... Args>
 void CB_PRINTF(std::format_string<Args...> fmt, Args&&... args)
 {
-    char buf[512];
-    try {
-        const std::string text = std::vformat(fmt.get(), std::make_format_args(args...));
-        const size_t n = text.size() < sizeof(buf) - 1 ? text.size() : sizeof(buf) - 1;
-        std::memcpy(buf, text.data(), n);
-        buf[n] = '\0';
-    } catch (...) {
-        buf[0] = '\0';
-    }
-    puts(buf);
-    fflush(stdout);
-    crashbundle_append(buf);
+    crashbundle_printf<512>("", fmt, std::forward<Args>(args)...);
 }
 }
 #endif
