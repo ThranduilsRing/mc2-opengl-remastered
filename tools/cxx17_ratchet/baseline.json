@@ -54,7 +54,7 @@
    "LG05": 104,
    "LG06": 367,
    "LG07": 0,
-   "LG08": 163,
+   "LG08": 161,
    "LG09": 4,
    "LG10": 15,
    "LG11": 75,
@@ -187,7 +187,7 @@
   "mclib": {
    "LG01": 3,
    "LG02": 0,
-   "LG03": 605,
+   "LG03": 601,
    "LG04": 15,
    "LG05": 116,
    "LG06": 555,
@@ -853,7 +853,7 @@
    "LG17": 2
   },
   "GameOS/gameos/vk_texture_residency.cpp": {
-   "LG08": 14,
+   "LG08": 12,
    "LG10": 2,
    "LG13": 2
   },
@@ -2488,6 +2488,9 @@
    "LG01": 1,
    "LG13": 4
   },
+  "mclib/effect_resources.cpp": {
+   "LG03": 10
+  },
   "mclib/err.cpp": {
    "LG06": 2
   },
@@ -3140,6 +3143,14 @@
   "mclib/render_contract.h": {
    "LG06": 5
   },
+  "mclib/render_submissions.cpp": {
+   "LG12a": 2
+  },
+  "mclib/render_submissions.h": {
+   "LG08": 1,
+   "LG12a": 4,
+   "LG13": 1
+  },
   "mclib/resource_strings.cpp": {
    "LG06": 1
   },
@@ -3439,25 +3450,6 @@
    "LG05": 2,
    "LG06": 4
   },
-  "mclib/txmmgr.cpp": {
-   "LG03": 14,
-   "LG12a": 2
-  },
-  "mclib/txmmgr.h": {
-   "LG05": 1,
-   "LG08": 1,
-   "LG12a": 4,
-   "LG13": 1
-  },
-  "mclib/txmmgr_lightrow.cpp": {
-   "LG05": 1,
-   "LG06": 1,
-   "LG17": 1
-  },
-  "mclib/txmmgr_lights.cpp": {
-   "LG05": 2,
-   "LG08": 7
-  },
   "mclib/userinput.cpp": {
    "LG06": 2
   },
@@ -3482,6 +3474,18 @@
   },
   "mclib/vis_semantics.h": {
    "LG06": 1
+  },
+  "mclib/vk_object_light_gather.cpp": {
+   "LG05": 1,
+   "LG06": 1,
+   "LG17": 1
+  },
+  "mclib/vk_object_lights.cpp": {
+   "LG05": 2,
+   "LG08": 7
+  },
+  "mclib/vk_object_lights.h": {
+   "LG05": 1
   },
   "mclib/weaponfx.cpp": {
    "LG06": 1
@@ -3534,7 +3538,7 @@
    "LG20": 3
   }
  },
- "head": "e67bfc56d",
+ "head": "3ea87f817",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
