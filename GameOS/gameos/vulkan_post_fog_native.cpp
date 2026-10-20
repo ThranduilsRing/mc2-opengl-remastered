@@ -21,11 +21,8 @@
 // postfog_edge / postfog_oob).
 //
 // GATE: umbrella-armed (mc2vkgate::umbrellaOn(), see the block above
-// vkPostFogNativeEnabled): MC2_VK_SHARED_GBUFFER=1 arms it. Runs ONLY when BOTH GL fog passes
-// would run (sceneHasTerrain_, edgeFogEnabled_, fogOobEnabled_, mapHalfExtent_>0)
-// AND the shared GBuffer substrate is live; ANY not-ready condition returns false
-// and the caller falls through to the unchanged subgraph/island/GL precedence chain
-// (fail-soft, never crashes, gate-OFF byte-identical).
+// vkPostFogNativeEnabled): the shared GBuffer substrate must be live. Edge and
+// out-of-bounds fog are independently selected; only edge fog needs a map extent.
 //
 // SYNC: per frame BeginFrame on BOTH shared resources. Guarded by the full upstream
 // native ownership chain, color/depth are treated as already Vulkan-owned: there is no
@@ -54,6 +51,7 @@
 #include "vk_image_resource.h"
 #include "vk_island_util.h"
 #include "vulkan_context.h"
+#include "../../RenderCore/postprocess_subpass_order.h"
 // Expose the VkImageResource getters (island-side halves).
 #define MC2_VULKAN_SHARED_SCENE_COLOR_IMPL_ISLAND
 #include "vulkan_shared_scene_color.h"
@@ -494,17 +492,12 @@ void gosPostProcess::VkPostFogNativeDeleter::operator()(VkPostFogNative* s) cons
 }
 
 // ---------------------------------------------------------------------------
-// runVkPostFogNative(): render BOTH fog effects natively in VK. Returns true only
-// when both draws were submitted (caller skips BOTH GL fog sites); ANY not-ready
-// condition returns false and the unchanged precedence chain runs.
+// Render the requested fog passes in canonical order, in one native render pass.
 // ---------------------------------------------------------------------------
 bool gosPostProcess::runVkPostFogNative()
 {
-    // Run ONLY when BOTH GL fog passes would run (parity guard — if either GL pass
-    // would self-skip, fall through so per-pass behavior is preserved exactly).
-    if (!sceneHasTerrain_ || !edgeFogEnabled_ || !fogOobEnabled_ ||
-        mapHalfExtent_ <= 0.0f)
-        return false;
+    const auto fog=RenderCore::vulkan::selectFogPasses(sceneHasTerrain_,edgeFogEnabled_,fogOobEnabled_,mapHalfExtent_);
+    if (!fog.edge && !fog.oob) return false;
     // The GL fog passes' stencil sky-exclusion (SKYBOX-FOG-EXCLUDE-1) has no VK port, but
     // with the horizon clamp both fog passes are exactly zero above fogHorizonFadeEnd
     // (5 deg), the only elevations the exclusion would touch, so native fog runs without
@@ -533,11 +526,8 @@ bool gosPostProcess::runVkPostFogNative()
     if (!s->inited || s->width != width_ || s->height != height_) {
         if (s->inited) destroy_state(s);
         if (!build_state(s, width_, height_)) {
-            // Substrate not ready (e.g. shared GBuffer gates off) is NOT a permanent
-            // failure UNLESS a real device/object create failed. Keep it simple and
-            // conservative: disable for the process on any init failure (matches the
-            // subgraph convention); the GL chain runs for the rest of the run.
-            vlog("init FAILED (reason=%s) — disabling for this process, GL fog chain runs.",
+            // Keep the native pass disabled after an initialization failure.
+            vlog("init FAILED (reason=%s) — disabling native fog for this process.",
                  g_pf.fallbackReason[0] ? g_pf.fallbackReason : "unknown");
             destroy_state(s);
             s->disabled = true;
@@ -550,7 +540,7 @@ bool gosPostProcess::runVkPostFogNative()
     const clk::time_point t0 = clk::now();
 
     // ---- UBOs (values IDENTICAL to the GL runEdgeFog()/runFogOob() uploads). ----
-    {
+    if (fog.edge) {
         EdgeFogParams p{};
         std::memcpy(p.invViewProj, inverseViewProj_, 16 * sizeof(float));
         p.u_fogColor[0] = edgeFogColor_[0];
@@ -570,7 +560,7 @@ bool gosPostProcess::runVkPostFogNative()
             s->edgeUbo.unmap();
         }
     }
-    {
+    if (fog.oob) {
         FogOobParams p{};
         std::memcpy(p.invViewProj, inverseViewProj_, 16 * sizeof(float));
         p.u_fogColor[0] = oobFogColor_[0];
@@ -632,12 +622,14 @@ bool gosPostProcess::runVkPostFogNative()
     rbi.renderArea = {{0, 0}, {static_cast<uint32_t>(s->width), static_cast<uint32_t>(s->height)}};
     rbi.clearValueCount = 0; // LOAD, no clear
     vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
-    vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->edgePipe.get());
-    vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 0, 1, &s->edgeSet, 0, nullptr);
-    vkCmdDraw(cb, 3, 1, 0, 0);
-    vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->oobPipe.get());
-    vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 0, 1, &s->oobSet, 0, nullptr);
-    vkCmdDraw(cb, 3, 1, 0, 0);
+    const auto fogDraws=fog.record([&](RenderCore::vulkan::PostprocessSubPassId pass) {
+        const bool edge=pass==RenderCore::vulkan::PostprocessSubPassId::EdgeFog;
+        const auto pipeline=edge ? s->edgePipe.get() : s->oobPipe.get();
+        const auto descriptor=edge ? s->edgeSet : s->oobSet;
+        vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+        vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 0, 1, &descriptor, 0, nullptr);
+        vkCmdDraw(cb, 3, 1, 0, 0);
+    });
     vkCmdEndRenderPass(cb);
 
     // Depth back to the GL hand-off layout (layout-stable across the boundary).
@@ -665,7 +657,7 @@ bool gosPostProcess::runVkPostFogNative()
 
     g_pf.renderUs = std::chrono::duration<double, std::micro>(clk::now() - t0).count();
     ++g_pf.usedVulkan;
-    g_pf.glSkipped += 2;
+    g_pf.glSkipped += fogDraws;
     return true;
 }
 
