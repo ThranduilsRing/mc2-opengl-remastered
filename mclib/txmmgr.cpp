@@ -26,6 +26,12 @@ void InstallEffectStream(const void *data, size_t size)
 	effectStream = s_effectStreamOwner.get();
 }
 
+void ReleaseEffectStream()
+{
+	s_effectStreamOwner.reset();
+	effectStream = nullptr;
+}
+
 // static globals
 MC_TextureManager *mcTextureManager = nullptr;
 gos_VERTEXManager *MC_TextureManager::gvManager = nullptr;

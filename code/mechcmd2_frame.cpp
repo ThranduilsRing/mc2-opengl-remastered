@@ -260,7 +260,7 @@ void __stdcall TerminateGameEngine()
 
 		gos_PushCurrentHeap(gosFX::Heap);
 
-		delete effectStream;
+		ReleaseEffectStream();
 		delete gosFX::LightManager::Instance;
 
 		gos_PopCurrentHeap();
