@@ -1,10 +1,6 @@
 {
   "_doc": "QUIET-DEFAULT-BUILD-1 baseline for scripts/check-default-build-quiet.py. This is ATTRIBUTED DEBT, not an approved list -- but unlike the 83-tag seed it replaces, every entry now carries a `keep` reason naming the harness code that parses it. History: VERIFY-INTEGRITY-3 measured 83 tags printing in a default build (nine repeating every 600 frames forever, four announcing switched-OFF features). QUIET-DEFAULT-BUILD-1 gated 70 of them behind MC2_DIAG_VERBOSE, taking a measured default-env mc2_10 run from 79 distinct tags / 439 diagnostic lines to 9 tags / 44 lines. The 9 that remain are load-bearing for verification itself: silencing them would blind the smoke harness, which is a worse failure than being noisy. Changing that is a harness-contract change and belongs to its own slice. The ratchet only ever tightens: gating a tag and removing it here is always correct; adding one requires a keep reason.",
   "tags": {
-    "ASSET_LOAD v1": {
-      "status": "keep",
-      "reason": "scripts/smoke_lib/logparse.py MarkerBucket matches event=icon_oob."
-    },
     "ASSET_SCALE v1": {
       "status": "keep",
       "reason": "scripts/smoke_lib/logparse.py counts event=oob_blit occurrences."
@@ -17,10 +13,6 @@
       "status": "keep",
       "reason": "Gates/gate.cpp dumpConfig: ONE summary line per start (set/nondefault/unregistered/badvalue counts) plus a line per env-set gate and each warning. The smoke runner forces MC2_CONFIG_STRICT=1 and reads these lines to prove which configuration was measured; per-row lines for unset gates only print under MC2_CONFIG_DUMP=all."
     },
-    "HDRI_SKY v1": {
-      "status": "keep",
-      "reason": "FAIL-LOUD by design (GameOS/gameos/gos_hdri.cpp): EXR load/decode, GL texture creation and GL upload failures disable the HDRI sky; gosPostProcess::setSkyNumber leaves the sky black on load failure. Stock-profile smoke logs expose missing data/hdr EXRs at startup and mission load. These failures must remain visible; successful loads, sidecar fallback and sun-scan diagnostics are already MC2_DIAGFE-gated."
-    },
     "INSTR v1": {
       "status": "keep",
       "reason": "scripts/whatran.py and smoke_lib/gates.py parse the 'enabled:' banner to record which gates were armed for a run. smoke_lib/gates.py reports '[INSTR v1] banner absent' as a failure."
@@ -32,10 +24,6 @@
     "QUADSETUP_SKIP v1": {
       "status": "keep",
       "reason": "Human-readable smoke oracle (fullyArmed=/skip=). Its parser smoke_lib/oracleparse.py was retired 2026-10-11 (owner ruling 2026-10-09 #11) with no replacement; the line stays until a gate owns it."
-    },
-    "RENDER_SNAPSHOT v3": {
-      "status": "keep",
-      "reason": "The static-prop snapshot oracle (count_mismatch/pkt_mismatch, want 0). Its parser smoke_lib/oracleparse.py was retired 2026-10-11 with no replacement; the line stays until a gate owns it."
     },
     "SMOKE v1": {
       "status": "keep",
@@ -57,22 +45,6 @@
       "status": "keep",
       "reason": "Regression floor of the video surface (owner ruling 2026-10-13, M1): one line per movie request, skip or play (campaign-start and won-mission pre-videos in code/missionbegin.cpp / logistics.cpp / logistics_begin.cpp, in-mission videos in controlgui_chat.cpp as event=play_requested), a few lines per session. Parsed by scripts/smoke_lib/logparse.py PRESENCE_RULES (an absence rule: tier1/tier2 mc2_10 must print an event=play_requested line or the row is red, bucket video_floor_missing; scripts/smoke_lib/gates.py applies it). The campaign-start pre_video line is not yet enforced: it needs a campaign-boot run, so until one exists the proof procedure greps it."
     },
-    "VK_HUD_SKIP v1": {
-      "status": "keep",
-      "reason": "ATTRIBUTED DEBT from the VK-default flip (merge window 8, 2026-10-17): printed unconditionally on the Vulkan default with no parser; gate it behind an MC2_*_DIAG bit and delete this row. (GameOS/gameos/gameos_graphics_hud.cpp)"
-    },
-    "VK_LIGHTFEED_DEDUP v1": {
-      "status": "keep",
-      "reason": "ATTRIBUTED DEBT from the VK-default flip (merge window 8, 2026-10-17): printed unconditionally on the Vulkan default with no parser; gate it behind an MC2_*_DIAG bit and delete this row. (GameOS/gameos/vk_shared_light_feed.cpp, one line at arm time)"
-    },
-    "VK_PRODUCER_PARITY v1": {
-      "status": "keep",
-      "reason": "ATTRIBUTED DEBT from the VK-default flip (merge window 8, 2026-10-17): printed unconditionally on the Vulkan default with no parser; gate it behind an MC2_*_DIAG bit and delete this row. (GameOS/gameos/vulkan_water_island_run.cpp)"
-    },
-    "VK_PRODUCER_SELFTEST v1": {
-      "status": "keep",
-      "reason": "ATTRIBUTED DEBT from the VK-default flip (merge window 8, 2026-10-17): printed unconditionally on the Vulkan default with no parser; gate it behind an MC2_*_DIAG bit and delete this row. (GameOS/gameos/vk_native_producers.cpp)"
-    },
     "VK_PROFILE v1": {
       "status": "keep",
       "reason": "scripts/smoke_lib/vk_profile.py and logparse.py (MarkerBucket verdict=refused) parse the Vulkan device-profile verdict; printed once per start. The default backend became Vulkan on 2026-10-17."
@@ -84,10 +56,6 @@
     "VRAM_ADAPTER v1": {
       "status": "keep",
       "reason": "Printed once before the first [VRAM v1] line, under the same smoke / MC2_DIAG_VERBOSE guard, and says which rule (luid or most_dedicated) picked the DXGI adapter the VRAM numbers come from; a reader of a VRAM figure on a two-GPU host needs it. No parser consumes it."
-    },
-    "WATER_SHORE_EDGE v1": {
-      "status": "keep",
-      "reason": "FAIL-LOUD by design (mclib/terrain.cpp): default shore mode 2 silently degrades to mask mode when visual_height_4x.r32 is missing from the install; NOT FOUND/size/read failures print once per mission load. LOADED is MC2_DIAGF (2026-10-07)."
     }
   }
 }
