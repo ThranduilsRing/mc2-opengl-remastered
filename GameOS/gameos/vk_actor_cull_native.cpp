@@ -4,6 +4,7 @@
 #include "vk_one_shot.h"
 #include "vk_island_util.h"
 #include "vulkan_context.h"
+#include "mc2_diag_verbose.h"
 #define VMA_STATIC_VULKAN_FUNCTIONS 0
 #define VMA_DYNAMIC_VULKAN_FUNCTIONS 0
 #include <vk_mem_alloc.h>
@@ -181,10 +182,10 @@ bool nativeCullPoll(uint32_t i, NativeCullHeader& header, uint32_t& count,
             s->lastDispatchNs=static_cast<uint64_t>(double((ticks[1]-ticks[0])&s->timestampMask)*s->timestampPeriod);
     }
     if (++s->readySamples==1 || s->readySamples%256==0) {
-        if (s->lastDispatchNs) std::printf("[GPU_CULL v2] event=native_result frame=%u records=%u visible=%u gpu_ns=%llu readback_bytes=%llu\n",
+        if (s->lastDispatchNs) MC2_DIAGF("[GPU_CULL v2] event=native_result frame=%u records=%u visible=%u gpu_ns=%llu readback_bytes=%llu\n",
             header.frame,count,header.visible,static_cast<unsigned long long>(*s->lastDispatchNs),
             static_cast<unsigned long long>(VkDeviceSize(count+4)*sizeof(uint32_t)));
-        else std::printf("[GPU_CULL v2] event=native_result frame=%u records=%u visible=%u gpu_ns=unavailable\n",header.frame,count,header.visible);
+        else MC2_DIAGF("[GPU_CULL v2] event=native_result frame=%u records=%u visible=%u gpu_ns=unavailable\n",header.frame,count,header.visible);
         std::fflush(stdout);
     }
     return true;
@@ -241,7 +242,7 @@ bool selftestNative() {
     records[1].boundingRadius=1; records[2].flags=Flag_AlwaysVisible; records[3].boundingRadius=0;
     matrix[15]=0;
     if (!check(records,{0,1,1,0},matrix,0)) return false;
-    std::printf("[GPU_CULL v2] event=native_predicate_selftest passed=%u failed=0 backend=vulkan\n",checked);
+    MC2_DIAGF("[GPU_CULL v2] event=native_predicate_selftest passed=%u failed=0 backend=vulkan\n",checked);
     std::fflush(stdout);
     return true;
 }
