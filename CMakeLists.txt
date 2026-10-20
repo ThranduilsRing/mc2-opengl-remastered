@@ -169,6 +169,13 @@ option(MC2_MULTIPLAYER "Compile the multiplayer session layer (code/multplyr*.cp
 # find_package(Vulkan) (the SDK loader/headers), link it into gameos, and
 # compile the Vulkan sources under -DMC2_VULKAN.
 option(MC2_VULKAN "Compile the Vulkan backend (2026-10-05: default ON; Vulkan is the target backend)" ON)
+# G2: Vulkan is the only supported renderer backend. An explicit -DMC2_VULKAN=OFF is rejected here
+# instead of silently configuring a tree whose renderer paths are all compiled out.
+if(NOT MC2_VULKAN)
+    message(FATAL_ERROR
+        "MC2_VULKAN=OFF is not supported: Vulkan is the required renderer backend. "
+        "Configure with -DMC2_VULKAN=ON (the default).")
+endif()
 if(MC2_VULKAN)
     find_package(Vulkan REQUIRED)
     message(STATUS "MC2_VULKAN=ON -- Vulkan found: ${Vulkan_LIBRARY} (include ${Vulkan_INCLUDE_DIR})")

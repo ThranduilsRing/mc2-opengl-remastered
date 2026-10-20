@@ -24,6 +24,13 @@ def test_native_cache_arguments_do_not_require_a_gl_sdk():
     assert not any("GLEW" in arg or "OpenGL" in arg for arg in args)
 
 
+def test_native_cache_arguments_select_the_required_vulkan_backend():
+    """G2: Vulkan is the required renderer backend, so the native lane configures it explicitly."""
+    args = bootstrap.cache_args("A:/Games/native-lane")
+    assert "-DMC2_VULKAN=ON" in args
+    assert "-DMC2_VULKAN=OFF" not in args
+
+
 def test_glew_only_donor_is_not_a_complete_native_sdk(tmp_path):
     donor = tmp_path / "donor"
     put(donor, "lib/x64/glew32.lib")
@@ -44,6 +51,25 @@ def test_native_donor_copy_filters_retired_gl_but_keeps_sdl_and_math(tmp_path):
         assert (lane / "3rdparty" / rel).read_bytes() == b"fixture"
     assert not any("glew" in p.name.casefold() or p.name == "GL"
                    for p in (lane / "3rdparty").rglob("*"))
+
+
+def test_native_render_hosts_reject_a_gl_only_configure():
+    """G2: Vulkan is the required renderer backend; the root configure rejects MC2_VULKAN=OFF."""
+    root = (ROOT / "CMakeLists.txt").read_text(encoding="utf-8")
+    assert "if(NOT MC2_VULKAN)" in root
+    assert "MC2_VULKAN=OFF is not supported" in root
+    assert "MC2_VULKAN_ISLAND=ON requires MC2_VULKAN=ON" in root
+
+
+def test_gated_layout_macros_stay_public_on_gameos():
+    """G2: MC2_VULKAN_ISLAND changes the gosPostProcess layout, so gameos keeps exporting it."""
+    gameos = (ROOT / "GameOS" / "gameos" / "CMakeLists.txt").read_text(encoding="utf-8")
+    assert "gameos requires MC2_VULKAN=ON" in gameos
+    assert "target_compile_definitions(gameos PUBLIC MC2_VULKAN_ISLAND)" in gameos
+    assert "target_compile_definitions(gameos PRIVATE MC2_VULKAN)" in gameos
+    root = (ROOT / "CMakeLists.txt").read_text(encoding="utf-8")
+    for target in ("gameos_main", "mc2", "mclib", "renderworld", "gameadapters", "gui_runtime"):
+        assert f"target_compile_definitions({target} PRIVATE MC2_VULKAN_ISLAND)" in root
 
 
 def test_populated_native_sdk_does_not_need_a_glew_sentinel(tmp_path, monkeypatch):
