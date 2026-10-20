@@ -1,6 +1,7 @@
 // VK terrain island: the terrain overlay and decal island: textures, pipeline init, submit, run, reset and the island destroy.
 // Declared in the class headers; shared names in vulkan_terrain_island_internal.h.
 #include "vulkan_terrain_island_internal.h"
+#include "vk_gpu_profile.h"   // VK-GPU-ZONES: MC2_VK_GPU_SCOPE
 #include "texture_decode.h"   // gos_GetTextureTexels
 
 #ifdef MC2_VULKAN_ISLAND
@@ -409,6 +410,7 @@ extern "C" int mc2_vk_overlay_run(int w, int h) {
     rbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
     rbi.renderPass = o->rpass.get(); rbi.framebuffer = o->fb.get();
     rbi.renderArea = {{0, 0}, {static_cast<uint32_t>(w), static_cast<uint32_t>(h)}};
+    MC2_VK_GPU_SCOPE(gpuScope, cb, "VKIsl.Terrain.Overlay");
     vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
     VkViewport vp{0.0f, 0.0f, static_cast<float>(w), static_cast<float>(h), 0.0f, 1.0f};
     VkRect2D scissor{{0, 0}, {static_cast<uint32_t>(w), static_cast<uint32_t>(h)}};
@@ -449,6 +451,7 @@ extern "C" int mc2_vk_overlay_run(int w, int h) {
         if (sourceKind == 2) ++mineDraws;
     }
     vkCmdEndRenderPass(cb);
+    gpuScope.end();
     if (vkEndCommandBuffer(cb) != VK_SUCCESS) { o->disabled = true; return 0; }
     VkSubmitInfo si{};
     si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;

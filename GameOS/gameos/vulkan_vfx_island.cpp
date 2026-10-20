@@ -25,6 +25,7 @@
 #include <volk.h>
 #include "Gates/gate.h"
 #include "vk_render_pass_timer.h"
+#include "vk_gpu_profile.h"   // VK-GPU-ZONES: MC2_VK_GPU_SCOPE
 #include "Gates/gate_cold.h"   // str<>()
 
 #define VMA_STATIC_VULKAN_FUNCTIONS 0
@@ -554,6 +555,7 @@ extern "C" int mc2_vk_vfx_island_run(
     rbi.renderPass = s->rpass.get(); rbi.framebuffer = s->fb.get();
     rbi.renderArea = {{0, 0}, {static_cast<uint32_t>(w), static_cast<uint32_t>(h)}};
     rbi.clearValueCount = 3; rbi.pClearValues = clears;
+    MC2_VK_GPU_SCOPE(gpuScope, cb, "VKIsl.Vfx");
     vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
     vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 0, 1, &s->set[par], 2, dynOffsets);
     unsigned long groupsDrawn = 0, meshDraws = 0, tubeDraws = 0, vegetationDraws = 0;
@@ -585,6 +587,7 @@ extern "C" int mc2_vk_vfx_island_run(
         }
     }
     vkCmdEndRenderPass(cb);
+    gpuScope.end();
     vk_render_pass_timer::End(cb, gos_render_pass_timer::Pass_AlphaVfx);
     if (vkEndCommandBuffer(cb) != VK_SUCCESS) { setFallback("record_failed"); s->disabled = true; return 0; }
 

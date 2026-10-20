@@ -137,6 +137,9 @@ static LONG WINAPI mc2_unhandled_exception_filter(EXCEPTION_POINTERS* ep)
 #include "render_backend_select.h"  // VK-P13-SELECTOR-1 / T1: MC2_RENDER_BACKEND
 #ifdef MC2_VULKAN
 #include "vulkan_context.h"         // VK-P13-SELECTOR-1 / T2: shared engine VK device
+#ifdef MC2_VULKAN_ISLAND
+#include "vk_gpu_profile.h"          // VK-GPU-ZONES: per-frame Tracy GPU collect / pass timestamps
+#endif
 #include "engine_present_vk.h"      // VK-P13-SELECTOR-1 / T3: GL->VK present intercept
 #endif
 #include "gos_visual_diff.h"  // Stage 2.E pre-HUD capture + Ctrl+Shift+P record
@@ -1092,6 +1095,9 @@ int main(int argc, char** argv)
         gos_frame_pass_stats::FrameEnd(static_cast<unsigned long>(g_mc2FrameCounter));
 
     frameSwapWindow(win);   // the shared host present also ends the Vulkan frame and advances the handle-slot clock
+#ifdef MC2_VULKAN_ISLAND
+    mc2vk::gpuprof::frameEnd();   // VK-GPU-ZONES: after the present submit so the frame's scopes are all recorded; Tracy collect + per-pass timestamp read
+#endif
     frameFrameCap(s_vsync_active, s_fps_cap_mission, s_fps_cap_menu, start_tick);
 
         FrameMark;

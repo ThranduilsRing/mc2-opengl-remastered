@@ -41,6 +41,7 @@
 #include <volk.h>
 #include "Gates/gate.h"
 #include "vk_render_pass_timer.h"
+#include "vk_gpu_profile.h"   // VK-GPU-ZONES: MC2_VK_GPU_SCOPE
 #include "Gates/gate_cold.h"   // str<>()
 
 #define VMA_STATIC_VULKAN_FUNCTIONS 0
@@ -1165,6 +1166,7 @@ static bool record_pass(ShadowIsland* s, VkFramebuffer fb, int size, const float
     rbi.renderArea = {{0, 0}, {static_cast<uint32_t>(size), static_cast<uint32_t>(size)}};
     rbi.clearValueCount = 1;
     rbi.pClearValues = &clear;
+    MC2_VK_GPU_SCOPE(gpuScope, cb, "VKIsl.Shadow.Dyn");
     vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
 
     // A NON-flipped viewport: a flipped one Y-mirrors the depth and streaks terrain (checked against the GL depth dump); the live consumer is
@@ -1211,6 +1213,7 @@ static bool record_pass(ShadowIsland* s, VkFramebuffer fb, int size, const float
     }
     s->mech.record(cb, s->parity, dynamicOffset);
     vkCmdEndRenderPass(cb);
+    gpuScope.end();
     ++s->passCount;
     ++g_health.usedVulkan;
     return true;
