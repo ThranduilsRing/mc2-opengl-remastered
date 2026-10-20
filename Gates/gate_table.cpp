@@ -151,9 +151,6 @@ L(Lead0Kill, "MC2_CEMENT_MISSION_LIGHT", Bool, true, "gameos", "", "", verified)
 L(Presence, "MC2_CHEAT_INFINITE_MONEY", Bool, false, "mech", "", "Interactive cheat gates -- read once at startup, default OFF (unset = nullptr = false)", verified),
 L(Presence, "MC2_CHEAT_SALVAGE_ALL", Bool, false, "mech", "", "", verified),
 L(Lead0, "MC2_CLOUD_SHADOW", Bool, false, "post", "", "", passthrough | verified),
-L(Lead0P, "MC2_CLUSTER_DEPTH_PYRAMID", Bool, false, "gameos", "", ""),
-L(Lead0P, "MC2_CLUSTER_DEPTH_PYRAMID_PLANT", Bool, false, "gameos", "", ""),
-L(Lead0P, "MC2_CLUSTER_DEPTH_PYRAMID_VERIFY", Bool, false, "gameos", "", ""),
 G("MC2_COALESCE_FORCE_DISARM", Enum, "", "props", "", "Step 12B.1 - exact, case-sensitive string match on the four valid values; anything else (including unset) leaves None.", tokens("|alloc_failed|mixed_alpha|no_extension|size_mismatch") | verified),
 L(Presence, "MC2_COALESCE_GPU_VS_CPU_COUNT_TRACE", Bool, false, "props", "", "Env probe for GPU-vs-CPU count diagnostic (Step 4.11).", verified),
 L(Lead0, "MC2_COLLISION_FACTS", Bool, false, "code", "", "", verified),
@@ -314,12 +311,6 @@ L(Lead1, "MC2_FX_TRACE", Bool, false, "code", "", "", passthrough | verified),
 G("MC2_GAMEOS_UI_DEFS", Bool, true, "editor", "", "The data/defs GameOS UI path is the replacement path, not an opt-in demo.", verified),
 L(Exact1, "MC2_GAMEPLAY_PICK_SELFTEST", Bool, false, "code", "", "", verified),
 L(Presence, "MC2_GEOM_PHASE_SPLIT", Bool, false, "terrain", "", "", passthrough | verified),
-// GLSTATEGUARD-SLICE-1
-// history: docs/gate-history.md#MC2_GLSTATEGUARD_LOG
-L(Presence, "MC2_GLSTATEGUARD_LOG", Bool, false, "gameos", "", "GLSTATEGUARD-SLICE-1: leak-visibility for mc2gl::GlScopedSsboBinding (gl_state_guard.h).", passthrough | registry(Trace, "MC2_GLSTATEGUARD_LOG", -1, false)),
-// GLSTATEGUARD-SLICE-2
-// history: docs/gate-history.md#MC2_GLSTATEGUARD_TERRAIN
-L(DefOnAtoiNZ, "MC2_GLSTATEGUARD_TERRAIN", Bool, true, "terrain", "", "GLSTATEGUARD-SLICE-2: kill-switch for the RAII depth/blend/cull ownership of the terrain LOD chunk draw (gos_TerrainLodChunk_SubmitDrawCommands via...", registry(Feature, "MC2_GLSTATEGUARD_TERRAIN", -1, true)),
 P("MC2_GLTF_AXIS", Int, 0, "props", "", "Coordinate transforms (spec ?6).", reread | verified),
 P("MC2_GLTF_GROUND", Int, 2, "code", "", "", verified),
 P("MC2_GLTF_YAW_DEG", Float, 0.0, "props", "", "", reread | verified),
@@ -449,9 +440,6 @@ L(Lead0Kill, "MC2_LIGHTBAKE_REBAKE_ON_READY", Bool, true, "props", "", "LIGHTBAK
 L(Lead0Kill, "MC2_LIGHTBRIDGE", Bool, true, "code", "", "", verified),
 G("MC2_LIGHTBRIDGE_STABLE_SKIP", Bool, false, "props", "", "Std Bool row: any text other than 0/false/off/no/1/true/on/yes (e.g. =2) still reads as on but is reported badvalue, which MC2_CONFIG_STRICT=1 turns fatal.", verified | passthrough),
 G("MC2_LIGHTBRIDGE_STABLE_SKIP_DIAG", Bool, false, "props", "", "Std Bool row: any text other than 0/false/off/no/1/true/on/yes (e.g. =2) still reads as on but is reported badvalue, which MC2_CONFIG_STRICT=1 turns fatal.", verified),
-L(Lead0P, "MC2_LIGHTGRID_BUILD", Bool, false, "gameos", "", ""),
-L(Lead0P, "MC2_LIGHTGRID_PLANT", Bool, false, "gameos", "", ""),
-L(Lead0P, "MC2_LIGHTGRID_VERIFY", Bool, false, "gameos", "", ""),
 // PERF-HARNESS-TRUTH-1: shipped unregistered, undocumented AND absent from
 // the run_smoke.py passthrough allowlist, so it silently no-opped through
 // the standard harness -- a lighting investigation could set it, see the

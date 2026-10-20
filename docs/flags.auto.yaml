@@ -3,8 +3,8 @@
 # Where each gate is read, what the smoke runner forwards and what tier1_env_vars.md says are not here: ask
 # tools/repo_intel (env_var, gate_status), which scan the sources.
 generator_version: "3.0.0"
-gate_count: 935
-registry_entry_count: 188
+gate_count: 927
+registry_entry_count: 186
 verified_count: 822
 flags:
   - name: MC2_3DVIEW_DIAG
@@ -744,24 +744,6 @@ flags:
     doc: ""
     smoke_passthrough: true
     verified: true
-  - name: MC2_CLUSTER_DEPTH_PYRAMID
-    kind: Bool
-    default: false
-    rule: Lead0P
-    owner: gameos
-    doc: ""
-  - name: MC2_CLUSTER_DEPTH_PYRAMID_PLANT
-    kind: Bool
-    default: false
-    rule: Lead0P
-    owner: gameos
-    doc: ""
-  - name: MC2_CLUSTER_DEPTH_PYRAMID_VERIFY
-    kind: Bool
-    default: false
-    rule: Lead0P
-    owner: gameos
-    doc: ""
   - name: MC2_COALESCE_FORCE_DISARM
     kind: Enum
     default: ""
@@ -1678,21 +1660,6 @@ flags:
     doc: ""
     smoke_passthrough: true
     verified: true
-  - name: MC2_GLSTATEGUARD_LOG
-    kind: Bool
-    default: false
-    rule: Presence
-    owner: gameos
-    doc: "GLSTATEGUARD-SLICE-1: leak-visibility for mc2gl::GlScopedSsboBinding (gl_state_guard.h)."
-    smoke_passthrough: true
-    registry: {feature_id: MC2_GLSTATEGUARD_LOG, kind: Trace, order: -1, default_on: false}
-  - name: MC2_GLSTATEGUARD_TERRAIN
-    kind: Bool
-    default: true
-    rule: DefOnAtoiNZ
-    owner: terrain
-    doc: "GLSTATEGUARD-SLICE-2: kill-switch for the RAII depth/blend/cull ownership of the terrain LOD chunk draw (gos_TerrainLodChunk_SubmitDrawCommands via..."
-    registry: {feature_id: MC2_GLSTATEGUARD_TERRAIN, kind: Feature, order: -1, default_on: true}
   - name: MC2_GLTF_AXIS
     kind: Int
     default: 0
@@ -2440,24 +2407,6 @@ flags:
     owner: props
     doc: "Std Bool row: any text other than 0/false/off/no/1/true/on/yes (e.g. =2) still reads as on but is reported badvalue, which MC2_CONFIG_STRICT=1 turns fatal."
     verified: true
-  - name: MC2_LIGHTGRID_BUILD
-    kind: Bool
-    default: false
-    rule: Lead0P
-    owner: gameos
-    doc: ""
-  - name: MC2_LIGHTGRID_PLANT
-    kind: Bool
-    default: false
-    rule: Lead0P
-    owner: gameos
-    doc: ""
-  - name: MC2_LIGHTGRID_VERIFY
-    kind: Bool
-    default: false
-    rule: Lead0P
-    owner: gameos
-    doc: ""
   - name: MC2_LIGHTING_LINEAR_AUDIT
     kind: Bool
     default: false

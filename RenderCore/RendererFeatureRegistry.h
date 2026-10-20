@@ -791,20 +791,6 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "FX-FORCE-SPAWN v1 fixture: default-OFF.",
     },
     {
-        "MC2_GLSTATEGUARD_LOG",
-        "MC2_GLSTATEGUARD_LOG",
-        EnvVarKind::Trace,
-        false,
-        "GLSTATEGUARD-SLICE-1: leak-visibility for mc2gl::GlScopedSsboBinding (gl_state_guard.h).",
-    },
-    {
-        "MC2_GLSTATEGUARD_TERRAIN",
-        "MC2_GLSTATEGUARD_TERRAIN",
-        EnvVarKind::Feature,
-        true,
-        "GLSTATEGUARD-SLICE-2: kill-switch for the RAII depth/blend/cull ownership of the terrain LOD chunk draw (gos_TerrainLodChunk_SubmitDrawCommands via...",
-    },
-    {
         "MC2_GOM_UPDATE_COST_SPLIT",
         "MC2_GOM_UPDATE_COST_SPLIT",
         EnvVarKind::Trace,

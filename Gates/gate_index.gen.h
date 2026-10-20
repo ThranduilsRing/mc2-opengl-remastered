@@ -10,7 +10,7 @@
 
 namespace mc2::gate::detail {
 
-inline constexpr std::size_t kGateCount = 935;
+inline constexpr std::size_t kGateCount = 927;
 
 inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_3DVIEW_DIAG", Kind::Bool, Rule::Presence, {}},
@@ -109,9 +109,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_CHEAT_INFINITE_MONEY", Kind::Bool, Rule::Presence, {}},
     {"MC2_CHEAT_SALVAGE_ALL", Kind::Bool, Rule::Presence, {}},
     {"MC2_CLOUD_SHADOW", Kind::Bool, Rule::Lead0, {}},
-    {"MC2_CLUSTER_DEPTH_PYRAMID", Kind::Bool, Rule::Lead0P, {}},
-    {"MC2_CLUSTER_DEPTH_PYRAMID_PLANT", Kind::Bool, Rule::Lead0P, {}},
-    {"MC2_CLUSTER_DEPTH_PYRAMID_VERIFY", Kind::Bool, Rule::Lead0P, {}},
     {"MC2_COALESCE_FORCE_DISARM", Kind::Enum, Rule::Std, "|alloc_failed|mixed_alpha|no_extension|size_mismatch"},
     {"MC2_COALESCE_GPU_VS_CPU_COUNT_TRACE", Kind::Bool, Rule::Presence, {}},
     {"MC2_COLLISION_FACTS", Kind::Bool, Rule::Lead0, {}},
@@ -231,8 +228,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_GAMEOS_UI_DEFS", Kind::Bool, Rule::Std, {}},
     {"MC2_GAMEPLAY_PICK_SELFTEST", Kind::Bool, Rule::Exact1, {}},
     {"MC2_GEOM_PHASE_SPLIT", Kind::Bool, Rule::Presence, {}},
-    {"MC2_GLSTATEGUARD_LOG", Kind::Bool, Rule::Presence, {}},
-    {"MC2_GLSTATEGUARD_TERRAIN", Kind::Bool, Rule::DefOnAtoiNZ, {}},
     {"MC2_GLTF_AXIS", Kind::Int, Rule::Prefix, {}},
     {"MC2_GLTF_GROUND", Kind::Int, Rule::Prefix, {}},
     {"MC2_GLTF_YAW_DEG", Kind::Float, Rule::Prefix, {}},
@@ -333,9 +328,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_LIGHTBRIDGE", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_LIGHTBRIDGE_STABLE_SKIP", Kind::Bool, Rule::Std, {}},
     {"MC2_LIGHTBRIDGE_STABLE_SKIP_DIAG", Kind::Bool, Rule::Std, {}},
-    {"MC2_LIGHTGRID_BUILD", Kind::Bool, Rule::Lead0P, {}},
-    {"MC2_LIGHTGRID_PLANT", Kind::Bool, Rule::Lead0P, {}},
-    {"MC2_LIGHTGRID_VERIFY", Kind::Bool, Rule::Lead0P, {}},
     {"MC2_LIGHTING_LINEAR_AUDIT", Kind::Bool, Rule::Presence, {}},
     {"MC2_LIGHTING_SHADOW_PREDICATE_MODE", Kind::Enum, Rule::Std, "|Legacy|Modern"},
     {"MC2_LIGHTSLOT_TRACE", Kind::Bool, Rule::Presence, {}},
