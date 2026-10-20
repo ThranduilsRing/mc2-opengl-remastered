@@ -150,7 +150,7 @@
    "LG09": 0,
    "LG10": 4,
    "LG11": 102,
-   "LG12a": 90,
+   "LG12a": 87,
    "LG12b": 154,
    "LG13": 26,
    "LG14": 93,
@@ -196,7 +196,7 @@
    "LG09": 2,
    "LG10": 20,
    "LG11": 66,
-   "LG12a": 151,
+   "LG12a": 150,
    "LG12b": 195,
    "LG13": 128,
    "LG14": 55,
@@ -1678,7 +1678,6 @@
   "code/mc2video.cpp": {
    "LG05": 2,
    "LG06": 5,
-   "LG12a": 2,
    "LG18": 1
   },
   "code/mc2video.h": {
@@ -1805,8 +1804,7 @@
    "LG04": 2
   },
   "code/mission_internal.h": {
-   "LG06": 1,
-   "LG12a": 1
+   "LG06": 1
   },
   "code/mission_movers.cpp": {
    "LG05": 1,
@@ -2519,7 +2517,6 @@
   "mclib/ffile.cpp": {
    "LG05": 4,
    "LG06": 4,
-   "LG12a": 1,
    "LG12b": 3,
    "LG17": 1
   },
@@ -3549,7 +3546,7 @@
    "LG20": 3
   }
  },
- "head": "5a7cfc5eb",
+ "head": "3dd1d83c9",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
