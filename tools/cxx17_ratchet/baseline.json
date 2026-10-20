@@ -141,7 +141,7 @@
   "code": {
    "LG01": 24,
    "LG02": 2,
-   "LG03": 451,
+   "LG03": 450,
    "LG04": 18,
    "LG05": 200,
    "LG06": 445,
@@ -228,7 +228,7 @@
    "LG17": 0,
    "LG18": 0,
    "LG19": 0,
-   "LG20": 24
+   "LG20": 21
   },
   "tools": {
    "LG01": 0,
@@ -1741,7 +1741,7 @@
    "LG06": 1
   },
   "code/mechcmd2_frame.cpp": {
-   "LG03": 5,
+   "LG03": 4,
    "LG11": 16,
    "LG12a": 1
   },
@@ -3515,7 +3515,7 @@
    "LG20": 3
   },
   "tests/unit/test_paths_mod.cpp": {
-   "LG20": 6
+   "LG20": 3
   },
   "tests/unit/test_preferences.cpp": {
    "LG20": 2
@@ -3546,7 +3546,7 @@
    "LG20": 3
   }
  },
- "head": "f53ebc1dc",
+ "head": "295fb37e6",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
