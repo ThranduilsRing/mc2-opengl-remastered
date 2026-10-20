@@ -33,13 +33,14 @@ struct ModIndexedEntry {
     bool stockExists = false;                 // same key exists in the stock loose data/ tree
 };
 
-enum ModConflictCode {
+enum class ModConflictCode : int {
     MODCONFLICT_DUPLICATE_FILE = 0,
     MODCONFLICT_DUPLICATE_DEF_ID,
     MODCONFLICT_RESERVED_CORE_NAMESPACE,
     MODCONFLICT_STOCK_OVERRIDE,
     MODCONFLICT__COUNT
 };
+using enum ModConflictCode;
 
 inline const char* modConflictToken(ModConflictCode c) {
     switch (c) {
@@ -155,15 +156,16 @@ inline std::vector<std::string> formatModConflictReport(
     if (findings.size() > cap)
         lines.push_back("(+" + std::to_string(findings.size() - cap) +
                         " more finding(s) suppressed)");
-    size_t counts[MODCONFLICT__COUNT] = {};
+    size_t counts[std::to_underlying(ModConflictCode::MODCONFLICT__COUNT)] = {};
     for (const ModConflictFinding& f : findings)
-        if (f.code >= 0 && f.code < MODCONFLICT__COUNT) ++counts[f.code];
+        if (f.code >= static_cast<ModConflictCode>(0) && f.code < MODCONFLICT__COUNT)
+            ++counts[std::to_underlying(f.code)];
     lines.push_back("conflict report: " + std::to_string(findings.size()) +
         " finding(s) — " +
-        std::to_string(counts[MODCONFLICT_DUPLICATE_FILE] +
-                       counts[MODCONFLICT_DUPLICATE_DEF_ID]) + " duplicate, " +
-        std::to_string(counts[MODCONFLICT_RESERVED_CORE_NAMESPACE]) + " reserved-core, " +
-        std::to_string(counts[MODCONFLICT_STOCK_OVERRIDE]) + " stock-override");
+        std::to_string(counts[std::to_underlying(MODCONFLICT_DUPLICATE_FILE)] +
+                       counts[std::to_underlying(MODCONFLICT_DUPLICATE_DEF_ID)]) + " duplicate, " +
+        std::to_string(counts[std::to_underlying(MODCONFLICT_RESERVED_CORE_NAMESPACE)]) + " reserved-core, " +
+        std::to_string(counts[std::to_underlying(MODCONFLICT_STOCK_OVERRIDE)]) + " stock-override");
     return lines;
 }
 

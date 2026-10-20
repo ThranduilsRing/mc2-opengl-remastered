@@ -8,6 +8,7 @@
 
 #include "projectz_overlay.h"
 
+#include <utility>
 #include <gameos.hpp>
 #include "../GameOS/gameos/gos_profiler.h"
 
@@ -54,7 +55,8 @@ static const uint32_t COLOR_RED    = 0x660000FFu;  // visual (255,0,0)   — was
 static const uint32_t COLOR_PURPLE = 0x66FF40B0u;  // visual (176,64,255)— was 0x66B040FF
 
 //--------------------------------------------------------------------
-static const char* s_modeNames[PZ_OVERLAY_MODE_COUNT] = {
+static constexpr int PZ_OVERLAY_MODE_COUNT_I = std::to_underlying(PZ_OVERLAY_MODE_COUNT);
+static const char* s_modeNames[PZ_OVERLAY_MODE_COUNT_I] = {
     "off",
     "legacyRectFinite",
     "homogClip",
@@ -64,7 +66,7 @@ static const char* s_modeNames[PZ_OVERLAY_MODE_COUNT] = {
 };
 
 const char* projectz_overlay_predicate_name() {
-    return s_modeNames[g_pzOverlayMode];
+    return s_modeNames[std::to_underlying(g_pzOverlayMode)];
 }
 
 //--------------------------------------------------------------------
@@ -92,7 +94,7 @@ static inline bool pz_finite(float v) {
 
 //--------------------------------------------------------------------
 void projectz_overlay_advance() {
-    int next = (static_cast<int>(g_pzOverlayMode) + 1) % static_cast<int>(PZ_OVERLAY_MODE_COUNT);
+    int next = (std::to_underlying(g_pzOverlayMode) + 1) % PZ_OVERLAY_MODE_COUNT_I;
     g_pzOverlayMode = static_cast<ProjectZOverlayMode>(next);
 
     // When overlay is on, force g_pzTrace so projectz_trace_dispatch runs
@@ -102,7 +104,7 @@ void projectz_overlay_advance() {
     if (g_pzOverlayMode != PZ_OVERLAY_OFF) {
         g_pzTrace = true;
     }
-    mc2::fmt::print_err("[PROJECTZ overlay] mode={}\n", mc2::fmt::safe(s_modeNames[g_pzOverlayMode]));
+    mc2::fmt::print_err("[PROJECTZ overlay] mode={}\n", mc2::fmt::safe(s_modeNames[std::to_underlying(g_pzOverlayMode)]));
     fflush(stderr);
 }
 
@@ -216,7 +218,7 @@ void projectz_overlay_render(int viewportW, int viewportH) {
         static bool s_firstEntry = true;
         if (s_firstEntry) {
             s_firstEntry = false;
-            mc2::fmt::print_err("[PROJECTZ overlay] first render entry: mode={} triCount={:d}\n", mc2::fmt::safe(s_modeNames[g_pzOverlayMode]), mc2::fmt::as_i32(s_triCount));
+            mc2::fmt::print_err("[PROJECTZ overlay] first render entry: mode={} triCount={:d}\n", mc2::fmt::safe(s_modeNames[std::to_underlying(g_pzOverlayMode)]), mc2::fmt::as_i32(s_triCount));
             fflush(stderr);
         }
     }
@@ -291,7 +293,7 @@ void projectz_overlay_render(int viewportW, int viewportH) {
         static int s_throttle = 0;
         if (++s_throttle >= 60) {
             s_throttle = 0;
-            mc2::fmt::print_err("[PROJECTZ overlay] {} | green={:d} yellow={:d} orange={:d} red={:d} purple={:d}\n", mc2::fmt::safe(s_modeNames[g_pzOverlayMode]), mc2::fmt::as_u32(s_bucketCount[0]), mc2::fmt::as_u32(s_bucketCount[1]), mc2::fmt::as_u32(s_bucketCount[2]), mc2::fmt::as_u32(s_bucketCount[3]), mc2::fmt::as_u32(s_bucketCount[4]));
+            mc2::fmt::print_err("[PROJECTZ overlay] {} | green={:d} yellow={:d} orange={:d} red={:d} purple={:d}\n", mc2::fmt::safe(s_modeNames[std::to_underlying(g_pzOverlayMode)]), mc2::fmt::as_u32(s_bucketCount[0]), mc2::fmt::as_u32(s_bucketCount[1]), mc2::fmt::as_u32(s_bucketCount[2]), mc2::fmt::as_u32(s_bucketCount[3]), mc2::fmt::as_u32(s_bucketCount[4]));
         }
     }
 

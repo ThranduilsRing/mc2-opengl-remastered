@@ -38,11 +38,12 @@ namespace gosFX
 		void
 			Save(Stuff::MemoryStream* stream);
 
-		enum MergeMode {
+		enum class MergeMode {
 			OnlyAddNewEffects,
 			ReplaceMatchingEffects,
 			ReplaceNamedEffects
 		};
+		using enum MergeMode;
 
 		void
 			Merge(

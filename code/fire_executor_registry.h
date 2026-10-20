@@ -175,6 +175,6 @@ inline void populateStockFireExecutors(FireExecutorRegistry& reg) {
 }
 
 // Number of executors populateStockFireExecutors binds (doctest locks this).
-enum { NUM_STOCK_FIRE_EXECUTORS = 8 };
+inline constexpr int NUM_STOCK_FIRE_EXECUTORS = 8;
 
 #endif // FIRE_EXECUTOR_REGISTRY_H

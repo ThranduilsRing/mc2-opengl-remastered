@@ -55,7 +55,7 @@ void Debugger::sprintStatement (char* dest) {
 						break;
 					default:
 						strcat(dest, " ");
-						strcat(dest, TokenStrings[token]);
+						strcat(dest, TokenStrings[static_cast<int>(token)]);
 						break;
 				}
 				break;

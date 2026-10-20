@@ -1,6 +1,7 @@
 // MissionInterfaceManager: camera movement, drag selection, jump/recover checks and the target / range / no-target / move / jump / run cursors.
 // Declared in the class headers; shared names in missiongui_shared_internal.h.
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
+#include <utility>
 #include "missiongui_shared_internal.h"
 constexpr float ATTILA_FACTOR = 1.0f;
 constexpr float ATTILA_ROTATION_FACTOR = 4.1f;
@@ -562,7 +563,7 @@ long MissionInterfaceManager::makeTargetCursor( bool lineOfSight, long moverCoun
 		{
 			if ( target->getObjectType()->getSubType() == BUILDING_SUBTYPE_LANDBRIDGE )
 			{
-				if ( gos_GetKeyStatus( (gosEnum_KeyIndex)commands[FORCE_FIRE_KEY].key ) == KEY_HELD || 
+				if ( gos_GetKeyStatus( (gosEnum_KeyIndex)commands[std::to_underlying(FORCE_FIRE_KEY)].key ) == KEY_HELD ||
 					 controlGui.getFireFromCurrentPos() )
 				{
 					target->setTargeted(true);
@@ -600,7 +601,7 @@ long MissionInterfaceManager::makeTargetCursor( bool lineOfSight, long moverCoun
 			}
 			else if ( targetTeam && !controlGui.getGuard() &&
 				Team::home->isFriendly( targetTeam ) && 				
-				gos_GetKeyStatus( (gosEnum_KeyIndex)commands[FORCE_FIRE_KEY].key ) != KEY_HELD // not forcing fire
+				gos_GetKeyStatus( (gosEnum_KeyIndex)commands[std::to_underlying(FORCE_FIRE_KEY)].key ) != KEY_HELD // not forcing fire
 				&& controlGui.getCurrentRange() == FIRERANGE_OPTIMAL ) // range attacks now are force fire
 			{
 				return makeNoTargetCursor( false, lineOfSight, 0, 0, moverCount, nonMoverCount );
@@ -626,7 +627,7 @@ long MissionInterfaceManager::makeTargetCursor( bool lineOfSight, long moverCoun
 		if (target)
 			target->setTargeted(true);
 	}
-	else if ( gos_GetKeyStatus( (gosEnum_KeyIndex)commands[FORCE_FIRE_KEY].key ) == KEY_HELD
+	else if ( gos_GetKeyStatus( (gosEnum_KeyIndex)commands[std::to_underlying(FORCE_FIRE_KEY)].key ) == KEY_HELD
 		|| ( controlGui.getCurrentRange() != FIRERANGE_OPTIMAL && controlGui.getCurrentRange() != FIRERANGE_CURRENT ) )
 	{
 		currentCursor = makeRangeCursor( lineOfSight );
@@ -687,7 +688,7 @@ long MissionInterfaceManager::makeNoTargetCursor( bool passable, bool lineOfSigh
 	if ( !moverCount )
 		cursorType = mState_NORMAL;
 
-	if ( gos_GetKeyStatus( (gosEnum_KeyIndex)commands[FORCE_FIRE_KEY].key ) == KEY_HELD // not forcing fire
+	if ( gos_GetKeyStatus( (gosEnum_KeyIndex)commands[std::to_underlying(FORCE_FIRE_KEY)].key ) == KEY_HELD // not forcing fire
 				|| controlGui.getFireFromCurrentPos() )
 	{
 		return makeRangeCursor( lineOfSight );

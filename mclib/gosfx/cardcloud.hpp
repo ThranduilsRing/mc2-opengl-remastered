@@ -102,13 +102,12 @@ namespace gosFX
 		using Particle = CardCloud__Particle;
 
 	public:
-		enum {
+		static constexpr int
 			ParticleSize =
 				sizeof(Particle)
 				 + 4*sizeof(glm::vec3)
 				 + sizeof(Stuff::RGBAColor)
-				 + 4*sizeof(Stuff::Vector2DOf<Stuff::Scalar>)
-		};
+				 + 4*sizeof(Stuff::Vector2DOf<Stuff::Scalar>);
 
 	protected:
 		std::unique_ptr<MidLevelRenderer::MLRCardCloud> m_cloudImplementation;						// point to an MLR triangle cloud by Michael

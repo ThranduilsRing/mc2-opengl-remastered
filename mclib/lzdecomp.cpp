@@ -104,8 +104,11 @@ static size_t LZDecompZlib_(MemoryPtr dest, MemoryPtr src, size_t srcLen, size_t
 static size_t LZDecompClassicLZW_(MemoryPtr dest, MemoryPtr src, size_t srcLen, size_t destMax)
 {
     // sebi 2026-04-21
-    enum { HASH_CLEAR_C = 256, HASH_EOF_C = 257, HASH_FREE_C = 258 };
-    enum { BASE_BITS_C = 9, MAX_BITS_C = 12 };
+    constexpr int HASH_CLEAR_C = 256;
+    constexpr int HASH_EOF_C = 257;
+    constexpr int HASH_FREE_C = 258;
+    constexpr int BASE_BITS_C = 9;
+    constexpr int MAX_BITS_C = 12;
 
     // Dictionary: each entry has 16-bit parent chain + 8-bit suffix. Max 4096 entries.
     static unsigned short parentTbl[4096];

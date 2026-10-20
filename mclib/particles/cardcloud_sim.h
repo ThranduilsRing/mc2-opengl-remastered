@@ -37,7 +37,7 @@ struct CardCloudSimParticle {
 static_assert(sizeof(CardCloudSimParticle) == 64,
               "CardCloudSimParticle must stay 64B (update the COMPUTE-1 GLSL mirror in lockstep)");
 
-enum : uint32_t { kCardCloudSimFlagAlive = 1u };
+inline constexpr uint32_t kCardCloudSimFlagAlive = 1u;
 
 } } // namespace mc2::particles
 

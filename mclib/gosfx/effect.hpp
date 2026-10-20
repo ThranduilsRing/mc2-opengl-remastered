@@ -292,15 +292,13 @@ namespace gosFX
 		virtual void Draw(DrawInfo *info);
 		virtual bool HasFinished();
 
-		enum {
-			ExecuteFlag = 1,
-			LoopFlag = 2,
-			LocalSpaceSimulationMode = 0,
-			DynamicWorldSpaceSimulationMode = 4,
-			StaticWorldSpaceSimulationMode = 8,
-			ParentSimulationMode = 12,
-			SimulationModeMask = 12
-		};
+		static constexpr int ExecuteFlag = 1;
+		static constexpr int LoopFlag = 2;
+		static constexpr int LocalSpaceSimulationMode = 0;
+		static constexpr int DynamicWorldSpaceSimulationMode = 4;
+		static constexpr int StaticWorldSpaceSimulationMode = 8;
+		static constexpr int ParentSimulationMode = 12;
+		static constexpr int SimulationModeMask = 12;
 
 		static glm::vec3
 			s_ether;

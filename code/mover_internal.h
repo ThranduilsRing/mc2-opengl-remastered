@@ -150,7 +150,7 @@ extern void DebugWeaponFireChunk (WeaponFireChunkPtr chunk1, WeaponFireChunkPtr 
 extern unsigned long		NextIdNumber;
 extern bool					JumpOnBlocked;
 extern bool					FindingEscapePath;
-extern float				RankVersusChassisCombatModifier[NUM_WARRIOR_RANKS][NUM_MECH_CLASSES];
+extern float				RankVersusChassisCombatModifier[NUM_WARRIOR_RANKS][std::to_underlying(NUM_MECH_CLASSES)];
 extern float				WarriorRankScale[NUM_WARRIOR_RANKS];
 extern const char *			SpecialtySkillsTable[NUM_SPECIALTY_SKILLS];
 extern float WeaponSpecialistModifier;

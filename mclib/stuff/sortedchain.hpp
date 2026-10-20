@@ -49,7 +49,7 @@ namespace Stuff {
 
 	//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ SortedChainLinkOf ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-	enum {VChainLink_Memoryblock_Allocation=100};
+	inline constexpr int VChainLink_Memoryblock_Allocation = 100;
 
 	template <class V> class SortedChainLinkOf:
 		public SortedChainLink
@@ -200,7 +200,7 @@ namespace Stuff {
 
 	//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ SortedChainOf ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-	enum {VChain_Memoryblock_Allocation=100};
+	inline constexpr int VChain_Memoryblock_Allocation = 100;
 
 	template <class T, class V> class SortedChainOf:
 		public SortedChain

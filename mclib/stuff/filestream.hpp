@@ -156,10 +156,11 @@ namespace Stuff {
 			GetFileName()
 				{Check_Object(this); return fileName;}
 
-		enum SeekType {
+		enum class SeekType {
 			FromBeginning,
 			FromEnd
 		};
+		using enum SeekType;
 
 		static char
 			RedirectedName[256];

@@ -517,7 +517,7 @@ long Debugger::removeBreakPoint (void) {
 
 void Debugger::processCommand (long commandId, char* strParam1, int numParam1, ABLModulePtr moduleParam1) {
 
-	switch (commandId) {
+	switch (static_cast<DebugCommandCode>(commandId)) {
 		case DEBUG_COMMAND_SET_MODULE:
 			if (moduleParam1) {
 				debugModule = moduleParam1;

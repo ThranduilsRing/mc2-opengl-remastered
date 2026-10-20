@@ -69,7 +69,7 @@ long adjClippedCell[8][2] = {
 	{6, 0}
 };
 
-float MechClassScale[NUM_MECH_CLASSES] = {
+float MechClassScale[std::to_underlying(NUM_MECH_CLASSES)] = {
 	0.0,
 	15.0,
 	40.0,
@@ -77,7 +77,7 @@ float MechClassScale[NUM_MECH_CLASSES] = {
 	200.0
 };
 
-float RankVersusChassisCombatModifier[NUM_WARRIOR_RANKS][NUM_MECH_CLASSES] = {
+float RankVersusChassisCombatModifier[NUM_WARRIOR_RANKS][std::to_underlying(NUM_MECH_CLASSES)] = {
 	{0.0, 0.0, -5.0, -15.0, -25.0},
 	{0.0, 5.0, 0.0, -5.0, -15.0},
 	{0.0, 10.0, 5.0, 0.0, -5.0},
@@ -113,7 +113,7 @@ long TargetMoveModifierTable [5][2] = {
 	{999, 4}
 };
 
-float MechClassWeights[NUM_MECH_CLASSES] = 
+float MechClassWeights[std::to_underlying(NUM_MECH_CLASSES)] =
 {
 	0.0,
 	35.0,

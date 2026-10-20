@@ -43,7 +43,7 @@ bool powered(const MoverVis& v)
 
 bool friendly(const MoverVis& v)
 {
-    return (v.relation == REL_OWN) || (v.relation == REL_ALLIED);
+    return (v.relation == std::to_underlying(REL_OWN)) || (v.relation == std::to_underlying(REL_ALLIED));
 }
 
 bool meshDrawn(const MoverVis& v)

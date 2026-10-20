@@ -71,7 +71,7 @@
 //
 // Case-SENSITIVE by design, consistent with HardpointId: ids are authored
 // namespaced strings, not free text.
-enum { WEAPON_NAME_CAP = 64 };   // includes the NUL terminator
+inline constexpr int WEAPON_NAME_CAP = 64;   // includes the NUL terminator
 
 // FNV-1a over the whole (untruncated) name. Empty/null name -> 0 (the "unset" id).
 inline unsigned int weaponIdHash(const char* name) {
@@ -117,7 +117,7 @@ inline WeaponId makeWeaponId(const char* name) { return WeaponId(name); }
 // uses for sockets. A later slice resolves these against external index spaces
 // (FX registry, atlas, string table) WITHOUT this header knowing about them.
 // Empty means "not mapped" (a validator flags a missing/dangling id).
-enum { WEAPON_STRID_CAP = 64 };
+inline constexpr int WEAPON_STRID_CAP = 64;
 
 struct WeaponStringId {
     char v[WEAPON_STRID_CAP];
@@ -172,7 +172,7 @@ struct WeaponCombatStats {
 // (the EXISTING vocabulary from damage_schema.h -- do NOT invent a parallel one);
 // a later validator checks a chosen mount location is a member. allowedCount == 0
 // is read as "unconstrained" (BT2018 AllowedLocations:"All").
-enum { WEAPON_MAX_ALLOWED_LOCATIONS = NUM_DAMAGE_LOCATION_IDS };
+inline constexpr int WEAPON_MAX_ALLOWED_LOCATIONS = NUM_DAMAGE_LOCATION_IDS;
 
 struct WeaponFitFacet {
     int              critSlots;    // InventorySize -- crit spaces required
@@ -263,7 +263,7 @@ enum class WeaponEvent {
 };
 
 // Keep this in lockstep with the enum above; a static_assert in the test locks it.
-enum { NUM_WEAPON_EVENTS = 10 };
+inline constexpr int NUM_WEAPON_EVENTS = 10;
 
 inline int weaponEventIndex(WeaponEvent e) { return static_cast<int>(e); }
 
@@ -280,7 +280,7 @@ enum class WeaponAssetKind {
     Light  // dynamic-light cue id (muzzle flash / beam glow)
 };
 
-enum { NUM_WEAPON_ASSET_KINDS = 4 };
+inline constexpr int NUM_WEAPON_ASSET_KINDS = 4;
 
 inline int weaponAssetKindIndex(WeaponAssetKind k) { return static_cast<int>(k); }
 

@@ -4,6 +4,7 @@
 #include "../GameOS/gameos/utils/mc2log.h"
 
 #include <string_view>
+#include <utility>
 #include "mc2str.h"
 
 
@@ -404,7 +405,7 @@ void ControlGui::cancelInfo()
 {
 	gosEnum_KeyIndex key;
 	bool bC, bA, bS;
-	MissionInterfaceManager::instance()->getHotKey( INFO_COMMAND_INDEX, key, bS, bC, bA );
+	MissionInterfaceManager::instance()->getHotKey( std::to_underlying(INFO_COMMAND_INDEX), key, bS, bC, bA );
 
 	if ( gos_GetKeyStatus( key )!= KEY_HELD )
 		getButton( INFO_COMMAND )->press( 0 );

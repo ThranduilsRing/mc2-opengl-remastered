@@ -50,7 +50,7 @@ extern std::atomic<unsigned long long> g_txmmgr_block_exhausted;
 extern std::atomic<unsigned long long> g_txmmgr_add_vertices_overflow_prevented;
 extern std::atomic<unsigned long long> g_txmmgr_add_shape_overflow_prevented;
 //----------------------------------------------------------------------
-enum MC_TextureKey
+enum class MC_TextureKey
 {
 	MC_INVALIDTEXTUREKEY = 0,
 	MC_Solid,

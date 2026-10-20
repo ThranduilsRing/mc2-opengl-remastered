@@ -22,7 +22,7 @@ namespace Stuff {
 
 	extern int ArmorLevel;
 
-	enum {SNAN_NEGATIVE_INT32=0xffb1ffb1};
+	inline constexpr unsigned int SNAN_NEGATIVE_INT32 = 0xffb1ffb1u;
 
 	#if !defined(Verify)
 		#if !defined(_ARMOR)
@@ -171,7 +171,7 @@ namespace Stuff {
 	//# TYPEDEFS #
 	//############
 
-	enum {INT_BITS=32};
+	inline constexpr int INT_BITS = 32;
 
 }
 

@@ -15,18 +15,14 @@
 
 inline constexpr int MAX_WEAPONS_PER_MOVER = 32;
 
-enum {
-	REFIT_VEHICLE,
-	REFIT_BAY,
-	NUM_FIXERS
-};
+inline constexpr int REFIT_VEHICLE = 0;
+inline constexpr int REFIT_BAY = 1;
+inline constexpr int NUM_FIXERS = 2;
 
-enum {
-	ARMOR_REFIT_COST,
-	INTERNAL_REFIT_COST,
-	AMMO_REFIT_COST,
-	NUM_COSTS
-};
+inline constexpr int ARMOR_REFIT_COST = 0;
+inline constexpr int INTERNAL_REFIT_COST = 1;
+inline constexpr int AMMO_REFIT_COST = 2;
+inline constexpr int NUM_COSTS = 3;
 
 struct LocationNode;
 using LocationNodePtr = LocationNode *;

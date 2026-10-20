@@ -17,6 +17,8 @@
 #include"dmover.h"
 #endif
 
+#include <utility>
+
 //#ifndef DSTD_H
 #include"dstd.h"
 //#endif
@@ -25,7 +27,7 @@
 
 inline constexpr int MAX_TRIGGER_AREAS = 16;
 
-enum TriggerAreaType {
+enum class TriggerAreaType : int {
 	TRIGGER_AREA_NONE,
 	TRIGGER_AREA_MOVER,
 	TRIGGER_AREA_TEAM,
@@ -33,6 +35,7 @@ enum TriggerAreaType {
 	TRIGGER_AREA_COMMANDER,
 	NUM_TRIGGER_AREA_TYPES
 };
+using enum TriggerAreaType;
 
 struct TriggerArea {
 	char	type;
@@ -54,7 +57,7 @@ class TriggerAreaManager {
 			
 		void init (void) {
 			for (long i = 0; i < MAX_TRIGGER_AREAS; i++)
-				triggerAreas[i].type = TRIGGER_AREA_NONE;
+				triggerAreas[i].type = static_cast<char>(std::to_underlying(TRIGGER_AREA_NONE));
 			for (long r = 0; r < MAX_MAP_CELL_WIDTH / 3; r++)
 				for (long c = 0; c < MAX_MAP_CELL_WIDTH / 3; c++)
 					map[r][c] = 0;

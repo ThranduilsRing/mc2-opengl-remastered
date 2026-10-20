@@ -28,7 +28,7 @@
 // Mirrors HardpointSocketName's shape (a small char buffer, no heap) so the
 // facet stays a POD safe in the offline test target and any future data blob.
 // Empty (`v[0]=='\0'`) is the "unmapped" sentinel the accessor seams test.
-enum { UI_ASSET_NAME_CAP = 64 };   // includes the NUL terminator
+inline constexpr int UI_ASSET_NAME_CAP = 64;   // includes the NUL terminator
 
 struct UIAssetName {
     char v[UI_ASSET_NAME_CAP];
@@ -45,7 +45,7 @@ struct UIAssetName {
 // The sentinel a string-id field carries when it declares NO override. Legacy
 // resource ids are non-negative (IDS_ values); -1 is never a real id, so it is
 // an unambiguous "use the legacy id" marker at the accessor seam.
-enum { UI_STRING_ID_UNSET = -1 };
+inline constexpr int UI_STRING_ID_UNSET = -1;
 
 // -------------------------------------------------------------------------
 // UIProfile -- the per-unit UI facet.

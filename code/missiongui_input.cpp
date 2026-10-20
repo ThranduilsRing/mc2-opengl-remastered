@@ -1,6 +1,7 @@
 // MissionInterfaceManager: save/load, rollovers and the gameplay / mech pick.
 // Declared in the class headers; shared names in missiongui_shared_internal.h.
 #include "missiongui_shared_internal.h"
+#include <utility>
 
 
 void MissionInterfaceManager::Save (FitIniFilePtr file)
@@ -288,7 +289,7 @@ void MissionInterfaceManager::updateRollovers()
 			case mState_CURPOS_ATTACK:
 			case mState_CURPOS_ATTACK_LOS:
 				helpTextID = 0;
-				if ( gos_GetKeyStatus( (gosEnum_KeyIndex)commands[FORCE_FIRE_KEY].key ) == KEY_HELD )
+				if ( gos_GetKeyStatus( (gosEnum_KeyIndex)commands[std::to_underlying(FORCE_FIRE_KEY)].key ) == KEY_HELD )
 					controlGui.setRolloverHelpText(  IDS_FORCE_FIRE_CURSOR_LEFT_HELP );
 				else
 					controlGui.setRolloverHelpText( IDS_FIRE_FROM_CURRENT_POSITION_CURSOR_LEFT_HELP );

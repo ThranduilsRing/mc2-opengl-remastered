@@ -55,16 +55,19 @@
 #ifndef VIS_SEMANTICS_H
 #define VIS_SEMANTICS_H
 
+#include <utility>
+
 namespace mc2_vis {
 
 // homeTeamRelationship, as fed by BattleMech::update / GroundVehicle::update
 // through Appearance::setObjectParameters.
-enum Relation
+enum class Relation
 {
     REL_OWN     = 0,   // same team AND same commander as the local player
     REL_ALLIED  = 1,   // same team, different commander
     REL_FOREIGN = 2    // everything else (enemy, neutral, unaligned)
 };
+using enum Relation;
 
 // Everything the four predicates need. Filled at the call site from state the
 // appearance already owns; nothing new is plumbed through the game layer.
@@ -79,7 +82,7 @@ struct MoverVis
 
     MoverVis()
         : sensorLevel(0), meshAlpha(255u), status(0),
-          relation(REL_FOREIGN), legacyVisible(true), inEditor(false) {}
+          relation(std::to_underlying(REL_FOREIGN)), legacyVisible(true), inEditor(false) {}
 };
 
 // MC2_VIS_SEMANTICS killswitch (=0 -> legacy predicates).

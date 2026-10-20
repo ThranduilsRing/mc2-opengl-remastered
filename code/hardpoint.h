@@ -65,7 +65,7 @@ inline WeaponTagMask weaponTagBit(WeaponTag t) {
 // human readability and is not part of the equality contract. Names longer than
 // the buffer are truncated in the stored NAME but still hashed in FULL, so two
 // distinct long names never collide merely because their prefixes match.
-enum { HARDPOINT_NAME_CAP = 48 };   // includes the NUL terminator
+inline constexpr int HARDPOINT_NAME_CAP = 48;   // includes the NUL terminator
 
 // FNV-1a over the whole (untruncated) name. Empty/null name -> 0 (the "unset"
 // id). Case-SENSITIVE by design: RightTorso and righttorso are different
@@ -121,7 +121,7 @@ inline HardpointId makeHardpointId(const char* name) { return HardpointId(name);
 //   * uiSlot   -> mechlab / HUD slot name (UIProfile, decoupled from atlas index)
 // All three are plain char buffers -> pure, no engine types. Empty means "not
 // mapped yet" (a later slice / validator flags a missing socket, etc.).
-enum { HARDPOINT_SOCKET_CAP = 48 };
+inline constexpr int HARDPOINT_SOCKET_CAP = 48;
 
 // Fixed, trivially-copyable string field.
 struct HardpointSocketName {

@@ -2,13 +2,15 @@
 // Declared in the class headers; shared names in controlgui_internal.h.
 #include "controlgui_internal.h"
 #include "mc2fmt.h"
+#include <utility>
 
 namespace {
-	enum CgPhase { CG_PAUSE=0, CG_BTNHOVER, CG_ROSTER, CG_MOVERSTATE, CG_TACMAP, CG_INFOWND, CG_VEHTAB, CG_FGBAR };
+	enum class CgPhase { CG_PAUSE=0, CG_BTNHOVER, CG_ROSTER, CG_MOVERSTATE, CG_TACMAP, CG_INFOWND, CG_VEHTAB, CG_FGBAR };
+	using enum CgPhase;
 	static const bool s_cgSplitOn = mc2::gate::get<"MC2_MIF_SPLIT">() || mc2::gate::get<"MC2_IFACE_COST_SPLIT">();
 	struct CgScope {
 		int idx; std::chrono::steady_clock::time_point t0;
-		explicit CgScope(int i):idx(i){ if(s_cgSplitOn) t0=std::chrono::steady_clock::now(); }
+		explicit CgScope(CgPhase i):idx(std::to_underlying(i)){ if(s_cgSplitOn) t0=std::chrono::steady_clock::now(); }
 		~CgScope(){ if(!s_cgSplitOn) return; g_ifaceCgFrameNs[idx]+=(unsigned long long)
 			std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now()-t0).count(); }
 	};

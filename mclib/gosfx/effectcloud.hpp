@@ -76,9 +76,7 @@ namespace gosFX
 		using Specification = EffectCloud__Specification;
 		using Particle = EffectCloud__Particle;
 
-		enum {
-			ParticleSize = sizeof(Particle)
-		};
+		static constexpr int ParticleSize = sizeof(Particle);
 
 	//----------------------------------------------------------------------------
 	// Class Data Support

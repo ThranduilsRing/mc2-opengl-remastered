@@ -42,12 +42,13 @@ namespace static_light_row {
 // ("sentinel; flush() patches per-frame").
 static const uint32_t kNoLightIndex = 0xFFFFFFFFu;
 
-enum Class {
+enum class Class {
     kHealthy    = 0,  // a real, baked, in-range row
     kSentinel   = 1,  // index is kNoLightIndex -> int(-1) -> OOB read -> zeros
     kOutOfRange = 2,  // index past the uploaded table -> OOB read -> zeros
     kEmptyRow   = 3   // slot exists but numLights_ == 0 -> reads as zero light
 };
+using enum Class;
 
 // Mirror of the resolution at gos_static_prop_registry.cpp flush():
 //   freshLightIdx = (perInstanceLight && rangeLightIdx != sentinel)
@@ -100,7 +101,7 @@ inline bool isZeroRow(uint32_t resolvedLightIdx, int numLightsAtSlot)
 // anyone changes what is drawn. Correcting the guard would alter which light row
 // some props receive -- a visible change on a default launch -- so the census
 // runs first and the behaviour change waits on its number.
-enum Divergence {
+enum class Divergence {
     kAgree                 = 0,  // both usable and equal -- nothing to decide
     kDifferBothValid       = 1,  // both usable but different: the per-actor capture
                                  // is doing real work; forwarding it is CORRECT and
@@ -114,6 +115,7 @@ enum Divergence {
                                  // per-actor index -> needless deregistration churn.
     kBothSentinel          = 4    // guard invalidates, and that is correct.
 };
+using enum Divergence;
 
 inline Divergence classifyGuardForward(uint32_t validatedIdx, uint32_t forwardedIdx)
 {

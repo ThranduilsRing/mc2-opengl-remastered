@@ -80,7 +80,7 @@ enum WeaponAmmoType {
 	NUM_WEAPON_AMMO_TYPES
 };
 
-enum WeaponStateType {
+enum class WeaponStateType {
 	WEAPON_STATE_READY,
 	WEAPON_STATE_RECYCLING,
 	WEAPON_STATE_DAMAGED,

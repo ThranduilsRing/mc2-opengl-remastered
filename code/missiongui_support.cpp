@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in missiongui_shared_internal.h.
 #include "missiongui_shared_internal.h"
 #include "mc2fmt.h"
+#include <utility>
 
 
 void MissionInterfaceManager::addAirstrike()
@@ -595,7 +596,7 @@ int MissionInterfaceManager::infoButtonReleased()
 }
 int MissionInterfaceManager::energyWeapons()
 {
-	if ( gos_GetKeyStatus( (gosEnum_KeyIndex)(commands[ENERGY_WEAPON_INDEX].key & 0x0000ffff) ) == KEY_HELD )
+	if ( gos_GetKeyStatus( (gosEnum_KeyIndex)(commands[std::to_underlying(ENERGY_WEAPON_INDEX)].key & 0x0000ffff) ) == KEY_HELD )
 		bEnergyWeapons = 1;	
 	else
 		bEnergyWeapons = 0;

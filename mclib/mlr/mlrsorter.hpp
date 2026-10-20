@@ -38,14 +38,12 @@ namespace MidLevelRenderer {
 		int LoadAlphaFromLineCloud(SortAlpha**);
 		int LoadAlphaFromQuads(SortAlpha**);
 
-		enum {
-			TriList = 0,
-			TriIndexedList,
-			PointCloud,
-			Quads,
-			LineCloud,
-			LastMode
-		};
+		static constexpr int TriList = 0;
+		static constexpr int TriIndexedList = 1;
+		static constexpr int PointCloud = 2;
+		static constexpr int Quads = 3;
+		static constexpr int LineCloud = 4;
+		static constexpr int LastMode = 5;
 
 		using DrawFunc = void (SortData::*)();
 		using LoadSortAlphaFunc = int (SortData::*)(SortAlpha**);

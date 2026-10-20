@@ -24,16 +24,18 @@
 
 //***************************************************************************
 
-enum UseType {
+enum class UseType {
 	USE_EXPR,
 	USE_TARGET,
 	USE_REFPARAM
 };
+using enum UseType;
 
-enum BlockType {
+enum class BlockType {
 	BLOCK_MODULE,
 	BLOCK_ROUTINE
 };
+using enum BlockType;
 
 //***************************************************************************
 

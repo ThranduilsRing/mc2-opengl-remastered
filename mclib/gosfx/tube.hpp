@@ -92,7 +92,7 @@ namespace gosFX
 		int
 			m_maxProfileCount;
 
-		enum ProfileType {
+		enum class ProfileType {
 			e_Ribbon,
 			e_AlignedRibbon,
 			e_Triangle,
@@ -101,7 +101,9 @@ namespace gosFX
 			e_Pentagon,
 			e_Hexagon,
 			e_VerticalRibbon
-		}
+		};
+		using enum ProfileType;
+		ProfileType
 			m_profileType;
 		bool
 			m_insideOut;

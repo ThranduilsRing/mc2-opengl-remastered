@@ -763,7 +763,7 @@ int PacketFile::insertPacket (int packet, MemoryPtr buffer, unsigned int nbytes,
 	unsigned int ourFileMode = 0;
 	
 	strcpy(ourFileName,m_fileName.c_str());
-	ourFileMode = fileMode;
+	ourFileMode = std::to_underlying(fileMode);
 	
 	tmpFile.close();
 	close();

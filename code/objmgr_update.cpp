@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in objmgr_internal.h.
 #include "objmgr_internal.h"
 #include "mc2fmt.h"
+#include <utility>
 #include "diagnostic_trace.h"
 
 
@@ -346,9 +347,10 @@ static void emitGpuCullRecord(GameObjectPtr obj,
 // FRAME-JOBS prepass, etc.).
 namespace gomcost {
 static const bool s_enabled = mc2::gate::get<"MC2_GOM_UPDATE_COST_SPLIT">();
-enum Phase {
+enum class Phase {
     kStaticTouch = 0, kMoverUpdate, kOtherFx, kSubstrateFlush, kTotal, kPhaseCount
 };
+inline constexpr int kPhaseCount = std::to_underlying(Phase::kPhaseCount);
 static const char* kName[kPhaseCount] = {
     "static_touch", "mover_update", "other_fx", "substrate_flush", "total"
 };
@@ -362,7 +364,7 @@ static inline unsigned long long nowNs() {
 // Lexical phase span. Zero-cost (two branch-predicted tests) when disabled.
 struct Span {
     int p; unsigned long long t0;
-    explicit Span(int phase) : p(phase), t0(s_enabled ? nowNs() : 0ULL) {}
+    explicit Span(Phase phase) : p(std::to_underlying(phase)), t0(s_enabled ? nowNs() : 0ULL) {}
     ~Span() { if (s_enabled) s_ns[p] += nowNs() - t0; }
 };
 // Whole-function span + window emit. Construct FIRST so its dtor runs LAST.
@@ -371,7 +373,7 @@ struct TotalSpan {
     TotalSpan() : t0(s_enabled ? nowNs() : 0ULL) {}
     ~TotalSpan() {
         if (!s_enabled) return;
-        s_ns[kTotal] += nowNs() - t0;
+        s_ns[std::to_underlying(Phase::kTotal)] += nowNs() - t0;
         if (++s_frames < 60) return;
         const double wf = static_cast<double>(s_frames);
         double phaseSumUs = 0.0;
@@ -379,12 +381,12 @@ struct TotalSpan {
         off += mc2::fmt::to_buf_n(line + off, sizeof(line) - off, "[GOM_UPDATE_COST v1] event=summary frames={:d}", mc2::fmt::as_i32(s_frames));
         for (int p = 0; p < kPhaseCount; ++p) {
             const double us = static_cast<double>(s_ns[p]) / 1000.0 / wf;
-            if (p != kTotal) phaseSumUs += us;
+            if (p != std::to_underlying(Phase::kTotal)) phaseSumUs += us;
             if (off < static_cast<int>(sizeof(line)))
                 off += mc2::fmt::to_buf_n(line + off, sizeof(line) - off, " {}_us={:.1f}", mc2::fmt::safe(kName[p]), us);
         }
         const double selfUs =
-            static_cast<double>(s_ns[kTotal]) / 1000.0 / wf - phaseSumUs;
+            static_cast<double>(s_ns[std::to_underlying(Phase::kTotal)]) / 1000.0 / wf - phaseSumUs;
         if (off < static_cast<int>(sizeof(line)))
             mc2::fmt::to_buf_n(line + off, sizeof(line) - off, " self_us={:.1f}", selfUs);
         mc2::fmt::print_err("{}\n", mc2::fmt::safe(line));
@@ -1405,7 +1407,7 @@ void GameObjectManager::update (bool terrain, bool movers, bool other)
 		int frameJobsPrePassCount = 0; // FRAME-JOBS-1: handle count for per-frame trace
 		updateFrameJobsPrepass(frameJobsPrePassCount);
 		ZoneScopedN("GameLogic.Units.TerrainObjects");
-		gomcost::Span _gomStaticTouch(gomcost::kStaticTouch); // [GOM_UPDATE_COST v1]
+		gomcost::Span _gomStaticTouch(gomcost::Phase::kStaticTouch); // [GOM_UPDATE_COST v1]
 		updateTerrainObjects(frameJobsPrePassCount);
 	}
 	
@@ -1413,7 +1415,7 @@ void GameObjectManager::update (bool terrain, bool movers, bool other)
 		static MoverPtr removeList[MAX_MOVERS];
 		long numRemoved = 0;
 
-		{ gomcost::Span _gomMoverUpdate(gomcost::kMoverUpdate); // [GOM_UPDATE_COST v1] mechs+vehicles update() walk
+		{ gomcost::Span _gomMoverUpdate(gomcost::Phase::kMoverUpdate); // [GOM_UPDATE_COST v1] mechs+vehicles update() walk
 		updateMoverWalk(removeList, numRemoved);
 
 		for (long i = 0; i < numRemoved; i++)
@@ -1424,14 +1426,14 @@ void GameObjectManager::update (bool terrain, bool movers, bool other)
 	}
 
 	if (other) {
-		gomcost::Span _gomOtherFx(gomcost::kOtherFx); // [GOM_UPDATE_COST v1] turrets/weapons/carnage/lights/artillery
+		gomcost::Span _gomOtherFx(gomcost::Phase::kOtherFx); // [GOM_UPDATE_COST v1] turrets/weapons/carnage/lights/artillery
 		updateOtherFx();
 	}
 
 	// C0-3: finalize GPU cull substrate SSBO for this frame.
 	// Called unconditionally — substrate_flushUpload internally checks isEnabled().
 	{ ZoneScopedN("GOM.substrateFlushUpload");
-	  gomcost::Span _gomSubstrate(gomcost::kSubstrateFlush); // [GOM_UPDATE_COST v1]
+	  gomcost::Span _gomSubstrate(gomcost::Phase::kSubstrateFlush); // [GOM_UPDATE_COST v1]
 	  gpu_cull::substrate_flushUpload(); }
 
 	// MC2_MOVE_RECON: per-frame tick (lazy init, atexit register, periodic emit).

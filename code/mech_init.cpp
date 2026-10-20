@@ -3,12 +3,13 @@
 #include "mech_internal.h"
 #include "mc2fmt.h"
 #include <algorithm>
+#include <utility>
 
 
 void BattleMech::init (bool create) {
 
 	objectClass = BATTLEMECH;
-	overlayWeightClass = OVERLAY_WEIGHT_MECH;
+	overlayWeightClass = std::to_underlying(OVERLAY_WEIGHT_MECH);
 	cBills = 0;
 	playedHeloDestruct = false;
 
@@ -32,7 +33,7 @@ void BattleMech::init (bool create) {
 	heatCheckTime = 0.0;
 #endif
 
-	chassisClass = MECH_CLASS_LIGHT;
+	chassisClass = std::to_underlying(MECH_CLASS_LIGHT);
 	chassisBR = 0;
 
 	damageThisFrame = 0.0f;
@@ -825,7 +826,7 @@ long BattleMech::init (FitIniFile* mechFile) {
 	ObjectTypePtr type = ObjectManager->getObjectType(typeHandle);
 	if (type->getExplosionObject() > 0)
 		ObjectManager->objTypeManager->load(type->getExplosionObject(), true);
-	chassisClass = getMechClass();
+	chassisClass = std::to_underlying(getMechClass());
 
 	// Mod-tolerance: mod mechs from stub-substituted BattleMechType paths
 	// may not contain a COMPONENT_FORM_SENSOR in their inventory, so the

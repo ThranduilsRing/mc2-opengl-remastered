@@ -28,7 +28,8 @@ class MissionBegin
 {
 	public:
 
-		enum { DIM_SCREEN_X = 5, DIM_SCREEN_Y = 3};
+		static constexpr int DIM_SCREEN_X = 5;
+		static constexpr int DIM_SCREEN_Y = 3;
 
 		//Tutorial - SAVE with savegame, please!!
 		static bool 				FirstTimePurchase;

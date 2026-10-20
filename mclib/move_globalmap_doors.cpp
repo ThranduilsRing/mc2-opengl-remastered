@@ -39,7 +39,7 @@ void GlobalMap::calcGlobalDoors (void) {
 									AreaType curAreaType = areas[curArea].type;
 									AreaType adjAreaType = areas[adjArea].type;
 									bool validDoor = false;
-									if ((curAreaType == AREA_TYPE_NORMAL) && (adjAreaType == AREA_TYPE_NORMAL))
+									if ((curAreaType == _AreaType::AREA_TYPE_NORMAL) && (adjAreaType == _AreaType::AREA_TYPE_NORMAL))
 										validDoor = true;
 									if (validDoor)
 										doorMap[r - minRow][c - minCol] = adjArea;
@@ -181,7 +181,7 @@ long GlobalMap::calcLinkCost (long startDoor, long thruArea, long goalDoor) {
 		newPath.numSteps = 10;
 		newPath.cost = 10;
 		}
-	else if ((areas[thruArea].type == AREA_TYPE_WALL) || (areas[thruArea].type == AREA_TYPE_GATE) || (areas[thruArea].type == AREA_TYPE_FOREST)) {
+	else if ((areas[thruArea].type == _AreaType::AREA_TYPE_WALL) || (areas[thruArea].type == _AreaType::AREA_TYPE_GATE) || (areas[thruArea].type == _AreaType::AREA_TYPE_FOREST)) {
 		// These costs are for when the area is open...
 		newPath.numSteps = 10;
 		newPath.cost = 10;

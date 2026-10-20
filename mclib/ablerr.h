@@ -17,7 +17,7 @@ inline constexpr int MAXLEN_ERROR_MESSAGE = 256;
 
 #pragma warning( disable : 4514 )  
 
-enum SyntaxErrorType {
+enum class SyntaxErrorType {
 	ABL_ERR_SYNTAX_NONE,									// 0
 	ABL_ERR_SYNTAX_ERROR,
 	ABL_ERR_SYNTAX_TOO_MANY_ERRORS,
@@ -88,8 +88,9 @@ enum SyntaxErrorType {
 	ABL_ERR_SYNTAX_MISSING_END_FSM,
 	NUM_ABL_SYNTAX_ERRORS
 };
+using enum SyntaxErrorType;
 
-enum RuntimeErrorType {
+enum class RuntimeErrorType {
 	ABL_ERR_RUNTIME_STACK_OVERFLOW,
 	ABL_ERR_RUNTIME_INFINITE_LOOP,
 	ABL_ERR_RUNTIME_NESTED_FUNCTION_CALL,
@@ -102,12 +103,13 @@ enum RuntimeErrorType {
 	ABL_ERR_RUNTIME_NULL_PREVSTATE,
 	NUM_ABL_RUNTIME_ERRORS
 };
+using enum RuntimeErrorType;
 
 //***************************************************************************
 
 struct ABLSyntaxFailure {};
-[[noreturn]] void syntaxError (int errCode);
-void runtimeError (int errCode);
+[[noreturn]] void syntaxError (SyntaxErrorType errCode);
+void runtimeError (RuntimeErrorType errCode);
 void ABL_Fatal (long errCode, const char* s);
 void ABL_Assert (bool test, long errCode, const char* s);
 

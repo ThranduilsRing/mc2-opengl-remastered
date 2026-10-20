@@ -918,7 +918,7 @@ long MechWarrior::handleKilledTarget (void) {
 			case BATTLEMECH:
 				if ((static_cast<MoverPtr>(target))->getMoveType() != MOVETYPE_AIR)	//Killing Helicopters does not count as a mech.
 				{
-					vehicleClass = target->getMechClass();
+					vehicleClass = std::to_underlying(target->getMechClass());
 					skillIncrement = KillSkill[vehicleClass];
 					numMechKills[vehicleClass][COMBAT_STAT_MISSION]++;
 					message = RADIO_MECH_DEAD;

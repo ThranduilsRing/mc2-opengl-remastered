@@ -89,12 +89,11 @@ namespace gosFX
 		using Specification = ShardCloud__Specification;
 		using Particle = ShardCloud__Particle;
 
-		enum {
+		static constexpr int
 			ParticleSize =
 				sizeof(Particle)
 				 + 3*sizeof(glm::vec3)
-				 + 3*sizeof(Stuff::RGBAColor)
-		};
+				 + 3*sizeof(Stuff::RGBAColor);
 
 	protected:
 		std::unique_ptr<MidLevelRenderer::MLRTriangleCloud> m_cloudImplementation;						// point to an MLR triangle cloud by Michael

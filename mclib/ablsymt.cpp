@@ -10,6 +10,7 @@
 #include<stdio.h>
 #include<stdlib.h>
 #include<string.h>
+#include<utility>
 #include "Gates/gate.h"
 #include "mc2fmt.h"
 
@@ -72,7 +73,7 @@ Type DummyType = {		// for erroneous type definitions
 StandardFunctionInfo		FunctionInfoTable[MAX_STANDARD_FUNCTIONS];
 //void*						FunctionCallbackTable[MAX_STANDARD_FUNCTIONS];
 void						(*FunctionCallbackTable[MAX_STANDARD_FUNCTIONS])(void);
-long						NumStandardFunctions = NUM_ABL_ROUTINES;
+long						NumStandardFunctions = std::to_underlying(RoutineKey::NUM_ABL_ROUTINES);
 
 void execStdRandom (void);
 
@@ -731,10 +732,10 @@ void initSymTable (void) {
 	//-------------------------------------------
 	// Set up the standard, built-in functions...
 //(char* name, long routineKey, bool isOrder, char* paramList, char* returnType, void* callback);
-	enterStandardRoutine("return", RTN_RETURN, false, nullptr, nullptr, nullptr);
-	enterStandardRoutine("print", RTN_PRINT, false, nullptr, nullptr, nullptr);
-	enterStandardRoutine("concat", RTN_CONCAT, false, nullptr, nullptr, nullptr);
-	enterStandardRoutine("getstatehandle", RTN_GET_STATE_HANDLE, false, nullptr, nullptr, nullptr);
+	enterStandardRoutine("return", std::to_underlying(RTN_RETURN), false, nullptr, nullptr, nullptr);
+	enterStandardRoutine("print", std::to_underlying(RTN_PRINT), false, nullptr, nullptr, nullptr);
+	enterStandardRoutine("concat", std::to_underlying(RTN_CONCAT), false, nullptr, nullptr, nullptr);
+	enterStandardRoutine("getstatehandle", std::to_underlying(RTN_GET_STATE_HANDLE), false, nullptr, nullptr, nullptr);
 
 	//-----------------------------------
 	// Honor Bound-specific extensions...

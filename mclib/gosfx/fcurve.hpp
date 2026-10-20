@@ -13,7 +13,7 @@ namespace gosFX {
 	class Curve
 	{
 	public:
-		enum CurveType
+		enum class CurveType
 		{
 			e_ConstantType,
 			e_LinearType,
@@ -28,6 +28,7 @@ namespace gosFX {
 			e_SplineLinearType,
 			e_SplineSplineType
 		};
+		using enum CurveType;
 
 		const CurveType
 			m_type;

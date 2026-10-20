@@ -34,14 +34,15 @@ union Value {
 	char*		stringPtr;
 };
 
-enum VariableType {
+enum class VariableType {
 	VAR_TYPE_NORMAL,
 	VAR_TYPE_STATIC,
 	VAR_TYPE_ETERNAL,
 	VAR_TYPE_REGISTERED
 };
+using enum VariableType;
 
-enum DefinitionType {
+enum class DefinitionType {
 	DFN_UNDEFINED,
 	DFN_CONST,
 	DFN_TYPE,
@@ -52,8 +53,9 @@ enum DefinitionType {
 	DFN_PROCEDURE,
 	DFN_FUNCTION
 };
+using enum DefinitionType;
 
-enum RoutineKey {
+enum class RoutineKey {
 	RTN_DECLARED,
 	RTN_FORWARD,
 	RTN_RETURN,
@@ -64,6 +66,7 @@ enum RoutineKey {
 	RTN_FATAL,
 	NUM_ABL_ROUTINES
 };
+using enum RoutineKey;
 // NOTE: NUMBER OF ROUTINEKEYS IS LIMITED TO 256!
 
 using SymTableNodePtr = struct _SymTableNode*;
@@ -139,7 +142,7 @@ struct _SymTableNode {
 	long				labelIndex;		// really for compiling only...
 }; using SymTableNode = _SymTableNode;
 
-enum FunctionParamType {
+enum class FunctionParamType {
 	PARAM_TYPE_ANYTHING,
 	PARAM_TYPE_CHAR,
 	PARAM_TYPE_INTEGER,
@@ -152,14 +155,16 @@ enum FunctionParamType {
 	PARAM_TYPE_BOOLEAN_ARRAY,
 	NUM_PARAM_TYPES
 };
+using enum FunctionParamType;
 
-enum FunctionReturnType {
+enum class FunctionReturnType {
 	RETURN_TYPE_NONE,
 	RETURN_TYPE_INTEGER,
 	RETURN_TYPE_REAL,
 	RETURN_TYPE_BOOLEAN,
 	NUM_RETURN_TYPES
 };
+using enum FunctionReturnType;
 
 // Raised 256 -> 512 for Omnitech ABL stubs. Baseline MC2 needs ~256; our
 // 40+11 Omnitech tier-1/2 extensions push registrations to ~313. Overflowing
@@ -181,13 +186,14 @@ struct StandardFunctionInfo {
 //---------------
 // TYPE structure
 
-enum FormType {
+enum class FormType {
 	FRM_NONE,
 	FRM_SCALAR,
 	FRM_ENUM,
 	FRM_ARRAY
 	//FRM_RECORD
 };
+using enum FormType;
 
 //---------------------------------------------------------------------
 // Currently, we are only supporting the basic types: arrays and simple

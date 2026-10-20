@@ -569,7 +569,7 @@ long GlobalMap::init (PacketFilePtr packetFile, long whichPacket) {
 				sprintf(s, "     ownerWID is %d", areas[i].ownerWID);
 				log->write(s);
 			}
-			sprintf(s, "     %s", typeString[areas[i].type]);
+			sprintf(s, "     %s", typeString[std::to_underlying(areas[i].type)]);
 			log->write(s);
 			for (long d = 0; d < areas[i].numDoors; d++) {
                 const DoorInfo& door = areas_doors[i][d];
@@ -926,7 +926,7 @@ void GlobalMap::calcAreas (void) {
 	for (long i = 0; i < (numAreas + 1); i++) {
 		areas[i].sectorR = 0;
 		areas[i].sectorC = 0;
-		areas[i].type = AREA_TYPE_NORMAL;
+		areas[i].type = _AreaType::AREA_TYPE_NORMAL;
 		areas[i].numDoors = 0;
 		areas[i].doors_Legacy32bitPtr = 0;
 		areas_doors[i] = nullptr;
@@ -964,16 +964,16 @@ void GlobalMap::calcSpecialTypes (void) {
 	for (long i = 0; i < numSpecialAreas; i++) {
 		if (specialAreas[i].type == SPECIAL_WALL)
 			for (long j = 0; j < specialAreas[i].numSubAreas; j++)
-				areas[specialAreas[i].subAreas[j]].type = AREA_TYPE_WALL;
+				areas[specialAreas[i].subAreas[j]].type = _AreaType::AREA_TYPE_WALL;
 		else if (specialAreas[i].type == SPECIAL_GATE)
 			for (long j = 0; j < specialAreas[i].numSubAreas; j++)
-				areas[specialAreas[i].subAreas[j]].type = AREA_TYPE_GATE;
+				areas[specialAreas[i].subAreas[j]].type = _AreaType::AREA_TYPE_GATE;
 		else if (specialAreas[i].type == SPECIAL_LAND_BRIDGE)
 			for (long j = 0; j < specialAreas[i].numSubAreas; j++)
-				areas[specialAreas[i].subAreas[j]].type = AREA_TYPE_LAND_BRIDGE;
+				areas[specialAreas[i].subAreas[j]].type = _AreaType::AREA_TYPE_LAND_BRIDGE;
 		else if (specialAreas[i].type == SPECIAL_FOREST)
 			for (long j = 0; j < specialAreas[i].numSubAreas; j++)
-				areas[specialAreas[i].subAreas[j]].type = AREA_TYPE_FOREST;
+				areas[specialAreas[i].subAreas[j]].type = _AreaType::AREA_TYPE_FOREST;
 	}
 
 	for (long r = 0; r < height; r++)
