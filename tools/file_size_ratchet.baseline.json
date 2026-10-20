@@ -44,9 +44,9 @@
   "gui/alistbox.cpp": 1513,
   "mclib/ablenv.cpp": 1581,
   "mclib/ablrtn.cpp": 1799,
-  "mclib/assimp_importer.cpp": 1578,
+  "mclib/assimp_importer.cpp": 1577,
   "mclib/camera.h": 1815,
-  "mclib/file.cpp": 2614,
+  "mclib/file.cpp": 2613,
   "mclib/gosfx/fcurve.cpp": 1923,
   "mclib/mapdata.cpp": 2518,
   "mclib/mlr/mlrlightmap.cpp": 1648,
@@ -56,7 +56,7 @@
   "mclib/terrtxm.cpp": 1816,
   "mclib/tgl.h": 1799
  },
- "head": "5125c5717",
+ "head": "1dbcd4585",
  "per_dir": {
   "GameAdapters": {
    "files": 9,
@@ -110,7 +110,7 @@
    "files": 563,
    "files_over_1500": 13,
    "files_over_3000": 0,
-   "max_lines": 2614
+   "max_lines": 2613
   },
   "shaders": {
    "files": 86,
@@ -142,7 +142,7 @@
   },
   {
    "file": "mclib/file.cpp",
-   "lines": 2614
+   "lines": 2613
   },
   {
    "file": "mclib/mapdata.cpp",
