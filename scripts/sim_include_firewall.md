@@ -76,3 +76,9 @@ the logger: it includes only standard headers and takes no sim input (its clock 
 injectable rate limiter for log output), so it adds no nondeterminism, and the same TU already
 carries baselined GameOS diagnostic includes (diagnostic_trace.h). It is debt like those rows:
 the extraction removes it with them.
+
+2026-10-19: four `gameos` rows added by hand for `GameOS/include/mc2fmt.h`, reached through
+`code/abl_trace.h` (lane flash-lg12b, sprintf -> std::format_to_n) from mission_update.cpp,
+warrior.cpp and warrior_orders.cpp, plus the direct include in mission_update.cpp. mc2fmt.h is a
+pure formatting helper over `<format>`: no clock, RNG, or camera input, so it adds no
+nondeterminism. Same category as the mc2log.h row above; removed with the other GameOS rows.

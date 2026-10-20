@@ -786,6 +786,60 @@
       "occurrence": 1
     },
     {
+      "tu": "code/mission_update.cpp",
+      "file": "code/abl_trace.h",
+      "chain": [
+        "code/mission_update.cpp",
+        "code/mission_internal.h",
+        "code/abl_trace.h",
+        "GameOS/include/mc2fmt.h"
+      ],
+      "rule": "gameos",
+      "subject": "mc2fmt.h",
+      "evidence": "#include \"mc2fmt.h\"",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/warrior.cpp",
+      "file": "code/abl_trace.h",
+      "chain": [
+        "code/warrior.cpp",
+        "code/warrior_internal.h",
+        "code/abl_trace.h",
+        "GameOS/include/mc2fmt.h"
+      ],
+      "rule": "gameos",
+      "subject": "mc2fmt.h",
+      "evidence": "#include \"mc2fmt.h\"",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/warrior_orders.cpp",
+      "file": "code/abl_trace.h",
+      "chain": [
+        "code/warrior_orders.cpp",
+        "code/warrior_internal.h",
+        "code/abl_trace.h",
+        "GameOS/include/mc2fmt.h"
+      ],
+      "rule": "gameos",
+      "subject": "mc2fmt.h",
+      "evidence": "#include \"mc2fmt.h\"",
+      "occurrence": 1
+    },
+    {
+      "tu": "code/mission_update.cpp",
+      "file": "code/mission_update.cpp",
+      "chain": [
+        "code/mission_update.cpp",
+        "GameOS/include/mc2fmt.h"
+      ],
+      "rule": "gameos",
+      "subject": "mc2fmt.h",
+      "evidence": "#include \"mc2fmt.h\"",
+      "occurrence": 1
+    },
+    {
       "tu": "code/sim_identity.cpp",
       "file": "code/sim_identity.cpp",
       "chain": [
