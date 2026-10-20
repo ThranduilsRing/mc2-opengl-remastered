@@ -6,30 +6,30 @@
   "specializationParams": [],
   "artifact": "mech.vert.default.dbbae7d3.spv",
   "spv_dir": "shaders/spv",
-  "source_sha256": "35e538624a4a4100d3dd1176028cb3e77ee89123cdeb12c1acaaf0f6d2c1cf7f",
-  "spirv_sha256": "c6eecde3c6276f33f2e806ac609615f5187dce3c36d78d59454423ec4ae93987",
+  "source_sha256": "0a54ca7f731fdc0377fe98fb50e5b88778e8e2fe784033ac288e70b55ce9d0e0",
+  "spirv_sha256": "b94a63a1dce6062b9fc2d2d39debe5905241875dd05b4973ae349e3df2d004c3",
   "bindings": {
     "ubos": [
       {
-        "name": "SceneData",
-        "binding": 1,
+        "name": "MechFrameUBO",
+        "binding": 0,
         "set": 0
       }
     ],
     "ssbos": [
       {
         "name": "LightsData",
-        "binding": 20,
+        "binding": 4,
         "set": 0
       },
       {
         "name": "InstanceBuffer",
-        "binding": 0,
+        "binding": 1,
         "set": 0
       },
       {
         "name": "BoneBuffer",
-        "binding": 1,
+        "binding": 2,
         "set": 0
       }
     ],
@@ -68,26 +68,48 @@
     ],
     "outputs": [
       {
-        "name": "v_uv",
+        "name": "vUv",
         "location": 0
       },
       {
-        "name": "v_litColor",
+        "name": "vNormalGL",
         "location": 1
       },
       {
-        "name": "v_highlightColor",
+        "name": "vLitColor",
         "location": 2
       },
       {
-        "name": "v_fogRGB",
+        "name": "vHighlight",
         "location": 3
       },
       {
-        "name": "v_normal",
+        "name": "vFog",
         "location": 4
+      },
+      {
+        "name": "vImportedMech",
+        "location": 9
+      },
+      {
+        "name": "vTangentGL",
+        "location": 8
+      },
+      {
+        "name": "vWorldPos",
+        "location": 5
+      },
+      {
+        "name": "vMechSunDirGL",
+        "location": 6
+      },
+      {
+        "name": "vMechSunFound",
+        "location": 7
       }
     ]
   },
-  "shaderVariantId": "dbbae7d3535c"
+  "shaderVariantId": "dbbae7d3535c",
+  "language": "glsl",
+  "targetEnv": "vulkan1.3"
 }

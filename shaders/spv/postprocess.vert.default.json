@@ -6,24 +6,15 @@
   "specializationParams": [],
   "artifact": "postprocess.vert.default.24eb2442.spv",
   "spv_dir": "shaders/spv",
-  "source_sha256": "dfc6c4c9ffc8c8c3748323351cf986f85beca30d613ce94f513ad9dc2d4d3d35",
-  "spirv_sha256": "cf169c2414b3ed8a2a189821be70b267a3b08bd22de84d990db0199dd65c582b",
+  "source_sha256": "72d03b347ad4d9ef6d6b186b5d6fcd93509400b6f5283f2771476aa944fdd3f6",
+  "spirv_sha256": "1c8da8f8a6724915d6fc54d73b7da777068f4521ec7acd2b80a8317121a63b12",
   "bindings": {
     "ubos": [],
     "ssbos": [],
     "samplers": []
   },
   "interface": {
-    "inputs": [
-      {
-        "name": "uv",
-        "location": 1
-      },
-      {
-        "name": "pos",
-        "location": 0
-      }
-    ],
+    "inputs": [],
     "outputs": [
       {
         "name": "TexCoord",
@@ -31,5 +22,7 @@
       }
     ]
   },
-  "shaderVariantId": "24eb244242a0"
+  "shaderVariantId": "24eb244242a0",
+  "language": "glsl",
+  "targetEnv": "vulkan1.3"
 }
