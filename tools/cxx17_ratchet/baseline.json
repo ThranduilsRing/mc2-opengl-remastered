@@ -150,7 +150,7 @@
    "LG09": 0,
    "LG10": 20,
    "LG11": 102,
-   "LG12a": 92,
+   "LG12a": 90,
    "LG12b": 341,
    "LG13": 26,
    "LG14": 123,
@@ -1880,7 +1880,6 @@
   "code/mechcmd2.cpp": {
    "LG03": 7,
    "LG11": 8,
-   "LG12a": 2,
    "LG12b": 1
   },
   "code/mechcmd2_cmdline.cpp": {
@@ -3833,7 +3832,7 @@
    "LG20": 3
   }
  },
- "head": "cb29dc68c",
+ "head": "ec2eecfd4",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
