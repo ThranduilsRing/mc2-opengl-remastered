@@ -67,6 +67,26 @@ def _remove_comment(line: str, suffix: str) -> str:
     return line
 
 
+def _repo_relative(root: Path, reference: str) -> str:
+    """Repo-relative POSIX form of a reference, so inventories are worktree-independent."""
+    text = reference.replace("\\", "/")
+    prefix = root.as_posix().rstrip("/") + "/"
+    if text.casefold().startswith(prefix.casefold()):
+        text = text[len(prefix):]
+    return text
+
+
+def _relative_inventory(root: Path, inventory: dict[str, Any]) -> dict[str, Any]:
+    """Copy of an inventory whose references are all repo-relative POSIX paths."""
+    normalized = json.loads(json.dumps(inventory))
+    for item in normalized.get("scripts", []):
+        for bucket in ("callers_by_basename", "callers_by_stem"):
+            for hit in item.get(bucket, []):
+                if isinstance(hit.get("reference"), str):
+                    hit["reference"] = _repo_relative(root, hit["reference"])
+    return normalized
+
+
 class Targets:
     def __init__(self, scripts, source, root):
         self.scripts = set(scripts)
@@ -391,7 +411,8 @@ def build_inventory(root: Path, paths: list[str] | None = None, *, excluded=(), 
             bucket = "callers_by_stem" if kind == "module" else "callers_by_basename"
             key = target, bucket, source, n, evidence
             found[key] = {"path": source, "line": n, "evidence": evidence,
-                          "reference": ref, "text": lines[n - 1].strip()[:240] if n <= len(lines) else ""}
+                          "reference": _repo_relative(root, ref),
+                          "text": lines[n - 1].strip()[:240] if n <= len(lines) else ""}
     for (target, bucket, _, _, _), hit in sorted(found.items()):
         items[target][bucket].append(hit)
     return {"schema_version": 2, "scripts": [items[p] for p in scripts]}
@@ -434,7 +455,7 @@ def main(argv=None):
         allowlist = _read_allowlist(allowlist_path)
         if args.check:
             errors = check_inventory(inventory, allowlist)
-            if not output.exists() or json.loads(output.read_text(encoding="utf-8")) != inventory:
+            if not output.exists() or _relative_inventory(root, json.loads(output.read_text(encoding="utf-8"))) != inventory:
                 errors.insert(0, f"caller inventory is stale: {output}")
             if errors:
                 print("\n".join(errors), file=sys.stderr)
