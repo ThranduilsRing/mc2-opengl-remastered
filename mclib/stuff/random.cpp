@@ -25,8 +25,8 @@ int
 int
 	Random::Index = -1;
 
-Random*
-	Random::Instance = nullptr;
+std::unique_ptr<Random>
+	Random::Instance;
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
@@ -35,8 +35,8 @@ void
 {
 	Verify(!Random::Instance);
 	Verify(Index == -1);
-	Random::Instance = new Random;
-	Register_Pointer(Random::Instance);
+	Random::Instance.reset(new Random);	// private constructor: make_unique cannot reach it
+	Register_Pointer(Random::Instance.get());
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -44,9 +44,8 @@ void
 void
 	Random::TerminateClass()
 {
-	Unregister_Pointer(Random::Instance);
-	delete Random::Instance;
-	Random::Instance = nullptr;
+	Unregister_Pointer(Random::Instance.get());
+	Random::Instance.reset();
 	Index = -1;
 }
 

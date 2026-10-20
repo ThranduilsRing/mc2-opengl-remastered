@@ -84,5 +84,56 @@ TEST_CASE("DynamicMemoryStream born small grows on writes through a MemoryStream
 	Stuff::MemoryStream::TerminateClass();
 	Stuff::RegisteredClass::TerminateClass();
 }
+TEST_CASE("DynamicMemoryStream copy owns its own bytes; a borrowed buffer is never freed by the stream")
+{
+	Stuff::RegisteredClass::InitializeClass();
+	Stuff::MemoryStream::InitializeClass();
+	{
+		Stuff::DynamicMemoryStream original(4);
+		const unsigned char abcd[4] = {'a', 'b', 'c', 'd'};
+		original.WriteBytes(abcd, 4);
+		{
+			Stuff::DynamicMemoryStream copy(original);	// deep copy: separate owned buffer
+			CHECK(copy.GetBytesUsed() == 4);
+			CHECK(copy.GetPointer() != original.GetPointer());
+			copy.Rewind();
+			CHECK(std::memcmp(copy.GetPointer(), abcd, 4) == 0);
+		}	// copy's buffer goes here; the original must still read back intact
+		original.Rewind();
+		CHECK(std::memcmp(original.GetPointer(), abcd, 4) == 0);
+
+		unsigned char borrowed[16] = {7, 7, 7, 7};
+		{
+			Stuff::DynamicMemoryStream view(borrowed, sizeof(borrowed));
+			CHECK(view.GetPointer() == borrowed);
+			const unsigned char nine = 9;
+			view.WriteBytes(&nine, 1);
+		}	// non-owning: the caller's array outlives the stream untouched apart from the write
+		CHECK(borrowed[0] == 9);
+		CHECK(borrowed[1] == 7);
+	}
+	Stuff::MemoryStream::TerminateClass();
+	Stuff::RegisteredClass::TerminateClass();
+}
+
+TEST_CASE("WriteSwappedBytes / ReadSwappedBytes round-trip through the scratch buffer")
+{
+	Stuff::RegisteredClass::InitializeClass();
+	Stuff::MemoryStream::InitializeClass();
+	{
+		unsigned char buf[4] = {0};
+		Stuff::MemoryStream ms(buf, sizeof(buf));
+		const unsigned char in[4] = {1, 2, 3, 4};
+		ms.WriteSwappedBytes(in, 4);
+		CHECK(buf[0] == 4);
+		CHECK(buf[3] == 1);
+		ms.Rewind();
+		unsigned char out[4] = {0};
+		ms.ReadSwappedBytes(out, 4);
+		CHECK(std::memcmp(out, in, 4) == 0);
+	}
+	Stuff::MemoryStream::TerminateClass();
+	Stuff::RegisteredClass::TerminateClass();
+}
 
 }

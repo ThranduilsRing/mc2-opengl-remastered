@@ -246,15 +246,12 @@ MemoryStream&
 	Verify(number_of_bytes > 0);
 	Verify(GetBytesRemaining() >= number_of_bytes);
 
-	BYTE *buffer = new BYTE[number_of_bytes];
-	Check_Pointer(buffer);
-	ReadBytes(buffer, number_of_bytes);
+	auto buffer = std::make_unique_for_overwrite<BYTE[]>(number_of_bytes);
+	ReadBytes(buffer.get(), number_of_bytes);
 	for (DWORD i=0; i<number_of_bytes; ++i)
 	{
 		static_cast<BYTE*>(ptr)[i] = buffer[number_of_bytes-1 - i];
 	}
-	Check_Pointer(buffer);
-	delete[] buffer;
 	return *this;
 }
 
@@ -300,15 +297,12 @@ MemoryStream&
 	Verify(number_of_bytes > 0);
 	Verify(GetBytesRemaining() >= number_of_bytes);
 
-	BYTE *buffer = new BYTE[number_of_bytes];
-	Check_Pointer(buffer);
+	auto buffer = std::make_unique_for_overwrite<BYTE[]>(number_of_bytes);
 	for (DWORD i=0; i<number_of_bytes; ++i)
 	{
 		buffer[number_of_bytes-1 - i] = static_cast<const BYTE*>(ptr)[i];
 	}
-	WriteBytes(buffer, number_of_bytes);
-	Check_Pointer(buffer);
-	delete[] buffer;
+	WriteBytes(buffer.get(), number_of_bytes);
 	return *this;
 }
 
@@ -789,7 +783,8 @@ DynamicMemoryStream::DynamicMemoryStream(DWORD stream_size):
 	Check_Pointer(this);
 
 	bufferSize = Calculate_Buffer_Size(stream_size);
-	streamStart = new BYTE[bufferSize];
+	ownedBuffer = std::make_unique_for_overwrite<BYTE[]>(bufferSize);
+	streamStart = ownedBuffer.get();
 	Check_Pointer(streamStart);
 
 	currentPosition = streamStart;
@@ -806,7 +801,8 @@ DynamicMemoryStream::DynamicMemoryStream(const DynamicMemoryStream &otherStream)
 	Check_Pointer(&otherStream);
 
 	bufferSize = otherStream.bufferSize;	
-	streamStart = new BYTE[bufferSize];
+	ownedBuffer = std::make_unique_for_overwrite<BYTE[]>(bufferSize);
+	streamStart = ownedBuffer.get();
 	Check_Pointer(streamStart);
 
 	streamSize = otherStream.GetSize();
@@ -835,11 +831,7 @@ DynamicMemoryStream::DynamicMemoryStream(
 DynamicMemoryStream::~DynamicMemoryStream()
 {
 	Check_Object(this);
-	if (ownsStream)
-	{
-		Check_Pointer(streamStart);
-		delete[] streamStart;
-	}
+	// ownedBuffer releases the bytes when ownsStream; a borrowed buffer is left alone.
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -854,13 +846,13 @@ bool
 	if (ownsStream && bufferSize - current_offset < count)
 	{
 		bufferSize = Calculate_Buffer_Size(new_stream_size);
-		BYTE *new_stream_start = new BYTE[bufferSize];
-		Check_Pointer(new_stream_start);
+		auto new_stream_start = std::make_unique_for_overwrite<BYTE[]>(bufferSize);
+		Check_Pointer(new_stream_start.get());
 
-		Mem_Copy(new_stream_start, streamStart, streamSize, bufferSize);
+		Mem_Copy(new_stream_start.get(), streamStart, streamSize, bufferSize);
 		Check_Pointer(streamStart);
-		delete[] streamStart;
-		streamStart = new_stream_start;
+		ownedBuffer = std::move(new_stream_start);
+		streamStart = ownedBuffer.get();
 		streamSize = new_stream_size;
 		currentPosition = streamStart + current_offset;
 	}

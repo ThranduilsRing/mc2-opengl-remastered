@@ -310,8 +310,39 @@ HashIterator::HashIterator(Hash *hash):
 	hashTable = hash->hashTable;
 	hashTableSize = hash->hashTableSize;
 	currentPosition = HashIteratorNullPosition;
-	vchainIterator = nullptr;
 	First();
+}
+
+HashIterator::HashIterator(const HashIterator &other):
+	SortedIterator(other),
+	hashTable(other.hashTable),
+	hashTableSize(other.hashTableSize),
+	currentPosition(other.currentPosition)
+{
+	if (other.vchainIterator != nullptr)
+	{
+		vchainIterator = std::make_unique<SortedChainIterator>(other.vchainIterator.get());
+		Register_Object(vchainIterator.get());
+	}
+}
+
+HashIterator&
+	HashIterator::operator=(const HashIterator &other)
+{
+	if (this != &other)
+	{
+		SortedIterator::operator=(other);
+		DeleteSortedChainIterator();
+		hashTable = other.hashTable;
+		hashTableSize = other.hashTableSize;
+		currentPosition = other.currentPosition;
+		if (other.vchainIterator != nullptr)
+		{
+			vchainIterator = std::make_unique<SortedChainIterator>(other.vchainIterator.get());
+			Register_Object(vchainIterator.get());
+		}
+	}
+	return *this;
 }
 
 Iterator*
@@ -343,7 +374,7 @@ void
 	Verify(hashTableSize > 0);
 	if (vchainIterator != nullptr)
 	{
-		Check_Object(vchainIterator);
+		Check_Object(vchainIterator.get());
 	}
 }
 
@@ -382,7 +413,7 @@ void
 	Check_Object(this);
 	if (vchainIterator != nullptr)
 	{
-		Check_Object(vchainIterator);
+		Check_Object(vchainIterator.get());
 
 		if (vchainIterator->GetCurrentPlug() != nullptr)
 		{
@@ -424,7 +455,7 @@ void
 	Check_Object(this);
 	if (vchainIterator != nullptr)
 	{
-		Check_Object(vchainIterator);
+		Check_Object(vchainIterator.get());
 
 		if (vchainIterator->GetCurrentPlug() != nullptr)
 		{
@@ -438,7 +469,7 @@ void
 
 		if (vchainIterator != nullptr)
 		{
-			Check_Object(vchainIterator);
+			Check_Object(vchainIterator.get());
 			Verify(vchainIterator->GetCurrentPlug() != nullptr);
 			return vchainIterator->GetCurrentPlug();
 		}
@@ -476,7 +507,7 @@ void
 	Check_Object(this);
 	if (vchainIterator != nullptr)
 	{
-		Check_Object(vchainIterator);
+		Check_Object(vchainIterator.get());
 
 		if (vchainIterator->GetCurrentPlug() != nullptr)
 		{
@@ -491,7 +522,7 @@ void
 
 		if (vchainIterator != nullptr)
 		{
-			Check_Object(vchainIterator);
+			Check_Object(vchainIterator.get());
 			vchainIterator->Remove();
 			return;
 		}
@@ -536,9 +567,8 @@ void
 {
 	if (vchainIterator != nullptr)
 	{
-		Unregister_Object(vchainIterator);
-		delete vchainIterator;
-      vchainIterator = nullptr;
+		Unregister_Object(vchainIterator.get());
+		vchainIterator.reset();
 	}
 }
 
@@ -570,8 +600,8 @@ void
 			//
 			// Create a vchain iterator
 			//
-			vchainIterator = new SortedChainIterator(hashTable[i]);
-			Register_Object(vchainIterator);
+			vchainIterator = std::make_unique<SortedChainIterator>(hashTable[i]);
+			Register_Object(vchainIterator.get());
 			if (vchainIterator->GetCurrentPlug() != nullptr)
 			{
 				//

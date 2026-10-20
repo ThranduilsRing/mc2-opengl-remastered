@@ -9,6 +9,7 @@
 
 #include <cstdint>
 #include <array>
+#include <memory>
 #include"stuff.hpp"
 #include"scalar.hpp"
 
@@ -52,8 +53,8 @@ namespace Stuff {
 		Random()
 			{Verify(Index == -1); Init();}
 
-		static Random
-			*Instance;
+		static std::unique_ptr<Random>
+			Instance;	// process singleton, owned between InitializeClass and TerminateClass
 		std::uint64_t m_drawCount = 0;
 
 		void
