@@ -356,7 +356,7 @@ static void BuildEditorDockspace() {
             // Right-column width = the reserved panel strip (vpW - fixed scene width).
             // Falls back to 0.26 of the window until the fixed rect is known (frame 1).
             float vpW = vp->Size.x > 1.0f ? vp->Size.x : 1.0f;
-            float panelPx = (s_fixedW > 0) ? (vpW - (float)s_fixedW) : (vpW * 0.26f);
+            float panelPx = vpW * 0.26f;
             if (panelPx < 64.0f)        panelPx = 64.0f;
             if (panelPx > vpW - 256.0f) panelPx = vpW - 256.0f;
             float ratio = panelPx / vpW;

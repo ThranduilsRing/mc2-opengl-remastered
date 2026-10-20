@@ -1014,7 +1014,7 @@ int main(int argc, char** argv)
     bool s_vsync_active = false;
 #ifdef MC2_VULKAN
     const auto& nativePresent = mc2vk::getOrCreateEnginePresentVk();
-    s_vsync_active = nativePresent.created() && nativePresent.health().present_mode == VK_PRESENT_MODE_FIFO_KHR;
+    s_vsync_active = nativePresent.valid() && nativePresent.health().present_mode == VK_PRESENT_MODE_FIFO_KHR;
 #endif
     printf("[FRAMECAP] MC2_FPS_CAP=%s vsync=%s -- menu=%d FPS mission=%d FPS%s\n",
            fpsCapIsSet ? mc2::gate::raw<"MC2_FPS_CAP">() : "(unset)",   // echoed as typed

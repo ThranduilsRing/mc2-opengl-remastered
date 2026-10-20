@@ -263,4 +263,4 @@ gos_VERTEXManager* MC_TextureManager::gvManager = nullptr;
 unsigned int MC_TextureManager::addLightDataStructure(TG_HWLightsData*) { return 0; }
 unsigned int MC_TextureManager::addLightDataStructureWithPerActorColor(TG_HWLightsData*) { return 0; }
 void MC_TextureManager::addRenderShape(DWORD, TG_RenderShape*, DWORD) {}
-namespace mc2::textures { DWORD sourceId(DWORD) { return 0; } }
+namespace mc2::textures { DWORD sourceId(DWORD) { return 0; } const char* name(DWORD) { return nullptr; } }
