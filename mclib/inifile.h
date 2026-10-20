@@ -25,6 +25,8 @@
 #include"file.h"
 #endif
 
+#include <string_view>
+
 //---------------------------------------------------------------------------
 // Macro Definitions
 #ifndef 	NO_ERR
@@ -147,70 +149,70 @@ class FitIniFile : public File
 
 		long seekBlock (const char *blockId);
 
-		long readIdFloat (const char *varName, float &value);
-		long readIdDouble (const char *varName, double &value);
+		long readIdFloat (std::string_view varName, float &value);
+		long readIdDouble (std::string_view varName, double &value);
 		
-		long readIdBoolean (const char *varName, bool &value);
-		long readIdInt (const char *varName, int &value);
-		long readIdLong (const char *varName, long &value);
-		long readIdULong (const char *varName, uint64_t &value);
+		long readIdBoolean (std::string_view varName, bool &value);
+		long readIdInt (std::string_view varName, int &value);
+		long readIdLong (std::string_view varName, long &value);
+		long readIdULong (std::string_view varName, uint64_t &value);
         // sebi
-		long readIdULong (const char *varName, DWORD &value);
+		long readIdULong (std::string_view varName, DWORD &value);
 		
-		long readIdShort (const char *varName, short &value);
-		long readIdUShort (const char *varName, unsigned short &value);
+		long readIdShort (std::string_view varName, short &value);
+		long readIdUShort (std::string_view varName, unsigned short &value);
 		
-		long readIdChar (const char *varName, char &value);
-		long readIdUChar (const char *varName, unsigned char &value);
+		long readIdChar (std::string_view varName, char &value);
+		long readIdUChar (std::string_view varName, unsigned char &value);
 		
-		long readIdString (const char *varName, char *result, unsigned long bufferSize);
+		long readIdString (std::string_view varName, char *result, unsigned long bufferSize);
 
-		long getIdStringLength (const char *varName);
+		long getIdStringLength (std::string_view varName);
 		
-		long readIdFloatArray (const char *varName, float *result, unsigned long numElements);
+		long readIdFloatArray (std::string_view varName, float *result, unsigned long numElements);
 		
-		long readIdIntArray (const char *varName, int *result, unsigned int numElements);
+		long readIdIntArray (std::string_view varName, int *result, unsigned int numElements);
 
-		long readIdLongArray (const char *varName, long *result, unsigned long numElements);
-		long readIdULongArray (const char *varName, unsigned long *result, unsigned long numElements);
+		long readIdLongArray (std::string_view varName, long *result, unsigned long numElements);
+		long readIdULongArray (std::string_view varName, unsigned long *result, unsigned long numElements);
 		
-		long readIdShortArray (const char *varName, short *result, unsigned long numElements);
-		long readIdUShortArray (const char *varName, unsigned short *result, unsigned long numElements);
+		long readIdShortArray (std::string_view varName, short *result, unsigned long numElements);
+		long readIdUShortArray (std::string_view varName, unsigned short *result, unsigned long numElements);
 		
-		long readIdCharArray (const char *varName, char *result, unsigned long numElements);
-		long readIdUCharArray (const char *varName, unsigned char *result, unsigned long numElements);
+		long readIdCharArray (std::string_view varName, char *result, unsigned long numElements);
+		long readIdUCharArray (std::string_view varName, unsigned char *result, unsigned long numElements);
 		
-		unsigned long getIdFloatArrayElements (const char *varName);
+		unsigned long getIdFloatArrayElements (std::string_view varName);
 		
-		unsigned long getIdLongArrayElements (const char *varName);
-		unsigned long getIdULongArrayElements (const char *varName);
+		unsigned long getIdLongArrayElements (std::string_view varName);
+		unsigned long getIdULongArrayElements (std::string_view varName);
 											 
-		unsigned long getIdShortArrayElements (const char *varName);
-		unsigned long getIdUShortArrayElements (const char *varName);
+		unsigned long getIdShortArrayElements (std::string_view varName);
+		unsigned long getIdUShortArrayElements (std::string_view varName);
 		
-		unsigned long getIdCharArrayElements (const char *varName);
-		unsigned long getIdUCharArrayElements (const char *varName);
+		unsigned long getIdCharArrayElements (std::string_view varName);
+		unsigned long getIdUCharArrayElements (std::string_view varName);
 		
-		long writeBlock (const char *blockId);
+		long writeBlock (std::string_view blockId);
 
-		long writeIdFloat (const char *varName, float value);
+		long writeIdFloat (std::string_view varName, float value);
 		
-		long writeIdBoolean (const char *varName, bool value);
-		long writeIdLong (const char *varName, long value);
-		long writeIdULong (const char *varName, unsigned long value);
+		long writeIdBoolean (std::string_view varName, bool value);
+		long writeIdLong (std::string_view varName, long value);
+		long writeIdULong (std::string_view varName, unsigned long value);
 		
-		long writeIdShort (const char *varName, short value);
-		long writeIdUShort (const char *varName, unsigned short value);
+		long writeIdShort (std::string_view varName, short value);
+		long writeIdUShort (std::string_view varName, unsigned short value);
 		
-		long writeIdChar (const char *varName, char value);
-		long writeIdUChar (const char *varName, unsigned char value);
+		long writeIdChar (std::string_view varName, char value);
+		long writeIdUChar (std::string_view varName, unsigned char value);
 		
 		long writeIdString (const char *varName, const char *result);
 
-		long writeIdFloatArray (const char *varName, float *array, unsigned long numElements);
-		long writeIdLongArray (const char *varName, long *array, unsigned long numElements);
-		long writeIdUShortArray (const char *varName, unsigned short *array, unsigned long numElements);
-		long writeIdUCharArray (const char *varName, unsigned char *array, unsigned long numElements);
+		long writeIdFloatArray (std::string_view varName, float *array, unsigned long numElements);
+		long writeIdLongArray (std::string_view varName, long *array, unsigned long numElements);
+		long writeIdUShortArray (std::string_view varName, unsigned short *array, unsigned long numElements);
+		long writeIdUCharArray (std::string_view varName, unsigned char *array, unsigned long numElements);
 };
 
 //---------------------------------------------------------------------------

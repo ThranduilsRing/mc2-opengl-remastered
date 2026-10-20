@@ -42,7 +42,7 @@ long FitIniFile::seekBlock (const char *blockId)
 }
 
 //---------------------------------------------------------------------------
-long FitIniFile::readIdFloat (const char *varName, float &value)
+long FitIniFile::readIdFloat (std::string_view varName, float &value)
 {
 	char line[255];
 	char searchString[255];
@@ -54,7 +54,7 @@ long FitIniFile::readIdFloat (const char *varName, float &value)
 	
 	//------------------------
 	// Put prefix on varName.
-	mc2::fmt::to_buf(searchString, "f {}", mc2::fmt::safe(varName));
+	mc2::fmt::to_buf(searchString, "f {}", varName);
 	
 	//--------------------------------
 	// Search line by line for varName
@@ -95,7 +95,7 @@ long FitIniFile::readIdFloat (const char *varName, float &value)
 }
 
 //---------------------------------------------------------------------------
-long FitIniFile::readIdDouble (const char *varName, double &value)
+long FitIniFile::readIdDouble (std::string_view varName, double &value)
 {
 	char line[255];
 	char searchString[255];
@@ -107,7 +107,7 @@ long FitIniFile::readIdDouble (const char *varName, double &value)
 	
 	//------------------------
 	// Put prefix on varName.
-	mc2::fmt::to_buf(searchString, "f {}", mc2::fmt::safe(varName));
+	mc2::fmt::to_buf(searchString, "f {}", varName);
 	
 	//--------------------------------
 	// Search line by line for varName
@@ -147,7 +147,7 @@ long FitIniFile::readIdDouble (const char *varName, double &value)
 	return(NO_ERR);
 }
 
-long FitIniFile::readIdInt(const char *varName, int &value)
+long FitIniFile::readIdInt(std::string_view varName, int &value)
 {
     long tmp = 0;
     long rv = readIdLong (varName, tmp);
@@ -156,7 +156,7 @@ long FitIniFile::readIdInt(const char *varName, int &value)
 }
 
 //---------------------------------------------------------------------------
-long FitIniFile::readIdLong (const char *varName, long &value)
+long FitIniFile::readIdLong (std::string_view varName, long &value)
 {
 	char line[255];
 	char searchString[255];
@@ -168,7 +168,7 @@ long FitIniFile::readIdLong (const char *varName, long &value)
 	
 	//------------------------
 	// Put prefix on varName.
-	mc2::fmt::to_buf(searchString, "l {}", mc2::fmt::safe(varName));
+	mc2::fmt::to_buf(searchString, "l {}", varName);
 	
 	//--------------------------------
 	// Search line by line for varName
@@ -209,7 +209,7 @@ long FitIniFile::readIdLong (const char *varName, long &value)
 }
 
 //---------------------------------------------------------------------------
-long FitIniFile::readIdBoolean (const char *varName, bool &value)
+long FitIniFile::readIdBoolean (std::string_view varName, bool &value)
 {
 	char line[255];
 	char searchString[255];
@@ -221,7 +221,7 @@ long FitIniFile::readIdBoolean (const char *varName, bool &value)
 	
 	//------------------------
 	// Put prefix on varName.
-	mc2::fmt::to_buf(searchString, "b {}", mc2::fmt::safe(varName));
+	mc2::fmt::to_buf(searchString, "b {}", varName);
 	
 	//--------------------------------
 	// Search line by line for varName
@@ -262,7 +262,7 @@ long FitIniFile::readIdBoolean (const char *varName, bool &value)
 }
 
 //---------------------------------------------------------------------------
-long FitIniFile::readIdShort (const char *varName, short &value)
+long FitIniFile::readIdShort (std::string_view varName, short &value)
 {
 	char line[255];
 	char searchString[255];
@@ -274,7 +274,7 @@ long FitIniFile::readIdShort (const char *varName, short &value)
 	
 	//------------------------
 	// Put prefix on varName.
-	mc2::fmt::to_buf(searchString, "s {}", mc2::fmt::safe(varName));
+	mc2::fmt::to_buf(searchString, "s {}", varName);
 	
 	//--------------------------------
 	// Search line by line for varName
@@ -315,7 +315,7 @@ long FitIniFile::readIdShort (const char *varName, short &value)
 }
 
 //---------------------------------------------------------------------------
-long FitIniFile::readIdChar (const char *varName, char &value)
+long FitIniFile::readIdChar (std::string_view varName, char &value)
 {
 	char line[255];
 	char searchString[255];
@@ -327,7 +327,7 @@ long FitIniFile::readIdChar (const char *varName, char &value)
 	
 	//------------------------
 	// Put prefix on varName.
-	mc2::fmt::to_buf(searchString, "c {}", mc2::fmt::safe(varName));
+	mc2::fmt::to_buf(searchString, "c {}", varName);
 	
 	//--------------------------------
 	// Search line by line for varName
@@ -367,7 +367,7 @@ long FitIniFile::readIdChar (const char *varName, char &value)
 	return(NO_ERR);
 }
 
-long FitIniFile::readIdULong (const char *varName, DWORD &value)
+long FitIniFile::readIdULong (std::string_view varName, DWORD &value)
 {
     uint64_t tmp = 0;
     long rv = readIdULong (varName, tmp);
@@ -376,7 +376,7 @@ long FitIniFile::readIdULong (const char *varName, DWORD &value)
 }
 
 //---------------------------------------------------------------------------
-long FitIniFile::readIdULong (const char *varName, uint64_t &value)
+long FitIniFile::readIdULong (std::string_view varName, uint64_t &value)
 {
 	char line[255];
 	char searchString[255];
@@ -388,7 +388,7 @@ long FitIniFile::readIdULong (const char *varName, uint64_t &value)
 	
 	//------------------------
 	// Put prefix on varName.
-	mc2::fmt::to_buf(searchString, "ul {}", mc2::fmt::safe(varName));
+	mc2::fmt::to_buf(searchString, "ul {}", varName);
 	
 	//--------------------------------
 	// Search line by line for varName
@@ -431,7 +431,7 @@ long FitIniFile::readIdULong (const char *varName, uint64_t &value)
 }
 
 //---------------------------------------------------------------------------
-long FitIniFile::readIdUShort (const char *varName, unsigned short &value)
+long FitIniFile::readIdUShort (std::string_view varName, unsigned short &value)
 {
 	char line[255];
 	char searchString[255];
@@ -443,7 +443,7 @@ long FitIniFile::readIdUShort (const char *varName, unsigned short &value)
 	
 	//------------------------
 	// Put prefix on varName.
-	mc2::fmt::to_buf(searchString, "us {}", mc2::fmt::safe(varName));
+	mc2::fmt::to_buf(searchString, "us {}", varName);
 	
 	//--------------------------------
 	// Search line by line for varName
@@ -484,7 +484,7 @@ long FitIniFile::readIdUShort (const char *varName, unsigned short &value)
 }
 
 //---------------------------------------------------------------------------
-long FitIniFile::readIdUChar (const char *varName, unsigned char &value)
+long FitIniFile::readIdUChar (std::string_view varName, unsigned char &value)
 {
 	char line[255];
 	char searchString[255];
@@ -496,7 +496,7 @@ long FitIniFile::readIdUChar (const char *varName, unsigned char &value)
 	
 	//------------------------
 	// Put prefix on varName.
-	mc2::fmt::to_buf(searchString, "uc {}", mc2::fmt::safe(varName));
+	mc2::fmt::to_buf(searchString, "uc {}", varName);
 	
 	//--------------------------------
 	// Search line by line for varName
@@ -572,7 +572,7 @@ long FitIniFile::copyString (char *dest, char *src, unsigned long bufLen)
 }
 
 //---------------------------------------------------------------------------
-long FitIniFile::readIdString (const char *varName, char *result, unsigned long bufferSize)
+long FitIniFile::readIdString (std::string_view varName, char *result, unsigned long bufferSize)
 {
 	char line[2048];
 	char searchString[255];
@@ -584,7 +584,7 @@ long FitIniFile::readIdString (const char *varName, char *result, unsigned long 
 	
 	//------------------------
 	// Put prefix on varName.
-	mc2::fmt::to_buf(searchString, "st {}", mc2::fmt::safe(varName));
+	mc2::fmt::to_buf(searchString, "st {}", varName);
 	
 	//--------------------------------
 	// Search line by line for varName
@@ -655,7 +655,7 @@ long FitIniFile::readIdString (const char *varName, char *result, unsigned long 
 }
 
 //---------------------------------------------------------------------------
-long FitIniFile::getIdStringLength (const char *varName)
+long FitIniFile::getIdStringLength (std::string_view varName)
 {
 	char line[255];
 	char searchString[255];
@@ -667,7 +667,7 @@ long FitIniFile::getIdStringLength (const char *varName)
 	
 	//------------------------
 	// Put prefix on varName.
-	mc2::fmt::to_buf(searchString, "st {}", mc2::fmt::safe(varName));
+	mc2::fmt::to_buf(searchString, "st {}", varName);
 	
 	//--------------------------------
 	// Search line by line for varName
