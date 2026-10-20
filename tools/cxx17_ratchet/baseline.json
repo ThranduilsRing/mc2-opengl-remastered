@@ -49,7 +49,7 @@
   "GameOS": {
    "LG01": 6,
    "LG02": 52,
-   "LG03": 123,
+   "LG03": 104,
    "LG04": 5,
    "LG05": 104,
    "LG06": 367,
@@ -60,7 +60,7 @@
    "LG11": 75,
    "LG12a": 61,
    "LG12b": 26,
-   "LG13": 312,
+   "LG13": 304,
    "LG14": 55,
    "LG15": 0,
    "LG16": 5,
@@ -141,8 +141,8 @@
   "code": {
    "LG01": 24,
    "LG02": 2,
-   "LG03": 450,
-   "LG04": 18,
+   "LG03": 433,
+   "LG04": 16,
    "LG05": 200,
    "LG06": 445,
    "LG07": 2,
@@ -152,7 +152,7 @@
    "LG11": 102,
    "LG12a": 87,
    "LG12b": 154,
-   "LG13": 26,
+   "LG13": 22,
    "LG14": 93,
    "LG15": 0,
    "LG16": 2,
@@ -187,10 +187,10 @@
   "mclib": {
    "LG01": 3,
    "LG02": 0,
-   "LG03": 614,
+   "LG03": 605,
    "LG04": 15,
    "LG05": 116,
-   "LG06": 636,
+   "LG06": 555,
    "LG07": 0,
    "LG08": 58,
    "LG09": 2,
@@ -198,8 +198,8 @@
    "LG11": 66,
    "LG12a": 150,
    "LG12b": 195,
-   "LG13": 128,
-   "LG14": 55,
+   "LG13": 123,
+   "LG14": 54,
    "LG15": 0,
    "LG16": 123,
    "LG17": 87,
@@ -337,7 +337,7 @@
    "LG08": 15
   },
   "GameOS/gameos/gameos.cpp": {
-   "LG03": 8,
+   "LG03": 5,
    "LG06": 8,
    "LG11": 2,
    "LG17": 1
@@ -633,8 +633,7 @@
    "LG16": 1
   },
   "GameOS/gameos/gos_terrain_lighting.h": {
-   "LG05": 2,
-   "LG13": 8
+   "LG05": 2
   },
   "GameOS/gameos/gos_terrain_lod_chunk.h": {
    "LG17": 2
@@ -693,7 +692,6 @@
    "LG14": 3
   },
   "GameOS/gameos/gpu_cull_substrate.cpp": {
-   "LG03": 2,
    "LG17": 1
   },
   "GameOS/gameos/gpu_cull_substrate.h": {
@@ -751,7 +749,6 @@
    "LG17": 1
   },
   "GameOS/gameos/utils/Image.cpp": {
-   "LG03": 14,
    "LG06": 6,
    "LG17": 5
   },
@@ -1220,7 +1217,6 @@
    "LG18": 1
   },
   "code/ablmc2_roster.cpp": {
-   "LG04": 2,
    "LG06": 1
   },
   "code/ablmc2_state.cpp": {
@@ -1319,7 +1315,7 @@
    "LG06": 2
   },
   "code/collsn.cpp": {
-   "LG03": 4
+   "LG03": 2
   },
   "code/collsn.h": {
    "LG13": 1
@@ -1332,7 +1328,7 @@
    "LG05": 2
   },
   "code/contact.cpp": {
-   "LG03": 4,
+   "LG03": 2,
    "LG12a": 1
   },
   "code/controlgui.h": {
@@ -1447,7 +1443,6 @@
   "code/gameobj.h": {
    "LG05": 1,
    "LG06": 2,
-   "LG13": 3,
    "LG14": 1
   },
   "code/gamesound.cpp": {
@@ -1817,7 +1812,7 @@
    "LG06": 2
   },
   "code/missionbegin.cpp": {
-   "LG03": 18,
+   "LG03": 10,
    "LG06": 2,
    "LG11": 1,
    "LG12a": 17
@@ -1826,7 +1821,7 @@
    "LG06": 2
   },
   "code/missionbriefingscreen.cpp": {
-   "LG03": 5,
+   "LG03": 2,
    "LG06": 4,
    "LG11": 1,
    "LG12a": 2,
@@ -2043,9 +2038,6 @@
   "code/optionsarea.h": {
    "LG06": 2
   },
-  "code/optionsscreenwrapper.cpp": {
-   "LG03": 2
-  },
   "code/pausewindow.cpp": {
    "LG11": 1
   },
@@ -2178,7 +2170,6 @@
    "LG04": 1,
    "LG05": 3,
    "LG06": 2,
-   "LG13": 1,
    "LG14": 19,
    "LG18": 1
   },
@@ -2239,7 +2230,7 @@
    "LG18": 2
   },
   "mclib/ablenv.cpp": {
-   "LG03": 12,
+   "LG03": 6,
    "LG06": 10,
    "LG08": 1,
    "LG11": 1,
@@ -2260,7 +2251,6 @@
   },
   "mclib/ablexec.h": {
    "LG04": 2,
-   "LG14": 1,
    "LG18": 2
   },
   "mclib/ablexpr.cpp": {
@@ -2671,20 +2661,19 @@
    "LG13": 1
   },
   "mclib/inifile.cpp": {
-   "LG06": 28,
+   "LG06": 15,
    "LG17": 3
   },
   "mclib/inifile.h": {
-   "LG06": 64,
+   "LG06": 23,
    "LG13": 1,
    "LG17": 4
   },
   "mclib/inifile_arrays.cpp": {
-   "LG06": 15,
    "LG17": 1
   },
   "mclib/inifile_read.cpp": {
-   "LG06": 14,
+   "LG06": 1,
    "LG11": 1
   },
   "mclib/lzcomp.cpp": {
@@ -3003,7 +2992,7 @@
   },
   "mclib/move.h": {
    "LG05": 1,
-   "LG13": 5,
+   "LG13": 1,
    "LG14": 1,
    "LG16": 50,
    "LG17": 1
@@ -3020,7 +3009,6 @@
   "mclib/move_globalmap_path.cpp": {
    "LG11": 1,
    "LG12b": 14,
-   "LG13": 1,
    "LG16": 3
   },
   "mclib/move_internal.h": {
@@ -3162,7 +3150,7 @@
    "LG06": 1
   },
   "mclib/sim_trace.h": {
-   "LG06": 1
+   "LG06": 2
   },
   "mclib/soundsys.cpp": {
    "LG05": 5,
@@ -3209,7 +3197,7 @@
    "LG11": 2
   },
   "mclib/stuff/hash.cpp": {
-   "LG03": 6,
+   "LG03": 4,
    "LG16": 1
   },
   "mclib/stuff/hash.hpp": {
@@ -3263,7 +3251,7 @@
    "LG03": 1
   },
   "mclib/stuff/random.cpp": {
-   "LG03": 2
+   "LG03": 1
   },
   "mclib/stuff/registeredclass.cpp": {
    "LG03": 2,
@@ -3546,7 +3534,7 @@
    "LG20": 3
   }
  },
- "head": "bfdf146a3",
+ "head": "e67bfc56d",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

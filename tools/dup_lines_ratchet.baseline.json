@@ -1,14 +1,14 @@
 {
  "counts": {
   "GameAdapters": 0,
-  "GameOS": 2478,
+  "GameOS": 2470,
   "GuiRuntime": 48,
   "HostServices": 0,
   "RenderCore": 402,
   "RenderWorld": 0,
   "code": 14499,
-  "mclib": 29016,
-  "shaders": 928
+  "mclib": 29014,
+  "shaders": 920
  },
  "dirs": [
   "code",
@@ -44,7 +44,6 @@
   "GameOS/gameos/gos_static_prop_registry.h": 8,
   "GameOS/gameos/gos_terrain_bridge.h": 20,
   "GameOS/gameos/gos_terrain_indirect_diag.cpp": 52,
-  "GameOS/gameos/gos_terrain_lighting.h": 8,
   "GameOS/gameos/gos_terrain_patch_stream.h": 18,
   "GameOS/gameos/gos_vfx_mesh_bridge.h": 16,
   "GameOS/gameos/terrain_material_lib.cpp": 42,
@@ -471,7 +470,7 @@
   "mclib/stuff/hash.hpp": 40,
   "mclib/stuff/iterator.cpp": 12,
   "mclib/stuff/marray.hpp": 16,
-  "mclib/stuff/memorystream.cpp": 38,
+  "mclib/stuff/memorystream.cpp": 36,
   "mclib/stuff/memorystream.hpp": 22,
   "mclib/stuff/mstring.cpp": 82,
   "mclib/stuff/mstring.hpp": 62,
@@ -512,7 +511,6 @@
   "shaders/include/object_light_pool.hglsl": 20,
   "shaders/include/shadow.hglsl": 162,
   "shaders/include/terrain_light_pool.hglsl": 20,
-  "shaders/include/terrain_lighting_shared.hglsl": 8,
   "shaders/vulkan/cloud_shadow.frag": 21,
   "shaders/vulkan/color_prop_tier1.frag": 19,
   "shaders/vulkan/color_prop_tier1.vert": 9,
@@ -535,8 +533,8 @@
   "shaders/vulkan/terrain_tier1.vert": 78,
   "shaders/vulkan/terrain_tier1_skirt.vert": 78
  },
- "head": "611de77a0",
+ "head": "e67bfc56d",
  "n": 8,
- "total": 47371,
+ "total": 47353,
  "version": 1
 }

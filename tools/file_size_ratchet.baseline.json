@@ -28,7 +28,7 @@
   "code/mechicon.cpp": 1980,
   "code/mechlabscreen.cpp": 1952,
   "code/mechlopedia.cpp": 1623,
-  "code/missionbegin.cpp": 2167,
+  "code/missionbegin.cpp": 2154,
   "code/mover.h": 1902,
   "code/mpparameterscreen.cpp": 2408,
   "code/multplyr.h": 1845,
@@ -42,7 +42,7 @@
   "code/warrior.h": 2177,
   "editor/tests/test_objectives.cpp": 1996,
   "gui/alistbox.cpp": 1513,
-  "mclib/ablenv.cpp": 1581,
+  "mclib/ablenv.cpp": 1588,
   "mclib/ablrtn.cpp": 1799,
   "mclib/assimp_importer.cpp": 1577,
   "mclib/camera.h": 1815,
@@ -56,7 +56,7 @@
   "mclib/terrtxm.cpp": 1816,
   "mclib/tgl.h": 1799
  },
- "head": "739f72181",
+ "head": "e67bfc56d",
  "per_dir": {
   "GameAdapters": {
    "files": 9,
@@ -170,7 +170,7 @@
   },
   {
    "file": "code/missionbegin.cpp",
-   "lines": 2167
+   "lines": 2154
   },
   {
    "file": "code/logisticsdialog.cpp",
