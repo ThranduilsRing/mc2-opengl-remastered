@@ -582,11 +582,7 @@ static std::vector<std::string> JsonGetStringArray(const char* json, const char*
     return result;
 }
 
-struct ModJson {
-    std::string id;
-    std::string name;
-    std::vector<std::string> deps;
-};
+struct ModJson { std::string id, name; std::vector<std::string> deps; };
 
 // Read mod.json at jsonPath. Returns nullopt if file not found or has no id.
 static std::optional<ModJson> ReadModJson(const char* jsonPath) {
@@ -599,10 +595,7 @@ static std::optional<ModJson> ReadModJson(const char* jsonPath) {
     CloseHandle(fh);
     buf[read] = '\0';
 
-    ModJson mj;
-    mj.id   = JsonGetString(buf, "id");
-    mj.name = JsonGetString(buf, "name");
-    mj.deps = JsonGetStringArray(buf, "dependencies");
+    ModJson mj{JsonGetString(buf, "id"), JsonGetString(buf, "name"), JsonGetStringArray(buf, "dependencies")};
     if (mj.id.empty()) return std::nullopt;
     return mj;
 }
@@ -815,9 +808,7 @@ void InitModSearchPaths(const char* modsRoot) {
         modId = "";
         modName = "";
     } else if (auto mj = ReadModJson(jsonPath)) {
-        modId   = mj->id;
-        modName = mj->name;
-        deps    = mj->deps;
+        modId = mj->id; modName = mj->name; deps = mj->deps;
     } else {
         // No mod.json — treat the folder name as the id. Dependencies (the compat
         // layer) come from MC2_MOD_DEPS instead (see below) — the launcher lets the
