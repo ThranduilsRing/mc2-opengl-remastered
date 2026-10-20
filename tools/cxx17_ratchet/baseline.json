@@ -49,25 +49,25 @@
   "GameOS": {
    "LG01": 6,
    "LG02": 52,
-   "LG03": 168,
+   "LG03": 123,
    "LG04": 5,
-   "LG05": 116,
-   "LG06": 419,
+   "LG05": 104,
+   "LG06": 367,
    "LG07": 0,
-   "LG08": 213,
-   "LG09": 0,
-   "LG10": 16,
-   "LG11": 86,
-   "LG12a": 79,
-   "LG12b": 27,
-   "LG13": 314,
-   "LG14": 61,
+   "LG08": 163,
+   "LG09": 4,
+   "LG10": 15,
+   "LG11": 75,
+   "LG12a": 61,
+   "LG12b": 26,
+   "LG13": 312,
+   "LG14": 55,
    "LG15": 0,
-   "LG16": 6,
-   "LG17": 78,
-   "LG18": 32,
+   "LG16": 5,
+   "LG17": 77,
+   "LG18": 19,
    "LG19": 1,
-   "LG20": 8
+   "LG20": 6
   },
   "GuiRuntime": {
    "LG01": 0,
@@ -78,7 +78,7 @@
    "LG06": 9,
    "LG07": 2,
    "LG08": 1,
-   "LG09": 41,
+   "LG09": 26,
    "LG10": 2,
    "LG11": 1,
    "LG12a": 0,
@@ -98,9 +98,9 @@
    "LG03": 0,
    "LG04": 0,
    "LG05": 27,
-   "LG06": 15,
+   "LG06": 14,
    "LG07": 0,
-   "LG08": 10,
+   "LG08": 11,
    "LG09": 35,
    "LG10": 0,
    "LG11": 0,
@@ -141,7 +141,7 @@
   "code": {
    "LG01": 24,
    "LG02": 2,
-   "LG03": 453,
+   "LG03": 452,
    "LG04": 18,
    "LG05": 200,
    "LG06": 445,
@@ -182,23 +182,23 @@
    "LG17": 0,
    "LG18": 0,
    "LG19": 1,
-   "LG20": 9
+   "LG20": 7
   },
   "mclib": {
    "LG01": 3,
    "LG02": 0,
    "LG03": 614,
    "LG04": 15,
-   "LG05": 138,
-   "LG06": 642,
+   "LG05": 135,
+   "LG06": 640,
    "LG07": 0,
-   "LG08": 55,
-   "LG09": 0,
+   "LG08": 58,
+   "LG09": 2,
    "LG10": 20,
-   "LG11": 67,
-   "LG12a": 157,
-   "LG12b": 199,
-   "LG13": 127,
+   "LG11": 66,
+   "LG12a": 151,
+   "LG12b": 197,
+   "LG13": 128,
    "LG14": 55,
    "LG15": 0,
    "LG16": 156,
@@ -334,7 +334,7 @@
   "GameOS/gameos/engine_present_vk.cpp": {
    "LG03": 2,
    "LG06": 4,
-   "LG08": 18
+   "LG08": 15
   },
   "GameOS/gameos/gameos.cpp": {
    "LG03": 8,
@@ -354,7 +354,7 @@
    "LG17": 1
   },
   "GameOS/gameos/gameos_graphics.cpp": {
-   "LG03": 7,
+   "LG03": 5,
    "LG06": 2,
    "LG11": 1,
    "LG12b": 1,
@@ -363,7 +363,7 @@
   },
   "GameOS/gameos/gameos_graphics_capi.cpp": {
    "LG03": 8,
-   "LG05": 8,
+   "LG05": 5,
    "LG06": 5,
    "LG17": 1,
    "LG18": 1
@@ -390,14 +390,8 @@
    "LG17": 1,
    "LG18": 4
   },
-  "GameOS/gameos/gameos_graphics_light_ssbo.cpp": {
-   "LG13": 1
-  },
   "GameOS/gameos/gameos_graphics_material_internal.h": {
-   "LG03": 18,
-   "LG06": 2,
-   "LG08": 2,
-   "LG12a": 2,
+   "LG03": 8,
    "LG13": 3,
    "LG14": 1,
    "LG17": 2
@@ -407,11 +401,9 @@
   },
   "GameOS/gameos/gameos_graphics_renderer_internal.h": {
    "LG03": 1,
-   "LG05": 1,
-   "LG06": 3,
-   "LG10": 1,
-   "LG17": 7,
-   "LG18": 2
+   "LG06": 2,
+   "LG17": 5,
+   "LG18": 1
   },
   "GameOS/gameos/gameos_graphics_shadow.cpp": {
    "LG05": 1
@@ -421,10 +413,8 @@
    "LG11": 1
   },
   "GameOS/gameos/gameos_graphics_tparams.cpp": {
-   "LG05": 1,
    "LG06": 1,
-   "LG17": 2,
-   "LG18": 10
+   "LG18": 1
   },
   "GameOS/gameos/gameos_input.cpp": {
    "LG20": 1
@@ -441,8 +431,8 @@
    "LG01": 5,
    "LG04": 1,
    "LG06": 1,
-   "LG12a": 30,
-   "LG12b": 7,
+   "LG12a": 28,
+   "LG12b": 6,
    "LG20": 1
   },
   "GameOS/gameos/gameosmain_frame.cpp": {
@@ -452,13 +442,6 @@
    "LG06": 1,
    "LG11": 4,
    "LG12a": 2
-  },
-  "GameOS/gameos/gos_cardcloud_sim.cpp": {
-   "LG06": 1
-  },
-  "GameOS/gameos/gos_cluster_depth_pyramid.cpp": {
-   "LG06": 1,
-   "LG11": 1
   },
   "GameOS/gameos/gos_crashbundle.cpp": {
    "LG06": 5,
@@ -473,7 +456,7 @@
   },
   "GameOS/gameos/gos_dev_shell.cpp": {
    "LG06": 4,
-   "LG11": 16
+   "LG11": 14
   },
   "GameOS/gameos/gos_dev_shell.h": {
    "LG02": 1,
@@ -491,20 +474,14 @@
   "GameOS/gameos/gos_frame_context.h": {
    "LG06": 1
   },
-  "GameOS/gameos/gos_gpu_sync.cpp": {
-   "LG06": 1,
-   "LG08": 2
-  },
-  "GameOS/gameos/gos_gpu_sync.h": {
-   "LG06": 1
-  },
   "GameOS/gameos/gos_hdri.cpp": {
-   "LG05": 1,
+   "LG05": 2,
    "LG06": 2,
    "LG10": 3,
    "LG17": 1
   },
   "GameOS/gameos/gos_hdri.h": {
+   "LG05": 1,
    "LG06": 1
   },
   "GameOS/gameos/gos_input.cpp": {
@@ -513,14 +490,9 @@
   "GameOS/gameos/gos_input.h": {
    "LG14": 1
   },
-  "GameOS/gameos/gos_lightgrid_build.cpp": {
-   "LG06": 1,
-   "LG11": 2
-  },
   "GameOS/gameos/gos_materials.cpp": {
-   "LG06": 3,
-   "LG08": 1,
-   "LG20": 1
+   "LG06": 2,
+   "LG08": 1
   },
   "GameOS/gameos/gos_materials.h": {
    "LG06": 1
@@ -548,24 +520,19 @@
   "GameOS/gameos/gos_postprocess.h": {
    "LG06": 1
   },
-  "GameOS/gameos/gos_postprocess_blur.cpp": {
-   "LG06": 2,
-   "LG11": 2
-  },
-  "GameOS/gameos/gos_postprocess_fbo.cpp": {
-   "LG06": 1
-  },
   "GameOS/gameos/gos_postprocess_shadow.cpp": {
    "LG10": 4
+  },
+  "GameOS/gameos/gos_postprocess_targets.cpp": {
+   "LG06": 2
   },
   "GameOS/gameos/gos_rdoc_capture.cpp": {
    "LG06": 1
   },
   "GameOS/gameos/gos_render.cpp": {
-   "LG03": 4,
+   "LG03": 2,
    "LG06": 1,
-   "LG12a": 13,
-   "LG20": 1
+   "LG12a": 4
   },
   "GameOS/gameos/gos_render.h": {
    "LG06": 1
@@ -619,8 +586,7 @@
   },
   "GameOS/gameos/gos_static_prop_batcher_seam.cpp": {
    "LG05": 6,
-   "LG08": 13,
-   "LG18": 1
+   "LG08": 10
   },
   "GameOS/gameos/gos_static_prop_batcher_shadow.cpp": {
    "LG08": 5
@@ -650,8 +616,8 @@
   },
   "GameOS/gameos/gos_terrain_indirect_cement.cpp": {
    "LG05": 3,
-   "LG10": 2,
-   "LG16": 1
+   "LG08": 1,
+   "LG10": 2
   },
   "GameOS/gameos/gos_terrain_indirect_diag.cpp": {
    "LG06": 1
@@ -661,14 +627,13 @@
   },
   "GameOS/gameos/gos_terrain_lighting.cpp": {
    "LG04": 1,
-   "LG05": 4,
-   "LG06": 1,
+   "LG05": 3,
    "LG08": 1,
    "LG10": 1,
    "LG16": 1
   },
   "GameOS/gameos/gos_terrain_lighting.h": {
-   "LG05": 3,
+   "LG05": 2,
    "LG13": 8
   },
   "GameOS/gameos/gos_terrain_lod_chunk.h": {
@@ -676,14 +641,10 @@
   },
   "GameOS/gameos/gos_terrain_lod_chunk_matalbedo.cpp": {
    "LG05": 2,
-   "LG06": 3,
-   "LG11": 1
+   "LG06": 3
   },
   "GameOS/gameos/gos_terrain_lod_chunk_upload.cpp": {
    "LG17": 2
-  },
-  "GameOS/gameos/gos_terrain_patch_stream.cpp": {
-   "LG08": 4
   },
   "GameOS/gameos/gos_terrain_water_stream.cpp": {
    "LG05": 1,
@@ -722,26 +683,17 @@
   "GameOS/gameos/gos_visual_diff.cpp": {
    "LG06": 1
   },
-  "GameOS/gameos/gpu_cull_compute.cpp": {
-   "LG06": 1,
-   "LG11": 1,
-   "LG12a": 2,
-   "LG17": 1
-  },
   "GameOS/gameos/gpu_cull_parity.cpp": {
    "LG06": 1
   },
   "GameOS/gameos/gpu_cull_parity.h": {
    "LG06": 1
   },
-  "GameOS/gameos/gpu_cull_readback.cpp": {
-   "LG03": 2
-  },
   "GameOS/gameos/gpu_cull_record.h": {
    "LG14": 3
   },
   "GameOS/gameos/gpu_cull_substrate.cpp": {
-   "LG03": 4,
+   "LG03": 2,
    "LG17": 1
   },
   "GameOS/gameos/gpu_cull_substrate.h": {
@@ -758,12 +710,6 @@
   },
   "GameOS/gameos/particle_stall_probe.h": {
    "LG06": 2
-  },
-  "GameOS/gameos/pipeline_binder.cpp": {
-   "LG06": 1
-  },
-  "GameOS/gameos/pipeline_binder.h": {
-   "LG06": 1
   },
   "GameOS/gameos/render_backend_select.cpp": {
    "LG06": 2
@@ -814,6 +760,9 @@
    "LG14": 1,
    "LG17": 4
   },
+  "GameOS/gameos/utils/color_utils.cpp": {
+   "LG09": 4
+  },
   "GameOS/gameos/utils/file_utils.cpp": {
    "LG06": 2,
    "LG11": 3
@@ -821,41 +770,8 @@
   "GameOS/gameos/utils/file_utils.h": {
    "LG06": 2
   },
-  "GameOS/gameos/utils/gl_utils.cpp": {
-   "LG03": 2,
-   "LG06": 3
-  },
-  "GameOS/gameos/utils/gl_utils.h": {
-   "LG03": 8,
-   "LG06": 4,
-   "LG12a": 3
-  },
-  "GameOS/gameos/utils/gpu_debug_labels.h": {
-   "LG06": 1
-  },
-  "GameOS/gameos/utils/gpu_ring_buffer.h": {
-   "LG06": 2
-  },
   "GameOS/gameos/utils/mc2log.cpp": {
    "LG12a": 2
-  },
-  "GameOS/gameos/utils/render_constants.h": {
-   "LG14": 5
-  },
-  "GameOS/gameos/utils/shader_builder.cpp": {
-   "LG03": 17,
-   "LG05": 8,
-   "LG06": 20,
-   "LG08": 37,
-   "LG11": 2,
-   "LG13": 1,
-   "LG17": 1,
-   "LG18": 2
-  },
-  "GameOS/gameos/utils/shader_builder.h": {
-   "LG05": 1,
-   "LG06": 8,
-   "LG14": 3
   },
   "GameOS/gameos/utils/stream.cpp": {
    "LG03": 2,
@@ -875,6 +791,9 @@
    "LG06": 4,
    "LG17": 2
   },
+  "GameOS/gameos/utils/texture_format.h": {
+   "LG14": 1
+  },
   "GameOS/gameos/utils/vec.cpp": {
    "LG18": 5
   },
@@ -883,7 +802,7 @@
    "LG13": 1,
    "LG18": 3
   },
-  "GameOS/gameos/view_uniforms_gl.cpp": {
+  "GameOS/gameos/view_registry.cpp": {
    "LG05": 2
   },
   "GameOS/gameos/visual_tuning_profile.cpp": {
@@ -893,6 +812,9 @@
   },
   "GameOS/gameos/visual_tuning_profile.h": {
    "LG06": 1
+  },
+  "GameOS/gameos/vk_actor_cull_native.cpp": {
+   "LG13": 2
   },
   "GameOS/gameos/vk_compute_pipeline.cpp": {
    "LG06": 1
@@ -923,6 +845,16 @@
   "GameOS/gameos/vk_render_pass_timer_ring.h": {
    "LG05": 3
   },
+  "GameOS/gameos/vk_scene_readback.cpp": {
+   "LG05": 1,
+   "LG13": 2,
+   "LG17": 3
+  },
+  "GameOS/gameos/vk_scene_readback.h": {
+   "LG05": 1,
+   "LG14": 1,
+   "LG17": 2
+  },
   "GameOS/gameos/vk_texture_residency.cpp": {
    "LG08": 14,
    "LG10": 2,
@@ -933,7 +865,7 @@
   },
   "GameOS/gameos/vulkan_color_prop_island.cpp": {
    "LG06": 2,
-   "LG13": 4,
+   "LG13": 2,
    "LG17": 2
   },
   "GameOS/gameos/vulkan_context.cpp": {
@@ -997,7 +929,7 @@
   },
   "GameOS/gameos/vulkan_terrain_island_internal.h": {
    "LG06": 1,
-   "LG13": 4
+   "LG13": 2
   },
   "GameOS/gameos/vulkan_terrain_island_island.cpp": {
    "LG05": 7,
@@ -1136,7 +1068,7 @@
    "LG20": 14
   },
   "GuiRuntime/GraphicsOptionsWindow_passes.cpp": {
-   "LG09": 12
+   "LG09": 8
   },
   "GuiRuntime/GraphicsOptionsWindow_terrain.cpp": {
    "LG09": 4
@@ -1144,7 +1076,7 @@
   "GuiRuntime/GuiRuntime.cpp": {
    "LG05": 1,
    "LG06": 2,
-   "LG09": 23,
+   "LG09": 12,
    "LG10": 1,
    "LG11": 1
   },
@@ -1163,9 +1095,6 @@
    "LG08": 1
   },
   "RenderCore/FrameArena.h": {
-   "LG06": 1
-  },
-  "RenderCore/GpuBuffer.h": {
    "LG06": 1
   },
   "RenderCore/IblHdriRegistry.h": {
@@ -1214,7 +1143,7 @@
    "LG14": 1
   },
   "RenderCore/TextureService.h": {
-   "LG08": 9,
+   "LG08": 10,
    "LG17": 1
   },
   "RenderCore/ambient_contract.h": {
@@ -2172,7 +2101,6 @@
    "LG11": 3
   },
   "code/simplecamera.cpp": {
-   "LG03": 1,
    "LG06": 5,
    "LG11": 2
   },
@@ -2283,9 +2211,6 @@
   },
   "code/weaponbolt.cpp": {
    "LG03": 1
-  },
-  "editor/EditorGosRender.cpp": {
-   "LG20": 2
   },
   "editor/EditorMFC.cpp": {
    "LG20": 1
@@ -3232,10 +3157,10 @@
   },
   "mclib/render_contract.cpp": {
    "LG05": 1,
-   "LG06": 8
+   "LG06": 6
   },
   "mclib/render_contract.h": {
-   "LG06": 6
+   "LG06": 5
   },
   "mclib/resource_strings.cpp": {
    "LG06": 1
@@ -3470,6 +3395,23 @@
    "LG06": 1,
    "LG18": 6
   },
+  "mclib/texture_assets.cpp": {
+   "LG05": 1,
+   "LG06": 5,
+   "LG09": 2
+  },
+  "mclib/texture_assets.h": {
+   "LG06": 4
+  },
+  "mclib/texture_sources.cpp": {
+   "LG06": 4,
+   "LG08": 2,
+   "LG11": 1
+  },
+  "mclib/texture_sources_internal.h": {
+   "LG06": 2,
+   "LG08": 1
+  },
   "mclib/tga_scratch.cpp": {
    "LG06": 2
   },
@@ -3524,16 +3466,13 @@
   },
   "mclib/txmmgr.cpp": {
    "LG03": 14,
-   "LG06": 2,
-   "LG08": 1,
-   "LG11": 1,
-   "LG12a": 7,
-   "LG12b": 2
+   "LG12a": 2
   },
   "mclib/txmmgr.h": {
-   "LG05": 2,
-   "LG06": 4,
-   "LG12a": 4
+   "LG05": 1,
+   "LG08": 1,
+   "LG12a": 4,
+   "LG13": 1
   },
   "mclib/txmmgr_lightrow.cpp": {
    "LG05": 1,
@@ -3543,12 +3482,6 @@
   "mclib/txmmgr_lights.cpp": {
    "LG05": 5,
    "LG08": 7
-  },
-  "mclib/txmmgr_texture.cpp": {
-   "LG05": 3,
-   "LG06": 8,
-   "LG11": 1,
-   "LG12a": 1
   },
   "mclib/userinput.cpp": {
    "LG06": 2
@@ -3626,7 +3559,7 @@
    "LG20": 3
   }
  },
- "head": "acf37556f",
+ "head": "541e0e945",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
