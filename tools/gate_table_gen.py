@@ -192,7 +192,7 @@ def count_overrides(root):
         base = os.path.join(root, top)
         for dp, _dn, fns in os.walk(base):
             for fn in fns:
-                if fn.endswith((".cpp", ".h", ".hpp", ".inl", ".cc")):
+                if fn.endswith((".cpp", ".h", ".hpp", ".inl", ".inc", ".cc")):
                     try:
                         with open(os.path.join(dp, fn), "r", encoding="utf-8", errors="replace") as fh:
                             n += len(pat.findall(fh.read()))
@@ -213,7 +213,7 @@ def typed_readers(root):
         for dp, dn, fns in os.walk(os.path.join(root, top)):
             dn[:] = [d for d in dn if d not in ("build", ".vs", "__pycache__")]
             for fn in fns:
-                if not fn.endswith((".cpp", ".h", ".hpp", ".inl", ".cc")):
+                if not fn.endswith((".cpp", ".h", ".hpp", ".inl", ".inc", ".cc")):
                     continue
                 try:
                     with open(os.path.join(dp, fn), "r", encoding="utf-8", errors="replace") as fh:
@@ -248,12 +248,16 @@ def _top_level_args(call):
     return n
 
 
-def sync_verified(root, outdir=None):
-    """Mark rows `verified` iff a typed reader exists, rebuild gate_dump, rewrite Gates/gate_table.json and the
-    index. One command after a migration."""
-    import tempfile
-    readers = typed_readers(root)
-    tp = os.path.join(root, TABLE_CPP_REL.replace("/", os.sep))
+def authored_table_paths(root):
+    """The table wrapper and its ordered row fragments; the compiler still parses rows."""
+    table = os.path.join(root, TABLE_CPP_REL.replace("/", os.sep))
+    with open(table, encoding="utf-8") as fh:
+        includes = re.findall(r'^#include "(gate_rows_\d+\.inc)"$', fh.read(), re.MULTILINE)
+    return [table] + [os.path.join(os.path.dirname(table), name) for name in includes]
+
+
+def _sync_verified_file(tp, readers):
+    """Update only verification markers, preserving the authored file's other bytes."""
     with open(tp, "r", encoding="utf-8", newline="") as fh:
         text = fh.read()
     nl = "\r\n" if "\r\n" in text else "\n"
@@ -277,6 +281,14 @@ def sync_verified(root, outdir=None):
     if changed:
         with open(tp, "w", encoding="utf-8", newline="") as fh:
             fh.write(nl.join(out))
+    return changed
+
+
+def sync_verified(root, outdir=None):
+    """Re-mark authored rows, rebuild the compiler dump and regenerate its derived files."""
+    import tempfile
+    readers = typed_readers(root)
+    changed = sum(_sync_verified_file(tp, readers) for tp in authored_table_paths(root))
     with tempfile.TemporaryDirectory(prefix="gate_dump_") as td:
         exe = build_gate_dump(root, td)
         if exe is None:
