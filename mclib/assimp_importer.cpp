@@ -34,6 +34,7 @@
 #include <cstring>
 #include <cmath>
 #include <cstdio>
+#include <optional>
 
 #include "msl.h"
 #include "tgl.h"
@@ -231,16 +232,15 @@ long ValidateScene(const aiScene* scene, const char* path) {
 
 //-----------------------------------------------------------------------------
 // Find the aiNode that references mesh index `meshIdx`. Walks the scene graph
-// recursively; returns NULL if no node owns the mesh (rare but possible in
+// recursively; returns nullopt if no node owns the mesh (rare but possible in
 // malformed files — caller falls back to root-level identity).
-const aiNode* FindNodeForMesh(const aiNode* node, unsigned meshIdx) {
+std::optional<const aiNode*> FindNodeForMesh(const aiNode* node, unsigned meshIdx) {
 	for (unsigned i = 0; i < node->mNumMeshes; i++)
 		if (node->mMeshes[i] == meshIdx) return node;
 	for (unsigned i = 0; i < node->mNumChildren; i++) {
-		const aiNode* found = FindNodeForMesh(node->mChildren[i], meshIdx);
-		if (found) return found;
+		if (auto found = FindNodeForMesh(node->mChildren[i], meshIdx)) return found;
 	}
-	return nullptr;
+	return std::nullopt;
 }
 
 //-----------------------------------------------------------------------------
@@ -270,8 +270,7 @@ const char* StripPath(const char* p) {
 // Embedded GLB images: Assimp reports the texture path as "*<index>" into
 // scene->mTextures[]. We resolve that to the embedded image's mFilename so the
 // derived name matches the authored image stem, not an opaque index.
-bool DeriveMC2TextureName(const aiScene* scene, const aiMaterial* mat,
-                          std::string& outName) {
+std::optional<std::string> DeriveMC2TextureName(const aiScene* scene, const aiMaterial* mat) {
 	aiString path;
 	bool have = false;
 	// glTF baseColor lands on BASE_COLOR in newer Assimp, DIFFUSE in the
@@ -281,7 +280,7 @@ bool DeriveMC2TextureName(const aiScene* scene, const aiMaterial* mat,
 	else if (mat->GetTexture(aiTextureType_DIFFUSE, 0, &path) == AI_SUCCESS && path.length > 0)
 		have = true;
 	if (!have)
-		return false;
+		return std::nullopt;
 
 	const char* raw = path.C_Str();
 
@@ -329,10 +328,9 @@ bool DeriveMC2TextureName(const aiScene* scene, const aiMaterial* mat,
 	// tools/mech_texname_harness/. Empty stem -> no texture (legacy returned false).
 	std::string name = mech_texname::deriveName(src, wantAlpha);
 	if (name.empty())
-		return false;
+		return std::nullopt;
 
-	outName.swap(name);
-	return true;
+	return name;
 }
 
 //-----------------------------------------------------------------------------
@@ -356,9 +354,8 @@ void BuildTextureList(const aiScene* scene, TG_TypeMultiShape* out) {
 
 	for (DWORD i = 0; i < count; i++) {
 		const aiMaterial* mat = scene->mMaterials[i];
-		std::string derived;
-		if (DeriveMC2TextureName(scene, mat, derived)) {
-			names[i] = derived;
+		if (auto derived = DeriveMC2TextureName(scene, mat)) {
+			names[i] = *derived;
 		} else {
 			names[i] = "NULLTXM";
 		}
@@ -418,7 +415,7 @@ long ImportShapeFromMesh(const aiScene* scene, unsigned meshIdx,
 	// Resolve node identity by walking the scene graph for the node that
 	// references this mesh. Multi-mesh-per-node is allowed; we just take the
 	// first hit (the renderer iterates shapes, not nodes).
-	const aiNode* meshNode = FindNodeForMesh(scene->mRootNode, meshIdx);
+	const aiNode* meshNode = FindNodeForMesh(scene->mRootNode, meshIdx).value_or(nullptr);
 	const char* nodeNm = (meshNode && meshNode->mName.length > 0)
 	                     ? meshNode->mName.C_Str() : "";
 	const char* parentNm = "None";
@@ -827,8 +824,8 @@ inline void aiToRowMajor(const aiMatrix4x4& M, float* out16) {
     out16[12]=M.d1; out16[13]=M.d2; out16[14]=M.d3; out16[15]=M.d4;
 }
 
-// Clip loop length in seconds, or -1 if the scene has no such clip.
-float clipDurationSec(const aiScene* scene, std::string_view clip) {
+// Clip loop length in seconds, or nullopt if the scene has no such clip.
+std::optional<float> clipDurationSec(const aiScene* scene, std::string_view clip) {
     for (unsigned a = 0; a < scene->mNumAnimations; ++a) {
         const aiAnimation* an = scene->mAnimations[a];
         if (clip == an->mName.C_Str()) {
@@ -836,7 +833,7 @@ float clipDurationSec(const aiScene* scene, std::string_view clip) {
             return static_cast<float>((an->mDuration / tps));
         }
     }
-    return -1.0f;
+    return std::nullopt;
 }
 
 // 1C — map the mech's per-frame movement to a BT2018 clip name. Gesture (already
@@ -969,14 +966,14 @@ void RegisterImportedAnim(const char* path, TG_TypeMultiShape* out, const SkelBa
     // Initial clip: the pinned clip if any, else idle. Fall back to whatever the
     // scene's first clip is when even idle is absent, so the tick always animates.
     e.initialClip = !bake.forcedClip.empty() ? bake.forcedClip : std::string("atlas_moveCoreIdle");
-    float d = clipDurationSec(scene, e.initialClip);
-    if (d < 0.0f && scene->mNumAnimations > 0) {
+    auto d = clipDurationSec(scene, e.initialClip);
+    if (!d && scene->mNumAnimations > 0) {
         e.initialClip = scene->mAnimations[0]->mName.C_Str();
         d = clipDurationSec(scene, e.initialClip);
     }
     e.scale = bake.scale;
     e.groundDy = groundDy;
-    e.initialDuration = d > 1e-4f ? d : 1.0f;
+    e.initialDuration = (d && *d > 1e-4f) ? *d : 1.0f;
     e.parts = parts;
 
     // 1B-GPU: precompute the model-delta inputs. VBO = A2·S·R_i·p̃ (A2 = mechToMC2Pos,
@@ -1222,8 +1219,10 @@ bool sampleActorClip(const ImportedAnimEntry& e, ActorAnimState& s, float dt,
             if (s.pendingClip == want) ++s.pendingStreak;
             else { s.pendingClip = want; s.pendingStreak = 1; }
             if (s.pendingStreak >= 4) {
-                float nd = clipDurationSec(e.scene, want);
-                if (nd >= 0.0f) { s.activeClip = want; s.durationSec = nd > 1e-4f ? nd : 1.0f; }
+                if (auto nd = clipDurationSec(e.scene, want)) {
+                    s.activeClip = want;
+                    s.durationSec = *nd > 1e-4f ? *nd : 1.0f;
+                }
                 s.pendingStreak = 0;
             }
         }
@@ -1495,10 +1494,10 @@ long ImportGeometryFromFile(const char* path, TG_TypeMultiShape* out, bool autoG
 			if (me->mNumVertices == 0 || me->mNumBones == 0 || skelMeshDropped(me->mName.C_Str())) continue;
 			const aiMaterial* mat = scene->mMaterials[me->mMaterialIndex];
 			aiString matName; mat->Get(AI_MATKEY_NAME, matName);
-			std::string nm;
-			if (!DeriveMC2TextureName(scene, mat, nm)) continue;
-			if (isVariantMat(matName.C_Str())) { baseTex = nm; gotVariant = true; break; }
-			if (!gotVariant && baseTex == "NULLTXM") baseTex = nm;
+			auto nm = DeriveMC2TextureName(scene, mat);
+			if (!nm) continue;
+			if (isVariantMat(matName.C_Str())) { baseTex = *nm; gotVariant = true; break; }
+			if (!gotVariant && baseTex == "NULLTXM") baseTex = *nm;
 		}
 		const char* texNames[1] = { baseTex.c_str() };
 		out->SetImportedTextures(1, texNames, nullptr);

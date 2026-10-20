@@ -76,6 +76,7 @@
 #include <unordered_map>
 #include <string>
 #include <vector>
+#include <optional>
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"
 #include "../GameOS/gameos/utils/mc2log.h"
@@ -387,8 +388,8 @@ static void WriteModIndexCache(
 }
 
 // Load cache into idx (first-wins, same as IndexModData).
-// Returns number of entries loaded, or -1 on format error.
-static int LoadModIndexCache(
+// Returns number of entries loaded, or nullopt on format error.
+static std::optional<int> LoadModIndexCache(
     std::unordered_map<std::string, ModFileEntry>& idx,
     const char* cachePath,
     const char* expectedModId,
@@ -397,35 +398,35 @@ static int LoadModIndexCache(
 ) {
     if (sigMismatch) *sigMismatch = false;
     FILE* f = fopen(cachePath, "rb");
-    if (!f) return -1;
+    if (!f) return std::nullopt;
 
     char line[MAX_PATH * 3];
     // header (a v1 cache fails here -> one-time rebuild after this change)
-    if (!fgets(line, sizeof(line), f)) { fclose(f); return -1; }
+    if (!fgets(line, sizeof(line), f)) { fclose(f); return std::nullopt; }
     line[strcspn(line, "\r\n")] = '\0';
-    if (strcmp(line, kCacheHeader) != 0) { fclose(f); return -1; }
+    if (strcmp(line, kCacheHeader) != 0) { fclose(f); return std::nullopt; }
     // modid
-    if (!fgets(line, sizeof(line), f)) { fclose(f); return -1; }
+    if (!fgets(line, sizeof(line), f)) { fclose(f); return std::nullopt; }
     line[strcspn(line, "\r\n")] = '\0';
-    if (strncmp(line, "modid ", 6) != 0) { fclose(f); return -1; }
-    if (strcmp(line + 6, expectedModId) != 0) { fclose(f); return -1; }
+    if (strncmp(line, "modid ", 6) != 0) { fclose(f); return std::nullopt; }
+    if (strcmp(line + 6, expectedModId) != 0) { fclose(f); return std::nullopt; }
     // sig (MOD-INDEX-CACHE-MTIME-1): stored tree signature vs the one just
     // recomputed from disk -- ANY mismatch means files changed since index time.
-    if (!fgets(line, sizeof(line), f)) { fclose(f); return -1; }
+    if (!fgets(line, sizeof(line), f)) { fclose(f); return std::nullopt; }
     line[strcspn(line, "\r\n")] = '\0';
     ModCacheSignature storedSig;
-    if (!parseModCacheSigLine(line, &storedSig)) { fclose(f); return -1; }
+    if (!parseModCacheSigLine(line, &storedSig)) { fclose(f); return std::nullopt; }
     if (!modCacheSignatureMatches(storedSig, expectedSig)) {
         if (sigMismatch) *sigMismatch = true;
         fclose(f);
-        return -1;
+        return std::nullopt;
     }
     // count
-    if (!fgets(line, sizeof(line), f)) { fclose(f); return -1; }
+    if (!fgets(line, sizeof(line), f)) { fclose(f); return std::nullopt; }
     line[strcspn(line, "\r\n")] = '\0';
-    if (strncmp(line, "count ", 6) != 0) { fclose(f); return -1; }
+    if (strncmp(line, "count ", 6) != 0) { fclose(f); return std::nullopt; }
     int count = atoi(line + 6);
-    if (count < 0) { fclose(f); return -1; }
+    if (count < 0) { fclose(f); return std::nullopt; }
 
     int loaded = 0;
     while (fgets(line, sizeof(line), f)) {
@@ -474,8 +475,8 @@ static bool TryLoadModCache(
     ComputeModDataSignature(dataDir, &diskSig);
 
     bool sigMismatch = false;
-    int loaded = LoadModIndexCache(idx, cachePath, modId, diskSig, &sigMismatch);
-    if (loaded < 0) {
+    auto loaded = LoadModIndexCache(idx, cachePath, modId, diskSig, &sigMismatch);
+    if (!loaded) {
         printf("[mod-cache] refresh modid='%s' reason=%s (files=%llu maxMtime=%llu)\n",
                modId,
                sigMismatch ? "signature-mismatch (mod files changed)"
@@ -486,7 +487,7 @@ static bool TryLoadModCache(
     }
 
     printf("[mod-cache] hit modid='%s' loaded=%d files (sig files=%llu maxMtime=%llu)\n",
-           modId, loaded, diskSig.fileCount, diskSig.maxMtime);
+           modId, *loaded, diskSig.fileCount, diskSig.maxMtime);
     fflush(stdout);
     return true;
 }
@@ -581,40 +582,46 @@ static std::vector<std::string> JsonGetStringArray(const char* json, const char*
     return result;
 }
 
-// Read mod.json at jsonPath. Returns false if file not found.
-static bool ReadModJson(const char* jsonPath,
-                        std::string& outId, std::string& outName,
-                        std::vector<std::string>& outDeps) {
+struct ModJson {
+    std::string id;
+    std::string name;
+    std::vector<std::string> deps;
+};
+
+// Read mod.json at jsonPath. Returns nullopt if file not found or has no id.
+static std::optional<ModJson> ReadModJson(const char* jsonPath) {
     HANDLE fh = CreateFileA(jsonPath, GENERIC_READ, FILE_SHARE_READ, nullptr,
                              OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
-    if (fh == INVALID_HANDLE_VALUE) return false;
+    if (fh == INVALID_HANDLE_VALUE) return std::nullopt;
     char buf[4096] = {};
     DWORD read = 0;
     ReadFile(fh, buf, sizeof(buf)-1, &read, nullptr);
     CloseHandle(fh);
     buf[read] = '\0';
 
-    outId   = JsonGetString(buf, "id");
-    outName = JsonGetString(buf, "name");
-    outDeps = JsonGetStringArray(buf, "dependencies");
-    return !outId.empty();
+    ModJson mj;
+    mj.id   = JsonGetString(buf, "id");
+    mj.name = JsonGetString(buf, "name");
+    mj.deps = JsonGetStringArray(buf, "dependencies");
+    if (mj.id.empty()) return std::nullopt;
+    return mj;
 }
 
 // O(1) lookup. Returns false immediately when no mod active (g_modIndex empty).
 // req: original filename as requested by caller (before lowercasing), used for level-2 trace.
 //      May be nullptr — falls back to fileName.
-static bool TryModOpen(const char* fileName, int* outHandle, const char* req = nullptr) {
-    if (g_modIndex.empty()) return false;
-    if (!ShouldSearchMods(fileName)) return false;
+static std::optional<int> TryModOpen(const char* fileName, const char* req = nullptr) {
+    if (g_modIndex.empty()) return std::nullopt;
+    if (!ShouldSearchMods(fileName)) return std::nullopt;
     std::string key = NormalizeKey(fileName);
     auto it = g_modIndex.find(key);
     if (it == g_modIndex.end()) {
         if (logFileResolve) { printf("[mod-miss] %s\n", key.c_str()); fflush(stdout); }
         // MISS record emitted by the caller after the full ladder, not here.
-        return false;
+        return std::nullopt;
     }
     int h = _open(it->second.path.c_str(), _O_RDONLY | _O_BINARY);
-    if (h == -1) return false;
+    if (h == -1) return std::nullopt;
     if (logFileResolve) {
         printf("[mod-hit] [%s] %s -> %s\n",
                it->second.modId.c_str(), key.c_str(), it->second.path.c_str());
@@ -632,8 +639,7 @@ static bool TryModOpen(const char* fileName, int* outHandle, const char* req = n
         const std::vector<std::string>* shOut = sh ? sh : &emptyShadow;
         EmitResolveRecord(key.c_str(), req ? req : fileName, layer, it->second.path.c_str(), shOut);
     }
-    *outHandle = h;
-    return true;
+    return h;
 }
 
 // Returns the owning mod id for a given data path (normalized), or nullptr if not in mod index.
@@ -808,7 +814,11 @@ void InitModSearchPaths(const char* modsRoot) {
         // solely from MC2_MOD_DEPS (parsed below).
         modId = "";
         modName = "";
-    } else if (!ReadModJson(jsonPath, modId, modName, deps)) {
+    } else if (auto mj = ReadModJson(jsonPath)) {
+        modId   = mj->id;
+        modName = mj->name;
+        deps    = mj->deps;
+    } else {
         // No mod.json — treat the folder name as the id. Dependencies (the compat
         // layer) come from MC2_MOD_DEPS instead (see below) — the launcher lets the
         // player pick a campaign + a compatibility layer separately, so metadata-less
@@ -973,9 +983,8 @@ long fileExists (const char* fName, long destination_mask)
 	fst_normalize_loose_key_inplace(normName);
 
 	// Active mod wins; falls back to base data, then FastFile.
-	int modHandle = -1;
-	if (TryModOpen(normName, &modHandle)) {
-		_close(modHandle);
+	if (auto modHandle = TryModOpen(normName)) {
+		_close(*modHandle);
 		return 1 & destination_mask;
 	}
 
@@ -1129,11 +1138,10 @@ long File::open (const char* fName, FileMode _mode, long numChild, bool doNotLow
 		//----------------------------------------------------------------
 		//-- Active mod wins; falls back to base data/.
 		{
-			int modHandle = -1;
 			// Pass original fName as req so level-2 trace shows pre-lowercase casing.
-			if (TryModOpen(m_fileName.c_str(), &modHandle, fName))
+			if (auto modHandle = TryModOpen(m_fileName.c_str(), fName))
 			{
-				handle = modHandle;
+				handle = *modHandle;
 				++g_resolveOpens;
 				if (mc2::gate::get<"MC2_LOG_MECH_ICON">() && strstr(m_fileName.c_str(), "mechicon"))
 					printf("[MECHICON] File::open MOD-HIT: %s\n", m_fileName.c_str());
