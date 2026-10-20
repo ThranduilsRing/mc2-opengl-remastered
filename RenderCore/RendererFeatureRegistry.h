@@ -772,7 +772,7 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
     {
         "MC2_FX_COST_SPLIT",
         "MC2_FX_COST_SPLIT",
-        EnvVarKind::Feature,
+        EnvVarKind::Trace,
         false,
         "FX cost-split instrumentation (default-off).",
     },
