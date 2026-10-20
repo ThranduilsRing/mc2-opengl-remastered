@@ -1,25 +1,24 @@
 {
  "dirs": {
-  "mclib": 3,
+  "mclib": 2,
   "tools": 2
  },
  "files": {
   "mclib/assimp_importer.cpp": 2,
-  "mclib/terrain_update.cpp": 1,
   "tools/asset_viewer/TglMeshLoader.cpp": 2
  },
- "head": "3a44b6886",
- "helper_calls": 209,
+ "head": "e681bc0a0",
+ "helper_calls": 197,
  "shapes": {
   "assign-scalars": 4,
   "assign-triple": 0,
-  "decl-chain": 1,
+  "decl-chain": 0,
   "swizzle-xzy": 0,
   "swizzle-zy": 0,
   "triplet-arglist": 0,
   "triplet-brace": 0,
   "triplet-ctor": 0
  },
- "total": 5,
+ "total": 4,
  "version": 1
 }

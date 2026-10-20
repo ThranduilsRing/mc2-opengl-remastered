@@ -1950,21 +1950,6 @@
    "new_array": 0,
    "owners": []
   },
-  "GLubyte": {
-   "delete": 0,
-   "delete_array": 1,
-   "files": {
-    "code/simplecamera.cpp": {
-     "delete_array": 1,
-     "new_array": 1
-    }
-   },
-   "new": 0,
-   "new_array": 1,
-   "owners": [
-    "SimpleCamera"
-   ]
-  },
   "GOSImage": {
    "delete": 1,
    "delete_array": 0,
@@ -2309,21 +2294,6 @@
    "new": 2,
    "new_array": 0,
    "owners": []
-  },
-  "Image": {
-   "delete": 1,
-   "delete_array": 0,
-   "files": {
-    "GameOS/gameos/utils/gl_utils.cpp": {
-     "delete": 1,
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": [
-    ""
-   ]
   },
   "Impl": {
    "delete": 1,
@@ -4202,25 +4172,6 @@
    "new_array": 0,
    "owners": []
   },
-  "RenderContext": {
-   "delete": 2,
-   "delete_array": 0,
-   "files": {
-    "GameOS/gameos/gos_render.cpp": {
-     "delete": 1,
-     "new": 1
-    },
-    "editor/EditorGosRender.cpp": {
-     "delete": 1,
-     "new": 2
-    }
-   },
-   "new": 3,
-   "new_array": 0,
-   "owners": [
-    ""
-   ]
-  },
   "RenderWindow": {
    "delete": 2,
    "delete_array": 0,
@@ -5137,7 +5088,7 @@
    ]
   },
   "UserHeap": {
-   "delete": 10,
+   "delete": 8,
    "delete_array": 0,
    "files": {
     "code/collsn.cpp": {
@@ -5172,18 +5123,13 @@
     "mclib/terrtxm.cpp": {
      "delete": 2,
      "new": 2
-    },
-    "mclib/txmmgr.cpp": {
-     "delete": 2,
-     "new": 2
     }
    },
-   "new": 11,
+   "new": 9,
    "new_array": 0,
    "owners": [
     "",
     "CollisionSystem",
-    "MC_TextureManager",
     "Mission",
     "Terrain",
     "TerrainTextures"
@@ -5209,18 +5155,6 @@
    "owners": [
     ""
    ]
-  },
-  "VERTEX": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "GameOS/gameos/utils/gl_utils.h": {
-     "new_array": 1
-    }
-   },
-   "new": 0,
-   "new_array": 1,
-   "owners": []
   },
   "VFXAppearance": {
    "delete": 0,
@@ -5850,18 +5784,6 @@
    "new_array": 0,
    "owners": []
   },
-  "glMesh": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "GameOS/gameos/utils/gl_utils.h": {
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": []
-  },
   "glm::vec3": {
    "delete": 0,
    "delete_array": 51,
@@ -5969,75 +5891,6 @@
     "MLR_I_MT_PMesh",
     "MLR_I_PMesh"
    ]
-  },
-  "glsl_program": {
-   "delete": 1,
-   "delete_array": 0,
-   "files": {
-    "GameOS/gameos/utils/shader_builder.cpp": {
-     "delete": 1,
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": [
-    "glsl_program"
-   ]
-  },
-  "glsl_sampler": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "GameOS/gameos/utils/shader_builder.cpp": {
-     "new": 3
-    }
-   },
-   "new": 3,
-   "new_array": 0,
-   "owners": []
-  },
-  "glsl_shader": {
-   "delete": 4,
-   "delete_array": 0,
-   "files": {
-    "GameOS/gameos/utils/shader_builder.cpp": {
-     "delete": 4,
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": [
-    "glsl_shader"
-   ]
-  },
-  "glsl_uniform": {
-   "delete": 1,
-   "delete_array": 0,
-   "files": {
-    "GameOS/gameos/utils/shader_builder.cpp": {
-     "delete": 1,
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": [
-    ""
-   ]
-  },
-  "glsl_uniform_block": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "GameOS/gameos/utils/shader_builder.cpp": {
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": []
   },
   "gosAudio": {
    "delete": 0,
@@ -6459,21 +6312,6 @@
     ""
    ]
   },
-  "gosRenderMaterial": {
-   "delete": 1,
-   "delete_array": 0,
-   "files": {
-    "GameOS/gameos/gameos_graphics_material_internal.h": {
-     "delete": 1,
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": [
-    ""
-   ]
-  },
   "gosRenderer": {
    "delete": 1,
    "delete_array": 0,
@@ -6573,21 +6411,6 @@
     ""
    ]
   },
-  "gos_TERRAIN_EXTRA": {
-   "delete": 0,
-   "delete_array": 1,
-   "files": {
-    "GameOS/gameos/gameos_graphics.cpp": {
-     "delete_array": 1,
-     "new_array": 1
-    }
-   },
-   "new": 0,
-   "new_array": 1,
-   "owners": [
-    "gosRenderer"
-   ]
-  },
   "gos_VERTEX": {
    "delete": 0,
    "delete_array": 0,
@@ -6664,23 +6487,12 @@
   "GameOS/gameos/gameos_graphics.cpp": 1,
   "GameOS/gameos/gameos_graphics_font.cpp": 18,
   "GameOS/gameos/gameos_graphics_internal.h": 4,
-  "GameOS/gameos/gameos_graphics_material_internal.h": 6,
+  "GameOS/gameos/gameos_graphics_material_internal.h": 1,
   "GameOS/gameos/gameos_graphics_renderer_internal.h": 1,
   "GameOS/gameos/gameos_sound.cpp": 6,
   "GameOS/gameos/gameosmain.cpp": 1,
-  "GameOS/gameos/gos_cardcloud_sim.cpp": 3,
-  "GameOS/gameos/gos_cluster_depth_pyramid.cpp": 2,
   "GameOS/gameos/gos_font.cpp": 6,
-  "GameOS/gameos/gos_lightgrid_build.cpp": 2,
-  "GameOS/gameos/gos_postprocess_blur.cpp": 2,
-  "GameOS/gameos/gos_terrain_lighting.cpp": 5,
-  "GameOS/gameos/gpu_cull_compute.cpp": 8,
-  "GameOS/gameos/gpu_cull_readback.cpp": 1,
-  "GameOS/gameos/gpu_cull_substrate.cpp": 1,
-  "GameOS/gameos/gpu_driven_common.cpp": 2,
   "GameOS/gameos/utils/Image.cpp": 13,
-  "GameOS/gameos/utils/gl_utils.h": 4,
-  "GameOS/gameos/utils/shader_builder.cpp": 12,
   "GameOS/gameos/utils/stream.cpp": 1,
   "GameOS/gameos/vulkan_post_fog_native.cpp": 1,
   "GameOS/gameos/vulkan_post_hzb_native.cpp": 1,
