@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in terrain_internal.h.
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "terrain_internal.h"
+#include "vulkan_terrain_island.h"
 
 
 float cosineEyeHalfFOV = 0.0f;
@@ -587,6 +588,19 @@ void Terrain::geometry (void)
 			gos_terrain_indirect::ParityFrameTick(quadsChecked);
 		}
 	}
+
+	#ifdef MC2_VULKAN_ISLAND
+	if (mc2_terrain_feed_observation_enabled() && objBlockInfo && objVertexActive) {
+		extern uint32_t g_mc2RenderFrame;
+		std::vector<uint8_t> blocks(static_cast<size_t>(numObjBlocks));
+		for (long b = 0; b < numObjBlocks; ++b) blocks[b] = objBlockInfo[b].active ? 1 : 0;
+		uint32_t solidCount = 0;
+		const uint32_t* solid = gos_terrain_indirect::SolidWindowStagingData(&solidCount);
+		mc2_terrain_feed_observe_activity(g_mc2RenderFrame, {blocks.data(), blocks.size()}, {objVertexActive,
+			static_cast<size_t>(realVerticesMapSide) * realVerticesMapSide}, {solid, solidCount},
+			gos_terrain_indirect::SolidWindowEnabled());
+	}
+	#endif
 
 	if (s_gpOn) {
 		const unsigned long long _geoTotal = (unsigned long long)

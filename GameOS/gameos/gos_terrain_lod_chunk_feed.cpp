@@ -36,6 +36,131 @@ float    s_vkTerrainMvp[16] = {0};
 bool     s_vkTerrainFeedValid = false;
 #endif
 #ifdef MC2_VULKAN_ISLAND
+
+namespace {
+std::string activitySnapshot;
+uint32_t activityFrame = UINT32_MAX;
+
+std::string feedHex(const void* data, size_t size)
+{
+    static constexpr char digits[] = "0123456789abcdef";
+    const auto* bytes = static_cast<const uint8_t*>(data);
+    std::string result;
+    result.reserve(size * 2);
+    for (size_t i = 0; i < size; ++i) {
+        result += digits[bytes[i] >> 4];
+        result += digits[bytes[i] & 15];
+    }
+    return result;
+}
+
+// FNV is a content-change receipt, not an asset authentication hash. Never hash
+// pointers or struct padding: only resource bytes and the initialized GPU ABI.
+std::string feedReceipt(const void* data, size_t size)
+{
+    uint64_t hash = 14695981039346656037ull;
+    if (data) {
+        const auto* bytes = static_cast<const uint8_t*>(data);
+        for (size_t i = 0; i < size; ++i) hash = (hash ^ bytes[i]) * 1099511628211ull;
+    }
+    return R"json({"bytes":)json" + std::to_string(size) + R"json(,"fnv1a64":)json" +
+        (data ? std::to_string(hash) : "null") + "}";
+}
+}
+
+extern "C" int mc2_terrain_feed_observation_enabled()
+{
+    return mc2vkfeeddump::enabled() && !mc2vkfeeddump::latch("terrain");
+}
+
+extern "C" void mc2_terrain_feed_observe_activity(uint32_t frame, std::span<const uint8_t> blocks,
+    std::span<const bool> vertices, std::span<const uint32_t> solid, bool solidEnabled)
+{
+    if (!mc2_terrain_feed_observation_enabled()) return;
+    // Normalize bool representations; observe the final flags, including the
+    // additive frustum fallback. Keep the solid candidate order and duplicates.
+    std::vector<uint8_t> vertexFlags(vertices.size());
+    for (size_t i = 0; i < vertices.size(); ++i) vertexFlags[i] = vertices[i] ? 1 : 0;
+    activitySnapshot = R"json({"blocks":")json" + feedHex(blocks.data(), blocks.size()) +
+        R"json(","vertices":")json" + feedHex(vertexFlags.data(), vertexFlags.size()) +
+        R"json(","solid_enabled":)json" + (solidEnabled ? "true" : "false") +
+        R"json(,"solid_count":)json" + std::to_string(solid.size()) +
+        R"json(,"solid_hex":")json" + feedHex(solid.data(), solid.size_bytes()) + R"json("})json";
+    activityFrame = frame;
+}
+
+extern "C" void mc2_terrain_feed_dump_consumed(const Mc2TerrainTier1Feed* f, uint32_t frame, int w, int h,
+    std::span<const uint8_t> ubos, int poolCount, int gridDim, std::span<const uint64_t, 8> importedVersions)
+{
+    if (!mc2_terrain_feed_observation_enabled() || !mc2vkfeeddump::readyToDump()) return;
+    mc2vkfeeddump::resetOnce();
+    FILE* file = mc2vkfeeddump::openAppend(false);
+    if (!file) return;  // Retry; an unwritten receipt must never look complete.
+    std::string json = R"json({"island":"terrain","schema":1,"render_frame":)json" + std::to_string(frame) +
+        R"json(,"activity_frame":)json" + std::to_string(activityFrame) +
+        R"json(,"frozen":)json" + (mc2CaptureGaitFreezeActive() ? "true" : "false") +
+        R"json(,"resolution":[)json" + std::to_string(w) + "," + std::to_string(h) +
+        R"json(],"mapSide":)json" + std::to_string(f->mapSide) +
+        R"json(,"patchCount":)json" + std::to_string(f->patchCount) + R"json(,"patches":[)json";
+    for (uint32_t i = 0; i < f->patchCount; ++i) {
+        const auto& p = f->patches[i];
+        uint32_t skirtBits = 0;
+        std::memcpy(&skirtBits, &p.skirtDepth, sizeof(skirtBits));
+        if (i) json += ',';
+        json += "[" + std::to_string(p.blockOriginX) + "," + std::to_string(p.blockOriginY) +
+            "," + std::to_string(p.quadCountX) + "," + std::to_string(p.quadCountY) +
+            "," + std::to_string(p.lodStep) + "," + std::to_string(skirtBits) +
+            "," + std::to_string(p.skirtEdgeMask) + "," + std::to_string(p.visualMode) +
+            "," + std::to_string(p.edgeStitch) + "]";
+    }
+    json += R"json(],"ubo_hex":")json" + feedHex(ubos.data(), ubos.size()) + R"json(","fields":{)json";
+    bool first = true;
+    auto field = [&](std::string_view name, const void* data, size_t bytes) {
+        if (!first) json += ',';
+        first = false;
+        json += R"json(")json" + std::string(name) + R"json(":)json" + feedReceipt(data, bytes);
+    };
+    field("height", f->heightCpu, static_cast<size_t>(f->heightBytes));
+    field("cement", f->cementCpu, static_cast<size_t>(f->cementBytes));
+    field("visual_height", f->visualHeightCpu, static_cast<size_t>(f->visualHeightBytes));
+    field("colormap", f->colormapBytes, f->colormapByteCount);
+    field("cement_atlas", f->cementAtlasRgba, static_cast<size_t>(f->cementAtlasSide) * f->cementAtlasSide * 4);
+    field("shore_mask", f->shorelineMaskRgba, static_cast<size_t>(f->shorelineMaskW) * f->shorelineMaskH * 4);
+    field("shore_field", f->shoreFieldTexels, static_cast<size_t>(f->shoreFieldW) * f->shoreFieldH * sizeof(float));
+    field("light_pool", poolCount > 0 ? f->poolLights : nullptr, static_cast<size_t>(poolCount) * 48);
+    field("light_header", gridDim > 0 ? f->lightGridHeader : nullptr, gridDim > 0 ? size_t(f->lightGridHeaderWords) * 4 : 0);
+    field("light_indices", gridDim > 0 ? f->lightGridIndices : nullptr, gridDim > 0 ? size_t(f->lightGridIndexWords) * 4 : 0);
+    json += R"json(},"versions":[)json";
+    const uint64_t versions[] = {f->heightVersion, f->cementVersion, f->visualHeightVersion, f->colormapVersion,
+        f->cementAtlasVersion, f->shorelineMaskVersion, f->shoreFieldVersion, f->matNormalVersion, f->staticShadowGeneration};
+    for (size_t i = 0; i < std::size(versions); ++i) {
+        if (i) json += ',';
+        json += std::to_string(versions[i]);
+    }
+    json += R"json(],"imported_versions":[)json";
+    for (size_t i = 0; i < 8; ++i) {
+        if (i) json += ',';
+        json += std::to_string(importedVersions[i]);
+    }
+    json += R"json(],"resource_shapes":[)json" + std::to_string(f->colormapWidth) + "," + std::to_string(f->colormapHeight) +
+        "," + std::to_string(f->colormapVkFormat) + "," + std::to_string(f->cementAtlasSide) +
+        "," + std::to_string(f->shorelineMaskW) + "," + std::to_string(f->shorelineMaskH) +
+        "," + std::to_string(f->shoreFieldW) + "," + std::to_string(f->shoreFieldH) +
+        "," + std::to_string(f->dynamicShadowSize) + "," + std::to_string(f->csmArraySize) + "," + std::to_string(f->csmFullMapSize) +
+        R"json(],"material_handles":[)json";
+    for (size_t i = 0; i < std::size(f->matNormalHandles); ++i) {
+        if (i) json += ',';
+        json += std::to_string(f->matNormalHandles[i]);
+    }
+    // External GPU images are identified by generation/matrices/readiness, not
+    // read back. Feed equality alone does not prove shadow or material pixels.
+    json += R"json(],"external_image_contents":"not_read_back","activity":)json" +
+        (activitySnapshot.empty() ? "null" : activitySnapshot) + "}\n";
+    const bool written = std::fwrite(json.data(), 1, json.size(), file) == json.size();
+    const bool closed = std::fclose(file) == 0;
+    if (written && closed) mc2vkfeeddump::latch("terrain") = true;
+}
+
 extern "C" int mc2_terrain_tier1_get_frame_feed(Mc2TerrainTier1Feed* out)
 {
     if (!out) return 0;
@@ -398,25 +523,6 @@ extern "C" int mc2_terrain_tier1_get_frame_feed(Mc2TerrainTier1Feed* out)
         out->cameraPosMC2[2] = cz;
     }
 
-    // VK-OFFLINE-PROOFS-1: golden feed dump. Fires once per process (paired
-    // with the deterministic bookmark/sim-freeze capture so run-to-run this is
-    // the SAME frame). No-op unless MC2_VK_FEED_DUMP is set.
-    if (mc2vkfeeddump::enabled() && mc2vkfeeddump::readyToDump() && !mc2vkfeeddump::latch("terrain")) {
-        mc2vkfeeddump::resetOnce();
-        if (FILE* f = mc2vkfeeddump::openAppend(/*truncateFirst=*/false)) {
-            unsigned displacedPatches = 0;
-            for (uint32_t i = 0; i < out->patchCount; ++i)
-                if (out->patches[i].visualMode == 2) ++displacedPatches;
-            mc2::fmt::print(f, "{{\"island\":\"terrain\",\"patchCount\":{:d},\"mapSide\":{:d},\"halfMap\":{:.6f},\"heightVersion\":{:d},\"cementVersion\":{:d},\"useCement\":{:d},\"lightingEnabled\":{:d},\"shadowsEnabled\":{:d},\"dynShadowsEnabled\":{:d},\"detailEnabled\":{:d},\"lodFadeEnabled\":{:d},\"visualSide\":{:d},\"visualDisplaceFar\":{:.6f},\"displacedPatches\":{:d},\"patches\":[", mc2::fmt::as_u32(out->patchCount), mc2::fmt::as_i32(out->mapSide), out->halfMap, mc2::fmt::as_u64(static_cast<unsigned long long>(out->heightVersion)), mc2::fmt::as_u64(static_cast<unsigned long long>(out->cementVersion)), mc2::fmt::as_i32(out->useCement), mc2::fmt::as_i32(out->lightingEnabled), mc2::fmt::as_i32(out->shadowsEnabled), mc2::fmt::as_i32(out->dynShadowsEnabled), mc2::fmt::as_i32(out->detailEnabled), mc2::fmt::as_i32(out->lodFadeEnabled), mc2::fmt::as_i32(out->visualSide), out->visualDisplaceFar, mc2::fmt::as_u32(displacedPatches));
-            for (uint32_t i = 0; i < out->patchCount; ++i) {
-                const Mc2TerrainTier1Patch& p = out->patches[i];
-                mc2::fmt::print(f, "{}{{\"qcX\":{:d},\"qcY\":{:d},\"blockOriginX\":{:d},\"blockOriginY\":{:d},\"lodStep\":{:d},\"skirtDepth\":{:.6f},\"skirtEdgeMask\":{:d}}}", mc2::fmt::safe(i ? "," : ""), mc2::fmt::as_i32(p.quadCountX), mc2::fmt::as_i32(p.quadCountY), mc2::fmt::as_i32(p.blockOriginX), mc2::fmt::as_i32(p.blockOriginY), mc2::fmt::as_i32(p.lodStep), p.skirtDepth, mc2::fmt::as_u32(p.skirtEdgeMask));
-            }
-            mc2::fmt::print(f, "]}}\n");
-            std::fclose(f);
-        }
-        mc2vkfeeddump::latch("terrain") = true;
-    }
     return 1;
 }
 #endif
