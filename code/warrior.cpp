@@ -1787,7 +1787,7 @@ void MechWarrior::requestMovePath (long selectionIndex, unsigned long moveParams
 		}
 	}
 
-	MC2_SIM_TRACE_LINE("REQ pilot={:d} src={:d} params={:d} sel={:d}", mc2::fmt::as_i32((getVehicle() ? getVehicle()->getPartId() : -1)), mc2::fmt::as_i32(source), mc2::fmt::as_u32(moveParams), mc2::fmt::as_i32(selectionIndex));
+	MC2_SIM_TRACE_LINE("REQ pilot={:d} src={:d} params={:d} sel={:d}", static_cast<int32_t>((getVehicle() ? getVehicle()->getPartId() : -1)), static_cast<int32_t>(source), static_cast<uint32_t>(moveParams), static_cast<int32_t>(selectionIndex));
 	PathManager->request(this, selectionIndex, moveParams, source);
 }
 

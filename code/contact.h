@@ -11,6 +11,8 @@
 #ifndef CONTACT_H
 #define	CONTACT_H
 
+#include <memory>
+
 //---------------------------------------------------------------------------
 #ifndef MCLIB_H
 #include"mclib.h"
@@ -350,7 +352,7 @@ class SensorSystemManager {
 		long					freeSensors;			//How many sensors are currently free
 		SensorSystemPtr*		sensorPool;				//Pool of ALL sensors
 		SensorSystemPtr			freeList;				//List of available sensors
-		TeamSensorSystemPtr		teamSensors[MAX_TEAMS];
+		std::unique_ptr<TeamSensorSystem>	teamSensors[MAX_TEAMS];
 		ECMInfo					ecms[MAX_ECMS];
 		long					numEcms;
 		long 					teamToUpdate;
@@ -379,8 +381,6 @@ class SensorSystemManager {
 			freeSensors = 0;
 			sensorPool = nullptr;
 			freeList = nullptr;
-			for (long i = 0; i < MAX_TEAMS; i++)
-				teamSensors[i] = nullptr;
 			numEcms = 0;
 			teamToUpdate = 0;
 		}
@@ -388,7 +388,7 @@ class SensorSystemManager {
 		long init (bool debug);
 
 		TeamSensorSystemPtr getTeamSensor (long teamId) {
-			return(teamSensors[teamId]);
+			return(teamSensors[teamId].get());
 		}
 		
 		SensorSystemPtr newSensor (void);

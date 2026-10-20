@@ -407,7 +407,7 @@ long CollisionSystem::init (FitIniFile *scenarioFile)
 	long result = NO_ERR;
 	gosASSERT(result == NO_ERR);
 	
-	collisionGrid = new CollisionGrid;
+	collisionGrid = std::make_unique<CollisionGrid>();
 	gosASSERT(collisionGrid != nullptr);
 
 	globalCollisionAlert = new GlobalCollisionAlert;
@@ -783,8 +783,7 @@ float CollisionSystem::timeToImpact (GameObjectPtr obj1, GameObjectPtr obj2)
 //------------------------------------------------------------------------------
 void CollisionSystem::destroy (void)
 {
-	delete collisionGrid;
-    collisionGrid = nullptr;
+	collisionGrid.reset();
 
 	
 	delete globalCollisionAlert;

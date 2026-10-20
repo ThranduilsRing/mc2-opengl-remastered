@@ -16,14 +16,14 @@ namespace gos_terrain_lighting {
 // ---------------------------------------------------------------------------
 
 // Flag bits for GpuTerrainVertexInput.flags (Phase 1: bits 0-3, Phase 2: bits 4-7)
-#define GPU_VERT_SHADOW          0x00000001u  // pVertex->shadow != 0
-#define GPU_VERT_CALCFRAME_LIGHT 0x00000002u  // calcThisFrame & 1
-#define GPU_VERT_BASE_COLOR_LIT  0x00000004u  // BaseVertexColor != 0
-#define GPU_VERT_RAIN_DAMPEN     0x00000008u  // rainLightLevel < 1.0f
-#define GPU_VERT_WATER           0x00000010u  // pVertex->water & 1
-#define GPU_VERT_WATER_ANIM_NEG  0x00000020u  // water & 128
-#define GPU_VERT_WATER_ANIM_POS  0x00000040u  // water & 64
-#define GPU_VERT_CALCFRAME_WATER 0x00000080u  // calcThisFrame & 2
+inline constexpr uint32_t GPU_VERT_SHADOW          = 0x00000001u;  // pVertex->shadow != 0
+inline constexpr uint32_t GPU_VERT_CALCFRAME_LIGHT = 0x00000002u;  // calcThisFrame & 1
+inline constexpr uint32_t GPU_VERT_BASE_COLOR_LIT  = 0x00000004u;  // BaseVertexColor != 0
+inline constexpr uint32_t GPU_VERT_RAIN_DAMPEN     = 0x00000008u;  // rainLightLevel < 1.0f
+inline constexpr uint32_t GPU_VERT_WATER           = 0x00000010u;  // pVertex->water & 1
+inline constexpr uint32_t GPU_VERT_WATER_ANIM_NEG  = 0x00000020u;  // water & 128
+inline constexpr uint32_t GPU_VERT_WATER_ANIM_POS  = 0x00000040u;  // water & 64
+inline constexpr uint32_t GPU_VERT_CALCFRAME_WATER = 0x00000080u;  // calcThisFrame & 2
 
 struct alignas(16) GpuTerrainVertexInput {   // 32 B std430
     float    xy[2];          // 8 B @ offset 0

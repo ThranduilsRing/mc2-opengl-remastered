@@ -29,7 +29,7 @@ How a hunt uses it:
 3. `grep -a "^\[DT\]" a/<m>.log > a.dt; grep -a "^\[DT\]" b/<m>.log > b.dt; diff a.dt b.dt | head`: read the first differing `RNGF`
    line; if the counts differ, the draws between the previous frame's `RNGCALL` stacks name the consumer; if they agree, the first differing
    item line (`HIT`, `SETTGT`, `CALC`, ...) is the state that moved, and the code that writes it is where to look.
-4. Rebase a stack address: `addr - TRACEBASE.line + <address of mc2_sim_trace::line in the PDB>`; or `llvm-symbolizer --obj=mc2.exe`.
+4. Rebase a stack address: `addr - TRACEBASE.line + <address of mc2_sim_trace::prefix in the PDB>` (the `line=` value is the address of `prefix`); or `llvm-symbolizer --obj=mc2.exe`.
 
 Proof that it compiles: a second Ninja tree, `MC2_NINJA_TREE=build-simtrace py -3 scripts/ninja_build.py -n mc2` then
 `cmake -DMC2_SIM_TRACE=ON build-simtrace` and the build; the lane that adds a trace point builds once with it ON. A default build has

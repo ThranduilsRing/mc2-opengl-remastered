@@ -5,7 +5,7 @@
 
 
 //---------------------------------------------------------------------------
-long FitIniFile::readIdFloatArray (const char *varName, float *result, unsigned long numElements)
+long FitIniFile::readIdFloatArray (std::string_view varName, float *result, unsigned long numElements)
 {
 	char line[255];
 	char frontSearch[10];
@@ -19,7 +19,7 @@ long FitIniFile::readIdFloatArray (const char *varName, float *result, unsigned 
 	//------------------------------------------------------------------
 	// Create two search strings so that we can match any number in []
 	mc2::fmt::to_buf(frontSearch, "f[");
-	mc2::fmt::to_buf(searchString, "] {}", mc2::fmt::safe(varName));
+	mc2::fmt::to_buf(searchString, "] {}", varName);
 	
 	//--------------------------------
 	// Search line by line for varName
@@ -101,7 +101,7 @@ long FitIniFile::readIdFloatArray (const char *varName, float *result, unsigned 
 
 // sebi: this is baaaad I know just dumb copy paste, maybe later do template version
 //---------------------------------------------------------------------------
-long FitIniFile::readIdIntArray (const char *varName, int *result, unsigned int numElements)
+long FitIniFile::readIdIntArray (std::string_view varName, int *result, unsigned int numElements)
 {
 	char line[255];
 	char frontSearch[10];
@@ -115,7 +115,7 @@ long FitIniFile::readIdIntArray (const char *varName, int *result, unsigned int 
 	//------------------------------------------------------------------
 	// Create two search strings so that we can match any number in []
 	mc2::fmt::to_buf(frontSearch, "l[");
-	mc2::fmt::to_buf(searchString, "] {}", mc2::fmt::safe(varName));
+	mc2::fmt::to_buf(searchString, "] {}", varName);
 	
 	//--------------------------------
 	// Search line by line for varName
@@ -196,7 +196,7 @@ long FitIniFile::readIdIntArray (const char *varName, int *result, unsigned int 
 }
 		
 //---------------------------------------------------------------------------
-long FitIniFile::readIdLongArray (const char *varName, long *result, unsigned long numElements)
+long FitIniFile::readIdLongArray (std::string_view varName, long *result, unsigned long numElements)
 {
 	char line[255];
 	char frontSearch[10];
@@ -210,7 +210,7 @@ long FitIniFile::readIdLongArray (const char *varName, long *result, unsigned lo
 	//------------------------------------------------------------------
 	// Create two search strings so that we can match any number in []
 	mc2::fmt::to_buf(frontSearch, "l[");
-	mc2::fmt::to_buf(searchString, "] {}", mc2::fmt::safe(varName));
+	mc2::fmt::to_buf(searchString, "] {}", varName);
 	
 	//--------------------------------
 	// Search line by line for varName
@@ -291,7 +291,7 @@ long FitIniFile::readIdLongArray (const char *varName, long *result, unsigned lo
 }
 
 //---------------------------------------------------------------------------
-long FitIniFile::readIdULongArray (const char *varName, unsigned long *result, unsigned long numElements)
+long FitIniFile::readIdULongArray (std::string_view varName, unsigned long *result, unsigned long numElements)
 {
 	char line[255];
 	char frontSearch[10];
@@ -305,7 +305,7 @@ long FitIniFile::readIdULongArray (const char *varName, unsigned long *result, u
 	//------------------------------------------------------------------
 	// Create two search strings so that we can match any number in []
 	mc2::fmt::to_buf(frontSearch, "ul[");
-	mc2::fmt::to_buf(searchString, "] {}", mc2::fmt::safe(varName));
+	mc2::fmt::to_buf(searchString, "] {}", varName);
 	
 	//--------------------------------
 	// Search line by line for varName
@@ -386,7 +386,7 @@ long FitIniFile::readIdULongArray (const char *varName, unsigned long *result, u
 }
 		
 //---------------------------------------------------------------------------
-long FitIniFile::readIdShortArray (const char *varName, short *result, unsigned long numElements)
+long FitIniFile::readIdShortArray (std::string_view varName, short *result, unsigned long numElements)
 {
 	char line[255];
 	char frontSearch[10];
@@ -400,7 +400,7 @@ long FitIniFile::readIdShortArray (const char *varName, short *result, unsigned 
 	//------------------------------------------------------------------
 	// Create two search strings so that we can match any number in []
 	mc2::fmt::to_buf(frontSearch, "s[");
-	mc2::fmt::to_buf(searchString, "] {}", mc2::fmt::safe(varName));
+	mc2::fmt::to_buf(searchString, "] {}", varName);
 	
 	//--------------------------------
 	// Search line by line for varName
@@ -481,7 +481,7 @@ long FitIniFile::readIdShortArray (const char *varName, short *result, unsigned 
 }
 
 //---------------------------------------------------------------------------
-long FitIniFile::readIdUShortArray (const char *varName, unsigned short *result, unsigned long numElements)
+long FitIniFile::readIdUShortArray (std::string_view varName, unsigned short *result, unsigned long numElements)
 {
 	char line[255];
 	char frontSearch[10];
@@ -495,7 +495,7 @@ long FitIniFile::readIdUShortArray (const char *varName, unsigned short *result,
 	//------------------------------------------------------------------
 	// Create two search strings so that we can match any number in []
 	mc2::fmt::to_buf(frontSearch, "us[");
-	mc2::fmt::to_buf(searchString, "] {}", mc2::fmt::safe(varName));
+	mc2::fmt::to_buf(searchString, "] {}", varName);
 	
 	//--------------------------------
 	// Search line by line for varName
@@ -576,7 +576,7 @@ long FitIniFile::readIdUShortArray (const char *varName, unsigned short *result,
 }
 		
 //---------------------------------------------------------------------------
-long FitIniFile::readIdCharArray (const char *varName, char *result, unsigned long numElements)
+long FitIniFile::readIdCharArray (std::string_view varName, char *result, unsigned long numElements)
 {
 	char line[255];
 	char frontSearch[10];
@@ -590,7 +590,7 @@ long FitIniFile::readIdCharArray (const char *varName, char *result, unsigned lo
 	//------------------------------------------------------------------
 	// Create two search strings so that we can match any number in []
 	mc2::fmt::to_buf(frontSearch, "c[");
-	mc2::fmt::to_buf(searchString, "] {}", mc2::fmt::safe(varName));
+	mc2::fmt::to_buf(searchString, "] {}", varName);
 	
 	//--------------------------------
 	// Search line by line for varName
@@ -671,7 +671,7 @@ long FitIniFile::readIdCharArray (const char *varName, char *result, unsigned lo
 }
 
 //---------------------------------------------------------------------------
-long FitIniFile::readIdUCharArray (const char *varName, unsigned char *result, unsigned long numElements)
+long FitIniFile::readIdUCharArray (std::string_view varName, unsigned char *result, unsigned long numElements)
 {
 	char line[255];
 	char frontSearch[10];
@@ -685,7 +685,7 @@ long FitIniFile::readIdUCharArray (const char *varName, unsigned char *result, u
 	//------------------------------------------------------------------
 	// Create two search strings so that we can match any number in []
 	mc2::fmt::to_buf(frontSearch, "uc[");
-	mc2::fmt::to_buf(searchString, "] {}", mc2::fmt::safe(varName));
+	mc2::fmt::to_buf(searchString, "] {}", varName);
 	
 	//--------------------------------
 	// Search line by line for varName
@@ -766,7 +766,7 @@ long FitIniFile::readIdUCharArray (const char *varName, unsigned char *result, u
 }
 		
 //---------------------------------------------------------------------------
-unsigned long FitIniFile::getIdFloatArrayElements (const char *varName)
+unsigned long FitIniFile::getIdFloatArrayElements (std::string_view varName)
 {
 	char line[255];
 	char frontSearch[10];
@@ -780,7 +780,7 @@ unsigned long FitIniFile::getIdFloatArrayElements (const char *varName)
 	//------------------------------------------------------------------
 	// Create two search strings so that we can match any number in []
 	mc2::fmt::to_buf(frontSearch, "f[");
-	mc2::fmt::to_buf(searchString, "] {}", mc2::fmt::safe(varName));
+	mc2::fmt::to_buf(searchString, "] {}", varName);
 	
 	//--------------------------------
 	// Search line by line for varName
@@ -821,7 +821,7 @@ unsigned long FitIniFile::getIdFloatArrayElements (const char *varName)
 }	
 	
 //---------------------------------------------------------------------------
-unsigned long FitIniFile::getIdLongArrayElements (const char *varName)
+unsigned long FitIniFile::getIdLongArrayElements (std::string_view varName)
 {
 	char line[255];
 	char frontSearch[10];
@@ -835,7 +835,7 @@ unsigned long FitIniFile::getIdLongArrayElements (const char *varName)
 	//------------------------------------------------------------------
 	// Create two search strings so that we can match any number in []
 	mc2::fmt::to_buf(frontSearch, "l[");
-	mc2::fmt::to_buf(searchString, "] {}", mc2::fmt::safe(varName));
+	mc2::fmt::to_buf(searchString, "] {}", varName);
 	
 	//--------------------------------
 	// Search line by line for varName
@@ -876,7 +876,7 @@ unsigned long FitIniFile::getIdLongArrayElements (const char *varName)
 }
 
 //---------------------------------------------------------------------------
-unsigned long FitIniFile::getIdULongArrayElements (const char *varName)
+unsigned long FitIniFile::getIdULongArrayElements (std::string_view varName)
 {
 	char line[255];
 	char frontSearch[10];
@@ -890,7 +890,7 @@ unsigned long FitIniFile::getIdULongArrayElements (const char *varName)
 	//------------------------------------------------------------------
 	// Create two search strings so that we can match any number in []
 	mc2::fmt::to_buf(frontSearch, "ul[");
-	mc2::fmt::to_buf(searchString, "] {}", mc2::fmt::safe(varName));
+	mc2::fmt::to_buf(searchString, "] {}", varName);
 	
 	//--------------------------------
 	// Search line by line for varName
@@ -931,7 +931,7 @@ unsigned long FitIniFile::getIdULongArrayElements (const char *varName)
 }
 											 
 //---------------------------------------------------------------------------
-unsigned long FitIniFile::getIdShortArrayElements (const char *varName)
+unsigned long FitIniFile::getIdShortArrayElements (std::string_view varName)
 {
 	char line[255];
 	char frontSearch[10];
@@ -945,7 +945,7 @@ unsigned long FitIniFile::getIdShortArrayElements (const char *varName)
 	//------------------------------------------------------------------
 	// Create two search strings so that we can match any number in []
 	mc2::fmt::to_buf(frontSearch, "s[");
-	mc2::fmt::to_buf(searchString, "] {}", mc2::fmt::safe(varName));
+	mc2::fmt::to_buf(searchString, "] {}", varName);
 	
 	//--------------------------------
 	// Search line by line for varName
@@ -986,7 +986,7 @@ unsigned long FitIniFile::getIdShortArrayElements (const char *varName)
 }
 
 //---------------------------------------------------------------------------
-unsigned long FitIniFile::getIdUShortArrayElements (const char *varName)
+unsigned long FitIniFile::getIdUShortArrayElements (std::string_view varName)
 {
 	char line[255];
 	char frontSearch[10];
@@ -1000,7 +1000,7 @@ unsigned long FitIniFile::getIdUShortArrayElements (const char *varName)
 	//------------------------------------------------------------------
 	// Create two search strings so that we can match any number in []
 	mc2::fmt::to_buf(frontSearch, "us[");
-	mc2::fmt::to_buf(searchString, "] {}", mc2::fmt::safe(varName));
+	mc2::fmt::to_buf(searchString, "] {}", varName);
 	
 	//--------------------------------
 	// Search line by line for varName
@@ -1041,7 +1041,7 @@ unsigned long FitIniFile::getIdUShortArrayElements (const char *varName)
 }
 
 //---------------------------------------------------------------------------
-unsigned long FitIniFile::getIdCharArrayElements (const char *varName)
+unsigned long FitIniFile::getIdCharArrayElements (std::string_view varName)
 {
 	char line[255];
 	char frontSearch[10];
@@ -1055,7 +1055,7 @@ unsigned long FitIniFile::getIdCharArrayElements (const char *varName)
 	//------------------------------------------------------------------
 	// Create two search strings so that we can match any number in []
 	mc2::fmt::to_buf(frontSearch, "c[");
-	mc2::fmt::to_buf(searchString, "] {}", mc2::fmt::safe(varName));
+	mc2::fmt::to_buf(searchString, "] {}", varName);
 	
 	//--------------------------------
 	// Search line by line for varName
@@ -1096,7 +1096,7 @@ unsigned long FitIniFile::getIdCharArrayElements (const char *varName)
 }
 
 //---------------------------------------------------------------------------
-unsigned long FitIniFile::getIdUCharArrayElements (const char *varName)
+unsigned long FitIniFile::getIdUCharArrayElements (std::string_view varName)
 {
 	char line[255];
 	char frontSearch[10];
@@ -1110,7 +1110,7 @@ unsigned long FitIniFile::getIdUCharArrayElements (const char *varName)
 	//------------------------------------------------------------------
 	// Create two search strings so that we can match any number in []
 	mc2::fmt::to_buf(frontSearch, "uc[");
-	mc2::fmt::to_buf(searchString, "] {}", mc2::fmt::safe(varName));
+	mc2::fmt::to_buf(searchString, "] {}", varName);
 	
 	//--------------------------------
 	// Search line by line for varName

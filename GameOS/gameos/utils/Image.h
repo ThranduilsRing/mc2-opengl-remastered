@@ -10,6 +10,7 @@ Cubemaps are identified with depth = 0.
 #define _IMAGE_H_
 
 #include <stdio.h>
+#include <memory>
 
 struct TGAHeader;
 
@@ -107,8 +108,8 @@ public:
 	
 	FORMAT getFormat() const { return format; }
 
-	unsigned char *getPixels() const { return pixels; }
-	unsigned char *getPixels() { return pixels; }
+	unsigned char *getPixels() const { return pixels.get(); }
+	unsigned char *getPixels() { return pixels.get(); }
 
 private:
 	bool loadWIC(const char *fileName);
@@ -116,7 +117,7 @@ private:
     bool loadTGA(const TGAHeader* header, unsigned char* readPixels);
     bool loadCompressedTGA(const TGAHeader* header, const unsigned char* readPixels, size_t len);
 
-	unsigned char *pixels;
+	std::unique_ptr<unsigned char[]> pixels;
 	long width, height;
 	FORMAT format;
 };

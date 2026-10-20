@@ -138,7 +138,7 @@ def step_preflight(ctx):
     out = ctx.stage_dir("preflight")
     r = ctx.run([sys.executable, ROOT / "tools/repo_intel/repo_query.py", "preflight",
                  "--expect-branch", "claude/nifty-mendeleev",
-                 "--expect-root", "A:/Games/mc2-flash3"], out=out, timeout=300)
+                 "--expect-root", ROOT.as_posix()], out=out, timeout=300)
     if r.dry:
         return Result(DRY, "", out)
     if r.rc == RC_TIMEOUT:

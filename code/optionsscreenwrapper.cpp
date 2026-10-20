@@ -14,7 +14,6 @@ OptionsScreenWrapper.cpp			: Implementation of the OptionsScreenWrapper componen
 
 OptionsScreenWrapper::OptionsScreenWrapper()
 {
-	pOptionsScreen = nullptr;
 	isActive = false;
 }
 
@@ -31,7 +30,7 @@ void OptionsScreenWrapper::begin()
 	isActive = true;
 	if (!pOptionsScreen)
 	{
- 		pOptionsScreen = new OptionsXScreen();
+		pOptionsScreen = std::make_unique<OptionsXScreen>();
 		char path[256];
 		strcpy( path, artPath );
 		strcat( path, "mcl_options.fit" );
@@ -59,8 +58,7 @@ void OptionsScreenWrapper::destroy()
 
 void OptionsScreenWrapper::end()
 {
-	delete pOptionsScreen;
-	pOptionsScreen = nullptr;
+	pOptionsScreen.reset();
 	isActive = false;
 }
 

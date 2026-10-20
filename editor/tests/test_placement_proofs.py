@@ -774,6 +774,7 @@ int main() {
 #include <fstream>
 #include <format>
 #include <string>
+#include <string_view>
 #include <vector>
 #include "GameOS/include/mc2fmt.h"
 #define gosASSERT(x) assert(x)
@@ -794,9 +795,9 @@ struct FitIniFile {
     int create(char* path) { file.open(path, std::ios::binary); file << "FITini \r\n"; return file ? 0 : 1; }
     void close() { file << "FITend \r\n"; file.close(); }
     long write(MemoryPtr data, size_t size) { file.write((char*)data, size); return size; }
-    long writeBlock(const char*);
-    long writeIdBoolean(const char*, bool);
-    long writeIdLong(const char*, long);
+    long writeBlock(std::string_view);
+    long writeIdBoolean(std::string_view, bool);
+    long writeIdLong(std::string_view, long);
     long writeIdString(const char*, const char*);
 };
 '''

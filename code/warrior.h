@@ -418,7 +418,7 @@ struct _AttackerRec {
 
 using AttackerRecPtr = AttackerRec*;
 
-#define MAX_GLOBAL_PATH			50
+// MAX_GLOBAL_PATH: defined once in move.h (included above).
 
 enum MovePathType {
 	MOVEPATH_UNDEFINED,

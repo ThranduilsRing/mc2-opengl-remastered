@@ -578,7 +578,8 @@ void __stdcall gos_LoadDataFromRegistry( const char* keyName, void* pData, DWORD
 
     // 1 + 1 =  for \0 and /
     const size_t confDirBytes = strlen(cfg_dir) + strlen(g_user_config_dir) + 1 + 1;
-    char* mc2_conf_dir = new char[confDirBytes];
+    auto mc2ConfDir = std::make_unique<char[]>(confDirBytes);
+    char* mc2_conf_dir = mc2ConfDir.get();
     mc2::fmt::to_buf_n(mc2_conf_dir, confDirBytes, "{}/{}", cfg_dir, g_user_config_dir);
 
     // if directory does not exist create it
@@ -593,13 +594,13 @@ void __stdcall gos_LoadDataFromRegistry( const char* keyName, void* pData, DWORD
 #endif
             MC2_LOG(Core, Debug, "stat: {}", mc2::fmt::safe(strerror(errno)));
             *szData = 0;
-            delete[] mc2_conf_dir;
             return;
         }
     }
 
     const size_t regFileBytes = strlen(mc2_conf_dir) + 1 + strlen(g_user_reg_file) + 1;
-    char* reg_file = new char[regFileBytes];
+    auto regFile = std::make_unique<char[]>(regFileBytes);
+    char* reg_file = regFile.get();
     mc2::fmt::to_buf_n(reg_file, regFileBytes, "{}/{}", mc2_conf_dir, g_user_reg_file);
 
     // check if reg file exists

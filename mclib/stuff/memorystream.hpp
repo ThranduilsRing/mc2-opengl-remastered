@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <memory>
 #include"stuff.hpp"
 
 namespace Stuff {
@@ -662,7 +663,9 @@ namespace Stuff {
 		DWORD
 			bufferSize;
 		bool
-			ownsStream;
+			ownsStream;	// false for the (void*, size) constructor: the caller owns those bytes
+		std::unique_ptr<BYTE[]>
+			ownedBuffer;	// set only when ownsStream; streamStart is the view of it
 	};
 
 }

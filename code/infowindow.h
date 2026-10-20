@@ -130,7 +130,7 @@ class InfoWindow
 		void setScrollPos( int where );
 		void drawName( const char* name );
 
-		ForceGroupIcon* icon;
+		ForceGroupIcon* icon;	// raw: only setUnit() frees it; ~ForceGroupIcon reads its Mover, which may be gone when InfoWindow dies
 
 		static  long SCROLLLEFT;
 		static  long SCROLLRIGHT;

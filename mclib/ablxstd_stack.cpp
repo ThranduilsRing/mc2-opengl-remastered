@@ -175,36 +175,36 @@ long ABLi_popAnything (ABLStackItem* value) {
 
 	long type = -1;
 	if (paramTypePtr == IntegerTypePtr) {
-		value->type = type = ABL_STACKITEM_INTEGER;
+		value->type = type = std::to_underlying(ABLStackItemType::ABL_STACKITEM_INTEGER);
 		value->data.integer = tos->integer;
 		}
 	else if (paramTypePtr == BooleanTypePtr) {
-		value->type = type = ABL_STACKITEM_BOOLEAN;
+		value->type = type = std::to_underlying(ABLStackItemType::ABL_STACKITEM_BOOLEAN);
 		value->data.boolean = (tos->integer ? true : false);
 		}
 	else if (paramTypePtr == CharTypePtr) {
-		value->type = type = ABL_STACKITEM_CHAR;
+		value->type = type = std::to_underlying(ABLStackItemType::ABL_STACKITEM_CHAR);
 		value->data.character  = tos->byte;
 		}
 	else if (paramTypePtr == RealTypePtr) {
-		value->type = type = ABL_STACKITEM_REAL;
+		value->type = type = std::to_underlying(ABLStackItemType::ABL_STACKITEM_REAL);
 		value->data.real = tos->real;
 		}
 	else if (paramTypePtr->form == FRM_ARRAY) {
 		if (paramTypePtr->info.array.elementTypePtr == CharTypePtr) {
-			value->type = type = ABL_STACKITEM_CHAR_PTR;
+			value->type = type = std::to_underlying(ABLStackItemType::ABL_STACKITEM_CHAR_PTR);
 			value->data.characterPtr = reinterpret_cast<char*>(tos->address);
 			}
 		else if (paramTypePtr->info.array.elementTypePtr == IntegerTypePtr) {
-			value->type = type = ABL_STACKITEM_INTEGER_PTR;
+			value->type = type = std::to_underlying(ABLStackItemType::ABL_STACKITEM_INTEGER_PTR);
 			value->data.integerPtr = reinterpret_cast<int*>(tos->address);
 			}
 		else if (paramTypePtr->info.array.elementTypePtr == RealTypePtr) {
-			value->type = type = ABL_STACKITEM_REAL_PTR;
+			value->type = type = std::to_underlying(ABLStackItemType::ABL_STACKITEM_REAL_PTR);
 			value->data.realPtr = reinterpret_cast<float*>(tos->address);
 			}
 		else if (paramTypePtr->info.array.elementTypePtr == BooleanTypePtr) {
-			value->type = type = ABL_STACKITEM_BOOLEAN_PTR;
+			value->type = type = std::to_underlying(ABLStackItemType::ABL_STACKITEM_BOOLEAN_PTR);
 			value->data.booleanPtr = reinterpret_cast<bool*>(tos->address);
 		}
 	}

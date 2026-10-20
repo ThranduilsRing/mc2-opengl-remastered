@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <memory>
 #include"stuff.hpp"
 #include"sortedsocket.hpp"
 #include"sortedchain.hpp"
@@ -103,7 +104,7 @@ namespace Stuff {
 		// Protected data
 		//--------------------------------------------------------------------
 		//
-		SortedChain **hashTable;
+		SortedChain **hashTable;	// owned (BuildHashTable/~Hash); raw because it is Register_Pointer'd and viewed by HashIterator
 		CollectionSize hashTableSize;
 
 	private:
@@ -268,6 +269,11 @@ namespace Stuff {
 		//--------------------------------------------------------------------
 		//
 		explicit HashIterator(Hash *hash);
+		// Copyable on purpose (MakeClone and HashIteratorOf::MakeClone copy-construct):
+		// a copy clones the chain iterator instead of sharing it.
+		HashIterator(const HashIterator &other);
+		HashIterator&
+			operator=(const HashIterator &other);
 		Iterator*
 			MakeClone();
 		~HashIterator();
@@ -331,13 +337,13 @@ namespace Stuff {
 		//--------------------------------------------------------------------
 		//
 		SortedChain
-			**hashTable;
+			**hashTable;	// non-owning view of Hash::hashTable
 		CollectionSize
 			hashTableSize;
 		IteratorPosition
 			currentPosition;
-		SortedChainIterator
-			*vchainIterator;
+		std::unique_ptr<SortedChainIterator>
+			vchainIterator;	// owned; deep-copied by the copy constructor
 	};
 
 	//~~~~~~~~~~~~~~~~~~~~~~~~~~~~ HashIteratorOf ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

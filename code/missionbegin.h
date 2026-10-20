@@ -100,10 +100,12 @@ class MissionBegin
 	
 		bool						bMultiplayer;
 
+		// Raw on purpose: beginMPlayer() re-runs from restartMPlayer() while an old MP screen may still be
+		// on the call stack; the old screens leak instead of being deleted under it.
 		LogisticsScreen*			multiplayerScreens[DIM_SCREEN_X][DIM_SCREEN_Y];
-		LogisticsScreen*			singlePlayerScreens[DIM_SCREEN_X][DIM_SCREEN_Y];
-		LogisticsScreen*			screens[DIM_SCREEN_X][DIM_SCREEN_Y];
-		LogisticsScreen*			placeHolderScreen;
+		std::unique_ptr<LogisticsScreen>	singlePlayerScreens[DIM_SCREEN_X][DIM_SCREEN_Y];	// owned; built once by begin()
+		LogisticsScreen*			screens[DIM_SCREEN_X][DIM_SCREEN_Y];	// non-owning grid view
+		LogisticsScreen*			placeHolderScreen;	// raw for the same reason as multiplayerScreens
 
 		long						curScreenX;
 		long						curScreenY;

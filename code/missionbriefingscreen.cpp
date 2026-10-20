@@ -83,20 +83,10 @@ MissionBriefingScreen::MissionBriefingScreen(  )
 	status = RUNNING;
 	LogisticsScreen::helpTextArrayID = 4;
 
-	for ( int i = 0; i < MAX_OBJECTIVES; i++ )
-		objectiveButtons[i] = nullptr;
 }
 
 MissionBriefingScreen::~MissionBriefingScreen()
 {
-	for ( int i = 0; i < MAX_OBJECTIVES; i++ )
-	{
-		if (objectiveButtons[i])
-		{
-			delete objectiveButtons[i];
-			objectiveButtons[i] = nullptr;
-		}
-	}
 
 	missionListBox.destroy();  //NO Default destructor for aListBox.  Just call destroy.
 }
@@ -492,7 +482,8 @@ void MissionBriefingScreen::begin()
 
 	statics[VIDEO_SCREEN].setColor( 0 );
 
-	memset( objectiveButtons, 0, sizeof ( aObject* ) * MAX_OBJECTIVES );
+	for ( int i = 0; i < MAX_OBJECTIVES; i++ )
+		objectiveButtons[i].reset();
 	for ( int mi = 0; mi < MAX_OBJECTIVES; mi++ )
 		objMarkerFx[mi] = objMarkerFy[mi] = -1.f;
 	dropZoneFx = dropZoneFy = -1.f;
@@ -765,7 +756,7 @@ void MissionBriefingScreen::addObjectiveButton( float fX, float fY, int count, i
 	xLoc += statics[MAP_INDEX].globalX() + bmpX/2.f;
 	yLoc += statics[MAP_INDEX].globalY() + bmpY/2.f;
 
-	aObject* pButtonText = new aObject;
+	auto pButtonText = std::make_unique<aObject>();
 	*pButtonText = statics[BUTTON_TEXT];
 	if (display)
 		pButtonText->showGUIWindow( true );
@@ -793,7 +784,7 @@ void MissionBriefingScreen::addObjectiveButton( float fX, float fY, int count, i
 	{
 		if ( !objectiveButtons[i])
 		{
-			objectiveButtons[i] = pButtonText;
+			objectiveButtons[i] = std::move(pButtonText);
 			// map-fraction (0..1) of this marker, for drawing on the scaled defs map.
 			objMarkerFx[i] = ( fX / mapWidth + 1.f ) * 0.5f;
 			objMarkerFy[i] = ( -fY / mapHeight + 1.f ) * 0.5f;
@@ -801,12 +792,7 @@ void MissionBriefingScreen::addObjectiveButton( float fX, float fY, int count, i
 		}
 	}
 
-	//If there are too many objectives, don't leave the RAM lying around!
-	if (i >= MAX_OBJECTIVES)
-	{
-		delete pButtonText;
-		pButtonText = nullptr;
-	}
+	// Too many objectives: pButtonText still owns the button and frees it here.
 }
 
 /*int MissionBriefingScreen::addLBItem( FitIniFile& file, const char* itemName, unsigned long color, int ID)
@@ -818,7 +804,7 @@ void MissionBriefingScreen::addObjectiveButton( float fX, float fY, int count, i
 
 int MissionBriefingScreen::addLBItem( const char* text, unsigned long color, int ID)
 {
-	aTextListItem* pEntry = new aTextListItem( IDS_MN_LB_FONT );
+	aTextListItem* pEntry = new aTextListItem( IDS_MN_LB_FONT );	// raw: the list box takes ownership in AddItem
 	pEntry->setID( ID );
 	pEntry->resize( missionListBox.width() - missionListBox.getScrollBarWidth() - 10,
 		pEntry->height() );
@@ -833,7 +819,7 @@ int MissionBriefingScreen::addLBItem( const char* text, unsigned long color, int
 int  MissionBriefingScreen::addItem( int ID, unsigned long color, int LBid)
 {
 
-	aTextListItem* pEntry = new aTextListItem( IDS_MN_LB_FONT );
+	aTextListItem* pEntry = new aTextListItem( IDS_MN_LB_FONT );	// raw: the list box takes ownership in AddItem
 	pEntry->setID( LBid );
 	pEntry->resize( missionListBox.width() - missionListBox.getScrollBarWidth() - 10,
 		pEntry->height() );

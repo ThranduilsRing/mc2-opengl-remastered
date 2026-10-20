@@ -185,11 +185,11 @@ inline constexpr int TACORDER_RANGE_MASK = 0x0000FC00;
 inline constexpr int TACORDER_AIM_MASK = 0x00070000;
 inline constexpr int TACORDER_TACTIC_MASK = 0x0FC00000;
 
-#define	RELPOS_FLAG_ABS					1
-#define	RELPOS_FLAG_PASSABLE_START		2
-#define	RELPOS_FLAG_PASSABLE_GOAL		4
+inline constexpr int RELPOS_FLAG_ABS = 1;
+inline constexpr int RELPOS_FLAG_PASSABLE_START = 2;
+inline constexpr int RELPOS_FLAG_PASSABLE_GOAL = 4;
 
-#define MAX_GLOBAL_PATH					50
+inline constexpr int MAX_GLOBAL_PATH = 50;
 
 inline constexpr int NUM_MOVE_LEVELS = 2;
 

@@ -72,9 +72,7 @@ inline constexpr int GAMEOBJECT_FLOATS = 4;
 inline constexpr int GAMEOBJECT_LONG = 2;
 inline constexpr int GAMEOBJECT_BYTES = 1;
 
-#define	RELPOS_FLAG_ABS					1
-#define	RELPOS_FLAG_PASSABLE_START		2
-#define	RELPOS_FLAG_PASSABLE_GOAL		4
+// RELPOS_FLAG_*: defined once in move.h (included above).
 
 enum AttackSourceType {
 	ATTACKSOURCE_WEAPONFIRE,

@@ -382,7 +382,7 @@ bool SensorSystem::isContact (MoverPtr mover) {
 //---------------------------------------------------------------------------
 
 void SensorSystem::addContact (MoverPtr mover, bool visual) {
-	MC2_SIM_TRACE_LINE("SADD owner={:d} mv={:d} vis={:d}", mc2::fmt::as_i32(owner->getPartId()), mc2::fmt::as_i32(mover->getPartId()), mc2::fmt::as_i32(static_cast<int>(visual)));
+	MC2_SIM_TRACE_LINE("SADD owner={:d} mv={:d} vis={:d}", static_cast<int32_t>(owner->getPartId()), static_cast<int32_t>(mover->getPartId()), static_cast<int32_t>(static_cast<int>(visual)));
 
 	Assert(!isContact(mover), 0, " SensorSystem.addContact: already contact ");
 	if (numContacts < MAX_CONTACTS_PER_SENSOR) {
@@ -421,7 +421,7 @@ void SensorSystem::removeContact (long contactIndex) {
 
 	MoverPtr contact = static_cast<MoverPtr>(ObjectManager->get(contacts[contactIndex] & 0x7FFF));
 	Assert(contact != nullptr, contacts[contactIndex] & 0x7FFF, " SensorSystem.removeContact: bad contact ");
-	MC2_SIM_TRACE_LINE("SREM owner={:d} mv={:d}", mc2::fmt::as_i32(owner->getPartId()), mc2::fmt::as_i32(contact->getPartId()));
+	MC2_SIM_TRACE_LINE("SREM owner={:d} mv={:d}", static_cast<int32_t>(owner->getPartId()), static_cast<int32_t>(contact->getPartId()));
 	
 	numContacts--;
 	if ((numContacts > 0) && (contactIndex != numContacts)) {
@@ -1152,13 +1152,10 @@ long SensorSystemManager::init (bool debug) {
 	freeList = sensorPool[0];
 	freeSensors = MAX_SENSORS;
 
-	for (int i = 0; i < MAX_TEAMS; i++)
-		teamSensors[i] = nullptr;
-
 	Assert (!debug || (Team::numTeams > 0), 0, " SensorSystemManager.init: 0 teams ");
 
 	for (int i = 0; i < Team::numTeams; i++) {
-		teamSensors[i] = new TeamSensorSystem;
+		teamSensors[i] = std::make_unique<TeamSensorSystem>();
 		teamSensors[i]->teamId = i;
 	}
 
@@ -1251,8 +1248,7 @@ void SensorSystemManager::destroy (void) {
 
 	for (long i = 0; i < Team::numTeams; i++) 
 	{
-		delete teamSensors[i];
-		teamSensors[i] = nullptr;
+		teamSensors[i].reset();
 	}
 }
 
@@ -1263,7 +1259,7 @@ void SensorSystemManager::addTeamSensor (long teamId, SensorSystemPtr sensor)
 	if ((teamId > -1) && (teamId < Team::numTeams))
 	{
 		teamSensors[teamId]->addSensor(sensor);
-		sensor->setMaster(teamSensors[teamId]);
+		sensor->setMaster(teamSensors[teamId].get());
 	}
 }
 

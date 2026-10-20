@@ -208,9 +208,9 @@ void MovePathManager::calcPath (void) {
 		if (!mover)
 			return;
 
-		MC2_SIM_TRACE_LINE("CALC pilot={:d} src={:d}", mc2::fmt::as_i32(mover->getPartId()), mc2::fmt::as_i32(curQRec->num));
+		MC2_SIM_TRACE_LINE("CALC pilot={:d} src={:d}", static_cast<int32_t>(mover->getPartId()), static_cast<int32_t>(curQRec->num));
 		/*long err = */pilot->calcMovePath(curQRec->selectionIndex, curQRec->moveParams);
-		MC2_SIM_TRACE_LINE("CALCDONE pilot={:d} p0={:d}/{:d} p1={:d}/{:d}", mc2::fmt::as_i32(mover->getPartId()), mc2::fmt::as_i32(pilot->getMovePath(0)->curStep), mc2::fmt::as_i32(pilot->getMovePath(0)->numStepsWhenNotPaused), mc2::fmt::as_i32(pilot->getMovePath(1)->curStep), mc2::fmt::as_i32(pilot->getMovePath(1)->numStepsWhenNotPaused));
+		MC2_SIM_TRACE_LINE("CALCDONE pilot={:d} p0={:d}/{:d} p1={:d}/{:d}", static_cast<int32_t>(mover->getPartId()), static_cast<int32_t>(pilot->getMovePath(0)->curStep), static_cast<int32_t>(pilot->getMovePath(0)->numStepsWhenNotPaused), static_cast<int32_t>(pilot->getMovePath(1)->curStep), static_cast<int32_t>(pilot->getMovePath(1)->numStepsWhenNotPaused));
 	}
 }
 

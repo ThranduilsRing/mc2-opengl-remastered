@@ -580,13 +580,13 @@ long ABLModule::init (int moduleHandle) {
 	ModuleInstanceRegistry[NumModuleInstances++] = this;
 
 	if (debugger) {
-		watchManager = new WatchManager;
+		watchManager = std::make_unique<WatchManager>();
 		if (!watchManager)
 			ABL_Fatal(0, " Unable to AblStackHeap->malloc WatchManager ");
 		long result = watchManager->init(MaxWatchesPerModule);
 		if (result != ABL_NO_ERR)
 			ABL_Fatal(0, " Unable to AblStackHeap->malloc WatchManager ");
-		breakPointManager = new BreakPointManager;
+		breakPointManager = std::make_unique<BreakPointManager>();
 		if (!breakPointManager)
 			ABL_Fatal(0, " Unable to AblStackHeap->malloc BreakPointManager ");
 		result = breakPointManager->init(MaxBreakPointsPerModule);
@@ -738,13 +738,13 @@ void ABLModule::read (ABLFile* moduleFile) {
 		ModuleInstanceRegistry[NumModuleInstances++] = this;
 
 		if (debugger) {
-			watchManager = new WatchManager;
+			watchManager = std::make_unique<WatchManager>();
 			if (!watchManager)
 				ABL_Fatal(0, " Unable to AblStackHeap->malloc WatchManager ");
 			long result = watchManager->init(MaxWatchesPerModule);
 			if (result != ABL_NO_ERR)
 				ABL_Fatal(0, " Unable to AblStackHeap->malloc WatchManager ");
-			breakPointManager = new BreakPointManager;
+			breakPointManager = std::make_unique<BreakPointManager>();
 			if (!breakPointManager)
 				ABL_Fatal(0, " Unable to AblStackHeap->malloc BreakPointManager ");
 			result = breakPointManager->init(MaxBreakPointsPerModule);
@@ -752,6 +752,20 @@ void ABLModule::read (ABLFile* moduleFile) {
 				ABL_Fatal(0, " Unable to AblStackHeap->malloc BreakPointManager ");
 		}
 	}
+}
+
+//---------------------------------------------------------------------------
+
+ABLModule::ABLModule (void) {
+
+	init();
+}
+
+//---------------------------------------------------------------------------
+
+ABLModule::~ABLModule (void) {
+
+	destroy();
 }
 
 //---------------------------------------------------------------------------
@@ -1404,15 +1418,8 @@ void ABLModule::destroy (void) {
 			}
 	}
 
-	if (watchManager) {
-		delete watchManager;
-		watchManager = nullptr;
-	}
-
-	if (breakPointManager) {
-		delete breakPointManager;
-		breakPointManager = nullptr;
-	}
+	watchManager.reset();
+	breakPointManager.reset();
 
 	// The instance's own blocks go back now, not at ABLi_close (BUGS row 78): the order flags and the sized statics. After
 	// ABLi_close the registry is gone and the first free reports the closed environment.
