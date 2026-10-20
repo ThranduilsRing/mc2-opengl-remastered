@@ -57,4 +57,27 @@ struct TextureStagingBudget {
     }
     void complete(size_t bytes) { assert(bytes<=used); used-=bytes; }
 };
+
+// Completed images retain their slot reservation and staging charge until publication
+// succeeds (or the source is cancelled). A full table must never strand a live handle.
+template<class Uploads, class Residents, class Complete>
+void publishTextureUploads(TextureService& service, TextureDescriptorTable& table,
+                           Uploads& uploads, Residents& residents, TextureStagingBudget& budget,
+                           Complete complete) {
+    while (!uploads.empty() && complete(uploads.front().ticket)) {
+        auto& upload=uploads.front();
+        auto it=residents.find(upload.handle.raw());
+        if (it!=residents.end()) {
+            auto& [raw,resident]=*it;
+            if (service.isLive(upload.handle) && resident.contentVersion==upload.contentVersion) {
+                const auto slot=table.insert(upload.handle,upload.image);
+                if (!slot) break;
+                resident.image=std::move(upload.image);
+                resident.descriptor=slot;
+            }
+        }
+        budget.complete(upload.bytes);
+        uploads.pop_front();
+    }
+}
 } // namespace RenderCore

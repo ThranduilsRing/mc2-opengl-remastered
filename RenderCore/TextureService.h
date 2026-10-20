@@ -344,7 +344,8 @@ public:
     uint32_t index(TextureHandle h) const {
         auto it = indices_.find(h.raw()); return it == indices_.end() ? 0 : it->second;
     }
-    bool full() const { return free_.empty() && slots_.size() >= capacity_; }
+    size_t availableSlots() const { return capacity_ > indices_.size()+1 ? capacity_-indices_.size()-1 : 0; }
+    bool full(size_t reserved = 0) const { return reserved >= availableSlots(); }
     std::vector<Slot> snapshot() const { return slots_; }
     uint64_t revision() const { return revision_; }
 private:

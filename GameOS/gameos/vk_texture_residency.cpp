@@ -56,6 +56,7 @@ void TextureResidency::attach(RenderCore::TextureHandle handle, std::shared_ptr<
 }
 
 ResidentTextureRef TextureResidency::createRenderTarget(uint32_t width, uint32_t height) {
+    if (table_->full(uploading_.size())) return {};
     auto image=std::make_shared<Image>();
     if (!image->image.createSampled2D(ctx_.allocator(),ctx_.device(),VK_FORMAT_R8G8B8A8_UNORM,width,height,1,
                                     VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,"ui.preview")) return {};
@@ -222,21 +223,14 @@ void TextureResidency::pump() {
         else pending_.push_back(std::move(pending));
     }
     // Queue order makes completion a prefix: idle resident images are never scanned.
-    while (!uploading_.empty() && ctx_.isComplete(uploading_.front().ticket)) {
-        auto& upload=uploading_.front();
-        auto it=residents_.find(upload.handle.raw());
-        if (it!=residents_.end() && service_.isLive(upload.handle) && it->second.contentVersion==upload.contentVersion) {
-            const auto slot=table_->insert(upload.handle,upload.image);
-            if (slot) { it->second.image=std::move(upload.image); it->second.descriptor=slot; }
-        }
-        budget_.complete(upload.bytes); uploading_.pop_front();
-    }
+    RenderCore::publishTextureUploads(service_,*table_,uploading_,residents_,budget_,
+                                     [this](GpuTicket ticket) { return ctx_.isComplete(ticket); });
     while (!pending_.empty()) {
         auto& p=pending_.front();
         auto it=residents_.find(p.handle.raw());
         if (it==residents_.end() || !service_.isLive(p.handle) || it->second.contentVersion!=p.contentVersion) { pending_.pop_front(); continue; }
         const size_t bytes=p.image->pixels.size();
-        if (table_->full() || !budget_.reserve(bytes)) break;
+        if (table_->full(uploading_.size()) || !budget_.reserve(bytes)) break;
         Upload upload; upload.handle=p.handle; upload.bytes=bytes; upload.contentVersion=p.contentVersion;
         if (this->upload(*p.image,it->second.useMips,&upload,it->second.layers,it->second.arrayView)) uploading_.push_back(std::move(upload));
         else budget_.complete(bytes);
