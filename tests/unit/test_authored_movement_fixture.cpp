@@ -317,7 +317,6 @@ struct MovementWorld {
     std::unique_ptr<Terrain> terrain;
     std::unique_ptr<FlatMesh> mesh;
     std::unique_ptr<MissionMap> cells;
-    std::array<std::unique_ptr<MoveMap>, 2> localMaps;
     std::unique_ptr<GlobalMap> areas;
     std::unique_ptr<TriggerAreaManager> triggers;
     std::unique_ptr<Watches> objects;
@@ -416,7 +415,7 @@ struct MovementWorld {
     }
     void provisionPaths() {
         MOVE_init(21);
-        for (int i = 0; i < 2; ++i) localMaps[i].reset(PathFindMap[i]);
+        // PathFindMap[] is owned by move.cpp (MOVE_acquirePathFindMap); the fixture only observes it.
         areas = std::make_unique<GlobalMap>();
         GlobalMoveMap[0] = areas.get();
         areas->isGateDisabledCallback = [](int) { return false; };

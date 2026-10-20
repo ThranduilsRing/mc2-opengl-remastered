@@ -5,6 +5,7 @@
 // reads MasterComponent lives in equipment_registry_engine.cpp (not built here).
 
 #include "doctest.h"
+#include <utility>
 #include "equipment_registry.h"
 
 TEST_CASE("slugifyComponentName mirrors converter _slug") {
@@ -35,26 +36,26 @@ TEST_CASE("coreQualifiedIdFor stamps core: and parses valid") {
 }
 
 TEST_CASE("componentFormToKind mirrors converter TYPE_TO_KIND grouping") {
-    CHECK(componentFormToKind(CFORM_WEAPON_ENERGY) == EQ_WEAPON);
-    CHECK(componentFormToKind(CFORM_WEAPON_BALLISTIC) == EQ_WEAPON);
-    CHECK(componentFormToKind(CFORM_WEAPON_MISSILE) == EQ_WEAPON);
-    CHECK(componentFormToKind(CFORM_WEAPON) == EQ_WEAPON);
-    CHECK(componentFormToKind(CFORM_AMMO) == EQ_AMMO);
-    CHECK(componentFormToKind(CFORM_SENSOR) == EQ_SENSOR);
-    CHECK(componentFormToKind(CFORM_PROBE) == EQ_SENSOR);
-    CHECK(componentFormToKind(CFORM_ECM) == EQ_ECM);
-    CHECK(componentFormToKind(CFORM_JAMMER) == EQ_ECM);
-    CHECK(componentFormToKind(CFORM_JUMPJET) == EQ_JUMPJET);
-    CHECK(componentFormToKind(CFORM_HEATSINK) == EQ_HEATSINK);
-    CHECK(componentFormToKind(CFORM_BULK) == EQ_STRUCTURE);
-    CHECK(componentFormToKind(CFORM_CASE) == EQ_STRUCTURE);
-    CHECK(componentFormToKind(CFORM_COCKPIT) == EQ_COCKPIT);
-    CHECK(componentFormToKind(CFORM_LIFESUPPORT) == EQ_COCKPIT);
-    CHECK(componentFormToKind(CFORM_ACTUATOR) == EQ_ACTUATOR);
-    CHECK(componentFormToKind(CFORM_GYROSCOPE) == EQ_ACTUATOR);
-    CHECK(componentFormToKind(CFORM_ENGINE) == EQ_ENGINE);
-    CHECK(componentFormToKind(CFORM_SIMPLE) == EQ_OTHER);
-    CHECK(componentFormToKind(CFORM_POWER_AMPLIFIER) == EQ_OTHER);
+    CHECK(componentFormToKind(std::to_underlying(CFORM_WEAPON_ENERGY)) == EQ_WEAPON);
+    CHECK(componentFormToKind(std::to_underlying(CFORM_WEAPON_BALLISTIC)) == EQ_WEAPON);
+    CHECK(componentFormToKind(std::to_underlying(CFORM_WEAPON_MISSILE)) == EQ_WEAPON);
+    CHECK(componentFormToKind(std::to_underlying(CFORM_WEAPON)) == EQ_WEAPON);
+    CHECK(componentFormToKind(std::to_underlying(CFORM_AMMO)) == EQ_AMMO);
+    CHECK(componentFormToKind(std::to_underlying(CFORM_SENSOR)) == EQ_SENSOR);
+    CHECK(componentFormToKind(std::to_underlying(CFORM_PROBE)) == EQ_SENSOR);
+    CHECK(componentFormToKind(std::to_underlying(CFORM_ECM)) == EQ_ECM);
+    CHECK(componentFormToKind(std::to_underlying(CFORM_JAMMER)) == EQ_ECM);
+    CHECK(componentFormToKind(std::to_underlying(CFORM_JUMPJET)) == EQ_JUMPJET);
+    CHECK(componentFormToKind(std::to_underlying(CFORM_HEATSINK)) == EQ_HEATSINK);
+    CHECK(componentFormToKind(std::to_underlying(CFORM_BULK)) == EQ_STRUCTURE);
+    CHECK(componentFormToKind(std::to_underlying(CFORM_CASE)) == EQ_STRUCTURE);
+    CHECK(componentFormToKind(std::to_underlying(CFORM_COCKPIT)) == EQ_COCKPIT);
+    CHECK(componentFormToKind(std::to_underlying(CFORM_LIFESUPPORT)) == EQ_COCKPIT);
+    CHECK(componentFormToKind(std::to_underlying(CFORM_ACTUATOR)) == EQ_ACTUATOR);
+    CHECK(componentFormToKind(std::to_underlying(CFORM_GYROSCOPE)) == EQ_ACTUATOR);
+    CHECK(componentFormToKind(std::to_underlying(CFORM_ENGINE)) == EQ_ENGINE);
+    CHECK(componentFormToKind(std::to_underlying(CFORM_SIMPLE)) == EQ_OTHER);
+    CHECK(componentFormToKind(std::to_underlying(CFORM_POWER_AMPLIFIER)) == EQ_OTHER);
 }
 
 TEST_CASE("registry query API: byId / byOrdinal / round-trip") {

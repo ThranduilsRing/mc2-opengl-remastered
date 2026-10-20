@@ -9,6 +9,7 @@
 // equipment_registry_engine.cpp (not built here).
 
 #include "doctest.h"
+#include <utility>
 #include "equipment_registry.h"
 #include "equipment_validator.h"
 #include "equipment_findings_text.h"
@@ -64,12 +65,12 @@ TEST_CASE("equipmentAddFillDecide: explicit-only, free-only, first-wins, no-255"
 
 TEST_CASE("mc2ComponentRowPopulated: the string-table-name divergence class") {
     // A truly populated row: masterID >= 0 and a VALID form.
-    CHECK(mc2ComponentRowPopulated(156, CFORM_WEAPON_ENERGY));
-    CHECK(mc2ComponentRowPopulated(0, CFORM_SIMPLE));
-    CHECK(mc2ComponentRowPopulated(254, CFORM_BULK));   // last valid form ordinal (19)
+    CHECK(mc2ComponentRowPopulated(156, std::to_underlying(CFORM_WEAPON_ENERGY)));
+    CHECK(mc2ComponentRowPopulated(0, std::to_underlying(CFORM_SIMPLE)));
+    CHECK(mc2ComponentRowPopulated(254, std::to_underlying(CFORM_BULK)));   // last valid form ordinal (19)
 
     // The sentinel state loadMasterList now guarantees for undefined rows.
-    CHECK(!mc2ComponentRowPopulated(-1, CFORM_WEAPON_ENERGY));
+    CHECK(!mc2ComponentRowPopulated(-1, std::to_underlying(CFORM_WEAPON_ENERGY)));
 
 // The observed live-witness divergence: initEXCEL bails on "undefined"
     // WITHOUT resetting masterID, leaving masterID==ordinal + a string-table
@@ -82,23 +83,23 @@ TEST_CASE("mc2ComponentRowPopulated: the string-table-name divergence class") {
     // Conversely, a populated row whose string-table entry is MISSING (empty
     // name) must still read as populated -- a name test would mark it free
     // (clobberable by an ADD def). The helper takes no name at all.
-    CHECK(mc2ComponentRowPopulated(150, CFORM_AMMO));
+    CHECK(mc2ComponentRowPopulated(150, std::to_underlying(CFORM_AMMO)));
 
     CHECK(kComponentFormOrdinalCount == 20);   // == NUM_COMPONENT_FORMS lock
 }
 
 TEST_CASE("equipmentAddKindToFormOrdinal maps kind+category to legacy form") {
-    CHECK(equipmentAddKindToFormOrdinal("Weapon", "Energy") == CFORM_WEAPON_ENERGY);
-    CHECK(equipmentAddKindToFormOrdinal("Weapon", "Ballistic") == CFORM_WEAPON_BALLISTIC);
-    CHECK(equipmentAddKindToFormOrdinal("Weapon", "Missile") == CFORM_WEAPON_MISSILE);
-    CHECK(equipmentAddKindToFormOrdinal("Weapon", "") == CFORM_WEAPON_ENERGY);
-    CHECK(equipmentAddKindToFormOrdinal("weapon", "energy") == CFORM_WEAPON_ENERGY); // case-insensitive
-    CHECK(equipmentAddKindToFormOrdinal("Ammo", nullptr) == CFORM_AMMO);
-    CHECK(equipmentAddKindToFormOrdinal("Sensor", nullptr) == CFORM_SENSOR);
-    CHECK(equipmentAddKindToFormOrdinal("ECM", nullptr) == CFORM_ECM);
-    CHECK(equipmentAddKindToFormOrdinal("JumpJet", nullptr) == CFORM_JUMPJET);
-    CHECK(equipmentAddKindToFormOrdinal("Heatsink", nullptr) == CFORM_HEATSINK);
-    CHECK(equipmentAddKindToFormOrdinal("bogus", nullptr) == CFORM_SIMPLE);
+    CHECK(equipmentAddKindToFormOrdinal("Weapon", "Energy") == std::to_underlying(CFORM_WEAPON_ENERGY));
+    CHECK(equipmentAddKindToFormOrdinal("Weapon", "Ballistic") == std::to_underlying(CFORM_WEAPON_BALLISTIC));
+    CHECK(equipmentAddKindToFormOrdinal("Weapon", "Missile") == std::to_underlying(CFORM_WEAPON_MISSILE));
+    CHECK(equipmentAddKindToFormOrdinal("Weapon", "") == std::to_underlying(CFORM_WEAPON_ENERGY));
+    CHECK(equipmentAddKindToFormOrdinal("weapon", "energy") == std::to_underlying(CFORM_WEAPON_ENERGY)); // case-insensitive
+    CHECK(equipmentAddKindToFormOrdinal("Ammo", nullptr) == std::to_underlying(CFORM_AMMO));
+    CHECK(equipmentAddKindToFormOrdinal("Sensor", nullptr) == std::to_underlying(CFORM_SENSOR));
+    CHECK(equipmentAddKindToFormOrdinal("ECM", nullptr) == std::to_underlying(CFORM_ECM));
+    CHECK(equipmentAddKindToFormOrdinal("JumpJet", nullptr) == std::to_underlying(CFORM_JUMPJET));
+    CHECK(equipmentAddKindToFormOrdinal("Heatsink", nullptr) == std::to_underlying(CFORM_HEATSINK));
+    CHECK(equipmentAddKindToFormOrdinal("bogus", nullptr) == std::to_underlying(CFORM_SIMPLE));
 }
 
 TEST_CASE("equipmentAddAllowedLocationsToCrit maps tokens to compbas column order") {
@@ -119,7 +120,7 @@ TEST_CASE("equipmentAddAllowedLocationsToCrit maps tokens to compbas column orde
 
 TEST_CASE("buildEquipmentAddCsvLine: dual-consumer column layout (row-156 shape)") {
     EquipmentAddRowFields f;
-    f.ordinal = 40; f.formOrdinal = CFORM_WEAPON_ENERGY;
+    f.ordinal = 40; f.formOrdinal = std::to_underlying(CFORM_WEAPON_ENERGY);
     f.displayName = "Hot, Medium Laser";   // comma must be stripped
     f.critSlots = 1; f.recycle = 4.2f; f.heat = 4.5f; f.tonnage = 2.0f;
     f.damage = 3.2f; f.combatValue = 120.0f; f.cost = 2100;
