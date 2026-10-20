@@ -3,7 +3,6 @@
 
 #if MC2_SIM_TRACE
 
-#include <cstdarg>
 #include <cstdint>
 #include <cstdio>
 #if __has_include(<stacktrace>)
@@ -17,11 +16,11 @@ namespace mc2_sim_trace {
 namespace {
 double s_time = 0.0;
 bool s_basePrinted = false;
+}
 
 void prefix()
 {
-	std::printf("[DT] f=%u t=%.4f ", static_cast<unsigned>(g_mc2FrameCounter), s_time);
-}
+	mc2::fmt::print_out("[DT] f={:d} t={:.4f} ", mc2::fmt::as_u32(g_mc2FrameCounter), s_time);
 }
 
 void setTime(double scenarioTime)
@@ -29,23 +28,12 @@ void setTime(double scenarioTime)
 	s_time = scenarioTime;
 }
 
-void line(const char* fmt, ...)
-{
-	prefix();
-	va_list args;
-	va_start(args, fmt);
-	std::vprintf(fmt, args);
-	va_end(args);
-	std::printf("\n");
-	std::fflush(stdout);
-}
-
 void stack(const char* tag)
 {
 	if (!s_basePrinted) {
 		s_basePrinted = true;
 		prefix();
-		std::printf("TRACEBASE line=%p\n", reinterpret_cast<void*>(&line));
+		std::printf("TRACEBASE line=%p\n", reinterpret_cast<void*>(&prefix));
 	}
 	prefix();
 	std::printf("%s stack=", tag);

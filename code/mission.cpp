@@ -806,14 +806,14 @@ void Mission::start (void)
 				{
 					missing++;
 					if (missing <= 32)   // bounded output; summary carries totals
-						mc2AuditLinef("[APPEAR_AUDIT v1] event=missing reason=%s "
-							"handle=%ld class=%d part=%ld",
-							why, h, static_cast<int>(obj->getObjectClass()),
-							obj->getPartId());
+						mc2AuditLinef("[APPEAR_AUDIT v1] event=missing reason={} "
+							"handle={:d} class={:d} part={:d}",
+							mc2::fmt::safe(why), mc2::fmt::as_i32(h), mc2::fmt::as_i32(static_cast<int>(obj->getObjectClass())),
+							mc2::fmt::as_i32(obj->getPartId()));
 				}
 			}
-			mc2AuditLinef("[APPEAR_AUDIT v1] summary scanned=%ld missing=%ld",
-				scanned, missing);
+			mc2AuditLinef("[APPEAR_AUDIT v1] summary scanned={:d} missing={:d}",
+				mc2::fmt::as_i32(scanned), mc2::fmt::as_i32(missing));
 		}
 	}
 	// APPEAR-AUDIT-END

@@ -159,8 +159,8 @@ void LogisticsMechIcon::setMech( LogisticsMech* pNewMech )
 		bool iconOob = false;
 		const icon_atlas::Cell cell = icon_atlas::cellForIndexChecked( index, width, height, fileW, fileH, &iconOob );
 		if ( iconOob && mc2AuditOnce( "ICON_OOB", 0x1000000ull + static_cast<unsigned long long>(static_cast<unsigned long>(index)) ) )
-			mc2AuditLinef( "[ASSET_LOAD v1] event=icon_oob site=logisticsmechicon index=%ld cell=%.0fx%.0f atlas=%.0fx%.0f",
-				index, width, height, fileW, fileH );
+			mc2AuditLinef( "[ASSET_LOAD v1] event=icon_oob site=logisticsmechicon index={:d} cell={:.0f}x{:.0f} atlas={:.0f}x{:.0f}",
+				mc2::fmt::as_i32(index), width, height, fileW, fileH );
 		const long cols = cell.cols;
 		const long xIndex = cell.col;
 		const long yIndex = cell.row;

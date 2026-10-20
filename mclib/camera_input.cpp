@@ -17,7 +17,7 @@ const float CAM_THRESHOLD = 150.0f;
 void Camera::setPosition(glm::vec3 newPosition, bool swoopy)
 {
 #if MC2_SIM_TRACE
-	MC2_SIM_TRACE_LINE("SETPOS new=%g,%g old=%g,%g", static_cast<double>(newPosition.x), static_cast<double>(newPosition.y), static_cast<double>(position.x), static_cast<double>(position.y));
+	MC2_SIM_TRACE_LINE("SETPOS new={:g},{:g} old={:g},{:g}", static_cast<double>(newPosition.x), static_cast<double>(newPosition.y), static_cast<double>(position.x), static_cast<double>(position.y));
 	MC2_SIM_TRACE_STACK("SETPOS");
 #endif
 	position = newPosition;
@@ -681,7 +681,7 @@ void Camera::moveDown(float amount)
 void Camera::applyScrollDelta(float dx, float dy)
 {
 #if MC2_SIM_TRACE
-	MC2_SIM_TRACE_LINE("SCROLL dx=%g dy=%g", static_cast<double>(dx), static_cast<double>(dy));
+	MC2_SIM_TRACE_LINE("SCROLL dx={:g} dy={:g}", static_cast<double>(dx), static_cast<double>(dy));
 	MC2_SIM_TRACE_STACK("SCROLL");
 #endif
 	if (camSmoothTau() <= 0.0f)

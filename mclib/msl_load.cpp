@@ -38,8 +38,8 @@ static void mslAssetLoadEvent(const char* event, const char* loader,
 {
 	if (!mc2AuditOnce("ASSET_LOAD", mslAssetKey(event, path)))
 		return;
-	mc2AuditLinef("[ASSET_LOAD v1] event=%s loader=%s reason=%s path=%s",
-		event, loader, reason, (path && path[0]) ? path : "?");
+	mc2AuditLinef("[ASSET_LOAD v1] event={} loader={} reason={} path={}",
+		mc2::fmt::safe(event), mc2::fmt::safe(loader), mc2::fmt::safe(reason), mc2::fmt::safe((path && path[0]) ? path : "?"));
 }
 
 long TG_TypeMultiShape::LoadBinaryCopy (const char *fileName)

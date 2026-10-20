@@ -15,11 +15,32 @@
 #include "gos_postprocess.h"   // VK-GL-LOST-DRAWS tags
 #include "cpu_proj_cost_split.h"  // F3 CPU projection cost-baseline (hard_reset)
 #include "sim_identity.h"         // SIM-IDENTITY-HASH-1 per-sim-frame world hash
-#define CB_PRINTF(fmt, ...) do { \
-    char _cbbuf[256]; \
-    snprintf(_cbbuf, sizeof(_cbbuf), fmt, ##__VA_ARGS__); \
-    puts(_cbbuf); fflush(stdout); crashbundle_append(_cbbuf); \
-} while (0)
+#include <cstdio>
+#include <cstring>
+#include <format>
+#include <string>
+#include <utility>
+
+namespace {
+
+template <class... Args>
+void CB_PRINTF(std::format_string<Args...> fmt, Args&&... args)
+{
+    char buf[256];
+    try {
+        const std::string text = std::vformat(fmt.get(), std::make_format_args(args...));
+        const size_t n = text.size() < sizeof(buf) - 1 ? text.size() : sizeof(buf) - 1;
+        std::memcpy(buf, text.data(), n);
+        buf[n] = '\0';
+    } catch (...) {
+        buf[0] = '\0';
+    }
+    puts(buf);
+    fflush(stdout);
+    crashbundle_append(buf);
+}
+
+}
 #endif
 
 #ifndef MISSION_H

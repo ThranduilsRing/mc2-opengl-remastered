@@ -470,7 +470,7 @@ void execStdRandom (void) {
 	// param of (n), should be: 0 <= r <= (n-1).
 	// A script's random() draws from the simulation stream; the trace names the brain and script line so an extra draw in one
 	// run points at the condition that reached it.
-	MC2_SIM_TRACE_LINE("ABLRAND mod=%s ln=%d n=%d", CurModule ? CurModule->getName() : "?", static_cast<int>(execLineNumber), n);
+	MC2_SIM_TRACE_LINE("ABLRAND mod={} ln={:d} n={:d}", mc2::fmt::safe(CurModule ? CurModule->getName() : "?"), mc2::fmt::as_i32(execLineNumber), mc2::fmt::as_i32(n));
 	ABLi_pokeInteger(ABLRandomCallback(n));
 }
 

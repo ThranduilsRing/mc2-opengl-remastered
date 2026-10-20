@@ -21,6 +21,11 @@
 // callers emit from the main/render thread.
 //===========================================================================//
 
+#include <cstring>
+#include <format>
+#include <string>
+#include <utility>
+
 // A gate for an audit is read where the audit is armed, through the typed registry
 // (mc2::gate::get<"MC2_FOO_AUDIT">() in a function-local static), not here.
 
@@ -28,8 +33,21 @@
 // it before a crash) AND mirrors the raw line to the registered sink, if any.
 void mc2AuditLine(const char* line);
 
-// printf-style convenience over mc2AuditLine (formatted line capped at 1024).
-void mc2AuditLinef(const char* fmt, ...);
+// std::format convenience over mc2AuditLine (formatted line capped at 1024).
+template <class... Args>
+void mc2AuditLinef(std::format_string<Args...> fmt, Args&&... args)
+{
+    char buf[1024];
+    try {
+        const std::string text = std::vformat(fmt.get(), std::make_format_args(args...));
+        const size_t n = text.size() < sizeof(buf) - 1 ? text.size() : sizeof(buf) - 1;
+        std::memcpy(buf, text.data(), n);
+        buf[n] = '\0';
+    } catch (...) {
+        buf[0] = '\0';
+    }
+    mc2AuditLine(buf);
+}
 
 // Bounded dedup for per-(entity,rule) / per-path rate limiting.
 // Returns true the FIRST time (tag,key) is seen — "emit now" — and false on

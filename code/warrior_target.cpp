@@ -3,6 +3,7 @@
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "warrior_internal.h"
 #include "sim_trace.h"
+#include "mc2fmt.h"
 
 
 
@@ -515,7 +516,7 @@ void MechWarrior::setLastTarget (GameObjectPtr target, bool obliterate, bool con
 			target->incrementAttackers();
 	}
 
-	MC2_SIM_TRACE_LINE("SETTGT pilot=%ld tgt=%ld", static_cast<long>(getVehicle()->getPartId()), static_cast<long>((target ? target->getPartId() : -1)));
+	MC2_SIM_TRACE_LINE("SETTGT pilot={:d} tgt={:d}", mc2::fmt::as_i32(getVehicle()->getPartId()), mc2::fmt::as_i32((target ? target->getPartId() : -1)));
 	if (target) {
 		lastTargetWID = target->getWatchID();
 		lastTargetFriendly = target->isFriendly(getVehicle());

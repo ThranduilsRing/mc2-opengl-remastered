@@ -5,7 +5,6 @@
 
 #include "mc2_audit.h"
 
-#include <cstdarg>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -38,18 +37,6 @@ void mc2AuditLine(const char* line)
     mc2::fmt::print_out("{}\n", mc2::fmt::safe(line));
     fflush(stdout);
     if (g_sink) g_sink(line);
-}
-
-void mc2AuditLinef(const char* fmt, ...)
-{
-    if (!fmt) return;
-    char buf[1024];
-    va_list ap;
-    va_start(ap, fmt);
-    vsnprintf(buf, sizeof(buf), fmt, ap);
-    va_end(ap);
-    buf[sizeof(buf) - 1] = '\0';
-    mc2AuditLine(buf);
 }
 
 bool mc2AuditOnce(const char* tag, unsigned long long key)

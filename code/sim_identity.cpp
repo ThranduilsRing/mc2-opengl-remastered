@@ -346,7 +346,7 @@ extern "C" void mc2SimIdentityTraceFrame(double scenarioTimeNow, long simFrame) 
 
 #if MC2_SIM_TRACE
 	mc2_sim_trace::setTime(scenarioTimeNow);
-	MC2_SIM_TRACE_LINE("RNGF sim=%lu app=%u wx=%u", SimRandomDraws(), static_cast<unsigned>(mc2_appearance_rng::drawCount()), weather ? weather->drawCount() : 0u);
+	MC2_SIM_TRACE_LINE("RNGF sim={:d} app={:d} wx={:d}", mc2::fmt::as_u32(static_cast<uint32_t>(SimRandomDraws())), mc2::fmt::as_u32(mc2_appearance_rng::drawCount()), mc2::fmt::as_u32(weather ? weather->drawCount() : 0u));
 #endif
 	if (simIdentityTraceDetail()) {
 		for (size_t i = 0; i < recs.size(); ++i) {

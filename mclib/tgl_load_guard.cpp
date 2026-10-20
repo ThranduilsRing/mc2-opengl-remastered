@@ -9,6 +9,7 @@
 #include "msl.h"        // TG_TypeMultiShape + TG_TypeShape + tglHeap
 #include "txmmgr.h"     // mcTextureManager (placeholder texture registration)
 #include "mc2_audit.h"  // [ASSET_LOAD v1] marker emitter (INFRA-1)
+#include "mc2fmt.h"
 #include "mc2_verify.h" // MC2_VERIFY live data-contract guard (log/fatal/off)
 
 #include <cstring>
@@ -160,9 +161,9 @@ bool tglVerifyShapeLoaded(TG_TypeMultiShape* shape, long rc, const char* ctx,
 	// (1) always-on marker (rate-limited per (ctx,path); asset_load_fail
 	//     red bucket counts this event).
 	if (mc2AuditOnce("ASSET_LOAD", guardKey(ctx, assetPath)))
-		mc2AuditLinef("[ASSET_LOAD v1] event=required_missing ctx=%s rc=%ld path=%s",
-			ctx ? ctx : "?", rc,
-			(assetPath && assetPath[0]) ? assetPath : "?");
+		mc2AuditLinef("[ASSET_LOAD v1] event=required_missing ctx={} rc={:d} path={}",
+			mc2::fmt::safe(ctx ? ctx : "?"), mc2::fmt::as_i32(rc),
+			mc2::fmt::safe((assetPath && assetPath[0]) ? assetPath : "?"));
 
 	// (2) live data-contract guard (MC2_VERIFY_MODE log/fatal/off).
 	MC2_VERIFY(false, "required shape load failed ctx=%s path=%s",

@@ -5,6 +5,7 @@
 #include "weaponbolt_internal.h"
 #include "appearance_rng.h"
 #include "sim_trace.h"
+#include "mc2fmt.h"
 #include "../RenderCore/axis_convert.h"
 #include "Gates/gate.h"
 
@@ -266,7 +267,7 @@ long WeaponBolt::update (void)
 #if MC2_SIM_TRACE
 			if (target && target->isMech()) {
 				const glm::vec3 tp = target->getPosition();
-				MC2_SIM_TRACE_LINE("BOLT id=%ld tgt=%ld dist=%.4f last=%.4f tpos=%.4f,%.4f,%.4f mpos=%.4f,%.4f,%.4f", static_cast<long>(getPartId()), static_cast<long>(target->getPartId()), static_cast<double>(distance), static_cast<double>(lastDistanceMoved),
+				MC2_SIM_TRACE_LINE("BOLT id={:d} tgt={:d} dist={:.4f} last={:.4f} tpos={:.4f},{:.4f},{:.4f} mpos={:.4f},{:.4f},{:.4f}", mc2::fmt::as_i32(getPartId()), mc2::fmt::as_i32(target->getPartId()), static_cast<double>(distance), static_cast<double>(lastDistanceMoved),
 				                   static_cast<double>(targetPos.x), static_cast<double>(targetPos.y), static_cast<double>(targetPos.z), static_cast<double>(tp.x), static_cast<double>(tp.y), static_cast<double>(tp.z));
 			}
 #endif

@@ -11,13 +11,30 @@
 // that found the mc2_10 and mc2_24 causes worked this way (docs/sim-trace.md). Compiled out by default so a shipping build pays nothing.
 #if MC2_SIM_TRACE
 
+#include <cstdio>
+#include <string>
+#include <utility>
+#include "mc2fmt.h"
+
 namespace mc2_sim_trace {
 
 // The scenario clock the lines carry; the simulation sets it once per sim frame.
 void setTime(double scenarioTime);
 
-// One `[DT] f=.. t=.. ` line; printf formatting.
-void line(const char* fmt, ...);
+// One [DT] line; std::format formatting; prefix() adds frame and scenario time.
+void prefix();
+template <class... Args>
+void line(std::format_string<Args...> fmt, Args&&... args)
+{
+	prefix();
+	try {
+		const std::string text = std::vformat(fmt.get(), std::make_format_args(args...));
+		std::fwrite(text.data(), 1, text.size(), stdout);
+	} catch (...) {
+	}
+	std::printf("\n");
+	std::fflush(stdout);
+}
 
 // A `[DT] f=.. t=.. <tag> stack=<addr> <addr> ...` line of the caller's return addresses (absolute; the first call also prints the
 // address of this function as TRACEBASE so a symbolizer can rebase them against the PDB).
