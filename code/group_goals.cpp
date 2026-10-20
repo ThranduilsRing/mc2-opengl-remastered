@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in group_internal.h.
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "group_internal.h"
+#include <mdspan>
 
 
 //---------------------------------------------------------------------------
@@ -117,6 +118,8 @@ long MoverGroup::calcMoveGoals (glm::vec3 goal, long numMovers, glm::vec3* goalL
 			Fatal(0, " MoverGroup.calcMoveGoals: unable to malloc goalMap ");
 	}
 
+	std::mdspan<GoalMapNode, std::dextents<std::size_t, 2>> goalView(goalMap, GOALMAP_DIM, GOALMAP_DIM);
+
 	if (!GameMap)
 		return(-1);
 
@@ -130,10 +133,10 @@ long MoverGroup::calcMoveGoals (glm::vec3 goal, long numMovers, glm::vec3* goalL
 			if (!inMapBounds(topLeftRow + r, topLeftCol + c, GameMap->height, GameMap->width))
 				continue;
 			cellsInMap++;
-			int index = r * GOALMAP_DIM + c;
-			goalMap[index].cost = GameMap->getPassable(topLeftRow + r, topLeftCol + c) ? 100 : COST_BLOCKED;
-			goalMap[index].flags = GOALFLAG_AVAILABLE + GOALFLAG_NO_NEIGHBORS;
-			goalMap[index].g = 0;
+			GoalMapNode& node = goalView[r, c];
+			node.cost = GameMap->getPassable(topLeftRow + r, topLeftCol + c) ? 100 : COST_BLOCKED;
+			node.flags = GOALFLAG_AVAILABLE + GOALFLAG_NO_NEIGHBORS;
+			node.g = 0;
 		}
 
 	//-----------------------------------------------
@@ -145,7 +148,7 @@ long MoverGroup::calcMoveGoals (glm::vec3 goal, long numMovers, glm::vec3* goalL
 	int curRow = GOALMAP_DIM / 2;
 	int curCol = GOALMAP_DIM / 2;
 	
-	GoalMapNode* curMapNode = &goalMap[curRow * GOALMAP_DIM + curCol];
+	GoalMapNode* curMapNode = &goalView[curRow, curCol];
 
 	//-----------------------------------------------------------------
 	// Put the START (the goal, in this case) on the empty OPEN list...
@@ -167,7 +170,7 @@ long MoverGroup::calcMoveGoals (glm::vec3 goal, long numMovers, glm::vec3* goalL
 		openHeap.popMin(bestPQNode);
 		curRow = bestPQNode.row;
 		curCol = bestPQNode.col;
-		GoalMapNode* bestMapNode = &goalMap[curRow * GOALMAP_DIM + curCol];
+		GoalMapNode* bestMapNode = &goalView[curRow, curCol];
 		bestMapNode->clearFlag(GOALFLAG_OPEN);
 
 		//----------------------------
@@ -193,7 +196,7 @@ long MoverGroup::calcMoveGoals (glm::vec3 goal, long numMovers, glm::vec3* goalL
 				long nRow = curRow + cellShift[i][0];
 				long nCol = curRow + cellShift[i][1];
 				if (inMapBounds(nRow, nCol, GOALMAP_DIM, GOALMAP_DIM))
-					goalMap[nRow * GOALMAP_DIM + nCol].clearFlag(GOALFLAG_NO_NEIGHBORS);
+					goalView[nRow, nCol].clearFlag(GOALFLAG_NO_NEIGHBORS);
 			}
 		}
 
@@ -211,7 +214,7 @@ long MoverGroup::calcMoveGoals (glm::vec3 goal, long numMovers, glm::vec3* goalL
 			//--------------------------------
 			// If it's on the map, check it...
 			if (inMapBounds(succRow, succCol, GOALMAP_DIM, GOALMAP_DIM)) {
-				GoalMapNode* succMapNode = &goalMap[succRow * GOALMAP_DIM + succCol];
+				GoalMapNode* succMapNode = &goalView[succRow, succCol];
 				if (succMapNode->cost < COST_BLOCKED) {
 					long succNodeG = bestNodeG + succMapNode->cost;
 					if ((succMapNode->flags & (GOALFLAG_OPEN + GOALFLAG_CLOSED)) == 0) {

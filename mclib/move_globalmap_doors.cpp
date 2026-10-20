@@ -1,6 +1,7 @@
 // Pathfinding: GlobalMap doors: door/area links, link costs, path-cost lookups and the sector build.
 // Declared in the class headers; shared names in move_internal.h.
 #include "move_internal.h"
+#include <mdspan>
 
 
 constexpr int MAX_DOORS_PER_SECTOR = 500;		// This should be WAY more than we'll ever need...
@@ -10,6 +11,8 @@ long maxNumDoors = 0;
 void GlobalMap::calcGlobalDoors (void) {
 
 	short doorMap[SECTOR_DIM][SECTOR_DIM];
+
+	std::mdspan<short, std::dextents<std::size_t, 2>> areaView(areaMap, height, width);
 
 	beginDoorProcessing();
 
@@ -27,14 +30,14 @@ void GlobalMap::calcGlobalDoors (void) {
 
 				for (long r = minRow; r < maxRow; r++)
 					for (long c = minCol; c < maxCol; c++) {
-						long curArea = areaMap[r * width + c];
+						long curArea = areaView[r, c];
 						if (curArea > -1) {
 							// The doorMap tracks, for each tile, what area is adjacent
 							// to it thru a door...
 							long adjR = r + adjTile[dir][0];
 							long adjC = c + adjTile[dir][1];
 							if ((adjR >= 0) && (adjR < height) && (adjC >= 0) && (adjC < width)) {
-								long adjArea = areaMap[adjR * width + adjC];
+								long adjArea = areaView[adjR, adjC];
 								if ((adjArea > -1) && (curArea != adjArea)) {
 									AreaType curAreaType = areas[curArea].type;
 									AreaType adjAreaType = areas[adjArea].type;
@@ -59,9 +62,9 @@ void GlobalMap::calcGlobalDoors (void) {
 						while (r < maxRow) {
 							long adjArea = doorMap[r - minRow][c - minCol];
 							if (adjArea > -1) {
-								long curArea = areaMap[r * width + c];
+								long curArea = areaView[r, c];
 								long length = 0;
-								while ((r < maxRow) && (areaMap[r * width + c] == curArea) && (doorMap[r - minRow][c - minCol] == adjArea)) {
+								while ((r < maxRow) && (areaView[r, c] == curArea) && (doorMap[r - minRow][c - minCol] == adjArea)) {
 									length++;
 									r++;
 								}
@@ -78,9 +81,9 @@ void GlobalMap::calcGlobalDoors (void) {
 						while (c < maxCol) {
 							long adjArea = doorMap[r - minRow][c - minCol];
 							if (adjArea > -1) {
-								long curArea = areaMap[r * width + c];
+								long curArea = areaView[r, c];
 								long length = 0;
-								while ((c < maxCol) && (areaMap[r * width + c] == curArea) && (doorMap[r - minRow][c - minCol] == adjArea)) {
+								while ((c < maxCol) && (areaView[r, c] == curArea) && (doorMap[r - minRow][c - minCol] == adjArea)) {
 									length++;
 									c++;
 								}
