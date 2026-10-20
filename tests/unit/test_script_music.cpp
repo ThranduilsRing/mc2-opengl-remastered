@@ -53,6 +53,17 @@ TEST_CASE("ScriptMusic: a looping tune ends only by stop or by another request")
 	CHECK(m.currentId(0.0) == -1);
 }
 
+TEST_CASE("ScriptMusic: a crossfade request replaces the view at once, the old tune's length no longer matters")
+{
+	ScriptMusic m;
+	m.request(7, 0.0, 100.0, false);
+	CHECK(m.currentId(50.0) == 7);
+	m.request(9, 50.0, 10.0, false);		// the second request starts while the first still plays
+	CHECK(m.currentId(50.0) == 9);
+	CHECK(m.currentId(59.9) == 9);
+	CHECK(m.currentId(60.0) == -1);
+}
+
 TEST_CASE("wavDurationSeconds: data length over the fmt byte rate, chunks before data are skipped")
 {
 	const auto plain = wavHeader(176400, 1764000);
