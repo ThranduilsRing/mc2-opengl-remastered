@@ -389,8 +389,8 @@ void gosRenderer::drawTris(gos_VERTEX* vertices, int count) {
     }
 #endif
     if ( mc2::gate::get<"MC2_LOG_PREVIEW">() ) {
-        FILE* f = fopen("preview_debug.log","a");
-        if (f) { mc2::fmt::print(f, "[PREVIEW] drawTris count={:d} isHUD={:d} backend=Vulkan\n", mc2::fmt::as_i32(count), mc2::fmt::as_i32(static_cast<int>(renderStates_[gos_State_IsHUD]))); fflush(f); fclose(f); }
+        bool f = mc2::log::enabled(mc2::log::Cat::Render, mc2::log::Level::Info);
+        if (f) { MC2_LOG(Render, Info, "[PREVIEW] drawTris count={:d} isHUD={:d} backend=Vulkan", mc2::fmt::as_i32(count), mc2::fmt::as_i32(static_cast<int>(renderStates_[gos_State_IsHUD]))); }
     }
     if (renderStates_[gos_State_IsHUD]) {
         if (hudFlushed_) {

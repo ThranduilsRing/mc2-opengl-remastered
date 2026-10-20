@@ -2274,7 +2274,7 @@
   {
    "tag": "CURSOR",
    "ver": -1,
-   "stream": "file",
+   "stream": "log",
    "keys": [
     "f",
     "drawMouse",
@@ -2288,7 +2288,7 @@
   {
    "tag": "CURSOR",
    "ver": -1,
-   "stream": "file",
+   "stream": "log",
    "keys": [
     "name",
     "realHack",
@@ -2302,7 +2302,7 @@
   {
    "tag": "CURSOR",
    "ver": -1,
-   "stream": "file",
+   "stream": "log",
    "keys": [
     "startMode",
     "drawMouse"
@@ -2312,7 +2312,7 @@
   {
    "tag": "CURSOR",
    "ver": -1,
-   "stream": "file",
+   "stream": "log",
    "keys": [
     "texHandle",
     "texWidth"
@@ -3183,7 +3183,7 @@
   {
    "tag": "ENCYCLO",
    "ver": -1,
-   "stream": "file",
+   "stream": "log",
    "keys": [
     "chassisScale",
     "file"
@@ -3193,7 +3193,7 @@
   {
    "tag": "ENCYCLO",
    "ver": -1,
-   "stream": "file",
+   "stream": "log",
    "keys": [
     "row",
     "mech",
@@ -3205,7 +3205,7 @@
   {
    "tag": "ENCYCLO",
    "ver": -1,
-   "stream": "file",
+   "stream": "log",
    "keys": [
     "text",
     "lookup",
@@ -4186,7 +4186,7 @@
   {
    "tag": "HUDSCALE",
    "ver": -1,
-   "stream": "file",
+   "stream": "log",
    "keys": [
     "active",
     "scale",
@@ -4202,7 +4202,7 @@
   {
    "tag": "HUDSCALE",
    "ver": -1,
-   "stream": "file",
+   "stream": "log",
    "keys": [
     "sw",
     "sh",
@@ -4790,6 +4790,71 @@
   {
    "tag": "LOGISTICS",
    "ver": -1,
+   "stream": "log",
+   "keys": [],
+   "count": 7
+  },
+  {
+   "tag": "LOGISTICS",
+   "ver": -1,
+   "stream": "log",
+   "keys": [
+    "artPath",
+    "objectPath"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "LOGISTICS",
+   "ver": -1,
+   "stream": "log",
+   "keys": [
+    "loaded"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "LOGISTICS",
+   "ver": -1,
+   "stream": "log",
+   "keys": [
+    "newMechAvailableCount",
+    "oldMechAvailableCount"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "LOGISTICS",
+   "ver": -1,
+   "stream": "log",
+   "keys": [
+    "open",
+    "size",
+    "tier"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "LOGISTICS",
+   "ver": -1,
+   "stream": "log",
+   "keys": [
+    "path"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "LOGISTICS",
+   "ver": -1,
+   "stream": "log",
+   "keys": [
+    "purchaseFile"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "LOGISTICS",
+   "ver": -1,
    "stream": "stdout",
    "keys": [],
    "count": 2
@@ -4913,7 +4978,7 @@
   {
    "tag": "MECHLIST",
    "ver": -1,
-   "stream": "file",
+   "stream": "log",
    "keys": [
     "chassisNameID",
     "chassisText",
@@ -5434,7 +5499,7 @@
    "ver": -1,
    "stream": "stdout",
    "keys": [],
-   "count": 6
+   "count": 5
   },
   {
    "tag": "MOVE_BD",
@@ -6283,14 +6348,14 @@
   {
    "tag": "PREVIEW",
    "ver": -1,
-   "stream": "file",
+   "stream": "log",
    "keys": [],
    "count": 1
   },
   {
    "tag": "PREVIEW",
    "ver": -1,
-   "stream": "file",
+   "stream": "log",
    "keys": [
     "argb"
    ],
@@ -6299,7 +6364,7 @@
   {
    "tag": "PREVIEW",
    "ver": -1,
-   "stream": "file",
+   "stream": "log",
    "keys": [
     "bounds",
     "viewMul",
@@ -6313,7 +6378,7 @@
   {
    "tag": "PREVIEW",
    "ver": -1,
-   "stream": "file",
+   "stream": "log",
    "keys": [
     "cameraToClip"
    ],
@@ -6322,7 +6387,7 @@
   {
    "tag": "PREVIEW",
    "ver": -1,
-   "stream": "file",
+   "stream": "log",
    "keys": [
     "count",
     "isHUD",
@@ -6333,7 +6398,7 @@
   {
    "tag": "PREVIEW",
    "ver": -1,
-   "stream": "file",
+   "stream": "log",
    "keys": [
     "mechShape"
    ],
@@ -6342,7 +6407,7 @@
   {
    "tag": "PREVIEW",
    "ver": -1,
-   "stream": "file",
+   "stream": "log",
    "keys": [
     "pObject",
     "bIsComponent"
@@ -6352,7 +6417,7 @@
   {
    "tag": "PREVIEW",
    "ver": -1,
-   "stream": "file",
+   "stream": "log",
    "keys": [
     "screenW",
     "screenH",
@@ -6365,7 +6430,7 @@
   {
    "tag": "PREVIEW",
    "ver": -1,
-   "stream": "file",
+   "stream": "log",
    "keys": [
     "shouldRender",
     "visible",
@@ -6377,7 +6442,7 @@
   {
    "tag": "PREVIEW",
    "ver": -1,
-   "stream": "file",
+   "stream": "log",
    "keys": [
     "tex",
     "panel",
@@ -6389,7 +6454,7 @@
   {
    "tag": "PREVIEW",
    "ver": -1,
-   "stream": "file",
+   "stream": "log",
    "keys": [
     "viewMul",
     "viewAdd",
@@ -6401,7 +6466,7 @@
   {
    "tag": "PREVIEW",
    "ver": -1,
-   "stream": "file",
+   "stream": "log",
    "keys": [
     "z"
    ],
@@ -7171,7 +7236,7 @@
   {
    "tag": "SAVELOAD",
    "ver": -1,
-   "stream": "file",
+   "stream": "log",
    "keys": [
     "op",
     "file",
