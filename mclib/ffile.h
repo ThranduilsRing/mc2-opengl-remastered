@@ -16,6 +16,7 @@
 
 #ifndef DSTD_H
 #include<dstd.h>
+#include<memory>
 #endif
 
 #ifndef FILE_H
@@ -58,7 +59,7 @@ class FastFile
 		DWORD		numFiles;
 		FILE_HANDLE	*files;
 
-		char 		*fileName;
+		std::unique_ptr<char[]> fileName;
 		FILE		*handle;
 
 		DWORD 		length;
@@ -91,7 +92,7 @@ class FastFile
 			if (isOpen() && (length == 0))
 			{
 				struct stat st;
-				stat(fileName,&st);
+				stat(fileName.get(),&st);
 				length = st.st_size;
 			}
 
@@ -104,7 +105,7 @@ class FastFile
 		}
 		const FILE_HANDLE* getFilesInfo() const { return files; }
 
-		const char* getFileName() { return fileName; }
+		const char* getFileName() { return fileName.get(); }
 
 		long openFast (DWORD hash, const char *fName);
 

@@ -61,7 +61,8 @@ void Terrain::initTerrainTextures(PacketFile* pakFile, volatile float& percent, 
 			strcpy(baseName,"newmap");
 		}
 
-		terrainTextures = new TerrainTextures;
+		terrainTexturesOwner = std::make_unique<TerrainTextures>();
+		terrainTextures = terrainTexturesOwner.get();
 		terrainTextures->init("textures",baseName);
 	}
 
@@ -78,8 +79,9 @@ void Terrain::initColorMapTexture(PacketFile* pakFile, volatile float& percent, 
 		char name[1024];
 
 		_splitpath(pakFile->getFilename(),nullptr,nullptr,name,nullptr);
-		terrainName = new char[strlen(name)+1];
-		strcpy(terrainName,name);
+		terrainNameOwner = std::make_unique<char[]>(strlen(name)+1);
+		strcpy(terrainNameOwner.get(),name);
+		terrainName = terrainNameOwner.get();
 
 		if (colorMapName)
 			strcpy(name,colorMapName);
@@ -95,7 +97,8 @@ void Terrain::initColorMapTexture(PacketFile* pakFile, volatile float& percent, 
 				
 		if (fileExists(tgaColorMapName) || fileExists(tgaColorMapBurninName) || fileExists(tgaColorMapJPGName))
 		{
-			terrainTextures2 = new TerrainColorMap;		//Otherwise, this will stay NULL and we know not to use them
+			terrainTextures2Owner = std::make_unique<TerrainColorMap>();
+			terrainTextures2 = terrainTextures2Owner.get();		//Otherwise, this will stay NULL and we know not to use them
 		}
 	}
 
@@ -146,7 +149,8 @@ void Terrain::initMapData(PacketFile* pakFile, volatile float& percent, float pe
 	// Create the MapBlock Manager and allocate its RAM
 	if ( !mapData )
 	{
-		mapData = new MapData;
+		mapDataOwner = std::make_unique<MapData>();
+		mapData = mapDataOwner.get();
 		if ( pakFile )
 			mapData->newInit( pakFile, realVerticesMapSide*realVerticesMapSide);
 		else
@@ -186,7 +190,7 @@ void Terrain::lodAllocMeta() {
 	s_blockMeta      = static_cast<TerrainBlockMeta*>(std::malloc(sizeof(TerrainBlockMeta)   * nBlocks));
 	s_superchunkMeta = static_cast<SuperchunkMeta*>(std::malloc(sizeof(SuperchunkMeta)      * nSuperchunks));
 	s_drawCmds       = static_cast<TerrainDrawCommand*>(std::malloc(sizeof(TerrainDrawCommand)  * nBlocks));
-	s_skirtDepths    = new float[nBlocks];
+	s_skirtDepths    = std::make_unique<float[]>(nBlocks);
 
 	gosASSERT(s_blockMeta      != nullptr);
 	gosASSERT(s_superchunkMeta != nullptr);
@@ -196,7 +200,7 @@ void Terrain::lodAllocMeta() {
 	memset(s_blockMeta,      0, sizeof(TerrainBlockMeta)   * nBlocks);
 	memset(s_superchunkMeta, 0, sizeof(SuperchunkMeta)      * nSuperchunks);
 	memset(s_drawCmds,       0, sizeof(TerrainDrawCommand)  * nBlocks);
-	memset(s_skirtDepths,    0, sizeof(float)               * nBlocks);
+	memset(s_skirtDepths.get(),    0, sizeof(float)               * nBlocks);
 
 	gCurrentFrame = 1;
 	s_cmdCount    = 0;

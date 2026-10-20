@@ -24,6 +24,7 @@
 #include <assimp/postprocess.h>
 #include <assimp/material.h>
 
+#include <memory>
 #include <vector>
 #include <string>
 #include <string_view>
@@ -953,13 +954,13 @@ void RegisterImportedAnim(const char* path, TG_TypeMultiShape* out, const SkelBa
                           const std::vector<ImportPartRec>& parts, float groundDy) {
     TG_TypeNodePtr slot = out->GetTypeNode(0);
     if (!slot || slot->GetNodeType() != SHAPE_NODE) return;
-    Assimp::Importer* imp = new Assimp::Importer();
+    auto imp = std::make_unique<Assimp::Importer>();
     const aiScene* scene = imp->ReadFile(path,
         aiProcess_Triangulate | aiProcess_GenSmoothNormals |
         aiProcess_JoinIdenticalVertices | aiProcess_ValidateDataStructure | aiProcess_SortByPType);
-    if (!scene) { delete imp; return; }
+    if (!scene) return;
     ImportedAnimEntry e;
-    e.imp = imp; e.scene = scene;
+    e.imp = imp.release(); e.scene = scene;
     e.shape = static_cast<TG_TypeShape*>(slot);
     e.multi = out;
     e.names = bake.names;

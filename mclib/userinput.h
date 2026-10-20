@@ -27,6 +27,7 @@
 
 #include<string.h>
 #include<gameos.hpp>
+#include<memory>
 
 //---------------------------------------------------------------------------
 inline constexpr int MC2_MOUSE_UP = 0;
@@ -128,7 +129,7 @@ class MouseCursorData
 		
 		long numCursors;
 		
-		StaticInfo*	cursorInfos;	// gotta be pointer, so destructor is called before texmgr quits
+		std::unique_ptr<StaticInfo[]> cursorInfos;	// gotta be pointer, so destructor is called before texmgr quits
 
 		char mouseHS[MAX_MOUSE_STATES][2];
 		unsigned long numFrames[MAX_MOUSE_STATES];
@@ -152,7 +153,7 @@ class MouseCursorData
 		void init (void)
 		{
 			numCursors = 0;
-			cursorInfos = 0;
+			cursorInfos.reset();
 			memset( mouseHS, 0, sizeof( mouseHS ) );
 			memset( numFrames, 0, sizeof( numFrames ) );
 			memset( frameLengths, 0, sizeof( frameLengths ) );
@@ -242,7 +243,7 @@ class UserInput
 		float lastMouseXPosition;				//Last Mouse X Position.
 		float lastMouseYPosition;				//Last Mouse Y Position.
 		
-		MouseCursorData *cursors;				//Stores the actual cursor data and Info
+		std::unique_ptr<MouseCursorData> cursors;				//Stores the actual cursor data and Info
 		
 		bool drawTerrainPointer;				//Draw an inverse project cross
 		long mouseState;						//Which cursor should I draw?
@@ -312,18 +313,14 @@ class UserInput
 			mouseLeftHeldTime = 0.f;
 			mouseRightHeldTime = 0.f;
 
-			cursors = nullptr;
+			cursors.reset();
 		}
 
 		void initMouseCursors (const char *mouseFile);
 		
 		void destroy (void)
 		{
-			if ( cursors )
-			{
-				delete cursors;
-				cursors = nullptr;
-			}
+			cursors.reset();
 
 			init();
 		}

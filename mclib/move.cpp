@@ -8,6 +8,7 @@
 #include "move_internal.h"
 #include "../GameOS/gameos/utils/mc2log.h"
 #include "packet_exact.h"
+#include <memory>
 
 
 int GlobalMap::minRow = 0;
@@ -33,6 +34,16 @@ bool FindingEscapePath = false;
 bool BlockWallTiles = true;
 MissionMapPtr GameMap = nullptr;
 GlobalMapPtr GlobalMoveMap[3] = {nullptr, nullptr, nullptr};
+static std::unique_ptr<MissionMap> s_gameMapOwner;
+static std::unique_ptr<GlobalMap> s_globalMoveMapOwner[3];
+static std::unique_ptr<MoveMap> s_pathFindMapOwner[2];
+
+MoveMapPtr MOVE_acquirePathFindMap (int which) {
+	if (!s_pathFindMapOwner[which])
+		s_pathFindMapOwner[which] = std::make_unique<MoveMap>();
+	PathFindMap[which] = s_pathFindMapOwner[which].get();
+	return PathFindMap[which];
+}
 
 long DebugMovePathType = 0;
 
@@ -415,14 +426,10 @@ void MOVE_init (long moveRange) {
 	// race later once solves may run off-thread).
 	buildCellShiftDistanceTable();
 
-	PathFindMap[SECTOR_PATHMAP] = new MoveMap;
-	if (!PathFindMap[SECTOR_PATHMAP])
-		Fatal(0, " MOVE_Init: Cannot initialize PathFindMap ");
+	PathFindMap[SECTOR_PATHMAP] = MOVE_acquirePathFindMap(SECTOR_PATHMAP);
 	PathFindMap[SECTOR_PATHMAP]->init(SECTOR_DIM*2, SECTOR_DIM*2);
 
-	PathFindMap[SIMPLE_PATHMAP] = new MoveMap;
-	if (!PathFindMap[SIMPLE_PATHMAP])
-		Fatal(0, " MOVE_Init: Cannot initialize PathFindMap ");
+	PathFindMap[SIMPLE_PATHMAP] = MOVE_acquirePathFindMap(SIMPLE_PATHMAP);
 	SimpleMovePathRange = moveRange;
 	if (SimpleMovePathRange <= 20)
 		Fatal(0, " MOVE_Init: MoveRange TOO SMALL. Go see Glenn. ");
@@ -439,10 +446,8 @@ void MOVE_buildData (long height, long width, MissionMapCellInfo* mapData, long 
 
 	EditorSave = true;
 
-	if (GameMap)
-		delete GameMap;
-	GameMap = new MissionMap;
-	if (!GameMap) { printf("[MOVE_BD] FATAL: new MissionMap returned NULL\n"); fflush(stdout); return; }
+	s_gameMapOwner = std::make_unique<MissionMap>();
+	GameMap = s_gameMapOwner.get();
 	printf("[MOVE_BD] MissionMap allocated OK, calling init(%ld,%ld)\n", height, width); fflush(stdout);
 
 	if (mapData)
@@ -478,41 +483,20 @@ void MOVE_buildData (long height, long width, MissionMapCellInfo* mapData, long 
 	if (!PathFindMap[SECTOR_PATHMAP])
 		Fatal(0, " MOVE_BuildData: Must call MOVE_Init()! ");
 
-	if (GlobalMoveMap[0])
-	{
-		delete GlobalMoveMap[0];
-		GlobalMoveMap[0] = nullptr;
-	}
-
-	if (GlobalMoveMap[1])
-	{
-		delete GlobalMoveMap[1];
-		GlobalMoveMap[1] = nullptr;
-	}
-
-	if (GlobalMoveMap[2])
-	{
-		delete GlobalMoveMap[2];
-		GlobalMoveMap[2] = nullptr;
-	}
-
 	printf("[MOVE_BD] building GlobalMoveMap[0] (ground)\n"); fflush(stdout);
-	GlobalMoveMap[0] = new GlobalMap;
-	if (!GlobalMoveMap[0])
-		Fatal(0, " MOVE_Init: Cannot initialize GlobalMoveMap ");
+	s_globalMoveMapOwner[0] = std::make_unique<GlobalMap>();
+	GlobalMoveMap[0] = s_globalMoveMapOwner[0].get();
 	GlobalMoveMap[0]->build(mapData);
 
 	printf("[MOVE_BD] building GlobalMoveMap[1] (hover)\n"); fflush(stdout);
-	GlobalMoveMap[1] = new GlobalMap;
-	if (!GlobalMoveMap[1])
-		Fatal(0, " MOVE_Init: Cannot initialize GlobalMoveMap ");
+	s_globalMoveMapOwner[1] = std::make_unique<GlobalMap>();
+	GlobalMoveMap[1] = s_globalMoveMapOwner[1].get();
 	GlobalMoveMap[1]->hover = true;
 	GlobalMoveMap[1]->build(mapData);
 
 	printf("[MOVE_BD] building GlobalMoveMap[2] (blank/heli)\n"); fflush(stdout);
-	GlobalMoveMap[2] = new GlobalMap;
-	if (!GlobalMoveMap[2])
-		Fatal(0, " MOVE_Init: Cannot initialize HeliGlobalMoveMap ");
+	s_globalMoveMapOwner[2] = std::make_unique<GlobalMap>();
+	GlobalMoveMap[2] = s_globalMoveMapOwner[2].get();
 	GlobalMoveMap[2]->blank = true;
 	GlobalMoveMap[2]->build(nullptr);
 
@@ -571,10 +555,8 @@ long MOVE_saveData (PacketFile* packetFile, long whichPacket) {
 
 long MOVE_readData (PacketFile* packetFile, long whichPacket) {
 
-	if (GameMap)
-		delete GameMap;
-	GameMap = new MissionMap;
-	gosASSERT(GameMap != nullptr);
+	s_gameMapOwner = std::make_unique<MissionMap>();
+	GameMap = s_gameMapOwner.get();
 	long numMissionMapPackets = GameMap->init(packetFile, whichPacket);
 	if (numMissionMapPackets == 0)
 		Fatal(0, " MOVE_readData: the mission map was rejected; the mission is not loaded ");
@@ -582,36 +564,23 @@ long MOVE_readData (PacketFile* packetFile, long whichPacket) {
 	if (!PathFindMap[SECTOR_PATHMAP])
 		Fatal(0, " MOVE_BuildData: Must call MOVE_Init()! ");
 
-	if (GlobalMoveMap[0])
-		delete GlobalMoveMap[0];
-	GlobalMoveMap[0] = new GlobalMap;
-	if (!GlobalMoveMap[0])
-		Fatal(0, " MOVE_Init: Cannot initialize GlobalMoveMap0 ");
+	s_globalMoveMapOwner[0] = std::make_unique<GlobalMap>();
+	GlobalMoveMap[0] = s_globalMoveMapOwner[0].get();
 	// The mission map reports a small packet count (zero is Fatal above), so this one sum cannot overflow and needs no saturation.
 	long numGlobalMap0Packets = GlobalMoveMap[0]->init(packetFile, whichPacket + numMissionMapPackets);
 	long numGlobalMap1Packets = 0;
 	long numGlobalMap2Packets = 0;
 	if (!GlobalMoveMap[0]->badLoad) {
 		// Let's read the hover move map...
-		if (GlobalMoveMap[1]) {
-			delete GlobalMoveMap[1];
-			GlobalMoveMap[1] = nullptr;
-		}
-		GlobalMoveMap[1] = new GlobalMap;
-		if (!GlobalMoveMap[1])
-			Fatal(0, " MOVE_Init: Cannot initialize GlobalMoveMap1 ");
+		s_globalMoveMapOwner[1] = std::make_unique<GlobalMap>();
+		GlobalMoveMap[1] = s_globalMoveMapOwner[1].get();
 		GlobalMoveMap[1]->hover = true;
 		const long map1Start = mc2::globalmap::advanceCursor(whichPacket + numMissionMapPackets, numGlobalMap0Packets);
 		numGlobalMap1Packets = GlobalMoveMap[1]->init(packetFile, map1Start);
 
 		// Let's read the helicoptor move map...
-		if (GlobalMoveMap[2]) {
-			delete GlobalMoveMap[2];
-			GlobalMoveMap[2] = nullptr;
-		}
-		GlobalMoveMap[2] = new GlobalMap;
-		if (!GlobalMoveMap[2])
-			Fatal(0, " MOVE_Init: Cannot initialize GlobalMoveMap2 ");
+		s_globalMoveMapOwner[2] = std::make_unique<GlobalMap>();
+		GlobalMoveMap[2] = s_globalMoveMapOwner[2].get();
 		GlobalMoveMap[2]->blank = true;
 		const long map2Start = mc2::globalmap::advanceCursor(map1Start, numGlobalMap1Packets);
 		numGlobalMap2Packets = GlobalMoveMap[2]->init(packetFile, map2Start);
@@ -671,36 +640,18 @@ long MOVE_readData (PacketFile* packetFile, long whichPacket) {
 
 void MOVE_cleanup (void) {
 
-	if (GameMap) {
-		delete GameMap;
-		GameMap = nullptr;
-	}
+	s_gameMapOwner.reset();
+	GameMap = nullptr;
 
-	if (GlobalMoveMap[0]) 
-	{
-		delete GlobalMoveMap[0];
-		GlobalMoveMap[0] = nullptr;
-	}
-	if (GlobalMoveMap[1]) 
-	{
-		delete GlobalMoveMap[1];
-		GlobalMoveMap[1] = nullptr;
-	}
-	if (GlobalMoveMap[2]) 
-	{
-		delete GlobalMoveMap[2];
-		GlobalMoveMap[2] = nullptr;
-	}
+	for (auto& owner : s_globalMoveMapOwner)
+		owner.reset();
+	for (auto& observer : GlobalMoveMap)
+		observer = nullptr;
 
-	if (PathFindMap[SECTOR_PATHMAP]) {
-		delete PathFindMap[SECTOR_PATHMAP];
-		PathFindMap[SECTOR_PATHMAP] = nullptr;
-	}
-
-	if (PathFindMap[SIMPLE_PATHMAP]) {
-		delete PathFindMap[SIMPLE_PATHMAP];
-		PathFindMap[SIMPLE_PATHMAP] = nullptr;
-	}
+	for (auto& owner : s_pathFindMapOwner)
+		owner.reset();
+	PathFindMap[SECTOR_PATHMAP] = nullptr;
+	PathFindMap[SIMPLE_PATHMAP] = nullptr;
 }
 
 

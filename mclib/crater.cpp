@@ -173,8 +173,7 @@ void CraterManager::destroy (void)
 	if (craterFile)
 		craterFile->close();
 	
-	delete craterFile;
-	craterFile = nullptr;
+	craterFile.reset();
 	
 	//----------------------------------------------
 	// Whack the Happy Crater Heaps

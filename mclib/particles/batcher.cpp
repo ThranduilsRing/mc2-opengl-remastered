@@ -203,9 +203,9 @@ bool Batcher::is_oracle_shape_log_enabled() {
 }
 
 Batcher::Batcher(unsigned int perFrameBudget)
-    : impl_(new Impl(perFrameBudget)) {}
+    : impl_(std::make_unique<Impl>(perFrameBudget)) {}
 
-Batcher::~Batcher() { delete impl_; }
+Batcher::~Batcher() = default;
 
 void Batcher::BeginGroup(uint32_t handle, float u0, float v0, float us, float vs,
                          int blendMode, uint32_t atlasColumns) {

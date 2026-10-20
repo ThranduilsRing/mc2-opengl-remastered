@@ -165,11 +165,11 @@ long GlobalMap::calcLinkCost (long startDoor, long thruArea, long goalDoor) {
 	long cost = 9999;
 	
 	if (!PathFindMap[SECTOR_PATHMAP]) {
-		PathFindMap[SECTOR_PATHMAP] = new MoveMap;
+		PathFindMap[SECTOR_PATHMAP] = MOVE_acquirePathFindMap(SECTOR_PATHMAP);
 		PathFindMap[SECTOR_PATHMAP]->init(30, 30);
 	}
 	if (!PathFindMap[SIMPLE_PATHMAP]) {
-		PathFindMap[SIMPLE_PATHMAP] = new MoveMap;
+		PathFindMap[SIMPLE_PATHMAP] = MOVE_acquirePathFindMap(SIMPLE_PATHMAP);
 		PathFindMap[SIMPLE_PATHMAP]->init(SimpleMovePathRange * 2 + 1, SimpleMovePathRange * 2 + 1);
 	}
 

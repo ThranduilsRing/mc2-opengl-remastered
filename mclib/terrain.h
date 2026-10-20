@@ -16,6 +16,8 @@
 #include"mapdata.h"
 #endif
 
+#include<memory>
+
 #ifndef TERRTXM_H
 #include"terrtxm.h"
 #endif
@@ -209,6 +211,12 @@ class Terrain
 		static char 							*terrainName;				//Name of terrain data file.
 		static char								*colorMapName;				//Name of colormap, if different from terrainName.
 
+		static std::unique_ptr<MapData> mapDataOwner;
+		static std::unique_ptr<TerrainTextures> terrainTexturesOwner;
+		static std::unique_ptr<TerrainColorMap> terrainTextures2Owner;
+		static std::unique_ptr<char[]> terrainNameOwner;
+		static std::unique_ptr<char[]> colorMapNameOwner;
+
 		static float							oneOverWorldUnitsPerElevationLevel;
 
 		static float							waterElevation;				//Actual height of water in world units.
@@ -239,7 +247,7 @@ class Terrain
 		static TerrainBlockMeta*				s_blockMeta;      // [s_terrainChunkSide * s_terrainChunkSide]
 		static SuperchunkMeta*					s_superchunkMeta; // [s_superchunkSide * s_superchunkSide]
 		static TerrainDrawCommand*				s_drawCmds;       // [s_terrainChunkSide * s_terrainChunkSide]
-		static float*							s_skirtDepths;    // [s_terrainChunkSide * s_terrainChunkSide], parallel to s_drawCmds
+		static std::unique_ptr<float[]>			s_skirtDepths;    // [s_terrainChunkSide * s_terrainChunkSide], parallel to s_drawCmds
 		static int								s_cmdCount;
 		static unsigned long					gCurrentFrame;    // starts at 1; incremented each frame
 		static int								s_terrainChunkSide; // = ceil(quads/20); render chunk array dim

@@ -17,11 +17,14 @@
 // NS3 boundary: effectStream belongs to the texture/effect subsystem, not
 // to whatever game/tool main links it. Previously redefined in every main.
 Stuff::MemoryStream *effectStream = nullptr;
+static std::unique_ptr<Stuff::MemoryStream> s_effectStreamOwner;
 
 // static globals
 MC_TextureManager *mcTextureManager = nullptr;
 gos_VERTEXManager *MC_TextureManager::gvManager = nullptr;
 gos_RenderShapeManager<TG_RenderShape> *MC_TextureManager::rsManager = nullptr;
+static std::unique_ptr<gos_VERTEXManager> s_gvManagerOwner;
+static std::unique_ptr<gos_RenderShapeManager<TG_RenderShape>> s_rsManagerOwner;
 MemoryPtr			MC_TextureManager::lzBuffer1 = nullptr;
 MemoryPtr			MC_TextureManager::lzBuffer2 = nullptr;
 int				MC_TextureManager::iBufferRefCount = 0;
@@ -121,8 +124,8 @@ void MC_TextureManager::freeVertices(void)
 	if (gvManager)
 	{
 		gvManager->destroy();
-		delete gvManager;
 		gvManager = nullptr;
+		s_gvManagerOwner.reset();
 	}
 }
 
@@ -131,8 +134,8 @@ void MC_TextureManager::freeShapes(void)
 	if (rsManager)
 	{
 		rsManager->destroy();
-		delete rsManager;
 		rsManager = nullptr;
+		s_rsManagerOwner.reset();
 	}
 }
 		
@@ -141,7 +144,8 @@ void MC_TextureManager::startVertices (long maxVertices)
 {
 	if (gvManager == nullptr)
 	{
-		gvManager = new gos_VERTEXManager;
+		s_gvManagerOwner = std::make_unique<gos_VERTEXManager>();
+		gvManager = s_gvManagerOwner.get();
 		gvManager->init(maxVertices);
 		gvManager->reset();
 	}
@@ -151,7 +155,8 @@ void MC_TextureManager::startShapes(uint32_t maxShapes)
 {
 	if (rsManager == nullptr)
 	{
-		rsManager = new gos_RenderShapeManager<TG_RenderShape>;
+		s_rsManagerOwner = std::make_unique<gos_RenderShapeManager<TG_RenderShape>>();
+		rsManager = s_rsManagerOwner.get();
 		rsManager->init(maxShapes);
 		rsManager->reset();
 	}
@@ -266,8 +271,8 @@ void MC_TextureManager::destroy (void)
 	delete gosFX::EffectLibrary::Instance;
 	gosFX::EffectLibrary::Instance = nullptr;
 
-	delete effectStream;
 	effectStream = nullptr;
+	s_effectStreamOwner.reset();
 	
 	delete gosFX::LightManager::Instance;
 	gosFX::LightManager::Instance = nullptr;
@@ -440,8 +445,8 @@ void MC_TextureManager::flush (bool justTextures)
 	delete gosFX::EffectLibrary::Instance;
 	gosFX::EffectLibrary::Instance = nullptr;
 
-	delete effectStream;
 	effectStream = nullptr;
+	s_effectStreamOwner.reset();
 	
 	delete gosFX::LightManager::Instance;
 	gosFX::LightManager::Instance = nullptr;
@@ -478,7 +483,8 @@ void MC_TextureManager::flush (bool justTextures)
 	effectFile.read(effectsData.data(),effectsSize);
 	effectFile.close();
 	
-	effectStream = new Stuff::MemoryStream(effectsData.data(),effectsSize);
+	s_effectStreamOwner = std::make_unique<Stuff::MemoryStream>(effectsData.data(),effectsSize);
+	effectStream = s_effectStreamOwner.get();
 	gosFX::EffectLibrary::Instance->Load(effectStream);
 	
 	gosFX::LightManager::Instance = new gosFX::LightManager();
