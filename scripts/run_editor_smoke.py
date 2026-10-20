@@ -1628,13 +1628,23 @@ def _oracle_exists(independent, key):
         return False
 
 
+def panel_render_host_allowed(exe: Path) -> bool:
+    if exe.parent == Path("A:/Games/mc2-opengl/mc2-win64-lane3").resolve():
+        return True
+    from tools.repo_intel.lane_model import lane_for
+    lane = lane_for(str(exe.parent))
+    return bool(lane and lane[1].get("worktree")
+                and Path(lane[1]["worktree"]).resolve() == REPO.resolve())
+
+
 def run_panel(name: str, exe: Path, stock: StockInputs, directory: Path, timeout: int) -> dict:
     directory.mkdir(exist_ok=False)
     provenance = {}
     start = time.time()
     try:
-        if exe.parent != Path("A:/Games/mc2-opengl/mc2-win64-lane3").resolve() or not exe.exists():
-            raise ValueError("panel smoke requires the lane3 smoke host executable")
+        allowed = panel_render_host_allowed(exe) if name == "panel_render" else exe.parent == Path("A:/Games/mc2-opengl/mc2-win64-lane3").resolve()
+        if not allowed or not exe.exists():
+            raise ValueError("panel smoke requires its owned builder install (other workflows require lane3)")
         head = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=REPO, text=True,
                                        **child_kwargs(redirected=True)).strip()
         fingerprint = exe_fingerprint.extract(exe)

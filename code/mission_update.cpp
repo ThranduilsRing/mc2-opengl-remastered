@@ -486,13 +486,8 @@ void Mission::updateCratersAndDamp() {
 	}
 }
 
-// Update the texture manager, the sensors and the collisions.
+// Update sensors and collisions.
 void Mission::updateSimSystems() {
-	//Do not UPDATE the textures during a pause.
-	//This uncaches things which only objectManager->update can cache back in!!!!!
-	if ( !mc2SimTickFrozen(missionInterface) || MPlayer )
-		{ ZoneScopedN("GameLogic.Mission.TextureManager"); mcTextureManager->update(); }
-
 	if (useSensors && ( !mc2SimTickFrozen(missionInterface) || MPlayer ) )
 		{ ZoneScopedN("GameLogic.Mission.Sensors"); SensorManager->update(); }
 

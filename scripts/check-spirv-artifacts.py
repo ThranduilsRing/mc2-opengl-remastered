@@ -111,7 +111,7 @@ def main():
                     if rel.endswith(".slang"):
                         cur = slang_compile.source_bundle(root / rel)
                     else:
-                        cur = canon_source(shader_common.build_shader_source(root / rel, defines))
+                        cur = slang_compile.source_bundle(root / rel)
                     if meta.get("source_sha256") != sha256(cur):
                         fails.append(f"{tag}: source drift - shader changed since bake "
                                      f"(rebuild with build_variants.py)")

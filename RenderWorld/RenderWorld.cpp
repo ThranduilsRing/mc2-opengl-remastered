@@ -29,7 +29,8 @@
 #include <vector>
 
 #include "../GameOS/gameos/gos_postprocess.h"
-#include "../GameOS/gameos/view_uniforms_gl.h"
+#include "../GameOS/gameos/vk_scene_readback.h"
+#include "../GameOS/gameos/view_registry.h"
 
 // M2-pre: forward-declare the gameplay-pick self-test entry point.
 // Lives in code/gameplay_pick.h; full include would drag the game-side
@@ -829,28 +830,14 @@ LookupResult lookupAtPixel(int screenX, int screenY) {
         out.lookupFailReason = "NO_POSTPROCESS";
         return out;
     }
-    const GLuint fbo = pp->getSceneFBO();
-    const GLuint tex = pp->getSceneObjectIdTex();
-    if (!fbo || !tex) {
-        out.lookupFailReason = "NO_FBO_OR_TEX";
+    mc2vk::ScenePixel pixel;
+    if (!mc2vk::readScenePixels(screenX, screenY, 1, 1,
+                              mc2vk::SceneDepth | mc2vk::SceneObjectId, &pixel, 1)) {
+        out.lookupFailReason = "NATIVE_READBACK_UNAVAILABLE";
         return out;
     }
-
-    // Synchronous single-pixel readback. Per spec section 7: stalls
-    // the GPU until prior-frame attachment-2 writes are visible.
-    // GL_RED_INTEGER + GL_UNSIGNED_INT is the integer-format pair
-    // (using GL_RED + GL_FLOAT would silently reinterpret bits).
-    uint32_t raw = 0u;
-    float    depthSample = 0.f;
-    GLint prevReadFbo = 0;
-    glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING, &prevReadFbo);
-    glBindFramebuffer(GL_READ_FRAMEBUFFER, fbo);
-    glReadBuffer(GL_COLOR_ATTACHMENT2);
-    glReadPixels(screenX, screenY, 1, 1, GL_RED_INTEGER, GL_UNSIGNED_INT, &raw);
-    // Depth readback shares the same FBO bind and GPU stall budget.
-    // No glReadBuffer needed — GL_DEPTH_COMPONENT reads the depth attachment.
-    glReadPixels(screenX, screenY, 1, 1, GL_DEPTH_COMPONENT, GL_FLOAT, &depthSample);
-    glBindFramebuffer(GL_READ_FRAMEBUFFER, static_cast<GLuint>(prevReadFbo));
+    const uint32_t raw = pixel.objectId;
+    const float depthSample = pixel.depth;
 
     // Capture raw pixel regardless of validity — inspector shows it even for failures.
     out.rawObjectId = raw;

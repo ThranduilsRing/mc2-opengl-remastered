@@ -1,6 +1,7 @@
 #include <algorithm>
 #include "Gates/preferences_legacy.h"
 #include "../GameOS/gameos/ui_texture.h"
+#include "../mclib/texture_assets.h"
 /*************************************************************************************************\
 gameTacMap.cpp			: Implementation of the gameTacMap component.
 //---------------------------------------------------------------------------//
@@ -90,11 +91,11 @@ void GameTacMap::init( unsigned char* bitmapData, int dataSize )
 	char path[256];
 	strcpy(  path, artPath );
 	strcat( path, "viewingrect.tga" );
-	viewRectHandle = mcTextureManager->loadTexture(path, gos_Texture_Alpha, 0 );
+	viewRectHandle = mc2::textures::load(path, gos_Texture_Alpha, 0 );
 
 	strcpy( path, artPath );
 	strcat( path, "blip.tga" );
-	blipHandle = mcTextureManager->loadTexture( path, gos_Texture_Alpha, 0 );
+	blipHandle = mc2::textures::load( path, gos_Texture_Alpha, 0 );
 }
 
 bool GameTacMap::usingImGui() const
@@ -599,7 +600,7 @@ bool GameTacMap::renderImGui()
 					   argbToImU32( ringColors[i] ), 0, 1.5f );
 	}
 
-	const unsigned long blipGos = mcTextureManager->get_gosTextureHandle( blipHandle );
+	const unsigned long blipGos = mc2::textures::sourceId( blipHandle );
 	const uint64_t blipTex=gos_GetUiTextureId(blipGos);
 	bool bSel = 0;   // unselected first, selected on top (legacy order)
 	for ( int j = 0; j < 2; j++ )
@@ -788,7 +789,7 @@ void GameTacMap::drawBlip( const glm::vec3& pos, long color, int type )
 	gos_SetRenderState( gos_State_Filter, gos_FilterBiLinear);
 	gos_SetRenderState( gos_State_ZCompare, 0);
 	gos_SetRenderState(	gos_State_ZWrite, 0);
-	unsigned long gosID = mcTextureManager->get_gosTextureHandle( blipHandle );
+	unsigned long gosID = mc2::textures::sourceId( blipHandle );
 	gos_SetRenderState( gos_State_Texture, gosID );
 
 	for ( int i = 0; i < 4; ++i )

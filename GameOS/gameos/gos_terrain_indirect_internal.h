@@ -19,7 +19,6 @@
 #include "../../mclib/terrain_material.h"  // single-sourced terrain type -> material
 #include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
 
-#include "gos_gpu_sync.h"               // GPU-SYNC-CONTRACT typed barrier helper
 #include "gos_terrain_patch_stream.h"  // TerrainQuadRecipe
 #include "gpu_driven_common.h"         // gpu_driven::IsTerrainSolidEnabled
 #include "gos_terrain_lighting.h"      // gos_terrain_lighting::GetOutputSsbo()
@@ -48,7 +47,6 @@ extern long g_viewContentEpoch;   // VIEW-EPOCH-DEDUPE-1 semantic view-content e
 
 #include <intrin.h>   // __rdtsc -- [LIGHT_COST_SPLIT v1]
 
-#include <GL/glew.h>
 
 // MC2 types — resolve relative path from GameOS/gameos/
 #include "../../mclib/terrain.h"
@@ -57,7 +55,7 @@ extern long g_viewContentEpoch;   // VIEW-EPOCH-DEDUPE-1 semantic view-content e
 #include "../../mclib/mapdata.h"
 #include "../../mclib/move.h"       // PR2c Stage 1c — MissionMap, GameMap, MAPCELL_DIM
 #include "../../mclib/terrtxm.h"    // TERRAIN_TXM_SIZE (extern int)
-#include "../../mclib/txmmgr.h"     // MC_MAXTEXTURES (cement node-index space)
+#include "../../mclib/txmmgr.h"     // frame/render integration
 #include "gos_terrain_bridge.h"     // gos_terrain_bridge_glTextureForGosHandle (cement readback)
 #include "../../RenderCore/KtxLoader.h"  // COLORMAP-BC7-KTX2-1: ktxLoadRgba8 for BC7 atlas upload
 #include "gos_terrain_arm_logic.h"        // shared GPU-terrain arm predicate (editor↔game)
@@ -162,21 +160,16 @@ extern int32_t                        g_recipeMapSide;
 extern bool                           g_recipeReady;
 extern bool s_firstDrawPrintedThisMission;
 bool traceOn();
-extern GLuint  g_atlasGLTex;
 extern int     g_atlasSize;
 extern float   g_atlasNumTexturesAcross;
 extern float   g_atlasMapTopLeftX;
 extern float   g_atlasMapTopLeftY;
 extern float   g_atlasOneOverWorldUnits;
-extern GLuint  g_cementAtlasGLTex;
 extern int     g_cementAtlasGridSide;
 extern int     g_cementAtlasTileCount;
 extern bool    g_cementLayerMapReady;
 extern int     g_cementCatalogTruncated;
-extern uint16_t g_cementLayerIndexByNodeIdx[MC_MAXTEXTURES];
 extern uint16_t g_cementLayerIndexBySlot[MC_MAX_TERRAIN_TXMS];
-extern GLuint g_transitionMaskArrayGL;
-extern bool   g_transitionMaskReady;
 int deriveMaskIdFromCorners(bool c0, bool c1, bool c2, bool c3);
 bool PadEdgeRoadFixEnabled();
 extern uint16_t g_cementAlphaLayerIndexBySlot[MC_MAX_TERRAIN_TXMS];
@@ -184,7 +177,6 @@ extern bool     g_cementAlphaLayerMapReady;
 void CementCellComputeStats(const std::vector<uint32_t>& atlasBuf, int atlasPixelSide, int gridSide, int txmSize, int k, CementCellStats& s);
 int ClassifyConcreteFamily(std::vector<CementCellStats>& st, int NT, float& refR, float& refG, float& refB);
 bool TileRoadAdjacent8(long r, long c, long mapSide, PostcompVertexPtr blocks);
-void BuildTransitionMaskArray();
 void PopulateRecipeCementWords();
 extern std::vector<uint32_t> g_uniqueTerrainNodeIds;
 void CollectUniqueNodeIds();

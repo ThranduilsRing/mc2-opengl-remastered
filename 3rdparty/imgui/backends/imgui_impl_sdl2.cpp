@@ -1,4 +1,5 @@
 // dear imgui: Platform Backend for SDL2
+// MC2 P9: GL support retired; native renderers own contexts and presentation.
 // This needs to be used along with a Renderer (e.g. DirectX11, OpenGL3, Vulkan..)
 // (Info: SDL2 is a cross-platform general purpose library for handling windows, inputs, graphics context creation, etc.)
 // (Prefer SDL 2.0.5+ for full feature support.)
@@ -172,7 +173,7 @@ static ImGui_ImplSDL2_Data* ImGui_ImplSDL2_GetBackendData()
 
 // Forward Declarations
 static void ImGui_ImplSDL2_UpdateMonitors();
-static void ImGui_ImplSDL2_InitMultiViewportSupport(SDL_Window* window, void* sdl_gl_context);
+static void ImGui_ImplSDL2_InitMultiViewportSupport(SDL_Window* window);
 static void ImGui_ImplSDL2_ShutdownMultiViewportSupport();
 
 // Functions
@@ -488,7 +489,7 @@ bool ImGui_ImplSDL2_ProcessEvent(const SDL_Event* event)
 EM_JS(void, ImGui_ImplSDL2_EmscriptenOpenURL, (char const* url), { url = url ? UTF8ToString(url) : null; if (url) window.open(url, '_blank'); });
 #endif
 
-static bool ImGui_ImplSDL2_Init(SDL_Window* window, SDL_Renderer* renderer, void* sdl_gl_context)
+static bool ImGui_ImplSDL2_Init(SDL_Window* window, SDL_Renderer* renderer)
 {
     ImGuiIO& io = ImGui::GetIO();
     IMGUI_CHECKVERSION();
@@ -594,14 +595,9 @@ static bool ImGui_ImplSDL2_Init(SDL_Window* window, SDL_Renderer* renderer, void
     // We need SDL_CaptureMouse(), SDL_GetGlobalMouseState() from SDL 2.0.4+ to support multiple viewports.
     // We left the call to ImGui_ImplSDL2_InitMultiViewportSupport() outside of #ifdef to avoid unused-function warnings.
     if (io.BackendFlags & ImGuiBackendFlags_PlatformHasViewports)
-        ImGui_ImplSDL2_InitMultiViewportSupport(window, sdl_gl_context);
+        ImGui_ImplSDL2_InitMultiViewportSupport(window);
 
     return true;
-}
-
-bool ImGui_ImplSDL2_InitForOpenGL(SDL_Window* window, void* sdl_gl_context)
-{
-    return ImGui_ImplSDL2_Init(window, nullptr, sdl_gl_context);
 }
 
 bool ImGui_ImplSDL2_InitForVulkan(SDL_Window* window)
@@ -609,7 +605,7 @@ bool ImGui_ImplSDL2_InitForVulkan(SDL_Window* window)
 #if !SDL_HAS_VULKAN
     IM_ASSERT(0 && "Unsupported");
 #endif
-    if (!ImGui_ImplSDL2_Init(window, nullptr, nullptr))
+    if (!ImGui_ImplSDL2_Init(window, nullptr))
         return false;
     ImGui_ImplSDL2_Data* bd = ImGui_ImplSDL2_GetBackendData();
     bd->UseVulkan = true;
@@ -621,22 +617,22 @@ bool ImGui_ImplSDL2_InitForD3D(SDL_Window* window)
 #if !defined(_WIN32)
     IM_ASSERT(0 && "Unsupported");
 #endif
-    return ImGui_ImplSDL2_Init(window, nullptr, nullptr);
+    return ImGui_ImplSDL2_Init(window, nullptr);
 }
 
 bool ImGui_ImplSDL2_InitForMetal(SDL_Window* window)
 {
-    return ImGui_ImplSDL2_Init(window, nullptr, nullptr);
+    return ImGui_ImplSDL2_Init(window, nullptr);
 }
 
 bool ImGui_ImplSDL2_InitForSDLRenderer(SDL_Window* window, SDL_Renderer* renderer)
 {
-    return ImGui_ImplSDL2_Init(window, renderer, nullptr);
+    return ImGui_ImplSDL2_Init(window, renderer);
 }
 
 bool ImGui_ImplSDL2_InitForOther(SDL_Window* window)
 {
-    return ImGui_ImplSDL2_Init(window, nullptr, nullptr);
+    return ImGui_ImplSDL2_Init(window, nullptr);
 }
 
 static void ImGui_ImplSDL2_CloseGamepads();
@@ -911,7 +907,7 @@ void ImGui_ImplSDL2_NewFrame()
         SDL_Vulkan_GetDrawableSize(bd->Window, &display_w, &display_h);
 #endif
     else
-        SDL_GL_GetDrawableSize(bd->Window, &display_w, &display_h);
+        SDL_GetWindowSizeInPixels(bd->Window, &display_w, &display_h);
     io.DisplaySize = ImVec2((float)w, (float)h);
     if (w > 0 && h > 0)
         io.DisplayFramebufferScale = ImVec2((float)display_w / w, (float)display_h / h);
@@ -962,10 +958,9 @@ struct ImGui_ImplSDL2_ViewportData
     SDL_Window*     Window;
     Uint32          WindowID;
     bool            WindowOwned;
-    SDL_GLContext   GLContext;
 
-    ImGui_ImplSDL2_ViewportData() { Window = nullptr; WindowID = 0; WindowOwned = false; GLContext = nullptr; }
-    ~ImGui_ImplSDL2_ViewportData() { IM_ASSERT(Window == nullptr && GLContext == nullptr); }
+    ImGui_ImplSDL2_ViewportData() { Window = nullptr; WindowID = 0; WindowOwned = false; }
+    ~ImGui_ImplSDL2_ViewportData() { IM_ASSERT(Window == nullptr); }
 };
 
 static void ImGui_ImplSDL2_CreateWindow(ImGuiViewport* viewport)
@@ -974,21 +969,8 @@ static void ImGui_ImplSDL2_CreateWindow(ImGuiViewport* viewport)
     ImGui_ImplSDL2_ViewportData* vd = IM_NEW(ImGui_ImplSDL2_ViewportData)();
     viewport->PlatformUserData = vd;
 
-    ImGuiViewport* main_viewport = ImGui::GetMainViewport();
-    ImGui_ImplSDL2_ViewportData* main_viewport_data = (ImGui_ImplSDL2_ViewportData*)main_viewport->PlatformUserData;
-
-    // Share GL resources with main context
-    bool use_opengl = (main_viewport_data->GLContext != nullptr);
-    SDL_GLContext backup_context = nullptr;
-    if (use_opengl)
-    {
-        backup_context = SDL_GL_GetCurrentContext();
-        SDL_GL_SetAttribute(SDL_GL_SHARE_WITH_CURRENT_CONTEXT, 1);
-        SDL_GL_MakeCurrent(main_viewport_data->Window, main_viewport_data->GLContext);
-    }
-
     Uint32 sdl_flags = 0;
-    sdl_flags |= use_opengl ? SDL_WINDOW_OPENGL : (bd->UseVulkan ? SDL_WINDOW_VULKAN : 0);
+    sdl_flags |= bd->UseVulkan ? SDL_WINDOW_VULKAN : 0;
     sdl_flags |= SDL_GetWindowFlags(bd->Window) & SDL_WINDOW_ALLOW_HIGHDPI;
     sdl_flags |= SDL_WINDOW_HIDDEN;
     sdl_flags |= (viewport->Flags & ImGuiViewportFlags_NoDecoration) ? SDL_WINDOW_BORDERLESS : 0;
@@ -1002,13 +984,6 @@ static void ImGui_ImplSDL2_CreateWindow(ImGuiViewport* viewport)
 #endif
     vd->Window = SDL_CreateWindow("No Title Yet", (int)viewport->Pos.x, (int)viewport->Pos.y, (int)viewport->Size.x, (int)viewport->Size.y, sdl_flags);
     vd->WindowOwned = true;
-    if (use_opengl)
-    {
-        vd->GLContext = SDL_GL_CreateContext(vd->Window);
-        SDL_GL_SetSwapInterval(0);
-    }
-    if (use_opengl && backup_context)
-        SDL_GL_MakeCurrent(vd->Window, backup_context);
 
     viewport->PlatformHandle = (void*)(intptr_t)SDL_GetWindowID(vd->Window);
     viewport->PlatformHandleRaw = nullptr;
@@ -1028,11 +1003,8 @@ static void ImGui_ImplSDL2_DestroyWindow(ImGuiViewport* viewport)
 {
     if (ImGui_ImplSDL2_ViewportData* vd = (ImGui_ImplSDL2_ViewportData*)viewport->PlatformUserData)
     {
-        if (vd->GLContext && vd->WindowOwned)
-            SDL_GL_DeleteContext(vd->GLContext);
         if (vd->Window && vd->WindowOwned)
             SDL_DestroyWindow(vd->Window);
-        vd->GLContext = nullptr;
         vd->Window = nullptr;
         IM_DELETE(vd);
     }
@@ -1129,23 +1101,6 @@ static bool ImGui_ImplSDL2_GetWindowMinimized(ImGuiViewport* viewport)
     return (SDL_GetWindowFlags(vd->Window) & SDL_WINDOW_MINIMIZED) != 0;
 }
 
-static void ImGui_ImplSDL2_RenderWindow(ImGuiViewport* viewport, void*)
-{
-    ImGui_ImplSDL2_ViewportData* vd = (ImGui_ImplSDL2_ViewportData*)viewport->PlatformUserData;
-    if (vd->GLContext)
-        SDL_GL_MakeCurrent(vd->Window, vd->GLContext);
-}
-
-static void ImGui_ImplSDL2_SwapBuffers(ImGuiViewport* viewport, void*)
-{
-    ImGui_ImplSDL2_ViewportData* vd = (ImGui_ImplSDL2_ViewportData*)viewport->PlatformUserData;
-    if (vd->GLContext)
-    {
-        SDL_GL_MakeCurrent(vd->Window, vd->GLContext);
-        SDL_GL_SwapWindow(vd->Window);
-    }
-}
-
 // Vulkan support (the Vulkan renderer needs to call a platform-side support function to create the surface)
 // SDL is graceful enough to _not_ need <vulkan/vulkan.h> so we can safely include this.
 #if SDL_HAS_VULKAN
@@ -1159,7 +1114,7 @@ static int ImGui_ImplSDL2_CreateVkSurface(ImGuiViewport* viewport, ImU64 vk_inst
 }
 #endif // SDL_HAS_VULKAN
 
-static void ImGui_ImplSDL2_InitMultiViewportSupport(SDL_Window* window, void* sdl_gl_context)
+static void ImGui_ImplSDL2_InitMultiViewportSupport(SDL_Window* window)
 {
     // Register platform interface (will be coupled with a renderer interface)
     ImGuiPlatformIO& platform_io = ImGui::GetPlatformIO();
@@ -1174,8 +1129,6 @@ static void ImGui_ImplSDL2_InitMultiViewportSupport(SDL_Window* window, void* sd
     platform_io.Platform_GetWindowFocus = ImGui_ImplSDL2_GetWindowFocus;
     platform_io.Platform_GetWindowMinimized = ImGui_ImplSDL2_GetWindowMinimized;
     platform_io.Platform_SetWindowTitle = ImGui_ImplSDL2_SetWindowTitle;
-    platform_io.Platform_RenderWindow = ImGui_ImplSDL2_RenderWindow;
-    platform_io.Platform_SwapBuffers = ImGui_ImplSDL2_SwapBuffers;
 #if SDL_HAS_WINDOW_ALPHA
     platform_io.Platform_SetWindowAlpha = ImGui_ImplSDL2_SetWindowAlpha;
 #endif
@@ -1190,7 +1143,6 @@ static void ImGui_ImplSDL2_InitMultiViewportSupport(SDL_Window* window, void* sd
     vd->Window = window;
     vd->WindowID = SDL_GetWindowID(window);
     vd->WindowOwned = false;
-    vd->GLContext = sdl_gl_context;
     main_viewport->PlatformUserData = vd;
     main_viewport->PlatformHandle = (void*)(intptr_t)vd->WindowID;
 }

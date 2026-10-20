@@ -7,10 +7,7 @@
 
 // TERRAIN-MATERIAL-LIB-1: default OFF. Drives u_useMaterialLib (chunk-path
 // roughness/AO branch). Evaluated once (static) -- matches terrainNormalArrayEnabled().
-static bool terrainMaterialLibEnabled() {
-    static const bool enabled = mc2::gate::get<"MC2_TERRAIN_MATERIAL_LIB">();
-    return enabled;
-}
+
 
 // LIGHTING-DEBUG-VIEWS: render-family-shared lighting debug channel on the
 // shared surfaceDebugMode integer space. The 40-series is reserved for the
@@ -57,268 +54,11 @@ extern "C" int gos_GetGlobalDebugView() { return g_mc2GlobalDebugView; }
 // detailNormalStrength stays {strength,0,0,0} => byte-identical render.
 //   .y = fadeStart (world units)   .z = fadeEnd (world units)   .w = macroStrength
 // Read once. Returns pointer to a static float[3].
-static const float* mc2_detailAntiTileYZW()
-{
-    static float s_yzw[3] = { 0.0f, 0.0f, 0.0f };
-    static bool s_init = false;
-    if (!s_init) {
-        s_init = true;
-        const bool antiTile = mc2::gate::get<"MC2_TERRAIN_DETAIL_ANTITILE">();   // row: Lead0, same rule as the chunk reader
-        if (antiTile) {
-            // The rows' defaults are the legacy ones for the fade band (1000 / 3000). MACRO_STRENGTH is the
-            // ledgered divergent gate: this legacy path defaults to 0.35, the chunk path to 0.
-            float start = mc2::gate::get<"MC2_TERRAIN_DETAIL_FADE_START">();
-            float end   = mc2::gate::get<"MC2_TERRAIN_DETAIL_FADE_END">();
-            if (end < start + 1.0f) end = start + 1.0f;   // keep fade band positive
-            s_yzw[0] = start;
-            s_yzw[1] = end;
-            s_yzw[2] = mc2::gate::isNonEmpty<"MC2_TERRAIN_DETAIL_MACRO_STRENGTH">()
-                           ? mc2::gate::get<"MC2_TERRAIN_DETAIL_MACRO_STRENGTH">() : 0.35f;
-        }
-    }
-    return s_yzw;
-}
 
-void gosRenderer::terrainBindUniformsForPatchStream(gosRenderMaterial* material)
-{
-    if (!material) return;
-    material->setTransform(projection_);
-    material->setFogColor(fog_color_);
-    material->apply();
-    material->setSamplerUnit(gosMesh::s_tex1, 0);
 
-    GLuint shp = material->getShader()->shp_;
-    cacheTerrainUniformLocations(shp);
-    const auto& tl = terrainLocs_;
 
-    float tessParams[4] = { terrain_tess_level_, terrain_tess_level_, 0.0f, 0.0f };
-    float tessDist[4]   = { terrain_tess_dist_near_, terrain_tess_dist_far_, 0.0f, 0.0f };
-    float tessDisp[4]   = { terrain_phong_alpha_, terrain_displace_scale_, 0.0f, 0.0f };
-    if (tl.tessLevel >= 0)         glUniform4fv(tl.tessLevel, 1, tessParams);
-    if (tl.tessDistanceRange >= 0) glUniform4fv(tl.tessDistanceRange, 1, tessDist);
-    if (tl.tessDisplace >= 0)      glUniform4fv(tl.tessDisplace, 1, tessDisp);
-    if (tl.cameraPos >= 0)         glUniform4fv(tl.cameraPos, 1, reinterpret_cast<const float*>(&terrain_camera_pos_));
-    float debugMode = terrain_debug_mode_;
-    if (mc2::gate::isSet<"MC2_TERRAIN_DEBUG_MODE">())
-        debugMode = mc2::gate::get<"MC2_TERRAIN_DEBUG_MODE">();
-    { int lvm = mc2LightingDebugMode(); if (lvm >= 0) debugMode = static_cast<float>(lvm); }  // LIGHTING-DEBUG-VIEWS-1A
-    float tessDebugVec[4] = { debugMode, 0.0f, 0.0f, 0.0f };
-    if (tl.tessDebug >= 0)         glUniform4fv(tl.tessDebug, 1, tessDebugVec);
-    if (tl.pathTint >= 0)          glUniform1i(tl.pathTint, mc2ShaderPathTint());  // MC2_SHADER_PATH_TINT
 
-    if (tl.mapHalfExtent >= 0) {
-        gosPostProcess* pp = getGosPostProcess();
-        float halfExt = pp ? pp->getMapHalfExtent() : 0.0f;
-        glUniform1f(tl.mapHalfExtent, halfExt);
 
-        // OVERLAY-MAGENTA-TEXTURE-RECON-1 (Source B): the colormap "no-data" magenta
-        // texels are hidden by the off-map edge-haze ONLY when mapHalfExtent > 0. If
-        // this is <= 0 for a map, the haze guard is skipped and magenta renders raw.
-        // Emit the live value (throttled to value changes) so we can tell Source-B
-        // guard-fail from a Source-A missing-texture. Gated MC2_OVERLAY_MAGENTA_TRACE.
-        {
-            static const bool s_magentaTrace = mc2::gate::get<"MC2_OVERLAY_MAGENTA_TRACE">();
-            static float s_lastHalfExt = -99999.0f;
-            if (s_magentaTrace && halfExt != s_lastHalfExt && mc2_diag::tagEnabled("OVERLAY_MAGENTA")) {
-                s_lastHalfExt = halfExt;
-                char _mg_buf[160];
-                mc2::fmt::to_buf(_mg_buf, "{{\"site\":\"map_half_extent\",\"value\":{:.1f},\"guard_fail\":{:d}}}", halfExt, mc2::fmt::as_i32((halfExt <= 0.0f) ? 1 : 0));
-                mc2_diag::writeEvent("OVERLAY_MAGENTA", 1, 0, _mg_buf);
-            }
-        }
-    }
-    if (terrain_mvp_valid_ && tl.terrainMVP >= 0)
-        glUniformMatrix4fv(tl.terrainMVP, 1, GL_FALSE, reinterpret_cast<const float*>(&terrain_mvp_));
-    // F1 Task 7b: probe-only worldToClipGL flat-uniform fallback path.
-    // Kept for non-AMD or future driver fixes; SSBO path (binding 23) is
-    // the reliable transport on AMD TES stages (proven: loc=-1 from driver
-    // optimizer removing the unused flat uniform once SSBO became primary).
-    // When the shader declares u_worldToClipGL as a flat uniform, loc >= 0
-    // and this path fires. Currently loc=-1 (shader uses SSBO only).
-    if (probeWorldToClipGLValid_ && tl.worldToClipGL >= 0)
-        glUniformMatrix4fv(tl.worldToClipGL, 1, GL_FALSE, probeWorldToClipGL_);
-
-    if (tl.terrainLightDir >= 0)        glUniform4fv(tl.terrainLightDir, 1, reinterpret_cast<const float*>(&terrain_light_dir_));
-    float tiling[4]      = { terrain_detail_tiling_, 0.0f, 0.0f, 0.0f };
-    const float* _datYZW = mc2_detailAntiTileYZW();  // TERRAIN-DETAIL-ANTI-TILE-1 (yzw=0 when gate OFF)
-    float strength[4]    = { terrain_detail_strength_, _datYZW[0], _datYZW[1], _datYZW[2] };
-    float pomP[4]        = { terrain_pom_scale_, 8.0f, 32.0f, 0.0f };
-    float worldScaleV[4] = { terrain_world_scale_, 0.0f, 0.0f, 0.0f };
-    float cellP[4]       = { terrain_cell_scale_, terrain_cell_jitter_, terrain_cell_rotation_, 0.0f };
-    if (tl.detailNormalTiling >= 0)   glUniform4fv(tl.detailNormalTiling, 1, tiling);
-    if (tl.detailNormalStrength >= 0) glUniform4fv(tl.detailNormalStrength, 1, strength);
-    // C1 tactical: push mission-gated material profile to terrain classifier.
-    // Default 0 = LEGACY = exact pre-C1 byte-for-byte rendering.
-    if (tl.terrainMaterialProfile >= 0) glUniform1i(tl.terrainMaterialProfile, g_terrainMaterialProfile);
-    if (tl.pomParams >= 0)            glUniform4fv(tl.pomParams, 1, pomP);
-    if (tl.terrainWorldScale >= 0)    glUniform4fv(tl.terrainWorldScale, 1, worldScaleV);
-    if (tl.cellBombParams >= 0)       glUniform4fv(tl.cellBombParams, 1, cellP);
-    if (tl.matNormalBoost >= 0)       glUniform4fv(tl.matNormalBoost, 1, terrain_mat_normal_boost_);
-    if (tl.matTiling >= 0)            glUniform4fv(tl.matTiling, 1, terrain_mat_tiling_);
-    if (tl.matTilingSnow >= 0)        glUniform1f(tl.matTilingSnow, terrain_mat_tiling_snow_);
-    if (tl.tintStrengthScale >= 0)    glUniform1f(tl.tintStrengthScale, terrain_tint_strength_scale_);
-    if (tl.snowBrightnessDampen >= 0) glUniform1f(tl.snowBrightnessDampen, terrain_snow_brightness_dampen_);
-    if (tl.tintRock  >= 0)            glUniform3fv(tl.tintRock,  1, terrain_tint_rock_);
-    if (tl.tintGrass >= 0)            glUniform3fv(tl.tintGrass, 1, terrain_tint_grass_);
-    if (tl.tintDirt  >= 0)            glUniform3fv(tl.tintDirt,  1, terrain_tint_dirt_);
-    if (tl.terrainClassGrass >= 0)    glUniform4fv(tl.terrainClassGrass, 1, terrain_class_grass_);
-    if (tl.terrainClassDirt  >= 0)    glUniform4fv(tl.terrainClassDirt,  1, terrain_class_dirt_);
-    // TERRAIN-MATERIAL-LIB-1: promoted tints always upload (they replace what
-    // were frag literals, so there is no gate-OFF skip for these -- the shader
-    // now always reads a uniform, and the default member value is the exact
-    // former literal). Roughness/AO + the branch flag ARE gated (byte-identity
-    // requires the u_useMaterialLib==0 branch to be taken by default).
-    if (tl.tintConcrete >= 0)         glUniform3fv(tl.tintConcrete, 1, terrain_tint_concrete_);
-    if (tl.tintSnow     >= 0)         glUniform3fv(tl.tintSnow,     1, terrain_tint_snow_);
-    if (tl.matRoughness  >= 0)        glUniform4fv(tl.matRoughness, 1, terrain_mat_roughness_);
-    if (tl.matAO         >= 0)        glUniform4fv(tl.matAO,        1, terrain_mat_ao_);
-    if (tl.useMaterialLib >= 0)       glUniform1i(tl.useMaterialLib, terrainMaterialLibEnabled() ? 1 : 0);
-    // TERRAIN-CONTROLMAP-ALBEDO-1: gate default OFF -> member stays 0.0f ->
-    // uploaded verbatim -> frag's mix(x,1.0,0.0)==x (byte-identical).
-    if (tl.controlAlbedoStrength >= 0) glUniform1f(tl.controlAlbedoStrength, terrain_control_albedo_strength_);
-    if (tl.time >= 0) {
-        float elapsed = SmokeMode::fixedTimestepEnabled()
-                        ? static_cast<float>(SmokeMode::fixedClockSeconds())
-                        : static_cast<float>((timing::get_wall_time_ms() - timeStart_)) / 1000.0f;
-        glUniform1f(tl.time, elapsed);
-    }
-
-    if (terrainNormalArrayEnabled()) {
-        if (terrain_normal_array_dirty_) buildTerrainNormalArray();
-        if (terrain_normal_array_tex_ != 0 && tl.matNormalArray >= 0) {
-            glUniform1i(tl.matNormalArray, kTerrainTexUnitNormalArray);
-            glActiveTexture(GL_TEXTURE0 + kTerrainTexUnitNormalArray);
-            glBindTexture(GL_TEXTURE_2D_ARRAY, terrain_normal_array_tex_);
-        }
-    } else {
-        for (int i = 0; i < 5; i++) {
-            if (terrain_mat_normal_[i] != 0 && tl.matNormal[i] >= 0) {
-                glUniform1i(tl.matNormal[i], kTerrainMatNormalUnits[i]);
-                glActiveTexture(GL_TEXTURE0 + kTerrainMatNormalUnits[i]);
-                glBindTexture(GL_TEXTURE_2D, terrain_mat_normal_[i]);
-            }
-        }
-    }
-    bindTerrainHeightTexUniforms(tl.terrainHeightTex, tl.terrainHeightParams,
-                                 tl.terrainCliffShadowFloor,
-                                 terrain_cliff_shadow_floor_);
-    glActiveTexture(GL_TEXTURE0);
-
-    // The shadow maps are Vulkan images the GL shaders cannot sample: the GL terrain runs shadow-free.
-    if (tl.enableShadows >= 0)        glUniform1i(tl.enableShadows, 0);
-    if (tl.enableDynamicShadows >= 0) glUniform1i(tl.enableDynamicShadows, 0);
-}
-
-int gosRenderer::terrainBindThinUniformsForPatchStream(glsl_program* overrideProg)
-{
-    glsl_program* target = overrideProg ? overrideProg : thin_terrain_prog_;
-    if (!target || !target->shp_) return -1;
-    GLuint shp = target->shp_;
-    glUseProgram(shp);
-    cacheThinTerrainUniformLocations(shp);
-    const auto& tl = thinTerrainLocs_;
-
-    if (terrain_mvp_valid_ && tl.terrainMVP >= 0)
-        glUniformMatrix4fv(tl.terrainMVP, 1, GL_FALSE, reinterpret_cast<const float*>(&terrain_mvp_));
-    // projection_: row-major Stuff matrix — upload GL_TRUE (column-major interpretation).
-    // All other projection_ upload sites (shadow line ~2737, material setTransform) use GL_TRUE.
-    // terrainMVP stays GL_FALSE — its D3D chain math cancels the implicit transpose.
-    if (tl.mvp >= 0)
-        glUniformMatrix4fv(tl.mvp, 1, GL_TRUE, reinterpret_cast<const float*>(&projection_));
-
-    static const bool s_thinDebug   = mc2::gate::get<"MC2_THIN_DEBUG">();
-    static bool       s_thinDbgDone = false;
-    if (s_thinDebug && !s_thinDbgDone && terrain_mvp_valid_) {
-        s_thinDbgDone = true;
-        const float* p = reinterpret_cast<const float*>(&projection_);
-        const float* m = reinterpret_cast<const float*>(&terrain_mvp_);
-        mc2::fmt::print_err("[THIN_DEBUG v1] event=thin_uniforms_bound proj_row0=[{:.5f},{:.5f},{:.5f},{:.5f}] proj_row1=[{:.5f},{:.5f},{:.5f},{:.5f}] tmvp_diag=[{:.5f},{:.5f},{:.5f},{:.5f}]\n", p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], m[0], m[5], m[10], m[15]);
-        fflush(stderr);
-    }
-
-    if (tl.cameraPos >= 0)        glUniform4fv(tl.cameraPos, 1, reinterpret_cast<const float*>(&terrain_camera_pos_));
-    if (tl.terrainLightDir >= 0)  glUniform4fv(tl.terrainLightDir, 1, reinterpret_cast<const float*>(&terrain_light_dir_));
-    // tessDebug: matches non-thin path (line ~4080). The thin path historically
-    // omitted this — debug-viz modes 1..8 in gos_terrain.frag therefore could
-    // not fire on the indirect/substrate draw, which silently broke the entire
-    // shader-debug channel for the path that needs it most.  Env override
-    // mirrors the tessellated path so MC2_TERRAIN_DEBUG_MODE works uniformly.
-    {
-        float debugMode = terrain_debug_mode_;
-        if (mc2::gate::isSet<"MC2_TERRAIN_DEBUG_MODE">())
-            debugMode = mc2::gate::get<"MC2_TERRAIN_DEBUG_MODE">();
-        { int lvm = mc2LightingDebugMode(); if (lvm >= 0) debugMode = static_cast<float>(lvm); }  // LIGHTING-DEBUG-VIEWS-1A
-        float tessDebugVec[4] = { debugMode, 0.0f, 0.0f, 0.0f };
-        if (tl.tessDebug >= 0) glUniform4fv(tl.tessDebug, 1, tessDebugVec);
-        if (tl.pathTint >= 0)  glUniform1i(tl.pathTint, mc2ShaderPathTint());  // MC2_SHADER_PATH_TINT
-    }
-    if (tl.mapHalfExtent >= 0) {
-        gosPostProcess* pp = getGosPostProcess();
-        float halfExt = pp ? pp->getMapHalfExtent() : 0.0f;
-        glUniform1f(tl.mapHalfExtent, halfExt);
-    }
-    float tiling[4]      = { terrain_detail_tiling_, 0.0f, 0.0f, 0.0f };
-    const float* _datYZW = mc2_detailAntiTileYZW();  // TERRAIN-DETAIL-ANTI-TILE-1 (yzw=0 when gate OFF)
-    float strength[4]    = { terrain_detail_strength_, _datYZW[0], _datYZW[1], _datYZW[2] };
-    float pomP[4]        = { terrain_pom_scale_, 8.0f, 32.0f, 0.0f };
-    float worldScaleV[4] = { terrain_world_scale_, 0.0f, 0.0f, 0.0f };
-    float cellP[4]       = { terrain_cell_scale_, terrain_cell_jitter_, terrain_cell_rotation_, 0.0f };
-    if (tl.detailNormalTiling >= 0)   glUniform4fv(tl.detailNormalTiling, 1, tiling);
-    if (tl.detailNormalStrength >= 0) glUniform4fv(tl.detailNormalStrength, 1, strength);
-    // C1 tactical: push mission-gated material profile to terrain classifier.
-    // Default 0 = LEGACY = exact pre-C1 byte-for-byte rendering.
-    if (tl.terrainMaterialProfile >= 0) glUniform1i(tl.terrainMaterialProfile, g_terrainMaterialProfile);
-    if (tl.pomParams >= 0)            glUniform4fv(tl.pomParams, 1, pomP);
-    if (tl.terrainWorldScale >= 0)    glUniform4fv(tl.terrainWorldScale, 1, worldScaleV);
-    if (tl.cellBombParams >= 0)       glUniform4fv(tl.cellBombParams, 1, cellP);
-    if (tl.matNormalBoost >= 0)       glUniform4fv(tl.matNormalBoost, 1, terrain_mat_normal_boost_);
-    if (tl.matTiling >= 0)            glUniform4fv(tl.matTiling, 1, terrain_mat_tiling_);
-    if (tl.matTilingSnow >= 0)        glUniform1f(tl.matTilingSnow, terrain_mat_tiling_snow_);
-    if (tl.tintStrengthScale >= 0)    glUniform1f(tl.tintStrengthScale, terrain_tint_strength_scale_);
-    if (tl.snowBrightnessDampen >= 0) glUniform1f(tl.snowBrightnessDampen, terrain_snow_brightness_dampen_);
-    if (tl.tintRock  >= 0)            glUniform3fv(tl.tintRock,  1, terrain_tint_rock_);
-    if (tl.tintGrass >= 0)            glUniform3fv(tl.tintGrass, 1, terrain_tint_grass_);
-    if (tl.tintDirt  >= 0)            glUniform3fv(tl.tintDirt,  1, terrain_tint_dirt_);
-    if (tl.terrainClassGrass >= 0)    glUniform4fv(tl.terrainClassGrass, 1, terrain_class_grass_);
-    if (tl.terrainClassDirt  >= 0)    glUniform4fv(tl.terrainClassDirt,  1, terrain_class_dirt_);
-    // TERRAIN-CONTROLMAP-ALBEDO-1: loc stays -1 on this (dead thin/legacy)
-    // path today; guarded upload is a no-op until gos_terrain.frag declares
-    // the uniform too.
-    if (tl.controlAlbedoStrength >= 0) glUniform1f(tl.controlAlbedoStrength, terrain_control_albedo_strength_);
-    if (tl.time >= 0) {
-        float elapsed = SmokeMode::fixedTimestepEnabled()
-                        ? static_cast<float>(SmokeMode::fixedClockSeconds())
-                        : static_cast<float>((timing::get_wall_time_ms() - timeStart_)) / 1000.0f;
-        glUniform1f(tl.time, elapsed);
-    }
-    if (tl.tex1 >= 0) glUniform1i(tl.tex1, 0);
-    if (terrainNormalArrayEnabled()) {
-        if (terrain_normal_array_dirty_) buildTerrainNormalArray();
-        if (terrain_normal_array_tex_ != 0 && tl.matNormalArray >= 0) {
-            glUniform1i(tl.matNormalArray, kTerrainTexUnitNormalArray);
-            glActiveTexture(GL_TEXTURE0 + kTerrainTexUnitNormalArray);
-            glBindTexture(GL_TEXTURE_2D_ARRAY, terrain_normal_array_tex_);
-        }
-    } else {
-        for (int i = 0; i < 5; i++) {
-            if (terrain_mat_normal_[i] != 0 && tl.matNormal[i] >= 0) {
-                glUniform1i(tl.matNormal[i], kTerrainMatNormalUnits[i]);
-                glActiveTexture(GL_TEXTURE0 + kTerrainMatNormalUnits[i]);
-                glBindTexture(GL_TEXTURE_2D, terrain_mat_normal_[i]);
-            }
-        }
-    }
-    bindTerrainHeightTexUniforms(tl.terrainHeightTex, tl.terrainHeightParams,
-                                 tl.terrainCliffShadowFloor,
-                                 terrain_cliff_shadow_floor_);
-    glActiveTexture(GL_TEXTURE0);
-
-    // The shadow maps are Vulkan images the GL shaders cannot sample: the GL terrain runs shadow-free.
-    if (tl.enableShadows >= 0)        glUniform1i(tl.enableShadows, 0);
-    if (tl.enableDynamicShadows >= 0) glUniform1i(tl.enableDynamicShadows, 0);
-
-    return tl.ssboRecordBase;
-}
 
 void __stdcall gos_SetTerrainTessParams(float level, float near_dist, float far_dist) {
     if (g_gos_renderer) g_gos_renderer->setTerrainTessParams(level, near_dist, far_dist);
@@ -353,18 +93,10 @@ void __stdcall gos_SetTerrainDebugMode(float mode) {
 float __stdcall gos_GetTerrainDebugMode() {
     return g_gos_renderer ? g_gos_renderer->getTerrainDebugMode() : 0.0f;
 }
-void __stdcall gos_TerrainExtraReset() {
-    if (g_gos_renderer) g_gos_renderer->terrainExtraReset();
-}
-void __stdcall gos_TerrainExtraAdd(const gos_TERRAIN_EXTRA* data, int count) {
-    if (g_gos_renderer) g_gos_renderer->terrainExtraAdd(data, count);
-}
-void __stdcall gos_SetTerrainBatchExtras(const gos_TERRAIN_EXTRA* extras, int count) {
-    if (g_gos_renderer) g_gos_renderer->setTerrainBatchExtras(extras, count);
-}
-bool __stdcall gos_IsTerrainTessellationActive() {
-    return g_gos_renderer && g_gos_renderer->getTerrainMaterial() != nullptr;
-}
+
+
+
+
 // Vulkan owns the shadow maps independently of the old GL shader programs.
 bool __stdcall gos_IsModernShadowPathActive() {
     return g_gos_renderer != nullptr;
@@ -655,29 +387,10 @@ void gos_SetTerrainCellBombParams(float scale, float jitter, float rotation) {
 void gos_SetTerrainPOMParams(float scale, float minLayers, float maxLayers) {
     if (g_gos_renderer) g_gos_renderer->setTerrainPOMParams(scale, minLayers, maxLayers);
 }
-void gos_SetTerrainDetailNormalTexture(unsigned int glTexId) {
-    // Legacy single-texture path — not used with per-material splatting, but terrtxm2 still calls it
-}
-void gos_SetTerrainDisplacementTexture(unsigned int glTexId) {
-    // Legacy single displacement — not used with per-material splatting
-}
-void gos_SetTerrainViewDir(float x, float y, float z) {
-    // View direction for POM — stored but not critical for tessellation path
-}
-unsigned int gos_CreateTerrainNormalTexture(const unsigned char* rgbaData, int width) {
-    GLuint texId = 0;
-    // TEX-CLASS: asset-pool -- terrain normal content texture factory
-    glGenTextures(1, &texId);
-    glBindTexture(GL_TEXTURE_2D, texId);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, width, 0, GL_RGBA, GL_UNSIGNED_BYTE, rgbaData);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    glBindTexture(GL_TEXTURE_2D, 0);
-    mc2::fmt::print_out("[TESS] Created terrain normal texture: id={:d} size={:d}\n", mc2::fmt::as_u32(texId), mc2::fmt::as_i32(width));
-    return texId;
-}
+
+
+
+
 
 void gos_SetTerrainShadowSoftness(float s) {
     if (g_gos_renderer) g_gos_renderer->setTerrainShadowSoftness(s);
@@ -802,7 +515,8 @@ void gos_GetTerrainMatHeight(float* rock, float* grass, float* dirt, float* conc
 // separate TU and needs the same MC2_TERRAIN_MATERIAL_LIB gate value to drive its
 // own u_useMaterialLib upload. Same cached-static evaluation as the bridge path.
 bool gos_TerrainMaterialLibEnabled() {
-    return terrainMaterialLibEnabled();
+    static const bool enabled = mc2::gate::get<"MC2_TERRAIN_MATERIAL_LIB">();
+    return enabled;
 }
 void gos_SetTerrainNormalsFromHeightStrength(float s) {
     if (g_gos_renderer) g_gos_renderer->setTerrainNormalsFromHeightStrength(s);

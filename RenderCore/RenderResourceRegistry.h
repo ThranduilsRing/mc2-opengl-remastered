@@ -31,12 +31,12 @@ enum class RenderResourceId : uint16_t {
     LightgridGrid        = 22,  // REGISTRY-COMPUTE-IDS-1: lightgrid sphere SSBO (s_sphereSsbo, kSphereStride*kMaxLights bytes); produced by lightgrid_build (compute), default-OFF gated substrate.
     LightgridIndex       = 23,  // REGISTRY-COMPUTE-IDS-1: lightgrid per-tile index pool SSBO (s_indexPool, nTiles*kMaxLights uints); produced by lightgrid_build (compute), default-OFF gated substrate.
     PostprocessComputeBlur = 24,// REGISTRY-COMPUTE-IDS-1: compute-blur ping-pong output substrate (postprocess_blur s_pingA, RGBA16F half-res); produced by postprocess_blur::Run (compute), default-OFF gated substrate. No consumer (substrate only).
-    ViewUniformsUbo      = 25,  // view-uniforms UBO (s_viewUniformsUbo, view_uniforms_gl.cpp); LIVE, owned + REGISTERED (view_uniforms_gl.cpp:65).
+    ViewUniformsUbo      = 25,  // reserved legacy view UBO identity; retired by P9. CPU view records remain live.
     TerrainTypeSsbo      = 26,  // LOD-chunk per-quad type SSBO (s_typeSsbo, gos_terrain_lod_chunk.cpp); LIVE, owned + REGISTERED (gos_terrain_lod_chunk.cpp:1676).
     TerrainCementSsbo    = 27,  // LOD-chunk cement-word SSBO (s_cementSsbo, gos_terrain_lod_chunk.cpp); LIVE, owned + REGISTERED (gos_terrain_lod_chunk.cpp:1857).
     StaticPropMaterialGpuBuffer = 28,  // STATICPROP-MATERIAL-SSBO-OWNER-1: static-prop MaterialGpu table SSBO (s_materialGpuSsbo, binding 5, gos_static_prop_batcher.cpp); LIVE default-ON, Mission lifetime. Distinct from mech-material MaterialGpuBuffer(id5, binding 2).
-    MechProfileMaterialGpuBuffer = 29,  // MECH-PROFILE-SSBO-OWNER-1: mech material-profile table SSBO (s_ssbo, binding 7, gos_materials.cpp); Persistent lifetime (init→shutdown). Only created when MC2_MECH_SURFACE_MATERIAL loads a profile; default run leaves glName==0. Distinct from binding-5 static-prop and binding-2 mech-material tables.
-    TerrainVisualHeightSsbo = 30,  // TERRAIN-VISUAL-HEIGHT-SSBO-OWNER-1: LOD-chunk 4x visual heightfield SSBO (s_visualHeightSsbo, GL binding 26, gos_terrain_lod_chunk.cpp); Mission lifetime. CREATE gated upstream (mclib/terrain.cpp: MC2_TERRAIN_VISUAL_HEIGHT/_DISPLACE + visual_height_4x.r32 bake); WIP, no stock bake → default run leaves glName==0 (never registers). GL binding 26 unrelated to id numbering.
+    MechProfileMaterialGpuBuffer = 29,  // MECH-PROFILE-SSBO-OWNER-1: mech material-profile table SSBO (s_ssbo, binding 7, gos_materials.cpp); Persistent lifetime (init→shutdown). Only created when MC2_MECH_SURFACE_MATERIAL loads a profile; default run leaves the resource unregistered. Distinct from binding-5 static-prop and binding-2 mech-material tables.
+    TerrainVisualHeightSsbo = 30,  // TERRAIN-VISUAL-HEIGHT-SSBO-OWNER-1: LOD-chunk 4x visual heightfield SSBO (s_visualHeightSsbo, GL binding 26, gos_terrain_lod_chunk.cpp); Mission lifetime. CREATE gated upstream (mclib/terrain.cpp: MC2_TERRAIN_VISUAL_HEIGHT/_DISPLACE + visual_height_4x.r32 bake); WIP, no stock bake → default run leaves the resource unregistered (never registers). GL binding 26 unrelated to id numbering.
     TerrainLightVertexInputSsbo = 31,  // TERRAIN-LIGHTING-SSBO-OWNER-1: terrain-lighting compute vertex-input SSBO (s_vertexInputSsbo, GL binding 0, gos_terrain_lighting.cpp); Mission lifetime (created mission_init, destroyed mission_shutdown). LIVE default-ON (MC2_TERRAIN_LIGHTING_GPU); feeds the Terrain pass via compute dispatch. Staging ring is Tier-2, NOT owned. GL binding 0 unrelated to id numbering.
     TerrainLightInputSsbo = 32,  // TERRAIN-LIGHTING-SSBO-OWNER-1: terrain-lighting compute per-light SSBO (s_lightInputSsbo, GL binding 1, gos_terrain_lighting.cpp); Mission lifetime. LIVE default-ON. GL binding 1 unrelated to id numbering.
     TerrainLightComputeOutputSsbo = 33,  // TERRAIN-LIGHTING-SSBO-OWNER-1: terrain-lighting compute output SSBO (s_computeOutputSsbo, GL binding 2, gos_terrain_lighting.cpp); Mission lifetime. LIVE default-ON; VRAM output the Terrain pass + water/mask consumers read. GL binding 2 unrelated to id numbering.
@@ -129,7 +129,7 @@ enum class RenderResourceFormat : uint8_t {
     BufferRaw = 7,
 };
 
-// Per-resource descriptor. GL-free conceptually; glName is debug-only.
+// Per-resource descriptor. Native owners retain driver handles separately.
 // valid=false means the slot is registered but the resource is currently
 // unavailable (mission not loaded, subsystem not yet initialized, etc.).
 // debugName must point to a string literal; never heap-allocated.
@@ -145,7 +145,6 @@ struct RenderResourceDesc {
     uint32_t             height         = 0;
     uint32_t             layers         = 1;
     uint32_t             samples        = 1;
-    uint32_t             glName         = 0;    // debug only; 0 if unavailable
     uint64_t             sizeBytes      = 0;    // 0 if unknown
     uint32_t             producerPassId = 0;
     uint32_t             consumerMask   = 0;

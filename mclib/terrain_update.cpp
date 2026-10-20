@@ -770,13 +770,7 @@ long Terrain::update (void)
 		glm::vec3 camOrigin = eye->getCameraOrigin();
 		gos_SetTerrainCameraPos(camOrigin.x, camOrigin.y, camOrigin.z);
 
-		// Pass camera look direction for POM (direction camera looks toward terrain)
-		glm::vec3 lookDir = eye->getLookVector();
-		// Swizzle same as camera pos, then normalize
-		float lx = -lookDir.x, ly = lookDir.z, lz = lookDir.y;
-		float len = sqrtf(lx*lx + ly*ly + lz*lz);
-		if (len > 0.001f) { lx /= len; ly /= len; lz /= len; }
-		gos_SetTerrainViewDir(lx, ly, lz);
+
 	}
 
 	return TRUE;

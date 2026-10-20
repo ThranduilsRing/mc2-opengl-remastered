@@ -45,7 +45,6 @@ static std::array<PipelineDesc, static_cast<size_t>(PipelineId::Count_)> s_descs
     // [1] StaticPropOpaque
     // Renders the alpha-OFF texture-array group. Full depth, no blending.
     {
-        /* glProgramName       */ 0u,              // filled by bindProgram()
         /* blend               */ BlendMode::Opaque,
         /* depthTestEnable     */ true,
         /* depthWriteEnable    */ true,
@@ -63,7 +62,6 @@ static std::array<PipelineDesc, static_cast<size_t>(PipelineId::Count_)> s_descs
     // Renders the alpha-ON texture-array group via shader discard.
     // GL blend stays disabled; depth write stays on (binary cutout writes depth).
     {
-        /* glProgramName       */ 0u,
         /* blend               */ BlendMode::AlphaTest,
         /* depthTestEnable     */ true,
         /* depthWriteEnable    */ true,            // intentional: discard ≠ blend
@@ -85,11 +83,9 @@ static std::array<PipelineDesc, static_cast<size_t>(PipelineId::Count_)> s_descs
     // objectIdWriteEnabled stays false here (descriptive; applyPipeline does not
     // reconfigure draw buffers). ssboBindingsMask = 0: the mech batcher binds its
     // own SSBOs (instance/bone/material/lights) manually; the mask is metadata
-    // and applyPipeline does not bind SSBOs. glProgramName filled by bindProgram()
-    // at mech shader link (loadProgramsIfNeeded). The mech sampler bind stays
+    // and does not bind SSBOs. The mech sampler bind stays
     // manual (no PipelineDesc sampler field).
     {
-        /* glProgramName       */ 0u,              // filled by bindProgram()
         /* blend               */ BlendMode::Opaque,
         /* depthTestEnable     */ true,
         /* depthWriteEnable    */ true,
@@ -109,7 +105,6 @@ static std::array<PipelineDesc, static_cast<size_t>(PipelineId::Count_)> s_descs
     // changes — same FBO stays bound. Shares the static-prop SSBOs (instance /
     // per-type / per-draw) because it reuses static_prop.vert.
     {
-        /* glProgramName       */ 0u,              // filled by bindProgram()
         /* blend               */ BlendMode::AlphaTest, // discard path; GL_BLEND off
         /* depthTestEnable     */ true,
         /* depthWriteEnable    */ true,
@@ -129,11 +124,10 @@ static std::array<PipelineDesc, static_cast<size_t>(PipelineId::Count_)> s_descs
     // [5] TerrainOverlay — cement/perimeter overlay (terrain_overlay.{vert,frag}).
     // TERRAIN-OVERLAY-DECAL-PIPELINE-REGISTRATION-1: DESCRIPTIVE — states the truth
     // (gosRenderer::drawTerrainOverlays/drawDecalStaticBatch set this by hand) but
-    // is NOT applyPipeline-driven; glProgramName stays 0. Opaque, reverse-Z GEQUAL,
+    // is descriptive pipeline intent. Opaque, reverse-Z GEQUAL,
     // depth-write on, cull DISABLED (overlay tiles draw both faces). frag writes
     // color0 (FragColor) + color1 (GBuffer1).
     {
-        /* glProgramName       */ 0u,
         /* blend               */ BlendMode::Opaque,
         /* depthTestEnable     */ true,
         /* depthWriteEnable    */ true,
@@ -153,7 +147,6 @@ static std::array<PipelineDesc, static_cast<size_t>(PipelineId::Count_)> s_descs
     // (BlendMode::AlphaBlend), depth-test on but depth-WRITE OFF (decals must not
     // occlude), reverse-Z GEQUAL, cull disabled. frag writes color0 + color1.
     {
-        /* glProgramName       */ 0u,
         /* blend               */ BlendMode::AlphaBlend, // FIRST alpha-blend row
         /* depthTestEnable     */ true,
         /* depthWriteEnable    */ false,           // decals do not write depth
@@ -168,7 +161,6 @@ static std::array<PipelineDesc, static_cast<size_t>(PipelineId::Count_)> s_descs
     },
     // [7] VfxTubeAlpha — tube_ribbon, SRC_ALPHA/ONE_MINUS_SRC_ALPHA
     {
-        /* glProgramName       */ 0u,
         /* blend               */ BlendMode::AlphaBlend,
         /* depthTestEnable     */ true,
         /* depthWriteEnable    */ false,
@@ -183,7 +175,6 @@ static std::array<PipelineDesc, static_cast<size_t>(PipelineId::Count_)> s_descs
     },
     // [8] VfxTubeAdditive — tube_ribbon, ONE/ONE (DIFFERS from billboard/mesh; schema-exact)
     {
-        /* glProgramName       */ 0u,
         /* blend               */ BlendMode::AdditiveOneOne, // ONE/ONE (differs from billboard/mesh)
         /* depthTestEnable     */ true,
         /* depthWriteEnable    */ false,
@@ -198,7 +189,6 @@ static std::array<PipelineDesc, static_cast<size_t>(PipelineId::Count_)> s_descs
     },
     // [9] VfxMeshAlpha — vfx_mesh, SRC_ALPHA/ONE_MINUS_SRC_ALPHA
     {
-        /* glProgramName       */ 0u,
         /* blend               */ BlendMode::AlphaBlend,
         /* depthTestEnable     */ true,
         /* depthWriteEnable    */ false,
@@ -213,7 +203,6 @@ static std::array<PipelineDesc, static_cast<size_t>(PipelineId::Count_)> s_descs
     },
     // [10] VfxMeshAdditive — vfx_mesh, SRC_ALPHA/ONE (schema-exact)
     {
-        /* glProgramName       */ 0u,
         /* blend               */ BlendMode::AdditiveSrcAlphaOne, // SRC_ALPHA/ONE (same as billboard)
         /* depthTestEnable     */ true,
         /* depthWriteEnable    */ false,
@@ -241,15 +230,6 @@ const PipelineDesc& getPipelineDesc(PipelineId id) {
     if (idx == 0u || idx >= static_cast<size_t>(PipelineId::Count_))
         return s_nullDesc;
     return s_descs[idx];
-}
-
-void bindProgram(PipelineId id, uint32_t glProgramName) {
-    const auto idx = static_cast<size_t>(id);
-    assert(idx > 0u && idx < static_cast<size_t>(PipelineId::Count_) &&
-           "bindProgram: invalid PipelineId");
-    if (idx == 0u || idx >= static_cast<size_t>(PipelineId::Count_))
-        return;
-    s_descs[idx].glProgramName = glProgramName;
 }
 
 // SPIRV-MECHOPAQUE-PIPELINEKEY-INTEGRATION-1: per-PipelineId logical variant key.

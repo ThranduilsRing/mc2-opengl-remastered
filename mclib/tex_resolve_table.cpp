@@ -6,7 +6,7 @@
 #include "../GameOS/gameos/gos_profiler.h"   // ZoneScopedN
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>          // memset
+#include <algorithm>
 #include "Gates/gate.h"
 
 TexResolveTable g_texResolveTable = {};
@@ -22,6 +22,13 @@ namespace {
     uint64_t s_oobCount            = 0;
     constexpr uint64_t kMaxMismatchPrints = 32;
     constexpr uint64_t kMaxOobPrints      = 16;
+    void advanceMemo() {
+        if (++g_texResolveTable.memoGeneration==0) {
+            std::fill(g_texResolveTable.stamps.begin(),g_texResolveTable.stamps.end(),0);
+            g_texResolveTable.memoGeneration=1;
+        }
+    }
+
 }
 
 void texResolveLogMismatch(DWORD nodeId, DWORD table_h, DWORD legacy_h)
@@ -38,8 +45,8 @@ void texResolveLogOOB(DWORD nodeId)
 {
     if (s_oobCount++ < kMaxOobPrints) {
         MC2_DIAGF("[TEX_RESOLVE v1] event=oob_node frame=%llu nodeId=%u max=%d\n",
-               static_cast<unsigned long long>(g_texResolveTable.buildGeneration),
-               static_cast<unsigned>(nodeId), static_cast<int>(MC_MAXTEXTURES));
+               (unsigned long long)g_texResolveTable.buildGeneration,
+               (unsigned)nodeId, (int)mc2::textures::assetCapacity());
         fflush(stdout);
     }
 }
@@ -56,7 +63,9 @@ void initTexResolveTable(void)
     }
     g_texResolveTable.trace = mc2::gate::get<"MC2_MODERN_TEX_RESOLVE_TRACE">();
 
-    memset(g_texResolveTable.handles, 0xFF, sizeof(g_texResolveTable.handles));
+    g_texResolveTable.handles.clear();
+    g_texResolveTable.stamps.clear();
+    g_texResolveTable.memoGeneration=1;
     g_texResolveTable.buildGeneration   = 0;
     g_texResolveTable.resolvedThisFrame = 0;
     g_texResolveTable.frameActive       = false;  // armed by first beginFrameTexResolve
@@ -65,8 +74,8 @@ void initTexResolveTable(void)
     if (g_texResolveTable.validate)      mode = "validate";
     else if (g_texResolveTable.enabled)  mode = "on (default)";
 
-    MC2_DIAGF("[TEX_RESOLVE v1] event=startup mode=%s max_textures=%d\n",
-           mode, static_cast<int>(MC_MAXTEXTURES));
+    MC2_DIAGF("[TEX_RESOLVE v1] event=startup mode=%s asset_capacity=%d\n",
+           mode, (int)mc2::textures::assetCapacity());
     fflush(stdout);
 
     atexit(&shutdownTexResolveTable);
@@ -89,7 +98,9 @@ void beginFrameTexResolve(uint64_t frameId)
     // accumulate it into s_totalResolves before zeroing.
     g_texResolveTable.resolvedThisFrame = 0;
 
-    memset(g_texResolveTable.handles, 0xFF, sizeof(g_texResolveTable.handles));
+    g_texResolveTable.handles.resize(mc2::textures::assetCapacity(),TexResolveTable::kSentinel);
+    g_texResolveTable.stamps.resize(g_texResolveTable.handles.size(),0);
+    advanceMemo();
     g_texResolveTable.frameActive = true;
 
     if (g_texResolveTable.trace) {
@@ -105,7 +116,7 @@ void invalidateTexResolveTable(void)
     // after Terrain::geometry armed the table). Mission::destroy has just
     // released every terrain node, so the memoized gos handles are stale.
     if (!g_texResolveTable.enabled) return;
-    memset(g_texResolveTable.handles, 0xFF, sizeof(g_texResolveTable.handles));
+    advanceMemo();
 }
 
 void endFrameTexResolve(void)

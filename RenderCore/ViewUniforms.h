@@ -1,16 +1,8 @@
 #pragma once
-// RenderCore/ViewUniforms.h — per-frame view/projection ABI contract.
-//
-// SHADER-SCHEMA-2: this struct is the C++ authority for the ViewUniforms
-// SSBO/UBO layout. GLSL mirror: shaders/include/view_uniforms.hglsl.
-// ABI gate: cmake --build build64 --target shader_schema
-//
-// Row-major storage (matches GL_FALSE upload convention used throughout
-// the engine). GLSL mat4 reads columns; ssbo_readViewUniforms() caller
-// must assemble column-major mat4 from row-major rows if needed.
-//
-// Not yet wired into any shader. Defines the contract that F1 Phase 3
-// (ViewUniforms atomic flip) and multi-view work must honour.
+// CPU view/projection record published by the view registry and frame packets.
+// The layout is also exercised by the offline shader-schema fixture; native
+// renderers consume frame-feed matrices rather than a shared driver view UBO.
+// Row-major storage; the GL suffix identifies the existing clip-space convention.
 
 #include <cstddef>   // offsetof
 #include <cstdint>   // uint32_t
@@ -31,10 +23,8 @@ static_assert(offsetof(ViewUniforms, worldToClipGL) ==   0, "worldToClipGL offse
 static_assert(offsetof(ViewUniforms, worldToViewGL) ==  64, "worldToViewGL offset");
 static_assert(offsetof(ViewUniforms, cameraWorldPos) == 128, "cameraWorldPos offset");
 
-// UBO binding point for ViewUniforms. Binding 2 is reserved by the compute-cull
-// frustum UBO (gpu_cull_compute.cpp CULL_UBO_BINDING=2). Binding 3 is the next
-// free UBO slot (UBO and SSBO namespaces are separate in GL 4.3+).
-// GL impl: GameOS/gameos/view_uniforms_gl.h
+// Reserved binding for the offline view_uniforms_contract shader fixture only.
+// There is no production view UBO or driver binding.
 constexpr uint32_t kViewUniformsBinding = 3;
 
 } // namespace RenderCore

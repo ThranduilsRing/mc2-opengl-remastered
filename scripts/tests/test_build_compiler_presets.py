@@ -320,3 +320,32 @@ def test_cache_launcher_rewrites_replayed_include_paths(tmp_path, monkeypatch):
     assert Path(cl.remap(str(other / "mclib" / "a.h"), str(own), roots, incs)) == own / "mclib" / "a.h"
     assert Path(cl.remap(str(other / "oldbld" / "generated" / "fp.h"), str(own), roots, incs)) == own / "bld" / "generated" / "fp.h"
     assert cl.remap("C:/Program Files/sdk/x.h", str(own), roots, incs) == "C:/Program Files/sdk/x.h"
+
+
+def test_external_build_root_reaches_every_output_without_moving_sources(monkeypatch, tmp_path):
+    calls = record_runs(monkeypatch, bat)
+    children = []
+    monkeypatch.setattr(bat.subprocess, "run", lambda cmd, **kw: children.append(cmd) or SimpleNamespace(returncode=0))
+    monkeypatch.setattr(bat.cn, "cache_cmake_args", lambda root: (["-DMC2_COMPILE_CACHE=ON"], {}))
+    monkeypatch.setattr(bat.cn, "compile_cache_env", lambda root: {})
+    external = tmp_path / "external trees"
+    assert bat.main(["--reconfigure", "--build-root", str(external), "-j2"]) == 0
+    for command, stage, phase, kwargs in calls:
+        if phase == "configure":
+            assert Path(command[command.index("-B") + 1]).is_relative_to(external)
+            assert Path(command[command.index("-S") + 1]).is_relative_to(ROOT)
+        elif stage == "root":
+            assert Path(command[command.index("-C") + 1]).is_relative_to(external)
+        else:
+            assert Path(command[command.index("--build") + 1]).is_relative_to(external)
+    child = children[0]
+    assert Path(child[child.index("--seam-tree") + 1]) == external / bat.TREE
+    assert Path(child[child.index("--build-root") + 1]) == external
+
+
+def test_external_doctest_output_uses_source_checkout(monkeypatch, tmp_path):
+    calls = record_runs(monkeypatch, bch)
+    assert bch.main(["--unit-only", "--compile-cache", "--build-root", str(tmp_path), "-j2"]) == 0
+    configure = calls[0][0]
+    assert Path(configure[configure.index("-B") + 1]) == tmp_path / "build-cc-tests"
+    assert Path(configure[configure.index("-S") + 1]) == ROOT / "tests/unit"

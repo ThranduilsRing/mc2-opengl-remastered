@@ -320,25 +320,6 @@
    "count": 1
   },
   {
-   "tag": "AMBIENT_GUARD",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "phase",
-    "pass",
-    "cmMiss",
-    "dfMiss",
-    "dwMiss",
-    "cm",
-    "df",
-    "dw",
-    "cm",
-    "df",
-    "dw"
-   ],
-   "count": 1
-  },
-  {
    "tag": "ANIMOVERRIDE",
    "ver": -1,
    "stream": "stderr",
@@ -1858,75 +1839,6 @@
    "count": 1
   },
   {
-   "tag": "BUCKET_CENSUS",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "event",
-    "gated_on",
-    "killswitch"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "BUCKET_CENSUS",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "event",
-    "kind",
-    "frames",
-    "raw_avg",
-    "raw_max",
-    "unique_avg",
-    "unique_max",
-    "canon_avg",
-    "canon_max",
-    "legacy_avg",
-    "legacy_max",
-    "sentinel_avg"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "BUCKET_CENSUS",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "event",
-    "kind",
-    "frames",
-    "raw_min",
-    "raw_avg",
-    "raw_max",
-    "unique_min",
-    "unique_avg",
-    "unique_max",
-    "canon_min",
-    "canon_avg",
-    "canon_max",
-    "legacy_min",
-    "legacy_avg",
-    "legacy_max",
-    "sentinel_avg"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "BUCKET_CENSUS",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "frame",
-    "raw",
-    "unique",
-    "sentinel",
-    "canon_nosort",
-    "legacy"
-   ],
-   "count": 1
-  },
-  {
    "tag": "BUILDING_PBR",
    "ver": -1,
    "stream": "stderr",
@@ -2123,27 +2035,19 @@
    "count": 1
   },
   {
-   "tag": "CLUSTER_DEPTH_PYRAMID",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [],
-   "count": 1
-  },
-  {
    "tag": "COLORMAP",
    "ver": -1,
    "stream": "stdout",
    "keys": [],
-   "count": 12
+   "count": 11
   },
   {
    "tag": "COLORMAP",
    "ver": -1,
    "stream": "stdout",
    "keys": [
-    "fmt",
-    "bytes",
-    "gltex"
+    "format",
+    "bytes"
    ],
    "count": 1
   },
@@ -2370,7 +2274,7 @@
   {
    "tag": "CURSOR",
    "ver": -1,
-   "stream": "log",
+   "stream": "file",
    "keys": [
     "f",
     "drawMouse",
@@ -2384,7 +2288,7 @@
   {
    "tag": "CURSOR",
    "ver": -1,
-   "stream": "log",
+   "stream": "file",
    "keys": [
     "name",
     "realHack",
@@ -2398,7 +2302,7 @@
   {
    "tag": "CURSOR",
    "ver": -1,
-   "stream": "log",
+   "stream": "file",
    "keys": [
     "startMode",
     "drawMouse"
@@ -2408,7 +2312,7 @@
   {
    "tag": "CURSOR",
    "ver": -1,
-   "stream": "log",
+   "stream": "file",
    "keys": [
     "texHandle",
     "texWidth"
@@ -2578,16 +2482,6 @@
    "ver": -1,
    "stream": "stderr",
    "keys": [],
-   "count": 2
-  },
-  {
-   "tag": "DRAWBUF",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "set",
-    "attachments"
-   ],
    "count": 2
   },
   {
@@ -3289,7 +3183,7 @@
   {
    "tag": "ENCYCLO",
    "ver": -1,
-   "stream": "log",
+   "stream": "file",
    "keys": [
     "chassisScale",
     "file"
@@ -3299,7 +3193,7 @@
   {
    "tag": "ENCYCLO",
    "ver": -1,
-   "stream": "log",
+   "stream": "file",
    "keys": [
     "row",
     "mech",
@@ -3311,7 +3205,7 @@
   {
    "tag": "ENCYCLO",
    "ver": -1,
-   "stream": "log",
+   "stream": "file",
    "keys": [
     "text",
     "lookup",
@@ -3428,10 +3322,7 @@
    "stream": "stderr",
    "keys": [
     "island",
-    "postcond",
-    "bound",
-    "owned",
-    "failures"
+    "postcond"
    ],
    "count": 1
   },
@@ -3442,9 +3333,7 @@
    "keys": [
     "island",
     "postcond",
-    "err",
-    "owned",
-    "failures"
+    "errors"
    ],
    "count": 1
   },
@@ -3464,25 +3353,7 @@
    "stream": "stderr",
    "keys": [
     "pass",
-    "hint",
-    "cmMiss",
-    "dfMiss",
-    "dwMiss",
-    "failures"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "EXECUTOR_TOPLEVEL",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "pass",
-    "hint",
-    "declFbo",
-    "actualFbo",
-    "boundFbo",
-    "failures"
+    "hint"
    ],
    "count": 2
   },
@@ -3493,10 +3364,9 @@
    "keys": [
     "pass",
     "hint",
-    "err",
-    "failures"
+    "target"
    ],
-   "count": 1
+   "count": 2
   },
   {
    "tag": "EXIT",
@@ -3518,19 +3388,6 @@
     "solid",
     "overlay",
     "editor"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "FBO_GUARD",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "phase",
-    "passId",
-    "declTarget",
-    "actualTarget",
-    "boundFbo"
    ],
    "count": 1
   },
@@ -3766,35 +3623,6 @@
    "count": 1
   },
   {
-   "tag": "GL",
-   "ver": -1,
-   "stream": "stdout",
-   "keys": [
-    "id"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "GL",
-   "ver": -1,
-   "stream": "stdout",
-   "keys": [
-    "max_texture_size",
-    "max_ssbo_block",
-    "max_combined_texture_units"
-   ],
-   "count": 2
-  },
-  {
-   "tag": "GLSTATEGUARD",
-   "ver": 1,
-   "stream": "stdout",
-   "keys": [
-    "slot"
-   ],
-   "count": 1
-  },
-  {
    "tag": "GOM_UPDATE_COST",
    "ver": 1,
    "stream": "buffer",
@@ -3842,117 +3670,6 @@
    "ver": -1,
    "stream": "stderr",
    "keys": [],
-   "count": 8
-  },
-  {
-   "tag": "GOS_MATERIALS",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "MC2_MATERIAL_GPU"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "GOS_MATERIALS",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "MC2_MECH_SURFACE_MATERIAL"
-   ],
-   "count": 2
-  },
-  {
-   "tag": "GOS_MATERIALS",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "normalTex",
-    "ormTex",
-    "flags"
-   ],
-   "count": 3
-  },
-  {
-   "tag": "GOS_MATERIALS",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "ssbo"
-   ],
-   "count": 2
-  },
-  {
-   "tag": "GOS_MATERIALS",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "tex"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "GOS_MATERIALS",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "tex",
-    "fmt"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "GOS_MATERIALS",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "tex",
-    "rough",
-    "metal"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "GPU",
-   "ver": -1,
-   "stream": "stdout",
-   "keys": [],
-   "count": 10
-  },
-  {
-   "tag": "GPUBUF",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "event",
-    "tag"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "GPUBUF",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "event",
-    "tag",
-    "frames",
-    "vcap",
-    "vstride",
-    "icap",
-    "istride"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "GPUBUF",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "event",
-    "tag",
-    "slot"
-   ],
    "count": 1
   },
   {
@@ -3968,20 +3685,6 @@
    "count": 1
   },
   {
-   "tag": "GPUBUF",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "tag",
-    "kind",
-    "frames",
-    "vbBytes",
-    "ibBytes",
-    "liveFences"
-   ],
-   "count": 1
-  },
-  {
    "tag": "GPUBUF_INIT",
    "ver": -1,
    "stream": "stderr",
@@ -3993,7 +3696,7 @@
    "ver": -1,
    "stream": "stderr",
    "keys": [],
-   "count": 6
+   "count": 2
   },
   {
    "tag": "GPUPROPS",
@@ -4061,62 +3764,41 @@
    "count": 1
   },
   {
-   "tag": "GPU_ALIGN",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "SSBO_OFFSET_ALIGNMENT"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "GPU_ALIGN",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "tag",
-    "buffer"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "GPU_ALIGN",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "tag",
-    "offset",
-    "align",
-    "remainder"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "GPU_ALIGN",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "tag",
-    "size"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "GPU_CULL_CUTOFF_UPPERBOUND",
+   "tag": "GPU_CULL",
    "ver": 2,
    "stream": "stdout",
    "keys": [
-    "types",
-    "pool",
+    "event",
+    "frame",
+    "records",
     "visible",
-    "omittedSlots",
-    "typesCutoffPossible",
-    "emptyPoolButVisible",
-    "overflow",
-    "type",
-    "pool",
-    "vis",
-    "omit"
+    "gpu_ns"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "GPU_CULL",
+   "ver": 2,
+   "stream": "stdout",
+   "keys": [
+    "event",
+    "frame",
+    "records",
+    "visible",
+    "gpu_ns",
+    "readback_bytes"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "GPU_CULL",
+   "ver": 2,
+   "stream": "stdout",
+   "keys": [
+    "event",
+    "passed",
+    "failed",
+    "backend"
    ],
    "count": 1
   },
@@ -4132,13 +3814,6 @@
     "posMismatch"
    ],
    "count": 1
-  },
-  {
-   "tag": "GPU_DRIVEN",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [],
-   "count": 5
   },
   {
    "tag": "GPU_PARTICLES",
@@ -4305,29 +3980,6 @@
    "count": 1
   },
   {
-   "tag": "GPU_SYNC",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "tag",
-    "producer",
-    "consumer"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "GPU_SYNC",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "tag",
-    "producer",
-    "consumer",
-    "bits"
-   ],
-   "count": 1
-  },
-  {
    "tag": "GROUND_CONTACT_BLOB",
    "ver": -1,
    "stream": "stderr",
@@ -4365,56 +4017,6 @@
     "frames",
     "max_abs_delta",
     "violations"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "HDRI_SKY",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "sidecar",
-    "w",
-    "h",
-    "glIF",
-    "bytes",
-    "tex"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "HDRI_SKY",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "enabled",
-    "reason",
-    "path"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "HDRI_SKY",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "enabled",
-    "reason",
-    "path",
-    "err"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "HDRI_SKY",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "enabled",
-    "reason",
-    "path",
-    "rc",
-    "err"
    ],
    "count": 1
   },
@@ -4584,7 +4186,7 @@
   {
    "tag": "HUDSCALE",
    "ver": -1,
-   "stream": "log",
+   "stream": "file",
    "keys": [
     "active",
     "scale",
@@ -4600,7 +4202,7 @@
   {
    "tag": "HUDSCALE",
    "ver": -1,
-   "stream": "log",
+   "stream": "file",
    "keys": [
     "sw",
     "sh",
@@ -4792,15 +4394,6 @@
    "count": 1
   },
   {
-   "tag": "INSTR",
-   "ver": 1,
-   "stream": "stdout",
-   "keys": [
-    "parallel_shader_compile"
-   ],
-   "count": 2
-  },
-  {
    "tag": "INTRO_MOVIE",
    "ver": -1,
    "stream": "stdout",
@@ -4913,13 +4506,6 @@
    "count": 1
   },
   {
-   "tag": "LIGHTGRID_BUILD",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [],
-   "count": 1
-  },
-  {
    "tag": "LIGHTROW_FRESHNESS",
    "ver": 1,
    "stream": "stderr",
@@ -4971,103 +4557,8 @@
    "stream": "stderr",
    "keys": [
     "event",
-    "binding",
-    "bytes"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "LIGHTSSBO",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "event",
-    "binding",
-    "capBytes",
-    "liveBytes",
-    "prefix"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "LIGHTSSBO",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "event",
-    "old",
-    "new"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "LIGHTSSBO",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "event",
-    "oldCap",
-    "newCap",
-    "liveBytes",
-    "prefix"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "LIGHTSSBO",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "event",
     "submitted",
     "maxIdx"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "LIGHTSSBO",
-   "ver": 2,
-   "stream": "stderr",
-   "keys": [
-    "event",
-    "prefixDirty",
-    "prefix",
-    "suffix"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "LIGHTSSBO",
-   "ver": 2,
-   "stream": "stderr",
-   "keys": [
-    "event",
-    "total",
-    "prefix"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "LIGHTSSBO",
-   "ver": 2,
-   "stream": "stderr",
-   "keys": [
-    "event",
-    "total",
-    "prefix",
-    "dirty"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "LIGHTSSBO",
-   "ver": 3,
-   "stream": "stderr",
-   "keys": [
-    "event",
-    "prefix",
-    "cap",
-    "dirty"
    ],
    "count": 1
   },
@@ -5179,30 +4670,6 @@
    "count": 1
   },
   {
-   "tag": "LIGHT_UPLOAD_STATS",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "frames",
-    "uploadBytes",
-    "baselineBytes",
-    "savedBytes"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "LINEAR_AUDIT",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "event",
-    "framebuffer_srgb",
-    "scene_color_internalformat",
-    "verdict"
-   ],
-   "count": 1
-  },
-  {
    "tag": "LINKUP",
    "ver": -1,
    "stream": "stdout",
@@ -5232,7 +4699,7 @@
    "stream": "stderr",
    "keys": [
     "frame",
-    "gltex",
+    "atlas_side",
     "scenarioTime"
    ],
    "count": 1
@@ -5323,71 +4790,6 @@
   {
    "tag": "LOGISTICS",
    "ver": -1,
-   "stream": "log",
-   "keys": [],
-   "count": 7
-  },
-  {
-   "tag": "LOGISTICS",
-   "ver": -1,
-   "stream": "log",
-   "keys": [
-    "artPath",
-    "objectPath"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "LOGISTICS",
-   "ver": -1,
-   "stream": "log",
-   "keys": [
-    "loaded"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "LOGISTICS",
-   "ver": -1,
-   "stream": "log",
-   "keys": [
-    "newMechAvailableCount",
-    "oldMechAvailableCount"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "LOGISTICS",
-   "ver": -1,
-   "stream": "log",
-   "keys": [
-    "open",
-    "size",
-    "tier"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "LOGISTICS",
-   "ver": -1,
-   "stream": "log",
-   "keys": [
-    "path"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "LOGISTICS",
-   "ver": -1,
-   "stream": "log",
-   "keys": [
-    "purchaseFile"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "LOGISTICS",
-   "ver": -1,
    "stream": "stdout",
    "keys": [],
    "count": 2
@@ -5437,13 +4839,6 @@
    "tag": "MATERIAL_GPU",
    "ver": 4,
    "stream": "buffer",
-   "keys": [],
-   "count": 1
-  },
-  {
-   "tag": "MATERIAL_GPU",
-   "ver": 4,
-   "stream": "buffer",
    "keys": [
     "emitted",
     "sidecar",
@@ -5473,29 +4868,6 @@
     "mismatches"
    ],
    "count": 2
-  },
-  {
-   "tag": "MATERIAL_GPU",
-   "ver": 4,
-   "stream": "buffer",
-   "keys": [
-    "event",
-    "materials",
-    "bytes"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "MATERIAL_GPU",
-   "ver": 4,
-   "stream": "buffer",
-   "keys": [
-    "event",
-    "materials",
-    "bytes",
-    "emitted"
-   ],
-   "count": 1
   },
   {
    "tag": "MATERIAL_GPU",
@@ -5539,18 +4911,9 @@
    "count": 3
   },
   {
-   "tag": "MECHICON",
-   "ver": -1,
-   "stream": "stdout",
-   "keys": [
-    "id"
-   ],
-   "count": 2
-  },
-  {
    "tag": "MECHLIST",
    "ver": -1,
-   "stream": "log",
+   "stream": "file",
    "keys": [
     "chassisNameID",
     "chassisText",
@@ -5948,16 +5311,6 @@
    "count": 1
   },
   {
-   "tag": "MODE",
-   "ver": -1,
-   "stream": "stdout",
-   "keys": [
-    "vsync",
-    "tracy"
-   ],
-   "count": 2
-  },
-  {
    "tag": "MODOVERRIDE",
    "ver": -1,
    "stream": "stderr",
@@ -6081,7 +5434,7 @@
    "ver": -1,
    "stream": "stdout",
    "keys": [],
-   "count": 5
+   "count": 6
   },
   {
    "tag": "MOVE_BD",
@@ -6306,6 +5659,28 @@
    "stream": "stdout",
    "keys": [
     "nodeType"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "NATIVE_TARGET_GUARD",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "phase",
+    "passId",
+    "unavailableTarget"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "NO_GL_RUNTIME",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "context",
+    "opengl32_loaded",
+    "glew32_loaded"
    ],
    "count": 1
   },
@@ -6748,64 +6123,6 @@
    "count": 1
   },
   {
-   "tag": "PATCH_STREAM",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "event",
-    "bytes",
-    "max_recipes"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "PATCH_STREAM",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "event",
-    "bytes_per_slot",
-    "slots"
-   ],
-   "count": 2
-  },
-  {
-   "tag": "PATCH_STREAM",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "event",
-    "reason"
-   ],
-   "count": 4
-  },
-  {
-   "tag": "PATCH_STREAM",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "event",
-    "slot",
-    "key",
-    "cached",
-    "incoming"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "PATCH_STREAM",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "event",
-    "slot",
-    "kind",
-    "count",
-    "cap"
-   ],
-   "count": 2
-  },
-  {
    "tag": "PATH",
    "ver": 1,
    "stream": "stderr",
@@ -6903,7 +6220,7 @@
    "keys": [
     "drawable",
     "screenRes",
-    "glViewport"
+    "sceneViewport"
    ],
    "count": 1
   },
@@ -6964,36 +6281,16 @@
    "count": 1
   },
   {
-   "tag": "PIPELINE_BIND",
+   "tag": "PREVIEW",
    "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "depth",
-    "cull",
-    "frontFace",
-    "polygonOffset",
-    "blend"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "POSTPROCESS_BLUR",
-   "ver": 1,
-   "stream": "stderr",
+   "stream": "file",
    "keys": [],
    "count": 1
   },
   {
    "tag": "PREVIEW",
    "ver": -1,
-   "stream": "log",
-   "keys": [],
-   "count": 1
-  },
-  {
-   "tag": "PREVIEW",
-   "ver": -1,
-   "stream": "log",
+   "stream": "file",
    "keys": [
     "argb"
    ],
@@ -7002,7 +6299,7 @@
   {
    "tag": "PREVIEW",
    "ver": -1,
-   "stream": "log",
+   "stream": "file",
    "keys": [
     "bounds",
     "viewMul",
@@ -7016,7 +6313,7 @@
   {
    "tag": "PREVIEW",
    "ver": -1,
-   "stream": "log",
+   "stream": "file",
    "keys": [
     "cameraToClip"
    ],
@@ -7025,55 +6322,18 @@
   {
    "tag": "PREVIEW",
    "ver": -1,
-   "stream": "log",
+   "stream": "file",
    "keys": [
     "count",
     "isHUD",
-    "curFbo"
+    "backend"
    ],
    "count": 1
   },
   {
    "tag": "PREVIEW",
    "ver": -1,
-   "stream": "log",
-   "keys": [
-    "fbo",
-    "depthTest",
-    "depthMask",
-    "cullFace",
-    "frontFace",
-    "cullMode",
-    "vp",
-    "globalScaleFactor",
-    "bounds"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "PREVIEW",
-   "ver": -1,
-   "stream": "log",
-   "keys": [
-    "fboAfterBegin"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "PREVIEW",
-   "ver": -1,
-   "stream": "log",
-   "keys": [
-    "glErr",
-    "nonBgCount",
-    "bbox"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "PREVIEW",
-   "ver": -1,
-   "stream": "log",
+   "stream": "file",
    "keys": [
     "mechShape"
    ],
@@ -7082,7 +6342,7 @@
   {
    "tag": "PREVIEW",
    "ver": -1,
-   "stream": "log",
+   "stream": "file",
    "keys": [
     "pObject",
     "bIsComponent"
@@ -7092,7 +6352,7 @@
   {
    "tag": "PREVIEW",
    "ver": -1,
-   "stream": "log",
+   "stream": "file",
    "keys": [
     "screenW",
     "screenH",
@@ -7105,7 +6365,7 @@
   {
    "tag": "PREVIEW",
    "ver": -1,
-   "stream": "log",
+   "stream": "file",
    "keys": [
     "shouldRender",
     "visible",
@@ -7117,7 +6377,7 @@
   {
    "tag": "PREVIEW",
    "ver": -1,
-   "stream": "log",
+   "stream": "file",
    "keys": [
     "tex",
     "panel",
@@ -7129,7 +6389,7 @@
   {
    "tag": "PREVIEW",
    "ver": -1,
-   "stream": "log",
+   "stream": "file",
    "keys": [
     "viewMul",
     "viewAdd",
@@ -7141,7 +6401,7 @@
   {
    "tag": "PREVIEW",
    "ver": -1,
-   "stream": "log",
+   "stream": "file",
    "keys": [
     "z"
    ],
@@ -7542,23 +6802,6 @@
    "count": 1
   },
   {
-   "tag": "RENDER_CONTRACT",
-   "ver": 2,
-   "stream": "stderr",
-   "keys": [],
-   "count": 1
-  },
-  {
-   "tag": "RENDER_CONTRACT_ASSERT",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "pass",
-    "hint"
-   ],
-   "count": 1
-  },
-  {
    "tag": "RENDER_PASS",
    "ver": 1,
    "stream": "stdout",
@@ -7567,14 +6810,13 @@
   },
   {
    "tag": "RENDER_PASS",
-   "ver": 1,
+   "ver": 2,
    "stream": "stdout",
    "keys": [
     "frame",
     "pass",
-    "fbo",
-    "viewport",
-    "drawbuffers",
+    "target",
+    "available",
     "phase",
     "hint"
    ],
@@ -7831,17 +7073,6 @@
    "count": 1
   },
   {
-   "tag": "RES_DIAG",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "sceneFBO",
-    "screenWidth",
-    "drawable"
-   ],
-   "count": 1
-  },
-  {
    "tag": "REVERSE_Z",
    "ver": 1,
    "stream": "stderr",
@@ -7940,7 +7171,7 @@
   {
    "tag": "SAVELOAD",
    "ver": -1,
-   "stream": "log",
+   "stream": "file",
    "keys": [
     "op",
     "file",
@@ -7976,6 +7207,34 @@
     "ibl_sh",
     "sun_match",
     "cum_sun_mismatch"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SCENE_TARGETS",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "SCENE_TARGETS",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "backend",
+    "extent",
+    "object_id"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SCENE_TARGETS",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "slot",
+    "reason"
    ],
    "count": 1
   },
@@ -8118,7 +7377,7 @@
     "pkt",
     "nodeIdx",
     "gosHandle",
-    "glTexId",
+    "sourceHandle",
     "W",
     "H",
     "override",
@@ -8185,29 +7444,6 @@
     "pkt",
     "layer",
     "group"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "SHADER",
-   "ver": -1,
-   "stream": "stdout",
-   "keys": [],
-   "count": 2
-  },
-  {
-   "tag": "SHADER ERROR",
-   "ver": -1,
-   "stream": "stdout",
-   "keys": [],
-   "count": 2
-  },
-  {
-   "tag": "SHADER ERROR",
-   "ver": -1,
-   "stream": "stdout",
-   "keys": [
-    "id"
    ],
    "count": 1
   },
@@ -8752,22 +7988,6 @@
    "count": 1
   },
   {
-   "tag": "SPIRV",
-   "ver": -1,
-   "stream": "log",
-   "keys": [],
-   "count": 8
-  },
-  {
-   "tag": "SPIRV",
-   "ver": -1,
-   "stream": "log",
-   "keys": [
-    "key"
-   ],
-   "count": 1
-  },
-  {
    "tag": "SPLATTING",
    "ver": -1,
    "stream": "stdout",
@@ -8892,56 +8112,6 @@
    "stream": "stderr",
    "keys": [
     "group",
-    "buckets",
-    "total_bytes"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "STATICPROP_BC7",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "group",
-    "dims",
-    "layers",
-    "format",
-    "bytes"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "STATICPROP_BC7",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "group",
-    "dims",
-    "layers",
-    "format",
-    "levels",
-    "srcVkFormat",
-    "bytes"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "STATICPROP_BC7",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "group",
-    "dims",
-    "reason"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "STATICPROP_BC7",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "group",
     "layers",
     "dims",
     "levels",
@@ -8967,47 +8137,6 @@
    "keys": [
     "group",
     "srcVkFormat"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "STATICPROP_ORM",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "group",
-    "dims",
-    "layers",
-    "format",
-    "levels",
-    "realMaps"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "STATICPROP_ORM",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "group",
-    "dims",
-    "layers",
-    "format",
-    "realMaps"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "STATICPROP_ORM",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "layer",
-    "group",
-    "sidecar",
-    "reason",
-    "got",
-    "want"
    ],
    "count": 1
   },
@@ -9093,40 +8222,6 @@
     "bldg_candidates",
     "bldg_skipped",
     "bldg_miss_notStaticNow"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "STATIC_POP_SPLIT",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "event",
-    "bytes"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "STATIC_POP_SPLIT",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "event",
-    "total",
-    "cap"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "STATIC_POP_SPLIT_CMD",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "pkts",
-    "nonZeroCmds",
-    "offCmds",
-    "count",
-    "storeTotal"
    ],
    "count": 1
   },
@@ -9268,24 +8363,6 @@
   {
    "tag": "TERRAIN_CONTROLMAP",
    "ver": 1,
-   "stream": "stderr",
-   "keys": [],
-   "count": 1
-  },
-  {
-   "tag": "TERRAIN_CONTROLMAP",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "handle",
-    "side",
-    "bytes"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "TERRAIN_CONTROLMAP",
-   "ver": 1,
    "stream": "stdout",
    "keys": [
     "path"
@@ -9335,19 +8412,6 @@
    "count": 1
   },
   {
-   "tag": "TERRAIN_CULL_PROBE",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "path",
-    "frame",
-    "cull",
-    "cullMode",
-    "frontFace"
-   ],
-   "count": 1
-  },
-  {
    "tag": "TERRAIN_DECAL",
    "ver": 1,
    "stream": "stderr",
@@ -9386,97 +8450,11 @@
    "count": 2
   },
   {
-   "tag": "TERRAIN_HEIGHT_TEX",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "handle",
-    "sourceSide",
-    "factor",
-    "renderSide",
-    "wuPerSample",
-    "topLeft",
-    "bytes"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "TERRAIN_HEIGHT_TEX",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "side",
-    "stride",
-    "elevOff",
-    "blocks"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "TERRAIN_INDIRECT",
+   "tag": "TERRAIN_OVERLAY",
    "ver": 1,
    "stream": "stdout",
    "keys": [
-    "event",
-    "path",
-    "armed",
-    "gate",
-    "note"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "TERRAIN_MAT_TEX",
-   "ver": -1,
-   "stream": "stdout",
-   "keys": [],
-   "count": 5
-  },
-  {
-   "tag": "TERRAIN_MAT_TEX",
-   "ver": -1,
-   "stream": "stdout",
-   "keys": [
-    "levels"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "TERRAIN_MAT_TEX",
-   "ver": -1,
-   "stream": "stdout",
-   "keys": [
-    "levels",
-    "vram",
-    "tex"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "TERRAIN_MAT_TEX",
-   "ver": -1,
-   "stream": "stdout",
-   "keys": [
-    "mips"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "TERRAIN_MAT_TEX",
-   "ver": -1,
-   "stream": "stdout",
-   "keys": [
-    "mips",
-    "mips"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "TERRAIN_MAT_TEX",
-   "ver": -1,
-   "stream": "stdout",
-   "keys": [
-    "vkFormat"
+    "event"
    ],
    "count": 1
   },
@@ -9514,37 +8492,6 @@
     "c2",
     "c3",
     "elev_raw"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "TERRAIN_OVERLAY",
-   "ver": 1,
-   "stream": "stdout",
-   "keys": [
-    "event",
-    "vbo_gl",
-    "kept"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "TERRAIN_OVERLAY_V2",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [],
-   "count": 1
-  },
-  {
-   "tag": "TERRAIN_OVERLAY_V2",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "handle",
-    "w",
-    "h",
-    "bytes",
-    "bounds"
    ],
    "count": 1
   },
@@ -9614,104 +8561,13 @@
    "count": 1
   },
   {
-   "tag": "TESS",
-   "ver": -1,
-   "stream": "stdout",
-   "keys": [],
-   "count": 4
-  },
-  {
-   "tag": "TESS",
-   "ver": -1,
-   "stream": "stdout",
-   "keys": [
-    "MC2_TERRAIN_TESS"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "TESS",
-   "ver": -1,
-   "stream": "stdout",
-   "keys": [
-    "TCS",
-    "TES"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "TESS",
-   "ver": -1,
-   "stream": "stdout",
-   "keys": [
-    "capacity",
-    "vb"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "TESS",
-   "ver": -1,
-   "stream": "stdout",
-   "keys": [
-    "id",
-    "size"
-   ],
-   "count": 1
-  },
-  {
    "tag": "TEXLOAD",
    "ver": -1,
-   "stream": "stderr",
+   "stream": "stdout",
    "keys": [
     "uniq",
     "name"
    ],
-   "count": 1
-  },
-  {
-   "tag": "TEXMGR_BC7",
-   "ver": -1,
-   "stream": "stdout",
-   "keys": [],
-   "count": 1
-  },
-  {
-   "tag": "TEXMGR_BC7",
-   "ver": -1,
-   "stream": "stdout",
-   "keys": [
-    "name"
-   ],
-   "count": 2
-  },
-  {
-   "tag": "TEXMGR_BC7",
-   "ver": -1,
-   "stream": "stdout",
-   "keys": [
-    "name",
-    "fmt",
-    "bytes"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "TEXMGR_BC7",
-   "ver": -1,
-   "stream": "stdout",
-   "keys": [
-    "name",
-    "fmt",
-    "err"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "TEXMGR_KTX_PRIMARY",
-   "ver": -1,
-   "stream": "stdout",
-   "keys": [],
    "count": 1
   },
   {
@@ -9733,6 +8589,20 @@
    "ver": 1,
    "stream": "log",
    "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "TEXTURE_SOURCES",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "boundary",
+    "live",
+    "roots",
+    "owned",
+    "encoded_bytes",
+    "legacy_cache_bytes"
+   ],
    "count": 1
   },
   {
@@ -9798,53 +8668,6 @@
     "since"
    ],
    "count": 2
-  },
-  {
-   "tag": "THIN_DEBUG",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "event",
-    "frame",
-    "fast",
-    "legacy",
-    "fail_active",
-    "fail_thin",
-    "fail_ready",
-    "fail_over",
-    "fail_handle0",
-    "fail_overlay",
-    "fail_water"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "THIN_DEBUG",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "event",
-    "proj_row0",
-    "proj_row1",
-    "tmvp_diag"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "THIN_TERRAIN",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [],
-   "count": 1
-  },
-  {
-   "tag": "THIN_TERRAIN",
-   "ver": -1,
-   "stream": "stdout",
-   "keys": [
-    "prog"
-   ],
-   "count": 1
   },
   {
    "tag": "TILE_CENSUS",
@@ -9954,13 +8777,6 @@
    "count": 1
   },
   {
-   "tag": "TRACY",
-   "ver": -1,
-   "stream": "stdout",
-   "keys": [],
-   "count": 2
-  },
-  {
    "tag": "TREE_REG_DIAG",
    "ver": 1,
    "stream": "stderr",
@@ -9990,27 +8806,6 @@
    "count": 1
   },
   {
-   "tag": "TXM",
-   "ver": -1,
-   "stream": "buffer",
-   "keys": [
-    "nodeName",
-    "handle",
-    "lzCompSize"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "TXM",
-   "ver": 1,
-   "stream": "buffer",
-   "keys": [
-    "event",
-    "peak_textures"
-   ],
-   "count": 2
-  },
-  {
    "tag": "TXMMGR_BOUNDS",
    "ver": 1,
    "stream": "stderr",
@@ -10034,81 +8829,12 @@
    "count": 1
   },
   {
-   "tag": "TXMMGR_FLUSH",
-   "ver": -1,
-   "stream": "stdout",
-   "keys": [
-    "mission_index",
-    "before_flush_used",
-    "freed_count",
-    "kept_neverflush_count",
-    "kept_other_count",
-    "after_flush_used"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "TXMMGR_SURVIVOR",
-   "ver": -1,
-   "stream": "stdout",
-   "keys": [
-    "mission_index",
-    "rank",
-    "count",
-    "key"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "TXMMGR_TEXTURE_AUDIT",
-   "ver": -1,
-   "stream": "stdout",
-   "keys": [
-    "mission_index",
-    "total_nodes_used",
-    "neverflush_nodes",
-    "flushable_nodes",
-    "gos_handles_live",
-    "allocated_this_mission",
-    "released_on_flush",
-    "survived_flush",
-    "anonymous_nodes",
-    "from_memory_nodes"
-   ],
-   "count": 1
-  },
-  {
    "tag": "TerrainLOD parity",
    "ver": -1,
    "stream": "stdout",
    "keys": [
     "legacy",
     "chunk"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "UI_AMBIENT_GUARD",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "phase",
-    "pass",
-    "cmMiss",
-    "dfMiss",
-    "blMiss",
-    "dwMiss",
-    "vpMiss",
-    "cm",
-    "df",
-    "bl",
-    "dw",
-    "vp",
-    "cm",
-    "df",
-    "bl",
-    "dw",
-    "vp"
    ],
    "count": 1
   },
@@ -10281,79 +9007,6 @@
     "legacy_before",
     "legacy_after",
     "unchanged"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "VFX_GPU_SIM",
-   "ver": 2,
-   "stream": "stderr",
-   "keys": [],
-   "count": 2
-  },
-  {
-   "tag": "VFX_GPU_SIM",
-   "ver": 2,
-   "stream": "stderr",
-   "keys": [
-    "class",
-    "calls",
-    "instances",
-    "count",
-    "groups",
-    "cpuActiveSum",
-    "compared",
-    "aliveGPU",
-    "aliveRef",
-    "maxAgeError",
-    "maxPosError",
-    "dt",
-    "compareStatus",
-    "GPU"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "VFX_GPU_SIM",
-   "ver": 2,
-   "stream": "stderr",
-   "keys": [
-    "class",
-    "dispatched",
-    "lastCount"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "VFX_GPU_SIM",
-   "ver": 2,
-   "stream": "stderr",
-   "keys": [
-    "class",
-    "instances",
-    "count",
-    "groups"
-   ],
-   "count": 2
-  },
-  {
-   "tag": "VFX_GPU_SIM",
-   "ver": 2,
-   "stream": "stderr",
-   "keys": [
-    "event",
-    "prog",
-    "recordBytes"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "VFX_GPU_SIM",
-   "ver": 2,
-   "stream": "stderr",
-   "keys": [
-    "event",
-    "source_missing"
    ],
    "count": 1
   },
@@ -10552,19 +9205,6 @@
    "count": 2
   },
   {
-   "tag": "VIEWPORT_PROBE",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "phase",
-    "pass",
-    "vpMiss",
-    "vp",
-    "vp"
-   ],
-   "count": 1
-  },
-  {
    "tag": "VISUAL_CAPTURE",
    "ver": 1,
    "stream": "stderr",
@@ -10587,24 +9227,6 @@
    "stream": "stderr",
    "keys": [
     "src"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "VISUAL_DAMP",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [],
-   "count": 1
-  },
-  {
-   "tag": "VISUAL_DAMP",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "binding",
-    "side",
-    "bytes"
    ],
    "count": 1
   },
@@ -10709,26 +9331,6 @@
     "out"
    ],
    "count": 2
-  },
-  {
-   "tag": "VISUAL_HEIGHT",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [],
-   "count": 1
-  },
-  {
-   "tag": "VISUAL_HEIGHT",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "binding",
-    "V",
-    "bytes",
-    "first",
-    "geomorphMips"
-   ],
-   "count": 1
   },
   {
    "tag": "VISUAL_HEIGHT",
@@ -10916,7 +9518,6 @@
    "keys": [
     "kind",
     "tex",
-    "gl",
     "wh",
     "serial",
     "rgba",
@@ -10941,16 +9542,6 @@
     "backend",
     "viewport_renderer_data",
     "owner"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "VK_IMGUI",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "live",
-    "retired"
    ],
    "count": 1
   },
@@ -11121,8 +9712,8 @@
     "present_mode",
     "readback_changed",
     "last_checksum",
-    "direct_fbo_requests",
-    "direct_fbo_grants",
+    "native_composite_requests",
+    "native_composite_grants",
     "copy1_blit_frames",
     "copy1_skip_frames",
     "gl_handoff_skip_frames",
@@ -11141,7 +9732,7 @@
     "hud_vk_texture_uploads",
     "imgui_vk_ready",
     "imgui_vk_frames",
-    "last_direct_fbo",
+    "native_composite_armed",
     "composite_wait_us_last",
     "composite_wait_us_avg",
     "composite_wait_samples",
@@ -11193,6 +9784,27 @@
     "record_submit_us",
     "fence_wait_us",
     "island_total_us"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_SCENE_READBACK",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "result"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_SCENE_READBACK",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "samples",
+    "channels",
+    "bounds",
+    "result"
    ],
    "count": 1
   },
@@ -11297,24 +9909,6 @@
   {
    "tag": "VK_SHARED_SCENE_COLOR",
    "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "placeholder_tex"
-   ],
-   "count": 3
-  },
-  {
-   "tag": "VK_SHARED_SCENE_COLOR",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "reason"
-   ],
-   "count": 3
-  },
-  {
-   "tag": "VK_SHARED_SCENE_COLOR",
-   "ver": -1,
    "stream": "stdout",
    "keys": [],
    "count": 1
@@ -11322,36 +9916,8 @@
   {
    "tag": "VK_SHARED_SCENE_DEPTH",
    "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "placeholder_tex"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "VK_SHARED_SCENE_DEPTH",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "reason"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "VK_SHARED_SCENE_DEPTH",
-   "ver": -1,
    "stream": "stdout",
    "keys": [],
-   "count": 1
-  },
-  {
-   "tag": "VK_SHARED_SCENE_STRICT",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "slot",
-    "reason"
-   ],
    "count": 1
   },
   {
@@ -11598,15 +10164,6 @@
    "count": 1
   },
   {
-   "tag": "VSYNC",
-   "ver": -1,
-   "stream": "stdout",
-   "keys": [
-    "MC2_VSYNC"
-   ],
-   "count": 3
-  },
-  {
    "tag": "WATCHDOG",
    "ver": -1,
    "stream": "buffer",
@@ -11837,16 +10394,6 @@
     "wupv"
    ],
    "count": 1
-  },
-  {
-   "tag": "WINDOW",
-   "ver": -1,
-   "stream": "stdout",
-   "keys": [
-    "drawable",
-    "logical"
-   ],
-   "count": 2
   },
   {
    "tag": "XFORM_PARITY_FATAL",

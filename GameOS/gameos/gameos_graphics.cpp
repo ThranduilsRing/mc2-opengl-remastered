@@ -6,6 +6,7 @@
 
 #include "gameos_graphics_material_internal.h"
 #include "mc2fmt.h"
+#include "vk_scene_readback.h"
 #include "texture_decode.h"
 #include "ui_texture.h"
 #ifdef MC2_VULKAN_ISLAND
@@ -167,39 +168,13 @@ gosRenderer* getGosRenderer() {
     return g_gos_renderer;
 }
 
-GLenum getGLVertexAttribType(gosVERTEX_ATTRIB_TYPE type) {
-	GLenum t = -1;
-	switch (type)
-	{
-	case gosVERTEX_ATTRIB_TYPE::BYTE: return GL_BYTE;
-	case gosVERTEX_ATTRIB_TYPE::UNSIGNED_BYTE: return GL_UNSIGNED_BYTE;
-	case gosVERTEX_ATTRIB_TYPE::SHORT: return GL_SHORT;
-	case gosVERTEX_ATTRIB_TYPE::UNSIGNED_SHORT: return GL_UNSIGNED_SHORT;
-	case gosVERTEX_ATTRIB_TYPE::INT: return GL_INT;
-	case gosVERTEX_ATTRIB_TYPE::UNSIGNED_INT: return GL_UNSIGNED_INT;
-	case gosVERTEX_ATTRIB_TYPE::FLOAT: return GL_FLOAT;
-	default:
-		gosASSERT(0 && "unknows vertex attrib type");
-	}
-
-	return t;
-};
-
-static const char* const g_shader_flags[] = {
-    "ALPHA_TEST",
-    "IS_OVERLAY"
-};
-
-const std::string gosRenderMaterial::s_mvp = std::string("mvp");
-const std::string gosRenderMaterial::s_fog_color = std::string("fog_color");
-
-const std::string gosMesh::s_tex1 = std::string("tex1");
+;
 
 const std::string gosRenderer::s_Foreground = std::string("Foreground");
 
 // ──────────────────────────────────────────────────────────────────────────
 
-GLuint gVAO = 0;
+
 // GAMEOS-GRAPHICS-SPLIT-1 slice 5: the HUD-scale / UI-canvas state globals
 // moved to gameos_graphics_params.cpp (extern-declared in
 // gameos_graphics_internal.h; flushHUDBatch et al. still reference them
@@ -231,7 +206,7 @@ void gosRenderer::init() {
     }
 
 
-    { ZoneScopedN("gosRenderer::init vao"); glGenVertexArrays(1, &gVAO); }
+
 
     pendingRequest = false;
 
@@ -248,85 +223,13 @@ void gosRenderer::init() {
 
 	fog_color_ = vec4(1.0f, 1.0f, 1.0f, 1.0f);
 
-    // Terrain tessellation extra VBO
-    terrain_extra_capacity_ = 1024 * 120;  // large buffer for extended view distance
-    {
-        ZoneScopedN("gosRenderer::init terrainExtra");
-        terrain_extra_data_ = new gos_TERRAIN_EXTRA[terrain_extra_capacity_];
-        terrain_extra_vb_ = makeBuffer(GL_ARRAY_BUFFER, nullptr,
-            sizeof(gos_TERRAIN_EXTRA) * terrain_extra_capacity_, GL_DYNAMIC_DRAW);
-    }
-    mc2::fmt::print_out("[TESS] Extra VBO created: capacity={:d} vb={:d}\n", mc2::fmt::as_i32(terrain_extra_capacity_), mc2::fmt::as_u32(terrain_extra_vb_));
-
-    // Load terrain tessellation material (TCS/TES shaders)
-    // ISSUE-34: MC2_TERRAIN_TESS=0 (default ON) skips the load — same engine
-    // state as a TCS/TES compile failure — so the no-tess config is testable
-    // headlessly. Shadow/GPU-transform behavior is keyed on
-    // gos_IsModernShadowPathActive(), not on this material.
-    {
-        ZoneScopedN("gosRenderer::init terrainMaterial");
-        if (!mc2::gate::get<"MC2_TERRAIN_TESS">()) {
-            terrain_material_ = nullptr;
-            mc2::fmt::print_out("[TESS] MC2_TERRAIN_TESS=0 — terrain tessellation material load skipped (kill-switch)\n");
-        } else {
-            mc2::fmt::print_out("[TESS] About to load terrain shader...\n"); fflush(stdout);
-            gosMaterialVariationHelper terrainHelper;
-            gosMaterialVariation mvar;
-            terrainHelper.getMaterialVariation(mvar);
-            terrain_material_ = gosRenderMaterial::load("gos_terrain", mvar);
-            if (terrain_material_) {
-                materialList_.push_back(terrain_material_);
-                mc2::fmt::print_out("[TESS] Terrain material loaded successfully\n");
-            } else {
-                mc2::fmt::print_out("[TESS] WARNING: Terrain material failed to load — tessellation disabled\n");
-            }
-        }
-        fflush(stdout);
-    }
-
-    // Load thin-record terrain program (gos_terrain_thin.vert + gos_terrain.frag, no tess).
-    // Used by PatchStream M1g to draw thin records via GL_TRIANGLES, avoiding tessellation overhead.
-    {
-        ZoneScopedN("gosRenderer::init thinTerrainProg");
-        std::string kThinPrefix = "#version 430\n";
-        if (terrainNormalArrayEnabled())
-            kThinPrefix += "#define TERRAIN_NORMAL_ARRAY\n";
-        if (mc2ShadowStaticBandFixEnabled())
-            kThinPrefix += "#define MC2_SHADOW_STATIC_BANDFIX 1\n";
-        if (mc2ShadowStaticBandFixV2Enabled())
-            kThinPrefix += "#define MC2_SHADOW_STATIC_BANDFIX_V2 1\n";
-        kThinPrefix += mc2TerrainShadowSunDefine();   // TERRAIN-SHADOW-GUARD-1
-        thin_terrain_prog_ = glsl_program::makeProgram(
-            "gos_terrain_thin",
-            "shaders/gos_terrain_thin.vert",
-            "shaders/gos_terrain.frag",
-            kThinPrefix.c_str());
-        if (!thin_terrain_prog_ || !thin_terrain_prog_->shp_)
-            mc2::fmt::print_err("[THIN_TERRAIN] WARNING: failed to compile thin terrain shader — thin draw path disabled\n");
-        else
-            mc2::fmt::print_out("[THIN_TERRAIN] Thin terrain shader loaded: prog={:d}\n", mc2::fmt::as_u32(static_cast<unsigned>(thin_terrain_prog_->shp_)));
-        fflush(stdout);
-    }
-
-    if (!TerrainPatchStream::init()) {
-        // init_fail path lives in Task 2; for now this is dead code.
-        MC2_DIAGFE(stderr, "[PATCH_STREAM v1] event=init_fail reason=task1_skeleton_returned_false\n");
-        fflush(stderr);
-    }
-
     gos_TerrainLodChunk_Init();
 }
 
 void gosRenderer::destroy() {
     gos_TerrainLodChunk_Destroy();
-    TerrainPatchStream::destroy();
 
     gosMesh::destroy(text_);
-
-    for(size_t i=0; i<materialList_.size(); i++) {
-        gosRenderMaterial::destroy(materialList_[i]);
-    }
-    materialList_.clear();
 
     // delete fonts before textures, because they refer them
     for(size_t i=0; i<fontList_.size(); i++) {
@@ -339,17 +242,6 @@ void gosRenderer::destroy() {
     }
     textureList_.clear();
 
-    // Terrain tessellation cleanup
-    delete[] terrain_extra_data_;
-    terrain_extra_data_ = nullptr;
-    if (terrain_extra_vb_) { glDeleteBuffers(1, &terrain_extra_vb_); terrain_extra_vb_ = 0; }
-    if (terrain_material_) { gosRenderMaterial::destroy(terrain_material_); terrain_material_ = nullptr; }
-    if (terrain_normal_array_tex_ != 0) {
-        glDeleteTextures(1, &terrain_normal_array_tex_);
-        terrain_normal_array_tex_ = 0;
-    }
-
-    glDeleteVertexArrays(1, &gVAO);
 
 }
 
@@ -377,14 +269,18 @@ static void mc2AuditDiagSink(const char* line) {
     mc2_diag::writeEvent("AUDIT", 1, 0, buf);
 }
 
-void gos_CreateRenderer(graphics::RenderContextHandle ctx_h, graphics::RenderWindowHandle win_h, int w, int h) {
+void gos_CreateRenderer(graphics::RenderWindowHandle win_h, int w, int h) {
     ZoneScopedN("gos_CreateRenderer");
 
-    g_gos_renderer = new gosRenderer(ctx_h, win_h, w, h);
+    g_gos_renderer = new gosRenderer(win_h, w, h);
     g_gos_renderer->init();
 
     gosPostProcess* pp = new gosPostProcess();
     pp->init(w, h);
+    if (!mc2vk::sceneReadbackSelfTest()) {
+        mc2::fmt::print_err("[VK_SCENE_READBACK] selftest result=FAIL\n");
+        std::abort();
+    }
 
     // Initialize diagnostic JSONL trace. Session id shared with debug_state_dump
     // so MCP can correlate JSONL events with render-state snapshots by session_id.
@@ -408,16 +304,18 @@ void gos_CreateRenderer(graphics::RenderContextHandle ctx_h, graphics::RenderWin
         mc2_diag::writeEvent("BUILD", 1, 0, buf);
     }
 
-    // DEVICE — one-shot GL device info; GL context is valid (g_gos_renderer->init() ran above).
+    // Report the actual native device selected by the shared owner.
     {
-        const char* vendor   = reinterpret_cast<const char*>(glGetString(GL_VENDOR));
-        const char* renderer = reinterpret_cast<const char*>(glGetString(GL_RENDERER));
-        const char* version  = reinterpret_cast<const char*>(glGetString(GL_VERSION));
-        const char* glsl     = reinterpret_cast<const char*>(glGetString(GL_SHADING_LANGUAGE_VERSION));
-        char buf[1024];
-        mc2::fmt::to_buf(buf, "{{\"gl_vendor\":\"{}\",\"gl_renderer\":\"{}\",\"gl_version\":\"{}\",\"glsl_version\":\"{}\"}}", mc2::fmt::safe(vendor   ? vendor   : "<unavailable>"), mc2::fmt::safe(renderer ? renderer : "<unavailable>"), mc2::fmt::safe(version  ? version  : "<unavailable>"), mc2::fmt::safe(glsl     ? glsl     : "<unavailable>"));
-        mc2_diag::writeEvent("DEVICE", 1, 0, buf);
+        const char* name = "unavailable";
+#ifdef MC2_VULKAN_ISLAND
+        if (mc2vk::engineVulkanContextValid())
+            name = mc2vk::getOrCreateEngineVulkanContext().health().deviceName;
+#endif
+        char buf[512];
+        mc2::fmt::to_buf(buf, "{{\"backend\":\"vulkan\",\"device\":\"{}\"}}", mc2::fmt::safe(name));
+        mc2_diag::writeEvent("DEVICE", 2, 0, buf);
     }
+
 }
 
 void gos_DestroyRenderer() {
@@ -461,9 +359,7 @@ void gos_RendererFlushHUDBatch() {
 // pp->endScene() leaves VAO 0 bound. Any caller that needs to issue
 // gos_Draw* calls after endScene (e.g. projectz_overlay_render) must
 // rebind gVAO first, same as flushHUDBatch() does internally.
-void gos_RendererRebindVAO() {
-    glBindVertexArray(gVAO);
-}
+
 
 // GAMEOS-GRAPHICS-SPLIT-1 slice 5: logical-canvas size shims for extraction
 // TUs (gameos_graphics_params.cpp) that must not see the gosRenderer class.
@@ -481,23 +377,12 @@ void gos_RendererHandleEvents() {
 // Resolve a gosTextureHandle to the underlying raw GL texture name for
 // consumers outside this TU (gos_static_prop_batcher). Returns 0 on
 // invalid handle — caller should treat 0 as "unbind / default white".
-uint32_t gos_GetGLTextureId(uint32_t gosHandle) {
-    if (gosHandle == INVALID_TEXTURE_ID || !g_gos_renderer) return 0;
-    // Reject uninitialized / sentinel handles (seen in the wild on
-    // TG_TinyTexture entries that were never loaded: 0xFFFFFFFF).
-    // Bound by the current texture list size to avoid the hard assert
-    // inside gosRenderer::getTexture(texture_id >= list size).
-    if (gosHandle >= g_gos_renderer->getTextureListSize()) return 0;
-    gosTexture* tex = g_gos_renderer->getTexture(gosHandle);
-    return tex ? tex->getTextureId() : 0;
-}
-
 GosTexels gos_GetTextureTexels(uint32_t gosHandle) {
     GosTexels out;
     if (gosHandle == INVALID_TEXTURE_ID || !g_gos_renderer) return out;
     if (gosHandle >= g_gos_renderer->getTextureListSize()) return out;
     gosTexture* tex = g_gos_renderer->getTexture(gosHandle);
-    if (!tex || tex->getTextureId() == 0) return out;   // not loaded yet: the caller retries next frame
+    if (!tex) return out;
     gosTextureInfo info;
     tex->getTextureInfo(&info);
     out.width = static_cast<uint32_t>(info.width_);
@@ -520,26 +405,19 @@ GosTexels gos_GetTextureTexels(uint32_t gosHandle) {
     return out;
 }
 
-GosTexels gos_GetTextureTexelsByGlName(uint32_t glName) {
-    if (glName == 0 || !g_gos_renderer) return {};
-    if (GosTexels pv = gos_GetCameraPreviewTexels(glName); pv.status == GosTexels::Status::Ready) return pv;
-    const uint32_t h = g_gos_renderer->findTextureHandleByGlName(glName);
-    return h == INVALID_TEXTURE_ID ? GosTexels{} : gos_GetTextureTexels(h);
-}
-
 // P1-1: FX-GPU-1 Phase 1 — narrow GL-name resolver for the GPU particle
 // bridge. Declared in GameOS/include/gameos.hpp and called at flush time.
 // Delegates to gos_GetGLTextureId; the DWORD parameter matches the GOS
 // texture handle convention used by gosFX/MLR.
 uint64_t gos_GetUiTextureId(DWORD handle) {
 #ifdef MC2_VULKAN_ISLAND
-    if (!mc2vk::uiTextureServiceReady()) return gos_GetGLTextureId(handle);
+    if (!mc2vk::uiTextureServiceReady()) return 0;
     const auto source=gos_GetTextureTexels(handle);
     if (source.status!=GosTexels::Status::Ready) return 0;
     return mc2vk::getOrCreateEngineVulkanContext().textures().legacyUiId(handle,source.width,source.height,
         mc2vk::texelFormat(source.vkFormat),source.bytes);
 #else
-    return gos_GetGLTextureId(handle);
+    return 0;
 #endif
 }
 uint64_t gos_GetMaterialTextureId(DWORD handle) {
@@ -554,10 +432,6 @@ uint64_t gos_GetMaterialTextureId(DWORD handle) {
 #endif
 }
 
-
-unsigned int gos_GetGLTextureName(DWORD handle) {
-    return gos_GetGLTextureId(static_cast<uint32_t>(handle));
-}
 
 const float* gos_GetProj2ScreenMat4() {
     if (!g_gos_renderer) return nullptr;

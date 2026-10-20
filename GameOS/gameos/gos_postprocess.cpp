@@ -8,43 +8,7 @@
 
 
 
-void setSceneDrawBuffers(SceneDrawBufferMode mode,
-                                bool objectIdAttachmentReady) {
-    const bool oid =
-        RenderWorld::IsObjectIdBufferEnabled() && objectIdAttachmentReady;
 
-    if (mode == SceneDrawBufferMode::SingleColor) {
-        GLenum bufs[1] = { GL_COLOR_ATTACHMENT0 };
-        glDrawBuffers(1, bufs);
-        // DRAWBUFFER-OWNERSHIP-1: self-report draw-set transitions at the single
-        // chokepoint so the frame trace shows which set is live per pass (catches a
-        // pass running under the wrong inherited set). Gated by the frame-plan gate.
-        if (render_frame_plan::traceEnabled()) {
-            mc2::fmt::print_err("[DRAWBUF] set=SingleColor0 attachments={{0}}\n");
-            std::fflush(stderr);
-        }
-        return;
-    }
-
-    if (oid) {
-        GLenum bufs[3] = {
-            GL_COLOR_ATTACHMENT0,
-            GL_COLOR_ATTACHMENT1,
-            GL_COLOR_ATTACHMENT2
-        };
-        glDrawBuffers(3, bufs);
-    } else {
-        GLenum bufs[2] = {
-            GL_COLOR_ATTACHMENT0,
-            GL_COLOR_ATTACHMENT1
-        };
-        glDrawBuffers(2, bufs);
-    }
-    if (render_frame_plan::traceEnabled()) {
-        mc2::fmt::print_err("[DRAWBUF] set=MainSceneMRT attachments={{0,1{}}}\n", mc2::fmt::safe(oid ? ",2" : ""));
-        std::fflush(stderr);
-    }
-}
 
 gosPostProcess* s_postProcess = nullptr;
 
@@ -99,7 +63,7 @@ void gosPostProcess::setSkyNumber(int skyNumber)
     bool  newSunValid = false;
     loadHdri(newPath, &newSunAz, &newSunValid);   // deletes the old texture first
 
-    if (hdriTex_) {
+    if (hdriCpu_) {
         hdriBakedSunAz_   = newSunAz;
         hdriBakedSunValid_ = newSunValid;
         std::strncpy(hdriCurrentPath_, newPath, sizeof(hdriCurrentPath_) - 1);
@@ -116,14 +80,10 @@ void gosPostProcess::setSkyNumber(int skyNumber)
 
 void gosPostProcess::loadHdri(const char* path, float* outSunAz, bool* outSunValid)
 {
-    if (hdriTex_) {
-        glDeleteTextures(1, &hdriTex_);
-        hdriTex_ = 0;
-    }
     hdriCpu_.reset();
     auto cpu = std::make_shared<HdriCpuImage>();
-    hdriTex_ = loadHdriTexture(path, outSunAz, outSunValid, cpu.get());
-    if (hdriTex_ && cpu && !cpu->levels.empty()) {
+    const bool decoded = decodeHdriSource(path, outSunAz, outSunValid, cpu.get());
+    if (decoded && !cpu->levels.empty()) {
         cpu->generation = ++hdriCpuGeneration_;
         hdriCpu_ = std::move(cpu);
     }
@@ -166,27 +126,8 @@ void gos_SetPostFxOptions(int casEnabled, float casSharpness, int tonemapMode)
         s_postProcess->setPostFxOptions(s_postFxOptions.casEnabled, s_postFxOptions.casSharpness, s_postFxOptions.tonemapMode);
 }
 
-// Fullscreen quad vertices: 2 triangles covering NDC [-1,1]
-// Each vertex: pos.x, pos.y, uv.x, uv.y
-static const float kQuadVerts[] = {
-    // Triangle 1
-    -1.0f, -1.0f,  0.0f, 0.0f,
-    1.0f, -1.0f,  1.0f, 0.0f,
-    1.0f,  1.0f,  1.0f, 1.0f,
-    // Triangle 2
-    -1.0f, -1.0f,  0.0f, 0.0f,
-    1.0f,  1.0f,  1.0f, 1.0f,
-    -1.0f,  1.0f,  0.0f, 1.0f,
-};
-
 gosPostProcess::gosPostProcess()
     : exposure_(1.0f)
-    , sceneFBO_(0)
-    , sceneColorTex_(0)
-    , sceneDepthTex_(0)
-    , sceneNormalTex_(0)
-    , quadVAO_(0)
-    , quadVBO_(0)
     , width_(0)
     , height_(0)
     , initialized_(false)
@@ -247,8 +188,7 @@ void gosPostProcess::init(int w, int h)
                      hzbEnabled_ ? 1 : 0, hzbEnv ? hzbEnv : "(unset)");
     }
 
-    createFBOs(w, h);
-    createFullscreenQuad();
+    createSceneTargets(w, h);
 
     // HDRI-SKY-1 init. Gate read once; default enabled unless env var == "0".
     {
@@ -260,12 +200,12 @@ void gosPostProcess::init(int w, int h)
             // Item 2: also scan for the baked sun azimuth (read-only; used only
             // when sun-sync is enabled at draw time).
             loadHdri(hdrPath, &hdriBakedSunAz_, &hdriBakedSunValid_);  // logs failures internally
-            if (hdriTex_) {
+            if (hdriCpu_) {
                 std::strncpy(hdriCurrentPath_, hdrPath, sizeof(hdriCurrentPath_) - 1);
                 hdriCurrentPath_[sizeof(hdriCurrentPath_) - 1] = '\0';
             }
 
-            hdriReady_ = hdriTex_ != 0;
+            hdriReady_ = bool(hdriCpu_);
 
         } else {
             MC2_DIAGFE(stderr,
@@ -414,257 +354,42 @@ void gosPostProcess::init(int w, int h)
     initialized_ = true;
 }
 
-void gosPostProcess::createFullscreenQuad()
-{
-    glGenVertexArrays(1, &quadVAO_);
-    glBindVertexArray(quadVAO_);
 
-    glGenBuffers(1, &quadVBO_);
-    glBindBuffer(GL_ARRAY_BUFFER, quadVBO_);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(kQuadVerts), kQuadVerts, GL_STATIC_DRAW);
 
-    // layout(location = 0) in vec2 pos
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), reinterpret_cast<void*>(0));
 
-    // layout(location = 1) in vec2 uv
-    glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), reinterpret_cast<void*>((2 * sizeof(float))));
-
-    glBindVertexArray(0);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-}
-
-void gosPostProcess::destroyFullscreenQuad()
-{
-    if (quadVBO_) {
-        glDeleteBuffers(1, &quadVBO_);
-        quadVBO_ = 0;
-    }
-    if (quadVAO_) {
-        glDeleteVertexArrays(1, &quadVAO_);
-        quadVAO_ = 0;
-    }
-}
 
 void gosPostProcess::beginScene()
 {
-    if (!initialized_)
-        return;
+    if (!initialized_) return;
+    prevFrameHadTerrain_ = sceneHasTerrain_;
+    sceneHasTerrain_ = false;
+    // Scene clears belong to the native terrain prefix or host menu clear.
 
-    prevFrameHadTerrain_ = sceneHasTerrain_;  // save for clear color decision
-    sceneHasTerrain_ = false;  // reset each frame; set by markTerrainDrawn()
-
-    glBindFramebuffer(GL_FRAMEBUFFER, sceneFBO_);
-
-    // COLORMASK-ROLLOUT-1 (keystone): assert the steady-state color mask (all
-    // attachments writable) at frame begin, before the clear + the first MRT scene
-    // draw. In normal frames this is a no-op (the mask is already all-TRUE), so it is
-    // byte-identical — but it HEALS any prior-frame set-only colorMask leak (e.g. a
-    // future applyPipeline opt-in that left attachment 1/2 masked off), guaranteeing
-    // terrain's GBuffer1 + objectId writes are never silently suppressed. Legacy
-    // bridges keep their own save/restore; this only sets a known-good baseline so
-    // incremental PipelineDesc colorMask opt-in is safe. (Resets the indexed masks
-    // too, so a prior glColorMaski leak on attachment 1/2 cannot persist.)
-    glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-
-    // Bind both draw buffers so the upcoming glClear in gameosmain.cpp clears
-    // both COLOR0 and COLOR1 (the GBuffer1 normal/post-shadow-mask attachment).
-    // After the clear, gameosmain.cpp calls pp->clearGBuffer1() to overwrite
-    // attachment 1 with the post-shadow-eligible sentinel (0.5, 0.5, 1.0, 0.0)
-    // before the scene renders. MRT remains bound for the entire scene draw;
-    // every Group I/II shader either writes GBuffer1 explicitly via the
-    // render-contract registry helpers or relies on the pre-cleared sentinel.
-    // See docs/superpowers/specs/render-contract-f3-report.md for the F3
-    // coherence guarantee. AMD location=1 corruption claim refuted 2026-04-27;
-    // see docs/amd-driver-rules.md "Tested-and-refuted claims".
-    if (sceneNormalTex_) {
-        // M1.5 C1 + M3 fix: helper takes readiness flag explicitly.
-        setSceneDrawBuffers(SceneDrawBufferMode::MainSceneMRT,
-                            sceneObjectIdTex_ != 0);
-    }
-    // M1.5 m1 clear-order rule + M3 plan-review fix: glClearBufferuiv
-    // at INDEX 2 only safe AFTER the env-ON 3-entry list is bound.
-    // Guarded by the same readiness predicate that selects the 3-entry
-    // list above; env-OFF byte-identical.
-    if (RenderWorld::IsObjectIdBufferEnabled() && sceneObjectIdTex_) {
-        static const GLuint kClearZero[4] = { 0u, 0u, 0u, 0u };
-        setSceneDrawBuffers(SceneDrawBufferMode::MainSceneMRT, true);
-        glClearBufferuiv(GL_COLOR, 2, kClearZero);
-    }
-    glViewport(0, 0, width_, height_);
-
-    // [RES_DIAG v1] One-shot dump of the resolution split: scene FBO size
-    // (this object's width_/height_) vs the HUD canvas (Environment.screenWidth)
-    // vs the native drawable (Environment.drawableWidth). Env-gated so it is
-    // byte-identical when MC2_RES_DIAG is unset. Confirms whether the scene
-    // FBO tracks options-res (screenWidth) or the native desktop (drawable).
-    static const bool s_resDiag = mc2::gate::get<"MC2_RES_DIAG">();
-    static bool s_resDiagDone = false;
-    if (s_resDiag && !s_resDiagDone) {
-        s_resDiagDone = true;
-        mc2::fmt::print_err("[RES_DIAG v1] sceneFBO={:d}x{:d}  screenWidth={:d}x{:d} (HUD canvas)  drawable={:d}x{:d} (native)\n", mc2::fmt::as_i32(width_), mc2::fmt::as_i32(height_), mc2::fmt::as_i32(Environment.screenWidth), mc2::fmt::as_i32(Environment.screenHeight), mc2::fmt::as_i32(Environment.drawableWidth), mc2::fmt::as_i32(Environment.drawableHeight));
-        fflush(stderr);
-    }
 }
 
 void gosPostProcess::endScene()
 {
     ZoneScopedN("Render.PostProcess");
-    TracyGpuZone("Render.PostProcess");
-
-    if (!initialized_)
-        return;
-
-
-    // GLSTATE-VAO-RESTORE-1: save the caller's VAO so endScene() is self-contained.
-    // NVIDIA Core profile rejects any draw with VAO=0 (GL_INVALID_OPERATION). endScene
-    // uses its own quadVAO_ internally and leaves VAO=0 on exit; callers that draw
-    // afterward must not rely on the side effect. Restoring here eliminates that
-    // contract leak and makes future draw sites safe without a gos_RendererRebindVAO() call.
-    GLint prevVAO = 0;
-    glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &prevVAO);
-
-    // CLUSTER-DEPTH-PYRAMID-NATIVE-1: build a per-tile (min,max) depth image
-    // from the resolved scene depth, here where depth is fully populated and
-    // before any post pass. Gated (MC2_CLUSTER_DEPTH_PYRAMID, default OFF) ->
-    // no-op + byte-identical when OFF. Substrate only: no consumer of the
-    // output exists yet (no lighting / decal / material reader).
-    cluster_depth_pyramid::Run(sceneDepthTex_, width_, height_);
-
-    // MC2-LIGHTGRID-BUILD-NATIVE-1: build a per-tile light-bin grid from a native
-    // sphere cull-geometry buffer (derived from ObjectLights @ binding 20) and the
-    // depth pyramid's per-tile (min,max) image. Runs AFTER the depth pyramid (it
-    // samples that tile texture) and AFTER the light SSBO upload. Gated
-    // (MC2_LIGHTGRID_BUILD, default OFF) -> no-op + byte-identical when OFF.
-    // INERT: no shading consumer reads the grid; zero visual change.
-    lightgrid_build::Run(inverseViewProj_, width_, height_);
-
-    // POSTPROCESS-COMPUTE-BLUR-1: greenfield GPU compute downsample + separable
-    // Gaussian blur SUBSTRATE (Vulkan-prep: typed-sync + ping-pong pattern).
-    // Runs after the other compute passes. Gated (MC2_POSTPROCESS_COMPUTE_BLUR,
-    // default OFF) -> no-op + byte-identical when OFF. INERT: NO bloom/glow/DOF
-    // consumer reads the blurred output; zero visual change. When ON, the live
-    // path blurs the feedback-safe scene-color copy if present (substrate only);
-    // the VERIFY sub-gate always proves CPU-vs-GPU parity on a controlled test
-    // pattern, independent of any consumer.
-    postprocess_blur::Run(getSceneColorCopyTexture(), width_, height_);
-
+    if (!initialized_) return;
 #ifdef MC2_VULKAN_ISLAND
-    // VK-POST-SCREENFX-NATIVE-1: the screen-space shadow receiver, the cloud shadow and the shoreline foam render natively on the shared engine
-    // context (one submit each, multiplied into the shared colour in place); the GL passes are gone, a decline leaves the pass out for the frame.
     if (vkPostScreenFxNativeEnabled()) {
         runVkPostScreenShadowStaticNative();
         runVkPostScreenFxNative();
     }
-#endif
-
-
-#ifdef MC2_VULKAN_ISLAND
-    // VK-POST-FOG-NATIVE-1: edge fog and OOB fog render natively on the shared engine context (the GL passes are gone; a decline leaves the
-    // fog out for the frame).
     runVkPostFogNative();
 #endif
-
-    // Bind default framebuffer (the backbuffer) for the composite output edge.
-    // VK-P14b (MC2_VK_PRESENT_DIRECT_FBO, copy-1 elimination): when the Vulkan
-    // backend owns present AND the direct-composite gate is on, redirect this
-    // single backbuffer bind to the FBO wrapping the shared exportable present
-    // image, so the WHOLE composite + FORCE-43 pillarbox + HUD + ImGui render
-    // straight into the shared image (presentGLFrame then SKIPS copy-1 and does
-    // the Y-flip in copy-2). Everything downstream in endScene inherits this bind.
-    // presentDirectFbo() returns 0 (fail-soft to FBO-0 + copy-1) unless the gate
-    // is on AND the present path is valid AND the FBO exists; the ==0 case leaves
-    // the original GL path byte-identical. NON-default FBO target: the shared FBO
-    // is COLOR_ATTACHMENT0-complete (RGBA8, no default sRGB encoding) so the
-    // inherited glClear / glReadBuffer(GL_BACK is only used inside copy-1, which is
-    // now skipped) all target this attachment correctly (see FBO-0-assumption scan).
-    GLuint directFbo = 0;
-    bool directVkOnly = false;
+    int x=0,y=0,w=width_,h=height_;
+    int bx=0,by=0,bw=0,bh=0;
+    if (gos_Compute43Box(width_,height_,&bx,&by,&bw,&bh)) { x=bx; y=by; w=bw; h=bh; }
+    int mode=gos_GetSelectedViewMode();
+    if (mode==1 && !sceneObjectIdReady()) mode=0;
 #ifdef MC2_VULKAN
-    {
-        mc2vk::EnginePresentVk& present = mc2vk::getOrCreateEnginePresentVk();
-        directFbo = (GLuint)present.presentDirectFbo();
-        if (directFbo == 0)
-            directVkOnly = present.presentDirectVkOnly();
-    }
+    auto& present=mc2vk::getOrCreateEnginePresentVk();
+    if (present.beginNativeComposite()) (void)present.renderNativeCompositeVisual(
+        exposure_,fxaaEnabled_,fxaaSubpix_,fxaaEdgeThreshold_,fxaaEdgeThresholdMin_,mode,
+        sceneObjectIdReady() ? int(RenderWorld::MechHandleIndexBase()) : 0,
+        lowLightGain_,lowLightTint_,casEnabled_,casSharpness_,tonemapMode_,x,y,w,h);
 #endif
-    if (directFbo != 0) {
-        glBindFramebuffer(GL_FRAMEBUFFER, directFbo);
-    } else {
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    }
-    int compositeVpX = 0, compositeVpY = 0, compositeVpW = width_, compositeVpH = height_;
-    // [FORCE-43 v1] Pillarbox the final scene composite into a centered 4:3
-    // rect with black bars. The scene FBO content (4:3 world stretched into the
-    // 16:9 target) un-stretches when drawn into a 4:3 rect. Mouse is remapped
-    // box-relative in gameos_input so pick stays aligned with the visible box.
-    {
-        // [OOB-LETTERBOX v1] (gate MC2_OOB_LETTERBOX, default ON; =0 reverts).
-        // When the backbuffer is larger than the scene FBO — e.g. a smoke run
-        // that STARTS minimized (FBO sized to the minimized drawable, backbuffer
-        // larger), or a menu where the window exceeds the render res — the
-        // composite quad below only covers glViewport(0,0,width_,height_) (the
-        // bottom-left); the rest of the backbuffer is never written and shows
-        // stale/alternating swapchain content -> a blue/black ~2Hz strobe in the
-        // out-of-bounds border (user-reported headache; also seen in menus).
-        // Clear the WHOLE backbuffer to black first so the OOB stays a stable
-        // black letterbox. glClear ignores glViewport (only scissor bounds it),
-        // so disable scissor for the clear. No-op in normal play: the composite
-        // quad overdraws the full backbuffer. FORCE-43 already cleared in its own
-        // branch; this generalizes it to ALL composite paths.
-        static const bool s_oobLetterbox = mc2::gate::get<"MC2_OOB_LETTERBOX">();
-        if (s_oobLetterbox) {
-            const GLboolean prevScissor = glIsEnabled(GL_SCISSOR_TEST);
-            if (prevScissor) glDisable(GL_SCISSOR_TEST);
-            glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-            glClear(GL_COLOR_BUFFER_BIT);
-            if (prevScissor) glEnable(GL_SCISSOR_TEST);
-        }
-        int bx, by, bw, bh;
-        if (gos_Compute43Box(width_, height_, &bx, &by, &bw, &bh)) {
-            glViewport(0, 0, width_, height_);
-            glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-            glClear(GL_COLOR_BUFFER_BIT);
-            glViewport(bx, by, bw, bh);
-            compositeVpX = bx; compositeVpY = by; compositeVpW = bw; compositeVpH = bh;
-        } else {
-            glViewport(0, 0, width_, height_);
-            compositeVpX = 0; compositeVpY = 0; compositeVpW = width_; compositeVpH = height_;
-        }
-    }
-
-    // Every view mode uses the native composite. Modes 2/4 retain the Visual
-    // presentation until their sensor overlays provide distinct shader branches.
-    int effectiveModeForComposite = gos_GetSelectedViewMode();
-    if (effectiveModeForComposite == 1 && sceneObjectIdTex_ == 0)
-        effectiveModeForComposite = 0;
-#ifdef MC2_VULKAN
-    if (directFbo != 0 || directVkOnly) {
-        (void)mc2vk::getOrCreateEnginePresentVk().renderNativeCompositeVisual(
-            exposure_, fxaaEnabled_, fxaaSubpix_, fxaaEdgeThreshold_, fxaaEdgeThresholdMin_,
-            effectiveModeForComposite,
-            sceneObjectIdTex_ != 0 ? static_cast<int>(RenderWorld::MechHandleIndexBase()) : 0,
-            lowLightGain_, lowLightTint_,
-            casEnabled_, casSharpness_, tonemapMode_,
-            compositeVpX, compositeVpY, compositeVpW, compositeVpH);
-    }
-#endif
-
-    // Shadow debug overlay (draws on top of composite)
     drawShadowDebugOverlay();
-
-    // Re-enable depth test
-    glDepthMask(GL_TRUE);
-    glEnable(GL_DEPTH_TEST);
-
-    // RENDER_STATES v1: post-process disturbed program, depth, blend, sampler,
-    // and unit-0/1 texture bindings outside applyRenderStates. Invalidate the
-    // applyRenderStates cache so the next renderer (e.g. HUD/debug overlay)
-    // gets a full state re-apply, not a stale-cache short-circuit.
     gos_InvalidateRenderStateCache();
-
-
-    // GLSTATE-VAO-RESTORE-1: restore the caller's VAO (see capture above).
-    glBindVertexArray((GLuint)prevVAO);
 }

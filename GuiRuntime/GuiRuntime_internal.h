@@ -11,7 +11,6 @@
 #include "imgui.h"
 #include "imgui_internal.h"   // DockBuilder* + ImGuiDockNode (docking branch)
 #include "imgui_impl_sdl2.h"
-#include "imgui_impl_opengl3.h"
 
 #include <algorithm>
 #include <array>
@@ -29,7 +28,6 @@
 #include <type_traits>
 #include <vector>
 
-#include <GL/glew.h>  // glGetError, glGetIntegerv for Render() diagnostics
 
 #include "../GameOS/gameos/gos_render.h"
 #include "../GameOS/gameos/gos_input.h"
@@ -53,7 +51,6 @@
 
 // Globals defined in GuiRuntime.cpp (or elsewhere in the engine) that the split pieces share.
 extern void __stdcall gos_InvalidateRenderStateCache();
-extern void __stdcall gos_PrepareForPostImGuiRender();
 extern bool __stdcall gos_ComputeUiCanvasBox(int w, int h, int* ox, int* oy, int* obw, int* obh);
 extern void __stdcall gos_GetEnvironmentDrawableSize(int* w, int* h);
 extern bool cliffDecal_hasDecal();

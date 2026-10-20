@@ -90,18 +90,8 @@ REGISTRY = [
                  r"vec3 base_light\) \{\nreturn calc_light\([^\n]*\n\}$"]),
     # VK wraps GL's inline block in mv_computeLodNear(); the rename map folds the
     # wrapper, the early-out gate and the camera/world spellings back to GL's.
-    Port("lodNear", "shaders/gos_terrain.frag", "shaders/vulkan/terrain_tier1.frag",
-         rename=[(r"\buT\.cameraPosMC2\b", "cameraPos"),
-                 (r"\bworldXY\b", "WorldPos.xy"),
-                 (r"\bworldZ\b", "WorldPos.z"),
-                 (r"\bLODFADE_NEAR_FADE\b", "LOD_NEAR_FADE"),
-                 (r"\bLODFADE_NEAR\b", "LOD_NEAR"),
-                 (r"^return (1\.0 - smoothstep)", r"float lodNear = \1")],
-         vk_drop=[r"^float mv_computeLodNear\(",
-                  r"^if \(uT\.lodFadeEnabled == 0\) return 1\.0;",   # gate-off early-out
-                  r"^\}$"]),
-    Port("skirtVertMath", "shaders/terrain_lod_chunk.vert", "shaders/vulkan/terrain_tier1_skirt.vert",
-         rename=[UT_TO_U]),
+
+
     # The VK caller passes sunAltSin in (clamp(shSun.z,0,1)); GL derives it inline.
     Port("calcDynamicShadowCsm", "shaders/include/shadow.hglsl", "shaders/vulkan/include/terrain_frame_vk.glsl",
          rename=[MV_PREFIX],

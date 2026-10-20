@@ -1,6 +1,8 @@
 <!-- doc-status: current | reviewed:2026-10-11 -->
 # Thermal ViewMode — engine-bearing units read hot (THERMAL-VIEW-MECH-HOT-1)
 
+> s68/P9: Retired GL sources are cited with Git object syntax (`8064c6930:path`) so the historical implementation remains inspectable.
+
 Status: **SHIPPED (mechs).** Slice 2 of `GAMEADAPTERS-VISUAL-STATE-BRIDGE-OPUS-1`.
 Vehicles-hot remains a follow-up (see below).
 
@@ -27,7 +29,7 @@ table.
 - `gos_postprocess.cpp` sets `u_engineIdxBase` to it when the OID buffer is live,
   else `0` (Thermal degrades to the prior luminance-only placeholder — no read
   of an unbound texture unit).
-- `shaders/postprocess.frag` Thermal branch (mode 3): forces mech pixels into the
+- `8064c6930:shaders/postprocess.frag` Thermal branch (mode 3): forces mech pixels into the
   hot band (`t = max(t, 0.9)`) before the iron-palette ramp.
 
 ViewMode-only (`MC2_VIEWMODE_FRAMEWORK=1`, mode 3). Visual mode and the default

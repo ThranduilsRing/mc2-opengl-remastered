@@ -1,6 +1,7 @@
 // TerrainQuad: TerrainQuad::draw: the SOLID / DRAWALPHA terrain and overlay submission, the M2d decal producer and its parity probe.
 // Declared in the class headers; shared names in quad_internal.h.
 #include "quad_internal.h"
+#include "texture_assets.h"
 #include "mc2fmt.h"
 
 
@@ -15,7 +16,6 @@
 // cement-transition/runway/road decal path — §2 WARNING, 9964d5a regression
 // class). MC2_TERRAIN_INDIRECT_THINEMIT_TRACE=1 emits a one-shot lifecycle
 // line so smoke artifacts capture the gate state.
-static const bool s_thinEmitTrace = mc2::gate::get<"MC2_TERRAIN_INDIRECT_THINEMIT_TRACE">();
 
 // MC2_M2D_PZ_PARITY probe (VPL Step 8b precursor validator). Re-authored per
 // docs/superpowers/reviews/2026-05-15-overlay-pz-scoped-redesign-rereview.md
@@ -38,19 +38,7 @@ static const int s_m2dPzParityEmitCap = 32; // first-N detail-line cap
 
 // Builds the gos_TERRAIN_EXTRA[3] (world position and normal per corner) of one
 // triangle by value, so the patch stream can write the bytes without re-reading the verts.
-static inline void buildTerrainExtraTriple(VertexPtr v0, VertexPtr v1, VertexPtr v2,
-                                           gos_TERRAIN_EXTRA out[3])
-{
-    VertexPtr vs[3] = { v0, v1, v2 };
-    for (int k = 0; k < 3; ++k) {
-        out[k].wx = vs[k]->vx;
-        out[k].wy = vs[k]->vy;
-        out[k].wz = vs[k]->pVertex->elevation;
-        out[k].nx = vs[k]->pVertex->vertexNormal.x;
-        out[k].ny = vs[k]->pVertex->vertexNormal.y;
-        out[k].nz = vs[k]->pVertex->vertexNormal.z;
-    }
-}
+
 
 // GPU projection: pack MC2 world coords into overlay vertex instead of screen-space
 static inline void setOverlayWorldCoords(gos_VERTEX& v, const VertexPtr src) {
@@ -118,9 +106,9 @@ void TerrainQuad::drawSetup(QuadDrawFrame& f) {
 	if (MC2_OverlayTileHiresSize() > 0 && overlayHandle != 0xffffffff)
 	{
 		DWORD ovLogicalW = 0, ovLogicalH = 0;
-		if (mcTextureManager->tryGetTextureLogicalSize(overlayHandle, ovLogicalW, ovLogicalH))
+		if (mc2::textures::logicalSize(overlayHandle, ovLogicalW, ovLogicalH))
 		{
-			const DWORD ovEdge = ovLogicalW * mcTextureManager->getUVScale(overlayHandle);
+			const DWORD ovEdge = ovLogicalW * mc2::textures::uvScale(overlayHandle);
 			if (ovEdge > 0)
 			{
 				oldminU = oldminV = 0.5f / static_cast<float>(ovEdge);
@@ -143,72 +131,15 @@ void TerrainQuad::drawSetup(QuadDrawFrame& f) {
 
 // Decide whether the M2 fast path takes this quad and run the path-mix diagnostic.
 void TerrainQuad::drawPathSelect(QuadDrawFrame& f) {
-	auto& fastPathEligible = f.fastPathEligible;
-	// === M2 fast-path eligibility ===
-	// Quads enter the fast path when:
-	//   (a) terrainHandle != 0           → emit thin record + optional detail + optional overlay
-	//   (b) terrainHandle == 0 + detail  → emit detail only (+ optional overlay), no thin record
-	//   (c) terrainHandle == 0 + overlay → emit overlay only, no thin record, no detail
-	// M2d landed: overlay-only quads are now fast-path eligible; the inline overlay
-	// emit below mirrors the legacy gos_PushTerrainOverlay sites (base/detail blocks
-	// in legacy continue to exist as the fallback when FASTPATH env is off).
-	// Per-gate flags retained so the path_mix diagnostic counter below can
-	// attribute fastPathEligible failures to the specific gate (s_failOverlay
-	// should read 0 post-M2d — leaving it in serves as the validation signal).
-	const bool g_active   = TerrainPatchStream::isFastPathActive();
-	const bool g_thin     = TerrainPatchStream::isThinRecordsActive();
-	const bool g_ready    = TerrainPatchStream::isReady();
-	const bool g_notOver  = !TerrainPatchStream::isOverflowed();
-	const bool g_handle   = (terrainHandle != 0);
-	const bool g_noOverlay= !(useOverlayTexture && overlayHandle != 0xffffffff);
-	const bool g_noWater  = !(useWaterInterestTexture && terrainDetailHandle != 0xffffffff);
-	fastPathEligible =
-	    g_active && g_thin && g_ready && g_notOver
-	    && (g_handle || !g_noWater || !g_noOverlay);
-
-	// MC2_THIN_DEBUG=1: per-gate fail counts to pinpoint which condition is culling
-	// most quads from the fast path. Demoted to silent-by-default per CLAUDE.md
-	// debug-instrumentation rule. Holds off until ~frame 1200 to skip warmup load
-	// and capture steady-state. Prints 5 frames then stops; per-quad cost is one
-	// branch on s_framesPrinted after that (effectively zero).
-	{
-	    static const bool s_pathMixOn = mc2::gate::get<"MC2_THIN_DEBUG">();
-	    static uint32_t s_fast = 0, s_legacy = 0;
-	    static uint32_t s_failActive = 0, s_failThin = 0, s_failReady = 0, s_failOver = 0;
-	    static uint32_t s_failHandle = 0, s_failOverlay = 0, s_failWater = 0;
-	    static uint32_t s_framesPrinted = 0;
-	    static uint32_t s_quadsThisFrame = 0;
-	    static uint32_t s_frameCounter = 0;
-	    constexpr uint32_t kWarmupHoldoffFrames = 1200;  // ~15s @ 80fps
-	    if (s_pathMixOn && s_framesPrinted < 5) {
-	        const bool warmedUp = (s_frameCounter >= kWarmupHoldoffFrames);
-	        if (warmedUp) {
-	            if (fastPathEligible) ++s_fast;
-	            else {
-	                ++s_legacy;
-	                if      (!g_active)    ++s_failActive;
-	                else if (!g_thin)      ++s_failThin;
-	                else if (!g_ready)     ++s_failReady;
-	                else if (!g_notOver)   ++s_failOver;
-	                else if (!g_handle)    ++s_failHandle;
-	                else if (!g_noOverlay) ++s_failOverlay;
-	                else if (!g_noWater)   ++s_failWater;
-	            }
-	        }
-	        if (++s_quadsThisFrame >= 14000) {
-	            ++s_frameCounter;
-	            if (warmedUp) {
-	                mc2::fmt::print_err("[THIN_DEBUG v1] event=path_mix frame={:d} (post-warmup) fast={:d} legacy={:d} fail_active={:d} fail_thin={:d} fail_ready={:d} fail_over={:d} fail_handle0={:d} fail_overlay={:d} fail_water={:d}\n", mc2::fmt::as_u32(s_framesPrinted), mc2::fmt::as_u32(s_fast), mc2::fmt::as_u32(s_legacy), mc2::fmt::as_u32(s_failActive), mc2::fmt::as_u32(s_failThin), mc2::fmt::as_u32(s_failReady), mc2::fmt::as_u32(s_failOver), mc2::fmt::as_u32(s_failHandle), mc2::fmt::as_u32(s_failOverlay), mc2::fmt::as_u32(s_failWater));
-	                fflush(stderr);
-	                s_fast = s_legacy = 0;
-	                s_failActive = s_failThin = s_failReady = s_failOver = 0;
-	                s_failHandle = s_failOverlay = s_failWater = 0;
-	                ++s_framesPrinted;
-	            }
-	            s_quadsThisFrame = 0;
-	        }
-	    }
-	}
+    // Keep the authored overlay route and its existing kill switches. Base
+    // terrain readiness belongs to the native indirect/LOD producer.
+    static const bool fast = mc2::gate::get<"MC2_MODERN_TERRAIN_SURFACE">()
+        && mc2::gate::get<"MC2_PATCHSTREAM_THIN_RECORDS">()
+        && mc2::gate::get<"MC2_PATCHSTREAM_THIN_RECORDS_DRAW">()
+        && mc2::gate::get<"MC2_PATCHSTREAM_THIN_RECORD_FASTPATH">();
+    f.fastPathEligible = fast && gos_terrain_indirect::IsFrameSolidArmed()
+        && (terrainHandle != 0 || (useOverlayTexture && overlayHandle != 0xffffffff)
+            || (useWaterInterestTexture && terrainDetailHandle != 0xffffffff));
 }
 
 // Fast path: compute the pz-validity of each triangle and run the pz parity probe.
@@ -309,143 +240,7 @@ void TerrainQuad::fastPzGate(QuadFastFrame& fp) {
 }
 
 // Fast path: emit the thin record (falls through to the detail label when the recipe SSBO is full).
-void TerrainQuad::fastThinEmit(QuadDrawFrame& f, QuadFastFrame& fp) {
-	auto& minU = f.minU; auto& maxU = f.maxU; auto& minV = f.minV;
-	auto& maxV = f.maxV; auto& pzTri1 = fp.pzTri1; auto& pzTri2 = fp.pzTri2;
-	    // === Thin-record emit path (terrainHandle != 0 only) ===
-	    // Detail-only quads (terrainHandle == 0 + has detail) skip this entire block
-	    // and go straight to the M2c detail emit below. The thin record is a base-
-	    // texture submission; quads without a base texture have nothing to put in it.
-	    //
-	    // Step 1b-1 gate-split: skip the entire thin-emit scope (recipe
-	    // peek/build via ensureRecipeForQuad + the TerrainQuadThinRecord
-	    // build + appendThinRecordDirect) when GPU SOLID is armed. Post
-	    // Fix-B the compute shader is the sole projection authority and
-	    // re-derives this record (incl. the pzTri1/pzTri2 flag bits) for
-	    // every admitted quad, so the CPU emit is dead work whose output
-	    // the GPU overwrites. NOTE: pz/pzTri compute, the
-	    // `if (!pzTri1 && !pzTri2) return;` cull, and the M2d
-	    // gos_PushTerrainOverlay block below stay UNCONDITIONAL — they
-	    // feed the live decal producer (§2 WARNING, 9964d5a
-	    // conflated-overlay regression class). The `goto fp_detail_only`
-	    // inside this block jumps to a label AFTER it, so gating the
-	    // block leaves the SSBO-full detail fallthrough intact.
-	    const bool thinEmitArmed = gos_terrain_indirect::IsFrameSolidArmed();
-	    if (s_thinEmitTrace) {
-	        static bool s_loggedThinEmit = false;
-	        if (!s_loggedThinEmit) {
-	            s_loggedThinEmit = true;
-	            mc2::fmt::print_out("[TERRAIN_INDIRECT v1] event=cpu_thinemit_demoted path=quad_m2 armed={:d} gate=IsFrameSolidArmed note=overlay_producer_unconditional\n", mc2::fmt::as_i32(thinEmitArmed ? 1 : 0));
-	            fflush(stdout);
-	        }
-	    }
-	    if (terrainHandle != 0 && !thinEmitArmed)
-	    {
-	        const bool isCement = Terrain::terrainTextures->isCement(vertices[0]->pVertex->textureData & 0x0000ffff);
-	        const bool isAlpha  = Terrain::terrainTextures->isAlpha(vertices[0]->pVertex->textureData & 0x0000ffff);
-	        const bool alphaOverride = Terrain::terrainTextures2 && (!isCement || isAlpha);
 
-	        // effectiveLightRGB: alphaOverride first, then selected (matching legacy priority)
-	        auto lightRGBc = [&](int c) -> uint32_t {
-	            DWORD lc = vertices[c]->lightRGB;
-	            if (alphaOverride) lc = 0xffffffffu;
-	            if (vertices[c]->pVertex->selected) lc = static_cast<DWORD>(SELECTION_COLOR);
-	            return static_cast<uint32_t>(lc);
-	        };
-
-	        // Lazy recipe build: peek the cache first using only corner-0 (wx0, wy0).
-	        // ~99% of quads hit the cache after warmup; building the full recipe (~20
-	        // cold reads through vertices[c]->pVertex->{elevation, vertexNormal,
-	        // terrainType}, ~30 stack stores, 4× terrainTypeToMaterial, bit-pack +
-	        // memcpy) on a hit is pure waste — ensureRecipeForQuad discards `recipe`
-	        // on hit. Build it only on miss.
-	        const float wx0 = vertices[0]->vx;
-	        const float wy0 = vertices[0]->vy;
-	        const uint64_t recipeKey = TerrainPatchStream::makeRecipeKey(wx0, wy0);
-	        uint32_t recipeIdx = TerrainPatchStream::tryGetRecipeIdx(recipeKey);
-	        if (recipeIdx == UINT32_MAX)
-	        {
-	            TerrainQuadRecipe recipe;
-	            recipe.wx0=wx0;             recipe.wy0=wy0;             recipe.wz0=vertices[0]->pVertex->elevation; recipe._wp0=0.f;
-	            recipe.wx1=vertices[1]->vx; recipe.wy1=vertices[1]->vy; recipe.wz1=vertices[1]->pVertex->elevation; recipe._wp1=0.f;
-	            recipe.wx2=vertices[2]->vx; recipe.wy2=vertices[2]->vy; recipe.wz2=vertices[2]->pVertex->elevation; recipe._wp2=0.f;
-	            recipe.wx3=vertices[3]->vx; recipe.wy3=vertices[3]->vy; recipe.wz3=vertices[3]->pVertex->elevation; recipe._wp3=0.f;
-	            recipe.nx0=vertices[0]->pVertex->vertexNormal.x; recipe.ny0=vertices[0]->pVertex->vertexNormal.y; recipe.nz0=vertices[0]->pVertex->vertexNormal.z; recipe._np0=0.f;
-	            recipe.nx1=vertices[1]->pVertex->vertexNormal.x; recipe.ny1=vertices[1]->pVertex->vertexNormal.y; recipe.nz1=vertices[1]->pVertex->vertexNormal.z; recipe._np1=0.f;
-	            recipe.nx2=vertices[2]->pVertex->vertexNormal.x; recipe.ny2=vertices[2]->pVertex->vertexNormal.y; recipe.nz2=vertices[2]->pVertex->vertexNormal.z; recipe._np2=0.f;
-	            recipe.nx3=vertices[3]->pVertex->vertexNormal.x; recipe.ny3=vertices[3]->pVertex->vertexNormal.y; recipe.nz3=vertices[3]->pVertex->vertexNormal.z; recipe._np3=0.f;
-	            recipe.minU=minU; recipe.minV=minV; recipe.maxU=maxU; recipe.maxV=maxV;
-
-	            // Pack 4 corner material types into _wp0 — bit-preserving write; shader reads via floatBitsToUint
-	            {
-	                uint32_t m0 = terrainTypeToMaterial(vertices[0]->pVertex->terrainType);
-	                uint32_t m1 = terrainTypeToMaterial(vertices[1]->pVertex->terrainType);
-	                uint32_t m2 = terrainTypeToMaterial(vertices[2]->pVertex->terrainType);
-	                uint32_t m3 = terrainTypeToMaterial(vertices[3]->pVertex->terrainType);
-	                uint32_t tpacked = m0 | (m1 << 8) | (m2 << 16) | (m3 << 24);
-	                memcpy(&recipe._wp0, &tpacked, 4);
-	            }
-
-	            recipeIdx = TerrainPatchStream::ensureRecipeForQuad(recipeKey, recipe);
-	            if (recipeIdx == UINT32_MAX) goto fp_detail_only;  // SSBO full — try detail still
-	        }
-
-	        {
-	            TerrainQuadThinRecord tr;
-	            tr.recipeIdx     = recipeIdx;
-	            tr.terrainHandle = static_cast<uint32_t>(terrainHandle);
-	            tr.flags         = (uvMode == BOTTOMLEFT ? 1u : 0u)
-	                             | (pzTri1 ? 2u : 0u)
-	                             | (pzTri2 ? 4u : 0u);
-	            tr.cementWord    = 0u;  // Fix B rename (was _pad0).  Patch-stream
-	                                    // path doesn't carry cement bits.
-	            tr.lightRGB0     = lightRGBc(0);
-	            tr.lightRGB1     = lightRGBc(1);
-	            tr.lightRGB2     = lightRGBc(2);
-	            tr.lightRGB3     = lightRGBc(3);
-	            // Fix B 2026-05-14: clipPos zeroed (patch-stream uses its own VS,
-	            // not the indirect thin VS that consumes clipPos).
-	            for (int k = 0; k < 16; ++k) tr.clipPos[k] = 0.0f;
-	            TerrainPatchStream::appendThinRecordDirect(tr);
-	        }
-	    }
-	    fp_detail_only:;
-
-	    // PR2a Stage 1a — M2c detail emit DELETED 2026-05-08.
-	    //
-	    // Was: an `if (useWaterInterestTexture && terrainDetailHandle != 0xffffffff)`
-	    // block (~64 lines) that built per-corner gos_VERTEX arrays + per-tri
-	    // clampUVs lambda + per-tri addVertices calls into the masterVertexNodes
-	    // queue with flags `MC2_ISTERRAIN | MC2_DRAWALPHA`.
-	    //
-	    // Two reasons it was retired:
-	    //   1. ZERO PIXEL OUTPUT since 521d83a (2026-04-16, "Fix terrain underlayer
-	    //      artifact"). Render.Overlays at txmmgr.cpp:1818-1822 unconditionally
-	    //      resets-and-skips any non-water alpha+terrain node — detail nodes
-	    //      have flags MC2_ISTERRAIN|MC2_DRAWALPHA (no water flag) so they hit
-	    //      the suppress predicate. The flat-plane detail layer was suppressed
-	    //      because tessellated terrain elevation made it visible as a "dark
-	    //      striped under-pattern."
-	    //   2. ZERO CPU EXECUTION across tier1 (verified 2026-05-08 Stage 0a,
-	    //      m2c_detail_emit_quads=0 on mc2_01/03/10/17). Code drift since the
-	    //      M2 thin-record landing eliminated the runtime path even though
-	    //      the brainstorm cited m2_thin_record_cpu_reduction_results.md's
-	    //      "~5,800 quads/frame on mc2_01" — that perf number is stale.
-	    //
-	    // Future "tessellation-aware detail layer" feature is independent scope
-	    // (see recon-6 "Open follow-ups" #4); brainstorm separately if/when it
-	    // ships. Don't resurrect this block.
-
-	    // M2d: per-quad base-texture overlay emit. Replaces the four legacy
-	    // gos_PushTerrainOverlay sites further down in this function (TOPRIGHT tri1+tri2,
-	    // BOTTOMLEFT tri1+tri2) — same output, but builds WorldOverlayVert straight from
-	    // vertices[c] instead of memcpy'ing gVertex through oVertex and calling
-	    // setOverlayWorldCoords. wz includes OVERLAY_ELEV_OFFSET (0.15f) to
-	    // prevent z-fighting against the base terrain — matches setOverlayWorldCoords.
-	    // ARGB and fog use raw vertices[c]->lightRGB/fogRGB — NO `selected` override and
-	    // NO `terrainTextures2` whiteout (those overrides apply to base/detail textures
-	    // only; legacy overlay block also uses raw lightRGB).
-}
 
 // Fast path: emit the overlay decal triangles.
 void TerrainQuad::fastOverlayEmit(QuadDrawFrame& f, QuadFastFrame& fp) {
@@ -618,12 +413,12 @@ void TerrainQuad::drawLegacyBottomRight(QuadDrawFrame& f) {
 		const bool pzTri1 = ((gVertex[0].z >= 0.0f) && (gVertex[0].z < 1.0f) &&
 		                     (gVertex[1].z >= 0.0f) && (gVertex[1].z < 1.0f) &&
 		                     (gVertex[2].z >= 0.0f) && (gVertex[2].z < 1.0f));
-		const gos_VERTEX gvTri1[3] = {gVertex[0], gVertex[1], gVertex[2]};
+
 		if (pzTri1)
 		{
 			{
 				// sebi: beware this will be drawn with alpha blending, so need to make sure that alpha is not zero, because this is a base terrain layer!
-				if(terrainHandle!=0 && !TerrainPatchStream::isFastPathActive()) {
+				if(terrainHandle!=0) {
 					mcTextureManager->addVertices(terrainHandle,gVertex,MC2_ISTERRAIN | MC2_DRAWSOLID);
 					// PatchStream append moved to appendQuad after both pz gates.
 				}
@@ -769,7 +564,7 @@ void TerrainQuad::drawLegacyBottomRight(QuadDrawFrame& f) {
 		if (pzTri2)
 		{
 			{
-				if(terrainHandle!=0 && !TerrainPatchStream::isFastPathActive()) {
+				if(terrainHandle!=0) {
 					mcTextureManager->addVertices(terrainHandle,gVertex,MC2_ISTERRAIN | MC2_DRAWSOLID);
 					// PatchStream append moved to appendQuad below.
 				}
@@ -879,58 +674,7 @@ void TerrainQuad::drawLegacyBottomRight(QuadDrawFrame& f) {
 		}
 
 		// PatchStream: one bucket lookup for both triangles of this quad.
-		if (terrainHandle != 0 && TerrainPatchStream::isReady() && !TerrainPatchStream::isOverflowed()) {
-			gos_TERRAIN_EXTRA tx1[3] = {}, tx2[3] = {};
-			if (!TerrainPatchStream::isThinRecordsActive()) {
-				if (pzTri1) buildTerrainExtraTriple(vertices[0], vertices[1], vertices[2], tx1);
-				if (pzTri2) buildTerrainExtraTriple(vertices[0], vertices[2], vertices[3], tx2);
-			}
-			TerrainPatchStream::appendQuad(terrainHandle, gvTri1, tx1, pzTri1, gVertex, tx2, pzTri2);
-			// M1 compact record — TOPRIGHT diagonal.
-			// gvTri1[0..2] = corners 0,1,2 (saved before shuffle).
-			// gVertex[2]   = corner 3 (constructed by shuffle from vertices[3]).
-			TerrainQuadRecord rec;
-			rec.wx0=vertices[0]->vx; rec.wy0=vertices[0]->vy; rec.wz0=vertices[0]->pVertex->elevation; rec._wp0=0.f;
-			rec.wx1=vertices[1]->vx; rec.wy1=vertices[1]->vy; rec.wz1=vertices[1]->pVertex->elevation; rec._wp1=0.f;
-			rec.wx2=vertices[2]->vx; rec.wy2=vertices[2]->vy; rec.wz2=vertices[2]->pVertex->elevation; rec._wp2=0.f;
-			rec.wx3=vertices[3]->vx; rec.wy3=vertices[3]->vy; rec.wz3=vertices[3]->pVertex->elevation; rec._wp3=0.f;
-			rec.nx0=vertices[0]->pVertex->vertexNormal.x; rec.ny0=vertices[0]->pVertex->vertexNormal.y; rec.nz0=vertices[0]->pVertex->vertexNormal.z; rec._np0=0.f;
-			rec.nx1=vertices[1]->pVertex->vertexNormal.x; rec.ny1=vertices[1]->pVertex->vertexNormal.y; rec.nz1=vertices[1]->pVertex->vertexNormal.z; rec._np1=0.f;
-			rec.nx2=vertices[2]->pVertex->vertexNormal.x; rec.ny2=vertices[2]->pVertex->vertexNormal.y; rec.nz2=vertices[2]->pVertex->vertexNormal.z; rec._np2=0.f;
-			rec.nx3=vertices[3]->pVertex->vertexNormal.x; rec.ny3=vertices[3]->pVertex->vertexNormal.y; rec.nz3=vertices[3]->pVertex->vertexNormal.z; rec._np3=0.f;
-			rec.minU=minU; rec.minV=minV; rec.maxU=maxU; rec.maxV=maxV;
-			rec.lightRGB0=gvTri1[0].argb; rec.lightRGB1=gvTri1[1].argb; rec.lightRGB2=gvTri1[2].argb; rec.lightRGB3=gVertex[2].argb;
-			rec.fogRGB0  =gvTri1[0].frgb; rec.fogRGB1  =gvTri1[1].frgb; rec.fogRGB2  =gvTri1[2].frgb; rec.fogRGB3  =gVertex[2].frgb;
-			rec.terrainHandle = static_cast<uint32_t>(terrainHandle);
-			rec.flags = 0u | (pzTri1 ? 2u : 0u) | (pzTri2 ? 4u : 0u); // bit0=0 → TOPRIGHT
-			rec._ctrl2 = 0u; rec._ctrl3 = 0u;
-			TerrainPatchStream::appendQuadRecord(rec);
-			TerrainPatchStream::addRecordVertParity((pzTri1 ? 3u : 0u) + (pzTri2 ? 3u : 0u));
-			{
-				TerrainQuadRecipe recipe;
-				recipe.wx0=vertices[0]->vx; recipe.wy0=vertices[0]->vy; recipe.wz0=vertices[0]->pVertex->elevation; recipe._wp0=0.f;
-				recipe.wx1=vertices[1]->vx; recipe.wy1=vertices[1]->vy; recipe.wz1=vertices[1]->pVertex->elevation; recipe._wp1=0.f;
-				recipe.wx2=vertices[2]->vx; recipe.wy2=vertices[2]->vy; recipe.wz2=vertices[2]->pVertex->elevation; recipe._wp2=0.f;
-				recipe.wx3=vertices[3]->vx; recipe.wy3=vertices[3]->vy; recipe.wz3=vertices[3]->pVertex->elevation; recipe._wp3=0.f;
-				recipe.nx0=vertices[0]->pVertex->vertexNormal.x; recipe.ny0=vertices[0]->pVertex->vertexNormal.y; recipe.nz0=vertices[0]->pVertex->vertexNormal.z; recipe._np0=0.f;
-				recipe.nx1=vertices[1]->pVertex->vertexNormal.x; recipe.ny1=vertices[1]->pVertex->vertexNormal.y; recipe.nz1=vertices[1]->pVertex->vertexNormal.z; recipe._np1=0.f;
-				recipe.nx2=vertices[2]->pVertex->vertexNormal.x; recipe.ny2=vertices[2]->pVertex->vertexNormal.y; recipe.nz2=vertices[2]->pVertex->vertexNormal.z; recipe._np2=0.f;
-				recipe.nx3=vertices[3]->pVertex->vertexNormal.x; recipe.ny3=vertices[3]->pVertex->vertexNormal.y; recipe.nz3=vertices[3]->pVertex->vertexNormal.z; recipe._np3=0.f;
-				recipe.minU=minU; recipe.minV=minV; recipe.maxU=maxU; recipe.maxV=maxV;
-				const uint32_t tFlags = 0u | (pzTri1 ? 2u : 0u) | (pzTri2 ? 4u : 0u); // bit0=0 → TOPRIGHT
-				{
-					uint32_t m0 = terrainTypeToMaterial(vertices[0]->pVertex->terrainType);
-					uint32_t m1 = terrainTypeToMaterial(vertices[1]->pVertex->terrainType);
-					uint32_t m2 = terrainTypeToMaterial(vertices[2]->pVertex->terrainType);
-					uint32_t m3 = terrainTypeToMaterial(vertices[3]->pVertex->terrainType);
-					uint32_t tpacked = m0 | (m1 << 8) | (m2 << 16) | (m3 << 24);
-					memcpy(&recipe._wp0, &tpacked, 4);
-				}
-				TerrainPatchStream::appendThinRecord(terrainHandle, recipe, tFlags,
-					gvTri1[0].argb, gvTri1[1].argb, gvTri1[2].argb, gVertex[2].argb);
-				TerrainPatchStream::addThinRecordVertParity((pzTri1 ? 3u : 0u) + (pzTri2 ? 3u : 0u));
-			}
-		}
+
 }
 
 // Legacy path for a BOTTOMLEFT quad: base, overlay, detail and patch-stream emit for both triangles.
@@ -987,11 +731,11 @@ void TerrainQuad::drawLegacyBottomLeft(QuadDrawFrame& f) {
 		const bool pzTri1 = ((gVertex[0].z >= 0.0f) && (gVertex[0].z < 1.0f) &&
 		                     (gVertex[1].z >= 0.0f) && (gVertex[1].z < 1.0f) &&
 		                     (gVertex[2].z >= 0.0f) && (gVertex[2].z < 1.0f));
-		const gos_VERTEX gvTri1[3] = {gVertex[0], gVertex[1], gVertex[2]};
+
 		if (pzTri1)
 		{
 			{
-				if(terrainHandle!=0 && !TerrainPatchStream::isFastPathActive()) {
+				if(terrainHandle!=0) {
 					mcTextureManager->addVertices(terrainHandle,gVertex,MC2_ISTERRAIN | MC2_DRAWSOLID);
 					// PatchStream append moved to appendQuad after both pz gates.
 				}
@@ -1135,7 +879,7 @@ void TerrainQuad::drawLegacyBottomLeft(QuadDrawFrame& f) {
 		if (pzTri2)
 		{
 			{
-				if(terrainHandle!=0 && !TerrainPatchStream::isFastPathActive()) {
+				if(terrainHandle!=0) {
 					mcTextureManager->addVertices(terrainHandle,gVertex,MC2_ISTERRAIN | MC2_DRAWSOLID);
 					// PatchStream append moved to appendQuad below.
 				}
@@ -1244,63 +988,7 @@ void TerrainQuad::drawLegacyBottomLeft(QuadDrawFrame& f) {
 		}
 
 		// PatchStream: one bucket lookup for both triangles of this quad.
-		if (terrainHandle != 0 && TerrainPatchStream::isReady() && !TerrainPatchStream::isOverflowed()) {
-			gos_TERRAIN_EXTRA tx1[3] = {}, tx2[3] = {};
-			if (!TerrainPatchStream::isThinRecordsActive()) {
-				if (pzTri1) buildTerrainExtraTriple(vertices[0], vertices[1], vertices[3], tx1);
-				if (pzTri2) buildTerrainExtraTriple(vertices[1], vertices[2], vertices[3], tx2);
-			}
-			TerrainPatchStream::appendQuad(terrainHandle, gvTri1, tx1, pzTri1, gVertex, tx2, pzTri2);
-			// M1 compact record — BOTTOMLEFT diagonal.
-			// gvTri1 = {corner0, corner1, corner3} (saved before shuffle).
-			// After shuffle: gVertex[0]=corner1, gVertex[1]=corner2, gVertex[2]=corner3.
-			// corner2 (vertices[2]) is only in gVertex[1] after the shuffle.
-			TerrainQuadRecord rec;
-			rec.wx0=vertices[0]->vx; rec.wy0=vertices[0]->vy; rec.wz0=vertices[0]->pVertex->elevation; rec._wp0=0.f;
-			rec.wx1=vertices[1]->vx; rec.wy1=vertices[1]->vy; rec.wz1=vertices[1]->pVertex->elevation; rec._wp1=0.f;
-			rec.wx2=vertices[2]->vx; rec.wy2=vertices[2]->vy; rec.wz2=vertices[2]->pVertex->elevation; rec._wp2=0.f;
-			rec.wx3=vertices[3]->vx; rec.wy3=vertices[3]->vy; rec.wz3=vertices[3]->pVertex->elevation; rec._wp3=0.f;
-			rec.nx0=vertices[0]->pVertex->vertexNormal.x; rec.ny0=vertices[0]->pVertex->vertexNormal.y; rec.nz0=vertices[0]->pVertex->vertexNormal.z; rec._np0=0.f;
-			rec.nx1=vertices[1]->pVertex->vertexNormal.x; rec.ny1=vertices[1]->pVertex->vertexNormal.y; rec.nz1=vertices[1]->pVertex->vertexNormal.z; rec._np1=0.f;
-			rec.nx2=vertices[2]->pVertex->vertexNormal.x; rec.ny2=vertices[2]->pVertex->vertexNormal.y; rec.nz2=vertices[2]->pVertex->vertexNormal.z; rec._np2=0.f;
-			rec.nx3=vertices[3]->pVertex->vertexNormal.x; rec.ny3=vertices[3]->pVertex->vertexNormal.y; rec.nz3=vertices[3]->pVertex->vertexNormal.z; rec._np3=0.f;
-			rec.minU=minU; rec.minV=minV; rec.maxU=maxU; rec.maxV=maxV;
-			// BOTTOMLEFT: gvTri1[0]=corner0, gvTri1[1]=corner1, gvTri1[2]=corner3
-			//             gVertex[1] after shuffle = corner2
-			rec.lightRGB0=gvTri1[0].argb; rec.lightRGB1=gvTri1[1].argb; rec.lightRGB2=gVertex[1].argb; rec.lightRGB3=gvTri1[2].argb;
-			rec.fogRGB0  =gvTri1[0].frgb; rec.fogRGB1  =gvTri1[1].frgb; rec.fogRGB2  =gVertex[1].frgb; rec.fogRGB3  =gvTri1[2].frgb;
-			rec.terrainHandle = static_cast<uint32_t>(terrainHandle);
-			rec.flags = 1u | (pzTri1 ? 2u : 0u) | (pzTri2 ? 4u : 0u); // bit0=1 → BOTTOMLEFT
-			rec._ctrl2 = 0u; rec._ctrl3 = 0u;
-			TerrainPatchStream::appendQuadRecord(rec);
-			TerrainPatchStream::addRecordVertParity((pzTri1 ? 3u : 0u) + (pzTri2 ? 3u : 0u));
-			{
-				TerrainQuadRecipe recipe;
-				recipe.wx0=vertices[0]->vx; recipe.wy0=vertices[0]->vy; recipe.wz0=vertices[0]->pVertex->elevation; recipe._wp0=0.f;
-				recipe.wx1=vertices[1]->vx; recipe.wy1=vertices[1]->vy; recipe.wz1=vertices[1]->pVertex->elevation; recipe._wp1=0.f;
-				recipe.wx2=vertices[2]->vx; recipe.wy2=vertices[2]->vy; recipe.wz2=vertices[2]->pVertex->elevation; recipe._wp2=0.f;
-				recipe.wx3=vertices[3]->vx; recipe.wy3=vertices[3]->vy; recipe.wz3=vertices[3]->pVertex->elevation; recipe._wp3=0.f;
-				recipe.nx0=vertices[0]->pVertex->vertexNormal.x; recipe.ny0=vertices[0]->pVertex->vertexNormal.y; recipe.nz0=vertices[0]->pVertex->vertexNormal.z; recipe._np0=0.f;
-				recipe.nx1=vertices[1]->pVertex->vertexNormal.x; recipe.ny1=vertices[1]->pVertex->vertexNormal.y; recipe.nz1=vertices[1]->pVertex->vertexNormal.z; recipe._np1=0.f;
-				recipe.nx2=vertices[2]->pVertex->vertexNormal.x; recipe.ny2=vertices[2]->pVertex->vertexNormal.y; recipe.nz2=vertices[2]->pVertex->vertexNormal.z; recipe._np2=0.f;
-				recipe.nx3=vertices[3]->pVertex->vertexNormal.x; recipe.ny3=vertices[3]->pVertex->vertexNormal.y; recipe.nz3=vertices[3]->pVertex->vertexNormal.z; recipe._np3=0.f;
-				recipe.minU=minU; recipe.minV=minV; recipe.maxU=maxU; recipe.maxV=maxV;
-				// BOTTOMLEFT: same corner order as fat record above.
-				// gvTri1[0]=corner0, gvTri1[1]=corner1, gvTri1[2]=corner3; gVertex[1]=corner2
-				const uint32_t tFlags = 1u | (pzTri1 ? 2u : 0u) | (pzTri2 ? 4u : 0u); // bit0=1 → BOTTOMLEFT
-				{
-					uint32_t m0 = terrainTypeToMaterial(vertices[0]->pVertex->terrainType);
-					uint32_t m1 = terrainTypeToMaterial(vertices[1]->pVertex->terrainType);
-					uint32_t m2 = terrainTypeToMaterial(vertices[2]->pVertex->terrainType);
-					uint32_t m3 = terrainTypeToMaterial(vertices[3]->pVertex->terrainType);
-					uint32_t tpacked = m0 | (m1 << 8) | (m2 << 16) | (m3 << 24);
-					memcpy(&recipe._wp0, &tpacked, 4);
-				}
-				TerrainPatchStream::appendThinRecord(terrainHandle, recipe, tFlags,
-					gvTri1[0].argb, gvTri1[1].argb, gVertex[1].argb, gvTri1[2].argb);
-				TerrainPatchStream::addThinRecordVertParity((pzTri1 ? 3u : 0u) + (pzTri2 ? 3u : 0u));
-			}
-		}
+
 }
 
 // Emits this quad: the M2 fast path (thin record, overlay decals) when the patch stream is armed,
@@ -1337,7 +1025,6 @@ void TerrainQuad::draw (void)
 
 		    if (!fp.pzTri1 && !fp.pzTri2) return;  // both culled — skip entirely
 
-		    fastThinEmit(f, fp);
 		    fastOverlayEmit(f, fp);
 
 		    return;

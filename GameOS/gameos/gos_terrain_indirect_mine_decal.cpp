@@ -1,5 +1,6 @@
 // Native mine bake and cement overlay producer. Texture data stays in the shared GOS cache.
 #include "gos_terrain_indirect_internal.h"
+#include "../../mclib/texture_assets.h"
 #include "mc2fmt.h"
 #include "texture_decode.h"
 
@@ -193,7 +194,6 @@ struct DecalDrawRange {
     uint32_t vertCount;
 };
 
-GLuint                       g_decalStaticVBO_GL  = 0;
 int                          g_decalVertCount     = 0;
 bool                         g_decalVBODirty      = true;  // first build triggers via Rebuild on first armed draw
 std::vector<DecalDrawRange>  g_decalDrawRanges;
@@ -254,9 +254,7 @@ void MarkDecalDirty() {
     g_decalVBODirty = true;
 }
 
-// Mirror ResetMineStaticVBO — CPU-clear only; keep g_decalStaticVBO_GL
-// allocation across missions (next BuildDecalStaticVBO reuses it via
-// glBufferData orphan+realloc).
+// Clear the mission-owned CPU decal bake; the native consumer owns its GPU copy.
 void ResetDecalStaticVBO() {
     g_decalVertCount = 0;
     g_decalVBODirty  = true;
@@ -265,7 +263,7 @@ void ResetDecalStaticVBO() {
     g_decalVertsCpu.clear();
 #endif
     if (IsTraceEnabled()) {
-        mc2::fmt::print_out("[TERRAIN_OVERLAY v1] event=decal_vbo_reset vbo_gl={:d} kept=1\n", mc2::fmt::as_u32(static_cast<unsigned>(g_decalStaticVBO_GL)));
+        mc2::fmt::print_out("[TERRAIN_OVERLAY v1] event=decal_cpu_reset\n");
         fflush(stdout);
     }
 }
@@ -445,9 +443,9 @@ void BuildDecalStaticVBO() {
             if (MC2_OverlayTileHiresSize() > 0)
             {
                 DWORD ovLogicalW = 0, ovLogicalH = 0;
-                if (mcTextureManager->tryGetTextureLogicalSize(overlayHandle, ovLogicalW, ovLogicalH))
+                if (mc2::textures::logicalSize(overlayHandle, ovLogicalW, ovLogicalH))
                 {
-                    const DWORD ovEdge = ovLogicalW * mcTextureManager->getUVScale(overlayHandle);
+                    const DWORD ovEdge = ovLogicalW * mc2::textures::uvScale(overlayHandle);
                     if (ovEdge > 0)
                     {
                         tileMinU = tileMinV = 0.5f / static_cast<float>(ovEdge);
@@ -620,7 +618,7 @@ void RebuildDecalStaticVBOIfDirty() {
     g_decalVBODirty = false;
 }
 
-unsigned int GetDecalStaticVBO_GL() { return g_decalStaticVBO_GL; }
+
 int          GetDecalVertCount()    { return g_decalVertCount; }
 
 // Mirror DrawMineStatic. Lazy rebuild-if-dirty on first armed draw, single

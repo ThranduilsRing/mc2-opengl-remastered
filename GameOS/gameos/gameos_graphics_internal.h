@@ -11,11 +11,10 @@
 #include "gameos.hpp"
 #include "gos_font.h"
 #include "texture_decode.h"   // mc2tex::decodeBc7 for the pre-compressed RGBA8 mirror
-#include "utils/gl_utils.h"
+#include "utils/texture_format.h"
 #include "utils/Image.h"
 #include "utils/mc2log.h"
 
-#include <GL/glew.h>
 #include <cstring>
 
 #include <cstdint>
@@ -28,59 +27,6 @@ struct gosTextureInfo {
     int width_;
     int height_;
     gos_TextureFormat format_;
-};
-
-struct GlPixelStoreGuard {
-    GLint packBuffer = 0, unpackBuffer = 0;
-    GLint packAlign = 0, unpackAlign = 0;
-    GLint packRowLen = 0, unpackRowLen = 0;
-    GLint packSkipRows = 0, packSkipPixels = 0;
-    GLint unpackSkipRows = 0, unpackSkipPixels = 0;
-    GLint activeTex = 0;
-    GLint binding2D = 0, binding2DArray = 0;
-
-    GlPixelStoreGuard() {
-        glGetIntegerv(GL_PIXEL_PACK_BUFFER_BINDING,   &packBuffer);
-        glGetIntegerv(GL_PIXEL_UNPACK_BUFFER_BINDING, &unpackBuffer);
-        glGetIntegerv(GL_PACK_ALIGNMENT,    &packAlign);
-        glGetIntegerv(GL_UNPACK_ALIGNMENT,  &unpackAlign);
-        glGetIntegerv(GL_PACK_ROW_LENGTH,   &packRowLen);
-        glGetIntegerv(GL_UNPACK_ROW_LENGTH, &unpackRowLen);
-        glGetIntegerv(GL_PACK_SKIP_ROWS,    &packSkipRows);
-        glGetIntegerv(GL_PACK_SKIP_PIXELS,  &packSkipPixels);
-        glGetIntegerv(GL_UNPACK_SKIP_ROWS,  &unpackSkipRows);
-        glGetIntegerv(GL_UNPACK_SKIP_PIXELS,&unpackSkipPixels);
-        glGetIntegerv(GL_ACTIVE_TEXTURE,    &activeTex);
-        glGetIntegerv(GL_TEXTURE_BINDING_2D,       &binding2D);
-        glGetIntegerv(GL_TEXTURE_BINDING_2D_ARRAY, &binding2DArray);
-
-        glBindBuffer(GL_PIXEL_PACK_BUFFER,   0);
-        glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
-        glPixelStorei(GL_PACK_ALIGNMENT,    1);
-        glPixelStorei(GL_PACK_ROW_LENGTH,   0);
-        glPixelStorei(GL_PACK_SKIP_ROWS,    0);
-        glPixelStorei(GL_PACK_SKIP_PIXELS,  0);
-        glPixelStorei(GL_UNPACK_ALIGNMENT,  1);
-        glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
-        glPixelStorei(GL_UNPACK_SKIP_ROWS,  0);
-        glPixelStorei(GL_UNPACK_SKIP_PIXELS,0);
-    }
-
-    ~GlPixelStoreGuard() {
-        glBindBuffer(GL_PIXEL_PACK_BUFFER,   (GLuint)packBuffer);
-        glBindBuffer(GL_PIXEL_UNPACK_BUFFER, (GLuint)unpackBuffer);
-        glPixelStorei(GL_PACK_ALIGNMENT,    packAlign);
-        glPixelStorei(GL_PACK_ROW_LENGTH,   packRowLen);
-        glPixelStorei(GL_PACK_SKIP_ROWS,    packSkipRows);
-        glPixelStorei(GL_PACK_SKIP_PIXELS,  packSkipPixels);
-        glPixelStorei(GL_UNPACK_ALIGNMENT,  unpackAlign);
-        glPixelStorei(GL_UNPACK_ROW_LENGTH, unpackRowLen);
-        glPixelStorei(GL_UNPACK_SKIP_ROWS,  unpackSkipRows);
-        glPixelStorei(GL_UNPACK_SKIP_PIXELS,unpackSkipPixels);
-        glBindTexture(GL_TEXTURE_2D,       (GLuint)binding2D);
-        glBindTexture(GL_TEXTURE_2D_ARRAY, (GLuint)binding2DArray);
-        glActiveTexture((GLenum)activeTex);
-    }
 };
 
 class gosTexture {
@@ -144,9 +90,9 @@ class gosTexture {
             mirror_h_ = 0;
         }
 
-        // A pre-compressed texture (gos_NewCompressedTexture2D, BC7 .ktx2 sidecars): the GL object arrives ready, and the
-        // level-0 blocks it was uploaded from stay with the handle as its CPU texels (vkFormat 145 / 146).
-        gosTexture(const Texture& prebuilt, gos_TextureFormat fmt, const char* name, uint32_t blockVkFormat,
+        // Pre-compressed BC7 source: retain its CPU descriptor and immutable
+        // level-0 blocks for the native consumer (vkFormat 145 / 146).
+        gosTexture(const CpuTextureDesc& prebuilt, gos_TextureFormat fmt, const char* name, uint32_t blockVkFormat,
                    std::shared_ptr<const std::vector<uint8_t>> blocks)
             : blocks_(std::move(blocks)), block_vk_format_(blockVkFormat)
         {
@@ -170,7 +116,7 @@ class gosTexture {
             mirror_h_ = 0;
         }
 
-        bool createHardwareTexture();
+        bool prepareSource();
 
         ~gosTexture() {
 
@@ -184,12 +130,9 @@ class gosTexture {
             if(texname_)
                 delete[] texname_;
 
-            destroyTexture(&tex_);
+
         }
 
-        uint32_t getTextureId() const { return tex_.id; }
-        TexType getTextureType() const { return tex_.type_; }
-        const Texture& getTexture() const { return tex_; }
         uint32_t getContentSerial() const { return content_serial_; }
         bool wantsMipmaps() const { return mc2tex::wantsMipmaps(hints_); }
         void markContentMutated() { ++content_serial_; }
@@ -276,29 +219,12 @@ class gosTexture {
             *pitch = tex_.w;
 
             gosASSERT(!plocked_area_);
-#if 0 
-            glBindTexture(GL_TEXTURE_2D, tex_.id);
-            GLint pack_row_length;
-            GLint pack_alignment;
-            glGetIntegerv(GL_PACK_ROW_LENGTH, &pack_row_length);
-            glGetIntegerv(GL_PACK_ALIGNMENT, &pack_alignment);
-            glBindTexture(GL_TEXTURE_2D, 0);
-#endif
             // always return rgba8 formatted data
             lock_type_read_only_ = is_read_only;
             const uint32_t ts = tex_.w*tex_.h * getTexFormatPixelSize(TF_RGBA8);
             plocked_area_ = new BYTE[ts];
-            // Zero before readback: getTextureData early-returns WITHOUT writing
-            // for block-compressed (BC7/TF_NONE) textures, which would otherwise
-            // leave this buffer full of heap garbage that the paint-scheme
-            // classifier then re-uploads. (A paint texture can land on BC7 when
-            // its paintInstance hashes low.)
             memset(plocked_area_, 0, ts);
-            // glGetTexImage readback is sensitive to inherited GL_PACK_* state and
-            // a left-bound GL_PIXEL_PACK_BUFFER; guard save/resets/restores it so
-            // the mech-paint recolour reads the real texels on NVIDIA.
-            GlPixelStoreGuard pixelStoreGuard;
-            getTextureData(tex_, 0, plocked_area_, TF_RGBA8);
+            if (ensureRgbaMirror()) std::memcpy(plocked_area_, rgba_mirror_->data(), ts);
             for(int y=0;y<tex_.h;++y) {
                 for(int x=0;x<tex_.w;++x) {
                     DWORD rgba = (reinterpret_cast<DWORD*>(plocked_area_))[tex_.w*y + x];
@@ -328,12 +254,8 @@ class gosTexture {
                         (reinterpret_cast<DWORD*>(plocked_area_))[tex_.w*y + x] = argb;
                     }
                 }
-                // Same hazard as Lock's readback, upload side: glTexSubImage2D
-                // reads from a left-bound GL_PIXEL_UNPACK_BUFFER (see applyPBO)
-                // instead of client memory, and honours inherited GL_UNPACK_*.
-                // Guard neutralises both so the recoloured texels actually land.
-                GlPixelStoreGuard pixelStoreGuard;
-                updateTexture(tex_, plocked_area_, TF_RGBA8);
+                blocks_.reset();
+                block_vk_format_ = 0;
                 setRgbaMirror(tex_.w, tex_.h, TF_RGBA8, plocked_area_);
                 markContentMutated();
             }
@@ -355,7 +277,7 @@ class gosTexture {
         BYTE* pcompdata_;
         BYTE* plocked_area_;
         DWORD size_;
-        Texture tex_;
+        CpuTextureDesc tex_;
 
         gos_TextureFormat format_;
         char* filename_;
@@ -426,7 +348,7 @@ int gosRendererLogicalHeight();
 // The gosRenderer class definition stays private to the main TU; extraction
 // TUs use these instead of member calls.
 
-// .bmp+.glyph fallback: create the font page gosTexture, createHardwareTexture
+// .bmp+.glyph fallback: create the font page gosTexture, prepareSource
 // (STOPs on failure, matching the old inline behavior) and register it with
 // the renderer. Returns the gos texture handle.
 DWORD gosRendererAddFontBmpTexture(const char* textureName);

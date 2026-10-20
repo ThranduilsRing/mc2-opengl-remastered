@@ -5,6 +5,7 @@
 #pragma once
 #define MLR_GOSIMAGE_HPP
 
+#include "../texture_assets.h"
 #if !defined(MLR_MLR_HPP)
 #include<mlr/mlr.hpp>
 #endif
@@ -61,7 +62,7 @@ namespace MidLevelRenderer {
 		DWORD GetHandle()
 		{ 
 			Check_Object(this);
-			DWORD imageHandle = mcTextureManager->get_gosTextureHandle(mcTextureNodeIndex);
+			DWORD imageHandle = mc2::textures::sourceId(mcTextureNodeIndex);
 
 			if (imageHandle == 0xffffffff)
 				imageHandle = 0;

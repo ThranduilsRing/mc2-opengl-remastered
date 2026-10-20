@@ -7,6 +7,7 @@ LogisticsPilotListBox.cpp			: Implementation of the LogisticsPilotListBox compon
 \*************************************************************************************************/
 
 #include"logisticspilotlistbox.h"
+#include "../mclib/texture_assets.h"
 #include"logisticspilot.h"
 #include "../resource.h"
 #include"pilotreadyscreen.h"
@@ -102,7 +103,7 @@ LogisticsPilotListBoxItem::LogisticsPilotListBoxItem( LogisticsPilot* pNewPilot 
 	{
 		DWORD aw = 0, ah = 0;
 		if ( mcTextureManager &&
-		     mcTextureManager->tryGetTextureLogicalSize( rankIcon.getTextureHandle(), aw, ah ) )
+		     mc2::textures::logicalSize( rankIcon.getTextureHandle(), aw, ah ) )
 		{
 			if ( aw > 0 ) rankIcon.setFileWidth( static_cast<float>(aw) );
 			if ( ah > 0 ) rankIcon.setFileHeight( static_cast<float>(ah) );
@@ -284,7 +285,7 @@ void LogisticsPilotListBox::makeUVs( LogisticsPilot* pPilot, aObject& icon )
 		DWORD aw = 0, ah = 0;
 		float fw = 256.f;
 		if ( mcTextureManager &&
-		     mcTextureManager->tryGetTextureLogicalSize( icon.getTextureHandle(), aw, ah ) && aw > 0 )
+		     mc2::textures::logicalSize( icon.getTextureHandle(), aw, ah ) && aw > 0 )
 			fw = static_cast<float>(aw);
 		icon.setFileWidth( fw );
 	}

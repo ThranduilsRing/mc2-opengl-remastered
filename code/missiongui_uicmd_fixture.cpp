@@ -1,6 +1,7 @@
 // MissionInterfaceManager: test-only fixtures and determinism verbs (spawn, teleport, freeze_movers, set_light, animate).
 // Declared in missiongui.h; shared names in missiongui_internal.h.
 #include "missiongui_internal.h"
+#include "../mclib/texture_assets.h"
 #include "Gates/gate.h"
 #include "mc2fmt.h"
 #include "../RenderCore/TextureService.h"
@@ -175,10 +176,10 @@ bool MissionInterfaceManager::uiCmdFixture(UiCmdCtx& c)
             auto* source=shapeOf(ObjectManager->findByPartId(sourceId));
             if (!source || slot>=unsigned(source->GetNumTextures()) || !mcTextureManager) { result="blocked";note="source has no slot";return true; }
             const DWORD node=source->GetTextureHandle(slot),old=shape->GetTextureHandle(slot);
-            if (node==0xffffffffu || node==old || !mcTextureManager->get_gosTextureHandle(node)) { result="blocked";note="source slot must name different resident art";return true; }
-            mcTextureManager->copyTexture(node); // adopts one manager/service reference for the destination
+            if (node==0xffffffffu || node==old || !mc2::textures::sourceId(node)) { result="blocked";note="source slot must name different resident art";return true; }
+            mc2::textures::retain(node); // adopts one manager/service reference for the destination
             shape->SetTextureHandle(slot,node);
-            if (old!=0xffffffffu) mcTextureManager->releaseNode(old);
+            if (old!=0xffffffffu) mc2::textures::release(old);
             if (auto* building=dynamic_cast<BldgAppearance*>(obj->getAppearance())) building->needsFullBakeNextFrame=true;
             if (auto* tree=dynamic_cast<TreeAppearance*>(obj->getAppearance())) tree->needsFullBakeNextFrame=true;
         }

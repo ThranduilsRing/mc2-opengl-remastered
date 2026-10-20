@@ -6,7 +6,6 @@ add_library(imgui STATIC
     imgui_draw.cpp
     imgui_tables.cpp
     imgui_widgets.cpp
-    backends/imgui_impl_opengl3.cpp
     backends/imgui_impl_sdl2.cpp
 )
 
@@ -16,8 +15,7 @@ target_include_directories(imgui PUBLIC
 )
 
 if(MC2_VULKAN)
-    # Rung 8.6a: build the Vulkan renderer backend inertly. Runtime selection stays
-    # on OpenGL until the present/HUD handoff is split safely.
+    # Native renderer shared by the game, editor and viewport tools.
     target_sources(imgui PRIVATE backends/imgui_impl_vulkan.cpp)
     target_compile_definitions(imgui PUBLIC IMGUI_IMPL_VULKAN_USE_VOLK)
     target_include_directories(imgui PUBLIC "${CMAKE_SOURCE_DIR}/3rdparty/volk")

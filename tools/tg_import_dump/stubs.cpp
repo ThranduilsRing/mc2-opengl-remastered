@@ -25,6 +25,7 @@
 
 #define _CRT_SECURE_NO_WARNINGS
 #include <cstdio>
+#include "texture_assets.h"
 #include <cstdlib>
 #include <cstdarg>
 #include <cstring>
@@ -250,4 +251,8 @@ gos_VERTEXManager* MC_TextureManager::gvManager = nullptr;
 unsigned int MC_TextureManager::addLightDataStructure(TG_HWLightsData*) { return 0; }
 unsigned int MC_TextureManager::addLightDataStructureWithPerActorColor(TG_HWLightsData*) { return 0; }
 void MC_TextureManager::addRenderShape(DWORD, TG_RenderShape*, DWORD) {}
-DWORD MC_TextureNode::get_gosTextureHandle() { return 0; }
+// This loader never acquires texture assets: render-only metadata is unavailable.
+namespace mc2::textures {
+DWORD sourceId(DWORD) { return 0; }
+const char* name(DWORD) { return nullptr; }
+}

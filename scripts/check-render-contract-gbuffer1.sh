@@ -335,24 +335,11 @@ mrt_inject_sites=$(
 )
 mrt_inject_count=$(printf '%s' "$mrt_inject_sites" | grep -c . )
 
-if [ "$mrt_inject_count" -ne 1 ]; then
-    echo "FAIL: expected exactly 1 C++ injection site for '#define MRT_ENABLED';" >&2
-    echo "      found $mrt_inject_count." >&2
-    echo "" >&2
-    echo "      MRT_ENABLED gates gos_terrain.frag's continuous materialAlpha write" >&2
-    echo "      to GBuffer1 -- the only producer ever correlated with water inside" >&2
-    echo "      the (0.15, 0.35) band that shaders/shoreline.frag:22 and" >&2
-    echo "      shaders/vulkan/shoreline.frag:102 classify as water." >&2
-    echo "" >&2
-    echo "      If you ADDED a site: confirm whether the program it builds is ever" >&2
-    echo "      bound and drawn. If it is, the legacy terrain materialAlpha is live" >&2
-    echo "      again and every 'the shoreline pass cannot reach water' claim in" >&2
-    echo "      the tree must be re-derived before you update this count." >&2
-    echo "      If you REMOVED the last site: those shader lines are now dead in" >&2
-    echo "      the preprocessor too, and Census 2 above should be revisited." >&2
-    echo "" >&2
+# The GL compiler and its last legacy terrain program are retired. Any revived
+# MRT_ENABLED injection would reintroduce a dead backend path.
+if [ "$mrt_inject_count" -ne 0 ]; then
+    echo "FAIL: retired GL MRT_ENABLED injection returned ($mrt_inject_count site(s))." >&2
     echo "$mrt_inject_sites" >&2
-    echo "" >&2
     failures=$((failures + 1))
 fi
 

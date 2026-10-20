@@ -339,30 +339,8 @@ void drawTerrainTuningSection() {
     }
 
     // ── Normals-from-Height ──
-    // Home for the height-texture / resample / strength controls so all
-    // terrain tuning is in one window.
+    // Native terrain slope-normal strength.
     ImGui::SeparatorText("Normals-from-Height");
-
-    int srcSide = ::gos_terrainHeightSourceSide();
-    int rndSide = ::gos_terrainHeightTexSide();
-    int factor  = ::gos_terrainHeightResampleFactor();
-    if (srcSide > 0) {
-        ImGui::Text("Height tex: source %d^2 -> render %d^2", srcSide, rndSide);
-    } else {
-        ImGui::TextDisabled("Height tex: not uploaded (no mission loaded)");
-    }
-    const char* factorLabels[3] = { "1x", "2x", "4x" };
-    int curIdx = (factor == 4) ? 2 : (factor == 2) ? 1 : 0;
-    int newIdx = curIdx;
-    if (ImGui::Combo("Resample##trf", &newIdx, factorLabels, 3)) {
-        if (newIdx != curIdx) {
-            const int f = (newIdx == 2) ? 4 : (newIdx == 1) ? 2 : 1;
-            ::gos_setTerrainHeightResampleFactor(f);
-        }
-    }
-    if (ImGui::IsItemHovered())
-        ImGui::SetTooltip("CPU bilinear resample factor for the height tex.\n"
-                          "1x = source grid only; 4x = 4× sub-grid (finer slope normals).");
 
     float nfh = ::gos_GetTerrainNormalsFromHeightStrength();
     if (ImGui::SliderFloat("NfH strength##tnfh", &nfh, 0.0f, 1.5f, "%.2f")) {

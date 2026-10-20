@@ -3,6 +3,7 @@
 //===========================================================================//
 
 #include"mlrheaders.hpp"
+#include "../texture_assets.h"
 #include "mc2fmt.h"
 
 //#############################################################################
@@ -55,7 +56,7 @@ GOSImage::GOSImage(const char *name, gos_TextureHints hints) : Plug (DefaultData
 
 	ipHints = hints;
 
-	mcTextureNodeIndex = mcTextureManager ? mcTextureManager->loadTexture(name,gos_Texture_Detect,ipHints) : 0xffffffff;
+	mcTextureNodeIndex = mcTextureManager ? mc2::textures::load(name,gos_Texture_Detect,ipHints) : 0xffffffff;
 
 	ptr.pTexture = nullptr;
 }
@@ -75,7 +76,7 @@ GOSImage::~GOSImage()
 	{
 		if (mcTextureManager)
 		{
-			mcTextureManager->releaseNode(mcTextureNodeIndex);
+			mc2::textures::release(mcTextureNodeIndex);
 			mcTextureNodeIndex = 0xffffffff;
 		}
 	}
@@ -106,7 +107,7 @@ void
 	if(!(flags & Locked))
 	{
 		flags |= Locked;
-		DWORD imageHandle = mcTextureManager->get_gosTextureHandle(mcTextureNodeIndex);
+		DWORD imageHandle = mc2::textures::sourceId(mcTextureNodeIndex);
 
 		if (imageHandle != 0xffffffff)
 			gos_LockTexture(imageHandle, 0, false, &ptr);
@@ -122,7 +123,7 @@ void
 	{
 		flags &= ~Locked;
 		Start_Timer(Unlock_Texture_Time);
-		DWORD imageHandle = mcTextureManager->get_gosTextureHandle(mcTextureNodeIndex);
+		DWORD imageHandle = mc2::textures::sourceId(mcTextureNodeIndex);
 
 		if (imageHandle != 0xffffffff)
 			gos_UnLockTexture(imageHandle);

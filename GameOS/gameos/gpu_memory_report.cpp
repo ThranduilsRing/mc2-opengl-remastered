@@ -1,12 +1,11 @@
 // GameOS/gameos/gpu_memory_report.cpp -- see gpu_memory_report.h.
 #include "gpu_memory_report.h"
 
-#include "gos_profiler.h"          // GLEW + Tracy (TracyPlot)
+#include "gos_profiler.h"          // TracyPlot
 #include "gos_smoke.h"
 #include "mc2_diag_verbose.h"
 #include "render_backend_select.h"
 
-#include <SDL2/SDL.h>
 
 #include <cstdio>
 #include <cstring>
@@ -26,15 +25,7 @@ namespace mc2::gpumem {
 
 namespace {
 
-bool hasGlExtension(std::string_view name) {
-    GLint n = 0;
-    glGetIntegerv(GL_NUM_EXTENSIONS, &n);
-    for (GLint i = 0; i < n; ++i) {
-        const GLubyte* e = glGetStringi(GL_EXTENSIONS, static_cast<GLuint>(i));
-        if (e && name == reinterpret_cast<const char*>(e)) return true;
-    }
-    return false;
-}
+
 
 #ifdef MC2_VULKAN
 void readVulkan(Snapshot& s) {
@@ -49,27 +40,14 @@ void readVulkan(Snapshot& s) {
 #endif
 
 #ifdef _WIN32
-// GL_EXT_memory_object_win32: the LUID of the device the current GL context renders on.
-constexpr GLenum kGlDeviceLuidExt = 0x9599;                 // GL_DEVICE_LUID_EXT
-using PfnGetUnsignedBytevExt = void(APIENTRY*)(GLenum, GLubyte*);
-
-// The LUID of the adapter the engine renders on: the Vulkan device when the shared context is live, else the GL context's device when the driver
-// implements GL_EXT_memory_object_win32. False when neither says (the caller then falls back to the adapter with the most dedicated memory).
 bool renderAdapterLuid(uint8_t (&luid)[8]) {
 #ifdef MC2_VULKAN
     if (mc2vk::engineVulkanContextValid()) return mc2vk::getOrCreateEngineVulkanContext().adapterLuid(luid);
 #endif
-    if (!SDL_GL_GetCurrentContext() || !hasGlExtension("GL_EXT_memory_object_win32")) return false;
-    auto get = reinterpret_cast<PfnGetUnsignedBytevExt>(SDL_GL_GetProcAddress("glGetUnsignedBytevEXT"));
-    if (!get) return false;
-    while (glGetError() != GL_NO_ERROR) {}
-    GLubyte bytes[8] = {0, 0, 0, 0, 0, 0, 0, 0};
-    get(kGlDeviceLuidExt, bytes);
-    if (glGetError() != GL_NO_ERROR) return false;
-    for (size_t i = 0; i < sizeof(luid); ++i) luid[i] = bytes[i];
-    return true;
+    return false;
 }
 
+// Match the actual native adapter when its LUID is available.
 const char* g_adapterRule = "unresolved";                    // "luid", "most_dedicated" (the driver gave no LUID) or "most_dedicated_luid_unmatched": which rule picked the DXGI adapter (printed once by log())
 
 // The DXGI adapter the engine renders on, found once; queried per call. Matched by LUID to the Vulkan device or the GL context's device; when the
@@ -151,7 +129,7 @@ std::string format(std::string_view phase, const Snapshot& s) {
     char buf[640];
     (*std::format_to_n(buf, (sizeof(buf)) - 1,
                   "[VRAM v1] phase={} backend={} vk_budget_mb={:d} vk_usage_mb={:d} vk_allocated_mb={:d} adapter_dedicated_mb={:d} proc_dedicated_mb={:d} proc_budget_mb={:d}",
-                  std::string(phase).c_str(), mc2::fmt::safe(s.backend ? s.backend : "gl"),
+                  std::string(phase).c_str(), mc2::fmt::safe(s.backend ? s.backend : "unavailable"),
                   mc2::fmt::as_i64(static_cast<long long>(bytesToMib(s.vkBudgetBytes))), mc2::fmt::as_i64(static_cast<long long>(bytesToMib(s.vkUsageBytes))), mc2::fmt::as_i64(static_cast<long long>(bytesToMib(s.vkAllocatedBytes))),
                   mc2::fmt::as_i64(static_cast<long long>(bytesToMib(s.dxgiAdapterDedicatedBytes))), mc2::fmt::as_i64(static_cast<long long>(bytesToMib(s.dxgiProcessUsageBytes))),
                   mc2::fmt::as_i64(static_cast<long long>(bytesToMib(s.dxgiProcessBudgetBytes)))).out = '\0');
@@ -162,7 +140,7 @@ std::string toJson(const Snapshot& s) {
     char buf[640];
     (*std::format_to_n(buf, (sizeof(buf)) - 1,
                   "{{\"backend\": \"{}\", \"vk_budget_mb\": {:d}, \"vk_usage_mb\": {:d}, \"vk_allocated_mb\": {:d}, \"adapter_dedicated_mb\": {:d}, \"proc_dedicated_mb\": {:d}, \"proc_budget_mb\": {:d}}}",
-                  mc2::fmt::safe(s.backend ? s.backend : "gl"),
+                  mc2::fmt::safe(s.backend ? s.backend : "unavailable"),
                   mc2::fmt::as_i64(static_cast<long long>(bytesToMib(s.vkBudgetBytes))), mc2::fmt::as_i64(static_cast<long long>(bytesToMib(s.vkUsageBytes))), mc2::fmt::as_i64(static_cast<long long>(bytesToMib(s.vkAllocatedBytes))),
                   mc2::fmt::as_i64(static_cast<long long>(bytesToMib(s.dxgiAdapterDedicatedBytes))), mc2::fmt::as_i64(static_cast<long long>(bytesToMib(s.dxgiProcessUsageBytes))),
                   mc2::fmt::as_i64(static_cast<long long>(bytesToMib(s.dxgiProcessBudgetBytes)))).out = '\0');

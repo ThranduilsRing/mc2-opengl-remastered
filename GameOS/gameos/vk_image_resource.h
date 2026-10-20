@@ -34,21 +34,7 @@ struct VkImageResource {
     VkFormat          format  = VK_FORMAT_UNDEFINED;
     VkImageUsageFlags usage   = 0;
 
-    // Double-buffered binary semaphore PAIRS + per-frame fences (blocker #4 -- the
-    // L5 present-semaphore-reuse fix). Frame N uses slot [frameParity]; before slot
-    // [parity] is reused two frames later, frameFence[parity] is waited so the prior
-    // submit retired and the binary semaphores are un-signalled + safe to re-signal.
-    //
-    // ITEM-2 (VK-RUNG8-ITEM2): these are plain (NON-exported) binary semaphores. Their
-    // Win32 export half was the exportable machinery that only the deleted GL<->VK signal/
-    // wait handoff needed; both it and (this rung) the exportable IMAGE half are gone. The
-    // binary semaphores + VkFrameSync stay as the shared all-island resource ABI (returned
-    // by beginFrame; the direct-chain islands read only fence+parity, nobody signals/waits
-    // these semaphores anymore).
-    //
-    // glToVkSem == the GL->VK direction slot; vkToGlSem == the VK->GL direction slot.
-    mc2vk::OwnedSemaphore glToVkSem[2];
-    mc2vk::OwnedSemaphore vkToGlSem[2];
+    // Two fence slots serialize native image reuse. No interop semaphores remain.
     mc2vk::OwnedFence     frameFence[2];
     RenderCore::FrameFenceCore frames;             // parity (^=1 each frame) and whether the slot fences may still be waited (disabled by a failed CancelFrame)
 
@@ -57,15 +43,10 @@ struct VkImageResource {
     VkDevice          device = VK_NULL_HANDLE;
 };
 
-// Frame sync handed back by beginFrame. Waits + resets the [parity] slot's fence so its
-// binary semaphores are safe to re-signal, and returns the fence + slot semaphores +
-// parity. The direct-chain islands read only `fence` (CPU serialization) and `parity`;
-// `signal`/`vk2gl` are the slot's binary semaphores and are no longer signalled/waited by
-// anyone (item 1 deleted the GL<->VK signal/wait handoff; item 8 deleted the present one).
-// They remain in the struct as the shared all-island ABI.
-struct VkFrameSync { VkFence fence; VkSemaphore signal; VkSemaphore vk2gl; uint32_t parity; };
+// Native submission completion and slot parity, returned after waiting/resetting the fence.
+struct VkFrameSync { VkFence fence; uint32_t parity; };
 
-// Raw-allocated (dedicated) NON-exportable VK image. Every caller is VK-only. The semaphores are plain binary.
+// Raw-allocated (dedicated) native image. Every caller uses Vulkan.
 // Returns false fail-soft on any error (nothing to clean up on the caller side; the
 // partial resource is torn down internally before returning false).
 bool vkImageResourceCreate(VkImageResource* r, VkDevice device, VkPhysicalDevice phys,
@@ -78,7 +59,7 @@ void vkImageResourceDestroy(VkImageResource* r, VkDevice device);
 // would release its image on a destroyed device.
 int vkImageResourceLiveCount();
 
-// Advance to the frame's parity slot; wait+reset its fence; return the sync trio.
+// Advance to the frame's parity slot; wait+reset its fence; return completion and parity.
 VkFrameSync vkImageResourceBeginFrame(VkImageResource* r);
 // Undoes a BeginFrame whose frame then recorded and submitted nothing: BeginFrame reset the slot's fence and only a submit signals it again, so a
 // caller that returns early without submitting must call this, or the next BeginFrame on that slot waits forever. It re-creates the fence signaled

@@ -9,6 +9,7 @@
 //---------------------------------------------------------------------------
 // Include files
 
+#include "texture_assets.h"
 #ifndef CELLIP_H
 #include"cellip.h"
 #endif
@@ -59,7 +60,7 @@ void EllipseElement::draw (void)
 
 	gos_SetRenderState( gos_State_AlphaTest, true );
 			
-	DWORD gosTextureHandle = mcTextureManager->get_gosTextureHandle (s_textureHandle);
+	DWORD gosTextureHandle = mc2::textures::sourceId(s_textureHandle);
 	gos_SetRenderState( gos_State_Texture, gosTextureHandle );
 	gos_SetRenderState( gos_State_Clipping, 2);
 	gos_SetRenderState( gos_State_Specular, 0);
@@ -123,7 +124,7 @@ void EllipseElement::init()
 {
 	if ( !s_textureHandle )
 	{
-		s_textureHandle = mcTextureManager->loadTexture("data/art/ring.tga", gos_Texture_Alpha, 0 );
+		s_textureHandle = mc2::textures::load("data/art/ring.tga", gos_Texture_Alpha, 0 );
 	}
 }
 
@@ -135,7 +136,7 @@ void EllipseElement::setClip( const GUI_RECT& rect )
 void EllipseElement::removeTextureHandle (void)
 {
 	if (s_textureHandle)
-		mcTextureManager->releaseNode(s_textureHandle);
+		mc2::textures::release(s_textureHandle);
 
 	s_textureHandle = 0;
 }

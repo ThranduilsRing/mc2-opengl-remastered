@@ -203,13 +203,7 @@ if(NOT TARGET SDL2::SDL2)
     find_package(SDL2 CONFIG REQUIRED)
 endif()
 
-if(NOT TARGET OpenGL::GL)
-    find_package(OpenGL REQUIRED)
-endif()
 
-if(NOT TARGET GLEW::GLEW)
-    find_package(GLEW REQUIRED)
-endif()
 
 set(MC2R_AV_SDL_INCLUDE_DIRS)
 
@@ -292,18 +286,13 @@ if(TARGET SDL2::SDL2main)
     target_link_libraries(mc2_asset_viewer PRIVATE SDL2::SDL2main)
 endif()
 
-# The viewer draws through Vulkan only (tools/common mc2_tool_vk). OpenGL/GLEW stay on the link line solely because the isolated
-# mc2_tglloader engine closure (render_contract.cpp, tgl.cpp -> gos_static_prop_batcher.h) still references GL symbols; no GL context is
-# ever created.
-target_link_libraries(mc2_asset_viewer PRIVATE OpenGL::GL)
+# The viewer and its engine loader closure have no GL dependency.
 
 if(WIN32)
     target_link_libraries(mc2_asset_viewer PRIVATE ole32 windowscodecs uuid)
     # Tracy needs Psapi (EnumProcessModules, GetModuleInformation, etc.).
     target_link_libraries(mc2_asset_viewer PRIVATE Psapi)
 endif()
-
-target_link_libraries(mc2_asset_viewer PRIVATE GLEW::GLEW)
 
 # Link the TGL loader lib (NS3 game-free loader + engine_stubs, isolated).
 target_link_libraries(mc2_asset_viewer PRIVATE mc2_tglloader)

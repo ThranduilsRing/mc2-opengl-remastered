@@ -311,37 +311,6 @@ void GuiRuntime::Shutdown() {
 }
 
 // --- Dockspace -------------------------------------------------------------------
-static int s_sceneViewW = 0;
-static int s_sceneViewH = 0;
-
-int GuiRuntime::SceneViewportWidth()  { return s_sceneViewW; }
-int GuiRuntime::SceneViewportHeight() { return s_sceneViewH; }
-
-// --- Render-to-texture viewport ---------------------------------------------------
-static unsigned int s_rttTex = 0;          // GLuint of the editor present texture
-static int s_vpX = 0, s_vpY = 0;           // scene screen rect (client/DisplaySize space)
-static int s_vpW = 0, s_vpH = 0;
-static int s_fixedX = 0, s_fixedY = 0;     // fixed-layout rect from EditorGameOS
-static int s_fixedW = 0, s_fixedH = 0;     // (w>0 => override the dynamic central node)
-
-bool GuiRuntime::RttEnabled() {
-    // DEFAULT OFF: the RTT scene-shrink reproduces a position-dependent
-    // pick error (objects parallax + picking drifts toward screen edges) because the
-    // shrunk scene projection diverges from the legacy object/pick projection. The
-    // full-window scene (RTT off) picks PERFECTLY. Panels overlay the
-    // map's right edge and are collapsible instead. Opt back in: MC2_EDITOR_RTT=1.
-    // The RTT viewport blits the GL back buffer into a GL texture; under Vulkan the scene lives in the present
-    // image, so the full-window scene is the only mode there.
-#ifdef MC2_VULKAN
-    return false;
-#else
-    static int s_on = -1;
-    if (s_on < 0) {
-        s_on = mc2::gate::get<"MC2_EDITOR_RTT">();   // default OFF
-    }
-    return s_on != 0;
-#endif
-}
 bool GuiRuntime::AutoDockActive() {
     if (!s_editorMode) return false;   // GAME: nothing auto-docks
     static int s = -1;
@@ -350,27 +319,21 @@ bool GuiRuntime::AutoDockActive() {
     }
     return s != 0;
 }
-void GuiRuntime::SetViewportTexture(unsigned int glTex) { s_rttTex = glTex; }
-void GuiRuntime::SetFixedViewportRect(int x, int y, int w, int h) {
-    s_fixedX = x; s_fixedY = y; s_fixedW = w; s_fixedH = h;
-}
-int  GuiRuntime::ViewportRectX() { return s_vpX; }
-int  GuiRuntime::ViewportRectY() { return s_vpY; }
-int  GuiRuntime::ViewportRectW() { return s_vpW; }
-int  GuiRuntime::ViewportRectH() { return s_vpH; }
+
+
+
+
+
+
 
 static bool dockEnabled() {
     if (!s_editorMode) return false;   // GAME: no editor dockspace -> windows float
     return mc2::gate::get<"MC2_EDITOR_DOCK">();
 }
 
-// Build (first run) + drive the editor dockspace each frame. PassthruCentralNode keeps
-// the central region transparent + mouse-passthrough so the GL scene + picking work
-// there; panels default to a right-side column. Records the central node size so
-// EditorGameOS shrinks the scene viewport to it (one-frame lag, harmless), making the
-// map fill exactly the un-docked region. Layout (incl. user re-docks) persists in imgui.ini.
+// Panels overlay the full native scene; the central node passes input through.
 static void BuildEditorDockspace() {
-    if (!dockEnabled()) { s_sceneViewW = s_sceneViewH = 0; return; }
+    if (!dockEnabled()) return;
 
     const ImGuiViewport* vp = ImGui::GetMainViewport();
     ImGuiID dockId = ImGui::DockSpaceOverViewport(0, vp, ImGuiDockNodeFlags_PassthruCentralNode);
@@ -393,7 +356,7 @@ static void BuildEditorDockspace() {
             // Right-column width = the reserved panel strip (vpW - fixed scene width).
             // Falls back to 0.26 of the window until the fixed rect is known (frame 1).
             float vpW = vp->Size.x > 1.0f ? vp->Size.x : 1.0f;
-            float panelPx = (s_fixedW > 0) ? (vpW - (float)s_fixedW) : (vpW * 0.26f);
+            float panelPx = vpW * 0.26f;
             if (panelPx < 64.0f)        panelPx = 64.0f;
             if (panelPx > vpW - 256.0f) panelPx = vpW - 256.0f;
             float ratio = panelPx / vpW;
@@ -435,32 +398,7 @@ static void BuildEditorDockspace() {
         --s_focusToolsFrames;
     }
 
-    if (ImGuiDockNode* central = ImGui::DockBuilderGetCentralNode(dockId)) {
-        s_sceneViewW = (int)central->Size.x;
-        s_sceneViewH = (int)central->Size.y;
 
-        // RTT: paint the editor scene texture into the central node via the
-        // BACKGROUND draw list. No ImGui window -> WantCaptureMouse stays false
-        // over the scene, so picking/camera input still reach the GameOS path
-        // (identical to the PassthruCentralNode behavior). The texture is filled
-        // by EditorGameOS (composite -> blit) before GuiRuntime::Render samples it.
-        // Fixed-layout rect (from EditorGameOS) overrides the dynamic central node so
-        // the scene rect, the camera viewport, and the pick offset are ONE known value.
-        const bool useFixed = (s_fixedW > 0 && s_fixedH > 0);
-        s_vpX = useFixed ? s_fixedX : (int)central->Pos.x;
-        s_vpY = useFixed ? s_fixedY : (int)central->Pos.y;
-        s_vpW = useFixed ? s_fixedW : (int)central->Size.x;
-        s_vpH = useFixed ? s_fixedH : (int)central->Size.y;
-        if (GuiRuntime::RttEnabled() && s_rttTex != 0) {
-            const ImVec2 p0 = ImVec2((float)s_vpX, (float)s_vpY);
-            const ImVec2 p1 = ImVec2((float)(s_vpX + s_vpW),
-                                     (float)(s_vpY + s_vpH));
-            // GL texture origin is bottom-left; flip V so the scene is upright.
-            ImGui::GetBackgroundDrawList()->AddImage(
-                (ImTextureID)(intptr_t)s_rttTex, p0, p1,
-                ImVec2(0.0f, 1.0f), ImVec2(1.0f, 0.0f));
-        }
-    }
 }
 
 void GuiRuntime::NewFrame() {
@@ -471,11 +409,7 @@ void GuiRuntime::NewFrame() {
     if (s_useSDL2Backend)
         ImGui_ImplSDL2_NewFrame();
 
-    // SDL_GL_GetDrawableSize returns 0 for SDL_CreateWindowFrom windows that
-    // have no SDL GL context (editor uses WGL, not SDL_GL_CreateContext).
-    // ImGui_ImplSDL2_NewFrame sets io.DisplayFramebufferScale = drawable/window,
-    // which becomes (0,0) -> ImGui_ImplOpenGL3_RenderDrawData computes fb_width=0
-    // and early-returns without issuing any draw calls.  Force scale=1 to fix.
+    // The foreign editor child uses physical client pixels at scale one.
     ImGui::GetIO().DisplayFramebufferScale = ImVec2(1.0f, 1.0f);
 
 #ifdef PLATFORM_WINDOWS

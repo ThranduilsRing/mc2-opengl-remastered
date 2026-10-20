@@ -35,7 +35,7 @@
 extern Terrain* land;
 
 // Render-side state accessors (GLuint == unsigned int; avoid pulling in glew here).
-extern unsigned int gos_terrain_indirect_getAtlasGLTex();  // colormap atlas the chunk shader samples
+extern unsigned int gos_terrain_indirect_getAtlasSide();  // retained colormap atlas side in pixels
 bool mc2TerrainLodChunkEnabled();                          // GPU-direct chunk terrain path active?
 
 namespace
@@ -200,7 +200,7 @@ namespace
 		bool        hasColormap   = false;   // land->terrainTextures2 != NULL
 		bool        recipeReady   = false;   // gos_terrain_indirect::IsDenseRecipeReady()
 		// render-side diagnosis
-		unsigned    atlasTex      = 0;       // chunk colormap atlas GL tex (0 -> samples black)
+		unsigned    atlasSide      = 0;       // colormap atlas side in pixels (0 -> unavailable)
 		bool        chunkPath     = false;   // mc2TerrainLodChunkEnabled()
 		long        lightBlack    = 0;       // verts whose baked localRGBLight RGB == 0
 		unsigned    lightSample   = 0;       // first vert's localRGBLight (aRGB)
@@ -232,7 +232,7 @@ namespace
 		s_probe.waterElev   = Terrain::waterElevation;
 		s_probe.hasColormap = ( land->terrainTextures2 != nullptr );
 		s_probe.recipeReady = gos_terrain_indirect::IsDenseRecipeReady();
-		s_probe.atlasTex    = gos_terrain_indirect_getAtlasGLTex();
+		s_probe.atlasSide    = gos_terrain_indirect_getAtlasSide();
 		s_probe.chunkPath   = mc2TerrainLodChunkEnabled();
 
 		// (1) elevation file on disk (the last generated one, if present).
@@ -285,7 +285,7 @@ namespace
 			"vert_min=%.1f vert_max=%.1f vert_mean=%.1f "
 			"mesh_min=%.1f mesh_max=%.1f mesh_mean=%.1f "
 			"water=%ld dry=%ld waterElev=%.1f colormap=%d recipeReady=%d "
-			"chunkPath=%d atlasTex=%u lightBlack=%ld lightSample=0x%06X\n",
+			"chunkPath=%d atlasSide=%u lightBlack=%ld lightSample=0x%06X\n",
 			s_probe.side, s_probe.expectVerts,
 			s_probe.fileFound ? 1 : 0,
 			s_probe.file.valid ? s_probe.file.mn : 0.f, s_probe.file.valid ? s_probe.file.mx : 0.f,
@@ -296,7 +296,7 @@ namespace
 			s_probe.mesh.valid ? s_probe.mesh.mean : 0.f,
 			s_probe.waterVerts, s_probe.dryVerts, s_probe.waterElev,
 			s_probe.hasColormap ? 1 : 0, s_probe.recipeReady ? 1 : 0,
-			s_probe.chunkPath ? 1 : 0, s_probe.atlasTex,
+			s_probe.chunkPath ? 1 : 0, s_probe.atlasSide,
 			s_probe.lightBlack, s_probe.lightSample & 0x00FFFFFF );
 		printf( "%s", line ); fflush( stdout );
 		OutputDebugStringA( line );
@@ -827,14 +827,14 @@ void RenderImGui()
 			ImGui::Text( "colormap set: %s   recipe ready: %s",
 				s_probe.hasColormap ? "yes" : "NO",
 				s_probe.recipeReady ? "yes" : "NO" );
-			ImGui::Text( "chunk path: %s   colormap atlas tex: %s (id=%u)",
+			ImGui::Text( "chunk path: %s   colormap atlas: %s (side=%u px)",
 				s_probe.chunkPath ? "ON" : "off",
-				s_probe.atlasTex ? "YES" : "MISSING", s_probe.atlasTex );
+				s_probe.atlasSide ? "YES" : "MISSING", s_probe.atlasSide );
 			ImGui::Text( "baked light: black %ld/%ld   sample=0x%06X",
 				s_probe.lightBlack, s_probe.expectVerts, s_probe.lightSample & 0x00FFFFFF );
-			if ( s_probe.chunkPath && s_probe.atlasTex == 0 )
+			if ( s_probe.chunkPath && s_probe.atlasSide == 0 )
 				ImGui::TextColored( ImVec4(1,0.4f,0.4f,1),
-					"-> colormap ATLAS missing (id=0) -> chunk terrain samples black" );
+					"-> colormap ATLAS missing (side=0) -> chunk terrain samples black" );
 			else if ( s_probe.expectVerts > 0 && s_probe.lightBlack == s_probe.expectVerts )
 				ImGui::TextColored( ImVec4(1,0.6f,0.3f,1),
 					"-> baked light all-black -> terrain unlit" );

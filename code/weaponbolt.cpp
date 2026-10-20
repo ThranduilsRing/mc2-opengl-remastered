@@ -9,6 +9,7 @@
 //===========================================================================//
 
 #include "weaponbolt_internal.h"
+#include "../mclib/texture_assets.h"
 #include "mc2fmt.h"
 #include <bit>
 #include <cstring>
@@ -617,9 +618,9 @@ void WeaponBolt::init (bool create, ObjectTypePtr _type)
 		textureName.init(tPath,(static_cast<WeaponBoltTypePtr>(_type))->textureName.get(),".tga");
 	
 		if ((static_cast<WeaponBoltTypePtr>(_type))->mipTexture)
-			mcTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Alpha,0);
+			mcTextureHandle = mc2::textures::load(textureName,gos_Texture_Alpha,0);
 		else
-			mcTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Alpha,gosHint_DisableMipmap);
+			mcTextureHandle = mc2::textures::load(textureName,gos_Texture_Alpha,gosHint_DisableMipmap);
 	}
 	else
 	{

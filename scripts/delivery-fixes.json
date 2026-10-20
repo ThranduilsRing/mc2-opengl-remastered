@@ -50,7 +50,15 @@
         {
           "kind": "file",
           "path": "shaders/gos_tex_vertex_lighted.frag",
-          "needle": "calcLightPools"
+          "needle": "calcLightPools",
+          "native_backend_needle": "[NO_GL_RUNTIME v1]",
+          "alternatives": [
+            {
+              "kind": "file",
+              "path": "shaders/vulkan/mech_tier1.frag",
+              "needle": "rgb += tex_color.rgb * olp_objectPoolLight("
+            }
+          ]
         }
       ],
       "note": "The vehicle light gather. GVAppearance called neither CacheGpuLightData() nor the batcher, so every vehicle rendered with numLights_==0, calc_light took its early-return and returned vec3(1,1,1) -- raw albedo, unlit, day AND night. This is one of the fixes that answers the user's own 'the vehicles look wrong' report, so its delivery is the question, not its correctness. HALF-DATA SHAPE: the commit also adds the night light-pool term to gos_tex_vertex_lighted.frag; a deploy tree carrying the OLD frag has no calcLightPools, the pool contribution silently vanishes, and the gate reports ON."
@@ -78,7 +86,15 @@
         {
           "kind": "file",
           "path": "shaders/gos_tex_vertex_lighted.frag",
-          "needle": "calcLightPools"
+          "needle": "calcLightPools",
+          "native_backend_needle": "[NO_GL_RUNTIME v1]",
+          "alternatives": [
+            {
+              "kind": "file",
+              "path": "shaders/vulkan/mech_tier1.frag",
+              "needle": "rgb += tex_color.rgb * olp_objectPoolLight("
+            }
+          ]
         }
       ],
       "note": "Separate entry from VEHICLE-LIT-PATH-1 ON PURPOSE, because the two have different delivery: an install can carry the gather call and NOT this follow-up, in which case only the first SHAPE_NODE leaf gets a light row and every other leaf still renders at raw albedo. Its own commit message records that with only CacheGpuLightData(), deterministic A/B poses showed ZERO pixel change -- i.e. the first fix alone was user-invisible. exe_needle is null deliberately: the fix adds no new string literal, so the binary tier cannot speak and source@sha is the strongest available evidence. That is a weaker answer, and it is reported as such rather than upgraded. Split 6532c1ca9 moved the unchanged call to gvactor_render.cpp; both source locations are accepted, with the declaration and call still required at the embedded commit."
@@ -99,7 +115,15 @@
         {
           "kind": "file",
           "path": "shaders/terrain_overlay.frag",
-          "needle": "u_overlayCementAdopt"
+          "needle": "u_overlayCementAdopt",
+          "native_backend_needle": "[NO_GL_RUNTIME v1]",
+          "alternatives": [
+            {
+              "kind": "file",
+              "path": "shaders/vulkan/terrain_overlay_tier1.frag",
+              "needle": "if (pc.cementAdopt == 0 || uT.useCement == 0)"
+            }
+          ]
         }
       ],
       "note": "The concrete overlay-cement adopt: the delivered cure for 'the concrete is a patchwork / the transition tiles are the wrong colour'. COMMIT IS 3ab322a0, THE INTRODUCER, NOT a8ea9be5, THE MERGE, and the difference was found by this manifest overstating it. Named against the merge, every install built between 08:33 and the merge reported EVIDENCE TIERS DISAGREE (binary=YES source@sha=YES ancestry=NO): the needles are satisfied by the 08:33 introduction, so the entry graded 'delivered' on binaries that predate the merge. Pointing it at the introducer makes the 6/18 mean exactly what it says -- these installs carry the adopt path as first shipped. What the merge ADDED (the widening to all 17 overlay ids, and the runway superset guard) is graded separately by OVERLAY-CEMENT-ARTGUARD-2, whose exe_needle is unique to that afternoon work and which answers 0/18. Two entries, because they have two different delivery answers. HALF-DATA: the whole repaint is computed in terrain_overlay.frag behind u_overlayCementAdopt; a deploy tree with the old frag ignores the uniform and the tile colours are unchanged while the gate reports ON."
@@ -120,7 +144,15 @@
         {
           "kind": "file",
           "path": "shaders/terrain_overlay.frag",
-          "needle": "u_overlayCementAdopt"
+          "needle": "u_overlayCementAdopt",
+          "native_backend_needle": "[NO_GL_RUNTIME v1]",
+          "alternatives": [
+            {
+              "kind": "file",
+              "path": "shaders/vulkan/terrain_overlay_tier1.frag",
+              "needle": "if (pc.cementAdopt == 0 || uT.useCement == 0)"
+            }
+          ]
         }
       ],
       "note": "The TileIsRoadArt runway superset guard. Adds NO gate of its own; it runs inside `if (OverlayCementAdoptEnabled() && Terrain::mapData)` (gos_terrain_indirect.cpp:1826), so MC2_OVERLAY_CEMENT_ADOPT is genuinely its gate and is recorded as such rather than left null -- a null would have graded the default axis an unconditional YES and claimed delivery on an install where the adopt gate is off. exe_needle is a printf format literal unique to this commit, so the binary tier can answer even though the fix adds no uniform."
@@ -141,7 +173,15 @@
         {
           "kind": "file",
           "path": "shaders/vulkan/terrain_tier1.frag",
-          "needle": "baseColor * ambCol * uT.ambientFloor * ambShadow"
+          "needle": "baseColor * ambCol * uT.ambientFloor * ambShadow",
+          "native_backend_needle": "[NO_GL_RUNTIME v1]",
+          "alternatives": [
+            {
+              "kind": "file",
+              "path": "shaders/vulkan/terrain_tier1.frag",
+              "needle": "baseColor * ambCol * uT.ambientFloor"
+            }
+          ]
         }
       ],
       "note": "Albedo-scaled daylight terrain ambient floor. Commit is 96ffc35d, the INTRODUCER (12:43), not ea7ef347, the merge onto canonical (13:35) -- same correction as OVERLAY-CEMENT-ADOPT-1, applied before it could overstate anything. It does not change this entry's answer (both are after the newest binary on this disk, so it is 0/18 either way), which is exactly why it was worth fixing while the answer was not in dispute. A FLOAT gate: the reader is `if (!e || !e[0]) return 0.35f;`, which every numeric rule in check-delivery.py missed until DELIVERY-CLOSE-1 -- the rules hard-coded the pointer name `v` and matched integers only, so this gate classified UNKNOWN and could not grade as delivered on any install no matter what it contained. expect_default is the literal 0.35, not 'ON', so a rewrite that changed the shipped strength while keeping it nonzero is caught. Native Vulkan retains this live requirement: the executable must carry the typed MC2_TERRAIN_AMBIENT_FLOOR gate marker and the deployed Vulkan fragment must consume uT.ambientFloor in its albedo-scaled ambient term. The retired GL uniform name is no longer a binary marker."

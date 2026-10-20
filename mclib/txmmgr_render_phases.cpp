@@ -58,47 +58,6 @@ void MC_TextureManager::renderListsPreamble (void)
 	} // end RenderLists.Preamble
 }
 
-void MC_TextureManager::renderListsLightDataUpload (void)
-{
-	{
-	ZoneScopedN("RenderLists.LightDataUpload");
-    // copy global list of light data into GPU buffer
-
-    // [LIGHTSSBO v1] Upload-size FLOOR retained (NOT a removable UBO-window
-    // artifact — falsified 2026-05-17). The engine deliberately tolerates
-    // transient over-count lightDataIndex for cull-stale actors whose
-    // update() was skipped offscreen (see gos_static_prop_registry.cpp
-    // comment "...points at a slot ... beyond the upload count"). The
-    // floor guarantees those indices still read valid backing memory
-    // instead of past-end (-> zero -> black props). std::max keeps the
-    // old max(count, 64) semantics; lightData_ is capacity(128)-sized so
-    // sourcing 64 entries is in-bounds.
-    // [LIGHTSSBO v2] kLightUploadFloor=64 is PRESERVED: totalBytes stays
-    // max(count,64)*stride. When count<64 the padded tail [count..64) lands in
-    // the per-frame SUFFIX [prefixBytes..totalBytes) and is uploaded every frame,
-    // so the deliberate tolerance of transient over-count lightDataIndex for
-    // cull-stale offscreen actors still reads valid backing memory — identical
-    // in-bounds guarantee to the legacy whole-buffer upload. The split only
-    // changes WHICH bytes re-upload each frame, never the uploaded extent.
-    constexpr uint32_t kLightUploadFloor = 64u;
-    const size_t lightUploadCount =
-        std::max<uint32_t>(lightDataStructuresCount, kLightUploadFloor);
-    const size_t totalBytes = lightUploadCount * sizeof(TG_HWLightsData);
-    // mc2StaticLightHighWater / mc2ConsumeStaticLightPrefixDirty / the split gate
-    // are all file-scope fns defined earlier in this TU — call directly.
-    if (mc2StaticLightUploadSplitEnabled() && mc2LightBakeEnabled()) {
-        // Prefix = permanent static table [0..S), clamped to the floored count.
-        const uint32_t S = mc2StaticLightHighWater();
-        const size_t prefixCount = (S < lightUploadCount) ? S : lightUploadCount;
-        const size_t prefixBytes = prefixCount * sizeof(TG_HWLightsData);
-        const bool prefixDirty = mc2ConsumeStaticLightPrefixDirty();
-        gos_LightDataSsbo_UploadSplit(lightData_.data(), prefixBytes, totalBytes, prefixDirty);
-    } else {
-        gos_LightDataSsbo_Upload(lightData_.data(), totalBytes);   // legacy whole-buffer
-    }
-	} // end RenderLists.LightDataUpload
-}
-
 void MC_TextureManager::renderListsSceneDataUpload (void)
 {
 #ifdef MC2_VULKAN_ISLAND
@@ -160,7 +119,6 @@ void MC_TextureManager::renderListsStaticShadowBuild (void)
 	if (gos_IsModernShadowPathActive() && !gos_StaticLightMatrixBuilt() &&
 	    Terrain::mapData) {
 		ZoneScopedN("Shadow.StaticFullMapBuild");
-		TracyGpuZone("Shadow.StaticFullMapBuild");
 
 		gos_BuildStaticLightMatrix();   // world-fixed, camera-independent
 		gos_MarkStaticLightMatrixBuilt();

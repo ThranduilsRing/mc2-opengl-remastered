@@ -9,8 +9,6 @@
 #include <string.h>
 #include <assert.h>
 #include <SDL2/SDL.h>
-#include <GL/glew.h>
-#include <GL/gl.h>
 #include "utils/mc2log.h"
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"   // raw<>()
@@ -18,14 +16,12 @@
 
 // FIXME: think how to make it better when different parts need window
 SDL_Window* g_sdl_window = nullptr;
-static SDL_GLContext g_sdl_glcontext = nullptr;
 static bool g_mouse_grabbed = false;
 
 // GPU-VENDOR-DETECT-1: -1 = not yet probed, 0 = not NVIDIA, 1 = NVIDIA.
 // Set once in init_render_context after the GL context is live. Read via
 // gos_IsNvidiaGPU() from mclib (bdactor.cpp) to pick vendor-aware defaults.
-int g_gosGpuIsNvidia = -1;
-bool gos_IsNvidiaGPU() { return g_gosGpuIsNvidia == 1; }
+
 
 namespace graphics {
 
@@ -40,10 +36,6 @@ struct RenderWindow {
     int height_;
 };
 
-struct RenderContext {
-   SDL_GLContext glcontext_;
-   RenderWindow* render_window_;
-};
 
 #ifdef PLATFORM_WINDOWS
 // True when the active clip rectangle is a real clip (smaller than the virtual
@@ -369,31 +361,6 @@ RenderWindow* create_window(const char* pwinname, int width, int height, bool wi
            mc2::fmt::as_i32(linked.major), mc2::fmt::as_i32(linked.minor), mc2::fmt::as_i32(linked.patch));
     }
 
-    SDL_GL_SetAttribute( SDL_GL_RED_SIZE, 8 );
-    SDL_GL_SetAttribute( SDL_GL_GREEN_SIZE, 8 );
-    SDL_GL_SetAttribute( SDL_GL_BLUE_SIZE, 8 );
-    SDL_GL_SetAttribute( SDL_GL_ALPHA_SIZE, 8);
-    SDL_GL_SetAttribute( SDL_GL_DEPTH_SIZE, 16 );
-    SDL_GL_SetAttribute( SDL_GL_DOUBLEBUFFER, 1 );
-
-    SDL_GL_SetAttribute(SDL_GL_ACCELERATED_VISUAL, 1);
-
-    // 4x multisampling :P
-    // disable, and add as setting later.
-    //SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, 1);
-    //SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, 4);
-
-
-    // select core profile if needed
-    // COMPATIBILITY, ES,...
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
-    //SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_COMPATIBILITY);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
-    // 4.3 required for core SSBO (GL_SHADER_STORAGE_BUFFER) + std430 layout,
-    // used by the GPU static-prop renderer. AMD RX 7900 XTX supports up to
-    // 4.6 core; 4.3 is the minimum feature level we need.
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
-
     if (VERBOSE_MODES) {
         SDL_DisplayMode mode;
         int bpp;
@@ -489,7 +456,7 @@ RenderWindow* create_window(const char* pwinname, int width, int height, bool wi
         // Environment.drawableWidth/Height each frame, so a live resize just
         // works once the SIZE_CHANGED handler refreshes those values.
         // MC2_WINDOW_RESIZABLE=0 restores a fixed window.
-        Uint32 winFlags = SDL_WINDOW_OPENGL | SDL_WINDOW_ALLOW_HIGHDPI;
+        Uint32 winFlags = SDL_WINDOW_VULKAN | SDL_WINDOW_ALLOW_HIGHDPI;
         {
             // ISSUE-49 residual: also honor the engine's windowed boot state
             // (windowed_hint = Environment.fullScreen == 0, set from
@@ -608,223 +575,21 @@ RenderWindow* create_window(const char* pwinname, int width, int height, bool wi
 }
 
 //==============================================================================
-void swap_window(RenderWindowHandle h)
-{
-    RenderWindow* rw = static_cast<RenderWindow*>(h);
-    assert(rw && rw->window_);
-    SDL_GL_SwapWindow(rw->window_);
-}
+
 
 //==============================================================================
-RenderContextHandle init_render_context(RenderWindowHandle render_window)
-{
-    RenderWindow* rw = static_cast<RenderWindow*>(render_window);
-    assert(rw && rw->window_);
 
-    SDL_GLContext glcontext = SDL_GL_CreateContext(rw->window_);
-    if (!glcontext ) {
-        mc2::fmt::print_err("SDL_GL_CreateContext(): {}\n", mc2::fmt::safe(SDL_GetError()));
-        return nullptr;
-    }
-
-    if (SDL_GL_MakeCurrent(rw->window_, glcontext) < 0) {
-        SDL_GL_DeleteContext(glcontext);
-        return nullptr;
-    } 
-
-    // MC2_VSYNC: "1" forces vsync on, "0" or unset leaves it off.
-    // Off by default so a GPU that misses 60 Hz is not rounded down
-    // to 30/20/15 FPS.
-    const bool vsync_on = mc2::gate::get<"MC2_VSYNC">();
-    SDL_GL_SetSwapInterval(vsync_on ? 1 : 0);
-    printf("[VSYNC] MC2_VSYNC=%s -- vsync %s.\n",
-           mc2::gate::raw<"MC2_VSYNC">() ? mc2::gate::raw<"MC2_VSYNC">() : "(unset, default 0)",   // echoed as typed
-           vsync_on ? "ON" : "OFF");
-
-    // Print GPU identity unconditionally with a distinctive prefix so it is
-    // impossible to miss when a user pastes their console log for triage.
-    // On hybrid-graphics laptops this line is the single most valuable
-    // diagnostic: it says which GPU OpenGL actually selected.
-    printf("[GPU] Vendor   : %s\n", reinterpret_cast<const char*>(glGetString(GL_VENDOR)));
-    printf("[GPU] Renderer : %s\n", reinterpret_cast<const char*>(glGetString(GL_RENDERER)));
-    printf("[GPU] Version  : %s\n", reinterpret_cast<const char*>(glGetString(GL_VERSION)));
-
-    // GPU-VENDOR-DETECT-1: cache whether this is an NVIDIA GPU. The whole
-    // GPU-driven static-prop stack (compute cull -> indirect multidraw ->
-    // persistent-mapped readback) was only ever validated on AMD RDNA3; on
-    // NVIDIA registered static props (trees/buildings) can draw nothing. Used
-    // by mclib to default MC2_FORCE_DYNAMIC_{TREES,BUILDINGS} ON for NVIDIA as a
-    // stopgap until the GPU path is fixed on that hardware (see bdactor.cpp).
-    {
-        const char* vend = reinterpret_cast<const char*>(glGetString(GL_VENDOR));
-        g_gosGpuIsNvidia = 0;
-        if (vend) {
-            // Vendor string is e.g. "NVIDIA Corporation".
-            if (strstr(vend, "NVIDIA") || strstr(vend, "nvidia") ||
-                strstr(vend, "NVidia"))
-                g_gosGpuIsNvidia = 1;
-        }
-        printf("[GPU] IsNvidia : %d\n", g_gosGpuIsNvidia);
-    }
-
-    // GL capability limits -- useful to rule out SSBO / texture-size / unit
-    // ceilings when a user reports rendering issues on unusual hardware.
-    {
-        GLint maxTex = 0, maxSSBO = 0, maxTexUnits = 0;
-        glGetIntegerv(GL_MAX_TEXTURE_SIZE, &maxTex);
-        glGetIntegerv(GL_MAX_SHADER_STORAGE_BLOCK_SIZE, &maxSSBO);
-        glGetIntegerv(GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS, &maxTexUnits);
-        printf("[GL] max_texture_size=%d max_ssbo_block=%d max_combined_texture_units=%d\n",
-               maxTex, maxSSBO, maxTexUnits);
-    }
-
-
-    // Drawable (physical, post-HiDPI) vs logical (window coords) size.
-    // Divergence indicates the backbuffer is larger than the window, which
-    // multiplies fragment cost.
-    {
-        int draw_w = 0, draw_h = 0, logical_w = 0, logical_h = 0;
-        SDL_GL_GetDrawableSize(rw->window_, &draw_w, &draw_h);
-        SDL_GetWindowSize(rw->window_, &logical_w, &logical_h);
-        printf("[WINDOW] drawable=%dx%d logical=%dx%d%s\n",
-               draw_w, draw_h, logical_w, logical_h,
-               (draw_w != logical_w || draw_h != logical_h) ? " (HiDPI)" : "");
-    }
-
-    // Single-line summary of effective runtime mode. Anchor for log pastes:
-    // grep [MODE] and you see every toggle state at a glance.
-    printf("[MODE] vsync=%d tracy=on-demand\n", vsync_on ? 1 : 0);
-    printf("[TRACY] on-demand mode -- profiler listening on TCP 8086, no capture until a GUI attaches.\n");
-
-    if(VERBOSE_RENDER) {
-        SDL_DisplayMode mode;
-        SDL_GetCurrentDisplayMode(0, &mode);
-        mc2::fmt::print_out("Current Display Mode:\n");
-        mc2::fmt::print_out("Screen BPP: {:d}\n", mc2::fmt::as_i32(SDL_BITSPERPIXEL(mode.format)));
-        mc2::fmt::print_out("\n");
-        mc2::fmt::print_out("Vendor     : {}\n", mc2::fmt::safe(reinterpret_cast<const char*>(glGetString(GL_VENDOR))));
-        mc2::fmt::print_out("Renderer   : {}\n", mc2::fmt::safe(reinterpret_cast<const char*>(glGetString(GL_RENDERER))));
-        mc2::fmt::print_out("Version    : {}\n", mc2::fmt::safe(reinterpret_cast<const char*>(glGetString(GL_VERSION))));
-        const char* exts = reinterpret_cast<const char*>(glGetString(GL_EXTENSIONS));
-        mc2::fmt::print_out("Extensions : {}\n", mc2::fmt::safe(exts));
-        mc2::fmt::print_out("\n");
-
-        int value;
-        int status = 0;
-
-        /*
-           status = SDL_GL_GetAttribute(SDL_GL_RED_SIZE, &value);
-           if (!status) {
-           printf("SDL_GL_RED_SIZE: requested %d, got %d\n", 5, value);
-           } else {
-           printf("Failed to get SDL_GL_RED_SIZE: %s\n", SDL_GetError());
-           }
-           status = SDL_GL_GetAttribute(SDL_GL_GREEN_SIZE, &value);
-           if (!status) {
-           printf("SDL_GL_GREEN_SIZE: requested %d, got %d\n", 5, value);
-           } else {
-           printf("Failed to get SDL_GL_GREEN_SIZE: %s\n", SDL_GetError());
-           }
-           status = SDL_GL_GetAttribute(SDL_GL_BLUE_SIZE, &value);
-           if (!status) {
-           printf("SDL_GL_BLUE_SIZE: requested %d, got %d\n", 5, value);
-           } else {
-           printf("Failed to get SDL_GL_BLUE_SIZE: %s\n", SDL_GetError());
-           }
-           */
-        //status = SDL_GL_GetAttribute(SDL_GL_DEPTH_SIZE, &value);
-        //if (!status) {
-        //    printf("SDL_GL_DEPTH_SIZE: requested %d, got %d\n", 16, value);
-        //} else {
-        //    printf("Failed to get SDL_GL_DEPTH_SIZE: %s\n", SDL_GetError());
-        //}
-
-		/*
-        status = SDL_GL_GetAttribute(SDL_GL_MULTISAMPLEBUFFERS, &value);
-        if (!status) {
-            printf("SDL_GL_MULTISAMPLEBUFFERS: %d\n", value);
-        } else {
-            printf("Failed to get SDL_GL_MULTISAMPLEBUFFERS: %s\n",
-                    SDL_GetError());
-        }
-
-        status = SDL_GL_GetAttribute(SDL_GL_MULTISAMPLESAMPLES, &value);
-        if (!status) {
-            printf("SDL_GL_MULTISAMPLESAMPLES: %d\n", value);
-        } else {
-            printf("Failed to get SDL_GL_MULTISAMPLESAMPLES: %s\n",
-                    SDL_GetError());
-        }
-		*/
-        status = SDL_GL_GetAttribute(SDL_GL_ACCELERATED_VISUAL, &value);
-        if (!status) {
-            mc2::fmt::print_out("SDL_GL_ACCELERATED_VISUAL: {:d}\n", mc2::fmt::as_i32(value));
-        } else {
-            mc2::fmt::print_out("Failed to get SDL_GL_ACCELERATED_VISUAL: {}\n",
-                    mc2::fmt::safe(SDL_GetError()));
-        }
-		
-        status = SDL_GL_GetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, &value);
-        if (!status) {
-            mc2::fmt::print_out("SDL_GL_CONTEXT_MAJOR_VERSION: {:d}\n", mc2::fmt::as_i32(value));
-        } else {
-            mc2::fmt::print_out("Failed to get SDL_GL_CONTEXT_MAJOR_VERSION: {}\n", mc2::fmt::safe(SDL_GetError()));
-        }
-
-        status = SDL_GL_GetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, &value);
-        if (!status) {
-            mc2::fmt::print_out("SDL_GL_CONTEXT_MINOR_VERSION: {:d}\n", mc2::fmt::as_i32(value));
-        } else {
-            mc2::fmt::print_out("Failed to get SDL_GL_CONTEXT_MINOR_VERSION: {}\n", mc2::fmt::safe(SDL_GetError()));
-        }
-    }
-
-    RenderContext* rc = new RenderContext();
-    rc->glcontext_ = glcontext;
-    rc->render_window_ = render_window;
-
-    g_sdl_glcontext = glcontext;
-
-	return rc;
-}
 
 //==============================================================================
-static void destroy_render_context_impl(RenderContextHandle rc_handle, bool deleteGlContext)
-{
-    RenderContext* rc = static_cast<RenderContext*>(rc_handle);
-    assert(rc);
 
-    if (deleteGlContext) {
-        SDL_GL_DeleteContext(rc->glcontext_);
-    } else {
-        SDL_GL_MakeCurrent(rc->render_window_ ? rc->render_window_->window_ : nullptr, nullptr);   // left to process teardown
-    }
-    g_sdl_glcontext = nullptr;
-    delete rc;
-}
 
-void destroy_render_context(RenderContextHandle rc_handle)
-{
-    destroy_render_context_impl(rc_handle, true);
-}
+
 
 //==============================================================================
-void release_render_context_at_exit(RenderContextHandle rc_handle)
-{
-    destroy_render_context_impl(rc_handle, false);
-}
+
 
 //==============================================================================
-void make_current_context(RenderContextHandle ctx_h)
-{
-    RenderContext* rc = static_cast<RenderContext*>(ctx_h);
-    assert(rc && rc->render_window_ && rc->glcontext_);
 
-    RenderWindow* rw = rc->render_window_;
-    assert(rw && rw->window_);
-
-    SDL_GL_MakeCurrent(rw->window_, rc->glcontext_);
-}
 
 //==============================================================================
 bool resize_window(RenderWindowHandle rw_handle, int width, int height)
@@ -908,14 +673,10 @@ bool is_mode_supported(int width, int height, int bpp) {
 }
 
 //==============================================================================
-int get_window_display_index(RenderContextHandle ctx_h)
+int get_window_display_index(RenderWindowHandle window)
 {
-    RenderContext* rc = static_cast<RenderContext*>(ctx_h);
-    assert(rc);
-
-    RenderWindow* rw = rc->render_window_;
+    RenderWindow* rw = window;
     assert(rw && rw->window_);
-
     return SDL_GetWindowDisplayIndex(rw->window_);
 }
 
@@ -974,7 +735,7 @@ void get_drawable_size(RenderWindowHandle rw_handle, int* width, int* height)
     RenderWindow* rw = static_cast<RenderWindow*>(rw_handle);
     assert(rw && width && height);
 	// TOD: does it make sense to cahce this value? probably not
-	SDL_GL_GetDrawableSize(rw->window_, width, height);
+	SDL_GetWindowSizeInPixels(rw->window_, width, height);
 }
 
 //==============================================================================
@@ -1153,9 +914,6 @@ SDL_Window* getSDLWindow() noexcept
 }
 
 //==============================================================================
-SDL_GLContext getSDLGLContext() noexcept
-{
-    return g_sdl_glcontext;
-}
+
 
 }; // namespace graphics

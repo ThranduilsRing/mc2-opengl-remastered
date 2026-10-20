@@ -1394,5 +1394,24 @@ class LegacyCatalogReferenceTests(unittest.TestCase):
         return "\n".join("[EDITOR_LEGACY_PLACEMENT v1] " + " ".join(f"{k}={v}" for k, v in p["facts"].items()) for p in result["placements"].values())
 
 
+class NativePanelHostOwnershipTests(unittest.TestCase):
+    def test_current_registered_builder_can_render_panels(self):
+        with patch.object(smoke, "REPO", Path("A:/Games/mc2-lane2")):
+            self.assertTrue(smoke.panel_render_host_allowed(Path("A:/Games/mc2-opengl/mc2-win64-lane2/Mission Editor Smoke.exe")))
+
+    def test_other_worktree_and_unregistered_installs_are_rejected(self):
+        with patch.object(smoke, "REPO", Path("A:/Games/different-worktree")):
+            self.assertFalse(smoke.panel_render_host_allowed(Path("A:/Games/mc2-opengl/mc2-win64-lane2/Mission Editor Smoke.exe")))
+        self.assertFalse(smoke.panel_render_host_allowed(Path("A:/Games/mc2-opengl/mc2-win64-v0.4/Mission Editor Smoke.exe")))
+
+    def test_owned_render_case_reaches_fingerprint_validation(self):
+        with scratch_directory() as directory:
+            exe = directory / "smoke.exe"
+            exe.write_bytes(b"not a PE")
+            with patch.object(smoke, "panel_render_host_allowed", return_value=True), patch.object(smoke.exe_fingerprint, "extract", return_value={"present": False}):
+                result = smoke.run_panel("panel_render", exe, None, directory / "result", 1)
+            self.assertIn("fingerprint", result["detail"])
+
+
 if __name__ == "__main__":
     unittest.main()

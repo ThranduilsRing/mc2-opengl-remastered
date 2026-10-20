@@ -36,7 +36,7 @@
 #ifndef GOS_RENDER_FRAME_DRIVER_H
 #define GOS_RENDER_FRAME_DRIVER_H
 
-#include "gos_render_context.h"   // reuse RenderHostKind { Game, Editor }
+#include "render_host_kind.h"   // reuse RenderHostKind { Game, Editor }
 
 // Per-frame description of host-disambiguating render behavior. Intentionally
 // minimal: world/camera state already flows through the existing globals

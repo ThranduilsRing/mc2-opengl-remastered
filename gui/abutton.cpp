@@ -3,6 +3,7 @@
 //===========================================================================//
 
 #include"abutton.h"
+#include "../mclib/texture_assets.h"
 #include"afont.h"
 #include"mclib.h"
 #include"platform_windows.h"
@@ -141,7 +142,7 @@ void aButton::render()
 	{
 		if ( textureHandle )
 		{
-			unsigned long gosID = mcTextureManager->get_gosTextureHandle( textureHandle );
+			unsigned long gosID = mc2::textures::sourceId( textureHandle );
 			gos_SetRenderState( gos_State_Texture, gosID ); 
 		}
 		else
@@ -370,11 +371,11 @@ void aButton::init( FitIniFile& buttonFile, const char* str, HGOSFONT3D font )
 		if ( !strstr( data.fileName, ".tga" ) )
 			strcat( file, ".tga" );
 		
-		int ID = mcTextureManager->loadTexture( file, gos_Texture_Alpha, 0, 0, 0x2 );
+		int ID = mc2::textures::load( file, gos_Texture_Alpha, 0, 0, 0x2 );
 		textureHandle = ID;
 		DWORD logicalWidth = 0;
 		DWORD logicalHeight = 0;
-		if ( mcTextureManager->tryGetTextureLogicalSize( ID, logicalWidth, logicalHeight ) )
+		if ( mc2::textures::logicalSize( ID, logicalWidth, logicalHeight ) )
 		{
 			data.fileWidth = logicalWidth;
 			data.fileHeight = logicalHeight;

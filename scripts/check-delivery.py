@@ -734,10 +734,34 @@ def grade_data(fix, inst) -> dict:
         return {"state": YES, "detail": ["no data required (declared)"],
                 "missing": 0}
     deploy = inst["deploy"]
-    detail, bad = [], 0
+    detail, bad, unknown = [], 0, False
     for it in items:
         kind = it.get("kind", "file")
         if kind == "file":
+            # Audited backend replacements preserve historical installs' evidence.
+            # Each candidate must satisfy its own path AND semantic needle.
+            if it.get("alternatives"):
+                primary = {k: v for k, v in it.items()
+                           if k not in ("alternatives", "native_backend_needle")}
+                marker = it.get("native_backend_needle")
+                if marker and inst.get("blob") is None:
+                    unknown = True
+                    detail.append("backend unknown: executable unreadable")
+                    continue
+                candidates = [primary, *it["alternatives"]]
+                if marker:
+                    candidates = (it["alternatives"] if marker.encode("ascii")
+                                  in inst["blob"] else [primary])
+                results = [grade_data({"data": [candidate]}, inst)
+                           for candidate in candidates]
+                match = next((r for r in results if r["state"] == YES), None)
+                if match:
+                    detail.extend(match["detail"])
+                else:
+                    bad += 1
+                    detail.append("MISSING/STALE backend alternatives: " +
+                                  "; ".join(d for r in results for d in r["detail"]))
+                continue
             p = os.path.join(deploy, it["path"].replace("/", os.sep))
             if not os.path.isfile(p):
                 detail.append(f"MISSING {it['path']}")
@@ -773,7 +797,8 @@ def grade_data(fix, inst) -> dict:
         else:
             detail.append(f"UNKNOWN data kind '{kind}'")
             bad += 1
-    return {"state": NO if bad else YES, "detail": detail, "missing": bad}
+    return {"state": NO if bad else UNK if unknown else YES,
+            "detail": detail, "missing": bad}
 
 
 _TIER_WHY = {
@@ -829,8 +854,9 @@ def check_integrity(fix, at=WORKING_TREE) -> list[str]:
                         f"is not there")
     for it in fix.get("data") or []:
         if it.get("kind", "file") == "file":
-            if show(at, it["path"]) is None:
-                errs.append(f"data path {it['path']} absent from the repo at "
+            paths = [it["path"], *[a["path"] for a in it.get("alternatives", [])]]
+            if not any(show(at, path) is not None for path in paths):
+                errs.append(f"data paths {paths} absent from the repo at "
                             f"{label_of(at)}")
     var = fix.get("gate")
     if var:

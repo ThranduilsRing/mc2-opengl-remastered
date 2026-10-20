@@ -2,6 +2,7 @@
 // (the persisted snapshots) the Vulkan mech island and the VK shadow cascades consume.
 // Declared in the class headers; shared names in gos_mech_batcher_internal.h.
 #include "gos_mech_batcher_internal.h"
+#include "../../mclib/texture_assets.h"
 #include "mc2fmt.h"
 #include "ui_texture.h"
 
@@ -98,7 +99,7 @@ bool GpuMechBatcher::submitActor(const GpuMechSubmitDesc& desc) {
         if (pkt.textureSlot == 0) {
             ps.packetTexHandles[p] = desc.slot0TexHandle;
         } else if (pkt.textureSlot < static_cast<uint32_t>(desc.mechShape->GetNumTextures())) {
-            ps.packetTexHandles[p]=mcTextureManager->get_gosTextureHandle(desc.mechShape->GetTextureHandle(pkt.textureSlot));
+            ps.packetTexHandles[p]=mc2::textures::sourceId(desc.mechShape->GetTextureHandle(pkt.textureSlot));
         }
     }
 
@@ -428,7 +429,7 @@ void MechFlushFrame::collectRuns() {
         // (TG_TinyTexture::gosTextureHandle is a misnamed slot index per
         // memory/mc2_texture_handle_is_live.md). Resolve to the live gos handle THIS FRAME.
         const DWORD liveGosHandle = (dc.texHandle != 0xFFFFFFFFu && mcTextureManager)
-            ? mcTextureManager->get_gosTextureHandle(dc.texHandle)
+            ? mc2::textures::sourceId(dc.texHandle)
             : 0u;
         Mc2MechDrawRun run{};
         run.firstIndex    = pkt.firstIndex;
@@ -440,9 +441,9 @@ void MechFlushFrame::collectRuns() {
         run.slot0Tex      = gos_GetMaterialTextureId(liveGosHandle);   // LIVE per-actor paint scheme this frame
         // VK-PARITY-MECH-1: per-type AO / normal maps.
         run.aoTex = (dc.aoTexHandle != 0u && dc.aoTexHandle != 0xFFFFFFFFu && mcTextureManager)
-            ? gos_GetMaterialTextureId(mcTextureManager->get_gosTextureHandle(dc.aoTexHandle)) : 0u;
+            ? gos_GetMaterialTextureId(mc2::textures::sourceId(dc.aoTexHandle)) : 0u;
         run.normalTex = (dc.normalTexHandle != 0u && dc.normalTexHandle != 0xFFFFFFFFu && mcTextureManager)
-            ? gos_GetMaterialTextureId(mcTextureManager->get_gosTextureHandle(dc.normalTexHandle)) : 0u;
+            ? gos_GetMaterialTextureId(mc2::textures::sourceId(dc.normalTexHandle)) : 0u;
         s_vkMechRunSnapshot.push_back(run);
         ++drawnCalls;
     }

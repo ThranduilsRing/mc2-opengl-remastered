@@ -39,16 +39,18 @@ def test_crash_no_summary_detected():
     assert s.smoke_summary_result is None
 
 
-SHADER_BUILDER = Path(__file__).resolve().parents[2] / "GameOS" / "gameos" / "utils" / "shader_builder.cpp"
+NATIVE_SHADER_LOADER = Path(__file__).resolve().parents[2] / "GameOS" / "gameos" / "vk_island_util.h"
 
 
-def test_shader_builder_error_token_is_counted_as_a_shader_failure():
-    """The producer's own prefix (read from shader_builder.cpp) is what the shader-failure bucket matches: a drifted prefix fails here."""
-    src = SHADER_BUILDER.read_text(encoding="utf-8", errors="replace")
-    m = re.search(r'#define SHADER_LOG_ERROR\(\.\.\.\) MC2_LOG\(Shader, Error, "([^"]*)" __VA_ARGS__\)', src)
-    assert m, "shader_builder.cpp no longer defines SHADER_LOG_ERROR as MC2_LOG(Shader, Error, \"<prefix>\" __VA_ARGS__)"
-    for body in ("Type mismatch: u_foo", "Duplicate shader name: gos_x.frag", "[SPIRV] failed to read a.spv; GLSL fallback"):
-        assert parse_log(m.group(1) + body + "\n").shader_errors == 1
+def test_native_shader_loader_errors_are_counted_as_shader_failures():
+    """Use every real loadSpv failure message so producer/parser drift fails closed."""
+    src = NATIVE_SHADER_LOADER.read_text(encoding="utf-8")
+    messages = re.findall(r'(?:log|later)\("([^"]+)"', src)
+    assert len(messages) == 4
+    for message in messages:
+        line = message.replace("%s", "fixture.spv").replace("%ld", "2")
+        assert parse_log("[VK_TEST] " + line + "\n").shader_errors == 1
+    assert parse_log("[VK_TEST] loaded spv 'valid.spv'.\n").shader_errors == 0
 
 
 def test_shader_failure_lines_count_once_per_line():

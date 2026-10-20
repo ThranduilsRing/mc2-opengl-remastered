@@ -10,6 +10,7 @@
 
 //---------------------------------------------------------------------------
 // Include Files
+#include "texture_assets.h"
 #ifndef MAPDATA_H
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include"mapdata.h"
@@ -123,7 +124,7 @@ static long worldQuadUVMode (long tileR, long tileC)
 
 static bool isTextureNodeResidentLocal (DWORD nodeId)
 {
-	return mcTextureManager->isTextureNodeResident(nodeId);
+	return mc2::textures::isDecoded(nodeId);
 }
 
 static void fillWorldCacheVertex (Vertex& vertex, PostcompVertexPtr pVertex, long tileR, long tileC)

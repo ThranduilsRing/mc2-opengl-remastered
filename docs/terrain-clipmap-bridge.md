@@ -1,6 +1,8 @@
 <!-- doc-status: current | reviewed:2026-10-11 -->
 # Terrain clipmap bridge — bake-mip / morph interface contract
 
+> s68/P9: Retired GL sources are cited with Git object syntax (`8064c6930:path`) so the historical implementation remains inspectable.
+
 **Status: HAND-OFF DOC ONLY.** No engine code, no renderer, no new gate in this
 slice (`GEOMORPH-NEXT-SLICES-1` Slice 3, CLIPMAP-BRIDGE). Written per the
 successor notes in `.claude/GEOMORPH-NEXT-SLICES.md` §"Slice 3 —
@@ -11,7 +13,7 @@ design or implement a clipmap renderer (toroidal ring buffers, GPU update
 regions, streaming) — that is a separate, much larger arc.
 
 Verified against this worktree's checked-in code (`mclib/terrain.cpp`,
-`GameOS/gameos/gos_terrain_lod_chunk.cpp`, `shaders/terrain_lod_chunk.vert`,
+`GameOS/gameos/gos_terrain_lod_chunk.cpp`, `8064c6930:shaders/terrain_lod_chunk.vert`,
 `tools/terrain_beautify/visual_heightfield.py`) — the geomorph arc has shipped
 here (contrary to the predecessor doc's "lane-local, 0 hits on nifty" note,
 which was written before this merge).

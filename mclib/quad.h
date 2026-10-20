@@ -144,7 +144,6 @@ class TerrainQuad
 		void drawSetup(QuadDrawFrame& f);
 		void drawPathSelect(QuadDrawFrame& f);
 		void fastPzGate(QuadFastFrame& fp);
-		void fastThinEmit(QuadDrawFrame& f, QuadFastFrame& fp);
 		void fastOverlayEmit(QuadDrawFrame& f, QuadFastFrame& fp);
 		void drawLegacyBottomRight(QuadDrawFrame& f);
 		void drawLegacyBottomLeft(QuadDrawFrame& f);

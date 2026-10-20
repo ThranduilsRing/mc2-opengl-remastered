@@ -145,14 +145,19 @@ class TestChannelLayerIndexAgreement(unittest.TestCase):
         return [s for s in re.findall(r'"([^"]+)"', m.group(1))]
 
     def _parse_loader_expected_layers(self):
-        """Extract kMatAlbedoExpectedLayer[] integer order from the loader."""
+        """The native-facing channel lookup returns its name-table index directly."""
         import re
         text = LOADER_CPP_PATH.read_text(encoding='utf-8')
-        m = re.search(r'kMatAlbedoExpectedLayer\[kMatAlbedoLayerCount\]\s*=\s*\{(.*?)\}',
-                      text, re.DOTALL)
-        self.assertIsNotNone(m, 'could not find kMatAlbedoExpectedLayer[] in loader')
-        # first integer on each populated line
-        return [int(x) for x in re.findall(r'(\d+)\s*,', m.group(1))]
+        count = re.search(r'kMatAlbedoLayerCount\s*=\s*(\d+)\s*;', text)
+        self.assertIsNotNone(count)
+        names = self._parse_loader_channel_names()
+        self.assertEqual(int(count.group(1)), len(names))
+        body = re.search(r'int gos_GetTerrainMatAlbedoLayerIndex\([^)]*\)\s*\{(.*?)\n\}',
+                         text, re.DOTALL)
+        self.assertIsNotNone(body)
+        self.assertRegex(body.group(1), r'for\s*\(int i = 0; i < kMatAlbedoLayerCount; \+\+i\)')
+        self.assertRegex(body.group(1), r'if \(strcmp\(channelName, kMatAlbedoChannelNames\[i\]\) == 0\) return i;')
+        return list(range(len(names)))
 
     def test_frag_constants_match_canonical(self):
         frag = self._parse_frag_mat_layers()

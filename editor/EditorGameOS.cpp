@@ -26,7 +26,8 @@
 // points, or provide safe no-op defaults where the old symbol was pure
 // Win32 boilerplate that has no SDL equivalent.
 #include "stdafx.h"
-#include "EditorGpuTimer.h"  // EditorFramePhase_* whole-frame timing (MC2_EDITOR_GPU_TIMERS)
+#include "EditorRenderTimer.h"
+#include "gos_render_pass_timer.h"  // EditorFramePhase_* whole-frame timing (MC2_EDITOR_GPU_TIMERS)
 #include "EditorWatchdog.h"  // EditorWatchdog_Heartbeat (MC2_EDITOR_WATCHDOG)
 #include <cstdarg>
 #include <vector>
@@ -37,7 +38,7 @@
 
 #include <gameos.hpp>          // gos_RendererBeginFrame / EndFrame / HandleEvents
 #include "gos_render.h"        // graphics::make_current_context etc.
-#include "gos_render_context.h"  // InitializeRenderContextConventions (shared game/editor parity)
+#include "render_host_kind.h"  // InitializeRenderContextConventions (shared game/editor parity)
 #include "render_frame_driver.h" // Shared world-render dispatch
 #include "../GameOS/gameos/gos_terrain_indirect.h" // RebuildCementAtlasIfDirty() — deferred cement-atlas rebuild at frame-start
 #include "gos_input.h"         // input::beginUpdateMouseState etc.
@@ -55,7 +56,6 @@
 
 #ifdef TRACY_ENABLE
 #  include "tracy/Tracy.hpp"
-#  include "tracy/TracyOpenGL.hpp"
 #endif
 
 extern uint32_t g_mc2FrameCounter;   // engine logic-pass epoch (mclib/tgl.cpp), advanced by gos::host::advanceFrameCounter
@@ -68,7 +68,6 @@ extern uint32_t g_mc2RenderFrame;    // render-frame clock (mclib/tgl.cpp), once
 #include "render_backend_select.h"
 #include "imgui.h"
 #include "imgui_impl_sdl2.h"
-#include "imgui_impl_opengl3.h"
 #endif
 
 namespace graphics {
@@ -99,12 +98,11 @@ namespace graphics {
 
 
 #ifdef PLATFORM_WINDOWS
-#include <GL/glew.h>
 #else
-#include <GL/glew.h>
 #endif
 
-extern void gos_CreateRenderer(graphics::RenderContextHandle ctx_h, graphics::RenderWindowHandle win_h, int w, int h);
+namespace graphics { void limit_editor_frame(); }
+extern void gos_CreateRenderer(graphics::RenderWindowHandle win_h, int w, int h);
 extern void gos_DestroyRenderer();
 extern bool gos_CreateAudio();
 extern void gos_DestroyAudio();
@@ -112,7 +110,6 @@ class gosRenderer;
 extern gosRenderer* getGosRenderer();
 
 static graphics::RenderWindowHandle  g_editorRenderWindow  = nullptr;
-static graphics::RenderContextHandle g_editorRenderContext = nullptr;
 static bool g_editorAudioCreated = false;
 
 
@@ -325,74 +322,33 @@ void __stdcall InitGameOS(HINSTANCE /*hInstance*/, HWND hWindow, char* commandLi
 
         EditorGameOSTrace("InitGameOS: after graphics::create_window renderWindow=%p", g_editorRenderWindow);
 
-        if (g_editorRenderWindow)
-        {
-            EditorGameOSTrace("InitGameOS: before graphics::init_render_context");
-            g_editorRenderContext = graphics::init_render_context(g_editorRenderWindow);
-            EditorGameOSTrace("InitGameOS: after graphics::init_render_context renderContext=%p", g_editorRenderContext);
-        }
+        if (g_editorRenderWindow) {
+            // Same VK bring-up as the game (gameosmain.cpp): shared engine context + present on this HWND.
+            // A no-op unless the Vulkan backend is selected; a failed bring-up is fatal inside it.
+            EditorGameOSTrace("InitGameOS: before initVulkanBackend backend=%s", "vulkan");
+            initVulkanBackend(g_editorRenderWindow, w, h);
+            EditorGameOSTrace("InitGameOS: after initVulkanBackend");
 
-        if (g_editorRenderContext)
-        {
-            EditorGameOSTrace("InitGameOS: before graphics::make_current_context");
-            graphics::make_current_context(g_editorRenderContext);
-            EditorGameOSTrace("InitGameOS: after graphics::make_current_context");
 
-            EditorGameOSTrace("InitGameOS: before glewInit");
-            // core-profile context needs glewExperimental so
-            // glewIsSupported() uses glGetStringi() instead of the (NULL on core)
-            // legacy extension string. Without it, NVIDIA reports ARB extensions as
-            // absent -> static-prop coalesce color path disabled -> invisible
-            // trees/buildings. Same fix as gameosmain.cpp. Must precede glewInit().
-            glewExperimental = GL_TRUE;
-            GLenum glewErr = glewInit();
-            EditorGameOSTrace("InitGameOS: after glewInit result=%u", (unsigned)glewErr);
-            (void)glGetError();  // drain spurious GL_INVALID_ENUM from glew probing
-
-            if (glewErr == GLEW_OK)
-            {
-#ifdef TRACY_ENABLE
-                TracyGpuContext;
-#endif
-                // Shared scene shaders require reverse-Z with [0,1] NDC depth.
-                // Initialize the same depth conventions in both hosts before renderer creation;
-                // the shared initializer rejects contexts without clip control.
-                // Same VK bring-up as the game (gameosmain.cpp): shared engine context + present on this HWND.
-                // A no-op unless the Vulkan backend is selected; a failed bring-up is fatal inside it.
-                EditorGameOSTrace("InitGameOS: before initVulkanBackend backend=%s", "vulkan");
-                initVulkanBackend(g_editorRenderWindow, w, h);
-                EditorGameOSTrace("InitGameOS: after initVulkanBackend");
-
-                EditorGameOSTrace("InitGameOS: before InitializeRenderContextConventions(Editor)");
-                InitializeRenderContextConventions(RenderHostKind::Editor);
-                EditorGameOSTrace("InitGameOS: after InitializeRenderContextConventions(Editor)");
-
-                EditorGameOSTrace("InitGameOS: before gos_CreateRenderer context=%p window=%p", g_editorRenderContext, g_editorRenderWindow);
-                gos_CreateRenderer(g_editorRenderContext, g_editorRenderWindow, w, h);
-                EditorGameOSTrace("InitGameOS: after gos_CreateRenderer renderer=%p", getGosRenderer());
+            EditorGameOSTrace("InitGameOS: before gos_CreateRenderer window=%p", g_editorRenderWindow);
+            gos_CreateRenderer(g_editorRenderWindow, w, h);
+            EditorGameOSTrace("InitGameOS: after gos_CreateRenderer renderer=%p", getGosRenderer());
 
 #ifdef MC2_IMGUI
-                EditorGameOSTrace("InitGameOS: MC2_IMGUI defined -- before GuiRuntime::Init sdlWin=%p", graphics::getSDLWindow());
-                // Editor opts into editor-mode ImGui (docking dockspace + auto-dock)
-                // BEFORE Init() so DockingEnable is set. The game never calls this, so
-                // its ImGui windows float. Must precede Init().
-                GuiRuntime::SetEditorMode(true);
-                GuiRuntime::Init();
-                EditorGameOSTrace("InitGameOS: after GuiRuntime::Init g_imguiInitialized=%d", g_imguiInitialized ? 1 : 0);
+            EditorGameOSTrace("InitGameOS: MC2_IMGUI defined -- before GuiRuntime::Init sdlWin=%p", graphics::getSDLWindow());
+            // Editor opts into editor-mode ImGui (docking dockspace + auto-dock)
+            // BEFORE Init() so DockingEnable is set. The game never calls this, so
+            // its ImGui windows float. Must precede Init().
+            GuiRuntime::SetEditorMode(true);
+            GuiRuntime::Init();
+            EditorGameOSTrace("InitGameOS: after GuiRuntime::Init g_imguiInitialized=%d", g_imguiInitialized ? 1 : 0);
 #endif
 
-                EditorGameOSTrace("InitGameOS: before gos_CreateAudio");
-                g_editorAudioCreated = gos_CreateAudio();
-                EditorGameOSTrace("InitGameOS: after gos_CreateAudio created=%d", g_editorAudioCreated ? 1 : 0);
-            }
-            else
-            {
-                EditorGameOSTrace("InitGameOS: glewInit failed; renderer not created");
-            }
-        }
-        else
-        {
-            EditorGameOSTrace("InitGameOS: renderer bootstrap skipped because window/context failed");
+            EditorGameOSTrace("InitGameOS: before gos_CreateAudio");
+            g_editorAudioCreated = gos_CreateAudio();
+            EditorGameOSTrace("InitGameOS: after gos_CreateAudio created=%d", g_editorAudioCreated ? 1 : 0);
+        } else {
+            EditorGameOSTrace("InitGameOS: native renderer bootstrap failed: no window");
         }
     }
     else
@@ -508,10 +464,10 @@ DWORD __stdcall RunGameOSLogic()
 {
     EditorWatchdog_Heartbeat();  // main-thread liveness for the stall watchdog
 
-    if (!g_editorRenderWindow || !g_editorRenderContext || !getGosRenderer())
+    if (!g_editorRenderWindow || !getGosRenderer())
     {
-        EditorGameOSTrace("RunGameOSLogic: skipped window=%p context=%p renderer=%p",
-            g_editorRenderWindow, g_editorRenderContext, getGosRenderer());
+        EditorGameOSTrace("RunGameOSLogic: skipped window=%p renderer=%p",
+            g_editorRenderWindow, getGosRenderer());
         return 0;
     }
 
@@ -538,80 +494,6 @@ DWORD __stdcall RunGameOSLogic()
             EditorGameOSTrace("RunGameOSLogic: resize w=%d h=%d", w, h);
         }
 
-#ifdef MC2_IMGUI
-        // Dock map-resize: shrink the SCENE viewport to the dockspace CENTRAL node (the
-        // area not covered by docked panels) so the GL map fills only that region and
-        // the docked right-side panels sit beside it, not over it. The scene FBO +
-        // glViewport + camera aspect all follow Environment.drawable/screen dims, and
-        // endScene composites to glViewport(0,0,width_,height_) -> the left region;
-        // ImGui (DisplaySize = full SDL window) draws panels in the right strip.
-        // SceneViewportWidth() lags one frame (built in NewFrame) -- harmless. The
-        // scene is left-anchored at (0,0) so mouse-pick coords still map 1:1.
-        // MC2_EDITOR_DOCK_RESIZE=0 disables (scene stays full-window behind panels).
-        {
-            // FIXED-LAYOUT viewport (2026-06-10, replaces the dynamic central-node
-            // shrink). Per user direction: reserve a FIXED, DPI-scaled panel column on
-            // the right; the scene viewport is the rest of the window, LEFT-ANCHORED at
-            // (0,0). Computing the size DIRECTLY from the client rect (not the ImGui
-            // central node) removes the one-frame lag AND the moving-target coordinate
-            // space that drove the pick divergence -- the scene size is a single known
-            // value fed to glViewport + Environment + (via the camera) every width
-            // cache. Picking is then exact by construction: mouse - (0,0), normalised
-            // by the same fixed width the camera projects with.
-            // MC2_EDITOR_RTT=0 disables (full-window scene, panels overlay).
-            static int s_panelLogical = -1;   // logical (96-dpi) panel width
-            if (s_panelLogical < 0) {
-                const int pw = mc2::gate::get<"MC2_EDITOR_PANEL_W">();   // row default 320
-                s_panelLogical = (pw > 0) ? pw : 320;
-            }
-            int sw = w, sh = h;
-            if (GuiRuntime::RttEnabled() && w > 0 && h > 0) {
-                // DPI scale from the GL-child window (1.0 at 96 dpi).
-                UINT dpi = ::GetDpiForWindow(hwnd);
-                float dpiScale = (dpi > 0) ? (float)dpi / 96.0f : 1.0f;
-                int panelPx = (int)(s_panelLogical * dpiScale + 0.5f);
-                if (panelPx > w - 256) panelPx = w - 256;   // keep a sane minimum scene
-                if (panelPx < 0) panelPx = 0;
-                sw = w - panelPx;
-                sh = h;
-                Environment.screenWidth    = sw;
-                Environment.drawableWidth  = sw;
-                Environment.screenHeight   = sh;
-                Environment.drawableHeight = sh;
-                // Publish the fixed scene rect (left-anchored) so GuiRuntime paints the
-                // RTT texture there and the pick offset uses the same rect.
-                GuiRuntime::SetFixedViewportRect(0, 0, sw, sh);
-
-                // SINGLE SOURCE OF TRUTH: set the GOS projection viewport to the scene
-                // sub-rect. gos_GetViewport feeds Camera::update/render -> viewMulX/Y +
-                // TG_Shape + userInput + projectZ (the forward-projection every cursor
-                // and object pick uses). Patching the per-frame copies one at a time
-                // always left one reading the full window (the residual scale/offset).
-                // setupViewport only STORES the projection fractions; it does NOT touch
-                // the GL render viewport (we set that explicitly via glViewport below),
-                // so the render stays scene-sized while ALL projections become coherent.
-                // Fractions are relative to the GOS BACKBUFFER width (full window),
-                // which differs from the MFC client width. Reading gos_GetViewport
-                // after we shrink would feed back the shrunk value (sw/sw=1 -> reset),
-                // so capture the TRUE full backbuffer dims once (and re-capture on
-                // resize) by restoring the full fraction, reading, then applying scene.
-                static float s_gosFullW = 0.0f, s_gosFullH = 0.0f;
-                static int s_gosTrackW = -1, s_gosTrackH = -1;
-                if (s_gosFullW <= 0.0f || s_gosTrackW != w || s_gosTrackH != h) {
-                    gos_SetupViewport(false, 0.0f, false, 0, 0.0f, 0.0f, 1.0f, 1.0f);
-                    float a = 0, b = 0, c = 0, d = 0;
-                    gos_GetViewport(&a, &b, &c, &d);
-                    s_gosFullW = a; s_gosFullH = b;
-                    s_gosTrackW = w; s_gosTrackH = h;
-                }
-                if (s_gosFullW > 0.0f && s_gosFullH > 0.0f) {
-                    // top, left, bottom, right as backbuffer fractions; left-anchored.
-                    gos_SetupViewport(false, 0.0f, false, 0,
-                        0.0f, 0.0f, (float)sh / s_gosFullH, (float)sw / s_gosFullW);
-                }
-            }
-        }
-#endif
     }
 
     input::beginUpdateMouseState();
@@ -650,7 +532,7 @@ DWORD __stdcall RunGameOSLogic()
 
     // Match the SDL game loop: bind context, clear, set viewport, run the
     // renderer frame, then swap the embedded WGL window.
-    graphics::make_current_context(g_editorRenderContext);
+
 
     const int viewport_w = Environment.drawableWidth;
     const int viewport_h = Environment.drawableHeight;
@@ -666,7 +548,6 @@ DWORD __stdcall RunGameOSLogic()
         pp_editor->beginScene();  // binds sceneFBO_, sets MRT w/ COLOR_ATTACHMENT2
     }
 
-    glViewport(0, 0, viewport_w, viewport_h);
 
     // Minimal per-frame GL state: depth test on and clear buffers.
     // Do NOT set up fixed-function projection/modelview matrices here —
@@ -675,21 +556,20 @@ DWORD __stdcall RunGameOSLogic()
     // gos_RendererBeginFrame() is responsible for all per-frame shader state.
     // Reverse-Z uses depth 0 at the far plane and GL_GEQUAL. Clearing to
     // depth 1 would reject scene draws against the near plane.
-    glEnable(GL_DEPTH_TEST);
-    glDepthFunc(GL_GEQUAL);   // reverse-Z (U2): was GL_LEQUAL
-    glDepthMask(GL_TRUE);
+
+
+
 
     // When pp_editor->beginScene() ran, the scene FBO is now bound — this
     // glClear hits the scene FBO's color/depth attachments, not FBO 0.
-    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-    glClearDepth(0.0f);       // reverse-Z (U2): far plane = depth 0 (match game scene clear)
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+
+
 
     // F3 render-contract: stamp GBuffer1 with the post-shadow-eligible
     // sentinel before any draws run. Required by render-contract coherence
     // guarantee (docs/superpowers/specs/render-contract-f3-report.md §5A).
     if (pp_editor) {
-        pp_editor->clearGBuffer1();
     }
 
     gos_RendererHandleEvents();
@@ -773,70 +653,6 @@ DWORD __stdcall RunGameOSLogic()
     gos_RendererFlushHUDBatch();
 
 #ifdef MC2_IMGUI
-    // RENDER-TO-TEXTURE viewport: endScene() composited the scene into the bottom-left
-    // (0,0,viewport_w,viewport_h) region of FBO 0. Capture it into an editor-owned
-    // texture so the dockspace can paint it into the central node at the node's exact
-    // screen rect (GuiRuntime background draw list). This makes the scene size, the
-    // displayed rect, and the pick-coordinate offset all consistent -> retires the
-    // legacy DOCK_RESIZE pick divergence. Editor-only; the shared endScene is untouched.
-    if (g_imguiInitialized && GuiRuntime::RttEnabled() && viewport_w > 0 && viewport_h > 0) {
-        static GLuint s_presentFBO = 0, s_presentTex = 0;
-        static int s_presentW = 0, s_presentH = 0;
-        if (s_presentFBO == 0)
-            glGenFramebuffers(1, &s_presentFBO);
-        if (s_presentTex == 0 || s_presentW != viewport_w || s_presentH != viewport_h) {
-            if (s_presentTex == 0) glGenTextures(1, &s_presentTex);
-            glBindTexture(GL_TEXTURE_2D, s_presentTex);
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, viewport_w, viewport_h, 0,
-                         GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-            glBindTexture(GL_TEXTURE_2D, 0);
-            glBindFramebuffer(GL_FRAMEBUFFER, s_presentFBO);
-            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
-                                   GL_TEXTURE_2D, s_presentTex, 0);
-            glBindFramebuffer(GL_FRAMEBUFFER, 0);
-            s_presentW = viewport_w; s_presentH = viewport_h;
-        }
-        // Blit the composited scene region of FBO 0 into the present texture.
-        glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
-        glReadBuffer(GL_BACK);
-        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, s_presentFBO);
-        glBlitFramebuffer(0, 0, viewport_w, viewport_h,
-                          0, 0, viewport_w, viewport_h,
-                          GL_COLOR_BUFFER_BIT, GL_NEAREST);
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
-        GuiRuntime::SetViewportTexture(s_presentTex);
-    }
-
-    if (g_imguiInitialized) {
-        // Ensure ImGui renders to the default framebuffer.
-        // Shadow/terrain passes leave non-zero FBOs bound; if we don't reset here
-        // ImGui draw calls go into the last-bound shadow-map texture, not the screen.
-        // endScene() already bound FBO 0 above; this is belt-and-suspenders.
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
-        // Restore viewport to the full window in case a render pass shrank it
-        // (e.g. shadow atlas pass sets a sub-viewport).
-        int vw = 0, vh = 0;
-        if (SDL_Window* sw = graphics::getSDLWindow())
-            SDL_GetWindowSize(sw, &vw, &vh);
-        if (vw > 0 && vh > 0)
-            glViewport(0, 0, vw, vh);
-        // RTT: the scene now lives in the present texture (painted into the central
-        // node by GuiRuntime). Wipe FBO 0 so the raw bottom-left composite left by
-        // endScene does not peek out from under the dockspace panels/empty regions.
-        if (GuiRuntime::RttEnabled()) {
-            glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-            glClear(GL_COLOR_BUFFER_BIT);
-        }
-        static bool s_renderTrace = false;
-        if (!s_renderTrace) {
-            s_renderTrace = true;
-            EditorGameOSTrace("RunGameOSLogic: first GuiRuntime::Render fbo=0 viewport=%dx%d", vw, vh);
-        }
-    }
     GuiRuntime::Render();
 #endif
     EditorFramePhase_Mark("gui");
@@ -845,15 +661,16 @@ DWORD __stdcall RunGameOSLogic()
     // is managed by the gosRenderer; forcibly unbinding it after EndFrame tears
     // down state the renderer expects to persist across the swap.  Let the
     // renderer own its own program lifecycle.
+    gos_render_pass_timer::FrameEnd();
     EditorViewportCaptureTick();
     // The game's present: VK composite+swapchain present when the Vulkan backend is up, else the GL swap.
     gos::host::advanceFrameCounter();   // the shared engine frame clock (props' light cache, readback tags); the game advances it at the same point
     gos::host::presentOrSwap(g_editorRenderWindow, g_mc2RenderFrame);
-    EditorFramePhase_Mark("swap");
+    graphics::limit_editor_frame();
+    EditorFramePhase_Mark("present");
     EditorFramePhase_End();
 
 #ifdef TRACY_ENABLE
-    TracyGpuCollect;
     FrameMark;
 #endif
 
@@ -866,10 +683,7 @@ DWORD __stdcall RunGameOSLogic()
 // WGL context is current before calling tryGameplayPick / glReadPixels.
 // Caller must have verified !IsObjectIdBufferEnabled() gating separately.
 // ---------------------------------------------------------------------------
-graphics::RenderContextHandle EditorGameOS_GetRenderContext()
-{
-    return g_editorRenderContext;
-}
+
 
 HSTRRES gameResourceHandle = nullptr;
 
@@ -903,14 +717,6 @@ void EditorGameOS_Shutdown(void)
         // Same order as the game: islands, present path, VulkanContext, then the GL context and the window below.
         gos::host::shutdownVulkanBackend();
         EditorGameOSTrace("EditorGameOS_Shutdown: after shutdownVulkanBackend");
-    }
-
-    if (g_editorRenderContext)
-    {
-        EditorGameOSTrace("EditorGameOS_Shutdown: before destroy_render_context");
-        graphics::destroy_render_context(g_editorRenderContext);
-        g_editorRenderContext = nullptr;
-        EditorGameOSTrace("EditorGameOS_Shutdown: after destroy_render_context");
     }
 
     if (g_editorRenderWindow)

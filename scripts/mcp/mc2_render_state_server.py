@@ -336,16 +336,7 @@ def get_render_health() -> str:
             lines.append(f"  offending_pass:   {fg.get('offending_pass', '?')}")
             lines.append(f"  missing_resource: {fg.get('missing_resource', '?')}")
             lines.append(f"  unknown_pass:     {fg.get('unknown_pass', '?')}")
-        # Runtime ambient cross-check (MC2_AMBIENT_PROBE; no such gate). samples>0 proves the probe
-        # fired; mismatches>0 = live GL ambient state diverged from the declared ledger.
-        amb_samples = fg.get("ambient_probe_samples", 0)
-        amb_miss = fg.get("ambient_probe_mismatches", 0)
-        if amb_samples or amb_miss:
-            if amb_miss not in (0, "?"):
-                any_fail = True
-            lines.append(f"  ambient_samples:  {amb_samples}")
-            lines.append(f"  ambient_mismatch: {amb_miss}{' *** FAIL' if amb_miss not in (0, '?') else ''}")
-        # FRAME-GRAPH-FBO-LEDGER-1: bound-FBO-vs-declared-target guard.
+        # Native image/present owner readiness (legacy fbo_* wire keys).
         fbo_samples = fg.get("fbo_samples", 0)
         fbo_miss = fg.get("fbo_mismatches", 0)
         if fbo_samples or fbo_miss:
@@ -1031,12 +1022,12 @@ def get_executor_health() -> str:
         enabled, frames, out_of_order, unobserved_total, observed_pass_count,
         terrain_mutex_violations, latch_miss_frames, known_early_suppressed
 
-      Ambient + FBO ledger cross-checks:
-        ambient_probe_mismatches, fbo_mismatches
+      Native target availability (legacy wire keys):
+        fbo_samples, fbo_mismatches
 
     VERDICT line:
       "EXECUTOR CLEAN" — validation_failures==0 && out_of_order==0 &&
-                         ambient_probe_mismatches==0 && fbo_mismatches==0
+                         top_level_failures==0 && fbo_mismatches==0
       "EXECUTOR FAIL"  — lists failing axes
 
     Requires engine running with MC2_DEBUG_STATE_DUMP=1.
@@ -1058,6 +1049,7 @@ def get_executor_health() -> str:
 
     # --- executor metrics ---
     val_fail  = fg.get("executor_validation_failures", 0)
+    top_fail = fg.get("executor_top_level_failures", 0)
     owned_w   = fg.get("executor_owned_wrappers", 0)
     owned_p   = fg.get("executor_owned_passes", owned_w)   # older name alias
     top_level = fg.get("executor_validated_top_level_passes", 0)
@@ -1080,22 +1072,18 @@ def get_executor_health() -> str:
     dr_ke_supp   = dr.get("known_early_suppressed", 0)
 
     # --- ambient + fbo cross-checks ---
-    amb_miss  = fg.get("ambient_probe_mismatches", 0)
-    amb_samp  = fg.get("ambient_probe_samples", 0)
     fbo_miss  = fg.get("fbo_mismatches", 0)
     fbo_samp  = fg.get("fbo_samples", 0)
     # AMBIENT-VIEWPORT-PROBE-1: observe-only — displayed but NOT in fail_axes (measure-first).
-    vp_miss   = fg.get("viewport_probe_mismatches", 0)
-    vp_samp   = fg.get("viewport_probe_samples", 0)
 
     # --- verdict ---
     fail_axes: list[str] = []
+    if top_fail not in (0, "?"):
+        fail_axes.append(f"top_level_failures={top_fail}")
     if val_fail not in (0, "?"):
         fail_axes.append(f"validation_failures={val_fail}")
     if dr_enabled and dr_ooo not in (0, "?"):
         fail_axes.append(f"out_of_order={dr_ooo}")
-    if amb_miss not in (0, "?"):
-        fail_axes.append(f"ambient_probe_mismatches={amb_miss}")
     if fbo_miss not in (0, "?"):
         fail_axes.append(f"fbo_mismatches={fbo_miss}")
 
@@ -1137,6 +1125,7 @@ def get_executor_health() -> str:
         f"  executor_scheduled_passes:              {scheduled}",
         f"  executor_skipped_deferred_passes:       {skipped}",
         f"  executor_validation_failures:           {val_fail}{_flag(val_fail)}",
+        f"  executor_top_level_failures:            {top_fail}{_flag(top_fail)}",
         "",
         f"# Dryrun observer  (MC2_FRAMEGRAPH_DRYRUN enabled={dr_enabled})",
         f"  frames:                   {dr_frames}",
@@ -1147,13 +1136,9 @@ def get_executor_health() -> str:
         f"  latch_miss_frames:        {dr_latch}{_flag(dr_latch)}",
         f"  known_early_suppressed:   {dr_ke_supp}",
         "",
-        f"# Ambient + FBO ledger",
-        f"  ambient_probe_samples:    {amb_samp}",
-        f"  ambient_probe_mismatches: {amb_miss}{_flag(amb_miss)}",
+        "# Native target availability",
         f"  fbo_samples:              {fbo_samp}",
         f"  fbo_mismatches:           {fbo_miss}{_flag(fbo_miss)}",
-        f"  viewport_probe_samples:   {vp_samp}",
-        f"  viewport_probe_mismatches:{vp_miss}  (observe-only, not a health gate)",
     ]
 
     banner = _stale_banner()

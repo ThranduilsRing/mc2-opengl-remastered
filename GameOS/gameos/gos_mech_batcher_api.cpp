@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in gos_mech_batcher_internal.h.
 #include <algorithm>
 #include "gos_mech_batcher_internal.h"
+#include "../../mclib/texture_assets.h"
 #include "mc2fmt.h"
 #include "../../RenderCore/FramePackets.h"
 #include "gos_terrain_lighting.h"      // GetObjectLightPoolParams
@@ -187,7 +188,7 @@ extern "C" uint32_t gos_getMechShadowInstDrawn() {
 }
 extern "C" const char* gos_getMechTextureNameByNodeIdx(uint32_t nodeIdx) {
     if (nodeIdx == 0xFFFFFFFFu || !mcTextureManager) return nullptr;
-    return mcTextureManager->getTextureName(static_cast<DWORD>(nodeIdx));
+    return mc2::textures::name(static_cast<DWORD>(nodeIdx));
 }
 
 // MECH-NORMALS-FIX-1: runtime getter/setter API for the normals mode and

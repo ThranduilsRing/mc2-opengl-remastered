@@ -3,6 +3,7 @@
 //===========================================================================//
 
 #include"mclib.h"
+#include "../mclib/texture_assets.h"
 #include"asystem.h"
 #include "mc2str.h"
 #include "../GameOS/gameos/asset_scale.h"
@@ -181,7 +182,7 @@ static void renderObjectViaGuiBridge(const gos_VERTEX* location, unsigned long t
 		// but a PERMANENTLY alpha-0 mech icon is the blank-icon bug signature.
 		if (mc2::gate::get<"MC2_LOG_MECH_ICON">() && textureHandle && mcTextureManager)
 		{
-			const char* nm = mcTextureManager->getTextureName(textureHandle);
+			const char* nm = mc2::textures::name(textureHandle);
 			if (nm && strstr(nm, "mechicon"))
 			{
 				printf("[mechicon-draw] bridge SKIP alpha=0 handle=%lu\n", textureHandle);
@@ -201,7 +202,7 @@ static void renderObjectViaGuiBridge(const gos_VERTEX* location, unsigned long t
 	uint64_t glTexture = 0;
 	if (textureHandle && mcTextureManager)
 	{
-		glTexture = mcTextureManager->getUiTextureId(textureHandle);
+		glTexture = mc2::textures::uiId(textureHandle);
 	}
 
 	// Diagnostic: trace every bridge draw of the mech-icon
@@ -209,7 +210,7 @@ static void renderObjectViaGuiBridge(const gos_VERTEX* location, unsigned long t
 	// name lookup keeps this robust across runs).
 	if (mc2::gate::get<"MC2_LOG_MECH_ICON">() && textureHandle && mcTextureManager)
 	{
-		const char* nm = mcTextureManager->getTextureName(textureHandle);
+		const char* nm = mc2::textures::name(textureHandle);
 		if (nm && strstr(nm, "mechicon"))
 		{
 			printf("[mechicon-draw] bridge handle=%lu glTex=%u rect=(%.0f,%.0f %.0fx%.0f) argb=%08X uv=(%.3f,%.3f)-(%.3f,%.3f)\n",
@@ -349,7 +350,7 @@ void aObject::init(FitIniFile* file, const char* blockName, DWORD neverFlush)
 			S_strlwr( buffer );
 			if ( !strstr( buffer, ".tga" ) )
 				strcat( buffer, ".tga" );
-			int ID = mcTextureManager->loadTexture( buffer, bAlpha ? gos_Texture_Alpha : gos_Texture_Keyed, 0, 0, neverFlush);
+			int ID = mc2::textures::load( buffer, bAlpha ? gos_Texture_Alpha : gos_Texture_Keyed, 0, 0, neverFlush);
 			textureHandle = ID;
 			if ( mc2::gate::get<"MC2_LOG_MECH_ICON">() && strstr(buffer, "mechicon") )
 			{
@@ -359,7 +360,7 @@ void aObject::init(FitIniFile* file, const char* blockName, DWORD neverFlush)
 			}
 			DWORD logicalWidth = 0;
 			DWORD logicalHeight = 0;
-			if ( mcTextureManager->tryGetTextureLogicalSize( ID, logicalWidth, logicalHeight ) )
+			if ( mc2::textures::logicalSize( ID, logicalWidth, logicalHeight ) )
 			{
 				fileWidth = logicalWidth;
 				// NOTE: fileHeight is intentionally NOT auto-set here.  Auto-setting
@@ -453,7 +454,7 @@ void aObject::destroy()
 
 	if ( textureHandle )
 	{
-		mcTextureManager->releaseNode( textureHandle );
+		mc2::textures::release( textureHandle );
 		textureHandle = 0;
 	}
 
@@ -695,7 +696,7 @@ void aObject::render()
 			return;
 		}
 
-		unsigned long gosID = mcTextureManager->get_gosTextureHandle( textureHandle );
+		unsigned long gosID = mc2::textures::sourceId( textureHandle );
 		gos_SetRenderState( gos_State_Texture, gosID );
 		gos_SetRenderState(gos_State_Filter, gos_FilterNone);
 		gos_SetRenderState( gos_State_AlphaMode, gos_Alpha_AlphaInvAlpha );
@@ -727,11 +728,11 @@ void	aObject::setTexture( const char* fileName )
 		fflush(stdout);
 	}
 	if ( textureHandle )
-		mcTextureManager->releaseNode( textureHandle );
-	textureHandle = mcTextureManager->loadTexture( fileName, gos_Texture_Keyed, 0, 0, 0x2);
+		mc2::textures::release( textureHandle );
+	textureHandle = mc2::textures::load( fileName, gos_Texture_Keyed, 0, 0, 0x2);
 	DWORD logicalWidth = 0;
 	DWORD logicalHeight = 0;
-	if ( mcTextureManager->tryGetTextureLogicalSize( textureHandle, logicalWidth, logicalHeight ) )
+	if ( mc2::textures::logicalSize( textureHandle, logicalWidth, logicalHeight ) )
 		fileWidth = logicalWidth;
 	else
 	{
@@ -745,7 +746,7 @@ void	aObject::setTexture(unsigned long newHandle )
 	//Gotta check handle.  If its the same as the new one,
 	// We don't gotta delete the old one.  The texture manager already did!!
 	if ( textureHandle && textureHandle != newHandle)
-		mcTextureManager->releaseNode( textureHandle );
+		mc2::textures::release( textureHandle );
 	
 	textureHandle = newHandle;
 	
@@ -753,7 +754,7 @@ void	aObject::setTexture(unsigned long newHandle )
 	{
 		DWORD logicalWidth = 0;
 		DWORD logicalHeight = 0;
-		if ( mcTextureManager->tryGetTextureLogicalSize( newHandle, logicalWidth, logicalHeight ) )
+		if ( mc2::textures::logicalSize( newHandle, logicalWidth, logicalHeight ) )
 			fileWidth = logicalWidth;
 		else
 		{
@@ -814,7 +815,7 @@ void aObject::copyData( const aObject& src )
 	if ( &src != this )
 	{
 		if ( src.textureHandle )
-			textureHandle = mcTextureManager->copyTexture( src.textureHandle );
+			textureHandle = mc2::textures::retain( src.textureHandle );
 
 		for ( int i = 0; i < 4;i++ )
 			location[i] = src.location[i];

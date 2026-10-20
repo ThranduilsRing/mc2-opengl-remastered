@@ -4,6 +4,8 @@
 #include "utils/mc2log.h"
 // Mech3DAppearance: Mech3DAppearance::init, initFX, hit reactions, paint schemata and paint scheme.
 // Declared in the class headers; shared names in mech3d_internal.h.
+#include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
+#include "texture_assets.h"
 #include "mech3d_internal.h"
 #include "appearance_rng.h"
 #include <format>
@@ -194,13 +196,13 @@ void Mech3DAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 			{
 				if (S_strnicmp(txmName,"a_",2) == 0)
 				{
-					DWORD gosTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Alpha,gosHint_DisableMipmap | gosHint_DontShrink);
+					DWORD gosTextureHandle = mc2::textures::load(textureName,gos_Texture_Alpha,gosHint_DisableMipmap | gosHint_DontShrink);
 					sensorTriangleShape->SetTextureHandle(i,gosTextureHandle);
 					sensorTriangleShape->SetTextureAlpha(i,true);
 				}
 				else
 				{
-					DWORD gosTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Solid,gosHint_DisableMipmap | gosHint_DontShrink);
+					DWORD gosTextureHandle = mc2::textures::load(textureName,gos_Texture_Solid,gosHint_DisableMipmap | gosHint_DontShrink);
 					sensorTriangleShape->SetTextureHandle(i,gosTextureHandle);
 					sensorTriangleShape->SetTextureAlpha(i,false);
 				}
@@ -230,13 +232,13 @@ void Mech3DAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 				{
 					if (S_strnicmp(txmName,"a_",2) == 0)
 					{
-						DWORD gosTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Alpha,gosHint_DisableMipmap | gosHint_DontShrink);
+						DWORD gosTextureHandle = mc2::textures::load(textureName,gos_Texture_Alpha,gosHint_DisableMipmap | gosHint_DontShrink);
 						sensorSquareShape->SetTextureHandle(i,gosTextureHandle);
 						sensorSquareShape->SetTextureAlpha(i,true);
 					}
 					else
 					{
-						DWORD gosTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Solid,gosHint_DisableMipmap | gosHint_DontShrink);
+						DWORD gosTextureHandle = mc2::textures::load(textureName,gos_Texture_Solid,gosHint_DisableMipmap | gosHint_DontShrink);
 						sensorSquareShape->SetTextureHandle(i,gosTextureHandle);
 						sensorSquareShape->SetTextureAlpha(i,false);
 					}
@@ -266,13 +268,13 @@ void Mech3DAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 				{
 					if (S_strnicmp(txmName,"a_",2) == 0)
 					{
-						DWORD gosTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Alpha,gosHint_DisableMipmap | gosHint_DontShrink);
+						DWORD gosTextureHandle = mc2::textures::load(textureName,gos_Texture_Alpha,gosHint_DisableMipmap | gosHint_DontShrink);
 						sensorSquareShape->SetTextureHandle(i,gosTextureHandle);
 						sensorSquareShape->SetTextureAlpha(i,true);
 					}
 					else
 					{
-						DWORD gosTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Solid,gosHint_DisableMipmap | gosHint_DontShrink);
+						DWORD gosTextureHandle = mc2::textures::load(textureName,gos_Texture_Solid,gosHint_DisableMipmap | gosHint_DontShrink);
 						sensorSquareShape->SetTextureHandle(i,gosTextureHandle);
 						sensorSquareShape->SetTextureAlpha(i,false);
 					}
@@ -476,14 +478,14 @@ void Mech3DAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 			{
 				if (S_strnicmp(txmName,"a_",2) == 0)
 				{
-					DWORD gosTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Alpha,gosHint_DisableMipmap | gosHint_DontShrink);
+					DWORD gosTextureHandle = mc2::textures::load(textureName,gos_Texture_Alpha,gosHint_DisableMipmap | gosHint_DontShrink);
 					gosASSERT(gosTextureHandle != 0xffffffff);
 					mechShadowShape->SetTextureHandle(i,gosTextureHandle);
 					mechShadowShape->SetTextureAlpha(i,true);
 				}
 				else
 				{
-					DWORD gosTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Solid,gosHint_DisableMipmap | gosHint_DontShrink);
+					DWORD gosTextureHandle = mc2::textures::load(textureName,gos_Texture_Solid,gosHint_DisableMipmap | gosHint_DontShrink);
 					gosASSERT(gosTextureHandle != 0xffffffff);
 					mechShadowShape->SetTextureHandle(i,gosTextureHandle);
 					mechShadowShape->SetTextureAlpha(i,false);
@@ -681,7 +683,7 @@ void Mech3DAppearance::setPaintScheme (void)
 	if (!mechShape)
 		return;
 
-	DWORD gosHandle = mcTextureManager->get_gosTextureHandle(mechShape->GetTextureHandle(0));
+	DWORD gosHandle = mc2::textures::sourceId(mechShape->GetTextureHandle(0));
 
 	if (gosHandle && gosHandle != 0xffffffff)
 	{
@@ -874,7 +876,7 @@ void Mech3DAppearance::resetPaintScheme (DWORD red, DWORD green, DWORD blue)
 			FullPathFileName aoFull;
 			aoFull.init(aoPath, const_cast<char*>(aoName), "");
 			if (textureOrKtxSidecarExists(aoFull)) {
-				aoTextureHandle = mcTextureManager->loadTexture(aoFull, gos_Texture_Solid,
+				aoTextureHandle = mc2::textures::load(aoFull, gos_Texture_Solid,
 					gosHint_DontShrink);
 				aoValid = (aoTextureHandle != 0 && aoTextureHandle != 0xFFFFFFFFu);
 			}
@@ -896,7 +898,7 @@ void Mech3DAppearance::resetPaintScheme (DWORD red, DWORD green, DWORD blue)
 			FullPathFileName nrmFull;
 			nrmFull.init(nrmPath, const_cast<char*>(nrmName), "");
 			if (textureOrKtxSidecarExists(nrmFull)) {
-				normalTextureHandle = mcTextureManager->loadTexture(nrmFull, gos_Texture_Solid,
+				normalTextureHandle = mc2::textures::load(nrmFull, gos_Texture_Solid,
 					gosHint_DontShrink);
 				normalValid = (normalTextureHandle != 0 && normalTextureHandle != 0xFFFFFFFFu);
 			}
@@ -906,7 +908,7 @@ void Mech3DAppearance::resetPaintScheme (DWORD red, DWORD green, DWORD blue)
 	}
 
 
-	mcTextureManager->releaseNode(localTextureHandle);
+	mc2::textures::release(localTextureHandle);
 	
 	char txmName[1024];
 	mechShape->GetTextureName(0,txmName,256);
@@ -944,9 +946,9 @@ void Mech3DAppearance::resetPaintScheme (DWORD red, DWORD green, DWORD blue)
 		// minified mechs at zoom-out no longer alias through the unpainted
 		// mask-boundary pixels that fix A already resolved at mip 0.
 		const DWORD mechHints = gosHint_MipmapFilter0 | gosHint_DontShrink;
-		DWORD textureInstanceAlreadyExists = mcTextureManager->textureInstanceExists(textureName,gos_Texture_Solid,mechHints,paintInstance);
+		DWORD textureInstanceAlreadyExists = mc2::textures::findAndRetain(textureName,gos_Texture_Solid,mechHints,paintInstance);
 		if (!textureInstanceAlreadyExists)
-			localTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Solid,mechHints,paintInstance);
+			localTextureHandle = mc2::textures::load(textureName,gos_Texture_Solid,mechHints,paintInstance);
 		else
 			localTextureHandle = textureInstanceAlreadyExists;
 			

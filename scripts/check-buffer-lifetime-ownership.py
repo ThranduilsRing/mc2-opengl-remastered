@@ -6,10 +6,10 @@ docs/render-backend-seams/buffer-lifetime-ledger.md so a buffer can't silently l
 mechanism that avoids a CPU-overwrite-while-GPU-reads hazard (the Vulkan-critical seam):
 
   1. Every ledger row declares a class in {A,B,C,D,E}.
-  2. CLASS-B COMMAND BARRIER PRESENCE — the GPU-produced indirect family
-     (gpu_cull_compute.cpp) still emits a
-     GL_COMMAND_BARRIER_BIT glMemoryBarrier between the producer compute and the indirect
-     draw. Removing that barrier (stale-command-buffer hazard) FAILs.
+  2. NATIVE CULL SLOT OWNERSHIP ? CPU uploads/pool reuse wait for that slot's
+     ticket, readback mapping waits for completion, and buffer-scoped barriers
+     order compute -> transfer -> host. The retired GL indirect family has no
+     command buffer or GL command-barrier obligation.
   3. CLASS-D VULKAN-DEBT DECLARED — the known implicit-sync buffers stay listed so the
      migration debt remains visible (a class-D buffer dropped from the ledger FAILs).
   4. STALE COUNTER DECLARED — gpu_drawn_instances is documented as known-stale.
@@ -29,12 +29,49 @@ OBJB = ROOT / "docs" / "render-backend-seams" / "objbatcher-zero-gpu-drawn-recon
 # parse rows: | `symbol...` | CLASS | ... |
 ROW = re.compile(r"^\|\s*`([^`]+)`[^|]*\|\s*([A-E])\s*\|", re.M)
 
-# Live class-B GL indirect family; terrain now captures CPU inputs only.
-BARRIER_TUS = [
-    ROOT / "GameOS" / "gameos" / "gpu_cull_compute.cpp",
-]
+NATIVE_CULL = ROOT / "GameOS" / "gameos" / "vk_actor_cull_native.cpp"
+
+
+def native_cull_hazards(source: str) -> list[str]:
+    # Comments and log strings cannot satisfy a synchronization contract.
+    code = re.sub(r"//[^\n]*|/\*.*?\*/|\"(?:\\.|[^\"\\])*\"|'(?:\\.|[^'\\])*'", '', source, flags=re.S)
+    def function(result, name):
+        match = re.search(r'\b' + result + r'\s+' + name + r'\s*\(', code)
+        if not match:
+            return ""
+        first = code.find('{', match.end())
+        if first < 0:
+            return ""
+        end, depth = first + 1, 1
+        while end < len(code) and depth:
+            depth += (code[end] == '{') - (code[end] == '}')
+            end += 1
+        return code[first:end]
+    submit = function('NativeCullSubmit', 'nativeCullSubmit')
+    poll = function('bool', 'nativeCullPoll')
+    failures = []
+    busy = re.search(r'if\s*\(\s*slot\.submitted\s*&&\s*!ctx\.isComplete\s*\(\s*slot\.ticket\s*\)\s*\)\s*return\s+NativeCullSubmit::Busy\s*;', submit)
+    writes = [submit.find(token) for token in ('slot.records.upload(', 'slot.params.upload(', 'vkResetCommandPool(')]
+    if not busy or any(pos < 0 or busy.end() > pos for pos in writes):
+        failures.append('native cull CPU overwrite/pool reuse lacks a preceding slot-ticket guard')
+    ready = re.search(r'if\s*\(\s*!slot\.submitted\s*\|\|\s*!ctx\.isComplete\s*\(\s*slot\.ticket\s*\)[^;{}]*\)\s*return\s+false\s*;', poll)
+    mapping = poll.find('slot.staging.map(')
+    if not ready or mapping < 0 or ready.end() > mapping:
+        failures.append('native cull readback mapping lacks a preceding completion guard')
+    compact = re.sub(r'\s+', '', submit)
+    output = 'bufferBarrier(slot.cb,slot.output.get(),VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,VK_ACCESS_SHADER_WRITE_BIT,VK_PIPELINE_STAGE_TRANSFER_BIT,VK_ACCESS_TRANSFER_READ_BIT)'
+    host = 'bufferBarrier(slot.cb,slot.staging.get(),VK_PIPELINE_STAGE_TRANSFER_BIT,VK_ACCESS_TRANSFER_WRITE_BIT,VK_PIPELINE_STAGE_HOST_BIT,VK_ACCESS_HOST_READ_BIT)'
+    if output not in compact:
+        failures.append('native cull output lacks its compute-write to transfer-read buffer barrier')
+    if host not in compact:
+        failures.append('native cull staging lacks its transfer-write to host-read buffer barrier')
+    if 'VK_PIPELINE_STAGE_ALL_COMMANDS_BIT' in submit or 'mc2vk::cmdBarrier(' in submit:
+        failures.append('native cull reintroduced device-wide synchronization for private buffers')
+    return failures
+
+
 # class-D members that must stay declared (Vulkan-debt visibility)
-REQUIRED_CLASS_D = {"lightData_", "s_ssbo"}
+REQUIRED_CLASS_D = {"s_ssbo"}
 
 
 def main() -> int:
@@ -52,14 +89,11 @@ def main() -> int:
     # 1. classes valid (regex already constrains A-E; check non-empty)
     classes = {sym: cls for sym, cls in rows}
 
-    # 2. class-B COMMAND barrier presence
-    for tu in BARRIER_TUS:
-        if not tu.exists():
-            fails.append(f"class-B TU missing: {tu.relative_to(ROOT)}")
-            continue
-        if "GL_COMMAND_BARRIER_BIT" not in tu.read_text(encoding="utf-8", errors="replace"):
-            fails.append(f"{tu.name}: no GL_COMMAND_BARRIER_BIT — a GPU-produced indirect "
-                         f"buffer lost its command barrier (stale-command-buffer hazard)")
+    # 2. Native producer/readback lifetime and visibility.
+    if not NATIVE_CULL.exists():
+        fails.append('native cull producer missing')
+    else:
+        fails.extend(native_cull_hazards(NATIVE_CULL.read_text(encoding="utf-8")))
 
     # 3. class-D Vulkan-debt declared
     declared_d = {sym for sym, cls in rows if cls == "D"}
@@ -83,7 +117,7 @@ def main() -> int:
         nd = sum(1 for _, c in rows if c == "D")
         print(f"[buffer-lifetime] PASS — {len(rows)} buffers classified "
               f"({nb} class-B barrier-checked, {nd} class-D debt-declared); "
-              f"command barriers intact; stale counter declared.")
+              f"native slot tickets/barriers intact; stale counter declared.")
     return 0
 
 

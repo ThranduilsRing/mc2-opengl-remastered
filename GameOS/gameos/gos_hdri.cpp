@@ -181,201 +181,55 @@ void buildRgba16fChain(HdriCpuImage& out, const float* pixels, int w, int h)
 
 }  // namespace
 
-GLuint loadHdriTexture(const char* path,
-                       float* outSunAzGL,
-                       bool*  outSunValid,
-                       HdriCpuImage* outCpu)
+// Decode source bytes only; the native sky and water owners upload their own images.
+bool decodeHdriSource(const char* path, float* outSunAzGL, bool* outSunValid, HdriCpuImage* outCpu)
 {
     if (outSunValid) *outSunValid = false;
-    if (outCpu) { outCpu->levels.clear(); outCpu->dims.clear(); }
-    if (!path || !*path) {
-        MC2_DIAGFE(stderr, "[HDRI_SKY v1] enabled=0 reason=path_empty\n");
-        return 0;
-    }
-
-    // ---- HDRI-BC6H-1: BC6H sidecar probe ----
-    // Attempt the .ktx2 sidecar before tinyexr if MC2_HDRI_BC6H=1 and BPTC
-    // is available.  The sun-scan still runs from the EXR pixel buffer so the
-    // azimuth estimate is identical to the RGBA16F path.
-    if (hdriBc6hOn() && GLEW_ARB_texture_compression_bptc) {
-        char sidecarPath[1024];
-        if (deriveSidecarKtx2(path, sidecarPath, sizeof(sidecarPath))) {
-            RenderCore::KtxImage img;
-            if (RenderCore::ktxLoadRgba8(sidecarPath, img) &&
-                img.isCompressed &&
-                (img.vkFormat == 143 || img.vkFormat == 144)) {
-
-                // BC6H_UFLOAT_BLOCK (143) maps to GL_COMPRESSED_RGB_BPTC_UNSIGNED_FLOAT.
-                // BC6H_SFLOAT_BLOCK (144) maps to GL_COMPRESSED_RGB_BPTC_SIGNED_FLOAT.
-                const GLenum glIF = (img.vkFormat == 144)
-                    ? GL_COMPRESSED_RGB_BPTC_SIGNED_FLOAT
-                    : GL_COMPRESSED_RGB_BPTC_UNSIGNED_FLOAT;
-
-                // Mip 0 byte length.
-                const size_t mip0Bytes = (img.mipCount > 1 &&
-                                          img.mipByteOffsets.size() > 1)
-                    ? static_cast<size_t>(img.mipByteOffsets[1])
-                    : img.pixels.size();
-
-                while (glGetError() != GL_NO_ERROR) { /* drain */ }
-
-                GLuint tex = 0;
-                // TEX-CLASS: asset-pool -- HDRI sky BC6H content texture
-                glGenTextures(1, &tex);
-                if (!tex) {
-                    MC2_DIAGFE(stderr,
-                        "[HDRI_SKY v1] bc6h: glGenTextures failed path=%s\n", path);
-                    // Fall through to tinyexr path below.
-                } else {
-                    GLint prevBinding = 0;
-                    glGetIntegerv(GL_TEXTURE_BINDING_2D, &prevBinding);
-
-                    glBindTexture(GL_TEXTURE_2D, tex);
-                    glCompressedTexImage2D(GL_TEXTURE_2D, 0, glIF,
-                                          img.width, img.height, 0,
-                                          static_cast<GLsizei>(mip0Bytes),
-                                          img.pixels.data());
-                    // Single-mip BC6H texture: clamp max level to 0 so the
-                    // texture is never incomplete due to missing mip levels.
-                    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
-                    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-                    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-                    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-                    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-                    glBindTexture(GL_TEXTURE_2D, prevBinding);
-
-                    const GLenum glErr = glGetError();
-                    if (glErr != GL_NO_ERROR) {
-                        MC2_DIAGFE(stderr,
-                            "[HDRI_SKY v1] bc6h: gl_error=0x%x path=%s\n",
-                            glErr, path);
-                        glDeleteTextures(1, &tex);
-                        tex = 0;
-                        // Fall through to tinyexr below.
-                    } else {
-                        mc2::fmt::print_err("[HDRI_SKY] bc6h: ON (default) sidecar={} w={:d} h={:d} glIF=0x{:x} bytes={:d} tex={:d}\n", mc2::fmt::safe(sidecarPath), mc2::fmt::as_i32(img.width), mc2::fmt::as_i32(img.height), mc2::fmt::as_u32(static_cast<unsigned>(glIF)), mc2::fmt::as_size(mip0Bytes), mc2::fmt::as_u32(static_cast<unsigned>(tex)));
-                        if (outCpu) {
-                            outCpu->format = (img.vkFormat == 144) ? HdriCpuImage::Format::Bc6hSfloat : HdriCpuImage::Format::Bc6hUfloat;
-                            const size_t n = std::min(mip0Bytes, img.pixels.size());
-                            outCpu->levels.emplace_back(img.pixels.begin(), img.pixels.begin() + static_cast<std::ptrdiff_t>(n));
-                            outCpu->dims.emplace_back(img.width, img.height);
-                        }
-
-                        // Sun scan: still load the EXR briefly to find the sun.
-                        if (outSunAzGL) {
-                            float* pixels = nullptr;
-                            int sw = 0, sh = 0;
-                            const char* err = nullptr;
-                            if (LoadEXR(&pixels, &sw, &sh, path, &err) == TINYEXR_SUCCESS) {
-                                float azGL = 0.0f;
-                                if (scanHdriSunAzGL(pixels, sw, sh, &azGL)) {
-                                    *outSunAzGL = azGL;
-                                    if (outSunValid) *outSunValid = true;
-                                    MC2_DIAGFE(stderr,
-                                        "[HDRI_SKY v1] bc6h: sun_scan ok az_gl_rad=%.4f az_gl_deg=%.1f\n",
-                                        azGL, azGL * 57.2957795f);
-                                } else {
-                                    MC2_DIAGFE(stderr,
-                                        "[HDRI_SKY v1] bc6h: sun_scan failed reason=no_above_horizon_energy\n");
-                                }
-                                free(pixels);
-                            } else {
-                                MC2_DIAGFE(stderr,
-                                    "[HDRI_SKY v1] bc6h: sun_scan skipped reason=exr_load_failed err=%s\n",
-                                    err ? err : "(null)");
-                                if (err) FreeEXRErrorMessage(err);
-                                if (pixels) free(pixels);
-                            }
-                        }
-
-                        return tex;
-                    }
-                }
-            } else {
-                // Sidecar missing or wrong format — log at debug level and fall through.
-                MC2_DIAGFE(stderr,
-                    "[HDRI_SKY v1] bc6h: sidecar not found or wrong format "
-                    "(%s), falling back to RGBA16F\n", sidecarPath);
-            }
-        }
-    }
-
-    // ---- Original tinyexr / GL_RGBA16F path ----
-    // tinyexr LoadEXR signature:
-    //   int LoadEXR(float** out_rgba, int* width, int* height,
-    //               const char* filename, const char** err);
-    // On success returns TINYEXR_SUCCESS (0), out_rgba is a newly-allocated
-    // float[w*h*4] in RGBA order (always 4 channels, regardless of source).
-    // Caller must free(out_rgba) and FreeEXRErrorMessage(err) if err != null.
-    float* pixels = nullptr;
-    int w = 0, h = 0;
-    const char* err = nullptr;
-    int rc = LoadEXR(&pixels, &w, &h, path, &err);
-    if (rc != TINYEXR_SUCCESS) {
-        mc2::fmt::print_err("[HDRI_SKY v1] enabled=0 reason=load_failed path={} rc={:d} err={}\n",
-            mc2::fmt::safe(path), mc2::fmt::as_i32(rc), mc2::fmt::safe(err ? err : "(null)"));
-        if (err) FreeEXRErrorMessage(err);
-        if (pixels) free(pixels);  // defensive — should be null on failure
-        return 0;
-    }
-
-    // Drain any stale GL errors from a previous caller so the post-upload
-    // check below blames only this function.
-    while (glGetError() != GL_NO_ERROR) { /* drain */ }
-
-    GLuint tex = 0;
-    // TEX-CLASS: asset-pool -- HDRI sky LDR content texture
-    glGenTextures(1, &tex);
-    if (!tex) {
-        mc2::fmt::print_err("[HDRI_SKY v1] enabled=0 reason=glGenTextures_failed path={}\n", mc2::fmt::safe(path));
-        free(pixels);
-        return 0;
-    }
-
-    GLint prevBinding = 0;
-    glGetIntegerv(GL_TEXTURE_BINDING_2D, &prevBinding);
-
-    glBindTexture(GL_TEXTURE_2D, tex);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, w, h, 0,
-                 GL_RGBA, GL_FLOAT, pixels);
-    glGenerateMipmap(GL_TEXTURE_2D);   // WATER-HDRI-REFL-1: mipmaps for textureLod in water FS
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-    glBindTexture(GL_TEXTURE_2D, prevBinding);
-
-    // HDRI-SKY Item 2: scan for the baked sun BEFORE freeing the pixel buffer.
-    if (outSunAzGL) {
-        float azGL = 0.0f;
-        const bool ok = scanHdriSunAzGL(pixels, w, h, &azGL);
-        if (ok) {
-            *outSunAzGL = azGL;
+    if (!outCpu) return false;
+    *outCpu = {};
+    if (!path || !*path) return false;
+    auto scanSun = [&](const float* pixels, int w, int h) {
+        if (!outSunAzGL) return;
+        float az = 0.0f;
+        if (scanHdriSunAzGL(pixels, w, h, &az)) {
+            *outSunAzGL = az;
             if (outSunValid) *outSunValid = true;
-            MC2_DIAGFE(stderr,
-                "[HDRI_SKY v1] sun_scan ok az_gl_rad=%.4f az_gl_deg=%.1f\n",
-                azGL, azGL * 57.2957795f);
-        } else {
-            MC2_DIAGFE(stderr,
-                "[HDRI_SKY v1] sun_scan failed reason=no_above_horizon_energy\n");
+        }
+    };
+    if (hdriBc6hOn()) {
+        char sidecarPath[1024];
+        RenderCore::KtxImage img;
+        if (deriveSidecarKtx2(path, sidecarPath, sizeof(sidecarPath)) &&
+            RenderCore::ktxLoadRgba8(sidecarPath, img) && img.isCompressed &&
+            (img.vkFormat == 143 || img.vkFormat == 144)) {
+            const size_t count = img.mipCount > 1 && img.mipByteOffsets.size() > 1
+                ? static_cast<size_t>(img.mipByteOffsets[1]) : img.pixels.size();
+            outCpu->format = img.vkFormat == 144 ? HdriCpuImage::Format::Bc6hSfloat : HdriCpuImage::Format::Bc6hUfloat;
+            outCpu->levels.emplace_back(img.pixels.begin(), img.pixels.begin() + static_cast<std::ptrdiff_t>(count));
+            outCpu->dims.emplace_back(img.width, img.height);
+            if (outSunAzGL) {
+                float* pixels = nullptr; int w = 0, h = 0; const char* error = nullptr;
+                if (LoadEXR(&pixels, &w, &h, path, &error) == TINYEXR_SUCCESS) scanSun(pixels, w, h);
+                if (pixels) free(pixels);
+                if (error) FreeEXRErrorMessage(error);
+            }
+            MC2_DIAGFE(stderr, "[HDRI_SKY v1] source=bc6h path=%s w=%d h=%d bytes=%zu\n", sidecarPath, img.width, img.height, count);
+            return true;
         }
     }
-
-    if (outCpu) buildRgba16fChain(*outCpu, pixels, w, h);
-    free(pixels);  // tinyexr uses plain malloc; free with free() not delete
-
-    const GLenum glErr = glGetError();
-    if (glErr != GL_NO_ERROR) {
-        mc2::fmt::print_err("[HDRI_SKY v1] enabled=0 reason=gl_error path={} err=0x{:x}\n",
-            mc2::fmt::safe(path), mc2::fmt::as_u32(static_cast<unsigned>(glErr)));
-        glDeleteTextures(1, &tex);
-        if (outCpu) { outCpu->levels.clear(); outCpu->dims.clear(); }
-        return 0;
+    float* pixels = nullptr; int w = 0, h = 0; const char* error = nullptr;
+    const int result = LoadEXR(&pixels, &w, &h, path, &error);
+    if (result != TINYEXR_SUCCESS || !pixels || w <= 0 || h <= 0 ||
+        w > int(RenderCore::kKtxMaxEdge) || h > int(RenderCore::kKtxMaxEdge)) {
+        MC2_DIAGFE(stderr, "[HDRI_SKY v1] enabled=0 reason=decode_failed path=%s error=%s\n", path, error ? error : "invalid_extent");
+        if (pixels) free(pixels);
+        if (error) FreeEXRErrorMessage(error);
+        return false;
     }
-
-    MC2_DIAGFE(stderr,
-        "[HDRI_SKY v1] loaded path=%s w=%d h=%d format=RGBA16F tex=%u\n",
-        path, w, h, tex);
-    return tex;
+    scanSun(pixels, w, h);
+    buildRgba16fChain(*outCpu, pixels, w, h);
+    free(pixels);
+    if (error) FreeEXRErrorMessage(error);
+    MC2_DIAGFE(stderr, "[HDRI_SKY v1] source=rgba16f path=%s w=%d h=%d\n", path, w, h);
+    return !outCpu->levels.empty();
 }

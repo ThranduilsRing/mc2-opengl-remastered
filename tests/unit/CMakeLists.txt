@@ -45,12 +45,14 @@ add_executable(mc2_tests
     test_unit_profile_validator.cpp  # UNITPROFILE-VALIDATOR-1: load-time construction-rules validator (offline)
     test_view_currency.cpp  # VIEW-EPOCH-DEDUPE-1: object MVP currency kernel (offline)
     test_frame_graph.cpp    # FRAME-GRAPH-SKELETON-1: resource-DAG validation (offline)
-    test_gpu_buffer_owner.cpp  # GPU-BUFFER-OWNER-SKELETON-1: owner record invariants (offline)
     test_completion_tracker.cpp  # the Vulkan completion tracker: ticket math and frame sealing (offline)
     test_deferred_destroy.cpp  # the Vulkan deferred-destroy queue: not before the ticket, after it, negative control (offline)
     test_frame_ring.cpp  # the Vulkan frame ring offset arithmetic: slots, alignment, growth sizing (offline)
     test_readback.cpp  # the Vulkan readback ring: ticket, tag and generation checks, wrong-tag negative control (offline)
     test_texture_service.cpp  # P4a texture/material identity: key dedupe, mod precedence, paint variants, stale handles, material sets (offline)
+    test_visibility_history.cpp # native actor visibility: paired IDs, lagged tiers, OR, stale fail-open
+    test_texture_sources.cpp    # session source admission, strong refs, mission scopes, no renderer
+    ${MC2_WORKTREE_ROOT}/mclib/texture_sources.cpp
     test_frame_fence_core.cpp  # the frame resource slot decision: parity flip, cancel, a failed fence re-create disables it (offline)
     test_handle_slots.cpp  # P3 handle slots: ticket-gated reuse, stale handles refused, generation wrap, range exhaustion (offline)
     test_frame_packets.cpp  # P1 frame packets: publish freezes a frame's views and lighting, per-slot arenas, republish and recycle (offline)
@@ -266,11 +268,12 @@ add_custom_target(rendercore_tests
 
 # CONTRACT-3: per-frame resource-ordering tracking test.
 # Standalone binary (own int main, no doctest) because render_contract.cpp
-# carries a GL include that the main mc2_tests target deliberately avoids.
-# Links glew32 for compilation; CONTRACT-3 paths never call GL at runtime.
+# exercises ordering independently of the doctest runner.
+# Native target ownership is supplied by native_render_state.cpp.
 add_executable(test_render_contract_3
     test_render_contract_3.cpp
     ${MC2_WORKTREE_ROOT}/mclib/render_contract.cpp
+    ${MC2_WORKTREE_ROOT}/GameOS/gameos/native_render_state.cpp
     ${MC2_WORKTREE_ROOT}/RenderCore/RenderResourceRegistry.cpp
     # Both test targets use zero apply-state counters because neither links the renderer.
     gos_counter_stubs.cpp
@@ -294,10 +297,6 @@ if(MSVC)
     target_compile_options(test_render_contract_3 PRIVATE /W4 /WX-)
 endif()
 
-target_link_libraries(test_render_contract_3 PRIVATE
-    ${MC2_WORKTREE_ROOT}/3rdparty/lib/x64/glew32.lib
-    opengl32
-)
 # render_contract.cpp reads its gates through the typed registry.
 mc2_link_gate(test_render_contract_3)
 
@@ -326,7 +325,7 @@ if(MSVC)
     target_compile_options(mc2_modlint PRIVATE /W4 /WX-)
 endif()
 
-# The former contract executables share doctest; the GL guard cases retain a real hidden context.
+# The former contract executables share doctest.
 target_sources(mc2_tests PRIVATE
     test_contract_smoke_harness.cpp
     test_shader_contract_harness.cpp
@@ -343,8 +342,8 @@ target_sources(mc2_tests PRIVATE
     test_terrain_daylight_harness.cpp
     test_object_light_row_harness.cpp
     test_class_light_band_harness.cpp
-    test_glstate_guard_harness.cpp
     ${MC2_WORKTREE_ROOT}/mclib/render_contract.cpp
+    ${MC2_WORKTREE_ROOT}/GameOS/gameos/native_render_state.cpp
     gos_counter_stubs.cpp
     ${MC2_WORKTREE_ROOT}/code/job_system.cpp
     ${MC2_WORKTREE_ROOT}/code/jobs_fatal.cpp
@@ -361,21 +360,17 @@ if(WIN32)
     list(PREPEND CMAKE_LIBRARY_PATH "${MC2_WORKTREE_ROOT}/3rdparty/lib/x64")
 endif()
 find_package(SDL2 CONFIG REQUIRED COMPONENTS SDL2)
-find_package(GLEW REQUIRED)
-find_package(OpenGL REQUIRED)
 target_link_libraries(mc2_tests PRIVATE
     Threads::Threads
     SDL2::SDL2
-    GLEW::GLEW
-    OpenGL::GL
 )
 if(WIN32)
-    # GLEW's imported location is its import library; runtime DLLs are beside SDL2, like the root build.
+    # The CPU surface tests use SDL2; no graphics context is created.
     add_custom_command(TARGET mc2_tests POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            "$<TARGET_FILE:SDL2::SDL2>" "$<TARGET_FILE_DIR:SDL2::SDL2>/glew32.dll"
+            "$<TARGET_FILE:SDL2::SDL2>"
             "$<TARGET_FILE_DIR:mc2_tests>"
-        COMMENT "Copy runtime libraries for hidden GL guard tests"
+        COMMENT "Copy SDL2 for CPU surface tests"
         VERBATIM
     )
 endif()

@@ -1,46 +1,10 @@
 #pragma once
-// FRAME-GRAPH-FBO-LEDGER-1 — map live framebuffer GLuints to LOGICAL render targets.
-//
-// An executor must own render targets as logical resources (MainColor,
-// Backbuffer, ...), not anonymous GLuints. Today every FBO is an anonymous GLuint in
-// gos_postprocess and the RenderResourceRegistry glName is never populated. This ledger
-// closes that: FBO owners REGISTER their GLuint->RenderResourceId at creation, the
-// per-pass FBO guard SAMPLES GL_DRAW_FRAMEBUFFER_BINDING and RESOLVES it back to a logical
-// target, and compares against the pass's declared target.
-//
-// The registry is runtime-populated (GLuints are assigned by glGenFramebuffers, not known
-// at compile time), so it is a tiny header-only singleton. The resolve/compare logic and
-// the per-pass target table are pure and offline-testable (tests/unit/test_frame_graph.cpp).
-// Like the ambient guard, an unregistered/unknown FBO is SKIPPED (no false positive), and
-// the guard ships measure-first: declare targets only where the bound FBO at the sample
-// seam is certain, expand as the probe proves more.
+// Logical pass targets. Native executor observations already carry resource IDs;
+// the retired GL name-to-resource ledger is no longer needed.
 #include "RenderPassContract.h"
 #include "RenderResourceRegistry.h"
 
 namespace RenderCore { namespace framegraph {
-
-class FboLedger {
-    static constexpr int kMax = 16;
-    struct Entry { unsigned glName; RenderResourceId target; };
-    Entry e_[kMax];
-    int   n_ = 0;
-public:
-    void reset() { n_ = 0; }                       // tests
-    void registerFbo(unsigned glName, RenderResourceId target) {
-        for (int i = 0; i < n_; ++i)
-            if (e_[i].glName == glName) { e_[i].target = target; return; }
-        if (n_ < kMax) e_[n_++] = { glName, target };
-    }
-    RenderResourceId resolve(unsigned glName) const {
-        if (glName == 0u) return RenderResourceId::Backbuffer;   // default framebuffer
-        for (int i = 0; i < n_; ++i)
-            if (e_[i].glName == glName) return e_[i].target;
-        return RenderResourceId::Unknown;                        // unregistered -> skipped
-    }
-};
-
-// One process-wide ledger (inline -> single instance across TUs).
-inline FboLedger& fboLedger() { static FboLedger g; return g; }
 
 // True iff the pass rendered into the WRONG logical target. Unknown on either side is
 // skipped (undeclared pass target, or an unregistered/irrelevant FBO) -> no false positive.
@@ -68,7 +32,7 @@ static constexpr PassFboTarget kPassFboTarget[] = {
     { RenderPassId::VFX,              RenderResourceId::MainColor },
     // UI-SAME-ORDER-VALIDATE-1: HUD/UI batch flush renders into the DEFAULT framebuffer
     // (post-composite). pp->endScene() binds FBO 0 before flushHUDBatch (gameos_graphics:7485-7487);
-    // fboLedger().resolve(0) == Backbuffer. First ledger row using Backbuffer.
+    // The native UI target is the backbuffer.
     { RenderPassId::UI,               RenderResourceId::Backbuffer },
 };
 static constexpr int kPassFboTargetCount =

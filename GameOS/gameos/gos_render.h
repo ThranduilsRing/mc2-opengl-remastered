@@ -68,10 +68,8 @@ bool gos_CursorCaptureForbidden(SDL_Window* window, const char** reason);
 namespace graphics {
 
 struct RenderWindow;
-struct RenderContext;
 
 using RenderWindowHandle = RenderWindow*;
-using RenderContextHandle = RenderContext*;
 
 void set_verbose(bool is_verbose);
 
@@ -86,7 +84,6 @@ void                get_window_size         (RenderWindowHandle rw_handle, int* 
 void                get_drawable_size       (RenderWindowHandle rw_handle, int* width, int* height);
 void                set_mouse_grab          (bool grabbed);
 void                refresh_mouse_grab      ();
-void                swap_window             (RenderWindowHandle h);
 void                destroy_window          (RenderWindowHandle rw_handle);
 bool                set_window_fullscreen   (RenderWindowHandle rw_handle, bool fullscreen);
 // NOFOCUS-HARDEN-1: true when MC2_WINDOW_OFFSCREEN is set -- the window is
@@ -97,20 +94,12 @@ bool                window_offscreen_requested();
 // is what let a desktop-sized window flash on screen for seconds.
 void                enforce_window_offscreen(RenderWindowHandle rw_handle);
 bool                is_mode_supported       (int width, int height, int bpp);
-int                 get_window_display_index(RenderContextHandle ctx_h);
+int                 get_window_display_index(RenderWindowHandle window);
 bool                get_desktop_display_mode(int display_index, int* width, int* height, int* bpp);
 int                 get_num_display_modes   (int display_index);
 bool                get_display_mode_by_index(int display_index, int mode_index, int* width, int* height, int* bpp);
 
-RenderContextHandle init_render_context     (RenderWindowHandle render_window);
-void                make_current_context    (RenderContextHandle ctx_h);
-void                destroy_render_context  (RenderContextHandle rc_handle);
-// The process is about to exit: makes the context non-current and drops the wrapper but does not delete the GL context. Deleting it blocks inside the AMD
-// driver (wglDeleteContext waits 1 to 5 s in whole seconds on a kernel object; BUGS 87) and the OS frees the context with the process anyway.
-void                release_render_context_at_exit(RenderContextHandle rc_handle);
-
 SDL_Window*         getSDLWindow            () noexcept;
-SDL_GLContext       getSDLGLContext          () noexcept;
 
 };
 

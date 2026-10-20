@@ -292,7 +292,6 @@ void MC_TextureManager::renderListsTerrainSolid (void)
 
 	{
 		ZoneScopedN("Render.TerrainSolid");
-		TracyGpuZone("Render.TerrainSolid");
 
 		// MC2_LOAD_RACE_TRACE: terrain GPU-residency probe. The degraded
 		// mission-load state renders terrain flat/untextured; this latches the
@@ -338,7 +337,7 @@ void MC_TextureManager::renderListsTerrainSolid (void)
 							masterVertexNodes[ti].vertices)
 						{
 							++terrTotal;
-							if (isTextureNodeResident(masterVertexNodes[ti].textureIndex))
+							if (mc2::textures::isDecoded(masterVertexNodes[ti].textureIndex))
 								++terrResident;
 						}
 					}
@@ -369,42 +368,7 @@ void MC_TextureManager::renderListsTerrainSolid (void)
 		// filter mirrors the legacy DRAWSOLID|ISTERRAIN draw-emission
 		// predicate so it is apples-to-apples with PatchStream's modern
 		// scope.
-		static const bool s_bucketCensusOn = mc2::gate::get<"MC2_BUCKET_CENSUS">();
-		uint32_t legacyEligible = 0;
-		if (s_bucketCensusOn) {
-			for (long ci = 0; ci < nextAvailableVertexNode; ++ci) {
-				const DWORD cf = masterVertexNodes[ci].flags;
-				if ((cf & MC2_DRAWSOLID) && (cf & MC2_ISTERRAIN) &&
-				    masterVertexNodes[ci].vertices &&
-				    masterVertexNodes[ci].currentVertex !=
-				        masterVertexNodes[ci].vertices)
-				{
-					++legacyEligible;
-				}
-			}
-		}
-
 		bool modernHandled = false;
-
-		// TERRAIN-CULL-STATE-PROBE-1 (MC2_TERRAIN_CULL_PROBE, default OFF): the
-		// terrain-solid dispatch CHOKEPOINT — runs every frame terrain renders,
-		// before the indirect/patch-stream/legacy branch. None of those paths set
-		// cull, so the ambient cull/frontFace read HERE is what terrain renders
-		// under. Read-only; first few frames then stops.
-		{
-			static const bool s_cullProbe = mc2::gate::get<"MC2_TERRAIN_CULL_PROBE">();
-			static int s_cullProbeFrames = 0;
-			if (s_cullProbe && s_cullProbeFrames < 8) {
-				++s_cullProbeFrames;
-				GLboolean cullOn = glIsEnabled(GL_CULL_FACE);
-				GLint cullMode = 0, frontFace = 0;
-				glGetIntegerv(GL_CULL_FACE_MODE, &cullMode);
-				glGetIntegerv(GL_FRONT_FACE, &frontFace);
-				mc2::fmt::print_err("[TERRAIN_CULL_PROBE] path=dispatch frame={:d} cull={} cullMode={} frontFace={}\n", mc2::fmt::as_i32(s_cullProbeFrames), mc2::fmt::safe(cullOn ? "ENABLED" : "disabled"), mc2::fmt::safe(cullMode == GL_BACK ? "BACK" : cullMode == GL_FRONT ? "FRONT" :
-						cullMode == GL_FRONT_AND_BACK ? "FRONT_AND_BACK" : "?"), mc2::fmt::safe(frontFace == GL_CCW ? "CCW" : frontFace == GL_CW ? "CW" : "?"));
-				std::fflush(stderr);
-			}
-		}
 
 		if (gos_terrain_indirect::IsFrameSolidArmed()) {
 			// Indirect SOLID owns this frame. The SOLID gate-off in setupTextures()
@@ -431,20 +395,6 @@ void MC_TextureManager::renderListsTerrainSolid (void)
 				RenderCore::framegraph::noteTerrainPath(RenderCore::framegraph::TerrainPath::IndirectBridge);
 				modernHandled = true;
 			}
-		} else if (TerrainPatchStream::isReady() && !TerrainPatchStream::isOverflowed()) {
-			// PATCHSTREAM-THIN-RETIRE-1: patch-stream-thin terrain draw retired (deprecated branch,
-			// terrain_path.patch_stream proven 0 in default/smoke/capture/editor). LOD-chunk owns
-			// terrain. Do NOT flush()-draw; fire the telemetry counter as a regression tripwire so
-			// patch_stream>0 surfaces if a reachable config ever needed it. modernHandled stays false
-			// (no gate-off fired for un-armed frames) — matching the prior flush()-returns semantics
-			// when it drew nothing.
-			// NOTE: flush() side-effects audit — flush() does: (a) draw calls, (b) glFenceSync on
-			// current slot, (c) markTerrainDrawn() on post-process, (d) noteTerrainPath(PatchStreamThin).
-			// The ring slot advance is in beginFrame() NOT flush(), so skipping flush() does not break
-			// the ring. The getLastFlush* snapshot getters read statics reset by beginFrame() each frame
-			// — they will correctly read 0 when this branch is not flushing. markTerrainDrawn() is NOT
-			// called here because no terrain was drawn. NO load-bearing non-draw side effects are lost.
-			RenderCore::framegraph::noteTerrainPath(RenderCore::framegraph::TerrainPath::PatchStreamThin);
 		}
 
 		// RENDER-FRAME-PLAN-SCAFFOLD-1: tattle WHICH terrain-solid branch drew this
@@ -501,9 +451,7 @@ void MC_TextureManager::renderListsTerrainSolid (void)
 		// either branch has reset the legacy ring; legacy_eligible was
 		// captured pre-flush above. emitCensus() is a no-op when the
 		// env var is unset.
-		if (s_bucketCensusOn) {
-			TerrainPatchStream::emitCensus(legacyEligible);
-		}
+
 	}   // end Render.TerrainSolid zone
 }
 
@@ -516,7 +464,6 @@ void MC_TextureManager::renderListsGpuStaticProps (void)
 	// on top of terrain, below decals/roads.
 	{
 		ZoneScopedN("Render.GpuStaticProps");
-		TracyGpuZone("Render.GpuStaticProps");
 		extern bool g_useGpuStaticProps;
 		extern bool g_useGpuObjects;
 		if (g_useGpuStaticProps || g_useGpuObjects) {
@@ -558,7 +505,6 @@ void MC_TextureManager::renderListsGpuStaticProps (void)
 				// GL_SAMPLES_PASSED segment holding only compute + barriers returns a garbage
 				// ~1e12 on this driver (begin snapshot never taken) and mis-attributes the frame's
 				// real draws to it. Suspend the query for it.
-				TracyGpuZone("GpuSP.CullDispatch");
 				gpu_cull::compute_dispatch();
 			}
 
@@ -583,7 +529,6 @@ void MC_TextureManager::renderListsGpuStaticProps (void)
 			extern bool g_useGpuObjects;
 			if (g_useGpuStaticProps || g_useGpuObjects) {
 				ZoneScopedN("GpuSP.BatcherFlush");
-				TracyGpuZone("GpuSP.BatcherFlush");
 				GpuStaticPropBatcher::instance().flush(getLastRenderSnapshot());
 			}
 		};
@@ -595,7 +540,6 @@ void MC_TextureManager::renderListsGpuStaticProps (void)
 		// flush itself. Pass_Mechs is a disjoint GL_TIME_ELAPSED scope.
 		auto runMechFlushUnit = []() {
 			ZoneScopedN("Render.GpuMechs");
-			TracyGpuZone("Render.GpuMechs");
 			// [RENDER_PASS v1] advisory telemetry (env-gated, rate-limited).
 			// MECHOPAQUE-NOTE-RELOCATE-1: note fires at the real mech GPU draw
 			// site (after shadow, after static-prop flush) — NOT at the preamble.
@@ -648,7 +592,6 @@ void MC_TextureManager::renderListsOverlayBatches (void)
 	// Render order matches design: terrain → cement overlays → decals → (old overlays).
 	{
 		ZoneScopedN("Render.TerrainOverlays");
-		TracyGpuZone("Render.TerrainOverlays");
 		gos_DrawTerrainOverlays();
 	}
 	// Slice A — cement-overlay static-bake draw. Mirrors the Render.Terrain
@@ -661,7 +604,6 @@ void MC_TextureManager::renderListsOverlayBatches (void)
 	// same slot the per-frame batch used (before mines/decals/old overlays).
 	{
 		ZoneScopedN("Render.TerrainOverlaysStatic");
-		TracyGpuZone("Render.TerrainOverlaysStatic");
 		if (gos_terrain_indirect::IsFrameOverlayArmed()) {
 			gos_terrain_indirect::DrawDecalStatic();
 		}
@@ -673,14 +615,12 @@ void MC_TextureManager::renderListsOverlayBatches (void)
 	// MC2_TERRAIN_INDIRECT_MINE=1 AND the texture-array has been built.
 	{
 		ZoneScopedN("Render.TerrainMines");
-		TracyGpuZone("Render.TerrainMines");
 		if (gos_terrain_indirect::IsFrameMineArmed()) {
 			gos_terrain_indirect::DrawMineStatic();
 		}
 	}
 	{
 		ZoneScopedN("Render.Decals");
-		TracyGpuZone("Render.Decals");
 		// MC2_DYNAMIC_DECALS: push dynamic impact decals into the batch before flushing.
 		// Gate-off: gatherToDecalBatch() is a no-op; gate-on: pushes faded quads.
 		// frameLength = duration of last frame in seconds (timing.h).

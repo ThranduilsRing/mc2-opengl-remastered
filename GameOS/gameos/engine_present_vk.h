@@ -72,8 +72,8 @@ struct EnginePresentHealth {
     unsigned long long last_readback_checksum = 0;
     unsigned long long prev_readback_checksum = 0;
     bool        readback_changed  = false; // last != prev at least once
-    uint32_t    direct_fbo_requests = 0;   // presentDirectFbo() calls from endScene
-    uint32_t    direct_fbo_grants   = 0;   // calls that returned the shared FBO
+    uint32_t    native_composite_requests = 0;   // native composite attempts
+    uint32_t    native_composite_grants   = 0;   // attempts accepted by the native owner
     uint32_t    copy1_blit_frames   = 0;   // legacy FBO-0 -> shared-image blit
     uint32_t    copy1_skip_frames   = 0;   // direct shared-FBO frames
     uint32_t    gl_handoff_skip_frames = 0;// explicit VK-owned present-image frames
@@ -92,7 +92,7 @@ struct EnginePresentHealth {
     uint32_t    hud_vk_textured_draws_last = 0;
     uint32_t    hud_vk_texture_uploads = 0;
     bool        imgui_vk_ready      = false;
-    unsigned int last_direct_fbo    = 0;   // last shared FBO id granted
+    bool native_composite_armed = false;   // most recent native composite readiness
     // VK-QWI-TO-FENCE-1 / VK-PRESENT-SINGLESUBMIT-1: water-style us_fence_wait
     // telemetry around the present path's ONLY CPU wait. History: QWI drain after
     // the composite submit -> per-submit compositeFence wait -> (single-submit) the
@@ -115,7 +115,6 @@ struct VkHudVertex {
 struct VkHudDraw {
     uint32_t kind = 0;
     uint32_t textureHandle = 0;
-    uint32_t glTextureId = 0;
     uint32_t textureWidth = 0;
     uint32_t textureHeight = 0;
     uint32_t textureFormat = 0;
@@ -148,12 +147,12 @@ public:
 
     // Stand up the present surface + swapchain + interop image on the EXISTING
     // visible GL game window (P13b: same-HWND raw vkCreateWin32SurfaceKHR, no
-    // second window), sized to (w,h) == the GL drawable extent. `glWindow` is the
+    // second window), sized to (w,h) == the GL drawable extent. `window` is the
     // game's SDL_WINDOW_OPENGL window (g_sdl_window) whose HWND we present to; it
     // stays visible and owns all input. `ctx` MUST be a valid, present-capable
     // (init(wantPresent=true)) engine context. Returns false + sets
     // health.fallback_reason on any error (fail-soft: partial state torn down).
-    bool init(VulkanContext& ctx, SDL_Window* glWindow, uint32_t w, uint32_t h);
+    bool init(VulkanContext& ctx, SDL_Window* window, uint32_t w, uint32_t h);
 
     // Present ONE finished GL frame. `glFbo0DrawableW/H` is the current GL
     // drawable size (for resize detection). Runs copy-1 (GL blit FBO-0 -> shared
@@ -166,38 +165,16 @@ public:
     // The present IS the frame boundary: every exit of this function (presented, skipped for a zero extent or a swapchain rebuild, declined, or
     // failed) ends with the context's frameBoundary(), so any host that presents through it (the game, the editor viewport) advances the frame
     // tracker, the frame ring and the deferred-destroy queue without a separate call.
-    bool presentGLFrame(uint32_t glDrawableW, uint32_t glDrawableH,
+    bool presentFrame(uint32_t drawableW, uint32_t drawableH,
                         bool verifyReadback);
 
     void destroy();
 
     bool valid() const { return created_; }
 
-    // VK-P14b (MC2_VK_PRESENT_DIRECT_FBO, copy-1 elimination): the GL FBO id that
-    // wraps the shared exportable present image (COLOR_ATTACHMENT, FRAMEBUFFER_
-    // COMPLETE). When the direct-composite gate is ON and the present path is up,
-    // endScene binds THIS instead of FBO-0 so the whole composite+pillarbox+HUD+
-    // ImGui renders straight into the shared image, and presentGLFrame then SKIPS
-    // copy-1 (the FBO-0->shared blit). Returns 0 when: the present path isn't
-    // valid, the gate is OFF, or the FBO isn't available -> caller falls back to
-    // the normal FBO-0 bind + copy-1 (fail-soft, no crash). Reading this also
-    // arms presentGLFrame's copy-1 skip for the frame (single source of truth:
-    // whichever branch endScene took, presentGLFrame mirrors it via directFbo_).
-    // Return type is a bare `unsigned int` (== GLuint) to keep this header free of
-    // any GL include; the impl casts to/from GLuint at the .cpp boundary.
-    unsigned int presentDirectFbo();
-
-    // VK-only strict/native present path: arms the same copy-1-skip contract as
-    // presentDirectFbo(), but without exposing a GL FBO. Valid only when the
-    // present image was allocated without GL import and native composite/HUD/ImGui
-    // will produce all tail pixels.
-    bool presentDirectVkOnly();
-
-    // Rung 8.6b seam: true only after this frame's endScene() successfully armed
-    // the direct-present shared FBO. Future native HUD/ImGui tail work must use
-    // this as its precondition; it is not permission to begin a second VK write
-    // by itself, because presentGLFrame() still owns the GL->VK semaphore handoff.
-    bool directPresentFrameArmed() const { return created_ && directFbo_ != 0; }
+    // Start this frame's native composite only when the present image exists.
+    bool beginNativeComposite();
+    bool directPresentFrameArmed() const { return created_ && nativeCompositeArmed_; }
 
     // Rung 8.6 native ImGui renderer seam. These stay VK-header-free so
     // GuiRuntime can hand draw data to the present owner without learning Vulkan.
@@ -240,7 +217,7 @@ public:
     bool renderNativeCsmShadowDebugOverlay(void* csmArrayView, int layer);
 
     // P13b: the visible GL game window we present onto (borrowed, not owned).
-    SDL_Window* window() const { return glWindow_; }
+    SDL_Window* window() const { return window_; }
     const EnginePresentHealth& health() const { return health_; }
 
     // Emit the [VK_PRESENT] health line for the T5 proof.
@@ -257,17 +234,13 @@ private:
 
     Impl* impl_ = nullptr;
 
-    bool presentGLFrameBody(uint32_t glDrawableW, uint32_t glDrawableH, bool verifyReadback);
+    bool presentFrameBody(uint32_t drawableW, uint32_t drawableH, bool verifyReadback);
     // Drains the outstanding presented-image readback (if any) before the shared image it copies is destroyed.
     void drainReadbackBeforeImageDestroy();
 
     bool created_ = false;
-    // VK-P14b: last FBO id handed out by presentDirectFbo() this frame (0 == none
-    // -> presentGLFrame runs copy-1 as usual; non-0 -> endScene rendered straight
-    // into the shared image so presentGLFrame SKIPS copy-1 and Y-flips in copy-2).
-    unsigned int directFbo_ = 0;
-    // True only when a native VK path wrote the shared present image after the
-    // current frame armed directFbo_. Cleared at each presentDirectFbo() grant.
+    bool nativeCompositeArmed_ = false;
+    // The composite/HUD tail must actually write the image before presentation.
     bool presentImageVkOwned_ = false;
     // VK-RUNG8-ITEM8: consecutive presented-frame attempts where the present image
     // was NOT VK-owned (native composite declined). Reset to 0 on any owned frame.
@@ -277,7 +250,7 @@ private:
     unsigned int notOwnedStreak_ = 0;
     // P13b: the existing visible GL game window we present onto via its HWND.
     // BORROWED (owned by gos_render / g_sdl_window) -- never destroyed here.
-    SDL_Window* glWindow_ = nullptr;
+    SDL_Window* window_ = nullptr;
     EnginePresentHealth health_;
 };
 

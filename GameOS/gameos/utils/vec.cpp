@@ -1044,16 +1044,7 @@ mat4 lookAt(const vec3 &from, const vec3 &at){
 	return mat;
 }
 
-mat4 glToD3DProjectionMatrix(const mat4 &m){
-	mat4 mat = m;
 
-	mat.elem[2][0] = 0.5f * (mat.elem[2][0] + mat.elem[3][0]);
-	mat.elem[2][1] = 0.5f * (mat.elem[2][1] + mat.elem[3][1]);
-	mat.elem[2][2] = 0.5f * (mat.elem[2][2] + mat.elem[3][2]);
-	mat.elem[2][3] = 0.5f * (mat.elem[2][3] + mat.elem[3][3]);
-
-	return mat;
-}
 
 mat4 pegToFarPlane(const mat4 &m){
 	mat4 mat;

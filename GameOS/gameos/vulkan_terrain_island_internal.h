@@ -12,7 +12,6 @@
 #endif
 
 #include <volk.h>
-#include <GL/glew.h>
 
 #define VMA_STATIC_VULKAN_FUNCTIONS 0
 #define VMA_DYNAMIC_VULKAN_FUNCTIONS 0
@@ -46,12 +45,6 @@
 #include <memory>
 #include <tracy/Tracy.hpp>   // VK-FLIP-FIELD-REPORT-1: coarse per-region frame zones
 
-#ifndef GL_COMPRESSED_RGBA_BPTC_UNORM
-#define GL_COMPRESSED_RGBA_BPTC_UNORM        0x8E8C
-#endif
-#ifndef GL_COMPRESSED_SRGB_ALPHA_BPTC_UNORM
-#define GL_COMPRESSED_SRGB_ALPHA_BPTC_UNORM  0x8E8D
-#endif
 
 // Types shared by the pieces of this island (the functions that use them live in namespace vk_terrain_detail).
 namespace vk_terrain_detail {
@@ -256,8 +249,8 @@ struct TerrainIsland : mc2vk::IslandState {
     // 1-layer until the real array imports (matNormalReady gates the FS sample).
     mc2vk::ResidentTextureRef matNormalTexture;
     mc2vk::OwnedSampler     matNormalSamp;   // REPEAT/LINEAR (GL_REPEAT wrap)
-    uint32_t      matNormalTexImported = 0;          // GL array tex name last imported (0 = none)
-    uint32_t      matNormalTexRejected = 0;          // GL array tex name whose slot texels were rejected (logged once)
+    uint64_t      matNormalVersionImported = 0;      // last source version imported
+    uint64_t      matNormalVersionRejected = 0;      // rejected source version, logged once
     uint32_t      matNormalLayers = 0;               // layer count of the imported array
     bool          matNormalReady = false;            // set once the real array is live
 

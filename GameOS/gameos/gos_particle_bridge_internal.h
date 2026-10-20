@@ -12,10 +12,7 @@
 #include "particles/batcher.h"  // GroupInfo
 
 #include <gameos.hpp>
-#include <GL/glew.h>
-#include "utils/shader_builder.h"
 #include "../../RenderCore/PipelineRegistry.h"  // VFX-APPLYPIPELINE-ROUTING-1
-#include "pipeline_binder.h"                    // applyPipeline — VFX per-group blend
 #include "gos_postprocess.h"  // VFX-SOFT-PARTICLES-MVP-1: scene-depth copy + invViewProj
 #include "../../mclib/camera.h"  // VFX-LIT-PARTICLES-MVP-1: eye->light*/ambient* (same source as terrain)
 #include "particle_stall_probe.h"  // PARTICLE-FLUSH-STALL-MEASURE-1 (gated timing)
@@ -23,7 +20,6 @@
 #ifdef MC2_VULKAN_ISLAND
 #include "vulkan_vfx_island.h"  // VK-FIELD-VFX-1: VK translucent particle pass
 #endif
-#include "gl_state_guard.h"      // GLSTATE-GUARD-ADOPTION-4: mc2gl::GlScoped* epilogue guards
 
 #include <cstdio>
 #include <cstdlib>
@@ -36,7 +32,6 @@
 // Globals defined in gos_particle_bridge.cpp (or elsewhere in the engine) that the split pieces share.
 extern const float* gos_GetTerrainMVPMat4();
 extern const float* gos_GetProj2ScreenMat4();
-extern void gos_RendererRebindVAO();
 
 // Group-log gate: defined in gos_particle_bridge.cpp, read by both pieces.
 bool groupLogEnabled();

@@ -194,10 +194,10 @@ void gos_terrain_bridge_renderWaterFast(
 // namespace scope, not inside a function body).
 extern "C" int mc2_vk_water_island_enabled();
 extern "C" int mc2_vk_water_island_run(
-    unsigned int sceneColorTex, unsigned int sceneDepthTex, int w, int h,
+    int w, int h,
     const void* recipes, unsigned int recipeCount,
     const void* vsParams, const void* fsParams,
-    unsigned int hdriGlTex,
+    uint64_t hdriGeneration,
     const void* nativeInputs);
 #endif
 
@@ -250,7 +250,7 @@ void gosRenderer::renderWaterFastPath(
     float maxMinUV)
 {
     ZoneScopedN("renderWaterFastPath");
-    TracyGpuZone("renderWaterFastPath");
+
     // The GL water draw (the MDI program, the GL cull/pack compute, the thin ring, the readback feed) is gone: the native Vulkan producers cull
     // and pack the thin records and the water island draws them. The handles and the detail / spray tuning went with the GL program.
     (void)waterGosHandle; (void)waterDetailGosHandle; (void)frameCosAlpha; (void)oneOverWaterTF; (void)sprayOffsetX; (void)sprayOffsetY;
@@ -354,11 +354,9 @@ void gosRenderer::renderWaterFastPath(
         fsP.f9[3] = g_cameraProjAspectNative ? vkVpAspect : (4.0f / 3.0f);
     }
     (void)mc2_vk_water_island_run(
-        static_cast<unsigned int>(ppVk->getSceneColorTexture()),
-        static_cast<unsigned int>(ppVk->getSceneDepthTexture()),
         ppVk->getWidth(), ppVk->getHeight(),
         vkRecipes, vkRecipeN, &vsP, &fsP,
-        ppVk->isHdriReady() ? static_cast<unsigned int>(ppVk->getHdriTex()) : 0u,
+        ppVk->isHdriReady() ? ppVk->getHdriGeneration() : 0,
         &vkNat);
 #else
     (void)waterElevation; (void)alphaDepth; (void)alphaEdgeByte; (void)alphaMiddleByte; (void)alphaDeepByte;

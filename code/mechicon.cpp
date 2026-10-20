@@ -1,4 +1,5 @@
 #include "../GameOS/gameos/ui_texture.h"
+#include "../mclib/texture_assets.h"
  #define MECHICON_CPP
 /*************************************************************************************************\
 MechIcon.cpp			: Implementation of the MechIcon component.
@@ -1385,7 +1386,7 @@ bool PilotIcon::getTexUV( uint64_t& glTex, float& u0, float& v0, float& u1, floa
 	v0 = yLocation/s_pilotTextureWidth+ (.1f/s_pilotTextureWidth);
 	v1 = (yLocation + pilotIconY)/s_pilotTextureWidth+ (.1f/s_pilotTextureWidth);
 
-	long gosID = mcTextureManager->get_gosTextureHandle( s_pilotTextureHandle );
+	long gosID = mc2::textures::sourceId( s_pilotTextureHandle );
 	if ( gosID <= 0 )   // 0 = none, -1 (0xffffffff) = invalid
 		return false;
 	glTex = gos_GetUiTextureId( static_cast<DWORD>(gosID) );
@@ -1874,12 +1875,12 @@ PilotIcon::PilotIcon()
 		}
 
 		s_pilotTexturesKey = AssetScale::key(path);
-		s_pilotTextureHandle = mcTextureManager->loadTexture( path, gos_Texture_Alpha, 0, 0, 0x2);
+		s_pilotTextureHandle = mc2::textures::load( path, gos_Texture_Alpha, 0, 0, 0x2);
 
 		// Find its logical width without forcing texture realization when metadata is available.
 		DWORD logicalWidth = 0;
 		DWORD logicalHeight = 0;
-		if ( mcTextureManager->tryGetTextureLogicalSize( s_pilotTextureHandle, logicalWidth, logicalHeight ) )
+		if ( mc2::textures::logicalSize( s_pilotTextureHandle, logicalWidth, logicalHeight ) )
 			s_pilotTextureWidth = logicalWidth;
 		else
 		{
@@ -1918,7 +1919,7 @@ void PilotIcon::render( float left, float top, float right, float bottom )
 	pilotLocation[4] = pilotLocation[0];
 
 
-	int gosID = mcTextureManager->get_gosTextureHandle( s_pilotTextureHandle );
+	int gosID = mc2::textures::sourceId( s_pilotTextureHandle );
 	gos_SetRenderState( gos_State_Texture, gosID );
 	// here I need to draw the pilot icon
 	gos_DrawTriangles( pilotLocation, 3 );
@@ -1936,7 +1937,7 @@ void PilotIcon::swapResolutions( bool bForce)
 {
 	if ( s_pilotTextureHandle )
 	{
-		mcTextureManager->releaseNode( s_pilotTextureHandle );
+		mc2::textures::release( s_pilotTextureHandle );
 	}
 	s_pilotTextureHandle = 0;
 
@@ -1959,12 +1960,12 @@ void PilotIcon::swapResolutions( bool bForce)
 		}
 
 		s_pilotTexturesKey = AssetScale::key(path);
-		s_pilotTextureHandle = mcTextureManager->loadTexture( path, gos_Texture_Alpha, 0, 0, 0x2);
+		s_pilotTextureHandle = mc2::textures::load( path, gos_Texture_Alpha, 0, 0, 0x2);
 
 		// Find its logical width without forcing texture realization when metadata is available.
 		DWORD logicalWidth = 0;
 		DWORD logicalHeight = 0;
-		if  ( mcTextureManager->tryGetTextureLogicalSize( s_pilotTextureHandle, logicalWidth, logicalHeight ) )
+		if  ( mc2::textures::logicalSize( s_pilotTextureHandle, logicalWidth, logicalHeight ) )
 			s_pilotTextureWidth = logicalWidth;
 		else
 		{

@@ -1,34 +1,13 @@
-// render_contract.cpp — Render Contract Registry table (phase 2).
-//
-// Phase 2 changes from phase 1:
-//   - All TODO_RENDER_CONTRACT rows filled in with audited values.
-//   - PassStateContract gains attachmentCount + RequiredAttachments.
-//   - ShaderOutputContract table added (output location declarations).
-//   - assertPassContract() + initRenderContractAssert() added; gated by
-//     MC2_RENDER_CONTRACT_ASSERT env var. Calls glGetIntegerv/glGetBooleanv
-//     to verify live GL state; safe only after glewInit().
-//
-// Authoritative Phase-1 entries (TerrainBase, TerrainOverlay, TerrainDecal,
-// Grass, StaticProp, PostProcess) are unchanged in semantics. New Phase-2
-// audit entries (Water, OpaqueObject, AlphaObject, ParticleEffect, UI,
-// DebugOverlay, ShadowCaster) reflect best-audit at commit time; mark any
-// further findings with TODO_RENDER_CONTRACT_P3 for the next pass.
-//
-// See: docs/superpowers/specs/2026-04-26-render-contract-registry-design.md
+// Pass metadata, CPU ordering/draw telemetry and native target/context validation.
 
 #include "render_contract.h"
-
-// GL access for assertPassContract. Only called from render paths,
-// well after glewInit(); glGetIntegerv/glGetBooleanv extension pointers
-// are guaranteed valid at that point.
-#include <GL/glew.h>
+#include "../GameOS/gameos/native_render_state.h"
 
 #include <cstdio>   // fprintf
 #include <cstdlib>
 
 #include "RenderCore/RenderPassContract.h"
 #include "RenderCore/RenderResourceRegistry.h"
-#include "RenderCore/ambient_contract.h"   // FRAME-GRAPH-AMBIENT-RUNTIME-1 cross-check
 #include "RenderCore/fbo_ledger.h"         // FRAME-GRAPH-FBO-LEDGER-1 cross-check
 #include "RenderCore/frame_pass_trace.h"           // FRAME-GRAPH-EXECUTOR-DRYRUN-1 pure kernel
 #include "RenderCore/terrain_subpass_contract.h"   // dominantTerrainPathLive / terrainPathsThatDrew
@@ -467,49 +446,6 @@ const SOC& lookupShaderOutput(PassIdentity id) {
     return kTodoShaderOutput;
 }
 
-// ---- Assert machinery -------------------------------------------------------
-
-static bool s_assertEnabled = false;
-
-static void fatalContractViolation(const char* passName, const char* hint,
-                                   const char* msg)
-{
-    mc2::fmt::print_err("[RENDER_CONTRACT_ASSERT] FATAL pass={} hint={}: {}\n", mc2::fmt::safe(passName), mc2::fmt::safe(hint ? hint : "?"), mc2::fmt::safe(msg));
-    fflush(stderr);
-    std::abort();
-}
-
-static void checkDrawBuffer(GLenum query, bool required,
-                            const char* slotName, const char* passName,
-                            const char* hint)
-{
-    if (!required) return;
-    GLint buf = 0;
-    glGetIntegerv(query, &buf);
-    if (buf == GL_NONE) {
-        char msg[128];
-        mc2::fmt::to_buf(msg, "{} required but draw buffer is GL_NONE", mc2::fmt::safe(slotName));
-        fatalContractViolation(passName, hint, msg);
-    }
-}
-
-// Returns the GL depth func expected for this pass, or 0 meaning "don't check."
-// Opaque scene passes use reverse-Z (GL_GEQUAL); shadow caster uses forward-Z (GL_LESS).
-static GLenum expectedDepthFuncFor(PassIdentity id)
-{
-    switch (id) {
-        case PassIdentity::TerrainBase:
-        case PassIdentity::Grass:
-        case PassIdentity::StaticProp:
-        case PassIdentity::OpaqueObject:
-            return GL_GEQUAL;
-        case PassIdentity::ShadowCaster:
-            return GL_LESS;
-        default:
-            return 0; // not checked for this pass
-    }
-}
-
 } // namespace
 
 // ---- Public API ------------------------------------------------------------
@@ -565,75 +501,13 @@ RenderCore::RenderPassId toRenderPassId(PassIdentity id) {
     return RenderCore::RenderPassId::None;
 }
 
-void initRenderContractAssert() {
-    s_assertEnabled = mc2::gate::get<"MC2_RENDER_CONTRACT_ASSERT">();
-    if (s_assertEnabled)
-        mc2::fmt::print_err("[RENDER_CONTRACT v2] assert mode ACTIVE\n");
-}
-
-void assertPassContract(PassIdentity id, const char* hint) {
-    if (!s_assertEnabled) return;
-    const PassStateContract& state = lookupState(id);
-    const char* passName = passIdentityName(id);
-
-    // --- draw-buffer attachment checks ---
-    checkDrawBuffer(GL_DRAW_BUFFER0, state.attachments.color0,
-                    "COLOR_ATTACHMENT0", passName, hint);
-    checkDrawBuffer(GL_DRAW_BUFFER1, state.attachments.color1,
-                    "COLOR_ATTACHMENT1", passName, hint);
-    checkDrawBuffer(GL_DRAW_BUFFER2, state.attachments.color2,
-                    "COLOR_ATTACHMENT2", passName, hint);
-
-    // --- depth test ---
-    if (state.requiresDepthTest) {
-        GLboolean dt = GL_FALSE;
-        glGetBooleanv(GL_DEPTH_TEST, &dt);
-        if (!dt)
-            fatalContractViolation(passName, hint,
-                "depth test required but GL_DEPTH_TEST disabled");
-    }
-
-    // --- depth write ---
-    if (state.requiresDepthWrite) {
-        GLboolean dw = GL_FALSE;
-        glGetBooleanv(GL_DEPTH_WRITEMASK, &dw);
-        if (!dw)
-            fatalContractViolation(passName, hint,
-                "depth write required but GL_DEPTH_WRITEMASK=FALSE");
-    }
-
-    // --- depth func: GL_GEQUAL for opaque scene, GL_LESS for shadow ---
-    const GLenum wantDF = expectedDepthFuncFor(id);
-    if (wantDF != 0) {
-        GLint df = 0;
-        glGetIntegerv(GL_DEPTH_FUNC, &df);
-        if ((GLenum)df != wantDF) {
-            const char* msg =
-                (wantDF == GL_GEQUAL) ?
-                    "depth func must be GL_GEQUAL (reverse-Z scene pass)" :
-                    "depth func must be GL_LESS (shadow forward-Z pass)";
-            fatalContractViolation(passName, hint, msg);
-        }
-    }
-
-    // --- blend disabled for opaque passes ---
-    if (state.blend == BM::Opaque) {
-        GLboolean blendOn = GL_FALSE;
-        glGetBooleanv(GL_BLEND, &blendOn);
-        if (blendOn)
-            fatalContractViolation(passName, hint,
-                "GL_BLEND enabled but pass blend contract is Opaque");
-    }
-}
-
 // ---- [RENDER_PASS v1] telemetry (slice D1) ----------------------------------
 //
 // Advisory, log-only, env-gated (MC2_RENDER_PASS_TELEMETRY=1). When OFF the
 // hot-path cost is a single cached-bool branch. When ON, emission is
 // rate-limited to one line per pass per sampled frame; a frame is sampled
 // every kTelemetryFrameInterval frames (300, matching debug_state_dump
-// cadence). GL queries (FBO binding, viewport, draw-buffer count) run only
-// on sampled frames at pass-begin points.
+// cadence). The target name is declared intent; availability queries native owners.
 //
 // D2 (deferred): per-pass draw-call/triangle/texture-bind counters + GPU
 // timing — those need counter feeds at centralized draw-submission sites.
@@ -671,7 +545,7 @@ void renderPassTelemetryFrameTick() {
 // FRAME-GRAPH-AMBIENT-RUNTIME-1: defined below; called here at the most-covered pass
 // seam (noteRenderPass fires for every pass owner every frame, independent of the
 // telemetry gate below).
-void ambientProbeAtPassBegin(RenderCore::RenderPassId id);
+void validateTargetAtPassBegin(RenderCore::RenderPassId id);
 
 // ---- FRAME-GRAPH-EXECUTOR-DRYRUN-1: per-frame observe-and-diff recorder ------
 //
@@ -718,11 +592,10 @@ void dryrunEnsureFrameInit() {
 void dryrunRecordPass(RenderCore::RenderPassId id) {
     if (id == RenderCore::RenderPassId::None) return;   // tags with no owner lane
     dryrunEnsureFrameInit();
-    // Resolve the bound draw FBO to a logical target via the existing ledger (no new sampling).
-    GLint bound = 0;
-    glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &bound);
-    const RenderCore::RenderResourceId fbo =
-        RenderCore::framegraph::fboLedger().resolve(static_cast<unsigned>(bound));
+    // A native pass has no ambient framebuffer binding. The trace records
+    // whether its declared logical destination has a live native owner.
+    const auto declared=RenderCore::framegraph::declaredFboTarget(id);
+    const auto fbo=mc2vk::nativeRenderTargetAvailable(declared) ? declared : RenderCore::RenderResourceId::Unknown;
     recordPassFired(g_dryrunTrace, id, fbo,
                     RenderCore::kFramePassOrder, RenderCore::kFramePassOrderCount);
 }
@@ -793,7 +666,7 @@ extern "C" unsigned long mc2_framegraph_dryrun_latch_miss()         { return g_d
 extern "C" unsigned long mc2_framegraph_dryrun_known_early_suppressed() { return g_dryrunKnownEarlySuppressed; }
 
 void noteRenderPass(PassIdentity id, const char* callerHint) {
-    ambientProbeAtPassBegin(toRenderPassId(id));   // self-gated; before the telemetry gate
+    validateTargetAtPassBegin(toRenderPassId(id));   // self-gated; before the telemetry gate
     if (dryrunEnabled()) dryrunRecordPass(toRenderPassId(id));  // FRAME-GRAPH-EXECUTOR-DRYRUN-1
     if (!s_telemetryEnabled) return;
     // Sample frame 1 (first full frame) then every kTelemetryFrameInterval.
@@ -805,18 +678,11 @@ void noteRenderPass(PassIdentity id, const char* callerHint) {
     s_telemetryEverEmitted[idx]   = true;
     s_telemetryLastEmitFrame[idx] = s_telemetryFrame;
 
-    GLint fbo = 0;
-    glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &fbo);
-    GLint vp[4] = {0, 0, 0, 0};
-    glGetIntegerv(GL_VIEWPORT, vp);
-    int drawBuffers = 0;
-    for (int i = 0; i < 8; ++i) {
-        GLint buf = 0;
-        glGetIntegerv(GL_DRAW_BUFFER0 + i, &buf);
-        if (buf != GL_NONE) ++drawBuffers;
-    }
-
-    mc2::fmt::print_out("[RENDER_PASS v1] frame={:d} pass={} fbo={:d} viewport={:d},{:d},{:d},{:d} drawbuffers={:d} phase=begin hint={}\n", mc2::fmt::as_u64(static_cast<unsigned long long>(s_telemetryFrame)), mc2::fmt::safe(passIdentityName(id)), mc2::fmt::as_i32(static_cast<int>(fbo)), mc2::fmt::as_i32(static_cast<int>(vp[0])), mc2::fmt::as_i32(static_cast<int>(vp[1])), mc2::fmt::as_i32(static_cast<int>(vp[2])), mc2::fmt::as_i32(static_cast<int>(vp[3])), mc2::fmt::as_i32(drawBuffers), mc2::fmt::safe(callerHint ? callerHint : "?"));
+    const auto target = RenderCore::framegraph::declaredFboTarget(toRenderPassId(id));
+    mc2::fmt::print_out("[RENDER_PASS v2] frame={:d} pass={} target={} available={:d} phase=begin hint={}\n",
+        mc2::fmt::as_u64((unsigned long long)s_telemetryFrame), mc2::fmt::safe(passIdentityName(id)),
+        mc2::fmt::safe(RenderCore::toString(target)), mc2::fmt::as_i32(mc2vk::nativeRenderTargetAvailable(target) ? 1 : 0),
+        mc2::fmt::safe(callerHint ? callerHint : "?"));
     fflush(stdout);
 }
 
@@ -918,143 +784,28 @@ void frameBegin() {
     ++s_frame.telemetryTick;
 }
 
-// FRAME-GRAPH-AMBIENT-RUNTIME-1: default-OFF diagnostic probe. Samples live GL ambient
-// state at pass entry and compares against the declared ambient ledger
-// (RenderCore/ambient_contract.h) via the pure compareAmbient(). Counts divergences;
-// MC2_AMBIENT_ASSERT_FATAL aborts. Default OFF because it is a LEDGER-VS-REALITY
-// validation tool, not yet a guard: colorMask is re-asserted mid-pass, so an entry-time
-// mismatch is DATA about the entry/established boundary, not necessarily a bug. The
-// pure comparison is offline-tested (tests/unit/test_frame_graph.cpp); only sampling is
-// here. This is the bridge from "ambient state declared" to "ambient state verified".
+// Native target availability, independent of Vulkan pipeline state.
 namespace {
-unsigned long g_ambientMismatchCount = 0;
-unsigned long g_ambientProbeSamples  = 0;  // declared passes actually compared (proves it ran)
-unsigned long g_fboMismatchCount     = 0;  // FRAME-GRAPH-FBO-LEDGER-1
-unsigned long g_fboSamples           = 0;
-// AMBIENT-VIEWPORT-PROBE-1: OBSERVE-ONLY viewport-axis mismatch counter. Kept SEPARATE
-// from g_ambientMismatchCount so the new axis never trips the existing guard's fatal /
-// CI path — this slice measures first. Non-fatal even under MC2_FRAMEGRAPH_AMBIENT_FATAL.
-unsigned long g_viewportMismatchCount = 0;
-unsigned long g_viewportProbeSamples  = 0;
-
-RenderCore::framegraph::ColorMaskState sampleColorMask() {
-    GLboolean m[4] = { GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE };
-    glGetBooleanv(GL_COLOR_WRITEMASK, m);
-    using C = RenderCore::framegraph::ColorMaskState;
-    if (m[0] && m[1] && m[2] && m[3]) return C::AllOn;
-    if (!m[0] && !m[1] && !m[2] && !m[3]) return C::AllOff;
-    return C::Inherit;   // mixed/partial -> unclassifiable, skipped by compareAmbient
+unsigned long g_fboMismatchCount = 0;
+unsigned long g_fboSamples = 0;
 }
-RenderCore::framegraph::DepthFuncState sampleDepthFunc() {
-    GLint df = 0;
-    glGetIntegerv(GL_DEPTH_FUNC, &df);
-    using D = RenderCore::framegraph::DepthFuncState;
-    if (df == GL_GEQUAL) return D::SceneGEqual;
-    if (df == GL_LESS)   return D::ShadowLess;
-    return D::Inherit;
-}
-RenderCore::framegraph::BlendState sampleBlend() {
-    using B = RenderCore::framegraph::BlendState;
-    return glIsEnabled(GL_BLEND) ? B::On : B::Off;
-}
-RenderCore::framegraph::DepthWriteState sampleDepthWrite() {
-    GLboolean w = GL_TRUE;
-    glGetBooleanv(GL_DEPTH_WRITEMASK, &w);
-    using D = RenderCore::framegraph::DepthWriteState;
-    return w ? D::On : D::Off;
-}
-// AMBIENT-VIEWPORT-PROBE-1: glGet-only sample of GL_VIEWPORT, classified by the pure
-// classifyViewport(). No GL state change.
-RenderCore::framegraph::ViewportKind sampleViewport() {
-    GLint vp[4] = { 0, 0, 0, 0 };
-    glGetIntegerv(GL_VIEWPORT, vp);
-    return RenderCore::framegraph::classifyViewport(vp[0], vp[1], vp[2], vp[3]);
-}
-} // namespace
 
-void ambientProbeAtPassBegin(RenderCore::RenderPassId id) {
-    // FRAME-GRAPH-AMBIENT-GUARD-1: promoted from default-OFF probe to DEFAULT-ON guard
-    // for the verified axes (colorMask/depthFunc/depthWrite; blend stays Inherit ->
-    // skipped, the probe disproved it as per-pass). Read-only (glGet + count); rendering
-    // stays byte-identical. Disable for perf-sensitive runs via
-    // MC2_FRAMEGRAPH_AMBIENT_GUARD=0. CI hard-fail via MC2_FRAMEGRAPH_AMBIENT_FATAL=1.
-    // The "fail dev/smoke if mismatch>0" tier is scripts/check-ambient-guard.py (reads
-    // the dump counter), so a bad ambient handoff trips immediately instead of surfacing
-    // later as flicker / missing geometry / wrong depth.
-    static const bool s_guardEnabled = mc2::gate::get<"MC2_FRAMEGRAPH_AMBIENT_GUARD">();
-    if (!s_guardEnabled) return;
-    static const bool s_fatal = mc2::gate::isSet<"MC2_FRAMEGRAPH_AMBIENT_FATAL">()
-        || mc2::gate::isSet<"MC2_AMBIENT_ASSERT_FATAL">();   // legacy alias
-
-    // --- AMBIENT axes (colorMask / depthFunc / depthWrite) -----------------------
-    if (const RenderCore::framegraph::AmbientContract* decl =
-            RenderCore::framegraph::findAmbient(id)) {
-        ++g_ambientProbeSamples;
-        RenderCore::framegraph::AmbientSample live;
-        live.colorMask  = sampleColorMask();
-        live.depthFunc  = sampleDepthFunc();
-        live.blend      = sampleBlend();
-        live.depthWrite = sampleDepthWrite();
-        // NOTE: viewport is deliberately NOT set on `live` here, so the shared mm/fatal
-        // path below stays byte-identical to the pre-slice guard. The viewport axis is
-        // measured OBSERVE-ONLY in a separate block (its own counter, never fatal).
-        const RenderCore::framegraph::AmbientMismatch mm =
-            RenderCore::framegraph::compareAmbient(*decl, live);
-
-        // --- AMBIENT-VIEWPORT-PROBE-1 (OBSERVE-ONLY) -----------------------------
-        // Sample GL_VIEWPORT, classify, compare only against a declared viewport kind.
-        // Counts divergences (detects the suspected shadow-viewport save/restore leak);
-        // NEVER aborts and NEVER changes control flow, so a pre-existing viewport leak
-        // measures rather than breaks. glGet only — no GL state change.
-        if (decl->viewport != RenderCore::framegraph::ViewportKind::Inherit) {
-            ++g_viewportProbeSamples;
-            RenderCore::framegraph::AmbientSample vpLive;
-            vpLive.viewport = sampleViewport();
-            RenderCore::framegraph::AmbientMismatch vpm;
-            if (vpLive.viewport != RenderCore::framegraph::ViewportKind::Inherit)
-                vpm.viewport = (decl->viewport != vpLive.viewport);
-            if (vpm.viewport) {
-                ++g_viewportMismatchCount;
-                static unsigned s_vpLogged = 0;
-                if (s_vpLogged < 32u) {
-                    ++s_vpLogged;
-                    mc2::fmt::print_err("[VIEWPORT_PROBE] phase=begin pass=\"{}\" vpMiss=1 (decl vp={:d} | live vp={:d}) [observe-only]\n", mc2::fmt::safe(decl->note ? decl->note : "?"), mc2::fmt::as_i32(static_cast<int>(decl->viewport)), mc2::fmt::as_i32(static_cast<int>(vpLive.viewport)));
-                    fflush(stderr);
-                }
-                // Intentionally NO abort() — observe-only.
-            }
-        }
-
-        if (mm.any()) {
-            ++g_ambientMismatchCount;
-            static unsigned s_logged = 0;
-            if (s_logged < 32u) {
-                ++s_logged;
-                mc2::fmt::print_err("[AMBIENT_GUARD] phase=begin pass=\"{}\" cmMiss={:d} dfMiss={:d} dwMiss={:d} (decl cm={:d} df={:d} dw={:d} | live cm={:d} df={:d} dw={:d})\n", mc2::fmt::safe(decl->note ? decl->note : "?"), mc2::fmt::as_i32(static_cast<int>(mm.colorMask)), mc2::fmt::as_i32(static_cast<int>(mm.depthFunc)), mc2::fmt::as_i32(static_cast<int>(mm.depthWrite)), mc2::fmt::as_i32(static_cast<int>(decl->colorMaskOnEntry)), mc2::fmt::as_i32(static_cast<int>(decl->depthFunc)), mc2::fmt::as_i32(static_cast<int>(decl->depthWrite)), mc2::fmt::as_i32(static_cast<int>(live.colorMask)), mc2::fmt::as_i32(static_cast<int>(live.depthFunc)), mc2::fmt::as_i32(static_cast<int>(live.depthWrite)));
-                fflush(stderr);
-            }
-            if (s_fatal) abort();
-        }
-    }
-
-    // --- FBO target (FRAME-GRAPH-FBO-LEDGER-1) -----------------------------------
-    // Independent of the ambient contract: a pass may declare an FBO target but no
-    // ambient row (e.g. TerrainOverlay/Decal). Sample the bound draw FBO, resolve it to
-    // a logical target via the ledger, compare to the pass's declared target.
+void validateTargetAtPassBegin(RenderCore::RenderPassId id) {
+    static const bool enabled = mc2::gate::get<"MC2_FRAMEGRAPH_AMBIENT_GUARD">();
+    if (!enabled) return;
+    static const bool s_fatal = mc2::gate::isSet<"MC2_FRAMEGRAPH_AMBIENT_FATAL">();
+    // Native destination readiness. The legacy fbo_* dump keys retain their
+    // wire format; the samples check real image/present owners, not GL bindings.
     const RenderCore::RenderResourceId fboDecl =
         RenderCore::framegraph::declaredFboTarget(id);
     if (fboDecl != RenderCore::RenderResourceId::Unknown) {
         ++g_fboSamples;
-        GLint bound = 0;
-        glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &bound);
-        const RenderCore::RenderResourceId actual =
-            RenderCore::framegraph::fboLedger().resolve(static_cast<unsigned>(bound));
-        if (RenderCore::framegraph::fboMismatch(fboDecl, actual)) {
+        if (!mc2vk::nativeRenderTargetAvailable(fboDecl)) {
             ++g_fboMismatchCount;
             static unsigned s_fboLogged = 0;
             if (s_fboLogged < 32u) {
                 ++s_fboLogged;
-                mc2::fmt::print_err("[FBO_GUARD] phase=begin passId={:d} declTarget={:d} actualTarget={:d} boundFbo={:d}\n", mc2::fmt::as_u32(static_cast<unsigned>(id)), mc2::fmt::as_u32(static_cast<unsigned>(fboDecl)), mc2::fmt::as_u32(static_cast<unsigned>(actual)), mc2::fmt::as_i32(static_cast<int>(bound)));
+                mc2::fmt::print_err("[NATIVE_TARGET_GUARD] phase=begin passId={:d} unavailableTarget={:d}\n", mc2::fmt::as_u32((unsigned)id), mc2::fmt::as_u32((unsigned)fboDecl));
                 fflush(stderr);
             }
             if (s_fatal) abort();
@@ -1062,28 +813,9 @@ void ambientProbeAtPassBegin(RenderCore::RenderPassId id) {
     }
 }
 
-// Read by the debug-state dump (GameOS, no GL include) via extern "C".
-extern "C" unsigned long mc2_ambient_mismatch_count() { return g_ambientMismatchCount; }
-extern "C" unsigned long mc2_ambient_probe_samples()  { return g_ambientProbeSamples;  }
-extern "C" unsigned long mc2_fbo_mismatch_count()     { return g_fboMismatchCount;     }
-extern "C" unsigned long mc2_fbo_samples()            { return g_fboSamples;           }
-// AMBIENT-VIEWPORT-PROBE-1 (observe-only).
-extern "C" unsigned long mc2_viewport_mismatch_count() { return g_viewportMismatchCount; }
-extern "C" unsigned long mc2_viewport_probe_samples()  { return g_viewportProbeSamples;  }
+extern "C" unsigned long mc2_fbo_mismatch_count() { return g_fboMismatchCount; }
+extern "C" unsigned long mc2_fbo_samples() { return g_fboSamples; }
 
-// --- UI-PASS-DRAWCOUNT-AMBIENT-MEASURE-1 ------------------------------------------
-// Observe-only telemetry for the EXISTING PassIdentity::UI RAII scope
-// (gosRenderer::flushHUDBatch). Measures (a) per-frame UI draw count by kind and
-// (b) a read-only sample of the UI pass's ambient ENTRY state, so a LATER slice can
-// promote UI from DO_NOT_MODEL -> modeled. Gate: MC2_UI_PASS_MEASURE (default-OFF).
-// The gate is enforced at the flushHUDBatch call sites (byte-identical when unset);
-// these entry points reuse the anon-namespace sampleColorMask()/... helpers above so
-// all glGet stays in this GL-aware TU. Read-only (glGet + count) — NO GL state change.
-//
-// UI entry ambient is DO_NOT_MODEL today; the "consistent" flag tests whether ONE
-// honest UI ambient contract is DECLARABLE: we latch the first-frame sample and count
-// any later frame whose entry sample differs (drift). driftCount==0 across a run =>
-// entry state is stable frame-to-frame => declarable.
 namespace {
 // Per-frame draw counters (reset at each UI pass entry sample).
 unsigned long g_uiDrawTotal = 0;   // last completed frame's total UI draws
@@ -1097,28 +829,11 @@ unsigned long g_uiDrawQuadCur  = 0;
 unsigned long g_uiDrawLineCur  = 0;
 unsigned long g_uiDrawTriCur   = 0;
 unsigned long g_uiDrawTextCur  = 0;
-// Entry ambient sample (numeric enum codes; see ambient_contract.h enums).
-unsigned long g_uiEntrySamples   = 0;   // # of UI pass entries sampled (proves it ran)
-unsigned long g_uiEntryColorMask = 0;   // ColorMaskState (0=Inherit/mixed,1=AllOn,2=AllOff)
-unsigned long g_uiEntryDepthFunc = 0;   // DepthFuncState (0=Inherit,1=SceneGEqual,2=ShadowLess)
-unsigned long g_uiEntryBlend     = 0;   // BlendState (1=On,2=Off)
-unsigned long g_uiEntryDepthWrite= 0;   // DepthWriteState (1=On,2=Off)
-bool          g_uiEntryLatched   = false;
-unsigned long g_uiFirstColorMask = 0, g_uiFirstDepthFunc = 0,
-              g_uiFirstBlend = 0, g_uiFirstDepthWrite = 0;
-unsigned long g_uiEntryDriftCount = 0;  // # entries differing from the first latched sample
-// UI-PASS-MODEL-1: OBSERVE-ONLY UI ambient guard counters. Kept SEPARATE from
-// g_ambientMismatchCount so the newly-modeled UI row can never trip the existing
-// default-ON ambient guard's fatal / CI path — UI is verified observe-first, exactly
-// like AMBIENT-VIEWPORT-PROBE-1 measured before enforcing.
-unsigned long g_uiAmbientSamples       = 0;  // UI ambient compares run (proves it fired)
-unsigned long g_uiAmbientMismatchCount = 0;  // UI entry-vs-declared divergences (never fatal)
+unsigned long g_uiDrawFrames = 0;
 } // namespace
 
-// Called ONCE at UI pass entry (flushHUDBatch, before the replay loop). Samples the
-// ambient axes the ambient contract tracks + rolls the prior frame's draw tallies into
-// the reported (last-completed) counters and resets the live accumulators.
-extern "C" void mc2_ui_pass_sample_entry_ambient() {
+// Publish the prior frame's CPU draw counts and start a fresh measured frame.
+extern "C" void mc2_ui_pass_begin_measure() {
     // Roll previous frame's live tallies into the reported snapshot.
     g_uiDrawTotal = g_uiDrawTotalCur; g_uiDrawTotalCur = 0;
     g_uiDrawQuad  = g_uiDrawQuadCur;  g_uiDrawQuadCur  = 0;
@@ -1126,21 +841,7 @@ extern "C" void mc2_ui_pass_sample_entry_ambient() {
     g_uiDrawTri   = g_uiDrawTriCur;   g_uiDrawTriCur   = 0;
     g_uiDrawText  = g_uiDrawTextCur;  g_uiDrawTextCur  = 0;
 
-    ++g_uiEntrySamples;
-    const unsigned long cm = static_cast<unsigned long>(sampleColorMask());
-    const unsigned long df = static_cast<unsigned long>(sampleDepthFunc());
-    const unsigned long bl = static_cast<unsigned long>(sampleBlend());
-    const unsigned long dw = static_cast<unsigned long>(sampleDepthWrite());
-    g_uiEntryColorMask = cm; g_uiEntryDepthFunc = df;
-    g_uiEntryBlend = bl;     g_uiEntryDepthWrite = dw;
-    if (!g_uiEntryLatched) {
-        g_uiFirstColorMask = cm; g_uiFirstDepthFunc = df;
-        g_uiFirstBlend = bl;     g_uiFirstDepthWrite = dw;
-        g_uiEntryLatched = true;
-    } else if (cm != g_uiFirstColorMask || df != g_uiFirstDepthFunc ||
-               bl != g_uiFirstBlend    || dw != g_uiFirstDepthWrite) {
-        ++g_uiEntryDriftCount;
-    }
+    ++g_uiDrawFrames;
 }
 
 // Called per replayed hudBatch_ draw (kind: 0=quad,1=line,2=tri,3=text).
@@ -1160,51 +861,11 @@ extern "C" unsigned long mc2_ui_pass_draw_quads()        { return g_uiDrawQuad; 
 extern "C" unsigned long mc2_ui_pass_draw_lines()        { return g_uiDrawLine;  }
 extern "C" unsigned long mc2_ui_pass_draw_tris()         { return g_uiDrawTri;   }
 extern "C" unsigned long mc2_ui_pass_draw_text()         { return g_uiDrawText;  }
-extern "C" unsigned long mc2_ui_pass_entry_samples()     { return g_uiEntrySamples;    }
-extern "C" unsigned long mc2_ui_pass_entry_colormask()   { return g_uiEntryColorMask;  }
-extern "C" unsigned long mc2_ui_pass_entry_depthfunc()   { return g_uiEntryDepthFunc;  }
-extern "C" unsigned long mc2_ui_pass_entry_blend()       { return g_uiEntryBlend;      }
-extern "C" unsigned long mc2_ui_pass_entry_depthwrite()  { return g_uiEntryDepthWrite; }
-extern "C" unsigned long mc2_ui_pass_entry_drift()       { return g_uiEntryDriftCount; }
 
-// UI-PASS-MODEL-1: OBSERVE-ONLY UI ambient guard. Samples the UI pass entry ambient
-// (same read-only glGet helpers as the guard/measure) and compares against the now-declared
-// UI row in kPassAmbient[] via the pure compareAmbient() + the viewport axis. Counts
-// divergences into g_uiAmbientMismatchCount; NEVER aborts and NEVER changes control flow or
-// GL state. This is the runtime cross-check that promotes UI DO_NOT_MODEL -> modeled: the
-// ambient guard now VERIFIES UI entry state every frame instead of skipping it. Called at UI
-// pass entry (flushHUDBatch, after pp->endScene binds FB0 + fullscreen viewport, after the
-// VAO rebind) — the exact point UI-PASS-DRAWCOUNT-AMBIENT-MEASURE-1 sampled. Kept observe-only
-// (its own counter, non-fatal) until verified 0 across all tier1, per MEASURE-THEN-ENFORCE.
-extern "C" void mc2_ui_pass_check_ambient() {
-    const RenderCore::framegraph::AmbientContract* decl =
-        RenderCore::framegraph::findAmbient(RenderCore::RenderPassId::UI);
-    if (!decl) return;
-    ++g_uiAmbientSamples;
-    RenderCore::framegraph::AmbientSample live;
-    live.colorMask  = sampleColorMask();
-    live.depthFunc  = sampleDepthFunc();
-    live.blend      = sampleBlend();
-    live.depthWrite = sampleDepthWrite();
-    live.viewport   = sampleViewport();
-    const RenderCore::framegraph::AmbientMismatch mm =
-        RenderCore::framegraph::compareAmbient(*decl, live);
-    if (mm.any()) {
-        ++g_uiAmbientMismatchCount;
-        static unsigned s_uiLogged = 0;
-        if (s_uiLogged < 32u) {
-            ++s_uiLogged;
-            mc2::fmt::print_err("[UI_AMBIENT_GUARD] phase=begin pass=\"UI\" cmMiss={:d} dfMiss={:d} blMiss={:d} dwMiss={:d} vpMiss={:d} (decl cm={:d} df={:d} bl={:d} dw={:d} vp={:d} | live cm={:d} df={:d} bl={:d} dw={:d} vp={:d}) [observe-only]\n", mc2::fmt::as_i32(static_cast<int>(mm.colorMask)), mc2::fmt::as_i32(static_cast<int>(mm.depthFunc)), mc2::fmt::as_i32(static_cast<int>(mm.blend)), mc2::fmt::as_i32(static_cast<int>(mm.depthWrite)), mc2::fmt::as_i32(static_cast<int>(mm.viewport)), mc2::fmt::as_i32(static_cast<int>(decl->colorMaskOnEntry)), mc2::fmt::as_i32(static_cast<int>(decl->depthFunc)), mc2::fmt::as_i32(static_cast<int>(decl->blend)), mc2::fmt::as_i32(static_cast<int>(decl->depthWrite)), mc2::fmt::as_i32(static_cast<int>(decl->viewport)), mc2::fmt::as_i32(static_cast<int>(live.colorMask)), mc2::fmt::as_i32(static_cast<int>(live.depthFunc)), mc2::fmt::as_i32(static_cast<int>(live.blend)), mc2::fmt::as_i32(static_cast<int>(live.depthWrite)), mc2::fmt::as_i32(static_cast<int>(live.viewport)));
-            fflush(stderr);
-        }
-        // Intentionally NO abort() — observe-only until verified 0 across all tier1.
-    }
-}
-extern "C" unsigned long mc2_ui_pass_ambient_samples()   { return g_uiAmbientSamples;       }
-extern "C" unsigned long mc2_ui_pass_ambient_mismatches() { return g_uiAmbientMismatchCount; }
+extern "C" unsigned long mc2_ui_pass_draw_frames() { return g_uiDrawFrames; }
 
 void beginPass(RenderCore::RenderPassId id) {
-    ambientProbeAtPassBegin(id);   // runs before order gate
+    validateTargetAtPassBegin(id);   // runs before order gate
     if (!s_frame.orderEnabled) return;
     const RenderCore::RenderPassContract* c = findPassContract(id);
     if (!c) return;
@@ -1380,8 +1041,7 @@ uint32_t getPassScopeViolationCount() {
 // knownEarly terrain handling, body-owned state setup, and call order are undisturbed.
 
 // Process-lifetime counters in the same anonymous namespace block so they share
-// visibility with sampleColorMask/sampleDepthFunc/sampleBlend/sampleDepthWrite
-// (all anonymous-namespace members of this TU are in the same unnamed namespace).
+// visibility across the CPU/native executor helpers in this translation unit.
 namespace {
 
 bool topLevelExecutorEnabled() {
@@ -1391,7 +1051,7 @@ bool topLevelExecutorEnabled() {
 }
 
 // g_validatedTopLevel: End reached (begin+end structurally complete) — optimistic count.
-// g_topLevelFailures: ambient or FBO mismatch, or glGetError != NO_ERROR.
+// g_topLevelFailures: missing native target or unhealthy Vulkan context.
 // g_skippedDeferred: deferred pass Begin calls seen (Shadow/Mech/Water/VFX/UI).
 unsigned long g_validatedTopLevel  = 0;
 unsigned long g_topLevelFailures   = 0;
@@ -1410,98 +1070,42 @@ bool isTopLevelExecutorEnabled() {
 
 void executorOwnBeginTopLevel(PassIdentity passId, const char* callerHint) {
     if (!topLevelExecutorEnabled()) return;
-
-    const RenderCore::RenderPassId id = toRenderPassId(passId);
-    const RenderCore::framegraph::TopLevelPassContract* c =
-        RenderCore::framegraph::findTopLevelExecutorPass(id);
-    if (!c) {
-        // Deferred pass (Shadow/Mech/Water/VFX/UI) — count but do nothing.
-        ++g_skippedDeferred;
-        return;
+    const auto id=toRenderPassId(passId);
+    const auto* c=RenderCore::framegraph::findTopLevelExecutorPass(id);
+    if (!c) { ++g_skippedDeferred; return; }
+    if (c->validateNativeContext && !mc2vk::nativeRenderHealthy()) {
+        ++g_topLevelFailures;
+        if (g_topLevelFailures<=kMaxTopLevelFailureLog)
+            mc2::fmt::print_err("[EXECUTOR_TOPLEVEL v1] BEGIN FAIL nativeContext pass={} hint={}\n",mc2::fmt::safe(c->note),mc2::fmt::safe(callerHint ? callerHint : "?"));
     }
-
-    // --- Ambient precondition (ONLY where declared, reusing same sampler helpers) ---
-    if (c->validateAmbient) {
-        if (const RenderCore::framegraph::AmbientContract* decl =
-                RenderCore::framegraph::findAmbient(id)) {
-            RenderCore::framegraph::AmbientSample live;
-            live.colorMask  = sampleColorMask();
-            live.depthFunc  = sampleDepthFunc();
-            live.blend      = sampleBlend();
-            live.depthWrite = sampleDepthWrite();
-            const RenderCore::framegraph::AmbientMismatch mm =
-                RenderCore::framegraph::compareAmbient(*decl, live);
-            if (mm.any()) {
-                ++g_topLevelFailures;
-                if (g_topLevelFailures <= kMaxTopLevelFailureLog)
-                    mc2::fmt::print_err("[EXECUTOR_TOPLEVEL v1] BEGIN FAIL ambient pass={} hint={} cmMiss={:d} dfMiss={:d} dwMiss={:d} failures={:d}\n", mc2::fmt::safe(c->note), mc2::fmt::safe(callerHint ? callerHint : "?"), mc2::fmt::as_i32(static_cast<int>(mm.colorMask)), mc2::fmt::as_i32(static_cast<int>(mm.depthFunc)), mc2::fmt::as_i32(static_cast<int>(mm.depthWrite)), mc2::fmt::as_u32(g_topLevelFailures));
-            }
-        }
+    const auto target=RenderCore::framegraph::declaredFboTarget(id);
+    if (c->validateNativeTarget && target!=RenderCore::RenderResourceId::Unknown && !mc2vk::nativeRenderTargetAvailable(target)) {
+        ++g_topLevelFailures;
+        if (g_topLevelFailures<=kMaxTopLevelFailureLog)
+            mc2::fmt::print_err("[EXECUTOR_TOPLEVEL v1] BEGIN FAIL nativeTarget pass={} hint={} target={:d}\n",mc2::fmt::safe(c->note),mc2::fmt::safe(callerHint ? callerHint : "?"),mc2::fmt::as_u32(unsigned(target)));
     }
-
-    // --- FBO precondition (ONLY where declared, reusing same FBO ledger helpers) ---
-    if (c->validateFbo) {
-        const RenderCore::RenderResourceId fboDecl =
-            RenderCore::framegraph::declaredFboTarget(id);
-        if (fboDecl != RenderCore::RenderResourceId::Unknown) {
-            GLint bound = 0;
-            glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &bound);
-            const RenderCore::RenderResourceId actual =
-                RenderCore::framegraph::fboLedger().resolve(static_cast<unsigned>(bound));
-            if (RenderCore::framegraph::fboMismatch(fboDecl, actual)) {
-                ++g_topLevelFailures;
-                if (g_topLevelFailures <= kMaxTopLevelFailureLog)
-                    mc2::fmt::print_err("[EXECUTOR_TOPLEVEL v1] BEGIN FAIL fbo pass={} hint={} declFbo={:d} actualFbo={:d} boundFbo={:d} failures={:d}\n", mc2::fmt::safe(c->note), mc2::fmt::safe(callerHint ? callerHint : "?"), mc2::fmt::as_u32(static_cast<unsigned>(fboDecl)), mc2::fmt::as_u32(static_cast<unsigned>(actual)), mc2::fmt::as_i32(static_cast<int>(bound)), mc2::fmt::as_u32(g_topLevelFailures));
-            }
-        }
-    }
-
-    // PIN INVARIANT: no GL state change, no reorder, no scheduling.
-    // The body runs UNCHANGED between this call and executorOwnEndTopLevel.
 }
 
 void executorOwnEndTopLevel(PassIdentity passId, const char* callerHint) {
     if (!topLevelExecutorEnabled()) return;
-
-    const RenderCore::RenderPassId id = toRenderPassId(passId);
-    const RenderCore::framegraph::TopLevelPassContract* c =
-        RenderCore::framegraph::findTopLevelExecutorPass(id);
-    if (!c) return;  // deferred pass; Begin already counted it
-
-    // --- Postcondition: glGetError must be GL_NO_ERROR ---
-    {
-        const GLenum err = glGetError();
-        if (err != GL_NO_ERROR) {
-            ++g_topLevelFailures;
-            if (g_topLevelFailures <= kMaxTopLevelFailureLog)
-                mc2::fmt::print_err("[EXECUTOR_TOPLEVEL v1] END FAIL glGetError pass={} hint={} err=0x{:x} failures={:d}\n", mc2::fmt::safe(c->note), mc2::fmt::safe(callerHint ? callerHint : "?"), mc2::fmt::as_u32(static_cast<unsigned>(err)), mc2::fmt::as_u32(g_topLevelFailures));
-            // Clear the error state so downstream code doesn't trip on our sample.
-            while (glGetError() != GL_NO_ERROR) {}
-        }
+    const auto id=toRenderPassId(passId);
+    const auto* c=RenderCore::framegraph::findTopLevelExecutorPass(id);
+    if (!c) return;
+    if (!mc2vk::nativeRenderHealthy()) {
+        ++g_topLevelFailures;
+        if (g_topLevelFailures<=kMaxTopLevelFailureLog)
+            mc2::fmt::print_err("[EXECUTOR_TOPLEVEL v1] END FAIL nativeContext pass={} hint={}\n",mc2::fmt::safe(c->note),mc2::fmt::safe(callerHint ? callerHint : "?"));
     }
-
-    // --- FBO postcondition (ONLY where declared) ---
-    if (c->validateFbo) {
-        const RenderCore::RenderResourceId fboDecl =
-            RenderCore::framegraph::declaredFboTarget(id);
-        if (fboDecl != RenderCore::RenderResourceId::Unknown) {
-            GLint bound = 0;
-            glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &bound);
-            const RenderCore::RenderResourceId actual =
-                RenderCore::framegraph::fboLedger().resolve(static_cast<unsigned>(bound));
-            if (RenderCore::framegraph::fboMismatch(fboDecl, actual)) {
-                ++g_topLevelFailures;
-                if (g_topLevelFailures <= kMaxTopLevelFailureLog)
-                    mc2::fmt::print_err("[EXECUTOR_TOPLEVEL v1] END FAIL fbo pass={} hint={} declFbo={:d} actualFbo={:d} boundFbo={:d} failures={:d}\n", mc2::fmt::safe(c->note), mc2::fmt::safe(callerHint ? callerHint : "?"), mc2::fmt::as_u32(static_cast<unsigned>(fboDecl)), mc2::fmt::as_u32(static_cast<unsigned>(actual)), mc2::fmt::as_i32(static_cast<int>(bound)), mc2::fmt::as_u32(g_topLevelFailures));
-            }
-        }
+    const auto target=RenderCore::framegraph::declaredFboTarget(id);
+    if (c->validateNativeTarget && target!=RenderCore::RenderResourceId::Unknown && !mc2vk::nativeRenderTargetAvailable(target)) {
+        ++g_topLevelFailures;
+        if (g_topLevelFailures<=kMaxTopLevelFailureLog)
+            mc2::fmt::print_err("[EXECUTOR_TOPLEVEL v1] END FAIL nativeTarget pass={} hint={} target={:d}\n",mc2::fmt::safe(c->note),mc2::fmt::safe(callerHint ? callerHint : "?"),mc2::fmt::as_u32(unsigned(target)));
     }
-
-    // Count every completed end (optimistic; failures separately surfaced in dump).
-    // Matches the sub-stage island model in gos_postprocess.cpp.
     ++g_validatedTopLevel;
-    // PIN INVARIANT: no GL state change, no reorder, no scheduling.
 }
+
+extern "C" unsigned long mc2_framegraph_executor_top_level_failures() { return g_topLevelFailures; }
 
 extern "C" unsigned long mc2_framegraph_executor_validated_top_level_passes() {
     return g_validatedTopLevel;

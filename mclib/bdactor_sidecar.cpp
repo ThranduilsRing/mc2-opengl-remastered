@@ -1,8 +1,7 @@
 // BldgAppearance / TreeAppearance: building PBR sidecar loaders, footprint shadow and override render-shape texture residency.
 // Declared in the class headers; shared names in bdactor_internal.h.
 #include "bdactor_internal.h"
-#include <algorithm>
-#include <string_view>
+#include "texture_assets.h"
 #include "mc2fmt.h"
 
 bool buildingPbrGateEnabled()
@@ -419,7 +418,7 @@ void LoadOverrideRenderShapeTextures(TG_TypeMultiShape* rs)
 		{
 			// "a_"-prefixed names are the engine's alpha-channel convention.
 			const bool alpha = (S_strnicmp(txmName, "a_", 2) == 0);
-			DWORD gosTextureHandle = mcTextureManager->loadTexture(
+			DWORD gosTextureHandle = mc2::textures::load(
 				textureName,
 				alpha ? gos_Texture_Alpha : gos_Texture_Solid,
 				gosHint_DisableMipmap | gosHint_DontShrink);

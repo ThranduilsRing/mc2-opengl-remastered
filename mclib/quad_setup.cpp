@@ -1,6 +1,7 @@
 // TerrainQuad: the editor-only legacy per-quad texture setup (setupTextures) with the terrain recipe cache and the projectZ overlay emit.
 // Declared in the class headers; shared names in quad_internal.h.
 #include "quad_internal.h"
+#include "texture_assets.h"
 #include "mc2fmt.h"
 
 
@@ -257,14 +258,14 @@ void TerrainQuad::setupTextures (void)
 	{
 		FullPathFileName mineTextureName;
 		mineTextureName.init(texturePath,"defaults" PATH_SEPARATOR "mine_00",".tga");
-		mineTextureHandle = mcTextureManager->loadTexture(mineTextureName,gos_Texture_Alpha,gosHint_DisableMipmap | gosHint_DontShrink, 0, 0x1);
+		mineTextureHandle = mc2::textures::load(mineTextureName,gos_Texture_Alpha,gosHint_DisableMipmap | gosHint_DontShrink, 0, 0x1);
 	}
 
 	if (blownTextureHandle == 0xffffffff)
 	{
 		FullPathFileName mineTextureName;
 		mineTextureName.init(texturePath,"defaults" PATH_SEPARATOR "minescorch_00",".tga");
-		blownTextureHandle = mcTextureManager->loadTexture(mineTextureName,gos_Texture_Alpha,gosHint_DisableMipmap | gosHint_DontShrink, 0, 0x1);
+		blownTextureHandle = mc2::textures::load(mineTextureName,gos_Texture_Alpha,gosHint_DisableMipmap | gosHint_DontShrink, 0, 0x1);
 	}
 
 	// quadList is allocated via Malloc+memset(0), not C++ new, so TerrainQuad's

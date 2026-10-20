@@ -1,11 +1,9 @@
-// terrain_field_store.h - the CPU copy of the terrain fields both backends draw from.
+// terrain_field_store.h - CPU-owned terrain inputs for native rendering.
 //
 // WHAT: the height field (mapSide^2 floats, whole-map and patch writes), the per-vertex cement words, and the 4x visual height
 // bake with its mip maxes, each with a version that changes on every write. Versions are unique for the process (0 = never
 // written), so a recreated store never matches a version a consumer copied from the previous one.
-// WHY: these arrived as CPU arrays and were kept only inside GL SSBOs, so the Vulkan terrain island had to read the SSBOs back
-// to draw. The store keeps the bytes; the GL upload and the Vulkan snapshot both read it, and a patch write (crater deform)
-// now changes the version the Vulkan island keys its re-copy on. No GL here.
+// Patch writes (including craters) change the version used by native consumers to refresh their copies.
 #pragma once
 
 #include <cstddef>
@@ -63,8 +61,14 @@ public:
     int visualMipFloats() const { return visualMipFloats_; }
     uint64_t visualHeightVersion() const { return visualVersion_; }
 
-    // Clear the previous mission's shore data. The GL texture keeps its name; mission
-    // draw paths must not read it while the store is empty.
+    bool setTerrainTypes(const float* types, int side);
+    bool setControlMap(const uint8_t* rgba, int side);
+    bool setOverlay(const uint8_t* rgba, int width, int height);
+    const FieldImage<float>& terrainTypes() const { return terrainTypes_; }
+    const FieldImage<uint8_t>& controlMap() const { return controlMap_; }
+    const FieldImage<uint8_t>& overlay() const { return overlay_; }
+
+    // Clear the previous mission's shore data; native draws must not read an empty field.
     void clearShoreFields();
 
     // The water shore sidecars of the loaded mission: the shoreline mask (RGBA8: signed distance, wet, foam, valid) and the
@@ -96,6 +100,8 @@ private:
     int visualSide_ = 0;
     int visualMipFloats_ = 0;
     uint64_t visualVersion_ = 0;
+    FieldImage<float> terrainTypes_;
+    FieldImage<uint8_t> controlMap_, overlay_;
     FieldImage<uint8_t> shorelineMask_;
     FieldImage<float> waterShoreHeight_;
     WaterShoreHeightKind waterShoreHeightKind_ = WaterShoreHeightKind::RawHeight;

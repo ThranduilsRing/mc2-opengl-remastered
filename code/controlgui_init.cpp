@@ -1,6 +1,7 @@
 // ControlGui: button, static and rect initialisation from the .fit files and resolution swap.
 // Declared in the class headers; shared names in controlgui_internal.h.
 #include "controlgui_internal.h"
+#include "../mclib/texture_assets.h"
 #include "mc2fmt.h"
 #include "../GameOS/gameos/utils/mc2log.h"
 
@@ -96,11 +97,11 @@ void ControlButton::initButtons( FitIniFile& buttonFile, long buttonCount, Contr
 			strcat( file, Buttons[i].data->fileName );
 			strcat( file, ".tga" );
 			S_strlwr( file );
-			int ID = mcTextureManager->loadTexture( file, gos_Texture_Alpha, 0, 0, 0x2 );
+			int ID = mc2::textures::load( file, gos_Texture_Alpha, 0, 0, 0x2 );
 			Buttons[i].data->textureHandle = ID;
 			DWORD logicalWidth = 0;
 			DWORD logicalHeight = 0;
-			if ( mcTextureManager->tryGetTextureLogicalSize( ID, logicalWidth, logicalHeight ) )
+			if ( mc2::textures::logicalSize( ID, logicalWidth, logicalHeight ) )
 			{
 				Buttons[i].data->fileWidth = logicalWidth;
 				Buttons[i].data->fileHeight = logicalHeight;
@@ -590,7 +591,7 @@ void ControlGui::swapResolutions( int resolutionX, int resolutionY )
 		for ( int i = 0; i < buttonCount; i++ )
 		{
 			if ( buttonData[i].textureHandle )
-				mcTextureManager->releaseNode( buttonData[i].textureHandle );
+				mc2::textures::release( buttonData[i].textureHandle );
 		}
 	}
 
@@ -599,7 +600,7 @@ void ControlGui::swapResolutions( int resolutionX, int resolutionY )
 		for ( int i = 0; i < LAST_VEHICLE; i++ )
 		{
 			if ( vehicleData[i].textureHandle )
-				mcTextureManager->releaseNode( vehicleData[i].textureHandle );
+				mc2::textures::release( vehicleData[i].textureHandle );
 		}
 	}
 

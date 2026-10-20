@@ -4,6 +4,7 @@
 //===========================================================================//
 
 #include "tgl_load_guard.h"
+#include "texture_assets.h"
 
 #include "msl.h"        // TG_TypeMultiShape + TG_TypeShape + tglHeap
 #include "txmmgr.h"     // mcTextureManager (placeholder texture registration)
@@ -134,7 +135,7 @@ void populatePlaceholder(TG_TypeMultiShape* shape)
 			DWORD texels[16];
 			for (int i = 0; i < 16; ++i)
 				texels[i] = 0xffff00ff;   // A=ff R=ff G=00 B=ff
-			s_magentaHandle = mcTextureManager->textureFromMemory(
+			s_magentaHandle = mc2::textures::fromPixels(
 				texels, gos_Texture_Solid,
 				gosHint_DisableMipmap | gosHint_DontShrink, 4);
 		}

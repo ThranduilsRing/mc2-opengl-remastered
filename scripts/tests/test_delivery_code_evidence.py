@@ -60,3 +60,36 @@ def test_relocation_cannot_replace_evidence_at_the_introducing_commit(monkeypatc
     ]}
     problems = delivery.check_integrity(fix)
     assert len(problems) == 1 and "absent from old.cpp at introducer" in problems[0]
+
+
+def test_backend_data_alternatives_require_a_semantic_match(tmp_path):
+    fix = {"data": [{"kind": "file", "path": "old.frag", "needle": "old_pool()",
+                     "native_backend_needle": "NATIVE_HOST",
+                     "alternatives": [{"kind": "file", "path": "native.frag",
+                                       "needle": "native_pool()"}]}]}
+    inst = {"deploy": str(tmp_path), "blob": b"NATIVE_HOST"}
+    assert delivery.grade_data(fix, inst)["state"] == delivery.NO
+    (tmp_path / "native.frag").write_text("stale shader", encoding="utf-8")
+    assert delivery.grade_data(fix, inst)["state"] == delivery.NO
+    (tmp_path / "native.frag").write_text("native_pool()", encoding="utf-8")
+    assert delivery.grade_data(fix, inst)["state"] == delivery.YES
+    (tmp_path / "native.frag").unlink()
+    (tmp_path / "old.frag").write_text("old_pool()", encoding="utf-8")
+    # A native binary cannot pass on unused legacy data left in the install.
+    assert delivery.grade_data(fix, inst)["state"] == delivery.NO
+    inst["blob"] = b"legacy host"
+    assert delivery.grade_data(fix, inst)["state"] == delivery.YES
+    inst["blob"] = None
+    assert delivery.grade_data(fix, inst)["state"] == delivery.UNK
+
+
+def test_backend_data_integrity_accepts_only_an_existing_backend(monkeypatch):
+    monkeypatch.setattr(delivery, "commit_exists", lambda sha: True)
+    fix = {"commit": "introducer", "data": [
+        {"kind": "file", "path": "old.frag", "alternatives": [
+            {"kind": "file", "path": "native.frag", "needle": "native_pool()"}]}]}
+    monkeypatch.setattr(delivery, "show", lambda sha, path:
+                        "native_pool()" if path == "native.frag" else None)
+    assert delivery.check_integrity(fix) == []
+    monkeypatch.setattr(delivery, "show", lambda sha, path: None)
+    assert len(delivery.check_integrity(fix)) == 1

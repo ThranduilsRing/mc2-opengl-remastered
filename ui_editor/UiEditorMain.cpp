@@ -1,3 +1,4 @@
+#include "../tools/common/tool_vk_gpu.h"
 /***************************************************************
  * FILENAME: UiEditorMain.cpp
  * DESCRIPTION: Standalone ImGui shell for the MC2R UI Editor.
@@ -50,7 +51,7 @@
 
 #include "imgui.h"
 #include "imgui_internal.h"
-#include "backends/imgui_impl_opengl3.h"
+#include "backends/imgui_impl_vulkan.h"
 #include "backends/imgui_impl_sdl2.h"
 
 #include "UiEditorFitLoader.h"
@@ -58,7 +59,6 @@
 #include "UiEditorVersion.h"
 
 #include <SDL.h>
-#include <SDL_opengl.h>
 
 #include <algorithm>
 #include <cmath>
@@ -7282,13 +7282,6 @@ int main(int, char**)
 		return 1;
 	}
 
-	SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, 0);
-	SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
-	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
-	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
-	SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
-	SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
-	SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
 
 	SDL_Window* window = SDL_CreateWindow(
 		UiEditorVersion_GetWindowTitle(),
@@ -7296,7 +7289,7 @@ int main(int, char**)
 		SDL_WINDOWPOS_CENTERED,
 		1280,
 		720,
-		SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
+		SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI | (toolvk::captureRequested() ? SDL_WINDOW_HIDDEN : 0));
 
 	if (!window)
 	{
@@ -7304,18 +7297,6 @@ int main(int, char**)
 		SDL_Quit();
 		return 1;
 	}
-
-	SDL_GLContext glContext = SDL_GL_CreateContext(window);
-	if (!glContext)
-	{
-		std::fprintf(stderr, "SDL_GL_CreateContext failed: %s\n", SDL_GetError());
-		SDL_DestroyWindow(window);
-		SDL_Quit();
-		return 1;
-	}
-
-	SDL_GL_MakeCurrent(window, glContext);
-	SDL_GL_SetSwapInterval(1);
 
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
@@ -7327,12 +7308,22 @@ int main(int, char**)
 
 	ApplyEditorStyle();
 	LoadFontCatalog();
-	UiEditorImageCache_Initialize();
-	LoadEditorConfig();
-	LoadDefaultLayout();
 
-	ImGui_ImplSDL2_InitForOpenGL(window, glContext);
-	ImGui_ImplOpenGL3_Init("#version 130");
+
+    toolvk::Shell native;
+    const bool platformReady = ImGui_ImplSDL2_InitForVulkan(window);
+    if (!platformReady || !toolvk::init(native, window, "MC2 UI Editor")) {
+        toolvk::shutdown(native);
+        if (platformReady) ImGui_ImplSDL2_Shutdown();
+        ImGui::DestroyContext(); SDL_DestroyWindow(window); SDL_Quit(); return 1;
+    }
+    if (!toolvk::gpuInit(&native) || !UiEditorImageCache_Initialize()) {
+        toolvk::gpuShutdown(); toolvk::shutdown(native); ImGui_ImplSDL2_Shutdown();
+        ImGui::DestroyContext(); SDL_DestroyWindow(window); SDL_Quit(); return 1;
+    }
+    native.clear[0] = 0.06f; native.clear[1] = 0.065f; native.clear[2] = 0.075f; native.clear[3] = 1.0f;
+    LoadEditorConfig();
+    LoadDefaultLayout();
 
 	bool running = true;
 	while (running)
@@ -7349,7 +7340,9 @@ int main(int, char**)
 				running = false;
 		}
 
-		ImGui_ImplOpenGL3_NewFrame();
+        if (!toolvk::begin(native)) { SDL_Delay(10); continue; }
+        UiEditorImageCache_BeginFrame();
+        ImGui_ImplVulkan_NewFrame();
 		ImGui_ImplSDL2_NewFrame();
 		ImGui::NewFrame();
 
@@ -7360,29 +7353,23 @@ int main(int, char**)
 
 		ImGui::Render();
 
-		int displayW = 0;
-		int displayH = 0;
-		SDL_GL_GetDrawableSize(window, &displayW, &displayH);
-
-		glViewport(0, 0, displayW, displayH);
-		glClearColor(0.06f, 0.065f, 0.075f, 1.0f);
-		glClear(GL_COLOR_BUFFER_BIT);
-
-		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-		SDL_GL_SwapWindow(window);
+        if (toolvk::end(native)) running = false;
+        if (native.submitFailed) running = false;
 	}
 
 	SaveEditorConfig();
 
+    const bool failed = native.submitFailed || toolvk::validationErrors() != 0
+        || (toolvk::captureRequested() && !native.captureSucceeded);
 	UiEditorImageCache_Shutdown();
 
-	ImGui_ImplOpenGL3_Shutdown();
+    toolvk::gpuShutdown();
+    toolvk::shutdown(native);
 	ImGui_ImplSDL2_Shutdown();
 	ImGui::DestroyContext();
 
-	SDL_GL_DeleteContext(glContext);
 	SDL_DestroyWindow(window);
 	SDL_Quit();
 
-	return 0;
+	return failed || toolvk::validationErrors() != 0 ? 1 : 0;
 }

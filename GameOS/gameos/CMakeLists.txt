@@ -16,7 +16,6 @@ set(SOURCES ${SOURCES}
     gameos_graphics_texture.cpp
     texture_decode.cpp
     terrain_field_store.cpp
-    gameos_graphics_light_ssbo.cpp
     gameos_graphics_params.cpp
     gameos_res.cpp
     MC2Strings.cpp
@@ -25,12 +24,11 @@ set(SOURCES ${SOURCES}
     gameos_debugging.cpp
     gameos_sound.cpp
     gos_render.cpp
-    gos_render_context.cpp
     render_frame_driver.cpp
     gos_hdri.cpp
     gos_postprocess.cpp
     gos_postprocess_gates.cpp
-    gos_postprocess_fbo.cpp
+    gos_postprocess_targets.cpp
     gos_postprocess_skybox.cpp
     gos_postprocess_shadow.cpp
     gos_postprocess_executor.cpp
@@ -52,14 +50,12 @@ set(SOURCES ${SOURCES}
     gos_particle_bridge_tube.cpp
     gos_vfx_mesh_bridge.cpp
     gos_vegetation.cpp
-    gos_cardcloud_sim.cpp
     gos_materials.cpp
     gos_mech_batcher.cpp
     gos_mech_batcher_geometry.cpp
     gos_mech_batcher_flush.cpp
     gos_mech_batcher_api.cpp
     gos_object_recon_tracy.cpp
-    gos_terrain_patch_stream.cpp
     gos_terrain_water_stream.cpp
     gos_terrain_indirect.cpp
     gos_terrain_indirect_diag.cpp
@@ -69,7 +65,6 @@ set(SOURCES ${SOURCES}
     gos_terrain_indirect_mine_decal.cpp
     gos_terrain_surface.cpp
     gos_terrain_lighting.cpp
-    gos_terrain_height_tex.cpp
     gos_terrain_lod_chunk.cpp
     gos_terrain_lod_chunk_gates.cpp
     gos_terrain_lod_chunk_matalbedo.cpp
@@ -94,24 +89,21 @@ set(SOURCES ${SOURCES}
     gos_font.cpp
     gos_input.cpp
     asset_scale.cpp
-    gos_gpu_sync.cpp
-    gos_cluster_depth_pyramid.cpp
-    gos_lightgrid_build.cpp
-    gos_postprocess_blur.cpp
     gpu_driven_common.cpp
     gpu_cull_record.cpp
     gpu_cull_substrate.cpp
     gpu_cull_parity.cpp
     gpu_cull_compute.cpp
+    vk_actor_cull_native.cpp
+    vk_scene_readback.cpp
+    native_render_state.cpp
     gpu_cull_readback.cpp
     render_snapshot.cpp
     gos_render_pass_timer.cpp
     vk_render_pass_timer.cpp
     gos_frame_pass_stats.cpp
     draw_packet_emitter.cpp
-    pipeline_binder.cpp
-    view_uniforms_gl.cpp
-    gpu_buffer_gl.cpp
+    view_registry.cpp
     debug_state_dump.cpp
     dbg_asset_globals.cpp
     diagnostic_trace.cpp
@@ -122,11 +114,9 @@ set(SOURCES ${SOURCES}
     render_backend_select.cpp
 
     utils/stream.cpp
-    utils/gl_utils.cpp
-    utils/gl_render_constants.cpp
+    utils/color_utils.cpp
     utils/Image.cpp
     utils/mc2log.cpp
-    utils/shader_builder.cpp
     utils/vec.cpp
     utils/timing.cpp
     ${CMAKE_SOURCE_DIR}/3rdparty/tracy/TracyClient.cpp

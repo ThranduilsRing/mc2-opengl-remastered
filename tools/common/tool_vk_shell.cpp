@@ -266,6 +266,33 @@ bool begin(Shell& s) {
     return true;
 }
 
+// Preserve the editor proof's 24-bit bottom-up BMP artifact contract.
+static bool writeBmp(const char* path, const uint8_t* pixels, uint32_t w, uint32_t h, bool bgra) {
+    if (!pixels || w == 0 || h == 0) return false;
+    const size_t stride = (size_t(w) * 3 + 3) & ~size_t(3);
+    std::vector<uint8_t> bmp(54 + stride * h, 0);
+    if (bmp.size() > UINT32_MAX) return false;
+    const auto put = [&](size_t offset, uint32_t value) {
+        for (unsigned i = 0; i < 4; ++i) bmp[offset + i] = uint8_t(value >> (i * 8));
+    };
+    bmp[0] = 'B'; bmp[1] = 'M'; bmp[26] = 1; bmp[28] = 24;
+    put(2, uint32_t(bmp.size())); put(10, 54); put(14, 40);
+    put(18, w); put(22, h); put(34, uint32_t(stride * h));
+    for (uint32_t y = 0; y < h; ++y) {
+        const uint8_t* src = pixels + size_t(h - 1 - y) * w * 4;
+        uint8_t* dst = bmp.data() + 54 + size_t(y) * stride;
+        for (uint32_t x = 0; x < w; ++x) {
+            dst[x * 3] = src[x * 4 + (bgra ? 0 : 2)];
+            dst[x * 3 + 1] = src[x * 4 + 1];
+            dst[x * 3 + 2] = src[x * 4 + (bgra ? 2 : 0)];
+        }
+    }
+    FILE* file = std::fopen(path, "wb");
+    if (!file) return false;
+    const bool written = std::fwrite(bmp.data(), 1, bmp.size(), file) == bmp.size();
+    return std::fclose(file) == 0 && written;
+}
+
 bool end(Shell& s) {
     if (!s.frameOpen) return false;
     VkClearValue cv{};
@@ -280,6 +307,7 @@ bool end(Shell& s) {
 
     ++s.frameNo;
     const bool capture = !s.capturePath.empty() && s.frameNo >= s.captureFrame;
+    if (capture) s.captureSucceeded = false;
     VkBuffer rbBuf = VK_NULL_HANDLE;
     VkDeviceMemory rbMem = VK_NULL_HANDLE;
     VkDeviceSize bytes = (VkDeviceSize)s.extent.width * s.extent.height * 4;
@@ -341,11 +369,15 @@ bool end(Shell& s) {
     bool quit = false;
     if (capture) {
         void* mapped = nullptr;
-        vkWaitForFences(s.dev, 1, &s.fence, VK_TRUE, UINT64_MAX);
-        vkMapMemory(s.dev, rbMem, 0, bytes, 0, &mapped);
-        bool ok = writePng(s.capturePath.c_str(), (const uint8_t*)mapped, s.extent.width, s.extent.height,
-                           s.format == VK_FORMAT_B8G8R8A8_UNORM || s.format == VK_FORMAT_B8G8R8A8_SRGB);
-        vkUnmapMemory(s.dev, rbMem);
+        const bool completed = vkWaitForFences(s.dev, 1, &s.fence, VK_TRUE, UINT64_MAX) == VK_SUCCESS;
+        const bool mappedOk = completed && vkMapMemory(s.dev, rbMem, 0, bytes, 0, &mapped) == VK_SUCCESS;
+        const bool bgra = s.format == VK_FORMAT_B8G8R8A8_UNORM || s.format == VK_FORMAT_B8G8R8A8_SRGB;
+        const bool bmp = s.capturePath.size() >= 4 && s.capturePath.substr(s.capturePath.size() - 4) == ".bmp";
+        const bool ok = mappedOk && (bmp
+            ? writeBmp(s.capturePath.c_str(), static_cast<const uint8_t*>(mapped), s.extent.width, s.extent.height, bgra)
+            : writePng(s.capturePath.c_str(), static_cast<const uint8_t*>(mapped), s.extent.width, s.extent.height, bgra));
+        s.captureSucceeded = ok;
+        if (mappedOk) vkUnmapMemory(s.dev, rbMem);
         vkDestroyBuffer(s.dev, rbBuf, nullptr);
         vkFreeMemory(s.dev, rbMem, nullptr);
         std::printf("[TOOLVK] capture %s %ux%u -> %s\n", ok ? "OK" : "FAILED", s.extent.width, s.extent.height, s.capturePath.c_str());

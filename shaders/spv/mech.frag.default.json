@@ -6,83 +6,99 @@
   "specializationParams": [],
   "artifact": "mech.frag.default.dbbae7d3.spv",
   "spv_dir": "shaders/spv",
-  "source_sha256": "ad9d483684abaf59eadf5d10c944aadd58ccf88fda0f2a0a9e127e851c3138e9",
-  "spirv_sha256": "69e1d4c3294e931429b0f6159e06e7aedb0d1076b027c8ac6778e8edd873dffb",
+  "source_sha256": "f6cff1134dfd4be9737f995e4227d6effd85a2e95aa99a227185ecf9ad94bb91",
+  "spirv_sha256": "d9d82c5bb829b0abf4f2244db215a68a805829043f2b1edc1c6da96f66f7bc91",
   "bindings": {
-    "ubos": [],
+    "ubos": [
+      {
+        "name": "MechFrameUBO",
+        "binding": 0,
+        "set": 0
+      }
+    ],
     "ssbos": [
       {
-        "name": "ObjectLightPool",
-        "binding": 28,
+        "name": "MechPoolLightsVK",
+        "binding": 5,
         "set": 0
       }
     ],
     "samplers": [
       {
-        "name": "u_tex",
+        "name": "uAlbedo",
         "type": "sampler2D",
-        "location": 7,
-        "binding": 0
+        "location": null,
+        "binding": 3
       },
       {
-        "name": "u_pbrNormalTex",
+        "name": "uMechAo",
         "type": "sampler2D",
-        "location": 8,
-        "binding": 0
+        "location": null,
+        "binding": 6
       },
       {
-        "name": "u_pbrOrmTex",
+        "name": "uMechNrm",
         "type": "sampler2D",
-        "location": 9,
-        "binding": 0
-      },
-      {
-        "name": "u_pbrPaintNormalTex",
-        "type": "sampler2D",
-        "location": 10,
-        "binding": 0
-      },
-      {
-        "name": "u_pbrPaintOrmTex",
-        "type": "sampler2D",
-        "location": 11,
-        "binding": 0
+        "location": null,
+        "binding": 7
       }
     ]
   },
   "interface": {
     "inputs": [
       {
-        "name": "v_uv",
-        "location": 0
-      },
-      {
-        "name": "v_litColor",
+        "name": "vNormalGL",
         "location": 1
       },
       {
-        "name": "v_highlightColor",
+        "name": "vUv",
+        "location": 0
+      },
+      {
+        "name": "vImportedMech",
+        "location": 9
+      },
+      {
+        "name": "vLitColor",
         "location": 2
       },
       {
-        "name": "v_normal",
-        "location": 4
+        "name": "vHighlight",
+        "location": 3
       },
       {
-        "name": "v_fogRGB",
-        "location": 3
+        "name": "vTangentGL",
+        "location": 8
+      },
+      {
+        "name": "vMechSunFound",
+        "location": 7
+      },
+      {
+        "name": "vWorldPos",
+        "location": 5
+      },
+      {
+        "name": "vMechSunDirGL",
+        "location": 6
+      },
+      {
+        "name": "vFog",
+        "location": 4
       }
     ],
     "outputs": [
       {
-        "name": "FragColor",
+        "name": "oColor",
         "location": 0
       },
       {
-        "name": "GBuffer1",
+        "name": "oGBuffer1",
         "location": 1
       }
     ]
   },
-  "shaderVariantId": "dbbae7d3535c"
+  "shaderVariantId": "dbbae7d3535c",
+  "language": "glsl",
+  "targetEnv": "vulkan1.3"
 }

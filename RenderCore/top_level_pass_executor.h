@@ -2,7 +2,7 @@
 // SAME-ORDER-EXECUTOR-VALIDATE-1 — pure/constexpr top-level pass executor descriptor.
 //
 // Declares WHICH top-level (frame-order) passes the executor validate-owns and what
-// preconditions to check. Contains NO GL, NO runtime state. The GL-touching runtime
+// preconditions to check. Contains NO GL, NO runtime state. The native-owner runtime
 // wrapper lives in mclib/render_contract.cpp (executorOwnBeginTopLevel /
 // executorOwnEndTopLevel). This header is offline-testable (tests/unit/test_frame_graph.cpp).
 //
@@ -32,8 +32,8 @@ namespace RenderCore { namespace framegraph {
 // All fields are plain bool; no GL, no runtime state.
 struct TopLevelPassContract {
     RenderPassId id;
-    bool         validateAmbient; // check ambient ledger (colorMask/depthFunc/depthWrite) on begin
-    bool         validateFbo;     // check FBO ledger (declared vs live draw FBO) on begin
+    bool         validateNativeContext; // native context/validation health on begin
+    bool         validateNativeTarget; // declared native destination must have a live owner
     const char*  note;            // human-readable label (for log/debug only)
 };
 
@@ -46,68 +46,68 @@ struct TopLevelPassContract {
 static constexpr TopLevelPassContract kTopLevelExecutorPasses[] = {
     {
         /*id*/              RenderPassId::Shadow,
-        /*validateAmbient*/ false,   // native Vulkan owns the shadow state
-        /*validateFbo*/     false,   // native Vulkan owns the shadow images
+        /*validateNativeContext*/ false, // native validation is also checked at pass end
+        /*validateNativeTarget*/     false, // native resource readiness, not ambient framebuffer binding
         /*note*/            "Shadow/gosRenderer_beginDynamicShadowPass",
     },
     {
         /*id*/              RenderPassId::MechOpaque,
-        /*validateAmbient*/ true,   // AmbientContract row: SceneGEqual depthFunc, MainScene viewport
-        /*validateFbo*/     true,   // FBO ledger: MainColor (scene FBO, established by terrain)
+        /*validateNativeContext*/ true, // native validation is also checked at pass end
+        /*validateNativeTarget*/     true, // native resource readiness, not ambient framebuffer binding
         /*note*/            "MechOpaque/GpuMechBatcher_flush",
     },
     {
         /*id*/              RenderPassId::StaticPropOpaque,
-        /*validateAmbient*/ true,   // AmbientContract row exists (SceneGEqual, depthWrite=On)
-        /*validateFbo*/     true,   // FBO ledger declares MainColor target
+        /*validateNativeContext*/ true, // native validation is also checked at pass end
+        /*validateNativeTarget*/     true, // native resource readiness, not ambient framebuffer binding
         /*note*/            "StaticPropOpaque/GpuStaticPropBatcher_flush",
     },
     {
         /*id*/              RenderPassId::Terrain,
-        /*validateAmbient*/ true,   // AmbientContract row exists (SceneGEqual, depthWrite=On, AllOn colorMask)
-        /*validateFbo*/     true,   // FBO ledger declares MainColor target
+        /*validateNativeContext*/ true, // native validation is also checked at pass end
+        /*validateNativeTarget*/     true, // native resource readiness, not ambient framebuffer binding
         /*note*/            "Terrain/gos_TerrainLodChunk_SubmitDrawCommands",
     },
     {
         /*id*/              RenderPassId::TerrainOverlay,
-        /*validateAmbient*/ false,  // no AmbientContract row for TerrainOverlay
-        /*validateFbo*/     true,   // FBO ledger declares MainColor target
+        /*validateNativeContext*/ false, // native validation is also checked at pass end
+        /*validateNativeTarget*/     true, // native resource readiness, not ambient framebuffer binding
         /*note*/            "TerrainOverlay/gosRenderer_drawTerrainOverlays",
     },
     {
         /*id*/              RenderPassId::TerrainDecal,
-        /*validateAmbient*/ false,  // no AmbientContract row for TerrainDecal
-        /*validateFbo*/     true,   // FBO ledger declares MainColor target
+        /*validateNativeContext*/ false, // native validation is also checked at pass end
+        /*validateNativeTarget*/     true, // native resource readiness, not ambient framebuffer binding
         /*note*/            "TerrainDecal/gosRenderer_drawDecals",
     },
     {
         /*id*/              RenderPassId::Water,
-        /*validateAmbient*/ false,   // AmbientContract row: SceneGEqual depthFunc, depthWrite On, MainScene viewport
-        /*validateFbo*/     false,   // FBO ledger declares MainColor target (scene FBO)
+        /*validateNativeContext*/ false, // native validation is also checked at pass end
+        /*validateNativeTarget*/     false, // native resource readiness, not ambient framebuffer binding
         /*note*/            "Water/gosRenderer_renderWaterFastPath",
     },
     {
         /*id*/              RenderPassId::VegetationCards,
-        /*validateAmbient*/ false,  // DRYRUN-OBSERVE-COVERAGE-1: no AmbientContract row
-        /*validateFbo*/     false,  // no declared FBO target for VegetationCards
+        /*validateNativeContext*/ false, // native validation is also checked at pass end
+        /*validateNativeTarget*/     false, // native resource readiness, not ambient framebuffer binding
         /*note*/            "VegetationCards/GosVegetation_flush",
     },
     {
         /*id*/              RenderPassId::VFX,
-        /*validateAmbient*/ false,  // VFX-FBO-ONLY-VALIDATE-1: note seam (gamecam:594) fires
+        /*validateNativeContext*/ false, // native validation is also checked at pass end
                                     // pre-body in a different TU -> ambient not honestly declarable
-        /*validateFbo*/     true,   // FBO ledger declares MainColor (scene HDR FBO bound across whole flush window)
+        /*validateNativeTarget*/     true, // native resource readiness, not ambient framebuffer binding
         /*note*/            "VFX/gamecam_particlesFlush",
     },
     {
         /*id*/              RenderPassId::UI,
-        /*validateAmbient*/ false,  // UI-PASS-MODEL-1: UI now HAS an AmbientContract row and is
+        /*validateNativeContext*/ false, // native validation is also checked at pass end
                                     // verified OBSERVE-ONLY at UI entry (mc2_ui_pass_check_ambient,
                                     // own non-fatal counter). Deliberately NOT routed through this
-                                    // executor validateAmbient path yet — that shares the default-ON
+                                    // executor validateNativeContext path yet — that shares the default-ON
                                     // FATAL g_ambientMismatchCount. Flip to true only after the UI
                                     // observe counter is verified 0 across all tier1 (measure-first).
-        /*validateFbo*/     true,   // FBO ledger declares Backbuffer (default FBO 0, post-composite)
+        /*validateNativeTarget*/     true, // native resource readiness, not ambient framebuffer binding
         /*note*/            "UI/gosRenderer_flushHUDBatch",
     },
 };

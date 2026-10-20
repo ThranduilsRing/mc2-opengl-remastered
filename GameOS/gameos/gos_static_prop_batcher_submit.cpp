@@ -11,7 +11,6 @@ bool GpuStaticPropBatcher::submit(TG_Shape* shape,
                                   uint32_t flags,
                                   uint32_t lightDataIndex) {
     if (!shape || !shape->matchesTypeMaterials() || s_fatalRegistrationFailure) return false;
-    if (s_programLoadFailed) return false;
 
     // TG_Shape::myType is a TG_TypeNodePtr; for SHAPE_NODE leaves it's a TG_TypeShape.
     TG_TypeShape* typeShape = static_cast<TG_TypeShape*>(shape->myType);
@@ -258,7 +257,7 @@ bool GpuStaticPropBatcher::submitMultiShape(TG_MultiShape* multi,
     if (!multi || !multi->usesTypeMaterials() || s_fatalRegistrationFailure) {
         return false;
     }
-    if (s_programLoadFailed || s_staticPropProgram == 0) {
+    if (!s_geometryFinalized) {
         return false;
     }
 

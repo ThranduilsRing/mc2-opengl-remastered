@@ -94,15 +94,10 @@ struct VkResourceContract {
 // data (TerrainVisualHeightSsbo, MechProfileMaterialGpuBuffer), temporal reflection RTs,
 // and pure vertex/index buffers are SKIPPED for v1 (spec §7).
 //
-// Descriptor-class totals below: 1 UniformBuffer, 11 StorageBuffer, 4 CombinedImageSampler.
-// (Inventory Part 1 names 2 core UBOs; only ViewUniformsUbo is enum-backed — CullUBO has
-//  no RenderResourceId, so it is out of scope for this id-keyed table.)
+// Descriptor-class totals below: 0 UniformBuffer, 11 StorageBuffer, 4 CombinedImageSampler.
 // ---------------------------------------------------------------------------
 static constexpr VkResourceContract kVkResourceContracts[] = {
-    // --- Uniform buffers (Inventory Part 1: 2 core UBOs; CullUBO is not enum-backed) ---
-    { RenderResourceId::ViewUniformsUbo, RenderResourceKind::Buffer,
-      VkDescriptorClass::UniformBuffer, VkResourceFreq::PerFrame,
-      "view-uniforms UBO 3, 3-slot ring -> UNIFORM_BUFFER_DYNAMIC (offset=slot*144)" },
+    // The retired view UBO has no native descriptor; CPU view records remain.
 
     // --- Storage buffers (Inventory Part 1: owned SSBOs, live default path) ---
     { RenderResourceId::LightDataSsbo, RenderResourceKind::Buffer,
@@ -252,7 +247,7 @@ constexpr int vkCountByClass(VkDescriptorClass c) {
 // Compile-time guards (fire at build time, not just test run) — mirrors
 // RenderPassContract.h's static_assert(kRenderPassContractCount == ...).
 // ---------------------------------------------------------------------------
-static_assert(kVkResourceContractCount == 16,
+static_assert(kVkResourceContractCount == 15,
               "kVkResourceContracts row count changed; update the slice-1 total or re-review "
               "(POSTPROCESS-VK-IMAGE-OWNERSHIP-1 added PostprocessSubgraphDepth; the sibling "
               "PostprocessSubgraphColor is intentionally NOT a descriptor row — see note above)");
@@ -260,8 +255,8 @@ static_assert(vkContractsCoverageOk(),
               "I1/I2: a vulkan_contract row has no class, no freq, or a class inconsistent with its kind");
 static_assert(vkContractsNoDuplicateIds(),
               "vulkan_contract: duplicate RenderResourceId in the table");
-static_assert(vkCountByClass(VkDescriptorClass::UniformBuffer) == 1,
-              "expected 1 UniformBuffer row (ViewUniformsUbo; CullUBO not enum-backed)");
+static_assert(vkCountByClass(VkDescriptorClass::UniformBuffer) == 0,
+              "no enum-backed live UniformBuffer rows (legacy view UBO retired)");
 static_assert(vkCountByClass(VkDescriptorClass::StorageBuffer) == 11,
               "expected 11 StorageBuffer rows (inventory Part-1 live owned SSBOs, enum-backed)");
 static_assert(vkCountByClass(VkDescriptorClass::CombinedImageSampler) == 4,

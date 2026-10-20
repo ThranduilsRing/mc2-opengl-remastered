@@ -278,3 +278,29 @@ def test_cmake_bakes_slang_with_import_and_validator_dependencies():
     assert '"${_src}" -o "${_spv}"' in cmake
     assert 'DEPENDS ${MC2_SLANG_DEPENDS}' in cmake
     assert 'Duplicate GLSL/Slang shader output' in cmake
+
+
+@sdk
+def test_glsl_pilot_is_native_vulkan_and_artifact_checker_agrees(work):
+    src = Path(work, 'native.comp')
+    src.write_text("""#version 450
+layout(local_size_x=1) in;
+layout(set=1, binding=0, std430) buffer Out { uint value[]; } result;
+void main() { result.value[0] = 42u; }
+""", encoding='utf-8')
+    cfg = {'spv_dir': 'out', 'pilots': [{'program': 'native_probe',
+           'stages': {'comp': 'native.comp'}, 'variants': [{'name': 'default', 'defines': []}]}]}
+    Path(work, 'pilots.json').write_text(json.dumps(cfg), encoding='utf-8')
+    built = run_build(work)
+    assert built.returncode == 0, built.stdout + built.stderr
+    meta = json.loads(Path(work, 'out/native_probe.comp.default.json').read_text())
+    assert meta['language'] == 'glsl' and meta['targetEnv'] == 'vulkan1.3'
+    assert [(b['set'], b['binding']) for b in meta['bindings']['ssbos']] == [(1, 0)]
+    manifest_dir = Path(work, 'tools/shader_offline_build')
+    manifest_dir.mkdir(parents=True)
+    (manifest_dir / 'pilots.json').write_text(json.dumps(cfg), encoding='utf-8')
+    checked = subprocess.run([sys.executable, '-I', os.path.join(ROOT, 'scripts/check-spirv-artifacts.py'),
+                              '--root', work, '--quiet'], capture_output=True, text=True,
+                             **console_child.child_kwargs(redirected=True))
+    assert checked.returncode == 0, checked.stdout + checked.stderr
+    assert run_build(work, '--check', '--quiet').returncode == 0

@@ -119,20 +119,10 @@ const char*                 passIdentityName(PassIdentity);
 // RenderPassId::None for tags with no owner lane (Unknown, DebugOverlay).
 RenderCore::RenderPassId toRenderPassId(PassIdentity);
 
-// Debug assertion machinery. initRenderContractAssert() reads the
-// MC2_RENDER_CONTRACT_ASSERT env var; call it once at engine init
-// (after GL is up). assertPassContract() is a no-op if the env var
-// is not set. callerHint is logged in assertion messages (use __func__).
-void initRenderContractAssert();
-void assertPassContract(PassIdentity id, const char* callerHint = nullptr);
-
 // CONTRACT-3: per-frame resource-ordering audit.
 // Env gates:
 //   MC2_RENDER_PASS_ORDER=1   -- check reads[] satisfied; warn + count violations
 //   MC2_RENDER_PASS_TELEMETRY=1 -- emit rate-limited pass manifest (every 300 frames)
-//
-// DO NOT USE MC2_RENDER_CONTRACT_ASSERT for this system.
-// MC2_RENDER_CONTRACT_ASSERT drives the existing GL-state abort checker (assertPassContract).
 //
 // Call frameBegin() once per frame before any pass.
 // Call beginPass(id) before each tracked pass; endPass(id) after.

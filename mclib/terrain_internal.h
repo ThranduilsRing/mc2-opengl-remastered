@@ -39,7 +39,6 @@
 #include"../GameOS/gameos/gos_terrain_surface.h"  // PR-1: continuous-surface mission-load generation
 #include"../GameOS/gameos/gos_terrain_bridge.h"
 #include"../GameOS/gameos/gos_terrain_lighting.h"
-#include"../GameOS/gameos/gos_terrain_height_tex.h"  // TERRAIN-NORMALS-FROM-HEIGHT-1
 #include"../GameOS/gameos/gos_terrain_lod_chunk.h"   // Terrain LOD chunk Phase 1
 #include"../GameOS/gameos/terrain_field_store.h"    // mission shore-field teardown
 #include"../GameOS/gameos/gos_render_pass_timer.h"   // [RENDER_PASS_TIME v1] chunk-terrain scope

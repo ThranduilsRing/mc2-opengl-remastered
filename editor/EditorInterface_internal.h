@@ -100,28 +100,6 @@
 // g_imguiInitialized is defined in GuiRuntime/GuiRuntime.cpp.
 extern bool g_imguiInitialized;
 
-// RTT viewport pick offset: the editor scene renders into the dockspace CENTRAL node
-// (a sub-rect of the GL-child window), not the full window. Full-window client mouse
-// coords must be shifted into the central-node's local space before any screen->world
-// unproject, else the placement cursor / object pick diverge from the mouse (the
-// historical "2x toward the right" bug). No-op when RTT is off (origin 0,0 == full).
-static inline void EditorRttClientToViewport(int& x, int& y)
-{
-    if (!g_imguiInitialized || !GuiRuntime::RttEnabled())
-        return;
-    if (GuiRuntime::ViewportRectW() <= 0 || GuiRuntime::ViewportRectH() <= 0)
-        return;
-    x -= GuiRuntime::ViewportRectX();
-    y -= GuiRuntime::ViewportRectY();
-}
-// Render context handle for explicit GL context bind before glReadPixels.
-// SDL_PollEvent inside RunGameOSLogic fires before make_current_context;
-// any WM_LBUTTONUP that arrives between RunGameOSLogic iterations needs
-// the context made current before tryGameplayPick calls glReadPixels.
-extern graphics::RenderContextHandle EditorGameOS_GetRenderContext();
-#else
-// Non-ImGui editor build: no RTT viewport, pick offset is a no-op.
-static inline void EditorRttClientToViewport(int&, int&) {}
 #endif
 
 #ifndef FLATTENBRUSH_H

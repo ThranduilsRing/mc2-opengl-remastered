@@ -121,39 +121,16 @@ namespace GuiRuntime {
                        const char* fontFamily,
                        bool requestFocus);
 
-    // Register a one-shot GL callback to run after ImGui::Render() +
-    // ImGui_ImplOpenGL3_RenderDrawData(). Use for 3D cameras and direct-GL images
-    // that must composite on top of the ImGui overlay rather than underneath it.
+    // Register a one-shot callback after native ImGui submission. Use for
+    // overlays that must composite on top of the ImGui layer.
     // The callback fires once and is then discarded.
     void RegisterPostImGuiRender(std::function<void()> fn);
 
-    // Size of the dockspace CENTRAL node (the area not covered by docked panels) in
-    // pixels. The editor shrinks its scene viewport to this so the map fills only the
-    // un-docked region. 0 until the dockspace is laid out (or docking off). Lags the
-    // live layout by one frame (built in NewFrame, read at frame top).
-    int SceneViewportWidth();
-    int SceneViewportHeight();
-
-    // Render-to-texture viewport (editor). When enabled, the editor renders the
-    // scene into an offscreen texture and the dockspace paints it into the central
-    // node via the background draw list (no ImGui window -> no WantCaptureMouse, so
-    // picking still reaches GameOS). EditorGameOS hands the texture id here each
-    // frame after compositing+blit. Picking offsets client mouse by the rect origin.
-    bool RttEnabled();                              // MC2_EDITOR_RTT (default ON)
     // True when the editor force-docks all panels into the right column each launch
     // (MC2_EDITOR_AUTODOCK != 0). Panel windows must then SKIP SetNextWindowPos before
     // Begin -- an explicit next-window-pos pulls the window out of the dock and floats it.
     bool AutoDockActive();
-    void SetViewportTexture(unsigned int glTex);    // GLuint; called pre-Render()
-    // Fixed-layout scene rect (client/screen pixels, left-anchored). When set (w>0),
-    // the dockspace paints the RTT texture into THIS rect instead of the dynamic
-    // central node, and the pick offset uses it. Set each frame by EditorGameOS.
-    void SetFixedViewportRect(int x, int y, int w, int h);
-    // Central-node screen rect (ImGui DisplaySize space == GL-child client coords).
-    int  ViewportRectX();
-    int  ViewportRectY();
-    int  ViewportRectW();
-    int  ViewportRectH();
+
 }
 
 extern bool g_imguiInitialized;

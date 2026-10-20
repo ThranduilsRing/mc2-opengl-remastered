@@ -9,7 +9,6 @@ SimpleCamera.cpp	: Implementation of the SimpleCamera component.
 //===========================================================================//
 \*************************************************************************************************/
 #include"simplecamera.h"
-#include <GL/glew.h>   // MC2_LOG_PREVIEW diagnostics: glIsEnabled/glGetIntegerv/glGetBooleanv
 #include"tex_resolve_table.h"
 #include"appear.h"
 #include"mclib.h"
@@ -56,7 +55,6 @@ SimpleCamera::SimpleCamera()
 
     bContextNotSet = true;
 }
-
 
 // The appearance destructor reads appearanceTypeList: with no list (outside a mission) the object is left unfreed, as before B7o.5.
 void SimpleCamera::releaseObject()
@@ -153,12 +151,7 @@ void SimpleCamera::render(long xOffset, long yOffset)
 		if ( isPanelPreview )
 		{
 			gos_BeginCameraPreviewRender();
-			if ( mc2::gate::get<"MC2_LOG_PREVIEW">() )
-			{
-				GLint fboAfterBegin = 0; glGetIntegerv(GL_FRAMEBUFFER_BINDING, &fboAfterBegin);
-				bool f = mc2::log::enabled(mc2::log::Cat::Ui, mc2::log::Level::Info);
-				if (f) { MC2_LOG(Ui, Info, "[PREVIEW] fboAfterBegin={:d}", mc2::fmt::as_i32(fboAfterBegin));   }
-			}
+
 		}
 
 		if ( bIsComponent )
@@ -293,30 +286,7 @@ void SimpleCamera::render(long xOffset, long yOffset)
 	
 			}
 
-
 			// EXPERIMENT (PREVIEW-FBO-FIXED-800x600-1 debug): the mech draws zero
-			// pixels anywhere in the FBO despite shouldRender=1. Test whether
-			// backface culling is discarding every triangle (e.g. an unexpected
-			// winding-order flip specific to FBO targets). MC2_PREVIEW_NOCULL=1
-			// force-disables GL_CULL_FACE for just this offscreen draw.
-			if ( isPanelPreview && mc2::gate::get<"MC2_PREVIEW_NOCULL">() )
-				glDisable(GL_CULL_FACE);
-
-			if ( mc2::gate::get<"MC2_LOG_PREVIEW">() )
-			{
-				GLboolean depthTest = glIsEnabled(GL_DEPTH_TEST);
-				GLboolean depthMask = GL_FALSE; glGetBooleanv(GL_DEPTH_WRITEMASK, &depthMask);
-				GLboolean cullFace = glIsEnabled(GL_CULL_FACE);
-				GLint frontFace = 0; glGetIntegerv(GL_FRONT_FACE, &frontFace);
-				GLint cullMode = 0; glGetIntegerv(GL_CULL_FACE_MODE, &cullMode);
-				GLint vp[4] = {}; glGetIntegerv(GL_VIEWPORT, vp);
-				GLint fbo = 0; glGetIntegerv(GL_FRAMEBUFFER_BINDING, &fbo);
-				bool f = mc2::log::enabled(mc2::log::Cat::Ui, mc2::log::Level::Info);
-				if (f) {
-					MC2_LOG(Ui, Info, "[PREVIEW] pre-draw fbo={:d} depthTest={:d} depthMask={:d} cullFace={:d} frontFace=0x{:X} cullMode=0x{:X} vp=[{:d},{:d},{:d},{:d}] globalScaleFactor={:.4f} bounds=[{:.0f},{:.0f},{:.0f},{:.0f}]", mc2::fmt::as_i32(fbo), mc2::fmt::as_i32(static_cast<int>(depthTest)), mc2::fmt::as_i32(static_cast<int>(depthMask)), mc2::fmt::as_i32(static_cast<int>(cullFace)), mc2::fmt::as_u32(static_cast<unsigned>(frontFace)), mc2::fmt::as_u32(static_cast<unsigned>(cullMode)), mc2::fmt::as_i32(vp[0]), mc2::fmt::as_i32(vp[1]), mc2::fmt::as_i32(vp[2]), mc2::fmt::as_i32(vp[3]), globalScaleFactor, bounds[0], bounds[1], bounds[2], bounds[3]);
-
-				}
-			}
 			// PREVIEW-DRAWOLDWAY-1 (THE blank-panel root cause): with drawOldWay
 			// false, TG_Shape::Render does NOT draw — it defers every triangle
 			// into mcTextureManager->addVertices() buckets (tgl.cpp:3252+), which
@@ -333,48 +303,7 @@ void SimpleCamera::render(long xOffset, long yOffset)
 			pObject->render();
 			if ( isPanelPreview )
 				drawOldWay = savedDrawOldWay;
-			if ( mc2::gate::get<"MC2_LOG_PREVIEW">() )
-			{
-				GLenum err = glGetError();
-				// Sample a handful of pixels across the panel rect (bounds[]) plus
-				// the FBO's dead-center, to tell "mesh rasterized nothing" (all
-				// samples == clear color 0,0,0,255) apart from "mesh drew but the
-				// composite/UV step is wrong" (some samples differ from clear).
-				// SCAN THE FULL PHYSICAL VIEWPORT. The preview FBO is supersampled
-				// (e.g. 3200x2400 for logical 800x600); the old fixed 800x600 read
-				// only covered the top-left sixteenth, so a correctly-drawn mech at
-				// logical (~379,206) => physical (~1516,824) scored nonBgCount=0 —
-				// a false "rasterized nothing".
-				GLint svp[4] = {}; glGetIntegerv(GL_VIEWPORT, svp);
-				const int pw = svp[2] > 0 ? svp[2] : 800;
-				const int ph = svp[3] > 0 ? svp[3] : 600;
-				int cx = static_cast<int>(((bounds[0] + bounds[2]) * 0.5f * pw / 800.0f));
-				int cy = ph - static_cast<int>(((bounds[1] + bounds[3]) * 0.5f * ph / 600.0f));   // GL bottom-up
-				GLubyte centerPx[4] = {}, cornerPx[4] = {};
-				glReadPixels(cx, cy, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, centerPx);
-				glReadPixels(10, 10, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, cornerPx);
-				int nonBgCount = 0, minX=9999, minY=9999, maxX=-1, maxY=-1;
-				static GLubyte* s_scanBuf = nullptr;
-				static int s_scanCap = 0;
-				if (pw*ph*4 > s_scanCap) { delete[] s_scanBuf; s_scanBuf = new GLubyte[pw*ph*4]; s_scanCap = pw*ph*4; }
-				glReadPixels(0, 0, pw, ph, GL_RGBA, GL_UNSIGNED_BYTE, s_scanBuf);
-				const int step = pw >= 1600 ? 16 : 4;
-				for (int y = 0; y < ph; y += step) {
-					for (int x = 0; x < pw; x += step) {
-						GLubyte* p = s_scanBuf + (y*pw + x)*4;
-						if (p[0] != 0 || p[1] != 0 || p[2] != 0) {
-							nonBgCount++;
-							if (x < minX) minX = x; if (x > maxX) maxX = x;
-							if (y < minY) minY = y; if (y > maxY) maxY = y;
-						}
-					}
-				}
-				bool f = mc2::log::enabled(mc2::log::Cat::Ui, mc2::log::Level::Info);
-				if (f) {
-					MC2_LOG(Ui, Info, "[PREVIEW] post-draw glErr=0x{:X} centerPx({:d},{:d})=RGBA({:d},{:d},{:d},{:d}) cornerPx(10,10)=RGBA({:d},{:d},{:d},{:d}) nonBgCount={:d} bbox=[{:d},{:d},{:d},{:d}]", mc2::fmt::as_u32(static_cast<unsigned>(err)), mc2::fmt::as_i32(cx), mc2::fmt::as_i32(cy), mc2::fmt::as_i32(centerPx[0]), mc2::fmt::as_i32(centerPx[1]), mc2::fmt::as_i32(centerPx[2]), mc2::fmt::as_i32(centerPx[3]), mc2::fmt::as_i32(cornerPx[0]), mc2::fmt::as_i32(cornerPx[1]), mc2::fmt::as_i32(cornerPx[2]), mc2::fmt::as_i32(cornerPx[3]), mc2::fmt::as_i32(nonBgCount), mc2::fmt::as_i32(minX), mc2::fmt::as_i32(minY), mc2::fmt::as_i32(maxX), mc2::fmt::as_i32(maxY));
 
-				}
-			}
 			// PREVIEW-FBO-FIXED-800x600-1: end the offscreen preview render and
 			// restore the real framebuffer/viewport before anything else in this
 			// scope touches the screen.
@@ -430,7 +359,6 @@ void SimpleCamera::render(long xOffset, long yOffset)
 	}
 
 
-
 }
 
 // PREVIEW-FBO-FIXED-800x600-1: composite this camera's panel-preview render
@@ -443,9 +371,9 @@ void SimpleCamera::drawPreviewToPanel( float panelX, float panelY, float panelW,
 {
 #ifdef MC2_IMGUI
 	#ifdef MC2_VULKAN_ISLAND
-    const uint64_t tex=mc2vk::uiTextureServiceReady() ? mc2_vk_preview_texture() : gos_GetCameraPreviewTexture();
+    const uint64_t tex=mc2vk::uiTextureServiceReady() ? mc2_vk_preview_texture() : 0;
 #else
-    const uint64_t tex=gos_GetCameraPreviewTexture();
+    const uint64_t tex=0;
 #endif
 	const float u1 = bounds[0] / 800.f;
 	const float u2 = bounds[2] / 800.f;
@@ -509,7 +437,6 @@ long SimpleCamera::update()
 		trianglePool->reset();
 
 		mcTextureManager->clearArrays();
-		mcTextureManager->update();
 
 		Camera::update();
 		//--------------------------------------------------------
@@ -545,7 +472,6 @@ long SimpleCamera::update()
 		float tmp = -mechPos.y/2.f;
 		mechPos.y = -mechPos.z/2.f;
 		mechPos.z = tmp;
-
 
 		float rotation = frameLength * rotationIncrement + pObject->rotation;
 
@@ -583,7 +509,6 @@ void SimpleCamera::setMech(const char* fileName, long baseColor, long highlight1
 	// sebi: added this conition ecause  appearanceTypeList used inside destructor
 	releaseObject();
 
-
 	if ( !appearanceTypeList )
 		Mission::initBareMinimum();
 
@@ -608,7 +533,6 @@ void SimpleCamera::setMech(const char* fileName, long baseColor, long highlight1
 
 	FullPathFileName path;
 	path.init( tglPath, testName, ".ini" );
-
 
 	//MUST ALWAYS CALL GET, EVEN IF WE HAVE AN APPEARANCE TYPE OR REFERENCE COUNT DOES NOT INCREASE!
 	Mech3DAppearanceType* appearanceType = nullptr;
@@ -664,7 +588,6 @@ void SimpleCamera::setVehicle(const char* fileName,long base, long highlight, lo
 	char NoPathFileName[256];
 	_splitpath( fileName, nullptr, nullptr, NoPathFileName, nullptr );
 
-
 	char testName[256];
 	strcpy( testName, fileName );
 	strcat( testName, "enc" );
@@ -695,7 +618,6 @@ void SimpleCamera::setVehicle(const char* fileName,long base, long highlight, lo
 }
 
 
-
 void SimpleCamera::setComponent(const char* fileName )
 {
 	this->pushContext();
@@ -718,7 +640,6 @@ void SimpleCamera::setComponent(const char* fileName )
 	releaseObject();
 
 	pObject = nullptr;
-
 
 	if ( !fileName )
 	{
@@ -750,7 +671,6 @@ void SimpleCamera::setComponent(const char* fileName )
 
 	rotationIncrement = 90;
 	
-
 
 	activate();
 		

@@ -189,7 +189,6 @@ void gos_TerrainLodChunk_UploadShorelineMask(const unsigned char* rgba, int w, i
 // zigzag ring the user reported — unaffected by MC2_TERRAIN_SHORELINE because
 // the water program never consulted the mask). Returns 0 / zeroed bounds when
 // no sidecar is loaded.
-unsigned int gos_TerrainLodChunk_ShorelineMaskTex();
 const float* gos_TerrainLodChunk_ShorelineMaskBounds();
 
 // WATER-SHORE-EDGE-1: per-fragment signed-height water shore edge.
@@ -221,7 +220,6 @@ void gos_TerrainLodChunk_UploadWaterShoreHeight(const float* heights, int w, int
 void gos_TerrainLodChunk_UploadWaterShoreSdf(const float* heights, int w, int h,
                                               float boundsTopLeftX, float boundsTopLeftY,
                                               float boundsSizeX, float boundsSizeY);
-unsigned int gos_TerrainLodChunk_WaterShoreHeightTex();
 const float* gos_TerrainLodChunk_WaterShoreHeightBounds();
 // VK-PARITY-WATER-SHORE-1: monotonic counter bumped by every shoreline-mask /
 // water-shore-height upload. The VK water island copies both GL textures once

@@ -1,6 +1,7 @@
 // TerrainColorMap: fractal base mesh, shadow burn-in, detail / water texture reset and light recalc, and the base texture reset.
 // Declared in the class headers; shared names in terrtxm2_internal.h.
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
+#include "texture_assets.h"
 #include "terrtxm2_internal.h"
 #include "mc2fmt.h"
 #include "tga_scratch.h"
@@ -816,9 +817,9 @@ void TerrainColorMap::resetDetailTexture (const char *fileName)
 	detailFile.init(texturePath,dName,".tga");
 
 	if (fileExists(detailFile))		//Otherwise, its already 0xffffffff!!
-		detailTextureNodeIndex.reset(mcTextureManager->loadTexture(detailFile,gos_Texture_Alpha,gosHint_DontShrink, 0, 0x1));
+		detailTextureNodeIndex.reset(mc2::textures::load(detailFile,gos_Texture_Alpha,gosHint_DontShrink, 0, 0x1));
 #else
-	detailTextureNodeIndex.reset(mcTextureManager->loadTexture(fileName,gos_Texture_Alpha,gosHint_DontShrink, 0, 0x1));
+	detailTextureNodeIndex.reset(mc2::textures::load(fileName,gos_Texture_Alpha,gosHint_DontShrink, 0, 0x1));
 #endif
 }
 
@@ -846,9 +847,9 @@ void TerrainColorMap::resetWaterTexture (const char *fileName)
 	waterFile.init(texturePath,dName,".tga");
 	
 	if (fileExists(waterFile))    //Otherwise, its already 0xffffffff!! 
-		waterTextureNodeIndex.reset(mcTextureManager->loadTexture(waterFile,gos_Texture_Solid,0, 0, 0x1));
+		waterTextureNodeIndex.reset(mc2::textures::load(waterFile,gos_Texture_Solid,0, 0, 0x1));
 #else
-	waterTextureNodeIndex.reset(mcTextureManager->loadTexture(fileName,gos_Texture_Solid,0, 0, 0x1));
+	waterTextureNodeIndex.reset(mc2::textures::load(fileName,gos_Texture_Solid,0, 0, 0x1));
 #endif
 }
 
@@ -894,7 +895,7 @@ void TerrainColorMap::resetWaterDetailTextures (const char *fileName)
 				numWaterDetailFrames = 0;
 			}
 
-			waterDetailNodeIndex[i].reset(mcTextureManager->loadTexture(waterFile,gos_Texture_Alpha,gosHint_DontShrink, 0, 0x1));
+			waterDetailNodeIndex[i].reset(mc2::textures::load(waterFile,gos_Texture_Alpha,gosHint_DontShrink, 0, 0x1));
 			numWaterDetailFrames++;
 		}
 		else
@@ -1013,7 +1014,7 @@ void TerrainColorMap::recalcLight(const char *fileName)
 
 				getColorMapData(txmRAM[i].ourRAM,i, colorMapInfo.width);
 
-				textures[i].mcTextureNodeIndex.reset(mcTextureManager->textureFromMemory(reinterpret_cast<DWORD *>(txmRAM[i].ourRAM),gos_Texture_Solid,gosHint_DontShrink,COLOR_MAP_TEXTURE_SIZE));
+				textures[i].mcTextureNodeIndex.reset(mc2::textures::fromPixels(reinterpret_cast<DWORD *>(txmRAM[i].ourRAM),gos_Texture_Solid,gosHint_DontShrink,COLOR_MAP_TEXTURE_SIZE));
 			}
 		}
 	}
@@ -1180,7 +1181,7 @@ void TerrainColorMap::resetBaseTexture (const char *fileName)
 			{
 				getColorMapData(txmRAM[i].ourRAM,i, colorMapInfo.width);
 
-				textures[i].mcTextureNodeIndex.reset(mcTextureManager->textureFromMemory(reinterpret_cast<DWORD *>(txmRAM[i].ourRAM),gos_Texture_Solid,gosHint_DontShrink,COLOR_MAP_TEXTURE_SIZE));
+				textures[i].mcTextureNodeIndex.reset(mc2::textures::fromPixels(reinterpret_cast<DWORD *>(txmRAM[i].ourRAM),gos_Texture_Solid,gosHint_DontShrink,COLOR_MAP_TEXTURE_SIZE));
 			}
 		}
 	}

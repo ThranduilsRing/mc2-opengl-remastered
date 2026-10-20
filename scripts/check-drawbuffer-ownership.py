@@ -12,8 +12,6 @@ whatever the previous pass left bound. This checker keeps that field honest:
      scene color into the MRT).
   C. CONTRACT-TABLE LOCKSTEP — for every registry row that maps to a pass in
      render_pass_attachment.h kContracts[], the declared draw set must match.
-  D. CHOKEPOINT EXISTS — gos_postprocess.cpp setSceneDrawBuffers still offers both
-     the MainSceneMRT and SingleColor modes (the single live authority).
 
 Exit 0 = PASS.
 """
@@ -26,7 +24,6 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 REGISTRY = ROOT / "RenderCore" / "PipelineRegistry.cpp"
 CONTRACTS = ROOT / "GameOS" / "gameos" / "render_pass_attachment.h"
-POSTPROC = ROOT / "GameOS" / "gameos" / "gos_postprocess.cpp"
 
 ROW_HEADER = re.compile(r"//\s*\[(\d+)\]\s*([A-Za-z]\w+)\b")
 COLOR_ATT = re.compile(
@@ -69,7 +66,7 @@ def parse_registry(text: str):
 
 def main() -> int:
     quiet = "--quiet" in sys.argv
-    for f in (REGISTRY, CONTRACTS, POSTPROC):
+    for f in (REGISTRY, CONTRACTS):
         if not f.exists():
             print(f"[drawbuf] ERROR missing: {f}", file=sys.stderr)
             return 2
@@ -104,11 +101,6 @@ def main() -> int:
             fails.append(f"{name}: drawBuffers={db} but render_pass_attachment.h "
                          f"contract '{key}'={contract_db[key]} — out of lockstep")
 
-    # D
-    pp = POSTPROC.read_text(encoding="utf-8", errors="replace")
-    if "SceneDrawBufferMode::SingleColor" not in pp or "MainSceneMRT" not in pp:
-        fails.append("setSceneDrawBuffers chokepoint missing a mode (SingleColor/MainSceneMRT)")
-
     if fails:
         print("[drawbuf] FAIL — draw-buffer ownership inconsistencies:", file=sys.stderr)
         for x in fails:
@@ -116,7 +108,7 @@ def main() -> int:
         return 1
     if not quiet:
         print(f"[drawbuf] PASS — {len(rows)} rows: SingleColor0 safe, MainSceneMRT "
-              f"sane, contract-table lockstep, chokepoint intact.")
+              f"sane, contract-table lockstep.")
     return 0
 
 

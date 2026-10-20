@@ -9,51 +9,6 @@
 
 #include <cstdint>  // uint32_t — used by B4 mask-SOLID bridge signature.
 
-// Forward decls for opaque pointer types used in signatures.
-class gosRenderMaterial;
-
-// gos_terrain_bridge_getMaterial and gos_terrain_bridge_getShaderProgram deleted by
-// DEAD-BRIDGE-DELETE-1: zero external callers tree-wide (dead public wrappers around
-// live gosRenderer members).
-
-// Sets every direct uniform + texture bind for the terrain material
-// (mirrors what the retired terrainDrawIndexedPatches set) EXCEPT the per-batch VBO upload. Call once per flush() before
-// issuing per-bucket glDrawArrays. The function internally calls
-// material->apply() (which calls glUseProgram), so direct glUniform*
-// calls inside it are AFTER apply() per AMD rule line 10.
-void gos_terrain_bridge_bindUniforms(gosRenderMaterial* material);
-
-// gos_terrain_bridge_applyVertexDeclaration and gos_terrain_bridge_endVertexDeclaration
-// and gos_terrain_bridge_end deleted by TERRAIN-BRIDGE-BODY-DELETE-1/2
-// (flush-exclusive; flush retired in PATCHSTREAM-THIN-RETIRE-1, 026e7276).
-
-// Translate engine gosTextureHandle → actual GL texture object name.
-//
-// CRITICAL: tex_resolve(textureIndex) returns the engine's gosTextureHandle
-// (e.g. 56), NOT the GL texture name. They are NOT the same number. The
-// engine's applyRenderStates() at gameos_graphics.cpp:2129–2135 always
-// converts gos→GL via getTexture(gosHandle)->getTextureId() before
-// glBindTexture. PatchStream must do the same.
-//
-// Returns 0 (the default no-texture) for INVALID_TEXTURE_ID, gosHandle==0,
-// or any case where the texture isn't resident.
-unsigned int gos_terrain_bridge_glTextureForGosHandle(unsigned int gosHandle);
-
-// gos_terrain_bridge_drawPatchStreamBucket, gos_terrain_bridge_beginBucketLoop,
-// gos_terrain_bridge_drawSingleBucket, gos_terrain_bridge_endBucketLoop deleted by
-// TERRAIN-BRIDGE-BODY-DELETE-1/2: callerless after TerrainPatchStream::flush() retired
-// (PATCHSTREAM-THIN-RETIRE-1, 026e7276).
-
-// Returns the GL program ID of the thin-record VS-only terrain shader (gos_terrain_thin.vert +
-// gos_terrain.frag). Returns 0 if not yet loaded or failed to compile.
-unsigned int gos_terrain_bridge_getThinShaderProgram();
-
-// gos_terrain_bridge_bindThinUniforms deleted by DEAD-BRIDGE-DELETE-1: zero external
-// callers (the internal terrainBindThinUniformsForPatchStream IS live; this wrapper is not).
-
-// gos_terrain_bridge_drawSingleBucketTriangles deleted by TERRAIN-BRIDGE-BODY-DELETE-2:
-// callerless after TerrainPatchStream::flush() retired (TERRAIN-BRIDGE-BODY-DELETE-1).
-
 // --- Water fast-path bridge (Stage 2 of renderWater architectural slice) ---
 //
 // Spec: docs/superpowers/specs/2026-04-29-renderwater-fastpath-design.md.

@@ -3,7 +3,6 @@
 #include "gos_static_prop_batcher_internal.h"
 #include "mc2fmt.h"
 
-
 // ---------------------------------------------------------------------------
 // Slice 2, Stage 2.A — new method and free-function definitions
 // ---------------------------------------------------------------------------
@@ -82,7 +81,6 @@ int gos_GpuPropsGetDebugMode() {
     return GpuStaticPropBatcher::instance().getDebugAddrMode();
 }
 
-
 const std::vector<GpuStaticPropInstance>& GpuStaticPropBatcher::getLastBuiltBatch() const {
     return s_lastBuiltBatch;
 }
@@ -127,24 +125,16 @@ void GpuStaticPropBatcher::submitCachedInstance(const GpuStaticPropInstance& ins
         }
     }
     bucket.instances.push_back(updated);
-    // The per-instance Colors SSBO zero-fill is skipped: no production shader reads colors_ (addr-mode 4 reads v_argb).
 }
 
 uint64_t GpuStaticPropBatcher::persistentStaticGen() { return s_persistentStaticGen; }
 void GpuStaticPropBatcher::setPersistentStaticGen(uint64_t g) { s_persistentStaticGen = g; }
 
-// VANISH-PROBE-1: stable-order access to persistent static instance origins.
-// Free functions (no header coupling) so code/gamecam.cpp can extern-declare
-// them and project a real prop through worldToClipGL at the live camera angle.
 uint32_t gos_ProbeStaticInstanceCount() {
     uint32_t n = 0; for (auto& kv : s_persistentStaticStore) n += static_cast<uint32_t>(kv.second.size());
     return n;
 }
 bool gos_ProbeStaticInstanceWorld(uint32_t idx, float outXYZ[3]) {
-    // unordered_map iteration order is stable between calls within a frame (no
-    // mutation), which is all the probe needs. modelMatrix is row-major data
-    // uploaded GL_FALSE -> the prop vertex shader reads it column-major, so the
-    // instance origin (modelMatrix * vec4(0,0,0,1)) is column 3 = m[12..14].
     for (auto& [typeID, v] : s_persistentStaticStore) {
         if (idx < v.size()) {
             const float* m = v[idx].modelMatrix;
@@ -207,7 +197,6 @@ void GpuStaticPropBatcher::reinjectPersistentStatic() {
     }
 }
 
-
 bool GpuStaticPropBatcher::buildRecipeFromShape(
         TG_Shape* shape,
         const glm::mat4& shapeToWorld,
@@ -224,8 +213,6 @@ bool GpuStaticPropBatcher::buildRecipeFromShape(
     if (it == s_typeIndex.end()) return false;
 
     GpuStaticPropInstance inst{};
-    // Matrix4D is a plain row-major Scalar[16] (see stuff/matrix.hpp). Copy
-    // as-is; shader uploads the worldToClip uniform with GL_FALSE.
     std::memcpy(inst.modelMatrix, &shapeToWorld, 16 * sizeof(float));
     inst.typeID           = it->second;
     inst.firstColorOffset = 0u;          // placeholder; submitCachedInstance patches per-frame
@@ -278,7 +265,6 @@ void batcher_queryTypeShape(const void* typeShape, int* outRegistered, int* outF
         *outFailed = (it != s_failedTypes.end() && it->second) ? 1 : 0;
     }
 }
-
 
 bool batcher_getTypeDrawInfo(uint32_t  typeID,
                               uint32_t* outIndexCount,
@@ -347,7 +333,6 @@ uint32_t batcher_getSortedPacketCount() {
 }
 uint32_t batcher_getAlphaOffCmdCount() { return s_alphaOffCmdCount; }
 uint32_t batcher_getAlphaOnCmdCount()  { return s_alphaOnCmdCount;  }
-GLuint   batcher_getCmdToBucketSsbo()  { return s_cmdToBucketSsbo;  }
 
 bool batcher_getPacketDrawInfo(uint32_t globalPacketIdx,
                                 uint32_t* outIndexCount,
@@ -398,15 +383,6 @@ uint32_t batcher_getTypeUploadedInstanceCount(uint32_t typeID) {
 // it to place each record at its instance-pool slot (record-index == pool-slot).
 static std::vector<uint32_t> s_baseInstanceForType;
 
-// ===========================================================================
-// M2a POPULATION-SPLIT (gate MC2_STATIC_POP_SPLIT, requires G2). De-merge the
-// persistent static instances out of the per-frame dynamic bucket so the
-// static cull-record golden has a STABLE per-type base (the merged base shifts
-// per-frame when dynamics share a static type's bucket -> the outOfRange 0->71
-// defect). Tasks 1+2: static-only base table + own front-packed instance SSBO.
-// Default-off => byte-identical (every new path gates on staticPopSplitArmed()).
-// ===========================================================================
-
 // Static-only per-type base (s_staticBaseInstanceForType, defined early near
 // s_globalInstanceCap): prefix-sum over s_persistentStaticStore[t].size() in the
 // SAME sorted+alpha order as s_baseInstanceForType, but counting ONLY persistent-
@@ -439,64 +415,6 @@ uint32_t batcher_getStaticBaseInstanceForType(uint32_t typeID) {
                ? s_staticBaseInstanceForType[typeID] : 0u;
 }
 
-// StaticPopulation instance buffer (Task 2; state s_staticInstanceSsbo/Map/Bytes/
-// FillGen defined early near s_globalInstanceCap): persistent-mapped, SINGLE
-// region (static is frozen -> no triple-buffer ring). Sized ONCE at the global
-// cap so growth never reallocates an immutable buffer mid-flight. Filled
-// [0,total) once per dirty in static-base layout.
-static bool ensureStaticInstanceCapacity() {
-    if (s_staticInstanceSsbo) return s_staticInstanceMap != nullptr;
-    const size_t want = static_cast<size_t>(s_globalInstanceCap)
-                        * sizeof(GpuStaticPropInstance);
-    // TIER2-EXCLUDED: dead-path
-    glGenBuffers(1, &s_staticInstanceSsbo);
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, s_staticInstanceSsbo);
-    const GLbitfield flags = GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT;
-    while (glGetError() != GL_NO_ERROR) {}
-    glBufferStorage(GL_SHADER_STORAGE_BUFFER, static_cast<GLsizeiptr>(want), nullptr, flags);
-    if (glGetError() != GL_NO_ERROR) {
-        glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
-        glDeleteBuffers(1, &s_staticInstanceSsbo);
-        s_staticInstanceSsbo = 0;
-        mc2::fmt::print_err("[STATIC_POP_SPLIT] event=alloc_failed bytes={:d}\n", mc2::fmt::as_size(want));
-        return false;
-    }
-    s_staticInstanceMap = MC2_GL_MapBufferRange(GL_SHADER_STORAGE_BUFFER, 0,
-                                           static_cast<GLsizeiptr>(want), flags);
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
-    s_staticInstanceBytes = want;
-    return s_staticInstanceMap != nullptr;
-}
-
-static void fillStaticInstanceBufferIfDirty() {
-    if (s_staticInstanceFillGen == s_persistentStaticGen) return;
-    rebuildStaticBaseInstanceTableIfDirty();
-    size_t total = 0;
-    for (auto& kv : s_persistentStaticStore) total += kv.second.size();
-    if (total > static_cast<size_t>(s_globalInstanceCap)) {
-        mc2::fmt::print_err("[STATIC_POP_SPLIT] event=overflow total={:d} cap={:d}\n", mc2::fmt::as_size(total), mc2::fmt::as_u32(s_globalInstanceCap));
-        return;  // never write past the cap
-    }
-    if (!ensureStaticInstanceCapacity()) return;
-    // Criterion 2: the buffer is overwritten in place — wait for the prior
-    // static draw to drain before clobbering it (dirties are rare, so the stall
-    // is rare; GPU in-order execution makes one wait cover all earlier frames).
-    if (s_staticDrawFence) {
-        glClientWaitSync(s_staticDrawFence, GL_SYNC_FLUSH_COMMANDS_BIT, GL_TIMEOUT_IGNORED);
-        glDeleteSync(s_staticDrawFence);
-        s_staticDrawFence = nullptr;
-    }
-    auto* dst = static_cast<GpuStaticPropInstance*>(s_staticInstanceMap);
-    for (auto& [typeID, vec] : s_persistentStaticStore) {
-        if (typeID >= s_staticBaseInstanceForType.size()) continue;
-        const uint32_t base = s_staticBaseInstanceForType[typeID];
-        for (uint32_t r = 0; r < vec.size(); ++r) dst[base + r] = vec[r];
-    }
-    s_staticInstanceFillGen = s_persistentStaticGen;
-}
-
-GLuint batcher_getStaticInstanceSsbo() { return s_staticInstanceSsbo; }
-
 // Task 3: build the StaticPopulation indirect cmds, one per sorted packet (same
 // [alpha-OFF | alpha-ON] order as s_sortedPacketOrder, so the Task-4 draw splits
 // at s_alphaOffCmdCount exactly like the dynamic draw). count/firstIndex/
@@ -505,57 +423,6 @@ GLuint batcher_getStaticInstanceSsbo() { return s_staticInstanceSsbo; }
 // GPU cull count; visibleIds authority arrives in M2b). A packet whose type has
 // 0 static instances gets instanceCount=0 -> harmless no-op sub-draw. Dirty-
 // gated on s_persistentStaticGen. Built but NOT drawn until Task 4.
-static void rebuildStaticDrawCmdsIfDirty() {
-    if (s_staticCmdBuiltGen == s_persistentStaticGen) return;
-    rebuildStaticBaseInstanceTableIfDirty();
-    const uint32_t pktCount = static_cast<uint32_t>(s_sortedPacketOrder.size());
-    s_staticDrawCmds.assign(pktCount, StaticDrawCmd{});
-    for (uint32_t i = 0; i < pktCount; ++i) {
-        const uint32_t gp = s_sortedPacketOrder[i];
-        if (gp >= s_packets.size()) continue;
-        const GpuStaticPropPacket& pkt = s_packets[gp];
-        const uint32_t tid = pkt.owningTypeID;
-        auto it = s_persistentStaticStore.find(tid);
-        const uint32_t cnt = (it != s_persistentStaticStore.end())
-                                 ? static_cast<uint32_t>(it->second.size()) : 0u;
-        StaticDrawCmd& c = s_staticDrawCmds[i];
-        c.count         = pkt.indexCount;
-        c.instanceCount = cnt;
-        c.firstIndex    = pkt.firstIndex;
-        c.baseVertex    = pkt.baseVertex;
-        c.baseInstance  = batcher_getStaticBaseInstanceForType(tid);
-    }
-    if (pktCount > 0u) {
-        if (!s_staticIndirectCmdBuf) glGenBuffers(1, &s_staticIndirectCmdBuf);
-        glBindBuffer(GL_DRAW_INDIRECT_BUFFER, s_staticIndirectCmdBuf);
-        MC2_GL_BufferData(GL_DRAW_INDIRECT_BUFFER,
-                     static_cast<GLsizeiptr>(pktCount * sizeof(StaticDrawCmd)),
-                     s_staticDrawCmds.data(), GL_DYNAMIC_DRAW);
-        glBindBuffer(GL_DRAW_INDIRECT_BUFFER, 0);
-    }
-    s_staticCmdBuiltGen = s_persistentStaticGen;
-
-    // Diag (env-gated): dump the static cmd summary so Task 3 can be validated
-    // before the draw exists. Sum of instanceCount over OFF/ON groups must equal
-    // the persistent store's total instance count; non-zero cmd count == sorted packet count.
-    static const bool s_cmdDiag = mc2::gate::get<"MC2_STATIC_POP_SPLIT_CMD_DIAG">();
-    if (s_cmdDiag) {
-        // maxBaseInstance+its instanceCount must stay within the static pool
-        // [0,storeTotal); nonZeroCmds = packets whose type has static instances.
-        uint32_t nonZero = 0, maxEnd = 0;
-        for (const auto& c : s_staticDrawCmds) {
-            if (c.instanceCount) ++nonZero;
-            const uint32_t end = c.baseInstance + c.instanceCount;
-            if (end > maxEnd) maxEnd = end;
-        }
-        uint64_t storeTotal = 0;
-        for (auto& kv : s_persistentStaticStore) storeTotal += kv.second.size();
-        mc2::fmt::print_err("[STATIC_POP_SPLIT_CMD] pkts={:d} nonZeroCmds={:d} offCmds={:d} maxBaseInst+count={:d} storeTotal={:d} (maxEnd<=storeTotal expected)\n", mc2::fmt::as_u32(pktCount), mc2::fmt::as_u32(nonZero), mc2::fmt::as_u32(s_alphaOffCmdCount), mc2::fmt::as_u32(maxEnd), mc2::fmt::as_u64(static_cast<unsigned long long>(storeTotal)));
-        std::fflush(stderr);
-    }
-}
-
-GLuint batcher_getStaticIndirectCmdBuf() { return s_staticIndirectCmdBuf; }
 
 uint32_t batcher_getBaseInstanceForType(uint32_t typeID) {
     // M2a: under the population split, the golden scatter must use the STABLE
@@ -572,42 +439,13 @@ bool batcher_isBaseInstanceTableReady() {
            && !s_baseInstanceForType.empty();
 }
 
-GLuint batcher_getCoalesceInstanceSsbo() { return s_coalesceInstanceSsbo; }
-GLuint batcher_getPerDrawSsbo()          { return s_perDrawSsbo;          }
 // COMPRESSION-BC7-STATICPROP-2: under the gate the two named handles are 0
 // (the build produced per-bucket arrays instead). Fall back to the first
 // alpha-OFF / first alpha-ON bucket array so the ImGui GBuffer preview still
 // shows a representative array. Gate OFF: returns the original handles.
-GLuint batcher_getTexArrayOff() {
-    if (s_texArrayOff) return s_texArrayOff;
-    for (size_t b = 0; b < s_bucketInfo.size(); ++b)
-        if (s_bucketInfo[b].group == 0u) return s_bucketInfo[b].glArray;
-    return 0;
-}
-GLuint batcher_getTexArrayOn() {
-    if (s_texArrayOn) return s_texArrayOn;
-    for (size_t b = 0; b < s_bucketInfo.size(); ++b)
-        if (s_bucketInfo[b].group == 1u) return s_bucketInfo[b].glArray;
-    return 0;
-}
-GLuint batcher_getPermutationSsbo()      { return s_permutationSsbo;      }
 
 size_t batcher_getCoalescePerFrameInstanceBytes() {
-    // SSBO-BIND-ALIGN: this is the per-frame RING STRIDE; fr_off_bytes_d =
-    // s_coalesceFrameSlot * this is the glBindBufferRange offset. The std430
-    // GpuStaticPropInstance stride is 112 bytes, so cap*112 is a multiple of 256
-    // (NVIDIA's GL_SHADER_STORAGE_BUFFER_OFFSET_ALIGNMENT) only when cap % 16 == 0.
-    // Otherwise slots 1+ bind at a misaligned offset -> NVIDIA rejects with
-    // GL_INVALID_VALUE -> the instance SSBO never binds -> static-prop trees
-    // invisible during gameplay, reappearing only when paused on slot 0 (offset 0,
-    // the one aligned slot). AMD tolerated it. Pad the per-frame stride up to the
-    // alignment; the allocation (Step 5.9) pads identically so offsets never
-    // overrun the ring.
-    size_t raw = s_globalPoolLegacy
-        ? (s_offGroupTotalBytes + s_onGroupTotalBytes)
-        : (static_cast<size_t>(s_globalInstanceCap) * sizeof(GpuStaticPropInstance));
-    return static_cast<size_t>(gpuAlignUp(static_cast<unsigned long long>(raw),
-                              static_cast<unsigned long long>(gpuSsboOffsetAlignment())));
+    return s_coalescePerFrameInstanceBytes;
 }
 
 bool batcher_isCoalesceLayoutReady() { return s_coalesceLayoutReady; }
@@ -812,7 +650,6 @@ void batcher_getStaticPropOpaqueDebugState(StaticPropOpaqueDebugState* out) {
     out->materialInventorySize       = static_cast<uint32_t>(s_materialInventory.size());
 }
 
-
 uint32_t batcher_getStaticPropTypeDescCount() {
     return static_cast<uint32_t>(s_typeDescTable.size());
 }
@@ -878,23 +715,6 @@ void batcher_buildCandidateLog() {
         mc2::fmt::safe((emitted == expected && boundsErrors == 0) ? " OK" : " MISMATCH"));
 }
 
-// Saved slot-16 GL buffer object. Slot 16 is reserved to this feature.
-static GLint s_savedSsbo16 = 0;
-
-void batcher_bindBaseInstanceByCmdSsboForPatch() {
-    if (s_globalPoolLegacy || !s_baseInstanceByCmdSsbo) return;
-    glGetIntegeri_v(GL_SHADER_STORAGE_BUFFER_BINDING, BASE_INSTANCE_SSBO_BINDING, &s_savedSsbo16);
-    const GLintptr off = static_cast<GLintptr>(
-        s_coalesceFrameSlot * s_baseInstanceByCmdBytesPerFrame);
-    gpuBindSsboRange(BASE_INSTANCE_SSBO_BINDING, s_baseInstanceByCmdSsbo,
-                     static_cast<long long>(off), static_cast<long long>(s_baseInstanceByCmdBytesPerFrame),
-                     "sp.baseInstanceByCmd");
-}
-void batcher_unbindBaseInstanceByCmdSsboForPatch() {
-    if (s_globalPoolLegacy || !s_baseInstanceByCmdSsbo) return;
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, BASE_INSTANCE_SSBO_BINDING, (GLuint)s_savedSsbo16);
-    s_savedSsbo16 = 0;
-}
 
 // Env probe for GPU-vs-CPU count diagnostic (Step 4.11).
 static const bool s_coalesceGpuVsCpuTrace = mc2::gate::get<"MC2_COALESCE_GPU_VS_CPU_COUNT_TRACE">();
@@ -907,45 +727,6 @@ void batcher_prepareBaseInstanceTable() {
     // CRIT-2 v2 fix: advance coalesce ring slot BEFORE any guards so flush()'s
     // memcpy + draw always read a fresh, well-defined slot.
     s_coalesceFrameSlot = (s_coalesceFrameSlot + 1) % RING_FRAMES;
-
-    // Wait on the fence for the slot we just took (from RING_FRAMES frames ago).
-    if (s_coalesceFence[s_coalesceFrameSlot]) {
-        glClientWaitSync(s_coalesceFence[s_coalesceFrameSlot],
-                         GL_SYNC_FLUSH_COMMANDS_BIT, GL_TIMEOUT_IGNORED);
-        glDeleteSync(s_coalesceFence[s_coalesceFrameSlot]);
-        s_coalesceFence[s_coalesceFrameSlot] = nullptr;
-    }
-
-    // Step 4.11 — GPU-vs-CPU count diagnostic (env-gated). Must be after fence
-    // wait (prior frame's compute is now complete — fence covered patch dispatch).
-    if (s_coalesceGpuVsCpuTrace) {
-        static std::vector<uint32_t> s_priorFrameCpuCount;
-        const GLuint bucketsBuf = gpu_cull::compute_getBucketCountsBuf();
-        if (bucketsBuf && !s_types.empty()) {
-            std::vector<uint32_t> bucketCountGpu(s_types.size() + 1, 0u);
-            glGetNamedBufferSubData(bucketsBuf, 0,
-                static_cast<GLsizeiptr>((s_types.size() + 1) * sizeof(uint32_t)),
-                bucketCountGpu.data());
-            const size_t cmpN = std::min(s_priorFrameCpuCount.size(), bucketCountGpu.size() - 1);
-            for (uint32_t t = 0; t < static_cast<uint32_t>(cmpN); ++t) {
-                if (bucketCountGpu[t] > s_priorFrameCpuCount[t]) {
-                    MC2_DIAGFE(stderr,
-                        "[COALESCE v1] event=gpu_count_exceeds_cpu type=%u gpu=%u cpu=%u\n",
-                        t, bucketCountGpu[t], s_priorFrameCpuCount[t]);
-                    std::fflush(stderr);
-                }
-            }
-        }
-        // Stash this frame's CPU bucket sizes for comparison RING_FRAMES frames from now.
-        s_priorFrameCpuCount.assign(s_types.size(), 0u);
-        for (auto& [typeID, bucket] : s_bucketsByType) {
-            if (typeID < s_priorFrameCpuCount.size())
-                s_priorFrameCpuCount[typeID] = static_cast<uint32_t>(bucket.instances.size());
-        }
-    }
-
-    if (!s_baseInstanceByCmdMap) return;
-    if (!batcher_isCoalesceArmed()) return;
 
     // Prefix-sum: compute baseInstance for each type in sorted order.
     std::array<uint32_t, 2> groupCursor = {0u, 0u};
@@ -992,18 +773,6 @@ void batcher_prepareBaseInstanceTable() {
     // => not called => byte-identical.
     if (staticPopSplitArmed()) {
         rebuildStaticBaseInstanceTableIfDirty();
-        fillStaticInstanceBufferIfDirty();
-        rebuildStaticDrawCmdsIfDirty();   // Task 3: own indirect cmds (not drawn until Task 4)
-    }
-
-    const uint32_t pktCount = static_cast<uint32_t>(s_sortedPacketOrder.size());
-    const size_t fr_off = s_coalesceFrameSlot * s_baseInstanceByCmdBytesPerFrame;
-    uint32_t* dst = reinterpret_cast<uint32_t*>(
-        static_cast<uint8_t*>(s_baseInstanceByCmdMap) + fr_off);
-    for (uint32_t i = 0; i < pktCount; ++i) {
-        const uint32_t globalPktIdx = s_sortedPacketOrder[i];
-        const uint32_t typeID       = s_packets[globalPktIdx].owningTypeID;
-        dst[i] = (typeID < baseInstanceForType.size()) ? baseInstanceForType[typeID] : 0u;
     }
 
     // Stash group byte/count boundaries for flush() memcpy and draw path.

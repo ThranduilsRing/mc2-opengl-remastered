@@ -45,7 +45,6 @@
 #include "imgui.h"
 #include "imgui_impl_vulkan.h"
 
-#include <GL/glew.h>   // copy-1 GL blit (FBO-0 -> shared GL texture)
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_vulkan.h>
 #include <SDL2/SDL_syswm.h>   // P13b: SDL_GetWindowWMInfo -> HWND / HINSTANCE
@@ -123,7 +122,7 @@ struct EnginePresentVk::Impl {
     mc2vk::OwnedSemaphore& curAcquireSem()    { return acquireSems[slot()]; }
     mc2vk::OwnedFence&     curInFlight()      { return inFlights[slot()]; }
     // VK-PRESENT-SINGLESUBMIT-1: the native composite records into its OWN command
-    // buffer at composite time (no submit, no drain) and presentGLFrame submits
+    // buffer at composite time (no submit, no drain) and presentFrame submits
     // {compositeCbuf, cbuf} in ONE vkQueueSubmit. compositePending marks a recorded-
     // but-not-yet-submitted composite; it is consumed by the single submit, dropped
     // on resize (the recording references the old shared image), and simply
@@ -156,7 +155,7 @@ struct EnginePresentVk::Impl {
     VkCommandBuffer readbackCbuf = VK_NULL_HANDLE;
 
     // Rung 8.6 native ImGui renderer backend. GuiRuntime builds ImDrawData;
-    // presentGLFrame records it here after GL->VK handoff and before copy-2.
+    // presentFrame records it here after GL->VK handoff and before copy-2.
     bool            imguiVkInited = false;
     bool            imguiVkFailed = false;
     mc2vk::OwnedRenderPass    imguiRenderPass;
@@ -168,18 +167,10 @@ struct EnginePresentVk::Impl {
         RenderCore::TextureHandle serviceTexture; // descriptor cache borrows identity; GPU retirement retains its image
         VkImageView serviceView=VK_NULL_HANDLE;
         std::shared_ptr<const void> serviceImage; // owns this exact view until the retired set is freed
-        mc2vk::OwnedDeviceMemory memory;
-        mc2vk::OwnedRawImage image;
-        mc2vk::OwnedImageView view;
         VkDescriptorSet set = VK_NULL_HANDLE;
-        std::weak_ptr<const std::vector<uint8_t>> src;   // expires when the texture is released or its content re-published
-        uint64_t uploadFrame = 0;
-        const void* srcPtr = nullptr;   // identity of the uploaded texel vector, compared with the live texture once per frame
-        uint64_t checkedFrame = 0;      // last frame srcPtr was compared
         uint64_t lastUsedFrame = 0;
     };
     std::unordered_map<uint64_t, ImguiTexEntry> imguiTex;
-    std::unordered_map<uint32_t, uint64_t> imguiTexRetryAt;   // GL names with no texels: next frame to ask again
     mc2vk::OwnedSampler imguiTexSampler;
     uint64_t imguiTexFrame = 0;
     // SINGLE-FRAME-IN-FLIGHT DEPENDENCY (VK-PRESENT-SINGLESUBMIT-1 audit note): the
@@ -1383,7 +1374,6 @@ void imguiTexReleaseAll(EnginePresentVk::Impl& s) {
     const bool live = imguiBackendLive();
     for (auto& kv : s.imguiTex) imguiTexDestroy(kv.second, live);
     s.imguiTex.clear();
-    s.imguiTexRetryAt.clear();
     s.ctx->drainDeferred("present_imgui_release");   // the retired entries return their sets while the backend is still up
 }
 
@@ -1393,7 +1383,7 @@ void imguiTexSweep(EnginePresentVk::Impl& s) {
         auto& e = it->second;
         const bool staleService = RenderCore::isUiTextureId(it->first) &&
             (!RenderCore::textureService().isLive(e.serviceTexture) || e.serviceView != s.ctx->textures().view(e.serviceTexture));
-        if (RenderCore::isUiTextureId(it->first) ? staleService : e.src.expired()) {   // the texture was released or recreated: retire the set, destroy it once the GPU is done with it
+        if (staleService) {   // the texture was released or recreated: retire the set, destroy it once the GPU is done with it
             s.ctx->retire(std::make_unique<ImguiTexRetired>(std::move(e)));
             it = s.imguiTex.erase(it);
         } else {
@@ -1453,127 +1443,7 @@ ImTextureID imguiTexResolve(EnginePresentVk::Impl& s, VkCommandBuffer cb, uint64
         if (!e.set) return 0;
         const auto set=reinterpret_cast<ImTextureID>(e.set); s.imguiTex.emplace(textureId,std::move(e)); return set;
     }
-    const uint32_t glName=uint32_t(textureId);
-    auto it = s.imguiTex.find(glName);
-    if (it != s.imguiTex.end()) {
-        auto& e = it->second;
-        if (e.checkedFrame == s.imguiTexFrame) {
-            e.lastUsedFrame = s.imguiTexFrame;
-            return reinterpret_cast<ImTextureID>(e.set);
-        }
-        // Once per frame: the cached image must still be the texture's CURRENT content. Pointer identity of the published texel
-        // vector tracks content (a re-publish or a reused GL name gives a different vector), and an expired weak_ptr covers a
-        // released one. Other caches holding the old vector alive do not matter: the comparison is against the live texture.
-        const GosTexels cur = gos_GetTextureTexelsByGlName(glName);
-        if (cur.status == GosTexels::Status::Ready && cur.bytes && cur.bytes.get() == e.srcPtr && !e.src.expired()) {
-            e.checkedFrame = s.imguiTexFrame;
-            e.lastUsedFrame = s.imguiTexFrame;
-            return reinterpret_cast<ImTextureID>(e.set);
-        }
-        imguiTexRetire(s, it);
-    }
-    auto miss = s.imguiTexRetryAt.find(glName);
-    if (miss != s.imguiTexRetryAt.end() && miss->second > s.imguiTexFrame)
-        return 0;
-    constexpr uint64_t kRetryFrames = 120;
-    auto fail = [&]() -> ImTextureID { s.imguiTexRetryAt[glName] = s.imguiTexFrame + kRetryFrames; return 0; };
-    if (!imguiTexMakeRoom(s)) return fail();
-    const GosTexels texels = gos_GetTextureTexelsByGlName(glName);
-    if (texels.status != GosTexels::Status::Ready || !texels.bytes || texels.width == 0 || texels.height == 0 ||
-        texels.width > 8192 || texels.height > 8192)
-        return fail();
-    VkFormat fmt = mc2vk::texelFormat(texels.vkFormat);
-    // ImGui writes display-space values into a UNORM target: a BC7 sRGB image would be decoded to linear and come out dark, so UI
-    // images sample BC7 as UNORM, which equals what the RGBA8 mirrors give.
-    if (fmt == VK_FORMAT_BC7_SRGB_BLOCK)
-        fmt = VK_FORMAT_BC7_UNORM_BLOCK;
-    const VkDeviceSize bytes = static_cast<VkDeviceSize>(texels.bytes->size());
-    const bool bc7 = fmt == VK_FORMAT_BC7_UNORM_BLOCK;
-    const VkDeviceSize need = bc7 ? static_cast<VkDeviceSize>(((texels.width + 3u) / 4u)) * ((texels.height + 3u) / 4u) * 16u
-                                  : static_cast<VkDeviceSize>(texels.width) * texels.height * 4u;
-    if (bytes < need)
-        return fail();
-
-    EnginePresentVk::Impl::ImguiTexEntry e;
-    // The staging bytes are this frame's transient memory: the copy below is recorded into `cb`, which submits this frame.
-    const mc2vk::FrameAlloc stage = s.ctx->frameAlloc(need, 16);
-    if (!stage)
-        return fail();
-    std::memcpy(stage.ptr, texels.bytes->data(), static_cast<size_t>(need));
-
-    VkImageCreateInfo ici{VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO};
-    ici.imageType = VK_IMAGE_TYPE_2D;
-    ici.format = fmt;
-    ici.extent = {texels.width, texels.height, 1};
-    ici.mipLevels = 1;
-    ici.arrayLayers = 1;
-    ici.samples = VK_SAMPLE_COUNT_1_BIT;
-    ici.tiling = VK_IMAGE_TILING_OPTIMAL;
-    ici.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
-    ici.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-    ici.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    if (!mc2vk::create(e.image, s.dev, [&](auto* h) { return vkCreateImage(s.dev, &ici, nullptr, h); }))
-        return fail();
-    VkMemoryRequirements req{};
-    vkGetImageMemoryRequirements(s.dev, e.image.get(), &req);
-    uint32_t memType = findMemoryType(s.phys, req.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-    if (memType == UINT32_MAX) memType = findMemoryType(s.phys, req.memoryTypeBits, 0);
-    if (memType == UINT32_MAX)
-        return fail();
-    VkMemoryAllocateInfo mai{VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO};
-    mai.allocationSize = req.size;
-    mai.memoryTypeIndex = memType;
-    if (!mc2vk::create(e.memory, s.dev, [&](auto* h) { return vkAllocateMemory(s.dev, &mai, nullptr, h); }) ||
-        vkBindImageMemory(s.dev, e.image.get(), e.memory.get(), 0) != VK_SUCCESS)
-        return fail();
-    VkImageViewCreateInfo vci{VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO};
-    vci.image = e.image.get();
-    vci.viewType = VK_IMAGE_VIEW_TYPE_2D;
-    vci.format = fmt;
-    vci.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
-    if (!mc2vk::create(e.view, s.dev, [&](auto* h) { return vkCreateImageView(s.dev, &vci, nullptr, h); }))
-        return fail();
-    if (!s.imguiTexSampler.get()) {
-        VkSamplerCreateInfo sci{VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO};
-        sci.magFilter = sci.minFilter = VK_FILTER_LINEAR;
-        sci.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
-        sci.addressModeU = sci.addressModeV = sci.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-        if (!mc2vk::create(s.imguiTexSampler, s.dev, [&](auto* h) { return vkCreateSampler(s.dev, &sci, nullptr, h); }))
-            return fail();
-    }
-
-    // The descriptor set is the last thing that can fail; the vendored backend returns null when the pool is exhausted.
-    e.set = ImGui_ImplVulkan_AddTexture(s.imguiTexSampler.get(), e.view.get(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-    if (!e.set) {
-        static bool s_logged = false;
-        if (!s_logged) {
-            s_logged = true;
-            std::fprintf(stderr, "[VK_IMGUI] descriptor pool exhausted (live=%zu retired=%zu): image draws skipped until sets retire\n",
-                         s.imguiTex.size(), g_imguiTexRetiredPending);
-        }
-        return fail();
-    }
-
-    // No failure past this point.
-    barrier(cb, e.image.get(), VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 0, VK_ACCESS_TRANSFER_WRITE_BIT,
-            VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
-    VkBufferImageCopy region{};
-    region.bufferOffset = stage.offset;
-    region.imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
-    region.imageExtent = {texels.width, texels.height, 1};
-    vkCmdCopyBufferToImage(cb, stage.buffer, e.image.get(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
-    barrier(cb, e.image.get(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-            VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
-
-    e.src = texels.bytes;
-    e.srcPtr = texels.bytes.get();
-    e.uploadFrame = s.imguiTexFrame;
-    e.checkedFrame = s.imguiTexFrame;
-    e.lastUsedFrame = s.imguiTexFrame;
-    const ImTextureID id = reinterpret_cast<ImTextureID>(e.set);
-    s.imguiTexRetryAt.erase(glName);
-    s.imguiTex.emplace(glName, std::move(e));
-    return id;
+    return 0;
 }
 
 bool recordPendingImgui(EnginePresentVk::Impl& s, VkCommandBuffer cb) {
@@ -1942,7 +1812,7 @@ bool buildSharedImage(EnginePresentVk::Impl& s, uint32_t w, uint32_t h, std::str
 
 }  // namespace
 
-bool EnginePresentVk::init(VulkanContext& ctx, SDL_Window* glWindow, uint32_t w, uint32_t h) {
+bool EnginePresentVk::init(VulkanContext& ctx, SDL_Window* window, uint32_t w, uint32_t h) {
     health_ = EnginePresentHealth{};
     health_.attempted = true;
     if (!ctx.valid()) {
@@ -1950,12 +1820,12 @@ bool EnginePresentVk::init(VulkanContext& ctx, SDL_Window* glWindow, uint32_t w,
         plog("%s. fail-soft.", health_.fallback_reason.c_str());
         return false;
     }
-    if (!glWindow) {
+    if (!window) {
         health_.fallback_reason = "P13b: NULL GL game window handed to present init";
         plog("%s. fail-soft.", health_.fallback_reason.c_str());
         return false;
     }
-    glWindow_ = glWindow;   // BORROWED (g_sdl_window) -- never destroyed here.
+    window_ = window;   // BORROWED (g_sdl_window) -- never destroyed here.
     if (w == 0) w = 1;
     if (h == 0) h = 1;
 
@@ -1985,7 +1855,7 @@ bool EnginePresentVk::init(VulkanContext& ctx, SDL_Window* glWindow, uint32_t w,
     // HWND (no conflict, since GL swap is suppressed in =vulkan mode). One window,
     // already visible, already owning focus + all input.
     SDL_SysWMinfo wm; SDL_VERSION(&wm.version);
-    if (SDL_GetWindowWMInfo(glWindow_, &wm) != SDL_TRUE) {
+    if (SDL_GetWindowWMInfo(window_, &wm) != SDL_TRUE) {
         return fail(std::string("P13b SDL_GetWindowWMInfo: ") + SDL_GetError());
     }
     if (wm.subsystem != SDL_SYSWM_WINDOWS) {
@@ -2086,36 +1956,14 @@ bool EnginePresentVk::init(VulkanContext& ctx, SDL_Window* glWindow, uint32_t w,
     return true;
 }
 
-// VK-RUNG8-ITEM8: the GL copy FBO is deleted, so this always returns 0 (endScene
-// never GL-renders into the present image). Kept as a stable no-op so endScene's
-// call site and the direct_fbo_requests counter are unchanged; the live arming is
-// presentDirectVkOnly() below.
-unsigned int EnginePresentVk::presentDirectFbo() {
-    ++health_.direct_fbo_requests;
-    // VK-RUNG8-ITEM8 (stage 2): the GL copy FBO wrapping the present image is
-    // deleted. There is no GL FBO to hand endScene any more -- the present image
-    // is written only by the native VK composite (via presentDirectVkOnly). This
-    // always returns 0 so endScene never GL-renders into the present image.
-    directFbo_ = 0;
+// Arm the native composite against the present owner's actual image readiness.
+bool EnginePresentVk::beginNativeComposite() {
+    ++health_.native_composite_requests;
+    nativeCompositeArmed_ = created_ && impl_ && impl_->sharedImg.image.get() != VK_NULL_HANDLE;
     presentImageVkOwned_ = false;
-    return 0;
-}
-
-bool EnginePresentVk::presentDirectVkOnly() {
-    // Arms the VK-only present image for this frame: endScene skips its own GL
-    // composite bind and the native VK composite (renderNativeCompositeVisual)
-    // renders the present image instead. directFbo_ is a sentinel (1u == "native
-    // present armed"), not a GL FBO name.
-    if (!created_ || !impl_ || impl_->sharedImg.image.get() == VK_NULL_HANDLE) {
-        directFbo_ = 0;
-        presentImageVkOwned_ = false;
-        return false;
-    }
-    directFbo_ = 1u;
-    presentImageVkOwned_ = false;
-    ++health_.direct_fbo_grants;
-    health_.last_direct_fbo = directFbo_;
-    return true;
+    health_.native_composite_armed = nativeCompositeArmed_;
+    if (nativeCompositeArmed_) ++health_.native_composite_grants;
+    return nativeCompositeArmed_;
 }
 
 bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
@@ -2130,7 +1978,7 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
                                                   bool casEnabled, float casSharpness, int tonemapMode,
                                                   int viewportX, int viewportY,
                                                   int viewportW, int viewportH) {
-    if (!created_ || !impl_ || directFbo_ == 0)
+    if (!created_ || !impl_ || !nativeCompositeArmed_)
         return false;
     Impl& s = *impl_;
     if (viewportW <= 0 || viewportH <= 0 ||
@@ -2164,7 +2012,7 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
     // VK-PRESENT-SINGLESUBMIT-1: the ONLY CPU wait on the present path. Retire the
     // PREVIOUS frame's single submit (composite+tail+blit) before either of its two
     // command buffers is reset for re-recording. The fence is NOT reset here — it is
-    // reset immediately before the submit that will signal it (presentGLFrame), so a
+    // reset immediately before the submit that will signal it (presentFrame), so a
     // mid-frame present decline (DISARM-2b) can never leave it unsignaled and hang
     // this wait. Timer kept from VK-QWI-TO-FENCE-1 (same [QWI-WAIT] receipt tag):
     // it now measures the previous-frame retire wait instead of an inline drain.
@@ -2192,7 +2040,7 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
                  health_.composite_wait_samples);
     }
 
-    // Record into the composite's OWN cbuf; the submit happens in presentGLFrame as
+    // Record into the composite's OWN cbuf; the submit happens in presentFrame as
     // half of the single {compositeCbuf, cbuf} submission.
     ZoneNamedN(zCompRec, "VKIsl.Present.CompositeRecord", true);   // VK-ISLAND-TRACY-1 (to fn return)
     VkCommandBuffer cc = s.curCompositeCbuf();
@@ -2271,7 +2119,7 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
     (void)fsScene; (void)fsObjectId;
 
     // VK-PRESENT-SINGLESUBMIT-1: NO submit and NO drain here. The recorded cbuf is
-    // submitted by presentGLFrame together with the tail (HUD/ImGui + swapchain
+    // submitted by presentFrame together with the tail (HUD/ImGui + swapchain
     // blit) in ONE vkQueueSubmit; GPU-side composite-before-tail ordering comes from
     // command-buffer order within the submit + the tail's entry barriers.
     s.compositePending = true;
@@ -2281,7 +2129,7 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
 }
 
 bool EnginePresentVk::renderNativeCsmShadowDebugOverlay(void* csmArrayView, int layer) {
-    if (!created_ || !impl_ || directFbo_ == 0)
+    if (!created_ || !impl_ || !nativeCompositeArmed_)
         return false;
     Impl& s = *impl_;
     VkImageView arrayView = reinterpret_cast<VkImageView>(csmArrayView);
@@ -2334,7 +2182,7 @@ bool EnginePresentVk::queueHudVulkanFrame(std::vector<VkHudDraw>&& draws,
     health_.hud_vk_textured_last = 0;
     health_.hud_vk_serialized_last = 0;
     for (const VkHudDraw& d : s.pendingHudDraws) {
-        if (d.textureHandle != 0 && d.glTextureId != 0 && d.textureWidth != 0 && d.textureHeight != 0) {
+        if (d.textureHandle != 0 && d.textureRgba && d.textureWidth != 0 && d.textureHeight != 0) {
             ++health_.hud_vk_textured_last;
             if (d.textureSerial != 0)
                 ++health_.hud_vk_serialized_last;
@@ -2379,10 +2227,10 @@ void EnginePresentVk::shutdownImguiVulkanRenderer() {
 // shared -> swapchain) + present. Rebuild swapchain + shared image on resize.
 // VK-P14b: when endScene rendered straight into the shared image (directFbo_!=0),
 // copy-1 is SKIPPED here and the Y-flip is done in copy-2 instead.
-bool EnginePresentVk::presentGLFrame(uint32_t glDrawableW, uint32_t glDrawableH,
+bool EnginePresentVk::presentFrame(uint32_t drawableW, uint32_t drawableH,
                                      bool verifyReadback) {
     mc2vk::VulkanContext* const ctx = (created_ && impl_) ? impl_->ctx : nullptr;
-    const bool ok = presentGLFrameBody(glDrawableW, glDrawableH, verifyReadback);
+    const bool ok = presentFrameBody(drawableW, drawableH, verifyReadback);
     // A recorded composite that this frame's submit did not consume (present declined, minimized, failed) is dropped here: it was recorded against this
     // frame's ring allocations and deferred-destroy epoch, which the boundary below moves past, so it must never be submitted later.
     if (impl_) impl_->compositePending = false;
@@ -2392,13 +2240,13 @@ bool EnginePresentVk::presentGLFrame(uint32_t glDrawableW, uint32_t glDrawableH,
     return ok;
 }
 
-bool EnginePresentVk::presentGLFrameBody(uint32_t glDrawableW, uint32_t glDrawableH,
+bool EnginePresentVk::presentFrameBody(uint32_t drawableW, uint32_t drawableH,
                                          bool verifyReadback) {
     if (!created_ || !impl_) {
         health_.fallback_reason = "present path not initialized";
         return false;
     }
-    ZoneScopedN("VKIsl.Present.Frame");   // VK-ISLAND-TRACY-1: presentGLFrame total (CPU)
+    ZoneScopedN("VKIsl.Present.Frame");   // VK-ISLAND-TRACY-1: presentFrame total (CPU)
     Impl& s = *impl_;
 
     // P13b: do NOT drain SDL events here. We present onto the SAME visible GL
@@ -2409,14 +2257,14 @@ bool EnginePresentVk::presentGLFrameBody(uint32_t glDrawableW, uint32_t glDrawab
     // Minimized / zero-drawable: skip present this frame (fail-soft, no crash).
     // The game loop also throttles on MINIMIZED via g_sdl_window, but guard here
     // too so a zero extent never reaches the swapchain rebuild.
-    if (glDrawableW == 0 || glDrawableH == 0) {
+    if (drawableW == 0 || drawableH == 0) {
         return true;   // nothing to present; try again next frame
     }
 
     // Resize: if the GL drawable changed, rebuild the shared image + swapchain to
     // match the game window's new size (OS-driven resize / DPI change).
-    if (glDrawableW != s.imgW || glDrawableH != s.imgH) {
-        const bool hadDirectFbo = (directFbo_ != 0);
+    if (drawableW != s.imgW || drawableH != s.imgH) {
+        const bool hadNativeComposite = (nativeCompositeArmed_);
         // VK-PRESENT-SINGLESUBMIT-1: (a) retire any in-flight prior submit before
         // buildSharedImage destroys the image it may still reference (the old
         // composite-time queue drain used to provide this incidentally; the wait is
@@ -2434,17 +2282,17 @@ bool EnginePresentVk::presentGLFrameBody(uint32_t glDrawableW, uint32_t glDrawab
         drainReadbackBeforeImageDestroy();   // a pending image->buffer copy reads the shared image buildSharedImage is about to destroy
         s.compositePending = false;
         std::string r;
-        if (!buildSharedImage(s, glDrawableW, glDrawableH, r)) {
+        if (!buildSharedImage(s, drawableW, drawableH, r)) {
             health_.fallback_reason = "resize: " + r; return false;
         }
-        if (!rebuildSwapchain(s, glDrawableW, glDrawableH, health_, r)) {
+        if (!rebuildSwapchain(s, drawableW, drawableH, health_, r)) {
             health_.fallback_reason = "resize: " + r; return false;
         }
         ++health_.resize_count;
         health_.extent_w = s.scExtent.width;
         health_.extent_h = s.scExtent.height;
-        if (hadDirectFbo) {
-            directFbo_ = 0;
+        if (hadNativeComposite) {
+            nativeCompositeArmed_ = false;
             presentImageVkOwned_ = false;
             return true;
         }
@@ -2506,7 +2354,7 @@ bool EnginePresentVk::presentGLFrameBody(uint32_t glDrawableW, uint32_t glDrawab
         // game window's current drawable. If it's zero (minimized), skip the
         // rebuild -- retry next frame, no crash. (No fence re-signal needed any
         // more: the fence was not reset on this path.)
-        int dw = 0, dh = 0; SDL_GL_GetDrawableSize(glWindow_, &dw, &dh);
+        int dw = 0, dh = 0; SDL_GetWindowSizeInPixels(window_, &dw, &dh);
         if (dw > 0 && dh > 0) {
             std::string rr;
             if (!rebuildSwapchain(s, static_cast<uint32_t>(dw), static_cast<uint32_t>(dh), health_, rr)) {
@@ -2690,7 +2538,7 @@ bool EnginePresentVk::presentGLFrameBody(uint32_t glDrawableW, uint32_t glDrawab
         ++health_.present_frames;
     } else if (r == VK_ERROR_OUT_OF_DATE_KHR || r == VK_SUBOPTIMAL_KHR) {
         ++health_.present_frames;
-        int dw = 0, dh = 0; SDL_GL_GetDrawableSize(glWindow_, &dw, &dh);
+        int dw = 0, dh = 0; SDL_GetWindowSizeInPixels(window_, &dw, &dh);
         if (dw > 0 && dh > 0) {
             std::string rr;
             if (!rebuildSwapchain(s, static_cast<uint32_t>(dw), static_cast<uint32_t>(dh), health_, rr)) {
@@ -2888,14 +2736,14 @@ void EnginePresentVk::destroy() {
         delete impl_;
         impl_ = nullptr;
     }
-    // P13b: glWindow_ is BORROWED (g_sdl_window, owned by gos_render). Never
+    // P13b: window_ is BORROWED (g_sdl_window, owned by gos_render). Never
     // destroy it here -- just drop our reference.
-    glWindow_ = nullptr;
+    window_ = nullptr;
     created_ = false;
 }
 
 void EnginePresentVk::logHealth() const {
-    mc2::fmt::print_err("[VK_PRESENT] created={:d} attempted={:d} present_frames={:d} resize_count={:d} resize_recreate_ok={:d} resize_recreate_retries={:d} resize_recreate_failsoft={:d} validation_errors={:d} extent={:d}x{:d} present_mode={} readback_changed={:d} last_checksum=0x{:x} direct_fbo_requests={:d} direct_fbo_grants={:d} copy1_blit_frames={:d} copy1_skip_frames={:d} gl_handoff_skip_frames={:d} tail_hook_frames={:d} composite_vk_frames={:d} shadow_debug_vk_frames={:d} hud_vk_queued_frames={:d} hud_vk_consumed_frames={:d} hud_vk_draws_last={:d} hud_vk_textured_last={:d} hud_vk_serialized_last={:d} hud_vk_color_frames={:d} hud_vk_color_draws_last={:d} hud_vk_textured_frames={:d} hud_vk_textured_draws_last={:d} hud_vk_texture_uploads={:d} imgui_vk_ready={:d} imgui_vk_frames={:d} last_direct_fbo={:d} composite_wait_us_last={:.1f} composite_wait_us_avg={:.1f} composite_wait_samples={:d} fallback_reason=\"{}\"\n",
+    mc2::fmt::print_err("[VK_PRESENT] created={:d} attempted={:d} present_frames={:d} resize_count={:d} resize_recreate_ok={:d} resize_recreate_retries={:d} resize_recreate_failsoft={:d} validation_errors={:d} extent={:d}x{:d} present_mode={} readback_changed={:d} last_checksum=0x{:x} native_composite_requests={:d} native_composite_grants={:d} copy1_blit_frames={:d} copy1_skip_frames={:d} gl_handoff_skip_frames={:d} tail_hook_frames={:d} composite_vk_frames={:d} shadow_debug_vk_frames={:d} hud_vk_queued_frames={:d} hud_vk_consumed_frames={:d} hud_vk_draws_last={:d} hud_vk_textured_last={:d} hud_vk_serialized_last={:d} hud_vk_color_frames={:d} hud_vk_color_draws_last={:d} hud_vk_textured_frames={:d} hud_vk_textured_draws_last={:d} hud_vk_texture_uploads={:d} imgui_vk_ready={:d} imgui_vk_frames={:d} native_composite_armed={:d} composite_wait_us_last={:.1f} composite_wait_us_avg={:.1f} composite_wait_samples={:d} fallback_reason=\"{}\"\n",
         mc2::fmt::as_i32(health_.created ? 1 : 0), mc2::fmt::as_i32(health_.attempted ? 1 : 0),
         mc2::fmt::as_u32(health_.present_frames), mc2::fmt::as_u32(health_.resize_count),
         mc2::fmt::as_u32(health_.resize_recreate_ok), mc2::fmt::as_u32(health_.resize_recreate_retries),
@@ -2904,7 +2752,7 @@ void EnginePresentVk::logHealth() const {
         health_.present_mode_name.empty() ? "?" : health_.present_mode_name.c_str(),
         mc2::fmt::as_i32(health_.readback_changed ? 1 : 0),
         mc2::fmt::as_u64(static_cast<unsigned long long>(health_.last_readback_checksum)),
-        mc2::fmt::as_u32(health_.direct_fbo_requests), mc2::fmt::as_u32(health_.direct_fbo_grants),
+        mc2::fmt::as_u32(health_.native_composite_requests), mc2::fmt::as_u32(health_.native_composite_grants),
         mc2::fmt::as_u32(health_.copy1_blit_frames), mc2::fmt::as_u32(health_.copy1_skip_frames),
         mc2::fmt::as_u32(health_.gl_handoff_skip_frames),
         mc2::fmt::as_u32(health_.tail_hook_frames),
@@ -2916,7 +2764,7 @@ void EnginePresentVk::logHealth() const {
         mc2::fmt::as_u32(health_.hud_vk_textured_frames), mc2::fmt::as_u32(health_.hud_vk_textured_draws_last),
         mc2::fmt::as_u32(health_.hud_vk_texture_uploads),
         mc2::fmt::as_i32(health_.imgui_vk_ready ? 1 : 0), mc2::fmt::as_u32(health_.imgui_vk_frames),
-        mc2::fmt::as_u32(health_.last_direct_fbo),
+        mc2::fmt::as_u32(health_.native_composite_armed),
         health_.composite_wait_us_last,
         health_.composite_wait_samples
             ? health_.composite_wait_us_accum / static_cast<double>(health_.composite_wait_samples) : 0.0,

@@ -14,7 +14,6 @@
 
 // pp->endScene() leaves VAO 0 bound; rebind the renderer's VAO before any
 // gos_Draw* calls. Defined in GameOS/gameos/gameos_graphics.cpp.
-extern void gos_RendererRebindVAO();
 
 #include <stdio.h>
 #include <math.h>
@@ -225,7 +224,6 @@ void projectz_overlay_render(int viewportW, int viewportH) {
 
     // pp->endScene() leaves VAO 0 bound; rebind so attribute 0 is active
     // (AMD silently drops draws when attribute 0 is unbound).
-    gos_RendererRebindVAO();
 
     // Alpha-blended, no-depth-test, no-texture state.
     gos_SetRenderState(gos_State_Texture,        0);

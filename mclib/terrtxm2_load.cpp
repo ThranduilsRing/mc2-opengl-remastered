@@ -1,6 +1,7 @@
 // TerrainColorMap: getScaledColorMap and TerrainColorMap::init(fileName): the mission colormap load.
 // Declared in the class headers; shared names in terrtxm2_internal.h.
 #include "terrtxm2_internal.h"
+#include "texture_assets.h"
 #include "mc2fmt.h"
 #include "tga_scratch.h"
 
@@ -172,7 +173,7 @@ long TerrainColorMap::init (char *fileName)
 		if (fileExists(detailFile))		//Otherwise, its already 0xffffffff!!
 		{
 			ZoneScopedN("TerrainColorMap::init detailTexture");
-			detailTextureNodeIndex.reset(mcTextureManager->loadTexture(detailFile,gos_Texture_Alpha,gosHint_DontShrink, 0, 0x1));
+			detailTextureNodeIndex.reset(mc2::textures::load(detailFile,gos_Texture_Alpha,gosHint_DontShrink, 0, 0x1));
 		}
 		else
 			gosASSERT(false);
@@ -195,7 +196,7 @@ long TerrainColorMap::init (char *fileName)
 		if (fileExists(waterFile))
 		{
 			ZoneScopedN("TerrainColorMap::init waterTexture");
-			waterTextureNodeIndex.reset(mcTextureManager->loadTexture(waterFile,gos_Texture_Solid,0, 0, 0x1));
+			waterTextureNodeIndex.reset(mc2::textures::load(waterFile,gos_Texture_Solid,0, 0, 0x1));
 		}
 		else
 			gosASSERT(false);
@@ -296,8 +297,8 @@ long TerrainColorMap::init (char *fileName)
 						}
 						{
 							ZoneScopedN("TerrainColorMap::init jpgColorMap tileCache");
-							textures[i].mcTextureNodeIndex.reset(mcTextureManager->textureFromMemoryRaw(reinterpret_cast<DWORD *>(txmRAM[i].ourRAM),gos_Texture_Solid,gosHint_DontShrink,COLOR_MAP_TEXTURE_SIZE));
-							mcTextureManager->setTextureNeverFlush(textures[i].mcTextureNodeIndex.get(), 0x1);
+							textures[i].mcTextureNodeIndex.reset(mc2::textures::fromRawPixels(reinterpret_cast<DWORD *>(txmRAM[i].ourRAM),gos_Texture_Solid,gosHint_DontShrink,COLOR_MAP_TEXTURE_SIZE));
+							mc2::textures::setSessionLifetime(textures[i].mcTextureNodeIndex.get(), 0x1);
 						}
 					}
 				}
@@ -437,8 +438,8 @@ long TerrainColorMap::init (char *fileName)
 							}
 							{
 								ZoneScopedN("TerrainColorMap::init colorMap tileCache");
-								textures[i].mcTextureNodeIndex.reset(mcTextureManager->textureFromMemoryRaw(reinterpret_cast<DWORD *>(txmRAM[i].ourRAM),gos_Texture_Solid,gosHint_DontShrink,COLOR_MAP_TEXTURE_SIZE));
-								mcTextureManager->setTextureNeverFlush(textures[i].mcTextureNodeIndex.get(), 0x1);
+								textures[i].mcTextureNodeIndex.reset(mc2::textures::fromRawPixels(reinterpret_cast<DWORD *>(txmRAM[i].ourRAM),gos_Texture_Solid,gosHint_DontShrink,COLOR_MAP_TEXTURE_SIZE));
+								mc2::textures::setSessionLifetime(textures[i].mcTextureNodeIndex.get(), 0x1);
 							}
 							if (i % 50 == 0)
 							{
@@ -586,9 +587,9 @@ long TerrainColorMap::init (char *fileName)
 
 						{
 							ZoneScopedN("TerrainColorMap::init normalMap tileCache");
-							normalMapTextures[i].mcTextureNodeIndex.reset(mcTextureManager->textureFromMemoryRaw(
+							normalMapTextures[i].mcTextureNodeIndex.reset(mc2::textures::fromRawPixels(
 								reinterpret_cast<DWORD *>(tileRAM), gos_Texture_Solid, gosHint_DontShrink, COLOR_MAP_TEXTURE_SIZE));
-							mcTextureManager->setTextureNeverFlush(normalMapTextures[i].mcTextureNodeIndex.get(), 0x1);
+							mc2::textures::setSessionLifetime(normalMapTextures[i].mcTextureNodeIndex.get(), 0x1);
 						}
 					}
 					}
@@ -598,87 +599,7 @@ long TerrainColorMap::init (char *fileName)
 			}
 		}
 
-		// Load detail normal map (shared tiling texture)
-		FullPathFileName detailNmPath;
-		detailNmPath.init(texturePath, "detail_normal", ".tga");
-		if (fileExists(detailNmPath))
-		{
-			// Load detail normal manually via textureFromMemory (loadTexture crashes during terrain init)
-			File detNmFile;
-			if (detNmFile.open(detailNmPath) == NO_ERR)
-			{
-				std::vector<unsigned char> detData;
-				TGAFileHeader detInfo{};
-				const bool detLoaded = loadTga(detNmFile, detData, detInfo, "detail normal map");
-				if (detLoaded && detInfo.image_type == UNC_TRUE && detInfo.width == detInfo.height && tgaPixelsPresent(detData, detInfo, "detail normal map"))
-				{
-					long detPixels = static_cast<long>(detInfo.width) * static_cast<long>(detInfo.width);
-					std::vector<DWORD> detStore(static_cast<size_t>(detPixels));
-					DWORD *detRGBA = detStore.data();
-					MemoryPtr loadBuf = detData.data() + sizeof(TGAFileHeader);
-					if (detInfo.pixel_depth == 24)
-					{
-						MemoryPtr cMap = reinterpret_cast<MemoryPtr>(detRGBA);
-						MemoryPtr lMap = loadBuf;
-						for (long i = 0; i < detPixels; i++)
-						{
-							*cMap++ = *lMap++; *cMap++ = *lMap++; *cMap++ = *lMap++; *cMap++ = 0xff;
-						}
-					}
-					else
-					{
-						memcpy(detRGBA, loadBuf, detPixels * sizeof(DWORD));
-					}
-					bool top = (detInfo.image_descriptor & 32) != 0;
-					if (!top)
-						flipTopToBottom(reinterpret_cast<MemoryPtr>(detRGBA), 32, detInfo.width, detInfo.height);
 
-					// Create GL texture directly (bypasses MC2 texture manager to avoid handle issues)
-					unsigned int glTexId = gos_CreateTerrainNormalTexture(reinterpret_cast<const unsigned char*>(detRGBA), detInfo.width);
-					gos_SetTerrainDetailNormalTexture(glTexId);
-				}
-			}
-		}
-	}
-
-	// Load detail displacement map (for POM - same tiling as detail normal)
-	FullPathFileName detailDispPath;
-	detailDispPath.init(texturePath, "detail_displacement", ".tga");
-	if (fileExists(detailDispPath))
-	{
-		File detDispFile;
-		if (detDispFile.open(detailDispPath) == NO_ERR)
-		{
-			std::vector<unsigned char> dispData;
-			TGAFileHeader dispInfo{};
-			const bool dispLoaded = loadTga(detDispFile, dispData, dispInfo, "detail displacement map");
-			if (dispLoaded && dispInfo.image_type == UNC_TRUE && dispInfo.width == dispInfo.height && tgaPixelsPresent(dispData, dispInfo, "detail displacement map"))
-			{
-				long dispPixels = static_cast<long>(dispInfo.width) * static_cast<long>(dispInfo.width);
-				std::vector<DWORD> dispStore(static_cast<size_t>(dispPixels));
-				DWORD *dispRGBA = dispStore.data();
-				MemoryPtr loadBuf = dispData.data() + sizeof(TGAFileHeader);
-				if (dispInfo.pixel_depth == 24)
-				{
-					MemoryPtr cMap = reinterpret_cast<MemoryPtr>(dispRGBA);
-					MemoryPtr lMap = loadBuf;
-					for (long i = 0; i < dispPixels; i++)
-					{
-						*cMap++ = *lMap++; *cMap++ = *lMap++; *cMap++ = *lMap++; *cMap++ = 0xff;
-					}
-				}
-				else
-				{
-					memcpy(dispRGBA, loadBuf, dispPixels * sizeof(DWORD));
-				}
-				bool top = (dispInfo.image_descriptor & 32) != 0;
-				if (!top)
-					flipTopToBottom(reinterpret_cast<MemoryPtr>(dispRGBA), 32, dispInfo.width, dispInfo.height);
-
-				unsigned int glTexId = gos_CreateTerrainNormalTexture(reinterpret_cast<const unsigned char*>(dispRGBA), dispInfo.width);
-				gos_SetTerrainDisplacementTexture(glTexId);
-			}
-		}
 	}
 
 	// Load terrain material texture arrays (4 PBR material sets)

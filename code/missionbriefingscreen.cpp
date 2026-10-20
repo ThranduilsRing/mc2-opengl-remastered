@@ -4,7 +4,7 @@
 //===========================================================================//
 
 #include <memory>
-#include <string_view>
+#include "../mclib/texture_assets.h"
 #include"missionbriefingscreen.h"
 #include "../GuiRuntime/GuiRuntime.h"
 #include "gos_crashbundle.h"
@@ -470,7 +470,7 @@ long	MissionBriefingScreen::getMissionTGA( const char* missionName, bool swizzle
 			}
 
 			// set up the texture
-			long tmpMapTextureHandle = mcTextureManager->textureFromMemory( reinterpret_cast<DWORD*>((pHeader+1)), gos_Texture_Solid, 0, bmpWidth );
+			long tmpMapTextureHandle = mc2::textures::fromPixels( reinterpret_cast<DWORD*>((pHeader+1)), gos_Texture_Solid, 0, bmpWidth );
 
 			mem.reset();
 

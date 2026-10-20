@@ -323,29 +323,6 @@ uint32_t mc2StaticLightHighWater()
     return s_staticLightHighWater;
 }
 
-// [LIGHTSSBO v2] Static prefix dirty flag. Set whenever the permanent prefix
-// [0..S) changes: a new recipe bakes, a recipe re-bakes on invalidate, or the
-// table is cleared on mission unload. Consumed (and cleared) once per frame by
-// the LightDataUpload split path. Initial true → first frame uploads the prefix.
-static bool s_staticLightPrefixDirty = true;
-
-void mc2MarkStaticLightPrefixDirty() { s_staticLightPrefixDirty = true; }
-bool mc2ConsumeStaticLightPrefixDirty()
-{
-    const bool d = s_staticLightPrefixDirty;
-    s_staticLightPrefixDirty = false;
-    return d;
-}
-
-// [LIGHTSSBO v2] Upload-split kill-switch. Default ON; MC2_STATIC_LIGHT_UPLOAD_SPLIT=0
-// forces the legacy whole-buffer upload every frame (bit-identical GPU contents).
-// parseEnvBoolWithDefault is not visible in this TU; use the explicit =0 idiom.
-bool mc2StaticLightUploadSplitEnabled()
-{
-    static const bool s_split = mc2::gate::get<"MC2_STATIC_LIGHT_UPLOAD_SPLIT">();
-    return s_split;
-}
-
 #ifdef MC2_VULKAN_ISLAND
 // VK-MECH-MATERIAL-LIGHTING-1: global fog-color snapshot (RGB, GL scene-UBO order),
 // set once per frame at the scene-UBO upload site. Read by the VK mech island feed.
@@ -400,7 +377,6 @@ void mc2EraseBakedStaticLight(int32_t recipeIndex)
 void mc2InvalidateBakedStaticLightCache()
 {
     s_bakedStaticLight.clear();
-    mc2MarkStaticLightPrefixDirty();   // re-upload prefix once re-bakes land
 }
 
 // Mission unload: recipeIndex restarts per mission -> a stale entry
@@ -412,7 +388,6 @@ void mc2ClearAllBakedStaticLight()
     // recipeIndex restarts at 0 against a fresh prefix.
     s_bakedStaticLight.clear();
     s_staticLightHighWater = 0;
-    mc2MarkStaticLightPrefixDirty();   // [LIGHTSSBO v2] table reset → re-upload prefix next frame
 }
 
 // [G1-STATIC-EAGER-LIGHT v1] Probe helper: returns true when lightData_[recipeIndex]
@@ -656,7 +631,6 @@ void MC_TextureManager::bakeStaticLightSlot(int32_t recipeIndex, const TG_HWLigh
         lightDataStructuresCapacity = newCap;
     }
     lightData_[ri] = baked;                                 // CPU mirror (persists)
-    mc2MarkStaticLightPrefixDirty();                        // [LIGHTSSBO v2] prefix content changed
     // 2A: the per-leaf permanent light index is NOT recipeIndex — it is the
     // owning RANGE's lightDataIndex (all leaves of a multi-leaf range share one
     // light slot, matching legacy flush). That propagation now lives in the
@@ -702,11 +676,7 @@ bool MC_TextureManager::copyLightSlot(uint32_t idx, TG_HWLightsData& out) const
     return true;
 }
 
-// VK-MECH-FEED-NATIVE-1: expose the CPU-side LightsData array (the byte SOURCE of
-// the GL SSBO — gos_LightDataSsbo_Upload(lightData_, ...) in renderLists below) so
-// the VK mech island can consume the game's light data directly instead of
-// glGetBufferSubData'ing it back out of the GL SSBO. Read-only view; valid for the
-// remainder of the frame after renderLists.
+// Native light feed: read-only CPU rows, valid for the remainder of the frame.
 const void* MC_TextureManager::getLightDataPtr() const
 {
     return lightData_.empty() ? nullptr : lightData_.data();

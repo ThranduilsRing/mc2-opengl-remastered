@@ -1,4 +1,4 @@
-// Shared surface of the gos_static_prop_batcher translation units (gos_static_prop_batcher*.cpp).
+// Shared CPU geometry, material, lighting and diagnostic state for the native static-prop feed.
 //
 // The pieces are contiguous slices of the original file, in file order (core, state, program, mapload, finalize, submit, flush,
 // shadow, seam); list them in the build in that order so namespace-scope initialisers run in their original order.
@@ -8,12 +8,10 @@
 
 #include "gos_static_prop_batcher.h"
 #include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
-#include "gos_gpu_sync.h"                 // GPU-SYNC-CONTRACT typed barrier helper
 #include "render_snapshot.h"             // ExtractedStaticPropPacket full definition for batcher_getDrawSlotEntry
 #include "gos_static_prop_registry.h"    // M1.5: getRecipeIndexForType
 #include "../../RenderWorld/RenderWorld.h"  // M1.5: IsObjectIdBufferEnabled + objectIdRawForStaticPropRecipe
 #include "../../RenderCore/MaterialGpu.h"   // MaterialGpu-2: sidecar upload
-#include "../../RenderCore/GpuBufferOwner.h" // STATICPROP-MATERIAL-SSBO-OWNER-1: owner record
 #include "../../RenderCore/IblShCoeffs.h"   // V-IBL-STATIC-1: SH-L2 constants
 #include "../../RenderCore/IblShRegistry.h"  // V-IBL-STATIC-2: per-mission SH set
 #include "../../RenderCore/StaticPropTypeDesc.h"  // v0: cross-seam immutable type table
@@ -21,9 +19,7 @@
 #include "../../RenderCore/RenderDebugView.h"  // DEBUG-VIEW-REGISTRY-1
 #include "draw_packet_emitter.h"
 #include "../../RenderCore/PipelineRegistry.h"   // direct include; do not rely on transitive
-#include "pipeline_binder.h"                     // applyPipeline — GL state from PipelineDesc
 #include "render_frame_plan.h"                   // STATIC-PROP-COLOR-LABEL-HARDENING-1: pass self-report
-#include "mdi_submit.h"                          // MDI-SUBMISSION-SCAFFOLD-1
 #include "static_prop_dispatch_meta.h"
 #include "gos_postprocess.h"             // getGosPostProcess, getDynamicLightSpaceMatrix
 #include "gos_terrain_lighting.h"        // POOL-CONSUMERS-1: UploadObjectLightPoolUniforms
@@ -40,14 +36,10 @@ extern "C" void mc2_vk_shadow_island_invalidate_geometry();  // vulkan_shadow_is
 extern "C" void mc2_vk_color_prop_island_invalidate_geometry();  // vulkan_color_prop_island.cpp
 #endif
 #include "../../RenderCore/top_level_pass_executor.h" // APPLY-STATE-STATICPROP-1: findTopLevelStateDesc
-#include "../../RenderCore/top_level_apply_axes.h"   // FRAMEGRAPH-APPLY-STATE-EXTEND-1: applyTopLevelGenericAxes
 #include "../../RenderCore/frame_executor.h"          // PER-PASS-APPLY-COUNTERS-1: ApplyPassId
 #include "gameos.hpp"
-#include "utils/shader_builder.h"
 #include "tgl.h"  // TG_Shape::s_worldToClip
-#include "gl_state_guard.h"  // GLSTATE-GUARD-SITE5: mc2gl::GlScoped* epilogue guards
 #include "Gates/gate_cold.h"  // typed gate registry: get<>(), isSet<>(), str<>()
-#include <GL/glew.h>
 #include <algorithm>
 #include <array>
 #include <chrono>
@@ -62,8 +54,6 @@ extern "C" void mc2_vk_color_prop_island_invalidate_geometry();  // vulkan_color
 #include <vector>
 #include "vk_feed_dump.h"  // VK-OFFLINE-PROOFS-1: MC2_VK_FEED_DUMP golden dump
 
-
-
 // LIGHTROW-FRESHNESS-1: the per-frame stamp that cachedFrame_ is compared
 // against. Defined in code/gameobj.cpp; declared extern exactly as every other
 // consumer does (code/gameobj.cpp:104, code/controlgui.cpp:2390, ...).
@@ -73,7 +63,6 @@ extern uint32_t g_mc2FrameCounter;
 
 #define ALPHA_TRACE(fmt, ...) \
     do { if (s_alphaTrace) { printf("[ALPHA_TEST] " fmt "\n", ##__VA_ARGS__); fflush(stdout); } } while (0)
-
 
 // PROP-FIXB-MVP: symmetric-mirror of the terrain Fix-B frame-of-reference (see
 // gos_terrain_lod_chunk.cpp ~:33-41 + docs/superpowers/specs/
@@ -87,13 +76,10 @@ extern uint32_t g_mc2FrameCounter;
 // verbatim from gos_terrain_lod_chunk.cpp.
 #include "gos_object_draw_mvp.h"  // RENDER-VIEW-CURRENCY-1 currency-checked accessor
 
-
 #include "mc2_hitch_trace.h"
-
 
 #define TREE_DIAG(fmt, ...) \
     do { if (s_treeDiagTrace) { fprintf(stderr, "[TREE_DIAG] " fmt "\n", ##__VA_ARGS__); fflush(stderr); } } while (0)
-
 
 // COUNTER-HONESTY-1: [TREE_DIAG] per-instance records are capped at this many
 // per path per process. That makes the stream a SAMPLE, and a sample must say so
@@ -102,14 +88,8 @@ extern uint32_t g_mc2FrameCounter;
 // emit one SAMPLE-CAP-REACHED notice when they stop.
 static constexpr int kTreeDiagSample = 8;
 
-
-// IBL-NIGHT-SCALE-1: declared at GLOBAL scope on purpose. iblShStrengthNightScaled()
-// lives inside the anonymous namespace below, so an `extern` declared *inside* it
-// would resolve to `(anonymous)::gos_GetNightState` and fail to link against the
-// real definition in gameos_graphics.cpp.
 void gos_GetNightState(bool* isNight, float* nightFactor);
 namespace gos_static_prop_batcher_detail {
-
 
 // Per-vertex stride in the shared VBO. Layout:
 //   vec3  a_position         (0..11)
@@ -119,7 +99,6 @@ namespace gos_static_prop_batcher_detail {
 //   float _pad               (36..39)
 // Kept in sync with shaders/static_prop.vert (Task 9).
 constexpr size_t kVertexStride = 40;
-
 
 constexpr uint32_t RING_FRAMES = 3;
 
@@ -137,20 +116,9 @@ constexpr uint32_t BASE_INSTANCE_SSBO_BINDING     = 16u;
 
 namespace gos_static_prop_batcher_detail {
 
-
-
-
 // Forward decl -- body appears after state block below, so it can reference
 // s_fatalRegistrationFailure which is declared further down in this namespace.
-void ensureRingCapacity(size_t neededInstances, size_t neededColorEntries);
 
-
-// CPU staging for the current frame.
-// Instances are staged in per-type buckets (not a flat list) so that
-// flush() can write each type's instances into a contiguous SSBO region.
-// Binding that region via glBindBufferRange means gl_InstanceID in the
-// shader is 0..N-1 within the bucket -- NOT dependent on gl_BaseInstance
-// and NOT requiring any extension.
 struct PerTypeBucket {
     std::vector<GpuStaticPropInstance> instances;
     std::vector<uint32_t>              colors;  // concatenated per-instance color blocks
@@ -161,9 +129,6 @@ struct PerTypeBucket {
     uint32_t reinjCount = 0;
 };
 
-
-// Populated at flush time: per-type contiguous byte offset into the
-// ring-slot SSBO (instance + color), used to bind exactly that range.
 struct TypeRangeSsbo {
     size_t instanceByteOffset;
     size_t instanceByteSize;
@@ -171,7 +136,6 @@ struct TypeRangeSsbo {
     size_t colorByteSize;
     uint32_t instanceCount;
 };
-
 
 // ===========================================================================
 // Substrate Multi-Draw Coalesce — file-scope state (plan v3.8 Step group 2).
@@ -187,46 +151,6 @@ bool IsCoalesceEnabled();
 
 static const float (*s_iblShRotatedSrc)[3] = nullptr;
 namespace gos_static_prop_batcher_detail {
-
-
-// COMPRESSION-BC7-STATICPROP-2 — bucketed static-prop arrays (gate ON only).
-// When MC2_STATICPROP_BC7=1 the build splits each alpha group into one
-// GL_TEXTURE_2D_ARRAY per (group,width,height) "bucket": uniform-dim by
-// construction so a bucket can be BC7-compressed (all layers BC7) or RGBA8
-// independently. The gate-OFF path is UNTOUCHED and continues to use the two
-// named handles above. These vectors stay empty when the gate is OFF.
-//
-//   s_bucketArrays[b]      = GL_TEXTURE_2D_ARRAY handle for bucket b
-//   s_bucketInfo[b]        = {group,w,h,layerCount,isBc7} for logging/inspection
-//   s_packetBucketIndex[g] = global bucket index for global packet g (-1 = none)
-//   s_slotBucketIndex[s]   = bucket index for sorted draw slot s (gate ON only)
-//   s_bucketCmdCount[b]    = number of contiguous draw cmds (sorted slots) in b
-//
-// texArrayLayer remains BUCKET-RELATIVE (layer within the bound bucket array) —
-// identical semantics to the old group-relative layer, so NO shader/ABI change.
-struct StaticPropBucketInfo {
-    uint8_t  group;       // 0=alpha-OFF, 1=alpha-ON (alpha render order preserved)
-    uint16_t w;
-    uint16_t h;
-    uint32_t layerCount;
-    bool     isBc7;
-    GLuint   glArray;
-};
-
-// FOLIAGE-STATICPROP-DEPTH-PREPASS-1 GL_EQUAL-parity (review CRITICAL-1/IMPORTANT-1):
-// the depth program is a DISTINCT GL program object, so its uniform state is
-// independent of the color program's. The depth frag mirrors the color frag's
-// alpha-derivation, so it needs the SAME u_materialGpuSample (texArrayLayer vs
-// MaterialTable.albedoTex select) and u_debugAddrMode (mode-8 LODBUG bypass)
-// uploaded to ITS program — uninitialized GL uniforms default to 0, which would
-// make the prepass discard differently than the color pass under GL_EQUAL and
-// make foliage vanish. Coalesce-only locations; -1 (legacy/absent) skips upload.
-struct DepthCoalesceLocs {
-    GLint drawIDBase        = -1;
-    GLint materialGpuSample = -1;   // CRITICAL-1: u_materialGpuSample
-    GLint debugAddrMode     = -1;   // IMPORTANT-1: u_debugAddrMode
-};
-
 
 // Step 12B.1 — forced-disarm test hook env state. Plan v3.8: process-once,
 // resolved by coalesce_resetEnvOnce() from MC2_COALESCE_FORCE_DISARM.
@@ -258,70 +182,22 @@ struct StaticDrawCmd { uint32_t count; uint32_t instanceCount; uint32_t firstInd
 
 static_assert(sizeof(StaticDrawCmd) == 20, "StaticDrawCmd must be 20 bytes");
 
-
 // --- Step 2.2: ProgramLocs uniform-location cache (§6.X). ---
 // One instance per program. -1 in any field means glGetUniformLocation
 // reported "uniform absent" — treat as skip-upload. Default-initialize
 // every field to -1 so an uncached program still skips cleanly.
-struct ProgramLocs {
-    // Shared (both programs).
-    GLint terrainMVP       = -1;
-    GLint mvp              = -1;
-    GLint fogValue         = -1;
-    GLint debugAddrMode    = -1;
-    // Legacy-only.
-    GLint maxLocalVertexID = -1;
-    GLint materialFlags    = -1;
-    GLint packetID         = -1;
-    // Coalesce-only.
-    GLint drawIDBase          = -1;
-    GLint texArr              = -1;
-    GLint materialGpuSample   = -1;   // MaterialGpu-3: u_materialGpuSample
-    GLint ambientV1Strength   = -1;   // V-AMBIENT-STATIC-1: u_ambientV1Strength
-    GLint debugMaterialMode   = -1;   // V-MATERIAL-DEBUG-1: u_debugMaterialMode
-    GLint iblSh               = -1;   // V-IBL-STATIC-1: u_iblSh[9] (vec3 array)
-    GLint iblShStrength       = -1;   // V-IBL-STATIC-1: u_iblShStrength
-    GLint pbrV1Strength       = -1;   // V-MATERIAL-PBR-2: u_pbrV1Strength
-    GLint pbrV1RoughnessOverride = -1; // V-MATERIAL-PBR-2-TUNE-UI: u_pbrV1RoughnessOverride
-    GLint ormTexArr           = -1;   // STATICPROP-MATERIAL-ORM-1: u_ormTexArr (sampler2DArray)
-    GLint ormSampleEnable     = -1;   // STATICPROP-MATERIAL-ORM-1: u_ormSampleEnable (int)
-    GLint pathTint            = -1;   // MC2_SHADER_PATH_TINT debug: u_pathTint (int)
-    GLint terrainSunMC2       = -1;   // GREYBEARD-DIFFUSE-TEST: u_terrainSunMC2 (vec3)
-    // EDGE-LIGHT-EMISSION-1: stock night-tag emission state.
-    GLint isNight            = -1;   // u_isNight (int 0/1)
-    GLint nightFactor        = -1;   // u_nightFactor (float 0..1)
-    GLint terrainDecalFill    = -1;   // TERRAIN-DECAL-FILL-1: u_terrainDecalFill (float)
-    // TERRAIN-DECAL-COLORBLEND-1: colormap sampler + atlas UV params + blend.
-    GLint terrainColormap        = -1;  // u_terrainColormap (sampler2D)
-    GLint decalAtlasTLX          = -1;  // u_decalAtlasTLX (float)
-    GLint decalAtlasTLY          = -1;  // u_decalAtlasTLY (float)
-    GLint decalAtlasOOW          = -1;  // u_decalAtlasOOW (float)
-    GLint terrainDecalColorBlend = -1;  // u_terrainDecalColorBlend (float)
-    // FAR-BACKDROP-LIT: night-shade substitution for far/impostor LODs.
-    GLint farBackdropLit         = -1;  // u_farBackdropLit (int, 0=off)
-    GLint farBackdropNear        = -1;  // u_farBackdropNear (float)
-    GLint farBackdropFar         = -1;  // u_farBackdropFar (float)
-    GLint farBackdropStrength    = -1;  // u_farBackdropStrength (float)
-    GLint farBackdropTint        = -1;  // u_farBackdropTint (vec3)
-};
-
 
 // STATICPROP-MATERIAL-ORM-1 — texture unit reserved for the per-bucket ORM
 // sibling array. Unit 0 stays the albedo array (u_texArr); unit 1 is ORM.
-static constexpr GLuint kOrmTexUnit = 1;
 
 // TERRAIN-DECAL-COLORBLEND-1 — texture unit for the terrain colormap atlas,
 // sampled only by the flagged cliff decal. Clear of albedo(0)/ORM(1).
-static constexpr GLuint kColormapTexUnit = 4;
-
-
 
 // Population indexed by GpuStaticPropPopulation enum value:
 //   0=Building, 1=Tree, 2=Generic, 3=Legacy.
 // Legacy is excluded from Gate F's fallback-rate computation
 // (slice-1 populations only).
 constexpr int kPopCount = 4;
-
 
 struct ObjBatcherCounters {
     // Per-frame, indexed by population:
@@ -354,10 +230,8 @@ struct ObjBatcherCounters {
     uint64_t mono_light_row_out_of_range            = 0;
 };
 
-
 void accumulateMonotonicAndMaybeEmit(bool forceEmit);
 }  // namespace gos_static_prop_batcher_detail
-
 
 // APPLY-STATE-STATICPROP-1: third top-level scene-pass apply-state. Forward-decl of
 // the cross-TU apply-state counter bump (defined in gos_postprocess.cpp). Bumps the
@@ -368,7 +242,6 @@ extern "C" void mc2_framegraph_executor_bump_apply_state(unsigned id);
 
 namespace gos_static_prop_batcher_detail {}
 using namespace gos_static_prop_batcher_detail;
-
 
 extern bool g_useGpuObjects;
 extern const bool s_alphaTrace;
@@ -417,19 +290,8 @@ extern float g_pbrV1Strength;
 extern bool  g_pbrV1RoughnessOverrideEnabled;
 extern float g_pbrV1RoughnessOverrideValue;
 namespace gos_static_prop_batcher_detail {
-extern GLuint s_sharedVbo;
-extern GLuint s_sharedIbo;
 extern uint64_t s_sharedVboBytes;
 extern uint64_t s_sharedIboBytes;
-extern GLuint s_sharedVao;
-extern GLuint s_perTypeSsbo;
-extern GLuint   s_instanceSsbo;
-extern GLuint   s_colorSsbo;
-extern RenderCore::GpuBufferOwner s_instanceSsboOwner;
-extern RenderCore::GpuBufferOwner s_colorSsboOwner;
-extern void*    s_instanceMap;
-extern void*    s_colorMap;
-extern GLsync   s_fence[RING_FRAMES];
 extern uint32_t s_frameSlot;
 extern size_t   s_instanceCapacity;
 extern size_t   s_colorCapacity;
@@ -451,12 +313,6 @@ extern std::vector<uint8_t>  s_stagingVbo;
 extern std::vector<uint32_t> s_stagingIbo;
 extern bool s_geometryFinalized;
 extern bool s_fatalRegistrationFailure;
-extern glsl_program* s_staticPropProgramObj;
-extern GLuint        s_staticPropProgram;
-extern bool s_programLoadTried;
-extern bool s_programLoadFailed;
-extern GLuint s_coalesceInstanceSsbo;
-extern GLuint s_perDrawSsbo;
 extern const bool s_materialGpuEnabled;
 extern const bool s_materialGpuSampleEnabled;
 bool staticPropAmbientV1Enabled();
@@ -488,22 +344,10 @@ extern std::vector<int32_t> s_typeAlphaClass;
 extern std::vector<float> s_typeHotColors;
 extern std::unordered_map<uint32_t, uint32_t> s_typeInstanceCountPrevFrame;
 extern bool s_reinjectedThisFrame;
-extern RenderCore::GpuBufferOwner           s_materialGpuSsbo;
-extern GLuint s_texArrayOff;
-extern GLuint s_texArrayOn;
-extern std::vector<GLuint>               s_bucketArrays;
-extern std::vector<StaticPropBucketInfo> s_bucketInfo;
 extern std::vector<int32_t>              s_packetBucketIndex;
 extern std::vector<uint8_t>              s_slotBucketIndex;
 extern std::vector<uint32_t>             s_bucketCmdCount;
-extern std::vector<GLuint>               s_ormBucketArrays;
 extern std::vector<std::vector<bool>>    s_ormLayerHasMap;
-extern GLuint s_permutationSsbo;
-extern GLuint s_staticPropProgramCoalesce;
-extern GLuint s_staticPropDepthProgram;
-extern DepthCoalesceLocs s_locsDepthCoalesce;
-extern void*  s_coalesceInstanceMap;
-extern GLsync s_coalesceFence[RING_FRAMES];
 extern std::vector<uint32_t> s_sortedTypeOrder;
 extern uint32_t s_alphaOffCount;
 extern uint32_t s_alphaOnCount;
@@ -513,42 +357,24 @@ extern size_t   s_coalescePerFrameInstanceBytes;
 extern std::vector<uint32_t> s_sortedPacketOrder;
 extern uint32_t s_alphaOffCmdCount;
 extern uint32_t s_alphaOnCmdCount;
-extern GLuint   s_cmdToBucketSsbo;
 extern std::vector<DWORD> s_coalescePinnedNodes;
 extern bool s_coalesceLayoutReady;
 extern bool s_coalesceEnabled;
 extern bool s_coalesceArmed;
 extern bool s_coalesceFirstFlushDone;
 extern bool s_coalesceEnvDisabled;
-extern bool s_hasShaderDrawParams;
 extern CoalesceForceDisarm s_coalesceForceDisarm;
 extern const bool s_coalesceTrace;
 extern const uint32_t s_globalInstanceCap;
 extern std::vector<uint32_t> s_staticBaseInstanceForType;
 extern uint64_t              s_staticBaseBuiltGen;
-extern GLuint                s_staticInstanceSsbo;
-extern void*                 s_staticInstanceMap;
-extern size_t                s_staticInstanceBytes;
-extern uint64_t              s_staticInstanceFillGen;
-extern GLuint                       s_staticIndirectCmdBuf;
 extern std::vector<StaticDrawCmd>   s_staticDrawCmds;
-extern uint64_t                     s_staticCmdBuiltGen;
-extern GLsync                       s_staticDrawFence;
 bool staticPopSplitArmed();
-extern GLuint   s_baseInstanceByCmdSsbo;
-extern void*    s_baseInstanceByCmdMap;
-extern size_t   s_baseInstanceByCmdBytesPerFrame;
 extern uint32_t s_offGroupCountThisFrame;
 extern size_t   s_offGroupBytesThisFrame;
 extern size_t   s_onGroupBytesThisFrame;
 extern size_t   s_totalUsedBytesThisFrame;
-extern ProgramLocs s_locsLegacy;
-extern ProgramLocs s_locsCoalesce;
-void allocPermutationSsboAsIdentity(uint32_t typeCount);
-GLenum bptcInternalFormatFor(bool isSrgb);
-void staticPropReleaseBuckets();
 void coalesceRollbackTexBuild(std::vector<DWORD>& tempPins);
-void loadProgramsIfNeeded();
 extern std::unordered_map<const TG_TypeShape*, bool> s_failedTypes;
 extern ObjBatcherCounters s_counters;
 extern bool s_objbatcherTrace;
@@ -575,13 +401,6 @@ extern std::unordered_map<uint32_t, TypeRangeSsbo> s_typeRanges;
 extern uint32_t s_lastUploadedSlot;
 }  // namespace gos_static_prop_batcher_detail
 
-// --- Step 2.4: env-once helper (spec §7). ---
-// Resolve the kill-switch ONCE per process. Idempotent guard via a function-
-// local static. Called at the top of loadProgramsIfNeeded() (primary site —
-// runs before the s_programLoadTried latch) and also as a no-op guard from
-// IsCoalesceEnabled() so legacy callers that bypass loadProgramsIfNeeded
-// still get a defined env-flag value. Step 12B.1 will extend this body to
-// also parse MC2_COALESCE_FORCE_DISARM.
 inline void coalesce_resetEnvOnce() {
     static bool s_done = false;
     if (s_done) return;

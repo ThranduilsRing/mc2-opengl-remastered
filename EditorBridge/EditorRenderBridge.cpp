@@ -335,9 +335,7 @@ void endMissionRenderResources() {
 void finalizeMissionGeometry() {
     GpuStaticPropBatcher::instance().finalizeGeometry();
     GpuMechBatcher::instance().finalizeGeometry();
-    if (gpu_cull::compute_isEnabled()) {
-        gpu_cull::compute_buildIndirectBuffer(batcher_getTypeCount());
-    }
+
 }
 
 void staticPropFrameBegin() {

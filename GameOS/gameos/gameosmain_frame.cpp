@@ -4,6 +4,9 @@
 #include "mc2fmt.h"
 #include "sim_substeps.h"
 #include "gos_host_vk.h"
+#include "vk_scene_readback.h"
+#include "terrain_field_store.h"
+#include "texture_decode.h"
 
 
 // Throttle while the window is invisible, then run the game logic and the event pumps.
@@ -254,14 +257,13 @@ void frameEmitDrawPackets(RenderSnapshot& snap) {
                 const RenderCore::EngineView& view = RenderCore::getCurrentView();
                 snap.terrainPass.viewId          = view.id;
                 snap.terrainPass.legacyProgramId = gos_getTerrainSurfaceProgramId();
-                snap.terrainPass.drawCallCount   = TerrainPatchStream::getLastFlushBucketCount();
+                // The retired GL patch stream has no draws; native terrain publishes its own feed.
+                snap.terrainPass.drawCallCount   = 0u;
                 uint32_t flags = 0u;
                 // tessellationOn: hard-coded true (matches inspector field semantics).
                 flags |= TerrainPassFacts::kFlagTessellationOn;
                 // viewUniformsBound: terrain shaders don't consume ViewUniforms (binding=3) yet.
                 // (Leave kFlagViewUniformsBound clear.)
-                if (TerrainPatchStream::wasLastFlushOverflowed())
-                    flags |= TerrainPassFacts::kFlagOverflow;
                 snap.terrainPass.flags = flags;
             }
 
@@ -277,9 +279,9 @@ void frameEmitDrawPackets(RenderSnapshot& snap) {
                 ts.thinProgramId      = gos_getThinTerrainProgramId();
                 ts.overlayProgramId   = gos_getTerrainOverlayProgramId();
                 ts.bucketCount  = snap.terrainPass.drawCallCount;
-                ts.vertCount    = TerrainPatchStream::getLastFlushVertCount();
-                ts.thinRecCount = TerrainPatchStream::getLastFlushThinRecCount();
-                ts.recipeCount  = TerrainPatchStream::getLastFlushRecipeCount();
+                ts.vertCount    = 0u;
+                ts.thinRecCount = 0u;
+                ts.recipeCount  = 0u;
                 ts.overflow     = (snap.terrainPass.flags & TerrainPassFacts::kFlagOverflow) != 0u;
                 ts.viewUniformsBoundForTerrain =
                     (snap.terrainPass.flags & TerrainPassFacts::kFlagViewUniformsBound) != 0u;
@@ -476,7 +478,7 @@ void frameLoadRaceProbes() {
                 extern bool  g_loadRaceTerrainResidentNow;
                 extern long  g_loadRaceMechDegradeReal;
                 extern float scenarioTime;
-                extern GLuint gos_terrain_indirect_getAtlasGLTex();
+                extern unsigned int gos_terrain_indirect_getAtlasSide();
                 // Frames to probe. Overridable via MC2_LOAD_RACE_PROBE_FRAMES
                 // (comma list) but defaults to the confirmed transient window.
                 static const std::vector<long> s_probeFrames = []{
@@ -494,71 +496,58 @@ void frameLoadRaceProbes() {
                     const long pf = s_probeFrames[s_nextProbe];
                     ++s_nextProbe;
 
-                    const GLuint atlasTex = gos_terrain_indirect_getAtlasGLTex();
+                    const unsigned int atlasSide = gos_terrain_indirect_getAtlasSide();
                     const char* pathStr = (g_loadRaceLastTerrainPath == 1) ? "gpu-indirect"
                                         : (g_loadRaceLastTerrainPath == 2) ? "cpu-thin" : "none";
 
-                    // (b) Fixed-texel scene oracle: read 3 deterministic terrain
-                    // points from the offscreen scene FBO (robust to a minimized
-                    // window). Points are normalized so they track resolution.
-                    gosPostProcess* ppLr = getGosPostProcess();
-                    GLuint lrFbo = ppLr ? ppLr->getSceneFBO() : 0;
-                    int lrW = ppLr ? ppLr->getWidth()  : 0;
-                    int lrH = ppLr ? ppLr->getHeight() : 0;
-                    unsigned char px[3][4] = {{0,0,0,0},{0,0,0,0},{0,0,0,0}};
+                    // Read all diagnostic points in one native copy/submit.
+                    int lrW=0,lrH=0;
+                    unsigned char px[3][4] = {};
                     const float ptsN[3][2] = {{0.5f,0.62f},{0.30f,0.72f},{0.70f,0.55f}};
-                    if (lrFbo && lrW > 0 && lrH > 0) {
-                        glBindFramebuffer(GL_READ_FRAMEBUFFER, lrFbo);
-                        glReadBuffer(GL_COLOR_ATTACHMENT0);
-                        for (int i = 0; i < 3; ++i) {
-                            int sx = static_cast<int>((ptsN[i][0] * lrW));
-                            int sy = static_cast<int>((ptsN[i][1] * lrH));
-                            glReadPixels(sx, sy, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, px[i]);
-                        }
-                        glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+                    if (mc2vk::sceneReadbackExtent(lrW,lrH,mc2vk::SceneColor)) {
+                        mc2vk::ScenePoint points[3];
+                        mc2vk::ScenePixel pixels[3];
+                        for (int i=0;i<3;++i) points[i]={int(ptsN[i][0]*lrW),int(ptsN[i][1]*lrH)};
+                        if (mc2vk::readSceneSamples(points,3,mc2vk::SceneColor,pixels))
+                            for (int i=0;i<3;++i) std::memcpy(px[i],pixels[i].rgba,4);
                     }
 
-                    // (b) Direct atlas-texel sample: attach the atlas to a scratch
-                    // FBO and read one texel. Skips (reports unreadable) when the
-                    // atlas is a compressed (BC7) format -- not color-renderable.
+                    // Sample retained atlas bytes; compressed images need only one BC7 block decoded.
                     unsigned char atlasTexel[4] = {0,0,0,0};
                     const char* atlasTexelStatus = "absent";
-                    if (atlasTex != 0) {
-                        GLint prevFbo = 0;
-                        glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING, &prevFbo);
-                        GLuint scratch = 0;
-                        glGenFramebuffers(1, &scratch);
-                        glBindFramebuffer(GL_READ_FRAMEBUFFER, scratch);
-                        glFramebufferTexture2D(GL_READ_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
-                                               GL_TEXTURE_2D, atlasTex, 0);
-                        if (glCheckFramebufferStatus(GL_READ_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE) {
-                            glReadBuffer(GL_COLOR_ATTACHMENT0);
-                            // Read a mid-atlas texel (content-bearing, not an edge).
-                            GLint aw = 0, ah = 0;
-                            glBindTexture(GL_TEXTURE_2D, atlasTex);
-                            glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH,  &aw);
-                            glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &ah);
-                            int ax = aw > 2 ? aw / 2 : 0;
-                            int ay = ah > 2 ? ah / 2 : 0;
-                            glReadPixels(ax, ay, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, atlasTexel);
-                            atlasTexelStatus = "ok";
-                        } else {
-                            atlasTexelStatus = "unreadable_compressed";
+                    if (const auto* fields = gos_TerrainFieldStore(); fields && atlasSide != 0) {
+                        const auto& cm = fields->colormapAtlas();
+                        const size_t ax = cm.width > 2 ? cm.width / 2 : 0;
+                        const size_t ay = cm.height > 2 ? cm.height / 2 : 0;
+                        if (cm.vkFormat == mc2tex::kVkFormatRgba8Unorm) {
+                            const size_t offset = (ay * cm.width + ax) * 4;
+                            if (offset + 4 <= cm.bytes.size()) {
+                                std::memcpy(atlasTexel, cm.bytes.data() + offset, 4);
+                                atlasTexelStatus = "ok";
+                            }
+                        } else if (cm.vkFormat == mc2tex::kVkFormatBc7Unorm || cm.vkFormat == mc2tex::kVkFormatBc7Srgb) {
+                            const size_t offset = ((ay / 4) * ((cm.width + 3) / 4) + ax / 4) * 16;
+                            if (offset + 16 <= cm.bytes.size()) {
+                                const std::vector<uint8_t> block(cm.bytes.begin() + offset, cm.bytes.begin() + offset + 16);
+                                const auto rgba = mc2tex::decodeBc7(block, 4, 4);
+                                if (rgba.size() == 64) {
+                                    std::memcpy(atlasTexel, rgba.data() + ((ay % 4) * 4 + ax % 4) * 4, 4);
+                                    atlasTexelStatus = "ok";
+                                }
+                            }
                         }
-                        glBindFramebuffer(GL_READ_FRAMEBUFFER, prevFbo);
-                        glDeleteFramebuffers(1, &scratch);
                     }
 
                     const char* fmt =
                         "LOADRACE probe: frame=%u probeFrame=%ld scenarioTime=%.2f "
-                        "terrain_path=%s atlasTex=%u atlas_first_frame=%ld "
+                        "terrain_path=%s atlasSide=%u atlas_first_frame=%ld "
                         "arm_first_frame=%ld terrain_first_resident_frame=%ld "
                         "terrain_resident=%s mech_degrade_real=%ld "
                         "scene_px0=%u,%u,%u scene_px1=%u,%u,%u scene_px2=%u,%u,%u "
                         "atlas_texel[%s]=%u,%u,%u,%u\n";
                     fprintf(stderr, fmt,
                         g_mc2FrameCounter, pf, scenarioTime,
-                        pathStr, static_cast<unsigned>(atlasTex), g_loadRaceAtlasFirstFrame,
+                        pathStr, (unsigned)atlasSide, g_loadRaceAtlasFirstFrame,
                         g_loadRaceArmFirstFrame, g_loadRaceTerrainFirstResidentFrame,
                         g_loadRaceTerrainResidentNow ? "Y" : "N", g_loadRaceMechDegradeReal,
                         px[0][0],px[0][1],px[0][2], px[1][0],px[1][1],px[1][2], px[2][0],px[2][1],px[2][2],
@@ -566,7 +555,7 @@ void frameLoadRaceProbes() {
                     fflush(stderr);
                     printf(fmt,
                         g_mc2FrameCounter, pf, scenarioTime,
-                        pathStr, static_cast<unsigned>(atlasTex), g_loadRaceAtlasFirstFrame,
+                        pathStr, (unsigned)atlasSide, g_loadRaceAtlasFirstFrame,
                         g_loadRaceArmFirstFrame, g_loadRaceTerrainFirstResidentFrame,
                         g_loadRaceTerrainResidentNow ? "Y" : "N", g_loadRaceMechDegradeReal,
                         px[0][0],px[0][1],px[0][2], px[1][0],px[1][1],px[1][2], px[2][0],px[2][1],px[2][2],
@@ -613,14 +602,6 @@ void frameSwapWindow(graphics::RenderWindowHandle win) {
         {
             ZoneScopedN("SwapWindow");
             mc2_hitch::HitchScope _hitchPresent(mc2_hitch::HitchSpanKind::PhasePresent);
-            // SwapWindow split: env-gated glFinish probe attributes the present
-            // stall. If MC2_PRESWAP_FINISH=1 moves the ~45ms into PreFinish, the
-            // cost is GPU-completion backpressure (GPU draining terrain/shadows),
-            // not vsync/CPU. SwapWindow.SDL isolates the bare SDL_GL_SwapWindow.
-            {
-                static const bool s_preSwapFinish = mc2::gate::get<"MC2_PRESWAP_FINISH">();
-                if (s_preSwapFinish) { ZoneScopedN("SwapWindow.PreFinish"); glFinish(); }
-            }
             {
                 ZoneScopedN("SwapWindow.SDL");
                 // The shared host present (Vulkan composite + present, or the GL swap): also the editor's.

@@ -12,40 +12,7 @@
 // mapping params and the cliff shadow floor. Caller is responsible for restoring
 // the active texture unit afterwards (existing sites already do glActiveTexture
 // (GL_TEXTURE0) immediately after this helper).
-void bindTerrainHeightTexUniforms(GLint heightTexLoc, GLint paramsLoc,
-                                         GLint cliffShadowFloorLoc,
-                                         float cliffShadowFloor)
-{
-    const GLuint htex = (GLuint)gos_terrainHeightTexHandle();
-    if (htex != 0 && heightTexLoc >= 0) {
-        glUniform1i(heightTexLoc, kTerrainTexUnitHeight);
-        glActiveTexture(GL_TEXTURE0 + kTerrainTexUnitHeight);
-        glBindTexture(GL_TEXTURE_2D, htex);
-    }
-    if (htex != 0 && paramsLoc >= 0) {
-        const float wuPerVert = gos_terrainHeightWorldUnitsPerVertex();
-        const float invWu = (wuPerVert > 0.0f) ? (1.0f / wuPerVert) : 0.0f;
-        const float p[4] = {
-            static_cast<float>(gos_terrainHeightTexSide()),
-            invWu,
-            gos_terrainHeightMapTopLeftX(),
-            gos_terrainHeightMapTopLeftY(),
-        };
-        glUniform4fv(paramsLoc, 1, p);
-    }
-    // CLIFF SHADOW FLOOR: lifts shadow-side steep terrain faces off near-black.
-    // Env gate MC2_TERRAIN_CLIFF_SHADOW_FLOOR is authoritative — unset/=0 forces
-    // 0.0 (shader max(shadow, 0*blend) => no-op, byte-identical). When set to a
-    // non-zero float the member value (ImGui-tunable) is uploaded, bounded 0..1.
-    float effectiveCliffFloor = 0.0f;
-    if (mc2::gate::get<"MC2_TERRAIN_CLIFF_SHADOW_FLOOR">()) {
-        effectiveCliffFloor = cliffShadowFloor;
-        effectiveCliffFloor = std::clamp(effectiveCliffFloor, 0.0f, 1.0f);
-    }
-    if (cliffShadowFloorLoc >= 0) {
-        glUniform1f(cliffShadowFloorLoc, effectiveCliffFloor);
-    }
-}
+
 
 // VK-SHADOW-COPY-ONCE-1: generation counter bumped each time the static
 // shadow map is (re)built (mission load / re-arm). 0 while never built.

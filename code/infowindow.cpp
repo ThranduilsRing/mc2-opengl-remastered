@@ -1,6 +1,7 @@
 #include <algorithm>
 #include "Gates/preferences_legacy.h"
 #include "../GameOS/gameos/ui_texture.h"
+#include "../mclib/texture_assets.h"
 #define INFOWINDOW_CPP
 /*************************************************************************************************\
 InfoWindow.cpp			: Implementation of the InfoWindow component.
@@ -123,7 +124,7 @@ void InfoWindow::init( FitIniFile& file )
 	{
 		if ( skillInfos[i].textureHandle )
 		{
-			mcTextureManager->releaseNode( skillInfos[i].textureHandle );
+			mc2::textures::release( skillInfos[i].textureHandle );
 		}
 	}
 
@@ -140,7 +141,7 @@ void InfoWindow::init( FitIniFile& file )
 	{
 		if ( buttonData[i].textureHandle )
 		{
-			mcTextureManager->releaseNode( buttonData[i].textureHandle );
+			mc2::textures::release( buttonData[i].textureHandle );
 		}
 	}
 
@@ -710,7 +711,7 @@ void InfoWindow::renderImGui()
 					const gos_VERTEX* loc = skillInfos[currentSkill].location;
 					const float rowH = loc[1].y - loc[0].y;   // authored 15
 					{
-						DWORD gosID = mcTextureManager->get_gosTextureHandle(
+						DWORD gosID = mc2::textures::sourceId(
 							skillInfos[currentSkill].textureHandle );
 						uint64_t glTex = ( gosID && gosID != 0xffffffff )
 							? gos_GetUiTextureId( gosID ) : 0;
@@ -858,7 +859,7 @@ void InfoWindow::renderImGui()
 		{
 			if ( !buttonData[i].textureHandle )
 				continue;
-			DWORD gosID = mcTextureManager->get_gosTextureHandle( buttonData[i].textureHandle );
+			DWORD gosID = mc2::textures::sourceId( buttonData[i].textureHandle );
 			if ( !gosID || gosID == 0xffffffff )
 				continue;
 			uint64_t glTex = gos_GetUiTextureId( gosID );
@@ -1591,7 +1592,7 @@ void InfoWindow::drawScrollingStuff()
 				drawEmptyRect( tmpRect, 0xff002f55, 0xff002f55  );
 
 
-				unsigned long gosID = mcTextureManager->get_gosTextureHandle( skillInfos[currentSkill].textureHandle );
+				unsigned long gosID = mc2::textures::sourceId( skillInfos[currentSkill].textureHandle );
 				gos_SetRenderState( gos_State_Texture, gosID );
 				gos_DrawQuads( v, 4 );
 

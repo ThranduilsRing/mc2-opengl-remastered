@@ -1,0 +1,75 @@
+"""The compiler retirement check must catch new runtime compiler paths."""
+import importlib.util
+from pathlib import Path
+import pytest
+
+ROOT = Path(__file__).resolve().parents[2]
+spec = importlib.util.spec_from_file_location('no_gl_compiler', ROOT / 'scripts/check-no-gl-compiler.py')
+checker = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(checker)
+
+
+@pytest.mark.parametrize('call', ['glCreateShader', 'glCreateProgram', 'glCompileShader',
+    'glLinkProgram', 'glShaderSource', 'glShaderBinary', 'glSpecializeShaderARB',
+    'glCreateShaderProgramv'])
+def test_rejects_runtime_compiler(call):
+    assert checker.audit({'host.cpp': f'void bad() {{ {call}(argument); }}'})
+
+
+def test_ignores_comments_strings_and_native_calls():
+    assert not checker.audit({'native.cpp': '// glCompileShader(old);\n'
+        'const char* history="glCreateProgram()";\n'
+        '/* glLinkProgram(old); */ vkCreateShaderModule(device, info);'})
+
+
+def test_current_owned_sources_have_no_gl_compiler():
+    assert not checker.audit(checker.snapshot())
+
+
+@pytest.mark.parametrize('source', ['TracyGpuZone("render");', 'glReadPixels(0);', 'glewInit();', 'wglCreateContext(dc);',
+    'SDL_GL_CreateContext(window);', 'ImGui_ImplSDL2_InitForOpenGL(window, context);',
+    'SwapBuffers(dc);', 'ChoosePixelFormat(dc, desc);', 'SetPixelFormat(dc, 1, desc);',
+    'PIXELFORMATDESCRIPTOR desc;', 'ImGui_ImplOpenGL3_RenderDrawData(draw);',
+    '#include <GL/glew.h>', '#include "imgui_impl_opengl3.h"',
+    'SDL_GLContext context;', 'auto flags = SDL_WINDOW_OPENGL;',
+    'LoadLibraryW(L"opengl32.dll");', 'GetProcAddress(module, "glBindTexture");'])
+def test_rejects_backend_or_loader(source):
+    assert checker.audit({'host.cpp': source})
+
+
+@pytest.mark.parametrize('source', ['target_link_libraries(app OpenGL::GL)',
+    'find_package(GLEW REQUIRED)', 'foreach(dll glew32.dll)',
+    'target_sources(imgui PRIVATE backends/imgui_impl_opengl3.cpp)'])
+def test_rejects_link_or_build_dependency(source):
+    assert checker.audit({'CMakeLists.txt': source})
+
+
+def test_module_observation_and_native_sdk_are_allowed():
+    assert not checker.audit({'host.cpp': '#include <volk.h>\n'
+        'GetModuleHandleW(L"opengl32.dll"); vkCreateDevice(device);',
+        'CMakeLists.txt': '# OpenGL::GL was retired\ntarget_link_libraries(app Vulkan::Headers)'})
+
+
+def test_retired_stage_cannot_be_reintroduced_but_native_stages_are_allowed():
+    assert checker.audit({'shaders/mech.vert': '#version 430\nvoid main() {}'})
+    assert not checker.audit({'shaders/vulkan/mech_tier1.vert': '#version 450\nvoid main() {}'})
+
+
+def test_retired_vendor_loader_or_renderer_source_cannot_return():
+    assert checker.audit({'3rdparty/include/GL/glew.h': '// no active code yet'})
+    assert checker.audit({'3rdparty/imgui/backends/imgui_impl_opengl3.cpp': ''})
+
+
+def test_legacy_encoded_owned_header_is_still_audited(tmp_path, monkeypatch):
+    (tmp_path / 'legacy.cpp').write_bytes(b'// old quote: \x92\nvoid f() { glBindTexture(0); }')
+    monkeypatch.setattr(checker.subprocess, 'check_output', lambda *a, **kw: 'legacy.cpp\n')
+    assert checker.audit(checker.snapshot(tmp_path))
+
+
+def test_active_sdl_platform_backend_cannot_escape_the_snapshot(tmp_path, monkeypatch):
+    name = '3rdparty/imgui/backends/imgui_impl_sdl2.cpp'
+    path = tmp_path / name
+    path.parent.mkdir(parents=True)
+    path.write_text('void swap() { SDL_GL_SwapWindow(window); }', encoding='utf-8')
+    monkeypatch.setattr(checker.subprocess, 'check_output', lambda *a, **kw: name + '\n')
+    assert checker.audit(checker.snapshot(tmp_path))

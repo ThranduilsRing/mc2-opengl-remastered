@@ -1,14 +1,11 @@
-// RenderCore/TextureService.h -- texture identity in front of the texture manager's node index (shared-foundations P4a).
-//
-// Three layers (design section 3): a KEY says what the texture is and decides deduplication; a HANDLE names it for the session (generation-checked, never
-// saved, never read by sim); the RESIDENCY (today the manager's node index, later a bindless slot) may change while the handle stays. This service is the
-// façade for the first two layers over the manager that still owns the pixels: the manager reports each named node it creates, reuses and destroys, and
-// the service keeps key <-> handle <-> node. It changes no behavior: nothing reads a node through a handle yet.
-//
-// Content change (a repaint, a refresh) keeps the handle and moves it to a new node: rebind(). The handle's content version counts the changes, which is
-// what a material that cached the old residency compares.
-//
-// Pure standard C++ (doctest-driven); the engine's instance is textureService().
+// Texture identity and source ownership for one engine session.
+// Keys name resolved providers and content; handles are generation checked, never
+// saved or read by simulation. Compatibility asset numbers index CPU sources;
+// Vulkan residency and descriptor indices belong to the backend and may change.
+// The session owns the source index and each live entry owns its payload. Raw
+// bindings and explicit service references share the count; detaching the final
+// raw binding preserves payloads retained by explicit references.
+// Pure standard C++; the engine supplies VFS sources and deferred CPU consumers.
 #pragma once
 
 #include <cassert>
@@ -97,8 +94,42 @@ inline TextureHandle uiTextureHandle(uint64_t id) {
     return isUiTextureId(id) ? TextureHandle::make(uint32_t(id) & 0xfffffu, uint32_t(id) >> 20) : TextureHandle::invalid();
 }
 
+// Source ownership is pure standard C++; the engine supplies VFS payloads and
+// drains deferred CPU consumers on the render thread, outside the service mutex.
+struct TextureSourcePayload { virtual ~TextureSourcePayload() = default; };
+struct TextureSourceOwner {
+    virtual ~TextureSourceOwner() = default;
+    virtual void collectRetired() = 0;
+};
+
 class TextureService {
 public:
+    void ownSources(std::unique_ptr<TextureSourceOwner> owner) {
+        assert(!sourceOwner_); sourceOwner_ = std::move(owner);
+    }
+    TextureSourceOwner* sourceOwner() const noexcept { return sourceOwner_.get(); }
+    // Never called under mu_: draining a CPU consumer may release a service reference.
+    void collectSourceRetirements() { if (sourceOwner_) sourceOwner_->collectRetired(); }
+    void attachSource(TextureHandle h, std::shared_ptr<TextureSourcePayload> payload) {
+        std::lock_guard<std::mutex> lk(mu_);
+        if (auto* e = resolve(h)) e->source = std::move(payload);
+    }
+    std::shared_ptr<TextureSourcePayload> source(TextureHandle h) const {
+        std::lock_guard<std::mutex> lk(mu_);
+        const auto* e = resolve(h); return e ? e->source : nullptr;
+    }
+    // Restore a raw asset binding only while this exact generation is still alive.
+    bool retainSource(TextureHandle h, uint32_t asset) {
+        std::lock_guard<std::mutex> lk(mu_);
+        auto* e = resolve(h);
+        if (!e || e->users == UINT32_MAX || asset == kNoTextureNode) return false;
+        auto it = byNode_.find(asset);
+        if (it != byNode_.end() && it->second.index != h.index()) return false;
+        auto& binding = byNode_[asset]; binding.index = h.index(); ++binding.users;
+        ++e->users;
+        if (e->node == kNoTextureNode) e->node = asset;
+        return true;
+    }
     // Render-thread material identity shares the texture service session lifetime.
     MaterialRegistry& materials() { return materials_; }
     std::function<void(TextureHandle)> onRetired; // context residency borrows the session; callback only queues invalidations
@@ -179,7 +210,7 @@ public:
         }
     }
 
-    // Only the last alias dying retires the identity and bumps its generation.
+    // Detach a raw asset binding. Explicit service references keep its payload alive.
     void onNodeDestroyed(uint32_t node) {
         std::lock_guard<std::mutex> lk(mu_);
         auto it = byNode_.find(node);
@@ -193,7 +224,8 @@ public:
             if (e.node==node) e.node=alias;
             return; // another manager node still owns this identity
         }
-        retire(binding.index);
+        e.node = kNoTextureNode;
+        if (e.users == 0) retire(binding.index);
     }
 
     // The same texture now lives in `newNode` (new pixels): the handle stays, the content version rises.
@@ -241,7 +273,7 @@ public:
         std::lock_guard<std::mutex> lk(mu_);
         return static_cast<uint32_t>(byKey_.size());
     }
-    // A mission boundary: every entry goes (the manager's nodes are all destroyed with the mission).
+    // Session teardown: force every entry stale, including entries with explicit refs.
     void clear() {
         std::lock_guard<std::mutex> lk(mu_);
         for (uint32_t i = 0; i < entries_.size(); ++i)
@@ -260,6 +292,7 @@ private:
         uint32_t    contentVersion = 0;
         TextureKey  key;
         TextureDimensions dimensions;
+        std::shared_ptr<TextureSourcePayload> source;
     };
     const Entry* resolve(TextureHandle h) const {
         if (!h.isValid() || h.index() >= entries_.size()) return nullptr;
@@ -275,6 +308,7 @@ private:
         e.node = kNoTextureNode;
         // Quarantine exhausted slots: wrapping would revive an old CPU handle.
         if (e.generation < 0xFFFu) { ++e.generation; free_.push_back(idx); }
+        e.source.reset();   // payload teardown only queues consumer cleanup
         e.key = TextureKey{};
     }
 
@@ -285,6 +319,7 @@ private:
     std::unordered_map<TextureKey, uint32_t, TextureKeyHash> byKey_;
     struct NodeBinding { uint32_t index=0, users=0; };
     std::unordered_map<uint32_t, NodeBinding> byNode_;
+    std::unique_ptr<TextureSourceOwner> sourceOwner_;
 };
 
 // Immutable descriptor snapshots retain image owners until that flight completes. Reusing a slot in a newer

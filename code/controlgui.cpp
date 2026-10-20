@@ -6,6 +6,7 @@ controlGui.cpp			: Implementation of the controlGui component.
 \*************************************************************************************************/
 
 #include "controlgui_internal.h"
+#include "../mclib/texture_assets.h"
 #include "../GameOS/gameos/utils/mc2log.h"
 #include "mc2fmt.h"
 
@@ -485,7 +486,7 @@ void ControlButton::render()
 {
 	if ( state != HIDDEN )
 	{
-		unsigned long gosID = mcTextureManager->get_gosTextureHandle( data->textureHandle );
+		unsigned long gosID = mc2::textures::sourceId( data->textureHandle );
 		gos_SetRenderState( gos_State_Texture, gosID ); 
 		gos_SetRenderState( gos_State_AlphaMode, gos_Alpha_AlphaInvAlpha);
 		gos_SetRenderState( gos_State_Filter, gos_FilterNone);

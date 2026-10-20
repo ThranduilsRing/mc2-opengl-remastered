@@ -1,7 +1,8 @@
 #include "gpu_cull_substrate.h"
 #include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
 #include "gpu_cull_parity.h"
-#include <GL/glew.h>
+#include <vector>
+#include <cstddef>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -23,17 +24,13 @@ namespace gpu_cull {
 // ---------------------------------------------------------------------------
 
 constexpr uint32_t RING_FRAMES             = 3;
-// Binding point 8: 0-3 are static-prop, 5-6 are water. 4 and 7 are unused.
-// 8 is the first binding clearly clear of all existing paths.
-constexpr uint32_t SUBSTRATE_SSBO_BINDING  = 8;
-
 // ---------------------------------------------------------------------------
 // Module state
 // ---------------------------------------------------------------------------
 
-static GLuint    s_instanceSsbo   = 0;
-static void*     s_mappedPtr      = nullptr;
-static GLsync    s_fence[RING_FRAMES] = {0, 0, 0};
+struct alignas(16) RecordBlock { std::byte bytes[16]; };
+static std::vector<RecordBlock> s_recordStorage;
+static void* s_recordData=nullptr;
 static uint32_t  s_frameSlot      = 0;
 
 static uint32_t  s_maxActors      = 0;   // set at init, immutable after
@@ -55,12 +52,6 @@ static uint32_t  s_cpuVisibleCount = 0;
 
 // Byte size of one ring slot: header + record array.
 static size_t    s_slotBytes      = 0;
-
-// PERF-GPU-CULL-READBACK-ID-CACHE-1: CPU-side actor ID cache.
-// Parallel to GPU SSBO records: cpuActorIds[slot][i] == records[slot][i].actorId.
-// Avoids PCIe/BAR cache misses in readback_buildActorVisSnapshot.
-static uint32_t* s_cpuActorIds[RING_FRAMES]  = {nullptr, nullptr, nullptr};
-static uint32_t  s_cpuSlotCount[RING_FRAMES] = {0u, 0u, 0u};
 
 // ---------------------------------------------------------------------------
 // M1 FROZEN-STATIC-CULL-RECORDS (gate MC2_GPU_CULL_STATIC_FROZEN_RECORDS).
@@ -98,26 +89,8 @@ bool substrate_isEnabled() {
 // Accessors
 // ---------------------------------------------------------------------------
 
-GLuint substrate_getInstanceSsboName() {
-    return s_initialized ? s_instanceSsbo : 0;
-}
-
-uint32_t substrate_getInstanceSsboBindingPoint() {
-    return SUBSTRATE_SSBO_BINDING;
-}
-
 uint32_t substrate_getCpuVisibleCount() {
     return s_cpuVisibleCount;
-}
-
-GLintptr substrate_getCurrentSlotOffset() {
-    if (!s_initialized) return 0;
-    return static_cast<GLintptr>(s_frameSlot * s_slotBytes);
-}
-
-GLsizeiptr substrate_getSlotBytes() {
-    if (!s_initialized) return 0;
-    return static_cast<GLsizeiptr>(s_slotBytes);
 }
 
 // ---------------------------------------------------------------------------
@@ -143,45 +116,18 @@ void substrate_init(uint32_t maxActors) {
 
     // Per-slot layout: [GpuActorRecordHeader][GpuActorRecord * maxActors]
     s_slotBytes = sizeof(GpuActorRecordHeader) + maxActors * sizeof(GpuActorRecord);
-    const GLsizeiptr totalBytes = static_cast<GLsizeiptr>(RING_FRAMES * s_slotBytes);
+    const size_t totalBytes=RING_FRAMES*s_slotBytes;
+    s_recordStorage.assign(totalBytes/sizeof(RecordBlock),RecordBlock{});
+    s_recordData=s_recordStorage.data();
 
-    const GLbitfield storageFlags = GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT;
-    const GLbitfield mapFlags     = storageFlags;
-
-    // TIER2-EXCLUDED: substrate-gated
-    glGenBuffers(1, &s_instanceSsbo);
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, s_instanceSsbo);
-    glBufferStorage(GL_SHADER_STORAGE_BUFFER, totalBytes, nullptr, storageFlags);
-    s_mappedPtr = glMapBufferRange(GL_SHADER_STORAGE_BUFFER, 0, totalBytes, mapFlags);
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
-
-    if (!s_mappedPtr) {
-        MC2_DIAGFE(stderr, "[GPU_CULL v1] FATAL: persistent map failed\n");
-        fflush(stderr);
-        abort();
-    }
-
-    // Zero the entire buffer so unwritten records read as zero.
-    memset(s_mappedPtr, 0, static_cast<size_t>(totalBytes));
-
-    // Allocate CPU actor ID cache — plain system memory, one slot per ring frame.
-    for (uint32_t i = 0u; i < RING_FRAMES; ++i) {
-        s_cpuActorIds[i]  = new uint32_t[maxActors]();
-        s_cpuSlotCount[i] = 0u;
-    }
     // M1: golden copy for the frozen static-prop record prefix (sized maxActors).
     s_staticRecords = new GpuActorRecord[maxActors]();
 
     s_initialized = true;
 
-    MC2_DIAGF("[GPU_CULL v1] event=substrate_init maxActors=%u slotBytes=%zu totalBytes=%lld binding=%u\n",
-           maxActors, s_slotBytes, static_cast<long long>(totalBytes), SUBSTRATE_SSBO_BINDING);
+    MC2_DIAGF("[GPU_CULL v1] event=substrate_init producer=cpu maxActors=%u slotBytes=%zu totalBytes=%zu\n",
+              maxActors,s_slotBytes,totalBytes);
     fflush(stdout);
-    if (mc2_diag::tagEnabled("GPU_CULL")) {
-        char diag_buf[256];
-        mc2::fmt::to_buf(diag_buf, "{{\"event\":\"substrate_init\",\"maxActors\":{:d},\"slotBytes\":{:d},\"totalBytes\":{:d},\"binding\":{:d}}}", mc2::fmt::as_u32(maxActors), mc2::fmt::as_size(s_slotBytes), mc2::fmt::as_i64(static_cast<long long>(totalBytes)), mc2::fmt::as_u32(SUBSTRATE_SSBO_BINDING));
-        mc2_diag::writeEvent("GPU_CULL", 1, 0, diag_buf);
-    }
 }
 
 // ---------------------------------------------------------------------------
@@ -191,31 +137,9 @@ void substrate_init(uint32_t maxActors) {
 void substrate_shutdown() {
     if (!substrate_isEnabled()) return;
 
-    // Wait for all in-flight slots before releasing.
-    for (uint32_t i = 0; i < RING_FRAMES; ++i) {
-        if (s_fence[i]) {
-            glClientWaitSync(s_fence[i], GL_SYNC_FLUSH_COMMANDS_BIT, GL_TIMEOUT_IGNORED);
-            glDeleteSync(s_fence[i]);
-            s_fence[i] = 0;
-        }
-    }
-
-    if (s_instanceSsbo) {
-        if (s_mappedPtr) {
-            glBindBuffer(GL_SHADER_STORAGE_BUFFER, s_instanceSsbo);
-            glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
-            glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
-            s_mappedPtr = nullptr;
-        }
-        glDeleteBuffers(1, &s_instanceSsbo);
-        s_instanceSsbo = 0;
-    }
-    // Free CPU actor ID cache.
-    for (uint32_t i = 0u; i < RING_FRAMES; ++i) {
-        delete[] s_cpuActorIds[i];
-        s_cpuActorIds[i]  = nullptr;
-        s_cpuSlotCount[i] = 0u;
-    }
+    // GPU submissions copy their inputs before returning; this ring has no GPU readers.
+    s_recordData=nullptr;
+    std::vector<RecordBlock>().swap(s_recordStorage);
     // M1: free the frozen static-prop golden copy.
     delete[] s_staticRecords;
     s_staticRecords            = nullptr;
@@ -223,7 +147,7 @@ void substrate_shutdown() {
     s_staticPrefixVisibleCount = 0u;
     for (uint32_t i = 0u; i < RING_FRAMES; ++i) s_staticDirty[i] = 0u;
 
-    s_mappedPtr      = nullptr;
+    s_recordData      = nullptr;
     s_maxActors      = 0;
     s_perFrameCount  = 0;
     s_cpuVisibleCount = 0;
@@ -246,20 +170,11 @@ void substrate_frameBegin() {
     // Advance ring slot.
     s_frameSlot = (s_frameSlot + 1) % RING_FRAMES;
 
-    // Wait on this slot's fence if it has not yet been signalled.
-    // At 60 Hz with 3-deep ring this should never stall, but be defensive.
-    if (s_fence[s_frameSlot]) {
-        ZoneScopedN("SubFrameBegin.RingWait");
-        glClientWaitSync(s_fence[s_frameSlot], GL_SYNC_FLUSH_COMMANDS_BIT, GL_TIMEOUT_IGNORED);
-        glDeleteSync(s_fence[s_frameSlot]);
-        s_fence[s_frameSlot] = 0;
-    }
-
     // Reset the per-frame record count for this slot.
     if (s_staticFrozen && s_staticPrefixCount > 0u) {
         // M1: static records are a FROZEN prefix [0,S). Refill THIS ring slot
-        // from the CPU golden copy if it is dirty (per-slot, lazy, AFTER the
-        // fence wait above so the GPU is done reading this slot), then start the
+        // from the CPU golden copy if it is dirty (per-slot, lazy, after the
+        // prior native snapshot so the GPU is done reading this slot), then start the
         // per-frame cursor AFTER the prefix so dynamic actors append into
         // [S,S+D). No per-frame static append (the registry skips it under the
         // gate). When S==0 or the gate is off, the else-branch keeps the
@@ -267,21 +182,17 @@ void substrate_frameBegin() {
         const uint32_t S = s_staticPrefixCount;
         if (s_staticDirty[s_frameSlot]) {
             const size_t slotOffset = s_frameSlot * s_slotBytes;
-            char* recBase = static_cast<char*>(s_mappedPtr) + slotOffset
+            char* recBase = static_cast<char*>(s_recordData) + slotOffset
                             + sizeof(GpuActorRecordHeader);
             memcpy(recBase, s_staticRecords,
                    static_cast<size_t>(S) * sizeof(GpuActorRecord));
-            for (uint32_t k = 0u; k < S; ++k)
-                s_cpuActorIds[s_frameSlot][k] = s_staticRecords[k].actorId;
             s_staticDirty[s_frameSlot] = 0u;
         }
         s_perFrameCount             = S;
         s_cpuVisibleCount           = s_staticPrefixVisibleCount;
-        s_cpuSlotCount[s_frameSlot] = S;
     } else {
         s_perFrameCount = 0;
         s_cpuVisibleCount = 0;
-        s_cpuSlotCount[s_frameSlot] = 0u;
     }
     s_overflowLoggedThisFrame = false;  // 2026-05-11 reset overflow log latch
 
@@ -319,7 +230,7 @@ void substrate_rebuildStaticPrefix(const GpuActorRecord* recs, uint32_t count) {
 // Writes one record into the current ring slot's array and maintains the two
 // lockstep per-frame counters (s_perFrameCount, s_cpuVisibleCount).
 // PRECONDITION: caller has passed the s_perFrameCount >= s_maxActors overflow
-// guard and verified s_mappedPtr != nullptr. The cpuVisible increment is
+// guard and verified s_recordData != nullptr. The cpuVisible increment is
 // computed from the cache-hot `rec` parameter, never by reading back from the
 // write-combined mapped buffer; it occurs AFTER the successful memcpy so the
 // accumulator counts exactly records actually written into
@@ -329,14 +240,11 @@ void substrate_rebuildStaticPrefix(const GpuActorRecord* recs, uint32_t count) {
 
 static inline void substrate_writeRecord(const GpuActorRecord& rec) {
     const size_t slotOffset = s_frameSlot * s_slotBytes;
-    char* dest = static_cast<char*>(s_mappedPtr)
+    char* dest = static_cast<char*>(s_recordData)
                  + slotOffset
                  + sizeof(GpuActorRecordHeader)
                  + s_perFrameCount * sizeof(GpuActorRecord);
     memcpy(dest, &rec, sizeof(GpuActorRecord));
-    // Cache actor ID in CPU memory so readback_buildActorVisSnapshot avoids
-    // reading recs[i].actorId from GPU-mapped (BAR/PCIe) memory.
-    s_cpuActorIds[s_frameSlot][s_perFrameCount] = rec.actorId;
     if (rec.prevVisibilityBit) ++s_cpuVisibleCount;
     ++s_perFrameCount;
 }
@@ -347,7 +255,7 @@ static inline void substrate_writeRecord(const GpuActorRecord& rec) {
 
 void substrate_submitDynamicActor(const GpuActorRecord& rec) {
     if (!substrate_isEnabled() || !s_initialized) return;
-    if (!s_mappedPtr) return;
+    if (!s_recordData) return;
 
     if (s_perFrameCount >= s_maxActors) {
         // Overflow: clamp and log once per frame. Same latch fix as
@@ -379,7 +287,7 @@ void substrate_flushUpload() {
         const size_t slotOffset = s_frameSlot * s_slotBytes;
         GpuActorRecordHeader* hdr =
             reinterpret_cast<GpuActorRecordHeader*>(
-                static_cast<char*>(s_mappedPtr) + slotOffset);
+                static_cast<char*>(s_recordData) + slotOffset);
 
         hdr->recordCount    = s_perFrameCount;
         hdr->recordCapacity = s_maxActors;
@@ -387,13 +295,6 @@ void substrate_flushUpload() {
         hdr->_pad0          = 0;
     }
     // Snapshot CPU slot count to match hdr->recordCount.
-    s_cpuSlotCount[s_frameSlot] = s_perFrameCount;
-
-    // Buffer is coherent (GL_MAP_COHERENT_BIT) — no explicit glFlushMappedBufferRange needed.
-
-    // Insert a fence for this slot so the next visit to this ring slot
-    // waits until the GPU has finished reading it.
-    { ZoneScopedN("SubFlush.FenceInsert"); s_fence[s_frameSlot] = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0); }
 
     // 600-frame summary + first-flush banner.
     ++s_flushCount;
@@ -420,14 +321,11 @@ void substrate_flushUpload() {
 // between substrate_flushUpload() and compute_dispatch() so the compute shader
 // sees both dynamic actors AND static prop records in the same dispatch.
 //
-// Safety: the fence placed by substrate_flushUpload() gates GPU reads from the
-// PREVIOUS visit to this ring slot, not the current CPU-write session. Writes to
-// the persistent-mapped coherent buffer are immediately visible to the GPU so
-// compute_dispatch() (glCopyBufferSubData) will copy the updated header + records.
+// CPU records remain mutable until compute_dispatch snapshots the final span.
 
 void substrate_appendStaticPropRecord(const GpuActorRecord& rec) {
     if (!substrate_isEnabled() || !s_initialized) return;
-    if (!s_mappedPtr) return;
+    if (!s_recordData) return;
 
     if (s_perFrameCount >= s_maxActors) {
         // Overflow: log once per frame (latch resets in substrate_frameBegin).
@@ -447,14 +345,13 @@ void substrate_appendStaticPropRecord(const GpuActorRecord& rec) {
     substrate_writeRecord(rec);
 
     // Update hdr->recordCount in-place so compute_dispatch's glCopyBufferSubData
-    // copies the updated count. Buffer is GL_MAP_COHERENT_BIT — no explicit flush.
+    // copies the updated count from CPU memory; there is no GPU mapping — no explicit flush.
     const size_t slotOffset = s_frameSlot * s_slotBytes;
     GpuActorRecordHeader* hdr =
         reinterpret_cast<GpuActorRecordHeader*>(
-            static_cast<char*>(s_mappedPtr) + slotOffset);
+            static_cast<char*>(s_recordData) + slotOffset);
     hdr->recordCount = s_perFrameCount;
     // Keep CPU slot count in sync with hdr->recordCount after each static-prop append.
-    s_cpuSlotCount[s_frameSlot] = s_perFrameCount;
 
     SUBSTRATE_TRACE("event=append_static type=%u count=%u",
                     (rec.category >> 4), s_perFrameCount);
@@ -467,10 +364,10 @@ void substrate_appendStaticPropRecord(const GpuActorRecord& rec) {
 // removed in the post-proof cleanup. Caller MUST invoke this AFTER the last
 // static-prop append for the frame (pre compute_dispatch), NOT inside flush.
 void substrate_countParityCheck() {
-    if (!substrate_isEnabled() || !s_initialized || !s_mappedPtr) return;
+    if (!substrate_isEnabled() || !s_initialized || !s_recordData) return;
     const size_t slotOffset = s_frameSlot * s_slotBytes;
     const GpuActorRecord* recs = reinterpret_cast<const GpuActorRecord*>(
-        static_cast<const char*>(s_mappedPtr) + slotOffset + sizeof(GpuActorRecordHeader));
+        static_cast<const char*>(s_recordData) + slotOffset + sizeof(GpuActorRecordHeader));
     uint32_t legacy = 0;
     for (uint32_t i = 0; i < s_perFrameCount; ++i)
         if (recs[i].prevVisibilityBit) ++legacy;
@@ -490,59 +387,12 @@ uint32_t substrate_getCurrentRecordCount() {
     return s_perFrameCount;
 }
 
-// ---------------------------------------------------------------------------
-// substrate_getSlotRecords (C3)
-// ---------------------------------------------------------------------------
-//
-// Returns the GpuActorRecord array for the given ring slot. The returned
-// pointer points directly into the persistent-mapped SSBO; it is valid as
-// long as the substrate is initialized. The CPU may safely read this range
-// after the matching fence for that slot has been consumed (i.e. the GPU has
-// finished reading it and signalled the fence). Because readback slot K ==
-// substrate slot K, callers should only query a slot that the readback ring
-// has confirmed is no longer in flight on the GPU.
-//
-// outCount is set to hdr->recordCount for the slot (may be 0 if no frame has
-// been flushed yet, or if the substrate was just reset).
-
-const GpuActorRecord* substrate_getSlotRecords(uint32_t slot, uint32_t* outCount) {
-    if (!s_initialized || !s_mappedPtr) {
-        if (outCount) *outCount = 0u;
-        return nullptr;
-    }
-    if (slot >= RING_FRAMES) {
-        if (outCount) *outCount = 0u;
-        return nullptr;
-    }
-
-    const size_t slotOffset = slot * s_slotBytes;
-    const char* slotBase = static_cast<const char*>(s_mappedPtr) + slotOffset;
-
-    const GpuActorRecordHeader* hdr =
-        reinterpret_cast<const GpuActorRecordHeader*>(slotBase);
-    if (outCount) *outCount = hdr->recordCount;
-
-    return reinterpret_cast<const GpuActorRecord*>(slotBase + sizeof(GpuActorRecordHeader));
-}
-
-// ---------------------------------------------------------------------------
-// substrate_getCpuActorIds (PERF-GPU-CULL-READBACK-ID-CACHE-1)
-// ---------------------------------------------------------------------------
-//
-// Returns the CPU-side actor ID array for the given ring slot.
-// Parallel to substrate_getSlotRecords: cpuIds[i] == records[i].actorId for
-// every valid index i < *outCount. Reading from this array avoids the ~4000
-// PCIe/BAR cache misses that reading GpuActorRecord.actorId from the
-// persistent-mapped SSBO incurs in readback_buildActorVisSnapshot.
-// outCount mirrors s_cpuSlotCount[slot], kept in sync with hdr->recordCount.
-
-const uint32_t* substrate_getCpuActorIds(uint32_t slot, uint32_t* outCount) {
-    if (!s_initialized || slot >= RING_FRAMES || !s_cpuActorIds[slot]) {
-        if (outCount) *outCount = 0u;
-        return nullptr;
-    }
-    if (outCount) *outCount = s_cpuSlotCount[slot];
-    return s_cpuActorIds[slot];
+// The native producer copies this span before any later CPU ring reuse.
+uint32_t substrate_capacity() { return s_initialized ? s_maxActors : 0; }
+std::span<const GpuActorRecord> substrate_currentRecords() {
+    if (!s_initialized || !s_recordData) return {};
+    const auto* bytes=static_cast<const char*>(s_recordData)+s_frameSlot*s_slotBytes+sizeof(GpuActorRecordHeader);
+    return {reinterpret_cast<const GpuActorRecord*>(bytes),s_perFrameCount};
 }
 
 } // namespace gpu_cull

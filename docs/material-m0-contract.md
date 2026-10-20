@@ -1,6 +1,8 @@
 <!-- doc-status: current | reviewed:2026-10-11 -->
 # Material M0 — GPU material contract pin
 
+> s68/P9: Retired GL sources are cited with Git object syntax (`8064c6930:path`) so the historical implementation remains inspectable.
+
 **Status:** M0 done (contract pin only). No consumer rewiring, no new PBR
 features, no terrain-splat behavior change. Branch `claude/sp-material-m0-1`.
 
@@ -17,7 +19,7 @@ producer is the `MaterialGpu` record default; the other two are pinned to match.
 | Site | File:line | was | now |
 |---|---|---|---|
 | Record producer (authoritative) | `GameOS/gameos/gos_static_prop_batcher.cpp` (`m.roughnessFactor`) | 1.0 | 1.0 |
-| Static-prop frag fallback | `shaders/static_prop.frag` (`float roughness =`) | 0.6 | 1.0 |
+| Static-prop frag fallback | `8064c6930:shaders/static_prop.frag` (`float roughness =`) | 0.6 | 1.0 |
 | Asset-viewer shader fallback | `tools/asset_viewer/LocalPbrMaterialBackend.cpp` (`rough =`) | 0.5 | 1.0 |
 | Asset-viewer doc comment | `tools/asset_viewer/MaterialRenderBackend.h` (`MaterialSlotTextures::orm`) | 0.5 | 1.0 |
 

@@ -10,7 +10,7 @@
 #include "../mclib/dynamic_decal_ring.h"  // MC2_DYNAMIC_DECALS live count
 
 #include "../GameOS/gameos/gos_postprocess.h"
-#include "../GameOS/gameos/view_uniforms_gl.h"
+#include "../GameOS/gameos/view_registry.h"
 #include "../RenderCore/RenderResourceRegistry.h"
 #include "gameos.hpp"
 #include "../GameOS/gameos/gos_static_prop_killswitch.h"
@@ -68,14 +68,6 @@ int   gos_GetWaterReflectionGate();
 float gos_GetWaterRtStrength();
 void  gos_SetWaterRtStrength(float v);
 int   gos_GetWaterReflectionRtGate();
-// height-tex source/render/factor accessors + live
-// factor setter. C-linkage (declared extern "C" in gos_terrain_height_tex.h).
-extern "C" {
-    int  __stdcall gos_terrainHeightSourceSide(void);
-    int  __stdcall gos_terrainHeightTexSide(void);
-    int  __stdcall gos_terrainHeightResampleFactor(void);
-    void __stdcall gos_setTerrainHeightResampleFactor(int factor);
-}
 // colormap RGB classifier thresholds (gameos_graphics.cpp).
 void gos_SetTerrainClassGrass(float gMinusRLo, float gMinusRHi, float gBrightLo, float gBrightHi);
 void gos_GetTerrainClassGrass(float* gMinusRLo, float* gMinusRHi, float* gBrightLo, float* gBrightHi);

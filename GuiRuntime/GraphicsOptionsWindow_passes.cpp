@@ -450,102 +450,13 @@ void drawRenderPassesSection() {
 
 
 void drawGBufferPreview() {
-    gosPostProcess* pp = getGosPostProcess();
-    if (!pp) {
-        ImGui::TextDisabled("(post-process system unavailable)");
-        return;
-    }
-
-    // Compute thumbnail width from available content region.
-    // Aspect ratio: fixed 16:9 approximation.
-    const float availW = ImGui::GetContentRegionAvail().x;
-    const float thumbW = (availW * 0.5f) - ImGui::GetStyle().ItemSpacing.x;
-    const float thumbH = thumbW * (9.0f / 16.0f);
-
-    // UV flip: OpenGL textures have (0,0) at bottom-left; ImGui expects top-left.
-    const ImVec2 uv0(0.0f, 1.0f);
-    const ImVec2 uv1(1.0f, 0.0f);
-    const ImVec2 sz(thumbW, thumbH);
-
-    {
-        unsigned int tex = pp->getSceneColorTexture();
-        if (tex) {
-            ImGui::TextUnformatted("Scene Color  (RGBA16F, HDR)");
-            ImGui::Image((ImTextureID)(intptr_t)tex, sz, uv0, uv1);
-            if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("HDR scene output before tone-mapping.\nValues above 1.0 are bloom sources.");
-        } else {
-            ImGui::TextDisabled("Scene Color: not allocated");
-        }
-    }
-
-    ImGui::SameLine();
-
-    {
-        unsigned int tex = pp->getSceneNormalTexture();
-        if (tex) {
-            ImGui::TextUnformatted("Scene Normals  (RGBA16F)");
-            // Column-layout: label is already on the SameLine'd column.
-            // SetCursorPosY to align label with opposite column.
-            ImGui::Image((ImTextureID)(intptr_t)tex, sz, uv0, uv1);
-            if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("World-space normals (RGB = XYZ mapped 0-1).\n"
-                                  "Alpha = shadow-skip flag (0=skip, 1=apply).\n"
-                                  "Clear sentinel: (0.5, 0.5, 1.0, 0.0) = flat-up.");
-        } else {
-            ImGui::TextDisabled("Scene Normals: not allocated");
-        }
-    }
-
-    ImGui::Spacing();
-    ImGui::TextUnformatted("Shadow Maps  (DEPTH_COMPONENT24)");
-    ImGui::TextDisabled("  Depth textures need GL_TEXTURE_COMPARE_MODE=GL_NONE to preview.");
-    ImGui::TextDisabled("  Use the shadow debug overlay in Post-Process instead.");
-
-    {
-        unsigned int tex = pp->getSceneObjectIdTex();
-        if (tex) {
-            ImGui::Spacing();
-            ImGui::TextUnformatted("Object-ID Buffer  (R32UI)");
-            ImGui::TextDisabled("  Uint texture — needs a hash-to-RGB visualization shader.");
-            ImGui::TextDisabled("  Use Ctrl+Shift+I + click to inspect individual pixels.");
-        } else {
-            ImGui::Spacing();
-            ImGui::TextDisabled("Object-ID buffer: not active (set MC2_OBJECT_ID_BUFFER=1)");
-        }
-    }
-
-    // ── Water Reflection (1/4-res RGBA16F) ────────────────────────────────────
-    // Reflection preview stays black without sky and terrain content.
-    {
-        unsigned int tex = pp->getWaterReflectionTexture();
-        ImGui::Spacing();
-        if (tex) {
-            ImGui::Text("Water Reflection  (1/4-res RGBA16F, %dx%d)",
-                        pp->getWaterReflectionWidth(), pp->getWaterReflectionHeight());
-            ImGui::Image((ImTextureID)(intptr_t)tex, sz, uv0, uv1);
-            if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("Quarter-res water reflection target (WATER-REFLECTION-RESOURCE-1).\n"
-                                  "BLACK until Phase C renders sky+terrain into it; substrate only.");
-        } else {
-            ImGui::TextDisabled("Water Reflection: not allocated");
-        }
-    }
-
-    // ── HZB depth pyramid  ───────────────────────────────
-    // Native Vulkan pyramid dimensions and render-only culling status.
-    {
-        ImGui::Spacing();
-        ImGui::Separator();
-        if (!pp->isHzbEnabled()) {
-            ImGui::TextDisabled("HZB culling: off (MC2_HZB_BUILD=0)");
-        } else {
-            const int mips = pp->getHzbMipCount();
-            ImGui::Text("VK HZB Pyramid (R32F per-level, %dx%d, %d mips, builds=%llu)",
-                        pp->getHzbWidth(), pp->getHzbHeight(), mips,
-                        (unsigned long long)pp->getHzbBuildCount());
-        }
-    }
+    const auto* pp=getGosPostProcess();
+    if (!pp) { ImGui::TextDisabled("Scene targets unavailable"); return; }
+    ImGui::Text("Scene targets: %d x %d",pp->getWidth(),pp->getHeight());
+    ImGui::Text("HDR color: %s",pp->sceneColorReady() ? "ready" : "unavailable");
+    ImGui::Text("World normals: %s",pp->sceneNormalReady() ? "ready" : "unavailable");
+    ImGui::Text("Object IDs: %s",pp->sceneObjectIdReady() ? "ready" : "disabled");
+    ImGui::TextDisabled("Use Debug View and the shadow overlay to inspect rendered output.");
 }
 
 

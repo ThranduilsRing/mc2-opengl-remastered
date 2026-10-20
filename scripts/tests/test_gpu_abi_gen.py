@@ -218,7 +218,7 @@ def test_mech_instance_record_is_64_bytes_with_pinned_offsets():
 
 def test_shader_redeclaring_a_generated_struct_is_rejected(tmp_path):
     root = _tmp_root(tmp_path)
-    shader = tmp_path / "shaders" / "shadow_mech.vert"
+    shader = tmp_path / "shaders" / "vulkan" / "shadow_mech.vert"
     shader.parent.mkdir(parents=True, exist_ok=True)
     # The historical bug: a private 48-byte copy of the 64-byte record.
     shader.write_text("struct GpuMechInstance { uint a; vec4 b; vec4 c; };\n", encoding="utf-8")
@@ -227,7 +227,7 @@ def test_shader_redeclaring_a_generated_struct_is_rejected(tmp_path):
 
 def test_shader_including_the_generated_struct_passes(tmp_path):
     root = _tmp_root(tmp_path)
-    shader = tmp_path / "shaders" / "shadow_mech.vert"
+    shader = tmp_path / "shaders" / "vulkan" / "shadow_mech.vert"
     shader.parent.mkdir(parents=True, exist_ok=True)
     shader.write_text("#include <include/gpu_abi_mech_instance.gen.hglsl>\n"
                       "// struct GpuMechInstance { stale comment }\n", encoding="utf-8")
@@ -314,14 +314,27 @@ def test_object_lights_record_matches_the_historical_abi():
                                  "light_falloff", "numLights"]
 
 
-def test_raw_shader_mirror_drift_is_rejected(tmp_path):
+def test_raw_shader_mirror_drift_is_rejected(tmp_path, monkeypatch):
     root = _tmp_root(tmp_path)
-    comp = tmp_path / "shaders" / "lightgrid_build.comp"
+    rel = "shaders/vulkan/mirror_contract.comp"
+    comp = tmp_path / rel
+    comp.parent.mkdir(parents=True, exist_ok=True)
+    # Synthetic offline mirror: production native consumers include the ABI.
+    comp.write_text("""#define TEST_MAX_LIGHTS 32
+struct MirrorObjectLights {
+    mat4 light_to_world[TEST_MAX_LIGHTS];
+    vec4 light_dir[TEST_MAX_LIGHTS];
+    vec4 light_color[TEST_MAX_LIGHTS];
+    vec4 light_falloff[TEST_MAX_LIGHTS];
+    ivec4 numLights;
+};
+""", encoding="utf-8")
+    monkeypatch.setattr(g, "MIRRORS", [(rel, "MirrorObjectLights", "ObjectLights")])
     assert g.main(["--check", "--root", root]) == 0
     text = comp.read_text(encoding="utf-8")
-    comp.write_text(text.replace("#define LIGHTGRID_MAX_LIGHTS 32", "#define LIGHTGRID_MAX_LIGHTS 16"),
+    comp.write_text(text.replace("#define TEST_MAX_LIGHTS 32", "#define TEST_MAX_LIGHTS 16"),
                     encoding="utf-8")
-    assert g.main(["--check", "--root", root]) == 1      # stale array length in the mirror
+    assert g.main(["--check", "--root", root]) == 1
 
 
 def test_ivec4_annotation_needs_int32_quad():

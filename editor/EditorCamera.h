@@ -22,11 +22,9 @@ EditorCamera.h			: Interface for the EditorCamera component.
 #endif
 
 #include "../EditorBridge/EditorRenderBridge.h"  // GPU batcher/registry lifecycle (firewall)
-#include <GL/glew.h>                              // GLint/GL_VIEWPORT/glGetIntegerv for the
-                                                  // throttled [PICKW] viewport diagnostics.
-#include "../GameOS/gameos/view_uniforms_gl.h"  // setCurrentView + uploadViewUniforms
+#include "../GameOS/gameos/view_registry.h"
 #include "../RenderCore/FramePackets.h"        // the frame packets the batchers read
-#include "EditorGpuTimer.h"                      // MC2_EDITOR_GPU_TIMERS per-pass GPU timing
+#include "EditorRenderTimer.h"                      // MC2_EDITOR_GPU_TIMERS per-pass GPU timing
 #include "AuthoredMissionState.h"
 
 #include <stdarg.h>
@@ -241,10 +239,6 @@ public:
 					}
 				}
 
-				static const bool s_vuOn = mc2::gate::get<"MC2_VIEW_UNIFORMS">();
-				if (s_vuOn) {
-					RenderCore::uploadViewUniforms(vu);
-				}
 			}
 
 			// The terrain shader needs camera position (distance LOD in TCS)
@@ -257,11 +251,11 @@ public:
 			gos_SetTerrainCameraPos(camOrig.x, camOrig.y, camOrig.z);
 			gos_SetTerrainLightDir(lightDirection.x, lightDirection.y, lightDirection.z);
 
-			EditorGpuTimer_Begin();                            // GPU per-pass timing (env-gated)
+			EditorRenderTimer_Begin();                            // CPU phase timing + native GPU pass collection
 
 			if (theSky)
 				theSky->render(1);
-			EditorGpuTimer_Mark("sky");
+			EditorRenderTimer_Mark("sky");
 
 			EditorBridge::staticPropFrameBegin();
 
@@ -272,7 +266,7 @@ public:
 
 			if (land)
 				land->render();
-			EditorGpuTimer_Mark("terrain");
+			EditorRenderTimer_Mark("terrain");
 
 
 			// TODO: Restore the editor actor render walk; the editor has no
@@ -280,11 +274,11 @@ public:
 			// cannot register per-frame visibility here.
 			if (!s_bSensorMapEnabled)
 				EditorObjectMgr::instance()->render();
-			EditorGpuTimer_Mark("objmgr");
+			EditorRenderTimer_Mark("objmgr");
 
 			if (land)
 				land->renderWater();
-			EditorGpuTimer_Mark("water");
+			EditorRenderTimer_Mark("water");
 
 
 			// TODO: Restore actor shadow visibility; the editor has no renderShadows walk.
@@ -298,7 +292,7 @@ public:
 			// Submit terrain chunk commands before post-processing; the chunk path
 			// suppresses legacy per-quad draws, so an unflushed buffer leaves terrain black.
 			Terrain::flushDrawCommands();
-			EditorGpuTimer_Mark("terrainFlush");
+			EditorRenderTimer_Mark("terrainFlush");
 
 			/* The editor interface needs to be drawn last, as it draws things "on top" of the
 			rendered scene. */
@@ -306,17 +300,17 @@ public:
 			{
 				EditorInterface::instance()->render();
 			}
-			EditorGpuTimer_Mark("ui");
+			EditorRenderTimer_Mark("ui");
 
 			if (mcTextureManager)
 				mcTextureManager->renderLists();
-			EditorGpuTimer_Mark("props");
+			EditorRenderTimer_Mark("props");
 
 			if (land)
 				land->renderWaterFastPath();
-			EditorGpuTimer_Mark("waterFast");
+			EditorRenderTimer_Mark("waterFast");
 
-			EditorGpuTimer_End();
+			EditorRenderTimer_End();
 		}
 	
 		if (drawOldWay)
@@ -439,11 +433,9 @@ public:
 
 			static int s_resDiag = 0;
 			if ((++s_resDiag % 600) == 1) {
-				GLint vp[4] = {0,0,0,0};
-				glGetIntegerv(GL_VIEWPORT, vp);
-				fprintf(stderr, "[PICKW v1] drawable=%dx%d screenRes=%.0fx%.0f glViewport=%d,%d,%d,%d\n",
+				fprintf(stderr, "[PICKW v1] drawable=%dx%d screenRes=%.0fx%.0f sceneViewport=%d,%d,%d,%d\n",
 					Environment.drawableWidth, Environment.drawableHeight,
-					screenResolution.x, screenResolution.y, vp[0], vp[1], vp[2], vp[3]);
+					screenResolution.x, screenResolution.y, 0, 0, (int)sceneRes.x, (int)sceneRes.y);
 				fflush(stderr);
 			}
 		}

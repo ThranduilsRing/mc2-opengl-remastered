@@ -127,17 +127,6 @@ void gosRenderer::applyRenderStates() {
             fflush(stdout);
         }
         if (equal) {
-            // Resolved-handle parity: check the underlying GL texture id, not the
-            // gos handle slot (handles mutate per-frame via tex_resolve).
-            uint32_t tex_states[] = { gos_State_Texture, gos_State_Texture2, gos_State_Texture3 };
-            for (int i = 0; i < 3 && equal; ++i) {
-                DWORD h = renderStates_[tex_states[i]];
-                gosTexture* tex = (h == INVALID_TEXTURE_ID) ? nullptr : this->getTexture(h);
-                uint32_t glId = tex ? tex->getTextureId() : 0u;
-                if (glId != cachedResolvedTexId_[i]) { equal = false; break; }
-                if (curStates_[tex_states[i]] != h) { equal = false; break; }
-            }
-            if (equal) {
                 // Skip GL work. Still run auto-reset bookkeeping so Terrain/Water
                 // intent bits don't bleed into the next frame.
                 curStates_[gos_State_Terrain] = renderStates_[gos_State_Terrain];
@@ -147,129 +136,13 @@ void gosRenderer::applyRenderStates() {
                 curStates_[gos_State_Overlay] = renderStates_[gos_State_Overlay];
                 rsSkipped_++;
                 return;
-            }
         }
     }
 
     rsApplied_++;
 
-	switch (renderStates_[gos_State_Culling]) {
-		case gos_Cull_None: glDisable(GL_CULL_FACE); break;
-		case gos_Cull_CW:	
-		case gos_Cull_CCW:
-			glEnable(GL_CULL_FACE);
-			// by default in OpenGL front face is CCW (could be changed by glFrontFace)
-			glCullFace(renderStates_[gos_State_Culling] == gos_Cull_CW ? GL_BACK : GL_FRONT);
-			break;
-		default: gosASSERT(0 && "Wrong cull face value");
-	}
-	curStates_[gos_State_Culling] = renderStates_[gos_State_Culling];
-
-
 	fog_color_ = uint32_to_vec4(renderStates_[gos_State_Fog]);
 	curStates_[gos_State_Fog] = renderStates_[gos_State_Fog];
-
-   switch(renderStates_[gos_State_ZWrite]) {
-       case 0: glDepthMask(GL_FALSE); break;
-       case 1: glDepthMask(GL_TRUE); break;
-       default: gosASSERT(0 && "Wrong depth write value");
-   }
-   curStates_[gos_State_ZWrite] = renderStates_[gos_State_ZWrite];
-
-   if(0 == renderStates_[gos_State_ZCompare]) {
-       glDisable(GL_DEPTH_TEST);
-   } else {
-       glEnable(GL_DEPTH_TEST);
-   }
-   // Reverse-Z (U2): gos_State_ZCompare is the SCENE depth-compare bridge.
-   // All gos_State_ZCompare writers (incl. txmmgr.cpp:2316/2327 and
-   // objmgr.cpp:1826 legacy CPU blob-shadow quads, which depth-test
-   // against the SCENE depth buffer) are scene-space; the ortho
-   // shadow-MAP passes never route through gos_State_ZCompare (they set
-   // glDepthFunc(GL_LESS) via the literal path in gameos_graphics.cpp
-   // 4436/4580/4650 + gos_postprocess.cpp 1139/1163 under their own FBO).
-   // So the scene remap applies globally here; no shadow carve-out.
-   switch(renderStates_[gos_State_ZCompare]) {
-       case 0: glDepthFunc(GL_ALWAYS);  break;   // unchanged
-       case 1: glDepthFunc(GL_GEQUAL);  break;   // reverse-Z: was GL_LEQUAL
-       case 2: glDepthFunc(GL_GREATER); break;   // reverse-Z: was GL_LESS
-       default: gosASSERT(0 && "Wrong depth test value");
-   }
-   curStates_[gos_State_ZCompare] = renderStates_[gos_State_ZCompare];
-
-   bool disable_blending = renderStates_[gos_State_AlphaMode] == gos_Alpha_OneZero;
-   if(disable_blending) {
-       glDisable(GL_BLEND);
-   } else {
-       glEnable(GL_BLEND);
-   }
-   switch(renderStates_[gos_State_AlphaMode]) {
-       case gos_Alpha_OneZero:          glBlendFunc(GL_ONE, GL_ZERO); break;
-       case gos_Alpha_OneOne:           glBlendFunc(GL_ONE, GL_ONE); break;
-       case gos_Alpha_AlphaInvAlpha:    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA); break;
-       case gos_Alpha_OneInvAlpha:      glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA); break;
-       case gos_Alpha_AlphaOne:         glBlendFunc(GL_SRC_ALPHA, GL_ONE); break;
-       default: gosASSERT(0 && "Wrong alpha mode value");
-   }
-   curStates_[gos_State_AlphaMode] = renderStates_[gos_State_AlphaMode];
-
-   #if 0 // now in shaders (this is not supported in CORE OpenGL profile
-   bool enable_alpha_test = renderStates_[gos_State_AlphaTest] == 1;
-   if(enable_alpha_test) {
-       glEnable(GL_ALPHA_TEST);
-       glAlphaFunc(GL_NOTEQUAL, 0.0f);
-   } else {
-       glDisable(GL_ALPHA_TEST);
-   }
-   #endif
-   curStates_[gos_State_AlphaTest] = renderStates_[gos_State_AlphaTest];
-
-   TexFilterMode filter = TFM_NONE;
-   switch(renderStates_[gos_State_Filter]) {
-       case gos_FilterNone: filter = TFM_NEAREST; break;
-       case gos_FilterBiLinear : filter = TFM_LINEAR; break;
-       case gos_FilterTriLinear: filter = TFM_LNEAR_MIPMAP_LINEAR; break;
-   }
-   // no mips for now, so ensure no invalid filters used
-   //gosASSERT(filter == TFM_NEAREST || filter == TFM_LINEAR);
-   // i do not know of any mipmaps that we are using
-   if(filter == TFM_LNEAR_MIPMAP_LINEAR)
-       filter = TFM_LINEAR;
-
-   // in this case does not necessaily mean, that state was set, because in OpenGL this is binded to texture (unless separate sampler state extension is used, which is not currently)
-   curStates_[gos_State_Filter] = renderStates_[gos_State_Filter];
-  
-   TexAddressMode address_mode = 
-       renderStates_[gos_State_TextureAddress] == gos_TextureWrap ? TAM_REPEAT : TAM_CLAMP_TO_EDGE;
-   // in this case does not necessarily mean, that state was set, because in OpenGL this is binded to texture (unless separate sampler state extension is used, which is not currently)
-   curStates_[gos_State_TextureAddress] = renderStates_[gos_State_TextureAddress];
-
-   uint32_t tex_states[] = { gos_State_Texture, gos_State_Texture2, gos_State_Texture3 };
-   for(int i=0; i<sizeof(tex_states) / sizeof(tex_states[0]); ++i) {
-       DWORD gosTextureHandle = renderStates_[tex_states[i]];
-
-       glActiveTexture(GL_TEXTURE0 + i);
-
-       gosTexture* tex = gosTextureHandle == INVALID_TEXTURE_ID ? nullptr : this->getTexture(gosTextureHandle);
-       if(tex) {
-           const uint32_t glId = tex->getTextureId();
-           glBindTexture(GL_TEXTURE_2D, glId);
-           setSamplerParams(tex->getTextureType(), address_mode, filter);
-           cachedResolvedTexId_[i] = glId;
-
-           gosTextureInfo texinfo;
-           tex->getTextureInfo(&texinfo);
-           if(renderStates_[gos_State_TextureMapBlend] == gos_BlendDecal && texinfo.format_ == gos_Texture_Alpha)
-           {
-               PAUSE((""));
-           }
-
-       } else {
-           glBindTexture(GL_TEXTURE_2D, 0);
-           cachedResolvedTexId_[i] = 0u;
-       }
-       curStates_[tex_states[i]] = gosTextureHandle;
-   }
 
    ////////////////////////////////////////////////////////////////////////////////
    // RENDER_STATES v1: snapshot the full renderStates_ array into curStates_ so
@@ -317,10 +190,8 @@ void gosRenderer::beginFrame()
     s_hud_scale_exempt = false;
     hudBatch_.clear();
     hudFlushed_ = false;
-    glBindVertexArray(gVAO);
     num_draw_calls_ = 0;
 
-    TerrainPatchStream::beginFrame();
     // gos_terrain_indirect::BeginFrame() moved to endFrame() — see comment there.
 }
 
@@ -331,10 +202,7 @@ void gosRenderer::beginFrame()
 // inside Camera.UpdateRenderers/gos_RendererEndFrame in Tracy because
 // last_check_time was never updated, so once 500 ms elapsed checkReload()
 // ran every frame over materialList_.
-static bool gos_ShaderHotReloadEnabled() {
-    static const bool s = mc2::gate::get<"MC2_SHADER_HOT_RELOAD">();
-    return s;
-}
+
 
 void gosRenderer::endFrame()
 {
@@ -358,23 +226,7 @@ void gosRenderer::endFrame()
         rsApplied_ = 0;
     }
 
-    if (!gos_ShaderHotReloadEnabled())
-        return;
 
-    static uint64_t last_check_time = timing::get_wall_time_ms();
-    const uint64_t now = timing::get_wall_time_ms();
-    if(now - last_check_time > 500)
-    {
-        for(int i=0; i< materialList_.size(); ++i)
-        {
-            materialList_[i]->checkReload();
-        }
-        // Originally absent: without reassigning last_check_time the
-        // condition stayed true every frame after the first 500 ms,
-        // turning a 2 Hz cadence into a per-frame O(materialList_.size())
-        // sweep. Diagnosed via [RENDER_STATES v1] / Tracy 2026-05-07.
-        last_check_time = now;
-    }
 }
 
 void gosRenderer::handleEvents()
@@ -537,9 +389,8 @@ void gosRenderer::drawTris(gos_VERTEX* vertices, int count) {
     }
 #endif
     if ( mc2::gate::get<"MC2_LOG_PREVIEW">() ) {
-        GLint curFbo = 0; glGetIntegerv(GL_FRAMEBUFFER_BINDING, &curFbo);
-        bool f = mc2::log::enabled(mc2::log::Cat::Render, mc2::log::Level::Info);
-        if (f) { MC2_LOG(Render, Info, "[PREVIEW] drawTris count={:d} isHUD={:d} curFbo={:d}", mc2::fmt::as_i32(count), mc2::fmt::as_i32(static_cast<int>(renderStates_[gos_State_IsHUD])), mc2::fmt::as_i32(curFbo));   }
+        FILE* f = fopen("preview_debug.log","a");
+        if (f) { mc2::fmt::print(f, "[PREVIEW] drawTris count={:d} isHUD={:d} backend=Vulkan\n", mc2::fmt::as_i32(count), mc2::fmt::as_i32((int)renderStates_[gos_State_IsHUD])); fflush(f); fclose(f); }
     }
     if (renderStates_[gos_State_IsHUD]) {
         if (hudFlushed_) {
@@ -615,15 +466,7 @@ void gosRenderer::drawTris(gos_VERTEX* vertices, int count) {
     // World geometry reaches Vulkan through the typed scene feeds.
 }
 
-void gosRenderer::terrainOverrideThinMVP(const float* mvp4x4)
-{
-    if (!mvp4x4) return;
-    const auto& tl = thinTerrainLocs_;
-    if (tl.terrainMVP < 0) return;
-    // GL_FALSE is correct for terrainMVP (memory/terrain_mvp_gl_false.md) —
-    // matches the upload at terrainBindThinUniformsForPatchStream above.
-    glUniformMatrix4fv(tl.terrainMVP, 1, GL_FALSE, mvp4x4);
-}
+
 
 // TERRAIN-DEADCODE-DELETE-1: gosRenderer::terrainDrawIndexedPatches deleted.
 // The legacy tess-solid terrain funnel is retired — terrain renders via the LOD-chunk path.

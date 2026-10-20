@@ -112,7 +112,3 @@ struct GosTexels {
 
 // Implemented by the renderer's texture list (gameos_graphics.cpp).
 GosTexels gos_GetTextureTexels(uint32_t gosHandle);
-// The same, found by the GL texture name (what the game hands ImGui as an ImTextureID); Pending when no live texture has that name.
-GosTexels gos_GetTextureTexelsByGlName(uint32_t glName);
-// The camera-preview FBO colour texture's last published 800x600 readback (Ready only for that GL name, and only under the VK backend).
-GosTexels gos_GetCameraPreviewTexels(uint32_t glName);

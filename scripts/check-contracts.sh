@@ -970,21 +970,18 @@ run_check "vfx_blend_distinction"  "py -3 scripts/check-vfx-blend-distinction.py
 run_check "multiply_blend"         "py -3 scripts/check-multiply-blend.py --quiet && py -3 -B -m pytest scripts/tests/test_check_native_post_contracts.py -k multiply -q -p no:cacheprovider"
 run_check "colormask_ownership"    "py -3 scripts/check-colormask-ownership.py --quiet && py -3 -B -m pytest scripts/tests/test_check_native_post_contracts.py -k color_mask -q -p no:cacheprovider"
 run_check "pass_attachment"        "py -3 scripts/check-pass-attachment-contract.py --quiet"
-run_check "frame_feedback"         "py -3 scripts/check-frame-resource-feedback.py --quiet"
+run_check "native_scene_targets"   "py -3 scripts/check-native-scene-targets.py --quiet && py -3 -B -m pytest scripts/tests/test_native_scene_targets.py scripts/tests/test_native_executor_health.py -q -p no:cacheprovider"
 run_check "drawbuffer_ownership"   "py -3 scripts/check-drawbuffer-ownership.py --quiet"
 run_check "apply_pass_bumped"      "py -3 scripts/check-apply-pass-bumped.py --quiet"
 run_check "static_prop_family"     "py -3 scripts/check-static-prop-family.py --quiet"
 run_check "mdi_submission"         "py -3 scripts/check-mdi-submission-ownership.py --quiet && py -3 -B -m pytest scripts/tests/test_check_native_post_contracts.py -k mdi -q -p no:cacheprovider"
 run_check "buffer_lifetime"        "py -3 scripts/check-buffer-lifetime-ownership.py --quiet"
-run_check "gpu_buffer_owners"      "py -3 scripts/check-gpu-buffer-owners.py --quiet"
-run_check "texture_owners"         "py -3 scripts/check-texture-owners.py --quiet"
 run_check "render_resource_ids"    "py -3 scripts/check-render-resource-ids.py"
 run_check "vulkan_bindings"        "py -3 scripts/check-vulkan-bindings.py --quiet"
-run_check "shader_variant"         "py -3 scripts/check-shader-variant.py --quiet"
 # GL-VARIANT-MATRIX-1: every GL program variant the C++ can build (manifest re-extracted
 # from GameOS/gameos and diffed) is assembled like shader_builder and glslang compile+LINKED;
-# also proves it catches the static_prop.frag include-splice regression. ~6s, offline.
-run_check "gl_shader_variants"     "py -3 scripts/check-gl-shader-variants.py --quiet && py -3 -B -m pytest scripts/tests/test_extract_gl_shader_variants.py -q -p no:cacheprovider"
+# also proves a malformed directive in a live fragment fails compilation. ~6s, offline.
+run_check "no_gl_compiler"         "py -3 scripts/check-no-gl-compiler.py --quiet && py -3 -B -m pytest scripts/tests/test_no_gl_compiler.py -q -p no:cacheprovider"
 run_check "spirv_artifacts"        "py -3 scripts/check-spirv-artifacts.py --quiet"
 # SLANG-TOOLCHAIN-1: .slang -> SPIR-V through build_variants.py (fixtures only; no shipped Slang yet).
 run_check "slang_build"            "py -3 -B -m pytest scripts/tests/test_slang_build.py -q -p no:cacheprovider"
@@ -1188,7 +1185,7 @@ run_check "delivery_manifest"      "py -3 scripts/check-delivery.py --contract -
 # A missing deploy is the most repairable finding there is.
 run_check "delivery_installs"      "py -3 scripts/check-delivery.py --quiet"
 run_check "pass_coverage"          "py -3 scripts/check-pass-coverage.py --quiet"
-run_check "render_ctx_parity"      "py -3 scripts/check-editor-game-render-context-parity.py --quiet"
+run_check "native_render_hosts"    "py -3 scripts/check-native-render-hosts.py --quiet && py -3 -B -m pytest scripts/tests/test_native_render_hosts.py scripts/tests/test_bootstrap_worktree_build.py -q -p no:cacheprovider"
 run_check "editor_pass_parity"     "py -3 scripts/check-editor-pass-contract-parity.py --quiet"
 run_check "gated_layout_macros"    "py -3 scripts/check-gated-layout-macros.py --quiet"
 # TERRAIN-AMBIENT-FLOOR-2: terrain_daylight.h duplicates camera.cpp's night-band

@@ -167,11 +167,11 @@ LIGHT_TYPE_BY_NUM = {           # lighting.hglsl:17-22
 RE_LIGHT_TYPE_FIELD = re.compile(r"light_dir\s*\[[^\]]*\]\s*\.w")
 
 # --- Category D: who calls the SHARED light kernel -------------------------
-RE_CALC_LIGHT_CALL = re.compile(r"(?<![\w:])calc_light\s*\(")
-RE_CALC_LIGHT_DEF = re.compile(r"\bvec3\s+calc_light\s*\(")
+RE_CALC_LIGHT_CALL = re.compile(r"(?<![\w:])(?:mv_)?calc_light\s*\(")
+RE_CALC_LIGHT_DEF = re.compile(r"\bvec3\s+(?:mv_)?calc_light\s*\(")
 
 # --- Category E: who forks calc_light's no-lights semantics -----------------
-RE_SPL_DEFINE = re.compile(r"^\s*#\s*define\s+MC2_STATIC_PROP_LIGHTING\b", re.M)
+RE_SPL_DEFINE = re.compile(r"if\s*\(\s*ld\.numLights\.x\s*==\s*0\s*\)\s*return\s+base_light\s*;")
 
 # --- Category F: C++ side ambient-floor gate defaults ----------------------
 # (file, env var) -> the default literal returned when the var is unset. Read
@@ -217,7 +217,7 @@ def scan(verbose_sink=None):
             types[rel] = tuple(sorted(named)) or ("<reads type, dispatches none>",)
         if RE_CALC_LIGHT_DEF.search(s):
             defs.append(rel)
-        elif RE_CALC_LIGHT_CALL.search(s):
+        if len(RE_CALC_LIGHT_CALL.findall(s)) > len(RE_CALC_LIGHT_DEF.findall(s)):
             callers.append(rel)
         if RE_SPL_DEFINE.search(s):
             spl.append(rel)
@@ -238,7 +238,7 @@ def scan(verbose_sink=None):
         "light_type_dispatch": tuple(sorted(types.items())),
         "calc_light_definition": sorted(defs),
         "calc_light_callers": sorted(callers),
-        "no_lights_semantics_fork": sorted(spl),
+        "native_zero_light_returns_base": sorted(spl),
         "cpp_floor_gate_readers": sorted(cpp),
     }
 
@@ -247,121 +247,47 @@ def scan(verbose_sink=None):
 # PINNED BASELINE -- the deliberate current state.
 # Each entry was read from the shader / C++ reader itself, not from docs.
 # ---------------------------------------------------------------------------
-BASELINE = {
-    # (file, identifier, value). FOUR scalar floors, three of them 0.35 and
-    # deliberately duplicated rather than hoisted -- gos_tex_vertex_lighted.vert
-    # :165-168 states the reason: lighting.hglsl is also included by shaders
-    # that must NOT get a floor, so hoisting would widen the blast radius.
-    "ambient_floor_scalar": [
-
-        ("shaders/gos_tex_vertex_lighted.vert", "kAmbientFloor", "0.35"),
-        ("shaders/mech.vert", "kAmbientFloor", "0.35"),
-        ("shaders/vulkan/mech_tier1.vert", "kAmbientFloor", "0.35"),
-        ("shaders/vulkan/water_geom.frag", "SKY_AMBIENT", "0.18"),
-    ],
-    # Hemisphere / bounce fills. THREE independent sky/ground pairs: terrain,
-    # static_prop.vert, and vulkan/color_prop_tier1.vert -- the last two nominally
-    # the SAME renderable class on two backends -- which do not agree with each
-    # other or with terrain.
-    "ambient_fill_vec3": [
-        ("shaders/static_prop.vert", "kAmbientV1Ground", "0.10,0.09,0.07"),
-        ("shaders/static_prop.vert", "kAmbientV1Sky", "0.20,0.22,0.28"),
-        ("shaders/terrain_lod_chunk.frag", "ambGnd", "0.34,0.30,0.24"),
-        ("shaders/terrain_lod_chunk.frag", "ambSky", "0.55,0.62,0.75"),
-        # Parity row 22 (StaticPropAmbient arm): verbatim port of static_prop.vert's kAmbientV1 pair (INTENTIONAL: parity).
-        ("shaders/vulkan/color_prop_tier1.vert", "kAmbientV1Ground", "0.10,0.09,0.07"),
-        ("shaders/vulkan/color_prop_tier1.vert", "kAmbientV1Sky", "0.20,0.22,0.28"),
-        ("shaders/vulkan/color_prop_tier1.vert", "kAmbientGround", "0.14,0.13,0.11"),
-        ("shaders/vulkan/color_prop_tier1.vert", "kAmbientSky", "0.00,0.02,0.08"),
-        # Verbatim port of terrain_lod_chunk.frag's TERRAIN-AMBIENT-FLOOR-2 pair (INTENTIONAL: parity).
-        ("shaders/vulkan/terrain_tier1.frag", "ambGnd", "0.34,0.30,0.24"),
-        ("shaders/vulkan/terrain_tier1.frag", "ambSky", "0.55,0.62,0.75"),
-        # The skirt pipeline's fragment SPIR-V is baked from terrain_tier1.frag itself (CMake
-        # MC2_VK_SHADER_SRC_ALIAS), so the two rows above pin the skirt's constants too.
-    ],
-    # Unnamed inline floors. THREE different answers to "how dark may a fully
-    # shadowed fragment get": 0.4 (the shared shadow kernel and its four VK
-    # re-ports), 0.55 (terrain's ambient occlusion), and the vegetation-card
-    # diffuse floor 0.60. shadow.hglsl legitimately
-    # appears TWICE (:233 and :593) -- the count is part of the pin.
-    "inline_light_floor": [
-        ("shaders/building_pbr.frag", "add:ao", "0.18+0.22"),
-        ("shaders/gos_vegetation_card.frag", "add:NdotL", "0.60+0.38"),
-        # INTENTIONAL: native vegetation preserves the authored GL card floor.
-        ("shaders/vulkan/vfx_particle.frag", "add:NdotL", "0.60+0.38"),
-        ("shaders/include/shadow.hglsl", "mix:shadow", "0.4->1.0"),
-        ("shaders/include/shadow.hglsl", "mix:shadow", "0.4->1.0"),
-
-        ("shaders/terrain_lod_chunk.frag", "mix:shadow", "0.55->1.0"),
-        ("shaders/vulkan/include/lighting_shadow_vk.glsl", "mix:shadow", "0.4->1.0"),
-        # lsvk_calcShadow + lsvk_calcDynamicShadowLegacy, line-for-line ports of GL calcShadow/calcDynamicShadow (INTENTIONAL: parity).
-        ("shaders/vulkan/include/lighting_shadow_vk.glsl", "mix:shadow", "0.4->1.0"),
-        ("shaders/vulkan/include/lighting_shadow_vk.glsl", "mix:shadow", "0.4->1.0"),
-        ("shaders/vulkan/screen_shadow_csm.frag", "mix:shadow", "0.4->1.0"),
-        ("shaders/vulkan/screen_shadow_static.frag", "mix:shadow", "0.4->1.0"),
-        # Same 0.55 terrain ambient-occlusion floor as the GL terrain frag (INTENTIONAL: parity).
-        ("shaders/vulkan/terrain_tier1.frag", "mix:shadow", "0.55->1.0"),
-    ],
-    # Which TG_LIGHT_* symbols each shader mentions in CODE. This is the
-    # light-type support matrix: static_prop.vert names only AMBIENT/INFINITE/
-    # INFINITEWITHFALLOFF because it hand-rolls its loop and deliberately
-    # omits POINT/SPOT (static_prop.vert:713). mech.vert names only the two
-    # directional types because its own loop is the SPECULAR sun-finder
-    # (mech.vert:283-292); its lighting comes from the shared kernel.
-    "light_type_dispatch": (
-        ("shaders/include/lighting.hglsl",
-         ("AMBIENT", "INFINITE", "INFINITEWITHFALLOFF", "POINT", "SPOT", "TERRAIN")),
-        ("shaders/lightgrid_build.comp", ("<reads type, dispatches none>",)),
-        ("shaders/mech.vert", ("INFINITE", "INFINITEWITHFALLOFF")),
-        ("shaders/static_prop.vert", ("AMBIENT", "INFINITE", "INFINITEWITHFALLOFF")),
-        # SAME matrix as the GL prop path. Reached via bare integers
-        # (`lt == 1 || lt == 2`, :284); RE_LIGHT_TYPE_INT selects the full
-        # type matrix.
-        ("shaders/vulkan/color_prop_tier1.vert",
-         ("AMBIENT", "INFINITE", "INFINITEWITHFALLOFF")),
-        ("shaders/vulkan/mech_tier1.vert",
-         ("AMBIENT", "INFINITE", "INFINITEWITHFALLOFF", "POINT", "SPOT", "TERRAIN")),
-    ),
-    # TWO definitions of the "shared" kernel: the GL one, and a verbatim
-    # re-port inside the Vulkan mech shader (vulkan/mech_tier1.vert:95).
-    "calc_light_definition": [
-        "shaders/include/lighting.hglsl",
-        "shaders/vulkan/mech_tier1.vert",
-    ],
-    # gos_tex_vertex_lighted.frag's call is in the #else of
-    # ENABLE_VERTEX_LIGHTING, which lighting.hglsl:8 hard-defines to 1 -- it is
-    # UNREACHABLE today. Pinned anyway: reviving it is exactly the kind of
-    # silent change this check exists to surface.
-    "calc_light_callers": [
-        "shaders/building_pbr.frag",
-        "shaders/building_pbr.vert",
-        "shaders/gos_tex_vertex_lighted.frag",
-        "shaders/gos_tex_vertex_lighted.vert",
-        "shaders/mech.vert",
-    ],
-    # Defining MC2_STATIC_PROP_LIGHTING flips calc_light's numLights==0
-    # early-return from vec3(1,1,1) to base_light (lighting.hglsl:232-237).
-    # That is a SEMANTIC fork, not a cosmetic macro.
-    "no_lights_semantics_fork": [
-        "shaders/mech.vert",
-        "shaders/static_prop.vert",
-    ],
-    "cpp_floor_gate_readers": [
-        ("GameOS/gameos/gos_terrain_lod_chunk_upload.cpp", "MC2_TERRAIN_AMBIENT_FLOOR", "present"),
-        ("mclib/camera.cpp", "MC2_NIGHT_AMBIENT_FLOOR", "present"),
-    ],
-}
+BASELINE = {'ambient_floor_scalar': [('shaders/vulkan/mech_tier1.vert', 'kAmbientFloor', '0.35'),
+                          ('shaders/vulkan/water_geom.frag', 'SKY_AMBIENT', '0.18')],
+ 'ambient_fill_vec3': [('shaders/vulkan/color_prop_tier1.vert', 'kAmbientV1Ground', '0.10,0.09,0.07'),
+                       ('shaders/vulkan/color_prop_tier1.vert', 'kAmbientV1Sky', '0.20,0.22,0.28'),
+                       ('shaders/vulkan/color_prop_tier1.vert', 'kAmbientGround', '0.14,0.13,0.11'),
+                       ('shaders/vulkan/color_prop_tier1.vert', 'kAmbientSky', '0.00,0.02,0.08'),
+                       ('shaders/vulkan/terrain_tier1.frag', 'ambGnd', '0.34,0.30,0.24'),
+                       ('shaders/vulkan/terrain_tier1.frag', 'ambSky', '0.55,0.62,0.75')],
+ 'inline_light_floor': [('shaders/vulkan/vfx_particle.frag', 'add:NdotL', '0.60+0.38'),
+                        ('shaders/include/shadow.hglsl', 'mix:shadow', '0.4->1.0'),
+                        ('shaders/include/shadow.hglsl', 'mix:shadow', '0.4->1.0'),
+                        ('shaders/vulkan/include/lighting_shadow_vk.glsl', 'mix:shadow', '0.4->1.0'),
+                        ('shaders/vulkan/include/lighting_shadow_vk.glsl', 'mix:shadow', '0.4->1.0'),
+                        ('shaders/vulkan/include/lighting_shadow_vk.glsl', 'mix:shadow', '0.4->1.0'),
+                        ('shaders/vulkan/screen_shadow_csm.frag', 'mix:shadow', '0.4->1.0'),
+                        ('shaders/vulkan/screen_shadow_static.frag', 'mix:shadow', '0.4->1.0'),
+                        ('shaders/vulkan/terrain_tier1.frag', 'mix:shadow', '0.55->1.0')],
+ 'light_type_dispatch': [('shaders/include/lighting.hglsl',
+                          ('AMBIENT', 'INFINITE', 'INFINITEWITHFALLOFF', 'POINT', 'SPOT', 'TERRAIN')),
+                         ('shaders/vulkan/color_prop_tier1.vert',
+                          ('AMBIENT', 'INFINITE', 'INFINITEWITHFALLOFF')),
+                         ('shaders/vulkan/mech_tier1.vert',
+                          ('AMBIENT', 'INFINITE', 'INFINITEWITHFALLOFF', 'POINT', 'SPOT', 'TERRAIN'))],
+ 'calc_light_definition': ['shaders/include/lighting.hglsl', 'shaders/vulkan/mech_tier1.vert'],
+ 'calc_light_callers': ['shaders/include/lighting.hglsl', 'shaders/vulkan/mech_tier1.vert'],
+ 'native_zero_light_returns_base': ['shaders/vulkan/mech_tier1.vert'],
+ 'cpp_floor_gate_readers': [('GameOS/gameos/gos_terrain_lod_chunk_upload.cpp',
+                             'MC2_TERRAIN_AMBIENT_FLOOR',
+                             'present'),
+                            ('mclib/camera.cpp', 'MC2_NIGHT_AMBIENT_FLOOR', 'present')]}
 
 # ---------------------------------------------------------------------------
 # ANTI-BLINDNESS WITNESSES. Each is a claim about the LIVE tree that is only
 # true if the scanner is actually working. They fail exit 2 (broken check),
 # distinct from exit 1 (real divergence), so the two are never confused.
 # ---------------------------------------------------------------------------
-WITNESS_DECOY_FILE = "shaders/gos_tex_vertex_lighted.vert"
-WITNESS_DECOY_EXPECT = 1   # :169 is real code; :72 is the same text in a comment
+WITNESS_DECOY_FILE = "shaders/vulkan/mech_tier1.vert"
+WITNESS_DECOY_EXPECT = 1   # One actual native ambient-floor declaration.
 MIN_NONEMPTY = ("ambient_floor_scalar", "ambient_fill_vec3", "inline_light_floor",
                 "calc_light_definition", "calc_light_callers",
-                "no_lights_semantics_fork", "cpp_floor_gate_readers")
+                "native_zero_light_returns_base", "cpp_floor_gate_readers")
 
 
 def self_check(live):
@@ -380,7 +306,7 @@ def self_check(live):
         problems.append(
             f"comment-stripper witness FAILED: {WITNESS_DECOY_FILE} yielded {n} "
             f"ambient-floor site(s), expected {WITNESS_DECOY_EXPECT}. That file "
-            f"declares one floor in code and quotes another inside a comment; "
+            f"must declare exactly one floor in native code; "
             f"{'>1 means comments are being scanned' if n > WITNESS_DECOY_EXPECT else 'fewer means the pattern no longer matches live code'}.")
 
     for rel, var, state in live["cpp_floor_gate_readers"]:

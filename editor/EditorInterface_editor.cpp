@@ -557,15 +557,7 @@ void Editor::update()
 	}
 	EditorObjectMgr::instance()->update();
 
-	// S2.15 — mirrors code/mission.cpp:549 (Mission::update). Without this
-	// per-tick call the MC_TextureManager texture LRU never advances: textures
-	// loaded at mission init (water base, water detail frames, terrain detail)
-	// are not refreshed against `turn`, and the cache eviction / handle
-	// integrity bookkeeping that the renderLists() + water fast-path bridge
-	// relies on for stable gosTextureHandles can drift. Mission's chain calls
-	// this every frame outside of pause; editor has no pause concept, so it
-	// runs unconditionally. Safe and idempotent.
-	mcTextureManager->update();
+
 }
 
 BEGIN_MESSAGE_MAP(EditorInterface,CWnd )

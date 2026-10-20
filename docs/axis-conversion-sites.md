@@ -8,9 +8,9 @@ The conversion is `(x, y, z) -> (-x, z, y)`; it is its own inverse, so the same 
 
 | Metric | Count |
 |---|---:|
-| Hand-written sites (ratcheted) | 5 |
+| Hand-written sites (ratcheted) | 4 |
 | Waived (`axis-swizzle: allow`) | 1 |
-| Helper-call sites (centralized) | 210 |
+| Helper-call sites (centralized) | 197 |
 | Helper definitions | 7 |
 | Matrix-form references (`kAxisSwapMC2toGL`, `makeAxisSwapMC2toGL`) | 9 |
 
@@ -21,7 +21,7 @@ The conversion is `(x, y, z) -> (-x, z, y)`; it is its own inverse, so the same 
 | triplet-ctor | `vec3(-a.x, a.z, a.y)` | 0 |
 | triplet-brace | `{ -a.x, a.z, a.y }` | 0 |
 | triplet-arglist | `f(.., -a.x, a.z, a.y)` | 0 |
-| decl-chain | `float lx = -d.x, ly = d.z, lz = d.y;` | 1 |
+| decl-chain | `float lx = -d.x, ly = d.z, lz = d.y;` | 0 |
 | swizzle-zy | `vec3(-a.x, a.zy)` | 0 |
 | swizzle-xzy | `a.xzy * vec3(-1, 1, 1)` | 0 |
 | assign-triple | `o.x = -i.x; o.y = i.z; o.z = i.y;` | 0 |
@@ -31,7 +31,7 @@ The conversion is `(x, y, z) -> (-x, z, y)`; it is its own inverse, so the same 
 
 | Directory | Sites |
 |---|---:|
-| `mclib` | 3 |
+| `mclib` | 2 |
 | `tools` | 2 |
 
 ## GL/VK shader twins
@@ -52,10 +52,6 @@ Shaders that carry sites, with their counterpart in the other backend. Twins mus
 
 - `tools/asset_viewer/TglMeshLoader.cpp:270` assign-scalars: `float px = -tv.position.x; float py = tv.position.z; float pz = tv.position.y;`
 - `tools/asset_viewer/TglMeshLoader.cpp:274` assign-scalars: `float nx = -tv.normal.x; float ny = tv.normal.z; float nz = tv.normal.y;`
-
-### `mclib/terrain_update.cpp` (1)
-
-- `mclib/terrain_update.cpp:776` decl-chain: `-lookDir.x, ly = lookDir.z, lz = lookDir.y`
 
 ## Helper-call sites
 
@@ -85,7 +81,7 @@ Shaders that carry sites, with their counterpart in the other backend. Twins mus
 - `mclib/bdactor_update.cpp`: 8
 - `mclib/camera.h`: 1
 - `mclib/camera_matrix.cpp`: 1
-- `mclib/camera_project.cpp`: 3
+- `mclib/camera_project.cpp`: 8
 - `mclib/cone_glow.cpp`: 1
 - `mclib/crater.cpp`: 1
 - `mclib/genactor.cpp`: 1
@@ -100,15 +96,7 @@ Shaders that carry sites, with their counterpart in the other backend. Twins mus
 - `mclib/mech3d_type.cpp`: 4
 - `mclib/mech3d_update.cpp`: 10
 - `mclib/msl_shape.cpp`: 1
-- `shaders/building_pbr.vert`: 1
-- `shaders/gos_tex_vertex_lighted.vert`: 2
 - `shaders/include/lighting.hglsl`: 2
-- `shaders/mech.vert`: 4
-- `shaders/static_prop.frag`: 2
-- `shaders/static_prop.vert`: 3
-- `shaders/terrain_lod_chunk.frag`: 4
-- `shaders/tube_ribbon.vert`: 1
-- `shaders/vfx_mesh.vert`: 1
 - `shaders/vulkan/color_prop_tier1.frag`: 2
 - `shaders/vulkan/color_prop_tier1.vert`: 2
 - `shaders/vulkan/mech_tier1.vert`: 6

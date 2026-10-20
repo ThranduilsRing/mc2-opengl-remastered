@@ -1,6 +1,5 @@
-// gameos_graphics_texture.cpp - gosTexture hardware-texture creation: the GL upload of what texture_decode.cpp decoded.
-// Decode and upload policy live in texture_decode.cpp (no GL); this file only uploads and keeps the decoded texels as the CPU
-// copy other backends import (gos_GetTextureTexels). Class definition lives in gameos_graphics_internal.h.
+// gosTexture prepares retained CPU pixels; Vulkan residency owns all GPU uploads.
+// Decode and alpha/mipmap policy live in texture_decode.cpp.
 
 #include "gameos_graphics_internal.h"
 
@@ -9,6 +8,8 @@
 
 #include <cstdio>
 #include <vector>
+#include <memory>
+#include <utility>
 #include "Gates/gate.h"
 #include "mc2fmt.h"
 #include "utils/mc2log.h"
@@ -39,7 +40,7 @@ void tracePlaceholder(const char* filename, const char* texname, int w, int h) {
 
 }  // namespace
 
-bool gosTexture::createHardwareTexture() {
+bool gosTexture::prepareSource() {
     std::optional<mc2tex::DecodedTexture> decoded;
     if (!is_from_memory_) {
         decoded = mc2tex::decodeFile(filename_, format_, hints_);
@@ -56,13 +57,16 @@ bool gosTexture::createHardwareTexture() {
     format_ = img.format;   // a placeholder keeps the requested format
 
     const TexFormat tf = img.layout == mc2tex::PixelLayout::RGB8 ? TF_RGB8 : TF_RGBA8;
-    tex_ = create2DTexture(img.width, img.height, tf, img.pixels.data(), img.wantMipmaps);
-    if (!tex_.isValid())
-        return false;
+    tex_.w = img.width;
+    tex_.h = img.height;
+    tex_.fmt_ = tf;
+    tex_.has_mipmaps = img.wantMipmaps;
     if (tf == TF_RGBA8)
         adoptRgbaMirror(img.width, img.height, std::move(img.pixels));
     else
         setRgbaMirror(img.width, img.height, tf, img.pixels.data());
+    const std::unique_ptr<BYTE[]> consumedSource(std::exchange(pcompdata_, nullptr));
+    size_ = 0;
     markContentMutated();
     return true;
 }

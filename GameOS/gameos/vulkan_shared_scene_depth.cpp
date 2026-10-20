@@ -27,7 +27,6 @@
 #include "vulkan_shared_scene_depth.h"
 
 #include <volk.h>
-#include <GL/glew.h>
 
 #include "vk_first_layout.h"
 #include "vk_image_resource.h"

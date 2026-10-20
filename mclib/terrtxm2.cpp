@@ -11,6 +11,7 @@
 //---------------------------------------------------------------------------
 // Include Files
 #include"platform_windows.h" /*only for declaration of DeleteFile() */
+#include "texture_assets.h"
 
 #include "terrtxm2_internal.h"
 #include "mc2fmt.h"
@@ -327,7 +328,7 @@ long TerrainColorMap::saveDetailTexture(const char *fileName)
 	mc2::fmt::to_buf(dName, "{}.detail", mc2::fmt::safe(fileName));
 	FullPathFileName detailFile;
 	detailFile.init(texturePath,dName,".tga");
-	return mcTextureManager->saveTexture(detailTextureNodeIndex.get(), detailFile);
+	return mc2::textures::save(detailTextureNodeIndex.get(), detailFile);
 }
 
 long TerrainColorMap::saveWaterTexture(const char *fileName)
@@ -336,7 +337,7 @@ long TerrainColorMap::saveWaterTexture(const char *fileName)
 	mc2::fmt::to_buf(dName, "{}.water", mc2::fmt::safe(fileName));
 	FullPathFileName waterFile;
 	waterFile.init(texturePath,dName,".tga");
-	return mcTextureManager->saveTexture(waterTextureNodeIndex.get(), waterFile);
+	return mc2::textures::save(waterTextureNodeIndex.get(), waterFile);
 }
 
 long TerrainColorMap::saveWaterDetail(const char *fileName)
@@ -349,7 +350,7 @@ long TerrainColorMap::saveWaterDetail(const char *fileName)
 		mc2::fmt::to_buf(dName, "{}.water{:04d}", mc2::fmt::safe(fileName), mc2::fmt::as_i32(i));
 		FullPathFileName waterDetailFile;
 		waterDetailFile.init(texturePath,dName,".tga");
-		long lResult = mcTextureManager->saveTexture(waterDetailNodeIndex[i].get(), waterDetailFile);
+		long lResult = mc2::textures::save(waterDetailNodeIndex[i].get(), waterDetailFile);
 		if (NO_ERR != lResult)
 		{
 			result = lResult;

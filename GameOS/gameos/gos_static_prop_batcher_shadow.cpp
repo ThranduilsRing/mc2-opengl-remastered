@@ -2,7 +2,7 @@
 // Declared in the class headers; shared names in gos_static_prop_batcher_internal.h.
 #include "gos_static_prop_batcher_internal.h"
 #include "mc2fmt.h"
-#include "view_uniforms_gl.h"   // RenderCore::getCurrentView: the eye position of the VK prop specular
+#include "view_registry.h"
 #include "../../RenderCore/FramePackets.h"
 
 void GpuStaticPropBatcher::setDebugAddrMode(int mode) { debugAddrMode_ = mode; }
@@ -199,7 +199,7 @@ extern "C" int mc2_color_prop_island_get_material_feed(Mc2ColorPropMaterialFeed*
     // BC7-bucketed: per-bucket sibling arrays with bucket-relative layers. The
     // single-array (group-relative) import + layer table below do not describe that
     // layout, so signal the island to fail soft (keep teal) rather than mis-sample.
-    out->bucketed        = s_bucketArrays.empty() ? 0u : 1u;
+    out->bucketed        = 0u;
     out->typeAlbedoLayer = s_typeAlbedoLayer.data();
     out->typeAlphaClass  = s_typeAlphaClass.data();
     out->typeCount       = static_cast<uint32_t>(s_typeAlbedoLayer.size());

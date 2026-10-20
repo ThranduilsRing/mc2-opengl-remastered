@@ -1,6 +1,8 @@
 <!-- doc-status: current | reviewed:2026-10-11 -->
 # Engine Standalone Seams — `ENGINE-STANDALONE-SEAMS-RECON-1`
 
+> s68/P9: Retired GL sources are cited with Git object syntax (`8064c6930:path`) so the historical implementation remains inspectable.
+
 **Status:** recon / design only. No production code changes. Companion branch
 `claude/engine-standalone-seams-recon-1` (off `claude/nifty-mendeleev` @ 29aebfe5).
 
@@ -85,7 +87,7 @@ The singleton-heavy reputation is mostly wrong for the **render** layer. Evidenc
   defines the backend-agnostic seam `PreviewSurface.h` (Stage1=`TexturePreview2D`,
   Stage2=`MaterialPreviewPBR`, Stage3=`ModelPreviewRenderCore`).
 - **A reusable include-splicing shader compiler exists**:
-  `GameOS/gameos/utils/shader_builder.cpp` — `load_shader()` + recursive
+  `8064c6930:GameOS/gameos/utils/shader_builder.cpp` — `load_shader()` + recursive
   `parse_includes()` (`:262-308`), GL-context-only, no Mission. Shaders carry **no
   `#version`**; it's supplied as a prefix string at compile (`:393`), as are feature
   defines (`MC2_COALESCE`, `MC2_USE_VIEW_UNIFORMS`, …). **Not currently compiled into the
@@ -255,7 +257,7 @@ exact-pixel goldens.
 | KtxLoader (CPU KTX2/BC7 parse) | `RenderCore/KtxLoader.*` | **STANDALONE-SAFE** |
 | MaterialGpu struct + cook manifest | `RenderCore/MaterialGpu.h`, `tools/material_cook/` | **STANDALONE-SAFE** |
 | Handle / DrawPacket / FrameArena / MechVisualState | `RenderCore/*` | **STANDALONE-SAFE** |
-| Shader include-splicer | `GameOS/gameos/utils/shader_builder.cpp` | **STANDALONE-SAFE** (GL-only; not yet linked into viewer) |
+| Shader include-splicer | `8064c6930:GameOS/gameos/utils/shader_builder.cpp` | **STANDALONE-SAFE** (GL-only; not yet linked into viewer) |
 | Asset viewer Stage 1 + `PreviewSurface` | `tools/asset_viewer/*` | **STANDALONE-SAFE** (already a standalone host) |
 | ViewUniforms UBO upload + EngineView registry | `GameOS/gameos/view_uniforms_gl.*` | NEEDS-ADAPTER (current GL context; no Mission) |
 | PipelineDesc → GL apply | `GameOS/gameos/pipeline_binder.*` | NEEDS-ADAPTER (GL context only) |

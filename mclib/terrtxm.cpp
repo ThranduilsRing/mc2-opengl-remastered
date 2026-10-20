@@ -8,6 +8,7 @@
 
 //---------------------------------------------------------------------------
 // Include Files
+#include "texture_assets.h"
 #ifndef TERRTXM_H
 #include"terrtxm.h"
 #endif
@@ -317,10 +318,10 @@ long TerrainTextures::init (const char *fileName, const char *baseName)
 			
 			memset(ourRAM,0,16 * 16 * sizeof(DWORD));
 			
-			textures[nextAvailable].mcTextureNodeIndex = mcTextureManager->textureFromMemoryRaw(reinterpret_cast<DWORD *>(ourRAM),gos_Texture_Solid,gosHint_DisableMipmap | gosHint_DontShrink,16);
+			textures[nextAvailable].mcTextureNodeIndex = mc2::textures::fromRawPixels(reinterpret_cast<DWORD *>(ourRAM),gos_Texture_Solid,gosHint_DisableMipmap | gosHint_DontShrink,16);
 			// textureFromMemoryRaw memcpy's into its own cache block, so this buffer is scratch (BUGS 53: it was never freed, 181 blocks per mission).
 			std::free(ourRAM);
-			mcTextureManager->setTextureNeverFlush(textures[nextAvailable].mcTextureNodeIndex, 0x1);
+			mc2::textures::setSessionLifetime(textures[nextAvailable].mcTextureNodeIndex, 0x1);
 			nextAvailable++;
 
 			if (nextAvailable > numTxms)
@@ -505,8 +506,8 @@ long TerrainTextures::textureFromMemoryAlpha (MemoryPtr ourRAM, long mipLevel)
 				px[i] = 0u;                         // transparent black -> no magenta/pink fringe
 		}
 	}
-	textures[nextAvailable].mcTextureNodeIndex = mcTextureManager->textureFromMemoryRaw(reinterpret_cast<DWORD *>(ourRAM),gos_Texture_Keyed,gosHint_DisableMipmap | gosHint_DontShrink,mipLevel);
-	mcTextureManager->setTextureNeverFlush(textures[nextAvailable].mcTextureNodeIndex, 0x1);
+	textures[nextAvailable].mcTextureNodeIndex = mc2::textures::fromRawPixels(reinterpret_cast<DWORD *>(ourRAM),gos_Texture_Keyed,gosHint_DisableMipmap | gosHint_DontShrink,mipLevel);
+	mc2::textures::setSessionLifetime(textures[nextAvailable].mcTextureNodeIndex, 0x1);
 
 	nextAvailable++;
 
@@ -519,8 +520,8 @@ long TerrainTextures::textureFromMemoryAlpha (MemoryPtr ourRAM, long mipLevel)
 //---------------------------------------------------------------------------
 long TerrainTextures::textureFromMemory (MemoryPtr ourRAM, long mipLevel)
 {
-	textures[nextAvailable].mcTextureNodeIndex = mcTextureManager->textureFromMemoryRaw(reinterpret_cast<DWORD *>(ourRAM),gos_Texture_Solid,gosHint_DisableMipmap | gosHint_DontShrink,mipLevel);
-	mcTextureManager->setTextureNeverFlush(textures[nextAvailable].mcTextureNodeIndex, 0x1);
+	textures[nextAvailable].mcTextureNodeIndex = mc2::textures::fromRawPixels(reinterpret_cast<DWORD *>(ourRAM),gos_Texture_Solid,gosHint_DisableMipmap | gosHint_DontShrink,mipLevel);
+	mc2::textures::setSessionLifetime(textures[nextAvailable].mcTextureNodeIndex, 0x1);
 
 	nextAvailable++;
 
@@ -533,7 +534,7 @@ long TerrainTextures::textureFromMemory (MemoryPtr ourRAM, long mipLevel)
 //---------------------------------------------------------------------------
 long TerrainTextures::loadTextureMemory (const char *textureName, long mipSize)
 {
-	textures[nextAvailable].mcTextureNodeIndex = mcTextureManager->loadTexture(textureName,gos_Texture_Solid,gosHint_DisableMipmap | gosHint_DontShrink, 0, 0x1);
+	textures[nextAvailable].mcTextureNodeIndex = mc2::textures::load(textureName,gos_Texture_Solid,gosHint_DisableMipmap | gosHint_DontShrink, 0, 0x1);
 
 	nextAvailable++;
 
@@ -546,7 +547,7 @@ long TerrainTextures::loadTextureMemory (const char *textureName, long mipSize)
 //---------------------------------------------------------------------------
 long TerrainTextures::loadDetailMemory (const char *textureName, long mipSize)
 {
-	textures[nextAvailable].mcTextureNodeIndex = mcTextureManager->loadTexture(textureName,gos_Texture_Alpha,gosHint_DontShrink, 0, 0x1);
+	textures[nextAvailable].mcTextureNodeIndex = mc2::textures::load(textureName,gos_Texture_Alpha,gosHint_DontShrink, 0, 0x1);
 
 	nextAvailable++;
 
@@ -559,7 +560,7 @@ long TerrainTextures::loadDetailMemory (const char *textureName, long mipSize)
 //---------------------------------------------------------------------------
 long TerrainTextures::loadOverlayMemory (const char *textureName)
 {
-	textures[nextAvailable].mcTextureNodeIndex = mcTextureManager->loadTexture(textureName,gos_Texture_Alpha,gosHint_DisableMipmap | gosHint_DontShrink, 0, 0x1);
+	textures[nextAvailable].mcTextureNodeIndex = mc2::textures::load(textureName,gos_Texture_Alpha,gosHint_DisableMipmap | gosHint_DontShrink, 0, 0x1);
 
 	nextAvailable++;
 
@@ -1291,7 +1292,7 @@ void TerrainTextures::purgeTransitions (void)
 {
 	for (long i=0;i<nextTransition;i++)
 	{
-		mcTextureManager->releaseNode(textures[transitions[i].baseTXMIndex].mcTextureNodeIndex);
+		mc2::textures::release(textures[transitions[i].baseTXMIndex].mcTextureNodeIndex);
 	}
 	
 	nextTransition = 0;
@@ -1783,7 +1784,7 @@ void TerrainTextures::destroy (void)
 		{
 			if (textures[i].mcTextureNodeIndex != 0xffffffff)
 			{
-				mcTextureManager->releaseNode(textures[i].mcTextureNodeIndex);
+				mc2::textures::release(textures[i].mcTextureNodeIndex);
 				textures[i].mcTextureNodeIndex = 0xffffffff;
 			}
 		}

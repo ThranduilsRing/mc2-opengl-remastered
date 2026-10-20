@@ -6,7 +6,7 @@
 #include "gameos.hpp"
 #include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
 #include "gos_render.h"
-#include "gos_render_context.h"        // InitializeRenderContextConventions (shared game/editor)
+#include "render_host_kind.h"
 #include "render_frame_driver.h"       // RenderFrameDriver_RenderWorld — Slice 6 shared render seam (gated)
 #include "render_snapshot.h"
 #include "draw_packet_emitter.h"       // DrawPacket v0
@@ -33,8 +33,7 @@
 #include <SDL2/SDL.h>
 #include "gos_input.h"
 
-#include "utils/shader_builder.h"
-#include "utils/gl_utils.h"
+#include "utils/color_utils.h"
 #include "utils/timing.h"
 #include "gos_postprocess.h"
 #include "gos_validate.h"
@@ -69,7 +68,7 @@
 #include "gpu_cull_record.h"       // C0-1: GpuActorRecord schema selftest
 #include "gpu_cull_readback.h"    // C2: async readback ring buffer selftest
 #include "object_admission_predicate.h"  // Track A1: init probe + selftest gate
-#include "view_uniforms_gl.h"                     // getCurrentView (unconditional: used by debug_state_dump)
+#include "view_registry.h"
 #include "debug_state_dump.h"                     // DEBUG-STATE-DUMP-1
 // TerrainPatchStream accessors feed the unconditional RenderSnapshot terrain-
 // pass fill (TERRAIN-PASS-PACKET-0) below, so this header must NOT be gated on
@@ -148,7 +147,7 @@ extern uint32_t g_mc2RenderFrame;
 extern void gos_GetTerrainCameraPos(float* x, float* y, float* z);
 extern void mc2_executor_own_begin_postprocess(gosPostProcess* pp);
 extern void mc2_executor_own_end_postprocess(gosPostProcess* pp);
-extern void gos_CreateRenderer(graphics::RenderContextHandle ctx_h, graphics::RenderWindowHandle win_h, int w, int h);
+extern void gos_CreateRenderer(graphics::RenderWindowHandle win_h, int w, int h);
 extern void gos_DestroyRenderer();
 extern void gos_RendererBeginFrame();
 extern void gos_RendererEndFrame();

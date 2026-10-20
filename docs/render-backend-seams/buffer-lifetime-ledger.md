@@ -1,12 +1,12 @@
-<!-- doc-status: current | reviewed:2026-10-11 -->
+<!-- doc-status: current | reviewed:2026-10-19 -->
 # Buffer Lifetime Ledger
 
 Maintained inventory of high-risk renderer GPU buffers by hazard class. Companion to
 [buffer-lifetime-ownership-recon-1](buffer-lifetime-ownership-recon-1.md). Machine-read by
 `scripts/check-buffer-lifetime-ownership.py` (registered `buffer_lifetime`). Source-verified
-vs nifty `4bd55403`.
+for the native actor-cull migration in lane2 s68.
 
-Classes: **A** fence-guarded ring · **B** GPU-produced + glMemoryBarrier · **C**
+Classes: **A** fence-guarded ring · **B** GPU-produced + explicit visibility barriers · **C**
 static/immutable per-mission · **D** implicit-sync (no fence/ring/explicit barrier —
 GL-safe, Vulkan-debt) · **E** sticky-bit temporal accumulator.
 
@@ -17,18 +17,12 @@ The table below is parsed: `| symbol | class | producer | sync | TU |` (one buff
 |---|---|---|---|---|
 | `s_boneSsbo` | A | CPU-map | ring3+fence | gos_mech_batcher.cpp |
 | `s_instanceSsbo` (mech) | A | CPU-map | ring3+fence | gos_mech_batcher.cpp |
-| `s_coalesceInstanceSsbo` | A | CPU-map | ring+coalesceFence | gos_static_prop_batcher.cpp |
-| `s_staticInstanceSsbo` | C | CPU-map | dirty-gated+staticDrawFence | gos_static_prop_batcher.cpp |
-| `s_staticIndirectCmdBuf` | C | CPU-glBufferData | dirty-gated | gos_static_prop_batcher.cpp |
-| `s_bucketCountsBuf` | B | GPU-atomicAdd | SSBO barrier+clear | gpu_cull_compute.cpp |
-| `s_actorVisBuf` | B | GPU-atomicOr | SSBO barrier+clear | gpu_cull_compute.cpp |
-| `s_blockVisBuf` | E | GPU-atomicOr | mission-clear+SSBO barrier | gpu_cull_compute.cpp |
-| `s_bucketCapsBuf` | C | CPU-glBufferData | static | gpu_cull_compute.cpp |
-| `s_heightSsbo` | C | CPU | static-mission | gos_terrain_lod_chunk.cpp |
+| `NativeCull::Slot::records/params` | A | CPU-upload | ring3+completed-ticket before upload/reuse | vk_actor_cull_native.cpp |
+| `NativeCull::Slot::output` | B | VK compute | buffer compute-write -> transfer-read | vk_actor_cull_native.cpp |
+| `NativeCull::Slot::staging` | B | VK transfer | buffer transfer-write -> host-read + completed-ticket before map | vk_actor_cull_native.cpp |
 | `g_recipeBuffer` (water) | C | CPU | static-mission | gos_terrain_water_stream.cpp |
 | `g_thinBuffer` (water) | A | CPU/GPU | ring3+fence | gos_terrain_water_stream.cpp |
 | `g_waterIndirectCmdBuffer` | B | GPU-atomicAdd | COMMAND barrier+clear | gos_terrain_water_stream.cpp |
-| `lightData_` | D | CPU-upload | IMPLICIT-SYNC | txmmgr.cpp |
 | `s_ssbo` (particle) | D | CPU-glBufferData | IMPLICIT-SYNC | gos_particle_bridge.cpp |
 | `s_tubePosSsbo` | D | CPU-glBufferData | IMPLICIT-SYNC | gos_particle_bridge.cpp |
 | `s_indirectCmdBuf` (terrain-mask) | D | CPU-glBufferData | orphan-then-upload (VK-OPT-4) | gameos_graphics.cpp |
@@ -36,6 +30,18 @@ The table below is parsed: `| symbol | class | producer | sync | TU |` (one buff
 
 Terrain GL recipe/thin/command buffers were retired in s65. The terrain path now
 captures CPU MVP inputs for Vulkan; it produces no GL indirect commands to fence.
+
+The GL light-data buffer and its dirty-prefix/orphan uploads are retired. The
+native light feed still reads the CPU table and its live row count directly.
+CardCloud CPU simulation remains authoritative; the unused GL compare oracle is gone.
+
+Static-prop geometry, albedo layers, material rows and cull identity mappings now
+remain CPU-owned until native consumers copy them; their GL buffers and fences are
+retired. Terrain height/type/cement/sidecar sources are CPU-owned as well.
+
+Actor-cull GL indirect buckets, visible-ID scatter and sticky block output were
+retired after their last draw consumer. Only actor visibility had a live CPU
+consumer; it now uses native compute, copied actor IDs and lagged CPU history.
 
 ## Known stale telemetry
 
@@ -46,8 +52,9 @@ captures CPU MVP inputs for Vulkan; it produces no GL indirect commands to fence
 ## What the checker enforces (FAIL)
 
 1. Every ledger row declares a class in {A,B,C,D,E}.
-2. **Class-B COMMAND barrier presence**: `gpu_cull_compute.cpp` contains a
-   `GL_COMMAND_BARRIER_BIT` glMemoryBarrier (removing it fails the check).
+2. **Native actor-cull ownership**: a slot ticket must complete before CPU input
+   uploads/pool reset or host readback mapping. Buffer barriers order compute -> copy
+   -> host; device-wide barriers for these private buffers fail the check.
 3. **Class-D Vulkan-debt declared** — at least the known class-D buffers are listed so the
    implicit-sync migration debt stays visible.
 4. **Stale counter declared** — `gpu_drawn_instances` is documented as known-stale.
@@ -55,7 +62,7 @@ captures CPU MVP inputs for Vulkan; it produces no GL indirect commands to fence
 ## Open (next slices)
 
 - STALE-COUNTER-RETIRE-1 (make gpu_drawn_instances honest).
-- LIGHT-BUFFER-BARRIER-VERIFY-1 / PARTICLE-BUFFER-LIFETIME-1 (class-D: confirm/insert the
+- PARTICLE-BUFFER-LIFETIME-1 (class-D: confirm/insert the
   explicit barrier or ring; freshest highest-touch risk).
 
 ## VK-OPT-4 — class-D terrain-mask orphan mitigation (2026-07-04)

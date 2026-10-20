@@ -15,15 +15,11 @@ set(UI_EDITOR_SOURCES
 add_executable(ui_editor ${UI_EDITOR_SOURCES})
 
 target_compile_features(ui_editor PRIVATE cxx_std_17)
-target_compile_definitions(ui_editor PRIVATE IMGUI_IMPL_OPENGL_LOADER_GLEW)
 
 if(NOT TARGET SDL2::SDL2)
     find_package(SDL2 CONFIG REQUIRED)
 endif()
 
-if(NOT TARGET OpenGL::GL)
-    find_package(OpenGL REQUIRED)
-endif()
 
 set(MC2R_UI_EDITOR_SDL_INCLUDE_DIRS)
 
@@ -101,12 +97,12 @@ if(TARGET SDL2::SDL2main)
     target_link_libraries(ui_editor PRIVATE SDL2::SDL2main)
 endif()
 
-target_link_libraries(ui_editor PRIVATE OpenGL::GL)
+if(NOT TARGET mc2_tool_vk)
+    add_subdirectory("${CMAKE_SOURCE_DIR}/tools/common" "${CMAKE_BINARY_DIR}/tools_common")
+endif()
+target_link_libraries(ui_editor PRIVATE mc2_tool_vk)
 if(WIN32)
     target_link_libraries(ui_editor PRIVATE ole32 windowscodecs uuid)
-endif()
-if(TARGET GLEW::GLEW)
-    target_link_libraries(ui_editor PRIVATE GLEW::GLEW)
 endif()
 
 set(MC2R_UI_EDITOR_RUNTIME_DEFS_DIR "${CMAKE_SOURCE_DIR}/data/defs")

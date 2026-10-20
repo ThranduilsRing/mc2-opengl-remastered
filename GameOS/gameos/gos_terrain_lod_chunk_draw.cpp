@@ -1,6 +1,7 @@
 // Native terrain patch capture and submission; GL scene draws have no present consumer.
 #include "gos_terrain_lod_chunk_internal.h"
 #include "mc2fmt.h"
+#include "terrain_field_store.h"
 
 bool terrainLodCheckerDiagEnabled()
 {
@@ -36,7 +37,7 @@ void gos_TerrainLodChunk_SubmitDrawCommands(
     std::memcpy(s_vkTerrainMvp, mvp, sizeof(s_vkTerrainMvp));
 
     const bool visualDisplaceActive = terrainVisualDisplaceGateOn()
-        && s_visualHeightSsbo.created() && s_visualSide > 0;
+        && gos_TerrainFieldStore() && !gos_TerrainFieldStore()->visualHeight().empty() && s_visualSide > 0;
     const bool allLods = mc2_vk_terrain_all_lods_enabled() != 0;
     const bool farDisplace = allLods && mc2_vk_terrain_visualdisplace_far_enabled() != 0;
     const bool skirts = mc2_vk_terrain_skirts_enabled() != 0;

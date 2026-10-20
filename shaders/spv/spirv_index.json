@@ -32,68 +32,6 @@
       "base": "mech",
       "stage": "frag",
       "defines": []
-    },
-    {
-      "key": "mech|vert|MC2_OBJECT_ID_BUFFER=1",
-      "artifact": "mech.vert.objectid.2a977866.spv",
-      "variantId": "2a9778665edb",
-      "base": "mech",
-      "stage": "vert",
-      "defines": [
-        "MC2_OBJECT_ID_BUFFER=1"
-      ]
-    },
-    {
-      "key": "mech|frag|MC2_OBJECT_ID_BUFFER=1",
-      "artifact": "mech.frag.objectid.2a977866.spv",
-      "variantId": "2a9778665edb",
-      "base": "mech",
-      "stage": "frag",
-      "defines": [
-        "MC2_OBJECT_ID_BUFFER=1"
-      ]
-    },
-    {
-      "key": "mech|vert|MC2_USE_VIEW_UNIFORMS=1",
-      "artifact": "mech.vert.viewuniforms.6c916165.spv",
-      "variantId": "6c9161651b66",
-      "base": "mech",
-      "stage": "vert",
-      "defines": [
-        "MC2_USE_VIEW_UNIFORMS=1"
-      ]
-    },
-    {
-      "key": "mech|frag|MC2_USE_VIEW_UNIFORMS=1",
-      "artifact": "mech.frag.viewuniforms.6c916165.spv",
-      "variantId": "6c9161651b66",
-      "base": "mech",
-      "stage": "frag",
-      "defines": [
-        "MC2_USE_VIEW_UNIFORMS=1"
-      ]
-    },
-    {
-      "key": "mech|vert|MC2_OBJECT_ID_BUFFER=1;MC2_USE_VIEW_UNIFORMS=1",
-      "artifact": "mech.vert.objectid_viewuniforms.02236e66.spv",
-      "variantId": "02236e66af94",
-      "base": "mech",
-      "stage": "vert",
-      "defines": [
-        "MC2_OBJECT_ID_BUFFER=1",
-        "MC2_USE_VIEW_UNIFORMS=1"
-      ]
-    },
-    {
-      "key": "mech|frag|MC2_OBJECT_ID_BUFFER=1;MC2_USE_VIEW_UNIFORMS=1",
-      "artifact": "mech.frag.objectid_viewuniforms.02236e66.spv",
-      "variantId": "02236e66af94",
-      "base": "mech",
-      "stage": "frag",
-      "defines": [
-        "MC2_OBJECT_ID_BUFFER=1",
-        "MC2_USE_VIEW_UNIFORMS=1"
-      ]
     }
   ]
 }

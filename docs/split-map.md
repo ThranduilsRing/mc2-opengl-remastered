@@ -46,10 +46,10 @@ Split commit: `f0521b300`.
 |---|---|
 | `gos_postprocess.cpp` | keeps the singleton, setters, init, scene begin/end and the viewmode/sky accessors |
 | `gos_postprocess_executor.cpp` | gosPostProcess: frame-graph executor ownership accessors, apply-state wrappers and counters. |
-| `gos_postprocess_fbo.cpp` | gosPostProcess: gosPostProcess teardown, resize, scene/post FBO creation and destruction, and the particle/VFX scene copies. |
 | `gos_postprocess_gates.cpp` | gosPostProcess: gate readers for the shared-scene, Vulkan tier-1 and shadow knobs, scene placeholder textures, and the skybox-fog and screen-shadow canary gates. |
 | `gos_postprocess_shadow.cpp` | gosPostProcess: shadow debug overlay, static and cascaded shadow maps and their light matrices. |
 | `gos_postprocess_skybox.cpp` | Native HDRI sky submission; the terrain pass draws it behind its depth. |
+| `gos_postprocess_targets.cpp` | Native scene-target ownership. Islands, presentation and explicit readbacks share these images; no parallel texture or framebuffer allocations exist. |
 | `gos_postprocess_internal.h` | shared include bundle, extern globals and declarations of the pieces |
 
 ## `GameOS/gameos/gos_static_prop_batcher.cpp`
@@ -57,14 +57,14 @@ Split commit: `f0521b300`.
 | Piece | What it holds |
 |---|---|
 | `gos_static_prop_batcher.cpp` | keeps what the pieces below did not take |
-| `gos_static_prop_batcher_finalize.cpp` | GpuStaticPropBatcher: GpuStaticPropBatcher::finalizeGeometry -- the orchestrator and every phase except the texture arrays. |
-| `gos_static_prop_batcher_finalize_textures.cpp` | GpuStaticPropBatcher: the texture-array phase of finalizeGeometry -- per-group array build, the BC7 / ORM bucket arrays and the per-packet layer tables. The orchestrator is in gos_static_prop_batcher_finalize.cpp. |
+| `gos_static_prop_batcher_finalize.cpp` | Finalize native prop geometry, CPU material sources and packet metadata once per mission. |
+| `gos_static_prop_batcher_finalize_textures.cpp` | Assemble CPU albedo arrays and per-packet layers for native prop consumers. |
 | `gos_static_prop_batcher_flush.cpp` | Native static-prop color dispatch. CPU feeds and bucket lifetime remain shared. |
 | `gos_static_prop_batcher_mapload.cpp` | GpuStaticPropBatcher: StaticPropViewToShaderMode, onMapLoad, setMissionForIbl, onMapUnload, registerType and registerMultiShape. |
-| `gos_static_prop_batcher_program.cpp` | GpuStaticPropBatcher: loadProgramsIfNeeded, ring capacity, light-freshness gate and the late-register / submit telemetry. |
+| `gos_static_prop_batcher_program.cpp` | Native prop readiness, registration diagnostics and submission counters. |
 | `gos_static_prop_batcher_seam.cpp` | GpuStaticPropBatcher: eligibility, persistent static instances, cached-instance submits, the batcher_* RenderCore seam accessors and the base-instance table. |
 | `gos_static_prop_batcher_shadow.cpp` | GpuStaticPropBatcher: the VK shadow-island geometry feed and the colour-prop island feeds (the GL prop shadow draws are gone). |
-| `gos_static_prop_batcher_state.cpp` | GpuStaticPropBatcher: the shared GPU buffer, ring, program-location, coalesce and static-draw state, the IBL helpers and the material and base-instance bookkeeping. |
+| `gos_static_prop_batcher_state.cpp` | CPU static-prop geometry/material ownership, persistent instance tables and IBL tuning. |
 | `gos_static_prop_batcher_submit.cpp` | GpuStaticPropBatcher: submit, submitMultiShape, the bucket upload, the V6 array build, the depth prepass and the executor apply-state hook. |
 | `gos_static_prop_batcher_internal.h` | shared include bundle, extern globals and declarations of the pieces |
 
@@ -84,7 +84,7 @@ Split commit: `f0521b300`.
 
 | Piece | What it holds |
 |---|---|
-| `gos_terrain_lod_chunk.cpp` | keeps the program and uniform-location state, Init/Destroy and the SSBO state |
+| `gos_terrain_lod_chunk.cpp` | keeps what the pieces below did not take |
 | `gos_terrain_lod_chunk_draw.cpp` | Native terrain patch capture and submission; GL scene draws have no present consumer. |
 | `gos_terrain_lod_chunk_feed.cpp` | gos_terrain_lod_chunk: VK tier-1 terrain frame feed (mc2_terrain_tier1_get_frame_feed) and its version counters. |
 | `gos_terrain_lod_chunk_gates.cpp` | gos_terrain_lod_chunk: eager tuning caches (kTglc*) the draw path and the light-pool uploads read, and the GlStateGuard kill-switch. |
@@ -596,7 +596,6 @@ Split commit: `16460b02e`.
 | `txmmgr_render_overlays.cpp` | MC_TextureManager::renderLists phase 12: the legacy overlay pass (water loops, no-underlayer, shadow blobs, non-terrain alpha, vfx / hud submit). |
 | `txmmgr_render_passes.cpp` | MC_TextureManager::renderLists phases 8-11 (dynamic shadow pass, solid terrain, GPU static props and mechs, terrain overlay / decal batches). |
 | `txmmgr_render_phases.cpp` | MC_TextureManager::renderLists phases 1-7 (state setup, light and scene-data upload, 3D objects, static-shadow build, static-prop registry flush); see txmmgr_render.cpp for the order they run in. |
-| `txmmgr_texture.cpp` | MC_TextureManager: texture load/save/copy and MC_TextureNode (KTX route-2 and compressed upload). |
 | `txmmgr_internal.h` | shared include bundle, extern globals and declarations of the pieces |
 | `txmmgr_render_internal.h` | shared include bundle, extern globals and declarations of the pieces |
 

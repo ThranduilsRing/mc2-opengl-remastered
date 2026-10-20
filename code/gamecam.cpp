@@ -68,7 +68,7 @@ extern "C" void mc2_vfx_pass_end();
 #include "../GameOS/gameos/debug_renderer.h"
 #include "../GuiRuntime/EditorInspector.h"  // IMG-INSPECT-3 flushDebugHighlight
 #include "../GameAdapters/SkyRenderAdapter.h"  // HDRI-SKY-1: firewall-clean sky rendering
-#include "../GameOS/gameos/view_uniforms_gl.h"  // F1-3A: ViewUniforms UBO upload
+#include "../GameOS/gameos/view_registry.h"
 #include "../GameOS/gameos/gos_static_prop_killswitch.h"  // F1-3C: gos_GetTerrainMVPMat4 compare probe
 #include "tacticaloverview.h"  // Tactical Overview diagnostic HUD + blend state
 // WATER-TERRAIN-REFLECTION-1: mirrored terrain reflection pass (engine-side;
@@ -276,16 +276,9 @@ void GameCamera::renderViewUniforms() {
 			}
 		}
 
-		// F1-3D flip: upload UBO by default; kill-switch MC2_VIEW_UNIFORMS=0.
-		// Original F1-3B/F1-3C gate required explicit =1 (opt-in). That left
-		// the UBO unbound when the env var was absent, so any shader compiled
-		// with MC2_USE_VIEW_UNIFORMS read from an unbound/zero UBO and drew
-		// props off-screen. Matches the s_viewUniformsShaderEnabled flip in
-		// gos_static_prop_batcher.cpp.
 		{
 			static const bool s_vuOn = mc2::gate::get<"MC2_VIEW_UNIFORMS">();
 			if (s_vuOn) {
-				RenderCore::uploadViewUniforms(vu);
 
 				// F1-3C: compare ViewUniforms.worldToClipGL against legacy terrain MVP upload
 				{

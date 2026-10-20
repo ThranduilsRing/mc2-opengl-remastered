@@ -6,6 +6,7 @@
 //===========================================================================//
 
 #include"logisticsmechicon.h"
+#include "../mclib/texture_assets.h"
 #include"mechicon.h"
 #include"icon_atlas_cell.h"
 #include "mc2_audit.h"   // META-FIX design B PART 3a: icon_oob marker
@@ -145,7 +146,7 @@ void LogisticsMechIcon::setMech( LogisticsMech* pNewMech )
 		DWORD atlasW = 0, atlasH = 0;
 		float fileW = 256.f, fileH = 256.f;
 		if ( mcTextureManager &&
-		     mcTextureManager->tryGetTextureLogicalSize( icon.getTextureHandle(), atlasW, atlasH ) )
+		     mc2::textures::logicalSize( icon.getTextureHandle(), atlasW, atlasH ) )
 		{
 			if ( atlasW > 0 ) fileW = static_cast<float>(atlasW);
 			if ( atlasH > 0 ) fileH = static_cast<float>(atlasH);

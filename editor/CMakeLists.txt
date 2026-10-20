@@ -22,6 +22,10 @@ target_include_directories(editor_document PRIVATE "${CMAKE_SOURCE_DIR}/3rdparty
 target_include_directories(editor_document PRIVATE "${CMAKE_SOURCE_DIR}/mclib")
 target_link_libraries(editor_document PRIVATE ZLIB::ZLIB)
 
+if(NOT TARGET mc2_tool_vk)
+    add_subdirectory("${CMAKE_SOURCE_DIR}/tools/common" "${CMAKE_BINARY_DIR}/tools_common")
+endif()
+
 function(add_editor_shell target)
     add_executable(${target} WIN32 shell/main.cpp shell/EntityPanels.cpp shell/ObjectivePanel.cpp shell/ObjectivePresentation.cpp shell/FileWorkflow.cpp
         "${CMAKE_SOURCE_DIR}/3rdparty/imgui/misc/cpp/imgui_stdlib.cpp")
@@ -29,7 +33,7 @@ function(add_editor_shell target)
     target_compile_features(${target} PRIVATE cxx_std_23)
     target_compile_definitions(${target} PRIVATE SDL_MAIN_HANDLED)
     target_include_directories(${target} PRIVATE "${CMAKE_BINARY_DIR}/generated")
-    target_link_libraries(${target} PRIVATE editor_document mc2_gate imgui SDL2::SDL2 OpenGL::GL)
+    target_link_libraries(${target} PRIVATE editor_document mc2_gate imgui SDL2::SDL2 mc2_tool_vk)
     if(MSVC)
         target_link_options(${target} PRIVATE /ENTRY:mainCRTStartup)
     endif()
@@ -76,7 +80,7 @@ add_executable(editor_panel_tests tests/test_main.cpp tests/test_panels.cpp test
 target_compile_features(editor_panel_tests PRIVATE cxx_std_23)
 target_compile_definitions(editor_panel_tests PRIVATE MC2_EDITOR_SMOKE_HOST=1)
 target_include_directories(editor_panel_tests PRIVATE shell)
-target_link_libraries(editor_panel_tests PRIVATE editor_document imgui SDL2::SDL2 OpenGL::GL)
+target_link_libraries(editor_panel_tests PRIVATE editor_document imgui SDL2::SDL2)
 
 # Reader compatibility belongs to offline tests; the owned document stays engine-free.
 include(tests/ObjectiveReader.cmake)
@@ -198,12 +202,10 @@ target_include_directories(EditRel PRIVATE
 
 # --- Dependencies ---
 # SDL2 is found by the root CMakeLists.txt; inherit its variables.
-# GLEW, OpenGL, ZLIB also found at root scope.
+# ZLIB is also found at root scope.
 find_package(SDL2 REQUIRED CONFIG REQUIRED COMPONENTS SDL2)
 find_package(SDL2_mixer REQUIRED)
 find_package(SDL2_ttf REQUIRED)
-find_package(GLEW REQUIRED)
-find_package(OpenGL REQUIRED)
 find_package(ZLIB REQUIRED)
 
 target_link_libraries(EditRel PRIVATE
@@ -224,10 +226,6 @@ target_link_libraries(EditRel PRIVATE
 
     # windows provides platform shims (string, IO, mmsystem) — no WinMain or InitGameOS.
     windows
-
-    # OpenGL stack
-    GLEW::GLEW
-    OpenGL::GL
 
     # SDL (matches root CMakeLists conventions)
     SDL2::SDL2
@@ -273,7 +271,7 @@ set_target_properties(EditRel PROPERTIES
 # TARGET_RUNTIME_DLLS, but root floor is 3.10 (see top-level
 # CMakeLists.txt), so we use TARGET_FILE generator expressions for
 # imported targets whose IMPORTED_LOCATION is the .dll (SDL2/SDL2_mixer/
-# SDL2_ttf/mc2res) and explicit filenames for the rest (GLEW/ZLIB
+# SDL2_ttf/mc2res) and explicit filenames for the rest (ZLIB
 # expose only the .lib via IMPORTED_LOCATION). All vcpkg DLLs are
 # colocated next to SDL2.dll, so anchor on $<TARGET_FILE_DIR:SDL2::SDL2>.
 set(_editor_runtime_dll_targets
@@ -290,7 +288,7 @@ foreach(_t IN LISTS _editor_runtime_dll_targets)
     )
 endforeach()
 
-foreach(_dll_name glew32.dll zlib1.dll)
+foreach(_dll_name zlib1.dll)
     add_custom_command(TARGET EditRel POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
                 "$<TARGET_FILE_DIR:SDL2::SDL2>/${_dll_name}"

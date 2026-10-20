@@ -7,6 +7,7 @@ MPStats.cpp			: Implementation of the MPStats component.
 \*************************************************************************************************/
 
 #include"mpstats.h"
+#include "../mclib/texture_assets.h"
 #include"../resource.h"
 #include"missionbriefingscreen.h"
 #include"chatwindow.h"
@@ -526,7 +527,7 @@ void MPStatsResultsEntry::setData(const MC2Player* data, unsigned long laurelCol
 		if ( pData )
 		{
 			int size = pData->pixel_depth/8;
-			int ID = mcTextureManager->textureFromMemory( reinterpret_cast<DWORD*>((pData+1)), gos_Texture_Solid, 0, pData->width, size  );
+			int ID = mc2::textures::fromPixels( reinterpret_cast<DWORD*>((pData+1)), gos_Texture_Solid, 0, pData->width, size  );
 			statics[0].setTexture( ID );
 			statics[0].setUVs( 0, 32, 32, 0 );
 		}

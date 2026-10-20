@@ -1,6 +1,7 @@
 // Mech3DAppearance: setObjStatus, updateGeometry and the arm recalculations.
 // Declared in the class headers; shared names in mech3d_internal.h.
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
+#include "texture_assets.h"
 #include "mech3d_internal.h"
 #include "../RenderCore/axis_convert.h"
 #include <format>
@@ -70,13 +71,13 @@ void Mech3DAppearance::setObjStatus (long oStatus)
 						
 						if (!i)
 						{
-							localTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Alpha,gosHint_DisableMipmap | gosHint_DontShrink,true);
+							localTextureHandle = mc2::textures::load(textureName,gos_Texture_Alpha,gosHint_DisableMipmap | gosHint_DontShrink,true);
 							mechShape->SetTextureHandle(i,localTextureHandle);
 							mechShape->SetTextureAlpha(i,true);
 						}
 						else
 						{
-							gosTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Alpha,gosHint_DisableMipmap | gosHint_DontShrink);
+							gosTextureHandle = mc2::textures::load(textureName,gos_Texture_Alpha,gosHint_DisableMipmap | gosHint_DontShrink);
 							mechShape->SetTextureHandle(i,gosTextureHandle);
 							mechShape->SetTextureAlpha(i,true);
 						}
@@ -88,13 +89,13 @@ void Mech3DAppearance::setObjStatus (long oStatus)
 						
 						if (!i)
 						{
-							localTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Solid,gosHint_DisableMipmap | gosHint_DontShrink,true);
+							localTextureHandle = mc2::textures::load(textureName,gos_Texture_Solid,gosHint_DisableMipmap | gosHint_DontShrink,true);
 							mechShape->SetTextureHandle(i,localTextureHandle);
 							mechShape->SetTextureAlpha(i,false);
 						}
 						else
 						{
-							gosTextureHandle = mcTextureManager->loadTexture(textureName,gos_Texture_Solid,gosHint_DisableMipmap | gosHint_DontShrink);
+							gosTextureHandle = mc2::textures::load(textureName,gos_Texture_Solid,gosHint_DisableMipmap | gosHint_DontShrink);
 							mechShape->SetTextureHandle(i,gosTextureHandle);
 							mechShape->SetTextureAlpha(i,false);
 						}

@@ -8,7 +8,7 @@ across missions and a pointer-keyed cache could serve a stale GL texture
 name. gos_FontGetAtlasDesc is a cheap CPU query plus a handful of GL
 texture-parameter calls per STRING (not per glyph) — noise next to the
 frame's draw-call count.
-===========================================================================*/
+ ===========================================================================*/
 
 #include"hud_imgui_font.h"
 
@@ -79,9 +79,9 @@ void drawLine( ImDrawList* dl, HGOSFONT3D font, const gos_FontAtlasDesc& ad,
 	float x, float y, ImU32 col, const char* text, int count,
 	float sx, float sy )
 {
-	const float ooW = 1.0f / static_cast<float>(ad.texWidth);
-	const float ooH = 1.0f / static_cast<float>(ad.texHeight);
-	const ImTextureID tex = static_cast<ImTextureID>(static_cast<intptr_t>(ad.glTexId));
+	const float ooW = 1.0f / (float)ad.texWidth;
+	const float ooH = 1.0f / (float)ad.texHeight;
+	const ImTextureID tex = (ImTextureID)(intptr_t)ad.textureId;
 
 	float penX = x;
 	for ( int i = 0; i < count && text[i] && text[i] != '\n'; ++i )

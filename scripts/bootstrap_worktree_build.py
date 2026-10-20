@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """bootstrap_worktree_build.py -- one-command CMake configure for a fresh worktree.
 
-WHY THIS EXISTS: the prebuilt 3rdparty binary deps (SDL2/GLEW/zlib/ffmpeg cmake
+WHY THIS EXISTS: the prebuilt 3rdparty binary deps (SDL2/zlib/ffmpeg cmake
 configs + libs + headers) live under 3rdparty/{cmake,lib,include,ffmpeg-lgpl-win64}
 and are UNTRACKED by git. A brand-new `git worktree add` therefore has source but
 no deps and no build64, and a bare `cmake -S . -B build64` fails one-find_package-
-at-a-time (SDL2 -> GLEW -> ZLIB -> MC2_IMGUI). We kept rediscovering the exact
+at-a-time (SDL2 -> ZLIB -> MC2_IMGUI). We kept rediscovering the exact
 -D flags every time. This script captures them ONCE.
 
 WHAT IT DOES (idempotent):
@@ -42,7 +42,7 @@ CMAKE_BT = ("C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/Comm
 # Untracked prebuilt-dependency dirs a fresh worktree lacks. Copied from a donor.
 DEP_DIRS = ["cmake", "lib", "include", "ffmpeg-lgpl-win64"]
 # Sentinel that proves a worktree's 3rdparty deps are populated.
-DONOR_SENTINEL = os.path.join("3rdparty", "lib", "x64", "glew32.lib")
+DONOR_SENTINEL = os.path.join("3rdparty", "lib", "x64", "SDL2.lib")
 
 
 def log(m):
@@ -92,11 +92,17 @@ def find_donor(worktree, explicit):
     return None
 
 
+def retired_gl_sdk(directory, names):
+    """Keep a legacy donor from restoring the retired GL headers/loader."""
+    return [name for name in names
+            if name.casefold() == "gl" or name.casefold().startswith("glew")]
+
+
 def ensure_deps(worktree, donor_arg):
     tp = os.path.join(worktree, "3rdparty")
     missing = [d for d in DEP_DIRS if not os.path.exists(os.path.join(tp, d))]
     # include/ and ffmpeg may exist (tracked-ish); only copy what's truly absent,
-    # but always require the glew sentinel to be present at the end.
+    # but always require the SDL2 sentinel to be present at the end.
     if not missing and os.path.isfile(os.path.join(worktree, DONOR_SENTINEL)):
         log("3rdparty deps already present.")
         return
@@ -113,7 +119,7 @@ def ensure_deps(worktree, donor_arg):
             log(f"  donor lacks 3rdparty/{d} (skip)")
             continue
         log(f"  copying 3rdparty/{d} ...")
-        shutil.copytree(src, dst)
+        shutil.copytree(src, dst, ignore=retired_gl_sdk)
     if not os.path.isfile(os.path.join(worktree, DONOR_SENTINEL)):
         fail(f"after copy, {DONOR_SENTINEL} still missing -- donor incomplete?")
 
@@ -129,10 +135,6 @@ def cache_args(worktree):
     return [
         "-DMC2_IMGUI=ON",
         f"-DCMAKE_PREFIX_PATH={tp}/cmake",
-        f"-DGLEW_INCLUDE_DIR={tp}/include",
-        f"-DGLEW_LIBRARY={tp}/lib/x64/glew32.lib",
-        f"-DGLEW_SHARED_LIBRARY_RELEASE={tp}/lib/x64/glew32.lib",
-        f"-DGLEW_STATIC_LIBRARY_RELEASE={tp}/lib/x64/glew32s.lib",
         f"-DZLIB_INCLUDE_DIR={tp}/include",
         f"-DZLIB_LIBRARY={tp}/lib/x64/zlib.lib",
     ]

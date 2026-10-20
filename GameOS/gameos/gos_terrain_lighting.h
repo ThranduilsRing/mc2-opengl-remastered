@@ -3,7 +3,6 @@
 
 #include <cstdint>
 #include <cstddef>   // offsetof (struct-layout static_asserts)
-#include <GL/glew.h>
 
 // Forward-declare TerrainQuad (full definition in mclib/quad.h:59).
 class TerrainQuad;
@@ -63,68 +62,34 @@ static_assert(sizeof(GpuTerrainLightingOutput) == 8, "GpuTerrainLightingOutput m
 // Lifecycle (design doc Q5)
 // ---------------------------------------------------------------------------
 
-// Per-mission: allocate SSBOs sized to numVertices = realVerticesMapSide^2,
-// compile shader on first call, reset ring.
+// Per-mission: size CPU input snapshots to numVertices = realVerticesMapSide^2.
 // CRITICAL: pass realVerticesMapSide * realVerticesMapSide — NOT getNumVertices()
 // (which returns 0 at mission_init call time per plan v2 CRITICAL-1).
 // Call from code/mission.cpp:2788 alongside gpu_cull::compute_init().
 void mission_init(uint32_t numVertices, uint32_t maxLights);
 
-// Per-mission teardown: zero CPU state; keep GL allocs for reuse next mission.
+// Per-mission teardown: invalidate CPU snapshots and light-grid readiness.
 // Call from Terrain::destroy (terrain.cpp:703).
 void mission_shutdown();
 
 // Per-frame: advance ring index. Call before PackAndDispatch.
 void BeginFrame();
 
-// Per-frame: pack input SSBO from vertex pool + camera lights, dispatch compute,
-// issue memory barrier + glCopyBufferSubData → staging ring, place glFenceSync.
+// Per-frame: pack the vertex window, camera lights and exact spatial light grid.
 void PackAndDispatch();
 
 bool IsEnabled();
-
-// NIGHT-LIGHT-POOLS-1: expose the per-frame packed terrain LIGHT POOL SSBO
-// (GpuTerrainLight[48B], lights [2..N-1] — sun/ambient excluded, uploaded every
-// frame by PackAndDispatch) so a forward consumer (terrain_lod_chunk.frag) can
-// re-run the stock per-light falloff per-fragment and restore night up-lighting
-// (building spotlights / light props / mech-vehicle-weapon lights pooling onto
-// terrain + cement). Returns 0 when Phase 1 is disabled or not initialized.
-GLuint GetLightPoolSsbo();
 
 // Number of lights packed into the pool SSBO by the LAST PackAndDispatch
 // (0 when disabled / no eye / no registered pool lights this frame).
 uint32_t GetLightPoolLightCount();
 
-// LIGHT-CLUSTER-PERF-1 (2026-07-25): world-space XY light grid over the packed
-// pool. Consumers bind headerSsbo/indexSsbo and upload dim/minXY/invCell, then
-// loop only over the lights binned into the fragment's cell instead of the whole
-// pool. Exact, not approximate: a light is stamped into every cell its ground
-// circle (radius = UNSCALED farDistance) touches, and the shader only ever
-// shrinks that reach — so the per-cell list is a conservative superset of the
-// lights that can contribute, and the lit result is bit-identical to the linear
-// full-pool loop.
-//
-// Returns false when the grid is not in play (MC2_LIGHT_GRID=0, pool too small,
-// degenerate bbox, or nothing packed this frame); consumers must then fall back
-// to the linear loop over GetLightPoolLightCount() lights.
-struct LightGridParams {
-    uint32_t dim;          // cells per axis (grid is dim x dim)
-    float    minXY[2];     // world XY of cell (0,0) corner
-    float    invCell[2];   // 1 / cell size, per axis
-    GLuint   headerSsbo;   // uvec2 {firstIndex, count} per cell
-    GLuint   indexSsbo;    // uint light indices, cell-major
-};
-bool GetLightGridParams(LightGridParams& out);
-
-// VK-PARITY-TERRAIN-2: CPU-side views of the SAME arrays this frame's
-// PackAndDispatch uploaded into the GL pool SSBO (binding 28) and the grid
-// SSBOs (29/30), so the VK terrain island can upload byte-identical copies
-// into its own storage buffers. Pointers stay valid until the next
+// CPU-owned views for native consumers. Pointers stay valid until the next
 // PackAndDispatch / mission_shutdown.
 // GetLightPoolCpu: returns the packed pool (count = GetLightPoolLightCount()),
 // nullptr when not initialized.
 const GpuTerrainLight* GetLightPoolCpu(uint32_t* outCount);
-// GetLightGridCpu: false whenever GetLightGridParams() would be false.
+// GetLightGridCpu: false when the grid is disabled, empty or uninitialized.
 struct LightGridCpu {
     uint32_t        dim;
     float           minXY[2];
@@ -136,20 +101,6 @@ struct LightGridCpu {
 };
 bool GetLightGridCpu(LightGridCpu& out);
 
-// POOL-CONSUMERS-1 (batch-6 item 6): bind the pool SSBO at binding 28 and
-// upload the shared pool uniforms (u_numPoolLights + soft/dim/scale/blend/
-// compress knobs, lockstep with the terrain-chunk consumer constants) onto
-// `program` (must be the CURRENTLY BOUND program). Object consumers
-// (static-prop batcher, mech batcher) call this per draw-batch setup.
-// Uploads u_numPoolLights=0 (loop never entered, byte-identical) when the
-// object sub-gate (MC2_LIGHT_POOL_OBJECTS) is off, or no lights are packed
-// this frame.
-void UploadObjectLightPoolUniforms(unsigned int program);
-
-// VK-PARITY-MECH-1: the ONE producer of the object-side pool count + knobs that
-// UploadObjectLightPoolUniforms uploads (GL) and the VK mech island stages into
-// its frame UBO. count = 0 when gated off / no pool this frame. `pool` points at
-// the CPU copy of the binding-28 array (GetLightPoolCpu), nullptr when count==0.
 struct ObjectLightPoolParams {
     int   count;
     int   soft;

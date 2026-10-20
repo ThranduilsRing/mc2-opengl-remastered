@@ -313,7 +313,6 @@ void EditorInterface::OnLButtonDblClk(UINT nFlags, CPoint point)
 	// drag-select works.  Use the same screen-space picker as single-click.
 	// RTT: viewport-local coords for the dbl-click picker (it unprojects).
 	int dblX = (int)point.x, dblY = (int)point.y;
-	EditorRttClientToViewport( dblX, dblY );
 	EditorObject* pObject = EditorInterface_PickObjectAtScreenPoint(dblX, dblY);
 	if (nullptr != pObject)
 	{

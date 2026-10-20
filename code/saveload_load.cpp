@@ -614,9 +614,7 @@ void Mission::loadActivateAndFinalize() {
 	GameAdapters::StaticProp::finalizeGeometry();
 	GpuMechBatcher::instance().finalizeGeometry();
 
-	if (gpu_cull::compute_isEnabled()) {
-		gpu_cull::compute_buildIndirectBuffer(GameAdapters::StaticProp::typeCount());
-	}
+
 	eye->primeActiveLightsForPrewarm();
 	ObjectManager->prewarmStaticPropLightBakes(eye);
 	GameAdapters::Vegetation::missionLoaded(land, GameMap);

@@ -2,8 +2,8 @@
 // Declared in the class headers; shared names in gos_static_prop_batcher_internal.h.
 #include <algorithm>
 #include "gos_static_prop_batcher_internal.h"
+#include "../../mclib/texture_assets.h"
 #include "mc2fmt.h"
-
 
 // ---------------------------------------------------------------------------
 // DEBUG-VIEW-REGISTRY-1: static-prop shader mode <-> RenderDebugView mapping.
@@ -77,13 +77,6 @@ void GpuStaticPropBatcher::onMapLoad() {
     s_geometryFinalized = false;
     s_fatalRegistrationFailure = false;
 
-    // Substrate-coalesce per-mission resets (plan v3.8 Step 3.1). Cleared
-    // here so finalizeGeometry() can repopulate fresh; do NOT clear
-    // s_coalesceEnvDisabled / s_hasShaderDrawParams (process-lifetime
-    // values resolved once per process via coalesce_resetEnvOnce / the
-    // GLEW probe inside loadProgramsIfNeeded). Do NOT clear
-    // s_coalescePinnedNodes — that vector is owned by onMapUnload's
-    // refcount-aware unpin loop (Step 4.1).
     s_sortedTypeOrder.clear();
     s_alphaOffCount = 0;
     s_alphaOnCount  = 0;
@@ -123,127 +116,19 @@ const char* ibl_sh_runtime_currentSetName() {
 
 void GpuStaticPropBatcher::onMapUnload() {
     GpuStaticPropRegistry::staticPropRegistryClearMaterialCache();
-    s_packetTexArrayLayer.clear();  // v2: sidecar is per-map; clear on unload
-    s_packetUvScaleX.clear();  // FENCE-UVSCALE-1: sidecar is per-map; clear on unload
-    s_packetUvScaleY.clear();
-    s_typeInstanceCountPrevFrame.clear(); // v2.1: per-map; clear on unload
-    s_typeDescTable.clear();        // v0: cross-seam mirror is per-map
-    if (s_sharedVbo) { glDeleteBuffers(1, &s_sharedVbo); s_sharedVbo = 0; }
-    if (s_sharedIbo) { glDeleteBuffers(1, &s_sharedIbo); s_sharedIbo = 0; }
-    if (s_sharedVao) { glDeleteVertexArrays(1, &s_sharedVao); s_sharedVao = 0; }
-    // Slice 2 (object-offload) — Stage 2.C.2: per-type hot-color SSBO is
-    // also per-map; rebuild on next finalizeGeometry.
-    if (s_perTypeSsbo) { glDeleteBuffers(1, &s_perTypeSsbo); s_perTypeSsbo = 0; }
-    // Ring buffers are kept across maps (sized to map's worst case -- grow on demand).
-
-    //
-    // 4.1 — refcount-aware unpin loop. Pattern matches
-    // gos_static_prop_registry.cpp:111-124 (releasePinsForRange).
-    // Idempotent via vector clear — rebuild populates fresh on next finalize.
-    if (mcTextureManager) {
-        for (DWORD nodeIdx : s_coalescePinnedNodes) {
-            mcTextureManager->unpinNode(nodeIdx);
-        }
-    }
+    for (DWORD nodeIdx : s_coalescePinnedNodes) mc2::textures::unpin(nodeIdx);
     s_coalescePinnedNodes.clear();
-
-    // 4.2 — unconditional fence cleanup. Coalesce fences are independent
-    // of legacy s_fence[]; drain both rings on map unload.
-    for (uint32_t i = 0; i < RING_FRAMES; ++i) {
-        if (s_coalesceFence[i]) {
-            glDeleteSync(s_coalesceFence[i]);
-            s_coalesceFence[i] = nullptr;
-        }
-    }
-
-    // Slice 1 step group 3 — teardown base-instance table SSBO before legacy ring.
-    if (s_baseInstanceByCmdSsbo) {
-        if (s_baseInstanceByCmdMap) {
-            glBindBuffer(GL_SHADER_STORAGE_BUFFER, s_baseInstanceByCmdSsbo);
-            glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
-            glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
-            s_baseInstanceByCmdMap = nullptr;
-        }
-        glDeleteBuffers(1, &s_baseInstanceByCmdSsbo);
-        s_baseInstanceByCmdSsbo             = 0;
-        s_baseInstanceByCmdBytesPerFrame    = 0;
-    }
-
-    // 4.3 — unmap and delete the persistent-mapped instance SSBO.
-    // Handle the partial-failure case where alloc succeeded but mapping
-    // failed (Step 5.9 leaves s_coalesceInstanceSsbo non-zero with
-    // s_coalesceInstanceMap nullptr in that path).
-    if (s_coalesceInstanceSsbo) {
-        if (s_coalesceInstanceMap) {
-            glBindBuffer(GL_SHADER_STORAGE_BUFFER, s_coalesceInstanceSsbo);
-            glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
-            glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
-            s_coalesceInstanceMap = nullptr;
-        }
-        glDeleteBuffers(1, &s_coalesceInstanceSsbo);
-        s_coalesceInstanceSsbo = 0;
-    }
-
-    // M2a POPULATION-SPLIT: tear down the static instance SSBO on map unload,
-    // mirroring s_coalesceInstanceSsbo above. ensureStaticInstanceCapacity()
-    // early-returns on a non-zero handle, so without this the persistent map
-    // handle would survive a context recreation as a dangling pointer. Reset the
-    // dirty-gens so the next map's first dirty flush rebuilds base + fill.
-    if (s_staticInstanceSsbo) {
-        if (s_staticInstanceMap) {
-            glBindBuffer(GL_SHADER_STORAGE_BUFFER, s_staticInstanceSsbo);
-            glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
-            glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
-            s_staticInstanceMap = nullptr;
-        }
-        glDeleteBuffers(1, &s_staticInstanceSsbo);
-        s_staticInstanceSsbo  = 0;
-        s_staticInstanceBytes = 0;
-    }
-    if (s_staticIndirectCmdBuf) {
-        glDeleteBuffers(1, &s_staticIndirectCmdBuf);
-        s_staticIndirectCmdBuf = 0;
-    }
-    if (s_staticDrawFence) { glDeleteSync(s_staticDrawFence); s_staticDrawFence = nullptr; }
-    s_staticDrawCmds.clear();
-    s_staticInstanceFillGen = 0xFFFFFFFFFFFFFFFFull;
-    s_staticBaseBuiltGen    = 0xFFFFFFFFFFFFFFFFull;
-    s_staticCmdBuiltGen     = 0xFFFFFFFFFFFFFFFFull;
-
-    if (s_texArrayOff)     { glDeleteTextures(1, &s_texArrayOff);     s_texArrayOff     = 0; }
-    if (s_texArrayOn)      { glDeleteTextures(1, &s_texArrayOn);      s_texArrayOn      = 0; }
-    for (auto& a : albedoArrays_) a = {};   // released with the GL arrays they mirror, not just cleared
+    for (auto& array : albedoArrays_) array = {};
     albedoKey_ = {};
-    staticPropReleaseBuckets();  // COMPRESSION-BC7-STATICPROP-2 (no-op when gate OFF)
-    if (s_perDrawSsbo)      { glDeleteBuffers(1,  &s_perDrawSsbo);      s_perDrawSsbo      = 0; }
-    if (s_permutationSsbo)  { glDeleteBuffers(1,  &s_permutationSsbo);  s_permutationSsbo  = 0; }
-    if (s_cmdToBucketSsbo)  { glDeleteBuffers(1,  &s_cmdToBucketSsbo);  s_cmdToBucketSsbo  = 0; }
-    // MaterialGpu-2 teardown: runs regardless of gate state (defensive).
-    // When gate is OFF, s_materialGpuSsbo == 0 and the if-block is skipped entirely.
-    if (s_materialGpuSsbo.backendHandle != 0) {
-        const size_t byteSize =
-            s_materialGpuTable.size() * sizeof(RenderCore::MaterialGpu);
-        char buf[96];
-        mc2::fmt::to_buf(buf, "[MATERIAL_GPU v4] event=unload materials={:d} bytes={:d}\n", mc2::fmt::as_size(s_materialGpuTable.size()), mc2::fmt::as_size(byteSize));
-        MC2_DIAG_FPUTS(buf, stderr);
-        GLuint local = static_cast<GLuint>(s_materialGpuSsbo.backendHandle);
-        glDeleteBuffers(1, &local);
-        s_materialGpuSsbo.backendHandle = 0;
-
-        // STATICPROP-MATERIAL-SSBO-OWNER-1: mark the slot unavailable on teardown.
-        RenderCore::RenderResourceDesc invalid;
-        invalid.id    = RenderCore::RenderResourceId::StaticPropMaterialGpuBuffer;
-        invalid.valid = false;
-        RenderCore::registerOrUpdateRenderResource(invalid);
-    }
-    s_packetMaterialIdx.clear();
-    s_materialGpuTable.clear();
-    s_materialInventory.clear();  // V-MATERIAL-STATIC-0
-    s_materialGpuSidecarValid = false;  // MAJ-1: reset so flush() cannot sample stale sidecar on reload
-    s_sortedPacketOrder.clear();
-    s_sortedPacketOrder.shrink_to_fit();
-    s_alphaOffCmdCount = 0;
-    s_alphaOnCmdCount  = 0;
+    s_packetTexArrayLayer.clear(); s_packetUvScaleX.clear(); s_packetUvScaleY.clear();
+    s_typeInstanceCountPrevFrame.clear();
+    s_packetMaterialIdx.clear(); s_materialGpuTable.clear(); s_materialInventory.clear();
+    s_materialGpuSidecarValid = false;
+    s_sortedPacketOrder.clear(); s_alphaOffCmdCount = s_alphaOnCmdCount = 0;
+    s_bucketsByType.clear(); s_persistentStaticStore.clear();
+    s_persistentStaticGen = s_staticBaseBuiltGen = 0xFFFFFFFFFFFFFFFFull;
+    s_staticBaseInstanceForType.clear();
+    onMapLoad();
 }
 
 //

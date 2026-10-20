@@ -1024,7 +1024,7 @@ void __stdcall gos_TextVisualBounds( DWORD* Width, int* Top, int* Bottom, const 
 //
 typedef struct gos_FontAtlasDesc
 {
-    uint32_t glTexId;      // GL texture name of the font atlas
+    uint64_t textureId;    // generation-tagged service identity of the font atlas
     int      texWidth;     // atlas dimensions in texels
     int      texHeight;
     int      lineSkip;     // line advance (gosFont::getMaxCharHeight)
@@ -2477,13 +2477,9 @@ void gos_SetTerrainMaterialNormal(int index, DWORD handle);
 void gos_SetTerrainWorldScale(float scale);
 void gos_SetTerrainCellBombParams(float scale, float jitter, float rotation);
 void gos_SetTerrainPOMParams(float scale, float minLayers, float maxLayers);
-unsigned int gos_CreateTerrainNormalTexture(const unsigned char* rgbaData, int width);
 // A width x width RGBA8 detail-normal texture as a gos texture handle (REPEAT, linear, no mips); its texels stay with the handle
 // while the Vulkan umbrella is armed, for the Vulkan terrain island. INVALID_TEXTURE_ID on failure.
 DWORD gos_NewTerrainNormalTexture(const unsigned char* rgbaData, int width);
-void gos_SetTerrainDetailNormalTexture(unsigned int glTexId);
-void gos_SetTerrainDisplacementTexture(unsigned int glTexId);
-void gos_SetTerrainViewDir(float x, float y, float z);
 
 // CPU displacement query API
 float gos_GetTerrainPhongAlpha();
@@ -2562,7 +2558,6 @@ void gos_SetShadowMode(bool enable);
 // handle.  Returns 0 if the handle is 0, out-of-bounds, or the slot is null
 // (texture evicted or not yet uploaded).  Read-only: no ref-count side
 // effects, no eviction, no async work.
-unsigned int gos_GetGLTextureName(DWORD handle);
 
 //
 // Set a renderstate
@@ -2868,7 +2863,6 @@ void __stdcall gos_LightDataSsbo_Upload(const void* data, size_t bytes);
 void __stdcall gos_LightDataSsbo_UploadSplit(const void* data, size_t prefixBytes,
                                              size_t totalBytes, bool prefixDirty);
 void __stdcall gos_LightDataSsbo_Destroy();
-void __stdcall gos_BindLightDataStorageBlock(HGOSRENDERMATERIAL material);
 // VEHICLE-LIGHTING-PATH-1: night light-pool bind/upload for material-only
 // callers (mclib ShapeRenderer). No-op-safe when the pool gates are off.
 void __stdcall gos_UploadObjectLightPools(HGOSRENDERMATERIAL material);
@@ -2959,7 +2953,6 @@ struct gosVERTEX_FORMAT_RECORD {
 HGOSBUFFER __stdcall gos_CreateBuffer(gosBUFFER_TYPE type, gosBUFFER_USAGE usage, int element_size, uint32_t count, void* pdata);
 void __stdcall gos_DestroyBuffer(HGOSBUFFER buffer);
 void __stdcall gos_UpdateBuffer(HGOSBUFFER buffer, void* data, size_t offset, size_t num_bytes);
-void __stdcall gos_BindBufferBase(HGOSBUFFER buffer, uint32_t slot);
 
 uint32_t gos_GetBufferSizeBytes(HGOSBUFFER buffer);
 
@@ -3035,7 +3028,6 @@ bool __stdcall gos_ProbeDrawableSize( int* w, int* h );
 // needed at the call site -- ImGui's own image draw handles that.
 void __stdcall gos_BeginCameraPreviewRender();
 void __stdcall gos_EndCameraPreviewRender();
-unsigned int __stdcall gos_GetCameraPreviewTexture();   // GLuint, avoids a GL include here
 
 //
 // This API sets the current gamma correction value. The default value is 1.0 (no correction applied). All color values are effected by (value/255 ^ (1.0/gamma)).
@@ -3180,7 +3172,7 @@ DWORD __stdcall gos_NewTextureFromMemory( gos_TextureFormat Format, const char* 
 // single level, GL_LINEAR filtering (no mips). Returns INVALID_TEXTURE_ID on
 // failure so callers can fall back to the uncompressed path.
 //
-DWORD __stdcall gos_NewCompressedTexture2D( uint32_t glInternalFormat, int Width, int Height, const uint8_t* BlockData, size_t ByteLen, const char* Name );
+DWORD __stdcall gos_NewCompressedTexture2D( uint32_t vkFormat, int Width, int Height, const uint8_t* BlockData, size_t ByteLen, const char* Name );
 
 #define RECT_TEX(width,height) (((height)<<16)|(width))
 
@@ -3232,7 +3224,6 @@ void __stdcall gos_UnLockTexture( DWORD Handle );
 // the handle is invalid. Used by the D3F font loader to bind atlases via
 // raw GL calls rather than the gos texture-state machine.
 //
-uint32_t __stdcall gos_GetTextureGLId( DWORD Handle );
 
 //
 // Converts from 32bpp source to subrect of n-bpp dest, bypassing intermediate 32bpp buffer

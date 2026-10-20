@@ -63,62 +63,10 @@ def _v(name: str, defines: list[str],
             "version": version, "rewrites": rewrites or []}
 
 
+# Runtime variants are native Vulkan pipelines. Only offline ABI fixtures need a prefix.
 SHADER_VARIANTS: dict[str, list[dict]] = {
-    "shaders/static_prop.frag": [
-        _v("default",           []),
-        _v("coalesce",          ["MC2_COALESCE=1"]),
-        _v("objectid",          ["MC2_OBJECT_ID_BUFFER=1"]),
-        _v("coalesce_objectid", ["MC2_COALESCE=1", "MC2_OBJECT_ID_BUFFER=1"]),
-    ],
-    "shaders/static_prop.vert": [
-        _v("default",           []),
-        _v("coalesce",          ["MC2_COALESCE=1"],
-           version=_V460, rewrites=_DRAW_PARAMS_REWRITES),
-        _v("objectid",          ["MC2_OBJECT_ID_BUFFER=1"]),
-        _v("coalesce_objectid", ["MC2_COALESCE=1", "MC2_OBJECT_ID_BUFFER=1"],
-           version=_V460, rewrites=_DRAW_PARAMS_REWRITES),
-    ],
-    "shaders/mech.frag": [
-        _v("default",  []),
-        _v("objectid", ["MC2_OBJECT_ID_BUFFER=1"]),
-        # The ViewUniforms variant compiles the specular block
-        # (u_cameraWorldPos + the spec uniforms) — covers its GLSL validity and
-        # locks the binding=3 ViewUniformsBlock interface in the fragment stage.
-        _v("viewuniforms", ["MC2_USE_VIEW_UNIFORMS=1"]),
-    ],
-    "shaders/mech.vert": [
-        _v("default",      []),
-        _v("objectid",     ["MC2_OBJECT_ID_BUFFER=1"]),
-        # Reflect the gated UBO path so
-        # binding=3 (ViewUniformsBlock) is visible in the golden and the legacy
-        # u_worldToClipGL uniform is confirmed absent on this variant.
-        _v("viewuniforms", ["MC2_USE_VIEW_UNIFORMS=1"]),
-    ],
-    "shaders/shadow_static_prop.vert": [
-        _v("default",  []),
-        _v("coalesce", ["MC2_COALESCE=1"]),
-    ],
-    "shaders/fixtures/material_gpu_contract.frag": [
-        _v("default", []),
-    ],
-    "shaders/fixtures/view_uniforms_contract.frag": [
-        _v("default", []),
-    ],
-    # gpu_cull compute variants.
-    # C1b mode adds VisibleIds/perBucketCount/actorVisBits/StickyBits SSBOs.
-    # C2_READBACK adds ReadbackBuf at binding=READBACK_SSBO_BINDING (14).
-    # READBACK_SSBO_BINDING is normally injected by build_cull_program at
-    # runtime; we pin it to 14 here to match gpu_cull_readback.h.
-    "shaders/gpu_cull.comp": [
-        _v("default",    []),
-        _v("c1b",        ["GPU_CULL_C1B_INDIRECT"]),
-        _v("c2_readback", ["GPU_CULL_C2_READBACK", "READBACK_SSBO_BINDING=14"]),
-    ],
-    # cardcloud_sim.comp ABI golden.
-    # Single SSBO (CardCloudSimBuf, binding=0) containing Particle array (64 B).
-    "shaders/cardcloud_sim.comp": [
-        _v("default", []),
-    ],
+    "shaders/fixtures/material_gpu_contract.frag": [_v("default", [])],
+    "shaders/fixtures/view_uniforms_contract.frag": [_v("default", [])],
 }
 
 # Macros that gate variant-specific bindings. Used for coverage audit.
@@ -301,7 +249,6 @@ def compile_to_spv(
     extra_defines: list[str],
     extra_token_rewrites: list[tuple[str, str]],
     glslang: str,
-    vulkan: bool,
     version_override: str | None = None,
 ) -> tuple[bool, str, Path | None]:
     """Compile shader to SPIR-V. Returns (ok, diagnostic, spv_path_or_None).
@@ -312,9 +259,16 @@ def compile_to_spv(
     """
     stage = shader_common.STAGE_BY_EXT[shader.suffix]
     try:
-        src = shader_common.build_shader_source(
-            shader, extra_defines, version_override, extra_token_rewrites
-        )
+        if shader.is_relative_to(ROOT / "shaders/vulkan"):
+            # Compile the real native source and its SDK include directives, without a GL prefix.
+            src = shader.read_text(encoding="utf-8")
+            if extra_defines:
+                first, rest = src.split("\n", 1)
+                src = first + "\n" + "".join("#define " + d.replace("=", " ", 1) + "\n" for d in extra_defines) + rest
+        else:
+            src = shader_common.build_shader_source(
+                shader, extra_defines, version_override, extra_token_rewrites
+            )
     except OSError as e:
         return False, f"read error: {e}", None
     except ValueError as e:
@@ -334,11 +288,9 @@ def compile_to_spv(
             "-S", stage,
             "--auto-map-locations",
             "--auto-map-bindings",
+            "-I" + str(shader.parent),
         ]
-        if vulkan:
-            cmd += ["-V", "-R"]
-        else:
-            cmd += ["-G"]
+        cmd += ["-V", "-R"]
         cmd += [str(tmp), "-o", str(spv_path)]
 
         proc = subprocess.run(cmd, capture_output=True, **console_child.child_kwargs(redirected=True))
@@ -720,11 +672,6 @@ def main() -> int:
         action="store_true",
         help="Promote variant-coverage WARNINGs to FAILs.",
     )
-    ap.add_argument(
-        "--gl",
-        action="store_true",
-        help="Use GL-semantics SPIR-V (-G) instead of Vulkan (-V -R).",
-    )
     args = ap.parse_args()
 
     # CI guard: reject --update in CI environments.
@@ -751,7 +698,6 @@ def main() -> int:
     print("reflect: tool versions:")
     _print_tool_versions(glslang, spirv_cross)
 
-    vulkan = not args.gl
 
     # Build target list.
     if args.shader:
@@ -806,7 +752,7 @@ def main() -> int:
             label = f"{shader_rel} [{variant_name}]"
 
             ok, diag, spv_path = compile_to_spv(
-                shader, extra_defines, vdef["rewrites"], glslang, vulkan,
+                shader, extra_defines, vdef["rewrites"], glslang,
                 version_override=vdef["version"],
             )
             if not ok:
@@ -892,7 +838,7 @@ def main() -> int:
                 save_golden(sr, vn, ct)
 
     total = passed + skipped + compile_errors + drifted + new_goldens
-    mode = "Vulkan" if vulkan else "GL"
+    mode = "Vulkan"
     action = "updated" if args.update else "checked"
     print(
         f"\nreflect: {passed} {action}, {drifted} drifted, "
