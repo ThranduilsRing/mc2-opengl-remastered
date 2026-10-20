@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in move_internal.h.
 #include "move_internal.h"
 #include "../GameOS/gameos/utils/mc2log.h"
+#include <mdspan>
 
 
 // Bounded readPacket helper for GlobalMap::init — refuses to read a packet
@@ -68,9 +69,10 @@ void GlobalMap::init (long w, long h) {
 	width = w;
 	height = h;
 	areaMap = mc2::globalmap::ownZeroed(areaMapStore, static_cast<size_t>(w) * static_cast<size_t>(h));
+	std::mdspan<short, std::dextents<std::size_t, 2>> areaView(areaMap, static_cast<std::size_t>(height), static_cast<std::size_t>(width));
 	for (long r = 0; r < height; r++)
 		for (long c = 0; c < width; c++)
-			areaMap[r * width + c] = -1;
+			areaView[r, c] = -1;
 
 	gosASSERT(((width % SECTOR_DIM) == 0) && ((height % SECTOR_DIM) == 0));
 	sectorWidth = w / SECTOR_DIM;
@@ -734,15 +736,17 @@ void GlobalMap::calcSpecialAreas (MissionMapCellInfo* mapData) {
 	memset(areaLogged, false, 64000);
 	long biggestID = -1;
 	long smallestID = 99999;
+	std::mdspan<short, std::dextents<std::size_t, 2>> areaView(areaMap, static_cast<std::size_t>(height), static_cast<std::size_t>(width));
+	std::mdspan<MissionMapCellInfo, std::dextents<std::size_t, 2>> mapDataView(mapData, static_cast<std::size_t>(height), static_cast<std::size_t>(width));
 	for (long r = 0; r < height; r++)
 		for (long c = 0; c < width; c++) {
-			if (mapData[r * width + c].specialType != SPECIAL_NONE) {
-				long ID = mapData[r * width + c].specialID;
+			if (mapDataView[r, c].specialType != SPECIAL_NONE) {
+				long ID = mapDataView[r, c].specialID;
 				if (ID > biggestID)
 					biggestID = ID;
 				if (ID < smallestID)
 					smallestID = ID;
-				switch (mapData[r * width + c].specialType) {
+				switch (mapDataView[r, c].specialType) {
 					case SPECIAL_GATE:
 						if (!areaLogged[ID]) {
 							specialAreas[ID].type = SPECIAL_GATE;
@@ -750,7 +754,7 @@ void GlobalMap::calcSpecialAreas (MissionMapCellInfo* mapData) {
 							specialAreas[ID].numCells = 0;
 							areaLogged[ID] = true;
 						}
-						areaMap[r * width + c] = ID;
+						areaView[r, c] = ID;
 						GameMap->setBuildGate(r, c, true);
 						specialAreas[ID].cells[specialAreas[ID].numCells][0] = r;
 						specialAreas[ID].cells[specialAreas[ID].numCells][1] = c;
@@ -763,7 +767,7 @@ void GlobalMap::calcSpecialAreas (MissionMapCellInfo* mapData) {
 							specialAreas[ID].numCells = 0;
 							areaLogged[ID] = true;
 						}
-						areaMap[r * width + c] = ID;
+						areaView[r, c] = ID;
 						GameMap->setBuildWall(r, c, true);
 						specialAreas[ID].cells[specialAreas[ID].numCells][0] = r;
 						specialAreas[ID].cells[specialAreas[ID].numCells][1] = c;
@@ -776,7 +780,7 @@ void GlobalMap::calcSpecialAreas (MissionMapCellInfo* mapData) {
 							specialAreas[ID].numCells = 0;
 							areaLogged[ID] = true;
 						}
-						areaMap[r * width + c] = ID;
+						areaView[r, c] = ID;
 						GameMap->setBuildLandBridge(r, c, true);
 						specialAreas[ID].cells[specialAreas[ID].numCells][0] = r;
 						specialAreas[ID].cells[specialAreas[ID].numCells][1] = c;
@@ -811,14 +815,15 @@ long GlobalMap::setTempArea (long tileR, long tileC, long cost) {
 
 bool GlobalMap::fillSpecialArea (long row, long col, long area, long specialID) {
 
-	areaMap[row * width + col] = area;
+	std::mdspan<short, std::dextents<std::size_t, 2>> areaView(areaMap, static_cast<std::size_t>(height), static_cast<std::size_t>(width));
+	areaView[row, col] = area;
 	GameMap->setBuildNotSet(row, col, false);
 
 	for (long dir = 0; dir < 4; dir ++) {
 		long adjR = row + adjTile[dir][0];
 		long adjC = col + adjTile[dir][1];
 		if ((adjR >= minRow) && (adjR < maxRow) && (adjC >= minCol) && (adjC < maxCol))
-			if (GameMap->getBuildNotSet(adjR, adjC) && (areaMap[adjR * width + adjC] == specialID))
+			if (GameMap->getBuildNotSet(adjR, adjC) && (areaView[adjR, adjC] == specialID))
 				fillSpecialArea(adjR, adjC, area, specialID);
 	}
 	
@@ -827,6 +832,7 @@ bool GlobalMap::fillSpecialArea (long row, long col, long area, long specialID) 
 
 bool GlobalMap::fillArea (long row, long col, long area, bool offMap) {
 
+	std::mdspan<short, std::dextents<std::size_t, 2>> areaView(areaMap, static_cast<std::size_t>(height), static_cast<std::size_t>(width));
 	if ((row < minRow) || (row >= maxRow) || (col < minCol) || (col >= maxCol))
 		return(false);
 
@@ -847,18 +853,18 @@ bool GlobalMap::fillArea (long row, long col, long area, bool offMap) {
 
 	if (!blank) {
 		if (!hover && GameMap->getDeepWater(row, col)) {
-			areaMap[row * width + col] = -2;
+			areaView[row, col] = -2;
 			return(false);
 		}
 
 		if (!offMap && !GameMap->getPassable(row, col)) {
-			areaMap[row * width + col] = -2;
+			areaView[row, col] = -2;
 			return(false);
 		}
 	}
 
 	gosASSERT(area != -1);
-	areaMap[row * width + col] = area;
+	areaView[row, col] = area;
 	for (long dir = 0; dir < 4; dir ++) {
 		long adjR = row + adjTile[dir][0];
 		long adjC = col + adjTile[dir][1];
@@ -909,6 +915,7 @@ void GlobalMap::calcAreas (void) {
 	// Large area maps use -1 and -2 to indicate blocked area. CalcArea will
 	// always return -1 for blocked-area cells.
 
+	std::mdspan<short, std::dextents<std::size_t, 2>> areaView(areaMap, static_cast<std::size_t>(height), static_cast<std::size_t>(width));
 
 	for (long r = 0; r < sectorHeight; r++)
 		for (long c = 0; c < sectorWidth; c++)
@@ -946,7 +953,7 @@ void GlobalMap::calcAreas (void) {
 			maxCol = minCol + SECTOR_DIM;
 			for (long r = minRow; r < maxRow; r++)
 				for (long c = minCol; c < maxCol; c++) {
-					long curArea = areaMap[r * width + c];
+					long curArea = areaView[r, c];
 					if (curArea > -1) {
 						areas[curArea].sectorR = sectorR;
 						areas[curArea].sectorC = sectorC;
