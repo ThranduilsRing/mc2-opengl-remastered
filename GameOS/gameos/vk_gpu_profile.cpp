@@ -9,6 +9,7 @@
 #include <deque>
 #include <mutex>
 #include <new>
+#include <string_view>
 #include <vector>
 
 #include "Gates/gate.h"
@@ -65,7 +66,9 @@ struct State {
 State g;
 
 #ifdef TRACY_ENABLE
-const tracy::SourceLocationData* locFor(const char* name, const char* file, uint32_t line) {
+const tracy::SourceLocationData* locFor(std::string_view nameSv, std::string_view fileSv, uint32_t line) {
+    const char* name = nameSv.data();
+    const char* file = fileSv.data();
     std::lock_guard<std::mutex> lock(g.srclocMutex);
     for (const State::Loc& l : g.locs)
         if (l.name == name && l.line == line) return &l.data;
@@ -77,7 +80,8 @@ static_assert(alignof(tracy::VkCtxScope) <= 16, "Scope::tracyZone_ alignment");
 tracy::VkCtxScope* zone(unsigned char* p) { return std::launder(reinterpret_cast<tracy::VkCtxScope*>(p)); }
 #endif
 
-Row& rowFor(const char* name) {
+Row& rowFor(std::string_view nameSv) {
+    const char* name = nameSv.data();
     for (uint32_t i = 0; i < g.rowCount; ++i)
         if (g.rows[i].name == name || std::strcmp(g.rows[i].name, name) == 0) return g.rows[i];
     if (g.rowCount < kMaxNames) { g.rows[g.rowCount].name = name; return g.rows[g.rowCount++]; }
@@ -138,7 +142,7 @@ void readSlot(uint32_t slot, uint32_t& used) {
     }
     if (!any) return;
     for (uint32_t k = 0; k < nNames; ++k) {
-        Row& row = rowFor(nameOf[k]);
+        Row& row = rowFor(std::string_view(nameOf[k]));
         row.sumMs += perName[k];
         row.calls += callsOf[k];
         ++row.frames;
@@ -265,7 +269,8 @@ void frameEnd() {
     g.frame.fetch_add(1, std::memory_order_relaxed);
 }
 
-Scope::Scope(VkCommandBuffer cb, const char* name, [[maybe_unused]] const char* file, [[maybe_unused]] uint32_t line) {
+Scope::Scope(VkCommandBuffer cb, std::string_view nameSv, [[maybe_unused]] std::string_view file, [[maybe_unused]] uint32_t line) {
+    const char* name = nameSv.data();
     if (cb == VK_NULL_HANDLE || g.device == VK_NULL_HANDLE) return;
     cb_ = cb;
     if (g.labels) {

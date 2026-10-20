@@ -9484,6 +9484,43 @@
    "count": 1
   },
   {
+   "tag": "VK_GPU_PASSES",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "frame",
+    "n",
+    "span_ms",
+    "sum_ms",
+    "unattributed_ms",
+    "scopes",
+    "dropped",
+    "overflow"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_GPU_PASSES",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "ns_per_tick",
+    "scopes_per_frame"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_GPU_PROFILE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "debug_labels",
+    "timestamps",
+    "tracy_ctx"
+   ],
+   "count": 1
+  },
+  {
    "tag": "VK_HUD_AUDIT",
    "ver": 1,
    "stream": "stderr",
@@ -10434,6 +10471,8 @@
   }
  ],
  "consumed_tags": [
+  "ALLOC_RELOAD",
+  "ALLOC_TICK",
   "APPEAR_AUDIT",
   "ASSET_LOAD",
   "ASSET_SCALE",
@@ -10477,6 +10516,7 @@
   "SIMID",
   "SMOKE",
   "SOAK",
+  "SOUND",
   "SPLATTING",
   "TEXLOAD",
   "TEXMGR_MISSING",

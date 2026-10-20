@@ -17,6 +17,7 @@
 #include <volk.h>
 
 #include <cstdint>
+#include <string_view>
 
 namespace mc2vk {
 class VulkanContext;
@@ -35,7 +36,8 @@ bool active();
 
 class Scope {
 public:
-    Scope(VkCommandBuffer cb, const char* name, const char* file, uint32_t line);
+    // `name` and `file` must be string literals (their data pointers are kept).
+    Scope(VkCommandBuffer cb, std::string_view name, std::string_view file, uint32_t line);
     ~Scope() { end(); }
     Scope(const Scope&) = delete;
     Scope& operator=(const Scope&) = delete;
