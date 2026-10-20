@@ -193,6 +193,10 @@ public:
     void cacheCooked(const TextureKey& key, std::shared_ptr<const KtxImage> image) {
         std::lock_guard<std::mutex> lk(mu_); cooked_[key] = std::move(image);
     }
+    // Mission-boundary eviction; live handles and borrowed decode results stay valid.
+    void clearCookedCache() {
+        std::lock_guard<std::mutex> lk(mu_); cooked_.clear();
+    }
     bool retainNode(uint32_t node) {
         std::lock_guard<std::mutex> lk(mu_);
         auto it=byNode_.find(node);

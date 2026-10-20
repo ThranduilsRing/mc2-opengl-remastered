@@ -28,6 +28,35 @@ struct Sources {
 }
 
 TEST_SUITE("TextureSources") {
+TEST_CASE("cooked images retire across distinct missions while live handles survive") {
+    Sources s;
+    RenderCore::TextureKey persistent; persistent.source="persistent-ui";
+    const auto live=s.service.acquire(persistent,RenderCore::kNoTextureNode,{32,16,32,16});
+    for (int mission=0;mission<4;++mission) {
+        std::vector<std::weak_ptr<const RenderCore::KtxImage>> images;
+        RenderCore::TextureKey key;
+        for (int i=0;i<16;++i) {
+            key.source="mission/"+std::to_string(mission)+"/sidecar/"+std::to_string(i);
+            auto image=std::make_shared<RenderCore::KtxImage>();
+            image->pixels.resize(size_t(mission+1)*(i+1)*1024);
+            images.push_back(image); s.service.cacheCooked(key,std::move(image));
+            const auto h=s.service.acquire(key);
+            REQUIRE(s.service.release(h)); // source retirement alone did not evict cooked bytes
+        }
+        for (const auto& image:images) REQUIRE_FALSE(image.expired());
+        auto pending=s.service.cooked(key); // a pending upload may legitimately retain its pixels
+        const auto size=pending->pixels.size();
+        s.index->flush(false); // the real mission boundary
+        CHECK_FALSE(bool(s.service.cooked(key)));
+        CHECK(s.service.isLive(live)); CHECK(s.service.dimensions(live).width==32);
+        CHECK(pending->pixels.size()==size);
+        for (size_t i=0;i+1<images.size();++i) CHECK(images[i].expired());
+        CHECK_FALSE(images.back().expired());
+        pending.reset();
+        for (const auto& image:images) CHECK(image.expired()); // cache-owned retained bytes return to zero
+    }
+}
+
 TEST_CASE("more than 4096 live source assets require no renderer or residency slots") {
     Sources s;
     DWORD last=0;

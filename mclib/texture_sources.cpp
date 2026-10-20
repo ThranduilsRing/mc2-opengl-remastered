@@ -103,6 +103,7 @@ void TextureSources::flush(bool all) {
         if (all) while (source->pins) { --source->pins; RenderCore::textureService().release(source->handle); }
     }
     collectRetired();
+    RenderCore::textureService().clearCookedCache();
     mc2::fmt::print_out("[TEXTURE_SOURCES] boundary={} live={} roots={} owned={} encoded_bytes={} legacy_cache_bytes=0\n",
                        all ? "shutdown" : "mission",live,roots,owned,encoded);
 }
