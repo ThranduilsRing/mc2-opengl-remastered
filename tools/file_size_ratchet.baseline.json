@@ -13,20 +13,19 @@
   "gui"
  ],
  "files_over_1500": {
-  "GameOS/gameos/engine_present_vk.cpp": 2935,
-  "GameOS/gameos/utils/shader_builder.cpp": 1532,
-  "GameOS/gameos/vulkan_color_prop_island.cpp": 1730,
-  "GameOS/gameos/vulkan_shadow_island_live.cpp": 1544,
-  "GameOS/include/gameos.hpp": 3730,
+  "GameOS/gameos/engine_present_vk.cpp": 2783,
+  "GameOS/gameos/vulkan_color_prop_island.cpp": 1722,
+  "GameOS/gameos/vulkan_shadow_island_live.cpp": 1543,
+  "GameOS/include/gameos.hpp": 3721,
   "RenderCore/RendererFeatureRegistry.h": 1610,
   "code/artlry.cpp": 1833,
   "code/bldng.cpp": 1691,
   "code/brain_special_dispatch.cpp": 2771,
-  "code/gamecam.cpp": 1615,
+  "code/gamecam.cpp": 1608,
   "code/gameobj.cpp": 2241,
-  "code/infowindow.cpp": 1729,
+  "code/infowindow.cpp": 1730,
   "code/logisticsdialog.cpp": 2149,
-  "code/mechicon.cpp": 1978,
+  "code/mechicon.cpp": 1979,
   "code/mechlabscreen.cpp": 1952,
   "code/mechlopedia.cpp": 1623,
   "code/missionbegin.cpp": 2167,
@@ -49,17 +48,15 @@
   "mclib/camera.h": 1815,
   "mclib/file.cpp": 2614,
   "mclib/gosfx/fcurve.cpp": 1923,
-  "mclib/mapdata.cpp": 2517,
+  "mclib/mapdata.cpp": 2518,
   "mclib/mlr/mlrlightmap.cpp": 1648,
   "mclib/mlr/mlrprimitiveclipping.hpp": 1722,
   "mclib/mlr/mlrtriangleclipping.hpp": 2112,
   "mclib/move.h": 1891,
-  "mclib/render_contract.cpp": 1526,
-  "mclib/terrtxm.cpp": 1815,
-  "mclib/tgl.h": 1799,
-  "shaders/terrain_lod_chunk.frag": 2096
+  "mclib/terrtxm.cpp": 1816,
+  "mclib/tgl.h": 1799
  },
- "head": "acf37556f",
+ "head": "5125c5717",
  "per_dir": {
   "GameAdapters": {
    "files": 9,
@@ -68,10 +65,10 @@
    "max_lines": 466
   },
   "GameOS": {
-   "files": 358,
-   "files_over_1500": 5,
+   "files": 339,
+   "files_over_1500": 4,
    "files_over_3000": 1,
-   "max_lines": 3730
+   "max_lines": 3721
   },
   "GuiRuntime": {
    "files": 14,
@@ -80,7 +77,7 @@
    "max_lines": 1153
   },
   "RenderCore": {
-   "files": 60,
+   "files": 58,
    "files_over_1500": 1,
    "files_over_3000": 0,
    "max_lines": 1610
@@ -89,7 +86,7 @@
    "files": 8,
    "files_over_1500": 0,
    "files_over_3000": 0,
-   "max_lines": 1040
+   "max_lines": 1027
   },
   "code": {
    "files": 411,
@@ -110,16 +107,16 @@
    "max_lines": 1513
   },
   "mclib": {
-   "files": 561,
-   "files_over_1500": 14,
+   "files": 563,
+   "files_over_1500": 13,
    "files_over_3000": 0,
    "max_lines": 2614
   },
   "shaders": {
-   "files": 140,
-   "files_over_1500": 1,
+   "files": 86,
+   "files_over_1500": 0,
    "files_over_3000": 0,
-   "max_lines": 2096
+   "max_lines": 851
   }
  },
  "thresholds": [
@@ -129,11 +126,11 @@
  "top": [
   {
    "file": "GameOS/include/gameos.hpp",
-   "lines": 3730
+   "lines": 3721
   },
   {
    "file": "GameOS/gameos/engine_present_vk.cpp",
-   "lines": 2935
+   "lines": 2783
   },
   {
    "file": "code/brain_special_dispatch.cpp",
@@ -149,7 +146,7 @@
   },
   {
    "file": "mclib/mapdata.cpp",
-   "lines": 2517
+   "lines": 2518
   },
   {
    "file": "code/objective.cpp",
@@ -188,16 +185,12 @@
    "lines": 2109
   },
   {
-   "file": "shaders/terrain_lod_chunk.frag",
-   "lines": 2096
-  },
-  {
    "file": "editor/tests/test_objectives.cpp",
    "lines": 1996
   },
   {
    "file": "code/mechicon.cpp",
-   "lines": 1978
+   "lines": 1979
   },
   {
    "file": "code/mechlabscreen.cpp",
@@ -232,11 +225,11 @@
    "lines": 1833
   },
   {
-   "file": "mclib/camera.h",
-   "lines": 1815
+   "file": "mclib/terrtxm.cpp",
+   "lines": 1816
   },
   {
-   "file": "mclib/terrtxm.cpp",
+   "file": "mclib/camera.h",
    "lines": 1815
   },
   {
@@ -246,13 +239,17 @@
   {
    "file": "mclib/tgl.h",
    "lines": 1799
+  },
+  {
+   "file": "code/infowindow.cpp",
+   "lines": 1730
   }
  ],
  "total": {
-  "files": 1872,
-  "files_over_1500": 45,
+  "files": 1799,
+  "files_over_1500": 42,
   "files_over_3000": 1,
-  "max_lines": 3730
+  "max_lines": 3721
  },
  "version": 1
 }
