@@ -20,7 +20,7 @@ bool s_basePrinted = false;
 
 void prefix()
 {
-	mc2::fmt::print_out("[DT] f={:d} t={:.4f} ", mc2::fmt::as_u32(g_mc2FrameCounter), s_time);
+	std::printf("[DT] f=%u t=%.4f ", static_cast<unsigned>(g_mc2FrameCounter), s_time);
 }
 
 void setTime(double scenarioTime)

@@ -516,7 +516,7 @@ void MechWarrior::setLastTarget (GameObjectPtr target, bool obliterate, bool con
 			target->incrementAttackers();
 	}
 
-	MC2_SIM_TRACE_LINE("SETTGT pilot={:d} tgt={:d}", mc2::fmt::as_i32(getVehicle()->getPartId()), mc2::fmt::as_i32((target ? target->getPartId() : -1)));
+	MC2_SIM_TRACE_LINE("SETTGT pilot={:d} tgt={:d}", static_cast<int32_t>(getVehicle()->getPartId()), static_cast<int32_t>((target ? target->getPartId() : -1)));
 	if (target) {
 		lastTargetWID = target->getWatchID();
 		lastTargetFriendly = target->isFriendly(getVehicle());

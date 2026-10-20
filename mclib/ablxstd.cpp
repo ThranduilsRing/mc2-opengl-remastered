@@ -216,7 +216,7 @@ TypePtr execStandardRoutineCall (SymTableNodePtr routineIdPtr, bool skipOrder) {
 					}
 				} else if (cb) {
 #if MC2_SIM_TRACE_ABL
-					MC2_SIM_TRACE_LINE("ABL mod={} ln={:d} fn={}", mc2::fmt::safe(CurModule ? CurModule->getName() : "?"), mc2::fmt::as_i32(execLineNumber), mc2::fmt::safe(routineIdPtr->name));
+					MC2_SIM_TRACE_LINE("ABL mod={} ln={:d} fn={}", mc2_sim_trace::safe(CurModule ? CurModule->getName() : "?"), static_cast<int32_t>(execLineNumber), mc2_sim_trace::safe(routineIdPtr->name));
 #endif
 					(*cb)();
 				} else {
