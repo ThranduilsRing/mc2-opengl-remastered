@@ -7,17 +7,8 @@ static const int kMatAlbedoLayerCount = 6;
 static const char* const kMatAlbedoChannelNames[kMatAlbedoLayerCount] = {
     "rock", "grass", "dirt", "concrete", "snow", "cliff"
 };
-// TERRAIN-MATERIAL-TEXTURES-1-FIX (fix A, INDEX ORACLE -- shared source of truth):
-// This table is the C++ mirror of the frag's MAT_LAYER_* constants
-// (shaders/include/terrain_mat_layers.hglsl). The albedo array is uploaded in
-// kMatAlbedoChannelNames[] order (layer i = channel i), and the frag samples
-// channel C at texture()'s layer arg = MAT_LAYER_<C>. Those two orders MUST agree
-// or dirt renders with the concrete/road albedo (the reported bug). kMatAlbedoExpectedLayer[i]
-// records what the frag's constant table says layer i should be; a load-time HARD
-// ERROR fires (and the array is disabled -> legacy tint path) if array index i !=
-// its frag constant. Keep these six values equal to their index -- if the frag
-// header ever reorders, update BOTH here and terrain_mat_layers.hglsl in lockstep.
-//   MAT_LAYER_ROCK=0 GRASS=1 DIRT=2 CONCRETE=3 SNOW=4 MARBLE_CLIFF=5
+// Channel IDs match shaders/include/terrain_mat_layers.hglsl and the terrain-layer
+// cooker. The public lookup returns the name-table index directly.
 static char  s_matAlbedoLayerPath[kMatAlbedoLayerCount][512] = {{0}};
 static char  s_matAlbedoTextureRoot[512] = {0};  // default data/terrain_layers/
 // JSON strength (matAlbedoStrength). <0 = "no JSON value" sentinel; the bind
