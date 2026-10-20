@@ -1,33 +1,34 @@
 // Native Vulkan scene pass executor. Geometry staging belongs to the submission queue.
 #pragma once
 #include <cstdint>
-class MC_TextureManager;
+namespace mc2 { class RenderSubmissions; }
 namespace mc2 {
 class VkSceneRenderer {
 public:
+    static void beginFrame();
 		//Sends down the triangle lists
-		static void renderLists (MC_TextureManager& submissions);
+		static void renderLists (RenderSubmissions& submissions);
 
 	private:
 		// Passes run in the order defined by vk_scene_renderer.cpp.
-		static void renderListsPreamble (MC_TextureManager& submissions);
-		static void renderListsSceneDataUpload (MC_TextureManager& submissions);
-		static void renderListsObjects3D (MC_TextureManager& submissions);
-		static void renderListsPostObjectsStateRestore (MC_TextureManager& submissions);
-		static void renderListsStaticShadowBuild (MC_TextureManager& submissions);
-		static void renderListsStaticPropRegistryFlush (MC_TextureManager& submissions);
-		static void renderListsDynamicShadowPass (MC_TextureManager& submissions);
-		static void renderListsTerrainSolid (MC_TextureManager& submissions);
-		static void renderListsGpuStaticProps (MC_TextureManager& submissions);
-		static void renderListsOverlayBatches (MC_TextureManager& submissions);
-		static void renderListsOverlaysWaterLoops (MC_TextureManager& submissions);
-		static void renderListsOverlaysNoUnderlayer (MC_TextureManager& submissions);
-		static void renderListsOverlaysShadowBlobs (MC_TextureManager& submissions);
-		static void renderListsOverlaysNonTerrainAlpha (MC_TextureManager& submissions);
-		static void renderListsOverlaysVfxHudSubmit (MC_TextureManager& submissions);
-		static void renderListsOverlaysOld (MC_TextureManager& submissions);
+		static void renderListsPreamble (RenderSubmissions& submissions);
+		static void renderListsSceneDataUpload (RenderSubmissions& submissions);
+		static void renderListsObjects3D (RenderSubmissions& submissions);
+		static void renderListsPostObjectsStateRestore (RenderSubmissions& submissions);
+		static void renderListsStaticShadowBuild (RenderSubmissions& submissions);
+		static void renderListsStaticPropRegistryFlush (RenderSubmissions& submissions);
+		static void renderListsDynamicShadowPass (RenderSubmissions& submissions);
+		static void renderListsTerrainSolid (RenderSubmissions& submissions);
+		static void renderListsGpuStaticProps (RenderSubmissions& submissions);
+		static void renderListsOverlayBatches (RenderSubmissions& submissions);
+		static void renderListsOverlaysWaterLoops (RenderSubmissions& submissions);
+		static void renderListsOverlaysNoUnderlayer (RenderSubmissions& submissions);
+		static void renderListsOverlaysShadowBlobs (RenderSubmissions& submissions);
+		static void renderListsOverlaysNonTerrainAlpha (RenderSubmissions& submissions);
+		static void renderListsOverlaysVfxHudSubmit (RenderSubmissions& submissions);
+		static void renderListsOverlaysOld (RenderSubmissions& submissions);
 		// VK legacy-shape island queue / run (defined only under MC2_VULKAN_ISLAND).
-		static void vkLegacySubmitNode (MC_TextureManager& submissions, long i, uint32_t pass, uint32_t alphaTest);
-		static void vkLegacyRun (MC_TextureManager& submissions);
+		static void vkLegacySubmitNode (RenderSubmissions& submissions, long i, uint32_t pass, uint32_t alphaTest);
+		static void vkLegacyRun (RenderSubmissions& submissions);
 };
 }

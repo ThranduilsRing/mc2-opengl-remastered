@@ -1,3 +1,4 @@
+#include "txmmgr.h"
 #include "Gates/preferences_legacy.h"
 //--------------------------------------------------------------------------
 //

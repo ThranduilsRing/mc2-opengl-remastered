@@ -1,3 +1,4 @@
+#include "vk_scene_renderer.h"
 #include "utils/mc2log.h"
 #include "Gates/preferences_legacy.h"
 #include "../GameOS/gameos/ui_texture.h"
@@ -289,7 +290,7 @@ void SimpleCamera::render(long xOffset, long yOffset)
 			// EXPERIMENT (PREVIEW-FBO-FIXED-800x600-1 debug): the mech draws zero
 			// PREVIEW-DRAWOLDWAY-1 (THE blank-panel root cause): with drawOldWay
 			// false, TG_Shape::Render does NOT draw — it defers every triangle
-			// into mcTextureManager->addVertices() buckets (tgl.cpp:3252+), which
+			// into mc2::renderSubmissions().addVertices() buckets (tgl.cpp:3252+), which
 			// renderLists() rasterizes LATER in the frame, long after
 			// gos_EndCameraPreviewRender() has restored FBO 0. That is exactly
 			// the observed "fbo=8 pre-draw, curFbo=0 at drawTris, nonBgCount=0"
@@ -337,7 +338,7 @@ void SimpleCamera::render(long xOffset, long yOffset)
 				// cull frustum test runs with last frame's GameCamera MVP, mis-culling
 				// visible actors on every camera-move frame of the intro pan.
 				gos_SetWorldToClipGL(worldToClipGL());
-				mc2::VkSceneRenderer::renderLists(*mcTextureManager);
+				mc2::VkSceneRenderer::renderLists(mc2::renderSubmissions());
 				// CINEMATIC-WATER-1: mirror GameCamera::render (gamecam.cpp:354).
 				// Draw the GPU water fast path after renderLists() so water appears
 				// on the SimpleCamera intro/deployment pan. The cinematic path only
@@ -436,7 +437,7 @@ long SimpleCamera::update()
 		shadowPool->reset();
 		trianglePool->reset();
 
-		mcTextureManager->clearArrays();
+		mc2::VkSceneRenderer::beginFrame();
 
 		Camera::update();
 		//--------------------------------------------------------

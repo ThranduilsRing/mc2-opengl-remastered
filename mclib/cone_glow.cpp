@@ -15,7 +15,7 @@
 #include "vis_semantics.h"   // VISIBILITY-SEMANTICS-1 supersession
 
 #include "msl.h"
-#include "txmmgr.h"
+#include "render_submissions.h"
 #include "camera.h"
 #include "timing.h"
 
@@ -42,7 +42,7 @@ float clampf(float f, float lo, float hi)
 // ---- per-frame glow queue ---------------------------------------------------
 // Reservation (addTriangle) happens at queue time (update phase); vertex fill
 // is deferred to FlushFrame() so the MC2_ISSPOTLGT vertex-block allocation in
-// addVertices sees the FULL frame reservation (txmmgr.h:1014-1020 allocates on
+// addVertices sees the FULL frame reservation (render_submissions.h:1014-1020 allocates on
 // first addVertices with capacity = reservations so far).
 
 struct QueuedTri { gos_VERTEX v[3]; };
@@ -716,7 +716,7 @@ void QueueConeGlow(TG_MultiShape* shape, long nodeId,
         s_tris.push_back(qt);
         // Reserve now (update phase) — capacity lands in the vertex-block
         // allocation made by the FIRST MC2_ISSPOTLGT addVertices this frame.
-        mcTextureManager->addTriangle(0xffffffff, MC2_ISSPOTLGT);
+        mc2::renderSubmissions().addTriangle(0xffffffff, MC2_ISSPOTLGT);
     }
 }
 
@@ -947,7 +947,7 @@ void QueueBeaconGlow(TG_MultiShape* shape, float nightFactor)
                     mkVert(ox0, oy0, inten, qt.v[1]);
                     mkVert(ox1, oy1, inten, qt.v[2]);
                     s_tris.push_back(qt);
-                    mcTextureManager->addTriangle(0xffffffff, MC2_ISSPOTLGT);
+                    mc2::renderSubmissions().addTriangle(0xffffffff, MC2_ISSPOTLGT);
                 }
                 else
                 {
@@ -956,14 +956,14 @@ void QueueBeaconGlow(TG_MultiShape* shape, float nightFactor)
                     mkVert(ox0, oy0, inten, q1.v[1]);
                     mkVert(ox1, oy1, inten, q1.v[2]);
                     s_tris.push_back(q1);
-                    mcTextureManager->addTriangle(0xffffffff, MC2_ISSPOTLGT);
+                    mc2::renderSubmissions().addTriangle(0xffffffff, MC2_ISSPOTLGT);
 
                     QueuedTri q2;
                     mkVert(ix0, iy0, inten, q2.v[0]);
                     mkVert(ox1, oy1, inten, q2.v[1]);
                     mkVert(ix1, iy1, inten, q2.v[2]);
                     s_tris.push_back(q2);
-                    mcTextureManager->addTriangle(0xffffffff, MC2_ISSPOTLGT);
+                    mc2::renderSubmissions().addTriangle(0xffffffff, MC2_ISSPOTLGT);
                 }
                 emittedAny = true;
             }
@@ -988,10 +988,10 @@ void FlushFrame()
     if (s_tris.empty()) return;
     // Only flush the queue built THIS frame; a stale queue (renderLists
     // skipped a frame) is dropped by the turn guard in QueueConeGlow.
-    if (s_queueTurn == turn && mcTextureManager)
+    if (s_queueTurn == turn && mc2::renderSubmissions().active())
     {
         for (size_t i = 0; i < s_tris.size(); ++i)
-            mcTextureManager->addVertices(0xffffffff, s_tris[i].v, MC2_ISSPOTLGT);
+            mc2::renderSubmissions().addVertices(0xffffffff, s_tris[i].v, MC2_ISSPOTLGT);
     }
     s_tris.clear();
 }

@@ -758,11 +758,11 @@ void TG_Shape::xformFaceQueue(bool isHudElement, BYTE alphaValue, bool isClamped
 	
 	if (isSpotlight)
 	{
-		mcTextureManager->addTriangle(0xffffffff,MC2_ISSPOTLGT);
+		mc2::renderSubmissions().addTriangle(0xffffffff,MC2_ISSPOTLGT);
 	}
 	else if (isWindow)
 	{
-		mcTextureManager->addTriangle(0xffffffff, MC2_DRAWALPHA);
+		mc2::renderSubmissions().addTriangle(0xffffffff, MC2_DRAWALPHA);
 	}
 	else
 	{
@@ -771,11 +771,11 @@ void TG_Shape::xformFaceQueue(bool isHudElement, BYTE alphaValue, bool isClamped
 		// So, find out what texture this face is using and mark that texture as needing 3 more vertices.
 		if (theShape->listOfTextures[theShape->listOfTypeTriangles[j].localTextureHandle].textureAlpha || (alphaValue != 0xff))
 		{
-			mcTextureManager->addTriangle(theShape->listOfTextures[theShape->listOfTypeTriangles[j].localTextureHandle].mcTextureNodeIndex,MC2_DRAWALPHA | addFlags);
+			mc2::renderSubmissions().addTriangle(theShape->listOfTextures[theShape->listOfTypeTriangles[j].localTextureHandle].mcTextureNodeIndex,MC2_DRAWALPHA | addFlags);
 		}
 		else
 		{
-			mcTextureManager->addTriangle(theShape->listOfTextures[theShape->listOfTypeTriangles[j].localTextureHandle].mcTextureNodeIndex,MC2_DRAWSOLID | addFlags);
+			mc2::renderSubmissions().addTriangle(theShape->listOfTextures[theShape->listOfTypeTriangles[j].localTextureHandle].mcTextureNodeIndex,MC2_DRAWSOLID | addFlags);
 		}
 
 	}

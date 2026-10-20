@@ -419,7 +419,7 @@ void TerrainQuad::drawLegacyBottomRight(QuadDrawFrame& f) {
 			{
 				// sebi: beware this will be drawn with alpha blending, so need to make sure that alpha is not zero, because this is a base terrain layer!
 				if(terrainHandle!=0) {
-					mcTextureManager->addVertices(terrainHandle,gVertex,MC2_ISTERRAIN | MC2_DRAWSOLID);
+					mc2::renderSubmissions().addVertices(terrainHandle,gVertex,MC2_ISTERRAIN | MC2_DRAWSOLID);
 					// PatchStream append moved to appendQuad after both pz gates.
 				}
 
@@ -522,7 +522,7 @@ void TerrainQuad::drawLegacyBottomRight(QuadDrawFrame& f) {
 					// Counter-only; behaviour unchanged. Post-return legacy body,
 					// unreachable on armed frames; expected ==0 (A2 gate).
 					gos_terrain_indirect::Counters_AddLegacyDrawAlphaDetailQuad();
-					mcTextureManager->addVertices(terrainDetailHandle,sVertex,MC2_ISTERRAIN | MC2_DRAWALPHA);	
+					mc2::renderSubmissions().addVertices(terrainDetailHandle,sVertex,MC2_ISTERRAIN | MC2_DRAWALPHA);
 				}
 			}
 		}
@@ -565,7 +565,7 @@ void TerrainQuad::drawLegacyBottomRight(QuadDrawFrame& f) {
 		{
 			{
 				if(terrainHandle!=0) {
-					mcTextureManager->addVertices(terrainHandle,gVertex,MC2_ISTERRAIN | MC2_DRAWSOLID);
+					mc2::renderSubmissions().addVertices(terrainHandle,gVertex,MC2_ISTERRAIN | MC2_DRAWSOLID);
 					// PatchStream append moved to appendQuad below.
 				}
 
@@ -668,7 +668,7 @@ void TerrainQuad::drawLegacyBottomRight(QuadDrawFrame& f) {
 					// Counter-only; behaviour unchanged. Post-return legacy body,
 					// unreachable on armed frames; expected ==0 (A2 gate).
 					gos_terrain_indirect::Counters_AddLegacyDrawAlphaDetailQuad();
-					mcTextureManager->addVertices(terrainDetailHandle,sVertex,MC2_ISTERRAIN | MC2_DRAWALPHA);
+					mc2::renderSubmissions().addVertices(terrainDetailHandle,sVertex,MC2_ISTERRAIN | MC2_DRAWALPHA);
 				}
 			}
 		}
@@ -736,7 +736,7 @@ void TerrainQuad::drawLegacyBottomLeft(QuadDrawFrame& f) {
 		{
 			{
 				if(terrainHandle!=0) {
-					mcTextureManager->addVertices(terrainHandle,gVertex,MC2_ISTERRAIN | MC2_DRAWSOLID);
+					mc2::renderSubmissions().addVertices(terrainHandle,gVertex,MC2_ISTERRAIN | MC2_DRAWSOLID);
 					// PatchStream append moved to appendQuad after both pz gates.
 				}
 
@@ -796,7 +796,7 @@ void TerrainQuad::drawLegacyBottomLeft(QuadDrawFrame& f) {
 					// Counter-only; behaviour unchanged. Post-return legacy body,
 					// unreachable on armed frames; expected ==0 (A2 gate).
 					gos_terrain_indirect::Counters_AddLegacyDrawAlphaDetailQuad();
-					mcTextureManager->addVertices(terrainDetailHandle,sVertex,MC2_ISTERRAIN | MC2_DRAWALPHA);
+					mc2::renderSubmissions().addVertices(terrainDetailHandle,sVertex,MC2_ISTERRAIN | MC2_DRAWALPHA);
 				}
 				
 				//--------------------------------------------------------------
@@ -880,7 +880,7 @@ void TerrainQuad::drawLegacyBottomLeft(QuadDrawFrame& f) {
 		{
 			{
 				if(terrainHandle!=0) {
-					mcTextureManager->addVertices(terrainHandle,gVertex,MC2_ISTERRAIN | MC2_DRAWSOLID);
+					mc2::renderSubmissions().addVertices(terrainHandle,gVertex,MC2_ISTERRAIN | MC2_DRAWSOLID);
 					// PatchStream append moved to appendQuad below.
 				}
 
@@ -940,7 +940,7 @@ void TerrainQuad::drawLegacyBottomLeft(QuadDrawFrame& f) {
 					// Counter-only; behaviour unchanged. Post-return legacy body,
 					// unreachable on armed frames; expected ==0 (A2 gate).
 					gos_terrain_indirect::Counters_AddLegacyDrawAlphaDetailQuad();
-					mcTextureManager->addVertices(terrainDetailHandle,sVertex,MC2_ISTERRAIN | MC2_DRAWALPHA);
+					mc2::renderSubmissions().addVertices(terrainDetailHandle,sVertex,MC2_ISTERRAIN | MC2_DRAWALPHA);
 				}
 				
 				//--------------------------------------------------------------

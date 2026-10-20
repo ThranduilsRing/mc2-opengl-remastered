@@ -671,7 +671,7 @@ long Mech3DAppearance::render (long depthFixup)
 					// path (stale included -- a stale index is exactly the one
 					// most likely to be out of range after a rebase). Clamps
 					// rather than declines; see the block comment above.
-					if (mcTextureManager &&
+					if (mc2::textures::ready() &&
 					    resolvedLI >= mc2::vkLights::getLightStructCount()) {
 						++s_mechLightRowOutOfRange;
 						static bool s_loggedMechOob = false;

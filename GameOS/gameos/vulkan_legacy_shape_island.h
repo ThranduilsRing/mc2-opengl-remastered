@@ -1,5 +1,5 @@
 // vulkan_legacy_shape_island.h -- VK-PARITY-F1: the VK owner of the LEGACY MLR
-// solid-object vertex loop in mcTextureManager::renderLists (ground vehicles and
+// solid-object vertex loop in mc2::textures::ready()::renderLists (ground vehicles and
 // every other TG_Shape drawn through the CPU-transformed gos_VERTEX path).
 // =============================================================================
 // WHY THIS EXISTS. Under the VK umbrella (MC2_RENDER_BACKEND=vulkan +
@@ -7,7 +7,7 @@
 // and every scene layer must be VK-rendered into the shared GBuffer (see
 // vk_shared_gbuffer_gate.h: "no per-layer GL fallback"). Ground vehicles do NOT go
 // through the GPU static-prop / GPU mech batchers: TG_Shape::Render CPU-transforms
-// and CPU-lights their triangles into gos_VERTEX arrays (mcTextureManager
+// and CPU-lights their triangles into gos_VERTEX arrays (mc2::textures::ready()
 // masterVertexNodes, one array per texture) which renderLists flushes with
 // gos_RenderIndexedArray(gos_VERTEX*) -> gosRenderer::drawIndexedTris -> the basic
 // gos_tex_vertex material. That draw had NO VK owner, so vehicles were rendered
@@ -54,7 +54,7 @@ enum Mc2LegacyMlrPass { MC2_LEGACY_PASS_SOLID = 0, MC2_LEGACY_PASS_ALPHA = 1,
 struct Mc2LegacyMlrDraw {
     const void* vertices;      // gos_VERTEX[vertexCount]
     uint32_t    vertexCount;   // multiple of 3
-    uint32_t    texNode;       // mcTextureManager node index (stable cache key)
+    uint32_t    texNode;       // mc2::textures::ready() node index (stable cache key)
     uint32_t    gosTexHandle;  // LIVE gos texture handle this frame (0 / 0xffffffff = untextured)
     uint32_t    pass;          // Mc2LegacyMlrPass
     uint32_t    alphaTest;     // 1 = discard texel alpha < 0.5 (MC2_ALPHATEST nodes)

@@ -145,7 +145,7 @@ void LogisticsMechIcon::setMech( LogisticsMech* pNewMech )
 		// hardcoded "% 10 / setFileWidth(256)" scrambled those high indices.
 		DWORD atlasW = 0, atlasH = 0;
 		float fileW = 256.f, fileH = 256.f;
-		if ( mcTextureManager &&
+		if ( mc2::textures::ready() &&
 		     mc2::textures::logicalSize( icon.getTextureHandle(), atlasW, atlasH ) )
 		{
 			if ( atlasW > 0 ) fileW = static_cast<float>(atlasW);

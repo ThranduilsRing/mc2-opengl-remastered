@@ -1,3 +1,4 @@
+#include "../RenderCore/TextureService.h"
 //===========================================================================//
 // Copyright (C) Microsoft Corporation. All rights reserved.                 //
 //===========================================================================//
@@ -180,7 +181,7 @@ static void renderObjectViaGuiBridge(const gos_VERTEX* location, unsigned long t
 	{
 		// Diagnostic: alpha-0 skips are invisible by design,
 		// but a PERMANENTLY alpha-0 mech icon is the blank-icon bug signature.
-		if (mc2::gate::get<"MC2_LOG_MECH_ICON">() && textureHandle && mcTextureManager)
+		if (mc2::gate::get<"MC2_LOG_MECH_ICON">() && textureHandle && mc2::textures::ready())
 		{
 			const char* nm = mc2::textures::name(textureHandle);
 			if (nm && strstr(nm, "mechicon"))
@@ -200,7 +201,7 @@ static void renderObjectViaGuiBridge(const gos_VERTEX* location, unsigned long t
 		return;
 
 	uint64_t glTexture = 0;
-	if (textureHandle && mcTextureManager)
+	if (textureHandle && mc2::textures::ready())
 	{
 		glTexture = mc2::textures::uiId(textureHandle);
 	}
@@ -208,7 +209,7 @@ static void renderObjectViaGuiBridge(const gos_VERTEX* location, unsigned long t
 	// Diagnostic: trace every bridge draw of the mech-icon
 	// atlas (texture handle 59 observed via [MECHICON] loadTexture log lines —
 	// name lookup keeps this robust across runs).
-	if (mc2::gate::get<"MC2_LOG_MECH_ICON">() && textureHandle && mcTextureManager)
+	if (mc2::gate::get<"MC2_LOG_MECH_ICON">() && textureHandle && mc2::textures::ready())
 	{
 		const char* nm = mc2::textures::name(textureHandle);
 		if (nm && strstr(nm, "mechicon"))

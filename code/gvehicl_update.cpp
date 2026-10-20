@@ -130,8 +130,8 @@ long GroundVehicle::update (void)
 			
 			if ( attackRange == FIRERANGE_CURRENT && !isDisabled() )
 			{
-				mcTextureManager->addTriangle(holdFireIconHandle,MC2_DRAWALPHA);
-				mcTextureManager->addTriangle(holdFireIconHandle,MC2_DRAWALPHA);
+				mc2::renderSubmissions().addTriangle(holdFireIconHandle,MC2_DRAWALPHA);
+				mc2::renderSubmissions().addTriangle(holdFireIconHandle,MC2_DRAWALPHA);
 			}
 		}
 			
@@ -177,8 +177,8 @@ long GroundVehicle::update (void)
 				
 				if ( attackRange == FIRERANGE_CURRENT && !isDisabled() )
 				{
-					mcTextureManager->addTriangle(holdFireIconHandle,MC2_DRAWALPHA);
-					mcTextureManager->addTriangle(holdFireIconHandle,MC2_DRAWALPHA);
+					mc2::renderSubmissions().addTriangle(holdFireIconHandle,MC2_DRAWALPHA);
+					mc2::renderSubmissions().addTriangle(holdFireIconHandle,MC2_DRAWALPHA);
 				}
 			}
  
@@ -610,8 +610,8 @@ long GroundVehicle::update (void)
 				
 				if ( attackRange == FIRERANGE_CURRENT && !isDisabled() )
 				{
-					mcTextureManager->addTriangle(holdFireIconHandle,MC2_DRAWALPHA);
-					mcTextureManager->addTriangle(holdFireIconHandle,MC2_DRAWALPHA);
+					mc2::renderSubmissions().addTriangle(holdFireIconHandle,MC2_DRAWALPHA);
+					mc2::renderSubmissions().addTriangle(holdFireIconHandle,MC2_DRAWALPHA);
 				}
 			}
 		}

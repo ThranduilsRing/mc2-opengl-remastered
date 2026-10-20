@@ -1,3 +1,4 @@
+#include "txmmgr.h"
 //******************************************************************************************
 //	mission.cpp - This file contains the mission class code
 //		Missions are what scenarios were in MechCommander 1.
@@ -1140,8 +1141,8 @@ void Mission::destroy (bool initLogistics)
 
 	if (mcTextureManager) {
 		mcTextureManager->flush();
-		mcTextureManager->freeVertices();
-		mcTextureManager->freeShapes();
+		mc2::renderSubmissions().freeVertices();
+		mc2::renderSubmissions().freeShapes();
 	}
 
 	if (soundSystem) soundSystem->purgeSoundSystem();

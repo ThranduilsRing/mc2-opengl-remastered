@@ -1,3 +1,4 @@
+#include "../../RenderCore/KtxLoader.h"
 // gos_terrain_indirect: dense recipe storage, recipe slot build/flush, colormap atlas and cement catalog atlas upload.
 // Declared in the class headers; shared names in gos_terrain_indirect_internal.h.
 #include "gos_terrain_indirect_internal.h"

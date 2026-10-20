@@ -1,9 +1,10 @@
+#include "vk_scene_renderer.h"
 // mc2::VkSceneRenderer::renderLists phase 12: the legacy overlay pass (water loops, no-underlayer,
 // shadow blobs, non-terrain alpha, vfx / hud submit).
 
 #include "vk_scene_renderer_internal.h"
 
-void mc2::VkSceneRenderer::renderListsOverlaysWaterLoops (MC_TextureManager& submissions)
+void mc2::VkSceneRenderer::renderListsOverlaysWaterLoops (RenderSubmissions& submissions)
 {
     // sebi: split in 2 parts, first draw objects which have alpha test off, then with alpha test on
 	{
@@ -44,7 +45,7 @@ void mc2::VkSceneRenderer::renderListsOverlaysWaterLoops (MC_TextureManager& sub
 	} // end RenderLists.TerrainAlphaWaterLoops
 }
 
-void mc2::VkSceneRenderer::renderListsOverlaysNoUnderlayer (MC_TextureManager& submissions)
+void mc2::VkSceneRenderer::renderListsOverlaysNoUnderlayer (RenderSubmissions& submissions)
 {
 	//<< sebi: added this section to draw objects which do not have terrain underlayer (those are added in quad.cpp, see (*) there )
 	{ ZoneScopedN("Render.NoUnderlayer");
@@ -68,7 +69,7 @@ void mc2::VkSceneRenderer::renderListsOverlaysNoUnderlayer (MC_TextureManager& s
 	//<< sebi: end of added block
 }
 
-void mc2::VkSceneRenderer::renderListsOverlaysShadowBlobs (MC_TextureManager& submissions)
+void mc2::VkSceneRenderer::renderListsOverlaysShadowBlobs (RenderSubmissions& submissions)
 {
 	// Cement overlays (MC2_ISCRATERS|MC2_ISTERRAIN) and decals (!MC2_ISTERRAIN|MC2_ISCRATERS)
 	// are now drawn by gos_DrawTerrainOverlays() and gos_DrawDecals() before Render.Overlays.
@@ -117,7 +118,7 @@ void mc2::VkSceneRenderer::renderListsOverlaysShadowBlobs (MC_TextureManager& su
 	} // end RenderLists.ShadowBlobs
 }
 
-void mc2::VkSceneRenderer::renderListsOverlaysNonTerrainAlpha (MC_TextureManager& submissions)
+void mc2::VkSceneRenderer::renderListsOverlaysNonTerrainAlpha (RenderSubmissions& submissions)
 {
 	{
 	ZoneScopedN("RenderLists.NonTerrainAlphaLoops");
@@ -162,7 +163,7 @@ void mc2::VkSceneRenderer::renderListsOverlaysNonTerrainAlpha (MC_TextureManager
 	} // end RenderLists.NonTerrainAlphaLoops
 }
 
-void mc2::VkSceneRenderer::renderListsOverlaysVfxHudSubmit (MC_TextureManager& submissions)
+void mc2::VkSceneRenderer::renderListsOverlaysVfxHudSubmit (RenderSubmissions& submissions)
 {
 	{
 	ZoneScopedN("RenderLists.VfxHudSubmit");
@@ -224,10 +225,10 @@ void mc2::VkSceneRenderer::renderListsOverlaysVfxHudSubmit (MC_TextureManager& s
 	gos_SetRenderState( gos_State_ZWrite, 0);
 	gos_SetRenderState( gos_State_ZCompare, 0);
 	gos_SetRenderState( gos_State_Perspective, 1);
- 	gos_SetRenderState( gos_State_AlphaMode, gos_Alpha_AlphaInvAlpha);
+	gos_SetRenderState( gos_State_AlphaMode, gos_Alpha_AlphaInvAlpha);
 	gos_SetRenderState( gos_State_AlphaTest, 1);
 	
- 	for (int i=0;i<submissions.nextAvailableVertexNode;i++)
+	for (int i=0;i<submissions.nextAvailableVertexNode;i++)
 	{
 		if ((submissions.masterVertexNodes[i].flags & MC2_ISCOMPASS) &&
 			(submissions.masterVertexNodes[i].vertices))
@@ -238,7 +239,7 @@ void mc2::VkSceneRenderer::renderListsOverlaysVfxHudSubmit (MC_TextureManager& s
 	
 	gos_SetRenderState( gos_State_Filter, gos_FilterNone);
 	
- 	for (int i=0;i<submissions.nextAvailableVertexNode;i++)
+	for (int i=0;i<submissions.nextAvailableVertexNode;i++)
 	{
 		if ((submissions.masterVertexNodes[i].flags & MC2_ISHUDLMNT) &&
 			(submissions.masterVertexNodes[i].vertices))
@@ -254,7 +255,7 @@ void mc2::VkSceneRenderer::renderListsOverlaysVfxHudSubmit (MC_TextureManager& s
 	} // end RenderLists.VfxHudSubmit
 }
 
-void mc2::VkSceneRenderer::renderListsOverlaysOld (MC_TextureManager& submissions)
+void mc2::VkSceneRenderer::renderListsOverlaysOld (RenderSubmissions& submissions)
 {
 	{
 		ZoneScopedN("Render.Overlays");

@@ -202,7 +202,7 @@ void UiDefs::GameOSPage::clear()
 {
     if (!impl)
         return;
-    // Texture nodes are intentionally left under mcTextureManager ownership.
+    // Texture nodes are intentionally left under mc2::textures::ready() ownership.
     // Several legacy UI classes follow the same cache lifetime; removing here
     // can invalidate shared page art while another screen still references it.
     impl->elements.clear();

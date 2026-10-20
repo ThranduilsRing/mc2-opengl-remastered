@@ -1,3 +1,4 @@
+#include "vk_scene_renderer.h"
 // mc2::VkSceneRenderer::renderLists phases 1-7 (state setup, light and scene-data upload, 3D objects,
 // static-shadow build, static-prop registry flush); see vk_scene_renderer.cpp for the order they run in.
 
@@ -9,7 +10,7 @@ extern void mc2SetSceneFogColorRGB(float, float, float);
 extern bool g_useGpuStaticProps;
 extern bool g_useGpuObjects;
 
-void mc2::VkSceneRenderer::renderListsPreamble (MC_TextureManager& submissions)
+void mc2::VkSceneRenderer::renderListsPreamble (RenderSubmissions& submissions)
 {
 	{
 	ZoneScopedN("RenderLists.Preamble");
@@ -62,7 +63,7 @@ void mc2::VkSceneRenderer::renderListsPreamble (MC_TextureManager& submissions)
 	} // end RenderLists.Preamble
 }
 
-void mc2::VkSceneRenderer::renderListsSceneDataUpload (MC_TextureManager& submissions)
+void mc2::VkSceneRenderer::renderListsSceneDataUpload (RenderSubmissions& submissions)
 {
 #ifdef MC2_VULKAN_ISLAND
     // Vulkan reads this CPU fog snapshot; the legacy GL SceneData UBO is gone.
@@ -72,7 +73,7 @@ void mc2::VkSceneRenderer::renderListsSceneDataUpload (MC_TextureManager& submis
 #endif
 }
 
-void mc2::VkSceneRenderer::renderListsObjects3D (MC_TextureManager& submissions)
+void mc2::VkSceneRenderer::renderListsObjects3D (RenderSubmissions& submissions)
 {
     // The typed Vulkan islands consume geometry independently of this old GL queue.
     // Drain it so an extra render without a logic tick cannot replay old shapes.
@@ -83,7 +84,7 @@ void mc2::VkSceneRenderer::renderListsObjects3D (MC_TextureManager& submissions)
     }
 }
 
-void mc2::VkSceneRenderer::renderListsPostObjectsStateRestore (MC_TextureManager& submissions)
+void mc2::VkSceneRenderer::renderListsPostObjectsStateRestore (RenderSubmissions& submissions)
 {
 	{
 	ZoneScopedN("RenderLists.PostObjectsStateRestore");
@@ -100,7 +101,7 @@ void mc2::VkSceneRenderer::renderListsPostObjectsStateRestore (MC_TextureManager
 	} // end RenderLists.PostObjectsStateRestore
 }
 
-void mc2::VkSceneRenderer::renderListsStaticShadowBuild (MC_TextureManager& submissions)
+void mc2::VkSceneRenderer::renderListsStaticShadowBuild (RenderSubmissions& submissions)
 {
 	// VPL-#shadow Phase 1+2 (arch-doc docs/plans/static-terrain-shadow-
 	// architecture.md): build the static terrain shadow from the FULL map
@@ -132,7 +133,7 @@ void mc2::VkSceneRenderer::renderListsStaticShadowBuild (MC_TextureManager& subm
 	}
 }
 
-void mc2::VkSceneRenderer::renderListsStaticPropRegistryFlush (MC_TextureManager& submissions)
+void mc2::VkSceneRenderer::renderListsStaticPropRegistryFlush (RenderSubmissions& submissions)
 {
 	// STATIC-PROP SHADOW-ORDER FIX (2026-05-29): inject static-registry instances
 	// into batcher buckets BEFORE flushShadow() below. flushShadow() calls

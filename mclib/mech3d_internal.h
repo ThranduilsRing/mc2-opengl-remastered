@@ -81,7 +81,7 @@ extern "C" int mc2FreezeMoversActive();
 #endif
 
 #ifndef TXMMGR_H
-#include"txmmgr.h"
+#include"render_submissions.h"
 #endif
 
 #ifndef CELINE_H

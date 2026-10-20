@@ -296,7 +296,7 @@ void mc2_render_backend_terrain_region_health(
 
 // ===========================================================================
 // VK-PARITY-OVERLAY-1: VK owner of the GL world-space overlay draw groups that
-// mcTextureManager::renderLists flushes after the terrain / objects:
+// mc2::textures::ready()::renderLists flushes after the terrain / objects:
 //   kind 0  terrain overlays (mission-static cement/pad/runway/road art bake from
 //           gos_terrain_indirect::DrawDecalStatic, + the legacy per-frame batch)
 //   kind 1  decals (craters, footprints, contact blobs, dynamic decals)

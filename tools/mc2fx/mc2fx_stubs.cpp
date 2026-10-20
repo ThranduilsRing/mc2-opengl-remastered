@@ -24,7 +24,6 @@
 #include "platform_windows.h"
 #include "gameos.hpp"
 #include "toolos.hpp"          // gos_OpenFile / gosEnum_FileWriteStatus / gos file I/O
-#include "txmmgr.h"            // MC_TextureManager / MC_TextureNode (metadata-only here)
 
 // Heap installer called once from main() before MLR/gosFX init. With CRT-backed
 // gos_Malloc the heaps are pure handles, so this is currently a no-op hook kept
@@ -136,7 +135,6 @@ int S_strnicmp(const char* a, const char* b, size_t n) { return _strnicmp(a, b, 
 // ---------------------------------------------------------------------------
 // Offline GOSImage keeps names with an invalid node when no manager exists.
 // The load/save closure never constructs a service, renderer, or game device.
-MC_TextureManager* mcTextureManager = nullptr;
 namespace mc2::textures { DWORD load(const char*, gos_TextureFormat, DWORD, DWORD, DWORD) { return 0; } }
 namespace mc2::textures { void release(DWORD) {} }
 namespace mc2::textures { DWORD sourceId(DWORD) { return 0; } }
@@ -178,3 +176,5 @@ extern "C" void gos_tube_ribbon_enqueue(const float*, const float*, const float*
                                         const unsigned short*, unsigned int, unsigned int, int) {}
 extern "C" void gos_vfx_mesh_flush(const GosVfxMeshUpload*, unsigned int,
                                    const GosVfxMeshInstance*, unsigned int) {}
+
+namespace mc2::textures { bool ready() { return false; } }

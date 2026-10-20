@@ -1,3 +1,4 @@
+#include "vk_scene_renderer.h"
 // mc2::VkSceneRenderer::renderLists orchestrator, the RENDERLISTS cost spans and the shadow-shape list.
 // The phases it runs live in txmmgr_render_{phases,passes,overlays}.cpp; shared names in vk_scene_renderer_internal.h.
 #include "vk_scene_renderer_internal.h"
@@ -60,7 +61,7 @@ void clearShadowShapes() {
 // Draws all textures with isTerrain set that are solid first,
 // then draws all alpha with isTerrain set.
 #ifdef MC2_VULKAN_ISLAND
-void mc2::VkSceneRenderer::vkLegacySubmitNode (MC_TextureManager& submissions, long i, uint32_t pass, uint32_t alphaTest)
+void mc2::VkSceneRenderer::vkLegacySubmitNode (RenderSubmissions& submissions, long i, uint32_t pass, uint32_t alphaTest)
 {
 		DWORD totalVertices = submissions.masterVertexNodes[i].numVertices;
 		if (submissions.masterVertexNodes[i].currentVertex != (submissions.masterVertexNodes[i].vertices + submissions.masterVertexNodes[i].numVertices))
@@ -80,7 +81,7 @@ void mc2::VkSceneRenderer::vkLegacySubmitNode (MC_TextureManager& submissions, l
 		submissions.masterVertexNodes[i].currentVertex = submissions.masterVertexNodes[i].vertices;
 }
 
-void mc2::VkSceneRenderer::vkLegacyRun (MC_TextureManager& submissions)
+void mc2::VkSceneRenderer::vkLegacyRun (RenderSubmissions& submissions)
 {
 		// fog_color_ is what gosRenderer would have latched from gos_State_Fog (set in the
 		// renderLists preamble: eye->fogColor when fog is on, else 0). The additive loops
@@ -93,7 +94,7 @@ void mc2::VkSceneRenderer::vkLegacyRun (MC_TextureManager& submissions)
 }
 #endif
 
-void mc2::VkSceneRenderer::renderLists (MC_TextureManager& submissions)
+void mc2::VkSceneRenderer::renderLists (RenderSubmissions& submissions)
 {
 	ZoneScopedN("textureManagerRenderLists");
 
@@ -113,4 +114,10 @@ void mc2::VkSceneRenderer::renderLists (MC_TextureManager& submissions)
 	renderListsGpuStaticProps(submissions);
 	renderListsOverlayBatches(submissions);
 	renderListsOverlaysOld(submissions);
+}
+
+void mc2::VkSceneRenderer::beginFrame()
+{
+    renderSubmissions().clearArrays();
+    vkLights::resetLightData();
 }

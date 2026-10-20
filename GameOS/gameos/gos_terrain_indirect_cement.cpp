@@ -43,7 +43,7 @@ int     g_cementCatalogTruncated    = 0;   // 1 if N>=255 cap hit (Gate A FAIL)
 // 0xFFFF = "not cement / not in atlas".
 
 // Slot-keyed lookup: textures[] slot index → atlas layer-index (0..N-1).
-// SLOT IS THE STABLE KEY (persistent across frames).  nodeIdx (mcTextureManager
+// SLOT IS THE STABLE KEY (persistent across frames).  nodeIdx (mc2::textures::ready()
 // handle) mutates per-frame per memory/mc2_texture_handle_is_live.md, so a
 // nodeIdx-keyed lookup miss-hits per frame → cement validity bit flickers
 // → visible concrete flicker.  Slot is allocated once by initTexture and is

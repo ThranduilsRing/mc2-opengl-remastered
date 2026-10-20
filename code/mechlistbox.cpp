@@ -28,7 +28,7 @@ MechListBox.cpp			: Implementation of the MechListBox component.
 // The launcher writes these into launcher_env.json, which main() applies after static initialization, so they
 // are read at first use rather than in a namespace-scope initializer.
 static bool cheatInfiniteMoney() { static const bool on = mc2::gate::get<"MC2_CHEAT_INFINITE_MONEY">(); return on; }
-#include"txmmgr.h"
+#include"render_submissions.h"
 #include "mc2fmt.h"
 #include "mc2str.h"
 
@@ -520,7 +520,7 @@ void MechListBox::initIcon( LogisticsMech* pMech, aObject& mechIcon )
 	// the size is unavailable, preserving the old square-atlas behavior.
 	DWORD atlasW = 0, atlasH = 0;
 	float fileW = 256.f, fileH = 256.f;
-	if ( mcTextureManager &&
+	if ( mc2::textures::ready() &&
 	     mc2::textures::logicalSize( mechIcon.getTextureHandle(), atlasW, atlasH ) )
 	{
 		if ( atlasW > 0 ) fileW = static_cast<float>(atlasW);

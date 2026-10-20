@@ -304,7 +304,7 @@ namespace {
 }
 
 // Cross-TU kill-switch view (C6 repoint lives in msl.cpp). Free function
-// to avoid pulling txmmgr.h into msl.cpp. Lazy-inits the env read.
+// to avoid pulling render_submissions.h into msl.cpp. Lazy-inits the env read.
 bool mc2LightBridgeRepointEnabled()
 {
     lbRepointInitFromEnv();
@@ -312,7 +312,7 @@ bool mc2LightBridgeRepointEnabled()
 }
 
 // ---- [LIGHTBAKE v1] cross-TU free fns (bdactor/msl/registry call these;
-// free fns avoid pulling txmmgr.h into those TUs) ----
+// free fns avoid pulling render_submissions.h into those TUs) ----
 bool mc2LightBakeEnabled()
 {
     bakeInitFromEnv();
@@ -323,7 +323,7 @@ bool mc2LightBakeEnabled()
 // anonymous namespace above but is visible throughout this TU (same pattern as
 // mc2GetBakedStaticLight reading s_bakedStaticLight). Exposed as a cross-TU free
 // fn for the stability trace below and the upload-split caller (Task 4) — no
-// txmmgr.h coupling into the consuming TUs.
+// render_submissions.h coupling into the consuming TUs.
 uint32_t mc2StaticLightHighWater()
 {
     return s_staticLightHighWater;

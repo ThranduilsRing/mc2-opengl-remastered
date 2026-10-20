@@ -1,3 +1,4 @@
+#include "txmmgr.h"
 #define MISSION2_CPP
 /*************************************************************************************************\
 mission2.cpp			: The parts of mission.cpp that we need for the mech viewer
@@ -114,8 +115,8 @@ void Mission::initBareMinimum()
 	}
 
 	// Vertex storage covers forests of detailed model overrides.
-	mcTextureManager->startVertices(32000000);
-	mcTextureManager->startShapes(10000);
+	mc2::renderSubmissions().startVertices(32000000);
+	mc2::renderSubmissions().startShapes(10000);
 
 	initTGLForLogistics();
 

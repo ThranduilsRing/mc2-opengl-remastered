@@ -195,7 +195,7 @@ void TG_Shape::Render (float forceZ, bool isHudElement, BYTE alphaValue, bool is
 						s_seenNodes[s_seenCount++] = nodeIdx;
 						if ( bool f = mc2::log::enabled(mc2::log::Cat::Render, mc2::log::Level::Info) )
 						{
-							const char* nm = mcTextureManager ? mc2::textures::name(nodeIdx) : nullptr;
+							const char* nm = mc2::textures::ready() ? mc2::textures::name(nodeIdx) : nullptr;
 							MC2_LOG(Render, Info, "[PREVIEW-TEX] local={:d} node={:d} gosHandle={:d} alpha={:d} name={}", mc2::fmt::as_i32(static_cast<long>(triType.localTextureHandle)), mc2::fmt::as_u32(static_cast<unsigned long>(nodeIdx)), mc2::fmt::as_u32(static_cast<unsigned long>(materialTextures()[triType.localTextureHandle].gosTextureHandle)), mc2::fmt::as_i32(static_cast<int>(materialTextures()[triType.localTextureHandle].textureAlpha)), mc2::fmt::safe(nm ? nm : "(null)"));
 
 						}
@@ -259,11 +259,11 @@ void TG_Shape::Render (float forceZ, bool isHudElement, BYTE alphaValue, bool is
  				
 					if (isSpotlight)
 					{
-						mcTextureManager->addVertices(0xffffffff,gVertex,MC2_ISSPOTLGT);
+						mc2::renderSubmissions().addVertices(0xffffffff,gVertex,MC2_ISSPOTLGT);
 					}
 					else if (isWindow)
 					{
-						mcTextureManager->addVertices(0xffffffff, gVertex, MC2_DRAWALPHA);
+						mc2::renderSubmissions().addVertices(0xffffffff, gVertex, MC2_DRAWALPHA);
 					}
 					else
 					{
@@ -272,14 +272,14 @@ void TG_Shape::Render (float forceZ, bool isHudElement, BYTE alphaValue, bool is
 						// So, find out what texture this face is using and mark that texture as needing 3 more vertices.
 						if (materialTextures()[triType.localTextureHandle].textureAlpha || (alphaValue != 0xff))
 						{
-							mcTextureManager->addVertices(materialTextures()[triType.localTextureHandle].mcTextureNodeIndex,gVertex,MC2_DRAWALPHA | addFlags);
+							mc2::renderSubmissions().addVertices(materialTextures()[triType.localTextureHandle].mcTextureNodeIndex,gVertex,MC2_DRAWALPHA | addFlags);
 						}
 						else
 						{
 							// [UI-PHASE1] carried from mc2r_ui_phase1: read by SimpleCamera
 							// to tell "transformed but not drawn" apart from "not transformed".
 							++g_previewDrawTris;
-							mcTextureManager->addVertices(materialTextures()[triType.localTextureHandle].mcTextureNodeIndex,gVertex,MC2_DRAWSOLID | addFlags);
+							mc2::renderSubmissions().addVertices(materialTextures()[triType.localTextureHandle].mcTextureNodeIndex,gVertex,MC2_DRAWSOLID | addFlags);
 						}
 					}
 				}
@@ -364,8 +364,8 @@ void TG_Shape::Render (float forceZ, bool isHudElement, BYTE alphaValue, bool is
 			const DWORD renderFlags = MC2_DRAWSOLID | addFlags |
 				((pbrOverrideActive && firstTextureAlpha) ? MC2_ALPHATEST : 0);
 			if (pbrOverrideActive && firstTextureAlpha)
-				mcTextureManager->addRenderShape(texNode, renderFlags);
-			mcTextureManager->addRenderShape(texNode, &rs, renderFlags);
+				mc2::renderSubmissions().addRenderShape(texNode, renderFlags);
+			mc2::renderSubmissions().addRenderShape(texNode, &rs, renderFlags);
 			if (traceBuildingPbr) {
 				fprintf(stderr,
 					"[BUILDING_PBR_TRACE] TG_Shape::Render enqueue shape=%p texNode=%lu localTex=%lu visible=%ld\n",

@@ -50,7 +50,7 @@ struct Counters {
     uint64_t shape_xform_ns       = 0;   // per-vertex screen-space transform
     uint64_t shape_vlight_ns      = 0;   // per-vertex lighting kernel
     uint64_t shape_flight_ns      = 0;   // per-face lighting + listOfTriangles
-    uint64_t shape_emit_ns        = 0;   // mcTextureManager queue calls
+    uint64_t shape_emit_ns        = 0;   // mc2::textures::ready() queue calls
     uint64_t shape_calls          = 0;
 };
 

@@ -24,7 +24,7 @@
 #endif
 
 #ifndef TXMMGR_H
-#include"txmmgr.h"
+#include"render_submissions.h"
 #endif
 
 #ifdef LINUX_BUILD

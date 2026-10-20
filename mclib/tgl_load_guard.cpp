@@ -7,7 +7,7 @@
 #include "texture_assets.h"
 
 #include "msl.h"        // TG_TypeMultiShape + TG_TypeShape + tglHeap
-#include "txmmgr.h"     // mcTextureManager (placeholder texture registration)
+#include "render_submissions.h"     // mc2::textures::ready() (placeholder texture registration)
 #include "mc2_audit.h"  // [ASSET_LOAD v1] marker emitter (INFRA-1)
 #include "mc2fmt.h"
 #include "mc2_verify.h" // MC2_VERIFY live data-contract guard (log/fatal/off)
@@ -29,7 +29,7 @@ unsigned long long guardKey(const char* ctx, const char* path)
 
 // Populate `shape` with the fail-loud placeholder: one magenta box
 // (12x12x20 local units) + a REAL 4x4 magenta texture registered through
-// mcTextureManager. Runs the same Track-D construction API the Assimp
+// mc2::textures::ready(). Runs the same Track-D construction API the Assimp
 // importer uses (AllocateImportedShapes / SetImportedTextures /
 // InitFromImportedMesh), so the result is a first-class TG type shape the
 // GPU batchers can register (valid handle => layerForPacket resolves; a
@@ -128,7 +128,7 @@ void populatePlaceholder(TG_TypeMultiShape* shape)
 	// REAL registered texture (contract: valid handle, not numTextures=0).
 	// 4x4 solid magenta, ARGB. Null-guarded: shapes loaded before the
 	// texture manager exists keep the 0xffffffff sentinel (still geometry).
-	if (mcTextureManager)
+	if (mc2::textures::ready())
 	{
 		static DWORD s_magentaHandle = 0xffffffff;
 		if (s_magentaHandle == 0xffffffff)

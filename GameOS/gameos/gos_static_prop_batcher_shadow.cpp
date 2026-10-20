@@ -243,7 +243,7 @@ extern "C" int mc2_color_prop_island_get_light_feed(Mc2ColorPropLightFeed* out) 
     // with the audit-gated readback it existed for (clean audit banked).
     out->lightDataCpu = nullptr;
     out->lightDataCpuBytes = 0;
-    if (mcTextureManager) {
+    if (mc2::vkLights::active()) {
         out->lightDataCpu      = mc2::vkLights::getLightDataPtr();
         out->lightDataCpuBytes = mc2::vkLights::getLightDataBytes();
     }

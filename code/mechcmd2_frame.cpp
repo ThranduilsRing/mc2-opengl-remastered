@@ -1,3 +1,4 @@
+#include "txmmgr.h"
 // Game main: the per-frame renderer update, engine termination and DoGameLogic.
 // Declared in the class headers; shared names in mechcmd2_internal.h.
 #include "mechcmd2_internal.h"

@@ -383,7 +383,7 @@ void GpuStaticPropBatcher::buildPerPacketDrawTables(StaticPropFinalizeFrame& f) 
                                 const DWORD nodeIdx =
                                     src->listOfTextures[pkt.textureSlot].mcTextureNodeIndex;
                                 inv.nodeIdx = static_cast<uint32_t>(nodeIdx);
-                                if (mcTextureManager && nodeIdx != 0xFFFFFFFFu) {
+                                if (mc2::textures::ready() && nodeIdx != 0xFFFFFFFFu) {
                                     const char* nm = mc2::textures::name(nodeIdx);
                                     if (nm && *nm) {
                                         mc2::fmt::to_buf_n(inv.textureName, sizeof(inv.textureName), "{}", mc2::fmt::safe(nm));

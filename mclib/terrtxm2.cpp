@@ -115,7 +115,7 @@ void TerrainColorMap::destroy (void)
 	// 4096-slot masterTextureNodes[] entries accumulate every mission and
 	// eventually STOP("TOO Many textures"). These textures are rebuilt next
 	// mission in init(fileName), so freeing them on unload is correct.
-	if (mcTextureManager)
+	if (mc2::textures::ready())
 	{
 		if (textures)
 		{

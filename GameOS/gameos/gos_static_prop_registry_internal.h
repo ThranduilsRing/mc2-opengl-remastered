@@ -5,7 +5,7 @@
 
 #include "gos_static_prop_registry.h"
 #include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
-#include "../../mclib/txmmgr.h"  // 2026-05-05: peekLightSlotNumLights/getLightStructCount for flush trace
+#include "../../mclib/render_submissions.h"  // 2026-05-05: peekLightSlotNumLights/getLightStructCount for flush trace
 #include "../../mclib/static_light_row_guard.h"  // ZERO-LIGHT-ROW-1: shared light-index validity contract
 #include "../../mclib/appear.h"   // Task 6: Appearance* for registerStaticProp()
 #include "../../mclib/apprtype.h"  // AppearanceType::name (inspector shapeName capture)
@@ -25,7 +25,6 @@
 #include "Gates/gate.h"
 
 // MC_TextureManager singleton, defined in mclib/txmmgr.cpp.
-extern MC_TextureManager* mcTextureManager;
 
 // 2026-05-05: frame counter for cull-aware static replay. When an actor goes
 // offscreen, MC2's cull gate skips its update() (`cull_gates_are_load_bearing.md`),

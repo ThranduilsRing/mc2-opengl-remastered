@@ -32,6 +32,7 @@ set(SOURCES ${SOURCES}
     tgl_transform_light.cpp
     tgl_types.cpp
     timing.cpp
+    render_submissions.cpp
     txmmgr.cpp
     txmmgr_diag.cpp
     txmmgr_lightrow.cpp

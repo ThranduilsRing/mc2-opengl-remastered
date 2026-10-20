@@ -1,3 +1,4 @@
+#include "../../RenderCore/TextureService.h"
 // vulkan_context.cpp
 //
 // VK-P13-SELECTOR-1 / T2 -- the standalone shared engine Vulkan context.

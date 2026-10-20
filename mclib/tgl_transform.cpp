@@ -142,7 +142,7 @@ void TG_Shape::xformGpuOnlyShape(glm::mat4* shapeToClip, bool isHudElement, BYTE
 			cur_viewport[3] = viewAddY;
 			cur_shape2clip = *shapeToClip;
 
-			mcTextureManager->addRenderShape(
+			mc2::renderSubmissions().addRenderShape(
 				materialTextures()[hwShape->listOfTypeTriangles[0].localTextureHandle].mcTextureNodeIndex,
 				MC2_DRAWSOLID | addFlags);
 
@@ -237,7 +237,7 @@ void TG_Shape::xformEmitShape(glm::mat4* shapeToClip, bool isHudElement, BYTE al
 			cur_shape2clip = *shapeToClip;
 
 			// FIXME: this (listOfTypeTriangles[0]) is not correct if model has more than 1 texture! 
-			mcTextureManager->addRenderShape(materialTextures()[theShape->listOfTypeTriangles[0].localTextureHandle].mcTextureNodeIndex, MC2_DRAWSOLID | addFlags);
+			mc2::renderSubmissions().addRenderShape(materialTextures()[theShape->listOfTypeTriangles[0].localTextureHandle].mcTextureNodeIndex, MC2_DRAWSOLID | addFlags);
 		}
 	}
 }

@@ -16,7 +16,7 @@ InfoWindow.cpp			: Implementation of the InfoWindow component.
 #include"mover.h"
 #include"mechicon.h"
 #include"team.h"
-#include"txmmgr.h"
+#include"render_submissions.h"
 #include"gameos.hpp"        // INFO-IMGUI-SLICE-1: gos_ComputeHudCanvasBox + Environment
 #include"imgui.h"           // INFO-IMGUI-SLICE-1: ImGui info panel
 #include"hud_imgui_font.h"  // FONT-IMGUI-SLICE-1: legacy bitmap-font text

@@ -55,7 +55,7 @@ extern long g_viewContentEpoch;   // VIEW-EPOCH-DEDUPE-1 semantic view-content e
 #include "../../mclib/mapdata.h"
 #include "../../mclib/move.h"       // PR2c Stage 1c — MissionMap, GameMap, MAPCELL_DIM
 #include "../../mclib/terrtxm.h"    // TERRAIN_TXM_SIZE (extern int)
-#include "../../mclib/txmmgr.h"     // frame/render integration
+#include "../../mclib/render_submissions.h"     // frame/render integration
 #include "gos_terrain_bridge.h"     // gos_terrain_bridge_glTextureForGosHandle (cement readback)
 #include "../../RenderCore/KtxLoader.h"  // COLORMAP-BC7-KTX2-1: ktxLoadRgba8 for BC7 atlas upload
 #include "gos_terrain_arm_logic.h"        // shared GPU-terrain arm predicate (editor↔game)
@@ -134,7 +134,7 @@ struct CementCellStats {
 // Include pVertex via PostcompVertex — already available through mapdata.h.
 // (terrain.h already included above, which pulls mapdata.h.)
 #include "../../mclib/vertex.h"     // ScreenVertex, vertexNum
-// tex_resolve — lazy per-frame memoization. Header includes txmmgr.h.
+// tex_resolve — lazy per-frame memoization. Header includes render_submissions.h.
 #include "../../mclib/tex_resolve_table.h"
 
 // TERRAIN_DEPTH_FUDGE for the per-tri pz check: single source of truth is

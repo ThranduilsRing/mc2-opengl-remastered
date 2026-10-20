@@ -155,7 +155,7 @@ int mc2_color_prop_island_get_material_feed(Mc2ColorPropMaterialFeed* out);
 // sum and the SH-L2 fill are real data now.
 struct Mc2ColorPropLightFeed {
     // VK-PROP-LIGHTFEED-NATIVE-1 (mech item-9 pattern): the CPU LightsData array
-    // (mcTextureManager lightData_, the byte source of the GL SSBO upload at
+    // (mc2::textures::ready() lightData_, the byte source of the GL SSBO upload at
     // renderLists) is the per-frame lighting feed. VK-PERF-2 cleanup deleted the
     // GL SSBO name/size fields with the audit-gated readback they existed for
     // (MC2_VK_PROP_FEED_AUDIT banked a clean run: 3000 frames, mismatches=0).

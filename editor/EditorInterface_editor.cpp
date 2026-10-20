@@ -1,3 +1,4 @@
+#include "vk_scene_renderer.h"
 // Editor: the Editor object (init, destroy, resave-all, render, update), the message map, the New menu and mission open/save prompts.
 // Declared in the class headers; shared names in EditorInterface_internal.h.
 #include "EditorInterface_internal.h"
@@ -508,7 +509,7 @@ void Editor::update()
 	}
 
 
-	mcTextureManager->clearArrays();
+	mc2::VkSceneRenderer::beginFrame();
 
 	// Guard all land/eye terrain work — land is NULL until the generator
 	// produces a map. EditorInterface::update() below still runs so that

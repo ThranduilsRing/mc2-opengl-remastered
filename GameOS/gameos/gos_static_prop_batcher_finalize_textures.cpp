@@ -74,12 +74,12 @@ bool GpuStaticPropBatcher::buildTextureArrays(StaticPropFinalizeFrame& f) {
 
                 const DWORD nodeIdx =
                     src->listOfTextures[pkt.textureSlot].mcTextureNodeIndex;
-                if (mcTextureManager && nodeIdx != 0xFFFFFFFFu) {
+                if (mc2::textures::ready() && nodeIdx != 0xFFFFFFFFu) {
                     mc2::textures::pin(nodeIdx);
                     newlyPinnedThisBuild.push_back(nodeIdx);
                 }
 
-                DWORD gosHandle = (mcTextureManager && nodeIdx != 0xFFFFFFFFu)
+                DWORD gosHandle = (mc2::textures::ready() && nodeIdx != 0xFFFFFFFFu)
                     ? mc2::textures::sourceId(nodeIdx)
                     : src->listOfTextures[pkt.textureSlot].gosTextureHandle;
                 // Snapshot first-packet handle for the runtime eviction
@@ -210,7 +210,7 @@ bool GpuStaticPropBatcher::buildTextureArrays(StaticPropFinalizeFrame& f) {
             return true;
         }
 
-        if (s_materialKtxEnabled && s_staticPropBc7Enabled && mcTextureManager) {
+        if (s_materialKtxEnabled && s_staticPropBc7Enabled && mc2::textures::ready()) {
             std::vector<RenderCore::KtxImage> bc7Imgs(uniques.size());
             bool bc7Ok      = true;
             const char* failReason = nullptr;
@@ -312,7 +312,7 @@ bool GpuStaticPropBatcher::buildTextureArrays(StaticPropFinalizeFrame& f) {
         for (size_t k = 0; k < uniques.size(); ++k) {
             const auto& u = uniques[k];
             bool ktxUsed = false;
-            if (s_materialKtxEnabled && u.nodeIdx != 0xFFFFFFFFu && mcTextureManager) {
+            if (s_materialKtxEnabled && u.nodeIdx != 0xFFFFFFFFu && mc2::textures::ready()) {
                 const char* srcName = mc2::textures::name(u.nodeIdx);
                 if (srcName && *srcName) {
                     // Derive tiered .ktx2 path: data/tgl/<tier>/foo.ktx2

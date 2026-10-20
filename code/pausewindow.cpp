@@ -21,7 +21,7 @@ PauseWindow.cpp			: Implementation of the PauseWindow component.
 #include"gameos.hpp"        // PAUSE-IMGUI-SLICE-1: gos_ComputeHudCanvasBox + Environment; gos_GetGLTextureName
 #include"imgui.h"           // PAUSE-IMGUI-SLICE-1: ImGui pause page
 #include"hud_imgui_font.h"  // FONT-IMGUI-SLICE-1: legacy bitmap-font text
-#include"txmmgr.h"          // PAUSE-IMGUI-SLICE-2: mcTextureManager (baked frame load)
+#include"render_submissions.h"          // PAUSE-IMGUI-SLICE-2: mc2::textures::ready() (baked frame load)
 #include<cstdint>           // PAUSE-IMGUI-SLICE-2: intptr_t (ImTextureID cast)
 
 // NOTE (MERGE-WAVE-1): nifty slice-B pause panel (no such gate) superseded

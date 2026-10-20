@@ -1,3 +1,4 @@
+#include "txmmgr.h"
 /***************************************************************
 * FILENAME: EditorData.cpp
 * DESCRIPTION: Implements Editor terrain, mission data, save, and load behavior.

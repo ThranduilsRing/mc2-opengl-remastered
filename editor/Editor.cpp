@@ -1,3 +1,4 @@
+#include "txmmgr.h"
 #include "Gates/preferences_legacy.h"
 /***************************************************************
 * FILENAME: Editor.cpp
@@ -681,12 +682,12 @@ void InitializeGameEngine()
 	{
 	}
 
-	mcTextureManager->startVertices(500000);
+	mc2::renderSubmissions().startVertices(500000);
 
 	// clearArrays() resets both the vertex and render-shape managers.
 	// The game initializes rsManager through startShapes(); the editor must do the same
 	// before the restored DoGameLogic/update path can safely run.
-	mcTextureManager->startShapes(10000);
+	mc2::renderSubmissions().startShapes(10000);
 
 	godMode = true;
 	MOVE_init(30);
@@ -782,8 +783,8 @@ void TerminateGameEngine()
 
 	if (mcTextureManager)
 	{
-		mcTextureManager->freeShapes();
-		mcTextureManager->freeVertices();
+		mc2::renderSubmissions().freeShapes();
+		mc2::renderSubmissions().freeVertices();
 
 		mcTextureManager->destroy();
 		delete mcTextureManager;

@@ -29,7 +29,7 @@ struct ExtractedMechPacket {
     uint32_t objectIdRaw;    // GpuMechSubmitDesc::objectIdRaw (RenderObjectHandle.raw())
     uint32_t instanceIdx;    // index i in this-frame s_pendingSubmits
     uint32_t materialIdx;    // 0xFFFFFFFFu sentinel (not available pre-flush in v0)
-    uint32_t texHandle;      // GpuMechSubmitDesc::slot0TexHandle (mcTextureManager slot index)
+    uint32_t texHandle;      // GpuMechSubmitDesc::slot0TexHandle (mc2::textures::ready() slot index)
     uint32_t typeLodIdx;     // PendingSubmit::typeLodIdx (type x LOD record index)
     uint32_t renderFlags;    // GpuMechSubmitDesc::renderFlags (bit0=ALPHA_TEST, bit1=lightsOut, bit2=highlighted)
     // GAMEADAPTERS-VISUAL-STATE-BRIDGE-1: per-mech visual state (debug dump).

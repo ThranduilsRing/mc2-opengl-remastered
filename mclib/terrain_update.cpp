@@ -192,7 +192,7 @@ long Terrain::update (void)
 	// Terrain LOD chunk Phase 4 — two-level AABB frustum cull.
 	// MC2_TERRAIN_LOD_CHUNK=1 gate (s_blockMeta is nullptr when env unset).
 	// Builds s_drawCmds[]; submitted via Terrain::flushDrawCommands() from
-	// code/gamecam.cpp after shadow pass, before mc2::VkSceneRenderer::renderLists(*mcTextureManager).
+	// code/gamecam.cpp after shadow pass, before mc2::VkSceneRenderer::renderLists(mc2::renderSubmissions()).
 	if (s_blockMeta && s_superchunkMeta && s_drawCmds && eye)
 	{
 		ZoneScopedN("Terrain::update lodChunkCull");

@@ -1092,7 +1092,7 @@ int mc2mechanim::ImportedGpuLiftAxis() { return mechImportGpuLiftAxis(); }
 
 // AO-1: the imported mech's AO texture name (materials.ao.tga from the package), or
 // nullptr if this type isn't imported / declares no AO. The caller (mech3d
-// resetPaintScheme) loads it via mcTextureManager and binds it on unit 6.
+// resetPaintScheme) loads it via mc2::textures::ready() and binds it on unit 6.
 const char* mc2mechanim::ImportedMechAoTexName(const void* typeKey) {
     for (const ImportedAnimEntry& e : g_importedAnims)
         if (static_cast<const void*>(e.multi) == typeKey)
@@ -1102,7 +1102,7 @@ const char* mc2mechanim::ImportedMechAoTexName(const void* typeKey) {
 
 // NORMALS-1: the imported mech's normal-map texture name (materials.normal.tga from the
 // package), or nullptr if this type isn't imported / declares no normal. The caller
-// (mech3d resetPaintScheme) loads it via mcTextureManager and binds it on unit 7.
+// (mech3d resetPaintScheme) loads it via mc2::textures::ready() and binds it on unit 7.
 const char* mc2mechanim::ImportedMechNormalTexName(const void* typeKey) {
     for (const ImportedAnimEntry& e : g_importedAnims)
         if (static_cast<const void*>(e.multi) == typeKey)

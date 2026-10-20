@@ -23,7 +23,7 @@
 //   albedoTex
 //     static props : GL_TEXTURE_2D_ARRAY layer index (shader-actionable;
 //                   shader samples via texture(u_texArr, vec3(uv, layer)))
-//     mechs        : mcTextureManager texHandle/slot — compare-only;
+//     mechs        : mc2::textures::ready() texHandle/slot — compare-only;
 //                   NOT shader-actionable without a dedicated texture-model arc.
 //                   CPU resolves: get_gosTextureHandle(slot) → gos handle → GL tex.
 //     VFX / future : undefined until each consumer defines its own texture identity.
@@ -73,7 +73,7 @@ namespace RenderCore {
 //                       dedup at finalizeGeometry); consumed shader-side by
 //                       static_prop.frag (texture(u_texArr, vec3(uv, layer))).
 //                       *** The only shader-actionable semantic today. ***
-//   TextureManagerSlot  produced by gos_mech_batcher.cpp (mcTextureManager
+//   TextureManagerSlot  produced by gos_mech_batcher.cpp (mc2::textures::ready()
 //                       slot/handle); COMPARE-ONLY — the mech shader never
 //                       samples MaterialGpu. CPU resolves slot -> gos handle
 //                       -> GL tex. NOT shader-actionable without a texture arc.
@@ -122,7 +122,7 @@ struct alignas(4) MaterialGpu {
     // MATERIAL-M0 — canonical texture-identity meaning per consumer lane (PINNED):
     //   static props (shader-actionable): texture uint == GL_TEXTURE_2D_ARRAY
     //                 layer index  -> MaterialTextureSemantic::TextureArrayLayer.
-    //   mechs (compare-only):             texture uint == mcTextureManager slot
+    //   mechs (compare-only):             texture uint == mc2::textures::ready() slot
     //                 -> MaterialTextureSemantic::TextureManagerSlot. The mech
     //                 shader NEVER samples this record; CPU resolves the slot.
     //   asset viewer (out-of-band):       not in this SSBO; the viewer binds raw

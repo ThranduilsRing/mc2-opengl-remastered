@@ -1,3 +1,4 @@
+#include "../RenderCore/TextureService.h"
 // Editor-owned UI images share the session residency; no GL producer or borrowed descriptor.
 #pragma once
 #include "../GameOS/gameos/ui_texture.h"

@@ -206,7 +206,7 @@ static void textureUVs(UiElement& e, float& u1, float& v1, float& u2, float& v2)
     //     divisor aObject::init derives (fileWidth = physical/uvScale). Opt-in
     //     via e.uvLegacySpace (setElementImageRegion legacyUvSpace=true).
     DWORD uvScale = 1;
-    if (e.uvLegacySpace && e.textureNode && mcTextureManager)
+    if (e.uvLegacySpace && e.textureNode && mc2::textures::ready())
         uvScale = mc2::textures::uvScale(e.textureNode);
     if (uvScale < 1) uvScale = 1;
 

@@ -210,7 +210,7 @@ void TerrainQuad::drawWater (void)
 						
 						if (alphaMode0 + alphaMode1 + alphaMode2)
 						{
-							mcTextureManager->addVertices(waterHandle,gVertex,MC2_ISTERRAIN | MC2_DRAWALPHA | MC2_ISWATER);
+							mc2::renderSubmissions().addVertices(waterHandle,gVertex,MC2_ISTERRAIN | MC2_DRAWALPHA | MC2_ISWATER);
 						}
 					}
 						
@@ -234,7 +234,7 @@ void TerrainQuad::drawWater (void)
 						sVertex[1].argb = (sVertex[1].argb & 0xff000000) + 0xffffff; 
 						sVertex[2].argb = (sVertex[2].argb & 0xff000000) + 0xffffff; 
 
-						mcTextureManager->addVertices(waterDetailHandle,sVertex,MC2_ISTERRAIN | MC2_DRAWALPHA | MC2_ISWATERDETAIL);
+						mc2::renderSubmissions().addVertices(waterDetailHandle,sVertex,MC2_ISTERRAIN | MC2_DRAWALPHA | MC2_ISWATERDETAIL);
 					}
 				}
  			}
@@ -350,7 +350,7 @@ void TerrainQuad::drawWater (void)
 						
 						if (alphaMode0 + alphaMode1 + alphaMode2)
 						{
-							mcTextureManager->addVertices(waterHandle,gVertex,MC2_ISTERRAIN | MC2_DRAWALPHA | MC2_ISWATER);
+							mc2::renderSubmissions().addVertices(waterHandle,gVertex,MC2_ISTERRAIN | MC2_DRAWALPHA | MC2_ISWATER);
 						}
 					}
 						
@@ -374,7 +374,7 @@ void TerrainQuad::drawWater (void)
 						sVertex[1].argb = (sVertex[1].argb & 0xff000000) + 0xffffff; 
 						sVertex[2].argb = (sVertex[2].argb & 0xff000000) + 0xffffff; 
 
-						mcTextureManager->addVertices(waterDetailHandle,sVertex,MC2_ISTERRAIN | MC2_DRAWALPHA | MC2_ISWATERDETAIL);
+						mc2::renderSubmissions().addVertices(waterDetailHandle,sVertex,MC2_ISTERRAIN | MC2_DRAWALPHA | MC2_ISWATERDETAIL);
 					}
 				}
 			}
@@ -499,7 +499,7 @@ void TerrainQuad::drawWater (void)
 						
 						if (alphaMode0 + alphaMode1 + alphaMode2)
 						{
-							mcTextureManager->addVertices(waterHandle,gVertex,MC2_ISTERRAIN | MC2_DRAWALPHA | MC2_ISWATER);
+							mc2::renderSubmissions().addVertices(waterHandle,gVertex,MC2_ISTERRAIN | MC2_DRAWALPHA | MC2_ISWATER);
 						}
 					}
 						
@@ -523,7 +523,7 @@ void TerrainQuad::drawWater (void)
 						sVertex[1].argb = (sVertex[1].argb & 0xff000000) + 0xffffff; 
 						sVertex[2].argb = (sVertex[2].argb & 0xff000000) + 0xffffff; 
 
-						mcTextureManager->addVertices(waterDetailHandle,sVertex,MC2_ISTERRAIN | MC2_DRAWALPHA | MC2_ISWATERDETAIL);
+						mc2::renderSubmissions().addVertices(waterDetailHandle,sVertex,MC2_ISTERRAIN | MC2_DRAWALPHA | MC2_ISWATERDETAIL);
 					}
 				}
 			}
@@ -638,7 +638,7 @@ void TerrainQuad::drawWater (void)
 		 
 						if (alphaMode0 + alphaMode1 + alphaMode2)
 						{
-							mcTextureManager->addVertices(waterHandle,gVertex,MC2_ISTERRAIN | MC2_DRAWALPHA | MC2_ISWATER);
+							mc2::renderSubmissions().addVertices(waterHandle,gVertex,MC2_ISTERRAIN | MC2_DRAWALPHA | MC2_ISWATER);
 						}
 					}
 						
@@ -662,7 +662,7 @@ void TerrainQuad::drawWater (void)
 						sVertex[1].argb = (sVertex[1].argb & 0xff000000) + 0xffffff; 
 						sVertex[2].argb = (sVertex[2].argb & 0xff000000) + 0xffffff; 
 
-						mcTextureManager->addVertices(waterDetailHandle,sVertex,MC2_ISTERRAIN | MC2_DRAWALPHA | MC2_ISWATERDETAIL);
+						mc2::renderSubmissions().addVertices(waterDetailHandle,sVertex,MC2_ISTERRAIN | MC2_DRAWALPHA | MC2_ISWATERDETAIL);
 					}
 				}
 			}

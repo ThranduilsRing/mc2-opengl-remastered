@@ -406,7 +406,7 @@ bool init_island(TerrainIsland* s, int w, int h) {
         // (D32_SFLOAT_S8_UINT), so terrain always starts its depth test from a
         // guaranteed-correct reverse-Z-far value, independent of what GL's differently-
         // interpreted clear wrote to the same memory. Terrain runs first in the frame
-        // (Terrain::flushDrawCommands() before mc2::VkSceneRenderer::renderLists(*mcTextureManager) --
+        // (Terrain::flushDrawCommands() before mc2::VkSceneRenderer::renderLists(mc2::renderSubmissions()) --
         // code/gamecam.cpp:530,535), so clearing here does not discard anything real:
         // nothing else has written scene depth yet this frame. STORE_OP_STORE (below)
         // still hands the correct depth downstream to props/mech Tier-1 (LOAD-preserve,

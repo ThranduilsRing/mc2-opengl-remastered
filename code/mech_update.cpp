@@ -644,8 +644,8 @@ long BattleMech::update (void)
 	//Must make room for holdFireIcons on HUD if this mech might need one!	
 	if (isOnGui && !mechRemoved && (attackRange == FIRERANGE_CURRENT) && !isDisabled() )
 	{
-		mcTextureManager->addTriangle(holdFireIconHandle,MC2_ISHUDLMNT);
-		mcTextureManager->addTriangle(holdFireIconHandle,MC2_ISHUDLMNT);
+		mc2::renderSubmissions().addTriangle(holdFireIconHandle,MC2_ISHUDLMNT);
+		mc2::renderSubmissions().addTriangle(holdFireIconHandle,MC2_ISHUDLMNT);
 	}
 	
 	return(1);		//Mech is still around,  false means whack this mech from list.

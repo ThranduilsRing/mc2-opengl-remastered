@@ -480,8 +480,8 @@ void Appearance::drawIcon( unsigned long bmpHandle, unsigned long bmpWidth,
 	v1[0] = v[0];
 	v1[1] = v[2];
 	v1[2] = v[3];
-	mcTextureManager->addVertices(bmpHandle,v,MC2_ISHUDLMNT);
-	mcTextureManager->addVertices(bmpHandle,v1,MC2_ISHUDLMNT); 
+	mc2::renderSubmissions().addVertices(bmpHandle,v,MC2_ISHUDLMNT);
+	mc2::renderSubmissions().addVertices(bmpHandle,v1,MC2_ISHUDLMNT);
 }
 	
 //---------------------------------------------------------------------------

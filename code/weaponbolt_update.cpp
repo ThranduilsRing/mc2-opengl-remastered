@@ -186,20 +186,20 @@ long WeaponBolt::update (void)
 		if (timeLeft >= 0.0f)
 		{
 			gosTextureHandle = mc2::textures::sourceId(mcTextureHandle);
-   			mcTextureManager->addTriangle(mcTextureHandle,MC2_ISEFFECTS|MC2_DRAWONEIN);
-   			mcTextureManager->addTriangle(mcTextureHandle,MC2_ISEFFECTS|MC2_DRAWONEIN); 
-   			mcTextureManager->addTriangle(mcTextureHandle,MC2_ISEFFECTS|MC2_DRAWONEIN);
-   			mcTextureManager->addTriangle(mcTextureHandle,MC2_ISEFFECTS|MC2_DRAWONEIN); 
+			mc2::renderSubmissions().addTriangle(mcTextureHandle,MC2_ISEFFECTS|MC2_DRAWONEIN);
+			mc2::renderSubmissions().addTriangle(mcTextureHandle,MC2_ISEFFECTS|MC2_DRAWONEIN);
+			mc2::renderSubmissions().addTriangle(mcTextureHandle,MC2_ISEFFECTS|MC2_DRAWONEIN);
+			mc2::renderSubmissions().addTriangle(mcTextureHandle,MC2_ISEFFECTS|MC2_DRAWONEIN);
 		}
 
 		startUV += (static_cast<WeaponBoltTypePtr>(getObjectType()))->uvAnimRate * frameLength;
 	}
 	else if (!gosEffect && !(static_cast<WeaponBoltTypePtr>(getObjectType()))->isBeam)
 	{
-		mcTextureManager->addTriangle(0xffffffff,MC2_DRAWALPHA);
-		mcTextureManager->addTriangle(0xffffffff,MC2_DRAWALPHA);
-		mcTextureManager->addTriangle(0xffffffff,MC2_DRAWALPHA);
-		mcTextureManager->addTriangle(0xffffffff,MC2_DRAWALPHA);
+		mc2::renderSubmissions().addTriangle(0xffffffff,MC2_DRAWALPHA);
+		mc2::renderSubmissions().addTriangle(0xffffffff,MC2_DRAWALPHA);
+		mc2::renderSubmissions().addTriangle(0xffffffff,MC2_DRAWALPHA);
+		mc2::renderSubmissions().addTriangle(0xffffffff,MC2_DRAWALPHA);
 	}
 		
 	glm::vec3 ownerPosition = laserPosition;

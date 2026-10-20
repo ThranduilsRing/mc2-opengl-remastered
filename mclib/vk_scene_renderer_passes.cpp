@@ -1,3 +1,4 @@
+#include "vk_scene_renderer.h"
 // mc2::VkSceneRenderer::renderLists phases 8-11 (dynamic shadow pass, solid terrain, GPU static props
 // and mechs, terrain overlay / decal batches).
 
@@ -13,7 +14,7 @@ extern uint32_t g_mc2FrameCounter;
 extern long     g_loadRaceAtlasFirstFrame;
 extern long     g_loadRaceArmFirstFrame;
 extern bool g_useGpuStaticProps;
-void mc2::VkSceneRenderer::renderListsDynamicShadowPass (MC_TextureManager& submissions)
+void mc2::VkSceneRenderer::renderListsDynamicShadowPass (RenderSubmissions& submissions)
 {
 	// GPU-driven dynamic sun shadow (Phase 1): frustum-fit + flushShadow.
 	// Runs BEFORE gpu_cull::compute_dispatch so the static-prop shadow uses the
@@ -296,7 +297,7 @@ void mc2::VkSceneRenderer::renderListsDynamicShadowPass (MC_TextureManager& subm
 	g_numShadowShapes.store(0, std::memory_order_relaxed);
 }
 
-void mc2::VkSceneRenderer::renderListsTerrainSolid (MC_TextureManager& submissions)
+void mc2::VkSceneRenderer::renderListsTerrainSolid (RenderSubmissions& submissions)
 {
 	// No special depth state for DRAWSOLID terrain
 
@@ -465,7 +466,7 @@ void mc2::VkSceneRenderer::renderListsTerrainSolid (MC_TextureManager& submissio
 	}   // end Render.TerrainSolid zone
 }
 
-void mc2::VkSceneRenderer::renderListsGpuStaticProps (MC_TextureManager& submissions)
+void mc2::VkSceneRenderer::renderListsGpuStaticProps (RenderSubmissions& submissions)
 {
 	// Task 10 flush() — moved here from after Render.3DObjects because
 	// terrain renders AFTER 3D objects in this codebase; placing our
@@ -592,7 +593,7 @@ void mc2::VkSceneRenderer::renderListsGpuStaticProps (MC_TextureManager& submiss
 	}
 }
 
-void mc2::VkSceneRenderer::renderListsOverlayBatches (MC_TextureManager& submissions)
+void mc2::VkSceneRenderer::renderListsOverlayBatches (RenderSubmissions& submissions)
 {
 	// DRAWSOLID done
 

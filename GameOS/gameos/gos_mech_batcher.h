@@ -78,20 +78,20 @@ struct GpuMechSubmitDesc {
     TG_MultiShape*              mechShape;      // live per-instance shape (shapeToWorld only)
     const Mech3DAppearanceType* mechType;       // stable type pointer
     int                         currentLOD;
-    uint32_t                    slot0TexHandle; // mcTextureManager SLOT INDEX (NOT a gos handle)
+    uint32_t                    slot0TexHandle; // mc2::textures::ready() SLOT INDEX (NOT a gos handle)
                                                // for texture slot 0 (per-actor paint scheme;
                                                // localTextureHandle from Mech3DAppearance, set
-                                               // by mcTextureManager->loadTexture). Resolved to
+                                               // by mc2::textures::load). Resolved to
                                                // a live gos handle at flush time via
-                                               // mcTextureManager->get_gosTextureHandle(slot)
+                                               // mc2::textures::sourceId(slot)
                                                // per memory/mc2_texture_handle_is_live.md.
                                                // TG_TypeShape::listOfTextures is a shared type-
                                                // level cache mutated by TransformMultiShape across
                                                // all actors — do NOT read it for slot 0.
-    uint32_t                    slot6TexHandle; // AO-1: AO mcTextureManager SLOT INDEX
+    uint32_t                    slot6TexHandle; // AO-1: AO mc2::textures::ready() SLOT INDEX
                                                // (0 = no AO). Resolved to a gos handle at
                                                // flush + bound to unit 6 when HAS_AO.
-    uint32_t                    slot7TexHandle; // NORMALS-1: normal-map mcTextureManager
+    uint32_t                    slot7TexHandle; // NORMALS-1: normal-map mc2::textures::ready()
                                                // SLOT INDEX (0 = no normal). Resolved at
                                                // flush + bound to unit 7 when HAS_NORMAL.
     uint32_t                    lightDataIndex; // Slice B1; 0 in Slice A

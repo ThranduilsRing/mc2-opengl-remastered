@@ -5,7 +5,7 @@
 #define TXMMGR_INTERNAL_H
 
 #ifndef TXMMGR_H
-#include"txmmgr.h"
+#include"render_submissions.h"
 #include "gos_crashbundle.h"
 #include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
 #endif
@@ -84,7 +84,7 @@
 #include "Gates/gate.h"
 
 // Globals defined in txmmgr.cpp (or elsewhere in the engine) that the split pieces share.
-extern MC_TextureManager *mcTextureManager;
+
 extern bool MLRVertexLimitReached;
 extern bool useFog;
 extern DWORD BaseVertexColor;

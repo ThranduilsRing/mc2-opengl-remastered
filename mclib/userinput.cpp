@@ -35,7 +35,7 @@
 #endif
 
 #ifndef TXMMGR_H
-#include"txmmgr.h"
+#include"render_submissions.h"
 #endif
 
 #include"../GameOS/gameos/gos_profiler.h"

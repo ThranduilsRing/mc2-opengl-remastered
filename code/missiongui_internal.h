@@ -34,12 +34,12 @@
 #include "bldg_anim_gate_counters.h"     // ANIMATE-BUILDING-1: animStartInvalidated receipt
 // RENDERER-INPUT-READBACK-1 (light_row / draw_path / shadow_feed / ground / pixel):
 //   tgl.h      -- TG_HWLightsData + ProbeGatherLightsForList (the real gather)
-//   txmmgr.h   -- mcTextureManager::copyLightSlot (the BAKED static light row)
+//   render_submissions.h   -- mc2::textures::ready()::copyLightSlot (the BAKED static light row)
 //   probe hdr  -- engine half: scene-FBO texel read + shadow-feed scan. Kept
 //                 out of this TU because scripts/check-no-raw-gl-from-game.sh
 //                 forbids gl*() under code/.
 #include "tgl.h"
-#include "txmmgr.h"
+#include "render_submissions.h"
 #include "../GameOS/gameos/gos_renderer_input_probe.h"
 
 #ifndef OBJMGR_H

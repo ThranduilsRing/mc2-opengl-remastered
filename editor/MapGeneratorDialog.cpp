@@ -1,3 +1,4 @@
+#include "../RenderCore/TextureService.h"
 /***************************************************************
 * FILENAME: MapGeneratorDialog.cpp
 * DESCRIPTION: ImGui Map Generator dialog for the MC2 Mission Editor.

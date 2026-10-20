@@ -1,3 +1,4 @@
+#include "../../RenderCore/TextureService.h"
 // Source admission and ownership use the real service and source index, without a renderer.
 #include "doctest.h"
 #include "../../mclib/texture_sources_internal.h"

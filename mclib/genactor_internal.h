@@ -47,7 +47,7 @@
 #endif
 
 #ifndef TXMMGR_H
-#include"txmmgr.h"
+#include"render_submissions.h"
 #endif
 
 #ifndef TIMING_H

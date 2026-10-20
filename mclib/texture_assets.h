@@ -9,6 +9,7 @@ namespace mc2::textures {
 inline constexpr DWORD kTextureAssetLimit = 0x40000000u;
 DWORD assetCapacity();
 void startSources();
+bool ready();
 void flushSources(bool all);
 void adoptOwned(DWORD asset) noexcept;
 void disown(DWORD asset) noexcept;

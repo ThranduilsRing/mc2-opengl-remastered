@@ -23,7 +23,7 @@
 #include "gos_render_pass_timer.h"
 #include "RenderCore/RenderPassContract.h"
 #include "Gates/gate_cold.h"  // invalidate(): a typed gate re-parses after _putenv_s
-#include "../../mclib/txmmgr.h"  // texture_refresh: mcTextureManager->refreshTexturesByName
+#include "../../mclib/render_submissions.h"  // texture_refresh: mc2::textures::refresh
 #include "../../mclib/texture_assets.h"
 #include "mc2fmt.h"
 
@@ -271,7 +271,7 @@ std::string cmdTextureRefresh(std::string_view req)
 {
     const std::string name = jsonGetString(req, "name");
     if (name.empty()) return makeReply(false, "texture_refresh: missing name (substring of texture path)", "");
-    if (!mcTextureManager) return makeReply(false, "texture_refresh: texture manager not initialized yet", "");
+    if (!mc2::textures::ready()) return makeReply(false, "texture_refresh: texture manager not initialized yet", "");
     long skippedNoFile = 0;
     const long refreshed = mc2::textures::refresh(name.c_str(), skippedNoFile);
     return makeReply(true, "",

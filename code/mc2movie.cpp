@@ -7,7 +7,7 @@
 #endif
 
 #ifndef TXMMGR_H
-#include"txmmgr.h"
+#include"render_submissions.h"
 #endif
 
 #ifndef FILE_H

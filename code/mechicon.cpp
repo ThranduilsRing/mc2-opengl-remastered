@@ -1,3 +1,4 @@
+#include "../RenderCore/TextureService.h"
 #include "../GameOS/gameos/ui_texture.h"
 #include "../mclib/texture_assets.h"
  #define MECHICON_CPP

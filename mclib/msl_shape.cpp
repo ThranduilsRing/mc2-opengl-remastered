@@ -578,7 +578,7 @@ void TG_MultiShape::BindMaterials() {
         if (!old || !(*old==key)) { instanceMaterials_[i]=registry.acquire(key); changed=true; }
         // The material stores generation identity; gos is resolved only at the legacy producer boundary.
         const DWORD node=key.albedo.isValid() ? service.nodeOf(key.albedo) : texture.mcTextureNodeIndex;
-        texture.gosTextureHandle=mcTextureManager && node!=0xffffffffu ? mc2::textures::sourceId(node) : 0xffffffffu;
+        texture.gosTextureHandle=mc2::textures::ready() && node!=0xffffffffu ? mc2::textures::sourceId(node) : 0xffffffffu;
     }
     if (changed || !materialSet_.valid()) materialSet_=registry.acquireSet(instanceMaterials_);
     for (long i=0;i<numTG_Shapes;++i)

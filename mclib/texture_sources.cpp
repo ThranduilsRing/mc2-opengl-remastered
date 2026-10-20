@@ -1,3 +1,4 @@
+#include "../RenderCore/TextureService.h"
 // Session source indices and reference lifetime; no file or device dependencies.
 #include "texture_sources_internal.h"
 #include "texture_ref.h"

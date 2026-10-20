@@ -252,7 +252,7 @@ void Terrain::render (void)
 //---------------------------------------------------------------------------
 // Terrain LOD chunk Phase 4 — flush pending draw commands to the GPU.
 // Called from code/gamecam.cpp after the shadow pass and before
-// mc2::VkSceneRenderer::renderLists(*mcTextureManager). No-op when MC2_TERRAIN_LOD_CHUNK is unset
+// mc2::VkSceneRenderer::renderLists(mc2::renderSubmissions()). No-op when MC2_TERRAIN_LOD_CHUNK is unset
 // (s_blockMeta is nullptr, s_cmdCount is 0). No GL calls in mclib/.
 void Terrain::flushDrawCommands (void)
 {
@@ -468,7 +468,7 @@ void Terrain::renderWater (void)
 
 //---------------------------------------------------------------------------
 // Stage 2 of renderWater architectural slice. Called from gamecam.cpp AFTER
-// mc2::VkSceneRenderer::renderLists(*mcTextureManager) so terrain has been flushed and
+// mc2::VkSceneRenderer::renderLists(mc2::renderSubmissions()) so terrain has been flushed and
 // depth-written. This is required for the alpha-blend-on-top semantics:
 // running fast-path INSIDE renderWater() (before renderLists) means terrain
 // hasn't drawn yet and overwrites our water.
@@ -500,7 +500,7 @@ void Terrain::renderWaterFastPath (void)
 	if (s_waterDebugOn)
 		QueryPerformanceCounter(reinterpret_cast<LARGE_INTEGER*>(&s_qpcStart2));
 
-	// getWater*Handle() returns mcTextureManager's textureIndex (master node
+	// getWater*Handle() returns mc2::textures::ready()'s textureIndex (master node
 	// id), NOT the engine's gosTextureHandle. tex_resolve() chases the lazy
 	// first-touch indirection — same pattern as M2d overlay at quad.cpp:2084.
 	const DWORD waterTexIdx =
