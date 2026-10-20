@@ -262,11 +262,11 @@ extern "C" int mc2SimIdentityWriteJson(char* buf, int cap,
 
 	// digestWorld sorts in place; take all three off the SAME sorted buffer.
 	const uint64_t graded = mc2_sim_identity::digestWorld(
-		recs.data(), recs.size(), mc2_sim_identity::DIGEST_GRADED);
+		recs, mc2_sim_identity::DIGEST_GRADED);
 	const uint64_t visual = mc2_sim_identity::digestWorld(
-		recs.data(), recs.size(), mc2_sim_identity::DIGEST_VISUAL);
+		recs, mc2_sim_identity::DIGEST_VISUAL);
 	const uint64_t strict = mc2_sim_identity::digestWorld(
-		recs.data(), recs.size(), mc2_sim_identity::DIGEST_STRICT);
+		recs, mc2_sim_identity::DIGEST_STRICT);
 
 	char hg[17], hv[17], hs[17];
 	mc2_sim_identity::toHex16(graded, hg);
@@ -315,11 +315,11 @@ extern "C" void mc2SimIdentityTraceFrame(double scenarioTimeNow, long simFrame) 
 		return;
 
 	const uint64_t graded = mc2_sim_identity::digestWorld(
-		recs.data(), recs.size(), mc2_sim_identity::DIGEST_GRADED);
+		recs, mc2_sim_identity::DIGEST_GRADED);
 	const uint64_t visual = mc2_sim_identity::digestWorld(
-		recs.data(), recs.size(), mc2_sim_identity::DIGEST_VISUAL);
+		recs, mc2_sim_identity::DIGEST_VISUAL);
 	const uint64_t strict = mc2_sim_identity::digestWorld(
-		recs.data(), recs.size(), mc2_sim_identity::DIGEST_STRICT);
+		recs, mc2_sim_identity::DIGEST_STRICT);
 
 	char hg[17], hv[17], hs[17];
 	mc2_sim_identity::toHex16(graded, hg);
@@ -334,8 +334,8 @@ extern "C" void mc2SimIdentityTraceFrame(double scenarioTimeNow, long simFrame) 
 	std::vector<AblRecord>& abl = ablScratch();
 	collectAbl(abl);
 	char ho[17], ha[17];
-	mc2_sim_identity::toHex16(mc2_sim_identity::digestObjects(objs.data(), objs.size()), ho);
-	mc2_sim_identity::toHex16(mc2_sim_identity::digestAbl(abl.data(), abl.size()), ha);
+	mc2_sim_identity::toHex16(mc2_sim_identity::digestObjects(objs), ho);
+	mc2_sim_identity::toHex16(mc2_sim_identity::digestAbl(abl), ha);
 
 	// Fixed-arity, fixed-width: two runs' logs diff cleanly and the first
 	// differing line IS the first divergent sim frame.

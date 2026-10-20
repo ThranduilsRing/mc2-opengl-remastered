@@ -2,6 +2,8 @@
 // Declared in the class headers; shared names in bdactor_internal.h.
 #include "bdactor_internal.h"
 #include "texture_assets.h"
+#include <optional>
+#include <string_view>
 #include "mc2fmt.h"
 
 bool buildingPbrGateEnabled()
@@ -9,36 +11,34 @@ bool buildingPbrGateEnabled()
 	return mc2::gate::get<"MC2_BUILDING_PBR">();
 }
 
-static bool readTextFile(const char* path, std::string& out)
+static std::optional<std::string> readTextFile(const char* path)
 {
 	std::ifstream f(path, std::ios::in | std::ios::binary);
 	if (!f)
-		return false;
+		return std::nullopt;
 	std::ostringstream ss;
 	ss << f.rdbuf();
-	out = ss.str();
-	return true;
+	return ss.str();
 }
 
-static bool extractJsonString(std::string_view text, std::string_view key, std::string& out)
+static std::optional<std::string> extractJsonString(std::string_view text, std::string_view key)
 {
 	std::string needle = "\"";
 	needle += key;
 	needle += "\"";
 	size_t p = text.find(needle);
 	if (p == std::string::npos)
-		return false;
+		return std::nullopt;
 	p = text.find(':', p + needle.size());
 	if (p == std::string::npos)
-		return false;
+		return std::nullopt;
 	p = text.find('"', p + 1);
 	if (p == std::string::npos)
-		return false;
+		return std::nullopt;
 	size_t e = text.find('"', p + 1);
 	if (e == std::string::npos)
-		return false;
-	out.assign(text, p + 1, e - p - 1);
-	return true;
+		return std::nullopt;
+	return std::string(text.substr(p + 1, e - p - 1));
 }
 
 static bool extractJsonNumber(const std::string& text, std::string_view key, float fallback, float& out)
@@ -59,17 +59,17 @@ static bool extractJsonNumber(const std::string& text, std::string_view key, flo
 	return end != start;
 }
 
-static bool extractJsonObject(std::string_view text, std::string_view key, std::string& out)
+static std::optional<std::string> extractJsonObject(std::string_view text, std::string_view key)
 {
 	std::string needle = "\"";
 	needle += key;
 	needle += "\"";
 	size_t p = text.find(needle);
 	if (p == std::string::npos)
-		return false;
+		return std::nullopt;
 	p = text.find('{', p + needle.size());
 	if (p == std::string::npos)
-		return false;
+		return std::nullopt;
 	int depth = 0;
 	for (size_t i = p; i < text.size(); ++i) {
 		if (text[i] == '{')
@@ -77,12 +77,11 @@ static bool extractJsonObject(std::string_view text, std::string_view key, std::
 		else if (text[i] == '}') {
 			--depth;
 			if (depth == 0) {
-				out.assign(text, p, i - p + 1);
-				return true;
+				return std::string(text.substr(p, i - p + 1));
 			}
 		}
 	}
-	return false;
+	return std::nullopt;
 }
 
 static bool extractJsonBool(const std::string& text, std::string_view key, bool fallback, bool& out)
@@ -111,43 +110,41 @@ static bool extractJsonBool(const std::string& text, std::string_view key, bool 
 	return false;
 }
 
-static bool extractBuildingPbrAxis(const char* sidecarPath, int& axis)
+static std::optional<int> extractBuildingPbrAxis(const char* sidecarPath)
 {
-	axis = -1;
-	std::string text;
-	if (!readTextFile(sidecarPath, text))
-		return false;
+	const auto text = readTextFile(sidecarPath);
+	if (!text)
+		return std::nullopt;
 
-	std::string axisMapping;
-	if (extractJsonString(text, "axis_mapping", axisMapping)) {
-		size_t p = axisMapping.find("MC2_GLTF_AXIS=");
+	if (const auto axisMapping = extractJsonString(*text, "axis_mapping")) {
+		size_t p = axisMapping->find("MC2_GLTF_AXIS=");
 		if (p != std::string::npos) {
 			p += strlen("MC2_GLTF_AXIS=");
-			if (p < axisMapping.size() && axisMapping[p] >= '0' && axisMapping[p] <= '3') {
-				axis = axisMapping[p] - '0';
-				return true;
+			if (p < axisMapping->size() && (*axisMapping)[p] >= '0' && (*axisMapping)[p] <= '3') {
+				return (*axisMapping)[p] - '0';
 			}
 		}
 	}
 
 	float numericAxis = -1.0f;
-	if (extractJsonNumber(text, "gltf_axis", -1.0f, numericAxis)) {
+	if (extractJsonNumber(*text, "gltf_axis", -1.0f, numericAxis)) {
 		const int asInt = static_cast<int>(numericAxis);
 		if (asInt >= 0 && asInt <= 3) {
-			axis = asInt;
-			return true;
+			return asInt;
 		}
 	}
-	return false;
+	return std::nullopt;
 }
 
-static bool extractBuildingPbrYaw(const char* sidecarPath, float& yawDegrees)
+static std::optional<float> extractBuildingPbrYaw(const char* sidecarPath)
 {
-	yawDegrees = 0.0f;
-	std::string text;
-	if (!readTextFile(sidecarPath, text))
-		return false;
-	return extractJsonNumber(text, "yaw_degrees", 0.0f, yawDegrees);
+	const auto text = readTextFile(sidecarPath);
+	if (!text)
+		return std::nullopt;
+	float yawDegrees = 0.0f;
+	if (!extractJsonNumber(*text, "yaw_degrees", 0.0f, yawDegrees))
+		return std::nullopt;
+	return yawDegrees;
 }
 
 // META-FIX design B PART 1: failFlag threads AppearanceType::
@@ -164,10 +161,8 @@ void loadBuildingImportSourceWithSidecarAxis(TG_TypeMultiShape* shape, const cha
 	FullPathFileName sidecarName;
 	sidecarName.init(tglPath, importSourceBase, ".mcasset.json");
 
-	int axis = -1;
-	const bool hasAxis = extractBuildingPbrAxis(sidecarName, axis);
-	float yawDegrees = 0.0f;
-	const bool hasYaw = extractBuildingPbrYaw(sidecarName, yawDegrees);
+	const auto axis = extractBuildingPbrAxis(sidecarName);
+	const auto yawDegrees = extractBuildingPbrYaw(sidecarName);
 	char axisValue[8] = {0};
 	char yawValue[32] = {0};
 	// Remember the importer axis/yaw gates as typed values; the restore below
@@ -176,13 +171,13 @@ void loadBuildingImportSourceWithSidecarAxis(TG_TypeMultiShape* shape, const cha
 	const int oldAxisNumber = mc2::gate::get<"MC2_GLTF_AXIS">();
 	const bool hadYaw = mc2::gate::isSet<"MC2_GLTF_YAW_DEG">();
 	const float oldYawNumber = mc2::gate::get<"MC2_GLTF_YAW_DEG">();
-	if (hasAxis) {
-		mc2::fmt::to_buf(axisValue, "{:d}", mc2::fmt::as_i32(axis));
+	if (axis) {
+		mc2::fmt::to_buf(axisValue, "{:d}", mc2::fmt::as_i32(*axis));
 		_putenv_s("MC2_GLTF_AXIS", axisValue);
 		mc2::gate::invalidate("MC2_GLTF_AXIS");
 	}
-	if (hasYaw) {
-		mc2::fmt::to_buf(yawValue, "{:.3f}", yawDegrees);
+	if (yawDegrees) {
+		mc2::fmt::to_buf(yawValue, "{:.3f}", *yawDegrees);
 		_putenv_s("MC2_GLTF_YAW_DEG", yawValue);
 		mc2::gate::invalidate("MC2_GLTF_YAW_DEG");
 	}
@@ -192,13 +187,13 @@ void loadBuildingImportSourceWithSidecarAxis(TG_TypeMultiShape* shape, const cha
 	tglVerifyShapeLoaded(shape, rc, "bdactor.bldg_import",
 		importSourceBase, failFlag);
 
-	if (hasYaw) {
+	if (yawDegrees) {
 		char oldYawText[32] = {0};   // "" removes the variable
 		if (hadYaw) *std::to_chars(oldYawText, oldYawText + sizeof(oldYawText) - 1, oldYawNumber).ptr = '\0';
 		_putenv_s("MC2_GLTF_YAW_DEG", oldYawText);
 		mc2::gate::invalidate("MC2_GLTF_YAW_DEG");
 	}
-	if (hasAxis) {
+	if (axis) {
 		char oldAxisText[16] = {0};
 		if (hadAxis) *std::to_chars(oldAxisText, oldAxisText + sizeof(oldAxisText) - 1, oldAxisNumber).ptr = '\0';
 		_putenv_s("MC2_GLTF_AXIS", oldAxisText);
@@ -239,49 +234,47 @@ bool loadBuildingPbrFromSidecar(BldgAppearanceType* type, const char* sidecarPat
 	if (!type || !buildingPbrGateEnabled())
 		return false;
 
-	std::string text;
-	if (!readTextFile(sidecarPath, text))
+	const auto text = readTextFile(sidecarPath);
+	if (!text)
 		return false;
-	if (text.find("\"materials\"") == std::string::npos ||
-	    text.find("corrugated_steel_painted") == std::string::npos ||
-	    text.find("CorrugatedSteel006A") == std::string::npos)
+	if (text->find("\"materials\"") == std::string::npos ||
+	    text->find("corrugated_steel_painted") == std::string::npos ||
+	    text->find("CorrugatedSteel006A") == std::string::npos)
 		return false;
 
-	std::string normalPath;
-	std::string ormPath;
-	if (!extractJsonString(text, "normal", normalPath) ||
-	    !extractJsonString(text, "orm", ormPath))
+	const auto normalPath = extractJsonString(*text, "normal");
+	const auto ormPath = extractJsonString(*text, "orm");
+	if (!normalPath || !ormPath)
 		return false;
 
 	float tileScale = 2.0f;
 	float roughnessBias = 0.0f;
 	float metallicInfluence = 0.0f;
-	if (!extractJsonNumber(text, "tile_scale", 2.0f, tileScale) ||
-	    !extractJsonNumber(text, "roughness_bias", 0.0f, roughnessBias) ||
-	    !extractJsonNumber(text, "metallic_influence", 0.0f, metallicInfluence))
+	if (!extractJsonNumber(*text, "tile_scale", 2.0f, tileScale) ||
+	    !extractJsonNumber(*text, "roughness_bias", 0.0f, roughnessBias) ||
+	    !extractJsonNumber(*text, "metallic_influence", 0.0f, metallicInfluence))
 		return false;
 
 	const std::string dir = pathDir(sidecarPath);
-	const std::string normalFull = joinSidecarPath(dir, normalPath);
-	const std::string ormFull = joinSidecarPath(dir, ormPath);
+	const std::string normalFull = joinSidecarPath(dir, *normalPath);
+	const std::string ormFull = joinSidecarPath(dir, *ormPath);
 	// Validate sidecar images on the CPU before enabling native shape routing.
 	if (!validateBuildingPbrKtx2(normalFull.c_str()) ||
 	    !validateBuildingPbrKtx2(ormFull.c_str()))
 		return false;
 
 	bool preserveLegacyAlpha = false;
-	if (extractJsonBool(text, "preserve_legacy_alpha", false, preserveLegacyAlpha))
+	if (extractJsonBool(*text, "preserve_legacy_alpha", false, preserveLegacyAlpha))
 		type->buildingPbrPreserveLegacyAlpha = preserveLegacyAlpha;
-	std::string footprint;
-	if (extractJsonObject(text, "footprint_shadow", footprint)) {
+	if (const auto footprint = extractJsonObject(*text, "footprint_shadow")) {
 		bool fpEnabled = false;
 		float fpStrength = 0.35f;
 		float fpSoftness = 2.0f;
 		float fpHeightBias = 0.05f;
-		if (extractJsonBool(footprint, "enabled", false, fpEnabled) &&
-		    extractJsonNumber(footprint, "strength", 0.35f, fpStrength) &&
-		    extractJsonNumber(footprint, "softness", 2.0f, fpSoftness) &&
-		    extractJsonNumber(footprint, "height_bias", 0.05f, fpHeightBias)) {
+		if (extractJsonBool(*footprint, "enabled", false, fpEnabled) &&
+		    extractJsonNumber(*footprint, "strength", 0.35f, fpStrength) &&
+		    extractJsonNumber(*footprint, "softness", 2.0f, fpSoftness) &&
+		    extractJsonNumber(*footprint, "height_bias", 0.05f, fpHeightBias)) {
 			type->buildingFootprintShadowEnabled = fpEnabled;
 			type->buildingFootprintShadowStrength = std::clamp(fpStrength, 0.0f, 0.85f);
 			type->buildingFootprintShadowSoftness = std::max(0.0f, fpSoftness);
