@@ -2,6 +2,9 @@
 // share these images; no parallel texture or framebuffer allocations exist.
 #include "gos_postprocess_internal.h"
 #include "mc2fmt.h"
+#ifdef MC2_VULKAN_ISLAND
+#include "vulkan_context.h"
+#endif
 #include <cstdlib>
 
 bool gosPostProcess::sceneColorReady() const {
@@ -68,6 +71,9 @@ void gosPostProcess::createSceneTargets(int w, int h) {
 
 void gosPostProcess::destroySceneTargets() {
 #ifdef MC2_VULKAN_ISLAND
+    // Menu frames also sample these images, before any lazy post-effect exists.
+    if (mc2vk::engineVulkanContextValid())
+        mc2vk::getOrCreateEngineVulkanContext().waitIdle("scene_targets");
     // Drop consumers before the images they borrow.
     destroyVkPostHzbNative();
     destroyVkPostFogNative();
