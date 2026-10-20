@@ -98,7 +98,8 @@ static std::set<std::string> scanSourceShaderRefs(const fs::path& root) {
 TEST_CASE("shader_contract_harness/referenced_shaders_exist") {
     const fs::path root = repoRoot();
     const auto refs = scanSourceShaderRefs(root);
-    CHECK((!refs.empty()));
+    // GL end (lane2 s68): no source file loads a GLSL path any more, so an empty set is correct.
+    // Any shaders/*.{vert,frag,...} literal that reappears must still exist on disk.
     int missing = 0;
     for (const auto& rel : refs) {
         std::error_code ec;
