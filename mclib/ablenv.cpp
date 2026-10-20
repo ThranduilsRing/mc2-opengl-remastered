@@ -528,6 +528,29 @@ long ABLModule::getRealId (void)
 
 //---------------------------------------------------------------------------
 
+// A2: the debugger managers are created in one place. init() and read() both call this, so the creation order
+// (watch manager, then break points) and the ownership (the unique_ptr members) cannot drift apart.
+void ABLModule::initDebuggerManagers (void) {
+
+	if (!debugger)
+		return;
+
+	watchManager = std::make_unique<WatchManager>();
+	if (!watchManager)
+		ABL_Fatal(0, " Unable to AblStackHeap->malloc WatchManager ");
+	long result = watchManager->init(MaxWatchesPerModule);
+	if (result != ABL_NO_ERR)
+		ABL_Fatal(0, " Unable to AblStackHeap->malloc WatchManager ");
+	breakPointManager = std::make_unique<BreakPointManager>();
+	if (!breakPointManager)
+		ABL_Fatal(0, " Unable to AblStackHeap->malloc BreakPointManager ");
+	result = breakPointManager->init(MaxBreakPointsPerModule);
+	if (result != ABL_NO_ERR)
+		ABL_Fatal(0, " Unable to AblStackHeap->malloc BreakPointManager ");
+}
+
+//---------------------------------------------------------------------------
+
 long ABLModule::init (int moduleHandle) {
 
 	if (moduleHandle == -1) {
@@ -579,20 +602,7 @@ long ABLModule::init (int moduleHandle) {
 	// This Active Module is now on the instance registry...
 	ModuleInstanceRegistry[NumModuleInstances++] = this;
 
-	if (debugger) {
-		watchManager = std::make_unique<WatchManager>();
-		if (!watchManager)
-			ABL_Fatal(0, " Unable to AblStackHeap->malloc WatchManager ");
-		long result = watchManager->init(MaxWatchesPerModule);
-		if (result != ABL_NO_ERR)
-			ABL_Fatal(0, " Unable to AblStackHeap->malloc WatchManager ");
-		breakPointManager = std::make_unique<BreakPointManager>();
-		if (!breakPointManager)
-			ABL_Fatal(0, " Unable to AblStackHeap->malloc BreakPointManager ");
-		result = breakPointManager->init(MaxBreakPointsPerModule);
-		if (result != ABL_NO_ERR)
-			ABL_Fatal(0, " Unable to AblStackHeap->malloc BreakPointManager ");
-	}
+	initDebuggerManagers();
 
 	if (ModuleRegistry[handle].moduleIdPtr->defn.info.routine.flags & ROUTINE_FLAG_FSM) {
 		//--------------------------------
@@ -737,20 +747,7 @@ void ABLModule::read (ABLFile* moduleFile) {
 
 		ModuleInstanceRegistry[NumModuleInstances++] = this;
 
-		if (debugger) {
-			watchManager = std::make_unique<WatchManager>();
-			if (!watchManager)
-				ABL_Fatal(0, " Unable to AblStackHeap->malloc WatchManager ");
-			long result = watchManager->init(MaxWatchesPerModule);
-			if (result != ABL_NO_ERR)
-				ABL_Fatal(0, " Unable to AblStackHeap->malloc WatchManager ");
-			breakPointManager = std::make_unique<BreakPointManager>();
-			if (!breakPointManager)
-				ABL_Fatal(0, " Unable to AblStackHeap->malloc BreakPointManager ");
-			result = breakPointManager->init(MaxBreakPointsPerModule);
-			if (result != ABL_NO_ERR)
-				ABL_Fatal(0, " Unable to AblStackHeap->malloc BreakPointManager ");
-		}
+		initDebuggerManagers();
 	}
 }
 
