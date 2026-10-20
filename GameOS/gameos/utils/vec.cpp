@@ -1,12 +1,9 @@
 #include "vec.h"
+#include <bit>
 #include <memory.h>
 
 half::half(const float x){
-	union {
-		float floatI;
-		unsigned int i;
-	};
-	floatI = x;
+	unsigned int i = std::bit_cast<unsigned int>(x);
 
 //	unsigned int i = *((unsigned int *) &x);
 	int e = ((i >> 23) & 0xFF) - 112;
@@ -41,18 +38,13 @@ half::half(const float x){
 }
 
 half::operator float () const {
-	union {
-		unsigned int s;
-		float result;
-	};
-
-	s = (sh & 0x8000) << 16;
+	unsigned int s = (sh & 0x8000) << 16;
 	unsigned int e = (sh >> 10) & 0x1F;
 	unsigned int m = sh & 0x03FF;
 
 	if (e == 0){
 		// +/- 0
-		if (m == 0) return result;
+		if (m == 0) return std::bit_cast<float>(s);
 
 		// Denorm
 		while ((m & 0x0400) == 0){
@@ -64,12 +56,12 @@ half::operator float () const {
 	} else if (e == 31){
 		// INF / NAN
 		s |= 0x7F800000 | (m << 13);
-		return result;
+		return std::bit_cast<float>(s);
 	}
 
 	s |= ((e + 112) << 23) | (m << 13);
 
-	return result;
+	return std::bit_cast<float>(s);
 }
 /* --------------------------------------------------------------------------------- */
 
