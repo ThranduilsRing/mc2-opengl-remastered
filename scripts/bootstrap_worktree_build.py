@@ -134,6 +134,9 @@ def cache_args(worktree):
     tp = worktree.replace("\\", "/") + "/3rdparty"
     return [
         "-DMC2_IMGUI=ON",
+        # G2: Vulkan is the required renderer backend; the root configure rejects
+        # -DMC2_VULKAN=OFF, so the native lane always selects it explicitly.
+        "-DMC2_VULKAN=ON",
         f"-DCMAKE_PREFIX_PATH={tp}/cmake",
         f"-DZLIB_INCLUDE_DIR={tp}/include",
         f"-DZLIB_LIBRARY={tp}/lib/x64/zlib.lib",

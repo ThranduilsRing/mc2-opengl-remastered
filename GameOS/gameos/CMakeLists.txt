@@ -1,6 +1,13 @@
 cmake_minimum_required (VERSION 3.10)
 project(gameos)
 
+# G2: the root configure rejects MC2_VULKAN=OFF (Vulkan is the required renderer backend). Fail here
+# too so a standalone/partial configure cannot silently drop the Vulkan sources and the
+# MC2_VULKAN_ISLAND layout define. Unset (standalone tool trees) keeps the historical behaviour.
+if(DEFINED MC2_VULKAN AND NOT MC2_VULKAN)
+    message(FATAL_ERROR "gameos requires MC2_VULKAN=ON (Vulkan is the required renderer backend).")
+endif()
+
 set(SOURCES ${SOURCES}
     gameos.cpp
     gameos_graphics.cpp
