@@ -162,7 +162,7 @@
       "commit": "96ffc35d",
       "gate": "MC2_TERRAIN_AMBIENT_FLOOR",
       "expect_default": "0.35",
-      "exe_needle": "u_terrainAmbientFloor",
+      "exe_needle": "MC2_TERRAIN_AMBIENT_FLOOR",
       "code_evidence": [
         {
           "path": "GameOS/gameos/gos_terrain_lod_chunk.cpp",
