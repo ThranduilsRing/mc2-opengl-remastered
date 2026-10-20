@@ -1,4 +1,5 @@
 #include <memory>
+#include <span>
 #include "mc2str.h"
 #define MPPREFS_CPP
 /*************************************************************************************************\
@@ -401,12 +402,12 @@ char MPPrefs::getColorIndex( unsigned long color )
 	return 0;
 }
 
-void MPPrefs::updateBaseColors( const MC2Player* players, long playerCount, bool bDrawRect )
+void MPPrefs::updateBaseColors( std::span<const MC2Player> players, bool bDrawRect )
 {
 
 	if ( getButton(MP_PREFS_BASE )->isPressed() )
 	{
-		for( int i = 0; i < playerCount; i++ )
+		for( size_t i = 0; i < players.size(); i++ )
 		{
 			if ( players[i].commanderID == MPlayer->commanderID )
 			{
@@ -446,11 +447,11 @@ void MPPrefs::updateBaseColors( const MC2Player* players, long playerCount, bool
 	
 }
 
-void MPPrefs::updateStripeColors(const MC2Player* players, long playerCount, bool bDrawRect)
+void MPPrefs::updateStripeColors(std::span<const MC2Player> players, bool bDrawRect)
 {
 	if ( getButton(MP_PREFS_STRIPE )->isPressed() )
 	{
-		for( int i = 0; i < playerCount; i++ )
+		for( size_t i = 0; i < players.size(); i++ )
 		{
 			if ( players[i].commanderID == MPlayer->commanderID )
 			{
@@ -511,8 +512,14 @@ void MPPrefs ::render(int OffsetX, int OffsetY )
 
 		long playerCount;
 		const MC2Player* players = MPlayer->getPlayers(playerCount);
-		updateBaseColors( players, playerCount, bRect );
-		updateStripeColors( players, playerCount, bRect );
+		// LG17: null pointer or non-positive count -> empty range (skip), matching the
+		// old `i < playerCount` loop, and keeping the span construction well-defined.
+		const std::span<const MC2Player> playerSpan =
+			( players && playerCount > 0 )
+				? std::span<const MC2Player>( players, static_cast<size_t>( playerCount ) )
+				: std::span<const MC2Player>();
+		updateBaseColors( playerSpan, bRect );
+		updateStripeColors( playerSpan, bRect );
 
 
 		textObjects[helpTextArrayID].render();

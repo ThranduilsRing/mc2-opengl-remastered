@@ -1,4 +1,5 @@
 #include <string>
+#include <span>
 #ifndef MPPREFS_H
 #define MPPREFS_H
 /*************************************************************************************************\
@@ -59,8 +60,8 @@ class MPPrefs: public LogisticsScreen
 		aObject			insigniaBmp; // the one inside the combo box...
 
 		// HELPERS
-		void	updateStripeColors(const _MC2Player* players, long playerCount, bool bDrawRect );
-		void	updateBaseColors( const _MC2Player* players, long playerCount, bool bDrawRect);
+		void	updateStripeColors(std::span<const _MC2Player> players, bool bDrawRect );
+		void	updateBaseColors( std::span<const _MC2Player> players, bool bDrawRect);
 		char	getColorIndex( unsigned long color );
 		void	setColor( unsigned long color );
 		void	setHighlightColor( unsigned long color );
