@@ -1,4 +1,5 @@
-#include "txmmgr.h"
+#include "vk_scene_renderer.h"
+#include "render_submissions.h"
 #include "Gates/preferences_legacy.h"
 //--------------------------------------------------------------------------
 //
@@ -1054,11 +1055,9 @@ void __stdcall InitializeGameEngine()
 		}
 		
 		//------------------------------------------------
-		// Fire up the MC Texture Manager.
+		// Initialize scene resources.
 		{ ZoneScopedN("InitializeGameEngine textureManager");
-		ownedTextureManager = std::make_unique_for_overwrite<MC_TextureManager>();
-		mcTextureManager = ownedTextureManager.get();
-		mcTextureManager->start();
+		mc2::VkSceneRenderer::start();
 		}
 	
 		//--------------------------------------------------------------

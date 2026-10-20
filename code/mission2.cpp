@@ -1,4 +1,5 @@
-#include "txmmgr.h"
+#include "vk_scene_renderer.h"
+#include "render_submissions.h"
 #define MISSION2_CPP
 /*************************************************************************************************\
 mission2.cpp			: The parts of mission.cpp that we need for the mech viewer
@@ -12,7 +13,6 @@ mission2.cpp			: The parts of mission.cpp that we need for the mech viewer
 
 #include"gos_profiler.h"
 
-std::unique_ptr<MC_TextureManager> ownedTextureManager;
 std::unique_ptr<WeaponEffects> ownedWeaponEffects;
 
 bool Mission::statisticsInitialized = 0;
@@ -106,11 +106,9 @@ void Mission::initBareMinimum()
 
 	long result = 0;
 
-	if ( !mcTextureManager )
+	if ( !mc2::VkSceneRenderer::active() )
 	{
-		ownedTextureManager = std::make_unique_for_overwrite<MC_TextureManager>();
-		mcTextureManager = ownedTextureManager.get();
-		mcTextureManager->start();
+		mc2::VkSceneRenderer::start();
 
 	}
 

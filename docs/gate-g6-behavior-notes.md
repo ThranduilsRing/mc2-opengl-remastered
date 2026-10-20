@@ -10,7 +10,7 @@ matrices) sets any of these inputs.
 | Gate | Site | Old | Now |
 |---|---|---|---|
 | `MC2_ABL_COMPILE_FATAL` | `mclib/ablrtn.cpp` (`s_compileFatal`) | only `0` disables | any value starting with `0` disables |
-| `MC2_LIGHT_POS_COLUMN_FIX` | `mclib/txmmgr.cpp` (`s_lightPosColumnFix`) | only `0` disables | any value starting with `0` disables |
+| `MC2_LIGHT_POS_COLUMN_FIX` | `mclib/vk_object_light_gather.cpp` (`s_lightPosColumnFix`) | only `0` disables | any value starting with `0` disables |
 | `MC2_TERRAIN_INDIRECT`, `MC2_TERRAIN_INDIRECT_OVERLAY` | `mclib/terrtxm2.cpp` (`s_skipColormapTiles` cache) | only `0` disables | any value starting with `0` disables |
 
 The tool now reports this class: a Bool site that tests for an exact `"0"` (`v[1] == '\0'`, `strcmp(v, "0")`) against a

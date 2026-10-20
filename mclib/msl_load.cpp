@@ -259,7 +259,7 @@ void TG_TypeMultiShape::SetImportedTextures(DWORD count,
 		// Sentinel handles per mc2_texture_handle_is_live.md — never cache the
 		// live gosTextureHandle at import time. The engine's texture-resolve
 		// pass (e.g. Mech3DAppearanceType::init via SetTextureHandle) wires
-		// real values once MC_TextureManager has loaded the bitmap.
+		// real values once legacy texture manager has loaded the bitmap.
 		listOfTextures[i].mcTextureNodeIndex = 0xffffffff;
 		listOfTextures[i].gosTextureHandle   = 0xffffffff;
 		listOfTextures[i].textureAlpha       = alphas ? alphas[i] : false;

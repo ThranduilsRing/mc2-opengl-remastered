@@ -570,7 +570,7 @@ long Mech3DAppearance::render (long depthFixup)
 				// MECH-LIGHTROW-FRESHNESS-1 (default-ON; =0 reverts bit-for-bit)
 				// THE DEFECT. cachedGpuLightIndex_ names a DYNAMIC light-table
 				// slot, and dynamic slots are rebased EVERY FRAME:
-				// MC_TextureManager::resetLightData (mclib/txmmgr.cpp)
+				// legacy texture manager::resetLightData (mclib/txmmgr.cpp)
 				// resets lightDataStructuresCount to the static high-water and
 				// clears every dedup map, its own comment (txmmgr.cpp)
 				// stating that prior-frame hash->slot entries "are invalid". An

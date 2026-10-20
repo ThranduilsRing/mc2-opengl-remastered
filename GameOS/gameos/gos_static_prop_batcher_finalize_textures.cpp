@@ -28,7 +28,7 @@ bool GpuStaticPropBatcher::buildTextureArrays(StaticPropFinalizeFrame& f) {
         uint32_t sourceHandle;
         int  w;
         int  h;
-        DWORD  nodeIdx;   // MC_TextureManager node index for KTX2 sidecar lookup
+        DWORD  nodeIdx;   // legacy texture manager node index for KTX2 sidecar lookup
         std::shared_ptr<const std::vector<uint8_t>> rgba;
     };
 

@@ -246,7 +246,7 @@ std::optional<const aiNode*> FindNodeForMesh(const aiNode* node, unsigned meshId
 //-----------------------------------------------------------------------------
 // Strip leading directory components from a texture path. Assimp can return
 // absolute Windows paths, relative paths, or bare filenames depending on the
-// source authoring tool; MC_TextureManager looks up by base name.
+// source authoring tool; legacy texture manager looks up by base name.
 const char* StripPath(const char* p) {
 	const char* slash1 = strrchr(p, '/');
 	const char* slash2 = strrchr(p, '\\');
@@ -256,7 +256,7 @@ const char* StripPath(const char* p) {
 
 //-----------------------------------------------------------------------------
 // MODEL-OVERRIDE texture binding: derive an MC2 texture NAME from a glTF/FBX
-// material's base-color image so MC_TextureManager can resolve it by name to a
+// material's base-color image so legacy texture manager can resolve it by name to a
 // loose data/tgl/<size>/<name>.tga (file.cpp strips the size subdir) or BC7
 // .ktx2 sidecar. MC2 stores the diffuse texture name WITH its ".tga" extension
 // (see msl.cpp ParseASEFile + the shadow-X strlen-4 logic). So:
@@ -362,7 +362,7 @@ void BuildTextureList(const aiScene* scene, TG_TypeMultiShape* out) {
 		nameCStrs[i] = names[i].c_str();
 	}
 
-	// alphas=NULL → all false; engine's MC_TextureManager toggles textureAlpha
+	// alphas=NULL → all false; engine's legacy texture manager toggles textureAlpha
 	// later via SetTextureAlpha when the actual TGA loads.
 	out->SetImportedTextures(count, nameCStrs.data(), nullptr);
 }

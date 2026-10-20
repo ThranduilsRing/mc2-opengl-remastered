@@ -2,6 +2,7 @@
 // Per-frame geometry bins and pools feeding native Vulkan draws.
 #include "render_submissions.h"
 #include "gos_profiler.h"
+bool MLRVertexLimitReached = false;
 mc2::RenderSubmissions& mc2::renderSubmissions()
 {
     static RenderSubmissions queue;

@@ -1,4 +1,5 @@
-#include "txmmgr.h"
+#include "vk_scene_renderer.h"
+#include "render_submissions.h"
 #include "Gates/preferences_legacy.h"
 /***************************************************************
 * FILENAME: Editor.cpp
@@ -672,11 +673,11 @@ void InitializeGameEngine()
 		trianglePool->init(20000);
 
 	
-	mcTextureManager = new MC_TextureManager;
+
 
 	if (getGosRenderer())
 	{
-		mcTextureManager->start();
+		mc2::VkSceneRenderer::start();
 	}
 	else
 	{
@@ -781,15 +782,8 @@ void TerminateGameEngine()
 
 	MOVE_cleanup();
 
-	if (mcTextureManager)
-	{
-		mc2::renderSubmissions().freeShapes();
-		mc2::renderSubmissions().freeVertices();
-
-		mcTextureManager->destroy();
-		delete mcTextureManager;
-		mcTextureManager = nullptr;
-	}
+    if (mc2::VkSceneRenderer::active())
+        mc2::VkSceneRenderer::shutdown();
 
 	if (colorPool || vertexPool || facePool || shadowPool || trianglePool)
 	{

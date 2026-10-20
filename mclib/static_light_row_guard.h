@@ -70,7 +70,7 @@ inline uint32_t resolve(bool perInstanceLight,
 
 // Classify a resolved index against the live light table.
 //   numLightsAtSlot < 0  => caller could not address the slot (out of range).
-//                           This is exactly what MC_TextureManager::peekLightSlot
+//                           This is exactly what legacy texture manager::peekLightSlot
 //                           returns (LightSlotPeek::numLights, "-1 if out of range").
 //   numLightsAtSlot == 0 => addressable but empty.
 inline Class classify(uint32_t resolvedLightIdx, int numLightsAtSlot)

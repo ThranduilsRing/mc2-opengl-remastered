@@ -1,6 +1,5 @@
-// MC_TextureManager: SPFLUSH cost accumulators and the TXMMGR_BOUNDS exhaustion counters.
-// Declared in the class headers; shared names in txmmgr_internal.h.
-#include "txmmgr_internal.h"
+// Geometry submission exhaustion diagnostics.
+#include "render_scene_support.h"
 #include "mc2fmt.h"
 
 // [TXMMGR_BOUNDS v1] — TXMMGR-BOUNDS-HARDEN-1 exhaustion counters.

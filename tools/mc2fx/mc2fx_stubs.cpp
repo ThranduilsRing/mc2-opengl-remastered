@@ -130,7 +130,7 @@ int S_stricmp(const char* a, const char* b)  { return _stricmp(a, b); }
 int S_strnicmp(const char* a, const char* b, size_t n) { return _strnicmp(a, b, n); }
 
 // ---------------------------------------------------------------------------
-// MC_TextureManager / MC_TextureNode — GPU texture metadata. The GOSImage /
+// legacy texture manager / MC_TextureNode — GPU texture metadata. The GOSImage /
 // MLR state path references these but never touches GL on the LOAD path.
 // ---------------------------------------------------------------------------
 // Offline GOSImage keeps names with an invalid node when no manager exists.

@@ -33,9 +33,9 @@ set(SOURCES ${SOURCES}
     tgl_types.cpp
     timing.cpp
     render_submissions.cpp
-    txmmgr.cpp
-    txmmgr_diag.cpp
-    txmmgr_lightrow.cpp
+    effect_resources.cpp
+    render_submission_diag.cpp
+    vk_object_light_gather.cpp
     vk_object_lights.cpp
     vk_scene_renderer.cpp
     vk_scene_renderer_phases.cpp

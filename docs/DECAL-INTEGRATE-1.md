@@ -132,7 +132,7 @@ copy (`VFX-SCENECOLOR-GRAB-1`, unrelated).
 ## Files changed
 
 - `mclib/dynamic_decal_ring.h/.cpp` — new (ring) + `snapshotLiveSlots()` accessor.
-- `mclib/crater.cpp`, `mclib/txmmgr.cpp`, `GuiRuntime/GraphicsOptionsWindow.cpp`,
+- `mclib/crater.cpp`, `mclib/vk_scene_renderer_phases.cpp`, `GuiRuntime/GraphicsOptionsWindow.cpp`,
   `mclib/CMakeLists.txt` — ring producer wiring (cherry-pick + reapplied hunks).
 - `shaders/box_decal.vert/.frag` — new (consumer shaders).
 - `GameOS/gameos/gos_postprocess.{cpp,h}` — box-decal pass + the seam closure

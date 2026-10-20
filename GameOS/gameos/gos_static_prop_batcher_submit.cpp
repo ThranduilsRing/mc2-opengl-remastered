@@ -408,7 +408,7 @@ bool GpuStaticPropBatcher::submitMultiShape(TG_MultiShape* multi,
     // LIGHTROW-FRESHNESS-1
     //
     // THE DEFECT THIS FIXES. cachedGpuLightIndex_ is a DYNAMIC slot index, and
-    // dynamic slot indices are rebased EVERY FRAME: MC_TextureManager::resetLightData
+    // dynamic slot indices are rebased EVERY FRAME: legacy texture manager::resetLightData
     // (mclib/txmmgr.cpp:2137) resets lightDataStructuresCount to the static
     // high-water and clears every dedup map, and its own comment states that
     // "any stale hash->slot entries from the prior frame are invalid". A slot

@@ -33,7 +33,7 @@ bool active();
         // Returns false if idx is beyond the allocated count.
         bool copyLightSlot(uint32_t idx, TG_HWLightsData& out);
         // VK-MECH-FEED-NATIVE-1: read-only view of the CPU LightsData array
-        // (the byte source of the GL SSBO upload). Defined in txmmgr.cpp
+        // (the byte source of the GL SSBO upload). Defined in vk_object_lights.cpp
         // (needs complete TG_HWLightsData for sizeof).
         const void* getLightDataPtr();
         uint64_t    getLightDataBytes();

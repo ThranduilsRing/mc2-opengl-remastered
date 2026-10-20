@@ -3,6 +3,7 @@
 // The phases it runs live in txmmgr_render_{phases,passes,overlays}.cpp; shared names in vk_scene_renderer_internal.h.
 #include "vk_scene_renderer_internal.h"
 #include "mc2fmt.h"
+#include "effect_resources.h"
 
 // --- Shadow shape collection (file-scope global, no struct layout impact) ---
 struct ShadowShapeEntry {
@@ -120,4 +121,30 @@ void mc2::VkSceneRenderer::beginFrame()
 {
     renderSubmissions().clearArrays();
     vkLights::resetLightData();
+}
+
+bool mc2::VkSceneRenderer::active() { return renderSubmissions().active(); }
+void mc2::VkSceneRenderer::start()
+{
+    mc2::textures::startSources();
+    renderSubmissions().start();
+    vkLights::start();
+    initTexResolveTable();
+}
+void mc2::VkSceneRenderer::shutdown()
+{
+    mc2::textures::flushSources(true);
+    renderSubmissions().clearTextureBins();
+    mc2::effects::shutdown();
+    renderSubmissions().destroy();
+    vkLights::shutdown();
+}
+void mc2::VkSceneRenderer::reset()
+{
+    renderSubmissions().clearTextureBins();
+    invalidateTexResolveTable();
+#ifdef MC2_VULKAN_ISLAND
+    mc2_vk_legacy_shape_island_reset();
+    mc2_vk_overlay_reset();
+#endif
 }

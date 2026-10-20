@@ -1,4 +1,6 @@
-#include "txmmgr.h"
+#include "vk_scene_renderer.h"
+#include "effect_resources.h"
+#include "render_submissions.h"
 //******************************************************************************************
 //	mission.cpp - This file contains the mission class code
 //		Missions are what scenarios were in MechCommander 1.
@@ -1139,8 +1141,10 @@ void Mission::destroy (bool initLogistics)
 
 	Mover::holdFireIconHandle = 0;
 
-	if (mcTextureManager) {
-		mcTextureManager->flush();
+	if (mc2::VkSceneRenderer::active()) {
+		mc2::textures::flushSources(false);
+        mc2::VkSceneRenderer::reset();
+        mc2::effects::reload();
 		mc2::renderSubmissions().freeVertices();
 		mc2::renderSubmissions().freeShapes();
 	}

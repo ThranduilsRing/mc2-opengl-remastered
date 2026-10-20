@@ -5,6 +5,10 @@ namespace mc2 { class RenderSubmissions; }
 namespace mc2 {
 class VkSceneRenderer {
 public:
+    static bool active();
+    static void start();
+    static void shutdown();
+    static void reset();
     static void beginFrame();
 		//Sends down the triangle lists
 		static void renderLists (RenderSubmissions& submissions);

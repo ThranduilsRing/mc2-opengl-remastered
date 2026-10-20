@@ -1058,10 +1058,6 @@ void mc2ClearObjectLightPolicy(void);
 // Shadow shape collection — populated during TG_Shape::Render(), consumed in renderLists()
 void addShadowShape(HGOSBUFFER vb, HGOSBUFFER ib, HGOSVERTEXDECLARATION vdecl, const float* worldEntries16);
 
-// CP-1: per-mission reset of the static terrain shadow priming flag.
-// Call alongside gos_ResetStaticShadowPriming() at the per-mission init
-// chokepoint so each mission re-primes its static terrain shadow.
-void mc_ResetTerrainShadowPrimed();
 
 //----------------------------------------------------------------------
 #endif

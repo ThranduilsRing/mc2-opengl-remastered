@@ -24,7 +24,7 @@
 #include "diagnostic_trace.h"
 #include "Gates/gate.h"
 
-// MC_TextureManager singleton, defined in mclib/txmmgr.cpp.
+// legacy texture manager singleton, defined in mclib/txmmgr.cpp.
 
 // 2026-05-05: frame counter for cull-aware static replay. When an actor goes
 // offscreen, MC2's cull gate skips its update() (`cull_gates_are_load_bearing.md`),

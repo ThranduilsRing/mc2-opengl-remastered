@@ -181,7 +181,7 @@ DWORD __stdcall gos_NewTextureFromMemory( gos_TextureFormat Format, const char* 
 // compressed) 2D texture from a pre-loaded block stream and register it as a
 // gosTexture handle. Mirrors gos_NewTextureFromMemory's lifecycle (gosTexture
 // + addTexture), but uploads via glCompressedTexImage2D instead of decoding a
-// TGA. Single level only (MC_TextureManager data/textures load with
+// TGA. Single level only (legacy texture manager data/textures load with
 // gosHint_DisableMipmap), so GL_TEXTURE_MAX_LEVEL=0 and GL_LINEAR filtering.
 // Returns INVALID_TEXTURE_ID on GL failure (caller falls through to the RGBA8
 // path). The internal format is passed in by the caller (sRGB BPTC for albedo).

@@ -2403,21 +2403,6 @@
     "MainMenu"
    ]
   },
-  "MC_TextureManager": {
-   "delete": 1,
-   "delete_array": 0,
-   "files": {
-    "editor/Editor.cpp": {
-     "delete": 1,
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": [
-    ""
-   ]
-  },
   "MLRAmbientLight": {
    "delete": 0,
    "delete_array": 0,
@@ -3239,7 +3224,7 @@
    ]
   },
   "MidLevelRenderer::MLRClipper": {
-   "delete": 4,
+   "delete": 3,
    "delete_array": 0,
    "files": {
     "code/mechcmd2.cpp": {
@@ -3252,8 +3237,8 @@
      "delete": 1,
      "new": 1
     },
-    "mclib/txmmgr.cpp": {
-     "delete": 2,
+    "mclib/effect_resources.cpp": {
+     "delete": 1,
      "new": 1
     }
    },
@@ -3261,7 +3246,7 @@
    "new_array": 0,
    "owners": [
     "",
-    "MC_TextureManager"
+    "effects"
    ]
   },
   "MidLevelRenderer::MLRSortByOrder": {
@@ -3274,7 +3259,7 @@
     "editor/Editor.cpp": {
      "new": 1
     },
-    "mclib/txmmgr.cpp": {
+    "mclib/effect_resources.cpp": {
      "new": 1
     }
    },
@@ -3292,7 +3277,7 @@
     "editor/Editor.cpp": {
      "new": 1
     },
-    "mclib/txmmgr.cpp": {
+    "mclib/effect_resources.cpp": {
      "new": 1
     }
    },
@@ -3310,7 +3295,7 @@
     "editor/Editor.cpp": {
      "new": 1
     },
-    "mclib/txmmgr.cpp": {
+    "mclib/effect_resources.cpp": {
      "new": 1
     }
    },
@@ -4005,21 +3990,15 @@
    "owners": []
   },
   "Stuff::MemoryStream": {
-   "delete": 2,
+   "delete": 1,
    "delete_array": 0,
    "files": {
-    "code/mechcmd2.cpp": {
-     "new": 1
-    },
-    "code/mechcmd2_frame.cpp": {
-     "delete": 1
-    },
     "editor/Editor.cpp": {
      "delete": 1,
      "new": 1
     }
    },
-   "new": 2,
+   "new": 1,
    "new_array": 0,
    "owners": [
     ""
@@ -5218,7 +5197,7 @@
     "editor/Editor.cpp": {
      "new": 1
     },
-    "mclib/txmmgr.cpp": {
+    "mclib/effect_resources.cpp": {
      "new": 1
     }
    },
@@ -5248,7 +5227,7 @@
     "editor/Editor.cpp": {
      "new": 1
     },
-    "mclib/txmmgr.cpp": {
+    "mclib/effect_resources.cpp": {
      "new": 1
     }
    },
@@ -5682,6 +5661,7 @@
   "mclib/bdactor_tree.cpp": 5,
   "mclib/bdactor_tree_static.cpp": 1,
   "mclib/bdactor_type.cpp": 1,
+  "mclib/effect_resources.cpp": 3,
   "mclib/fastfile.cpp": 1,
   "mclib/genactor.cpp": 1,
   "mclib/genactor_frame.cpp": 1,
@@ -5764,7 +5744,6 @@
   "mclib/stuff/sortedchain.cpp": 2,
   "mclib/stuff/stuff.cpp": 1,
   "mclib/stuff/trace.cpp": 3,
-  "mclib/stuff/tree.cpp": 2,
-  "mclib/txmmgr.cpp": 6
+  "mclib/stuff/tree.cpp": 2
  }
 }

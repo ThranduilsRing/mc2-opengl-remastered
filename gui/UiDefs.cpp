@@ -280,7 +280,7 @@ bool UiDefs::GameOSPage::setElementTextureNode(const std::string& key, long text
         if (e.key != key)
             continue;
         // Runtime-supplied texture (e.g. a mission tac-map extracted from a .pak
-        // by getMissionTGA): inject the MC_TextureManager node directly instead
+        // by getMissionTGA): inject the legacy texture manager node directly instead
         // of loading from a file path. drawUiImageElement resolves the GL handle
         // from textureNode every frame.
         e.texturePath.clear();

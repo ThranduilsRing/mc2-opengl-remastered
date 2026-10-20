@@ -16,7 +16,7 @@ Each frame runs the following passes:
 | 5 | Objects (queue) | `ObjectManager->render()` | Mechs, static props, FX shape nodes — queued here, drawn at flush |
 | 6 | Water surface (CPU path) | `land->renderWater()` | Default path; `projectZ()`-displaced |
 | 7 | Shadow queue | `ObjectManager->renderShadows()` | Shadow geometry queued for pre-pass |
-| 8 | **Flush gate** | `mcTextureManager->renderLists()` (`mclib/txmmgr.cpp`) | Uploads UBOs + light SSBO; shadow pre-pass; all master-node draws; post-process composite |
+| 8 | **Flush gate** | `mc2::VkSceneRenderer::renderLists(mc2::renderSubmissions())` (`mclib/vk_scene_renderer.cpp`) | Uploads UBOs + light SSBO; shadow pre-pass; all master-node draws; post-process composite |
 | 9 | Water surface (GPU path) | `land->renderWaterFastPath()` | Opt-in (`MC2_RENDER_WATER_FASTPATH=1`); runs after depth ready |
 | 10 | GPU particles | `Batcher::Instance().Flush()` | Opt-in (`MC2_GPU_PARTICLES=1`) |
 | 11 | Legacy FX | `theClipper->RenderNow()` | MLR particles, gosFX; post-shadow |
@@ -42,7 +42,7 @@ Bridge paths (Bucket D) are active but being retired. New render features must l
 | `code/gamecam.cpp` | Frame loop, render-call sequence, camera/light uniform upload |
 | `GameOS/gameos/gameos_graphics.cpp` | GL state machine, draw dispatch, uniform caching |
 | `GameOS/gameos/gos_postprocess.cpp` | FBO management, bloom, shadow map binding, post-process composite |
-| `mclib/txmmgr.cpp` | Flush gate: `renderLists()`, master-node arrays, shadow pre-pass |
+| `mclib/vk_scene_renderer.cpp` | Flush gate: `renderLists()`, master-node arrays, shadow pre-pass |
 | `mclib/terrain.cpp` | Terrain `render()`, slim reduction loop, quad admission |
 | `mclib/mech3d.cpp` | Mech appearance rendering (engine side; 5139 lines) |
 | `GameOS/gameos/gos_static_prop_batcher.cpp` | GPU static-prop + mech batcher, instance SSBO |

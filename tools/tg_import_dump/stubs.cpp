@@ -16,10 +16,10 @@
 // CODE/ (GAME) SYMBOLS stubbed below (the headline finding):
 //   - eye          (extern CameraPtr;  code/gamecam.cpp)
 //   - land         (extern TerrainPtr; code/ game terrain singleton)
-//   - mc2::textures::ready() (extern MC_TextureManager*; game texture singleton)
+//   - mc2::textures::ready() (extern legacy texture manager*; game texture singleton)
 //   - Camera::HazeFactor / Camera::projectModernClipGL (render-time only)
 //   - Terrain::getTerrainElevation (game terrain query; render/transform only)
-//   - MC_TextureManager::* / MC_TextureNode::* (GPU texture bind; render only)
+//   - legacy texture manager::* / MC_TextureNode::* (GPU texture bind; render only)
 //   None are on the geometry LOAD path; all are reachable only from
 //   transform/render entry points the spike never invokes.
 
@@ -245,7 +245,7 @@ ModernClipResult Camera::projectModernClipGL(const glm::vec3&) const
 // Terrain elevation query (transform-time only).
 float Terrain::getTerrainElevation(const glm::vec3&) { return 0.0f; }
 
-// MC_TextureManager / MC_TextureNode (GPU texture bind; render only).
+// legacy texture manager / MC_TextureNode (GPU texture bind; render only).
 
 unsigned int mc2::vkLights::addLightDataStructure(TG_HWLightsData*) { return 0; }
 unsigned int mc2::vkLights::addLightDataStructureWithPerActorColor(TG_HWLightsData*) { return 0; }

@@ -582,14 +582,3 @@ Split commit: `e880b7520`.
 | `tgl_types.cpp` | TG shapes: ASE number/name helpers and the TG_TypeNode / TG_TypeShape / TG_Shape lifecycle, binary copy and creation. |
 | `tgl_internal.h` | shared include bundle, extern globals and declarations of the pieces |
 
-## `mclib/txmmgr.cpp`
-
-Split commit: `16460b02e`.
-
-| Piece | What it holds |
-|---|---|
-| `txmmgr.cpp` | keeps the manager lifecycle, addRenderShape and the node pin/update code |
-| `txmmgr_diag.cpp` | MC_TextureManager: SPFLUSH cost accumulators and the TXMMGR_BOUNDS exhaustion counters. |
-| `txmmgr_lightrow.cpp` | MC_TextureManager: pure object light row, GatherLightsParameters and the light-clamp / light-row diagnostics. |
-| `txmmgr_internal.h` | shared include bundle, extern globals and declarations of the pieces |
-

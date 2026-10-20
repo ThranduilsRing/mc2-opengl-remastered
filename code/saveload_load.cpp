@@ -122,7 +122,7 @@ void Mission::loadTerrain(MissionLoadFrame& f) {
 		static_cast<uint32_t>(Terrain::realVerticesMapSide * Terrain::realVerticesMapSide),
 		64u);
 	gos_ResetStaticShadowPriming();
-	mc_ResetTerrainShadowPrimed();
+
 }
 
 // Read the saved move maps and create the path manager.

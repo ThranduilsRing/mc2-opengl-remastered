@@ -4,7 +4,7 @@
 #ifndef TXMMGR_RENDER_INTERNAL_H
 #define TXMMGR_RENDER_INTERNAL_H
 
-#include "txmmgr_internal.h"
+#include "render_scene_support.h"
 
 // Number of shadow-shape slots reserved this frame (see addShadowShape).
 extern std::atomic<int> g_numShadowShapes;

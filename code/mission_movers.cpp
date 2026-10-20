@@ -383,7 +383,7 @@ typedef struct _MoverInitData {
             // currently seems that newly created gvehicl wilnot be drawn because isOnGui set to false
             // (actually it was not initialized at all until I added it to GroundVehicle::init)
             // and if isOnGui == false, then alphaValue will be set to 0x00 (see gvehicl.cpp) and renderer will not render it because
-            // there is no case in MC_TextureManager::renderLists() for only MC2_DRAWALPHA flag
+            // there is no case in legacy texture manager::renderLists() for only MC2_DRAWALPHA flag
             // how it works on Windows... who knows.
 			mover->setOnGUI(true);
 

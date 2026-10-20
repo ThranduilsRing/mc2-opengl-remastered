@@ -14,10 +14,6 @@
 #include<gameos.hpp>
 #endif
 
-#ifndef TXMMGR_H
-#include"txmmgr.h"
-#endif
-
 namespace MidLevelRenderer {
 
 	class GOSImage:

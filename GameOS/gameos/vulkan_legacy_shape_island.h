@@ -83,7 +83,7 @@ void mc2_vk_legacy_shape_submit(const Mc2LegacyMlrDraw* d);
 // co-wrote this frame, 0 otherwise (list is cleared either way).
 int mc2_vk_legacy_shape_island_run(int w, int h, const Mc2LegacyMlrFrame* frame);
 
-// Called on mission unload (MC_TextureManager::flush): texture node indices are
+// Called on mission unload (legacy texture manager::flush): texture node indices are
 // reused by the next mission, so the copy-once texture cache must be dropped.
 void mc2_vk_legacy_shape_island_reset();
 

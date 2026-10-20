@@ -255,7 +255,7 @@ cp -f mc2srcdata/art_4x_gpu/*.tga "$DEPLOY/data/art/"
 
 ### Buffer Size Fix
 
-Upscaled textures are larger and may exceed the default decompression buffer. If textures fail to load, check `MAX_LZ_BUFFER_SIZE` in `mclib/txmmgr.h` -- it was increased from 263KB to 8MB for 4x textures.
+Upscaled textures are larger. The current source loader in `mclib/texture_assets.cpp` uses dynamically sized buffers with a 512 MiB source limit (`kMaxSourceBytes`); the former fixed `MAX_LZ_BUFFER_SIZE` buffer has been retired.
 
 ---
 

@@ -505,7 +505,7 @@ void MissionBriefingScreen::begin()
 	statics[MAP_INDEX].setUVs( 0, 127, 127, 0 );
 	statics[MAP_INDEX].setColor( 0xffffffff );
 	// The legacy statics[MAP_INDEX] is not drawn on the defs page; route the minimap
-	// into the defs map image. getMissionTGA returns an MC_TextureManager node (not a
+	// into the defs map image. getMissionTGA returns an legacy texture manager node (not a
 	// raw gos handle), so inject it as a texture NODE: drawUiImageElement resolves +
 	// GL-uploads it each frame via get_gosTextureHandle (setElementTextureNode also
 	// handles the pak TGA's V-flip). A raw gos-override skips the upload -> no GL name.

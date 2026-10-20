@@ -1,3 +1,4 @@
+#include "effect_resources.h"
 #include "Gates/preferences_legacy.h"
 // Shared surface of the game-main translation units (mechcmd2*.cpp).
 //
@@ -205,8 +206,6 @@ extern DWORD startTime;
 extern DWORD endTime;
 extern bool gameStarted;
 extern Stuff::MemoryStream *effectStream;
-void InstallEffectStream(const void *data, size_t size);	// mclib/txmmgr.cpp
-void ReleaseEffectStream();	// mclib/txmmgr.cpp
 extern MidLevelRenderer::MLRClipper * theClipper;
 char* __stdcall GetGameInformation();
 void __stdcall InitializeGameEngine();

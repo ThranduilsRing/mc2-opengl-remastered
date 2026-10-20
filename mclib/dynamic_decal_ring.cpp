@@ -10,7 +10,7 @@
 //   gameos.hpp   -> gos_PushDecal, WorldOverlayVert
 //
 // The gos texture handle is resolved by the caller (crater.cpp) at spawn
-// time so this file has no dependency on crater.h or MC_TextureManager.
+// time so this file has no dependency on crater.h or legacy texture manager.
 
 #include "dynamic_decal_ring.h"
 

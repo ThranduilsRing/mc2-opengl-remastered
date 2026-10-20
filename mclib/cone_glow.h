@@ -21,7 +21,7 @@
 //      terrain.
 //  (B) QueueConeGlow / FlushFrame — night-gated additive re-render of the
 //      authored cone mesh through the still-alive legacy MC2_ISSPOTLGT
-//      consumer in MC_TextureManager::renderLists (OneOne additive, ZWrite
+//      consumer in legacy texture manager::renderLists (OneOne additive, ZWrite
 //      off, fog off). Reservation (addTriangle) happens at queue time in the
 //      update phase — same phase legacy MultiTransformShape reserved from —
 //      and vertex fill is deferred to FlushFrame() at the top of
@@ -124,7 +124,7 @@ void QueueConeGlow(TG_MultiShape* shape, long nodeId,
 void QueueBeaconGlow(TG_MultiShape* shape, float nightFactor);
 
 // Submit all queued cone triangles into the MC2_ISSPOTLGT vertex batch.
-// Called once per frame from MC_TextureManager::renderLists() (top).
+// Called once per frame from legacy texture manager::renderLists() (top).
 void FlushFrame();
 
 // GHOST-LIGHT-VISIBILITY-1 (mover fairness rule). True when the player is

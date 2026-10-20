@@ -3,7 +3,7 @@
 // Spec: docs/superpowers/specs/2026-04-27-modern-terrain-tex-resolve-table-design.md
 //
 // Lazy first-touch design: tex_resolve(nodeId) goes through the legacy
-// MC_TextureManager::get_gosTextureHandle(nodeId) accessor on the first read
+// legacy texture manager::get_gosTextureHandle(nodeId) accessor on the first read
 // of that node this frame, memoizes the result in handles[], and returns
 // indexed loads for subsequent reads. Killswitch OFF reverts to legacy.
 //===========================================================================

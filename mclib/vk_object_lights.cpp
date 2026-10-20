@@ -1,6 +1,6 @@
 // Vulkan CPU object-light rows, baked static slots and per-frame dedup caches.
-// Declared in the class headers; shared names in txmmgr_internal.h.
-#include "txmmgr_internal.h"
+// Declared in the class headers; shared names in render_scene_support.h.
+#include "render_scene_support.h"
 #include "vk_object_lights.h"
 #include <optional>
 #include "mc2fmt.h"

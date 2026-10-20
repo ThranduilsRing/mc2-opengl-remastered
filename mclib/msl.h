@@ -23,7 +23,7 @@
 #include"tgl.h"
 #endif
 
-#ifndef TXMMGR_H
+#ifndef MC2_RENDER_SUBMISSIONS_H
 #include"render_submissions.h"
 #endif
 
