@@ -94,7 +94,8 @@ def test_verified_must_match_the_typed_readers(tmp_path):
         'int f() { return mc2::gate::get<"MC2_READ_ME">(); }\n// get<"MC2_IN_A_COMMENT">\n', encoding="utf-8")
     (tmp_path / "Gates").mkdir()
     (tmp_path / "Gates" / "g.cpp").write_text('get<"MC2_INSIDE_GATES">', encoding="utf-8")
-    assert tg.typed_readers(str(tmp_path)) == {"MC2_READ_ME"}
+    (tmp_path / "code" / "a.inc").write_text('get<"MC2_INCLUDED">()', encoding="utf-8")
+    assert tg.typed_readers(str(tmp_path)) == {"MC2_READ_ME", "MC2_INCLUDED"}
 
 
 def test_override_counter_matches_the_using_enum_spelling(tmp_path):
@@ -242,3 +243,45 @@ def test_linked_worktree_check_build_stays_inside_lane(tmp_path, monkeypatch):
     assert result.is_dir()
     assert tg.persistent_build_dir(str(root)) == str(result)
     assert not outside.exists()
+
+
+def test_authored_table_paths_follow_include_order(tmp_path):
+    gates = tmp_path / "Gates"
+    gates.mkdir()
+    table = gates / "gate_table.cpp"
+    table.write_text('#include "gate_table_dsl.h"\n#include "gate_rows_2.inc"\n'
+                     '#include "gate_rows_0.inc"\n', encoding="utf-8")
+    assert tg.authored_table_paths(str(tmp_path)) == [
+        str(table), str(gates / "gate_rows_2.inc"), str(gates / "gate_rows_0.inc")]
+
+
+def test_sync_verified_refuses_a_missing_fragment(tmp_path):
+    gates = tmp_path / "Gates"
+    gates.mkdir()
+    (gates / "gate_table.cpp").write_text('#include "gate_rows_0.inc"\n', encoding="utf-8")
+    with pytest.raises(FileNotFoundError):
+        for path in tg.authored_table_paths(str(tmp_path)):
+            tg._sync_verified_file(path, set())
+
+
+def test_sync_verified_updates_fragments_without_changing_wrapper(tmp_path, monkeypatch):
+    gates = tmp_path / "Gates"
+    gates.mkdir()
+    table = gates / "gate_table.cpp"
+    wrapper = b'#include "gate_table_dsl.h"\r\n#include "gate_rows_0.inc"\r\n#include "gate_rows_1.inc"\r\n'
+    table.write_bytes(wrapper)
+    first = gates / "gate_rows_0.inc"
+    second = gates / "gate_rows_1.inc"
+    first.write_bytes(b'G("MC2_A", Bool, false, "code", "", "doc"),\r\n')
+    second.write_bytes(b'L(Presence, "MC2_B", Bool, false, "code", "", "doc", passthrough | verified),\n')
+    monkeypatch.setattr(tg, "typed_readers", lambda root: {"MC2_A"})
+    monkeypatch.setattr(tg, "build_gate_dump", lambda *args: "dump")
+    monkeypatch.setattr(tg.subprocess, "run", lambda *a, **kw: type("Result", (), {
+        "returncode": 0, "stdout": "{}\n"})())
+    monkeypatch.setattr(tg, "write_index", lambda root: 0)
+    assert tg.sync_verified(str(tmp_path)) == 0
+    assert table.read_bytes() == wrapper
+    assert first.read_bytes() == b'G("MC2_A", Bool, false, "code", "", "doc", verified),\r\n'
+    assert second.read_bytes() == b'L(Presence, "MC2_B", Bool, false, "code", "", "doc", passthrough),\n'
+    assert tg.sync_verified(str(tmp_path)) == 0
+    assert tg._sync_verified_file(str(first), {"MC2_A"}) == 0

@@ -1,0 +1,13 @@
+{
+  "base": "8b4a0c3a0639e2a274ee67c19040136731a4fcac",
+  "src": "mclib/file.cpp",
+  "mode": "include-only",
+  "fragments": [
+    "mclib/file_mod.inc"
+  ],
+  "include": "#include \"file_mod.inc\"\n\n",
+  "expanded_sha256": "2d0349f4b365b37b6588edfe54ac7c48cf7b91e462d88cce83ac5a582f0b27b4",
+  "_proof": "Replace the include bytes with file_mod.inc and compare with base:src. Exact byte equality implies token equivalence, unchanged linkage, and unchanged initialization order. No declarations, macros, or includes hoisted.",
+  "_scope": "Contiguous mod overlay, index/cache, trace, resolution and initialization block, including the interleaved image-size helper. Still compiled only through file.cpp by every tool closure.",
+  "_path_rows": "V1 not present on bf5ffbab1; use existing PathsMod, PathPerm, FileFamily, FileDisk and mod cache tests plus split_path_contracts/path_normalization."
+}
