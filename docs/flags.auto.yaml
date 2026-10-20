@@ -1602,7 +1602,7 @@ flags:
     doc: "FX cost-split instrumentation (default-off)."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_FX_COST_SPLIT, kind: Trace, order: -1, default_on: false}
+    registry: {feature_id: MC2_FX_COST_SPLIT, kind: Feature, order: -1, default_on: false}
   - name: MC2_FX_COUNT_LOG
     kind: Bool
     default: false
