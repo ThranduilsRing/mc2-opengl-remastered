@@ -4162,28 +4162,28 @@
         },
         {
           "path": "editor/tests/test_placement_proofs.py",
-          "line": 1171,
+          "line": 1172,
           "evidence": "import",
           "reference": "scripts.run_editor_smoke",
           "text": "from scripts.run_editor_smoke import main"
         },
         {
           "path": "editor/tests/test_placement_proofs.py",
-          "line": 1190,
+          "line": 1191,
           "evidence": "import",
           "reference": "scripts.run_editor_smoke",
           "text": "from scripts.run_editor_smoke import run_owned_marker_reload"
         },
         {
           "path": "editor/tests/test_placement_proofs.py",
-          "line": 1221,
+          "line": 1222,
           "evidence": "import",
           "reference": "scripts.run_editor_smoke",
           "text": "from scripts.run_editor_smoke import run_owned_objective_reload"
         },
         {
           "path": "editor/tests/test_placement_proofs.py",
-          "line": 1286,
+          "line": 1287,
           "evidence": "import",
           "reference": "scripts.run_editor_smoke",
           "text": "from scripts.run_editor_smoke import marker_reload_provenance"
