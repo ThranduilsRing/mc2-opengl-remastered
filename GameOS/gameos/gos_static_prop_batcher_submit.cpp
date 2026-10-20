@@ -533,7 +533,7 @@ bool GpuStaticPropBatcher::submitMultiShape(TG_MultiShape* multi,
     // it must read zero. It is NOT repaired by clamping (clamping would just
     // re-introduce the silent wrong-row substitution this slice removes).
     if (mcTextureManager &&
-        lightDataIndex >= mcTextureManager->getLightStructCount()) {
+        lightDataIndex >= mc2::vkLights::getLightStructCount()) {
         ++s_counters.mono_light_row_out_of_range;
         static bool s_loggedOob = false;
         if (!s_loggedOob) {
@@ -544,7 +544,7 @@ bool GpuStaticPropBatcher::submitMultiShape(TG_MultiShape* multi,
                 "(INVARIANT BREAK -- shader would read light[] out of bounds; "
                 "actor dropped)\n",
                 (callerName && callerName[0]) ? callerName : "<unknown>",
-                lightDataIndex, mcTextureManager->getLightStructCount(),
+                lightDataIndex, mc2::vkLights::getLightStructCount(),
                 g_mc2FrameCounter);
             std::fflush(stderr);
         }

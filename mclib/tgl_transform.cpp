@@ -608,11 +608,11 @@ long TG_Shape::MultiTransformShape_PositionsOnly (glm::mat4 *shapeToClip, glm::v
 uint32_t TG_Shape::GatherGpuObjectLightDataOnly()
 {
 	LcsScope<LcsBucket::C5> _lcs;
-	return mcTextureManager->addLightDataStructureWithPerActorColor(&lightData_);
+	return mc2::vkLights::addLightDataStructureWithPerActorColor(&lightData_);
 }
 
 uint32_t TG_Shape::ResubmitCachedLightData()
 {
 	LcsScope<LcsBucket::C6> _lcs;
-	return mcTextureManager->addLightDataStructure(&lightData_);
+	return mc2::vkLights::addLightDataStructure(&lightData_);
 }

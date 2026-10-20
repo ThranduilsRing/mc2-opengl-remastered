@@ -110,10 +110,10 @@ bool MissionInterfaceManager::uiCmdProbe(UiCmdCtx& c)
 					GameAdapters::StaticProp::recipeLightDataIndex(recipe, &ldi) &&
 					mcTextureManager) {
 					TG_HWLightsData baked;
-					if (mcTextureManager->copyLightSlot(ldi, baked)) {
-						mc2::fmt::to_buf(b, "  baked: recipe={:d} lightDataIndex={:d} slots={:d} numLights={:d} firstType={:d} firstColor=({:.4f},{:.4f},{:.4f})\n", mc2::fmt::as_i32(static_cast<int>(recipe)), mc2::fmt::as_u32(ldi), mc2::fmt::as_u32(mcTextureManager->getLightStructCount()), mc2::fmt::as_i32(baked.numLights_), mc2::fmt::as_i32(baked.numLights_ > 0 ? static_cast<int>(baked.lightDir[0][3]) : -1), baked.numLights_ > 0 ? baked.lightColor[0][0] : 0.0f, baked.numLights_ > 0 ? baked.lightColor[0][1] : 0.0f, baked.numLights_ > 0 ? baked.lightColor[0][2] : 0.0f);
+					if (mc2::vkLights::copyLightSlot(ldi, baked)) {
+						mc2::fmt::to_buf(b, "  baked: recipe={:d} lightDataIndex={:d} slots={:d} numLights={:d} firstType={:d} firstColor=({:.4f},{:.4f},{:.4f})\n", mc2::fmt::as_i32(static_cast<int>(recipe)), mc2::fmt::as_u32(ldi), mc2::fmt::as_u32(mc2::vkLights::getLightStructCount()), mc2::fmt::as_i32(baked.numLights_), mc2::fmt::as_i32(baked.numLights_ > 0 ? static_cast<int>(baked.lightDir[0][3]) : -1), baked.numLights_ > 0 ? baked.lightColor[0][0] : 0.0f, baked.numLights_ > 0 ? baked.lightColor[0][1] : 0.0f, baked.numLights_ > 0 ? baked.lightColor[0][2] : 0.0f);
 					} else {
-						mc2::fmt::to_buf(b, "  baked: recipe={:d} lightDataIndex={:d} UNREADABLE (index beyond allocated slot count {:d})\n", mc2::fmt::as_i32(static_cast<int>(recipe)), mc2::fmt::as_u32(ldi), mc2::fmt::as_u32(mcTextureManager->getLightStructCount()));
+						mc2::fmt::to_buf(b, "  baked: recipe={:d} lightDataIndex={:d} UNREADABLE (index beyond allocated slot count {:d})\n", mc2::fmt::as_i32(static_cast<int>(recipe)), mc2::fmt::as_u32(ldi), mc2::fmt::as_u32(mc2::vkLights::getLightStructCount()));
 					}
 					extra += b;
 				} else if (recipe >= 0) {

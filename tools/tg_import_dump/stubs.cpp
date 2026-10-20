@@ -248,8 +248,8 @@ float Terrain::getTerrainElevation(const glm::vec3&) { return 0.0f; }
 
 // MC_TextureManager / MC_TextureNode (GPU texture bind; render only).
 gos_VERTEXManager* MC_TextureManager::gvManager = nullptr;
-unsigned int MC_TextureManager::addLightDataStructure(TG_HWLightsData*) { return 0; }
-unsigned int MC_TextureManager::addLightDataStructureWithPerActorColor(TG_HWLightsData*) { return 0; }
+unsigned int mc2::vkLights::addLightDataStructure(TG_HWLightsData*) { return 0; }
+unsigned int mc2::vkLights::addLightDataStructureWithPerActorColor(TG_HWLightsData*) { return 0; }
 void MC_TextureManager::addRenderShape(DWORD, TG_RenderShape*, DWORD) {}
 // This loader never acquires texture assets: render-only metadata is unavailable.
 namespace mc2::textures {

@@ -87,8 +87,8 @@ extern "C" int mc2_mech_island_get_frame_feed(Mc2MechFrameFeed* out) {
     out->lightDataCpu = nullptr;
     out->lightDataCpuBytes = 0;
     if (mcTextureManager) {
-        out->lightDataCpu      = mcTextureManager->getLightDataPtr();
-        out->lightDataCpuBytes = mcTextureManager->getLightDataBytes();
+        out->lightDataCpu      = mc2::vkLights::getLightDataPtr();
+        out->lightDataCpuBytes = mc2::vkLights::getLightDataBytes();
     }
     // VK-PARITY-MECH-1: default mech FS shading inputs from the GL producers.
     {

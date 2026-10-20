@@ -591,7 +591,6 @@ Split commit: `16460b02e`.
 | `txmmgr.cpp` | keeps the manager lifecycle, addRenderShape and the node pin/update code |
 | `txmmgr_diag.cpp` | MC_TextureManager: SPFLUSH cost accumulators and the TXMMGR_BOUNDS exhaustion counters. |
 | `txmmgr_lightrow.cpp` | MC_TextureManager: pure object light row, GatherLightsParameters and the light-clamp / light-row diagnostics. |
-| `txmmgr_lights.cpp` | MC_TextureManager: baked static light slots, light-data dedup and the LIGHTBAKE / LIGHTBRIDGE gates. |
 | `txmmgr_render.cpp` | MC_TextureManager::renderLists orchestrator, the RENDERLISTS cost spans and the shadow-shape list. |
 | `txmmgr_render_overlays.cpp` | MC_TextureManager::renderLists phase 12: the legacy overlay pass (water loops, no-underlayer, shadow blobs, non-terrain alpha, vfx / hud submit). |
 | `txmmgr_render_passes.cpp` | MC_TextureManager::renderLists phases 8-11 (dynamic shadow pass, solid terrain, GPU static props and mechs, terrain overlay / decal batches). |

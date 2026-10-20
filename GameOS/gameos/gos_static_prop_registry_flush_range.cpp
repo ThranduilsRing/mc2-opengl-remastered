@@ -183,7 +183,7 @@ void flushLightRowDiag(uint64_t s_diag_flush_calls, uint32_t regIdx, RecipeRange
         // uploaded table, which is exactly classify()'s out-of-range input.
         int zlrNumLights = -1;
         if (mcTextureManager && freshLightIdx != static_light_row::kNoLightIndex)
-            zlrNumLights = mcTextureManager->peekLightSlot(freshLightIdx).numLights;
+            zlrNumLights = mc2::vkLights::peekLightSlot(freshLightIdx).numLights;
         const static_light_row::Class zlrClass =
             static_light_row::classify(freshLightIdx, zlrNumLights);
         switch (zlrClass) {
@@ -196,7 +196,7 @@ void flushLightRowDiag(uint64_t s_diag_flush_calls, uint32_t regIdx, RecipeRange
             s_zlr_instances += rng.count;
             if (!s_zlr_firstShown) {
                 s_zlr_firstShown = true;
-                mc2::fmt::print_err("[STATIC_LIGHT_ROW v1] event=zero_row_reached_gpu class={} regIdx={:d} typeID={:d} leaves={:d} lightIdx={:d} numLights={:d} tableCount={:d} rngLightIdx={:d} multiCache={:d}\n", mc2::fmt::safe(static_light_row::className(zlrClass)), mc2::fmt::as_u32(regIdx), mc2::fmt::as_u32(s_recipes[rng.first].typeID), mc2::fmt::as_u32(rng.count), mc2::fmt::as_u32(freshLightIdx), mc2::fmt::as_i32(zlrNumLights), mc2::fmt::as_u32(mcTextureManager ? mcTextureManager->getLightStructCount() : 0u), mc2::fmt::as_u32(rng.lightDataIndex), mc2::fmt::as_u32(rng.multi->getCachedGpuLightIndex()));
+                mc2::fmt::print_err("[STATIC_LIGHT_ROW v1] event=zero_row_reached_gpu class={} regIdx={:d} typeID={:d} leaves={:d} lightIdx={:d} numLights={:d} tableCount={:d} rngLightIdx={:d} multiCache={:d}\n", mc2::fmt::safe(static_light_row::className(zlrClass)), mc2::fmt::as_u32(regIdx), mc2::fmt::as_u32(s_recipes[rng.first].typeID), mc2::fmt::as_u32(rng.count), mc2::fmt::as_u32(freshLightIdx), mc2::fmt::as_i32(zlrNumLights), mc2::fmt::as_u32(mcTextureManager ? mc2::vkLights::getLightStructCount() : 0u), mc2::fmt::as_u32(rng.lightDataIndex), mc2::fmt::as_u32(rng.multi->getCachedGpuLightIndex()));
                 fflush(stderr);
             }
         }
@@ -219,10 +219,10 @@ void flushLightRowDiag(uint64_t s_diag_flush_calls, uint32_t regIdx, RecipeRange
         static int s_flushTracePrinted = 0;
         if (s_trace && s_flushTracePrinted < 16) {
             ++s_flushTracePrinted;
-            MC_TextureManager::LightSlotPeek peek = {-2, -2, 0, 0, 0};
-            if (mcTextureManager) peek = mcTextureManager->peekLightSlot(freshLightIdx);
+            mc2::vkLights::LightSlotPeek peek = {-2, -2, 0, 0, 0};
+            if (mcTextureManager) peek = mc2::vkLights::peekLightSlot(freshLightIdx);
             const uint32_t structCount = mcTextureManager
-                ? mcTextureManager->getLightStructCount() : 0;
+                ? mc2::vkLights::getLightStructCount() : 0;
             // H2 trace: if peek.numLights>0 but firstColor is (0,0,0) and/or
             // firstType is AMBIENT, that explains tree-leaf vertices going
             // black on the static replay (base_light=0 + ambient*0 = 0).

@@ -35,7 +35,7 @@ set(SOURCES ${SOURCES}
     txmmgr.cpp
     txmmgr_diag.cpp
     txmmgr_lightrow.cpp
-    txmmgr_lights.cpp
+    vk_object_lights.cpp
     txmmgr_render.cpp
     txmmgr_render_phases.cpp
     txmmgr_render_passes.cpp

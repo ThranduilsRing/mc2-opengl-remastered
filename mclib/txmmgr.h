@@ -34,6 +34,7 @@
 #include<string.h>
 #include<gameos.hpp>
 #include "texture_assets.h"
+#include "vk_object_lights.h"
 #include<mutex>  // std::recursive_mutex — FRAME-JOBS-2 precondition (vertex node allocators)
 #include<atomic> // TXMMGR-BOUNDS-HARDEN-1 exhaustion counters
 #include<cstdio> // TXMMGR-BOUNDS-HARDEN-1 trace emit
@@ -349,11 +350,6 @@ class MC_TextureManager
 		MC_HardwareVertexArrayNode 		*hardwareVertexData4;		//This holds the vertex draw data for UNTEXTURED triangles!
 		MC_HardwareVertexArrayNode 		*hardwareVertexData5;		//This holds the vertex draw data for UNTEXTURED triangles!
 
-        std::vector<TG_HWLightsData>    lightData_;               // CPU mirror of the light SSBO; size() == lightDataStructuresCapacity
-        uint32_t                        lightDataStructuresCapacity;
-        uint32_t                        lightDataStructuresCount;
-		// [LIGHTSSBO v1] lightDataBuffer_ removed: LightsData is now an
-		// SSBO owned by gameos_graphics.cpp (gos_LightDataSsbo_*).
 		
 	//Member Functions
 	//-----------------
@@ -375,8 +371,7 @@ class MC_TextureManager
 			vertexData = vertexData2 = vertexData3 = vertexData4 = vertexData5 = nullptr;
 			hardwareVertexData = hardwareVertexData2 = hardwareVertexData3 = hardwareVertexData4 = hardwareVertexData5 = nullptr;
 
-            lightDataStructuresCapacity = 0;
-            lightDataStructuresCount = 0;
+
 
 		}
 
@@ -449,36 +444,7 @@ class MC_TextureManager
 		// skippedNoFile. Returns number of nodes refreshed.
 
 		
-        void resetLightData();
 
-        // [LIGHTBAKE v2] persistent static-light table: write the baked
-        // constant into the permanent CPU slot lightData_[recipeIndex]
-        // (grow-preserving) + advance the static high-water S. Called
-        // once per recipe at bake / invalidate re-bake, NOT per frame.
-        void bakeStaticLightSlot(int32_t recipeIndex, const struct TG_HWLightsData& baked);
-
-        // Diagnostic accessors for the static-prop registry's flush trace:
-        // read-only views of the per-frame light dedup table.
-        // LightSlotPeek includes the first light's type (lightDir[0].w) and
-        // color (lightColor[0].rgb) so registry::flush() can identify the
-        // H2 hypothesis: slot has numLights=1 but lightColor=(0,0,0) → black.
-        struct LightSlotPeek {
-            int   numLights;    // -1 if out of range
-            int   firstType;    // -1 if numLights==0; else int(lightDir[0].w)
-            float firstColorR;
-            float firstColorG;
-            float firstColorB;
-        };
-        uint32_t getLightStructCount() const { return lightDataStructuresCount; }
-        LightSlotPeek peekLightSlot(uint32_t idx) const;
-        // [LIGHTBAKE-PROOF v1] copy a light slot's full struct (parity trace).
-        // Returns false if idx is beyond the allocated count.
-        bool copyLightSlot(uint32_t idx, TG_HWLightsData& out) const;
-        // VK-MECH-FEED-NATIVE-1: read-only view of the CPU LightsData array
-        // (the byte source of the GL SSBO upload). Defined in txmmgr.cpp
-        // (needs complete TG_HWLightsData for sizeof).
-        const void* getLightDataPtr() const;
-        uint64_t    getLightDataBytes() const;
 
  		//-----------------------------------------------------------------
 		// Gets gosTextureHandle for Node ID.  Does all caching necessary.
@@ -1122,10 +1088,6 @@ class MC_TextureManager
 
 		void addRenderShape(DWORD nodeId, TG_RenderShape* render_shape, DWORD flags);
 
-        // returns index at which this light structure was added
-        // ( if same one was found, then that index is returned and nothing is added)
-        uint32_t addLightDataStructure(TG_HWLightsData* lightData);
-        uint32_t addLightDataStructureWithPerActorColor(TG_HWLightsData* lightData);
 
 		void clearArrays (void)
 		{
@@ -1143,7 +1105,7 @@ class MC_TextureManager
 			gvManager->reset();
 			rsManager->reset();
 
-            resetLightData();
+            mc2::vkLights::resetLightData();
 		}
 		
 		//Sends down the triangle lists

@@ -115,9 +115,7 @@ void MC_TextureManager::start (void)
 	for (int i=0;i<MC_MAXFACES;i++)
 		indexArray[i] = i;
 		
-    lightDataStructuresCapacity = 128;
-    lightDataStructuresCount = 0;
-    lightData_.assign(lightDataStructuresCapacity, TG_HWLightsData());
+    mc2::vkLights::start();
 
 	initTexResolveTable();
 }
@@ -164,7 +162,7 @@ void MC_TextureManager::destroy (void)
 
 
 
-    std::vector<TG_HWLightsData>().swap(lightData_);
+    mc2::vkLights::shutdown();
 
 }
 

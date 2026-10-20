@@ -356,7 +356,7 @@ void TG_Shape::Render (float forceZ, bool isHudElement, BYTE alphaValue, bool is
 			memcpy(rs.viewport_, cur_viewport, 4 * sizeof(float));
 			{
 				LcsScope<LcsBucket::C2> _lcs;
-				rs.light_data_buffer_index_ = mcTextureManager->addLightDataStructure(&lightData_);
+				rs.light_data_buffer_index_ = mc2::vkLights::addLightDataStructure(&lightData_);
 			}
             rs.isHudElement_ = isHudElement;
 
