@@ -13,9 +13,9 @@
   "gui"
  ],
  "files_over_1500": {
-  "GameOS/gameos/engine_present_vk.cpp": 2936,
-  "GameOS/gameos/utils/shader_builder.cpp": 1520,
-  "GameOS/gameos/vulkan_color_prop_island.cpp": 1731,
+  "GameOS/gameos/engine_present_vk.cpp": 2935,
+  "GameOS/gameos/utils/shader_builder.cpp": 1532,
+  "GameOS/gameos/vulkan_color_prop_island.cpp": 1730,
   "GameOS/gameos/vulkan_shadow_island_live.cpp": 1544,
   "GameOS/include/gameos.hpp": 3730,
   "RenderCore/RendererFeatureRegistry.h": 1610,
@@ -47,9 +47,9 @@
   "mclib/ablrtn.cpp": 1798,
   "mclib/assimp_importer.cpp": 1577,
   "mclib/camera.h": 1815,
-  "mclib/file.cpp": 2616,
+  "mclib/file.cpp": 2614,
   "mclib/gosfx/fcurve.cpp": 1923,
-  "mclib/mapdata.cpp": 2522,
+  "mclib/mapdata.cpp": 2521,
   "mclib/mlr/mlrlightmap.cpp": 1648,
   "mclib/mlr/mlrprimitiveclipping.hpp": 1722,
   "mclib/mlr/mlrtriangleclipping.hpp": 2112,
@@ -59,7 +59,7 @@
   "mclib/tgl.h": 1799,
   "shaders/terrain_lod_chunk.frag": 2096
  },
- "head": "3d7fddc7b",
+ "head": "ee8b47415",
  "per_dir": {
   "GameAdapters": {
    "files": 9,
@@ -68,7 +68,7 @@
    "max_lines": 466
   },
   "GameOS": {
-   "files": 357,
+   "files": 358,
    "files_over_1500": 5,
    "files_over_3000": 1,
    "max_lines": 3730
@@ -92,7 +92,7 @@
    "max_lines": 1040
   },
   "code": {
-   "files": 410,
+   "files": 411,
    "files_over_1500": 22,
    "files_over_3000": 0,
    "max_lines": 2770
@@ -113,7 +113,7 @@
    "files": 561,
    "files_over_1500": 14,
    "files_over_3000": 0,
-   "max_lines": 2616
+   "max_lines": 2614
   },
   "shaders": {
    "files": 140,
@@ -133,7 +133,7 @@
   },
   {
    "file": "GameOS/gameos/engine_present_vk.cpp",
-   "lines": 2936
+   "lines": 2935
   },
   {
    "file": "code/brain_special_dispatch.cpp",
@@ -145,11 +145,11 @@
   },
   {
    "file": "mclib/file.cpp",
-   "lines": 2616
+   "lines": 2614
   },
   {
    "file": "mclib/mapdata.cpp",
-   "lines": 2522
+   "lines": 2521
   },
   {
    "file": "code/objective.cpp",
@@ -249,7 +249,7 @@
   }
  ],
  "total": {
-  "files": 1870,
+  "files": 1872,
   "files_over_1500": 45,
   "files_over_3000": 1,
   "max_lines": 3730
