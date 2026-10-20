@@ -35,6 +35,7 @@
 
 #include<stuff/stuff.hpp>
 #include<vector>
+#include<memory>
 
 //---------------------------------------------------------------------------
 enum  Overlays
@@ -71,7 +72,7 @@ class MapData
 
 	protected:
 		PostcompVertexPtr			blocks;
-		PostcompVertexPtr			blankVertex;
+		std::unique_ptr<PostcompVertex> blankVertex;
 		struct WorldQuadTerrainCacheEntry* terrainFaceCache;
 		int							hasSelection;
 
@@ -152,7 +153,7 @@ class MapData
 			blocks = nullptr;
 			terrainFaceCache = nullptr;
 
-			blankVertex = nullptr;
+			blankVertex.reset();
 
 			hasSelection = false;
 

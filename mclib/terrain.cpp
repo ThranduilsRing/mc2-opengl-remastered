@@ -49,6 +49,11 @@ glm::vec3				Terrain::mapTopLeft3d;					//Calced during load.
 
 char *						Terrain::terrainName = nullptr;
 char * 						Terrain::colorMapName = nullptr;
+std::unique_ptr<MapData> Terrain::mapDataOwner;
+std::unique_ptr<TerrainTextures> Terrain::terrainTexturesOwner;
+std::unique_ptr<TerrainColorMap> Terrain::terrainTextures2Owner;
+std::unique_ptr<char[]> Terrain::terrainNameOwner;
+std::unique_ptr<char[]> Terrain::colorMapNameOwner;
 
 // C1 tactical material profile (see terrain.h). Default LEGACY = exact
 // pre-C1 byte-for-byte behavior; only mc2_24 currently flips to a
@@ -100,7 +105,7 @@ bool						Terrain::recalcLight = false;
 TerrainBlockMeta*			Terrain::s_blockMeta       = nullptr;
 SuperchunkMeta*				Terrain::s_superchunkMeta  = nullptr;
 TerrainDrawCommand*			Terrain::s_drawCmds        = nullptr;
-float*						Terrain::s_skirtDepths     = nullptr;
+std::unique_ptr<float[]>		Terrain::s_skirtDepths;
 int							Terrain::s_cmdCount        = 0;
 unsigned long				Terrain::gCurrentFrame     = 0;
 int							Terrain::s_terrainChunkSide = 0;
@@ -392,29 +397,29 @@ void Terrain::getColorMapName (FitIniFile *file)
 			char mapName[1024];
 			if (file->readIdString("ColorMapName",mapName,1023) == NO_ERR)
 			{
-				colorMapName = new char[strlen(mapName)+1];
-				strcpy(colorMapName,mapName);
+				colorMapNameOwner = std::make_unique<char[]>(strlen(mapName)+1);
+				strcpy(colorMapNameOwner.get(),mapName);
+				colorMapName = colorMapNameOwner.get();
 				return;
 			}
 		}
 	}
 
+	colorMapNameOwner.reset();
 	colorMapName = nullptr;
 }
 
 //---------------------------------------------------------------------------
 void Terrain::setColorMapName (char *mapName)
 {
-	if (colorMapName)
-	{
-		delete [] colorMapName;
-		colorMapName = nullptr;
-	}
+	colorMapNameOwner.reset();
+	colorMapName = nullptr;
 
 	if (mapName)
 	{
-		colorMapName = new char [strlen(mapName)+1];
-		strcpy(colorMapName,mapName);
+		colorMapNameOwner = std::make_unique<char[]>(strlen(mapName)+1);
+		strcpy(colorMapNameOwner.get(),mapName);
+		colorMapName = colorMapNameOwner.get();
 	}
 }
 
@@ -604,7 +609,7 @@ void Terrain::destroy (void)
 		if (s_blockMeta)      { std::free(s_blockMeta);      s_blockMeta      = nullptr; }
 		if (s_superchunkMeta) { std::free(s_superchunkMeta); s_superchunkMeta = nullptr; }
 		if (s_drawCmds)       { std::free(s_drawCmds);       s_drawCmds       = nullptr; }
-		delete[] s_skirtDepths; s_skirtDepths = nullptr;
+		s_skirtDepths.reset();
 		s_terrainChunkSide = 0;
 		s_superchunkSide   = 0;
 		s_cmdCount         = 0;
@@ -613,31 +618,25 @@ void Terrain::destroy (void)
 	if (terrainTextures)
 	{
 		terrainTextures->destroy();
-		delete terrainTextures;
+		terrainTexturesOwner.reset();
 		terrainTextures = nullptr;
 	}
 
 	if (terrainTextures2)
 	{
 		terrainTextures2->destroy();
-		delete terrainTextures2;
+		terrainTextures2Owner.reset();
 		terrainTextures2 = nullptr;
 	}
 
-	delete mapData;
+	mapDataOwner.reset();
 	mapData = nullptr;
 
-	if (terrainName)
-	{
-		delete [] terrainName;
-		terrainName = nullptr;
-	}
+	terrainNameOwner.reset();
+	terrainName = nullptr;
 
-	if (colorMapName)
-	{
-		delete [] colorMapName;
-		colorMapName = nullptr;
-	}
+	colorMapNameOwner.reset();
+	colorMapName = nullptr;
 
 	if (tileRowToWorldCoord)
 	{

@@ -151,11 +151,7 @@ void MapData::destroy (void)
 	// Separate from invalidateTerrainFaceCache (different cache system).
 	gos_terrain_indirect::InvalidateAllRecipes();
 
-	if (blankVertex)
-	{
-		delete blankVertex;
-		blankVertex = nullptr;
-	}
+	blankVertex.reset();
 }
 
 //---------------------------------------------------------------------------
@@ -945,7 +941,7 @@ long MapData::update (void)
 	if (!blankVertex)
 	{
 		ZoneScopedN("MapData::update initBlankVertex");
-		blankVertex = new PostcompVertex;
+		blankVertex = std::make_unique<PostcompVertex>();
 		blankVertex->elevation = 33.0f;
 		blankVertex->textureData = (41<<16) + 41;
 	 			
@@ -1104,7 +1100,7 @@ void MapData::makeLists (VertexPtr vertexList, long &numVerts, TerrainQuadPtr qu
 			{
 				//------------------------------------------------------------
 				// Point this to the Blank Vertex
-				Pvertex = blankVertex;
+				Pvertex = blankVertex.get();
 				currentVertex->vertexNum = -1;
 			}
 			else

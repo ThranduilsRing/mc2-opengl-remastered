@@ -86,6 +86,7 @@ extern long topOpenNodes;
 extern long MaxHPrime;
 extern bool PreserveMapTiles;
 extern MoveMapPtr PathFindMap[2];
+MoveMapPtr MOVE_acquirePathFindMap (int which);
 extern bool EditorSave;
 
 inline constexpr int StepAdjDir[9] = {-1, 0, 2, 2, 4, 4, 6, 6, 0};

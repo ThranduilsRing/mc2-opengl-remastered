@@ -134,14 +134,14 @@ long FastFile::open (const char* fName)
 {
 	//-------------------------------------------------------------
 	long fNameLength = static_cast<long>(strlen(fName));
-	fileName = new char [fNameLength+1];
+	fileName = std::make_unique<char[]>(fNameLength+1);
 
 	if (!fileName)
 		return(NO_RAM_FOR_FILENAME);
 		
-	strncpy(fileName,fName,fNameLength+1);
+	strncpy(fileName.get(),fName,fNameLength+1);
 
-	handle = fopen(fileName,"rb");
+	handle = fopen(fileName.get(),"rb");
 	if (handle != nullptr)
 	{
 		logicalPosition = 0;
@@ -152,7 +152,7 @@ long FastFile::open (const char* fName)
 		//Check on CD.  They may not have been installed.
 		char actualPath[2048];
 		strcpy(actualPath,CDInstallPath);
-		strcat(actualPath,fileName);
+		strcat(actualPath,fileName.get());
 		handle = fopen(actualPath,"r");
 		if (handle == nullptr)
 		{
@@ -167,7 +167,7 @@ long FastFile::open (const char* fName)
 				if (!gos_NoUserPresentRequested()) EnterWindowMode();
 
 				char data[2048];
-				sprintf(data,FileMissingString,fileName,CDMissingString);
+				sprintf(data,FileMissingString,fileName.get(),CDMissingString);
 				DWORD result1 = mc2MessageBox(data,MissingTitleString,MB_OKCANCEL | MB_ICONWARNING,IDCANCEL);
 				if (result1 == IDCANCEL)
 				{
@@ -249,10 +249,7 @@ void FastFile::close (void)
 	//------------------------------------------------------------------------
 	// The actual stored filename is also in the parent.  Everyone else just has
 	// pointer and, as such, only the parent frees the memory.
-	if (fileName)
-		delete [] fileName;	//	this was free, which didn't match the new allocation.
-							//	neither new nor free were overridden. Should they have been?
-	fileName = nullptr;
+	fileName.reset();
 	length = 0;
 
 	if (isOpen())
@@ -280,16 +277,15 @@ long FastFile::create(const char* fName, bool compressed)
 
 	//-------------------------------------------------------------
 	long fNameLength = static_cast<long>(strlen(fName));
-	fileName = new char [fNameLength+1];
+	fileName = std::make_unique<char[]>(fNameLength+1);
 
 	if (!fileName) {
-        delete[] fileName;
 		return(NO_RAM_FOR_FILENAME);
     }
 		
-	strncpy(fileName,fName,fNameLength+1);
+	strncpy(fileName.get(),fName,fNameLength+1);
 
-	handle = fopen(fileName, "wb");
+	handle = fopen(fileName.get(), "wb");
 	if (handle != nullptr)
 	{
 		logicalPosition = 0;
@@ -300,7 +296,7 @@ long FastFile::create(const char* fName, bool compressed)
 
 	long res = writeVersion(handle);
 	if(NO_ERR != res) {
-        delete[] fileName;
+        fileName.reset();
 		return res;
     }
 
@@ -504,7 +500,7 @@ long FastFile::readFast (DWORD fastFileHandle, void *bfr, DWORD size)
 						if (!gos_NoUserPresentRequested()) EnterWindowMode();
 
 						char data[2048];
-						sprintf(data,FileMissingString,fileName,CDMissingString);
+						sprintf(data,FileMissingString,fileName.get(),CDMissingString);
 						DWORD result1 = mc2MessageBox(data,MissingTitleString,MB_OKCANCEL | MB_ICONWARNING,IDCANCEL);
 						if (result1 == IDCANCEL)
 						{
@@ -572,7 +568,7 @@ long FastFile::readFast (DWORD fastFileHandle, void *bfr, DWORD size)
 					long error = uncompress(reinterpret_cast<MemoryPtr>(bfr),&decompLength,LZPacketBuffer,files[fastFileHandle].pfe->size);
 					if (error != Z_OK) {
 						if (s_ffTrace) { CB_PRINTF("[FF] ZLIB FAILED error=%ld %s", error, files[fastFileHandle].pfe->name); }
-						STOP(("Error %d UnCompressing File %s from FastFile %s",error,files[fastFileHandle].pfe->name,fileName));
+						STOP(("Error %d UnCompressing File %s from FastFile %s",error,files[fastFileHandle].pfe->name,fileName.get()));
 					}
 				}
 
@@ -655,16 +651,16 @@ long FastFile::writeFast (const char* fastFileName, void* buffer, int nbytes)
 			int result = write(file, LZPacketBuffer, static_cast<unsigned int>(compressedSize));
 			_close(file);
 
-			char* fbc = new char[compressedSize];
-			char* fb = new char[nbytes];
+			auto fbc = std::make_unique<char[]>(compressedSize);
+			auto fb = std::make_unique<char[]>(nbytes);
 
 			file = _open("d:/ffile.bin", _O_RDONLY | _O_BINARY);
-			result = _read(file, fbc, static_cast<unsigned int>(compressedSize));
+			result = _read(file, fbc.get(), static_cast<unsigned int>(compressedSize));
 			_close(file);
 
-			gosASSERT(memcmp(LZPacketBuffer, fbc, compressedSize) == 0);
+			gosASSERT(memcmp(LZPacketBuffer, fbc.get(), compressedSize) == 0);
 
-			size_t uncompressedSize = LZDecomp(reinterpret_cast<Bytef*>(fb), reinterpret_cast<Bytef*>(fbc), compressedSize, nbytes);
+			size_t uncompressedSize = LZDecomp(reinterpret_cast<Bytef*>(fb.get()), reinterpret_cast<Bytef*>(fbc.get()), compressedSize, nbytes);
 			gosASSERT(nbytes == uncompressedSize);
 		}
 	}
@@ -719,7 +715,7 @@ long FastFile::readFastRAW (DWORD fastFileHandle, void *bfr, DWORD size)
 				if (!gos_NoUserPresentRequested()) EnterWindowMode();
 
 				char data[2048];
-				sprintf(data,FileMissingString,fileName,CDMissingString);
+				sprintf(data,FileMissingString,fileName.get(),CDMissingString);
 				DWORD result1 = mc2MessageBox(data,MissingTitleString,MB_OKCANCEL | MB_ICONWARNING,IDCANCEL);
 				if (result1 == IDCANCEL)
 				{

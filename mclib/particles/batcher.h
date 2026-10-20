@@ -23,6 +23,7 @@
 
 #include "spec.h"
 #include <cstdint>
+#include <memory>
 
 namespace mc2 {
 namespace particles {
@@ -153,7 +154,7 @@ class Batcher {
 
  private:
     struct Impl;
-    Impl* impl_;
+    std::unique_ptr<Impl> impl_;
     Batcher(const Batcher&)            = delete;
     Batcher& operator=(const Batcher&) = delete;
 };

@@ -272,7 +272,7 @@ void Terrain::flushDrawCommands (void)
 		gos_frame_pass_stats::SetPassCounts(
 			gos_render_pass_timer::Pass_TerrainChunk, static_cast<uint32_t>(s_cmdCount), 0u);
 		gos_frame_pass_stats::SetVisibleTerrainChunks(static_cast<uint32_t>(s_cmdCount));
-		gos_TerrainLodChunk_SubmitDrawCommands(s_drawCmds, s_skirtDepths,
+		gos_TerrainLodChunk_SubmitDrawCommands(s_drawCmds, s_skirtDepths.get(),
 			s_skirtEdgeMaskVec.empty() ? nullptr : s_skirtEdgeMaskVec.data(),
 			s_stitchStepVec.empty() ? nullptr : s_stitchStepVec.data(),
 			s_shadowTierVec.empty() ? nullptr : s_shadowTierVec.data(),

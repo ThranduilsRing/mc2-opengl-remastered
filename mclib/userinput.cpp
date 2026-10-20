@@ -95,7 +95,7 @@ void MouseCursorData::initCursors (const char *cursorFileName)
 
 	gosASSERT( numCursors < MAX_MOUSE_STATES );
 
-	cursorInfos = new StaticInfo[numCursors];
+	cursorInfos = std::make_unique<StaticInfo[]>(numCursors);
 		
 	//----------------------------------------------
 	// Each cursor is defined as a number of frames
@@ -151,11 +151,7 @@ void MouseCursorData::destroy (void)
 	{
 		userInput->mouseOff();
 		
-		if ( cursorInfos )
-		{
-			delete [] cursorInfos;
-			cursorInfos = nullptr;
-		}
+		cursorInfos.reset();
 
 		numCursors = 0;
 	}
@@ -506,13 +502,12 @@ void UserInput::initMouseCursors (const char *mouseFile)
 	{
 		ZoneScopedN("UserInput::initMouseCursors destroyOld");
 		cursors->destroy();
-		delete cursors;
-		cursors = nullptr;
+		cursors.reset();
 	}
 
 	{
 		ZoneScopedN("UserInput::initMouseCursors alloc");
-		cursors = new MouseCursorData;
+		cursors = std::make_unique<MouseCursorData>();
 	}
 	gosASSERT(cursors != nullptr);
 	

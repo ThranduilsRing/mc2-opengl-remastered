@@ -19,6 +19,7 @@
 #endif
 
 #include<vector>
+#include<memory>
 #include<stuff/stuff.hpp>
 
 //---------------------------------------------------------------------
@@ -68,7 +69,7 @@ class CraterManager
 		unsigned long		craterPosHeapSize;
 		unsigned long		craterShpHeapSize;
 		
-		PacketFilePtr		craterFile;
+		std::unique_ptr<PacketFile> craterFile;
 		
 		unsigned long		maxCraters;
 		unsigned long		currentCrater;
@@ -98,7 +99,7 @@ class CraterManager
 			craterTextureHandles.clear();
 			craterTextureIndices.clear();
 			
-			craterFile = nullptr;
+			craterFile.reset();
 		}
 		
 		CraterManager (void)
