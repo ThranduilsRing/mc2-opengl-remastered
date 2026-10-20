@@ -25,7 +25,6 @@
 #include <format>
 #include <string>
 #include <utility>
-#include "mc2fmt.h"
 
 // A gate for an audit is read where the audit is armed, through the typed registry
 // (mc2::gate::get<"MC2_FOO_AUDIT">() in a function-local static), not here.
@@ -39,7 +38,8 @@ template <class... Args>
 void mc2AuditLinef(std::format_string<Args...> fmt, Args&&... args)
 {
     char buf[1024];
-    mc2::fmt::to_buf(buf, fmt, std::forward<Args>(args)...);
+    const auto r = std::format_to_n(buf, sizeof(buf) - 1, fmt, std::forward<Args>(args)...);
+    buf[r.size < sizeof(buf) - 1 ? r.size : sizeof(buf) - 1] = '\0';
     mc2AuditLine(buf);
 }
 

@@ -14,7 +14,7 @@
 #include <cstdio>
 #include <string>
 #include <utility>
-#include "mc2fmt.h"
+#include <format>
 
 namespace mc2_sim_trace {
 
