@@ -35,17 +35,18 @@ void crashbundle_trigger_test_crash(void);
 #include <cstdio>
 #include <cstring>
 #include <format>
+#include <string_view>
 #include <utility>
 #include "mc2fmt.h"
 
 // std::format line -> stdout + crash-bundle ring. Cap is the line buffer size (output truncated to Cap-1 bytes); prefix is
 // prepended inside that cap (use "" for none).
 template <size_t Cap, class... Args>
-void crashbundle_printf(const char* prefix, std::format_string<Args...> fmt, Args&&... args)
+void crashbundle_printf(std::string_view prefix, std::format_string<Args...> fmt, Args&&... args)
 {
     char buf[Cap];
-    const size_t plen = std::strlen(prefix);
-    std::memcpy(buf, prefix, plen);
+    const size_t plen = prefix.size();
+    std::memcpy(buf, prefix.data(), plen);
     mc2::fmt::to_buf_n(buf + plen, Cap - plen, fmt, std::forward<Args>(args)...);
     std::puts(buf);
     std::fflush(stdout);
