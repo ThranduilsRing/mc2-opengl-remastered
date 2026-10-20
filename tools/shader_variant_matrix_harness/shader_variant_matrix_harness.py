@@ -47,12 +47,9 @@ SHADER_EXTS = (".vert", ".frag", ".comp", ".tesc", ".tese", ".geom", ".glsl", ".
 # Named audit anchors — verified injected+guarded at authoring time. Value macros
 # (referenced as a token / fallback-#define rather than an #ifdef guard) are
 # flagged with value=True so the anchor accepts any GLSL reference.
-ANCHORS = (
-    {"macro": "MRT_ENABLED", "value": False},
-    {"macro": "TERRAIN_NORMAL_ARRAY", "value": False},
-    {"macro": "MC2_SHADOW_CSM", "value": False},
-    {"macro": "MC2_SHADOW_CSM_MAX", "value": True},
-)
+# GL end (lane2 s68): the C++ shader-prefix injection these anchors audited is gone with the GL
+# shader path, so there is nothing left to anchor. The classifier selftest and drift report remain.
+ANCHORS = ()
 
 _STRLIT = re.compile(r'"((?:\\.|[^"\\])*)"')
 _DEFINE_IN = re.compile(r'#define\s+([A-Za-z_]\w*)')
