@@ -245,10 +245,6 @@ inline void GlobalMap::propogateCost (long door, long cost, long fromAreaIndex, 
 	}
 }
 
-#ifdef TERRAINEDIT
-#define MAX_GLOBAL_PATH		50
-#endif
-
 long GlobalMap::calcPath (long startArea,
 						  long goalArea,
 						  GlobalPathStepPtr path,
