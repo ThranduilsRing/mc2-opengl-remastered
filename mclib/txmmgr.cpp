@@ -24,6 +24,8 @@ static std::unique_ptr<Stuff::MemoryStream> s_effectStreamOwner;
 MC_TextureManager *mcTextureManager = nullptr;
 gos_VERTEXManager *MC_TextureManager::gvManager = nullptr;
 gos_RenderShapeManager<TG_RenderShape> *MC_TextureManager::rsManager = nullptr;
+static std::unique_ptr<gos_VERTEXManager> s_gvManagerOwner;
+static std::unique_ptr<gos_RenderShapeManager<TG_RenderShape>> s_rsManagerOwner;
 
 bool MLRVertexLimitReached = false;
 
