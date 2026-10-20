@@ -12,6 +12,7 @@ start. A save written by one exe, loaded by another and written again must equal
 at campaign start (PILOT_RUN_NOISE) and, by timing, in the mission the capture lands in; between those, judge the logistics text only.
 
   py -3 tools/campaign_save_roundtrip.py capture --out DIR [--deploy INSTALL] [--save-at 2400] [--timeout 150]
+  py -3 tools/campaign_save_roundtrip.py capture --out DIR --check-screens --salvage   # + the purchase/loadout screen checks and the salvage carry-over
   py -3 tools/campaign_save_roundtrip.py capture --out DIR --load OLD/save1.ims --load-at 900     # load a save from another exe, re-save
   py -3 tools/campaign_save_roundtrip.py logistics DIR/save1.ims
   py -3 tools/campaign_save_roundtrip.py compare OLD/save1.ims NEW/save2.ims      # logistics text, version/campaign packets, pilot text bytes
@@ -42,7 +43,8 @@ SCRUB = ("MC2_ACTIVE_MOD", "MC2_MOD_DEPS", "MC2_SOAK_AUTOWIN", "MC2_SOAK_AUTO_PU
          "MC2_SOAK_KILL_ENEMY", "MC2_SOAK_PILOT_PROMOTE", "MC2_SOAK_STOP_AT_BAY", "MC2_BOOT_QUICKSAVE_AT", "MC2_BOOT_QUICKLOAD_AT")
 
 
-def campaign_env(campaign: str, win_after_sec: float, save_at: int, load_at: int | None) -> dict:
+def campaign_env(campaign: str, win_after_sec: float, save_at: int, load_at: int | None,
+                 check_screens: bool = False, salvage: bool = False) -> dict:
     env = {k: v for k, v in os.environ.items() if k not in SCRUB}
     env.update({
         "MC2_BOOT_TO_BAY": campaign,
@@ -58,6 +60,11 @@ def campaign_env(campaign: str, win_after_sec: float, save_at: int, load_at: int
     })
     if load_at is not None:
         env["MC2_BOOT_QUICKLOAD_AT"] = str(load_at)
+    # SCRUB removed any inherited copy above, so these are the only way the screen checks and the salvage carry-over run.
+    if check_screens:
+        env["MC2_SOAK_CHECK_SCREENS"] = "1"
+    if salvage:
+        env["MC2_SOAK_SALVAGE_TRADEMOVER"] = "1"
     return env
 
 
@@ -153,7 +160,8 @@ def capture(args) -> int:
     first_src, second_src = (os.path.join(sdir, n) for n in ("testgame.ims", "testgame_resave.ims"))
     loading = args.load is not None
     # With a load, the quicksave fixture is armed far out of reach: it only makes the engine write the re-save right after the load.
-    env = campaign_env(args.campaign, args.win_after_sec, 10**9 if loading else args.save_at, args.load_at if loading else None)
+    env = campaign_env(args.campaign, args.win_after_sec, 10**9 if loading else args.save_at, args.load_at if loading else None,
+                       check_screens=args.check_screens, salvage=args.salvage)
     # Host game lease before the owner's saves are touched, held until this process exits (launch-to-kill included).
     try:
         host_lease.acquire(LEASE_LABEL)
@@ -195,6 +203,10 @@ def main(argv=None) -> int:
     c.add_argument("--win-after-sec", type=float, default=2.0)
     c.add_argument("--timeout", type=int, default=150)
     c.add_argument("--keep-going", action="store_true")
+    c.add_argument("--check-screens", action="store_true",
+                   help="MC2_SOAK_CHECK_SCREENS=1: run the explicit purchase/loadout screen checks ([SOAK] screen-check lines)")
+    c.add_argument("--salvage", action="store_true",
+                   help="MC2_SOAK_SALVAGE_TRADEMOVER=1: exercise the salvage carry-over path ([SOAK] salvage-* lines)")
     g = sub.add_parser("logistics")
     g.add_argument("save")
     k = sub.add_parser("compare")

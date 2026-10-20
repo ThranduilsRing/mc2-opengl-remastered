@@ -226,4 +226,49 @@ TEST_CASE("an FST entry whose uncompressed size is implausible is rejected and r
 	remove(fstPath.c_str());
 }
 
+// LG17 span guard: FastFile::writeFileEntries takes only the span now (the old
+// (FILE_HANDLE* files, int num_files) pair is gone). reserve() writes the whole
+// zeroed table through it (four entries here), and writeFast() then rewrites
+// one entry through a one-element span at that entry's offset. An incomplete
+// table or a wrong offset shows up as a failed lookup or the wrong bytes.
+TEST_CASE("multi-entry archive: reserve's span writes the whole table, writeFast's span one entry")
+{
+	const char *names[] = {"mvh_scratch_fst_a.txt", "mvh_scratch_fst_b.txt",
+	                       "mvh_scratch_fst_c.txt", "mvh_scratch_fst_d.txt"};
+	const char *payloads[] = {kFstPayload, "second-entry-payload", "third", "fourth-entry-payload"};
+	const int count = 4;
+	const std::string fstPath = scratchPath("archive4.fst");
+
+	{
+		FastFile ff;
+		REQUIRE(ff.create(fstPath.c_str(), /*compressed=*/true) == NO_ERR);
+		REQUIRE(ff.reserve(count) == NO_ERR);
+		REQUIRE(ff.getNumFiles() == count);
+		for (int i = 0; i < count; ++i)
+			CHECK(ff.getFilesInfo()[i].inuse == FALSE);
+		for (int i = 0; i < count; ++i) {
+			std::string buf(payloads[i]);
+			REQUIRE(ff.writeFast(names[i], (void *)buf.data(), (int)buf.size()) == NO_ERR);
+		}
+		ff.close();
+	}
+
+	{
+		FstRegistry reg(fstPath.c_str());
+		REQUIRE(reg.ok);
+		for (int i = 0; i < count; ++i) {
+			long h = -1;
+			FastFile *ff = FastFileFind(names[i], h);   // opens slot h by name
+			REQUIRE(ff != nullptr);
+			const long len = ff->sizeFast(h);
+			REQUIRE(len == (long)strlen(payloads[i]));
+			std::string got((size_t)len, '\0');
+			REQUIRE(ff->readFast(h, &got[0], (DWORD)len) == len);
+			CHECK(got == payloads[i]);
+			ff->closeFast(h);
+		}
+	}
+
+	remove(fstPath.c_str());
+}
 } // TEST_SUITE("FstRoundtrip")

@@ -33,6 +33,9 @@
 #include <string>
 
 #include <direct.h>   // _mkdir / _rmdir
+#ifdef _WIN32
+#include <io.h>       // _dup / _dup2 / _close for captureStdout
+#endif
 #include <windows.h>  // (paths.cpp uses PATH_SEPARATOR; nothing needed at runtime here)
 
 namespace
@@ -60,6 +63,29 @@ void writeFile (const std::string &path, const char *data)
 	fclose(fp);
 }
 
+// Capture the engine printf output of one call (the mod-cache hit/miss lines).
+template <class Fn>
+std::string captureStdout (Fn fn)
+{
+	std::fflush(stdout);
+	std::FILE *sink = std::tmpfile();
+	REQUIRE(sink != nullptr);
+	const int saved = _dup(_fileno(stdout));
+	REQUIRE(saved >= 0);
+	REQUIRE(_dup2(_fileno(sink), _fileno(stdout)) == 0);
+	fn();
+	std::fflush(stdout);
+	_dup2(saved, _fileno(stdout));
+	_close(saved);
+	std::rewind(sink);
+	std::string text;
+	char buf[512];
+	size_t n;
+	while ((n = std::fread(buf, 1, sizeof buf, sink)) > 0)
+		text.append(buf, n);
+	std::fclose(sink);
+	return text;
+}
 std::string readAll (File &f)
 {
 	const long len = (long)f.getLength();
@@ -200,4 +226,217 @@ TEST_CASE("mod search is gated: absolute paths and .. are never mod-resolved")
 	_putenv_s("MC2_REBUILD_MOD_CACHE", "");
 }
 
+// LG05 optional guards: ReadModJson (found: id/name/deps -> InitModSearchPaths
+// mounts the declared dep; not found / no id: the folder name becomes the id),
+// TryModOpen (found: an open handle; not found: no handle and every caller
+// falls through), and LoadModIndexCache (found: the cached entries; malformed
+// or missing: nullopt and a fresh walk). All values are scratch-tree content.
+
+namespace
+{
+const char *kJsonModsRoot = "mvh_scratch_json_mods";
+const char *kJsonFolder  = "jsonfolder";       // the mods/ directory name
+const char *kJsonModId   = "jsontestmod";      // the id INSIDE mod.json
+const char *kDepId       = "jsondep";
+
+// A mod.json whose scalars are spelled with escapes/odd spacing: the reader
+// must return the values themselves, not the raw JSON text.
+const char *kModJson =
+	"{ \"name\" : \"Json Test Mod\",\n"
+	"  \"id\"  : \"jsontestmod\",\n"
+	"  \"dependencies\" : [ \"jsondep\" ] }\n";
+
+std::string jsonBase () { return std::string(kJsonModsRoot) + "/" + kJsonFolder; }
+std::string depBase  () { return std::string(kJsonModsRoot) + "/" + kDepId; }
+
+void removeJsonTree ()
+{
+	const std::string bases[] = { jsonBase(), depBase() };
+	for (const std::string &b : bases)
+	{
+		remove((b + "/data/mvh_scratch_data/mod.txt").c_str());
+		remove((b + "/data/mvh_scratch_data/dep.txt").c_str());
+		remove((b + "/.modindex-cache").c_str());
+		remove((b + "/mod.json").c_str());
+		_rmdir((b + "/data/mvh_scratch_data").c_str());
+		_rmdir((b + "/data").c_str());
+		_rmdir(b.c_str());
+	}
+	_rmdir(kJsonModsRoot);
+}
+
+// Each mod layer needs its own file name: index keys are the paths under
+// data/, and the first layer to claim a key wins.
+const char *kDepRelPath  = "data/mvh_scratch_data/dep.txt";
+const char *kModRelPath  = "data/mvh_scratch_data/mod.txt";
+} // namespace
+
+TEST_CASE("mod.json found: its id and declared dependency are what get mounted")
+{
+	removeJsonTree();
+	_mkdir(kJsonModsRoot);
+	_mkdir(jsonBase().c_str());
+	_mkdir((jsonBase() + "/data").c_str());
+	_mkdir((jsonBase() + "/data/mvh_scratch_data").c_str());
+	writeFile(jsonBase() + "/mod.json", kModJson);
+	writeFile(jsonBase() + "/" + kModRelPath, "FROM-JSON-MOD");
+
+	_mkdir(depBase().c_str());
+	_mkdir((depBase() + "/data").c_str());
+	_mkdir((depBase() + "/data/mvh_scratch_data").c_str());
+	writeFile(depBase() + "/" + kDepRelPath, "FROM-JSON-DEP");
+
+	_putenv_s("MC2_MOD_DEPS", "");
+	_putenv_s("MC2_REBUILD_MOD_CACHE", "1");
+	setActiveMod(kJsonFolder);
+	InitModSearchPaths(kJsonModsRoot);
+
+	// Found: the active layer is named by the id INSIDE mod.json, not by the
+	// mods/ folder the env variable names; only ReadModJson yields that.
+	SUBCASE("the json id owns the active mod's file")
+	{
+		const char *owner = LookupModOwner(kModRelPath);
+		REQUIRE(owner != nullptr);
+		CHECK(std::string(owner) == kJsonModId);
+	}
+	// ...and its "dependencies" array reached the index as a mounted layer,
+	// which only ReadModJson's deps result can cause (MC2_MOD_DEPS is empty).
+	SUBCASE("the json dependencies array mounts the dep layer")
+	{
+		const char *owner = LookupModOwner(kDepRelPath);
+		REQUIRE(owner != nullptr);
+		CHECK(std::string(owner) == kDepId);
+	}
+
+	setActiveMod(nullptr);
+	InitModSearchPaths(kJsonModsRoot);
+	_putenv_s("MC2_MOD_DEPS", "");
+	removeJsonTree();
+	_putenv_s("MC2_REBUILD_MOD_CACHE", "");
+}
+
+TEST_CASE("mod.json not found or without an id: the folder name becomes the id")
+{
+	removeJsonTree();
+	_mkdir(kJsonModsRoot);
+	_mkdir(jsonBase().c_str());
+	_mkdir((jsonBase() + "/data").c_str());
+	_mkdir((jsonBase() + "/data/mvh_scratch_data").c_str());
+	writeFile(jsonBase() + "/" + kModRelPath, "FROM-NAMELESS-MOD");
+
+	_putenv_s("MC2_MOD_DEPS", "");
+	_putenv_s("MC2_REBUILD_MOD_CACHE", "1");
+
+	SUBCASE("no mod.json")
+	{
+		remove((jsonBase() + "/mod.json").c_str());
+		setActiveMod(kJsonFolder);
+		InitModSearchPaths(kJsonModsRoot);
+		const char *owner = LookupModOwner(kModRelPath);
+		REQUIRE(owner != nullptr);
+		CHECK(std::string(owner) == kJsonFolder);
+	}
+
+	SUBCASE("mod.json with no id field")
+	{
+		writeFile(jsonBase() + "/mod.json", "{ ""name"" : ""No Id Here"" }" "\n");
+		setActiveMod(kJsonFolder);
+		InitModSearchPaths(kJsonModsRoot);
+		const char *owner = LookupModOwner(kModRelPath);
+		REQUIRE(owner != nullptr);
+		CHECK(std::string(owner) == kJsonFolder);
+	}
+
+	setActiveMod(nullptr);
+	InitModSearchPaths(kJsonModsRoot);
+	_putenv_s("MC2_MOD_DEPS", "");
+	removeJsonTree();
+	_putenv_s("MC2_REBUILD_MOD_CACHE", "");
+}
+
+TEST_CASE("mod-index cache: a missing or malformed cache is a clean miss")
+{
+	removeJsonTree();
+	_mkdir(kJsonModsRoot);
+	_mkdir(jsonBase().c_str());
+	_mkdir((jsonBase() + "/data").c_str());
+	_mkdir((jsonBase() + "/data/mvh_scratch_data").c_str());
+	writeFile(jsonBase() + "/" + kModRelPath, "FROM-UNCACHED-MOD");
+
+	_putenv_s("MC2_MOD_DEPS", "");
+	_putenv_s("MC2_REBUILD_MOD_CACHE", "1");
+	setActiveMod(kJsonFolder);
+	InitModSearchPaths(kJsonModsRoot);                 // miss: fresh walk writes the cache
+	REQUIRE(LookupModOwner(kModRelPath) != nullptr);
+
+	// Missing: the cache is deleted. A dot-named file is invisible to the tree
+	// signature, so the next load differs only in the cache -- a pure miss.
+	remove((jsonBase() + "/.modindex-cache").c_str());
+	_putenv_s("MC2_REBUILD_MOD_CACHE", "");
+	std::string out = captureStdout([] { InitModSearchPaths(kJsonModsRoot); });
+	CHECK(out.find("[mod-cache] refresh") != std::string::npos);
+	CHECK(LookupModOwner(kModRelPath) != nullptr);
+
+	// Found: the cache the miss just wrote is read back on the next load.
+	out = captureStdout([] { InitModSearchPaths(kJsonModsRoot); });
+	CHECK(out.find("[mod-cache] hit") != std::string::npos);
+	CHECK(LookupModOwner(kModRelPath) != nullptr);
+
+	setActiveMod(nullptr);
+	InitModSearchPaths(kJsonModsRoot);
+	_putenv_s("MC2_MOD_DEPS", "");
+	removeJsonTree();
+	_putenv_s("MC2_REBUILD_MOD_CACHE", "");
+}
+TEST_CASE("mod-index cache: a cache whose count line is negative is a miss, not a partial index")
+{
+	removeJsonTree();
+	_mkdir(kJsonModsRoot);
+	_mkdir(jsonBase().c_str());
+	_mkdir((jsonBase() + "/data").c_str());
+	_mkdir((jsonBase() + "/data/mvh_scratch_data").c_str());
+	writeFile(jsonBase() + "/" + kModRelPath, "FROM-BAD-CACHE-MOD");
+
+	_putenv_s("MC2_MOD_DEPS", "");
+	_putenv_s("MC2_REBUILD_MOD_CACHE", "1");
+	setActiveMod(kJsonFolder);
+	InitModSearchPaths(kJsonModsRoot);                 // miss: writes a valid cache
+	REQUIRE(LookupModOwner(kModRelPath) != nullptr);
+
+	// Keep the header, modid and REAL signature line (any change to the tree
+	// would make this a signature mismatch, not a format error); only the
+	// count line is negative. LoadModIndexCache returns nullopt for it, so the
+	// load must fall back to a fresh walk -- never to an empty index.
+	const std::string cachePath = jsonBase() + "/.modindex-cache";
+	std::string lines;
+	{
+		FILE *fp = fopen(cachePath.c_str(), "rb");
+		REQUIRE(fp != nullptr);
+		char line[512];
+		for (int i = 0; i < 3 && fgets(line, sizeof line, fp); ++i)
+			lines += line;                             // header, modid, sig
+		fclose(fp);
+	}
+	{
+		FILE *fp = fopen(cachePath.c_str(), "wb");
+		REQUIRE(fp != nullptr);
+		fputs(lines.c_str(), fp);
+		fputs("count -1\n", fp);
+		fclose(fp);
+	}
+	_putenv_s("MC2_REBUILD_MOD_CACHE", "");
+	const std::string out = captureStdout([] { InitModSearchPaths(kJsonModsRoot); });
+	CHECK(out.find("[mod-cache] miss") != std::string::npos);
+	// The signature matched, so this is the format-error path (the negative
+	// count), not a stale-tree rebuild.
+	CHECK(out.find("cache missing/stale-format") != std::string::npos);
+	REQUIRE(LookupModOwner(kModRelPath) != nullptr);
+	CHECK(std::string(LookupModOwner(kModRelPath)) == std::string(kJsonFolder));
+
+	setActiveMod(nullptr);
+	InitModSearchPaths(kJsonModsRoot);
+	_putenv_s("MC2_MOD_DEPS", "");
+	removeJsonTree();
+	_putenv_s("MC2_REBUILD_MOD_CACHE", "");
+}
 } // TEST_SUITE("PathsAndMods")

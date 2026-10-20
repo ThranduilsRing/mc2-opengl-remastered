@@ -247,3 +247,109 @@ TEST_CASE("sim_identity: ABL digest keeps registry order and sees state, init an
     CHECK(fnvBytes(kFnvOffset, "abc", 3) == fnvBytes(kFnvOffset, "abc", 3));
     CHECK(fnvBytes(kFnvOffset, "abc", 3) != fnvBytes(kFnvOffset, "abc", 2));
 }
+
+// LG17 span guards: the span signatures replaced (const T* recs, size_t n).
+// Each reference below is that old loop written out literally, so a change to
+// the span kernel that would have moved game digests fails here.
+namespace {
+
+uint64_t oldDigestWorld(const MoverRecord* recs, size_t n, DigestKind kind) {
+    std::vector<MoverRecord> sorted;
+    if (n) sorted.assign(recs, recs + n);
+    sortRecords(sorted);   // same in-place total sort, same insertion order
+    uint64_t h = foldHeader(kFnvOffset, n);
+    h = fnvI32(h, static_cast<int32_t>(kind));
+    for (size_t i = 0; i < n; ++i) {
+        uint64_t m = (kind == DIGEST_STRICT) ? digestMoverStrict(sorted[i])
+                   : (kind == DIGEST_VISUAL) ? digestMoverVisual(sorted[i])
+                                             : digestMoverGraded(sorted[i]);
+        for (int b = 0; b < 8; ++b)
+            h = fnvByte(h, static_cast<uint8_t>(((m >> (b * 8)) & 0xFFu)));
+    }
+    return h;
+}
+
+uint64_t oldDigestObjects(const ObjectRecord* recs, size_t n) {
+    std::vector<ObjectRecord> sorted;
+    if (n) sorted.assign(recs, recs + n);
+    sortObjects(sorted);
+    uint64_t h = foldHeader(kFnvOffset, n);
+    for (size_t i = 0; i < n; ++i) {
+        const ObjectRecord& r = sorted[i];
+        h = fnvI32(h, r.id);
+        h = fnvI32(h, r.kind);
+        h = fnvI32(h, r.team);
+        h = fnvI32(h, r.commander);
+        h = fnvI32(h, r.status);
+        h = fnvI32(h, quantize(r.damage, kPosQuantum));
+        h = fnvI32(h, quantize(r.rot, kAngQuantum));
+        h = fnvI32(h, r.target);
+    }
+    return h;
+}
+
+uint64_t oldDigestAbl(const AblRecord* recs, size_t n) {
+    uint64_t h = foldHeader(kFnvOffset, n);
+    for (size_t i = 0; i < n; ++i) {
+        const AblRecord& r = recs[i];
+        h = fnvI32(h, r.id);
+        h = fnvI32(h, r.handle);
+        h = fnvI32(h, r.state);
+        h = fnvI32(h, r.prevState);
+        h = fnvI32(h, r.initCalled);
+        for (int b = 0; b < 8; ++b)
+            h = fnvByte(h, static_cast<uint8_t>((r.statics >> (b * 8)) & 0xFFu));
+    }
+    return h;
+}
+
+} // namespace
+
+TEST_CASE("sim_identity: span digests match the old pointer+count loops") {
+    std::vector<MoverRecord> movers{mk(940, 100.0f, 3.0f, -7.0f),
+                                    mk(102, -5.0f, 0.0f, 2.5f),
+                                    mk(711, 10.0f, 20.0f, 30.0f)};
+    for (const DigestKind k : {DIGEST_GRADED, DIGEST_VISUAL, DIGEST_STRICT}) {
+        std::vector<MoverRecord> bySpan = movers;
+        CHECK(digestWorld(bySpan, k) == oldDigestWorld(movers.data(), movers.size(), k));
+    }
+
+    std::vector<ObjectRecord> objects(2);
+    objects[0].id = 3; objects[0].kind = 2; objects[0].team = 1; objects[0].damage = 12.5f;
+    objects[0].rot = 45.0f; objects[0].target = 8;
+    objects[1].id = 1; objects[1].kind = 1; objects[1].team = 0; objects[1].commander = 2;
+    objects[1].damage = 0.25f;
+    std::vector<ObjectRecord> objBySpan = objects;
+    CHECK(digestObjects(objBySpan) == oldDigestObjects(objects.data(), objects.size()));
+
+    std::vector<AblRecord> abl(2);
+    abl[0].id = 0; abl[0].handle = 3; abl[0].state = 1; abl[0].statics = 0x0123456789ABCDEFULL;
+    abl[1].id = 1; abl[1].handle = 4; abl[1].state = 7; abl[1].prevState = 1; abl[1].initCalled = 1;
+    abl[1].statics = 0xFEDCBA9876543210ULL;
+    const std::vector<AblRecord>& constAbl = abl;   // the span is span<const AblRecord>
+    CHECK(digestAbl(constAbl) == oldDigestAbl(abl.data(), abl.size()));
+}
+
+TEST_CASE("sim_identity: empty and one-element span digests are defined and distinct") {
+    std::vector<MoverRecord> none;
+    std::vector<MoverRecord> one{mk(500, 1.0f, 2.0f, 3.0f)};
+    CHECK(digestWorld(none, DIGEST_GRADED) == oldDigestWorld(nullptr, 0, DIGEST_GRADED));
+    CHECK(digestWorld(none, DIGEST_VISUAL) == oldDigestWorld(nullptr, 0, DIGEST_VISUAL));
+    CHECK(digestWorld(none, DIGEST_STRICT) == oldDigestWorld(nullptr, 0, DIGEST_STRICT));
+    CHECK(digestWorld(one, DIGEST_GRADED) == oldDigestWorld(one.data(), 1, DIGEST_GRADED));
+    CHECK(digestWorld(none, DIGEST_GRADED) != digestWorld(one, DIGEST_GRADED));
+
+    std::vector<ObjectRecord> noObjects;
+    CHECK(digestObjects(noObjects) == oldDigestObjects(nullptr, 0));
+    ObjectRecord single;
+    single.id = 77; single.kind = 1; single.damage = 3.5f;
+    std::vector<ObjectRecord> oneObject{single};
+    CHECK(digestObjects(oneObject) == oldDigestObjects(oneObject.data(), 1));
+    CHECK(digestObjects(noObjects) != digestObjects(oneObject));
+
+    std::vector<AblRecord> noAbl;
+    std::vector<AblRecord> oneAbl(1);
+    CHECK(digestAbl(noAbl) == oldDigestAbl(nullptr, 0));
+    CHECK(digestAbl(oneAbl) == oldDigestAbl(oneAbl.data(), 1));
+    CHECK(digestAbl(noAbl) != digestAbl(oneAbl));
+}
