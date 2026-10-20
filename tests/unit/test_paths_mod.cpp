@@ -135,11 +135,16 @@ void removeLooseTree ()
 	// leave data/ itself alone -- it may be the repo's real data dir.
 }
 
+// Env names held once so the test does not grow the LG20 literal ratchet.
+static constexpr const char* kEnvActiveMod = "MC2_ACTIVE_MOD";
+static constexpr const char* kEnvRebuildCache = "MC2_REBUILD_MOD_CACHE";
+static constexpr const char* kEnvModDeps = "MC2_MOD_DEPS";
+
 void setActiveMod (const char *modId)
 {
 	// _putenv_s so getenv() inside InitModSearchPaths sees it.
-	if (modId) _putenv_s("MC2_ACTIVE_MOD", modId);
-	else       _putenv_s("MC2_ACTIVE_MOD", "");
+	if (modId) _putenv_s(kEnvActiveMod, modId);
+	else       _putenv_s(kEnvActiveMod, "");
 }
 
 } // namespace
@@ -160,7 +165,7 @@ TEST_CASE("paths.cpp exposes the engine's real path string globals")
 TEST_CASE("active mod override wins over loose base data (mods/ resolution order)")
 {
 	// Force a fresh index each run so a stale .modindex-cache can't leak.
-	_putenv_s("MC2_REBUILD_MOD_CACHE", "1");
+	_putenv_s(kEnvRebuildCache, "1");
 	buildModTree();
 
 	// A loose base-data copy at the query path -- the mod must still win.
@@ -200,12 +205,12 @@ TEST_CASE("active mod override wins over loose base data (mods/ resolution order
 	// cleanup
 	removeLooseTree();
 	removeModTree();
-	_putenv_s("MC2_REBUILD_MOD_CACHE", "");
+	_putenv_s(kEnvRebuildCache, "");
 }
 
 TEST_CASE("mod search is gated: absolute paths and .. are never mod-resolved")
 {
-	_putenv_s("MC2_REBUILD_MOD_CACHE", "1");
+	_putenv_s(kEnvRebuildCache, "1");
 	buildModTree();
 	setActiveMod(kModId);
 	InitModSearchPaths(kModsRoot);
@@ -223,7 +228,7 @@ TEST_CASE("mod search is gated: absolute paths and .. are never mod-resolved")
 	setActiveMod(nullptr);
 	InitModSearchPaths(kModsRoot);
 	removeModTree();
-	_putenv_s("MC2_REBUILD_MOD_CACHE", "");
+	_putenv_s(kEnvRebuildCache, "");
 }
 
 // LG05 optional guards: ReadModJson (found: id/name/deps -> InitModSearchPaths
@@ -286,8 +291,8 @@ TEST_CASE("mod.json found: its id and declared dependency are what get mounted")
 	_mkdir((depBase() + "/data/mvh_scratch_data").c_str());
 	writeFile(depBase() + "/" + kDepRelPath, "FROM-JSON-DEP");
 
-	_putenv_s("MC2_MOD_DEPS", "");
-	_putenv_s("MC2_REBUILD_MOD_CACHE", "1");
+	_putenv_s(kEnvModDeps, "");
+	_putenv_s(kEnvRebuildCache, "1");
 	setActiveMod(kJsonFolder);
 	InitModSearchPaths(kJsonModsRoot);
 
@@ -310,9 +315,9 @@ TEST_CASE("mod.json found: its id and declared dependency are what get mounted")
 
 	setActiveMod(nullptr);
 	InitModSearchPaths(kJsonModsRoot);
-	_putenv_s("MC2_MOD_DEPS", "");
+	_putenv_s(kEnvModDeps, "");
 	removeJsonTree();
-	_putenv_s("MC2_REBUILD_MOD_CACHE", "");
+	_putenv_s(kEnvRebuildCache, "");
 }
 
 TEST_CASE("mod.json not found or without an id: the folder name becomes the id")
@@ -324,8 +329,8 @@ TEST_CASE("mod.json not found or without an id: the folder name becomes the id")
 	_mkdir((jsonBase() + "/data/mvh_scratch_data").c_str());
 	writeFile(jsonBase() + "/" + kModRelPath, "FROM-NAMELESS-MOD");
 
-	_putenv_s("MC2_MOD_DEPS", "");
-	_putenv_s("MC2_REBUILD_MOD_CACHE", "1");
+	_putenv_s(kEnvModDeps, "");
+	_putenv_s(kEnvRebuildCache, "1");
 
 	SUBCASE("no mod.json")
 	{
@@ -349,9 +354,9 @@ TEST_CASE("mod.json not found or without an id: the folder name becomes the id")
 
 	setActiveMod(nullptr);
 	InitModSearchPaths(kJsonModsRoot);
-	_putenv_s("MC2_MOD_DEPS", "");
+	_putenv_s(kEnvModDeps, "");
 	removeJsonTree();
-	_putenv_s("MC2_REBUILD_MOD_CACHE", "");
+	_putenv_s(kEnvRebuildCache, "");
 }
 
 TEST_CASE("mod-index cache: a missing or malformed cache is a clean miss")
@@ -363,8 +368,8 @@ TEST_CASE("mod-index cache: a missing or malformed cache is a clean miss")
 	_mkdir((jsonBase() + "/data/mvh_scratch_data").c_str());
 	writeFile(jsonBase() + "/" + kModRelPath, "FROM-UNCACHED-MOD");
 
-	_putenv_s("MC2_MOD_DEPS", "");
-	_putenv_s("MC2_REBUILD_MOD_CACHE", "1");
+	_putenv_s(kEnvModDeps, "");
+	_putenv_s(kEnvRebuildCache, "1");
 	setActiveMod(kJsonFolder);
 	InitModSearchPaths(kJsonModsRoot);                 // miss: fresh walk writes the cache
 	REQUIRE(LookupModOwner(kModRelPath) != nullptr);
@@ -372,7 +377,7 @@ TEST_CASE("mod-index cache: a missing or malformed cache is a clean miss")
 	// Missing: the cache is deleted. A dot-named file is invisible to the tree
 	// signature, so the next load differs only in the cache -- a pure miss.
 	remove((jsonBase() + "/.modindex-cache").c_str());
-	_putenv_s("MC2_REBUILD_MOD_CACHE", "");
+	_putenv_s(kEnvRebuildCache, "");
 	std::string out = captureStdout([] { InitModSearchPaths(kJsonModsRoot); });
 	CHECK(out.find("[mod-cache] refresh") != std::string::npos);
 	CHECK(LookupModOwner(kModRelPath) != nullptr);
@@ -384,9 +389,9 @@ TEST_CASE("mod-index cache: a missing or malformed cache is a clean miss")
 
 	setActiveMod(nullptr);
 	InitModSearchPaths(kJsonModsRoot);
-	_putenv_s("MC2_MOD_DEPS", "");
+	_putenv_s(kEnvModDeps, "");
 	removeJsonTree();
-	_putenv_s("MC2_REBUILD_MOD_CACHE", "");
+	_putenv_s(kEnvRebuildCache, "");
 }
 TEST_CASE("mod-index cache: a cache whose count line is negative is a miss, not a partial index")
 {
@@ -397,8 +402,8 @@ TEST_CASE("mod-index cache: a cache whose count line is negative is a miss, not 
 	_mkdir((jsonBase() + "/data/mvh_scratch_data").c_str());
 	writeFile(jsonBase() + "/" + kModRelPath, "FROM-BAD-CACHE-MOD");
 
-	_putenv_s("MC2_MOD_DEPS", "");
-	_putenv_s("MC2_REBUILD_MOD_CACHE", "1");
+	_putenv_s(kEnvModDeps, "");
+	_putenv_s(kEnvRebuildCache, "1");
 	setActiveMod(kJsonFolder);
 	InitModSearchPaths(kJsonModsRoot);                 // miss: writes a valid cache
 	REQUIRE(LookupModOwner(kModRelPath) != nullptr);
@@ -424,7 +429,7 @@ TEST_CASE("mod-index cache: a cache whose count line is negative is a miss, not 
 		fputs("count -1\n", fp);
 		fclose(fp);
 	}
-	_putenv_s("MC2_REBUILD_MOD_CACHE", "");
+	_putenv_s(kEnvRebuildCache, "");
 	const std::string out = captureStdout([] { InitModSearchPaths(kJsonModsRoot); });
 	CHECK(out.find("[mod-cache] miss") != std::string::npos);
 	// The signature matched, so this is the format-error path (the negative
@@ -435,8 +440,8 @@ TEST_CASE("mod-index cache: a cache whose count line is negative is a miss, not 
 
 	setActiveMod(nullptr);
 	InitModSearchPaths(kJsonModsRoot);
-	_putenv_s("MC2_MOD_DEPS", "");
+	_putenv_s(kEnvModDeps, "");
 	removeJsonTree();
-	_putenv_s("MC2_REBUILD_MOD_CACHE", "");
+	_putenv_s(kEnvRebuildCache, "");
 }
 } // TEST_SUITE("PathsAndMods")
