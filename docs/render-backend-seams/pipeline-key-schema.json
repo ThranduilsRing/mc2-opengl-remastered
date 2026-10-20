@@ -211,12 +211,9 @@
       "pipelineDescRegistered": true,
       "shaderVariantId": {
         "base": "mech",
-        "macros": [
-          "MC2_OBJECT_ID_BUFFER",
-          "MC2_USE_VIEW_UNIFORMS"
-        ],
-        "recorded_at_runtime": true,
-        "recording": "RenderCore::recordPipelineVariantKey(MechOpaque, 'mech|'+shaderDefineKey(prefix)) in gos_mech_batcher at bindProgram; path-independent (GLSL==SPIR-V). Default runtime variant key = mech|MC2_OBJECT_ID_BUFFER=1;MC2_USE_VIEW_UNIFORMS=1 (both macros default-ON)."
+        "macros": [],
+        "recorded_at_runtime": false,
+        "recording": "P9 retired the GL prefix/specialization path. The native mech_tier1 stages have one default variant; executable shader-module identity belongs to the Vulkan pipeline owner."
       },
       "specializationParams": [],
       "vertexLayout": "mech_GpuMechVertex_48B",
@@ -488,7 +485,7 @@
   },
   "pilot_family": {
     "choice": "MechOpaque",
-    "why": "single program, single fixed VAO (GpuMechVertex 48B), already pipelineDescRegistered=true, already in reflect.py SHADER_VARIANTS (mech.{vert,frag} default/objectid/viewuniforms), smallest variant set (OBJECT_ID x USE_VIEW_UNIFORMS = 4). Cleanest target for eventual PSO validation.",
+    "why": "Active shaders/vulkan/mech_tier1.vert and .frag form one native default variant, with the existing 48B vertex layout and registered render intent.",
     "runner_up": "StaticPropOpaque (registered + reflected, but up to 16 variants â€” larger surface)"
   },
   "answers": {
