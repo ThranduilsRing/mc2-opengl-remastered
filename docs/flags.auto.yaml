@@ -5,7 +5,7 @@
 generator_version: "3.0.0"
 gate_count: 935
 registry_entry_count: 188
-verified_count: 874
+verified_count: 822
 flags:
   - name: MC2_3DVIEW_DIAG
     kind: Bool
@@ -13,7 +13,6 @@ flags:
     rule: Presence
     owner: gameos
     doc: ""
-    verified: true
   - name: MC2_ABL_ARG_GUARD
     kind: Bool
     default: false
@@ -122,7 +121,6 @@ flags:
     rule: Presence
     owner: code
     doc: ""
-    verified: true
   - name: MC2_ANIM_CADENCE_GUARD
     kind: Bool
     default: false
@@ -607,7 +605,6 @@ flags:
     rule: Presence
     owner: terrain
     doc: ""
-    verified: true
   - name: MC2_BUCKET_HEADER_TRACE
     kind: Bool
     default: false
@@ -753,21 +750,18 @@ flags:
     rule: Lead0P
     owner: gameos
     doc: ""
-    verified: true
   - name: MC2_CLUSTER_DEPTH_PYRAMID_PLANT
     kind: Bool
     default: false
     rule: Lead0P
     owner: gameos
     doc: ""
-    verified: true
   - name: MC2_CLUSTER_DEPTH_PYRAMID_VERIFY
     kind: Bool
     default: false
     rule: Lead0P
     owner: gameos
     doc: ""
-    verified: true
   - name: MC2_COALESCE_FORCE_DISARM
     kind: Enum
     default: ""
@@ -1259,7 +1253,6 @@ flags:
     rule: Prefix
     owner: editor
     doc: ""
-    verified: true
   - name: MC2_EDITOR_PICK_TRACE
     kind: Bool
     default: false
@@ -1273,7 +1266,6 @@ flags:
     rule: Exact1
     owner: code
     doc: ""
-    verified: true
   - name: MC2_EDITOR_STATIC_PREWARM_OFF
     kind: Bool
     default: false
@@ -1693,7 +1685,6 @@ flags:
     owner: gameos
     doc: "GLSTATEGUARD-SLICE-1: leak-visibility for mc2gl::GlScopedSsboBinding (gl_state_guard.h)."
     smoke_passthrough: true
-    verified: true
     registry: {feature_id: MC2_GLSTATEGUARD_LOG, kind: Trace, order: -1, default_on: false}
   - name: MC2_GLSTATEGUARD_TERRAIN
     kind: Bool
@@ -1701,7 +1692,6 @@ flags:
     rule: DefOnAtoiNZ
     owner: terrain
     doc: "GLSTATEGUARD-SLICE-2: kill-switch for the RAII depth/blend/cull ownership of the terrain LOD chunk draw (gos_TerrainLodChunk_SubmitDrawCommands via..."
-    verified: true
     registry: {feature_id: MC2_GLSTATEGUARD_TERRAIN, kind: Feature, order: -1, default_on: true}
   - name: MC2_GLTF_AXIS
     kind: Int
@@ -1769,7 +1759,6 @@ flags:
     rule: Presence
     owner: gameos
     doc: "LIGHT-GROW-ONCE-SUBDATA-1 (AMD-safe intermediate for the light SSBO orphan churn; NOT the full GpuStorageRing ring)."
-    verified: true
     registry: {feature_id: MC2_GPUBUF_LIGHT_GROWONCE, kind: Feature, order: -1, default_on: false}
   - name: MC2_GPUBUF_RESIDENCY
     kind: Bool
@@ -1823,7 +1812,6 @@ flags:
     owner: gameos
     doc: "Trace macro (env-gated, default off)"
     smoke_passthrough: true
-    verified: true
   - name: MC2_GPU_CULL_CONSERVATIVE_OR
     kind: Bool
     default: true
@@ -1837,7 +1825,6 @@ flags:
     rule: Presence
     owner: gameos
     doc: "Debug: dump concatenated source to file for inspection."
-    verified: true
   - name: MC2_GPU_CULL_FORCE_FENCE_NOT_READY
     kind: Bool
     default: false
@@ -1877,7 +1864,6 @@ flags:
     owner: gameos
     doc: "Ownership-parity oracle (Slice A, measurement-only, default off)."
     smoke_passthrough: true
-    verified: true
   - name: MC2_GPU_CULL_READBACK
     kind: Bool
     default: true
@@ -1946,7 +1932,6 @@ flags:
     owner: gameos
     doc: ""
     smoke_passthrough: true
-    verified: true
   - name: MC2_GPU_DRIVEN
     kind: Bool
     default: true
@@ -2094,7 +2079,6 @@ flags:
     rule: Lead1
     owner: gameos
     doc: ""
-    verified: true
   - name: MC2_GPU_TRAIL_DISABLE
     kind: Bool
     default: false
@@ -2462,28 +2446,24 @@ flags:
     rule: Lead0P
     owner: gameos
     doc: ""
-    verified: true
   - name: MC2_LIGHTGRID_PLANT
     kind: Bool
     default: false
     rule: Lead0P
     owner: gameos
     doc: ""
-    verified: true
   - name: MC2_LIGHTGRID_VERIFY
     kind: Bool
     default: false
     rule: Lead0P
     owner: gameos
     doc: ""
-    verified: true
   - name: MC2_LIGHTING_LINEAR_AUDIT
     kind: Bool
     default: false
     rule: Presence
     owner: post
     doc: "LINEAR-COLOR-AUDIT-1: one-shot runtime color-pipeline probe."
-    verified: true
   - name: MC2_LIGHTING_SHADOW_PREDICATE_MODE
     kind: Enum
     default: ""
@@ -2505,7 +2485,6 @@ flags:
     rule: Presence
     owner: mech
     doc: ""
-    verified: true
   - name: MC2_LIGHT_BILLBOARD_FACING
     kind: String
     default: ""
@@ -2756,7 +2735,6 @@ flags:
     owner: gameos
     doc: "LIGHT-PREFIX-GPU-COPY-1 (TXMMGR-PERF-EASYWINS-1): keep a VRAM stash of the immutable static light prefix [0..S) and glCopyBufferSubData it into the..."
     smoke_passthrough: true
-    verified: true
     registry: {feature_id: MC2_LIGHT_PREFIX_GPU_COPY, kind: Feature, order: -1, default_on: false}
   - name: MC2_LIGHT_REALISM
     kind: Bool
@@ -2853,7 +2831,6 @@ flags:
     rule: Lead0
     owner: gameos
     doc: ""
-    verified: true
   - name: MC2_LINKUP_TRACE
     kind: Bool
     default: false
@@ -3630,7 +3607,6 @@ flags:
     rule: Lead0Kill
     owner: post
     doc: ""
-    verified: true
   - name: MC2_OPTIONS_OVERRIDE
     kind: String
     default: ""
@@ -3724,14 +3700,12 @@ flags:
     rule: Presence
     owner: terrain
     doc: ""
-    verified: true
   - name: MC2_PATCHSTREAM_DIRECT_TEXTURE_BIND_CHECK
     kind: Bool
     default: false
     rule: Presence
     owner: terrain
     doc: ""
-    verified: true
   - name: MC2_PATCHSTREAM_QUAD_RECORDS
     kind: Bool
     default: false
@@ -3739,7 +3713,6 @@ flags:
     owner: terrain
     doc: ""
     smoke_passthrough: true
-    verified: true
   - name: MC2_PATCHSTREAM_QUAD_RECORDS_DRAW
     kind: Bool
     default: false
@@ -3747,7 +3720,6 @@ flags:
     owner: terrain
     doc: ""
     smoke_passthrough: true
-    verified: true
   - name: MC2_PATCHSTREAM_THIN_RECORDS
     kind: Bool
     default: false
@@ -3779,7 +3751,6 @@ flags:
     owner: terrain
     doc: "Step 4 bailout - env-gated forced init failure for testing the fallback path without driver stress."
     smoke_passthrough: true
-    verified: true
   - name: MC2_PATCH_STREAM_TRACE
     kind: Bool
     default: false
@@ -3787,7 +3758,6 @@ flags:
     owner: terrain
     doc: ""
     smoke_passthrough: true
-    verified: true
   - name: MC2_PATH_JUMP_FAIL_BACKOFF
     kind: Bool
     default: false
@@ -3844,7 +3814,6 @@ flags:
     owner: gameos
     doc: ""
     smoke_passthrough: true
-    verified: true
   - name: MC2_PIPELINE_COLORMASK
     kind: Bool
     default: false
@@ -3871,21 +3840,18 @@ flags:
     rule: Lead0P
     owner: post
     doc: ""
-    verified: true
   - name: MC2_POSTPROCESS_COMPUTE_BLUR_PLANT
     kind: Bool
     default: false
     rule: Lead0P
     owner: post
     doc: ""
-    verified: true
   - name: MC2_POSTPROCESS_COMPUTE_BLUR_VERIFY
     kind: Bool
     default: false
     rule: Lead0P
     owner: post
     doc: ""
-    verified: true
   - name: MC2_PRESWAP_FINISH
     kind: Bool
     default: false
@@ -3893,7 +3859,6 @@ flags:
     owner: gameos
     doc: ""
     smoke_passthrough: true
-    verified: true
   - name: MC2_PREVIEW_FBO_SCALE
     kind: Int
     default: 0
@@ -3907,7 +3872,6 @@ flags:
     rule: Presence
     owner: code
     doc: "EXPERIMENT (PREVIEW-FBO-FIXED-800x600-1 debug): the mech draws zero pixels anywhere in the FBO despite shouldRender=1."
-    verified: true
   - name: MC2_PREVIEW_SCENE_DRAIN
     kind: Bool
     default: false
@@ -4114,7 +4078,6 @@ flags:
     owner: code
     doc: ""
     smoke_passthrough: true
-    verified: true
   - name: MC2_RENDER_FRAME_DRIVER
     kind: Bool
     default: false
@@ -4357,7 +4320,6 @@ flags:
     rule: Lead1
     owner: gameos
     doc: "SPIRV-CONSUMER-PILOT-BUILD-1: DEFAULT-OFF. =1 loads the offline-baked OpenGL SPIR-V (OFFLINE-SHADER-VARIANT-BUILD-1, shaders/spv/) for the postprocess..."
-    verified: true
     registry: {feature_id: MC2_SHADER_SPIRV, kind: Feature, order: -1, default_on: false}
   - name: MC2_SHADER_SPIRV_FATAL
     kind: Bool
@@ -4365,7 +4327,6 @@ flags:
     rule: Lead1
     owner: gameos
     doc: "SPIRV-CONSUMER-PILOT-BUILD-1: DEFAULT-OFF debug gate."
-    verified: true
     registry: {feature_id: MC2_SHADER_SPIRV_FATAL, kind: Trace, order: -1, default_on: false}
   - name: MC2_SHADOW_ALT_SCALE
     kind: Bool
@@ -4982,7 +4943,6 @@ flags:
     rule: Lead0Kill
     owner: code
     doc: "STATICPROP-PERMANENT-INSTANCE-LIGHTS-1: upload the immutable static light prefix [0..S) once/dirty-only + the dynamic suffix [S..count) per frame, instead..."
-    verified: true
     registry: {feature_id: MC2_FEATURE_STATIC_LIGHT_UPLOAD_SPLIT, kind: Feature, order: -1, default_on: true}
   - name: MC2_STATIC_PER_INSTANCE_LIGHT
     kind: Bool
@@ -5004,7 +4964,6 @@ flags:
     rule: Presence
     owner: props
     doc: "Diag (env-gated): dump the static cmd summary so Task 3 can be validated before the draw exists."
-    verified: true
   - name: MC2_STATIC_PROP_BAKE_SELFTEST
     kind: Bool
     default: false
@@ -5322,7 +5281,6 @@ flags:
     rule: Presence
     owner: code
     doc: ""
-    verified: true
   - name: MC2_TERRAIN_CULL_WIDE
     kind: Bool
     default: false
@@ -5336,7 +5294,6 @@ flags:
     rule: Prefix
     owner: gameos
     doc: "TERRAIN-DEBUG-VIEWS-1: terrain fragment-shader debug-mode selector for the tessellated terrain path (gos_terrain.frag tessDebug.x)."
-    verified: true
     registry: {feature_id: MC2_DIAG_TERRAIN_DEBUG_MODE, kind: Trace, order: -1, default_on: false}
   - name: MC2_TERRAIN_DETAIL_ANTITILE
     kind: Bool
@@ -5351,14 +5308,12 @@ flags:
     rule: Prefix
     owner: gameos
     doc: ""
-    verified: true
   - name: MC2_TERRAIN_DETAIL_FADE_START
     kind: Float
     default: 1000
     rule: Prefix
     owner: gameos
     doc: ""
-    verified: true
   - name: MC2_TERRAIN_DETAIL_LOD1_STRENGTH
     kind: Float
     default: 0.400000006
@@ -5441,7 +5396,6 @@ flags:
     rule: Presence
     owner: terrain
     doc: "Step 1b-1 (cpu-pack-retirement plan ?2 A1): the M2 thin-record emit scope is orphaned by Fix B (commit 005ebc7) - the GPU compute shader..."
-    verified: true
   - name: MC2_TERRAIN_INDIRECT_TRACE
     kind: Bool
     default: false
@@ -5868,7 +5822,6 @@ flags:
     owner: gameos
     doc: "TCS/TES terrain tessellation (gameos_graphics.cpp)."
     smoke_passthrough: true
-    verified: true
     registry: {feature_id: MC2_FEATURE_TERRAIN_TESSELLATION, kind: Feature, order: 3, default_on: true}
   - name: MC2_TERRAIN_TILE_CENSUS
     kind: Bool
@@ -5987,7 +5940,6 @@ flags:
     owner: terrain
     doc: ""
     smoke_passthrough: true
-    verified: true
   - name: MC2_TOBJ_COST_SPLIT
     kind: Bool
     default: false
@@ -6047,7 +5999,6 @@ flags:
     rule: Lead1
     owner: code
     doc: "[TXMMGR_TEXTURE_AUDIT v1] - texture-node-slot leak instrumentation."
-    verified: true
   - name: MC2_TYPE_TABLE_CAND_LOG
     kind: Bool
     default: false
@@ -6319,7 +6270,6 @@ flags:
     rule: Lead1
     owner: code
     doc: "VFX-GPU-SIM-CARDCLOUD-BUFFER-1 (Stage 2 of the originals-restoration arc; docs/vfx-gpu-sim-spec.md)."
-    verified: true
     registry: {feature_id: MC2_FEATURE_VFX_GPU_SIM_CARDCLOUD, kind: Feature, order: 16, default_on: false}
   - name: MC2_VFX_GPU_SIM_COMPARE
     kind: Bool
@@ -6327,7 +6277,6 @@ flags:
     rule: Lead1
     owner: code
     doc: "VFX-GPU-SIM-CARDCLOUD-BUFFER-1: emit the [VFX_GPU_SIM v1] integrity/compare logs (cpuActive vs submitted-live count, age/alpha ranges, world bounds, SSBO..."
-    verified: true
     registry: {feature_id: MC2_FEATURE_VFX_GPU_SIM_COMPARE, kind: Feature, order: 17, default_on: false}
   - name: MC2_VFX_ORACLE_RENDER
     kind: Bool
@@ -6774,7 +6723,6 @@ flags:
     owner: post
     doc: "VK shared-scene deletion-readiness canary."
     smoke_passthrough: true
-    verified: true
     registry: {feature_id: MC2_TRACE_VK_SHARED_SCENE_STRICT, kind: Trace, order: -1, default_on: false}
   - name: MC2_VK_TERRAIN_COPY_STATS
     kind: Bool
