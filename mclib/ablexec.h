@@ -10,6 +10,8 @@
 #ifndef ABLEXEC_H
 #define ABLEXEC_H
 
+#include <utility>
+
 #ifndef ABLGEN_H
 #include"ablgen.h"
 #endif
@@ -36,7 +38,9 @@ inline constexpr int ABL_PARAM_VOID = 0;
 inline constexpr int ABL_PARAM_INTEGER = 1;
 inline constexpr int ABL_PARAM_REAL = 2;
 
-enum ABLStackItemType {
+// Typed label only: ABLStackItem::type stays a long (same values, same layout), so callers
+// convert with std::to_underlying / static_cast<ABLStackItemType> at that boundary.
+enum class ABLStackItemType : long {
 	ABL_STACKITEM_CHAR,
 	ABL_STACKITEM_INTEGER,
 	ABL_STACKITEM_REAL,
@@ -69,7 +73,7 @@ union StackItem {
 using StackItemPtr = StackItem*;
 
 struct ABLStackItem {
-	long			type;
+	long			type;	// an ABLStackItemType value
 	union {
 		int         integer;
 		float		real;

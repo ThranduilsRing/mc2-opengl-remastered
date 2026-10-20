@@ -45,9 +45,9 @@ void execSetTextMsg (void) {
 	(void)msgType; (void)seconds;
 
 	char s[512];
-	if (value.type == ABL_STACKITEM_CHAR_PTR && value.data.characterPtr)
+	if (value.type == std::to_underlying(ABLStackItemType::ABL_STACKITEM_CHAR_PTR) && value.data.characterPtr)
 		mc2::fmt::to_buf(s, "[OMNI.TEXT] {}", mc2::fmt::safe(value.data.characterPtr));
-	else if (value.type == ABL_STACKITEM_INTEGER)
+	else if (value.type == std::to_underlying(ABLStackItemType::ABL_STACKITEM_INTEGER))
 		mc2::fmt::to_buf(s, "[OMNI.TEXT] #{:d}", mc2::fmt::as_i32(value.data.integer));
 	else
 		mc2::fmt::to_buf(s, "[OMNI.TEXT] (type={:d})", mc2::fmt::as_i32(static_cast<int>(value.type)));
@@ -67,9 +67,9 @@ void execSetLargeMsg (void) {
 	(void)msgType; (void)seconds;
 
 	char s[512];
-	if (value.type == ABL_STACKITEM_CHAR_PTR && value.data.characterPtr)
+	if (value.type == std::to_underlying(ABLStackItemType::ABL_STACKITEM_CHAR_PTR) && value.data.characterPtr)
 		mc2::fmt::to_buf(s, "[OMNI.LARGE] {}", mc2::fmt::safe(value.data.characterPtr));
-	else if (value.type == ABL_STACKITEM_INTEGER)
+	else if (value.type == std::to_underlying(ABLStackItemType::ABL_STACKITEM_INTEGER))
 		mc2::fmt::to_buf(s, "[OMNI.LARGE] #{:d}", mc2::fmt::as_i32(value.data.integer));
 	else
 		mc2::fmt::to_buf(s, "[OMNI.LARGE] (type={:d})", mc2::fmt::as_i32(static_cast<int>(value.type)));
@@ -135,16 +135,16 @@ void execAblPrint (void) {
 
 	char s[512];
 	const char* fn = fileName ? fileName : "abl";
-	switch (value.type) {
-		case ABL_STACKITEM_CHAR:
+	switch (static_cast<ABLStackItemType>(value.type)) {
+		case ABLStackItemType::ABL_STACKITEM_CHAR:
 			mc2::fmt::to_buf(s, "[ABL:{}] char={:c}", mc2::fmt::safe(fn), mc2::fmt::as_char(value.data.character)); break;
-		case ABL_STACKITEM_INTEGER:
+		case ABLStackItemType::ABL_STACKITEM_INTEGER:
 			mc2::fmt::to_buf(s, "[ABL:{}] int={:d}", mc2::fmt::safe(fn), mc2::fmt::as_i32(value.data.integer)); break;
-		case ABL_STACKITEM_REAL:
+		case ABLStackItemType::ABL_STACKITEM_REAL:
 			mc2::fmt::to_buf(s, "[ABL:{}] real={:.2f}", mc2::fmt::safe(fn), value.data.real); break;
-		case ABL_STACKITEM_BOOLEAN:
+		case ABLStackItemType::ABL_STACKITEM_BOOLEAN:
 			mc2::fmt::to_buf(s, "[ABL:{}] bool={}", mc2::fmt::safe(fn), mc2::fmt::safe(value.data.boolean ? "true" : "false")); break;
-		case ABL_STACKITEM_CHAR_PTR:
+		case ABLStackItemType::ABL_STACKITEM_CHAR_PTR:
 			mc2::fmt::to_buf(s, "[ABL:{}] str={}", mc2::fmt::safe(fn), mc2::fmt::safe(value.data.characterPtr ? value.data.characterPtr : "")); break;
 		default:
 			mc2::fmt::to_buf(s, "[ABL:{}] (type={:d})", mc2::fmt::safe(fn), mc2::fmt::as_i32(static_cast<int>(value.type))); break;
@@ -819,36 +819,36 @@ void execMCPrint (void) {
 	ABLStackItem value;
 	ABLi_popAnything(&value);
 	char s[256];
-	switch (value.type) {
-		case ABL_STACKITEM_CHAR:
+	switch (static_cast<ABLStackItemType>(value.type)) {
+		case ABLStackItemType::ABL_STACKITEM_CHAR:
 			mc2::fmt::to_buf(s, "char={:c}", mc2::fmt::as_char(value.data.character));
 			DEBUGWINS_print(s, 0);
 			break;
-		case ABL_STACKITEM_INTEGER:
+		case ABLStackItemType::ABL_STACKITEM_INTEGER:
 			mc2::fmt::to_buf(s, "int={:d}", mc2::fmt::as_i32(value.data.integer));
 			DEBUGWINS_print(s, 0);
 			break;
-		case ABL_STACKITEM_REAL:
+		case ABLStackItemType::ABL_STACKITEM_REAL:
 			mc2::fmt::to_buf(s, "real={:.2f}", value.data.real);
 			DEBUGWINS_print(s, 0);
 			break;
-		case ABL_STACKITEM_BOOLEAN:
+		case ABLStackItemType::ABL_STACKITEM_BOOLEAN:
 			mc2::fmt::to_buf(s, "bool={}", mc2::fmt::safe(value.data.boolean ? "true" : "false"));
 			DEBUGWINS_print(s, 0);
 			break;
-		case ABL_STACKITEM_CHAR_PTR:
+		case ABLStackItemType::ABL_STACKITEM_CHAR_PTR:
 			mc2::fmt::to_buf(s, "char*={}", mc2::fmt::safe(value.data.characterPtr));
 			DEBUGWINS_print(s, 0);
 			break;
-		case ABL_STACKITEM_INTEGER_PTR:
+		case ABLStackItemType::ABL_STACKITEM_INTEGER_PTR:
 			mc2::fmt::to_buf(s, "int*={:d},{:d},{:d}", mc2::fmt::as_i32(value.data.integerPtr[0]), mc2::fmt::as_i32(value.data.integerPtr[1]), mc2::fmt::as_i32(value.data.integerPtr[2]));
 			DEBUGWINS_print(s, 0);
 			break;
-		case ABL_STACKITEM_REAL_PTR:
+		case ABLStackItemType::ABL_STACKITEM_REAL_PTR:
 			mc2::fmt::to_buf(s, "real*={:.2f},{:.2f},{:.2f}", value.data.realPtr[0], value.data.realPtr[1], value.data.realPtr[2]);
 			DEBUGWINS_print(s, 0);
 			break;
-		case ABL_STACKITEM_BOOLEAN_PTR:
+		case ABLStackItemType::ABL_STACKITEM_BOOLEAN_PTR:
 			mc2::fmt::to_buf(s, "bool*={:d},{:d},{:d}", mc2::fmt::as_i32(value.data.booleanPtr[0]), mc2::fmt::as_i32(value.data.booleanPtr[1]), mc2::fmt::as_i32(value.data.booleanPtr[2]));
 			DEBUGWINS_print(s, 0);
 			break;	

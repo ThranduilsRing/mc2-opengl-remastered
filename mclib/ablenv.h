@@ -11,6 +11,7 @@
 #define ABLENV_H
 
 #include<stdio.h>
+#include<memory>
 
 #ifndef DABLENV_H
 #include"dablenv.h"
@@ -166,8 +167,10 @@ class ABLModule {
 		bool					initCalled;
 		SymTableNodePtr			prevState;
 		SymTableNodePtr			state;
-		WatchManagerPtr			watchManager;
-		BreakPointManagerPtr	breakPointManager;
+		// Owned, debugger builds only. The managers keep their ABL-pool operator new/delete, which
+		// default_delete honours. Complete types live in abldbug.h, so the ctor/dtor are out of line.
+		std::unique_ptr<WatchManager>		watchManager;
+		std::unique_ptr<BreakPointManager>	breakPointManager;
 		bool					trace;
 		bool					step;
 		bool					traceEntry;
@@ -188,8 +191,7 @@ class ABLModule {
 			initCalled = false;
 			prevState = nullptr;
 			state = nullptr;
-			watchManager = nullptr;
-			breakPointManager = nullptr;
+			// watchManager / breakPointManager: unique_ptr members start null (init() runs only from the constructor)
 			trace = false;
 			step = false;
 			traceEntry = false;
@@ -197,9 +199,9 @@ class ABLModule {
 		}
 
 
-		ABLModule (void) {
-			init();
-		}
+		ABLModule (void);
+		ABLModule (const ABLModule&) = delete;
+		ABLModule& operator= (const ABLModule&) = delete;
 
 		long init (int moduleHandle);
 		
@@ -277,11 +279,11 @@ class ABLModule {
 		}
 
 		WatchManagerPtr getWatchManager (void) {
-			return(watchManager);
+			return(watchManager.get());
 		}
 
 		BreakPointManagerPtr getBreakPointManager (void) {
-			return(breakPointManager);
+			return(breakPointManager.get());
 		}
 
 		void setTrace (bool _trace) {
@@ -345,10 +347,7 @@ class ABLModule {
 
 		void destroy (void);
 
-		~ABLModule (void) {
-
-			destroy();
-		}
+		~ABLModule (void);
 
 };
 
