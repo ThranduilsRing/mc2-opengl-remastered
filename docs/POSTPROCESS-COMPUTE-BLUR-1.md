@@ -1,6 +1,8 @@
 <!-- doc-status: current | reviewed:2026-10-11 -->
 # POSTPROCESS-COMPUTE-BLUR-1
 
+> s68/P9: Retired GL sources are cited with Git object syntax (`8064c6930:path`) so the historical implementation remains inspectable.
+
 Greenfield, default-OFF, **INERT** GPU compute downsample + separable-Gaussian-blur
 substrate. Vulkan-prep: exercises the typed-sync + ping-pong compute pattern.
 **No consumer, no visual change.** Clean-room (standard separable Gaussian — no
@@ -14,7 +16,7 @@ adopt.
 
 | File | Role |
 |---|---|
-| `shaders/postprocess_blur.comp` | One `.comp`, three modes via injected define: `MODE_DOWNSAMPLE` (2x2 box -> half-res), `MODE_BLUR_H`, `MODE_BLUR_V` (5-tap Gaussian). No `#version` in file — C++ prepends `#version 430` + tile/mode defines (mirrors `cluster_depth_pyramid.comp`). |
+| `8064c6930:shaders/postprocess_blur.comp` | One `.comp`, three modes via injected define: `MODE_DOWNSAMPLE` (2x2 box -> half-res), `MODE_BLUR_H`, `MODE_BLUR_V` (5-tap Gaussian). No `#version` in file — C++ prepends `#version 430` + tile/mode defines (mirrors `cluster_depth_pyramid.comp`). |
 | `GameOS/gameos/gos_postprocess_blur.{h,cpp}` | Self-contained gated pass. Builds its own 3 compute programs, owns the half-res RGBA16F ping-pong textures + a controlled test pattern, dispatches downsample→blurH→blurV, typed `gpuSyncBarrier` edges between stages, one-shot CPU-vs-GPU parity. Structure mirrors `gos_cluster_depth_pyramid.cpp`. |
 | `GameOS/gameos/gos_postprocess.cpp` | Frame hook (1 site in `endScene`, after `lightgrid_build::Run`), include, `Shutdown()` wiring. |
 | `GameOS/gameos/CMakeLists.txt` | New TU registration. |

@@ -1,6 +1,8 @@
 <!-- doc-status: current | reviewed:2026-10-11 -->
 # Critical inline rules (every session reads these)
 
+> s68/P9: Retired GL sources are cited with Git object syntax (`8064c6930:path`) so the historical implementation remains inspectable.
+
 Extracted from CLAUDE.md 2026-05-24. **Authoritative.** CLAUDE.md links here.
 
 Rules are organized loosely by category but every rule applies whenever the
@@ -33,7 +35,7 @@ Four rules. No exceptions for new code.
 - **New SSBO range bind:** use `gpuBindSsboRange(index, buf, offset, size, "tag")`. Raw `glBindBufferRange(GL_SHADER_STORAGE_BUFFER, ...)` is forbidden in new code. Enforces offset alignment (`GL_SHADER_STORAGE_BUFFER_OFFSET_ALIGNMENT`) that NVIDIA rejects and AMD silently tolerates. `gos_gpu_sync.h`.
 - **New render pass entry:** call `render_contract::assertPassContract(PassIdentity::X, "hint")` after the pass's fixed-function state block. Aborts under `MC2_RENDER_CONTRACT_ASSERT=1` on depth-func / blend mismatches. `mclib/render_contract.h`.
 - **New compute/copy/readback edge:** add a named row to `barrierBitsFor` in `gos_gpu_sync.cpp`, then call `gpuSyncBarrier(producer, consumer, "tag")`. No raw `glMemoryBarrier` in new code. If the edge is already in the table, just call the wrapper. If it's not, add the edge first — unmapped edges fall back to `GL_ALL_BARRIER_BITS` with a loud stderr warning.
-- **New shader variant:** must compile with `[SHADER WARN]` clean (zero lines logged from `glGetShaderInfoLog` / `glGetProgramInfoLog` on success). NVIDIA emits warnings for unused uniforms, precision mismatches, and deprecated builtins that AMD logs nothing for. Treat them as errors. `GameOS/gameos/utils/shader_builder.cpp`.
+- **New shader variant:** must compile with `[SHADER WARN]` clean (zero lines logged from `glGetShaderInfoLog` / `glGetProgramInfoLog` on success). NVIDIA emits warnings for unused uniforms, precision mismatches, and deprecated builtins that AMD logs nothing for. Treat them as errors. `8064c6930:GameOS/gameos/utils/shader_builder.cpp`.
 
 ## Shaders / GL
 

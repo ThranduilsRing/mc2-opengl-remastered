@@ -1,6 +1,8 @@
 <!-- doc-status: current | reviewed:2026-10-11 -->
 # Thermal / IR view — design (THERMAL-IR-DESIGN-1)
 
+> s68/P9: Retired GL sources are cited with Git object syntax (`8064c6930:path`) so the historical implementation remains inspectable.
+
 Status: **Phase 1 shipped as a labeled placeholder; Phase 2 deferred.**
 
 The shipped Thermal mode (`MC2_VIEW_MODE=3`) is a **luminance placeholder**, NOT
@@ -27,7 +29,7 @@ So any "mechs read hot" claim today would be a stub producing wrong output.
 
 ## Phase 1 (SHIPPED): luminance placeholder
 
-`shaders/postprocess.frag`, `u_viewMode == 3`: map scene luminance to an iron
+`8064c6930:shaders/postprocess.frag`, `u_viewMode == 3`: map scene luminance to an iron
 palette (black→indigo→red→orange→yellow→white). Honest behavior: emissive /
 bright regions (fire, muzzle flash, exhaust glow, specular) read hot; dark
 terrain reads cool. Labeled "Thermal (luminance placeholder)" in the UI and

@@ -1,6 +1,8 @@
 <!-- doc-status: current | reviewed:2026-10-11 -->
 # MC2 OpenGL Render Contract
 
+> s68/P9: Retired GL sources are cited with Git object syntax (`8064c6930:path`) so the historical implementation remains inspectable.
+
 This document defines the authoritative rendering contracts for the modernized
 OpenGL renderer. Its purpose is to stop accidental mixed-state paths from
 spreading through the codebase and to make future rendering work easier to
@@ -170,7 +172,7 @@ Projection owner:
 - GPU. The indirect terrain-quad path's sole projection authority is
   `clipPos[4]` in the thin record (Fix B): the producer writes per-corner
   clip-space positions and the thin VS reads them directly. The thin VS
-  has NO `terrainMVP` uniform. Verified: `shaders/gos_terrain_thin.vert`
+  has NO `terrainMVP` uniform. Verified: `8064c6930:shaders/gos_terrain_thin.vert`
   Fix-B comment block (`vec4 clipPos[4]` at the record struct; "terrainMVP
   uniform REMOVED from the thin VS"). Fix A's per-slot MVP snapshot is
   DEMOTED behind `MC2_RING_TRACE=1` (default-off, inert: cached uniform

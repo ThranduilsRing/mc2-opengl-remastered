@@ -1,6 +1,8 @@
 <!-- doc-status: current | reviewed:2026-10-11 -->
 # Render Performance Snapshot
 
+> s68/P9: Retired GL sources are cited with Git object syntax (`8064c6930:path`) so the historical implementation remains inspectable.
+
 **Last refreshed:** 2026-07-16 (VK present-path + island perf section added below,
 see "VK present-path and island perf"; the wolfman-zoom CPU/GL bucket map below
 this point is still the 2026-06-04 snapshot and needs its own re-measurement
@@ -29,7 +31,7 @@ own section rather than merged into the GL bucket table. Branch
 
 - **Terrain haze SSBO field cleanup (2026-07-16, `f268db51`, `mc2-haze-ubo-cleanup`):**
   removed a dead field from the terrain lighting compute SSBO
-  (`GameOS/gameos/gos_terrain_lighting.{cpp,h}`, `shaders/gos_terrain_lighting.comp`,
+  (`GameOS/gameos/gos_terrain_lighting.{cpp,h}`, `8064c6930:shaders/gos_terrain_lighting.comp`,
   `shaders/include/terrain_lighting_shared.hglsl`), keeping the 32-byte std430
   ABI with explicit C++ alignment and lock flags at offset 28. Not a measured
   perf win (dead-field removal, not a hot-path retirement) — housekeeping
