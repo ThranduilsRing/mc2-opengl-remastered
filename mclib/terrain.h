@@ -298,7 +298,7 @@ class Terrain
 		static void flushDrawCommands (void);
 		void renderWater (void);
 		// Stage 2 of renderWater architectural slice: GPU water fast path.
-		// Called AFTER mcTextureManager->renderLists() so terrain has been
+		// Called AFTER mc2::VkSceneRenderer::renderLists(*mcTextureManager) so terrain has been
 		// flushed and depth-written before water alpha-blends on top.
 		// No-op when MC2_RENDER_WATER_FASTPATH is unset.
 		void renderWaterFastPath (void);

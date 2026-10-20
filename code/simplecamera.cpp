@@ -337,7 +337,7 @@ void SimpleCamera::render(long xOffset, long yOffset)
 				// cull frustum test runs with last frame's GameCamera MVP, mis-culling
 				// visible actors on every camera-move frame of the intro pan.
 				gos_SetWorldToClipGL(worldToClipGL());
-				mcTextureManager->renderLists();
+				mc2::VkSceneRenderer::renderLists(*mcTextureManager);
 				// CINEMATIC-WATER-1: mirror GameCamera::render (gamecam.cpp:354).
 				// Draw the GPU water fast path after renderLists() so water appears
 				// on the SimpleCamera intro/deployment pan. The cinematic path only

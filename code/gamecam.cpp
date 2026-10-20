@@ -879,7 +879,7 @@ void GameCamera::render (void)
 		if (!drawOldWay)
 		{
 			ZoneScopedN("GameCamera::render textureManagerRenderLists");
-			mcTextureManager->renderLists();			//This sends triangles down to the card.  All "rendering" to this point has been setting up tri lists
+			mc2::VkSceneRenderer::renderLists(*mcTextureManager);			//This sends triangles down to the card.  All "rendering" to this point has been setting up tri lists
 			endFrameTexResolve();              // close the per-frame window — clears frameActive,
 			                                   // accumulates resolved-count, emits 600-frame summary
 			                                   // when due. No-op when killswitch OFF or already inactive.

@@ -1,6 +1,6 @@
 // Shared surface of the txmmgr_render*.cpp pieces: the renderLists phase helpers, the
 // per-frame state they share and the RENDERLISTS cost spans. Declared names are defined
-// in txmmgr_render.cpp.
+// in vk_scene_renderer.cpp.
 #ifndef TXMMGR_RENDER_INTERNAL_H
 #define TXMMGR_RENDER_INTERNAL_H
 

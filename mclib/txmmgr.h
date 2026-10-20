@@ -35,6 +35,7 @@
 #include<gameos.hpp>
 #include "texture_assets.h"
 #include "vk_object_lights.h"
+#include "vk_scene_renderer.h"
 #include<mutex>  // std::recursive_mutex — FRAME-JOBS-2 precondition (vertex node allocators)
 #include<atomic> // TXMMGR-BOUNDS-HARDEN-1 exhaustion counters
 #include<cstdio> // TXMMGR-BOUNDS-HARDEN-1 trace emit
@@ -293,6 +294,7 @@ struct TG_HWLightsData;
 //----------------------------------------------------------------------
 class MC_TextureManager
 {
+    friend class mc2::VkSceneRenderer;
 	
 	//Data Members
 	//------------
@@ -1108,32 +1110,7 @@ class MC_TextureManager
             mc2::vkLights::resetLightData();
 		}
 		
-		//Sends down the triangle lists
-		void renderLists (void);
 
-	private:
-		// renderLists phases, in execution order (txmmgr_render.cpp).
-		void renderListsPreamble (void);
-		void renderListsLightDataUpload (void);
-		void renderListsSceneDataUpload (void);
-		void renderListsObjects3D (void);
-		void renderListsPostObjectsStateRestore (void);
-		void renderListsStaticShadowBuild (void);
-		void renderListsStaticPropRegistryFlush (void);
-		void renderListsDynamicShadowPass (void);
-		void renderListsTerrainSolid (void);
-		void renderListsGpuStaticProps (void);
-		void renderListsOverlayBatches (void);
-		void renderListsOverlaysWaterLoops (void);
-		void renderListsOverlaysNoUnderlayer (void);
-		void renderListsOverlaysShadowBlobs (void);
-		void renderListsOverlaysNonTerrainAlpha (void);
-		void renderListsOverlaysVfxHudSubmit (void);
-		void renderListsOverlaysOld (void);
-		// VK legacy-shape island queue / run (defined only under MC2_VULKAN_ISLAND).
-		void vkLegacySubmitNode (long i, uint32_t pass, uint32_t alphaTest);
-		void vkLegacyRun (void);
-	public:
 
 
 };

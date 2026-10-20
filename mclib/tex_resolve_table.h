@@ -37,7 +37,7 @@ extern uint64_t        g_currentFrameId;
 void beginFrameTexResolve(uint64_t frameId);
 
 // Clear frameActive and emit the 600-frame summary tick when due.
-// Called immediately after mcTextureManager->renderLists() returns in
+// Called immediately after mc2::VkSceneRenderer::renderLists(*mcTextureManager) returns in
 // GameCamera::render. Pairs with beginFrameTexResolve to make the
 // "this is a terrain frame" window an explicit invariant.
 void endFrameTexResolve(void);

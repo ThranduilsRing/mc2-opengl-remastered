@@ -252,7 +252,7 @@ void Terrain::render (void)
 //---------------------------------------------------------------------------
 // Terrain LOD chunk Phase 4 — flush pending draw commands to the GPU.
 // Called from code/gamecam.cpp after the shadow pass and before
-// mcTextureManager->renderLists(). No-op when MC2_TERRAIN_LOD_CHUNK is unset
+// mc2::VkSceneRenderer::renderLists(*mcTextureManager). No-op when MC2_TERRAIN_LOD_CHUNK is unset
 // (s_blockMeta is nullptr, s_cmdCount is 0). No GL calls in mclib/.
 void Terrain::flushDrawCommands (void)
 {
@@ -468,7 +468,7 @@ void Terrain::renderWater (void)
 
 //---------------------------------------------------------------------------
 // Stage 2 of renderWater architectural slice. Called from gamecam.cpp AFTER
-// mcTextureManager->renderLists() so terrain has been flushed and
+// mc2::VkSceneRenderer::renderLists(*mcTextureManager) so terrain has been flushed and
 // depth-written. This is required for the alpha-blend-on-top semantics:
 // running fast-path INSIDE renderWater() (before renderLists) means terrain
 // hasn't drawn yet and overwrites our water.

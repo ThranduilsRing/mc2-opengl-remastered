@@ -185,7 +185,7 @@ public:
 				s_ecrFrame, (active && turn > 1) ? 1 : 0);
 		if (active && turn > 1)
 		{
-			// Static props must dispatch through mcTextureManager->renderLists() so
+			// Static props must dispatch through mc2::VkSceneRenderer::renderLists(*mcTextureManager) so
 			// visibility and batching share the scene render order.
 
 			gos_SetWorldToClipGL(eye->worldToClipGL());
@@ -303,7 +303,7 @@ public:
 			EditorRenderTimer_Mark("ui");
 
 			if (mcTextureManager)
-				mcTextureManager->renderLists();
+				mc2::VkSceneRenderer::renderLists(*mcTextureManager);
 			EditorRenderTimer_Mark("props");
 
 			if (land)

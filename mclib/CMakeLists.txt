@@ -36,10 +36,10 @@ set(SOURCES ${SOURCES}
     txmmgr_diag.cpp
     txmmgr_lightrow.cpp
     vk_object_lights.cpp
-    txmmgr_render.cpp
-    txmmgr_render_phases.cpp
-    txmmgr_render_passes.cpp
-    txmmgr_render_overlays.cpp
+    vk_scene_renderer.cpp
+    vk_scene_renderer_phases.cpp
+    vk_scene_renderer_passes.cpp
+    vk_scene_renderer_overlays.cpp
     texture_sources.cpp
     texture_assets.cpp
     tex_resolve_table.cpp
