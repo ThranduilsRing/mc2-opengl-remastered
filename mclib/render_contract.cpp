@@ -680,7 +680,7 @@ void noteRenderPass(PassIdentity id, const char* callerHint) {
 
     const auto target = RenderCore::framegraph::declaredFboTarget(toRenderPassId(id));
     mc2::fmt::print_out("[RENDER_PASS v2] frame={:d} pass={} target={} available={:d} phase=begin hint={}\n",
-        mc2::fmt::as_u64((unsigned long long)s_telemetryFrame), mc2::fmt::safe(passIdentityName(id)),
+        mc2::fmt::as_u64(static_cast<unsigned long long>(s_telemetryFrame)), mc2::fmt::safe(passIdentityName(id)),
         mc2::fmt::safe(RenderCore::toString(target)), mc2::fmt::as_i32(mc2vk::nativeRenderTargetAvailable(target) ? 1 : 0),
         mc2::fmt::safe(callerHint ? callerHint : "?"));
     fflush(stdout);

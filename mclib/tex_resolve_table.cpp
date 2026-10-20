@@ -45,8 +45,8 @@ void texResolveLogOOB(DWORD nodeId)
 {
     if (s_oobCount++ < kMaxOobPrints) {
         MC2_DIAGF("[TEX_RESOLVE v1] event=oob_node frame=%llu nodeId=%u max=%d\n",
-               (unsigned long long)g_texResolveTable.buildGeneration,
-               (unsigned)nodeId, (int)mc2::textures::assetCapacity());
+               static_cast<unsigned long long>(g_texResolveTable.buildGeneration),
+               static_cast<unsigned>(nodeId), static_cast<int>(mc2::textures::assetCapacity()));
         fflush(stdout);
     }
 }
@@ -75,7 +75,7 @@ void initTexResolveTable(void)
     else if (g_texResolveTable.enabled)  mode = "on (default)";
 
     MC2_DIAGF("[TEX_RESOLVE v1] event=startup mode=%s asset_capacity=%d\n",
-           mode, (int)mc2::textures::assetCapacity());
+           mode, static_cast<int>(mc2::textures::assetCapacity()));
     fflush(stdout);
 
     atexit(&shutdownTexResolveTable);

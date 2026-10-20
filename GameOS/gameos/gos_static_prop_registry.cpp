@@ -252,8 +252,8 @@ static void releasePinsForRange(RecipeRange& rng) {
             mc2::textures::unpin(nodeIdx);
             ++s_totalUnpinCalls;
             TEX_LC_PIN("event=unpin nodeIdx=%lu refcount=%lu",
-                       (unsigned long)nodeIdx,
-                       (unsigned long)mc2::textures::pinCount(nodeIdx));
+                       static_cast<unsigned long>(nodeIdx),
+                       static_cast<unsigned long>(mc2::textures::pinCount(nodeIdx)));
         }
     }
     rng.pinnedTextureNodes.clear();
@@ -490,9 +490,9 @@ int32_t registerRecipe(TG_MultiShape* multi,
                 storedRng.pinnedTextureNodes.push_back(nodeIdx);
                 ++s_totalPinCalls;
                 TEX_LC_PIN("event=pin nodeIdx=%lu refcount=%lu regIdx=%d multi=%p",
-                           (unsigned long)nodeIdx,
-                           (unsigned long)mc2::textures::pinCount(nodeIdx),
-                           regIdx, (void*)multi);
+                           static_cast<unsigned long>(nodeIdx),
+                           static_cast<unsigned long>(mc2::textures::pinCount(nodeIdx)),
+                           regIdx, static_cast<void*>(multi));
             }
         }
     }

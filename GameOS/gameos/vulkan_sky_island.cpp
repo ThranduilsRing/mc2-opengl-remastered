@@ -216,7 +216,7 @@ bool ensure_hdri(Island* s, uint64_t generation) {
     s->hdriReal = haveReal;
     vkDeviceWaitIdle(s->device);   // rare (<=2x per session): descriptor rewrite safety
     update_set(s);
-    vlog("HDRI %s import: %dx%d fmt=%d mips=%u source_version=%llu (copy-once).", haveReal ? "REAL" : "DUMMY", w, h, static_cast<int>(fmt), mips, (unsigned long long)generation);
+    vlog("HDRI %s import: %dx%d fmt=%d mips=%u source_version=%llu (copy-once).", haveReal ? "REAL" : "DUMMY", w, h, static_cast<int>(fmt), mips, static_cast<unsigned long long>(generation));
     return true;
 }
 

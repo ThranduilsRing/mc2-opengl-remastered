@@ -895,7 +895,7 @@ void CollectUniqueNodeIds() {
     for (const TerrainQuadRecipe& rec : g_denseRecipes) {
         uint32_t nodeId;
         memcpy(&nodeId, &rec._wp2, 4);
-        if (!gos_terrain_arm::IsTileHandle(nodeId, (uint32_t)mc2::textures::kTextureAssetLimit)) continue;
+        if (!gos_terrain_arm::IsTileHandle(nodeId, static_cast<uint32_t>(mc2::textures::kTextureAssetLimit))) continue;
         if (seen.insert(nodeId).second) {
             g_uniqueTerrainNodeIds.push_back(nodeId);
         }

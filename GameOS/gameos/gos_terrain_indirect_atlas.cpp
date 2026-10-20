@@ -285,7 +285,7 @@ void BuildColormapAtlas() {
 
     // MC2_LOAD_RACE_TRACE: latch the frame the colormap atlas first exists.
     if (g_loadRaceTrace && atlasSizeCapture > 0 && g_loadRaceAtlasFirstFrame < 0) {
-        g_loadRaceAtlasFirstFrame = (long)g_mc2FrameCounter;
+        g_loadRaceAtlasFirstFrame = static_cast<long>(g_mc2FrameCounter);
         mc2::fmt::print_err("[LOADRACE] atlas first-resident frame={:d} atlas_side={:d} scenarioTime={:.2f}\n", mc2::fmt::as_i32(g_loadRaceAtlasFirstFrame), mc2::fmt::as_i32(atlasSizeCapture), scenarioTime);
         fflush(stderr);
     }
@@ -375,11 +375,11 @@ void BuildCementCatalogAtlas() {
         }
 
         if (nodeIdx == 0xffffffffu) continue;
-        if (nodeIdx >= (DWORD)mc2::textures::kTextureAssetLimit) {
+        if (nodeIdx >= static_cast<DWORD>(mc2::textures::kTextureAssetLimit)) {
             if (traceOn()) {
                 MC2_DIAGF("[TERRAIN_INDIRECT v1] event=cement_atlas_nodeidx_oob "
                        "slot=%ld nodeIdx=%u cap=%d\n",
-                       slot, (unsigned)nodeIdx, (int)mc2::textures::kTextureAssetLimit);
+                       slot, static_cast<unsigned>(nodeIdx), static_cast<int>(mc2::textures::kTextureAssetLimit));
                 fflush(stdout);
             }
             continue;
@@ -414,10 +414,10 @@ void BuildCementCatalogAtlas() {
     std::vector<int> alphaCementSlots;
     {
         for (long slot = 0; slot < lastSlot; ++slot) {
-            if (!tt->isCement((DWORD)slot)) continue;
-            if (!tt->isAlpha((DWORD)slot)) continue;   // alpha/transition slots only
-            const DWORD nodeIdx = tt->peekTextureHandle((DWORD)slot);
-            if (nodeIdx == 0xffffffffu || nodeIdx >= (DWORD)mc2::textures::kTextureAssetLimit) { ++alphaSkipped; continue; }
+            if (!tt->isCement(static_cast<DWORD>(slot))) continue;
+            if (!tt->isAlpha(static_cast<DWORD>(slot))) continue;   // alpha/transition slots only
+            const DWORD nodeIdx = tt->peekTextureHandle(static_cast<DWORD>(slot));
+            if (nodeIdx == 0xffffffffu || nodeIdx >= static_cast<DWORD>(mc2::textures::kTextureAssetLimit)) { ++alphaSkipped; continue; }
             auto image = mc2::textures::image(nodeIdx);
             if (!image || image->width != txmSize || image->height != txmSize ||
                 image->vkFormat != 37 || image->pixels.size() != size_t(txmSize) * txmSize * 4) { ++alphaSkipped; continue; }

@@ -79,7 +79,7 @@ bool ensure_hdri(WaterIsland* s, uint64_t hdriGeneration) {
     // Real art is published after the service upload ticket; descriptors follow the retired slot.
     write_descriptors(s);   // binding 2 now valid
     vlog("hdri %s import: %dx%d fmt=%d mips=%u source_version=%llu (copy-once, zero per-frame cost).",
-         haveReal ? "REAL" : "DUMMY", w, h, static_cast<int>(fmt), mips, (unsigned long long)hdriGeneration);
+         haveReal ? "REAL" : "DUMMY", w, h, static_cast<int>(fmt), mips, static_cast<unsigned long long>(hdriGeneration));
     return true;
 }
 
