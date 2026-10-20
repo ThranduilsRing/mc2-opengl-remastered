@@ -1,6 +1,7 @@
 // MC_TextureManager: baked static light slots, light-data dedup and the LIGHTBAKE / LIGHTBRIDGE gates.
 // Declared in the class headers; shared names in txmmgr_internal.h.
 #include "txmmgr_internal.h"
+#include <optional>
 #include "mc2fmt.h"
 
 // PERF FIX 2026-05-07: hash-based dedup map. The previous linear-scan
@@ -74,7 +75,7 @@ namespace {
         return fnv1a_64_bytes(h, &b, sizeof(b));
     }
 
-    static inline uint32_t decomposeFirstActiveLightColor(TG_HWLightsData* lights) {
+    static inline std::optional<uint32_t> decomposeFirstActiveLightColor(TG_HWLightsData* lights) {
         const TG_LightPtr* listOfLights = TG_Shape::s_listOfLights;
         const DWORD numLights = TG_Shape::s_numLights;
 
@@ -85,25 +86,25 @@ namespace {
                 lights->lightColor[0][1] = ((startLight >> 8) & 0x000000ff) / 255.0f;
                 lights->lightColor[0][2] = ((startLight) & 0x000000ff) / 255.0f;
                 lights->lightColor[0][3] = 1.0f;
-                return 0;
+                return 0u;
             }
         }
 
-        return 0xFFFFFFFFu;
+        return std::nullopt;
     }
 
-    static inline uint32_t firstActiveLightSourceIndex() {
+    static inline std::optional<uint32_t> firstActiveLightSourceIndex() {
         const TG_LightPtr* listOfLights = TG_Shape::s_listOfLights;
         const DWORD numLights = TG_Shape::s_numLights;
 
         if (!listOfLights)
-            return 0xFFFFFFFFu;
+            return std::nullopt;
 
         for (DWORD iLight = 0; iLight < numLights; ++iLight) {
             if ((listOfLights[iLight] != nullptr) && listOfLights[iLight]->active)
                 return iLight;
         }
-        return 0xFFFFFFFFu;
+        return std::nullopt;
     }
 
     static uint64_t sceneLightTemplateKey(uint32_t actorLightSourceIndex) {
@@ -546,20 +547,20 @@ uint32_t MC_TextureManager::addLightDataStructureWithPerActorColor(TG_HWLightsDa
         s_sceneLightTemplateFrame = g_mc2FrameCounter;
     }
 
-    const uint32_t actorLightSource = firstActiveLightSourceIndex();
-    if (actorLightSource == 0xFFFFFFFFu) {
+    const auto actorLightSource = firstActiveLightSourceIndex();
+    if (!actorLightSource) {
         ++s_lbFrameNo;  // [LIGHTBRIDGE v1] no per-actor light (direct passthrough)
         GatherLightsParameters(light_data);
         return addLightDataStructure(light_data);
     }
 
-    const uint64_t key = sceneLightTemplateKey(actorLightSource);
+    const uint64_t key = sceneLightTemplateKey(*actorLightSource);
     auto it = s_sceneLightTemplateMap.find(key);
     if (it == s_sceneLightTemplateMap.end()) {
         ++s_lbFrameMiss;  // [LIGHTBRIDGE v1] template miss (GatherLightsParameters runs)
         CachedSceneLightTemplate entry;
         GatherLightsParameters(&entry.data);
-        entry.actorLightSlot = decomposeFirstActiveLightColor(&entry.data);
+        entry.actorLightSlot = decomposeFirstActiveLightColor(&entry.data).value_or(0xFFFFFFFFu);
         it = s_sceneLightTemplateMap.emplace(key, entry).first;
     } else {
         ++s_lbFrameHit;  // [LIGHTBRIDGE v1] template hit (trailing FNV+memcmp = retirable redundancy)
@@ -568,7 +569,7 @@ uint32_t MC_TextureManager::addLightDataStructureWithPerActorColor(TG_HWLightsDa
     *light_data = it->second.data;
     const bool perActor = (it->second.actorLightSlot != 0xFFFFFFFFu);
     if (perActor)
-        decomposeFirstActiveLightColor(light_data);
+        (void)decomposeFirstActiveLightColor(light_data);
 
     // [LIGHTBRIDGE v1] substitutive repoint: on the (template + per-actor-
     // color) cache hit, return the resolved slot directly and SKIP the
@@ -583,7 +584,7 @@ uint32_t MC_TextureManager::addLightDataStructureWithPerActorColor(TG_HWLightsDa
     if (!s_lbRepointInit) lbRepointInitFromEnv();
     if (s_lbRepointEnabled) {
         const uint32_t actorARGB = perActor
-            ? static_cast<uint32_t>(TG_Shape::s_listOfLights[actorLightSource]->GetaRGB())
+            ? static_cast<uint32_t>(TG_Shape::s_listOfLights[*actorLightSource]->GetaRGB())
             : 0u;
         const uint64_t combined =
             key ^ (static_cast<uint64_t>(actorARGB) * 0x9E3779B97F4A7C15ULL);
