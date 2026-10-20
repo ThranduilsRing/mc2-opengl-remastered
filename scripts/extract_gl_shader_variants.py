@@ -470,7 +470,7 @@ def _eval(e: str, ctx: Ctx, pos: int) -> Value:
             raise ExtractError(f"unresolved helper call {e}")
         s, o, c = fn
         txt = s.t[o:c]
-        mm = re.search(r"(snprintf|mc2::fmt::to_buf_n|mc2::fmt::to_buf)\s*\(([^;]*)\)\s*;", txt, re.S)
+        mm = re.search(r"(snprintf|std::format_to_n|mc2::fmt::to_buf_n|mc2::fmt::to_buf)\s*\(([^;]*)\)\s*;", txt, re.S)
         if mm:
             args = split_top(mm.group(2), ",")
             fmt_at = 1 if mm.group(1) == "mc2::fmt::to_buf" else 2
@@ -552,7 +552,7 @@ def _eval_var(name: str, ctx: Ctx, pos: int) -> Value:
                       r"\s*(?:\[[^\]]*\])?\s*=\s*", re.S)
     asg = re.compile(r"(?<![\w.>])" + n + r"\s*(\+=|=)(?!=)\s*", re.S)
     app = re.compile(r"(?<![\w.>])" + n + r"\s*\.append\s*\(", re.S)
-    snp = re.compile(r"(?:\bsnprintf|\bmc2::fmt::to_buf_n|\bmc2::fmt::to_buf)\s*\(\s*" + n + r"\s*,")
+    snp = re.compile(r"(?:\bsnprintf|\bstd::format_to_n|\bmc2::fmt::to_buf_n|\bmc2::fmt::to_buf)\s*\(\s*" + n + r"\s*,")
     seen = set()
     body = src.t
     for m in decl.finditer(body, bo, pos):
@@ -575,7 +575,7 @@ def _eval_var(name: str, ctx: Ctx, pos: int) -> Value:
     for m in snp.finditer(body, bo, pos):
         a, _ = call_args(body, body.index("(", m.start()))
         callee = m.group(0).split("(")[0].strip()
-        fmt_at = {"snprintf": 2, "mc2::fmt::to_buf_n": 2, "mc2::fmt::to_buf": 1}[callee]
+        fmt_at = {"snprintf": 2, "std::format_to_n": 2, "mc2::fmt::to_buf_n": 2, "mc2::fmt::to_buf": 1}[callee]
         fmt = parse_string_literals(a[fmt_at]) if len(a) > fmt_at else None
         if fmt is None:
             raise ExtractError(f"snprintf fmt not literal for {name}")
