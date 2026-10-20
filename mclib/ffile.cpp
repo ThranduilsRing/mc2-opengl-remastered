@@ -117,16 +117,16 @@ long FastFile::writeNumFiles(FILE* handle, int num_files)
 	return NO_ERR;
 }
 
-long FastFile::writeFileEntries(FILE* handle, FILE_HANDLE* files, int num_files, int offset)
+long FastFile::writeFileEntries(FILE* handle, std::span<FILE_HANDLE> files, int offset)
 {
 	fseek(handle, FASTFILE_ENTRY_TABLE_START + offset * sizeof(FILEENTRY), SEEK_SET);
 	int result  = 0;
-	for (int i=0;i<num_files;i++)
+	for (auto& file : files)
 	{
-		result += static_cast<int>(fwrite(files[i].pfe, 1, sizeof(FILEENTRY), handle));
+		result += static_cast<int>(fwrite(file.pfe, 1, sizeof(FILEENTRY), handle));
 	}
 
-	return result == sizeof(FILEENTRY) * num_files ? NO_ERR : BAD_WRITE_ERR;
+	return result == sizeof(FILEENTRY) * files.size() ? NO_ERR : BAD_WRITE_ERR;
 }
 
 //---------------------------------------------------------------------------
@@ -337,7 +337,7 @@ long FastFile::reserve(int num_files)
 		files[i].pos = 0;
 	}
 
-	res = writeFileEntries(handle, files, numFiles, 0);
+	res = writeFileEntries(handle, std::span<FILE_HANDLE>(files, numFiles), 0);
 	if(NO_ERR != res)
 		return res;
 
@@ -677,7 +677,7 @@ long FastFile::writeFast (const char* fastFileName, void* buffer, int nbytes)
 			return BAD_WRITE_ERR;
 	}
 
-	long res = writeFileEntries(handle, &files[fastFileHandle], 1, fastFileHandle);
+	long res = writeFileEntries(handle, std::span<FILE_HANDLE>(&files[fastFileHandle], 1), fastFileHandle);
 	if(NO_ERR != res)
 		return res;
 

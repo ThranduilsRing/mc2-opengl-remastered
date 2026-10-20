@@ -5,6 +5,7 @@
 
 #include <cstdio>
 #include <cstring>
+#include <span>
 
 #include "Gates/gate.h"
 #include "KtxLoader.h"
@@ -20,8 +21,8 @@ bool endsWithPng(const char* path) {
     return n >= 4 && _stricmp(path + n - 4, ".png") == 0;
 }
 
-bool hasPngSignature(const uint8_t* bytes, size_t size) {
-    return size >= 8 && bytes[0] == 0x89 && bytes[1] == 'P' && bytes[2] == 'N' && bytes[3] == 'G';
+bool hasPngSignature(std::span<const uint8_t> bytes) {
+    return bytes.size() >= 8 && bytes[0] == 0x89 && bytes[1] == 'P' && bytes[2] == 'N' && bytes[3] == 'G';
 }
 
 // A texture edge beyond this is malformed content, not art; it also keeps the loader's int byte counts (w * h * 4) from wrapping.
@@ -31,9 +32,9 @@ constexpr size_t kMaxTgaEdge = 16384;
 // loader runs: the size is bounded, an uncompressed payload must be present in full, and RLE is accepted only at 24 / 32 bpp
 // (the RLE loader sizes its buffer by the stored pixel size while expanding 16-bit pixels to 4 bytes). The loader itself stops
 // an RLE stream at the end of the bytes.
-bool tgaFits(const uint8_t* bytes, size_t size) {
+bool tgaFits(std::span<const uint8_t> bytes) {
     constexpr size_t kHeader = 18;
-    if (size <= kHeader) return false;
+    if (bytes.size() <= kHeader) return false;
     const size_t descLen = bytes[0];
     const uint8_t imageType = bytes[2];
     const size_t w = static_cast<size_t>(bytes[12]) | (static_cast<size_t>(bytes[13]) << 8);
@@ -41,8 +42,8 @@ bool tgaFits(const uint8_t* bytes, size_t size) {
     const size_t bpp = bytes[16];
     if (w == 0 || h == 0 || w > kMaxTgaEdge || h > kMaxTgaEdge) return false;
     if (imageType == 2)
-        return (bpp == 16 || bpp == 24 || bpp == 32) && size >= kHeader + descLen + w * h * (bpp / 8);
-    return imageType == 10 && (bpp == 24 || bpp == 32) && size > kHeader + descLen;
+        return (bpp == 16 || bpp == 24 || bpp == 32) && bytes.size() >= kHeader + descLen + w * h * (bpp / 8);
+    return imageType == 10 && (bpp == 24 || bpp == 32) && bytes.size() > kHeader + descLen;
 }
 
 bool endsWithTga(const char* path) {
@@ -165,8 +166,8 @@ std::optional<DecodedTexture> decodeMemory(const uint8_t* bytes, size_t size, co
         return out;
     }
     // The texture cache stores raw file bytes; the signature picks the decoder (UI pages reference .png art through this path).
-    const bool png = hasPngSignature(bytes, size);
-    if (!png && !tgaFits(bytes, size)) {
+    const bool png = hasPngSignature(std::span<const uint8_t>(bytes, size));
+    if (!png && !tgaFits(std::span<const uint8_t>(bytes, size))) {
         MC2_LOG(Core, Warn, "[TEXTURE_DECODE v1] rejected {}: truncated or unsupported TGA ({:d} bytes)",
                 mc2::fmt::safe(nameForLog ? nameForLog : "NO NAME"), mc2::fmt::as_size(size));
         return std::nullopt;

@@ -24,6 +24,8 @@
 
 #include<sys/types.h>
 #include<sys/stat.h>
+
+#include<span>
 //---------------------------------------------------------------------------
 inline constexpr int MAX_FILENAME_SIZE = 250;
 
@@ -71,7 +73,7 @@ class FastFile
 
 		long writeVersion(FILE* handle);
 		long writeNumFiles(FILE* handle, int num_files);
-		long writeFileEntries(FILE* handle, FILE_HANDLE* files, int num_files, int offset);
+		long writeFileEntries(FILE* handle, std::span<FILE_HANDLE> files, int offset);
 
 	public:
 		FastFile (void);
