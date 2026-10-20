@@ -44,6 +44,7 @@
 
 #include"sensor_trace.h"		// SENSOR-SCAN-FACTS-1 (gated, default-OFF)
 #include "sim_trace.h"
+#include "mc2fmt.h"
 #include "score_sort.h"
 #include <cstdint>
 #include <span>
@@ -380,7 +381,7 @@ bool SensorSystem::isContact (MoverPtr mover) {
 //---------------------------------------------------------------------------
 
 void SensorSystem::addContact (MoverPtr mover, bool visual) {
-	MC2_SIM_TRACE_LINE("SADD owner=%ld mv=%ld vis=%d", static_cast<long>(owner->getPartId()), static_cast<long>(mover->getPartId()), static_cast<int>(visual));
+	MC2_SIM_TRACE_LINE("SADD owner={:d} mv={:d} vis={:d}", mc2::fmt::as_i32(owner->getPartId()), mc2::fmt::as_i32(mover->getPartId()), mc2::fmt::as_i32(static_cast<int>(visual)));
 
 	Assert(!isContact(mover), 0, " SensorSystem.addContact: already contact ");
 	if (numContacts < MAX_CONTACTS_PER_SENSOR) {
@@ -419,7 +420,7 @@ void SensorSystem::removeContact (long contactIndex) {
 
 	MoverPtr contact = static_cast<MoverPtr>(ObjectManager->get(contacts[contactIndex] & 0x7FFF));
 	Assert(contact != nullptr, contacts[contactIndex] & 0x7FFF, " SensorSystem.removeContact: bad contact ");
-	MC2_SIM_TRACE_LINE("SREM owner=%ld mv=%ld", static_cast<long>(owner->getPartId()), static_cast<long>(contact->getPartId()));
+	MC2_SIM_TRACE_LINE("SREM owner={:d} mv={:d}", mc2::fmt::as_i32(owner->getPartId()), mc2::fmt::as_i32(contact->getPartId()));
 	
 	numContacts--;
 	if ((numContacts > 0) && (contactIndex != numContacts)) {

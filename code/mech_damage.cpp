@@ -164,7 +164,7 @@ bool BattleMech::hitInventoryItem (long itemIndex, bool setupOnly) {
 }
 
 void BattleMech::destroyBodyLocation (long bodyLocation) {
-	MC2_SIM_TRACE_LINE("DESTROYLOC mech=%ld loc=%ld", static_cast<long>(getPartId()), static_cast<long>(bodyLocation));
+	MC2_SIM_TRACE_LINE("DESTROYLOC mech={:d} loc={:d}", mc2::fmt::as_i32(getPartId()), mc2::fmt::as_i32(bodyLocation));
 
 	if (body[bodyLocation].damageState == IS_DAMAGE_DESTROYED)
 		return;
@@ -191,7 +191,7 @@ void BattleMech::destroyBodyLocation (long bodyLocation) {
 	if (bodyLocation == MECH_BODY_LOCATION_CTORSO) {
 		// Mech essentially destroyed. Does it explode or simply shutdown?
 		// For now, it's always exploding...
-		MC2_SIM_TRACE_LINE("CTBRANCH mech=%ld ctbt=%.6f ebt=%.6f status=%d", static_cast<long>(getPartId()), static_cast<double>(centerTorsoBlowTime), static_cast<double>(engineBlowTime), static_cast<int>(getStatus()));
+		MC2_SIM_TRACE_LINE("CTBRANCH mech={:d} ctbt={:.6f} ebt={:.6f} status={:d}", mc2::fmt::as_i32(getPartId()), static_cast<double>(centerTorsoBlowTime), static_cast<double>(engineBlowTime), mc2::fmt::as_i32(static_cast<int>(getStatus())));
 		if ((scenarioTime <= centerTorsoBlowTime) || ((engineBlowTime > -1.0) && (scenarioTime <= engineBlowTime))) {
 			pilot->handleAlarm(PILOT_ALARM_VEHICLE_INCAPACITATED, 0);
 			ObjectManager->getObjectType(typeHandle)->handleDestruction(this, nullptr);
@@ -466,7 +466,7 @@ long BattleMech::handleMoveChunk (unsigned long chunk) {
 #pragma optimize("",on)
 
 bool BattleMech::injureBodyLocation (long bodyLocation, float damage) {
-	MC2_SIM_TRACE_LINE("INJURE mech=%ld loc=%ld dmg=%.3f cur=%.3f", static_cast<long>(getPartId()), static_cast<long>(bodyLocation), static_cast<double>(damage), static_cast<double>(body[bodyLocation].curInternalStructure));
+	MC2_SIM_TRACE_LINE("INJURE mech={:d} loc={:d} dmg={:.3f} cur={:.3f}", mc2::fmt::as_i32(getPartId()), mc2::fmt::as_i32(bodyLocation), static_cast<double>(damage), static_cast<double>(body[bodyLocation].curInternalStructure));
 
 	BodyLocationPtr location = &body[bodyLocation];
 
@@ -510,7 +510,7 @@ long BattleMech::handleWeaponHit (WeaponShotInfoPtr shotInfo, bool addMultiplayC
 	if (!shotInfo)
 		return(NO_ERR);
 
-	MC2_SIM_TRACE_LINE("HIT mech=%ld dmg=%.3f loc=%ld master=%ld atk=%ld", static_cast<long>(getPartId()), static_cast<double>(shotInfo->damage), static_cast<long>(shotInfo->hitLocation), static_cast<long>(shotInfo->masterId), static_cast<long>(shotInfo->attackerWID));
+	MC2_SIM_TRACE_LINE("HIT mech={:d} dmg={:.3f} loc={:d} master={:d} atk={:d}", mc2::fmt::as_i32(getPartId()), static_cast<double>(shotInfo->damage), mc2::fmt::as_i32(shotInfo->hitLocation), mc2::fmt::as_i32(shotInfo->masterId), mc2::fmt::as_i32(shotInfo->attackerWID));
 	printHandleWeaponHitDebugInfo(shotInfo);
 
 	// COMBAT-TRACE-1: weapon HIT resolution is the universal combat chokepoint — scripted ABL

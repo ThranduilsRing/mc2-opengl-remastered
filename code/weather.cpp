@@ -28,6 +28,7 @@
 #include <cstdlib>
 #include <vector>   // MC2_RAIN_BATCH staging buffer
 #include "sim_trace.h"
+#include "mc2fmt.h"
 #include "Gates/gate.h"
 #include "det_rng.h"
 
@@ -282,7 +283,7 @@ void Weather::update (void)
    		glm::vec3 startPos = eye->getPosition();
 		startPos.z += BASE_RAIN_HEIGHT;
    		float currentElevation = land->getTerrainElevation(startPos);
-		MC2_SIM_TRACE_LINE("WX pos=%.9g,%.9g,%.9g elev=%.9g fl=%.9g rl=%.9g", static_cast<double>(startPos.x), static_cast<double>(startPos.y), static_cast<double>(startPos.z), static_cast<double>(currentElevation), static_cast<double>(frameLength), static_cast<double>(rainLevel));
+		MC2_SIM_TRACE_LINE("WX pos={:.9g},{:.9g},{:.9g} elev={:.9g} fl={:.9g} rl={:.9g}", static_cast<double>(startPos.x), static_cast<double>(startPos.y), static_cast<double>(startPos.z), static_cast<double>(currentElevation), static_cast<double>(frameLength), static_cast<double>(rainLevel));
 		
 		//----------------------------
 		// Update the light level

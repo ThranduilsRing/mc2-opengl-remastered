@@ -11,13 +11,31 @@
 #ifndef FFILE_H
 #include"ffile.h"
 #include "gos_crashbundle.h"
+#include <cstdio>
+#include <cstring>
+#include <format>
+#include <string>
+#include <utility>
 // Format, print, and feed the crash-bundle ring in one call.
-#define CB_PRINTF(fmt, ...) do { \
-    char _cbbuf[512]; \
-    snprintf(_cbbuf, sizeof(_cbbuf), fmt, ##__VA_ARGS__); \
-    puts(_cbbuf); fflush(stdout); \
-    crashbundle_append(_cbbuf); \
-} while(0)
+namespace {
+
+template <class... Args>
+void CB_PRINTF(std::format_string<Args...> fmt, Args&&... args)
+{
+    char buf[512];
+    try {
+        const std::string text = std::vformat(fmt.get(), std::make_format_args(args...));
+        const size_t n = text.size() < sizeof(buf) - 1 ? text.size() : sizeof(buf) - 1;
+        std::memcpy(buf, text.data(), n);
+        buf[n] = '\0';
+    } catch (...) {
+        buf[0] = '\0';
+    }
+    puts(buf);
+    fflush(stdout);
+    crashbundle_append(buf);
+}
+}
 #endif
 
 #ifndef FASTFILE_H
@@ -548,30 +566,30 @@ long FastFile::readFast (DWORD fastFileHandle, void *bfr, DWORD size)
 						if (Z_OK == uncompress(reinterpret_cast<MemoryPtr>(bfr), &tryLength, LZPacketBuffer, files[fastFileHandle].pfe->size)
 							&& tryLength == static_cast<unsigned long>(files[fastFileHandle].pfe->realSize))
 						{
-							if (s_ffTrace) { CB_PRINTF("[FF] RAW-ZLIB %s size=%u real=%u (size==realSize but valid zlib; inflated)", files[fastFileHandle].pfe->name, files[fastFileHandle].pfe->size, files[fastFileHandle].pfe->realSize); }
+							if (s_ffTrace) { CB_PRINTF("[FF] RAW-ZLIB {} size={:d} real={:d} (size==realSize but valid zlib; inflated)", files[fastFileHandle].pfe->name, files[fastFileHandle].pfe->size, files[fastFileHandle].pfe->realSize); }
 							copiedVerbatim = false;
 						}
 					}
 					if (copiedVerbatim)
 					{
 						// Raw-stored entry: copy verbatim.
-						if (s_ffTrace) { CB_PRINTF("[FF] RAW %s size=%u real=%u", files[fastFileHandle].pfe->name, files[fastFileHandle].pfe->size, files[fastFileHandle].pfe->realSize); }
+						if (s_ffTrace) { CB_PRINTF("[FF] RAW {} size={:d} real={:d}", files[fastFileHandle].pfe->name, files[fastFileHandle].pfe->size, files[fastFileHandle].pfe->realSize); }
 						memcpy(bfr, LZPacketBuffer, files[fastFileHandle].pfe->size);
 					}
 					decompLength = files[fastFileHandle].pfe->realSize;
 				}
 				else if (useLZCompress)
 				{
-					if (s_ffTrace) { CB_PRINTF("[FF] LZSS %s size=%u real=%u", files[fastFileHandle].pfe->name, files[fastFileHandle].pfe->size, files[fastFileHandle].pfe->realSize); }
+					if (s_ffTrace) { CB_PRINTF("[FF] LZSS {} size={:d} real={:d}", files[fastFileHandle].pfe->name, files[fastFileHandle].pfe->size, files[fastFileHandle].pfe->realSize); }
 					decompLength = static_cast<unsigned long>(LZDecomp(reinterpret_cast<MemoryPtr>(bfr),LZPacketBuffer,files[fastFileHandle].pfe->size,files[fastFileHandle].pfe->realSize));
 				}
 				else
 				{
-					if (s_ffTrace) { CB_PRINTF("[FF] ZLIB %s size=%u real=%u firstbytes=%02x%02x%02x%02x", files[fastFileHandle].pfe->name, files[fastFileHandle].pfe->size, files[fastFileHandle].pfe->realSize, static_cast<unsigned char>(LZPacketBuffer[0]), static_cast<unsigned char>(LZPacketBuffer[1]), static_cast<unsigned char>(LZPacketBuffer[2]), static_cast<unsigned char>(LZPacketBuffer[3])); }
+					if (s_ffTrace) { CB_PRINTF("[FF] ZLIB {} size={:d} real={:d} firstbytes={:02x}{:02x}{:02x}{:02x}", files[fastFileHandle].pfe->name, files[fastFileHandle].pfe->size, files[fastFileHandle].pfe->realSize, LZPacketBuffer[0], LZPacketBuffer[1], LZPacketBuffer[2], LZPacketBuffer[3]); }
 					decompLength = files[fastFileHandle].pfe->realSize;
 					long error = uncompress(reinterpret_cast<MemoryPtr>(bfr),&decompLength,LZPacketBuffer,files[fastFileHandle].pfe->size);
 					if (error != Z_OK) {
-						if (s_ffTrace) { CB_PRINTF("[FF] ZLIB FAILED error=%ld %s", error, files[fastFileHandle].pfe->name); }
+						if (s_ffTrace) { CB_PRINTF("[FF] ZLIB FAILED error={:d} {}", error, files[fastFileHandle].pfe->name); }
 						STOP(("Error %d UnCompressing File %s from FastFile %s",error,files[fastFileHandle].pfe->name,fileName));
 					}
 				}

@@ -263,12 +263,12 @@ void Mission::updateDevHotkeys() {
 			if (gos_GetKeyStatus(KEY_LBRACKET) == KEY_PRESSED) {
 				float s = max(gos_GetTerrainShadowSoftness() - 0.1f, 0.1f);
 				gos_SetTerrainShadowSoftness(s);
-				CB_PRINTF("[SHADOW-KEY] [: softness=%.1f", s);
+				CB_PRINTF("[SHADOW-KEY] [: softness={:.1f}", s);
 			}
 			if (gos_GetKeyStatus(KEY_RBRACKET) == KEY_PRESSED) {
 				float s = min(gos_GetTerrainShadowSoftness() + 0.1f, 10.0f);
 				gos_SetTerrainShadowSoftness(s);
-				CB_PRINTF("[SHADOW-KEY] ]: softness=%.1f", s);
+				CB_PRINTF("[SHADOW-KEY] ]: softness={:.1f}", s);
 			}
 		}
 		#endif

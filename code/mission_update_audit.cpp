@@ -189,9 +189,9 @@ namespace {
 	static bool  s_cohAtexit     = false;
 
 	static void cohEmitSummary() {
-		mc2AuditLinef("[MOVER_COHERENCE] summary checked=%ld violations=%ld "
-			"advisories=%ld audits=%ld",
-			s_cohChecked, s_cohViolations, s_cohAdvisories, s_cohAudits);
+		mc2AuditLinef("[MOVER_COHERENCE] summary checked={:d} violations={:d} "
+			"advisories={:d} audits={:d}",
+			mc2::fmt::as_i32(s_cohChecked), mc2::fmt::as_i32(s_cohViolations), mc2::fmt::as_i32(s_cohAdvisories), mc2::fmt::as_i32(s_cohAudits));
 	}
 
 	// rule ids for the dedup key (per mover partId).
@@ -207,9 +207,9 @@ namespace {
 		if (violation) s_cohViolations++; else s_cohAdvisories++;
 		if (!mc2AuditOnce("MOVER_COHERENCE", key))
 			return;
-		mc2AuditLinef("[MOVER_COHERENCE] %s rule=%s part=%ld name=%s %s",
-			violation ? "VIOLATION" : "ADVISORY", rule, partId,
-			(name && name[0]) ? name : "?", detail ? detail : "");
+		mc2AuditLinef("[MOVER_COHERENCE] {} rule={} part={:d} name={} {}",
+			mc2::fmt::safe(violation ? "VIOLATION" : "ADVISORY"), mc2::fmt::safe(rule), mc2::fmt::as_i32(partId),
+			mc2::fmt::safe((name && name[0]) ? name : "?"), mc2::fmt::safe(detail ? detail : ""));
 	}
 
 }  // namespace

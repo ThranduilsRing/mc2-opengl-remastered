@@ -9,6 +9,7 @@ MechIcon.cpp			: Implementation of the MechIcon component.
 
 #include"mechicon.h"
 #include "mc2_audit.h"   // META-FIX design B PART 3b: icon_oob CPU-blit chokepoint
+#include "mc2fmt.h"
 #include"mover.h"
 #include"utilities.h"
 #include"mech.h"
@@ -69,10 +70,10 @@ static bool iconTileChecked(const char* site, long index,
 		for (const char* p = site; p && *p; ++p) key = key * 33 + static_cast<unsigned char>(*p);
 		key = key * 33 + static_cast<unsigned long long>(static_cast<unsigned long>(index));
 		if (mc2AuditOnce("ICON_OOB", key))
-			mc2AuditLinef("[ASSET_LOAD v1] event=icon_oob site=%s index=%ld "
-				"off=(%ld,%ld) tile=(%ld,%ld) atlas=(%u,%u)",
-				site, index, nominalOffX, nominalOffY, tileW, tileH,
-				actualW, actualH);
+			mc2AuditLinef("[ASSET_LOAD v1] event=icon_oob site={} index={:d} "
+				"off=({:d},{:d}) tile=({:d},{:d}) atlas=({:d},{:d})",
+				mc2::fmt::safe(site), mc2::fmt::as_i32(index), mc2::fmt::as_i32(nominalOffX), mc2::fmt::as_i32(nominalOffY), mc2::fmt::as_i32(tileW), mc2::fmt::as_i32(tileH),
+				mc2::fmt::as_u32(actualW), mc2::fmt::as_u32(actualH));
 	}
 	return oob;
 }

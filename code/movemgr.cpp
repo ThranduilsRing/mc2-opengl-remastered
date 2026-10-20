@@ -24,6 +24,7 @@
 #include"gos_profiler.h"
 #include"path_trace.h"  // PATHFINDING-FACTS-1 gated PATH telemetry
 #include "sim_trace.h"
+#include "mc2fmt.h"
 #if MC2_SIM_TRACE
 #include "mover.h"   // the trace names the mover behind a path request; the file otherwise knows only the forward declaration
 #endif
@@ -207,9 +208,9 @@ void MovePathManager::calcPath (void) {
 		if (!mover)
 			return;
 
-		MC2_SIM_TRACE_LINE("CALC pilot=%ld src=%ld", static_cast<long>(mover->getPartId()), static_cast<long>(curQRec->num));
+		MC2_SIM_TRACE_LINE("CALC pilot={:d} src={:d}", mc2::fmt::as_i32(mover->getPartId()), mc2::fmt::as_i32(curQRec->num));
 		/*long err = */pilot->calcMovePath(curQRec->selectionIndex, curQRec->moveParams);
-		MC2_SIM_TRACE_LINE("CALCDONE pilot=%ld p0=%ld/%ld p1=%ld/%ld", static_cast<long>(mover->getPartId()), static_cast<long>(pilot->getMovePath(0)->curStep), static_cast<long>(pilot->getMovePath(0)->numStepsWhenNotPaused), static_cast<long>(pilot->getMovePath(1)->curStep), static_cast<long>(pilot->getMovePath(1)->numStepsWhenNotPaused));
+		MC2_SIM_TRACE_LINE("CALCDONE pilot={:d} p0={:d}/{:d} p1={:d}/{:d}", mc2::fmt::as_i32(mover->getPartId()), mc2::fmt::as_i32(pilot->getMovePath(0)->curStep), mc2::fmt::as_i32(pilot->getMovePath(0)->numStepsWhenNotPaused), mc2::fmt::as_i32(pilot->getMovePath(1)->curStep), mc2::fmt::as_i32(pilot->getMovePath(1)->numStepsWhenNotPaused));
 	}
 }
 

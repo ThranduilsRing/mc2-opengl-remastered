@@ -36,6 +36,9 @@ extern "C" {
 }
 #include "Gates/gate.h"
 #include "mc2fmt.h"
+#include <format>
+#include <string>
+#include <utility>
 
 //-----------------------------------------------------------------------------
 // Availability gate
@@ -43,19 +46,40 @@ extern "C" {
 bool g_ffmpegAvailable = true;
 
 static const bool s_videoTrace = mc2::gate::get<"MC2_DEBUG_VIDEO">();
-#define VIDEO_TRACE(fmt, ...) do { \
-    if (s_videoTrace) { \
-        char _cbbuf[512]; \
-        snprintf(_cbbuf, sizeof(_cbbuf), "[VIDEO] " fmt, ##__VA_ARGS__); \
-        puts(_cbbuf); fflush(stdout); crashbundle_append(_cbbuf); \
-    } \
-} while (0)
+template <class... Args>
+void VIDEO_TRACE(std::format_string<Args...> fmt, Args&&... args)
+{
+    if (!s_videoTrace) return;
+    char buf[512];
+    try {
+        const std::string text = "[VIDEO] " + std::vformat(fmt.get(), std::make_format_args(args...));
+        const size_t n = text.size() < sizeof(buf) - 1 ? text.size() : sizeof(buf) - 1;
+        std::memcpy(buf, text.data(), n);
+        buf[n] = '\0';
+    } catch (...) {
+        buf[0] = '\0';
+    }
+    puts(buf);
+    fflush(stdout);
+    crashbundle_append(buf);
+}
 
-#define VIDEO_LOG(fmt, ...) do { \
-    char _cbbuf[512]; \
-    snprintf(_cbbuf, sizeof(_cbbuf), "[VIDEO] " fmt, ##__VA_ARGS__); \
-    puts(_cbbuf); fflush(stdout); crashbundle_append(_cbbuf); \
-} while (0)
+template <class... Args>
+void VIDEO_LOG(std::format_string<Args...> fmt, Args&&... args)
+{
+    char buf[512];
+    try {
+        const std::string text = "[VIDEO] " + std::vformat(fmt.get(), std::make_format_args(args...));
+        const size_t n = text.size() < sizeof(buf) - 1 ? text.size() : sizeof(buf) - 1;
+        std::memcpy(buf, text.data(), n);
+        buf[n] = '\0';
+    } catch (...) {
+        buf[0] = '\0';
+    }
+    puts(buf);
+    fflush(stdout);
+    crashbundle_append(buf);
+}
 
 #if defined(_WIN32)
 // Delay-load failure hook. Defense-in-depth: flags unavailability if a
@@ -68,10 +92,10 @@ static FARPROC WINAPI Mc2VideoDelayLoadFailureHook(unsigned dliNotify,
 {
     if (dliNotify == dliFailLoadLib || dliNotify == dliFailGetProc) {
         if (g_ffmpegAvailable) {
-            VIDEO_LOG("FFmpeg delay-load failed post-probe (dll=%s, notify=%u). "
+            VIDEO_LOG("FFmpeg delay-load failed post-probe (dll={}, notify={:d}). "
                       "This should not happen if the gate is respected.",
-                      pdli && pdli->szDll ? pdli->szDll : "<unknown>",
-                      dliNotify);
+                      mc2::fmt::safe(pdli && pdli->szDll ? pdli->szDll : "<unknown>"),
+                      mc2::fmt::as_u32(dliNotify));
             g_ffmpegAvailable = false;
         }
         return (FARPROC)0;
@@ -116,8 +140,8 @@ void ffmpegProbeAvailability()
     for (const char* d : MC2_VIDEO_DLL_LIST) {
         if (!tryLoadOne(d)) {
             DWORD err = GetLastError();
-            VIDEO_LOG("FFmpeg unavailable: LoadLibraryA(%s) failed (err=%lu). "
-                      "Video playback disabled for this session.", d, err);
+            VIDEO_LOG("FFmpeg unavailable: LoadLibraryA({}) failed (err={:d}). "
+                      "Video playback disabled for this session.", mc2::fmt::safe(d), mc2::fmt::as_u32(err));
             g_ffmpegAvailable = false;
             return;
         }
@@ -160,9 +184,9 @@ bool resolveVideoCandidate(const char* shortName, bool preferUpscaled,
         if (s.looseRequired && !fileExists(tmp)) return false;
         if (viableSoFar == index) {
             mc2::fmt::to_buf_n(outPath, outPathSize, "{}", mc2::fmt::safe(tmp));
-            VIDEO_TRACE("resolver: viable idx=%d ext=%s path=%s%s",
-                        index, s.ext,
-                        s.looseRequired ? "" : "(FST) ", outPath);
+            VIDEO_TRACE("resolver: viable idx={:d} ext={} path={}{}",
+                        mc2::fmt::as_i32(index), mc2::fmt::safe(s.ext),
+                        s.looseRequired ? "" : "(FST) ", mc2::fmt::safe(outPath));
             return true;
         }
         ++viableSoFar;
@@ -315,8 +339,8 @@ static bool tryOpenEmbeddedAudio(VideoSession* s)
     }
 
     s->audioStreamStarted = true;
-    VIDEO_TRACE("audio: embedded stream opened, rate=%d ch=%d",
-                s->aOutRate, s->aOutChannels);
+    VIDEO_TRACE("audio: embedded stream opened, rate={:d} ch={:d}",
+                mc2::fmt::as_i32(s->aOutRate), mc2::fmt::as_i32(s->aOutChannels));
     return true;
 }
 
@@ -352,17 +376,17 @@ VideoSession* video_open(const VideoOpenParams& p, VideoOpenResult* out)
     s->objectiveReceipt.capture(p.resolvedPath);
 
     if (avformat_open_input(&s->fmt, p.resolvedPath, nullptr, nullptr) < 0) {
-        VIDEO_LOG("avformat_open_input failed for '%s'", p.resolvedPath);
+        VIDEO_LOG("avformat_open_input failed for '{}'", mc2::fmt::safe(p.resolvedPath));
         video_close(sessionOwner.release()); return nullptr;
     }
     if (avformat_find_stream_info(s->fmt, nullptr) < 0) {
-        VIDEO_LOG("avformat_find_stream_info failed for '%s'", p.resolvedPath);
+        VIDEO_LOG("avformat_find_stream_info failed for '{}'", mc2::fmt::safe(p.resolvedPath));
         video_close(sessionOwner.release()); return nullptr;
     }
 
     s->vStream = av_find_best_stream(s->fmt, AVMEDIA_TYPE_VIDEO, -1, -1, nullptr, 0);
     if (s->vStream < 0) {
-        VIDEO_LOG("no video stream in '%s'", p.resolvedPath);
+        VIDEO_LOG("no video stream in '{}'", mc2::fmt::safe(p.resolvedPath));
         video_close(sessionOwner.release()); return nullptr;
     }
     AVStream* vst = s->fmt->streams[s->vStream];
@@ -397,7 +421,7 @@ VideoSession* video_open(const VideoOpenParams& p, VideoOpenResult* out)
                                         RECT_TEX(static_cast<DWORD>(s->srcW), static_cast<DWORD>(s->srcH)),
                                         gosHint_DisableMipmap);
     if (s->texHandle == 0) {
-        VIDEO_LOG("gos_NewEmptyTexture failed %dx%d", s->srcW, s->srcH);
+        VIDEO_LOG("gos_NewEmptyTexture failed {}x{}", mc2::fmt::as_i32(s->srcW), mc2::fmt::as_i32(s->srcH));
         video_close(sessionOwner.release()); return nullptr;
     }
 
@@ -446,8 +470,8 @@ VideoSession* video_open(const VideoOpenParams& p, VideoOpenResult* out)
         out->quadX1 = s->quadX1; out->quadY1 = s->quadY1;
     }
 
-    VIDEO_LOG("init: opened '%s' (%dx%d, sar=%.3f, fps=%.2f, audio=%d)",
-              p.resolvedPath, s->srcW, s->srcH, s->sar, s->fps, static_cast<int>((s->aStream >= 0)));
+    VIDEO_LOG("init: opened '{}' ({}x{}, sar={:.3f}, fps={:.2f}, audio={:d})",
+              mc2::fmt::safe(p.resolvedPath), mc2::fmt::as_i32(s->srcW), mc2::fmt::as_i32(s->srcH), s->sar, s->fps, mc2::fmt::as_i32(static_cast<int>((s->aStream >= 0))));
 
     s->clockStart   = static_cast<double>(av_gettime()) / 1000000.0;
     s->presentedPTS = -1.0;
@@ -503,7 +527,7 @@ static void markAudioStalled(VideoSession* s, const char* reason)
         double lastAudioSec = audioMasterClock(s);
         s->clockStart = nowSeconds() - lastAudioSec;
         s->audioStallLogged = true;
-        VIDEO_LOG("audio stalled (%s); master clock fallback to wall-clock", reason);
+        VIDEO_LOG("audio stalled ({}); master clock fallback to wall-clock", mc2::fmt::safe(reason));
     }
 }
 
@@ -526,7 +550,7 @@ static int logOnceDecodeError(VideoSession* s, const char* where, int ret)
     if (!s->loggedVideoDecodeError) {
         char errbuf[128] = {0};
         av_strerror(ret, errbuf, sizeof(errbuf));
-        VIDEO_LOG("decode error at %s: %s (ret=%d)", where, errbuf, ret);
+        VIDEO_LOG("decode error at {}: {} (ret={:d})", mc2::fmt::safe(where), mc2::fmt::safe(errbuf), mc2::fmt::as_i32(ret));
         s->loggedVideoDecodeError = true;
     }
     return -1;
@@ -818,7 +842,7 @@ void video_setRect(VideoSession* s, int x0, int y0, int w, int h)
     if (!s) return;
     if (w <= 0 || h <= 0) {
         if (!s->loggedDegenerateRect) {
-            VIDEO_LOG("setRect: degenerate rect ignored (w=%d h=%d)", w, h);
+            VIDEO_LOG("setRect: degenerate rect ignored (w={:d} h={:d})", mc2::fmt::as_i32(w), mc2::fmt::as_i32(h));
             s->loggedDegenerateRect = true;
         }
         return;

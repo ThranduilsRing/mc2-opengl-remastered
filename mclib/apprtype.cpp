@@ -307,8 +307,8 @@ AppearanceTypePtr AppearanceTypeList::getAppearance (unsigned long apprNum, cons
 		for (const char* p = appearFile; p && *p; ++p)
 			key = key * 33 + static_cast<unsigned char>(*p);
 		if (mc2AuditOnce("APPR_TYPE_FAIL", key))
-			mc2AuditLinef("[ASSET_LOAD v1] event=appr_type_fail name=%s apprNum=0x%08lx",
-				appearFile, apprNum);
+			mc2AuditLinef("[ASSET_LOAD v1] event=appr_type_fail name={} apprNum=0x{:08x}",
+				mc2::fmt::safe(appearFile), mc2::fmt::as_u32(apprNum));
 	}
 
 	return appearanceType;
