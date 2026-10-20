@@ -13,7 +13,7 @@
   "gui"
  ],
  "files_over_1500": {
-  "GameOS/gameos/engine_present_vk.cpp": 2783,
+  "GameOS/gameos/engine_present_vk.cpp": 2784,
   "GameOS/gameos/vulkan_color_prop_island.cpp": 1722,
   "GameOS/gameos/vulkan_shadow_island_live.cpp": 1543,
   "GameOS/include/gameos.hpp": 3721,
@@ -21,11 +21,11 @@
   "code/artlry.cpp": 1833,
   "code/bldng.cpp": 1691,
   "code/brain_special_dispatch.cpp": 2771,
-  "code/gamecam.cpp": 1608,
+  "code/gamecam.cpp": 1609,
   "code/gameobj.cpp": 2241,
   "code/infowindow.cpp": 1730,
   "code/logisticsdialog.cpp": 2149,
-  "code/mechicon.cpp": 1980,
+  "code/mechicon.cpp": 1981,
   "code/mechlabscreen.cpp": 1952,
   "code/mechlopedia.cpp": 1623,
   "code/missionbegin.cpp": 2154,
@@ -42,7 +42,7 @@
   "code/warrior.h": 2177,
   "editor/tests/test_objectives.cpp": 1996,
   "gui/alistbox.cpp": 1513,
-  "mclib/ablenv.cpp": 1588,
+  "mclib/ablenv.cpp": 1585,
   "mclib/ablrtn.cpp": 1799,
   "mclib/assimp_importer.cpp": 1577,
   "mclib/camera.h": 1815,
@@ -56,7 +56,7 @@
   "mclib/terrtxm.cpp": 1816,
   "mclib/tgl.h": 1799
  },
- "head": "e67bfc56d",
+ "head": "bc444d6f4",
  "per_dir": {
   "GameAdapters": {
    "files": 9,
@@ -107,7 +107,7 @@
    "max_lines": 1513
   },
   "mclib": {
-   "files": 563,
+   "files": 567,
    "files_over_1500": 13,
    "files_over_3000": 0,
    "max_lines": 2613
@@ -130,7 +130,7 @@
   },
   {
    "file": "GameOS/gameos/engine_present_vk.cpp",
-   "lines": 2783
+   "lines": 2784
   },
   {
    "file": "code/brain_special_dispatch.cpp",
@@ -190,7 +190,7 @@
   },
   {
    "file": "code/mechicon.cpp",
-   "lines": 1980
+   "lines": 1981
   },
   {
    "file": "code/mechlabscreen.cpp",
@@ -246,7 +246,7 @@
   }
  ],
  "total": {
-  "files": 1799,
+  "files": 1803,
   "files_over_1500": 42,
   "files_over_3000": 1,
   "max_lines": 3721
