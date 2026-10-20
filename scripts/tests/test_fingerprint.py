@@ -2,7 +2,7 @@
 # scripts/tests/test_fingerprint.py
 """Tests for scripts/smoke_lib/fingerprint.py (deploy-fingerprint parse/compare).
 
-No game launch or git; executable hashing uses in-memory byte streams.
+No game launch; hashing uses in-memory streams. Generator checks use a temporary git repo.
 
 Run:
   py -3 -m pytest scripts/tests/test_fingerprint.py -v
@@ -11,6 +11,9 @@ from __future__ import annotations
 
 import sys
 import hashlib
+import re
+import shutil
+import subprocess
 from io import BytesIO
 from pathlib import Path
 from unittest.mock import patch
@@ -20,8 +23,11 @@ import pytest
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
+from scripts import console_child
 from scripts.smoke_lib.fingerprint import (parse_fingerprint, check_fingerprint,
                                           resolve_reference, describe_reference)
+
+CMAKE = shutil.which("cmake") or "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/bin/cmake.exe"
 
 BANNER = ("[BUILD_FINGERPRINT v1] sha=0123456789ab dirty=0 "
           "branch=claude/sp-deploy-fingerprint-1 built=2026-06-11T12:00:00 "
@@ -285,3 +291,52 @@ def test_exe_reference_can_identify_dirty_build_by_bytes():
         _lines, bad = check_fingerprint(parse_fingerprint(LOG.replace("dirty=0", "dirty=1")),
                                         None, reference=ref, exe_path="deployed.exe")
     assert not bad
+
+
+def _identity_run(*cmd, cwd=None):
+    return subprocess.run(cmd, cwd=cwd, check=True, capture_output=True, text=True,
+                          **console_child.child_kwargs(redirected=True)).stdout.strip()
+
+
+def test_generated_identity_commit_dirty_and_noop(tmp_path):
+    src = tmp_path / "repo"
+    src.mkdir()
+    (src / "scripts").mkdir()
+    (src / "scripts/build_inputs.txt").write_text("code/\n")
+    (src / "code").mkdir()
+    marker = src / "code/input.cpp"
+    marker.write_text("// baseline\n")
+    _identity_run("git", "init", str(src))
+    _identity_run("git", "add", "scripts/build_inputs.txt", "code/input.cpp", cwd=src)
+    commit = ["git", "-c", "user.name=Fingerprint Test", "-c", "user.email=fingerprint@example.invalid", "commit"]
+    _identity_run(*commit, "-m", "baseline", cwd=src)
+    out = tmp_path / "build_fingerprint.h"
+    cpp = tmp_path / "build_fingerprint.cpp"
+
+    def generate():
+        _identity_run(CMAKE, f"-DOUT={out.as_posix()}", f"-DCPP_OUT={cpp.as_posix()}",
+            f"-DSRC_DIR={src.as_posix()}", "-P", str(ROOT / "cmake/GenerateBuildFingerprint.cmake"))
+        return cpp.read_text()
+
+    clean = generate()
+    sha = _identity_run("git", "rev-parse", "HEAD", cwd=src)[:12]
+    assert f'const char MC2_BUILD_GIT_SHA[] = "{sha}";' in clean
+    assert "const int MC2_BUILD_GIT_DIRTY = 0;" in clean
+    assert "#if 0" in clean
+    assert f"MC2FP1|{sha}|0|" in clean
+    # An older build time must survive a no-op even across a wall-clock tick.
+    for output in (out, cpp):
+        output.write_text(re.sub(r"\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d", "2001-02-03T04:05:06", output.read_text()))
+    clean = cpp.read_text()
+    times = out.stat().st_mtime_ns, cpp.stat().st_mtime_ns
+    assert generate() == clean
+    assert times == (out.stat().st_mtime_ns, cpp.stat().st_mtime_ns)
+    _identity_run(*commit, "--allow-empty", "-m", "identity only", cwd=src)
+    changed = generate()
+    assert changed != clean
+    assert _identity_run("git", "rev-parse", "HEAD", cwd=src)[:12] in changed
+    marker.write_text("// changed\n")
+    dirty = generate()
+    assert "const int MC2_BUILD_GIT_DIRTY = 1;" in dirty
+    assert "#if 1" in dirty
+    assert "|1|" in dirty

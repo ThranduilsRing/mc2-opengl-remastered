@@ -60,7 +60,7 @@
 #include <algorithm>
 
 #include "render_backend_select.h"
-#include "build_fingerprint.h"  // [BUILD_FINGERPRINT v1] identity macros (generated dir)
+#include "build_identity.h"  // Stable build identity declarations
 
 // Game Camera global `eye` + hard-set API (setPosition/setRotation). Use the
 // explicit mclib path: the GameOS-local "utils/camera.h" is a different GL

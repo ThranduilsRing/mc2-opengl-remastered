@@ -9,7 +9,7 @@
 #include "draw_packet_emitter.h"       // DrawPacket v0
 #include "gos_static_prop_batcher.h"   // batcher_getSortedPacketCount — explicit, do not rely on transitive
 #include "../../RenderCore/MaterialGpu.h"  // RenderCore::MaterialGpu for g_dpSelProp albedoTex fill
-#include "build_fingerprint.h"          // MC2_BUILD_GIT_SHA (real macro; MC2_BUILD_HASH never defined)
+#include "build_identity.h"          // Stable build identity declarations
 #include "../../RenderCore/ResolutionContract.h"  // META-FIX design D: MC2_RES_ASSERT audit
 #include "vk_shared_gbuffer_gate.h"        // mc2vkgate::umbrellaOn (the VK umbrella adapter)
 #include <stdio.h>

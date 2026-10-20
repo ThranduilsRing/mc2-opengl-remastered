@@ -519,3 +519,8 @@ endif()
 if(TARGET gameos_main)
     target_link_libraries(gameos_main PUBLIC mc2_gate)
 endif()
+
+# A single generated object supplies identity to game, editor, and tool consumers.
+target_link_libraries(gameos PUBLIC mc2_build_identity)
+target_link_libraries(gameos_editor PUBLIC mc2_build_identity)
+target_link_libraries(gameos_main PUBLIC mc2_build_identity)

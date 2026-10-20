@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """log_tag_census - the set of structured log lines the engine emits, frozen so a conversion cannot change one.
 
-WHAT: scans the tracked C++ sources for calls that write a `[TAG vN] key=...` (or `[TAG] ...`) line -- printf, fprintf, puts, SPEW, the log_*
+WHAT: scans tracked C++ sources and .cpp.in templates for calls that write a `[TAG vN] key=...` (or `[TAG] ...`) line -- printf, fprintf, puts, SPEW, the log_*
 macros, sprintf-style buffers (snprintf, mc2::fmt::to_buf*), and the facade's MC2_EVENT* / mc2::log::event<> -- reads the format literal across
 continuation lines and adjacent literals, and records (tag, version, stream, key order) with a count. tests/unit/log_tag_baseline.json holds
 the frozen census plus the tags the Python parsers consume.
@@ -32,7 +32,7 @@ import console_child  # noqa: E402
 import cxx_calls  # noqa: E402
 
 BASELINE = os.path.join(ROOT, "tests", "unit", "log_tag_baseline.json")
-CPP_EXT = (".cpp", ".cc", ".cxx", ".c", ".h", ".hpp", ".inl", ".inc")
+CPP_EXT = (".cpp", ".cc", ".cxx", ".c", ".h", ".hpp", ".inl", ".inc", ".cpp.in")
 SKIP_PREFIX = ("3rdparty/", "build", "tests/")
 
 # callee -> (index of the stream/FILE argument or None, index of the format argument, stream name when fixed)

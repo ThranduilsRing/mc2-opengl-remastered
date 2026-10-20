@@ -629,19 +629,24 @@ endif()
 # Deploy fingerprint: embed git identity (sha/dirty/branch/build-time/worktree)
 # in the exe. Regenerated on every BUILD (not just configure) by the custom
 # target below; the script writes only-if-changed so no-op rebuilds stay no-op.
-# Consumed by code/mechcmd2.cpp ("[BUILD_FINGERPRINT v1]" startup banner) and
-# asserted by scripts/run_smoke.py.
+# Only mc2_build_identity compiles the changing values. Engine sources include
+# stable declarations; deploy tooling still reads the metadata header.
 set(MC2_BUILD_FINGERPRINT_H "${CMAKE_BINARY_DIR}/generated/build_fingerprint.h")
+set(MC2_BUILD_FINGERPRINT_CPP "${CMAKE_BINARY_DIR}/generated/build_fingerprint.cpp")
 execute_process(COMMAND ${CMAKE_COMMAND}
-        -DOUT=${MC2_BUILD_FINGERPRINT_H} -DSRC_DIR=${CMAKE_SOURCE_DIR}
+        -DOUT=${MC2_BUILD_FINGERPRINT_H} -DCPP_OUT=${MC2_BUILD_FINGERPRINT_CPP} -DSRC_DIR=${CMAKE_SOURCE_DIR}
         -P "${CMAKE_SOURCE_DIR}/cmake/GenerateBuildFingerprint.cmake")
 add_custom_target(build_fingerprint
     COMMAND ${CMAKE_COMMAND}
-        -DOUT=${MC2_BUILD_FINGERPRINT_H} -DSRC_DIR=${CMAKE_SOURCE_DIR}
+        -DOUT=${MC2_BUILD_FINGERPRINT_H} -DCPP_OUT=${MC2_BUILD_FINGERPRINT_CPP} -DSRC_DIR=${CMAKE_SOURCE_DIR}
         -P "${CMAKE_SOURCE_DIR}/cmake/GenerateBuildFingerprint.cmake"
-    BYPRODUCTS "${MC2_BUILD_FINGERPRINT_H}"
-    COMMENT "Refreshing build_fingerprint.h (git sha + dirty flag)"
+    BYPRODUCTS "${MC2_BUILD_FINGERPRINT_H}" "${MC2_BUILD_FINGERPRINT_CPP}"
+    COMMENT "Refreshing build fingerprint (one translation unit)"
     VERBATIM)
+
+add_library(mc2_build_identity STATIC "${MC2_BUILD_FINGERPRINT_CPP}")
+target_include_directories(mc2_build_identity PRIVATE "${CMAKE_SOURCE_DIR}/GameOS/include")
+add_dependencies(mc2_build_identity build_fingerprint)
 
 add_executable(mc2 ${SOURCES} ${MAIN_SRC})
 if(MC2_ALLOC_STATS)

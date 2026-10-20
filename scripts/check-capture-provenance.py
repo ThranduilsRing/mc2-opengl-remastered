@@ -187,7 +187,7 @@ MAX_ACK_DAYS = 365
 #: recognising the stamp -- and every manifest would then quietly record
 #: "no fingerprint" while this checker found nothing to complain about. That is a
 #: blind instrument, so the coupling is asserted on every run.
-EMITTER_SRC = ROOT / "code" / "mechcmd2.cpp"
+EMITTER_SRC = ROOT / "cmake" / "build_fingerprint.cpp.in"
 
 
 def verify_source_coupling() -> list[str]:
@@ -207,9 +207,9 @@ def verify_source_coupling() -> list[str]:
         problems.append(
             f"exe_fingerprint.DIRTY_MARKER no longer matches "
             f"{EMITTER_SRC.name}; the binary's dirty flag would always read 0.")
-    if "#if MC2_BUILD_GIT_DIRTY" not in src:
+    if "#if @_dirty@" not in src:
         problems.append(
-            "the dirty banner is no longer behind `#if MC2_BUILD_GIT_DIRTY`; "
+            "the dirty banner is no longer behind the generated dirty conditional; "
             "absence of the marker string no longer implies a clean build, so "
             "the extracted `dirty` bit would be wrong.")
     return problems

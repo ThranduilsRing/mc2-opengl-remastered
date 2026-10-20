@@ -7,7 +7,8 @@
 # survives exe copies between deploy dirs.
 #
 # Inputs (via -D):
-#   OUT     — absolute path of the header to write
+#   OUT     — absolute path of the metadata header for deploy tooling
+#   CPP_OUT — optional generated implementation; the only TU containing identity values
 #   SRC_DIR — source worktree root (git repo / worktree)
 #
 # Runs on EVERY build (add_custom_target in CMakeLists.txt), but only rewrites
@@ -95,7 +96,27 @@ if(EXISTS "${OUT}")
     endif()
 endif()
 
+# The metadata header remains available to deploy tooling; no engine TU includes it.
+# Timestamp-only differences must not invalidate either output on a no-op build.
+if(CPP_OUT)
+    file(READ "${CMAKE_CURRENT_LIST_DIR}/build_fingerprint.cpp.in" _cpp_template)
+    string(CONFIGURE "${_cpp_template}" _cpp_content @ONLY)
+    if(EXISTS "${CPP_OUT}")
+        file(READ "${CPP_OUT}" _cpp_old)
+        string(REGEX REPLACE "[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T[0-9][0-9]:[0-9][0-9]:[0-9][0-9]" "" _cpp_old_cmp "${_cpp_old}")
+        string(REGEX REPLACE "[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T[0-9][0-9]:[0-9][0-9]:[0-9][0-9]" "" _cpp_new_cmp "${_cpp_content}")
+        if(NOT _cpp_old_cmp STREQUAL _cpp_new_cmp)
+            set(_write 1)
+        endif()
+    else()
+        set(_write 1)
+    endif()
+endif()
+
 if(_write)
     file(WRITE "${OUT}" "${_content}")
+    if(CPP_OUT)
+        file(WRITE "${CPP_OUT}" "${_cpp_content}")
+    endif()
     message(STATUS "build_fingerprint.h: sha=${_sha} dirty=${_dirty} branch=${_branch}")
 endif()
