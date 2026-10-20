@@ -4,6 +4,7 @@
 //===========================================================================//
 
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
+#include <mdspan>
 #include "move_internal.h"
 #include "../GameOS/gameos/utils/mc2log.h"
 #include "packet_exact.h"
@@ -747,9 +748,10 @@ void MissionMap::init (long h, long w) {
 void MissionMap::rebuildTileMineCounts (void) {
 	if (tileMineCount.empty() || map.empty()) return;
 	std::fill(tileMineCount.begin(), tileMineCount.end(), 0);
+	std::mdspan<MapCell, std::dextents<std::size_t, 2>> mapView(map.data(), static_cast<std::size_t>(height), static_cast<std::size_t>(width));
 	for (long r = 0; r < height; ++r) {
 		for (long c = 0; c < width; ++c) {
-			if (map[r * width + c].getMine() != 0) {
+			if (mapView[r, c].getMine() != 0) {
 				const long tileIdx = (r / MAPCELL_DIM) * tileMineCountWidth + (c / MAPCELL_DIM);
 				++tileMineCount[tileIdx];
 			}
@@ -840,20 +842,21 @@ long MissionMap::init (long cellHeight, long cellWidth, long curPlanet, MissionM
 	for (long i = 0; i < 256; i++)
 		terrainTypes[i] = overlayTypes[i] = 0;
 
-	if (mapData)
+	if (mapData) {
+		std::mdspan<MissionMapCellInfo, std::dextents<std::size_t, 2>> mapDataView(mapData, static_cast<std::size_t>(height), static_cast<std::size_t>(width));
 		for (long row = 0; row < height; row++)
 			for (long col = 0; col < width; col++) {
-				setTerrain(row, col, mapData[row * width + col].terrain);
-				terrainTypes[mapData[row * width + col].terrain]++;
-				setOverlay(row, col, mapData[row * width + col].overlay);
-				overlayTypes[mapData[row * width + col].overlay]++;
-				setGate(row, col, mapData[row * width + col].gate);
-				setRoad(row, col, mapData[row * width + col].road);
-				setPassable(row, col, mapData[row * width + col].passable);
-				setLocalHeight(row, col, mapData[row * width + col].lineOfSight);
+				setTerrain(row, col, mapDataView[row, col].terrain);
+				terrainTypes[mapDataView[row, col].terrain]++;
+				setOverlay(row, col, mapDataView[row, col].overlay);
+				overlayTypes[mapDataView[row, col].overlay]++;
+				setGate(row, col, mapDataView[row, col].gate);
+				setRoad(row, col, mapDataView[row, col].road);
+				setPassable(row, col, mapDataView[row, col].passable);
+				setLocalHeight(row, col, mapDataView[row, col].lineOfSight);
 				setPreserved(row, col, false);
-				setMine(row, col, mapData[row * width + col].mine);
-				setForest(row, col, mapData[row * width + col].forest);
+				setMine(row, col, mapDataView[row, col].mine);
+				setForest(row, col, mapDataView[row, col].forest);
 				setBuildWall(row, col, false);
 				setBuildGate(row, col, false);
 				glm::vec3 worldPos;
@@ -865,7 +868,7 @@ long MissionMap::init (long cellHeight, long cellWidth, long curPlanet, MissionM
 					setDeepWater(row, col, true);
 				for (long i = 0; i < NUM_MOVE_LEVELS; i++)
 					GameMap->setPathlock(i, row, col, false);
-				switch (mapData[row * width + col].specialType) {
+				switch (mapDataView[row, col].specialType) {
 					case SPECIAL_WALL:
 						setBuildWall(row, col, true);
 						break;
@@ -880,6 +883,7 @@ long MissionMap::init (long cellHeight, long cellWidth, long curPlanet, MissionM
 					//	break;
 				}
 			}
+	}
 	else {
 		for (long row = 0; row < height; row++)
 			for (long col = 0; col < width; col++) {
@@ -932,11 +936,12 @@ void MissionMap::spreadState (long cellRow, long cellCol, long radius) {
 	// This does a simple depth-first spread from the center. The way it's coded,
 	// it essentially grows a box from the center cell.
 	if (inMapBounds(cellRow, cellCol, height, width) && (radius > 0)) {
+		std::mdspan<MapCell, std::dextents<std::size_t, 2>> mapView(map.data(), static_cast<std::size_t>(height), static_cast<std::size_t>(width));
 		// If we're placing moving objects for this frame only, we'll want to
 		// preserve the cell states of this tile...
 		if (!getPreserved(cellRow, cellCol))
 			setPreserved(cellRow, cellCol, true);
-		map[cellRow * width + cellCol].setPassable(false);
+		mapView[cellRow, cellCol].setPassable(false);
 		for (long dir = 0; dir < NUM_DIRECTIONS; dir++) {
 			long adjR = cellRow;
 			long adjC = cellCol;
@@ -996,12 +1001,13 @@ void MissionMap::print (char* fileName) {
 
 	File debugFile;
 	debugFile.create(fileName);
+	std::mdspan<MapCell, std::dextents<std::size_t, 2>> mapView(map.data(), static_cast<std::size_t>(height), static_cast<std::size_t>(width));
 	
 	for (long cellR = 0; cellR < height; cellR++) {
 		char outString[1024];
 		outString[0] = '\0';
 		for (long cellC = 0; cellC < width; cellC++) {
-			if (!map[cellR * width + cellC].getPassable())
+			if (!mapView[cellR, cellC].getPassable())
 				strcat(outString, "X");
 			else
 				strcat(outString, ".");
