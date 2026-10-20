@@ -1,6 +1,7 @@
 // Camera: the camera goal updates, Camera::update and render.
 // Declared in the class headers; shared names in camera_internal.h.
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
+#include <algorithm>
 #include "camera_internal.h"
 #include "mc2fmt.h"
 #include "Gates/render_options.h"
@@ -374,8 +375,7 @@ long Camera::update (void)
 	if (zoomAnchorActive)
 	{
 		float frac = 1.0f - (cameraAltitude / zoomAnchorH0);
-		if (frac > 1.0f) frac = 1.0f;
-		if (frac < -1.0f) frac = -1.0f;
+		frac = std::clamp(frac, -1.0f, 1.0f);
 		glm::vec3 Tnew = zoomAnchorPivot;
 		Tnew.x = zoomAnchorPivot.x + (zoomAnchorWorld.x - zoomAnchorPivot.x) * frac;
 		Tnew.y = zoomAnchorPivot.y + (zoomAnchorWorld.y - zoomAnchorPivot.y) * frac;

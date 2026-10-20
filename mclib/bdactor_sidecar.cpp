@@ -1,6 +1,7 @@
 // BldgAppearance / TreeAppearance: building PBR sidecar loaders, footprint shadow and override render-shape texture residency.
 // Declared in the class headers; shared names in bdactor_internal.h.
 #include "bdactor_internal.h"
+#include <algorithm>
 #include <string_view>
 #include "mc2fmt.h"
 
@@ -283,7 +284,7 @@ bool loadBuildingPbrFromSidecar(BldgAppearanceType* type, const char* sidecarPat
 		    extractJsonNumber(footprint, "softness", 2.0f, fpSoftness) &&
 		    extractJsonNumber(footprint, "height_bias", 0.05f, fpHeightBias)) {
 			type->buildingFootprintShadowEnabled = fpEnabled;
-			type->buildingFootprintShadowStrength = std::max(0.0f, std::min(fpStrength, 0.85f));
+			type->buildingFootprintShadowStrength = std::clamp(fpStrength, 0.0f, 0.85f);
 			type->buildingFootprintShadowSoftness = std::max(0.0f, fpSoftness);
 			type->buildingFootprintShadowHeightBias = fpHeightBias;
 		}
@@ -301,7 +302,7 @@ static bool buildingFootprintShadowRuntimeEnabled()
 
 static DWORD footprintShadowColor(float strength)
 {
-	const unsigned int a = static_cast<unsigned int>((std::max(0.0f, std::min(strength, 0.85f)) * 255.0f + 0.5f));
+	const unsigned int a = static_cast<unsigned int>((std::clamp(strength, 0.0f, 0.85f) * 255.0f + 0.5f));
 	return static_cast<DWORD>((a << 24));
 }
 

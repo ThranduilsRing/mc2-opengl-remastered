@@ -38,6 +38,7 @@
 //   hundred getter calls once per capture; the per-FRAME path is opt-in.
 //---------------------------------------------------------------------------
 
+#include <algorithm>
 #include "objmgr.h"
 #include "mover.h"
 #include "warrior.h"
@@ -111,8 +112,7 @@ void collectMovers(std::vector<MoverRecord>& out) {
 
 		float dmg = mover->getDamageLevel();
 		float hpFrac = 1.0f - dmg;
-		if (hpFrac < 0.0f) hpFrac = 0.0f;
-		if (hpFrac > 1.0f) hpFrac = 1.0f;
+		hpFrac = std::clamp(hpFrac, 0.0f, 1.0f);
 		r.hp = hpFrac;
 
 		// Appearance drives what is actually DRAWN: which gesture is playing and

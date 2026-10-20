@@ -768,7 +768,7 @@ void BattleMech::render (void)
 	if (drawTerrainGrid)
 	{
 		MovePathPtr path = pilot->getMovePath();
-		gosASSERT(path != NULL);
+		gosASSERT(path != nullptr);
 		if (path->numSteps)
 		{
 			Stuff::Vector4D lineStart, lineEnd;

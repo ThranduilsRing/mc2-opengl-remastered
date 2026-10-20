@@ -13,6 +13,7 @@
 
 //---------------------------------------------------------------------------
 // Include files
+#include <algorithm>
 #ifndef APPEAR_H
 #include"appear.h"
 #endif
@@ -589,8 +590,7 @@ class TreeAppearanceType : public AppearanceType
 		// getTreeCollisionShape — unchanged, LOD-independent.
 		TG_TypeMultiShape* getTreeRenderShape (long lod)
 		{
-			if (lod < 0)        lod = 0;
-			if (lod >= MAX_LODS) lod = MAX_LODS - 1;
+			lod = std::clamp(lod, 0L, static_cast<long>(MAX_LODS) - 1);
 			if (treeRenderShape[lod])
 				return treeRenderShape[lod];
 			// clamp to the highest populated override LOD <= lod

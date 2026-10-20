@@ -155,7 +155,7 @@ void Mission::loadBrainParamsPhase(MissionInitFrame& f) {
 			if (MechWarrior::warriorList[i] && !MechWarrior::warriorList[i]->getBrain())
 				continue;
 			// Exhausting the warrior slots can leave a missing pilot.
-			if (!MC2_VERIFY(MechWarrior::warriorList[i] != NULL,
+			if (!MC2_VERIFY(MechWarrior::warriorList[i] != nullptr,
 					"Mission::init: warriorList[%lu] is NULL (loadBrainParameters)", i))
 				continue;	// log mode: skip the missing warrior
 			result = MechWarrior::warriorList[i]->loadBrainParameters(missionFile, i);
@@ -909,7 +909,7 @@ void Mission::initWeatherCamera(MissionInitFrame& f) {
 void Mission::initInterface(MissionInitFrame& f) {
 	auto& result = f.result; auto& pakFile = f.pakFile;
 	missionInterface = new MissionInterfaceManager;
-	gosASSERT(missionInterface != NULL);
+	gosASSERT(missionInterface != nullptr);
 	
 	missionInterface->initTacMap( &pakFile, 2 );
 	
@@ -939,7 +939,7 @@ void Mission::initInterface(MissionInitFrame& f) {
 
 	if (tempSpecialAreaFootPrints) {
 		std::free(tempSpecialAreaFootPrints);
-		tempSpecialAreaFootPrints = NULL;
+		tempSpecialAreaFootPrints = nullptr;
 		tempNumSpecialAreas = 0;
 	}
 

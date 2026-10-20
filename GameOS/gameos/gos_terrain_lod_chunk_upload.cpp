@@ -1,5 +1,6 @@
 // gos_terrain_lod_chunk: heightfield, visual-damp, control-map, overlay/shoreline sidecar and cement-word uploads, and the terrain light/ambient accessors.
 // Declared in the class headers; shared names in gos_terrain_lod_chunk_internal.h.
+#include <algorithm>
 #include "gos_terrain_lod_chunk_internal.h"
 #include "mc2fmt.h"
 #include "Gates/render_options.h"
@@ -684,8 +685,7 @@ void gos_TerrainPadGlowRGB(float out[3])
     if (fg > flMax) flMax = fg;
     if (fb > flMax) flMax = fb;
     float nf = 1.0f - flMax;
-    if (nf < 0.0f) nf = 0.0f;
-    if (nf > 1.0f) nf = 1.0f;
+    nf = std::clamp(nf, 0.0f, 1.0f);
     const float s = gos_TerrainPadGlowStrength() * nf;
     out[0] = s * 1.00f; out[1] = s * 0.88f; out[2] = s * 0.70f;
 }

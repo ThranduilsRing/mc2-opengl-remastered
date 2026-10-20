@@ -1,6 +1,7 @@
 // FITBLOCK-WRITER-1 — raw brace-block writer implementation.
 // Pure std C++ leaf (no engine headers). See fitblockwriter.h for the contract.
 
+#include <algorithm>
 #include "fitblockwriter.h"
 
 #include <cstdio>
@@ -52,8 +53,7 @@ void FitBlockWriter::writeLong(std::string_view key, long v) {
 }
 
 void FitBlockWriter::writeFloat(std::string_view key, float v, int precision) {
-    if (precision < 0)  precision = 0;
-    if (precision > 9)  precision = 9;
+    precision = std::clamp(precision, 0, 9);
     char buf[48];
     std::snprintf(buf, sizeof(buf), "%.*f", precision, v);
     writeToken(key, buf);

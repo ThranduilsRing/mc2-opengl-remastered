@@ -12,6 +12,7 @@
 // primitives). build64_island defines both; the guards below make the TU inert
 // otherwise so the GL shipping build never sees a Vulkan symbol.
 
+#include <algorithm>
 #include "engine_present_vk.h"
 #include "Gates/gate.h"
 #include "gos_visual_capture.h"   // VK-VISUAL-CAPTURE-1
@@ -426,10 +427,8 @@ bool buildSwapchain(EnginePresentVk::Impl& s, uint32_t w, uint32_t h,
 
     VkExtent2D extent = caps.currentExtent;
     if (extent.width == 0xFFFFFFFFu) { extent.width = w; extent.height = h; }
-    if (extent.width  < caps.minImageExtent.width)  extent.width  = caps.minImageExtent.width;
-    if (extent.width  > caps.maxImageExtent.width)  extent.width  = caps.maxImageExtent.width;
-    if (extent.height < caps.minImageExtent.height) extent.height = caps.minImageExtent.height;
-    if (extent.height > caps.maxImageExtent.height) extent.height = caps.maxImageExtent.height;
+    extent.width = std::clamp(extent.width, caps.minImageExtent.width, caps.maxImageExtent.width);
+    extent.height = std::clamp(extent.height, caps.minImageExtent.height, caps.maxImageExtent.height);
     if (extent.width == 0 || extent.height == 0) {
         // Minimized / zero drawable: skip (fail-soft, retry next frame).
         reason = "zero surface extent (window minimized?)"; return false;

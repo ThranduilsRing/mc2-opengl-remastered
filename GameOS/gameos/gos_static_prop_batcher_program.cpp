@@ -569,11 +569,11 @@ void emitSubmitTypeHistDump(std::string_view trigger) {
     for (size_t t = 0; t < s_submitTypeHist.size(); ++t) {
         if (s_submitTypeHist[t] > 0) {
             const char* name = "<unknown>";
-            for (const auto& kv : s_typeIndex) {
-                if (kv.second == t && kv.first) {
+            for (const auto& [shape, idx] : s_typeIndex) {
+                if (idx == t && shape) {
                     // const_cast: getNodeId is non-const in tgl.h but returns
                     // a pointer to a char[TG_NODE_ID] field — we only read it.
-                    name = const_cast<TG_TypeShape*>(kv.first)->getNodeId();
+                    name = const_cast<TG_TypeShape*>(shape)->getNodeId();
                     break;
                 }
             }

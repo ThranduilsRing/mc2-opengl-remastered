@@ -4,6 +4,7 @@
 // Pure pass-through implementation over the legacy `Terrain* land` global.
 // See terrain_runtime.h and docs/recon/terrain-runtime-api-recon-1.md.
 //******************************************************************************
+#include <algorithm>
 #include "terrain.h"
 #include "terrain_runtime.h"
 #include "Gates/gate.h"
@@ -88,8 +89,7 @@ float sampleFeatureMask(const glm::vec3& worldPos, FeatureMask kind)
 		// mask saturates on steep faces. Consumers may threshold as needed.
 		const float angle = land->getTerrainAngle(worldPos);
 		float m = angle / 60.0f;
-		if (m < 0.0f) m = 0.0f;
-		if (m > 1.0f) m = 1.0f;
+		m = std::clamp(m, 0.0f, 1.0f);
 		return m;
 	}
 	case FM_Shoreline:
@@ -101,8 +101,7 @@ float sampleFeatureMask(const glm::vec3& worldPos, FeatureMask kind)
 		const float band  = 30.0f; // world units; ~quarter tile spacing
 		float d = fabsf(gh - water);
 		float m = 1.0f - (d / band);
-		if (m < 0.0f) m = 0.0f;
-		if (m > 1.0f) m = 1.0f;
+		m = std::clamp(m, 0.0f, 1.0f);
 		return m;
 	}
 	case FM_Cement:        // colormap-baked artifact today — no runtime feature data

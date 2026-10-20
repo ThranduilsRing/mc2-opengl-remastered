@@ -1,6 +1,7 @@
 // GVAppearance: paint schemes, gestures, object/mover parameters, bounds, destruction and node positions.
 // Declared in the class headers; shared names in gvactor_internal.h.
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
+#include <algorithm>
 #include "gvactor_internal.h"
 #include "appearance_rng.h"
 #include "../RenderCore/axis_convert.h"
@@ -69,8 +70,7 @@ void GVAppearance::setPaintScheme (void)
 
 					float ratio = static_cast<float>(domChan) / static_cast<float>((maxOther + 1));
 					float margin = (ratio - kRatio) / (kRatio * (kRatioMargin - 1.0f));
-					if (margin > 1.0f) margin = 1.0f;
-					if (margin < 0.0f) margin = 0.0f;
+					margin = std::clamp(margin, 0.0f, 1.0f);
 					mixFactor = margin;
 				}
 

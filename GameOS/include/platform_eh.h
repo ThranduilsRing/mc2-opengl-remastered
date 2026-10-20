@@ -3,7 +3,7 @@
 
 #ifndef PLATFORM_WINDOWS
 
-typedef void (*exception_handler_ptr_t)(void);
+using exception_handler_ptr_t = void (*)(void);
 
 void set_terminate(exception_handler_ptr_t eh);
 #else

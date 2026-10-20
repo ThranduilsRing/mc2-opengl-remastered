@@ -1,3 +1,4 @@
+#include <algorithm>
 #include "debug_renderer.h"
 
 #include <cstdlib>   // getenv
@@ -91,8 +92,7 @@ void drawAabbWorld(Vec3 mn, Vec3 mx, uint32_t rgba) {
 void drawRingWorld(Vec3 center, float radius, int segments, uint32_t rgba) {
     Queue* q = sink();
     if (!q) return;
-    if (segments < 3)   segments = 3;
-    if (segments > 256) segments = 256;
+    segments = std::clamp(segments, 3, 256);
     const float step = 6.2831853f / static_cast<float>(segments);  // 2*PI
     for (int i = 0; i < segments; ++i) {
         float a0 = step * i;
@@ -111,8 +111,7 @@ void drawRingWorld(Vec3 center, float radius, int segments, uint32_t rgba) {
 void drawRingWorld(Vec3 center, Vec3 normal, float radius, int segments, uint32_t rgba) {
     Queue* q = sink();
     if (!q) return;
-    if (segments < 3)   segments = 3;
-    if (segments > 256) segments = 256;
+    segments = std::clamp(segments, 3, 256);
 
     // Normalize; fall back to XZ-plane ring on degenerate normal.
     float nx = normal.x, ny = normal.y, nz = normal.z;
@@ -169,8 +168,7 @@ void drawCrossWorld(Vec3 center, float halfSize, uint32_t rgba) {
 
 void drawSphereApproxWorld(Vec3 center, float radius, int rings, int segments, uint32_t rgba) {
     if (!sink()) return;
-    if (rings < 1)  rings = 1;
-    if (rings > 16) rings = 16;
+    rings = std::clamp(rings, 1, 16);
 
     // 3 great-circle rings, one per axis plane
     drawRingWorld(center, {0,1,0}, radius, segments, rgba);  // XZ plane (Y normal)

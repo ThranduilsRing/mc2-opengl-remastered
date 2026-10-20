@@ -152,11 +152,11 @@ struct Literal {
 
 //---------------------------------------------------------------------------
 
-typedef struct CaseItem {
+struct CaseItem {
 	int					labelValue;
 	char*				branchLocation;
 	struct CaseItem*	next;
-} CaseItem;
+};
 
 using CaseItemPtr = CaseItem*;
 

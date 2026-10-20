@@ -1,5 +1,6 @@
 // gameos_graphics: terrain uniform binding for the patch stream, the lighting debug view and the terrain, lighting, night and material setters and getters.
 // Declared in the class headers; shared names in gameos_graphics_material_internal.h.
+#include <algorithm>
 #include "gameos_graphics_material_internal.h"
 #include "mc2fmt.h"
 
@@ -32,8 +33,7 @@ int mc2LightingDebugMode()
 static int g_mc2GlobalDebugView = 0;
 extern "C" void gos_SetGlobalDebugView(int view)
 {
-    if (view < 0) view = 0;
-    if (view > 6) view = 6;
+    view = std::clamp(view, 0, 6);
     g_mc2GlobalDebugView = view;
     static const struct { int lighting; int vfx; int propMat; } kMap[7] = {
         { -1, 0, 0 },   // 0 off
@@ -574,8 +574,7 @@ static float s_gosNightFactor = 0.0f;
 
 void gos_SetNightState(bool isNight, float nightFactor) {
     s_gosIsNight     = isNight;
-    if (nightFactor < 0.0f) nightFactor = 0.0f;
-    if (nightFactor > 1.0f) nightFactor = 1.0f;
+    nightFactor = std::clamp(nightFactor, 0.0f, 1.0f);
     s_gosNightFactor = nightFactor;
 }
 void gos_GetNightState(bool* isNight, float* nightFactor) {

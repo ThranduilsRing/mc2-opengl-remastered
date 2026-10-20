@@ -2010,8 +2010,7 @@ static void cpu_rgb2hsv(float r, float g, float b, float& h, float& s, float& v)
 // smoothstep matching GLSL
 static float cpu_smoothstep(float edge0, float edge1, float x) {
     float t = (x - edge0) / (edge1 - edge0);
-    if (t < 0.0f) t = 0.0f;
-    if (t > 1.0f) t = 1.0f;
+    t = std::clamp(t, 0.0f, 1.0f);
     return t * t * (3.0f - 2.0f * t);
 }
 

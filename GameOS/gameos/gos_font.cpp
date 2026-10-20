@@ -1,3 +1,4 @@
+#include <algorithm>
 #include<inttypes.h>
 #include <stdio.h>
 // errno + strerror
@@ -221,10 +222,8 @@ void calibrate_vertical(gosGlyphInfo& gi, const gosD3FAtlas& atlas,
         }
         int rel_top = top - top_trim;
         int rel_bot = bot - top_trim;
-        if(rel_top < INT8_MIN) rel_top = INT8_MIN;
-        if(rel_top > INT8_MAX) rel_top = INT8_MAX;
-        if(rel_bot < INT8_MIN) rel_bot = INT8_MIN;
-        if(rel_bot > INT8_MAX) rel_bot = INT8_MAX;
+        rel_top = std::clamp(rel_top, int{INT8_MIN}, int{INT8_MAX});
+        rel_bot = std::clamp(rel_bot, int{INT8_MIN}, int{INT8_MAX});
         gi.ink_top_[c]   = static_cast<int8_t>(rel_top);
         gi.ink_bot_[c]   = static_cast<int8_t>(rel_bot);
         gi.ink_valid_[c] = 1;

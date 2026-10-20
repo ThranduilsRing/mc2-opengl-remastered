@@ -291,8 +291,8 @@ void MechFlushFrame::buildMaterialTable() {
     if (s_mechMaterialGpuEnabled) {
         if (s_mechMaterialTable.empty())
             s_mechMaterialTable.push_back(RenderCore::MaterialGpu{}); // index 0 = sentinel/not-assigned
-        for (const auto& kv : buckets) {
-            const uint32_t texHandle = kv.first.texHandle;
+        for (const auto& [key, subs] : buckets) {
+            const uint32_t texHandle = key.texHandle;
             uint32_t mIdx;
             auto it = s_mechHandleToMaterialIdx.find(texHandle);
             if (it != s_mechHandleToMaterialIdx.end()) {
@@ -331,9 +331,7 @@ void MechFlushFrame::writeInstances() {
     };
 
     uint32_t dcIdx    = 0;
-    for (const auto& kv : buckets) {
-        const BucketKey& key              = kv.first;
-        const std::vector<uint32_t>& subs = kv.second;
+    for (const auto& [key, subs] : buckets) {
 
         DrawCall dc;
         dc.globalPacketIdx = key.globalPacketIdx;

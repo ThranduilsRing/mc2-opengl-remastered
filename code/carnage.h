@@ -47,14 +47,15 @@ union _CarnageInfo {
 using CarnageInfo = _CarnageInfo;
 
 //---------------------------------------------------------------------------
-typedef struct _CarnageData : public GameObjectData
+struct _CarnageData : public GameObjectData
 {
 	CarnageEnumType		carnageType;
 	GameObjectWatchID	ownerWID;
 	CarnageInfo			info;
 
 	int32_t				effectId;
-} CarnageData;
+};
+using CarnageData = _CarnageData;
 
 class Carnage : public GameObject 
 {
@@ -228,13 +229,13 @@ class FireType : public ObjectType
 			
 			totalFires = 1;
 			
-			fireOffsetX = NULL;
-			fireOffsetY = NULL;
-			fireDelay = NULL;
+			fireOffsetX = nullptr;
+			fireOffsetY = nullptr;
+			fireDelay = nullptr;
 			
-			fireRandomOffsetX = NULL;
-			fireRandomOffsetY = NULL;
-			fireRandomDelay = NULL;
+			fireRandomOffsetX = nullptr;
+			fireRandomOffsetY = nullptr;
+			fireRandomDelay = nullptr;
 		}
 		
 		FireType (void) 

@@ -2,6 +2,7 @@
 // Gate: MC2_TACTIC_WEIGHTS (default OFF).
 // Pure functions — no global state, no warrior mutation.
 
+#include <algorithm>
 #include "brain_tactic_select.h"
 #include "tacordr.h"
 #include <cstring>
@@ -50,8 +51,7 @@ const char* tacticName(int idx)
 // lerp helper (clamped [0,1])
 static float lerpClamped(float a, float b, float t)
 {
-    if (t < 0.0f) t = 0.0f;
-    if (t > 1.0f) t = 1.0f;
+    t = std::clamp(t, 0.0f, 1.0f);
     return a + (b - a) * t;
 }
 

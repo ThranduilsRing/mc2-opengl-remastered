@@ -1,5 +1,6 @@
 // GpuStaticPropBatcher: StaticPropViewToShaderMode, onMapLoad, setMissionForIbl, onMapUnload, registerType and registerMultiShape.
 // Declared in the class headers; shared names in gos_static_prop_batcher_internal.h.
+#include <algorithm>
 #include "gos_static_prop_batcher_internal.h"
 #include "mc2fmt.h"
 
@@ -38,8 +39,7 @@ RenderDebugView StaticPropShaderModeToView(int m) {
 }
 
 void batcher_setDebugMaterialMode(int shaderMode) {
-    if (shaderMode < 0) shaderMode = 0;
-    if (shaderMode > 6) shaderMode = 6;
+    shaderMode = std::clamp(shaderMode, 0, 6);
     s_staticPropDebugMaterialMode = shaderMode;
 }
 

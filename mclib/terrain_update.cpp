@@ -1,5 +1,6 @@
 // Terrain: Terrain::update with the LOD chunk selection and morph factor helpers.
 // Declared in the class headers; shared names in terrain_internal.h.
+#include <algorithm>
 #include "terrain_internal.h"
 #include "mc2fmt.h"
 
@@ -99,8 +100,7 @@ static float computeMorphFactor(float distSq, uint8_t level)
     const float d = sqrtf(distSq);
     float r = (d - lo) / (hi - lo);            // 0..1 across the band (may exceed under hysteresis/clamps)
     float m = (r - s_morphStart) / (1.0f - s_morphStart);
-    if (m < 0.0f) m = 0.0f;
-    if (m > 1.0f) m = 1.0f;
+    m = std::clamp(m, 0.0f, 1.0f);
     return m;
 }
 

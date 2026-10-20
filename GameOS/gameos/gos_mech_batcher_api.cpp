@@ -1,5 +1,6 @@
 // GpuMechBatcher: the VK island feed accessors, the render-snapshot compare and the extern C tuning / debug setters and getters.
 // Declared in the class headers; shared names in gos_mech_batcher_internal.h.
+#include <algorithm>
 #include "gos_mech_batcher_internal.h"
 #include "mc2fmt.h"
 #include "../../RenderCore/FramePackets.h"
@@ -195,8 +196,7 @@ extern "C" const char* gos_getMechTextureNameByNodeIdx(uint32_t nodeIdx) {
 // VBO from the pristine s_stagingVbo (mode 0 = byte-identical to cooked).
 
 extern "C" void batcher_setMechNormalsMode(int mode) {
-    if (mode < 0) mode = 0;
-    if (mode > 2) mode = 2;
+    mode = std::clamp(mode, 0, 2);
     s_mechNormalsMode = mode;
 }
 
@@ -205,8 +205,7 @@ extern "C" int batcher_getMechNormalsMode() {
 }
 
 extern "C" void batcher_setMechNormalsSmoothDeg(float deg) {
-    if (deg < 1.0f)   deg = 1.0f;
-    if (deg > 179.0f) deg = 179.0f;
+    deg = std::clamp(deg, 1.0f, 179.0f);
     s_mechNormalsSmoothDeg = deg;
 }
 
@@ -220,8 +219,7 @@ extern "C" float batcher_getMechNormalsSmoothDeg() {
 extern "C" void batcher_setMechAmbientEnabled(int on) { s_mechAmbientV1 = (on != 0); }
 extern "C" int  batcher_getMechAmbientEnabled()       { return s_mechAmbientV1 ? 1 : 0; }
 extern "C" void batcher_setMechAmbientStrength(float s) {
-    if (s < 0.0f) s = 0.0f;
-    if (s > 2.0f) s = 2.0f;
+    s = std::clamp(s, 0.0f, 2.0f);
     s_mechAmbientStrength = s;
 }
 extern "C" float batcher_getMechAmbientStrength() { return s_mechAmbientStrength; }
@@ -234,14 +232,12 @@ extern "C" float batcher_getMechAmbientStrength() { return s_mechAmbientStrength
 extern "C" void  batcher_setMechSpecularEnabled(int on)      { s_mechSpecularV1 = (on != 0); }
 extern "C" int   batcher_getMechSpecularEnabled()            { return s_mechSpecularV1 ? 1 : 0; }
 extern "C" void  batcher_setMechSpecularStrength(float s) {
-    if (s < 0.0f) s = 0.0f;
-    if (s > 4.0f) s = 4.0f;
+    s = std::clamp(s, 0.0f, 4.0f);
     s_mechSpecularStrength = s;
 }
 extern "C" float batcher_getMechSpecularStrength()           { return s_mechSpecularStrength; }
 extern "C" void  batcher_setMechMetalRoughness(float r) {
-    if (r < 0.04f) r = 0.04f;
-    if (r > 1.0f)  r = 1.0f;
+    r = std::clamp(r, 0.04f, 1.0f);
     s_mechMetalRoughness = r;
 }
 extern "C" float batcher_getMechMetalRoughness()             { return s_mechMetalRoughness; }
@@ -263,20 +259,17 @@ extern "C" void  batcher_setImportedMechNormalStrength(float s) {
 }
 extern "C" float batcher_getImportedMechNormalStrength()     { return g_importedMechNormalStrength; }
 extern "C" void  batcher_setMechGlassRoughness(float r) {
-    if (r < 0.04f) r = 0.04f;
-    if (r > 1.0f)  r = 1.0f;
+    r = std::clamp(r, 0.04f, 1.0f);
     s_mechGlassRoughness = r;
 }
 extern "C" float batcher_getMechGlassRoughness()             { return s_mechGlassRoughness; }
 extern "C" void  batcher_setMechGlassLumaThresh(float t) {
-    if (t < 0.0f) t = 0.0f;
-    if (t > 1.0f) t = 1.0f;
+    t = std::clamp(t, 0.0f, 1.0f);
     s_mechGlassLumaThresh = t;
 }
 extern "C" float batcher_getMechGlassLumaThresh()            { return s_mechGlassLumaThresh; }
 extern "C" void  batcher_setMechGlassMaxChanThresh(float t) {
-    if (t < 0.0f) t = 0.0f;
-    if (t > 1.0f) t = 1.0f;
+    t = std::clamp(t, 0.0f, 1.0f);
     s_mechGlassMaxChanThresh = t;
 }
 extern "C" float batcher_getMechGlassMaxChanThresh()         { return s_mechGlassMaxChanThresh; }

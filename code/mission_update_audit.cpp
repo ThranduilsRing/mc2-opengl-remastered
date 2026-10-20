@@ -1,5 +1,6 @@
 // Mission: the runtime-bridge mover.state emitter and the mover-registry coherence audit that Mission::update calls
 // once per frame. Declared in mission_internal.h.
+#include <algorithm>
 #include "mission_internal.h"
 #include "mc2fmt.h"
 
@@ -79,8 +80,7 @@ namespace {
 			// HP signal reachable without poking per-location body arrays).
 			float dmg = mover->getDamageLevel();
 			float hpFrac = 1.0f - dmg;
-			if (hpFrac < 0.0f) hpFrac = 0.0f;
-			if (hpFrac > 1.0f) hpFrac = 1.0f;
+			hpFrac = std::clamp(hpFrac, 0.0f, 1.0f);
 
 			char              pilotName[64];
 			bridgeSanitize(pilotName, sizeof(pilotName), 0);   // default "?"
