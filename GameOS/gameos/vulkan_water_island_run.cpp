@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in vulkan_water_island_internal.h.
 #include "vulkan_water_island_internal.h"
 #include "vk_render_pass_timer.h"
+#include "vk_gpu_profile.h"   // VK-GPU-ZONES: MC2_VK_GPU_SCOPE
 #include "mc2fmt.h"
 #include "mc2_diag_verbose.h"
 
@@ -223,12 +224,14 @@ extern "C" int mc2_vk_water_island_run(
         rbi.renderPass = s->rpass.get(); rbi.framebuffer = s->fb.get();
         rbi.renderArea = {{0, 0}, {static_cast<uint32_t>(w), static_cast<uint32_t>(h)}};
         rbi.clearValueCount = 3; rbi.pClearValues = clears;
+        MC2_VK_GPU_SCOPE(gpuScope, cb, "VKIsl.Water");
         vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
         vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->pipe.get());
         const uint32_t uboOffsets[2] = {static_cast<uint32_t>(uboSpan.offset), static_cast<uint32_t>(uboSpan.offset + fsUboOff)};
         vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 0, 1, &s->set[par], 2, uboOffsets);
         vkCmdDrawIndirect(cb, s->native->drawArgs(par), 0, 1, 16);
         vkCmdEndRenderPass(cb);
+        gpuScope.end();
         vk_render_pass_timer::End(cb, gos_render_pass_timer::Pass_Water);
         if (vkEndCommandBuffer(cb) != VK_SUCCESS) { setFallback("record_failed"); s->disabled = true; return 0; }
         }   // VK-ISLAND-TRACY-1: close VKIsl.Water.Record

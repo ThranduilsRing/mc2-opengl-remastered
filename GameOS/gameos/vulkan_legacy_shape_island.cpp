@@ -30,6 +30,7 @@
 #include "vk_island_util.h"
 #include "vk_one_shot.h"
 #include "vulkan_context.h"
+#include "vk_gpu_profile.h"   // VK-GPU-ZONES: MC2_VK_GPU_SCOPE
 #include "vk_texture_residency.h"
 #include "vulkan_legacy_shape_island.h"
 #include "../../RenderCore/gpu_abi/GpuLegacyFrameUBO.h"  // single-source per-frame UBO
@@ -556,6 +557,7 @@ extern "C" int mc2_vk_legacy_shape_island_run(int w, int h, const Mc2LegacyMlrFr
     VkClearValue clears[3]{}; clears[0].color.float32[3]=1;
     clears[1].color.float32[0]=0.5f; clears[1].color.float32[1]=0.5f; clears[1].color.float32[2]=1;
     if (s->preview) { rbi.clearValueCount=3; rbi.pClearValues=clears; }
+    MC2_VK_GPU_SCOPE(gpuScope, cb, "VKIsl.Legacy");
     vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
     VkViewport vp{0.0f, 0.0f, static_cast<float>(w), static_cast<float>(h), 0.0f, 1.0f};
     VkRect2D scissor{{0, 0}, {static_cast<uint32_t>(w), static_cast<uint32_t>(h)}};
@@ -587,6 +589,7 @@ extern "C" int mc2_vk_legacy_shape_island_run(int w, int h, const Mc2LegacyMlrFr
         ++drawn; verts += r.d->vertexCount;
     }
     vkCmdEndRenderPass(cb);
+    gpuScope.end();
     if (vkEndCommandBuffer(cb) != VK_SUCCESS) { setFallback("record_failed"); s->disabled = true; return 0; }
 
     VkSubmitInfo si{};

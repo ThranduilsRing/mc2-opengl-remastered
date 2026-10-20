@@ -21,6 +21,7 @@
 #include "vk_depth_caster_pipeline.h"
 #include "vk_island_util.h"
 #include "vulkan_context.h"
+#include "vk_gpu_profile.h"   // VK-GPU-ZONES: MC2_VK_GPU_SCOPE
 
 #include <algorithm>
 #include <cstring>
@@ -267,6 +268,7 @@ bool ShadowStaticMap::record(VkCommandBuffer cb, const StaticPropGeometryView& g
     rbi.renderPass = pass_; rbi.framebuffer = fb_.get();
     rbi.renderArea = {{0, 0}, {static_cast<uint32_t>(size_), static_cast<uint32_t>(size_)}};
     rbi.clearValueCount = 1; rbi.pClearValues = &clear;
+    MC2_VK_GPU_SCOPE(gpuScope, cb, "VKIsl.Shadow.Static");
     vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
     const VkViewport vp{0.0f, 0.0f, static_cast<float>(size_), static_cast<float>(size_), 0.0f, 1.0f};   // not flipped, as the island's passes
     const VkRect2D scissor{{0, 0}, {static_cast<uint32_t>(size_), static_cast<uint32_t>(size_)}};
@@ -304,6 +306,7 @@ bool ShadowStaticMap::record(VkCommandBuffer cb, const StaticPropGeometryView& g
         }
     }
     vkCmdEndRenderPass(cb);
+    gpuScope.end();
     pendingGeneration_ = spec.generation;
     failedGeneration_ = 0;
     mc2::fmt::print_err("[VK_SHADOW_STATIC] build recorded: generation={} size={} terrain_tris={} building_instances={} building_draws={}\n",

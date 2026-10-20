@@ -34,6 +34,7 @@
 #endif
 
 #include "vulkan_context.h"
+#include "vk_gpu_profile.h"   // VK-GPU-ZONES: MC2_VK_GPU_SCOPE
 #include "vk_texture_residency.h"
 #include "mc2_diag_verbose.h"
 #include "vk_image_resource.h"
@@ -1506,9 +1507,11 @@ bool recordPendingImgui(EnginePresentVk::Impl& s, VkCommandBuffer cb) {
         const std::vector<CmdSave>& v;
         ~RestoreGuard() { for (const CmdSave& c : v) { c.cmd->TextureId = c.id; c.cmd->ClipRect = c.clip; } }
     } restoreGuard{saved};
+    MC2_VK_GPU_SCOPE(gpuScope, cb, "VKIsl.Present.ImGui");
     vkCmdBeginRenderPass(cb, &rp, VK_SUBPASS_CONTENTS_INLINE);
     ImGui_ImplVulkan_RenderDrawData(drawData, cb);
     vkCmdEndRenderPass(cb);
+    gpuScope.end();
     return true;
 }
 
@@ -1701,6 +1704,7 @@ uint32_t recordPendingHudColorProof(EnginePresentVk::Impl& s, VkCommandBuffer cb
     rp.framebuffer = s.hudColorFramebuffer.get();
     rp.renderArea.offset = {0, 0};
     rp.renderArea.extent = {s.imgW, s.imgH};
+    MC2_VK_GPU_SCOPE(gpuScope, cb, "VKIsl.Present.Hud");
     vkCmdBeginRenderPass(cb, &rp, VK_SUBPASS_CONTENTS_INLINE);
     VkViewport vp{};
     vp.x = 0.0f; vp.y = 0.0f;
@@ -1767,6 +1771,7 @@ uint32_t recordPendingHudColorProof(EnginePresentVk::Impl& s, VkCommandBuffer cb
         }
     }
     vkCmdEndRenderPass(cb);
+    gpuScope.end();
     if (nativeDraws) *nativeDraws = triDraws + lineDraws + texDraws;
     if (texturedDraws) *texturedDraws = texDraws;
     if (textureUploadsOut) *textureUploadsOut = textureUploads;
@@ -2072,6 +2077,7 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
     clear.color = {{0.0f, 0.0f, 0.0f, 1.0f}};
     rp.clearValueCount = 1;
     rp.pClearValues = &clear;
+    MC2_VK_GPU_SCOPE(gpuScope, cc, "VKIsl.Present.Composite");
     vkCmdBeginRenderPass(cc, &rp, VK_SUBPASS_CONTENTS_INLINE);
     VkViewport vp{static_cast<float>(viewportX), static_cast<float>(viewportY),
                   static_cast<float>(viewportW), static_cast<float>(viewportH), 0.0f, 1.0f};
@@ -2103,6 +2109,7 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
                        0, sizeof(pc), pc);
     vkCmdDraw(cc, 3, 1, 0, 0);
     vkCmdEndRenderPass(cc);
+    gpuScope.end();
 
     barrier(cc, scene->image.get(),
             VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
@@ -2401,6 +2408,7 @@ bool EnginePresentVk::presentFrameBody(uint32_t drawableW, uint32_t drawableH,
         srp.framebuffer = s.shadowDebugFramebuffer.get();
         srp.renderArea.offset = {0, 0};
         srp.renderArea.extent = {s.imgW, s.imgH};
+        MC2_VK_GPU_SCOPE(gpuScope, s.curCbuf(), "VKIsl.Present.ShadowDebug");
         vkCmdBeginRenderPass(s.curCbuf(), &srp, VK_SUBPASS_CONTENTS_INLINE);
         const float quadSize = 256.0f;
         const float margin = 16.0f;
@@ -2417,6 +2425,7 @@ bool EnginePresentVk::presentFrameBody(uint32_t drawableW, uint32_t drawableH,
                            0, sizeof(spc), spc);
         vkCmdDraw(s.curCbuf(), 3, 1, 0, 0);
         vkCmdEndRenderPass(s.curCbuf());
+        gpuScope.end();
         ++health_.shadow_debug_vk_frames;
     }
     s.pendingShadowDebugView = VK_NULL_HANDLE;

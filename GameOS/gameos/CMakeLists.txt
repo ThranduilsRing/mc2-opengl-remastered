@@ -101,6 +101,7 @@ set(SOURCES ${SOURCES}
     render_snapshot.cpp
     gos_render_pass_timer.cpp
     vk_render_pass_timer.cpp
+    vk_gpu_profile.cpp
     gos_frame_pass_stats.cpp
     draw_packet_emitter.cpp
     view_registry.cpp

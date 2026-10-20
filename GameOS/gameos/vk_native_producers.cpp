@@ -6,6 +6,7 @@
 
 #include "vk_island_util.h"
 #include "vk_one_shot.h"
+#include "vk_gpu_profile.h"   // VK-GPU-ZONES: MC2_VK_GPU_SCOPE
 #include "vulkan_context.h"
 #include "mc2_diag_verbose.h"
 
@@ -327,6 +328,7 @@ bool NativeProducers::record(VkCommandBuffer cb, uint32_t par, const gos_terrain
     // Hand-off from earlier frames' work on this queue (their cull read lightOut; the vertex stage read thin / recipes).
     cmdBarrier(cb, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_TRANSFER_WRITE_BIT,
                VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_TRANSFER_WRITE_BIT);
+    MC2_VK_GPU_SCOPE(gpuCompute, cb, "VKIsl.Terrain.CullCompute");
     vkCmdFillBuffer(cb, header_[par].get(), 0, 16, 0);
     if (!lightOutCleared_) {
         vkCmdFillBuffer(cb, lightOut_.get(), 0, VK_WHOLE_SIZE, 0xFFFFFFFFu);   // the engine no-tint white sentinel, like the GL output SSBO's clear
@@ -344,6 +346,7 @@ bool NativeProducers::record(VkCommandBuffer cb, uint32_t par, const gos_terrain
     cmdBarrier(cb, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_WRITE_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_READ_BIT);
     argsP_.bind(cb, argsSets_.set(par));
     argsP_.dispatch(cb, 1);
+    gpuCompute.end();
 
     VkPipelineStageFlags toStages = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT;
     VkAccessFlags toAccess = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_INDIRECT_COMMAND_READ_BIT;

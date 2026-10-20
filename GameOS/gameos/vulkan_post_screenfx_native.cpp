@@ -42,6 +42,7 @@
 
 #include "gos_postprocess.h"
 #include "vk_render_pass_timer.h"
+#include "vk_gpu_profile.h"   // VK-GPU-ZONES: MC2_VK_GPU_SCOPE
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"   // str<>()
 #include "Gates/render_options.h"   // options.cfg PropShadowReceive
@@ -853,11 +854,13 @@ bool gosPostProcess::runVkPostScreenShadowStaticNative()
     rbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
     rbi.renderPass = s->rpass.get(); rbi.framebuffer = s->fb.get();
     rbi.renderArea = {{0, 0}, {static_cast<uint32_t>(s->width), static_cast<uint32_t>(s->height)}};
+    MC2_VK_GPU_SCOPE(gpuScope, cb, "VKIsl.Post.ShadowResolve");
     vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
     vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, csmDirectReady ? s->shadowCsmPipe.get() : s->shadowPipe.get());
     vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->shadowPlayout.get(), 0, 1, &s->shadowSet, 0, nullptr);
     vkCmdDraw(cb, 3, 1, 0, 0);
     vkCmdEndRenderPass(cb);
+    gpuScope.end();
 
     barrier(s->sDepthRes->image.get(), VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT,
             VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
@@ -1042,6 +1045,7 @@ unsigned gosPostProcess::runVkPostScreenFxNative()
         rbi.renderPass = s->rpass.get(); rbi.framebuffer = s->fb.get();
         rbi.renderArea = {{0, 0}, {static_cast<uint32_t>(s->width), static_cast<uint32_t>(s->height)}};
         rbi.clearValueCount = 0; // LOAD, no clear
+        MC2_VK_GPU_SCOPE(gpuScope, cb, "VKIsl.Post.CloudShore");
         vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
         if (wantCloud) {
             vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->cloudPipe.get());
@@ -1054,6 +1058,7 @@ unsigned gosPostProcess::runVkPostScreenFxNative()
             vkCmdDraw(cb, 3, 1, 0, 0);
         }
         vkCmdEndRenderPass(cb);
+        gpuScope.end();
     }
 
     // Depth + normal back to the GL hand-off layouts (layout-stable).
