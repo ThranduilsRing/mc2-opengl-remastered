@@ -155,7 +155,7 @@
    "LG13": 26,
    "LG14": 93,
    "LG15": 0,
-   "LG16": 6,
+   "LG16": 2,
    "LG17": 44,
    "LG18": 11,
    "LG19": 0,
@@ -201,7 +201,7 @@
    "LG13": 128,
    "LG14": 55,
    "LG15": 0,
-   "LG16": 156,
+   "LG16": 123,
    "LG17": 87,
    "LG18": 36,
    "LG19": 0,
@@ -1468,8 +1468,7 @@
    "LG04": 1
   },
   "code/group_goals.cpp": {
-   "LG12b": 2,
-   "LG16": 4
+   "LG12b": 2
   },
   "code/gvehicl.cpp": {
    "LG03": 1,
@@ -3005,7 +3004,7 @@
   "mclib/move.cpp": {
    "LG11": 1,
    "LG12a": 8,
-   "LG16": 15,
+   "LG16": 1,
    "LG17": 1
   },
   "mclib/move.h": {
@@ -3019,11 +3018,10 @@
    "LG05": 1,
    "LG06": 1,
    "LG12b": 7,
-   "LG16": 14
+   "LG16": 1
   },
   "mclib/move_globalmap_doors.cpp": {
-   "LG05": 1,
-   "LG16": 6
+   "LG05": 1
   },
   "mclib/move_globalmap_path.cpp": {
    "LG11": 1,
@@ -3554,7 +3552,7 @@
    "LG20": 3
   }
  },
- "head": "71ace6b1e",
+ "head": "c54b824c8",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
