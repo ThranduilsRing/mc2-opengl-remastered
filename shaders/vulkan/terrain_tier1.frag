@@ -175,24 +175,19 @@ void mv_weights(vec3 colAvg, out vec4 w, out float snowWeight) {
     if (tot > 0.01) w /= tot; else w = vec4(1.0, 0.0, 0.0, 0.0);
 }
 
-// VK-TERRAIN-ANTITILE sub-slice: port the anti-tiling helpers from GL
-// (terrain_lod_chunk.frag hash22 + sampleAntiTileArr, :274-294) VERBATIM. VK's
-// mv_detailNormal runs in UNIFORM control flow (no per-fragment weight branch — the
-// GL `if (w.* > 0.01)` branches are dropped here, all layers always accumulate), so
-// implicit-LOD texture() is well-defined and the GL ddx/ddy → textureGrad plumbing
-// (only needed for GL's non-uniform branches) is NOT required. Otherwise byte-for-byte
-// the same math (hash offsets, smoothstep blend weights, normalize divisor).
+// Gradients come from uniform main() control flow, before cement/material
+// selection. Offset anti-tile lookups use the same continuous UV footprint.
 vec2 mv_hash22(vec2 p) {
     vec3 p3 = fract(vec3(p.xyx) * vec3(0.1031, 0.1030, 0.0973));
     p3 += dot(p3, p3.yzx + 33.33);
     return fract((p3.xx + p3.yz) * p3.zy);
 }
-vec4 mv_sampleAntiTileArr(int layer, vec2 uv, float scale) {
+vec4 mv_sampleAntiTileArr(int layer, vec2 uv, float scale, vec2 dx, vec2 dy) {
     vec2 off1 = mv_hash22(floor(uv / scale)) * scale;
     vec2 off2 = mv_hash22(floor(uv / scale) + vec2(7.0, 13.0)) * scale;
-    vec4 s0 = texture(u_matNormalArray, vec3(uv,        float(layer)));
-    vec4 s1 = texture(u_matNormalArray, vec3(uv + off1, float(layer)));
-    vec4 s2 = texture(u_matNormalArray, vec3(uv + off2, float(layer)));
+    vec4 s0 = textureGrad(u_matNormalArray, vec3(uv,        float(layer)), dx, dy);
+    vec4 s1 = textureGrad(u_matNormalArray, vec3(uv + off1, float(layer)), dx, dy);
+    vec4 s2 = textureGrad(u_matNormalArray, vec3(uv + off2, float(layer)), dx, dy);
     vec2 f = fract(uv / scale);
     float w1 = smoothstep(0.2, 0.5, f.x) * smoothstep(0.2, 0.5, f.y);
     float w2 = smoothstep(0.2, 0.5, 1.0 - f.x) * smoothstep(0.2, 0.5, 1.0 - f.y);
@@ -331,8 +326,6 @@ void mv_cliffMaterial(vec3 macroN, inout vec3 N, inout vec3 baseColor) {
 // previously omitted — now included to match GL. POM is the real-view march
 // (see mv_parallax below). DEFERRED vs GL: LOD-tier fade, painted-concrete normal, cliff
 // albedo re-projection (VK-PARITY-GAPS row 14).
-// Uses implicit-LOD texture()/mv_sampleAntiTileArr (uniform control flow
-// here — no non-uniform weight branch, so LOD is well-defined). -------------------
 // VK-TERRAIN-LODFADE: LOD_NEAR/LOD_NEAR_FADE constants verbatim from gos_terrain.frag
 // :163-164. camDist matches gos_terrain.frag :322-326 EXACTLY: ground-plane distance
 // from the camera (Stuff/MLR .x=left/right,.y=elevation,.z=forward) to WorldPos (MC2
@@ -350,7 +343,7 @@ float mv_computeLodNear(vec2 worldXY, float worldZ) {
 }
 //PORT-END:lodNear
 
-vec3 mv_detailNormal(vec4 w, float snowWeight, vec2 worldXY, float lodNear, float macroNz) {
+vec3 mv_detailNormal(vec4 w, float snowWeight, vec2 worldXY, float lodNear, float macroNz, vec2 uvDx, vec2 uvDy) {
     vec2 uv = worldXY * (uT.detailTiling / MATV_WU_PER_TILE);
     vec2 uvRock     = uv * (MATV_TILING.x / 3.0);
     vec2 uvGrass    = uv * MATV_TILING.y;
@@ -358,12 +351,13 @@ vec3 mv_detailNormal(vec4 w, float snowWeight, vec2 worldXY, float lodNear, floa
     vec2 uvConcrete = uv * MATV_TILING.w;
     vec2 uvSnow     = uv * MATV_TILING_SNOW;
     // Screen-space derivative AA (GL fwRock/fwGrass/...): fade a layer to 0 as its
-    // tiling goes sub-pixel. Verbatim GL :353-357.
-    float fwRock     = clamp(1.0 - (length(fwidth(uvRock))     - 0.5) * 2.0, 0.0, 1.0);
-    float fwGrass    = clamp(1.0 - (length(fwidth(uvGrass))    - 0.5) * 2.0, 0.0, 1.0);
-    float fwDirt     = clamp(1.0 - (length(fwidth(uvDirt))     - 0.5) * 2.0, 0.0, 1.0);
-    float fwConcrete = clamp(1.0 - (length(fwidth(uvConcrete)) - 0.5) * 2.0, 0.0, 1.0);
-    float fwSnow     = clamp(1.0 - (length(fwidth(uvSnow))     - 0.5) * 2.0, 0.0, 1.0);
+    // tiling goes sub-pixel. main() supplies the continuous UV footprint.
+    vec2 uvWidth = abs(uvDx) + abs(uvDy);
+    float fwRock     = clamp(1.0 - (length(uvWidth * (MATV_TILING.x / 3.0)) - 0.5) * 2.0, 0.0, 1.0);
+    float fwGrass    = clamp(1.0 - (length(uvWidth * MATV_TILING.y) - 0.5) * 2.0, 0.0, 1.0);
+    float fwDirt     = clamp(1.0 - (length(uvWidth * MATV_TILING.z) - 0.5) * 2.0, 0.0, 1.0);
+    float fwConcrete = clamp(1.0 - (length(uvWidth * MATV_TILING.w) - 0.5) * 2.0, 0.0, 1.0);
+    float fwSnow     = clamp(1.0 - (length(uvWidth * MATV_TILING_SNOW) - 0.5) * 2.0, 0.0, 1.0);
 
     // POM: parallax-offset the material UVs, fwidth-gated (near only). The march uses the real view vector, faded out over the world
     // distance MATV_POM_FADE_NEAR..FAR (the cost governor), over the slope band where the cliff blend takes over, and over cement
@@ -397,32 +391,35 @@ vec3 mv_detailNormal(vec4 w, float snowWeight, vec2 worldXY, float lodNear, floa
 
     vec3 dN = vec3(0.0);
     // rock: boost/3 (GL parity — rock detail was too dense/strong). GL :392-397.
-    {
+    if (w.x != 0.0 && fwRock != 0.0 && lodNear != 0.0) {
         vec4 s = (atsRock > 0.01 && fwRock > 0.5)
-               ? mv_sampleAntiTileArr(MAT_LAYER_ROCK, uvRock, atsRock)
-               : texture(u_matNormalArray, vec3(uvRock, float(MAT_LAYER_ROCK)));
+               ? mv_sampleAntiTileArr(MAT_LAYER_ROCK, uvRock, atsRock, uvDx * (MATV_TILING.x / 3.0), uvDy * (MATV_TILING.x / 3.0))
+               : textureGrad(u_matNormalArray, vec3(uvRock, float(MAT_LAYER_ROCK)), uvDx * (MATV_TILING.x / 3.0), uvDy * (MATV_TILING.x / 3.0));
         dN += w.x * (MATV_NORMAL_BOOST.x / 3.0) * fwRock * (s.rgb * 2.0 - 1.0);
     }
-    {
+    if (w.y != 0.0 && fwGrass != 0.0 && lodNear != 0.0) {
         vec4 s = (atsGrass > 0.01 && fwGrass > 0.5)
-               ? mv_sampleAntiTileArr(MAT_LAYER_GRASS, uvGrass, atsGrass)
-               : texture(u_matNormalArray, vec3(uvGrass, float(MAT_LAYER_GRASS)));
+               ? mv_sampleAntiTileArr(MAT_LAYER_GRASS, uvGrass, atsGrass, uvDx * MATV_TILING.y, uvDy * MATV_TILING.y)
+               : textureGrad(u_matNormalArray, vec3(uvGrass, float(MAT_LAYER_GRASS)), uvDx * MATV_TILING.y, uvDy * MATV_TILING.y);
         dN += w.y * MATV_NORMAL_BOOST.y * fwGrass * (s.rgb * 2.0 - 1.0);
     }
-    {
+    if (w.z != 0.0 && fwDirt != 0.0 && lodNear != 0.0) {
         vec4 s = (atsDirt > 0.01 && fwDirt > 0.5)
-               ? mv_sampleAntiTileArr(MAT_LAYER_DIRT, uvDirt, atsDirt)
-               : texture(u_matNormalArray, vec3(uvDirt, float(MAT_LAYER_DIRT)));
+               ? mv_sampleAntiTileArr(MAT_LAYER_DIRT, uvDirt, atsDirt, uvDx * MATV_TILING.z, uvDy * MATV_TILING.z)
+               : textureGrad(u_matNormalArray, vec3(uvDirt, float(MAT_LAYER_DIRT)), uvDx * MATV_TILING.z, uvDy * MATV_TILING.z);
         dN += w.z * MATV_NORMAL_BOOST.z * fwDirt * (s.rgb * 2.0 - 1.0);
     }
-    {
+    if (w.w != 0.0 && fwConcrete != 0.0 && lodNear != 0.0) {
         vec4 s = (atsConc > 0.01 && fwConcrete > 0.5)
-               ? mv_sampleAntiTileArr(MAT_LAYER_CONCRETE, uvConcrete, atsConc)
-               : texture(u_matNormalArray, vec3(uvConcrete, float(MAT_LAYER_CONCRETE)));
+               ? mv_sampleAntiTileArr(MAT_LAYER_CONCRETE, uvConcrete, atsConc, uvDx * MATV_TILING.w, uvDy * MATV_TILING.w)
+               : textureGrad(u_matNormalArray, vec3(uvConcrete, float(MAT_LAYER_CONCRETE)), uvDx * MATV_TILING.w, uvDy * MATV_TILING.w);
         dN += w.w * MATV_NORMAL_BOOST.w * fwConcrete * (s.rgb * 2.0 - 1.0);
     }
-    dN += snowWeight * 0.9 * fwSnow *
-          (texture(u_matNormalArray, vec3(uvSnow, float(MAT_LAYER_SNOW))).rgb * 2.0 - 1.0);
+    if (snowWeight != 0.0 && fwSnow != 0.0 && lodNear != 0.0) {
+        dN += snowWeight * 0.9 * fwSnow *
+              (textureGrad(u_matNormalArray, vec3(uvSnow, float(MAT_LAYER_SNOW)),
+                           uvDx * MATV_TILING_SNOW, uvDy * MATV_TILING_SNOW).rgb * 2.0 - 1.0);
+    }
     // VK-TERRAIN-LODFADE: GL gos_terrain.frag :727-736 ties the WHOLE detail-normal
     // contribution to lodNear (detailMul), not just the POM offset -- stops the
     // detail-normal "carpet" from popping in/out at the LOD0/band boundary. lodNear
@@ -438,6 +435,9 @@ float cCutLt(float x, float fw) {
 }
 
 void main() {
+    // Valid even for quads straddling cement, zero weights or the LOD fade.
+    vec2 detailUv = v_worldPos.xy * (uT.detailTiling / MATV_WU_PER_TILE);
+    vec2 detailUvDx = dFdx(detailUv), detailUvDy = dFdy(detailUv);
     vec3 base;
     // VK-TERRAIN-LIGHTING: track whether this fragment resolved to a solid cement slab.
     // GL treats pure concrete as a flat-lit slab (no NdotL relief) and drops the STATIC
@@ -679,13 +679,13 @@ void main() {
         if (uT.detailEnabled != 0 && !pureConcrete) {
             vec3 baseN = mv_smoothTerrainNormal(v_worldPos.xy);  // macro slope (height SSBO)
             vec3 dN    = vec3(0.0);
-            if (uT.detailReady != 0) {
+            if (uT.detailReady != 0 && uT.detailStrength != 0.0) {
                 vec4  matW; float snowW;
                 mv_weights(base, matW, snowW);                   // classify from colormap base
                 // VK-TERRAIN-LODFADE: fades detail-normal/POM to 0 across the LOD0/band
                 // boundary (GL gos_terrain.frag :326-328). Gate off -> lodNear==1.0.
                 float lodNear = mv_computeLodNear(v_worldPos.xy, v_worldPos.z);
-                dN = mv_detailNormal(matW, snowW, v_worldPos.xy, lodNear, baseN.z);
+                dN = mv_detailNormal(matW, snowW, v_worldPos.xy, lodNear, baseN.z, detailUvDx, detailUvDy);
             }
             vec3 pert = vec3(baseN.xy / max(baseN.z, 0.2) * uT.nfhStrength
                              + dN.xy * uT.detailStrength, 1.0);
