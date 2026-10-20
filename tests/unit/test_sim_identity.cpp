@@ -36,7 +36,7 @@ MoverRecord mk(int32_t id, float x, float y, float z) {
 }
 
 uint64_t world(std::vector<MoverRecord> v, DigestKind k) {
-    return digestWorld(v.data(), v.size(), k);
+    return digestWorld(v, k);
 }
 
 } // namespace
@@ -186,7 +186,7 @@ TEST_CASE("sim_identity: digest kinds do not collide with each other") {
 TEST_CASE("sim_identity: empty world hashes to a defined, count-distinct value") {
     std::vector<MoverRecord> none;
     std::vector<MoverRecord> one{mk(1, 0.0f, 0.0f, 0.0f)};
-    CHECK(digestWorld(none.data(), 0, DIGEST_GRADED) !=
+    CHECK(digestWorld(none, DIGEST_GRADED) !=
           world(one, DIGEST_GRADED));
 }
 
@@ -209,20 +209,20 @@ TEST_CASE("sim_identity: object digest is order-independent and count/field sens
     };
     std::vector<ObjectRecord> a{obj(1, 1, 0.0f, 0), obj(2, 2, 5.0f, 1), obj(3, 1, 1.0f, 2)};
     std::vector<ObjectRecord> b{a[2], a[0], a[1]};
-    CHECK(digestObjects(a.data(), a.size()) == digestObjects(b.data(), b.size()));
+    CHECK(digestObjects(a) == digestObjects(b));
     std::vector<ObjectRecord> fewer{a[0], a[1]};
-    CHECK(digestObjects(a.data(), a.size()) != digestObjects(fewer.data(), fewer.size()));
+    CHECK(digestObjects(a) != digestObjects(fewer));
     std::vector<ObjectRecord> captured = a;
     captured[0].commander = 1;
-    CHECK(digestObjects(a.data(), a.size()) != digestObjects(captured.data(), captured.size()));
+    CHECK(digestObjects(a) != digestObjects(captured));
     std::vector<ObjectRecord> aimed = a;
     aimed[1].target = 77;
-    CHECK(digestObjects(a.data(), a.size()) != digestObjects(aimed.data(), aimed.size()));
+    CHECK(digestObjects(a) != digestObjects(aimed));
     std::vector<ObjectRecord> noise = a;
     noise[2].damage += 1.0f / 4096.0f;   // under the quantum: graded alike
-    CHECK(digestObjects(a.data(), a.size()) == digestObjects(noise.data(), noise.size()));
+    CHECK(digestObjects(a) == digestObjects(noise));
     std::vector<ObjectRecord> none;
-    CHECK(digestObjects(none.data(), 0) != digestObjects(fewer.data(), fewer.size()));
+    CHECK(digestObjects(none) != digestObjects(fewer));
 }
 
 TEST_CASE("sim_identity: ABL digest keeps registry order and sees state, init and statics") {
@@ -234,16 +234,16 @@ TEST_CASE("sim_identity: ABL digest keeps registry order and sees state, init an
     AblRecord y; y.id = 1; y.handle = 3; y.state = 2; y.statics = fnvBytes(kFnvOffset, "abd", 3);
     std::vector<AblRecord> a{x, y};
     std::vector<AblRecord> swapped{y, x};
-    CHECK(digestAbl(a.data(), a.size()) != digestAbl(swapped.data(), swapped.size()));
+    CHECK(digestAbl(a) != digestAbl(swapped));
     std::vector<AblRecord> moved = a;
     moved[0].state = 4;
-    CHECK(digestAbl(a.data(), a.size()) != digestAbl(moved.data(), moved.size()));
+    CHECK(digestAbl(a) != digestAbl(moved));
     std::vector<AblRecord> inited = a;
     inited[1].initCalled = 1;
-    CHECK(digestAbl(a.data(), a.size()) != digestAbl(inited.data(), inited.size()));
+    CHECK(digestAbl(a) != digestAbl(inited));
     std::vector<AblRecord> other = a;
     other[1].statics = x.statics;
-    CHECK(digestAbl(a.data(), a.size()) != digestAbl(other.data(), other.size()));
+    CHECK(digestAbl(a) != digestAbl(other));
     CHECK(fnvBytes(kFnvOffset, "abc", 3) == fnvBytes(kFnvOffset, "abc", 3));
     CHECK(fnvBytes(kFnvOffset, "abc", 3) != fnvBytes(kFnvOffset, "abc", 2));
 }
