@@ -3764,45 +3764,6 @@
    "count": 1
   },
   {
-   "tag": "GPU_CULL",
-   "ver": 2,
-   "stream": "stdout",
-   "keys": [
-    "event",
-    "frame",
-    "records",
-    "visible",
-    "gpu_ns"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "GPU_CULL",
-   "ver": 2,
-   "stream": "stdout",
-   "keys": [
-    "event",
-    "frame",
-    "records",
-    "visible",
-    "gpu_ns",
-    "readback_bytes"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "GPU_CULL",
-   "ver": 2,
-   "stream": "stdout",
-   "keys": [
-    "event",
-    "passed",
-    "failed",
-    "backend"
-   ],
-   "count": 1
-  },
-  {
    "tag": "GPU_CULL_FROZEN_ORDER_ORACLE",
    "ver": -1,
    "stream": "stderr",
