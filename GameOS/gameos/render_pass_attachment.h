@@ -14,6 +14,7 @@
 
 #include <cstddef>
 #include <cstdio>
+#include "mc2fmt.h"
 
 namespace render_pass_attachment {
 
@@ -180,8 +181,10 @@ inline void format(const Contract& c, char* buf, std::size_t n) {
     if (wi == 0) writes[wi++] = '-';
     writes[wi] = '\0';
 
-    std::snprintf(buf, n, " target=%s drawBuffers=%s writes=%s reads=%s",
-                  targetName(c.target), drawBufName(c.drawBuffers), writes, reads);
+    if (n > 0) {
+        (*std::format_to_n(buf, n - 1, " target={} drawBuffers={} writes={} reads={}",
+                      mc2::fmt::safe(targetName(c.target)), mc2::fmt::safe(drawBufName(c.drawBuffers)), mc2::fmt::safe(writes), mc2::fmt::safe(reads)).out = '\0');
+    }
 }
 
 }  // namespace render_pass_attachment

@@ -28,6 +28,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
+#include "mc2fmt.h"
 
 namespace mc2gpu {
 
@@ -214,7 +215,7 @@ private:
         // guard on availability so a missing extension never crashes.
         if (glObjectLabel) {
             char name[96];
-            std::snprintf(name, sizeof(name), "GpuMeshRing.%s.%s", tag ? tag : "?", which);
+            (*std::format_to_n(name, (sizeof(name)) - 1, "GpuMeshRing.{}.{}", mc2::fmt::safe(tag ? tag : "?"), mc2::fmt::safe(which)).out = '\0');
             glObjectLabel(GL_BUFFER, buf, -1, name);
         }
     }

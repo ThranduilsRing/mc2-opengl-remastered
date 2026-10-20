@@ -312,9 +312,9 @@ class gosMaterialVariationHelper {
             // calcDynamicShadow (signature frozen; no call-site changes).
             if (mc2ShadowCsmEnabled()) {
                 char csmDef[64];
-                snprintf(csmDef, sizeof(csmDef),
-                         "#define MC2_SHADOW_CSM 1\n#define MC2_SHADOW_CSM_MAX %d\n",
-                         mc2ShadowCsmCount());
+                (*std::format_to_n(csmDef, (sizeof(csmDef)) - 1,
+                         "#define MC2_SHADOW_CSM 1\n#define MC2_SHADOW_CSM_MAX {:d}\n",
+                         mc2::fmt::as_i32(mc2ShadowCsmCount())).out = '\0');
                 defines_str.append(csmDef);
             }
             // SHADOW-DIST-FADE-1: distance-scaled dynamic-shadow penumbra +
@@ -322,16 +322,12 @@ class gosMaterialVariationHelper {
             // folds away, current behavior.
             if (mc2ShadowDistFadeWu() > 0.0f) {
                 char fadeDef[240];
-                snprintf(fadeDef, sizeof(fadeDef),
-                         "#define MC2_SHADOW_DIST_FADE_WU %.1f\n"
-                         "#define MC2_SHADOW_DIST_FADE_MAX_F %.2f\n"
-                         "#define MC2_SHADOW_FADE_CONT_F %d\n"
-                         "#define MC2_SHADOW_FADE_RAMP0_F %d\n"
-                         "#define MC2_SHADOW_ALT_SCALE_F %d\n",
+                (*std::format_to_n(fadeDef, (sizeof(fadeDef)) - 1,
+                         "#define MC2_SHADOW_DIST_FADE_WU {:.1f}\n#define MC2_SHADOW_DIST_FADE_MAX_F {:.2f}\n#define MC2_SHADOW_FADE_CONT_F {:d}\n#define MC2_SHADOW_FADE_RAMP0_F {:d}\n#define MC2_SHADOW_ALT_SCALE_F {:d}\n",
                          mc2ShadowDistFadeWu(), mc2ShadowDistFadeMax(),
-                     mc2ShadowFadeCont() ? 1 : 0,
-                     mc2ShadowFadeRamp0() ? 1 : 0,
-                     mc2ShadowAltScale() ? 1 : 0);
+                     mc2::fmt::as_i32(mc2ShadowFadeCont() ? 1 : 0),
+                     mc2::fmt::as_i32(mc2ShadowFadeRamp0() ? 1 : 0),
+                     mc2::fmt::as_i32(mc2ShadowAltScale() ? 1 : 0)).out = '\0');
                 defines_str.append(fadeDef);
             }
             defines_str.append("\n");

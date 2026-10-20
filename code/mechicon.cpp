@@ -18,6 +18,7 @@ MechIcon.cpp			: Implementation of the MechIcon component.
 #include"gamesound.h"
 #include"platform_windows.h"
 #include "Gates/gate.h"
+#include "mc2fmt.h"
 
 #ifndef MISSION_H
 #include"mission.h"
@@ -263,7 +264,7 @@ ForceGroupIcon::~ForceGroupIcon()
 void ForceGroupIcon::init( FitIniFile& file, int which )
 {
 	char buffer[256];
-	sprintf( buffer, "MechIcon%d", which );
+	(*std::format_to_n( buffer, sizeof(buffer) - 1, "MechIcon{:d}", mc2::fmt::as_i32(which) ).out = '\0');
 	if ( NO_ERR != file.seekBlock( buffer ) )
 		Assert( 0, 0, "couldn't find the icon" );
 

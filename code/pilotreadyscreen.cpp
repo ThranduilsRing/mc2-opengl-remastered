@@ -18,6 +18,7 @@ PilotReadyScreen.cpp			: Implementation of the PilotReadyScreen component.
 #include"multplyr.h"
 #include"chatwindow.h"
 #include"../GuiRuntime/GuiRuntime.h"
+#include "mc2fmt.h"
 
 PilotReadyScreen* PilotReadyScreen::s_instance = nullptr;
 
@@ -126,13 +127,13 @@ void PilotReadyScreen::init(FitIniFile* file)
 	char blockName[32];
 	for (int i = 0; i < 4; i++ )
 	{
-		sprintf( blockName, "PilotSpecialtySkillIcon%ld", i );
+		(*std::format_to_n( blockName, sizeof(blockName) - 1, "PilotSpecialtySkillIcon{:d}", mc2::fmt::as_i32(i) ).out = '\0');
 		specialtySkillIcons[i].init( file, blockName );
 	}
 
 	for (int i = 0; i < 4; i++ )
 	{
-		sprintf( blockName, "PilotSpecialtySkill%ld", i );
+		(*std::format_to_n( blockName, sizeof(blockName) - 1, "PilotSpecialtySkill{:d}", mc2::fmt::as_i32(i) ).out = '\0');
 		file->seekBlock( blockName );
 		file->readIdLong( "left", skillLocations[i].left );
 		file->readIdLong( "top", skillLocations[i].top );
@@ -142,19 +143,19 @@ void PilotReadyScreen::init(FitIniFile* file)
 
 	for (int i = 0; i < 5; i++ )
 	{
-		sprintf( blockName, "PilotReadyRankIcon%ld", i );
+		(*std::format_to_n( blockName, sizeof(blockName) - 1, "PilotReadyRankIcon{:d}", mc2::fmt::as_i32(i) ).out = '\0');
 		rankIcons[i].init( file, blockName );
 	}
 
 	for (int i = 0; i < 16; i++ )
 	{
-		sprintf( blockName, "PilotMedal%ld", i );
+		(*std::format_to_n( blockName, sizeof(blockName) - 1, "PilotMedal{:d}", mc2::fmt::as_i32(i) ).out = '\0');
 		medalIcons[i].init( file, blockName );
 	}
 
 	for (int i = 0; i < 16; i++ )
 	{
-		sprintf( blockName, "PilotMedalPlacement%ld", i );
+		(*std::format_to_n( blockName, sizeof(blockName) - 1, "PilotMedalPlacement{:d}", mc2::fmt::as_i32(i) ).out = '\0');
 		file->seekBlock( blockName );
 		file->readIdLong( "left", medalLocations[i].left );
 		file->readIdLong( "right", medalLocations[i].right );
@@ -397,7 +398,7 @@ void PilotReadyScreen::update()
 		char str[64];
 
 		// RP
-		sprintf( str, "%ld ", LogisticsData::instance->getCBills() );
+		(*std::format_to_n( str, sizeof(str) - 1, "{:d} ", mc2::fmt::as_i32(LogisticsData::instance->getCBills()) ).out = '\0');
 		textObjects[1].setText( str );
 		setDefsElementText( "game.mcl_pr_layout.text.cbills_text", str );
 
@@ -817,18 +818,18 @@ void PilotReadyScreen::setPilot( LogisticsPilot* pPilot )
 		cLoadString( rankID, rankBuf, sizeof( rankBuf ) - 1 );
 		setDefsElementText( "game.mcl_pr_layout.text.pilot_info_rank", rankBuf );
 
-		sprintf( str, "%ld", static_cast<long>(pCurPilot->getGunnery()) );
+		(*std::format_to_n( str, sizeof(str) - 1, "{:d}", mc2::fmt::as_i32(static_cast<long>(pCurPilot->getGunnery())) ).out = '\0');
 		textObjects[5].setText( str );
 		setDefsElementText( "game.mcl_pr_layout.text.pilot_info_targeting_number", str );
 		attributeMeters[0].setValue( (pCurPilot->getGunnery())/80.f );
 
 		char number[64];
-		sprintf( number, "%ld", static_cast<long>(pCurPilot->getPiloting()) );
+		(*std::format_to_n( number, sizeof(number) - 1, "{:d}", mc2::fmt::as_i32(static_cast<long>(pCurPilot->getPiloting())) ).out = '\0');
 		textObjects[6].setText( number );
 		setDefsElementText( "game.mcl_pr_layout.text.pilot_info_piloting_number", number );
 		attributeMeters[1].setValue( pCurPilot->getPiloting()/80.f );
 
-		sprintf( number, "%ld", pCurPilot->getMechKills() );
+		(*std::format_to_n( number, sizeof(number) - 1, "{:d}", mc2::fmt::as_i32(pCurPilot->getMechKills()) ).out = '\0');
 		textObjects[7].setText( number );
 		setDefsElementText( "game.mcl_pr_layout.text.pilot_info_kills_number", number );
 
@@ -846,7 +847,7 @@ void PilotReadyScreen::setPilot( LogisticsPilot* pPilot )
 		for (; i < 4; i++ )
 		{
 			char skillKey[64];
-			sprintf( skillKey, "game.mcl_pr_layout.text.special_skill_%d", i + 1 );
+			(*std::format_to_n( skillKey, sizeof(skillKey) - 1, "game.mcl_pr_layout.text.special_skill_{:d}", mc2::fmt::as_i32(i + 1) ).out = '\0');
 			if ( i < count )
 			{
 				textObjects[9+i].setText( specialtySkills[i] );

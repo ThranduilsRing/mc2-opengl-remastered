@@ -63,6 +63,7 @@
 #include "dteam.h"   // MAX_CONTACTS_PER_TEAM: the length of every getContacts output array
 
 #include <array>
+#include "mc2fmt.h"
 
 // ---------------------------------------------------------------------------
 // TECHSCRIPT-DISPATCH-1D-M: MissionVarStore global definition.
@@ -618,7 +619,7 @@ static const char* resolveVerbAliasToken(const char* verb, char out[256]) {
         if (ciEquals(kRecognizedVerbs[i], tok)) canonical = kRecognizedVerbs[i];
     if (!canonical) return verb;
     if (std::strcmp(canonical, tok) == 0) return verb;  // already canonical spelling
-    std::snprintf(out, 256, "%s%s", canonical, te);     // te keeps the arg tail (incl. space)
+    (*std::format_to_n(out, (256) - 1, "{}{}", mc2::fmt::safe(canonical), mc2::fmt::safe(te)).out = '\0');     // te keeps the arg tail (incl. space)
     return out;
 }
 
@@ -2131,7 +2132,7 @@ static bool parseBrainSpecialBody_FitIni(const char* fitPath, BrainSpecialBody& 
     // FitIni reader had the fixed buffer.
     char verbBuf[256];
     for (int i = 0; i < 64; ++i) {
-        std::snprintf(keyBuf, sizeof(keyBuf), "DO%d", i);
+        (*std::format_to_n(keyBuf, (sizeof(keyBuf)) - 1, "DO{:d}", mc2::fmt::as_i32(i)).out = '\0');
         verbBuf[0] = '\0';
         long result = fit.readIdString(keyBuf, verbBuf, static_cast<unsigned long>((sizeof(verbBuf) - 1)));
         if (result != NO_ERR)
@@ -2176,9 +2177,9 @@ static bool parseGlobalSpecials(const char* missionFitPath, SpecialIndex& gIndex
         size_t dirLen = static_cast<size_t>((lastSlash - missionFitPath)) + 1;
         if (dirLen >= sizeof(gpath) - 24) return false;
         std::memcpy(gpath, missionFitPath, dirLen);
-        std::snprintf(gpath + dirLen, sizeof(gpath) - dirLen, "global_specials.fit");
+        (*std::format_to_n(gpath + dirLen, (sizeof(gpath) - dirLen) - 1, "global_specials.fit").out = '\0');
     } else {
-        std::snprintf(gpath, sizeof(gpath), "global_specials.fit");
+        (*std::format_to_n(gpath, (sizeof(gpath)) - 1, "global_specials.fit").out = '\0');
     }
     BrainSpecialBody gBody;   // discarded — globals never provide the entry body
     if (!parseBrainSpecialBody_RawScan(gpath, gBody, &gIndex))
@@ -2326,7 +2327,7 @@ bool parseBrainSpecialBody(const char* missionName, BrainSpecialBody& outBody,
     aliasRegistrySeed();
 
     char fitPath[256];
-    std::snprintf(fitPath, sizeof(fitPath), "data/missions/%s_specials.fit", missionName);
+    (*std::format_to_n(fitPath, (sizeof(fitPath)) - 1, "data/missions/{}_specials.fit", mc2::fmt::safe(missionName)).out = '\0');
 
     // BRAINSPECIAL-SCOPE-GLOBAL-1: parse the global library first (gate-guarded no-op).
     SpecialIndex gIndex;
@@ -2682,7 +2683,7 @@ int scanFsmTodosFromFile(const char* missionName, BrainSpecialBody& outBody) {
     outBody.fsmTodos.clear();
 
     char fitPath[256];
-    std::snprintf(fitPath, sizeof(fitPath), "data/missions/%s_specials.fit", missionName);
+    (*std::format_to_n(fitPath, (sizeof(fitPath)) - 1, "data/missions/{}_specials.fit", mc2::fmt::safe(missionName)).out = '\0');
 
     std::ifstream inFile(fitPath);
     if (!inFile.is_open()) {

@@ -29,6 +29,7 @@
 #include "Gates/gate.h"
 #include <cstdlib>
 #include <chrono>
+#include "mc2fmt.h"
 
 namespace mc2_collision_trace {
 
@@ -91,13 +92,11 @@ struct CollideScope {
 		auto t1 = std::chrono::steady_clock::now();
 		double us = std::chrono::duration<double, std::micro>(t1 - t0).count();
 		char buf[320];
-		snprintf(buf, sizeof(buf),
-			"{\"ev\":\"frame\",\"collidables\":%ld,\"pairs_tested\":%ld,"
-			"\"narrow\":%ld,\"culled\":%ld,\"grid_cells\":%ld,\"hits\":%ld,"
-			"\"collide_us\":%.2f}",
-			g_counters.collidables, g_counters.pairsTested,
-			g_counters.narrowChecks, g_counters.culledPairs,
-			g_counters.gridCells, g_counters.hits, us);
+		(*std::format_to_n(buf, (sizeof(buf)) - 1,
+			"{{\"ev\":\"frame\",\"collidables\":{:d},\"pairs_tested\":{:d},\"narrow\":{:d},\"culled\":{:d},\"grid_cells\":{:d},\"hits\":{:d},\"collide_us\":{:.2f}}}",
+			mc2::fmt::as_i32(g_counters.collidables), mc2::fmt::as_i32(g_counters.pairsTested),
+			mc2::fmt::as_i32(g_counters.narrowChecks), mc2::fmt::as_i32(g_counters.culledPairs),
+			mc2::fmt::as_i32(g_counters.gridCells), mc2::fmt::as_i32(g_counters.hits), us).out = '\0');
 		mc2_diag::writeEvent("COLLISION", 1, 0, buf);
 		g_counters.active = false;
 	}

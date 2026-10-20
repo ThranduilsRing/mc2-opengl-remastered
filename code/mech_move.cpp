@@ -361,7 +361,7 @@ bool BattleMech::updateMovePath (float& newRotate, char& newThrottleSetting, lon
 		if (selected) {
 			long area = GlobalMoveMap->calcArea(objPosition->tileRow, objPosition->tileCol);
 			char debugStr[256];
-			sprintf(debugStr, "Area = %d\n", area);
+			(*std::format_to_n(debugStr, sizeof(debugStr) - 1, "Area = {:d}\n", mc2::fmt::as_i32(area)).out = '\0');
 			mc2::fmt::debug_out(debugStr);
 		}
 	#endif

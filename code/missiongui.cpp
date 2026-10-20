@@ -27,6 +27,7 @@
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include <memory>
 #include "missiongui_shared_internal.h"
+#include "mc2fmt.h"
 
 
 	const char* terrainStr[NUM_TERRAIN_TYPES] = {
@@ -742,9 +743,9 @@ void MissionInterfaceManager::printDebugInfo()
 		int ga0 = GlobalMoveMap[0] ? GlobalMoveMap[0]->calcArea(row, col) : -1;
 		int ga1 = GlobalMoveMap[1] ? GlobalMoveMap[1]->calcArea(row, col) : -1;
 		if (target)
-			sprintf(debugString, "POS = %s(%c) %d,%d [%d, %d] (%.4f, %.4f, %.4f) OBJ = %s\n", terrainStr[GameMap->getTerrain(row, col)], GameMap->getPassable(row, col) ? 'T' : 'F', ga0, ga1, row, col, wPos.x, wPos.y, wPos.z, target->getName());
+			(*std::format_to_n(debugString, sizeof(debugString) - 1, "POS = {}({:c}) {:d},{:d} [{:d}, {:d}] ({:.4f}, {:.4f}, {:.4f}) OBJ = {}\n", mc2::fmt::safe(terrainStr[GameMap->getTerrain(row, col)]), mc2::fmt::as_char(GameMap->getPassable(row, col) ? 'T' : 'F'), mc2::fmt::as_i32(ga0), mc2::fmt::as_i32(ga1), mc2::fmt::as_i32(row), mc2::fmt::as_i32(col), wPos.x, wPos.y, wPos.z, mc2::fmt::safe(target->getName())).out = '\0');
 		else
-			sprintf(debugString, "POS = %s(%c) %d,%d [%d, %d] (%.4f, %.4f, %.4f)\n", terrainStr[GameMap->getTerrain(row, col)], GameMap->getPassable(row, col) ? 'T' : 'F', ga0, ga1, row, col, wPos.x, wPos.y, wPos.z);
+			(*std::format_to_n(debugString, sizeof(debugString) - 1, "POS = {}({:c}) {:d},{:d} [{:d}, {:d}] ({:.4f}, {:.4f}, {:.4f})\n", mc2::fmt::safe(terrainStr[GameMap->getTerrain(row, col)]), mc2::fmt::as_char(GameMap->getPassable(row, col) ? 'T' : 'F'), mc2::fmt::as_i32(ga0), mc2::fmt::as_i32(ga1), mc2::fmt::as_i32(row), mc2::fmt::as_i32(col), wPos.x, wPos.y, wPos.z).out = '\0');
 		DEBUGWINS_print(debugString);
 	}
 

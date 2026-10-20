@@ -20,6 +20,7 @@
 
 #include"platform_windows.h"
 #include"platform_str.h"
+#include "mc2fmt.h"
 
 static int gGetLastError = 0;
 
@@ -268,7 +269,7 @@ struct FindFileData {
 static void FillFindData(const char* dir_name, const char* entry_name, LPWIN32_FIND_DATAA lpFindFileData) {
 
         char entry_path[MAX_PATH];
-        snprintf(entry_path, MAX_PATH-1, "%s/%s", dir_name, entry_name);
+        (*std::format_to_n(entry_path, (MAX_PATH-1) - 1, "{}/{}", mc2::fmt::safe(dir_name), mc2::fmt::safe(entry_name)).out = '\0');
 
         struct stat s;
         stat(entry_path, &s);

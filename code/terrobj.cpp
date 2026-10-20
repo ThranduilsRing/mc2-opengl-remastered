@@ -70,6 +70,7 @@
 #include "bldg_anim_gate_counters.h"
 #include "frame_jobs.h"  // FRAME-JOBS-1: frameJobsEnabled() gate
 #include "../RenderCore/axis_convert.h"
+#include "mc2fmt.h"
 
 //---------------------------------------------------------------------------
 // Slice 3 Static-Update Bypass instrumentation (worktree CLAUDE.md
@@ -123,16 +124,14 @@ void g_staticUpdateEmitSummary(uint32_t frame) {
     const StaticUpdateCounters& cur  = g_staticUpdateCounters;
     const StaticUpdateCounters& prev = g_staticUpdateLastSummary;
     char buf[256];
-    snprintf(buf, sizeof(buf),
-        "[STATIC_UPDATE v1] frame=%u seen=%u run=%u skip=%u "
-        "dyn_falling=%u dyn_other=%u "
-        "delta_seen=%u delta_run=%u delta_skip=%u",
-        frame,
-        cur.objects_seen, cur.updates_run, cur.updates_skipped,
-        cur.dyn_falling, cur.dyn_other,
-        cur.objects_seen   - prev.objects_seen,
-        cur.updates_run    - prev.updates_run,
-        cur.updates_skipped - prev.updates_skipped);
+    (*std::format_to_n(buf, (sizeof(buf)) - 1,
+        "[STATIC_UPDATE v1] frame={:d} seen={:d} run={:d} skip={:d} dyn_falling={:d} dyn_other={:d} delta_seen={:d} delta_run={:d} delta_skip={:d}",
+        mc2::fmt::as_u32(frame),
+        mc2::fmt::as_u32(cur.objects_seen), mc2::fmt::as_u32(cur.updates_run), mc2::fmt::as_u32(cur.updates_skipped),
+        mc2::fmt::as_u32(cur.dyn_falling), mc2::fmt::as_u32(cur.dyn_other),
+        mc2::fmt::as_u32(cur.objects_seen   - prev.objects_seen),
+        mc2::fmt::as_u32(cur.updates_run    - prev.updates_run),
+        mc2::fmt::as_u32(cur.updates_skipped - prev.updates_skipped)).out = '\0');
     MC2_DIAG_PUTS(buf);
     fflush(stdout);
 
@@ -571,27 +570,27 @@ void TerrainObject::updateDebugWindow (GameDebugWindow* debugWindow) {
 		}
 	else
 		debugWindow->print("<no name>");
-	sprintf(s, "team: %d, handle: %d, partID: %d %s", getTeamId(), getHandle(), getPartId(), getFlag(OBJECT_FLAG_CAPTURABLE) ? "[C]" : " ");
+	(*std::format_to_n(s, sizeof(s) - 1, "team: {:d}, handle: {:d}, partID: {:d} {}", mc2::fmt::as_i32(getTeamId()), mc2::fmt::as_i32(getHandle()), mc2::fmt::as_i32(getPartId()), mc2::fmt::safe(getFlag(OBJECT_FLAG_CAPTURABLE) ? "[C]" : " ")).out = '\0');
 	debugWindow->print(s);
-	sprintf(s, "objType: %d", getObjectType()->whatAmI());
+	(*std::format_to_n(s, sizeof(s) - 1, "objType: {:d}", mc2::fmt::as_i32(getObjectType()->whatAmI())).out = '\0');
 	debugWindow->print(s);
-	sprintf(s, "damage: %.2f/%.2f", getDamage(), getDamageLevel());
+	(*std::format_to_n(s, sizeof(s) - 1, "damage: {:.2f}/{:.2f}", getDamage(), getDamageLevel()).out = '\0');
 	debugWindow->print(s);
-	sprintf(s, "pos: [%d, %d](area = %d)", cellPositionRow, cellPositionCol, GlobalMoveMap[0]->calcArea(cellPositionRow, cellPositionCol));
+	(*std::format_to_n(s, sizeof(s) - 1, "pos: [{:d}, {:d}](area = {:d})", mc2::fmt::as_i32(cellPositionRow), mc2::fmt::as_i32(cellPositionCol), mc2::fmt::as_i32(GlobalMoveMap[0]->calcArea(cellPositionRow, cellPositionCol))).out = '\0');
 	debugWindow->print(s);
-	sprintf(s, "footprint:[%d,%d]:[%d,%d]", cellFootprint[0], cellFootprint[1], cellFootprint[2], cellFootprint[3]);
+	(*std::format_to_n(s, sizeof(s) - 1, "footprint:[{:d},{:d}]:[{:d},{:d}]", mc2::fmt::as_i32(cellFootprint[0]), mc2::fmt::as_i32(cellFootprint[1]), mc2::fmt::as_i32(cellFootprint[2]), mc2::fmt::as_i32(cellFootprint[3])).out = '\0');
 	debugWindow->print(s);
 	if (numSubAreas0 > 0) {
-		sprintf(s, "subAreas:");
+		(*std::format_to_n(s, sizeof(s) - 1, "subAreas:").out = '\0');
 		for (long i = 0; i < numSubAreas0; i++) {
 			char tempStr[15];
-			sprintf(tempStr, " %d", subAreas0[i]);
+			(*std::format_to_n(tempStr, sizeof(tempStr) - 1, " {:d}", mc2::fmt::as_i32(subAreas0[i])).out = '\0');
 			strcat(s, tempStr);
 		}
 		strcat(s, " *");
 		for (int i = 0; i < numSubAreas1; i++) {
 			char tempStr[15];
-			sprintf(tempStr, " %d", subAreas1[i]);
+			(*std::format_to_n(tempStr, sizeof(tempStr) - 1, " {:d}", mc2::fmt::as_i32(subAreas1[i])).out = '\0');
 			strcat(s, tempStr);
 		}
 		debugWindow->print(s);

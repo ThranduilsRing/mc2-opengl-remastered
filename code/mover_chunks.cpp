@@ -1,6 +1,7 @@
 // Mover: multiplayer MoveChunk/StatusChunk build, pack, unpack and compare, plus MoverDynamics and MoverControl.
 // Declared in mover.h; shared names in mover_internal.h.
 #include "mover_internal.h"
+#include "mc2fmt.h"
 
 
 
@@ -257,7 +258,7 @@ void MoveChunk::pack (MoverPtr mover) {
 	if ((numSteps < 1) || (numSteps > 4)) {
 		DebugMoveChunk(mover, this, nullptr);
 		char errMsg[1024];
-		sprintf(errMsg, " MoveChunk.pack: bad numSteps %d (save mvchunk.dbg file) ", numSteps);
+		(*std::format_to_n(errMsg, sizeof(errMsg) - 1, " MoveChunk.pack: bad numSteps {:d} (save mvchunk.dbg file) ", mc2::fmt::as_i32(numSteps)).out = '\0');
 		Assert(false, numSteps, errMsg);
 	}
 #endif
@@ -319,7 +320,7 @@ void MoveChunk::unpack (MoverPtr mover) {
 	if ((numSteps < 1) || (numSteps > 4)) {
 		DebugMoveChunk(mover, this, nullptr);
 		char errMsg[1024];
-		sprintf(errMsg, " MoveChunk.unpack: bad numSteps %d (save mvchunk.dbg file) ", numSteps);
+		(*std::format_to_n(errMsg, sizeof(errMsg) - 1, " MoveChunk.unpack: bad numSteps {:d} (save mvchunk.dbg file) ", mc2::fmt::as_i32(numSteps)).out = '\0');
 		Assert(false, numSteps, errMsg);
 	}
 #endif
@@ -450,7 +451,7 @@ void StatusChunk::pack (MoverPtr mover) {
 				#ifdef ASSERT_STATUSCHUNK
 					DebugStatusChunk(mover, this, nullptr);
 					char errMsg[1024];
-					sprintf(errMsg, " StatusChunk.pack: bad targetId %d (save stchunk.dbg file) ", targetId);
+					(*std::format_to_n(errMsg, sizeof(errMsg) - 1, " StatusChunk.pack: bad targetId {:d} (save stchunk.dbg file) ", mc2::fmt::as_i32(targetId)).out = '\0');
 					Assert(false, targetId, errMsg);
 				#else
 					StatusChunkUnpackErr = 1;
@@ -465,7 +466,7 @@ void StatusChunk::pack (MoverPtr mover) {
 				#ifdef ASSERT_STATUSCHUNK
 					DebugStatusChunk(mover, this, nullptr);
 					char errMsg[1024];
-					sprintf(errMsg, " StatusChunk.pack: NULL Terrain Target (save stchunk.dbg file) ");
+					(*std::format_to_n(errMsg, sizeof(errMsg) - 1, " StatusChunk.pack: NULL Terrain Target (save stchunk.dbg file) ").out = '\0');
 					Assert(false, targetId, errMsg);
 				#else
 					StatusChunkUnpackErr = 3;
@@ -479,7 +480,7 @@ void StatusChunk::pack (MoverPtr mover) {
 				#ifdef ASSERT_STATUSCHUNK
 					DebugStatusChunk(mover, this, nullptr);
 					char errMsg[1024];
-					sprintf(errMsg, " StatusChunk.pack: NULL Special Target (save stchunk.dbg file) ");
+					(*std::format_to_n(errMsg, sizeof(errMsg) - 1, " StatusChunk.pack: NULL Special Target (save stchunk.dbg file) ").out = '\0');
 					Assert(false, targetId, errMsg);
 				#else
 					StatusChunkUnpackErr = 4;
@@ -493,7 +494,7 @@ void StatusChunk::pack (MoverPtr mover) {
 			#ifdef ASSERT_STATUSCHUNK
 				DebugStatusChunk(mover, this, nullptr);
 				char errMsg[1024];
-				sprintf(errMsg, " StatusChunk.pack: bad targetType %d (save stchunk.dbg file) ", targetType);
+				(*std::format_to_n(errMsg, sizeof(errMsg) - 1, " StatusChunk.pack: bad targetType {:d} (save stchunk.dbg file) ", mc2::fmt::as_i32(targetType)).out = '\0');
 				Assert(false, targetType, errMsg);
 			#else
 				StatusChunkUnpackErr = 5;
@@ -571,7 +572,7 @@ void StatusChunk::unpack (MoverPtr mover) {
 				#ifdef ASSERT_STATUSCHUNK
 					DebugStatusChunk(mover, this, nullptr);
 					char errMsg[1024];
-					sprintf(errMsg, " StatusChunk.unpack: bad targetId %d (save stchunk.dbg file) ", targetId);
+					(*std::format_to_n(errMsg, sizeof(errMsg) - 1, " StatusChunk.unpack: bad targetId {:d} (save stchunk.dbg file) ", mc2::fmt::as_i32(targetId)).out = '\0');
 					Assert(false, targetId, errMsg);
 				#else
 					StatusChunkUnpackErr = 1;
@@ -586,7 +587,7 @@ void StatusChunk::unpack (MoverPtr mover) {
 				#ifdef ASSERT_STATUSCHUNK
 					DebugStatusChunk(mover, this, nullptr);
 					char errMsg[1024];
-					sprintf(errMsg, " StatusChunk.unpack: NULL Terrain Target (save stchunk.dbg file) ");
+					(*std::format_to_n(errMsg, sizeof(errMsg) - 1, " StatusChunk.unpack: NULL Terrain Target (save stchunk.dbg file) ").out = '\0');
 					Assert(false, targetId, errMsg);
 				#else
 					StatusChunkUnpackErr = 3;
@@ -600,7 +601,7 @@ void StatusChunk::unpack (MoverPtr mover) {
 				#ifdef ASSERT_STATUSCHUNK
 					DebugStatusChunk(mover, this, nullptr);
 					char errMsg[1024];
-					sprintf(errMsg, " StatusChunk.unpack: NULL Special Target (save stchunk.dbg file) ");
+					(*std::format_to_n(errMsg, sizeof(errMsg) - 1, " StatusChunk.unpack: NULL Special Target (save stchunk.dbg file) ").out = '\0');
 					Assert(false, targetId, errMsg);
 				#else
 					StatusChunkUnpackErr = 4;
@@ -614,7 +615,7 @@ void StatusChunk::unpack (MoverPtr mover) {
 			#ifdef ASSERT_STATUSCHUNK
 				DebugStatusChunk(mover, this, nullptr);
 				char errMsg[1024];
-				sprintf(errMsg, " StatusChunk.unpack: bad targetType %d (save stchunk.dbg file) ", targetType);
+				(*std::format_to_n(errMsg, sizeof(errMsg) - 1, " StatusChunk.unpack: bad targetType {:d} (save stchunk.dbg file) ", mc2::fmt::as_i32(targetType)).out = '\0');
 				Assert(false, targetType, errMsg);
 			#else
 				StatusChunkUnpackErr = 5;

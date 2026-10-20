@@ -10,6 +10,7 @@
 
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "objmgr_internal.h"
+#include "mc2fmt.h"
 
 
 // ---------------------------------------------------------------------------
@@ -498,9 +499,9 @@ void GameObjectManager::setWatchID (GameObjectPtr obj) {
 			if (mc2_diag::tagEnabled("WATCHID_BOUND") &&
 				(s_watchIdDrops == 1 || (s_watchIdDrops & 0xFF) == 0)) {
 				char _wb_buf[128];
-				snprintf(_wb_buf, sizeof(_wb_buf),
-					"{\"nextWatchID\":%lu,\"cap\":%ld,\"drops\":%lu}",
-					nextWatchID, getMaxObjects(), s_watchIdDrops);
+				(*std::format_to_n(_wb_buf, (sizeof(_wb_buf)) - 1,
+					"{{\"nextWatchID\":{:d},\"cap\":{:d},\"drops\":{:d}}}",
+					mc2::fmt::as_u32(nextWatchID), mc2::fmt::as_i32(getMaxObjects()), mc2::fmt::as_u32(s_watchIdDrops)).out = '\0');
 				mc2_diag::writeEvent("WATCHID_BOUND", 1, 0, _wb_buf);
 			}
 			return;
@@ -532,10 +533,10 @@ GameObjectPtr GameObjectManager::getByWatchIDGenerational (unsigned long watchID
 		if (mc2_diag::tagEnabled("WATCHID_STALE") &&
 			(s_watchStaleDrops == 1 || (s_watchStaleDrops & 0xFF) == 0)) {
 			char _ws_buf[160];
-			snprintf(_ws_buf, sizeof(_ws_buf),
-				"{\"watchID\":%lu,\"expected\":%u,\"stored\":%u,\"drops\":%lu}",
-				watchID, static_cast<unsigned>(expectedGen),
-				static_cast<unsigned>(watchGeneration[watchID]), s_watchStaleDrops);
+			(*std::format_to_n(_ws_buf, (sizeof(_ws_buf)) - 1,
+				"{{\"watchID\":{:d},\"expected\":{:d},\"stored\":{:d},\"drops\":{:d}}}",
+				mc2::fmt::as_u32(watchID), mc2::fmt::as_u32(static_cast<unsigned>(expectedGen)),
+				mc2::fmt::as_u32(static_cast<unsigned>(watchGeneration[watchID])), mc2::fmt::as_u32(s_watchStaleDrops)).out = '\0');
 			mc2_diag::writeEvent("WATCHID_STALE", 1, 0, _ws_buf);
 		}
 		return nullptr;

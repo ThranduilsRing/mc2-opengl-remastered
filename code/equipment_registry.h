@@ -36,6 +36,7 @@
 #include <map>
 #include <cctype>
 #include <cstdio>                  // snprintf (EQUIP-ADD-FILL-1 CSV builder)
+#include "mc2fmt.h"
 #include <cstdlib>                 // strtol
 #include <cstring>                 // strchr
 
@@ -589,11 +590,11 @@ inline std::string buildEquipmentAddCsvLine(const EquipmentAddRowFields& f) {
     char num[64];
     std::string line;
     auto addF = [&](float v) {
-        std::snprintf(num, sizeof(num), "%.2f", static_cast<double>(v));
+        (*std::format_to_n(num, sizeof(num) - 1, "{:.2f}", static_cast<double>(v)).out = '\0');
         line += num; line += ",";
     };
     auto addI = [&](long v) {
-        std::snprintf(num, sizeof(num), "%ld", v);
+        (*std::format_to_n(num, sizeof(num) - 1, "{:d}", mc2::fmt::as_i32(v)).out = '\0');
         line += num; line += ",";
     };
     addI(f.ordinal);
@@ -630,7 +631,7 @@ inline std::string buildEquipmentAddCsvLine(const EquipmentAddRowFields& f) {
     addI(f.stringId);
     addI(f.helpStringId);
     addI(f.iconX);
-    std::snprintf(num, sizeof(num), "%d", f.iconY);
+    (*std::format_to_n(num, sizeof(num) - 1, "{:d}", mc2::fmt::as_i32(f.iconY)).out = '\0');
     line += num;
     return line;
 }

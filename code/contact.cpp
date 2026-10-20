@@ -48,6 +48,7 @@
 #include <cstdint>
 #include <span>
 #include "../GameOS/gameos/utils/mc2log.h"
+#include "mc2fmt.h"
 
 //***************************************************************************
 
@@ -723,9 +724,9 @@ void TeamSensorSystem::addSensor (SensorSystemPtr sensor) {
 		{
 			capLoggedThisMission = true;
 			char _cbbuf[128];
-			snprintf(_cbbuf, sizeof(_cbbuf),
-				"[CONTACT v1] event=sensor_cap_hit team=%ld numSensors=%ld max=%d",
-				teamId, numSensors, MAX_SENSORS_PER_TEAM);
+			(*std::format_to_n(_cbbuf, (sizeof(_cbbuf)) - 1,
+				"[CONTACT v1] event=sensor_cap_hit team={:d} numSensors={:d} max={:d}",
+				mc2::fmt::as_i32(teamId), mc2::fmt::as_i32(numSensors), mc2::fmt::as_i32(MAX_SENSORS_PER_TEAM)).out = '\0');
 			puts(_cbbuf);
 			fflush(stdout);
 		}
@@ -1009,7 +1010,7 @@ SensorSystemPtr TeamSensorSystem::findBestSpotter (MoverPtr contact, long* statu
 	ContactInfoPtr contactInfo = contact->getContactInfo();
 	if (!contactInfo) {
 		char s[256];
-		sprintf(s, "TeamSensorSystem.findBestSpotter: NULL contactInfo for objClass %d partID %d team %d", contact->getObjectClass(), contact->getPartId(), contact->getTeamId());
+		(*std::format_to_n(s, sizeof(s) - 1, "TeamSensorSystem.findBestSpotter: NULL contactInfo for objClass {:d} partID {:d} team {:d}", mc2::fmt::as_i32(contact->getObjectClass()), mc2::fmt::as_i32(contact->getPartId()), mc2::fmt::as_i32(contact->getTeamId())).out = '\0');
 		STOP((s));
 	}
 	SensorSystemPtr bestSensor = nullptr;

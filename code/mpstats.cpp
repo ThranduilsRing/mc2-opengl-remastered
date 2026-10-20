@@ -12,6 +12,7 @@ MPStats.cpp			: Implementation of the MPStats component.
 #include"chatwindow.h"
 #include"mechbayscreen.h"
 #include"logisticsdialog.h"
+#include "mc2fmt.h"
 
 constexpr int MP_STATS_SAVE = 400;
 
@@ -39,7 +40,7 @@ int MPStats::init()
 	if ( NO_ERR != file.open( path ) )
 	{
 		char buffer2[512];
-		sprintf( buffer2, "couldn't open file %s", static_cast<const char*>(path) );
+		(*std::format_to_n( buffer2, sizeof(buffer2) - 1, "couldn't open file {}", mc2::fmt::safe(static_cast<const char*>(path)) ).out = '\0');
 		Assert( 0, 0, buffer2 );
 		return false;	
 
@@ -315,7 +316,7 @@ void MPStatsEntry::init()
 	if ( NO_ERR != file.open( path ) )
 	{
 		char buffer2[512];
-		sprintf( buffer2, "couldn't open file %s", static_cast<const char*>(path) );
+		(*std::format_to_n( buffer2, sizeof(buffer2) - 1, "couldn't open file {}", mc2::fmt::safe(static_cast<const char*>(path)) ).out = '\0');
 		Assert( 0, 0, buffer2 );
 		return;	
 
@@ -368,23 +369,23 @@ void MPStatsEntry::setData(const MC2Player* data, bool bShowScore )
 
 		textObjects[0].setText( data->name );
 		char team[32];
-		sprintf( team, "%ld", data->teamSelected + 1 );
+		(*std::format_to_n( team, sizeof(team) - 1, "{:d}", mc2::fmt::as_i32(data->teamSelected + 1) ).out = '\0');
 		textObjects[1].setText( team );
 		// score needs to do here
-		sprintf( team, "%ld", data->score );
+		(*std::format_to_n( team, sizeof(team) - 1, "{:d}", mc2::fmt::as_i32(data->score) ).out = '\0');
 		if ( MPlayer->missionSettings.missionType == MISSION_TYPE_KING_OF_THE_HILL )
 		{
-			sprintf( team, "%ld:%.2ld", data->score/60, data->score % 60 );
+			(*std::format_to_n( team, sizeof(team) - 1, "{:d}:{:02d}", mc2::fmt::as_i32(data->score/60), mc2::fmt::as_i32(data->score % 60) ).out = '\0');
 		}
 		if ( bShowScore )
 			textObjects[2].setText( team );
 		else
 			textObjects[2].setText( "" );
 
-		sprintf( team, "%ld", data->kills );
+		(*std::format_to_n( team, sizeof(team) - 1, "{:d}", mc2::fmt::as_i32(data->kills) ).out = '\0');
 		textObjects[3].setText( team );
 
-		sprintf( team, "%ld", data->losses );
+		(*std::format_to_n( team, sizeof(team) - 1, "{:d}", mc2::fmt::as_i32(data->losses) ).out = '\0');
 		textObjects[4].setText( team );
 
 	}
@@ -440,7 +441,7 @@ void MPStatsResultsEntry::init()
 	if ( NO_ERR != file.open( path ) )
 	{
 		char buffer2[512];
-		sprintf( buffer2, "couldn't open file %s", static_cast<const char*>(path) );
+		(*std::format_to_n( buffer2, sizeof(buffer2) - 1, "couldn't open file {}", mc2::fmt::safe(static_cast<const char*>(path)) ).out = '\0');
 		Assert( 0, 0, buffer2 );
 		return;	
 
@@ -479,24 +480,24 @@ void MPStatsResultsEntry::setData(const MC2Player* data, unsigned long laurelCol
 	textObjects[4].setColor( textColor );
 
 	char text[64];
-	sprintf( text, "%ld", MPlayer->teamScore[data->team] );
+	(*std::format_to_n( text, sizeof(text) - 1, "{:d}", mc2::fmt::as_i32(MPlayer->teamScore[data->team]) ).out = '\0');
 	if ( MPlayer->missionSettings.missionType == MISSION_TYPE_KING_OF_THE_HILL )
 	{
-		sprintf( text, "%ld:%.2ld", MPlayer->teamScore[data->team]/60, MPlayer->teamScore[data->team] % 60 );
+		(*std::format_to_n( text, sizeof(text) - 1, "{:d}:{:02d}", mc2::fmt::as_i32(MPlayer->teamScore[data->team]/60), mc2::fmt::as_i32(MPlayer->teamScore[data->team] % 60) ).out = '\0');
 	}
 	if ( bShowScore )
 		textObjects[0].setText( text );
 	else
 		textObjects[0].setText( "" );
 
-	sprintf( text, "%ld", data->kills );
+	(*std::format_to_n( text, sizeof(text) - 1, "{:d}", mc2::fmt::as_i32(data->kills) ).out = '\0');
 	textObjects[1].setText( text );
 
-	sprintf( text, "%ld", data->losses );
+	(*std::format_to_n( text, sizeof(text) - 1, "{:d}", mc2::fmt::as_i32(data->losses) ).out = '\0');
 	textObjects[2].setText( text );
 
 
-	sprintf( text, "%ld", data->teamSelected + 1);
+	(*std::format_to_n( text, sizeof(text) - 1, "{:d}", mc2::fmt::as_i32(data->teamSelected + 1)).out = '\0');
 	textObjects[5].setText( text );
 
 	char path[256];
