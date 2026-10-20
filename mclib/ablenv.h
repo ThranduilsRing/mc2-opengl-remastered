@@ -176,6 +176,9 @@ class ABLModule {
 		bool					traceEntry;
 		bool					traceExit;
 
+		// A2: one place creates and initializes the debugger managers (init and read both call it).
+		void initDebuggerManagers (void);
+
 		//static long				numModules;
 
 	public:
