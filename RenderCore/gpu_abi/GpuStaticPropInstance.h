@@ -32,7 +32,7 @@ struct alignas(16) GpuStaticPropInstance {
     uint32_t firstColorOffset;  // into per-frame color SSBO
     uint32_t flags;             // bit 0: lightsOut, bit 1: isWindow, bit 2: isSpotlight
     uint32_t lightDataIndex;    // index into the per-frame light-data UBO populated by
-                                // mcTextureManager->addLightDataStructure(); writer is
+                                // mc2::vkLights::addLightDataStructure(); writer is
                                 // submitMultiShape (was _pad0 at offset 76).
     float    aRGBHighlight[4];  // @vec4
     float    fogRGB[4];         // @vec4

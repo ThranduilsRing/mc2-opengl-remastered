@@ -7,8 +7,9 @@ Utilities.cpp			: Implementation of the Utilities component.
 \*************************************************************************************************/
 #include"utilities.h"
 #include "texture_assets.h"
+#include "../RenderCore/TextureService.h"
 
-#include"txmmgr.h"
+#include"render_submissions.h"
 #include"inifile.h"
 #include"mclib.h"
 #include"../GameOS/gameos/gos_profiler.h"
@@ -173,7 +174,7 @@ void drawEmptyRect( const GUI_RECT& area, unsigned long leftTopBorderColor,
 
 StaticInfo::~StaticInfo()
 {
-	if (mcTextureManager && textureHandle)
+	if (mc2::textures::ready() && textureHandle)
 		mc2::textures::release( textureHandle );
 }
 

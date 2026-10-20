@@ -1,6 +1,6 @@
 // vk_shared_light_feed.h
 //
-// VK-LIGHTFEED-DEDUP-1 -- ONE shared per-frame LightsData span for every VK island that consumes the game's CPU ObjectLights array (mcTextureManager
+// VK-LIGHTFEED-DEDUP-1 -- ONE shared per-frame LightsData span for every VK island that consumes the game's CPU ObjectLights array (mc2::textures::ready()
 // lightData_, the byte source of the GL SSBO upload at renderLists).
 //
 // The mech and the color-prop island both read the SAME ~3.5 MB array. The first island to acquire in a frame copies it once into the engine frame ring

@@ -3,13 +3,13 @@
 // Spec: docs/superpowers/specs/2026-04-27-modern-terrain-tex-resolve-table-design.md
 //
 // Lazy first-touch design: tex_resolve(nodeId) goes through the legacy
-// MC_TextureManager::get_gosTextureHandle(nodeId) accessor on the first read
+// legacy texture manager::get_gosTextureHandle(nodeId) accessor on the first read
 // of that node this frame, memoizes the result in handles[], and returns
 // indexed loads for subsequent reads. Killswitch OFF reverts to legacy.
 //===========================================================================
 #pragma once
 
-#include "txmmgr.h"   // frame/render integration
+#include "render_submissions.h"   // frame/render integration
 #include "texture_assets.h"
 #include "dstd.h"     // DWORD
 #include <vector>
@@ -37,7 +37,7 @@ extern uint64_t        g_currentFrameId;
 void beginFrameTexResolve(uint64_t frameId);
 
 // Clear frameActive and emit the 600-frame summary tick when due.
-// Called immediately after mcTextureManager->renderLists() returns in
+// Called immediately after mc2::VkSceneRenderer::renderLists(mc2::renderSubmissions()) returns in
 // GameCamera::render. Pairs with beginFrameTexResolve to make the
 // "this is a terrain frame" window an explicit invariant.
 void endFrameTexResolve(void);

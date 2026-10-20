@@ -1,11 +1,16 @@
-// MC_TextureManager::renderLists phases 1-7 (state setup, light and scene-data upload, 3D objects,
-// static-shadow build, static-prop registry flush); see txmmgr_render.cpp for the order they run in.
+#include "vk_scene_renderer.h"
+// mc2::VkSceneRenderer::renderLists phases 1-7 (state setup, light and scene-data upload, 3D objects,
+// static-shadow build, static-prop registry flush); see vk_scene_renderer.cpp for the order they run in.
 
-#include "txmmgr_render_internal.h"
+#include "vk_scene_renderer_internal.h"
 #include "mc2fmt.h"
 #include "Gates/render_options.h"
 
-void MC_TextureManager::renderListsPreamble (void)
+extern void mc2SetSceneFogColorRGB(float, float, float);
+extern bool g_useGpuStaticProps;
+extern bool g_useGpuObjects;
+
+void mc2::VkSceneRenderer::renderListsPreamble (RenderSubmissions& submissions)
 {
 	{
 	ZoneScopedN("RenderLists.Preamble");
@@ -58,28 +63,28 @@ void MC_TextureManager::renderListsPreamble (void)
 	} // end RenderLists.Preamble
 }
 
-void MC_TextureManager::renderListsSceneDataUpload (void)
+void mc2::VkSceneRenderer::renderListsSceneDataUpload (RenderSubmissions& submissions)
 {
 #ifdef MC2_VULKAN_ISLAND
     // Vulkan reads this CPU fog snapshot; the legacy GL SceneData UBO is gone.
     const vec4 fc = uint32_to_vec4(eye->fogColor);
-    extern void mc2SetSceneFogColorRGB(float, float, float);
+
     mc2SetSceneFogColorRGB(fc.z, fc.y, fc.x);
 #endif
 }
 
-void MC_TextureManager::renderListsObjects3D (void)
+void mc2::VkSceneRenderer::renderListsObjects3D (RenderSubmissions& submissions)
 {
     // The typed Vulkan islands consume geometry independently of this old GL queue.
     // Drain it so an extra render without a logic tick cannot replay old shapes.
-    for (size_t i = 0; i < nextAvailableHardwareVertexNode; ++i) {
-        auto& node = masterHardwareVertexNodes[i];
+    for (size_t i = 0; i < submissions.nextAvailableHardwareVertexNode; ++i) {
+        auto& node = submissions.masterHardwareVertexNodes[i];
         if ((node.flags & MC2_DRAWSOLID) && node.shapes)
             node.currentShape = node.shapes;
     }
 }
 
-void MC_TextureManager::renderListsPostObjectsStateRestore (void)
+void mc2::VkSceneRenderer::renderListsPostObjectsStateRestore (RenderSubmissions& submissions)
 {
 	{
 	ZoneScopedN("RenderLists.PostObjectsStateRestore");
@@ -96,7 +101,7 @@ void MC_TextureManager::renderListsPostObjectsStateRestore (void)
 	} // end RenderLists.PostObjectsStateRestore
 }
 
-void MC_TextureManager::renderListsStaticShadowBuild (void)
+void mc2::VkSceneRenderer::renderListsStaticShadowBuild (RenderSubmissions& submissions)
 {
 	// VPL-#shadow Phase 1+2 (arch-doc docs/plans/static-terrain-shadow-
 	// architecture.md): build the static terrain shadow from the FULL map
@@ -128,7 +133,7 @@ void MC_TextureManager::renderListsStaticShadowBuild (void)
 	}
 }
 
-void MC_TextureManager::renderListsStaticPropRegistryFlush (void)
+void mc2::VkSceneRenderer::renderListsStaticPropRegistryFlush (RenderSubmissions& submissions)
 {
 	// STATIC-PROP SHADOW-ORDER FIX (2026-05-29): inject static-registry instances
 	// into batcher buckets BEFORE flushShadow() below. flushShadow() calls
@@ -145,8 +150,8 @@ void MC_TextureManager::renderListsStaticPropRegistryFlush (void)
 	// Render.GpuStaticProps block; runs regardless of tessellation/mech state.
 	{
 		ZoneScopedN("RenderLists.StaticPropRegistryFlush");
-		extern bool g_useGpuStaticProps;
-		extern bool g_useGpuObjects;
+
+
 		if (g_useGpuStaticProps || g_useGpuObjects) {
 			GpuStaticPropRegistry::flush();
 		}

@@ -246,7 +246,7 @@ std::optional<const aiNode*> FindNodeForMesh(const aiNode* node, unsigned meshId
 //-----------------------------------------------------------------------------
 // Strip leading directory components from a texture path. Assimp can return
 // absolute Windows paths, relative paths, or bare filenames depending on the
-// source authoring tool; MC_TextureManager looks up by base name.
+// source authoring tool; legacy texture manager looks up by base name.
 const char* StripPath(const char* p) {
 	const char* slash1 = strrchr(p, '/');
 	const char* slash2 = strrchr(p, '\\');
@@ -256,7 +256,7 @@ const char* StripPath(const char* p) {
 
 //-----------------------------------------------------------------------------
 // MODEL-OVERRIDE texture binding: derive an MC2 texture NAME from a glTF/FBX
-// material's base-color image so MC_TextureManager can resolve it by name to a
+// material's base-color image so legacy texture manager can resolve it by name to a
 // loose data/tgl/<size>/<name>.tga (file.cpp strips the size subdir) or BC7
 // .ktx2 sidecar. MC2 stores the diffuse texture name WITH its ".tga" extension
 // (see msl.cpp ParseASEFile + the shadow-X strlen-4 logic). So:
@@ -362,7 +362,7 @@ void BuildTextureList(const aiScene* scene, TG_TypeMultiShape* out) {
 		nameCStrs[i] = names[i].c_str();
 	}
 
-	// alphas=NULL → all false; engine's MC_TextureManager toggles textureAlpha
+	// alphas=NULL → all false; engine's legacy texture manager toggles textureAlpha
 	// later via SetTextureAlpha when the actual TGA loads.
 	out->SetImportedTextures(count, nameCStrs.data(), nullptr);
 }
@@ -1092,7 +1092,7 @@ int mc2mechanim::ImportedGpuLiftAxis() { return mechImportGpuLiftAxis(); }
 
 // AO-1: the imported mech's AO texture name (materials.ao.tga from the package), or
 // nullptr if this type isn't imported / declares no AO. The caller (mech3d
-// resetPaintScheme) loads it via mcTextureManager and binds it on unit 6.
+// resetPaintScheme) loads it via mc2::textures::ready() and binds it on unit 6.
 const char* mc2mechanim::ImportedMechAoTexName(const void* typeKey) {
     for (const ImportedAnimEntry& e : g_importedAnims)
         if (static_cast<const void*>(e.multi) == typeKey)
@@ -1102,7 +1102,7 @@ const char* mc2mechanim::ImportedMechAoTexName(const void* typeKey) {
 
 // NORMALS-1: the imported mech's normal-map texture name (materials.normal.tga from the
 // package), or nullptr if this type isn't imported / declares no normal. The caller
-// (mech3d resetPaintScheme) loads it via mcTextureManager and binds it on unit 7.
+// (mech3d resetPaintScheme) loads it via mc2::textures::ready() and binds it on unit 7.
 const char* mc2mechanim::ImportedMechNormalTexName(const void* typeKey) {
     for (const ImportedAnimEntry& e : g_importedAnims)
         if (static_cast<const void*>(e.multi) == typeKey)

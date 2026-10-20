@@ -45,6 +45,7 @@ set(MC2_PCH_SKIP_mclib
     "mclib/camera_update.cpp"
     "mclib/cmponent.cpp"
     "mclib/crater.cpp"
+    "mclib/effect_resources.cpp"
     "mclib/genactor.cpp"
     "mclib/gvactor.cpp"
     "mclib/gvactor_geometry.cpp"
@@ -62,6 +63,7 @@ set(MC2_PCH_SKIP_mclib
     "mclib/msl_load.cpp"
     "mclib/quad.cpp"
     "mclib/render_contract.cpp"
+    "mclib/render_submissions.cpp"
     "mclib/soundsys.cpp"
     "mclib/terrain_geometry.cpp"
     "mclib/terrtxm2.cpp"
@@ -69,9 +71,8 @@ set(MC2_PCH_SKIP_mclib
     "mclib/tgl_parse.cpp"
     "mclib/tgl_shadows.cpp"
     "mclib/tgl_transform_light.cpp"
-    "mclib/txmmgr.cpp"
-    "mclib/txmmgr_lightrow.cpp"
     "mclib/userinput.cpp"
+    "mclib/vk_object_light_gather.cpp"
 )
 
 set(MC2_PCH_SKIP_mc2

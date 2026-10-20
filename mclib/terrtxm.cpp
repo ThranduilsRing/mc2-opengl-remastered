@@ -1778,7 +1778,7 @@ void TerrainTextures::destroy (void)
 	// memset(-1) at init so unused slots hold 0xffffffff; nextAvailable bounds
 	// the live region. These are rebuilt next mission in init(), so freeing on
 	// unload is correct.
-	if (mcTextureManager && textures)
+	if (mc2::textures::ready() && textures)
 	{
 		for (long i=0;i<nextAvailable;i++)
 		{

@@ -1,3 +1,4 @@
+#include "vk_scene_renderer.h"
 #include "Gates/preferences_legacy.h"
 #include "Gates/gate.h"
 #ifndef EDITORCAMERA_H
@@ -185,7 +186,7 @@ public:
 				s_ecrFrame, (active && turn > 1) ? 1 : 0);
 		if (active && turn > 1)
 		{
-			// Static props must dispatch through mcTextureManager->renderLists() so
+			// Static props must dispatch through mc2::VkSceneRenderer::renderLists(mc2::renderSubmissions()) so
 			// visibility and batching share the scene render order.
 
 			gos_SetWorldToClipGL(eye->worldToClipGL());
@@ -302,8 +303,8 @@ public:
 			}
 			EditorRenderTimer_Mark("ui");
 
-			if (mcTextureManager)
-				mcTextureManager->renderLists();
+			if (mc2::renderSubmissions().active())
+				mc2::VkSceneRenderer::renderLists(mc2::renderSubmissions());
 			EditorRenderTimer_Mark("props");
 
 			if (land)

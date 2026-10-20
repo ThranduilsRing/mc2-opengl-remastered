@@ -29,7 +29,7 @@ class TG_TypeMultiShape;
 //
 // MVP scope (geometry-only): no animation, no LOD swap, no shadow mesh,
 // no shared-gesture aliasing. Texture handles initialised to sentinel values
-// (0xffffffff) and resolved later by the engine's MC_TextureManager — the
+// (0xffffffff) and resolved later by the engine's legacy texture manager — the
 // importer must NOT cache live gosTextureHandle values (memory:
 // mc2_texture_handle_is_live.md).
 // autoGround: when true (default), apply MC2_GLTF_GROUND base-snapping (for trees /

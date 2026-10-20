@@ -14,7 +14,7 @@
 #include "../../RenderCore/frame_executor.h"          // PER-PASS-APPLY-COUNTERS-1: ApplyPassId/applyPassName (GL-free)
 #include "../../code/unitprofile.h" // UNIT-PROFILE-SEAM-1 witness bridge (POD only)
 
-// Texture name lookup for mech node indices (mcTextureManager slot → name string).
+// Texture name lookup for mech node indices (mc2::textures::ready() slot → name string).
 // Defined in gos_mech_batcher.cpp; not declared in any header.
 extern "C" const char* gos_getMechTextureNameByNodeIdx(uint32_t nodeIdx);
 // FRAME-GRAPH-AMBIENT-RUNTIME-1: ambient-probe mismatch count (mclib/render_contract.cpp).

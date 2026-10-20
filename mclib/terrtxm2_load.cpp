@@ -484,7 +484,7 @@ long TerrainColorMap::init (char *fileName)
 	}
 
 	//At this point, the color Map DATA should be freeable!!
-	// All of the textures have been passed to the mcTextureManager!
+	// All of the textures have been passed to the mc2::textures::ready()!
 	{
 		ZoneScopedN("TerrainColorMap::init colorMap cleanup");
 		releaseColorMapScratch();

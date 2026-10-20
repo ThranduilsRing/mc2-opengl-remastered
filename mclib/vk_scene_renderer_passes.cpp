@@ -1,9 +1,20 @@
-// MC_TextureManager::renderLists phases 8-11 (dynamic shadow pass, solid terrain, GPU static props
+#include "vk_scene_renderer.h"
+// mc2::VkSceneRenderer::renderLists phases 8-11 (dynamic shadow pass, solid terrain, GPU static props
 // and mechs, terrain overlay / decal batches).
 
-#include "txmmgr_render_internal.h"
+#include "vk_scene_renderer_internal.h"
 #include "mc2fmt.h"
-void MC_TextureManager::renderListsDynamicShadowPass (void)
+
+extern bool g_useGpuObjects;
+extern bool g_useGpuMechs;
+extern bool     g_loadRaceTrace;
+extern long     g_loadRaceTerrainFirstResidentFrame;
+extern bool     g_loadRaceTerrainResidentNow;
+extern uint32_t g_mc2FrameCounter;
+extern long     g_loadRaceAtlasFirstFrame;
+extern long     g_loadRaceArmFirstFrame;
+extern bool g_useGpuStaticProps;
+void mc2::VkSceneRenderer::renderListsDynamicShadowPass (RenderSubmissions& submissions)
 {
 	// GPU-driven dynamic sun shadow (Phase 1): frustum-fit + flushShadow.
 	// Runs BEFORE gpu_cull::compute_dispatch so the static-prop shadow uses the
@@ -12,8 +23,8 @@ void MC_TextureManager::renderListsDynamicShadowPass (void)
 	// off-screen-caster low-sun shadow is the documented Phase-2 gap).
 	{
 		ZoneScopedN("RenderLists.DynamicShadowPass");
-		extern bool g_useGpuObjects;
-		extern bool g_useGpuMechs;
+
+
 		// ISSUE-34: modern-shadow-path predicate (was tess-keyed) — dynamic
 		// shadow pass stays on when tessellation is off.
 		if (gos_IsModernShadowPathActive() && (g_useGpuObjects || g_useGpuMechs)) {
@@ -286,7 +297,7 @@ void MC_TextureManager::renderListsDynamicShadowPass (void)
 	g_numShadowShapes.store(0, std::memory_order_relaxed);
 }
 
-void MC_TextureManager::renderListsTerrainSolid (void)
+void mc2::VkSceneRenderer::renderListsTerrainSolid (RenderSubmissions& submissions)
 {
 	// No special depth state for DRAWSOLID terrain
 
@@ -298,7 +309,7 @@ void MC_TextureManager::renderListsTerrainSolid (void)
 		// first frame on which terrain is fully GPU-resident. Two independent
 		// readiness sources, selected by which renderer is actually active
 		// (mc2TerrainLodChunkEnabled(), cached static bool -- cheap read, no walk):
-		//   - Default chunk/GPU-indirect path: masterVertexNodes[] is NEVER
+		//   - Default chunk/GPU-indirect path: submissions.masterVertexNodes[] is NEVER
 		//     populated with terrain nodes here (the legacy per-quad walk below
 		//     is suppressed on this path), so the old terrTotal>0 walk always
 		//     false-negatived (terrain_resident=N on every run, even healthy
@@ -307,16 +318,16 @@ void MC_TextureManager::renderListsTerrainSolid (void)
 		//     "[LOADRACE] gpu terrain first-arm" one-shot lines -- two long
 		//     compares, no new walk.
 		//   - Legacy per-quad path (MC2_TERRAIN_LOD_CHUNK=0): unchanged
-		//     masterVertexNodes walk (non-mutating isTextureNodeResident, so it
+		//     submissions.masterVertexNodes walk (non-mutating isTextureNodeResident, so it
 		//     never forces an upload).
 		// Also refreshes g_loadRaceTerrainResidentNow each frame for the verdict.
 		{
-			extern bool     g_loadRaceTrace;
-			extern long     g_loadRaceTerrainFirstResidentFrame;
-			extern bool     g_loadRaceTerrainResidentNow;
-			extern uint32_t g_mc2FrameCounter;
-			extern long     g_loadRaceAtlasFirstFrame;   // gos_terrain_indirect.cpp latch
-			extern long     g_loadRaceArmFirstFrame;     // gos_terrain_indirect.cpp latch
+
+
+
+
+
+
 			if (g_loadRaceTrace)
 			{
 				bool fully;
@@ -330,14 +341,14 @@ void MC_TextureManager::renderListsTerrainSolid (void)
 				else
 				{
 					long terrResident = 0;
-					for (long ti = 0; ti < nextAvailableVertexNode; ++ti)
+					for (long ti = 0; ti < submissions.nextAvailableVertexNode; ++ti)
 					{
-						const DWORD tf = masterVertexNodes[ti].flags;
+						const DWORD tf = submissions.masterVertexNodes[ti].flags;
 						if ((tf & MC2_DRAWSOLID) && (tf & MC2_ISTERRAIN) &&
-							masterVertexNodes[ti].vertices)
+							submissions.masterVertexNodes[ti].vertices)
 						{
 							++terrTotal;
-							if (mc2::textures::isDecoded(masterVertexNodes[ti].textureIndex))
+							if (mc2::textures::isDecoded(submissions.masterVertexNodes[ti].textureIndex))
 								++terrResident;
 						}
 					}
@@ -416,10 +427,10 @@ void MC_TextureManager::renderListsTerrainSolid (void)
 
 
 		bool bSkip_DRAWSOLID = false;
-		for (long i=0;i<nextAvailableVertexNode && !bSkip_DRAWSOLID;i++)
+		for (long i=0;i<submissions.nextAvailableVertexNode && !bSkip_DRAWSOLID;i++)
 		{
-				if ((masterVertexNodes[i].flags & MC2_DRAWSOLID) &&
-					(masterVertexNodes[i].vertices))
+				if ((submissions.masterVertexNodes[i].flags & MC2_DRAWSOLID) &&
+					(submissions.masterVertexNodes[i].vertices))
 				{
 					// LEGACY-MLR-DELETE-1: legacy masterVertexNode terrain draw retired. Terrain solid is
 					// owned by LOD-chunk (gamecam.cpp) / indirect bridge / patch-stream. A terrain node
@@ -427,10 +438,10 @@ void MC_TextureManager::renderListsTerrainSolid (void)
 					// node arrives with modernHandled==false, no modern path drew terrain this frame — a real
 					// regression (terrain would be invisible). Fire the LegacyMLR telemetry counter as a loud
 					// tripwire so it surfaces in terrain_path.legacy_mlr instead of silently vanishing.
-					if (masterVertexNodes[i].flags & MC2_ISTERRAIN) {
+					if (submissions.masterVertexNodes[i].flags & MC2_ISTERRAIN) {
 						if (!modernHandled)
 							RenderCore::framegraph::noteTerrainPath(RenderCore::framegraph::TerrainPath::LegacyMLR);
-						masterVertexNodes[i].currentVertex = masterVertexNodes[i].vertices;
+						submissions.masterVertexNodes[i].currentVertex = submissions.masterVertexNodes[i].vertices;
 						continue;
 					}
 
@@ -438,13 +449,13 @@ void MC_TextureManager::renderListsTerrainSolid (void)
 					gos_SetRenderState( gos_State_Terrain, 0 );
 
 #ifdef MC2_VULKAN_ISLAND
-                    vkLegacySubmitNode(i, MC2_LEGACY_PASS_SOLID, 0);
+                    vkLegacySubmitNode(submissions, i, MC2_LEGACY_PASS_SOLID, 0);
 #endif
-					masterVertexNodes[i].currentVertex = masterVertexNodes[i].vertices;
+					submissions.masterVertexNodes[i].currentVertex = submissions.masterVertexNodes[i].vertices;
 				}
 			}
 #ifdef MC2_VULKAN_ISLAND
-		vkLegacyRun();   // VK-PARITY-F1: queued legacy SOLID nodes -> shared GBuffer
+		vkLegacyRun(submissions);   // VK-PARITY-F1: queued legacy SOLID nodes -> shared GBuffer
 #endif
 		// Emit one [BUCKET_CENSUS v1] line per frame (env-gated). Runs
 		// after flush() has populated the modern-side stats and after
@@ -455,7 +466,7 @@ void MC_TextureManager::renderListsTerrainSolid (void)
 	}   // end Render.TerrainSolid zone
 }
 
-void MC_TextureManager::renderListsGpuStaticProps (void)
+void mc2::VkSceneRenderer::renderListsGpuStaticProps (RenderSubmissions& submissions)
 {
 	// Task 10 flush() — moved here from after Render.3DObjects because
 	// terrain renders AFTER 3D objects in this codebase; placing our
@@ -464,8 +475,8 @@ void MC_TextureManager::renderListsGpuStaticProps (void)
 	// on top of terrain, below decals/roads.
 	{
 		ZoneScopedN("Render.GpuStaticProps");
-		extern bool g_useGpuStaticProps;
-		extern bool g_useGpuObjects;
+
+
 		if (g_useGpuStaticProps || g_useGpuObjects) {
 			// [RENDERLISTS_COST v1] prep+cull-dispatch only; the two flush units
 			// below carry their own spans (no double-count vs total).
@@ -525,8 +536,8 @@ void MC_TextureManager::renderListsGpuStaticProps (void)
 		// flush eligibility lives in the extern flags read in Render.GpuStaticProps;
 		// re-read here (same flags) so the flush still respects the GPU-path gate.
 		auto runSpFlushUnit = []() {
-			extern bool g_useGpuStaticProps;
-			extern bool g_useGpuObjects;
+
+
 			if (g_useGpuStaticProps || g_useGpuObjects) {
 				ZoneScopedN("GpuSP.BatcherFlush");
 				GpuStaticPropBatcher::instance().flush(getLastRenderSnapshot());
@@ -534,7 +545,7 @@ void MC_TextureManager::renderListsGpuStaticProps (void)
 		};
 
 		// Unit B: GPU mech batcher Slice A flush — runs adjacent to the static-prop
-		// flush, inside renderLists() so terrain has already been emitted by the
+		// flush, inside renderLists(submissions) so terrain has already been emitted by the
 		// patch stream and the depth state is set up. Independent of
 		// g_useGpuStaticProps; gated on its own MC2_GPU_MECHS env var inside the
 		// flush itself. Pass_Mechs is a disjoint GL_TIME_ELAPSED scope.
@@ -582,7 +593,7 @@ void MC_TextureManager::renderListsGpuStaticProps (void)
 	}
 }
 
-void MC_TextureManager::renderListsOverlayBatches (void)
+void mc2::VkSceneRenderer::renderListsOverlayBatches (RenderSubmissions& submissions)
 {
 	// DRAWSOLID done
 

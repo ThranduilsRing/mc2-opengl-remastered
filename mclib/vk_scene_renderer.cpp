@@ -1,7 +1,9 @@
-// MC_TextureManager::renderLists orchestrator, the RENDERLISTS cost spans and the shadow-shape list.
-// The phases it runs live in txmmgr_render_{phases,passes,overlays}.cpp; shared names in txmmgr_render_internal.h.
-#include "txmmgr_render_internal.h"
+#include "vk_scene_renderer.h"
+// mc2::VkSceneRenderer::renderLists orchestrator, the RENDERLISTS cost spans and the shadow-shape list.
+// The phases it runs live in txmmgr_render_{phases,passes,overlays}.cpp; shared names in vk_scene_renderer_internal.h.
+#include "vk_scene_renderer_internal.h"
 #include "mc2fmt.h"
+#include "effect_resources.h"
 
 // --- Shadow shape collection (file-scope global, no struct layout impact) ---
 struct ShadowShapeEntry {
@@ -60,27 +62,27 @@ void clearShadowShapes() {
 // Draws all textures with isTerrain set that are solid first,
 // then draws all alpha with isTerrain set.
 #ifdef MC2_VULKAN_ISLAND
-void MC_TextureManager::vkLegacySubmitNode (long i, uint32_t pass, uint32_t alphaTest)
+void mc2::VkSceneRenderer::vkLegacySubmitNode (RenderSubmissions& submissions, long i, uint32_t pass, uint32_t alphaTest)
 {
-		DWORD totalVertices = masterVertexNodes[i].numVertices;
-		if (masterVertexNodes[i].currentVertex != (masterVertexNodes[i].vertices + masterVertexNodes[i].numVertices))
-			totalVertices = static_cast<DWORD>((masterVertexNodes[i].currentVertex - masterVertexNodes[i].vertices));
+		DWORD totalVertices = submissions.masterVertexNodes[i].numVertices;
+		if (submissions.masterVertexNodes[i].currentVertex != (submissions.masterVertexNodes[i].vertices + submissions.masterVertexNodes[i].numVertices))
+			totalVertices = static_cast<DWORD>((submissions.masterVertexNodes[i].currentVertex - submissions.masterVertexNodes[i].vertices));
 		if (totalVertices)
 		{
 			Mc2LegacyMlrDraw d{};
-			d.vertices = masterVertexNodes[i].vertices;
+			d.vertices = submissions.masterVertexNodes[i].vertices;
 			d.vertexCount = totalVertices;
-			d.texNode = static_cast<uint32_t>(masterVertexNodes[i].textureIndex);
-			const DWORD gosTex = tex_resolve(masterVertexNodes[i].textureIndex);
+			d.texNode = static_cast<uint32_t>(submissions.masterVertexNodes[i].textureIndex);
+			const DWORD gosTex = tex_resolve(submissions.masterVertexNodes[i].textureIndex);
 			d.gosTexHandle = (gosTex == 0xffffffffu) ? 0u : static_cast<uint32_t>(gosTex);
 			d.pass = pass;
 			d.alphaTest = alphaTest;
 			mc2_vk_legacy_shape_submit(&d);
 		}
-		masterVertexNodes[i].currentVertex = masterVertexNodes[i].vertices;
+		submissions.masterVertexNodes[i].currentVertex = submissions.masterVertexNodes[i].vertices;
 }
 
-void MC_TextureManager::vkLegacyRun (void)
+void mc2::VkSceneRenderer::vkLegacyRun (RenderSubmissions& submissions)
 {
 		// fog_color_ is what gosRenderer would have latched from gos_State_Fog (set in the
 		// renderLists preamble: eye->fogColor when fog is on, else 0). The additive loops
@@ -93,7 +95,7 @@ void MC_TextureManager::vkLegacyRun (void)
 }
 #endif
 
-void MC_TextureManager::renderLists (void)
+void mc2::VkSceneRenderer::renderLists (RenderSubmissions& submissions)
 {
 	ZoneScopedN("textureManagerRenderLists");
 
@@ -102,15 +104,47 @@ void MC_TextureManager::renderLists (void)
 	// and AFTER every legacy addVertices for the frame (all of which happen in
 	// the object render pass, before renderLists). See mclib/cone_glow.cpp.
 	mc2_cone_glow::FlushFrame();
-	renderListsPreamble();
-	renderListsSceneDataUpload();
-	renderListsObjects3D();
-	renderListsPostObjectsStateRestore();
-	renderListsStaticShadowBuild();
-	renderListsStaticPropRegistryFlush();
-	renderListsDynamicShadowPass();
-	renderListsTerrainSolid();
-	renderListsGpuStaticProps();
-	renderListsOverlayBatches();
-	renderListsOverlaysOld();
+	renderListsPreamble(submissions);
+	renderListsSceneDataUpload(submissions);
+	renderListsObjects3D(submissions);
+	renderListsPostObjectsStateRestore(submissions);
+	renderListsStaticShadowBuild(submissions);
+	renderListsStaticPropRegistryFlush(submissions);
+	renderListsDynamicShadowPass(submissions);
+	renderListsTerrainSolid(submissions);
+	renderListsGpuStaticProps(submissions);
+	renderListsOverlayBatches(submissions);
+	renderListsOverlaysOld(submissions);
+}
+
+void mc2::VkSceneRenderer::beginFrame()
+{
+    renderSubmissions().clearArrays();
+    vkLights::resetLightData();
+}
+
+bool mc2::VkSceneRenderer::active() { return renderSubmissions().active(); }
+void mc2::VkSceneRenderer::start()
+{
+    mc2::textures::startSources();
+    renderSubmissions().start();
+    vkLights::start();
+    initTexResolveTable();
+}
+void mc2::VkSceneRenderer::shutdown()
+{
+    mc2::textures::flushSources(true);
+    renderSubmissions().clearTextureBins();
+    mc2::effects::shutdown();
+    renderSubmissions().destroy();
+    vkLights::shutdown();
+}
+void mc2::VkSceneRenderer::reset()
+{
+    renderSubmissions().clearTextureBins();
+    invalidateTexResolveTable();
+#ifdef MC2_VULKAN_ISLAND
+    mc2_vk_legacy_shape_island_reset();
+    mc2_vk_overlay_reset();
+#endif
 }

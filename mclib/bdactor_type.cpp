@@ -267,7 +267,7 @@ void BldgAppearanceType::init (const char * fileName)
 			// with the wrong texture (orange-rectangle ghost) or get culled
 			// from the multidraw, leaving destroyed buildings invisible.
 			// Mirror the per-instance loop (bdactor.cpp) at the
-			// type-level: load textures into mcTextureManager, set the
+			// type-level: load textures into mc2::textures::ready(), set the
 			// handles + alpha bits on the shared TG_TypeMultiShape so
 			// every per-instance clone via CreateFrom inherits them.
 			for (long i = 0; i < bldgDmgShape->GetNumTextures(); i++)

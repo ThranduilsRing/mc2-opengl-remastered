@@ -1,3 +1,5 @@
+#include "vk_scene_renderer.h"
+#include "render_submissions.h"
 #include "Gates/preferences_legacy.h"
 /***************************************************************
 * FILENAME: Editor.cpp
@@ -671,22 +673,22 @@ void InitializeGameEngine()
 		trianglePool->init(20000);
 
 	
-	mcTextureManager = new MC_TextureManager;
+
 
 	if (getGosRenderer())
 	{
-		mcTextureManager->start();
+		mc2::VkSceneRenderer::start();
 	}
 	else
 	{
 	}
 
-	mcTextureManager->startVertices(500000);
+	mc2::renderSubmissions().startVertices(500000);
 
 	// clearArrays() resets both the vertex and render-shape managers.
 	// The game initializes rsManager through startShapes(); the editor must do the same
 	// before the restored DoGameLogic/update path can safely run.
-	mcTextureManager->startShapes(10000);
+	mc2::renderSubmissions().startShapes(10000);
 
 	godMode = true;
 	MOVE_init(30);
@@ -780,15 +782,8 @@ void TerminateGameEngine()
 
 	MOVE_cleanup();
 
-	if (mcTextureManager)
-	{
-		mcTextureManager->freeShapes();
-		mcTextureManager->freeVertices();
-
-		mcTextureManager->destroy();
-		delete mcTextureManager;
-		mcTextureManager = nullptr;
-	}
+    if (mc2::VkSceneRenderer::active())
+        mc2::VkSceneRenderer::shutdown();
 
 	if (colorPool || vertexPool || facePool || shadowPool || trianglePool)
 	{

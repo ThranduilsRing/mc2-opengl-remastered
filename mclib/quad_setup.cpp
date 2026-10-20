@@ -217,7 +217,7 @@ static void addTerrainTriangles(const TerrainRecipe& r)
 			// indirect draw is armed — the indirect path owns SOLID this frame.
 			if (BeginLegacySolidCluster()) {
 				CostSplitSolidScope _csSolid;
-				mcTextureManager->addTriangleBulk(r.terrainHandle, MC2_ISTERRAIN | MC2_DRAWSOLID, 2);
+				mc2::renderSubmissions().addTriangleBulk(r.terrainHandle, MC2_ISTERRAIN | MC2_DRAWSOLID, 2);
 				EndLegacySolidCluster();
 			}
 		}
@@ -227,7 +227,7 @@ static void addTerrainTriangles(const TerrainRecipe& r)
 		if (r.terrainHandle != 0) {
 			if (BeginLegacySolidCluster()) {
 				CostSplitSolidScope _csSolid;
-				mcTextureManager->addTriangleBulk(r.terrainHandle, MC2_ISTERRAIN | MC2_DRAWSOLID, 2);
+				mc2::renderSubmissions().addTriangleBulk(r.terrainHandle, MC2_ISTERRAIN | MC2_DRAWSOLID, 2);
 				EndLegacySolidCluster();
 			}
 		}
@@ -237,7 +237,7 @@ static void addTerrainTriangles(const TerrainRecipe& r)
 		if (r.terrainHandle != 0) {
 			if (BeginLegacySolidCluster()) {
 				CostSplitSolidScope _csSolid;
-				mcTextureManager->addTriangleBulk(r.terrainHandle, MC2_ISTERRAIN | MC2_DRAWSOLID, 2);
+				mc2::renderSubmissions().addTriangleBulk(r.terrainHandle, MC2_ISTERRAIN | MC2_DRAWSOLID, 2);
 				EndLegacySolidCluster();
 			}
 		}
@@ -335,8 +335,8 @@ void TerrainQuad::setupTextures (void)
 					// MC2_MODERN_TERRAIN_PATCHES=0 only.
 					if (BeginLegacySolidCluster()) {
 					CostSplitSolidScope _csSolid;
-					mcTextureManager->addTriangle(terrainHandle,MC2_ISTERRAIN | MC2_DRAWSOLID);
-					mcTextureManager->addTriangle(terrainHandle,MC2_ISTERRAIN | MC2_DRAWSOLID);
+					mc2::renderSubmissions().addTriangle(terrainHandle,MC2_ISTERRAIN | MC2_DRAWSOLID);
+					mc2::renderSubmissions().addTriangle(terrainHandle,MC2_ISTERRAIN | MC2_DRAWSOLID);
 					EndLegacySolidCluster();
 					}
 					pz_emit_terrain_tris(vertices, uvMode, "terrain_quad_cluster_a", __FILE__, __LINE__);
@@ -367,8 +367,8 @@ void TerrainQuad::setupTextures (void)
 							{
 								tex_resolve(mineTextureHandle);
 								{ CostSplitDetailOverlayScope _csDetail;
-								mcTextureManager->addTriangle(mineTextureHandle, MC2_DRAWALPHA);
-								mcTextureManager->addTriangle(mineTextureHandle, MC2_DRAWALPHA);
+								mc2::renderSubmissions().addTriangle(mineTextureHandle, MC2_DRAWALPHA);
+								mc2::renderSubmissions().addTriangle(mineTextureHandle, MC2_DRAWALPHA);
 								}
 								mineResult.setMine(cellPos,localResult);
 							}
@@ -376,8 +376,8 @@ void TerrainQuad::setupTextures (void)
 							{
 								tex_resolve(blownTextureHandle);
 								{ CostSplitDetailOverlayScope _csDetail;
-								mcTextureManager->addTriangle(blownTextureHandle, MC2_DRAWALPHA);
-								mcTextureManager->addTriangle(blownTextureHandle, MC2_DRAWALPHA);
+								mc2::renderSubmissions().addTriangle(blownTextureHandle, MC2_DRAWALPHA);
+								mc2::renderSubmissions().addTriangle(blownTextureHandle, MC2_DRAWALPHA);
 								}
 								mineResult.setMine(cellPos,localResult);
 							}
@@ -414,8 +414,8 @@ void TerrainQuad::setupTextures (void)
 					// MC2_MODERN_TERRAIN_PATCHES=0 only.
 					if (BeginLegacySolidCluster()) {
 					CostSplitSolidScope _csSolid;
-					mcTextureManager->addTriangle(terrainHandle,MC2_ISTERRAIN | MC2_DRAWSOLID);
-					mcTextureManager->addTriangle(terrainHandle,MC2_ISTERRAIN | MC2_DRAWSOLID);
+					mc2::renderSubmissions().addTriangle(terrainHandle,MC2_ISTERRAIN | MC2_DRAWSOLID);
+					mc2::renderSubmissions().addTriangle(terrainHandle,MC2_ISTERRAIN | MC2_DRAWSOLID);
 					EndLegacySolidCluster();
 					}
 					pz_emit_terrain_tris(vertices, uvMode, "terrain_quad_cluster_c", __FILE__, __LINE__);
@@ -446,8 +446,8 @@ void TerrainQuad::setupTextures (void)
 							{
 								tex_resolve(mineTextureHandle);
 								{ CostSplitDetailOverlayScope _csDetail;
-								mcTextureManager->addTriangle(mineTextureHandle,MC2_DRAWALPHA);
-								mcTextureManager->addTriangle(mineTextureHandle,MC2_DRAWALPHA);
+								mc2::renderSubmissions().addTriangle(mineTextureHandle,MC2_DRAWALPHA);
+								mc2::renderSubmissions().addTriangle(mineTextureHandle,MC2_DRAWALPHA);
 								}
 								mineResult.setMine(cellPos,localResult);
 							}
@@ -455,8 +455,8 @@ void TerrainQuad::setupTextures (void)
 							{
 								tex_resolve(blownTextureHandle);
 								{ CostSplitDetailOverlayScope _csDetail;
-								mcTextureManager->addTriangle(blownTextureHandle,MC2_DRAWALPHA);
-								mcTextureManager->addTriangle(blownTextureHandle,MC2_DRAWALPHA);
+								mc2::renderSubmissions().addTriangle(blownTextureHandle,MC2_DRAWALPHA);
+								mc2::renderSubmissions().addTriangle(blownTextureHandle,MC2_DRAWALPHA);
 								}
 								mineResult.setMine(cellPos,localResult);
 							}
@@ -857,8 +857,8 @@ void TerrainQuad::setupTextures (void)
 					waterDetailHandle = Terrain::terrainTextures2->getWaterDetailHandle(sprayFrame);
 				}
 
-				mcTextureManager->addTriangleBulk(waterHandle, MC2_ISTERRAIN | MC2_DRAWALPHA | MC2_ISWATER, 2);
-				mcTextureManager->addTriangleBulk(waterDetailHandle, MC2_ISTERRAIN | MC2_DRAWALPHA | MC2_ISWATERDETAIL, 2);
+				mc2::renderSubmissions().addTriangleBulk(waterHandle, MC2_ISTERRAIN | MC2_DRAWALPHA | MC2_ISWATER, 2);
+				mc2::renderSubmissions().addTriangleBulk(waterDetailHandle, MC2_ISTERRAIN | MC2_DRAWALPHA | MC2_ISWATERDETAIL, 2);
 			}
 		}
 		else

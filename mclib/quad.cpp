@@ -74,7 +74,7 @@ void enqueueTerrainMineState(TerrainQuad& quad)
 				{
 					tex_resolve(TerrainQuad::mineTextureHandle);
 					{ CostSplitDetailOverlayScope _csDetail;
-					mcTextureManager->addTriangleBulk(TerrainQuad::mineTextureHandle, MC2_DRAWALPHA, 2);
+					mc2::renderSubmissions().addTriangleBulk(TerrainQuad::mineTextureHandle, MC2_DRAWALPHA, 2);
 					}
 					quad.mineResult.setMine(cellPos,localResult);
 				}
@@ -82,7 +82,7 @@ void enqueueTerrainMineState(TerrainQuad& quad)
 				{
 					tex_resolve(TerrainQuad::blownTextureHandle);
 					{ CostSplitDetailOverlayScope _csDetail;
-					mcTextureManager->addTriangleBulk(TerrainQuad::blownTextureHandle, MC2_DRAWALPHA, 2);
+					mc2::renderSubmissions().addTriangleBulk(TerrainQuad::blownTextureHandle, MC2_DRAWALPHA, 2);
 					}
 					quad.mineResult.setMine(cellPos,localResult);
 				}

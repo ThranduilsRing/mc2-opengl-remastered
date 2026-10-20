@@ -38,7 +38,7 @@ CMake targets: `mc2` (the game), `mc2_launcher`, libs `mclib`, `gui`, `rendercor
 3. Render entry: `gos_RendererBeginFrame()` -> `UpdateRenderers()` (`code/mechcmd2.cpp`) -> mission render ->
    `GameCamera::render` (`code/gamecam.cpp`) -> `gos_RendererEndFrame()` (`gameos_graphics.cpp`). Optional seam:
    `RenderFrameDriver_RenderWorld` (`render_frame_driver.cpp`, gate `MC2_RENDER_FRAME_DRIVER`).
-4. Key rule: `XXX::render()` only ENQUEUES. All GL fires in `MC_TextureManager::renderLists()` (`mclib/txmmgr.cpp`).
+4. Key rule: `XXX::render()` only ENQUEUES. All GL fires in `mc2::VkSceneRenderer::renderLists()` (`mclib/vk_scene_renderer_phases.cpp`).
 5. `GameCamera::render` order: HDRI sky -> shadow pre-passes (CSM + dynamic) -> `renderLists()` -> water fast path
    (`renderWaterFastPath`) -> GPU particles (gosFX) -> postprocess -> HUD batch -> ImGui.
 6. Inside `renderLists()`: terrain indirect, static props, mechs, then legacy `ShapeRenderer` for vehicles/generics.
@@ -51,7 +51,7 @@ CMake targets: `mc2` (the game), `mc2_launcher`, libs `mclib`, `gui`, `rendercor
 | Sky | `GameAdapters/SkyRenderAdapter.cpp`, `gos_hdri.cpp` | `vulkan_sky_island.cpp` (`mc2_vk_sky_island_run`) |
 | Terrain | `gos_terrain_lod_chunk.cpp`, `gos_terrain_indirect.cpp`, `mclib/terrain.cpp` | `vulkan_terrain_island.cpp` (`mc2_vk_terrain_island_run`, called from `gos_terrain_lod_chunk.cpp`) |
 | Water | `gos_terrain_water_stream.cpp`, `Terrain::renderWaterFastPath` | `vulkan_water_island.cpp` (hooked in `gameos_graphics.cpp`) |
-| Shadows | CSM pre-pass in `mclib/txmmgr.cpp` | `vulkan_shadow_island_live.cpp` (live VK shadow island) |
+| Shadows | CSM pre-pass in `mclib/vk_scene_renderer_phases.cpp` | `vulkan_shadow_island_live.cpp` (live VK shadow island) |
 | Props/buildings/trees | `gos_static_prop_batcher.cpp`, `gos_static_prop_registry.cpp`, `gos_vegetation.cpp` | `vulkan_color_prop_island.cpp` (static buckets only) |
 | Mechs | `gos_mech_batcher.cpp`, `GameAdapters/MechRenderAdapter.cpp` | `vulkan_mech_island.cpp` |
 | Vehicles/legacy | `ShapeRenderer` in `renderLists()` | `vulkan_legacy_shape_island.cpp` |
@@ -72,7 +72,7 @@ Islands share color/depth/GBuffer via `vulkan_shared_scene_color.cpp`, `vulkan_s
 | Props / buildings | `gos_static_prop_batcher.cpp`, `gos_static_prop_registry.cpp`, `GameAdapters/StaticPropRenderAdapter.cpp`, `code/bldng.cpp` |
 | Trees / foliage | `gos_vegetation.cpp`, `GameAdapters/VegetationAdapter.cpp` |
 | Mechs | `gos_mech_batcher.cpp`, `GameAdapters/MechRenderAdapter.cpp`, `code/mech.cpp`; memory `INDEX-MECH.md` |
-| Shadows | `mclib/txmmgr.cpp` (caster pass), `GameOS/gameos/vulkan_shadow_island_live.cpp` (the shadow maps), `shaders/vulkan/shadow_mech.vert`; memory `shadow_coordinate_spaces`, `csm_dynamic_shadow_architecture` |
+| Shadows | `mclib/vk_scene_renderer_phases.cpp` (caster pass), `GameOS/gameos/vulkan_shadow_island_live.cpp` (the shadow maps), `shaders/vulkan/shadow_mech.vert`; memory `shadow_coordinate_spaces`, `csm_dynamic_shadow_architecture` |
 | Fog / sky | `shaders/vulkan/edge_fog.frag`, `shaders/vulkan/fog_oob.frag`, `shaders/vulkan/hdri_sky.frag`, `gos_hdri.cpp`, `SkyRenderAdapter.cpp` |
 | Post-process | `gos_postprocess.cpp`, `RenderCore/postprocess_subgraph.h` |
 | HUD / UI | `gos_RendererFlushHUDBatch` in `gameos_graphics.cpp`; `code/missiongui.cpp`, `gui/`, `GuiRuntime/` |

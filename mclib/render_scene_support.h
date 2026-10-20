@@ -1,11 +1,9 @@
-// Shared surface of the txmmgr translation units (txmmgr*.cpp).
-// txmmgr.cpp keeps the manager lifecycle, addRenderShape and the node pin/update code; the rest of
-// MC_TextureManager is split by responsibility (see DOC in each piece).
-#ifndef TXMMGR_INTERNAL_H
-#define TXMMGR_INTERNAL_H
+// Shared preparation support for native scene passes, object lights and effects.
+#ifndef MC2_RENDER_SCENE_SUPPORT_H
+#define MC2_RENDER_SCENE_SUPPORT_H
 
-#ifndef TXMMGR_H
-#include"txmmgr.h"
+#ifndef MC2_RENDER_SUBMISSIONS_H
+#include"render_submissions.h"
 #include "gos_crashbundle.h"
 #include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
 #endif
@@ -83,8 +81,8 @@
 #include "dynamic_decal_ring.h"  // MC2_DYNAMIC_DECALS gather before gos_DrawDecals
 #include "Gates/gate.h"
 
-// Globals defined in txmmgr.cpp (or elsewhere in the engine) that the split pieces share.
-extern MC_TextureManager *mcTextureManager;
+// Borrowed engine scene state shared by the native preparation code.
+
 extern bool MLRVertexLimitReached;
 extern bool useFog;
 extern DWORD BaseVertexColor;
@@ -110,4 +108,4 @@ void mc2ClearObjectLightPolicy(void);
 void GatherLightsParameters(TG_HWLightsData* lights);
 void ProbeGatherLightsForList(TG_LightPtr* lights, unsigned long nLights, TG_HWLightsData* out);
 
-#endif // TXMMGR_INTERNAL_H
+#endif // MC2_RENDER_SCENE_SUPPORT_H

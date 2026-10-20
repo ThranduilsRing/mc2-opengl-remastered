@@ -32,14 +32,15 @@ set(SOURCES ${SOURCES}
     tgl_transform_light.cpp
     tgl_types.cpp
     timing.cpp
-    txmmgr.cpp
-    txmmgr_diag.cpp
-    txmmgr_lightrow.cpp
-    txmmgr_lights.cpp
-    txmmgr_render.cpp
-    txmmgr_render_phases.cpp
-    txmmgr_render_passes.cpp
-    txmmgr_render_overlays.cpp
+    render_submissions.cpp
+    effect_resources.cpp
+    render_submission_diag.cpp
+    vk_object_light_gather.cpp
+    vk_object_lights.cpp
+    vk_scene_renderer.cpp
+    vk_scene_renderer_phases.cpp
+    vk_scene_renderer_passes.cpp
+    vk_scene_renderer_overlays.cpp
     texture_sources.cpp
     texture_assets.cpp
     tex_resolve_table.cpp

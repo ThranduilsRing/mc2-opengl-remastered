@@ -1,3 +1,4 @@
+#include "vk_scene_renderer.h"
 // Mission: the per-frame Mission::update with its MC2_MISSION_SPLIT timing, mover bridge, soak hooks and coherence audit.
 // Declared in the class headers; shared names in mission_internal.h.
 #include "mission_internal.h"
@@ -10,7 +11,7 @@
 // Every site below was previously written `!missionInterface->isPaused()`. If
 // the freeze only widened the ObjectManager branch and left these alone, the
 // sim would be half-frozen, which is worse than either extreme:
-//   * mcTextureManager->update() -- its own comment says it must not run while
+//   * texture-source frame updates -- its own comment says it must not run while
 //     paused because it "uncaches things which only objectManager->update can
 //     cache back in", and under a freeze that call is exactly what is skipped.
 //     Half-freezing would uncache textures with nothing to restore them, i.e.
@@ -364,7 +365,7 @@ void Mission::updateFrameClock() {
 
 // Update the interface, camera, terrain, weather, waypoints and the path manager.
 void Mission::updateFrontEnd() {
-	{ ZoneScopedN("Mission.clearArrays"); MisScope _ms(MS_CLEARARRAYS); mcTextureManager->clearArrays(); }
+	{ ZoneScopedN("Mission.clearArrays"); MisScope _ms(MS_CLEARARRAYS); mc2::VkSceneRenderer::beginFrame(); }
 
 	if (missionInterface)
 		{ ZoneScopedN("GameLogic.Mission.Interface"); MisScope _ms(MS_INTERFACE); missionInterface->update(); }

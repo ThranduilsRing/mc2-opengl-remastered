@@ -174,7 +174,7 @@ bool MissionInterfaceManager::uiCmdFixture(UiCmdCtx& c)
         if (!shape || (copy && count<2) || slot>=unsigned(shape->GetNumTextures())) { result="blocked";note="material_copy <dstPartId> <srcPartId> [slot], material_state <partId>";return true; }
         if (copy) {
             auto* source=shapeOf(ObjectManager->findByPartId(sourceId));
-            if (!source || slot>=unsigned(source->GetNumTextures()) || !mcTextureManager) { result="blocked";note="source has no slot";return true; }
+            if (!source || slot>=unsigned(source->GetNumTextures()) || !mc2::textures::ready()) { result="blocked";note="source has no slot";return true; }
             const DWORD node=source->GetTextureHandle(slot),old=shape->GetTextureHandle(slot);
             if (node==0xffffffffu || node==old || !mc2::textures::sourceId(node)) { result="blocked";note="source slot must name different resident art";return true; }
             mc2::textures::retain(node); // adopts one manager/service reference for the destination

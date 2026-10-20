@@ -851,7 +851,7 @@ void Mech3DAppearance::resetPaintScheme (DWORD red, DWORD green, DWORD blue)
 		{
 			// The GPU mech batcher binds SLOT 0 per-actor from
 			// localTextureHandle (submitActor desc.slot0TexHandle, an
-			// mcTextureManager node index — same space as GetTextureHandle).
+			// mc2::textures::ready() node index — same space as GetTextureHandle).
 			localTextureHandle = ph;
 			if (mechShape->GetNumTextures() > 0)
 			{

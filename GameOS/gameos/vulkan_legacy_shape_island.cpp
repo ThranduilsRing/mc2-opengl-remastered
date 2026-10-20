@@ -1,3 +1,4 @@
+#include "../../RenderCore/TextureService.h"
 // vulkan_legacy_shape_island.cpp -- VK-PARITY-F1: VK owner of the legacy MLR
 // solid-object vertex loop (ground vehicles etc.). See the header for the why;
 // structure = vulkan_mech_island.cpp's shared-GBuffer co-write path (LOAD-preserve
@@ -5,7 +6,7 @@
 // parity-fenced submit) with a much simpler feed:
 //   * geometry: the node's CPU gos_VERTEX array (pre-transformed screen-space,
 //     CPU-lit) is memcpy'd each frame into a per-parity host-visible vertex buffer;
-//   * textures: copy-once import of the handle's decoded texels, keyed on the mcTextureManager node;
+//   * textures: copy-once import of the handle's decoded texels, keyed on the mc2::textures::ready() node;
 //   * no lights / no instancing: vertex colour is already CPU-lit.
 // The whole TU compiles to nothing unless MC2_VULKAN_ISLAND is defined.
 
@@ -119,7 +120,7 @@ struct Island : mc2vk::IslandState {
     mc2vk::OwnedDescriptorSetLayout dsl;
     mc2vk::OwnedDescriptorPool pool;
     TexEntry dummyTex;                                  // 1x1 white (untextured / failed import)
-    std::unordered_map<uint32_t, TexEntry> texs;        // keyed on mcTextureManager node
+    std::unordered_map<uint32_t, TexEntry> texs;        // keyed on mc2::textures::ready() node
     mc2vk::OwnedShaderModule vert, frag;
     mc2vk::OwnedPipelineLayout playout;
     mc2vk::OwnedPipeline pipes[MC2_LEGACY_PASS_COUNT];

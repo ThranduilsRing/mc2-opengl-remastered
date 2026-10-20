@@ -582,20 +582,3 @@ Split commit: `e880b7520`.
 | `tgl_types.cpp` | TG shapes: ASE number/name helpers and the TG_TypeNode / TG_TypeShape / TG_Shape lifecycle, binary copy and creation. |
 | `tgl_internal.h` | shared include bundle, extern globals and declarations of the pieces |
 
-## `mclib/txmmgr.cpp`
-
-Split commit: `16460b02e`.
-
-| Piece | What it holds |
-|---|---|
-| `txmmgr.cpp` | keeps the manager lifecycle, addRenderShape and the node pin/update code |
-| `txmmgr_diag.cpp` | MC_TextureManager: SPFLUSH cost accumulators and the TXMMGR_BOUNDS exhaustion counters. |
-| `txmmgr_lightrow.cpp` | MC_TextureManager: pure object light row, GatherLightsParameters and the light-clamp / light-row diagnostics. |
-| `txmmgr_lights.cpp` | MC_TextureManager: baked static light slots, light-data dedup and the LIGHTBAKE / LIGHTBRIDGE gates. |
-| `txmmgr_render.cpp` | MC_TextureManager::renderLists orchestrator, the RENDERLISTS cost spans and the shadow-shape list. |
-| `txmmgr_render_overlays.cpp` | MC_TextureManager::renderLists phase 12: the legacy overlay pass (water loops, no-underlayer, shadow blobs, non-terrain alpha, vfx / hud submit). |
-| `txmmgr_render_passes.cpp` | MC_TextureManager::renderLists phases 8-11 (dynamic shadow pass, solid terrain, GPU static props and mechs, terrain overlay / decal batches). |
-| `txmmgr_render_phases.cpp` | MC_TextureManager::renderLists phases 1-7 (state setup, light and scene-data upload, 3D objects, static-shadow build, static-prop registry flush); see txmmgr_render.cpp for the order they run in. |
-| `txmmgr_internal.h` | shared include bundle, extern globals and declarations of the pieces |
-| `txmmgr_render_internal.h` | shared include bundle, extern globals and declarations of the pieces |
-

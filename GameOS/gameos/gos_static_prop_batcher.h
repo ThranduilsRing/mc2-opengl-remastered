@@ -454,11 +454,11 @@ struct StaticPropMaterialInventoryEntry {
     uint32_t albedoTexLayer;      // texture-array layer (same as MaterialGpu::albedoTex for static-props)
     uint32_t alphaGroup;          // 0 = alpha-OFF group, 1 = alpha-ON group
     uint32_t flags;               // mirror of MaterialGpu::flags at build time
-    uint32_t nodeIdx;             // mcTextureManager nodeIdx for the source texture; 0xFFFFFFFF if absent
-    uint32_t textureWidth;        // pixels, from mcTextureManager metadata; 0 if unavailable
+    uint32_t nodeIdx;             // mc2::textures::ready() nodeIdx for the source texture; 0xFFFFFFFF if absent
+    uint32_t textureWidth;        // pixels, from mc2::textures::ready() metadata; 0 if unavailable
     uint32_t textureHeight;       // pixels; equals width for MC2 (square only)
     uint32_t usageCount;          // number of draw slots (PerDrawEntry rows) that reference this material
-    char     textureName[64];     // mcTextureManager nodeName; "(unnamed)" / "(absent)" sentinels otherwise
+    char     textureName[64];     // mc2::textures::ready() nodeName; "(unnamed)" / "(absent)" sentinels otherwise
     bool     placeholder;         // true when nodeIdx==0xFFFFFFFF OR name is null/empty OR dims are zero
     // V-MATERIAL-PBR-1: mirror of MaterialGpu PBR scalars for inspector display.
     // Static-prop default: metallic=0.0 (dielectric), roughness=1.0 (fully rough).

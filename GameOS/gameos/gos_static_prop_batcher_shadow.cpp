@@ -243,9 +243,9 @@ extern "C" int mc2_color_prop_island_get_light_feed(Mc2ColorPropLightFeed* out) 
     // with the audit-gated readback it existed for (clean audit banked).
     out->lightDataCpu = nullptr;
     out->lightDataCpuBytes = 0;
-    if (mcTextureManager) {
-        out->lightDataCpu      = mcTextureManager->getLightDataPtr();
-        out->lightDataCpuBytes = mcTextureManager->getLightDataBytes();
+    if (mc2::vkLights::active()) {
+        out->lightDataCpu      = mc2::vkLights::getLightDataPtr();
+        out->lightDataCpuBytes = mc2::vkLights::getLightDataBytes();
     }
     // s_currentShSet: the live per-mission SH-L2 set (RenderCore::IblShRegistry),
     // same table the GL static-prop VS uniform upload uses (u_iblSh[9]).

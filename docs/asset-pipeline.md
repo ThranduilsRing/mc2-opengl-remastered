@@ -90,13 +90,13 @@ Notes:
 | Vehicles | `GVAppearance` (`gvactor.cpp`) | `code/gvehicl.cpp GroundVehicle` |
 | Terrain | `gos_terrain_indirect.cpp` + `gameos_graphics.cpp` | `terrain.cpp`/`terrtxm2.cpp` + mission `.pak` |
 | VFX | `gos_particle_bridge` / `particle_billboard` / MLR | `code/weaponbolt.cpp` + `gosfx` specs |
-| Textures (all) | `mclib/txmmgr.cpp` + `RenderCore/KtxLoader` | (asset-specific appearance) |
+| Textures (all) | `mclib/texture_assets.cpp` + `RenderCore/KtxLoader` | (asset-specific appearance) |
 | Text | `gos_font.cpp` | UI code |
 | Audio | `gameos_sound.cpp` (SDL2) | `GameSoundSystem` |
 
 ## 4. Texture runtime path (disk → GPU)
 
-- `mclib/txmmgr.cpp:3426-3521` — if `MC2_TEXMGR_COMPRESSED_UPLOAD` and a same-stem
+- `mclib/texture_assets.cpp` — if `MC2_TEXMGR_COMPRESSED_UPLOAD` and a same-stem
   `.ktx2` sidecar exists: `RenderCore::ktxLoadRgba8` → validate BC7 (vkFormat 145/146)
   → `gos_NewCompressedTexture2D` (`GL_COMPRESSED_[SRGB_ALPHA|RGBA]_BPTC_UNORM`, mip 0)
   → else RGBA8 fallback.

@@ -1,3 +1,5 @@
+#include "vk_scene_renderer.h"
+#include "render_submissions.h"
 // Game main: the per-frame renderer update, engine termination and DoGameLogic.
 // Declared in the class headers; shared names in mechcmd2_internal.h.
 #include "mechcmd2_internal.h"
@@ -237,17 +239,8 @@ void __stdcall TerminateGameEngine()
 			soundSystem = nullptr;
 		}
 
-		if (mcTextureManager)
-		{
-            // sebi: destroy is called from destructor anyway, and
-            // by calling it here before destructor, we a are causing memory leak:
-            // lzBuffer1 & lzBuffer2 will not be freed because
-            // textureCacheHeap will be NULL
-			//mcTextureManager->destroy();
-
-			ownedTextureManager.reset();
-			mcTextureManager = nullptr;
-		}
+        if (mc2::VkSceneRenderer::active())
+            mc2::VkSceneRenderer::shutdown();
 
 		ownedFloatHelp.reset();
 		globalFloatHelp = nullptr;
@@ -539,7 +532,8 @@ void __stdcall DoGameLogic()
 					
 					//Gotta get rid of the mission textures before Heidi starts her stuff!
 					// No RAM otherwise in mc2_18.
-					mcTextureManager->flush(true);
+					mc2::textures::flushSources(false);
+                    mc2::VkSceneRenderer::reset();
 
 					if (MPlayer && aborted) {
 						MPlayer->closeSession();

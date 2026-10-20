@@ -18,8 +18,7 @@
 // commutative". So a non-contiguous fusion must be treated as a measured reorder, gated,
 // and parity-proven — never adopted as a subgraph growth.
 //
-// ★ PROOF-ONLY. SCHEMA + VALIDATION. ZERO runtime callers; NOT wired into the renderer;
-//   included only by the offline doctest suite (tests/unit/test_subgraph_contiguity.cpp).
+//   Contiguity is checked offline; the native fog draw selection below is also used by the renderer.
 //   Header-only, no GL includes, no Vulkan includes, no game-side includes — mirrors
 //   vulkan_layout_chain.h discipline exactly.
 //
@@ -42,6 +41,19 @@ enum class PostprocessSubPassId : uint8_t {
     OobFog,             // runFogOob        — out-of-bounds far-plane fog (executor island "FogOob")
     Composite,          // backbuffer bind + pillarbox composite output
 };
+
+struct FogPassSelection {
+    bool edge, oob;
+    template<class Draw> unsigned record(Draw draw) const {
+        unsigned count=0;
+        if (edge) { draw(PostprocessSubPassId::EdgeFog); ++count; }
+        if (oob) { draw(PostprocessSubPassId::OobFog); ++count; }
+        return count;
+    }
+};
+constexpr FogPassSelection selectFogPasses(bool terrain, bool edge, bool oob, float halfExtent) {
+    return {terrain && edge && halfExtent>0.0f, terrain && oob};
+}
 
 // Canonical execution order — the single source of truth for "canonical index".
 static constexpr PostprocessSubPassId kPostprocessSubPassOrder[] = {

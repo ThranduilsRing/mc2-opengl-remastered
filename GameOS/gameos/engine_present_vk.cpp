@@ -1,3 +1,4 @@
+#include "../../RenderCore/TextureService.h"
 // engine_present_vk.cpp
 //
 // VK-P13-SELECTOR-PLAN / T3 -- whole-frame GL->VK present intercept implementation.

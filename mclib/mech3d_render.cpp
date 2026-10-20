@@ -570,7 +570,7 @@ long Mech3DAppearance::render (long depthFixup)
 				// MECH-LIGHTROW-FRESHNESS-1 (default-ON; =0 reverts bit-for-bit)
 				// THE DEFECT. cachedGpuLightIndex_ names a DYNAMIC light-table
 				// slot, and dynamic slots are rebased EVERY FRAME:
-				// MC_TextureManager::resetLightData (mclib/txmmgr.cpp)
+				// legacy texture manager::resetLightData (mclib/txmmgr.cpp)
 				// resets lightDataStructuresCount to the static high-water and
 				// clears every dedup map, its own comment (txmmgr.cpp)
 				// stating that prior-frame hash->slot entries "are invalid". An
@@ -671,13 +671,13 @@ long Mech3DAppearance::render (long depthFixup)
 					// path (stale included -- a stale index is exactly the one
 					// most likely to be out of range after a rebase). Clamps
 					// rather than declines; see the block comment above.
-					if (mcTextureManager &&
-					    resolvedLI >= mcTextureManager->getLightStructCount()) {
+					if (mc2::textures::ready() &&
+					    resolvedLI >= mc2::vkLights::getLightStructCount()) {
 						++s_mechLightRowOutOfRange;
 						static bool s_loggedMechOob = false;
 						if (!s_loggedMechOob) {
 							s_loggedMechOob = true;
-							mc2::fmt::print_err("[LIGHTROW_FRESHNESS v1] event=mech_row_out_of_range mechType={:016X} index={:d} liveRowCount={:d} currentFrame={:d} (INVARIANT BREAK -- shader would read light[] out of bounds; CLAMPED to slot 0)\n", mc2::fmt::as_ptr(static_cast<void*>(mechType)), mc2::fmt::as_u32(resolvedLI), mc2::fmt::as_u32(mcTextureManager->getLightStructCount()), mc2::fmt::as_u32(static_cast<unsigned>(g_mc2FrameCounter)));
+							mc2::fmt::print_err("[LIGHTROW_FRESHNESS v1] event=mech_row_out_of_range mechType={:016X} index={:d} liveRowCount={:d} currentFrame={:d} (INVARIANT BREAK -- shader would read light[] out of bounds; CLAMPED to slot 0)\n", mc2::fmt::as_ptr(static_cast<void*>(mechType)), mc2::fmt::as_u32(resolvedLI), mc2::fmt::as_u32(mc2::vkLights::getLightStructCount()), mc2::fmt::as_u32(static_cast<unsigned>(g_mc2FrameCounter)));
 							fflush(stderr);
 						}
 						resolvedLI = 0u;

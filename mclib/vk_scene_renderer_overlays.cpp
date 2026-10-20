@@ -1,9 +1,10 @@
-// MC_TextureManager::renderLists phase 12: the legacy overlay pass (water loops, no-underlayer,
+#include "vk_scene_renderer.h"
+// mc2::VkSceneRenderer::renderLists phase 12: the legacy overlay pass (water loops, no-underlayer,
 // shadow blobs, non-terrain alpha, vfx / hud submit).
 
-#include "txmmgr_render_internal.h"
+#include "vk_scene_renderer_internal.h"
 
-void MC_TextureManager::renderListsOverlaysWaterLoops (void)
+void mc2::VkSceneRenderer::renderListsOverlaysWaterLoops (RenderSubmissions& submissions)
 {
     // sebi: split in 2 parts, first draw objects which have alpha test off, then with alpha test on
 	{
@@ -12,30 +13,30 @@ void MC_TextureManager::renderListsOverlaysWaterLoops (void)
     {
         gos_SetRenderState( gos_State_AlphaTest, states);
 
-        for (int i=0;i<nextAvailableVertexNode;i++)
+        for (int i=0;i<submissions.nextAvailableVertexNode;i++)
         {
-            if ((masterVertexNodes[i].flags & MC2_ISTERRAIN) &&
-                    (masterVertexNodes[i].flags & MC2_DRAWALPHA) &&
-                    (masterVertexNodes[i].flags & MC2_ALPHATEST)==states*MC2_ALPHATEST &&
-                    (masterVertexNodes[i].vertices))
+            if ((submissions.masterVertexNodes[i].flags & MC2_ISTERRAIN) &&
+                    (submissions.masterVertexNodes[i].flags & MC2_DRAWALPHA) &&
+                    (submissions.masterVertexNodes[i].flags & MC2_ALPHATEST)==states*MC2_ALPHATEST &&
+                    (submissions.masterVertexNodes[i].vertices))
             {
                 // The legacy non-water terrain alpha/detail layer sits on the original
                 // flat terrain plane and shows through displaced tess terrain as the
                 // dark striped under-pattern. Keep water passes, but drop this layer.
-                if (!(masterVertexNodes[i].flags & MC2_ISWATER) &&
-                    !(masterVertexNodes[i].flags & MC2_ISWATERDETAIL)) {
-                    masterVertexNodes[i].currentVertex = masterVertexNodes[i].vertices;
+                if (!(submissions.masterVertexNodes[i].flags & MC2_ISWATER) &&
+                    !(submissions.masterVertexNodes[i].flags & MC2_ISWATERDETAIL)) {
+                    submissions.masterVertexNodes[i].currentVertex = submissions.masterVertexNodes[i].vertices;
                     continue;
                 }
 
                 {
                     int waterMode = 0;
-                    if (masterVertexNodes[i].flags & MC2_ISWATER) waterMode = 1;
-                    else if (masterVertexNodes[i].flags & MC2_ISWATERDETAIL) waterMode = 2;
+                    if (submissions.masterVertexNodes[i].flags & MC2_ISWATER) waterMode = 1;
+                    else if (submissions.masterVertexNodes[i].flags & MC2_ISWATERDETAIL) waterMode = 2;
                     gos_SetRenderState(gos_State_Water, waterMode);
                 }
 
-                masterVertexNodes[i].currentVertex = masterVertexNodes[i].vertices;
+                submissions.masterVertexNodes[i].currentVertex = submissions.masterVertexNodes[i].vertices;
             }
         }
     }
@@ -44,7 +45,7 @@ void MC_TextureManager::renderListsOverlaysWaterLoops (void)
 	} // end RenderLists.TerrainAlphaWaterLoops
 }
 
-void MC_TextureManager::renderListsOverlaysNoUnderlayer (void)
+void mc2::VkSceneRenderer::renderListsOverlaysNoUnderlayer (RenderSubmissions& submissions)
 {
 	//<< sebi: added this section to draw objects which do not have terrain underlayer (those are added in quad.cpp, see (*) there )
 	{ ZoneScopedN("Render.NoUnderlayer");
@@ -54,21 +55,21 @@ void MC_TextureManager::renderListsOverlaysNoUnderlayer (void)
 		gos_SetRenderState(	gos_State_ZWrite, 1);
 	}
 
-	for (int i=0;i<nextAvailableVertexNode;i++)
+	for (int i=0;i<submissions.nextAvailableVertexNode;i++)
 	{
-		if ((masterVertexNodes[i].flags & MC2_ISTERRAIN) &&
-			!(masterVertexNodes[i].flags & MC2_DRAWALPHA) &&
-			(masterVertexNodes[i].flags & MC2_GPUOVERLAY) &&
-			(masterVertexNodes[i].vertices))
+		if ((submissions.masterVertexNodes[i].flags & MC2_ISTERRAIN) &&
+			!(submissions.masterVertexNodes[i].flags & MC2_DRAWALPHA) &&
+			(submissions.masterVertexNodes[i].flags & MC2_GPUOVERLAY) &&
+			(submissions.masterVertexNodes[i].vertices))
 		{
-			masterVertexNodes[i].currentVertex = masterVertexNodes[i].vertices;
+			submissions.masterVertexNodes[i].currentVertex = submissions.masterVertexNodes[i].vertices;
 		}
 	}
 	} // end ZoneScopedN("Render.NoUnderlayer")
 	//<< sebi: end of added block
 }
 
-void MC_TextureManager::renderListsOverlaysShadowBlobs (void)
+void mc2::VkSceneRenderer::renderListsOverlaysShadowBlobs (RenderSubmissions& submissions)
 {
 	// Cement overlays (MC2_ISCRATERS|MC2_ISTERRAIN) and decals (!MC2_ISTERRAIN|MC2_ISCRATERS)
 	// are now drawn by gos_DrawTerrainOverlays() and gos_DrawDecals() before Render.Overlays.
@@ -98,26 +99,26 @@ void MC_TextureManager::renderListsOverlaysShadowBlobs (void)
 	//NEVER draw shadows in Software.
 	if (Environment.Renderer != 3)
 	{
-		for (int i=0;i<nextAvailableVertexNode;i++)
+		for (int i=0;i<submissions.nextAvailableVertexNode;i++)
 		{
-			 if	((masterVertexNodes[i].flags & MC2_ISSHADOWS) &&
-				(masterVertexNodes[i].flags & MC2_DRAWALPHA) &&
-				(masterVertexNodes[i].vertices))
+			 if	((submissions.masterVertexNodes[i].flags & MC2_ISSHADOWS) &&
+				(submissions.masterVertexNodes[i].flags & MC2_DRAWALPHA) &&
+				(submissions.masterVertexNodes[i].vertices))
 			{
 #ifdef MC2_VULKAN_ISLAND
-				vkLegacySubmitNode(i, MC2_LEGACY_PASS_SHADOW, 0);
+				vkLegacySubmitNode(submissions, i, MC2_LEGACY_PASS_SHADOW, 0);
 #endif
-				masterVertexNodes[i].currentVertex = masterVertexNodes[i].vertices;
+				submissions.masterVertexNodes[i].currentVertex = submissions.masterVertexNodes[i].vertices;
 			}
 		}
 	}
 #ifdef MC2_VULKAN_ISLAND
-	vkLegacyRun();   // VK-PARITY-F1: queued legacy blob-shadow nodes -> shared GBuffer
+	vkLegacyRun(submissions);   // VK-PARITY-F1: queued legacy blob-shadow nodes -> shared GBuffer
 #endif
 	} // end RenderLists.ShadowBlobs
 }
 
-void MC_TextureManager::renderListsOverlaysNonTerrainAlpha (void)
+void mc2::VkSceneRenderer::renderListsOverlaysNonTerrainAlpha (RenderSubmissions& submissions)
 {
 	{
 	ZoneScopedN("RenderLists.NonTerrainAlphaLoops");
@@ -135,19 +136,19 @@ void MC_TextureManager::renderListsOverlaysNonTerrainAlpha (void)
     for(int states = 0; states < 2; ++states)
     {
         gos_SetRenderState( gos_State_AlphaTest, states);
-        for (int i=0;i<nextAvailableVertexNode;i++)
+        for (int i=0;i<submissions.nextAvailableVertexNode;i++)
         {
-            if (!(masterVertexNodes[i].flags & MC2_ISTERRAIN) &&
-                    !(masterVertexNodes[i].flags & MC2_ISSHADOWS) &&
-                    !(masterVertexNodes[i].flags & MC2_ISCOMPASS) &&
-                    (masterVertexNodes[i].flags & MC2_DRAWALPHA) &&
-                    (masterVertexNodes[i].flags & MC2_ALPHATEST)==states*MC2_ALPHATEST &&
-                    (masterVertexNodes[i].vertices))
+            if (!(submissions.masterVertexNodes[i].flags & MC2_ISTERRAIN) &&
+                    !(submissions.masterVertexNodes[i].flags & MC2_ISSHADOWS) &&
+                    !(submissions.masterVertexNodes[i].flags & MC2_ISCOMPASS) &&
+                    (submissions.masterVertexNodes[i].flags & MC2_DRAWALPHA) &&
+                    (submissions.masterVertexNodes[i].flags & MC2_ALPHATEST)==states*MC2_ALPHATEST &&
+                    (submissions.masterVertexNodes[i].vertices))
             {
 #ifdef MC2_VULKAN_ISLAND
-                vkLegacySubmitNode(i, MC2_LEGACY_PASS_ALPHA, static_cast<uint32_t>(states));
+                vkLegacySubmitNode(submissions, i, MC2_LEGACY_PASS_ALPHA, static_cast<uint32_t>(states));
 #endif
-                masterVertexNodes[i].currentVertex = masterVertexNodes[i].vertices;
+                submissions.masterVertexNodes[i].currentVertex = submissions.masterVertexNodes[i].vertices;
             }
         }
     }
@@ -162,7 +163,7 @@ void MC_TextureManager::renderListsOverlaysNonTerrainAlpha (void)
 	} // end RenderLists.NonTerrainAlphaLoops
 }
 
-void MC_TextureManager::renderListsOverlaysVfxHudSubmit (void)
+void mc2::VkSceneRenderer::renderListsOverlaysVfxHudSubmit (RenderSubmissions& submissions)
 {
 	{
 	ZoneScopedN("RenderLists.VfxHudSubmit");
@@ -189,15 +190,15 @@ void MC_TextureManager::renderListsOverlaysVfxHudSubmit (void)
 		gos_SetRenderState( gos_State_MonoEnable, 0);
 	}
 				
-	for (int i=0;i<nextAvailableVertexNode;i++)
+	for (int i=0;i<submissions.nextAvailableVertexNode;i++)
 	{
-		if ((masterVertexNodes[i].flags & MC2_ISEFFECTS) &&
-			(masterVertexNodes[i].vertices))
+		if ((submissions.masterVertexNodes[i].flags & MC2_ISEFFECTS) &&
+			(submissions.masterVertexNodes[i].vertices))
 		{
 #ifdef MC2_VULKAN_ISLAND
-			vkLegacySubmitNode(i, MC2_LEGACY_PASS_ADD, 0);
+			vkLegacySubmitNode(submissions, i, MC2_LEGACY_PASS_ADD, 0);
 #endif
-			masterVertexNodes[i].currentVertex = masterVertexNodes[i].vertices;
+			submissions.masterVertexNodes[i].currentVertex = submissions.masterVertexNodes[i].vertices;
 		}
 	}
 	
@@ -206,44 +207,44 @@ void MC_TextureManager::renderListsOverlaysVfxHudSubmit (void)
 	// sets ZWrite 0 (legacy behavior).
 	gos_SetRenderState(	gos_State_ZWrite, 0);
 
-	for (int i=0;i<nextAvailableVertexNode;i++)
+	for (int i=0;i<submissions.nextAvailableVertexNode;i++)
 	{
-		if ((masterVertexNodes[i].flags & MC2_ISSPOTLGT) &&
-			(masterVertexNodes[i].vertices))
+		if ((submissions.masterVertexNodes[i].flags & MC2_ISSPOTLGT) &&
+			(submissions.masterVertexNodes[i].vertices))
 		{
 #ifdef MC2_VULKAN_ISLAND
-			vkLegacySubmitNode(i, MC2_LEGACY_PASS_ADD, 0);
+			vkLegacySubmitNode(submissions, i, MC2_LEGACY_PASS_ADD, 0);
 #endif
-			masterVertexNodes[i].currentVertex = masterVertexNodes[i].vertices;
+			submissions.masterVertexNodes[i].currentVertex = submissions.masterVertexNodes[i].vertices;
 		}
 	}
 	
 #ifdef MC2_VULKAN_ISLAND
-	vkLegacyRun();   // VK-PARITY-F1: queued legacy alpha + additive effect / spotlight-cone nodes
+	vkLegacyRun(submissions);   // VK-PARITY-F1: queued legacy alpha + additive effect / spotlight-cone nodes
 #endif
 	gos_SetRenderState( gos_State_ZWrite, 0);
 	gos_SetRenderState( gos_State_ZCompare, 0);
 	gos_SetRenderState( gos_State_Perspective, 1);
- 	gos_SetRenderState( gos_State_AlphaMode, gos_Alpha_AlphaInvAlpha);
+	gos_SetRenderState( gos_State_AlphaMode, gos_Alpha_AlphaInvAlpha);
 	gos_SetRenderState( gos_State_AlphaTest, 1);
 	
- 	for (int i=0;i<nextAvailableVertexNode;i++)
+	for (int i=0;i<submissions.nextAvailableVertexNode;i++)
 	{
-		if ((masterVertexNodes[i].flags & MC2_ISCOMPASS) &&
-			(masterVertexNodes[i].vertices))
+		if ((submissions.masterVertexNodes[i].flags & MC2_ISCOMPASS) &&
+			(submissions.masterVertexNodes[i].vertices))
 		{
-			masterVertexNodes[i].currentVertex = masterVertexNodes[i].vertices;
+			submissions.masterVertexNodes[i].currentVertex = submissions.masterVertexNodes[i].vertices;
 		}
 	}
 	
 	gos_SetRenderState( gos_State_Filter, gos_FilterNone);
 	
- 	for (int i=0;i<nextAvailableVertexNode;i++)
+	for (int i=0;i<submissions.nextAvailableVertexNode;i++)
 	{
-		if ((masterVertexNodes[i].flags & MC2_ISHUDLMNT) &&
-			(masterVertexNodes[i].vertices))
+		if ((submissions.masterVertexNodes[i].flags & MC2_ISHUDLMNT) &&
+			(submissions.masterVertexNodes[i].vertices))
 		{
-			masterVertexNodes[i].currentVertex = masterVertexNodes[i].vertices;
+			submissions.masterVertexNodes[i].currentVertex = submissions.masterVertexNodes[i].vertices;
 		}
 	}
 
@@ -254,7 +255,7 @@ void MC_TextureManager::renderListsOverlaysVfxHudSubmit (void)
 	} // end RenderLists.VfxHudSubmit
 }
 
-void MC_TextureManager::renderListsOverlaysOld (void)
+void mc2::VkSceneRenderer::renderListsOverlaysOld (RenderSubmissions& submissions)
 {
 	{
 		ZoneScopedN("Render.Overlays");
@@ -269,10 +270,10 @@ void MC_TextureManager::renderListsOverlaysOld (void)
 		gos_SetRenderState( gos_State_TextureAddress, gos_TextureWrap );
 	}
 	
-	renderListsOverlaysWaterLoops();
-	renderListsOverlaysNoUnderlayer();
-	renderListsOverlaysShadowBlobs();
-	renderListsOverlaysNonTerrainAlpha();
-	renderListsOverlaysVfxHudSubmit();
+	renderListsOverlaysWaterLoops(submissions);
+	renderListsOverlaysNoUnderlayer(submissions);
+	renderListsOverlaysShadowBlobs(submissions);
+	renderListsOverlaysNonTerrainAlpha(submissions);
+	renderListsOverlaysVfxHudSubmit(submissions);
 	} // end Render.Overlays zone
 }

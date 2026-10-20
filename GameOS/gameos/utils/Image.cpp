@@ -170,7 +170,7 @@ bool Image::loadPNG(const char *fileName)
 	return loadWIC(fileName);
 }
 
-// Memory-based PNG decode.  The MC2 texture cache (mcTextureManager) stores
+// Memory-based PNG decode.  The MC2 texture cache (mc2::textures::ready()) stores
 // raw file bytes and creates GPU textures later via gos_NewTextureFromMemory;
 // that path historically assumed TGA bytes.  The data/defs UI Editor pages
 // reference .png art, so the from-memory path needs a PNG decoder too.

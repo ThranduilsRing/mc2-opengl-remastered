@@ -1,3 +1,6 @@
+#include "vk_scene_renderer.h"
+#include "effect_resources.h"
+#include "render_submissions.h"
 /***************************************************************
 * FILENAME: EditorData.cpp
 * DESCRIPTION: Implements Editor terrain, mission data, save, and load behavior.
@@ -188,8 +191,12 @@ bool EditorData::clear()
 	EditorData::instance->WaterTextureNeedsSaving(false);
 	EditorData::instance->WaterDetailTextureNeedsSaving(false);
 
-	if (mcTextureManager)
-		mcTextureManager->flush();		//Toss the textures we aren't using anymore!
+	if (mc2::VkSceneRenderer::active())
+    {
+        mc2::textures::flushSources(false);
+        mc2::VkSceneRenderer::reset();
+        mc2::effects::reload();
+    }		//Toss the textures we aren't using anymore!
 
 	//TG_Shape::tglHeap->dumpRecordLog();	//Anything left in heap at this point is a leak!
 

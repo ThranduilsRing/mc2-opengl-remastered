@@ -12,6 +12,23 @@ using namespace RenderCore::vulkan;
 
 TEST_SUITE("SubgraphContiguity") {
 
+TEST_CASE("native fog records each independently enabled pass in canonical order") {
+    for (int edge=0;edge<2;++edge) for (int oob=0;oob<2;++oob) {
+        const auto fog=selectFogPasses(true,edge!=0,oob!=0,100.0f);
+        int edgeDraws=0,oobDraws=0;
+        const auto count=fog.record([&](PostprocessSubPassId pass) {
+            if (pass==PostprocessSubPassId::EdgeFog) { ++edgeDraws; CHECK(oobDraws==0); }
+            else { CHECK(pass==PostprocessSubPassId::OobFog); ++oobDraws; }
+        });
+        CHECK(edgeDraws==edge); CHECK(oobDraws==oob); CHECK(count==unsigned(edge+oob));
+    }
+    const auto noExtent=selectFogPasses(true,true,true,0.0f);
+    CHECK_FALSE(noExtent.edge); CHECK(noExtent.oob);
+    CHECK(noExtent.record([](PostprocessSubPassId pass) { CHECK(pass==PostprocessSubPassId::OobFog); })==1);
+    const auto menu=selectFogPasses(false,true,true,100.0f);
+    CHECK(menu.record([](PostprocessSubPassId) { FAIL("menu must not draw fog"); })==0);
+}
+
 TEST_CASE("canonical order matches endScene() and the enum") {
     CHECK(kPostprocessSubPassOrderCount == 6);
     CHECK(postprocessSubPassOrderMatchesEnum());

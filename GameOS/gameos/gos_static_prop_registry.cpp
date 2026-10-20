@@ -247,7 +247,7 @@ void buildCachedActorRecord(const RecipeRange& rng, uint32_t recipeIdx,
 // and the per-range vector destructor handles deallocation.
 static void releasePinsForRange(RecipeRange& rng) {
     if (rng.pinsReleased) return;
-    if (mcTextureManager) {
+    if (mc2::textures::ready()) {
         for (DWORD nodeIdx : rng.pinnedTextureNodes) {
             mc2::textures::unpin(nodeIdx);
             ++s_totalUnpinCalls;
@@ -470,7 +470,7 @@ int32_t registerRecipe(TG_MultiShape* multi,
     SP_TRACE("register regIdx=%d first=%u count=%u", regIdx, rng.first, rng.count);
 
     // Pin every mcTextureNodeIndex referenced by this recipe's multi-shape.
-    // mcTextureManager evicts textures during gameplay (txmmgr.cpp:update);
+    // mc2::textures::ready() evicts textures during gameplay (txmmgr.cpp:update);
     // for actors using touch() instead of update() under MC2_STATIC_UPDATE_SKIP=1
     // there's no re-cache pathway, so the leaf TG_TypeShape::listOfTextures
     // gosTextureHandle goes stale and the batcher renders black quads.
@@ -478,7 +478,7 @@ int32_t registerRecipe(TG_MultiShape* multi,
     // Use the public TG_MultiShape::GetNumTextures()/GetTextureHandle(j) API
     // (msl.h:454-470) — GetTextureHandle(j) returns mcTextureNodeIndex directly.
     // Do not access TG_TypeMultiShape::numTextures/listOfTextures — protected.
-    if (mcTextureManager) {
+    if (mc2::textures::ready()) {
         // RECIPE-SLOT-RECYCLE: index by regIdx, NOT .back() -- a recycled slot is
         // not at the end of s_recipeRanges.
         RecipeRange& storedRng = s_recipeRanges[static_cast<size_t>(regIdx)];

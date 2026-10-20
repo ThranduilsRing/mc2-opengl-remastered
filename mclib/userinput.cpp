@@ -34,8 +34,8 @@
 #include"clip.h"
 #endif
 
-#ifndef TXMMGR_H
-#include"txmmgr.h"
+#ifndef MC2_RENDER_SUBMISSIONS_H
+#include"render_submissions.h"
 #endif
 
 #include"../GameOS/gameos/gos_profiler.h"

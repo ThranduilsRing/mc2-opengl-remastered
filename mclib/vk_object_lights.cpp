@@ -1,6 +1,7 @@
-// MC_TextureManager: baked static light slots, light-data dedup and the LIGHTBAKE / LIGHTBRIDGE gates.
-// Declared in the class headers; shared names in txmmgr_internal.h.
-#include "txmmgr_internal.h"
+// Vulkan CPU object-light rows, baked static slots and per-frame dedup caches.
+// Declared in the class headers; shared names in render_scene_support.h.
+#include "render_scene_support.h"
+#include "vk_object_lights.h"
 #include <optional>
 #include "mc2fmt.h"
 
@@ -18,6 +19,10 @@
 // from collisions are correct (same-data → same-result), just waste a
 // UBO slot. Acceptable.
 namespace {
+    std::vector<TG_HWLightsData> lightData_;
+    uint32_t lightDataStructuresCapacity = 0;
+    uint32_t lightDataStructuresCount = 0;
+    bool s_active = false;
     // FRAME-JOBS-2 precondition: single mutex protecting both dedup maps AND
     // the lightData_ grow path. One lock covers the whole light-slot allocation
     // sequence (map lookup -> grow-if-needed -> table write -> map insert) so
@@ -299,7 +304,7 @@ namespace {
 }
 
 // Cross-TU kill-switch view (C6 repoint lives in msl.cpp). Free function
-// to avoid pulling txmmgr.h into msl.cpp. Lazy-inits the env read.
+// to avoid pulling render_submissions.h into msl.cpp. Lazy-inits the env read.
 bool mc2LightBridgeRepointEnabled()
 {
     lbRepointInitFromEnv();
@@ -307,7 +312,7 @@ bool mc2LightBridgeRepointEnabled()
 }
 
 // ---- [LIGHTBAKE v1] cross-TU free fns (bdactor/msl/registry call these;
-// free fns avoid pulling txmmgr.h into those TUs) ----
+// free fns avoid pulling render_submissions.h into those TUs) ----
 bool mc2LightBakeEnabled()
 {
     bakeInitFromEnv();
@@ -318,7 +323,7 @@ bool mc2LightBakeEnabled()
 // anonymous namespace above but is visible throughout this TU (same pattern as
 // mc2GetBakedStaticLight reading s_bakedStaticLight). Exposed as a cross-TU free
 // fn for the stability trace below and the upload-split caller (Task 4) — no
-// txmmgr.h coupling into the consuming TUs.
+// render_submissions.h coupling into the consuming TUs.
 uint32_t mc2StaticLightHighWater()
 {
     return s_staticLightHighWater;
@@ -400,11 +405,11 @@ void mc2ClearAllBakedStaticLight()
 // slot beyond S means registerRecipe ran but bakeStaticLightSlot was never called.
 bool mc2IsStaticLightSlotBaked(int32_t recipeIndex)
 {
-    if (recipeIndex < 0 || !mcTextureManager) return false;
+    if (recipeIndex < 0 || !mc2::vkLights::active()) return false;
     const uint32_t ri = static_cast<uint32_t>(recipeIndex);
     if (ri >= s_staticLightHighWater) return false;  // slot never written
     TG_HWLightsData slot{};
-    if (!mcTextureManager->copyLightSlot(ri, slot)) return false;
+    if (!mc2::vkLights::copyLightSlot(ri, slot)) return false;
     return slot.numLights_ > 0;
 }
 
@@ -425,11 +430,11 @@ bool mc2PeekStaticLightSlotSummary(int32_t recipeIndex, int* outNumLights,
     if (outNumLights) *outNumLights = 0;
     if (amb) amb[0] = amb[1] = amb[2] = 0.0f;
     if (sun) sun[0] = sun[1] = sun[2] = 0.0f;
-    if (recipeIndex < 0 || !mcTextureManager) return false;
+    if (recipeIndex < 0 || !mc2::vkLights::active()) return false;
     const uint32_t ri = static_cast<uint32_t>(recipeIndex);
     if (ri >= s_staticLightHighWater) return false;   // slot never written
     TG_HWLightsData slot{};
-    if (!mcTextureManager->copyLightSlot(ri, slot)) return false;
+    if (!mc2::vkLights::copyLightSlot(ri, slot)) return false;
     if (outNumLights) *outNumLights = slot.numLights_;
     const int n = (slot.numLights_ < MAX_HW_LIGHTS_IN_WORLD)
                 ? slot.numLights_ : MAX_HW_LIGHTS_IN_WORLD;
@@ -461,8 +466,8 @@ bool mc2PeekStaticLightSlotSummary(int32_t recipeIndex, int* outNumLights,
 // lightData_ contents). No GL call, no FNV, no memcmp.
 void mc2WriteStaticLightSlot(int32_t recipeIndex, const TG_HWLightsData& baked)
 {
-    if (recipeIndex < 0 || !mcTextureManager) return;
-    mcTextureManager->bakeStaticLightSlot(recipeIndex, baked);
+    if (recipeIndex < 0 || !mc2::vkLights::active()) return;
+    mc2::vkLights::bakeStaticLightSlot(recipeIndex, baked);
 }
 
 // [LIGHTSLOT v1] Task 0 cardinality-gate accessors (diagnostic only).
@@ -471,9 +476,9 @@ void mc2WriteStaticLightSlot(int32_t recipeIndex, const TG_HWLightsData& baked)
 uint32_t mc2LightSlotBakedHighWater()   { return s_staticLightHighWater; }
 uint64_t mc2LightSlotDedupHits()         { return s_lightSlotDedupHits; }
 uint64_t mc2LightSlotActorKeyHits()      { return s_lightSlotActorKeyHits; }
-uint32_t mc2LightSlotTableCount()        { return mcTextureManager ? mcTextureManager->getLightStructCount() : 0u; }
+uint32_t mc2LightSlotTableCount()        { return mc2::vkLights::active() ? mc2::vkLights::getLightStructCount() : 0u; }
 
-uint32_t MC_TextureManager::addLightDataStructure(TG_HWLightsData* light_data)
+uint32_t mc2::vkLights::addLightDataStructure(TG_HWLightsData* light_data)
 {
     ZoneScopedN("addLightDataStructure scan");
     // FRAME-JOBS-2 precondition: lock covers map lookup + grow-if-needed +
@@ -508,7 +513,7 @@ uint32_t MC_TextureManager::addLightDataStructure(TG_HWLightsData* light_data)
     return rv;
 }
 
-uint32_t MC_TextureManager::addLightDataStructureWithPerActorColor(TG_HWLightsData* light_data)
+uint32_t mc2::vkLights::addLightDataStructureWithPerActorColor(TG_HWLightsData* light_data)
 {
     gosASSERT(light_data);
     LbScope _lb_;  // [LIGHTBRIDGE v1] C5/C6 populate sizing (RAII, all return paths)
@@ -583,7 +588,7 @@ uint32_t MC_TextureManager::addLightDataStructureWithPerActorColor(TG_HWLightsDa
     return addLightDataStructure(light_data);
 }
 
-void MC_TextureManager::resetLightData()
+void mc2::vkLights::resetLightData()
 {
     // [LIGHTBRIDGE v1] frame-start boundary: flush the just-completed frame's
     // C5/C6 populate sizing (same boundary the dedup-map reset relies on).
@@ -618,7 +623,7 @@ void MC_TextureManager::resetLightData()
 // the addLightDataStructure grow), mirror the baked constant into the
 // permanent slot, advance S. Called once per recipe at bake / invalidate
 // re-bake -- NOT per frame.
-void MC_TextureManager::bakeStaticLightSlot(int32_t recipeIndex, const TG_HWLightsData& baked)
+void mc2::vkLights::bakeStaticLightSlot(int32_t recipeIndex, const TG_HWLightsData& baked)
 {
     if (recipeIndex < 0) return;
     const uint32_t ri = static_cast<uint32_t>(recipeIndex);
@@ -651,7 +656,7 @@ void MC_TextureManager::bakeStaticLightSlot(int32_t recipeIndex, const TG_HWLigh
         lightDataStructuresCount = s_staticLightHighWater;
 }
 
-MC_TextureManager::LightSlotPeek MC_TextureManager::peekLightSlot(uint32_t idx) const
+mc2::vkLights::LightSlotPeek mc2::vkLights::peekLightSlot(uint32_t idx)
 {
     LightSlotPeek p = {-1, -1, 0.0f, 0.0f, 0.0f};
     if (idx >= lightDataStructuresCount || idx >= lightData_.size()) return p;
@@ -670,7 +675,7 @@ MC_TextureManager::LightSlotPeek MC_TextureManager::peekLightSlot(uint32_t idx) 
 }
 
 // [LIGHTBAKE-PROOF v1] read-only full-slot copy for the parity trace.
-bool MC_TextureManager::copyLightSlot(uint32_t idx, TG_HWLightsData& out) const
+bool mc2::vkLights::copyLightSlot(uint32_t idx, TG_HWLightsData& out)
 {
     if (idx >= lightDataStructuresCount || idx >= lightData_.size()) return false;
     out = lightData_[idx];
@@ -678,13 +683,31 @@ bool MC_TextureManager::copyLightSlot(uint32_t idx, TG_HWLightsData& out) const
 }
 
 // Native light feed: read-only CPU rows, valid for the remainder of the frame.
-const void* MC_TextureManager::getLightDataPtr() const
+const void* mc2::vkLights::getLightDataPtr()
 {
     return lightData_.empty() ? nullptr : lightData_.data();
 }
 
-uint64_t MC_TextureManager::getLightDataBytes() const
+uint64_t mc2::vkLights::getLightDataBytes()
 {
     return static_cast<uint64_t>(lightDataStructuresCount) * sizeof(TG_HWLightsData);
 }
 
+
+void mc2::vkLights::start()
+{
+    lightDataStructuresCapacity = 128;
+    lightDataStructuresCount = 0;
+    lightData_.assign(lightDataStructuresCapacity, TG_HWLightsData());
+    s_active = true;
+}
+
+void mc2::vkLights::shutdown()
+{
+    std::vector<TG_HWLightsData>().swap(lightData_);
+    lightDataStructuresCapacity = lightDataStructuresCount = 0;
+    s_active = false;
+}
+
+bool mc2::vkLights::active() { return s_active; }
+uint32_t mc2::vkLights::getLightStructCount() { return lightDataStructuresCount; }

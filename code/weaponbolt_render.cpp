@@ -7,7 +7,7 @@
 
 
 // VK-FIELD-VFX-2 (2026-07-11): under the field VK umbrella the DEFAULT bolt path
-// (drawOldWay==false -> mcTextureManager->addVertices) DEFERS the bolt geometry into
+// (drawOldWay==false -> mc2::renderSubmissions().addVertices) DEFERS the bolt geometry into
 // the texture-manager render list, which renderLists() flushes into the (discarded)
 // GL scene backbuffer under VK-only present -> weapon fire VANISHES. The round-1
 // objmgr IsHUD wrap is INERT for this path because addVertices only memcpys verts
@@ -228,7 +228,7 @@ void WeaponBolt::render (void)
 				}
 				else
 				{
-					mcTextureManager->addVertices(0xffffffff,lq1Vertices,MC2_DRAWALPHA);
+					mc2::renderSubmissions().addVertices(0xffffffff,lq1Vertices,MC2_DRAWALPHA);
 				}
 			}
 	
@@ -254,7 +254,7 @@ void WeaponBolt::render (void)
 				}
 				else
 				{
-					mcTextureManager->addVertices(0xffffffff,lq2Vertices,MC2_DRAWALPHA);
+					mc2::renderSubmissions().addVertices(0xffffffff,lq2Vertices,MC2_DRAWALPHA);
 				}
 			}
 				
@@ -280,7 +280,7 @@ void WeaponBolt::render (void)
 				}
 				else
 				{
-					mcTextureManager->addVertices(0xffffffff,lq3Vertices,MC2_DRAWALPHA);
+					mc2::renderSubmissions().addVertices(0xffffffff,lq3Vertices,MC2_DRAWALPHA);
 				}
 			}
 	
@@ -306,7 +306,7 @@ void WeaponBolt::render (void)
 				}
 				else
 				{
-					mcTextureManager->addVertices(0xffffffff,lq4Vertices,MC2_DRAWALPHA);
+					mc2::renderSubmissions().addVertices(0xffffffff,lq4Vertices,MC2_DRAWALPHA);
 				}
 			}
 		}
@@ -537,7 +537,7 @@ void WeaponBolt::render (void)
 					(lq1Vertices[2].z >= 0.0f) &&  
 					(lq1Vertices[2].z < 1.0f))
 					{
-						mcTextureManager->addVertices(mcTextureHandle,lq1Vertices,MC2_ISEFFECTS|MC2_DRAWONEIN);
+						mc2::renderSubmissions().addVertices(mcTextureHandle,lq1Vertices,MC2_ISEFFECTS|MC2_DRAWONEIN);
 					}
 					
 				if ((lq2Vertices[0].z >= 0.0f) &&
@@ -547,7 +547,7 @@ void WeaponBolt::render (void)
 					(lq2Vertices[2].z >= 0.0f) &&  
 					(lq2Vertices[2].z < 1.0f))
 					{
-						mcTextureManager->addVertices(mcTextureHandle,lq2Vertices,MC2_ISEFFECTS|MC2_DRAWONEIN);
+						mc2::renderSubmissions().addVertices(mcTextureHandle,lq2Vertices,MC2_ISEFFECTS|MC2_DRAWONEIN);
 					}
 					
 				if ((lq3Vertices[0].z >= 0.0f) &&
@@ -557,7 +557,7 @@ void WeaponBolt::render (void)
 					(lq3Vertices[2].z >= 0.0f) &&  
 					(lq3Vertices[2].z < 1.0f))
 					{
-						mcTextureManager->addVertices(mcTextureHandle,lq3Vertices,MC2_ISEFFECTS|MC2_DRAWONEIN);
+						mc2::renderSubmissions().addVertices(mcTextureHandle,lq3Vertices,MC2_ISEFFECTS|MC2_DRAWONEIN);
 					}
 					
 				if ((lq4Vertices[0].z >= 0.0f) &&
@@ -567,7 +567,7 @@ void WeaponBolt::render (void)
 					(lq4Vertices[2].z >= 0.0f) &&  
 					(lq4Vertices[2].z < 1.0f))
 					{
-						mcTextureManager->addVertices(mcTextureHandle,lq4Vertices,MC2_ISEFFECTS|MC2_DRAWONEIN);
+						mc2::renderSubmissions().addVertices(mcTextureHandle,lq4Vertices,MC2_ISEFFECTS|MC2_DRAWONEIN);
 					}
 			}
 				

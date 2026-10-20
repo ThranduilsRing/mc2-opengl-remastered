@@ -123,7 +123,7 @@ class Batcher {
     void ResolveTextures();
 
     // Upload staging to the SSBO and issue the billboard draw. Must run
-    // AFTER mcTextureManager->renderLists() (per gpu_direct_renderer_
+    // AFTER mc2::VkSceneRenderer::renderLists(mc2::renderSubmissions()) (per gpu_direct_renderer_
     // bringup_checklist.md trap #6 — render order). The hook site is
     // code/gamecam.cpp post-renderLists. Clears staging after flush.
     // No-op when is_enabled() is false OR staged count is zero.

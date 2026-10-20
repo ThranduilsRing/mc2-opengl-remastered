@@ -102,7 +102,7 @@ LogisticsPilotListBoxItem::LogisticsPilotListBoxItem( LogisticsPilot* pNewPilot 
 	// the wrong scale. Derive the divisor from the real texture (mirrors the mech-icon fix).
 	{
 		DWORD aw = 0, ah = 0;
-		if ( mcTextureManager &&
+		if ( mc2::textures::ready() &&
 		     mc2::textures::logicalSize( rankIcon.getTextureHandle(), aw, ah ) )
 		{
 			if ( aw > 0 ) rankIcon.setFileWidth( static_cast<float>(aw) );
@@ -284,7 +284,7 @@ void LogisticsPilotListBox::makeUVs( LogisticsPilot* pPilot, aObject& icon )
 	{
 		DWORD aw = 0, ah = 0;
 		float fw = 256.f;
-		if ( mcTextureManager &&
+		if ( mc2::textures::ready() &&
 		     mc2::textures::logicalSize( icon.getTextureHandle(), aw, ah ) && aw > 0 )
 			fw = static_cast<float>(aw);
 		icon.setFileWidth( fw );

@@ -326,12 +326,12 @@ void TG_Shape::MultiTransformShadows (glm::vec3 *pos, glm::mat4 *s2w, float rota
 			if (materialTextures()[triType.localTextureHandle + (theShape->numTextures>>1)].gosTextureHandle != 0xffffffff)
 			{
 				for (long k=0;k<totalShadows;k++)
-					mcTextureManager->addTriangle(materialTextures()[triType.localTextureHandle + (theShape->numTextures>>1)].mcTextureNodeIndex,MC2_DRAWALPHA | MC2_ISSHADOWS);
+					mc2::renderSubmissions().addTriangle(materialTextures()[triType.localTextureHandle + (theShape->numTextures>>1)].mcTextureNodeIndex,MC2_DRAWALPHA | MC2_ISSHADOWS);
 			}
 			else
 			{
 				for (long k=0;k<totalShadows;k++)
-					mcTextureManager->addTriangle(materialTextures()[triType.localTextureHandle].mcTextureNodeIndex,MC2_DRAWALPHA | MC2_ISSHADOWS);
+					mc2::renderSubmissions().addTriangle(materialTextures()[triType.localTextureHandle].mcTextureNodeIndex,MC2_DRAWALPHA | MC2_ISSHADOWS);
 			}
 		}
 	}
@@ -448,11 +448,11 @@ long TG_Shape::RenderShadows (long startFace)
 						{
 							if (materialTextures()[triType.localTextureHandle + (theShape->numTextures>>1)].gosTextureHandle != 0xffffffff)
 							{
-								mcTextureManager->addVertices(materialTextures()[triType.localTextureHandle + (theShape->numTextures>>1)].mcTextureNodeIndex,gVertex,MC2_ISSHADOWS | MC2_DRAWALPHA);
+								mc2::renderSubmissions().addVertices(materialTextures()[triType.localTextureHandle + (theShape->numTextures>>1)].mcTextureNodeIndex,gVertex,MC2_ISSHADOWS | MC2_DRAWALPHA);
 							}
 							else
 							{
-								mcTextureManager->addVertices(materialTextures()[triType.localTextureHandle].mcTextureNodeIndex,gVertex,MC2_ISSHADOWS | MC2_DRAWALPHA);
+								mc2::renderSubmissions().addVertices(materialTextures()[triType.localTextureHandle].mcTextureNodeIndex,gVertex,MC2_ISSHADOWS | MC2_DRAWALPHA);
 							}
 						}
 					}

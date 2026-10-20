@@ -332,6 +332,77 @@ TEST_CASE("TextureService: delayed streaming staging cancellation and reload") {
     budget.complete(16); CHECK(budget.used==0);
 }
 
+namespace {
+struct PublicationFixture {
+    TextureService service;
+    TextureDescriptorTable table{2}; // placeholder plus one usable slot
+    TextureStagingBudget budget{32};
+    mc2vk::CompletionTracker tracker;
+    struct Resident { std::shared_ptr<int> image; uint32_t descriptor=0, contentVersion=0; };
+    struct Upload { TextureHandle handle; std::shared_ptr<int> image; mc2vk::GpuTicket ticket; size_t bytes; uint32_t contentVersion; };
+    std::unordered_map<uint32_t,Resident> residents;
+    std::deque<Upload> uploads;
+    bool queue(TextureHandle h) {
+        if (table.full(uploads.size()) || !budget.reserve(4)) return false;
+        const auto version=service.contentVersion(h);
+        residents[h.raw()].contentVersion=version;
+        uploads.push_back({h,std::make_shared<int>(1),{tracker.noteSubmit(mc2vk::QueueKind::Graphics),0},4,version});
+        return true;
+    }
+    void pump() {
+        publishTextureUploads(service,table,uploads,residents,budget,
+                              [this](mc2vk::GpuTicket ticket) { return tracker.isComplete(ticket); });
+    }
+    void complete() { tracker.setCompleted(mc2vk::QueueKind::Graphics,uploads.back().ticket.gfx); }
+};
+}
+
+TEST_CASE("TextureService: in-flight uploads reserve descriptor capacity") {
+    PublicationFixture f;
+    const auto a=f.service.acquire(keyOf("unit","a",1));
+    const auto b=f.service.acquire(keyOf("unit","b",2));
+    REQUIRE(f.queue(a));
+    CHECK_FALSE(f.queue(b)); // the uncompleted A already claims the only slot
+    f.pump(); CHECK(f.table.index(a)==0); CHECK(f.uploads.size()==1);
+    f.complete(); f.pump();
+    REQUIRE(f.table.index(a)==1); REQUIRE(bool(f.residents[a.raw()].image));
+    CHECK_FALSE(f.queue(b));
+    REQUIRE(f.service.release(a)); REQUIRE(f.table.erase(a));
+    REQUIRE(f.queue(b));
+    f.pump(); CHECK(f.table.index(b)==0);
+    f.complete(); f.pump();
+    CHECK(bool(f.residents[b.raw()].image)); CHECK(f.table.index(b)==1);
+    CHECK(f.service.isLive(b)); CHECK(f.budget.used==0);
+}
+
+TEST_CASE("TextureService: failed publication retries on the same live handle") {
+    PublicationFixture f;
+    const auto waiting=f.service.acquire(keyOf("unit","waiting",1));
+    const auto occupant=f.service.acquire(keyOf("unit","occupant",2));
+    REQUIRE(f.queue(waiting)); f.complete();
+    // Force an insertion failure even after admission, as with a competing publisher.
+    REQUIRE(f.table.insert(occupant,std::make_shared<int>(2))==1);
+    f.pump();
+    CHECK(f.table.index(waiting)==0); CHECK_FALSE(bool(f.residents[waiting.raw()].image));
+    REQUIRE(f.uploads.size()==1); CHECK(f.budget.used==4);
+    REQUIRE(f.table.erase(occupant));
+    f.pump();
+    CHECK(f.uploads.empty()); CHECK(f.budget.used==0);
+    CHECK(f.service.isLive(waiting)); CHECK(f.table.index(waiting)==1);
+    CHECK(bool(f.residents[waiting.raw()].image));
+}
+
+TEST_CASE("TextureService: cancelled completed upload releases its reservation") {
+    PublicationFixture f;
+    const auto h=f.service.acquire(keyOf("unit","cancelled",1));
+    REQUIRE(f.queue(h)); REQUIRE(f.service.release(h));
+    f.pump(); CHECK(f.budget.used==4); // GPU still owns staging
+    f.complete(); f.pump();
+    CHECK(f.uploads.empty()); CHECK(f.budget.used==0);
+    CHECK(f.table.index(h)==0); CHECK_FALSE(bool(f.residents[h.raw()].image));
+    CHECK_FALSE(f.table.full());
+}
+
 TEST_CASE("TextureService: UI ids retain every generation bit and signal node retirement") {
     const auto high=TextureHandle::make(0xfffffu,0xfffu);
     CHECK(uiTextureHandle(uiTextureId(high))==high);

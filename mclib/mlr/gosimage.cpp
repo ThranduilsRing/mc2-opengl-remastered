@@ -56,7 +56,7 @@ GOSImage::GOSImage(const char *name, gos_TextureHints hints) : Plug (DefaultData
 
 	ipHints = hints;
 
-	mcTextureNodeIndex = mcTextureManager ? mc2::textures::load(name,gos_Texture_Detect,ipHints) : 0xffffffff;
+	mcTextureNodeIndex = mc2::textures::ready() ? mc2::textures::load(name,gos_Texture_Detect,ipHints) : 0xffffffff;
 
 	ptr.pTexture = nullptr;
 }
@@ -74,7 +74,7 @@ GOSImage::~GOSImage()
 
 	if((flags & Loaded) != 0)
 	{
-		if (mcTextureManager)
+		if (mc2::textures::ready())
 		{
 			mc2::textures::release(mcTextureNodeIndex);
 			mcTextureNodeIndex = 0xffffffff;

@@ -667,7 +667,7 @@ void Mission::initGpuAndLighting() {
 	// static light matrix (both are process-scoped and otherwise carry over
 	// the previous mission's state into this mission).
 	gos_ResetStaticShadowPriming();
-	mc_ResetTerrainShadowPrimed();
+
 	if (mc2::gate::get<"MC2_DECOR_SHADOW_TRACE">()) {
 		mc2::fmt::print_out("[DECOR_SHADOW v1] event=mission_reset_priming frame={:d}\n", mc2::fmt::as_u32(g_mc2FrameCounter)); fflush(stdout);
 	}

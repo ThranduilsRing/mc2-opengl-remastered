@@ -1,3 +1,4 @@
+#include "../RenderCore/TextureService.h"
 // ControlGui: button, static and rect initialisation from the .fit files and resolution swap.
 // Declared in the class headers; shared names in controlgui_internal.h.
 #include "controlgui_internal.h"

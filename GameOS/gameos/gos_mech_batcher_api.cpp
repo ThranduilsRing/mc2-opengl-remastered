@@ -86,9 +86,9 @@ extern "C" int mc2_mech_island_get_frame_feed(Mc2MechFrameFeed* out) {
     mc2GetSceneFogColorRGB(out->fogColorRGB);
     out->lightDataCpu = nullptr;
     out->lightDataCpuBytes = 0;
-    if (mcTextureManager) {
-        out->lightDataCpu      = mcTextureManager->getLightDataPtr();
-        out->lightDataCpuBytes = mcTextureManager->getLightDataBytes();
+    if (mc2::vkLights::active()) {
+        out->lightDataCpu      = mc2::vkLights::getLightDataPtr();
+        out->lightDataCpuBytes = mc2::vkLights::getLightDataBytes();
     }
     // VK-PARITY-MECH-1: default mech FS shading inputs from the GL producers.
     {
@@ -187,7 +187,7 @@ extern "C" uint32_t gos_getMechShadowInstDrawn() {
     return static_cast<uint32_t>(s_shadowInstDrawn);
 }
 extern "C" const char* gos_getMechTextureNameByNodeIdx(uint32_t nodeIdx) {
-    if (nodeIdx == 0xFFFFFFFFu || !mcTextureManager) return nullptr;
+    if (nodeIdx == 0xFFFFFFFFu || !mc2::textures::ready()) return nullptr;
     return mc2::textures::name(static_cast<DWORD>(nodeIdx));
 }
 

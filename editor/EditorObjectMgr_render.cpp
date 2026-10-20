@@ -102,7 +102,7 @@ void EditorObjectMgr::render()
 	// (renderLists, MVP, batcher flush, terrain dispatch) lives in the
 	// canonical game render-world chain wired by S2 -- DO NOT re-add here.
 	// Each appearance()->render() enqueues into the static-prop / mech
-	// batcher; the flush happens later via mcTextureManager->renderLists().
+	// batcher; the flush happens later via mc2::VkSceneRenderer::renderLists(mc2::renderSubmissions()).
 	// See docs/superpowers/plans/2026-05-25-editor-rebuild.md S2 followup.
 
 	// the editor registers static props (registerStatic
@@ -179,7 +179,7 @@ void EditorObjectMgr::render()
 						(*iter)->appearance()->drawBars();
 					// BldgAppearance::render() submits into the static-prop batcher's
 					// per-frame buckets via submitMultiShape() (bdactor.cpp).
-					// Flush is issued later from mcTextureManager->renderLists().
+					// Flush is issued later from mc2::VkSceneRenderer::renderLists(mc2::renderSubmissions()).
 					(*iter)->appearance()->render();
 					++bRendered;
 					if ( (*iter)->isSelected() )

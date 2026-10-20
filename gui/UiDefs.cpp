@@ -202,7 +202,7 @@ void UiDefs::GameOSPage::clear()
 {
     if (!impl)
         return;
-    // Texture nodes are intentionally left under mcTextureManager ownership.
+    // Texture nodes are intentionally left under mc2::textures::ready() ownership.
     // Several legacy UI classes follow the same cache lifetime; removing here
     // can invalidate shared page art while another screen still references it.
     impl->elements.clear();
@@ -280,7 +280,7 @@ bool UiDefs::GameOSPage::setElementTextureNode(const std::string& key, long text
         if (e.key != key)
             continue;
         // Runtime-supplied texture (e.g. a mission tac-map extracted from a .pak
-        // by getMissionTGA): inject the MC_TextureManager node directly instead
+        // by getMissionTGA): inject the legacy texture manager node directly instead
         // of loading from a file path. drawUiImageElement resolves the GL handle
         // from textureNode every frame.
         e.texturePath.clear();

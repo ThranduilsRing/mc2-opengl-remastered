@@ -1,3 +1,4 @@
+#include "../../RenderCore/TextureService.h"
 // vulkan_mech_island.cpp — VK-P14 MECH TIER-1: the FIRST VK-native SKINNED mech region.
 // =============================================================================
 // Co-writes the GL mech batcher's visible instances IN-PLACE into the SHARED scene

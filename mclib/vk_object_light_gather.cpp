@@ -1,6 +1,5 @@
-// MC_TextureManager: pure object light row, GatherLightsParameters and the light-clamp / light-row diagnostics.
-// Declared in the class headers; shared names in txmmgr_internal.h.
-#include "txmmgr_internal.h"
+// Object-light gathering and diagnostics for the native Vulkan feeds.
+#include "render_scene_support.h"
 #include "mc2fmt.h"
 
 // T1.15 [SPOT_DIAG v1] pack-probe state (GatherLightsParameters).
@@ -361,7 +360,7 @@ void applyPureObjectLightRow(TG_HWLightsData* lights)
 
 }
 
-// LIGHT-ROW-PURE-1 public policy declaration API (declared in txmmgr.h).
+// LIGHT-ROW-PURE-1 public policy declaration API (declared in render_submissions.h).
 // An appearance class publishes the policy it is about to apply, immediately
 // beside the legacy mutation, and clears it when its gather is done. Publishing
 // is inert by itself: it changes no light, no row and no pixel unless

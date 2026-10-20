@@ -1,3 +1,4 @@
+#include "../RenderCore/TextureService.h"
 // VFS texture sources and CPU consumer snapshots, owned by the session service.
 #include "texture_sources_internal.h"
 #include "texture_ref.h"
@@ -166,6 +167,8 @@ std::shared_ptr<const RenderCore::KtxImage> decodeUi(UiSource source) {
 }
 
 } // namespace
+
+bool ready() { return sourcesIfReady() != nullptr; }
 
 TextureSources& sourceStore() { startSources(); return *sourcesIfReady(); }
 void startSources() {

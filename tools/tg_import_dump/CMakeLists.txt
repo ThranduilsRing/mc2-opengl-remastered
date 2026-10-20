@@ -8,7 +8,7 @@
 #
 # Links the real importer (assimp_importer.cpp) + shared FK (mech_skel_import.cpp)
 # + tgl/msl/stuff TUs + the SAME stubs the tgl_loader_standalone_spike proved
-# (CRT-backed heaps/files; gos_*/eye/land/mcTextureManager are render-only and
+# (CRT-backed heaps/files; gos_*/eye/land/mc2::textures::ready() are render-only and
 # never hit on the import path). The linker is the proof it stays game-free.
 #
 # STANDALONE BUILD (own tree; never touches build64/):

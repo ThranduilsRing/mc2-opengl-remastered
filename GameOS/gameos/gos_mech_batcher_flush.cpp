@@ -149,7 +149,7 @@ struct DrawCall {
     uint32_t materialFlags;
     uint32_t instanceBase;
     uint32_t instanceCount;
-    uint32_t aoTexHandle;   // AO-1: AO mcTextureManager slot (0=none; per-type, so consistent within a bucket).
+    uint32_t aoTexHandle;   // AO-1: AO mc2::textures::ready() slot (0=none; per-type, so consistent within a bucket).
     uint32_t normalTexHandle; // NORMALS-1: normal-map slot (0=none; per-type).
 };
 
@@ -425,10 +425,10 @@ void MechFlushFrame::collectRuns() {
     for (const DrawCall& dc : drawCalls) {
         const GpuMechPacket& pkt = s_packets[dc.globalPacketIdx];
 
-        // dc.texHandle is the mcTextureManager slot index, NOT a gos handle
+        // dc.texHandle is the mc2::textures::ready() slot index, NOT a gos handle
         // (TG_TinyTexture::gosTextureHandle is a misnamed slot index per
         // memory/mc2_texture_handle_is_live.md). Resolve to the live gos handle THIS FRAME.
-        const DWORD liveGosHandle = (dc.texHandle != 0xFFFFFFFFu && mcTextureManager)
+        const DWORD liveGosHandle = (dc.texHandle != 0xFFFFFFFFu && mc2::textures::ready())
             ? mc2::textures::sourceId(dc.texHandle)
             : 0u;
         Mc2MechDrawRun run{};
@@ -440,9 +440,9 @@ void MechFlushFrame::collectRuns() {
         run.materialFlags = dc.materialFlags;
         run.slot0Tex      = gos_GetMaterialTextureId(liveGosHandle);   // LIVE per-actor paint scheme this frame
         // VK-PARITY-MECH-1: per-type AO / normal maps.
-        run.aoTex = (dc.aoTexHandle != 0u && dc.aoTexHandle != 0xFFFFFFFFu && mcTextureManager)
+        run.aoTex = (dc.aoTexHandle != 0u && dc.aoTexHandle != 0xFFFFFFFFu && mc2::textures::ready())
             ? gos_GetMaterialTextureId(mc2::textures::sourceId(dc.aoTexHandle)) : 0u;
-        run.normalTex = (dc.normalTexHandle != 0u && dc.normalTexHandle != 0xFFFFFFFFu && mcTextureManager)
+        run.normalTex = (dc.normalTexHandle != 0u && dc.normalTexHandle != 0xFFFFFFFFu && mc2::textures::ready())
             ? gos_GetMaterialTextureId(mc2::textures::sourceId(dc.normalTexHandle)) : 0u;
         s_vkMechRunSnapshot.push_back(run);
         ++drawnCalls;

@@ -408,7 +408,7 @@ bool GpuStaticPropBatcher::submitMultiShape(TG_MultiShape* multi,
     // LIGHTROW-FRESHNESS-1
     //
     // THE DEFECT THIS FIXES. cachedGpuLightIndex_ is a DYNAMIC slot index, and
-    // dynamic slot indices are rebased EVERY FRAME: MC_TextureManager::resetLightData
+    // dynamic slot indices are rebased EVERY FRAME: legacy texture manager::resetLightData
     // (mclib/txmmgr.cpp:2137) resets lightDataStructuresCount to the static
     // high-water and clears every dedup map, and its own comment states that
     // "any stale hash->slot entries from the prior frame are invalid". A slot
@@ -532,8 +532,8 @@ bool GpuStaticPropBatcher::submitMultiShape(TG_MultiShape* multi,
     // construction, so this is an invariant assertion, not a expected path --
     // it must read zero. It is NOT repaired by clamping (clamping would just
     // re-introduce the silent wrong-row substitution this slice removes).
-    if (mcTextureManager &&
-        lightDataIndex >= mcTextureManager->getLightStructCount()) {
+    if (mc2::textures::ready() &&
+        lightDataIndex >= mc2::vkLights::getLightStructCount()) {
         ++s_counters.mono_light_row_out_of_range;
         static bool s_loggedOob = false;
         if (!s_loggedOob) {
@@ -544,7 +544,7 @@ bool GpuStaticPropBatcher::submitMultiShape(TG_MultiShape* multi,
                 "(INVARIANT BREAK -- shader would read light[] out of bounds; "
                 "actor dropped)\n",
                 (callerName && callerName[0]) ? callerName : "<unknown>",
-                lightDataIndex, mcTextureManager->getLightStructCount(),
+                lightDataIndex, mc2::vkLights::getLightStructCount(),
                 g_mc2FrameCounter);
             std::fflush(stderr);
         }

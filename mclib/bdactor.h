@@ -766,7 +766,7 @@ class TreeAppearance : public ObjectAppearance
 // LoadOverrideRenderShapeTextures (bdactor.cpp). The editor palette prime path
 // (EditorObjectMgr::primeAllBuildingAppearanceTypes) calls this to force every
 // placeable type's render-shape textures resident on disk BEFORE the one-shot
-// finalizeGeometry() probe, which reads mcTextureManager->getWidth(nodeIdx).
+// finalizeGeometry() probe, which reads the texture source logical size.
 // Without it the probe sees width 0 -> layerForPacket=-1 -> packet dropped ->
 // invisible body. The helper stays static; this wrapper is the only export.
 void Bldg_ForceRenderShapeTexturesResident(TG_TypeMultiShape* rs);

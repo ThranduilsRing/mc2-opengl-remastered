@@ -21,7 +21,7 @@
 #include "gos_static_prop_batcher.h"  // for STATIC_PROP_RING_FRAMES cross-check
 #include "../../mclib/mech_anim_runtime.h"  // 1B-GPU: imported-mech model-delta skinning
 #include "gameos.hpp"                 // gos_InvalidateRenderStateCache
-#include "../../mclib/txmmgr.h"       // mcTextureManager->get_gosTextureHandle (live resolve)
+#include "../../mclib/render_submissions.h"       // mc2::textures::sourceId (live resolve)
 #include "../../mclib/terrain_depth_bias.h"  // VK-P14 MECH: OBJECT_DEPTH_BIAS feed
 #include "vulkan_mech_island.h"       // VK-P14 MECH: island feed contract (Vulkan-free POD)
 #include <cstdio>

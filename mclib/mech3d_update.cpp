@@ -535,7 +535,7 @@ long Mech3DAppearance::update (bool animate)
 
         // sebi: update texture handle, it will not be updated it updateGeometry 
         // is not caaled which is not correct and leads to 
-        // "Flags do not match either set of vertex Data" (see txmmgr.h)
+        // "Flags do not match either set of vertex Data" (see render_submissions.h)
 		leftArm->SetTextureHandle(0,localTextureHandle);
 
 		leftArm->SetFogRGB(0xffffffff);
@@ -612,7 +612,7 @@ long Mech3DAppearance::update (bool animate)
 
         // sebi: update texture handle, it will not be updated it updateGeometry 
         // is not caaled which is not correct and leads to 
-        // "Flags do not match either set of vertex Data" (see txmmgr.h)
+        // "Flags do not match either set of vertex Data" (see render_submissions.h)
 		rightArm->SetTextureHandle(0,localTextureHandle);
 
 		rightArm->SetFogRGB(0xffffffff);

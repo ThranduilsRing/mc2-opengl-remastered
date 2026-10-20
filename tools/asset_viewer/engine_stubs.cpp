@@ -16,10 +16,10 @@
 // CODE/ (GAME) SYMBOLS stubbed below (the headline finding):
 //   - eye          (extern CameraPtr;  code/gamecam.cpp)
 //   - land         (extern TerrainPtr; code/ game terrain singleton)
-//   - mcTextureManager (extern MC_TextureManager*; game texture singleton)
+//   - mc2::textures::ready() (extern legacy texture manager*; game texture singleton)
 //   - Camera::HazeFactor / Camera::projectModernClipGL (render-time only)
 //   - Terrain::getTerrainElevation (game terrain query; render/transform only)
-//   - MC_TextureManager::* / MC_TextureNode::* (GPU texture bind; render only)
+//   - legacy texture manager::* / MC_TextureNode::* (GPU texture bind; render only)
 //   None are on the geometry LOAD path; all are reachable only from
 //   transform/render entry points the spike never invokes.
 
@@ -37,7 +37,7 @@
 #include "tgl.h"
 #include "camera.h"
 #include "terrain.h"
-#include "txmmgr.h"
+#include "render_submissions.h"
 #include "object_admission_predicate.h"
 #include "gos_object_recon_tracy.h"
 
@@ -234,7 +234,6 @@ extern "C" void crashbundle_append(const char* /*line*/) {}
 // ===========================================================================
 CameraPtr  eye  = nullptr;   // code/gamecam.cpp — render camera singleton
 TerrainPtr land = nullptr;   // game terrain singleton
-MC_TextureManager* mcTextureManager = nullptr;  // game texture singleton
 
 // Camera statics/methods (render-time projection; never on load path).
 float Camera::HazeFactor = 0.0f;
@@ -246,9 +245,13 @@ ModernClipResult Camera::projectModernClipGL(const glm::vec3&) const
 // Terrain elevation query (transform-time only).
 float Terrain::getTerrainElevation(const glm::vec3&) { return 0.0f; }
 
-// MC_TextureManager / MC_TextureNode (GPU texture bind; render only).
-gos_VERTEXManager* MC_TextureManager::gvManager = nullptr;
-unsigned int MC_TextureManager::addLightDataStructure(TG_HWLightsData*) { return 0; }
-unsigned int MC_TextureManager::addLightDataStructureWithPerActorColor(TG_HWLightsData*) { return 0; }
-void MC_TextureManager::addRenderShape(DWORD, TG_RenderShape*, DWORD) {}
+// legacy texture manager / MC_TextureNode (GPU texture bind; render only).
+
+unsigned int mc2::vkLights::addLightDataStructure(TG_HWLightsData*) { return 0; }
+unsigned int mc2::vkLights::addLightDataStructureWithPerActorColor(TG_HWLightsData*) { return 0; }
+void mc2::RenderSubmissions::addRenderShape(DWORD, TG_RenderShape*, DWORD) {}
 namespace mc2::textures { DWORD sourceId(DWORD) { return 0; } const char* name(DWORD) { return nullptr; } }
+
+namespace mc2::textures { bool ready() { return false; } }
+mc2::RenderSubmissions::~RenderSubmissions() = default;
+mc2::RenderSubmissions& mc2::renderSubmissions() { static RenderSubmissions queue; return queue; }

@@ -389,7 +389,7 @@ void submitBuildingFootprintShadow(const BldgAppearance* appearance)
 // immediately after a successful override import — mirrors the stock loaders.
 void LoadOverrideRenderShapeTextures(TG_TypeMultiShape* rs)
 {
-	if (!rs || !mcTextureManager)
+	if (!rs || !mc2::textures::ready())
 		return;
 	for (long i = 0; i < rs->GetNumTextures(); i++)
 	{
@@ -440,7 +440,7 @@ void LoadOverrideRenderShapeTextures(TG_TypeMultiShape* rs)
 // Only the editor palette prime path calls this (see bdactor.h). Keeps the helper
 // static while letting the editor TU force a type render-shape's textures resident
 // before its one-shot finalizeGeometry() texture probe runs. NULL-guarded by the
-// helper itself (also guards mcTextureManager).
+// helper itself (also guards mc2::textures::ready()).
 void Bldg_ForceRenderShapeTexturesResident(TG_TypeMultiShape* rs)
 {
 	if (rs)

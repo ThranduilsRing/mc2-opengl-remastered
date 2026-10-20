@@ -1,10 +1,9 @@
-// MC_TextureManager: SPFLUSH cost accumulators and the TXMMGR_BOUNDS exhaustion counters.
-// Declared in the class headers; shared names in txmmgr_internal.h.
-#include "txmmgr_internal.h"
+// Geometry submission exhaustion diagnostics.
+#include "render_scene_support.h"
 #include "mc2fmt.h"
 
 // [TXMMGR_BOUNDS v1] — TXMMGR-BOUNDS-HARDEN-1 exhaustion counters.
-// Declared extern in txmmgr.h so the inline pool allocators + addVertices paths
+// Declared extern in render_submissions.h so the inline pool allocators + addVertices paths
 // can bump them. atomic+relaxed because addVertices/addRenderShape run on
 // frame-jobs workers; the increment only happens on the rare overflow path.
 // A teardown dump surfaces any nonzero counter even with the trace gate off, so

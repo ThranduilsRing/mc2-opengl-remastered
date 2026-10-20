@@ -1342,7 +1342,7 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
 
 
     // VK-PROP-AMBIENT-IBL-1 / VK-PROP-LIGHTFEED-NATIVE-1: per-frame copy of the game's
-    // CPU LightsData array (mcTextureManager lightData_, the byte source of the GL SSBO
+    // CPU LightsData array (mc2::textures::ready() lightData_, the byte source of the GL SSBO
     // upload at renderLists) into the island's own SSBO (binding 4) so the vert shader's
     // ambientTerm sum reads the same ObjectLights[] the GL prop VS does. This is the mech
     // item-9 native-feed pattern: the former per-frame glGetBufferSubData GL SSBO readback

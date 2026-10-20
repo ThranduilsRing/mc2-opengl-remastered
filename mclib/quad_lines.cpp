@@ -964,13 +964,13 @@ void TerrainQuad::drawMine (void)
 					{
 						if (drawBlownMine)
 						{
-							mcTextureManager->addVertices(blownTextureHandle,gVertex,MC2_DRAWALPHA);
-							mcTextureManager->addVertices(blownTextureHandle,sVertex,MC2_DRAWALPHA);
+							mc2::renderSubmissions().addVertices(blownTextureHandle,gVertex,MC2_DRAWALPHA);
+							mc2::renderSubmissions().addVertices(blownTextureHandle,sVertex,MC2_DRAWALPHA);
 						}
 						else
 						{
-							mcTextureManager->addVertices(mineTextureHandle,gVertex,MC2_DRAWALPHA);
-							mcTextureManager->addVertices(mineTextureHandle,sVertex,MC2_DRAWALPHA);
+							mc2::renderSubmissions().addVertices(mineTextureHandle,gVertex,MC2_DRAWALPHA);
+							mc2::renderSubmissions().addVertices(mineTextureHandle,sVertex,MC2_DRAWALPHA);
 						}
 					}
 				}

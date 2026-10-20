@@ -68,7 +68,7 @@ public:
     // Returns false if key not found.
     bool setElementTexture(const std::string& key, const std::string& texturePath);
 
-    // Inject a runtime MC_TextureManager texture node (e.g. a mission tac-map
+    // Inject a runtime legacy texture manager texture node (e.g. a mission tac-map
     // built from a .pak by getMissionTGA) into an image element; 0 clears it.
     bool setElementTextureNode(const std::string& key, long textureNode);
     // Raw gos texture handle (e.g. a live video frame); bypasses the texture

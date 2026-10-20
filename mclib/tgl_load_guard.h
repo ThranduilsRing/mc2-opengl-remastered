@@ -8,7 +8,7 @@
 // ("[ASSET_LOAD v1] event=required_missing ..." — always-on) and populates a
 // VISIBLE magenta placeholder box that renders on BOTH the legacy CPU path and the GPU
 // static-prop/mech batchers. The placeholder registers a REAL 4x4 magenta
-// texture through mcTextureManager and sets valid handles — NOT
+// texture through mc2::textures::ready() and sets valid handles — NOT
 // numTextures=0 — because the batchers cull packets with layerForPacket=-1
 // (bdactor.cpp layerForPacket evidence); a textureless placeholder would
 // itself be invisible on the modern path, defeating the contract.
