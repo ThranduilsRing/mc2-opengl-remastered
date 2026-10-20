@@ -204,8 +204,8 @@ inline int compareRecords(const MoverRecord& a, const MoverRecord& b) {
     return 0;
 }
 
-inline void sortRecords(MoverRecord* recs, size_t n) {
-    sortTotal(std::span<MoverRecord>(recs, n), compareRecords);
+inline void sortRecords(std::span<MoverRecord> recs) {
+    sortTotal(recs, compareRecords);
 }
 
 // --- digests ---------------------------------------------------------------
@@ -281,11 +281,11 @@ using enum DigestKind;
 
 // World digest. SORTS `recs` in place (caller's buffer is scratch) so the
 // result is invariant to the order movers were walked in.
-inline uint64_t digestWorld(MoverRecord* recs, size_t n, DigestKind kind) {
-    sortRecords(recs, n);
-    uint64_t h = foldHeader(kFnvOffset, n);
+inline uint64_t digestWorld(std::span<MoverRecord> recs, DigestKind kind) {
+    sortRecords(recs);
+    uint64_t h = foldHeader(kFnvOffset, recs.size());
     h = fnvI32(h, static_cast<int32_t>(kind));
-    for (size_t i = 0; i < n; ++i) {
+    for (size_t i = 0; i < recs.size(); ++i) {
         uint64_t m = (kind == DIGEST_STRICT) ? digestMoverStrict(recs[i])
                    : (kind == DIGEST_VISUAL) ? digestMoverVisual(recs[i])
                                              : digestMoverGraded(recs[i]);
@@ -329,15 +329,15 @@ inline int compareObjects(const ObjectRecord& a, const ObjectRecord& b) {
     return 0;
 }
 
-inline void sortObjects(ObjectRecord* recs, size_t n) {
-    sortTotal(std::span<ObjectRecord>(recs, n), compareObjects);
+inline void sortObjects(std::span<ObjectRecord> recs) {
+    sortTotal(recs, compareObjects);
 }
 
 // Graded (quantized) digest over buildings and turrets. SORTS `recs` in place.
-inline uint64_t digestObjects(ObjectRecord* recs, size_t n) {
-    sortObjects(recs, n);
-    uint64_t h = foldHeader(kFnvOffset, n);
-    for (size_t i = 0; i < n; ++i) {
+inline uint64_t digestObjects(std::span<ObjectRecord> recs) {
+    sortObjects(recs);
+    uint64_t h = foldHeader(kFnvOffset, recs.size());
+    for (size_t i = 0; i < recs.size(); ++i) {
         const ObjectRecord& r = recs[i];
         h = fnvI32(h, r.id);
         h = fnvI32(h, r.kind);
@@ -363,9 +363,9 @@ struct AblRecord {
     uint64_t statics    = 0;   // FNV over the instance's static variable bytes
 };
 
-inline uint64_t digestAbl(const AblRecord* recs, size_t n) {
-    uint64_t h = foldHeader(kFnvOffset, n);
-    for (size_t i = 0; i < n; ++i) {
+inline uint64_t digestAbl(std::span<const AblRecord> recs) {
+    uint64_t h = foldHeader(kFnvOffset, recs.size());
+    for (size_t i = 0; i < recs.size(); ++i) {
         const AblRecord& r = recs[i];
         h = fnvI32(h, r.id);
         h = fnvI32(h, r.handle);
