@@ -7,6 +7,7 @@ deployment or mission binary writes are involved. Run commands from the repo roo
 py -3 -B tools/mapgen/extract.py --all
 py -3 -B tools/mapgen/ascii.py --examples
 py -3 -B tools/mapgen/analyze.py
+py -3 -B tools/mapgen/generate.py --size 300 --seed 42
 py -3 -B tools/mapgen/ascii.py tools/mapgen/corpus/stock/mc2_03.json --cells-per-char 1 --crop 36 36 90 90
 py -3 -B -m unittest discover -s tests/mapgen -v
 ```
@@ -74,6 +75,44 @@ profile after a new extraction. Comparisons exclude inherited stock stems from
 custom mod sets; inherited campaign variants are explicitly labeled. Pooled
 statistics deduplicate decoded terrain/object packets across installs. Archetype
 labels and slope/proximity measurements are coarse, documented approximations.
+
+## Generating layouts
+
+`generate.py --size N --seed S --out DIRECTORY` writes JSON and ASCII. Sizes
+96..1024 cells are supported. Default `--style stock` calibrates from the 24 stock
+missions; `--style mixed` uses the deduplicated stock/mod pool, or supply an install
+label from the corpus. Profile hashes and terrain hashes are recorded in output.
+Same seed, profile, style and terrain produce the same JSON bytes across processes.
+
+The generator lays a connected road skeleton between reachable map edges, reserves
+flat parcels along it, adds access spurs, buildings, walls/gates, linked turret
+batteries, then tree clusters. Compounds have cement inset two cells from the wall
+ring; each road entry replaces a wall segment with a controlled gate. Abstract
+corner/straight wall shapes are explicit. Open sites have no cement ring. Player
+starts are on the network; enemy sites stay at least 0.25 map sides away.
+
+First sites demonstrate a compound, an open outpost and a roadside town; later
+sites sample measured archetype weights. Parcel dimensions sample p10..p90 with
+practical minima and a 42-cell cap; structures sample measured mixes/counts.
+Battery counts are conservatively limited to 3..5, within stock observations.
+Tree density uses the measured median. These choices give inspectable examples
+without attempting to reproduce an entire campaign's distributions per map.
+Small maps have at least three requested sites, so mission-wide density comparisons
+only apply at stock map sizes and above. Difficult terrain may fit fewer sites;
+failure to fit a compound plus another site produces an error, not invalid output.
+
+`--heightfield FILE` accepts a JSON elevation matrix, JSON
+`{"elevation_wu": [[...]], "water": [[false,...]]}`, numpy `.npy` (no pickle), or
+an extracted layout JSON. Heights are world units, and the expanded grid must
+match `--size`. Extracted coarse heights are expanded by nearest sample; steps
+can therefore create steep boundaries. `--water-level WU` optionally marks low
+cells wet. Supplied heights are preserved (rounded to 0.001 wu), not flattened or
+bridged. Roads and placements use dry terrain below 10 degrees slope. If the land
+cannot reach two map edges or fit the required sites, generation reports why.
+Synthetic terrain supplies gentle hills, a lake and a steep escarpment by default.
+
+Outputs are cell-level plans: model IDs, exact footprints and playable mission
+logic remain unassigned. Objective markers are suggestions, with no FIT conditions.
 
 ## Boundaries for phase 2
 
