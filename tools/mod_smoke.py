@@ -62,9 +62,12 @@ BATTERY = (
 # base install). Files only count when absent from the stock fast files, so the
 # list can never shadow stock or mod content.
 ENGINE_DATA_TREES = (
-    'assets', 'data/art/asset_sizes.csv', 'data/art/gui', 'data/cdag',
+    'assets', 'data/effects', 'data/art/asset_sizes.csv', 'data/art/gui', 'data/cdag',
     'data/materials', 'data/terrain_layers', 'data/vegetation', 'data/model_overrides',
 )
+# Always staged, even when a mod's own fast file also carries them (the modern
+# engine loads these loose, e.g. data/effects/mc2.fx).
+ENGINE_DATA_UNFILTERED = ('assets', 'data/effects')
 ENGINE_DATA_FILES = ('data/art/mcl_splashscreen_planet_1_opaque.tga',)
 HDR_TREE = 'data/hdr'
 HDR_MAX_BYTES = 20 * 1024 * 1024   # skip the 128 MB 16k sky cubes
@@ -238,7 +241,7 @@ def build_engine_cache(cache: Path, build: Path, build64: Path, base_install: Pa
             summary['engine_data'] += 1
 
     for rel in ENGINE_DATA_TREES:
-        place_rel(rel, keep=None if rel == 'assets' else not_stock)
+        place_rel(rel, keep=None if rel in ENGINE_DATA_UNFILTERED else not_stock)
     for rel in ENGINE_DATA_FILES:
         place_rel(rel)
     place_rel(HDR_TREE, keep=lambda p: p.stat().st_size <= HDR_MAX_BYTES and not_stock(p))
@@ -354,6 +357,19 @@ def _natural(s: str):
     return [int(t) if t.isdigit() else t for t in re.split(r'(\d+)', s)]
 
 
+def _mission_rank(stem: str):
+    # numbered campaign-style names first (mc2_01, a_0_1, reap3m01), test/demo maps last
+    if re.fullmatch(r'mc2_\d+', stem):
+        group = 0
+    elif re.fullmatch(r'[a-z]_\d+_\d+', stem):
+        group = 1
+    elif re.search(r'\d+$', stem) and not stem.startswith(('ai_', 'm0')):
+        group = 2
+    else:
+        group = 3
+    return (group, _natural(stem))
+
+
 def pick_mission(layers: list[Path], override: str | None = None) -> tuple[str, str]:
     """(stem, how) for a mod. Campaign first mission that exists, else first
     .fit+.pak pair. `override` wins (and must exist)."""
@@ -367,7 +383,7 @@ def pick_mission(layers: list[Path], override: str | None = None) -> tuple[str, 
         for stem in _campaign_stems(layer):
             if stem in fits:
                 return stem, f'campaign:{layer.name}'
-    ranked = sorted((s for s in pairs if 'special' not in s), key=_natural)
+    ranked = sorted((s for s in pairs if 'special' not in s), key=_mission_rank)
     if ranked:
         return ranked[0], 'first-mission'
     raise ValueError(f'no mission found in {[l.name for l in layers]}')
@@ -403,12 +419,75 @@ def extract_mission(fst: Path, stem: str, out: Path) -> None:
     raise FileNotFoundError(f'{wanted} not found inside {fst}')
 
 
-def stage_mod(cache: Path, layers: list[Path], target: Path, stem: str) -> dict:
+GAP_SKIP_PREFIXES = ('data/movies/',)
+GAP_SKIP_PARTS = ('.beauty/',)
+
+
+def stage_keys(target: Path) -> set[str]:
+    """Normalized keys the stage can already resolve: its fast files + loose data."""
+    sys.path.insert(0, str(ROOT / 'tools' / 'mod_install'))
+    import fst_listing
+    keys = set()
+    for fst in target.glob('*.fst'):
+        keys.update(fst_listing.normalize_key(e['name']) for e in fst_listing.parse_fst(str(fst)))
+    for dirpath, _dirs, files in os.walk(target / 'data'):
+        for name in files:
+            keys.add((Path(dirpath) / name).relative_to(target).as_posix().lower())
+    return keys
+
+
+def fill_stock_gap(base_install: Path, target: Path) -> dict:
+    """Retail MC2 mods (MC2X, MCO) ship only the files they change and rely on the
+    retail install for the rest, sometimes renaming members inside a replaced fast
+    file (camera.fst: mc2xcams.fit for cameras.fit). Materialize every stock member
+    the stage cannot resolve as a loose file; never touches a key the mod provides."""
+    sys.path.insert(0, str(ROOT / 'tools' / 'mc2x_import'))
+    sys.path.insert(0, str(ROOT / 'tools' / 'mod_install'))
+    import importlib
+    fst_lib = importlib.import_module('fst')
+    have = stage_keys(target)
+    stats = {'from_fst': 0, 'from_loose': 0, 'bytes': 0}
+
+    def wanted(key: str) -> bool:
+        return (key not in have and key.startswith('data/')
+                and not key.startswith(GAP_SKIP_PREFIXES)
+                and not any(p in key for p in GAP_SKIP_PARTS))
+
+    for name in STOCK_FSTS:
+        src = base_install / name
+        if not src.is_file():
+            continue
+        for off, comp, real, member, is_lz, blob in fst_lib.fst_entries(src):
+            key = member.lower().replace(chr(92), '/')
+            if not wanted(key):
+                continue
+            out = target / key
+            out.parent.mkdir(parents=True, exist_ok=True)
+            out.write_bytes(fst_lib.decompress_entry(off, comp, real, is_lz, blob))
+            have.add(key)
+            stats['from_fst'] += 1
+            stats['bytes'] += real
+    for dirpath, _dirs, files in os.walk(base_install / 'data'):
+        for name in files:
+            path = Path(dirpath) / name
+            key = path.relative_to(base_install).as_posix().lower()
+            if wanted(key) and not path.is_symlink():
+                place_file(path, target / key, link_ok=False)
+                have.add(key)
+                stats['from_loose'] += 1
+                stats['bytes'] += path.stat().st_size
+    return stats
+
+
+def stage_mod(cache: Path, layers: list[Path], target: Path, stem: str,
+              base_install: Path | None = None) -> dict:
     stats = {'engine': link_engine(cache, target), 'mod_files': 0, 'mod_bytes': 0}
     for layer in layers:
         s = overlay_mod(layer, target)
         stats['mod_files'] += s['files']
         stats['mod_bytes'] += s['bytes']
+    if base_install is not None:
+        stats['stock_gap'] = fill_stock_gap(base_install, target)
     stats['mission_extracted'] = ensure_loose_mission(layers, target, stem)
     return stats
 
@@ -452,6 +531,23 @@ def health_cell(h: dict) -> str:
     return f'{mech} {ai}'
 
 
+def artifact_log_text(started: float, stem: str) -> str:
+    """Engine log run_smoke saved for this mission (tests/smoke/artifacts/<stamp>/<stem>.log)."""
+    root = ROOT / 'tests' / 'smoke' / 'artifacts'
+    if not root.is_dir():
+        return ''
+    best = None
+    for d in root.iterdir():
+        log = d / f'{stem}.log'
+        try:
+            if log.is_file() and log.stat().st_mtime >= started and (
+                    best is None or log.stat().st_mtime > best.stat().st_mtime):
+                best = log
+        except OSError:
+            continue
+    return best.read_text(encoding='utf-8', errors='replace') if best else ''
+
+
 def collect_log_text(smoke_output: str) -> str:
     """Smoke stdout plus every engine log run_smoke names or leaves nearby."""
     parts = [smoke_output]
@@ -491,6 +587,7 @@ def run_mod(staged: Path, stem: str, duration: int, timeout: int) -> dict:
         '--duration', str(duration),
         '--keep-logs',
     ]
+    started = dt.datetime.now().timestamp() - 2
     env = os.environ.copy()
     env.setdefault('MC2_MECH_BATCHER_STATS', '1')
     print('[mod_smoke] run:', ' '.join(cmd), flush=True)
@@ -514,7 +611,8 @@ def run_mod(staged: Path, stem: str, duration: int, timeout: int) -> dict:
     verdict = next(
         (line.strip() for line in output.splitlines()
          if line.startswith('|') and ('PASS' in line or 'FAIL' in line)), '')
-    health = analyze_health(collect_log_text(output))
+    text = '\n'.join([collect_log_text(output), artifact_log_text(started, stem)])
+    health = analyze_health(text)
     return {'exit': rc, 'fingerprint': fingerprint, 'verdict': verdict,
             'log': str(log), 'health': health}
 
@@ -579,7 +677,7 @@ def battery(args) -> int:
     for display, folder, layers, stem, how in plan:   # strictly one game at a time
         staged = run_root / folder
         staged.mkdir()
-        stats = stage_mod(cache, layers, staged, stem)
+        stats = stage_mod(cache, layers, staged, stem, base_install)
         print(f'[mod_smoke] {display}: mission {stem} ({how}); staged {stats}', flush=True)
         result = run_mod(staged, stem, args.duration, args.timeout)
         result.update({'mod': display, 'mission': stem, 'mission_source': how,
@@ -587,8 +685,13 @@ def battery(args) -> int:
                        'identity': tree_identity(staged)})
         rows.append(result)
         print('[mod_smoke]', display, result_word(result), health_cell(result['health']), flush=True)
+        if result_word(result) == 'PASS' and not args.keep_stages:
+            shutil.rmtree(staged, ignore_errors=True)
+            result['staged'] = 'deleted (PASS)'
         if result_word(result) != 'PASS' and args.fail_fast:
             break
+    if not args.keep_stages:
+        shutil.rmtree(cache, ignore_errors=True)
     report = run_root / 'battery.json'
     report.write_text(json.dumps(rows, indent=2), encoding='utf-8')
     print(format_table(rows))
@@ -610,6 +713,8 @@ def main() -> int:
     ap.add_argument('--duration', type=int, default=30)
     ap.add_argument('--timeout', type=int, default=300)
     ap.add_argument('--fail-fast', action='store_true')
+    ap.add_argument('--keep-stages', action='store_true',
+                    help='keep every staged install (default: delete a stage after a PASS)')
     args = ap.parse_args()
     if not 1 <= args.duration <= 30:
         ap.error('--duration must be between 1 and 30')

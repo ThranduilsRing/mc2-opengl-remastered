@@ -200,3 +200,30 @@ def test_result_word():
     assert ms.result_word(ok) == "PASS"
     assert ms.result_word({"exit": 1, "health": ok["health"]}).startswith("FAIL")
     assert ms.result_word({"exit": 0, "health": ms.analyze_health("")}) == "HEALTH-FAIL"
+
+
+def test_first_mission_prefers_numbered_over_test_maps(tmp_path):
+    mod = tmp_path / "m"
+    for stem in ("ai_glenn", "cityassault", "m0101", "reap3m02", "reap3m01"):
+        _w(mod / f"data/missions/{stem}.fit")
+        _w(mod / f"data/missions/{stem}.pak")
+    assert ms.pick_mission([mod])[0] == "reap3m01"
+    _w(mod / "data/missions/mc2_03.fit")
+    _w(mod / "data/missions/mc2_03.pak")
+    assert ms.pick_mission([mod])[0] == "mc2_03"
+
+
+def test_stock_gap_fills_from_base_loose_but_never_overrides(tmp_path):
+    base = tmp_path / "base"
+    _w(base / "data/art/stock_only.fit", "stock")
+    _w(base / "data/art/both.fit", "stock")
+    _w(base / "data/movies/big.bik", "movie")
+    _w(base / "data/m/x.beauty/a.png", "png")
+    stage = tmp_path / "stage"
+    _w(stage / "data/art/both.fit", "mod")
+    stats = ms.fill_stock_gap(base, stage)
+    assert (stage / "data/art/stock_only.fit").read_text() == "stock"
+    assert (stage / "data/art/both.fit").read_text() == "mod"
+    assert not (stage / "data/movies/big.bik").exists()
+    assert not (stage / "data/m/x.beauty/a.png").exists()
+    assert stats["from_loose"] == 1
