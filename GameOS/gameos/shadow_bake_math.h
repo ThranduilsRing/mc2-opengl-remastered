@@ -23,7 +23,9 @@ inline Vec3 normalized(Vec3 v) {
 }
 
 // The art constants of the bake (owner ruling D2, 2026-10-21): the sun's angular radius, which sets every penumbra, and the long-shadow fade.
-inline constexpr float kSunAngularRadiusDeg = 2.0f;
+inline constexpr float kSunAngularRadiusDeg = 1.5f;   // calibrated on the owner views: 2.0 washed the night tree streaks out
+// The terrain's own shadow is a wide, low ridge, not a sharp caster: its cone is this many times the sun's (soft gradients, as pre-T15 had).
+inline constexpr float kTerrainConeScale = 2.5f;
 inline constexpr float kFadeStartWorld = 0.0f;   // the fade ramps from contact ...
 inline constexpr float kFadeEndWorld = 80.0f;    // ... to full at this blocker distance along the ray (the pre-T15 MC2_SHADOW_DIST_FADE)
 inline constexpr float kFadeMax = 0.65f;          // the pre-T15 MC2_SHADOW_DIST_FADE_MAX

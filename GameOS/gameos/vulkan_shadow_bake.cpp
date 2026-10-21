@@ -362,7 +362,7 @@ bool ShadowBake::inputsReady(const ShadowBakeInputs& in, uint64_t& key, uint64_t
     h = mc2shadow::fnv1a(&halfMap, sizeof(halfMap), h);
     h = mc2shadow::fnv1a(&sun, sizeof(sun), h);
     h = mc2shadow::fnv1a(&water, sizeof(water), h);
-    const float art[4] = {mc2shadow::kSunAngularRadiusDeg, mc2shadow::kFadeStartWorld, mc2shadow::kFadeEndWorld, mc2shadow::kFadeMax};
+    const float art[5] = {mc2shadow::kSunAngularRadiusDeg, mc2shadow::kFadeStartWorld, mc2shadow::kFadeEndWorld, mc2shadow::kFadeMax, mc2shadow::kTerrainConeScale};
     h = mc2shadow::fnv1a(art, sizeof(art), h);
     const uint64_t hv = maskReady_ ? bakedHeightVersion_ : store->heightVersion();
     h = mc2shadow::fnv1a(&hv, sizeof(hv), h);

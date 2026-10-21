@@ -4,6 +4,8 @@
 // tightest clearance of the ray over the cone's half-height at each step, so a ridge's shadow has a penumbra that grows with the distance to the ridge.
 #include "include/shadow_bake_common.glsl"
 
+const float kTerrainConeScale = 2.5;   // LOCKSTEP with mc2shadow::kTerrainConeScale
+
 layout(local_size_x = 8, local_size_y = 8) in;
 
 void main() {
@@ -18,7 +20,8 @@ void main() {
         vec2 dir = uB.sun.xy / horiz;
         float tanAlt = uB.sun.z / horiz;
         float cosAlt2 = horiz * horiz;                  // |L| = 1, so cos^2(alt) = |L.xy|^2
-        float cone = uB.sun.w / max(cosAlt2, 0.05);     // vertical half-height of the sun's disk per unit of horizontal distance
+        // Vertical half-height of the (widened, kTerrainConeScale in shadow_bake_math.h) sun disk per unit of horizontal distance.
+        float cone = kTerrainConeScale * uB.sun.w / max(cosAlt2, 0.05);
         float stepLen = uB.march.y;
         float dist = stepLen * (0.5 + bakeHash(t));
         for (int i = 0; i < 96; ++i) {
