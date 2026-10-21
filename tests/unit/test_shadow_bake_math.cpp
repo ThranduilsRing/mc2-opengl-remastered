@@ -28,7 +28,17 @@ TEST_CASE("shadow bake: mask layout is max(target, span / cap) in whole tiles") 
     MaskLayout big = maskLayout(301, 301 * 64.0f, 1.5f, 12288);
     CHECK(big.texels == 12288);
     CHECK(big.texelWorld == doctest::Approx(3.125f));
-    // No terrain, no mask.
+    // The editor's largest map (1024 cells = 43,690 wu, 342 vertices) also hits the cap: 24 x 24 tiles at about 3.56 wu.
+    MaskLayout editorMax = maskLayout(342, 342 * 64.0f, 1.5f, 12288);
+    CHECK(editorMax.texels == 12288);
+    CHECK(editorMax.tilesPerSide == 24);
+    CHECK(editorMax.texelWorld == doctest::Approx(43648.0f / 12288.0f));
+    // Its tile window still fits the 4096 caster window (the window texel grows past 0.5 wu instead of clipping casters).
+    const LightBasis lb = lightBasis(sunAt(15.0f, 45.0f));
+    const Window ew = casterWindow(lb, tileRegionWorld(editorMax, 23, 23), 0.0f, 400.0f, 600.0f, std::tan(kSunAngularRadiusDeg * 0.01745329252f));
+    CHECK(ew.texels == kWindowMaxTexels);
+    CHECK(ew.texelWorld > kWindowTexelWorld);
+    CHECK(ew.texelWorld < 1.5f);
     CHECK(maskLayout(1, 0.0f, 1.5f, 12288).texels == 0);
 }
 
