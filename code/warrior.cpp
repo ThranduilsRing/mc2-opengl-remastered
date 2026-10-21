@@ -1320,8 +1320,8 @@ long MechWarrior::runBrain (void) {
 	}
 
 	// MOD-HEALTH-1: tools/mod_smoke.py asserts AI is alive ("dead AI on POAR") from these
-	// milestone lines; always-on, three lines per process.
-	{
+	// milestone lines; gated by MC2_MOD_HEALTH_DIAG (mod_smoke sets it), three lines per process.
+	if (static const bool s_modHealth = mc2::gate::get<"MC2_MOD_HEALTH_DIAG">(); s_modHealth) {
 		static unsigned long s_brainRuns = 0;
 		++s_brainRuns;
 		if (s_brainRuns == 1 || s_brainRuns == 100 || s_brainRuns == 1000) {

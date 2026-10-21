@@ -639,6 +639,7 @@ def run_mod(staged: Path, stem: str, duration: int, timeout: int) -> dict:
     started = dt.datetime.now().timestamp() - 2
     env = os.environ.copy()
     env.setdefault('MC2_MECH_BATCHER_STATS', '1')
+    env.setdefault('MC2_MOD_HEALTH_DIAG', '1')  # enables the [MOD_HEALTH v1] AI-liveness lines
     print('[mod_smoke] run:', ' '.join(cmd), flush=True)
     try:
         proc = subprocess.run(cmd, cwd=str(ROOT), capture_output=True,

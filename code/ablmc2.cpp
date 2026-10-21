@@ -510,8 +510,8 @@ void initABL (void) {
 	ABLi_addFunction("isdeadorfled",         false, "i",   "b",  execIsDeadOrFled);
 	ABLi_addFunction("printteamstatus",      false, "i",   nullptr, execPrintTeamStatus);
 
-	ABLi_addFunction("settextmsg",           false, "i*i", nullptr, execSetTextMsg);
-	ABLi_addFunction("setlargemsg",          false, "i*i", nullptr, execSetLargeMsg);
+	ABLi_addFunction("settextmsg",           false, "i?i", nullptr, execSetTextMsg);
+	ABLi_addFunction("setlargemsg",          false, "i?i", nullptr, execSetLargeMsg);
 	ABLi_addFunction("setmissiontune",       false, "i",   nullptr, execSetMissionTune);
 	ABLi_addFunction("addresourcepoints",    false, "i",   nullptr, execAddResourcePoints);
 	ABLi_addFunction("addmoney",             false, "i",   nullptr, execAddMoney);
@@ -536,11 +536,11 @@ void initABL (void) {
 	ABLi_addFunction("setrepairtruckenabled",  false, "b", nullptr, execSetRepairTruckEnabled);
 	ABLi_addFunction("setsalvagecraftenabled", false, "b", nullptr, execSetSalvageCraftEnabled);
 
-	ABLi_addFunction("gettargetrelativeposition",    false, "iRR", nullptr, execGetTargetRelativePosition);
-	ABLi_addFunction("getrelativepositiontotarget",  false, "iriR", nullptr, execGetRelativePositionToTarget);
+	ABLi_addFunction("gettargetrelativeposition",    false, "irr", nullptr, execGetTargetRelativePosition);
+	ABLi_addFunction("getrelativepositiontotarget",  false, "i*iR", nullptr, execGetRelativePositionToTarget);
 	ABLi_addFunction("newdistancetoposition", false, "iR", "r", execNewDistanceToPosition);
-	ABLi_addFunction("numfriendswithinradius", false, "ir", "i", execNumFriendsWithinRadius);
-	ABLi_addFunction("numenemieswithinradius", false, "ir", "i", execNumEnemiesWithinRadius);
+	ABLi_addFunction("numfriendswithinradius", false, "i*", "i", execNumFriendsWithinRadius);
+	ABLi_addFunction("numenemieswithinradius", false, "i*", "i", execNumEnemiesWithinRadius);
 	ABLi_addFunction("hasorderfromplayer",   false, "i",   "b",  execHasOrderFromPlayer);
 	ABLi_addFunction("isselected",           false, nullptr,  "b",  execIsSelected);
 	ABLi_addFunction("isrefit",              false, nullptr,  "b",  execIsRefit);
@@ -549,9 +549,9 @@ void initABL (void) {
 	ABLi_addFunction("hirepilot",            false, "C",   nullptr, execHirePilot);
 	ABLi_addFunction("addnewpilot",          false, "iCC", nullptr, execAddNewPilot);
 	ABLi_addFunction("addnewpilottoplayer",  false, "iCC", nullptr, execAddNewPilotToPlayer);
-	ABLi_addFunction("autorepairwithinradius", false, "ir", nullptr, execAutoRepairWithinRadius);
-	ABLi_addFunction("scanareacapture",      false, "r",   nullptr, execScanAreaCapture);
-	ABLi_addFunction("scanarearepair",       false, "r",   nullptr, execScanAreaRepair);
+	ABLi_addFunction("autorepairwithinradius", false, "i*", nullptr, execAutoRepairWithinRadius);
+	ABLi_addFunction("scanareacapture",      false, "*",   "i", execScanAreaCapture);
+	ABLi_addFunction("scanarearepair",       false, "*",   nullptr, execScanAreaRepair);
 	ABLi_addFunction("setcampaignglobalvar", false, "ii",  nullptr, execSetCampaignGlobalVar);
 	ABLi_addFunction("getcampaignglobalvar", false, "i",   "i",  execGetCampaignGlobalVar);
 	ABLi_addFunction("setfixedbuildingrp",   false, "ii",  nullptr, execSetFixedBuildingRp);

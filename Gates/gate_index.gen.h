@@ -10,7 +10,7 @@
 
 namespace mc2::gate::detail {
 
-inline constexpr std::size_t kGateCount = 927;
+inline constexpr std::size_t kGateCount = 928;
 
 inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_3DVIEW_DIAG", Kind::Bool, Rule::Presence, {}},
@@ -451,6 +451,7 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_MODERN_TEX_RESOLVE_VALIDATE", Kind::Bool, Rule::Presence, {}},
     {"MC2_MODOVERRIDE_TRACE", Kind::Bool, Rule::Presence, {}},
     {"MC2_MOD_DEPS", Kind::String, Rule::Std, {}},
+    {"MC2_MOD_HEALTH_DIAG", Kind::Bool, Rule::Lead1, {}},
     {"MC2_MOUSE_RECON", Kind::Bool, Rule::Presence, {}},
     {"MC2_MOVER_COHERENCE_AUDIT", Kind::Bool, Rule::Lead0, {}},
     {"MC2_MOVER_CONTACT_SHADOW", Kind::Float, Rule::Prefix, {}},

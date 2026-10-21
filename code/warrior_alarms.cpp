@@ -3,6 +3,7 @@
 #include "warrior_internal.h"
 #include "mission.h"
 #include "mc2fmt.h"
+#include "Gates/gate.h"
 
 
 
@@ -150,7 +151,7 @@ void MechWarrior::setGeneralTacOrder (TacticalOrder newTacOrder) {
 	newTacOrderReceived[ORDERSTATE_GENERAL] = true;
 	// MOD-HEALTH-1: first AI/script-issued general order (tools/mod_smoke.py health check).
 	static bool s_firstGeneralOrder = false;
-	if (!s_firstGeneralOrder) {
+	if (!s_firstGeneralOrder && mc2::gate::get<"MC2_MOD_HEALTH_DIAG">()) {
 		s_firstGeneralOrder = true;
 		mc2::fmt::print_out("[MOD_HEALTH v1] event=first_general_order scenarioTime={:.2f}\n",
 			static_cast<double>(scenarioTime));
