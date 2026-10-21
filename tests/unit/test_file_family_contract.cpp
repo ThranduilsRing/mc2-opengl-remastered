@@ -697,8 +697,10 @@ TEST_CASE("FC9 the resolver corpus hands back the provider and bytes it names")
 		REQUIRE(bytes->type == MlJson::Str);
 		// Bytes first: the ladder must hand back the content the fixture names.
 		CHECK(resolved.bytes == bytes->s);
-		CHECK(fs::path(fst_normalize_loose_key(path.c_str())).lexically_normal() ==
-			fs::path(expectedProvider(layer, request)));
+		if (layer != "fastfile") {
+			CHECK(fs::path(fst_normalize_loose_key(path.c_str())).lexically_normal() ==
+				fs::path(expectedProvider(layer, request)));
+		}
 		if (layer == "fastfile") {
 			// An archive member has no disk path: its decoded bytes above are
 			// the provider check, and the probe must agree it is packed.
