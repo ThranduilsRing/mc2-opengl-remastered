@@ -10,6 +10,7 @@
 #include <cstdint>
 #include <span>
 #include <vector>
+#include "terrain_surface_asset.h"
 
 namespace mc2terrain {
 
@@ -90,6 +91,12 @@ public:
     bool setColormapAtlas(std::span<const uint8_t> bytes, int width, int height, uint32_t vkFormat);
     const ColormapAtlas& colormapAtlas() const { return colormapAtlas_; }
 
+    bool setSurfaceAsset(SurfaceAsset asset, uint64_t expectedSource);
+    bool loadSurfaceAsset(std::span<const uint8_t> bytes, uint64_t expectedSource);
+    void clearSurfaceAsset();
+    const SurfaceAsset& surfaceAsset() const { return surfaceAsset_; }
+    uint64_t surfaceVersion() const { return surfaceVersion_; }
+
 private:
     std::vector<float> height_;
     int mapSide_ = 0;
@@ -107,6 +114,8 @@ private:
     WaterShoreHeightKind waterShoreHeightKind_ = WaterShoreHeightKind::RawHeight;
     FieldImage<uint8_t> cementAtlas_;
     ColormapAtlas colormapAtlas_;
+    SurfaceAsset surfaceAsset_;
+    uint64_t surfaceVersion_ = 0;
 };
 
 }  // namespace mc2terrain
