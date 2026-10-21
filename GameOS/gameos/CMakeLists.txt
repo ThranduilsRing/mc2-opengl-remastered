@@ -17,6 +17,7 @@ set(SOURCES ${SOURCES}
     texture_decode.cpp
     terrain_field_store.cpp
     terrain_surface_asset.cpp
+    terrain_surface_cook.cpp
     gameos_graphics_params.cpp
     gameos_res.cpp
     MC2Strings.cpp

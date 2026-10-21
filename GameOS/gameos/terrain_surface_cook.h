@@ -1,0 +1,29 @@
+// Shared offline and mission-load evaluator of the existing terrain macro-color response.
+#pragma once
+#include "terrain_surface_asset.h"
+
+namespace mc2terrain {
+struct SurfaceCookInput {
+    std::span<const SurfaceColor> color;
+    // The original resolved atlas can exceed the cooked image size. Sample bytes directly
+    // rather than expanding a 5120+ square source to a second float image at load time.
+    std::span<const uint8_t> rgba;
+    bool srgb = false;
+    static constexpr uint32_t kMaxSourceSide = 16384;
+    uint32_t colorWidth = 0, colorHeight = 0;
+    float topLeftX = 0, topLeftY = 0, worldSpan = 0;
+    std::span<const float> shore;
+    uint32_t shoreWidth = 0, shoreHeight = 0;
+    std::array<float, 4> shoreBounds{}; // north-west x/y, width/height in world units
+    float waterElevation = 0;
+    bool followCoast = false;
+    uint32_t outputWidth = 0, outputHeight = 0;
+};
+
+std::vector<SurfaceColor> surfaceColorsFromRgba(std::span<const uint8_t> rgba, bool srgb);
+bool validSurfaceCookInput(const SurfaceCookInput& input);
+uint64_t surfaceCookSourceHash(const SurfaceCookInput& input);
+// UVs have the original atlas convention (north at v=0); caller validates input once per cook.
+SurfaceColor evaluateSurfaceMacro(const SurfaceCookInput& input, float u, float v);
+std::optional<SurfaceAsset> cookSurface(const SurfaceCookInput& input);
+} // namespace mc2terrain
