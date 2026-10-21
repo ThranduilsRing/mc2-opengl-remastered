@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in objmgr_internal.h.
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include <memory>
+#include <span>
 #include "objmgr_internal.h"
 #include "saved_objects_check.h"
 #include "mc2fmt.h"
@@ -426,9 +427,8 @@ void GameObjectManager::buildStaticShadowCasterSet() {
 	ZoneScopedN("GameObjectManager::buildStaticShadowCasterSet");
 	mc2shadow::StaticCasterSet& set = mc2shadow::staticCasterSet();
 	set.beginRebuild();
-	auto addAll = [&set](auto* objects, long count, mc2shadow::CasterKind kind) {
-		for (long i = 0; i < count; ++i) {
-			GameObjectPtr obj = objects[i];
+	auto addAll = [&set](auto objects, mc2shadow::CasterKind kind) {
+		for (GameObjectPtr obj : objects) {
 			if (!obj || !obj->getExists()) continue;
 			AppearancePtr app = obj->getAppearance();
 			if (!app) continue;
@@ -442,10 +442,10 @@ void GameObjectManager::buildStaticShadowCasterSet() {
 			set.add(e);
 		}
 	};
-	addAll(terrainObjects, numTerrainObjects, mc2shadow::CasterKind::TerrainObject);
-	addAll(buildings, numBuildings, mc2shadow::CasterKind::Building);
-	addAll(turrets, numTurrets, mc2shadow::CasterKind::Turret);
-	addAll(gates, numGates, mc2shadow::CasterKind::Gate);
+	addAll(std::span(terrainObjects, static_cast<size_t>(numTerrainObjects)), mc2shadow::CasterKind::TerrainObject);
+	addAll(std::span(buildings, static_cast<size_t>(numBuildings)), mc2shadow::CasterKind::Building);
+	addAll(std::span(turrets, static_cast<size_t>(numTurrets)), mc2shadow::CasterKind::Turret);
+	addAll(std::span(gates, static_cast<size_t>(numGates)), mc2shadow::CasterKind::Gate);
 	set.endRebuild();
 }
 

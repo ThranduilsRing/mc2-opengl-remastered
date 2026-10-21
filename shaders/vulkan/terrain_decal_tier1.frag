@@ -12,7 +12,6 @@
 #define PREC highp
 #endif
 #include "include/terrain_frame_vk.glsl"
-#include "include/terrain_static_visibility.glsl"   // the bake mask, the same static term the ground under the decal reads
 
 layout(location = 0) in vec3  WorldPos;
 layout(location = 1) in vec2  Texcoord;
@@ -36,6 +35,7 @@ layout(push_constant) uniform OverlayPC {
     int   _pad2;
 } pc;
 
+#include "include/terrain_static_visibility.glsl"
 void main() {
     vec4 tex_color = (Texcoord.x < -0.5) ? vec4(1.0) : texture(tex1, Texcoord);
     vec4 c = Color * tex_color;

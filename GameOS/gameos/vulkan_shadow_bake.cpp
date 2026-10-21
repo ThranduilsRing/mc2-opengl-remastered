@@ -1,18 +1,11 @@
 // vulkan_shadow_bake.cpp -- see the header. Compiles to nothing unless MC2_VULKAN_ISLAND is defined.
 #ifdef MC2_VULKAN_ISLAND
 
-#ifndef VK_USE_PLATFORM_WIN32_KHR
-#define VK_USE_PLATFORM_WIN32_KHR
-#endif
-
-#include <volk.h>
-
-#define VMA_STATIC_VULKAN_FUNCTIONS 0
-#define VMA_DYNAMIC_VULKAN_FUNCTIONS 0
-#include <vk_mem_alloc.h>
-
 #include "vulkan_shadow_bake.h"
 
+#include <vk_mem_alloc.h>
+
+#include "../../RenderCore/axis_convert.h"
 #include "../../RenderCore/gpu_abi/GpuStaticPropInstance.h"
 #include "gos_postprocess.h"
 #include "mc2fmt.h"
@@ -31,7 +24,9 @@
 #include <chrono>
 #include <cmath>
 #include <cstring>
+#include <optional>
 #include <string>
+#include <string_view>
 
 extern void gos_GetTerrainLightDir(float* x, float* y, float* z);
 extern void gos_GetTerrainChunkGridInfo(int* mapSide, float* halfMap);
@@ -73,7 +68,7 @@ struct BakeTileParams {
 };
 static_assert(sizeof(BakeTileParams) == 176, "BakeTile std140 size (shadow_bake_common.glsl)");
 
-void blog(const char* what) { mc2::fmt::print_err("[SHADOW_BAKE] {}\n", what); }
+void blog(std::string_view what) { mc2::fmt::print_err("[SHADOW_BAKE] {}\n", what); }
 
 VkImageMemoryBarrier imageBarrier(VkImage image, VkImageAspectFlags aspect, uint32_t baseMip, uint32_t mips, VkImageLayout from, VkImageLayout to,
                                   VkAccessFlags src, VkAccessFlags dst) {
@@ -163,9 +158,10 @@ void instanceBox(const float m[16], const float mn[3], const float mx[3], mc2sha
     hi = {-1e30f, -1e30f, -1e30f};
     for (int c = 0; c < 8; ++c) {
         const float v[3] = {(c & 1) ? mx[0] : mn[0], (c & 2) ? mx[1] : mn[1], (c & 4) ? mx[2] : mn[2]};
-        float s[3];
+        mc2shadow::Vec3 stuff;
+        float* s = &stuff.x;
         for (int j = 0; j < 3; ++j) s[j] = v[0] * m[4 * j + 0] + v[1] * m[4 * j + 1] + v[2] * m[4 * j + 2] + m[4 * j + 3];
-        const mc2shadow::Vec3 w{-s[0], s[2], s[1]};
+        const mc2shadow::Vec3 w = mc2ToRender(stuff);
         lo = {(std::min)(lo.x, w.x), (std::min)(lo.y, w.y), (std::min)(lo.z, w.z)};
         hi = {(std::max)(hi.x, w.x), (std::max)(hi.y, w.y), (std::max)(hi.z, w.z)};
     }
@@ -332,23 +328,23 @@ void ShadowBake::invalidate() {
 
 // The bake's inputs: the caster set of the mission, the terrain, the sun, the water, the static light matrix. The mask key leaves out the height version
 // once a mask exists: a crater or an editor stroke must not rebake the whole map (dirty tiles arrive with P5).
-bool ShadowBake::inputsReady(const ShadowBakeInputs& in, uint64_t& key, uint64_t& objectKey) {
+std::optional<ShadowBake::BakeKeys> ShadowBake::inputsReady(const ShadowBakeInputs& in) {
     const mc2shadow::StaticCasterSet& set = mc2shadow::staticCasterSet();
-    if (set.version() == 0) return false;
+    if (set.version() == 0) return std::nullopt;
     // A map whose objects cast nothing has no prop geometry; its bake is the terrain self-shadow alone.
-    if (!set.entries().empty() && (in.vbo == VK_NULL_HANDLE || in.ibo == VK_NULL_HANDLE)) return false;
+    if (!set.entries().empty() && (in.vbo == VK_NULL_HANDLE || in.ibo == VK_NULL_HANDLE)) return std::nullopt;
     const mc2terrain::TerrainFieldStore* store = gos_TerrainFieldStore();
-    if (!store || store->mapSide() < 2) return false;
+    if (!store || store->mapSide() < 2) return std::nullopt;
     StaticShadowSpec spec;
-    if (!gos_GetStaticShadowSpec(&spec)) return false;
+    if (!gos_GetStaticShadowSpec(&spec)) return std::nullopt;
     if (!in.alphaReady && !in.alphaAbsent && !set.entries().empty()) {
-        if (++waitFrames_ < kMaxAlphaWaitFrames) return false;
+        if (++waitFrames_ < kMaxAlphaWaitFrames) return std::nullopt;
         if (!loggedWait_) { loggedWait_ = true; blog("the alpha-ON array never arrived: baking with foliage casters opaque."); }
     }
     int side = 0;
     float halfMap = 0.0f;
     gos_GetTerrainChunkGridInfo(&side, &halfMap);
-    if (side != store->mapSide()) return false;
+    if (side != store->mapSide()) return std::nullopt;
     float lx = 0.0f, ly = 0.0f, lz = 1.0f;
     gos_GetTerrainLightDir(&lx, &ly, &lz);
     const mc2shadow::Vec3 sun = mc2shadow::clampSunAltitude({lx, ly, lz}, mc2ShadowMinSunAltDeg());
@@ -370,10 +366,11 @@ bool ShadowBake::inputsReady(const ShadowBakeInputs& in, uint64_t& key, uint64_t
         loggedHeightDrift_ = true;
         blog("terrain heights changed after the bake (crater or edit): the mask keeps the baked heights until dirty tiles exist (P5).");
     }
-    key = h | 1u;
+    BakeKeys keys;
+    keys.mask = h | 1u;
     const uint64_t gen = spec.generation;
-    objectKey = mc2shadow::fnv1a(&gen, sizeof(gen), key) | 1u;
-    return true;
+    keys.object = mc2shadow::fnv1a(&gen, sizeof(gen), keys.mask) | 1u;
+    return keys;
 }
 
 bool ShadowBake::ensureProducts(int maskTexels) {
@@ -489,8 +486,9 @@ bool ShadowBake::update(VkCommandBuffer cb, uint64_t epoch, const ShadowBakeInpu
     if (!inited_) return false;
     retire(epoch);
     if (recorded_) return false;   // the previous bake has not retired: its descriptors and buffers are still in flight
-    uint64_t key = 0, objectKey = 0;
-    if (!inputsReady(in, key, objectKey)) return false;
+    const std::optional<BakeKeys> keys = inputsReady(in);
+    if (!keys) return false;
+    const uint64_t key = keys->mask, objectKey = keys->object;
     const bool needMask = key != bakedKey_;
     const bool needObject = needMask || objectKey != objectKey_;
     if (!needMask && !needObject) return false;

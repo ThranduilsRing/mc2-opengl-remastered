@@ -927,41 +927,27 @@ uint8_t getPopulationsEverTagged() { return s_popsEverTagged; }
 // the full registry (s_recipes/s_recipeRanges), NOT the per-frame visible buckets.
 // Trees and unset-population recipes are excluded. Used once at the static
 // shadow-map build to replay all rigid buildings into the world-fixed depth map.
+// Appends one live recipe's leaves to `out`; nothing for a tombstone or a stale range. Returns the number appended.
+static size_t appendRecipeLeaves(const RecipeRange& rng, std::vector<GpuStaticPropInstance>& out) {
+    const size_t begin = rng.first;
+    const size_t end = begin + rng.count;
+    if (rng.count == 0 || end > s_recipes.size()) return 0;
+    out.insert(out.end(), s_recipes.begin() + static_cast<std::ptrdiff_t>(begin), s_recipes.begin() + static_cast<std::ptrdiff_t>(end));
+    return rng.count;
+}
+
 void getBuildingShadowInstances(std::vector<GpuStaticPropInstance>& out) {
     out.clear();
     const uint8_t bldg = static_cast<uint8_t>(GpuStaticPropPopulation::Building);
-    for (const RecipeRange& rng : s_recipeRanges) {
-        if (rng.count == 0) continue;            // tombstone (invalidated/destroyed)
-        if (rng.population != bldg) continue;     // buildings only; trees/unset excluded
-        const size_t end = static_cast<size_t>(rng.first) + rng.count;
-        if (end > s_recipes.size()) continue;     // defense: stale range
-        out.insert(out.end(),
-                   s_recipes.begin() + rng.first,
-                   s_recipes.begin() + end);
-    }
+    for (const RecipeRange& rng : s_recipeRanges)
+        if (rng.population == bldg) appendRecipeLeaves(rng, out);   // buildings only; trees/unset excluded
 }
 
-// SHADOW-DYNAMIC-PROP-CASTERS-1: append every non-tombstoned NON-BUILDING recipe's
-// leaf instances (trees/fences/generic props) to `out`. Visibility-independent —
-// reads the full registry (s_recipes/s_recipeRanges), NOT the per-frame visible
-// buckets. Buildings are EXCLUDED (population==Building) because they cast via the
-// world-fixed static map; everything else (Tree/Generic/Legacy and unset recipes,
-// which are non-buildings in practice — buildings are tagged Building at register)
-// is included so the dynamic shadow pass admits ALL props regardless of camera
-// visibility. Mirror of getBuildingShadowInstances with the filter inverted.
+// SHADOW-DYNAMIC-PROP-CASTERS-1: every non-tombstoned NON-BUILDING recipe's leaf instances (trees/fences/generic props), from the
+// full registry, not the per-frame visible buckets, so the dynamic shadow pass admits every prop whatever the camera saw. Buildings
+// cast via the world-fixed static map.
 void getDynamicPropShadowInstances(std::vector<GpuStaticPropInstance>& out) {
-    out.clear();
-    const uint8_t bldg = static_cast<uint8_t>(GpuStaticPropPopulation::Building);
-    for (const RecipeRange& rng : s_recipeRanges) {
-        if (rng.count == 0) continue;            // tombstone (invalidated/destroyed)
-        if (rng.noShadow) continue;              // SHADOW-FOLIAGE: impostor/far-LOD casts no shadow
-        if (rng.population == bldg) continue;    // buildings cast via the static map
-        const size_t end = static_cast<size_t>(rng.first) + rng.count;
-        if (end > s_recipes.size()) continue;     // defense: stale range
-        out.insert(out.end(),
-                   s_recipes.begin() + rng.first,
-                   s_recipes.begin() + end);
-    }
+    getDynamicPropShadowInstancesExcluding(out, {});
 }
 
 void getDynamicPropShadowInstancesExcluding(std::vector<GpuStaticPropInstance>& out, const std::vector<uint8_t>& excludedRecipes) {
@@ -969,22 +955,16 @@ void getDynamicPropShadowInstancesExcluding(std::vector<GpuStaticPropInstance>& 
     const uint8_t bldg = static_cast<uint8_t>(GpuStaticPropPopulation::Building);
     for (size_t r = 0; r < s_recipeRanges.size(); ++r) {
         const RecipeRange& rng = s_recipeRanges[r];
-        if (rng.count == 0 || rng.noShadow || rng.population == bldg) continue;
+        if (rng.noShadow || rng.population == bldg) continue;   // an impostor/far LOD casts nothing; buildings cast via the static map
         if (r < excludedRecipes.size() && excludedRecipes[r] != 0) continue;
-        const size_t end = static_cast<size_t>(rng.first) + rng.count;
-        if (end > s_recipes.size()) continue;
-        out.insert(out.end(), s_recipes.begin() + rng.first, s_recipes.begin() + end);
+        appendRecipeLeaves(rng, out);
     }
 }
 
-bool getRecipeShadowLeaves(int32_t recipeIndex, std::vector<GpuStaticPropInstance>& out) {
-    if (!recipeValid(recipeIndex)) return false;
+size_t getRecipeShadowLeaves(int32_t recipeIndex, std::vector<GpuStaticPropInstance>& out) {
+    if (!recipeValid(recipeIndex)) return 0;
     const RecipeRange& rng = s_recipeRanges[static_cast<size_t>(recipeIndex)];
-    if (rng.noShadow) return false;
-    const size_t end = static_cast<size_t>(rng.first) + rng.count;
-    if (end > s_recipes.size()) return false;
-    out.insert(out.end(), s_recipes.begin() + rng.first, s_recipes.begin() + end);
-    return true;
+    return rng.noShadow ? 0 : appendRecipeLeaves(rng, out);
 }
 
 bool staticPropGetExtentRadius(int32_t recipeIndex, float* out) {

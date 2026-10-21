@@ -16,7 +16,6 @@
 #define PREC highp
 #endif
 #include "include/terrain_frame_vk.glsl"
-#include "include/terrain_static_visibility.glsl"   // the bake mask, the same static term the ground under the overlay reads
 
 layout(location = 0) in vec3  WorldPos;
 layout(location = 1) in vec2  Texcoord;
@@ -66,6 +65,7 @@ vec3 overlayCementAlbedo(uint cw, vec2 wp) {
     return texture(u_cementAtlas, cAtlasUV).rgb * vec3(uT.missionFlatR, uT.missionFlatG, uT.missionFlatB);
 }
 
+#include "include/terrain_static_visibility.glsl"
 void main() {
     if (pc._pad0 == 2) {
         ivec2 size = textureSize(tex1, 0);

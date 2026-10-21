@@ -65,7 +65,7 @@ uint64_t StaticCasterSet::resolve(std::vector<GpuStaticPropInstance>& leaves) co
     for (uint32_t i : order) {
         const StaticCasterEntry& e = entries_[i];
         one.clear();
-        if (!GpuStaticPropRegistry::getRecipeShadowLeaves(e.recipeIndex, one)) continue;
+        if (GpuStaticPropRegistry::getRecipeShadowLeaves(e.recipeIndex, one) == 0) continue;
         h = fnv1a(&e.gameHandle, sizeof(e.gameHandle), h);
         h = fnv1a(&e.kind, sizeof(e.kind), h);
         h = fnv1a(&e.damageState, sizeof(e.damageState), h);

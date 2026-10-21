@@ -22,6 +22,7 @@
 #include "vulkan_shadow_island_live.h"   // Mc2ShadowPacket
 
 #include <cstdint>
+#include <optional>
 #include <span>
 #include <string_view>
 #include <vector>
@@ -86,7 +87,8 @@ private:
     };
     struct InstRun { uint32_t typeID, firstInstance, count; };
 
-    bool inputsReady(const ShadowBakeInputs& in, uint64_t& key, uint64_t& objectKey);
+    struct BakeKeys { uint64_t mask = 0, object = 0; };
+    std::optional<BakeKeys> inputsReady(const ShadowBakeInputs& in);
     bool ensureProducts(int maskTexels);
     bool ensureTransients();
     bool computeTypeBounds(const ShadowBakeInputs& in);
