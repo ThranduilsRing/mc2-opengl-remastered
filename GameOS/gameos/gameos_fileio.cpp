@@ -19,13 +19,15 @@
 
 #include "platform_io.h" // will be removed
 #include "mc2fmt.h"
+#include <string>
+#include <string_view>
 
 namespace {
 
 // The one place a GOS stream touches the C runtime file API. The stream
 // handle goes through it for open/seek/read/write/close, so that plumbing
 // exists once instead of once per member function.
-FILE* openStream(const char* path, gosEnum_FileWriteStatus status)
+FILE* openStream(std::string_view path_view, gosEnum_FileWriteStatus status)
 {
     const char* mode = nullptr;
     switch(status) {
@@ -43,11 +45,12 @@ FILE* openStream(const char* path, gosEnum_FileWriteStatus status)
             gosASSERT(0);
     }
 
-    FILE* file = fopen(path, mode);
+    const std::string path(path_view); // fopen needs a terminated string
+    FILE* file = fopen(path.c_str(), mode);
     if(!file)
     {
         int err = errno; // save errno from being possible overwritten by sprintf
-        mc2::fmt::print_err("gosFileStream: failed to open file: {} : {}\n", mc2::fmt::safe(path), mc2::fmt::safe(strerror(err)));
+        mc2::fmt::print_err("gosFileStream: failed to open file: {} : {}\n", mc2::fmt::safe(path.c_str()), mc2::fmt::safe(strerror(err)));
         STOP(("Failed to open file"));
     }
     return file;
