@@ -255,15 +255,8 @@ long FastFile::open (const char* fName)
 		{
 			char* nm = files[i].pfe->name;
 			nm[MAX_FILENAME_SIZE - 1] = '\0';
-			bool dirty = false;
-			for (const char* c = nm; *c; ++c)
-			{
-				if (*c == '\\' || (*c >= 'A' && *c <= 'Z'))
-				{
-					dirty = true;
-					break;
-				}
-			}
+			const std::string_view sv(nm);
+			const bool dirty = std::ranges::any_of(sv, [](char ch) { return ch == static_cast<char>(0x5C) || (ch >= 'A' && ch <= 'Z'); });
 			if (dirty)
 			{
 				fst_normalize_loose_key_inplace(nm);
