@@ -198,7 +198,7 @@ long GameObjectManager::calcPartId (long objectClass, long param1, long param2, 
 		case TREEBUILDING:
 		case TURRET:
 		case GATE:
-			partId = MIN_TERRAIN_PART_ID + param1 * MAX_MAP_CELL_WIDTH + param2;
+			partId = MIN_TERRAIN_PART_ID + param1 * gTerrainPartIdStride + param2;
 			break;
 		case TRAINCAR:
 			Fatal(0, " TRAINS NEED PART IDS ");

@@ -385,7 +385,7 @@ void BuildingSettingsDlg::updateMemberVariables()
 	m_y = pEditorObject->getPosition().y;
 	long row, column;
 	pEditorObject->getCells(row, column);
-	m_partID = MIN_TERRAIN_PART_ID + row * MAX_MAP_CELL_WIDTH + column;
+	m_partID = MIN_TERRAIN_PART_ID + row * gTerrainPartIdStride + column;
 
 	UpdateData( false );
 }

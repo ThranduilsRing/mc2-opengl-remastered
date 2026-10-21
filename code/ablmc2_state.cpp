@@ -68,7 +68,7 @@ void execGetTerrainObjectPartID (void) {
 	long row = ABLi_popInteger();
 	long col = ABLi_popInteger();
 	
-	long partID = MIN_TERRAIN_PART_ID + row * MAX_MAP_CELL_WIDTH + col;
+	long partID = MIN_TERRAIN_PART_ID + row * gTerrainPartIdStride + col;
 	pushInteger(partID);
 }	
 

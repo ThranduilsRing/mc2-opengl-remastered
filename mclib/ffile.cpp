@@ -47,6 +47,7 @@ void CB_PRINTF(std::format_string<Args...> fmt, Args&&... args)
 #include<gameos.hpp>
 #include "mc2_dialog.h"
 #include "Gates/gate.h"
+#include "fst_hash.h"
 
 MemoryPtr 		LZPacketBuffer = nullptr;
 unsigned int	LZPacketBufferSize = 512000;
@@ -245,6 +246,30 @@ long FastFile::open (const char* fName)
 
 		files[i].inuse = FALSE;
 		files[i].pos = 0;
+
+		// Retail-format FSTs (MCO art/tgl, REAP3, CVE-G) store member names
+		// with backslashes (and sometimes mixed case); lookups are keyed on
+		// lowercase forward-slash (FastFileFind). Canonicalize the in-memory
+		// entry and rebuild its hash; the file on disk is never touched.
+		// Already-canonical names (stock) are left byte-identical.
+		{
+			char* nm = files[i].pfe->name;
+			nm[MAX_FILENAME_SIZE - 1] = '\0';
+			bool dirty = false;
+			for (const char* c = nm; *c; ++c)
+			{
+				if (*c == '\\' || (*c >= 'A' && *c <= 'Z'))
+				{
+					dirty = true;
+					break;
+				}
+			}
+			if (dirty)
+			{
+				fst_normalize_loose_key_inplace(nm);
+				files[i].pfe->hash = static_cast<DWORD>(elfHash(nm));
+			}
+		}
 	}
 
 	return (0);

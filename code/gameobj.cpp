@@ -1450,8 +1450,8 @@ bool WeaponHitChunk::valid (long from) {
 				GameObjectPtr target = ObjectManager->findByPartId(targetId);
 				if (!target) {
 					char s[512];
-					long r = (targetId - MIN_TERRAIN_PART_ID) / MAX_MAP_CELL_WIDTH;
-					long c = targetId - MIN_TERRAIN_PART_ID - (MAX_MAP_CELL_WIDTH * r);
+					long r = (targetId - MIN_TERRAIN_PART_ID) / gTerrainPartIdStride;
+					long c = targetId - MIN_TERRAIN_PART_ID - (gTerrainPartIdStride * r);
 					(*std::format_to_n(s, sizeof(s) - 1, "WeaponHitChunk INVALID: NULL terrain target ({:d}), rc = {:d},{:d}, type = {:d}, damage = {:.2f}, data={:d}", mc2::fmt::as_i32(targetId), mc2::fmt::as_i32(r), mc2::fmt::as_i32(c), mc2::fmt::as_i32(targetType), damage, mc2::fmt::as_i32(data)).out = '\0');
 					if (CombatLog) {
 						CombatLog->write(s);
