@@ -155,13 +155,23 @@ void import_colormap(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
             const auto source = cooked->sourceHash;
             if (fields->setSurfaceAsset(std::move(*cooked), source)) {
                 const auto& surface = fields->surfaceAsset();
-                std::vector<uint64_t> packedColors(surface.macroColor.size());
+                // The cook output comes from an 8-bit atlas and is only ever sampled at LOD 0, so RGBA8 holds it:
+                // sRGB sources store the sRGB-encoded rgb (the sampler decodes to the same linear values the cook
+                // computed, with sRGB's dark-end precision); alpha is the cooked breakup in [0,1]. Half the VRAM
+                // of the former R16G16B16A16_SFLOAT upload (64 MB vs 128 MB at 4096^2).
+                const auto toByte = [](float v) { return uint8_t(std::lround(std::clamp(v, 0.0f, 1.0f) * 255.0f)); };
+                const auto encode = [&](float v) {
+                    v = std::clamp(v, 0.0f, 1.0f);
+                    return toByte(input.srgb ? (v <= 0.0031308f ? v * 12.92f : 1.055f * std::pow(v, 1.0f / 2.4f) - 0.055f) : v);
+                };
+                std::vector<uint32_t> packedColors(surface.macroColor.size());
                 for (size_t i = 0; i < packedColors.size(); ++i) {
                     const auto& c = surface.macroColor[i];
-                    packedColors[i] = glm::packHalf4x16(glm::vec4(c[0], c[1], c[2], c[3]));
+                    packedColors[i] = uint32_t(encode(c[0])) | uint32_t(encode(c[1])) << 8 | uint32_t(encode(c[2])) << 16 |
+                                      uint32_t(toByte(c[3])) << 24;
                 }
-                if (upload_colormap_image(s, VK_FORMAT_R16G16B16A16_SFLOAT, surface.width, surface.height,
-                        packedColors.data(), packedColors.size() * sizeof(uint64_t))) {
+                if (upload_colormap_image(s, input.srgb ? VK_FORMAT_R8G8B8A8_SRGB : VK_FORMAT_R8G8B8A8_UNORM, surface.width, surface.height,
+                        packedColors.data(), packedColors.size() * sizeof(uint32_t))) {
                     s->colormapVersionImported = feed.colormapVersion;
                     s->colormapShoreVersionImported = feed.shoreFieldVersion;
                     s->colormapCookParams = params;
