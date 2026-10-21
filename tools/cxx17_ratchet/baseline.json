@@ -228,7 +228,7 @@
    "LG17": 0,
    "LG18": 0,
    "LG19": 0,
-   "LG20": 21
+   "LG20": 33
   },
   "tools": {
    "LG01": 0,
@@ -3499,6 +3499,9 @@
   "tests/unit/test_authored_order_seam.cpp": {
    "LG20": 1
   },
+  "tests/unit/test_file_family_contract.cpp": {
+   "LG20": 12
+  },
   "tests/unit/test_job_system_harness.cpp": {
    "LG20": 1
   },
@@ -3537,7 +3540,7 @@
    "LG20": 3
   }
  },
- "head": "be5b2eab0",
+ "head": "563443d20",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
