@@ -15,7 +15,7 @@
  "files_over_1500": {
   "GameOS/gameos/engine_present_vk.cpp": 2793,
   "GameOS/gameos/vulkan_color_prop_island.cpp": 1725,
-  "GameOS/gameos/vulkan_shadow_island_live.cpp": 1546,
+  "GameOS/gameos/vulkan_shadow_island_live.cpp": 1550,
   "GameOS/include/gameos.hpp": 3721,
   "RenderCore/RendererFeatureRegistry.h": 1596,
   "code/artlry.cpp": 1833,
@@ -56,7 +56,7 @@
   "mclib/terrtxm.cpp": 1816,
   "mclib/tgl.h": 1799
  },
- "head": "587a7ba82",
+ "head": "d70280265",
  "per_dir": {
   "GameAdapters": {
    "files": 9,
@@ -65,7 +65,7 @@
    "max_lines": 466
   },
   "GameOS": {
-   "files": 346,
+   "files": 349,
    "files_over_1500": 4,
    "files_over_3000": 1,
    "max_lines": 3721
@@ -113,10 +113,10 @@
    "max_lines": 2518
   },
   "shaders": {
-   "files": 86,
+   "files": 88,
    "files_over_1500": 0,
    "files_over_3000": 0,
-   "max_lines": 780
+   "max_lines": 779
   }
  },
  "thresholds": [
@@ -246,7 +246,7 @@
   }
  ],
  "total": {
-  "files": 1810,
+  "files": 1815,
   "files_over_1500": 42,
   "files_over_3000": 1,
   "max_lines": 3721
