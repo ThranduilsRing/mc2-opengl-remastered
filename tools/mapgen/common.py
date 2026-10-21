@@ -91,6 +91,20 @@ def distance(a, b):
     return math.hypot(a[0] - b[0], a[1] - b[1])
 
 
+def building_role(obj):
+    if "role" in obj:
+        return obj["role"]
+    name = (obj.get("type_name", "") + " " + obj.get("appearance", "")).lower()
+    groups = (("airfield", ("hangar", "airfield", "controltower", "runway")),
+              ("hq", ("_hq", "headquarter", "command", "sensor", "lookout")),
+              ("industrial", ("factory", "tank", "fuel", "pipe", "refinery", "power", "generator", "warehouse", "storage", "mine", "industrial")),
+              ("town", ("house", "apartment", "office", "shop", "church", "hotel", "shack", "skyscraper", "residen", "commercial")))
+    for role, words in groups:
+        if any(word in name for word in words):
+            return role
+    return "military"
+
+
 def components(mask, diagonal=False):
     """Return deterministic components as cell lists, largest first."""
     remaining = np.array(mask, dtype=bool, copy=True)
@@ -123,16 +137,15 @@ def distance_field(mask):
     result = np.full(mask.shape, rows + cols, dtype=np.int32)
     result[mask] = 0
     # Two raster passes give the exact chessboard distance transform.
-    for r in range(rows):
-        for c in range(cols):
-            if r:
-                result[r, c] = min(result[r, c], int(result[r-1, max(0, c-1):min(cols, c+2)].min()) + 1)
-            if c:
-                result[r, c] = min(result[r, c], result[r, c-1] + 1)
-    for r in range(rows-1, -1, -1):
-        for c in range(cols-1, -1, -1):
-            if r+1 < rows:
-                result[r, c] = min(result[r, c], int(result[r+1, max(0, c-1):min(cols, c+2)].min()) + 1)
-            if c+1 < cols:
-                result[r, c] = min(result[r, c], result[r, c+1] + 1)
+    index = np.arange(cols, dtype=np.int32)
+    for order, dr in ((range(rows), -1), (range(rows-1, -1, -1), 1)):
+        for r in order:
+            previous = r + dr
+            if 0 <= previous < rows:
+                row = result[previous]
+                neighbours = np.minimum(row, np.r_[row[0], row[:-1]])
+                neighbours = np.minimum(neighbours, np.r_[row[1:], row[-1]])
+                result[r] = np.minimum(result[r], neighbours + 1)
+            row = np.minimum.accumulate(result[r] - index) + index
+            result[r] = (np.minimum.accumulate((row + index)[::-1])[::-1] - index)
     return result

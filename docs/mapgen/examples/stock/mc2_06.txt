@@ -1,0 +1,112 @@
+stock/mc2_06 | 300x300 cells | 3 cells/char
+North up; cell crop [0,0)..[300,300); objects by team: {-1: 327, 0: 105, 1: 16}
+@ player start; O visible objective; B military; h town; I industry; H HQ/sensor; A airfield
+# wall/fence; + gate; T turret; C turret control; G generator; c gate control
+= road/bridge; : runway; . cement; ~ water; t trees; ^ slope>=35deg; % rock; , prop; ? unresolved
++----------------------------------------------------------------------------------------------------+
+|                                                                 =                                  |
+|  tt  t  tt  tt tttt tttt t            tt tt                     =                             t  tt|
+| ttttttttttttttttttttttttt tttttt      ttt                       =                            tt tt |
+|  ttt tttttttttttttttttttttttttt        t t                      =                             t tt |
+| ttttttttttttttttttttttttttttttttt     tt t         t      ttt   =                         tt tt  t |
+| ttttt  ttttttttttttttttttttttttttt     t t        ttt    tt t   =                        t     t tt|
+|  tttttttt tttttttttttttttttttttttt      t      t   tt  t tttt   =                        tttt  tt  |
+| t ttttttttttttttttttttttttttt tttt            ttt tttttt ttt    =                         tttt t t |
+|  ttttt t ttttttttttttttttttttttt t           ttttttt ttttttt tt =                     t t  t tt t t|
+| ttttttttttttttttttttttttt tttttt            t t tttt ttttttt tt =                     ttt   ttt    |
+| tttt  t ttttttttttttttttt  tttttt            tt  tttttt ttttt   =                      tt   t tt   |
+|   tttttttttttttttttttttttt     t           tt  tttttttttttttt   =                                  |
+|  ttttttttt ttttttttt tttt                     t    tttt   t t   =                                t |
+|  ttttttttttttttttttttttt                              t    t    =                              t   |
+|   tttttttt     tttt ttt                               t         =                             ttt t|
+|  tttttttttt     ttttttt                                         =            t                t t t|
+|     ttttttt      ttttt    ===================          ####T### =           ttt              t  ttt|
+|    ttttt t        ttttt   =                 =          #BBO.GBBH=            tttt             t ttt|
+|                   ttttt   =                 =====================           ttt               ttttt|
+|     tt            tt      =                            T..=.B,T              ttt              t    |
+|                           =                            #T#=#T##                                    |
+|                           =                             HB=B                                       |
+|                    ========                               =             ttt                      t |
+|        ####        =                             t t      =             tt                     t t |
+|        #BB#        =               ~~~~         ttt       =              t   t                 tt t|
+|        #.,B        =            ~~~~~~~~~~~      t        =                                   ttttt|
+|=====================          ~~~~~~~~~~~~~~~             =   t                                tttt|
+|                              ~~~~~~~~~~~~~~~~             =            tt  t                tttt tt|
+|                            ~~~~~~~~~~~~~~~~~~~          t =            tt tt                 t t   |
+|        tt                 ~~~~~~~~~~~~~~~~~~~~~          t=   t                                 ~~ |
+|       ttt               ~~~~~~~~~~~~~~~~~~~~~~~~    t    t=   t                                 ~~ |
+|     tttt t             ~~~~~~~~~~~~~~~~~~~~~~~~~    t tt  =         t t                        ~~~ |
+|     t tt tt           ~~~~~~~~~~~~~~~~~~~~~~~~~~    t tt  =         tttttt  t                  ~~~ |
+|  t  tt tttt          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~         =         ttttttt                    ~~~ |
+| ttt   ttttttt        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~        =         ttt           t            ~~~ |
+|t  t t ttt ttttt     ~~~~~~~~   ~~~~~~~~~~~~~~~~~~      ttt=   t   ttt            tt            ~~~ |
+| t t tttt tttt t     ~~~~~~~ .H#^~~~~~~~~~~~~~~~~~      ttt=   tt   tt              t          ~~~~ |
+| t ttttttttttttt     ~~~~~~~ O.# ~~~~~~~~~~~~~~~~~     t   = tt t                              ~~~~ |
+|tttt  tttttttttt     ~~~~~~~ ==# ~~~~~~~~~~~~~~~~          =  tt           tt                   ~~~ |
+| tttttttttt tt t    ~~~~~~~~ .,= ~~~~~~~~~~~~~~~           =        t  tt  tt                  ~~~~ |
+|ttt t tttttt  t     ~~~~~~~~~  =  ~~~~~~~~~~~~~            =         t tt                      ~~~~ |
+| tttttttttttt        ~~~~~~~~  =  ~~~~~~~~~~~~             =         t t                      ~~~~~ |
+| t tt tttttttttt     ~~~~~~~~~ =   ~~~~~~~~~~    t       t =    t              t             ~~~~~~ |
+|  tt tttttttttt       ~~~~~~~~         ~~~ ~   tttt     tt==  ttt             t              ~~~~~~ |
+|tttttttttttttt t       ~~~~~~~                 ttt    tt t=    tt                            ~~~~~~ |
+|  tttttt tttt t          ~~~    t               t    t t ==                                  ~~~~~~ |
+|tttt  ttttt tt                   tt                   t  =                                   ~~~~~~ |
+| ttttt tttttttttt               ttt                  t   =                     tt           ~~~~~~~ |
+|tttttt ttt tttttttt              t t                 t   I                                   ~~~~~~ |
+| ttt           tt  t  tt         t                       III.                ttt              ~~~~~ |
+|tttt          tttt tttt                                t III.                tt               ~~~~~ |
+|  t            t  t  tt t                              =============        ttt              ~~~~~~ |
+|t              tttt tttttt                             = ,B,,      =         ttt            ~~~~~~~ |
+|t                t   tttt                   t         ==B##H#      =         tt              ~~~~~~ |
+|                     t  tt                  tt        =    #       =                         ~~~~~~ |
+|                t   t t                      t        =            ========                 ~~~~~~~ |
+|                                t  tt                 =                   =               ~~~~~~~~~ |
+|                H                t ttt                =                   =                ~~~~~~~~ |
+|                                  t tt                =                   =  ,             ~~~~~~~~ |
+|                                    t             H   =                   = ,,             ~~~~~~~~ |
+|                                      H               =                   ==,,.            ~~~~~~~~ |
+|                   ###T####            ########       =                   ,B,,            ~~~~~~~~~ |
+|                   #......T            #,,T..T#       =                   ,,.             ~~~~~~~~  |
+|                   T.c=C.G#            #T,,,cG#       =                                   ~~~~~~~~  |
+|                   ##.+.###            ####.+.#       =                                   ~~~~~~~~  |
+|                      =                     =         =                                  ~~~~~~~~~  |
+|                      =                     =         =                                 ~~~~~~~~~   |
+|                      =                     =         =                                 ~~~~~~~~~   |
+|                      =                     =         =                                  ~~~~~~~~   |
+|                      =                     =         =                                  ~~~~~~~    |
+|                      =                     =         =                                  ~~~~~~~    |
+|               H      =                     ==        =                                 ~~~~~~~     |
+|                      =                      =        =                               ~~~~~~~~~     |
+|                      =  ##T#                =        =                               ~~~~~~~~      |
+|                      = H#,.T                =        =                             ~~~~~~~~~~      |
+|    ##T##       =========T=C#  H #T#       H =        =                             ~~~~~~~~~~      |
+|    #.BB#       =       = +##   ##.##      #.+.#    H =                              ~~~~~~~~       |
+|    #.BG.       =   #T#T=.=#####TBCGT      #T=.T###   =                              ~~~~~~~~       |
+|    T.C=+========   #.=+===#GBB##.+.# ######.=..#T#=======@====                     ~~~~~~~~        |
+|    #.,c.           #C..=###IIB## + ###.======C..#.=          =                    ~~~~~~~~~        |
+|    #.,B#           T###=+===============,,..===+=+=          =                   ~~~~~~~~~         |
+|    ##T.#               ..G=cBB..c=BB,=B,,.B.c=.##.           ==========         ~~~~~~~~~          |
+|                         #.=B,..,B=BBIIB,,=,..=G#T#                    =         ~~~~~~~~           |
+|                         #B==============.=..==####                    =         ~~~~~~~~           |
+|                         #===BBB.BBBB.BB======##                       =         ~~~~~~~            |
+|                         #=.=BBB.BB.BBBB=..####                        =        ~~~~~~~             |
+|                         #=.==B==========B.#     H                     =         ~~~~~              |
+|                         #=II..=.HT###TG=,,#                           =          ~~                |
+|                 T#T#T   #=II.I=I.#=OB..=BB#                           =====================        |
+|                 #..=+===+==I.I=..#H=#.C=###                                               =        |
+|                 #.C..   .c===..==####===#                                   ^             =        |
+|                 #G.c#   ####====.T..#T###                               ~~~~~~            =        |
+|                 T#TT#      ##########                              ~~~~~~~~~~~            =        |
+|                                                                 ~~~~~~~~~~~~              =========|
+|                                                              ~~~~~~~~~~~~                          |
+|                                                            ~~~~~~~~~~~~                            |
+|                                                     ~ ~~~~~~~~~~~~~~~~                             |
+|                                                  ~~~~~~~~~~~~~~~~~~~                               |
+|                                           ~~~~~~~~~~~~~~~~~~~~~~~~                                 |
+|                                                                                                    |
++----------------------------------------------------------------------------------------------------+
+Visible objectives (O; symbols may share a character):
+  [266, 108]: 1. Protect the Base Headquarters
+  [112, 88]: a - Capture Steiner Sensor Control.
+  [53, 179]: b - Capture the Turret Control at Road Checkpoint.
+Coarse preview: highest-priority feature wins each character; object footprints are not drawn.

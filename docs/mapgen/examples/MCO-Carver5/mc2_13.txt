@@ -1,0 +1,135 @@
+MCO-Carver5/mc2_13 | 360x360 cells | 3 cells/char
+North up; cell crop [0,0)..[360,360); objects by team: {-1: 102, 1: 222, 2: 1}
+@ player start; O visible objective; B military; h town; I industry; H HQ/sensor; A airfield
+# wall/fence; + gate; T turret; C turret control; G generator; c gate control
+= road/bridge; : runway; . cement; ~ water; t trees; ^ slope>=35deg; % rock; , prop; ? unresolved
++------------------------------------------------------------------------------------------------------------------------+
+|                                                 ^^ ^^                                                                  |
+|                                                 ^^ ^^                                                                  |
+|                                                ^^ ^^                                                                   |
+|                                                ^^ ^^                                                                   |
+|                                                  ^^                                                                    |
+|                                                                                                                        |
+|                                                                                                                        |
+|                                                                                                                        |
+|                                                                                                                        |
+|                                                                                                                        |
+|                                                                                                                        |
+|                                                                                                                        |
+|                                                                                                                        |
+|                                       ^                                                                                |
+|                                      ^                                                                                 |
+|                                     ^                                                                                  |
+|                                    ^                                                                                   |
+|                                   ^^                                                                                   |
+|                                  ^^                                                     ^^                             |
+|                                 ^^                                                                                     |
+|                                ^^                                                   ^                                  |
+|                               ^^                                                    ^  G.BB.                           |
+|                              ^^  ^                                      TBB       H^^  B....                           |
+|                             ^^  ^                                       G.BBT      ^^  ...I.  ^                        |
+|                            ^^                                           BC.cB       ^    GB.  ^                        |
+|                           ^^                                            BBB+.       ^    ... ^^                        |
+|                          ^^                                                                  ^                         |
+|                         ^^                                                                  ^                          |
+|                       ^^^                                                              ^^^^^                           |
+|                                                        TBBB                           ^                                |
+|                                                        BcCB                      ^   ^^                                |
+|                                                        G..B                     ^    ^               BBBBBB            |
+|                                                        BB+.         ^^^^^^^^^  ^    ^                TG.c,B            |
+|                                          TBBT          TB        ^^^^     ^^^                        B===BB            |
+|                                           C.B                   ^^                                   T=.,,B            |
+|                                TBBT      +GcB                 ^^^                                     +B..B            |
+|                                Gc.+      TBBB                ^^^                 ^                     B.CB            |
+|                                BBCB                         ^^^                   ^^                   T.BB            |
+|                                 BBB                                     B...       ^  B                BBBB            |
+|       ^^                        TBB      ^^^^                           BhB.       ^                                   |
+|     ^^^                               ^    ^^^ ^^                       B.B.  CBB.  ^                                  |
+|   ^^^^                               ^^          ^H              .....  BBB. T....  ^                                  |
+| ^^^^  ^^                             ^           ^^              T.BT.  h.B.  ..C.  ^^                                 |
+|^^^^ ^^                              ^             ^       ^      T.BT.  ..B.  ..T.                                     |
+|^^  ^^                                              ^^            .....    h.                                           |
+|  ^^^                                                             .T.T.    ..                                           |
+|^^^                                           B                   ....O                                                 |
+|^                                            B..    ^^^^^ ^^                           ^^                               |
+|                                     ^       AO.   ^       ^^          ..T.T.          ^                                |
+|                                     ^       ...   ^        ^^         T.....         ^                                 |
+|                                      ^       ..  ^          ^         ..BB..        ^^                                 |
+|                                      ^          ^           ^^        T.T.T.        ^^ ^                               |
+|                                       ^^^      ^^            ^^       ......       ^^                                  |
+|                                          ^^^^ ^               ^                   ^^                                   |
+| ^^                                                            ^^                 ^^                                    |
+|   ^^                                                           ^^^              ^^                                     |
+|    ^                                                    BBcB     ^^^            ^                                      |
+|     ^                                                   BC.B      ^^^^          ^^                                     |
+|                                                         TB.+        ^^^ ^^       ^                                     |
+|                                                          BG.               ^     ^                                     |
+|     ^                                                    TBB     + B       ^^     ^                                    |
+|     ^                                                           BGcB        ^                                          |
+|                                                                 TBCB        ^^     ^                                   |
+|   ^                                                              BBT         ^                                         |
+|  ^                                                                           ^      ^                                  |
+|                                                                                     ^                                  |
+|                                                                                      ^     H^                          |
+|                                                                                           ^  ^                         |
+|                                                                                           ^^                           |
+|                                                                              ^ ^           ^^                          |
+|                                                                               ^^  , ,       ^^                         |
+|                                                                             ^ ^^  , ,                                  |
+|             B                                                                 ^     B                                  |
+|                O                                       ^                                ,                              |
+|                                                       ^  ^ ^^                         O.,                              |
+|                                                       ^ ^                     ^    ,  ,.,                              |
+|              @                                       ^ ^^          ^          ^    ,..BB.       TBBT                   |
+|                                                      ^ ^           ^^ ^       ^    II.B..    ^  +CBB                   |
+|                                                       ^^            ^^             ...      ^^   cGB                   |
+|                                                                      ^         ^            ^   BBBT                   |
+|                                                       ^^                        ^^         ^^                          |
+|                                                       ^^             ^           ^^       ^^                           |
+|                                                        ^                          ^^    ^^^  ^                         |
+|                                                        ^                            ^  ^    ^                          |
+|                                                         ^           ^                     ^                            |
+|                                                         ^^         ^          BGBB                                     |
+|                          ^^                              ^^       ^           BBc.+    TB +B                           |
+|                         ^^ ^  ^^^^                        ^^ ^^^^^            B.CBB    BC.cB                           |
+|                        ^^          ^^                                         BB.B     BGBBB                           |
+|                       ^^                 ^                                     TBT     TBBT                            |
+|                       ^^                  ^^                                                                           |
+|                      ^^         I.   ,     ^^^                                                                         |
+|                                III. I,,,     ^^^                                                                       |
+|                                .IIIIIIO.  BH   ^^                                                                      |
+|                                BB...I,B.  ...   ^                                                                      |
+|      ^                         ......BB. ====B. ^                                                                      |
+|      ^          ^             I    ..     BB... ^                                                                      |
+|              ^^^          .BBBI.   ..     ...   ^                                                                      |
+|       ^   ^^       :::::::::::B,  ,.,.                                                                      ^          |
+|^      ^^ ^^       IIII...BBBB... ,B.,B.                                                                                |
+|                   IIII.....B..   ,,.,..                                                                   ^            |
+|                                         .O.                                                                            |
+|                                        B,..                                                              ^             |
+|                                B        II,     ^                                                        ^             |
+|                                         ..,                                                                            |
+|                                                                                                         ^              |
+|                                                                                                         ^              |
+|                                   H                                                                     ^              |
+|                                                                                                         ^              |
+|                                                                                                                        |
+|                                                        ^^                                                              |
+|                                                          ^^^                        ^     ^              ^             |
+|                                                                                          ^^              ^             |
+|                                                                                          ^ ^              ^            |
+|                                                                                                            ^           |
+|   ,                                                                                                         ^          |
+|   h,                                                                                                         ^         |
+|                                                                       ^                                         ^      |
+|                                                                       ^^                                               |
+|                                                                        ^                                               |
++------------------------------------------------------------------------------------------------------------------------+
+Visible objectives (O; symbols may share a character):
+  [138, 212]: Destroy Both HPG Station
+  [145, 139]: Capture Weapons Facility #1
+  [223, 261]: Capture Weapons Facility #2
+  [305, 127]: Capture Weapons Facility #3
+  [280, 117]: Destroy Davion Dropship
+  [220, 48]: Move all Surviving 'Mechs to Extraction Point
+Coarse preview: highest-priority feature wins each character; object footprints are not drawn.

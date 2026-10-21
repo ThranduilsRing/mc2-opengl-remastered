@@ -1,0 +1,135 @@
+MechCommanderOmnitech/mw2_2_1 | 360x360 cells | 3 cells/char
+North up; cell crop [0,0)..[360,360); objects by team: {-1: 212, 1: 58, 2: 17}
+@ player start; O visible objective; B military; h town; I industry; H HQ/sensor; A airfield
+# wall/fence; + gate; T turret; C turret control; G generator; c gate control
+= road/bridge; : runway; . cement; ~ water; t trees; ^ slope>=35deg; % rock; , prop; ? unresolved
++------------------------------------------------------------------------------------------------------------------------+
+|                        ^^^                                                                                             |
+|                                                                                                                        |
+|                                                                                                                        |
+|                                                                                                                        |
+|                                                                                                                        |
+|                                                                                                                        |
+|                                                                                                                        |
+|     BB                                                                                                                 |
+|                         ^^^^^^                                                                         ^               |
+|                                                                                                     ^^                 |
+|                                                                                                    ^^                  |
+|                                                                                                   ^                    |
+|                            %                              %                                                            |
+|                                %%%%%                    t                                                              |
+|                               %%%  % %%                    t       %                                                   |
+|                              ^%  t   t%                           %%%   %                                              |
+|                             ^^   % %  %                                                                                |
+|                         % % ^              =================================                                           |
+|                          %%^^   TBBBB#####BTT       %%               % %t %=                                           |
+|                         %% ^     B%% ==T=T=+   %                  %  %     =                                           |
+|                          %%^     B==?=,,C==T   t%%                         =                                           |
+|                         %  ^   % B=B==,,GT,B  %              ##       %%   =                                           |
+|                               %t B==Bc=I===B % %% %                    t   =                                           |
+|                                % #BB##IB=##B    % t%                    %  =                                           |
+|                               %  #=B=#OB=#hB       t                       =                                           |
+|                     h,           #B###=%=.#B                               =                                           |
+|                                  B  t%=%=##B                               =                                           |
+|                                 TBBBBT+TBBBT                               =         t                                 |
+|                        %          %t  =                      ^^            =         %t                                |
+|                         %             =                       ^  %         ==========                                  |
+|                         % %     %     ===                     ^^%%  ^^         =hBBBI                                  |
+|                           %             =                      ^^%%         %% =Bh B=                                  |
+|                                         =                                   t  =Bh,BI                                  |
+|                            %%           =                                      B h%BB                                  |
+|                    %                    =                                      ========                                |
+|                    %        %           =                                            t=                                |
+|                             %%          =                                            %=                                |
+|                ,            %       %t  =                                          %C G                                |
+|               BB%%                      =                                      T  t   = %%                       O     |
+|              ##I     ^                  =     ^                                   %%  =                         t      |
+|             t#B     ^^             ======   ^^ t%                                  ====   %%                           |
+|              #   # ^^              =       ^^  %%                ^                ==  =   %tt          %               |
+|       ^                            =      ^^   tt                                 T   =#  t            %t              |
+|        ^      %  t                 =     ^^                                         TT?T                %              |
+|              ^^                    =    ^^                                       ^     t                               |
+|                                    =   ^^%                               %             t                               |
+|                                    =   ^^% %       %       ^     %%      t%                                            |
+|               %                  ===  ^^  t                       %                          %%                        |
+|               % % =              =%t  ^%                                        ^            %t                        |
+|            ^  % t =              =%% ^^                                                                                |
+|             ^%% % =              =   ^^                    tBB                                                         |
+|              t%  %=              =   ^^                     %B                                                         |
+|              ^% % =              =    ^^^^^^^                                                                          |
+|               ^^t ================    ^^^^^^^^         ^                                                               |
+|                ^^ =%                       ^^^^      ^^^                         %%%t%                                 |
+|                ^^ =B                         ^^    ^^^^           t%                 t                                 |
+|                ^  =B           %%             ^   ^^^^ %           %      ,I#                                          |
+|                  B=,   ^^^           %        ^  ^^^  %%                  ,=,                                          |
+|                       ^^  ^                     %                         ,=%                                          |
+|                 ^^   ^^    ^^                                             B=h                                          |
+|                 ^^^         ^^                                            #=                 t  t                      |
+|                              ^^                                                                                        |
+|                 %             ^^                                                               %                       |
+|                                 ^                                                    t%t      %%%                      |
+|                                                                                      %%%      %t                       |
+|                                                                                               %t                       |
+|                                     t            t%                                                                    |
+|                                                   %        %                                 %                         |
+|                                      ^                                          ^^^    %                               |
+|                                       ^                      ,%                  ^^^   %%  %                           |
+|                                                             II                    ^^        %%                         |
+|                         % %                                 I                      ^^       %t                         |
+|                                            ^              I==                       ^                                  |
+|                                        t                  =  T  T                   ^                                  |
+|                                        tB   ^       ======= O                                                          |
+|                                       %I=============     = %                                                          |
+|                                       %H%  ^           %  = %                                                          |
+|                                         t                 =T B T                                                       |
+|                                        %                  = ,B,   T    %                                               |
+|                                         %        % ,#     =T%C %      %%t                                              |
+|                                %%       %                 ==== %      %%%                                              |
+|                                %%t                           T#T#T     t          ^                                    |
+|                                                    % %                           ^^                                    |
+|                                     ^                                            ^                                     |
+|                                 %   ^^                                           ^                                     |
+|                                 %t   ^                                                                                 |
+|                                       ^                                                                                |
+|      ^                                 ^                                                                               |
+|     ^                                  ^                                                                               |
+|     ^                             ^                                                                                    |
+|             O                                                             %                           %t               |
+|                                    ^                   t%  %t              %    ^                    t%%               |
+|                                            %%        t  %  %%                   ^^                   %%%               |
+|                                            %       %tt                           ^                                     |
+|                                                    %   t                         ^                                     |
+|                                                  %   t%                                                                |
+|                                                % %                                                                     |
+|                                                %%%t                                                                    |
+|                                                 %%                           %                                         |
+|                                                                                                                        |
+|                                                                                                                        |
+|                                                                                                                        |
+|                                                                                                                        |
+|                                                                                                                        |
+|                                                                                  ^                                     |
+|                                        ^                        @               ^                                      |
+|                                      ^^                                        ^                                       |
+|                                     ^^^                                                                                |
+|                                   ^^^^                                                                                 |
+|                                  ^^^                                                                                   |
+|                                 ^^                                                                                     |
+|                                ^^                                                                                      |
+|                                ^                                                                                       |
+|                               ^                                                                                        |
+|                              ^^                                                                                        |
+|                              ^^                                                                                        |
+|                             ^^                                                                                         |
+|                             ^                                                                                          |
+|                            ^^                                                                                          |
+|                           ^^                                                                                           |
++------------------------------------------------------------------------------------------------------------------------+
+Visible objectives (O; symbols may share a character):
+  [224, 183]:  1. Go to Nav Alpha
+  [270, 40]:  1A. Goto Nav Beta
+  [72, 117]:  2. FOLLOW SCOUT TO REBEL BASE
+  [115, 343]: Escort Friendly APC to extraction point
+  [270, 40]: NAV ALPHA IS GUARDED
+Coarse preview: highest-priority feature wins each character; object footprints are not drawn.
+Source warnings: unresolved object type IDs: [2523, 2562]; unresolved/ambiguous parent cells: 3

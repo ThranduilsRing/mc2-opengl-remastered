@@ -5,6 +5,8 @@ deployment or mission binary writes are involved. Run commands from the repo roo
 
 ```
 py -3 -B tools/mapgen/extract.py --all
+py -3 -B tools/mapgen/ascii.py --examples
+py -3 -B tools/mapgen/ascii.py tools/mapgen/corpus/stock/mc2_03.json --cells-per-char 1 --crop 36 36 90 90
 py -3 -B -m unittest discover -s tests/mapgen -v
 ```
 
@@ -40,6 +42,18 @@ differences at 128 wu spacing; cliffs start at 35 degrees. Wet means `(water & 1
 Cement means terrain type 10 or 13..20. Roads come from the textureData overlay
 layer, decoded with the install's textures.fit; rough overlays are excluded.
 Raw terrain types and overlay handles remain available for future refinements.
+
+## ASCII previews
+
+Committed examples live in `docs/mapgen/examples/<install>/`. Six stock campaign
+missions cover an airfield, compounds/outposts, towns and late campaign bases;
+mod previews include both inherited and custom maps where available. The renderer
+accepts any JSON in the shared schema, including generated layouts. Set
+`--cells-per-char N` to zoom out, `--crop R0 C0 R1 C1` to inspect a base, and
+`--out PATH` to save. The legend and objective coordinates are included in every
+file. Coarse characters show the highest-priority feature; use a finer scale to
+inspect chains, gates and small buildings. Teams are retained in JSON and listed
+in the preview header; ASCII class symbols do not encode ownership.
 
 The object catalog is indexed by Packet-1 objTypeNum, and its ObjectClass resolves
 engine class. Buildings.csv supplies editor classes (wall, control, generator,
