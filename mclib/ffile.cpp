@@ -11,10 +11,12 @@
 #ifndef FFILE_H
 #include"ffile.h"
 #include "gos_crashbundle.h"
+#include <algorithm>
 #include <cstdio>
 #include <cstring>
 #include <format>
 #include <string>
+#include <string_view>
 #include <utility>
 // Format, print, and feed the crash-bundle ring in one call.
 namespace {
