@@ -355,6 +355,9 @@ def main(argv: Optional[List[str]] = None) -> int:
     print(f"[parity_smoke] loaded {len(trace_records)} engine records from {args.trace_file!r}")
 
     # Build config
+    # dependencies=None: read MC2_MOD_DEPS, which is the layer set the engine
+    # mounts when the trace was produced (InitModSearchPaths), so the static
+    # resolver indexes the same mod layers without a second flag.
     config = load_config(
         game_dir=args.game_dir,
         mods_root=args.mods_root,
