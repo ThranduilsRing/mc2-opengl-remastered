@@ -6,7 +6,7 @@
 #include "toolos.hpp"
 #include "fileio.hpp"
 
-#include <doctest/doctest.h>
+#include "doctest.h"
 
 #include <filesystem>
 #include <fstream>
