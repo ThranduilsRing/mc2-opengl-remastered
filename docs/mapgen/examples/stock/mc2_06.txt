@@ -1,5 +1,5 @@
 stock/mc2_06 | 300x300 cells | 3 cells/char
-North up; cell crop [0,0)..[300,300); objects by team: {-1: 327, 0: 105, 1: 16}
+North up; cell crop [0,0)..[300,300); objects by team: {-1: 320, 0: 105, 1: 12}
 @ player start; O visible objective; B military; h town; I industry; H HQ/sensor; A airfield
 # wall/fence; + gate; T turret; C turret control; G generator; c gate control
 = road/bridge; : runway; . cement; ~ water; t trees; ^ slope>=35deg; % rock; , prop; ? unresolved
@@ -21,15 +21,15 @@ North up; cell crop [0,0)..[300,300); objects by team: {-1: 327, 0: 105, 1: 16}
 |   tttttttt     tttt ttt                               t         =                             ttt t|
 |  tttttttttt     ttttttt                                         =            t                t t t|
 |     ttttttt      ttttt    ===================          ####T### =           ttt              t  ttt|
-|    ttttt t        ttttt   =                 =          #BBO.GBBH=            tttt             t ttt|
+|    ttttt t        ttttt   =                 =          #hhO.GB#H=            tttt             t ttt|
 |                   ttttt   =                 =====================           ttt               ttttt|
-|     tt            tt      =                            T..=.B,T              ttt              t    |
+|     tt            tt      =                            T..=.,,T              ttt              t    |
 |                           =                            #T#=#T##                                    |
-|                           =                             HB=B                                       |
+|                           =                             H#=#                                       |
 |                    ========                               =             ttt                      t |
 |        ####        =                             t t      =             tt                     t t |
-|        #BB#        =               ~~~~         ttt       =              t   t                 tt t|
-|        #.,B        =            ~~~~~~~~~~~      t        =                                   ttttt|
+|        #IB#        =               ~~~~         ttt       =              t   t                 tt t|
+|        #.,#        =            ~~~~~~~~~~~      t        =                                   ttttt|
 |=====================          ~~~~~~~~~~~~~~~             =   t                                tttt|
 |                              ~~~~~~~~~~~~~~~~             =            tt  t                tttt tt|
 |                            ~~~~~~~~~~~~~~~~~~~          t =            tt tt                 t t   |
@@ -56,7 +56,7 @@ North up; cell crop [0,0)..[300,300); objects by team: {-1: 327, 0: 105, 1: 16}
 | ttt           tt  t  tt         t                       III.                ttt              ~~~~~ |
 |tttt          tttt tttt                                t III.                tt               ~~~~~ |
 |  t            t  t  tt t                              =============        ttt              ~~~~~~ |
-|t              tttt tttttt                             = ,B,,      =         ttt            ~~~~~~~ |
+|t              tttt tttttt                             = ,,,,      =         ttt            ~~~~~~~ |
 |t                t   tttt                   t         ==B##H#      =         tt              ~~~~~~ |
 |                     t  tt                  tt        =    #       =                         ~~~~~~ |
 |                t   t t                      t        =            ========                 ~~~~~~~ |
@@ -65,7 +65,7 @@ North up; cell crop [0,0)..[300,300); objects by team: {-1: 327, 0: 105, 1: 16}
 |                                  t tt                =                   =  ,             ~~~~~~~~ |
 |                                    t             H   =                   = ,,             ~~~~~~~~ |
 |                                      H               =                   ==,,.            ~~~~~~~~ |
-|                   ###T####            ########       =                   ,B,,            ~~~~~~~~~ |
+|                   ###T####            ########       =                   ,I,,            ~~~~~~~~~ |
 |                   #......T            #,,T..T#       =                   ,,.             ~~~~~~~~  |
 |                   T.c=C.G#            #T,,,cG#       =                                   ~~~~~~~~  |
 |                   ##.+.###            ####.+.#       =                                   ~~~~~~~~  |
@@ -80,20 +80,20 @@ North up; cell crop [0,0)..[300,300); objects by team: {-1: 327, 0: 105, 1: 16}
 |                      =  ##T#                =        =                               ~~~~~~~~      |
 |                      = H#,.T                =        =                             ~~~~~~~~~~      |
 |    ##T##       =========T=C#  H #T#       H =        =                             ~~~~~~~~~~      |
-|    #.BB#       =       = +##   ##.##      #.+.#    H =                              ~~~~~~~~       |
-|    #.BG.       =   #T#T=.=#####TBCGT      #T=.T###   =                              ~~~~~~~~       |
-|    T.C=+========   #.=+===#GBB##.+.# ######.=..#T#=======@====                     ~~~~~~~~        |
-|    #.,c.           #C..=###IIB## + ###.======C..#.=          =                    ~~~~~~~~~        |
+|    #.hB#       =       = +##   ##.##      #.+.#    H =                              ~~~~~~~~       |
+|    #.hG.       =   #T#T=.=#####TBCGT      #T=.T###   =                              ~~~~~~~~       |
+|    T.C=+========   #.=+===#GII##.+.# ######.=..#T#=======@====                     ~~~~~~~~        |
+|    #.,c.           #C..=###III## + ###.======C..#.=          =                    ~~~~~~~~~        |
 |    #.,B#           T###=+===============,,..===+=+=          =                   ~~~~~~~~~         |
-|    ##T.#               ..G=cBB..c=BB,=B,,.B.c=.##.           ==========         ~~~~~~~~~          |
-|                         #.=B,..,B=BBIIB,,=,..=G#T#                    =         ~~~~~~~~           |
+|    ##T.#               ..G=cB,..c=BB,=B,,.I.c=.##.           ==========         ~~~~~~~~~          |
+|                         #.=B,..,I=BBIIB,,=,..=G#T#                    =         ~~~~~~~~           |
 |                         #B==============.=..==####                    =         ~~~~~~~~           |
-|                         #===BBB.BBBB.BB======##                       =         ~~~~~~~            |
-|                         #=.=BBB.BB.BBBB=..####                        =        ~~~~~~~             |
+|                         #===IBB.hhhh.Bh======##                       =         ~~~~~~~            |
+|                         #=.=I,I.hh.hhBh=..####                        =        ~~~~~~~             |
 |                         #=.==B==========B.#     H                     =         ~~~~~              |
 |                         #=II..=.HT###TG=,,#                           =          ~~                |
 |                 T#T#T   #=II.I=I.#=OB..=BB#                           =====================        |
-|                 #..=+===+==I.I=..#H=#.C=###                                               =        |
+|                 #..=+===+==I.==..#H=#.C=###                                               =        |
 |                 #.C..   .c===..==####===#                                   ^             =        |
 |                 #G.c#   ####====.T..#T###                               ~~~~~~            =        |
 |                 T#TT#      ##########                              ~~~~~~~~~~~            =        |

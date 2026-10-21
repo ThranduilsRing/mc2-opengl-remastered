@@ -2,7 +2,9 @@
 from __future__ import annotations
 
 import csv
+import hashlib
 import io
+import json
 import re
 import struct
 import sys
@@ -158,6 +160,7 @@ def catalog(install):
     raw, source = install.read("data/objects/object2.pak")
     count = struct.unpack_from("<I", raw, 4)[0] // 4 - 2
     special = {}
+    csv_classes = {}
     csv_source = None
     # GUI relocated in modern installs; legacy archive path remains valid.
     try:
@@ -165,19 +168,19 @@ def catalog(install):
         for row in csv.reader(io.StringIO(text.decode("latin1"))):
             if len(row) > 5 and row[4].strip().isdigit():
                 special[int(row[4])] = (row[0], row[5].upper().strip(), row[1])
+                csv_classes[int(row[4])] = row[3].upper().strip()
     except FileNotFoundError:
         pass
-    result = {}
-    for i in range(count):
-        content = packet(raw, i)
-        sections = fit_sections(content)
-        if not sections:
-            continue
+    result, loose_sources = {}, {}
+
+    def describe(i, sections, csv_only=False):
         clsnum = sections.get("objectclass", {}).get("objecttypenum", -1)
         obj = sections.get("objecttype", {})
         name = obj.get("appearancename", obj.get("name", f"type_{i}"))
         csv_name, tag, group = special.get(i, (name, "", ""))
         cls = CLASS_NAMES.get(clsnum, "other")
+        if csv_only:
+            cls = {"BUILDING": "building", "TREE": "prop", "MECH": "mech", "VEHICLE": "vehicle"}.get(csv_classes.get(i), "unknown")
         if tag in ("WALL", "GATE", "TURRET", "TURRET_CONTROL", "TURRET_GENERATOR", "GATE_CONTROL"):
             cls = tag.lower()
         if group == "1" or tag.startswith("TREE"):
@@ -188,13 +191,41 @@ def catalog(install):
         if cls == "tree" and group and group != "1":
             cls = "prop"
         low = str(name).lower()
+        # The Omnitech CSV omits WALL tags on the unchanged tiered wall models.
+        if re.search(r"(?:^|_)(?:light|medium|heavy)(?:wall|post)", str(csv_name).lower()):
+            cls = "wall"
+        if str(csv_name).lower().endswith("prop") or "banner" in low:
+            cls = "prop"
+        if low.startswith("bridge"):
+            cls = "bridge"
         if any(word in low for word in ("wirefence", "woodenfence", "sandbagwall")):
             cls = "fence"
         if cls == "building" and any(s in low for s in ("rock", "cliff", "boulder")):
             cls = "rock"
-        result[i] = {"class": cls, "type_name": str(csv_name), "appearance": str(name),
-                     "object_class": clsnum, "special_type": tag}
-    return result, {"object_catalog": source, "building_catalog": csv_source}
+        return {"class": cls, "type_name": str(csv_name), "appearance": str(name),
+                "object_class": clsnum, "special_type": tag,
+                "catalog_resolution": "csv" if csv_only else "object_fit"}
+
+    for i in range(count):
+        sections = fit_sections(packet(raw, i))
+        if sections:
+            result[i] = describe(i, sections)
+    # Omnitech extends past object2.pak with Buildings.csv IDs and named FITs.
+    for i, (name, _, _) in special.items():
+        if i not in result:
+            filename = f"data/objects/{name}.fit"
+            if install.has(filename):
+                content, origin = install.read(filename)
+                sections = fit_sections(content)
+                loose_sources[str(i)] = origin
+                result[i] = describe(i, sections)
+                result[i]["catalog_fit"] = origin
+            else:
+                result[i] = describe(i, {"objecttype": {"appearancename": name}}, csv_only=True)
+    return result, {"object_catalog": source, "building_catalog": csv_source,
+                    "extended_catalog_fit_count": len(loose_sources),
+                    "extended_catalog_fit_index_sha256": hashlib.sha256(
+                        json.dumps(loose_sources, sort_keys=True).encode()).hexdigest()}
 
 
 def overlay_catalog(install):

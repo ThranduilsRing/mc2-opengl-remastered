@@ -97,8 +97,8 @@ def building_role(obj):
     name = (obj.get("type_name", "") + " " + obj.get("appearance", "")).lower()
     groups = (("airfield", ("hangar", "airfield", "controltower", "runway")),
               ("hq", ("_hq", "headquarter", "command", "sensor", "lookout")),
-              ("industrial", ("factory", "tank", "fuel", "pipe", "refinery", "power", "generator", "warehouse", "storage", "mine", "industrial")),
-              ("town", ("house", "apartment", "office", "shop", "church", "hotel", "shack", "skyscraper", "residen", "commercial")))
+              ("industrial", ("factory", "tank", "fuel", "pipe", "refinery", "power", "generator", "warehouse", "storage", "mine", "industrial", "ammodump", "plant", "processor", "transformer", "valve", "crane", "gantry", "munitions", "rpbuilding", "container")),
+              ("town", ("house", "apartment", "office", "shop", "church", "hotel", "shack", "skyscraper", "residen", "commercial", "civliving", "city", "shanty", "meethall", "promenade", "palace")))
     for role, words in groups:
         if any(word in name for word in words):
             return role

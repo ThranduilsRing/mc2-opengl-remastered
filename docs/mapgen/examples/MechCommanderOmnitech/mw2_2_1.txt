@@ -1,5 +1,5 @@
 MechCommanderOmnitech/mw2_2_1 | 360x360 cells | 3 cells/char
-North up; cell crop [0,0)..[360,360); objects by team: {-1: 212, 1: 58, 2: 17}
+North up; cell crop [0,0)..[360,360); objects by team: {-1: 188, 1: 57, 2: 17}
 @ player start; O visible objective; B military; h town; I industry; H HQ/sensor; A airfield
 # wall/fence; + gate; T turret; C turret control; G generator; c gate control
 = road/bridge; : runway; . cement; ~ water; t trees; ^ slope>=35deg; % rock; , prop; ? unresolved
@@ -11,7 +11,7 @@ North up; cell crop [0,0)..[360,360); objects by team: {-1: 212, 1: 58, 2: 17}
 |                                                                                                                        |
 |                                                                                                                        |
 |                                                                                                                        |
-|     BB                                                                                                                 |
+|     ,,                                                                                                                 |
 |                         ^^^^^^                                                                         ^               |
 |                                                                                                     ^^                 |
 |                                                                                                    ^^                  |
@@ -22,40 +22,40 @@ North up; cell crop [0,0)..[360,360); objects by team: {-1: 212, 1: 58, 2: 17}
 |                              ^%  t   t%                           %%%   %                                              |
 |                             ^^   % %  %                                                                                |
 |                         % % ^              =================================                                           |
-|                          %%^^   TBBBB#####BTT       %%               % %t %=                                           |
-|                         %% ^     B%% ==T=T=+   %                  %  %     =                                           |
-|                          %%^     B==?=,,C==T   t%%                         =                                           |
-|                         %  ^   % B=B==,,GT,B  %              ##       %%   =                                           |
-|                               %t B==Bc=I===B % %% %                    t   =                                           |
-|                                % #BB##IB=##B    % t%                    %  =                                           |
-|                               %  #=B=#OB=#hB       t                       =                                           |
-|                     h,           #B###=%=.#B                               =                                           |
-|                                  B  t%=%=##B                               =                                           |
-|                                 TBBBBT+TBBBT                               =         t                                 |
+|                          %%^^   T##########TT       %%               % %t %=                                           |
+|                         %% ^     #%% ==T=T=+   %                  %  %     =                                           |
+|                          %%^     #==I=,,C==T   t%%                         =                                           |
+|                         %  ^   % #=B==,,GT,#  %              ##       %%   =                                           |
+|                               %t #==Bc=I===# % %% %                    t   =                                           |
+|                                % #hI##=B=###    % t%                    %  =                                           |
+|                               %  #===#OB=#h#       t                       =                                           |
+|                     h,           #I###=%=.##                               =                                           |
+|                                  #  t%=%=###                               =                                           |
+|                                 T####T+T###T                               =         t                                 |
 |                        %          %t  =                      ^^            =         %t                                |
 |                         %             =                       ^  %         ==========                                  |
-|                         % %     %     ===                     ^^%%  ^^         =hBBBI                                  |
-|                           %             =                      ^^%%         %% =Bh B=                                  |
-|                                         =                                   t  =Bh,BI                                  |
-|                            %%           =                                      B h%BB                                  |
+|                         % %     %     ===                     ^^%%  ^^         =hhhBI                                  |
+|                           %             =                      ^^%%         %% =hh ,=                                  |
+|                                         =                                   t  =hh,hI                                  |
+|                            %%           =                                      h h%hh                                  |
 |                    %                    =                                      ========                                |
 |                    %        %           =                                            t=                                |
 |                             %%          =                                            %=                                |
 |                ,            %       %t  =                                          %C G                                |
-|               BB%%                      =                                      T  t   = %%                       O     |
+|               I,%%                      =                                      T  t   = %%                       O     |
 |              ##I     ^                  =     ^                                   %%  =                         t      |
-|             t#B     ^^             ======   ^^ t%                                  ====   %%                           |
+|             t#,     ^^             ======   ^^ t%                                  ====   %%                           |
 |              #   # ^^              =       ^^  %%                ^                ==  =   %tt          %               |
 |       ^                            =      ^^   tt                                 T   =#  t            %t              |
-|        ^      %  t                 =     ^^                                         TT?T                %              |
+|        ^      %  t                 =     ^^                                         TTTT                %              |
 |              ^^                    =    ^^                                       ^     t                               |
 |                                    =   ^^%                               %             t                               |
 |                                    =   ^^% %       %       ^     %%      t%                                            |
 |               %                  ===  ^^  t                       %                          %%                        |
 |               % % =              =%t  ^%                                        ^            %t                        |
 |            ^  % t =              =%% ^^                                                                                |
-|             ^%% % =              =   ^^                    tBB                                                         |
-|              t%  %=              =   ^^                     %B                                                         |
+|             ^%% % =              =   ^^                    t,B                                                         |
+|              t%  %=              =   ^^                     %%                                                         |
 |              ^% % =              =    ^^^^^^^                                                                          |
 |               ^^t ================    ^^^^^^^^         ^                                                               |
 |                ^^ =%                       ^^^^      ^^^                         %%%t%                                 |
@@ -63,7 +63,7 @@ North up; cell crop [0,0)..[360,360); objects by team: {-1: 212, 1: 58, 2: 17}
 |                ^  =B           %%             ^   ^^^^ %           %      ,I#                                          |
 |                  B=,   ^^^           %        ^  ^^^  %%                  ,=,                                          |
 |                       ^^  ^                     %                         ,=%                                          |
-|                 ^^   ^^    ^^                                             B=h                                          |
+|                 ^^   ^^    ^^                                             h=h                                          |
 |                 ^^^         ^^                                            #=                 t  t                      |
 |                              ^^                                                                                        |
 |                 %             ^^                                                               %                       |
@@ -76,12 +76,12 @@ North up; cell crop [0,0)..[360,360); objects by team: {-1: 212, 1: 58, 2: 17}
 |                                       ^                      ,%                  ^^^   %%  %                           |
 |                                                             II                    ^^        %%                         |
 |                         % %                                 I                      ^^       %t                         |
-|                                            ^              I==                       ^                                  |
+|                                            ^              ===                       ^                                  |
 |                                        t                  =  T  T                   ^                                  |
 |                                        tB   ^       ======= O                                                          |
 |                                       %I=============     = %                                                          |
 |                                       %H%  ^           %  = %                                                          |
-|                                         t                 =T B T                                                       |
+|                                         t                 =T H T                                                       |
 |                                        %                  = ,B,   T    %                                               |
 |                                         %        % ,#     =T%C %      %%t                                              |
 |                                %%       %                 ==== %      %%%                                              |
@@ -132,4 +132,4 @@ Visible objectives (O; symbols may share a character):
   [115, 343]: Escort Friendly APC to extraction point
   [270, 40]: NAV ALPHA IS GUARDED
 Coarse preview: highest-priority feature wins each character; object footprints are not drawn.
-Source warnings: unresolved object type IDs: [2523, 2562]; unresolved/ambiguous parent cells: 3
+Source warnings: unresolved/ambiguous parent cells: 3

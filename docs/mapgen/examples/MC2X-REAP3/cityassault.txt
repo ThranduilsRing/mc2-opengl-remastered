@@ -1,5 +1,5 @@
 MC2X-REAP3/cityassault | 480x480 cells | 3 cells/char
-North up; cell crop [0,0)..[480,480); objects by team: {-1: 13, 1: 16, 2: 1631}
+North up; cell crop [0,0)..[480,480); objects by team: {-1: 13, 1: 15, 2: 1610}
 @ player start; O visible objective; B military; h town; I industry; H HQ/sensor; A airfield
 # wall/fence; + gate; T turret; C turret control; G generator; c gate control
 = road/bridge; : runway; . cement; ~ water; t trees; ^ slope>=35deg; % rock; , prop; ? unresolved
@@ -58,95 +58,95 @@ North up; cell crop [0,0)..[480,480); objects by team: {-1: 13, 1: 16, 2: 1631}
 |                                                          ^^  ttt  t         ^^             ^^                                                                  |
 |                                                    ^^^^ ^^^ t    t         ^^              ^^                                                                  |
 |                                                   ^^BB^^^I=        ^t^^    ^^              ^^ BO                                                               |
-|                                                   ^B   B^B=        ^^^^^   ^^              ^^^                                                                 |
+|                                                   ^B   #^,=        ^^^^^   ^^              ^^^                                                                 |
 |                                                   ^B   +===          ^^^^^^^                ^^^                                                                |
 |                                                   ^^      =            ^^^^                  ^^^                                                               |
-|                                                   ^^^BBBB==                                   ^^^   ^^^                                                        |
-|                                                    ^^^^B  =                                    ^^^^^^^^^                                                       |
+|                                                   ^^^BB#B==                                   ^^^   ^^^                                                        |
+|                                                    ^^^^#  =                                    ^^^^^^^^^                                                       |
 |                                                     ^^^^  =                                     ^^^^  ^^                                                       |
 |                                                  ^^^   ^^ =                                           ^^                                                       |
 |                                               ^^^^^^^ ^^  =                                           ^^                                                       |
 |                                              ^^^^  ^^^^^  =            T#######T####T                 ^^                                                       |
 |                                             ^^^      ^    =            #============#                 ^^^                                                      |
-|                                             ^^            =            #=BBIIIIIBGG=#                  ^^                                                      |
-|                                             ^^            =            #=BBIIIIIBGG=#                  ^^                                                      |
-|                                             ^^            =            #=B==========#                   ^^                                                     |
-|                                             ^^            =            #=B=.IIIIIII=#                   ^^^^^                                                  |
-|                                              ^^           =            T=BBIBBBBBBB=T                     ^^^^                                                 |
-|                                              ^^           =            #=BBIIIIIIII=#                       ^^                                                 |
+|                                             ^^            =            #=IIIIIIIIGG=#                  ^^                                                      |
+|                                             ^^            =            #=IIIIIIIIGG=#                  ^^                                                      |
+|                                             ^^            =            #=I==========#                   ^^                                                     |
+|                                             ^^            =            #=I=.IIIIIII=#                   ^^^^^                                                  |
+|                                              ^^           =            T=IIIIIIIIII=T                     ^^^^                                                 |
+|                                              ^^           =            #=IIIIIIIIII=#                       ^^                                                 |
 |                                           ^^^^^           =            #============#                       ^^                                                 |
-|                                         ==+================            #=#=#BBBBBBBB#                       ^^                                                 |
-|                                           ^          ^^   =            #C#I#IIIOIIII#                      ^^     ^^^^                                         |
+|                                         ==+================            #=#=#IIIIIIIB#                       ^^                                                 |
+|                                           ^          ^^   =            #C#=#IIIOIIII#                      ^^     ^^^^                                         |
 |                                           ^^TT ^^^^^^^^^^ =            T#T+T###T####T                     ^^^    ^B^^^^                                        |
 |                             ^^^^^^         ^^ ^^^^^^^H ^^^=              B=                               ^^     ^= B^^                                        |
 |                            ^^^^^^          ^^^^       ^^^ =               =H                             ^^ H   ^^= B^^                                        |
 |                            ^  ^^^           ^^    ^^^^^^  =               =B                              ^^ ^^^^^= B^^                                        |
-|                            ^^^^^^^              ^^^^^^    =               =                               ^^^^^BB = B^^                                        |
-|                            ^^    ^^            ^^^        =               =                                ^^^ BBB= B^^                                        |
-|                            ^^   ^^^           ^^^         =               =                                    BBB+ B^^                                        |
-|                            ^^  ^^^   ^^^^    ^^^          =               =                                      B=B ^^^                                       |
-|                            ^^ ^^^   ^^^B^^^^^^^           =               B                                       =   ^^^                                      |
-|                            ^+^^^   ^^^ B ^^^^             =               =                                       =    ^^                                      |
-|                           ^^=^^^^^^^^  B                  =               =                                       =    ^^                                      |
-|                          ^^^= ^^^^^    BB                 =               =                                       =B   ^^                                      |
-|                         ^^T ===========+===========================================================================B  ^^^                                      |
-|                          ^^T     =     BB                  H############# =  BBBBBBBBB                       =       ^^^                                       |
-|                           ^^^    =     B                   #            # =  B=======B                       =      ^^^                                        |
-|                            ^^^   =     B                   B I  I  I  I #B= B BBIIII=B                       =     ^^^                                         |
-|                             ^^   =     B                   #========O===#====+=IIOII=B                       =     ^^                                          |
-|                              ^^  =     B                   #  B  B  B  B#B=.cBBBIIII=B                       =      ^^                                         |
-|                             ^^^  =     B                   B I  I  I  I # =  B=======B                       =      ^^^                                        |
-|                            ^^^   =     B                   H############# = BBBBBBBBBB                       =       ^^^                                       |
-|                            ^BBBBB+BBBBBB                                  =   BB                             =        ^^                                       |
-|                            ^^  B ===== B                                  =  BBB                             =        ^^                                       |
-|                           ^^   B =   = B                                  =                                  =        ^^                                       |
-|                       ^^^^^^ B BB+BB = B                                  =                                  =       ^^^                                       |
-|                      ^^BBB   = BB= B = B                                  =                                  =     ^^^^                                        |
-|                      ^^===   =  B+BB = B                                  =                                  =    ^^^^                                         |
-|                      ^=========+==   = B                                  =                                  =    ^^                                           |
-|                     ^H=     == BB=   = B                                  =                                  =    ^^                                           |
-|                     ^^=     == BB= @ = B                                  =                                  =     ^^                                          |
-|                    ^^^      == BB===== B                                  =                                  =     ^^                                          |
-|                     ^^^^ II == B   = = B                                  =H                                 =     ^^                                          |
-|                      ^^^^^^^BB ^^^ = = B                                  =                                  =     ^^                                          |
-|                         ^^^^^^^^^^^B = B                                BB=B                                 =    ^^^                                          |
-|                             ^^^^ ^BBB+ B  =BBBBBBBBBBBBBBBBBBBBBBBBBBBBBB=B                                  =   ^^^                                           |
-|                BBB               ^^ B=B   B   =           =           =  B=                            B     =  ^^^                                            |
-|                                 H^^^B=B   B   ==========###==###==== ,=  B=                                  = ^^^                                             |
-|                              ^    ^^ =    B   =   =  = #BB# BBB# tt= B=B B=                                  = ^^^^^^^^^^                                      |
-|                            ^^^^^ ^^^ =    B   = O = B= #BB#B#BB# BB=  =  B==========================================B^^^^^                                     |
-|                            ^I ^^^^^  =    B  B=   ==== ###= #### BB= ,=  B=              =                   =  T  B^^^^^                                      |
-|                            ^I===+=====    B   =t   B   =BB=B     BB= B=B B=              =             B     =    T^^^^^^                                      |
+|                            ^^^^^^^              ^^^^^^    =               =                               ^^^^^#I = B^^                                        |
+|                            ^^    ^^            ^^^        =               =                                ^^^ #IB= B^^                                        |
+|                            ^^   ^^^           ^^^         =               =                                    ###+ #^^                                        |
+|                            ^^  ^^^   ^^^^    ^^^          =               =                                      #=# ^^^                                       |
+|                            ^^ ^^^   ^^^#^^^^^^^           =               =                                       =   ^^^                                      |
+|                            ^+^^^   ^^^ # ^^^^             =               =                                       =    ^^                                      |
+|                           ^^=^^^^^^^^  #                  =               =                                       =    ^^                                      |
+|                          ^^^= ^^^^^    ##                 =               =                                       =,   ^^                                      |
+|                         ^^T ===========+===========================================================================h  ^^^                                      |
+|                          ^^T     =     ##                  H############# =  BBBBBBBBB                       =       ^^^                                       |
+|                           ^^^    =     #                   #            # =  B=======B                       =      ^^^                                        |
+|                            ^^^   =     #                   B I  I  I  I #B= B BBIIII=B                       =     ^^^                                         |
+|                             ^^   =     #                   #========O===#====+=IIOII=B                       =     ^^                                          |
+|                              ^^  =     #                   #  B  B  B  B#B=.cBBBIIII=B                       =      ^^                                         |
+|                             ^^^  =     #                   B I  I  I  I # =  B=======B                       =      ^^^                                        |
+|                            ^^^   =     #                   H############# = BBBBBBBBBB                       =       ^^^                                       |
+|                            ^#####+######                                  =   BB                             =        ^^                                       |
+|                            ^^  # ===== #                                  =  BBB                             =        ^^                                       |
+|                           ^^   # =   = #                                  =                                  =        ^^                                       |
+|                       ^^^^^^ B ##+## = #                                  =                                  =       ^^^                                       |
+|                      ^^III   = #I= # = #                                  =                                  =     ^^^^                                        |
+|                      ^^===   =  #+B# = #                                  =                                  =    ^^^^                                         |
+|                      ^=========+==   = #                                  =                                  =    ^^                                           |
+|                     ^H=     == ##=   = #                                  =                                  =    ^^                                           |
+|                     ^^=     == #B= @ = #                                  =                                  =     ^^                                          |
+|                    ^^^      == #B===== #                                  =                                  =     ^^                                          |
+|                     ^^^^ II == #   = = #                                  =H                                 =     ^^                                          |
+|                      ^^^^^^^BB ^^^ = = #                                  =                                  =     ^^                                          |
+|                         ^^^^^^^^^^^B = #                                BB=B                                 =    ^^^                                          |
+|                             ^^^^ ^###+ #  =BBBBBBBBBBBBBBBBBBBBBBBBBBBBBB==                                  =   ^^^                                           |
+|                #B#               ^^ #=#   B   =           =           =  B=                            B     =  ^^^                                            |
+|                                 H^^^#=#   B   ==========###==###==== ,=  B=                                  = ^^^                                             |
+|                              ^    ^^ =    B   =   =  = #BB# hBB# tt= h=h B=                                  = ^^^^^^^^^^                                      |
+|                            ^^^^^ ^^^ =    B   = O = h= #B,#h#Bh# BB=  =  B==========================================#^^^^^                                     |
+|                            ^I ^^^^^  =    B  h=   ==== ###= #### BB= ,=  B=              =                   =  T  #^^^^^                                      |
+|                            ^I===+=====    B   =t   B   =hh=B     BB= h=h B=              =             B     =    T^^^^^^                                      |
 |                            ^^    ^^  =    B   =      ======      BB=  =  B=              =                   =     ^^                                          |
-|                B           ^^  ^^^^^ =    B B =B  tt =.B.==  B   BB= ,=  B=              =           B       =     ^^^                                         |
-|             B  B            ^^^^^ ^^ =    B   =  tttt=...==      tt= B=B B=              =                   =      ^^                                         |
+|                ,           ^^  ^^^^^ =    B B =h  tt =.B.==  B   BB= ,=  B=              =           B       =     ^^^                                         |
+|             B  B            ^^^^^ ^^ =    B   =  tttt=...==      tt= h=h B=              =                   =      ^^                                         |
 |             ^        ^^^^^^  ^^^ ^^^ =    B   =ttt%% ======B       ######B=              =           B       =      ^^                                         |
-|                          ^ ^    ^^^  =    B  B= ttt  t   t=B      B#B #BBB=########################          =      ^^                                         |
+|                          ^ ^    ^^^  =    B  B= ttt  t   t=B      B#B #BIB=########################          =      ^^                                         |
 |                         ^   ^  ^^^   =    BBBB= =====t B t=====B B #IB#BIB=#           ###B#hhhh= #          =     ^^^                                         |
-|                   ^^ ^^     ^^^^T    =    B   = =B=B=t   t=BB    B #IB#BIB=#           #BhI#hhhh= #          =     ^^                                          |
-|                       ^^^    +========    B  B==============B    B =#####B=#           #hBI#hhhh= #          = B  ^^                                           |
-|                         ^^^^^^       =    B B== =B=B==.B.==      B = B=B B=#           IBBI#hhhh= #          = B  ^^                                           |
-|                          ^^^^^^T     =    B B== ======.=.==  B   B =  =  B=#           #hBBBhhhhB #          =  ##^^                                           |
-|                               ^^     =    B B==      ======      B =  =  B=#           II=B#hhhh  #          =====C^^                                          |
-|                               ^^     =    B B==tBt B   =  =      B = B=B B=#           ###I#      #          =  #% ^^                                          |
-|                               ^^     =    B B==tBtB   B=B =    B B =t =  B=#             =        #          =   ^^^                                           |
-|                              ^^^     =    B B==tBt     =  =      B =t%=  B=#             B        #          = ^^^^^                                           |
-|                             ^^^      =    B B =============      B ====  B=#                      #          = ^H                                              |
+|                   ^^ ^^     ^^^^T    =    B   = =B=B=t   t=Bh    B #IB#BIB=#           #hhI#hhhh= #          =     ^^                                          |
+|                       ^^^    +========    B  h==============B    B =#####B=#           #hhI#hhhh= #          = ,  ^^                                           |
+|                         ^^^^^^       =    B h== =B=B==.B.==      B = h=h B=#           I=hI#hhhh= #          = ,  ^^                                           |
+|                          ^^^^^^T     =    B h== ======.=.==  B   B =  =  B=#           #hhBBhhhhh #          =  ##^^                                           |
+|                               ^^     =    B h==      ======      B =  =  B=#           II=I#hhhh  #          =====C^^                                          |
+|                               ^^     =    B h==tht h   =  =      B = h=h B=#           ###I#      #          =  #% ^^                                          |
+|                               ^^     =    B h==thth   h=h =    B B =t =  B=#             =        #          =   ^^^                                           |
+|                              ^^^     =    B h==tht     =  =      B =t%=  B=#             B        #          = ^^^^^                                           |
+|                             ^^^      =    B h =============      B ====  B=#                      #          = ^H                                              |
 |                            ^^^       H    B===                   B       B=#                      #          =^^^^^                                            |
-|                            ^^             BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB=#                  B   #          =B^^^^^^                                          |
-|                            ^^             B===t=t  =             B =     B=#                      #          =BBBB ^^                                          |
-|                            ^^^   ^^^^^    B  B==BIt==B  ttttt    B ====BtB=#                      #          =+===B^^^                                         |
-|                             ^^^^^^^^^^^^  B  B==BIt==Bt=====tttt B ==BtttB=#                      #          =B=BB ^^^                                         |
-|                               ^^^     ^^^ B  B==BIt==Bt=ttt=tttt B ====BtB=#                      #          =B=  ^^^                                          |
-|                                        ^^ B  B==BIt==B =ttt=tttttB ==BtttB=#                      #          =BB ^^^                                           |
-|                                  ^^   ^^  B  B==BIt==Bt=ttt======B ====BtB=#                      #            ^^^^                                            |
-|                                ^^^^^  ^^  B  B==BIt=====tttttt=tBB ==BtttB=#                      #           ^^^^                                             |
-|                                ^^ ^^  ^^  B  B==BIt=BB=t==BttB=tt  ====BtB=#              ========#          ^^                                                |
-|                                ^^ ^^^^^   B tB==BIt=B ===ttttt=tttt==BtttB=#                      #          ^^                                                |
-|                               ^^   ^^^    B tB==BIt=B =ttttttt=tttt====BtB=#                      #          ^^                                                |
-|                             ^^^^          B  B==BIt=B =ttttttt===tt==BtttB=#                      #          ^^                                                |
-|                            ^^^            B tB==BIt=B ====ttttttI%t====BtB=#                      #         ^^                                                 |
-|                            ^^             B tB==BIt=B   t=httttt%t ==B ttB=#                      #         ^^                                                 |
+|                            ^^             BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB=#                  ,   #          =#^^^^^^                                          |
+|                            ^^             B===t=t  =             B =     B=#                      #          =#BIB ^^                                          |
+|                            ^^^   ^^^^^    B  h==hIt==h  ttttt    B ====htB=#                      #          =+===B^^^                                         |
+|                             ^^^^^^^^^^^^  B  h==hIt==ht=====tttt B ==htttB=#                      #          =#=BB ^^^                                         |
+|                               ^^^     ^^^ B  h==hIt==ht=ttt=tttt B ====htB=#                      #          =#=  ^^^                                          |
+|                                        ^^ B  h==hIt==h =ttt=tttttB ==htttB=#                      #          =#B ^^^                                           |
+|                                  ^^   ^^  B  h==hIt==ht=ttt======B ====htB=#                      #            ^^^^                                            |
+|                                ^^^^^  ^^  B  h==hIt=====tttttt=tBB ==htttB=#                      #           ^^^^                                             |
+|                                ^^ ^^  ^^  B  h==hIt=BB=t==htth=tt  ====htB=#              ========#          ^^                                                |
+|                                ^^ ^^^^^   B th==hIt=B ===ttttt=tttt==htttB=#                      #          ^^                                                |
+|                               ^^   ^^^    B th==hIt=B =ttttttt=tttt====htB=#                      #          ^^                                                |
+|                             ^^^^          B  h==hIt=B =ttttttt===tt==htttB=#                      #          ^^                                                |
+|                            ^^^            B th==hIt=B ====ttttttI%t====htB=#                      #         ^^                                                 |
+|                            ^^             B th==hIt=B   t=httttt%t ==h ttB=#                      #         ^^                                                 |
 |                            ^^             B    = t =B              =     B=#                      #         ^^                                                 |
 |                            ^^^            =BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB=#                      #         ^^                                                 |
 |                             ^^^                                          B=#                      #         ^^                                                 |

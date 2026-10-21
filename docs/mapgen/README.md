@@ -6,6 +6,7 @@ deployment or mission binary writes are involved. Run commands from the repo roo
 ```
 py -3 -B tools/mapgen/extract.py --all
 py -3 -B tools/mapgen/ascii.py --examples
+py -3 -B tools/mapgen/analyze.py
 py -3 -B tools/mapgen/ascii.py tools/mapgen/corpus/stock/mc2_03.json --cells-per-char 1 --crop 36 36 90 90
 py -3 -B -m unittest discover -s tests/mapgen -v
 ```
@@ -59,6 +60,20 @@ The object catalog is indexed by Packet-1 objTypeNum, and its ObjectClass resolv
 engine class. Buildings.csv supplies editor classes (wall, control, generator,
 etc.). Its vegetation tags override engine classes because some mods implement
 trees as buildings. Decorative props/fences/rocks remain separate from buildings.
+Named loose FIT files extend the Omnitech catalog beyond object2.pak, with CSV
+class fallback when a named FIT is absent. Tiered wall/post names identify walls
+even when a mod's CSV omits the WALL tag; original engine class is preserved.
+
+## Measured corpus
+
+`docs/mapgen/corpus.md` documents clustering, archetype rules, measured ranges,
+road connectivity, local orientation, terrain siting and team separation.
+`docs/mapgen/extraction_manifest.json` preserves source paths and hashes;
+`tools/mapgen/profile.json` is the generator's measured input. Regenerate the
+profile after a new extraction. Comparisons exclude inherited stock stems from
+custom mod sets; inherited campaign variants are explicitly labeled. Pooled
+statistics deduplicate decoded terrain/object packets across installs. Archetype
+labels and slope/proximity measurements are coarse, documented approximations.
 
 ## Boundaries for phase 2
 

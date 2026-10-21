@@ -6,7 +6,7 @@ import zlib
 import numpy as np
 
 from tools.mapgen.common import mask_of, packed_cell, spans, world_cell
-from tools.mapgen.data import fit_sections, packet
+from tools.mapgen.data import catalog, fit_sections, packet
 from tools.mapgen.extract import OBJECT, VERTEX, extract_mission
 
 
@@ -26,7 +26,16 @@ class MemoryInstall:
         self.files = files
 
     def read(self, name):
-        return self.files[name], "fixture::" + name
+        return self.files[name.lower()], "fixture::" + name
+
+    def has(self, name):
+        return name.lower() in self.files
+
+    def read_alternative(self, names):
+        for name in names:
+            if self.has(name):
+                return self.read(name)
+        raise FileNotFoundError(names)
 
 
 class ExtractionTests(unittest.TestCase):
@@ -69,6 +78,18 @@ class ExtractionTests(unittest.TestCase):
         raster = np.array([[True, False, True], [False, True, True]])
         layout = {"size": {"rows": 2, "cols": 3}, "layers": {"roads": spans(raster)}}
         np.testing.assert_array_equal(mask_of(layout, "roads"), raster)
+
+    def test_mod_catalog_extensions_and_omitted_tags(self):
+        fits = [f'[ObjectClass]\nl ObjectTypeNum=1\n[ObjectType]\nst AppearanceName="{name}"\n'.encode()
+                for name in ("tree_pine", "D_LightWall", "truckprop")]
+        csv = ("File Name,Group ID,NameID,Type,FitID,SPECIAL TYPE\n"
+               "Pine,1,1,BUILDING,0,TREE1\nD_LightWall,7,1,BUILDING,1,\n"
+               "TruckProp,2,1,BUILDING,2,\nGenerator,20,1,BUILDING,2545,TURRET_GENERATOR\n")
+        install = MemoryInstall({"data/objects/object2.pak": pak(*fits, compressed=True),
+            "data/art/buildings.csv": csv.encode(), "data/objects/generator.fit": fits[0]})
+        types, sources = catalog(install)
+        self.assertEqual([types[n]["class"] for n in (0, 1, 2, 2545)], ["tree", "wall", "prop", "turret_generator"])
+        self.assertEqual(sources["extended_catalog_fit_count"], 1)
 
 
 if __name__ == "__main__":

@@ -1,5 +1,5 @@
 MCO-Carver5/mc2_13 | 360x360 cells | 3 cells/char
-North up; cell crop [0,0)..[360,360); objects by team: {-1: 102, 1: 222, 2: 1}
+North up; cell crop [0,0)..[360,360); objects by team: {-1: 99, 1: 222, 2: 1}
 @ player start; O visible objective; B military; h town; I industry; H HQ/sensor; A airfield
 # wall/fence; + gate; T turret; C turret control; G generator; c gate control
 = road/bridge; : runway; . cement; ~ water; t trees; ^ slope>=35deg; % rock; , prop; ? unresolved
@@ -26,31 +26,31 @@ North up; cell crop [0,0)..[360,360); objects by team: {-1: 102, 1: 222, 2: 1}
 |                                 ^^                                                                                     |
 |                                ^^                                                   ^                                  |
 |                               ^^                                                    ^  G.BB.                           |
-|                              ^^  ^                                      TBB       H^^  B....                           |
-|                             ^^  ^                                       G.BBT      ^^  ...I.  ^                        |
-|                            ^^                                           BC.cB       ^    GB.  ^                        |
-|                           ^^                                            BBB+.       ^    ... ^^                        |
+|                              ^^  ^                                      T##       H^^  B....                           |
+|                             ^^  ^                                       G.##T      ^^  ...I.  ^                        |
+|                            ^^                                           #C.c#       ^    GB.  ^                        |
+|                           ^^                                            ###+.       ^    ... ^^                        |
 |                          ^^                                                                  ^                         |
 |                         ^^                                                                  ^                          |
 |                       ^^^                                                              ^^^^^                           |
-|                                                        TBBB                           ^                                |
-|                                                        BcCB                      ^   ^^                                |
-|                                                        G..B                     ^    ^               BBBBBB            |
-|                                                        BB+.         ^^^^^^^^^  ^    ^                TG.c,B            |
-|                                          TBBT          TB        ^^^^     ^^^                        B===BB            |
-|                                           C.B                   ^^                                   T=.,,B            |
-|                                TBBT      +GcB                 ^^^                                     +B..B            |
-|                                Gc.+      TBBB                ^^^                 ^                     B.CB            |
-|                                BBCB                         ^^^                   ^^                   T.BB            |
-|                                 BBB                                     B...       ^  B                BBBB            |
-|       ^^                        TBB      ^^^^                           BhB.       ^                                   |
+|                                                        T###                           ^                                |
+|                                                        #cC#                      ^   ^^                                |
+|                                                        G..#                     ^    ^               ######            |
+|                                                        ##+.         ^^^^^^^^^  ^    ^                TG.c,#            |
+|                                          T##T          T#        ^^^^     ^^^                        #===B#            |
+|                                           C.#                   ^^                                   T=.,,#            |
+|                                T##T      +Gc#                 ^^^                                     +#..#            |
+|                                Gc.+      T###                ^^^                 ^                     #.C#            |
+|                                ##C#                         ^^^                   ^^                   T.B#            |
+|                                 #B#                                     B...       ^  B                ####            |
+|       ^^                        T##      ^^^^                           BhB.       ^                                   |
 |     ^^^                               ^    ^^^ ^^                       B.B.  CBB.  ^                                  |
 |   ^^^^                               ^^          ^H              .....  BBB. T....  ^                                  |
 | ^^^^  ^^                             ^           ^^              T.BT.  h.B.  ..C.  ^^                                 |
 |^^^^ ^^                              ^             ^       ^      T.BT.  ..B.  ..T.                                     |
 |^^  ^^                                              ^^            .....    h.                                           |
 |  ^^^                                                             .T.T.    ..                                           |
-|^^^                                           B                   ....O                                                 |
+|^^^                                           I                   ....O                                                 |
 |^                                            B..    ^^^^^ ^^                           ^^                               |
 |                                     ^       AO.   ^       ^^          ..T.T.          ^                                |
 |                                     ^       ...   ^        ^^         T.....         ^                                 |
@@ -60,14 +60,14 @@ North up; cell crop [0,0)..[360,360); objects by team: {-1: 102, 1: 222, 2: 1}
 |                                          ^^^^ ^               ^                   ^^                                   |
 | ^^                                                            ^^                 ^^                                    |
 |   ^^                                                           ^^^              ^^                                     |
-|    ^                                                    BBcB     ^^^            ^                                      |
-|     ^                                                   BC.B      ^^^^          ^^                                     |
-|                                                         TB.+        ^^^ ^^       ^                                     |
-|                                                          BG.               ^     ^                                     |
-|     ^                                                    TBB     + B       ^^     ^                                    |
-|     ^                                                           BGcB        ^                                          |
-|                                                                 TBCB        ^^     ^                                   |
-|   ^                                                              BBT         ^                                         |
+|    ^                                                    ####     ^^^            ^                                      |
+|     ^                                                   #C.#      ^^^^          ^^                                     |
+|                                                         T#.+        ^^^ ^^       ^                                     |
+|                                                          #G.               ^     ^                                     |
+|     ^                                                    T##     + #       ^^     ^                                    |
+|     ^                                                           #Gc#        ^                                          |
+|                                                                 T#C#        ^^     ^                                   |
+|   ^                                                              ##T         ^                                         |
 |  ^                                                                           ^      ^                                  |
 |                                                                                     ^                                  |
 |                                                                                      ^     H^                          |
@@ -80,30 +80,30 @@ North up; cell crop [0,0)..[360,360); objects by team: {-1: 102, 1: 222, 2: 1}
 |                O                                       ^                                ,                              |
 |                                                       ^  ^ ^^                         O.,                              |
 |                                                       ^ ^                     ^    ,  ,.,                              |
-|              @                                       ^ ^^          ^          ^    ,..BB.       TBBT                   |
-|                                                      ^ ^           ^^ ^       ^    II.B..    ^  +CBB                   |
-|                                                       ^^            ^^             ...      ^^   cGB                   |
-|                                                                      ^         ^            ^   BBBT                   |
+|              @                                       ^ ^^          ^          ^    ,..BI.       T##T                   |
+|                                                      ^ ^           ^^ ^       ^    II.,..    ^  +C##                   |
+|                                                       ^^            ^^             ...      ^^   cG#                   |
+|                                                                      ^         ^            ^   ###T                   |
 |                                                       ^^                        ^^         ^^                          |
 |                                                       ^^             ^           ^^       ^^                           |
 |                                                        ^                          ^^    ^^^  ^                         |
 |                                                        ^                            ^  ^    ^                          |
 |                                                         ^           ^                     ^                            |
-|                                                         ^^         ^          BGBB                                     |
-|                          ^^                              ^^       ^           BBc.+    TB +B                           |
-|                         ^^ ^  ^^^^                        ^^ ^^^^^            B.CBB    BC.cB                           |
-|                        ^^          ^^                                         BB.B     BGBBB                           |
-|                       ^^                 ^                                     TBT     TBBT                            |
+|                                                         ^^         ^          #G##                                     |
+|                          ^^                              ^^       ^           #Bc.+    T# +#                           |
+|                         ^^ ^  ^^^^                        ^^ ^^^^^            #.C##    #C.c#                           |
+|                        ^^          ^^                                         ##.#     #GB##                           |
+|                       ^^                 ^                                     T#T     T##T                            |
 |                       ^^                  ^^                                                                           |
 |                      ^^         I.   ,     ^^^                                                                         |
 |                                III. I,,,     ^^^                                                                       |
 |                                .IIIIIIO.  BH   ^^                                                                      |
-|                                BB...I,B.  ...   ^                                                                      |
+|                                BB...I,I.  ...   ^                                                                      |
 |      ^                         ......BB. ====B. ^                                                                      |
 |      ^          ^             I    ..     BB... ^                                                                      |
 |              ^^^          .BBBI.   ..     ...   ^                                                                      |
 |       ^   ^^       :::::::::::B,  ,.,.                                                                      ^          |
-|^      ^^ ^^       IIII...BBBB... ,B.,B.                                                                                |
+|^      ^^ ^^       IIII...BBBB... ,I.,B.                                                                                |
 |                   IIII.....B..   ,,.,..                                                                   ^            |
 |                                         .O.                                                                            |
 |                                        B,..                                                              ^             |

@@ -1,5 +1,5 @@
 stock/mc2_10 | 360x360 cells | 3 cells/char
-North up; cell crop [0,0)..[360,360); objects by team: {-1: 257, 0: 22, 1: 139}
+North up; cell crop [0,0)..[360,360); objects by team: {-1: 253, 0: 22, 1: 133}
 @ player start; O visible objective; B military; h town; I industry; H HQ/sensor; A airfield
 # wall/fence; + gate; T turret; C turret control; G generator; c gate control
 = road/bridge; : runway; . cement; ~ water; t trees; ^ slope>=35deg; % rock; , prop; ? unresolved
@@ -19,16 +19,16 @@ North up; cell crop [0,0)..[360,360); objects by team: {-1: 257, 0: 22, 1: 139}
 |                          t                                               t t t     ~~~~~                          t    |
 |                       t  t tt                                                t      ~~~~   t                t     t    |
 |     t   t               t  t                                               ttt    t ~~~~ :                  tt t       |
-|         t                tt t                                              t t TBB#,t #  :                 t   tt      |
-|             t   tt        ttt                                             t t  ##B#,,### :     tt         t    t       |
+|         t                tt t                                              t t T#I#,t #  :                 t   tt      |
+|             t   tt        ttt                                             t t  ##,#,,### :     tt         t    t       |
 |            t             t               t                                 t  tB====,##I : :              t            |
-|             t                                                                 TBC.G=,I#. : :      t   t   t t          |
+|             t                                                                 T#C.G=,,#. : :      t   t   t t          |
 |                                                                               #TBT.B,::::B:::::   ^        O  t t      |
-|                                                                               B,.==O=,,  : :     t     t     t  t      |
-|                                             t                                 T#TT#.=B.G.: :           t     t tt      |
-|                                     t     tt        t                             TB=H,..: :                 t  t t    |
+|                                                                               #,.==O=,,  : :     t     t     t  t      |
+|                                             t                                 T#TT#.=I.G.: :           t     t tt      |
+|                                     t     tt        t                             T#=H,..: :                 t  t t    |
 |                                          t           tt                          ======C,: :       t           t tt    |
-|                              t               t t   t t                           =##B#B.#: :           ttt    t t t    |
+|                              t               t t   t t                           =#####.#: :           ttt    t t t    |
 |                                           tttt tttt  tttt                        =T#T.T#T  :             t  t    tt    |
 |                t        t t  t             t  t  ttttttttttt                     =         :  t      t    t  t t t     |
 |            t t t         t  tt               ^t tt t     tttt                    =         :            tt  t   t t    |
@@ -41,11 +41,11 @@ North up; cell crop [0,0)..[360,360); objects by team: {-1: 257, 0: 22, 1: 139}
 |     tt t  t  tt      tt       ttt###=t  t^  #### %^  =                   tttt =                t       t     t  tt     |
 |     tt   t   tttt    t    ttt tt=#I#=Ht t## # BT# ^^ =                    t  t=                  t   t tttt tttt t     |
 |     tt   ttt ttt   t   t  tttttA==#T tt^#B#t# t ##t^ = t               tttttt =                      ttt t ttttttt     |
-|             tt    tt      tttt B=C = t^^BOB TBB B#   =  t            t ttt t  =                t      t  ttt t t       |
-|    t  t   ttt t t         t tt B=  = t^t#BT #=  B#   ===             tt t t   =               t t    t  ttt t         ^|
-|    t t t  t  t             ttt^BT  Ttt^ ###tT#T##T   = =t               t     =                     t   t tt tt        |
+|             tt    tt      tttt I=C = t^^BOB TBB B#   =  t            t ttt t  =                t      t  ttt t t       |
+|    t  t   ttt t t         t tt I=  = t^t#BT #=  B#   ===             tt t t   =               t t    t  ttt t         ^|
+|    t t t  t  t             ttt^IT  Ttt^ ###tT#T##T   = =t               t     =                     t   t tt tt        |
 |            t  tt         tt tt GB OT     =   T %      t=            tt t=======                      t      t          |
-|      tt ttt   t           ttt t =BT= tt  =   =       tt= t          tttt=                        t      tt ttt         |
+|      tt ttt   t           ttt t =IT= tt  =   =       tt= t          tttt=                        t      tt ttt         |
 |       t t t               ttttt^ t ========  =         = tt     t   t  t=                        t      tt   ttt       |
 |                           tt   ^t        H====t        = tttt  ttt tt  t=                   t   tt        tttttt       |
 |                          tt   tt             =     ^t  =  ttt  t   t   t=                         tt ttt  t       t    |
@@ -60,16 +60,16 @@ North up; cell crop [0,0)..[360,360); objects by team: {-1: 257, 0: 22, 1: 139}
 |         ttttt tt ###BI t   t     t      t  tT=T             =  =     =                               tt  ttt       t   |
 |           tttttBt#I##B#   t t      t     t  t=t             =  =     =                                       t    tt   |
 |         tt  tt BB#I##=# t h     t            =              =  =======                                t   t tt   t     |
-|            ttt  ,#I=#B# tBI,  =======        =              =                            t  t     t t t  tt t          |
-|     t t     t t , B=#B#t#B ,# =     =      t = t            =                               t t     t t t        ttt   |
-|                 t,I=,I  #B tB =t    =       t=t             =                              t                    t      |
+|            ttt  ,#I=#I# tBI,  =======        =              =                            t  t     t t t  tt t          |
+|     t t     t t , I=#I#t#B ,# =     =      t = t            =                               t t     t t t        ttt   |
+|                 t,I=,I  #h tB =t    =       t=t             =                              t                    t      |
 |             t tt ,I==#=========     =      t =              =                                     t   tt tt            |
 |      t           h II    ,=   t     ========H=t             =                                     t    t tt      tt    |
 |                      t  tt=                  ================                                           ttt            |
-|           ^^^       tth,BB=  ttt                                                                          tt     tt    |
-|          ^^^^^^^  tttt =B#Bt                                                tt                                         |
-|        ^^^^^^^^^^^  t BBBBB                   ~~                 t         t                             t t           |
-|       ^^^^    ^^^^^   tB=#t tt   ^          ~~~~~~                           t                           t             |
+|           ^^^       tth,hh=  ttt                                                                          tt     tt    |
+|          ^^^^^^^  tttt =h#ht                                                tt                                         |
+|        ^^^^^^^^^^^  t hhhhh                   ~~                 t         t                             t t           |
+|       ^^^^    ^^^^^   th=#t tt   ^          ~~~~~~                           t                           t             |
 |     ^^^^^~~~~~~ ^^^^                      ~~~~~~~~                   t      t                             t            |
 |     ^^^~~~~~~~~~  ^^^^^^^^^^^       ~~~~~~~~~~~~~~~~~  ^           t t     tt                                          |
 |^   ^^^~~~~~~~~~~~~ ^^^^^^^^^^^^^  ~~~~~~~~~~~~~~~~~~~~  ^        t tttt t                                              |

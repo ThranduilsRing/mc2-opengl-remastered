@@ -26,7 +26,7 @@ North up; cell crop [0,0)..[360,360); objects by team: {-1: 16}
 |       tttttttt              tt                                 tttt       ttt                ttttt                     |
 |      ttttttttt            ttttt                            ttt   tt         t              t ttttt                     |
 |      ttt ttttt           tttt t                             tt     t      tttt              tttttt                     |
-|      tttttt tt        t    t tt               t          B t tt          ttttt                tttt                     |
+|      tttttt tt        t    t tt               t          I t tt          ttttt                tttt                     |
 |        ttttt              ttttt             ttt            tttt         tttttt                 tt               t      |
 |                          tttttt              t             tttt          ttt tt                               ttttt t  |
 |                   ttt                         t                        ttttt                                 tttttttt  |
@@ -59,11 +59,11 @@ North up; cell crop [0,0)..[360,360); objects by team: {-1: 16}
 |         tt tt         ttt  ttt     tt ttt     ttt t                       t t       tttt    ttttttt     tttttt t tttt  |
 |         tttt          t t  tttttt  tttttt       t t                                  ttt    ttttt t                    |
 |         t t t         t    tttttt    t tt         t       .hh.                    tttt     tttttt                      |
-|         t t                ttttt    ttt t                B....                     ttt                     t           |
+|         t t                ttttt    ttt t                I....                     ttt                     t           |
 |                            ttttt    tttttt              .....B..                                         t ttt t       |
-|                            ttttt     tt tt              .====...         t                    B           tttt  t t    |
-|               t       B      tttt     tt               B==.H=...          tt                             ttt tttttt    |
-|          t tttt             ttttt                      ..=..==B.       t t                               tttt ttttt    |
+|                            ttttt     tt tt              .====...         t                    I           tttt  t t    |
+|               t       I      tttt     tt               I==.H=...          tt                             ttt tttttt    |
+|          t tttt             ttttt                      ..=..==I.       t t                               tttt ttttt    |
 |          tttttt             ttttt                       .====...      tttttt                         t  t t tttt tt    |
 |          t tt  t      ttt                               .....BB.      t t        t                  ttttttttttttt tt   |
 |           tttttt     tttttt                             .....B..       t       ttt             t    ttt  ttttttttt     |
@@ -99,7 +99,7 @@ North up; cell crop [0,0)..[360,360); objects by team: {-1: 16}
 |             ttt t                                     t     ttt    ttt          ttt                tttt     t          |
 |              tttt           t                         tt     ttt   ttt          tt                 tttttt              |
 |             ttt t         tttt            t t        tttt   tttt    t                              tttttt              |
-|                           tttt           ttt           tt  B  t    t t                             tttt                |
+|                           tttt           ttt           tt  I  t    t t                             tttt                |
 |                         ttttttt        t tttt          t      t                                        t               |
 |                         ttttttt         ttt           t                       tt                                       |
 |                         ttttttt        ttttt    tt    ttt        t           tt t                                      |
