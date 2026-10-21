@@ -181,8 +181,25 @@ TypePtr standardRoutineCall (SymTableNodePtr routineIdPtr) {
 				else
 					syntaxError(ABL_ERR_SYNTAX_WRONG_NUMBER_OF_PARAMS);
 				for (long i = 0; i < numParams; i++) {
+					const bool wantRealRef = (FunctionInfoTable[key].params[i] == PARAM_TYPE_REAL_REF);
+					bool refVarOk = true;
+					if (wantRealRef) {
+						// By-reference out-param: the script must pass a bare real variable. A literal or expression would
+						// leave the exec side reading a symbol pointer that is not in the code stream.
+						refVarOk = false;
+						if (curToken == TKN_IDENTIFIER) {
+							SymTableNodePtr refId = nullptr;
+							searchAndFindAllSymTables(refId);
+							refVarOk = refId && ((refId->defn.key == DFN_VAR) || (refId->defn.key == DFN_REFPARAM) ||
+								(refId->defn.key == DFN_VALPARAM));
+						}
+					}
 					TypePtr paramType = expression();
 					switch (FunctionInfoTable[key].params[i]) {
+						case PARAM_TYPE_REAL_REF:
+							if (!refVarOk || (paramType != RealTypePtr) || ((curToken != TKN_COMMA) && (curToken != TKN_RPAREN)))
+								syntaxError(ABL_ERR_SYNTAX_INCOMPATIBLE_TYPES);
+							break;
 						case PARAM_TYPE_ANYTHING:
 							break;
 						case PARAM_TYPE_CHAR:

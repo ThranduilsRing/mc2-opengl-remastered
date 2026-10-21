@@ -602,6 +602,9 @@ void enterStandardRoutine (const char* name, long routineKey, bool isOrder, cons
 				case 'B':
 					FunctionInfoTable[tableIndex].params[i] = PARAM_TYPE_BOOLEAN_ARRAY;
 					break;
+				case 'v':
+					FunctionInfoTable[tableIndex].params[i] = PARAM_TYPE_REAL_REF;
+					break;
 				default: {
 					char err[255];
 					mc2::fmt::to_buf(err, " ABL.enterStandardRoutine: bad param type ({:c}) for ({})", mc2::fmt::as_char(paramList[i]), mc2::fmt::safe(name));

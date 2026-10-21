@@ -536,7 +536,7 @@ void initABL (void) {
 	ABLi_addFunction("setrepairtruckenabled",  false, "b", nullptr, execSetRepairTruckEnabled);
 	ABLi_addFunction("setsalvagecraftenabled", false, "b", nullptr, execSetSalvageCraftEnabled);
 
-	ABLi_addFunction("gettargetrelativeposition",    false, "irr", nullptr, execGetTargetRelativePosition);
+	ABLi_addFunction("gettargetrelativeposition",    false, "ivv", nullptr, execGetTargetRelativePosition);
 	ABLi_addFunction("getrelativepositiontotarget",  false, "i*iR", nullptr, execGetRelativePositionToTarget);
 	ABLi_addFunction("newdistancetoposition", false, "iR", "r", execNewDistanceToPosition);
 	ABLi_addFunction("numfriendswithinradius", false, "i*", "i", execNumFriendsWithinRadius);

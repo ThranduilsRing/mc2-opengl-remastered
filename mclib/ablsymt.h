@@ -153,6 +153,7 @@ enum class FunctionParamType {
 	PARAM_TYPE_INTEGER_ARRAY,
 	PARAM_TYPE_REAL_ARRAY,
 	PARAM_TYPE_BOOLEAN_ARRAY,
+	PARAM_TYPE_REAL_REF,	// out-param: must be a plain real variable (the exec side reads a symbol reference from the code stream)
 	NUM_PARAM_TYPES
 };
 using enum FunctionParamType;
