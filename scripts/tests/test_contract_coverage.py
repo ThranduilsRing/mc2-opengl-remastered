@@ -1,5 +1,6 @@
 """Every check and C++ test must have an executable route or a reasoned exemption."""
 import ast
+import json
 from pathlib import Path
 import re
 import subprocess
@@ -50,6 +51,45 @@ def coverage_problems(checks, inventory, manual, board, harnesses, registered, d
     for name in debt:
         if name not in harnesses or name in registered:
             issues.append(f"stale harness debt: {name}")
+    return issues
+
+
+def ownership_problems(modules, ownership, board):
+    """Each discovered Python test module has one contract-row owner, or scripts_tests."""
+    issues = []
+    rows = re.findall(r'^run_check(?:_tri)?\s+"([^"]+)"\s+"([^"]+)"', board, re.M)
+    commands = {label: command for label, command in rows}
+    tests = {}
+    for entry in ownership.get("tests", []):
+        module = entry.get("module")
+        owners = entry.get("owners", [])
+        if not isinstance(module, str) or not isinstance(owners, list) or not owners \
+                or not all(isinstance(owner, str) for owner in owners):
+            issues.append(f"invalid ownership entry: {entry!r}")
+            continue
+        if module in tests:
+            issues.append(f"duplicate ownership entry: {module}")
+            continue
+        tests[module] = owners
+        if len(owners) != len(set(owners)):
+            issues.append(f"duplicate owner: {module}")
+        for owner in owners:
+            if owner not in commands:
+                issues.append(f"missing contract row for owner: {owner} ({module})")
+            elif owner != ownership.get("aggregate_owner") and module not in commands[owner]:
+                issues.append(f"row {owner} does not name its owned module: {module}")
+    aggregate = ownership.get("aggregate_owner")
+    if aggregate not in commands:
+        issues.append(f"missing aggregate contract row: {aggregate}")
+    for module in modules:
+        if module not in tests:
+            issues.append(f"zero owners: {module}")
+    for module in tests:
+        if module not in modules:
+            issues.append(f"stale ownership entry: {module}")
+        owners = tests[module]
+        if aggregate in owners and len(owners) > 1:
+            issues.append(f"duplicate execution: {module} (aggregate and direct owners)")
     return issues
 
 
@@ -113,6 +153,9 @@ def test_contract_and_test_tier_coverage():
     issues = coverage_problems(checks, inventory, entries(read("scripts/manual-checks.allowlist"), ":"),
                                read("scripts/check-contracts.sh"), harnesses, registered,
                                entries(read("scripts/unregistered-harness-debt.txt"), "#"), tracked)
+    modules = [f"scripts/tests/{path.name}" for path in (ROOT / "scripts/tests").glob("test_*.py")]
+    issues += ownership_problems(modules, json.loads(read("scripts/test_ownership.json")),
+                                 read("scripts/check-contracts.sh"))
     cmakes = {path: read(path) for path in ("CMakeLists.txt", "tests/unit/CMakeLists.txt",
               "tests/model_override/CMakeLists.txt", "tests/static_natural_skip/CMakeLists.txt")}
     sources = {path.name: path.read_text(encoding="utf-8")
@@ -138,6 +181,35 @@ def test_duplicate_rows_and_harness_debt_fail():
     assert coverage_problems([], {"scripts": []}, {}, row * 2, set(), set(), {})
     assert coverage_problems([], {"scripts": []}, {}, "", {"lost_harness"}, set(), {})
     assert coverage_problems([], {"scripts": []}, {}, "", {"paid_harness"}, {"paid_harness"}, {"paid_harness": "old"})
+
+
+def test_ownership_rejects_missing_duplicate_and_stale_owners():
+    board = 'run_check "direct" "py -3 -m pytest scripts/tests/test_direct.py"\n' \
+            'run_check "scripts_tests" "py -3 scripts/run_scripts_tests.py"\n'
+    modules = ["scripts/tests/test_direct.py", "scripts/tests/test_aggregate.py"]
+    good = {"aggregate_owner": "scripts_tests", "tests": [
+        {"module": "scripts/tests/test_direct.py", "owners": ["direct"]},
+        {"module": "scripts/tests/test_aggregate.py", "owners": ["scripts_tests"]}]}
+    assert ownership_problems(modules, good, board) == []
+    missing = {"aggregate_owner": "scripts_tests", "tests": good["tests"][:1]}
+    assert ownership_problems(modules, missing, board) == ["zero owners: scripts/tests/test_aggregate.py"]
+    duplicate = {"aggregate_owner": "scripts_tests", "tests": [
+        *good["tests"], {"module": "scripts/tests/test_direct.py", "owners": ["direct"]}]}
+    assert ownership_problems(modules, duplicate, board) == [
+        "duplicate ownership entry: scripts/tests/test_direct.py"]
+    doubly_owned = {"aggregate_owner": "scripts_tests", "tests": [
+        {"module": "scripts/tests/test_direct.py", "owners": ["direct", "scripts_tests"]},
+        {"module": "scripts/tests/test_aggregate.py", "owners": ["scripts_tests"]}]}
+    assert ownership_problems(modules, doubly_owned, board) == [
+        "duplicate execution: scripts/tests/test_direct.py (aggregate and direct owners)"]
+    stale = {"aggregate_owner": "scripts_tests", "tests": [
+        *good["tests"], {"module": "scripts/tests/test_gone.py", "owners": ["gone"]}]}
+    stale_board = board + 'run_check "gone" "py -3 -m pytest scripts/tests/test_gone.py"\n'
+    assert ownership_problems(modules, stale, board) == [
+        "missing contract row for owner: gone (scripts/tests/test_gone.py)",
+        "stale ownership entry: scripts/tests/test_gone.py"]
+    assert ownership_problems(modules, stale, stale_board) == [
+        "stale ownership entry: scripts/tests/test_gone.py"]
 
 
 def test_board_missing_script_fails_and_tracked_twin_passes():
