@@ -248,4 +248,11 @@ std::optional<SurfaceAsset> cookSurface(const SurfaceCookInput& in) {
     if (!validSurfaceAsset(candidate, source)) return {};
     return candidate;
 }
+
+std::optional<SurfaceAsset> resolveSurfaceAsset(const SurfaceCookInput& input, std::span<const uint8_t> candidate) {
+    const auto source = surfaceCookSourceHash(input);
+    if (source == 0) return {};
+    if (auto cached = decodeSurfaceAsset(candidate, source)) return cached;
+    return cookSurface(input);
+}
 } // namespace mc2terrain

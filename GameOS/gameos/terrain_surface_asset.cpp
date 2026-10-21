@@ -8,6 +8,7 @@ namespace {
 constexpr uint32_t kMagic = 0x31465354; // TSF1
 constexpr size_t kHeaderBytes = 48;
 constexpr uint64_t kPixelBytes = 16;
+std::vector<uint8_t> missionCook;
 
 bool validSize(uint32_t w, uint32_t h) {
     return w > 0 && h > 0 && w <= SurfaceAsset::kMaxSide && h <= SurfaceAsset::kMaxSide;
@@ -73,4 +74,10 @@ std::vector<uint8_t> encodeSurfaceAsset(const SurfaceAsset& asset) {
     for (unsigned i = 0; i < 8; ++i) bytes[32 + i] = static_cast<uint8_t>(hash >> (8 * i));
     return bytes;
 }
+
+void setSurfaceMissionCook(std::vector<uint8_t> candidate) {
+    missionCook = candidate.size() <= SurfaceAsset::kMaxBytes ? std::move(candidate) : std::vector<uint8_t>{};
+}
+
+std::span<const uint8_t> surfaceMissionCook() { return missionCook; }
 } // namespace mc2terrain

@@ -1,8 +1,13 @@
 #include "doctest.h"
 #include "terrain_field_store.h"
+#include "terrain_surface_cook.h"
+#include "file.h"
+#include "ffile.h"
+#include "fastfile.h"
 
 #include <bit>
 #include <limits>
+#include <cstdio>
 
 namespace {
 mc2terrain::SurfaceAsset sampleSurface() {
@@ -61,4 +66,80 @@ TEST_CASE("surface asset: stale truncated oversized corrupt replacements preserv
         CHECK(mc2terrain::encodeSurfaceAsset(candidate).empty());
         CHECK(store.surfaceVersion() == version);
     }
+}
+
+TEST_CASE("surface asset: resolved stock FST and loose inputs give the same complete cook") {
+    const char* sourcePath = "mvh_scratch_surface_source.rgba";
+    const char* fstPath = "mvh_scratch_surface_providers.fst";
+    const std::vector<uint8_t> stock = {22,45,78,255, 100,80,40,255, 33,99,44,255, 88,77,66,255};
+    auto overrideBytes = stock; overrideBytes[0] = 244;
+    auto write = [&](const auto& bytes) {
+        FILE* f = std::fopen(sourcePath,"wb"); REQUIRE(f != nullptr);
+        REQUIRE(std::fwrite(bytes.data(),1,bytes.size(),f)==bytes.size());
+        REQUIRE(std::fclose(f)==0);
+    };
+    auto read = [&](bool disk) {
+        File f; REQUIRE(f.open(sourcePath)==NO_ERR);
+        CHECK(f.isLoadedFromDisk()==disk);
+        std::vector<uint8_t> bytes(f.getLength());
+        REQUIRE(f.read(bytes.data(),bytes.size())==static_cast<long>(bytes.size()));
+        return bytes;
+    };
+    auto resolve = [&](const auto& bytes, const auto& hint) {
+        const auto colors = mc2terrain::surfaceColorsFromRgba(bytes,false);
+        mc2terrain::SurfaceCookInput input;
+        input.color=colors; input.colorWidth=2; input.colorHeight=2; input.worldSpan=256;
+        input.outputWidth=4; input.outputHeight=4;
+        auto asset = mc2terrain::resolveSurfaceAsset(input,hint);
+        REQUIRE(asset.has_value());
+        CHECK(asset->macroColor.size()==16); // complete coverage even when no cook matches
+        return mc2terrain::encodeSurfaceAsset(*asset);
+    };
+    const std::vector<uint8_t> missing;
+    write(stock);
+    const auto stockResolved=read(true);
+    const auto stockCook=resolve(stockResolved,missing);
+    REQUIRE(std::remove(sourcePath)==0);
+    {
+        FastFile archive;
+        REQUIRE(archive.create(fstPath,true)==NO_ERR);
+        REQUIRE(archive.reserve(1)==NO_ERR);
+        auto packed=stock;
+        REQUIRE(archive.writeFast(sourcePath,packed.data(),packed.size())==NO_ERR);
+        archive.close();
+    }
+    struct Registry {
+        Registry() {
+            maxFastFiles=4; numFastFiles=0;
+            fastFiles=static_cast<FastFile**>(std::calloc(maxFastFiles,sizeof(FastFile*)));
+        }
+        ~Registry() { FastFileFini(); }
+    };
+    {
+        Registry registry;
+        REQUIRE(FastFileInit(fstPath));
+        CHECK(fileExists(sourcePath)==FILE_ON_FST);
+        const auto packedResolved=read(false);
+        CHECK(packedResolved==stockResolved);
+        CHECK(resolve(packedResolved,missing)==stockCook);
+        CHECK(resolve(packedResolved,stockCook)==stockCook);
+        write(stock);
+        CHECK(read(true)==packedResolved);
+        CHECK(resolve(read(true),stockCook)==stockCook);
+        write(overrideBytes);
+        const auto looseResolved=read(true);
+        CHECK(looseResolved==overrideBytes);
+        const auto looseCook=resolve(looseResolved,missing);
+        CHECK(looseCook!=stockCook);
+        CHECK(resolve(looseResolved,stockCook)==looseCook); // stale stock cook cannot hide a mod override
+        auto truncated=stockCook; truncated.resize(21);
+        CHECK(resolve(looseResolved,truncated)==looseCook);
+        REQUIRE(std::remove(sourcePath)==0);
+        CHECK(resolve(read(false),looseCook)==stockCook); // removing override restores the FST provider
+    }
+    REQUIRE(std::remove(fstPath)==0);
+    mc2terrain::setSurfaceMissionCook(stockCook);
+    CHECK(std::vector<uint8_t>(mc2terrain::surfaceMissionCook().begin(),mc2terrain::surfaceMissionCook().end())==stockCook);
+    mc2terrain::setSurfaceMissionCook({});
+    CHECK(mc2terrain::surfaceMissionCook().empty());
 }
