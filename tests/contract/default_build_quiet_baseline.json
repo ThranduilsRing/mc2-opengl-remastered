@@ -13,6 +13,10 @@
       "status": "keep",
       "reason": "Gates/gate.cpp dumpConfig: ONE summary line per start (set/nondefault/unregistered/badvalue counts) plus a line per env-set gate and each warning. The smoke runner forces MC2_CONFIG_STRICT=1 and reads these lines to prove which configuration was measured; per-row lines for unset gates only print under MC2_CONFIG_DUMP=all."
     },
+    "FONT_FALLBACK v1": {
+      "status": "keep",
+      "reason": "FAIL-LOUD by design (font-load hardening, GameOS/gameos/gameos_graphics_capi.cpp gos_LoadFont): Warn only when a requested font fails to load and the arial8 fallback is used or unavailable. Never prints when the font exists; a missing font must be visible, not silent."
+    },
     "INSTR v1": {
       "status": "keep",
       "reason": "scripts/whatran.py and smoke_lib/gates.py parse the 'enabled:' banner to record which gates were armed for a run. smoke_lib/gates.py reports '[INSTR v1] banner absent' as a failure."
@@ -37,6 +41,10 @@
       "status": "keep",
       "reason": "FAIL-LOUD by design (DEPLOY-CURRENT-1, mclib/terrain.cpp): only the sidecar NOT FOUND / load-failure lines print by default; LOADED is MC2_DIAGF. Prints once per mission load on maps without a cooked shoreline mask."
     },
+    "TEXTURE_DECODE v1": {
+      "status": "keep",
+      "reason": "FAIL-LOUD by design (GameOS/gameos/texture_decode.cpp, gameos_graphics_capi.cpp): Warn only when a texture is rejected (missing/truncated/unsupported). Never prints for valid assets; silent rejection would hide missing art, especially on mods."
+    },
     "TGL_POOL v1": {
       "status": "keep",
       "reason": "scripts/smoke_lib/logparse.py counts pool_nulls from lines containing 'nulls='."
@@ -60,6 +68,10 @@
     "VRAM_ADAPTER v1": {
       "status": "keep",
       "reason": "Printed once before the first [VRAM v1] line, under the same smoke / MC2_DIAG_VERBOSE guard, and says which rule (luid or most_dedicated) picked the DXGI adapter the VRAM numbers come from; a reader of a VRAM figure on a two-GPU host needs it. No parser consumes it."
+    },
+    "WATER_SHORE_EDGE v1": {
+      "status": "keep",
+      "reason": "FAIL-LOUD by design (mclib/terrain_init.cpp): the unconditional lines report a shore-field sidecar that is missing, mis-sized, non-finite or unreadable; the LOADED lines are MC2_DIAGF. Same policy as TERRAIN_SHORELINE."
     }
   }
 }

@@ -1,5 +1,6 @@
 // vk_gpu_profile.cpp -- see the header.
 #include "vk_gpu_profile.h"
+#include "mc2_diag_verbose.h"
 
 #ifdef MC2_VULKAN_ISLAND
 #include <algorithm>
@@ -218,8 +219,10 @@ void init(VulkanContext& ctx) {
         tracyCtx = g.tracy != nullptr;
     }
 #endif
-    std::fprintf(stderr, "[VK_GPU_PROFILE v1] debug_labels=%d timestamps=%d tracy_ctx=%d\n", g.labels ? 1 : 0, g.timers ? 1 : 0, tracyCtx ? 1 : 0);
-    std::fflush(stderr);
+    if (mc2DiagVerbose()) {   // startup summary is an MC2_DIAG_VERBOSE line (a default build stays quiet)
+        std::fprintf(stderr, "[VK_GPU_PROFILE v1] debug_labels=%d timestamps=%d tracy_ctx=%d\n", g.labels ? 1 : 0, g.timers ? 1 : 0, tracyCtx ? 1 : 0);
+        std::fflush(stderr);
+    }
 }
 
 void shutdown(VulkanContext& ctx) {
