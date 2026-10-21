@@ -104,6 +104,7 @@ set(SOURCES ${SOURCES}
     gpu_cull_parity.cpp
     gpu_cull_compute.cpp
     vk_actor_cull_native.cpp
+    vk_vegetation_state.cpp
     vk_scene_readback.cpp
     native_render_state.cpp
     gpu_cull_readback.cpp

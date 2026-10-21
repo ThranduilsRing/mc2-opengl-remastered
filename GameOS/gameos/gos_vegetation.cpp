@@ -1,6 +1,10 @@
 // CPU vegetation instances and native Vulkan crossed-card submission.
 #include "gos_vegetation.h"
 #include "vulkan_vfx_geometry.h"
+#ifdef MC2_VULKAN_ISLAND
+#include "vk_vegetation_state.h"
+#include "vulkan_context.h"
+#endif
 #include "texture_decode.h"
 #include "gos_postprocess.h"
 #include "Gates/gate.h"
@@ -103,6 +107,9 @@ void GosVegetation::shutdown() {
     frameDraws = sessionDraws = 0;
     reason = "no_call";
     mc2_vk_vfx_vegetation_atlas(GosTexels{});
+#ifdef MC2_VULKAN_ISLAND
+    if (auto* gpu = mc2veg::State::get(false)) gpu->clear(mc2vk::getOrCreateEngineVulkanContext());
+#endif
 }
 void GosVegetation::uploadInstances(const Instance* data, uint32_t count) {
     if (!initialized) return;
@@ -126,6 +133,23 @@ void GosVegetation::uploadInstances(const Instance* data, uint32_t count) {
         begin=end;
     }
     peak = std::max(peak, static_cast<uint32_t>(instances.size()));
+#ifdef MC2_VULKAN_ISLAND
+    // The population is immutable until the next upload: it goes to the device once, here, not per frame.
+    if (mc2vk::engineVulkanContextValid()) {
+        std::vector<mc2veg::GpuInstance> gpuInstances(instances.size());
+        for (size_t k=0;k<instances.size();++k) {
+            const auto& i=instances[k];
+            gpuInstances[k]={i.x,i.y,i.z,i.yaw,i.scale,i.atlasFrame,i.seed,0u};
+        }
+        std::vector<mc2veg::GpuRegion> gpuRegions(regions.size());
+        for (size_t k=0;k<regions.size();++k) {
+            const auto& r=regions[k];
+            gpuRegions[k]={r.x,r.y,r.z,r.radius,uint32_t(r.begin),uint32_t(r.end),0u,0u};
+        }
+        if (auto* gpu = mc2veg::State::get(true))
+            gpu->upload(mc2vk::getOrCreateEngineVulkanContext(),gpuInstances.data(),uint32_t(gpuInstances.size()),gpuRegions.data(),uint32_t(gpuRegions.size()));
+    }
+#endif
 }
 void GosVegetation::setBlockVisibility(const uint32_t* data, uint32_t count) {
     if (data && count) visibility.assign(data, data+count);
@@ -223,5 +247,11 @@ void GosVegetation::emitSummary() {
     if (!isEnabled() || summaryEmitted) return;
     mc2::fmt::print_err("VEG_SUMMARY instance_count={:d} draw_calls={:d} flush_reason={}\n",
         mc2::fmt::as_u32(peak),mc2::fmt::as_i32(sessionDraws),reason);
+#ifdef MC2_VULKAN_ISLAND
+    // Upload volume follows population changes, not frames: these two numbers must not grow with the frame count.
+    if (const auto* gpu = mc2veg::State::get(false))
+        mc2::fmt::print_err("[VEG_GPU] summary population_uploads={:d} population_bytes={:d}\n",
+            mc2::fmt::as_u64(gpu->stats().uploads),mc2::fmt::as_u64(gpu->stats().uploadBytes));
+#endif
     std::fflush(stderr); summaryEmitted=true;
 }

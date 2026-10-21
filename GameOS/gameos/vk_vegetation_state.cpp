@@ -1,0 +1,117 @@
+// vk_vegetation_state.cpp -- see vk_vegetation_state.h.
+#ifdef MC2_VULKAN_ISLAND
+
+#include "vk_vegetation_state.h"
+
+#include "vk_island_util.h"
+#include "vk_one_shot.h"
+#include "vulkan_context.h"
+
+#define VMA_STATIC_VULKAN_FUNCTIONS 0
+#define VMA_DYNAMIC_VULKAN_FUNCTIONS 0
+#include <vk_mem_alloc.h>
+
+#include <algorithm>
+#include <cstdarg>
+#include <cstdio>
+#include <memory>
+
+namespace mc2veg {
+namespace {
+
+void vlog(const char* fmt, ...) {
+    va_list ap;
+    va_start(ap, fmt);
+    vk_island_util::vlogv("[VEG_GPU] ", fmt, ap);
+    va_end(ap);
+}
+
+bool createDevice(mc2vk::VulkanContext& ctx, mc2vk::OwnedBuffer& out, VkDeviceSize bytes, VkBufferUsageFlags usage, const char* name, int slot = -1) {
+    VkBufferCreateInfo info{VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
+    info.size = std::max<VkDeviceSize>(bytes, 16);
+    info.usage = usage;
+    VmaAllocationCreateInfo alloc{};
+    alloc.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
+    return out.create(ctx.allocator(), ctx.device(), info, alloc, name, slot);
+}
+
+}  // namespace
+
+State* State::get(bool create) {
+    if (!mc2vk::engineVulkanContextValid()) return nullptr;
+    auto& slot = mc2vk::getOrCreateEngineVulkanContext().islandSlot(mc2vk::IslandSlot::Vegetation);
+    if (!slot && create) slot = std::make_unique<State>();
+    return static_cast<State*>(slot.get());
+}
+
+void State::release() {
+    if (mc2vk::engineVulkanContextValid()) mc2vk::getOrCreateEngineVulkanContext().retireIsland(mc2vk::IslandSlot::Vegetation);
+}
+
+void State::clear(mc2vk::VulkanContext& ctx) {
+    ctx.waitIdle("veg_clear");
+    instances_.reset();
+    regions_.reset();
+    for (Slot& s : slot_) s = Slot{};
+    instanceCount_ = regionCount_ = 0;
+}
+
+bool State::upload(mc2vk::VulkanContext& ctx, const GpuInstance* instances, uint32_t instanceCount, const GpuRegion* regions, uint32_t regionCount) {
+    clear(ctx);
+    if (!instances || !regions || instanceCount == 0 || regionCount == 0) return true;   // an empty population is a valid population
+    const VkDeviceSize instBytes = VkDeviceSize(instanceCount) * sizeof(GpuInstance), regBytes = VkDeviceSize(regionCount) * sizeof(GpuRegion);
+    const VkBufferUsageFlags kStore = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+    mc2vk::OwnedBuffer stageInst, stageReg;
+    if (!stageInst.createFilled(ctx.allocator(), ctx.device(), instances, instBytes, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, "veg.stage.instances") ||
+        !stageReg.createFilled(ctx.allocator(), ctx.device(), regions, regBytes, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, "veg.stage.regions") ||
+        !createDevice(ctx, instances_, instBytes, kStore | VK_BUFFER_USAGE_TRANSFER_DST_BIT, "veg.instances") ||
+        !createDevice(ctx, regions_, regBytes, kStore | VK_BUFFER_USAGE_TRANSFER_DST_BIT, "veg.regions")) {
+        vlog("population upload failed: buffer allocation (instances=%u regions=%u).", instanceCount, regionCount);
+        clear(ctx);
+        return false;
+    }
+    for (uint32_t i = 0; i < kSlots; ++i) {
+        Slot& s = slot_[i];
+        if (!createDevice(ctx, s.scratch, VkDeviceSize(instanceCount) * 4, kStore, "veg.scratch", int(i)) ||
+            !createDevice(ctx, s.counts, VkDeviceSize(regionCount) * 4, kStore, "veg.counts", int(i)) ||
+            !createDevice(ctx, s.offsets, VkDeviceSize(regionCount) * 4, kStore, "veg.offsets", int(i)) ||
+            !createDevice(ctx, s.dense, VkDeviceSize(instanceCount) * 4, kStore, "veg.dense", int(i)) ||
+            !createDevice(ctx, s.args, 64, kStore | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT, "veg.args", int(i))) {
+            vlog("population upload failed: output buffer allocation.");
+            clear(ctx);
+            return false;
+        }
+    }
+    const bool ok = mc2vk::submitOneShot(ctx, [&](VkCommandBuffer cb) {
+        const VkBufferCopy ci{0, 0, instBytes}, cr{0, 0, regBytes};
+        vkCmdCopyBuffer(cb, stageInst.get(), instances_.get(), 1, &ci);
+        vkCmdCopyBuffer(cb, stageReg.get(), regions_.get(), 1, &cr);
+        // Empty draw arguments until the first cull: an indirect draw with instanceCount 0.
+        for (Slot& s : slot_) vkCmdFillBuffer(cb, s.args.get(), 0, 64, 0);
+        VkMemoryBarrier mb{VK_STRUCTURE_TYPE_MEMORY_BARRIER};
+        mb.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+        mb.dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_INDIRECT_COMMAND_READ_BIT;
+        vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TRANSFER_BIT,
+                             VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT, 0, 1, &mb, 0, nullptr, 0, nullptr);
+    }, "veg_population_upload");
+    if (!ok) {
+        vlog("population upload failed: copy submit.");
+        clear(ctx);
+        return false;
+    }
+    instanceCount_ = instanceCount;
+    regionCount_ = regionCount;
+    const VkDeviceSize outBytes = VkDeviceSize(instanceCount) * 8 * kSlots + VkDeviceSize(regionCount) * 8 * kSlots;
+    ++stats_.uploads;
+    stats_.uploadBytes += instBytes + regBytes;
+    stats_.instances = instanceCount;
+    stats_.regions = regionCount;
+    vlog("population upload #%llu: instances=%u regions=%u avg_per_region=%.1f uploaded_bytes=%llu resident_output_bytes=%llu",
+         static_cast<unsigned long long>(stats_.uploads), instanceCount, regionCount, double(instanceCount) / double(regionCount),
+         static_cast<unsigned long long>(instBytes + regBytes), static_cast<unsigned long long>(outBytes));
+    return true;
+}
+
+}  // namespace mc2veg
+
+#endif  // MC2_VULKAN_ISLAND
