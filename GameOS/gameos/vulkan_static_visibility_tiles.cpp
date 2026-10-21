@@ -2,8 +2,6 @@
 #ifdef MC2_VULKAN_ISLAND
 #include "vk_gpu_profile.h"
 #include <string>
-#define VMA_STATIC_VULKAN_FUNCTIONS 0
-#define VMA_DYNAMIC_VULKAN_FUNCTIONS 0
 #include <vk_mem_alloc.h>
 
 namespace mc2vk {

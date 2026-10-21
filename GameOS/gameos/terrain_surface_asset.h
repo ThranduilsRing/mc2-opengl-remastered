@@ -6,6 +6,7 @@
 #include <optional>
 #include <span>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace mc2terrain {
@@ -40,8 +41,8 @@ std::vector<uint8_t> encodeSurfaceAsset(const SurfaceAsset& asset);
 // On-disk write-through cache keyed by source hash (which embeds the evaluator version).
 // Load validates via decodeSurfaceAsset (magic/schema/evaluator/key/size/payload hash).
 // Store writes a temp file then renames, so a crash cannot leave a partial entry.
-std::optional<SurfaceAsset> loadCachedSurfaceAsset(const std::string& dir, uint64_t expectedSource);
-bool storeCachedSurfaceAsset(const std::string& dir, const SurfaceAsset& asset);
+std::optional<SurfaceAsset> loadCachedSurfaceAsset(std::string_view dir, uint64_t expectedSource);
+bool storeCachedSurfaceAsset(std::string_view dir, const SurfaceAsset& asset);
 
 struct SurfaceCookInput;
 // A cook is only a cache hint. The caller passes inputs already resolved by the mission's existing loaders.

@@ -157,7 +157,8 @@ void import_colormap(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
         std::string cacheDir;
         {
             std::array<char, 1024> userDir{};
-            if (gos_GetUserDataDirectory(userDir.data(), userDir.size())) cacheDir = std::string(userDir.data()) + "/cache/terrain";
+            const int userDirCap = static_cast<int>(userDir.size());
+            if (gos_GetUserDataDirectory(userDir.data(), userDirCap)) cacheDir = std::string(userDir.data()) + "/cache/terrain";
         }
         const char* cookOrigin = "none";
         const auto resolveT0 = std::chrono::steady_clock::now();

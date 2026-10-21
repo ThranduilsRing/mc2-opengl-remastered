@@ -8,7 +8,9 @@
 #include <cstdio>
 #include <cstring>
 #include <filesystem>
+#include <functional>
 #include <string>
+#include <tuple>
 #include <system_error>
 
 namespace mc2terrain {
@@ -94,14 +96,14 @@ std::vector<uint8_t> encodeSurfaceAsset(const SurfaceAsset& asset) {
 
 namespace {
 constexpr size_t kCacheMaxFiles = 6; // each entry is up to ~256 MiB
-std::filesystem::path cacheFile(const std::string& dir, uint64_t source) {
+std::filesystem::path cacheFile(std::string_view dir, uint64_t source) {
     char name[40];
     std::snprintf(name, sizeof name, "macro-%016llx.tsf", static_cast<unsigned long long>(source));
     return std::filesystem::path(dir) / name;
 }
 }
 
-std::optional<SurfaceAsset> loadCachedSurfaceAsset(const std::string& dir, uint64_t expectedSource) {
+std::optional<SurfaceAsset> loadCachedSurfaceAsset(std::string_view dir, uint64_t expectedSource) {
     if (dir.empty() || expectedSource == 0) return {};
     const auto path = cacheFile(dir, expectedSource);
     std::error_code ec;
@@ -116,13 +118,14 @@ std::optional<SurfaceAsset> loadCachedSurfaceAsset(const std::string& dir, uint6
     return decodeSurfaceAsset(bytes, expectedSource);
 }
 
-bool storeCachedSurfaceAsset(const std::string& dir, const SurfaceAsset& asset) {
+bool storeCachedSurfaceAsset(std::string_view dir, const SurfaceAsset& asset) {
     if (dir.empty()) return false;
     const auto bytes = encodeSurfaceAsset(asset);
     if (bytes.empty()) return false;
     namespace fs = std::filesystem;
     std::error_code ec;
-    fs::create_directories(dir, ec);
+    const fs::path dirPath{dir};
+    fs::create_directories(dirPath, ec);
     const auto path = cacheFile(dir, asset.sourceHash);
     static std::atomic<uint32_t> counter{0};
     auto tmp = path;
@@ -137,7 +140,7 @@ bool storeCachedSurfaceAsset(const std::string& dir, const SurfaceAsset& asset) 
     if (ec) { fs::remove(tmp, ec); return false; }
     // Bound disk use: keep the newest kCacheMaxFiles entries, sweep stale temp files.
     std::vector<std::pair<fs::file_time_type, fs::path>> entries;
-    for (const auto& e : fs::directory_iterator(dir, ec)) {
+    for (const auto& e : fs::directory_iterator(dirPath, ec)) {
         if (e.path().filename().string().rfind("macro-", 0) != 0) continue;
         std::error_code e2;
         const auto t = e.last_write_time(e2);
@@ -146,9 +149,9 @@ bool storeCachedSurfaceAsset(const std::string& dir, const SurfaceAsset& asset) 
         else if (fs::file_time_type::clock::now() - t > std::chrono::hours(1)) fs::remove(e.path(), e2);
     }
     if (entries.size() > kCacheMaxFiles) {
-        std::sort(entries.begin(), entries.end(), [](const auto& x, const auto& y) { return x.first > y.first; });
+        std::ranges::sort(entries, std::greater<>{}, [](const auto& e) { return std::get<0>(e); });
         for (size_t i = kCacheMaxFiles; i < entries.size(); ++i)
-            if (entries[i].second != path) fs::remove(entries[i].second, ec);
+            if (const auto& victim = std::get<1>(entries[i]); victim != path) fs::remove(victim, ec);
     }
     return true;
 }
