@@ -169,6 +169,15 @@ void write_descriptors(WaterIsland* s, int only) {
             }
             vkUpdateDescriptorSets(s->device, 2, ws, 0, nullptr);
         }
+        // Binding 7: the bake mask, once the bake is ready (the linear, mipped, clamped sampler suits it).
+        if (s->maskView != VK_NULL_HANDLE && s->hdriSampler) {
+            const VkDescriptorImageInfo maskInfo{ s->hdriSampler.get(), s->maskView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL };
+            VkWriteDescriptorSet wm{};
+            wm.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; wm.dstSet = s->set[i];
+            wm.dstBinding = 7; wm.descriptorCount = 1;
+            wm.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; wm.pImageInfo = &maskInfo;
+            vkUpdateDescriptorSets(s->device, 1, &wm, 0, nullptr);
+        }
     }
 }
 

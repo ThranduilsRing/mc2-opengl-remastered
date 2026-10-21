@@ -5,6 +5,9 @@
 // (MC2_SHADOW_BAKE=0) the binding holds a 1x1 placeholder and the old static map with its tent filter is used instead.
 layout(set=0, binding=17) uniform sampler2D u_staticMask;
 
+// World units of water over which the ground's static shadow fades out.
+const float TERRAIN_WATER_SHADOW_DEPTH = 24.0;
+
 bool terrainStaticMaskBound() { return textureSize(u_staticMask, 0).x > 1; }
 
 // Raw mask visibility in [0, 1] at a world XY (1 off the map).
@@ -37,7 +40,11 @@ float terrainStaticShadowLegacy(vec3 worldPos, vec3 normal, vec3 lightDir, LsvkS
 
 // Visibility in the receivers' [0.4, 1] domain.
 float terrainStaticShadow(vec3 worldPos, vec3 normal, vec3 lightDir, LsvkShadowKnobs k) {
-    if (terrainStaticMaskBound()) return mix(0.4, 1.0, terrainStaticMask(worldPos.xy));
+    if (terrainStaticMaskBound()) {
+        // Under water the surface carries the shadow (water_geom.frag reads the same texel); the bed's own copy fades out with depth.
+        float under = smoothstep(0.0, TERRAIN_WATER_SHADOW_DEPTH, uT.shorelineWaterElev - worldPos.z);
+        return mix(mix(0.4, 1.0, terrainStaticMask(worldPos.xy)), 1.0, under);
+    }
     return terrainStaticShadowLegacy(worldPos, normal, lightDir, k);
 }
 #endif
