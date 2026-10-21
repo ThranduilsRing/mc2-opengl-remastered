@@ -413,7 +413,7 @@ void execGetRelativePositionToTarget (void) {
 	//		Returns: nothing
 
 	long targetId = ABLi_popInteger();
-	float distance = ABLi_popReal();
+	float distance = ABLi_popIntegerReal();
 	long flag = ABLi_popInteger();
 	const auto output = ABLi_popRealBuf();
 	float outPoint[3] = {};
@@ -535,7 +535,7 @@ void execNumFriendsWithinRadius (void) {
 	//		Returns: integer count
 
 	long partId = ABLi_popInteger();
-	float radius = ABLi_popReal();
+	float radius = ABLi_popIntegerReal();
 	(void)partId;
 	ABLi_pushInteger(static_cast<int>(countMoversWithinRadius(true, radius)));
 }
@@ -547,7 +547,7 @@ void execNumEnemiesWithinRadius (void) {
 	//		Returns: integer count
 
 	long partId = ABLi_popInteger();
-	float radius = ABLi_popReal();
+	float radius = ABLi_popIntegerReal();
 	(void)partId;
 	ABLi_pushInteger(static_cast<int>(countMoversWithinRadius(false, radius)));
 }
@@ -555,11 +555,9 @@ void execNumEnemiesWithinRadius (void) {
 void execHasOrderFromPlayer (void) {
 
 	//Stub -- no reliable hook for player-origin tac orders in this branch.
-	//		PARAMS: integer partId
+	//		PARAMS: none (scripts use it as a bare identifier)
 	//		Returns: bool false
 
-	long partId = ABLi_popInteger();
-	(void)partId;
 	ABLi_pushBoolean(false);
 }
 
@@ -660,7 +658,7 @@ void execAutoRepairWithinRadius (void) {
 	//		Returns: nothing
 
 	long partId = ABLi_popInteger();
-	float radius = ABLi_popReal();
+	float radius = ABLi_popIntegerReal();
 	(void)partId; (void)radius;
 	omniTrace("autorepairwithinradius (stub)");
 }
@@ -668,12 +666,13 @@ void execAutoRepairWithinRadius (void) {
 void execScanAreaCapture (void) {
 
 	//Area-scan for capturable objects (Omnitech). Safe stub.
-	//		PARAMS: real radius
-	//		Returns: nothing
+	//		PARAMS: integer-or-real radius
+	//		Returns: integer, 0 = scan finished (scripts clear their "not yet scanned" flag on 0)
 
-	float radius = ABLi_popReal();
+	float radius = ABLi_popIntegerReal();
 	(void)radius;
 	omniTrace("scanareacapture (stub)");
+	ABLi_pushInteger(0);
 }
 
 void execScanAreaRepair (void) {
@@ -682,7 +681,7 @@ void execScanAreaRepair (void) {
 	//		PARAMS: real radius
 	//		Returns: nothing
 
-	float radius = ABLi_popReal();
+	float radius = ABLi_popIntegerReal();
 	(void)radius;
 	omniTrace("scanarearepair (stub)");
 }

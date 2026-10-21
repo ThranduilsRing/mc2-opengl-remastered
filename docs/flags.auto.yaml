@@ -3,9 +3,9 @@
 # Where each gate is read, what the smoke runner forwards and what tier1_env_vars.md says are not here: ask
 # tools/repo_intel (env_var, gate_status), which scan the sources.
 generator_version: "3.0.0"
-gate_count: 927
+gate_count: 928
 registry_entry_count: 186
-verified_count: 822
+verified_count: 823
 flags:
   - name: MC2_3DVIEW_DIAG
     kind: Bool
@@ -3355,6 +3355,14 @@ flags:
     rule: Std
     owner: code
     doc: "Stock campaign: no active mod."
+    smoke_passthrough: true
+    verified: true
+  - name: MC2_MOD_HEALTH_DIAG
+    kind: Bool
+    default: false
+    rule: Lead1
+    owner: code
+    doc: "MC2_MOD_HEALTH_DIAG=1 - emit [MOD_HEALTH v1] AI-liveness milestone lines (tools/mod_smoke.py sets it)."
     smoke_passthrough: true
     verified: true
   - name: MC2_MOUSE_RECON

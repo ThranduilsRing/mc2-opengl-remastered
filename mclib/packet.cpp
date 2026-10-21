@@ -433,7 +433,7 @@ int PacketFile::seekPacket (int packet)
 		static int s_oobCount = 0;
 		++s_oobCount;
 		if (s_oobCount == 1 || s_oobCount % 100 == 0)
-			STOP(("[PACKET_OOB] packet=%d maxPackets=%d count=%d\n", packet, numPackets, s_oobCount));
+			STOP(("[PACKET_OOB] packet=%d maxPackets=%d count=%d file=%s\n", packet, numPackets, s_oobCount, getFilename() ? getFilename() : "?"));
 		return(PACKET_OUT_OF_RANGE);
 	}
 	

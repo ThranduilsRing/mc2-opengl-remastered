@@ -70,6 +70,7 @@ L(Presence, "MC2_MODERN_TEX_RESOLVE_TRACE", Bool, false, "code", "", "", verifie
 L(Presence, "MC2_MODERN_TEX_RESOLVE_VALIDATE", Bool, false, "code", "", "Default ON with explicit opt-out.", verified),
 L(Presence, "MC2_MODOVERRIDE_TRACE", Bool, false, "props", "", "", verified),
 G("MC2_MOD_DEPS", String, "", "code", "", "Stock campaign: no active mod.", passthrough | verified),
+L(Lead1, "MC2_MOD_HEALTH_DIAG", Bool, false, "code", "", "MC2_MOD_HEALTH_DIAG=1 - emit [MOD_HEALTH v1] AI-liveness milestone lines (tools/mod_smoke.py sets it).", passthrough | verified),
 L(Presence, "MC2_MOUSE_RECON", Bool, false, "unclassified", "", "MC2_MOUSE_RECON: env-gated one-shot-ish confirm log.", verified),
 // META-FIX-BATCH-3 (recurrence-proofing, designs A + B — 2026-07-16)
 // history: docs/gate-history.md#MC2_MOVER_COHERENCE_AUDIT
