@@ -7,7 +7,7 @@
   "RenderCore": 402,
   "RenderWorld": 0,
   "code": 14499,
-  "mclib": 28956,
+  "mclib": 28940,
   "shaders": 920
  },
  "dirs": [
@@ -464,7 +464,6 @@
   "mclib/render_contract.cpp": 45,
   "mclib/render_submissions.h": 146,
   "mclib/resizeimage.h": 96,
-  "mclib/soundsys.cpp": 16,
   "mclib/stuff/armoron.hpp": 20,
   "mclib/stuff/chain.cpp": 22,
   "mclib/stuff/chain.hpp": 41,
@@ -533,8 +532,8 @@
   "shaders/vulkan/terrain_tier1.vert": 78,
   "shaders/vulkan/terrain_tier1_skirt.vert": 78
  },
- "head": "bc444d6f4",
+ "head": "0c9487a3c",
  "n": 8,
- "total": 47295,
+ "total": 47279,
  "version": 1
 }
