@@ -44,12 +44,7 @@ layout(location = 0) in vec3 v_worldPos;
 layout(location = 0) out vec4 fragColor;   // MRT0 color
 layout(location = 1) out vec4 GBuffer1;    // MRT1 normal + shadow class
 
-// VK-TERRAIN-DETAIL: the height SSBO (VK-owned snapshot; same buffer the VS reads at
-// binding 1). The FS reads it to reproduce GL's smoothTerrainNormal() macro slope
-// (terrain_lod_chunk.frag:152-173). Bilinear central difference -> +Z-up world normal.
-layout(set = 0, binding = 1, std430) readonly buffer TerrainHeightBufFS {
-    float heightsFS[];
-} uHF;
+layout(set = 0, binding = 16) uniform sampler2D u_macroGradient;
 // VK-TERRAIN-DETAIL: the material tangent-space detail-normal array (VK copy-once
 // import of GL terrain_normal_array_tex_, a 9-layer RGBA8 GL_TEXTURE_2D_ARRAY,
 // GL_REPEAT). Layers per include/terrain_mat_layers.hglsl. Dummy 1x1 until imported
@@ -75,29 +70,11 @@ const vec4  MATV_CLASS_GRASS  = vec4(-0.02, 0.06, 0.22, 0.40); // gMinusR lo/hi,
 const vec4  MATV_CLASS_DIRT   = vec4(-0.02, 0.06, 0.22, 0.45); // rMinusG lo/hi, rBright lo/hi
 const float MATV_WU_PER_TILE  = 768.0;  // MAT_WORLD_UNITS_PER_TILE (terrain_lod_chunk.frag:240)
 
-// --- GL smoothTerrainNormal port (terrain_lod_chunk.frag:145-173). ----------
-float mv_heightAtCell(int cx, int cy) {
-    cx = clamp(cx, 0, uT.mapSide - 1);
-    cy = clamp(cy, 0, uT.mapSide - 1);
-    return uHF.heightsFS[cx + cy * uT.mapSide];
-}
-float mv_heightBilinear(float fx, float fy) {
-    int   x0 = int(floor(fx)), y0 = int(floor(fy));
-    float tx = fx - float(x0), ty = fy - float(y0);
-    float h00 = mv_heightAtCell(x0,     y0);
-    float h10 = mv_heightAtCell(x0 + 1, y0);
-    float h01 = mv_heightAtCell(x0,     y0 + 1);
-    float h11 = mv_heightAtCell(x0 + 1, y0 + 1);
-    return mix(mix(h00, h10, tx), mix(h01, h11, tx), ty);
-}
+// Central difference commutes with bilinear interpolation; normalize after filtering.
 vec3 mv_smoothTerrainNormal(vec2 worldXY) {
-    float colF = (worldXY.x + uT.halfMap) / 128.0;
-    float rowF = (uT.halfMap - worldXY.y) / 128.0;
-    float span = 2.0 * 128.0;
-    float dhdx   = (mv_heightBilinear(colF + 1.0, rowF) - mv_heightBilinear(colF - 1.0, rowF)) / span;
-    float dhdrow = (mv_heightBilinear(colF, rowF + 1.0) - mv_heightBilinear(colF, rowF - 1.0)) / span;
-    float dhdy   = -dhdrow;
-    return normalize(vec3(-dhdx, -dhdy, 1.0));
+    vec2 cell = vec2(worldXY.x + uT.halfMap, uT.halfMap - worldXY.y) / 128.0;
+    vec2 gradient = textureLod(u_macroGradient, (cell + 1.5) / float(uT.mapSide + 2), 0.0).rg;
+    return normalize(vec3(gradient, 1.0));
 }
 
 // --- GL colormap material classifier (terrain_lod_chunk.frag chunkColorWeights +
@@ -393,10 +370,12 @@ float cCutLt(float x, float fw) {
 }
 
 void main() {
+    vec3 macroNormal = mv_smoothTerrainNormal(v_worldPos.xy);
     // Valid even for quads straddling cement, zero weights or the LOD fade.
     vec2 detailUv = v_worldPos.xy * (uT.detailTiling / MATV_WU_PER_TILE);
     vec2 detailUvDx = dFdx(detailUv), detailUvDy = dFdy(detailUv);
     vec3 base;
+    float cookedBreakup = 0.5;
     // VK-TERRAIN-LIGHTING: track whether this fragment resolved to a solid cement slab.
     // GL treats pure concrete as a flat-lit slab (no NdotL relief) and drops the STATIC
     // self-shadow on it (terrain_lod_chunk.frag:894 + :902-907). We mirror that: on a
@@ -408,7 +387,9 @@ void main() {
         // The shared cook already applied the original nine-tap blur and coast-color repair.
         vec2 uv = vec2((v_worldPos.x - uT.atlasTopLeftX) * uT.atlasOneOverWorldUnits,
                        (uT.atlasTopLeftY - v_worldPos.y) * uT.atlasOneOverWorldUnits);
-        base = textureLod(u_colormap, uv, 0.0).rgb;
+        vec4 macro = textureLod(u_colormap, uv, 0.0);
+        base = macro.rgb;
+        cookedBreakup = macro.a;
     } else {
         // Fail-soft olive placeholder (colormap not importable/ready this frame).
         float hMod = clamp(v_worldPos.z / 512.0 + 0.5, 0.35, 1.0);
@@ -593,7 +574,7 @@ void main() {
         // Cement: restore the authored colormap tone (concreteColorBlend = sqrt(pureConcrete)).
         baseColor = mix(baseColor, base, sqrt(clamp(F3pc, 0.0, 1.0)));
         // Cliff: desaturate + darken toward rock on steep MACRO slope (un-perturbed).
-        float macroNzF3 = mv_smoothTerrainNormal(v_worldPos.xy).z;
+        float macroNzF3 = macroNormal.z;
         float cliffBlend = smoothstep(0.85, 0.55, abs(macroNzF3));
         if (cliffBlend > 0.01) {
             float luma = dot(baseColor, vec3(0.299, 0.587, 0.114));
@@ -601,9 +582,13 @@ void main() {
             baseColor = mix(baseColor, cliffColor, cliffBlend * 0.7 * (1.0 - F3pc));
         }
         // World-space two-octave break-up noise (non-snow, non-concrete).
-        float lowFreq  = fbm(v_worldPos.xy * 0.0035, 3) * 0.5 + 0.5;
-        float highFreq = fbm(v_worldPos.xy * 0.018,  2) * 0.5 + 0.5;
-        float breakup  = mix(0.78, 1.18, mix(lowFreq, highFreq, 0.55));
+        float noiseBlend = cookedBreakup;
+        if (uT.colormapReady < 2) {
+            float lowFreq = fbm(v_worldPos.xy * 0.0035, 3) * 0.5 + 0.5;
+            float highFreq = fbm(v_worldPos.xy * 0.018, 2) * 0.5 + 0.5;
+            noiseBlend = mix(lowFreq, highFreq, 0.55);
+        }
+        float breakup = mix(0.78, 1.18, noiseBlend);
         baseColor *= mix(1.0, breakup, (1.0 - f3Snow) * (1.0 - F3pc));
         baseColor *= mix(1.0, uT.snowBrightnessDampen, f3Snow);
     }
@@ -621,7 +606,7 @@ void main() {
         vec3 N = vec3(0.0, 0.0, 1.0);                            // flat-up terrain normal (default)
         vec3 dbgBaseN = vec3(0.0, 0.0, 1.0); vec3 dbgDN = vec3(0.0);  // CSM-BLACKOUT-RECON-1 taps
         if (uT.detailEnabled != 0 && !pureConcrete) {
-            vec3 baseN = mv_smoothTerrainNormal(v_worldPos.xy);  // macro slope (height SSBO)
+            vec3 baseN = macroNormal;
             vec3 dN    = vec3(0.0);
             if (uT.detailReady != 0 && uT.detailStrength != 0.0) {
                 vec4  matW; float snowW;
@@ -655,7 +640,7 @@ void main() {
         // (Skirt strips: GL keeps flat-up there; VK shares this frag, residual noted.)
         LsvkShadowKnobs shKnobs = mv_shadowKnobs();
         vec3 shadowN = vec3(0.0, 0.0, 1.0);
-        if ((shKnobs.flags & LSVK_KNOB_BANDFIX_V2) != 0) shadowN = mv_smoothTerrainNormal(v_worldPos.xy);
+        if ((shKnobs.flags & LSVK_KNOB_BANDFIX_V2) != 0) shadowN = macroNormal;
         float staticS = 1.0;
         if (uT.enableShadows != 0) {
             staticS = lsvk_calcShadow(v_worldPos, shadowN, lightDir,
@@ -731,7 +716,7 @@ void main() {
         // first 1.5 wu above the water, the optional mask modulator, a 12-20 deg slope guard and a beach affinity term.
         if (uT.shorelineOn != 0) {
             float aboveWater = v_worldPos.z - uT.shorelineWaterElev;
-            vec3  macroN     = mv_smoothTerrainNormal(v_worldPos.xy);
+            vec3  macroN     = macroNormal;
             float nzc        = clamp(abs(macroN.z), 0.0, 0.9995);
             float sinSlope   = max(sqrt(max(1.0 - nzc * nzc, 1e-6)), 0.03);
             float horizDist  = max(aboveWater, 0.0) * (nzc / sinSlope);

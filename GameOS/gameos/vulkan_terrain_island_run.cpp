@@ -155,7 +155,7 @@ void fill_frame_ubo(TerrainIsland* s, const Mc2TerrainTier1Feed& feed,
     u.atlasTopLeftX          = feed.atlasTopLeftX;
     u.atlasTopLeftY          = feed.atlasTopLeftY;
     u.atlasOneOverWorldUnits = feed.atlasOneOverWorldUnits;
-    u.colormapReady          = s->colormapReady ? 1 : 0;
+    u.colormapReady          = s->colormapReady ? (s->colormapBreakup ? 2 : 1) : 0;
     // CEMENT: only enable the FS cement branch when the GL gate is on AND both
     // the VK cement atlas image and the cement-word snapshot are live (fail-soft
     // if only one of them is ready -> colormap base, no hole).
@@ -452,7 +452,7 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
       fsC = vkImageResourceBeginFrame(s->colorRes); }
     us_fence_wait = usSince(tFence0);
     const uint32_t par = fsC.parity & 1u;
-    const std::array<VkImageView,5> views{s->colormapTexture.view(),s->cementTexture.view(),s->shoreMaskTexture.view(),s->matNormalTexture.view(),s->shoreFieldTexture.view()};
+    const std::array<VkImageView,6> views{s->colormapTexture.view(),s->cementTexture.view(),s->shoreMaskTexture.view(),s->matNormalTexture.view(),s->shoreFieldTexture.view(),s->macroGradientTexture.view()};
     if (s->descriptorsDirty[par] || s->boundTextures[par]!=views) {
         write_descriptors(s,int(par)); s->boundTextures[par]=views;
     }

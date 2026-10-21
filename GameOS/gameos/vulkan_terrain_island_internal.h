@@ -163,13 +163,15 @@ struct TerrainIsland : mc2vk::IslandState {
     // (g_atlasGLTex). Sampled image + view + sampler; binding 2. Keyed by the GL tex
     // name so a re-built atlas (per-mission) re-imports.
     bool descriptorsDirty[2] = {true,true};
-    std::array<VkImageView,5> boundTextures[2]{};
+    std::array<VkImageView,6> boundTextures[2]{};
     mc2vk::ResidentTextureRef colormapTexture;
     mc2vk::OwnedSampler     colormapSamp;
     uint64_t      colormapVersionImported = 0;   // field-store colormap version last imported (0 = none yet)
     uint64_t      colormapShoreVersionImported = 0;
     std::array<float, 9> colormapCookParams{};
     bool          colormapReady = false;     // set once the sampled image is live
+    bool          colormapBreakup = false;
+    mc2vk::ResidentTextureRef macroGradientTexture;
 
     // CEMENT/ROAD atlas sub-slice: VK-owned copy-once import of the GL cement atlas
     // (g_cementAtlasGLTex, runtime RGBA8). Sampled image + view + REPEAT sampler; binding

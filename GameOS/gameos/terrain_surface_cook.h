@@ -17,6 +17,7 @@ struct SurfaceCookInput {
     std::array<float, 4> shoreBounds{}; // north-west x/y, width/height in world units
     float waterElevation = 0;
     bool followCoast = false;
+    bool staticBreakup = false; // encoded in macroColor alpha; editable tint stays in the shader
     uint32_t outputWidth = 0, outputHeight = 0;
 };
 
@@ -25,5 +26,7 @@ bool validSurfaceCookInput(const SurfaceCookInput& input);
 uint64_t surfaceCookSourceHash(const SurfaceCookInput& input);
 // UVs have the original atlas convention (north at v=0); caller validates input once per cook.
 SurfaceColor evaluateSurfaceMacro(const SurfaceCookInput& input, float u, float v);
+float evaluateSurfaceBreakup(float worldX, float worldY);
+std::optional<SurfaceGradients> cookSurfaceGradients(std::span<const float> heights, uint32_t side);
 std::optional<SurfaceAsset> cookSurface(const SurfaceCookInput& input);
 } // namespace mc2terrain

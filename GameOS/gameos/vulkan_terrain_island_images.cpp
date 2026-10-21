@@ -21,12 +21,19 @@ namespace vk_terrain_detail {
 bool snapshot_height(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
     if (feed.heightVersion == s->heightVersionCopied) return true; // unchanged
     if (!feed.heightCpu || feed.heightBytes == 0) return false;
+    const auto gradients = mc2terrain::cookSurfaceGradients(
+        {feed.heightCpu, size_t(feed.heightBytes) / sizeof(float)}, uint32_t(feed.mapSide));
+    if (!gradients) return false;
     if (!ensure_height_capacity(s, static_cast<VkDeviceSize>(feed.heightBytes))) return false;
     // VK-TERRAIN-FENCE-DEFER-1: the height SSBO stays single-instance (version-gated
     // rare rewrite: mission load / crater deform). Under the deferred retire a prior
     // terrain submit may still be reading it — device-idle before rewriting in place.
     // (The old inline post-submit fence wait used to provide this guarantee for free.)
     mc2vk::getOrCreateEngineVulkanContext().waitIdle("terrain_height_snapshot");
+    if (!create_colormap_sampler(s) || !upload_sampled_image(s, s->macroGradientTexture,
+            VK_FORMAT_R32G32_SFLOAT, gradients->side, gradients->side, gradients->texels.data(),
+            gradients->texels.size() * sizeof(gradients->texels[0]))) return false;
+    write_descriptors(s);
     void* p = nullptr;
     if (vmaMapMemory(s->allocator, s->heightBuf.allocation(), &p) != VK_SUCCESS) return false;
     std::memcpy(p, feed.heightCpu, static_cast<size_t>(feed.heightBytes));
@@ -117,6 +124,7 @@ void import_colormap(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
     if (feed.colormapVersion == s->colormapVersionImported && s->colormapReady &&
         feed.shoreFieldVersion == s->colormapShoreVersionImported && params == s->colormapCookParams) return;
     s->colormapReady = false; // a failed mission replacement must never reuse the previous mission's color
+    s->colormapBreakup = false;
 
     // Consume exactly the atlas selected by the existing stock/mod import path. The cache is optional;
     // missing/stale cooks regenerate from these same bytes, including BC7's original sampling space.
@@ -142,6 +150,7 @@ void import_colormap(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
             std::copy(feed.shoreFieldBounds, feed.shoreFieldBounds + 4, input.shoreBounds.begin());
         }
         input.waterElevation = feed.shorelineWaterElev;
+        input.staticBreakup = true;
         if (auto cooked = mc2terrain::resolveSurfaceAsset(input, mc2terrain::surfaceMissionCook())) {
             const auto source = cooked->sourceHash;
             if (fields->setSurfaceAsset(std::move(*cooked), source)) {
@@ -157,6 +166,7 @@ void import_colormap(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
                     s->colormapShoreVersionImported = feed.shoreFieldVersion;
                     s->colormapCookParams = params;
                     s->colormapReady = true;
+                    s->colormapBreakup = true;
                     write_descriptors(s);
                     vlog("COLORMAP-BASE: cooked macro color %ux%u source=%llu coast=%d.", surface.width, surface.height,
                          static_cast<unsigned long long>(source), int(input.followCoast));

@@ -33,7 +33,7 @@ float scalar(const char* text) {
 int main(int argc, char** argv) {
     if (argc < 6) {
         std::cerr << "terrain_cook source.rgba width height world_span output.tsf [--srgb] [--origin x y] "
-                     "[--shore grid.f32 width height water] [--shore-bounds x y width height]\n";
+                     "[--shore grid.f32 width height water] [--shore-bounds x y width height] [--breakup]\n";
         return 2;
     }
     try {
@@ -47,6 +47,7 @@ int main(int argc, char** argv) {
         for (int i = 6; i < argc; ++i) {
             const std::string option(argv[i]);
             if (option == "--srgb") in.srgb = true;
+            else if (option == "--breakup") in.staticBreakup = true;
             else if (option == "--origin" && i + 2 < argc) {
                 in.topLeftX = scalar(argv[++i]); in.topLeftY = scalar(argv[++i]);
             } else if (option == "--shore-bounds" && i + 4 < argc) {

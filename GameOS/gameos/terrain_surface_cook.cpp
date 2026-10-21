@@ -170,7 +170,7 @@ uint64_t surfaceCookSourceHash(const SurfaceCookInput& in) {
     if (!validSurfaceCookInput(in)) return 0;
     uint64_t hash = 14695981039346656037ull;
     for (uint32_t word : {SurfaceAsset::kEvaluator, in.colorWidth, in.colorHeight, in.outputWidth, in.outputHeight,
-                          uint32_t(in.followCoast)}) hashWord(hash, word);
+                          uint32_t(in.followCoast), uint32_t(in.staticBreakup)}) hashWord(hash, word);
     for (float value : {in.topLeftX, in.topLeftY, in.worldSpan}) hashWord(hash, std::bit_cast<uint32_t>(value));
     if (!in.rgba.empty()) {
         hashWord(hash, 0x41424752u); // RGBA byte source, distinct from a caller's linear float source
@@ -220,7 +220,70 @@ SurfaceColor followCoast(const SurfaceCookInput& in, SurfaceColor base, float u,
 } // namespace
 
 SurfaceColor evaluateSurfaceMacro(const SurfaceCookInput& in, float u, float v) {
-    return followCoast(in, filteredColor(in, axisSamples(u,in.colorWidth,0),axisSamples(v,in.colorHeight,1)),u,v);
+    auto color = followCoast(in, filteredColor(in, axisSamples(u,in.colorWidth,0),axisSamples(v,in.colorHeight,1)),u,v);
+    if (in.staticBreakup) color[3] = evaluateSurfaceBreakup(in.topLeftX + u * in.worldSpan, in.topLeftY - v * in.worldSpan);
+    return color;
+}
+
+namespace {
+// Ashima simplex response from noise.hglsl. The encoded blend fits the existing alpha channel.
+float simplex(float vx, float vy) {
+    constexpr float c0 = 0.211324865405187f, c1 = 0.366025403784439f;
+    constexpr float c2 = -0.577350269189626f, c3 = 0.024390243902439f;
+    const float skew = (vx + vy) * c1;
+    float ix = std::floor(vx + skew), iy = std::floor(vy + skew);
+    const float unskew = (ix + iy) * c0;
+    const float x = vx - ix + unskew, y = vy - iy + unskew;
+    const float i1x = x > y ? 1.0f : 0.0f, i1y = x > y ? 0.0f : 1.0f;
+    auto mod289 = [](float a) { return a - std::floor(a * (1.0f / 289.0f)) * 289.0f; };
+    auto permute = [&](float a) { return mod289(((a * 34.0f) + 1.0f) * a); };
+    ix = mod289(ix); iy = mod289(iy);
+    const float xs[3] = {x, x + c0 - i1x, x + c2};
+    const float ys[3] = {y, y + c0 - i1y, y + c2};
+    const float oxs[3] = {0, i1x, 1}, oys[3] = {0, i1y, 1};
+    float value = 0;
+    for (int k = 0; k < 3; ++k) {
+        const float p = permute(permute(iy + oys[k]) + ix + oxs[k]);
+        float m = std::max(0.5f - (xs[k] * xs[k] + ys[k] * ys[k]), 0.0f);
+        m *= m; m *= m;
+        const float a = 2.0f * (p * c3 - std::floor(p * c3)) - 1.0f;
+        const float h = std::abs(a) - 0.5f;
+        const float a0 = a - std::floor(a + 0.5f);
+        m *= 1.79284291400159f - 0.85373472095314f * (a0 * a0 + h * h);
+        value += m * (a0 * xs[k] + h * ys[k]);
+    }
+    return 130.0f * value;
+}
+float surfaceFbm(float x, float y, int octaves) {
+    float value = 0, amplitude = 0.5f, frequency = 1;
+    for (int i = 0; i < octaves; ++i) {
+        value += amplitude * simplex(x * frequency, y * frequency);
+        frequency *= 2; amplitude *= 0.5f;
+    }
+    return value;
+}
+} // namespace
+
+float evaluateSurfaceBreakup(float worldX, float worldY) {
+    const float low = surfaceFbm(worldX * 0.0035f, worldY * 0.0035f, 3) * 0.5f + 0.5f;
+    const float high = surfaceFbm(worldX * 0.018f, worldY * 0.018f, 2) * 0.5f + 0.5f;
+    return mix(low, high, 0.55f);
+}
+
+std::optional<SurfaceGradients> cookSurfaceGradients(std::span<const float> heights, uint32_t side) {
+    if (side < 2 || side > 4097 || heights.size() != uint64_t(side) * side) return {};
+    for (float h : heights) if (!std::isfinite(h)) return {};
+    SurfaceGradients result;
+    result.side = side + 2;
+    result.texels.resize(size_t(result.side) * result.side);
+    const auto height = [&](int x, int y) {
+        return heights[size_t(std::clamp(y, 0, int(side) - 1)) * side + size_t(std::clamp(x, 0, int(side) - 1))];
+    };
+    for (int y = -1; y <= int(side); ++y) for (int x = -1; x <= int(side); ++x)
+        result.texels[size_t(y + 1) * result.side + size_t(x + 1)] = {
+            -(height(x + 1, y) - height(x - 1, y)) / 256.0f,
+             (height(x, y + 1) - height(x, y - 1)) / 256.0f};
+    return result;
 }
 
 std::optional<SurfaceAsset> cookSurface(const SurfaceCookInput& in) {
@@ -236,9 +299,13 @@ std::optional<SurfaceAsset> cookSurface(const SurfaceCookInput& in) {
         ys[y]=axisSamples((float(y)+0.5f)/float(candidate.height),in.colorHeight,1);
     const auto rows = [&](uint32_t first, uint32_t end) {
         for (uint32_t y=first; y<end; ++y)
-            for (uint32_t x=0; x<candidate.width; ++x)
+            for (uint32_t x=0; x<candidate.width; ++x) {
                 candidate.macroColor[size_t(y)*candidate.width+x]=followCoast(in,filteredColor(in,xs[x],ys[y]),
                     (float(x)+0.5f)/float(candidate.width),(float(y)+0.5f)/float(candidate.height));
+                if (in.staticBreakup) candidate.macroColor[size_t(y)*candidate.width+x][3] = evaluateSurfaceBreakup(
+                    in.topLeftX + (float(x)+0.5f)/float(candidate.width)*in.worldSpan,
+                    in.topLeftY - (float(y)+0.5f)/float(candidate.height)*in.worldSpan);
+            }
     };
     if (candidate.macroColor.size() >= 1024u*1024u && candidate.height > 1) {
         // At most two cook workers, both within the caller's CPU reservation. Rows have disjoint outputs.

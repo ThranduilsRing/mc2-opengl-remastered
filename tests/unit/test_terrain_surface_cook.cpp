@@ -176,3 +176,63 @@ TEST_CASE("surface cook: large raster publishes complete rows with the same refe
         for (size_t c=0;c<3;++c) CHECK(cooked->macroColor[size_t(y)*1024+x][c]==doctest::Approx(expected[c]).epsilon(0.0001));
     }
 }
+
+TEST_CASE("surface cook: filtered gradients match independent bilinear height differences including the clamp halo") {
+    constexpr uint32_t side = 13;
+    std::vector<float> heights(side * side);
+    for (uint32_t y = 0; y < side; ++y) for (uint32_t x = 0; x < side; ++x)
+        heights[y * side + x] = float((x * 143 + y * 71 + x * y * 13) % 911) - 300.0f;
+    const auto gradient = mc2terrain::cookSurfaceGradients(heights, side);
+    REQUIRE(gradient);
+    REQUIRE(gradient->side == side + 2);
+    auto height = [&](double x, double y) {
+        const int ix = int(std::floor(x)), iy = int(std::floor(y));
+        double value = 0;
+        for (int a = 0; a < 2; ++a) for (int b = 0; b < 2; ++b)
+            value += heights[size_t(std::clamp(iy + b, 0, int(side) - 1)) * side + size_t(std::clamp(ix + a, 0, int(side) - 1))]
+                * (a ? x - ix : 1 - x + ix) * (b ? y - iy : 1 - y + iy);
+        return value;
+    };
+    double worst = 0;
+    for (int y = -20; y <= 140; ++y) for (int x = -20; x <= 140; ++x) {
+        const double px = x * 0.1, py = y * 0.1;
+        const int ix = int(std::floor(px)), iy = int(std::floor(py));
+        double gx = 0, gy = 0;
+        for (int a = 0; a < 2; ++a) for (int b = 0; b < 2; ++b) {
+            const auto& g = gradient->texels[size_t(std::clamp(iy + b + 1, 0, int(side) + 1)) * gradient->side +
+                                              size_t(std::clamp(ix + a + 1, 0, int(side) + 1))];
+            const double w = (a ? px - ix : 1 - px + ix) * (b ? py - iy : 1 - py + iy);
+            gx += w * g[0]; gy += w * g[1];
+        }
+        worst = std::max({worst, std::abs(gx + (height(px + 1, py) - height(px - 1, py)) / 256),
+                                  std::abs(gy - (height(px, py + 1) - height(px, py - 1)) / 256)});
+    }
+    CHECK(worst < 0.000001);
+    heights[4] = std::numeric_limits<float>::quiet_NaN();
+    CHECK_FALSE(mc2terrain::cookSurfaceGradients(heights, side));
+    CHECK_FALSE(mc2terrain::cookSurfaceGradients({}, side));
+    CHECK_FALSE(mc2terrain::cookSurfaceGradients({}, 0xffffffffu));
+}
+
+TEST_CASE("surface cook: breakup alpha is independently invalidated and editable color stays separate") {
+    const std::vector<mc2terrain::SurfaceColor> colors = {{0.3f, 0.4f, 0.5f, 1}};
+    SurfaceCookInput in;
+    in.color = colors; in.colorWidth = in.colorHeight = 1;
+    in.worldSpan = 256; in.topLeftX = -128; in.topLeftY = 128;
+    in.outputWidth = in.outputHeight = 8;
+    const auto color = mc2terrain::cookSurface(in);
+    REQUIRE(color);
+    in.staticBreakup = true;
+    const auto relief = mc2terrain::resolveSurfaceAsset(in, mc2terrain::encodeSurfaceAsset(*color));
+    REQUIRE(relief);
+    CHECK(relief->sourceHash != color->sourceHash);
+    for (size_t i = 0; i < relief->macroColor.size(); ++i) {
+        for (size_t k = 0; k < 3; ++k) CHECK(relief->macroColor[i][k] == color->macroColor[i][k]);
+        CHECK(relief->macroColor[i][3] >= 0);
+        CHECK(relief->macroColor[i][3] <= 1);
+    }
+    const auto source = relief->sourceHash;
+    in.topLeftX += 1;
+    CHECK(mc2terrain::surfaceCookSourceHash(in) != source);
+    CHECK(mc2terrain::evaluateSurfaceBreakup(0, 0) == doctest::Approx(0.5));
+}
