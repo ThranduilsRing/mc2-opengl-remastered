@@ -44,6 +44,25 @@ float bakeTerrainHeight(vec2 xy) {
     return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
 }
 
+// Catmull-Rom terrain height: the cone march's surface. A bilinear 128 wu grid has creases along every cell edge, and a sun near the clamp
+// turns each crease into a stair-step on the shadow line; the smooth surface keeps the ridge silhouettes round.
+vec4 bakeCatmullW(float t) {
+    float t2 = t * t, t3 = t2 * t;
+    return 0.5 * vec4(-t3 + 2.0 * t2 - t, 3.0 * t3 - 5.0 * t2 + 2.0, -3.0 * t3 + 4.0 * t2 + t, t3 - t2);
+}
+float bakeTerrainHeightSmooth(vec2 xy) {
+    vec2 g = vec2(xy.x - uB.heightInfo.x, uB.heightInfo.y - xy.y) / uB.heightInfo.z;
+    ivec2 i = ivec2(floor(g));
+    vec2 f = g - vec2(i);
+    vec4 wx = bakeCatmullW(f.x), wy = bakeCatmullW(f.y);
+    float h = 0.0;
+    for (int y = 0; y < 4; ++y) {
+        vec4 row = vec4(bakeHeightAt(i + ivec2(-1, y - 1)), bakeHeightAt(i + ivec2(0, y - 1)), bakeHeightAt(i + ivec2(1, y - 1)), bakeHeightAt(i + ivec2(2, y - 1)));
+        h += wy[y] * dot(wx, row);
+    }
+    return h;
+}
+
 // Deterministic per global mask texel (the same texel in two tiles' aprons gets the same value).
 float bakeHash(ivec2 t) {
     uvec2 g = uvec2(t + uB.regionInfo.yz + ivec2(65536));

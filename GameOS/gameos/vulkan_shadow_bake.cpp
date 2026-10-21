@@ -505,6 +505,7 @@ bool ShadowBake::update(VkCommandBuffer cb, uint64_t epoch, const ShadowBakeInpu
     }
     recorded_ = true;
     submitted_ = false;
+    recordedEpoch_ = epoch;
     return true;
 }
 
@@ -528,7 +529,8 @@ void ShadowBake::markSubmitted(uint64_t epoch) {
 // submit, so its timestamps are final and its transients idle.
 void ShadowBake::retire(uint64_t epoch) {
     if (!recorded_) return;
-    if (!submitted_) { recorded_ = false; return; }   // recorded into a frame that never submitted: the products stay as they were
+    // Recorded into an earlier frame that never submitted: the products stay as they were. Within the recording frame it is still pending.
+    if (!submitted_) { if (epoch != recordedEpoch_) recorded_ = false; return; }
     if (epoch < submittedEpoch_ + 2 || (epoch & 1u) != (submittedEpoch_ & 1u)) return;
     recorded_ = false;
     submitted_ = false;

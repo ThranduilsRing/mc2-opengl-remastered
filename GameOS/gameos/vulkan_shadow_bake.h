@@ -107,7 +107,7 @@ private:
     // The bake state: a recorded bake is pending until its submit retires (its descriptors and transients are not touched before that).
     uint64_t bakedKey_ = 0, objectKey_ = 0, recordedKey_ = 0, recordedObjectKey_ = 0;
     bool recorded_ = false, submitted_ = false, recordedMask_ = false;
-    uint64_t submittedEpoch_ = 0;
+    uint64_t submittedEpoch_ = 0, recordedEpoch_ = 0;
     bool maskReady_ = false, objectReady_ = false;
     uint64_t objectGeneration_ = 0, recordedObjectGeneration_ = 0;
     uint32_t waitFrames_ = 0;

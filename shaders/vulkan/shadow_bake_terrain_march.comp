@@ -1,6 +1,6 @@
 #version 450
 #extension GL_GOOGLE_include_directive : require
-// Static shadow bake, terrain self-shadow: a cone march toward the sun over the height field from P = (x, y, max(terrain, water)). The visibility is the
+// Static shadow bake, terrain self-shadow: a cone march toward the sun over the (Catmull-Rom smoothed) height field from P = (x, y, max(terrain, water)). The visibility is the
 // tightest clearance of the ray over the cone's half-height at each step, so a ridge's shadow has a penumbra that grows with the distance to the ridge.
 #include "include/shadow_bake_common.glsl"
 
@@ -11,7 +11,7 @@ void main() {
     int n = uB.regionInfo.x;
     if (t.x >= n || t.y >= n) return;
     vec2 xy = bakeTexelWorld(t);
-    float z = max(bakeTerrainHeight(xy), uB.region.w);
+    float z = max(bakeTerrainHeightSmooth(xy), uB.region.w);
     float horiz = length(uB.sun.xy);
     float vis = 1.0;
     if (horiz > 1e-4 && z < uB.march.x) {
@@ -24,7 +24,7 @@ void main() {
         for (int i = 0; i < 96; ++i) {
             float rayZ = z + dist * tanAlt + 0.5;
             if (rayZ > uB.march.x || dist > uB.march.w) break;
-            float h = bakeTerrainHeight(xy + dir * dist);
+            float h = bakeTerrainHeightSmooth(xy + dir * dist);
             vis = min(vis, clamp(0.5 + 0.5 * (rayZ - h) / (dist * cone), 0.0, 1.0));
             if (vis <= 0.0) break;
             stepLen *= uB.march.z;
