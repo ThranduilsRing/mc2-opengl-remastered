@@ -28,6 +28,7 @@
 
 #ifndef ABLPARSE_H
 #include"ablparse.h"
+#include"ablexec.h"
 #endif
 
 //***************************************************************************
@@ -181,24 +182,32 @@ TypePtr standardRoutineCall (SymTableNodePtr routineIdPtr) {
 				else
 					syntaxError(ABL_ERR_SYNTAX_WRONG_NUMBER_OF_PARAMS);
 				for (long i = 0; i < numParams; i++) {
-					const bool wantRealRef = (FunctionInfoTable[key].params[i] == PARAM_TYPE_REAL_REF);
-					bool refVarOk = true;
-					if (wantRealRef) {
-						// By-reference out-param: the script must pass a bare real variable. A literal or expression would
-						// leave the exec side reading a symbol pointer that is not in the code stream.
-						refVarOk = false;
-						if (curToken == TKN_IDENTIFIER) {
-							SymTableNodePtr refId = nullptr;
+					TypePtr paramType = nullptr;
+					if (FunctionInfoTable[key].params[i] == PARAM_TYPE_REAL_REF) {
+						// By-reference out-param: exactly one identifier naming a scalar real variable, then , or ). A literal,
+						// an expression (x + 1.0), a subscripted element or a field is a compile error: the exec side reads one
+						// symbol reference from the code stream and writes through it, so nothing else may be emitted.
+						SymTableNodePtr refId = nullptr;
+						if (curToken == TKN_IDENTIFIER)
 							searchAndFindAllSymTables(refId);
-							refVarOk = refId && ((refId->defn.key == DFN_VAR) || (refId->defn.key == DFN_REFPARAM) ||
-								(refId->defn.key == DFN_VALPARAM));
+						const bool isRealVar = refId && refId->typePtr == RealTypePtr &&
+							((refId->defn.key == DFN_VAR) || (refId->defn.key == DFN_REFPARAM) || (refId->defn.key == DFN_VALPARAM));
+						if (isRealVar) {
+							crunchSymTableNodePtr(refId);
+							getToken();
+							paramType = RealTypePtr;
+							if ((curToken != TKN_COMMA) && (curToken != TKN_RPAREN))
+								syntaxError(ABL_ERR_SYNTAX_INCOMPATIBLE_TYPES);
+						}
+						else {
+							syntaxError(ABL_ERR_SYNTAX_INCOMPATIBLE_TYPES);
+							paramType = expression();	// error recovery only; the compile has already failed
 						}
 					}
-					TypePtr paramType = expression();
+					else
+						paramType = expression();
 					switch (FunctionInfoTable[key].params[i]) {
 						case PARAM_TYPE_REAL_REF:
-							if (!refVarOk || (paramType != RealTypePtr) || ((curToken != TKN_COMMA) && (curToken != TKN_RPAREN)))
-								syntaxError(ABL_ERR_SYNTAX_INCOMPATIBLE_TYPES);
 							break;
 						case PARAM_TYPE_ANYTHING:
 							break;
