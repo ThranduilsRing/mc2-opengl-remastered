@@ -94,13 +94,20 @@ constexpr unsigned long MAX_SOUND_BITES = 4096;
 constexpr long MAX_DIGITAL_MUSIC = 1024;
 constexpr long MAX_SOUND_PACKET_BYTES = 64l * 1024l * 1024l;
 
+// The channel a music crossfade slot plays on: slot 0 is STREAM1CHANNEL, slot 1 is STREAM2CHANNEL.
+static int musicSlotChannel (int slot)
+{
+	return (slot == 0) ? STREAM1CHANNEL : STREAM2CHANNEL;
+}
+
 //---------------------------------------------------------------------------
 // class SoundSystem
 //---------------------------------------------------------------------------
 void SoundSystem::destroy (void)
 {
     for (auto& sound : sounds) gosAudio_DestroyResource(&sound.resourceHandle);
-    for (HGOSAUDIO* handle : {&stream1Handle, &stream2Handle, &stream3Handle, &bettyHandle, &supportHandle})
+    for (MusicSlot& slot : musicSlots) gosAudio_DestroyResource(&slot.handle);
+    for (HGOSAUDIO* handle : {&stream3Handle, &bettyHandle, &supportHandle})
         gosAudio_DestroyResource(handle);
 	sounds.clear();
 	digitalMusic.clear();
@@ -271,7 +278,7 @@ long SoundSystem::init (const char *soundFileName)
 	radioVolume = float(RadioVolume) / 256.0f;
 	bettyVolume = float(BettyVolume) / 256.0f;
 
-	stream1Id = stream2Id = 0;
+	musicSlots[0].id = musicSlots[1].id = 0;
 
 	return(NO_ERR);
 }
@@ -455,6 +462,39 @@ void SoundSystem::preloadSoundBite (long soundId)
 }
 
 //---------------------------------------------------------------------------
+// One music slot's frame: the fade rule, then the end-of-stream decision. Both slots run through here, slot 0 first.
+void SoundSystem::updateMusicSlot (int slot)
+{
+	MusicSlot& s = musicSlots[slot];
+	const int channel = musicSlotChannel(slot);
+
+	float volLevel = 1.0f;
+	const MusicFadeStep step = advanceMusicFade(s.fade, frameLength, streamFadeDownTime, volLevel);
+
+	if ((step == MusicFadeStep::FadingDown) || (step == MusicFadeStep::FadingUp))
+	{
+		gosAudio_SetChannelSlider(channel, gosAudio_Volume, digitalMasterVolume * volLevel * musicVolume * digitalMusic[currentMusicId].volume);
+	}
+	else if (step == MusicFadeStep::Ended)
+	{
+		if (s.handle)
+			gosAudio_DestroyResource(&s.handle);
+		s.handle = nullptr;
+		s.fade.active = FALSE;
+	}
+
+	if (s.fade.active && s.handle && (gosAudio_GetChannelPlayMode(channel) == gosAudio_Stop))
+	{
+		if (s.handle)
+			gosAudio_DestroyResource(&s.handle);
+
+		s.handle = nullptr;
+		s.fade.time = 0.0;
+		s.fade.active = FALSE;
+	}
+}
+
+//---------------------------------------------------------------------------
 void SoundSystem::update (void)
 {
 	if (useSound && (isRaining != oldRaining))
@@ -541,146 +581,21 @@ void SoundSystem::update (void)
 
 	//Start the music change we requested playing!!
 	// This avoids the stupid sound bug of starting more then one stream per frame!!
-	if (stream1Handle && !stream1Active)
+	for (int slot = 0; slot < 2; ++slot)
 	{
-		stream1Active = true;
-		gosAudio_SetChannelPlayMode( STREAM1CHANNEL, digitalMusic[currentMusicId].loop ? gosAudio_Loop : gosAudio_PlayOnce);
+		if (musicSlots[slot].handle && !musicSlots[slot].fade.active)
+		{
+			musicSlots[slot].fade.active = true;
+			gosAudio_SetChannelPlayMode( musicSlotChannel(slot), digitalMusic[currentMusicId].loop ? gosAudio_Loop : gosAudio_PlayOnce);
+		}
 	}
 
-	if (stream2Handle && !stream2Active)
+ 	if (useMusic && (musicSlots[0].fade.active || musicSlots[1].fade.active))
 	{
-		stream2Active = true;
-		gosAudio_SetChannelPlayMode( STREAM2CHANNEL, digitalMusic[currentMusicId].loop ? gosAudio_Loop : gosAudio_PlayOnce);
-	}
+		updateMusicSlot(0);
+		updateMusicSlot(1);
 
- 	if (useMusic && (stream1Active || stream2Active))
-	{
-		if (stream1Active && (stream1Time != 0.0))
-		{
-			if (stream1Time < 0.0)
-			{
-				//------------------------------------------
-				// We are fading Down.
-				stream1Time += frameLength;
-				if (stream1Time >= 0.0)
-				{
-					stream1Time = 0.0;
-					if (stream1Handle) 
-						gosAudio_DestroyResource(&stream1Handle);
-					stream1Handle = nullptr;
-					stream1Active = FALSE;
-				}
-				else
-				{
-					float volLevel = fabs(stream1Time) / streamFadeDownTime;
-					if (volLevel < 0.0)
-						volLevel = 0.0;
-
-					if (volLevel > 1.0)
-						volLevel = 1.0;
-
-					gosAudio_SetChannelSlider(STREAM1CHANNEL, gosAudio_Volume, digitalMasterVolume * volLevel * musicVolume * digitalMusic[currentMusicId].volume);
-				}
-			}
-			else if (stream1Time > 0.0)
-			{
-				//------------------------------------------
-				// We are fading Up.
-				stream1Time -= frameLength;
-				if (stream1Time <= 0.0)
-				{
-					stream1Time = 0.0;
-					gosAudio_SetChannelSlider(STREAM1CHANNEL, gosAudio_Volume, digitalMasterVolume * musicVolume * digitalMusic[currentMusicId].volume);
-				}
-				else
-				{
-					float volLevel = (streamFadeDownTime - fabs(stream1Time)) / streamFadeDownTime;
-					
-					if (volLevel < 0.0)
-						volLevel = 0.0;
-
-					if (volLevel > 1.0)
-						volLevel = 1.0;
-
-					gosAudio_SetChannelSlider(STREAM1CHANNEL, gosAudio_Volume, digitalMasterVolume * volLevel * musicVolume * digitalMusic[currentMusicId].volume);
-				}
-			}
-		}
-			
-		if (stream2Active && (stream2Time != 0.0))
-		{
-			if (stream2Time < 0.0)
-			{
-				//------------------------------------------
-				// We are fading Down.
-				stream2Time += frameLength;
-				if (stream2Time >= 0.0)
-				{
-					stream2Time = 0.0;
-					if (stream2Handle) 
-						gosAudio_DestroyResource(&stream2Handle);
-					stream2Handle = nullptr;
-					stream2Active = FALSE;
-				}
-				else
-				{
-					float volLevel = fabs(stream2Time) / streamFadeDownTime;
-
-					if (volLevel < 0.0)
-						volLevel = 0.0;
-
-					if (volLevel > 1.0)
-						volLevel = 1.0;
-
-					gosAudio_SetChannelSlider(STREAM2CHANNEL, gosAudio_Volume, digitalMasterVolume * volLevel * musicVolume * digitalMusic[currentMusicId].volume);
-				}
-			}
-			else if (stream2Time > 0.0)
-			{
-				//------------------------------------------
-				// We are fading Up.
-				stream2Time -= frameLength;
-				if (stream2Time <= 0.0)
-				{
-					stream2Time = 0.0;
-					gosAudio_SetChannelSlider(STREAM2CHANNEL, gosAudio_Volume, digitalMasterVolume * musicVolume * digitalMusic[currentMusicId].volume);
-				}
-				else
-				{
-					float volLevel = (streamFadeDownTime - fabs(stream2Time)) / streamFadeDownTime;
-
-					if (volLevel < 0.0)
-						volLevel = 0.0;
-
-					if (volLevel > 1.0)
-						volLevel = 1.0;
-
-					gosAudio_SetChannelSlider(STREAM2CHANNEL, gosAudio_Volume, digitalMasterVolume * volLevel * musicVolume * digitalMusic[currentMusicId].volume);
-				}
-			}
-		}
-			
-		if (stream1Active && stream1Handle && (gosAudio_GetChannelPlayMode(STREAM1CHANNEL) == gosAudio_Stop))
-		{
-			if (stream1Handle) 
-				gosAudio_DestroyResource(&stream1Handle);
-				
-			stream1Handle = nullptr;
-			stream1Time = 0.0;
-			stream1Active = FALSE;
-		}
-		
-		if (stream2Active && stream2Handle && (gosAudio_GetChannelPlayMode(STREAM2CHANNEL) == gosAudio_Stop))
-		{
-			if (stream2Handle) 
-				gosAudio_DestroyResource(&stream2Handle);
-				
-			stream2Handle = nullptr;
-		 	stream2Time = 0.0;
-		 	stream2Active = FALSE;
-		}
-
-		if (!stream1Active && !stream2Active)
+		if (!musicSlots[0].fade.active && !musicSlots[1].fade.active)
 			currentMusicId = -1;
 	}
 
@@ -747,79 +662,49 @@ long SoundSystem::playDigitalMusic (long musicId)
 				// new sound system can't handle it if its not.
 				if (fileExists(digitalStream))
 				{
-					if (!stream1Active && !stream2Active)
+					int slot;
+					if (!musicSlots[0].fade.active && !musicSlots[1].fade.active)
 					{
-						if (stream1Handle)
-						{
-							gosAudio_DestroyResource(&stream1Handle);
-							stream1Handle = nullptr;
-						}
-							
-						gosAudio_CreateResource(&stream1Handle, gosAudio_StreamedFile, static_cast<const char *>(digitalStream));
-						
-						stream1Time = streamFadeDownTime;
-						
-						gosAudio_SetChannelSlider( STREAM1CHANNEL, gosAudio_Volume, 0.0f );
-						gosAudio_SetChannelSlider( STREAM1CHANNEL, gosAudio_Panning,0.0f );
-						gosAudio_AssignResourceToChannel( STREAM1CHANNEL, stream1Handle );
-
-						currentMusicId = musicId;
-						stream1Id = musicId;
+						slot = 0;
 					}
-					else if (!stream2Active)
+					else if (!musicSlots[1].fade.active)
 					{
-						if (stream2Handle)
-						{
-							gosAudio_DestroyResource( &stream2Handle );
-							stream2Handle = nullptr;
-						}
-							
-						gosAudio_CreateResource( &stream2Handle, gosAudio_StreamedFile, static_cast<const char *>(digitalStream) );
-						
+						slot = 1;
+
 						//Need to check if stream1 ever got all the way faded up!
-						if (stream1Time > 0.0f)
-							stream1Time = -stream1Time;
-						else
-							stream1Time = -streamFadeDownTime;
-
-						stream2Time = streamFadeDownTime;
-						
-						gosAudio_SetChannelSlider( STREAM2CHANNEL, gosAudio_Volume, 0.0f );
-						gosAudio_SetChannelSlider( STREAM2CHANNEL, gosAudio_Panning,0.0f );
-						gosAudio_AssignResourceToChannel( STREAM2CHANNEL, stream2Handle );
-							
-						currentMusicId = musicId;
-						stream2Id = musicId;
+						musicSlots[0].fade.time = (musicSlots[0].fade.time > 0.0f) ? -musicSlots[0].fade.time : -streamFadeDownTime;
 					}
-					else if (!stream1Active)
+					else if (!musicSlots[0].fade.active)
 					{
-						if (stream1Handle)
-						{
-							gosAudio_DestroyResource(&stream1Handle);
-							stream1Handle = nullptr;
-						}
-							
-						gosAudio_CreateResource(&stream1Handle, gosAudio_StreamedFile, static_cast<const char *>(digitalStream));
-						
-						stream1Time = streamFadeDownTime;
+						slot = 0;
 
 						//Need to check if stream2 ever got all the way faded up!
-						if (stream2Time > 0.0f)
-							stream2Time = -stream2Time;
-						else
-							stream2Time = -streamFadeDownTime;
-
-						gosAudio_SetChannelSlider( STREAM1CHANNEL, gosAudio_Volume, 0.0f );
-						gosAudio_SetChannelSlider( STREAM1CHANNEL, gosAudio_Panning,0.0f );
-						gosAudio_AssignResourceToChannel( STREAM1CHANNEL, stream1Handle );
-							
-						currentMusicId = musicId;
-						stream1Id = musicId;
+						musicSlots[1].fade.time = (musicSlots[1].fade.time > 0.0f) ? -musicSlots[1].fade.time : -streamFadeDownTime;
 					}
 					else
 					{
 						return(-1);
 					}
+
+					MusicSlot& s = musicSlots[slot];
+					const int channel = musicSlotChannel(slot);
+
+					if (s.handle)
+					{
+						gosAudio_DestroyResource(&s.handle);
+						s.handle = nullptr;
+					}
+
+					gosAudio_CreateResource(&s.handle, gosAudio_StreamedFile, static_cast<const char *>(digitalStream));
+
+					s.fade.time = streamFadeDownTime;
+
+					gosAudio_SetChannelSlider( channel, gosAudio_Volume, 0.0f );
+					gosAudio_SetChannelSlider( channel, gosAudio_Panning,0.0f );
+					gosAudio_AssignResourceToChannel( channel, s.handle );
+
+					currentMusicId = musicId;
+					s.id = musicId;
 				}
 			}
 		}
@@ -1024,7 +909,7 @@ bool SoundSystem::isPlayingVoiceOver (void)
 //---------------------------------------------------------------------------
 bool SoundSystem::isDigitalMusicPlaying (void)
 {
-	if (stream2Handle || stream1Handle)
+	if (musicSlots[0].handle || musicSlots[1].handle)
 		return true;
 
 	return false;
@@ -1121,24 +1006,16 @@ void SoundSystem::stopDigitalMusic (void)
 {
 	if (useSound && useMusic)
 	{
-		if (stream1Active && stream1Handle)
+		for (MusicSlot& slot : musicSlots)
 		{
-			if (stream1Handle) 
-				gosAudio_DestroyResource(&stream1Handle);
-				
-			stream1Handle = nullptr;
-			stream1Time = 0.0;
-			stream1Active = FALSE;
-		}
-		
-		if (stream2Active && stream2Handle)
-		{
-			if (stream2Handle) 
-				gosAudio_DestroyResource(&stream2Handle);
-				
-			stream2Handle = nullptr;
-		 	stream2Time = 0.0;
-		 	stream2Active = FALSE;
+			if (slot.fade.active && slot.handle)
+			{
+				gosAudio_DestroyResource(&slot.handle);
+
+				slot.handle = nullptr;
+				slot.fade.time = 0.0;
+				slot.fade.active = FALSE;
+			}
 		}
 
 		currentMusicId = -1;
@@ -1245,13 +1122,10 @@ void SoundSystem::setMusicVolume(unsigned char volume)
 		musicVolume = float(MusicVolume) / 256.0f;
 		if (useMusic)
 		{
-			if (stream1Active && stream1Handle)
+			for (int slot = 0; slot < 2; ++slot)
 			{
-				gosAudio_SetChannelSlider( STREAM1CHANNEL,gosAudio_Volume, (digitalMasterVolume * musicVolume) );
-			}
-			if (stream2Active && stream2Handle)
-			{
-				gosAudio_SetChannelSlider( STREAM2CHANNEL,gosAudio_Volume, (digitalMasterVolume * musicVolume) );
+				if (musicSlots[slot].fade.active && musicSlots[slot].handle)
+					gosAudio_SetChannelSlider( musicSlotChannel(slot),gosAudio_Volume, (digitalMasterVolume * musicVolume) );
 			}
 		}
 	}

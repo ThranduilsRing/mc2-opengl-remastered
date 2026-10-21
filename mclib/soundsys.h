@@ -102,6 +102,69 @@ struct DigitalMusicEntry {
 };
 
 //---------------------------------------------------------------------------
+// The fade state of one music crossfade slot, and the per-frame rule that advances it. Pure: no device and no engine state, so
+// a crossfade can be replayed frame by frame in a unit test (tests/unit/test_music_crossfade.cpp).
+struct MusicFade {
+	float	time = 0.0f;		// signed: > 0 fading up, < 0 fading down, 0 steady
+	bool	active = false;
+};
+
+enum class MusicFadeStep {
+	Steady,			// nothing to do this frame
+	FadingUp,		// set the channel volume to `level`
+	FadingDown,		// set the channel volume to `level`
+	Ended			// the fade-down finished: destroy the stream and free the slot
+};
+
+// Advances one slot's fade by one frame. `level` is the volume multiplier to apply for FadingUp/FadingDown and is untouched
+// otherwise.
+inline MusicFadeStep advanceMusicFade (MusicFade& fade, float frameLength, float fadeDownTime, float& level)
+{
+	if (!fade.active || (fade.time == 0.0f))
+		return MusicFadeStep::Steady;
+
+	if (fade.time < 0.0f)
+	{
+		//------------------------------------------
+		// We are fading Down.
+		fade.time += frameLength;
+		if (fade.time >= 0.0f)
+		{
+			fade.time = 0.0f;
+			return MusicFadeStep::Ended;
+		}
+
+		level = fabs(fade.time) / fadeDownTime;
+		if (level < 0.0f)
+			level = 0.0f;
+
+		if (level > 1.0f)
+			level = 1.0f;
+
+		return MusicFadeStep::FadingDown;
+	}
+
+	//------------------------------------------
+	// We are fading Up.
+	fade.time -= frameLength;
+	if (fade.time <= 0.0f)
+	{
+		fade.time = 0.0f;
+		level = 1.0f;
+		return MusicFadeStep::FadingUp;
+	}
+
+	level = (fadeDownTime - fabs(fade.time)) / fadeDownTime;
+	if (level < 0.0f)
+		level = 0.0f;
+
+	if (level > 1.0f)
+		level = 1.0f;
+
+	return MusicFadeStep::FadingUp;
+}
+
+//---------------------------------------------------------------------------
 class SoundSystem
 {
 	//Data Members
@@ -128,15 +191,13 @@ class SoundSystem
 		long				currentMusicId;
 		ScriptMusic			scriptMusic;		// what an ABL script sees: its last request, ended by the scenario clock, never by the device
 		
-		HGOSAUDIO			stream1Handle;
-		bool				stream1Active;
-		float				stream1Time;
-		long				stream1Id;
-		
-		HGOSAUDIO			stream2Handle;
-		bool				stream2Active;
-		float				stream2Time;
-		long				stream2Id;
+		// The two music crossfade slots: slot 0 plays on STREAM1CHANNEL, slot 1 on STREAM2CHANNEL.
+		struct MusicSlot {
+			HGOSAUDIO	handle = nullptr;
+			MusicFade	fade;
+			long		id = -1;
+		};
+		MusicSlot			musicSlots[2];
 		
 		HGOSAUDIO			stream3Handle;
 		bool				stream3Active;
@@ -165,6 +226,9 @@ class SoundSystem
 		static float		musicVolume;
 		static float		radioVolume;
 		static float		bettyVolume;
+
+		// Advances one music crossfade slot's fade and end-of-stream decision for this frame.
+		void updateMusicSlot (int slot);
 
 	public:
 
@@ -208,13 +272,13 @@ class SoundSystem
 			
 			currentMusicId = -1;
 			
-			stream1Handle = 0;
-			stream1Active = FALSE;
-			stream1Time = 0.0;
-			
-			stream2Handle = 0;
-			stream2Active = FALSE;
-			stream2Time = 0.0;
+			for (MusicSlot& slot : musicSlots)
+			{
+				slot.handle = nullptr;
+				slot.fade.active = FALSE;
+				slot.fade.time = 0.0f;
+				slot.id = -1;
+			}
 			
 			stream3Handle = 0;
 			stream3Active = false;
