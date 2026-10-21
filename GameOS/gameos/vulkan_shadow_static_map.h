@@ -19,11 +19,14 @@
 #include "vk_owned.h"
 #include "vulkan_shadow_island_live.h"   // Mc2ShadowPacket
 #include "shadow_static_building_runs.h"
+#include "terrain_static_visibility.h"
+#include "vulkan_static_visibility_tiles.h"
 
 #include <cstdint>
 #include <span>
 #include <string_view>
 #include <vector>
+#include <optional>
 
 namespace mc2vk {
 
@@ -46,23 +49,24 @@ public:
     // shader module or an object cannot be made; the island then runs without a static map.
     bool init(VkDevice device, VmaAllocator allocator, VkRenderPass pass, std::string_view spvDir);
 
-    // True when the engine has a static map generation this object has not built yet.
+    // Caster generation, height version, projection, size and caster bias all invalidate the build.
     bool stale() const;
 
     // Records the build of the engine's current generation into `cb` (outside any render pass). The caller submits `cb` and then calls markSubmitted().
     // False (logged) when an input is missing or malformed; the previous build, if any, stays the one consumers see.
     bool record(VkCommandBuffer cb, const StaticPropGeometryView& geometry);
-    void markSubmitted() { if (pendingGeneration_ != 0) { builtGeneration_ = pendingGeneration_; pendingGeneration_ = 0; } }
+    void markSubmitted() { if (pendingKey_) { builtKey_ = pendingKey_; pendingKey_.reset(); visibilityTiles_.markSubmitted(); } }
 
     // The map of the last submitted build; null before the first one.
-    VkImageView view() const { return builtGeneration_ != 0 ? view_.get() : VK_NULL_HANDLE; }
-    uint64_t generation() const { return builtGeneration_; }
+    VkImageView view() const { return builtKey_ ? view_.get() : VK_NULL_HANDLE; }
+    VkImageView visibilityTilesView() const { return builtKey_ ? visibilityTiles_.view() : VK_NULL_HANDLE; }
+    uint64_t generation() const { return builtKey_ ? builtKey_->generation : 0; }
     // For the matrix diag's depth dump.
     VkImage image() const { return image_.get(); }
     int size() const { return size_; }
 
     // A map boundary: the next map's generation builds afresh, and nothing is handed out until it has.
-    void invalidate() { builtGeneration_ = 0; pendingGeneration_ = 0; failedGeneration_ = 0; }
+    void invalidate() { builtKey_.reset(); pendingKey_.reset(); failedKey_.reset(); visibilityTiles_.invalidate(); }
 
 private:
     bool ensureTarget(int size, VkRenderPass pass);
@@ -75,9 +79,8 @@ private:
     VkRenderPass pass_ = VK_NULL_HANDLE;
     bool inited_ = false;
     int size_ = 0;
-    uint64_t builtGeneration_ = 0;
-    uint64_t pendingGeneration_ = 0;
-    uint64_t failedGeneration_ = 0;
+    std::optional<mc2terrain::StaticVisibilityDependencies> builtKey_, pendingKey_, failedKey_;
+    StaticVisibilityTiles visibilityTiles_;
     uint32_t terrainIndexCount_ = 0;
     uint64_t terrainHeightVersion_ = 0;
 

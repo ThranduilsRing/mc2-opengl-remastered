@@ -36,6 +36,7 @@
 #endif
 #include "../include/noise.hglsl"   // VK-PARITY-F3: fbm() for the GL colour break-up (terrain_lod_chunk.frag:1839)
 #include "include/terrain_frame_vk.glsl"   // TerrainFrameUBO + set-0 resources + CSM shadow helpers
+#include "include/terrain_static_visibility.glsl"
 #include "../include/axis.hglsl"   // mc2ToRender: the POM view vector is built in the MC2 world frame
 #include "../include/edge_haze.hglsl"   // edgeHazeAmount + EDGE_HAZE_SKY, shared with GL
 
@@ -643,9 +644,7 @@ void main() {
         if ((shKnobs.flags & LSVK_KNOB_BANDFIX_V2) != 0) shadowN = mv_smoothTerrainNormal(v_worldPos.xy);
         float staticS = 1.0;
         if (uT.enableShadows != 0) {
-            staticS = lsvk_calcShadow(v_worldPos, shadowN, lightDir,
-                                      u_staticShadow, uT.staticLightSpaceMatrix,
-                                      uT.shadowSoftness, 16, shKnobs);
+            staticS = terrainStaticShadow(v_worldPos, shadowN, lightDir, shKnobs);
         }
         // VK-TERRAIN-CSM-NEAR-1: near-cascade-array path when armed+valid (uT.csmEnabled),
         // else the legacy single dynamic map. Both now carry the GL dist-fade + clamped sun.

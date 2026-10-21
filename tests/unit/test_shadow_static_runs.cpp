@@ -3,8 +3,35 @@
 // is drawn; with tables, one run per type present and the out-of-range types counted.
 #include "doctest.h"
 #include "gameos/shadow_static_building_runs.h"
+#include "gameos/terrain_static_visibility.h"
 
 using mc2vk::planShadowBuildingRuns;
+
+TEST_CASE("static visibility: every producer invalidates the cache independently") {
+    StaticShadowSpec spec;
+    spec.generation = 7;
+    spec.size = 4096;
+    const auto original = mc2terrain::staticVisibilityDependencies(spec, 3);
+    CHECK(original == mc2terrain::staticVisibilityDependencies(spec, 3));
+    CHECK_FALSE(original == mc2terrain::staticVisibilityDependencies(spec, 4)); // crater
+    auto edited = spec;
+    ++edited.generation; // destroyed caster / mission reload
+    CHECK_FALSE(original == mc2terrain::staticVisibilityDependencies(edited, 3));
+    edited = spec;
+    edited.size = 8192;
+    CHECK_FALSE(original == mc2terrain::staticVisibilityDependencies(edited, 3));
+    for (int component = 0; component < 16; ++component) {
+        edited = spec;
+        edited.lightSpace[component] = 0.25f; // sun / projection edit without a generation bump
+        CHECK_FALSE(original == mc2terrain::staticVisibilityDependencies(edited, 3));
+    }
+    edited = spec;
+    edited.biasFactor = 1.0f;
+    CHECK_FALSE(original == mc2terrain::staticVisibilityDependencies(edited, 3));
+    edited = spec;
+    edited.biasUnits = 1.0f;
+    CHECK_FALSE(original == mc2terrain::staticVisibilityDependencies(edited, 3));
+}
 
 TEST_CASE("static shadow runs: no static-prop geometry draws no building") {
     const uint32_t types[] = {0, 0, 3, 7};

@@ -1435,6 +1435,10 @@ extern "C" uint64_t mc2_vk_shadow_island_static_generation() {
     const ShadowIsland* s = parkedIsland();
     return s && s->staticMap.view() != VK_NULL_HANDLE ? s->staticMap.generation() : 0;
 }
+extern "C" void* mc2_vk_shadow_island_get_static_visibility_tiles() {
+    const ShadowIsland* s = parkedIsland();
+    return s ? reinterpret_cast<void*>(s->staticMap.visibilityTilesView()) : nullptr;
+}
 
 extern "C" void* mc2_vk_shadow_island_get_csm_array_view() {
     return productReady(g_csmArrayReadyThisFrame)
