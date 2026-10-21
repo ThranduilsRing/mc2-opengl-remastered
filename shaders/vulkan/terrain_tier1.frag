@@ -71,6 +71,7 @@ const vec4  MATV_CLASS_DIRT   = vec4(-0.02, 0.06, 0.22, 0.45); // rMinusG lo/hi,
 const float MATV_WU_PER_TILE  = 768.0;  // MAT_WORLD_UNITS_PER_TILE (terrain_lod_chunk.frag:240)
 
 // Central difference commutes with bilinear interpolation; normalize after filtering.
+// Call at the point of use: hoisting the result to the top of main() kept it live across the whole shader and cost ~15% at 4K.
 vec3 mv_smoothTerrainNormal(vec2 worldXY) {
     vec2 cell = vec2(worldXY.x + uT.halfMap, uT.halfMap - worldXY.y) / 128.0;
     vec2 gradient = textureLod(u_macroGradient, (cell + 1.5) / float(uT.mapSide + 2), 0.0).rg;
@@ -370,7 +371,6 @@ float cCutLt(float x, float fw) {
 }
 
 void main() {
-    vec3 macroNormal = mv_smoothTerrainNormal(v_worldPos.xy);
     // Valid even for quads straddling cement, zero weights or the LOD fade.
     vec2 detailUv = v_worldPos.xy * (uT.detailTiling / MATV_WU_PER_TILE);
     vec2 detailUvDx = dFdx(detailUv), detailUvDy = dFdy(detailUv);
@@ -574,7 +574,7 @@ void main() {
         // Cement: restore the authored colormap tone (concreteColorBlend = sqrt(pureConcrete)).
         baseColor = mix(baseColor, base, sqrt(clamp(F3pc, 0.0, 1.0)));
         // Cliff: desaturate + darken toward rock on steep MACRO slope (un-perturbed).
-        float macroNzF3 = macroNormal.z;
+        float macroNzF3 = mv_smoothTerrainNormal(v_worldPos.xy).z;
         float cliffBlend = smoothstep(0.85, 0.55, abs(macroNzF3));
         if (cliffBlend > 0.01) {
             float luma = dot(baseColor, vec3(0.299, 0.587, 0.114));
@@ -606,7 +606,7 @@ void main() {
         vec3 N = vec3(0.0, 0.0, 1.0);                            // flat-up terrain normal (default)
         vec3 dbgBaseN = vec3(0.0, 0.0, 1.0); vec3 dbgDN = vec3(0.0);  // CSM-BLACKOUT-RECON-1 taps
         if (uT.detailEnabled != 0 && !pureConcrete) {
-            vec3 baseN = macroNormal;
+            vec3 baseN = mv_smoothTerrainNormal(v_worldPos.xy);
             vec3 dN    = vec3(0.0);
             if (uT.detailReady != 0 && uT.detailStrength != 0.0) {
                 vec4  matW; float snowW;
@@ -640,7 +640,7 @@ void main() {
         // (Skirt strips: GL keeps flat-up there; VK shares this frag, residual noted.)
         LsvkShadowKnobs shKnobs = mv_shadowKnobs();
         vec3 shadowN = vec3(0.0, 0.0, 1.0);
-        if ((shKnobs.flags & LSVK_KNOB_BANDFIX_V2) != 0) shadowN = macroNormal;
+        if ((shKnobs.flags & LSVK_KNOB_BANDFIX_V2) != 0) shadowN = mv_smoothTerrainNormal(v_worldPos.xy);
         float staticS = 1.0;
         if (uT.enableShadows != 0) {
             staticS = lsvk_calcShadow(v_worldPos, shadowN, lightDir,
@@ -716,7 +716,7 @@ void main() {
         // first 1.5 wu above the water, the optional mask modulator, a 12-20 deg slope guard and a beach affinity term.
         if (uT.shorelineOn != 0) {
             float aboveWater = v_worldPos.z - uT.shorelineWaterElev;
-            vec3  macroN     = macroNormal;
+            vec3  macroN     = mv_smoothTerrainNormal(v_worldPos.xy);
             float nzc        = clamp(abs(macroN.z), 0.0, 0.9995);
             float sinSlope   = max(sqrt(max(1.0 - nzc * nzc, 1e-6)), 0.03);
             float horizDist  = max(aboveWater, 0.0) * (nzc / sinSlope);
