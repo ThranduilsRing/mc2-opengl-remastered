@@ -1,12 +1,14 @@
 """Format regressions: synthetic bytes, no dependency on private installs."""
 import struct
+import tempfile
 import unittest
 import zlib
+from pathlib import Path
 
 import numpy as np
 
 from tools.mapgen.common import mask_of, packed_cell, spans, world_cell
-from tools.mapgen.data import catalog, fit_sections, packet
+from tools.mapgen.data import Install, catalog, fit_sections, packet
 from tools.mapgen.extract import OBJECT, VERTEX, extract_mission
 
 
@@ -50,6 +52,37 @@ class ExtractionTests(unittest.TestCase):
         damaged[12:16] = struct.pack("<I", 99)
         with self.assertRaises(ValueError):
             packet(damaged, 0)
+
+    def test_lzw_and_zlib_in_lzd_storage(self):
+        codes = [256, *b"hello", 257]
+        value = sum(code << (9*i) for i,code in enumerate(codes))
+        compressed = value.to_bytes((len(codes)*9+7)//8,"little")
+        for compressed in (compressed, zlib.compress(b"hello")):
+            payload = struct.pack("<I",5) + compressed
+            raw = struct.pack("<III",0xFEEDFACE,12,(2<<29)|12) + payload
+            self.assertEqual(packet(raw,0),b"hello")
+
+    def test_fst_zlib_sniff_loose_precedence_and_dependency_aliases(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            content = b"[Terrain]\nl UserMin=0\n"*20
+            packed = zlib.compress(content)
+            name = b"data/missions/test.fit"
+            archive = struct.pack("<II",0xFADDECAF,1)
+            archive += struct.pack("<IIII250s",274,len(packed),len(content),0,name)
+            (root/"mission.fst").write_bytes(archive+packed)
+            fallback_root = root/"fallback"
+            (fallback_root/"data/art/gui").mkdir(parents=True)
+            (fallback_root/"data/art/gui/buildings.csv").write_bytes(b"fallback")
+            install = Install(root,Install(fallback_root))
+            self.assertEqual(install.read("DATA\\MISSIONS\\TEST.FIT")[0],content)
+            (root/"data/missions").mkdir(parents=True)
+            (root/"data/missions/test.fit").write_bytes(b"loose")
+            (root/"data/art").mkdir(parents=True)
+            (root/"data/art/buildings.csv").write_bytes(b"local")
+            install = Install(root,Install(fallback_root))
+            self.assertEqual(install.read("data/missions/test.fit")[0],b"loose")
+            self.assertEqual(install.read_alternative(("data/art/gui/buildings.csv","data/art/buildings.csv"))[0],b"local")
 
     def test_xy_cell_math_and_water_low_bit(self):
         self.assertEqual(world_cell(-128, 128, 2), [0, 0])

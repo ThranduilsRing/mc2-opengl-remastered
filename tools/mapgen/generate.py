@@ -18,6 +18,7 @@ from tools.mapgen.ascii import render
 from tools.mapgen.common import (CELL_WU, FLAT_DEG, LAYERS, SCHEMA, STEEP_DEG,
                                 components, distance, distance_field, load_json,
                                 mask_of, output_path, packed_cell, slope_grid, spans, write_json)
+from tools.mapgen.validate import validate
 
 PROFILE_PATH = Path(__file__).with_name("profile.json")
 
@@ -191,7 +192,7 @@ def generate(size=300, seed=42, heightfield=None, water=None, profile=None, styl
 
     density = stats["metrics"]["enemy_bases_per_100k_cells"]["median"] or 4
     target_bases = max(3, min(64, round(density*size*size/100000)))
-    archetypes = list(stats["archetypes"])
+    archetypes = sorted(stats["archetypes"])
     weights = [stats["archetypes"][name]["count"] for name in archetypes]
     road_positions = [tuple(map(int, v)) for v in np.argwhere(roads)]
     # Explicit examples of the three visible site forms; remaining sites follow
@@ -260,6 +261,14 @@ def generate(size=300, seed=42, heightfield=None, water=None, profile=None, styl
                             90 if c in (c0,c1-1) else 0)
                         add("wall", (r, c), team, base_id, rotation=rotation,
                             segment="corner" if corner else "straight")
+        has_runway = kind == "airfield_hq" and max(r1-r0, c1-c0) >= 24
+        if has_runway:
+            if c1-c0 >= r1-r0:
+                strip = np.s_[(r0+r1)//2, c0+2:c1-2]
+            else:
+                strip = np.s_[r0+2:r1-2, (c0+c1)//2]
+            layers["runway"][strip] = True
+            roads[strip] = True
         inset = 4 if walled else 2
         slots = [(r, c) for r in range(r0+inset, r1-inset, 2)
                  for c in range(c0+inset, c1-inset, 2) if not roads[r, c]]
@@ -309,7 +318,7 @@ def generate(size=300, seed=42, heightfield=None, water=None, profile=None, styl
             if kind == "industrial" and number < 3:
                 role = "industrial"
             if kind == "airfield_hq" and number == 0:
-                role = "airfield"
+                role = "airfield" if has_runway else "hq"
             add("building", cell, team, base_id, role=role, rotation=90 if side in ("E", "W") else 0)
         bases.append({"id": base_id, "archetype": kind, "team": team,
                       "bounds": [r0,c0,r1,c1], "entry_cell": list(gate),
@@ -322,7 +331,8 @@ def generate(size=300, seed=42, heightfield=None, water=None, profile=None, styl
         raise ValueError("terrain cannot fit a compound and at least one other site; use more flat land or a larger size")
     # Decorations are deliberately last; their rejection cannot perturb bases.
     road_distance = distance_field(roads)
-    tree_allowed = mainland & ~reserved & (road_distance >= 4) & ~occupied
+    base_distance = distance_field(reserved)
+    tree_allowed = mainland & (base_distance >= 4) & (road_distance >= 4) & ~occupied
     tree_allowed[max(0,start[0]-5):start[0]+6, max(0,start[1]-5):start[1]+6] = False
     tree_density = stats["metrics"]["tree_objects_per_100k_cells"]["median"] or 0
     tree_target = min(20000, round(size*size*tree_density/100000))
@@ -379,13 +389,17 @@ def main(argv=None):
         if args.water_level is not None and args.heightfield is None:
             terrain, wet = synthetic_terrain(args.size, args.seed)
             wet |= terrain <= args.water_level
-        layout = generate(args.size, args.seed, terrain, wet, load_json(args.profile), args.style)
+        profile = load_json(args.profile)
+        layout = generate(args.size, args.seed, terrain, wet, profile, args.style)
+        errors = validate(layout, profile)
+        if errors:
+            raise ValueError("; ".join(errors[:8]))
         out = output_path(args.out)
         out.mkdir(parents=True, exist_ok=True)
         write_json(out / (layout["name"]+".json"), layout)
         path = out / (layout["name"]+".txt")
         path.write_text(render(layout, args.cells_per_char), encoding="ascii")
-        print(f"{path}: {len(layout['bases'])} sites, {len(layout['objects'])} objects")
+        print(f"{path}: {len(layout['bases'])} sites, {len(layout['objects'])} objects; plausibility PASS")
     except (ValueError, KeyError) as error:
         parser.exit(2, f"generation failed: {error}\n")
 

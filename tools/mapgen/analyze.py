@@ -390,7 +390,8 @@ def main(argv=None):
                 seen.add(fingerprint)
         groups[label] = aggregate(measurements)
         print(f"{label}: {len(measurements)} maps, {groups[label]['base_count']} clusters", flush=True)
-    profile = {"schema": "mc2-mapgen-profile-1", "index_sha256": hashlib.sha256(index_path.read_bytes()).hexdigest(),
+    canonical_index = json.dumps(manifest, sort_keys=True, separators=(",", ":")).encode()
+    profile = {"schema": "mc2-mapgen-profile-1", "index_sha256": hashlib.sha256(canonical_index).hexdigest(),
                "cluster_radius_cells": CLUSTER_RADIUS, "groups": groups, "scopes": scopes,
                "pooled": aggregate(pooled)}
     write_json(args.profile, profile, pretty=True)

@@ -8,6 +8,7 @@ py -3 -B tools/mapgen/extract.py --all
 py -3 -B tools/mapgen/ascii.py --examples
 py -3 -B tools/mapgen/analyze.py
 py -3 -B tools/mapgen/generate.py --size 300 --seed 42
+py -3 -B tools/mapgen/validate.py tools/mapgen/corpus/generated/generated_300_42.json
 py -3 -B tools/mapgen/ascii.py tools/mapgen/corpus/stock/mc2_03.json --cells-per-char 1 --crop 36 36 90 90
 py -3 -B -m unittest discover -s tests/mapgen -v
 ```
@@ -71,7 +72,8 @@ even when a mod's CSV omits the WALL tag; original engine class is preserved.
 road connectivity, local orientation, terrain siting and team separation.
 `docs/mapgen/extraction_manifest.json` preserves source paths and hashes;
 `tools/mapgen/profile.json` is the generator's measured input. Regenerate the
-profile after a new extraction. Comparisons exclude inherited stock stems from
+profile after a new extraction. Its index hash uses canonical JSON, so Git
+newline conversion does not invalidate provenance. Comparisons exclude inherited stock stems from
 custom mod sets; inherited campaign variants are explicitly labeled. Pooled
 statistics deduplicate decoded terrain/object packets across installs. Archetype
 labels and slope/proximity measurements are coarse, documented approximations.
@@ -110,6 +112,43 @@ cells wet. Supplied heights are preserved (rounded to 0.001 wu), not flattened o
 bridged. Roads and placements use dry terrain below 10 degrees slope. If the land
 cannot reach two map edges or fit the required sites, generation reports why.
 Synthetic terrain supplies gentle hills, a lake and a steep escarpment by default.
+
+## Plausibility and verification
+
+The generator CLI validates before writing. `validate.py FILE` also checks an
+existing generated JSON and exits nonzero on errors. Checks cover complete wall
+rings, controlled gates at road crossings, two-hop turret chains with matching
+packed cells and teams, measured parent-link distances and battery sizes, unique
+object cells, dry flat parcels/roads/placements, connected roads reaching map
+edges, tree clearances, player/enemy separation, and measured size/count/density
+envelopes. The heightfield is used to recalculate slopes rather than trusting a
+stored classification. Corpus envelopes are broad min/max plausibility limits,
+not a claim of statistical equivalence; the small-map demonstration floor is
+excluded from mission-wide density checks.
+
+Run `py -3 -B -m unittest discover -s tests/mapgen -v` (22 tests passing). The offline suite covers
+binary packet/FST fixtures, mod catalog differences, source provenance, a 24-seed
+sweep, 1024x1024 generation, supplied water/cliff obstacles, impossible terrain,
+process/hash-seed determinism, population summaries, and deliberate gate/road/
+parent/water/slope corruptions. These checks need no installs or engine build;
+they use synthetic inputs and the committed measured profile.
+
+Generated examples (JSON + ASCII) live in `docs/mapgen/examples/generated/`.
+The 1024-cell ASCII example uses eight cells per character; its large JSON is
+regenerable with the command below.
+
+| Example | Sites | Artifacts |
+|---|---:|---|
+| 180 cells, seed 7 | 3 | [ASCII](examples/generated/generated_180_7.txt), [JSON](examples/generated/generated_180_7.json) |
+| 300 cells, seed 42 | 5 | [ASCII](examples/generated/generated_300_42.txt), [JSON](examples/generated/generated_300_42.json) |
+| 360 cells, seed 17 | 7 | [ASCII](examples/generated/generated_360_17.txt), [JSON](examples/generated/generated_360_17.json) |
+| 1024 cells, seed 42 | 57 | [ASCII](examples/generated/generated_1024_42.txt) |
+
+All four pass the plausibility checker. Reproduce the large layout locally:
+
+```
+py -3 -B tools/mapgen/generate.py --size 1024 --seed 42 --cells-per-char 8
+```
 
 Outputs are cell-level plans: model IDs, exact footprints and playable mission
 logic remain unassigned. Objective markers are suggestions, with no FIT conditions.

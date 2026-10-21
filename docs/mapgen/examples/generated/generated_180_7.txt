@@ -1,0 +1,71 @@
+generated/generated_180_7 | 180x180 cells | 3 cells/char
+North up; cell crop [0,0)..[180,180); objects by team: {-1: 17, 1: 113}
+@ player start; O visible objective; B military; h town; I industry; H HQ/sensor; A airfield
+# wall/fence; + gate; T turret; C turret control; G generator; c gate control
+= road/bridge; : runway; . cement; ~ water; t trees; ^ slope>=35deg; % rock; , prop; ? unresolved
++------------------------------------------------------------+
+|                                      ==              ^     |
+|         tt                           ==              ^     |
+|        t                             ==              ^     |
+|      tt  t                           ==              ^     |
+|     tttt                             ==              ^     |
+|t   t tttt                            ==              ^     |
+|    ttt ttt                           ==              ^     |
+| t    tttt  t                         ==              ^     |
+| t   t tt t                           ==              ^     |
+|   tt     t                           ==              ^     |
+| tt           ^~~~~^                  ==              ^     |
+|tt    t     ^~~~~~~~~^                ==              ^     |
+|tt         ^~~~~~~~~~~                ==              ^     |
+|ttt t      ~~~~~~~~~~~~               ==              ^     |
+|t t        ~~~~~~~~~~~~ t             ==              ^     |
+|t          ~~~~~~~~~~~~               ==              ^     |
+|           ^~~~~~~~~~~^ t          =====              ^     |
+|            ^~~~~~~~~ttt        ===========           ^     |
+|              ^~~~~tt tt t   ==============           ^     |
+|                  tttttt     ====                     ^     |
+|                  ttt t t    ==                       ^     |
+|                  t tttt  t  ==                       ^     |
+|                  tttt       ==                       ^     |
+|                   t t       ==                       ^^^^^^|
+|                      t      ==                       ^^^^^^|
+|                             ==                  h          |
+|                             ==                 h h h     tt|
+|                             ==         t tttt     h      t |
+|                             ==       tt ttt t   h= h    t t|
+|                             ==     tt ttttttt  h hhh  ttttt|
+|                             ==        t ttt  t h hhh  t  tt|
+|                             ========  tttttt     =     tt t|
+|                             ==  =  ========================|
+|                             ==  =  ========================|
+|                             ==TO=T      t            tt    |
+|                             ==C =                  t tttttt|
+|                             ==TB T              t  t tttt  |
+|                             ==                 t  tttttt tt|
+|===============================             t     t tt  tttt|
+|===============================                 ttttttttt   |
+|                  =================               tttt  t   |
+|                 =========   ========           tt ttttt    |
+|                 ==               =====           ttttt t   |
+|                 ==                 ========     ttttt  t   |
+|                 ==                 ####+####     t  t  t   |
+|                 ==                 #...=...#      t        |
+|                 ==                 #.T.=cIO#               |
+|                 @=                 #..G=...#               |
+|                 ==                 #.IC=...#               |
+|                 ==                 #.......#               |
+|                 ==                 #.T....T#               |
+|                 ==                 #.......#               |
+|                 ==                 #########               |
+|                 ==                                         |
+|          tt     ==                                         |
+|           t     ==                                         |
+|       tttttt    ==                                         |
+|        tt tt t  ==                                         |
+|       ttttttt   ==                                         |
+|      t ttttt    ==                                         |
++------------------------------------------------------------+
+Visible objectives (O; symbols may share a character):
+  [140, 130]: Capture or clear walled_compound base_0
+  [104, 97]: Capture or clear outpost base_1
+Coarse preview: highest-priority feature wins each character; object footprints are not drawn.
