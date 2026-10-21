@@ -316,10 +316,17 @@ std::optional<SurfaceAsset> cookSurface(const SurfaceCookInput& in) {
     return candidate;
 }
 
-std::optional<SurfaceAsset> resolveSurfaceAsset(const SurfaceCookInput& input, std::span<const uint8_t> candidate) {
+std::optional<SurfaceAsset> resolveSurfaceAsset(const SurfaceCookInput& input, std::span<const uint8_t> candidate,
+                                                const std::string& cacheDir, const char** origin) {
     const auto source = surfaceCookSourceHash(input);
     if (source == 0) return {};
+    if (origin) *origin = "precooked";
     if (auto cached = decodeSurfaceAsset(candidate, source)) return cached;
-    return cookSurface(input);
+    if (origin) *origin = "cache";
+    if (auto cached = loadCachedSurfaceAsset(cacheDir, source)) return cached;
+    auto cooked = cookSurface(input);
+    if (origin) *origin = "cooked";
+    if (cooked && !cacheDir.empty() && storeCachedSurfaceAsset(cacheDir, *cooked) && origin) *origin = "cooked+stored";
+    return cooked;
 }
 } // namespace mc2terrain
