@@ -195,6 +195,11 @@ add_executable(mc2_tests
     # linked above). Linking it lets tests reference the engine's real path
     # globals (objectPath/artPath/...) instead of stand-ins.
     ${MC2_WORKTREE_ROOT}/mclib/paths.cpp      # path string globals (leaf)
+
+    # V4: the GOS stream handle (gosFileStream) and its gos_* entry points.
+    # Disk-only: archive/mod resolution lives above this layer.
+    test_gos_file_stream.cpp
+    ${MC2_WORKTREE_ROOT}/GameOS/gameos/gameos_fileio.cpp
 )
 mc2_link_gate(mc2_tests)
 

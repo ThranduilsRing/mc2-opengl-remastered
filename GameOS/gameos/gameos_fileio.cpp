@@ -20,18 +20,15 @@
 #include "platform_io.h" // will be removed
 #include "mc2fmt.h"
 
-gosFileStream::gosFileStream( const char *FileName, gosEnum_FileWriteStatus fwstatus )
+namespace {
+
+// The one place a GOS stream touches the C runtime file API. The stream
+// handle goes through it for open/seek/read/write/close, so that plumbing
+// exists once instead of once per member function.
+FILE* openStream(const char* path, gosEnum_FileWriteStatus status)
 {
-    gosASSERT(FileName);
-    gosASSERT(strlen(FileName) < MAX_PATH);
-    m_writeEnabled = fwstatus;
-    strcpy(m_Filename, FileName);
-
-    // ???
-    pNext = nullptr;
-
     const char* mode = nullptr;
-    switch(fwstatus) {
+    switch(status) {
         case READONLY:
             mode = "rb";
             break;
@@ -46,18 +43,19 @@ gosFileStream::gosFileStream( const char *FileName, gosEnum_FileWriteStatus fwst
             gosASSERT(0);
     }
 
-    m_hFile = fopen(m_Filename, mode);
-    if(!m_hFile)
+    FILE* file = fopen(path, mode);
+    if(!file)
     {
         int err = errno; // save errno from being possible overwritten by sprintf
-        mc2::fmt::print_err("gosFileStream: failed to open file: {} : {}\n", mc2::fmt::safe(m_Filename), mc2::fmt::safe(strerror(err)));
+        mc2::fmt::print_err("gosFileStream: failed to open file: {} : {}\n", mc2::fmt::safe(path), mc2::fmt::safe(strerror(err)));
         STOP(("Failed to open file"));
     }
+    return file;
 }
 
-DWORD gosFileStream::Seek( int where, gosEnum_FileSeekType seek_type)
+DWORD seekStream(FILE* file, int where, gosEnum_FileSeekType seek_type)
 {
-    gosASSERT(m_hFile);
+    gosASSERT(file);
     int whence = 0;
     switch(seek_type) {
         case FROMSTART:
@@ -74,33 +72,68 @@ DWORD gosFileStream::Seek( int where, gosEnum_FileSeekType seek_type)
             gosASSERT(0);
     }
 
-    return fseek(static_cast<FILE*>(m_hFile), where, whence);
+    return fseek(file, where, whence);
+}
+
+DWORD readStream(FILE* file, void* buffer, DWORD length)
+{
+    gosASSERT(file);
+    size_t size = 1;
+    size_t nmemb = length;
+    size_t num_items = fread(buffer, size, nmemb, file);
+    gosASSERT(num_items == nmemb); // .. can trigger if eof
+    return num_items * size;
+}
+
+DWORD writeStream(FILE* file, const void* buffer, DWORD length)
+{
+    gosASSERT(file);
+    size_t size = 1;
+    size_t nmemb = length;
+    size_t num_items = fwrite(buffer, size, nmemb, file);
+    gosASSERT(num_items == nmemb); // .. can trigger if eof
+    return num_items * size;
+}
+
+void closeStream(FILE* file)
+{
+    gosASSERT(file);
+    fclose(file);
+}
+
+} // namespace
+
+gosFileStream::gosFileStream( const char *FileName, gosEnum_FileWriteStatus fwstatus )
+{
+    gosASSERT(FileName);
+    gosASSERT(strlen(FileName) < MAX_PATH);
+    m_writeEnabled = fwstatus;
+    strcpy(m_Filename, FileName);
+
+    // ???
+    pNext = nullptr;
+
+    m_hFile = openStream(m_Filename, fwstatus);
+}
+
+DWORD gosFileStream::Seek( int where, gosEnum_FileSeekType seek_type)
+{
+    return seekStream(static_cast<FILE*>(m_hFile), where, seek_type);
 }
 
 DWORD gosFileStream::Read( void *buffer, DWORD length )
 {
-    gosASSERT(m_hFile);
-    size_t size = 1;
-    size_t nmemb = length;
-    size_t num_items = fread(buffer, size, nmemb, static_cast<FILE*>(m_hFile));
-    gosASSERT(num_items == nmemb); // .. can trigger if eof
-    return num_items * size;
+    return readStream(static_cast<FILE*>(m_hFile), buffer, length);
 }
 
 DWORD gosFileStream::Write( const void *buffer, DWORD length )
 {
-    gosASSERT(m_hFile);
-    size_t size = 1;
-    size_t nmemb = length;
-    size_t num_items = fwrite(buffer, size, nmemb, static_cast<FILE*>(m_hFile));
-    gosASSERT(num_items == nmemb); // .. can trigger if eof
-    return num_items * size;
+    return writeStream(static_cast<FILE*>(m_hFile), buffer, length);
 }
 
 gosFileStream::~gosFileStream()
 {
-    gosASSERT(m_hFile);
-    fclose(static_cast<FILE*>(m_hFile));
+    closeStream(static_cast<FILE*>(m_hFile));
 }
 
 // toolos.hpp
