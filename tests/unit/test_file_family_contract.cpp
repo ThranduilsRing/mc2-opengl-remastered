@@ -414,3 +414,368 @@ TEST_CASE("FileFamilyContract/ABL truncation and oversized reads never reach the
 	CHECK(logged.find("[ABL_FILE_READ_BAD]", second + 1) == std::string::npos);
 	CHECK(logged.find("[ABL_FILE_OPEN_BAD]") != std::string::npos);
 }
+
+// FC9..FC11 -- V1 resolver conformance corpus (tests/fixtures/vfs_resolution.json).
+//
+// One specification drives three harnesses: this engine ladder, the editor
+// resolver (editor/tests/test_catalog.cpp) and the static resolver
+// (tests/mod_install/test_vfs_resolution_corpus.py).  Each materializes the
+// same tree, mounts with the same config and must agree on the PROVIDER and on
+// the BYTES every request resolves to; "it exists" is not evidence.
+//
+// This arm runs the real ladder: InitModSearchPaths reads MC2_ACTIVE_MOD /
+// MC2_MOD_DEPS and the mod.json dependencies, File::open walks mod index ->
+// loose disk -> FastFileFind, and FastFileInit/FastFileFind/readFast supply
+// the archive members (decoded), so the expected bytes are what the game hands
+// a caller.  The editor arm instead reads system.cfg's FastFiles list, and the
+// python arm reads <archive>.fst.txt sidecars.
+//
+// Rows the editor resolver cannot express stay out of the shared fixture (it
+// has no numeric-size-subdir strip and no loose-over-archive step): those are
+// pinned by test_paths_mod.cpp, test_fst_roundtrip.cpp,
+// editor/tests/test_catalog.cpp and tests/mod_install/test_resolver.py.
+
+#include "doctest.h"
+
+#include "file.h"
+#include "ffile.h"
+#include "fastfile.h"
+#include "fst_hash.h"
+
+#include "../../tools/mc2_modlint/modlint_input.h"
+
+#include <zlib.h>
+
+#include <cstdio>
+#include <cstring>
+#include <filesystem>
+#include <fstream>
+#include <sstream>
+#include <string>
+#include <utility>
+#include <vector>
+
+#ifndef MC2_REPO_ROOT
+#error "MC2_REPO_ROOT must be defined by tests/unit/CMakeLists.txt"
+#endif
+
+namespace
+{
+
+namespace fs = std::filesystem;
+
+const MlJson *need (const MlJson &object, const char *key)
+{
+	const MlJson *value = object.find(key);
+	REQUIRE(value != nullptr);
+	return value;
+}
+
+void putEnv (const char *name, const std::string &value) { _putenv_s(name, value.c_str()); }
+
+// Environment restored on every exit path (the ladder reads it on each mount).
+struct EnvRestore
+{
+	const char *name;
+	std::string saved;
+	bool had;
+	explicit EnvRestore (const char *n) : name(n)
+	{
+		const char *value = getenv(n);
+		had = value != nullptr;
+		saved = had ? value : "";
+	}
+	~EnvRestore () { _putenv_s(name, had ? saved.c_str() : ""); }
+	EnvRestore (const EnvRestore &) = delete;
+	EnvRestore &operator= (const EnvRestore &) = delete;
+};
+
+struct CwdRestore
+{
+	fs::path saved;
+	CwdRestore () : saved(fs::current_path()) {}
+	~CwdRestore ()
+	{
+		std::error_code ignored;
+		fs::current_path(saved, ignored);
+	}
+	CwdRestore (const CwdRestore &) = delete;
+	CwdRestore &operator= (const CwdRestore &) = delete;
+};
+
+void writeWholeFile (const fs::path &path, const std::string &bytes)
+{
+	std::error_code ec;
+	fs::create_directories(path.parent_path(), ec);
+	std::ofstream out(path, std::ios::binary | std::ios::trunc);
+	REQUIRE(out.good());
+	out.write(bytes.data(), (std::streamsize)bytes.size());
+	REQUIRE(out.good());
+}
+
+void setWord (std::string &bytes, size_t at, unsigned value)
+{
+	for (unsigned i = 0; i < 4; ++i) bytes[at + i] = (char)(value >> (8 * i));
+}
+
+// A stock-shaped archive: zlib entries in the fixed 266-byte table (what
+// FastFile::writeFast writes with compressed=true), names stored as specified.
+void writeFst (const fs::path &path, const std::vector<std::pair<std::string, std::string>> &entries)
+{
+	std::string archive(8 + 266 * entries.size(), '\0');
+	setWord(archive, 0, FASTFILE_VERSION);
+	setWord(archive, 4, (unsigned)entries.size());
+	unsigned offset = (unsigned)archive.size();
+	for (size_t i = 0; i < entries.size(); ++i) {
+		const std::string &name = entries[i].first;
+		const std::string &plain = entries[i].second;
+		REQUIRE(name.size() < MAX_FILENAME_SIZE);
+		uLongf size = compressBound((uLong)plain.size());
+		std::string encoded(size, '\0');
+		REQUIRE(compress2((Bytef *)encoded.data(), &size, (const Bytef *)plain.data(),
+			(uLong)plain.size(), 6) == Z_OK);
+		encoded.resize(size);
+		setWord(archive, 8 + i * 266, offset);
+		setWord(archive, 8 + i * 266 + 4, (unsigned)encoded.size());
+		setWord(archive, 8 + i * 266 + 8, (unsigned)plain.size());
+		setWord(archive, 8 + i * 266 + 12, (unsigned)elfHash(name.c_str()));
+		std::memcpy(archive.data() + 8 + i * 266 + 16, name.data(), name.size());
+		archive += encoded;
+		offset += (unsigned)encoded.size();
+	}
+	writeWholeFile(path, archive);
+}
+
+// The fixture deploy, materialized under one CWD-relative scratch root: the
+// ladder opens CWD-relative names, and no tempfile directory can be populated
+// under the test sandbox.
+struct Deploy
+{
+	fs::path root;
+	std::vector<std::string> archives;
+
+	explicit Deploy (const MlJson &fixture)
+	{
+		root = fs::absolute("vfs_resolution_scratch");
+		std::error_code ec;
+		fs::remove_all(root, ec);
+		fs::create_directories(root, ec);
+		REQUIRE(!ec);
+		for (const auto &file : need(fixture, "files")->arr)
+			writeWholeFile(root / need(file, "path")->s, need(file, "bytes")->s);
+		for (const auto &archive : need(fixture, "fst_files")->arr) {
+			std::vector<std::pair<std::string, std::string>> entries;
+			for (const auto &entry : need(archive, "entries")->arr)
+				entries.emplace_back(need(entry, "name")->s, need(entry, "bytes")->s);
+			const fs::path path = root / need(archive, "path")->s;
+			writeFst(path, entries);
+			archives.push_back(path.string());
+		}
+	}
+	~Deploy ()
+	{
+		std::error_code ec;
+		fs::remove_all(root, ec);
+	}
+	Deploy (const Deploy &) = delete;
+	Deploy &operator= (const Deploy &) = delete;
+};
+
+struct FstRegistry
+{
+	explicit FstRegistry (const std::vector<std::string> &archives)
+	{
+		maxFastFiles = (long)archives.size();
+		numFastFiles = 0;
+		fastFiles = (FastFile **)std::calloc(archives.size(), sizeof(FastFile *));
+		REQUIRE(fastFiles != nullptr);
+		for (const auto &archive : archives) REQUIRE(FastFileInit(archive.c_str()));
+	}
+	~FstRegistry () { FastFileFini(); }
+	FstRegistry (const FstRegistry &) = delete;
+	FstRegistry &operator= (const FstRegistry &) = delete;
+};
+
+struct Resolved
+{
+	bool opened = false;
+	std::string bytes;
+};
+
+Resolved resolveWithLadder (const std::string &request)
+{
+	Resolved resolved;
+	File file;
+	if (file.open(request.c_str()) == NO_ERR) {
+		resolved.opened = true;
+		const unsigned long length = file.getLength();
+		resolved.bytes.assign(length, '\0');
+		if (length) REQUIRE(file.read((MemoryPtr)resolved.bytes.data(), (long)length) == (long)length);
+	}
+	file.close();
+	return resolved;
+}
+
+struct Corpus
+{
+	MlJson fixture;
+	std::string active, mods, deps;
+	std::vector<const MlJson *> rows;
+
+	explicit Corpus (const char *name)
+	{
+		std::ifstream input(fs::path(MC2_REPO_ROOT) / "tests/fixtures" / name);
+		REQUIRE(input.good());
+		std::ostringstream text;
+		text << input.rdbuf();
+		bool ok = false;
+		fixture = parseModlintJson(text.str(), &ok);
+		REQUIRE(ok);
+		const MlJson &config = *need(fixture, "config");
+		active = need(config, "active_mod")->s;
+		for (const auto &dep : need(config, "dependencies")->arr)
+			deps += (deps.empty() ? "" : ",") + dep.s;
+		for (const auto &row : need(fixture, "requests")->arr) rows.push_back(&row);
+	}
+
+	void mount (const Deploy &deploy)
+	{
+		mods = (deploy.root / "mods").string();
+		putEnv("MC2_ACTIVE_MOD", active);
+		putEnv("MC2_MOD_DEPS", deps);
+		putEnv("MC2_REBUILD_MOD_CACHE", "1");
+		InitModSearchPaths(mods.c_str());
+	}
+};
+
+// The bytes the fixture's provider path actually holds on disk.
+std::string readWholeFile (const fs::path &path)
+{
+	std::ifstream input(path, std::ios::binary);
+	REQUIRE(input.good());
+	std::ostringstream text;
+	text << input.rdbuf();
+	return text.str();
+}
+
+// Root-relative provider of a row: mods/<id>/data/... or data/... .
+std::string expectedProvider (const std::string &layer, const std::string &request)
+{
+	const std::string key = fst_normalize_loose_key(request.c_str());
+	if (layer.starts_with("mod:")) return "mods/" + layer.substr(4) + "/" + key;
+	return key;
+}
+
+} // namespace
+
+TEST_CASE("FC9 the resolver corpus hands back the provider and bytes it names")
+{
+	Corpus corpus("vfs_resolution.json");
+	Deploy deploy(corpus.fixture);
+	EnvRestore activeEnv("MC2_ACTIVE_MOD"), depsEnv("MC2_MOD_DEPS"), rebuildEnv("MC2_REBUILD_MOD_CACHE");
+	CwdRestore cwd;
+	fs::current_path(deploy.root);
+	corpus.mount(deploy);
+	FstRegistry archives(deploy.archives);   // fixture order == registration order
+
+	for (const MlJson *row : corpus.rows) {
+		const std::string request = need(*row, "req")->s;
+		const std::string layer = need(*row, "layer")->s;
+		const std::string path = need(*row, "path")->s;
+		const MlJson *bytes = row->find("bytes");
+		INFO("request " << request << " expects layer " << layer);
+
+		const Resolved resolved = resolveWithLadder(request);
+		CHECK(resolved.opened == (layer != "MISS"));
+		if (layer == "MISS") {
+			CHECK(resolved.bytes.empty());
+			CHECK(fileExists(request.c_str()) == 0);
+			continue;
+		}
+		// Every non-miss row names its content; only a miss may be null.
+		REQUIRE(bytes != nullptr);
+		REQUIRE(bytes->type == MlJson::Str);
+		// Bytes first: the ladder must hand back the content the fixture names.
+		CHECK(resolved.bytes == bytes->s);
+		CHECK(fs::path(fst_normalize_loose_key(path.c_str())).lexically_normal() ==
+			fs::path(expectedProvider(layer, request)));
+		if (layer == "fastfile") {
+			// An archive member has no disk path: its decoded bytes above are
+			// the provider check, and the probe must agree it is packed.
+			CHECK(path.empty());
+			CHECK(fileExists(request.c_str()) == FILE_ON_FST);
+			continue;
+		}
+		// Loose provider: the probe reports disk, the named file exists under
+		// the deploy root and holds exactly the bytes the ladder returned.
+		CHECK(fileExists(request.c_str()) == FILE_ON_DISK);
+		const fs::path provider = deploy.root / path;
+		CHECK(fs::exists(provider));
+		CHECK(readWholeFile(provider) == resolved.bytes);
+	}
+	putEnv("MC2_ACTIVE_MOD", "");
+	putEnv("MC2_MOD_DEPS", "");
+	InitModSearchPaths("");
+}
+
+TEST_CASE("FC10 the resolver corpus attributes each mod hit to the layer the fixture names")
+{
+	Corpus corpus("vfs_resolution.json");
+	Deploy deploy(corpus.fixture);
+	EnvRestore activeEnv("MC2_ACTIVE_MOD"), depsEnv("MC2_MOD_DEPS"), rebuildEnv("MC2_REBUILD_MOD_CACHE");
+	CwdRestore cwd;
+	fs::current_path(deploy.root);
+	corpus.mount(deploy);
+
+	for (const MlJson *row : corpus.rows) {
+		const std::string request = need(*row, "req")->s;
+		const std::string layer = need(*row, "layer")->s;
+		INFO("request " << request);
+		const char *owner = LookupModOwner(request.c_str());
+		if (layer.starts_with("mod:")) {
+			REQUIRE(owner != nullptr);
+			CHECK(std::string(owner) == layer.substr(4));
+		} else {
+			// Dot-prefixed entries and unlisted mods are never indexed.
+			CHECK(owner == nullptr);
+		}
+	}
+
+	// Stock mode: the same requests now see no mod layer at all.
+	putEnv("MC2_ACTIVE_MOD", "");
+	putEnv("MC2_MOD_DEPS", "");
+	InitModSearchPaths(corpus.mods.c_str());
+	for (const MlJson *row : corpus.rows) {
+		const std::string layer = need(*row, "layer")->s;
+		if (layer.starts_with("mod:")) CHECK(LookupModOwner(need(*row, "req")->s.c_str()) == nullptr);
+	}
+	InitModSearchPaths("");
+}
+
+TEST_CASE("FC11 the resolver corpus does not depend on request order")
+{
+	Corpus corpus("vfs_resolution.json");
+	Deploy deploy(corpus.fixture);
+	EnvRestore activeEnv("MC2_ACTIVE_MOD"), depsEnv("MC2_MOD_DEPS"), rebuildEnv("MC2_REBUILD_MOD_CACHE");
+	CwdRestore cwd;
+	fs::current_path(deploy.root);
+	corpus.mount(deploy);
+	FstRegistry archives(deploy.archives);
+
+	for (auto it = corpus.rows.rbegin(); it != corpus.rows.rend(); ++it) {
+		const std::string request = need(**it, "req")->s;
+		const std::string layer = need(**it, "layer")->s;
+		const MlJson *bytes = (*it)->find("bytes");
+		INFO("request " << request << " expects layer " << layer);
+		const Resolved resolved = resolveWithLadder(request);
+		CHECK(resolved.opened == (layer != "MISS"));
+		REQUIRE(bytes != nullptr);
+		if (layer != "MISS") {
+			REQUIRE(bytes->type == MlJson::Str);
+			CHECK(resolved.bytes == bytes->s);
+		}
+	}
+	putEnv("MC2_ACTIVE_MOD", "");
+	putEnv("MC2_MOD_DEPS", "");
+	InitModSearchPaths("");
+}

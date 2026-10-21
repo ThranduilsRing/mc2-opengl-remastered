@@ -4,6 +4,7 @@
 #include <chrono>
 #include <fstream>
 #include <iostream>
+#include <nlohmann/json.hpp>
 #include <zlib.h>
 
 using namespace editor::document;
@@ -54,6 +55,12 @@ std::string bytes(const ResolvedFile& file)
 {
     return {reinterpret_cast<const char*>(file.bytes.data()), file.bytes.size()};
 }
+std::uint32_t fstHash(std::string_view key)
+{
+    std::uint32_t hash{};
+    for (const unsigned char c : FileResolver::normalize(key)) { hash = (hash << 4) + c; const auto high = hash & 0xf0000000; if (high) hash ^= high >> 24; hash &= ~high; }
+    return hash;
+}
 std::string fst(std::string_view key, std::string_view plain, bool compress)
 {
     std::string encoded(plain);
@@ -66,9 +73,7 @@ std::string fst(std::string_view key, std::string_view plain, bool compress)
     std::string archive(274, '\0');
     word(archive, 0, 0xfaddecaf); word(archive, 4, 1);
     word(archive, 8, 274); word(archive, 12, static_cast<std::uint32_t>(encoded.size())); word(archive, 16, static_cast<std::uint32_t>(plain.size()));
-    std::uint32_t hash{};
-    for (const unsigned char c : FileResolver::normalize(key)) { hash = (hash << 4) + c; const auto high = hash & 0xf0000000; if (high) hash ^= high >> 24; hash &= ~high; }
-    word(archive, 20, hash);
+    word(archive, 20, fstHash(key));
     archive.replace(24, key.size(), key);
     return archive + encoded;
 }
@@ -301,3 +306,88 @@ TEST_CASE("catalog runtime classes cover every supported legacy placement family
     CHECK(catalog.entries()[9].family == ObjectFamily::marker);
     CHECK(catalog.navMarkerObjects() == std::vector<std::uint32_t>{8});
 }
+
+namespace {
+// V1 resolver conformance corpus: the same tests/fixtures/vfs_resolution.json
+// the engine ladder (tests/unit/test_file_family_contract.cpp) and the static
+// resolver (tests/mod_install/test_vfs_resolution_corpus.py) consume.  This arm
+// mounts the editor's FileResolver on the same tree with the same active mod and
+// ordered dependencies, then checks the PROVIDER and the BYTES of every row.
+// Rows the editor cannot express (numeric-size-subdir strip, loose-over-archive
+// precedence, shadowed-layer lists) stay out of the shared fixture; the catalog
+// tests above pin the editor's own precedence rules.
+std::filesystem::path repositoryRoot()
+{
+    return std::filesystem::path(__FILE__).parent_path().parent_path().parent_path();
+}
+std::string corpusFst(const std::vector<std::pair<std::string, std::string>>& entries)
+{
+    std::string archive(8 + 266 * entries.size(), '\0');
+    word(archive, 0, 0xcaddecaf); word(archive, 4, static_cast<std::uint32_t>(entries.size()));
+    std::uint32_t offset = static_cast<std::uint32_t>(archive.size());
+    for (std::size_t i = 0; i < entries.size(); ++i) {
+        const auto& [key, plain] = entries[i];
+        uLongf size = compressBound(static_cast<uLong>(plain.size()));
+        std::string encoded(size, '\0');
+        REQUIRE(compress2(reinterpret_cast<Bytef*>(encoded.data()), &size, reinterpret_cast<const Bytef*>(plain.data()), static_cast<uLong>(plain.size()), 6) == Z_OK);
+        encoded.resize(size);
+        const auto p = 8 + i * 266;
+        word(archive, p, offset); word(archive, p + 4, static_cast<std::uint32_t>(encoded.size()));
+        word(archive, p + 8, static_cast<std::uint32_t>(plain.size())); word(archive, p + 12, fstHash(key));
+        archive.replace(p + 16, key.size(), key);
+        archive += encoded;
+        offset += static_cast<std::uint32_t>(encoded.size());
+    }
+    return archive;
+}
+}
+
+TEST_CASE("resolver conformance corpus agrees with the engine and static resolver on provider and bytes")
+{
+    std::ifstream input(repositoryRoot() / "tests/fixtures/vfs_resolution.json");
+    REQUIRE(input.good());
+    const nlohmann::json fixture = nlohmann::json::parse(input);
+    const auto root = scratch();
+    for (const auto& file : fixture.at("files"))
+        write(root / file.at("path").get<std::string>(), file.at("bytes").get<std::string>());
+    write(root / "system.cfg", fixture.at("config").at("system_cfg").get<std::string>());
+    for (const auto& archive : fixture.at("fst_files")) {
+        std::vector<std::pair<std::string, std::string>> entries;
+        for (const auto& entry : archive.at("entries")) entries.emplace_back(entry.at("name").get<std::string>(), entry.at("bytes").get<std::string>());
+        write(root / archive.at("path").get<std::string>(), corpusFst(entries));
+    }
+
+    const auto settings = fixture.at("config");
+    auto resolver = FileResolver::mount({root, root / "mods", settings.at("active_mod").get<std::string>(),
+        settings.at("dependencies").get<std::vector<std::string>>()});
+    REQUIRE(resolver);
+    CHECK((resolver->config().dependencies == std::vector<std::string>{"first", "second"}));
+
+    for (const auto& row : fixture.at("requests")) {
+        const auto request = row.at("req").get<std::string>();
+        const auto layer = row.at("layer").get<std::string>();
+        INFO("request " << request << " expects layer " << layer);
+        const auto file = resolver->read(request);
+        if (layer == "MISS") { CHECK_FALSE(file); continue; }
+        REQUIRE(file);
+        CHECK(file->layer == layer);
+        CHECK(file->key == FileResolver::normalize(request));
+        if (row.at("bytes").is_null()) {
+            CHECK(file->bytes.empty());
+        } else {
+            CHECK(bytes(*file) == row.at("bytes").get<std::string>());
+        }
+        if (layer == "fastfile") {
+            // An archive member is provided by the archive itself: the fixture
+            // names no loose path, and the source must be one of the listed FSTs.
+            CHECK(row.at("path").get<std::string>().empty());
+            CHECK((file->source.filename() == settings.at("fst")[0].get<std::string>() ||
+                   file->source.filename() == settings.at("fst")[1].get<std::string>()));
+            continue;
+        }
+        const auto provider = FileResolver::normalize(std::filesystem::relative(file->source, root).generic_string());
+        CHECK(provider == row.at("path").get<std::string>());
+        CHECK(std::filesystem::exists(root / row.at("path").get<std::string>()));
+    }
+}
+

@@ -47,6 +47,9 @@ Config dict keys (passed to resolve() / load_config()):
   game_dir   str   Deploy root (CWD the engine runs from).  Required.
   mods_root  str   Path to mods/ folder.  Default: game_dir/mods.
   active_mod str   MC2_ACTIVE_MOD value.  None -> base-game mode (no mod layer).
+  dependencies list MC2_MOD_DEPS layers (launcher compatibility selection), appended
+                   after the active mod.json dependencies, de-duplicated.  Default:
+                   read MC2_MOD_DEPS from the environment (load_config only).
   fst_files  list  Paths to .fst listing files.  Default: auto-discover game_dir/*.fst.
 
 Python 3 stdlib only.  No engine edits, no run_smoke/gates.py edits.
@@ -269,10 +272,13 @@ class ResolverConfig:
         mods_root: Optional[str] = None,
         active_mod: Optional[str] = None,
         fst_files: Optional[List[str]] = None,
+        dependencies: Optional[List[str]] = None,
     ) -> None:
         self.game_dir = game_dir.replace("\\", "/").rstrip("/")
         self.mods_root = (mods_root or os.path.join(game_dir, "mods")).replace("\\", "/")
         self.active_mod = active_mod  # None = base-game mode
+        # Additional layers (MC2_MOD_DEPS), already in highest-priority-first order.
+        self.dependencies: List[str] = list(dependencies or [])
 
         # mod_index: normalized_key -> (abs_path, mod_id)
         # shadowed:  normalized_key -> [mod_ids that lost]
@@ -299,6 +305,11 @@ class ResolverConfig:
         json_path = f"{mod_dir}/mod.json"
 
         mod_id_from_json, _, deps = _read_mod_json(json_path)
+        # MC2_MOD_DEPS (file_mod.inc InitModSearchPaths) is appended after the
+        # mod.json dependencies, highest priority first, de-duplicated.
+        for dep_id in self.dependencies:
+            if dep_id not in deps:
+                deps.append(dep_id)
         # If mod.json missing or id field empty, fall back to folder name (file.cpp:516-521)
         effective_id = mod_id_from_json if mod_id_from_json else self.active_mod
 
@@ -312,23 +323,42 @@ class ResolverConfig:
             _index_mod_layer(self.mod_index, self.shadowed, dep_data, dep_id)
 
 
+def parse_mod_deps(value: Optional[str]) -> List[str]:
+    """
+    Mirrors the MC2_MOD_DEPS parser in InitModSearchPaths (file_mod.inc):
+    comma/semicolon separated, surrounding spaces/tabs trimmed, empty entries
+    dropped, later duplicates ignored.  Order is highest priority first.
+    """
+    deps: List[str] = []
+    for piece in re.split(r"[,;]", value or ""):
+        dep = piece.strip(" \t")
+        if dep and dep not in deps:
+            deps.append(dep)
+    return deps
+
+
 def load_config(
     game_dir: str,
     mods_root: Optional[str] = None,
     active_mod: Optional[str] = None,
     fst_files: Optional[List[str]] = None,
+    dependencies: Optional[List[str]] = None,
 ) -> ResolverConfig:
     """
     Build a ResolverConfig from explicit parameters.
-    If active_mod is None, reads MC2_ACTIVE_MOD from the environment.
+    If active_mod is None, reads MC2_ACTIVE_MOD from the environment; if
+    dependencies is None, reads MC2_MOD_DEPS.
     """
     if active_mod is None:
         active_mod = os.environ.get("MC2_ACTIVE_MOD") or None
+    if dependencies is None:
+        dependencies = parse_mod_deps(os.environ.get("MC2_MOD_DEPS"))
     return ResolverConfig(
         game_dir=game_dir,
         mods_root=mods_root,
         active_mod=active_mod,
         fst_files=fst_files,
+        dependencies=dependencies,
     )
 
 

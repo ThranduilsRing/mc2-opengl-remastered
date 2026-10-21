@@ -1,0 +1,71 @@
+{
+  "_comment": "V1 resolver conformance corpus: ONE specification for three harnesses -- tools/mod_install/resolver.py (static), tests/unit/test_file_family_contract.cpp (engine File::open ladder) and editor/tests/test_catalog.cpp (editor FileResolver). Each harness materializes `files` into an empty deploy root, writes `fst_files` as raw binary FastFile archives (registered in that order; the editor arm takes the order from `config.system_cfg`), mounts with `config`, then resolves every `requests` row. `data/art/dep-order.tga` exists in both dependencies so its winner proves dep[0] > dep[1] (ordered dependencies), and `fst-shared.tga` exists in both archives so its winner proves FastFile registration order. Fields each harness must match: `layer` and provider bytes for all three; `path` (root-relative, forward slashes, lowercase, empty for archive members and misses) for the python and editor harnesses; `shadowed` for the python harness (the only one that exposes the losing layers). Bytes are compared, not mere existence.",
+  "source_commit": "a8fda9533",
+  "scope": "Mod roots are mods/<id>/data. Dependencies are mod.json order then config.dependencies (de-duplicated). FastFiles are tried in registration order (first match wins). A loose file (mod or base) beats an archive member. Dot-prefixed entries anywhere under a mod's data/ are never indexed.",
+  "config": {
+    "active_mod": "active",
+    "dependencies": ["first", "second"],
+    "fst": ["first.fst", "second.fst"],
+    "system_cfg": "FITini\n[FastFiles]\nl NumFastFiles = 2\nst File0 = \"first.fst\"\nst File1 = \"second.fst\"\nFITend\n"
+  },
+  "files": [
+    {"path": "mods/active/mod.json", "bytes": "{\"id\":\"active\",\"dependencies\":[\"first\"]}\n"},
+    {"path": "mods/active/data/art/shared.tga", "bytes": "active-mod"},
+    {"path": "mods/active/data/art/active-only.tga", "bytes": "active-only"},
+    {"path": "mods/active/data/art/dup.tga", "bytes": "active-dup"},
+    {"path": "mods/active/data/ART/Buildings.csv", "bytes": "active-buildings"},
+    {"path": "mods/active/data/Packed/Mod.TGA", "bytes": "Mod-Packed"},
+    {"path": "mods/active/data/.hidden/secret.tga", "bytes": "active-hidden"},
+    {"path": "mods/active/data/art/.dotfile.tga", "bytes": "active-dotfile"},
+    {"path": "mods/active/.scratch/data/art/scratch.tga", "bytes": "active-scratch"},
+    {"path": "mods/first/data/art/shared.tga", "bytes": "first-mod"},
+    {"path": "mods/first/data/art/dup.tga", "bytes": "first-dup"},
+    {"path": "mods/first/data/art/first-only.tga", "bytes": "first-only"},
+    {"path": "mods/first/data/art/dep-order.tga", "bytes": "first-dep-order"},
+    {"path": "mods/first/data/art/.hidden-first.tga", "bytes": "first-dotfile"},
+    {"path": "mods/first/data/art/.dotdir/first.tga", "bytes": "first-dotdir"},
+    {"path": "mods/second/data/art/shared.tga", "bytes": "second-mod"},
+    {"path": "mods/second/data/art/dup.tga", "bytes": "second-dup"},
+    {"path": "mods/second/data/art/second-only.tga", "bytes": "second-only"},
+    {"path": "mods/second/data/art/dep-order.tga", "bytes": "second-dep-order"},
+    {"path": "mods/unlisted/data/art/unlisted.tga", "bytes": "unlisted-mod"},
+    {"path": "data/art/base-only.tga", "bytes": "base-only"},
+    {"path": "data/art/shared.tga", "bytes": "base-shared"},
+    {"path": "Data/Packed/LOOSE.TGA", "bytes": "Base-Packed-Loose"}
+  ],
+  "fst_files": [
+    {"path": "first.fst", "entries": [
+      {"name": "data/art/fst-only.tga", "bytes": "first-fst"},
+      {"name": "data/art/fst-shared.tga", "bytes": "First-FST-Shared"},
+      {"name": "data/art/fst-loose.tga", "bytes": "first-fst-loose"}
+    ]},
+    {"path": "second.fst", "entries": [
+      {"name": "data/art/fst-second.tga", "bytes": "second-fst"},
+      {"name": "data/art/fst-shared.tga", "bytes": "second-fst-shared"},
+      {"name": "data/art/fst-loose.tga", "bytes": "second-fst-loose"}
+    ]}
+  ],
+  "requests": [
+    {"req": "data/art/shared.tga", "layer": "mod:active", "path": "mods/active/data/art/shared.tga", "bytes": "active-mod", "shadowed": ["mod:first", "mod:second", "base-loose"]},
+    {"req": "DATA\\ART\\Shared.TGA", "layer": "mod:active", "path": "mods/active/data/art/shared.tga", "bytes": "active-mod", "shadowed": ["mod:first", "mod:second", "base-loose"]},
+    {"req": "data/art/active-only.tga", "layer": "mod:active", "path": "mods/active/data/art/active-only.tga", "bytes": "active-only", "shadowed": []},
+    {"req": "data/art/dup.tga", "layer": "mod:active", "path": "mods/active/data/art/dup.tga", "bytes": "active-dup", "shadowed": ["mod:first", "mod:second"]},
+    {"req": "data/ART/Buildings.csv", "layer": "mod:active", "path": "mods/active/data/art/buildings.csv", "bytes": "active-buildings", "shadowed": []},
+    {"req": "data/packed/mod.tga", "layer": "mod:active", "path": "mods/active/data/packed/mod.tga", "bytes": "Mod-Packed", "shadowed": []},
+    {"req": "data/art/first-only.tga", "layer": "mod:first", "path": "mods/first/data/art/first-only.tga", "bytes": "first-only", "shadowed": []},
+    {"req": "data/art/dep-order.tga", "layer": "mod:first", "path": "mods/first/data/art/dep-order.tga", "bytes": "first-dep-order", "shadowed": ["mod:second"]},
+    {"req": "data/art/second-only.tga", "layer": "mod:second", "path": "mods/second/data/art/second-only.tga", "bytes": "second-only", "shadowed": []},
+    {"req": "data/art/unlisted.tga", "layer": "MISS", "path": "", "bytes": null, "shadowed": []},
+    {"req": "data/art/.dotfile.tga", "layer": "MISS", "path": "", "bytes": null, "shadowed": []},
+    {"req": "data/art/scratch.tga", "layer": "MISS", "path": "", "bytes": null, "shadowed": []},
+    {"req": "data/art/.hidden-first.tga", "layer": "MISS", "path": "", "bytes": null, "shadowed": []},
+    {"req": "data/art/.dotdir/first.tga", "layer": "MISS", "path": "", "bytes": null, "shadowed": []},
+    {"req": "data/.hidden/secret.tga", "layer": "MISS", "path": "", "bytes": null, "shadowed": []},
+    {"req": "data/art/base-only.tga", "layer": "base-loose", "path": "data/art/base-only.tga", "bytes": "base-only", "shadowed": []},
+    {"req": "DATA\\Packed\\Loose.TGA", "layer": "base-loose", "path": "data/packed/loose.tga", "bytes": "Base-Packed-Loose", "shadowed": []},
+    {"req": "data/art/fst-only.tga", "layer": "fastfile", "path": "", "bytes": "first-fst", "shadowed": []},
+    {"req": "data/art/fst-second.tga", "layer": "fastfile", "path": "", "bytes": "second-fst", "shadowed": []},
+    {"req": "data/art/fst-shared.tga", "layer": "fastfile", "path": "", "bytes": "First-FST-Shared", "shadowed": []},
+    {"req": "data/art/no-such-file.tga", "layer": "MISS", "path": "", "bytes": null, "shadowed": []}
+  ]
+}
