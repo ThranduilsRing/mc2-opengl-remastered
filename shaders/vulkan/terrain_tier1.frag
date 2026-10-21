@@ -8,8 +8,8 @@
 //                        samples the REAL colormap atlas (VK-owned copy-once import
 //                        of the GL g_atlasGLTex; see vulkan_terrain_island.cpp) at
 //                        the SAME world-XY -> atlas-UV as the GL LOD-chunk frag
-//                        (terrain_lod_chunk.frag:462-482), including the 9-tap disc
-//                        blur, so the VK terrain BASE color matches GL's colormap.
+//                        (terrain_lod_chunk.frag:462-482). The shared surface cook
+//                        supplies the filtered macro color and coast correction.
 //                        cement/road/overlay-sidecar/detail/POM/lighting are STILL
 //                        DEFERRED (later sub-slices). Fail-soft: if the colormap is
 //                        not importable/ready (uT.colormapReady==0) fall back to the
@@ -38,60 +38,13 @@
 #include "include/terrain_frame_vk.glsl"   // TerrainFrameUBO + set-0 resources + CSM shadow helpers
 #include "../include/axis.hglsl"   // mc2ToRender: the POM view vector is built in the MC2 world frame
 #include "../include/edge_haze.hglsl"   // edgeHazeAmount + EDGE_HAZE_SKY, shared with GL
-#include "../include/water_shore_edge.hglsl"   // SHORE-FIELD-1: wse_bicubicHeight (the water's shore field reconstruction)
-
-// SHORE-FIELD-1 (owner: "colormap tint for now"): binding 15 is the water's smooth shore field. Inside the coastal
-// band the stock colormap's water paint (teal staircase corners baked from the coarse 128 wu grid) is made to follow
-// the smoothed coast: where the field says land but the colormap texel is painted as water, the colour is taken from
-// the land side (re-sampled uphill along the field gradient); where the field says shallow water but the texel is
-// painted as land, from the water side. Heights and the mesh are untouched.
-layout(set = 0, binding = 15) uniform sampler2D u_shoreField;
-
-vec3 sfColormapAt(vec2 worldXY) {
-    vec2 uv = vec2((worldXY.x - uT.atlasTopLeftX) * uT.atlasOneOverWorldUnits,
-                   (uT.atlasTopLeftY - worldXY.y) * uT.atlasOneOverWorldUnits);
-    return textureLod(u_colormap, uv, 0.0).rgb;
-}
-float sfWaterPaint(vec3 c) { return smoothstep(0.0, 0.08, min(c.g, c.b) - c.r); }   // same test as the material weights
-
-vec3 sfFollowCoast(vec3 base, vec3 wp) {
-    vec2 hn = vec2((wp.x - uT.shoreFieldBoundsX) / max(uT.shoreFieldBoundsW, 1e-5),
-                   (uT.shoreFieldBoundsY - wp.y) / max(uT.shoreFieldBoundsH, 1e-5));
-    if (any(lessThan(hn, vec2(0.0))) || any(greaterThan(hn, vec2(1.0)))) return base;
-    float thick = uT.shorelineWaterElev - wse_bicubicHeight(u_shoreField, hn);   // > 0: the field says water
-    const float kBandWu = 24.0;   // depth/height band around the waterline the colour follow acts in
-    if (abs(thick) > kBandWu) return base;
-    float paint = sfWaterPaint(base);
-    bool fieldWater = thick > 0.0;
-    float want = fieldWater ? 1.0 - paint : paint;   // how wrong the painted side is
-    if (want < 0.02) return base;
-    // Uphill direction of the field in world XY (texel-step central differences; hn.y runs north->south).
-    vec2 e = 1.0 / vec2(textureSize(u_shoreField, 0) - ivec2(1));
-    float gx = wse_bicubicHeight(u_shoreField, hn + vec2(e.x, 0.0)) - wse_bicubicHeight(u_shoreField, hn - vec2(e.x, 0.0));
-    float gy = wse_bicubicHeight(u_shoreField, hn - vec2(0.0, e.y)) - wse_bicubicHeight(u_shoreField, hn + vec2(0.0, e.y));
-    vec2 dir = vec2(gx, gy);
-    if (dot(dir, dir) < 1e-10) return base;
-    dir = normalize(dir) * (fieldWater ? -1.0 : 1.0);   // land: step uphill; water: step downhill
-    vec3 found = base;
-    for (int k = 1; k <= 4; ++k) {
-        vec3 c = sfColormapAt(wp.xy + dir * (40.0 * float(k)));
-        float p = sfWaterPaint(c);
-        if (fieldWater ? (p > 0.5) : (p < 0.5)) { found = c; break; }
-    }
-    return mix(base, found, want);
-}
 
 layout(location = 0) in vec3 v_worldPos;
 
 layout(location = 0) out vec4 fragColor;   // MRT0 color
 layout(location = 1) out vec4 GBuffer1;    // MRT1 normal + shadow class
 
-// VK-TERRAIN-DETAIL: the height SSBO (VK-owned snapshot; same buffer the VS reads at
-// binding 1). The FS reads it to reproduce GL's smoothTerrainNormal() macro slope
-// (terrain_lod_chunk.frag:152-173). Bilinear central difference -> +Z-up world normal.
-layout(set = 0, binding = 1, std430) readonly buffer TerrainHeightBufFS {
-    float heightsFS[];
-} uHF;
+layout(set = 0, binding = 16) uniform sampler2D u_macroGradient;
 // VK-TERRAIN-DETAIL: the material tangent-space detail-normal array (VK copy-once
 // import of GL terrain_normal_array_tex_, a 9-layer RGBA8 GL_TEXTURE_2D_ARRAY,
 // GL_REPEAT). Layers per include/terrain_mat_layers.hglsl. Dummy 1x1 until imported
@@ -117,29 +70,12 @@ const vec4  MATV_CLASS_GRASS  = vec4(-0.02, 0.06, 0.22, 0.40); // gMinusR lo/hi,
 const vec4  MATV_CLASS_DIRT   = vec4(-0.02, 0.06, 0.22, 0.45); // rMinusG lo/hi, rBright lo/hi
 const float MATV_WU_PER_TILE  = 768.0;  // MAT_WORLD_UNITS_PER_TILE (terrain_lod_chunk.frag:240)
 
-// --- GL smoothTerrainNormal port (terrain_lod_chunk.frag:145-173). ----------
-float mv_heightAtCell(int cx, int cy) {
-    cx = clamp(cx, 0, uT.mapSide - 1);
-    cy = clamp(cy, 0, uT.mapSide - 1);
-    return uHF.heightsFS[cx + cy * uT.mapSide];
-}
-float mv_heightBilinear(float fx, float fy) {
-    int   x0 = int(floor(fx)), y0 = int(floor(fy));
-    float tx = fx - float(x0), ty = fy - float(y0);
-    float h00 = mv_heightAtCell(x0,     y0);
-    float h10 = mv_heightAtCell(x0 + 1, y0);
-    float h01 = mv_heightAtCell(x0,     y0 + 1);
-    float h11 = mv_heightAtCell(x0 + 1, y0 + 1);
-    return mix(mix(h00, h10, tx), mix(h01, h11, tx), ty);
-}
+// Central difference commutes with bilinear interpolation; normalize after filtering.
+// Call at the point of use: hoisting the result to the top of main() kept it live across the whole shader and cost ~15% at 4K.
 vec3 mv_smoothTerrainNormal(vec2 worldXY) {
-    float colF = (worldXY.x + uT.halfMap) / 128.0;
-    float rowF = (uT.halfMap - worldXY.y) / 128.0;
-    float span = 2.0 * 128.0;
-    float dhdx   = (mv_heightBilinear(colF + 1.0, rowF) - mv_heightBilinear(colF - 1.0, rowF)) / span;
-    float dhdrow = (mv_heightBilinear(colF, rowF + 1.0) - mv_heightBilinear(colF, rowF - 1.0)) / span;
-    float dhdy   = -dhdrow;
-    return normalize(vec3(-dhdx, -dhdy, 1.0));
+    vec2 cell = vec2(worldXY.x + uT.halfMap, uT.halfMap - worldXY.y) / 128.0;
+    vec2 gradient = textureLod(u_macroGradient, (cell + 1.5) / float(uT.mapSide + 2), 0.0).rg;
+    return normalize(vec3(gradient, 1.0));
 }
 
 // --- GL colormap material classifier (terrain_lod_chunk.frag chunkColorWeights +
@@ -439,6 +375,7 @@ void main() {
     vec2 detailUv = v_worldPos.xy * (uT.detailTiling / MATV_WU_PER_TILE);
     vec2 detailUvDx = dFdx(detailUv), detailUvDy = dFdy(detailUv);
     vec3 base;
+    float cookedBreakup = 0.5;
     // VK-TERRAIN-LIGHTING: track whether this fragment resolved to a solid cement slab.
     // GL treats pure concrete as a flat-lit slab (no NdotL relief) and drops the STATIC
     // self-shadow on it (terrain_lod_chunk.frag:894 + :902-907). We mirror that: on a
@@ -447,24 +384,12 @@ void main() {
     bool pureConcrete = false;
     bool cementHit = false;   // a solid cement atlas texel won (the shoreline wet band skips it, as GL)
     if (uT.colormapReady != 0) {
-        // Mirror terrain_lod_chunk.frag:466-482 EXACTLY (world-XY -> atlas-UV, then
-        // the 9-tap disc blur) so the VK base color matches GL's colormap sample.
-        vec2 uv;
-        uv.x = (v_worldPos.x - uT.atlasTopLeftX) * uT.atlasOneOverWorldUnits;
-        uv.y = (uT.atlasTopLeftY - v_worldPos.y) * uT.atlasOneOverWorldUnits;
-        const float CMAP_BLUR = 0.0020;
-        const float CMAP_R2   = CMAP_BLUR * 0.707;
-        base = texture(u_colormap, uv).rgb
-             + texture(u_colormap, uv + vec2( CMAP_BLUR, 0.0)).rgb
-             + texture(u_colormap, uv + vec2(-CMAP_BLUR, 0.0)).rgb
-             + texture(u_colormap, uv + vec2(0.0,  CMAP_BLUR)).rgb
-             + texture(u_colormap, uv + vec2(0.0, -CMAP_BLUR)).rgb
-             + texture(u_colormap, uv + vec2( CMAP_R2,  CMAP_R2)).rgb
-             + texture(u_colormap, uv + vec2(-CMAP_R2,  CMAP_R2)).rgb
-             + texture(u_colormap, uv + vec2( CMAP_R2, -CMAP_R2)).rgb
-             + texture(u_colormap, uv + vec2(-CMAP_R2, -CMAP_R2)).rgb;
-        base /= 9.0;
-        if (uT.shoreFieldOn != 0 && uT.shoreFieldIsSdf != 0) base = sfFollowCoast(base, v_worldPos);   // SHORE-FIELD-1
+        // The shared cook already applied the original nine-tap blur and coast-color repair.
+        vec2 uv = vec2((v_worldPos.x - uT.atlasTopLeftX) * uT.atlasOneOverWorldUnits,
+                       (uT.atlasTopLeftY - v_worldPos.y) * uT.atlasOneOverWorldUnits);
+        vec4 macro = textureLod(u_colormap, uv, 0.0);
+        base = macro.rgb;
+        cookedBreakup = macro.a;
     } else {
         // Fail-soft olive placeholder (colormap not importable/ready this frame).
         float hMod = clamp(v_worldPos.z / 512.0 + 0.5, 0.35, 1.0);
@@ -657,9 +582,13 @@ void main() {
             baseColor = mix(baseColor, cliffColor, cliffBlend * 0.7 * (1.0 - F3pc));
         }
         // World-space two-octave break-up noise (non-snow, non-concrete).
-        float lowFreq  = fbm(v_worldPos.xy * 0.0035, 3) * 0.5 + 0.5;
-        float highFreq = fbm(v_worldPos.xy * 0.018,  2) * 0.5 + 0.5;
-        float breakup  = mix(0.78, 1.18, mix(lowFreq, highFreq, 0.55));
+        float noiseBlend = cookedBreakup;
+        if (uT.colormapReady < 2) {
+            float lowFreq = fbm(v_worldPos.xy * 0.0035, 3) * 0.5 + 0.5;
+            float highFreq = fbm(v_worldPos.xy * 0.018, 2) * 0.5 + 0.5;
+            noiseBlend = mix(lowFreq, highFreq, 0.55);
+        }
+        float breakup = mix(0.78, 1.18, noiseBlend);
         baseColor *= mix(1.0, breakup, (1.0 - f3Snow) * (1.0 - F3pc));
         baseColor *= mix(1.0, uT.snowBrightnessDampen, f3Snow);
     }
@@ -677,7 +606,7 @@ void main() {
         vec3 N = vec3(0.0, 0.0, 1.0);                            // flat-up terrain normal (default)
         vec3 dbgBaseN = vec3(0.0, 0.0, 1.0); vec3 dbgDN = vec3(0.0);  // CSM-BLACKOUT-RECON-1 taps
         if (uT.detailEnabled != 0 && !pureConcrete) {
-            vec3 baseN = mv_smoothTerrainNormal(v_worldPos.xy);  // macro slope (height SSBO)
+            vec3 baseN = mv_smoothTerrainNormal(v_worldPos.xy);
             vec3 dN    = vec3(0.0);
             if (uT.detailReady != 0 && uT.detailStrength != 0.0) {
                 vec4  matW; float snowW;

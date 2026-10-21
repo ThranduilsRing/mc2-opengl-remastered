@@ -161,4 +161,22 @@ bool TerrainFieldStore::setColormapAtlas(std::span<const uint8_t> bytes, int wid
     return true;
 }
 
+bool TerrainFieldStore::setSurfaceAsset(SurfaceAsset asset, uint64_t expectedSource) {
+    if (!validSurfaceAsset(asset, expectedSource)) return false;
+    surfaceAsset_ = std::move(asset);
+    surfaceVersion_ = nextVersion();
+    return true;
+}
+
+bool TerrainFieldStore::loadSurfaceAsset(std::span<const uint8_t> bytes, uint64_t expectedSource) {
+    auto candidate = decodeSurfaceAsset(bytes, expectedSource);
+    if (!candidate) return false;
+    return setSurfaceAsset(std::move(*candidate), expectedSource);
+}
+
+void TerrainFieldStore::clearSurfaceAsset() {
+    surfaceAsset_ = {};
+    surfaceVersion_ = nextVersion();
+}
+
 }  // namespace mc2terrain

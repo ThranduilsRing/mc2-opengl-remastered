@@ -175,7 +175,7 @@ void write_descriptors(TerrainIsland* s, int parity) {
     }
     for (VkBuffer& b : s->ringBound[i]) b = VK_NULL_HANDLE;
     VkDescriptorBufferInfo hInfo{ s->heightBuf.get(), 0, VK_WHOLE_SIZE };
-    VkWriteDescriptorSet w[16]{};
+    VkWriteDescriptorSet w[17]{};
     uint32_t n = 0;
     w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = s->set[i];
     w[n].dstBinding = 1; w[n].descriptorCount = 1;
@@ -293,6 +293,10 @@ void write_descriptors(TerrainIsland* s, int parity) {
         w[n].dstBinding = 15; w[n].descriptorCount = 1;
         w[n].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; w[n].pImageInfo = &sfInfo; ++n;
     }
+    const VkDescriptorImageInfo gradientInfo{s->colormapSamp.get(), s->macroGradientTexture.view(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
+    w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = s->set[i];
+    w[n].dstBinding = 16; w[n].descriptorCount = 1;
+    w[n].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; w[n].pImageInfo = &gradientInfo; ++n;
     vkUpdateDescriptorSets(s->device, n, w, 0, nullptr);
     }   // per-parity set loop
 }
@@ -491,6 +495,10 @@ bool init_island(TerrainIsland* s, int w, int h) {
     // Bind a 1x1 dummy colormap so binding 2 is a valid descriptor from frame 1
     // (colormapReady stays false until the real atlas imports -> FS uses olive).
     if (!ensure_dummy_colormap(s)) { setFallback("colormap_dummy_failed"); return false; }
+    const float flatGradient[2] = {0, 0};
+    if (!upload_sampled_image(s, s->macroGradientTexture, VK_FORMAT_R32G32_SFLOAT, 1, 1, flatGradient, sizeof(flatGradient))) {
+        setFallback("macro_gradient_dummy_failed"); return false;
+    }
     // CEMENT: dummy cement atlas (binding 3) + dummy cement-word SSBO (binding 4) so both
     // are valid descriptors from frame 1 (useCement stays 0 until the real atlas+words
     // are ready -> FS ignores the cement branch -> colormap base, no hole).
@@ -528,7 +536,7 @@ bool init_island(TerrainIsland* s, int w, int h) {
 
     // ---- Descriptor layout: binding0 dynamic UBO (VS+FS), binding1 height SSBO (VS). ----
     {
-        VkDescriptorSetLayoutBinding b[16]{};
+        VkDescriptorSetLayoutBinding b[17]{};
         b[0].binding = 0; b[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
         b[0].descriptorCount = 1; b[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
         // VK-TERRAIN-DETAIL: binding 1 (height SSBO) is now ALSO read by the FS
@@ -574,9 +582,11 @@ bool init_island(TerrainIsland* s, int w, int h) {
         // SHORE-FIELD-1: binding 15 = water shore field sampler2D (FS, texelFetch only).
         b[15].binding = 15; b[15].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         b[15].descriptorCount = 1; b[15].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+        b[16].binding = 16; b[16].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        b[16].descriptorCount = 1; b[16].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
         VkDescriptorSetLayoutCreateInfo lci{};
         lci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-        lci.bindingCount = 16; lci.pBindings = b;
+        lci.bindingCount = 17; lci.pBindings = b;
         if (!mc2vk::create(s->dsl, s->device, [&](auto* h) { return vkCreateDescriptorSetLayout(s->device, &lci, nullptr, h); })) {
             vlog("vkCreateDescriptorSetLayout failed."); return false;
         }
@@ -586,7 +596,7 @@ bool init_island(TerrainIsland* s, int w, int h) {
         sizes[1].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;          sizes[1].descriptorCount = 6;  // (height + cement + visual-height) x2
         // Image samplers per set: colormap, cement, static shadow, matNormalArray, dyn shadow, csm array, csm full map,
         // shoreline mask, shore field; two sets.
-        sizes[2].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;  sizes[2].descriptorCount = 18;
+        sizes[2].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;  sizes[2].descriptorCount = 20;
         sizes[3].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;  sizes[3].descriptorCount = 6;  // light pool + grid header + grid indices, x2
         VkDescriptorPoolCreateInfo pci{};
         pci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;

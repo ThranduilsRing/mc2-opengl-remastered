@@ -4,6 +4,8 @@
 #include "vk_one_shot.h"
 #include "texture_decode.h"
 #include "terrain_field_store.h"
+#include "terrain_surface_cook.h"
+#include "../../3rdparty/glm/glm/gtc/packing.hpp"
 
 // The field store names the atlas format with its own constants (its header stays free of the decoder); they are the same VkFormat numbers.
 static_assert(mc2terrain::ColormapAtlas::kRgba8 == mc2tex::kVkFormatRgba8Unorm && mc2terrain::ColormapAtlas::kBc7Unorm == mc2tex::kVkFormatBc7Unorm
@@ -19,12 +21,19 @@ namespace vk_terrain_detail {
 bool snapshot_height(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
     if (feed.heightVersion == s->heightVersionCopied) return true; // unchanged
     if (!feed.heightCpu || feed.heightBytes == 0) return false;
+    const auto gradients = mc2terrain::cookSurfaceGradients(
+        {feed.heightCpu, size_t(feed.heightBytes) / sizeof(float)}, uint32_t(feed.mapSide));
+    if (!gradients) return false;
     if (!ensure_height_capacity(s, static_cast<VkDeviceSize>(feed.heightBytes))) return false;
     // VK-TERRAIN-FENCE-DEFER-1: the height SSBO stays single-instance (version-gated
     // rare rewrite: mission load / crater deform). Under the deferred retire a prior
     // terrain submit may still be reading it — device-idle before rewriting in place.
     // (The old inline post-submit fence wait used to provide this guarantee for free.)
     mc2vk::getOrCreateEngineVulkanContext().waitIdle("terrain_height_snapshot");
+    if (!create_colormap_sampler(s) || !upload_sampled_image(s, s->macroGradientTexture,
+            VK_FORMAT_R32G32_SFLOAT, gradients->side, gradients->side, gradients->texels.data(),
+            gradients->texels.size() * sizeof(gradients->texels[0]))) return false;
+    write_descriptors(s);
     void* p = nullptr;
     if (vmaMapMemory(s->allocator, s->heightBuf.allocation(), &p) != VK_SUCCESS) return false;
     std::memcpy(p, feed.heightCpu, static_cast<size_t>(feed.heightBytes));
@@ -109,7 +118,65 @@ bool ensure_dummy_colormap(TerrainIsland* s) {
 // bound (colormapReady=false) so the FS falls back to olive.
 void import_colormap(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
     if (!feed.colormapBytes || feed.colormapVersion == 0) return;                          // atlas not built yet -> stay olive
-    if (feed.colormapVersion == s->colormapVersionImported && s->colormapReady) return;     // already imported
+    const std::array<float, 9> params = {feed.atlasTopLeftX, feed.atlasTopLeftY, feed.atlasOneOverWorldUnits,
+        feed.shoreFieldBounds[0], feed.shoreFieldBounds[1], feed.shoreFieldBounds[2], feed.shoreFieldBounds[3],
+        feed.shorelineWaterElev, float(feed.shoreFieldIsSdf != 0 && feed.shoreFieldTexels != nullptr)};
+    if (feed.colormapVersion == s->colormapVersionImported && s->colormapReady &&
+        feed.shoreFieldVersion == s->colormapShoreVersionImported && params == s->colormapCookParams) return;
+    s->colormapReady = false; // a failed mission replacement must never reuse the previous mission's color
+    s->colormapBreakup = false;
+
+    // Consume exactly the atlas selected by the existing stock/mod import path. The cache is optional;
+    // missing/stale cooks regenerate from these same bytes, including BC7's original sampling space.
+    if (auto* fields = gos_TerrainFieldStore(); fields && fields->colormapAtlas().version == feed.colormapVersion) {
+        const auto& atlas = fields->colormapAtlas();
+        std::vector<uint8_t> decoded;
+        std::span<const uint8_t> rgba = atlas.bytes;
+        if (atlas.vkFormat == mc2terrain::ColormapAtlas::kBc7Unorm || atlas.vkFormat == mc2terrain::ColormapAtlas::kBc7Srgb) {
+            decoded = mc2tex::decodeBc7(atlas.bytes, uint32_t(atlas.width), uint32_t(atlas.height));
+            rgba = decoded;
+        }
+        mc2terrain::SurfaceCookInput input;
+        input.rgba = rgba; input.srgb = atlas.vkFormat == mc2terrain::ColormapAtlas::kBc7Srgb;
+        input.colorWidth = uint32_t(atlas.width); input.colorHeight = uint32_t(atlas.height);
+        input.topLeftX = feed.atlasTopLeftX; input.topLeftY = feed.atlasTopLeftY;
+        input.worldSpan = feed.atlasOneOverWorldUnits > 0 ? 1.0f / feed.atlasOneOverWorldUnits : 0;
+        input.outputWidth = std::min(input.colorWidth * 2, mc2terrain::SurfaceAsset::kMaxSide);
+        input.outputHeight = std::min(input.colorHeight * 2, mc2terrain::SurfaceAsset::kMaxSide);
+        input.followCoast = params[8] != 0 && feed.shoreFieldW > 1 && feed.shoreFieldH > 1;
+        if (input.followCoast) {
+            input.shore = {feed.shoreFieldTexels, size_t(feed.shoreFieldW) * size_t(feed.shoreFieldH)};
+            input.shoreWidth = uint32_t(feed.shoreFieldW); input.shoreHeight = uint32_t(feed.shoreFieldH);
+            std::copy(feed.shoreFieldBounds, feed.shoreFieldBounds + 4, input.shoreBounds.begin());
+        }
+        input.waterElevation = feed.shorelineWaterElev;
+        input.staticBreakup = true;
+        if (auto cooked = mc2terrain::resolveSurfaceAsset(input, mc2terrain::surfaceMissionCook())) {
+            const auto source = cooked->sourceHash;
+            if (fields->setSurfaceAsset(std::move(*cooked), source)) {
+                const auto& surface = fields->surfaceAsset();
+                std::vector<uint64_t> packedColors(surface.macroColor.size());
+                for (size_t i = 0; i < packedColors.size(); ++i) {
+                    const auto& c = surface.macroColor[i];
+                    packedColors[i] = glm::packHalf4x16(glm::vec4(c[0], c[1], c[2], c[3]));
+                }
+                if (upload_colormap_image(s, VK_FORMAT_R16G16B16A16_SFLOAT, surface.width, surface.height,
+                        packedColors.data(), packedColors.size() * sizeof(uint64_t))) {
+                    s->colormapVersionImported = feed.colormapVersion;
+                    s->colormapShoreVersionImported = feed.shoreFieldVersion;
+                    s->colormapCookParams = params;
+                    s->colormapReady = true;
+                    s->colormapBreakup = true;
+                    write_descriptors(s);
+                    vlog("COLORMAP-BASE: cooked macro color %ux%u source=%llu coast=%d.", surface.width, surface.height,
+                         static_cast<unsigned long long>(source), int(input.followCoast));
+                    return;
+                }
+            }
+        }
+    }
+    // Malformed/unsupported sources still cover the full map through the original raw atlas.
+    // This is an import failure fallback; normal stock and mod missions always use the shared cook.
     VkFormat fmt;
     switch (feed.colormapVkFormat) {
         case mc2tex::kVkFormatBc7Srgb:    fmt = VK_FORMAT_BC7_SRGB_BLOCK; break;
@@ -126,9 +193,11 @@ void import_colormap(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
     if (upload_colormap_image(s, fmt, static_cast<uint32_t>(feed.colormapWidth), static_cast<uint32_t>(feed.colormapHeight), feed.colormapBytes,
                               static_cast<VkDeviceSize>(feed.colormapByteCount))) {
         s->colormapVersionImported = feed.colormapVersion;
+        s->colormapShoreVersionImported = feed.shoreFieldVersion;
+        s->colormapCookParams = params;
         s->colormapReady = true;
         write_descriptors(s);
-        vlog("COLORMAP-BASE: imported the colormap atlas %dx%d format %u from the terrain field store (version %llu).",
+        vlog("COLORMAP-BASE: cook unavailable, using raw atlas %dx%d format %u (version %llu).",
              feed.colormapWidth, feed.colormapHeight, feed.colormapVkFormat, static_cast<unsigned long long>(feed.colormapVersion));
     }
     // On failure the dummy stays bound (colormapReady=false) -> FS uses olive.

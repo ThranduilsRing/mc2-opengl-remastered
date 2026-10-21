@@ -122,8 +122,8 @@ bool TextureResidency::init() {
 
 std::shared_ptr<TextureResidency::Image> TextureResidency::upload(const RenderCore::KtxImage& image, bool useMips, Upload* async, uint32_t layers, bool arrayView) {
     const bool rgba=image.vkFormat==37 || image.vkFormat==43;
-    const bool floating=image.vkFormat==97 || image.vkFormat==100;
-    const size_t stride=image.vkFormat==97 ? 8u : 4u;
+    const bool floating=image.vkFormat==97 || image.vkFormat==100 || image.vkFormat==VK_FORMAT_R32G32_SFLOAT;
+    const size_t stride=(image.vkFormat==97 || image.vkFormat==VK_FORMAT_R32G32_SFLOAT) ? 8u : 4u;
     const bool bc1=image.vkFormat>=131 && image.vkFormat<=134;
     const bool blocks=bc1 || image.vkFormat==137 || image.vkFormat==138 || image.vkFormat==141 || (image.vkFormat>=143 && image.vkFormat<=146);
     if ((!rgba && !floating && !blocks) || image.isCompressed!=blocks || (blocks && image.blockSizeBytes!=(bc1?8u:16u))) return {};
@@ -248,7 +248,7 @@ ResidentTextureRef TextureResidency::acquirePixels(uint32_t width,uint32_t heigh
                                                    bool mipmaps,uint32_t layers,bool arrayView) {
     if (!bytes || !width || !height || width>RenderCore::kKtxMaxEdge || height>RenderCore::kKtxMaxEdge || !layers || layers>4096) return {};
     const bool compressed=format>=131 && format<=146;
-    const size_t expected=(compressed ? size_t((width+3)/4)*((height+3)/4)*(format<=134?8u:16u) : size_t(width)*height*(format==VK_FORMAT_R16G16B16A16_SFLOAT ? 8u : 4u))*layers;
+    const size_t expected=(compressed ? size_t((width+3)/4)*((height+3)/4)*(format<=134?8u:16u) : size_t(width)*height*((format==VK_FORMAT_R16G16B16A16_SFLOAT || format==VK_FORMAT_R32G32_SFLOAT) ? 8u : 4u))*layers;
     if (count!=expected) return {};
     RenderCore::TextureKey key;
     key.source=RenderCore::makeTextureSourceId("legacy-cpu:P9",std::to_string(width)+"x"+std::to_string(height)+

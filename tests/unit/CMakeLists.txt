@@ -137,6 +137,10 @@ add_executable(mc2_tests
     ${MC2_WORKTREE_ROOT}/GameOS/gameos/utils/Image.cpp     # the TGA / PNG decoders texture_decode wraps (WIC for PNG)
     test_terrain_field_store.cpp  # the CPU terrain fields both backends draw from (no GL)
     ${MC2_WORKTREE_ROOT}/GameOS/gameos/terrain_field_store.cpp
+    test_terrain_surface_asset.cpp
+    ${MC2_WORKTREE_ROOT}/GameOS/gameos/terrain_surface_asset.cpp
+    test_terrain_surface_cook.cpp
+    ${MC2_WORKTREE_ROOT}/GameOS/gameos/terrain_surface_cook.cpp
     test_vk_render_pass_timer.cpp  # VK pass timer tick math (counter wrap, valid bits); header-only, no Vulkan
     test_debug_line_project.cpp  # debug overlay segment projection; header-only
     test_hitch_fence.cpp # hitch trace Vulkan fence-wait record; header-only, no Vulkan

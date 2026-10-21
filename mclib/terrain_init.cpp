@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <cstring>
 #include <vector>
+#include "../GameOS/gameos/terrain_field_store.h"
 
 
 //---------------------------------------------------------------------------
@@ -1146,6 +1147,9 @@ long Terrain::init( unsigned long verticesPerMapSide, PacketFile* pakFile, unsig
 					float percentRange)
 {
 	ZoneScopedN("Terrain::init");
+	// Derived color never survives a mission switch. Source loaders below retain their provider order.
+	mc2terrain::setSurfaceMissionCook({});
+	if (auto* fields = gos_TerrainFieldStore()) fields->clearSurfaceAsset();
 	initMapExtents(verticesPerMapSide, visibleVertices);
 	initTerrainHeap(percent, percentRange);
 	initTerrainTextures(pakFile, percent, percentRange);
@@ -1179,6 +1183,24 @@ long Terrain::init( unsigned long verticesPerMapSide, PacketFile* pakFile, unsig
 	initVertexQuadLists(visibleVertices);
 	initColorMapLoad();
 	initMaterialProfile();
+	// The atlas is assembled later, during primeMissionTerrainCache. Keep only the optional
+	// resolved cache here; the native importer validates it against the final atlas and shore bytes.
+	{
+		std::string stem = terrainName ? terrainName : "";
+		const auto slash = stem.find_last_of("/\\");
+		if (slash != std::string::npos) stem.erase(0, slash + 1);
+		if (const auto dot = stem.find_last_of('.'); dot != std::string::npos) stem.erase(dot);
+		const std::string path = "data/missions/" + stem + ".beauty/macro_color.tsf";
+		File cache;
+		if (cache.open(path.c_str()) == NO_ERR) {
+			const auto length = cache.getLength();
+			if (length > 0 && uint64_t(length) <= mc2terrain::SurfaceAsset::kMaxBytes) {
+				std::vector<uint8_t> bytes(static_cast<size_t>(length));
+				if (cache.read(bytes.data(), length) == static_cast<long>(length))
+					mc2terrain::setSurfaceMissionCook(std::move(bytes));
+			}
+		}
+	}
 
 	return NO_ERR;
 }
