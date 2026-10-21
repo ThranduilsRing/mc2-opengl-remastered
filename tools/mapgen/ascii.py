@@ -66,7 +66,7 @@ def render(layout, cells_per_char=3, crop=None):
     lines = heading + ["|"+"".join(line)+"|" for line in grid] + ["+"+"-"*nc+"+"]
     if visible:
         lines += ["Visible objectives (O; symbols may share a character):"]
-        lines += [f"  {o['cell']}: {o['title']}" for o in visible]
+        lines += [f"  {o['cell']}: {o['title'].rstrip()}" for o in visible]
     lines += ["Coarse preview: highest-priority feature wins each character; object footprints are not drawn."]
     if layout.get("warnings"):
         lines += ["Source warnings: " + "; ".join(layout["warnings"])]
