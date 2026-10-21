@@ -5,6 +5,7 @@
 #include "texture_decode.h"
 #include "terrain_field_store.h"
 #include "gameos.hpp"
+#include <array>
 #include "terrain_surface_cook.h"
 #include "../../3rdparty/glm/glm/gtc/packing.hpp"
 
@@ -155,8 +156,8 @@ void import_colormap(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
         // Write-through cache under the user data dir, keyed by source hash: stock, FST and mod maps alike.
         std::string cacheDir;
         {
-            char userDir[1024] = {0};
-            if (gos_GetUserDataDirectory(userDir, sizeof(userDir))) cacheDir = std::string(userDir) + "/cache/terrain";
+            std::array<char, 1024> userDir{};
+            if (gos_GetUserDataDirectory(userDir.data(), userDir.size())) cacheDir = std::string(userDir.data()) + "/cache/terrain";
         }
         const char* cookOrigin = "none";
         const auto resolveT0 = std::chrono::steady_clock::now();
