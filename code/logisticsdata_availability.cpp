@@ -85,7 +85,8 @@ long LogisticsData::updateAvailability()
 			if ( NO_ERR != file.readIdLong( tmp, component ) )
 				break;
 
-			available[component] = 1;
+			if ( component >= 0 && component < 255 )
+				available[component] = 1;
 		}
 
 
@@ -415,9 +416,15 @@ void LogisticsData::appendAvailability(const char* pFileName, bool* availableArr
 				if ( NO_ERR != file.readIdLong( tmp, component ) )
 					break;
 
+				// Unknown / out-of-range ids (mod or stale purchase data) are skipped, not fatal.
+				LogisticsComponent* pComp = (component >= 0 && component < 255) ? getComponent( component ) : nullptr;
+				if ( !pComp )
+				{
+					MC2_LOG(Ui, Warn, "[LOGISTICS] appendAvailability: unknown component id {:d} in '{}' -- skipped", mc2::fmt::as_i32(component), mc2::fmt::safe(pFileName ? pFileName : "(null)"));
+					continue;
+				}
 				availableArray[component] = true;
 
-				LogisticsComponent* pComp = getComponent( component );
 				if ( !pComp->isAvailable() )
 					bNewWeapons = true;
 				pComp->setAvailable( true );
@@ -472,7 +479,7 @@ void LogisticsData::appendAvailability(const char* pFileName, bool* availableArr
 				for ( int i = 0; i < componentCount; i++ )
 				{
 					LogisticsComponent* pComp = getComponent(componentArray[i]);
-					if ( !pComp->isAvailable() ) // unavailable componets
+					if ( !pComp || !pComp->isAvailable() ) // unavailable componets
 					{
 						bRight= false;
 						break;
