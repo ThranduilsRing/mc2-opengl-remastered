@@ -42,7 +42,8 @@ void GameDebugWindow::setFont (const char* fontFile) {
 	}
 	if (fontFile) {
 		font = gos_LoadFont(fontFile);
-		gos_TextSetAttributes(font, 0xffffffff, 1.0, true, true, false, false);
+		if (font)
+			gos_TextSetAttributes(font, 0xffffffff, 1.0, true, true, false, false);
 	}
 	DWORD height, width;
 	gos_TextStringLength(&width, &height, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ");

@@ -9,6 +9,9 @@
 #include "gameos_graphics_internal.h"
 
 #include "platform_str.h"
+#include "file.h"
+#include "utils/mc2log.h"
+#include "mc2fmt.h"
 
 
 #include <algorithm>
@@ -104,16 +107,20 @@ gosFont* gosFont::load(const char* fontFile) {
                 auto sidecarNameOwner = std::make_unique_for_overwrite<char[]>(sidecarNameSize);
                 char* sidecarName = sidecarNameOwner.get();
                 memset(sidecarName, 0, sidecarNameSize);
-                S_snprintf(sidecarName, sidecarNameSize, "%s/%s%s", dir, fname, glyph_ext);
+                // _splitpath leaves the trailing separator on dir; "dir//name" would
+                // miss FST/mod keys (the key fold does not collapse slashes).
+                // A non-empty dir from _splitpath already ends in a separator.
+                S_snprintf(sidecarName, sidecarNameSize, dir[0] ? "%s%s%s" : "%s/%s%s", dir, fname, glyph_ext);
 
-                FILE* sidecar = fopen(sidecarName, "rb");
-                if(sidecar) {
+                // Game file layer (mod overlay, loose file, FastFile), not raw fopen.
+                File sidecar;
+                if(sidecar.open(sidecarName) == NO_ERR) {
                     uint32_t legacy_globals[5] = {0};
-                    if(fread(legacy_globals, sizeof(uint32_t), 5, sidecar) == 5) {
+                    if(sidecar.read(reinterpret_cast<MemoryPtr>(legacy_globals), sizeof(legacy_globals)) == static_cast<long>(sizeof(legacy_globals))) {
                         gi.max_advance_    = legacy_globals[2];
                         gi.font_line_skip_ = legacy_globals[4];
                     }
-                    fclose(sidecar);
+                    sidecar.close();
                 }
                 sidecarNameOwner.reset();
             }

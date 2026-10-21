@@ -71,17 +71,39 @@ void __stdcall gos_GetViewport( float* pViewportMulX, float* pViewportMulY, floa
     g_gos_renderer->getViewportTransform(pViewportMulX, pViewportMulY, pViewportAddX, pViewportAddY);
 }
 
+// Stock default font the game already uses for the debug window; the fallback
+// when a requested font (mod or otherwise) cannot be loaded.
+static const char kFontFallbackId[] = "assets/graphics/arial8.tga";
+
+static gosFont* gosLoadFontCached(std::string_view fontView)
+{
+    const std::string fontStr(fontView);
+    gosRenderer* r = getGosRenderer();
+    gosFont* font = r->findFont(fontStr.c_str());
+    if(font) {
+        font->addRef();
+        return font;
+    }
+    font = gosFont::load(fontStr.c_str());
+    if(font)
+        r->addFont(font);   // never register a null font: findFont() dereferences every entry
+    return font;
+}
+
 HGOSFONT3D __stdcall gos_LoadFont( const char* FontFile, DWORD StartLine/* = 0*/, int CharCount/* = 256*/, DWORD TextureHandle/*=0*/)
 {
+    if(!FontFile || !g_gos_renderer)
+        return nullptr;
 
-    gosFont* font = getGosRenderer()->findFont(FontFile);
-    if(!font) {
-        font = gosFont::load(FontFile);
-        getGosRenderer()->addFont(font);
-    } else {
-        font->addRef();
+    gosFont* font = gosLoadFontCached(FontFile);
+    if(!font && _stricmp(FontFile, kFontFallbackId) != 0) {
+        MC2_LOG(Assets, Warn, "[FONT_FALLBACK v1] font '{}' failed to load; using '{}'",
+                mc2::fmt::safe(FontFile), mc2::fmt::safe(kFontFallbackId));
+        font = gosLoadFontCached(kFontFallbackId);
     }
-
+    if(!font)
+        MC2_LOG(Assets, Warn, "[FONT_FALLBACK v1] font '{}' failed to load and no fallback is available",
+                mc2::fmt::safe(FontFile));
     return font;
 }
 
