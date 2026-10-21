@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstring>
 
 namespace mc2shadow {
 
@@ -18,9 +19,17 @@ uint64_t get(std::span<const uint8_t> bytes, size_t offset, unsigned count) {
     for (unsigned i = 0; i < count; ++i) word |= uint64_t(bytes[offset + i]) << (8 * i);
     return word;
 }
+// Integrity only (a torn or flipped file is a miss), eight bytes a step: a byte-wise FNV over a 67 MB chain cost more than the read.
 uint64_t payloadHash(std::span<const uint8_t> bytes) {
-    uint64_t h = 14695981039346656037ull;
-    for (uint8_t b : bytes) { h ^= b; h *= 1099511628211ull; }
+    uint64_t h = 14695981039346656037ull ^ bytes.size();
+    size_t i = 0;
+    for (; i + 8 <= bytes.size(); i += 8) {
+        uint64_t w;
+        std::memcpy(&w, bytes.data() + i, 8);
+        h = (h ^ w) * 0x9E3779B97F4A7C15ull;
+        h ^= h >> 29;
+    }
+    for (; i < bytes.size(); ++i) { h ^= bytes[i]; h *= 1099511628211ull; }
     return h;
 }
 bool validShape(uint32_t texels, uint32_t mips) {

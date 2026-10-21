@@ -18,7 +18,7 @@
 namespace mc2shadow {
 
 struct ShadowMaskAsset {
-    static constexpr uint32_t kSchema = 1;
+    static constexpr uint32_t kSchema = 2;   // 2: word-wise payload hash
     static constexpr uint32_t kEvaluator = 1;   // bump when the bake's output for the same inputs changes
     static constexpr uint32_t kMaxTexels = 16384;
     static constexpr uint64_t kMaxBytes = 48ull + uint64_t(kMaxTexels) * kMaxTexels / 2 * 4 / 3 + 4096;
