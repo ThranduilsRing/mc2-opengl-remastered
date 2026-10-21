@@ -555,11 +555,9 @@ void execNumEnemiesWithinRadius (void) {
 void execHasOrderFromPlayer (void) {
 
 	//Stub -- no reliable hook for player-origin tac orders in this branch.
-	//		PARAMS: integer partId
+	//		PARAMS: none (scripts use it as a bare identifier)
 	//		Returns: bool false
 
-	long partId = ABLi_popInteger();
-	(void)partId;
 	ABLi_pushBoolean(false);
 }
 

@@ -541,7 +541,7 @@ void initABL (void) {
 	ABLi_addFunction("newdistancetoposition", false, "iR", "r", execNewDistanceToPosition);
 	ABLi_addFunction("numfriendswithinradius", false, "i*", "i", execNumFriendsWithinRadius);
 	ABLi_addFunction("numenemieswithinradius", false, "i*", "i", execNumEnemiesWithinRadius);
-	ABLi_addFunction("hasorderfromplayer",   false, "i",   "b",  execHasOrderFromPlayer);
+	ABLi_addFunction("hasorderfromplayer",   false, nullptr, "b",  execHasOrderFromPlayer);
 	ABLi_addFunction("isselected",           false, nullptr,  "b",  execIsSelected);
 	ABLi_addFunction("isrefit",              false, nullptr,  "b",  execIsRefit);
 	ABLi_addFunction("needsrefit",           false, nullptr,  "b",  execNeedsRefit);
