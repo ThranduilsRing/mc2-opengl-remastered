@@ -196,6 +196,8 @@ class Appearance
 		// returns -1 (no recipe); BldgAppearance / TreeAppearance override
 		// to return staticReg.recipeIndex when registered, else -1.
 		virtual int32_t getStaticRecipeIndex() const { return -1; }
+		// The registry recipe that casts this appearance's static shadow: its shadow LOD (LOD0), whatever LOD is drawn. -1 = casts none.
+		virtual int32_t getShadowCasterRecipeIndex() const { return getStaticRecipeIndex(); }
 
 		// STATIC-REG-PREWARM-QUEUE-1: mission-load off-screen light bake.
 		// Called after finalizeGeometry() when world lights are valid.

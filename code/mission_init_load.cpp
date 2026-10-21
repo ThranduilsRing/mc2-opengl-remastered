@@ -999,6 +999,8 @@ void Mission::initFinalizeGeometry() {
 	{ ZoneScopedN("Mission::init prewarmStaticPropLightBakes");
 	  eye->primeActiveLightsForPrewarm();
 	  ObjectManager->prewarmStaticPropLightBakes(eye); }
+	{ ZoneScopedN("Mission::init buildStaticShadowCasterSet");
+	  ObjectManager->buildStaticShadowCasterSet(); }
 	mission_phase_mark("gpu_finalize_ready"); // LOAD-PHASE-FACTS-1: geometry finalize + indirect-buffer build + light-bake prewarm done
 
 	// Vegetation card system — notify adapter that terrain + move map are ready.

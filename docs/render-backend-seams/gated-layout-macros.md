@@ -1470,6 +1470,574 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:35`
+- Class: `CasterPacketAlpha`  (data-member)
+- Member: `int32_t layer = -1;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:36`
+- Class: `CasterPacketAlpha`  (data-member)
+- Member: `float scaleX = 1.0f;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:37`
+- Class: `CasterPacketAlpha`  (data-member)
+- Member: `float scaleY = 1.0f;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:42`
+- Class: `ShadowBakeInputs`  (data-member)
+- Member: `VkBuffer vbo = VK_NULL_HANDLE;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:43`
+- Class: `ShadowBakeInputs`  (data-member)
+- Member: `VkBuffer ibo = VK_NULL_HANDLE;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:44`
+- Class: `ShadowBakeInputs`  (data-member)
+- Member: `std::span<const Mc2ShadowPacket> packets;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:46`
+- Class: `ShadowBakeInputs`  (data-member)
+- Member: `std::span<const uint32_t> typePacketCount;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:47`
+- Class: `ShadowBakeInputs`  (data-member)
+- Member: `std::span<const CasterPacketAlpha> packetAlpha;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:48`
+- Class: `ShadowBakeInputs`  (data-member)
+- Member: `VkDescriptorSet alphaSet = VK_NULL_HANDLE;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:57`
+- Class: `ShadowBake`  (data-member)
+- Member: `ShadowBake& operator=(const ShadowBake&) = delete;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:83`
+- Class: `TileWork`  (data-member)
+- Member: `mc2shadow::Window window;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:84`
+- Class: `TileWork`  (data-member)
+- Member: `float casterTop = 0.0f;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:85`
+- Class: `TileWork`  (data-member)
+- Member: `uint32_t firstRun = 0, runCount = 0;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:99`
+- Class: `ShadowBake`  (data-member)
+- Member: `VkDevice device_ = VK_NULL_HANDLE;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:100`
+- Class: `ShadowBake`  (data-member)
+- Member: `VmaAllocator allocator_ = nullptr;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:101`
+- Class: `ShadowBake`  (data-member)
+- Member: `VkPhysicalDevice phys_ = VK_NULL_HANDLE;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:102`
+- Class: `ShadowBake`  (data-member)
+- Member: `VkDescriptorSetLayout alphaDsl_ = VK_NULL_HANDLE;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:103`
+- Class: `ShadowBake`  (data-member)
+- Member: `bool inited_ = false;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:104`
+- Class: `ShadowBake`  (data-member)
+- Member: `bool timed_ = false;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:105`
+- Class: `ShadowBake`  (data-member)
+- Member: `double timestampPeriodNs_ = 1.0;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:108`
+- Class: `ShadowBake`  (data-member)
+- Member: `uint64_t bakedKey_ = 0, objectKey_ = 0, recordedKey_ = 0, recordedObjectKey_ = 0;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:109`
+- Class: `ShadowBake`  (data-member)
+- Member: `bool recorded_ = false, submitted_ = false, recordedMask_ = false;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:110`
+- Class: `ShadowBake`  (data-member)
+- Member: `uint64_t submittedEpoch_ = 0;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:111`
+- Class: `ShadowBake`  (data-member)
+- Member: `bool maskReady_ = false, objectReady_ = false;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:112`
+- Class: `ShadowBake`  (data-member)
+- Member: `uint64_t objectGeneration_ = 0, recordedObjectGeneration_ = 0;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:113`
+- Class: `ShadowBake`  (data-member)
+- Member: `uint32_t waitFrames_ = 0;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:114`
+- Class: `ShadowBake`  (data-member)
+- Member: `bool loggedWait_ = false, loggedHeightDrift_ = false;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:115`
+- Class: `ShadowBake`  (data-member)
+- Member: `uint64_t bakedHeightVersion_ = 0;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:118`
+- Class: `ShadowBake`  (data-member)
+- Member: `mc2shadow::MaskLayout layout_;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:119`
+- Class: `ShadowBake`  (data-member)
+- Member: `mc2shadow::LightBasis basis_;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:120`
+- Class: `ShadowBake`  (data-member)
+- Member: `mc2shadow::Vec3 sun_;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:121`
+- Class: `ShadowBake`  (data-member)
+- Member: `float waterZ_ = 0.0f, terrainTop_ = 0.0f, halfMap_ = 0.0f, fadeMax_ = 0.0f;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:122`
+- Class: `ShadowBake`  (data-member)
+- Member: `int mapSide_ = 0, heightSide_ = 0;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:123`
+- Class: `ShadowBake`  (data-member)
+- Member: `float heightSpacing_ = 0.0f;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:124`
+- Class: `ShadowBake`  (data-member)
+- Member: `std::vector<float> heights_;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:125`
+- Class: `ShadowBake`  (data-member)
+- Member: `std::vector<GpuStaticPropInstance> leaves_;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:127`
+- Class: `ShadowBake`  (data-member)
+- Member: `std::vector<TypeBounds> typeBounds_;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:128`
+- Class: `ShadowBake`  (data-member)
+- Member: `std::vector<TileWork> tiles_;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:129`
+- Class: `ShadowBake`  (data-member)
+- Member: `std::vector<InstRun> runs_;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:130`
+- Class: `ShadowBake`  (data-member)
+- Member: `std::vector<InstRun> objectRuns_;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:131`
+- Class: `ShadowBake`  (data-member)
+- Member: `uint32_t binnedInstances_ = 0;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:132`
+- Class: `ShadowBake`  (data-member)
+- Member: `double cpuMs_ = 0.0;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:133`
+- Class: `ShadowBake`  (data-member)
+- Member: `VkDeviceSize transientBytes_ = 0;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:136`
+- Class: `ShadowBake`  (data-member)
+- Member: `OwnedRenderPass windowPass_, objectPass_;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:137`
+- Class: `ShadowBake`  (data-member)
+- Member: `OwnedDescriptorSetLayout casterDsl_;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:138`
+- Class: `ShadowBake`  (data-member)
+- Member: `OwnedPipelineLayout casterLayout_;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:139`
+- Class: `ShadowBake`  (data-member)
+- Member: `OwnedShaderModule propVert_, terrainVert_, opaqueFrag_, alphaFrag_;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:140`
+- Class: `ShadowBake`  (data-member)
+- Member: `OwnedPipeline windowOpaque_, windowAlpha_, objectOpaque_, objectAlpha_, objectTerrain_;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:141`
+- Class: `ShadowBake`  (data-member)
+- Member: `OwnedDescriptorPool casterPool_;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:143`
+- Class: `ShadowBake`  (data-member)
+- Member: `ComputePipeline pcss_, march_, resolve_;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:144`
+- Class: `ShadowBake`  (data-member)
+- Member: `OwnedDescriptorPool computePool_;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:146`
+- Class: `ShadowBake`  (data-member)
+- Member: `OwnedSampler depthRawSampler_, depthCompareSampler_;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:147`
+- Class: `ShadowBake`  (data-member)
+- Member: `OwnedQueryPool queries_;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:148`
+- Class: `ShadowBake`  (data-member)
+- Member: `uint32_t queryCount_ = 0;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:151`
+- Class: `ShadowBake`  (data-member)
+- Member: `OwnedImage maskImage_;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:152`
+- Class: `ShadowBake`  (data-member)
+- Member: `OwnedImageView maskView_;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:153`
+- Class: `ShadowBake`  (data-member)
+- Member: `int maskTexels_ = 0;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:154`
+- Class: `ShadowBake`  (data-member)
+- Member: `uint32_t maskMips_ = 0;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:155`
+- Class: `ShadowBake`  (data-member)
+- Member: `bool maskInitialized_ = false;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:156`
+- Class: `ShadowBake`  (data-member)
+- Member: `OwnedImage objectImage_;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:157`
+- Class: `ShadowBake`  (data-member)
+- Member: `OwnedImageView objectView_;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:158`
+- Class: `ShadowBake`  (data-member)
+- Member: `OwnedFramebuffer objectFb_;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:159`
+- Class: `ShadowBake`  (data-member)
+- Member: `bool objectInitialized_ = false;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:160`
+- Class: `ShadowBake`  (data-member)
+- Member: `OwnedBuffer terrainVbo_, terrainIbo_;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:161`
+- Class: `ShadowBake`  (data-member)
+- Member: `uint32_t terrainIndexCount_ = 0;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:162`
+- Class: `ShadowBake`  (data-member)
+- Member: `OwnedBuffer objectInstances_, objectUbo_;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:165`
+- Class: `ShadowBake`  (data-member)
+- Member: `OwnedImage windowImage_;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:166`
+- Class: `ShadowBake`  (data-member)
+- Member: `OwnedImageView windowView_;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:167`
+- Class: `ShadowBake`  (data-member)
+- Member: `OwnedFramebuffer windowFb_;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:169`
+- Class: `ShadowBake`  (data-member)
+- Member: `OwnedImageView scratchView_[4];`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:170`
+- Class: `ShadowBake`  (data-member)
+- Member: `OwnedBuffer staging_, tileParams_, passParams_, casterUbo_, instances_, heightBuf_;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
 - Header: `GameOS/gameos/vulkan_shadow_mech_casters.h:56`
 - Class: `ShadowMechCasters`  (data-member)
 - Member: `VkDevice device_ = VK_NULL_HANDLE;`
@@ -1870,4 +2438,4 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ---
 
-Result: 233 guard(s) analyzed, 0 violation(s).
+Result: 304 guard(s) analyzed, 0 violation(s).

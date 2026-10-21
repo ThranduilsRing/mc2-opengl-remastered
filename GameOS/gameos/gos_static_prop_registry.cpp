@@ -964,6 +964,29 @@ void getDynamicPropShadowInstances(std::vector<GpuStaticPropInstance>& out) {
     }
 }
 
+void getDynamicPropShadowInstancesExcluding(std::vector<GpuStaticPropInstance>& out, const std::vector<uint8_t>& excludedRecipes) {
+    out.clear();
+    const uint8_t bldg = static_cast<uint8_t>(GpuStaticPropPopulation::Building);
+    for (size_t r = 0; r < s_recipeRanges.size(); ++r) {
+        const RecipeRange& rng = s_recipeRanges[r];
+        if (rng.count == 0 || rng.noShadow || rng.population == bldg) continue;
+        if (r < excludedRecipes.size() && excludedRecipes[r] != 0) continue;
+        const size_t end = static_cast<size_t>(rng.first) + rng.count;
+        if (end > s_recipes.size()) continue;
+        out.insert(out.end(), s_recipes.begin() + rng.first, s_recipes.begin() + end);
+    }
+}
+
+bool getRecipeShadowLeaves(int32_t recipeIndex, std::vector<GpuStaticPropInstance>& out) {
+    if (!recipeValid(recipeIndex)) return false;
+    const RecipeRange& rng = s_recipeRanges[static_cast<size_t>(recipeIndex)];
+    if (rng.noShadow) return false;
+    const size_t end = static_cast<size_t>(rng.first) + rng.count;
+    if (end > s_recipes.size()) return false;
+    out.insert(out.end(), s_recipes.begin() + rng.first, s_recipes.begin() + end);
+    return true;
+}
+
 bool staticPropGetExtentRadius(int32_t recipeIndex, float* out) {
     if (!recipeValid(recipeIndex)) return false;
     *out = s_recipeRanges[static_cast<size_t>(recipeIndex)].extentRadius;

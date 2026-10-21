@@ -37,6 +37,7 @@ add_executable(mc2_tests
     test_frame_arena.cpp    # FRAME-ARENA-1: FrameArena typed L2 allocator invariants
     test_depth_hzb.cpp      # HZB-DEPTH-CONVENTION-TESTS-1: reverse-Z / HZB reduction contract
     test_shadow_static_runs.cpp  # the VK static shadow map drops every building on a map without static-prop geometry
+    test_shadow_bake_math.cpp  # the static shadow bake's mask layout, reach, footprint and caster-window math (header-only, no Vulkan)
     test_gate.cpp           # GATE-REGISTRY-G1A: truthiness matrix, slot cache, [CONFIG v1] dump
     test_tactical_overview.cpp   # TACTICAL-OVERVIEW-1: blend-state pure logic
     test_xform_convention.cpp    # XFORM-CONVENTION-HARNESS-1: clip-space convention lock

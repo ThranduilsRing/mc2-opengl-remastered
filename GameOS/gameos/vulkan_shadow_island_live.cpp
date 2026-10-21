@@ -59,6 +59,8 @@
 #include "vulkan_color_prop_island.h"
 #include "vulkan_shadow_mech_casters.h"
 #include "vulkan_shadow_static_map.h"
+#include "vulkan_shadow_bake.h"
+#include "static_caster_set.h"
 #include "vk_shared_gbuffer_gate.h"
 
 #include <tracy/Tracy.hpp>   // VK-ISLAND-TRACY-1: per-frame CPU attribution zones
@@ -233,11 +235,7 @@ struct ShadowIsland : mc2vk::IslandState {
     // Foliage and fence casters. Per packet of the shared geometry: the layer of the colour island's alpha-ON array that the packet's colour-pass fragments sample,
     // and the UV sub-region scale (layer < 0: an opaque packet). Built once per map from the colour island's material feed; the array view is re-bound whenever the
     // colour island hands out a different one. Until both exist a frame draws those packets opaque (a solid shadow), as the first frames of a map always did.
-    struct PacketAlpha {
-        int32_t layer = -1;
-        float   scaleX = 1.0f;
-        float   scaleY = 1.0f;
-    };
+    using PacketAlpha = mc2vk::CasterPacketAlpha;
     std::vector<PacketAlpha> packetAlpha;
     bool        alphaTableBuilt = false;
     VkImageView alphaBoundView = VK_NULL_HANDLE;
@@ -284,6 +282,7 @@ struct ShadowIsland : mc2vk::IslandState {
     // The mech casters share the render pass and the UBO above, the static map the render pass and the geometry; declared last so they are released first.
     mc2vk::ShadowMechCasters        mech;
     mc2vk::ShadowStaticMap          staticMap;
+    mc2vk::ShadowBake               bake;   // borrows the alpha layout and the caster geometry above, so it is released first
 
     ShadowIsland() = default;
     // The views and framebuffers over the two image resources go first; the resources hold their images with raw allocations and are released here.
@@ -604,6 +603,9 @@ bool init_island(ShadowIsland* s, int size) {
     // ---- Static sun shadow map: a failure leaves terrain and objects without building and terrain shadows (logged by the map). ----
     if (!s->staticMap.init(s->device, s->allocator, s->rpass.get(), spv_dir()))
         vlog("static shadow map unavailable: no static sun shadow on this device.");
+    // ---- Static shadow bake (mask + object map): a failure leaves the bake off (logged by the bake). ----
+    if (!s->bake.init(s->device, s->allocator, s->phys, s->alphaDsl.get(), spv_dir()))
+        vlog("static shadow bake unavailable on this device.");
 
     // ---- Command pool + 2 command buffers (per parity). ----
     {
@@ -1126,6 +1128,31 @@ static void record_static_map_if_stale(ShadowIsland* s) {
     if (s->staticMap.record(s->cbuf[s->parity], geometry)) ++s->passCount;
 }
 
+// The static shadow bake: retires a finished bake and records the next one when its inputs are ready and differ from the last. Like the static map it
+// counts as a pass, so its frame is submitted even when every other pass declines.
+static void record_bake(ShadowIsland* s) {
+    mc2vk::ShadowBakeInputs in;
+    std::vector<uint32_t> firstPacket, packetCount;
+    if (s->geomUploaded) {
+        firstPacket.resize(s->typeRuns.size());
+        packetCount.resize(s->typeRuns.size());
+        for (size_t t = 0; t < s->typeRuns.size(); ++t) { firstPacket[t] = s->typeRuns[t].firstPacket; packetCount[t] = s->typeRuns[t].packetCount; }
+        in.vbo = s->vbo.get();
+        in.ibo = s->ibo.get();
+        in.packets = s->packets;
+        in.typeFirstPacket = firstPacket;
+        in.typePacketCount = packetCount;
+        in.packetAlpha = s->packetAlpha;
+        in.alphaSet = s->alphaSet;
+        in.alphaReady = s->alphaReady;
+    }
+    if (!in.alphaReady) {
+        Mc2ColorPropMaterialFeed mf{};
+        in.alphaAbsent = mc2_color_prop_island_get_material_feed(&mf) && mf.arrayKeyOn == 0;
+    }
+    if (s->bake.update(s->cbuf[s->parity], s->recordEpoch, in)) ++s->passCount;
+}
+
 // The start every pass shares: the island is up, the caster geometry is resident, the frame's recording is open and the casters are staged.
 static ShadowIsland* prepare_pass(const void* instances, unsigned int instanceCount) {
     ShadowIsland* s = parkedIsland();
@@ -1136,6 +1163,7 @@ static ShadowIsland* prepare_pass(const void* instances, unsigned int instanceCo
     refresh_alpha_casters(s);
     s->mech.stage(g_shadowFrameEpoch);
     record_static_map_if_stale(s);
+    record_bake(s);
     return s;
 }
 
@@ -1351,9 +1379,10 @@ extern "C" void mc2_vk_shadow_island_submit_frame() {
     if (!s->recording) {
         // No caster pass opened the frame (a map without registry props has no prop caster geometry): the static sun map still builds once per
         // generation, so terrain keeps its static shadow.
-        if (s->disabled || !s->inited || !(s->useInterop || s->directChain) || !s->staticMap.stale()) return;
+        if (s->disabled || !s->inited || !(s->useInterop || s->directChain) || !(s->staticMap.stale() || s->bake.wantsFrame())) return;
         if (!begin_frame(s, g_shadowFrameEpoch)) return;
         record_static_map_if_stale(s);
+        record_bake(s);
     }
     VkCommandBuffer cb = s->cbuf[s->parity];
     // The single dynamic map is recorded only when a receiver would otherwise have no dynamic shadow at all.
@@ -1390,6 +1419,7 @@ extern "C" void mc2_vk_shadow_island_submit_frame() {
     if (mc2vk::submitGraphics(si, fence) != VK_SUCCESS) { setFallback("submit_failed"); disableFrame(); return; }
     timerGuard.submitted();
     s->staticMap.markSubmitted();
+    s->bake.markSubmitted(s->recordEpoch);
     if (g_diagVkDumpPending) { g_diagVkDumpPending = false; diagDumpVk(s); }
 }
 
@@ -1530,6 +1560,9 @@ extern "C" void mc2_vk_shadow_island_invalidate_geometry() {
     if (!parked) return;
     release_geometry(parked);
     parked->staticMap.invalidate();
+    // The bake's products may still be read by a frame in flight; a map boundary idles once rather than ever on a rebake.
+    if (parked->bake.hasProducts()) mc2vk::getOrCreateEngineVulkanContext().waitIdle("shadow_bake_release");
+    parked->bake.invalidate();
     vlog("caster geometry invalidated (map boundary).");
 }
 

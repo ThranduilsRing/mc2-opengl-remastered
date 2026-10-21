@@ -435,6 +435,11 @@ int32_t TreeAppearance::getStaticRecipeIndex() const {
     return staticReg[activeLOD].registered ? staticReg[activeLOD].recipeIndex : -1;
 }
 
+// The shadow LOD is LOD0 whatever LOD is drawn: the far LODs are registered no-shadow.
+int32_t TreeAppearance::getShadowCasterRecipeIndex() const {
+    return staticReg[0].registered ? staticReg[0].recipeIndex : -1;
+}
+
 // STATIC-REG-PREWARM-QUEUE-1: mission-load off-screen light bake for trees.
 // Mirrors BldgAppearance::prewarmStaticLightBake — see that function for rationale.
 // Trees bake LOD0 only (activeLOD is pinned 0 at mission load; Task 5 adds distance

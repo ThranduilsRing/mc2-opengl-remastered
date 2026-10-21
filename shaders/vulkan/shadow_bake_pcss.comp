@@ -1,0 +1,68 @@
+#version 450
+#extension GL_GOOGLE_include_directive : require
+// Static shadow bake, prop visibility: deterministic PCSS against the tile's caster window at the visible surface P = (x, y, max(terrain, water)).
+// A blocker search over a square of half-width reach * tan(theta) keeps only blockers whose own penumbra reaches P, the mean of their distances sets the
+// filter width w = d * tan(theta) (contact hardening: sharp at a trunk, wide at a canopy's tail), and a Vogel disk of bilinear compares sized to w filters.
+// Writes (visibility, mean blocker distance along the ray, blocker weight) for the fade.
+#include "include/shadow_bake_common.glsl"
+
+layout(local_size_x = 8, local_size_y = 8) in;
+
+void main() {
+    ivec2 t = ivec2(gl_GlobalInvocationID.xy);
+    int n = uB.regionInfo.x;
+    if (t.x >= n || t.y >= n) return;
+    vec2 xy = bakeTexelWorld(t);
+    float z = max(bakeTerrainHeight(xy), uB.region.w);
+    vec4 c = uB.window * vec4(xy, z, 1.0);
+    vec2 uv = c.xy * 0.5 + 0.5;
+    float zr = c.z;
+    float range = uB.windowInfo.y - uB.windowInfo.x;
+    float extent = uB.windowInfo.z * uB.windowInfo.w;   // the window's side in world units
+    float tanT = uB.sun.w;
+    float bias = 0.25 / range;
+    float sinAlt = max(uB.sun.z, 0.05);
+
+    // The longest ray a caster can stand on above P: up to the highest caster top in the window.
+    float maxRay = clamp((uB.fade.w - z) / sinAlt, 0.0, zr * range);
+    float search = max(maxRay * tanT, 1.5 * uB.windowInfo.z);
+    float jitter = bakeHash(t);
+
+    float found = 0.0, total = 0.0, sumD = 0.0;
+    for (int j = 0; j < 8; ++j) {
+        for (int i = 0; i < 8; ++i) {
+            vec2 o = ((vec2(i, j) + 0.5 + 0.5 * (jitter - 0.5)) / 8.0 * 2.0 - 1.0) * search;
+            vec4 g = textureGather(u_windowDepth, uv + o / extent, 0);
+            float reach = length(o) - uB.windowInfo.z;
+            for (int k = 0; k < 4; ++k) {
+                total += 1.0;
+                float d = (zr - g[k]) * range;   // distance from P back along its ray to the blocker
+                if (g[k] < zr - bias && d * tanT >= reach) { found += 1.0; sumD += d; }
+            }
+        }
+    }
+    {   // the texel under P itself, so a thin caster between search taps is never missed
+        vec4 g = textureGather(u_windowDepth, uv, 0);
+        for (int k = 0; k < 4; ++k) {
+            total += 1.0;
+            if (g[k] < zr - bias) { found += 1.0; sumD += (zr - g[k]) * range; }
+        }
+    }
+    if (found == 0.0) { imageStore(u_props, t, vec4(1.0, 0.0, 0.0, 0.0)); return; }
+    float meanD = sumD / found;
+    if (found == total) { imageStore(u_props, t, vec4(0.0, meanD, 1.0, 0.0)); return; }
+
+    // At least 0.75 mask texel wide, so the mask never holds an edge sharper than it can sample without stair-steps.
+    float w = max(meanD * tanT, 0.75 * uB.region.z);
+    float wt = w / uB.windowInfo.z;
+    int taps = clamp(int(ceil(wt * wt * 0.6)), 12, 64);
+    float rot = jitter * 6.2831853;
+    float vis = 0.0;
+    for (int i = 0; i < 64; ++i) {
+        if (i >= taps) break;
+        float r = sqrt((float(i) + 0.5) / float(taps)) * w;
+        float a = float(i) * 2.39996323 + rot;
+        vis += texture(u_windowCompare, vec3(uv + r * vec2(cos(a), sin(a)) / extent, zr - bias));
+    }
+    imageStore(u_props, t, vec4(vis / float(taps), meanD, 1.0, 0.0));
+}
