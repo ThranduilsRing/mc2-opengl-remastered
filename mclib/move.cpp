@@ -663,6 +663,7 @@ void MissionMap::init (long h, long w) {
 
 	height = h;
 	width = w;
+	gTerrainPartIdStride = (w > TERRAIN_PART_ID_STRIDE_STOCK) ? w : TERRAIN_PART_ID_STRIDE_STOCK;
 
 	VerticesMapSideDivTwo = (Terrain::blocksMapSide * Terrain::verticesBlockSide) / 2.0;
 	MetersMapSideDivTwo = Terrain::worldUnitsMapSide / 2;

@@ -45,6 +45,21 @@ TEST_CASE("a header with in-range counts is accepted, including the limits thems
 	CHECK(gm::rejectHeaderCounts(top) == nullptr);
 }
 
+TEST_CASE("fan campaign maps (900 and 1024 cells per side) are accepted, stock 720 unchanged")
+{
+	static_assert(gm::kMaxCellsPerSide >= 1024);
+	for (long side : {720L, 900L, 1024L})
+	{
+		gm::HeaderCounts c = stock();
+		c.height = side;
+		c.width = side;
+		CHECK(gm::rejectHeaderCounts(c) == nullptr);
+	}
+	gm::HeaderCounts over = stock();
+	over.height = 1025;
+	CHECK(std::string(gm::rejectHeaderCounts(over)) == "height");
+}
+
 TEST_CASE("each header count outside its range is named and refused")
 {
 	struct Case { const char* name; void (*bad)(gm::HeaderCounts&); };
