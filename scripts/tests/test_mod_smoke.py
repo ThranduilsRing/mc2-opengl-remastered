@@ -213,17 +213,32 @@ def test_first_mission_prefers_numbered_over_test_maps(tmp_path):
     assert ms.pick_mission([mod])[0] == "mc2_03"
 
 
-def test_stock_gap_fills_from_base_loose_but_never_overrides(tmp_path):
+def _write_fst(path: Path, members: dict) -> None:
+    import struct
+    names = list(members)
+    off = 8 + 266 * len(names)
+    table, blobs = b"", b""
+    for n in names:
+        data = members[n]
+        table += struct.pack("<IIII250s", off + len(blobs), len(data), len(data), 0, n.encode())
+        blobs += data
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(struct.pack("<II", 0xCADDECAF, len(names)) + table + blobs)
+
+
+def test_stock_gap_fills_from_base_fst_but_never_overrides(tmp_path):
     base = tmp_path / "base"
-    _w(base / "data/art/stock_only.fit", "stock")
-    _w(base / "data/art/both.fit", "stock")
-    _w(base / "data/movies/big.bik", "movie")
-    _w(base / "data/m/x.beauty/a.png", "png")
+    _write_fst(base / "camera.fst", {
+        "data/cameras/cameras.fit": b"stock cams",
+        "data/art/both.fit": b"stock both",
+        "data/movies/big.bik": b"movie",
+        "data/m/x.beauty/a.png": b"png"})
     stage = tmp_path / "stage"
+    _write_fst(stage / "camera.fst", {"data/cameras/mc2xcams.fit": b"mod cams"})  # renamed member
     _w(stage / "data/art/both.fit", "mod")
     stats = ms.fill_stock_gap(base, stage)
-    assert (stage / "data/art/stock_only.fit").read_text() == "stock"
+    assert (stage / "data/cameras/cameras.fit").read_bytes() == b"stock cams"
     assert (stage / "data/art/both.fit").read_text() == "mod"
     assert not (stage / "data/movies/big.bik").exists()
     assert not (stage / "data/m/x.beauty/a.png").exists()
-    assert stats["from_loose"] == 1
+    assert stats["from_fst"] == 1

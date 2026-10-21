@@ -446,7 +446,7 @@ def fill_stock_gap(base_install: Path, target: Path) -> dict:
     import importlib
     fst_lib = importlib.import_module('fst')
     have = stage_keys(target)
-    stats = {'from_fst': 0, 'from_loose': 0, 'bytes': 0}
+    stats = {'from_fst': 0, 'bytes': 0}
 
     def wanted(key: str) -> bool:
         return (key not in have and key.startswith('data/')
@@ -467,15 +467,6 @@ def fill_stock_gap(base_install: Path, target: Path) -> dict:
             have.add(key)
             stats['from_fst'] += 1
             stats['bytes'] += real
-    for dirpath, _dirs, files in os.walk(base_install / 'data'):
-        for name in files:
-            path = Path(dirpath) / name
-            key = path.relative_to(base_install).as_posix().lower()
-            if wanted(key) and not path.is_symlink():
-                place_file(path, target / key, link_ok=False)
-                have.add(key)
-                stats['from_loose'] += 1
-                stats['bytes'] += path.stat().st_size
     return stats
 
 
