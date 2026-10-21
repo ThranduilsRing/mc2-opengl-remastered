@@ -10,7 +10,7 @@
 
 namespace mc2::gate::detail {
 
-inline constexpr std::size_t kGateCount = 927;
+inline constexpr std::size_t kGateCount = 928;
 
 inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_3DVIEW_DIAG", Kind::Bool, Rule::Presence, {}},
@@ -574,6 +574,7 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_SHADER_SPIRV", Kind::Bool, Rule::Lead1, {}},
     {"MC2_SHADER_SPIRV_FATAL", Kind::Bool, Rule::Lead1, {}},
     {"MC2_SHADOW_ALT_SCALE", Kind::Bool, Rule::Lead0Kill, {}},
+    {"MC2_SHADOW_BAKE", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_SHADOW_BOUNDED_NEAR_RADIUS", Kind::Float, Rule::Prefix, {}},
     {"MC2_SHADOW_CASTER_CULL_CACHE", Kind::Bool, Rule::Lead0P, {}},
     {"MC2_SHADOW_CASTER_CULL_MARGIN", Kind::Float, Rule::Prefix, {}},

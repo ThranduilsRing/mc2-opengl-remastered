@@ -12,6 +12,7 @@
 #define PREC highp
 #endif
 #include "include/terrain_frame_vk.glsl"
+#include "include/terrain_static_visibility.glsl"   // the bake mask, the same static term the ground under the decal reads
 
 layout(location = 0) in vec3  WorldPos;
 layout(location = 1) in vec2  Texcoord;
@@ -46,7 +47,8 @@ void main() {
         LsvkShadowKnobs shKnobs = mv_shadowKnobs();
         float staticShadow = 1.0;
         if (uT.enableShadows != 0)
-            staticShadow = lsvk_calcShadow(WorldPos, shadowN, lightDir3, u_staticShadow,
+            staticShadow = terrainStaticMaskBound() ? mix(0.4, 1.0, terrainStaticMask(WorldPos.xy))
+                         : lsvk_calcShadow(WorldPos, shadowN, lightDir3, u_staticShadow,
                                            uT.staticLightSpaceMatrix, uT.shadowSoftness, 8, shKnobs);
         float dynShadow = 1.0;
         if (uT.csmEnabled != 0) {

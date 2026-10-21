@@ -4,6 +4,7 @@
 
 #include "vk_scene_renderer_internal.h"
 #include "mc2fmt.h"
+#include "../GameOS/gameos/static_caster_set.h"
 
 extern bool g_useGpuObjects;
 extern bool g_useGpuMechs;
@@ -103,10 +104,23 @@ void mc2::VkSceneRenderer::renderListsDynamicShadowPass (RenderSubmissions& subm
 					// modelMatrix+typeID): a value starting with "0" opts out.
 					static const bool s_dynPropDirtyOnly = mc2::gate::get<"MC2_SHADOW_DYNAMIC_PROP_DIRTY_ONLY">();
 					static uint64_t  s_dynPropInstsGeneration = UINT64_MAX; // sentinel: force first build
+					// Once the static shadow bake is ready it owns every prop of the gameplay caster set: the cascades keep the rest (movers).
+#ifdef MC2_VULKAN_ISLAND
+					const bool bakeOwnsStatics = mc2_vk_shadow_island_bake_ready() != 0;
+#else
+					const bool bakeOwnsStatics = false;
+#endif
+					const uint64_t casterSetVersion = bakeOwnsStatics ? mc2shadow::staticCasterSet().version() : 0;
+					static uint64_t s_dynPropCasterSetVersion = 0;
 					if (!s_dynPropDirtyOnly ||
-					    GpuStaticPropRegistry::getRegistryGeneration() != s_dynPropInstsGeneration) {
-						GpuStaticPropRegistry::getDynamicPropShadowInstances(s_dynPropInsts);
+					    GpuStaticPropRegistry::getRegistryGeneration() != s_dynPropInstsGeneration ||
+					    casterSetVersion != s_dynPropCasterSetVersion) {
+						if (bakeOwnsStatics)
+							GpuStaticPropRegistry::getDynamicPropShadowInstancesExcluding(s_dynPropInsts, mc2shadow::staticCasterSet().recipeMask());
+						else
+							GpuStaticPropRegistry::getDynamicPropShadowInstances(s_dynPropInsts);
 						s_dynPropInstsGeneration = GpuStaticPropRegistry::getRegistryGeneration();
+						s_dynPropCasterSetVersion = casterSetVersion;
 					}
 
 					// SHADOW-CASTER-LIGHTBOX-CULL-1 (gate MC2_SHADOW_CASTER_LIGHTBOX_CULL,

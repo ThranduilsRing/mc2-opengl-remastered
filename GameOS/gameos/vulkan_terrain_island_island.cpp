@@ -505,8 +505,10 @@ bool init_island(TerrainIsland* s, int w, int h) {
         setFallback("static_visibility_dummy_failed"); return false;
     }
     VkSamplerCreateInfo visibilitySampler{VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO};
-    visibilitySampler.magFilter = visibilitySampler.minFilter = VK_FILTER_NEAREST;
-    visibilitySampler.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
+    // The bake mask is pre-filtered: bilinear within a level, linear between its mips.
+    visibilitySampler.magFilter = visibilitySampler.minFilter = VK_FILTER_LINEAR;
+    visibilitySampler.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+    visibilitySampler.maxLod = VK_LOD_CLAMP_NONE;
     visibilitySampler.addressModeU = visibilitySampler.addressModeV = visibilitySampler.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
     if (!mc2vk::create(s->staticVisibilitySampler,s->device,[&](auto* h){return vkCreateSampler(s->device,&visibilitySampler,nullptr,h);})) return false;
     const float flatGradient[2] = {0, 0};

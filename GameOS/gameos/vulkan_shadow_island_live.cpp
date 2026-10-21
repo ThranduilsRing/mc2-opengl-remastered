@@ -1120,8 +1120,14 @@ static void refresh_alpha_casters(ShadowIsland* s) {
 
 // Appends the static map's build to the frame's recording when the engine has a generation the map has not built (a map load, a destroy rebake): once
 // per generation, never per frame. It counts as a pass of the frame, so the frame is submitted even when every other pass declines.
+// MC2_SHADOW_BAKE (temporary kill-switch, default on): the bake replaces the old static map; =0 brings the old map back.
+static bool bake_enabled() {
+    static const bool s_on = mc2::gate::get<"MC2_SHADOW_BAKE">();
+    return s_on;
+}
+
 static void record_static_map_if_stale(ShadowIsland* s) {
-    if (!s->staticMap.stale()) return;
+    if (bake_enabled() || !s->staticMap.stale()) return;
     std::vector<uint32_t> firstPacket(s->typeRuns.size()), packetCount(s->typeRuns.size());
     for (size_t t = 0; t < s->typeRuns.size(); ++t) { firstPacket[t] = s->typeRuns[t].firstPacket; packetCount[t] = s->typeRuns[t].packetCount; }
     mc2vk::StaticPropGeometryView geometry{s->vbo.get(), s->ibo.get(), s->packets, firstPacket, packetCount};
@@ -1131,6 +1137,7 @@ static void record_static_map_if_stale(ShadowIsland* s) {
 // The static shadow bake: retires a finished bake and records the next one when its inputs are ready and differ from the last. Like the static map it
 // counts as a pass, so its frame is submitted even when every other pass declines.
 static void record_bake(ShadowIsland* s) {
+    if (!bake_enabled()) return;
     mc2vk::ShadowBakeInputs in;
     std::vector<uint32_t> firstPacket, packetCount;
     if (s->geomUploaded) {
@@ -1379,7 +1386,8 @@ extern "C" void mc2_vk_shadow_island_submit_frame() {
     if (!s->recording) {
         // No caster pass opened the frame (a map without registry props has no prop caster geometry): the static sun map still builds once per
         // generation, so terrain keeps its static shadow.
-        if (s->disabled || !s->inited || !(s->useInterop || s->directChain) || !(s->staticMap.stale() || s->bake.wantsFrame())) return;
+        if (s->disabled || !s->inited || !(s->useInterop || s->directChain)) return;
+        if (!(bake_enabled() ? s->bake.wantsFrame() : s->staticMap.stale())) return;
         if (!begin_frame(s, g_shadowFrameEpoch)) return;
         record_static_map_if_stale(s);
         record_bake(s);
@@ -1457,13 +1465,25 @@ extern "C" int mc2_vk_shadow_island_csm_fullmap_ready() {
 
 // The static sun shadow map of the last submitted build, in DEPTH_STENCIL_READ_ONLY, and the engine generation it was built from; null / 0 before the
 // first build of the map. A consumer pairs the view with the light matrix of the same generation.
+// With the bake on, the static map is the bake's D16 object map (terrain, buildings, trees and props with the same static light matrix).
 extern "C" void* mc2_vk_shadow_island_get_static_view() {
     const ShadowIsland* s = parkedIsland();
-    return s ? reinterpret_cast<void*>(s->staticMap.view()) : nullptr;
+    if (!s) return nullptr;
+    return bake_enabled() ? reinterpret_cast<void*>(s->bake.objectView()) : reinterpret_cast<void*>(s->staticMap.view());
 }
 extern "C" uint64_t mc2_vk_shadow_island_static_generation() {
     const ShadowIsland* s = parkedIsland();
-    return s && s->staticMap.view() != VK_NULL_HANDLE ? s->staticMap.generation() : 0;
+    if (!s) return 0;
+    if (bake_enabled()) return s->bake.objectGeneration();
+    return s->staticMap.view() != VK_NULL_HANDLE ? s->staticMap.generation() : 0;
+}
+extern "C" int mc2_vk_shadow_island_bake_ready() {
+    const ShadowIsland* s = parkedIsland();
+    return s && bake_enabled() && s->bake.ready() ? 1 : 0;
+}
+extern "C" void* mc2_vk_shadow_island_get_bake_mask_view() {
+    const ShadowIsland* s = parkedIsland();
+    return s && bake_enabled() ? reinterpret_cast<void*>(s->bake.maskView()) : nullptr;
 }
 extern "C" void* mc2_vk_shadow_island_get_static_visibility_tiles() {
     const ShadowIsland* s = parkedIsland();

@@ -6,6 +6,8 @@ L(Lead1, "MC2_SHADER_SPIRV", Bool, false, "gameos", "", "SPIRV-CONSUMER-PILOT-BU
 // history: docs/gate-history.md#MC2_SHADER_SPIRV_FATAL
 L(Lead1, "MC2_SHADER_SPIRV_FATAL", Bool, false, "gameos", "", "SPIRV-CONSUMER-PILOT-BUILD-1: DEFAULT-OFF debug gate.", registry(Trace, "MC2_SHADER_SPIRV_FATAL", -1, false)),
 L(Lead0Kill, "MC2_SHADOW_ALT_SCALE", Bool, true, "post", "", "", passthrough | verified),
+// Greenfield shadows P2-P6 temporary kill-switch (deleted in P8): =0 skips the static shadow bake; terrain then reads the old static map and the cascades carry the static props again.
+L(Lead0Kill, "MC2_SHADOW_BAKE", Bool, true, "post", "", "Static shadow bake (mask + object map); =0 is the temporary kill-switch back to the cascade-fed static props.", passthrough | verified),
 // history: docs/gate-history.md#MC2_SHADOW_BOUNDED_NEAR_RADIUS
 P("MC2_SHADOW_BOUNDED_NEAR_RADIUS", Float, 2500.0, "post", "", "SHADOW-BOUNDED-NEAR-FIT-1 tunable: bounded near-fit radius in world units (default 2500, clamped 512..mapClampR).", passthrough | registry(Trace, "MC2_TUNE_SHADOW_BOUNDED_NEAR_RADIUS", -1, false) | rangeAbove(0.0, 3.4028234663852886e38) | verified),
 // history: docs/gate-history.md#MC2_SHADOW_CASTER_CULL_CACHE

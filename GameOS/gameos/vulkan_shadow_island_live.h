@@ -255,6 +255,11 @@ int   mc2_vk_shadow_island_csm_array_ready();
 void*    mc2_vk_shadow_island_get_static_view();
 void*    mc2_vk_shadow_island_get_static_visibility_tiles();
 uint64_t mc2_vk_shadow_island_static_generation();
+// The static shadow bake: ready once its first mask has been submitted; the mask view is R8 with mips over the terrain grid (row 0 north,
+// u = (x + halfMap) / ((mapSide - 1) * 128), v = (halfMap - y) / ((mapSide - 1) * 128)), in SHADER_READ_ONLY. While the bake is ready the static props
+// cast through it and the object map, not through the cascades.
+int   mc2_vk_shadow_island_bake_ready();
+void* mc2_vk_shadow_island_get_bake_mask_view();
 
 // MC2_VK_SHADOW_MATRIX_DIAG (Trace gate, default OFF = zero cost): one-shot matrix/depth-map
 // evidence for the GL-vs-VK shadow producer/consumer comparison. enabled() is a cached getenv.

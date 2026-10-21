@@ -24,8 +24,8 @@ TEST_CASE("shadow bake: mask layout is max(target, span / cap) in whole tiles") 
     CHECK(m.texelWorld > 1.4f);
     CHECK(m.tilesPerSide * kTileTexels == m.texels);
     CHECK(m.originX == doctest::Approx(-101 * 64.0f));
-    // A 900-cell map hits the cap: 38,400 wu / 12,288 = 3.125 wu.
-    MaskLayout big = maskLayout(901, 901 * 64.0f, 1.5f, 12288);
+    // A 900-cell map (1 cell = 128/3 wu, 301 vertices) hits the cap: 38,400 wu / 12,288 = 3.125 wu.
+    MaskLayout big = maskLayout(301, 301 * 64.0f, 1.5f, 12288);
     CHECK(big.texels == 12288);
     CHECK(big.texelWorld == doctest::Approx(3.125f));
     // No terrain, no mask.

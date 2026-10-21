@@ -16,6 +16,7 @@
 #define PREC highp
 #endif
 #include "include/terrain_frame_vk.glsl"
+#include "include/terrain_static_visibility.glsl"   // the bake mask, the same static term the ground under the overlay reads
 
 layout(location = 0) in vec3  WorldPos;
 layout(location = 1) in vec2  Texcoord;
@@ -98,7 +99,8 @@ void main() {
     LsvkShadowKnobs shKnobs = mv_shadowKnobs();
     float staticShadow = 1.0;
     if (uT.enableShadows != 0)
-        staticShadow = lsvk_calcShadow(WorldPos, shadowN, lightDir3, u_staticShadow,
+        staticShadow = terrainStaticMaskBound() ? mix(0.4, 1.0, terrainStaticMask(WorldPos.xy))
+                     : lsvk_calcShadow(WorldPos, shadowN, lightDir3, u_staticShadow,
                                        uT.staticLightSpaceMatrix, uT.shadowSoftness, 8, shKnobs);
     float dynamicShadow = 1.0;
     if (uT.csmEnabled != 0) {
@@ -110,8 +112,7 @@ void main() {
         dynamicShadow = lsvk_calcDynamicShadowLegacy(WorldPos, shadowN, lightDir3, u_dynamicShadow,
                                                      uT.dynamicLightSpaceMatrix, uT.shadowSoftness, 4, shKnobs);
     }
-    float shadow = staticShadow * dynamicShadow;
-    if (ovCementTile) shadow = dynamicShadow;                  // concrete exemption (static dropped)
+    float shadow = min(staticShadow, dynamicShadow);           // no cement exemption (D3)
     c.rgb *= shadow;
 
     // In-shader distance fog (skipped on cement tiles: the shared screen-space fog does it once).

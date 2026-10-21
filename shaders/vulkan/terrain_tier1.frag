@@ -655,8 +655,8 @@ void main() {
             vec3 shSun = lsvk_shadowSun(lightDir, shKnobs);         // TERRAIN-SHADOW-GUARD-1
             dynS = terrainDynamicShadow(v_worldPos, shadowN, shSun);
         }
+        // No cement exemption (owner ruling D3, 2026-10-21): it was a layering artefact; static shadows land on pads too.
         float shadow = min(staticS, dynS);
-        shadow = mix(shadow, dynS, pureConcrete ? 1.0 : 0.0);  // concrete: dynamic only
         lit = baseColor * normalLight * shadow;
 
         // VK-PARITY-TERRAIN-2: NIGHT-LIGHT-POOLS-1..4 / LIGHT-CLUSTER-PERF-1 /

@@ -699,12 +699,15 @@ bool bind_static_shadow(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
     s->shadowReady = false;
     s->shadowExternalView = VK_NULL_HANDLE;
     s->staticVisibilityExternalView = VK_NULL_HANDLE;
-    if (!feed.lightingEnabled || !feed.shadowsEnabled || feed.staticShadowGeneration == 0) return false;
+    if (!feed.lightingEnabled || !feed.shadowsEnabled) return false;
+    // Binding 17: the shadow bake's mask once it is ready (terrain, overlays and decals read the ground's static shadow from it); until then, and with
+    // the bake off, the 1x1 placeholder, which sends the shaders to the old static map at binding 5.
+    if (mc2_vk_shadow_island_bake_ready()) s->staticVisibilityExternalView = reinterpret_cast<VkImageView>(mc2_vk_shadow_island_get_bake_mask_view());
+    if (feed.staticShadowGeneration == 0) return false;
     if (mc2_vk_shadow_island_static_generation() != feed.staticShadowGeneration) return false;
     void* view = mc2_vk_shadow_island_get_static_view();
     if (view == nullptr) return false;
     s->shadowExternalView = reinterpret_cast<VkImageView>(view);
-    s->staticVisibilityExternalView = reinterpret_cast<VkImageView>(mc2_vk_shadow_island_get_static_visibility_tiles());
     s->shadowReady = true;
     return true;
 }
