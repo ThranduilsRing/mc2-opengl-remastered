@@ -214,4 +214,18 @@ inline uint64_t fnv1a(const void* data, size_t bytes, uint64_t h = 1469598103934
     return h;
 }
 
+// A fast content hash for large arrays (heights, geometry): eight bytes a step, then FNV over the tail.
+inline uint64_t hashWords(const void* data, size_t bytes, uint64_t h = 1469598103934665603ull) {
+    const auto* p = static_cast<const uint8_t*>(data);
+    h ^= bytes;
+    size_t i = 0;
+    for (; i + 8 <= bytes; i += 8) {
+        uint64_t w = 0;
+        for (int k = 0; k < 8; ++k) w |= uint64_t(p[i + static_cast<size_t>(k)]) << (8 * k);
+        h = (h ^ w) * 0x9E3779B97F4A7C15ull;
+        h ^= h >> 29;
+    }
+    return fnv1a(p + i, bytes - i, h);
+}
+
 }  // namespace mc2shadow

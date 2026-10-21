@@ -939,14 +939,14 @@ bool ShadowBake::recordBake(VkCommandBuffer cb, const ShadowBakeInputs& in) {
 // The content key of a mask (P4 disk cache): everything the bake reads, by content, not by process-local versions. The heights, the caster set (handles,
 // damage, transforms), the static-prop geometry and its alpha cut-outs, the sun, the water, the layout and the art and evaluator constants.
 uint64_t ShadowBake::contentKey(const ShadowBakeInputs& in, uint64_t casterHash) const {
-    uint64_t h = mc2shadow::fnv1a(heights_.data(), heights_.size() * sizeof(float));
+    uint64_t h = mc2shadow::hashWords(heights_.data(), heights_.size() * sizeof(float));
     h = mc2shadow::fnv1a(&casterHash, sizeof(casterHash), h);
     const void* vb = nullptr;
     const void* ib = nullptr;
     uint64_t vbBytes = 0, ibBytes = 0;
     if (in.vbo != VK_NULL_HANDLE && mc2_static_prop_geometry_cpu(&vb, &vbBytes, &ib, &ibBytes) && vb && ib) {
-        h = mc2shadow::fnv1a(vb, static_cast<size_t>(vbBytes), h);
-        h = mc2shadow::fnv1a(ib, static_cast<size_t>(ibBytes), h);
+        h = mc2shadow::hashWords(vb, static_cast<size_t>(vbBytes), h);
+        h = mc2shadow::hashWords(ib, static_cast<size_t>(ibBytes), h);
         h = mc2shadow::fnv1a(in.packets.data(), in.packets.size_bytes(), h);
         h = mc2shadow::fnv1a(in.typeFirstPacket.data(), in.typeFirstPacket.size_bytes(), h);
         if (in.alphaReady) h = mc2shadow::fnv1a(in.packetAlpha.data(), in.packetAlpha.size_bytes(), h);

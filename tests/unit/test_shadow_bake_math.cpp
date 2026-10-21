@@ -28,7 +28,7 @@ TEST_CASE("shadow bake: mask layout is max(target, span / cap) in whole tiles") 
     MaskLayout big = maskLayout(301, 301 * 64.0f, 1.5f, 12288);
     CHECK(big.texels == 12288);
     CHECK(big.texelWorld == doctest::Approx(3.125f));
-    // The editor's largest map (1024 cells = 43,690 wu, 342 vertices) also hits the cap: 24 x 24 tiles at about 3.56 wu.
+    // The design table's 1024 cells (128/3 wu each: 43,690 wu, 342 vertices) also hits the cap: 24 x 24 tiles at about 3.56 wu.
     MaskLayout editorMax = maskLayout(342, 342 * 64.0f, 1.5f, 12288);
     CHECK(editorMax.texels == 12288);
     CHECK(editorMax.tilesPerSide == 24);
@@ -39,6 +39,19 @@ TEST_CASE("shadow bake: mask layout is max(target, span / cap) in whole tiles") 
     CHECK(ew.texels == kWindowMaxTexels);
     CHECK(ew.texelWorld > kWindowTexelWorld);
     CHECK(ew.texelWorld < 1.5f);
+    // The owner's editor maps: 1024 cells of 128 wu (1025 vertices, about 131 km) still fit the cap, at about 10.7 wu a texel, and the tile
+    // window grows its texel past 0.5 wu instead of clipping casters.
+    MaskLayout big1k = maskLayout(1025, 1025 * 64.0f, 1.5f, 12288);
+    CHECK(big1k.texels == 12288);
+    CHECK(big1k.tilesPerSide == 24);
+    CHECK(big1k.texelWorld == doctest::Approx(131072.0f / 12288.0f));
+    const Window w1k = casterWindow(lightBasis(sunAt(15.0f, 45.0f)), tileRegionWorld(big1k, 12, 12), 0.0f, 800.0f, 1200.0f,
+                                    std::tan(kSunAngularRadiusDeg * 0.01745329252f));
+    CHECK(w1k.texels == kWindowMaxTexels);
+    CHECK(w1k.texelWorld < 4.0f);
+    // A different map size is a different layout, so a cooked mask of one never loads for the other.
+    CHECK(maskLayout(1024, 1024 * 64.0f, 1.5f, 12288).span != big1k.span);
+    // No terrain, no mask.
     CHECK(maskLayout(1, 0.0f, 1.5f, 12288).texels == 0);
 }
 
