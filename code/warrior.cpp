@@ -1319,6 +1319,18 @@ long MechWarrior::runBrain (void) {
 			return(0);
 	}
 
+	// MOD-HEALTH-1: tools/mod_smoke.py asserts AI is alive ("dead AI on POAR") from these
+	// milestone lines; always-on, three lines per process.
+	{
+		static unsigned long s_brainRuns = 0;
+		++s_brainRuns;
+		if (s_brainRuns == 1 || s_brainRuns == 100 || s_brainRuns == 1000) {
+			mc2::fmt::print_out("[MOD_HEALTH v1] event=brain_runs count={:d} scenarioTime={:.2f}\n",
+				mc2::fmt::as_u64(s_brainRuns), static_cast<double>(scenarioTime));
+			fflush(stdout);
+		}
+	}
+
 	// Param 1 is the ID of this mech...
 	//ABLi_setIntegerParam(brainParams, 0, ((BattleMechPtr)owner)->ID);
 
