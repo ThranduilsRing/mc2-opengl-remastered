@@ -213,7 +213,7 @@ def stock_fst_keys(base_install: Path) -> set[str]:
 def build_engine_cache(cache: Path, build: Path, build64: Path, base_install: Path) -> dict:
     """Assemble the shared engine payload in `cache`. Returns a summary."""
     cache.mkdir(parents=True, exist_ok=True)
-    summary = {'payload': 0, 'manifest_extra': 0, 'engine_data': 0, 'stock_fsts': [], 'configs': []}
+    summary = {'payload': 0, 'manifest_extra': 0, 'engine_data': 0, 'stock_fsts': [], 'configs': [], 'dlls': []}
     staged: set[str] = set()
     for src, rel in engine_payload_items(build, build64):
         place_file(src, cache / rel, link_ok=False)
@@ -242,6 +242,11 @@ def build_engine_cache(cache: Path, build: Path, build64: Path, base_install: Pa
     for rel in ENGINE_DATA_FILES:
         place_rel(rel)
     place_rel(HDR_TREE, keep=lambda p: p.stat().st_size <= HDR_MAX_BYTES and not_stock(p))
+    for dll in sorted(base_install.glob('*.dll')):
+        # runtime DLLs the build dir does not carry (SDL2*, glew, zlib, mc2res_64)
+        if not (cache / dll.name).is_file():
+            place_file(dll, cache / dll.name, link_ok=False)
+            summary['dlls'].append(dll.name)
     system_cfg = ROOT / 'system.cfg'
     if system_cfg.is_file() and not (cache / 'system.cfg').is_file():
         place_file(system_cfg, cache / 'system.cfg', link_ok=False)
@@ -255,7 +260,7 @@ def build_engine_cache(cache: Path, build: Path, build64: Path, base_install: Pa
         if src.is_file():
             place_file(src, cache / name, link_ok=False)
             summary['configs'].append(name)
-    required = ['mc2.exe'] + list(STOCK_FSTS) + list(CONFIG_FILES)
+    required = ['mc2.exe', 'SDL2.dll', 'mc2res_64.dll'] + list(STOCK_FSTS) + list(CONFIG_FILES)
     missing = [n for n in required if not (cache / n).is_file()]
     if missing:
         raise FileNotFoundError('engine payload incomplete, missing: ' + ', '.join(missing))
