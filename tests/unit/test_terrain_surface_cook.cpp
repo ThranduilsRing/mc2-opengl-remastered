@@ -1,4 +1,6 @@
 #include "doctest.h"
+#include <filesystem>
+#include <cstdio>
 #include "terrain_surface_cook.h"
 
 #include <algorithm>
@@ -235,4 +237,57 @@ TEST_CASE("surface cook: breakup alpha is independently invalidated and editable
     in.topLeftX += 1;
     CHECK(mc2terrain::surfaceCookSourceHash(in) != source);
     CHECK(mc2terrain::evaluateSurfaceBreakup(0, 0) == doctest::Approx(0.5));
+}
+
+TEST_CASE("surface cook cache: roundtrip, stale key, corrupt and truncated files, bit-identical output") {
+    namespace fs = std::filesystem;
+    const fs::path dir = fs::temp_directory_path() / "mc2_terrain_cache_test";
+    fs::remove_all(dir);
+    const std::vector<mc2terrain::SurfaceColor> colors = {{0.3f, 0.4f, 0.5f, 1}, {0.6f, 0.2f, 0.1f, 1},
+                                                          {0.1f, 0.9f, 0.4f, 1}, {0.5f, 0.5f, 0.5f, 1}};
+    SurfaceCookInput in;
+    in.color = colors; in.colorWidth = in.colorHeight = 2;
+    in.worldSpan = 256; in.topLeftX = -128; in.topLeftY = 128;
+    in.outputWidth = in.outputHeight = 16; in.staticBreakup = true;
+    const std::string cache = dir.string();
+    const char* origin = "";
+    const auto cold = mc2terrain::resolveSurfaceAsset(in, {}, cache, &origin);
+    REQUIRE(cold);
+    CHECK(std::string(origin) == "cooked+stored");
+    const auto warm = mc2terrain::resolveSurfaceAsset(in, {}, cache, &origin);
+    REQUIRE(warm);
+    CHECK(std::string(origin) == "cache");
+    CHECK(mc2terrain::encodeSurfaceAsset(*warm) == mc2terrain::encodeSurfaceAsset(*cold));
+    CHECK(mc2terrain::encodeSurfaceAsset(*cold) == mc2terrain::encodeSurfaceAsset(*mc2terrain::cookSurface(in)));
+    // Stale key: changed source bytes hash elsewhere, never hit the old entry.
+    auto changed = in; changed.topLeftX += 1;
+    CHECK_FALSE(mc2terrain::loadCachedSurfaceAsset(cache, mc2terrain::surfaceCookSourceHash(changed)));
+    mc2terrain::resolveSurfaceAsset(changed, {}, cache, &origin);
+    CHECK(std::string(origin) == "cooked+stored");
+    // A valid file renamed to another key is rejected (embedded source hash mismatch).
+    const auto key = cold->sourceHash;
+    char name[40], other[40];
+    std::snprintf(name, sizeof name, "macro-%016llx.tsf", static_cast<unsigned long long>(key));
+    std::snprintf(other, sizeof other, "macro-%016llx.tsf", static_cast<unsigned long long>(key + 7));
+    fs::copy_file(dir / name, dir / other);
+    CHECK_FALSE(mc2terrain::loadCachedSurfaceAsset(cache, key + 7));
+    // Corrupt and truncated entries fall back to a fresh cook and heal the cache.
+    {
+        std::FILE* f = std::fopen((dir / name).string().c_str(), "r+b");
+        REQUIRE(f);
+        std::fseek(f, 100, SEEK_SET); std::fputc(0x5a, f); std::fclose(f);
+    }
+    CHECK_FALSE(mc2terrain::loadCachedSurfaceAsset(cache, key));
+    const auto healed = mc2terrain::resolveSurfaceAsset(in, {}, cache, &origin);
+    REQUIRE(healed);
+    CHECK(std::string(origin) == "cooked+stored");
+    CHECK(mc2terrain::encodeSurfaceAsset(*healed) == mc2terrain::encodeSurfaceAsset(*cold));
+    fs::resize_file(dir / name, 60);
+    CHECK_FALSE(mc2terrain::loadCachedSurfaceAsset(cache, key));
+    fs::resize_file(dir / name, 0);
+    CHECK_FALSE(mc2terrain::loadCachedSurfaceAsset(cache, key));
+    // No temp files are left behind by successful stores.
+    for (const auto& e : fs::directory_iterator(dir)) CHECK(e.path().extension() == ".tsf");
+    CHECK_FALSE(mc2terrain::loadCachedSurfaceAsset("", key));
+    fs::remove_all(dir);
 }

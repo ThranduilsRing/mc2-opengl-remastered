@@ -4,6 +4,7 @@
 #include "vk_one_shot.h"
 #include "texture_decode.h"
 #include "terrain_field_store.h"
+#include "gameos.hpp"
 #include "terrain_surface_cook.h"
 #include "../../3rdparty/glm/glm/gtc/packing.hpp"
 
@@ -151,7 +152,17 @@ void import_colormap(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
         }
         input.waterElevation = feed.shorelineWaterElev;
         input.staticBreakup = true;
-        if (auto cooked = mc2terrain::resolveSurfaceAsset(input, mc2terrain::surfaceMissionCook())) {
+        // Write-through cache under the user data dir, keyed by source hash: stock, FST and mod maps alike.
+        std::string cacheDir;
+        {
+            char userDir[1024] = {0};
+            if (gos_GetUserDataDirectory(userDir, sizeof(userDir))) cacheDir = std::string(userDir) + "/cache/terrain";
+        }
+        const char* cookOrigin = "none";
+        const auto resolveT0 = std::chrono::steady_clock::now();
+        auto cooked = mc2terrain::resolveSurfaceAsset(input, mc2terrain::surfaceMissionCook(), cacheDir, &cookOrigin);
+        const double resolveMs = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - resolveT0).count();
+        if (cooked) {
             const auto source = cooked->sourceHash;
             if (fields->setSurfaceAsset(std::move(*cooked), source)) {
                 const auto& surface = fields->surfaceAsset();
@@ -168,8 +179,8 @@ void import_colormap(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
                     s->colormapReady = true;
                     s->colormapBreakup = true;
                     write_descriptors(s);
-                    vlog("COLORMAP-BASE: cooked macro color %ux%u source=%llu coast=%d.", surface.width, surface.height,
-                         static_cast<unsigned long long>(source), int(input.followCoast));
+                    vlog("COLORMAP-BASE: cooked macro color %ux%u source=%llu coast=%d origin=%s resolve_ms=%.1f.", surface.width, surface.height,
+                         static_cast<unsigned long long>(source), int(input.followCoast), cookOrigin, resolveMs);
                     return;
                 }
             }
