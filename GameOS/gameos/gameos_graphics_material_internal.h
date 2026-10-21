@@ -218,15 +218,15 @@ private:
 
 
 struct gosTextAttribs {
-    HGOSFONT3D FontHandle;
-    DWORD Foreground;
-    float Size;
-    bool WordWrap;
-    bool Proportional;
-    bool Bold;
-    bool Italic;
-    DWORD WrapType;
-    bool DisableEmbeddedCodes;
+    HGOSFONT3D FontHandle = nullptr;   // must start null: GameDebugWindow::setFont queries length before any font is set
+    DWORD Foreground = 0xffffffff;
+    float Size = 1.0f;
+    bool WordWrap = false;
+    bool Proportional = true;
+    bool Bold = false;
+    bool Italic = false;
+    DWORD WrapType = 0;
+    bool DisableEmbeddedCodes = false;
 };
 
 
