@@ -3392,6 +3392,13 @@
    "count": 1
   },
   {
+   "tag": "FONT_FALLBACK",
+   "ver": 1,
+   "stream": "log",
+   "keys": [],
+   "count": 2
+  },
+  {
    "tag": "FRAMECAP",
    "ver": -1,
    "stream": "stderr",
@@ -10528,6 +10535,7 @@
   "VFX_BIRTH",
   "VIDEO",
   "VISUAL_CAPTURE",
+  "VK_GPU_PASSES",
   "VK_PROFILE",
   "VK_VALIDATION",
   "VRAM"
