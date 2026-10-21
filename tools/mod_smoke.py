@@ -35,6 +35,7 @@ import json
 import os
 import re
 import shutil
+import struct
 import subprocess
 import sys
 from pathlib import Path
@@ -419,6 +420,62 @@ def extract_mission(fst: Path, stem: str, out: Path) -> None:
     raise FileNotFoundError(f'{wanted} not found inside {fst}')
 
 
+def elf_hash(name: str) -> int:
+    """mclib/fst_hash.cpp elfHash (32-bit unsigned long on Windows)."""
+    h = 0
+    for ch in name.encode('latin-1', 'replace'):
+        h = ((h << 4) + ch) & 0xFFFFFFFF
+        g = h & 0xF0000000
+        if g:
+            h ^= g >> 24
+        h &= ~g & 0xFFFFFFFF
+    return h
+
+
+def normalize_fst_names(path: Path) -> int:
+    """Rewrite a fast file's entry table in place so every member name is the
+    engine's lookup key (lowercase, forward slashes) with a matching elfHash.
+    Retail MC2 / MC2X fast files store 'data\\\\missions\\\\x.fit'; FastFileFind
+    only ever looks up the normalized form, so such members are unreachable and
+    the engine aborts on the first one it needs. Returns entries rewritten.
+    Only call on a private copy (never a hardlink)."""
+    entry = struct.Struct('<IIII250s')
+    changed = 0
+    with path.open('r+b') as fh:
+        magic, count = struct.unpack('<II', fh.read(8))
+        if magic not in (0xCADDECAF, 0xFADDECAF):
+            raise ValueError(f'not a fast file: {path}')
+        table = bytearray(fh.read(entry.size * count))
+        for i in range(count):
+            off, size, real, hsh, raw = entry.unpack_from(table, i * entry.size)
+            name = raw.split(b'\0', 1)[0].decode('latin-1')
+            norm = name.replace(chr(92), '/').lower()
+            if norm == name and hsh == elf_hash(norm):
+                continue
+            entry.pack_into(table, i * entry.size, off, size, real, elf_hash(norm),
+                            norm.encode('latin-1', 'replace'))
+            changed += 1
+        if changed:
+            fh.seek(8)
+            fh.write(table)
+    return changed
+
+
+def normalize_stage_fsts(target: Path) -> dict:
+    out = {}
+    for fst in sorted(target.glob('*.fst')):
+        if fst.stat().st_nlink > 1:      # shared engine copy: already canonical
+            continue
+        try:
+            n = normalize_fst_names(fst)
+        except (ValueError, struct.error):
+            out[fst.name] = 'INVALID'
+            continue
+        if n:
+            out[fst.name] = n
+    return out
+
+
 GAP_SKIP_PREFIXES = ('data/movies/',)
 GAP_SKIP_PARTS = ('.beauty/',)
 
@@ -477,6 +534,7 @@ def stage_mod(cache: Path, layers: list[Path], target: Path, stem: str,
         s = overlay_mod(layer, target)
         stats['mod_files'] += s['files']
         stats['mod_bytes'] += s['bytes']
+    stats['fst_renamed'] = normalize_stage_fsts(target)
     if base_install is not None:
         stats['stock_gap'] = fill_stock_gap(base_install, target)
     stats['mission_extracted'] = ensure_loose_mission(layers, target, stem)

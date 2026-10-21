@@ -242,3 +242,29 @@ def test_stock_gap_fills_from_base_fst_but_never_overrides(tmp_path):
     assert not (stage / "data/movies/big.bik").exists()
     assert not (stage / "data/m/x.beauty/a.png").exists()
     assert stats["from_fst"] == 1
+
+
+def test_elf_hash_matches_stock_fast_file():
+    stock = Path("A:/Games/mc2-opengl/mc2-win64-v0.4/camera.fst")
+    if not stock.is_file():
+        return
+    sys.path.insert(0, str(ROOT / "tools" / "mod_install"))
+    import fst_listing
+    for e in fst_listing.parse_fst(str(stock)):
+        assert e["hash"] == ms.elf_hash(e["name"]), e["name"]
+
+
+def test_normalize_fst_names_rewrites_backslash_members(tmp_path):
+    sys.path.insert(0, str(ROOT / "tools" / "mod_install"))
+    import fst_listing
+    fst = tmp_path / "mission.fst"
+    _write_fst(fst, {"data" + chr(92) + "missions" + chr(92) + "Reap3M01.fit": b"abc", "data/ok.fit": b"def"})
+    assert ms.normalize_fst_names(fst) == 2          # ok.fit hash was written as 0
+    entries = fst_listing.parse_fst(str(fst))
+    assert [e["name"] for e in entries] == ["data/missions/reap3m01.fit", "data/ok.fit"]
+    assert all(e["hash"] == ms.elf_hash(e["name"]) for e in entries)
+    assert ms.normalize_fst_names(fst) == 0          # idempotent
+    sys.path.insert(0, str(ROOT / "tools" / "mc2x_import"))
+    import fst as fstlib
+    first = fstlib.fst_entries(fst)[0]
+    assert fstlib.decompress_entry(*[first[0], first[1], first[2], first[4], first[5]]) == b"abc"
