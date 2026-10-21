@@ -139,6 +139,7 @@ void gosRenderer::drawText(const char* text) {
 
     const gosTextAttribs& ta = g_gos_renderer->getTextAttributes();
     const gosFont* font = ta.FontHandle;
+    if(!font) return;   // no font could be loaded (see gos_LoadFont); draw nothing
 
     const DWORD tex_id = font->getTextureId();
     const gosTexture* tex = getTexture(tex_id);
@@ -792,7 +793,7 @@ void __stdcall gos_TextStringLength( DWORD* Width, DWORD* Height, const char *fm
 
     const gosTextAttribs& ta = g_gos_renderer->getTextAttributes();
     const gosFont* font = ta.FontHandle;
-    gosASSERT(font);
+    if(!font) { *Width = 0; *Height = 0; return; }   // no font could be loaded (see gos_LoadFont)
 
     int num_newlines = 0;
     int max_width = 0;
@@ -851,7 +852,7 @@ void __stdcall gos_TextVisualBounds( DWORD* Width, int* Top, int* Bottom, const 
 
     const gosTextAttribs& ta = g_gos_renderer->getTextAttributes();
     const gosFont* font = ta.FontHandle;
-    gosASSERT(font);
+    if(!font) { *Width = 0; *Top = 0; *Bottom = 0; return; }   // no font could be loaded (see gos_LoadFont)
 
     const gosGlyphInfo& gi = font->getGlyphInfo();
     const int line_skip = font->getMaxCharHeight();
