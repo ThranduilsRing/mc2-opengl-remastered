@@ -80,6 +80,7 @@ L(DefOnLead0, "MC2_VEGETATION_CARDS", Bool, true, "gameos", "", "", passthrough 
 P("MC2_VEGETATION_DENSITY", Int, 25, "code", "", "", verified),
 P("MC2_VEGETATION_MAX", Int, 5000000, "code", "", "", verified),
 L(Lead0, "MC2_VEG_DEBUG_FORCE_VISIBLE", Bool, false, "gameos", "", "", verified),
+L(Lead0, "MC2_VEG_GPU_COMPARE", Bool, false, "gameos", "", "Diagnostic (packet V2 scaffolding): every 120th vegetation frame also runs the GPU cull synchronously and logs CPU/GPU survivor agreement as [VEG_GPU] compare.", verified),
 P("MC2_VEG_MAX_DIST", Float, 4096.0, "gameos", "", "", verified),
 // VehicleAmbientFloor (VEHICLE-AMBIENT-FLOOR-1)
 // history: docs/gate-history.md#MC2_VEHICLE_AMBIENT_FLOOR

@@ -178,6 +178,15 @@ void GosVegetation::flush(float lx, float ly, float lz, float lw, float time,
         planes[plane][4]=std::sqrt(p[0]*p[0]+p[1]*p[1]+p[2]*p[2]);
     }
     const float pixelScale=0.5f*pp->getHeight()*std::sqrt(mvp[1]*mvp[1]+mvp[5]*mvp[5]+mvp[9]*mvp[9]);
+#ifdef MC2_VULKAN_ISLAND
+    // V2 scaffolding: every 120th frame the GPU cull runs beside the CPU walk and the survivor lists are compared.
+    static uint32_t compareTick = 0;
+    const bool compare = mc2::gate::get<"MC2_VEG_GPU_COMPARE">() && (compareTick++ % 120u) == 60u;
+    static thread_local std::vector<uint32_t> cpuIds;
+    cpuIds.clear();
+#else
+    constexpr bool compare = false;
+#endif
     for (const auto& region : regions) {
         if (!force) {
             bool outside=false;
@@ -225,8 +234,30 @@ void GosVegetation::flush(float lx, float ly, float lz, float lw, float time,
         v.extra[2]=1.0f; // whole-clump LOD replaces screen-space Bayer thinning
         v.extra[3]=1.0f-smooth(fadeStart*0.8f,fadeStart,dist3);
         vertices.push_back(v);
+#ifdef MC2_VULKAN_ISLAND
+        if (compare) cpuIds.push_back(static_cast<uint32_t>(index));
+#endif
         }
     }
+#ifdef MC2_VULKAN_ISLAND
+    if (compare) {
+        mc2veg::CullParams cp{};
+        for (int k=0;k<4;++k) { for (int c=0;c<4;++c) cp.plane[k][c]=planes[k][c]; cp.planeLen[k]=planes[k][4]; }
+        cp.clipRow[0]=mvp[3]; cp.clipRow[1]=mvp[7]; cp.clipRow[2]=mvp[11]; cp.clipRow[3]=mvp[15];
+        cp.cam[0]=cx; cp.cam[1]=cy; cp.cam[2]=cz; cp.cam[3]=maxDist;
+        cp.misc[0]=fadeStart; cp.misc[1]=pixelScale; cp.misc[2]=std::max(lz,0.0f); cp.misc[3]=time;
+        cp.grid[0]=halfMap; cp.grid[1]=blockSide;
+        cp.counts[3]=chunkSide>0 ? uint32_t(chunkSide) : 0u;
+        cp.flags[0]=force ? 1u : 0u;
+        mc2veg::CompareResult cr;
+        if (auto* gpu = mc2veg::State::get(false);
+            gpu && gpu->compare(mc2vk::getOrCreateEngineVulkanContext(),cp,visibility.data(),uint32_t(visibility.size()),cpuIds,cr))
+            mc2::fmt::print_err("[VEG_GPU] compare cpu={:d} gpu={:d} only_cpu={:d} only_gpu={:d} first_diff_rank={:d} regions={:d}\n",
+                mc2::fmt::as_u32(cr.cpu),mc2::fmt::as_u32(cr.gpu),mc2::fmt::as_u32(cr.onlyCpu),mc2::fmt::as_u32(cr.onlyGpu),
+                mc2::fmt::as_i64(cr.firstOrderMismatch==~0u ? -1 : int64_t(cr.firstOrderMismatch)),mc2::fmt::as_u32(gpu->regionCount()));
+        else mc2::fmt::print_err("[VEG_GPU] compare unavailable\n");
+    }
+#endif
     VfxParticleDraw draw{};
     draw.count=static_cast<uint32_t>(vertices.size());
     draw.texture=kVfxVegetationAtlas;

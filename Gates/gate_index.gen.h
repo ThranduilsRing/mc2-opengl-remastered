@@ -10,7 +10,7 @@
 
 namespace mc2::gate::detail {
 
-inline constexpr std::size_t kGateCount = 928;
+inline constexpr std::size_t kGateCount = 929;
 
 inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_3DVIEW_DIAG", Kind::Bool, Rule::Presence, {}},
@@ -816,6 +816,7 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_VEGETATION_DENSITY", Kind::Int, Rule::Prefix, {}},
     {"MC2_VEGETATION_MAX", Kind::Int, Rule::Prefix, {}},
     {"MC2_VEG_DEBUG_FORCE_VISIBLE", Kind::Bool, Rule::Lead0, {}},
+    {"MC2_VEG_GPU_COMPARE", Kind::Bool, Rule::Lead0, {}},
     {"MC2_VEG_MAX_DIST", Kind::Float, Rule::Prefix, {}},
     {"MC2_VEHICLE_AMBIENT_FLOOR", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_VEHICLE_LIT_PATH", Kind::Bool, Rule::Lead0Kill, {}},

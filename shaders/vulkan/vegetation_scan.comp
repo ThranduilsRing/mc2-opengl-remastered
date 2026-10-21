@@ -1,0 +1,31 @@
+// Vegetation GPU cull, pass 2: exclusive prefix over the per-region survivor counts, then the indirect draw arguments.
+// One workgroup; every thread owns a contiguous slice of regions.
+#version 450
+#extension GL_GOOGLE_include_directive : require
+layout(local_size_x = 1024) in;
+#include "include/vegetation_cull_common.glsl"
+shared uint s_sums[1024];
+void main() {
+    uint lid = gl_LocalInvocationIndex, regions = P.counts.x;
+    uint per = (regions + 1023u) / 1024u, start = min(lid * per, regions), stop = min(start + per, regions);
+    uint sum = 0u;
+    for (uint i = start; i < stop; ++i) sum += counts[i];
+    uint v = sum;
+    s_sums[lid] = v;
+    barrier();
+    for (uint off = 1u; off < 1024u; off <<= 1u) {
+        uint t = lid >= off ? s_sums[lid - off] : 0u;
+        barrier();
+        v += t;
+        s_sums[lid] = v;
+        barrier();
+    }
+    uint run = v - sum;
+    for (uint i = start; i < stop; ++i) { offsets[i] = run; run += counts[i]; }
+    if (lid == 1023u) {
+        // The vegetation card is two instanced eight-vertex strips (first vertex 0 and 8).
+        args[0] = 8u; args[1] = v; args[2] = 0u; args[3] = 0u;
+        args[4] = 8u; args[5] = v; args[6] = 8u; args[7] = 0u;
+        args[8] = v;
+    }
+}

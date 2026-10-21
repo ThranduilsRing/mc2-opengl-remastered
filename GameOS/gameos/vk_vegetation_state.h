@@ -12,10 +12,13 @@
 
 #include <volk.h>
 
+#include "vk_compute_pipeline.h"
+#include "vk_frame_ring.h"
 #include "vk_owned.h"
 #include "vulkan_context.h"   // mc2vk::IslandState
 
 #include <cstdint>
+#include <vector>
 
 namespace mc2vk { class VulkanContext; }
 
@@ -35,6 +38,25 @@ struct GpuRegion {
     uint32_t first, last, pad0, pad1;   // [first, last) in the population order
 };
 static_assert(sizeof(GpuRegion) == 32);
+
+// LOCKSTEP with VegParams in vegetation_cull_common.glsl (std140, 176 B).
+struct CullParams {
+    float plane[4][4];
+    float planeLen[4];
+    float clipRow[4];
+    float cam[4];
+    float misc[4];
+    float grid[4];
+    uint32_t counts[4];
+    uint32_t flags[4];
+};
+static_assert(sizeof(CullParams) == 176);
+
+// CPU-vs-GPU survivor comparison result (diagnostic scaffolding of packet V2).
+struct CompareResult {
+    uint32_t cpu = 0, gpu = 0, onlyCpu = 0, onlyGpu = 0, firstOrderMismatch = ~0u;
+    bool ok = false;
+};
 
 struct PopulationStats {
     uint64_t uploads = 0;        // population uploads since process start (one per uploadInstances)
@@ -62,6 +84,16 @@ public:
     uint32_t regionCount() const { return regionCount_; }
     const PopulationStats& stats() const { return stats_; }
 
+    // Records the three cull dispatches into `cb` (outside a render pass): writes `params` and the block-visibility field into the frame-ring `span`
+    // (params at paramsOff, visibility at visOff), then cull -> scan -> compact for parity `par`, ending in a barrier to the vertex/indirect/transfer
+    // readers. The parity's previous submit must have completed. False when the pipelines cannot be built.
+    bool record(mc2vk::VulkanContext& ctx, VkCommandBuffer cb, uint32_t par, const mc2vk::FrameAlloc& span, VkDeviceSize paramsOff, VkDeviceSize visOff,
+                CullParams params, const uint32_t* visibility, uint32_t visibilityCount);
+    // Synchronous GPU run of one frame's cull and a comparison with the CPU survivor ids (population indices, CPU walk order). Diagnostic only.
+    bool compare(mc2vk::VulkanContext& ctx, const CullParams& params, const uint32_t* visibility, uint32_t visibilityCount, const std::vector<uint32_t>& cpuIds,
+                 CompareResult& out);
+    uint64_t frameUploadBytes() const { return frameUploadBytes_; }
+
     VkBuffer instances() const { return instances_.get(); }
     VkBuffer regions() const { return regions_.get(); }
     VkBuffer scratch(uint32_t par) const { return slot_[par].scratch.get(); }
@@ -74,6 +106,13 @@ private:
     struct Slot {
         mc2vk::OwnedBuffer scratch, counts, offsets, dense, args;
     };
+    bool ensurePipelines(mc2vk::VulkanContext& ctx);
+    mc2vk::ComputePipeline cull_, scan_, compact_;
+    mc2vk::ComputeSets sets_;
+    bool pipelinesTried_ = false, pipelinesOk_ = false;
+    uint64_t generation_ = 1, boundGeneration_ = 0;
+    VkBuffer ringBound_[kSlots] = {};
+    uint64_t frameUploadBytes_ = 0;
     mc2vk::OwnedBuffer instances_, regions_;
     Slot slot_[kSlots];
     uint32_t instanceCount_ = 0, regionCount_ = 0;

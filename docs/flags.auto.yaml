@@ -3,9 +3,9 @@
 # Where each gate is read, what the smoke runner forwards and what tier1_env_vars.md says are not here: ask
 # tools/repo_intel (env_var, gate_status), which scan the sources.
 generator_version: "3.0.0"
-gate_count: 928
+gate_count: 929
 registry_entry_count: 186
-verified_count: 823
+verified_count: 824
 flags:
   - name: MC2_3DVIEW_DIAG
     kind: Bool
@@ -6125,6 +6125,13 @@ flags:
     rule: Lead0
     owner: gameos
     doc: ""
+    verified: true
+  - name: MC2_VEG_GPU_COMPARE
+    kind: Bool
+    default: false
+    rule: Lead0
+    owner: gameos
+    doc: "Diagnostic (packet V2 scaffolding): every 120th vegetation frame also runs the GPU cull synchronously and logs CPU/GPU survivor agreement as [VEG_GPU] compare."
     verified: true
   - name: MC2_VEG_MAX_DIST
     kind: Float
