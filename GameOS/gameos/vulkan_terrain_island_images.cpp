@@ -6,6 +6,7 @@
 #include "terrain_field_store.h"
 #include "gameos.hpp"
 #include <array>
+#include <filesystem>
 #include "terrain_surface_cook.h"
 #include "../../3rdparty/glm/glm/gtc/packing.hpp"
 
@@ -158,7 +159,7 @@ void import_colormap(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
         {
             std::array<char, 1024> userDir{};
             const int userDirCap = static_cast<int>(userDir.size());
-            if (gos_GetUserDataDirectory(userDir.data(), userDirCap)) cacheDir = std::string(userDir.data()) + "/cache/terrain";
+            if (gos_GetUserDataDirectory(userDir.data(), userDirCap)) cacheDir = (std::filesystem::path(userDir.data()) / "cache" / "terrain").generic_string();
         }
         const char* cookOrigin = "none";
         const auto resolveT0 = std::chrono::steady_clock::now();
