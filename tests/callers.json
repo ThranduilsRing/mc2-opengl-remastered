@@ -2488,7 +2488,7 @@
         },
         {
           "path": "scripts/run_scripts_tests.py",
-          "line": 22,
+          "line": 23,
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child  # noqa: E402"
@@ -2593,7 +2593,7 @@
         },
         {
           "path": "scripts/tests/test_contract_coverage.py",
-          "line": 11,
+          "line": 12,
           "evidence": "import",
           "reference": "scripts.console_child",
           "text": "from scripts import console_child"
@@ -4275,7 +4275,7 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 645,
+          "line": 588,
           "evidence": "command",
           "reference": "scripts/run_smoke.py",
           "text": "proc = subprocess.run(cmd, cwd=str(ROOT), capture_output=True,"
@@ -4363,7 +4363,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/run_scripts_tests.py",
-          "line": 23,
+          "line": 24,
           "evidence": "import",
           "reference": "run_tools_tests",
           "text": "import run_tools_tests as rtt  # noqa: E402"
@@ -7360,7 +7360,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/tests/test_contract_coverage.py",
-          "line": 10,
+          "line": 11,
           "evidence": "import",
           "reference": "tools.callers",
           "text": "from tools import callers"
@@ -8522,13 +8522,6 @@
           "text": "from tools.mc2x_import.fst import fst_entries, decompress_entry  # noqa: E402"
         },
         {
-          "path": "scripts/tests/test_mod_smoke.py",
-          "line": 268,
-          "evidence": "import",
-          "reference": "fst",
-          "text": "import fst as fstlib"
-        },
-        {
           "path": "tools/list_free_ordinals.py",
           "line": 39,
           "evidence": "import",
@@ -8565,7 +8558,7 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 504,
+          "line": 448,
           "evidence": "import_module",
           "reference": "fst",
           "text": "fst_lib = importlib.import_module('fst')"
@@ -8747,20 +8740,6 @@
       "callers_by_basename": [],
       "callers_by_stem": [
         {
-          "path": "scripts/tests/test_mod_smoke.py",
-          "line": 252,
-          "evidence": "import",
-          "reference": "fst_listing",
-          "text": "import fst_listing"
-        },
-        {
-          "path": "scripts/tests/test_mod_smoke.py",
-          "line": 259,
-          "evidence": "import",
-          "reference": "fst_listing",
-          "text": "import fst_listing"
-        },
-        {
           "path": "tests/mod_install/test_fst_listing.py",
           "line": 18,
           "evidence": "import",
@@ -8783,7 +8762,7 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 486,
+          "line": 430,
           "evidence": "import",
           "reference": "fst_listing",
           "text": "import fst_listing"
@@ -8816,6 +8795,13 @@
           "evidence": "import",
           "reference": "resolver",
           "text": "from resolver import ("
+        },
+        {
+          "path": "tests/mod_install/test_vfs_resolution_corpus.py",
+          "line": 26,
+          "evidence": "import",
+          "reference": "resolver",
+          "text": "from resolver import ResolverConfig, load_config, normalize_key, parse_mod_deps, resolve  # noqa: E402"
         },
         {
           "path": "tools/mod_install/parity_smoke.py",
