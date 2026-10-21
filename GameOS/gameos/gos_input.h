@@ -57,6 +57,8 @@ void updateKeyboardState();
 void resetKeypress();
 
 // Set by the ImGui layer each frame after NewFrame(); gates game mouse input.
+// The capture/focus/modal decisions these flags feed live in
+// input_capture_policy.h (pure, SDL-free); this header only publishes them.
 void setImguiWantsMouse(bool v);
 
 // HUD-IMGUI wheel guard (IN-MISSION-HUD-IMGUI-SCOPE-1 slice E, fixes slice D's

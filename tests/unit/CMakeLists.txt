@@ -123,6 +123,7 @@ add_executable(mc2_tests
     test_pilot_profile_preserve.cpp  # PILOT-PROFILE-PRESERVE-1: editor Profile save decision kernel (offline)
     test_ui_defs_lockstep.cpp  # UI-DEFS-LOCKSTEP-HARDEN-1: defs/ui package version + zero-element/zero-draw fail-soft (offline)
     test_hud_tab_registry.cpp  # HUD-IMGUI slice C: tab registry order/cycle invariants (offline)
+    test_input_capture_policy.cpp  # I3: pure input capture/focus/modal policy + press/release edge kernel (offline)
     test_infowindow_model.cpp  # HUD-IMGUI slice D: info-window component aggregation kernel (offline)
     test_terrain_material.cpp  # TERRAIN-MATERIAL-SINGLE-SOURCE: terrain type -> material table (type 20 = Concrete)
     test_sim_substeps.cpp   # sim steps per rendered frame under the harness clock (MC2_SIM_SPEED)

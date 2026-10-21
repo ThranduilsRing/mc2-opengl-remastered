@@ -2,11 +2,19 @@
 #include <string.h> // memset
 #include <assert.h>
 #include "gos_input.h"
+#include "input_capture_policy.h"
 #include "mc2fmt.h"
 
 #ifdef PLATFORM_WINDOWS
 #include <windows.h>   // GetAsyncKeyState, GetSystemMetrics, SM_SWAPBUTTON
 #endif
+
+// I3: the pure edge kernel in input_capture_policy.h stores its result in the
+// same byte slots as input::KeyState; the two enums must stay value-identical.
+static_assert(static_cast<int>(input::capture::Edge::Free)     == input::KS_FREE,     "capture::Edge must mirror input::KeyState");
+static_assert(static_cast<int>(input::capture::Edge::Pressed)  == input::KS_PRESSED,  "capture::Edge must mirror input::KeyState");
+static_assert(static_cast<int>(input::capture::Edge::Held)     == input::KS_HELD,     "capture::Edge must mirror input::KeyState");
+static_assert(static_cast<int>(input::capture::Edge::Released) == input::KS_RELEASED, "capture::Edge must mirror input::KeyState");
 
 static input::MouseInfo g_mouse_info;
 static input::KeyboardInfo g_keyboard_info;
@@ -89,13 +97,17 @@ void setImguiHoversMouse(bool v) { s_imguiHoversMouse = v; }
 static bool s_gameModalActive = false;
 void setGameModalActive(bool v) { s_gameModalActive = v; }
 
+// (hoisted above handleMouseWheel so the wheel guard can read the whole
+// capture policy state; the setter stays at its original site below)
+static bool s_imguiWantsMouse = false;
+
 void handleMouseWheel(const SDL_Event* event) {
     assert(event);
 
     // HUD-IMGUI wheel guard (see gos_input.h): cursor over an ImGui window ->
     // wheel belongs to ImGui, not the game camera. Game modal (pause menu)
     // still wins, mirroring the button gate below.
-    if (s_imguiHoversMouse && !s_gameModalActive)
+    if (!capture::wheelReachesGame({ s_imguiWantsMouse, s_imguiHoversMouse, s_gameModalActive }))
         return;
 
     MouseInfo* mi = &g_mouse_info;
@@ -116,7 +128,6 @@ void beginUpdateMouseState() {
     mi->wheel_hor_ = mi->wheel_vert_ = 0.0f;
 }
 
-static bool s_imguiWantsMouse = false;
 void setImguiWantsMouse(bool v) { s_imguiWantsMouse = v; }
 
 // IMGUI-PAUSE-INPUT-FIX-1: when a game MODAL (the pause menu) is up, the game must
@@ -154,7 +165,8 @@ void updateMouseState() {
 
     // Gate ImGui-captured clicks out of game input — EXCEPT when a game modal (pause
     // menu) is active, where the game must remain clickable through/over ImGui windows.
-    if (s_imguiWantsMouse && !s_gameModalActive) button_state = 0;
+    if (!capture::mouseButtonsReachGame({ s_imguiWantsMouse, s_imguiHoversMouse, s_gameModalActive }))
+        button_state = 0;
 
     int buttons[] = {SDL_BUTTON_LEFT, SDL_BUTTON_MIDDLE, SDL_BUTTON_RIGHT, SDL_BUTTON_X1, SDL_BUTTON_X2 };
 
@@ -164,15 +176,9 @@ void updateMouseState() {
         if(idx == -1 || idx >= MouseInfo::NUM_BUTTONS)
             continue;
 
-        KeyState prev_ks = mi->button_state_[idx];
-
-        if(button_state & SDL_BUTTON(buttons[b])) {
-            mi->button_state_[idx] = 
-                (prev_ks==KS_FREE||prev_ks==KS_RELEASED) ? KS_PRESSED : KS_HELD;
-        } else {
-            mi->button_state_[idx] = 
-                (prev_ks==KS_HELD||prev_ks==KS_PRESSED) ? KS_RELEASED : KS_FREE;
-        }
+        const capture::Edge prev = static_cast<capture::Edge>(mi->button_state_[idx]);
+        const capture::Edge next = capture::nextEdge(prev, (button_state & SDL_BUTTON(buttons[b])) != 0);
+        mi->button_state_[idx] = static_cast<KeyState>(next);
 #if 0
         if(mi->button_state_[idx] == KS_PRESSED)
             mc2::fmt::print_out("{:d} pressed\n", mc2::fmt::as_i32(idx));
@@ -208,22 +214,17 @@ void updateKeyboardState() {
 
     for(int i=0; i<array_len; ++i) {
 
-        uint8_t ls = ki->last_state_[i];
-
-        if(state[i]) {
-           ls = (ls==KS_FREE||ls==KS_RELEASED) ? KS_PRESSED : KS_HELD;
-        } else {
-           ls = (ls==KS_HELD||ls==KS_PRESSED) ? KS_RELEASED : KS_FREE;
-        }
-        ki->last_state_[i] = ls;
+        const capture::Edge prev = static_cast<capture::Edge>(ki->last_state_[i]);
+        const capture::Edge next = capture::nextEdge(prev, state[i] != 0);
+        ki->last_state_[i] = static_cast<uint8_t>(next);
 
 #if 0
-        if(ls == KS_PRESSED || ls==KS_RELEASED) {
-            mc2::fmt::print_out("key: {:d} {}\n", mc2::fmt::as_i32(i), mc2::fmt::safe(ls==KS_PRESSED ? "PRESSED" : "RELEASED"));
+        if(next == capture::Edge::Pressed || next == capture::Edge::Released) {
+            mc2::fmt::print_out("key: {:d} {}\n", mc2::fmt::as_i32(i), mc2::fmt::safe(next == capture::Edge::Pressed ? "PRESSED" : "RELEASED"));
         }
 #endif
 
-        if(ki->first_pressed_==-1 && ls==KS_PRESSED) {
+        if(ki->first_pressed_==-1 && next==capture::Edge::Pressed) {
             ki->first_pressed_ = i;
         }
     }
@@ -243,13 +244,9 @@ void updateKeyboardState() {
         auto injectModifier = [&](SDL_Scancode sc, DWORD vk) {
             int idx = static_cast<int>(sc);
             if (idx < 0 || idx >= kStateLen) return;
-            uint8_t ls = ki->last_state_[idx];
-            bool down = (::GetAsyncKeyState(vk) & 0x8000) != 0;
-            if (down)
-                ls = (ls==KS_FREE||ls==KS_RELEASED) ? KS_PRESSED : KS_HELD;
-            else
-                ls = (ls==KS_HELD||ls==KS_PRESSED) ? KS_RELEASED : KS_FREE;
-            ki->last_state_[idx] = ls;
+            const capture::Edge prev = static_cast<capture::Edge>(ki->last_state_[idx]);
+            const bool down = (::GetAsyncKeyState(vk) & 0x8000) != 0;
+            ki->last_state_[idx] = static_cast<uint8_t>(capture::nextEdge(prev, down));
         };
         injectModifier(SDL_SCANCODE_LCTRL,  VK_LCONTROL);
         injectModifier(SDL_SCANCODE_RCTRL,  VK_RCONTROL);
