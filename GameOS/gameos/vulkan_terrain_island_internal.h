@@ -167,6 +167,8 @@ struct TerrainIsland : mc2vk::IslandState {
     mc2vk::ResidentTextureRef colormapTexture;
     mc2vk::OwnedSampler     colormapSamp;
     uint64_t      colormapVersionImported = 0;   // field-store colormap version last imported (0 = none yet)
+    uint64_t      colormapShoreVersionImported = 0;
+    std::array<float, 9> colormapCookParams{};
     bool          colormapReady = false;     // set once the sampled image is live
 
     // CEMENT/ROAD atlas sub-slice: VK-owned copy-once import of the GL cement atlas

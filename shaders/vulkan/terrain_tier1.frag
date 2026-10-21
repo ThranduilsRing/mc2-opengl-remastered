@@ -8,8 +8,8 @@
 //                        samples the REAL colormap atlas (VK-owned copy-once import
 //                        of the GL g_atlasGLTex; see vulkan_terrain_island.cpp) at
 //                        the SAME world-XY -> atlas-UV as the GL LOD-chunk frag
-//                        (terrain_lod_chunk.frag:462-482), including the 9-tap disc
-//                        blur, so the VK terrain BASE color matches GL's colormap.
+//                        (terrain_lod_chunk.frag:462-482). The shared surface cook
+//                        supplies the filtered macro color and coast correction.
 //                        cement/road/overlay-sidecar/detail/POM/lighting are STILL
 //                        DEFERRED (later sub-slices). Fail-soft: if the colormap is
 //                        not importable/ready (uT.colormapReady==0) fall back to the
@@ -38,48 +38,6 @@
 #include "include/terrain_frame_vk.glsl"   // TerrainFrameUBO + set-0 resources + CSM shadow helpers
 #include "../include/axis.hglsl"   // mc2ToRender: the POM view vector is built in the MC2 world frame
 #include "../include/edge_haze.hglsl"   // edgeHazeAmount + EDGE_HAZE_SKY, shared with GL
-#include "../include/water_shore_edge.hglsl"   // SHORE-FIELD-1: wse_bicubicHeight (the water's shore field reconstruction)
-
-// SHORE-FIELD-1 (owner: "colormap tint for now"): binding 15 is the water's smooth shore field. Inside the coastal
-// band the stock colormap's water paint (teal staircase corners baked from the coarse 128 wu grid) is made to follow
-// the smoothed coast: where the field says land but the colormap texel is painted as water, the colour is taken from
-// the land side (re-sampled uphill along the field gradient); where the field says shallow water but the texel is
-// painted as land, from the water side. Heights and the mesh are untouched.
-layout(set = 0, binding = 15) uniform sampler2D u_shoreField;
-
-vec3 sfColormapAt(vec2 worldXY) {
-    vec2 uv = vec2((worldXY.x - uT.atlasTopLeftX) * uT.atlasOneOverWorldUnits,
-                   (uT.atlasTopLeftY - worldXY.y) * uT.atlasOneOverWorldUnits);
-    return textureLod(u_colormap, uv, 0.0).rgb;
-}
-float sfWaterPaint(vec3 c) { return smoothstep(0.0, 0.08, min(c.g, c.b) - c.r); }   // same test as the material weights
-
-vec3 sfFollowCoast(vec3 base, vec3 wp) {
-    vec2 hn = vec2((wp.x - uT.shoreFieldBoundsX) / max(uT.shoreFieldBoundsW, 1e-5),
-                   (uT.shoreFieldBoundsY - wp.y) / max(uT.shoreFieldBoundsH, 1e-5));
-    if (any(lessThan(hn, vec2(0.0))) || any(greaterThan(hn, vec2(1.0)))) return base;
-    float thick = uT.shorelineWaterElev - wse_bicubicHeight(u_shoreField, hn);   // > 0: the field says water
-    const float kBandWu = 24.0;   // depth/height band around the waterline the colour follow acts in
-    if (abs(thick) > kBandWu) return base;
-    float paint = sfWaterPaint(base);
-    bool fieldWater = thick > 0.0;
-    float want = fieldWater ? 1.0 - paint : paint;   // how wrong the painted side is
-    if (want < 0.02) return base;
-    // Uphill direction of the field in world XY (texel-step central differences; hn.y runs north->south).
-    vec2 e = 1.0 / vec2(textureSize(u_shoreField, 0) - ivec2(1));
-    float gx = wse_bicubicHeight(u_shoreField, hn + vec2(e.x, 0.0)) - wse_bicubicHeight(u_shoreField, hn - vec2(e.x, 0.0));
-    float gy = wse_bicubicHeight(u_shoreField, hn - vec2(0.0, e.y)) - wse_bicubicHeight(u_shoreField, hn + vec2(0.0, e.y));
-    vec2 dir = vec2(gx, gy);
-    if (dot(dir, dir) < 1e-10) return base;
-    dir = normalize(dir) * (fieldWater ? -1.0 : 1.0);   // land: step uphill; water: step downhill
-    vec3 found = base;
-    for (int k = 1; k <= 4; ++k) {
-        vec3 c = sfColormapAt(wp.xy + dir * (40.0 * float(k)));
-        float p = sfWaterPaint(c);
-        if (fieldWater ? (p > 0.5) : (p < 0.5)) { found = c; break; }
-    }
-    return mix(base, found, want);
-}
 
 layout(location = 0) in vec3 v_worldPos;
 
@@ -447,24 +405,10 @@ void main() {
     bool pureConcrete = false;
     bool cementHit = false;   // a solid cement atlas texel won (the shoreline wet band skips it, as GL)
     if (uT.colormapReady != 0) {
-        // Mirror terrain_lod_chunk.frag:466-482 EXACTLY (world-XY -> atlas-UV, then
-        // the 9-tap disc blur) so the VK base color matches GL's colormap sample.
-        vec2 uv;
-        uv.x = (v_worldPos.x - uT.atlasTopLeftX) * uT.atlasOneOverWorldUnits;
-        uv.y = (uT.atlasTopLeftY - v_worldPos.y) * uT.atlasOneOverWorldUnits;
-        const float CMAP_BLUR = 0.0020;
-        const float CMAP_R2   = CMAP_BLUR * 0.707;
-        base = texture(u_colormap, uv).rgb
-             + texture(u_colormap, uv + vec2( CMAP_BLUR, 0.0)).rgb
-             + texture(u_colormap, uv + vec2(-CMAP_BLUR, 0.0)).rgb
-             + texture(u_colormap, uv + vec2(0.0,  CMAP_BLUR)).rgb
-             + texture(u_colormap, uv + vec2(0.0, -CMAP_BLUR)).rgb
-             + texture(u_colormap, uv + vec2( CMAP_R2,  CMAP_R2)).rgb
-             + texture(u_colormap, uv + vec2(-CMAP_R2,  CMAP_R2)).rgb
-             + texture(u_colormap, uv + vec2( CMAP_R2, -CMAP_R2)).rgb
-             + texture(u_colormap, uv + vec2(-CMAP_R2, -CMAP_R2)).rgb;
-        base /= 9.0;
-        if (uT.shoreFieldOn != 0 && uT.shoreFieldIsSdf != 0) base = sfFollowCoast(base, v_worldPos);   // SHORE-FIELD-1
+        // The shared cook already applied the original nine-tap blur and coast-color repair.
+        vec2 uv = vec2((v_worldPos.x - uT.atlasTopLeftX) * uT.atlasOneOverWorldUnits,
+                       (uT.atlasTopLeftY - v_worldPos.y) * uT.atlasOneOverWorldUnits);
+        base = textureLod(u_colormap, uv, 0.0).rgb;
     } else {
         // Fail-soft olive placeholder (colormap not importable/ready this frame).
         float hMod = clamp(v_worldPos.z / 512.0 + 0.5, 0.35, 1.0);
