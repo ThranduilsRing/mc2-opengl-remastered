@@ -27,7 +27,8 @@ inline constexpr float kSunAngularRadiusDeg = 1.5f;   // calibrated on the owner
 // The terrain's own shadow is a wide, low ridge, not a sharp caster: its cone is this many times the sun's (soft gradients, as pre-T15 had).
 inline constexpr float kTerrainConeScale = 2.5f;
 inline constexpr float kFadeStartWorld = 0.0f;   // the fade ramps from contact ...
-inline constexpr float kFadeEndWorld = 120.0f;   // ... to full at this blocker distance along the ray (pre-T15 80; 120 keeps the night tree streaks as dark as pre-T15 had them)
+inline constexpr float kFadeEndWorld = 240.0f;   // ... to full at this blocker distance along the ray (pre-T15 80; at the 15 deg night clamp a tree's
+                                                 // canopy sits 150+ wu up its ray, and 80 or 120 erased the streaks pre-T15 still showed)
 inline constexpr float kFadeMax = 0.65f;          // the pre-T15 MC2_SHADOW_DIST_FADE_MAX
 inline constexpr float kWorldUnitsPerVertex = 128.0f;
 
