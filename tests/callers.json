@@ -6438,6 +6438,20 @@
       "callers_by_stem": []
     },
     {
+      "path": "scripts/tests/test_terrain_feed_compare.py",
+      "basename": "test_terrain_feed_compare.py",
+      "stem": "test_terrain_feed_compare",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "scripts/tests/test_terrain_perf_report.py",
+      "basename": "test_terrain_perf_report.py",
+      "stem": "test_terrain_perf_report",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
       "path": "scripts/tests/test_tracy_capture_compare.py",
       "basename": "test_tracy_capture_compare.py",
       "stem": "test_tracy_capture_compare",
@@ -10576,6 +10590,21 @@
       ]
     },
     {
+      "path": "tools/terrain_feed_compare.py",
+      "basename": "terrain_feed_compare.py",
+      "stem": "terrain_feed_compare",
+      "callers_by_basename": [
+        {
+          "path": "scripts/tests/test_terrain_feed_compare.py",
+          "line": 9,
+          "evidence": "load module",
+          "reference": "tools/terrain_feed_compare.py",
+          "text": "spec = importlib.util.spec_from_file_location('terrain_feed_compare', Path(__file__).resolve().parents[2] / 'tools/terrain_feed_compare.py')"
+        }
+      ],
+      "callers_by_stem": []
+    },
+    {
       "path": "tools/terrain_gen/__init__.py",
       "basename": "__init__.py",
       "stem": "__init__",
@@ -10672,6 +10701,21 @@
       "basename": "test_banding_seam.py",
       "stem": "test_banding_seam",
       "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "tools/terrain_perf_report.py",
+      "basename": "terrain_perf_report.py",
+      "stem": "terrain_perf_report",
+      "callers_by_basename": [
+        {
+          "path": "scripts/tests/test_terrain_perf_report.py",
+          "line": 8,
+          "evidence": "load module",
+          "reference": "tools/terrain_perf_report.py",
+          "text": "spec = importlib.util.spec_from_file_location('terrain_perf_report', Path(__file__).resolve().parents[2] / 'tools/terrain_perf_report.py')"
+        }
+      ],
       "callers_by_stem": []
     },
     {
