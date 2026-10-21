@@ -253,6 +253,7 @@ int   mc2_vk_shadow_island_csm_array_ready();
 // The world-fixed static sun shadow map (terrain + registry buildings), built once per engine static-map generation (map load, destroy rebake). The
 // view is a D32 image in DEPTH_STENCIL_READ_ONLY; null and 0 until the map's first build has been submitted.
 void*    mc2_vk_shadow_island_get_static_view();
+void*    mc2_vk_shadow_island_get_static_visibility_tiles();
 uint64_t mc2_vk_shadow_island_static_generation();
 
 // MC2_VK_SHADOW_MATRIX_DIAG (Trace gate, default OFF = zero cost): one-shot matrix/depth-map

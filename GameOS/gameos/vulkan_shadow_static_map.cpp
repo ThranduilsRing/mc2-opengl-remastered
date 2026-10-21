@@ -121,19 +121,23 @@ bool ShadowStaticMap::init(VkDevice device, VmaAllocator allocator, VkRenderPass
 
     if (!ubo_.createHostWritable(allocator_, device_, sizeof(StaticFrameUBO), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, "shadow.static.ubo")) { slog("UBO failed."); return false; }
     inited_ = true;
+    if (!visibilityTiles_.init(device_, allocator_, spvDir)) slog("visibility tiles unavailable; using dense static receivers.");
     return true;
 }
 
 bool ShadowStaticMap::stale() const {
     if (!inited_) return false;
     StaticShadowSpec spec;
-    return gos_GetStaticShadowSpec(&spec) && spec.generation != builtGeneration_ && spec.generation != pendingGeneration_
-        && spec.generation != failedGeneration_;
+    if (!gos_GetStaticShadowSpec(&spec)) return false;
+    const auto* fields = gos_TerrainFieldStore();
+    const auto key = mc2terrain::staticVisibilityDependencies(spec, fields ? fields->heightVersion() : 0);
+    return (!builtKey_ || *builtKey_ != key) && (!pendingKey_ || *pendingKey_ != key) && (!failedKey_ || *failedKey_ != key);
 }
 
 bool ShadowStaticMap::ensureTarget(int size, VkRenderPass pass) {
     if (image_ && size_ == size) return true;
-    builtGeneration_ = 0;   // a new image holds no build until the one being recorded is submitted
+    builtKey_.reset(); // publish only after the build and visibility tiles have been submitted
+    visibilityTiles_.invalidate();
     fb_.reset();   // the framebuffer and the view go before the image they cover
     view_.reset();
     image_.reset();
@@ -236,8 +240,10 @@ bool ShadowStaticMap::record(VkCommandBuffer cb, const StaticPropGeometryView& g
     if (!inited_) return false;
     StaticShadowSpec spec;
     if (!gos_GetStaticShadowSpec(&spec)) return false;
-    // A generation that fails is not retried: the retry would idle the device every frame. The next generation (map load, rebake) tries again.
-    failedGeneration_ = spec.generation;
+    // Failed dependencies are not retried every frame; a producer edit permits another attempt.
+    const auto* fields = gos_TerrainFieldStore();
+    const auto key = mc2terrain::staticVisibilityDependencies(spec, fields ? fields->heightVersion() : 0);
+    failedKey_ = key;
     if (spec.size <= 0 || spec.size > kMaxMapSize) { mc2::fmt::print_err("[VK_SHADOW_STATIC] map size {} rejected.\n", spec.size); return false; }
     // A rebuild rewrites buffers and descriptors an earlier build's submit may still read; rebuilds happen once per map or per destroy.
     getOrCreateEngineVulkanContext().waitIdle("shadow_static_rebuild");
@@ -307,10 +313,12 @@ bool ShadowStaticMap::record(VkCommandBuffer cb, const StaticPropGeometryView& g
     }
     vkCmdEndRenderPass(cb);
     gpuScope.end();
-    pendingGeneration_ = spec.generation;
-    failedGeneration_ = 0;
-    mc2::fmt::print_err("[VK_SHADOW_STATIC] build recorded: generation={} size={} terrain_tris={} building_instances={} building_draws={}\n",
-                        mc2::fmt::as_u64(spec.generation), spec.size, terrainTris, buildingInstances, buildingDraws);
+    const bool tiles = visibilityTiles_.record(cb, view_.get(), static_cast<uint32_t>(size_));
+    pendingKey_ = key;
+    failedKey_.reset();
+    mc2::fmt::print_err("[VK_SHADOW_STATIC] build recorded: generation={} size={} terrain_tris={} building_instances={} building_draws={} visibility_tiles={} height_version={}\n",
+                        mc2::fmt::as_u64(spec.generation), spec.size, terrainTris, buildingInstances, buildingDraws, tiles,
+                        mc2::fmt::as_u64(key.heightVersion));
     return true;
 }
 

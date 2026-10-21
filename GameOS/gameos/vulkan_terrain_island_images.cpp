@@ -674,11 +674,13 @@ bool ensure_dummy_shadow(TerrainIsland* s) {
 bool bind_static_shadow(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
     s->shadowReady = false;
     s->shadowExternalView = VK_NULL_HANDLE;
+    s->staticVisibilityExternalView = VK_NULL_HANDLE;
     if (!feed.lightingEnabled || !feed.shadowsEnabled || feed.staticShadowGeneration == 0) return false;
     if (mc2_vk_shadow_island_static_generation() != feed.staticShadowGeneration) return false;
     void* view = mc2_vk_shadow_island_get_static_view();
     if (view == nullptr) return false;
     s->shadowExternalView = reinterpret_cast<VkImageView>(view);
+    s->staticVisibilityExternalView = reinterpret_cast<VkImageView>(mc2_vk_shadow_island_get_static_visibility_tiles());
     s->shadowReady = true;
     return true;
 }

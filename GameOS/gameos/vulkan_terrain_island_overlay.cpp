@@ -385,7 +385,7 @@ extern "C" int mc2_vk_overlay_run(int w, int h) {
     const uint32_t par = fsC.parity & 1u;
     // Overlays can be the first terrain consumer of this parity (including load warmup).
     // Initialize the shared set after its fence even when the terrain draw was skipped.
-    const std::array<VkImageView,6> views{s->colormapTexture.view(),s->cementTexture.view(),s->shoreMaskTexture.view(),s->matNormalTexture.view(),s->shoreFieldTexture.view(),s->macroGradientTexture.view()};
+    const std::array<VkImageView,7> views{s->colormapTexture.view(),s->cementTexture.view(),s->shoreMaskTexture.view(),s->matNormalTexture.view(),s->shoreFieldTexture.view(),s->macroGradientTexture.view(),s->staticVisibilityDummy.view()};
     if (s->descriptorsDirty[par] || s->boundTextures[par]!=views) {
         write_descriptors(s,int(par)); s->boundTextures[par]=views;
     }

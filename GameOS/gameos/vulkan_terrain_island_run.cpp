@@ -395,7 +395,7 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
         const VkImageView wantCsmArrayView = s->csmArrayDirect ? s->csmArrayExternalView : s->csmArrayView.get();
         const VkImageView wantCsmFullMapView = s->csmFullMapDirect ? s->csmFullMapExternalView : s->csmFullMapView.get();
         if (wantStaticView != s->shadowBoundView || wantView != s->dynShadowBoundView || wantCsmArrayView != s->csmArrayBoundView
-            || wantCsmFullMapView != s->csmFullMapBoundView) {
+            || wantCsmFullMapView != s->csmFullMapBoundView || s->staticVisibilityExternalView != s->staticVisibilityBoundView) {
             // VK-TERRAIN-FENCE-DEFER-1: a prior terrain submit may still be in flight
             // using these sets under the deferred retire (the old inline wait made
             // this rewrite safe for free). Bound-view switches are RARE (first frame
@@ -403,6 +403,7 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
             mc2vk::getOrCreateEngineVulkanContext().waitIdle("terrain_bound_view_switch");
             write_descriptors(s);
             s->shadowBoundView = wantStaticView;
+            s->staticVisibilityBoundView = s->staticVisibilityExternalView;
             s->dynShadowBoundView = wantView;
             s->csmArrayBoundView = wantCsmArrayView;
             s->csmFullMapBoundView = wantCsmFullMapView;
@@ -452,7 +453,7 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
       fsC = vkImageResourceBeginFrame(s->colorRes); }
     us_fence_wait = usSince(tFence0);
     const uint32_t par = fsC.parity & 1u;
-    const std::array<VkImageView,6> views{s->colormapTexture.view(),s->cementTexture.view(),s->shoreMaskTexture.view(),s->matNormalTexture.view(),s->shoreFieldTexture.view(),s->macroGradientTexture.view()};
+    const std::array<VkImageView,7> views{s->colormapTexture.view(),s->cementTexture.view(),s->shoreMaskTexture.view(),s->matNormalTexture.view(),s->shoreFieldTexture.view(),s->macroGradientTexture.view(),s->staticVisibilityDummy.view()};
     if (s->descriptorsDirty[par] || s->boundTextures[par]!=views) {
         write_descriptors(s,int(par)); s->boundTextures[par]=views;
     }

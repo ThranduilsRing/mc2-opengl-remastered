@@ -163,7 +163,7 @@ struct TerrainIsland : mc2vk::IslandState {
     // (g_atlasGLTex). Sampled image + view + sampler; binding 2. Keyed by the GL tex
     // name so a re-built atlas (per-mission) re-imports.
     bool descriptorsDirty[2] = {true,true};
-    std::array<VkImageView,6> boundTextures[2]{};
+    std::array<VkImageView,7> boundTextures[2]{};
     mc2vk::ResidentTextureRef colormapTexture;
     mc2vk::OwnedSampler     colormapSamp;
     uint64_t      colormapVersionImported = 0;   // field-store colormap version last imported (0 = none yet)
@@ -204,6 +204,10 @@ struct TerrainIsland : mc2vk::IslandState {
     bool          shadowReady = false;           // binding 5 holds the island's map of this frame's generation
     VkImageView   shadowExternalView = VK_NULL_HANDLE;   // the shadow island's static map this frame, or null
     VkImageView   shadowBoundView = VK_NULL_HANDLE;      // what binding 5 was last written with
+    mc2vk::ResidentTextureRef staticVisibilityDummy;
+    mc2vk::OwnedSampler staticVisibilitySampler;
+    VkImageView staticVisibilityExternalView = VK_NULL_HANDLE;
+    VkImageView staticVisibilityBoundView = VK_NULL_HANDLE;
 
     // VK-TERRAIN-DYNSHADOW: second D32 depth-COMPARE image for the DYNAMIC (building/mech)
     // shadow map at binding 7 (shares shadowSamp). Same copy-per-frame mechanism as static.

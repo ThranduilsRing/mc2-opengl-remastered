@@ -9965,7 +9965,9 @@
     "size",
     "terrain_tris",
     "building_instances",
-    "building_draws"
+    "building_draws",
+    "visibility_tiles",
+    "height_version"
    ],
    "count": 1
   },
@@ -10528,6 +10530,7 @@
   "VFX_BIRTH",
   "VIDEO",
   "VISUAL_CAPTURE",
+  "VK_GPU_PASSES",
   "VK_PROFILE",
   "VK_VALIDATION",
   "VRAM"
