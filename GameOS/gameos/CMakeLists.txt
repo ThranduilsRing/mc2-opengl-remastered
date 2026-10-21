@@ -389,7 +389,7 @@ if(MC2_VULKAN)
     # VK-PARITY-TERRAIN-2: shaders #include files from shaders/vulkan/include and the
     # shared GL/VK shaders/include/*.hglsl (e.g. terrain_light_pool.hglsl); list them as
     # DEPENDS so editing an include re-bakes the SPIR-V (the bake step has no depfile).
-    file(GLOB MC2_VK_SHADER_INCLUDES
+    file(GLOB MC2_VK_SHADER_INCLUDES CONFIGURE_DEPENDS
         "${MC2_VK_SHADER_SRC_DIR}/include/*.glsl"
         "${CMAKE_SOURCE_DIR}/shaders/include/*.hglsl")
     if(MC2_GLSLANG_VALIDATOR OR MC2_GLSLC)
