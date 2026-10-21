@@ -663,7 +663,15 @@ def run_mod(staged: Path, stem: str, duration: int, timeout: int) -> dict:
     text = '\n'.join([collect_log_text(output), artifact_log_text(started, stem)])
     health = analyze_health(text)
     return {'exit': rc, 'fingerprint': fingerprint, 'verdict': verdict,
-            'log': str(log), 'health': health}
+            'log': str(log), 'health': health, 'note': failure_note(text)}
+
+
+def failure_note(text: str) -> str:
+    """First engine-side fatal line (STOP / FATAL / CRASH / VERIFY), trimmed."""
+    for line in text.splitlines():
+        if re.search(r'STOP|FATAL|\[CRASH\]|\[VERIFY\]', line):
+            return line.strip()[:110]
+    return ''
 
 
 def result_word(row: dict) -> str:
@@ -676,9 +684,10 @@ def result_word(row: dict) -> str:
 
 
 def format_table(rows: list[dict]) -> str:
-    head = ('mod', 'mission', 'result', 'health')
-    body = [(r['mod'], r['mission'], result_word(r), health_cell(r['health'])) for r in rows]
-    widths = [max(len(str(x[i])) for x in [head] + body) for i in range(4)]
+    head = ('mod', 'mission', 'result', 'health', 'note')
+    body = [(r['mod'], r['mission'], result_word(r), health_cell(r['health']),
+             r.get('note', '') if result_word(r) != 'PASS' else '') for r in rows]
+    widths = [max(len(str(x[i])) for x in [head] + body) for i in range(5)]
     line = lambda cells: '| ' + ' | '.join(str(c).ljust(w) for c, w in zip(cells, widths)) + ' |'
     return '\n'.join([line(head), line(['-' * w for w in widths])] + [line(b) for b in body])
 
