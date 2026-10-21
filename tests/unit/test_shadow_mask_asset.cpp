@@ -1,0 +1,114 @@
+// tests/unit/test_shadow_mask_asset.cpp
+// The static shadow mask as a cooked asset: BC4 block packing (the bit layout the GPU encoder mirrors), header and payload validation, and the disk
+// cache through a cold store, a warm load, a changed key and a healed (corrupted then rewritten) entry, plus the per-kind LRU.
+#include "doctest.h"
+#include "gameos/cook_cache.h"
+#include "gameos/shadow_mask_asset.h"
+
+#include <cstdio>
+#include <cstdlib>
+#include <filesystem>
+#include <string>
+
+using namespace mc2shadow;
+
+namespace {
+ShadowMaskAsset makeAsset(uint32_t texels, uint32_t mips, uint64_t key) {
+    ShadowMaskAsset a;
+    a.texels = texels;
+    a.mips = mips;
+    a.key = key;
+    a.blocks.resize(static_cast<size_t>(bc4ChainBytes(texels, mips)));
+    for (size_t i = 0; i < a.blocks.size(); ++i) a.blocks[i] = static_cast<uint8_t>(i * 131u + key);
+    return a;
+}
+std::string tempDir(const char* leaf) {
+    const auto dir = std::filesystem::temp_directory_path() / "mc2_test_shadow_mask" / leaf;
+    std::error_code ec;
+    std::filesystem::remove_all(dir, ec);
+    return dir.string();
+}
+}  // namespace
+
+TEST_CASE("shadow mask: BC4 blocks reproduce flat, two-level and graded tiles within one palette step") {
+    std::array<uint8_t, 16> flat{};
+    flat.fill(200);
+    CHECK(decodeBc4Block(encodeBc4Block(flat)) == flat);
+    std::array<uint8_t, 16> edge{};
+    for (int i = 0; i < 16; ++i) edge[static_cast<size_t>(i)] = (i % 4) < 2 ? 102 : 255;   // a shadow edge: 0.4 floor and lit
+    CHECK(decodeBc4Block(encodeBc4Block(edge)) == edge);
+    std::array<uint8_t, 16> ramp{};
+    for (int i = 0; i < 16; ++i) ramp[static_cast<size_t>(i)] = static_cast<uint8_t>(100 + i * 9);
+    const auto back = decodeBc4Block(encodeBc4Block(ramp));
+    for (int i = 0; i < 16; ++i) CHECK(std::abs(int(back[static_cast<size_t>(i)]) - int(ramp[static_cast<size_t>(i)])) <= (135 / 7 + 1) / 2 + 1);
+}
+
+TEST_CASE("shadow mask: chain sizes count one block for levels under 4 texels") {
+    CHECK(bc4ChainBytes(4, 1) == 8);
+    CHECK(bc4ChainBytes(4, 3) == 24);   // 4, 2, 1 texels: one block each
+    CHECK(bc4ChainBytes(8704, 1) == uint64_t(2176) * 2176 * 8);
+    // The 1024-cell cap (12288^2) fits the asset bound.
+    CHECK(bc4ChainBytes(12288, 14) + 48 <= ShadowMaskAsset::kMaxBytes);
+}
+
+TEST_CASE("shadow mask: the header guards key, evaluator, sizes and payload") {
+    const ShadowMaskAsset a = makeAsset(16, 5, 0x1234);
+    auto bytes = encodeShadowMaskAsset(a);
+    REQUIRE(!bytes.empty());
+    const auto ok = decodeShadowMaskAsset(bytes, 0x1234);
+    REQUIRE(ok);
+    CHECK(ok->blocks == a.blocks);
+    CHECK_FALSE(decodeShadowMaskAsset(bytes, 0x1235));   // another bake's key
+    auto truncated = bytes;
+    truncated.pop_back();
+    CHECK_FALSE(decodeShadowMaskAsset(truncated, 0x1234));
+    auto flipped = bytes;
+    flipped.back() ^= 0x40;
+    CHECK_FALSE(decodeShadowMaskAsset(flipped, 0x1234));   // payload hash
+    auto evaluator = bytes;
+    evaluator[8] ^= 1;
+    CHECK_FALSE(decodeShadowMaskAsset(evaluator, 0x1234));
+    ShadowMaskAsset bad = a;
+    bad.blocks.pop_back();
+    CHECK(encodeShadowMaskAsset(bad).empty());
+}
+
+TEST_CASE("shadow mask cache: cold, warm, changed and healed") {
+    const std::string dir = tempDir("cwch");
+    const ShadowMaskAsset a = makeAsset(32, 6, 77);
+    CHECK_FALSE(loadCachedShadowMask(dir, 77));   // cold
+    REQUIRE(storeCachedShadowMask(dir, a));
+    const auto warm = loadCachedShadowMask(dir, 77);
+    REQUIRE(warm);
+    CHECK(warm->blocks == a.blocks);
+    CHECK_FALSE(loadCachedShadowMask(dir, 78));   // changed inputs: another key misses
+    // A corrupted entry is a miss, and the next bake's store heals it.
+    const auto path = mc2cache::entryPath(dir, kShadowMaskKind, 77);
+    {
+        std::FILE* f = std::fopen(path.string().c_str(), "r+b");
+        REQUIRE(f);
+        std::fseek(f, 60, SEEK_SET);
+        std::fputc(0x5A, f);
+        std::fclose(f);
+    }
+    CHECK_FALSE(loadCachedShadowMask(dir, 77));
+    REQUIRE(storeCachedShadowMask(dir, a));
+    CHECK(loadCachedShadowMask(dir, 77));
+}
+
+TEST_CASE("cook cache: each kind keeps its own newest entries") {
+    const std::string dir = tempDir("lru");
+    const mc2cache::CacheKind other{"other-", ".bin", 2, 0};
+    const std::vector<uint8_t> payload(64, 7);
+    for (uint64_t k = 1; k <= 3; ++k) REQUIRE(mc2cache::writeEntry(dir, other, k, payload));
+    for (uint64_t k = 1; k <= 6; ++k) REQUIRE(storeCachedShadowMask(dir, makeAsset(8, 2, 100 + k)));
+    size_t shadows = 0, others = 0;
+    for (const auto& e : std::filesystem::directory_iterator(dir)) {
+        const std::string name = e.path().filename().string();
+        shadows += name.rfind("shadow-", 0) == 0 ? 1 : 0;
+        others += name.rfind("other-", 0) == 0 ? 1 : 0;
+    }
+    CHECK(shadows == kShadowMaskKind.maxFiles);
+    CHECK(others == 2);
+    CHECK(loadCachedShadowMask(dir, 106));   // the entry just written always survives its own sweep
+}

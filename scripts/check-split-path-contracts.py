@@ -220,6 +220,8 @@ ISLANDS = {
         "greenfield static shadow bake (P1, shadow-greenfield-design-2026-10-21): native VK compute with no GL sibling; GL is being retired. Parity is judged on viewed captures against the pre-T15 look (owner views mc2_01 palms / mc2_10 shore) and the [SHADOW_BAKE] logs, not by RULE4 hash lockstep.",
     "shaders/vulkan/shadow_bake_resolve.comp":
         "greenfield static shadow bake (P1, shadow-greenfield-design-2026-10-21): native VK compute with no GL sibling; GL is being retired. Parity is judged on viewed captures against the pre-T15 look (owner views mc2_01 palms / mc2_10 shore) and the [SHADOW_BAKE] logs, not by RULE4 hash lockstep.",
+    "shaders/vulkan/shadow_bake_bc4.comp":
+        "greenfield static shadow bake (P1, shadow-greenfield-design-2026-10-21): native VK compute with no GL sibling; GL is being retired. Parity is judged on viewed captures against the pre-T15 look (owner views mc2_01 palms / mc2_10 shore) and the [SHADOW_BAKE] logs, not by RULE4 hash lockstep.",
     "shaders/vulkan/shadow_prop.vert":
         "native VK tier-1 island (VULKAN-BACKEND-L6/P-ladder): structural rewrite of the GL pass (Vulkan bindings/push-constants/SPIR-V), NOT a text-lockstep sibling. Parity is enforced at runtime pixel level per RendererFeatureRegistry convention (VK arc GL/VK visual capture pairs, VFX-9 2026-07-16 + tier1 smoke), not by RULE4 hash lockstep. Declared island-only at MERGE-WAVE-2 checker reconcile 2026-07-22.",
     "shaders/vulkan/shadow_prop.frag":

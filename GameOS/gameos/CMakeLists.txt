@@ -25,6 +25,8 @@ set(SOURCES ${SOURCES}
     terrain_field_store.cpp
     static_caster_set.cpp
     terrain_surface_asset.cpp
+    cook_cache.cpp
+    shadow_mask_asset.cpp
     terrain_surface_cook.cpp
     gameos_graphics_params.cpp
     gameos_res.cpp
@@ -390,7 +392,7 @@ if(MC2_VULKAN)
     set(MC2_VK_SHADER_BASENAMES edge_fog fog_oob hzb_reduce hzb_cull shadow_debug_overlay water_geom shadow_prop shadow_prop_alpha shadow_mech shadow_terrain_static color_prop_tier1 terrain_tier1 terrain_tier1_skirt mech_tier1 legacy_shape_tier1 terrain_overlay_tier1 terrain_decal_tier1 hdri_sky cloud_shadow shoreline screen_shadow_static screen_shadow_csm postprocess postprocess_visual hud_color hud_tex vfx_particle)
     set(MC2_VK_SPV_OUTPUTS "")
     list(APPEND MC2_VK_SHADER_BASENAMES terrain_static_visibility)
-    list(APPEND MC2_VK_SHADER_BASENAMES shadow_bake_pcss shadow_bake_terrain_march shadow_bake_resolve)
+    list(APPEND MC2_VK_SHADER_BASENAMES shadow_bake_pcss shadow_bake_terrain_march shadow_bake_resolve shadow_bake_bc4)
     # Output stages that bake from another basename's source: the skirt pipeline needs its
     # own .frag.spv name but runs the main-patch fragment program, so one source feeds both.
     # check-vk-pipeline-layout.py carries the same alias.

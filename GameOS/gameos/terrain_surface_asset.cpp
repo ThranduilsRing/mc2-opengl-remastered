@@ -1,17 +1,12 @@
 #include "terrain_surface_asset.h"
 
+#include "cook_cache.h"
+
 #include <algorithm>
-#include <atomic>
 #include <bit>
-#include <chrono>
 #include <cmath>
-#include <cstdio>
 #include <cstring>
-#include <filesystem>
-#include <functional>
 #include <string>
-#include <tuple>
-#include <system_error>
 
 namespace mc2terrain {
 namespace {
@@ -95,65 +90,20 @@ std::vector<uint8_t> encodeSurfaceAsset(const SurfaceAsset& asset) {
 }
 
 namespace {
-constexpr size_t kCacheMaxFiles = 6; // each entry is up to ~256 MiB
-std::filesystem::path cacheFile(std::string_view dir, uint64_t source) {
-    char name[40];
-    std::snprintf(name, sizeof name, "macro-%016llx.tsf", static_cast<unsigned long long>(source));
-    return std::filesystem::path(dir) / name;
-}
+// Each macro entry is up to ~256 MiB.
+constexpr mc2cache::CacheKind kMacroKind{"macro-", ".tsf", 6, SurfaceAsset::kMaxBytes};
 }
 
 std::optional<SurfaceAsset> loadCachedSurfaceAsset(std::string_view dir, uint64_t expectedSource) {
-    if (dir.empty() || expectedSource == 0) return {};
-    const auto path = cacheFile(dir, expectedSource);
-    std::error_code ec;
-    const auto size = std::filesystem::file_size(path, ec);
-    if (ec || size < kHeaderBytes || size > SurfaceAsset::kMaxBytes) return {};
-    std::vector<uint8_t> bytes(static_cast<size_t>(size));
-    std::FILE* f = std::fopen(path.string().c_str(), "rb");
-    if (!f) return {};
-    const bool read = std::fread(bytes.data(), 1, bytes.size(), f) == bytes.size();
-    std::fclose(f);
-    if (!read) return {};
-    return decodeSurfaceAsset(bytes, expectedSource);
+    if (expectedSource == 0) return {};
+    const auto bytes = mc2cache::readEntry(dir, kMacroKind, expectedSource);
+    if (!bytes || bytes->size() < kHeaderBytes) return {};
+    return decodeSurfaceAsset(*bytes, expectedSource);
 }
 
 bool storeCachedSurfaceAsset(std::string_view dir, const SurfaceAsset& asset) {
-    if (dir.empty()) return false;
     const auto bytes = encodeSurfaceAsset(asset);
-    if (bytes.empty()) return false;
-    namespace fs = std::filesystem;
-    std::error_code ec;
-    const fs::path dirPath{dir};
-    fs::create_directories(dirPath, ec);
-    const auto path = cacheFile(dir, asset.sourceHash);
-    static std::atomic<uint32_t> counter{0};
-    auto tmp = path;
-    tmp += ".tmp" + std::to_string(counter.fetch_add(1)) + "-" +
-           std::to_string(std::chrono::steady_clock::now().time_since_epoch().count());
-    std::FILE* f = std::fopen(tmp.string().c_str(), "wb");
-    if (!f) return false;
-    const bool wrote = std::fwrite(bytes.data(), 1, bytes.size(), f) == bytes.size();
-    const bool closed = std::fclose(f) == 0;
-    if (!wrote || !closed) { fs::remove(tmp, ec); return false; }
-    fs::rename(tmp, path, ec); // atomic replace: a crash leaves only a .tmp file, never a partial entry
-    if (ec) { fs::remove(tmp, ec); return false; }
-    // Bound disk use: keep the newest kCacheMaxFiles entries, sweep stale temp files.
-    std::vector<std::pair<fs::file_time_type, fs::path>> entries;
-    for (const auto& e : fs::directory_iterator(dirPath, ec)) {
-        if (e.path().filename().string().rfind("macro-", 0) != 0) continue;
-        std::error_code e2;
-        const auto t = e.last_write_time(e2);
-        if (e2) continue;
-        if (e.path().extension() == ".tsf") entries.emplace_back(t, e.path());
-        else if (fs::file_time_type::clock::now() - t > std::chrono::hours(1)) fs::remove(e.path(), e2);
-    }
-    if (entries.size() > kCacheMaxFiles) {
-        std::ranges::sort(entries, std::greater<>{}, [](const auto& e) { return std::get<0>(e); });
-        for (size_t i = kCacheMaxFiles; i < entries.size(); ++i)
-            if (const auto& victim = std::get<1>(entries[i]); victim != path) fs::remove(victim, ec);
-    }
-    return true;
+    return !bytes.empty() && mc2cache::writeEntry(dir, kMacroKind, asset.sourceHash, bytes);
 }
 
 void setSurfaceMissionCook(std::vector<uint8_t> candidate) {

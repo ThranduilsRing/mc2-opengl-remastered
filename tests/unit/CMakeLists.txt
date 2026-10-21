@@ -140,6 +140,9 @@ add_executable(mc2_tests
     ${MC2_WORKTREE_ROOT}/GameOS/gameos/terrain_field_store.cpp
     test_terrain_surface_asset.cpp
     ${MC2_WORKTREE_ROOT}/GameOS/gameos/terrain_surface_asset.cpp
+    ${MC2_WORKTREE_ROOT}/GameOS/gameos/cook_cache.cpp
+    test_shadow_mask_asset.cpp  # the shadow mask cook: header/payload validation, BC4 block packing, cold/warm/changed/healed cache
+    ${MC2_WORKTREE_ROOT}/GameOS/gameos/shadow_mask_asset.cpp
     test_terrain_surface_cook.cpp
     ${MC2_WORKTREE_ROOT}/GameOS/gameos/terrain_surface_cook.cpp
     test_vk_render_pass_timer.cpp  # VK pass timer tick math (counter wrap, valid bits); header-only, no Vulkan

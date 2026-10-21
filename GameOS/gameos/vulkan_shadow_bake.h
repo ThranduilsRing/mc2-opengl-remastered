@@ -17,6 +17,7 @@
 #include <volk.h>
 
 #include "shadow_bake_math.h"
+#include "shadow_mask_asset.h"
 #include "vk_compute_pipeline.h"
 #include "vk_owned.h"
 #include "vulkan_shadow_island_live.h"   // Mc2ShadowPacket
@@ -24,6 +25,7 @@
 #include <cstdint>
 #include <optional>
 #include <span>
+#include <string>
 #include <string_view>
 #include <vector>
 
@@ -96,6 +98,15 @@ private:
     bool recordObjectMap(VkCommandBuffer cb, const ShadowBakeInputs& in, uint32_t queryBase);
     void drawRuns(VkCommandBuffer cb, const ShadowBakeInputs& in, std::span<const InstRun> runs, bool& alphaBound, VkPipeline opaque, VkPipeline alpha);
     void retire(uint64_t epoch);
+    uint64_t contentKey(const ShadowBakeInputs& in, uint64_t casterHash) const;
+    bool ensureEncoder();
+    void encodeLevel(VkCommandBuffer cb, VkDescriptorSet set, uint32_t slice, uint32_t side);
+    void recordTileEncode(VkCommandBuffer cb, int tx, int ty);
+    void recordTopLevels(VkCommandBuffer cb);
+    void recordTopLevelsMipsOnly(VkCommandBuffer cb);
+    void recordMaskToRead(VkCommandBuffer cb, bool readback);
+    bool recordWarmUpload(VkCommandBuffer cb, const mc2shadow::ShadowMaskAsset& asset);
+    void storeReadback();
     void releaseTransients();
 
     VkDevice device_ = VK_NULL_HANDLE;
@@ -142,7 +153,15 @@ private:
     OwnedPipeline windowOpaque_, windowAlpha_, objectOpaque_, objectAlpha_, objectTerrain_;
     OwnedDescriptorPool casterPool_;
     VkDescriptorSet windowCasterSet_ = VK_NULL_HANDLE, objectCasterSet_ = VK_NULL_HANDLE;   // freed with casterPool_
-    ComputePipeline pcss_, march_, resolve_;
+    ComputePipeline pcss_, march_, resolve_, bc4_;
+    OwnedDescriptorPool bc4Pool_;
+    VkDescriptorSet bc4TileSet_ = VK_NULL_HANDLE, bc4TopSet_ = VK_NULL_HANDLE;   // freed with bc4Pool_
+    std::string cacheDir_;   // <user data>/cache/shadow; empty = no disk cache
+    uint64_t contentKey_ = 0;
+    bool warm_ = false, readbackPending_ = false;
+    double warmReadMs_ = 0.0;
+    VkDeviceSize tileLevelOff_[8] = {};
+    std::vector<VkDeviceSize> topLevelOff_;
     OwnedDescriptorPool computePool_;
     VkDescriptorSet computeSet_ = VK_NULL_HANDLE;   // allocated from computePool_ with pcss_'s layout (the three layouts are identical)
     OwnedSampler depthRawSampler_, depthCompareSampler_;
@@ -155,6 +174,10 @@ private:
     int maskTexels_ = 0;
     uint32_t maskMips_ = 0;
     bool maskInitialized_ = false;
+    OwnedImage topR8_;   // mask level 7 (4 texels a tile) and its mips, R8: the source of the levels below the tile grid
+    OwnedImageView topR8View_;
+    uint32_t topSide_ = 0, topMips_ = 0;
+    bool topInitialized_ = false;
     OwnedImage objectImage_;
     OwnedImageView objectView_;
     OwnedFramebuffer objectFb_;
@@ -170,6 +193,9 @@ private:
     OwnedImage scratch_[4];   // props, terrain, blur, combined
     OwnedImageView scratchView_[4];
     OwnedBuffer staging_, tileParams_, passParams_, casterUbo_, instances_, heightBuf_;
+    OwnedImage tileR8_;   // one tile's levels 512..4, R8, before BC4
+    OwnedImageView tileR8View_;
+    OwnedBuffer blockStaging_, bc4Params_, transfer_;   // encoder output, per-level parameters, the read-back / upload of the whole chain
 };
 
 }  // namespace mc2vk

@@ -1,0 +1,42 @@
+#version 450
+// Static shadow bake, BC4 encode: one invocation per 4x4 block of one level of an R8 image (a tile's level, or a level of the coarse top image),
+// written as two words into the block buffer the level copy reads. The 8-value mode: endpoint 0 = the block's max, endpoint 1 = its min, each texel
+// the nearest of the 8 steps. LOCKSTEP with mc2shadow::encodeBc4Block (shadow_mask_asset.cpp), which a doctest pins.
+layout(local_size_x = 8, local_size_y = 8) in;
+
+layout(set = 0, binding = 0, std140) uniform Bc4Level { ivec4 level; } uL;   // x: level side (texels), y: first output word, z: mip of the source
+layout(set = 0, binding = 1) uniform sampler2D u_src;
+layout(set = 0, binding = 2, std430) writeonly buffer Bc4Blocks { uint words[]; } uO;
+
+void main() {
+    int side = uL.level.x;
+    int blocks = (side + 3) / 4;
+    ivec2 b = ivec2(gl_GlobalInvocationID.xy);
+    if (b.x >= blocks || b.y >= blocks) return;
+    uint v[16];
+    uint hi = 0u, lo = 255u;
+    for (int i = 0; i < 16; ++i) {
+        ivec2 t = min(b * 4 + ivec2(i & 3, i >> 2), ivec2(side - 1));
+        v[i] = uint(clamp(texelFetch(u_src, t, uL.level.z).r, 0.0, 1.0) * 255.0 + 0.5);
+        hi = max(hi, v[i]);
+        lo = min(lo, v[i]);
+    }
+    uint w0 = hi | (lo << 8u), w1 = 0u;
+    if (hi != lo) {
+        for (int i = 0; i < 16; ++i) {
+            // Sevenths from min to max, then the palette index of that step (7 -> 0, 0 -> 1, k -> 8 - k).
+            uint step = uint(floor(7.0 * float(v[i] - lo) / float(hi - lo) + 0.5));
+            uint idx = step == 7u ? 0u : (step == 0u ? 1u : 8u - step);
+            int bit = 16 + 3 * i;
+            if (bit < 32) {
+                w0 |= idx << uint(bit);
+                if (bit > 29) w1 |= idx >> uint(32 - bit);
+            } else {
+                w1 |= idx << uint(bit - 32);
+            }
+        }
+    }
+    uint o = uint(uL.level.y) + 2u * uint(b.y * blocks + b.x);
+    uO.words[o] = w0;
+    uO.words[o + 1u] = w1;
+}
