@@ -471,6 +471,13 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
         }
     }
     sync_ring_bindings(s, par, uboSpan, lpSpans);
+    if (mc2_terrain_feed_observation_enabled()) {
+        const uint64_t imported[] = {s->heightVersionCopied, s->cementVersionCopied, s->visualHeightVersionCopied,
+            s->colormapVersionImported, s->cementVersionImported, s->shoreMaskVersionImported,
+            s->shoreFieldVersionImported, s->matNormalVersionImported};
+        mc2_terrain_feed_dump_consumed(&feed, g_mc2RenderFrame, w, h, {static_cast<const uint8_t*>(uboSpan.ptr),
+            static_cast<size_t>(patchCount) * sizeof(TerrainFrameUBO)}, vkPoolLights, vkGridDim, imported);
+    }
     g_health.stageUs = usStagePre + usSince(tUboFill0);
     g_health.patchRecords = patchCount;
 

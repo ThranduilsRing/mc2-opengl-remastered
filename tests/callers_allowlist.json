@@ -94,6 +94,8 @@
   "scripts/tests/test_ref_passthrough.py": "Pytest-discovered module through scripts/check-contracts.sh:1516 (scripts_tests); the executable command names the directory.",
   "scripts/tests/test_runner_env_drop.py": "Pytest-discovered module through scripts/check-contracts.sh:1516 (scripts_tests); the executable command names the directory.",
   "scripts/tests/test_slang_build.py": "Pytest-discovered module through scripts/check-contracts.sh:1516 (scripts_tests); the executable command names the directory.",
+  "scripts/tests/test_terrain_feed_compare.py": "Pytest-discovered module through scripts/run_scripts_tests.py (scripts_tests); discovery supplies filenames at runtime.",
+  "scripts/tests/test_terrain_perf_report.py": "Pytest-discovered module through scripts/run_scripts_tests.py (scripts_tests); discovery supplies filenames at runtime.",
   "scripts/tests/test_tracy_capture_compare.py": "Pytest-discovered module through the scripts_tests board row.",
   "scripts/tests/test_vk_offline_proofs.py": "Pytest-discovered module through scripts/check-contracts.sh:1516 (scripts_tests); the executable command names the directory.",
   "scripts/verify_background_launch.py": "Existing script at 97949f0f5 with no resolved executable caller; retained pending coordinator cull review. This exception does not certify live use.",

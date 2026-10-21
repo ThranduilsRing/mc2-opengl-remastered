@@ -22,6 +22,7 @@
 #ifdef MC2_VULKAN_ISLAND
 
 #include <cstdint>
+#include <span>
 
 #ifdef __cplusplus
 extern "C" {
@@ -224,6 +225,14 @@ struct Mc2TerrainTier1Feed {
 // from run() to pull the frame's LOD0 patch list + shared params. Returns 1 on a
 // valid feed, 0 otherwise (island then fails soft -> GL drew everything).
 int mc2_terrain_tier1_get_frame_feed(Mc2TerrainTier1Feed* out);
+
+// Observation only, under the existing MC2_VK_FEED_DUMP capture switch.
+// Activity is copied after geometry; the consumer records the exact staged UBOs.
+int mc2_terrain_feed_observation_enabled();
+void mc2_terrain_feed_observe_activity(uint32_t frame, std::span<const uint8_t> blocks,
+    std::span<const bool> vertices, std::span<const uint32_t> solid, bool solidEnabled);
+void mc2_terrain_feed_dump_consumed(const Mc2TerrainTier1Feed* feed, uint32_t frame, int w, int h,
+    std::span<const uint8_t> ubos, int poolCount, int gridDim, std::span<const uint64_t, 8> importedVersions);
 
 // True when MC2_VK_TERRAIN_TIER1 (+ MC2_VK_SHARED_SCENE_DEPTH) requests the VK
 // terrain region. When true the GL LOD-chunk loop SKIPS the LOD0 main draws (and

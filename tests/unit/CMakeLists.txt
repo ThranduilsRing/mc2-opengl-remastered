@@ -478,3 +478,39 @@ if(WIN32)
             "$<TARGET_FILE:SDL2_mixer::SDL2_mixer>" "$<TARGET_FILE_DIR:mc2_tests>"
         VERBATIM)
 endif()
+
+# Characterize the production query arithmetic without pulling renderer/sim
+# services into the unit binary. These are verbatim source slices, regenerated
+# on source changes; no second implementation or production query refactor.
+function(mc2_height_slice output source begin end)
+    file(READ "${MC2_WORKTREE_ROOT}/${source}" text)
+    string(FIND "${text}" "${begin}" first)
+    string(FIND "${text}" "${end}" last)
+    if(first LESS 0 OR last LESS first)
+        message(FATAL_ERROR "Terrain height characterization source boundary changed: ${source}")
+    endif()
+    math(EXPR length "${last} - ${first}")
+    string(SUBSTRING "${text}" ${first} ${length} body)
+    set(${output} "${body}" PARENT_SCOPE)
+    set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${MC2_WORKTREE_ROOT}/${source}")
+endfunction()
+if(TARGET glm::glm)
+    mc2_height_slice(height_index mclib/mapdata.cpp
+        "float MapData::terrainElevation( long indexY, long indexX )" "void MapData::setTerrain(")
+    mc2_height_slice(height_world mclib/mapdata.cpp
+        "static void cpu_rgb2hsv(" "void MapData::unselectAll()")
+    mc2_height_slice(height_valid mclib/terrain_raycast.cpp
+        "bool Terrain::IsValidTerrainPosition (" "bool Terrain::IsEditorSelectTerrainPosition (")
+    mc2_height_slice(height_runtime mclib/terrain_runtime.cpp
+        "float sampleGameplayHeight(" "int sampleMaterialId(")
+    file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/terrain_height_queries.inc"
+        CONTENT "${height_index}\n${height_world}")
+    file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/terrain_height_valid.inc"
+        CONTENT "${height_valid}")
+    file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/terrain_height_runtime.inc"
+        CONTENT "${height_runtime}")
+    target_sources(mc2_tests PRIVATE test_terrain_height_compat.cpp)
+    set_source_files_properties(test_terrain_height_compat.cpp PROPERTIES
+        INCLUDE_DIRECTORIES "${CMAKE_CURRENT_BINARY_DIR}"
+        COMPILE_OPTIONS "/fp:precise")
+endif()
