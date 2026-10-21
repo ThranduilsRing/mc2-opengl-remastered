@@ -1,0 +1,34 @@
+{
+  "defines": [],
+  "outputs": [
+    {
+      "location": 0,
+      "name": "FragColor",
+      "type": "vec4"
+    },
+    {
+      "location": 1,
+      "name": "GBuffer1",
+      "type": "vec4"
+    }
+  ],
+  "shader": "shaders/gos_vegetation_card.frag",
+  "ssbos": [],
+  "stage": "frag",
+  "ubos": [
+    {
+      "binding": 1,
+      "members": [
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "u_terrainLightDir",
+          "offset": 0,
+          "type": "vec4"
+        }
+      ],
+      "name": "gl_DefaultUniformBlock"
+    }
+  ],
+  "variant": "default"
+}

@@ -70,6 +70,25 @@ bool OwnedBuffer::upload(const void* src, VkDeviceSize bytes, VkDeviceSize offse
     return true;
 }
 
+bool OwnedBuffer::createDeviceLocal(VmaAllocator allocator, VkDevice device, VkDeviceSize size, VkBufferUsageFlags usage, std::string_view name, int i0, int i1) {
+    VkBufferCreateInfo bci{};
+    bci.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    bci.size = size ? size : 16;
+    bci.usage = usage;
+    VmaAllocationCreateInfo aci{};
+    aci.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
+    return create(allocator, device, bci, aci, name, i0, i1);
+}
+
+bool OwnedBuffer::read(void* dst, VkDeviceSize bytes, VkDeviceSize offset) const {
+    const void* src = map();
+    if (!src) return false;
+    vmaInvalidateAllocation(allocator_, allocation_, offset, bytes);
+    std::memcpy(dst, static_cast<const uint8_t*>(src) + offset, static_cast<size_t>(bytes));
+    unmap();
+    return true;
+}
+
 bool OwnedImage::createSampled2D(VmaAllocator allocator, VkDevice device, VkFormat format, uint32_t width, uint32_t height,
                                  uint32_t mipLevels, VkImageUsageFlags extraUsage, std::string_view name) {
     VkImageCreateInfo ici{};

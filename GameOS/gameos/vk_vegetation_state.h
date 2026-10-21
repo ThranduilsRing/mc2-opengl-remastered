@@ -18,7 +18,7 @@
 #include "vulkan_context.h"   // mc2vk::IslandState
 
 #include <cstdint>
-#include <vector>
+#include <span>
 
 namespace mc2vk { class VulkanContext; }
 
@@ -52,12 +52,6 @@ struct CullParams {
 };
 static_assert(sizeof(CullParams) == 176);
 
-// CPU-vs-GPU survivor comparison result (diagnostic scaffolding of packet V2).
-struct CompareResult {
-    uint32_t cpu = 0, gpu = 0, onlyCpu = 0, onlyGpu = 0, firstOrderMismatch = ~0u;
-    bool ok = false;
-};
-
 struct PopulationStats {
     uint64_t uploads = 0;        // population uploads since process start (one per uploadInstances)
     uint64_t uploadBytes = 0;    // bytes those uploads moved to the device
@@ -69,14 +63,15 @@ class State final : public mc2vk::IslandState {
 public:
     static constexpr uint32_t kSlots = 2;   // frame parity, as the VFX island
 
-    // The state of the engine context; nullptr when none exists and `create` is false.
-    static State* get(bool create);
+    // Whether the engine context holds a state yet, and the state itself (created on first use; needs a valid engine context).
+    static bool exists();
+    static State& instance();
     // Releases it (renderer shutdown or a population cleared for good).
     static void release();
 
     // Replaces the population: device-local copies of the instances and regions, and fresh per-parity output buffers sized to it. Waits for the device
     // (load-time work, never per frame). False leaves no population.
-    bool upload(mc2vk::VulkanContext& ctx, const GpuInstance* instances, uint32_t instanceCount, const GpuRegion* regions, uint32_t regionCount);
+    bool upload(mc2vk::VulkanContext& ctx, std::span<const GpuInstance> instances, std::span<const GpuRegion> regions);
     void clear(mc2vk::VulkanContext& ctx);
 
     bool ready() const { return instanceCount_ != 0 && regionCount_ != 0; }
@@ -88,11 +83,19 @@ public:
     // (params at paramsOff, visibility at visOff), then cull -> scan -> compact for parity `par`, ending in a barrier to the vertex/indirect/transfer
     // readers. The parity's previous submit must have completed. False when the pipelines cannot be built.
     bool record(mc2vk::VulkanContext& ctx, VkCommandBuffer cb, uint32_t par, const mc2vk::FrameAlloc& span, VkDeviceSize paramsOff, VkDeviceSize visOff,
-                CullParams params, const uint32_t* visibility, uint32_t visibilityCount);
-    // Synchronous GPU run of one frame's cull and a comparison with the CPU survivor ids (population indices, CPU walk order). Diagnostic only.
-    bool compare(mc2vk::VulkanContext& ctx, const CullParams& params, const uint32_t* visibility, uint32_t visibilityCount, const std::vector<uint32_t>& cpuIds,
-                 CompareResult& out);
+                CullParams params, std::span<const uint32_t> visibility);
     uint64_t frameUploadBytes() const { return frameUploadBytes_; }
+    uint32_t lastSurvivors() const { return lastSurvivors_; }   // survivor count of the parity's previous frame, read back without a wait
+
+    // The draw side. Set 2 of the vegetation graphics pipeline layout: 0 = instances, 1 = dense survivor list, 2 = the frame's cull parameters (dynamic).
+    // The layout exists before any population does; the island builds its pipeline layout from it.
+    bool ensureDrawLayout(mc2vk::VulkanContext& ctx);
+    VkDescriptorSetLayout drawLayout() const { return drawDsl_.get(); }
+    VkDescriptorSet drawSet(uint32_t par) const { return par < kSlots ? drawSets_[par] : VK_NULL_HANDLE; }
+    // Dynamic offset of the cull parameters inside the ring span passed to the last record() of this parity.
+    uint32_t paramsDynamicOffset(uint32_t par) const { return paramsDynOffset_[par]; }
+    // The two indirect strips (first vertex 0 and 8) of the parity's survivor arguments.
+    void drawIndirect(VkCommandBuffer cb, uint32_t par) const;
 
     VkBuffer instances() const { return instances_.get(); }
     VkBuffer regions() const { return regions_.get(); }
@@ -104,7 +107,8 @@ public:
 
 private:
     struct Slot {
-        mc2vk::OwnedBuffer scratch, counts, offsets, dense, args;
+        mc2vk::OwnedBuffer scratch, counts, offsets, dense, args, stats;
+        bool statsPending = false;
     };
     bool ensurePipelines(mc2vk::VulkanContext& ctx);
     mc2vk::ComputePipeline cull_, scan_, compact_;
@@ -113,6 +117,13 @@ private:
     uint64_t generation_ = 1, boundGeneration_ = 0;
     VkBuffer ringBound_[kSlots] = {};
     uint64_t frameUploadBytes_ = 0;
+    uint32_t lastSurvivors_ = 0;
+    uint32_t paramsDynOffset_[kSlots] = {};
+    mc2vk::OwnedDescriptorSetLayout drawDsl_;
+    mc2vk::OwnedDescriptorPool drawPool_;
+    VkDescriptorSet drawSets_[kSlots] = {};
+    VkBuffer drawRingBound_[kSlots] = {};
+    bool drawTried_ = false;
     mc2vk::OwnedBuffer instances_, regions_;
     Slot slot_[kSlots];
     uint32_t instanceCount_ = 0, regionCount_ = 0;

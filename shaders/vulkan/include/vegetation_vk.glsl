@@ -1,19 +1,14 @@
 // Native crossed-card geometry. Instance culling uses the same CPU block/distance inputs.
 #include "../../include/terrain_depth_bias.hglsl"
-void mc2VegetationVertex() {
-    Particle p = particles[gl_InstanceIndex];
+void mc2VegetationVertex(vec3 i_worldPos, float i_yaw, float i_scale, float i_seed, uint i_atlasFrame, float lodFade, float windFade, float lightZ, float time) {
     uint vi = uint(gl_VertexIndex);
     uint row = (vi%8u)/2u;
     float height = float(row) / 3.0;
     vec3 a_card = vec3((vi&1u)==0u ? -0.5 : 0.5,height,vi>=8u ? 1.5707963 : 0.0);
     vec2 a_uv = vec2((vi&1u)==0u ? 0.0 : 1.0,height);
-    vec3 i_worldPos=p.position;
-    float i_yaw=p._pad0,i_scale=p.color.x,i_seed=p.color.y;
-    uint i_atlasFrame=p.kind_flags;
-    float lodFade=p.size;
     uint atlasIdx=i_atlasFrame&0x0fu;
     v_uv=vec2(a_uv.x*0.25+float(atlasIdx%4u)*0.25,float(atlasIdx/4u)*0.5+(1.0-a_uv.y)*0.5);
-    v_vegData.w=p.color.z;
+    v_vegData.w=lightZ;
     v_flags=16u;
     // Card role from bits 4-5 of i_atlasFrame:
     //   0 = vertical    (~40% of instances, 0° tilt)
@@ -48,10 +43,8 @@ void mc2VegetationVertex() {
     // Wind: two slow overlapping harmonics for flowing, continuous motion.
     // Spatial gradient is gentle so the wave across the field is wide.
     // Ground cover (role 3) is static — too short to visibly sway.
-    float trueDist   = p.age;
-    float windFade   = uintBitsToFloat(p.atlasIndex);
-    float windPhase1 = p.lifetime * 0.35 + i_worldPos.x * 0.02 + i_worldPos.y * 0.03 + i_seed * 6.28;
-    float windPhase2 = p.lifetime * 0.55 + i_worldPos.x * 0.03 + i_worldPos.y * 0.05 + i_seed * 3.14;
+    float windPhase1 = time * 0.35 + i_worldPos.x * 0.02 + i_worldPos.y * 0.03 + i_seed * 6.28;
+    float windPhase2 = time * 0.55 + i_worldPos.x * 0.03 + i_worldPos.y * 0.05 + i_seed * 3.14;
     float windNoise  = sin(windPhase1) * 0.75 + sin(windPhase2) * 0.25;
     float windStr    = (cardRole == 3u) ? 0.0           // ground cover: no sway
                      : (cardRole == 2u) ? 0.05           // top/cap: gentle

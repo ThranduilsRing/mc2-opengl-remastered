@@ -8974,6 +8974,48 @@
    "count": 1
   },
   {
+   "tag": "VEG_GPU",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 3
+  },
+  {
+   "tag": "VEG_GPU",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "instances",
+    "regions"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VEG_GPU",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "instances",
+    "regions",
+    "avg_per_region",
+    "uploaded_bytes",
+    "resident_output_bytes"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VEG_GPU",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "population_uploads",
+    "population_bytes",
+    "frame_upload_bytes",
+    "last_survivors"
+   ],
+   "count": 1
+  },
+  {
    "tag": "VEG_SUMMARY",
    "ver": -1,
    "stream": "stderr",

@@ -123,6 +123,10 @@ public:
     void unmap() const;
     // Copies `bytes` to `offset` and flushes the written range, for memory that is not coherent. False when the buffer is empty or the map fails.
     bool upload(const void* src, VkDeviceSize bytes, VkDeviceSize offset = 0) const;
+    // A device-local buffer, filled by a transfer (copy-once data).
+    bool createDeviceLocal(VmaAllocator allocator, VkDevice device, VkDeviceSize size, VkBufferUsageFlags usage, std::string_view name, int i0 = -1, int i1 = -1);
+    // Copies `bytes` from `offset` to `dst` after invalidating the range, for host-visible memory the GPU wrote. False when the buffer is empty or the map fails.
+    bool read(void* dst, VkDeviceSize bytes, VkDeviceSize offset = 0) const;
 
 private:
     void swap(OwnedBuffer& other) noexcept {
