@@ -5417,6 +5417,27 @@
    "count": 1
   },
   {
+   "tag": "MOD_HEALTH",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "event",
+    "count",
+    "scenarioTime"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "MOD_HEALTH",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "event",
+    "scenarioTime"
+   ],
+   "count": 1
+  },
+  {
    "tag": "MOUSE_RECON",
    "ver": 1,
    "stream": "stdout",
@@ -10513,6 +10534,7 @@
   "ISO_DEPLOY",
   "LINK_GUARD",
   "MARAUDER",
+  "MOD_HEALTH",
   "MOVER",
   "MOVER_COHERENCE",
   "ORDER_LIVENESS_SUMMARY",
@@ -10533,6 +10555,7 @@
   "TIMING",
   "TOOLVK",
   "VEG_SUMMARY",
+  "VERIFY",
   "VFX_",
   "VFX_BIRTH",
   "VIDEO",

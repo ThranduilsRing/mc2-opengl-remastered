@@ -8,6 +8,9 @@ compile; an expression, literal, array element and wrong-typed variable must eac
 import argparse, subprocess, sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'scripts'))
+import console_child  # noqa: E402
+
 ROOT = Path(__file__).resolve().parents[1]
 CASES = [('ok bare real var', 'gettargetrelativeposition(-1, tr1, tr1);', False),
          ('expression x + 1.0', 'gettargetrelativeposition(-1, tr1 + 1.0, tr1);', True),
@@ -34,7 +37,7 @@ def main():
             t = t.replace(marker, '		' + call + nl + marker, 1)
             f.write_bytes(t.encode('latin-1'))
             subprocess.run([sys.executable, str(ROOT / 'scripts/run_smoke.py'), '--exe', str(stage / 'mc2.exe'), '--mission', 'a_0_1',
-                            '--allow-any-mission', '--duration', '12', '--keep-logs'], cwd=str(stage), capture_output=True)
+                            '--allow-any-mission', '--duration', '12', '--keep-logs'], cwd=str(stage), capture_output=True, **console_child.child_kwargs(redirected=True))
             art = max((ROOT / 'tests/smoke/artifacts').iterdir(), key=lambda p: p.stat().st_mtime)
             log = ''.join(p.read_text(errors='replace') for p in art.glob('*.log'))
             failed = 'SYNTAX ERROR data/missions/warriors/a_0_1_guard.abl' in log

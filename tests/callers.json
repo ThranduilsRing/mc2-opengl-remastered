@@ -2788,6 +2788,13 @@
           "text": "import console_child  # noqa: E402  (windowless console children without a conhost each)"
         },
         {
+          "path": "tools/abl_refparam_check.py",
+          "line": 12,
+          "evidence": "import",
+          "reference": "console_child",
+          "text": "import console_child  # noqa: E402"
+        },
+        {
           "path": "tools/abl_writer_census.py",
           "line": 32,
           "evidence": "import",
@@ -3076,7 +3083,7 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 27,
+          "line": 44,
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child  # noqa: E402  (windowless console children)"
@@ -3566,6 +3573,13 @@
           "evidence": "import",
           "reference": "deploy_payload",
           "text": "import deploy_payload as dp                          # noqa: E402"
+        },
+        {
+          "path": "tools/mod_smoke.py",
+          "line": 166,
+          "evidence": "import_module",
+          "reference": "deploy_payload",
+          "text": "return importlib.import_module('deploy_payload')"
         }
       ]
     },
@@ -4239,6 +4253,13 @@
           "text": "proc = subprocess.Popen([sys.executable, str(ROOT / \"scripts\" / \"run_smoke.py\"), *smoke_args],"
         },
         {
+          "path": "tools/abl_refparam_check.py",
+          "line": 39,
+          "evidence": "command",
+          "reference": "scripts/run_smoke.py",
+          "text": "subprocess.run([sys.executable, str(ROOT / 'scripts/run_smoke.py'), '--exe', str(stage / 'mc2.exe'), '--mission', 'a_0_1',"
+        },
+        {
           "path": "tools/mission_order_ingress_witness.py",
           "line": 177,
           "evidence": "command",
@@ -4254,7 +4275,7 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 243,
+          "line": 645,
           "evidence": "command",
           "reference": "scripts/run_smoke.py",
           "text": "proc = subprocess.run(cmd, cwd=str(ROOT), capture_output=True,"
@@ -6339,6 +6360,13 @@
       "callers_by_stem": []
     },
     {
+      "path": "scripts/tests/test_mod_smoke.py",
+      "basename": "test_mod_smoke.py",
+      "stem": "test_mod_smoke",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
       "path": "scripts/tests/test_module_test_cache.py",
       "basename": "test_module_test_cache.py",
       "stem": "test_module_test_cache",
@@ -6377,6 +6405,13 @@
       "path": "scripts/tests/test_nofocus_env.py",
       "basename": "test_nofocus_env.py",
       "stem": "test_nofocus_env",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "scripts/tests/test_omnitech_abl_stack_balance.py",
+      "basename": "test_omnitech_abl_stack_balance.py",
+      "stem": "test_omnitech_abl_stack_balance",
       "callers_by_basename": [],
       "callers_by_stem": []
     },
@@ -6551,6 +6586,13 @@
           "text": "import _git_util  # noqa: E402  (shared git helpers)"
         }
       ]
+    },
+    {
+      "path": "tools/abl_refparam_check.py",
+      "basename": "abl_refparam_check.py",
+      "stem": "abl_refparam_check",
+      "callers_by_basename": [],
+      "callers_by_stem": []
     },
     {
       "path": "tools/abl_writer_census.py",
@@ -8480,6 +8522,13 @@
           "text": "from tools.mc2x_import.fst import fst_entries, decompress_entry  # noqa: E402"
         },
         {
+          "path": "scripts/tests/test_mod_smoke.py",
+          "line": 268,
+          "evidence": "import",
+          "reference": "fst",
+          "text": "import fst as fstlib"
+        },
+        {
           "path": "tools/list_free_ordinals.py",
           "line": 39,
           "evidence": "import",
@@ -8509,7 +8558,14 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 204,
+          "line": 412,
+          "evidence": "import_module",
+          "reference": "fst",
+          "text": "fst_lib = importlib.import_module('fst')"
+        },
+        {
+          "path": "tools/mod_smoke.py",
+          "line": 504,
           "evidence": "import_module",
           "reference": "fst",
           "text": "fst_lib = importlib.import_module('fst')"
@@ -8691,11 +8747,46 @@
       "callers_by_basename": [],
       "callers_by_stem": [
         {
+          "path": "scripts/tests/test_mod_smoke.py",
+          "line": 252,
+          "evidence": "import",
+          "reference": "fst_listing",
+          "text": "import fst_listing"
+        },
+        {
+          "path": "scripts/tests/test_mod_smoke.py",
+          "line": 259,
+          "evidence": "import",
+          "reference": "fst_listing",
+          "text": "import fst_listing"
+        },
+        {
           "path": "tests/mod_install/test_fst_listing.py",
           "line": 18,
           "evidence": "import",
           "reference": "fst_listing",
           "text": "from fst_listing import ("
+        },
+        {
+          "path": "tools/mod_smoke.py",
+          "line": 208,
+          "evidence": "import",
+          "reference": "fst_listing",
+          "text": "import fst_listing"
+        },
+        {
+          "path": "tools/mod_smoke.py",
+          "line": 328,
+          "evidence": "import",
+          "reference": "fst_listing",
+          "text": "import fst_listing"
+        },
+        {
+          "path": "tools/mod_smoke.py",
+          "line": 486,
+          "evidence": "import",
+          "reference": "fst_listing",
+          "text": "import fst_listing"
         }
       ]
     },
@@ -8760,7 +8851,15 @@
       "path": "tools/mod_smoke.py",
       "basename": "mod_smoke.py",
       "stem": "mod_smoke",
-      "callers_by_basename": [],
+      "callers_by_basename": [
+        {
+          "path": "scripts/tests/test_mod_smoke.py",
+          "line": 9,
+          "evidence": "load module",
+          "reference": "tools/mod_smoke.py",
+          "text": "_spec = importlib.util.spec_from_file_location(\"mod_smoke\", ROOT / \"tools\" / \"mod_smoke.py\")"
+        }
+      ],
       "callers_by_stem": []
     },
     {

@@ -322,5 +322,8 @@
   "tools/reload_leak.py": "Operator-run battery tool (py -3 tools/reload_leak.py), no in-repo caller by design; merge window 27.",
   "tools/sim_trace_diff.py": "Operator-run battery tool (py -3 tools/sim_trace_diff.py), no in-repo caller by design; merge window 27.",
   "tools/sound_smoke.py": "Operator-run battery tool (py -3 tools/sound_smoke.py), no in-repo caller by design; merge window 27.",
-  "tools/tools_smoke.py": "Operator-run battery tool (py -3 tools/tools_smoke.py), no in-repo caller by design; merge window 27."
+  "tools/tools_smoke.py": "Operator-run battery tool (py -3 tools/tools_smoke.py), no in-repo caller by design; merge window 27.",
+  "tools/abl_refparam_check.py": "Operator-run proof tool (py -3 tools/abl_refparam_check.py <kept stage>), no in-repo caller by design; merge window 34.",
+  "scripts/tests/test_mod_smoke.py": "Pytest-discovered module through the scripts_tests board row; merge window 34.",
+  "scripts/tests/test_omnitech_abl_stack_balance.py": "Pytest-discovered module through the scripts_tests board row; merge window 34."
 }
