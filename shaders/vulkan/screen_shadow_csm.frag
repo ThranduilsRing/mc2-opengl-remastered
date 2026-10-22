@@ -33,8 +33,11 @@ void main() {
     if (depth<=0.0001 || rc_pixelHandlesOwnShadow(normalData)) { FragColor=vec4(1.0); return; }
     vec4 p=u.inverseViewProj*vec4(TexCoord*2.0-1.0,depth,1.0);
     vec3 worldPos=p.xyz/p.w;
-    vec3 N=mc2ToRender(normalize(normalData.rgb*2.0-1.0));
     bool prop=rc_isStaticPropNoSelfShadow(normalData);
+    // Props store Stuff-space normals; skinned mechs already write MC2 normals.
+    // Converting a mech twice suppresses body reception through mechSoft.
+    vec3 decodedNormal=normalize(normalData.rgb*2.0-1.0);
+    vec3 N=prop?mc2ToRender(decodedNormal):decodedNormal;
     float shadow=u.enableShadows!=0 && !prop?objectStaticVisibility(worldPos):1.0;
     if (u.enableDynamicShadows!=0) {
         float v=moverVisibility(worldPos,N);
