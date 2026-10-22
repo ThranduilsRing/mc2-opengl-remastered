@@ -122,7 +122,9 @@ def cook_asset(asset: ir.Asset, out: Path, *, compress=True, max_triangles=None,
     if "destroyed" in asset.states:
         record["destroyed"] = chain("pristine", "destroyed", asset.states["destroyed"])
     if asset.shadows:
-        record["shadow"] = {st: glb(sc, f"pristine_{st}_shadow", st) for st, sc in asset.shadows.items()}
+        # Vulkan static shadows cast from the render shape itself (intact or destroyed override), so a
+        # separate stand-in would be ignored; never emit data the runtime silently drops.
+        entry["shadow_standins_not_emitted"] = sorted(asset.shadows)
     if asset.conditions:
         record["conditions"] = {}
         for cond, states in asset.conditions.items():

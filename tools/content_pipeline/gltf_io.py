@@ -182,7 +182,7 @@ def _image_ref(doc, buffers, base_dir, texinfo, role, extract_dir, passthrough=F
     return TextureRef.of(out, role, passthrough)
 
 
-def read_materials(doc, buffers, base_dir, extract_dir=None, class_of=None, texture_roots=()):
+def read_materials(doc, buffers, base_dir, extract_dir=None, class_of=None, texture_roots=(), unclassified="error"):
     """IR materials from glTF materials (+ the implicit default material when used).
 
     class_of(name, extras) may override the class; otherwise extras.mc2_material_class
@@ -204,7 +204,7 @@ def read_materials(doc, buffers, base_dir, extract_dir=None, class_of=None, text
         if mr and occ and mr.sha256 != occ.sha256:
             orm = None   # separate maps: the cooker packs them (frontend passes both via extras)
         if cls is None:
-            if normal or orm:
+            if (normal or orm) and unclassified == "error":
                 raise ValueError(f"{name}: authored maps need an explicit material class (extras.mc2_material_class)")
             cls = "legacy_prelit"
         metallic_default, rough_default = CLASS_DEFAULTS.get(cls, (0.0, 1.0))
@@ -234,7 +234,7 @@ def read_materials(doc, buffers, base_dir, extract_dir=None, class_of=None, text
 
 
 def read_gltf(path, *, frame="gltf", wu_per_unit=1.0, yaw_degrees=0.0, extract_dir=None,
-              allow_skin=False, class_of=None, texture_roots=()):
+              allow_skin=False, class_of=None, texture_roots=(), unclassified="error"):
     """Read a glTF/GLB into a Scene in TG space. Returns (scene, materials, info)."""
     doc, buffers, base_dir = load_document(path)
     required = set(doc.get("extensionsRequired", []))
@@ -242,7 +242,7 @@ def read_gltf(path, *, frame="gltf", wu_per_unit=1.0, yaw_degrees=0.0, extract_d
         raise ValueError(f"unsupported required extensions: {sorted(required)}")
     if (doc.get("skins") or doc.get("animations")) and not allow_skin:
         raise ValueError("skinned/animated source: static assets need a static export (mechs use allow_skin)")
-    materials, default_slot = read_materials(doc, buffers, base_dir, extract_dir, class_of, texture_roots)
+    materials, default_slot = read_materials(doc, buffers, base_dir, extract_dir, class_of, texture_roots, unclassified)
     scene = Scene()
     mesh_cache = {}
 

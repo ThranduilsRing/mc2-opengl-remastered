@@ -1,4 +1,7 @@
-"""Local candidate import. No network code; scene transforms are baked explicitly."""
+"""Local candidate import for search, ranking, fitting and previews (no network code).
+
+Cooking is not done here: replace.package hands the source glTF to tools/content_pipeline,
+which keeps hierarchy, normals, alpha and materials (this reader flattens them for ranking)."""
 from __future__ import annotations
 
 import base64
@@ -12,7 +15,7 @@ import subprocess
 import numpy as np
 from PIL import Image
 
-from tools.assets.common import Mesh, bounds, face_normals, output_path, texture_tiers, transform_normals
+from tools.assets.common import Mesh, bounds, face_normals, output_path, transform_normals
 
 
 @dataclass
@@ -263,71 +266,3 @@ def convert_fbx(source, destination, blender):
     if result.returncode or not destination.is_file():
         raise ValueError("Blender conversion failed: "+result.stderr[-2000:])
     return destination
-
-
-def export_runtime_gltf(candidate, folder, stem, max_texture_edge):
-    """Bake inverse default prop axis map; emit identity nodes + PNG/TGA textures.
-
-    Runtime default axis0 is TG=(-src.x,-src.y,src.z). StaticProp autoGround
-    is disabled by bdactor_type.cpp. The exported glTF is intentionally -Y-up
-    so runtime TG is +Y-up. Source candidate previews remain conventional +Y-up.
-    """
-    from tools.assets.common import write_json
-    folder = output_path(folder, mod=True)
-    folder.mkdir(parents=True, exist_ok=True)
-    binary = bytearray()
-    doc = {"asset": {"version": "2.0", "generator": "mc2-assets offline prop cooker"},
-           "buffers": [], "bufferViews": [], "accessors": [], "images": [],
-           "textures": [], "materials": [], "meshes": [{"primitives": []}],
-           "nodes": [{"name": "modern_prop", "mesh": 0}], "scenes": [{"nodes": [0]}], "scene": 0}
-
-    def accessor(array, kind):
-        array = np.asarray(array, dtype="<f4")
-        while len(binary)%4:
-            binary.append(0)
-        start = len(binary); binary.extend(array.tobytes())
-        view = len(doc["bufferViews"])
-        doc["bufferViews"].append({"buffer": 0, "byteOffset": start, "byteLength": array.nbytes})
-        record = {"bufferView": view, "componentType": 5126, "count": len(array), "type": kind}
-        if kind == "VEC3":
-            record.update(min=array.min(axis=0).tolist(), max=array.max(axis=0).tolist())
-        doc["accessors"].append(record)
-        return len(doc["accessors"])-1
-
-    cooked_images, texnames = [], []
-    for index, image in enumerate(candidate.images):
-        image = image.copy().convert("RGBA")
-        if max(image.size) > max_texture_edge:
-            ratio = max_texture_edge/max(image.size)
-            image = image.resize(tuple(max(1, round(v*ratio)) for v in image.size), Image.Resampling.LANCZOS)
-        alpha = image.getextrema()[3][0] < 255
-        name = ("a_" if alpha else "")+f"{stem}_mat{index:03d}"
-        image.save(folder/(name+".png"))
-        image.save(folder/(name+".tga"))
-        # Runtime searches data/tgl/ObjectTextureSize, not manifestDir.
-        modroot = folder.parents[2]
-        for tier, reduced in texture_tiers(image):
-            target = output_path(modroot/"data"/"tgl"/str(tier), mod=True)
-            target.mkdir(parents=True, exist_ok=True)
-            reduced.save(target/(name+".tga"))
-        doc["images"].append({"uri": name+".png", "name": name})
-        doc["textures"].append({"source": index})
-        doc["materials"].append({"name": name, "doubleSided": alpha,
-            "alphaMode": "MASK" if alpha else "OPAQUE", "alphaCutoff": .5,
-            "pbrMetallicRoughness": {"baseColorTexture": {"index": index}, "metallicFactor": 0, "roughnessFactor": 1}})
-        cooked_images.append(image); texnames.append(name+".tga")
-    mesh = candidate.mesh
-    for material in sorted(set(int(n) for n in mesh.materials)):
-        face_mask = mesh.materials == material
-        positions = mesh.vertices.reshape(-1, 3, 3)[face_mask].reshape(-1, 3)*[-1, -1, 1]
-        tex = mesh.uv.reshape(-1, 3, 2)[face_mask].reshape(-1, 2)
-        normals = (face_normals(positions) if mesh.normals is None else
-                   mesh.normals.reshape(-1, 3, 3)[face_mask].reshape(-1, 3)*[-1, -1, 1])
-        attrs = {"POSITION": accessor(positions, "VEC3"),
-                 "NORMAL": accessor(normals, "VEC3"),
-                 "TEXCOORD_0": accessor(tex, "VEC2")}
-        doc["meshes"][0]["primitives"].append({"attributes": attrs, "material": material, "mode": 4})
-    doc["buffers"] = [{"uri": stem+".bin", "byteLength": len(binary)}]
-    (folder/(stem+".bin")).write_bytes(binary)
-    write_json(folder/(stem+".gltf"), doc)
-    return folder/(stem+".gltf"), cooked_images, texnames

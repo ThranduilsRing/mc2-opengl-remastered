@@ -47,7 +47,7 @@ def read_scene(path, meta, extract_dir, classes=None, allow_skin=False):
     scene, materials, info = gltf_io.read_gltf(
         path, frame=meta.get("frame", "gltf"), wu_per_unit=float(meta.get("wu_per_unit", 1.0)),
         yaw_degrees=float(meta.get("yaw_degrees", 0.0)), extract_dir=extract_dir, allow_skin=allow_skin,
-        texture_roots=tuple(meta.get("texture_roots", ())))
+        texture_roots=tuple(meta.get("texture_roots", ())), unclassified=meta.get("unclassified", "error"))
     return scene, _apply_classes(materials, classes or {}), info
 
 

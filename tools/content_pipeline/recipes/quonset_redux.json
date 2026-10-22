@@ -1,9 +1,18 @@
 {
-  "version": 1,
-  "id": "reduxpbr",
-  "props": [
+  "mod_id": "reduxpbr",
+  "name": "Redux PBR: rusty quonset (candidate)",
+  "description": "Stock quonset2 geometry and albedo; reviewed CC0 corrugated detail on the roof strip only.",
+  "out": "G:/mc2-assets/out/blender-redux-pbr/quonset-candidate",
+  "srcdata": "A:/Games/mc2-srcdata/tgl",
+  "texture_roots": [
+    "E:/mc2-lane5/data/tgl/128"
+  ],
+  "assets": [
     {
+      "frontend": "stock_ase",
       "prop": "quonset2",
+      "kind": "building",
+      "destroyed": true,
       "slots": [
         {
           "slot": 0,

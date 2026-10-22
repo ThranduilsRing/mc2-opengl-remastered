@@ -1,0 +1,82 @@
+{
+  "mod_id": "cp-hangar-fence",
+  "name": "Content pipeline proof: hangar and fence",
+  "description": "Stock hangar with reviewed CC0 detail; procedural chain-link fence; stock destroyed geometry via the destroyed override.",
+  "out": "G:/mc2-assets/out/content-pipeline/cp-hangar-fence",
+  "srcdata": "A:/Games/mc2-srcdata/tgl",
+  "texture_roots": ["G:/mc2-installs/mc2-win64-w1w2/data/tgl/128"],
+  "assets": [
+    {
+      "frontend": "stock_ase",
+      "prop": "hangar",
+      "kind": "building",
+      "destroyed": true,
+      "slots": [
+        {
+          "slot": 0,
+          "stockAlbedo": "A_Hangar.tga",
+          "reviewed": true,
+          "class": "painted_metal",
+          "metallic": 0,
+          "roughness": 1,
+          "normalStrength": 0.6,
+          "aoStrength": 0.5,
+          "reviewNote": "Stock atlas viewed (a_hangar 128 tier). Corrugated roof strip and window wall get vertical-rib corrugated detail aligned with the painted ribs; lintel band, lower panels, side panel columns, end-wall arches and door frame get concrete detail. Window glass (stock alpha) and the roller door keep the legacy response. Painted surfaces are dielectric: metal is never taken from colour.",
+          "regions": [
+            {
+              "provider": "ambientCG", "license": "CC0",
+              "sourceUrl": "https://ambientcg.com/view?id=CorrugatedSteel006A",
+              "normal": "G:/mc2-assets/pbr/scifi-kit/CorrugatedSteel006A/CorrugatedSteel006A_1K-PNG_NormalGL.png",
+              "roughnessMap": "G:/mc2-assets/pbr/scifi-kit/CorrugatedSteel006A/CorrugatedSteel006A_1K-PNG_Roughness.png",
+              "uvScale": [2, 2],
+              "roughnessRange": [0.55, 0.8],
+              "maskRects": [[0, 0, 0.585, 0.235], [0, 0.345, 0.585, 0.585]],
+              "excludeAlpha": true
+            },
+            {
+              "provider": "Poly Haven", "license": "CC0",
+              "sourceUrl": "https://polyhaven.com/a/concrete_wall_003",
+              "normal": "G:/mc2-assets/pbr/scifi-kit/concrete_wall_003/concrete_wall_003_nor_gl_2k.jpg",
+              "roughnessMap": "G:/mc2-assets/pbr/scifi-kit/concrete_wall_003/concrete_wall_003_rough_2k.jpg",
+              "uvScale": [3, 3],
+              "roughnessRange": [0.8, 1.0],
+              "maskRects": [[0, 0.235, 0.585, 0.345], [0, 0.6, 0.585, 0.75], [0.59, 0, 0.75, 0.585],
+                            [0.76, 0, 1, 0.585], [0, 0.77, 1, 0.84]],
+              "excludeAlpha": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "frontend": "gltf",
+      "id": "wirefence",
+      "replaces": "staticProp:wirefence",
+      "kind": "prop",
+      "intact": "G:/mc2-assets/out/fence-procedural/data/model_overrides/fence/wirefence_proc.glb",
+      "texture_roots": ["G:/mc2-assets/out/fence-procedural/data/tgl/128"],
+      "frame": "mc2_runtime",
+      "license": "project (procedural, tools/blender_pipeline/recipes/fence_gen.py)",
+      "classes": {
+        "fence_lattice": {"class": "grating", "metallic": 1.0, "roughness": 0.55},
+        "fence_metal": {"class": "bare_metal", "metallic": 1.0, "roughness": 0.5}
+      },
+      "destroyed": {"stock_ase": "wirefencedam"}
+    },
+    {
+      "frontend": "gltf",
+      "id": "wirefencediag",
+      "replaces": "staticProp:wirefencediag",
+      "kind": "prop",
+      "intact": "G:/mc2-assets/out/fence-procedural/data/model_overrides/fence/wirefencediag_proc.glb",
+      "texture_roots": ["G:/mc2-assets/out/fence-procedural/data/tgl/128"],
+      "frame": "mc2_runtime",
+      "license": "project (procedural, tools/blender_pipeline/recipes/fence_gen.py)",
+      "classes": {
+        "fence_lattice": {"class": "grating", "metallic": 1.0, "roughness": 0.55},
+        "fence_metal": {"class": "bare_metal", "metallic": 1.0, "roughness": 0.5}
+      },
+      "destroyed": {"stock_ase": "wirefencediagdam"}
+    }
+  ]
+}

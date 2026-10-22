@@ -221,7 +221,7 @@ def test_package_carries_destroyed_conditions_shadow_and_is_reproducible(tmp_pat
     out2 = package.build_package([asset()], tmp_path / "p2", mod_id="cp-test", compress=False)
     rec = json.loads((out1 / "data/model_overrides/models.json").read_text())["overrides"][0]
     assert rec["destroyed"]["source"] == "panel/pristine_destroyed_lod0.glb"
-    assert rec["shadow"]["intact"] == "panel/pristine_intact_shadow.glb"
+    assert "shadow" not in rec           # render shapes cast; stand-ins are reported, not emitted
     assert rec["conditions"]["worn"]["source"] == "panel/worn_intact_lod0.glb"
     assert all(r["class"] == "grating" for r in rec["materials"]["slots"])
     assert rec["materials"]["slots"][0]["alphaMode"] == "MASK"

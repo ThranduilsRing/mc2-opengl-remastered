@@ -205,25 +205,6 @@ def texture_image(install, name):
     return Image.open(io.BytesIO(raw)).convert("RGBA"), path, origin
 
 
-def texture_tiers(image):
-    """Keep full size in tier 256; halve each lower tier, retaining cutout coverage."""
-    image = image.convert("RGBA")
-    coverage = float(np.mean(np.asarray(image)[:, :, 3] >= 128))
-    for tier in (32, 64, 128, 256):
-        size = tuple(max(1, round(v*tier/256)) for v in image.size)
-        if size == image.size:
-            yield tier, image.copy()
-            continue
-        reduced = image.convert("RGBa").resize(size, Image.Resampling.LANCZOS).convert("RGBA")
-        if 0 < coverage < 1:
-            rgba = np.array(reduced)
-            alpha = rgba[:, :, 3].astype(float)
-            threshold = np.quantile(alpha, 1-coverage)
-            rgba[:, :, 3] = np.clip(alpha+128-threshold, 0, 255).astype(np.uint8)
-            reduced = Image.fromarray(rgba)
-        yield tier, reduced
-
-
 def stock_install(root=INSTALL_ROOT):
     # The dev install has experimental loose missions/object2. Stock means FST baseline.
     install = Install(Path(root)/INSTALLS["stock"], include_loose=False)

@@ -1,7 +1,6 @@
 """Rebuild the hangar/fence selection evidence from local data; no downloads.
 
-py -3 tools/assets/examples.py --rework
-Existing complete rework packages are read, never overwritten.
+py -3 tools/assets/examples.py
 """
 from __future__ import annotations
 
@@ -13,16 +12,14 @@ import sys
 
 if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from tools.assets.common import OUT_ROOT, parse_tgl, stock_install, write_json
+from tools.assets.common import parse_tgl, stock_install, write_json
 from tools.assets.render import comparison, mesh_textures, render
 from tools.assets.replace import search, select, target_spec
-from tools.assets.rework import rework
 
 
 def main(argv=None):
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--catalog", type=Path, default=Path("docs/assets/catalog.json"))
-    p.add_argument("--rework", action="store_true")
     args = p.parse_args(argv)
     data = json.loads(args.catalog.read_text(encoding="utf-8"))
     stock = stock_install()
@@ -45,26 +42,6 @@ def main(argv=None):
                 "budget_triangles": spec["budgets"]["max_triangles_lod0"],
                 "texture_edge_budget": spec["budgets"]["max_texture_edge"],
                 "candidate_count": len(found["results"]), "library_exists": found["library_exists"]})
-        if name in ("hangar", "wirefence") and args.rework:
-            mod_id = "asset-rework-"+name
-            destination = OUT_ROOT/mod_id
-            if not destination.exists():
-                rework(entry, mod_id)
-            report = json.loads((destination/"rework-report.json").read_text(encoding="utf-8"))
-            write_json(out/(name+"-rework-report.json"), report)
-            (out/(name+"-modeller-brief.md")).write_text((destination/"modeller-brief.md").read_text(encoding="utf-8"), encoding="utf-8")
-            from PIL import Image
-            renamed = {t["stock"]: t["cooked"] for t in report["textures"]}
-            for state in ("intact", "destroyed"):
-                spec = target_spec(entry, state)
-                original = parse_tgl(stock.read(spec["stock_tgl"])[0])
-                cooked = parse_tgl((destination/spec["stock_tgl"]).read_bytes())
-                tex = mesh_textures(original, stock)
-                for i, texture in enumerate(original.textures):
-                    if texture in renamed:
-                        tex[i] = Image.open(destination/"data"/"tgl"/"128"/renamed[texture]).convert("RGBA")
-                comparison(original, cooked, mesh_textures(original, stock), tex, out/f"{name}-{state}-rework.png")
-                comparison(original, cooked, mesh_textures(original, stock), tex, destination/f"preview-{state}.png")
     write_json(out/"results.json", results)
     top = sorted((r for r in data["objects"] if r["category"] not in ("tree", "mech")), key=lambda r: (-r["priority"], r["id"]))[:20]
     write_json(Path("docs/assets/top20.json"), [{"rank": i+1, "id": r["id"], "category": r["category"], "instances": r["instances"], "priority": r["priority"]} for i, r in enumerate(top)])
@@ -79,7 +56,7 @@ def main(argv=None):
         "missing_base_appearances": [r["id"] for r in missing], "model_errors": model_errors,
         "unresolved_instances": {label: sum(s["unresolved_type_ids"].values()) for label, s in data["installs"].items()},
         "custom_or_missing_instances": {label: s["custom_or_missing_instances"] for label, s in data["installs"].items()}})
-    print(f"Wrote {len(results)} target/search/stock-preview sets; rework={args.rework}")
+    print(f"Wrote {len(results)} target/search/stock-preview sets")
     return 0
 
 

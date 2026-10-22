@@ -3,7 +3,6 @@
 py -3 tools/assets/replace.py spec hangar
 py -3 tools/assets/replace.py search wirefence
 py -3 tools/assets/replace.py package hangar --candidate G:/mc2-assets/candidates/foo.glb --id modern-hangar
-py -3 tools/assets/replace.py rework hangar --id rework-hangar
 """
 from __future__ import annotations
 
@@ -22,7 +21,7 @@ if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from tools.assets.common import (INSTALL_ROOT, OUT_ROOT, Mesh, bounds, output_path,
     parse_tgl, stock_install, texture_image, transform_normals, write_json)
-from tools.assets.candidates import Candidate, export_runtime_gltf, load_candidate, load_gltf
+from tools.assets.candidates import Candidate, load_candidate
 
 CANDIDATES = Path("G:/mc2-assets/candidates")
 
@@ -75,8 +74,8 @@ def target_spec(entry, state="intact"):
                  for m in entry["models"] if m["role"] == role],
         "lod_runtime": "staticProp override has one render shape; declared stock distances multiplied by 5; pack optional LODs as review assets, not promises of activation",
         "destroyed_requirement": {"required": bool(destroyed), "models": [m["tgl"] for m in destroyed],
-            "runtime_geometry_override_supported": False,
-            "policy": "damage stays stock in current BldgAppearance; an intact package requires explicit stock-damage fallback, or rework textures for both states; destroyed candidates can be cooked for review only"},
+            "runtime_geometry_override_supported": True,
+            "policy": "a destroyed candidate cooks into the same package (models.json \"destroyed\" chain, rendered when the building is destroyed); without one the stock damage shape renders, which requires explicit --allow-stock-damage"},
         "shadow": {"eligible": klass == "staticProp", "stock_shadow_models": [m["tgl"] for m in entry["models"] if "shadow" in m["role"]],
             "contract": "retain caster geometry; alpha texture does not disqualify fences/gates. TG gate excludes spotlights/windows/HUD/clamped/alphaTestOn/translucent shapes. Depth-only path may produce solid fence shadows; preview is not a shadow oracle"},
         "instances": entry["instances"], "peak_mission_instances": peak,
@@ -236,73 +235,70 @@ def safe_mod_id(mod_id):
     return mod_id
 
 
-def package(entry, spec, candidate_path, mod_id, **kwargs):
-    import tempfile
-    destination = output_path(OUT_ROOT/safe_mod_id(mod_id), mod=True)
-    if destination.exists():
-        raise FileExistsError(f"refusing to overwrite package: {destination}")
-    destination.parent.mkdir(parents=True, exist_ok=True)
-    with tempfile.TemporaryDirectory(prefix=f".{mod_id}-", dir=destination.parent) as folder:
-        staging = output_path(folder, mod=True)
-        _package(entry, spec, candidate_path, mod_id, destination=staging, **kwargs)
-        staging.rename(destination)
-    return destination
+def fit_matrix(transform):
+    """The fit (orientation, uniform/axis scale, base translation) as one TG-space 4x4."""
+    m = np.eye(4)
+    m[:3, :3] = np.diag(transform["scale_xyz"]) @ np.array(transform["orientation_matrix"])
+    m[:3, 3] = transform["translation_wu"]
+    return m
 
 
-def _package(entry, spec, candidate_path, mod_id, *, root=INSTALL_ROOT, yaw=0,
-            stretch=False, allow_stock_damage=False, review_only=False, destination=None):
-    mod_id = safe_mod_id(mod_id)
-    if not spec["package_supported"] and not review_only:
-        raise ValueError(spec["runtime_limit"]+"; destroyed geometry requires --review-only")
-    if spec["destroyed_requirement"]["required"] and not (allow_stock_damage or review_only):
-        raise ValueError("damage stays stock at runtime; use --allow-stock-damage explicitly or --review-only")
+def candidate_ir(entry, spec, candidate_path, mod_id, *, yaw=0, stretch=False, destroyed=None, work_dir=None):
+    """Catalog selection -> canonical IR: the source glTF keeps its hierarchy, normals, alpha and
+    materials; the fitted placement becomes the frame node. Destroyed candidates (when given) fit
+    the stock destroyed bounds and ride the same asset."""
+    from tools.content_pipeline.frontends import gltf_file
     metadata = metadata_for(candidate_path)
     if not metadata.get("license") or not metadata.get("source_url"):
         raise ValueError("candidate .asset.json must record license and source_url (local provenance accepted)")
     if metadata.get("category") != spec["category"]:
         raise ValueError("candidate category must match target")
-    candidate = load_candidate(candidate_path)
-    candidate, transform = fit_candidate(candidate, spec, metadata, yaw=yaw, stretch=stretch)
-    # Size-limit before checking final texture budgets.
-    images = []
-    for img in candidate.images:
-        img = img.copy()
-        img.thumbnail((spec["budgets"]["max_texture_edge"],)*2)
-        images.append(img)
-    candidate = Candidate(candidate.mesh, images, candidate.source)
-    validation = validate(candidate, spec, transform)
-    if not validation["valid"]:
-        raise ValueError("candidate failed validation: "+"; ".join(validation["errors"]))
-    out = output_path(destination or OUT_ROOT/mod_id, mod=True)
-    if out.exists() and destination is None:
-        raise FileExistsError(f"refusing to overwrite package: {out}")
-    folder = out/"data"/"model_overrides"/"cooked"
-    gltf, images, texnames = export_runtime_gltf(candidate, folder, mod_id, spec["budgets"]["max_texture_edge"])
-    # Read exported data, simulate the engine's actual default mapping, validate again.
-    roundtrip = load_gltf(gltf)
-    engine_mesh = dataclass_replace(roundtrip.mesh, vertices=roundtrip.mesh.vertices*[-1, -1, 1],
-                                   normals=roundtrip.mesh.normals*[-1, -1, 1])
-    cooked = Candidate(engine_mesh, roundtrip.images, gltf)
-    final = validate(cooked, spec, transform)
-    if not final["valid"]:
-        raise ValueError("cooked round-trip failed: "+"; ".join(final["errors"]))
-    record = {"type": "model", "class": "staticProp", "replaces": spec["selection_key"],
-              "source": "cooked/"+gltf.name, "scale": 1.0, "renderOnly": True, "fallback": "stock"}
-    # Never emit a fake damage override that the runtime would silently ignore.
-    write_json(folder.parent/("models.review.json" if review_only else "models.json"), {"overrides": [record]})
-    if not review_only:
-        write_json(out/"mod.json", {"schema": "mc2-mod/1", "id": mod_id,
-            "name": "Modernized "+spec["id"], "version": "1.0.0", "dependencies": []})
-    report = {"review_only": review_only, "stock_damage_fallback": allow_stock_damage,
-              "candidate_sha256": hashlib.sha256(Path(candidate_path).read_bytes()).hexdigest(),
-              "metadata": metadata, "transform": transform, "validation": final,
-              "runtime_textures": texnames, "source": str(candidate_path),
-              "damage_note": spec["destroyed_requirement"]["policy"]}
-    write_json(out/"target-spec.json", spec); write_json(out/"validation.json", report)
-    from tools.assets.render import comparison, mesh_textures
-    stock = stock_install(root)
-    stock_mesh = parse_tgl(stock.read(spec["stock_tgl"])[0])
-    comparison(stock_mesh, cooked.mesh, mesh_textures(stock_mesh, stock), cooked.images, out/"preview.png")
+
+    def fitted(path, target):
+        _, transform = fit_candidate(load_candidate(path), target, metadata_for(path) or metadata, yaw=yaw, stretch=stretch)
+        return transform
+    transform = fitted(candidate_path, spec)
+    meta = {"frame": "gltf", "license": metadata["license"], "source_url": metadata["source_url"]}
+    classes = metadata.get("material_classes", {})
+    dspec = None
+    if destroyed is not None:
+        dspec = target_spec(entry, "destroyed")
+    asset = gltf_file.to_ir(safe_mod_id(mod_id), spec["selection_key"], candidate_path,
+                            kind="building" if spec["category"] != "prop" else "prop",
+                            destroyed=destroyed, classes=classes, meta=meta, work_dir=work_dir)
+    asset.lod0().nodes[0].matrix = fit_matrix(transform)
+    if destroyed is not None:
+        asset.states["destroyed"][0].scene.nodes[0].matrix = fit_matrix(fitted(destroyed, dspec))
+    asset.frontend.update({"name": "catalog", "selection": spec["id"], "transform": transform,
+                           "semantic_orientation_verified": transform["semantic_orientation_verified"]})
+    return asset.check()
+
+
+def package(entry, spec, candidate_path, mod_id, *, root=INSTALL_ROOT, yaw=0, stretch=False,
+            allow_stock_damage=False, review_only=False, destroyed=None, overwrite=False):
+    """Validate the fitted candidate, then cook it with tools/content_pipeline (the one cooker)."""
+    from tools.content_pipeline import ir, package as cp_package
+    mod_id = safe_mod_id(mod_id)
+    if not spec["package_supported"] and not review_only:
+        raise ValueError(spec["runtime_limit"]+"; use --review-only for a reviewable IR")
+    if spec["destroyed_requirement"]["required"] and destroyed is None and not (allow_stock_damage or review_only):
+        raise ValueError("no destroyed candidate: pass --destroyed PATH or accept stock damage with --allow-stock-damage")
+    asset = candidate_ir(entry, spec, candidate_path, mod_id, yaw=yaw, stretch=stretch, destroyed=destroyed)
+    lo, hi = asset.lod0().bounds()
+    tolerance = np.maximum(np.array(spec["bounds"]["size"]) * spec["validation"]["relative_bounds_tolerance"],
+                           spec["validation"]["absolute_bounds_tolerance_wu"])
+    if np.any(np.abs(lo - spec["bounds"]["min"]) > tolerance) or np.any(np.abs(hi - spec["bounds"]["max"]) > tolerance):
+        raise ValueError("fitted candidate bounds do not match the stock target")
+    if asset.lod0().triangle_count() > spec["budgets"]["max_triangles_lod0"]:
+        raise ValueError("triangle budget exceeded")
+    out = output_path(OUT_ROOT/mod_id, mod=True)
+    if review_only:
+        ir.save(asset, out/"content"/f"{mod_id}.mc2ir.json")   # reviewable IR; no active package
+        write_json(out/"target-spec.json", spec)
+        return out
+    cp_package.build_package([asset], out, mod_id=mod_id, name="Modernized "+spec["id"],
+                             max_triangles=spec["budgets"]["max_triangles_lod0"], overwrite=overwrite)
+    write_json(out/"target-spec.json", spec)
     return out
 
 
@@ -311,7 +307,7 @@ def main(argv=None):
     p.add_argument("--catalog", type=Path, default=Path("docs/assets/catalog.json"))
     p.add_argument("--root", type=Path, default=INSTALL_ROOT)
     sub = p.add_subparsers(dest="command", required=True)
-    for command in ("spec", "search", "package", "rework"):
+    for command in ("spec", "search", "package"):
         child = sub.add_parser(command)
         child.add_argument("selection")
         child.add_argument("--state", choices=("intact", "destroyed"), default="intact")
@@ -319,7 +315,7 @@ def main(argv=None):
             child.add_argument("--out", type=Path)
         if command == "search":
             child.add_argument("--library", type=Path, default=CANDIDATES)
-        if command in ("package", "rework"):
+        if command == "package":
             child.add_argument("--id", required=True)
         if command == "package":
             child.add_argument("--candidate", type=Path, required=True)
@@ -327,8 +323,7 @@ def main(argv=None):
             child.add_argument("--stretch", action="store_true")
             child.add_argument("--allow-stock-damage", action="store_true")
             child.add_argument("--review-only", action="store_true")
-        if command == "rework":
-            child.add_argument("--factor", type=int, default=4)
+            child.add_argument("--destroyed", type=Path, help="destroyed-state candidate (fits the stock damage bounds)")
     convert = sub.add_parser("convert-fbx")
     convert.add_argument("source", type=Path); convert.add_argument("destination", type=Path)
     convert.add_argument("--blender", type=Path, required=True)
@@ -347,12 +342,10 @@ def main(argv=None):
                 print(args.out)
             else:
                 print(json.dumps(value, indent=2))
-        elif args.command == "package":
-            print(package(entry, spec, args.candidate, args.id, root=args.root, yaw=args.yaw,
-                          stretch=args.stretch, allow_stock_damage=args.allow_stock_damage, review_only=args.review_only))
         else:
-            from tools.assets.rework import rework
-            print(rework(entry, args.id, root=args.root, factor=args.factor))
+            print(package(entry, spec, args.candidate, args.id, root=args.root, yaw=args.yaw,
+                          stretch=args.stretch, allow_stock_damage=args.allow_stock_damage,
+                          review_only=args.review_only, destroyed=args.destroyed))
         return 0
     except (ValueError, OSError, KeyError, IndexError) as error:
         print(f"ERROR: {error}", file=sys.stderr)

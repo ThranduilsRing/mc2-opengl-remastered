@@ -84,17 +84,22 @@ def convert_one(fbx, btname, args):
     asset_dir = os.path.join(out_dir, btname)
     os.makedirs(asset_dir, exist_ok=True)
 
-    # 1. FBX2glTF (skip if present unless --force)
-    if args.force or not os.path.isfile(glb):
-        r = subprocess.run([args.fbx2gltf, "-i", fbx, "-o", os.path.join(out_dir, btname), "-b"],
+    # 1. FBX2glTF into a raw intermediate (skip if present unless --force). The cooked GLB is
+    #    always derived from the raw one, never re-processed in place: a repeat run gives
+    #    identical bytes instead of accumulating the bind correction.
+    raw_dir = os.path.join(out_dir, "_fbx2gltf")
+    os.makedirs(raw_dir, exist_ok=True)
+    raw = os.path.join(raw_dir, f"{btname}.glb")
+    if args.force or not os.path.isfile(raw):
+        r = subprocess.run([args.fbx2gltf, "-i", fbx, "-o", os.path.join(raw_dir, btname), "-b"],
                            stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, **console_child.child_kwargs(redirected=True))
-        if not os.path.isfile(glb):
+        if not os.path.isfile(raw):
             print(f"[FAIL] {btname}: FBX2glTF produced no glb\n{r.stdout[-400:]}")
             return None
 
-    # 2. retarget clips in place (atlas reference). Atlas itself = identity no-op.
+    # 2. retarget clips raw -> cooked (atlas reference). Atlas itself = identity no-op.
     try:
-        retarget_file(glb, args.atlas_ref, glb)
+        retarget_file(raw, args.atlas_ref, glb)
     except Exception as e:
         print(f"[FAIL] {btname}: retarget error: {e}")
         return None

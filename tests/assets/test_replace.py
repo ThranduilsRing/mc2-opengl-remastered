@@ -9,11 +9,10 @@ import numpy as np
 from PIL import Image
 import pytest
 
-from tools.assets.candidates import Candidate, export_runtime_gltf, load_candidate, load_gltf
+from tools.assets.candidates import Candidate, load_candidate, load_gltf
 from tools.assets.common import Mesh, OUT_ROOT, bounds, output_path
 from tools.assets.replace import (fit_candidate, orientation_matrix, rank_candidate,
                                   safe_mod_id, search, select, target_spec, validate)
-from tools.assets.rework import rename_tgl_textures, upscale
 from test_catalog import tgl_fixture
 
 
@@ -60,7 +59,6 @@ def artifact_root(monkeypatch, tmp_path):
         assert path.is_relative_to(parent.resolve())
         monkeypatch.setattr("tools.assets.common.OUT_ROOT", path)
         monkeypatch.setattr("tools.assets.replace.OUT_ROOT", path)
-        monkeypatch.setattr("tools.assets.rework.OUT_ROOT", path)
         yield path
 
 
@@ -72,7 +70,7 @@ def test_spec_carries_collision_destroyed_lods_and_real_key(entry):
     assert spec["height_wu"] == 8
     assert spec["collision"]["type_fields"][0]["fields"]["objecttype"]["extentradius"] == 35
     assert spec["destroyed_requirement"]["required"]
-    assert not spec["destroyed_requirement"]["runtime_geometry_override_supported"]
+    assert spec["destroyed_requirement"]["runtime_geometry_override_supported"]   # destroyed chains cook now
     assert not target_spec(entry, "destroyed")["package_supported"]
 
 
@@ -83,7 +81,7 @@ def test_selection_accepts_type_id_and_rejects_ambiguity(entry):
 
 
 def test_animated_buildings_require_review(entry):
-    from tools.assets.replace import _package
+    from tools.assets.replace import package
     catalog = json.loads(Path("docs/assets/catalog.json").read_text())
     for name in ("repairbay", "rpbuilding", "sensortower"):
         assert not target_spec(select(catalog, name))["package_supported"]
@@ -93,7 +91,7 @@ def test_animated_buildings_require_review(entry):
         spec = target_spec(entry)
         assert not spec["package_supported"]
         with pytest.raises(ValueError, match="runtime|static props"):
-            _package(entry, spec, "unused.gltf", "animated", allow_stock_damage=True)
+            package(entry, spec, "unused.gltf", "animated", allow_stock_damage=True)
 
 
 def test_loader_bakes_scene_transforms(cube):
@@ -183,52 +181,6 @@ def test_validation_blocks_triangle_budget_nonfinite_and_rotation(cube, entry):
     assert not validate(bad, spec)["valid"]
 
 
-def test_runtime_export_inverts_axis_and_binds_real_texture_names(cube, entry, artifact_root):
-    candidate, transform = fit_candidate(load_candidate(cube), target_spec(entry), {"forward_axis": "-z"})
-    folder = artifact_root/"pack"/"data"/"model_overrides"/"cooked"
-    path, images, names = export_runtime_gltf(candidate, folder, "test", 512)
-    cooked = load_gltf(path)
-    np.testing.assert_allclose(cooked.mesh.vertices*[-1, -1, 1], candidate.mesh.vertices, atol=1e-6)
-    doc = json.loads(path.read_text())
-    assert doc["nodes"] == [{"name": "modern_prop", "mesh": 0}]
-    for name in names:
-        assert (artifact_root/"pack"/"data"/"tgl"/"128"/name).is_file()
-    assert cooked.images[0].getpixel((0, 0)) == images[0].getpixel((0, 0))
-
-
-def test_authored_corner_normals_survive_scene_fit_and_export(cube, entry, artifact_root):
-    doc = json.loads(cube.read_text())
-    payload = base64.b64decode(doc["buffers"][0]["uri"].split(",")[1])
-    authored = np.array([[1+i, 2, 3] for i in range(8)], dtype="<f4")
-    authored /= np.linalg.norm(authored, axis=1, keepdims=True)
-    doc["bufferViews"].append({"buffer": 0, "byteOffset": len(payload), "byteLength": authored.nbytes})
-    payload += authored.tobytes()
-    doc["buffers"][0] = {"uri": "data:application/octet-stream;base64,"+base64.b64encode(payload).decode(), "byteLength": len(payload)}
-    doc["accessors"].append({"bufferView": 2, "componentType": 5126, "count": 8, "type": "VEC3"})
-    doc["meshes"][0]["primitives"][0]["attributes"]["NORMAL"] = 2
-    doc["nodes"][0]["scale"] = [-2, 3, 4]
-    cube.write_text(json.dumps(doc))
-    candidate = load_gltf(cube)
-    idx = np.frombuffer(payload, dtype="<u2", count=36, offset=8*3*4).reshape(-1, 3)[:, [0, 2, 1]].ravel()
-    expected = authored[idx]/[-2, 3, 4]
-    expected /= np.linalg.norm(expected, axis=1, keepdims=True)
-    np.testing.assert_allclose(candidate.mesh.normals, expected)
-    rotation = orientation_matrix({"forward_axis": "-z"}, yaw=90)
-    rotated = candidate.mesh.vertices @ rotation.T
-    entry["models"][0]["bounds"] = bounds((rotated-rotated.min(axis=0))*[1, 1.1, 1.2])
-    fitted, _ = fit_candidate(candidate, target_spec(entry), {"forward_axis": "-z"}, yaw=90, stretch=True)
-    expected = (expected @ rotation.T)/[1, 1.1, 1.2]
-    expected /= np.linalg.norm(expected, axis=1, keepdims=True)
-    np.testing.assert_allclose(fitted.mesh.normals, expected, atol=1e-6)
-    path, _, _ = export_runtime_gltf(fitted, artifact_root/"normal"/"data"/"model_overrides"/"cooked", "normal", 512)
-    exported = json.loads(path.read_text())
-    a = exported["accessors"][exported["meshes"][0]["primitives"][0]["attributes"]["NORMAL"]]
-    view = exported["bufferViews"][a["bufferView"]]
-    actual = np.frombuffer(path.with_suffix(".bin").read_bytes(), dtype="<f4", count=a["count"]*3, offset=view["byteOffset"]).reshape(-1, 3)
-    np.testing.assert_allclose(actual*[-1, -1, 1], expected, atol=1e-6)
-    np.testing.assert_allclose(load_gltf(path).mesh.normals, actual, atol=1e-6)
-
-
 def test_orientation_uses_declared_z_up_and_front():
     matrix = orientation_matrix({"up_axis": "z", "forward_axis": "y"})
     np.testing.assert_allclose(matrix@[0, 0, 1], [0, 1, 0])
@@ -246,53 +198,6 @@ def test_mod_and_output_path_guards():
         output_path("C:/outside/mod", mod=True)
 
 
-def test_rework_isolates_texture_names_and_preserves_geometry_bytes():
-    raw = tgl_fixture()
-    cooked = rename_tgl_textures(raw, {"a_test.tga": "a_unique.tga"})
-    assert cooked[12+256:] == raw[12+256:]
-    assert cooked[:12] == raw[:12]
-    assert b"a_unique.tga" in cooked[:268]
-
-
-def test_alpha_upscale():
-    image = Image.new("RGBA", (8, 8), (150, 180, 200, 0))
-    large = upscale(image, 4, 64)
-    assert large.size == (32, 32)
-    assert large.getextrema()[3] == (0, 0)
-
-
-@pytest.mark.parametrize("workflow", ["candidate", "rework"])
-def test_packages_write_smaller_alpha_preserving_tiers(workflow, cube, entry, artifact_root, monkeypatch):
-    from tools.assets.rework import rework
-    image = Image.new("RGBA", (64, 32), (150, 180, 200, 0))
-    image.paste((150, 180, 200, 255), (0, 0, 32, 32))
-    large = upscale(image, 4, 1024)
-    if workflow == "candidate":
-        candidate = load_gltf(cube)
-        candidate.images = [large]
-        out = artifact_root/"tiers"
-        _, _, names = export_runtime_gltf(candidate, out/"data"/"model_overrides"/"cooked", "tiers", 1024)
-        name = names[0]
-    else:
-        class FakeStock:
-            def read(self, name):
-                return tgl_fixture(), "fixture"
-        monkeypatch.setattr("tools.assets.rework.stock_install", lambda root: FakeStock())
-        monkeypatch.setattr("tools.assets.rework.texture_image", lambda stock, name: (image, name, "fixture"))
-        monkeypatch.setattr("tools.assets.render.mesh_textures", lambda mesh, stock: [image])
-        out = rework(entry, "tiers")
-        report = json.loads((out/"rework-report.json").read_text())
-        name = report["textures"][0]["cooked"]
-        assert not (out/"authoring").exists()
-    for tier in (32, 64, 128, 256):
-        with Image.open(out/"data"/"tgl"/str(tier)/name) as reduced:
-            assert reduced.size == (tier, tier//2)
-            coverage = float(np.mean(np.asarray(reduced)[:, :, 3] >= 128))
-            assert abs(coverage-.5) <= 1/tier
-            if tier == 256:
-                np.testing.assert_array_equal(np.asarray(reduced), np.asarray(large))
-
-
 def test_renderer_repeats_uvs_instead_of_clamping():
     from tools.assets.render import render
     mesh = Mesh(np.array([[0, 0, 0], [0, 2, 0], [2, 0, 0]], dtype=float),
@@ -304,43 +209,63 @@ def test_renderer_repeats_uvs_instead_of_clamping():
     np.testing.assert_array_equal(np.asarray(render(shifted, [image])), np.asarray(expected))
 
 
-def test_package_end_to_end_schema_textures_preview_and_stock_damage(cube, entry, artifact_root, monkeypatch):
-    from tools.assets.replace import package
-    class FakeStock:
-        def read(self, name):
-            return tgl_fixture(), "fixture"
-    monkeypatch.setattr("tools.assets.replace.stock_install", lambda root: FakeStock())
-    monkeypatch.setattr("tools.assets.render.mesh_textures", lambda mesh, stock: [Image.new("RGBA", (2, 2), "white")])
+def _provenance(cube):
     cube.with_suffix(".asset.json").write_text(json.dumps({"category": "building", "forward_axis": "-z",
         "source_url": "local:pytest-cube", "license": "test-fixture", "orientation_reviewed": True}))
+
+
+def test_package_cooks_through_the_canonical_pipeline(cube, entry, artifact_root, monkeypatch):
+    """The catalog frontend fits; tools/content_pipeline cooks. The runtime GLB's world geometry is
+    the fitted candidate, node transforms baked, authored normals kept (no faceting)."""
+    from tools.assets.replace import package
+    from tools.content_pipeline import cache, gltf_io, validate
+    monkeypatch.setattr(cache, "DEFAULT_DIR", artifact_root/"cook-cache")
+    doc = json.loads(cube.read_text())
+    payload = base64.b64decode(doc["buffers"][0]["uri"].split(",")[1])
+    authored = np.array([[1+i, 2, 3] for i in range(8)], dtype="<f4")
+    authored /= np.linalg.norm(authored, axis=1, keepdims=True)
+    doc["bufferViews"].append({"buffer": 0, "byteOffset": len(payload), "byteLength": authored.nbytes})
+    payload += authored.tobytes()
+    doc["buffers"][0] = {"uri": "data:application/octet-stream;base64,"+base64.b64encode(payload).decode(), "byteLength": len(payload)}
+    doc["accessors"].append({"bufferView": 2, "componentType": 5126, "count": 8, "type": "VEC3"})
+    doc["accessors"][0].update(min=[0, 0, 0], max=[2, 4, 6])
+    doc["meshes"][0]["primitives"][0]["attributes"]["NORMAL"] = 2
+    cube.write_text(json.dumps(doc))
+    _provenance(cube)
     spec = target_spec(entry)
-    with pytest.raises(ValueError, match="damage stays stock"):
+    with pytest.raises(ValueError, match="no destroyed candidate"):
         package(entry, spec, cube, "bad")
-    assert not (artifact_root/"bad").exists()
-    assert list(artifact_root.iterdir()) == []  # failed transaction removes its staging directory
     out = package(entry, spec, cube, "good", allow_stock_damage=True)
-    assert json.loads((out/"mod.json").read_text())["schema"] == "mc2-mod/1"
-    manifest = json.loads((out/"data/model_overrides/models.json").read_text())
-    record, = manifest["overrides"]
-    assert record["replaces"] == "staticProp:hangar"
-    assert record["scale"] == 1 and record["fallback"] == "stock" and record["renderOnly"]
-    assert (out/"data/model_overrides"/record["source"]).is_file()
-    assert (out/"preview.png").is_file()
-    assert json.loads((out/"validation.json").read_text())["validation"]["valid"]
+    record, = json.loads((out/"data/model_overrides/models.json").read_text())["overrides"]
+    assert record["replaces"] == "staticProp:hangar" and record["renderOnly"] and record["fallback"] == "stock"
+    assert "destroyed" not in record                     # stock damage, explicitly accepted
+    glb = out/"data/model_overrides"/record["source"]
+    assert validate.errors(validate.validate_runtime_glb(glb)) == []
+    fitted, _ = fit_candidate(load_candidate(cube), spec, {"forward_axis": "-z"})
+    scene, _, _ = gltf_io.read_gltf(glb, frame="mc2_runtime", texture_roots=None)
+    world = np.concatenate([p.positions[p.indices].reshape(-1, 3) for _, p in scene.flattened()])
+    np.testing.assert_allclose(np.sort(world, axis=0), np.sort(fitted.mesh.vertices, axis=0), atol=1e-4)
+    normals = np.concatenate([p.normals for _, p in scene.flattened()])
+    assert len({tuple(np.round(n, 4)) for n in normals}) == 8   # 8 authored corner normals, not 6 face normals
+    assert (out/"content/good.mc2ir.json").is_file()
     with pytest.raises(FileExistsError):
         package(entry, spec, cube, "good", allow_stock_damage=True)
 
 
-@pytest.mark.parametrize("state", ["destroyed", "animated"])
-def test_destroyed_review_package_cannot_silently_activate(cube, entry, artifact_root, monkeypatch, state):
+def test_destroyed_candidate_rides_the_same_package(cube, entry, artifact_root, monkeypatch):
     from tools.assets.replace import package
-    class FakeStock:
-        def read(self, name):
-            return tgl_fixture(), "fixture"
-    monkeypatch.setattr("tools.assets.replace.stock_install", lambda root: FakeStock())
-    monkeypatch.setattr("tools.assets.render.mesh_textures", lambda mesh, stock: [Image.new("RGBA", (2, 2), "white")])
-    cube.with_suffix(".asset.json").write_text(json.dumps({"category": "building", "forward_axis": "-z",
-        "source_url": "local:pytest-cube", "license": "test-fixture"}))
+    from tools.content_pipeline import cache
+    monkeypatch.setattr(cache, "DEFAULT_DIR", artifact_root/"cook-cache")
+    _provenance(cube)
+    out = package(entry, target_spec(entry), cube, "both", destroyed=cube)
+    record, = json.loads((out/"data/model_overrides/models.json").read_text())["overrides"]
+    assert (out/"data/model_overrides"/record["destroyed"]["source"]).is_file()
+
+
+@pytest.mark.parametrize("state", ["destroyed", "animated"])
+def test_review_only_never_activates(cube, entry, artifact_root, state):
+    from tools.assets.replace import package
+    _provenance(cube)
     if state == "animated":
         entry["ini_sections"] = {"animation:0": {"animationname": "hangar"}}
     spec = target_spec(entry, "destroyed" if state == "destroyed" else "intact")
@@ -349,4 +274,4 @@ def test_destroyed_review_package_cannot_silently_activate(cube, entry, artifact
     out = package(entry, spec, cube, "review", review_only=True)
     assert not (out/"mod.json").exists()
     assert not (out/"data/model_overrides/models.json").exists()
-    assert (out/"data/model_overrides/models.review.json").exists()
+    assert (out/"content/review.mc2ir.json").exists()
