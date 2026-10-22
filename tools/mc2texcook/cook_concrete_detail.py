@@ -48,6 +48,40 @@ def gray(a):
     return a if a.ndim == 2 else a[:, :, 0]
 
 
+def _blur_wrap(a, sigma):
+    # tileable blur: pad with wrapped copies, blur, crop the centre
+    n = a.shape[0]
+    t = np.tile(a, (3, 3))
+    return cv2.GaussianBlur(t, (0, 0), sigma)[n:2 * n, n:2 * n]
+
+
+SIGMAS = (1.0, 2.0, 4.0, 8.0, 16.0, 32.0, 64.0)
+
+
+def equalize(chans, target):
+    """Give every spatial octave of the detail the same contrast (shared across the channels), so the detail still reads after the
+    mip chain has averaged the fine octaves away at RTS zoom. The cooked sets carry almost all their contrast in the finest octaves."""
+    means = [c.mean() for c in chans]
+    levels = [[_blur_wrap(c - m, s) for s in SIGMAS] for c, m in zip(chans, means)]
+    out = [np.zeros_like(chans[0]) for _ in chans]
+    prev = [c - m for c, m in zip(chans, means)]
+    for k in range(len(SIGMAS)):
+        bands = [prev[i] - levels[i][k] for i in range(len(chans))]
+        sd = float(np.sqrt(np.mean([np.var(b) for b in bands]))) + 1e-6
+        for i in range(len(chans)):
+            out[i] += bands[i] * (target / np.sqrt(len(SIGMAS)) / sd)
+        prev = [levels[i][k] for i in range(len(chans))]
+    return [o + m for o, m in zip(out, means)]
+
+
+def finish(nx, ny, rough, ao):
+    nx, ny = equalize([nx, ny], 0.045)
+    (rough,) = equalize([rough], 0.05)
+    (ao,) = equalize([ao], 0.07)
+    ao = np.clip(ao + (0.96 - ao.mean()), 0.0, 1.0)      # cavities darken, the mean stays near 1 so the colour keeps its tone
+    return np.clip(nx, 0, 1), np.clip(ny, 0, 1), np.clip(rough, 0, 1), ao
+
+
 def pad_maps(src):
     d = os.path.join(src, "concrete_layers_02", "textures")
     n = rs(load(os.path.join(d, "concrete_layers_02_nor_gl_2k.exr")))
@@ -56,7 +90,7 @@ def pad_maps(src):
     # no AO channel in this set: cavity = how far the height sits below its local mean (only ever darkens)
     blur = cv2.GaussianBlur(h, (0, 0), 24)
     ao = np.clip(1.0 + (h - blur) * 4.0, 0.0, 1.0)
-    return n[:, :, 0], n[:, :, 1], r, ao
+    return finish(n[:, :, 0], n[:, :, 1], r, ao)
 
 
 def road_maps(src):
@@ -64,7 +98,7 @@ def road_maps(src):
     n = rs(load(os.path.join(d, "clean_asphalt_nor_gl_2k.jpg")))
     arm = rs(load(os.path.join(d, "clean_asphalt_arm_2k.jpg")))
     ao = np.clip(arm[:, :, 0] / max(float(np.percentile(arm[:, :, 0], 90)), 1e-3), 0.0, 1.0)
-    return n[:, :, 0], n[:, :, 1], arm[:, :, 1], ao
+    return finish(n[:, :, 0], n[:, :, 1], arm[:, :, 1], ao)
 
 
 def main():

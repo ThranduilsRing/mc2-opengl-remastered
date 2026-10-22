@@ -39,7 +39,7 @@ MaterialDetail cdEval(int layer, vec2 wp, vec2 dx, vec2 dy) {
     MaterialDetail d;
     d.n = normalize(vec3(nxy, 1.0));
     d.roughness = 0.5 * (a.z + b.z);
-    d.ao = clamp(1.0 + (0.5 * (a.w + b.w) - 1.0) * 3.0, 0.0, 1.0);   // contrast stretch: the cooked AO is mild
+    d.ao = clamp(1.0 + (0.5 * (a.w + b.w) - 1.0) * 1.0, 0.0, 1.0);
     return d;
 }
 
