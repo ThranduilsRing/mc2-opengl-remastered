@@ -1,6 +1,8 @@
 """The shared cell-level JSON format and small grid operations (no game writes)."""
 from __future__ import annotations
 
+import gzip
+import io
 import json
 import math
 from collections import deque
@@ -30,14 +32,25 @@ def write_json(path, value, *, pretty=False):
     path.parent.mkdir(parents=True, exist_ok=True)
     # A replacement prevents an interrupted extraction leaving a half-written mission.
     tmp = path.with_suffix(path.suffix + ".tmp")
-    tmp.write_text(json.dumps(value, sort_keys=True, allow_nan=False,
-                              indent=2 if pretty else None,
-                              separators=None if pretty else (",", ":")) + "\n",
-                   encoding="utf-8")
+    options = dict(sort_keys=True,allow_nan=False,indent=2 if pretty else None,
+                   separators=None if pretty else (",", ":"))
+    if path.suffix == ".gz":
+        # A fixed header and streaming encoder keep large editor-map artifacts
+        # reproducible without constructing a second enormous JSON string.
+        with tmp.open("wb") as raw:
+            with gzip.GzipFile(filename="",mode="wb",fileobj=raw,mtime=0) as compressed:
+                with io.TextIOWrapper(compressed,encoding="utf-8",newline="\n") as stream:
+                    json.dump(value,stream,**options)
+                    stream.write("\n")
+    else:
+        tmp.write_text(json.dumps(value,**options)+"\n",encoding="utf-8")
     tmp.replace(path)
 
 
 def load_json(path):
+    if Path(path).suffix == ".gz":
+        with gzip.open(path,"rt",encoding="utf-8") as stream:
+            return json.load(stream)
     return json.loads(Path(path).read_text(encoding="utf-8"))
 
 

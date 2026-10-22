@@ -21,6 +21,7 @@ from tools.mapgen.common import (CELL_WU, FLAT_DEG, LAYERS, SCHEMA, STEEP_DEG,
 from tools.mapgen.validate import validate
 
 PROFILE_PATH = Path(__file__).with_name("profile.json")
+MAX_CELLS = 3072  # 1024 editor vertices, three movement cells per vertex.
 
 
 def synthetic_terrain(size, seed):
@@ -115,8 +116,8 @@ def nearest(mask, target):
 
 
 def plan_cells(size=300, seed=42, heightfield=None, water=None, profile=None, style="stock"):
-    if not 96 <= size <= 1024:
-        raise ValueError("size must be between 96 and 1024 cells")
+    if not 96 <= size <= MAX_CELLS:
+        raise ValueError(f"size must be between 96 and {MAX_CELLS} cells")
     profile = profile or load_json(PROFILE_PATH)
     stats = profile["pooled"] if style == "mixed" else profile["groups"][style]
     rng = random.Random(seed)
@@ -195,7 +196,7 @@ def plan_cells(size=300, seed=42, heightfield=None, water=None, profile=None, st
         return obj
 
     density = stats["metrics"]["enemy_bases_per_100k_cells"]["median"] or 4
-    target_bases = max(3, min(64, round(density*size*size/100000)))
+    target_bases = max(3, min(512, round(density*size*size/100000)))
     archetypes = sorted(stats["archetypes"])
     weights = [stats["archetypes"][name]["count"] for name in archetypes]
     road_positions = [tuple(map(int, v)) for v in np.argwhere(roads)]
@@ -344,7 +345,7 @@ def plan_cells(size=300, seed=42, heightfield=None, water=None, profile=None, st
     tree_allowed = mainland & (base_distance >= 4) & (road_distance >= 4) & ~occupied
     tree_allowed[max(0,start[0]-5):start[0]+6, max(0,start[1]-5):start[1]+6] = False
     tree_density = stats["metrics"]["tree_objects_per_100k_cells"]["median"] or 0
-    tree_target = min(20000, round(size*size*tree_density/100000))
+    tree_target = min(180000, round(size*size*tree_density/100000))
     tree_cells = np.argwhere(tree_allowed)
     centre_indices = rng.sample(range(len(tree_cells)), min(len(tree_cells), max(8, size*size//5000)))
     cluster_centres = [tuple(map(int, tree_cells[i])) for i in centre_indices]
@@ -371,7 +372,8 @@ def plan_cells(size=300, seed=42, heightfield=None, water=None, profile=None, st
             "source": {"corpus": "generated", "seed": seed, "style": style,
                        "profile_sha256": hashlib.sha256(json.dumps(profile, sort_keys=True).encode()).hexdigest(),
                        "heightfield_sha256": hashlib.sha256(heights.astype("<f8").tobytes()+wet.tobytes()).hexdigest()},
-            "size": {"rows": size, "cols": size, "cell_wu": CELL_WU, "vertices": None},
+            "size": {"rows": size, "cols": size, "cell_wu": CELL_WU,
+                     "vertices": size//3 if size%3 == 0 else None},
             "objects": objects, "parts": parts, "player_start": list(start), "objectives": objectives,
             "roads_wu": world_roads(road_paths,mainland,size),
             "bases": bases, "terrain": {"cell_step": 1, "elevation_wu": heights.tolist(),
@@ -417,6 +419,8 @@ def main(argv=None):
     parser.add_argument("--profile", type=Path, default=PROFILE_PATH)
     parser.add_argument("--style", default="stock", help="stock, mixed, or a corpus install label")
     parser.add_argument("--cells-per-char", type=int, default=3)
+    parser.add_argument("--wu-per-pixel",type=float,help="override the measured Quonset scale")
+    parser.add_argument("--hillshade",action="store_true",help="subtle pixel-art hillshade")
     parser.add_argument("--out", type=Path, default=Path("tools/mapgen/corpus/generated"))
     args = parser.parse_args(argv)
     try:
@@ -431,12 +435,13 @@ def main(argv=None):
             raise ValueError("; ".join(errors[:8]))
         out = output_path(args.out)
         out.mkdir(parents=True, exist_ok=True)
-        write_json(out / (layout["name"]+".json"), layout)
+        suffix = ".json.gz" if args.size>1024 else ".json"
+        write_json(out / (layout["name"]+suffix), layout)
         path = out / (layout["name"]+".txt")
         path.write_text(render(layout, args.cells_per_char), encoding="ascii")
         from tools.mapgen.raster import render as raster, crop_base
-        raster(layout,out/(layout["name"]+".png"))
-        raster(layout,out/(layout["name"]+"_base.png"),1,crop_base(layout))
+        raster(layout,out/(layout["name"]+".png"),args.wu_per_pixel,hillshade=args.hillshade)
+        raster(layout,out/(layout["name"]+"_base.png"),args.wu_per_pixel,crop_base(layout),args.hillshade)
         print(f"{path}: {len(layout['bases'])} sites, {len(layout['objects'])} objects; plausibility PASS")
     except (ValueError, KeyError) as error:
         parser.exit(2, f"generation failed: {error}\n")

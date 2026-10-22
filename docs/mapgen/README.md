@@ -29,11 +29,14 @@ this is a survey of these installations, not a claim of pristine original media.
 The owner means **top-down pixel art**, like a more detailed tacmap. Raster PNGs
 are the primary output; the phase-1 ASCII tools and examples remain available.
 See [raster examples](raster/README.md) and [model footprint methods/coverage](footprints.md).
-All 320 stock/mod corpus missions have full-map PNGs. Two stock base crops and
-every generated base crop use 1 world unit per pixel. Full maps automatically use
-2..8 wu/px, with explicit size guards. PNGs include class colours, team tint,
-player start, visible objectives, native object outlines, authored road alpha
-masks, terrain colours and optional hillshade.
+All 320 stock/mod corpus missions have full-map PNGs. Every full map and crop
+defaults to **42.080 wu/px**, measured from stock `Quonset` type 335's 84.160-wu
+long side / 2: the hut is two pixels by one. Every original `.png` has a
+nearest-neighbour `_4x.png` preview. Override scale with `--wu-per-pixel N`.
+Buildings use whole-pixel rectangles and snapped display rotations; walls are
+one-pixel lines, gates and turrets distinct pixels, trees pixels/small clusters,
+and roads one or two pixels wide. Terrain uses eight flat colours, with optional
+subtle `--hillshade`. Native geometry and original rotations remain in JSON.
 
 ## JSON schema `mc2-mapgen-1`
 
@@ -91,9 +94,13 @@ labels and slope/proximity measurements are coarse, documented approximations.
 
 ## Generating layouts
 
-`generate.py --size N --seed S --out DIRECTORY` writes JSON, full-map PNG, a
-1 wu/px base PNG, render sidecars, and a legacy ASCII preview. Sizes
-96..1024 cells are supported. Default `--style stock` calibrates from the 24 stock
+`generate.py --size N --seed S --out DIRECTORY` writes JSON, full-map and base
+PNGs at Quonset scale, their 4x previews, render sidecars, and a legacy ASCII
+preview. Sizes **96..3072 movement cells** are supported: the owner's **1K editor
+map is 1024 vertices = 3072 cells**, not 1024 cells. Divisible-by-three sizes
+record their vertex side in `size.vertices`. Layouts above 1024 cells use
+deterministic `.json.gz` with streaming output; readers accept either format.
+Default `--style stock` calibrates from the 24 stock
 missions; `--style mixed` uses the deduplicated stock/mod pool, or supply an install
 label from the corpus. Profile hashes and terrain hashes are recorded in output.
 Same seed, profile, footprint table, style and terrain produce the same JSON bytes
@@ -110,7 +117,8 @@ First sites demonstrate a compound, an open outpost and a roadside town; later
 sites sample measured archetype weights. Parcel dimensions sample p10..p90 with
 practical minima and a 42-cell cap; structures sample measured mixes/counts.
 Battery counts are conservatively limited to 3..5, within stock observations.
-Tree density uses the measured median. These choices give inspectable examples
+Site and tree density use measured medians, capped at 512 sites and 180,000 trees
+to cover the 3072-cell domain. These choices give inspectable examples
 without attempting to reproduce an entire campaign's distributions per map.
 Small maps have at least three requested sites, so mission-wide density comparisons
 only apply at stock map sizes and above. Difficult terrain may fit fewer sites;
@@ -199,8 +207,9 @@ spacing and swept road width checks. It distinguishes permitted wall joins from
 solid footprint overlaps. Conservative model rectangles include overhangs;
 neither these nor visual road widths prove engine MOVE passability.
 
-New examples are in [raster/generated](raster/generated/): 180/7, 360/17, 720/23,
-1024/42, each with JSON, a full map and a 1 wu/px base crop. The old cell examples
+New examples are in [raster/generated](raster/generated/README.md): 180/7, 360/17,
+720/23, 1024/42 and **3072/42 (1024 vertices)**, each with JSON, a full map and a
+base crop at Quonset scale, plus exact 4x viewing versions. The old cell examples
 above are historical phase-1 artifacts. Playable mission logic remains unassigned;
 objective markers are suggestions with no FIT conditions.
 

@@ -31,11 +31,19 @@ class GeneratedLayoutTests(unittest.TestCase):
                 layout = generate(size, seed, profile=self.profile)
                 self.assertEqual(validate(layout, self.profile), [])
 
-    def test_editor_maximum_1024_cells(self):
+    def test_large_1024_cell_layout(self):
         layout = generate(1024, 42, profile=self.profile)
         self.assertEqual(layout["size"]["rows"], 1024)
         self.assertGreater(len(layout["bases"]), 20)
         self.assertEqual(validate(layout, self.profile), [])
+
+    def test_1024_vertex_domain_reaches_terrain_validation(self):
+        # This boundary must accept 3072 cells before checking the supplied land.
+        # Successful full-size generation/validation is also exercised by the
+        # committed 3072-cell example, without repeating that expensive bake here.
+        shape = (3072,3072)
+        with self.assertRaisesRegex(ValueError,"connected dry flat land"):
+            generate(3072,42,np.ones(shape),np.ones(shape,dtype=bool),self.profile)
 
     def test_parent_chain_corruptions_are_detected(self):
         broken = copy.deepcopy(self.example)
@@ -108,8 +116,8 @@ class GeneratedLayoutTests(unittest.TestCase):
     def test_impossible_terrain_and_bounds_fail_clearly(self):
         with self.assertRaisesRegex(ValueError, "connected dry flat land"):
             generate(96, 1, np.ones((96,96)), np.ones((96,96),bool), self.profile)
-        with self.assertRaisesRegex(ValueError, "96 and 1024"):
-            generate(1025, 1, profile=self.profile)
+        with self.assertRaisesRegex(ValueError, "96 and 3072"):
+            generate(3073, 1, profile=self.profile)
         with self.assertRaisesRegex(ValueError, "finite"):
             generate(96, 1, np.full((96,96), np.nan), profile=self.profile)
         with self.assertRaisesRegex(ValueError, "finite"):
