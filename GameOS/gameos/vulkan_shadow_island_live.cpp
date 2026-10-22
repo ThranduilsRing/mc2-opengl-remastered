@@ -1014,6 +1014,7 @@ extern "C" void mc2_vk_shadow_island_submit_frame() {
     ShadowIsland* s = parkedIsland();
     if (!s) return;
     if (!s->recording) {
+        ++g_shadowFrameEpoch;
         if (s->disabled || !s->inited || !s->bake.wantsFrame()) return;
         if (!begin_frame(s,g_shadowFrameEpoch)) return;
         record_bake(s);
