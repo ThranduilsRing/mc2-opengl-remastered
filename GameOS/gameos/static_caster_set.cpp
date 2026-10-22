@@ -42,10 +42,24 @@ void StaticCasterSet::add(const StaticCasterEntry& entry) {
 void StaticCasterSet::endRebuild() {
     building_ = false;
     version_ = g_nextVersion++;
+    loadHash_ = resolve(loadLeaves_);
+    // per-entry ranges of the snapshot, for the drift log
+    loadRanges_.assign(entries_.size(), {0u, 0u});
+    {
+        std::vector<GpuStaticPropInstance> one;
+        uint32_t at = 0;
+        for (uint32_t i : resolveOrder()) {
+            one.clear();
+            const uint32_t n = static_cast<uint32_t>(GpuStaticPropRegistry::getRecipeShadowLeaves(entries_[i].recipeIndex, one));
+            loadRanges_[i] = {at, n};
+            at += n;
+        }
+    }
     uint32_t byKind[4] = {0, 0, 0, 0};
     for (const StaticCasterEntry& e : entries_) ++byKind[static_cast<uint8_t>(e.kind) & 3u];
-    mc2::fmt::print_err("[SHADOW_BAKE] caster_set version={} entries={} terrain_objects={} buildings={} turrets={} gates={}\n",
-                        mc2::fmt::as_u64(version_), mc2::fmt::as_size(entries_.size()), byKind[0], byKind[1], byKind[2], byKind[3]);
+    mc2::fmt::print_err("[SHADOW_BAKE] caster_set version={} entries={} terrain_objects={} buildings={} turrets={} gates={} load_leaves={} load_hash={:016x}\n",
+                        mc2::fmt::as_u64(version_), mc2::fmt::as_size(entries_.size()), byKind[0], byKind[1], byKind[2], byKind[3],
+                        mc2::fmt::as_size(loadLeaves_.size()), mc2::fmt::as_u64(loadHash_));
 }
 
 void StaticCasterSet::clear() {
@@ -54,6 +68,9 @@ void StaticCasterSet::clear() {
     byOwner_.clear();
     removed_.clear();
     events_.clear();
+    loadLeaves_.clear();
+    loadRanges_.clear();
+    loadHash_ = 0;
     version_ = 0;
     building_ = false;
 }
@@ -128,9 +145,8 @@ std::vector<StaticCasterSet::CasterEvent> StaticCasterSet::takeEvents() {
     return out;
 }
 
-uint64_t StaticCasterSet::resolve(std::vector<GpuStaticPropInstance>& leaves) const {
-    leaves.clear();
-    // Hash in handle order, so the key does not depend on the order the game arrays were walked in.
+// Entry indices in handle order, so the key does not depend on the order the game arrays were walked in.
+std::vector<uint32_t> StaticCasterSet::resolveOrder() const {
     std::vector<uint32_t> order(entries_.size());
     for (uint32_t i = 0; i < order.size(); ++i) order[i] = i;
     std::sort(order.begin(), order.end(), [this](uint32_t a, uint32_t b) {
@@ -138,9 +154,40 @@ uint64_t StaticCasterSet::resolve(std::vector<GpuStaticPropInstance>& leaves) co
         const StaticCasterEntry& y = entries_[b];
         return x.gameHandle != y.gameHandle ? x.gameHandle < y.gameHandle : x.recipeIndex < y.recipeIndex;
     });
+    return order;
+}
+
+void StaticCasterSet::logDriftSinceLoad(uint32_t maxLines) const {
+    std::vector<GpuStaticPropInstance> one;
+    uint32_t drifted = 0, logged = 0;
+    for (uint32_t i = 0; i < entries_.size(); ++i) {
+        const StaticCasterEntry& e = entries_[i];
+        one.clear();
+        GpuStaticPropRegistry::getRecipeShadowLeaves(e.recipeIndex, one);
+        const std::pair<uint32_t, uint32_t> range = i < loadRanges_.size() ? loadRanges_[i] : std::pair<uint32_t, uint32_t>{0u, 0u};
+        float maxDelta = 0.0f;
+        bool differs = one.size() != range.second;
+        for (uint32_t k = 0; !differs && k < range.second; ++k) {
+            const GpuStaticPropInstance& a = loadLeaves_[range.first + k];
+            if (a.typeID != one[k].typeID) { differs = true; break; }
+            for (int m = 0; m < 16; ++m) maxDelta = (std::max)(maxDelta, std::fabs(a.modelMatrix[m] - one[k].modelMatrix[m]));
+        }
+        if (maxDelta > 0.0f) differs = true;
+        if (!differs) continue;
+        ++drifted;
+        if (logged++ < maxLines)
+            mc2::fmt::print_err("[SHADOW_BAKE] caster drift: handle={} kind={} recipe={} damage={} leaves load={} now={} max_matrix_delta={:.4f}\n",
+                                e.gameHandle, static_cast<uint32_t>(e.kind), e.recipeIndex, static_cast<uint32_t>(e.damageState), range.second,
+                                mc2::fmt::as_size(one.size()), maxDelta);
+    }
+    mc2::fmt::print_err("[SHADOW_BAKE] caster drift since load: {} of {} entries\n", drifted, mc2::fmt::as_size(entries_.size()));
+}
+
+uint64_t StaticCasterSet::resolve(std::vector<GpuStaticPropInstance>& leaves) const {
+    leaves.clear();
     uint64_t h = fnv1a(nullptr, 0);
     std::vector<GpuStaticPropInstance> one;
-    for (uint32_t i : order) {
+    for (uint32_t i : resolveOrder()) {
         const StaticCasterEntry& e = entries_[i];
         one.clear();
         if (GpuStaticPropRegistry::getRecipeShadowLeaves(e.recipeIndex, one) == 0) continue;

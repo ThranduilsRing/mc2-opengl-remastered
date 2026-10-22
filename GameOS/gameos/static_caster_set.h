@@ -10,6 +10,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 #include "../../RenderCore/gpu_abi/GpuStaticPropInstance.h"
@@ -57,13 +58,22 @@ public:
     // The registry leaves of every live entry, in entry order. Returns the content hash: the handles, kinds, damage states, type IDs and transforms of
     // the set, independent of registry slot numbering.
     uint64_t resolve(std::vector<GpuStaticPropInstance>& leaves) const;
+    // The set as endRebuild() resolved it, before the mission ran a frame. The cold bake renders this (so its key does not depend on what combat did
+    // before the bake ran); every event since is queued for the dirty path anyway.
+    uint64_t loadSnapshot(std::vector<GpuStaticPropInstance>& leaves) const { leaves = loadLeaves_; return loadHash_; }
+    // Logs the entries whose leaves differ from the load snapshot ([SHADOW_BAKE] caster drift): what moved between load and the bake.
+    void logDriftSinceLoad(uint32_t maxLines) const;
 
 private:
+    std::vector<uint32_t> resolveOrder() const;
     std::vector<StaticCasterEntry> entries_;
     std::vector<uint8_t> recipeMask_;
     std::unordered_map<const void*, uint32_t> byOwner_;
     std::unordered_map<const void*, std::vector<GpuStaticPropInstance>> removed_;   // leaves an owner lost and may get back unchanged
     std::vector<CasterEvent> events_;
+    std::vector<GpuStaticPropInstance> loadLeaves_;
+    std::vector<std::pair<uint32_t, uint32_t>> loadRanges_;   // per entry: first leaf and count in loadLeaves_
+    uint64_t loadHash_ = 0;
     uint64_t deltaVersion_ = 0;
     uint64_t version_ = 0;
     bool building_ = false;

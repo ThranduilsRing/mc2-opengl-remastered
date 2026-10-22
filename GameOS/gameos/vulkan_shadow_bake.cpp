@@ -678,7 +678,9 @@ bool ShadowBake::recordBake(VkCommandBuffer cb, const ShadowBakeInputs& in) {
 
     // Casters: the gameplay set resolved to registry leaves, each with its world box and light-space box.
     const clk::time_point tResolve = clk::now();
-    const uint64_t casterHash = mc2shadow::staticCasterSet().resolve(leaves_);
+    // The load snapshot, not the set as it is now: the key then does not depend on how far combat got before the bake (events since are dirty tiles).
+    const uint64_t casterHash = mc2shadow::staticCasterSet().loadSnapshot(leaves_);
+    mc2shadow::staticCasterSet().logDriftSinceLoad(6);
     cpuStage_[0] = std::chrono::duration<double, std::milli>(clk::now() - tResolve).count();
     std::vector<mc2shadow::LightBox> boxes;
     std::vector<float> tops;
