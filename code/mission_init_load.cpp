@@ -978,6 +978,20 @@ void Mission::initLabTimingAndClose() {
 
 // Finalise the static-prop and mech geometry and the GPU cull buffers.
 void Mission::initFinalizeGeometry() {
+	// Seed gameplay attachments before the first LOS/weapon query. Camera
+	// extraction must never supply a mover's initial node palette.
+	for (long i = 1; i <= ObjectManager->getMaxObjects(); ++i) {
+		auto* object = ObjectManager->get(i);
+		if (!object || !object->getExists()) continue;
+		auto* appearance = object->getAppearance();
+		if (!appearance || !appearance->simulationOwned()) continue;
+		const int team = object->getTeamId();
+		const int relation = team >= 0 && Team::home ? Team::getRelation(team, Team::home->getId()) : 0;
+		appearance->setObjectParameters(object->getPosition(), object->getRotation(), object->drawFlags, team, relation);
+		appearance->refreshSimPose();
+	}
+	ObjectManager->snapshotMoverPoses();
+	ObjectManager->extractRenderSnapshots();
 	// All actors have been spawned and have called registerType() into the
 	// GPU static-prop batcher. Upload the shared VBO/IBO/VAO now so that
 	// submit()/flush() can reference immutable geometry for the rest of the

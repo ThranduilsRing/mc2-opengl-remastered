@@ -1,5 +1,6 @@
 #include "vk_scene_renderer.h"
 #include "sim_tick_cost.h"
+#include "command_replay.h"
 // Mission: the per-frame Mission::update with its MC2_MISSION_SPLIT timing, mover bridge, soak hooks and coherence audit.
 // Declared in the class headers; shared names in mission_internal.h.
 #include "mission_internal.h"
@@ -428,7 +429,7 @@ void Mission::updateFrontEnd() {
 		}
 	}
 
-	{ ZoneScopedN("GameLogic.Mission.VTol"); MisScope _ms(MS_VTOL); missionInterface->updateVTol(); }
+
 
 	{ ZoneScopedN("GameLogic.Mission.Terrain"); MisScope _ms(MS_LAND_UPDATE); land->update(); }
 
@@ -464,6 +465,7 @@ void Mission::updatePresentationOnly(bool moversOnly, float alpha) {
 	else
 		ObjectManager->updateAppearancesOnly( true, true, true );
 	ObjectManager->updatePresentationCull();
+	missionInterface->updateVTol();
 	updateCratersAndDamp();
 	ObjectManager->setPresentationAlpha(1.0f);
 	frameLength = renderLength;
@@ -536,6 +538,7 @@ void Mission::updateCratersAndDamp() {
 
 // Update sensors and collisions.
 void Mission::updateSimSystems() {
+	{ ZoneScopedN("GameLogic.Mission.VTol"); MisScope _ms(MS_VTOL); missionInterface->updateVTol(); }
 	if (useSensors && ( !mc2SimTickFrozen(missionInterface) || MPlayer ) )
 		{ ZoneScopedN("GameLogic.Mission.Sensors"); SensorManager->update(); }
 
@@ -545,6 +548,8 @@ void Mission::updateSimSystems() {
 
 // Flush the ABL trace and emit the mover bridge, the identity hash and the coherence audit.
 void Mission::updateTraceHooks() {
+	// Refresh after mission ABL, without advancing a controller twice.
+	if (mc2::replay::active()) missionInterface->updateVTol();
 	mc2_abl_trace::flushFrame(g_mc2FrameCounter, getBrainTickIndex());
 
 	// Runtime-bridge v0: emit [MOVER v2] mover.state to stdout (env-gated,

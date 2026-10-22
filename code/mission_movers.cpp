@@ -362,6 +362,13 @@ typedef struct _MoverInitData {
 				MC2_VERIFY_NOTNULL(Team::teams[moverSpec->teamID], "Mission::addMover Team::teams[teamID]"))
 				Team::teams[moverSpec->teamID]->addToRoster(mover);
 			missionInterface->addMover(mover);
+			if (auto* appearance = mover->getAppearance()) {
+				mover->unitAnimation = appearance->simulationAnimation();
+				mover->simulationPose = appearance->simPose;
+				appearance->setObjectParameters(mover->getPosition(), mover->getRotation(), mover->drawFlags,
+					mover->getTeamId(), 0);
+				appearance->refreshSimPose();
+			}
 
 			for (long i = 0; i < ObjectManager->getNumMovers(); i++) {
 				MoverPtr curMover = ObjectManager->getMover(i);

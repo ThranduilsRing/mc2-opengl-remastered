@@ -66,6 +66,11 @@ static void saveloadTrace(const char* op, const char* file, const char* missionF
 
 void Mission::save (const char *saveFileName)
 {
+	struct SimulationPhase {
+		bool previous = simPresentationPass;
+		SimulationPhase() { simPresentationPass = false; }
+		~SimulationPhase() { simPresentationPass = previous; }
+	} simulationPhase;
 	saveloadTrace("save", saveFileName, missionFileName);
 	char currentPath[1024];
 	gos_GetCurrentPath( currentPath, 1023 );
@@ -823,6 +828,11 @@ void Mission::loadMissionSettings(MissionLoadFrame& f) {
 // MissionLoadFrame.
 void Mission::load (const char *loadFileName)
 {
+	struct SimulationPhase {
+		bool previous = simPresentationPass;
+		SimulationPhase() { simPresentationPass = false; }
+		~SimulationPhase() { simPresentationPass = previous; }
+	} simulationPhase;
 	MissionLoadFrame f;
 	f.loadFileName = loadFileName;
 	loadPrologue(f);

@@ -1,3 +1,4 @@
+#include "unit_animation_tick.h"
 // GVAppearance: updateGeometry (reads the shadow-skip gate and the spot-light diagnostic counters), update, destroy, water wake and activity effects.
 // Declared in the class headers; shared names in gvactor_internal.h.
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
@@ -89,6 +90,8 @@ glm::quat GVAppearance::poseRotation() const
 
 void GVAppearance::updateGeometry (void)
 {
+		if (unitAnim().gvAnimationState >= 0) appearType->setAnimation(gvShape, unitAnim().gvAnimationState);
+		gvShape->SetFrameNum(unitAnim().currentFrame);
 		if (rotation > 180)
 			rotation -= 360;
 	
@@ -591,50 +594,7 @@ long GVAppearance::update (bool animate)
 	// with the default animate=true, and LOS resolution still runs while movers
 	// are frozen, a frozen vehicle's animation could keep ticking off the
 	// wall-clock frameLength. Same mech-vs-vehicle asymmetry as sensorSpin.
- 	if ((!simPresentationPass || !simulationOwned()) && animate && unitAnim().gvFrameRate != 0.0f)
-	{
-		//--------------------------------------------------------
-		// Make sure animation runs no faster than bdFrameRate fps.
-		float frameInc = unitAnim().gvFrameRate * frameLength;
-		
-		if (frameInc != 0.0f)
-		{
-			if (!unitAnim().setFirstFrame)		//DO NOT ANIMATE ON FIRST FRAME!  Wait a bit!
-			{
-				if (unitAnim().isReversed)
-					unitAnim().currentFrame -= frameInc;
-				else
-					unitAnim().currentFrame += frameInc;
-			}
-			else
-			{
-				unitAnim().setFirstFrame = false;
-			}
-	
-			if (unitAnim().currentFrame >= appearType->getNumFrames(unitAnim().gvAnimationState))
-			{
-				if (unitAnim().isLooping)
-					unitAnim().currentFrame -= appearType->getNumFrames(unitAnim().gvAnimationState);
-				else
-					unitAnim().currentFrame = appearType->getNumFrames(unitAnim().gvAnimationState) - 1;
-					
-				unitAnim().canTransition = true;		//Whenever we have completed one cycle or at last frame, OK to move on!
-			}
-			
-	
-			if (unitAnim().currentFrame < 0)
-			{
-				if (unitAnim().isLooping)
-					unitAnim().currentFrame += appearType->getNumFrames(unitAnim().gvAnimationState); 
-				else
-					unitAnim().currentFrame = 0.0f; 
-					
-				unitAnim().canTransition = true;		//Whenever we have completed one cycle or at last frame, OK to move on!
-			}
-		}
-		
-		gvShape->SetFrameNum(unitAnim().currentFrame);
-	}
+	if ((!simPresentationPass || !simulationOwned()) && animate) mc2::sim::advanceLinearAnimation(unitAnim(), unitAnim().gvFrameRate, appearType->getNumFrames(unitAnim().gvAnimationState), frameLength);
 
 	if (!simPresentationPass && simulationOwned() && actorHandle_ >= 0) { updateSimPose(); return TRUE; }
 

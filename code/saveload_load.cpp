@@ -600,9 +600,10 @@ void Mission::loadLogistics(MissionLoadFrame& f) {
 	LogisticsData::instance->setCurrentMissionNum(currentMissionNum);
 	currentPacket++;
 	//-------------------------------------------------------------------------------------------
-    // currentPacket names END; old saves legitimately have no extension.
-    if (currentPacket + 1 < loadFile.getNumPackets()) {
-        loadFile.seekPacket(currentPacket + 1);
+    // Legacy files reserve unused packet slots after END. An empty slot is
+    // absent, rather than an invalid new section.
+    if (currentPacket + 1 < loadFile.getNumPackets() &&
+        loadFile.seekPacket(currentPacket + 1) == NO_ERR && loadFile.getPacketSize() > 0) {
         const auto size = loadFile.getPacketSize();
         if (size <= 0 || size > static_cast<int>(mc2::save::maxFileBytes)) Fatal(0, "Invalid R2 save section size");
         mc2::save::Bytes bytes(static_cast<size_t>(size));
@@ -625,6 +626,8 @@ void Mission::loadLogistics(MissionLoadFrame& f) {
 
 // Activate the camera and finalise the static-prop and mech geometry and the GPU cull buffers.
 void Mission::loadActivateAndFinalize() {
+	ObjectManager->snapshotMoverPoses();
+	ObjectManager->extractRenderSnapshots();
 	eye->activate();
 	eye->update();
 	loadProgress = 100.f;

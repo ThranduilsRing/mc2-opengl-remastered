@@ -48,6 +48,7 @@
 #include "bldng.h"
 #include "turret.h"
 #include "combat_sim_hash.h"
+#include "vtol_simulation.h"
 #include "weather.h"
 #include "../mclib/abl.h"
 #include "../mclib/mathfunc.h"
@@ -347,7 +348,8 @@ extern "C" void mc2SimIdentityTraceFrame(double scenarioTimeNow, long simFrame) 
         mc2::save::Archive objects;
         auto sceneryHash = mc2_sim_identity::digestObjects(objs);
         auto combatHash = combatSimulationHash(*ObjectManager);
-        objects(sceneryHash, combatHash);
+        auto vtolHash = vtolSimulationHash();
+        objects(sceneryHash, combatHash, vtolHash);
         for (long i = 1; i <= ObjectManager->getMaxObjects(); ++i) {
             auto* mover = ObjectManager->get(i);
             if (!mover || !mover->getExists()) continue;

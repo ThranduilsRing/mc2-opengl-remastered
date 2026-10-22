@@ -952,6 +952,11 @@ void Mission::initMissionScript(MissionInitFrame& f) {
 // shared locals live in MissionInitFrame. The Tracy zone and the missionFileName char-array reset stay here.
 void Mission::init (const char *missionName, long loadType, long dropZoneID, glm::vec3* dropZoneList, char commandersToLoad[8][3], long numMoversPerCommander)
 {
+	struct SimulationPhase {
+		bool previous = simPresentationPass;
+		SimulationPhase() { simPresentationPass = false; }
+		~SimulationPhase() { simPresentationPass = previous; }
+	} simulationPhase;
 	extern int g_lightProbeSetupPath; g_lightProbeSetupPath = 1; // [GPUPROPS v1]
 	ZoneScopedN("Mission::init");
 	MissionInitFrame f;

@@ -7,8 +7,23 @@
 #include "unit_anim_state.h"
 #include "save_archive.h"
 #include "simulation_save_section.h"
+#include "unit_animation_tick.h"
 
 namespace ar = mc2_appearance_rng;
+
+TEST_CASE("gameplay linear clips transition on fixed ticks in either direction") {
+    mc2::sim::UnitAnimState state;
+    state.setFirstFrame = true;
+    mc2::sim::advanceLinearAnimation(state, 30, 3, 1.0f / 30.0f);
+    CHECK(state.currentFrame == 0);
+    for (int i = 0; i < 3; ++i) mc2::sim::advanceLinearAnimation(state, 30, 3, 1.0f / 30.0f);
+    CHECK(state.currentFrame == 2);
+    CHECK(state.canTransition);
+    state.isReversed = state.isLooping = true;
+    state.currentFrame = 0;
+    mc2::sim::advanceLinearAnimation(state, 30, 3, 1.0f / 30.0f);
+    CHECK(state.currentFrame == 2);
+}
 
 TEST_CASE("mission animation payload exceeds 64K and rejects truncation") {
     mc2::save::Bytes original(100000, 0x5a), decoded;

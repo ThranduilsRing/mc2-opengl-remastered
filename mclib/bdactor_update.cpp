@@ -1,3 +1,4 @@
+#include "unit_animation_tick.h"
 // BldgAppearance / TreeAppearance: BldgAppearance::update and the activity/flash helpers.
 // Declared in the class headers; shared names in bdactor_internal.h.
 #include "bdactor_internal.h"
@@ -44,55 +45,7 @@ long BldgAppearance::update (bool animate)
 			}
 		}
 	}
-	float oldFrame = unitAnim().currentFrame;
-	if (animate && unitAnim().bdFrameRate != 0.0f)
-	{
-		// Make sure animation runs no faster than bdFrameRate fps.
-		float frameInc = unitAnim().bdFrameRate * frameLength;
-		
-		// Increment Frames -- Everything else!
-		if (frameInc != 0.0f)
-		{
-			if (!unitAnim().setFirstFrame)		//DO NOT ANIMATE ON FIRST FRAME!  Wait a bit!
-			{
-				if (simPresentationPass && mc2::animationsFrozen())
-				{
-					// MC2_SMOKE_FREEZE_ANIM: the frame stays where it is
-				}
-				else if (unitAnim().isReversed)
-					unitAnim().currentFrame -= frameInc;
-				else
-					unitAnim().currentFrame += frameInc;
-			}
-			else
-			{
-				unitAnim().setFirstFrame = false;
-			}
-	
-			//Check Positive overflow of Animation
-			if (unitAnim().currentFrame >= appearType->getNumFrames(unitAnim().bdAnimationState))
-			{
-				if (unitAnim().isLooping)
-					unitAnim().currentFrame -= appearType->getNumFrames(unitAnim().bdAnimationState);
-				else
-					unitAnim().currentFrame = appearType->getNumFrames(unitAnim().bdAnimationState) - 1;
-					
-				unitAnim().canTransition = true;		//Whenever we have completed one cycle or at last frame, OK to move on!
-			}
-			
-			//Check negative overflow of gesture
-			if (unitAnim().currentFrame < 0)
-			{
-				if (unitAnim().isLooping)
-					unitAnim().currentFrame += appearType->getNumFrames(unitAnim().bdAnimationState); 
-				else
-					unitAnim().currentFrame = 0.0f; 
-					
-				unitAnim().canTransition = true;		//Whenever we have completed one cycle or at last frame, OK to move on!
-			}
-		}
-		
-	}
+	if (animate) mc2::sim::advanceLinearAnimation(unitAnim(), unitAnim().bdFrameRate, appearType->getNumFrames(unitAnim().bdAnimationState), frameLength);
 
         if (simulationOwned()) { updateSimPose(); return TRUE; }
     }
@@ -559,6 +512,7 @@ long BldgAppearance::update (bool animate)
 	}
 
 	float oldFrame = unitAnim().currentFrame;
+	if (unitAnim().bdAnimationState >= 0) appearType->setAnimation(bldgShape, unitAnim().bdAnimationState);
 	bldgShape->SetFrameNum(unitAnim().currentFrame);
 
 	// Under the GPU static-prop path we need listOfColors / shapeToWorld
