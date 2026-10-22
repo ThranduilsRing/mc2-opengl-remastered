@@ -39,6 +39,9 @@ void EditorMoverPopulationSmokeTick(long frame) {
 				if (auto* object=mgr->addBuilding(p,group,index,0,0,1.0f,false)) { mgr->select(*object,true); ++count; }
 			}
 		EditorInterface::frameSelectedObjects();
+		// Framing centres the selection but intentionally preserves zoom. The
+		// population proof needs the whole spread in the ordinary visible feed.
+		if (eye) eye->setCameraAltitudeDesired(eye->getMaximumCameraAltitude());
 	}
 	fprintf(stderr,"[EDITOR_CLI v1] event=mover_population count=%d ok=%d frame=%ld\n",count,count==100?1:0,frame);
 	fflush(stderr);
