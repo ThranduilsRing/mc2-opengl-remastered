@@ -1,0 +1,94 @@
+{
+  "method": "Lanczos premultiplied-alpha resize + RGB unsharp mask",
+  "learned_upscaling": false,
+  "factor_requested": 4,
+  "geometry_preserved": true,
+  "texture_names_isolated": true,
+  "models": [
+    {
+      "tgl": "data/tgl/hangar.tgl",
+      "role": "intact",
+      "lod": 0,
+      "stock_sha256": "268723dcc150fc3a05f9253d0bfb2e8d53ce3397777f1888cdbca2667c0d5ff0",
+      "cooked_sha256": "cba97aa69bc7060cd495cdcb43716a0b3ef1ceac7f689da3682024dea733a6d8",
+      "geometry_equal": true
+    },
+    {
+      "tgl": "data/tgl/hangarl1.tgl",
+      "role": "intact",
+      "lod": 1,
+      "stock_sha256": "a7873f0a86d88e78e60adb2650956798d8504038c590af17fcd8462b0c346aa8",
+      "cooked_sha256": "01a7ffcd11af4cdfa13afc6de933a79459272db03b7777715a64fd3921a84573",
+      "geometry_equal": true
+    },
+    {
+      "tgl": "data/tgl/hangardam.tgl",
+      "role": "destroyed",
+      "lod": 0,
+      "stock_sha256": "b836668bfd8bb1cccb2c3ff3d9da7376be3dc41fb72a4971c3bebdf1fcbd7d51",
+      "cooked_sha256": "a6a8839fa7fb1475f6691f9083968deaf524515a6d579735510892bf73a88399",
+      "geometry_equal": true
+    }
+  ],
+  "textures": [
+    {
+      "stock": "a_hangar.tga",
+      "cooked": "a_asset-rework-hangar_t000.tga",
+      "resolution": [
+        512,
+        512
+      ],
+      "mip_levels": 10
+    },
+    {
+      "stock": "a_hangardam.tga",
+      "cooked": "a_asset-rework-hangar_t001.tga",
+      "resolution": [
+        512,
+        512
+      ],
+      "mip_levels": 10
+    },
+    {
+      "stock": "a_hangarl1.tga",
+      "cooked": "a_asset-rework-hangar_t002.tga",
+      "resolution": [
+        512,
+        512
+      ],
+      "mip_levels": 10
+    },
+    {
+      "stock": "sprubble.tga",
+      "cooked": "asset-rework-hangar_t003.tga",
+      "resolution": [
+        512,
+        512
+      ],
+      "mip_levels": 10
+    }
+  ],
+  "runtime": "stock TGL clones, texture name fields only; installed mods untouched",
+  "mips_normals": "authoring artifacts only: generic model_override loader disables mipmaps and has no generic normal binding; not auto-activated",
+  "upscalers": {
+    "builtin": "Pillow Lanczos + unsharp; no learned detail synthesis",
+    "path_binaries": {
+      "realesrgan-ncnn-vulkan": null,
+      "upscayl-bin": null,
+      "waifu2x-ncnn-vulkan": null,
+      "magick": null,
+      "texconv": null,
+      "toktx": null,
+      "blender": "C:\\Program Files\\Blender Foundation\\Blender 5.1\\blender.exe"
+    },
+    "known_local_locations": [
+      "C:\\Program Files\\Upscayl",
+      "C:\\Users\\Joe\\AppData\\Local\\Programs\\upscayl",
+      "G:\\mc2-assets\\tools",
+      "C:\\Users\\Joe\\.cache\\torch\\hub\\checkpoints"
+    ],
+    "local_binaries_or_weights": [],
+    "downloads_performed": false,
+    "scope": "PATH and listed local locations only; no claim to scan every disk"
+  }
+}

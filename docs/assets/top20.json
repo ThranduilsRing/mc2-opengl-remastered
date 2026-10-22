@@ -1,0 +1,142 @@
+[
+  {
+    "rank": 1,
+    "id": "razorwirefence",
+    "category": "fence",
+    "instances": 12853,
+    "priority": 1549352.971
+  },
+  {
+    "rank": 2,
+    "id": "wirefence",
+    "category": "fence",
+    "instances": 9300,
+    "priority": 944460.192
+  },
+  {
+    "rank": 3,
+    "id": "s_lightwall",
+    "category": "wall",
+    "instances": 6230,
+    "priority": 543020.214
+  },
+  {
+    "rank": 4,
+    "id": "s_mediumwall",
+    "category": "wall",
+    "instances": 3615,
+    "priority": 416207.295
+  },
+  {
+    "rank": 5,
+    "id": "d_lightwall",
+    "category": "wall",
+    "instances": 2892,
+    "priority": 326215.628
+  },
+  {
+    "rank": 6,
+    "id": "l_lightwall",
+    "category": "wall",
+    "instances": 3119,
+    "priority": 315704.425
+  },
+  {
+    "rank": 7,
+    "id": "l_mediumwall",
+    "category": "wall",
+    "instances": 2302,
+    "priority": 309691.719
+  },
+  {
+    "rank": 8,
+    "id": "d_mediumwall",
+    "category": "wall",
+    "instances": 1843,
+    "priority": 280075.544
+  },
+  {
+    "rank": 9,
+    "id": "woodenfence",
+    "category": "fence",
+    "instances": 5375,
+    "priority": 255503.034
+  },
+  {
+    "rank": 10,
+    "id": "bridge",
+    "category": "bridge",
+    "instances": 1069,
+    "priority": 210976.001
+  },
+  {
+    "rank": 11,
+    "id": "l_heavywall",
+    "category": "wall",
+    "instances": 1152,
+    "priority": 196736.002
+  },
+  {
+    "rank": 12,
+    "id": "crateswithtarp",
+    "category": "prop",
+    "instances": 2735,
+    "priority": 181134.229
+  },
+  {
+    "rank": 13,
+    "id": "lookouttower",
+    "category": "building",
+    "instances": 1217,
+    "priority": 169374.312
+  },
+  {
+    "rank": 14,
+    "id": "s_heavywall",
+    "category": "wall",
+    "instances": 1207,
+    "priority": 163389.536
+  },
+  {
+    "rank": 15,
+    "id": "rock_gfield1",
+    "category": "rock",
+    "instances": 1289,
+    "priority": 160388.012
+  },
+  {
+    "rank": 16,
+    "id": "quonsetclean",
+    "category": "building",
+    "instances": 1533,
+    "priority": 142965.936
+  },
+  {
+    "rank": 17,
+    "id": "woodencrates",
+    "category": "prop",
+    "instances": 2286,
+    "priority": 141375.818
+  },
+  {
+    "rank": 18,
+    "id": "geodesicdome",
+    "category": "building",
+    "instances": 567,
+    "priority": 139315.47
+  },
+  {
+    "rank": 19,
+    "id": "streetlight",
+    "category": "prop",
+    "instances": 3111,
+    "priority": 119967.527
+  },
+  {
+    "rank": 20,
+    "id": "greenhouse",
+    "category": "building",
+    "instances": 701,
+    "priority": 116745.258
+  }
+]

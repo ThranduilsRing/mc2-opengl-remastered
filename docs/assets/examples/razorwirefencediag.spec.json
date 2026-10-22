@@ -1,0 +1,394 @@
+{
+  "schema": "mc2-target-spec-1",
+  "id": "razorwirefencediag",
+  "state": "intact",
+  "category": "fence",
+  "selection_key": "staticProp:razorwirefencediag",
+  "stock_tgl": "data/tgl/razorwirefencediag.tgl",
+  "stock_sha256": "a5dcaa31455dbfdde78f60aa9e61a689b5ce83d2ea2ccc90b447a1eb8104a9dd",
+  "bounds": {
+    "min": [
+      -4.307300090789795,
+      0.0,
+      -0.3061999976634979
+    ],
+    "max": [
+      4.307300090789795,
+      27.35460090637207,
+      60.64849853515625
+    ],
+    "size": [
+      8.61460018157959,
+      27.35460090637207,
+      60.95469853281975
+    ],
+    "footprint_wu": [
+      8.61460018157959,
+      60.95469853281975
+    ],
+    "height_wu": 27.35460090637207,
+    "extent_radius_wu": 66.6713386650355
+  },
+  "footprint_wu": [
+    8.61460018157959,
+    60.95469853281975
+  ],
+  "height_wu": 27.35460090637207,
+  "pivot_wu": [
+    0,
+    0,
+    0
+  ],
+  "base_center_wu": [
+    0.0,
+    0.0,
+    30.171149268746376
+  ],
+  "orientation": {
+    "target_space": "TG X lateral, +Y up, -Z nominal forward; world units",
+    "runtime_axis": 0,
+    "runtime_mapping": "TG=(-glTF.x,-glTF.y,+glTF.z)",
+    "cook": "bake all scene transforms, then inverse runtime axis0 into POSITION/NORMAL; identity nodes; scale=1",
+    "auto_ground_static_prop": false,
+    "semantic_front": "stock axes only; door/front direction needs visual review; declare candidate forward_axis"
+  },
+  "collision": {
+    "authority": "stock object2 type fields and stock shape; renderOnly=true preserves gameplay",
+    "type_fields": [
+      {
+        "type_id": 443,
+        "fields": {
+          "objecttype": {
+            "destroyedobject": 0,
+            "extentradius": 0.0
+          },
+          "terrainobjectdata": {
+            "extentradius": 20.0
+          }
+        }
+      }
+    ],
+    "visual_extent_radius_wu": 66.6713386650355,
+    "ui_bounds_pixels_not_world_units": {
+      "upperleftx": -20,
+      "upperlefty": -20,
+      "lowerrightx": 20,
+      "lowerrighty": 20
+    }
+  },
+  "lods": [
+    {
+      "role": "intact",
+      "lod": 0,
+      "distance_ini_wu": 0.0,
+      "tgl": "data/tgl/razorwirefencediag.tgl",
+      "triangles": 8,
+      "missing": false
+    },
+    {
+      "role": "intact",
+      "lod": 1,
+      "distance_ini_wu": 1000.0,
+      "tgl": "data/tgl/razorwirefencediagl1.tgl",
+      "triangles": 6,
+      "missing": false
+    }
+  ],
+  "lod_runtime": "staticProp override has one render shape; declared stock distances multiplied by 5; pack optional LODs as review assets, not promises of activation",
+  "destroyed_requirement": {
+    "required": true,
+    "models": [
+      "data/tgl/razorwirefencediagdam.tgl"
+    ],
+    "runtime_geometry_override_supported": false,
+    "policy": "damage stays stock in current BldgAppearance; an intact package requires explicit stock-damage fallback, or rework textures for both states; destroyed candidates can be cooked for review only"
+  },
+  "shadow": {
+    "eligible": true,
+    "stock_shadow_models": [
+      "data/tgl/razorwirefencediagx.tgl",
+      "data/tgl/razorwirefencediagdamx.tgl"
+    ],
+    "contract": "retain caster geometry; alpha texture does not disqualify fences/gates. TG gate excludes spotlights/windows/HUD/clamped/alphaTestOn/translucent shapes. Depth-only path may produce solid fence shadows; preview is not a shadow oracle"
+  },
+  "instances": 292,
+  "peak_mission_instances": 31,
+  "budgets": {
+    "stock_triangles": 8,
+    "max_triangles_lod0": 8064,
+    "policy": "250k triangles / peak mission count, clamped 64..12000 and never below stock; conservative potential-instance proxy, not measured visibility",
+    "max_texture_edge": 1024,
+    "max_texture_bytes_rgba_with_mips": 16777216,
+    "texture_policy": "textures shared by instances; total unique RGBA mip-chain estimate capped at 16 MiB"
+  },
+  "validation": {
+    "relative_bounds_tolerance": 0.1,
+    "absolute_bounds_tolerance_wu": 0.5,
+    "max_stretch_ratio": 1.25
+  },
+  "package_supported": true,
+  "runtime_limit": "intact static props only; animated gate/turret nodes need authored rig review; vehicles/mechs use their existing importer; vegetation uses tree cooker",
+  "missions": [
+    {
+      "corpus": "stock",
+      "mission": "mc2_03",
+      "instances": 1,
+      "terrain_instances": 1,
+      "modified_geometry_instances": 0,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\mc2-win64-v0.4\\mission.fst::data/missions/mc2_03.pak"
+    },
+    {
+      "corpus": "stock",
+      "mission": "mc2_08",
+      "instances": 29,
+      "terrain_instances": 29,
+      "modified_geometry_instances": 0,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\mc2-win64-v0.4\\mission.fst::data/missions/mc2_08.pak"
+    },
+    {
+      "corpus": "stock",
+      "mission": "mc2_10",
+      "instances": 11,
+      "terrain_instances": 11,
+      "modified_geometry_instances": 0,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\mc2-win64-v0.4\\mission.fst::data/missions/mc2_10.pak"
+    },
+    {
+      "corpus": "stock",
+      "mission": "mc2_11",
+      "instances": 1,
+      "terrain_instances": 1,
+      "modified_geometry_instances": 0,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\mc2-win64-v0.4\\mission.fst::data/missions/mc2_11.pak"
+    },
+    {
+      "corpus": "MC2X-CVE-G",
+      "mission": "cityassault",
+      "instances": 6,
+      "terrain_instances": 6,
+      "modified_geometry_instances": 6,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MC2X-CVE-G\\mission.fst::data/missions/cityassault.pak"
+    },
+    {
+      "corpus": "MC2X-CVE-G",
+      "mission": "mc2_03",
+      "instances": 1,
+      "terrain_instances": 1,
+      "modified_geometry_instances": 1,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MC2X-CVE-G\\mission.fst::data/missions/mc2_03.pak"
+    },
+    {
+      "corpus": "MC2X-CVE-G",
+      "mission": "mc2_08",
+      "instances": 29,
+      "terrain_instances": 29,
+      "modified_geometry_instances": 29,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MC2X-CVE-G\\mission.fst::data/missions/mc2_08.pak"
+    },
+    {
+      "corpus": "MC2X-CVE-G",
+      "mission": "mc2_10",
+      "instances": 11,
+      "terrain_instances": 11,
+      "modified_geometry_instances": 11,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MC2X-CVE-G\\mission.fst::data/missions/mc2_10.pak"
+    },
+    {
+      "corpus": "MC2X-CVE-G",
+      "mission": "mc2_11",
+      "instances": 1,
+      "terrain_instances": 1,
+      "modified_geometry_instances": 1,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MC2X-CVE-G\\mission.fst::data/missions/mc2_11.pak"
+    },
+    {
+      "corpus": "MC2X-CVE-G",
+      "mission": "metropolitan",
+      "instances": 31,
+      "terrain_instances": 31,
+      "modified_geometry_instances": 31,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MC2X-CVE-G\\mission.fst::data/missions/metropolitan.pak"
+    },
+    {
+      "corpus": "MC2X-REAP3",
+      "mission": "cityassault",
+      "instances": 6,
+      "terrain_instances": 6,
+      "modified_geometry_instances": 6,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MC2X-REAP3\\mission.fst::data/missions/cityassault.pak"
+    },
+    {
+      "corpus": "MC2X-REAP3",
+      "mission": "metropolitan",
+      "instances": 31,
+      "terrain_instances": 31,
+      "modified_geometry_instances": 31,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MC2X-REAP3\\mission.fst::data/missions/metropolitan.pak"
+    },
+    {
+      "corpus": "Exodus",
+      "mission": "a_0_4",
+      "instances": 1,
+      "terrain_instances": 1,
+      "modified_geometry_instances": 0,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MC2-Exodus\\data\\missions\\a_0_4.pak"
+    },
+    {
+      "corpus": "Exodus",
+      "mission": "e_4_6",
+      "instances": 1,
+      "terrain_instances": 1,
+      "modified_geometry_instances": 0,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MC2-Exodus\\data\\missions\\e_4_6.pak"
+    },
+    {
+      "corpus": "Exodus",
+      "mission": "mc2_03",
+      "instances": 1,
+      "terrain_instances": 1,
+      "modified_geometry_instances": 0,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MC2-Exodus\\mission.fst::data/missions/mc2_03.pak"
+    },
+    {
+      "corpus": "Exodus",
+      "mission": "mc2_08",
+      "instances": 29,
+      "terrain_instances": 29,
+      "modified_geometry_instances": 0,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MC2-Exodus\\mission.fst::data/missions/mc2_08.pak"
+    },
+    {
+      "corpus": "Exodus",
+      "mission": "mc2_10",
+      "instances": 11,
+      "terrain_instances": 11,
+      "modified_geometry_instances": 0,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MC2-Exodus\\mission.fst::data/missions/mc2_10.pak"
+    },
+    {
+      "corpus": "Exodus",
+      "mission": "mc2_11",
+      "instances": 1,
+      "terrain_instances": 1,
+      "modified_geometry_instances": 0,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MC2-Exodus\\mission.fst::data/missions/mc2_11.pak"
+    },
+    {
+      "corpus": "MagicExpansion",
+      "mission": "mc2_03",
+      "instances": 1,
+      "terrain_instances": 1,
+      "modified_geometry_instances": 0,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MC2-MagicExpansion\\mission.fst::data/missions/mc2_03.pak"
+    },
+    {
+      "corpus": "MagicExpansion",
+      "mission": "mc2_08",
+      "instances": 29,
+      "terrain_instances": 29,
+      "modified_geometry_instances": 0,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MC2-MagicExpansion\\mission.fst::data/missions/mc2_08.pak"
+    },
+    {
+      "corpus": "MagicExpansion",
+      "mission": "mc2_10",
+      "instances": 11,
+      "terrain_instances": 11,
+      "modified_geometry_instances": 0,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MC2-MagicExpansion\\mission.fst::data/missions/mc2_10.pak"
+    },
+    {
+      "corpus": "MagicExpansion",
+      "mission": "mc2_11",
+      "instances": 1,
+      "terrain_instances": 1,
+      "modified_geometry_instances": 0,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MC2-MagicExpansion\\mission.fst::data/missions/mc2_11.pak"
+    },
+    {
+      "corpus": "MechCommanderOmnitech",
+      "mission": "a_0_4",
+      "instances": 1,
+      "terrain_instances": 1,
+      "modified_geometry_instances": 1,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MechCommanderOmnitech\\data\\missions\\a_0_4.pak"
+    },
+    {
+      "corpus": "MechCommanderOmnitech",
+      "mission": "e_4_6",
+      "instances": 1,
+      "terrain_instances": 1,
+      "modified_geometry_instances": 1,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MechCommanderOmnitech\\data\\missions\\e_4_6.pak"
+    },
+    {
+      "corpus": "MechCommanderOmnitech",
+      "mission": "mw2_n_33",
+      "instances": 4,
+      "terrain_instances": 4,
+      "modified_geometry_instances": 4,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MechCommanderOmnitech\\data\\missions\\mw2_n_33.pak"
+    },
+    {
+      "corpus": "MCO-Carver5",
+      "mission": "mc2_03",
+      "instances": 1,
+      "terrain_instances": 1,
+      "modified_geometry_instances": 1,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MCO-Carver5\\data\\missions\\mc2_03.pak"
+    },
+    {
+      "corpus": "MCO-Carver5",
+      "mission": "mc2_08",
+      "instances": 29,
+      "terrain_instances": 29,
+      "modified_geometry_instances": 29,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MCO-Carver5\\data\\missions\\mc2_08.pak"
+    },
+    {
+      "corpus": "MCO-Carver5",
+      "mission": "mc2_10",
+      "instances": 11,
+      "terrain_instances": 11,
+      "modified_geometry_instances": 11,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MCO-Carver5\\data\\missions\\mc2_10.pak"
+    },
+    {
+      "corpus": "MCO-Carver5",
+      "mission": "mc2_11",
+      "instances": 1,
+      "terrain_instances": 1,
+      "modified_geometry_instances": 1,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MCO-Carver5\\data\\missions\\mc2_11.pak"
+    }
+  ]
+}

@@ -27,8 +27,31 @@ TGL data uses the serialized Win32 layout in `mclib/msl_load.cpp` and
 node centers, preserves per-corner UVs, and uses TG +Y up. It intentionally does
 not copy the viewer's historical Z-up mapping. Helpers/LOS/spotlights are omitted.
 Previews approximate materials and lighting; they do not certify runtime pixels.
+Continued quoted model filenames are folded before INI parsing: the stock
+WireFence damage-shadow name contains a newline and must resolve to
+`wirefencedamx`, rather than a truncated fictitious filename.
 
 Run checks: `py -3 -B -m pytest tests/assets -q -p no:cacheprovider`.
+
+## Generated coverage and examples
+
+The snapshot accounts for all 2,030 stock TGL binaries: 1,958 referenced by
+appearance INIs and 72 unassigned. There are 1,271 appearance/type records,
+767 with a decoded base mesh; 504 definitions have no usable base geometry in
+these installed archives (many are unused legacy definitions). All 319 mission
+PAKs across stock plus six mods decoded without mission errors or unresolved
+object type IDs, yielding 455,874 placements matched to stock selection keys.
+Custom/missing-model placements remain counted separately in corpus coverage.
+
+The 75 contact-sheet pages include all present TGLs, including shadow meshes,
+and placeholders for 23 declared missing files and 19 empty/helper-only shapes.
+There are 2,011 decoded thumbnails and 2,053 requested thumbnail slots. No absent
+geometry is fabricated. Full gaps are in [coverage-details.json](examples/coverage-details.json).
+
+[Worked examples](worked-examples.md), [top 20](top20.md), and
+[download approval candidates](downloads.json) are committed separately from
+mod binaries. Rebuild examples with `py -3 tools/assets/examples.py --rework`;
+existing complete draft packages are read rather than overwritten.
 
 ## Select, compare and package
 

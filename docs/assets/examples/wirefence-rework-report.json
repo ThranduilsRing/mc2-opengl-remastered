@@ -1,0 +1,76 @@
+{
+  "method": "Lanczos premultiplied-alpha resize + RGB unsharp mask",
+  "learned_upscaling": false,
+  "factor_requested": 4,
+  "geometry_preserved": true,
+  "texture_names_isolated": true,
+  "models": [
+    {
+      "tgl": "data/tgl/wirefence.tgl",
+      "role": "intact",
+      "lod": 0,
+      "stock_sha256": "b6291ed3f3928065a2503b0b684709c752c923742db78cbf3e62546a0c05b095",
+      "cooked_sha256": "acd66fc28e3cea4df67dedaf6fefa0733e5230eaf432c4ce4c2fadc9868754a4",
+      "geometry_equal": true
+    },
+    {
+      "tgl": "data/tgl/wirefencel1.tgl",
+      "role": "intact",
+      "lod": 1,
+      "stock_sha256": "b6291ed3f3928065a2503b0b684709c752c923742db78cbf3e62546a0c05b095",
+      "cooked_sha256": "acd66fc28e3cea4df67dedaf6fefa0733e5230eaf432c4ce4c2fadc9868754a4",
+      "geometry_equal": true
+    },
+    {
+      "tgl": "data/tgl/wirefencedam.tgl",
+      "role": "destroyed",
+      "lod": 0,
+      "stock_sha256": "bad134185f81aae4265e1d54101e9ab8e46cc0f4f107af722df2895147ece69c",
+      "cooked_sha256": "edf66591891a202a4ab9f25bb891988f7b1af4c195bbd77b577ebec4c97b01db",
+      "geometry_equal": true
+    }
+  ],
+  "textures": [
+    {
+      "stock": "a_wirefence.tga",
+      "cooked": "a_asset-rework-wirefence_t000.tga",
+      "resolution": [
+        256,
+        256
+      ],
+      "mip_levels": 9
+    },
+    {
+      "stock": "a_wirefencedamaged.tga",
+      "cooked": "a_asset-rework-wirefence_t001.tga",
+      "resolution": [
+        256,
+        256
+      ],
+      "mip_levels": 9
+    }
+  ],
+  "runtime": "stock TGL clones, texture name fields only; installed mods untouched",
+  "mips_normals": "authoring artifacts only: generic model_override loader disables mipmaps and has no generic normal binding; not auto-activated",
+  "upscalers": {
+    "builtin": "Pillow Lanczos + unsharp; no learned detail synthesis",
+    "path_binaries": {
+      "realesrgan-ncnn-vulkan": null,
+      "upscayl-bin": null,
+      "waifu2x-ncnn-vulkan": null,
+      "magick": null,
+      "texconv": null,
+      "toktx": null,
+      "blender": "C:\\Program Files\\Blender Foundation\\Blender 5.1\\blender.exe"
+    },
+    "known_local_locations": [
+      "C:\\Program Files\\Upscayl",
+      "C:\\Users\\Joe\\AppData\\Local\\Programs\\upscayl",
+      "G:\\mc2-assets\\tools",
+      "C:\\Users\\Joe\\.cache\\torch\\hub\\checkpoints"
+    ],
+    "local_binaries_or_weights": [],
+    "downloads_performed": false,
+    "scope": "PATH and listed local locations only; no claim to scan every disk"
+  }
+}
