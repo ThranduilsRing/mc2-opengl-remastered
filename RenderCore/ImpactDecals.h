@@ -389,7 +389,7 @@ public:
             const float hx = z[0], hy = z[1];
             const float hl = std::sqrt(hx * hx + hy * hy);
             z[0] = 0.0f; z[1] = 0.0f; z[2] = -1.0f;
-            halfZ = std::max(r.radius, 6.0f) + 4.0f;
+            halfZ = std::max(r.radius, 6.0f) + 12.0f;
             for (int k = 0; k < 3; ++k) centre[k] = hitR[k];
             float x[3] = {1.0f, 0.0f, 0.0f};
             if (hl > 1e-3f) { x[0] = hx / hl; x[1] = hy / hl; }

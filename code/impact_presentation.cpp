@@ -146,9 +146,10 @@ void fixtureVolley() {
             groundDone = true;
             // A row on open ground between the camera and the building: missile, laser, ballistic.
             const glm::vec3 ground = glm::normalize(dir - up * 0.6f);
-            g_queue.push(fixtureEvent(impact::WeaponClass::Missile, bp - dir * (r + 45.0f), ground, 0));
-            g_queue.push(fixtureEvent(impact::WeaponClass::Laser, bp - dir * (r + 95.0f) + side * 10.0f, ground, 0));
-            g_queue.push(fixtureEvent(impact::WeaponClass::Ballistic, bp - dir * (r + 130.0f) - side * 15.0f, ground, 0));
+            auto onGround = [&](glm::vec3 p) { if (land) p.z = land->getTerrainElevation(p); return p; };
+            g_queue.push(fixtureEvent(impact::WeaponClass::Missile, onGround(bp - dir * (r + 45.0f)), ground, 0));
+            g_queue.push(fixtureEvent(impact::WeaponClass::Laser, onGround(bp - dir * (r + 95.0f) + side * 10.0f), ground, 0));
+            g_queue.push(fixtureEvent(impact::WeaponClass::Ballistic, onGround(bp - dir * (r + 130.0f) - side * 15.0f), ground, 0));
         }
         if (s_logs < 4) {
             ++s_logs;
