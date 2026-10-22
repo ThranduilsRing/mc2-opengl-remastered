@@ -653,7 +653,7 @@ void gosPostProcess::VkPostHzbNativeDeleter::operator()(VkPostHzbNative* s) cons
 
 void gosPostProcess::prewarmVkHzb() {
     if(!hzbEnabled_ || width_<=0 || height_<=0) return;
-    if(!vkPostHzbNative_) vkPostHzbNative_.reset(new VkPostHzbNative());
+    if(!vkPostHzbNative_) vkPostHzbNative_.reset(std::make_unique<VkPostHzbNative>().release());
     auto* s=vkPostHzbNative_.get();
     int levels=1; for(int edge=(std::max)(width_,height_);edge>1;edge=(edge+1)/2) ++levels;
     if(!s->inited && !build_state(s,width_,height_,levels)) { destroy_state(s); return; }

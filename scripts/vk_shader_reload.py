@@ -103,7 +103,7 @@ def main():
         return 0
     except (OSError, RuntimeError, subprocess.TimeoutExpired) as exc:
         reason = str(exc).replace("\r", " ").replace("\n", " ")[:400]
-        publish(install, ["rejected-v1", reason])
+        publish(install, ["rejected-v1", args.shader, reason])
         print(f"[VK_SHADER_RELOAD_COMMAND] failure_keeps_old {reason}", flush=True)
         return 1
 

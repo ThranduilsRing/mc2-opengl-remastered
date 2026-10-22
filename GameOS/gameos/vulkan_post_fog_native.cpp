@@ -497,7 +497,7 @@ void gosPostProcess::VkPostFogNativeDeleter::operator()(VkPostFogNative* s) cons
 // ---------------------------------------------------------------------------
 void gosPostProcess::prewarmVkFog() {
     if(width_<=0 || height_<=0 || (!edgeFogEnabled_ && !fogOobEnabled_)) return;
-    if(!vkPostFogNative_) vkPostFogNative_.reset(new VkPostFogNative());
+    if(!vkPostFogNative_) vkPostFogNative_.reset(std::make_unique<VkPostFogNative>().release());
     auto* s=vkPostFogNative_.get();
     if(!s->inited && !build_state(s,width_,height_)) destroy_state(s);
 }

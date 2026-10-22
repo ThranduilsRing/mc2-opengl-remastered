@@ -656,7 +656,7 @@ bool gosPostProcess::vkPostScreenFxNativeEnabled()
 
 void gosPostProcess::prewarmVkScreenFx() {
     if(width_<=0 || height_<=0 || !vkPostScreenFxNativeEnabled()) return;
-    if(!vkPostScreenFx_) vkPostScreenFx_.reset(new VkPostScreenFx());
+    if(!vkPostScreenFx_) vkPostScreenFx_.reset(std::make_unique<VkPostScreenFx>().release());
     auto* s=vkPostScreenFx_.get();
     if(!s->inited && !build_state(s,width_,height_)) destroy_state(s);
 }

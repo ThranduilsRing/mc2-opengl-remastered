@@ -41,6 +41,6 @@ std::string ledgerJson();
 void panel();
 void breadcrumb(std::string_view kind, std::string_view name, uint64_t hash = 0, VkCommandBuffer cb = VK_NULL_HANDLE);
 // Crash-path safe: copies preformatted snapshots, never calls the driver or allocates.
-void crashSnapshot(const char* folder);
+void crashSnapshot(std::string_view folder);
 }
 #endif

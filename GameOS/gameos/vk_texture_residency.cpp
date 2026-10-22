@@ -155,7 +155,8 @@ std::shared_ptr<TextureResidency::Image> TextureResidency::upload(const RenderCo
         if (image.mipCount>1) {
             RenderCore::KtxImage reduced=image;
             const size_t skip=image.mipByteOffsets[1];
-            reduced.width=std::max(1u,w/2); reduced.height=std::max(1u,h/2); --reduced.mipCount;
+            reduced.width=std::max(1u,w/2);
+            reduced.height=std::max(1u,h/2); --reduced.mipCount;
             reduced.pixels.erase(reduced.pixels.begin(),reduced.pixels.begin()+skip);
             reduced.mipByteOffsets.erase(reduced.mipByteOffsets.begin());
             for(auto& offset:reduced.mipByteOffsets) offset-=skip;

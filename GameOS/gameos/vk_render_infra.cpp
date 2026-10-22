@@ -77,7 +77,8 @@ struct State {
     VkBuffer marker=VK_NULL_HANDLE; VkDeviceMemory markerMemory=VK_NULL_HANDLE; volatile uint32_t* markerMap=nullptr;
 };
 State* statePtr=nullptr;
-State& state() { static auto* s=[] { auto* p=new State; statePtr=p; return p; }(); return *s; }
+// The crash filter can run after normal renderer teardown; this process-lifetime storage deliberately survives it.
+State& state() { static auto* s=[] { auto* p=std::make_unique<State>().release(); statePtr=p; return p; }(); return *s; }
 size_t category(std::string_view name) {
     if (name.find("staging")!=name.npos || name.find("stage")!=name.npos || name.find("frameRing")!=name.npos || name.find("readback")!=name.npos) return 5;
     if (name.find("shadow")!=name.npos) return 1;
@@ -97,7 +98,8 @@ void saveLocked(State& s) {
     CacheHeader h=s.identity; h.bytes=bytes; h.hash=hashBytes(data.data(),bytes);
     const auto tmp=s.cachePath.wstring()+L".tmp";
     { std::ofstream out(tmp,std::ios::binary|std::ios::trunc); out.write(reinterpret_cast<const char*>(&h),sizeof(h)); out.write(reinterpret_cast<const char*>(data.data()),bytes); out.flush(); if (!out) return; }
-    if (MoveFileExW(tmp.c_str(),s.cachePath.c_str(),MOVEFILE_REPLACE_EXISTING|MOVEFILE_WRITE_THROUGH)) {
+    std::error_code ec; std::filesystem::rename(tmp,s.cachePath,ec);
+    if (!ec) {
         s.dirty=false; s.saved=std::chrono::steady_clock::now();
         std::fprintf(stderr,"[VK_PIPELINE_CACHE v1] saved_bytes=%zu pipelines=%llu creation_ms=%.3f\n",bytes,s.creations,s.creationMs);
     }
@@ -174,11 +176,26 @@ void shutdown() { auto& s=state(); saveCache(); if(s.cache) vkDestroyPipelineCac
 }
 void allocation(uint64_t key,uint64_t bytes,std::string_view name,bool raw) {
     auto& s=state(); std::lock_guard lock(s.mutex); auto c=category(name);
-    if(!s.allocations.emplace(key,Allocation{bytes,c,raw}).second) return;
-    s.live+=bytes; s.raw+=raw?bytes:0; s.current[c]+=bytes; s.peaks[c]=std::max(s.peaks[c],s.current[c]); s.peak=std::max(s.peak,s.live);
+    const auto [entry,inserted]=s.allocations.emplace(key,Allocation{bytes,c,raw});
+    if(!inserted) return;
+    s.live+=bytes; s.raw+=raw?bytes:0; s.current[c]+=bytes;
+    s.peaks[c]=std::max(s.peaks[c],s.current[c]);
+    s.peak=std::max(s.peak,s.live);
 }
-void release(uint64_t key) { auto& s=state(); std::lock_guard lock(s.mutex); auto it=s.allocations.find(key); if(it==s.allocations.end()) return; s.live-=it->second.bytes; s.raw-=it->second.raw?it->second.bytes:0; if(it->second.deferred) s.deferredBytes-=it->second.bytes; s.current[it->second.category]-=it->second.bytes; s.allocations.erase(it); }
-void defer(uint64_t key) { auto& s=state(); std::lock_guard lock(s.mutex); auto it=s.allocations.find(key); if(it!=s.allocations.end() && !it->second.deferred) { it->second.deferred=true; s.deferredBytes+=it->second.bytes; } }
+void release(uint64_t key) {
+    auto& s=state(); std::lock_guard lock(s.mutex); auto it=s.allocations.find(key);
+    if(it==s.allocations.end()) return;
+    const auto& [allocationKey,a]=*it;
+    s.live-=a.bytes; s.raw-=a.raw?a.bytes:0;
+    if(a.deferred) s.deferredBytes-=a.bytes;
+    s.current[a.category]-=a.bytes; s.allocations.erase(it);
+}
+void defer(uint64_t key) {
+    auto& s=state(); std::lock_guard lock(s.mutex); auto it=s.allocations.find(key);
+    if(it==s.allocations.end()) return;
+    auto& [allocationKey,a]=*it;
+    if(!a.deferred) { a.deferred=true; s.deferredBytes+=a.bytes; }
+}
 bool admit(uint64_t bytes) {
     auto& s=state(); uint64_t os=0,usage=0,allocated=0; getOrCreateEngineVulkanContext().deviceLocalMemory(os,usage,allocated);
     std::lock_guard lock(s.mutex); const uint64_t limit=os?std::min(os,s.budget):s.budget;
@@ -226,11 +243,11 @@ void breadcrumb(std::string_view kind,std::string_view name,uint64_t hash,VkComm
         if(s.markerMap) vkCmdWriteBufferMarkerAMD(cb,VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,s.marker,VkDeviceSize(index)*sizeof(uint32_t),uint32_t(sequence));
     }
 }
-void crashSnapshot(const char* folder) {
+void crashSnapshot(std::string_view folder) {
     if(!statePtr) return;
-    auto& s=*statePtr; char path[MAX_PATH]{}; std::snprintf(path,sizeof(path),"%s\\gpu_breadcrumbs.txt",folder);
+    auto& s=*statePtr; char path[MAX_PATH]{}; std::snprintf(path,sizeof(path),"%.*s/gpu_breadcrumbs.txt",int(folder.size()),folder.data());
     HANDLE f=CreateFileA(path,GENERIC_WRITE,FILE_SHARE_READ,nullptr,CREATE_ALWAYS,FILE_ATTRIBUTE_NORMAL,nullptr); if(f==INVALID_HANDLE_VALUE) return;
-    DWORD wrote=0; auto write=[&](const char* p) { WriteFile(f,p,DWORD(strnlen(p,2048)),&wrote,nullptr); WriteFile(f,"\r\n",2,&wrote,nullptr); };
+    DWORD wrote=0; auto write=[&](std::string_view p) { WriteFile(f,p.data(),DWORD(std::min<size_t>(p.size(),2048)),&wrote,nullptr); WriteFile(f,"\r\n",2,&wrote,nullptr); };
     write(s.driver); write(s.packages); write(s.ledger);
     write("Recent shader/pipeline identities:");
     for(auto& c:s.identities) if(!c.writing && c.text[0]) write(c.text);
@@ -246,8 +263,20 @@ void crashSnapshot(const char* folder) {
         if(s.markerMap) { char gpu[64]{}; std::snprintf(gpu,sizeof(gpu),"gpu_completed_sequence=%u",s.markerMap[i]); write(gpu); }
     }
     CloseHandle(f);
-    std::snprintf(path,sizeof(path),"%s\\latest_render_state.json",folder);
-    CopyFileA("debug_state\\latest_render_state.json",path,FALSE);
+    if(folder=="debug_state") return; // The device-loss snapshot already lives beside the latest state.
+    std::snprintf(path,sizeof(path),"%.*s/latest_render_state.json",int(folder.size()),folder.data());
+    // Keep crash-time copying independent of the C++ heap, just like the bundle's existing file writer.
+    HANDLE input=CreateFileA("debug_state/latest_render_state.json",GENERIC_READ,FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE,nullptr,OPEN_EXISTING,FILE_ATTRIBUTE_NORMAL,nullptr);
+    if(input==INVALID_HANDLE_VALUE) return;
+    HANDLE output=CreateFileA(path,GENERIC_WRITE,FILE_SHARE_READ,nullptr,CREATE_ALWAYS,FILE_ATTRIBUTE_NORMAL,nullptr);
+    if(output!=INVALID_HANDLE_VALUE) {
+        char block[4096]; DWORD count=0;
+        while(ReadFile(input,block,sizeof(block),&count,nullptr) && count) {
+            if(!WriteFile(output,block,count,&wrote,nullptr) || wrote!=count) break;
+        }
+        CloseHandle(output);
+    }
+    CloseHandle(input);
 }
 namespace {
 // Recipes own the arrays referenced by Vulkan's temporary creation structures. Layouts/render passes belong to
@@ -271,7 +300,7 @@ struct Recipe {
         if(info.pNext || info.pSpecializationInfo || !info.pName || std::strcmp(info.pName,"main")) reloadable=false;
         auto it=state().shaders.find(info.module);
         if(it==state().shaders.end()) { reloadable=false; shaders.emplace_back(); }
-        else { shaders.push_back(it->second); hash^=it->second.hash; }
+        else { const auto& [module,sh]=*it; shaders.push_back(sh); hash^=sh.hash; }
         info.pName="main"; info.pSpecializationInfo=nullptr; info.pNext=nullptr; stages.push_back(info);
     }
     void capture(const VkGraphicsPipelineCreateInfo& in) {
@@ -314,8 +343,8 @@ struct Recipe {
         if(rendering.sType) { rendering.pColorAttachmentFormats=formats.data(); g.pNext=&rendering; }
     }
 };
-auto& recipes() { static auto* r=new std::unordered_map<uint64_t,std::unique_ptr<Recipe>>; return *r; }
-auto& pipelineTokens() { static auto* r=new std::unordered_map<VkPipeline,uint64_t>; return *r; }
+auto& recipes() { static auto* r=std::make_unique<std::unordered_map<uint64_t,std::unique_ptr<Recipe>>>().release(); return *r; }
+auto& pipelineTokens() { static auto* r=std::make_unique<std::unordered_map<VkPipeline,uint64_t>>().release(); return *r; }
 uint64_t nextPipelineToken=0;
 struct RetiredPipeline { VkDevice device; VkPipeline handle; ~RetiredPipeline() { if(handle) vkDestroyPipeline(device,handle,nullptr); }
     RetiredPipeline(VkDevice d,VkPipeline p):device(d),handle(p){} RetiredPipeline(RetiredPipeline&& o) noexcept:device(o.device),handle(std::exchange(o.handle,VK_NULL_HANDLE)){} };
@@ -323,15 +352,16 @@ void reload() {
 #ifndef FINAL
     std::ifstream request("shader_reload.request"); if(!request) return;
     std::string action,path,candidate,oldHash,newHash; std::getline(request,action); std::getline(request,path); std::getline(request,candidate); std::getline(request,oldHash); std::getline(request,newHash); request.close();
-    DeleteFileA("shader_reload.request");
-    auto fail=[&](const char* reason) { std::fprintf(stderr,"[VK_SHADER_RELOAD v1] failure_keeps_old reason=%s shader=%s\n",reason,path.c_str()); std::fflush(stderr); };
-    if(action!="validated-v1") { fail(path.c_str()); return; }
+    std::error_code fileError; std::filesystem::remove("shader_reload.request",fileError);
+    auto fail=[&](std::string_view reason) { std::fprintf(stderr,"[VK_SHADER_RELOAD v1] failure_keeps_old reason=%.*s shader=%s\n",int(reason.size()),reason.data(),path.c_str()); std::fflush(stderr); };
+    if(action!="validated-v1") { fail(candidate.empty()?path.c_str():candidate.c_str()); return; }
     // The compile/reflection command supplies a content-bound request. Reject a stale request, even if the file name matches.
     uint64_t expectedOld=0,expectedNew=0;
     try { expectedOld=std::stoull(oldHash,nullptr,16); expectedNew=std::stoull(newHash,nullptr,16); } catch(...) { fail("malformed_request"); return; }
     std::ifstream in(candidate,std::ios::binary|std::ios::ate); if(!in || in.tellg()<20 || in.tellg()>16*MiB || in.tellg()%4!=0) { fail("invalid_candidate"); return; }
     std::vector<uint32_t> code(size_t(in.tellg())/4); in.seekg(0); in.read(reinterpret_cast<char*>(code.data()),code.size()*4);
     if(!in || code[0]!=0x07230203 || hashBytes(code.data(),code.size()*4)!=expectedNew) { fail("candidate_hash"); return; }
+    in.close(); // Windows CRT file handles must close before atomic replacement.
     auto& s=state(); std::lock_guard lock(s.mutex);
     struct Pending { Recipe* recipe; VkPipeline pipeline; std::vector<Shader> shaders; };
     std::vector<Pending> pending; bool ok=true; size_t affected=0;
@@ -354,11 +384,13 @@ void reload() {
         if(!ok) break;
     }
     if(!ok || !affected) { for(auto& p:pending) vkDestroyPipeline(s.dev,p.pipeline,nullptr); fail(!affected?"no_live_pipeline":"stale_ABI_or_pipeline_creation"); return; }
-    if(!MoveFileExA(candidate.c_str(),path.c_str(),MOVEFILE_REPLACE_EXISTING|MOVEFILE_WRITE_THROUGH)) {
+    std::filesystem::rename(candidate,path,fileError);
+    if(fileError) {
         for(auto& p:pending) vkDestroyPipeline(s.dev,p.pipeline,nullptr);
         fail("shader_file_publish"); return;
     }
     s.overrides[path]=Shader{path,code,expectedNew};
+    breadcrumb("shader",path,expectedNew);
     // All stages of every affected pipeline succeeded. Publish together at the render-thread frame boundary.
     for(auto& p:pending) {
         const VkPipeline old=p.recipe->original;
@@ -366,6 +398,7 @@ void reload() {
         getOrCreateEngineVulkanContext().retire(RetiredPipeline(s.dev,old));
         p.recipe->original=p.pipeline; p.recipe->shaders=std::move(p.shaders); p.recipe->hash=0;
         for(auto& shader:p.recipe->shaders) p.recipe->hash^=shader.hash;
+        breadcrumb("pipeline","reloaded",p.recipe->hash);
     }
     s.dirty=true;
     std::fprintf(stderr,"[VK_SHADER_RELOAD v1] success pipelines=%zu shader=%s old=%016llx new=%016llx retirement=graphics_timeline\n",pending.size(),path.c_str(),expectedOld,expectedNew); std::fflush(stderr);
@@ -377,13 +410,16 @@ struct LatestStages {
     VkResult update(VkPipelineShaderStageCreateInfo& stage) {
         auto& s=state(); const auto found=s.shaders.find(stage.module);
         if(found==s.shaders.end()) return VK_SUCCESS;
-        const auto latest=s.overrides.find(found->second.path);
-        if(latest==s.overrides.end() || latest->second.hash==found->second.hash) return VK_SUCCESS;
+        const auto& [originalModule,original]=*found;
+        const auto latest=s.overrides.find(original.path);
+        if(latest==s.overrides.end()) return VK_SUCCESS;
+        const auto& [path,updated]=*latest;
+        if(updated.hash==original.hash) return VK_SUCCESS;
         VkShaderModuleCreateInfo ci{VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO};
-        ci.codeSize=latest->second.code.size()*4; ci.pCode=latest->second.code.data();
+        ci.codeSize=updated.code.size()*4; ci.pCode=updated.code.data();
         VkShaderModule module=VK_NULL_HANDLE; const auto result=vkCreateShaderModule(s.dev,&ci,nullptr,&module);
         if(result!=VK_SUCCESS) return result;
-        temporary.push_back(module); s.shaders[module]=latest->second; stage.module=module; return VK_SUCCESS;
+        temporary.push_back(module); s.shaders[module]=updated; stage.module=module; return VK_SUCCESS;
     }
     ~LatestStages() { auto& s=state(); for(auto module:temporary) { s.shaders.erase(module); vkDestroyShaderModule(s.dev,module,nullptr); } }
 };
@@ -408,7 +444,7 @@ VkResult graphics(VkDevice dev,VkPipelineCache,uint32_t n,const VkGraphicsPipeli
     const VkResult result=vkCreateGraphicsPipelines(dev,s.cache,n,info,allocator,out);
     if(result!=VK_SUCCESS) { for(uint32_t i=0;i<n;++i) if(out[i]) { vkDestroyPipeline(dev,out[i],allocator); out[i]=VK_NULL_HANDLE; } }
     const double ms=std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-begin).count(); s.creationMs+=ms; s.creations+=n; s.dirty=true;
-    for(uint32_t i=0;i<n;++i) if(out[i]) { auto r=std::make_unique<Recipe>(); r->original=out[i]; r->capture(info[i]); breadcrumb("pipeline",std::to_string(reinterpret_cast<uint64_t>(out[i])),r->hash); const uint64_t token=++nextPipelineToken; pipelineTokens()[out[i]]=token; recipes()[token]=std::move(r); }
+    for(uint32_t i=0;i<n;++i) if(out[i]) { auto r=std::make_unique<Recipe>(); r->original=out[i]; r->capture(info[i]); breadcrumb("pipeline","graphics",r->hash); const uint64_t token=++nextPipelineToken; pipelineTokens()[out[i]]=token; recipes()[token]=std::move(r); }
     std::fprintf(stderr,"[VK_PIPELINE_CREATE v1] kind=graphics count=%u ms=%.3f frame=%llu\n",n,ms,getOrCreateEngineVulkanContext().tracker().frameNo());
     return result;
 }
@@ -425,27 +461,29 @@ VkResult compute(VkDevice dev,VkPipelineCache,uint32_t n,const VkComputePipeline
 }
 void bind(VkCommandBuffer cb,VkPipelineBindPoint point,VkPipeline pipeline) {
     auto& s=state(); std::lock_guard lock(s.mutex); auto it=pipelineTokens().find(pipeline);
-    if(it!=pipelineTokens().end()) breadcrumb("bind","pipeline",recipes().at(it->second)->hash);
+    if(it!=pipelineTokens().end()) { const auto& [handle,token]=*it; breadcrumb("bind","pipeline",recipes().at(token)->hash); }
     vkCmdBindPipeline(cb,point,pipeline);
 }
 uint64_t adoptPipeline(VkDevice,VkPipeline pipeline) {
     auto& s=state(); std::lock_guard lock(s.mutex); auto it=pipelineTokens().find(pipeline);
-    if(it!=pipelineTokens().end()) return it->second;
+    if(it!=pipelineTokens().end()) { const auto& [handle,token]=*it; return token; }
     auto r=std::make_unique<Recipe>(); r->original=pipeline; r->reloadable=false;
     const uint64_t token=++nextPipelineToken; pipelineTokens()[pipeline]=token; recipes()[token]=std::move(r); return token;
 }
 VkPipeline currentPipeline(uint64_t token) {
     auto& s=state(); std::lock_guard lock(s.mutex); auto it=recipes().find(token);
-    return it==recipes().end()?VK_NULL_HANDLE:it->second->original;
+    if(it==recipes().end()) return VK_NULL_HANDLE;
+    const auto& [key,recipe]=*it; return recipe->original;
 }
 void destroyOwnedPipeline(uint64_t token) {
     auto& s=state(); std::lock_guard lock(s.mutex); auto it=recipes().find(token); if(it==recipes().end()) return;
-    const auto pipeline=it->second->original; pipelineTokens().erase(pipeline); recipes().erase(it); vkDestroyPipeline(s.dev,pipeline,nullptr);
+    const auto& [key,recipe]=*it; const auto pipeline=recipe->original;
+    pipelineTokens().erase(pipeline); recipes().erase(it); vkDestroyPipeline(s.dev,pipeline,nullptr);
 }
 void deferPipeline(uint64_t token) {
     auto& s=state(); std::lock_guard lock(s.mutex); auto it=recipes().find(token);
     // Retired pipeline owners can outlive their creation layouts; they are no longer reload candidates.
-    if(it!=recipes().end()) it->second->retired=true;
+    if(it!=recipes().end()) { auto& [key,recipe]=*it; recipe->retired=true; }
 }
 void frame() {
     auto& s=state(); if(!s.dev) return; reload();
@@ -497,7 +535,7 @@ void deviceLost() {
             }
         }
     }
-    CreateDirectoryA("debug_state",nullptr); crashSnapshot("debug_state");
+    std::error_code ec; std::filesystem::create_directories("debug_state",ec); crashSnapshot("debug_state");
     std::fprintf(stderr,"[VK_BREADCRUMBS v1] device_lost snapshot=debug_state/gpu_breadcrumbs.txt\n");
 }
 }
