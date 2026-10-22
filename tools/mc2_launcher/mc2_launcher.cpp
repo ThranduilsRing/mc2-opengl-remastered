@@ -238,7 +238,6 @@ static const EnvVarDef k_envVars[] = {
     { "MC2_IMGUI",                   "ImGui overlay",                         true,  "",     "Debug"     },
     { "MC2_IMGUI_INSPECTOR",         "ImGui inspector panel",                 true,  "",     "Debug"     },
     // --- Shadow tuning (value vars) ---
-    // NOTE: MC2_SHADOW_MAP_SIZE moved to Graphics Options dialog (shadow quality radios).
     { "MC2_SHADOW_CSM_R0",           "CSM near cascade radius WU (def 512)",  false, "512",  "Shadow Tuning" },
     // --- Lighting / Grounding A-B (2026-07-30 / 07-31) ---
     // The gates the README in the install root asks for a human verdict on.
@@ -300,7 +299,6 @@ static void UpdateForSelection();
 //   MC2_STATICPROP_TEX_TIER  = "128" / "256" / "512" / "1024"
 //     (NOTE: engine side must read this var to select the texture resolution tier;
 //      launcher sets it here — wire the engine read in MaterialGpu/texarray loader)
-//   MC2_SHADOW_MAP_SIZE = "2048" / "4096" / "8192"
 //   MC2_FPS_CAP         = "<N>" or unset
 //   MC2_VSYNC           = "1" or unset
 
@@ -2281,7 +2279,6 @@ static void DoLaunch(HWND hwnd) {
     // MC2_STATICPROP_TEX_TIER: texture resolution tier (engine reads this in the
     //   texture-array loader to pick which mip level / atlas to load).
     SetEnvironmentVariableA("MC2_STATICPROP_TEX_TIER", k_texTierValues[s_gfxTexQual]);
-    // MC2_SHADOW_MAP_SIZE: per-cascade shadow texture size.
     // MC2_FPS_CAP: frame cap in FPS (gameosmain.cpp reads this).
     if (s_gfxFrameCapOn) {
         char fpsBuf[32];

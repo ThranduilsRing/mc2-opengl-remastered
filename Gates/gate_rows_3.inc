@@ -5,7 +5,6 @@ P("MC2_SHADER_PATH_TINT", Int, 0, "post", "", "", verified),
 L(Lead1, "MC2_SHADER_SPIRV", Bool, false, "gameos", "", "SPIRV-CONSUMER-PILOT-BUILD-1: DEFAULT-OFF. =1 loads the offline-baked OpenGL SPIR-V (OFFLINE-SHADER-VARIANT-BUILD-1, shaders/spv/) for the postprocess...", registry(Feature, "MC2_SHADER_SPIRV", -1, false)),
 // history: docs/gate-history.md#MC2_SHADER_SPIRV_FATAL
 L(Lead1, "MC2_SHADER_SPIRV_FATAL", Bool, false, "gameos", "", "SPIRV-CONSUMER-PILOT-BUILD-1: DEFAULT-OFF debug gate.", registry(Trace, "MC2_SHADER_SPIRV_FATAL", -1, false)),
-// Greenfield shadows P2-P6 temporary kill-switch (deleted in P8): =0 skips the static shadow bake; terrain then reads the old static map and the cascades carry the static props again.
 // history: docs/gate-history.md#MC2_SHADOW_BOUNDED_NEAR_RADIUS
 // history: docs/gate-history.md#MC2_SHADOW_CASTER_CULL_CACHE
 L(Presence, "MC2_SHADOW_CULL_DEBUG", Bool, false, "code", "", "", passthrough),

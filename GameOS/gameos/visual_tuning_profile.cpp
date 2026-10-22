@@ -15,8 +15,6 @@
 
 // Renderer function forward declarations.
 // Definitions in gameos_graphics.cpp / gos_postprocess.cpp / gos_particle_bridge.cpp.
-extern float gos_GetTerrainShadowSoftness();
-extern void  gos_SetTerrainShadowSoftness(float s);
 extern float gos_GetWaterSkyTintStrength();
 extern void  gos_SetWaterSkyTintStrength(float v);
 extern float gos_GetExposure();
@@ -145,9 +143,7 @@ static void applyKey(const char* key, float val, int& count) {
     if (strcmp(key, "exposure") == 0) {
         gos_SetExposure(val);
         count++;
-    } else if (strcmp(key, "shadowSoftness") == 0) {
-        gos_SetTerrainShadowSoftness(val);
-        count++;
+
     } else if (strcmp(key, "terrainLightingV1Strength") == 0 ||
                strcmp(key, "terrainLightingV2Floor") == 0) {
         // Retired keys: shipped installs still carry them; ignored silently.
@@ -311,7 +307,6 @@ bool visualTuning_saveCurrentToMission() {
     // Snapshot all current tunable values.
     std::map<std::string,float> current;
     current["exposure"]                  = gos_GetExposure();
-    current["shadowSoftness"]            = gos_GetTerrainShadowSoftness();
     current["staticPropIblStrength"]     = g_iblShStrength;
     current["waterSkyTintStrength"]      = gos_GetWaterSkyTintStrength();
     current["vfxBrightness"]             = gos_vfx_getBrightness();

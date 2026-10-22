@@ -131,20 +131,6 @@ void draw() {
                 }
                 ImGui::Unindent();
             }
-            if (ImGui::CollapsingHeader("Shadow Tuning##pp")) {
-                ImGui::Indent();
-                ImGui::TextDisabled("Softness (all shadow receivers):");
-                {
-                    float softness = gos_GetTerrainShadowSoftness();
-                    if (ImGui::SliderFloat("Softness##sdtune", &softness, 0.5f, 8.0f))
-                        gos_SetTerrainShadowSoftness(softness);
-                    if (ImGui::IsItemHovered())
-                        ImGui::SetTooltip("higher = blurrier shadows\ndefault 0.9 (also in Terrain Tuning)");
-                    ImGui::SameLine();
-                    if (ImGui::SmallButton("Reset##sdtune")) gos_SetTerrainShadowSoftness(0.9f);
-                }
-                ImGui::Unindent();
-            }
             ImGui::Separator();
             ImGui::Checkbox("Screen Shadows##pp", &pp->screenShadowEnabled_);
             if (pp->screenShadowEnabled_) {
