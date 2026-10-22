@@ -190,12 +190,9 @@ static const EnvVarDef k_envVars[] = {
     // options.cfg key and the engine reads it once at startup through CPrefs. The dialog starts such a row from the engine's own default for
     // that key (RowDefault), so a fresh dialog shows what the game does with no key in options.cfg and Launch never writes a value the engine
     // did not choose; its defaultVal column is ignored. offVal "0" on a default-ON row records that unchecking means FALSE.
-    { "ShadowCSM",                   "Cascaded shadow maps (CSM; ON)",       true,  NULL,   "Rendering", "0", true },
     // An environment gate whose engine default is OFF; the launcher offers it pre-checked, so a launcher launch has cloud shadows on and a
     // shell launch does not. Unchecked == unset == off (no offVal).
     { "MC2_CLOUD_SHADOW",            "Cloud shadows (engine OFF; launcher ON)", true, "1",  "Rendering" },
-    { "ShadowBoundedNearFit",        "Crisp near shadows (ON)",              true,  NULL,   "Rendering", "0", true },
-    { "PropShadowReceive",           "Building self/prop-on-prop shadows",    true,  NULL,   "Rendering", NULL, true },
     { "StaticPropPbr",               "Static prop PBR specular (OFF)",        true,  NULL,   "Rendering", NULL, true },
     { "StaticPropAmbient",           "Static prop hemisphere ambient (ON)",   true,  NULL,   "Rendering", "0", true },
     // The TREE/PROP A/B knob (see READ-ME-FIRST-AB-TESTS.md); default ON.
@@ -241,7 +238,6 @@ static const EnvVarDef k_envVars[] = {
     { "MC2_IMGUI",                   "ImGui overlay",                         true,  "",     "Debug"     },
     { "MC2_IMGUI_INSPECTOR",         "ImGui inspector panel",                 true,  "",     "Debug"     },
     // --- Shadow tuning (value vars) ---
-    // NOTE: MC2_SHADOW_MAP_SIZE moved to Graphics Options dialog (shadow quality radios).
     { "MC2_SHADOW_CSM_R0",           "CSM near cascade radius WU (def 512)",  false, "512",  "Shadow Tuning" },
     // --- Lighting / Grounding A-B (2026-07-30 / 07-31) ---
     // The gates the README in the install root asks for a human verdict on.
@@ -303,7 +299,6 @@ static void UpdateForSelection();
 //   MC2_STATICPROP_TEX_TIER  = "128" / "256" / "512" / "1024"
 //     (NOTE: engine side must read this var to select the texture resolution tier;
 //      launcher sets it here — wire the engine read in MaterialGpu/texarray loader)
-//   MC2_SHADOW_MAP_SIZE = "2048" / "4096" / "8192"
 //   MC2_FPS_CAP         = "<N>" or unset
 //   MC2_VSYNC           = "1" or unset
 
@@ -328,10 +323,10 @@ static char s_savedDataDriven[4]    = ""; // "1" or "0" or "" (generated defs to
 
 static const char* k_texTierValues[]    = { "128", "256", "512", "1024" };
 static const char* k_texTierLabels[]    = { "Low (128px)", "Medium (256px)", "High (512px)", "Ultra (1024px)" };
-static const char* k_shadSizeValues[]   = { "2048", "4096", "8192" };
-static const char* k_shadQualLabels[]   = { "Low (2048)", "Medium (4096)", "High (8192)" };
+
+static const char* k_shadQualLabels[]   = { "Potato", "Medium", "High" };
 static const int   k_texVramMB[]        = { 40, 160, 640, 2560 };  // texture array VRAM by tier
-static const int   k_shadVramMB[]       = { 64, 256, 1024 };       // shadow map VRAM by quality (4 cascades)
+static const int   k_shadVramMB[]       = { 27, 107, 164 };       // resident mask, static-object and mover images
 
 struct GfxPreset { int texQual; int shadQual; bool frameCap; int fps; };
 static const GfxPreset k_gfxPresets[] = {
@@ -376,13 +371,6 @@ static void LoadGfxJson() {
         else if (tier == 512)  s_gfxTexQual = 2;
         else if (tier == 1024) s_gfxTexQual = 3;
     }
-    // Shadow quality via MC2_SHADOW_MAP_SIZE
-    if (JsonGetString(buf, "MC2_SHADOW_MAP_SIZE", val, sizeof(val))) {
-        int sz = atoi(val);
-        if      (sz == 2048) s_gfxShadQual = 0;
-        else if (sz == 4096) s_gfxShadQual = 1;
-        else if (sz == 8192) s_gfxShadQual = 2;
-    }
     // Frame cap
     val[0] = '\0';
     if (JsonGetString(buf, "MC2_FPS_CAP", val, sizeof(val)) && val[0]) {
@@ -425,7 +413,6 @@ static bool SaveGfxJson() {
     if (!first) out += ",\n";
     out += std::string("  \"MC2_STATICPROP_TEX_TIER\": \"") + k_texTierValues[s_gfxTexQual] + "\"";
     // Shadow map size (always write)
-    out += std::string(",\n  \"MC2_SHADOW_MAP_SIZE\": \"") + k_shadSizeValues[s_gfxShadQual] + "\"";
     // Frame cap (only if enabled)
     if (s_gfxFrameCapOn) out += ",\n  \"MC2_FPS_CAP\": \"" + std::to_string(s_gfxFrameCapFps) + "\"";
     // VSync (only if enabled)
@@ -847,6 +834,9 @@ static void LoadCfgRows() {
     OptionsCfgPath(path, sizeof(path));
     const std::string text = ReadTextFile(path);
     if (text.empty()) return;
+    mc2::options::RenderOptions options;
+    mc2::options::cfg::loadFromText(options,text);
+    s_gfxShadQual=options.shadowQuality;
     for (int i = 0; i < k_envVarCount; i++) {
         if (!k_envVars[i].cfg) continue;
         const auto v = mc2::options::cfg::get(text, k_envVars[i].key);
@@ -873,6 +863,8 @@ static void SaveCfgRows() {
     const std::string before = ReadTextFile(path);
     if (before.empty()) return;
     std::string text = before;
+    text=mc2::options::cfg::set(text,*mc2::options::find("ShadowQuality"),std::to_string(s_gfxShadQual));
+
     for (int i = 0; i < k_envVarCount; i++) {
         if (!k_envVars[i].cfg) continue;
         const mc2::options::Option* opt = mc2::options::find(k_envVars[i].key);
@@ -909,7 +901,7 @@ static void LauncherLogLine(const std::string& line) {
 // They are dropped by the next save without a word unless they are named, so the migration counts and names them. A key is a quoted MC2_ name
 // followed by a colon; a value that happens to start with MC2_ is not a key. `names` receives at most `cap` names, the count is complete.
 static int CountUnknownEnvKeys(const std::string& json, std::string& names, int cap) {
-    static const char* const k_kept[] = { "MC2_STATICPROP_TEX_TIER", "MC2_SHADOW_MAP_SIZE", "MC2_FPS_CAP", "MC2_VSYNC" };   // the graphics-dialog keys
+    static const char* const k_kept[] = { "MC2_STATICPROP_TEX_TIER", "MC2_FPS_CAP", "MC2_VSYNC" };   // the graphics-dialog keys
     int count = 0;
     std::string seen;   // ",NAME," entries, so a key repeated in the file counts once
     for (size_t at = json.find("\"MC2_"); at != std::string::npos; at = json.find("\"MC2_", at + 1)) {
@@ -2287,8 +2279,6 @@ static void DoLaunch(HWND hwnd) {
     // MC2_STATICPROP_TEX_TIER: texture resolution tier (engine reads this in the
     //   texture-array loader to pick which mip level / atlas to load).
     SetEnvironmentVariableA("MC2_STATICPROP_TEX_TIER", k_texTierValues[s_gfxTexQual]);
-    // MC2_SHADOW_MAP_SIZE: per-cascade shadow texture size.
-    SetEnvironmentVariableA("MC2_SHADOW_MAP_SIZE", k_shadSizeValues[s_gfxShadQual]);
     // MC2_FPS_CAP: frame cap in FPS (gameosmain.cpp reads this).
     if (s_gfxFrameCapOn) {
         char fpsBuf[32];

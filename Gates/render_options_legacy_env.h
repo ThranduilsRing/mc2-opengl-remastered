@@ -21,9 +21,6 @@ struct LegacyKey {
 
 // Every option that was an environment gate. PostCAS, PostCASSharpness and TonemapMode were options.cfg keys from the start and have no entry.
 inline constexpr LegacyKey kLegacyKeys[] = {
-    {"MC2_SHADOW_CSM",                       "ShadowCSM"},
-    {"MC2_SHADOW_BOUNDED_NEAR_FIT",          "ShadowBoundedNearFit"},
-    {"MC2_PROP_SHADOW_RECEIVE",              "PropShadowReceive"},
     {"MC2_SHORELINE_LEGACY_SUPPRESS",        "ShorelineLegacySuppress"},
     {"MC2_CPU_PHONG_RETIRE",                 "CpuPhongRetire"},
     {"MC2_STATIC_PROP_AMBIENT_V1",           "StaticPropAmbient"},

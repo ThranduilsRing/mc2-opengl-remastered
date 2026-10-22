@@ -131,13 +131,8 @@ gosPostProcess::gosPostProcess()
     , width_(0)
     , height_(0)
     , initialized_(false)
-    , shadowMapSize_(4096)
     , shadowsEnabled_(true)
-    , staticLightMatrixBuilt_(false)
     , mapHalfExtent_(0.0f)
-    , dynShadowMapSize_(2048)
-    , csmCount_(0)
-    , csmDebugLayer_(0)
     , screenShadowEnabled_(true)
     , screenShadowDebug_(0)
     , enableCloudShadow_(mc2CloudShadowEnabled())
@@ -152,14 +147,6 @@ gosPostProcess::gosPostProcess()
     , prevFrameHadTerrain_(false)
     , shorelineEnabled_(true)
 {
-    memset(staticLightSpaceMatrix_, 0, sizeof(staticLightSpaceMatrix_));
-    memset(dynamicLightSpaceMatrix_, 0, sizeof(dynamicLightSpaceMatrix_));
-    dynamicFullMapSize_ = 4096;
-    dynamicFullMapTexelWorld_ = 0.0f;
-    memset(dynamicCascadeMatrices_, 0, sizeof(dynamicCascadeMatrices_));
-    memset(dynamicCascadeTexelWorld_, 0, sizeof(dynamicCascadeTexelWorld_));
-    csmDepthSpan_ = 1.0f;
-    memset(savedViewport_, 0, sizeof(savedViewport_));
     memset(inverseViewProj_, 0, sizeof(inverseViewProj_));
     memset(viewProj_, 0, sizeof(viewProj_));
     showShadowDebug_ = false;
@@ -346,9 +333,6 @@ void gosPostProcess::init(int w, int h)
         MC2_DIAGFE(stderr, "[VIEWMODE_LOWLIGHT v1] gain=%.2f tint=(%.2f,%.2f,%.2f)\n",
                      lowLightGain_, lowLightTint_[0], lowLightTint_[1], lowLightTint_[2]);
     }
-
-    initShadows();
-    initDynamicShadows();
 
     s_postProcess = this;
     initialized_ = true;

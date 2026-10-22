@@ -153,7 +153,7 @@ bool init_island(WaterIsland* s, int w, int h) {
 
     // ---- Descriptor layout/pool/set (2 UBO + 2 SSBO), both stages. ----
     {
-        VkDescriptorSetLayoutBinding b[7]{};
+        VkDescriptorSetLayoutBinding b[10]{};
         b[0].binding = 0; b[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
         b[0].descriptorCount = 1; b[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
         b[1].binding = 1; b[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
@@ -171,20 +171,28 @@ bool init_island(WaterIsland* s, int w, int h) {
             b[5 + k].binding = 3 + k; b[5 + k].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
             b[5 + k].descriptorCount = 1; b[5 + k].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
         }
+        // The static shadow bake's mask (7), FS-only: the water surface reads the same static shadow as the ground under it.
+        b[7].binding = 7; b[7].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        b[7].descriptorCount = 1; b[7].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+        b[8].binding=24; b[8].descriptorType=VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        b[8].descriptorCount=1; b[8].stageFlags=VK_SHADER_STAGE_FRAGMENT_BIT;
+        b[9].binding=25; b[9].descriptorType=VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        b[9].descriptorCount=1; b[9].stageFlags=VK_SHADER_STAGE_FRAGMENT_BIT;
         VkDescriptorSetLayoutCreateInfo lci{};
         lci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-        lci.bindingCount = 7; lci.pBindings = b;
+        lci.bindingCount = 10; lci.pBindings = b;
         if (!mc2vk::create(s->dsl, s->device, [&](VkDescriptorSetLayout* h) { return vkCreateDescriptorSetLayout(s->device, &lci, nullptr, h); })) {
             vlog("vkCreateDescriptorSetLayout failed."); return false;
         }
         // VK-WATER-FENCE-DEFER-1: TWO sets (one per parity slot), so pool sizes double.
-        VkDescriptorPoolSize sizes[3]{};
+        VkDescriptorPoolSize sizes[4]{};
         sizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC; sizes[0].descriptorCount = 4;
         sizes[1].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; sizes[1].descriptorCount = 4;
-        sizes[2].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; sizes[2].descriptorCount = 6;
+        sizes[2].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; sizes[2].descriptorCount = 10;
+        sizes[3].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER; sizes[3].descriptorCount = 2;
         VkDescriptorPoolCreateInfo pci{};
         pci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-        pci.maxSets = 2; pci.poolSizeCount = 3; pci.pPoolSizes = sizes;
+        pci.maxSets = 2; pci.poolSizeCount = 4; pci.pPoolSizes = sizes;
         if (!mc2vk::create(s->pool, s->device, [&](VkDescriptorPool* h) { return vkCreateDescriptorPool(s->device, &pci, nullptr, h); })) {
             vlog("vkCreateDescriptorPool failed."); return false;
         }
@@ -250,7 +258,9 @@ bool init_island(WaterIsland* s, int w, int h) {
         // 0, so under GL's SRC_ALPHA blend it contributes nothing; writeMask=0 is
         // the exact no-op without requiring independentBlend.
         cba[1].blendEnable = VK_FALSE;
-        cba[1].colorWriteMask = 0;
+        // Keep normal RGB masked. Water shades its own light, so its alpha marker
+        // must prevent the screen resolve from darkening the reflected sky again.
+        cba[1].colorWriteMask = VK_COLOR_COMPONENT_A_BIT;
         VkPipelineColorBlendStateCreateInfo cb{};
         cb.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
         cb.attachmentCount = 2; cb.pAttachments = cba;

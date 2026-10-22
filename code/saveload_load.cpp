@@ -121,7 +121,6 @@ void Mission::loadTerrain(MissionLoadFrame& f) {
 	gos_terrain_lighting::mission_init(
 		static_cast<uint32_t>(Terrain::realVerticesMapSide * Terrain::realVerticesMapSide),
 		64u);
-	gos_ResetStaticShadowPriming();
 
 }
 

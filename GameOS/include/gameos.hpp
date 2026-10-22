@@ -2349,71 +2349,11 @@ void gos_GetTerrainCameraPos(float* x, float* y, float* z);
 // SCENE-LIGHTING-STATE-1: read-only current sky number (-1 = none/unset).
 int gos_GetSkyNumber();
 
-// Static shadow API: world-fixed shadow map, accumulates over multiple frames
+// Mission surface bounds and the shared shadow sun clamp.
 void gos_SetMapHalfExtent(float halfExtent);
-void gos_SetWaterElevation(float elevation);  // sea-level world Z for edge-fog water skip
-bool gos_StaticLightMatrixBuilt();
-void gos_BuildStaticLightMatrix();  // builds matrix once (idempotent)
-void gos_MarkStaticLightMatrixBuilt();
-// VK-SHADOW-COPY-ONCE-1: generation counter bumped on each (re)build; lets
-// consumers (VK terrain interop) copy-once per generation instead of per-frame.
-uint64_t gos_GetStaticShadowGeneration();
-// VPL-#shadow C-1: per-mission re-arm of the one-shot full-map static
-// shadow (Terrain::destroy -> rebuild next mission vs frozen prior one).
-void gos_ResetStaticLightMatrix();
-// CP-1: per-mission-init companion re-prime (mission.cpp chokepoint). Body
-// is just the static-light-matrix reset; coexists
-// idempotently with the Terrain::destroy gos_ResetStaticLightMatrix path.
-void gos_ResetStaticShadowPriming();
-// VPL-#shadow Phase 1: gos_RequestFullShadowRebuild / gos_ShadowRebuildPending
-// / gos_ClearShadowRebuildPending RETIRED (camera-windowed-accumulate
-// machinery; only caller was the deleted txmmgr prime block).
-void gos_BuildDynamicLightMatrix(float sunDirX, float sunDirY, float sunDirZ,
-                                  const float camFitCornersMC2[8][3],
-                                  const float shadowCenterXYZ[3], bool shadowCenterValid);
-
-// Item 1: Cascaded Shadow Maps gate (dynamic path). Default OFF => the legacy
-// single dynamic shadow map runs unchanged (byte-identical). See gos_postprocess.cpp.
-bool  mc2ShadowCsmEnabled();
-int   mc2ShadowCsmCount();
-float mc2ShadowCsmLambda();
-int   mc2ShadowMapSize();   // CSM-REDESIGN: env-tunable dynamic shadow map edge (texels)
-float mc2ShadowCsmR0();     // CSM-REDESIGN: near/mid cascade radius (world units), clamp >=64
-float mc2ShadowCsmSoftness();
-// Per-cascade shadow resolution: the LAST (full-map) cascade renders into a
-// separate lower-res 2D depth texture instead of the high-res near-cascade
-// array. Saves VRAM (3x8192 array -> 2x8192 array + 1x4096). See gos_postprocess.cpp.
-bool  mc2ShadowFullMapSeparate();  // MC2_SHADOW_FULLMAP_SEPARATE, default ON
-int   mc2ShadowFullMapSize();      // MC2_SHADOW_FULLMAP_SIZE, default 4096, clamp {2048,4096,8192}
-float mc2ShadowObjNormalBias();  // object shadow-receive normal-offset (texels); 0 disables
-float mc2ShadowDistFadeWu();     // SHADOW-DIST-FADE-1: dynamic-shadow dissolve distance (wu); 0 = off
-float mc2ShadowDistFadeMax();    // SHADOW-DONUT-FIX-1: max fade opacity [0,1], default 0.65 (1 = old full erase)
-bool  mc2ShadowFadeCont();       // SHADOW-FADE-CONTINUOUS-1: MC2_SHADOW_FADE_CONT, default ON; =0 restores 4-step ladder
-bool  mc2ShadowFadeRamp0();      // SHADOW-FADE-RAMP0-1: MC2_SHADOW_FADE_RAMP0, default ON; =0 restores 0.45-onset fade window (seam)
-bool  mc2ShadowAltScale();       // SHADOW-ALT-SCALE-1: MC2_SHADOW_ALT_SCALE, default ON; =0 restores fixed low-sun gains at all altitudes
-// STATIC-SHADOW-BANDING gates (single chokepoint, gameos_graphics.cpp). Both
-// DEFAULT ON since 2026-07-18 (field banding bug); "=0" kills (byte-identical
-// legacy). Every shader-prefix injection site MUST use these helpers -- do not
-// re-read the env vars locally (that is how the 2026-07-18 default-flip almost
-// missed the live chunk path).
-bool  mc2ShadowStaticBandFixEnabled();    // MC2_SHADOW_STATIC_BANDFIX (v1: PCF tap floor)
-bool  mc2ShadowStaticBandFixV2Enabled();  // MC2_SHADOW_STATIC_BANDFIX_V2 (v2: slope-normal bias + normal-offset receiver)
-int   mc2WaterBiasLegacy();               // MC2_WATER_BIAS_LEGACY (WATER-BIAS-LINEARIZE-1: 1 = legacy constant FAST water bias)
-// TERRAIN-SHADOW-GUARD-1: MC2_TERRAIN_SHADOW_GUARD_CLAMPED_SUN, DEFAULT ON, "=0"
-// kills. shadow.hglsl's back-face guard must dot the SAME altitude-clamped sun
-// the shadow matrices were built from (mc2ShadowMinSunAltDeg, gos_postprocess).
-// Every terrain-family shader-prefix site MUST append mc2TerrainShadowSunDefine()
-// -- same chokepoint rule as the BANDFIX helpers above.
-bool  mc2TerrainShadowGuardClampedSun();
-// VK-PARITY-SHADOW-1: the shadow.hglsl knob set the terrain GL program bakes in as #defines
-// (MC2_SHADOW_DIST_FADE_WU/_MAX_F/_CONT_F/_RAMP0_F/_ALT_SCALE_F, MC2_SHADOW_MIN_SUN_SIN,
-// MC2_SHADOW_STATIC_BANDFIX_V2), snapped to the SAME printf precision so the Vulkan terrain
-// UBO carries bit-identical values. flags: b0 FADE_CONT, b1 FADE_RAMP0, b2 ALT_SCALE, b3 BANDFIX_V2.
-// distFadeWu==0 => fade block off; minSunSin==0 => clamp identity.
-struct Mc2ShadowFadeKnobs { float distFadeWu; float distFadeMax; float minSunSin; int flags; };
-Mc2ShadowFadeKnobs mc2ShadowFadeKnobs();
-std::string mc2TerrainShadowSunDefine();  // "" when off => shader byte-identical
-float mc2ShadowMinSunAltDeg();            // MC2_SHADOW_MIN_SUN_ALT, default 15 deg
+void gos_SetWaterElevation(float elevation);
+int mc2WaterBiasLegacy();
+float mc2ShadowMinSunAltDeg();
 // MC2_SHADER_PATH_TINT: debug-only. 1 = each candidate ground shader outputs a
 // unique solid color so the render path of a given surface can be identified
 // visually. Default 0 => byte-identical normal rendering. See gos_postprocess.cpp.

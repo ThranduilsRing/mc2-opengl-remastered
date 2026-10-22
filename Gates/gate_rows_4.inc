@@ -181,7 +181,7 @@ L(Lead1, "MC2_VK_PROP_PERF", Bool, false, "vk", "", "", passthrough | verified),
 L(Lead1, "MC2_VK_SELECT_TEST", Bool, false, "code", "", "", verified),
 // VK-P8a SHADOW-INTEROP: the SECOND VK geometry region + FIRST VK-produces-depth gate.
 // history: docs/gate-history.md#MC2_VK_SHADOW_MATRIX_DIAG
-L(Lead0, "MC2_VK_SHADOW_MATRIX_DIAG", Bool, false, "vk", "", "VK shadow producer/consumer evidence (default OFF = zero cost; GameOS/gameos/vulkan_shadow_island_live.cpp).", passthrough | registry(Trace, "MC2_TRACE_VK_SHADOW_MATRIX_DIAG", -1, false) | verified),
+L(Lead0, "MC2_VK_SHADOW_MATRIX_DIAG", Bool, false, "vk", "", "VK shadow producer/consumer evidence (default OFF = zero cost; GameOS/gameos/vulkan_shadow_island_live.cpp).", passthrough | registry(Trace, "MC2_TRACE_VK_SHADOW_MATRIX_DIAG", -1, false)),
 // VK-P14 GATE-CONSOLIDATION-1: the ONE umbrella for the shared-GBuffer scene path.
 // history: docs/gate-history.md#MC2_VK_SHARED_GBUFFER
 L(Lead0Kill, "MC2_VK_SHARED_GBUFFER", Bool, true, "vk", "", "Retired: the Vulkan scene path is unconditional; =0 is ignored with a [RENDER_BACKEND] line (render_backend_select.cpp).", passthrough | registry(Feature, "MC2_FEATURE_VK_SHARED_GBUFFER", -1, true) | verified),
@@ -189,8 +189,7 @@ L(Lead0Kill, "MC2_VK_SHARED_GBUFFER", Bool, true, "vk", "", "Retired: the Vulkan
 // history: docs/gate-history.md#MC2_VK_SHARED_SCENE_STRICT
 L(Exact1, "MC2_VK_SHARED_SCENE_STRICT", Bool, false, "post", "", "VK shared-scene deletion-readiness canary.", passthrough | registry(Trace, "MC2_TRACE_VK_SHARED_SCENE_STRICT", -1, false)),
 L(Presence, "MC2_VK_TERRAIN_COPY_STATS", Bool, false, "vk", "", "", passthrough | verified),
-P("MC2_VK_TERRAIN_CSM_DEBUG", Int, 0, "vk", "", "", verified),
-L(Lead1, "MC2_VK_TERRAIN_CSM_FULLMAP_EXPERIMENTAL", Bool, false, "terrain", "", "", verified),
+L(Lead1, "MC2_VK_TERRAIN_CSM_FULLMAP_EXPERIMENTAL", Bool, false, "terrain", "", ""),
 L(Lead0Kill, "MC2_VK_TERRAIN_FENCE_DEFER", Bool, true, "vk", "", "", verified | passthrough),
 // VK-TERRAIN-LIGHTING: make the VK Tier-1 terrain LIT (directional relief + baked static shadow).
 // history: docs/gate-history.md#MC2_VK_TERRAIN_LODFADE

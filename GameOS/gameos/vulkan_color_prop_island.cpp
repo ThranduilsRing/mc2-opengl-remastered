@@ -232,6 +232,7 @@ struct ColorPropIsland : mc2vk::IslandState {
     VkDeviceSize  layerCapBytes = 0;
     VkDeviceSize  hotCapBytes = 0;
     uint32_t      mapGeneration = 0;        // bumped at every map change; consumers of the albedo arrays rebind on a change
+    uint64_t alphaContentHash = 0;
     bool          hotReady = false;         // the hot-colour table was uploaded for the current map (cleared at a map change)
     float         terrainSunMC2[3] = {0.0f, 0.0f, 1.0f};
 
@@ -532,6 +533,12 @@ bool cp_upload_albedo_array(ColorPropIsland* s, const AlbedoTarget& tgt,
     key.format=uint32_t(fmt); key.hints=mips>1 ? gosHint_MipmapFilter0 : 0;
     auto texture=mc2vk::getOrCreateEngineVulkanContext().textures().acquire(key,image,{w,h,w,h},layers,true);
     if (!texture) return false;
+    if (tgt.texture == &s->albedoOnTexture) {
+        // Bytes plus their interpretation identify the actual alpha-ON upload across installs/mods.
+        const uint32_t shape[] = {uint32_t(fmt), w, h, layers, mips};
+        for (uint32_t v : shape) { hash ^= v; hash *= 1099511628211ull; }
+        s->alphaContentHash = hash;
+    }
     *tgt.texture=std::move(texture); *tgt.layers=layers;
     return true;
 }
@@ -1150,6 +1157,11 @@ extern "C" void mc2_vk_color_prop_island_invalidate_geometry() {
     ++s->mapGeneration;
 }
 
+extern "C" uint64_t mc2_color_prop_island_alpha_content_hash() {
+    const auto* s = parkedIsland();
+    return s && s->materialReadyOn ? s->alphaContentHash : 0;
+}
+
 extern "C" int mc2_color_prop_island_get_alpha_array(void** view, uint32_t* generation) {
     const ColorPropIsland* s = parkedIsland();
     if (!view || !generation || !s || !s->materialReadyOn || !s->albedoOnTexture) return 0;
@@ -1178,18 +1190,7 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
     if (!mc2_color_prop_island_get_frame_feed(&feed)) { setFallback("no_color_feed"); return 0; }
     if (!feed.instances112 || feed.count == 0) { setFallback("no_color_instances"); return 0; }
     // MC2_VK_SHADOW_MATRIX_DIAG: the object matrix the props are projected with next to the live camera matrix, so a light-space leak into the colour pass shows.
-    if (mc2_vk_shadow_matrix_diag_enabled()) {
-        static int diagPrints = 0;
-        if (diagPrints < 3) {
-            ++diagPrints;
-            const float* live = gos_GetTerrainMVPMat4();
-            const float* f = feed.worldToClipGL;
-            vlog("matrix diag: prop row0=[%.4f %.4f %.4f %.4f] row3=[%.4f %.4f %.4f %.4f] live row0=[%.4f %.4f %.4f %.4f] row3=[%.4f %.4f %.4f %.4f]",
-                 f[0], f[1], f[2], f[3], f[12], f[13], f[14], f[15],
-                 live ? live[0] : 0.0f, live ? live[1] : 0.0f, live ? live[2] : 0.0f, live ? live[3] : 0.0f,
-                 live ? live[12] : 0.0f, live ? live[13] : 0.0f, live ? live[14] : 0.0f, live ? live[15] : 0.0f);
-        }
-    }
+
 
     // Lazy init / rebuild on size change.
     mc2vk::VulkanContext& slotCtx = mc2vk::getOrCreateEngineVulkanContext();

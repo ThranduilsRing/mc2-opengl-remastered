@@ -61,14 +61,7 @@ bool terrainNormalArrayEnabled() {
 // the textbook Poisson-disk banding/ring artifact, most visible on smoothly
 // varying receivers (rolling grass), NOT a shadow-map resolution or depth
 // issue. Killswitch "=0" => byte-identical legacy (shadowTaps stays 16/8/4).
-bool mc2ShadowStaticBandFixEnabled() {
-    // SHADOW-BANDING-DEFAULT-ON (2026-07-18): field bug report confirmed the
-    // banding persists in the shipped default config ("this was never
-    // fixed") — the fix existed but was left opt-in. DEFAULT ON now;
-    // killswitch: MC2_SHADOW_STATIC_BANDFIX=0 reverts to legacy taps.
-    static const bool enabled = mc2::gate::get<"MC2_SHADOW_STATIC_BANDFIX">();
-    return enabled;
-}
+
 
 // STATIC-SHADOW-BANDING-2: default ON (2026-07-18, was OFF). Round 1 (BANDFIX v1) was refuted by
 // field check as insufficient -- taps=16 still banded on TERRAIN (grass/dirt
@@ -83,16 +76,7 @@ bool mc2ShadowStaticBandFixEnabled() {
 // for shadow bias ONLY (lighting normal N is untouched). Independent gate,
 // typically paired with v1 (taps) but not required to be. Killswitch "=0" =>
 // byte-identical legacy (shadowN stays flat vec3(0,0,1)).
-bool mc2ShadowStaticBandFixV2Enabled() {
-    // SHADOW-BANDING-DEFAULT-ON (2026-07-18): field bug report (banding in
-    // and around mech shadows on terrain) verified A/B in-engine: default
-    // config shows diagonal contour striping across terrain
-    // (debugview 1 = shadow factor, mc2_01 f1800: high-pass stripe
-    // amplitude 3.67 -> 1.12 with V2 on). DEFAULT ON now; killswitch:
-    // MC2_SHADOW_STATIC_BANDFIX_V2=0 reverts to flat-normal bias.
-    static const bool enabled = mc2::gate::get<"MC2_SHADOW_STATIC_BANDFIX_V2">();
-    return enabled;
-}
+
 
 // TERRAIN-SHADOW-GUARD-1 (MC2_TERRAIN_SHADOW_GUARD_CLAMPED_SUN, DEFAULT ON,
 // "=0" kills). The shadow MATRICES are built from an altitude-clamped sun
@@ -105,10 +89,7 @@ bool mc2ShadowStaticBandFixV2Enabled() {
 // via the unguarded path. Feeding the guard the same clamped sun the matrices
 // used restores them. No-op wherever sin(authored altitude) >= sin(15deg)
 // (mc2_01=50deg, mc2_03=46deg, mc2_24=75deg -> byte-identical).
-bool mc2TerrainShadowGuardClampedSun() {
-    static const bool enabled = mc2::gate::get<"MC2_TERRAIN_SHADOW_GUARD_CLAMPED_SUN">();
-    return enabled;
-}
+
 
 // mc2ShadowMinSunAltDeg() is defined in gos_postprocess.cpp (declared in
 // gameos.hpp) so the GLSL clamp and the C++ matrix clamp can never drift apart.
@@ -117,40 +98,12 @@ bool mc2TerrainShadowGuardClampedSun() {
 // program consumes shadow.hglsl with the terrain sun. Returns "" when the gate is
 // off or the clamp is disabled -> shadow.hglsl's 0.0 default -> identity -> the
 // compiled shader is byte-identical to legacy.
-std::string mc2TerrainShadowSunDefine() {
-    if (!mc2TerrainShadowGuardClampedSun()) return std::string();
-    const float deg = mc2ShadowMinSunAltDeg();
-    if (deg <= 0.0f) return std::string();
-    char buf[80];
-    mc2::fmt::to_buf(buf, "#define MC2_SHADOW_MIN_SUN_SIN {:.8f}\n", static_cast<double>(sinf(deg * 0.01745329252f)));
-    return std::string(buf);
-}
+
 
 // VK-PARITY-SHADOW-1: single producer of the terrain shadow knob set (see gameos.hpp).
 // Values are round-tripped through the SAME printf formats the #define injection uses
 // (%.1f wu, %.2f max, %.8f sin) so GL (compile-time literal) and VK (UBO float) agree.
-Mc2ShadowFadeKnobs mc2ShadowFadeKnobs() {
-    Mc2ShadowFadeKnobs k{};
-    char buf[64];
-    if (mc2ShadowDistFadeWu() > 0.0f) {
-        mc2::fmt::to_buf(buf, "{:.1f}", static_cast<double>(mc2ShadowDistFadeWu()));
-        k.distFadeWu = static_cast<float>(atof(buf));
-        mc2::fmt::to_buf(buf, "{:.2f}", static_cast<double>(mc2ShadowDistFadeMax()));
-        k.distFadeMax = static_cast<float>(atof(buf));
-        k.flags |= mc2ShadowFadeCont()  ? 1 : 0;
-        k.flags |= mc2ShadowFadeRamp0() ? 2 : 0;
-        k.flags |= mc2ShadowAltScale()  ? 4 : 0;
-    }
-    if (mc2TerrainShadowGuardClampedSun()) {
-        const float deg = mc2ShadowMinSunAltDeg();
-        if (deg > 0.0f) {
-            mc2::fmt::to_buf(buf, "{:.8f}", static_cast<double>(sinf(deg * 0.01745329252f)));
-            k.minSunSin = static_cast<float>(atof(buf));
-        }
-    }
-    if (mc2ShadowStaticBandFixV2Enabled()) k.flags |= 8;
-    return k;
-}
+
 
 // WATER-BIAS-LINEARIZE-1: bias-mode selector for the FAST water regime.
 // Default 0 = distance-proportional bias (clip.z += F_REL*clip.z; world error

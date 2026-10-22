@@ -869,13 +869,8 @@ void GameCamera::render (void)
 			}
 		}
 
-		// Terrain LOD chunk Phase 4 flush — submit GPU draw commands built in
-		// Terrain::update(). No-op when MC2_TERRAIN_LOD_CHUNK is unset
-		// (s_blockMeta is nullptr). Placed before renderLists() so chunk geometry
-		// is fully drawn before post-process; after shadow pass so shadows resolve.
-		// Mirrors the water fast path pattern (below renderLists) but uses depth
-		// written by chunk draws instead of needing an already-populated depth buf.
-		{ Terrain::flushDrawCommands(); }
+		// The normal renderer flushes chunks after the current mover map.
+		if (drawOldWay) Terrain::flushDrawCommands();
 
 		if (!drawOldWay)
 		{

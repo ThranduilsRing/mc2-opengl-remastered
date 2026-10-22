@@ -385,7 +385,6 @@ void BldgAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 // comment there has the full rationale); needed here because the REAL
 // in-game combat-destroy event is this function's OBJECT_STATUS_DESTROYED
 // transition, which runs long before that definition in file order.
-void bldgTriggerStaticShadowRebake(bool wasRegistered);
 
 void BldgAppearance::setObjStatus (long oStatus)
 {
@@ -417,7 +416,6 @@ void BldgAppearance::setObjStatus (long oStatus)
 		if (oStatus == OBJECT_STATUS_DESTROYED) {
 			const bool wasRegistered = staticReg.registered;
 			invalidateStaticRegistration();
-			bldgTriggerStaticShadowRebake(wasRegistered);
 		}
 
 		if ((oStatus == OBJECT_STATUS_DESTROYED) || (oStatus == OBJECT_STATUS_DISABLED))

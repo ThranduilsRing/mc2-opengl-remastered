@@ -1,6 +1,7 @@
 // MissionInterfaceManager: test-only fixtures and determinism verbs (spawn, teleport, freeze_movers, set_light, animate).
 // Declared in missiongui.h; shared names in missiongui_internal.h.
 #include "missiongui_internal.h"
+#include "terrobj.h"
 #include "../mclib/texture_assets.h"
 #include "Gates/gate.h"
 #include "mc2fmt.h"
@@ -185,6 +186,35 @@ bool MissionInterfaceManager::uiCmdFixture(UiCmdCtx& c)
         }
         shape->BindMaterials();result="ok";
         note="material_set="+std::to_string(shape->materialSet().base)+" node="+std::to_string(shape->GetTextureHandle(slot))+" type_defaults="+std::to_string(shape->usesTypeMaterials());
+        return true;
+    }
+    // Deterministic tree-fall witness: arm the same owner state as a collision.
+    // TerrainObject::update integrates the fall and submits its real appearance.
+    if (line.rfind("tree_fall ", 0) == 0) {
+        float x = 0.0f, y = 0.0f;
+        if (!mc2::gate::get<"MC2_TEST_SPAWN">()) {
+            result = "blocked"; note = "needs MC2_TEST_SPAWN=1";
+        } else if (sscanf(line.c_str() + 10, "%f %f", &x, &y) != 2 || !ObjectManager) {
+            note = "tree_fall <world x> <world y> (nearest intact tree within 512)";
+        } else {
+            TerrainObjectPtr nearest = nullptr;
+            float best = 512.0f * 512.0f;
+            for (long i = 0; i < ObjectManager->getNumTerrainObjects(); ++i) {
+                auto* tree = ObjectManager->getTerrainObject(i);
+                if (!tree || tree->getSubType() != TERROBJ_TREE ||
+                    tree->getFlag(OBJECT_FLAG_FALLING) || tree->getFlag(OBJECT_FLAG_FALLEN)) continue;
+                const auto pos = tree->getPosition();
+                const float d = (pos.x - x) * (pos.x - x) + (pos.y - y) * (pos.y - y);
+                if (d < best) { best = d; nearest = tree; }
+            }
+            if (nearest) {
+                nearest->setFlag(OBJECT_FLAG_FALLING, true);
+                nearest->setTangible(false);
+                result = "ok";
+                const auto pos = nearest->getPosition();
+                note = "tree falling at " + std::to_string(pos.x) + "," + std::to_string(pos.y);
+            } else { result = "blocked"; note = "no intact tree within 512"; }
+        }
         return true;
     }
 	if (line.compare(0, 6, "spawn ") == 0 || line.compare(0, 9, "teleport ") == 0) {

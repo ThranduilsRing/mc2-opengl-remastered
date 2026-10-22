@@ -465,6 +465,10 @@ class GameObjectManager {
 		// the first frame. Guarded by MC2_STATIC_REG_PREWARM=1 (default off).
 		void prewarmStaticPropLightBakes(Camera* cam);
 
+		// The static shadow bake's caster set: every registered terrain object, building, turret and gate with its shadow recipe, rebuilt once
+		// the static-prop geometry is final. Reads the objects; changes nothing in the simulation.
+		void buildStaticShadowCasterSet();
+
 		long getSpecificObjects (long objClass, long objSubType, GameObjectPtr* objects, long maxObjects);
 
 		GameObjectPtr getObjBlockObject (long blockNumber, long objLocalIndex) {

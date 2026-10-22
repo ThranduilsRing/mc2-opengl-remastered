@@ -31,7 +31,7 @@ void EditorResetMissionCamera();
 #include "../GameOS/gameos/gpu_cull_substrate.h"
 #include "../GameOS/gameos/gpu_cull_readback.h"
 #include "../GameOS/gameos/gos_terrain_lighting.h"
-#include <gameos.hpp>  // gos_ResetStaticShadowPriming
+#include <gameos.hpp>
 #include "../GameAdapters/StaticPropRenderAdapter.h"
 #include "../GameAdapters/MechRenderAdapter.h"
 

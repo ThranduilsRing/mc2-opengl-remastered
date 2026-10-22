@@ -19,7 +19,6 @@ public:
 		static void renderListsSceneDataUpload (RenderSubmissions& submissions);
 		static void renderListsObjects3D (RenderSubmissions& submissions);
 		static void renderListsPostObjectsStateRestore (RenderSubmissions& submissions);
-		static void renderListsStaticShadowBuild (RenderSubmissions& submissions);
 		static void renderListsStaticPropRegistryFlush (RenderSubmissions& submissions);
 		static void renderListsDynamicShadowPass (RenderSubmissions& submissions);
 		static void renderListsTerrainSolid (RenderSubmissions& submissions);

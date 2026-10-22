@@ -9,6 +9,7 @@ BuildingBrush.cpp	: Implementation of the BuildingBrush component.
 #include "stdafx.h"
 #include <malloc.h> // _msize: capacity of the standard CRT terrain allocation
 #include "BuildingBrush.h"
+#include "../GameOS/gameos/shadow_mover_feed.h"
 
 #ifndef EDITOROBJECTMGR_H
 #include "EditorObjectMgr.h"
@@ -252,6 +253,13 @@ bool BuildingBrush::BuildingAction::redo()
 		if (pObj)
 		{
 			(*pObj).CastAndCopy((*(*iter)));
+			// Undo retired the shared snapshot's recipe. CastAndCopy replaces the
+			// temporary appearance addBuilding just registered with that snapshot.
+			const int type = (pObj->getID() >> 24) & 0xff;
+			if (type != GV_TYPE && type != MECH_TYPE) {
+				pObj->appearance()->registerStatic();
+				if (eye && eye->getNumLights() > 0) pObj->appearance()->prewarmStaticLightBake(eye);
+			}
 		}
 		else
 		{
@@ -325,6 +333,7 @@ void BuildingBrush::update( int ScreenMouseX, int ScreenMouseY )
 
 void BuildingBrush::render( int ScreenMouseX, int ScreenMouseY )
 {
+	mc2shadow::ScopedMoverCapturePause pausePreviewShadows;
 	if ( !pCursor )
 		return;
 

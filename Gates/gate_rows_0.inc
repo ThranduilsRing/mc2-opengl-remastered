@@ -161,9 +161,7 @@ G("MC2_DEBUG_OVERLAY_PREDICATE_MODE", Enum, "", "code", "", "", tokens("|Legacy|
 // history: docs/gate-history.md#MC2_DEBUG_RENDERER
 L(Lead0, "MC2_DEBUG_RENDERER", Bool, false, "code", "", "Debug overlay renderer (GuiRuntime/EditorInspector.cpp).", registry(Feature, "MC2_FEATURE_DEBUG_RENDERER", 8, false) | verified),
 L(Lead0, "MC2_DEBUG_RENDERER_TEST", Bool, false, "gameos", "", "", verified),
-L(Presence, "MC2_DEBUG_SHADOW_FRUSTUM", Bool, false, "post", "", "[SHADOWFRUSTUM v1] VPL-#shadow: prove the static-shadow CLIPPER is correct (user suspected light/clipper; render-expert grep says it's feed-scope, not the...", verified),
 L(Presence, "MC2_DEBUG_SHADOW_STATIC", Bool, false, "code", "", ""),
-L(Presence, "MC2_DEBUG_SHADOW_ZRANGE", Bool, false, "post", "", "[SHADOWZRANGE v1] VPL-#10: prove the [0,1] ZERO_TO_ONE conversion is correct.", verified),
 // history: docs/gate-history.md#MC2_DEBUG_STATE_DUMP
 L(Lead0, "MC2_DEBUG_STATE_DUMP", Bool, false, "gameos", "", "DEBUG-STATE-DUMP-1: write a JSON render-state snapshot to debug_state/latest_render_state.json every 300 frames (and at frame 1).", passthrough | registry(Trace, "MC2_DIAG_DEBUG_STATE_DUMP", -1, false) | verified),
 // history: docs/gate-history.md#MC2_DEBUG_STATE_DUMP_DIR

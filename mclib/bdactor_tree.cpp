@@ -260,6 +260,7 @@ void TreeAppearance::setObjectParameters (const glm::vec3 &pos, float Rot, long 
 
 void TreeAppearance::setMoverParameters (float pitchAngle, float lArmRot, float rArmRot, bool isAirborne)
 {
+	if (pitchAngle != pitch) invalidateStaticRegistration();
 	pitch = pitchAngle;
 }
 
@@ -718,7 +719,7 @@ bool TreeAppearance::IsStaticNow() const
 	// Higher LODs have no live per-instance shape (staticReg[lod>=1].shape==nullptr),
 	// so the key is bypassed for activeLOD!=0 — markVisible replays the pre-registered
 	// LOD recipe directly (drawing the correct LOD geometry).
-	return staticReg[activeLOD].registered
+    return !shadowIsMoving() && staticReg[activeLOD].registered
 		&& (activeLOD == 0 ? staticReg[0].shape == treeShape : true)
 		&& !needsFullBakeNextFrame;
 }

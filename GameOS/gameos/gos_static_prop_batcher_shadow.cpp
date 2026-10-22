@@ -4,6 +4,25 @@
 #include "mc2fmt.h"
 #include "view_registry.h"
 #include "../../RenderCore/FramePackets.h"
+#include "shadow_mover_feed.h"
+
+void GpuStaticPropBatcher::captureMoverShadowShape(const void* owner, TG_MultiShape* multi) {
+    if (!multi || !multi->listOfShapes || !s_geometryFinalized || g_mechPreviewRenderDepth>0) return;
+    auto& feed=mc2shadow::moverPropFeed();
+    if (feed.paused()) return;
+    if (feed.contains(owner,g_mc2FrameCounter)) return;
+    static std::vector<GpuStaticPropInstance> leaves;
+    leaves.clear();
+    for (int i=0;i<multi->numTG_Shapes;++i) {
+        const auto& rec=multi->listOfShapes[i];
+        TG_Shape* shape=rec.node.get();
+        if (!rec.processMe || !shape || !shape->myType || shape->myType->GetNodeType()!=SHAPE_NODE || shape->GetIsSpotlight()) continue;
+        GpuStaticPropInstance leaf{};
+        const uint32_t flags=shape->GetIsAlphaTest()?(1u<<2):0;
+        if (GpuStaticPropBatcher::instance().buildRecipeFromShape(shape,glm::mat4(rec.shapeToWorld),0,0,flags,&leaf)) leaves.push_back(leaf);
+    }
+    feed.record(owner,leaves,g_mc2FrameCounter);
+}
 
 void GpuStaticPropBatcher::setDebugAddrMode(int mode) { debugAddrMode_ = mode; }
 

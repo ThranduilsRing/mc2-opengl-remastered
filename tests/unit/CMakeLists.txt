@@ -36,7 +36,10 @@ add_executable(mc2_tests
     test_rendercore.cpp     # RENDERCORE-UNIT-TESTS-1: GL-free substrate invariants
     test_frame_arena.cpp    # FRAME-ARENA-1: FrameArena typed L2 allocator invariants
     test_depth_hzb.cpp      # HZB-DEPTH-CONVENTION-TESTS-1: reverse-Z / HZB reduction contract
-    test_shadow_static_runs.cpp  # the VK static shadow map drops every building on a map without static-prop geometry
+    test_shadow_bake_math.cpp  # the static shadow bake's mask layout, reach, footprint and caster-window math (header-only, no Vulkan)
+    test_shadow_mover_fit.cpp
+    test_static_caster_set.cpp
+    ../../GameOS/gameos/static_caster_set.cpp
     test_gate.cpp           # GATE-REGISTRY-G1A: truthiness matrix, slot cache, [CONFIG v1] dump
     test_tactical_overview.cpp   # TACTICAL-OVERVIEW-1: blend-state pure logic
     test_xform_convention.cpp    # XFORM-CONVENTION-HARNESS-1: clip-space convention lock
@@ -142,6 +145,9 @@ add_executable(mc2_tests
     ${MC2_WORKTREE_ROOT}/GameOS/gameos/terrain_field_store.cpp
     test_terrain_surface_asset.cpp
     ${MC2_WORKTREE_ROOT}/GameOS/gameos/terrain_surface_asset.cpp
+    ${MC2_WORKTREE_ROOT}/GameOS/gameos/cook_cache.cpp
+    test_shadow_mask_asset.cpp  # the shadow mask cook: header/payload validation, BC4 block packing, cold/warm/changed/healed cache
+    ${MC2_WORKTREE_ROOT}/GameOS/gameos/shadow_mask_asset.cpp
     test_terrain_surface_cook.cpp
     ${MC2_WORKTREE_ROOT}/GameOS/gameos/terrain_surface_cook.cpp
     test_vk_render_pass_timer.cpp  # VK pass timer tick math (counter wrap, valid bits); header-only, no Vulkan

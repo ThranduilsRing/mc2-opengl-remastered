@@ -1,0 +1,72 @@
+#version 450
+#extension GL_GOOGLE_include_directive : require
+// Static shadow bake, resolve. Three steps over one tile, picked by uP.mode.x:
+//   0: blur the blocker distance horizontally (Gaussian, weighted by where blockers were found);
+//   1: blur it vertically, fade the prop shadow by it (opacity = 1 - strength * ((distance - start) / (end - start))^2: a long shadow fades as a whole, its
+//      interior never goes hollow), and take the min with the terrain self-shadow;
+//   2: a 3x3 tent over the tile's own texels, written as R8 into the staging words the tile copy reads.
+#include "include/shadow_bake_common.glsl"
+
+layout(local_size_x = 8, local_size_y = 8) in;
+
+const int kBlurRadius = 16;
+const float kBlurSigma = 7.0;
+
+float gaussW(int k) { return exp(-float(k * k) / (2.0 * kBlurSigma * kBlurSigma)); }
+
+void blurH(ivec2 t, int n) {
+    vec2 acc = vec2(0.0);
+    for (int k = -kBlurRadius; k <= kBlurRadius; ++k) {
+        vec4 p = imageLoad(u_props, ivec2(clamp(t.x + k, 0, n - 1), t.y));
+        float g = gaussW(k);
+        acc += g * vec2(p.y * p.z, p.z);
+    }
+    imageStore(u_blur, t, vec4(acc, 0.0, 0.0));
+}
+
+void combine(ivec2 t, int n) {
+    vec2 acc = vec2(0.0);
+    for (int k = -kBlurRadius; k <= kBlurRadius; ++k)
+        acc += gaussW(k) * imageLoad(u_blur, ivec2(t.x, clamp(t.y + k, 0, n - 1))).xy;
+    float dist = acc.y > 1e-4 ? acc.x / acc.y : 0.0;
+    // The pre-T15 ramp (SHADOW-FADE-RAMP0: strength x (distance / end)^2), continuous from contact.
+    float ramp = clamp((dist - uB.fade.x) / max(uB.fade.y - uB.fade.x, 1.0), 0.0, 1.0);
+    float opacity = 1.0 - uB.fade.z * ramp * ramp;
+    float props = mix(1.0, imageLoad(u_props, t).x, opacity);
+    float terrain = imageLoad(u_terrain, t).x;
+    imageStore(u_combined, t, vec4(min(props, terrain)));
+}
+
+float tent(ivec2 t, int n) {
+    float acc = 0.0;
+    for (int y = -1; y <= 1; ++y)
+        for (int x = -1; x <= 1; ++x) {
+            float w = float((2 - abs(x)) * (2 - abs(y)));
+            acc += w * imageLoad(u_combined, clamp(t + ivec2(x, y), ivec2(0), ivec2(n - 1))).x;
+        }
+    return acc / 16.0;
+}
+
+void main() {
+    int n = uB.regionInfo.x;
+    int mode = uP.mode.x;
+    if (mode == 2) {
+        // One invocation packs four horizontally adjacent texels of the tile (the region minus its apron).
+        ivec2 q = ivec2(gl_GlobalInvocationID.xy);
+        int apron = uB.regionInfo.w;
+        int tile = n - 2 * apron;
+        if (q.x * 4 >= tile || q.y >= tile) return;
+        uint word = 0u;
+        for (int i = 0; i < 4; ++i) {
+            ivec2 t = ivec2(apron + q.x * 4 + i, apron + q.y);
+            uint b = uint(clamp(tent(t, n), 0.0, 1.0) * 255.0 + 0.5);
+            word |= b << (8u * uint(i));
+        }
+        uM.texels[(q.y * tile + q.x * 4) / 4] = word;
+        return;
+    }
+    ivec2 t = ivec2(gl_GlobalInvocationID.xy);
+    if (t.x >= n || t.y >= n) return;
+    if (mode == 0) blurH(t, n);
+    else combine(t, n);
+}

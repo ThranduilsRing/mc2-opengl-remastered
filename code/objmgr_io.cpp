@@ -2,9 +2,11 @@
 // Declared in the class headers; shared names in objmgr_internal.h.
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include <memory>
+#include <span>
 #include "objmgr_internal.h"
 #include "saved_objects_check.h"
 #include "mc2fmt.h"
+#include "../GameOS/gameos/static_caster_set.h"
 
 // Load tells an object's class from the byte size of its packet, so no two record types may share a size.
 namespace {
@@ -419,6 +421,33 @@ void GameObjectManager::registerStaticPropsForMissionLoad() {
 		byArr_reg[2], byArr_enum[2], byArr_skip[2], byArr_noapp[2],
 		byArr_reg[3], byArr_enum[3], byArr_skip[3], byArr_noapp[3]);
 	fflush(stderr);
+}
+
+void GameObjectManager::buildStaticShadowCasterSet() {
+	ZoneScopedN("GameObjectManager::buildStaticShadowCasterSet");
+	mc2shadow::StaticCasterSet& set = mc2shadow::staticCasterSet();
+	set.beginRebuild();
+	auto addAll = [&set](auto objects, mc2shadow::CasterKind kind) {
+		for (GameObjectPtr obj : objects) {
+			if (!obj || !obj->getExists()) continue;
+			AppearancePtr app = obj->getAppearance();
+			if (!app) continue;
+			const int32_t recipe = app->getShadowCasterRecipeIndex();
+			if (recipe < 0 && kind != mc2shadow::CasterKind::Turret) continue;
+			mc2shadow::StaticCasterEntry e;
+			e.owner = app;
+			e.gameHandle = static_cast<uint32_t>(obj->getHandle());
+			e.recipeIndex = recipe;
+			e.kind = kind;
+			e.damageState = obj->isDestroyed() ? 1 : 0;
+			set.add(e);
+		}
+	};
+	addAll(std::span(terrainObjects, static_cast<size_t>(numTerrainObjects)), mc2shadow::CasterKind::TerrainObject);
+	addAll(std::span(buildings, static_cast<size_t>(numBuildings)), mc2shadow::CasterKind::Building);
+	addAll(std::span(turrets, static_cast<size_t>(numTurrets)), mc2shadow::CasterKind::Turret);
+	addAll(std::span(gates, static_cast<size_t>(numGates)), mc2shadow::CasterKind::Gate);
+	set.endRebuild();
 }
 
 // STATIC-REG-PREWARM-QUEUE-1: mission-load off-screen light bake.

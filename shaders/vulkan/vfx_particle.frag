@@ -9,6 +9,10 @@
 //   additive group: SRC_ALPHA / ONE                  (matches GL additive)
 // so the FS emits straight color; the src-alpha factor premultiplies in HW.
 #version 450
+#extension GL_GOOGLE_include_directive : require
+#include "include/mover_shadow.glsl"
+layout(set=0, binding=17) uniform sampler2D groundShadowMask;
+layout(location=5) in vec3 v_shadowWorld;
 
 layout(set = 1, binding = 0) uniform sampler2D uAtlas;   // the draw group's sprite page
 
@@ -46,6 +50,10 @@ void main() {
     // Root lift.
     col.rgb += vec3(v_vegData.y * 0.08);
 
+    vec2 maskUV = vec2(v_shadowWorld.x - moverFrame.mask.x, moverFrame.mask.y - v_shadowWorld.y) * moverFrame.mask.z;
+    float staticS = moverFrame.mask.w > 0.5 && maskUV == clamp(maskUV,0.0,1.0) ? texture(groundShadowMask,maskUV).r : 1.0;
+    float dynamicS = moverVisibility(v_shadowWorld, vec3(0.0,0.0,1.0));
+    col.rgb *= mix(0.4,1.0,min(staticS,dynamicS));
     col.rgb = min(vec3(1.0), col.rgb);
 
     o_color = vec4(col.rgb, 1.0);

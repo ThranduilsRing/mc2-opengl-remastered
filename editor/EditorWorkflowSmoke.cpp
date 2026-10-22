@@ -11,6 +11,116 @@
 #include <memory>
 #include <array>
 #include <cstdio>
+#include "../GameOS/gameos/static_caster_set.h"
+#include "../GameOS/gameos/gos_postprocess.h"
+
+void EditorMoverPopulationSmokeTick(long frame) {
+	static bool fired=false;
+	if (fired || frame<120 || !land || !EditorObjectMgr::instance()) return;
+	fired=true;
+	auto* mgr=EditorObjectMgr::instance();
+	Unit* prototype=nullptr;
+	for (auto* unit:mgr->getUnits())
+		if (((unit->getID()>>24)&0xff)==MECH_TYPE && unit->appearance()) { prototype=unit; break; }
+	int count=0;
+	if (prototype) {
+		const int group=prototype->getGroup(), index=prototype->getIndexInGroup();
+		const glm::vec3 anchor=prototype->getPosition();
+		const float span=(land->realVerticesMapSide-1)*land->worldUnitsPerVertex;
+		const float west=land->mapTopLeft3d.x, north=land->mapTopLeft3d.y;
+		const float water=getGosPostProcess()?getGosPostProcess()->getWaterElevation():-1e30f;
+		mgr->unselectAll();
+        // Find a dry, compact ten-by-ten spread, rather than a long row
+        // that framing cannot fit at an ordinary editor zoom.
+        std::vector<glm::vec3> positions;
+        for (int row=-20;row<10 && positions.size()!=100;row+=5)
+            for (int col=-20;col<10 && positions.size()!=100;col+=5) {
+                positions.clear();
+                for (int y=0;y<10;++y) for (int x=0;x<10;++x) {
+                    glm::vec3 p{anchor.x+(col+x)*96.0f,anchor.y+(row+y)*96.0f,0};
+                    if (p.x<west+256 || p.x>west+span-256 || p.y>north-256 || p.y<north-span+256) continue;
+                    p.z=land->getTerrainElevation(p);
+                    if (p.z>=water+8) positions.push_back(p);
+                }
+            }
+        if (positions.size()==100)
+            for (const auto& p:positions)
+                if (auto* object=mgr->addBuilding(p,group,index,0,0,1.0f,false)) { mgr->select(*object,true); ++count; }
+        EditorInterface::frameSelectedObjects();
+        if (eye) eye->setCameraAltitudeDesired(2600.0f);
+	}
+	fprintf(stderr,"[EDITOR_CLI v1] event=mover_population count=%d ok=%d frame=%ld\n",count,count==100?1:0,frame);
+	fflush(stderr);
+}
+
+// Unlike the synchronous authoring probes, leave each edit alive across rendered
+// frames so the shadow job can consume it. These run only under -smoke-shadow-edits.
+void EditorInterface::tickShadowEditSmoke(long frame)
+{
+	static long nextFrame = 0;
+	static int stage = 0;
+	static const Appearance* placedOwner = nullptr;
+	if (!land || stage == 6) return;
+	if (!nextFrame) { nextFrame = frame + 240; return; }
+	if (frame < nextFrame) return;
+	bool ok = false;
+	if (stage == 0) {
+		const int mid = (land->realVerticesMapSide - 1) / 2;
+		glm::vec3 point(land->mapTopLeft3d.x + mid * land->worldUnitsPerVertex,
+			land->mapTopLeft3d.y - mid * land->worldUnitsPerVertex, 0.0f);
+		point.z = land->getTerrainElevation(point);
+		HeightBrush brush(HeightBrush::RAISE, land->worldUnitsPerVertex * 0.25f, 32.0f);
+		brush.beginPaint();
+		ok = brush.paint(point, 0, 0);
+		undoMgr.AddAction(brush.endPaint());
+		ok = ok && land->getTerrainElevation(point) > point.z;
+	} else if (stage == 2) {
+		unsigned long group{}, index{};
+		auto* mgr = EditorObjectMgr::instance();
+		// A known stock static prop; never choose a marker or a mover.
+		if (mgr->getBuildingFromID(263, group, index, true)) {
+			setActiveBrush(new BuildingBrush(group, index, 0), -500, -500);
+			auto* brush = dynamic_cast<BuildingBrush*>(curBrush);
+			const int mid = (land->realVerticesMapSide - 1) / 2;
+			for (int row = mid; row < mid + 24 && !ok; ++row)
+				for (int col = mid; col < mid + 24 && !ok; ++col) {
+					glm::vec3 point{};
+					land->cellToWorld(row, col, point);
+					point.z = land->getTerrainElevation(point);
+					if (!brush->canPaint(point, 0, 0, 0)) continue;
+					brush->beginPaint();
+					ok = brush->paint(point, 0, 0);
+					undoMgr.AddAction(brush->endPaint());
+					if (ok) {
+						auto* placed = mgr->getObjectAtLocation(point.x, point.y);
+						placedOwner = placed->appearance();
+					}
+				}
+		}
+	} else if (stage == 4) {
+		ok = undoMgr.Redo();
+	} else {
+		if (stage >= 3) {
+			const Appearance* owner = nullptr;
+			for (auto* object : EditorObjectMgr::instance()->getBuildings())
+				if (object->appearance() == placedOwner) owner = object->appearance();
+			int trackedRecipe = -2;
+			for (const auto& entry : mc2shadow::staticCasterSet().entries())
+				if (entry.owner == owner) trackedRecipe = entry.recipeIndex;
+			fprintf(stderr, "[EDITOR_CLI v1] event=shadow_delete recipe=%d tracked_recipe=%d undo_index=%d found=%d\n",
+				owner ? owner->getShadowCasterRecipeIndex() : -1, trackedRecipe, undoMgr.GetCurrentPosition(), owner ? 1 : 0);
+		}
+		ok = undoMgr.Undo();
+		if (stage >= 3) {
+			for (auto* object : EditorObjectMgr::instance()->getBuildings())
+				if (object->appearance() == placedOwner) ok = false;
+		}
+	}
+	fprintf(stderr, "[EDITOR_CLI v1] event=shadow_edit stage=%d ok=%d frame=%ld\n", stage, ok ? 1 : 0, frame);
+	fflush(stderr);
+	++stage;
+	nextFrame = frame + 240;
+}
 
 void EditorInterface::runCatalogReferenceSmoke()
 {

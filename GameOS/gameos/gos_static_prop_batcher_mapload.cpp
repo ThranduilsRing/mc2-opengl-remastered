@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in gos_static_prop_batcher_internal.h.
 #include <algorithm>
 #include "gos_static_prop_batcher_internal.h"
+#include "static_caster_set.h"
 #include "../../mclib/texture_assets.h"
 #include "mc2fmt.h"
 
@@ -68,6 +69,7 @@ void GpuStaticPropBatcher::onMapLoad() {
     s_sharedIboBytes = 0;
 #ifdef MC2_VULKAN_ISLAND
     mc2_vk_shadow_island_invalidate_geometry();
+    mc2shadow::staticCasterSet().clear();   // the next mission rebuilds it once its geometry is final
     mc2_vk_color_prop_island_invalidate_geometry();   // map change: drop map-1 VBO/IBO
 #endif
     s_typeAlbedoLayer.clear();  // VK-P11 STATIC-PROP MATERIAL: feed invalid after unmap
