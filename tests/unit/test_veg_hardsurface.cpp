@@ -38,14 +38,20 @@ TEST_CASE("crack term: coverage gradient and seams") {
     CHECK(crackTerm(0.0f, 1.0f) > 0.0f);
 }
 
-TEST_CASE("class-3 union: pure cement (1.0) with alpha transition (<1) takes the max") {
-    // The bake writes max(overlay alpha, pure-cement 1.0) per texel; a pure cell
-    // therefore removes all normal cover regardless of a neighbouring ramp.
-    const float alphaRamp = 0.3f, pure = 1.0f;
-    const float cov = std::max(alphaRamp, pure);
-    CHECK(coverToDensityMul(cov) == doctest::Approx(0.0f));
-    CHECK(weedKeepProbability(cov, 0.0f) > 0.0f);
-    CHECK((kWeedFlagBit & 0x3Fu) == 0u);  // never collides with frame + card-role bits
+TEST_CASE("producer follows analytic pad edge instead of skipped overlay alpha") {
+    const auto edge = [](int r, int c) -> uint32_t {
+        if (r == 1 && c == 1) return 0xc0000000u;
+        return r >= 0 && r <= 1 && c >= 0 && c <= 1 ? 0x80000000u : 0u;
+    };
+    CHECK(cementWordCoverage(1,1,0.1f,0.1f,0.0f,edge) == 1.0f);
+    CHECK(cementWordCoverage(1,1,0.4f,0.4f,1.0f,edge) == 0.0f);
+    CHECK(renderedHardSurfaceCoverage(cementWordCoverage(1,1,0.4f,0.4f,1,edge), 1, false) == 0);
+    CHECK(renderedHardSurfaceCoverage(cementWordCoverage(1,1,0.4f,0.4f,1,edge), 0.7f, true) == doctest::Approx(0.7f));
+    const auto own = [](int, int) { return 0xc0800000u; };
+    CHECK(cementWordCoverage(0,0,0.1f,0.1f,0.3f,own) == doctest::Approx(0.3f));
+    const auto solid = [](int, int) { return 0x80000000u; };
+    CHECK(renderedHardSurfaceCoverage(cementWordCoverage(0,0,0.5f,0.5f,0,solid), 0.3f, true) == 1);
+    CHECK((kWeedFlagBit & 0x3fu) == 0);
 }
 
 TEST_CASE("placement samples coverage and keeps weeds sparse away from seams") {

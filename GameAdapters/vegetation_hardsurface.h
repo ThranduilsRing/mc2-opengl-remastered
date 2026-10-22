@@ -4,8 +4,43 @@
 // doctest tier can drive them without the engine.
 #include <algorithm>
 #include <cmath>
+#include <cstdint>
 
 namespace mc2::vegetation {
+
+// Match terrain_tier1.frag's cement-word ownership and analytic 0.5 cuts.
+// Fetch returns zero outside the map. Coverage uses world-space texel centres;
+// screen derivative antialiasing belongs to the renderer, not placement.
+template<class Fetch>
+[[nodiscard]] float cementWordCoverage(int row, int col, float u, float v,
+                                      float atlasAlpha, Fetch wordAt) {
+    const uint32_t word = wordAt(row, col);
+    if (!(word & 0x80000000u)) return 0.0f;
+    if (!(word & 0x40000000u)) return 1.0f;
+    if (word & 0x00800000u) return atlasAlpha;
+    const auto has = [&](int dr, int dc) { return (wordAt(row + dr, col + dc) & 0x80000000u) != 0; };
+    const int cfg = ((has(0,-1) && has(-1,0) && has(-1,-1)) ? 8 : 0)
+                  | ((has(0,1) && has(-1,0) && has(-1,1)) ? 4 : 0)
+                  | ((has(0,1) && has(1,0) && has(1,1)) ? 2 : 0)
+                  | ((has(0,-1) && has(1,0) && has(1,-1)) ? 1 : 0);
+    const auto cut = [](float x) { return x < 0.5f ? 1.0f : 0.0f; };
+    switch (cfg) {
+    case 0: return 0; case 15: return 1;
+    case 8: return cut(u+v); case 4: return cut(1-u+v);
+    case 2: return cut(2-u-v); case 1: return cut(u+1-v);
+    case 7: return 1-cut(u+v); case 11: return 1-cut(1-u+v);
+    case 13: return 1-cut(2-u-v); case 14: return 1-cut(u+1-v);
+    case 12: return cut(v); case 6: return 1-cut(u);
+    case 3: return 1-cut(v); case 9: return cut(u);
+    case 10: return std::max(cut(u+v), cut(2-u-v));
+    case 5: return std::max(cut(1-u+v), cut(u+1-v));
+    }
+    return 0;
+}
+
+[[nodiscard]] inline float renderedHardSurfaceCoverage(float cement, float overlay, bool overlayDrawn) {
+    return std::max(cement, overlayDrawn ? overlay : 0.0f);
+}
 
 inline constexpr float kHardFalloffLo   = 0.15f;  // coverage where cover starts thinning
 inline constexpr float kHardFalloffHi   = 0.60f;  // coverage where normal cover is gone
