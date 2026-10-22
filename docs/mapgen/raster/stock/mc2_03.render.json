@@ -1,0 +1,19 @@
+{
+  "crop_cells": [
+    0,
+    0,
+    300,
+    300
+  ],
+  "header_pixels": 68,
+  "hillshade": true,
+  "install": "stock",
+  "map_pixels": [
+    1600,
+    1600
+  ],
+  "mission": "mc2_03",
+  "road_geometry": "authored alpha masks",
+  "unresolved_visible_footprints": 0,
+  "wu_per_pixel": 8
+}

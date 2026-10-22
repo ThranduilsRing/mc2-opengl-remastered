@@ -1,0 +1,19 @@
+{
+  "crop_cells": [
+    0,
+    0,
+    180,
+    180
+  ],
+  "header_pixels": 68,
+  "hillshade": true,
+  "install": "stock",
+  "map_pixels": [
+    1920,
+    1920
+  ],
+  "mission": "tut_02",
+  "road_geometry": "authored alpha masks",
+  "unresolved_visible_footprints": 0,
+  "wu_per_pixel": 4
+}

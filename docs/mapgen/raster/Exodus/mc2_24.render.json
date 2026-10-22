@@ -1,0 +1,19 @@
+{
+  "crop_cells": [
+    0,
+    0,
+    360,
+    360
+  ],
+  "header_pixels": 68,
+  "hillshade": true,
+  "install": "Exodus",
+  "map_pixels": [
+    1920,
+    1920
+  ],
+  "mission": "mc2_24",
+  "road_geometry": "authored alpha masks",
+  "unresolved_visible_footprints": 0,
+  "wu_per_pixel": 8
+}
