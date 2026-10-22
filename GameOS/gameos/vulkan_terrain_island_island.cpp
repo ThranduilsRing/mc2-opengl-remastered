@@ -658,7 +658,7 @@ bool init_island(TerrainIsland* s, int w, int h) {
         gp.pMultisampleState = &ms; gp.pDepthStencilState = &ds; gp.pColorBlendState = &cb;
         gp.pDynamicState = &dsci;
         gp.layout = s->playout.get(); gp.renderPass = s->rpass.get(); gp.subpass = 0;
-        if (!mc2vk::create(s->pipe, s->device, [&](auto* h) { return vkCreateGraphicsPipelines(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, h); })) {
+        if (!mc2vk::create(s->pipe, s->device, [&](auto* h) { return mc2vk::infra::graphics(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, h); })) {
             vlog("vkCreateGraphicsPipelines failed."); setFallback("pipeline_failed"); return false;
         }
         mc2vk::nameObject(s->device, s->pipe.get(), "terrain.pipe");
@@ -697,7 +697,7 @@ bool init_island(TerrainIsland* s, int w, int h) {
         sgp.pMultisampleState = &ms; sgp.pDepthStencilState = &ds; sgp.pColorBlendState = &cb;
         sgp.pDynamicState = &dsci;
         sgp.layout = s->playout.get(); sgp.renderPass = s->rpass.get(); sgp.subpass = 0;
-        if (!mc2vk::create(s->skirtPipe, s->device, [&](auto* h) { return vkCreateGraphicsPipelines(s->device, VK_NULL_HANDLE, 1, &sgp, nullptr, h); })) {
+        if (!mc2vk::create(s->skirtPipe, s->device, [&](auto* h) { return mc2vk::infra::graphics(s->device, VK_NULL_HANDLE, 1, &sgp, nullptr, h); })) {
             vlog("vkCreateGraphicsPipelines (skirt) failed."); setFallback("pipeline_failed"); return false;
         }
         mc2vk::nameObject(s->device, s->skirtPipe.get(), "terrain.skirtPipe");

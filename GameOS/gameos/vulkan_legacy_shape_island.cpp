@@ -425,7 +425,7 @@ bool init_island(Island* s, int w, int h) {
             gp.pMultisampleState = &ms; gp.pDepthStencilState = &ds; gp.pColorBlendState = &cb;
             gp.pDynamicState = &dsci;
             gp.layout = s->playout.get(); gp.renderPass = s->rpass.get(); gp.subpass = 0;
-            if (!mc2vk::create(s->pipes[k], s->device, [&](VkPipeline* h) { return vkCreateGraphicsPipelines(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, h); })) {
+            if (!mc2vk::create(s->pipes[k], s->device, [&](VkPipeline* h) { return mc2vk::infra::graphics(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, h); })) {
                 setFallback("pipeline_failed"); return false;
             }
             mc2vk::nameObjectAt(s->device, s->pipes[k].get(), "legacyshape.pipe", static_cast<int>(k));
@@ -450,6 +450,17 @@ extern "C" int mc2_vk_legacy_shape_island_enabled() {
 
 extern "C" void mc2_vk_legacy_shape_submit(const Mc2LegacyMlrDraw* d) {
     if (d && d->vertices && d->vertexCount >= 3) g_pending.push_back(*d);
+}
+
+extern "C" int mc2_vk_legacy_shape_island_prewarm(int w,int h) {
+    auto& ctx=mc2vk::getOrCreateEngineVulkanContext();
+    if(!ctx.valid() || w<=0 || h<=0) return 0;
+    auto& slot=ctx.islandSlot(mc2vk::IslandSlot::LegacyShape);
+    if(slot) return 1;
+    auto fresh=std::make_unique<Island>();
+    if(!init_island(fresh.get(),w,h)) { ctx.waitIdle("legacy_shape_prewarm_failure"); return 0; }
+    slot=std::move(fresh);
+    return 1;
 }
 
 extern "C" int mc2_vk_legacy_shape_island_run(int w, int h, const Mc2LegacyMlrFrame* frame) {
@@ -577,7 +588,7 @@ extern "C" int mc2_vk_legacy_shape_island_run(int w, int h, const Mc2LegacyMlrFr
         }
         const uint32_t pass = (r.d->pass < MC2_LEGACY_PASS_COUNT) ? r.d->pass : static_cast<uint32_t>(MC2_LEGACY_PASS_SOLID);
         if (pass != boundPass) {
-            vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->pipes[pass].get());
+            mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->pipes[pass].get());
             boundPass = pass;
         }
         // FS flags: bit0 alpha test, bit1 fog off (additive loops clear gos_State_Fog), bit2 opaque alpha.

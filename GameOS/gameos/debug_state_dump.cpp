@@ -1,3 +1,4 @@
+#include "vk_render_infra.h"
 #include "shadow_quality.h"
 #include "debug_state_dump.h"
 
@@ -474,6 +475,9 @@ std::string buildSnapshotJson(const RenderSnapshot& snap,
         s << "    \"enabled\": "; b(s, enabled); s << "\n";
         s << "  },\n";
     }
+#ifdef MC2_VULKAN_ISLAND
+    s << "  \"vulkan_residency\": " << mc2vk::infra::ledgerJson() << ",\n";
+#endif
     s << "  \"registeredViews\": [\n";
     {
         const uint32_t vc = RenderCore::getViewCount();

@@ -449,7 +449,7 @@ bool build_state(gosPostProcess::VkPostFogNative* s, int w, int h) {
             gp.layout = s->playout.get();
             gp.renderPass = s->rpass.get();
             gp.subpass = 0;
-            if (!mc2vk::create(out, s->device, [&](VkPipeline* h) { return vkCreateGraphicsPipelines(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, h); })) {
+            if (!mc2vk::create(out, s->device, [&](VkPipeline* h) { return mc2vk::infra::graphics(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, h); })) {
                 vlog("vkCreateGraphicsPipelines failed."); return false;
             }
             mc2vk::nameObject(s->device, out.get(), name);
@@ -495,6 +495,13 @@ void gosPostProcess::VkPostFogNativeDeleter::operator()(VkPostFogNative* s) cons
 // ---------------------------------------------------------------------------
 // Render the requested fog passes in canonical order, in one native render pass.
 // ---------------------------------------------------------------------------
+void gosPostProcess::prewarmVkFog() {
+    if(width_<=0 || height_<=0 || (!edgeFogEnabled_ && !fogOobEnabled_)) return;
+    if(!vkPostFogNative_) vkPostFogNative_.reset(new VkPostFogNative());
+    auto* s=vkPostFogNative_.get();
+    if(!s->inited && !build_state(s,width_,height_)) destroy_state(s);
+}
+
 bool gosPostProcess::runVkPostFogNative()
 {
     const auto fog=RenderCore::vulkan::selectFogPasses(sceneHasTerrain_,edgeFogEnabled_,fogOobEnabled_,mapHalfExtent_);
@@ -628,7 +635,7 @@ bool gosPostProcess::runVkPostFogNative()
         const bool edge=pass==RenderCore::vulkan::PostprocessSubPassId::EdgeFog;
         const auto pipeline=edge ? s->edgePipe.get() : s->oobPipe.get();
         const auto descriptor=edge ? s->edgeSet : s->oobSet;
-        vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+        mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
         vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 0, 1, &descriptor, 0, nullptr);
         vkCmdDraw(cb, 3, 1, 0, 0);
     });

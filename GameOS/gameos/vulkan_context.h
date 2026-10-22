@@ -23,6 +23,7 @@
 #ifdef MC2_VULKAN
 
 #include <volk.h>
+#include "vk_render_infra.h"
 
 #include "vk_completion_tracker.h"
 #include "vk_deferred_destroy.h"
@@ -214,7 +215,7 @@ public:
     // Parks an owner (a buffer, an image, a container of them) until the GPU has finished the frame that may use it, then destroys it: the replacement
     // for "waitIdle, then reset". Main thread only. Owners must be move-only types or movable values.
     template <class Owner>
-    void retire(Owner&& owner, uint64_t bytes = 0) { deferred_.retire(tracker_, std::forward<Owner>(owner), bytes); }
+    void retire(Owner&& owner, uint64_t bytes = 0) { infra::retiring(owner); deferred_.retire(tracker_, std::forward<Owner>(owner), bytes); }
     // Mission unload, swapchain recreate, teardown: idles the device and destroys everything parked. The only sanctioned device-idle besides init failure.
     void drainDeferred(std::string_view why);
     const DeferredDestroy& deferred() const { return deferred_; }
@@ -259,8 +260,7 @@ private:
 #endif
 };
 
-// Object names for the validation layer and the capture tools: a message that says `VkImage 0x310000000031` is decoded by creation order, one that says
-// `shared.scene.normal` is not. The names are live only while the debug-utils messenger is (a validation run); otherwise every call returns at once.
+// Object names are retained in crash breadcrumbs in every build; debug-utils publication additionally requires a validation run.
 // `name` comes from the creating site and says what the object is for.
 bool debugNamesEnabled();
 void setObjectName(VkDevice device, VkObjectType type, uint64_t handle, std::string_view name);
@@ -277,7 +277,6 @@ inline void nameObject(VkDevice device, Handle handle, std::string_view name) {
 // The same for an object that exists once per slot: `name[i0]` or `name[i0][i1]`; a negative index is left out.
 template <class Handle>
 inline void nameObjectAt(VkDevice device, Handle handle, std::string_view name, int i0 = -1, int i1 = -1) {
-    if (!debugNamesEnabled()) return;
     std::string full(name);
     if (i0 >= 0) full += "[" + std::to_string(i0) + "]";
     if (i1 >= 0) full += "[" + std::to_string(i1) + "]";

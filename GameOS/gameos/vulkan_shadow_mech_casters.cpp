@@ -199,7 +199,7 @@ void ShadowMechCasters::stage(uint64_t epoch) {
 
 void ShadowMechCasters::record(VkCommandBuffer cb, uint32_t parity, uint32_t uboOffset) const {
     if (!hasCasters() || !geomUploaded_ || !pipeline_) return;
-    vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_.get());
+    mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_.get());
     const VkDescriptorSet set = set_[parity & 1u];
     vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, layout_.get(), 0, 1, &set, 1, &uboOffset);
     const VkBuffer vertexBuf = vbo_.get();

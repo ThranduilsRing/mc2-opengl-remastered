@@ -409,7 +409,7 @@ void ShadowBake::drawRuns(VkCommandBuffer cb, const ShadowBakeInputs& in, std::s
             const bool alphaPacket = in.alphaReady && in.alphaSet != VK_NULL_HANDLE && pk < in.packetAlpha.size() && in.packetAlpha[pk].layer >= 0;
             if (alphaPacket) {
                 if (!alphaBound) {
-                    vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, alpha);
+                    mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, alpha);
                     vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, casterLayout_.get(), 1, 1, &in.alphaSet, 0, nullptr);
                     alphaBound = true;
                 }
@@ -417,7 +417,7 @@ void ShadowBake::drawRuns(VkCommandBuffer cb, const ShadowBakeInputs& in, std::s
                 const struct { float scale[2]; int32_t layer; int32_t pad; } pc = {{pa.scaleX, pa.scaleY}, pa.layer, 0};
                 vkCmdPushConstants(cb, casterLayout_.get(), VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(pc), &pc);
             } else if (alphaBound) {
-                vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, opaque);
+                mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, opaque);
                 alphaBound = false;
             }
             vkCmdDrawIndexed(cb, pkt.indexCount, run.count, pkt.firstIndex, static_cast<int32_t>(pkt.baseVertex), run.firstInstance);
@@ -905,7 +905,7 @@ void ShadowBake::recordRegion(VkCommandBuffer cb, const ShadowBakeInputs& in, co
         vkCmdSetViewport(cb, 0, 1, &vp);
         vkCmdSetScissor(cb, 0, 1, &sc);
         vkCmdSetDepthBias(cb, 0.0f, 0.0f, 0.0f);
-        vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, windowOpaque_.get());
+        mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, windowOpaque_.get());
         vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, casterLayout_.get(), 0, 1, &windowSet, 1, &casterOff);
         vkCmdBindVertexBuffers(cb, 0, 1, &in.vbo, &zero);
         vkCmdBindIndexBuffer(cb, in.ibo, 0, VK_INDEX_TYPE_UINT32);
@@ -1355,14 +1355,14 @@ bool ShadowBake::recordObjectMap(VkCommandBuffer cb, const ShadowBakeInputs& in,
     const VkDeviceSize zero = 0;
     vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, casterLayout_.get(), 0, 1, &objectCasterSet_, 1, &objOff);
     vkCmdSetDepthBias(cb, 0.0f, 0.0f, 0.0f);
-    vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, objectTerrain_.get());
+    mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, objectTerrain_.get());
     const VkBuffer tv = terrainVbo_.get();
     vkCmdBindVertexBuffers(cb, 0, 1, &tv, &zero);
     vkCmdBindIndexBuffer(cb, terrainIbo_.get(), 0, VK_INDEX_TYPE_UINT32);
     vkCmdDrawIndexed(cb, terrainIndexCount_, 1, 0, 0, 0);
     if (!objectRuns_.empty()) {
         vkCmdSetDepthBias(cb, 2.0f, 0.0f, 1.0f);
-        vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, objectOpaque_.get());
+        mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, objectOpaque_.get());
         vkCmdBindVertexBuffers(cb, 0, 1, &in.vbo, &zero);
         vkCmdBindIndexBuffer(cb, in.ibo, 0, VK_INDEX_TYPE_UINT32);
         bool alphaBound = false;

@@ -1023,7 +1023,7 @@ bool init_island(ColorPropIsland* s, int w, int h) {
         gp.pMultisampleState = &ms; gp.pDepthStencilState = &ds; gp.pColorBlendState = &cb;
         gp.pDynamicState = &dsci;
         gp.layout = s->playout.get(); gp.renderPass = s->t1_rpass.get(); gp.subpass = 0;
-        if (!mc2vk::create(s->t1_pipe, s->device, [&](VkPipeline* h) { return vkCreateGraphicsPipelines(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, h); })) {
+        if (!mc2vk::create(s->t1_pipe, s->device, [&](VkPipeline* h) { return mc2vk::infra::graphics(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, h); })) {
             vlog("TIER-1 vkCreateGraphicsPipelines failed."); setFallback("tier1_pipeline_failed"); return false;
         }
         mc2vk::nameObject(s->device, s->t1_pipe.get(), "colorprop.tier1Pipe");
@@ -1044,7 +1044,7 @@ bool init_island(ColorPropIsland* s, int w, int h) {
         cba[0].alphaBlendOp = VK_BLEND_OP_ADD;
         cba[1].blendEnable = VK_FALSE;
         cba[1].colorWriteMask = 0;
-        if (!mc2vk::create(s->t1_fringePipe, s->device, [&](VkPipeline* h) { return vkCreateGraphicsPipelines(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, h); })) {
+        if (!mc2vk::create(s->t1_fringePipe, s->device, [&](VkPipeline* h) { return mc2vk::infra::graphics(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, h); })) {
             vlog("TIER-1 fringe vkCreateGraphicsPipelines failed."); setFallback("tier1_pipeline_failed"); return false;
         }
         mc2vk::nameObject(s->device, s->t1_fringePipe.get(), "colorprop.tier1FringePipe");
@@ -1172,6 +1172,17 @@ extern "C" int mc2_color_prop_island_get_alpha_array(void** view, uint32_t* gene
 }
 
 extern "C" int mc2_vk_color_prop_island_enabled() {
+    return 1;
+}
+
+extern "C" int mc2_vk_color_prop_island_prewarm(int w,int h) {
+    auto& ctx=mc2vk::getOrCreateEngineVulkanContext();
+    if(!ctx.valid() || w<=0 || h<=0) return 0;
+    auto& slot=ctx.islandSlot(mc2vk::IslandSlot::ColorProp);
+    if(slot) return 1;
+    auto fresh=std::make_unique<ColorPropIsland>();
+    if(!init_island(fresh.get(),w,h)) { ctx.waitIdle("color_prop_prewarm_failure"); return 0; }
+    slot=std::move(fresh);
     return 1;
 }
 
@@ -1523,7 +1534,7 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
         vkCmdSetViewport(cb, 0, 1, &vp);
         vkCmdSetScissor(cb, 0, 1, &scissor);
 
-        vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->t1_pipe.get());
+        mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->t1_pipe.get());
         vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 0, 1, &s->set[par], nDyn, dynOffsets);
         VkDeviceSize vboOff = 0;
         const VkBuffer vertexBuffer = s->vbo.get();
@@ -1556,7 +1567,7 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
         // after every core is in the depth buffer.
         for (int32_t fringePass = 0; fringePass < 2; ++fringePass) {
         if (fringePass == 1)
-            vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->t1_fringePipe.get());
+            mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->t1_fringePipe.get());
         uint32_t i = 0;
         while (i < instanceCount) {
             const uint32_t tid = insts[i].typeID;

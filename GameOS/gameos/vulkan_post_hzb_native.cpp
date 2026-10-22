@@ -250,7 +250,7 @@ bool build_prop_cull(gosPostProcess::VkPostHzbNative& state, uint32_t count) {
         VkComputePipelineCreateInfo pi{VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO};
         pi.stage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
         pi.stage.stage = VK_SHADER_STAGE_COMPUTE_BIT; pi.stage.module = s->cullShader.get(); pi.stage.pName = "main"; pi.layout = s->cullLayout.get();
-        if (!mc2vk::create(s->cullPipe,s->device,[&](VkPipeline* p){return vkCreateComputePipelines(s->device,VK_NULL_HANDLE,1,&pi,nullptr,p);})) return false;
+        if (!mc2vk::create(s->cullPipe,s->device,[&](VkPipeline* p){return mc2vk::infra::compute(s->device,VK_NULL_HANDLE,1,&pi,nullptr,p);})) return false;
     }
     const uint32_t levels = uint32_t(s->mipCount);
     VkDescriptorPoolSize sizes[] = {{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, levels}, {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, levels*2}};
@@ -606,7 +606,7 @@ bool build_state(gosPostProcess::VkPostHzbNative* s, int w, int h, int mipCount)
         gp.layout = s->playout.get();
         gp.renderPass = s->rpass.get();
         gp.subpass = 0;
-        const bool pipeOk = mc2vk::create(s->pipe, s->device, [&](VkPipeline* h) { r = vkCreateGraphicsPipelines(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, h); return r; });
+        const bool pipeOk = mc2vk::create(s->pipe, s->device, [&](VkPipeline* h) { r = mc2vk::infra::graphics(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, h); return r; });
         mc2vk::nameObject(s->device, s->pipe.get(), "posthzb.pipe");
         if (!pipeOk) {
             vlog("vkCreateGraphicsPipelines failed (%d).", static_cast<int>(r));
@@ -649,6 +649,15 @@ bool build_state(gosPostProcess::VkPostHzbNative* s, int w, int h, int mipCount)
 void gosPostProcess::VkPostHzbNativeDeleter::operator()(VkPostHzbNative* s) const {
     destroy_state(s);
     delete s;
+}
+
+void gosPostProcess::prewarmVkHzb() {
+    if(!hzbEnabled_ || width_<=0 || height_<=0) return;
+    if(!vkPostHzbNative_) vkPostHzbNative_.reset(new VkPostHzbNative());
+    auto* s=vkPostHzbNative_.get();
+    int levels=1; for(int edge=(std::max)(width_,height_);edge>1;edge=(edge+1)/2) ++levels;
+    if(!s->inited && !build_state(s,width_,height_,levels)) { destroy_state(s); return; }
+    if(!build_prop_cull(*s,1024)) destroy_state(s);
 }
 
 bool gosPostProcess::runVkPostHzbNative(const Mc2ColorPropFeed& feed, uint32_t generation, void** maskBuffer)
@@ -772,7 +781,7 @@ bool gosPostProcess::runVkPostHzbNative(const Mc2ColorPropFeed& feed, uint32_t g
         rbi.clearValueCount = 0;
         MC2_VK_GPU_SCOPE(gpuScope, cb, "VKIsl.Post.HzbBuild");
         vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
-        vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->pipe.get());
+        mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->pipe.get());
         VkViewport vp{0.0f, 0.0f, static_cast<float>(lv.w), static_cast<float>(lv.h), 0.0f, 1.0f};
         VkRect2D sc{{0, 0}, {static_cast<uint32_t>(lv.w), static_cast<uint32_t>(lv.h)}};
         vkCmdSetViewport(cb, 0, 1, &vp);
@@ -794,7 +803,7 @@ bool gosPostProcess::runVkPostHzbNative(const Mc2ColorPropFeed& feed, uint32_t g
     memoryBarrier(VK_PIPELINE_STAGE_TRANSFER_BIT | VK_PIPELINE_STAGE_HOST_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
                   VK_ACCESS_TRANSFER_WRITE_BIT | VK_ACCESS_HOST_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT);
     MC2_VK_GPU_SCOPE(gpuCull, cb, "VKIsl.Post.HzbCull");
-    vkCmdBindPipeline(cb,VK_PIPELINE_BIND_POINT_COMPUTE,s->cullPipe.get());
+    mc2vk::infra::bind(cb,VK_PIPELINE_BIND_POINT_COMPUTE,s->cullPipe.get());
     for (uint32_t level = 0; level < uint32_t(s->mipCount); ++level) {
         const uint32_t push[] = {feed.count,level};
         vkCmdBindDescriptorSets(cb,VK_PIPELINE_BIND_POINT_COMPUTE,s->cullLayout.get(),0,1,&s->cullSets[level],0,nullptr);

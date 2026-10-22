@@ -273,6 +273,7 @@ void frameEnd() {
 }
 
 Scope::Scope(VkCommandBuffer cb, std::string_view nameSv, [[maybe_unused]] std::string_view file, [[maybe_unused]] uint32_t line) {
+    infra::breadcrumb("pass", nameSv, 0, cb);
     const char* name = nameSv.data();
     if (cb == VK_NULL_HANDLE || g.device == VK_NULL_HANDLE) return;
     cb_ = cb;

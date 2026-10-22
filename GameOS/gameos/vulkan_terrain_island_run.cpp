@@ -435,7 +435,7 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     VkRect2D scissor{{0, 0}, {static_cast<uint32_t>(w), static_cast<uint32_t>(h)}};
     vkCmdSetViewport(cb, 0, 1, &vp);
     vkCmdSetScissor(cb, 0, 1, &scissor);
-    vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->pipe.get());
+    mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->pipe.get());
 
     // VK-DRAW-PERF-1: stamp draws-start (gap 0->1 = setup + clear/load).
     s->gpuTimer.write(cb, 1);
@@ -449,7 +449,7 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
         const uint32_t dynOffs[4] = {static_cast<uint32_t>(uboSpan.offset + i * sizeof(TerrainFrameUBO)), static_cast<uint32_t>(lpSpans[0].offset),
                                      static_cast<uint32_t>(lpSpans[1].offset), static_cast<uint32_t>(lpSpans[2].offset)};
         vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 0, 1, &s->set[par], 4, dynOffs);
-        vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->pipe.get());
+        mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->pipe.get());
         VkDeviceSize vboOff = 0;
         { const VkBuffer vb = pm->vbo.get(); vkCmdBindVertexBuffers(cb, 0, 1, &vb, &vboOff); }
         vkCmdBindIndexBuffer(cb, pm->ibo.get(), 0, VK_INDEX_TYPE_UINT16);
@@ -463,7 +463,7 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
         if (pr.skirtDepth > 0.0f && pr.skirtEdgeMask != 0u) {
             const SkirtMesh* sm = getOrBuildSkirtMesh(s, pr.quadCountX, pr.quadCountY, pr.lodStep);
             if (sm) {
-                vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->skirtPipe.get());
+                mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->skirtPipe.get());
                 VkDeviceSize svboOff = 0;
                 { const VkBuffer vb = sm->vbo.get(); vkCmdBindVertexBuffers(cb, 0, 1, &vb, &svboOff); }
                 vkCmdBindIndexBuffer(cb, sm->ibo.get(), 0, VK_INDEX_TYPE_UINT16);

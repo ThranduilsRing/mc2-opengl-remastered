@@ -8,6 +8,7 @@
 #ifdef MC2_VULKAN_ISLAND
 
 #include <volk.h>
+#include "vk_render_infra.h"
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"   // str<>()
 #include <cstdarg>
@@ -81,6 +82,7 @@ inline VkShaderModule loadSpv(VkDevice device, std::string_view pathView, LogFn 
         if (later) later("vkCreateShaderModule('%s') failed.", path.c_str());
         return VK_NULL_HANDLE;
     }
+    mc2vk::infra::shader(mod, pathView, code);
     return mod;
 }
 

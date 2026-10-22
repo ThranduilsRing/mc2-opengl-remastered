@@ -588,7 +588,7 @@ bool build_state(gosPostProcess::VkPostScreenFx* s, int w, int h) {
             gp.layout = layout;
             gp.renderPass = s->rpass.get();
             gp.subpass = 0;
-            if (!mc2vk::create(out, s->device, [&](VkPipeline* h) { return vkCreateGraphicsPipelines(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, h); })) {
+            if (!mc2vk::create(out, s->device, [&](VkPipeline* h) { return mc2vk::infra::graphics(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, h); })) {
                 vlog("vkCreateGraphicsPipelines failed."); return false;
             }
             mc2vk::nameObject(s->device, out.get(), name);
@@ -652,6 +652,13 @@ bool gosPostProcess::vkPostScreenFxNativeEnabled()
         }
     }
     return state == 1;
+}
+
+void gosPostProcess::prewarmVkScreenFx() {
+    if(width_<=0 || height_<=0 || !vkPostScreenFxNativeEnabled()) return;
+    if(!vkPostScreenFx_) vkPostScreenFx_.reset(new VkPostScreenFx());
+    auto* s=vkPostScreenFx_.get();
+    if(!s->inited && !build_state(s,width_,height_)) destroy_state(s);
 }
 
 bool gosPostProcess::runVkPostScreenShadowStaticNative()
@@ -782,7 +789,7 @@ bool gosPostProcess::runVkPostScreenShadowStaticNative()
     rbi.renderArea = {{0, 0}, {static_cast<uint32_t>(s->width), static_cast<uint32_t>(s->height)}};
     MC2_VK_GPU_SCOPE(gpuScope, cb, "VKIsl.Post.ShadowResolve");
     vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
-    vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->shadowPipe.get());
+    mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->shadowPipe.get());
     vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->shadowPlayout.get(), 0, 1, &s->shadowSet, 0, nullptr);
     vkCmdDraw(cb, 3, 1, 0, 0);
     vkCmdEndRenderPass(cb);
@@ -974,12 +981,12 @@ unsigned gosPostProcess::runVkPostScreenFxNative()
         MC2_VK_GPU_SCOPE(gpuScope, cb, "VKIsl.Post.CloudShore");
         vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
         if (wantCloud) {
-            vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->cloudPipe.get());
+            mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->cloudPipe.get());
             vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->cloudPlayout.get(), 0, 1, &s->cloudSet, 0, nullptr);
             vkCmdDraw(cb, 3, 1, 0, 0);
         }
         if (wantShore) {
-            vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->shorePipe.get());
+            mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->shorePipe.get());
             vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->shorePlayout.get(), 0, 1, &s->shoreSet, 0, nullptr);
             vkCmdDraw(cb, 3, 1, 0, 0);
         }

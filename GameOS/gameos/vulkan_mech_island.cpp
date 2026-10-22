@@ -643,7 +643,7 @@ bool init_island(MechIsland* s, int w, int h) {
         gp.pMultisampleState = &ms; gp.pDepthStencilState = &ds; gp.pColorBlendState = &cb;
         gp.pDynamicState = &dsci;
         gp.layout = s->playout.get(); gp.renderPass = s->rpass.get(); gp.subpass = 0;
-        if (!mc2vk::create(s->pipe, s->device, [&](VkPipeline* h) { return vkCreateGraphicsPipelines(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, h); })) {
+        if (!mc2vk::create(s->pipe, s->device, [&](VkPipeline* h) { return mc2vk::infra::graphics(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, h); })) {
             setFallback("pipeline_failed"); return false;
         }
         mc2vk::nameObject(s->device, s->pipe.get(), "mech.pipe");
@@ -703,6 +703,17 @@ bool upload_geometry_once(MechIsland* s) {
 // ===========================================================================
 
 extern "C" int mc2_vk_mech_island_enabled() {
+    return 1;
+}
+
+extern "C" int mc2_vk_mech_island_prewarm(int w,int h) {
+    auto& ctx=mc2vk::getOrCreateEngineVulkanContext();
+    if(!ctx.valid() || w<=0 || h<=0) return 0;
+    auto& slot=ctx.islandSlot(mc2vk::IslandSlot::Mech);
+    if(slot) return 1;
+    auto fresh=std::make_unique<MechIsland>();
+    if(!init_island(fresh.get(),w,h)) { ctx.waitIdle("mech_prewarm_failure"); return 0; }
+    slot=std::move(fresh);
     return 1;
 }
 
@@ -908,7 +919,7 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
     vkCmdSetViewport(cb, 0, 1, &vp);
     vkCmdSetScissor(cb, 0, 1, &scissor);
 
-    vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->pipe.get());
+    mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->pipe.get());
     VkDeviceSize vboOff = 0;
     const VkBuffer vertexBuffer = s->vbo.get();
     vkCmdBindVertexBuffers(cb, 0, 1, &vertexBuffer, &vboOff);

@@ -14,6 +14,7 @@
 #include <volk.h>
 
 #include "owned_handle.h"
+#include "vk_render_infra.h"
 
 #include <string_view>
 
@@ -29,9 +30,8 @@ namespace mc2vk {
 namespace release {
 struct ImageView { void operator()(VkDevice d, VkImageView h) const { vkDestroyImageView(d, h, nullptr); } };
 struct Sampler { void operator()(VkDevice d, VkSampler h) const { vkDestroySampler(d, h, nullptr); } };
-struct Pipeline { void operator()(VkDevice d, VkPipeline h) const { vkDestroyPipeline(d, h, nullptr); } };
 struct PipelineLayout { void operator()(VkDevice d, VkPipelineLayout h) const { vkDestroyPipelineLayout(d, h, nullptr); } };
-struct ShaderModule { void operator()(VkDevice d, VkShaderModule h) const { vkDestroyShaderModule(d, h, nullptr); } };
+struct ShaderModule { void operator()(VkDevice d, VkShaderModule h) const { infra::forgetShader(h); vkDestroyShaderModule(d, h, nullptr); } };
 struct DescriptorPool { void operator()(VkDevice d, VkDescriptorPool h) const { vkDestroyDescriptorPool(d, h, nullptr); } };
 struct DescriptorSetLayout { void operator()(VkDevice d, VkDescriptorSetLayout h) const { vkDestroyDescriptorSetLayout(d, h, nullptr); } };
 struct Framebuffer { void operator()(VkDevice d, VkFramebuffer h) const { vkDestroyFramebuffer(d, h, nullptr); } };
@@ -41,7 +41,7 @@ struct Fence { void operator()(VkDevice d, VkFence h) const { vkDestroyFence(d, 
 struct QueryPool { void operator()(VkDevice d, VkQueryPool h) const { vkDestroyQueryPool(d, h, nullptr); } };
 struct Semaphore { void operator()(VkDevice d, VkSemaphore h) const { vkDestroySemaphore(d, h, nullptr); } };
 struct RawImage { void operator()(VkDevice d, VkImage h) const { vkDestroyImage(d, h, nullptr); } };
-struct DeviceMemory { void operator()(VkDevice d, VkDeviceMemory h) const { vkFreeMemory(d, h, nullptr); } };
+struct DeviceMemory { void operator()(VkDevice d, VkDeviceMemory h) const { infra::release(reinterpret_cast<uint64_t>(h)); vkFreeMemory(d, h, nullptr); } };
 struct RawBuffer { void operator()(VkDevice d, VkBuffer h) const { vkDestroyBuffer(d, h, nullptr); } };
 struct Swapchain { void operator()(VkDevice d, VkSwapchainKHR h) const { vkDestroySwapchainKHR(d, h, nullptr); } };
 struct Surface { void operator()(VkInstance i, VkSurfaceKHR h) const { vkDestroySurfaceKHR(i, h, nullptr); } };
@@ -50,7 +50,30 @@ struct Surface { void operator()(VkInstance i, VkSurfaceKHR h) const { vkDestroy
 template <class Handle, class Release> using DeviceOwned = mc2::OwnedHandle<Handle, VkDevice, Release>;
 using OwnedImageView = DeviceOwned<VkImageView, release::ImageView>;
 using OwnedSampler = DeviceOwned<VkSampler, release::Sampler>;
-using OwnedPipeline = DeviceOwned<VkPipeline, release::Pipeline>;
+// A stable owner token survives a reload; get() resolves the current pipeline under the publish lock.
+// Old Vulkan handles can then be retired immediately without risking handle reuse or double destruction.
+class OwnedPipeline {
+public:
+    using HandleType=VkPipeline;
+    OwnedPipeline()=default;
+    OwnedPipeline(VkDevice device,VkPipeline pipeline): device_(device),token_(pipeline ? infra::adoptPipeline(device,pipeline) : 0) {}
+    ~OwnedPipeline() { reset(); }
+    OwnedPipeline(const OwnedPipeline&)=delete;
+    OwnedPipeline& operator=(const OwnedPipeline&)=delete;
+    OwnedPipeline(OwnedPipeline&& other) noexcept:device_(other.device_),token_(std::exchange(other.token_,0)) {}
+    OwnedPipeline& operator=(OwnedPipeline&& other) noexcept {
+        if(this!=&other) { reset(); device_=other.device_; token_=std::exchange(other.token_,0); }
+        return *this;
+    }
+    VkPipeline get() const noexcept { return token_ ? infra::currentPipeline(token_) : VK_NULL_HANDLE; }
+    VkDevice context() const noexcept { return device_; }
+    explicit operator bool() const noexcept { return token_!=0; }
+    void reset() noexcept { if(token_) infra::destroyOwnedPipeline(std::exchange(token_,0)); }
+    void markDeferred() { if(token_) infra::deferPipeline(token_); }
+private:
+    VkDevice device_=VK_NULL_HANDLE;
+    uint64_t token_=0;
+};
 using OwnedPipelineLayout = DeviceOwned<VkPipelineLayout, release::PipelineLayout>;
 using OwnedShaderModule = DeviceOwned<VkShaderModule, release::ShaderModule>;
 using OwnedDescriptorPool = DeviceOwned<VkDescriptorPool, release::DescriptorPool>;
@@ -116,6 +139,7 @@ public:
 
     VkBuffer get() const noexcept { return buffer_; }
     VmaAllocation allocation() const noexcept { return allocation_; }
+    void markDeferred() { if(allocation_) infra::defer(reinterpret_cast<uint64_t>(allocation_)); }
     explicit operator bool() const noexcept { return buffer_ != VK_NULL_HANDLE; }
 
     // Host mapping of a host-visible buffer for one write; nullptr when the map fails.
@@ -161,6 +185,7 @@ public:
 
     VkImage get() const noexcept { return image_; }
     VmaAllocation allocation() const noexcept { return allocation_; }
+    void markDeferred() { if(allocation_) infra::defer(reinterpret_cast<uint64_t>(allocation_)); }
     explicit operator bool() const noexcept { return image_ != VK_NULL_HANDLE; }
 
 private:

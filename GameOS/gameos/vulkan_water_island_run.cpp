@@ -19,6 +19,17 @@ void gos_GetTerrainChunkGridInfo(int* mapSide, float* halfMap);
 //   recipes/recipeCount — mission-static recipe array (64B each; uploaded once).
 //   vsP/fsP — the packed uniform params (LOCKSTEP with water_geom.{vert,frag}).
 // Returns 1 if the VK water pass rendered this frame; 0 = declined (no water this frame: the GL water draw is gone).
+extern "C" int mc2_vk_water_island_prewarm(int w,int h) {
+    auto& ctx=mc2vk::getOrCreateEngineVulkanContext();
+    if(!ctx.valid() || w<=0 || h<=0) return 0;
+    auto& slot=ctx.islandSlot(mc2vk::IslandSlot::Water);
+    if(slot) return 1;
+    auto fresh=std::make_unique<WaterIsland>();
+    if(!init_island(fresh.get(),w,h)) { ctx.waitIdle("water_prewarm_failure"); return 0; }
+    slot=std::move(fresh);
+    return 1;
+}
+
 extern "C" int mc2_vk_water_island_run(
     int w, int h,
     const void* recipes, unsigned int recipeCount,
@@ -255,7 +266,7 @@ extern "C" int mc2_vk_water_island_run(
         rbi.clearValueCount = 3; rbi.pClearValues = clears;
         MC2_VK_GPU_SCOPE(gpuScope, cb, "VKIsl.Water");
         vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
-        vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->pipe.get());
+        mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->pipe.get());
         const uint32_t uboOffsets[2] = {static_cast<uint32_t>(uboSpan.offset), static_cast<uint32_t>(uboSpan.offset + fsUboOff)};
         vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 0, 1, &s->set[par], 2, uboOffsets);
         vkCmdDrawIndirect(cb, s->native->drawArgs(par), 0, 1, 16);

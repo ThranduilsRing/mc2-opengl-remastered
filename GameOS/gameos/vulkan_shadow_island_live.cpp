@@ -388,7 +388,7 @@ bool init_island(ShadowIsland* s, int size) {
     bool ok = vkImageResourceCreate(&s->depthResource, s->device, s->phys,
                                     static_cast<uint32_t>(size), static_cast<uint32_t>(size), s->depthFormat,
                                     VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT |
-                                    VK_IMAGE_USAGE_SAMPLED_BIT);
+                                    VK_IMAGE_USAGE_SAMPLED_BIT, "shadow.depthResource");
     if (ok) mc2vk::nameObject(s->device, s->depthResource.image.get(), "shadow.depthResource");
     if (!ok) {
         vkImageResourceDestroy(&s->depthResource, s->device);
@@ -878,7 +878,7 @@ static bool record_pass(ShadowIsland* s, VkFramebuffer fb, int size, const float
     // GL's glPolygonOffset(factor, units) is depthBias(constant = units, slope = factor).
     vkCmdSetDepthBias(cb, biasUnits, 0.0f, biasFactor);
 
-    vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->pipe.get());
+    mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->pipe.get());
     const VkDescriptorSet set = s->set[s->parity];
     vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 0, 1, &set, 1, &dynamicOffset);
     bool alphaBound = false;   // the alpha-tested pipeline and set 1 are bound
@@ -897,7 +897,7 @@ static bool record_pass(ShadowIsland* s, VkFramebuffer fb, int size, const float
             const bool alphaPacket = s->alphaReady && pk < s->packetAlpha.size() && s->packetAlpha[pk].layer >= 0;
             if (alphaPacket) {
                 if (!alphaBound) {
-                    vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->alphaPipe.get());
+                    mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->alphaPipe.get());
                     const VkDescriptorSet aset = s->alphaSet;
                     vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 1, 1, &aset, 0, nullptr);
                     alphaBound = true;
@@ -906,7 +906,7 @@ static bool record_pass(ShadowIsland* s, VkFramebuffer fb, int size, const float
                 const struct { float scale[2]; int32_t layer; int32_t pad; } pc = {{pa.scaleX, pa.scaleY}, pa.layer, 0};
                 vkCmdPushConstants(cb, s->playout.get(), VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(pc), &pc);
             } else if (alphaBound) {
-                vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->pipe.get());
+                mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->pipe.get());
                 alphaBound = false;
             }
             vkCmdDrawIndexed(cb, pkt.indexCount, run.count, pkt.firstIndex, static_cast<int32_t>(pkt.baseVertex), run.firstInstance);
@@ -922,6 +922,10 @@ static bool record_pass(ShadowIsland* s, VkFramebuffer fb, int size, const float
 }
 
 static bool ensure_island(int size) {
+    // A reduced map remains valid for the requested tier; pressure must not cause per-frame rebuilds.
+    if (const ShadowIsland* parked=parkedIsland(); parked && parked->size<=size) return true;
+    size=static_cast<int>(mc2vk::infra::shadowTier(static_cast<uint32_t>(size),2));
+    if(!size) { setFallback("shadow_residency_budget"); return false; }
     // Item-2 boot-level native-or-decline: a prior PERMANENT init failure declined this island for the whole session -> GL owns the dynamic shadow pass.
     if (g_shadowSessionDeclined) return false;
     // Lazy init / rebuild on size change.
@@ -953,6 +957,8 @@ static bool ensure_island(int size) {
     }
     return true;
 }
+
+extern "C" int mc2_vk_shadow_island_prewarm(int,int) { return ensure_island(mc2shadow::shadowQuality().mapSide) ? 1 : 0; }
 
 bool mc2vk::bindMoverShadowDescriptors(VkDevice device, VkDescriptorSet set) {
     ShadowIsland* s=parkedIsland();
