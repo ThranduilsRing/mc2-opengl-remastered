@@ -1,0 +1,6943 @@
+{
+  "base_crops": 6,
+  "corpus_missions": 320,
+  "footprint_coverage": {
+    "extentRadius": 7,
+    "tgl": 2656
+  },
+  "generated_full_maps": 4,
+  "png_count": 330,
+  "renders": [
+    {
+      "crop_cells": [
+        0,
+        0,
+        300,
+        300
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "Exodus",
+      "map_pixels": [
+        1600,
+        1600
+      ],
+      "mission": "a_0_1",
+      "png": "Exodus/a_0_1.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "41e28f8b35cdf3afef56008d2503ba5c7478454e8bada8514c87a835670d5f4d",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        240,
+        240
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "Exodus",
+      "map_pixels": [
+        1280,
+        1280
+      ],
+      "mission": "a_0_2",
+      "png": "Exodus/a_0_2.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "1a6faa831f35b79717e75582d46342e5e5e84ee089e92040ae7eecf08e9a3ff7",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        300,
+        300
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "Exodus",
+      "map_pixels": [
+        1600,
+        1600
+      ],
+      "mission": "a_0_3",
+      "png": "Exodus/a_0_3.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "42c9913ea87c7b323c08d66a9f84f907e6dd9603b903080b77ad1782e62ec272",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "Exodus",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "a_0_4",
+      "png": "Exodus/a_0_4.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "df3a6ab3dfcfe70357c483f1461ade690440184d3083939ae7ddfb0194260568",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "Exodus",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "a_0_5",
+      "png": "Exodus/a_0_5.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "a3dfde3e5cfeee03c485083493ac914e5dce1f559dba2acd52f83532be6e58a7",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "Exodus",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "a_0_6",
+      "png": "Exodus/a_0_6.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "6f6d0896fe569ec7985e4b68b7c1c8e4dbd5b12e3788d66155bbafb768f29510",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "Exodus",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "a_0_7",
+      "png": "Exodus/a_0_7.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "6270b09b462ff950bd0cc62cee7c6872efdadfef67fdb82e8e7eeaaa568aeca6",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "Exodus",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "a_1_3",
+      "png": "Exodus/a_1_3.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "e031a803bec62101c6de6c05c15ad8e08e8d15b1f75acf43f7a86a21ee4cc0e6",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "Exodus",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "a_1_6",
+      "png": "Exodus/a_1_6.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "57620e696335da5b4ad8d220e35ff4408568885ac305e8f99fac4c32a67204d2",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        300,
+        300
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "Exodus",
+      "map_pixels": [
+        1600,
+        1600
+      ],
+      "mission": "a_jship_2",
+      "png": "Exodus/a_jship_2.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "b44a00c1535e56420656f198394f406ef10fd42e7ef88e4beeeef84e139b9661",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "Exodus",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "ai_glenn",
+      "png": "Exodus/ai_glenn.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "09ffe71d326a5bd61e0610f5ef50702ef91c9d7fcc92440952b37ed5a165414a",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "Exodus",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "e3demo",
+      "png": "Exodus/e3demo.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "2b7d35c356a7f4690035568afd1ceaadc4186830272fa748c0ce9c7b2d9f9767",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        240,
+        240
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "Exodus",
+      "map_pixels": [
+        1280,
+        1280
+      ],
+      "mission": "e_1_0",
+      "png": "Exodus/e_1_0.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "fe6ff63e657a0b2d03cbbd0337effeedacd16913cb8ab5be93b9278a3c3a42df",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        300,
+        300
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "Exodus",
+      "map_pixels": [
+        1600,
+        1600
+      ],
+      "mission": "e_1_1",
+      "png": "Exodus/e_1_1.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "d399de71aa7320f053908da052f15ae45673bb6374fe4e94d6eaf1450451a4b9",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        240,
+        240
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "Exodus",
+      "map_pixels": [
+        1280,
+        1280
+      ],
+      "mission": "e_1_2",
+      "png": "Exodus/e_1_2.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "d98b0700560d29e7a7ab4b4c8e109cfb0977bae1e1910e55345a682af4b968a2",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        300,
+        300
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "Exodus",
+      "map_pixels": [
+        1600,
+        1600
+      ],
+      "mission": "e_1_3",
+      "png": "Exodus/e_1_3.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "14fe99b904da39a187c0dd94ba58a636abc3c4599f815f6955d4a8c60210d828",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "Exodus",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "e_2_0a",
+      "png": "Exodus/e_2_0a.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "a43e6841063f9b759c41cc0a18581e327d8d39cf23f5dd616bf88be0fb5257df",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        240,
+        240
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "Exodus",
+      "map_pixels": [
+        1280,
+        1280
+      ],
+      "mission": "e_2_1",
+      "png": "Exodus/e_2_1.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "e915bda0afffb14dc027f290b9c78e01289f6faba611127f0ec75f0dec052e78",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "Exodus",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "e_3_0a",
+      "png": "Exodus/e_3_0a.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "44494401c2d86d20dab839f92d20d2346cd342a6aa8dfb19d469af283609bb6e",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "Exodus",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "e_3_1",
+      "png": "Exodus/e_3_1.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "d09c6a24834dd8187bd069f978f2668e3b6747655dc969c65240956a5f392b02",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "Exodus",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "e_3_2",
+      "png": "Exodus/e_3_2.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "ae7235030ac410ca4a2cfe8c611966a7c3d31521022f92419e30fb3749270a37",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        300,
+        300
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "Exodus",
+      "map_pixels": [
+        1600,
+        1600
+      ],
+      "mission": "e_4_1",
+      "png": "Exodus/e_4_1.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "4af1e678afd91d4f918a9aab7f9ff86ed9442348bcd1880a8ebcda230d62d3c0",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        300,
+        300
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "Exodus",
+      "map_pixels": [
+        1600,
+        1600
+      ],
+      "mission": "e_4_2",
+      "png": "Exodus/e_4_2.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "1eea65be9f0bbe7cfcd032f2e7059e175b919324d2ec5b0ffb3b851bc9a2a3fa",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "Exodus",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "e_4_3",
+      "png": "Exodus/e_4_3.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "414f0de1a8bb51d7de3eb103a2f27c899fbb04cc295703584c12a6fcd7d72087",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "Exodus",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "e_4_4",
+      "png": "Exodus/e_4_4.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "37c5a8b16f7b97d8c1bdefafc2e91d98fa7932639d019851f51a3d6dc6e7b299",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        240,
+        240
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "Exodus",
+      "map_pixels": [
+        1280,
+        1280
+      ],
+      "mission": "e_4_5",
+      "png": "Exodus/e_4_5.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "2c5aab22e88f31ebedbb8fd345d8d4341d5fe486a9b9802f0ced4643860a46eb",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        300,
+        300
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "Exodus",
+      "map_pixels": [
+        1600,
+        1600
+      ],
+      "mission": "e_4_6",
+      "png": "Exodus/e_4_6.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "7b51be0d6acd5c31e0f23f435b4a1a9e90d194079a8200d7900003f28edee84a",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "Exodus",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "e_4_7",
+      "png": "Exodus/e_4_7.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "15038738bd67c4577cd315b4c5e5145c3b07e650fcbab08ba3550cf45f20238d",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "Exodus",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "m0101",
+      "png": "Exodus/m0101.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "bfdd2f9b8ed6565fbe25c318e3d8058e80d9201e44d21933f34b5f512944d93a",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        300,
+        300
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "Exodus",
+      "map_pixels": [
+        1600,
+        1600
+      ],
+      "mission": "mc2_01",
+      "png": "Exodus/mc2_01.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "cf2e930ef84d0dbf8b5d22217238fda352edcdf423574098a0b648e54f190315",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "Exodus",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_02",
+      "png": "Exodus/mc2_02.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "36e74bf7260a437b91d3c6d4303b079ee399d17e5744c77590e31d2032752ae3",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        300,
+        300
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "Exodus",
+      "map_pixels": [
+        1600,
+        1600
+      ],
+      "mission": "mc2_03",
+      "png": "Exodus/mc2_03.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "214e07b1bd2dfdd35b8c06bbcfdec054b8ed0e4c97d39a4763451e90c496b62a",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "Exodus",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_04",
+      "png": "Exodus/mc2_04.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "261e678574a9185897fdfb10c72cd34b1d3928faca9020a4519fca5adf9c7717",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "Exodus",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_05",
+      "png": "Exodus/mc2_05.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "2ad4d3586b7d48e85409e0757eeaed90c6416bf9e704fe80b7ba8844e04b5849",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        300,
+        300
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "Exodus",
+      "map_pixels": [
+        1600,
+        1600
+      ],
+      "mission": "mc2_06",
+      "png": "Exodus/mc2_06.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "c2a49da499824514e0d9aa7780795d7993ffdbf01caae5bef3a08f49b54768a1",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        300,
+        300
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "Exodus",
+      "map_pixels": [
+        1600,
+        1600
+      ],
+      "mission": "mc2_07",
+      "png": "Exodus/mc2_07.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "e8592106fcaad2f3118e7a5d9176e625d6737e9942f0bcf9b02debe90f9df7a0",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "Exodus",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_08",
+      "png": "Exodus/mc2_08.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "6787fb5958b92a33c9d232ce97e17ccac0c0989f6a7b032db69aaa7a2709528f",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "Exodus",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_09",
+      "png": "Exodus/mc2_09.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "fef997980b4306b898deb2830f67c8cbf50acebb6b175773ff26b112fe4f237c",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "Exodus",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_10",
+      "png": "Exodus/mc2_10.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "e274e93381ea7314bbd14195c2b43f2230ef8a76a5753d386d5192ec6d06a3c5",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "Exodus",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_11",
+      "png": "Exodus/mc2_11.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "ae072bcc4e7e22c875d4ae50517262b8b7773f8195e3367d5e22ed5237486bdb",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "Exodus",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_12",
+      "png": "Exodus/mc2_12.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "5633d5c71bddd036b77a4c629f1376ca1adb16737a9366b5925316ff17a56d1d",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "Exodus",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_13",
+      "png": "Exodus/mc2_13.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "ac50cf88f90c9af8d5eb10d7ff14aeda9c479162219912abb80a50de5e5b3086",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "Exodus",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_14",
+      "png": "Exodus/mc2_14.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "a20d2fae9b682f97d21813e5c239b8a3bdbdafb8e6becdddc5d3e9ddd04265a6",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "Exodus",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_15",
+      "png": "Exodus/mc2_15.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "869d7d1cf23af2c6cbc83d904aa41a139ebb707c8266587ecd5185e9cec18a20",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "Exodus",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_16",
+      "png": "Exodus/mc2_16.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "26328545cce355b076eda8be314b6061a760993c22234cfd1192bf10a384704b",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "Exodus",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_17",
+      "png": "Exodus/mc2_17.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "a74cb3c3625a9efd77ebfd2280e1e6ff86188ba88c82cb72121760c36b67ba58",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "Exodus",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_18",
+      "png": "Exodus/mc2_18.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "5410b2a35c8b79aef91b215f49bcabd8d4a4fe81b9ae8f248515ebbf2a8a6eca",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "Exodus",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_19",
+      "png": "Exodus/mc2_19.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "10907e47d0208f05f97b3bdf0abd45e66e109850debe91a905786df6c21ab5e8",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "Exodus",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_20",
+      "png": "Exodus/mc2_20.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "23fd349957a4081d17efe4f4ac6f03ac49c6076bd1d9dcefe29e3c73cc74c336",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "Exodus",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_21",
+      "png": "Exodus/mc2_21.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "b5609639c1d29275b43b76a700451f9839a11b4125b78abe8b1da809bc1d3842",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "Exodus",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_22",
+      "png": "Exodus/mc2_22.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "c39f837475da864318d460b3014db9fe4d29c63a71eb3f349419353b3236a246",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "Exodus",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_23",
+      "png": "Exodus/mc2_23.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "ce99d43ab130c705a656e4e428cad2c0c728dca7d37634b7637b177db71277e0",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "Exodus",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_24",
+      "png": "Exodus/mc2_24.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "b63df2edcc7a7a1bd1d9c3c78eb42d296dbbcf1fec12d50041ace41c2954d33a",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "Exodus",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_m01",
+      "png": "Exodus/mc2_m01.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "70ad445048670f7706e255d0c269306fe48c27af58cb8350b08e6a8033bb1a65",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "Exodus",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_m02",
+      "png": "Exodus/mc2_m02.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "bba2664147068b4d3fcc2c687c11eda458d51d4c67721fd4240a340d75620917",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "Exodus",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_m02a",
+      "png": "Exodus/mc2_m02a.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "7fdadd767d2cc4386d317ab8b535b74690fa659412635db5ae73164fbf1db829",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "Exodus",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_m02b",
+      "png": "Exodus/mc2_m02b.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "a9bda30ce4ff454907d8b9d49a09fcc9df1a0bbf600970d0875215cf4aabf5e1",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "Exodus",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_m03",
+      "png": "Exodus/mc2_m03.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "a4928e0310417e27282fcb1d78bd43c79030d8e321dd378094794f4724e195fc",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "Exodus",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_m04",
+      "png": "Exodus/mc2_m04.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "e8c50fcb4a18a36bbec855e3fab82dd3270ca1b0700b3503a8b7ae2c2de157ca",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "Exodus",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_m05",
+      "png": "Exodus/mc2_m05.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "6c1643116bbc18a3b646b5cf3825968d52c8c041d2e3ec19fbf89ee11c26f8ce",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "Exodus",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_m06",
+      "png": "Exodus/mc2_m06.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "120beb5dad7faa95c48d2bcb61ec087868d577a37e553e619e314ec96d05eed0",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "Exodus",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_m07",
+      "png": "Exodus/mc2_m07.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "dee6f289bac2cb35e8ebad909ba7135657b7e7fb4943f004928578a23e8e2535",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "Exodus",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_m08",
+      "png": "Exodus/mc2_m08.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "735cd93f9e04d20235c2e5c6d7dcd3c6fd75ef96125aeb4cd34b0901fee87665",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "Exodus",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_m09",
+      "png": "Exodus/mc2_m09.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "f1cb9f127ce2f19a9af405d37bda190c04a73d916c756f7279349f267984e55f",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "Exodus",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_m10",
+      "png": "Exodus/mc2_m10.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "f849e530afa965e21d22a81a2ff23e363ab62321a8cbfbfd4023549b76e3ebf4",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        180,
+        180
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "Exodus",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "tut_01",
+      "png": "Exodus/tut_01.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "cef1037bcaacdcd5e84e9c317a0d404dfa9017dd01fd6d1d3c4af8ef8868a79f",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 4
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        180,
+        180
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "Exodus",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "tut_02",
+      "png": "Exodus/tut_02.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "b339a2bd704276d9e824b0d796ef7d4d7236078354992f58a66b07a247803db9",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 4
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        180,
+        180
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "Exodus",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "tut_03",
+      "png": "Exodus/tut_03.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "e8dc2133637bc45e6ebe4a2ca8cec95dd232198644d7a1e4e70ea1a3cae34531",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 4
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        180,
+        180
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "Exodus",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "tut_04",
+      "png": "Exodus/tut_04.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "c0c7e331b7394094449233162fa3a460328dea396c3f74d2e35acfa34109bf1c",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 4
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        180,
+        180
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "Exodus",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "tut_05",
+      "png": "Exodus/tut_05.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "94b01f54620148a2f3254d7f987a0f693e408a2bf20a5cac4e3f93ba9d3cb54d",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 4
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "Exodus",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "x_2_4",
+      "png": "Exodus/x_2_4.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "2056db30b6bdace07a03367f4edf56fd328439599f50e51c924b5516342d75e8",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        300,
+        300
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "Exodus",
+      "map_pixels": [
+        1600,
+        1600
+      ],
+      "mission": "x_2_5",
+      "png": "Exodus/x_2_5.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "217e2f97f191326fc47b73de576878e39a70181b19f6465b786be3a9ca0c80b5",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        300,
+        300
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "Exodus",
+      "map_pixels": [
+        1600,
+        1600
+      ],
+      "mission": "x_4_2",
+      "png": "Exodus/x_4_2.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "3a1efcd520d2c31f9b194c5ab94308cdacfbcb5df873f278f68e5e5da82a87da",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "Exodus",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "x_5_1a",
+      "png": "Exodus/x_5_1a.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "32f7c1a35904ed13d1b60c1448fa610f2aaa69e0ec1cd42908ed0b5ff4d421c3",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        1024,
+        1024
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "stock",
+      "map_pixels": [
+        5462,
+        5462
+      ],
+      "mission": "generated_1024_42",
+      "png": "generated/generated_1024_42.png",
+      "road_geometry": "world polylines",
+      "sha256": "d1ae1e7ac4752512d0331c5fb984ad3ff7f64fc046a7d39c3799823269a1ff54",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        503,
+        277,
+        535,
+        317
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "stock",
+      "map_pixels": [
+        1707,
+        1366
+      ],
+      "mission": "generated_1024_42",
+      "png": "generated/generated_1024_42_base.png",
+      "road_geometry": "world polylines",
+      "sha256": "964400ba3511057da00f8ad96f69f7958aa7d8b58e24624e9451aa4bf932c434",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 1
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        180,
+        180
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "stock",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "generated_180_7",
+      "png": "generated/generated_180_7.png",
+      "road_geometry": "world polylines",
+      "sha256": "d7280c19cf3cd3dfb978b15241e40455823c9d0016f93414e6fda61f7b0bc5ba",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 4
+    },
+    {
+      "crop_cells": [
+        129,
+        105,
+        163,
+        140
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "stock",
+      "map_pixels": [
+        1494,
+        1451
+      ],
+      "mission": "generated_180_7",
+      "png": "generated/generated_180_7_base.png",
+      "road_geometry": "world polylines",
+      "sha256": "40686391ec20a38251f424557ce50b0360103ced0d6ecbe81d0c0dc458ab2a17",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 1
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "stock",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "generated_360_17",
+      "png": "generated/generated_360_17.png",
+      "road_geometry": "world polylines",
+      "sha256": "fe58d4076d5b457373cb17afabaf409a5afac90134352eb83f66ed6a8dda7de9",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        288,
+        178,
+        329,
+        220
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "stock",
+      "map_pixels": [
+        1792,
+        1750
+      ],
+      "mission": "generated_360_17",
+      "png": "generated/generated_360_17_base.png",
+      "road_geometry": "world polylines",
+      "sha256": "5d5d06beb117b517bee498a5e891f7b595261f409ac01de1d4fd46d98c648dbd",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 1
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        720,
+        720
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "stock",
+      "map_pixels": [
+        3840,
+        3840
+      ],
+      "mission": "generated_720_23",
+      "png": "generated/generated_720_23.png",
+      "road_geometry": "world polylines",
+      "sha256": "fbc02b3639a66274d32d88de9154b697d13a8a896f772f9adfe38e12553d742c",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        468,
+        7,
+        509,
+        40
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "stock",
+      "map_pixels": [
+        1408,
+        1750
+      ],
+      "mission": "generated_720_23",
+      "png": "generated/generated_720_23_base.png",
+      "road_geometry": "world polylines",
+      "sha256": "9fa66ce36a15c10bd049c0c01f5a1553499dfa198d96d51ab790b3c42a145b2e",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 1
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MagicExpansion",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "ai_glenn",
+      "png": "MagicExpansion/ai_glenn.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "4a68ac146dedd0e40cbb785b08f53d58b1f939e1006d4199cfbc9013f7bed9c2",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MagicExpansion",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "e3demo",
+      "png": "MagicExpansion/e3demo.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "6654d1bc8c79ec9bf72f13ad2d659f5661443ddad4dc00190a80cf4377d1f39f",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MagicExpansion",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "m0101",
+      "png": "MagicExpansion/m0101.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "c42054d1b384217743cd055ffa4993c8c260c5bfcb90514472c38996175faab8",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        300,
+        300
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MagicExpansion",
+      "map_pixels": [
+        1600,
+        1600
+      ],
+      "mission": "mc2_01",
+      "png": "MagicExpansion/mc2_01.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "55d820d536fb77a645ba1e747b18f22f6a5d46d21bb45ad3afc1a06d7216f266",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MagicExpansion",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_02",
+      "png": "MagicExpansion/mc2_02.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "477cb74e1574e26ff6b9bb40fc80bd13243989afa95d1ab00b1e447547f6583c",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        300,
+        300
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MagicExpansion",
+      "map_pixels": [
+        1600,
+        1600
+      ],
+      "mission": "mc2_03",
+      "png": "MagicExpansion/mc2_03.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "7254b7313d86815075aab7abbb690b59b0a819f3f029a3ddeb6520d1d0646a28",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MagicExpansion",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_04",
+      "png": "MagicExpansion/mc2_04.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "a8bee15ff8b8ad28df28cbee088f31a15b35513d9eb09ac16faeda9557d5b62a",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MagicExpansion",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_05",
+      "png": "MagicExpansion/mc2_05.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "a27ee1b1b45c84b8bb54c1508c4ff39ac45d48372fcd2a5e63053187c66e240b",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        300,
+        300
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MagicExpansion",
+      "map_pixels": [
+        1600,
+        1600
+      ],
+      "mission": "mc2_06",
+      "png": "MagicExpansion/mc2_06.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "a55d698a831b4753597912afc53e3fb6da3a9fa160c1191289c5f7a2f621c00d",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        300,
+        300
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MagicExpansion",
+      "map_pixels": [
+        1600,
+        1600
+      ],
+      "mission": "mc2_07",
+      "png": "MagicExpansion/mc2_07.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "bcb052d569f42fb1fdf3a087b921f5ac34c3ca443cd35fed7a8a5179cd68fabf",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MagicExpansion",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_08",
+      "png": "MagicExpansion/mc2_08.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "6f836a03f041b346adcec07856ea4f9ab8282c824ff15a4b6114308fb690825a",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MagicExpansion",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_09",
+      "png": "MagicExpansion/mc2_09.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "23d92328f6a81f291e2a1b86fd00e3e0f054ac016e53c1f3a8820340832fe493",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MagicExpansion",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_10",
+      "png": "MagicExpansion/mc2_10.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "882dba0566bffd6a21b5b2dde8d314830f11b56e624044b40df94749cff4cbdd",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MagicExpansion",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_11",
+      "png": "MagicExpansion/mc2_11.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "38f0b1ed87276884a705d4137aae7b46b1e47bc100d130c719105f1cedc61dc6",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MagicExpansion",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_12",
+      "png": "MagicExpansion/mc2_12.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "0ba523571e2bbe3510850b671e34145c8138acc21661547a4f5e3c62c342badc",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MagicExpansion",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_13",
+      "png": "MagicExpansion/mc2_13.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "aef0f9f34743c879a352b71749cc52c7cb52e560d95173ec61aec968c0f0aefc",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MagicExpansion",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_14",
+      "png": "MagicExpansion/mc2_14.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "c4fb912b3d1219a1ea8acb1ed61144f91aa27eea8150e5c3cdbf5d793a6664c8",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MagicExpansion",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_15",
+      "png": "MagicExpansion/mc2_15.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "b4ce6547a507c64081bc86813630e4bd1f816fb2c918b46b7f8bcced722fe8ed",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MagicExpansion",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_16",
+      "png": "MagicExpansion/mc2_16.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "7623dacddaac00820c2a76544c8063a184ee1d9cb10667e4a115065f095918e8",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MagicExpansion",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_17",
+      "png": "MagicExpansion/mc2_17.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "ae4bb863de47732adc346fa0dcb64b75ab0ba50c8a308a0d2b75582819882bbf",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MagicExpansion",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_18",
+      "png": "MagicExpansion/mc2_18.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "7ab740ac5fb63bc6b619f8073c1a32bb1d47d09f628c2c7a01087d4893182e55",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MagicExpansion",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_19",
+      "png": "MagicExpansion/mc2_19.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "28b1ccee42d197d92b6796806923deed074c074964f91bc143e147f2608c49e8",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MagicExpansion",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_20",
+      "png": "MagicExpansion/mc2_20.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "727584bd921967064755ae2dde7785f28e97562ec4d408da919732293b2ef257",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MagicExpansion",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_21",
+      "png": "MagicExpansion/mc2_21.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "b70f9db70bf5477bf5f3753d4b1764559c54b7bec901b6fd92fabc6e73bcf4d2",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MagicExpansion",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_22",
+      "png": "MagicExpansion/mc2_22.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "c6eb859fc71dad9aa4e47e85af13c7faebc7683871c3b49add8a377ae5acdbfd",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MagicExpansion",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_23",
+      "png": "MagicExpansion/mc2_23.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "c9dd1b0f422c3b9fe18e50617256f0dee907b958ae8dc78c49ebd945ec4885ea",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MagicExpansion",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_24",
+      "png": "MagicExpansion/mc2_24.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "dc3133278867db009edb88655fba8e8d9ebb821ff6188cb3308484ca90b600fc",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MagicExpansion",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_m01",
+      "png": "MagicExpansion/mc2_m01.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "02bea5b42fe1caf344f44d9d5a52c3595f1cc919850f2570029376d1c397b065",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MagicExpansion",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_m02",
+      "png": "MagicExpansion/mc2_m02.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "b4df2e2c555139688dccdb1a61435f980e7ab2159f2b3e88ee5c8c76e32f6ffe",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MagicExpansion",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_m02a",
+      "png": "MagicExpansion/mc2_m02a.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "b5f4f21a1c4ae9976e4f95febd7f4a0b0c5e12a393866f667d25339e3ea1c978",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MagicExpansion",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_m02b",
+      "png": "MagicExpansion/mc2_m02b.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "859dab3d5e1afbda3ef21f4f73f83a17fd5d276697440af50cc7cbda1cc55d07",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MagicExpansion",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_m03",
+      "png": "MagicExpansion/mc2_m03.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "429696a6bc47d92a8a6a895426d8b09431058b730b97d3b6c8f31d1c9010d1ff",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MagicExpansion",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_m04",
+      "png": "MagicExpansion/mc2_m04.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "42cf9bdc6ef47df9140ae78a981287ddb90d1c5b00ffe50fb23d41d55a199f58",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MagicExpansion",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_m05",
+      "png": "MagicExpansion/mc2_m05.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "75aabd49c8393848e34db1b1f6396c9c8abfbf27da869dbf679f3391cefe83e6",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MagicExpansion",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_m06",
+      "png": "MagicExpansion/mc2_m06.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "c68c573ee1746fd0802836ee50235b3ac2543b034edefba82fc4424279251b3e",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MagicExpansion",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_m07",
+      "png": "MagicExpansion/mc2_m07.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "79832c08dd7b5ab3ffc41c693b10ee58284709763b69923300d8bf5004eef59a",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MagicExpansion",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_m08",
+      "png": "MagicExpansion/mc2_m08.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "4fd153724b48784c19e0e0df3b1a9f2a53c5d5819b68c89be043a11eca7b5188",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MagicExpansion",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_m09",
+      "png": "MagicExpansion/mc2_m09.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "e6215b6216d04f74b0d79b0d5a68092fbefc912d070db9443c8a3f8ca02e26d7",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MagicExpansion",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_m10",
+      "png": "MagicExpansion/mc2_m10.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "28c82873161979a6517f646fae21aa655cd64107c4f98bea1a4e7844465e9451",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        180,
+        180
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MagicExpansion",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "tut_01",
+      "png": "MagicExpansion/tut_01.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "3bb5b30db405ffd0b4d63c9f3e6995298c76f5e6584ef3b57c2fddc338a584df",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 4
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        180,
+        180
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MagicExpansion",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "tut_02",
+      "png": "MagicExpansion/tut_02.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "a0527f58b95bdc9a4859051a9eac3ed582203959d29dc00b67141b8c48f0e7c2",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 4
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        180,
+        180
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MagicExpansion",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "tut_03",
+      "png": "MagicExpansion/tut_03.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "db7ab8ea3563fd062d5d3ec8b9bd4e5eb25fd71a4b57c29ee9b40894d60c8db6",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 4
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        180,
+        180
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MagicExpansion",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "tut_04",
+      "png": "MagicExpansion/tut_04.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "8466e1cdc5783d8da0d1243039e8ee7648b4518076da6e78ff69e5ed30bce723",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 4
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        180,
+        180
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MagicExpansion",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "tut_05",
+      "png": "MagicExpansion/tut_05.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "b13cec3d98ad8b4f89496b04a3b0caa4ee6ffae04a69ba012e2c113d1dedf2e6",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 4
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        480,
+        480
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MC2X-CVE-G",
+      "map_pixels": [
+        2560,
+        2560
+      ],
+      "mission": "cityassault",
+      "png": "MC2X-CVE-G/cityassault.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "260841aa3c8b458bb2be3a92ad3b84753c0494eff3587187a6267c9a6178dea6",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        720,
+        720
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MC2X-CVE-G",
+      "map_pixels": [
+        3840,
+        3840
+      ],
+      "mission": "corona",
+      "png": "MC2X-CVE-G/corona.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "9895ace55e06cc6aff8188ebe6282de4af7fcdac04c23e09a04cef49b19a4336",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MC2X-CVE-G",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "delta",
+      "png": "MC2X-CVE-G/delta.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "73e3c9f5947cb887ff0368297f411d4b80905413d7e6736098e7400ec42332d7",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        300,
+        300
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MC2X-CVE-G",
+      "map_pixels": [
+        1600,
+        1600
+      ],
+      "mission": "mc2_01",
+      "png": "MC2X-CVE-G/mc2_01.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "e0213c3859009374dffe63dd6dcb786f2ac691baff046a0272a2f49640930852",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MC2X-CVE-G",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_02",
+      "png": "MC2X-CVE-G/mc2_02.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "ec8aa90e4b255932382f428c5f0f832ffe73d3d9522bc754dc20bfb19bf8ef61",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        300,
+        300
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MC2X-CVE-G",
+      "map_pixels": [
+        1600,
+        1600
+      ],
+      "mission": "mc2_03",
+      "png": "MC2X-CVE-G/mc2_03.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "8fb477dc4cd2a2141efa256db329f2da5c1048c60e30bef46e3073da6fbef027",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MC2X-CVE-G",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_04",
+      "png": "MC2X-CVE-G/mc2_04.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "76a6305394278d2b8c4c3665eed69edaaebc755b6f8e57d19f0fa726d1a70c5e",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MC2X-CVE-G",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_05",
+      "png": "MC2X-CVE-G/mc2_05.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "0b52093873735e5f757c750bbde6d87f79e384af84c31b2352dc1a846c12f0ff",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        300,
+        300
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MC2X-CVE-G",
+      "map_pixels": [
+        1600,
+        1600
+      ],
+      "mission": "mc2_06",
+      "png": "MC2X-CVE-G/mc2_06.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "f3aad15e30b2dee6b0c5cf437e19ad879a84ffd1bda6a2b8ba82aff9a1ca991f",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        300,
+        300
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MC2X-CVE-G",
+      "map_pixels": [
+        1600,
+        1600
+      ],
+      "mission": "mc2_07",
+      "png": "MC2X-CVE-G/mc2_07.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "faaee290f881001db43428cb36f8702a1bbfcae54e0573c281ba8c24e22675d2",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MC2X-CVE-G",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_08",
+      "png": "MC2X-CVE-G/mc2_08.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "33dcc9afd564edb1ec3629361ab3ce15c5d5e9b19ba2d4ad75383bbe0469ab85",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MC2X-CVE-G",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_09",
+      "png": "MC2X-CVE-G/mc2_09.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "8c0a1a49b89b2473ab3268bf873c98069aa99da7c36a18e4437fdc6e4ad0d7f5",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MC2X-CVE-G",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_10",
+      "png": "MC2X-CVE-G/mc2_10.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "5e67cb38a9d718a09973631807ee78bd63bbde24cf7dc1ef29f3d0c067094941",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MC2X-CVE-G",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_11",
+      "png": "MC2X-CVE-G/mc2_11.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "417e3ce1899d416590d4f12bd4e9f73ddf5a1b2846aeaa4df5aabe452eec8bb1",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MC2X-CVE-G",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_12",
+      "png": "MC2X-CVE-G/mc2_12.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "cebe4cafc426941c8843731d6d0454da6dbb73ae48f78a82180ab86d107f2d48",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MC2X-CVE-G",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_13",
+      "png": "MC2X-CVE-G/mc2_13.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "40f50a91859e298d43cde7040bc7f3c86718ff52667558e30e982364bbe5fe84",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MC2X-CVE-G",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_14",
+      "png": "MC2X-CVE-G/mc2_14.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "14da0968e79e404a9d338b110bc8cd98c3bf4cd3c1370d136461d4e1b88967c8",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MC2X-CVE-G",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_15",
+      "png": "MC2X-CVE-G/mc2_15.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "3814d7d81889cd766ac0fe0719d7cf9eb09c8105894ca9065054ab5e019664e4",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MC2X-CVE-G",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_16",
+      "png": "MC2X-CVE-G/mc2_16.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "d09aa9fa2e98f2a9c7ab0f186d15f8d33f9bd6113a77ebf2111fa7509f61be4f",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MC2X-CVE-G",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_17",
+      "png": "MC2X-CVE-G/mc2_17.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "402744d00412222800aaf544148ab795ddca6a21fcc8f653d316bb29c7fc5255",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MC2X-CVE-G",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_18",
+      "png": "MC2X-CVE-G/mc2_18.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "db08f94debde0e0774da529a669a0648e283a4f8d559e32adc1200811cd2deb2",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MC2X-CVE-G",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_19",
+      "png": "MC2X-CVE-G/mc2_19.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "0655ad796082d96a50d5bcdb8bcb61642e5cfd1019b56843a8a2c0df2f4a9721",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MC2X-CVE-G",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_20",
+      "png": "MC2X-CVE-G/mc2_20.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "49a83fa4cc6adaf7e4fc3f0bbb9534a243b755486e993a92c9b868e0866b0b37",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MC2X-CVE-G",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_21",
+      "png": "MC2X-CVE-G/mc2_21.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "4a8e24215f476490d2652e4f167e20dc98935a9f3746fd8416332dcfcb74c39d",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MC2X-CVE-G",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_22",
+      "png": "MC2X-CVE-G/mc2_22.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "e5551328e0a2d36a55be7b1148cff3ad159981e6abe834b3f2b649a85e5f84a7",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MC2X-CVE-G",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_23",
+      "png": "MC2X-CVE-G/mc2_23.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "7ca18913b98abbcc8452d3b5e9ed6061255f15815e7ad437578cae619913e02b",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MC2X-CVE-G",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_24",
+      "png": "MC2X-CVE-G/mc2_24.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "f7fb2af3bf6af3bea7a616324c3a415f5e57e56becf3461230b6a251f0c8ae59",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MC2X-CVE-G",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2xquickdummy",
+      "png": "MC2X-CVE-G/mc2xquickdummy.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "2b2eea7bc84ed800b0762b656db042efced15c439128d5698b69ec7847156692",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MC2X-CVE-G",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "metropolitan",
+      "png": "MC2X-CVE-G/metropolitan.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "e16f9822f1692a9c4e00931d910af9f07e82f4fdc20ffa0b4855d4318f546d2c",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MC2X-CVE-G",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mudhole",
+      "png": "MC2X-CVE-G/mudhole.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "fae3291913501b5f81f5b08dce9170f9dbf42a87b777808de38fd02f4edc4167",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MC2X-CVE-G",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "paradise",
+      "png": "MC2X-CVE-G/paradise.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "49b8d3ffa05a2984d1144a496d99448edb6d88e2bd5cd66e8e067555ef5e708e",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MC2X-CVE-G",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "redrockoutpost",
+      "png": "MC2X-CVE-G/redrockoutpost.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "3f3f99f0ea8dc97a04236fe9e5ffa92af5e626b7f3e6d2b721315891d4ac414d",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        480,
+        480
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MC2X-REAP3",
+      "map_pixels": [
+        2560,
+        2560
+      ],
+      "mission": "cityassault",
+      "png": "MC2X-REAP3/cityassault.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "8c7caa992662f9fd4aae2235c81c0dca2fdc94c814a49ac4fadfa0519e1500d8",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        720,
+        720
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MC2X-REAP3",
+      "map_pixels": [
+        3840,
+        3840
+      ],
+      "mission": "corona",
+      "png": "MC2X-REAP3/corona.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "6a00cb763d95d8ca4b397d7dbb6c42da844ca969c2968af842427b77103dc73c",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MC2X-REAP3",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "delta",
+      "png": "MC2X-REAP3/delta.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "5662390497b55300e1f7b36ac713cb94f6b463e6568f216cc9d86d899c0a05b3",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MC2X-REAP3",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2xquickdummy",
+      "png": "MC2X-REAP3/mc2xquickdummy.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "3e7e201e7416b8b48c37fc5759c49bec790bf7f017ccf775651ef53f93c4b6c5",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MC2X-REAP3",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "metropolitan",
+      "png": "MC2X-REAP3/metropolitan.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "d0bc4aae812c696fdd4db5f8658e613b1e96d26bbf22711f8af3116a54aea45f",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MC2X-REAP3",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mudhole",
+      "png": "MC2X-REAP3/mudhole.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "b12113272aa9d0c3c39e2dffaa3ef650fa0bf005e9611daf8584922b92da4c2a",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MC2X-REAP3",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "paradise",
+      "png": "MC2X-REAP3/paradise.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "57c45bc1dfe8c223b02e052bded318f7d7745258c668de65f95d618ea215bbc4",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MC2X-REAP3",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "reap3-x",
+      "png": "MC2X-REAP3/reap3-x.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "e7d7eaba2f040e260daf806ee9f3c801a14852d22a2a4a4db28de2cb89237fce",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        900,
+        900
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MC2X-REAP3",
+      "map_pixels": [
+        4800,
+        4800
+      ],
+      "mission": "reap3m01",
+      "png": "MC2X-REAP3/reap3m01.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "b4e7dae36c821642d3cd44279793bc60e0503cfec5400b43efb69e8ccbbcdf25",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        900,
+        900
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MC2X-REAP3",
+      "map_pixels": [
+        4800,
+        4800
+      ],
+      "mission": "reap3m02",
+      "png": "MC2X-REAP3/reap3m02.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "858f55a46c41fc1cbb6ee4896b860186c5e843dcf0c1b30fc09e36c920719507",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        900,
+        900
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MC2X-REAP3",
+      "map_pixels": [
+        4800,
+        4800
+      ],
+      "mission": "reap3m03",
+      "png": "MC2X-REAP3/reap3m03.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "fb0174c68e8a18d5c8020d51cfbe43e6db16fd42af85ecd0ed261f8737c56018",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        900,
+        900
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MC2X-REAP3",
+      "map_pixels": [
+        4800,
+        4800
+      ],
+      "mission": "reap3m04",
+      "png": "MC2X-REAP3/reap3m04.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "1faba6c04b5b9c01593ef5340355e95c1c057b2b71f95694ccc9deaa604ec265",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        900,
+        900
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MC2X-REAP3",
+      "map_pixels": [
+        4800,
+        4800
+      ],
+      "mission": "reap3m05",
+      "png": "MC2X-REAP3/reap3m05.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "f54984656363657ca230fa08092b39ea0cc7586f0d71d25aef1dce555ff90e7c",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        900,
+        900
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MC2X-REAP3",
+      "map_pixels": [
+        4800,
+        4800
+      ],
+      "mission": "reap3m06",
+      "png": "MC2X-REAP3/reap3m06.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "3e50957e8dd2f583c0cc48650bf31720a3a4e2e645034faf0073cee7db266d8a",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        900,
+        900
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MC2X-REAP3",
+      "map_pixels": [
+        4800,
+        4800
+      ],
+      "mission": "reap3m07",
+      "png": "MC2X-REAP3/reap3m07.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "c78c7d949cfd2fd22390266387fdc00dea6c5d39c16350099386be2ae6c4de56",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        900,
+        900
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MC2X-REAP3",
+      "map_pixels": [
+        4800,
+        4800
+      ],
+      "mission": "reap3m08",
+      "png": "MC2X-REAP3/reap3m08.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "a51e232b6f707420b8ccd40331e5135bd1d54bc6a93c05a2b6aeddb93bee8261",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        900,
+        900
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MC2X-REAP3",
+      "map_pixels": [
+        4800,
+        4800
+      ],
+      "mission": "reap3m09",
+      "png": "MC2X-REAP3/reap3m09.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "534c65017b6c2bbec84e6402b950337cf2e3b9e0862cc735e8631c6d8b1330ba",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        900,
+        900
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MC2X-REAP3",
+      "map_pixels": [
+        4800,
+        4800
+      ],
+      "mission": "reap3m10",
+      "png": "MC2X-REAP3/reap3m10.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "1cbfa83680639a6cae562b88a3fb8a9d5cf140a14c9d2a90707d4f87cd5e6507",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        900,
+        900
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MC2X-REAP3",
+      "map_pixels": [
+        4800,
+        4800
+      ],
+      "mission": "reap3m11",
+      "png": "MC2X-REAP3/reap3m11.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "b37a5b4c2fcd4fa4f841cc3dc8f8715a98e58b193870a0446a23166eccd80ff8",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        900,
+        900
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MC2X-REAP3",
+      "map_pixels": [
+        4800,
+        4800
+      ],
+      "mission": "reap3m12",
+      "png": "MC2X-REAP3/reap3m12.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "d4bd9924471a342872f23dfc566c07efa6ed1ecaa79f00e7985b925043918d4a",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        900,
+        900
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MC2X-REAP3",
+      "map_pixels": [
+        4800,
+        4800
+      ],
+      "mission": "reap3m13",
+      "png": "MC2X-REAP3/reap3m13.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "52192be6e7b13527102e8cf0ef2872419493c6340585e7d1f125e876d43a53c0",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        900,
+        900
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MC2X-REAP3",
+      "map_pixels": [
+        4800,
+        4800
+      ],
+      "mission": "reap3m14",
+      "png": "MC2X-REAP3/reap3m14.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "32a81c94421371e57f5c80b1435be48a0550f2bf395703e4a048c92b897fd123",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        900,
+        900
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MC2X-REAP3",
+      "map_pixels": [
+        4800,
+        4800
+      ],
+      "mission": "reap3m15",
+      "png": "MC2X-REAP3/reap3m15.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "42b0bbc7ed362d4f75b52f3766d5e1d03de4f64a69a704b15919876e3a71faa2",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        900,
+        900
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MC2X-REAP3",
+      "map_pixels": [
+        4800,
+        4800
+      ],
+      "mission": "reap3m16",
+      "png": "MC2X-REAP3/reap3m16.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "16c243939f2524051ad103def443317d241b4484c736e5a9f30ca6dc2838b2bd",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        900,
+        900
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MC2X-REAP3",
+      "map_pixels": [
+        4800,
+        4800
+      ],
+      "mission": "reap3m17",
+      "png": "MC2X-REAP3/reap3m17.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "79cbe81d05148010c013616bf93371f9c69dd680309082aee6276d7bfaad4a32",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        900,
+        900
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MC2X-REAP3",
+      "map_pixels": [
+        4800,
+        4800
+      ],
+      "mission": "reap3m18",
+      "png": "MC2X-REAP3/reap3m18.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "a499f45a609d5abf9360bbb6262429767be2f8cea7202e932ec344857075fdae",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        900,
+        900
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MC2X-REAP3",
+      "map_pixels": [
+        4800,
+        4800
+      ],
+      "mission": "reap3m19",
+      "png": "MC2X-REAP3/reap3m19.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "19f4235abe0f6c663d9f3d68b8c6ab3f1d18911acf03b91e83552b4bd65b5ff4",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        900,
+        900
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MC2X-REAP3",
+      "map_pixels": [
+        4800,
+        4800
+      ],
+      "mission": "reap3m20",
+      "png": "MC2X-REAP3/reap3m20.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "e1ba868c49213ed3a1754a3fdaa018980cba9ed995a669362b5aa8a424b72c45",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        900,
+        900
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MC2X-REAP3",
+      "map_pixels": [
+        4800,
+        4800
+      ],
+      "mission": "reap3m21",
+      "png": "MC2X-REAP3/reap3m21.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "9b150cda1908dfeed765e0cf30190255b361a4d17ecf4ad214a5f0dbaecfcf9b",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        900,
+        900
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MC2X-REAP3",
+      "map_pixels": [
+        4800,
+        4800
+      ],
+      "mission": "reap3m22",
+      "png": "MC2X-REAP3/reap3m22.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "84e470f5f773ea84ebb1e1c9becdb14a0c50a7f3a78d6a2bc64a4672babcbcda",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        900,
+        900
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MC2X-REAP3",
+      "map_pixels": [
+        4800,
+        4800
+      ],
+      "mission": "reap3m23",
+      "png": "MC2X-REAP3/reap3m23.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "70b8e59c99a3b3680602b9c6884d001060278437ffb21d08319bdcc5c7873989",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        900,
+        900
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MC2X-REAP3",
+      "map_pixels": [
+        4800,
+        4800
+      ],
+      "mission": "reap3m24",
+      "png": "MC2X-REAP3/reap3m24.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "287e76b53403bdeb53331b719753ac388e12d45b33685c8bdaa52c4c099eff10",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MC2X-REAP3",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "redrockoutpost",
+      "png": "MC2X-REAP3/redrockoutpost.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "9704eb341b39903cca6e6954dcb318a77bc5f0d2ed9d3a98444e83b84fd7e462",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        300,
+        300
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MCO-Carver5",
+      "map_pixels": [
+        1600,
+        1600
+      ],
+      "mission": "mc2_01",
+      "png": "MCO-Carver5/mc2_01.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "98f6df2ed59f1736a8d42ec2c04e26d1db00150373962baf5c0825ff3c7dc3a5",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MCO-Carver5",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_02",
+      "png": "MCO-Carver5/mc2_02.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "15a1c9ba7ac8c14fd2ad5c2ee8b4d8c200480019aadac585ffa6ba1a358f739b",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        300,
+        300
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MCO-Carver5",
+      "map_pixels": [
+        1600,
+        1600
+      ],
+      "mission": "mc2_03",
+      "png": "MCO-Carver5/mc2_03.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "227ad6d5addf4b522be7899806eaac29ac331c578a4ae721311de2baf106d37c",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MCO-Carver5",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_04",
+      "png": "MCO-Carver5/mc2_04.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "99f7197ea16733398438123109d56a3b28ec4bc678d60295a44db53943db74c1",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MCO-Carver5",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_05",
+      "png": "MCO-Carver5/mc2_05.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "a48419dc6cdbf917cc830ef0a22f4842cf335451bbd1bd25f16133e3d86eb734",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        300,
+        300
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MCO-Carver5",
+      "map_pixels": [
+        1600,
+        1600
+      ],
+      "mission": "mc2_06",
+      "png": "MCO-Carver5/mc2_06.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "3ef2687579f0290ff3eff474c15c2d5ef800191b241ae779f026826aef533da7",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        300,
+        300
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MCO-Carver5",
+      "map_pixels": [
+        1600,
+        1600
+      ],
+      "mission": "mc2_07",
+      "png": "MCO-Carver5/mc2_07.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "49d4eee68848ef7effec62a495c3d99ea34ea0e65fe080ad9194ca278d3d09e2",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MCO-Carver5",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_08",
+      "png": "MCO-Carver5/mc2_08.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "178cb56c0d8164d6cae07c4f135751a2317921f1410af6b8b8c3771b19fc7f8d",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MCO-Carver5",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_09",
+      "png": "MCO-Carver5/mc2_09.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "ac877a18f0316a15141773fd435a62ee3b43b3c8c5aa3c2c761a91c778a6e352",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MCO-Carver5",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_10",
+      "png": "MCO-Carver5/mc2_10.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "3afd87a532ef9c127100f5b0cfce955df6c644d5e1756a7b88000fc9304c5569",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MCO-Carver5",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_11",
+      "png": "MCO-Carver5/mc2_11.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "8998892d82879a4d8f49d9e89d6a8cbbae43e263801961d891de612bf4e0d428",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MCO-Carver5",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_12",
+      "png": "MCO-Carver5/mc2_12.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "e73e5ef59e59ccb17d5bc2c470ab4084f2249fb6dda87b6830b747358c15ad84",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MCO-Carver5",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_13",
+      "png": "MCO-Carver5/mc2_13.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "2b6dda989a93b13663cd19caa45b033f77066fec7b3392929d64b21ca3ec89ea",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MCO-Carver5",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_14",
+      "png": "MCO-Carver5/mc2_14.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "0cdfdc85f41ed79132b6efe911c1e51683ba0d64ded62493544bc0c347b114b1",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MCO-Carver5",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_15",
+      "png": "MCO-Carver5/mc2_15.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "a7fba742e137902494be192a1312a910eaeb3685d33ea51f3f47d84c9893e183",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MCO-Carver5",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_16",
+      "png": "MCO-Carver5/mc2_16.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "87f26ae18ac981808e4f7797c49431689b5998bff400419ff9ee01ce1a23cae4",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MCO-Carver5",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_17",
+      "png": "MCO-Carver5/mc2_17.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "c13bf8e15f69d5fff93cf707311680e20bf55eaa277a911d50c3a7ee11b12bea",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MCO-Carver5",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_18",
+      "png": "MCO-Carver5/mc2_18.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "a643929336af56055915a773362e7a1617988a3c6e4dc0160d40cf08f539dfb6",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MCO-Carver5",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_19",
+      "png": "MCO-Carver5/mc2_19.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "d2603b3ba0d06347c67c380481f3d620e18cd8bf203f97da644af10d60b11c96",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MCO-Carver5",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_20",
+      "png": "MCO-Carver5/mc2_20.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "7878b9396e238ac09e4fab417097d660e864a58444a37597a33400f89be23978",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MCO-Carver5",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_21",
+      "png": "MCO-Carver5/mc2_21.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "57c5d77e26cb3c8a0baafc4ee6a160db26d53925abb11a0ca252687a594075c9",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MCO-Carver5",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_22",
+      "png": "MCO-Carver5/mc2_22.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "f12edae895a04bad017d4f9250f9607b327349309bcf2f614446594b48617765",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MCO-Carver5",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_23",
+      "png": "MCO-Carver5/mc2_23.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "43c0c541eb84cc67c82bea6d08a034d65ec3f92431af5dc4accd429a5c5cc7d3",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MCO-Carver5",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_24",
+      "png": "MCO-Carver5/mc2_24.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "b4f0d8f6cf9e62ab9552b0afd56a1244f48097a12913593f58ba91f8bf4ec36a",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        300,
+        300
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MechCommanderOmnitech",
+      "map_pixels": [
+        1600,
+        1600
+      ],
+      "mission": "a_0_1",
+      "png": "MechCommanderOmnitech/a_0_1.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "10bed62a4adb8d0f492a3fa3043afd9d20fdf638a2b7e2c0376c1a3a0f2b07f4",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        240,
+        240
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MechCommanderOmnitech",
+      "map_pixels": [
+        1280,
+        1280
+      ],
+      "mission": "a_0_2",
+      "png": "MechCommanderOmnitech/a_0_2.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "3a9c87b1ad4a824e3247955a8555742471e889516b4d1aac7633c184657700d5",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        300,
+        300
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MechCommanderOmnitech",
+      "map_pixels": [
+        1600,
+        1600
+      ],
+      "mission": "a_0_3",
+      "png": "MechCommanderOmnitech/a_0_3.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "bc4a762c691649afb0df6672a350996f6f3bb06bf94b2cddef09f02b15eaeb34",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MechCommanderOmnitech",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "a_0_4",
+      "png": "MechCommanderOmnitech/a_0_4.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "a261dc379839237798230b2908f02a4a58092e6ad9290baa1ad45356d5e3f93c",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MechCommanderOmnitech",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "a_0_5",
+      "png": "MechCommanderOmnitech/a_0_5.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "55423fe487d0eba8c44a6a51ad7fe28e01b09fe58500db305b78ed9993856feb",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MechCommanderOmnitech",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "a_0_6",
+      "png": "MechCommanderOmnitech/a_0_6.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "993067ba49d713fa7b2ca50e030054c52ae98faa355b4eeb678efb677a64a2c3",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MechCommanderOmnitech",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "a_0_7",
+      "png": "MechCommanderOmnitech/a_0_7.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "4657cf836a40d99480c0bb1e975591d408067b81168be301bdf71d0af903119b",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MechCommanderOmnitech",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "a_1_3",
+      "png": "MechCommanderOmnitech/a_1_3.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "22e3a4c3fa2bf899937dea10502f9c0fc9a06db326bc2eaa94962f3756da1b1f",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MechCommanderOmnitech",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "a_1_6",
+      "png": "MechCommanderOmnitech/a_1_6.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "c1e7816d3d078842c4afd8add51a549cd6a0780954e27d8ad5c96c9a94b7d472",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        300,
+        300
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MechCommanderOmnitech",
+      "map_pixels": [
+        1600,
+        1600
+      ],
+      "mission": "a_jship_2",
+      "png": "MechCommanderOmnitech/a_jship_2.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "5b9179eb936858025dc3e21c07eb02d84c57ddae56a2598b2cb165478149b5ab",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MechCommanderOmnitech",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "e3demo",
+      "png": "MechCommanderOmnitech/e3demo.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "90223e5deff21e725d1e5140b33c5f0780846c954491c0809a2406a751076213",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        240,
+        240
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MechCommanderOmnitech",
+      "map_pixels": [
+        1280,
+        1280
+      ],
+      "mission": "e_1_0",
+      "png": "MechCommanderOmnitech/e_1_0.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "965b8560c5fe37346dc5ff8c2a07641d935e8af51fc80c95010940ebb1acdc08",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        300,
+        300
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MechCommanderOmnitech",
+      "map_pixels": [
+        1600,
+        1600
+      ],
+      "mission": "e_1_1",
+      "png": "MechCommanderOmnitech/e_1_1.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "2d70d9bba23d59d58368e29f01b5b37ead2190ffaad0263d877c10a01248e9e8",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        240,
+        240
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MechCommanderOmnitech",
+      "map_pixels": [
+        1280,
+        1280
+      ],
+      "mission": "e_1_2",
+      "png": "MechCommanderOmnitech/e_1_2.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "212a83389cc778040fa17eee55d295704bdfff6e9c354548aa2a3e46ec6a52ef",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        300,
+        300
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MechCommanderOmnitech",
+      "map_pixels": [
+        1600,
+        1600
+      ],
+      "mission": "e_1_3",
+      "png": "MechCommanderOmnitech/e_1_3.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "a2b4ceb1734e18c3ea3dc1daaed58c175a587a5eb52339b9d062693c8f0e8bfd",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MechCommanderOmnitech",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "e_2_0a",
+      "png": "MechCommanderOmnitech/e_2_0a.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "6b75ed182ebd52c9c56f02bfff7a7901bb618f5a69e5b1a61e54627d25b70fbb",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        240,
+        240
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MechCommanderOmnitech",
+      "map_pixels": [
+        1280,
+        1280
+      ],
+      "mission": "e_2_1",
+      "png": "MechCommanderOmnitech/e_2_1.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "15940d0032f5a890b548de8188007356a6215884458af256600891e12d16689f",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MechCommanderOmnitech",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "e_3_0a",
+      "png": "MechCommanderOmnitech/e_3_0a.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "591c6b7fdd9d42d814c7e6468d953728f8042bb907ca6dcc29ebb4d7dd9bdaeb",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MechCommanderOmnitech",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "e_3_1",
+      "png": "MechCommanderOmnitech/e_3_1.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "ad7ce352bb30959b8fb82d9727b875189446ba91f47818da32da84edbd7b87fc",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MechCommanderOmnitech",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "e_3_2",
+      "png": "MechCommanderOmnitech/e_3_2.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "d6bdff02d4c75c7641e2fd10611588ae03f405d41ee9faffd595be5498efa51a",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        300,
+        300
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MechCommanderOmnitech",
+      "map_pixels": [
+        1600,
+        1600
+      ],
+      "mission": "e_4_1",
+      "png": "MechCommanderOmnitech/e_4_1.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "351b5d35a8cbe70338bb820d8fc185ba6ab52ea5069c13b4c6cdf266f9dbd659",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        300,
+        300
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MechCommanderOmnitech",
+      "map_pixels": [
+        1600,
+        1600
+      ],
+      "mission": "e_4_2",
+      "png": "MechCommanderOmnitech/e_4_2.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "9142cd4c7d43867665691615d7db2070432084dccaad3f9a261a79bab2aceb44",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MechCommanderOmnitech",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "e_4_3",
+      "png": "MechCommanderOmnitech/e_4_3.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "eb936a7c0e1fc49a186a527f1494004db76eb17d80533e758357f2a5532dc5aa",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MechCommanderOmnitech",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "e_4_4",
+      "png": "MechCommanderOmnitech/e_4_4.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "092da535f901256d800ec38208a255a9a5132b30820113032cec1202a9e9aaa4",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        240,
+        240
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MechCommanderOmnitech",
+      "map_pixels": [
+        1280,
+        1280
+      ],
+      "mission": "e_4_5",
+      "png": "MechCommanderOmnitech/e_4_5.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "05147d304c1c8fac28b52f7e9828ca7012c31d199f5143eab74c9b6999eefa2a",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        300,
+        300
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MechCommanderOmnitech",
+      "map_pixels": [
+        1600,
+        1600
+      ],
+      "mission": "e_4_6",
+      "png": "MechCommanderOmnitech/e_4_6.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "7d0a20e3c4a0678ed45ff52b68186d2b8e004179f0a6235a7dd2e340fc58dd0e",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MechCommanderOmnitech",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "e_4_7",
+      "png": "MechCommanderOmnitech/e_4_7.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "2c4af4278e9a65262fbf466bb8f24cf71ae883194084987ea9619a94e57f0cfa",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MechCommanderOmnitech",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mw2_0_1",
+      "png": "MechCommanderOmnitech/mw2_0_1.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "acefb437ba6a9f3ec77f7d4b0965aea2297430ab550dcf88a8b3039e004edd64",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MechCommanderOmnitech",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mw2_0_2",
+      "png": "MechCommanderOmnitech/mw2_0_2.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "a7e091c2170ae624d660e0018fe2cb6ec99b2a54dd14ad37c6321ad93ffbbb32",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        300,
+        300
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MechCommanderOmnitech",
+      "map_pixels": [
+        1600,
+        1600
+      ],
+      "mission": "mw2_10_1_luthien",
+      "png": "MechCommanderOmnitech/mw2_10_1_luthien.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "0778d87a878587592751dff822bdc57b75fd8496a6a3ec39817c5e3f43ad4116",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MechCommanderOmnitech",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mw2_10_2_luthien",
+      "png": "MechCommanderOmnitech/mw2_10_2_luthien.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "2871639de874adcfc65f1ec58bf82bf7d0acb17d2d9ed0ef1986019d63ca50e8",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MechCommanderOmnitech",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mw2_1_1",
+      "png": "MechCommanderOmnitech/mw2_1_1.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "cff71474136c1a37dd0d7b0f4ba1202aec0c7a97cac6d879d7a554d643f4a142",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MechCommanderOmnitech",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mw2_1_2",
+      "png": "MechCommanderOmnitech/mw2_1_2.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "4b9e3e1c1caa12fb6d22ee15217b6f3142423a34226d6102ef9daa9b302e7455",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MechCommanderOmnitech",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mw2_2_1",
+      "png": "MechCommanderOmnitech/mw2_2_1.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "b3f9c86e12b98c062125031614a7ed31a0095b7bf7d76fa6b7c3d01b8c574748",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MechCommanderOmnitech",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mw2_2_2",
+      "png": "MechCommanderOmnitech/mw2_2_2.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "e07ac2ca5f83c0faa259f9220a3f5ef683122d9b5346cc9ee21e84ad5b109b55",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MechCommanderOmnitech",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mw2_2_3",
+      "png": "MechCommanderOmnitech/mw2_2_3.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "11d58cc5a7b0c16c6fbda4697dd7f802a421ea0c311150f585d0fa18986edefd",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MechCommanderOmnitech",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mw2_2_4",
+      "png": "MechCommanderOmnitech/mw2_2_4.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "55bae2b04854c719fde013e05a8d5b69fcd7a6cb6c4d5b6c08ea20e6d01780b5",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MechCommanderOmnitech",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mw2_3_1",
+      "png": "MechCommanderOmnitech/mw2_3_1.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "bcd74e79b4de5bfb2d6a6ccd879ecd4a11150decc56cf5b62fbfe67efbca14aa",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MechCommanderOmnitech",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mw2_4_1",
+      "png": "MechCommanderOmnitech/mw2_4_1.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "7de829afa922615b4ec7e99b8d3b522db96df21c3eceeb8fdbfa55fa3110b951",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MechCommanderOmnitech",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mw2_4_2",
+      "png": "MechCommanderOmnitech/mw2_4_2.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "78b2174e825163f73d49c0b0f5353a3762feb21963d6ae7aea1650b1af0f626b",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MechCommanderOmnitech",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mw2_5_1",
+      "png": "MechCommanderOmnitech/mw2_5_1.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "683654aa7b864d3c855f4904a585ee19d0682386a9cb45aa04437b03524cb1f3",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MechCommanderOmnitech",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mw2_5_2",
+      "png": "MechCommanderOmnitech/mw2_5_2.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "eac4c0b2c6105b8e076af947a771adbeb50475472770573f86871faba24dcba0",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MechCommanderOmnitech",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mw2_6_1",
+      "png": "MechCommanderOmnitech/mw2_6_1.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "58e2520464d11e2f6e6e7d5f2c835e45ad5603b39e6436039dc8491f38693fe6",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MechCommanderOmnitech",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mw2_6_2",
+      "png": "MechCommanderOmnitech/mw2_6_2.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "c72f500831564fae9b9d19f0405c982857205bb8311f16739770a9441a4f26fd",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        480,
+        480
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MechCommanderOmnitech",
+      "map_pixels": [
+        2560,
+        2560
+      ],
+      "mission": "mw2_7_1",
+      "png": "MechCommanderOmnitech/mw2_7_1.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "e9def2d0775f7b5a5ece122b6c99aa7376fe1e20f374726e7956909dea40116f",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        540,
+        540
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MechCommanderOmnitech",
+      "map_pixels": [
+        2880,
+        2880
+      ],
+      "mission": "mw2_8_1",
+      "png": "MechCommanderOmnitech/mw2_8_1.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "32e781662c42588a1b84ea9d1bdb399be802675d3722ea9e56c7749b7cfe5109",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        540,
+        540
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MechCommanderOmnitech",
+      "map_pixels": [
+        2880,
+        2880
+      ],
+      "mission": "mw2_9_1_lastfrontier",
+      "png": "MechCommanderOmnitech/mw2_9_1_lastfrontier.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "d38fcbe99504b29104d0e34b8d9ef96cff1bac00c06384e3c4bc90039f656054",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        300,
+        300
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MechCommanderOmnitech",
+      "map_pixels": [
+        1600,
+        1600
+      ],
+      "mission": "mw2_n_0",
+      "png": "MechCommanderOmnitech/mw2_n_0.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "a4e4e3b3f494427c5040ab50f699138e4792ae97600703755493782de7202173",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        180,
+        180
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MechCommanderOmnitech",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mw2_n_1",
+      "png": "MechCommanderOmnitech/mw2_n_1.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "1255876b3c92f6ef6ec8c9b32f4287904615b20e4a3e59606afe2b6d6deba45b",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 4
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        300,
+        300
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MechCommanderOmnitech",
+      "map_pixels": [
+        1600,
+        1600
+      ],
+      "mission": "mw2_n_2",
+      "png": "MechCommanderOmnitech/mw2_n_2.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "e3e8dbb13820267b1b132752e48807e39a0a757458217e7713caba9553d5fd57",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MechCommanderOmnitech",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mw2_n_3",
+      "png": "MechCommanderOmnitech/mw2_n_3.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "c02df53f5386025c8e6cedeaf3f10a7cbfcfb0d7cc9c998cd4740b20cf465b43",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        420,
+        420
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MechCommanderOmnitech",
+      "map_pixels": [
+        2240,
+        2240
+      ],
+      "mission": "mw2_n_32_oasis",
+      "png": "MechCommanderOmnitech/mw2_n_32_oasis.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "a04daf6cb4cea8329eca3300bf15ba1a542069c59328dabcf28737cc1d775be6",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MechCommanderOmnitech",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mw2_n_33",
+      "png": "MechCommanderOmnitech/mw2_n_33.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "1dee61ef27025607d466aaab4da32d7ada0211f9a7d3fc873776e0b9f1bfebb7",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MechCommanderOmnitech",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mw2_n_35",
+      "png": "MechCommanderOmnitech/mw2_n_35.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "126b1f1cd6fdfd736ae7e63070564a0a353870ae88cbe02120803e4bed6c6921",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MechCommanderOmnitech",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mw2_n_4",
+      "png": "MechCommanderOmnitech/mw2_n_4.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "c17444b70164e820933a4389fcf9ad856d19c1752f5de4126856ba7825465b14",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MechCommanderOmnitech",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mw2_n_5",
+      "png": "MechCommanderOmnitech/mw2_n_5.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "1f912e54595e99ca34447499e03418b59608e34c42f6e27d95270a847927387b",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MechCommanderOmnitech",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mw2_n_6",
+      "png": "MechCommanderOmnitech/mw2_n_6.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "b08a74606044733b1145ab8d12ba7556d3a8a849d25592d39d6e7b5d21c67b54",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        240,
+        240
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MechCommanderOmnitech",
+      "map_pixels": [
+        1280,
+        1280
+      ],
+      "mission": "mw2_n_7",
+      "png": "MechCommanderOmnitech/mw2_n_7.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "42db4d55f42a15c49808fa3f3b87bc7963fcba450694bb83691a122af1f88c2c",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        180,
+        180
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MechCommanderOmnitech",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mw2_n_8",
+      "png": "MechCommanderOmnitech/mw2_n_8.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "c5e9eb56438175a518aac493bea229d66576d2891f515e077cf6fdf4985029ca",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 4
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MechCommanderOmnitech",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mw2_solaris_1",
+      "png": "MechCommanderOmnitech/mw2_solaris_1.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "6e7319f3a0f70503c707fbd0dc18faef4ed44a6d5b83ac3dd6135bb0460e35e7",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MechCommanderOmnitech",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mw2_solaris_2",
+      "png": "MechCommanderOmnitech/mw2_solaris_2.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "9821153bd2015f1eecb80a5fdf519090fc93d09ab9227575590ace56d86b789e",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MechCommanderOmnitech",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mw2_solaris_3",
+      "png": "MechCommanderOmnitech/mw2_solaris_3.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "292acb0cbe8496fd278befc98efda49856b0decf4a2b509cd58445b1786fa96f",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MechCommanderOmnitech",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mw2_w_1",
+      "png": "MechCommanderOmnitech/mw2_w_1.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "ccf80bee96973b062e952484d80984eaf1d5687c1d0229715b55658f322ff83f",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        180,
+        180
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MechCommanderOmnitech",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "p",
+      "png": "MechCommanderOmnitech/p.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "93b8c0ec5300a164c10968e759d34b54f64b2ba98d2558aa8268b02cfbe74db6",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 4
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MechCommanderOmnitech",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "x_2_4",
+      "png": "MechCommanderOmnitech/x_2_4.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "723178ddbf2a0edc93b15a6725aa72c49356ff7833a452dc82464dde5f034814",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        300,
+        300
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MechCommanderOmnitech",
+      "map_pixels": [
+        1600,
+        1600
+      ],
+      "mission": "x_2_5",
+      "png": "MechCommanderOmnitech/x_2_5.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "a537cbf42ed7aa2a2d7b8b3470498da5f5b879036e45e03e64bac4e0683ffc8a",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        300,
+        300
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MechCommanderOmnitech",
+      "map_pixels": [
+        1600,
+        1600
+      ],
+      "mission": "x_4_2",
+      "png": "MechCommanderOmnitech/x_4_2.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "4b9f468781ef9f51d7f5884f9ff057b2a9e08fad367ecff5a894b420e98f2b98",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "MechCommanderOmnitech",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "x_5_1a",
+      "png": "MechCommanderOmnitech/x_5_1a.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "4a29407cc2535b4ccc710dedbd6535e87baf31c27785087f2f7c3ad45dec1c68",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "stock",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "ai_glenn",
+      "png": "stock/ai_glenn.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "20ff1f67612102161514662daaf9ed6cc18989cc7790e9ac5037297fc65ca814",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "stock",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "e3demo",
+      "png": "stock/e3demo.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "647275d27b7924e8ca97ded914eb9b5c2f59bacc2c3986fb8e6740a31df4deac",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "stock",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "gaea_peaks_01",
+      "png": "stock/gaea_peaks_01.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "e996fabfe995d5743ea3cdf6e477a67c2ad45f22410b21b55bbcbee72d123359",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "stock",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "m0101",
+      "png": "stock/m0101.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "a529ac3f542afa267454255de58e10728273e596c67fd7b0cc68f547ce3b9e94",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        300,
+        300
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "stock",
+      "map_pixels": [
+        1600,
+        1600
+      ],
+      "mission": "mc2_01",
+      "png": "stock/mc2_01.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "df4775e1f52e6b23c9f408c8d6a3aa3cd531e31ee29edf6c7c2839026fabf47c",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "stock",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_02",
+      "png": "stock/mc2_02.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "b3faaa93c173d7e7957380d48443820a8cadf81465351f118910d8bbf48de8b1",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        300,
+        300
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "stock",
+      "map_pixels": [
+        1600,
+        1600
+      ],
+      "mission": "mc2_03",
+      "png": "stock/mc2_03.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "304009b73489d23d9bd8889a0fbc31f5ff91312e0fa44a06a64c99d1f43ea01d",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        148,
+        94,
+        181,
+        138
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "stock",
+      "map_pixels": [
+        1878,
+        1408
+      ],
+      "mission": "mc2_03",
+      "png": "stock/mc2_03_base.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "d3c32d10b6f3a9f450ac82b458256d62cc6a773f5c2747ca315e6dcf6818e55b",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 1
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "stock",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_04",
+      "png": "stock/mc2_04.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "bf6bd189bceb5a93b006f93f7caccd0a5c2c5439050f053fe0487420cf2c7525",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "stock",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_05",
+      "png": "stock/mc2_05.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "1f338ddb392ebca132b9f25be72e01d7b1a1a262515f4586ba450c556934a357",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        300,
+        300
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "stock",
+      "map_pixels": [
+        1600,
+        1600
+      ],
+      "mission": "mc2_06",
+      "png": "stock/mc2_06.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "e3f09c97214cb12cf4829a61efa1468cae3ce3cf636ab7ace68724d8ee2fe684",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        300,
+        300
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "stock",
+      "map_pixels": [
+        1600,
+        1600
+      ],
+      "mission": "mc2_07",
+      "png": "stock/mc2_07.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "590409739807c73ae4b2bed2b2396a62dd5d3d7af078361926b70ffc29c3c2bf",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "stock",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_08",
+      "png": "stock/mc2_08.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "583845c7707358ffbe66a0bbbedef64ef2e802758f48e51838c825bcb49083c9",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "stock",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_09",
+      "png": "stock/mc2_09.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "0bd9bd06302dc19c827ed7622c42673e93dae9449725d9744ba4af54be59cf55",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "stock",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_10",
+      "png": "stock/mc2_10.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "ec8ffe434e7d2bec9ccd4ceb23a47966ac393ce3219ef3b621b675d5eb044a76",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "stock",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_11",
+      "png": "stock/mc2_11.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "9f5c318ddf8b8688af4db907187b6582f8e95cb5285255cdb3a40e7e042567b6",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "stock",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_12",
+      "png": "stock/mc2_12.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "cd0451a0e25d331c9c2f917a4bd925fe5be20f86a67ea6ed12243ee12b44a23b",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "stock",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_13",
+      "png": "stock/mc2_13.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "d625a1ef378720f89bb585233127a8ccbf8cadbac3fe0017d0ff394d41f83921",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "stock",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_14",
+      "png": "stock/mc2_14.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "575ce11e11f49b683cf3a006fa3d96ade1e18a6a2b33eacd4a745297724c74f2",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "stock",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_15",
+      "png": "stock/mc2_15.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "1d593ab0d9d3abb788c6687f0843dfc39f6ba4155da047952efd54074f5049d0",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "stock",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_16",
+      "png": "stock/mc2_16.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "c90a0c6dbe88e0de2afd756e7ca41930f3f97f711619a1678daabefe9f3a56ef",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "stock",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_17",
+      "png": "stock/mc2_17.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "2f6de9e7d78d051d718fa4dc0adaf9385f90a9494196bd5a86f15839e7d90435",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        290,
+        35,
+        330,
+        79
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "stock",
+      "map_pixels": [
+        1878,
+        1707
+      ],
+      "mission": "mc2_17",
+      "png": "stock/mc2_17_base.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "ce3841912ae16ab18717586f2f6e472c748b6422a74761add1ac32fc5686d6e9",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 1
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "stock",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_18",
+      "png": "stock/mc2_18.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "bb700b7d782009a37defb0f44328675574ecf5a5959884b199509757e592ce08",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "stock",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_19",
+      "png": "stock/mc2_19.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "5b49addc0833be77b8a1163ddc85b28a2eafd0c83d6ed9c92872f8d99b759c1a",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "stock",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_20",
+      "png": "stock/mc2_20.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "2188a4efc8c5db31bfc54e0bd6889e46773a1437b3f1df43a7e37c8ef8a333ed",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "stock",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_21",
+      "png": "stock/mc2_21.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "081c896aa561ab7fa3de06507340cd51540054d0324735510ac0cfe5f7cd9b16",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "stock",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_22",
+      "png": "stock/mc2_22.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "1bff82a43dc05f51e59b1ec09db24c77e75be405400788dc527a2ec6e93d82fc",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "stock",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_23",
+      "png": "stock/mc2_23.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "eb0b9fec6c6b9b697a3eb38612b15119fb7571735c3b26e8eda8bb72ba161559",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "stock",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_24",
+      "png": "stock/mc2_24.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "ba959b77e31f3233c6245d880b28dfd81593aa0b8ceb370a81e07ce093efa020",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "stock",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_m01",
+      "png": "stock/mc2_m01.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "d10d9b72a89cc12b5f661f6d21da9c90b1375a97ac2535f1c44c3e92488d1f9e",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "stock",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_m02",
+      "png": "stock/mc2_m02.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "93e5685373ed7400e66ba2b67b21a5a693d2078d3dfcbb9abd3679a0b409c00d",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "stock",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_m02a",
+      "png": "stock/mc2_m02a.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "729df143c9b4a1b0c1377cdb2ce75942316214bbd027344aeb52420eb8b8836e",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "stock",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_m02b",
+      "png": "stock/mc2_m02b.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "28562f2cb50f5d30a871f0bd2028c8355fc541532f3969052dc50c3ef348b711",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "stock",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_m03",
+      "png": "stock/mc2_m03.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "c884962341abdb06e739a9e8e802a030b80bb489f5f441dab225eb4b6a93947e",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "stock",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_m04",
+      "png": "stock/mc2_m04.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "143a71c307801c7683a68bbd4383311b42ef7d96d6e92e4bc4c3b13ed4b85131",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "stock",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_m05",
+      "png": "stock/mc2_m05.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "4578a982b7adcf9279111a5cb426f444ade341a11cf9f4e2973c7291f5e52354",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "stock",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_m06",
+      "png": "stock/mc2_m06.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "49404fe258b4929f0e41ddb629e859e6c235e3f343d89e93bdb21a3367ed3357",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "stock",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_m07",
+      "png": "stock/mc2_m07.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "f2e476c46ba60e67edbdf70c2f86b64165e940a7df921e670fcf39931310de7c",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "stock",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_m08",
+      "png": "stock/mc2_m08.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "47fed7619659e48f9236500c82b1a997ced917a09597487a01df39699a6ba207",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "stock",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_m09",
+      "png": "stock/mc2_m09.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "8303660e4517d0be39fc4c6b463355b8cc4bde03f578bee8fa808d6a8309ea82",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        360,
+        360
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "stock",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "mc2_m10",
+      "png": "stock/mc2_m10.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "7c41d1755a39ec0279106844072efe90475237372d00105467e70b019d78917f",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 8
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        180,
+        180
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "stock",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "tut_01",
+      "png": "stock/tut_01.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "173a3d044e01f5847037462ef3b0b6393501097c21af709a6e84a4c6c9fc2126",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 4
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        180,
+        180
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "stock",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "tut_02",
+      "png": "stock/tut_02.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "9ef6b7039608580a512d50ef8a8fa7ec6a117919738606646e938e206d2da852",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 4
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        180,
+        180
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "stock",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "tut_03",
+      "png": "stock/tut_03.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "bb567c3d872f2dc89b4711fb98a65ee6d3fac417d85b09f9d5f334a3b24056a5",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 4
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        180,
+        180
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "stock",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "tut_04",
+      "png": "stock/tut_04.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "cb7c9fcdaff046fd62646802ada6ce6dca8a989506fac4d24d7dcd0bd5f3dd9e",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 4
+    },
+    {
+      "crop_cells": [
+        0,
+        0,
+        180,
+        180
+      ],
+      "header_pixels": 68,
+      "hillshade": true,
+      "install": "stock",
+      "map_pixels": [
+        1920,
+        1920
+      ],
+      "mission": "tut_05",
+      "png": "stock/tut_05.png",
+      "road_geometry": "authored alpha masks",
+      "sha256": "4fd98e9e7865a976ba7048b9463e6999a1b43c7ed49ab743f9820eb8ca29aecc",
+      "unresolved_visible_footprints": 0,
+      "wu_per_pixel": 4
+    }
+  ],
+  "schema": "mc2-raster-index-1"
+}

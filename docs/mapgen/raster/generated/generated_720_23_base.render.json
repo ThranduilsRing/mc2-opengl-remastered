@@ -1,0 +1,19 @@
+{
+  "crop_cells": [
+    468,
+    7,
+    509,
+    40
+  ],
+  "header_pixels": 68,
+  "hillshade": true,
+  "install": "stock",
+  "map_pixels": [
+    1408,
+    1750
+  ],
+  "mission": "generated_720_23",
+  "road_geometry": "world polylines",
+  "unresolved_visible_footprints": 0,
+  "wu_per_pixel": 1
+}
