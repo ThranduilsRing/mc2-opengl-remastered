@@ -184,7 +184,7 @@ void fill_frame_ubo(TerrainIsland* s, const Mc2TerrainTier1Feed& feed,
     u.detailReady    = !s->matNormalReady ? 0 : (s->matNormalLayers > 5u ? 2 : 1);
     u.nfhStrength    = feed.nfhStrength;
     u.concreteDetail = (s->concreteDetailReady && feed.lightingEnabled && feed.detailEnabled) ? 1 : 0;   // detail toggle off = base game look
-    u.concreteDetailStrength = 1.0f;
+    u.concreteDetailStrength = 2.5f;   // normal gain over the cooked 2K sets; tuned in a viewed RTS-zoom montage
     u.detailTiling   = feed.detailTiling;
     u.detailStrength = feed.detailStrength;
     // VK-TERRAIN-DYNSHADOW: enable only when the sub-gate is on AND a real GL

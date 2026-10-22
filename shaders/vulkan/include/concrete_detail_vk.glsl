@@ -22,12 +22,12 @@ struct MaterialDetail {
     float ao;         // 0..1, 1 = unoccluded
 };
 
-// Two unrelated tilings blended so the repeat does not read: 96 wu patch plus a rotated 61 wu patch.
+// Two unrelated tilings blended so the repeat does not read: 160 wu patch plus a rotated 101 wu patch.
 // `dx`/`dy` are the screen derivatives of the world XY, taken in uniform control flow by the caller (this runs in divergent branches).
 MaterialDetail cdEval(int layer, vec2 wp, vec2 dx, vec2 dy) {
     const mat2 R = mat2(0.8, -0.6, 0.6, 0.8);
-    const float kScaleA = 1.0 / 96.0;
-    const float kScaleB = 1.0 / 61.0;
+    const float kScaleA = 1.0 / 160.0;
+    const float kScaleB = 1.0 / 101.0;
     vec4 a = textureGrad(u_concreteDetail, vec3(wp * kScaleA, float(layer)), dx * kScaleA, dy * kScaleA);
     vec4 b = textureGrad(u_concreteDetail, vec3(R * wp * kScaleB + 0.37, float(layer)),
                          R * dx * kScaleB, R * dy * kScaleB);

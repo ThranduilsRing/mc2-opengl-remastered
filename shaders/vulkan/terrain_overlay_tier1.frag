@@ -120,7 +120,7 @@ void main() {
         MaterialDetail cd = cdEval(ovAdoptAlbedo ? CD_LAYER_PAD : CD_LAYER_ROAD, WorldPos.xy, cdWpDx, cdWpDy);
         float cdDiff; vec3 cdSp;
         cdShade(cd, lightDir3, uT.ambientDayGate, cdDiff, cdSp);
-        c.rgb *= mix(1.0, cd.ao, 0.6) * cdDiff;
+        c.rgb *= mix(1.0, cd.ao, 0.9) * cdDiff;
         cdSpec = cdSp;
     }
     c.rgb = c.rgb * shadow + cdSpec * shadow;

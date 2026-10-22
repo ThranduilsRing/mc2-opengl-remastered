@@ -642,7 +642,7 @@ void main() {
             MaterialDetail cd = cdEval(CD_LAYER_PAD, v_worldPos.xy, cdWpDx, cdWpDy);
             float cdDiff; vec3 cdSp;
             cdShade(cd, normalize(lightDir), uT.ambientDayGate, cdDiff, cdSp);
-            baseColor *= mix(1.0, cd.ao, 0.6 * cdW);
+            baseColor *= mix(1.0, cd.ao, 0.9 * cdW);
             normalLight *= mix(1.0, cdDiff, cdW);
             cdSpec = cdSp * cdW;
         }
