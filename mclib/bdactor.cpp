@@ -11,6 +11,7 @@
 #endif
 
 #include "bdactor_internal.h"
+#include "gameobj.h"
 #include "appearance_rng.h"
 #include "../RenderCore/axis_convert.h"
 #include "mc2fmt.h"

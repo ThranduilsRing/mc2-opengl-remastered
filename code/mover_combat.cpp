@@ -281,82 +281,37 @@ MoverPtr Mover::getPoint (void) {
 	return(nullptr);
 }
 
-bool Mover::hasWeaponNode (void)
-{
-
-	if ((lowestWeaponNodeID == -1) || (lowestWeaponNodeID == -2) || (turn < 6))
-	{
-		lowestWeaponNodeID = appearance->getLowestWeaponNode();
-		glm::vec3 nodePos = appearance->getWeaponNodePosition(lowestWeaponNodeID);
-		lowestWeaponNodeZ = nodePos.z - land->getTerrainElevation(nodePos);
-	}
-
-	return (lowestWeaponNodeID != -1);
+namespace {
+// LOS is an authoritative query even when a renderer or UI asks it.
+struct SimulationPoseRead {
+    bool previous = simPresentationPass;
+    SimulationPoseRead() { simPresentationPass = false; }
+    ~SimulationPoseRead() { simPresentationPass = previous; }
+};
 }
 
-glm::vec3 Mover::getLOSPosition (void)
+bool Mover::hasWeaponNode(void)
 {
-	float jumpLowestNode = 0.0f;
-	if (appearance)
-	{
+    SimulationPoseRead read;
+    return appearance && appearance->getLowestWeaponNode() != -1;
+}
 
-
-		if ((getStatus() == OBJECT_STATUS_NORMAL) &&
-			((appearance->getCurrentGestureId() == 2) || 
-			 (appearance->getCurrentGestureId() == 4) || 
-			 (appearance->getCurrentGestureId() == 7) || !isMech()) && 
-			((lowestWeaponNodeID == -1) || (lowestWeaponNodeID == -2) || (turn < 6)) )
-		{
-			lowestWeaponNodeID = appearance->getLowestWeaponNode();
-			if (lowestWeaponNodeID == -1)
-			{
-				//We must not have ever rendered this guy.  Probably multiplayer.
-				// Update his Geometry.
-
-
-				lowestWeaponNodeID = appearance->getLowestWeaponNode();
-			}
-
-			glm::vec3 nodePos = appearance->getWeaponNodePosition(lowestWeaponNodeID);
-			lowestWeaponNodeZ = nodePos.z - land->getTerrainElevation(nodePos);
-		}
-
-		if (appearance->getCurrentGestureId() == 20)
-		{
-			// Gesture 20 is jump; lowestWeaponNodeZ is only refreshed for
-			// gestures 2/4/7, so we recompute every frame here. Pose
-			// oscillation can drop the raw value to/below 0, which then
-			// fails the `> 0.0f` override below and drops the LOS ray to
-			// the stale cached Z (often below terrain) -- every weapon's
-			// lineOfSight test fails that frame. Clamp to the same
-			// shutdown-mech fudge used as the fallback below.
-			glm::vec3 nodePos = appearance->getWeaponNodePosition(lowestWeaponNodeID);
-			float rawZ = nodePos.z - land->getTerrainElevation(nodePos);
-			jumpLowestNode = (rawZ > 15.0f) ? rawZ : 15.0f;
-		}
-
-		if (lowestWeaponNodeZ <= 0.0f)
-		{
-			glm::vec3 nodePos = appearance->getWeaponNodePosition(lowestWeaponNodeID);
-			lowestWeaponNodeZ = nodePos.z - land->getTerrainElevation(nodePos);
-		}
-
-
-	}
-
-	glm::vec3 losPos = position;
-	if (lowestWeaponNodeZ != -9999.9f)
-		losPos.z += lowestWeaponNodeZ;
-	else
-		losPos.z += 15.0f;		  //Fudge in some higher value so shutdown mechs don't just disappear!!
-
-	if (jumpLowestNode > 0.0f)
-	{
-		losPos = position;
-		losPos.z += jumpLowestNode;
-	}
-
-	return (losPos);
+glm::vec3 Mover::getLOSPosition(void)
+{
+    SimulationPoseRead read;
+    float height = 15.0f;
+    if (appearance && appearance->simPose->ready) {
+        const long node = appearance->getLowestWeaponNode();
+        if (node >= 0) {
+            const auto at = appearance->getWeaponNodePosition(node);
+            height = at.z - land->getTerrainElevation(at);
+        }
+        if (isMech() && appearance->simulationAnimation()->currentGestureId == 20 && height < 15.0f)
+            height = 15.0f;
+    }
+    auto result = position;
+    result.z += height;
+    return result;
 }
 
 long Mover::clearWeaponFireChunks (long which) {

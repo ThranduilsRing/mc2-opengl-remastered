@@ -8,6 +8,15 @@ std::uint64_t combatSimulationHash(GameObjectManager& manager)
     for (long i = 1; i <= manager.getMaxObjects(); ++i) {
         auto* object = manager.get(i);
         if (!object || !object->getExists()) continue;
+        auto id = object->getPartId();
+        auto kind = static_cast<std::uint32_t>(object->getObjectClass());
+        auto status = object->getStatus();
+        auto position = object->getPosition();
+        auto rotation = object->getRotation();
+        auto damage = object->getDamage();
+        auto tangible = object->getTangible();
+        auto falling = object->getFlag(OBJECT_FLAG_FALLING);
+        state(i, id, kind, status, position.x, position.y, position.z, rotation, damage, tangible, falling);
         if (auto* bolt = dynamic_cast<WeaponBolt*>(object)) {
             auto hash = bolt->simulationHash(); state(i, hash);
         } else if (auto* explosion = dynamic_cast<Carnage*>(object)) {
