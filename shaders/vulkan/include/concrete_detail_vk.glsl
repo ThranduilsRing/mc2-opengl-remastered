@@ -22,15 +22,15 @@ struct MaterialDetail {
     float ao;         // 0..1, 1 = unoccluded
 };
 
-// Two unrelated tilings blended so the repeat does not read: 160 wu patch plus a rotated 101 wu patch.
+// Two unrelated tilings blended so the repeat does not read: 400 wu patch plus a rotated 257 wu patch (RTS zoom: smaller patches mip away to nothing).
 // `dx`/`dy` are the screen derivatives of the world XY, taken in uniform control flow by the caller (this runs in divergent branches).
 MaterialDetail cdEval(int layer, vec2 wp, vec2 dx, vec2 dy) {
     const mat2 R = mat2(0.8, -0.6, 0.6, 0.8);
-    const float kScaleA = 1.0 / 160.0;
-    const float kScaleB = 1.0 / 101.0;
-    vec4 a = textureGrad(u_concreteDetail, vec3(wp * kScaleA, float(layer)), dx * kScaleA, dy * kScaleA);
+    const float kScaleA = 1.0 / 400.0;
+    const float kScaleB = 1.0 / 257.0;
+    vec4 a = textureGrad(u_concreteDetail, vec3(wp * kScaleA, float(layer)), dx * kScaleA * 0.5, dy * kScaleA * 0.5);
     vec4 b = textureGrad(u_concreteDetail, vec3(R * wp * kScaleB + 0.37, float(layer)),
-                         R * dx * kScaleB, R * dy * kScaleB);
+                         R * dx * kScaleB * 0.5, R * dy * kScaleB * 0.5);
     // Image rows run top-down while world v runs north, so the GL-convention green channel is negated.
     vec2 na = vec2(a.x * 2.0 - 1.0, -(a.y * 2.0 - 1.0));
     vec2 nb = vec2(b.x * 2.0 - 1.0, -(b.y * 2.0 - 1.0));
@@ -39,7 +39,7 @@ MaterialDetail cdEval(int layer, vec2 wp, vec2 dx, vec2 dy) {
     MaterialDetail d;
     d.n = normalize(vec3(nxy, 1.0));
     d.roughness = 0.5 * (a.z + b.z);
-    d.ao = 0.5 * (a.w + b.w);
+    d.ao = clamp(1.0 + (0.5 * (a.w + b.w) - 1.0) * 2.0, 0.0, 1.0);   // contrast stretch: the cooked AO is mild
     return d;
 }
 
