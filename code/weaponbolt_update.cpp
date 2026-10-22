@@ -8,6 +8,7 @@
 #include "mc2fmt.h"
 #include "../RenderCore/axis_convert.h"
 #include "Gates/gate.h"
+#include "impact_presentation.h"
 
 
 //---------------------------------------------------------------------------
@@ -298,6 +299,11 @@ long WeaponBolt::update (void)
 
 					}
 
+					// Presentation only: the impact decal library reads this event; the simulation never reads it back.
+					impact_presentation::onWeaponImpact(weaponShot.masterId, boltType->isBeam,
+						boltType->areaEffectDmg > 0.0f && boltType->areaEffectRad > 0.0f, weaponShot.damage,
+						boltType->isBeam ? position : ownerPosition, hotSpot, targetWID);
+
 					if (hitEffect && hitEffect->IsExecuted())
 					{
 						glm::vec3			tPosition;
@@ -361,6 +367,9 @@ long WeaponBolt::update (void)
 					else
 					{
 						traceCombat("impact", "miss");
+						impact_presentation::onWeaponImpact(weaponShot.masterId, boltType->isBeam,
+							boltType->areaEffectDmg > 0.0f && boltType->areaEffectRad > 0.0f, weaponShot.damage,
+							boltType->isBeam ? position : ownerPosition, hotSpot, 0);
 						if (missEffect && missEffect->IsExecuted())
 						{
 							glm::vec3			tPosition;
@@ -538,6 +547,11 @@ long WeaponBolt::update (void)
 							hotSpot = target->appearance->getHitNodeRight();
 					}
 
+					// Presentation only: the impact decal library reads this event; the simulation never reads it back.
+					impact_presentation::onWeaponImpact(weaponShot.masterId, boltType->isBeam,
+						boltType->areaEffectDmg > 0.0f && boltType->areaEffectRad > 0.0f, weaponShot.damage,
+						boltType->isBeam ? position : ownerPosition, hotSpot, targetWID);
+
 					if (hitEffect && hitEffect->IsExecuted())
 					{
 						glm::vec3			tPosition;
@@ -599,6 +613,9 @@ long WeaponBolt::update (void)
 					else
 					{
 						traceCombat("impact", "miss");
+						impact_presentation::onWeaponImpact(weaponShot.masterId, boltType->isBeam,
+							boltType->areaEffectDmg > 0.0f && boltType->areaEffectRad > 0.0f, weaponShot.damage,
+							boltType->isBeam ? position : ownerPosition, hotSpot, 0);
 						if (missEffect && missEffect->IsExecuted())
 						{
 							glm::vec3			tPosition;

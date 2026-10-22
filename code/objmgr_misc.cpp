@@ -1,6 +1,7 @@
 // GameObjectManager: mover lists, object types, part ids, collision lists, captures, effects spawn and appearance-only update.
 // Declared in the class headers; shared names in objmgr_internal.h.
 #include "objmgr_internal.h"
+#include "impact_presentation.h"
 
 
 //---------------------------------------------------------------------------
@@ -374,6 +375,8 @@ CarnagePtr GameObjectManager::createExplosion (long effectId,
 											   float damage,
 											   float radius) 
 {
+	// Presentation only: scorch/crater for mines, deaths and airstrikes (bolt impacts emit their own event).
+	impact_presentation::onExplosion(effectId, position, radius);
 	long explosionObjTypeHandle = weaponEffects->GetEffectObjNum(effectId);
 	if (explosionObjTypeHandle != INVALID_OBJECT) 
 	{

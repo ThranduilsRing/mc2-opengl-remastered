@@ -11,6 +11,7 @@
 #include "../GameOS/gameos/gos_dev_shell.h"
 #include "mc2fmt.h"
 #include "appearance_rng.h"
+#include "impact_presentation.h"
 static bool devShellSimSpeed(const char* paramsJson,
                              std::string& dataJsonOut, std::string& errorOut)
 {
@@ -709,6 +710,7 @@ void Mission::initMissionSettings(MissionInitFrame& f) {
 		
 	result = craterManager->init(1000,20479,"feet");
 	gosASSERT(result == NO_ERR);
+	impact_presentation::reset();
 	
 	ObjectManager = new GameObjectManager;
 	if (!ObjectManager)

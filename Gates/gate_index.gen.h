@@ -224,7 +224,7 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_FX_COST_SPLIT", Kind::Bool, Rule::Exact1, {}},
     {"MC2_FX_COUNT_LOG", Kind::Bool, Rule::Presence, {}},
     {"MC2_FX_DEFS", Kind::Bool, Rule::Presence, {}},
-    {"MC2_FX_FORCE_SPAWN", Kind::Enum, Rule::Std, "|0|1|2|3|4|5|6|7|8|9|loop"},
+    {"MC2_FX_FORCE_SPAWN", Kind::Enum, Rule::Std, "|0|1|2|3|4|5|6|7|8|9|loop|impact"},
     {"MC2_FX_TRACE", Kind::Bool, Rule::Lead1, {}},
     {"MC2_GAMEOS_UI_DEFS", Kind::Bool, Rule::Std, {}},
     {"MC2_GAMEPLAY_PICK_SELFTEST", Kind::Bool, Rule::Exact1, {}},

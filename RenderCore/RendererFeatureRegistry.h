@@ -788,7 +788,7 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "MC2_FX_FORCE_SPAWN",
         EnvVarKind::Feature,
         false,
-        "FX-FORCE-SPAWN v1 fixture: default-OFF.",
+        "FX-FORCE-SPAWN v1 fixture: default-OFF. =impact: impact-decal volley.",
     },
     {
         "MC2_GOM_UPDATE_COST_SPLIT",

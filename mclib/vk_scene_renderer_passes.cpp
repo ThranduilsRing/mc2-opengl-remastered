@@ -647,6 +647,12 @@ void mc2::VkSceneRenderer::renderListsOverlayBatches (RenderSubmissions& submiss
 		if (gosPostProcess* ppVkOv = getGosPostProcess())
 			(void)mc2_vk_overlay_run(ppVkOv->getWidth(), ppVkOv->getHeight());
 	}
+	// Weapon impact decals: after the opaque scene and its decal batch, before water and transparent effects.
+	{
+		ZoneScopedN("Render.ImpactDecals");
+		if (gosPostProcess* ppImpact = getGosPostProcess())
+			(void)mc2_vk_impact_decals_run(ppImpact->getWidth(), ppImpact->getHeight());
+	}
 #endif
 	// ── End new world-space overlay batches ───────────────────────────────────
 }

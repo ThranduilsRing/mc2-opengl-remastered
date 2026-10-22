@@ -63,6 +63,7 @@
 #include "../GameOS/gameos/vulkan_color_prop_island.h"   // VK-P11 STATIC-PROP COLOR: producer call
 #include "../GameOS/gameos/vulkan_mech_island.h"          // VK-P14 MECH TIER-1: producer call
 #include "../GameOS/gameos/vulkan_legacy_shape_island.h"  // VK-PARITY-F1: legacy MLR solid loop VK owner
+#include "../GameOS/gameos/vulkan_impact_decals.h"         // weapon impact box decals
 #include "../GameOS/gameos/vulkan_terrain_island.h"        // VK-PARITY-OVERLAY-1: overlay/decal VK owner
 #endif
 #include "../GameOS/gameos/render_frame_plan.h"  // RENDER-FRAME-PLAN-SCAFFOLD-1

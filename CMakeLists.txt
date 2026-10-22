@@ -462,6 +462,7 @@ set(SOURCES
     "code/action_executor_registry.cpp"
     "code/fire_executor_registry.cpp"
     "code/weapon_presentation_proof.cpp"
+    "code/impact_presentation.cpp"
     "code/tacordr.cpp"
     "code/team.cpp"
     "code/team_los.cpp"

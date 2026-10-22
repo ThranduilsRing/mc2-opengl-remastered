@@ -82,6 +82,7 @@ extern "C" void mc2_vfx_pass_end();
 #include "../GameOS/gameos/gos_postprocess.h"  // VK-GL-LOST-DRAWS tags
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"   // str<>()
+#include "impact_presentation.h"
 
 namespace {
 // Marks the quads drawn inside a scope as exempt from the HUD batch's bottom-band shrink, then restores the previous state.
@@ -833,6 +834,7 @@ void GameCamera::render (void)
 			ZoneScopedN("GameCamera::render craters");
 			craterManager->render();					//render the craters and footprints
 		}
+		impact_presentation::frame();				// weapon impact decals (read-only on the sim)
 
 		{
 			ZoneScopedN("GameCamera::render objects");

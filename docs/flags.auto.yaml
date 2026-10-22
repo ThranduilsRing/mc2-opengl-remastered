@@ -1633,8 +1633,8 @@ flags:
     default: ""
     rule: Std
     owner: code
-    doc: "FX-FORCE-SPAWN v1 fixture: default-OFF."
-    tokens: "|0|1|2|3|4|5|6|7|8|9|loop"
+    doc: "FX-FORCE-SPAWN v1 fixture: default-OFF. =impact: impact-decal volley."
+    tokens: "|0|1|2|3|4|5|6|7|8|9|loop|impact"
     smoke_passthrough: true
     verified: true
     registry: {feature_id: MC2_FX_FORCE_SPAWN, kind: Feature, order: -1, default_on: false}
