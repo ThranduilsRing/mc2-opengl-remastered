@@ -435,12 +435,15 @@ void EditorObjectMgr::registerStaticPropsForMissionLoad()
 				continue;
 			const Appearance* app = obj->appearance();
 			const int32_t recipe = app->getShadowCasterRecipeIndex();
-			if (recipe < 0)
+			const int special=getSpecialType(obj->getID());
+			if (recipe < 0 && special!=EDITOR_TURRET)
 				continue;
 			mc2shadow::StaticCasterEntry e;
 			e.owner = app;
 			e.gameHandle = handle++;
 			e.recipeIndex = recipe;
+			e.kind=special==EDITOR_TURRET?mc2shadow::CasterKind::Turret:
+				special==EDITOR_GATE?mc2shadow::CasterKind::Gate:mc2shadow::CasterKind::TerrainObject;
 			set.add(e);
 		}
 		set.endRebuild();

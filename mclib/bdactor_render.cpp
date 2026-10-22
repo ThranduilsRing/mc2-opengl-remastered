@@ -41,6 +41,9 @@ uint32_t captureForcedBuildingHighlight()
 
 long BldgAppearance::render (long depthFixup)
 {
+	if (gos_IsModernShadowPathActive() &&
+		(mc2shadow::staticCasterSet().isMoverOwner(static_cast<const Appearance*>(this)) || !isStaticEligible()))
+		GpuStaticPropBatcher::instance().captureMoverShadowShape(static_cast<const Appearance*>(this),bldgShape);
 	// GPU-batcher path bypasses inView here — the whole point of C2 is
 	// letting the GPU clipper decide visibility. The legacy angular-cull
 	// recalcBounds has a ~87% false-negative rate at wolfman zoom; under
@@ -456,6 +459,7 @@ long BldgAppearance::renderShadows (void)
 
 long TreeAppearance::render (long depthFixup)
 {
+	if (gos_IsModernShadowPathActive() && shadowIsMoving()) GpuStaticPropBatcher::instance().captureMoverShadowShape(static_cast<const Appearance*>(this),treeShape);
 	// Mirror BldgAppearance::render: bypass inView under GPU path — the
 	// GPU clipper decides visibility, and the legacy angular cull has a
 	// ~87% false-negative rate at wolfman zoom.
@@ -608,7 +612,7 @@ long TreeAppearance::render (long depthFixup)
 				// submission with no late-reg flag, snapshot the leaf batch into the
 				// registry. Subsequent frames use the static path above.
 				// Pass treeShape as multi so flush() can patch lightDataIndex each frame.
-				if (submittedToGpu && !staticReg[activeLOD].registered
+				if (submittedToGpu && !shadowIsMoving() && !staticReg[activeLOD].registered
 				        && !needsFullBakeNextFrame) {
 					const auto& batch =
 						GpuStaticPropBatcher::instance().getLastBuiltBatch();

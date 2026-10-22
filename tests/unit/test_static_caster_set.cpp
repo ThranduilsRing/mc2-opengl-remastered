@@ -1,6 +1,7 @@
 // Caster lifecycle against an owned CPU recipe feed; no renderer or graphics context.
 #include "doctest.h"
 #include "gameos/static_caster_set.h"
+#include "gameos/shadow_mover_feed.h"
 
 #include <map>
 
@@ -27,6 +28,40 @@ size_t getRecipeShadowLeaves(int32_t recipe, std::vector<GpuStaticPropInstance>&
     out.insert(out.end(), leaves.begin(), leaves.end());
     return leaves.size();
 }
+}
+
+TEST_CASE("static caster set: turrets never enter the bake and live poses replace their registry fallback") {
+    RecipeFeed feed;
+    feed.add(1,10); feed.add(2,20); feed.add(3,30);
+    int turret=0,building=0;
+    mc2shadow::StaticCasterSet set;
+    set.beginRebuild();
+    set.add({&turret,2,1,mc2shadow::CasterKind::Turret});
+    set.add({&building,1,2,mc2shadow::CasterKind::Building});
+    set.endRebuild();
+    REQUIRE(set.entries().size()==1);
+    CHECK(set.moverOwnerCount()==1);
+    CHECK(set.isMoverOwner(&turret));
+    CHECK_FALSE(set.isMoverOwner(&building));
+    std::vector<GpuStaticPropInstance> leaves;
+    const uint64_t hash=set.loadSnapshot(leaves);
+    REQUIRE(leaves.size()==1); CHECK(leaves[0].typeID==20);
+    CHECK(set.recipeMask()[1]==0);
+    leaves.clear(); set.appendMoverLeaves(leaves);
+    REQUIRE(leaves.size()==1); CHECK(leaves[0].typeID==10);
+    set.ownerInvalidated(&turret,1); set.ownerRegistered(&turret,3);
+    CHECK_FALSE(set.hasEvents());
+    leaves.clear(); set.appendMoverLeaves(leaves);
+    REQUIRE(leaves.size()==1); CHECK(leaves[0].typeID==30);
+    CHECK(set.loadSnapshot(leaves)==hash);
+    GpuStaticPropInstance live{}; live.typeID=40;
+    mc2shadow::moverPropFeed().record(&turret,std::span(&live,1),100);
+    leaves.clear(); set.appendMoverLeaves(leaves,100);
+    CHECK(leaves.empty());
+    mc2shadow::moverPropFeed().append(leaves,100);
+    REQUIRE(leaves.size()==1); CHECK(leaves[0].typeID==40);
+    set.ownerInvalidated(&turret,3);
+    CHECK_FALSE(set.hasEvents());
 }
 
 TEST_CASE("static caster set: editor admission preserves the load snapshot and assigns unique handles") {
@@ -115,9 +150,11 @@ TEST_CASE("static caster set: identical registration cancels a change and map re
     set.add({&owner, 1, 1});
     set.endRebuild();
     set.setAdmitNewOwners(true);
+    const uint64_t delta=set.deltaVersion();
     set.ownerInvalidated(&owner, 1);
     set.ownerRegistered(&owner, 2);
     CHECK_FALSE(set.hasEvents());
+    CHECK(set.deltaVersion()==delta); // cancelled registration must not rebuild the object map
     CHECK(set.recipeMask()[1] == 0);
     CHECK(set.recipeMask()[2] == 1);
     set.beginRebuild();

@@ -9,6 +9,7 @@ BuildingBrush.cpp	: Implementation of the BuildingBrush component.
 #include "stdafx.h"
 #include <malloc.h> // _msize: capacity of the standard CRT terrain allocation
 #include "BuildingBrush.h"
+#include "../GameOS/gameos/shadow_mover_feed.h"
 
 #ifndef EDITOROBJECTMGR_H
 #include "EditorObjectMgr.h"
@@ -332,6 +333,7 @@ void BuildingBrush::update( int ScreenMouseX, int ScreenMouseY )
 
 void BuildingBrush::render( int ScreenMouseX, int ScreenMouseY )
 {
+	mc2shadow::ScopedMoverCapturePause pausePreviewShadows;
 	if ( !pCursor )
 		return;
 

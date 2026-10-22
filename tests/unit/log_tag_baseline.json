@@ -2723,6 +2723,18 @@
    "keys": [
     "event",
     "count",
+    "ok",
+    "frame"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "EDITOR_CLI",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "count",
     "selected",
     "units",
     "buildings",

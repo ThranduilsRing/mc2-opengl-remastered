@@ -5,6 +5,7 @@
 #include "gos_static_prop_registry.h"
 #include "mc2fmt.h"
 #include "shadow_bake_math.h"
+#include "shadow_mover_feed.h"
 
 #include <algorithm>
 #include <optional>
@@ -28,9 +29,14 @@ void StaticCasterSet::beginRebuild() {
 }
 
 void StaticCasterSet::add(const StaticCasterEntry& entry) {
-    if (!building_ || entry.recipeIndex < 0) return;
+    if (!building_ || (entry.recipeIndex < 0 && entry.kind != CasterKind::Turret)) return;
     nextGameHandle_ = (std::max)(nextGameHandle_, entry.gameHandle + 1);
-    if (entry.owner) byOwner_[entry.owner] = static_cast<uint32_t>(entries_.size());
+    if (entry.kind == CasterKind::Turret) {
+        if (entry.owner) byOwner_[entry.owner] = {static_cast<uint32_t>(movers_.size()),true};
+        movers_.push_back(entry);
+        return;
+    }
+    if (entry.owner) byOwner_[entry.owner] = {static_cast<uint32_t>(entries_.size()),false};
     entries_.push_back(entry);
     const size_t r = static_cast<size_t>(entry.recipeIndex);
     if (recipeMask_.size() <= r) recipeMask_.resize(r + 1, 0);
@@ -61,7 +67,9 @@ void StaticCasterSet::endRebuild() {
 }
 
 void StaticCasterSet::clear() {
+    moverPropFeed().clear();
     entries_.clear();
+    movers_.clear();
     recipeMask_.clear();
     byOwner_.clear();
     removed_.clear();
@@ -102,8 +110,9 @@ void StaticCasterSet::ownerInvalidated(const void* owner, int32_t oldRecipe) {
     if (building_ || version_ == 0 || !owner) return;
     auto idx = findOwner(byOwner_, owner);
     if (!idx) return;
-    StaticCasterEntry& e = entries_[*idx];
+    StaticCasterEntry& e = entryAt(*idx);
     if (e.recipeIndex < 0 || e.recipeIndex != oldRecipe) return;
+    if (idx->mover) { e.recipeIndex=-1; return; }
     std::vector<GpuStaticPropInstance> leaves;
     GpuStaticPropRegistry::getRecipeShadowLeaves(oldRecipe, leaves);
     if (static_cast<size_t>(oldRecipe) < recipeMask_.size()) recipeMask_[static_cast<size_t>(oldRecipe)] = 0;
@@ -118,8 +127,10 @@ void StaticCasterSet::admitOwner(const void* owner, CasterKind kind) {
     fresh.owner = owner;
     fresh.gameHandle = nextGameHandle_++;
     fresh.kind = kind;
-    byOwner_[owner] = static_cast<uint32_t>(entries_.size());
-    entries_.push_back(fresh);
+    const bool mover=kind==CasterKind::Turret;
+    auto& owners=mover?movers_:entries_;
+    byOwner_[owner] = {static_cast<uint32_t>(owners.size()),mover};
+    owners.push_back(fresh);
 }
 
 void StaticCasterSet::ownerRegistered(const void* owner, int32_t newRecipe) {
@@ -130,8 +141,9 @@ void StaticCasterSet::ownerRegistered(const void* owner, int32_t newRecipe) {
         admitOwner(owner);
         idx = findOwner(byOwner_, owner);
     }
-    StaticCasterEntry& e = entries_[*idx];
+    StaticCasterEntry& e = entryAt(*idx);
     if (e.recipeIndex == newRecipe) return;
+    if (idx->mover) { e.recipeIndex=newRecipe; return; }
     CasterEvent ev;
     GpuStaticPropRegistry::getRecipeShadowLeaves(newRecipe, ev.after);
     if (auto node = removed_.extract(owner); !node.empty()) ev.before = std::move(node.mapped());
@@ -139,10 +151,8 @@ void StaticCasterSet::ownerRegistered(const void* owner, int32_t newRecipe) {
     const size_t r = static_cast<size_t>(newRecipe);
     if (recipeMask_.size() <= r) recipeMask_.resize(r + 1, 0);
     recipeMask_[r] = 1;
-    ++deltaVersion_;
     if (sameLeaves(ev.before, ev.after)) return;   // a re-registration of the same leaves: nothing to rebake
-    // Turrets turn: their shadow is a mover's (P6). Until then the bake keeps their pristine pose and their re-registrations queue nothing.
-    if (e.kind == CasterKind::Turret) return;
+    ++deltaVersion_;
     events_.push_back(std::move(ev));
 }
 
@@ -152,7 +162,7 @@ std::vector<StaticCasterSet::CasterEvent> StaticCasterSet::takeEvents() {
         for (uint32_t i : resolveOrder()) {
             const auto& entry = entries_[i];
             auto node = removed_.extract(entry.owner);
-            if (node.empty() || entry.kind == CasterKind::Turret) continue;
+            if (node.empty()) continue;
             CasterEvent ev;
             ev.before = std::move(node.mapped());
             events_.push_back(std::move(ev));
@@ -201,6 +211,19 @@ void StaticCasterSet::logDriftSinceLoad(uint32_t maxLines) const {
                                 mc2::fmt::as_size(one.size()), maxDelta);
     }
     mc2::fmt::print_err("[SHADOW_BAKE] caster drift since load: {} of {} entries\n", drifted, mc2::fmt::as_size(entries_.size()));
+}
+
+bool StaticCasterSet::isMoverOwner(const void* owner) const {
+    const auto index=findOwner(byOwner_,owner);
+    return index && index->mover;
+}
+
+void StaticCasterSet::appendMoverLeaves(std::vector<GpuStaticPropInstance>& leaves, uint64_t frame) const {
+    std::vector<uint32_t> order(movers_.size());
+    for (uint32_t i=0;i<order.size();++i) order[i]=i;
+    std::sort(order.begin(),order.end(),[this](uint32_t a,uint32_t b) { return movers_[a].gameHandle<movers_[b].gameHandle; });
+    for (uint32_t i:order)
+        if (!moverPropFeed().contains(movers_[i].owner,frame)) GpuStaticPropRegistry::getRecipeShadowLeaves(movers_[i].recipeIndex,leaves);
 }
 
 uint64_t StaticCasterSet::resolve(std::vector<GpuStaticPropInstance>& leaves) const {

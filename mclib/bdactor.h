@@ -680,6 +680,7 @@ class TreeAppearance : public ObjectAppearance
 		virtual bool IsStaticNow() const override;
 		virtual void touch() override;
 		void selectActiveLOD();  // TREE-OVERRIDE-LOD-MVP: per-frame distance LOD pick (update+touch)
+		bool shadowIsMoving() const { return pitch>=-85.0f && pitch<=85.0f && (pitch<-0.01f || pitch>0.01f); }
 		virtual void invalidateStaticRegistration() override;
 		// Task 5 (Track B): mission-load bulk registration overrides.
 		virtual void registerStatic()              override;

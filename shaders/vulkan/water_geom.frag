@@ -15,6 +15,8 @@
 #version 450
 #extension GL_GOOGLE_include_directive : require
 #define PREC highp
+#include "include/mover_shadow.glsl"
+#include "../include/render_contract.hglsl"
 
 layout(location = 0) in PREC vec4  Color;
 layout(location = 1) in PREC vec2  Texcoord;
@@ -219,6 +221,7 @@ void main(void)
             col *= mix(0.4, 1.0, texture(u_staticMask, maskUv).r);
     }
     // WATER-VISUAL-FIRST-SLICE sky tint (strength 0 default -> mix returns col; GL line 328).
+    col *= mix(0.4,1.0,moverVisibility(WorldPos,vec3(0.0,0.0,1.0)));
     col = mix(col, F.f9.xyz, clamp(F.f8.w, 0.0, 1.0));
 
     // ---- RUNG-6.5 WATER-REFLECTION PORT (WATER-SKY-REFLECTION-1 + WATER-HDRI-REFL-1) ----
@@ -279,5 +282,6 @@ void main(void)
     // composites onto MainColor (GL_ONE / GL_ONE_MINUS_SRC_ALPHA) == GL's native one-stage
     // col*a + bg*(1-a) blend, bit-exact. (Straight-alpha two-stage double-applied alpha.)
     FragColor = vec4(col * waterA, waterA);
-    GBuffer1  = vec4(0.5, 0.5, 1.0, 0.0);   // rc_gbuffer1_screenShadowEligible(0,0,1)
+    GBuffer1 = rc_gbuffer1_shadowHandled(vec3(0.0,0.0,1.0));
+    if (moverFrame.flags.w == 0) GBuffer1 = rc_gbuffer1_screenShadowEligible(vec3(0.0,0.0,1.0));
 }

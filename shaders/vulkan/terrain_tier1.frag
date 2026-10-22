@@ -650,7 +650,7 @@ void main() {
         // VK-TERRAIN-CSM-NEAR-1: near-cascade-array path when armed+valid (uT.csmEnabled),
         // else the legacy single dynamic map. Both now carry the GL dist-fade + clamped sun.
         float dynS = 1.0;
-        if (uT.csmEnabled != 0 || uT.enableDynShadows != 0) {
+        if (moverFrame.flags.x != 0 || uT.csmEnabled != 0 || uT.enableDynShadows != 0) {
             // T15: bounded terrain-only receiver (4 compare fetches); objects keep the tent.
             vec3 shSun = lsvk_shadowSun(lightDir, shKnobs);         // TERRAIN-SHADOW-GUARD-1
             dynS = terrainDynamicShadow(v_worldPos, shadowN, shSun);

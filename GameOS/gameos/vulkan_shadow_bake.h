@@ -259,6 +259,7 @@ private:
     bool objectInitialized_ = false;
     OwnedBuffer terrainVbo_, terrainIbo_;
     uint32_t terrainIndexCount_ = 0;
+    uint64_t objectHeightVersion_ = ~0ull;
     OwnedBuffer objectInstances_, objectUbo_;
 
     // Transients (one bake).

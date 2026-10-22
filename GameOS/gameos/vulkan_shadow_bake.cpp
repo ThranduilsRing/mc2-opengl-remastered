@@ -216,6 +216,8 @@ void ShadowBake::invalidate() {
     topInitialized_ = false;
     terrainVbo_.reset(); terrainIbo_.reset(); objectInstances_.reset(); objectUbo_.reset();
     terrainIndexCount_ = 0;
+    objectHeightVersion_ = ~0ull;
+    typeBounds_.clear();
     maskTexels_ = 0; maskMips_ = 0;
     maskInitialized_ = objectInitialized_ = false;
     maskReady_ = objectReady_ = false;
@@ -279,6 +281,9 @@ std::optional<ShadowBake::BakeKeys> ShadowBake::inputsReady(const ShadowBakeInpu
     keys.mask = h | 1u;
     const uint64_t gen = spec.generation;
     keys.object = mc2shadow::fnv1a(&gen, sizeof(gen), keys.mask) | 1u;
+    const uint64_t delta=set.deltaVersion(), height=store->heightVersion();
+    keys.object=mc2shadow::fnv1a(&delta,sizeof(delta),keys.object);
+    keys.object=mc2shadow::fnv1a(&height,sizeof(height),keys.object)|1u;
     return keys;
 }
 
@@ -432,7 +437,7 @@ bool ShadowBake::update(VkCommandBuffer cb, uint64_t epoch, const ShadowBakeInpu
     recorded_ = true;
     submitted_ = false;
     recordedEpoch_ = epoch;
-    liveStale_ = true;
+    if (recordedMask_) liveStale_ = true;
     return true;
 }
 
@@ -489,11 +494,14 @@ void ShadowBake::retire(uint64_t epoch) {
     if (recordedMask_ && !warm_) storeReadback();
     const VkDeviceSize maskBytes = mc2shadow::bc4ChainBytes(static_cast<uint32_t>(maskTexels_), maskMips_);
     const VkDeviceSize objectBytes = static_cast<VkDeviceSize>(kObjectMapSize) * kObjectMapSize * 2;
-    mc2::fmt::print_err("[SHADOW_BAKE] vram resident_mb={:.1f} (mask {:.1f} + object_map {:.1f}) transient_peak_mb={:.1f} released\n",
+    mc2::fmt::print_err("[SHADOW_BAKE] vram resident_mb={:.1f} (mask {:.1f} + object_map {:.1f}) transient_peak_mb={:.1f} {}\n",
                         static_cast<double>(maskBytes + objectBytes) / 1048576.0, static_cast<double>(maskBytes) / 1048576.0,
-                        static_cast<double>(objectBytes) / 1048576.0, static_cast<double>(transientBytes_) / 1048576.0);
+                        static_cast<double>(objectBytes) / 1048576.0, static_cast<double>(transientBytes_) / 1048576.0,
+                        recordedMask_?"released":"retained for dirty updates");
+    const bool completedMask=recordedMask_;
     recordedMask_ = false;
-    releaseTransients();
+    // Object-only rebuilds share the dirty path's retained window/encoder images.
+    if (completedMask) releaseTransients();
 }
 
 bool ShadowBake::recordBake(VkCommandBuffer cb, const ShadowBakeInputs& in) {
@@ -539,14 +547,14 @@ bool ShadowBake::recordBake(VkCommandBuffer cb, const ShadowBakeInputs& in) {
         if (layout_.texels == 0) { blog("map too small for a mask: no bake."); return false; }
     }
     if (!ensureProducts(layout_.texels > 0 ? layout_.texels : maskTexels_)) return false;
-    typeBounds_.clear();
-    if (in.vbo != VK_NULL_HANDLE && !computeTypeBounds(in)) { blog("static-prop geometry not readable: no bake."); return false; }
+    if (typeBounds_.empty() && in.vbo != VK_NULL_HANDLE && !computeTypeBounds(in)) { blog("static-prop geometry not readable: no bake."); return false; }
 
     // Casters: the gameplay set resolved to registry leaves, each with its world box and light-space box.
     const clk::time_point tResolve = clk::now();
     // The load snapshot, not the set as it is now: the key then does not depend on how far combat got before the bake (events since are dirty tiles).
-    const uint64_t casterHash = mc2shadow::staticCasterSet().loadSnapshot(leaves_);
-    mc2shadow::staticCasterSet().logDriftSinceLoad(6);
+    const auto& casters=mc2shadow::staticCasterSet();
+    const uint64_t casterHash=recordedMask_?casters.loadSnapshot(leaves_):casters.resolve(leaves_);
+    if (recordedMask_) casters.logDriftSinceLoad(6);
     cpuStage_[0] = std::chrono::duration<double, std::milli>(clk::now() - tResolve).count();
     std::vector<mc2shadow::LightBox> boxes;
     std::vector<float> tops;
@@ -1249,7 +1257,7 @@ bool ShadowBake::recordObjectMap(VkCommandBuffer cb, const ShadowBakeInputs& in,
     const mc2terrain::TerrainFieldStore* store = gos_TerrainFieldStore();
     StaticShadowSpec spec;
     if (!store || !gos_GetStaticShadowSpec(&spec)) return false;
-    if (terrainIndexCount_ == 0) {
+    if (terrainIndexCount_ == 0 || objectHeightVersion_ != store->heightVersion()) {
         const int side = store->mapSide();
         const std::vector<float>& height = store->height();
         const int half = side >> 1;
@@ -1275,6 +1283,7 @@ bool ShadowBake::recordObjectMap(VkCommandBuffer cb, const ShadowBakeInputs& in,
             return false;
         }
         terrainIndexCount_ = static_cast<uint32_t>(indices.size());
+        objectHeightVersion_ = store->heightVersion();
     }
     if (queryCount_) vkCmdWriteTimestamp(cb, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, queries_.get(), queryBase);
     MC2_VK_GPU_SCOPE(gpuScope, cb, "VKIsl.Shadow.BakeObjectMap");

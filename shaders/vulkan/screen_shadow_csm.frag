@@ -3,6 +3,7 @@
 #version 450
 #extension GL_GOOGLE_include_directive : require
 #include "../include/axis.hglsl"
+#include "include/mover_shadow.glsl"
 
 #define PREC highp
 #define MC2_SHADOW_CSM_MAX 3
@@ -70,6 +71,11 @@ float sampleShadowMap(sampler2DShadow smap, vec3 worldPos, mat4 lsMatrix, int nu
         projCoords.y < 0.0 || projCoords.y > 1.0) return 1.0;
 
     float currentDepth = projCoords.z - 0.003;
+    if (moverFrame.flags.w != 0) {
+        vec4 taps=textureGather(smap,projCoords.xy,projCoords.z-3.0/65535.0);
+        vec2 f=fract(projCoords.xy*vec2(textureSize(smap,0))-0.5);
+        return mix(0.4,1.0,mix(mix(taps.w,taps.z,f.x),mix(taps.x,taps.y,f.x),f.y));
+    }
     float angle = 6.2831853 * fract(sin(dot(worldPos.xz, vec2(12.9898, 78.233))) * 43758.5453);
     float ca = cos(angle), sa = sin(angle);
     mat2 rot = mat2(ca, sa, -sa, ca);
@@ -86,6 +92,14 @@ float sampleShadowMap(sampler2DShadow smap, vec3 worldPos, mat4 lsMatrix, int nu
 
 float sampleDynamicShadow(vec3 worldPos, vec3 N, float softScale, float shadowFloor)
 {
+    if (moverFrame.flags.w != 0) {
+        float visibility=moverVisibility(worldPos,N);
+        if (softScale>0.0) {
+            float nl=max(dot(N,moverFrame.sun.xyz),0.0);
+            visibility=mix(1.0,visibility,smoothstep(0.0,0.15+0.30*softScale,nl));
+        }
+        return mix(shadowFloor,1.0,visibility);
+    }
     float NdotL = max(dot(N, u.lightDir.xyz), 0.0);
     if (NdotL < 0.05) return 1.0;
     int count = clamp(u.dynamicCsmCount, 1, MC2_SHADOW_CSM_MAX);
@@ -149,11 +163,11 @@ void main()
     bool isStaticProp = rc_isStaticPropNoSelfShadow(normalData);
 
     float shadow = 1.0;
-    if (u.enableShadows == 1)
+    if (u.enableShadows == 1 && (moverFrame.flags.w == 0 || !isStaticProp))
         shadow = min(shadow, sampleShadowMap(shadowMap, worldPos, u.lightSpaceMatrix, 8));
     if (u.enableDynamicShadows == 1 && !isStaticProp)
         shadow = min(shadow, sampleDynamicShadow(worldPos, objN, u.mechSoft, 0.55));
-    else if (u.enableDynamicShadows == 1 && u.propShadowReceive != 0 && !rc_isAlphaTestProp(normalData))
-        shadow = min(shadow, sampleDynamicShadow(worldPos, objN, u.mechSoft, 0.4));
+    else if (u.enableDynamicShadows == 1 && (moverFrame.flags.w != 0 || (u.propShadowReceive != 0 && !rc_isAlphaTestProp(normalData))))
+        shadow = min(shadow, sampleDynamicShadow(worldPos, objN, moverFrame.flags.w != 0 ? 0.0 : u.mechSoft, 0.4));
     FragColor = vec4(shadow, shadow, shadow, 1.0);
 }

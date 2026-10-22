@@ -5,6 +5,7 @@
 #include "vk_gpu_profile.h"   // VK-GPU-ZONES: MC2_VK_GPU_SCOPE
 #include "mc2fmt.h"
 #include "vulkan_shadow_island_live.h"   // the bake mask
+#include "vulkan_mover_shadow.h"
 void gos_GetTerrainChunkGridInfo(int* mapSide, float* halfMap);
 #include "mc2_diag_verbose.h"
 
@@ -103,6 +104,7 @@ extern "C" int mc2_vk_water_island_run(
       fsC = vkImageResourceBeginFrame(s->sColorRes); }
     us_fence_wait = usSince(tFence0);
     const uint32_t par = fsC.parity & 1u;
+    if (!mc2vk::bindMoverShadowDescriptors(s->device,s->set[par])) { setFallback("mover_receiver_unavailable"); s->disabled=true; return 0; }
 
     const clk::time_point tStage0 = clk::now();
     const WaterStream::VkNativeInputs* nat = nullptr;   // STEP 3.4P: set in the feed block when the native producers run this frame

@@ -121,6 +121,15 @@ def parse_panels(text: str) -> dict:
     return panels
 
 
+def grade_mover_population(text: str) -> str:
+    if not re.search(r"\[EDITOR_CLI v1\] event=mover_population count=100 ok=1 frame=\d+", text):
+        return "mover population: did not place 100 real scene mechs"
+    samples=re.findall(r"movers actors_feed=(\d+) actors_visible=(\d+) rigid_leaves=\d+ map=4096 format=D16",text)
+    if not any(int(total)>=100 and int(visible)>=100 for total,visible in samples):
+        return "mover population: the union fit did not admit 100 unique actor palettes"
+    return ""
+
+
 def grade_shadow_edits(text: str) -> str:
     """Require rendered edits, not just synchronous model undo/redo."""
     stages = list(re.finditer(r"\[EDITOR_CLI v1\] event=shadow_edit stage=(\d+) ok=(\d+) frame=(\d+)", text))
@@ -921,6 +930,10 @@ def run_case(name: str, exe: Path, deploy: Path, exit_sec: int, timeout: int,
         detail = grade_shadow_edits(combined)
         if detail:
             bucket = "shadow_edit_probe_failed"
+    if not bucket and expect == "mover_population":
+        detail = grade_mover_population(combined)
+        if detail:
+            bucket = "mover_population_failed"
     if not bucket and expect:
         fc = int(esmoke.get("foliage_count", "-1"))
         if expect == "foliage_present" and fc <= 0:
@@ -1089,6 +1102,7 @@ def build_suite(deploy: Path):
     cases = {
         "gen_map_basic":   (["-gen-map=0,0"], None),                    # launch+generate+render+exit
         "shadow_edits":    (["-mission=data/missions/mc2_01.pak", "-smoke-shadow-edits"], "shadow_edits"),
+        "mover_population": (["-mission=data/missions/mc2_01.pak", "-smoke-mover-population"], "mover_population"),
         "foliage_present": (["-gen-map=0,0", "-smoke-foliage"], "foliage_present"),
         "foliage_missing": (["-gen-map=0,0", "-smoke-foliage=terrain_gen_out\\__does_not_exist__.json"], "foliage_tolerated"),
         "foliage_garbage": (["-gen-map=0,0", "-smoke-foliage=terrain_gen_out\\garbage.foliage.json"], "foliage_tolerated"),
@@ -1958,7 +1972,7 @@ def main() -> int:
             results.append(r2)
         else:
             flags, expect = suite[c]
-            exit_sec = max(args.exit_sec, 75) if c == "shadow_edits" else args.exit_sec
+            exit_sec = max(args.exit_sec, 75) if c in ("shadow_edits", "mover_population") else args.exit_sec
             results.append(run_case_with_retry(c, exe, deploy, exit_sec, args.timeout, list(flags), expect))
 
     # Report

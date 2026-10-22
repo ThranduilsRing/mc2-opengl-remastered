@@ -1470,6 +1470,110 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
+- Header: `GameOS/gameos/vulkan_mover_shadow.h:33`
+- Class: `MoverShadowState`  (data-member)
+- Member: `VkDevice device_ = VK_NULL_HANDLE;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_mover_shadow.h:34`
+- Class: `MoverShadowState`  (data-member)
+- Member: `std::vector<Bounds> bounds_;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_mover_shadow.h:35`
+- Class: `MoverShadowState`  (data-member)
+- Member: `std::vector<GpuStaticPropInstance> props_;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_mover_shadow.h:36`
+- Class: `MoverShadowState`  (data-member)
+- Member: `std::vector<mc2shadow::MoverSphere> spheres_;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_mover_shadow.h:37`
+- Class: `MoverShadowState`  (data-member)
+- Member: `std::vector<uint32_t> boneOffsets_;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_mover_shadow.h:39`
+- Class: `MoverShadowState`  (data-member)
+- Member: `uint64_t heightVersion_ = ~0ull;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_mover_shadow.h:40`
+- Class: `MoverShadowState`  (data-member)
+- Member: `float ground_ = 0, extent_ = 0, mechRadius_ = 0;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_mover_shadow.h:41`
+- Class: `MoverShadowState`  (data-member)
+- Member: `uint32_t mechGeneration_ = ~0u, actorCount_ = 0;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_mover_shadow.h:44`
+- Class: `MoverShadowState`  (data-member)
+- Member: `uint64_t activeFrame_=~0ull;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_mover_shadow.h:45`
+- Class: `MoverShadowState`  (data-member)
+- Member: `OwnedBuffer inactive_;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_mover_shadow.h:46`
+- Class: `MoverShadowState`  (data-member)
+- Member: `OwnedImage dummy_;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_mover_shadow.h:47`
+- Class: `MoverShadowState`  (data-member)
+- Member: `OwnedImageView dummyView_;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_mover_shadow.h:48`
+- Class: `MoverShadowState`  (data-member)
+- Member: `OwnedSampler sampler_;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
 - Header: `GameOS/gameos/vulkan_shadow_bake.h:41`
 - Class: `CasterPacketAlpha`  (data-member)
 - Member: `int32_t layer = -1;`
@@ -2352,15 +2456,15 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 - Header: `GameOS/gameos/vulkan_shadow_bake.h:262`
 - Class: `ShadowBake`  (data-member)
-- Member: `OwnedBuffer objectInstances_, objectUbo_;`
+- Member: `uint64_t objectHeightVersion_ = ~0ull;`
 - Consuming targets: gameos
 - Reached by define: gameos[gameos(PUBLIC)]
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_shadow_bake.h:265`
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:263`
 - Class: `ShadowBake`  (data-member)
-- Member: `OwnedImage windowImage_;`
+- Member: `OwnedBuffer objectInstances_, objectUbo_;`
 - Consuming targets: gameos
 - Reached by define: gameos[gameos(PUBLIC)]
 
@@ -2368,7 +2472,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 - Header: `GameOS/gameos/vulkan_shadow_bake.h:266`
 - Class: `ShadowBake`  (data-member)
-- Member: `OwnedImageView windowView_;`
+- Member: `OwnedImage windowImage_;`
 - Consuming targets: gameos
 - Reached by define: gameos[gameos(PUBLIC)]
 
@@ -2376,15 +2480,15 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 - Header: `GameOS/gameos/vulkan_shadow_bake.h:267`
 - Class: `ShadowBake`  (data-member)
-- Member: `OwnedFramebuffer windowFb_;`
+- Member: `OwnedImageView windowView_;`
 - Consuming targets: gameos
 - Reached by define: gameos[gameos(PUBLIC)]
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_shadow_bake.h:269`
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:268`
 - Class: `ShadowBake`  (data-member)
-- Member: `OwnedImageView scratchView_[4];`
+- Member: `OwnedFramebuffer windowFb_;`
 - Consuming targets: gameos
 - Reached by define: gameos[gameos(PUBLIC)]
 
@@ -2392,13 +2496,21 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 - Header: `GameOS/gameos/vulkan_shadow_bake.h:270`
 - Class: `ShadowBake`  (data-member)
+- Member: `OwnedImageView scratchView_[4];`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:271`
+- Class: `ShadowBake`  (data-member)
 - Member: `OwnedBuffer staging_, tileParams_, passParams_, casterUbo_, instances_, heightBuf_;`
 - Consuming targets: gameos
 - Reached by define: gameos[gameos(PUBLIC)]
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_shadow_bake.h:272`
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:273`
 - Class: `ShadowBake`  (data-member)
 - Member: `OwnedImageView tileR8View_;`
 - Consuming targets: gameos
@@ -2806,4 +2918,4 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ---
 
-Result: 350 guard(s) analyzed, 0 violation(s).
+Result: 364 guard(s) analyzed, 0 violation(s).

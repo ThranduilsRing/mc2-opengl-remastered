@@ -74,6 +74,8 @@ bool         g_cliSuppressModals  = false;
 bool         g_cliSmokeSave       = false;
 bool         g_cliSmokeWorkflows = false;
 bool         g_cliSmokeShadowEdits = false;
+bool         g_cliSmokeMoverPopulation = false;
+void EditorMoverPopulationSmokeTick(long frame);
 bool         g_cliSmokeCatalogReference = false;
 std::string  g_cliSmokeSavePath;
 int          g_cliSmokeSaveOk     = -1;    // -1 = not attempted, 0/1 = save() result
@@ -377,6 +379,10 @@ static void s_cli_parse(const char* cmd)
 		else if (s_cli_flag_match(tok, "-smoke-shadow-edits", "--smoke-shadow-edits"))
 		{
 			g_cliSmokeShadowEdits = true;
+		}
+		else if (s_cli_flag_match(tok, "-smoke-mover-population", "--smoke-mover-population"))
+		{
+			g_cliSmokeMoverPopulation = true;
 		}
 		else if (s_cli_flag_match(tok, "-smoke-catalog-reference", "--smoke-catalog-reference"))
 		{
@@ -921,6 +927,8 @@ void EditorPlaytestSmokeDriverTick()
 {
 	if (g_cliSmokeShadowEdits && g_cliSmokeWorkDone && EditorInterface::instance())
 		EditorInterface::instance()->tickShadowEditSmoke(g_cliFrameCounter);
+	if (g_cliSmokeMoverPopulation && g_cliSmokeWorkDone)
+		EditorMoverPopulationSmokeTick(g_cliFrameCounter);
 	// -playtest END-TO-END SMOKE driver (main thread). Runs once the auto-load
 	// work is done. Warms a few frames, fires the REAL EditorPlaytest::Start()
 	// (the toolbar button path) with the child in smoke mode, then polls

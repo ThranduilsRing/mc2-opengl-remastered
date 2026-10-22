@@ -12,6 +12,37 @@
 #include <array>
 #include <cstdio>
 #include "../GameOS/gameos/static_caster_set.h"
+#include "../GameOS/gameos/gos_postprocess.h"
+
+void EditorMoverPopulationSmokeTick(long frame) {
+	static bool fired=false;
+	if (fired || frame<120 || !land || !EditorObjectMgr::instance()) return;
+	fired=true;
+	auto* mgr=EditorObjectMgr::instance();
+	Unit* prototype=nullptr;
+	for (auto* unit:mgr->getUnits())
+		if (((unit->getID()>>24)&0xff)==MECH_TYPE && unit->appearance()) { prototype=unit; break; }
+	int count=0;
+	if (prototype) {
+		const int group=prototype->getGroup(), index=prototype->getIndexInGroup();
+		const glm::vec3 anchor=prototype->getPosition();
+		const float span=(land->realVerticesMapSide-1)*land->worldUnitsPerVertex;
+		const float west=land->mapTopLeft3d.x, north=land->mapTopLeft3d.y;
+		const float water=getGosPostProcess()?getGosPostProcess()->getWaterElevation():-1e30f;
+		mgr->unselectAll();
+		for (int row=-20;row<20 && count<100;++row)
+			for (int col=-20;col<20 && count<100;++col) {
+				glm::vec3 p{anchor.x+col*96.0f,anchor.y+row*96.0f,0};
+				if (p.x<west+256 || p.x>west+span-256 || p.y>north-256 || p.y<north-span+256) continue;
+				p.z=land->getTerrainElevation(p);
+				if (p.z<water+8) continue;
+				if (auto* object=mgr->addBuilding(p,group,index,0,0,1.0f,false)) { mgr->select(*object,true); ++count; }
+			}
+		EditorInterface::frameSelectedObjects();
+	}
+	fprintf(stderr,"[EDITOR_CLI v1] event=mover_population count=%d ok=%d frame=%ld\n",count,count==100?1:0,frame);
+	fflush(stderr);
+}
 
 // Unlike the synchronous authoring probes, leave each edit alive across rendered
 // frames so the shadow job can consume it. These run only under -smoke-shadow-edits.

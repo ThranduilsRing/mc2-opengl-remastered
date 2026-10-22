@@ -147,6 +147,7 @@ void TreeAppearance::invalidateStaticRegistration()
 // Task 5 (Track B): mission-load bulk static-prop registration (mirror of
 // BldgAppearance::registerStatic). HC-1: writes directly to typed staticReg.
 void TreeAppearance::registerStatic() {
+	if (shadowIsMoving()) return;
 	const bool seamProbe = (mc2::gate::get<"MC2_MODOVERRIDE_TRACE">())
 		&& appearType && appearType->treeRenderShape[0];
 	if (seamProbe)

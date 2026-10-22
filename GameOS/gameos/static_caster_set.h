@@ -1,6 +1,7 @@
 // static_caster_set.h -- the gameplay-keyed set of static shadow casters the shadow bake renders.
 //
-// WHAT: one entry per gameplay object that casts a static shadow (trees and props, buildings, turrets, gates): its game handle, the static-prop registry
+// WHAT: one entry per gameplay object that casts a static shadow (trees and props, buildings, gates); turrets are tracked separately as rigid movers.
+// Each entry holds its game handle, the static-prop registry
 // recipe of its shadow LOD (LOD0), its damage state and, once resolved, its transforms. The game side rebuilds the set at mission load from the object
 // arrays; the bake resolves it into registry leaves and keys its products on the set's content.
 // WHY: the bake must not depend on the render registry's generation (it bumps on LOD swaps, material and light writes) nor on what the camera has seen:
@@ -38,6 +39,9 @@ public:
 
     uint64_t version() const { return version_; }
     const std::vector<StaticCasterEntry>& entries() const { return entries_; }
+    void appendMoverLeaves(std::vector<GpuStaticPropInstance>& leaves, uint64_t frame = 0) const;
+    bool isMoverOwner(const void* owner) const;
+    size_t moverOwnerCount() const { return movers_.size(); }
     // Per registry recipe index, 1 when an entry owns it (the cascades skip those recipes once the bake has them).
     const std::vector<uint8_t>& recipeMask() const { return recipeMask_; }
 
@@ -70,11 +74,14 @@ public:
     void logDriftSinceLoad(uint32_t maxLines) const;
 
 private:
+    struct OwnerIndex { uint32_t index; bool mover; };
+    StaticCasterEntry& entryAt(OwnerIndex index) { return index.mover ? movers_[index.index] : entries_[index.index]; }
     std::vector<uint32_t> resolveOrder() const;
     std::vector<StaticCasterEntry> entries_;
+    std::vector<StaticCasterEntry> movers_;
     std::vector<uint8_t> recipeMask_;
     // Pointer identity is used only for lookup; event emission follows gameplay handle order.
-    std::unordered_map<const void*, uint32_t> byOwner_;
+    std::unordered_map<const void*, OwnerIndex> byOwner_;
     std::unordered_map<const void*, std::vector<GpuStaticPropInstance>> removed_;   // leaves an owner lost and may get back unchanged
     std::vector<CasterEvent> events_;
     std::vector<GpuStaticPropInstance> loadLeaves_;

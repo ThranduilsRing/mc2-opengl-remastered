@@ -12,6 +12,7 @@
 #include "lighting_shadow_vk.glsl"
 
 #include "terrain_frame_ubo_vk.glsl"
+#include "mover_shadow.glsl"
 
 layout(set = 0, binding = 2) uniform sampler2D u_colormap;
 // CEMENT/ROAD: the VK-owned copy-once import of the GL cement atlas (REPEAT sampler) +

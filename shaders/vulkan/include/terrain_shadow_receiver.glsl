@@ -48,6 +48,7 @@ const vec2 TSR_DIR_Q = vec2(-0.4472136, 0.8944272);
 
 // `sun` is the already altitude-clamped sun (lsvk_shadowSun). Returns visibility in [0.4,1].
 float terrainDynamicShadow(vec3 worldPos, vec3 shadowN, vec3 sun) {
+    if (moverFrame.flags.w != 0) return mix(0.4,1.0,moverVisibility(worldPos,shadowN));
     float nl = max(dot(shadowN, sun), 0.0);
     if (nl < 0.05) return 1.0;
 

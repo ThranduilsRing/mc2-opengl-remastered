@@ -199,6 +199,11 @@ unsigned int mc2_vk_shadow_island_run(
     const void* instances, unsigned int instanceCount,
     float biasFactor, float biasUnits);
 
+// One union-fit movers-only D16 map. Camera rows map MC2 world to clip Z [0,W];
+// sun points toward the light. Instances are rigid movers, never baked statics.
+void mc2_vk_shadow_island_run_movers(const float cameraRows[16], const float sun[3],
+                                    const void* instances, unsigned int instanceCount);
+
 // Ends the frame's shadow recording and submits it, once, with no wait on the GPU. mc2_vk_shadow_island_run / _run_csm_array_layer / _run_csm_fullmap only
 // RECORD their passes into the frame's command buffer; this is called after the last of them and before any consumer reads a product (the accessors below
 // report a product ready only after it). A frame whose passes all declined submits nothing.

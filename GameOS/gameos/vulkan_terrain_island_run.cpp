@@ -1,6 +1,7 @@
 // VK terrain island: the extern C entry points: enabled / ready / prepare, the frame UBO and light-pool staging, and the per-frame run.
 // Declared in the class headers; shared names in vulkan_terrain_island_internal.h.
 #include "vulkan_terrain_island_internal.h"
+#include "vulkan_mover_shadow.h"
 #include "vk_render_pass_timer.h"
 #include "vk_gpu_profile.h"   // VK-GPU-ZONES: MC2_VK_GPU_SCOPE
 #include "mc2fmt.h"
@@ -453,6 +454,7 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
       fsC = vkImageResourceBeginFrame(s->colorRes); }
     us_fence_wait = usSince(tFence0);
     const uint32_t par = fsC.parity & 1u;
+    if (!mc2vk::bindMoverShadowDescriptors(s->device,s->set[par])) { setFallback("mover_receiver_unavailable"); s->disabled=true; return 0; }
     const std::array<VkImageView,7> views{s->colormapTexture.view(),s->cementTexture.view(),s->shoreMaskTexture.view(),s->matNormalTexture.view(),s->shoreFieldTexture.view(),s->macroGradientTexture.view(),s->staticVisibilityDummy.view()};
     if (s->descriptorsDirty[par] || s->boundTextures[par]!=views) {
         write_descriptors(s,int(par)); s->boundTextures[par]=views;

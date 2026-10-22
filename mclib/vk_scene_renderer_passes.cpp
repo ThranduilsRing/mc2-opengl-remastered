@@ -5,6 +5,8 @@
 #include "vk_scene_renderer_internal.h"
 #include "mc2fmt.h"
 #include "../GameOS/gameos/static_caster_set.h"
+#include "../GameOS/gameos/shadow_mover_feed.h"
+#include <cstring>
 
 extern bool g_useGpuObjects;
 extern bool g_useGpuMechs;
@@ -17,6 +19,35 @@ extern long     g_loadRaceArmFirstFrame;
 extern bool g_useGpuStaticProps;
 void mc2::VkSceneRenderer::renderListsDynamicShadowPass (RenderSubmissions& submissions)
 {
+#ifdef MC2_VULKAN_ISLAND
+	static const bool unionMovers=mc2::gate::get<"MC2_SHADOW_BAKE">();
+	if (unionMovers) {
+		if (gos_IsModernShadowPathActive() && (g_useGpuObjects || g_useGpuMechs)) {
+			const glm::mat4 camera=eye->worldToClipGL();
+			float rows[16];
+			std::memcpy(rows,&camera,sizeof(rows)); // Camera::projectModernClipGL uses these four explicit rows
+			float sun[3]; gos_GetTerrainLightDir(&sun[0],&sun[1],&sun[2]);
+			static std::vector<GpuStaticPropInstance> movers;
+			static std::vector<GpuStaticPropInstance> registryMovers;
+			static uint64_t registryGeneration=~0ull, casterVersion=~0ull, casterDelta=~0ull;
+			const auto& set=mc2shadow::staticCasterSet();
+			const uint64_t generation=GpuStaticPropRegistry::getRegistryGeneration();
+			if (generation!=registryGeneration || set.version()!=casterVersion || set.deltaVersion()!=casterDelta) {
+				GpuStaticPropRegistry::getDynamicPropShadowInstancesExcluding(registryMovers,set.recipeMask());
+				registryGeneration=generation; casterVersion=set.version(); casterDelta=set.deltaVersion();
+			}
+			movers=registryMovers;
+			set.appendMoverLeaves(movers,g_mc2FrameCounter);
+			mc2shadow::moverPropFeed().append(movers,g_mc2FrameCounter);
+			render_contract::executorOwnBeginTopLevel(render_contract::PassIdentity::ShadowCaster,"renderLists_unionMovers");
+			mc2_vk_shadow_island_run_movers(rows,sun,movers.data(),static_cast<unsigned int>(movers.size()));
+			render_contract::executorOwnEndTopLevel(render_contract::PassIdentity::ShadowCaster,"renderLists_unionMovers");
+		}
+		mc2_vk_shadow_island_submit_frame();
+		g_numShadowShapes.store(0,std::memory_order_relaxed);
+		return;
+	}
+#endif
 	// GPU-driven dynamic sun shadow (Phase 1): frustum-fit + flushShadow.
 	// Runs BEFORE gpu_cull::compute_dispatch so the static-prop shadow uses the
 	// full camera-visible per-type ranges (not the cull-narrowed indirect).

@@ -20,6 +20,13 @@ spec.loader.exec_module(smoke)
 
 
 class ShadowEditGradingTests(unittest.TestCase):
+    def test_population_requires_unique_actors_in_the_live_union_fit(self):
+        proof="[EDITOR_CLI v1] event=mover_population count=100 ok=1 frame=120\n[VK_SHADOW_ISLAND] movers actors_feed=110 actors_visible=100 rigid_leaves=3 map=4096 format=D16"
+        self.assertEqual(smoke.grade_mover_population(proof),"")
+        self.assertTrue(smoke.grade_mover_population(proof.replace("count=100","count=99")))
+        self.assertTrue(smoke.grade_mover_population(proof.replace("actors_visible=100","actors_visible=99")))
+        self.assertTrue(smoke.grade_mover_population(proof.replace("format=D16","format=D32")))
+
     def test_each_edit_must_reach_and_drain_the_renderer(self):
         lines = []
         for stage in range(6):

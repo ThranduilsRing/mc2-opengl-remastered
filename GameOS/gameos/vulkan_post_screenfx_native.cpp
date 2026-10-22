@@ -67,6 +67,7 @@
 #define MC2_VULKAN_SHARED_SCENE_DEPTH_IMPL_ISLAND
 #include "vulkan_shared_scene_depth.h"
 #include "vulkan_shadow_island_live.h"
+#include "vulkan_mover_shadow.h"
 #include "static_shadow_spec.h"
 #include "gos_postprocess_internal.h"   // mc2ShadowGuardClampedSun, mc2ClampShadowSunAltitude
 #include "vk_shared_gbuffer_gate.h"
@@ -431,7 +432,7 @@ bool build_state(gosPostProcess::VkPostScreenFx* s, int w, int h) {
         r = mc2vk::createChecked(s->shoreDsl, s->device, [&](auto* h) { return vkCreateDescriptorSetLayout(s->device, &lci, nullptr, h); });
         if (r != VK_SUCCESS) { vlog("vkCreateDescriptorSetLayout(shore) failed (%d).", static_cast<int>(r)); return false; }
 
-        VkDescriptorSetLayoutBinding shadowBinds[6]{};
+        VkDescriptorSetLayoutBinding shadowBinds[8]{};
         shadowBinds[0].binding = 0; shadowBinds[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         shadowBinds[0].descriptorCount = 1; shadowBinds[0].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
         shadowBinds[1].binding = 1; shadowBinds[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
@@ -444,13 +445,17 @@ bool build_state(gosPostProcess::VkPostScreenFx* s, int w, int h) {
         shadowBinds[4].descriptorCount = 1; shadowBinds[4].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
         shadowBinds[5].binding = 5; shadowBinds[5].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         shadowBinds[5].descriptorCount = 1; shadowBinds[5].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-        lci.bindingCount = 6; lci.pBindings = shadowBinds;
+        shadowBinds[6].binding=24; shadowBinds[6].descriptorType=VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        shadowBinds[6].descriptorCount=1; shadowBinds[6].stageFlags=VK_SHADER_STAGE_FRAGMENT_BIT;
+        shadowBinds[7].binding=25; shadowBinds[7].descriptorType=VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        shadowBinds[7].descriptorCount=1; shadowBinds[7].stageFlags=VK_SHADER_STAGE_FRAGMENT_BIT;
+        lci.bindingCount = 8; lci.pBindings = shadowBinds;
         r = mc2vk::createChecked(s->shadowDsl, s->device, [&](auto* h) { return vkCreateDescriptorSetLayout(s->device, &lci, nullptr, h); });
         if (r != VK_SUCCESS) { vlog("vkCreateDescriptorSetLayout(shadow) failed (%d).", static_cast<int>(r)); return false; }
 
         VkDescriptorPoolSize sizes[2]{};
-        sizes[0].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; sizes[0].descriptorCount = 8;
-        sizes[1].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;         sizes[1].descriptorCount = 3;
+        sizes[0].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; sizes[0].descriptorCount = 9;
+        sizes[1].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;         sizes[1].descriptorCount = 4;
         VkDescriptorPoolCreateInfo pci{};
         pci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
         pci.maxSets = 3; pci.poolSizeCount = 2; pci.pPoolSizes = sizes;
@@ -681,7 +686,7 @@ bool gosPostProcess::vkPostScreenFxNativeEnabled()
 bool gosPostProcess::runVkPostScreenShadowStaticNative()
 {
     const bool dynamicCasterActive = mc2::gate::get<"MC2_SHADOW_ENABLE">();   // DEFAULT ON; =0 kill-switch
-    const bool csmActive = dynamicCasterActive && csmBuilt_;
+    const bool csmActive = dynamicCasterActive && (csmBuilt_ || mc2::gate::get<"MC2_SHADOW_BAKE">());
     const bool csmDirectReady = csmActive
         && mc2_vk_shadow_island_csm_array_ready()
         && mc2_vk_shadow_island_csm_fullmap_ready()
@@ -721,6 +726,7 @@ bool gosPostProcess::runVkPostScreenShadowStaticNative()
             return false;
         }
     }
+    if (!mc2vk::bindMoverShadowDescriptors(s->device,s->shadowSet)) { setFallback("mover_receiver_unavailable"); return false; }
     // The static sun map is the shadow island's, used only when its build is of the engine's current generation, so it pairs with
     // staticLightSpaceMatrix_ below. Without it and without the cascades this pass declines and the GL screen-shadow pass runs.
     StaticShadowSpec staticSpec;

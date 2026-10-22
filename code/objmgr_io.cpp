@@ -433,7 +433,7 @@ void GameObjectManager::buildStaticShadowCasterSet() {
 			AppearancePtr app = obj->getAppearance();
 			if (!app) continue;
 			const int32_t recipe = app->getShadowCasterRecipeIndex();
-			if (recipe < 0) continue;
+			if (recipe < 0 && kind != mc2shadow::CasterKind::Turret) continue;
 			mc2shadow::StaticCasterEntry e;
 			e.owner = app;
 			e.gameHandle = static_cast<uint32_t>(obj->getHandle());
