@@ -66,7 +66,8 @@ def render(mesh, textures=(), *, size=(224, 160), frame=None, yaw=-35):
             uv = mesh.uv[i*3:i*3+3]
             u = w0*uv[0, 0]+w1*uv[1, 0]+w2*uv[2, 0]
             v = w0*uv[0, 1]+w1*uv[1, 1]+w2*uv[2, 1]
-            rgba = tex[(v*tex.shape[0]).astype(int).clip(0, tex.shape[0]-1), (u*tex.shape[1]).astype(int).clip(0, tex.shape[1]-1)]
+            rgba = tex[np.floor(v*tex.shape[0]).astype(int)%tex.shape[0],
+                       np.floor(u*tex.shape[1]).astype(int)%tex.shape[1]]
             mask &= rgba[:, :, 3] >= 128
             rgb = rgba[:, :, :3]
         else:
