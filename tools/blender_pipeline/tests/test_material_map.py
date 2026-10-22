@@ -1,4 +1,5 @@
 import struct
+import re
 import sys
 from pathlib import Path
 
@@ -74,6 +75,19 @@ def test_archive_leaves_source_untouched(tmp_path):
     archived = mm.archive_source(source, tmp_path / "archive", report)
     assert archived.read_bytes() == before == source.read_bytes()
     assert report[0]["sha256"] == mm.digest(source)
+
+
+def test_uvless_stock_helpers_keep_zero_uv_instead_of_sampling_roof(tmp_path):
+    from test_ase_submaterial import SINGLE_MAT_ASE
+    text = re.sub(r'\*MESH_TVERTLIST\s*\{[^}]*\}', '', SINGLE_MAT_ASE)
+    text = re.sub(r'\*MESH_TFACELIST\s*\{[^}]*\}', '', text)
+    file = tmp_path / "helper.ase"; file.write_text(text)
+    g, raw, _ = mm.stock_glb(file)
+    for mesh in g["meshes"]:
+        acc = g["accessors"][mesh["primitives"][0]["attributes"]["TEXCOORD_0"]]
+        view = g["bufferViews"][acc["bufferView"]]
+        uv = [struct.unpack_from("<2f", raw, view["byteOffset"] + i*8) for i in range(acc["count"])]
+        assert uv == [(0, 0)] * acc["count"]  # TG's explicit no-TFACE default
 
 
 def test_window_overlay_shares_albedo_but_has_no_authored_material():

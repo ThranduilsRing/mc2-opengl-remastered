@@ -223,6 +223,7 @@ def stock_glb(ase_path):
     them without a runtime axis override or changed node/triangle/UV layout.
     """
     geometry, materials, helpers = ase.parse_ase(str(ase_path))
+    uv_present = {obj.node_name: bool(obj.tverts and obj.tfaces) for obj in geometry}
     gltf, raw, stats = ase.build_glb_data(geometry, materials, helpers)
     raw = add_stock_colors(gltf, raw, geometry, Path(ase_path).read_text(encoding="utf-8", errors="replace"))
     binary = bytearray(raw)
@@ -240,7 +241,8 @@ def stock_glb(ase_path):
     seen = set()
     for i, node in enumerate(nodes):
         if "mesh" in node:
-            for prim in gltf["meshes"][node["mesh"]]["primitives"]:
+            mesh = gltf["meshes"][node["mesh"]]
+            for prim in mesh["primitives"]:
                 for semantic in ("POSITION", "NORMAL", "TEXCOORD_0"):
                     index = prim["attributes"][semantic]
                     if index in seen:
@@ -252,6 +254,12 @@ def stock_glb(ase_path):
                         # Keep the converter's stock 1-V. Assimp's glTF2 loader
                         # flips V internally, then toMC2V flips it back. An extra
                         # cook-side flip therefore inverts the displayed atlas.
+                        if not uv_present[mesh["name"]]:
+                            # TG's no-TFACE path uses (0,0), not the converter's
+                            # flipped default (0,1). Helpers/windows/cones must
+                            # keep that exact texel, including its alpha.
+                            for v in range(acc["count"]):
+                                struct.pack_into("<2f", binary, offset+v*8, 0, 0)
                         continue
                     values = []
                     for v in range(acc["count"]):

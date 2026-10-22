@@ -7066,7 +7066,7 @@
       "callers_by_stem": [
         {
           "path": "tools/blender_pipeline/tests/test_material_map.py",
-          "line": 10,
+          "line": 11,
           "evidence": "import",
           "reference": "material_map",
           "text": "import material_map as mm"
@@ -7268,21 +7268,28 @@
       "callers_by_stem": [
         {
           "path": "tools/blender_pipeline/tests/test_material_map.py",
-          "line": 48,
+          "line": 49,
           "evidence": "import",
           "reference": "test_ase_submaterial",
           "text": "from test_ase_submaterial import SINGLE_MAT_ASE"
         },
         {
           "path": "tools/blender_pipeline/tests/test_material_map.py",
-          "line": 94,
+          "line": 81,
           "evidence": "import",
           "reference": "test_ase_submaterial",
           "text": "from test_ase_submaterial import SINGLE_MAT_ASE"
         },
         {
           "path": "tools/blender_pipeline/tests/test_material_map.py",
-          "line": 111,
+          "line": 108,
+          "evidence": "import",
+          "reference": "test_ase_submaterial",
+          "text": "from test_ase_submaterial import SINGLE_MAT_ASE"
+        },
+        {
+          "path": "tools/blender_pipeline/tests/test_material_map.py",
+          "line": 125,
           "evidence": "import",
           "reference": "test_ase_submaterial",
           "text": "from test_ase_submaterial import SINGLE_MAT_ASE"

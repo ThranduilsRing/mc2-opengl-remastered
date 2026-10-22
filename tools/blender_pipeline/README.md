@@ -234,6 +234,8 @@ from colour. Detail tiling/rotation is baked before the stock-atlas exclusions.
 (for example `LitWin_Quonset2`). They share their unchanged albedo on an unmapped
 slot: atlas masks alone cannot exclude overlays that reuse a roof texel. Unknown
 or duplicate names fail the cook.
+Meshes without texture coordinates retain TG's `(0,0)` default, including its
+sampled alpha; they must not acquire the converter's flipped roof-corner texel.
 
 The candidate bundle contains mod metadata, `models.json`, stock-geometry GLBs,
 private byte-for-byte TGA albedos (plus their stock KTX2 sidecars when present),
