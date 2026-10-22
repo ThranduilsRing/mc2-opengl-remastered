@@ -47,8 +47,10 @@ def test_strict_bits_cannot_pass_on_matching_graded_chains(schema):
     digest = sim.chain if schema == 2 else sim.full_chain
     base = {"frames": 300, "chain": digest(lines, 300), "chain_schema": schema}
     assert check(base, [lines] * 4)["accepted"]
-    counters = [line.replace("rng=1/2/3", "rng=4/5/6") for line in lines]
+    counters = [line.replace("rng=1/2/3", "rng=1/5/6") for line in lines]   # appearance and weather counts only
     assert check(base, [lines, lines, counters, counters])["accepted"] == (schema == 2)
+    sim_draw = [line.replace("rng=1/2/3", "rng=4/2/3") for line in lines]   # the simulation count is never excluded
+    assert not check(base, [lines, lines, sim_draw, sim_draw])["accepted"]
     drift = [line.replace("strict=aaaa", "strict=bbbb") for line in lines]
     assert sim.visible_chain(lines) == sim.visible_chain(drift)
     assert not check(base, [lines, lines, drift, drift])["accepted"]
