@@ -23,6 +23,7 @@
 #include "vk_owned.h"
 #include "vulkan_shadow_island_live.h"   // Mc2ShadowPacket
 
+#include <array>
 #include <cstdint>
 #include <optional>
 #include <span>
@@ -118,7 +119,7 @@ private:
     bool recordObjectMap(VkCommandBuffer cb, const ShadowBakeInputs& in, uint32_t queryBase);
     void drawRuns(VkCommandBuffer cb, const ShadowBakeInputs& in, std::span<const InstRun> runs, bool& alphaBound, VkPipeline opaque, VkPipeline alpha);
     void retire(uint64_t epoch);
-    uint64_t contentKey(const ShadowBakeInputs& in, uint64_t casterHash) const;
+    uint64_t contentKey(const ShadowBakeInputs& in, uint64_t casterHash);
     bool ensureEncoder();
     void encodeLevel(VkCommandBuffer cb, VkDescriptorSet set, uint32_t slice, uint32_t side);
     void recordTileEncode(VkCommandBuffer cb, int originX, int originY, uint32_t tile, uint32_t sliceBase);
@@ -134,6 +135,9 @@ private:
     void writeIncrementalSets(uint32_t par);
     void retireIncremental(uint64_t epoch);
     void releaseIncremental();
+    void rebuildLive();
+    void appendLive(const GpuStaticPropInstance& leaf);
+    void applyLiveEvent(const std::vector<GpuStaticPropInstance>& before, const std::vector<GpuStaticPropInstance>& after);
     static bool diagOn();
     bool recordDiagReadback(VkCommandBuffer cb, uint64_t epoch);
     void compareChains(const std::vector<uint8_t>& a, const std::vector<uint8_t>& b) const;
@@ -194,6 +198,7 @@ private:
     VkDescriptorSet bc4TileSet_ = VK_NULL_HANDLE, bc4TopSet_ = VK_NULL_HANDLE;   // freed with bc4Pool_
     std::string cacheDir_;   // <user data>/cache/shadow; empty = no disk cache
     uint64_t contentKey_ = 0;
+    std::array<uint64_t, 6> keyParts_{};   // heights, casters, geometry, alpha cut-outs, scalars, versions
     bool warm_ = false, readbackPending_ = false;
     double warmReadMs_ = 0.0;
     VkDeviceSize tileLevelOff_[8] = {};
@@ -204,7 +209,11 @@ private:
     std::vector<mc2shadow::LightBox> liveBoxes_;
     std::vector<float> liveTops_;
     std::vector<uint32_t> liveIdx_;
-    bool incActive_ = false, heightsMoved_ = false, eventsSinceDrain_ = false, castersMoved_ = false;
+    std::vector<float> incHeightsCpu_;   // the dirty path's own height copy
+    bool liveStale_ = true;
+    uint32_t liveRebuilds_ = 0;
+    double cpuStage_[3] = {0, 0, 0};   // cold bake CPU ms: resolve, content key, tile planning
+    bool incActive_ = false, heightsMoved_ = false, eventsSinceDrain_ = false;
     uint64_t lastIncEpoch_ = 0, incRecordedEpoch_ = ~0ull, heightsGen_ = 1, incHeightsGen_[2] = {0, 0};
     uint32_t incSubTiles_ = 0, incBatches_ = 0, eventsLogged_ = 0;
     double incMaxGpuMs_ = 0.0, incSumGpuMs_ = 0.0;

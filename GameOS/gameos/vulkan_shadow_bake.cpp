@@ -51,6 +51,7 @@ constexpr VkFormat kWorkFmt = VK_FORMAT_R8_UNORM;          // a tile's resolved 
 constexpr uint32_t kTileLevels = 6;                        // levels 0..5 of a tile (512..16) or a sub-tile (128..4) are encoded where they lie
 constexpr uint32_t kTopLevel = 5;                          // the coarse top image is mask level 5; the levels below it are re-derived from it
 constexpr uint32_t kSubTilesPerFrame = 2;                  // the dirty-update budget: about 0.12 ms of GPU each on the 7900 XTX (0.3 ms target)
+constexpr uint64_t kDirtyIdleFrames = 1800;               // the dirty path's transients go after this long without a batch (about 30 s)
 constexpr int kDirtyGrowTexels = 24;                       // the blurred fade (16) and the 3x3 resolve (1) read this far past a change
 constexpr uint32_t kSliceSubTile = kTileLevels;            // encoder parameter slices: 0..5 tile levels, 6..11 sub-tile levels, then the top
 constexpr int kObjectMapSize = 4096;              // High preset (D4); presets arrive with P7
@@ -565,6 +566,7 @@ bool ShadowBake::update(VkCommandBuffer cb, uint64_t epoch, const ShadowBakeInpu
     recorded_ = true;
     submitted_ = false;
     recordedEpoch_ = epoch;
+    liveStale_ = true;
     return true;
 }
 
@@ -675,7 +677,9 @@ bool ShadowBake::recordBake(VkCommandBuffer cb, const ShadowBakeInputs& in) {
     if (in.vbo != VK_NULL_HANDLE && !computeTypeBounds(in)) { blog("static-prop geometry not readable: no bake."); return false; }
 
     // Casters: the gameplay set resolved to registry leaves, each with its world box and light-space box.
+    const clk::time_point tResolve = clk::now();
     const uint64_t casterHash = mc2shadow::staticCasterSet().resolve(leaves_);
+    cpuStage_[0] = std::chrono::duration<double, std::milli>(clk::now() - tResolve).count();
     std::vector<mc2shadow::LightBox> boxes;
     std::vector<float> tops;
     std::vector<uint32_t> live;
@@ -709,16 +713,24 @@ bool ShadowBake::recordBake(VkCommandBuffer cb, const ShadowBakeInputs& in) {
     bool warm = false;
     double warmReadMs = 0.0;
     if (recordedMask_) {
+        const clk::time_point k0 = clk::now();
         contentKey_ = contentKey(in, casterHash);
+        cpuStage_[1] = std::chrono::duration<double, std::milli>(clk::now() - k0).count();
         const clk::time_point r0 = clk::now();
         cached = mc2shadow::loadCachedShadowMask(cacheDir_, contentKey_);
         warmReadMs = std::chrono::duration<double, std::milli>(clk::now() - r0).count();
         warm = !diagForceFull_ && cached && cached->texels == static_cast<uint32_t>(layout_.texels) && cached->mips == maskMips_;
+        mc2::fmt::print_err("[SHADOW_BAKE] key {:016x} parts heights={:016x} casters={:016x} geometry={:016x} alpha={:016x} scalars={:016x} versions={:016x} "
+                            "leaves={} alpha_ready={} cpu_ms resolve={:.1f} key={:.1f}\n",
+                            mc2::fmt::as_u64(contentKey_), mc2::fmt::as_u64(keyParts_[0]), mc2::fmt::as_u64(keyParts_[1]), mc2::fmt::as_u64(keyParts_[2]),
+                            mc2::fmt::as_u64(keyParts_[3]), mc2::fmt::as_u64(keyParts_[4]), mc2::fmt::as_u64(keyParts_[5]), mc2::fmt::as_size(leaves_.size()),
+                            in.alphaReady ? 1 : 0, cpuStage_[0], cpuStage_[1]);
         diagForceFull_ = false;
     }
     warm_ = warm;
 
     // Tiles: the window each needs and the casters that can reach it.
+    const clk::time_point p0 = clk::now();
     tiles_.clear();
     runs_.clear();
     std::vector<GpuStaticPropInstance> tileInst;
@@ -740,6 +752,7 @@ bool ShadowBake::recordBake(VkCommandBuffer cb, const ShadowBakeInputs& in) {
         (void)region;
     }
     binnedInstances_ = static_cast<uint32_t>(tileInst.size());
+    cpuStage_[2] = std::chrono::duration<double, std::milli>(clk::now() - p0).count();
 
     // Uploads.
     if (recordedMask_ && !(warm ? ensureEncoder() : ensureTransients())) return false;
@@ -875,27 +888,29 @@ bool ShadowBake::recordBake(VkCommandBuffer cb, const ShadowBakeInputs& in) {
 
 // The content key of a mask (P4 disk cache): everything the bake reads, by content, not by process-local versions. The heights, the caster set (handles,
 // damage, transforms), the static-prop geometry and its alpha cut-outs, the sun, the water, the layout and the art and evaluator constants.
-uint64_t ShadowBake::contentKey(const ShadowBakeInputs& in, uint64_t casterHash) const {
-    uint64_t h = mc2shadow::hashWords(heights_.data(), heights_.size() * sizeof(float));
-    h = mc2shadow::fnv1a(&casterHash, sizeof(casterHash), h);
+uint64_t ShadowBake::contentKey(const ShadowBakeInputs& in, uint64_t casterHash) {
+    // Each input hashed on its own first, so a key that differs between two runs says which input moved ([SHADOW_BAKE] key parts).
+    keyParts_ = {};
+    keyParts_[0] = mc2shadow::hashWords(heights_.data(), heights_.size() * sizeof(float));
+    keyParts_[1] = casterHash;
     const void* vb = nullptr;
     const void* ib = nullptr;
     uint64_t vbBytes = 0, ibBytes = 0;
     if (in.vbo != VK_NULL_HANDLE && mc2_static_prop_geometry_cpu(&vb, &vbBytes, &ib, &ibBytes) && vb && ib) {
-        h = mc2shadow::hashWords(vb, static_cast<size_t>(vbBytes), h);
-        h = mc2shadow::hashWords(ib, static_cast<size_t>(ibBytes), h);
-        h = mc2shadow::fnv1a(in.packets.data(), in.packets.size_bytes(), h);
-        h = mc2shadow::fnv1a(in.typeFirstPacket.data(), in.typeFirstPacket.size_bytes(), h);
-        if (in.alphaReady) h = mc2shadow::fnv1a(in.packetAlpha.data(), in.packetAlpha.size_bytes(), h);
+        uint64_t g = mc2shadow::hashWords(vb, static_cast<size_t>(vbBytes));
+        g = mc2shadow::hashWords(ib, static_cast<size_t>(ibBytes), g);
+        g = mc2shadow::fnv1a(in.packets.data(), in.packets.size_bytes(), g);
+        keyParts_[2] = mc2shadow::fnv1a(in.typeFirstPacket.data(), in.typeFirstPacket.size_bytes(), g);
+        if (in.alphaReady) keyParts_[3] = mc2shadow::fnv1a(in.packetAlpha.data(), in.packetAlpha.size_bytes());
     }
     const float scalars[13] = {sun_.x, sun_.y, sun_.z, waterZ_, halfMap_, static_cast<float>(mapSide_), static_cast<float>(layout_.texels),
                                kMaskTargetTexelWorld, mc2shadow::kSunAngularRadiusDeg, mc2shadow::kFadeStartWorld, mc2shadow::kFadeEndWorld,
                                mc2shadow::kFadeMax, mc2shadow::kTerrainConeScale};
-    h = mc2shadow::fnv1a(scalars, sizeof(scalars), h);
+    keyParts_[4] = mc2shadow::fnv1a(scalars, sizeof(scalars));
     const uint32_t versions[4] = {mc2shadow::ShadowMaskAsset::kSchema, mc2shadow::ShadowMaskAsset::kEvaluator, static_cast<uint32_t>(kMaskCapTexels),
                                   static_cast<uint32_t>(heightSide_)};
-    h = mc2shadow::fnv1a(versions, sizeof(versions), h);
-    return h | 1u;
+    keyParts_[5] = mc2shadow::fnv1a(versions, sizeof(versions));
+    return mc2shadow::fnv1a(keyParts_.data(), sizeof(keyParts_)) | 1u;
 }
 
 // The BC4 encoder's buffers: one tile's level chain plus the top image's chain, and one parameter slice per level (tile, sub-tile, top).
@@ -1286,10 +1301,11 @@ bool ShadowBake::updateIncremental(VkCommandBuffer cb, uint64_t epoch, const Sha
     }
     if (set.hasEvents()) {
         for (const auto& ev : set.takeEvents()) {
+            applyLiveEvent(ev.before, ev.after);
             for (const auto* side : {&ev.before, &ev.after}) {
                 if (const auto r = leavesFootprint(*side)) {
                     const size_t added = dirty_.add(mc2shadow::subTilesForRect(layout_, grownForDirty(*r), 0));
-                    if (eventsLogged_ < 16) {
+                    if (eventsLogged_ < 8) {
                         ++eventsLogged_;
                         mc2::fmt::print_err("[SHADOW_BAKE] caster event: {} leaves {} footprint=({:.0f},{:.0f})-({:.0f},{:.0f}) dirty_sub_tiles+={}\n",
                                             side == &ev.before ? "removed" : "added", mc2::fmt::as_size(side->size()), r->x0, r->y0, r->x1, r->y1,
@@ -1298,7 +1314,6 @@ bool ShadowBake::updateIncremental(VkCommandBuffer cb, uint64_t epoch, const Sha
                 }
             }
         }
-        castersMoved_ = true;
         eventsSinceDrain_ = true;
     }
     if (store) {
@@ -1324,41 +1339,32 @@ bool ShadowBake::updateIncremental(VkCommandBuffer cb, uint64_t epoch, const Sha
                                 incSubTiles_, incBatches_, incTimed_ ? incSumGpuMs_ / incTimed_ : 0.0, incMaxGpuMs_, kSubTilesPerFrame);
             incSubTiles_ = incBatches_ = incTimed_ = 0;
             incMaxGpuMs_ = incSumGpuMs_ = 0.0;
-            releaseTransients();
-            releaseIncremental();
             if (eventsSinceDrain_ && diagOn()) diagRequest_ = true;
             eventsSinceDrain_ = false;
+        }
+        if (!incActive_ && incParams_ && epoch >= lastIncEpoch_ + kDirtyIdleFrames) {
+            releaseTransients();
+            releaseIncremental();
+            mc2::fmt::print_err("[SHADOW_BAKE] dirty path idle {} frames: transients released\n", kDirtyIdleFrames);
         }
         if (diagRequest_ && !incActive_) { incRecordedEpoch_ = epoch; return recordDiagReadback(cb, epoch); }
         return false;
     }
     ZoneScopedN("ShadowBake.Dirty");
     // CPU state the sub-tiles read: the heights (re-read after a patch) and the live casters (re-resolved after an event).
-    if (heightsMoved_ || heights_.empty()) {
+    if (heightsMoved_ || incHeightsCpu_.empty()) {
         if (!store) return false;
         const int coarseSide = store->mapSide();
         if (!store->visualHeight().empty() && store->visualSide() == (coarseSide - 1) * 4 + 1)
-            heights_.assign(store->visualHeight().begin(), store->visualHeight().begin() + static_cast<size_t>(heightSide_) * heightSide_);
+            incHeightsCpu_.assign(store->visualHeight().begin(), store->visualHeight().begin() + static_cast<size_t>(heightSide_) * heightSide_);
         else
-            heights_ = store->height();
-        if (heights_.size() != static_cast<size_t>(heightSide_) * heightSide_) return false;
+            incHeightsCpu_ = store->height();
+        if (incHeightsCpu_.size() != static_cast<size_t>(heightSide_) * heightSide_) return false;
+        heights_ = incHeightsCpu_;
         heightsMoved_ = false;
         ++heightsGen_;
     }
-    if (castersMoved_ || liveLeaves_.empty()) {
-        castersMoved_ = false;
-        set.resolve(liveLeaves_);
-        liveBoxes_.clear(); liveTops_.clear(); liveIdx_.clear();
-        for (uint32_t i = 0; i < liveLeaves_.size(); ++i) {
-            const GpuStaticPropInstance& leaf = liveLeaves_[i];
-            if (leaf.typeID >= typeBounds_.size() || !typeBounds_[leaf.typeID].valid) continue;
-            mc2shadow::Vec3 lo, hi;
-            instanceBox(leaf.modelMatrix, typeBounds_[leaf.typeID].mn, typeBounds_[leaf.typeID].mx, lo, hi);
-            liveBoxes_.push_back(mc2shadow::lightBox(basis_, lo, hi));
-            liveTops_.push_back(hi.z);
-            liveIdx_.push_back(i);
-        }
-    }
+    if (liveStale_) rebuildLive();
     if (!ensureTransients() || !ensureIncremental()) return false;
     const uint32_t par = static_cast<uint32_t>(epoch & 1u);
     // This parity's last batch retired when the island waited its fence: its timestamps are final and its buffers and sets free to rewrite.
@@ -1373,6 +1379,7 @@ bool ShadowBake::updateIncremental(VkCommandBuffer cb, uint64_t epoch, const Sha
         }
         incQueryUsed_[par] = false;
     }
+    if (heights_.size() != incHeightsCpu_.size()) heights_ = incHeightsCpu_;
     const std::vector<mc2shadow::SubTile> batch = dirty_.take(kSubTilesPerFrame);
     const float tanT = std::tan(mc2shadow::kSunAngularRadiusDeg * 0.01745329252f);
     std::vector<InstRun> runs;
@@ -1399,8 +1406,8 @@ bool ShadowBake::updateIncremental(VkCommandBuffer cb, uint64_t epoch, const Sha
     if (!incParams_.upload(tp.data(), tp.size(), parBase) || !incCasterUbo_.upload(ubo.data(), ubo.size(), parBase) ||
         (!inst.empty() && !incInstances_.upload(inst.data(), inst.size() * sizeof(GpuStaticPropInstance), instBase))) return false;
     if (incHeightsGen_[par] != heightsGen_) {
-        if (!makeHostBuffer(incHeights_[par], allocator_, device_, heights_.size() * sizeof(float), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, "shadow.bake.dirtyHeights") ||
-            !incHeights_[par].upload(heights_.data(), heights_.size() * sizeof(float))) return false;
+        if (!makeHostBuffer(incHeights_[par], allocator_, device_, incHeightsCpu_.size() * sizeof(float), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, "shadow.bake.dirtyHeights") ||
+            !incHeights_[par].upload(incHeightsCpu_.data(), incHeightsCpu_.size() * sizeof(float))) return false;
         incHeightsGen_[par] = heightsGen_;
     }
     writeIncrementalSets(par);
@@ -1509,7 +1516,47 @@ void ShadowBake::releaseIncremental() {
     incHeights_[0].reset(); incHeights_[1].reset();
     incHeightsGen_[0] = incHeightsGen_[1] = 0;
     incQueryUsed_[0] = incQueryUsed_[1] = false;
+    incHeightsCpu_.clear();
+}
+
+// The live casters (the bake's caster set as the registry has it now) with their light boxes: built once, then edited by each event.
+void ShadowBake::rebuildLive() {
+    liveStale_ = false;
+    std::vector<GpuStaticPropInstance> all;
+    mc2shadow::staticCasterSet().resolve(all);
     liveLeaves_.clear(); liveBoxes_.clear(); liveTops_.clear(); liveIdx_.clear();
+    for (const GpuStaticPropInstance& leaf : all) appendLive(leaf);
+}
+
+void ShadowBake::appendLive(const GpuStaticPropInstance& leaf) {
+    if (leaf.typeID >= typeBounds_.size() || !typeBounds_[leaf.typeID].valid) return;
+    mc2shadow::Vec3 lo, hi;
+    instanceBox(leaf.modelMatrix, typeBounds_[leaf.typeID].mn, typeBounds_[leaf.typeID].mx, lo, hi);
+    liveIdx_.push_back(static_cast<uint32_t>(liveLeaves_.size()));
+    liveLeaves_.push_back(leaf);
+    liveBoxes_.push_back(mc2shadow::lightBox(basis_, lo, hi));
+    liveTops_.push_back(hi.z);
+}
+
+// One caster event applied to the live arrays: its old leaves out (swap-remove), its new leaves in. A leaf that cannot be found marks the arrays
+// stale, and the next batch rebuilds them whole.
+void ShadowBake::applyLiveEvent(const std::vector<GpuStaticPropInstance>& before, const std::vector<GpuStaticPropInstance>& after) {
+    if (liveStale_) return;
+    for (const GpuStaticPropInstance& leaf : before) {
+        if (leaf.typeID >= typeBounds_.size() || !typeBounds_[leaf.typeID].valid) continue;
+        bool found = false;
+        for (size_t j = 0; j < liveLeaves_.size(); ++j) {
+            if (liveLeaves_[j].typeID != leaf.typeID || std::memcmp(liveLeaves_[j].modelMatrix, leaf.modelMatrix, sizeof(leaf.modelMatrix)) != 0) continue;
+            liveLeaves_[j] = liveLeaves_.back(); liveLeaves_.pop_back();
+            liveBoxes_[j] = liveBoxes_.back(); liveBoxes_.pop_back();
+            liveTops_[j] = liveTops_.back(); liveTops_.pop_back();
+            liveIdx_.pop_back();   // the index array is the identity
+            found = true;
+            break;
+        }
+        if (!found) { liveStale_ = true; ++liveRebuilds_; return; }
+    }
+    for (const GpuStaticPropInstance& leaf : after) appendLive(leaf);
 }
 
 bool ShadowBake::diagOn() {
