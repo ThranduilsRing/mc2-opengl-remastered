@@ -1229,6 +1229,19 @@ class Camera
 		// inverseProject() when a real terrain hit is required.
 		bool screenToGroundPlaneApprox (long screenX, long screenY, glm::vec3 &outWorld, float z_plane = 0.0f);
 
+		// pickTerrainRay: O(ray length) screen-pixel -> terrain-surface cell centre.
+		// Builds the camera ray for the pixel (double-precision inverse of
+		// worldToClipGL: near-plane point toward the NDC z=0.5 point), walks it over the heightfield with
+		// the exact cell DDA (Terrain::raycastTerrain), snaps the hit the way
+		// inverseProject does (cell centre when the quadList is populated, nearest
+		// vertex in screen space when it is empty), and VERIFIES the hit by forward projecting
+		// it back to within 3 px of the cursor. Returns false (outWorld untouched)
+		// on a miss / off-map ray / failed verification; the caller then falls back.
+		// This is the per-frame cursor picker: it replaces the O(quads)
+		// inverseProject walk (85-126 ms on a 1024-cell map). Discrete click paths
+		// keep inverseProject. rawHit (optional) receives the un-snapped hit.
+		bool pickTerrainRay (long screenX, long screenY, glm::vec3 &outWorld, glm::vec3 *rawHit = nullptr);
+
 		// screenToTerrainApprox: screenToGroundPlaneApprox refined onto the
 		// terrain surface by iterating the plane height (fixed 3 steps, O(1),
 		// no quad scan).

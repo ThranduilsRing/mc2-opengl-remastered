@@ -119,7 +119,21 @@ extern "C" int mc2_vk_water_island_run(
         if (gos_terrain_lighting::GetVkProducerSnapshot(snap0) && snap0.numVertices > 0) {
             slotCtx.waitIdle("water_native_init");
             auto np = std::make_unique<mc2vk::NativeProducers>();
-            if (np->init(slotCtx, snap0.numVertices, recipeCount, s->recipeBuf.get())) {
+            // Upper bound on the quads the cull can emit: the shader's water-eligibility predicate (water bit on any corner, or any
+            // corner under waterElevation + shoreExt) counted over the CPU recipes once, plus headroom. Sizes the thin buffers from the map.
+            uint32_t eligibleBound = 0;
+            {
+                const WaterStream::VkNativeInputs* in0 = static_cast<const WaterStream::VkNativeInputs*>(nativeInputsIn);
+                const WaterStream::WaterRecipe* rc = static_cast<const WaterStream::WaterRecipe*>(recipes);
+                const float thr = in0->waterElevation + in0->shoreExt + 64.0f;   // +64 wu: slack for a later alphaDepth / shore change
+                uint32_t n = 0;
+                for (uint32_t i = 0; i < recipeCount; ++i) {
+                    const WaterStream::WaterRecipe& r = rc[i];
+                    if ((r.waterBits & 0x01010101u) != 0u || r.v0e < thr || r.v1e < thr || r.v2e < thr || r.v3e < thr) ++n;
+                }
+                eligibleBound = n + n / 8u + 4096u;
+            }
+            if (np->init(slotCtx, snap0.numVertices, recipeCount, s->recipeBuf.get(), eligibleBound)) {
                 s->native = std::move(np);
                 s->thinNative[0] = s->thinNative[1] = true;
                 write_descriptors(s);   // binding 6 -> the GPU-produced thin buffers

@@ -74,10 +74,15 @@ public:
     static constexpr uint32_t kSlots = 2;            // parity slots (the island's frame parity)
     static constexpr uint32_t kMaxThin = 131072;     // thin-record capacity per slot (6.3 MB); an overflow shows in the parity line
     static constexpr uint32_t kParityCap = 32768;    // records read back on a parity frame
+    // VRAM ceiling for the thin-record capacity: 1 << 20 records x 48 B = 48 MB per slot (96 MB for both). It covers every quad of a
+    // 1024-vertex map (1023^2 = 1,046,529), so a fully flooded engine-cap map is never truncated.
+    static constexpr uint32_t kMaxThinCeiling = 1u << 20;
 
     // Builds the pipelines and the per-slot buffers. `recipes` is the island's device-local recipe buffer (64 B x recipeCount, mission-static).
+    // `waterEligibleBound` is an upper bound on the quads the cull can ever emit (the recipes the shader's water-eligibility predicate admits,
+    // with headroom); the thin capacity is sized from it: max(kMaxThin, bound), at most recipeCount and kMaxThinCeiling. 0 = unknown (kMaxThin).
     // False (logged) on any failure; nothing is half-built then.
-    bool init(const VulkanContext& ctx, uint32_t numVertices, uint32_t recipeCount, VkBuffer recipes);
+    bool init(const VulkanContext& ctx, uint32_t numVertices, uint32_t recipeCount, VkBuffer recipes, uint32_t waterEligibleBound = 0);
     bool ready() const noexcept { return ready_; }
 
     VkBuffer thin(uint32_t par) const noexcept { return thin_[par & 1].get(); }

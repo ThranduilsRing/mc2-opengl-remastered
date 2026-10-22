@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in warrior_internal.h.
 #include "warrior_internal.h"
 #include "mc2fmt.h"
+#include "tacorder_terrain_queue.h"
 
 
 std::unique_ptr<BldgAppearance> MechWarrior::getWayPointMarker( const glm::vec3& pos, const char* name )
@@ -151,7 +152,7 @@ long MechWarrior::calcTacOrder (long goalAction,
 
 	newTacOrder.init(ORDER_ORIGIN_COMMANDER, TACTICAL_ORDER_NONE);
 	if (currentAction == GOAL_ACTION_MOVE) {
-		GlobalPathStep globalPath[50];
+		GlobalPathStep globalPath[MAX_GLOBAL_PATH];
 		long numSteps = 0;
 		if (currentTarget)
 			numSteps = getVehicle()->calcGlobalPath(globalPath, currentTarget, nullptr, true);
@@ -261,7 +262,7 @@ long MechWarrior::calcTacOrder (long goalAction,
 		}
 		}
 	else if (currentAction == GOAL_ACTION_ATTACK) {
-		GlobalPathStep globalPath[50];
+		GlobalPathStep globalPath[MAX_GLOBAL_PATH];
 		long numSteps = getVehicle()->calcGlobalPath(globalPath, currentTarget, nullptr, true);
 		if (numSteps > 0) {
 			lastGoalPathSize = numSteps;
@@ -368,7 +369,7 @@ long MechWarrior::calcTacOrder (long goalAction,
 				currentLocation = glm::vec3(0.0f);
 				currentTarget = blockerList[blockerToAttack];
 			}
-			GlobalPathStep globalPath[50];
+			GlobalPathStep globalPath[MAX_GLOBAL_PATH];
 			long numSteps = getVehicle()->calcGlobalPath(globalPath, currentTarget, nullptr, true);
 			if (numSteps > 0) {
 				lastGoalPathSize = numSteps;
@@ -589,8 +590,8 @@ void MechWarrior::copyToData (MechWarriorData &data)
 	data.mainGoalObjectWID = mainGoalObjectWID;
 	data.mainGoalLocation = mainGoalLocation;
 	data.mainGoalControlRadius = mainGoalControlRadius;
-	data.lastGoalPathSize = lastGoalPathSize;
-	MemCpy(data.lastGoalPath,lastGoalPath);
+	data.lastGoalPathSize = lastGoalPathSize <= MAX_SAVED_GLOBAL_PATH ? lastGoalPathSize : 0;
+	std::copy_n(lastGoalPath, MAX_SAVED_GLOBAL_PATH, data.lastGoalPath);
 	
 	MemCpy(data.newTacOrderReceived,newTacOrderReceived);
 	MemCpy(data.tacOrder,tacOrder);
@@ -716,7 +717,7 @@ void MechWarrior::copyFromData (MechWarriorData &data)
 	mainGoalLocation = data.mainGoalLocation;
 	mainGoalControlRadius = data.mainGoalControlRadius;
 	lastGoalPathSize = data.lastGoalPathSize;
-	MemCpy(lastGoalPath,data.lastGoalPath);
+	std::copy_n(data.lastGoalPath, MAX_SAVED_GLOBAL_PATH, lastGoalPath);
 	
 	MemCpy(newTacOrderReceived, data.newTacOrderReceived);
 	MemCpy(tacOrder, data.tacOrder);
@@ -731,6 +732,13 @@ void MechWarrior::copyFromData (MechWarriorData &data)
 	tacOrderQueueLooping = data.tacOrderQueueLooping;
 	numTacOrdersQueued = data.numTacOrdersQueued;
 	MemCpy(tacOrderQueue,data.tacOrderQueue);
+	tacOrderQueueIndex = data.tacOrderQueueIndex;
+	dropCompactTerrainOrdersOnLoad(tacOrderQueue, numTacOrdersQueued, tacOrderQueueIndex);
+	if (terrain_part_chunk::compact() && numTacOrdersQueued == 0) {
+		tacOrderQueueExecuting = false;
+		tacOrderQueueLooping = false;
+		curPlayerOrderFromQueue = false;
+	}
 	// The wire field is dead storage: null it for every slot, then rebuild the runtime owners for the queued orders only (an empty slot
 	// has move mode 0 (slow), which used to give every pilot 16 waypoint markers at the origin after a load). Each live marker of the
 	// previous run is released exactly once by restoreQueueMarkers.
@@ -746,7 +754,6 @@ void MechWarrior::copyFromData (MechWarriorData &data)
 				return getWayPointMarker( queued.point, "JumpWayPoint" );
 			return nullptr;
 		});
-	tacOrderQueueIndex = data.tacOrderQueueIndex;
 	nextTacOrderId = data.nextTacOrderId;
 	lastTacOrderId = data.lastTacOrderId;
 	

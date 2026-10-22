@@ -6,15 +6,13 @@
 
 #include <chrono>
 #include <cstdint>
+#include "move_recon_stats.h"
 
 // Master enable flag — set once from the MC2_MOVE_RECON / *_SHADOW gates on first moveReconFrameTick().
-extern bool g_moveReconEnabled;
 
 // Monotonic (lifetime) accumulators — never reset.
 extern uint64_t g_moveRecon_ctrl_ns;
 extern uint64_t g_moveRecon_pathlock_ns;
-extern uint64_t g_moveRecon_astar_local_ns;
-extern uint64_t g_moveRecon_astar_global_ns;
 
 // Monotonic counters.
 extern uint64_t g_moveRecon_movers_total;
@@ -102,7 +100,6 @@ extern uint64_t g_moveRecon_frame_movers;
 extern uint64_t g_moveRecon_max_ctrl_ns;
 extern uint64_t g_moveRecon_max_pathlock_ns;
 extern uint64_t g_moveRecon_max_astar_local_ns;
-extern uint64_t g_moveRecon_max_astar_global_ns;
 
 // Called once per frame at end of GameObjectManager::update.
 // Lazily inits, registers atexit on first call, emits every 30 frames, resets per-frame accums.

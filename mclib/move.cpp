@@ -451,10 +451,9 @@ void MOVE_buildData (long height, long width, MissionMapCellInfo* mapData, long 
 	GameMap = s_gameMapOwner.get();
 	printf("[MOVE_BD] MissionMap allocated OK, calling init(%ld,%ld)\n", height, width); fflush(stdout);
 
-	if (mapData)
-		GameMap->init(height, width, 0, mapData);
-	else
-		GameMap->init( height, width );
+	// The four-argument initializer also populates passability for a blank map.
+	// The allocation-only overload leaves every interior cell blocked.
+	GameMap->init(height, width, 0, mapData);
 
 	if (GameMap->map.empty()) { MC2_LOG(Io, Error, "move: the built mission map is {} x {} cells, so it is empty; no move data is built", height, width); return; }
 	printf("[MOVE_BD] GameMap->init OK map=%p\n", static_cast<void*>(GameMap->map.data())); fflush(stdout);

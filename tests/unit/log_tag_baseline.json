@@ -5297,8 +5297,17 @@
    "tag": "MISSION",
    "ver": -1,
    "stream": "stdout",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "MISSION",
+   "ver": -1,
+   "stream": "stdout",
    "keys": [
     "moveSide",
+    "terrainCells",
+    "cap",
     "terrainVtx"
    ],
    "count": 1
@@ -5896,10 +5905,57 @@
    "keys": [
     "kind",
     "wid",
+    "moved_m",
+    "to_goal_m"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "ORDER_FIXTURE",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "kind",
+    "wid",
+    "start_x_wu",
+    "start_y_wu",
+    "goal_x_wu",
+    "goal_y_wu",
+    "distance_m"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "ORDER_FIXTURE",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "kind",
+    "wid",
     "tgt",
     "t"
    ],
    "count": 2
+  },
+  {
+   "tag": "ORDER_FIXTURE",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "kind",
+    "wid",
+    "travel_s",
+    "moved_m",
+    "to_goal_m",
+    "x_wu",
+    "y_wu",
+    "global_steps",
+    "recon",
+    "global_solve_ms",
+    "global_solve_max_ms",
+    "local_solve_ms"
+   ],
+   "count": 1
   },
   {
    "tag": "ORDER_INGRESS",
@@ -6199,6 +6255,17 @@
    "count": 2
   },
   {
+   "tag": "PATH",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "steps",
+    "capacity"
+   ],
+   "count": 1
+  },
+  {
    "tag": "PATROL",
    "ver": -1,
    "stream": "stderr",
@@ -6304,6 +6371,62 @@
     "cell",
     "dWorld",
     "raycastHit"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "PICK_RAY_PARITY",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "event",
+    "code",
+    "px"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "PICK_RAY_PARITY",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "event",
+    "n",
+    "points",
+    "both_hit",
+    "exact_cell",
+    "within_1p5_cells",
+    "far",
+    "ray_only",
+    "legacy_only",
+    "neither",
+    "max_dist_wu",
+    "ray_avg_us",
+    "legacy_avg_ms"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "PICK_RAY_PARITY",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "event",
+    "px",
+    "legacy"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "PICK_RAY_PARITY",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "event",
+    "px",
+    "ray",
+    "legacy",
+    "dist"
    ],
    "count": 1
   },
