@@ -47,6 +47,8 @@ The 75 contact-sheet pages include all present TGLs, including shadow meshes,
 and placeholders for 23 declared missing files and 19 empty/helper-only shapes.
 There are 2,011 decoded thumbnails and 2,053 requested thumbnail slots. No absent
 geometry is fabricated. Full gaps are in [coverage-details.json](examples/coverage-details.json).
+Loose thumbnails are generated locally by `catalog.py --sheets`; only the
+contact sheets and their index are retained in git.
 
 [Worked examples](worked-examples.md), [top 20](top20.md), and
 [download approval candidates](downloads.json) are committed separately from
