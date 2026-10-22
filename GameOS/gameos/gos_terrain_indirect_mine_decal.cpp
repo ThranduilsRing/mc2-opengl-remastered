@@ -251,11 +251,13 @@ void RebuildCementAtlasIfDirty() {
 // Mirror MarkMineDirty — idempotent; multiple cement mutations between paints
 // debounce to one rebuild via the dirty flag.
 void MarkDecalDirty() {
+    InvalidateHardSurfaceField();
     g_decalVBODirty = true;
 }
 
 // Clear the mission-owned CPU decal bake; the native consumer owns its GPU copy.
 void ResetDecalStaticVBO() {
+    InvalidateHardSurfaceField();
     g_decalVertCount = 0;
     g_decalVBODirty  = true;
     g_decalDrawRanges.clear();
@@ -619,6 +621,138 @@ void RebuildDecalStaticVBOIfDirty() {
 }
 
 
+
+// ---------------------------------------------------------------------------
+// VEG-CEMENT-1: sub-cell hard-surface coverage from the overlay/decal bake.
+//
+// Cement (pads, runway, road edges) is produced by the decal bake, whose
+// visible edge is the overlay texture's ALPHA, not the cell boundary. The
+// vegetation placement used to reject on raw per-cell codes (a staircase).
+// This rasterises the same face-cache walk BuildDecalStaticVBO uses into a
+// sparse R8 coverage field (kHsRes texels per tile side, one block per cement
+// tile): alpha-cement tiles contribute their overlay texture's alpha at the
+// bake's own UV mapping; pure-cement tiles (overlayHandle == 0xffffffff,
+// skipped by the bake, drawn by the cement-word/atlas path) contribute 1.0.
+// ROUGH / DIRT_ROAD overlays write 0 (vegetation still grows on dirt roads).
+// Built once per mission (lazy on first query), reset with the decal bake.
+// ---------------------------------------------------------------------------
+namespace {
+constexpr int kHsRes = 32;                       // texels per tile side (4 wu at 128 wu/tile)
+struct HardSurfaceField {
+    bool                 built = false;
+    long                 side = 0;               // tiles per side (cacheW)
+    long                 half = 0;
+    float                wupv = 128.0f;
+    std::vector<int32_t> blockOf;                // tile -> block index or -1
+    std::vector<uint8_t> texels;                 // blocks * kHsRes * kHsRes
+    int                  tilesAlpha = 0, tilesPure = 0, tilesNoImage = 0, tilesRoadSkipped = 0;
+};
+HardSurfaceField g_hs;
+
+inline uint8_t hsTexel(long ix, long iy) {
+    if (ix < 0 || iy < 0) return 0;
+    const long tc = ix / kHsRes, tr = iy / kHsRes;
+    if (tc >= g_hs.side || tr >= g_hs.side) return 0;
+    const int32_t b = g_hs.blockOf[static_cast<size_t>(tr) * static_cast<size_t>(g_hs.side) + static_cast<size_t>(tc)];
+    if (b < 0) return 0;
+    return g_hs.texels[(static_cast<size_t>(b) * kHsRes + static_cast<size_t>(iy % kHsRes)) * kHsRes + static_cast<size_t>(ix % kHsRes)];
+}
+
+void BuildHardSurfaceField() {
+    g_hs = HardSurfaceField{};
+    g_hs.built = true;
+    if (!Terrain::mapData) return;
+    const long mapSide = Terrain::realVerticesMapSide;
+    const long cacheW  = mapSide - 1;
+    if (cacheW <= 0) return;
+    g_hs.side = cacheW;
+    g_hs.half = Terrain::halfVerticesMapSide;
+    g_hs.wupv = Terrain::worldUnitsPerVertex;
+    g_hs.blockOf.assign(static_cast<size_t>(cacheW) * static_cast<size_t>(cacheW), -1);
+
+    for (long tr = 0; tr < cacheW; ++tr) {
+        for (long tc = 0; tc < cacheW; ++tc) {
+            const MapData::WorldQuadTerrainCacheEntry* e = Terrain::mapData->getTerrainFaceCacheEntry(tr, tc);
+            if (!e || !e->isValid() || !e->isCement()) continue;
+            Overlays ovT = INVALID_OVERLAY; DWORD ovO = 0;
+            Terrain::mapData->getOverlay(tr, tc, ovT, ovO);
+            if (ovT == ROUGH || ovT == DIRT_ROAD) { ++g_hs.tilesRoadSkipped; continue; }
+
+            const bool alphaTile = e->isAlpha() && e->overlayHandle != 0xffffffffu;
+            std::shared_ptr<const RenderCore::KtxImage> img;
+            if (alphaTile && e->overlayHandle < static_cast<DWORD>(mc2::textures::kTextureAssetLimit))
+                img = mc2::textures::image(e->overlayHandle);
+            const bool imgOk = img && img->vkFormat == 37 && img->width > 0 && img->height > 0 &&
+                               img->pixels.size() >= static_cast<size_t>(img->width) * static_cast<size_t>(img->height) * 4u;
+
+            const int32_t b = static_cast<int32_t>(g_hs.texels.size() / (static_cast<size_t>(kHsRes) * kHsRes));
+            g_hs.texels.resize(g_hs.texels.size() + static_cast<size_t>(kHsRes) * kHsRes, 0);
+            uint8_t* blk = &g_hs.texels[static_cast<size_t>(b) * kHsRes * kHsRes];
+            if (!alphaTile || !imgOk) {
+                // Pure cement (class 3), or an alpha tile whose source pixels are
+                // unavailable: full coverage (conservative -- no vegetation).
+                memset(blk, 255, static_cast<size_t>(kHsRes) * kHsRes);
+                if (alphaTile) ++g_hs.tilesNoImage; else ++g_hs.tilesPure;
+            } else {
+                ++g_hs.tilesAlpha;
+                // The bake maps u along +x (tileC) and v along +row (south) over
+                // [kOldMin, kOldMax]; sample the same way (box-filtered per texel).
+                const int W = img->width, H = img->height;
+                const float u0 = kOldMinU, u1 = kOldMaxU, v0 = kOldMinV, v1 = kOldMaxV;
+                for (int r = 0; r < kHsRes; ++r) {
+                    for (int c = 0; c < kHsRes; ++c) {
+                        const float ua = u0 + (u1 - u0) * (static_cast<float>(c)     / kHsRes);
+                        const float ub = u0 + (u1 - u0) * (static_cast<float>(c + 1) / kHsRes);
+                        const float va = v0 + (v1 - v0) * (static_cast<float>(r)     / kHsRes);
+                        const float vb = v0 + (v1 - v0) * (static_cast<float>(r + 1) / kHsRes);
+                        const int x0 = std::clamp(static_cast<int>(ua * W), 0, W - 1);
+                        const int x1 = std::clamp(static_cast<int>(ub * W), x0, W - 1);
+                        const int y0 = std::clamp(static_cast<int>(va * H), 0, H - 1);
+                        const int y1 = std::clamp(static_cast<int>(vb * H), y0, H - 1);
+                        unsigned sum = 0, n = 0;
+                        for (int y = y0; y <= y1; ++y)
+                            for (int x = x0; x <= x1; ++x) {
+                                sum += img->pixels[(static_cast<size_t>(y) * W + x) * 4u + 3u];
+                                ++n;
+                            }
+                        blk[r * kHsRes + c] = static_cast<uint8_t>(n ? (sum + n / 2) / n : 0);
+                    }
+                }
+            }
+            g_hs.blockOf[static_cast<size_t>(tr) * static_cast<size_t>(cacheW) + static_cast<size_t>(tc)] = b;
+        }
+    }
+    MC2_DIAGF("[VEG_HARDSURFACE v1] event=field_built tiles_alpha=%d tiles_pure=%d tiles_alpha_noimage=%d tiles_road_skipped=%d blocks=%zu\n",
+              g_hs.tilesAlpha, g_hs.tilesPure, g_hs.tilesNoImage, g_hs.tilesRoadSkipped,
+              g_hs.texels.size() / (static_cast<size_t>(kHsRes) * kHsRes));
+}
+
+// Pure bilinear of a texel fetcher; split out so the unit test can drive it.
+}  // namespace
+
+float HardSurfaceCoverage(float wx, float wy) {
+    if (!g_hs.built) BuildHardSurfaceField();
+    if (g_hs.texels.empty()) return 0.0f;
+    // Continuous texel coords; texel centres sit at +0.5.
+    const float X = (wx / g_hs.wupv + static_cast<float>(g_hs.half)) * kHsRes - 0.5f;
+    const float Y = (static_cast<float>(g_hs.half) - wy / g_hs.wupv) * kHsRes - 0.5f;
+    const float fxl = std::floor(X), fyl = std::floor(Y);
+    const float fx = X - fxl, fy = Y - fyl;
+    const long ix = static_cast<long>(fxl), iy = static_cast<long>(fyl);
+    const float a = static_cast<float>(hsTexel(ix, iy))     * (1.0f - fx) + static_cast<float>(hsTexel(ix + 1, iy))     * fx;
+    const float b = static_cast<float>(hsTexel(ix, iy + 1)) * (1.0f - fx) + static_cast<float>(hsTexel(ix + 1, iy + 1)) * fx;
+    return (a * (1.0f - fy) + b * fy) * (1.0f / 255.0f);
+}
+
+void InvalidateHardSurfaceField() { g_hs = HardSurfaceField{}; }
+
+void HardSurfaceStats(int* alpha, int* pure, int* noImage) {
+    if (!g_hs.built) BuildHardSurfaceField();
+    if (alpha) *alpha = g_hs.tilesAlpha;
+    if (pure) *pure = g_hs.tilesPure;
+    if (noImage) *noImage = g_hs.tilesNoImage;
+}
+
 int          GetDecalVertCount()    { return g_decalVertCount; }
 
 // Mirror DrawMineStatic. Lazy rebuild-if-dirty on first armed draw, single
@@ -662,4 +796,12 @@ bool DrawDecalStatic() {
 // debounce to one rebuild/paint via the dirty flag.
 void gos_terrain_indirect_MarkDecalDirty() {
     gos_terrain_indirect::MarkDecalDirty();
+}
+
+// VEG-CEMENT-1 C-linkage forwarders (VegetationAdapter avoids gos_terrain_indirect.h).
+float gos_terrain_indirect_HardSurfaceCoverage(float wx, float wy) {
+    return gos_terrain_indirect::HardSurfaceCoverage(wx, wy);
+}
+void gos_terrain_indirect_HardSurfaceStats(int* alpha, int* pure, int* noImage) {
+    gos_terrain_indirect::HardSurfaceStats(alpha, pure, noImage);
 }
