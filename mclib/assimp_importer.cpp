@@ -40,6 +40,8 @@
 #include "tgl.h"
 #include "mech_skel_import.h"  // BT2018-SKEL-ENGINE-1A: shared FK/skeleton math
 #include "mech_anim_runtime.h" // BT2018-SKEL-ENGINE-1B-RUNTIME: per-frame re-bake API
+#include "file.h"              // ModCapabilityMounted (package capability)
+#include "mech_clip_state.h"   // P9: gesture -> clip state machine + stride matching
 
 // BT2018-SKEL-ENGINE-1A — bind-pose bake trace (default OFF). MC2_MECH_SKEL_TRACE=1.
 static const bool s_mechSkelTrace = mc2::gate::get<"MC2_MECH_SKEL_TRACE">();
@@ -710,6 +712,10 @@ struct ActorAnimState {
     unsigned lastFrame = 0xFFFFFFFFu;       // per-actor idempotency (combat double-update)
     std::vector<float> modelDelta;          // jointCount*16 row-major (placement-free)
     float gpuLift = 0.0f;                    // world-up foot-ground lift (per-frame)
+    mc2clip::Phase phase;                    // P9: jump/land memory
+    mc2clip::Mode  mode = mc2clip::Mode::Loop;  // P9: Once clips hold their last frame
+    bool  locomotion = false;                // P9: stride-matched playback
+    float playRate = 1.0f;                   // P9: last stride rate (diagnostics)
     std::vector<mc2skel::GpuBone> lastGlobals;  // 1A: last-frame clip bone GLOBALS (FK),
                                                 // parallel to ImportedAnimEntry::names —
                                                 // read by GetImportedNodeWorld for firepoints.
@@ -723,6 +729,7 @@ struct ImportedAnimEntry {
     std::vector<std::string> names;        // skeleton, parallel to clip globals
     std::string         pinnedClip;        // MC2_MECH_IMPORT_FORCE_CLIP (empty = 1C dynamic)
     std::string         initialClip;       // clip seeded into each new actor state
+    std::map<std::string, float> strideSpeed;  // P9: locomotion clip -> planted-foot speed (world units/s)
     std::map<std::string, std::string> nodeManifest;  // 1A: MC2 node name -> source joint
                                             // (from bt2018_mech_package.json "nodes").
     std::string aoTexName;                  // AO-1: materials.ao.tga (deriveName stem +
@@ -748,16 +755,26 @@ std::vector<ImportedAnimEntry> g_importedAnims;
 // Prune actor states untouched for this many frames (dead/despawned actors).
 const unsigned ACTOR_STATE_STALE_FRAMES = 600u;
 
-bool mechImportAnimateEnabled() {
-    // Opt-in, default OFF (static FORCE_CLIP bake stays the safe path).
-    static int v = mc2::gate::get<"MC2_MECH_IMPORT_ANIMATE">();
-    return v != 0;
+// BT2018-FIRST-CLASS P3: a mounted package with the "imported_mechs" capability ships its
+// imported mechs animated on the GPU path (per-actor palettes); the env gates stay as
+// opt-in for loose imports and an explicit =0 kills the package default.
+static bool importedMechPackageMounted() {
+    static const bool v = ModCapabilityMounted("imported_mechs");
+    return v;
 }
 
-// 1B-GPU: route the imported mech through the GPU skinned-mech path (default OFF).
+bool mechImportAnimateEnabled() {
+    // Opt-in, default OFF (static FORCE_CLIP bake stays the safe path) unless a package asks.
+    static const bool v = mc2::gate::get<"MC2_MECH_IMPORT_ANIMATE">() ||
+        (importedMechPackageMounted() && mc2::gate::state<"MC2_MECH_IMPORT_ANIMATE">() != mc2::gate::Tri::Off);
+    return v;
+}
+
+// 1B-GPU: route the imported mech through the GPU skinned-mech path (default OFF unless a package asks).
 bool mechImportGpuEnabled() {
-    static int v = mc2::gate::get<"MC2_MECH_IMPORT_GPU">();
-    return v != 0;
+    static const bool v = mc2::gate::get<"MC2_MECH_IMPORT_GPU">() ||
+        (importedMechPackageMounted() && mc2::gate::state<"MC2_MECH_IMPORT_GPU">() != mc2::gate::Tri::Off);
+    return v;
 }
 // GPU palette clip-side axis case. Default 2 (== mechToMC2Pos, the VBO axis): with
 // the actor shapeToWorld_root composed by the batcher, axis 2 stands the mech upright
@@ -836,46 +853,57 @@ std::optional<float> clipDurationSec(const aiScene* scene, std::string_view clip
     return std::nullopt;
 }
 
-// 1C — map the mech's per-frame movement to a BT2018 clip name. Gesture (already
-// debounced by the stock transition state machine) drives the main states; a
-// rotation-rate test adds turn-in-place (there is no stock GestureTurn). Clip
-// names follow the atlas/marauder set; a missing clip falls back to idle in the
-// tick. Gesture ids: 2=Stand 4=Walk 7=Run 9=Reverse 13=Idle 20=Jump (mech3d.h).
-const char* selectClipForMotion(int gesture, float speed, float turnRate, int turnStreak) {
-    // BT2018-SKEL-ANIM-COVERAGE-1: combat / reaction gestures (mech3d.h ids) take
-    // precedence over locomotion. Hit-reacts (16-19) flow through currentGestureId on
-    // moderate hits; fall/knockdown (14/15) → prone-hold (23/24) → getup (21/22) flow
-    // through the transitionArray (incl. forced on death). Limp (11/12) has no BT clip
-    // → walk fallback. Knockdown is the only BT down/react family clip.
-    switch (gesture) {
-        case 16: return "atlas_hitReactLgtFwd";    // HitFront
-        case 17: return "atlas_hitReactLgtBwd";    // HitBack
-        case 18: return "atlas_hitReactLgtLeft";   // HitLeft
-        case 19: return "atlas_hitReactLgtRight";  // HitRight
-        case 14: case 15:                          // FallBackward / FallForward
-        case 21: case 22:                          // Rollover / GetUp
-        case 23: case 24:                          // Fallen prone (held at end by caller)
-            return "atlas_hitReactKnockdownInpl";
-        case 11: case 12:                          // Limp L/R (no BT limp clip)
-            return "atlas_moveCoreWalkFwd";
-        default: break;
+// 1C/P9: per-frame clip choice lives in mclib/mech_clip_state.h (mc2clip::select): gesture
+// state + measured speed -> clip, one-shot vs loop, stride-matched locomotion.
+
+// P9: planted-foot speed of each locomotion clip, measured once at import. A clip plays in
+// place, so while a foot is planted it slides backwards under the root at exactly the ground
+// speed the clip was authored for. Playback rate = actual speed / this value, and the planted
+// foot then stays put (mc2clip::strideRate). Units: the GPU model space (AS1 includes the
+// import scale), up = y. Needs e.AS1, so it runs on the GPU path only.
+void measureClipStrides(ImportedAnimEntry& e) {
+    static const char* const kClips[] = {
+        "atlas_moveCoreWalkFwd", "atlas_moveCoreRunFwd", "atlas_moveCoreSprintFwd", "atlas_moveCoreWalkBwd",
+        "atlas_moveCoreWalkLimpFwdLeft", "atlas_moveCoreWalkLimpFwdRight" };
+    int feet[2] = { -1, -1 };
+    for (size_t i = 0; i < e.names.size(); ++i) {
+        if (e.names[i] == "j_LFoot") feet[0] = static_cast<int>(i);
+        if (e.names[i] == "j_RFoot") feet[1] = static_cast<int>(i);
     }
-    // Locomotion + turn-in-place.
-    const float MOVE_EPS = 1.0f;    // world units/sec ≈ moving
-    const bool standing = (gesture != 4 && gesture != 7 && gesture != 9 && gesture != 20);
-    if (standing && speed < MOVE_EPS && turnStreak >= 3)
-        return (turnRate > 0.0f) ? "atlas_moveCoreTurnLeftIdle" : "atlas_moveCoreTurnRightIdle";
-    switch (gesture) {
-        case 7:  return "atlas_moveCoreRunFwd";
-        case 9:  return "atlas_moveCoreWalkBwd";
-        case 4:  return "atlas_moveCoreWalkFwd";
-        case 20: return "atlas_moveJumpUpIdle";
-        default: return (speed > MOVE_EPS) ? "atlas_moveCoreWalkFwd" : "atlas_moveCoreIdle";
+    if (feet[0] < 0 || feet[1] < 0) return;
+    for (const char* clip : kClips) {
+        auto dur = clipDurationSec(e.scene, clip);
+        if (!dur || *dur < 0.1f) continue;
+        const int frames = static_cast<int>(*dur * 30.0f);
+        std::vector<aiVector3D> pos[2];
+        std::vector<mc2skel::GpuBone> g;
+        for (int f = 0; f <= frames; ++f) {
+            double tt = 0, dd = 0;
+            if (!mc2skel::EvaluateClipGpuBones(e.scene, clip, static_cast<float>(f), e.names, g, &tt, &dd)) break;
+            for (int k = 0; k < 2; ++k) {
+                const aiMatrix4x4 M = e.AS1 * rowMajorToAi(g[feet[k]].m);
+                pos[k].push_back(aiVector3D(M.a4, M.b4, M.c4));
+            }
+        }
+        float sum = 0.0f; int n = 0;
+        for (int k = 0; k < 2; ++k) {
+            if (pos[k].size() < 3) continue;
+            float lo = 1e30f, hi = -1e30f;
+            for (const aiVector3D& p : pos[k]) { lo = std::min(lo, p.y); hi = std::max(hi, p.y); }
+            const float planted = lo + 0.15f * (hi - lo);
+            for (size_t f = 1; f < pos[k].size(); ++f) {
+                if (pos[k][f].y > planted || pos[k][f - 1].y > planted) continue;
+                const float dx = pos[k][f].x - pos[k][f - 1].x, dz = pos[k][f].z - pos[k][f - 1].z;
+                sum += sqrtf(dx * dx + dz * dz) * 30.0f;
+                ++n;
+            }
+        }
+        if (n > 0 && sum / n > 0.5f) {
+            e.strideSpeed[clip] = sum / n;
+            mc2::fmt::print_err("[MECH_IMPORT] stride '{}' planted-foot speed={:.2f} u/s ({:d} samples)\n", clip, sum / n, n);
+        }
     }
 }
-// Prone/fallen gestures hold the clip's last frame (a downed/destroyed mech must not
-// loop the knockdown). Other clips loop.
-inline bool gestureHoldsAtEnd(int gesture) { return gesture == 23 || gesture == 24; }
 
 // BT2018-MECH-NODE-MANIFEST-1A: load the per-mech package's "nodes" map
 // (MC2 semantic name -> source joint) from the GLB's sidecar
@@ -1027,6 +1055,7 @@ void RegisterImportedAnim(const char* path, TG_TypeMultiShape* out, const SkelBa
             }
             e.restLift = (lowestY < 1e29f) ? -lowestY : 0.0f;
         }
+        measureClipStrides(e);
         MECH_SKEL_TRACE("file='%s' 1B-GPU registered joints=%zu verts=%d axis=%d (bbox y[%.2f..%.2f])",
                         path, bake.rest.size(), nv, mechImportGpuAxis(),
                         out->minBox.y, out->maxBox.y);
@@ -1212,23 +1241,39 @@ bool sampleActorClip(const ImportedAnimEntry& e, ActorAnimState& s, float dt,
         const bool standing = (motion.gestureId != 4 && motion.gestureId != 7 &&
                                motion.gestureId != 9 && motion.gestureId != 20);
         s.turnStreak = (standing && speed < 1.0f && fabsf(turnRate) > 12.0f) ? (s.turnStreak + 1) : 0;
-        const char* want = selectClipForMotion(motion.gestureId, speed, turnRate, s.turnStreak);
-        if (s.activeClip == want) {
-            s.pendingStreak = 0;
-        } else {
-            if (s.pendingClip == want) ++s.pendingStreak;
-            else { s.pendingClip = want; s.pendingStreak = 1; }
-            if (s.pendingStreak >= 4) {
-                if (auto nd = clipDurationSec(e.scene, want)) {
-                    s.activeClip = want;
-                    s.durationSec = *nd > 1e-4f ? *nd : 1.0f;
-                }
-                s.pendingStreak = 0;
+        // P9: event clips (hits, falls, get-up, death, jump phases) switch at once and play
+        // from their first frame; locomotion keeps the 4-frame debounce and its phase.
+        const bool finished = (s.mode == mc2clip::Mode::Once) && s.clipTimeSec >= s.durationSec - 1e-4f;
+        const mc2clip::Choice want = mc2clip::select(motion.gestureId, speed, turnRate, s.turnStreak,
+                                                     motion.destroyed, finished, s.activeClip.c_str(), s.phase);
+        auto adopt = [&](const mc2clip::Choice& c, bool restart) {
+            if (auto nd = clipDurationSec(e.scene, c.clip)) {
+                s.activeClip = c.clip;
+                s.durationSec = *nd > 1e-4f ? *nd : 1.0f;
+                s.mode = c.mode;
+                s.locomotion = c.locomotion;
+                if (restart) s.clipTimeSec = 0.0f;
             }
+            s.pendingStreak = 0;
+        };
+        if (s.activeClip == want.clip) {
+            s.pendingStreak = 0;
+            s.locomotion = want.locomotion;
+        } else if (want.immediate) {
+            adopt(want, true);
+        } else {
+            if (s.pendingClip == want.clip) ++s.pendingStreak;
+            else { s.pendingClip = want.clip; s.pendingStreak = 1; }
+            if (s.pendingStreak >= 4) adopt(want, s.mode == mc2clip::Mode::Once);
+        }
+        s.playRate = 1.0f;
+        if (s.locomotion) {
+            auto st = e.strideSpeed.find(s.activeClip);
+            if (st != e.strideSpeed.end()) s.playRate = mc2clip::strideRate(speed, st->second);
         }
     }
-    const bool holdAtEnd = e.pinnedClip.empty() && gestureHoldsAtEnd(motion.gestureId);
-    if (advanceClock) s.clipTimeSec += dt;
+    const bool holdAtEnd = e.pinnedClip.empty() && s.mode == mc2clip::Mode::Once;
+    if (advanceClock) s.clipTimeSec += dt * (e.pinnedClip.empty() ? s.playRate : 1.0f);
     if (s.durationSec > 0.0f) {
         if (holdAtEnd) { if (s.clipTimeSec > s.durationSec) s.clipTimeSec = s.durationSec; }
         else while (s.clipTimeSec >= s.durationSec) s.clipTimeSec -= s.durationSec;
