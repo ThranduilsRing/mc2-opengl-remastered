@@ -5,15 +5,189 @@
     360,
     360
   ],
-  "header_pixels": 68,
-  "hillshade": true,
+  "header_pixels": 0,
+  "hillshade": false,
   "install": "MCO-Carver5",
   "map_pixels": [
-    1920,
-    1920
+    366,
+    366
   ],
   "mission": "mc2_18",
+  "north_up": true,
+  "object_palette": {
+    "airfield": [
+      158,
+      173,
+      187
+    ],
+    "bridge": [
+      162,
+      159,
+      140
+    ],
+    "fence": [
+      133,
+      134,
+      114
+    ],
+    "gate": [
+      212,
+      178,
+      91
+    ],
+    "gate_control": [
+      102,
+      166,
+      175
+    ],
+    "hq": [
+      165,
+      148,
+      192
+    ],
+    "industrial": [
+      189,
+      153,
+      103
+    ],
+    "military": [
+      144,
+      157,
+      168
+    ],
+    "prop": [
+      139,
+      133,
+      111
+    ],
+    "rock": [
+      120,
+      119,
+      111
+    ],
+    "town": [
+      185,
+      177,
+      153
+    ],
+    "tree": [
+      47,
+      86,
+      54
+    ],
+    "turret": [
+      207,
+      120,
+      94
+    ],
+    "turret_control": [
+      115,
+      184,
+      193
+    ],
+    "turret_generator": [
+      205,
+      172,
+      77
+    ],
+    "wall": [
+      163,
+      158,
+      140
+    ]
+  },
+  "png": "mc2_18.png",
+  "preview_pixels": [
+    1464,
+    1464
+  ],
+  "preview_png": "mc2_18_4x.png",
+  "preview_scale": 4,
   "road_geometry": "authored alpha masks",
+  "scale_overridden": false,
+  "scale_reference": {
+    "long_side_wu": 84.16,
+    "pixels_long": 2,
+    "type_key": "stock:335"
+  },
+  "style": "quonset-pixel-1",
+  "symbols": {
+    "gate": "gold pixel",
+    "objective": "gold diamond",
+    "player": "cyan chevron",
+    "tree": "green pixel/cluster",
+    "turret": "team pixel",
+    "wall": "1px line"
+  },
+  "team_palette": {
+    "-1": [
+      206,
+      189,
+      133
+    ],
+    "0": [
+      89,
+      187,
+      225
+    ],
+    "1": [
+      218,
+      91,
+      70
+    ],
+    "2": [
+      227,
+      158,
+      69
+    ],
+    "3": [
+      171,
+      127,
+      205
+    ]
+  },
+  "terrain_palette": {
+    "cement": [
+      121,
+      125,
+      123
+    ],
+    "dirt": [
+      139,
+      118,
+      83
+    ],
+    "grass": [
+      78,
+      96,
+      60
+    ],
+    "rock": [
+      108,
+      108,
+      103
+    ],
+    "sand": [
+      183,
+      159,
+      104
+    ],
+    "scrub": [
+      108,
+      111,
+      69
+    ],
+    "snow": [
+      209,
+      218,
+      210
+    ],
+    "water": [
+      43,
+      83,
+      111
+    ]
+  },
   "unresolved_visible_footprints": 0,
-  "wu_per_pixel": 8
+  "wu_per_pixel": 42.08
 }
