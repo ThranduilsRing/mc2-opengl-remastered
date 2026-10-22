@@ -64,12 +64,8 @@ long Mech3DAppearance::update (bool animate)
 	
 	//If mech is in 2 and does NOT have a target.
 	//Fix please
-	// FREEZE-MOVERS-1: idleTime is a wall-clock accumulator that FLIPS THE
-	// GESTURE (2 -> 13) once it passes idleMAX. Left running under a freeze it
-	// silently changes which animation a "pinned" mech is posed in, so two
-	// arms of the same A/B can differ by a whole gesture. Frozen only when
-	// freeze_movers armed it; stock and capture paths are untouched.
-	if (!unitAnim().inCombatMode && (unitAnim().currentGestureId == 2) && (mc2FreezeMoversActive() == 0))
+	// Gameplay idle transitions advance with the owning simulation tick.
+	if (!unitAnim().inCombatMode && (unitAnim().currentGestureId == 2))
 	{
 		unitAnim().idleTime += frameLength;
 		if (unitAnim().idleTime > idleMAX)
@@ -289,9 +285,9 @@ long Mech3DAppearance::update (bool animate)
 					// this frame, so _alreadyAdvanced is false and the first
 					// LOS-triggered call would silently tick the gait -- precisely
 					// the run-to-run pose drift this feature exists to remove.
-					const bool _captureFroze = (mc2CaptureGaitFreezeActive() != 0) ||
-					                           (mc2FreezeMoversActive() != 0) || mc2::animationsFrozen();
-					if (!_alreadyAdvanced && !_captureFroze)
+					// Pause and explicit mover freezes stop the owning tick. A
+					// presentation or capture setting cannot stop a gameplay clock.
+					if (!_alreadyAdvanced)
 					{
 						if (unitAnim().inReverse)
 							unitAnim().currentFrame -= frameInc;

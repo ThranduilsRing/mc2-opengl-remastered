@@ -178,7 +178,10 @@ void GVAppearance::updateGeometry (void)
 			// the renderShadows early-return above.
 			const bool skipShadowXform = g_useGpuGVShadowSkip && gos_IsModernShadowPathActive();
 			if (!skipShadowXform)
+			{
+				auto rot = mc2::math::quatFromEuler(mc2::math::Euler(0.0f, rotation * DEGREES_TO_RADS, 0.0f));
 				gvShadowShape->TransformMultiShape (&xlatPosition,&rot);
+			}
 		}
 		
 		gvShape->SetLightList(eye->getWorldLights(),eye->getNumLights());
@@ -580,7 +583,7 @@ long GVAppearance::update (bool animate)
 	// with the default animate=true, and LOS resolution still runs while movers
 	// are frozen, a frozen vehicle's animation could keep ticking off the
 	// wall-clock frameLength. Same mech-vs-vehicle asymmetry as sensorSpin.
- 	if (!simPresentationPass && animate && unitAnim().gvFrameRate != 0.0f && (mc2FreezeMoversActive() == 0))
+ 	if (!simPresentationPass && animate && unitAnim().gvFrameRate != 0.0f)
 	{
 		//--------------------------------------------------------
 		// Make sure animation runs no faster than bdFrameRate fps.
