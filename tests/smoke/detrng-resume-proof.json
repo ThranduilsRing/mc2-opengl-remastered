@@ -1,0 +1,270 @@
+{
+  "handoff_tip": "95922056c869",
+  "tested_engine_commit": "2bbc6b135010f564478b40688111e8a5e74b41d1",
+  "branch": "claude/det-rng-sidebugs",
+  "install": "G:/mc2-installs/mc2-win64-detrng",
+  "evidence_root": "E:/mc2-archive-2026-10/proofs/detrng-resume",
+  "build": {
+    "result": "PASS",
+    "log": "E:\\mc2-archive-2026-10\\proofs\\detrng-resume\\build.log",
+    "deploy_log": "E:\\mc2-archive-2026-10\\proofs\\detrng-resume\\deploy.log"
+  },
+  "offline": {
+    "doctest_cases_passed": 3362,
+    "production_seam_cases_passed": 37,
+    "arm_remap_witness_cases_passed": 4,
+    "arm_remap_witness_assertions_passed": 11,
+    "unit_log": "E:\\mc2-archive-2026-10\\proofs\\detrng-resume\\doctest.log",
+    "arm_witness_log": "E:\\mc2-archive-2026-10\\proofs\\detrng-resume\\arm-remap-witness.log",
+    "contracts_passed": 122,
+    "contracts_failed": 1,
+    "contracts_log": "E:\\mc2-archive-2026-10\\proofs\\detrng-resume\\contracts-final.log",
+    "acknowledged_failure": "doc_links: four references in pre-existing untracked .aider.chat.history.md; left untouched",
+    "cxx17_ratchet": "PASS after replacing the arm remap pointer/count interface with std::span; baseline unchanged"
+  },
+  "mods": [
+    {
+      "name": "MC2X-CVE-G",
+      "mission": "mc2_01",
+      "result": "PASS",
+      "health": {
+        "mech_ok": true,
+        "mech_instances_max": 12,
+        "mlr_mech_draws": 0,
+        "mech_evidence": true,
+        "ai_ok": true,
+        "first_brain_s": 0.91,
+        "first_order_s": 5.57
+      },
+      "fingerprint": "> mc2_01: [DEPLOY_FINGERPRINT] OK: exe sha=2bbc6b135010 matches worktree HEAD 2bbc6b135010f564478b40688111e8a5e74b41d1",
+      "log": "G:\\mc2-battery\\mod_smoke\\20261021-225320\\MC2X-CVE-G\\smoke.log"
+    },
+    {
+      "name": "MC2X-REAP3",
+      "mission": "reap3m01",
+      "result": "PASS",
+      "health": {
+        "mech_ok": true,
+        "mech_instances_max": 30,
+        "mlr_mech_draws": 0,
+        "mech_evidence": true,
+        "ai_ok": true,
+        "first_brain_s": 0.0,
+        "first_order_s": 1.49
+      },
+      "fingerprint": "> reap3m01: [DEPLOY_FINGERPRINT] OK: exe sha=2bbc6b135010 matches worktree HEAD 2bbc6b135010f564478b40688111e8a5e74b41d1",
+      "log": "G:\\mc2-battery\\mod_smoke\\20261021-225320\\MC2X-REAP3\\smoke.log"
+    },
+    {
+      "name": "MC2-Exodus",
+      "mission": "a_0_1",
+      "result": "PASS",
+      "health": {
+        "mech_ok": true,
+        "mech_instances_max": 30,
+        "mlr_mech_draws": 0,
+        "mech_evidence": true,
+        "ai_ok": true,
+        "first_brain_s": 0.76,
+        "first_order_s": 5.52
+      },
+      "fingerprint": "> a_0_1: [DEPLOY_FINGERPRINT] OK: exe sha=2bbc6b135010 matches worktree HEAD 2bbc6b135010f564478b40688111e8a5e74b41d1",
+      "log": "G:\\mc2-battery\\mod_smoke\\20261021-225320\\MC2-Exodus\\smoke.log"
+    },
+    {
+      "name": "MC2-MagicExpansion",
+      "mission": "mc2_01",
+      "result": "PASS",
+      "health": {
+        "mech_ok": true,
+        "mech_instances_max": 38,
+        "mlr_mech_draws": 0,
+        "mech_evidence": true,
+        "ai_ok": true,
+        "first_brain_s": 0.88,
+        "first_order_s": 10.28
+      },
+      "fingerprint": "> mc2_01: [DEPLOY_FINGERPRINT] OK: exe sha=2bbc6b135010 matches worktree HEAD 2bbc6b135010f564478b40688111e8a5e74b41d1",
+      "log": "G:\\mc2-battery\\mod_smoke\\20261021-225320\\MC2-MagicExpansion\\smoke.log"
+    },
+    {
+      "name": "MechCommanderOmnitech",
+      "mission": "a_0_1",
+      "result": "PASS",
+      "health": {
+        "mech_ok": true,
+        "mech_instances_max": 12,
+        "mlr_mech_draws": 0,
+        "mech_evidence": true,
+        "ai_ok": true,
+        "first_brain_s": 0.89,
+        "first_order_s": 0.89
+      },
+      "fingerprint": "> a_0_1: [DEPLOY_FINGERPRINT] OK: exe sha=2bbc6b135010 matches worktree HEAD 2bbc6b135010f564478b40688111e8a5e74b41d1",
+      "log": "G:\\mc2-battery\\mod_smoke\\20261021-225320\\MechCommanderOmnitech\\smoke.log"
+    },
+    {
+      "name": "MCO-Carver5",
+      "mission": "mc2_01",
+      "result": "PASS",
+      "health": {
+        "mech_ok": true,
+        "mech_instances_max": 38,
+        "mlr_mech_draws": 0,
+        "mech_evidence": true,
+        "ai_ok": true,
+        "first_brain_s": 0.89,
+        "first_order_s": 0.89
+      },
+      "fingerprint": "> mc2_01: [DEPLOY_FINGERPRINT] OK: exe sha=2bbc6b135010 matches worktree HEAD 2bbc6b135010f564478b40688111e8a5e74b41d1",
+      "log": "G:\\mc2-battery\\mod_smoke\\20261021-225320\\MCO-Carver5\\smoke.log"
+    }
+  ],
+  "mod_battery_report": "E:\\mc2-archive-2026-10\\proofs\\detrng-resume\\mod-battery.json",
+  "determinism": [
+    {
+      "mission": "mc2_03",
+      "result": "PASS",
+      "verdicts": [
+        "sim_determinism: PASS identical over 2785 sim frames (chain 75b2d3f4eb7be049; runs had 2785 and 3766)",
+        "sim_determinism: baseline PASS first 1000 frames match the baseline chain 3bfc7e1947c403dc in every digest"
+      ],
+      "log": "E:\\mc2-archive-2026-10\\proofs\\detrng-resume\\determinism-mc2_03.log",
+      "artifacts": "E:\\mc2-archive-2026-10\\proofs\\detrng-resume\\determinism-mc2_03",
+      "baseline_changed": false
+    },
+    {
+      "mission": "mc2_24",
+      "result": "PASS",
+      "verdicts": [
+        "sim_determinism: PASS identical over 2845 sim frames (chain 2d4e28aa52c4db74; runs had 2845 and 3670)",
+        "sim_determinism: baseline PASS first 1000 frames match the baseline chain e835863671799429 in every digest"
+      ],
+      "log": "E:\\mc2-archive-2026-10\\proofs\\detrng-resume\\determinism-mc2_24.log",
+      "artifacts": "E:\\mc2-archive-2026-10\\proofs\\detrng-resume\\determinism-mc2_24",
+      "baseline_changed": false
+    },
+    {
+      "mission": "mc2_10",
+      "result": "PENDING",
+      "verdicts": [],
+      "log": "E:\\mc2-archive-2026-10\\proofs\\detrng-resume\\determinism-mc2_10.log",
+      "artifacts": "E:\\mc2-archive-2026-10\\proofs\\detrng-resume\\determinism-mc2_10",
+      "baseline_changed": false
+    },
+    {
+      "mission": "mc2_16",
+      "result": "PENDING",
+      "verdicts": [],
+      "log": "E:\\mc2-archive-2026-10\\proofs\\detrng-resume\\determinism-mc2_16.log",
+      "artifacts": "E:\\mc2-archive-2026-10\\proofs\\detrng-resume\\determinism-mc2_16",
+      "baseline_changed": false
+    }
+  ],
+  "withdrawal": [
+    {
+      "camera": "far-bridge",
+      "result": "PASS",
+      "first_withdrawn_after_order_sim_seconds": 3.03,
+      "trace_period_sim_seconds": 0.25,
+      "unit": 512,
+      "unit_class": "GroundVehicle",
+      "initial_hp": 1.0,
+      "observed_in_view": [
+        0
+      ],
+      "pilot_trace": "E:\\mc2-archive-2026-10\\proofs\\detrng-resume\\withdraw-far-bridge\\pilot-status.json",
+      "readbacks": "E:\\mc2-archive-2026-10\\proofs\\detrng-resume\\withdraw-far-bridge\\commands.txt.ack",
+      "engine_log": "E:\\mc2-archive-2026-10\\proofs\\detrng-resume\\withdraw-far-bridge\\engine.log"
+    },
+    {
+      "camera": "near-bridge",
+      "result": "PASS",
+      "first_withdrawn_after_order_sim_seconds": 3.07,
+      "trace_period_sim_seconds": 0.25,
+      "unit": 512,
+      "unit_class": "GroundVehicle",
+      "initial_hp": 1.0,
+      "observed_in_view": [
+        1
+      ],
+      "pilot_trace": "E:\\mc2-archive-2026-10\\proofs\\detrng-resume\\withdraw-near-bridge\\pilot-status.json",
+      "readbacks": "E:\\mc2-archive-2026-10\\proofs\\detrng-resume\\withdraw-near-bridge\\commands.txt.ack",
+      "engine_log": "E:\\mc2-archive-2026-10\\proofs\\detrng-resume\\withdraw-near-bridge\\engine.log"
+    }
+  ],
+  "visual_captures": [
+    {
+      "set": "edges-mc2_01",
+      "result": "PASS",
+      "manifest": "E:\\mc2-archive-2026-10\\proofs\\detrng-resume\\edges-mc2_01\\mc2_01_capture_manifest.json",
+      "backend": {
+        "requested": "vulkan",
+        "drew": [
+          "vulkan"
+        ],
+        "disagree": []
+      },
+      "pngs": [
+        "E:\\mc2-archive-2026-10\\proofs\\detrng-resume\\edges-mc2_01\\mc2_01_edge_fog_boundary_south.png",
+        "E:\\mc2-archive-2026-10\\proofs\\detrng-resume\\edges-mc2_01\\mc2_01_edge_fog_corner_southwest.png"
+      ],
+      "claim": "Capture completed; no cross-build pixel-parity claim"
+    },
+    {
+      "set": "edges-mc2_10",
+      "result": "PASS",
+      "manifest": "E:\\mc2-archive-2026-10\\proofs\\detrng-resume\\edges-mc2_10\\mc2_10_capture_manifest.json",
+      "backend": {
+        "requested": "vulkan",
+        "drew": [
+          "vulkan"
+        ],
+        "disagree": []
+      },
+      "pngs": [
+        "E:\\mc2-archive-2026-10\\proofs\\detrng-resume\\edges-mc2_10\\mc2_10_night_runway_centre.png",
+        "E:\\mc2-archive-2026-10\\proofs\\detrng-resume\\edges-mc2_10\\mc2_10_night_runway_threshold.png"
+      ],
+      "claim": "Capture completed; no cross-build pixel-parity claim"
+    },
+    {
+      "set": "day-oblique-cliff",
+      "result": "PASS",
+      "manifest": "E:\\mc2-archive-2026-10\\proofs\\detrng-resume\\day-oblique-cliff\\mc2_01_capture_manifest.json",
+      "backend": {
+        "requested": "vulkan",
+        "drew": [
+          "vulkan"
+        ],
+        "disagree": []
+      },
+      "pngs": [
+        "E:\\mc2-archive-2026-10\\proofs\\detrng-resume\\day-oblique-cliff\\mc2_01_cliff_wall_sideon.png",
+        "E:\\mc2-archive-2026-10\\proofs\\detrng-resume\\day-oblique-cliff\\mc2_01_oblique_fog.png"
+      ],
+      "claim": "Capture completed; no cross-build pixel-parity claim"
+    }
+  ],
+  "open": [
+    "Complete determinism pair and existing-baseline check: mc2_10",
+    "Complete determinism pair and existing-baseline check: mc2_16"
+  ],
+  "inherited_proofs": {
+    "source": "E:/mc2-archive-2026-10/plans/detrng-handoff-2026-10-21.md",
+    "tier1": "5/5 PASS at handoff tip; not rerun as a tier after the span-only API change",
+    "save_load": "mc2_01 first-save-only PASS against existing masked baseline at handoff tip"
+  },
+  "withdrawal_note": "Authoritative completion is pilot status withdrawn, not object deallocation. Screenshots are supplemental; no visual-disappearance claim. Earlier driver attempts had a class-name casing error, not an engine failure.",
+  "edge_crops": [
+    {
+      "png": "E:\\mc2-archive-2026-10\\proofs\\detrng-resume\\day-cliff-edge-crop.png",
+      "sha256": "896d327ca2af815f5cb7e0d112cb7e1912ab5d1bf42d97654494ea59936b2d41"
+    },
+    {
+      "png": "E:\\mc2-archive-2026-10\\proofs\\detrng-resume\\night-runway-edge-crop.png",
+      "sha256": "111f96c9024a732d3ca0e8a36854c6f0926f929024f77688a2cb6b71f7ad7912"
+    }
+  ],
+  "completed": false
+}
