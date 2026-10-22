@@ -76,6 +76,7 @@ struct PackageChassis {
     std::string fitPath;        // absolute path of the chassisdef.fit (object type source)
     std::string modId;
     std::string balanceProfile;
+    std::string hudIcon;        // P6: HUD strip base (<base>_<W>x<H>.tga in data/art), empty = stock atlas
     long objTypeNum = -1;       // runtime allocation; never saved (saves carry chassisId)
     float scale = 1.0f, tonnage = 0.0f, emptyMass = 0.0f, payload = 0.0f;
     bool purchasable = false;

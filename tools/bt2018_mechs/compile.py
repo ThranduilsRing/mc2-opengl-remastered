@@ -463,6 +463,7 @@ def emit_chassis_fit(profile, recipe):
              f'st BalanceProfile = "{profile["balance_profile"]}"', "f Scale = 1.0",
              f"f Tonnage = {m['tonnage']}", f"f EmptyMass = {m['empty_mass']}", f"f Payload = {m['payload']}",
              "b Purchasable = TRUE",
+             f'st HudIcon = "{stem}_hud"',
              f"l RegionCount = {len(m['regions'])}", f"l HardpointCount = {len(profile['hardpoints'])}", ""]
     for i, (loc, (x, y, w, h)) in enumerate(m["regions"].items()):
         lines += [f"[Region{i}]", f'st Location = "{loc}"', f"l X = {x}", f"l Y = {y}", f"l W = {w}", f"l H = {h}", ""]

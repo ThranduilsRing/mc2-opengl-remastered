@@ -58,6 +58,7 @@ bool parse(const std::string& path, mc2pkg::PackageChassis& out) {
     out.chassisId = mc2id::canonicalizeQualifiedId(readStr(f, "ChassisId"));
     out.stem = readStr(f, "Stem");
     out.balanceProfile = readStr(f, "BalanceProfile");
+    out.hudIcon = readStr(f, "HudIcon");
     out.scale = readFloat(f, "Scale", 1.0f);
     out.tonnage = readFloat(f, "Tonnage", 0.0f);
     out.emptyMass = readFloat(f, "EmptyMass", 0.0f);

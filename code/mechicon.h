@@ -193,6 +193,10 @@ class MechIcon : public ForceGroupIcon
 
 		static TGAFileHeader* s_MechTextures;
 		static AssetScale::AssetKey s_MechTexturesKey;
+		// BT2018-FIRST-CLASS P6: where a unit's HUD icon comes from (stock atlas column, or a
+		// package chassis' own strip at column 0).
+		struct HudIconSource { const TGAFileHeader* atlas; AssetScale::AssetKey key; long column; };
+		static HudIconSource hudIconSourceFor( Mover* pUnit, long stockColumn );
 
 		void doDraw( char* newDamage, char* oldDamage, unsigned long handle, unsigned long where);
 		virtual void setDrawBack( bool bSet);

@@ -321,3 +321,26 @@ def test_cook_retargets_from_the_raw_cache_so_repeat_cooks_match(tmp_path):
     once = legacy.read_bytes()
     retarget_file(str(legacy), str(atlas), str(legacy))
     assert legacy.read_bytes() != once
+
+
+# ---------------------------------------------------------------- P6 icons
+
+
+def test_hud_icons_use_only_the_exact_region_palette():
+    from tools.bt2018_mechs import render_icons as R
+    import numpy as np
+    quad = np.array([[-1, 0, 0], [1, 0, 0], [1, 2, 0], [-1, 2, 0]], dtype=float)
+    tris = np.array([[0, 1, 2], [0, 2, 3]])
+    parts = [(R.region_of("mad_left_arm_forearm"), quad + [2, 0, 0], tris),
+             (R.region_of("mad_centre_torso"), quad, tris),
+             (R.region_of("mad_right_leg_calf"), quad - [2, 0, 0], tris)]
+    assert [p[0] for p in parts] == [2, 6, 1]
+    assert R.region_of("mad_left_arm_forearm_dmg") is None and R.region_of("uixMdlIndc_mechBlip") is None
+    for w, h in R.HUD_SIZES:
+        strip = R.hud_strip(parts, w, h)
+        assert strip.shape == (2 * h, w, 4)
+        assert R.palette_ok(strip, rear_row_from=h) == []
+        reds = {int(v) for v in strip[:h, :, 0][strip[:h, :, 3] > 0]}
+        assert {194 + 2, 194 + 6, 194 + 1} & reds          # region offset is in the red channel
+        rear = strip[h:]
+        assert not ({194 + 2, 194 + 1} & {int(v) for v in rear[:, :, 0][rear[:, :, 3] > 0]})   # no limbs on the rear row

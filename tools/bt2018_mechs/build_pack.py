@@ -31,6 +31,8 @@ if __package__ in (None, ""):
     from tools.bt2018_mechs import compile as C  # noqa: E402
 else:
     from . import compile as C
+if str(Path(__file__).resolve().parents[2]) not in sys.path:
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 REPO = Path(__file__).resolve().parents[2]
 MOD_SCHEMA = "mc2-mod/1"
@@ -188,6 +190,12 @@ def build(args, out: Path):
                     dst = out / "data" / "tgl" / k
                     shutil.copyfile(tex_src / k, dst)
                     assets[str(dst.relative_to(out)).replace("\\", "/")] = sha256(dst)
+        # P6: icons rendered offline from the same model (generated, so hashed with the generated files).
+        if not args.no_icons:
+            from tools.bt2018_mechs import render_icons
+            for name in render_icons.build_icons(conv / model["source_glb"], p["stem"], out / "data" / "art"):
+                dst = out / "data" / "art" / name
+                assets[f"data/art/{name}"] = sha256(dst)
 
     mod = {
         "schema": MOD_SCHEMA,
@@ -223,6 +231,7 @@ def main():
     ap.add_argument("--mod-id", default="bt2018_mechs")
     ap.add_argument("--out", default="")
     ap.add_argument("--only", default="")
+    ap.add_argument("--no-icons", action="store_true", help="skip the offline icon render (P6)")
     ap.add_argument("--check", action="store_true", help="rebuild into a temp dir and compare with the existing mod")
     args = ap.parse_args()
     out = Path(args.out) if args.out else Path(args.install) / "mods" / args.mod_id

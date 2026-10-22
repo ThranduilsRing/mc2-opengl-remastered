@@ -21,6 +21,10 @@ MechIcon.cpp			: Implementation of the MechIcon component.
 #include"gamesound.h"
 #include"platform_windows.h"
 #include "Gates/gate.h"
+#include "package_chassis.h"
+#include <map>
+#include <memory>
+#include <string>
 #include "mc2fmt.h"
 
 #ifndef MISSION_H
@@ -32,6 +36,71 @@ MechIcon.cpp			: Implementation of the MechIcon component.
 #endif
 
 TGAFileHeader *MechIcon::s_MechTextures = nullptr;
+
+// BT2018-FIRST-CLASS P6: package chassis HUD icons. A package chassis names a strip base in its
+// chassisdef.fit ([Chassis] HudIcon); the pack ships <base>_<W>x<H>.tga for each HUD size (one
+// column, row 0 front, row 1 rear, exact region palette; tools/bt2018_mechs/render_icons.py).
+// The stock atlas and its column layout are untouched; stock units keep their atlas column.
+namespace {
+struct PackageHudStrip {
+	std::unique_ptr<char[]> bytes;
+	AssetScale::AssetKey key;
+};
+std::map<std::string, PackageHudStrip>& packageHudStrips()
+{
+	static std::map<std::string, PackageHudStrip> strips;
+	return strips;
+}
+const PackageHudStrip* loadPackageHudStrip( const std::string& base )
+{
+	char path[512];
+	mc2::fmt::to_buf( path, "{}{}_{:d}x{:d}.tga", artPath, base,
+		static_cast<int>(ForceGroupIcon::unitIconX), static_cast<int>(ForceGroupIcon::unitIconY) );
+	S_strlwr( path );
+	auto& cache = packageHudStrips();
+	auto it = cache.find( path );
+	if ( it == cache.end() )
+	{
+		PackageHudStrip strip;
+		File file;
+		if ( NO_ERR == file.open( path ) )
+		{
+			const int size = file.getLength();
+			strip.bytes = std::make_unique<char[]>( size );
+			file.read( reinterpret_cast<BYTE*>(strip.bytes.get()), size );
+			auto* hdr = reinterpret_cast<TGAFileHeader*>(strip.bytes.get());
+			if ( hdr->pixel_depth != 32 || hdr->width < ForceGroupIcon::unitIconX || hdr->height < 2 * ForceGroupIcon::unitIconY )
+			{
+				mc2::fmt::print_out( "[mechicon] package HUD strip '{}' is not 32-bit {:.0f}x{:.0f}x2 -- stock icon used\n", path, ForceGroupIcon::unitIconX, ForceGroupIcon::unitIconY );
+				strip.bytes.reset();
+			}
+			else
+			{
+				flipTopToBottom( reinterpret_cast<BYTE*>(hdr + 1), hdr->pixel_depth, hdr->width, hdr->height );
+				strip.key = AssetScale::key( path );
+			}
+		}
+		it = cache.emplace( path, std::move(strip) ).first;
+	}
+	return it->second.bytes ? &it->second : nullptr;
+}
+} // namespace
+
+MechIcon::HudIconSource MechIcon::hudIconSourceFor( Mover* pUnit, long stockColumn )
+{
+	HudIconSource src{ s_MechTextures, s_MechTexturesKey, stockColumn };
+	const mc2pkg::PackageChassis* pc = pUnit ? packageChassisByTypeNum( pUnit->getTypeHandle() ) : nullptr;
+	if ( pc && !pc->hudIcon.empty() )
+	{
+		if ( const PackageHudStrip* strip = loadPackageHudStrip( pc->hudIcon ) )
+		{
+			src.atlas = reinterpret_cast<const TGAFileHeader*>(strip->bytes.get());
+			src.key = strip->key;
+			src.column = 0;
+		}
+	}
+	return src;
+}
 AssetScale::AssetKey MechIcon::s_MechTexturesKey;
 
 //---------------------------------------------------------------------------
@@ -415,26 +484,28 @@ void MechIcon::setDrawBack( bool bSet)
 
 
 	DWORD* pDestData, *pDestRow = textureData.pTexture + offsetY * textureData.Width + offsetX;
-	char* pTmp = reinterpret_cast<char*>(s_MechTextures) + sizeof ( TGAFileHeader );
+	char* pTmp = nullptr;   // set once the source is chosen (below)
 
-	long whichMech = unit->getIconPictureIndex();
+	const HudIconSource src = hudIconSourceFor( unit, unit->getIconPictureIndex() );
+	long whichMech = src.column;
+	pTmp = const_cast<char*>(reinterpret_cast<const char*>(src.atlas)) + sizeof ( TGAFileHeader );
 
 	offsetY = unitIconY;
 	offsetX = whichMech  * unitIconX;
 
 	{
-		const uint32_t actualW = static_cast<uint32_t>(s_MechTextures->width);
-		const uint32_t actualH = static_cast<uint32_t>(s_MechTextures->height);
+		const uint32_t actualW = static_cast<uint32_t>(src.atlas->width);
+		const uint32_t actualH = static_cast<uint32_t>(src.atlas->height);
 		// ISSUE-43: blitFactorFor — column-extended atlases (MCO/MC2X added
 		// icon columns) direct-index instead of mis-sampling as an upscale.
 		const AssetScale::Vec2 f = AssetScale::blitFactorFor(
-			MechIcon::s_MechTexturesKey, actualW, actualH, "mechicon.blit");
+			src.key, actualW, actualH, "mechicon.blit");
 		// Direct-index path: match original pSrcRow += width / pSrcData++
 		// semantics so out-of-bounds indices wrap exactly like before.
 		// OOB is NOT clamped here — original relied on the wrap behavior
 		// for high whichMech indices (e.g. MC2X mod mechs beyond slot 33).
 		(void)AssetScale::nominalToActualRect(
-			MechIcon::s_MechTexturesKey, actualW, actualH,
+			src.key, actualW, actualH,
 			static_cast<float>(offsetX), static_cast<float>(offsetY),
 			unitIconX, unitIconY,
 			"mechicon.blit");
@@ -604,9 +675,9 @@ bool MechIcon::init( Mover* pMover )
 		return 0;
 
 	long whichMech = pMover->getIconPictureIndex();
+	unit = pMover;   // P6: init(long) picks a package chassis' own HUD strip
 	bool bRetVal = init( whichMech );
 
-	unit = pMover;
 	pilotIcon.setPilot( pMover->getPilot() );
 
 	return bRetVal;
@@ -617,8 +688,11 @@ bool MechIcon::init( Mover* pMover )
 bool MechIcon::init( long whichIndex )
 {
 	initTextures();
+	// BT2018-FIRST-CLASS P6: a package chassis brings its own HUD strip (column 0).
+	const HudIconSource src = hudIconSourceFor( unit, whichIndex );
+	whichIndex = src.column;
 
-	int pixelDepth = s_MechTextures->pixel_depth/8; 
+	int pixelDepth = src.atlas->pixel_depth/8; 
 	if ( pixelDepth != 4 )
 		PAUSE(("Texture for MechIcon not 32-bit"));
 
@@ -648,14 +722,14 @@ bool MechIcon::init( long whichIndex )
 		return false;
 
 	DWORD* pDestData, *pDestRow = textureData.pTexture + offsetY * textureData.Width + offsetX;
-	char* pTmp = reinterpret_cast<char*>(s_MechTextures) + sizeof ( TGAFileHeader );
+	const char* pTmp = reinterpret_cast<const char*>(src.atlas) + sizeof ( TGAFileHeader );
 
 	offsetY = 0;
 	offsetX = whichIndex * unitIconX;
 
 	{
-		const uint32_t actualW = static_cast<uint32_t>(s_MechTextures->width);
-		const uint32_t actualH = static_cast<uint32_t>(s_MechTextures->height);
+		const uint32_t actualW = static_cast<uint32_t>(src.atlas->width);
+		const uint32_t actualH = static_cast<uint32_t>(src.atlas->height);
 
 		if ( mc2::gate::get<"MC2_LOG_MECHICON">() )
 		{
@@ -667,10 +741,10 @@ bool MechIcon::init( long whichIndex )
 
 		// ISSUE-43: blitFactorFor (see note in blit 1 above).
 		const AssetScale::Vec2 f = AssetScale::blitFactorFor(
-			MechIcon::s_MechTexturesKey, actualW, actualH, "mechicon.blit");
+			src.key, actualW, actualH, "mechicon.blit");
 		// Direct-index path (see note in blit 1 above). No OOB clamp.
 		(void)AssetScale::nominalToActualRect(
-			MechIcon::s_MechTexturesKey, actualW, actualH,
+			src.key, actualW, actualH,
 			static_cast<float>(offsetX), static_cast<float>(offsetY),
 			unitIconX, unitIconY,
 			"mechicon.blit");
