@@ -1,4 +1,5 @@
 #include "debug_state_dump.h"
+#include "visual_tuning_profile.h"
 
 #include "gameos.hpp"           // SHADOW-OBSERVABILITY-1: mc2ShadowCsm* accessors
 #include "gos_postprocess.h"
@@ -402,6 +403,7 @@ std::string buildSnapshotJson(const RenderSnapshot& snap,
     s << "    \"skyNumber\": " << g_dbgSkyNumber << ",\n";
     s << "    \"loadScreen\": \"" << jsonEscape(g_dbgLoadScreen) << "\"\n";
     s << "  },\n";
+    s << "  \"missionEnvironment\": " << visualTuning_environmentJson() << ",\n";
     s << "  \"build\": {\n";
     s << "    \"commit\": \"unknown\",\n";
     s << "    \"config\": \"" << buildConfigString() << "\"\n";
