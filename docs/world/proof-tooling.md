@@ -35,8 +35,10 @@ records every ordered view, allocated mover tails, null slots, existence
 bits, watch IDs without assignment, ring cursors and the dirty-collidables
 flag. Terrain block records include the block activity input and each slot's
 vertex-activity bit. The collidable snapshot preserves the current stored
-view, even if dirty; it never calls the mutating lazy getter. Spawn, destroy,
-mover-list mutation, mission removal and trade events retain their actual
+view, even if dirty; it never calls the mutating lazy getter. Existence
+transitions are observed at `GameObject::setExists`, including both FX
+overrides, so direct pool activation and release cannot bypass the witness.
+Mover-list mutation, mission removal and trade events retain their actual
 order. Update records precede each object-manager `update()` call, including
 duplicate visits. Mission scope also captures events from collisions and ABL.
 Load-time creation before the first tick is represented by the initial

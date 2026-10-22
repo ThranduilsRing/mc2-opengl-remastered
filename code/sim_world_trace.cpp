@@ -59,7 +59,7 @@ void snapshot(GameObjectManager& w, const char* phase) {
     // Include allocated tails: removed movers are compacted into reserve slots.
     view("mechs", w.mechs, w.maxMechs);
     view("vehicles", w.vehicles, w.maxVehicles);
-    #ifdef USE_ELEMENTALS
+#ifdef USE_ELEMENTALS
     view("elementals", w.elementals, w.numElementals);
 #else
     record(std::format("view=elementals n={} cursor=-1 slots=", w.numElementals));

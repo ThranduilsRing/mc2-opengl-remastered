@@ -1,4 +1,3 @@
-#include "sim_world_trace.h"
 //***************************************************************************
 //
 //	gameobj.cpp -- File contains the Game Object class code
@@ -187,7 +186,6 @@ void GameObject::destroy_instr (const char* reason, const char* file, int line) 
 	}
 
 	// 3. Real destruction — unchanged existing behavior.
-	MC2_WORLD_EVENT("remove", this, 0);
 	setExists(false);
 
 	// 4. Env-gated log line.
