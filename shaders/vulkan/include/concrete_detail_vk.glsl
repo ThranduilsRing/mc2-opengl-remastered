@@ -66,7 +66,7 @@ void cdApply(int layer, vec2 wp, vec2 dx, vec2 dy, vec3 L, float w, inout vec3 c
     MaterialDetail d = cdEval(layer, wp, dx, dy);
     float diff; vec3 sp;
     cdShade(d, normalize(L), uT.ambientDayGate, diff, sp);
-    color *= mix(1.0, d.ao, 0.9 * w);
+    color *= mix(1.0, d.ao, 0.5 * w);
     nl *= mix(1.0, diff, w);
     spec += sp * w;
 }
