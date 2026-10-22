@@ -4,6 +4,8 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstdint>
+#include <string>
+#include <string_view>
 #include "../../mclib/battle_bench_sink.h"
 
 namespace mc2::battlebench {
@@ -11,9 +13,10 @@ using Clock = std::chrono::steady_clock;
 inline double milliseconds(Clock::time_point start) {
     return std::chrono::duration<double, std::milli>(Clock::now() - start).count();
 }
-inline bool arm(const char* path) {
+inline bool arm(std::string_view path) {
     if (output) return false;
-    output = std::fopen(path, "w");
+    const std::string filename(path);
+    output = std::fopen(filename.c_str(), "w");
     if (!output) return false;
     std::setvbuf(output, nullptr, _IOFBF, 1024 * 1024);
     std::atexit([] { if (output) { std::fclose(output); output = nullptr; } });
