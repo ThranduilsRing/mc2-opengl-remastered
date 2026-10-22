@@ -58,7 +58,9 @@ SurfaceMaterial propSurface(int id, vec3 albedo) {
     s.ao = mix(1.0, orm.r, row.aoStrength);
     s.roughness = clamp(orm.g * row.material.roughnessFactor, 0.3, 1.0);
     s.metallic = clamp(orm.b * row.material.metallicFactor, 0.0, 1.0);
-    s.emission = propDecodeColor(vMaterialSeed);
+    // Ordinary baked vertex light is a lighting input, not material emission.
+    // Window nodes expose their emitted radiance directly for the future L6 consumer.
+    s.emission = (vMaterialFlags & 2u) != 0u ? s.baseColor * propDecodeColor(vMaterialSeed) : vec3(0);
     s.materialClass = row.metadata.x;
     return s;
 }
@@ -75,7 +77,7 @@ float propMaterialCoverage(int id) {
 // above stays independent of this pre-L6 lighting/output convention.
 vec3 propAuthoredColor(SurfaceMaterial s, bool alphaTest) {
     if ((vMaterialFlags & 2u) != 0u)
-        return propEncodeColor(s.baseColor * s.emission) + vHighlight.rgb * vHighlight.a;
+        return propEncodeColor(s.emission) + vHighlight.rgb * vHighlight.a;
     vec3 nStuff = renderToMc2(s.normal);
     vec3 L = normalize(uFrame.terrainSunMC2.xyz);
     float raw = dot(s.normal, L);
