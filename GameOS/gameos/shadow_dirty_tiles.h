@@ -89,4 +89,19 @@ private:
     std::deque<SubTile> order_;
 };
 
+// Until uploads succeed, an aborted batch remains work for a later frame.
+class DirtyBatch {
+public:
+    DirtyBatch(DirtyQueue& queue, size_t budget) : queue_(queue), tiles(queue.take(budget)) {}
+    ~DirtyBatch() { if (!committed_) queue_.add(tiles); }
+    DirtyBatch(const DirtyBatch&) = delete;
+    DirtyBatch& operator=(const DirtyBatch&) = delete;
+    void commit() { committed_ = true; }
+private:
+    DirtyQueue& queue_;
+    bool committed_ = false;
+public:
+    const std::vector<SubTile> tiles;
+};
+
 }  // namespace mc2shadow

@@ -180,3 +180,13 @@ TEST_CASE("Shadow preset dimensions bound potato resident memory") {
     const auto window=casterWindow(basis,{-256,-256,256,256},0,100,200,0.03f,p.windowSide);
     CHECK(window.texels==2048); CHECK(window.texelWorld>0);
 }
+
+TEST_CASE("shadow bake dirty tiles: aborted batches requeue until uploads commit") {
+    DirtyQueue q; q.reset(4); q.add({{0, 0}, {1, 1}});
+    for (int failure = 0; failure < 3; ++failure) {
+        { DirtyBatch aborted(q, 2); CHECK(aborted.tiles.size() == 2); CHECK(q.empty()); }
+        CHECK(q.size() == 2);
+    }
+    { DirtyBatch uploaded(q, 2); uploaded.commit(); }
+    CHECK(q.empty());
+}

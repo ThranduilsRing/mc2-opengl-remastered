@@ -1018,7 +1018,8 @@ bool ShadowBake::updateIncremental(VkCommandBuffer cb, uint64_t epoch, const Sha
         incQueryUsed_[par] = false;
     }
     if (heights_.size() != incHeightsCpu_.size()) heights_ = incHeightsCpu_;
-    const std::vector<mc2shadow::SubTile> batch = dirty_.take(kSubTilesPerFrame);
+    mc2shadow::DirtyBatch pendingBatch(dirty_, kSubTilesPerFrame);
+    const auto& batch = pendingBatch.tiles;
     const float tanT = std::tan(mc2shadow::kSunAngularRadiusDeg * 0.01745329252f);
     std::vector<InstRun> runs;
     std::vector<GpuStaticPropInstance> inst;
@@ -1035,7 +1036,7 @@ bool ShadowBake::updateIncremental(VkCommandBuffer cb, uint64_t epoch, const Sha
         std::memcpy(ubo.data() + i * kSlice, &u, sizeof(u));
     }
     if (inst.size() > incInstanceCap_) {
-        blog("a dirty batch has more casters than its buffer: the batch waits for the next frame.");
+        blog("a dirty batch has more casters than its buffer: the batch is requeued; increase the instance capacity to make progress.");
         return false;
     }
     const VkDeviceSize parBase = static_cast<VkDeviceSize>(par) * kSubTilesPerFrame * kSlice;
@@ -1049,6 +1050,7 @@ bool ShadowBake::updateIncremental(VkCommandBuffer cb, uint64_t epoch, const Sha
         incHeightsGen_[par] = heightsGen_;
     }
     writeIncrementalSets(par);
+    pendingBatch.commit();
 
     MC2_VK_GPU_SCOPE(gpuScope, cb, "VKIsl.Shadow.BakeDirty");
     vkCmdResetQueryPool(cb, incQueries_.get(), par * 2, 2);
