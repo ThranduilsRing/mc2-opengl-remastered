@@ -646,13 +646,11 @@ long TacticalOrder::unpack (void) {
 					}
 				else if (targetType == 1) {
 					// Terrain
-					unsigned long targetPartId = static_cast<unsigned long>(terrain_part_chunk::unpack(tempData & TACORDERCHUNK_TERRAINPARTID_MASK).value_or(-1));
+					const auto targetPartId = terrain_part_chunk::unpack(tempData & TACORDERCHUNK_TERRAINPARTID_MASK);
 					tempData >>= TACORDERCHUNK_TERRAINPARTID_BITS;
 
-					GameObjectPtr obj = ObjectManager->findByPartId(targetPartId);
-					if (!obj)
-						STOP(("TacticalOrder.unpack: NULL Terrain Target"));
-					targetWID = obj->getWatchID();
+					GameObjectPtr obj = targetPartId ? ObjectManager->findByPartId(*targetPartId) : nullptr;
+					targetWID = obj ? obj->getWatchID() : 0;
 					}
 				else
 					Fatal(targetType, " TacticalOrder.unpack: Bad targetType ");
@@ -678,13 +676,11 @@ long TacticalOrder::unpack (void) {
 				}
 			else if (targetType == 1) {
 				// Terrain
-				unsigned long targetPartId = static_cast<unsigned long>(terrain_part_chunk::unpack(tempData & TACORDERCHUNK_TERRAINPARTID_MASK).value_or(-1));
+				const auto targetPartId = terrain_part_chunk::unpack(tempData & TACORDERCHUNK_TERRAINPARTID_MASK);
 				tempData >>= TACORDERCHUNK_TERRAINPARTID_BITS;
 
-				GameObjectPtr obj = ObjectManager->findByPartId(targetPartId);
-				if (!obj)
-					STOP(("TacticalOrder.unpack: NULL Terrain Target"));
-				targetWID = obj->getWatchID();
+				GameObjectPtr obj = targetPartId ? ObjectManager->findByPartId(*targetPartId) : nullptr;
+				targetWID = obj ? obj->getWatchID() : 0;
 				}
 			else
 				Fatal(0, " Bad targetType ");

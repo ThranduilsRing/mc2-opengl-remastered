@@ -1,5 +1,6 @@
 #include "doctest.h"
 #include "terrain_part_chunk.h"
+#include "tacorder_terrain_queue.h"
 
 namespace {
 struct ChunkScope {
@@ -12,6 +13,41 @@ struct ChunkScope {
 		terrain_part_chunk::registry() = std::move(saved);
 	}
 };
+}
+
+TEST_CASE("compact terrain orders are dropped on load even for stale valid indices") {
+	ChunkScope scope;
+	gTerrainPartIdStride = 3072;
+	const auto field = terrain_part_chunk::pack(MIN_TERRAIN_PART_ID + 42);
+	terrain_part_chunk::registry() = {};
+	CHECK_FALSE(terrain_part_chunk::unpack(field).has_value());
+	terrain_part_chunk::pack(MIN_TERRAIN_PART_ID + 99);
+	CHECK(terrain_part_chunk::unpack(field) == MIN_TERRAIN_PART_ID + 99);
+	struct Queued { unsigned long packedData[2]; };
+	for (auto code : {TACTICAL_ORDER_GUARD, TACTICAL_ORDER_ATTACK_OBJECT,
+		TACTICAL_ORDER_MOVETO_OBJECT, TACTICAL_ORDER_JUMPTO_OBJECT,
+		TACTICAL_ORDER_CAPTURE, TACTICAL_ORDER_REFIT, TACTICAL_ORDER_RECOVER, TACTICAL_ORDER_GETFIXED}) {
+		Queued queue[] = {{static_cast<unsigned long>(code), 1UL << 9},
+			{TACTICAL_ORDER_MOVETO_POINT, 1UL << 9}, {31, 1UL << 9},
+			{TACTICAL_ORDER_ATTACK_OBJECT, 0}};
+		char count = 4;
+		int32_t index = 2;
+		dropCompactTerrainOrdersOnLoad(queue, count, index);
+		CHECK(count == 3);
+		CHECK(index == 1);
+		CHECK(queue[0].packedData[0] == TACTICAL_ORDER_MOVETO_POINT);
+		CHECK(queue[1].packedData[0] == 31);
+	}
+	Queued queue[] = {{TACTICAL_ORDER_ATTACK_OBJECT, 1UL << 9}};
+	char count = 1;
+	int32_t index = 0;
+	gTerrainPartIdStride = 720;
+	dropCompactTerrainOrdersOnLoad(queue, count, index);
+	CHECK(count == 1);
+	gTerrainPartIdStride = 3072;
+	dropCompactTerrainOrdersOnLoad(queue, count, index);
+	CHECK(count == 0);
+	CHECK(index == 0);
 }
 
 TEST_CASE("terrain chunks preserve stock and mod 20-bit wire values") {

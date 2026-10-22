@@ -3,8 +3,8 @@
 // A terrain part id is MIN_TERRAIN_PART_ID + row * gTerrainPartIdStride + col. The chunk fields hold 20 bits, which fits
 // every map up to 1024 cells a side exactly (stock stride 720: unchanged, the field is id - MIN_TERRAIN_PART_ID). A larger
 // map (stride > 1024) cannot name its cells in 20 bits, so there the field carries a compact index handed out by a
-// registry the first time an id is packed; unpack maps it back. Chunks are in-process only for such maps, so the registry
-// is the same on both sides of every pack/unpack.
+// registry the first time an id is packed; unpack maps it back. The registry is process-local, but queued tactical orders
+// are saved. On compact maps those terrain-target orders must be discarded on load; indices may be absent or alias new targets.
 #pragma once
 #include "unitdesg.h"
 #include "../mclib/terrain.h"

@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in warrior_internal.h.
 #include "warrior_internal.h"
 #include "mc2fmt.h"
+#include "tacorder_terrain_queue.h"
 
 
 std::unique_ptr<BldgAppearance> MechWarrior::getWayPointMarker( const glm::vec3& pos, const char* name )
@@ -731,6 +732,13 @@ void MechWarrior::copyFromData (MechWarriorData &data)
 	tacOrderQueueLooping = data.tacOrderQueueLooping;
 	numTacOrdersQueued = data.numTacOrdersQueued;
 	MemCpy(tacOrderQueue,data.tacOrderQueue);
+	tacOrderQueueIndex = data.tacOrderQueueIndex;
+	dropCompactTerrainOrdersOnLoad(tacOrderQueue, numTacOrdersQueued, tacOrderQueueIndex);
+	if (terrain_part_chunk::compact() && numTacOrdersQueued == 0) {
+		tacOrderQueueExecuting = false;
+		tacOrderQueueLooping = false;
+		curPlayerOrderFromQueue = false;
+	}
 	// The wire field is dead storage: null it for every slot, then rebuild the runtime owners for the queued orders only (an empty slot
 	// has move mode 0 (slow), which used to give every pilot 16 waypoint markers at the origin after a load). Each live marker of the
 	// previous run is released exactly once by restoreQueueMarkers.
@@ -746,7 +754,6 @@ void MechWarrior::copyFromData (MechWarriorData &data)
 				return getWayPointMarker( queued.point, "JumpWayPoint" );
 			return nullptr;
 		});
-	tacOrderQueueIndex = data.tacOrderQueueIndex;
 	nextTacOrderId = data.nextTacOrderId;
 	lastTacOrderId = data.lastTacOrderId;
 	
