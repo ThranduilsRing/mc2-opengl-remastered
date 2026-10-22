@@ -104,6 +104,11 @@ void BldgAppearance::setWeaponNodeUsed (long weaponNode)
 
 glm::vec3 BldgAppearance::getWeaponNodePosition (long nodeId)
 {
+    if (!simPresentationPass) {
+        if (!simPose->ready) updateSimPose();
+        return nodeId >= 0 && static_cast<size_t>(nodeId) < simPose->nodes.size() ? simPose->nodes[nodeId] : simPose->root;
+    }
+
 	glm::vec3 result = position;
 	if ((nodeId < 0) || (nodeId >= appearType->numWeaponNodes))
 		return result;
@@ -121,7 +126,7 @@ glm::vec3 BldgAppearance::getWeaponNodePosition (long nodeId)
    	xlatPosition.z = position.y;
    
    	glm::quat torsoRot;
-   	torsoRot = mc2::math::quatFromEuler(mc2::math::Euler(0.0f,(turretYaw * DEGREES_TO_RADS),0.0f));
+   	torsoRot = mc2::math::quatFromEuler(mc2::math::Euler(0.0f,(unitAnim().turretRotation * DEGREES_TO_RADS),0.0f));
 	if (rotationalNodeId == -1)
 	{
 		if (S_stricmp(appearType->rotationalNodeId,"NONE") != 0)
@@ -145,6 +150,11 @@ glm::vec3 BldgAppearance::getWeaponNodePosition (long nodeId)
 
 glm::vec3 BldgAppearance::getHitNode (void)
 {
+    if (!simPresentationPass) {
+        if (!simPose->ready) updateSimPose();
+        return simPose->hitLeft;
+    }
+
 	if (hitNodeId == -1)
 		hitNodeId = bldgShape->GetNodeNameId("hitnode");
 
@@ -182,6 +192,9 @@ float BldgAppearance::getWeaponNodeRecycle (long node)
 
 void BldgAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 {
+	simulationShape_.reset();
+	simulationType_ = nullptr;
+	simPose->ready = false;
 	Appearance::init(tree,obj);
 	appearType = static_cast<BldgAppearanceType *>(tree);
 
@@ -235,7 +248,7 @@ void BldgAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 
 	currentLOD = 0;
  	
-	turretYaw = turretPitch = 0.0f;
+	unitAnim().turretRotation = unitAnim().pitch = 0.0f;
 	
 	destructFX = nullptr;
 	activity = nullptr;
@@ -510,6 +523,12 @@ void BldgAppearance::setObjStatus (long oStatus)
 
 glm::vec3 BldgAppearance::getNodeNamePosition (const char *nodeName)
 {
+    if (!simPresentationPass) {
+        if (!simPose->ready) updateSimPose();
+        const auto id = simulationShape_ ? simulationShape_->GetNodeNameId(nodeName) : -1;
+        return id >= 0 && static_cast<size_t>(id) < simPose->shapeNodes.size() ? simPose->shapeNodes[id] : simPose->root;
+    }
+
 	glm::vec3 result = position;
 	
    	// Create Matrix to conform to.
@@ -532,6 +551,11 @@ glm::vec3 BldgAppearance::getNodeNamePosition (const char *nodeName)
 
 glm::vec3 BldgAppearance::getNodeIdPosition (long nodeId)
 {
+    if (!simPresentationPass) {
+        if (!simPose->ready) updateSimPose();
+        return nodeId >= 0 && static_cast<size_t>(nodeId) < simPose->shapeNodes.size() ? simPose->shapeNodes[nodeId] : simPose->root;
+    }
+
 	glm::vec3 result = position;
 	
    	// Create Matrix to conform to.
@@ -639,8 +663,8 @@ void BldgAppearance::setGesture (unsigned long gestureId)
 
 void BldgAppearance::setMoverParameters (float turretRot, float lArmRot, float rArmRot, bool isAirborne)
 {
-	turretYaw = turretRot;
-	turretPitch = lArmRot;
+	unitAnim().turretRotation = turretRot;
+	unitAnim().pitch = lArmRot;
 }
 
 void BldgAppearance::setObjectParameters (const glm::vec3 &pos, float Rot, long sel, long team, long homeRelations)
@@ -825,3 +849,38 @@ bool BldgAppearance::playDestruction (void)
 uint32_t g_bldgAnimGate_typeIdleNowStatic()    { return s_animTypeIdleNowStatic.load(std::memory_order_relaxed); }
 uint32_t g_bldgAnimGate_animStartInvalidated() { return s_animStartInvalidated; }
 uint32_t g_bldgAnimGate_animStateToState()     { return s_animStateToStateGesture; }
+
+void BldgAppearance::updateSimPose()
+{
+    if (!appearType) return;
+    auto* source = status == OBJECT_STATUS_DESTROYED && appearType->bldgDmgShape ?
+        appearType->bldgDmgShape : appearType->getBldgCollisionShape(0);
+    if (!source) return;
+    if (simPose->ready && simulationType_ == source && appearType->numWeaponNodes == 0 &&
+        unitAnim().bdFrameRate == 0.0f && simPose->root == position && simPose->heading == rotation) return;
+    if (simulationType_ != source || !simulationShape_) {
+        simulationShape_.reset(source->CreateFrom());
+        simulationType_ = source;
+    }
+    auto* shape = simulationShape_.get();
+    if (status != OBJECT_STATUS_DESTROYED) appearType->setAnimation(shape, unitAnim().bdAnimationState);
+    shape->SetFrameNum(unitAnim().currentFrame);
+    auto aim = mc2::math::quatFromEuler(mc2::math::Euler(unitAnim().pitch * DEGREES_TO_RADS, unitAnim().turretRotation * DEGREES_TO_RADS, 0.0f));
+    shape->SetNodeRotation(appearType->rotationalNodeId, &aim);
+    auto root = mc2::math::quatFromEuler(mc2::math::Euler(0.0f, rotation * DEGREES_TO_RADS, 0.0f));
+    glm::vec3 translation; mc2ToRender(translation, position);
+    shape->TransformMultiShape_BuildRecipe(&translation, &root);
+    simPose->root = position; simPose->heading = rotation;
+    simPose->nodes.resize(appearType->numWeaponNodes);
+    for (long i = 0; i < appearType->numWeaponNodes; ++i) {
+        auto node = shape->GetTransformedNodePosition(&translation, &root, appearType->nodeData[i].nodeId);
+        simPose->nodes[i] = node == glm::vec3(0.0f) ? position : node;
+    }
+    simPose->shapeNodes.resize(shape->GetNumShapes());
+    for (long i = 0; i < shape->GetNumShapes(); ++i)
+        simPose->shapeNodes[i] = shape->GetTransformedNodePosition(&translation, &root, i);
+    const auto hit = shape->GetNodeNameId("hitnode");
+    simPose->hitLeft = hit >= 0 && static_cast<size_t>(hit) < simPose->shapeNodes.size() ? simPose->shapeNodes[hit] : position;
+    simPose->hitRight = simPose->hitLeft;
+    simPose->ready = true;
+}

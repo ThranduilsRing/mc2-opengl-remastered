@@ -217,6 +217,10 @@ class BldgAppearance : public ObjectAppearance
 
 		BldgAppearanceType*							appearType;
 		TG_MultiShapePtr							bldgShape;
+		std::unique_ptr<TG_MultiShape> simulationShape_;
+		TG_TypeMultiShape* simulationType_ = nullptr;
+		void updateSimPose();
+		void refreshSimPose() override { updateSimPose(); }
 		bool										buildingPbrRenderActive;
 
 		// Slice 2 (object-offload): set true by the GPU-object batcher's
@@ -277,8 +281,6 @@ class BldgAppearance : public ObjectAppearance
 
 
 		
-		float										turretYaw;
-		float										turretPitch;
 		
 		float										hazeFactor;
 		

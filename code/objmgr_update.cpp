@@ -5,6 +5,7 @@
 #include "mc2fmt.h"
 #include <utility>
 #include "diagnostic_trace.h"
+#include "gpu_cull_compute.h"
 
 
 // ---------------------------------------------------------------------------

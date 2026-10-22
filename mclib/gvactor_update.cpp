@@ -529,6 +529,10 @@ void GVAppearance::updateGeometry (void)
 
 long GVAppearance::update (bool animate) 
 {
+	if (!simPresentationPass && simulationOwned()) {
+		if (unitAnim().lastAnimAdvanceFrame == static_cast<uint32_t>(turn)) { updateSimPose(); return TRUE; }
+		unitAnim().lastAnimAdvanceFrame = static_cast<uint32_t>(turn);
+	}
 	if (simPresentationPass) presentEffects();
 
 	if (!simPresentationPass) {

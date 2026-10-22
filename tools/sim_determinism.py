@@ -160,9 +160,14 @@ def load_simid(path: str) -> list:
                 for m in re.finditer(re.escape(PREFIX) + r"[^\r\n\[]*", ln)]
 
 
+def simulation_fields(line: str) -> str:
+    """Keep authoritative fields and sim/anim RNG draws; ignore cosmetic RNG draws."""
+    return _RNG_COUNTS.sub(_RNG_NONSIM, line.rstrip())
+
+
 def chain(lines, frames: int | None = None) -> str:
     """Graded acceptance chain: all fields, including strict, except RNG draw counts."""
-    return full_chain([_RNG_COUNTS.sub(_RNG_NONSIM, ln.rstrip()) for ln in lines], frames)
+    return full_chain([simulation_fields(ln) for ln in lines], frames)
 
 
 def full_chain(lines, frames: int | None = None) -> str:
@@ -191,7 +196,7 @@ def compare(a, b, min_frames: int = MIN_FRAMES):
         if error:
             return False, error
     for i in range(common):
-        if _RNG_COUNTS.sub(_RNG_NONSIM, a[i]) != _RNG_COUNTS.sub(_RNG_NONSIM, b[i]):
+        if simulation_fields(a[i]) != simulation_fields(b[i]):
             prev = a[i - 1] if i else "(first frame)"
             return False, (f"DIVERGED at sim frame index {i}\n  run a: {a[i]}\n  run b: {b[i]}\n  last agreed: {prev}\n"
                            "  rerun with MC2_SIM_IDENTITY_TRACE_DETAIL=1 for the per-mover lines of that frame")

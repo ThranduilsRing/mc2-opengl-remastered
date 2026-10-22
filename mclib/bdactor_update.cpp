@@ -27,6 +27,8 @@ long BldgAppearance::update (bool animate)
 
 
     if (!simPresentationPass) {
+	if (unitAnim().lastAnimAdvanceFrame == static_cast<uint32_t>(turn)) { updateSimPose(); return TRUE; }
+	unitAnim().lastAnimAdvanceFrame = static_cast<uint32_t>(turn);
 	// Recycle the weapon Nodes
 	if (!unitAnim().nodeRecycle.empty())
 	{
@@ -88,16 +90,9 @@ long BldgAppearance::update (bool animate)
 			}
 		}
 		
-		bldgShape->SetFrameNum(unitAnim().currentFrame);
 	}
 
-        if (bldgShape && (appearType->numWeaponNodes > 0 || unitAnim().bdFrameRate != 0.0f)) {
-            mc2ToRender(xlatPosition, position);
-            rot = mc2::math::quatFromEuler(mc2::math::Euler(0.0f, rotation * DEGREES_TO_RADS, 0.0f));
-            auto aim = mc2::math::quatFromEuler(mc2::math::Euler(turretPitch * DEGREES_TO_RADS, turretYaw * DEGREES_TO_RADS, 0.0f));
-            bldgShape->SetNodeRotation(appearType->rotationalNodeId, &aim);
-            bldgShape->TransformMultiShape_BuildRecipe(&xlatPosition, &rot);
-        }
+        updateSimPose();
         return TRUE;
     }
 
@@ -555,7 +550,7 @@ long BldgAppearance::update (bool animate)
 			bldgShape->SetFogRGB(0xffffffff);
 	
 		glm::quat turretRot;
-		turretRot = mc2::math::quatFromEuler(mc2::math::Euler((turretPitch * DEGREES_TO_RADS),(turretYaw * DEGREES_TO_RADS),0.0f));
+		turretRot = mc2::math::quatFromEuler(mc2::math::Euler((unitAnim().pitch * DEGREES_TO_RADS),(unitAnim().turretRotation * DEGREES_TO_RADS),0.0f));
 		if (rotationalNodeId == -1)
 	   		rotationalNodeId = bldgShape->SetNodeRotation(appearType->rotationalNodeId,&turretRot);
    

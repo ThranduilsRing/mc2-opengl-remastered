@@ -347,15 +347,13 @@ long Gate::update (void)
 				setTargeted( true );
 			}
 			
-			appearance->setObjectParameters(position,(static_cast<ObjectAppearance*>(appearance))->rotation,drawFlags,getTeamId(),Team::getRelation(getTeamId(), Team::home->getId()));
+			appearance->setObjectParameters(position,rotation,drawFlags,getTeamId(),Team::getRelation(getTeamId(), Team::home->getId()));
 	
 			//------------------------------------------------
 			// MUST update appearance every frame or animation goes HINKY!
 			// Appearance update now checks inView and does NOT run transform math unless necessary!
 			// Whoops!
-			appearance->setInView(true);
 			appearance->update();
-			appearance->setInView(inView);
 			
 			if (inView)
 			{

@@ -648,7 +648,7 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 
 					MC2_WORLD_UPDATE("appearance_mechs", mechs[i]);
 
-					presentationPose(mechs[i], pos, rot);
+
 					mechs[i]->getAppearance()->update( false );
                     mechs[i]->getAppearance()->updateFootprints();
 					mechs[i]->getAppearance()->setVisibility(inView,true);
@@ -671,7 +671,7 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 					int teamID = vehicles[i]->getTeamId();
 					vehicles[i]->getAppearance()->setObjectParameters(pos, rot, vehicles[i]->drawFlags, teamID, Team::getRelation(teamID, Team::home->getId()));
 					MC2_WORLD_UPDATE("appearance_vehicles", vehicles[i]);
-					presentationPose(vehicles[i], pos, rot);
+
 					vehicles[i]->getAppearance()->update( false );
 					vehicles[i]->getAppearance()->setInView( inView );
 				}
@@ -688,6 +688,7 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 			{
 				if (turrets[i] && turrets[i]->getExists()) 
 				{
+                    turrets[i]->updatePresentationLighting();
 					if (turrets[i]->getAppearance()->recalcBounds())
 					{
 						// Must force here as well.

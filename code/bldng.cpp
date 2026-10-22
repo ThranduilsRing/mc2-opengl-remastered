@@ -722,9 +722,10 @@ long Building::update (void)
 		// Radius so that nobody has to enter it!
 		if (type->getExtentRadius() < 0.0) 
 		{
-				Stuff::Vector4D diagonalSize;
-			diagonalSize.Subtract(appearance->upperLeft,appearance->lowerRight);
-			float actualSize = diagonalSize.GetLength();
+			// Collision fallback uses stock LOD0 content bounds, independent of projection.
+			auto* appearanceType = static_cast<BldgAppearanceType*>(appearance->getAppearanceType());
+			auto* shape = appearanceType->getBldgCollisionShape(0);
+			float actualSize = shape ? glm::length(shape->maxBox - shape->minBox) : 0.0f;
 			actualSize /= worldUnitsPerMeter;
 			actualSize *= 1.25;
 			
@@ -792,7 +793,7 @@ long Building::update (void)
 			}
 	
 			
-			appearance->setObjectParameters(position,(static_cast<ObjectAppearance*>(appearance))->rotation, drawFlags,getTeamId(),Team::getRelation(getTeamId(), Team::home->getId()));
+			appearance->setObjectParameters(position,rotation, drawFlags,getTeamId(),Team::getRelation(getTeamId(), Team::home->getId()));
 			// Grounding and animation are authoritative even when the building is off-screen.
 			const bool inView = false;
 			position.z = TerrainRuntime::groundElevation(position);
