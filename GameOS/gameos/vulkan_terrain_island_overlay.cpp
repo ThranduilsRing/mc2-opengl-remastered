@@ -1,6 +1,7 @@
 // VK terrain island: the terrain overlay and decal island: textures, pipeline init, submit, run, reset and the island destroy.
 // Declared in the class headers; shared names in vulkan_terrain_island_internal.h.
 #include "vulkan_terrain_island_internal.h"
+#include "vulkan_mover_shadow.h"
 #include "vk_gpu_profile.h"   // VK-GPU-ZONES: MC2_VK_GPU_SCOPE
 #include "texture_decode.h"   // gos_GetTextureTexels
 
@@ -383,6 +384,7 @@ extern "C" int mc2_vk_overlay_run(int w, int h) {
     VkFrameSync fsC{};
     { ZoneScopedN("VKIsl.Overlay.FenceWait"); fsC = vkImageResourceBeginFrame(colorRes); }
     const uint32_t par = fsC.parity & 1u;
+    if (!mc2vk::bindMoverShadowDescriptors(s->device,s->set[par])) return 0;
     // Overlays can be the first terrain consumer of this parity (including load warmup).
     // Initialize the shared set after its fence even when the terrain draw was skipped.
     const std::array<VkImageView,7> views{s->colormapTexture.view(),s->cementTexture.view(),s->shoreMaskTexture.view(),s->matNormalTexture.view(),s->shoreFieldTexture.view(),s->macroGradientTexture.view(),s->staticVisibilityDummy.view()};
