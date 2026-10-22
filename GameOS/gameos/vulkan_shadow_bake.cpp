@@ -28,6 +28,7 @@
 #include <array>
 #include <chrono>
 #include <cmath>
+#include <cstdio>
 #include <cstring>
 #include <filesystem>
 #include <optional>
@@ -1374,7 +1375,6 @@ bool ShadowBake::updateIncremental(VkCommandBuffer cb, uint64_t epoch, const Sha
 
     MC2_VK_GPU_SCOPE(gpuScope, cb, "VKIsl.Shadow.BakeDirty");
     vkCmdResetQueryPool(cb, incQueries_.get(), par * 2, 2);
-    vkCmdWriteTimestamp(cb, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, incQueries_.get(), par * 2);
     // The mask and the top image are rewritten in place: their earlier readers (the terrain, water and overlay passes) finish first.
     VkImageMemoryBarrier pre[6];
     pre[0] = imageBarrier(maskImage_.get(), VK_IMAGE_ASPECT_COLOR_BIT, 0, maskMips_, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
@@ -1386,6 +1386,8 @@ bool ShadowBake::updateIncremental(VkCommandBuffer cb, uint64_t epoch, const Sha
                                   VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT);
     vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
                          VK_PIPELINE_STAGE_TRANSFER_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 6, pre);
+    // Stamped once everything before the batch has finished, so the span is the batch's own GPU time.
+    vkCmdWriteTimestamp(cb, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, incQueries_.get(), par * 2);
     for (size_t i = 0; i < batch.size(); ++i) {
         RegionJob job{mc2shadow::kSubTileTexels, mc2shadow::kSubTileTexels + 2 * mc2shadow::kTileApron, batch[i].x * mc2shadow::kSubTileTexels,
                       batch[i].y * mc2shadow::kSubTileTexels};
@@ -1523,6 +1525,29 @@ void ShadowBake::compareChains(const std::vector<uint8_t>& a, const std::vector<
         }
     }
     const uint64_t total = static_cast<uint64_t>(blocks) * 16;
+    {   // a quarter-resolution picture of both masks and their difference, next to the cook cache, for a look
+        const uint32_t n = static_cast<uint32_t>(maskTexels_), q = n / 4, bpr = n / 4;
+        std::vector<uint8_t> img(static_cast<size_t>(q) * q * 3);
+        for (uint32_t y = 0; y < q; ++y)
+            for (uint32_t x = 0; x < q; ++x) {
+                const size_t blk = static_cast<size_t>(y) * bpr + x;   // one block per output texel: its first texel
+                std::array<uint8_t, 8> ba{}, bb{};
+                std::memcpy(ba.data(), a.data() + blk * 8, 8);
+                std::memcpy(bb.data(), b.data() + blk * 8, 8);
+                const auto pa = mc2shadow::decodeBc4Block(ba), pb = mc2shadow::decodeBc4Block(bb);
+                const size_t o3 = (static_cast<size_t>(y) * q + x) * 3;
+                img[o3 + 0] = pa[0];
+                img[o3 + 1] = pb[0];
+                img[o3 + 2] = static_cast<uint8_t>((std::min)(255, std::abs(int(pa[0]) - int(pb[0])) * 4));
+            }
+        const std::string path = cacheDir_ + "/diag_dirty_fresh_diff.ppm";
+        if (std::FILE* f = std::fopen(path.c_str(), "wb")) {
+            std::fprintf(f, "P6\n%u %u\n255\n", q, q);
+            std::fwrite(img.data(), 1, img.size(), f);
+            std::fclose(f);
+            mc2::fmt::print_err("[SHADOW_BAKE] diag picture (R dirty, G fresh, B |diff|x4): {}\n", path);
+        }
+    }
     uint64_t acc = 0;
     int p999 = 0;
     for (int d = 0; d < 256; ++d) { acc += hist[static_cast<size_t>(d)]; if (acc * 1000 >= total * 999) { p999 = d; break; } }
