@@ -1,0 +1,43 @@
+{
+  "schema": "mc2-scifi-style-1",
+  "sources": {
+    "stock": {"path": "E:/mc2-archive-2026-10/asset-modernize/docs/assets/catalog.json", "use": "Measured TG bounds, pivots, LOD0 keys. Authoritative world units; no donor geometry."},
+    "bt_industrial": {"path": "A:/Games/mc2-opengl/BattleTech_2018_Dump/Mesh/industrialMedB_LOD2.obj", "use": "Reference only. Measured OBJ bounds X -18.16..17.77, Y -0.12..11.97812, Z -18.72..18.93: 35.93 x 37.65 footprint, 12.09812 height. Layered industrial masses, roof plant, buttresses. Units not established."},
+    "bt_collision": {"path": "A:/Games/mc2-opengl/BattleTech_2018_Dump/Mesh/industrialBldgA_COL.obj", "use": "Reference only. Bounds 29.59 x 31.69 footprint, 15.8499992 height. Collision proxy supports mass proportions only, not detail measurements."},
+    "chicago": {"path": "G:/mc2-assets/ref/quality-bar/reddit_chicago_rowhouses.jpg", "use": "Owner quality reference: inset openings, layered parapets/plinths, stair rails, coherent material zones. All metre dimensions below are sci-fi design translations, NOT recovered physical measurements from this image."},
+    "houses": {"path": "G:/mc2-assets/ref/quality-bar/reddit_chicago_houses.jpg", "use": "Owner quality reference: seed variation in a coherent block; pads, roads, soft daylight."},
+    "warno": {"path": "E:/mc2-archive-2026-10/plans/warno-visual-adaptation-2026-10-21.md", "use": "Strong silhouettes, low-frequency colour zones, restrained subpixel detail."},
+    "cc0": {"path": "E:/mc2-archive-2026-10/plans/gameasset-inventory-2026-10-21.md", "use": "Local ambientCG PaintedMetal002, Metal052C, CorrugatedSteel006A; CC0 by owner source ruling; no downloads."},
+    "mw5": {"path": "C:/Users/Joe/Downloads/Output/Exports/MW5Mercs", "use": "Present: Unreal mech exports and local mod paks (Vanilla/MadCatIIEnhanced). No readily viewable building imagery found; no UE editor setup or extraction performed."}
+  },
+  "scale": {"world_units_per_metre": 4.0, "source": "stock", "basis": "Design calibration: hangar 47.75 x 48 x 19.48m; barracks 10.53 x 21.18 x 4.38m. Does not claim canonical BattleTech physical scale."},
+  "dimensions": {
+    "module_m": {"value": 3.0, "source": "bt_industrial", "basis": "Design grid: about 12 bays across reference width; inferred rhythm, not an individually measured donor panel."},
+    "floor_m": {"value": 3.6, "source": "chicago", "basis": "Human-scale translation, chosen."},
+    "mech_door_m": {"value": [10.0, 13.0], "source": "stock", "basis": "Chosen to fit measured hangar envelope; 67% of stock height."},
+    "vehicle_door_m": {"value": [4.8, 4.6], "source": "bt_industrial", "basis": "Chosen industrial vocabulary translation."},
+    "infantry_door_m": {"value": [1.25, 2.4], "source": "chicago", "basis": "Chosen human-scale translation."},
+    "window_m": {"value": [1.6, 0.65], "source": "chicago", "basis": "Chosen armoured slit translation."},
+    "reveal_m": {"value": 0.24, "source": "chicago", "basis": "Chosen real geometry depth, about one tenth of infantry door height."},
+    "panel_gap_m": {"value": 0.055, "source": "warno", "basis": "Chosen bounded detail: real recessed seams without high contrast noise."},
+    "bevel_m": {"value": 0.045, "source": "chicago", "basis": "Chosen edge light catch; larger structural edges use 0.08m."},
+    "plinth_m": {"value": 0.5, "source": "chicago", "basis": "Chosen layered base course."},
+    "parapet_m": {"value": 0.55, "source": "chicago", "basis": "Chosen layered roof edge with overhanging cap."},
+    "rail_height_m": {"value": 1.05, "source": "chicago", "basis": "Chosen human-scale translation."}
+  },
+  "vocabulary": {
+    "wall_panel": {"source": "bt_industrial", "parts": ["ferrocrete backing", "separate armour panels", "recessed seams", "horizontal armour band"]},
+    "bay_door": {"source": "stock", "parts": ["deep reveal", "twin sliding leaves", "guide rails", "lintel", "hazard sill", "floodlights"]},
+    "rollup_door": {"source": "bt_industrial", "parts": ["reveal", "slats", "hood", "jambs"]},
+    "window_slit": {"source": "chicago", "parts": ["inset glazing", "mullion", "lintel", "sill", "armoured shutters"]},
+    "roofs": {"source": "bt_industrial", "parts": ["flat parapet", "stepped clerestory", "barrel vault", "triangular truss", "faceted dome"]},
+    "greebles": {"source": "chicago", "parts": ["buttress", "vent", "HVAC", "pipe", "antenna", "catwalk", "ladder", "stairs with rails", "sign plate", "pad", "floodlight"]},
+    "material_zones": {"source": "cc0", "parts": ["ferrocrete plinth", "painted armour", "corrugated roof", "dark steel frames", "grating", "inset blue glazing", "ochre safety markings"]}
+  },
+  "palettes": [
+    {"name": "olive_ochre", "source": "warno", "basis": "Chosen restrained military family", "armour": [0.25, 0.30, 0.23], "trim": [0.12, 0.16, 0.14], "accent": [0.70, 0.43, 0.12]},
+    {"name": "slate_oxide", "source": "warno", "basis": "Chosen restrained industrial family", "armour": [0.29, 0.35, 0.37], "trim": [0.13, 0.18, 0.21], "accent": [0.57, 0.23, 0.12]}
+  ],
+  "budgets": {"source": "warno", "basis": "Authoring targets, not measured engine performance. Budget enforced on exported triangles. Bakes 1024, LOD1 512.", "high_max": 180000, "lod0_max": 12000, "lod1_max": 3500, "atlas_resolution": 1024},
+  "presentation": {"source": "houses", "engine": "CYCLES", "samples": 24, "beauty_px": 900, "rts_subject_px": 190, "sky_strength": 0.65, "sun_angle_degrees": 12, "ground": "muted warm grey, concrete pad, road strip, white footprint corners"}
+}
