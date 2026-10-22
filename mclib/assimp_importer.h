@@ -35,6 +35,9 @@ class TG_TypeMultiShape;
 // autoGround: when true (default), apply MC2_GLTF_GROUND base-snapping (for trees /
 // pivot-centered authored meshes). Pass false for stock-derived staticprop overrides
 // (cooked from .tgl) — they already carry the stock pivot; grounding would shift them.
-long ImportGeometryFromFile(const char* path, TG_TypeMultiShape* out, bool autoGround = true);
+// authoredColors preserves stock lighting tags carried by COLOR_0 in reviewed
+// prop packages. False retains the existing white-seed behavior for all imports.
+long ImportGeometryFromFile(const char* path, TG_TypeMultiShape* out, bool autoGround = true,
+                            bool authoredColors = false);
 
 #endif // ENABLE_ASSIMP_IMPORTER

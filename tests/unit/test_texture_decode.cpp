@@ -3,6 +3,9 @@
 #include "doctest.h"
 
 #include "texture_decode.h"
+#include "gos_prop_material_cpu.h"
+#include <fstream>
+#include <filesystem>
 
 #include <cstdint>
 #include <cstdio>
@@ -242,4 +245,52 @@ TEST_CASE("mod-sized RGBA mip chains preserve constant colour through rectangula
             for (auto pixel:level) CHECK(pixel==127);
         }
     }
+}
+
+TEST_CASE("authored prop detail: linear ORM mips keep channels and normal mips normalize") {
+    mc2tex::TextureArrayCpu orm;
+    const std::vector<uint8_t> texels = {0,40,200,255, 100,80,100,255, 200,120,0,255, 100,160,100,255};
+    mc2prop::appendLayer(orm,2,2,texels,false);
+    REQUIRE(orm.levels.size()==2);
+    CHECK(orm.levels[0]==texels);
+    CHECK(orm.levels[1]==std::vector<uint8_t>{100,100,100,255});
+    mc2tex::TextureArrayCpu normals;
+    std::vector<uint8_t> sloped = {218,128,218,255, 128,218,218,255, 218,128,218,255, 128,218,218,255};
+    mc2prop::appendLayer(normals,2,2,sloped,true);
+    REQUIRE(normals.levels.size()==2);
+    float length2=0;
+    for(int c=0;c<3;++c) { float v=normals.levels[1][c]/127.5f-1; length2+=v*v; }
+    CHECK(length2==doctest::Approx(1.0f).epsilon(0.02));
+    CHECK(normals.levels[0]==sloped);
+}
+
+TEST_CASE("authored prop detail: failed map never creates a material, absent channel is neutral") {
+    mc2prop::MaterialSources sources;
+    ModelOverrideRecord owner;
+    owner.manifestDir=std::filesystem::temp_directory_path().generic_string();
+    ModelOverrideMaterial input;
+    input.normalPath="mc2-pbr-test-definitely-missing.tga";
+    CHECK_FALSE(mc2prop::addMaterial(sources,owner,input));
+    CHECK(sources.table.empty());
+    CHECK(sources.normal.layers==0);
+    const auto file=std::filesystem::path(owner.manifestDir)/"mc2-pbr-doctest-orm.tga";
+    const auto bytes=tga(2,2,32,{20,100,220,255,20,100,220,255,20,100,220,255,20,100,220,255});
+    { std::ofstream out(file,std::ios::binary); out.write(reinterpret_cast<const char*>(bytes.data()),bytes.size()); }
+    input.normalPath.clear(); input.ormPath=file.filename().generic_string();
+    const bool loaded=mc2prop::addMaterial(sources,owner,input);
+    std::filesystem::remove(file);
+    REQUIRE(loaded);
+    REQUIRE(sources.table.size()==1);
+    CHECK(sources.table[0].material.normalTex==RenderCore::kMaterialTexAbsent);
+    CHECK(sources.table[0].material.metallicRoughnessTex==0);
+    CHECK(sources.normal.levels[0][0]==128);
+    CHECK(sources.normal.levels[0][2]==255);
+    CHECK(sources.orm.levels[0][0]==220);
+    CHECK(sources.orm.levels[0][1]==100);
+    CHECK(sources.orm.levels[0][2]==20);
+    // Failed second entry must leave all arrays/table at their previous size.
+    input.normalPath="mc2-pbr-test-definitely-missing.tga";
+    CHECK_FALSE(mc2prop::addMaterial(sources,owner,input));
+    CHECK(sources.table.size()==1);
+    CHECK(sources.normal.layers==1);
 }

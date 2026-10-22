@@ -191,7 +191,7 @@ void BldgAppearanceType::init (const char * fileName)
 			{
 				// staticprop overrides cooked from stock .tgl carry the stock pivot already
 				// -> no auto-ground (would shift them in depth). Trees keep autoGround=true.
-				long r = ImportGeometryFromFile(overridePath, bldgRenderShape, /*autoGround=*/false);
+				long r = ImportGeometryFromFile(overridePath, bldgRenderShape, /*autoGround=*/false, !ov->materials.empty());
 				if (r != 0 || bldgRenderShape->GetNumShapes() == 0)
 				{
 					delete bldgRenderShape; bldgRenderShape = nullptr;   // stock fallback
@@ -204,6 +204,7 @@ void BldgAppearanceType::init (const char * fileName)
 					// MODEL-OVERRIDE texture binding: resolve importer-assigned
 					// texture names to GOS handles on the TYPE render shape.
 					LoadOverrideRenderShapeTextures(bldgRenderShape);
+                    propMaterialSource = ov;
 					mc2::fmt::print_err("[MODOVERRIDE] staticProp '{}': render override applied ({})\n", mc2::fmt::safe(bldgBaseName), mc2::fmt::safe(overridePath));
 					fflush(stderr);
 					if (buildingPbrGateEnabled())
@@ -225,6 +226,7 @@ void BldgAppearanceType::init (const char * fileName)
 			catch (...)
 			{
 				delete bldgRenderShape; bldgRenderShape = nullptr;   // stock fallback
+                propMaterialSource = nullptr;
 				mc2::fmt::print_err("[MODOVERRIDE] staticProp '{}': import threw ({}), using stock render\n",
 				        mc2::fmt::safe(bldgBaseName), mc2::fmt::safe(overridePath));
 				fflush(stderr);
@@ -422,6 +424,8 @@ void BldgAppearanceType::init (const char * fileName)
 		if (bldgShape[i])
 			bldgShape[i]->SetLightRGBs(hotPinkRGB, hotGreenRGB, hotYellowRGB);
 	}
+    if (bldgRenderShape && propMaterialSource && !propMaterialSource->materials.empty())
+        bldgRenderShape->SetLightRGBs(hotPinkRGB, hotGreenRGB, hotYellowRGB);
 }
 
 void BldgAppearanceType::destroy (void)
@@ -447,6 +451,7 @@ void BldgAppearanceType::destroy (void)
 		bldgRenderShape = nullptr;
 	}
 	buildingPbrEnabled = false;
+    propMaterialSource = nullptr;
 
  	if (bldgDmgShape)
 	{

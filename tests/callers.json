@@ -2893,6 +2893,13 @@
           "text": "import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)"
         },
         {
+          "path": "tools/blender_pipeline/fence_bundle.py",
+          "line": 32,
+          "evidence": "import",
+          "reference": "console_child",
+          "text": "import console_child  # noqa: E402"
+        },
+        {
           "path": "tools/blender_pipeline/tex_hd.py",
           "line": 70,
           "evidence": "import",
@@ -6649,9 +6656,23 @@
           "evidence": "command",
           "reference": "tools/ase_to_glb.py",
           "text": "proc = subprocess.run(cmd, capture_output=True, text=True,"
+        },
+        {
+          "path": "tools/blender_pipeline/fence_bundle.py",
+          "line": 180,
+          "evidence": "command",
+          "reference": "tools/ase_to_glb.py",
+          "text": "subprocess.run([sys.executable, str(HERE.parent / \"ase_to_glb.py\"),"
         }
       ],
       "callers_by_stem": [
+        {
+          "path": "tools/blender_pipeline/material_map.py",
+          "line": 24,
+          "evidence": "import",
+          "reference": "ase_to_glb",
+          "text": "import ase_to_glb as ase"
+        },
         {
           "path": "tools/blender_pipeline/tests/test_ase_submaterial.py",
           "line": 9,
@@ -6957,6 +6978,20 @@
           "text": "import batch_driver as bd  # noqa: E402"
         },
         {
+          "path": "tools/blender_pipeline/fence_bundle.py",
+          "line": 30,
+          "evidence": "import",
+          "reference": "batch_driver",
+          "text": "import batch_driver  # noqa: E402"
+        },
+        {
+          "path": "tools/blender_pipeline/material_map.py",
+          "line": 26,
+          "evidence": "import",
+          "reference": "batch_driver",
+          "text": "import batch_driver as pipeline"
+        },
+        {
           "path": "tools/blender_pipeline/sweep.py",
           "line": 38,
           "evidence": "import",
@@ -7030,6 +7065,36 @@
       ]
     },
     {
+      "path": "tools/blender_pipeline/fence_bundle.py",
+      "basename": "fence_bundle.py",
+      "stem": "fence_bundle",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tools/blender_pipeline/tests/test_fence.py",
+          "line": 6,
+          "evidence": "import",
+          "reference": "tools.blender_pipeline.fence_bundle",
+          "text": "from tools.blender_pipeline import fence_bundle"
+        }
+      ]
+    },
+    {
+      "path": "tools/blender_pipeline/material_map.py",
+      "basename": "material_map.py",
+      "stem": "material_map",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tools/blender_pipeline/tests/test_material_map.py",
+          "line": 10,
+          "evidence": "import",
+          "reference": "material_map",
+          "text": "import material_map as mm"
+        }
+      ]
+    },
+    {
       "path": "tools/blender_pipeline/mc2asset.py",
       "basename": "mc2asset.py",
       "stem": "mc2asset",
@@ -7056,6 +7121,13 @@
           "evidence": "import",
           "reference": "_recipe_util",
           "text": "from _recipe_util import (  # noqa: E402"
+        },
+        {
+          "path": "tools/blender_pipeline/recipes/fence_gen.py",
+          "line": 36,
+          "evidence": "import",
+          "reference": "_recipe_util",
+          "text": "from _recipe_util import arg, emit_stats, script_args  # noqa: E402"
         },
         {
           "path": "tools/blender_pipeline/recipes/rebake_pbr.py",
@@ -7086,6 +7158,21 @@
       "stem": "decimate_lods",
       "callers_by_basename": [],
       "callers_by_stem": []
+    },
+    {
+      "path": "tools/blender_pipeline/recipes/fence_gen.py",
+      "basename": "fence_gen.py",
+      "stem": "fence_gen",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tools/blender_pipeline/tests/test_fence.py",
+          "line": 7,
+          "evidence": "import",
+          "reference": "tools.blender_pipeline.recipes.fence_gen",
+          "text": "from tools.blender_pipeline.recipes import fence_gen"
+        }
+      ]
     },
     {
       "path": "tools/blender_pipeline/recipes/rebake_pbr.py",
@@ -7120,6 +7207,13 @@
           "evidence": "import",
           "reference": "srcdata",
           "text": "from srcdata import (  # noqa: E402"
+        },
+        {
+          "path": "tools/blender_pipeline/material_map.py",
+          "line": 27,
+          "evidence": "import",
+          "reference": "srcdata",
+          "text": "from srcdata import find_tgl_dir"
         },
         {
           "path": "tools/blender_pipeline/mc2asset.py",
@@ -7192,7 +7286,29 @@
       "basename": "test_ase_submaterial.py",
       "stem": "test_ase_submaterial",
       "callers_by_basename": [],
-      "callers_by_stem": []
+      "callers_by_stem": [
+        {
+          "path": "tools/blender_pipeline/tests/test_material_map.py",
+          "line": 48,
+          "evidence": "import",
+          "reference": "test_ase_submaterial",
+          "text": "from test_ase_submaterial import SINGLE_MAT_ASE"
+        },
+        {
+          "path": "tools/blender_pipeline/tests/test_material_map.py",
+          "line": 78,
+          "evidence": "import",
+          "reference": "test_ase_submaterial",
+          "text": "from test_ase_submaterial import SINGLE_MAT_ASE"
+        },
+        {
+          "path": "tools/blender_pipeline/tests/test_material_map.py",
+          "line": 95,
+          "evidence": "import",
+          "reference": "test_ase_submaterial",
+          "text": "from test_ase_submaterial import SINGLE_MAT_ASE"
+        }
+      ]
     },
     {
       "path": "tools/blender_pipeline/tests/test_asset_edit.py",
@@ -7216,9 +7332,23 @@
       "callers_by_stem": []
     },
     {
+      "path": "tools/blender_pipeline/tests/test_fence.py",
+      "basename": "test_fence.py",
+      "stem": "test_fence",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
       "path": "tools/blender_pipeline/tests/test_manifest.py",
       "basename": "test_manifest.py",
       "stem": "test_manifest",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "tools/blender_pipeline/tests/test_material_map.py",
+      "basename": "test_material_map.py",
+      "stem": "test_material_map",
       "callers_by_basename": [],
       "callers_by_stem": []
     },

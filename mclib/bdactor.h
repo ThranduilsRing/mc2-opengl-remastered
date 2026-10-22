@@ -41,6 +41,7 @@
 #endif
 
 inline constexpr int MAX_BD_ANIMATIONS = 10;
+struct ModelOverrideRecord;
 //***********************************************************************
 //
 // BldgAppearanceType
@@ -57,6 +58,7 @@ class BldgAppearanceType : public AppearanceType
 		// NULL = no override → render falls back to stock bldgShape[lod].
 		// Collision/damage NEVER read this; they read bldgShape[lod] directly.
 		TG_TypeMultiShapePtr		bldgRenderShape;
+        const ModelOverrideRecord* propMaterialSource = nullptr; // transient; registry owns it
 		bool						buildingPbrEnabled;
 		bool						buildingPbrPreserveLegacyAlpha;
 		bool						buildingFootprintShadowEnabled;
@@ -99,6 +101,7 @@ class BldgAppearanceType : public AppearanceType
 			}
 
 			bldgRenderShape = nullptr;   // MODEL-OVERRIDE dual-shape: no override by default
+            propMaterialSource = nullptr;
 			buildingPbrEnabled = false;
 			buildingPbrPreserveLegacyAlpha = false;
 			buildingFootprintShadowEnabled = false;

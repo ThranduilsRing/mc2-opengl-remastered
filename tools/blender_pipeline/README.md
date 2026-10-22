@@ -212,6 +212,40 @@ shaders. The engine-faithful path is a follow-up: an asset_viewer
 `--render-glb-to-png` mode (planned, not implemented) reusing the existing `--smoke-backend-a-render`
 offscreen pathway.
 
+## Reviewed Vulkan prop material mapping
+
+`py -3 tools/blender_pipeline/material_map.py tools/blender_pipeline/examples/quonset_pbr.mapping.json --textures E:/mc2-lane5/data/tgl/128 --out G:/mc2-assets/out/blender-redux-pbr/quonset-candidate`
+uses the stock ASE extractor and bakes transforms into vertices. Pass the mapping
+path relative to the working directory (the example above assumes the repo root).
+`--srcdata` selects the stock ASE/INI directory, `--textures` its displayed stock
+albedo directory, `--archive` the source-copy archive, and `--only PROP` limits a
+larger mapping. Dependencies: the existing Pillow and NumPy installation.
+
+Mappings require `version:1`, a safe mod `id`, and `props` with named `prop` and
+`slots`. Each slot names `slot` (glTF/Assimp material index), `stockAlbedo`, an
+explicit `class` (`dielectric`, `painted_metal`, `bare_metal`, `rust`), `reviewed:true`,
+CC0 `license`, and `provider` (`ambientCG` or `Poly Haven`). Supply NormalGL
+`normal`, `roughnessMap`, optional `ao` and `metallicMap`; missing AO is neutral.
+`normalStrength`, `roughness`, `metallic`, `aoStrength`, `uvScale`, quarter-turn
+`rotation`, and optional grayscale `mask` or normalized `maskRects` control the
+cook. Exclusions become flat, rough dielectric regions. Metal is never inferred
+from colour. Detail tiling/rotation is baked before the stock-atlas exclusions.
+
+The candidate bundle contains mod metadata, `models.json`, stock-geometry GLBs,
+private byte-for-byte TGA albedos (plus their stock KTX2 sidecars when present),
+linear uncompressed **32-bit RGBA TGA** normal/ORM maps and a source-hash report.
+ORM is R=AO/G=roughness/B=metallic/A=authored coverage. A=0 keeps the legacy
+response without new specular, protecting excluded cloth/windows/atlas regions.
+All detail maps in a mission use the same
+power-of-two extent (CLI default 512); the native loader rejects incompatible or
+malformed declarations safely. A versioned `materials` package in each override
+record selects the authored slot; material IDs are independent of albedo layers.
+No material package means legacy Vulkan shading, without fallback sheen.
+
+The report says `accepted:false` until viewed day/night gameplay montages and
+close crops pass. A cooked candidate is not shipped art. Intact render shapes
+only: collision, damage shapes and stock fallback LODs are not upgraded.
+
 ## Follow-ons (from .claude/BLENDER-CAPABILITY-SURVEY-1.md)
 
 - **#1 tree impostors / far-LOD cards** — biggest payoff; reuse this driver +
