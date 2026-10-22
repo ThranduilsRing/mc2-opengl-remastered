@@ -30,18 +30,24 @@ void EditorMoverPopulationSmokeTick(long frame) {
 		const float west=land->mapTopLeft3d.x, north=land->mapTopLeft3d.y;
 		const float water=getGosPostProcess()?getGosPostProcess()->getWaterElevation():-1e30f;
 		mgr->unselectAll();
-		for (int row=-20;row<20 && count<100;++row)
-			for (int col=-20;col<20 && count<100;++col) {
-				glm::vec3 p{anchor.x+col*96.0f,anchor.y+row*96.0f,0};
-				if (p.x<west+256 || p.x>west+span-256 || p.y>north-256 || p.y<north-span+256) continue;
-				p.z=land->getTerrainElevation(p);
-				if (p.z<water+8) continue;
-				if (auto* object=mgr->addBuilding(p,group,index,0,0,1.0f,false)) { mgr->select(*object,true); ++count; }
-			}
-		EditorInterface::frameSelectedObjects();
-		// Framing centres the selection but intentionally preserves zoom. The
-		// population proof needs the whole spread in the ordinary visible feed.
-		if (eye) eye->setCameraAltitudeDesired(eye->getMaximumCameraAltitude());
+        // Find a dry, compact ten-by-ten spread, rather than a long row
+        // that framing cannot fit at an ordinary editor zoom.
+        std::vector<glm::vec3> positions;
+        for (int row=-20;row<10 && positions.size()!=100;row+=5)
+            for (int col=-20;col<10 && positions.size()!=100;col+=5) {
+                positions.clear();
+                for (int y=0;y<10;++y) for (int x=0;x<10;++x) {
+                    glm::vec3 p{anchor.x+(col+x)*96.0f,anchor.y+(row+y)*96.0f,0};
+                    if (p.x<west+256 || p.x>west+span-256 || p.y>north-256 || p.y<north-span+256) continue;
+                    p.z=land->getTerrainElevation(p);
+                    if (p.z>=water+8) positions.push_back(p);
+                }
+            }
+        if (positions.size()==100)
+            for (const auto& p:positions)
+                if (auto* object=mgr->addBuilding(p,group,index,0,0,1.0f,false)) { mgr->select(*object,true); ++count; }
+        EditorInterface::frameSelectedObjects();
+        if (eye) eye->setCameraAltitudeDesired(2600.0f);
 	}
 	fprintf(stderr,"[EDITOR_CLI v1] event=mover_population count=%d ok=%d frame=%ld\n",count,count==100?1:0,frame);
 	fflush(stderr);
