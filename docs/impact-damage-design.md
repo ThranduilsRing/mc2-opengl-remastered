@@ -65,7 +65,9 @@ keyed on the same (weapon, material) pair (`fx_def_registry` override), not a ne
 - Budget: quality 2 = 256 decals, 1 = 96 (no unit scars), 0 = off. Full pool: the decal with the least remaining life is
   evicted. At most 32 spawns per frame. Render option `ImpactDecals` in `options.cfg` (default 2); the potato/base-game
   preset sets 0. No new environment gate.
-- Cost is bounded by covered screen area x 7 texture fetches; an empty frame records nothing.
+- Cost is bounded by covered screen area x 7 texture fetches; an empty frame records nothing. Measured (MC2_VK_GPU_TIMESTAMPS,
+  7900 XTX, 1080p, mc2_10, 6-51 live decals): VKIsl.ImpactDecals 0.009-0.041 ms per frame, the high end at close zoom where
+  the boxes cover most of the screen; about 0.16 ms worst case scaled to 4K, inside the 0.65 ms VFX-and-decals budget.
 
 ## 5. Per-object vs world decals
 
