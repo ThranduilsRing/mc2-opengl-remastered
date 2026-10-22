@@ -326,5 +326,8 @@
   "tools/tools_smoke.py": "Operator-run battery tool (py -3 tools/tools_smoke.py), no in-repo caller by design; merge window 27.",
   "tools/abl_refparam_check.py": "Operator-run proof tool (py -3 tools/abl_refparam_check.py <kept stage>), no in-repo caller by design; merge window 34.",
   "scripts/tests/test_mod_smoke.py": "Pytest-discovered module through the scripts_tests board row; merge window 34.",
-  "scripts/tests/test_omnitech_abl_stack_balance.py": "Pytest-discovered module through the scripts_tests board row; merge window 34."
+  "scripts/tests/test_omnitech_abl_stack_balance.py": "Pytest-discovered module through the scripts_tests board row; merge window 34.",
+  "tools/scifi_kit/kit.py": "Owner-run procedural art CLI documented in OWNER-DRIVING.md; review, library, export, install and capture commands.",
+  "tools/scifi_kit/blender_build.py": "Headless Blender entry point invoked dynamically by tools/scifi_kit/kit.py run_blender with --python; bpy is supplied by Blender.",
+  "tools/scifi_kit/tests/test_lots.py": "Pytest-discovered footprint regressions; py -3 -B -m pytest tools/scifi_kit/tests -q -p no:cacheprovider."
 }

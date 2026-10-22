@@ -2,8 +2,10 @@
 # Sci-fi building kit: owner driving loop
 
 Run from `A:/Games/mc2-study2`, branch `claude/scifi-building-kit`. Local commits
-only. Outputs and Blender intermediates stay on G:. No engine build is needed
-for these intact visual overrides. Pre-existing `.scratch/` is unrelated.
+only. Outputs and Blender intermediates stay on G:. After the collision fix on
+this branch is deployed once, art iteration needs no engine rebuild. The old
+test-install binary allowed render geometry into stock movement-map buffers and
+could not load dense overrides. Pre-existing `.scratch/` is unrelated.
 
 ```powershell
 # First setup / regenerate the 19 reusable, parameterized part prototypes + LODs

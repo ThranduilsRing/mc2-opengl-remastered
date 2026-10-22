@@ -9,10 +9,14 @@ from contextlib import contextmanager
 
 
 class MeshKit:
-    def __init__(self):
+    def __init__(self, dimensions=None):
         self.vertices, self.faces, self.materials = [], [], []
         self.origin, self.yaw = (0, 0, 0), 0
         self.counts = Counter()
+        self.dimensions = dimensions or {}
+
+    def dimension(self, key, default):
+        return self.dimensions.get(key, {}).get('value', default)
 
     @contextmanager
     def at(self, origin, yaw=0):
@@ -47,7 +51,8 @@ class MeshKit:
         # Local front -Y. Split the actual wall around the glazing aperture.
         bottom, top = 0.50, height
         if window and height > 2.2 and width > 1.6:
-            ww, wh = min(1.6,width*0.65), min(0.65,height*0.19)
+            window_width,window_height=self.dimension('window_m',[1.6,.65])
+            ww, wh = min(window_width,width*0.65), min(window_height,height*0.19)
             wz = height*0.65
             self.box((0,0.20,(bottom+wz-wh/2)/2),(width-gap,.34,wz-wh/2-bottom),'concrete')
             self.box((0,0.20,(wz+wh/2+top)/2),(width-gap,.34,top-wz-wh/2),'armour')
@@ -66,7 +71,7 @@ class MeshKit:
 
     def window_slit(self, width=1.6, height=.65, z=2.4):
         self.counts['window_slit'] += 1
-        self.box((0,.245,z),(width,.075,height),'glass')
+        self.box((0,self.dimension('reveal_m',.24)+.005,z),(width,.075,height),'glass')
         for x in [-width/2,width/2]:
             self.box((x,.075,z),(.11,.36,height+.12),'steel')
         self.box((0,-.04,z-height/2),(width+.32,.48,.12),'concrete')
@@ -76,13 +81,14 @@ class MeshKit:
 
     def bay_door(self, width=10, height=13, rollup=False):
         self.counts['rollup_door' if rollup else 'bay_door'] += 1
-        self.box((0,.42,height/2+.32),(width,.16,height),'recess')
+        reveal=self.dimension('reveal_m',.24)
+        self.box((0,reveal+.18,height/2+.32),(width,.16,height),'recess')
         # Leaves are recessed .24m behind jambs, never pasted onto a solid wall.
         rows = max(3,round(height/(.48 if rollup else 1.7)))
         for j in range(rows):
             hh = height/rows
             for sign in [-1,1]:
-                self.box((sign*width*.25,.31,.32+hh*(j+.5)),(width/2-.045,.10,hh-.045),'roof' if rollup else 'trim')
+                self.box((sign*width*.25,reveal+.07,.32+hh*(j+.5)),(width/2-.045,.10,hh-.045),'roof' if rollup else 'trim')
         self.box((0,.19,height/2+.32),(.13,.16,height),'steel')
         for sign in [-1,1]:
             self.box((sign*(width/2+.18),.02,height/2+.32),(.36,.63,height+.35),'concrete')
@@ -213,7 +219,7 @@ class MeshKit:
 def assemble(job,style):
     import random
     rng=random.Random(job['seed'])
-    kit=MeshKit();r=job['rule'];h=job['height_m']
+    kit=MeshKit(style['dimensions']);r=job['rule'];h=job['height_m']
     for wing_index,(x0,y0,x1,y1) in enumerate(job['wings_m']):
         cx,cy=(x0+x1)/2,(y0+y1)/2
         lotw,lotd=x1-x0,y1-y0
@@ -292,7 +298,7 @@ def assemble(job,style):
                 for sign in [-1,1]:
                     kit.box((sign*(w/2-1.5),0,wh+.15),(2.4,d*.75,.36),'trim')
             else:
-                kit.flat_roof(w+.10,d+.10,wh,min(.55,h*.09));roof_top=wh+.6
+                kit.flat_roof(w+.10,d+.10,wh,min(kit.dimension('parapet_m',.55),h*.09));roof_top=wh+.6
                 if r['roof']=='clerestory':
                     kit.box((0,0,wh+h*.10),(w*.48,d*.82,h*.20),'armour')
                     kit.box((0,0,wh+h*.205),(w*.51,d*.85,.22),'trim');roof_top=wh+h*.21

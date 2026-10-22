@@ -10,7 +10,7 @@ import numpy as np
 from mathutils import Vector
 
 sys.path.insert(0,str(Path(__file__).resolve().parent))
-from core import read_json, write_json
+from core import read_json, write_json, inside
 from parts import MeshKit, assemble
 
 
@@ -129,12 +129,25 @@ def save_image(im,path,fmt='PNG'):
     im.filepath_raw=str(path);im.file_format=fmt;im.save()
 
 
+def constrain_lod(ob,job):
+    # Quadric collapse may move an outer pad vertex beyond its original lot.
+    # Project those few vertices back into the conservative wing union.
+    for v in ob.data.vertices:
+        x,y,z=v.co
+        if not inside([x,y],job['footprint_m']):
+            choices=[(max(a,min(c,x)),max(b,min(d,y))) for a,b,c,d in job['wings_m']]
+            x,y=min(choices,key=lambda p:(p[0]-x)**2+(p[1]-y)**2)
+        v.co=(x,y,max(0,min(job['height_m'],z)))
+    ob.data.update()
+
+
 def lod_bake(high,job,style,out):
     scene=cycles(8);scene.render.bake.margin=6
     low=high.copy();low.data=high.data.copy();bpy.context.collection.objects.link(low);low.name='GameLOD0'
     select(low)
     mod=low.modifiers.new('RTS triangle budget','DECIMATE');mod.ratio=min(1,style['budgets']['lod0_max']*.96/triangles(high))
     bpy.ops.object.modifier_apply(modifier=mod.name)
+    constrain_lod(low,job)
     bpy.ops.object.mode_set(mode='EDIT');bpy.ops.mesh.select_all(action='SELECT');bpy.ops.uv.smart_project(angle_limit=1.15192,island_margin=.004);bpy.ops.object.mode_set(mode='OBJECT')
     # Single target material; all source zones are projected from the high mesh.
     target=material('scifi_'+out.name,[.3,.3,.3]);low.data.materials.clear();low.data.materials.append(target)
@@ -166,7 +179,7 @@ def lod_bake(high,job,style,out):
     roughtex=nt.nodes.new('ShaderNodeTexImage');roughtex.image=images['roughness'];nt.links.new(roughtex.outputs[0],bs.inputs['Roughness'])
     high.hide_render=True
     far=low.copy();far.data=low.data.copy();far.name='GameLOD1';bpy.context.collection.objects.link(far)
-    select(far);mod=far.modifiers.new('Far LOD budget','DECIMATE');mod.ratio=min(1,style['budgets']['lod1_max']*.96/triangles(low));bpy.ops.object.modifier_apply(modifier=mod.name);far.hide_render=True
+    select(far);mod=far.modifiers.new('Far LOD budget','DECIMATE');mod.ratio=min(1,style['budgets']['lod1_max']*.96/triangles(low));bpy.ops.object.modifier_apply(modifier=mod.name);constrain_lod(far,job);far.hide_render=True
     return low,far
 
 
@@ -256,7 +269,7 @@ def library(out,style,texture_manifest):
     prototypes={'wall_panel':{'window':True},'bay_door':{},'rollup_door':{'width':4.8,'height':4.6,'rollup':True},'infantry_door':{},'window_slit':{},'buttress':{},'flat_roof':{'width':6,'depth':5},'barrel_roof':{'width':6,'depth':5,'z':0,'rise':1.5},'roof_truss':{},'dome':{},'vent':{},'pipe':{},'antenna':{},'catwalk':{},'ladder':{},'signage':{},'pad':{'width':5,'depth':5},'stairs':{},'floodlight':{}}
     stats={}
     for i,(name,params) in enumerate(prototypes.items()):
-        kit=MeshKit();getattr(kit,'bay_door' if name=='rollup_door' else name)(**params)
+        kit=MeshKit(style['dimensions']);getattr(kit,'bay_door' if name=='rollup_door' else name)(**params)
         ob=mesh_object(kit,name,mats);ob.location=((i%5)*15,(i//5)*20,0);ob.asset_mark();ob['parameters']=json.dumps(params);stats[name]={'parameters':params,'source_triangles':triangles(ob)}
         low=ob.copy();low.data=ob.data.copy();bpy.context.collection.objects.link(low);low.name=name+'_lod1';select(low);mod=low.modifiers.new('Part preview LOD','DECIMATE');mod.ratio=.25;bpy.ops.object.modifier_apply(modifier=mod.name);low.hide_render=True;low.hide_viewport=True;stats[name]['lod1_triangles']=triangles(low)
     out.mkdir(parents=True,exist_ok=True);write_json(out/'parts.json',stats)

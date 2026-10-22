@@ -38,6 +38,6 @@
     {"name": "olive_ochre", "source": "warno", "basis": "Chosen restrained military family", "armour": [0.25, 0.30, 0.23], "trim": [0.12, 0.16, 0.14], "accent": [0.70, 0.43, 0.12]},
     {"name": "slate_oxide", "source": "warno", "basis": "Chosen restrained industrial family", "armour": [0.29, 0.35, 0.37], "trim": [0.13, 0.18, 0.21], "accent": [0.57, 0.23, 0.12]}
   ],
-  "budgets": {"source": "warno", "basis": "Authoring targets, not measured engine performance. Budget enforced on exported triangles. Bakes 1024, LOD1 512.", "high_max": 180000, "lod0_max": 12000, "lod1_max": 3500, "atlas_resolution": 1024},
+  "budgets": {"source": "warno", "basis": "Authoring targets, not measured engine performance. Budget enforced on exported triangles. LOD0 and LOD1 share one 1024 bake atlas; runtime TGA tiers are 32 through 1024.", "high_max": 180000, "lod0_max": 12000, "lod1_max": 3500, "atlas_resolution": 1024},
   "presentation": {"source": "houses", "engine": "CYCLES", "samples": 24, "beauty_px": 900, "rts_subject_px": 190, "sky_strength": 0.65, "sun_angle_degrees": 12, "ground": "muted warm grey, concrete pad, road strip, white footprint corners"}
 }

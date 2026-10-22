@@ -3145,6 +3145,13 @@
           "text": "import console_child  # noqa: E402"
         },
         {
+          "path": "tools/scifi_kit/kit.py",
+          "line": 20,
+          "evidence": "import",
+          "reference": "console_child",
+          "text": "import console_child"
+        },
+        {
           "path": "tools/shader_offline_build/build_variants.py",
           "line": 51,
           "evidence": "import",
@@ -4388,6 +4395,13 @@
           "evidence": "command",
           "reference": "scripts/run_visual_capture.py",
           "text": "subprocess.run(cmd, check=False, **console_child.child_kwargs())"
+        },
+        {
+          "path": "tools/scifi_kit/kit.py",
+          "line": 208,
+          "evidence": "command",
+          "reference": "scripts/run_visual_capture.py",
+          "text": "result=subprocess.run(cmd,**console_child.child_kwargs())"
         }
       ],
       "callers_by_stem": [
@@ -9811,6 +9825,71 @@
           "text": "import saveload_roundtrip as rt"
         }
       ]
+    },
+    {
+      "path": "tools/scifi_kit/blender_build.py",
+      "basename": "blender_build.py",
+      "stem": "blender_build",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "tools/scifi_kit/core.py",
+      "basename": "core.py",
+      "stem": "core",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tools/scifi_kit/blender_build.py",
+          "line": 13,
+          "evidence": "import",
+          "reference": "core",
+          "text": "from core import read_json, write_json, inside"
+        },
+        {
+          "path": "tools/scifi_kit/kit.py",
+          "line": 18,
+          "evidence": "import",
+          "reference": "core",
+          "text": "from core import DEFAULT_OUT, make_job, read_json, write_json, inside"
+        },
+        {
+          "path": "tools/scifi_kit/tests/test_lots.py",
+          "line": 8,
+          "evidence": "import",
+          "reference": "core",
+          "text": "from core import inside, plan_wings"
+        }
+      ]
+    },
+    {
+      "path": "tools/scifi_kit/kit.py",
+      "basename": "kit.py",
+      "stem": "kit",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "tools/scifi_kit/parts.py",
+      "basename": "parts.py",
+      "stem": "parts",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tools/scifi_kit/blender_build.py",
+          "line": 14,
+          "evidence": "import",
+          "reference": "parts",
+          "text": "from parts import MeshKit, assemble"
+        }
+      ]
+    },
+    {
+      "path": "tools/scifi_kit/tests/test_lots.py",
+      "basename": "test_lots.py",
+      "stem": "test_lots",
+      "callers_by_basename": [],
+      "callers_by_stem": []
     },
     {
       "path": "tools/shader_offline_build/build_variants.py",
