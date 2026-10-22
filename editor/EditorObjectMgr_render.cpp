@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in EditorObjectMgr_internal.h.
 #include "EditorObjectMgr_internal.h"
 #include "Gates/gate.h"
+#include "../GameOS/gameos/static_caster_set.h"   // the shadow bake's caster set
 
 
 // --------------------------------------------------------------------------
@@ -421,6 +422,29 @@ void EditorObjectMgr::registerStaticPropsForMissionLoad()
 		app->registerStatic();
 		if (app->isStaticRegistered())
 			++registered;
+	}
+	// The shadow bake's caster set: every registered building / tree / prop, as GameObjectManager::buildStaticShadowCasterSet does in the game.
+	{
+		mc2shadow::StaticCasterSet& set = mc2shadow::staticCasterSet();
+		set.beginRebuild();
+		uint32_t handle = 1;
+		for (auto iter = buildings.begin(); iter != buildings.end(); iter++)
+		{
+			EditorObject* obj = *iter;
+			if (!obj || !obj->appearance())
+				continue;
+			const Appearance* app = obj->appearance();
+			const int32_t recipe = app->getShadowCasterRecipeIndex();
+			if (recipe < 0)
+				continue;
+			mc2shadow::StaticCasterEntry e;
+			e.owner = app;
+			e.gameHandle = handle++;
+			e.recipeIndex = recipe;
+			set.add(e);
+		}
+		set.endRebuild();
+		set.setAdmitNewOwners(true);
 	}
 	MC2_DIAGFE(stderr, "[STATIC_PROP_REG v1] event=editor_load enumerated=%d registered=%d skipped=%d\n",
 	        total, registered, total - registered);

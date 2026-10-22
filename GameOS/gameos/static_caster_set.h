@@ -43,7 +43,9 @@ public:
 
     // A caster's shadow recipe goes away (destroyed, falling, shape swap) or a new one is registered for it (rubble, a landed tree, a re-registration).
     // Each change queues the caster's leaves before and after as an event; the bake turns those into dirty sub-tiles. A re-registration that puts back
-    // exactly the leaves it removed cancels out. Unknown owners (not in the set) are ignored; neither call changes version().
+    // exactly the leaves it removed cancels out. Unknown owners are ignored unless editor admission is enabled; neither call changes version().
+    // In the editor objects are placed after the load walk: an unknown owner that registers a shadow recipe joins the set (and queues its leaves).
+    void setAdmitNewOwners(bool admit) { admitNewOwners_ = admit; }
     void ownerInvalidated(const void* owner, int32_t oldRecipe);
     void ownerRegistered(const void* owner, int32_t newRecipe);
 
@@ -77,7 +79,9 @@ private:
     uint64_t loadHash_ = 0;
     uint64_t deltaVersion_ = 0;
     uint64_t version_ = 0;
+    uint32_t nextGameHandle_ = 1;
     bool building_ = false;
+    bool admitNewOwners_ = false;
 };
 
 StaticCasterSet& staticCasterSet();

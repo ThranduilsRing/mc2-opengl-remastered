@@ -23,16 +23,13 @@ StaticCasterSet& staticCasterSet() {
 }
 
 void StaticCasterSet::beginRebuild() {
-    entries_.clear();
-    recipeMask_.clear();
-    byOwner_.clear();
-    removed_.clear();
-    events_.clear();
+    clear();
     building_ = true;
 }
 
 void StaticCasterSet::add(const StaticCasterEntry& entry) {
     if (!building_ || entry.recipeIndex < 0) return;
+    nextGameHandle_ = (std::max)(nextGameHandle_, entry.gameHandle + 1);
     if (entry.owner) byOwner_[entry.owner] = static_cast<uint32_t>(entries_.size());
     entries_.push_back(entry);
     const size_t r = static_cast<size_t>(entry.recipeIndex);
@@ -73,7 +70,9 @@ void StaticCasterSet::clear() {
     loadRanges_.clear();
     loadHash_ = 0;
     version_ = 0;
+    nextGameHandle_ = 1;
     building_ = false;
+    admitNewOwners_ = false;
 }
 
 namespace {
@@ -116,7 +115,16 @@ void StaticCasterSet::ownerInvalidated(const void* owner, int32_t oldRecipe) {
 void StaticCasterSet::ownerRegistered(const void* owner, int32_t newRecipe) {
     if (building_ || version_ == 0 || !owner || newRecipe < 0) return;
     auto idx = findOwner(byOwner_, owner);
-    if (!idx) return;
+    if (!idx) {
+        if (!admitNewOwners_) return;
+        StaticCasterEntry fresh;
+        fresh.owner = owner;
+        fresh.gameHandle = nextGameHandle_++;
+        fresh.recipeIndex = -1;
+        byOwner_[owner] = static_cast<uint32_t>(entries_.size());
+        entries_.push_back(fresh);
+        idx = findOwner(byOwner_, owner);
+    }
     StaticCasterEntry& e = entries_[*idx];
     if (e.recipeIndex == newRecipe) return;
     CasterEvent ev;
