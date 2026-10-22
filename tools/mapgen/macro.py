@@ -81,7 +81,10 @@ def plan(mainland, heights, slopes, wet, seed, count):
     interior = np.zeros_like(allowed)
     margin = max(10,round(n*.13))
     interior[margin:-margin,margin:-margin] = True
-    candidates = np.argwhere(allowed & interior & (suitability >= np.quantile(suitability[allowed],.48)))
+    # random.shuffle swaps Python values; NumPy row views alias during swaps
+    # and silently duplicate candidates, biasing development toward one edge.
+    candidates = [tuple(map(int,p)) for p in np.argwhere(
+        allowed & interior & (suitability >= np.quantile(suitability[allowed],.48)))]
     rng.shuffle(candidates)
     majors = max(3,min(9,round(size/430)))
     hubs = []

@@ -224,6 +224,10 @@ def upgrade(layout, profile):
             target = world_position(layout,request)
             parent = by_id.get(request.get("parent_link"))
             link_stats = profile["groups"]["stock"]["links"].get(f"{cls} -> {parent['class']}") if parent else None
+            controlled_gate = (by_id.get(gate_request['id']) if layout.get('macro') and
+                               cls=='gate_control' and gate_request and
+                               gate_request['parent_link']==request['id'] else None)
+            gate_link = profile['groups']['stock']['links']['gate -> gate_control'] if controlled_gate else None
             inset = 2 if base["walled"] else 1
             parcel = [r0+inset,c0+inset,r1-inset,c1-inset]
             placed = False
@@ -240,6 +244,10 @@ def upgrade(layout, profile):
                     centre = (rng.uniform(c0+inset,c1-inset)*CELL_WU-size*CELL_WU/2,
                               size*CELL_WU/2-rng.uniform(r0+inset,r1-inset)*CELL_WU)
                 obj = make(request,asset,centre)
+                if obj and controlled_gate:
+                    separation = math.dist(obj['position_wu'][:2],controlled_gate['position_wu'][:2])/CELL_WU
+                    if not gate_link['min']<=separation<=gate_link['max']:
+                        continue
                 if obj and link_stats:
                     separation = math.dist(obj["position_wu"][:2],parent["position_wu"][:2])/CELL_WU
                     if not link_stats["min"] <= separation <= link_stats["max"]:

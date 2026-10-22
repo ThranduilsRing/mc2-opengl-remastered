@@ -37,9 +37,38 @@ def measure_scale(layout):
         areas = [(b['bounds'][2]-b['bounds'][0])*(b['bounds'][3]-b['bounds'][1]) for b in layout['bases']]
         result['parcel_area_p10_p50_p90'] = np.percentile(areas,[10,50,90]).tolist()
         result['parcel_area_max_min'] = max(areas)/min(areas)
+        positions = np.array([[(b['bounds'][0]+b['bounds'][2])/2,
+                               (b['bounds'][1]+b['bounds'][3])/2] for b in layout['bases']])
+        distances = np.sqrt(np.square(positions[:,None]-positions[None,:]).sum(axis=2))
+        np.fill_diagonal(distances,np.inf)
+        nearest = distances.min(axis=1)
+        result['parcel_nn_cv'] = float(nearest.std()/nearest.mean()) if len(positions)>1 else 0
         members = Counter(o.get('base_id') for o in structural(layout['objects']))
         sizes = [members[b['id']] for b in layout['bases']]
         result['parcel_structures_p10_p50_p90'] = np.percentile(sizes,[10,50,90]).tolist()
         result['tiny_site_fraction'] = sum(n<=3 for n in sizes)/len(sizes)
         result['largest_site_structures'] = max(sizes)
     return result
+
+
+def main():
+    import argparse
+    from pathlib import Path
+    from collections import defaultdict
+    from tools.mapgen.common import load_json,write_json
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--corpus',type=Path,default=Path('tools/mapgen/corpus'))
+    parser.add_argument('--out',type=Path,default=Path('docs/mapgen/scale-realism/corpus-metrics.json'))
+    args = parser.parse_args()
+    by = defaultdict(list)
+    for row in load_json(args.corpus/'index.json')['missions']:
+        by[row['corpus']].append(measure_scale(load_json(args.corpus/row['file'])))
+    fields = ('sites','nn_median_cells','nn_cv','empty_land_fraction','road_components',
+              'road_largest_fraction','tree_bin_cv')
+    result = {k:{f:float(np.median([m[f] for m in group])) for f in fields} for k,group in by.items()}
+    result['mission_counts'] = {k:len(v) for k,v in by.items()}
+    write_json(args.out,result,pretty=True)
+
+
+if __name__=='__main__':
+    main()

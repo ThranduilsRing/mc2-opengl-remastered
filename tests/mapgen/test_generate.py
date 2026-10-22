@@ -39,7 +39,9 @@ class GeneratedLayoutTests(unittest.TestCase):
         self.assertEqual(validate(layout, self.profile), [])
 
         metrics = measure_scale(layout)
-        self.assertGreater(metrics['nn_cv'], .4)
+        # The authored cluster rule omits lone outposts; use all planned sites
+        # for this placement regression, including the tiny end of the hierarchy.
+        self.assertGreater(metrics['parcel_nn_cv'], .4)
         self.assertGreater(metrics['empty_land_fraction'], .70)
         self.assertGreater(metrics['parcel_area_max_min'], 25)
         self.assertGreater(metrics['tree_bin_cv'], .8)
