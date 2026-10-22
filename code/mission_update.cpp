@@ -3,7 +3,7 @@
 // Declared in the class headers; shared names in mission_internal.h.
 #include "mission_internal.h"
 #include "sim_world_trace.h"
-#include "../GameOS/gameos/sim_tick_clock.h"
+#include "sim_tick_clock.h"
 #include <optional>
 #include <utility>
 #include "../GameOS/gameos/utils/mc2log.h"
@@ -73,13 +73,13 @@ namespace {
 	static const bool s_misSplit = mc2::gate::get<"MC2_MISSION_SPLIT">();
 	enum class MisPhase : int { MS_LAND_UPDATE=0, MS_PATHMGR, MS_CLEAR_BLOCKS, MS_CLEAR_VERTS,
 	       MS_TERRAIN_TEX, MS_GEOMETRY, MS_OBJMGR,
-	       MS_TOTAL, MS_CLEARARRAYS, MS_INTERFACE, MS_CAMERA, MS_VTOL, MS_WEATHER, MS_WAYPOINTS,
+	       MS_TOTAL, MS_CLEARARRAYS, MS_INTERFACE, MS_CAMERA, MS_VTOL, MS_WEATHER, MS_WAYPOINTS, MS_PRESENT,
 	       MS_COUNT };
 	using enum MisPhase;
 	static constexpr int MS_COUNT_I = std::to_underlying(MisPhase::MS_COUNT);
 	static const char* s_misNames[MS_COUNT_I] = {
 		"land_update","pathmgr","clearBlocks","clearVerts","terrainTex","geometry","objmgr",
-		"TOTAL","clearArrays","interface","camera","vtol","weather","waypoints" };
+		"TOTAL","clearArrays","interface","camera","vtol","weather","waypoints","present" };
 	static unsigned long long s_misNs[MS_COUNT_I]  = {0};
 	static unsigned long long s_misMax[MS_COUNT_I] = {0};
 	static unsigned long long s_misFrames = 0;
@@ -447,6 +447,7 @@ void Mission::updatePathManager() {
 // A render frame with no sim tick: draw the unchanged sim state again. This is the paused-frame path (appearances re-pose
 // from object positions) with the clock at zero and Mech3DAppearance::update told not to advance sim state.
 void Mission::updatePresentationOnly() {
+	MisScope _ms(MS_PRESENT);
 	gpu_cull::substrate_frameBegin();
 	const float renderLength = frameLength;
 	frameLength = 0.0f;
@@ -1311,7 +1312,7 @@ bool Mission::updatePass(bool tickMode, bool runFrame, bool runSim, bool advance
 	return false;
 }
 
-// Per-frame mission update. Normal play runs on the fixed 30 Hz sim tick (GameOS/gameos/sim_tick_clock.h): the frame's
+// Per-frame mission update. Normal play runs on the fixed 30 Hz sim tick (code/sim_tick_clock.h): the frame's
 // real time x game speed is banked, whole ticks run out of the bank, and a frame that banks no tick only redraws the
 // unchanged sim state. A paused or frozen sim and multiplayer keep the old one-pass-per-frame update.
 long Mission::update (void)

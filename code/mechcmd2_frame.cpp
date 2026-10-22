@@ -355,7 +355,7 @@ void __stdcall DoGameLogic()
 
 		// frameLength here is the RENDER frame's length: UI, camera and the presentation passes use it. The sim does not.
 		// Mission::update banks it (times the game speed) into the fixed 30 Hz tick clock and sets frameLength to the tick
-		// length around each tick (GameOS/gameos/sim_tick_clock.h). Under the harness clock the render frame is virtual:
+		// length around each tick (code/sim_tick_clock.h). Under the harness clock the render frame is virtual:
 		// 1/30 s unless MC2_FPS_CAP names another rate, so the committed SIMID baselines (one frame = one tick) hold and
 		// a different rate proves the sim does not follow it.
 		if (SmokeMode::fixedTimestepEnabled())

@@ -7717,16 +7717,6 @@
    "count": 1
   },
   {
-   "tag": "SIM_SPEED",
-   "ver": 1,
-   "stream": "stdout",
-   "keys": [
-    "steps_per_frame",
-    "frame"
-   ],
-   "count": 1
-  },
-  {
    "tag": "SMOKE",
    "ver": 1,
    "stream": "stderr",
@@ -10563,7 +10553,8 @@
   "VK_GPU_PASSES",
   "VK_PROFILE",
   "VK_VALIDATION",
-  "VRAM"
+  "VRAM",
+  "WORLD_ORDER"
  ],
  "plain_tags": [
   "VEG_SUMMARY",

@@ -1,5 +1,5 @@
 #include "doctest.h"
-#include "../../GameOS/gameos/sim_tick_clock.h"
+#include "../../code/sim_tick_clock.h"
 
 #include <limits>
 
