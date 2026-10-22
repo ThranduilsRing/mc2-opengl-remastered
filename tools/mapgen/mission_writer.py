@@ -231,9 +231,9 @@ def mission_fit(layout, template):
     sections += ['[Team0Objectives]\nul NumObjectives = 1\n', base, condition]
     sections += [f'[Team{t}Objectives]\nul NumObjectives = 0\n' for t in range(1,8)]
     sections += [f'[Player{t}]\nl DefaultTeam = {1 if t == 1 else 0}\n' for t in range(8)]
-    # Empty script has a supported no-missionBrain path; objective and defeat
-    # evaluation live in Mission::updateTermination, independent of ABL.
-    sections += ['[Script]\nst ScenarioScript = ""\n', 'FITend\n']
+    # Objective and defeat evaluation live in Mission::updateTermination. A
+    # minimal script keeps the normal ABL load path free of missing-file errors.
+    sections += [f'[Script]\nst ScenarioScript = "{layout["name"]}"\n', 'FITend\n']
     layout['objectives'] = [{'id':'team0objective0', 'title':'Destroy the enemy base',
                              'cell': target['cell'], 'position_wu':target['position_wu'], 'display':True}]
     return '\n'.join(sections).encode('latin1')
@@ -243,6 +243,10 @@ def emit(layout, source, out, name=None):
     out = output_path(out, [source.root])
     out.mkdir(parents=True, exist_ok=True)
     layout = snapped(layout)
+    from tools.mapgen.validate import validate
+    errors = validate(layout, load_json(Path(__file__).with_name('profile.json')))
+    if errors:
+        raise ValueError('snapped layout validation: '+ '; '.join(errors[:5]))
     if name:
         layout['name'] = name
     if not re.fullmatch(r'[a-zA-Z0-9_]{1,60}', layout['name']):
@@ -251,6 +255,9 @@ def emit(layout, source, out, name=None):
     place_units(layout, blocked)
     template_pak, pak_source = source.read('data/missions/mc2_01.pak')
     template_fit, fit_source = source.read('data/missions/mc2_01.fit')
+    for dependency in ('pmwhacksaw.fit', 'pmwregular.fit', 'pbrain.abl', 'sbguard.abl'):
+        if not source.has('data/missions/warriors/'+dependency):
+            raise ValueError(f'missing stock pilot/brain: {dependency}')
     cells = np.where(blocked, 2, 0x402).astype('<u4')
     cells[[0,-1], :] |= 0x200
     cells[:, [0,-1]] |= 0x200
@@ -264,6 +271,8 @@ def emit(layout, source, out, name=None):
     fit = mission_fit(layout, template_fit)
     write_pak([PacketRecord(i,4,make_zlib_payload(p)) for i,p in enumerate(packets)], stem.with_suffix('.pak'))
     stem.with_suffix('.fit').write_bytes(fit)
+    script = f'module {layout["name"]} : integer;\ncode\n    return(0);\nendmodule.\n'
+    stem.with_suffix('.abl').write_text(script, encoding='ascii')
     # Read every packet using the repo's strict decoder, not just our encoder.
     raw = stem.with_suffix('.pak').read_bytes()
     for i,p in enumerate(packets):
@@ -293,6 +302,7 @@ def emit(layout, source, out, name=None):
               'source_pak':pak_source, 'source_fit':fit_source,
               'source_pak_sha256':hashlib.sha256(template_pak).hexdigest(),
               'pak_sha256':hashlib.sha256(raw).hexdigest(), 'fit_sha256':hashlib.sha256(fit).hexdigest(),
+              'abl_sha256':hashlib.sha256(script.encode('ascii')).hexdigest(),
               'validation':'all packets + FIT + extraction + parent links + spawn connectivity passed',
               'limitations':['flat grass terrain; planned roads/cement are not texture-baked',
                              'conservative model rectangles; no destruction-aware special areas',
