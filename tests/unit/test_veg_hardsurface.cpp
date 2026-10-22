@@ -47,4 +47,21 @@ TEST_CASE("class-3 union: pure cement (1.0) with alpha transition (<1) takes the
     CHECK((kWeedFlagBit & 0x3Fu) == 0u);  // never collides with frame + card-role bits
 }
 
+TEST_CASE("placement samples coverage and keeps weeds sparse away from seams") {
+    const auto flat = [](float, float) { return 1.0f; };
+    const auto open = [](float, float) { return 0.0f; };
+    const auto transition = [](float, float) { return 0.3f; };
+    const auto zeroRoll = [](float, float) { return 0.0f; };
+    const auto highRoll = [](float, float) { return 0.99f; };
+    CHECK(hardSurfacePlacement(64, 64, 128, open, highRoll) == HardSurfacePlacement::Cover);
+    CHECK(hardSurfacePlacement(64, 64, 128, transition, zeroRoll) == HardSurfacePlacement::TransitionCover);
+    CHECK(hardSurfacePlacement(64, 64, 128, flat, zeroRoll) == HardSurfacePlacement::Weed);
+    CHECK(hardSurfacePlacement(64, 64, 128, flat, highRoll) == HardSurfacePlacement::Reject);
+
+    // The cover roll loses; a 5% weed roll survives at a seam but not inside a pad.
+    const auto rolls = [] { return [call = 0](float, float) mutable { return call++ == 0 ? 0.99f : 0.05f; }; };
+    CHECK(hardSurfacePlacement(64, 64, 128, flat, rolls()) == HardSurfacePlacement::Reject);
+    CHECK(hardSurfacePlacement(0, 64, 128, flat, rolls()) == HardSurfacePlacement::Weed);
+}
+
 }

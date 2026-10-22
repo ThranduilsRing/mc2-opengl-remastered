@@ -8969,7 +8969,13 @@
     "rej_none_fringe",
     "rej_overlay",
     "rej_slope",
-    "passed"
+    "passed",
+    "hs_weeds",
+    "hs_cover_kept",
+    "hs_tiles_alpha",
+    "hs_tiles_pure",
+    "hs_tiles_noimg",
+    "hs_build_ms"
    ],
    "count": 1
   },

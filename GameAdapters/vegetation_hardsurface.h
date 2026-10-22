@@ -37,4 +37,29 @@ inline constexpr unsigned kWeedFlagBit  = 0x40u;  // atlasFrame bit 6 (bits 0-5 
     return kWeedDensity * (0.15f + 0.85f * std::clamp(crack, 0.0f, 1.0f));
 }
 
+enum class HardSurfacePlacement { Cover, TransitionCover, Weed, Reject };
+
+// Sample the visible paving footprint independently of the terrain's cell class.
+// Sampler and hash parameters keep the placement rule testable without the engine.
+template<class Coverage, class Hash>
+[[nodiscard]] HardSurfacePlacement hardSurfacePlacement(float wx, float wy, float tileWu,
+                                                       Coverage coverage, Hash hash) {
+    const float cov = coverage(wx, wy);
+    if (cov <= 0.0f) return HardSurfacePlacement::Cover;
+    const float hc = hash(wx * 53.7f + 17.0f, wy * 91.3f + 3.0f);
+    if (hc < coverToDensityMul(cov))
+        return cov > kHardFalloffLo ? HardSurfacePlacement::TransitionCover : HardSurfacePlacement::Cover;
+
+    constexpr float kTap = 6.0f;
+    const float gx = (coverage(wx + kTap, wy) - coverage(wx - kTap, wy)) / (2.0f * kTap);
+    const float gy = (coverage(wx, wy + kTap) - coverage(wx, wy - kTap)) / (2.0f * kTap);
+    const float grad = std::sqrt(gx * gx + gy * gy);
+    const float sx = std::fabs(std::fmod(wx, tileWu));
+    const float sy = std::fabs(std::fmod(wy, tileWu));
+    const float seam = std::min({sx, tileWu - sx, sy, tileWu - sy});
+    const float hw = hash(wy * 71.9f + 5.0f, wx * 29.3f + 11.0f);
+    return hw < weedKeepProbability(cov, crackTerm(grad, seam))
+        ? HardSurfacePlacement::Weed : HardSurfacePlacement::Reject;
+}
+
 }  // namespace mc2::vegetation

@@ -6,6 +6,7 @@
 
 #include "VegetationAdapter.h"
 #include "vegetation_budget.h"
+#include "vegetation_noise.h"
 #include "vegetation_hardsurface.h"
 #include "mc2_diag_verbose.h"
 #include "Gates/gate.h"
@@ -44,13 +45,8 @@ extern float gos_terrain_indirect_HardSurfaceCoverage(float wx, float wy);
 extern void  gos_terrain_indirect_HardSurfaceStats(int* alpha, int* pure, int* noImage);
 
 namespace {
-
-// Cheap, deterministic hash in [0, 1).  Inputs are world-grid coordinates
-// plus a per-instance discriminator so each card within a cell differs.
-[[nodiscard]] float hashf(float a, float b) noexcept
-{
-    return fabsf(fmodf(sinf(a * 127.1f + b * 311.7f) * 43758.5f, 1.0f));
-}
+using mc2::vegetation::hashf;
+using mc2::vegetation::macroZone;
 
 // World-unit spacing between sample points.
 // ~5x area density vs 32: (32/14)^2 ≈ 5.2x more grid cells per area.
@@ -61,7 +57,7 @@ constexpr float kGridStep = 14.0f;
 // ---------------------------------------------------------------------------
 
 // Vegetation density tier from terrain material type (getTerrain codes).
-// kHard   = absolute no-vegetation: water, concrete, cement, cliff, none
+// kHard   = absolute no-vegetation: water, cliff, none
 // kNone   = hard exclude (kept for 15% fringe logic at borders)
 // kSparse = transitional surfaces: dirt, ash, mountain, slimy
 // kFull   = vegetated surfaces: grass, moss, forest floor, mud, tundra
@@ -128,26 +124,6 @@ struct FramePalette { uint8_t f[8]; int dominant; int n; };
             // Default kFull for any unknown code (future terrain types should be green).
             return VegDensity::kFull;
     }
-}
-
-// Bilinear-interpolated hash on a coarse grid → smooth spatial blobs.
-// Returns [0,1].  Used as secondary variation WITHIN terrain-type zones;
-// terrain type is still the primary gate.
-[[nodiscard]] float macroZone(float wx, float wy, float cellSize = 512.0f) noexcept
-{
-    const float gx = wx / cellSize;
-    const float gy = wy / cellSize;
-    const int cx = static_cast<int>(gx >= 0.0f ? gx : gx - 1.0f);
-    const int cy = static_cast<int>(gy >= 0.0f ? gy : gy - 1.0f);
-    float fx = gx - static_cast<float>(cx);
-    float fy = gy - static_cast<float>(cy);
-    fx = fx * fx * (3.0f - 2.0f * fx);
-    fy = fy * fy * (3.0f - 2.0f * fy);
-    const float h00 = hashf(static_cast<float>(cx    ), static_cast<float>(cy    ));
-    const float h10 = hashf(static_cast<float>(cx + 1), static_cast<float>(cy    ));
-    const float h01 = hashf(static_cast<float>(cx    ), static_cast<float>(cy + 1));
-    const float h11 = hashf(static_cast<float>(cx + 1), static_cast<float>(cy + 1));
-    return h00*(1-fx)*(1-fy) + h10*fx*(1-fy) + h01*(1-fx)*fy + h11*fx*fy;
 }
 
 } // anonymous namespace
@@ -313,42 +289,14 @@ void GameAdapters::Vegetation::missionLoaded(Terrain* land, MissionMap* gameMap)
                         if (instVdc == VegDensity::kHard) { ++instRejHard; continue; }
                     }
                 }
-                // VEG-CEMENT-1: hard surfaces (pads, runway, paved roads, bridges) are decided
-                // by the decal bake's sub-cell coverage, not by per-cell overlay codes.
-                // Normal cover thins smoothly with coverage; instances that lose the test on
-                // real hard surface may survive as sparse crack weeds (kWeed flag).
-                bool isWeed = false;
-                {
-                    const float cov = gos_terrain_indirect_HardSurfaceCoverage(instWx, instWy);
-                    if (cov > 0.0f) {
-                        const float hc = hashf(instWx * 53.7f + 17.0f, instWy * 91.3f + 3.0f);
-                        if (hc >= mc2::vegetation::coverToDensityMul(cov)) {
-                            // Lost the cover test: weed candidate.
-                            constexpr float kTap = 6.0f;
-                            const float gx = (gos_terrain_indirect_HardSurfaceCoverage(instWx + kTap, instWy) -
-                                              gos_terrain_indirect_HardSurfaceCoverage(instWx - kTap, instWy)) / (2.0f * kTap);
-                            const float gy = (gos_terrain_indirect_HardSurfaceCoverage(instWx, instWy + kTap) -
-                                              gos_terrain_indirect_HardSurfaceCoverage(instWx, instWy - kTap)) / (2.0f * kTap);
-                            const float grad = std::sqrt(gx * gx + gy * gy);
-                            // Distance to the nearest paving seam (tile boundary).
-                            const float tileWu = Terrain::worldUnitsPerVertex;
-                            const float sx = std::fabs(std::fmod(instWx, tileWu));
-                            const float sy = std::fabs(std::fmod(instWy, tileWu));
-                            const float seam = std::min(std::min(sx, tileWu - sx), std::min(sy, tileWu - sy));
-                            const float crack = mc2::vegetation::crackTerm(grad, seam);
-                            const float hw = hashf(instWy * 71.9f + 5.0f, instWx * 29.3f + 11.0f);
-                            if (hw < mc2::vegetation::weedKeepProbability(cov, crack)) {
-                                isWeed = true;
-                                ++diagWeeds;
-                            } else {
-                                ++instRejOverlay;   // hard-surface reject (replaces the per-cell overlay reject)
-                                continue;
-                            }
-                        } else if (cov > mc2::vegetation::kHardFalloffLo) {
-                            ++diagCoverKept;       // survived inside the falloff band
-                        }
-                    }
-                }
+                const auto hardSurface = mc2::vegetation::hardSurfacePlacement(
+                    instWx, instWy, Terrain::worldUnitsPerVertex,
+                    gos_terrain_indirect_HardSurfaceCoverage, hashf);
+                using enum mc2::vegetation::HardSurfacePlacement;
+                if (hardSurface == Reject) { ++instRejOverlay; continue; }
+                const bool isWeed = hardSurface == Weed;
+                if (isWeed) ++diagWeeds;
+                if (hardSurface == TransitionCover) ++diagCoverKept;
 
                 // Slope gate: getTerrainAngle() returns DEGREES.
                 // Hard limit 60°: cliff faces above this never get vegetation.

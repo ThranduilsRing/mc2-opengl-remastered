@@ -3,6 +3,7 @@
 #include "../../mclib/texture_assets.h"
 #include "mc2fmt.h"
 #include "texture_decode.h"
+#include <mdspan>
 
 namespace {
 struct MineVert { float pos[3]; float uv[2]; uint32_t layer; };
@@ -688,6 +689,7 @@ void BuildHardSurfaceField() {
             const int32_t b = static_cast<int32_t>(g_hs.texels.size() / (static_cast<size_t>(kHsRes) * kHsRes));
             g_hs.texels.resize(g_hs.texels.size() + static_cast<size_t>(kHsRes) * kHsRes, 0);
             uint8_t* blk = &g_hs.texels[static_cast<size_t>(b) * kHsRes * kHsRes];
+            const std::mdspan<uint8_t, std::extents<size_t, kHsRes, kHsRes>> coverage(blk);
             if (!alphaTile || !imgOk) {
                 // Pure cement (class 3), or an alpha tile whose source pixels are
                 // unavailable: full coverage (conservative -- no vegetation).
@@ -715,7 +717,7 @@ void BuildHardSurfaceField() {
                                 sum += img->pixels[(static_cast<size_t>(y) * W + x) * 4u + 3u];
                                 ++n;
                             }
-                        blk[r * kHsRes + c] = static_cast<uint8_t>(n ? (sum + n / 2) / n : 0);
+                        coverage[r, c] = static_cast<uint8_t>(n ? (sum + n / 2) / n : 0);
                     }
                 }
             }
