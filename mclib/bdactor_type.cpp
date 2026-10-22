@@ -219,11 +219,10 @@ void BldgAppearanceType::init (const char * fileName)
 				propMaterialSource = ov;
 				if (destroyed.present())
 				{
-					bldgDmgRenderShape = new TG_TypeMultiShape;
-					if (!importOverrideRenderShape(*ov, destroyed.sourceRelPath, bldgBaseName, "destroyed", bldgDmgRenderShape))
+					bldgDmgRenderShape = std::make_unique<TG_TypeMultiShape>();
+					if (!importOverrideRenderShape(*ov, destroyed.sourceRelPath, bldgBaseName, "destroyed", bldgDmgRenderShape.get()))
 					{
-						delete bldgDmgRenderShape;
-						bldgDmgRenderShape = nullptr;   // stock damage fallback
+						bldgDmgRenderShape.reset();   // stock damage fallback
 					}
 				}
 				mc2::fmt::print_err("[MODOVERRIDE] staticProp '{}': render override applied (condition={} destroyed={})\n",
@@ -422,7 +421,7 @@ void BldgAppearanceType::init (const char * fileName)
 	}
 	// Stock-derived override GLBs carry the stock lighting tags (COLOR_0), so the
 	// hot colours apply to them exactly as to the stock shapes.
-	for (TG_TypeMultiShape* rs : {bldgRenderShape, bldgDmgRenderShape})
+	for (TG_TypeMultiShape* rs : {bldgRenderShape, bldgDmgRenderShape.get()})
 		if (rs && propMaterialSource && !propMaterialSource->materials.empty())
 			rs->SetLightRGBs(hotPinkRGB, hotGreenRGB, hotYellowRGB);
 }
@@ -459,11 +458,7 @@ void BldgAppearanceType::destroy (void)
 		delete bldgRenderShape;
 		bldgRenderShape = nullptr;
 	}
-	if (bldgDmgRenderShape)
-	{
-		delete bldgDmgRenderShape;
-		bldgDmgRenderShape = nullptr;
-	}
+	bldgDmgRenderShape.reset();
     propMaterialSource = nullptr;
 
  	if (bldgDmgShape)

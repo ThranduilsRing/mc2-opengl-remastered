@@ -14,6 +14,7 @@
 //---------------------------------------------------------------------------
 // Include files
 #include <algorithm>
+#include <memory>
 #ifndef APPEAR_H
 #include"appear.h"
 #endif
@@ -59,7 +60,7 @@ class BldgAppearanceType : public AppearanceType
 		// Collision/damage NEVER read this; they read bldgShape[lod] directly.
 		TG_TypeMultiShapePtr		bldgRenderShape;
 		// Destroyed-state render override (the cooked "destroyed" chain); NULL = stock bldgDmgShape.
-		TG_TypeMultiShapePtr		bldgDmgRenderShape;
+		std::unique_ptr<TG_TypeMultiShape>	bldgDmgRenderShape;
         const ModelOverrideRecord* propMaterialSource = nullptr; // transient; registry owns it
 
 		TG_TypeMultiShapePtr		bldgDmgShape;
@@ -198,7 +199,7 @@ class BldgAppearanceType : public AppearanceType
 		// render accessor (it already reads bldgShape[lod] directly).
 		TG_TypeMultiShape* getBldgCollisionShape (long lod) { return bldgShape[lod]; }
 		// Destroyed render authority: the override's destroyed chain if cooked, else stock damage.
-		TG_TypeMultiShape* getBldgDmgRenderShape (void) { return bldgDmgRenderShape ? bldgDmgRenderShape : bldgDmgShape; }
+		TG_TypeMultiShape* getBldgDmgRenderShape (void) { return bldgDmgRenderShape ? bldgDmgRenderShape.get() : bldgDmgShape; }
 		// Registers every render shape (LODs + destroyed) with the GPU static-prop batcher, tagging
 		// override shapes with their material source. Idempotent; the per-instance init and the
 		// mission-load pre-pass both go through here.
