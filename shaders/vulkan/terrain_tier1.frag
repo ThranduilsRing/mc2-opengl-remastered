@@ -378,6 +378,7 @@ void main() {
     vec2 detailUv = v_worldPos.xy * (uT.detailTiling / MATV_WU_PER_TILE);
     vec2 detailUvDx = dFdx(detailUv), detailUvDy = dFdy(detailUv);
     vec2 cdWpDx = dFdx(v_worldPos.xy), cdWpDy = dFdy(v_worldPos.xy);   // CONCRETE-ROAD-PBR-DETAIL: uniform-flow derivatives
+    float cdRoad = 0.0;   // the cement atlas also carries the road and runway tiles: dark asphalt texels take the asphalt detail
     float cdW = 0.0;   // how much of this fragment is cement slab (alpha on transition edges), weights the detail
     vec3 base;
     float cookedBreakup = 0.5;
@@ -445,6 +446,7 @@ void main() {
                 cSampleUV = clamp(cTileUV, vec2(cInsetLod), vec2(1.0 - cInsetLod));   // CEMENT-MIP-EDGE-1
             vec2 cAtlasUV = (vec2(float(cCol), float(cRow)) + cSampleUV) / float(cGridSide);
             vec4 cementTexel = textureLod(u_cementAtlas, cAtlasUV, cLod);
+            cdRoad = 1.0 - smoothstep(0.20, 0.30, dot(cementTexel.rgb, vec3(0.299, 0.587, 0.114)));
             vec3 cementColor = cementTexel.rgb * vec3(uT.missionFlatR, uT.missionFlatG, uT.missionFlatB);  // CEMENT-NIGHT-LIGHT-1
             // CEMENT-ALPHA-LAND-1 (terrain_lod_chunk.frag:1009-1015): OWN_ALPHA transition.
             // Word bit23 => the atlas cell carries its own coverage in alpha; composite OVER base.
@@ -639,7 +641,7 @@ void main() {
         // normal and a roughness sheen on top of it.
         vec3 cdSpec = vec3(0.0);
         if (uT.concreteDetail != 0 && cdW > 0.0) {
-            MaterialDetail cd = cdEval(CD_LAYER_PAD, v_worldPos.xy, cdWpDx, cdWpDy);
+            MaterialDetail cd = cdEval(cdRoad > 0.5 ? CD_LAYER_ROAD : CD_LAYER_PAD, v_worldPos.xy, cdWpDx, cdWpDy);
             float cdDiff; vec3 cdSp;
             cdShade(cd, normalize(lightDir), uT.ambientDayGate, cdDiff, cdSp);
             baseColor *= mix(1.0, cd.ao, 0.9 * cdW);
