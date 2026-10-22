@@ -29,6 +29,7 @@ get_filename_component(MC2_WORKTREE_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../.." ABS
 
 add_executable(mc2_tests
     test_main.cpp           # owns DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
+    test_scoped_collision_shape.cpp
     test_hashing.cpp
     test_projection.cpp     # currently scope-stopped; placeholder skipped case
     test_argb_pack.cpp

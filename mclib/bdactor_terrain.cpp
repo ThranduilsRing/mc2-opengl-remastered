@@ -1,10 +1,31 @@
 // BldgAppearance / TreeAppearance: BldgAppearance terrain/move-map/line-of-sight marking and cell coverage.
 // Declared in the class headers; shared names in bdactor_internal.h.
 #include "bdactor_internal.h"
+#include "scoped_collision_shape.h"
+
+namespace {
+// Dense render-only overrides must never enter the stock cell-list algorithms.
+TG_MultiShapePtr stockCollisionInstance(BldgAppearanceType* type, long status, long animation)
+{
+	if (!type->bldgRenderShape)
+		return nullptr;
+	const bool damaged = status == OBJECT_STATUS_DESTROYED || status == OBJECT_STATUS_DISABLED;
+	auto* stock = damaged && type->bldgDmgShape
+		? type->bldgDmgShape : type->getBldgCollisionShape(0);
+	if (!stock)
+		return nullptr;
+	auto* instance = stock->CreateFrom();
+	if (animation != -1)
+		type->setAnimation(instance, animation);
+	return instance;
+}
+}
 
 inline constexpr float HEIGHT_THRESHOLD = 10.0f;
 
 long BldgAppearance::calcCellsCovered (glm::vec3& pos, short* cellList) {
+	mc2::ScopedCollisionShape collision(bldgShape, currentLOD, buildingPbrRenderActive,
+		stockCollisionInstance(appearType, status, bdAnimationState));
 
 	gosASSERT((Terrain::realVerticesMapSide * MAPCELL_DIM) == GameMap->width);
 	long numCoords = 0;
@@ -66,6 +87,8 @@ long BldgAppearance::calcCellsCovered (glm::vec3& pos, short* cellList) {
 
 void BldgAppearance::markTerrain (_ScenarioMapCellInfo* pInfo, int type, int counter)
 {
+	mc2::ScopedCollisionShape collision(bldgShape, currentLOD, buildingPbrRenderActive,
+		stockCollisionInstance(appearType, status, bdAnimationState));
 	if (appearType->spinMe)			//We are a marker
 		return;						//Do not mark impassable
 		
@@ -324,6 +347,8 @@ void BldgAppearance::markTerrain (_ScenarioMapCellInfo* pInfo, int type, int cou
 
 long BldgAppearance::markMoveMap (bool passable, long* lineOfSightRect, bool useHeight, short* cellList)
 {
+	mc2::ScopedCollisionShape collision(bldgShape, currentLOD, buildingPbrRenderActive,
+		stockCollisionInstance(appearType, status, bdAnimationState));
 	int minRow = 9999;
 	int maxRow = 0;
 	int minCol = 9999;
@@ -353,7 +378,9 @@ long BldgAppearance::markMoveMap (bool passable, long* lineOfSightRect, bool use
 				for (int j=0;j<tempBldgShape->GetNumVerticesInShape(i);j++) 
 				{
 					glm::vec3 vertexPos, worldPos;
-					vertexPos = tempBldgShape->GetShapeVertexInWorld(i,j,-rotation);
+					vertexPos = collision.active()
+						? tempBldgShape->GetShapeVertexInEditor(i,j,-rotation)
+						: tempBldgShape->GetShapeVertexInWorld(i,j,-rotation);
 					worldPos = position + vertexPos;
 	
 					int cellR, cellC;
@@ -391,7 +418,9 @@ long BldgAppearance::markMoveMap (bool passable, long* lineOfSightRect, bool use
 				for (int j=0;j<tempBldgShape->GetNumVerticesInShape(i);j++)
 				{
 					glm::vec3 vertexPos, worldPos;
-					vertexPos = tempBldgShape->GetShapeVertexInWorld(i,j,-rotation);
+					vertexPos = collision.active()
+						? tempBldgShape->GetShapeVertexInEditor(i,j,-rotation)
+						: tempBldgShape->GetShapeVertexInWorld(i,j,-rotation);
 					worldPos = position + vertexPos;
 	
 					int cellR, cellC;
@@ -444,6 +473,8 @@ long BldgAppearance::markMoveMap (bool passable, long* lineOfSightRect, bool use
 
 void BldgAppearance::markLOS (bool clearIt)
 {
+	mc2::ScopedCollisionShape collision(bldgShape, currentLOD, buildingPbrRenderActive,
+		stockCollisionInstance(appearType, status, bdAnimationState));
 	//MUST force building to HIGHEST LOD!!!  IMpassability data is only valid at this LOD!!
 	// Building will reset its LOD on next draw!!
 	TG_MultiShapePtr tempBldgShape = bldgShape;
@@ -507,6 +538,8 @@ void BldgAppearance::markLOS (bool clearIt)
 
 void BldgAppearance::calcAdjCell (long& row, long& col)
 {
+	mc2::ScopedCollisionShape collision(bldgShape, currentLOD, buildingPbrRenderActive,
+		stockCollisionInstance(appearType, status, bdAnimationState));
 	//MUST force building to HIGHEST LOD!!!  IMpassability data is only valid at this LOD!!
 	// Building will reset its LOD on next draw!!
 	if (currentLOD)
@@ -529,7 +562,9 @@ void BldgAppearance::calcAdjCell (long& row, long& col)
 		for (int j=0;j<bldgShape->GetNumVerticesInShape(i);j++)
 		{
 			glm::vec3 vertexPos, worldPos;
-			vertexPos = bldgShape->GetShapeVertexInWorld(i,j,-rotation);
+			vertexPos = collision.active()
+				? bldgShape->GetShapeVertexInEditor(i,j,-rotation)
+				: bldgShape->GetShapeVertexInWorld(i,j,-rotation);
 			worldPos = position + vertexPos;
 
 			{
