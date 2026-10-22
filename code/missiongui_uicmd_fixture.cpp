@@ -243,23 +243,24 @@ bool MissionInterfaceManager::uiCmdFixture(UiCmdCtx& c)
     }
 	if (line.compare(0, 6, "spawn ") == 0 || line.compare(0, 9, "teleport ") == 0) {
 		// GAMEPLAY-DRIVER-1 test-only fixtures (gated MC2_TEST_SPAWN=1).
-		//   spawn <clone|vehicle|infantry|objNum> <x> <y> [team] [variant]
+		//   spawn <clone|vehicle|infantry|objNum> <x> <y> [team] [variant] [pilotProfile]
 		//   teleport <partId> <x> <y>
 		const bool armed = mc2::gate::get<"MC2_TEST_SPAWN">();
 		if (!armed) {
 			result = "blocked"; note = "needs MC2_TEST_SPAWN=1";
 		}
 		else if (line.compare(0, 6, "spawn ") == 0) {
-			char kind[40] = {0}; float x = 0, y = 0; int team = -1, variant = 0;
-			const int nf = sscanf(line.c_str() + 6, "%39s %f %f %d %d",
-				kind, &x, &y, &team, &variant);
+			char kind[40] = {0}, pilotProfile[50] = {0}; float x = 0, y = 0; int team = -1, variant = 0;
+			const int nf = sscanf(line.c_str() + 6, "%39s %f %f %d %d %49s",
+				kind, &x, &y, &team, &variant, pilotProfile);
 			if (nf < 3) {
-				note = "spawn <clone|vehicle|infantry|objNum> <x> <y> [team] [variant]";
+				note = "spawn <clone|vehicle|infantry|objNum> <x> <y> [team] [variant] [pilotProfile]";
 			} else {
 				const long homeCmdr = Commander::home ? Commander::home->getId() : 0;
 				const long homeTeam = Team::home ? Team::home->getId() : 0;
 				MoverInitData data; memset(&data, 0, sizeof(data));
 				strcpy(data.pilotFileName, "pmw00080");
+				if (nf >= 6) mc2::fmt::to_buf(data.pilotFileName, "{}", pilotProfile);
 				strcpy(data.brainFileName, "pbrain");
 				data.controlDataType = 0;
 				data.rosterIndex = 255;

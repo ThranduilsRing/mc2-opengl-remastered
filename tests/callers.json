@@ -3785,7 +3785,7 @@
         },
         {
           "path": "scripts/run_battle_bench.py",
-          "line": 18,
+          "line": 19,
           "evidence": "import",
           "reference": "manifest_schema",
           "text": "import manifest_schema as ms"
@@ -4429,7 +4429,7 @@
         },
         {
           "path": "scripts/run_battle_bench.py",
-          "line": 19,
+          "line": 20,
           "evidence": "import",
           "reference": "run_visual_capture",
           "text": "import run_visual_capture as capture"

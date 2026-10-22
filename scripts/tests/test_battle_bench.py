@@ -92,3 +92,24 @@ def test_shader_edits_change_build_identity_and_preserve_workload_identity(tmp_p
     after = bench.content_identity(tmp_path)
     assert before["sha256"] == after["sha256"]
     assert before["shaders_sha256"] != after["shaders_sha256"]
+
+
+def test_first_seconds_tick_spikes_are_preserved(evidence):
+    evidence[1].append({"type": "tick", "frame": 2, "ms": 500})
+    report = summarize(evidence)
+    assert report["sim_tick"]["max_ms"] == 500
+    assert len(report["tick_spikes_over_1ms"]) == 2
+    assert report["warmup_sim_seconds"] == 0
+
+
+def test_scenario_uses_an_authored_mission_pilot(tmp_path):
+    scenario = json.loads(bench.SCENARIO.read_text(encoding="utf-8"))
+    channel = bench.prepare(tmp_path, scenario, "day")
+    assert "spawn clone -980 2350 0 0 pmp_dagger" in channel.read_text(encoding="utf-8")
+
+
+@pytest.mark.parametrize("sha,dirty", [("b" * 12, 0), ("a" * 12, 1)])
+def test_runtime_build_substitution_is_rejected(sha, dirty):
+    log = f"[BUILD_FINGERPRINT v1] sha={sha} dirty={dirty} branch=test built=2026-10-22 src=A:/test"
+    with pytest.raises(ValueError, match="runtime build mismatch"):
+        bench.verify_runtime(log, "a" * 40)

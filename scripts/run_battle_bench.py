@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import atexit
 import contextlib
 import hashlib
 import json
@@ -17,7 +18,7 @@ import time
 
 import manifest_schema as ms
 import run_visual_capture as capture
-from smoke_lib import host_lease, render_options_pin, runner
+from smoke_lib import deploy_lease, fingerprint, host_lease, render_options_pin, runner
 
 ROOT = Path(__file__).resolve().parents[1]
 SCENARIO = ROOT / "tests/visual/bookmarks/battle_bench_v1.json"
@@ -77,7 +78,7 @@ def prepare(directory, scenario, phase):
     for i in range(spawn["count"]):
         x = spawn["origin"][0] + i % spawn["columns"] * spawn["spacing"]
         y = spawn["origin"][1] + i // spawn["columns"] * spawn["spacing"]
-        commands.append(f"spawn clone {x} {y}")
+        commands.append(f"spawn clone {x} {y} 0 0 {spawn['pilot']}")
     commands += ["select all", "order powerup", "bench_attack", view_command(scenario["bookmarks"][0]), "list all"]
     channel.write_text("\n".join(commands) + "\n", encoding="utf-8")
     return channel
@@ -87,7 +88,8 @@ def environment(channel, width, height):
     declared = {"MC2_TEST_SPAWN": "1", "MC2_UI_COMMAND_FILE": str(channel),
                 "MC2_DETERMINISTIC_RNG": "1", "MC2_SMOKE_SEED": "0xC0FFEE", "MC2_RNG_SEED": "0xC0FFEE",
                 "MC2_VK_GPU_TIMESTAMPS": "1", "MC2_FPS_CAP": "0", "MC2_VSYNC": "0",
-                "MC2_WIDTH": str(width), "MC2_HEIGHT": str(height), "MC2_LAUNCHER_ENV_JSON": "0"}
+                "MC2_WIDTH": str(width), "MC2_HEIGHT": str(height), "MC2_LAUNCHER_ENV_JSON": "0",
+                "MC2_FORCE_ALL_VISIBLE": "0"}
     return declared
 
 
@@ -121,9 +123,7 @@ def summarize(directory, log, scenario):
     worlds = [r for r in rows if r["type"] == "world"]
     if not worlds:
         raise ValueError(f"no world evidence: {directory}")
-    # Warmup is bounded in simulation seconds, not an fps-dependent number of frames.
-    eligible = [r["frame"] for r in worlds if r["sim_s"] >= worlds[0]["sim_s"] + 2]
-    start = min(eligible) if eligible else worlds[0]["frame"]
+    start = next((r["frame"] for r in rows if r["type"] == "clock" and "frame" in r), worlds[0]["frame"])
     samples = [r for r in rows if r.get("frame", 0) >= start]
     gpu = [r for r in samples if r["type"] == "gpu"]
     if not gpu or any(r["recorded"] != r["valid"] for r in gpu):
@@ -159,18 +159,33 @@ def summarize(directory, log, scenario):
             "load_ms": times.get("mission_ready"), "world": {"movers_peak": max(r["movers"] for r in worlds),
                 "units_alive_peak": max(r["units_alive"] for r in worlds), "mechs_peak": max(r["mechs"] for r in worlds),
                 "new_destructions": destruction, "samples": worlds},
-            "views": [r for r in rows if r["type"] == "view"], "warmup_sim_seconds": 2,
+            "views": [r for r in rows if r["type"] == "view"], "warmup_sim_seconds": 0,
             "driver_receipts": [line for line in log.splitlines() if re.search(r"\[.*(?:DEVICE|VK_DEVICE|VULKAN).*\]|driver|deviceName", line, re.I)],
             "scope_note": "Vegetation is nested inside Vfx; inclusive Vfx must not be added to vegetation. GPU frame is the timestamp span, not a sum of passes.",
             "raw": str(directory / "frames.jsonl")}
 
 
-def perf_run(exe, directory, scenario, phase, size, duration):
+def verify_runtime(log, expected_sha):
+    observed = fingerprint.parse_fingerprint(log)
+    if not observed or observed["dirty"] or not expected_sha.startswith(observed["sha"]):
+        raise ValueError(f"runtime build mismatch: expected {expected_sha}, observed {observed}")
+
+
+def perf_run(exe, directory, scenario, phase, size, duration, expected_sha):
     channel = prepare(directory, scenario, phase)
     declared = environment(channel, *size)
     env, record = capture.build_capture_env(SCENARIO, directory, 0, 30, False, declared)
     for key in ("MC2_VISUAL_BOOKMARK_CAPTURE", "MC2_VISUAL_CAPTURE_DIR", "MC2_VISUAL_CAPTURE_FRAME", "MC2_VISUAL_SETTLE"):
         env.pop(key, None)
+        for section in record.values():
+            if isinstance(section, dict): section.pop(key, None)
+    actual = os.environ.copy()
+    for key in runner.unregistered_ambient(actual, env): actual.pop(key, None)
+    actual.update(runner.FORCED_ENV)
+    for key, value in runner.SOFT_ENV.items(): actual.setdefault(key, value)
+    for key in runner.POPPED_ENV: actual.pop(key, None)
+    actual.update(env)
+    record["effective"] = {k: v for k, v in actual.items() if k.startswith("MC2_")}
     done, errors = threading.Event(), []
     thread = threading.Thread(target=drive_views, args=(channel, scenario["bookmarks"], duration, done, errors), daemon=True)
     thread.start()
@@ -182,6 +197,7 @@ def perf_run(exe, directory, scenario, phase, size, duration):
         done.set(); thread.join(timeout=2)
     (directory / "engine.log").write_text(result.stdout_text, encoding="utf-8")
     (directory / "environment.json").write_text(json.dumps(record, indent=2), encoding="utf-8")
+    verify_runtime(result.stdout_text, expected_sha)
     if result.exit_code or result.killed_by_timeout or not result.verdict.passed or errors:
         raise RuntimeError(f"smoke failed: {directory}; exit={result.exit_code}; verdict={result.verdict}; camera={errors}")
     summary = summarize(directory, result.stdout_text, scenario)
@@ -190,13 +206,13 @@ def perf_run(exe, directory, scenario, phase, size, duration):
     return summary
 
 
-def capture_run(exe, directory, scenario, phase):
+def capture_run(exe, directory, scenario, phase, expected_sha):
     channel = prepare(directory, scenario, phase)
     declared = environment(channel, 1920, 1080)
     command = [str(ROOT / "scripts/run_visual_capture.py"), "--no-kill", "--show-window",
                "--exe", str(exe), "--mission", scenario["mission"], "--bookmarks", str(SCENARIO),
                "--out-dir", str(directory), "--trigger-frame", str(scenario["capture_frame"]),
-               "--settle", str(scenario["settle_frames"]), "--duration", "30"]
+               "--settle", str(scenario["settle_frames"]), "--duration", "120"]
     for key, value in declared.items():
         command += ["--env-declare", f"{key}={value}"]
     saved_argv = sys.argv
@@ -208,6 +224,7 @@ def capture_run(exe, directory, scenario, phase):
         sys.argv = saved_argv
     if code:
         raise RuntimeError(f"capture refused/failed: {directory}; see harness.log")
+    verify_runtime((directory / f"{scenario['mission']}_capture.log").read_text(encoding="utf-8", errors="replace"), expected_sha)
     return [str(directory / f"{scenario['mission']}_{m['name']}.png") for m in scenario["bookmarks"]]
 
 
@@ -263,6 +280,24 @@ def diff(before, after):
             print(f"| {scene} / {metric} | {a:.3f} | {b:.3f} | {(b/a-1)*100:+.1f}% |")
 
 
+def hold_install(install):
+    while True:
+        try:
+            deploy_lease.acquire_lease_waiting(str(install), "integrated battle benchmark", 30)
+            break
+        except deploy_lease.LeaseError:
+            print("[battle-bench] install lease still occupied; retrying", flush=True)
+    done = threading.Event()
+    def refresh():
+        while not done.wait(30): deploy_lease.touch_lease(str(install))
+    thread = threading.Thread(target=refresh, daemon=True)
+    thread.start()
+    def release():
+        done.set(); thread.join(timeout=2)
+        deploy_lease.release_lease(str(install))
+    atexit.register(release)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--exe", type=Path, default=DEFAULT_EXE)
@@ -276,6 +311,7 @@ def main():
     if args.runs < 1 or not 20 <= args.duration <= 30:
         parser.error("--runs >=1 and --duration 20..30 required")
     scenario = json.loads(SCENARIO.read_text(encoding="utf-8"))
+    hold_install(args.exe.parent.resolve())
     identity = ms.identity_block(generator="battle_bench", exe_path=args.exe, repo_root=ROOT, deploy_target=args.exe.parent)
     provenance = identity["binary_provenance"]
     if provenance.get("dirty") or not provenance.get("available") or not provenance.get("source_head_matches_binary"):
@@ -301,6 +337,8 @@ def main():
         except host_lease.HostLeaseBusy:
             print("[battle-bench] lease still occupied; retrying", flush=True)
             time.sleep(1)
+    if sha_file(args.exe) != identity["exe"]["sha256"]:
+        raise ValueError("install binary changed while waiting; redeploy the recorded build")
     images = []
     for i in range(1, args.runs + 1):
         run = {"index": i, "perf": {}, "captures": []}
@@ -308,8 +346,8 @@ def main():
             for name, size in (("4k", (3840, 2160)), ("1080p", (1920, 1080))):
                 key = f"{phase}-{name}"
                 print(f"[battle-bench] run {i}/{args.runs} {key}", flush=True)
-                run["perf"][key] = perf_run(args.exe.resolve(), out / f"run{i}" / key, scenario, phase, size, args.duration)
-            paths = capture_run(args.exe.resolve(), out / f"run{i}" / f"capture-{phase}", scenario, phase)
+                run["perf"][key] = perf_run(args.exe.resolve(), out / f"run{i}" / key, scenario, phase, size, args.duration, sha)
+            paths = capture_run(args.exe.resolve(), out / f"run{i}" / f"capture-{phase}", scenario, phase, sha)
             run["captures"] += paths
             if i == args.runs:
                 images += paths

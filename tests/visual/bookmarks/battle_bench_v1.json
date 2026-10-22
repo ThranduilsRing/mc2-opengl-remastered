@@ -4,7 +4,7 @@
   "_note": "Fortress center (-763,2652) comes from the mc2_24 object-cluster extraction documented in mc2_24_building_faces.json. Tactical, low-angle and maximum-altitude views frame the strike force spawning inside that base. The southern forest/concrete view adapts base_near in mc2_24_terrain_near.json. Framing and battle coverage require viewing the generated montage before accepting a baseline; coordinates alone are not visual proof.",
   "mission": "mc2_24",
   "seed": "0xC0FFEE",
-  "spawn": {"count": 48, "columns": 8, "origin": [-980, 2350], "spacing": 65},
+  "spawn": {"count": 48, "columns": 8, "origin": [-980, 2350], "spacing": 65, "pilot": "pmp_dagger"},
   "capture_frame": 240,
   "settle_frames": 30,
   "bookmarks": [
