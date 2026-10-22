@@ -1,5 +1,6 @@
 // Keep terrain queries on stock geometry without replacing the render instance.
 #pragma once
+#include <memory>
 
 namespace mc2 {
 template<class Shape>
@@ -16,9 +17,12 @@ public:
     }
     ~ScopedCollisionShape() {
         if (active_) {
-            if (instance_) {
-                instance_->ClearAnimation();
-                delete instance_;
+            {
+                // Legacy queries may replace the temporary instance. Adopt its
+                // final value at exit so replacement and cleanup have one owner.
+                std::unique_ptr<Shape> collision(instance_);
+                if (collision)
+                    collision->ClearAnimation();
             }
             instance_ = render_;
             lod_ = renderLod_;
