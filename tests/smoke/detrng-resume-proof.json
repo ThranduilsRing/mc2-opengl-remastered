@@ -265,9 +265,7 @@
       "claim": "Capture completed; no cross-build pixel-parity claim"
     }
   ],
-  "open": [
-    "mc2_16 order-liveness guard: both smoke wrappers exit 1. The committed baseline env enables MC2_FIXTURE_ORDER_LIVENESS without MC2_SOAK_AUTOWIN; ORDER_LIVENESS_SUMMARY is absent. Ordinary report rows and fingerprints pass; determinism and baseline comparisons pass. Stopped further runtime work under the user guard rule; baseline and guard unchanged."
-  ],
+  "open": [],
   "inherited_proofs": {
     "source": "E:/mc2-archive-2026-10/plans/detrng-handoff-2026-10-21.md",
     "tier1": "5/5 PASS at handoff tip; not rerun as a tier after the span-only API change",
@@ -290,5 +288,98 @@
       "sha256": "111f96c9024a732d3ca0e8a36854c6f0926f929024f77688a2cb6b71f7ad7912"
     }
   ],
-  "completed": false
+  "completed": true,
+  "liveness_recheck_2026_10_22": {
+    "tested_engine_commit": "2bbc6b135010f564478b40688111e8a5e74b41d1",
+    "fixture_commit": "edf34d49a",
+    "contract_fix_commits": [
+      "85a12740d",
+      "48bb96651"
+    ],
+    "install": "G:/mc2-installs/mc2-win64-detrng",
+    "determinism": {
+      "result": "PASS",
+      "baseline_changed": true,
+      "baseline_reason": "The prior baseline had no active fixture orders because autowin was absent. Keep all 1000 frames, the seed and install fingerprint; record active fixture digests from pair-cap5/a and verify with a fresh pair.",
+      "previous_chain": "381fe40d96777ed3",
+      "active_fixture_chain": "4f74f9fbdbb43dde",
+      "verdicts": [
+        "sim_determinism: PASS identical over 1121 sim frames (chain 43431128320490ae; runs had 1133 and 1121)",
+        "sim_determinism: baseline PASS first 1000 frames match the baseline chain 4f74f9fbdbb43dde in every digest"
+      ],
+      "log": "E:\\mc2-archive-2026-10\\proofs\\detrng-liveness-20261022\\verified-pair.log",
+      "artifacts": "E:\\mc2-archive-2026-10\\proofs\\detrng-liveness-20261022\\verified-pair",
+      "wrappers": [
+        {
+          "run": "a",
+          "result": "PASS",
+          "liveness_summary": "ORDER_LIVENESS_SUMMARY issued_move=5 moved=5 refused=0 stalled=0 verdict=PASS",
+          "manifest": "E:\\mc2-archive-2026-10\\proofs\\detrng-liveness-20261022\\verified-pair\\a\\manifest.json",
+          "report": "E:\\mc2-archive-2026-10\\proofs\\detrng-liveness-20261022\\verified-pair\\a\\report.md",
+          "engine_log": "E:\\mc2-archive-2026-10\\proofs\\detrng-liveness-20261022\\verified-pair\\a\\mc2_16.log"
+        },
+        {
+          "run": "b",
+          "result": "PASS",
+          "liveness_summary": "ORDER_LIVENESS_SUMMARY issued_move=5 moved=5 refused=0 stalled=0 verdict=PASS",
+          "manifest": "E:\\mc2-archive-2026-10\\proofs\\detrng-liveness-20261022\\verified-pair\\b\\manifest.json",
+          "report": "E:\\mc2-archive-2026-10\\proofs\\detrng-liveness-20261022\\verified-pair\\b\\report.md",
+          "engine_log": "E:\\mc2-archive-2026-10\\proofs\\detrng-liveness-20261022\\verified-pair\\b\\mc2_16.log"
+        }
+      ]
+    },
+    "contracts": {
+      "passed": 123,
+      "failed": 0,
+      "log": "E:\\mc2-archive-2026-10\\proofs\\detrng-liveness-20261022\\contracts-green.log"
+    },
+    "contract_history": {
+      "doc_links_and_ownership_attempts": [
+        "E:\\mc2-archive-2026-10\\proofs\\detrng-liveness-20261022\\contracts.log",
+        "E:\\mc2-archive-2026-10\\proofs\\detrng-liveness-20261022\\contracts-final.log"
+      ],
+      "regression_test_wiring_failures": "E:\\mc2-archive-2026-10\\proofs\\detrng-liveness-20261022\\contracts-test-wiring-failures.log",
+      "fix": "Documentation checker scans tracked docs; the new regression test uses console_child, has an execution owner and an explicit dynamic-caller declaration; caller inventory regenerated."
+    },
+    "units": {
+      "result": "PASS",
+      "doctest_cases_passed": 3362,
+      "production_seam_cases_passed": 37,
+      "negative_controls": "adapter and execution disconnection both PASS",
+      "log": "E:\\mc2-archive-2026-10\\proofs\\detrng-liveness-20261022\\unit-final.log"
+    },
+    "smoke_lite": {
+      "result": "PASS",
+      "log": "E:\\mc2-archive-2026-10\\proofs\\detrng-liveness-20261022\\smoke-lite.log",
+      "artifacts": "E:\\mc2-archive-2026-10\\proofs\\detrng-liveness-20261022\\smoke-lite"
+    },
+    "scratch": {
+      "unchanged": true,
+      "proof": "E:\\mc2-archive-2026-10\\proofs\\detrng-liveness-20261022\\scratch-preservation.json",
+      "handling": "Existing root mvh_scratch_* fixtures remain untracked; seam ran in an isolated external working directory."
+    },
+    "timing": "60-second pairs; fixture env pins MC2_SIM_SPEED=4, MC2_SOAK_WIN_AFTER_SEC=40, MC2_FPS_CAP=5, MC2_HOST_LEASE_EXCLUSIVE=1. Summary at 36 sim seconds before autowin at 40 sim seconds. Baseline retains all 1000 frames.",
+    "liveness_guard_changed": false,
+    "commands": {
+      "determinism": "py -3 tools/sim_determinism.py check mc2_16 --duration 60 --install G:/mc2-installs/mc2-win64-detrng --ref-commit 2bbc6b135010f564478b40688111e8a5e74b41d1 --out E:/mc2-archive-2026-10/proofs/detrng-liveness-20261022/verified-pair",
+      "contracts": "bash scripts/check-contracts.sh",
+      "units": "py -3 E:/mc2-archive-2026-10/proofs/detrng-liveness-20261022/run_unit_isolated.py (canonical build_contract_harnesses.main --run --unit; only seam executable cwd isolated)",
+      "smoke_lite": "MC2_HOST_LEASE_EXCLUSIVE=1 py -3 scripts/run_smoke.py --lite --keep-logs --exe G:/mc2-installs/mc2-win64-detrng/mc2.exe --ref-commit 2bbc6b135010f564478b40688111e8a5e74b41d1"
+    },
+    "attempts": [
+      "pair-initial: default 5s autowin ended too early",
+      "pair-window60: liveness PASS but early_exit and changed baseline prefix",
+      "pair-window175: determinism and baseline PASS, wrappers missing summary before deadline",
+      "pair-window167: determinism and baseline PASS, autowin early_exit",
+      "pair-final: first wrapper ended 34 frames before the liveness summary threshold",
+      "pair-final185: determinism and baseline PASS; liveness summary missing under host load",
+      "pair-cap30: insufficient sim progress under host load; active orders change baseline prefix",
+      "pair-exclusive: determinism and baseline PASS; first wrapper missed summary during a build burst",
+      "pair-4x: render cap 20 left the first wrapper below summary threshold",
+      "pair-4x21: first wrapper did not reach summary under host load",
+      "pair-cap5: active fixture baseline recording pair",
+      "verified-pair: fresh pair and both wrappers PASS after recording the active fixture baseline"
+    ],
+    "ready_for_merge": true
+  }
 }
