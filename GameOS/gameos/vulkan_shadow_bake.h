@@ -204,7 +204,7 @@ private:
     std::vector<float> liveTops_;
     std::vector<uint32_t> liveIdx_;
     bool incActive_ = false, heightsMoved_ = false, eventsSinceDrain_ = false;
-    uint64_t lastIncEpoch_ = 0, heightsGen_ = 1, incHeightsGen_[2] = {0, 0};
+    uint64_t lastIncEpoch_ = 0, incRecordedEpoch_ = ~0ull, heightsGen_ = 1, incHeightsGen_[2] = {0, 0};
     uint32_t incSubTiles_ = 0, incBatches_ = 0, eventsLogged_ = 0;
     double incMaxGpuMs_ = 0.0;
     uint32_t incInstanceCap_ = 0;
@@ -213,7 +213,7 @@ private:
     OwnedQueryPool incQueries_;
     VkDescriptorSet incComputeSet_[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE}, incWindowSet_[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE};
     // MC2_SHADOW_DIAG: the dirty-updated mask read back and compared with a fresh bake of the same state.
-    bool diagRequest_ = false, diagPending_ = false, diagForceFull_ = false;
+    bool diagRequest_ = false, diagPending_ = false, diagForceFull_ = false, diagSwept_ = false;
     uint64_t diagEpoch_ = 0;
     OwnedBuffer diagBuf_;
     std::vector<uint8_t> diagInc_;

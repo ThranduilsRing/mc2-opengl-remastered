@@ -1255,10 +1255,22 @@ std::optional<mc2shadow::Rect> ShadowBake::leavesFootprint(const std::vector<Gpu
 // own command buffer (no waitIdle, no second mask). True when it recorded a batch.
 bool ShadowBake::updateIncremental(VkCommandBuffer cb, uint64_t epoch, const ShadowBakeInputs& in) {
     if (!maskReady_ || layout_.texels == 0) return false;
+    // The island asks once per pass, several times a frame: one batch per frame (a second would rewrite descriptor sets this frame already bound).
+    if (incRecordedEpoch_ == epoch) return false;
     retireIncremental(epoch);
     mc2shadow::StaticCasterSet& set = mc2shadow::staticCasterSet();
     mc2terrain::TerrainFieldStore* store = gos_TerrainFieldStore();
     bool castersMoved = false;
+    // MC2_SHADOW_DIAG: one pass of every sub-tile through the dirty path, so the comparison below covers the whole map.
+    if (diagOn() && !diagSwept_) {
+        diagSwept_ = true;
+        const int n = layout_.texels / mc2shadow::kSubTileTexels;
+        std::vector<mc2shadow::SubTile> all;
+        for (int y = 0; y < n; ++y)
+            for (int x = 0; x < n; ++x) all.push_back({x, y});
+        dirty_.add(all);
+        eventsSinceDrain_ = true;
+    }
     if (set.hasEvents()) {
         for (const auto& ev : set.takeEvents()) {
             for (const auto* side : {&ev.before, &ev.after}) {
@@ -1303,7 +1315,7 @@ bool ShadowBake::updateIncremental(VkCommandBuffer cb, uint64_t epoch, const Sha
             if (eventsSinceDrain_ && diagOn()) diagRequest_ = true;
             eventsSinceDrain_ = false;
         }
-        if (diagRequest_ && !incActive_) return recordDiagReadback(cb, epoch);
+        if (diagRequest_ && !incActive_) { incRecordedEpoch_ = epoch; return recordDiagReadback(cb, epoch); }
         return false;
     }
     ZoneScopedN("ShadowBake.Dirty");
@@ -1402,6 +1414,7 @@ bool ShadowBake::updateIncremental(VkCommandBuffer cb, uint64_t epoch, const Sha
     incQueryUsed_[par] = true;
     incActive_ = true;
     lastIncEpoch_ = epoch;
+    incRecordedEpoch_ = epoch;
     incSubTiles_ += static_cast<uint32_t>(batch.size());
     ++incBatches_;
     return true;
