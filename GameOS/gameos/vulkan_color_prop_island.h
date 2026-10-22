@@ -45,7 +45,8 @@ void mc2_color_prop_island_end_frame(void);
 // geometry finalize until the next map load. Returns 0 before finalize. Lets a backend build its own buffers without a GL
 // readback; implemented by the static-prop batcher (gos_static_prop_batcher_finalize.cpp).
 int mc2_static_prop_geometry_cpu(const void** vbo, uint64_t* vboBytes, const void** ibo, uint64_t* iboBytes);
-// 1 when GL alpha-tests the shared-geometry packet `packet` this frame (its material's ALPHA_TEST bit or its texture's live alpha flag), else 0.
+// Baked packet coverage: 0 opaque, 1 stock core/fringe, 2 override hard cutout.
+// Both nonzero modes alpha-test; mode 2 writes surviving coverage into scene depth.
 int mc2_static_prop_packet_alpha_test(uint32_t packet);
 
 // Health accessor (mirrors mc2_render_backend_shadow_region_health).
