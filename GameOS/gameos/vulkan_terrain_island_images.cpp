@@ -765,6 +765,15 @@ bool ensure_dummy_concrete_detail(TerrainIsland* s) {
 }
 
 void import_concrete_detail(TerrainIsland* s) {
+    if (s->concreteDetailPending) {                      // the upload is asynchronous: until it lands the residency service hands out a placeholder view
+        auto& tx = mc2vk::getOrCreateEngineVulkanContext().textures();
+        if (!tx.ready(s->concreteDetailPending.get())) return;
+        s->concreteDetailTexture = std::move(s->concreteDetailPending);
+        s->concreteDetailReady = true;
+        write_descriptors(s);
+        vlog("CONCRETE-DETAIL: the pad + road detail array is resident and bound.");
+        return;
+    }
     if (s->concreteDetailTried) return;
     s->concreteDetailTried = true;                       // one attempt per run; a missing sidecar is the base game look
     static const char* const kFiles[2] = {"data/terrain_layers/concrete_detail_pad.ktx2", "data/terrain_layers/concrete_detail_road.ktx2"};
@@ -784,9 +793,7 @@ void import_concrete_detail(TerrainIsland* s) {
     }
     auto tex = mc2vk::getOrCreateEngineVulkanContext().textures().acquirePixels(uint32_t(w), uint32_t(h), VK_FORMAT_R8G8B8A8_UNORM, px.data(), px.size(), true, 2, true);
     if (tex) {
-        s->concreteDetailTexture = std::move(tex);
-        s->concreteDetailReady = true;
-        write_descriptors(s);
+        s->concreteDetailPending = std::move(tex);
         vlog("CONCRETE-DETAIL: imported pad + road detail array %dx%d x2 layers.", w, h);
     }
 }

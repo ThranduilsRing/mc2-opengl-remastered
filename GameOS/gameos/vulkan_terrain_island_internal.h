@@ -266,6 +266,7 @@ struct TerrainIsland : mc2vk::IslandState {
     mc2vk::OwnedSampler     concreteDetailSamp;
     bool          concreteDetailReady = false;
     bool          concreteDetailTried = false;
+    mc2vk::ResidentTextureRef concreteDetailPending;   // uploading; swapped in (and bound) only once the residency service reports it ready
 
     // Per-patch dynamic UBO (one 512B slot per LOD0 patch this frame; 512 is a multiple
     // of the 256B minUniformBufferOffsetAlignment — grew from 256 for the dynshadow mat4).
