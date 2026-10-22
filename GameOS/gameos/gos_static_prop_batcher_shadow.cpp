@@ -3,6 +3,7 @@
 #include "gos_static_prop_batcher_internal.h"
 #include "mc2fmt.h"
 #include "view_registry.h"
+#include "visual_tuning_profile.h"
 #include "../../RenderCore/FramePackets.h"
 
 void GpuStaticPropBatcher::setDebugAddrMode(int mode) { debugAddrMode_ = mode; }
@@ -247,21 +248,18 @@ extern "C" int mc2_color_prop_island_get_light_feed(Mc2ColorPropLightFeed* out) 
         out->lightDataCpu      = mc2::vkLights::getLightDataPtr();
         out->lightDataCpuBytes = mc2::vkLights::getLightDataBytes();
     }
-    // s_currentShSet: the live per-mission SH-L2 set (RenderCore::IblShRegistry),
-    // same table the GL static-prop VS uniform upload uses (u_iblSh[9]).
-    // IBL-SUN-ROTATE-1: routed through the SAME accessor as the two GL upload
-    // sites, so VK and the debug state dump see the rotated set when the gate
-    // is on and cannot silently disagree with GL. Gate OFF -> identical bytes.
-    std::memcpy(out->iblSh, iblShCoeffsForUpload(), sizeof(out->iblSh));
-    // The StaticPropIblSh option (default on). Mirrors the GL per-frame upload rule
-    // exactly: on -> g_iblShStrength; off -> 0.0.
-    out->iblShStrength = iblShStrengthNightScaled();
+    // The L1 record owns day/night coefficients; night strength is already resolved there.
+    const auto& environment = visualTuning_environment();
+    for (size_t i=0; i<9; ++i)
+        std::copy_n(environment.sky.diffuseSh[i].data(),3,out->iblSh[i]);
+    // Retain the existing option and profile strength, applied once.
+    out->iblShStrength = iblShEnabled() ? g_iblShStrength : 0.0f;
     bool isNight = false;
     float nightFactor = 0.0f;
     gos_GetNightState(&isNight, &nightFactor);
     out->isNight      = isNight ? 1 : 0;
     out->nightFactor  = nightFactor;
-    out->ambientV1Strength = staticPropAmbientV1Enabled() ? 1.0f : 0.0f;
+    out->ambientV1Strength = 0.0f; // ABI slot retained; the duplicate fill is retired.
     // The GL upload zeroes the strength when the view-uniform block is off; the island always has the eye position.
     out->pbrV1Strength = pbrV1Enabled() ? g_pbrV1Strength : 0.0f;
     out->pbrV1RoughnessOverride = g_pbrV1RoughnessOverrideEnabled ? g_pbrV1RoughnessOverrideValue : -1.0f;

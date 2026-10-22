@@ -33,6 +33,7 @@ struct MechFrameUBO {
     float   poolF[4];           // @vec4 moverDim, moverScale, objScale, -
     int32_t poolI[4];           // @ivec4 numPoolLights, soft, moverMax, compress
     int32_t miscI[4];           // @ivec4 specDebugMask, -, -, -
+    float   environmentAmbient[4]; // @vec4 mission sky RGB; ground is half the sky
 };
 
 #include "GpuMechFrameUBO.layout.gen.h"

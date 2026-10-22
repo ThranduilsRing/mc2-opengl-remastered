@@ -39,6 +39,8 @@ struct MissionEnvironment {
         std::string shConvention = "legacy-generated-Y-up";
         std::string orientation = "legacy-sun-aligned";
         std::array<std::array<float, 3>, 9> diffuseSh{};
+        std::array<float, 3> hemisphereSky{};
+        std::array<float, 3> hemisphereGround{};
     } sky;
     struct Output {
         float exposureMultiplier = 1;

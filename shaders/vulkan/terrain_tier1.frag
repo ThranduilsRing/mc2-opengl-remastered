@@ -632,7 +632,6 @@ void main() {
         // Shadow compose — mirrors terrain_lod_chunk.frag:896-907 EXACTLY:
         //   staticS = calcShadow(...16);  dynS = calcDynamicShadow(...8);
         //   shadow  = min(staticS, dynS);
-        //   shadow  = mix(shadow, dynS, pureConcrete);   // concrete: dyn only, static dropped
         // GL callers pass shadowN = flat-up (0,0,1), NOT the perturbed N. computeBakedShadow
         // is a VERBATIM match of the legacy calcDynamicShadow body (adaptiveScale 2.4->0.8,
         // mix(0.4,1.0,shadow)); the GL static calcShadow uses the same PCF core here too.
@@ -656,7 +655,6 @@ void main() {
             dynS = terrainDynamicShadow(v_worldPos, shadowN, shSun);
         }
         float shadow = min(staticS, dynS);
-        shadow = mix(shadow, dynS, pureConcrete ? 1.0 : 0.0);  // concrete: dynamic only
         lit = baseColor * normalLight * shadow;
 
         // VK-PARITY-TERRAIN-2: NIGHT-LIGHT-POOLS-1..4 / LIGHT-CLUSTER-PERF-1 /
@@ -678,21 +676,7 @@ void main() {
         if (dot(padGlow, padGlow) > 0.0 && uT.useCement != 0)
             lit += padGlow * tlp_padGlowMask(v_worldPos.xy, uT.halfMap, uT.mapSide, uT.padGlowSpill);
 
-        // VK-PARITY-TERRAIN-1: TERRAIN-AMBIENT-FLOOR-2, verbatim from
-        // terrain_lod_chunk.frag:2267-2277. baseColor == base here (VK has no material
-        // tint); flatLitShare == pureConcrete at stock u_cementLit=0 (the GL expression
-        // cementLightBlend*(1-u_cementLit)). Floor/gate come from the same C++ producer.
-        if (uT.ambientFloor > 0.0 && uT.ambientDayGate > 0.0) {
-            float skyF   = N.z * 0.5 + 0.5;
-            vec3  ambSky = vec3(0.55, 0.62, 0.75);
-            vec3  ambGnd = vec3(0.34, 0.30, 0.24);
-            vec3  ambCol = mix(ambGnd, ambSky, skyF);
-            float ambShadow = mix(0.55, 1.0, shadow);
-            float flatLitShare = pureConcrete ? 1.0 : 0.0;
-            vec3  ambTerm   = baseColor * ambCol * uT.ambientFloor * ambShadow
-                            * uT.ambientDayGate * (1.0 - flatLitShare);
-            lit += ambTerm;
-        }
+        // The burnin already contains mission ambient; no second ambient floor.
 
         // MOVER-CONTACT-SHADOW-1 (terrain_lod_chunk.frag:2287-2288): contact-AO on the
         // fully composited lighting. moverContact==0 unless MC2_MOVER_CONTACT_SHADOW>0.

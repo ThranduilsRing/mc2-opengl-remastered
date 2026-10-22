@@ -121,6 +121,17 @@ TEST_CASE("MissionEnvironment/real loader resets renderer state on mission and m
     CHECK(exposure==2.0f); CHECK(ambient==0.8f); CHECK(grass[0]==-0.5f);
     RenderCore::LegacyMissionLighting lighting; lighting.skyNumber=14; lighting.night=true;
     visualTuning_setMissionLighting(lighting);
+    CHECK(visualTuning_environment().sky.shIdentity=="mission-ambient-night");
+    lighting.ambientColor={0.24f,0.20f,0.16f};
+    visualTuning_setMissionLighting(lighting);
+    const auto& nightSky=visualTuning_environment().sky;
+    CHECK(nightSky.hemisphereSky[0]==doctest::Approx(0.06f));
+    CHECK(nightSky.hemisphereGround[0]==doctest::Approx(0.03f));
+    for (size_t c=0;c<3;++c) {
+        CHECK(0.886227f*nightSky.diffuseSh[0][c]+2.0f*0.511664f*nightSky.diffuseSh[1][c]
+            ==doctest::Approx(nightSky.hemisphereSky[c]));
+        for (size_t i=2;i<9;++i) CHECK(nightSky.diffuseSh[i][c]==0);
+    }
     file.write(R"({"defaults":{"exposure":1.5}})");
     visualTuning_applyProfile("also-not-authored");
     CHECK(exposure==1.5f); CHECK(ambient==0.15f); CHECK(grass[0]==-0.02f);

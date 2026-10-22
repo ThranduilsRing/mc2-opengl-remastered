@@ -103,14 +103,15 @@ Json environmentDocument(const Environment& env) {
             {"authoredPitch",l.authoredPitch}, {"night",l.night}, {"nightFactor",l.nightFactor},
             {"daylightLevel",l.daylightLevel}, {"skyNumber",l.skyNumber}}},
         {"sky",{{"asset",env.sky.asset}, {"provider",env.sky.provider}, {"shIdentity",env.sky.shIdentity},
-            {"shConvention",env.sky.shConvention}, {"orientation",env.sky.orientation}, {"diffuseSh",env.sky.diffuseSh}}},
+            {"shConvention",env.sky.shConvention}, {"orientation",env.sky.orientation}, {"diffuseSh",env.sky.diffuseSh},
+            {"hemisphereSky",env.sky.hemisphereSky}, {"hemisphereGround",env.sky.hemisphereGround}}},
         {"output",output}, {"atmosphere",env.atmosphere}, {"localLights",env.localLights},
         {"clouds",env.clouds}, {"cacheStatus",env.cacheStatus}, {"legacyTuning",env.legacyTuning},
         {"providers",env.providers}};
 }
 
 void finish(Environment& env) {
-    const auto rgb = [&](const char* prefix) {
+    const auto rgb = [&](std::string_view prefix) {
         const std::string key(prefix);
         return std::array<float,3>{env.legacyTuning.at(key+"R"),
             env.legacyTuning.at(key+"G"),env.legacyTuning.at(key+"B")};
@@ -129,6 +130,19 @@ void finish(Environment& env) {
     env.sky.shIdentity = sh.name;
     for (size_t i=0; i<9; ++i)
         std::copy_n(sh.coeffs[i],3,env.sky.diffuseSh[i].begin());
+    // Weak mission-colored sky at night, never the daylight HDRI coefficients.
+    const float night = env.lighting.night ? 1.0f : std::clamp(env.lighting.nightFactor,0.0f,1.0f);
+    for (size_t c=0; c<3; ++c) {
+        const float ambient = env.lighting.ambientColor[c];
+        env.sky.hemisphereSky[c] = ambient * (1.0f - 0.75f*night);
+        env.sky.hemisphereGround[c] = env.sky.hemisphereSky[c]*0.5f;
+        for (size_t i=0; i<9; ++i) {
+            const float nightSh = i==0 ? ambient*0.25f*0.75f/0.886227f
+                : i==1 ? ambient*0.25f*0.25f/(2.0f*0.511664f) : 0.0f;
+            env.sky.diffuseSh[i][c] = env.sky.diffuseSh[i][c]*(1.0f-night) + nightSh*night;
+        }
+    }
+    if (night > 0) env.sky.shIdentity = "mission-ambient-night";
     // FNV-1a over canonical JSON, never struct padding or addresses. No bake cache yet.
     uint64_t hash = 14695981039346656037ull;
     auto values = environmentDocument(env);

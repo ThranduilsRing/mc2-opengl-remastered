@@ -342,3 +342,15 @@ land in the same `TG_HWLightsData` table via `addLightDataStructure`.
   Where they say UNKNOWN, that is literal.
 - **This lane changed no pixels.** It produces a map, a guard and a
   recommendation. Nothing here is visible on a default launch.
+# R2 update, 2026-10-22
+
+INTENTIONAL: native props use the mission environment SH once, with baked vertex
+emission and the existing clamp retained. ObjectLights ambient and fixed prop
+hemispheres no longer stack. Native mechs use a mission-colored hemisphere in
+vertex lighting; both the constant vertex floor and fragment hemisphere are
+removed. The shared light kernel's MC2_ENVIRONMENT_AMBIENT compile policy omits
+ObjectLights ambient for that receiver. Legacy callers keep their existing policy.
+Terrain burnin already contains ambient; its extra cool floor is removed.
+Night SH is an analytic hemisphere from mission ambient at quarter strength,
+not the DaySkyHDRI coefficients. The census now pins zero fixed fill colors;
+its remaining scalar-floor witness is water's unchanged SKY_AMBIENT.

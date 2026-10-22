@@ -247,29 +247,38 @@ def scan(verbose_sink=None):
 # PINNED BASELINE -- the deliberate current state.
 # Each entry was read from the shader / C++ reader itself, not from docs.
 # ---------------------------------------------------------------------------
-BASELINE = {'ambient_floor_scalar': [('shaders/vulkan/mech_tier1.vert', 'kAmbientFloor', '0.35'),
-                          ('shaders/vulkan/water_geom.frag', 'SKY_AMBIENT', '0.18')],
- 'ambient_fill_vec3': [('shaders/vulkan/color_prop_tier1.vert', 'kAmbientV1Ground', '0.10,0.09,0.07'),
-                       ('shaders/vulkan/color_prop_tier1.vert', 'kAmbientV1Sky', '0.20,0.22,0.28'),
-                       ('shaders/vulkan/color_prop_tier1.vert', 'kAmbientGround', '0.14,0.13,0.11'),
-                       ('shaders/vulkan/color_prop_tier1.vert', 'kAmbientSky', '0.00,0.02,0.08'),
-                       ('shaders/vulkan/terrain_tier1.frag', 'ambGnd', '0.34,0.30,0.24'),
-                       ('shaders/vulkan/terrain_tier1.frag', 'ambSky', '0.55,0.62,0.75')],
- 'inline_light_floor': [('shaders/vulkan/vfx_particle.frag', 'add:NdotL', '0.60+0.38'),
+BASELINE = {'ambient_floor_scalar': [('shaders/vulkan/water_geom.frag', 'SKY_AMBIENT', '0.18')],
+ 'ambient_fill_vec3': [],
+ 'inline_light_floor': [('shaders/include/shadow.hglsl', 'mix:shadow', '0.4->1.0'),
                         ('shaders/include/shadow.hglsl', 'mix:shadow', '0.4->1.0'),
-                        ('shaders/include/shadow.hglsl', 'mix:shadow', '0.4->1.0'),
-                        ('shaders/vulkan/include/lighting_shadow_vk.glsl', 'mix:shadow', '0.4->1.0'),
-                        ('shaders/vulkan/include/lighting_shadow_vk.glsl', 'mix:shadow', '0.4->1.0'),
-                        ('shaders/vulkan/include/lighting_shadow_vk.glsl', 'mix:shadow', '0.4->1.0'),
+                        ('shaders/vulkan/include/lighting_shadow_vk.glsl',
+                         'mix:shadow',
+                         '0.4->1.0'),
+                        ('shaders/vulkan/include/lighting_shadow_vk.glsl',
+                         'mix:shadow',
+                         '0.4->1.0'),
+                        ('shaders/vulkan/include/lighting_shadow_vk.glsl',
+                         'mix:shadow',
+                         '0.4->1.0'),
                         ('shaders/vulkan/screen_shadow_csm.frag', 'mix:shadow', '0.4->1.0'),
                         ('shaders/vulkan/screen_shadow_static.frag', 'mix:shadow', '0.4->1.0'),
-                        ('shaders/vulkan/terrain_tier1.frag', 'mix:shadow', '0.55->1.0')],
- 'light_type_dispatch': [('shaders/include/lighting.hglsl',
-                          ('AMBIENT', 'INFINITE', 'INFINITEWITHFALLOFF', 'POINT', 'SPOT', 'TERRAIN')),
+                        ('shaders/vulkan/vfx_particle.frag', 'add:NdotL', '0.60+0.38')],
+ 'light_type_dispatch': (('shaders/include/lighting.hglsl',
+                          ('AMBIENT',
+                           'INFINITE',
+                           'INFINITEWITHFALLOFF',
+                           'POINT',
+                           'SPOT',
+                           'TERRAIN')),
                          ('shaders/vulkan/color_prop_tier1.vert',
                           ('AMBIENT', 'INFINITE', 'INFINITEWITHFALLOFF')),
                          ('shaders/vulkan/mech_tier1.vert',
-                          ('AMBIENT', 'INFINITE', 'INFINITEWITHFALLOFF', 'POINT', 'SPOT', 'TERRAIN'))],
+                          ('AMBIENT',
+                           'INFINITE',
+                           'INFINITEWITHFALLOFF',
+                           'POINT',
+                           'SPOT',
+                           'TERRAIN'))),
  'calc_light_definition': ['shaders/include/lighting.hglsl', 'shaders/vulkan/mech_tier1.vert'],
  'calc_light_callers': ['shaders/include/lighting.hglsl', 'shaders/vulkan/mech_tier1.vert'],
  'native_zero_light_returns_base': ['shaders/vulkan/mech_tier1.vert'],
@@ -283,9 +292,9 @@ BASELINE = {'ambient_floor_scalar': [('shaders/vulkan/mech_tier1.vert', 'kAmbien
 # true if the scanner is actually working. They fail exit 2 (broken check),
 # distinct from exit 1 (real divergence), so the two are never confused.
 # ---------------------------------------------------------------------------
-WITNESS_DECOY_FILE = "shaders/vulkan/mech_tier1.vert"
+WITNESS_DECOY_FILE = "shaders/vulkan/water_geom.frag"
 WITNESS_DECOY_EXPECT = 1   # One actual native ambient-floor declaration.
-MIN_NONEMPTY = ("ambient_floor_scalar", "ambient_fill_vec3", "inline_light_floor",
+MIN_NONEMPTY = ("ambient_floor_scalar", "inline_light_floor",
                 "calc_light_definition", "calc_light_callers",
                 "native_zero_light_returns_base", "cpp_floor_gate_readers")
 
@@ -361,7 +370,7 @@ def main():
 
     failures = []
     for key in sorted(BASELINE):
-        if not BASELINE[key]:
+        if not BASELINE[key] and key != "ambient_fill_vec3":
             continue   # category pinned as "observe only"
         want, got = norm(BASELINE[key]), norm(live.get(key, ()))
         if want != got:

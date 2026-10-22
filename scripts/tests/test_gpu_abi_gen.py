@@ -348,7 +348,7 @@ def test_ivec4_annotation_needs_int32_quad():
 
 @pytest.mark.parametrize("header,size,block", [
     ("GpuColorFrameUBO.h", 320, "ColorFrameUBO"),   # 256 until the night state, the ambient fill strength, the specular strength, the eye position and the prop light-pool feed joined the block
-    ("GpuMechFrameUBO.h", 208, "MechFrameUBO"),
+    ("GpuMechFrameUBO.h", 224, "MechFrameUBO"),  # R2 mission ambient replaces stacked fills
     ("GpuLegacyFrameUBO.h", 80, "LegacyFrameUBO"),
 ])
 def test_vk_frame_ubos_are_registered_with_their_historical_sizes(header, size, block):
