@@ -11,14 +11,8 @@ namespace {
 constexpr uint32_t kMagic = 0x314D5354;   // TSM1
 constexpr size_t kHeaderBytes = 48;
 
-void put(std::vector<uint8_t>& bytes, uint64_t word, unsigned count) {
-    for (unsigned i = 0; i < count; ++i) bytes.push_back(static_cast<uint8_t>(word >> (8 * i)));
-}
-uint64_t get(std::span<const uint8_t> bytes, size_t offset, unsigned count) {
-    uint64_t word = 0;
-    for (unsigned i = 0; i < count; ++i) word |= uint64_t(bytes[offset + i]) << (8 * i);
-    return word;
-}
+using mc2cache::putLE;
+using mc2cache::getLE;
 // Integrity only (a torn or flipped file is a miss), eight bytes a step: a byte-wise FNV over a 67 MB chain cost more than the read.
 uint64_t payloadHash(std::span<const uint8_t> bytes) {
     uint64_t h = 14695981039346656037ull ^ bytes.size();
@@ -54,25 +48,25 @@ std::vector<uint8_t> encodeShadowMaskAsset(const ShadowMaskAsset& asset) {
     if (!validShape(asset.texels, asset.mips) || asset.key == 0 || asset.blocks.size() != bc4ChainBytes(asset.texels, asset.mips)) return {};
     std::vector<uint8_t> bytes;
     bytes.reserve(kHeaderBytes + asset.blocks.size());
-    put(bytes, kMagic, 4); put(bytes, ShadowMaskAsset::kSchema, 4); put(bytes, ShadowMaskAsset::kEvaluator, 4);
-    put(bytes, asset.texels, 4); put(bytes, asset.mips, 4); put(bytes, 0, 4);
-    put(bytes, asset.key, 8); put(bytes, payloadHash(asset.blocks), 8); put(bytes, asset.blocks.size(), 8);
+    putLE(bytes, kMagic, 4); putLE(bytes, ShadowMaskAsset::kSchema, 4); putLE(bytes, ShadowMaskAsset::kEvaluator, 4);
+    putLE(bytes, asset.texels, 4); putLE(bytes, asset.mips, 4); putLE(bytes, 0, 4);
+    putLE(bytes, asset.key, 8); putLE(bytes, payloadHash(asset.blocks), 8); putLE(bytes, asset.blocks.size(), 8);
     bytes.insert(bytes.end(), asset.blocks.begin(), asset.blocks.end());
     return bytes;
 }
 
 std::optional<ShadowMaskAsset> decodeShadowMaskAsset(std::span<const uint8_t> bytes, uint64_t expectedKey) {
-    if (expectedKey == 0 || bytes.size() < kHeaderBytes || get(bytes, 0, 4) != kMagic || get(bytes, 4, 4) != ShadowMaskAsset::kSchema ||
-        get(bytes, 8, 4) != ShadowMaskAsset::kEvaluator || get(bytes, 24, 8) != expectedKey) return {};
+    if (expectedKey == 0 || bytes.size() < kHeaderBytes || getLE(bytes, 0, 4) != kMagic || getLE(bytes, 4, 4) != ShadowMaskAsset::kSchema ||
+        getLE(bytes, 8, 4) != ShadowMaskAsset::kEvaluator || getLE(bytes, 24, 8) != expectedKey) return {};
     ShadowMaskAsset a;
-    a.texels = static_cast<uint32_t>(get(bytes, 12, 4));
-    a.mips = static_cast<uint32_t>(get(bytes, 16, 4));
+    a.texels = static_cast<uint32_t>(getLE(bytes, 12, 4));
+    a.mips = static_cast<uint32_t>(getLE(bytes, 16, 4));
     a.key = expectedKey;
     if (!validShape(a.texels, a.mips)) return {};
     const uint64_t payload = bc4ChainBytes(a.texels, a.mips);
-    if (get(bytes, 40, 8) != payload || bytes.size() != kHeaderBytes + payload) return {};
+    if (getLE(bytes, 40, 8) != payload || bytes.size() != kHeaderBytes + payload) return {};
     const auto body = bytes.subspan(kHeaderBytes);
-    if (payloadHash(body) != get(bytes, 32, 8)) return {};
+    if (payloadHash(body) != getLE(bytes, 32, 8)) return {};
     a.blocks.assign(body.begin(), body.end());
     return a;
 }

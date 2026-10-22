@@ -107,6 +107,7 @@ private:
     void recordMaskToRead(VkCommandBuffer cb, bool readback);
     bool recordWarmUpload(VkCommandBuffer cb, const mc2shadow::ShadowMaskAsset& asset);
     void storeReadback();
+    std::vector<VkBufferImageCopy> chainRegions() const;
     void releaseTransients();
 
     VkDevice device_ = VK_NULL_HANDLE;

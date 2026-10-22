@@ -19,14 +19,8 @@ bool validSize(uint32_t w, uint32_t h) {
     return w > 0 && h > 0 && w <= SurfaceAsset::kMaxSide && h <= SurfaceAsset::kMaxSide;
 }
 
-void put(std::vector<uint8_t>& bytes, uint64_t word, unsigned count) {
-    for (unsigned i = 0; i < count; ++i) bytes.push_back(static_cast<uint8_t>(word >> (8 * i)));
-}
-uint64_t get(std::span<const uint8_t> bytes, size_t offset, unsigned count) {
-    uint64_t word = 0;
-    for (unsigned i = 0; i < count; ++i) word |= uint64_t(bytes[offset + i]) << (8 * i);
-    return word;
-}
+using mc2cache::putLE;
+using mc2cache::getLE;
 } // namespace
 
 uint64_t surfaceHash(std::span<const uint8_t> bytes, uint64_t seed) {
@@ -44,15 +38,15 @@ bool validSurfaceAsset(const SurfaceAsset& asset, uint64_t expectedSource) {
 }
 
 std::optional<SurfaceAsset> decodeSurfaceAsset(std::span<const uint8_t> bytes, uint64_t expectedSource) {
-    if (bytes.size() < kHeaderBytes || get(bytes, 0, 4) != kMagic ||
-        get(bytes, 4, 4) != SurfaceAsset::kSchema || get(bytes, 8, 4) != SurfaceAsset::kEvaluator ||
-        get(bytes, 20, 4) != SurfaceAsset::kLinear || get(bytes, 24, 8) != expectedSource || expectedSource == 0) return {};
-    const auto width = static_cast<uint32_t>(get(bytes, 12, 4));
-    const auto height = static_cast<uint32_t>(get(bytes, 16, 4));
+    if (bytes.size() < kHeaderBytes || getLE(bytes, 0, 4) != kMagic ||
+        getLE(bytes, 4, 4) != SurfaceAsset::kSchema || getLE(bytes, 8, 4) != SurfaceAsset::kEvaluator ||
+        getLE(bytes, 20, 4) != SurfaceAsset::kLinear || getLE(bytes, 24, 8) != expectedSource || expectedSource == 0) return {};
+    const auto width = static_cast<uint32_t>(getLE(bytes, 12, 4));
+    const auto height = static_cast<uint32_t>(getLE(bytes, 16, 4));
     if (!validSize(width, height)) return {};
     const uint64_t payloadBytes = uint64_t(width) * height * kPixelBytes;
-    if (get(bytes, 40, 8) != payloadBytes || bytes.size() != kHeaderBytes + payloadBytes ||
-        surfaceHash(bytes.subspan(kHeaderBytes)) != get(bytes, 32, 8)) return {};
+    if (getLE(bytes, 40, 8) != payloadBytes || bytes.size() != kHeaderBytes + payloadBytes ||
+        surfaceHash(bytes.subspan(kHeaderBytes)) != getLE(bytes, 32, 8)) return {};
     SurfaceAsset candidate;
     candidate.width = width; candidate.height = height; candidate.sourceHash = expectedSource;
     candidate.macroColor.resize(size_t(width) * height);
@@ -62,7 +56,7 @@ std::optional<SurfaceAsset> decodeSurfaceAsset(std::span<const uint8_t> bytes, u
         size_t offset = kHeaderBytes;
         for (auto& pixel : candidate.macroColor)
             for (float& channel : pixel) {
-                channel = std::bit_cast<float>(static_cast<uint32_t>(get(bytes, offset, 4)));
+                channel = std::bit_cast<float>(static_cast<uint32_t>(getLE(bytes, offset, 4)));
                 offset += 4;
             }
     }
@@ -74,15 +68,15 @@ std::vector<uint8_t> encodeSurfaceAsset(const SurfaceAsset& asset) {
     if (!validSurfaceAsset(asset, asset.sourceHash)) return {};
     std::vector<uint8_t> bytes;
     bytes.reserve(kHeaderBytes + asset.macroColor.size() * kPixelBytes);
-    put(bytes, kMagic, 4); put(bytes, SurfaceAsset::kSchema, 4); put(bytes, SurfaceAsset::kEvaluator, 4);
-    put(bytes, asset.width, 4); put(bytes, asset.height, 4); put(bytes, SurfaceAsset::kLinear, 4);
-    put(bytes, asset.sourceHash, 8); put(bytes, 0, 8); put(bytes, asset.macroColor.size() * kPixelBytes, 8);
+    putLE(bytes, kMagic, 4); putLE(bytes, SurfaceAsset::kSchema, 4); putLE(bytes, SurfaceAsset::kEvaluator, 4);
+    putLE(bytes, asset.width, 4); putLE(bytes, asset.height, 4); putLE(bytes, SurfaceAsset::kLinear, 4);
+    putLE(bytes, asset.sourceHash, 8); putLE(bytes, 0, 8); putLE(bytes, asset.macroColor.size() * kPixelBytes, 8);
     if constexpr (std::endian::native == std::endian::little) {
         bytes.resize(kHeaderBytes + asset.macroColor.size() * kPixelBytes);
         std::memcpy(bytes.data() + kHeaderBytes, asset.macroColor.data(), asset.macroColor.size() * kPixelBytes);
     } else {
         for (const auto& pixel : asset.macroColor)
-            for (float channel : pixel) put(bytes, std::bit_cast<uint32_t>(channel), 4);
+            for (float channel : pixel) putLE(bytes, std::bit_cast<uint32_t>(channel), 4);
     }
     const uint64_t hash = surfaceHash(std::span<const uint8_t>(bytes).subspan(kHeaderBytes));
     for (unsigned i = 0; i < 8; ++i) bytes[32 + i] = static_cast<uint8_t>(hash >> (8 * i));

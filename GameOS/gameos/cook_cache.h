@@ -16,6 +16,16 @@
 
 namespace mc2cache {
 
+// Little-endian header fields of a cooked file (no native struct layout on disk).
+inline void putLE(std::vector<uint8_t>& bytes, uint64_t word, unsigned count) {
+    for (unsigned i = 0; i < count; ++i) bytes.push_back(static_cast<uint8_t>(word >> (8 * i)));
+}
+inline uint64_t getLE(std::span<const uint8_t> bytes, size_t offset, unsigned count) {
+    uint64_t word = 0;
+    for (unsigned i = 0; i < count; ++i) word |= uint64_t(bytes[offset + i]) << (8 * i);
+    return word;
+}
+
 struct CacheKind {
     std::string_view prefix;   // e.g. "macro-", "shadow-"
     std::string_view ext;      // e.g. ".tsf", ".tsm"

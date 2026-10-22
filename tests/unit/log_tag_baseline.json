@@ -7535,8 +7535,28 @@
    "ver": -1,
    "stream": "stderr",
    "keys": [
+    "cpu_ms"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SHADOW_BAKE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
     "generation",
     "casters"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SHADOW_BAKE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "key",
+    "mb",
+    "ms"
    ],
    "count": 1
   },
@@ -7576,6 +7596,17 @@
    "keys": [
     "resident_mb",
     "transient_peak_mb"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SHADOW_BAKE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "upload",
+    "object_map",
+    "cpu_ms"
    ],
    "count": 1
   },

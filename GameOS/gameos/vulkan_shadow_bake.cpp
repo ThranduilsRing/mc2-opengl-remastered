@@ -1060,27 +1060,7 @@ void ShadowBake::recordTileEncode(VkCommandBuffer cb, int tx, int ty) {
 
 // The mask levels below the tile grid: the top image's mips (from the tiles' 4x4 levels), encoded and copied to mask levels kTileMips.. .
 void ShadowBake::recordTopLevels(VkCommandBuffer cb) {
-    for (uint32_t k = 1; k < topMips_; ++k) {
-        VkImageMemoryBarrier toSrc = imageBarrier(topR8_.get(), VK_IMAGE_ASPECT_COLOR_BIT, k - 1, 1, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                                                  VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_TRANSFER_READ_BIT);
-        vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &toSrc);
-        const int32_t from = static_cast<int32_t>((std::max)(topSide_ >> (k - 1), 1u)), to = static_cast<int32_t>((std::max)(topSide_ >> k, 1u));
-        VkImageBlit blit{};
-        blit.srcSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, k - 1, 0, 1};
-        blit.srcOffsets[1] = {from, from, 1};
-        blit.dstSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, k, 0, 1};
-        blit.dstOffsets[1] = {to, to, 1};
-        vkCmdBlitImage(cb, topR8_.get(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, topR8_.get(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &blit, VK_FILTER_LINEAR);
-    }
-    VkImageMemoryBarrier toRead[2];
-    uint32_t n = 0;
-    if (topMips_ > 1)
-        toRead[n++] = imageBarrier(topR8_.get(), VK_IMAGE_ASPECT_COLOR_BIT, 0, topMips_ - 1, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                                   VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_ACCESS_TRANSFER_READ_BIT, VK_ACCESS_SHADER_READ_BIT);
-    toRead[n++] = imageBarrier(topR8_.get(), VK_IMAGE_ASPECT_COLOR_BIT, topMips_ - 1, 1, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                               VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT);
-    vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, 0, nullptr, n, toRead);
-    topInitialized_ = true;
+    recordTopLevelsMipsOnly(cb);
     if (topMips_ <= 1) return;
     for (uint32_t k = 1; k < topMips_; ++k) encodeLevel(cb, bc4TopSet_, kTileMips + k, (std::max)(topSide_ >> k, 1u));
     cmdBarrier(cb, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_WRITE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_READ_BIT);
@@ -1096,6 +1076,21 @@ void ShadowBake::recordTopLevels(VkCommandBuffer cb) {
     vkCmdCopyBufferToImage(cb, blockStaging_.get(), maskImage_.get(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, static_cast<uint32_t>(lv.size()), lv.data());
 }
 
+// The BC4 chain's levels as consecutive buffer regions (the cooked asset's layout).
+std::vector<VkBufferImageCopy> ShadowBake::chainRegions() const {
+    std::vector<VkBufferImageCopy> lv(maskMips_);
+    VkDeviceSize off = 0;
+    for (uint32_t m = 0; m < maskMips_; ++m) {
+        const uint32_t side = (std::max)(static_cast<uint32_t>(maskTexels_) >> m, 1u);
+        lv[m] = {};
+        lv[m].bufferOffset = off;
+        lv[m].imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, m, 0, 1};
+        lv[m].imageExtent = {side, side, 1};
+        off += mc2shadow::bc4ChainBytes(side, 1);
+    }
+    return lv;
+}
+
 // Every mask level becomes sampled; a fresh bake is also read back whole into a host buffer the cache store reads once the bake retires.
 void ShadowBake::recordMaskToRead(VkCommandBuffer cb, bool readback) {
     VkImageLayout from = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
@@ -1105,16 +1100,7 @@ void ShadowBake::recordMaskToRead(VkCommandBuffer cb, bool readback) {
         VkImageMemoryBarrier toSrc = imageBarrier(maskImage_.get(), VK_IMAGE_ASPECT_COLOR_BIT, 0, maskMips_, from, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
                                                   fromAccess, VK_ACCESS_TRANSFER_READ_BIT);
         vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &toSrc);
-        std::vector<VkBufferImageCopy> lv(maskMips_);
-        VkDeviceSize off = 0;
-        for (uint32_t m = 0; m < maskMips_; ++m) {
-            const uint32_t side = (std::max)(static_cast<uint32_t>(maskTexels_) >> m, 1u);
-            lv[m] = {};
-            lv[m].bufferOffset = off;
-            lv[m].imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, m, 0, 1};
-            lv[m].imageExtent = {side, side, 1};
-            off += mc2shadow::bc4ChainBytes(side, 1);
-        }
+        const std::vector<VkBufferImageCopy> lv = chainRegions();
         vkCmdCopyImageToBuffer(cb, maskImage_.get(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, transfer_.get(), maskMips_, lv.data());
         cmdBarrier(cb, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_HOST_BIT, VK_ACCESS_HOST_READ_BIT);
         from = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
@@ -1155,16 +1141,7 @@ bool ShadowBake::recordWarmUpload(VkCommandBuffer cb, const mc2shadow::ShadowMas
                           VK_ACCESS_TRANSFER_WRITE_BIT);
     vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
                          VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 2, pre);
-    std::vector<VkBufferImageCopy> lv(maskMips_);
-    VkDeviceSize off = 0;
-    for (uint32_t m = 0; m < maskMips_; ++m) {
-        const uint32_t side = (std::max)(static_cast<uint32_t>(maskTexels_) >> m, 1u);
-        lv[m] = {};
-        lv[m].bufferOffset = off;
-        lv[m].imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, m, 0, 1};
-        lv[m].imageExtent = {side, side, 1};
-        off += mc2shadow::bc4ChainBytes(side, 1);
-    }
+    const std::vector<VkBufferImageCopy> lv = chainRegions();
     vkCmdCopyBufferToImage(cb, transfer_.get(), maskImage_.get(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, maskMips_, lv.data());
     VkBufferImageCopy tc{};
     tc.bufferOffset = asset.blocks.size();
@@ -1178,8 +1155,6 @@ bool ShadowBake::recordWarmUpload(VkCommandBuffer cb, const mc2shadow::ShadowMas
 
 // The top image's own mips and its sampled layout, without re-encoding (a warm load already has the mask's top levels).
 void ShadowBake::recordTopLevelsMipsOnly(VkCommandBuffer cb) {
-    const uint32_t saved = topMips_;
-    (void)saved;
     for (uint32_t k = 1; k < topMips_; ++k) {
         VkImageMemoryBarrier toSrc = imageBarrier(topR8_.get(), VK_IMAGE_ASPECT_COLOR_BIT, k - 1, 1, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                                                   VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_TRANSFER_READ_BIT);
