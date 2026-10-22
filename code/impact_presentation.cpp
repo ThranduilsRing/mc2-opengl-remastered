@@ -108,9 +108,13 @@ impact::Event fixtureEvent(impact::WeaponClass w, const glm::vec3& hit, const gl
 void fixtureVolley() {
     static const bool s_on = mc2::gate::is<"MC2_FX_FORCE_SPAWN", "impact">();
     static float s_next = 0.0f;
-    if (!s_on || !eye || !ObjectManager || scenarioTime < 4.0f || scenarioTime < s_next) return;
-    s_next = scenarioTime + 1.5f;
+    static glm::vec3 s_lastFocus(1e9f);
+    if (!s_on || !eye || !ObjectManager || scenarioTime < 4.0f) return;
     const glm::vec3 focus = eye->getPosition();
+    const float moved = (focus.x - s_lastFocus.x) * (focus.x - s_lastFocus.x) + (focus.y - s_lastFocus.y) * (focus.y - s_lastFocus.y);
+    if (scenarioTime < s_next && moved < 150.0f * 150.0f) return;   // a camera cut fires at once
+    s_next = scenarioTime + 1.5f;
+    s_lastFocus = focus;
     const glm::vec3 camO = eye->getCameraOrigin();
     GameObject* best[2] = {nullptr, nullptr};   // [0] sheet metal, [1] concrete
     float bestD[2] = {1e30f, 1e30f};
@@ -140,11 +144,11 @@ void fixtureVolley() {
         g_queue.push(fixtureEvent(impact::WeaponClass::Missile, bp + side * (r * 0.5f) + up * (r * 0.35f), shot, wid));
         if (!groundDone) {
             groundDone = true;
-            const glm::vec3 base = bp - dir * (r + 75.0f);
+            // A row on open ground between the camera and the building: missile, laser, ballistic.
             const glm::vec3 ground = glm::normalize(dir - up * 0.6f);
-            g_queue.push(fixtureEvent(impact::WeaponClass::Ballistic, base - side * 65.0f, ground, 0));
-            g_queue.push(fixtureEvent(impact::WeaponClass::Laser, base, ground, 0));
-            g_queue.push(fixtureEvent(impact::WeaponClass::Missile, base + side * 70.0f, ground, 0));
+            g_queue.push(fixtureEvent(impact::WeaponClass::Missile, bp - dir * (r + 45.0f), ground, 0));
+            g_queue.push(fixtureEvent(impact::WeaponClass::Laser, bp - dir * (r + 95.0f) + side * 10.0f, ground, 0));
+            g_queue.push(fixtureEvent(impact::WeaponClass::Ballistic, bp - dir * (r + 130.0f) - side * 15.0f, ground, 0));
         }
         if (s_logs < 4) {
             ++s_logs;

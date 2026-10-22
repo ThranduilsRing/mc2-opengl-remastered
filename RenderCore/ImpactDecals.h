@@ -152,7 +152,7 @@ inline Recipe recipeFor(WeaponClass w, Material m, float magnitude) {
     switch (w) {
     case WeaponClass::Ballistic:
         r.tileHit = metal ? Tile::BulletMetal : Tile::BulletConcrete;
-        r.radius = metal ? 7.0f : (m == Material::Soil ? 9.0f : 8.0f);
+        r.radius = metal ? 9.0f : (m == Material::Soil ? 10.0f : 9.0f);
         r.lifetime = 45.0f;
         if (metal) { r.glow = 1.5f; r.glowTau = 0.25f; }
         r.normalStrength = 1.2f;
