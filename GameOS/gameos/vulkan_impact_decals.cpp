@@ -117,6 +117,7 @@ struct State {
     VkCommandBuffer cbuf[kSlots] = {VK_NULL_HANDLE, VK_NULL_HANDLE};
     uint64_t ticket[kSlots] = {0, 0};
     uint32_t slot = 0;
+    VkImageView boundAtlas[kSlots][2] = {};   // the residency serves a placeholder until the upload lands
     // Owned, in creation order (released in reverse by the moved-to local in destroy()).
     mc2vk::OwnedImageView depthView;
     mc2vk::OwnedSampler pointSampler;
@@ -376,6 +377,19 @@ extern "C" int mc2_vk_impact_decals_run(int w, int h) {
     {
         FrameUbo u{};
         fillFrame(u, *pp, w, h);
+        // Rebind the atlas views when residency swaps the placeholder for the uploaded images.
+        const VkImageView views[2] = {s->surfaceAtlas.view(), s->normalAtlas.view()};
+        if (views[0] != s->boundAtlas[slot][0] || views[1] != s->boundAtlas[slot][1]) {
+            VkDescriptorImageInfo img[2] = {{s->atlasSampler.get(), views[0], VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL},
+                                            {s->atlasSampler.get(), views[1], VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL}};
+            VkWriteDescriptorSet wr[2]{};
+            for (uint32_t k = 0; k < 2; ++k) {
+                wr[k].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; wr[k].dstSet = s->set[slot]; wr[k].dstBinding = 2 + k;
+                wr[k].descriptorCount = 1; wr[k].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; wr[k].pImageInfo = &img[k];
+            }
+            vkUpdateDescriptorSets(s->device, 2, wr, 0, nullptr);
+            s->boundAtlas[slot][0] = views[0]; s->boundAtlas[slot][1] = views[1];
+        }
         if (void* m = s->ubo[slot].map()) { std::memcpy(m, &u, sizeof(u)); s->ubo[slot].unmap(); } else { decline("ubo_map"); return 0; }
         if (void* m = s->ssbo[slot].map()) { std::memcpy(m, g_frame.data(), size_t(count) * sizeof(impact::GpuDecal)); s->ssbo[slot].unmap(); }
         else { decline("ssbo_map"); return 0; }
