@@ -38,6 +38,8 @@
 #include<fcntl.h>
 #include <memory>
 #include <string>
+#include <optional>
+#include <string_view>
 #include <vector>
 
 //---------------------------------------------------------------------------
@@ -79,6 +81,13 @@ void ActivateModForMission(const char* missionFitKey);
 void DeactivateMod();
 // Diagnostic: returns owning mod id for a data path, or nullptr if not in mod index.
 const char* LookupModOwner(const char* dataPath);
+// Winning loose provider for metadata/editing. Base fallback is not editable
+// while a mod is active; dependency files are never the active editable override.
+struct ModFileSource {
+    std::optional<std::string> path;
+    bool editable = false;
+};
+ModFileSource ResolveModFileSource(std::string_view dataPath);
 // Lower values win; follows the same active/dependency order as File::open.
 int LookupModPriority(const char* dataPath);
 // Archive metadata for a loose override; the normal File::open precedence stays authoritative.

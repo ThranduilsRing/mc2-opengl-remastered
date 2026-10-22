@@ -1,5 +1,6 @@
 // L1 compatibility environment: preserve legacy renderer values and color interpretation.
 #include "visual_tuning_profile.h"
+#include "../../GameAdapters/MissionEnvironmentAdapter.h"
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"
 #include "ibl_sh_runtime.h"
@@ -62,7 +63,7 @@ std::map<std::string, float> engineDefaults() {
         {"terrainClassDirtBrLo",0.22f}, {"terrainClassDirtBrHi",0.45f}};
 }
 
-bool validValue(const std::string& key, double value) {
+bool validValue(std::string_view key, double value) {
     if (!std::isfinite(value)) return false;
     float hi = 64;
     float lo = 0;
@@ -113,30 +114,31 @@ void finish(Environment& env) {
     env.effectiveHash = hash;
 }
 
-Json parseSource(const VisualTuningSource& source, std::vector<std::string>& diagnostics) {
+std::optional<Json> parseSource(const VisualTuningSource& source, std::vector<std::string>& diagnostics) {
     if (source.text.empty()) {
         diagnostics.push_back(source.error.empty() ? "missing profile: " + source.path : source.error);
-        return nullptr;
+        return std::nullopt;
     }
     auto doc = Json::parse(source.text, nullptr, false);
     if (!doc.is_object()) {
         diagnostics.push_back("invalid JSON profile: " + source.path);
-        return nullptr;
+        return std::nullopt;
     }
     const auto version = doc.find("schemaVersion");
     if (version != doc.end() && (!version->is_number_integer() ||
         (*version != 1 && *version != Environment::kSchemaVersion))) {
         diagnostics.push_back("unsupported schemaVersion: " + source.path);
-        return nullptr;
+        return std::nullopt;
     }
     if (doc.contains("colorContract") && doc["colorContract"] != "legacy-authored-v1") {
         diagnostics.push_back("unsupported colorContract: " + source.path);
-        return nullptr;
+        return std::nullopt;
     }
     return doc;
 }
 
-void overlay(Environment& env, const Json& values, const std::string& provider) {
+void overlay(Environment& env, const Json& values, std::string_view providerView) {
+    const std::string provider(providerView);
     if (!values.is_object()) { env.diagnostics.push_back("expected object: " + provider); return; }
     for (auto it=values.begin(); it!=values.end(); ++it) {
         if (it.key() == "terrainLightingV1Strength" || it.key() == "terrainLightingV2Floor") continue;
@@ -150,23 +152,8 @@ void overlay(Environment& env, const Json& values, const std::string& provider) 
     }
 }
 
-VisualTuningSource readProfileSource(const std::string& path) {
-    VisualTuningSource source{path,"base-loose",{},true};
-    std::ifstream file(path,std::ios::binary | std::ios::ate);
-    if (!file) {
-        if (std::filesystem::exists(path)) source.error = "unreadable profile: " + path;
-        return source;
-    }
-    if (file.tellg() <= 0 || file.tellg() > 512*1024) {
-        source.error = "invalid profile size: " + path;
-        return source;
-    }
-    source.text.resize(static_cast<size_t>(file.tellg()));
-    file.seekg(0);
-    if (!file.read(source.text.data(),static_cast<std::streamsize>(source.text.size()))) {
-        source.text.clear(); source.error = "short profile read: " + path;
-    }
-    return source;
+VisualTuningSource readProfileSource(std::string_view path) {
+    return GameAdapters::Environment::readProfileSource(path);
 }
 
 } // namespace
@@ -178,8 +165,9 @@ RenderCore::MissionEnvironment visualTuning_resolve(std::string_view mission,
     env.legacyTuning = engineDefaults();
     env.providers = {"engine-defaults", "mission.fit:legacy-camera"};
     for (const auto& source : sources) {
-        auto doc = parseSource(source,env.diagnostics);
-        if (doc.is_null()) continue;
+        auto parsed = parseSource(source,env.diagnostics);
+        if (!parsed) continue;
+        const auto& doc = *parsed;
         env.sourceSchemaVersion = doc.value("schemaVersion",1u);
         const auto provider = source.provider + ":" + source.path;
         env.providers.push_back(provider);
@@ -320,6 +308,7 @@ void visualTuning_applyProfile(const char* missionName) {
     const auto sessionPath = mc2::gate::str<"MC2_VISUAL_TUNING_FILE">();
     if (!sessionPath.empty()) {
         s_editableSource = readProfileSource(sessionPath);
+        if (s_editableSource.provider == "base-loose") s_editableSource.editable = true;
         sources.push_back(s_editableSource);
     }
     s_profilePath = s_editableSource.path;
@@ -347,7 +336,11 @@ bool visualTuning_hasProfileFile() { return s_hasFile; }
 int visualTuning_getAppliedKeyCount() { return s_appliedKeys; }
 
 bool visualTuning_saveCurrentToMission() {
-    if (s_environment.mission.empty() || !s_editableSource.editable) return false;
+    if (s_environment.mission.empty()) return false;
+    if (!s_editableSource.editable) {
+        mc2::fmt::print_err("[VisualTuning] '{}' is not an active editable override; preserve its provider\n",s_profilePath);
+        return false;
+    }
 
     // Snapshot all current tunable values.
     std::map<std::string,float> current;
@@ -389,8 +382,9 @@ bool visualTuning_saveCurrentToMission() {
     Json doc = Json::object();
     if (!source.text.empty()) {
         std::vector<std::string> diagnostics;
-        doc = parseSource(source,diagnostics);
-        if (doc.is_null()) return false;
+        auto parsed = parseSource(source,diagnostics);
+        if (!parsed) return false;
+        doc = std::move(*parsed);
     }
     if (doc.contains("missions") && !doc["missions"].is_object()) return false;
     if (!doc.contains("missions")) doc["missions"] = Json::object();

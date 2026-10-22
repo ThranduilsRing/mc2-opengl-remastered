@@ -1,6 +1,8 @@
 #include "doctest.h"
 #include "../../GameOS/gameos/visual_tuning_profile.h"
 #include "Gates/gate_cold.h"
+#include "file.h"
+#include "../../GameAdapters/MissionEnvironmentAdapter.h"
 #include <chrono>
 #include <filesystem>
 #include <fstream>
@@ -135,4 +137,82 @@ TEST_CASE("MissionEnvironment/invalid files cannot be overwritten by save") {
         std::ifstream input(file.path);
         CHECK(std::string((std::istreambuf_iterator<char>(input)),{})==bad);
     }
+}
+
+namespace {
+struct MountedProfiles {
+    std::filesystem::path previous = std::filesystem::current_path();
+    std::filesystem::path root = std::filesystem::temp_directory_path() /
+        ("mc2-environment-vfs-"+std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()));
+    MountedProfiles() {
+        REQUIRE_FALSE(std::filesystem::exists(root));
+        std::filesystem::create_directory(root);
+        std::filesystem::current_path(root);
+        put("data/visual_tuning.json",R"({"defaults":{"exposure":1.1}})");
+        put("mods/env-a/mod.json",R"({"id":"env-a","name":"A"})");
+        put("mods/env-b/mod.json",R"({"id":"env-b","name":"B"})");
+        put("mods/env-active/mod.json",R"({"id":"env-active","name":"Active","dependencies":["env-a","env-b"]})");
+        put("mods/env-a/data/visual_tuning.json",R"({"defaults":{"exposure":1.2}})");
+        put("mods/env-b/data/visual_tuning.json",R"({"defaults":{"exposure":1.3}})");
+        put("mods/env-active/data/visual_tuning.json",R"({"defaults":{"exposure":1.4},"missions":{"other":{"exposure":1.6}}})");
+    }
+    static void put(const std::filesystem::path& path,const char* text) {
+        std::filesystem::create_directories(path.parent_path());
+        std::ofstream file(path); file<<text; REQUIRE(bool(file));
+    }
+    static std::string read(const std::filesystem::path& path) {
+        std::ifstream file(path); return {std::istreambuf_iterator<char>(file),{}};
+    }
+    ~MountedProfiles() {
+        mc2::gate::ScopedOverride<"MC2_ACTIVE_MOD"> clear(nullptr);
+        InitModSearchPaths("");
+        std::filesystem::current_path(previous);
+        // Only this fixture's newly created absolute child of the temp directory is owned.
+        if (root.is_absolute() && root.parent_path()==std::filesystem::temp_directory_path() &&
+            root.filename().string().starts_with("mc2-environment-vfs-")) {
+            std::error_code error; std::filesystem::remove_all(root,error);
+        }
+    }
+};
+}
+
+TEST_CASE("MissionEnvironment/real VFS active dependency order base fallback and editable provider") {
+    MountedProfiles files;
+    mc2::gate::ScopedOverride<"MC2_ACTIVE_MOD"> active("env-active");
+    mc2::gate::ScopedOverride<"MC2_MOD_DEPS"> deps(nullptr);
+    mc2::gate::ScopedOverride<"MC2_REBUILD_MOD_CACHE"> rebuild("1");
+    mc2::gate::ScopedOverride<"MC2_VISUAL_TUNING_FILE"> session(nullptr);
+    InitModSearchPaths("mods");
+    visualTuning_applyProfile("a");
+    CHECK(exposure==1.4f);
+    const auto base=files.read("data/visual_tuning.json");
+    const auto dep=files.read("mods/env-b/data/visual_tuning.json");
+    exposure=1.7f;
+    REQUIRE(visualTuning_saveCurrentToMission());
+    auto saved=nlohmann::json::parse(files.read("mods/env-active/data/visual_tuning.json"));
+    CHECK(saved["missions"]["other"]["exposure"]==1.6);
+    CHECK(saved["missions"]["a"]["exposure"].get<float>()==1.7f);
+    CHECK(files.read("data/visual_tuning.json")==base);
+    CHECK(files.read("mods/env-b/data/visual_tuning.json")==dep);
+    for (const auto& [removed,expected] : std::vector<std::pair<std::string,float>>{
+            {"env-active",1.2f},{"env-a",1.3f},{"env-b",1.1f}}) {
+        std::filesystem::remove("mods/"+removed+"/data/visual_tuning.json");
+        InitModSearchPaths("mods");
+        visualTuning_applyProfile("a");
+        CHECK(exposure==expected);
+        CHECK_FALSE(visualTuning_saveCurrentToMission());
+    }
+}
+
+TEST_CASE("MissionEnvironment/explicit session profile wins over mounted active profile") {
+    MountedProfiles files;
+    TempProfile overrideFile(R"({"defaults":{"exposure":2.5}})");
+    mc2::gate::ScopedOverride<"MC2_ACTIVE_MOD"> active("env-active");
+    mc2::gate::ScopedOverride<"MC2_MOD_DEPS"> deps(nullptr);
+    mc2::gate::ScopedOverride<"MC2_REBUILD_MOD_CACHE"> rebuild("1");
+    mc2::gate::ScopedOverride<"MC2_VISUAL_TUNING_FILE"> session(overrideFile.path.string().c_str());
+    InitModSearchPaths("mods");
+    visualTuning_applyProfile("a");
+    CHECK(exposure==2.5f);
+    CHECK(GameAdapters::Environment::readProfileSource("data/visual_tuning.json").provider=="mod:env-active");
 }
