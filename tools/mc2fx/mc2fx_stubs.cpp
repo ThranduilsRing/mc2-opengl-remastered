@@ -71,6 +71,7 @@ void StatisticFormat(const char*) {}
 void ExitGameOS() {}
 
 int  __stdcall gos_rand() { return std::rand(); }
+void __stdcall gos_srand(unsigned int seed) { std::srand(seed); }
 
 // STOP / Pause family (release no-op; aborts in the engine).
 int InternalFunctionStop(const char* /*fmt*/, const char* /*arg*/) { return 0; }

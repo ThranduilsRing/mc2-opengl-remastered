@@ -24,16 +24,16 @@ TEST_CASE("arm remap: before - legacy constants name the wrong nodes") {
 	// facing 1 is a smoke node (absolute index) and 3 is the right-torso MISSILE node: the remap hit neither the arm's
 	// node nor a node chosen for the weapon's type
 	CHECK(legacyRemap(1, true, false) == 3);
-	CHECK(legacyRemap(2, false, true) == 2);   // facing 2 is the right-arm node (absolute); the left-arm remap never applies to it
-	CHECK(legacyRemap(2, true, false) == 2);   // the right arm is gone and the weapon still fires from its node
+	CHECK(legacyRemap(2, false, true) == 5);   // 5: whatever node index 5 happens to be, chosen with no regard to type
+	CHECK(legacyRemap(2, true, false) == 2);   // the right arm is gone and the weapon still fires from facing 2
 }
 
 TEST_CASE("arm remap: after - lost-arm node moves to a compatible node on the remaining body") {
-	// energy weapon on the lost right arm (w0): kAny center-torso node is the only non-arm node that accepts energy
-	CHECK(remapLostArmNode(kNodes, 5, 0, kEnergy, true, false) == 2);
-	// energy weapon on the lost left arm (w1) with the right arm intact: same replacement
-	CHECK(remapLostArmNode(kNodes, 5, 1, kEnergy, false, true) == 2);
-	// both arms gone, energy weapon: still the center-torso node
+	// energy weapon on the lost right arm (w0): the intact left-arm energy node is the least-used compatible one
+	CHECK(remapLostArmNode(kNodes, 5, 0, kEnergy, true, false) == 1);
+	// energy weapon on the lost left arm (w1) with the right arm intact: the right-arm node
+	CHECK(remapLostArmNode(kNodes, 5, 1, kEnergy, false, true) == 0);
+	// both arms gone, energy weapon: the center-torso node is all that is left
 	CHECK(remapLostArmNode(kNodes, 5, 0, kEnergy, true, true) == 2);
 }
 

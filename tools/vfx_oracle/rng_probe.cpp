@@ -4,6 +4,7 @@
 
 // The standalone probe supplies the engine seed source without a game process.
 int gos_rand() { return 17; }
+void gos_srand(unsigned int) {}
 
 namespace {
 // A probe-only candidate sequence; runtime VFX still uses the legacy Stuff table.
