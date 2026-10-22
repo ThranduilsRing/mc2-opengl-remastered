@@ -34,6 +34,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <thread>
 
 extern void gos_GetTerrainLightDir(float* x, float* y, float* z);
 extern void gos_GetTerrainChunkGridInfo(int* mapSide, float* halfMap);
@@ -1135,9 +1136,15 @@ void ShadowBake::storeReadback() {
         compareChains(diagInc_, asset.blocks);
         diagInc_.clear();
     }
-    const bool ok = mc2shadow::storeCachedShadowMask(cacheDir_, asset);
-    mc2::fmt::print_err("[SHADOW_BAKE] cook cache store: {} key={:016x} mb={:.1f} ms={:.2f}\n", ok ? "ok" : "failed", mc2::fmt::as_u64(contentKey_),
-                        static_cast<double>(asset.blocks.size()) / 1048576.0, std::chrono::duration<double, std::milli>(clk::now() - t0).count());
+    const double copyMs = std::chrono::duration<double, std::milli>(clk::now() - t0).count();
+    // The disk write (tens to hundreds of ms) runs off the render thread; the asset is a private copy.
+    std::thread([dir = cacheDir_, a = std::move(asset), copyMs]() {
+        const auto w0 = std::chrono::steady_clock::now();
+        const bool ok = mc2shadow::storeCachedShadowMask(dir, a);
+        mc2::fmt::print_err("[SHADOW_BAKE] cook cache store: {} key={:016x} mb={:.1f} render_thread_ms={:.2f} writer_ms={:.2f}\n", ok ? "ok" : "failed",
+                            mc2::fmt::as_u64(a.key), static_cast<double>(a.blocks.size()) / 1048576.0, copyMs,
+                            std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - w0).count());
+    }).detach();
 }
 
 // One region's plan: its receiver height range, its caster window, the casters that can reach it (appended to `runs` / `inst`) and its parameters.
@@ -1267,7 +1274,6 @@ bool ShadowBake::updateIncremental(VkCommandBuffer cb, uint64_t epoch, const Sha
     retireIncremental(epoch);
     mc2shadow::StaticCasterSet& set = mc2shadow::staticCasterSet();
     mc2terrain::TerrainFieldStore* store = gos_TerrainFieldStore();
-    bool castersMoved = false;
     // MC2_SHADOW_DIAG: one pass of every sub-tile through the dirty path, so the comparison below covers the whole map.
     if (diagOn() && !diagSwept_) {
         diagSwept_ = true;
@@ -1292,7 +1298,7 @@ bool ShadowBake::updateIncremental(VkCommandBuffer cb, uint64_t epoch, const Sha
                 }
             }
         }
-        castersMoved = true;
+        castersMoved_ = true;
         eventsSinceDrain_ = true;
     }
     if (store) {
@@ -1339,7 +1345,8 @@ bool ShadowBake::updateIncremental(VkCommandBuffer cb, uint64_t epoch, const Sha
         heightsMoved_ = false;
         ++heightsGen_;
     }
-    if (castersMoved || liveLeaves_.empty()) {
+    if (castersMoved_ || liveLeaves_.empty()) {
+        castersMoved_ = false;
         set.resolve(liveLeaves_);
         liveBoxes_.clear(); liveTops_.clear(); liveIdx_.clear();
         for (uint32_t i = 0; i < liveLeaves_.size(); ++i) {

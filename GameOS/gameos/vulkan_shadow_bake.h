@@ -204,7 +204,7 @@ private:
     std::vector<mc2shadow::LightBox> liveBoxes_;
     std::vector<float> liveTops_;
     std::vector<uint32_t> liveIdx_;
-    bool incActive_ = false, heightsMoved_ = false, eventsSinceDrain_ = false;
+    bool incActive_ = false, heightsMoved_ = false, eventsSinceDrain_ = false, castersMoved_ = false;
     uint64_t lastIncEpoch_ = 0, incRecordedEpoch_ = ~0ull, heightsGen_ = 1, incHeightsGen_[2] = {0, 0};
     uint32_t incSubTiles_ = 0, incBatches_ = 0, eventsLogged_ = 0;
     double incMaxGpuMs_ = 0.0, incSumGpuMs_ = 0.0;

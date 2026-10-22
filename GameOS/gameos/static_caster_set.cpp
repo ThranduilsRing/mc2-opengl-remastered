@@ -7,6 +7,7 @@
 #include "shadow_bake_math.h"
 
 #include <algorithm>
+#include <cmath>
 #include <cstring>
 
 namespace mc2shadow {
@@ -58,10 +59,17 @@ void StaticCasterSet::clear() {
 }
 
 namespace {
+// Within a texel of the mask: a re-registration that moves a caster by less than this changes no shadow worth a rebake (the matrix is rebuilt from
+// the object's float state each time and wobbles in the last bits).
 bool sameLeaves(const std::vector<GpuStaticPropInstance>& a, const std::vector<GpuStaticPropInstance>& b) {
     if (a.size() != b.size()) return false;
-    for (size_t i = 0; i < a.size(); ++i)
-        if (a[i].typeID != b[i].typeID || std::memcmp(a[i].modelMatrix, b[i].modelMatrix, sizeof(a[i].modelMatrix)) != 0) return false;
+    for (size_t i = 0; i < a.size(); ++i) {
+        if (a[i].typeID != b[i].typeID) return false;
+        for (int k = 0; k < 16; ++k) {
+            const bool translation = (k == 3 || k == 7 || k == 11);
+            if (std::fabs(a[i].modelMatrix[k] - b[i].modelMatrix[k]) > (translation ? 0.75f : 0.01f)) return false;
+        }
+    }
     return true;
 }
 }  // namespace
@@ -98,12 +106,15 @@ void StaticCasterSet::ownerRegistered(const void* owner, int32_t newRecipe) {
     recipeMask_[idx] = 1;
     ++deltaVersion_;
     if (sameLeaves(ev.before, ev.after)) return;   // a re-registration of the same leaves: nothing to rebake
+    // Turrets turn: their shadow is a mover's (P6). Until then the bake keeps their pristine pose and their re-registrations queue nothing.
+    if (e.kind == CasterKind::Turret) return;
     events_.push_back(std::move(ev));
 }
 
 std::vector<StaticCasterSet::CasterEvent> StaticCasterSet::takeEvents() {
     // Owners that lost their recipe and never got one back (a felled tree still falling, a building with no rubble shape) are removals.
     for (auto& [owner, leaves] : removed_) {
+        if (const auto it = byOwner_.find(owner); it != byOwner_.end() && entries_[it->second].kind == CasterKind::Turret) continue;
         CasterEvent ev;
         ev.before = std::move(leaves);
         events_.push_back(std::move(ev));
