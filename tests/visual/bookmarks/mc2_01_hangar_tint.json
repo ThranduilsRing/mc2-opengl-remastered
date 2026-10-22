@@ -1,0 +1,9 @@
+{
+ "schema_v": 1,
+ "mission": "mc2_01",
+ "_note": "BLUE-TINT-1: the shadow-bake lane's P5 hangar pose (near-camera cement + hangar front wall), used to witness the near-camera colour balance. Duplicate keeps >=2 bookmarks.",
+ "bookmarks": [
+  {"name": "saved_hangar_tint", "pos": [3174.0, -346.0, 0.0], "rot": -135.0, "proj": 30.0, "alt": 700.0, "covers": ["terrain_cement", "static_prop_wall"]},
+  {"name": "saved_hangar_tint_dup", "pos": [3174.0, -346.0, 0.0], "rot": -135.0, "proj": 30.0, "alt": 700.0, "covers": ["terrain_cement", "static_prop_wall"]}
+ ]
+}
