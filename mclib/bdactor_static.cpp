@@ -124,7 +124,8 @@ void BldgAppearance::registerStatic() {
 	// registered). getBldgRenderShape == stock when no override is present.
 	const bool _regIsOverride = (appearType->bldgRenderShape != nullptr);
 	for (int i = 0; i < MAX_LODS; ++i)
-		GpuStaticPropBatcher::instance().registerMultiShape(appearType->getBldgRenderShape(i), _regIsOverride);
+		GpuStaticPropBatcher::instance().registerMultiShape(appearType->getBldgRenderShape(i), _regIsOverride,
+            _regIsOverride ? appearType->propMaterialSource : nullptr);
 
 	// G5 RENDER-PATH OBSERVABILITY (descriptive; env-gated; ZERO behavior change):
 	// one line per registered static-prop type recording which render path it takes.

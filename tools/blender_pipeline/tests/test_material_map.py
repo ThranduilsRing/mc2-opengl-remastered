@@ -61,7 +61,9 @@ def test_stock_geometry_and_albedo_are_reproducible(tmp_path):
             tex = gltf["accessors"][prim["attributes"]["TEXCOORD_0"]]
             texview = gltf["bufferViews"][tex["bufferView"]]
             uv = [struct.unpack_from("<2f", binary, texview["byteOffset"] + i*8) for i in range(3)]
-            assert uv == [(0, 0), (1, 0), (0, 1)]  # importer flips once, like stock TG
+            # Assimp glTF2Importer.cpp flips Y on import; our toMC2V flips again.
+            # Their net identity must retain the converter's stock TG 1-V.
+            assert uv == [(0, 1), (1, 1), (0, 0)]
 
 
 def test_archive_leaves_source_untouched(tmp_path):

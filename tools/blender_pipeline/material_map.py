@@ -220,11 +220,9 @@ def stock_glb(ase_path):
                     acc = gltf["accessors"][index]; view = gltf["bufferViews"][acc["bufferView"]]
                     offset = view.get("byteOffset", 0) + acc.get("byteOffset", 0)
                     if semantic == "TEXCOORD_0":
-                        # The converter and Assimp each flip V. Stock TG flips
-                        # once, so undo the converter's flip before import.
-                        for v in range(acc["count"]):
-                            u, tex_v = struct.unpack_from("<2f", binary, offset+v*8)
-                            struct.pack_into("<2f", binary, offset+v*8, u, 1-tex_v)
+                        # Keep the converter's stock 1-V. Assimp's glTF2 loader
+                        # flips V internally, then toMC2V flips it back. An extra
+                        # cook-side flip therefore inverts the displayed atlas.
                         continue
                     values = []
                     for v in range(acc["count"]):
