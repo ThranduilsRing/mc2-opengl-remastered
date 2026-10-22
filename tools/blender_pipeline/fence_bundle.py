@@ -28,6 +28,8 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 import batch_driver  # noqa: E402
+sys.path.insert(0, str(HERE.parent.parent / "scripts"))
+import console_child  # noqa: E402
 
 TRI_BUDGET = 300
 BOUNDS_TOL = 1.5   # world units vs stock footprint (posts extend half a post radius)
@@ -185,7 +187,8 @@ def main(argv=None):
             subprocess.run([sys.executable, str(HERE.parent / "ase_to_glb.py"),
                             "--ase", str(srcdata / f"{stem}.ase"), "--ini", str(srcdata / f"{stem}.ini"),
                             "--out-glb", str(dst), "--out-sidecar", str(ref_dir / f"stock_{app}.json"),
-                            "--asset-class", "prop"], check=True, capture_output=True)
+                            "--asset-class", "prop"], check=True, capture_output=True,
+                           **console_child.child_kwargs(redirected=True))
     errs = validate(out, srcdata, ref_dir)
     for e in errs:
         print("[validate] FAIL", e)

@@ -2879,6 +2879,13 @@
           "text": "import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)"
         },
         {
+          "path": "tools/blender_pipeline/fence_bundle.py",
+          "line": 32,
+          "evidence": "import",
+          "reference": "console_child",
+          "text": "import console_child  # noqa: E402"
+        },
+        {
           "path": "tools/blender_pipeline/tex_hd.py",
           "line": 70,
           "evidence": "import",
@@ -6631,7 +6638,7 @@
         },
         {
           "path": "tools/blender_pipeline/fence_bundle.py",
-          "line": 185,
+          "line": 187,
           "evidence": "command",
           "reference": "tools/ase_to_glb.py",
           "text": "subprocess.run([sys.executable, str(HERE.parent / \"ase_to_glb.py\"),"
