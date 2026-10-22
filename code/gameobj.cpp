@@ -804,7 +804,7 @@ void WeaponFireChunk::unpack (GameObjectPtr attacker) {
 				numMissiles = (tempData & WEAPONFIRECHUNK_MISSILES_MASK);
 				tempData >>= WEAPONFIRECHUNK_MISSILES_BITS;
 			}
-			targetId = terrain_part_chunk::unpack(tempData & WEAPONFIRECHUNK_TARGETID_MASK);
+			targetId = terrain_part_chunk::unpack(tempData & WEAPONFIRECHUNK_TARGETID_MASK).value_or(-1);
 			tempData >>= WEAPONFIRECHUNK_TARGETID_BITS;
 			break;
 		case WEAPONFIRECHUNK_TARGET_SPECIAL:
@@ -1334,7 +1334,7 @@ void WeaponHitChunk::unpack (void) {
 		case WEAPONHITCHUNK_TARGET_TERRAIN:
 			//-------------------------
 			// Terrain Object Target...
-			targetId = terrain_part_chunk::unpack(tempData & WEAPONHITCHUNK_TARGETID_MASK);
+			targetId = terrain_part_chunk::unpack(tempData & WEAPONHITCHUNK_TARGETID_MASK).value_or(-1);
 			tempData >>= WEAPONHITCHUNK_TARGETID_BITS;
 			break;
 		case WEAPONHITCHUNK_TARGET_SPECIAL:

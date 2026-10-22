@@ -9,6 +9,7 @@
 #include "unitdesg.h"
 #include "../mclib/terrain.h"
 #include <cstdint>
+#include <optional>
 #include <unordered_map>
 #include <vector>
 
@@ -29,8 +30,10 @@ inline unsigned long pack (long partId) {
 		return off;
 	Registry& r = registry();
 	const auto it = r.forward.find(off);
-	if (it != r.forward.end())
-		return it->second;
+	if (it != r.forward.end()) {
+		const auto& [cellOffset, index] = *it;
+		return index;
+	}
 	const unsigned long idx = r.reverse.size();
 	if (idx > kFieldMax)
 		return kFieldMax;   // more than ~1M distinct targeted terrain cells in one mission: saturate
@@ -40,12 +43,12 @@ inline unsigned long pack (long partId) {
 }
 
 // 20-bit field value -> id
-inline long unpack (unsigned long field) {
+inline std::optional<long> unpack (unsigned long field) {
 	if (!compact())
 		return static_cast<long>(MIN_TERRAIN_PART_ID + field);
 	const Registry& r = registry();
 	if (field >= r.reverse.size())
-		return -1;
+		return std::nullopt;
 	return static_cast<long>(MIN_TERRAIN_PART_ID + r.reverse[field]);
 }
 }

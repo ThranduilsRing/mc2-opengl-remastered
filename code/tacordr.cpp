@@ -646,7 +646,7 @@ long TacticalOrder::unpack (void) {
 					}
 				else if (targetType == 1) {
 					// Terrain
-					unsigned long targetPartId = static_cast<unsigned long>(terrain_part_chunk::unpack(tempData & TACORDERCHUNK_TERRAINPARTID_MASK));
+					unsigned long targetPartId = static_cast<unsigned long>(terrain_part_chunk::unpack(tempData & TACORDERCHUNK_TERRAINPARTID_MASK).value_or(-1));
 					tempData >>= TACORDERCHUNK_TERRAINPARTID_BITS;
 
 					GameObjectPtr obj = ObjectManager->findByPartId(targetPartId);
@@ -678,7 +678,7 @@ long TacticalOrder::unpack (void) {
 				}
 			else if (targetType == 1) {
 				// Terrain
-				unsigned long targetPartId = static_cast<unsigned long>(terrain_part_chunk::unpack(tempData & TACORDERCHUNK_TERRAINPARTID_MASK));
+				unsigned long targetPartId = static_cast<unsigned long>(terrain_part_chunk::unpack(tempData & TACORDERCHUNK_TERRAINPARTID_MASK).value_or(-1));
 				tempData >>= TACORDERCHUNK_TERRAINPARTID_BITS;
 
 				GameObjectPtr obj = ObjectManager->findByPartId(targetPartId);

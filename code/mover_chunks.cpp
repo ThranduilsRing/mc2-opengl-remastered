@@ -538,7 +538,7 @@ void StatusChunk::unpack (MoverPtr mover) {
 				targetId = (tempData & STATUSCHUNK_MOVERINDEX_MASK);
 				break;
 			case STATUSCHUNK_TARGET_TERRAIN:
-				targetId = terrain_part_chunk::unpack(tempData & STATUSCHUNK_TERRAINPARTID_MASK);
+				targetId = terrain_part_chunk::unpack(tempData & STATUSCHUNK_TERRAINPARTID_MASK).value_or(-1);
 				break;
 			case STATUSCHUNK_TARGET_SPECIAL:
 				targetVertexOrCarNumber = (tempData & STATUSCHUNK_TRAIN_MASK);

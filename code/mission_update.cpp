@@ -1019,8 +1019,8 @@ void Mission::updateOrderLiveness() {
 					continue;   // dead-unit exemption
 				const float distM =
 					obj->distanceFrom(s_olEntries[i].startPos);   // meters
-				printf("[ORDER_FIXTURE] kind=progress wid=%lu moved_m=%.0f to_goal_m=%.0f\n",
-					static_cast<unsigned long>(s_olEntries[i].wid), static_cast<double>(distM),
+				mc2::fmt::print_out("[ORDER_FIXTURE] kind=progress wid={:d} moved_m={:.0f} to_goal_m={:.0f}\n",
+					mc2::fmt::as_u64(static_cast<unsigned long long>(s_olEntries[i].wid)), static_cast<double>(distM),
 					static_cast<double>(obj->distanceFrom(s_olEntries[i].goalPos)));
 				if (distM >= 25.0f)
 					++olMoved;

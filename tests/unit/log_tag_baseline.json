@@ -5905,6 +5905,18 @@
    "keys": [
     "kind",
     "wid",
+    "moved_m",
+    "to_goal_m"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "ORDER_FIXTURE",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "kind",
+    "wid",
     "tgt",
     "t"
    ],

@@ -159,7 +159,8 @@ def test_contract_and_test_tier_coverage():
     cmakes = {path: read(path) for path in ("CMakeLists.txt", "tests/unit/CMakeLists.txt",
               "tests/model_override/CMakeLists.txt", "tests/static_natural_skip/CMakeLists.txt")}
     sources = {path.name: path.read_text(encoding="utf-8")
-               for path in (ROOT / "tests/unit").glob("test_*.cpp")}
+               for path in (ROOT / "tests/unit").glob("test_*.cpp")
+               if path.relative_to(ROOT).as_posix() in tracked}
     for name in native_contracts:
         source = sources.get(f"test_{name}.cpp", "")
         if not re.search(r'TEST_CASE(?:_FIXTURE)?\s*\([^\n]*"' + re.escape(name) + r'/', source):
