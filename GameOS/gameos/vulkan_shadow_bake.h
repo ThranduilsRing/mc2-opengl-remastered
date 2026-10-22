@@ -25,6 +25,7 @@
 
 #include <array>
 #include <cstdint>
+#include <future>
 #include <optional>
 #include <span>
 #include <string>
@@ -197,6 +198,13 @@ private:
     OwnedDescriptorPool bc4Pool_;
     VkDescriptorSet bc4TileSet_ = VK_NULL_HANDLE, bc4TopSet_ = VK_NULL_HANDLE;   // freed with bc4Pool_
     std::string cacheDir_;   // <user data>/cache/shadow; empty = no disk cache
+    struct CacheLoad {
+        std::optional<mc2shadow::ShadowMaskAsset> asset;
+        double readMs = 0.0;
+    };
+    // Only owned bytes cross the worker boundary; no renderer or registry state is read there.
+    std::future<CacheLoad> cacheLoad_;
+    uint64_t cacheLoadKey_ = 0;
     uint64_t contentKey_ = 0;
     std::array<uint64_t, 6> keyParts_{};   // heights, casters, geometry, alpha cut-outs, scalars, versions
     bool warm_ = false, readbackPending_ = false;

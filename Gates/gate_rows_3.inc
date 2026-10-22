@@ -22,7 +22,7 @@ P("MC2_SHADOW_CSM_SOFTNESS", Float, 0.9, "unclassified", "", "", clampRange(stat
 L(Presence, "MC2_SHADOW_CULL_DEBUG", Bool, false, "code", "", "", passthrough | verified),
 // history: docs/gate-history.md#MC2_SHADOW_DEBUG_MODE
 G("MC2_SHADOW_DEBUG_MODE", String, "", "post", "", "SHADOW-ENV-DEBUG-MODE-1: selects shadow debug map overlay without ImGui.", passthrough | registry(Trace, "MC2_DIAG_SHADOW_DEBUG_MODE", -1, false) | verified),
-L(Presence, "MC2_SHADOW_DIAG", Bool, false, "props", "", ""),
+L(Presence, "MC2_SHADOW_DIAG", Bool, false, "props", "", "", verified),
 P("MC2_SHADOW_DIST_FADE", Float, 80.0, "post", "", "", passthrough | clampRange(0.0, 100000.0) | verified),
 P("MC2_SHADOW_DIST_FADE_MAX", Float, 0.65, "post", "", "", passthrough | clampRange(0.0, 1.0) | verified),
 // history: docs/gate-history.md#MC2_SHADOW_DYNAMIC_PROP_CASTERS

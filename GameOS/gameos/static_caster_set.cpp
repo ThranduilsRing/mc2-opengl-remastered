@@ -79,7 +79,9 @@ namespace {
 template <class Map>
 const typename Map::mapped_type* findOwner(const Map& m, const void* owner) {
     const auto it = m.find(owner);
-    return it == m.end() ? nullptr : &it->second;
+    if (it == m.end()) return nullptr;
+    const auto& [key, value] = *it;
+    return &value;
 }
 // Within a texel of the mask: a re-registration that moves a caster by less than this changes no shadow worth a rebake (the matrix is rebuilt from
 // the object's float state each time and wobbles in the last bits).
@@ -132,12 +134,16 @@ void StaticCasterSet::ownerRegistered(const void* owner, int32_t newRecipe) {
 
 std::vector<StaticCasterSet::CasterEvent> StaticCasterSet::takeEvents() {
     // Owners that lost their recipe and never got one back (a felled tree still falling, a building with no rubble shape) are removals.
-    for (auto& [owner, leaves] : removed_) {
-        if (const uint32_t* idx = findOwner(byOwner_, owner); idx && entries_[*idx].kind == CasterKind::Turret) continue;
-        CasterEvent ev;
-        ev.before = std::move(leaves);
-        events_.push_back(std::move(ev));
-        ++deltaVersion_;
+    if (!removed_.empty()) {
+        for (uint32_t i : resolveOrder()) {
+            const auto& entry = entries_[i];
+            auto node = removed_.extract(entry.owner);
+            if (node.empty() || entry.kind == CasterKind::Turret) continue;
+            CasterEvent ev;
+            ev.before = std::move(node.mapped());
+            events_.push_back(std::move(ev));
+            ++deltaVersion_;
+        }
     }
     removed_.clear();
     std::vector<CasterEvent> out;
@@ -164,11 +170,11 @@ void StaticCasterSet::logDriftSinceLoad(uint32_t maxLines) const {
         const StaticCasterEntry& e = entries_[i];
         one.clear();
         GpuStaticPropRegistry::getRecipeShadowLeaves(e.recipeIndex, one);
-        const std::pair<uint32_t, uint32_t> range = i < loadRanges_.size() ? loadRanges_[i] : std::pair<uint32_t, uint32_t>{0u, 0u};
+        const auto [firstLeaf, leafCount] = i < loadRanges_.size() ? loadRanges_[i] : std::pair<uint32_t, uint32_t>{0u, 0u};
         float maxDelta = 0.0f;
-        bool differs = one.size() != range.second;
-        for (uint32_t k = 0; !differs && k < range.second; ++k) {
-            const GpuStaticPropInstance& a = loadLeaves_[range.first + k];
+        bool differs = one.size() != leafCount;
+        for (uint32_t k = 0; !differs && k < leafCount; ++k) {
+            const GpuStaticPropInstance& a = loadLeaves_[firstLeaf + k];
             if (a.typeID != one[k].typeID) { differs = true; break; }
             for (int m = 0; m < 16; ++m) maxDelta = (std::max)(maxDelta, std::fabs(a.modelMatrix[m] - one[k].modelMatrix[m]));
         }
@@ -177,7 +183,7 @@ void StaticCasterSet::logDriftSinceLoad(uint32_t maxLines) const {
         ++drifted;
         if (logged++ < maxLines)
             mc2::fmt::print_err("[SHADOW_BAKE] caster drift: handle={} kind={} recipe={} damage={} leaves load={} now={} max_matrix_delta={:.4f}\n",
-                                e.gameHandle, static_cast<uint32_t>(e.kind), e.recipeIndex, static_cast<uint32_t>(e.damageState), range.second,
+                                e.gameHandle, static_cast<uint32_t>(e.kind), e.recipeIndex, static_cast<uint32_t>(e.damageState), leafCount,
                                 mc2::fmt::as_size(one.size()), maxDelta);
     }
     mc2::fmt::print_err("[SHADOW_BAKE] caster drift since load: {} of {} entries\n", drifted, mc2::fmt::as_size(entries_.size()));

@@ -7528,7 +7528,7 @@
    "ver": -1,
    "stream": "stderr",
    "keys": [],
-   "count": 2
+   "count": 4
   },
   {
    "tag": "SHADOW_BAKE",
@@ -7563,12 +7563,45 @@
    "ver": -1,
    "stream": "stderr",
    "keys": [
+    "handle",
+    "kind",
+    "recipe",
+    "damage",
+    "load",
+    "now",
+    "max_matrix_delta"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SHADOW_BAKE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
     "hash_dirty",
     "hash_fresh",
     "max_abs",
     "mean_abs",
     "p99.9_abs",
     "texels"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SHADOW_BAKE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "heights",
+    "casters",
+    "geometry",
+    "alpha",
+    "scalars",
+    "versions",
+    "leaves",
+    "alpha_ready",
+    "resolve",
+    "key"
    ],
    "count": 1
   },
@@ -7656,7 +7689,9 @@
     "terrain_objects",
     "buildings",
     "turrets",
-    "gates"
+    "gates",
+    "load_leaves",
+    "load_hash"
    ],
    "count": 1
   },

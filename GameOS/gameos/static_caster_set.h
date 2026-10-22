@@ -51,7 +51,7 @@ public:
         std::vector<GpuStaticPropInstance> before, after;   // the caster's leaves before and after the change
     };
     std::vector<CasterEvent> takeEvents();
-    bool hasEvents() const { return !events_.empty(); }
+    bool hasEvents() const { return !events_.empty() || !removed_.empty(); }
     // Process-unique, changes with every applied event (the bake re-resolves its casters when it moves).
     uint64_t deltaVersion() const { return deltaVersion_; }
 
@@ -68,6 +68,7 @@ private:
     std::vector<uint32_t> resolveOrder() const;
     std::vector<StaticCasterEntry> entries_;
     std::vector<uint8_t> recipeMask_;
+    // Pointer identity is used only for lookup; event emission follows gameplay handle order.
     std::unordered_map<const void*, uint32_t> byOwner_;
     std::unordered_map<const void*, std::vector<GpuStaticPropInstance>> removed_;   // leaves an owner lost and may get back unchanged
     std::vector<CasterEvent> events_;
