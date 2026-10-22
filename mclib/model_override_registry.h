@@ -71,7 +71,7 @@ public:
     int mergeFromFile(const std::string& manifestPath, std::string_view manifestDir);
     // conditions.json: {"version":1,"missions":{"<mission>":{"*":"worn","<appearance>":"abandoned"}}}.
     // Later files win per (mission, appearance). Returns selections merged.
-    int mergeConditionsFromFile(const std::string& path);
+    int mergeConditionsFromFile(std::string_view path);
     // The condition chosen for an appearance in a mission ("" = pristine, the default).
     std::string selectedCondition(std::string_view mission, std::string_view appearanceName) const;
     const ModelOverrideRecord* resolve(const char* overrideClass, const char* appearanceName) const;

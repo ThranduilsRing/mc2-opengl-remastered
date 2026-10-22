@@ -265,8 +265,9 @@ int ModelOverrideRegistry::mergeFromFile(const std::string& manifestPath, std::s
     return merged;
 }
 
-int ModelOverrideRegistry::mergeConditionsFromFile(const std::string& path) {
-    std::ifstream in(path.c_str());
+int ModelOverrideRegistry::mergeConditionsFromFile(std::string_view pathView) {
+    const std::string path(pathView);
+    std::ifstream in(path.c_str());   // path-audit: loose-only (mod/model_overrides tree, beside models.json)
     if (!in.is_open()) return 0;
     int merged = 0;
     try {
@@ -340,7 +341,7 @@ std::vector<std::string> modelOverrideMountOrder(std::string_view activeMod, std
 static std::vector<std::string> activeModJsonDeps(const std::string& activeMod) {
     std::vector<std::string> deps;
     if (activeMod.empty()) return deps;
-    std::ifstream in(("mods/" + activeMod + "/mod.json").c_str());
+    std::ifstream in(("mods/" + activeMod + "/mod.json").c_str());   // path-audit: loose-only (mod root metadata)
     if (!in.is_open()) return deps;
     try {
         json root;

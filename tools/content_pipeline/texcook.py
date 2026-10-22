@@ -33,6 +33,9 @@ from PIL import Image
 
 from . import cache
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
+import console_child  # noqa: E402  (windowless console children; scripts/console_child.py)
+
 CONTRACT_VERSION = "mc2-texcook/1"
 TEXCONV = Path(os.environ.get("MC2_TEXCONV", "A:/Games/mc2-tools/texconv/texconv.exe"))
 TIERS = (32, 64, 128, 256, 512, 1024)
@@ -163,14 +166,9 @@ def _texconv_level(level: np.ndarray, fmt: str, workdir: Path) -> bytes:
     Image.fromarray(level, "RGBA").save(src)
     out = workdir / "level.dds"
     out.unlink(missing_ok=True)
-    kw = {}
-    if sys.platform == "win32":
-        sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
-        import console_child
-        kw = console_child.child_kwargs(redirected=True)
     r = subprocess.run([str(TEXCONV), "-nologo", "-nogpu", "-y", "-dx10", "--ignore-srgb", "-m", "1",
                         "-f", fmt, "-ft", "dds", "-o", str(workdir), str(src)],
-                       capture_output=True, text=True, **kw)
+                       capture_output=True, text=True, **console_child.child_kwargs(redirected=True))
     if r.returncode or not out.is_file():
         raise RuntimeError(f"texconv {fmt} failed: {r.stdout[-400:]} {r.stderr[-400:]}")
     data = out.read_bytes()

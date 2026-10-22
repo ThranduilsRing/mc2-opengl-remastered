@@ -1,6 +1,7 @@
 // BldgAppearance / TreeAppearance: BldgAppearance terrain/move-map/line-of-sight marking and cell coverage.
 // Declared in the class headers; shared names in bdactor_internal.h.
 #include "bdactor_internal.h"
+#include <memory>
 
 inline constexpr float HEIGHT_THRESHOLD = 10.0f;
 
@@ -27,21 +28,19 @@ long BldgAppearance::calcCellsCovered (glm::vec3& pos, short* cellList) {
 
 	// Cell coverage comes from the stock collision shape: a model override owns the per-instance
 	// RENDER shape (bldgShape) and must never become the passability source.
+	std::unique_ptr<TG_MultiShape> stockCover;          // owns the stock copy, if one is made
+	struct ClearOnExit { TG_MultiShape* s = nullptr; ~ClearOnExit() { if (s) s->ClearAnimation(); } } clearOnExit;
 	TG_MultiShapePtr coverShape = bldgShape;
-	const bool renderOverridden = appearType->bldgRenderShape || appearType->bldgDmgRenderShape;
-	if (renderOverridden)
+	if (appearType->bldgRenderShape || appearType->bldgDmgRenderShape)
 	{
 		TG_TypeMultiShape* source = appearType->bldgShape[0];
 		if (status == OBJECT_STATUS_DESTROYED && appearType->bldgDmgShape)
 			source = appearType->bldgDmgShape;
-		coverShape = source->CreateFrom();
+		stockCover.reset(source->CreateFrom());
+		coverShape = clearOnExit.s = stockCover.get();
 		if (bdAnimationState != -1)
 			appearType->setAnimation(coverShape,bdAnimationState);
 	}
-	struct CoverShapeRelease {
-		TG_MultiShapePtr shape, render;
-		~CoverShapeRelease() { if (shape != render) { shape->ClearAnimation(); delete shape; } }
-	} release{coverShape, bldgShape};
 
 	for (int i=0;i<coverShape->GetNumShapes();i++)
 	{
