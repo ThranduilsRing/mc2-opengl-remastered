@@ -370,30 +370,65 @@ def transform_primitive(prim: Primitive, matrix) -> Primitive:
                      None if prim.color0 is None else prim.color0.copy())
 
 
-def inward_hull_faces(scene: Scene, epsilon: float = 0.25):
-    """Triangles lying on the asset's bounding-box planes whose normal points into the box.
+def _ray_hits(origins, dirs, tris, chunk=256):
+    """Any-hit Moller-Trumbore: for each ray, does it hit any triangle at t > 0?"""
+    v0, e1, e2 = tris[:, 0], tris[:, 1] - tris[:, 0], tris[:, 2] - tris[:, 0]
+    out = np.zeros(len(origins), dtype=bool)
+    for s0 in range(0, len(origins), chunk):
+        o, d = origins[s0:s0 + chunk, None, :], dirs[s0:s0 + chunk, None, :]
+        pvec = np.cross(d, e2[None])
+        det = np.einsum("rtk,tk->rt", pvec, e1)
+        ok = np.abs(det) > 1e-12
+        inv = np.where(ok, 1.0 / np.where(ok, det, 1.0), 0.0)
+        tvec = o - v0[None]
+        u = np.einsum("rtk,rtk->rt", tvec, pvec) * inv
+        qvec = np.cross(tvec, e1[None])
+        v = np.einsum("rtk,rtk->rt", d, qvec) * inv
+        t = np.einsum("tk,rtk->rt", e2, qvec) * inv
+        hit = ok & (u >= 0) & (v >= 0) & (u + v <= 1) & (t > 1e-3)
+        out[s0:s0 + chunk] = hit.any(axis=1)
+    return out
 
-    A building's outer skin on a bbox plane must face out; an inward one is back-face culled from
-    outside and the wall reads as a hole (the sci-fi kit hangar's front gable). Returns
-    [(node index, primitive index, triangle indices)] in the scene's world space."""
-    lo, hi = scene.bounds()
-    found = []
+
+def inward_hull_faces(scene: Scene, min_area: float = 1.0):
+    """Outer-skin triangles that face into the building.
+
+    A building's skin must face out; an inverted one is back-face culled from outside and the wall
+    reads as a hole (the sci-fi kit hangar's gables, inset from the bounding box). For each face
+    of at least min_area, rays leave from three interior points along +normal and -normal: when
+    the front side is enclosed (every +normal ray hits the asset) while the back side escapes
+    (most -normal rays reach open space), the face is inverted. Returns
+    [(node index, primitive index, triangle indices)]."""
     worlds = scene.world_matrices()
+    items, all_tris = [], []
     for ni, node in enumerate(scene.nodes):
         if node.mesh is None:
             continue
         for pi, prim in enumerate(scene.meshes[node.mesh].primitives):
             p = transform_primitive(prim, worlds[ni])
             t = p.positions[p.indices]
-            c = t.mean(axis=1)
-            n = np.cross(t[:, 1] - t[:, 0], t[:, 2] - t[:, 0])
-            n /= np.maximum(np.linalg.norm(n, axis=1, keepdims=True), 1e-20)
-            bad = np.zeros(len(c), dtype=bool)
-            for axis in range(3):
-                bad |= (np.abs(c[:, axis] - lo[axis]) < epsilon) & (n[:, axis] > 0.5)
-                bad |= (np.abs(c[:, axis] - hi[axis]) < epsilon) & (n[:, axis] < -0.5)
-            if bad.any():
-                found.append((ni, pi, np.nonzero(bad)[0]))
+            items.append((ni, pi, t))
+            all_tris.append(t)
+    if not all_tris:
+        return []
+    every = np.concatenate(all_tris)
+    found = []
+    weights = np.array([[0.6, 0.2, 0.2], [0.2, 0.6, 0.2], [0.2, 0.2, 0.6]])
+    for ni, pi, t in items:
+        n = np.cross(t[:, 1] - t[:, 0], t[:, 2] - t[:, 0])
+        area = np.linalg.norm(n, axis=1) / 2
+        cand = np.nonzero(area >= min_area)[0]
+        if not len(cand):
+            continue
+        n = n[cand] / np.maximum(2 * area[cand, None], 1e-20)
+        pts = np.einsum("sk,tkd->tsd", weights, t[cand]).reshape(-1, 3)
+        dirs = np.repeat(n, 3, axis=0)
+        offset = 0.01 * dirs
+        front = _ray_hits(pts + offset, dirs, every).reshape(-1, 3)
+        back = _ray_hits(pts - offset, -dirs, every).reshape(-1, 3)
+        bad = front.all(axis=1) & ((~back).sum(axis=1) >= 2)
+        if bad.any():
+            found.append((ni, pi, cand[bad]))
     return found
 
 
