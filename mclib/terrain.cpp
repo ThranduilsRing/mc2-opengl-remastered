@@ -574,7 +574,6 @@ void Terrain::destroy (void)
 	// over mission 2's terrain (strictly worse than the original bug).
 	// Must pair with the Phase-1 camera-accumulate retirement (same
 	// commit). blocks[] is one-shot repopulated at next MapData::newInit.
-	gos_ResetStaticLightMatrix();
 
 	mc2terrain::TerrainFieldStore* fieldStore = gos_TerrainFieldStore();
 	if (fieldStore) fieldStore->clearShoreFields();

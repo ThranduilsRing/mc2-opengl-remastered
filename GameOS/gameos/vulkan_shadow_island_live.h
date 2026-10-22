@@ -182,100 +182,22 @@ struct Mc2ColorPropLightFeed {
 };
 int mc2_color_prop_island_get_light_feed(Mc2ColorPropLightFeed* out);
 
-// --- Island public API (implemented in vulkan_shadow_island_live.cpp) --------
-
-// True when MC2_VK_SHADOW_INTEROP requests the VK shadow region.
+// --- Vulkan shadow production and receiver resources ---
 int mc2_vk_shadow_island_enabled();
-
-// Per-frame entry. Returns the GL texture handle of the VK-produced shared shadow
-// map (>0) if the VK pass rendered+signalled this frame; 0 = fell back (GL path).
-//   size          — square shadow map side (getDynamicShadowMapSize()).
-//   lightSpace16  — the 16 raw floats GL uploads (GL_FALSE) for lightSpaceMatrix.
-//   instances     — the CPU GpuStaticPropInstance vector (112B each).
-//   instanceCount — caster instance count.
-//   biasFactor/biasUnits — glPolygonOffset(shadowBiasFactor_, shadowBiasUnits_).
-unsigned int mc2_vk_shadow_island_run(
-    int size, const float* lightSpace16,
-    const void* instances, unsigned int instanceCount,
-    float biasFactor, float biasUnits);
-
-// One union-fit movers-only D16 map. Camera rows map MC2 world to clip Z [0,W];
-// sun points toward the light. Instances are rigid movers, never baked statics.
+// Fit and record one D16 map from current-frame mover bounds.
 void mc2_vk_shadow_island_run_movers(const float cameraRows[16], const float sun[3],
                                     const void* instances, unsigned int instanceCount);
-
-// Ends the frame's shadow recording and submits it, once, with no wait on the GPU. mc2_vk_shadow_island_run / _run_csm_array_layer / _run_csm_fullmap only
-// RECORD their passes into the frame's command buffer; this is called after the last of them and before any consumer reads a product (the accessors below
-// report a product ready only after it). A frame whose passes all declined submits nothing.
+// Submit recorded bake and mover work on the engine queue before receivers.
 void mc2_vk_shadow_island_submit_frame();
-
-// VK-SHADOW-DIRECT-CONSUME-1: raw VK-side accessors for a same-process, same-device
-// VK consumer (the terrain island) to bind the shadow island's depth image directly —
-// no GL round-trip at all (neither the GL copy-to-VK-image the terrain island does
-// today, nor a GL sample). Valid ONLY for the frame just produced by
-// mc2_vk_shadow_island_run() (mc2_vk_shadow_island_dyn_shadow_ready()!=0 iff that
-// call recorded this frame and the frame was submitted; consumers run later on the same queue and the render pass dependencies order their reads). The returned view/sampler are owned by
-// the shadow island; the caller must NOT destroy them. Opaque void* to keep this
-// header GL/Vulkan-type-free for non-VK TUs; real type is VkImageView / VkSampler,
-// reinterpret_cast in the (VK-only) consumer TU. Same VkDevice as the terrain island
-// (both borrow the one shared engine VulkanContext) — the handles are valid VK
-// objects on that device already, no export/import ceremony (VK->VK, not VK->GL).
-// Same-queue ordering: the shadow island's vkWaitForFences() inside run() fully
-// retires its submit before returning, and the terrain island runs strictly later in
-// the frame (after GL terrain draws) -- so by the time the terrain island samples
-// this view, the depth write is already complete and visible; no extra barrier needed
-// on the terrain island's read side beyond the descriptor's SHADER_READ_ONLY layout.
-void* mc2_vk_shadow_island_get_dyn_shadow_view();
-void* mc2_vk_shadow_island_get_dyn_shadow_sampler();
-int   mc2_vk_shadow_island_dyn_shadow_ready();
-
-// VK-CSM-FULLMAP-DIRECT-1: default-off companion producer for the CSM catch-all
-// cascade. It reuses the shadow island's static-prop geometry/instance machinery,
-// but renders the last cascade matrix into a separate exportable D32 image whose
-// VkImageView can be bound directly by the terrain island at binding 9. The GL CSM
-// path still renders normally; this path only deletes terrain's per-frame
-// glGetTexImage+vkCmdCopyBufferToImage full-map import when
-// MC2_VK_CSM_FULLMAP_INTEROP=1.
-unsigned int mc2_vk_shadow_island_run_csm_fullmap(
-    int size, const float* lightSpace16,
-    const void* instances, unsigned int instanceCount,
-    float biasFactor, float biasUnits);
-void* mc2_vk_shadow_island_get_csm_fullmap_view();
-void* mc2_vk_shadow_island_get_csm_fullmap_image();
-int   mc2_vk_shadow_island_csm_fullmap_ready();
-
-// VK-CSM-ARRAY-DIRECT-1: optional near-cascade companion. Renders each near CSM
-// cascade into a layer of a VK-owned D32 2D array; terrain can bind the array view
-// directly at binding 8 when all near layers were produced in the current frame.
-unsigned int mc2_vk_shadow_island_run_csm_array_layer(
-    int size, int layers, int layerIndex, const float* lightSpace16,
-    const void* instances, unsigned int instanceCount,
-    float biasFactor, float biasUnits);
-void* mc2_vk_shadow_island_get_csm_array_view();
-void* mc2_vk_shadow_island_get_csm_array_image();
-int   mc2_vk_shadow_island_csm_array_ready();
-
-// The world-fixed static sun shadow map (terrain + registry buildings), built once per engine static-map generation (map load, destroy rebake). The
-// view is a D32 image in DEPTH_STENCIL_READ_ONLY; null and 0 until the map's first build has been submitted.
-void*    mc2_vk_shadow_island_get_static_view();
-void*    mc2_vk_shadow_island_get_static_visibility_tiles();
-uint64_t mc2_vk_shadow_island_static_generation();
-// The static shadow bake: ready once its first mask has been submitted; the mask view is R8 with mips over the terrain grid (row 0 north,
-// u = (x + halfMap) / ((mapSide - 1) * 128), v = (halfMap - y) / ((mapSide - 1) * 128)), in SHADER_READ_ONLY. While the bake is ready the static props
-// cast through it and the object map, not through the cascades.
-int   mc2_vk_shadow_island_bake_ready();
+// Current-frame D16 mover image; the debug array view aliases that image.
+int mc2_vk_shadow_island_movers_ready();
+void* mc2_vk_shadow_island_get_mover_debug_view();
+// Full-map D16 static object image and its matching submitted projection.
+void* mc2_vk_shadow_island_get_object_view();
+int mc2_vk_shadow_island_get_object_matrix(float* matrix16);
+// BC4 visibility mask. Row zero is north; the image includes mip levels.
+int mc2_vk_shadow_island_bake_ready();
 void* mc2_vk_shadow_island_get_bake_mask_view();
-
-// MC2_VK_SHADOW_MATRIX_DIAG (Trace gate, default OFF = zero cost): one-shot matrix/depth-map
-// evidence for the GL-vs-VK shadow producer/consumer comparison. enabled() is a cached getenv.
-int  mc2_vk_shadow_matrix_diag_enabled();
-// Called once per frame after the dynamic+CSM caster passes (txmmgr.cpp). Logs
-// [VK_SHADOW_MATRIX v1] at tick 200 and 1200; dumps the VK depth PNGs at tick 200.
-void mc2_vk_shadow_matrix_diag_tick(const float* glDynMat, int dynSize,
-                                    const float* glCascMats, int csmN, int arrSize,
-                                    int fullSize, float fullTexelWorld);
-// Terrain island: returns 1 exactly once after a tick armed a log (consumes the latch).
-int  mc2_vk_shadow_matrix_diag_take_terrain_arm();
 
 // Health accessor (mirrors mc2_render_backend_water_region_health).
 void mc2_render_backend_shadow_region_health(

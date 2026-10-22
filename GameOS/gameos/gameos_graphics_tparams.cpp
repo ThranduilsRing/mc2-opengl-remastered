@@ -253,22 +253,9 @@ void gos_SetWaterElevation(float elevation) {
     gosPostProcess* pp = getGosPostProcess();
     if (pp) pp->setWaterElevation(elevation);
 }
-bool gos_StaticLightMatrixBuilt() {
-    gosPostProcess* pp = getGosPostProcess();
-    return pp && pp->staticLightMatrixBuilt();
-}
-void gos_BuildStaticLightMatrix() {
-    gosPostProcess* pp = getGosPostProcess();
-    if (!pp || !pp->shadowsEnabled_) return;
-    float lx = 0, ly = 0, lz = 0;
-    gos_GetTerrainLightDir(&lx, &ly, &lz);
-    // Negate: lightDir points scene→sun, but matrix needs light→scene
-    pp->buildStaticLightMatrix(-lx, -ly, -lz, pp->getMapHalfExtent());
-}
-void gos_MarkStaticLightMatrixBuilt() {
-    gosPostProcess* pp = getGosPostProcess();
-    if (pp) pp->markStaticLightMatrixBuilt();
-}
+
+
+
 
 void gos_GetTerrainLightDir(float* x, float* y, float* z) {
     if (g_gos_renderer) {

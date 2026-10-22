@@ -90,6 +90,7 @@ public:
     bool ready() const { return maskReady_; }
     VkImageView maskView() const { return maskReady_ ? maskView_.get() : VK_NULL_HANDLE; }
     VkImageView objectView() const { return objectReady_ ? objectView_.get() : VK_NULL_HANDLE; }
+    const float* objectMatrix() const { return objectMatrix_.data(); }
     uint64_t objectGeneration() const { return objectReady_ ? objectGeneration_ : 0; }
     const mc2shadow::MaskLayout& layout() const { return layout_; }
 
@@ -164,6 +165,7 @@ private:
     uint64_t submittedEpoch_ = 0, recordedEpoch_ = 0;
     bool maskReady_ = false, objectReady_ = false;
     uint64_t objectGeneration_ = 0, recordedObjectGeneration_ = 0;
+    std::array<float,16> objectMatrix_{}, recordedObjectMatrix_{};
     uint32_t waitFrames_ = 0;
     bool loggedWait_ = false, loggedHeightDrift_ = false;
     uint64_t bakedHeightVersion_ = 0;

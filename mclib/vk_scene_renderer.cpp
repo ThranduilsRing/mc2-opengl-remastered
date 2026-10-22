@@ -108,7 +108,6 @@ void mc2::VkSceneRenderer::renderLists (RenderSubmissions& submissions)
 	renderListsSceneDataUpload(submissions);
 	renderListsObjects3D(submissions);
 	renderListsPostObjectsStateRestore(submissions);
-	renderListsStaticShadowBuild(submissions);
 	renderListsStaticPropRegistryFlush(submissions);
 	renderListsDynamicShadowPass(submissions);
 	// Terrain samples the current mover map, after its producer has submitted.

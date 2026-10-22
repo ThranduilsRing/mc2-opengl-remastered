@@ -197,59 +197,11 @@ struct TerrainIsland : mc2vk::IslandState {
     // The STATIC sun shadow map at binding 5: the VK shadow island's map (shadowExternalView) when its build matches the frame's generation, else this
     // island's 1x1 dummy (shadowImg / shadowView) with enableShadows=0. Sampled through a depth-COMPARE sampler (compareOp=LESS_OR_EQUAL, LINEAR HW
     // PCF, CLAMP_TO_BORDER white=1.0), exactly like the GL sampler2DShadow.
-    mc2vk::OwnedImage       shadowImg;
-    mc2vk::OwnedImageView   shadowView;
-    mc2vk::OwnedSampler     shadowSamp;  // depth-compare, LESS_OR_EQUAL, LINEAR (shared)
-    uint32_t      shadowDim   = 0;               // the dummy's edge (texels)
     bool          shadowReady = false;           // binding 5 holds the island's map of this frame's generation
-    VkImageView   shadowExternalView = VK_NULL_HANDLE;   // the shadow island's static map this frame, or null
-    VkImageView   shadowBoundView = VK_NULL_HANDLE;      // what binding 5 was last written with
     mc2vk::ResidentTextureRef staticVisibilityDummy;
     mc2vk::OwnedSampler staticVisibilitySampler;
     VkImageView staticVisibilityExternalView = VK_NULL_HANDLE;
     VkImageView staticVisibilityBoundView = VK_NULL_HANDLE;
-
-    // VK-TERRAIN-DYNSHADOW: second D32 depth-COMPARE image for the DYNAMIC (building/mech)
-    // shadow map at binding 7 (shares shadowSamp). Same copy-per-frame mechanism as static.
-    mc2vk::OwnedImage       dynShadowImg;
-    mc2vk::OwnedImageView   dynShadowView;
-    uint32_t      dynShadowDim  = 0;
-    bool          dynShadowReady = false;
-
-    // VK-SHADOW-DIRECT-CONSUME-1: when the VK shadow island produced+fenced this
-    // frame's dynamic shadow depth (mc2_vk_shadow_island_dyn_shadow_ready()), binding 7
-    // is repointed at ITS VkImageView directly (no glGetTexImage copy at all) instead of
-    // this island's own dynShadowView. Reset to null every frame before the decision;
-    // write_descriptors() must be called whenever this changes (the view handle itself
-    // varies frame to frame, unlike the stable owned dynShadowView the copy path reuses).
-    VkImageView   dynShadowExternalView = VK_NULL_HANDLE;
-    bool          dynShadowDirect = false;   // true this frame -> binding 7 used the external view
-    VkImageView   dynShadowBoundView = VK_NULL_HANDLE;   // what binding 7 was last vkUpdateDescriptorSets'd with
-
-    // VK-TERRAIN-CSM-NEAR-1: near-cascade D32 depth-COMPARE ARRAY (binding 8) + the
-    // separate lower-res full-map D32 depth-COMPARE 2D image (binding 9). Item-7
-    // (VK-RUNG8 CSM copy-mode delete): the per-frame GL depth readback / glCopyImageSubData
-    // scratch / vkCmdCopyBufferToImage import was DELETED. Terrain now binds the VK shadow
-    // island's own VkImageViews directly (csmArrayExternalView / csmFullMapExternalView,
-    // produced under MC2_VK_CSM_ARRAY_INTEROP / MC2_VK_CSM_FULLMAP_INTEROP). The owned
-    // images below are now only the 1x1 dummies (ensure_dummy_csm) that keep bindings 8/9
-    // valid on warmup/decline frames (csmEnabled=0 -> frag on the legacy single-map path).
-    mc2vk::OwnedImage       csmArrayImg;
-    mc2vk::OwnedImageView   csmArrayView;
-    uint32_t      csmArrayDim  = 0;
-    uint32_t      csmArrayLayers = 0;
-    bool          csmArrayReady = false;
-    VkImageView   csmArrayExternalView = VK_NULL_HANDLE;
-    bool          csmArrayDirect = false;
-    VkImageView   csmArrayBoundView = VK_NULL_HANDLE;
-
-    mc2vk::OwnedImage       csmFullMapImg;
-    mc2vk::OwnedImageView   csmFullMapView;
-    uint32_t      csmFullMapDim  = 0;
-    bool          csmFullMapReady = false;
-    VkImageView   csmFullMapExternalView = VK_NULL_HANDLE;
-    bool          csmFullMapDirect = false;
-    VkImageView   csmFullMapBoundView = VK_NULL_HANDLE;
 
     // VK-TERRAIN-DETAIL sub-slice: the material detail-normal ARRAY. A VK copy-once
     // import of the GL terrain_normal_array_tex_ (9-layer RGBA8 GL_TEXTURE_2D_ARRAY,
@@ -361,12 +313,12 @@ void import_shore_mask(TerrainIsland* s, const Mc2TerrainTier1Feed& feed);
 bool ensure_dummy_shore_field(TerrainIsland* s);
 void import_shore_field(TerrainIsland* s, const Mc2TerrainTier1Feed& feed);
 bool snapshot_cement(TerrainIsland* s, const Mc2TerrainTier1Feed& feed);
-bool ensure_shadow_sampler(TerrainIsland* s);
-bool ensure_dummy_shadow(TerrainIsland* s);
+
+
 bool bind_static_shadow(TerrainIsland* s, const Mc2TerrainTier1Feed& feed);
-bool copy_dynamic_shadow(TerrainIsland* s, const Mc2TerrainTier1Feed& feed);
-bool ensure_dummy_csm(TerrainIsland* s);
-bool copy_csm_shadows(TerrainIsland* s, const Mc2TerrainTier1Feed& feed);
+
+
+
 bool ensure_dummy_matnormal(TerrainIsland* s);
 void import_matnormal(TerrainIsland* s, const Mc2TerrainTier1Feed& feed);
 
@@ -414,9 +366,9 @@ bool create_cement_sampler(TerrainIsland* s);
 bool upload_sampled_image_array(TerrainIsland* s, mc2vk::ResidentTextureRef& outTexture, VkFormat fmt, uint32_t width, uint32_t height, uint32_t layers, const void* bytes, VkDeviceSize byteCount);
 bool create_matnormal_sampler(TerrainIsland* s);
 bool snapshot_visual_height(TerrainIsland* s, const Mc2TerrainTier1Feed& feed);
-bool ensure_shadow_image_slot(TerrainIsland* s, uint32_t dim, mc2vk::OwnedImage& img, mc2vk::OwnedImageView& view, uint32_t* curDim);
-bool ensure_shadow_image(TerrainIsland* s, uint32_t dim);
-bool ensure_csm_array_image(TerrainIsland* s, uint32_t dim, uint32_t layers);
+
+
+
 void ovl_destroy_tex(OvlTex& t);
 void ovl_destroy(TerrainIsland* s);
 bool ovl_alloc_tex_set(TerrainIsland* s, OvlState* o, OvlTex& t);

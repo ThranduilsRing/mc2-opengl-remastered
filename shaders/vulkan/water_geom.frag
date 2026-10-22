@@ -283,5 +283,4 @@ void main(void)
     // col*a + bg*(1-a) blend, bit-exact. (Straight-alpha two-stage double-applied alpha.)
     FragColor = vec4(col * waterA, waterA);
     GBuffer1 = rc_gbuffer1_shadowHandled(vec3(0.0,0.0,1.0));
-    if (moverFrame.flags.w == 0) GBuffer1 = rc_gbuffer1_screenShadowEligible(vec3(0.0,0.0,1.0));
 }

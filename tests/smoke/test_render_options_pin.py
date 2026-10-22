@@ -21,9 +21,9 @@ def values(**changes):
 
 def test_table_has_the_engines_options_with_their_defaults():
     t = {o.key: o for o in rop.table()}
-    assert len(t) == 18
+    assert len(t) == 15
     assert t["ShadowQuality"].default == 2 and (t["ShadowQuality"].lo, t["ShadowQuality"].hi) == (0, 2)
-    assert t["ShadowCSM"].default is True and t["StaticPropPbr"].default is False and t["StaticPropAmbient"].default is True
+    assert t["CpuPhongRetire"].default is True and t["StaticPropPbr"].default is False and t["StaticPropAmbient"].default is True
     assert t["SunAxisFix"].default is False
     assert t["PostCASSharpness"].default == 0.5 and t["PostCASSharpness"].hi == 1.0
     assert t["TonemapMode"].kind == "long" and (t["TonemapMode"].lo, t["TonemapMode"].hi) == (0, 3)
@@ -46,21 +46,21 @@ def test_python_grammar_agrees_with_the_doctest_case_table():
 def test_accepted_spellings_and_first_key_wins():
     v = values()
     rej = []
-    rop.apply_cfg(v, "[MechCommander2]\r\nb ShadowCSM = false\r\nb SunAxisFix = TRUE\r\nb VfxLitParticles = 1\r\nl TonemapMode = 3\r\n"
-                     "f PostCASSharpness = 0.25\r\nb StaticPropAmbient =   False  \r\nb ShadowCSM = TRUE\r\n[Keys]\r\nb SunElevationFix = TRUE\r\n", rej)
+    rop.apply_cfg(v, "[MechCommander2]\r\nb CpuPhongRetire = false\r\nb SunAxisFix = TRUE\r\nb VfxLitParticles = 1\r\nl TonemapMode = 3\r\n"
+                     "f PostCASSharpness = 0.25\r\nb StaticPropAmbient =   False  \r\nb CpuPhongRetire = TRUE\r\n[Keys]\r\nb SunElevationFix = TRUE\r\n", rej)
     assert rej == []
-    assert v["ShadowCSM"] is False and v["SunAxisFix"] is True and v["VfxLitParticles"] is True and v["StaticPropAmbient"] is False
+    assert v["CpuPhongRetire"] is False and v["SunAxisFix"] is True and v["VfxLitParticles"] is True and v["StaticPropAmbient"] is False
     assert v["TonemapMode"] == 3 and v["PostCASSharpness"] == 0.25
     assert v["SunElevationFix"] is False      # another block
 
 
 def test_record_reads_the_install_then_the_override_case_insensitively(tmp_path):
-    (tmp_path / "options.cfg").write_text("[MechCommander2]\r\nb StaticPropAmbient = FALSE\r\nb ShadowCSM = banana\r\n", encoding="latin-1")
-    rec = rop.record(tmp_path, {"MC2_OPTIONS_OVERRIDE": "shadowcsm=0, TonemapMode=9, Nope=1"})
+    (tmp_path / "options.cfg").write_text("[MechCommander2]\r\nb StaticPropAmbient = FALSE\r\nb CpuPhongRetire = banana\r\n", encoding="latin-1")
+    rec = rop.record(tmp_path, {"MC2_OPTIONS_OVERRIDE": "cpuphongretire=0, TonemapMode=9, Nope=1"})
     assert rec["values"]["StaticPropAmbient"] is False
-    assert rec["values"]["ShadowCSM"] is False                     # the override beats the (rejected) file value
+    assert rec["values"]["CpuPhongRetire"] is False                     # the override beats the (rejected) file value
     assert rec["values"]["TonemapMode"] == 0
-    assert {(r["key"], r["why"]) for r in rec["rejected"]} == {("ShadowCSM", "garbage"), ("TonemapMode", "out_of_range"), ("Nope", "unknown_key")}
+    assert {(r["key"], r["why"]) for r in rec["rejected"]} == {("CpuPhongRetire", "garbage"), ("TonemapMode", "out_of_range"), ("Nope", "unknown_key")}
     assert rop.record(tmp_path / "missing", {})["values"] == values()   # no file: the defaults
 
 
@@ -93,7 +93,7 @@ def test_floats_compare_at_engine_precision():
 def test_engine_report_must_agree_with_the_harness_reading():
     assert rop.check_engine(values(), None) == []
     assert rop.check_engine(values(), values()) == []
-    assert rop.check_engine(values(), values(ShadowCSM=False)) == ["ShadowCSM: A=True B=False"]
+    assert rop.check_engine(values(), values(CpuPhongRetire=False)) == ["CpuPhongRetire: A=True B=False"]
 
 
 def test_capture_ab_refuses_sets_with_different_options(tmp_path):

@@ -100,8 +100,6 @@ void gosPostProcess::destroy() {
     if (!initialized_) return;
     destroySceneTargets();
     hdriCpu_.reset(); hdriReady_=false; hdriEnabled_=false;
-    destroyShadows();
-    destroyDynamicShadows();
     s_postProcess=nullptr;
     initialized_=false;
 }

@@ -58,89 +58,18 @@ public:
     // viewMat, projMat are column-major 4x4 floats (16 floats each).
     void renderHdriSkybox(const float* viewMat, const float* projMat);
 
-    // Shadow mapping
-    void initShadows();
-    void destroyShadows();
     bool sceneColorReady() const;
     bool sceneNormalReady() const;
     bool sceneObjectIdReady() const;
-    const float* getLightSpaceMatrix() const { return staticLightSpaceMatrix_; }
-    int getShadowMapSize() const { return shadowMapSize_; }
+
+    // Static bake plus one current-frame mover map.
     bool shadowsEnabled_;
-
-    // Shadow debug overlay: the Vulkan CSM near-cascade view (the GL shadow maps are gone).
-    bool showShadowDebug_;        // master toggle for debug overlay
+    bool showShadowDebug_;
     void drawShadowDebugOverlay();
-
-    // Shadow tuning — live-adjustable via ImGui; defaults match former hardcoded values.
-    // Applied in beginShadowPass / beginShadowPassNoClear (static shadow pass only).
-    float shadowBiasFactor_ = 2.0f;   // glPolygonOffset factor
-    float shadowBiasUnits_  = 4.0f;   // glPolygonOffset units
-
-    // Static world-fixed shadows: accumulate over multiple frames
-    void buildStaticLightMatrix(float sunDirX, float sunDirY, float sunDirZ,
-                                float mapHalfExtent);
-    bool staticLightMatrixBuilt() const { return staticLightMatrixBuilt_; }
-    // VK-SHADOW-COPY-ONCE-1: bump a generation counter each time the static
-    // shadow map is (re)built (mission load / Terrain::destroy re-arm). The VK
-    // interop copy path uses this to copy-once per generation instead of every
-    // frame -- the static map only changes on this event, never per-frame.
-    void markStaticLightMatrixBuilt() { staticLightMatrixBuilt_ = true; ++staticShadowGeneration_; }
-    uint64_t staticShadowGeneration() const { return staticShadowGeneration_; }
-    // VPL-#shadow C-1: per-mission re-arm so the one-shot full-map static
-    // shadow rebuilds on the next mission (against fresh blocks[]) instead
-    // of freezing the previous mission's shadow. Called from Terrain::destroy.
-    void resetStaticLightMatrix() { staticLightMatrixBuilt_ = false; }
-    void setMapHalfExtent(float extent) { mapHalfExtent_ = extent; }
+    void setMapHalfExtent(float extent) { mapHalfExtent_=extent; }
     float getMapHalfExtent() const { return mapHalfExtent_; }
-    void setWaterElevation(float elev) { waterElevation_ = elev; }
-    // TERRAIN-SHORELINE-V3: read-only accessor so the chunk terrain driver
-    // (gos_terrain_lod_chunk.cpp) can upload the SAME water elevation the
-    // water fast path uses (Terrain::waterElevation, mirrored here at mission
-    // load via setWaterElevation/gos_SetWaterElevation) as u_waterElevation
-    // for elevation-based shoreline band placement.
+    void setWaterElevation(float z) { waterElevation_=z; }
     float getWaterElevation() const { return waterElevation_; }
-
-    // Dynamic object shadows: camera-centered, re-rendered every frame
-    void initDynamicShadows();
-    void destroyDynamicShadows();
-    // camFitCornersMC2 = 8 raw-MC2 frustum corners (clipToWorld-unprojected
-    // + Stuff->MC2 swizzled by the caller). Builder clamps + fits the ortho.
-    void buildDynamicLightMatrix(float sunDirX, float sunDirY, float sunDirZ,
-                                 const float camFitCornersMC2[8][3],
-                                 const float shadowCenterXYZ[3], bool shadowCenterValid);
-    // The dynamic shadow state exists (the sizes and light matrices; the cascades when ShadowCSM is on). The maps themselves are Vulkan images owned by the shadow island.
-    bool dynShadowBuilt() const { return dynShadowBuilt_; }
-    bool csmBuilt() const { return csmBuilt_; }
-    // The single (legacy) dynamic light-space matrix; the cascade matrices are getDynamicCascadeMatrices().
-    const float* getDynamicLightSpaceMatrix() const { return dynamicLightSpaceMatrix_; }
-    int getDynamicShadowMapSize() const { return dynShadowMapSize_; }
-    // VK-P8a SHADOW-INTEROP: the dynamic prop caster draw enables polygon offset via
-    // glPolygonOffset(shadowBiasFactor_, shadowBiasUnits_) (gos_static_prop_batcher.cpp
-    // drawDynamicPropShadows). The VK shadow island must reproduce this as VK depthBias
-    // EXACTLY (the parity STOP-watch), so it needs these values.
-    float getShadowBiasFactor() const { return shadowBiasFactor_; }
-    float getShadowBiasUnits() const { return shadowBiasUnits_; }
-
-    // --- Item 1: Cascaded Shadow Maps (dynamic path) -----------------------
-    // Option ShadowCSM (options.cfg, default on; off selects the legacy
-    // single-map path above, byte-identical). When on
-    // (the default), the dynamic shadow is an array of csmCount layers, each
-    // with its own light matrix.
-    int    getDynamicShadowCascadeCount() const { return csmCount_; }
-    // Flat float[csmCount_*16] of per-cascade light-space matrices (col-major).
-    const float* getDynamicCascadeMatrices() const { return dynamicCascadeMatrices_; }
-    // Per-cascade world-texel footprint (2*cRad/mapSize), used for texel-scaled
-    // depth bias in the shadow shaders. Same indexing as the cascade matrices.
-    const float* getDynamicCascadeTexelWorld() const { return dynamicCascadeTexelWorld_; }
-    // (farP-nearP) of the shared CSM ortho z-row; must match the C++ z-row exactly.
-    float getCsmDepthSpan() const { return csmDepthSpan_; }
-    // Per-cascade shadow resolution: the LAST cascade lives in a separate 2D
-    // depth image, the near cascades stay in the array.
-    int    getDynamicFullMapSize() const { return dynamicFullMapSize_; }
-    // World-texel footprint of the last (full-map) cascade, computed with the
-    // separate texture's resolution (NOT the array's). Used for the depth bias.
-    float  getDynamicFullMapTexelWorld() const { return dynamicFullMapTexelWorld_; }
 
     // Toggles and parameters
     float exposure_;
@@ -365,36 +294,8 @@ private:
 
     bool initialized_;
 
-    // Shadow map (size only: the maps are Vulkan images)
-    int shadowMapSize_;
-    int savedViewport_[4];
-    float staticLightSpaceMatrix_[16]; // world-fixed ortho, built once at map load
-    bool staticLightMatrixBuilt_;      // true after light matrix is built (first frame)
-    uint64_t staticShadowGeneration_ = 0; // VK-SHADOW-COPY-ONCE-1: bumped each (re)build
-    float mapHalfExtent_;              // half the map size in world units
-    float waterElevation_ = 0.0f;     // sea-level world Z (Terrain::waterElevation)
-
-    // Dynamic object shadows (camera-centered, per-frame): size and matrices only
-    int dynShadowMapSize_;
-    bool dynShadowBuilt_ = false;
-    bool csmBuilt_ = false;
-    float dynamicLightSpaceMatrix_[16];
-
-    // --- Item 1 CSM state (only used when the ShadowCSM option is on) --------
-    static const int kMaxCsmCascades = 3;
-    int    csmCount_;                          // clamp(MC2_SHADOW_CSM_COUNT,1,3)
-    float  dynamicCascadeMatrices_[kMaxCsmCascades * 16]; // per-cascade col-major
-    float  dynamicCascadeTexelWorld_[kMaxCsmCascades];    // 2*cRad/mapSize per cascade, world units
-    float  csmDepthSpan_;                                 // (farP-nearP) of shared ortho z-row
-    int    csmDebugLayer_;                     // which layer the debug blit shows
-
-    // --- Per-cascade shadow resolution: separate full-map (last) cascade -----
-    // The near cascades (0..N-2) are array layers at dynShadowMapSize_. The LAST
-    // cascade (N-1, map-centered full-map catch-all) is a separate, lower-res 2D
-    // depth image to save VRAM while keeping the near cascades sharp. When
-    // MC2_SHADOW_FULLMAP_SEPARATE=0, dynamicFullMapSize_ == dynShadowMapSize_.
-    int    dynamicFullMapSize_;                 // edge in texels (default 4096)
-    float  dynamicFullMapTexelWorld_;           // 2*cRad/dynamicFullMapSize_ for last cascade
+    float mapHalfExtent_=0.0f;
+    float waterElevation_=0.0f;
 
     float inverseViewProj_[16];
     float viewProj_[16];

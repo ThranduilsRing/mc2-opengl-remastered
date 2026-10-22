@@ -15,7 +15,6 @@
 #include "shadow_mask_asset.h"
 #include "shadow_dirty_tiles.h"
 #include "static_caster_set.h"
-#include "static_shadow_spec.h"
 #include "terrain_field_store.h"
 #include "vk_depth_caster_pipeline.h"
 #include "vk_gpu_profile.h"
@@ -240,14 +239,15 @@ void ShadowBake::invalidate() {
 // The bake's inputs: the caster set of the mission, the terrain, the sun, the water, the static light matrix. The mask key leaves out the height version
 // once a mask exists: a crater or an editor stroke must not rebake the whole map (dirty tiles arrive with P5).
 std::optional<ShadowBake::BakeKeys> ShadowBake::inputsReady(const ShadowBakeInputs& in) {
+    static const bool enabled=mc2::gate::get<"MC2_SHADOW_ENABLE">();
+    const auto* post=getGosPostProcess();
+    if (!enabled || !post || !post->shadowsEnabled_) return std::nullopt;
     const mc2shadow::StaticCasterSet& set = mc2shadow::staticCasterSet();
     if (set.version() == 0) return std::nullopt;
     // A map whose objects cast nothing has no prop geometry; its bake is the terrain self-shadow alone.
     if (!set.entries().empty() && (in.vbo == VK_NULL_HANDLE || in.ibo == VK_NULL_HANDLE)) return std::nullopt;
     const mc2terrain::TerrainFieldStore* store = gos_TerrainFieldStore();
     if (!store || store->mapSide() < 2) return std::nullopt;
-    StaticShadowSpec spec;
-    if (!gos_GetStaticShadowSpec(&spec)) return std::nullopt;
     if (!in.alphaReady && !in.alphaAbsent && !set.entries().empty()) {
         if (++waitFrames_ < kMaxAlphaWaitFrames) return std::nullopt;
         if (!loggedWait_) { loggedWait_ = true; blog("the alpha-ON array never arrived: baking with foliage casters opaque."); }
@@ -279,8 +279,7 @@ std::optional<ShadowBake::BakeKeys> ShadowBake::inputsReady(const ShadowBakeInpu
     }
     BakeKeys keys;
     keys.mask = h | 1u;
-    const uint64_t gen = spec.generation;
-    keys.object = mc2shadow::fnv1a(&gen, sizeof(gen), keys.mask) | 1u;
+    keys.object = keys.mask;
     const uint64_t delta=set.deltaVersion(), height=store->heightVersion();
     keys.object=mc2shadow::fnv1a(&delta,sizeof(delta),keys.object);
     keys.object=mc2shadow::fnv1a(&height,sizeof(height),keys.object)|1u;
@@ -454,6 +453,7 @@ void ShadowBake::markSubmitted(uint64_t epoch) {
     if (recordedMask_) { bakedKey_ = recordedKey_; maskReady_ = true; }
     objectKey_ = recordedObjectKey_;
     objectGeneration_ = recordedObjectGeneration_;
+    objectMatrix_ = recordedObjectMatrix_;
     objectReady_ = true;
 }
 
@@ -512,8 +512,7 @@ bool ShadowBake::recordBake(VkCommandBuffer cb, const ShadowBakeInputs& in) {
     const clk::time_point t0 = clk::now();
     ZoneScopedN("ShadowBake.Record");
     const mc2terrain::TerrainFieldStore* store = gos_TerrainFieldStore();
-    StaticShadowSpec spec;
-    if (!store || !gos_GetStaticShadowSpec(&spec)) return false;
+    if (!store) return false;
     gos_GetTerrainChunkGridInfo(&mapSide_, &halfMap_);
     float lx = 0.0f, ly = 0.0f, lz = 1.0f;
     gos_GetTerrainLightDir(&lx, &ly, &lz);
@@ -577,13 +576,22 @@ bool ShadowBake::recordBake(VkCommandBuffer cb, const ShadowBakeInputs& in) {
     if (casterTop < -1e29f) casterTop = terrainTop_;
     casterTop_ = casterTop;
 
-    // Object map instances: every live leaf, sorted by type.
-    std::vector<uint32_t> objOrder = live;
-    std::sort(objOrder.begin(), objOrder.end(), [this](uint32_t a, uint32_t b) { return leaves_[a].typeID < leaves_[b].typeID; });
+    // The mask/cache uses pristine load leaves. Object receivers always use
+    // current gameplay leaves, including on a full mask rebake after an edit.
     std::vector<GpuStaticPropInstance> objInst;
-    objInst.reserve(objOrder.size());
+    casters.resolve(objInst);
+    std::erase_if(objInst, [this](const auto& leaf) {
+        return leaf.typeID >= typeBounds_.size() || !typeBounds_[leaf.typeID].valid;
+    });
+    std::sort(objInst.begin(), objInst.end(), [](const auto& a, const auto& b) { return a.typeID < b.typeID; });
     std::vector<uint32_t> objTypes;
-    for (uint32_t i : objOrder) { objInst.push_back(leaves_[i]); objTypes.push_back(leaves_[i].typeID); }
+    objTypes.reserve(objInst.size());
+    for (const auto& leaf : objInst) {
+        objTypes.push_back(leaf.typeID);
+        mc2shadow::Vec3 lo, hi;
+        instanceBox(leaf.modelMatrix, typeBounds_[leaf.typeID].mn, typeBounds_[leaf.typeID].mx, lo, hi);
+        casterTop_ = (std::max)(casterTop_, hi.z);
+    }
     objectRuns_.clear();
     appendRuns(objectRuns_, objTypes, 0);
 
@@ -650,6 +658,12 @@ bool ShadowBake::recordBake(VkCommandBuffer cb, const ShadowBakeInputs& in) {
     binnedInstances_ = static_cast<uint32_t>(tileInst.size());
     cpuStage_[2] = std::chrono::duration<double, std::milli>(clk::now() - p0).count();
 
+    // The bake owns the full-map object projection. It is paired with the
+    // submitted D16 image, independently of camera history or an engine latch.
+    const float span=(mapSide_-1)*mc2shadow::kWorldUnitsPerVertex;
+    const mc2shadow::Rect full{-halfMap_,halfMap_-span,-halfMap_+span,halfMap_};
+    const auto objectWindow=mc2shadow::casterWindow(basis_,full,terrainMin_,terrainTop_,casterTop_,tanT,objectMapSize());
+    mc2shadow::windowMatrix(basis_,objectWindow,recordedObjectMatrix_.data());
     // Uploads.
     if (recordedMask_ && !(warm ? ensureEncoder() : ensureTransients())) return false;
     const uint32_t tileCount = static_cast<uint32_t>(tiles_.size());
@@ -667,7 +681,7 @@ bool ShadowBake::recordBake(VkCommandBuffer cb, const ShadowBakeInputs& in) {
             std::memcpy(ubo.data() + t * kSlice, &u, sizeof(u));
         }
         CasterUBO o{};
-        std::memcpy(o.lightSpace, spec.lightSpace, sizeof(o.lightSpace));
+        std::memcpy(o.lightSpace, recordedObjectMatrix_.data(), sizeof(o.lightSpace));
         std::memcpy(ubo.data() + tileCount * kSlice, &o, sizeof(o));
         if (!casterUbo_.upload(ubo.data(), ubo.size())) { blog("caster UBO upload failed."); return false; }
         if (!tileInst.empty() && !instances_.upload(tileInst.data(), tileInst.size() * sizeof(GpuStaticPropInstance))) { blog("instance upload failed."); return false; }
@@ -767,7 +781,7 @@ bool ShadowBake::recordBake(VkCommandBuffer cb, const ShadowBakeInputs& in) {
         gpuScope.end();
     }
     if (!recordObjectMap(cb, in, tileCount * kQueriesPerTile + 2)) return false;
-    recordedObjectGeneration_ = spec.generation;
+    recordedObjectGeneration_ = recordedObjectKey_;
     cpuMs_ = std::chrono::duration<double, std::milli>(clk::now() - t0).count();
     warmReadMs_ = warmReadMs;
     if (recordedMask_ && warm) {
@@ -780,7 +794,7 @@ bool ShadowBake::recordBake(VkCommandBuffer cb, const ShadowBakeInputs& in) {
                             mc2shadow::kSunAngularRadiusDeg, mc2shadow::kFadeStartWorld, mc2shadow::kFadeEndWorld, fadeMax_, waterZ_, heightSide_,
                             heightSpacing_, cpuMs_);
     } else {
-        mc2::fmt::print_err("[SHADOW_BAKE] object map re-recorded: generation={} casters={}\n", mc2::fmt::as_u64(spec.generation), mc2::fmt::as_size(leaves_.size()));
+        mc2::fmt::print_err("[SHADOW_BAKE] object map re-recorded: generation={} casters={}\n", mc2::fmt::as_u64(recordedObjectKey_), mc2::fmt::as_size(leaves_.size()));
     }
     return true;
 }
@@ -1265,8 +1279,7 @@ void ShadowBake::compareChains(const std::vector<uint8_t>& a, const std::vector<
 // The object map: the whole height field as the old static map drew it, then every caster, with the engine's static light matrix.
 bool ShadowBake::recordObjectMap(VkCommandBuffer cb, const ShadowBakeInputs& in, uint32_t queryBase) {
     const mc2terrain::TerrainFieldStore* store = gos_TerrainFieldStore();
-    StaticShadowSpec spec;
-    if (!store || !gos_GetStaticShadowSpec(&spec)) return false;
+    if (!store) return false;
     if (terrainIndexCount_ == 0 || objectHeightVersion_ != store->heightVersion()) {
         const int side = store->mapSide();
         const std::vector<float>& height = store->height();
@@ -1318,7 +1331,7 @@ bool ShadowBake::recordObjectMap(VkCommandBuffer cb, const ShadowBakeInputs& in,
     vkCmdBindIndexBuffer(cb, terrainIbo_.get(), 0, VK_INDEX_TYPE_UINT32);
     vkCmdDrawIndexed(cb, terrainIndexCount_, 1, 0, 0, 0);
     if (!objectRuns_.empty()) {
-        vkCmdSetDepthBias(cb, spec.biasUnits, 0.0f, spec.biasFactor);
+        vkCmdSetDepthBias(cb, 2.0f, 0.0f, 1.0f);
         vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, objectOpaque_.get());
         vkCmdBindVertexBuffers(cb, 0, 1, &in.vbo, &zero);
         vkCmdBindIndexBuffer(cb, in.ibo, 0, VK_INDEX_TYPE_UINT32);

@@ -35,7 +35,6 @@ layout(push_constant) uniform OverlayPC {
     int   _pad2;
 } pc;
 
-#include "include/terrain_static_visibility.glsl"
 void main() {
     vec4 tex_color = (Texcoord.x < -0.5) ? vec4(1.0) : texture(tex1, Texcoord);
     vec4 c = Color * tex_color;
@@ -44,25 +43,8 @@ void main() {
     if (!skipInlineShadow) {
         const vec3 shadowN = vec3(0.0, 0.0, 1.0);
         vec3 lightDir3 = uT.terrainLightDir.xyz;
-        LsvkShadowKnobs shKnobs = mv_shadowKnobs();
-        float staticShadow = 1.0;
-        if (uT.enableShadows != 0)
-            staticShadow = terrainStaticMaskBound() ? mix(0.4, 1.0, terrainStaticMask(WorldPos.xy))
-                         : lsvk_calcShadow(WorldPos, shadowN, lightDir3, u_staticShadow,
-                                           uT.staticLightSpaceMatrix, uT.shadowSoftness, 8, shKnobs);
-        float dynShadow = 1.0;
-        if (moverFrame.flags.w != 0) {
-            dynShadow = mix(0.4, 1.0, moverVisibility(WorldPos, shadowN));
-        } else if (uT.csmEnabled != 0) {
-            vec3 shSun = lsvk_shadowSun(lightDir3, shKnobs);
-            float NdotLdyn = max(dot(shadowN, shSun), 0.0);
-            dynShadow = (NdotLdyn < 0.05) ? 1.0
-                      : mv_calcDynamicShadowCsm(WorldPos, NdotLdyn, clamp(shSun.z, 0.0, 1.0), 4);
-        } else if (uT.enableDynShadows != 0) {
-            dynShadow = lsvk_calcDynamicShadowLegacy(WorldPos, shadowN, lightDir3, u_dynamicShadow,
-                                                     uT.dynamicLightSpaceMatrix, uT.shadowSoftness, 4, shKnobs);
-        }
-        c.rgb *= min(staticShadow, dynShadow);
+        c.rgb *= min(uT.enableShadows!=0?terrainStaticShadow(WorldPos):1.0,
+                     terrainDynamicShadow(WorldPos,shadowN));
     }
 
     if (pc.fogColor.x > 0.0 || pc.fogColor.y > 0.0 || pc.fogColor.z > 0.0 || pc.fogColor.w > 0.0)

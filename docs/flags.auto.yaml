@@ -3,9 +3,9 @@
 # Where each gate is read, what the smoke runner forwards and what tier1_env_vars.md says are not here: ask
 # tools/repo_intel (env_var, gate_status), which scan the sources.
 generator_version: "3.0.0"
-gate_count: 928
-registry_entry_count: 186
-verified_count: 824
+gate_count: 899
+registry_entry_count: 181
+verified_count: 791
 flags:
   - name: MC2_3DVIEW_DIAG
     kind: Bool
@@ -889,26 +889,12 @@ flags:
     owner: gameos
     doc: ""
     verified: true
-  - name: MC2_DEBUG_SHADOW_FRUSTUM
-    kind: Bool
-    default: false
-    rule: Presence
-    owner: post
-    doc: "[SHADOWFRUSTUM v1] VPL-#shadow: prove the static-shadow CLIPPER is correct (user suspected light/clipper; render-expert grep says it's feed-scope, not the..."
-    verified: true
   - name: MC2_DEBUG_SHADOW_STATIC
     kind: Bool
     default: false
     rule: Presence
     owner: code
     doc: ""
-  - name: MC2_DEBUG_SHADOW_ZRANGE
-    kind: Bool
-    default: false
-    rule: Presence
-    owner: post
-    doc: "[SHADOWZRANGE v1] VPL-#10: prove the [0,1] ZERO_TO_ONE conversion is correct."
-    verified: true
   - name: MC2_DEBUG_STATE_DUMP
     kind: Bool
     default: false
@@ -4277,96 +4263,6 @@ flags:
     owner: gameos
     doc: "SPIRV-CONSUMER-PILOT-BUILD-1: DEFAULT-OFF debug gate."
     registry: {feature_id: MC2_SHADER_SPIRV_FATAL, kind: Trace, order: -1, default_on: false}
-  - name: MC2_SHADOW_ALT_SCALE
-    kind: Bool
-    default: true
-    rule: Lead0Kill
-    owner: post
-    doc: ""
-    smoke_passthrough: true
-    verified: true
-  - name: MC2_SHADOW_BAKE
-    kind: Bool
-    default: true
-    rule: Lead0Kill
-    owner: post
-    doc: "Static shadow bake (mask + object map); =0 is the temporary kill-switch back to the cascade-fed static props."
-    smoke_passthrough: true
-    verified: true
-  - name: MC2_SHADOW_BOUNDED_NEAR_RADIUS
-    kind: Float
-    default: 2500
-    rule: Prefix
-    owner: post
-    doc: "SHADOW-BOUNDED-NEAR-FIT-1 tunable: bounded near-fit radius in world units (default 2500, clamped 512..mapClampR)."
-    range: {lo: 0, hi: 3.4028234663852886e+38, style: reject, lo_exclusive: true}
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_TUNE_SHADOW_BOUNDED_NEAR_RADIUS, kind: Trace, order: -1, default_on: false}
-  - name: MC2_SHADOW_CASTER_CULL_CACHE
-    kind: Bool
-    default: false
-    rule: Lead0P
-    owner: code
-    doc: "SHADOW-CASTER-CULL-CACHE-1 (TXMMGR-PERF-EASYWINS-1): reuse the Shadow.CasterCull result (mclib/txmmgr.cpp DynamicShadowPass) across frames when BOTH the..."
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_SHADOW_CASTER_CULL_CACHE, kind: Feature, order: -1, default_on: false}
-  - name: MC2_SHADOW_CASTER_CULL_MARGIN
-    kind: Float
-    default: 0.25
-    rule: Prefix
-    owner: code
-    doc: ""
-    range: {lo: 0, hi: 3.4028234663852886e+38, style: reject}
-    smoke_passthrough: true
-    verified: true
-  - name: MC2_SHADOW_CASTER_LIGHTBOX_CULL
-    kind: Bool
-    default: true
-    rule: Lead0Kill
-    owner: code
-    doc: "DEFAULT ON since 2026-06-16 (render-hygiene-s1)."
-    smoke_passthrough: true
-    verified: true
-  - name: MC2_SHADOW_CSM_COUNT
-    kind: Int
-    default: 3
-    rule: Prefix
-    owner: post
-    doc: ""
-    range: {lo: 1, hi: 3, style: clamp}
-    verified: true
-  - name: MC2_SHADOW_CSM_LAMBDA
-    kind: Float
-    default: 0.5
-    rule: Prefix
-    owner: post
-    doc: ""
-    range: {lo: 0, hi: 1, style: clamp}
-    verified: true
-  - name: MC2_SHADOW_CSM_R0
-    kind: Float
-    default: 512
-    rule: Prefix
-    owner: post
-    doc: ""
-    verified: true
-  - name: MC2_SHADOW_CSM_R1
-    kind: Float
-    default: 4096
-    rule: Prefix
-    owner: post
-    doc: ""
-    verified: true
-  - name: MC2_SHADOW_CSM_SOFTNESS
-    kind: Float
-    default: 0.899999976
-    rule: Prefix
-    owner: unclassified
-    doc: ""
-    range: {lo: 0.10000000149011612, hi: 6, style: clamp}
-    verified: true
   - name: MC2_SHADOW_CULL_DEBUG
     kind: Bool
     default: false
@@ -4374,7 +4270,6 @@ flags:
     owner: code
     doc: ""
     smoke_passthrough: true
-    verified: true
   - name: MC2_SHADOW_DEBUG_MODE
     kind: String
     default: ""
@@ -4391,40 +4286,6 @@ flags:
     owner: props
     doc: ""
     verified: true
-  - name: MC2_SHADOW_DIST_FADE
-    kind: Float
-    default: 80
-    rule: Prefix
-    owner: post
-    doc: ""
-    range: {lo: 0, hi: 100000, style: clamp}
-    smoke_passthrough: true
-    verified: true
-  - name: MC2_SHADOW_DIST_FADE_MAX
-    kind: Float
-    default: 0.649999976
-    rule: Prefix
-    owner: post
-    doc: ""
-    range: {lo: 0, hi: 1, style: clamp}
-    smoke_passthrough: true
-    verified: true
-  - name: MC2_SHADOW_DYNAMIC_PROP_CASTERS
-    kind: Enum
-    default: "1"
-    rule: Std
-    owner: props
-    doc: "SHADOW-DYNAMIC-PROP-CASTERS-1: feed the per-frame DYNAMIC sun-shadow caster pass from the full registry (registered props, visibility-independent) instead..."
-    tokens: "1|0|2"
-    smoke_passthrough: true
-    registry: {feature_id: MC2_FEATURE_SHADOW_DYNAMIC_PROP_CASTERS, kind: Feature, order: -1, default_on: true}
-  - name: MC2_SHADOW_DYNAMIC_PROP_DIRTY_ONLY
-    kind: Bool
-    default: true
-    rule: Lead0Kill
-    owner: code
-    doc: "DEFAULT-ON since 2026-06-04 (smoke-clean mc2_24; proven s_registryGeneration dirty-only pattern, shadow pass reads only modelMatrix+typeID): only literal..."
-    verified: true
   - name: MC2_SHADOW_ENABLE
     kind: Bool
     default: true
@@ -4434,30 +4295,6 @@ flags:
     smoke_passthrough: true
     verified: true
     registry: {feature_id: MC2_FEATURE_SHADOW_MAPS, kind: Feature, order: 5, default_on: true}
-  - name: MC2_SHADOW_FADE_CONT
-    kind: Bool
-    default: true
-    rule: Lead0Kill
-    owner: post
-    doc: ""
-    smoke_passthrough: true
-    verified: true
-  - name: MC2_SHADOW_FADE_RAMP0
-    kind: Bool
-    default: true
-    rule: Lead0Kill
-    owner: post
-    doc: ""
-    smoke_passthrough: true
-    verified: true
-  - name: MC2_SHADOW_FOCUS_CENTER
-    kind: Bool
-    default: true
-    rule: Lead0Kill
-    owner: post
-    doc: ""
-    smoke_passthrough: true
-    verified: true
   - name: MC2_SHADOW_FRUSTUM_DIAG
     kind: Bool
     default: false
@@ -4465,38 +4302,7 @@ flags:
     owner: post
     doc: "SHADOW-FRUSTUM-AUDIT-1: read-only per-frame dynamic sun-shadow coverage probe in buildDynamicLightMatrix (sun dir, frustum XY, fit/xy radius, map clamp..."
     smoke_passthrough: true
-    verified: true
     registry: {feature_id: MC2_TRACE_SHADOW_FRUSTUM, kind: Trace, order: -1, default_on: false}
-  - name: MC2_SHADOW_FULLMAP_SEPARATE
-    kind: Bool
-    default: true
-    rule: Lead0Kill
-    owner: post
-    doc: ""
-    verified: true
-  - name: MC2_SHADOW_FULLMAP_SIZE
-    kind: Int
-    default: 4096
-    rule: Prefix
-    owner: post
-    doc: ""
-    verified: true
-  - name: MC2_SHADOW_GUARD_CLAMPED_SUN
-    kind: Bool
-    default: true
-    rule: Lead0Kill
-    owner: post
-    doc: "SHADOW-SUNCLAMP-1: feed the shadow_screen.frag back-face guard (`if (NdotL < 0.05) return 1.0;`) the SAME altitude-clamped sun the shadow matrices are built..."
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_FEATURE_SHADOW_GUARD_CLAMPED_SUN, kind: Feature, order: -1, default_on: true}
-  - name: MC2_SHADOW_MAP_SIZE
-    kind: Int
-    default: 8192
-    rule: Prefix
-    owner: post
-    doc: ""
-    verified: true
   - name: MC2_SHADOW_MECH_SOFT
     kind: Float
     default: 1
@@ -4514,14 +4320,6 @@ flags:
     smoke_passthrough: true
     verified: true
     registry: {feature_id: MC2_TUNE_SHADOW_MIN_SUN_ALT, kind: Trace, order: -1, default_on: false}
-  - name: MC2_SHADOW_OBJ_NORMAL_BIAS
-    kind: Float
-    default: 2
-    rule: Prefix
-    owner: unclassified
-    doc: ""
-    range: {lo: 0, hi: 16, style: clamp}
-    verified: true
   - name: MC2_SHADOW_PROP_ALPHA
     kind: Bool
     default: true
@@ -4542,7 +4340,6 @@ flags:
     rule: Lead0Kill
     owner: post
     doc: ""
-    verified: true
   - name: MC2_SHADOW_STATE_TRACE
     kind: Bool
     default: false
@@ -4550,20 +4347,6 @@ flags:
     owner: gameos
     doc: ""
     smoke_passthrough: true
-  - name: MC2_SHADOW_STATIC_BANDFIX
-    kind: Bool
-    default: true
-    rule: Lead0Kill
-    owner: gameos
-    doc: "SHADOW-BANDING-DEFAULT-ON (2026-07-18): field bug report confirmed the banding persists in the shipped default config (\"this was never fixed\") - the fix..."
-    verified: true
-  - name: MC2_SHADOW_STATIC_BANDFIX_V2
-    kind: Bool
-    default: true
-    rule: Lead0Kill
-    owner: gameos
-    doc: "SHADOW-BANDING-DEFAULT-ON (2026-07-18): field bug report (banding in and around mech shadows on terrain) verified A/B in-engine: default config shows..."
-    verified: true
   - name: MC2_SHADOW_TIER_STATS
     kind: Bool
     default: false
@@ -5640,15 +5423,6 @@ flags:
     owner: terrain
     doc: ""
     verified: true
-  - name: MC2_TERRAIN_SHADOW_GUARD_CLAMPED_SUN
-    kind: Bool
-    default: true
-    rule: Lead0Kill
-    owner: gameos
-    doc: "TERRAIN-SHADOW-GUARD-1: the TERRAIN-side twin of SHADOW-SUNCLAMP-1, and the one that actually moves world pixels."
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_FEATURE_TERRAIN_SHADOW_GUARD_CLAMPED_SUN, kind: Feature, order: -1, default_on: true}
   - name: MC2_TERRAIN_SHORELINE
     kind: Bool
     default: true
@@ -6663,7 +6437,6 @@ flags:
     owner: vk
     doc: "VK shadow producer/consumer evidence (default OFF = zero cost; GameOS/gameos/vulkan_shadow_island_live.cpp)."
     smoke_passthrough: true
-    verified: true
     registry: {feature_id: MC2_TRACE_VK_SHADOW_MATRIX_DIAG, kind: Trace, order: -1, default_on: false}
   - name: MC2_VK_SHARED_GBUFFER
     kind: Bool
@@ -6690,20 +6463,12 @@ flags:
     doc: ""
     smoke_passthrough: true
     verified: true
-  - name: MC2_VK_TERRAIN_CSM_DEBUG
-    kind: Int
-    default: 0
-    rule: Prefix
-    owner: vk
-    doc: ""
-    verified: true
   - name: MC2_VK_TERRAIN_CSM_FULLMAP_EXPERIMENTAL
     kind: Bool
     default: false
     rule: Lead1
     owner: terrain
     doc: ""
-    verified: true
   - name: MC2_VK_TERRAIN_FENCE_DEFER
     kind: Bool
     default: true

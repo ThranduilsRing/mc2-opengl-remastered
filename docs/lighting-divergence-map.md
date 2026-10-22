@@ -342,3 +342,5 @@ land in the same `TG_HWLightsData` table via `addLightDataStructure`.
   Where they say UNKNOWN, that is literal.
 - **This lane changed no pixels.** It produces a map, a guard and a
   recommendation. Nothing here is visible on a default launch.
+
+P8 shadow consolidation (INTENTIONAL): the two ground receiver floors remain 0.4 in `ground_shadow.glsl`. The unified object receiver retains a 0.4 static/prop floor and a 0.55 mover floor for mechs. The scanner names these live sites, replacing the deleted cascade and static screen shader sites. Vegetation receives the same static mask and mover visibility with a 0.4 floor.

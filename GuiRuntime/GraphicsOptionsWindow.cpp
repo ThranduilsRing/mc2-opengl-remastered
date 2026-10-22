@@ -133,17 +133,6 @@ void draw() {
             }
             if (ImGui::CollapsingHeader("Shadow Tuning##pp")) {
                 ImGui::Indent();
-                ImGui::TextDisabled("Polygon offset (static shadow pass only):");
-                ImGui::SliderFloat("Factor##bias", &pp->shadowBiasFactor_, 0.0f, 8.0f);
-                if (ImGui::IsItemHovered())
-                    ImGui::SetTooltip("lower = shadow acne risk\nhigher = peter-panning risk\ndefault 2.0");
-                ImGui::SliderFloat("Units##bias",  &pp->shadowBiasUnits_,  0.0f, 20.0f);
-                if (ImGui::IsItemHovered())
-                    ImGui::SetTooltip("offset units\ndefault 4.0");
-                ImGui::SameLine();
-                if (ImGui::SmallButton("Reset##bias"))
-                    { pp->shadowBiasFactor_ = 2.0f; pp->shadowBiasUnits_ = 4.0f; }
-                ImGui::Spacing();
                 ImGui::TextDisabled("Softness (all shadow receivers):");
                 {
                     float softness = gos_GetTerrainShadowSoftness();

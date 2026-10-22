@@ -179,7 +179,6 @@ bool EditorData::initTerrainFromPCV( const char* fileName )
 		static_cast<uint32_t>(Terrain::realVerticesMapSide * Terrain::realVerticesMapSide),
 		64u);
 	gpu_cull::readback_init(kEditorMaxActors + kEditorMaxActors / 4u + kStaticPropHeadroom);
-	gos_ResetStaticShadowPriming();
 	// Reset terrain shadow priming so a previous mission cannot leave stale
 	// depth ordering between water and terrain shadow surfaces.
 
@@ -1376,7 +1375,6 @@ bool EditorData::initTerrainFromTGA( int mapSize, int min, int max, int terrain 
 		gos_terrain_lighting::mission_init(
 			static_cast<uint32_t>(Terrain::realVerticesMapSide * Terrain::realVerticesMapSide), 64u);
 		gpu_cull::readback_init(kEditorMaxActors + kEditorMaxActors / 4u + kStaticPropHeadroom);
-		gos_ResetStaticShadowPriming();
 
 	}
 	// Load the colormap into terrainTextures2. The load path does this inside

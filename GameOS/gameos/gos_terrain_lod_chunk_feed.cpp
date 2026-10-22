@@ -2,7 +2,6 @@
 // Declared in the class headers; shared names in gos_terrain_lod_chunk_internal.h.
 #include "gos_terrain_lod_chunk_internal.h"
 #include "mc2fmt.h"
-#include "static_shadow_spec.h"
 #include "terrain_field_store.h"
 
 #ifdef MC2_VULKAN_ISLAND
@@ -244,124 +243,9 @@ extern "C" int mc2_terrain_tier1_get_frame_feed(Mc2TerrainTier1Feed* out)
         float lx = 0.f, ly = 0.f, lz = 1.f;
         gos_GetTerrainLightDir(&lx, &ly, &lz);
         out->terrainLightDir[0] = lx; out->terrainLightDir[1] = ly; out->terrainLightDir[2] = lz;
-        // Default: no shadow (lit-only) until the engine's static light matrix exists.
-        out->shadowsEnabled     = 0;
-        out->staticShadowGeneration = 0;
-        out->shadowSoftness     = 2.5f;   // shadow.hglsl default
-        std::memset(out->staticLightSpaceMatrix, 0, sizeof(out->staticLightSpaceMatrix));
-        gosPostProcess* pp = getGosPostProcess();
-        StaticShadowSpec staticSpec;
-        if (pp && gos_GetStaticShadowSpec(&staticSpec)) {
-            out->shadowsEnabled = 1;
-            out->staticShadowGeneration = staticSpec.generation;
-            std::memcpy(out->staticLightSpaceMatrix, staticSpec.lightSpace, sizeof(out->staticLightSpaceMatrix));
-        }
-
-        // VK-TERRAIN-DYNSHADOW: the DYNAMIC (building/mech) shadow map. Mirrors the GL
-        // LOD-chunk enable gate (gos_terrain_lod_chunk.cpp:1120,1131): shadowsEnabled_
-        // && getDynamicShadowFBO(). Non-CSM legacy single-map path only (CSM array path
-        // deferred — matches the mechanism-proven shadow-compare spike). Copy source is
-        // the RAW engine GL texture so we never toggle compare-mode on a VK interop tex.
-        out->dynShadowsEnabled = 0;
-        out->dynamicShadowSize = 0;
-        std::memset(out->dynamicLightSpaceMatrix, 0, sizeof(out->dynamicLightSpaceMatrix));
-        if (pp && pp->shadowsEnabled_ && pp->dynShadowBuilt()
-            && !mc2ShadowCsmEnabled()) {
-            const int    dSize = pp->getDynamicShadowMapSize();
-            if (dSize > 0) {
-                out->dynShadowsEnabled = 1;
-                out->dynamicShadowSize = dSize;
-                std::memcpy(out->dynamicLightSpaceMatrix, pp->getDynamicLightSpaceMatrix(),
-                            sizeof(out->dynamicLightSpaceMatrix));
-            }
-        }
-        // VK-FLIP-FIELD-REPORT-1 CSM SUBSET: when CSM IS enabled (launcher default), the
-        // single-map dyn path above is skipped (!mc2ShadowCsmEnabled), so VK terrain got
-        // NO object shadow up close. GL LOD0 terrain samples calcDynamicShadow's CSM
-        // cascades (near array + full-map catch-all). Full near-cascade-array interop is a
-        // large lift (sampler2DArrayShadow import + N matrices) and is DEFERRED. The
-        // BIGGEST-SAFE-SUBSET: feed the CSM FULL-MAP cascade (the last cascade — a single
-        // GL_TEXTURE_2D DEPTH_COMPONENT texture, byte-shape-identical to the single dyn map
-        // this island already imports) through the SAME binding-7 slot + computeBakedShadow.
-        // Result: VK terrain gets whole-map object shadows (coarser than GL's near cascade
-        // near the camera, but present) — closes the "no shadows at all" gap with the
-        // proven single-map mechanism, zero new interop surface.
-        //
-        // VK-FLIP-FIELD-BUG1-1 (field oracle 2026-07-06, mc2_01 overview_center): the
-        // full-map subset is NET-NEGATIVE at normal play distance. GL LOD0 terrain samples
-        // the NEAR cascade up close; the full-map cascade projects tall building/mech
-        // occluders as huge soft blobs that swim with the camera = the user's
-        // "camera-dependent garbage shadow wash". CSM-OFF was PIXEL-CLEAN vs GL on the same
-        // bookmark; CSM-ON washed the whole airport. The matrix/texture ARE consistent
-        // (island renders full-map, UBO carries the full-map cascade matrix) — the wash is
-        // inherent to the coarse subset, NOT a binding mismatch. The real cure is near-
-        // cascade-array interop (sampler2DArrayShadow + N matrices), still DEFERRED.
-        //
-        // Therefore this subset is now DOUBLE-GATED: MC2_VK_TERRAIN_CSM=1 (presence) is no
-        // longer sufficient — it additionally requires MC2_VK_TERRAIN_CSM_FULLMAP_EXPERIMENTAL=1.
-        // The launcher/field bat sets MC2_VK_TERRAIN_CSM=1 as part of the umbrella family;
-        // that alone must NOT re-introduce the wash. Off by default -> VK terrain draws with
-        // NO dynamic object shadow under CSM (matches the clean CSM-OFF capture), which is
-        // strictly better than the wash until the near-cascade port lands.
-        if (!out->dynShadowsEnabled && pp && pp->shadowsEnabled_
-            && mc2ShadowCsmEnabled()
-            && mc2::gate::get<"MC2_VK_TERRAIN_CSM_FULLMAP_EXPERIMENTAL">()) {
-            const int    fSize = pp->getDynamicFullMapSize();
-            const int    ccount = pp->getDynamicShadowCascadeCount();
-            const float* mats  = pp->getDynamicCascadeMatrices();
-            if (pp->csmBuilt() && fSize > 0 && ccount > 0 && mats) {
-                out->dynShadowsEnabled = 1;
-                out->dynamicShadowSize = fSize;
-                // Full-map cascade = the LAST cascade; its matrix is row (ccount-1).
-                std::memcpy(out->dynamicLightSpaceMatrix, mats + (ccount - 1) * 16,
-                            sizeof(out->dynamicLightSpaceMatrix));
-            }
-        }
-
-        // VK-TERRAIN-CSM-NEAR-1: the REAL cure. Feed the near-cascade array + separate
-        // full-map cascade so the VK frag can port GL's calcDynamicShadow cascade-select
-        // verbatim (near cascade up close, coarse full-map only past its range) instead
-        // of the FULLMAP_EXPERIMENTAL subset's "always coarse" wash. Independent of the
-        // two paths above: MC2_VK_TERRAIN_CSM alone (no FULLMAP_EXPERIMENTAL) now means
-        // THIS implementation. GL must actually have CSM active+built this frame.
-        //
-        // FAR-BAND-BLACK-1 FIX: this block was gated on dynShadowGate alone, NOT on
-        // the CSM sub-gate as the comment above claims -- so
-        // setting MC2_VK_TERRAIN_DYNSHADOW=1 with GL CSM active (ShadowCSM on,
-        // the default) fed CSM cascade data to the VK terrain frag even with
-        // MC2_VK_TERRAIN_CSM=0 (or unset with the umbrella off). The field launcher bat
-        // sets exactly this combination (DYNSHADOW+CSM both umbrella members, CSM only
-        // gets explicitly forced off in isolation tests) -- the resulting csmEnabled=1
-        // fragments made the VK terrain frag's CSM cascade-select path run in a
-        // configuration nobody exercises intentionally, collapsing shading to
-        // near-black over most of the screen (root cause of FAR-BAND-BLACK; isolated
-        // via bisecting MC2_VK_TERRAIN_LIGHTING/DETAIL/DYNSHADOW/CSM one at a time --
-        // DYNSHADOW alone reproduces, and disabling GL CSM instead of the VK gate also
-        // clears it, confirming the CSM feed itself is the trigger, not depth/format).
-        // Now requires the CSM sub-gate explicitly, matching the documented contract.
-        out->csmEnabled = 0;
-        out->csmArraySize = 0;
-        out->csmCount = 0;
-        std::memset(out->csmCascadeMatrices, 0, sizeof(out->csmCascadeMatrices));
-        std::memset(out->csmCascadeTexelWorld, 0, sizeof(out->csmCascadeTexelWorld));
-        out->csmDepthSpan = 1.0f;
-        out->csmFullMapSize = 0;
-        out->csmFullMapTexelWorld = 0.0f;
-        if (pp && pp->shadowsEnabled_ && mc2ShadowCsmEnabled()) {
-            const int    ccount2 = pp->getDynamicShadowCascadeCount();
-            const float* mats2   = pp->getDynamicCascadeMatrices();
-            const float* texelW  = pp->getDynamicCascadeTexelWorld();
-            if (pp->csmBuilt() && ccount2 > 0 && ccount2 <= 3 && mats2 && texelW) {
-                out->csmEnabled = 1;
-                out->csmArraySize  = pp->getDynamicShadowMapSize();
-                out->csmCount      = ccount2;
-                std::memcpy(out->csmCascadeMatrices, mats2, sizeof(float) * 16 * ccount2);
-                std::memcpy(out->csmCascadeTexelWorld, texelW, sizeof(float) * ccount2);
-                out->csmDepthSpan  = pp->getCsmDepthSpan();
-                out->csmFullMapSize  = pp->getDynamicFullMapSize();
-                out->csmFullMapTexelWorld = pp->getDynamicFullMapTexelWorld();
-            }
-        }
+        const auto* pp=getGosPostProcess();
+        out->shadowsEnabled=pp && pp->shadowsEnabled_;
+        out->dynShadowsEnabled=out->shadowsEnabled;
     }
 
     // VK-TERRAIN-DETAIL sub-slice: hand the material detail-normal ARRAY tex + the GL
@@ -476,14 +360,7 @@ extern "C" int mc2_terrain_tier1_get_frame_feed(Mc2TerrainTier1Feed* out)
                                   &out->lightPoolCompress, &out->moverContactShadow);
         gos_TerrainPadGlowRGB(out->padGlow);
         out->padGlowSpill = gos_TerrainPadGlowSpillWu();
-        // VK-PARITY-SHADOW-1: the SAME knobs GL bakes into the terrain program as defines.
-        {
-            const Mc2ShadowFadeKnobs sk = mc2ShadowFadeKnobs();
-            out->shadowDistFadeWu  = sk.distFadeWu;
-            out->shadowDistFadeMax = sk.distFadeMax;
-            out->shadowMinSunSin   = sk.minSunSin;
-            out->shadowKnobFlags   = sk.flags;
-        }
+
     }
 
     // VK-TERRAIN-LODFADE sub-slice: camera-distance fade for detail-normal/POM, closing

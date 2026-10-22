@@ -1,3 +1,4 @@
+#include "Gates/gate_cold.h"
 // VK terrain island: the extern C entry points: enabled / ready / prepare, the frame UBO and light-pool staging, and the per-frame run.
 // Declared in the class headers; shared names in vulkan_terrain_island_internal.h.
 #include "vulkan_terrain_island_internal.h"
@@ -186,12 +187,6 @@ void fill_frame_ubo(TerrainIsland* s, const Mc2TerrainTier1Feed& feed,
     u.nfhStrength    = feed.nfhStrength;
     u.detailTiling   = feed.detailTiling;
     u.detailStrength = feed.detailStrength;
-    // VK-TERRAIN-DYNSHADOW: enable only when the sub-gate is on AND a real GL
-    // dynamic map was copied this frame (s->dynShadowReady). Else 0 -> no
-    // dynamic shadow term (byte-identical to the pre-dynshadow frame).
-    u.enableDynShadows = (feed.lightingEnabled && feed.dynShadowsEnabled && s->dynShadowReady) ? 1 : 0;
-    std::memcpy(u.dynamicLightSpaceMatrix, feed.dynamicLightSpaceMatrix,
-                sizeof(u.dynamicLightSpaceMatrix));
     // VK-TERRAIN-LODFADE: camera pos + gate, precondition-chained on detail
     // being enabled (fading an already-off detail term is a no-op).
     u.cameraPosMC2[0] = feed.cameraPosMC2[0];
@@ -203,42 +198,7 @@ void fill_frame_ubo(TerrainIsland* s, const Mc2TerrainTier1Feed& feed,
     // patch's skirt sub-gate was off at capture, or GL reported no skirt for
     // this block -- island draws no skirt strips for it, see the draw loop).
     u.skirtDepth = patch.skirtDepth;
-    // VK-TERRAIN-CSM-NEAR-1: enable only when the gate armed AND both the near
-    // array + full-map copies succeeded this frame (s->csmArrayReady/
-    // csmFullMapReady). Else 0 -> frag falls back to the legacy single-map
-    // dynamic-shadow path (u.enableDynShadows above), never a hole.
-    u.csmEnabled = (feed.lightingEnabled && feed.csmEnabled
-                    && s->csmArrayReady && s->csmFullMapReady) ? 1 : 0;
-    u.csmCount     = feed.csmCount;
-    u.csmDepthSpan = feed.csmDepthSpan;
-    // CSM-BLACKOUT-RECON-1: one-shot debug viz, env-gated (no perf/behavior
-    // impact when unset). See MC2_VK_TERRAIN_CSM_DEBUG in mc2vkgate.
-    {
-        static const int dbgMode = mc2::gate::get<"MC2_VK_TERRAIN_CSM_DEBUG">();
-        u.csmDebugMode = dbgMode;
-    }
-    std::memcpy(u.csmCascadeMatrices, feed.csmCascadeMatrices, sizeof(u.csmCascadeMatrices));
-    u.csmCascadeTexelWorld[0] = feed.csmCascadeTexelWorld[0];
-    u.csmCascadeTexelWorld[1] = feed.csmCascadeTexelWorld[1];
-    u.csmCascadeTexelWorld[2] = feed.csmCascadeTexelWorld[2];
-    u.csmCascadeTexelWorld[3] = 0.0f;
-    u.csmFullMapTexelWorld = feed.csmFullMapTexelWorld;
-    if (mc2_vk_shadow_matrix_diag_enabled() && mc2_vk_shadow_matrix_diag_take_terrain_arm()) {
-        // MC2_VK_SHADOW_MATRIX_DIAG: exactly what terrain_tier1.frag samples with (std140 default
-        // column-major mat4, no row_major qualifier; raw memcpy of the GL arrays).
-        auto pm = [](const char* tag, const float* m, int n) {
-            mc2::fmt::print_err("[VK_SHADOW_MATRIX v1] {} = [", mc2::fmt::safe(tag));
-            for (int i = 0; i < n; ++i) mc2::fmt::print_err("{}{:.6g}", mc2::fmt::safe(i ? "," : ""), m[i]);
-            mc2::fmt::print_err("]\n");
-        };
-        mc2::fmt::print_err("[VK_SHADOW_MATRIX v1] TERRAIN UBO csmEnabled={:d} csmCount={:d} enableDynShadows={:d} csmDepthSpan={:.6g} csmFullMapTexelWorld={:.6g} csmCascadeTexelWorld={:.6g},{:.6g},{:.6g} feed.csmArraySize={:d} feed.csmFullMapSize={:d} feed.dynShadowSize={:d}\n", mc2::fmt::as_i32(static_cast<int>(u.csmEnabled)), mc2::fmt::as_i32(static_cast<int>(u.csmCount)), mc2::fmt::as_i32(static_cast<int>(u.enableDynShadows)), u.csmDepthSpan, u.csmFullMapTexelWorld, u.csmCascadeTexelWorld[0], u.csmCascadeTexelWorld[1], u.csmCascadeTexelWorld[2], mc2::fmt::as_i32(static_cast<int>(feed.csmArraySize)), mc2::fmt::as_i32(static_cast<int>(feed.csmFullMapSize)), mc2::fmt::as_i32(static_cast<int>(feed.dynamicShadowSize)));
-        pm("TERRAIN UBO dynamicLightSpaceMatrix", u.dynamicLightSpaceMatrix, 16);
-        for (int i = 0; i < 3; ++i) {
-            char tg[64]; mc2::fmt::to_buf(tg, "TERRAIN UBO csmCascadeMatrices[{:d}]", mc2::fmt::as_i32(i));
-            pm(tg, u.csmCascadeMatrices + i * 16, 16);
-        }
-        std::fflush(stderr);
-    }
+    u.csmDebugMode=std::atoi(mc2::gate::str<"MC2_SHADOW_DEBUG_MODE">().c_str());
     // VK-TERRAIN-VISUALDISPLACE-FAR-1: mode-2 far-band Z-swap. Per-patch
     // visualMode (0 or 2, from the GL capture site) is only honored when the
     // bake snapshot is live AND the side is sane -- else forced 0 (VS draws
@@ -338,11 +298,8 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     // VK-FLIP-FIELD-REPORT-1: atlas + per-frame shadow-map interop copies grouped in
     // one coarse zone (colormap/cement copy-once; static copy-once-per-generation since
     // VK-SHADOW-COPY-ONCE-1; dyn shadow copy-per-frame).
-    const clk::time_point tCopies0 = clk::now();
     // VK-TERRAIN-STAGING-PERF-1: per-step sub-timers inside the copies zone, only
     // sampled when MC2_VK_TERRAIN_COPY_STATS is set (same gate as the summary line).
-    static const bool s_copyStatsOn = mc2::gate::get<"MC2_VK_TERRAIN_COPY_STATS">();
-    double subStaticUs = 0.0, subDynUs = 0.0, subCsmUs = 0.0;
     {
     ZoneScopedN("VK-terrain-interop-copies");
     // COLORMAP-BASE: copy-once import of the GL colormap atlas (no-op once imported;
@@ -364,69 +321,14 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     if (feed.visualHeightCpu)
         snapshot_visual_height(s, feed);
 
-    // Binding 5 is the VK shadow island's static sun map of this frame's generation, or no static shadow (lit, never a hole).
-    {
-        const clk::time_point t0 = clk::now();
-        bind_static_shadow(s, feed);
-        if (s_copyStatsOn) subStaticUs = usSince(t0);
+    bind_static_shadow(s,feed);
+    const auto mask=s->staticVisibilityExternalView;
+    if (mask!=s->staticVisibilityBoundView) {
+        s->staticVisibilityBoundView=mask;
+        write_descriptors(s);
     }
 
-    // Binding 7 is the VK shadow island's single dynamic map this frame, or no dynamic shadow at all.
-    {
-        const clk::time_point t0 = clk::now();
-        copy_dynamic_shadow(s, feed);
-        if (s_copyStatsOn) subDynUs = usSince(t0);
-    }
-
-    // VK-TERRAIN-CSM-NEAR-1: per-frame copy of the GL near-cascade array + full-map
-    // cascade. No-op (csmArrayReady/csmFullMapReady=false) when the gate is off or GL
-    // CSM isn't actually built this frame -> UBO csmEnabled forced 0 below -> frag falls
-    // back to the legacy single-map path (fail-soft, never a hole).
-    {
-        const clk::time_point t0 = clk::now();
-        copy_csm_shadows(s, feed);
-        if (s_copyStatsOn) subCsmUs = usSince(t0);
-    }
-
-    // The shadow island's views are stable across frames, but bindings 5, 7, 8 and 9 are rewritten (write_descriptors) on the frame a binding switches
-    // between the island's view and this island's dummy: the descriptor set otherwise still names whatever was last written.
-    {
-        const VkImageView wantStaticView = s->shadowExternalView != VK_NULL_HANDLE ? s->shadowExternalView : s->shadowView.get();
-        const VkImageView wantView = s->dynShadowDirect ? s->dynShadowExternalView : s->dynShadowView.get();
-        const VkImageView wantCsmArrayView = s->csmArrayDirect ? s->csmArrayExternalView : s->csmArrayView.get();
-        const VkImageView wantCsmFullMapView = s->csmFullMapDirect ? s->csmFullMapExternalView : s->csmFullMapView.get();
-        if (wantStaticView != s->shadowBoundView || wantView != s->dynShadowBoundView || wantCsmArrayView != s->csmArrayBoundView
-            || wantCsmFullMapView != s->csmFullMapBoundView || s->staticVisibilityExternalView != s->staticVisibilityBoundView) {
-            // VK-TERRAIN-FENCE-DEFER-1: a prior terrain submit may still be in flight
-            // using these sets under the deferred retire (the old inline wait made
-            // this rewrite safe for free). Bound-view switches are RARE (first frame
-            // of a direct-consume switch / warmup transitions) — device-idle first.
-            mc2vk::getOrCreateEngineVulkanContext().waitIdle("terrain_bound_view_switch");
-            write_descriptors(s);
-            s->shadowBoundView = wantStaticView;
-            s->staticVisibilityBoundView = s->staticVisibilityExternalView;
-            s->dynShadowBoundView = wantView;
-            s->csmArrayBoundView = wantCsmArrayView;
-            s->csmFullMapBoundView = wantCsmFullMapView;
-        }
-    }
-
-    // VK-TERRAIN-DETAIL: copy-once import of the GL material detail-normal 2D_ARRAY. No-op
-    // once imported / while the gate is off (feed.matNormalVersion==0). Fail-soft: leaves
-    // the flat-normal dummy bound (matNormalReady=false) -> FS uses macro-slope-only normal.
-    import_matnormal(s, feed);
-    }   // VK-FLIP-FIELD-REPORT-1: close VK-terrain-interop-copies zone
-
-    // VK-SHADOW-COPY-ONCE-1 evidence: optional per-frame ms log for the interop-copies
-    // zone, gated the same way as MC2_MECH_BATCHER_STATS (env-presence, off by default,
-    // zero cost when unset). Lets a smoke run produce before/after timing without a
-    // Tracy capture tool in the loop.
-    {
-        if (s_copyStatsOn) {
-            const double ms = usSince(tCopies0) / 1000.0;
-            mc2::fmt::print_err("[VK_TERRAIN_COPY_STATS] copies_ms={:.4f} static_us={:.1f} dyn_us={:.1f} csm_us={:.1f} staticGen={:d} shadowReady={:d} dynReady={:d} dynDirect={:d} csmArrayReady={:d} csmArrayDirect={:d} csmFullMapReady={:d} csmFullMapDirect={:d}\n", ms, subStaticUs, subDynUs, subCsmUs, mc2::fmt::as_u64(static_cast<unsigned long long>(feed.staticShadowGeneration)), mc2::fmt::as_i32(s->shadowReady ? 1 : 0), mc2::fmt::as_i32(s->dynShadowReady ? 1 : 0), mc2::fmt::as_i32(s->dynShadowDirect ? 1 : 0), mc2::fmt::as_i32(s->csmArrayReady ? 1 : 0), mc2::fmt::as_i32(s->csmArrayDirect ? 1 : 0), mc2::fmt::as_i32(s->csmFullMapReady ? 1 : 0), mc2::fmt::as_i32(s->csmFullMapDirect ? 1 : 0));
-        }
-    }
+    } // texture imports and shadow-mask binding
 
     // CPU staging cost so far (copies + snapshots); the per-parity UBO fill below is
     // added after the beginFrame wait so stageUs never absorbs the deferred retire.

@@ -1,43 +1,29 @@
 {
   "matrix_id": "shadow",
-  "description": "Sun-shadow capture variants. MC2_SHADOW_ENABLE is the master gate (default-OFF); dynamic prop casters (MC2_SHADOW_DYNAMIC_PROP_CASTERS) is default-ON and effective only when shadows are enabled, so its kill-switch entry pairs it with the master gate. MC2_SHADOW_DEBUG_MODE=1 visualizes the screen-shadow pass classification (sky / self-shadow-handled / lit / shadowed). MC2_SHADOW_BOUNDED_NEAR_FIT tightens the light-frustum near fit. Definitions only — no captures run here.",
-  "default_missions": ["mc2_01", "mc2_17"],
+  "description": "Static bake and one current-frame mover map. Master shadows default on; quality controls resolution. Definitions only.",
+  "default_missions": [
+    "mc2_01",
+    "mc2_17"
+  ],
   "default_duration": 20,
   "entries": [
     {
       "id": "default",
-      "description": "No shadow env. Master gate OFF -> byte-identical baseline (no shadow pass).",
+      "description": "Default high quality shadows.",
       "env": {}
     },
     {
-      "id": "shadow_on",
-      "description": "Sun shadows enabled (MC2_SHADOW_ENABLE=1). Dynamic prop casters default-ON. The headline 'shadows on' shot.",
+      "id": "shadow_off",
+      "description": "Master shadow control.",
       "env": {
-        "MC2_SHADOW_ENABLE": "1"
+        "MC2_SHADOW_ENABLE": "0"
       }
     },
     {
-      "id": "shadow_dynamic_casters_off",
-      "description": "Shadows on, dynamic prop casters kill-switched (MC2_SHADOW_DYNAMIC_PROP_CASTERS=0). Isolates the registry-fed dynamic caster contribution vs the static/building casters.",
+      "id": "shadow_potato",
+      "description": "Potato resolution with all receiver classes.",
       "env": {
-        "MC2_SHADOW_ENABLE": "1",
-        "MC2_SHADOW_DYNAMIC_PROP_CASTERS": "0"
-      }
-    },
-    {
-      "id": "shadow_debug_classify",
-      "description": "Screen-shadow classification debug (MC2_SHADOW_DEBUG_MODE=1): sky=black, self-shadow-handled=brown, lit=green, shadowed=blue. Diagnostic-only.",
-      "env": {
-        "MC2_SHADOW_ENABLE": "1",
-        "MC2_SHADOW_DEBUG_MODE": "1"
-      }
-    },
-    {
-      "id": "shadow_bounded_near_fit",
-      "description": "Shadows on with bounded-near light-frustum fit (options.cfg ShadowBoundedNearFit=1, the default; passed as MC2_OPTIONS_OVERRIDE so the arm stays explicit). Tighter near plane -> denser shadow-map texel coverage near the camera.",
-      "env": {
-        "MC2_SHADOW_ENABLE": "1",
-        "MC2_OPTIONS_OVERRIDE": "ShadowBoundedNearFit=1"
+        "MC2_OPTIONS_OVERRIDE": "ShadowQuality=0"
       }
     }
   ]

@@ -260,7 +260,7 @@ bool init_island(WaterIsland* s, int w, int h) {
         cba[1].blendEnable = VK_FALSE;
         // Keep normal RGB masked. Water shades its own light, so its alpha marker
         // must prevent the screen resolve from darkening the reflected sky again.
-        cba[1].colorWriteMask = mc2::gate::get<"MC2_SHADOW_BAKE">() ? VK_COLOR_COMPONENT_A_BIT : 0;
+        cba[1].colorWriteMask = VK_COLOR_COMPONENT_A_BIT;
         VkPipelineColorBlendStateCreateInfo cb{};
         cb.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
         cb.attachmentCount = 2; cb.pAttachments = cba;

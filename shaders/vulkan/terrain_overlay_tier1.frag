@@ -65,7 +65,6 @@ vec3 overlayCementAlbedo(uint cw, vec2 wp) {
     return texture(u_cementAtlas, cAtlasUV).rgb * vec3(uT.missionFlatR, uT.missionFlatG, uT.missionFlatB);
 }
 
-#include "include/terrain_static_visibility.glsl"
 void main() {
     if (pc._pad0 == 2) {
         ivec2 size = textureSize(tex1, 0);
@@ -96,25 +95,8 @@ void main() {
 
     vec3 lightDir3 = normalize(uT.terrainLightDir.xyz);
     const vec3 shadowN = vec3(0.0, 0.0, 1.0);                  // flat-up, matches GL overlay
-    LsvkShadowKnobs shKnobs = mv_shadowKnobs();
-    float staticShadow = 1.0;
-    if (uT.enableShadows != 0)
-        staticShadow = terrainStaticMaskBound() ? mix(0.4, 1.0, terrainStaticMask(WorldPos.xy))
-                     : lsvk_calcShadow(WorldPos, shadowN, lightDir3, u_staticShadow,
-                                       uT.staticLightSpaceMatrix, uT.shadowSoftness, 8, shKnobs);
-    float dynamicShadow = 1.0;
-    if (moverFrame.flags.w != 0) {
-            dynamicShadow = mix(0.4, 1.0, moverVisibility(WorldPos, shadowN));
-        } else if (uT.csmEnabled != 0) {
-        vec3 shSun = lsvk_shadowSun(lightDir3, shKnobs);
-        float NdotLdyn = max(dot(shadowN, shSun), 0.0);
-        dynamicShadow = (NdotLdyn < 0.05) ? 1.0
-                      : mv_calcDynamicShadowCsm(WorldPos, NdotLdyn, clamp(shSun.z, 0.0, 1.0), 4);
-    } else if (uT.enableDynShadows != 0) {
-        dynamicShadow = lsvk_calcDynamicShadowLegacy(WorldPos, shadowN, lightDir3, u_dynamicShadow,
-                                                     uT.dynamicLightSpaceMatrix, uT.shadowSoftness, 4, shKnobs);
-    }
-    float shadow = min(staticShadow, dynamicShadow);           // no cement exemption (D3)
+    float shadow=min(uT.enableShadows!=0?terrainStaticShadow(WorldPos):1.0,
+                     terrainDynamicShadow(WorldPos,shadowN));
     c.rgb *= shadow;
 
     // In-shader distance fog (skipped on cement tiles: the shared screen-space fog does it once).

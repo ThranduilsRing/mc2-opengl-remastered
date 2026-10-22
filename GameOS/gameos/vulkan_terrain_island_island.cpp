@@ -206,16 +206,6 @@ void write_descriptors(TerrainIsland* s, int parity) {
         w[n].dstBinding = 4; w[n].descriptorCount = 1;
         w[n].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; w[n].pBufferInfo = &ceBuf; ++n;
     }
-    // Binding 5 static shadow sampler2DShadow: the shadow island's static map when this frame has it, else the dummy (uT.enableShadows gates use).
-    VkDescriptorImageInfo shInfo{};
-    const VkImageView staticView = (s->shadowExternalView != VK_NULL_HANDLE) ? s->shadowExternalView : s->shadowView.get();
-    if (staticView != VK_NULL_HANDLE && s->shadowSamp) {
-        shInfo.sampler = s->shadowSamp.get(); shInfo.imageView = staticView;
-        shInfo.imageLayout = (s->shadowExternalView != VK_NULL_HANDLE) ? kDirectShadowLayout : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = s->set[i];
-        w[n].dstBinding = 5; w[n].descriptorCount = 1;
-        w[n].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; w[n].pImageInfo = &shInfo; ++n;
-    }
     // VK-TERRAIN-DETAIL: binding 6 material detail-normal sampler2DArray — always written
     // once the (dummy 1x1x1 or real) array image + sampler exist (uT.detailReady gates use).
     VkDescriptorImageInfo mnInfo{};
@@ -225,45 +215,6 @@ void write_descriptors(TerrainIsland* s, int parity) {
         w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = s->set[i];
         w[n].dstBinding = 6; w[n].descriptorCount = 1;
         w[n].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; w[n].pImageInfo = &mnInfo; ++n;
-    }
-    // VK-TERRAIN-DYNSHADOW: binding 7 dynamic shadow sampler2DShadow — always written once
-    // the (dummy or real) depth-compare image exists (uT.enableDynShadows gates use).
-    // VK-SHADOW-DIRECT-CONSUME-1: prefer the shadow island's own view (zero-copy) when
-    // it produced+fenced this frame; falls back to this island's own copy-updated image
-    // (dynShadowView) otherwise. Layout is DEPTH_STENCIL_READ_ONLY_OPTIMAL on the direct
-    // path (see vulkan_shadow_island_live.cpp render-pass finalLayout) which is a valid
-    // sampled-read layout for a combined-image-sampler descriptor.
-    VkDescriptorImageInfo dshInfo{};
-    const VkImageView dshView = (s->dynShadowExternalView != VK_NULL_HANDLE)
-        ? s->dynShadowExternalView : s->dynShadowView.get();
-    if (dshView != VK_NULL_HANDLE && s->shadowSamp) {
-        dshInfo.sampler = s->shadowSamp.get(); dshInfo.imageView = dshView;
-        dshInfo.imageLayout = (s->dynShadowExternalView != VK_NULL_HANDLE) ? kDirectShadowLayout : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = s->set[i];
-        w[n].dstBinding = 7; w[n].descriptorCount = 1;
-        w[n].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; w[n].pImageInfo = &dshInfo; ++n;
-    }
-    // VK-TERRAIN-CSM-NEAR-1: binding 8 near-cascade array, binding 9 full-map cascade —
-    // always written once the (dummy or real) images + shared shadowSamp exist.
-    VkDescriptorImageInfo csmArrInfo{};
-    const VkImageView csmArrView = (s->csmArrayExternalView != VK_NULL_HANDLE)
-        ? s->csmArrayExternalView : s->csmArrayView.get();
-    if (csmArrView != VK_NULL_HANDLE && s->shadowSamp) {
-        csmArrInfo.sampler = s->shadowSamp.get(); csmArrInfo.imageView = csmArrView;
-        csmArrInfo.imageLayout = (s->csmArrayExternalView != VK_NULL_HANDLE) ? kDirectShadowLayout : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = s->set[i];
-        w[n].dstBinding = 8; w[n].descriptorCount = 1;
-        w[n].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; w[n].pImageInfo = &csmArrInfo; ++n;
-    }
-    VkDescriptorImageInfo csmFmInfo{};
-    const VkImageView csmFmView = (s->csmFullMapExternalView != VK_NULL_HANDLE)
-        ? s->csmFullMapExternalView : s->csmFullMapView.get();
-    if (csmFmView != VK_NULL_HANDLE && s->shadowSamp) {
-        csmFmInfo.sampler = s->shadowSamp.get(); csmFmInfo.imageView = csmFmView;
-        csmFmInfo.imageLayout = (s->csmFullMapExternalView != VK_NULL_HANDLE) ? kDirectShadowLayout : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = s->set[i];
-        w[n].dstBinding = 9; w[n].descriptorCount = 1;
-        w[n].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; w[n].pImageInfo = &csmFmInfo; ++n;
     }
     // VK-TERRAIN-VISUALDISPLACE-FAR-1: binding 10 visual-height (fine bake) SSBO —
     // always written (dummy 16B until the first bake snapshot; uT.visualMode==0 gates use).
@@ -539,7 +490,6 @@ bool init_island(TerrainIsland* s, int w, int h) {
     // VK-TERRAIN-LIGHTING: dummy 1x1 depth-compare shadow (binding 5) so binding 5 is a
     // valid descriptor from frame 1 (shadowReady stays false until MC2_VK_TERRAIN_LIGHTING
     // is on AND the GL static shadow map is live -> FS enableShadows=0 -> lit-only, no hole).
-    if (!ensure_dummy_shadow(s)) { setFallback("shadow_dummy_failed"); return false; }
     // VK-TERRAIN-DETAIL: 1x1x1 flat-normal matNormalArray dummy so binding 6 is a valid
     // descriptor from frame 1 (matNormalReady stays false until MC2_VK_TERRAIN_DETAIL is on
     // AND the GL array is live -> FS uses macro-slope-only normal, no hole).
@@ -548,11 +498,10 @@ bool init_island(TerrainIsland* s, int w, int h) {
     // (bindings 8/9) so both are valid descriptors from frame 1 (csmArrayReady/csmFullMapReady
     // stay false until MC2_VK_TERRAIN_CSM is armed AND GL CSM is actually built -> FS
     // csmEnabled=0 -> falls back to the legacy single-map path, no hole).
-    if (!ensure_dummy_csm(s)) { setFallback("csm_dummy_failed"); return false; }
 
     // ---- Descriptor layout: binding0 dynamic UBO (VS+FS), binding1 height SSBO (VS). ----
     {
-        VkDescriptorSetLayoutBinding b[20]{};
+        VkDescriptorSetLayoutBinding b[16]{};
         b[0].binding = 0; b[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
         b[0].descriptorCount = 1; b[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
         // VK-TERRAIN-DETAIL: binding 1 (height SSBO) is now ALSO read by the FS
@@ -569,46 +518,38 @@ bool init_island(TerrainIsland* s, int w, int h) {
         b[4].binding = 4; b[4].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
         b[4].descriptorCount = 1; b[4].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
         // VK-TERRAIN-LIGHTING: binding 5 = static shadow sampler2DShadow (FS).
-        b[5].binding = 5; b[5].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        b[5].descriptorCount = 1; b[5].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
         // VK-TERRAIN-DETAIL: binding 6 = material detail-normal sampler2DArray (FS).
-        b[6].binding = 6; b[6].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        b[6].descriptorCount = 1; b[6].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+        b[5].binding = 6; b[5].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        b[5].descriptorCount = 1; b[5].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
         // VK-TERRAIN-DYNSHADOW: binding 7 = dynamic shadow sampler2DShadow (FS).
-        b[7].binding = 7; b[7].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        b[7].descriptorCount = 1; b[7].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
         // VK-TERRAIN-CSM-NEAR-1: binding 8 = near-cascade array sampler2DArrayShadow (FS);
         // binding 9 = full-map cascade sampler2DShadow (FS).
-        b[8].binding = 8; b[8].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        b[8].descriptorCount = 1; b[8].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-        b[9].binding = 9; b[9].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        b[9].descriptorCount = 1; b[9].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
         // VK-TERRAIN-VISUALDISPLACE-FAR-1: binding 10 = visual-height fine-bake SSBO (VS,
         // both main + skirt verts read it for the mode-2 Z-swap).
-        b[10].binding = 10; b[10].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-        b[10].descriptorCount = 1; b[10].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+        b[6].binding = 10; b[6].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        b[6].descriptorCount = 1; b[6].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
         // VK-PARITY-TERRAIN-2: bindings 11/12/13 = light pool / grid header / grid index SSBOs (FS).
         for (int k = 11; k <= 13; ++k) {
             b[k].binding = static_cast<uint32_t>(k); b[k].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
             b[k].descriptorCount = 1; b[k].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
         }
         // TERRAIN-SHORELINE-V3: binding 14 = shoreline mask sidecar sampler2D (FS).
-        b[14].binding = 14; b[14].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        b[14].descriptorCount = 1; b[14].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+        b[10].binding = 14; b[10].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        b[10].descriptorCount = 1; b[10].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
         // SHORE-FIELD-1: binding 15 = water shore field sampler2D (FS, texelFetch only).
-        b[15].binding = 15; b[15].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        b[15].descriptorCount = 1; b[15].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-        b[16].binding = 16; b[16].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        b[16].descriptorCount = 1; b[16].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-        b[17].binding = 17; b[17].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        b[17].descriptorCount = 1; b[17].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-        b[18].binding=24; b[18].descriptorType=VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        b[18].descriptorCount=1; b[18].stageFlags=VK_SHADER_STAGE_FRAGMENT_BIT;
-        b[19].binding=25; b[19].descriptorType=VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        b[19].descriptorCount=1; b[19].stageFlags=VK_SHADER_STAGE_FRAGMENT_BIT;
+        b[11].binding = 15; b[11].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        b[11].descriptorCount = 1; b[11].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+        b[12].binding = 16; b[12].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        b[12].descriptorCount = 1; b[12].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+        b[13].binding = 17; b[13].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        b[13].descriptorCount = 1; b[13].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+        b[14].binding=24; b[14].descriptorType=VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        b[14].descriptorCount=1; b[14].stageFlags=VK_SHADER_STAGE_FRAGMENT_BIT;
+        b[15].binding=25; b[15].descriptorType=VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        b[15].descriptorCount=1; b[15].stageFlags=VK_SHADER_STAGE_FRAGMENT_BIT;
         VkDescriptorSetLayoutCreateInfo lci{};
         lci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-        lci.bindingCount = 20; lci.pBindings = b;
+        lci.bindingCount = 16; lci.pBindings = b;
         if (!mc2vk::create(s->dsl, s->device, [&](auto* h) { return vkCreateDescriptorSetLayout(s->device, &lci, nullptr, h); })) {
             vlog("vkCreateDescriptorSetLayout failed."); return false;
         }

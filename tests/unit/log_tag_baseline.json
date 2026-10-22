@@ -2250,28 +2250,6 @@
    "count": 1
   },
   {
-   "tag": "CSM",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "layers",
-    "casters_per_layer"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "CSM",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "nearLayers",
-    "arraySize",
-    "fullMapSize",
-    "separate"
-   ],
-   "count": 1
-  },
-  {
    "tag": "CURSOR",
    "ver": -1,
    "stream": "log",
@@ -7518,49 +7496,6 @@
    "count": 1
   },
   {
-   "tag": "SHADOWFRUSTUM",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "event",
-    "n",
-    "sunDirIn",
-    "sunDirNorm",
-    "mapHalfExtent",
-    "near",
-    "far",
-    "coversWorldXY"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "SHADOWZRANGE",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "event",
-    "cascade",
-    "ndcZ",
-    "inRange"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "SHADOWZRANGE",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "event",
-    "pt",
-    "world",
-    "clipZ",
-    "clipW",
-    "ndcZ",
-    "inRange"
-   ],
-   "count": 2
-  },
-  {
    "tag": "SHADOW_BAKE",
    "ver": -1,
    "stream": "stderr",
@@ -7789,27 +7724,6 @@
    "count": 1
   },
   {
-   "tag": "SHADOW_CULL",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "margin"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "SHADOW_CULL_DBG",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "world",
-    "clipW",
-    "ndc",
-    "keep"
-   ],
-   "count": 1
-  },
-  {
    "tag": "SHADOW_DEBUG",
    "ver": -1,
    "stream": "stderr",
@@ -7822,39 +7736,6 @@
    "stream": "stderr",
    "keys": [
     "MC2_SHADOW_DEBUG_MODE"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "SHADOW_FRUSTUM_DIAG",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "focusCenter",
-    "focusWorld",
-    "focusXYDist",
-    "nearSpread",
-    "farSpread"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "SHADOW_FRUSTUM_DIAG",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "frame",
-    "sunDir",
-    "lightAABB",
-    "worldCenter",
-    "fitRadius",
-    "orig",
-    "xyRadius",
-    "mapClampR",
-    "texelWU",
-    "orthoWH",
-    "validCorners",
-    "mapSize"
    ],
    "count": 1
   },
@@ -10144,104 +10025,11 @@
    "count": 1
   },
   {
-   "tag": "VK_SHADOW_MATRIX",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [],
-   "count": 6
-  },
-  {
-   "tag": "VK_SHADOW_MATRIX",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "csmEnabled",
-    "csmCount",
-    "enableDynShadows",
-    "csmDepthSpan",
-    "csmFullMapTexelWorld",
-    "csmCascadeTexelWorld",
-    "feed.csmArraySize",
-    "feed.csmFullMapSize",
-    "feed.dynShadowSize"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "VK_SHADOW_MATRIX",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "map",
-    "side"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "VK_SHADOW_MATRIX",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "map",
-    "side",
-    "dim",
-    "min",
-    "max",
-    "bbox"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "VK_SHADOW_MATRIX",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "ok"
-   ],
-   "count": 2
-  },
-  {
-   "tag": "VK_SHADOW_MATRIX",
-   "ver": 1,
-   "stream": "stderr",
-   "keys": [
-    "tick",
-    "csmN",
-    "dynSize",
-    "arrSize",
-    "fullSize",
-    "fullTexelWorld"
-   ],
-   "count": 1
-  },
-  {
    "tag": "VK_SHADOW_MECH",
    "ver": -1,
    "stream": "stderr",
    "keys": [],
    "count": 10
-  },
-  {
-   "tag": "VK_SHADOW_STATIC",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [],
-   "count": 5
-  },
-  {
-   "tag": "VK_SHADOW_STATIC",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "generation",
-    "size",
-    "terrain_tris",
-    "building_instances",
-    "building_draws",
-    "visibility_tiles",
-    "height_version"
-   ],
-   "count": 1
   },
   {
    "tag": "VK_SHARED_SCENE_COLOR",
@@ -10255,26 +10043,6 @@
    "ver": -1,
    "stream": "stdout",
    "keys": [],
-   "count": 1
-  },
-  {
-   "tag": "VK_TERRAIN_COPY_STATS",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "copies_ms",
-    "static_us",
-    "dyn_us",
-    "csm_us",
-    "staticGen",
-    "shadowReady",
-    "dynReady",
-    "dynDirect",
-    "csmArrayReady",
-    "csmArrayDirect",
-    "csmFullMapReady",
-    "csmFullMapDirect"
-   ],
    "count": 1
   },
   {

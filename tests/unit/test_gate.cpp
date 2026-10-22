@@ -1,3 +1,4 @@
+#include <array>
 // tests/unit/test_gate.cpp
 // GATE-REGISTRY-G1A: the typed gate table's parser, readers, cache and [CONFIG v1] dump.
 //
@@ -313,14 +314,22 @@ TEST_CASE("Tri is an enum class with no bool conversion") {
     CHECK(true);
 }
 
+namespace {
+constexpr std::array kRetiredShadowGates{"MC2_DEBUG_SHADOW_FRUSTUM","MC2_DEBUG_SHADOW_ZRANGE","MC2_SHADOW_ALT_SCALE","MC2_SHADOW_BAKE","MC2_SHADOW_BOUNDED_NEAR_RADIUS","MC2_SHADOW_CASTER_CULL_CACHE","MC2_SHADOW_CASTER_CULL_MARGIN","MC2_SHADOW_CASTER_LIGHTBOX_CULL","MC2_SHADOW_CSM_COUNT","MC2_SHADOW_CSM_LAMBDA","MC2_SHADOW_CSM_R0","MC2_SHADOW_CSM_R1","MC2_SHADOW_CSM_SOFTNESS","MC2_SHADOW_DIST_FADE","MC2_SHADOW_DIST_FADE_MAX","MC2_SHADOW_DYNAMIC_PROP_CASTERS","MC2_SHADOW_DYNAMIC_PROP_DIRTY_ONLY","MC2_SHADOW_FADE_CONT","MC2_SHADOW_FADE_RAMP0","MC2_SHADOW_FOCUS_CENTER","MC2_SHADOW_FULLMAP_SEPARATE","MC2_SHADOW_FULLMAP_SIZE","MC2_SHADOW_GUARD_CLAMPED_SUN","MC2_SHADOW_MAP_SIZE","MC2_SHADOW_OBJ_NORMAL_BIAS","MC2_SHADOW_STATIC_BANDFIX","MC2_SHADOW_STATIC_BANDFIX_V2","MC2_TERRAIN_SHADOW_GUARD_CLAMPED_SUN","MC2_VK_TERRAIN_CSM_DEBUG"};
+}
+
+TEST_CASE("Retired cascade and latch gates cannot be re-enabled") {
+    for (const char* name : kRetiredShadowGates)
+        CHECK_FALSE(gate::lookupName(name).has_value());
+}
+
 TEST_CASE("table is sorted, unique and every name round-trips through lookupName") {
     const gate::Row* rows = gate::tableData();
     const std::size_t n = gate::tableSize();
     REQUIRE(n == gate::detail::kGateCount);
-    // The table has 927 rows after retiring 10 SSAO/box-decal/GL-HZB gates and the am-f5 dead-gate wave. REQUIRE(n == kGateCount) only ties the table to the
-    // generated header, so a bad regeneration that shrinks both passes it; this floor catches that loss. It sits a
-    // few rows under the real count and moves down with an amnesty wave that deletes rows on purpose.
-    REQUIRE(n >= 920);
+    // Preserve the pre-cutover population floor, counting the explicitly
+    // retired shadow cohort whose absence is checked below.
+    REQUIRE(n + kRetiredShadowGates.size() >= 920);
     for (std::size_t i = 0; i < n; ++i) {
         if (i > 0) CHECK((rows[i - 1].name < rows[i].name));
         const auto info = gate::lookupName(rows[i].name);
@@ -978,14 +987,12 @@ float oldClampKnob(const char* v, float dflt, float lo, float hi) {
 
 TEST_CASE("G6 numeric rows reproduce the old mclib readers on every probe") {
     const gate::Row& fwd = g1b::rowNamed("MC2_LIGHT_POOL_MOVER_FWD");
-    const gate::Row& margin = g1b::rowNamed("MC2_SHADOW_CASTER_CULL_MARGIN");
     const gate::Row& floor = g1b::rowNamed("MC2_NIGHT_AMBIENT_FLOOR");
     for (const char* t : g1b::kProbes) {
         INFO((t ? t : "(unset)"));
         if (t && std::string(t) == "1e999") continue;   // inf: listed EDGE for the float rows (no harness sets it)
         if (t && std::string(t) == "-1e999") continue;
         CHECK(asFloat(gate::detail::parseRow(fwd, t)) == g6::oldMoverFwd(t));
-        CHECK(asFloat(gate::detail::parseRow(margin, t)) == g6::oldCullMargin(t));
         CHECK(static_cast<long>(g1b::intOf(floor, t)) == g6::oldNightFloor(t));
     }
 }
@@ -1050,7 +1057,6 @@ TEST_CASE("G6 predicate enums accept their documented spellings without a badval
 TEST_CASE("G6 level-valued gates are Enum rows with the level tokens first") {
     struct Want { const char* name; const char* tokens; const char* def; };
     const Want want[] = {
-        {"MC2_SHADOW_DYNAMIC_PROP_CASTERS", "1|0|2", "1"},
         {"MC2_SPOTLIGHT_DIRECTION_FIX", "0|1|2", "0"},
     };
     for (const Want& w : want) {
@@ -1063,7 +1069,6 @@ TEST_CASE("G6 level-valued gates are Enum rows with the level tokens first") {
         CHECK(g1b::intOf(r, nullptr) == 0);
         CHECK(g1b::intOf(r, "9") == 0);
     }
-    CHECK(g1b::intOf(g1b::rowNamed("MC2_SHADOW_DYNAMIC_PROP_CASTERS"), "0") == 1);
 }
 
 TEST_CASE("G6 string and presence rows") {
@@ -1094,33 +1099,13 @@ TEST_CASE("raw<> echoes the environment text, nullptr when unset, without cachin
 // G5: gos_postprocess.cpp rows
 // ---------------------------------------------------------------------------
 
-TEST_CASE("G5 postprocess clamp rows reproduce the clamping lambdas they replaced") {
-    auto fl = [&](const char* name, const char* text) { return asFloat(gate::detail::parseRow(g1b::rowNamed(name), text)); };
-    auto in = [&](const char* name, const char* text) {
-        return static_cast<std::int32_t>(static_cast<std::uint32_t>(gate::detail::parseRow(g1b::rowNamed(name), text)));
-    };
-    CHECK(in("MC2_SHADOW_CSM_COUNT", nullptr) == 3);
-    CHECK(in("MC2_SHADOW_CSM_COUNT", "0") == 1);
-    CHECK(in("MC2_SHADOW_CSM_COUNT", "9") == 3);
-    CHECK(in("MC2_SHADOW_CSM_COUNT", "2") == 2);
-    CHECK(fl("MC2_SHADOW_CSM_LAMBDA", "-1") == 0.0f);
-    CHECK(fl("MC2_SHADOW_CSM_LAMBDA", "7") == 1.0f);
-    CHECK(fl("MC2_SHADOW_CSM_LAMBDA", "") == 0.5f);
-    CHECK(fl("MC2_SHADOW_CSM_SOFTNESS", "0.01") == 0.1f);      // the old test was `s < 0.1f`
-    CHECK(fl("MC2_SHADOW_CSM_SOFTNESS", "99") == 6.0f);
-    CHECK(fl("MC2_SHADOW_DIST_FADE", "1e9") == 100000.0f);
-    CHECK(fl("MC2_SHADOW_DIST_FADE_MAX", "2") == 1.0f);
-    CHECK(fl("MC2_SHADOW_OBJ_NORMAL_BIAS", "30") == 16.0f);
-    CHECK(fl("MC2_SHADOW_MECH_SOFT", "-3") == 0.0f);
-    // the reader fell back to 2500 for <= 0
-    CHECK(fl("MC2_SHADOW_BOUNDED_NEAR_RADIUS", "0") == 2500.0f);
-    CHECK(fl("MC2_SHADOW_BOUNDED_NEAR_RADIUS", "-5") == 2500.0f);
-    CHECK(fl("MC2_SHADOW_BOUNDED_NEAR_RADIUS", "800") == 800.0f);
-    // snapped and lower-bound-only knobs keep unranged rows: the site does the snapping / flooring
-    CHECK(in("MC2_SHADOW_MAP_SIZE", "5000") == 5000);
-    CHECK(in("MC2_SHADOW_MAP_SIZE", nullptr) == 8192);
-    CHECK(fl("MC2_SHADOW_CSM_R0", "10") == 10.0f);
+TEST_CASE("G5 mover softness retains its bounded range") {
+    const auto& soft=g1b::rowNamed("MC2_SHADOW_MECH_SOFT");
+    CHECK(asFloat(gate::detail::parseRow(soft,"-3"))==0.0f);
+    CHECK(asFloat(gate::detail::parseRow(soft,"99"))==4.0f);
+    CHECK(asFloat(gate::detail::parseRow(soft,nullptr))==1.0f);
 }
+
 
 TEST_CASE("G5 postprocess text rows") {
     for (const char* name : {"MC2_SHADOW_DEBUG_MODE", "MC2_VIEW_MODE", "MC2_OOB_FOG_COLOR"})
@@ -1263,9 +1248,7 @@ TEST_CASE("render options default to what the gate rows they replaced defaulted 
     CHECK_FALSE(d.postCas);
     CHECK(d.postCasSharpness == 0.5f);
     CHECK(d.tonemapMode == 0);
-    CHECK(d.shadowCsm);
-    CHECK(d.shadowBoundedNearFit);
-    CHECK(d.propShadowReceive == 0);
+    CHECK(d.shadowQuality == 2);
     CHECK(d.shorelineLegacySuppress);
     CHECK(d.cpuPhongRetire);
     CHECK(d.staticPropAmbient);        // the flat fill is ON; the PBR specular below is OFF (owner ruling 2026-10-13: most props carry no PBR data)
@@ -1285,9 +1268,9 @@ TEST_CASE("render option keys are unique and findable") {
         REQUIRE(mo::find(mo::kOptions[i].key) == &mo::kOptions[i]);
     }
     CHECK(mo::find("NotAnOption") == nullptr);
-    CHECK(mo::find("shadowcsm") == mo::find("ShadowCSM"));   // keys are case-insensitive like options.cfg
+    CHECK(mo::find("cpuphongretire") == mo::find("CpuPhongRetire"));   // keys are case-insensitive like options.cfg
     CHECK(mo::find("PostCAS") != mo::find("PostCASSharpness"));
-    CHECK(mo::kOptionCount == 18);
+    CHECK(mo::kOptionCount == 15);
 }
 
 TEST_CASE("render option values outside their bounds, NaN and garbage are rejected and change nothing") {
@@ -1310,18 +1293,18 @@ TEST_CASE("render option values outside their bounds, NaN and garbage are reject
     CHECK(mo::setFloat(o, floor, 2.0f) == mo::Verdict::Ok);
     CHECK(mo::setFloat(o, floor, 9.0f) == mo::Verdict::OutOfRange);
     CHECK(o.staticPropIblSunRotateFloor == 2.0f);
-    const mo::Option& recv = *mo::find("PropShadowReceive");
-    CHECK(mo::setLong(o, recv, 2) == mo::Verdict::OutOfRange);
-    CHECK(o.propShadowReceive == 0);
+    const mo::Option& recv = *mo::find("ShadowQuality");
+    CHECK(mo::setLong(o, recv, 3) == mo::Verdict::OutOfRange);
+    CHECK(o.shadowQuality == 2);
 }
 
 TEST_CASE("the MC2_OPTIONS_OVERRIDE grammar applies good entries and reports every bad one") {
     namespace mo = mc2::options;
     mo::RenderOptions o{};
     std::vector<mo::Reject> rej;
-    const int n = mo::applyOverrides(o, "shadowcsm=0, STATICPROPPBR=TRUE,PostCASSharpness=nan,TonemapMode=9,Bogus=1,SunAxisFix,VfxLitParticles=maybe", rej);
+    const int n = mo::applyOverrides(o, "cpuphongretire=0, STATICPROPPBR=TRUE,PostCASSharpness=nan,TonemapMode=9,Bogus=1,SunAxisFix,VfxLitParticles=maybe", rej);
     CHECK(n == 2);
-    CHECK_FALSE(o.shadowCsm);
+    CHECK_FALSE(o.cpuPhongRetire);
     CHECK(o.staticPropPbr);
     CHECK(o.postCasSharpness == 0.5f);
     CHECK(o.tonemapMode == 0);
@@ -1374,17 +1357,17 @@ TEST_CASE("render options read before the publish are counted, and publish repla
 
 TEST_CASE("options.cfg line editor reads, replaces in place and adds inside the [MechCommander2] block") {
     namespace mo = mc2::options;
-    const std::string head = "FITini \r\n\r\n[MechCommander2]\r\nl ResolutionX = 3840\r\nb FullScreen = TRUE\r\nb ShadowCSM = TRUE\r\n";
+    const std::string head = "FITini \r\n\r\n[MechCommander2]\r\nl ResolutionX = 3840\r\nb FullScreen = TRUE\r\nb CpuPhongRetire = TRUE\r\n";
     const std::string tail = "\r\n[Keys]\r\nl Foo = 1\r\n";
     const std::string file = head + tail;
     CHECK(*mo::cfg::get(file, "ResolutionX") == "3840");
-    CHECK(*mo::cfg::get(file, "shadowcsm") == "TRUE");
+    CHECK(*mo::cfg::get(file, "cpuphongretire") == "TRUE");
     CHECK_FALSE(mo::cfg::get(file, "Foo").has_value());   // another block
     CHECK_FALSE(mo::cfg::get(file, "PostCAS").has_value());
 
     // an existing line is replaced in place, every other byte stays
-    const mo::Option& csm = *mo::find("ShadowCSM");
-    CHECK(mo::cfg::set(file, csm, "FALSE") == "FITini \r\n\r\n[MechCommander2]\r\nl ResolutionX = 3840\r\nb FullScreen = TRUE\r\nb ShadowCSM = FALSE\r\n" + tail);
+    const mo::Option& csm = *mo::find("CpuPhongRetire");
+    CHECK(mo::cfg::set(file, csm, "FALSE") == "FITini \r\n\r\n[MechCommander2]\r\nl ResolutionX = 3840\r\nb FullScreen = TRUE\r\nb CpuPhongRetire = FALSE\r\n" + tail);
 
     // a missing key lands after the block's last line, before the blank line and the next block
     const mo::Option& pbr = *mo::find("StaticPropPbr");
@@ -1399,8 +1382,8 @@ TEST_CASE("options.cfg line editor reads, replaces in place and adds inside the 
     CHECK(mo::cfg::set(file, *mo::find("TonemapMode"), "2").find("l TonemapMode = 2") != std::string::npos);
 
     // LF files stay LF; a last line without a line break still gets the new line on its own line
-    const std::string lf = "[MechCommander2]\nb ShadowCSM = TRUE";
-    CHECK(mo::cfg::set(lf, pbr, "TRUE") == "[MechCommander2]\nb ShadowCSM = TRUE\nb StaticPropPbr = TRUE\n");
+    const std::string lf = "[MechCommander2]\nb CpuPhongRetire = TRUE";
+    CHECK(mo::cfg::set(lf, pbr, "TRUE") == "[MechCommander2]\nb CpuPhongRetire = TRUE\nb StaticPropPbr = TRUE\n");
 
     // no [MechCommander2] block: unchanged (the launcher never invents a file whose resolution lines are missing)
     const std::string other = "[Other]\nb X = TRUE\n";
@@ -1409,9 +1392,9 @@ TEST_CASE("options.cfg line editor reads, replaces in place and adds inside the 
 
     // the whole-file load the engine runs before the window exists: valid keys apply, an out-of-range one is skipped, other blocks are ignored
     mo::RenderOptions loaded{};
-    const std::string cfgText = "[MechCommander2]\r\nb ShadowCSM = FALSE\r\nl TonemapMode = 7\r\nf PostCASSharpness = 0.75\r\nb SunAxisFix = TRUE\r\n[Keys]\r\nb SunElevationFix = TRUE\r\n";
+    const std::string cfgText = "[MechCommander2]\r\nb CpuPhongRetire = FALSE\r\nl TonemapMode = 7\r\nf PostCASSharpness = 0.75\r\nb SunAxisFix = TRUE\r\n[Keys]\r\nb SunElevationFix = TRUE\r\n";
     CHECK(mo::cfg::loadFromText(loaded, cfgText) == 3);
-    CHECK_FALSE(loaded.shadowCsm);
+    CHECK_FALSE(loaded.cpuPhongRetire);
     CHECK(loaded.tonemapMode == 0);
     CHECK(loaded.postCasSharpness == 0.75f);
     CHECK(loaded.sunAxisFix);
@@ -1429,12 +1412,12 @@ TEST_CASE("options.cfg values follow one strict grammar and every reader sees th
     namespace mo = mc2::options;
     struct Case { const char* line; const char* key; mo::Verdict want; };
     const Case cases[] = {
-        {"b ShadowCSM = banana",           "ShadowCSM",        mo::Verdict::Garbage},
-        {"b ShadowCSM = F",                "ShadowCSM",        mo::Verdict::Garbage},
-        {"b ShadowCSM = yes",              "ShadowCSM",        mo::Verdict::Garbage},
-        {"b ShadowCSM =",                  "ShadowCSM",        mo::Verdict::Garbage},
-        {"b ShadowCSM = FALSE ; off",      "ShadowCSM",        mo::Verdict::Garbage},
-        {"b ShadowCSM = TRUE TRUE",        "ShadowCSM",        mo::Verdict::Garbage},
+        {"b CpuPhongRetire = banana",           "CpuPhongRetire",        mo::Verdict::Garbage},
+        {"b CpuPhongRetire = F",                "CpuPhongRetire",        mo::Verdict::Garbage},
+        {"b CpuPhongRetire = yes",              "CpuPhongRetire",        mo::Verdict::Garbage},
+        {"b CpuPhongRetire =",                  "CpuPhongRetire",        mo::Verdict::Garbage},
+        {"b CpuPhongRetire = FALSE ; off",      "CpuPhongRetire",        mo::Verdict::Garbage},
+        {"b CpuPhongRetire = TRUE TRUE",        "CpuPhongRetire",        mo::Verdict::Garbage},
         {"l TonemapMode = abc",            "TonemapMode",      mo::Verdict::Garbage},
         {"l TonemapMode = 2 ; AgX",        "TonemapMode",      mo::Verdict::Garbage},
         {"l TonemapMode = 2 // AgX",       "TonemapMode",      mo::Verdict::Garbage},
@@ -1465,11 +1448,11 @@ TEST_CASE("options.cfg values follow one strict grammar and every reader sees th
     // the accepted spellings
     mo::RenderOptions o{};
     std::vector<mo::Reject> rejects;
-    const std::string good = "[MechCommander2]\r\nb ShadowCSM = false\r\nb SunAxisFix = TRUE\r\nb VfxLitParticles = 1\r\nb VfxSoftParticles = 0\r\n"
+    const std::string good = "[MechCommander2]\r\nb CpuPhongRetire = false\r\nb SunAxisFix = TRUE\r\nb VfxLitParticles = 1\r\nb VfxSoftParticles = 0\r\n"
                              "l TonemapMode = 3\r\nf PostCASSharpness = 0.25\r\nb StaticPropAmbient =   False  \r\n";
     CHECK(mo::cfg::loadFromText(o, good, &rejects) == 7);
     CHECK(rejects.empty());
-    CHECK_FALSE(o.shadowCsm);
+    CHECK_FALSE(o.cpuPhongRetire);
     CHECK(o.sunAxisFix);
     CHECK(o.vfxLitParticles);
     CHECK_FALSE(o.vfxSoftParticles);
@@ -1479,8 +1462,8 @@ TEST_CASE("options.cfg values follow one strict grammar and every reader sees th
 
     // a duplicate key is read at its first line; a rejected value does not clobber a value the struct already holds
     mo::RenderOptions dup{};
-    CHECK(mo::cfg::loadFromText(dup, "[MechCommander2]\nb ShadowCSM = FALSE\nb ShadowCSM = TRUE\n") == 1);
-    CHECK_FALSE(dup.shadowCsm);
+    CHECK(mo::cfg::loadFromText(dup, "[MechCommander2]\nb CpuPhongRetire = FALSE\nb CpuPhongRetire = TRUE\n") == 1);
+    CHECK_FALSE(dup.cpuPhongRetire);
     mo::RenderOptions keep{};
     keep.tonemapMode = 2;
     std::vector<mo::Reject> keepRejects;
@@ -1493,7 +1476,7 @@ TEST_CASE("the render options serialize as one JSON object of all option values 
     namespace mo = mc2::options;
     mo::RenderOptions o{};
     const std::string d = mo::toJson(o);
-    CHECK(d.rfind("{\"PostCAS\": false, \"PostCASSharpness\": 0.5, \"TonemapMode\": 0, \"ShadowQuality\": 2, \"ShadowCSM\": true", 0) == 0);
+    CHECK(d.rfind("{\"PostCAS\": false, \"PostCASSharpness\": 0.5, \"TonemapMode\": 0, \"ShadowQuality\": 2", 0) == 0);
     CHECK(d.find("\"StaticPropIblSunRotateFloor\": 0.45") != std::string::npos);
     CHECK(d.find("\"StaticPropPbr\": false") != std::string::npos);
     CHECK(d.back() == '}');
