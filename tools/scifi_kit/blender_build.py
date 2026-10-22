@@ -207,11 +207,14 @@ def setup_review(job,style):
     ground=MeshKit();w,d=job['stock']['bounds']['size'][::2];unit=style['scale']['world_units_per_metre'];w/=unit;d/=unit
     ground.box((0,0,-.10),(w*8,d*8,.18),'ground')
     ground.box((0,-d*.75,-.01),(w*4,d*.30,.04),'road')
-    for sign in [-1,1]:
-        for x,y,sx,sy in [(sign*w/2,0,.055,d),(0,sign*d/2,w,.055)]:
-            ground.box((x,y,.19),(sx,sy,.025),'line')
+    polygon=job['footprint_m']
+    for a,b in zip(polygon,polygon[1:]+polygon[:1]):
+        dx,dy=b[0]-a[0],b[1]-a[1]
+        with ground.at(((a[0]+b[0])/2,(a[1]+b[1])/2,0),math.atan2(dy,dx)):
+            ground.box((0,0,.19),(math.hypot(dx,dy),.055,.025),'line')
     mesh_object(ground,'Review ground / road / footprint',{'ground':material('ground',[.25,.26,.245]),'road':material('road',[.115,.13,.135]),'line':material('lot paint',[.65,.67,.61])},0)
     ld=bpy.data.lights.new('Broad sun','SUN');ld.energy=2.6;ld.angle=math.radians(12)
+    ld.angle=math.radians(style['presentation']['sun_angle_degrees'])
     light=bpy.data.objects.new('Broad sun',ld);scene.collection.objects.link(light);light.rotation_euler=(math.radians(28),math.radians(-24),math.radians(-30))
     camera_data=bpy.data.cameras.new('Review camera');cam=bpy.data.objects.new('Review camera',camera_data);scene.collection.objects.link(cam);scene.camera=cam
     cam.data.type='ORTHO';scene.render.image_settings.file_format='PNG';scene.render.film_transparent=False
