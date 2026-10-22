@@ -207,10 +207,8 @@ def _runtime_frame_glb(ase_path):
                 view = gltf["bufferViews"][acc["bufferView"]]
                 offset = view.get("byteOffset", 0) + acc.get("byteOffset", 0)
                 if semantic == "TEXCOORD_0":
-                    # The extractor flips V; the importer flips once more. Stock TG flips once.
-                    for v in range(acc["count"]):
-                        u, tv = struct.unpack_from("<2f", binary, offset + v * 8)
-                        struct.pack_into("<2f", binary, offset + v * 8, u, 1 - tv)
+                    # The extractor already writes glTF V (1 - v_ase), which the engine importer
+                    # (Assimp's glTF flip + toMC2V) returns to stock TG V: keep it as written.
                     continue
                 values = []
                 for v in range(acc["count"]):
