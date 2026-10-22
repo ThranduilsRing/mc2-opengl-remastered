@@ -1470,7 +1470,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_shadow_bake.h:38`
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:39`
 - Class: `CasterPacketAlpha`  (data-member)
 - Member: `int32_t layer = -1;`
 - Consuming targets: gameos
@@ -1478,7 +1478,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_shadow_bake.h:39`
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:40`
 - Class: `CasterPacketAlpha`  (data-member)
 - Member: `float scaleX = 1.0f;`
 - Consuming targets: gameos
@@ -1486,7 +1486,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_shadow_bake.h:40`
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:41`
 - Class: `CasterPacketAlpha`  (data-member)
 - Member: `float scaleY = 1.0f;`
 - Consuming targets: gameos
@@ -1494,7 +1494,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_shadow_bake.h:45`
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:46`
 - Class: `ShadowBakeInputs`  (data-member)
 - Member: `VkBuffer vbo = VK_NULL_HANDLE;`
 - Consuming targets: gameos
@@ -1502,7 +1502,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_shadow_bake.h:46`
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:47`
 - Class: `ShadowBakeInputs`  (data-member)
 - Member: `VkBuffer ibo = VK_NULL_HANDLE;`
 - Consuming targets: gameos
@@ -1510,7 +1510,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_shadow_bake.h:47`
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:48`
 - Class: `ShadowBakeInputs`  (data-member)
 - Member: `std::span<const Mc2ShadowPacket> packets;`
 - Consuming targets: gameos
@@ -1518,7 +1518,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_shadow_bake.h:49`
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:50`
 - Class: `ShadowBakeInputs`  (data-member)
 - Member: `std::span<const uint32_t> typePacketCount;`
 - Consuming targets: gameos
@@ -1526,7 +1526,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_shadow_bake.h:50`
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:51`
 - Class: `ShadowBakeInputs`  (data-member)
 - Member: `std::span<const CasterPacketAlpha> packetAlpha;`
 - Consuming targets: gameos
@@ -1534,7 +1534,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_shadow_bake.h:51`
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:52`
 - Class: `ShadowBakeInputs`  (data-member)
 - Member: `VkDescriptorSet alphaSet = VK_NULL_HANDLE;`
 - Consuming targets: gameos
@@ -1542,7 +1542,71 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:59`
+- Class: `ShadowBakeTileParams`  (data-member)
+- Member: `float window[16];`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
 - Header: `GameOS/gameos/vulkan_shadow_bake.h:60`
+- Class: `ShadowBakeTileParams`  (data-member)
+- Member: `float region[4];`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:61`
+- Class: `ShadowBakeTileParams`  (data-member)
+- Member: `int32_t regionInfo[4];`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:62`
+- Class: `ShadowBakeTileParams`  (data-member)
+- Member: `float sun[4];`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:63`
+- Class: `ShadowBakeTileParams`  (data-member)
+- Member: `float windowInfo[4];`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:64`
+- Class: `ShadowBakeTileParams`  (data-member)
+- Member: `float heightInfo[4];`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:65`
+- Class: `ShadowBakeTileParams`  (data-member)
+- Member: `float fade[4];`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:66`
+- Class: `ShadowBakeTileParams`  (data-member)
+- Member: `float march[4];`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:73`
 - Class: `ShadowBake`  (data-member)
 - Member: `ShadowBake& operator=(const ShadowBake&) = delete;`
 - Consuming targets: gameos
@@ -1550,7 +1614,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_shadow_bake.h:86`
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:99`
 - Class: `TileWork`  (data-member)
 - Member: `mc2shadow::Window window;`
 - Consuming targets: gameos
@@ -1558,7 +1622,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_shadow_bake.h:87`
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:100`
 - Class: `TileWork`  (data-member)
 - Member: `float casterTop = 0.0f;`
 - Consuming targets: gameos
@@ -1566,7 +1630,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_shadow_bake.h:88`
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:101`
 - Class: `TileWork`  (data-member)
 - Member: `uint32_t firstRun = 0, runCount = 0;`
 - Consuming targets: gameos
@@ -1574,7 +1638,31 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_shadow_bake.h:113`
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:105`
+- Class: `CasterView`  (data-member)
+- Member: `const std::vector<GpuStaticPropInstance>* leaves;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:106`
+- Class: `CasterView`  (data-member)
+- Member: `const std::vector<mc2shadow::LightBox>* boxes;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:107`
+- Class: `CasterView`  (data-member)
+- Member: `const std::vector<float>* tops;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:148`
 - Class: `ShadowBake`  (data-member)
 - Member: `VkDevice device_ = VK_NULL_HANDLE;`
 - Consuming targets: gameos
@@ -1582,7 +1670,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_shadow_bake.h:114`
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:149`
 - Class: `ShadowBake`  (data-member)
 - Member: `VmaAllocator allocator_ = nullptr;`
 - Consuming targets: gameos
@@ -1590,7 +1678,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_shadow_bake.h:115`
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:150`
 - Class: `ShadowBake`  (data-member)
 - Member: `VkPhysicalDevice phys_ = VK_NULL_HANDLE;`
 - Consuming targets: gameos
@@ -1598,7 +1686,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_shadow_bake.h:116`
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:151`
 - Class: `ShadowBake`  (data-member)
 - Member: `VkDescriptorSetLayout alphaDsl_ = VK_NULL_HANDLE;`
 - Consuming targets: gameos
@@ -1606,7 +1694,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_shadow_bake.h:117`
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:152`
 - Class: `ShadowBake`  (data-member)
 - Member: `bool inited_ = false;`
 - Consuming targets: gameos
@@ -1614,7 +1702,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_shadow_bake.h:118`
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:153`
 - Class: `ShadowBake`  (data-member)
 - Member: `bool timed_ = false;`
 - Consuming targets: gameos
@@ -1622,7 +1710,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_shadow_bake.h:119`
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:154`
 - Class: `ShadowBake`  (data-member)
 - Member: `double timestampPeriodNs_ = 1.0;`
 - Consuming targets: gameos
@@ -1630,7 +1718,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_shadow_bake.h:122`
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:157`
 - Class: `ShadowBake`  (data-member)
 - Member: `uint64_t bakedKey_ = 0, objectKey_ = 0, recordedKey_ = 0, recordedObjectKey_ = 0;`
 - Consuming targets: gameos
@@ -1638,7 +1726,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_shadow_bake.h:123`
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:158`
 - Class: `ShadowBake`  (data-member)
 - Member: `bool recorded_ = false, submitted_ = false, recordedMask_ = false;`
 - Consuming targets: gameos
@@ -1646,7 +1734,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_shadow_bake.h:124`
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:159`
 - Class: `ShadowBake`  (data-member)
 - Member: `uint64_t submittedEpoch_ = 0, recordedEpoch_ = 0;`
 - Consuming targets: gameos
@@ -1654,7 +1742,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_shadow_bake.h:125`
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:160`
 - Class: `ShadowBake`  (data-member)
 - Member: `bool maskReady_ = false, objectReady_ = false;`
 - Consuming targets: gameos
@@ -1662,7 +1750,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_shadow_bake.h:126`
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:161`
 - Class: `ShadowBake`  (data-member)
 - Member: `uint64_t objectGeneration_ = 0, recordedObjectGeneration_ = 0;`
 - Consuming targets: gameos
@@ -1670,7 +1758,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_shadow_bake.h:127`
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:162`
 - Class: `ShadowBake`  (data-member)
 - Member: `uint32_t waitFrames_ = 0;`
 - Consuming targets: gameos
@@ -1678,7 +1766,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_shadow_bake.h:128`
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:163`
 - Class: `ShadowBake`  (data-member)
 - Member: `bool loggedWait_ = false, loggedHeightDrift_ = false;`
 - Consuming targets: gameos
@@ -1686,7 +1774,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_shadow_bake.h:129`
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:164`
 - Class: `ShadowBake`  (data-member)
 - Member: `uint64_t bakedHeightVersion_ = 0;`
 - Consuming targets: gameos
@@ -1694,7 +1782,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_shadow_bake.h:132`
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:167`
 - Class: `ShadowBake`  (data-member)
 - Member: `mc2shadow::MaskLayout layout_;`
 - Consuming targets: gameos
@@ -1702,7 +1790,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_shadow_bake.h:133`
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:168`
 - Class: `ShadowBake`  (data-member)
 - Member: `mc2shadow::LightBasis basis_;`
 - Consuming targets: gameos
@@ -1710,7 +1798,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_shadow_bake.h:134`
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:169`
 - Class: `ShadowBake`  (data-member)
 - Member: `mc2shadow::Vec3 sun_;`
 - Consuming targets: gameos
@@ -1718,15 +1806,15 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_shadow_bake.h:135`
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:170`
 - Class: `ShadowBake`  (data-member)
-- Member: `float waterZ_ = 0.0f, terrainTop_ = 0.0f, halfMap_ = 0.0f, fadeMax_ = 0.0f;`
+- Member: `float waterZ_ = 0.0f, terrainTop_ = 0.0f, terrainMin_ = 0.0f, halfMap_ = 0.0f, fadeMax_ = 0.0f, casterTop_ = 0.0f;`
 - Consuming targets: gameos
 - Reached by define: gameos[gameos(PUBLIC)]
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_shadow_bake.h:136`
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:171`
 - Class: `ShadowBake`  (data-member)
 - Member: `int mapSide_ = 0, heightSide_ = 0;`
 - Consuming targets: gameos
@@ -1734,7 +1822,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_shadow_bake.h:137`
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:172`
 - Class: `ShadowBake`  (data-member)
 - Member: `float heightSpacing_ = 0.0f;`
 - Consuming targets: gameos
@@ -1742,7 +1830,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_shadow_bake.h:138`
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:173`
 - Class: `ShadowBake`  (data-member)
 - Member: `std::vector<float> heights_;`
 - Consuming targets: gameos
@@ -1750,7 +1838,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_shadow_bake.h:139`
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:174`
 - Class: `ShadowBake`  (data-member)
 - Member: `std::vector<GpuStaticPropInstance> leaves_;`
 - Consuming targets: gameos
@@ -1758,7 +1846,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_shadow_bake.h:141`
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:176`
 - Class: `ShadowBake`  (data-member)
 - Member: `std::vector<TypeBounds> typeBounds_;`
 - Consuming targets: gameos
@@ -1766,7 +1854,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_shadow_bake.h:142`
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:177`
 - Class: `ShadowBake`  (data-member)
 - Member: `std::vector<TileWork> tiles_;`
 - Consuming targets: gameos
@@ -1774,7 +1862,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_shadow_bake.h:143`
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:178`
 - Class: `ShadowBake`  (data-member)
 - Member: `std::vector<InstRun> runs_;`
 - Consuming targets: gameos
@@ -1782,7 +1870,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_shadow_bake.h:144`
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:179`
 - Class: `ShadowBake`  (data-member)
 - Member: `std::vector<InstRun> objectRuns_;`
 - Consuming targets: gameos
@@ -1790,7 +1878,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_shadow_bake.h:145`
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:180`
 - Class: `ShadowBake`  (data-member)
 - Member: `uint32_t binnedInstances_ = 0;`
 - Consuming targets: gameos
@@ -1798,7 +1886,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_shadow_bake.h:146`
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:181`
 - Class: `ShadowBake`  (data-member)
 - Member: `double cpuMs_ = 0.0;`
 - Consuming targets: gameos
@@ -1806,7 +1894,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_shadow_bake.h:147`
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:182`
 - Class: `ShadowBake`  (data-member)
 - Member: `VkDeviceSize transientBytes_ = 0;`
 - Consuming targets: gameos
@@ -1814,7 +1902,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_shadow_bake.h:150`
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:185`
 - Class: `ShadowBake`  (data-member)
 - Member: `OwnedRenderPass windowPass_, objectPass_;`
 - Consuming targets: gameos
@@ -1822,7 +1910,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_shadow_bake.h:151`
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:186`
 - Class: `ShadowBake`  (data-member)
 - Member: `OwnedDescriptorSetLayout casterDsl_;`
 - Consuming targets: gameos
@@ -1830,7 +1918,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_shadow_bake.h:152`
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:187`
 - Class: `ShadowBake`  (data-member)
 - Member: `OwnedPipelineLayout casterLayout_;`
 - Consuming targets: gameos
@@ -1838,7 +1926,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_shadow_bake.h:153`
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:188`
 - Class: `ShadowBake`  (data-member)
 - Member: `OwnedShaderModule propVert_, terrainVert_, opaqueFrag_, alphaFrag_;`
 - Consuming targets: gameos
@@ -1846,7 +1934,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_shadow_bake.h:154`
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:189`
 - Class: `ShadowBake`  (data-member)
 - Member: `OwnedPipeline windowOpaque_, windowAlpha_, objectOpaque_, objectAlpha_, objectTerrain_;`
 - Consuming targets: gameos
@@ -1854,7 +1942,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_shadow_bake.h:155`
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:190`
 - Class: `ShadowBake`  (data-member)
 - Member: `OwnedDescriptorPool casterPool_;`
 - Consuming targets: gameos
@@ -1862,7 +1950,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_shadow_bake.h:157`
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:192`
 - Class: `ShadowBake`  (data-member)
 - Member: `ComputePipeline pcss_, march_, resolve_, bc4_;`
 - Consuming targets: gameos
@@ -1870,7 +1958,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_shadow_bake.h:158`
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:193`
 - Class: `ShadowBake`  (data-member)
 - Member: `OwnedDescriptorPool bc4Pool_;`
 - Consuming targets: gameos
@@ -1878,7 +1966,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_shadow_bake.h:161`
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:196`
 - Class: `ShadowBake`  (data-member)
 - Member: `uint64_t contentKey_ = 0;`
 - Consuming targets: gameos
@@ -1886,7 +1974,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_shadow_bake.h:162`
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:197`
 - Class: `ShadowBake`  (data-member)
 - Member: `bool warm_ = false, readbackPending_ = false;`
 - Consuming targets: gameos
@@ -1894,7 +1982,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_shadow_bake.h:163`
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:198`
 - Class: `ShadowBake`  (data-member)
 - Member: `double warmReadMs_ = 0.0;`
 - Consuming targets: gameos
@@ -1902,7 +1990,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_shadow_bake.h:164`
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:199`
 - Class: `ShadowBake`  (data-member)
 - Member: `VkDeviceSize tileLevelOff_[8] = {};`
 - Consuming targets: gameos
@@ -1910,7 +1998,159 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_shadow_bake.h:165`
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:202`
+- Class: `ShadowBake`  (data-member)
+- Member: `mc2shadow::DirtyQueue dirty_;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:203`
+- Class: `ShadowBake`  (data-member)
+- Member: `std::vector<GpuStaticPropInstance> liveLeaves_;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:204`
+- Class: `ShadowBake`  (data-member)
+- Member: `std::vector<mc2shadow::LightBox> liveBoxes_;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:205`
+- Class: `ShadowBake`  (data-member)
+- Member: `std::vector<float> liveTops_;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:206`
+- Class: `ShadowBake`  (data-member)
+- Member: `std::vector<uint32_t> liveIdx_;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:207`
+- Class: `ShadowBake`  (data-member)
+- Member: `bool incActive_ = false, heightsMoved_ = false, eventsSinceDrain_ = false, castersMoved_ = false;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:208`
+- Class: `ShadowBake`  (data-member)
+- Member: `uint64_t lastIncEpoch_ = 0, incRecordedEpoch_ = ~0ull, heightsGen_ = 1, incHeightsGen_[2] = {0, 0};`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:209`
+- Class: `ShadowBake`  (data-member)
+- Member: `uint32_t incSubTiles_ = 0, incBatches_ = 0, eventsLogged_ = 0;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:210`
+- Class: `ShadowBake`  (data-member)
+- Member: `double incMaxGpuMs_ = 0.0, incSumGpuMs_ = 0.0;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:211`
+- Class: `ShadowBake`  (data-member)
+- Member: `uint32_t incTimed_ = 0;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:212`
+- Class: `ShadowBake`  (data-member)
+- Member: `uint32_t incInstanceCap_ = 0;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:213`
+- Class: `ShadowBake`  (data-member)
+- Member: `bool incQueryUsed_[2] = {false, false};`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:214`
+- Class: `ShadowBake`  (data-member)
+- Member: `OwnedBuffer incParams_, incCasterUbo_, incPass_, incInstances_, incHeights_[2];`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:215`
+- Class: `ShadowBake`  (data-member)
+- Member: `OwnedQueryPool incQueries_;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:216`
+- Class: `ShadowBake`  (data-member)
+- Member: `VkDescriptorSet incComputeSet_[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE}, incWindowSet_[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE};`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:218`
+- Class: `ShadowBake`  (data-member)
+- Member: `bool diagRequest_ = false, diagPending_ = false, diagForceFull_ = false, diagSwept_ = false;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:219`
+- Class: `ShadowBake`  (data-member)
+- Member: `uint64_t diagEpoch_ = 0;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:220`
+- Class: `ShadowBake`  (data-member)
+- Member: `OwnedBuffer diagBuf_;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:221`
+- Class: `ShadowBake`  (data-member)
+- Member: `std::vector<uint8_t> diagInc_;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:222`
 - Class: `ShadowBake`  (data-member)
 - Member: `std::vector<VkDeviceSize> topLevelOff_;`
 - Consuming targets: gameos
@@ -1918,7 +2158,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_shadow_bake.h:166`
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:223`
 - Class: `ShadowBake`  (data-member)
 - Member: `OwnedDescriptorPool computePool_;`
 - Consuming targets: gameos
@@ -1926,7 +2166,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_shadow_bake.h:168`
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:225`
 - Class: `ShadowBake`  (data-member)
 - Member: `OwnedSampler depthRawSampler_, depthCompareSampler_;`
 - Consuming targets: gameos
@@ -1934,7 +2174,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_shadow_bake.h:169`
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:226`
 - Class: `ShadowBake`  (data-member)
 - Member: `OwnedQueryPool queries_;`
 - Consuming targets: gameos
@@ -1942,7 +2182,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_shadow_bake.h:170`
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:227`
 - Class: `ShadowBake`  (data-member)
 - Member: `uint32_t queryCount_ = 0;`
 - Consuming targets: gameos
@@ -1950,7 +2190,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_shadow_bake.h:173`
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:230`
 - Class: `ShadowBake`  (data-member)
 - Member: `OwnedImage maskImage_;`
 - Consuming targets: gameos
@@ -1958,7 +2198,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_shadow_bake.h:174`
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:231`
 - Class: `ShadowBake`  (data-member)
 - Member: `OwnedImageView maskView_;`
 - Consuming targets: gameos
@@ -1966,7 +2206,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_shadow_bake.h:175`
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:232`
 - Class: `ShadowBake`  (data-member)
 - Member: `int maskTexels_ = 0;`
 - Consuming targets: gameos
@@ -1974,7 +2214,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_shadow_bake.h:176`
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:233`
 - Class: `ShadowBake`  (data-member)
 - Member: `uint32_t maskMips_ = 0;`
 - Consuming targets: gameos
@@ -1982,7 +2222,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_shadow_bake.h:177`
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:234`
 - Class: `ShadowBake`  (data-member)
 - Member: `bool maskInitialized_ = false;`
 - Consuming targets: gameos
@@ -1990,7 +2230,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_shadow_bake.h:179`
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:236`
 - Class: `ShadowBake`  (data-member)
 - Member: `OwnedImageView topR8View_;`
 - Consuming targets: gameos
@@ -1998,7 +2238,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_shadow_bake.h:180`
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:237`
 - Class: `ShadowBake`  (data-member)
 - Member: `uint32_t topSide_ = 0, topMips_ = 0;`
 - Consuming targets: gameos
@@ -2006,7 +2246,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_shadow_bake.h:181`
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:238`
 - Class: `ShadowBake`  (data-member)
 - Member: `bool topInitialized_ = false;`
 - Consuming targets: gameos
@@ -2014,7 +2254,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_shadow_bake.h:182`
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:239`
 - Class: `ShadowBake`  (data-member)
 - Member: `OwnedImage objectImage_;`
 - Consuming targets: gameos
@@ -2022,7 +2262,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_shadow_bake.h:183`
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:240`
 - Class: `ShadowBake`  (data-member)
 - Member: `OwnedImageView objectView_;`
 - Consuming targets: gameos
@@ -2030,7 +2270,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_shadow_bake.h:184`
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:241`
 - Class: `ShadowBake`  (data-member)
 - Member: `OwnedFramebuffer objectFb_;`
 - Consuming targets: gameos
@@ -2038,7 +2278,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_shadow_bake.h:185`
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:242`
 - Class: `ShadowBake`  (data-member)
 - Member: `bool objectInitialized_ = false;`
 - Consuming targets: gameos
@@ -2046,7 +2286,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_shadow_bake.h:186`
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:243`
 - Class: `ShadowBake`  (data-member)
 - Member: `OwnedBuffer terrainVbo_, terrainIbo_;`
 - Consuming targets: gameos
@@ -2054,7 +2294,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_shadow_bake.h:187`
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:244`
 - Class: `ShadowBake`  (data-member)
 - Member: `uint32_t terrainIndexCount_ = 0;`
 - Consuming targets: gameos
@@ -2062,7 +2302,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_shadow_bake.h:188`
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:245`
 - Class: `ShadowBake`  (data-member)
 - Member: `OwnedBuffer objectInstances_, objectUbo_;`
 - Consuming targets: gameos
@@ -2070,7 +2310,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_shadow_bake.h:191`
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:248`
 - Class: `ShadowBake`  (data-member)
 - Member: `OwnedImage windowImage_;`
 - Consuming targets: gameos
@@ -2078,7 +2318,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_shadow_bake.h:192`
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:249`
 - Class: `ShadowBake`  (data-member)
 - Member: `OwnedImageView windowView_;`
 - Consuming targets: gameos
@@ -2086,7 +2326,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_shadow_bake.h:193`
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:250`
 - Class: `ShadowBake`  (data-member)
 - Member: `OwnedFramebuffer windowFb_;`
 - Consuming targets: gameos
@@ -2094,7 +2334,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_shadow_bake.h:195`
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:252`
 - Class: `ShadowBake`  (data-member)
 - Member: `OwnedImageView scratchView_[4];`
 - Consuming targets: gameos
@@ -2102,7 +2342,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_shadow_bake.h:196`
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:253`
 - Class: `ShadowBake`  (data-member)
 - Member: `OwnedBuffer staging_, tileParams_, passParams_, casterUbo_, instances_, heightBuf_;`
 - Consuming targets: gameos
@@ -2110,7 +2350,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vulkan_shadow_bake.h:198`
+- Header: `GameOS/gameos/vulkan_shadow_bake.h:255`
 - Class: `ShadowBake`  (data-member)
 - Member: `OwnedImageView tileR8View_;`
 - Consuming targets: gameos
@@ -2518,4 +2758,4 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ---
 
-Result: 314 guard(s) analyzed, 0 violation(s).
+Result: 344 guard(s) analyzed, 0 violation(s).
