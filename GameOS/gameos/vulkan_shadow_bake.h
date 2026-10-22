@@ -118,6 +118,10 @@ private:
     bool ensureProducts(int maskTexels);
     bool ensureTransients();
     bool computeTypeBounds(const ShadowBakeInputs& in);
+    bool recordColdTile(VkCommandBuffer cb, const ShadowBakeInputs& in);
+    bool readHeightGrid();
+    uint32_t coldNextTile_ = 0;
+    bool coldPending_ = false;
     bool recordBake(VkCommandBuffer cb, const ShadowBakeInputs& in);
     bool recordObjectMap(VkCommandBuffer cb, const ShadowBakeInputs& in, uint32_t queryBase);
     void drawRuns(VkCommandBuffer cb, const ShadowBakeInputs& in, std::span<const InstRun> runs, bool& alphaBound, VkPipeline opaque, VkPipeline alpha);
@@ -220,7 +224,6 @@ private:
     std::vector<mc2shadow::LightBox> liveBoxes_;
     std::vector<float> liveTops_;
     std::vector<uint32_t> liveIdx_;
-    std::vector<float> incHeightsCpu_;   // the dirty path's own height copy
     bool liveStale_ = true;
     uint32_t liveRebuilds_ = 0;
     double cpuStage_[3] = {0, 0, 0};   // cold bake CPU ms: resolve, content key, tile planning

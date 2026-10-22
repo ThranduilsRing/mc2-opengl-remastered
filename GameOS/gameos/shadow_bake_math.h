@@ -6,6 +6,8 @@
 // WHY: the window and the reach decide which casters a tile sees and how much of a shadow fits; getting them wrong cuts shadows at tile seams. Kept here so
 // a doctest pins them without a GPU.
 #pragma once
+#include <span>
+#include <vector>
 
 #include <algorithm>
 #include <cmath>
@@ -226,6 +228,29 @@ inline uint64_t hashWords(const void* data, size_t bytes, uint64_t h = 146959810
         h ^= h >> 29;
     }
     return fnv1a(p + i, bytes - i, h);
+}
+
+// Retain endpoints and sample the visual surface without copying its full 4x grid.
+inline std::vector<float> maskHeightGrid(std::span<const float> source, int sourceSide, int maskTexels) {
+    if (sourceSide < 2 || source.size() != size_t(sourceSide) * sourceSide || maskTexels < 1) return {};
+    const int side = (std::min)(sourceSide, maskTexels + 1);
+    std::vector<float> out(size_t(side) * side);
+    const double scale = double(sourceSide - 1) / (side - 1);
+    for (int y = 0; y < side; ++y) {
+        const double gy = y * scale;
+        const int iy = (std::min)(int(gy), sourceSide - 2);
+        const float fy = float(gy - iy);
+        for (int x = 0; x < side; ++x) {
+            const double gx = x * scale;
+            const int ix = (std::min)(int(gx), sourceSide - 2);
+            const float fx = float(gx - ix);
+            const size_t i = size_t(iy) * sourceSide + ix;
+            const float a = source[i] + fx * (source[i + 1] - source[i]);
+            const float b = source[i + sourceSide] + fx * (source[i + sourceSide + 1] - source[i + sourceSide]);
+            out[size_t(y) * side + x] = a + fy * (b - a);
+        }
+    }
+    return out;
 }
 
 }  // namespace mc2shadow

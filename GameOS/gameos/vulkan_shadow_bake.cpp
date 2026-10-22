@@ -217,6 +217,7 @@ void ShadowBake::releaseTransients() {
 
 void ShadowBake::invalidate() {
     // A map boundary may wait for its disk worker; gameplay frames never wait for it.
+    coldPending_ = false; coldNextTile_ = 0;
     cacheLoad_ = {};
     cacheLoadKey_ = 0;
     releaseTransients();
@@ -427,7 +428,14 @@ void ShadowBake::drawRuns(VkCommandBuffer cb, const ShadowBakeInputs& in, std::s
 bool ShadowBake::update(VkCommandBuffer cb, uint64_t epoch, const ShadowBakeInputs& in) {
     if (!inited_) return false;
     retire(epoch);
-    if (recorded_) return false;   // the previous bake has not retired: its descriptors and buffers are still in flight
+    // Cold tiles only read retained CPU uploads; queue barriers order shared scratch reuse.
+    // Continue next frame without waiting two epochs; only the final submit must retire before release.
+    if (recorded_ && !(coldPending_ && submitted_ && epoch > submittedEpoch_)) return false;
+    if (coldPending_) {
+        if (!recordColdTile(cb, in)) return false;
+        recorded_ = true; submitted_ = false; recordedEpoch_ = epoch;
+        return true;
+    }
     if (cacheLoad_.valid() && cacheLoad_.wait_for(std::chrono::seconds(0)) != std::future_status::ready) return false;
     const std::optional<BakeKeys> keys = inputsReady(in);
     if (!keys) return false;
@@ -463,6 +471,7 @@ void ShadowBake::markSubmitted(uint64_t epoch) {
     if (!recorded_ || submitted_) return;
     submitted_ = true;
     submittedEpoch_ = epoch;
+    if (coldPending_) return;
     if (recordedMask_) { bakedKey_ = recordedKey_; bakedSetVersion_ = mc2shadow::staticCasterSet().version(); maskReady_ = true; }
     objectKey_ = recordedObjectKey_;
     objectGeneration_ = recordedObjectGeneration_;
@@ -479,6 +488,7 @@ void ShadowBake::retire(uint64_t epoch) {
     if (epoch < submittedEpoch_ + 2 || (epoch & 1u) != (submittedEpoch_ & 1u)) return;
     recorded_ = false;
     submitted_ = false;
+    if (coldPending_) return;
     if (queries_ && queryCount_ > 0) {
         // A mask bake wrote every query; an object-map-only rebuild wrote its last two.
         const size_t tiles = tiles_.size();
@@ -498,7 +508,7 @@ void ShadowBake::retire(uint64_t epoch) {
                 for (size_t t = 0; t < tiles; ++t)
                     for (uint32_t s = 0; s < 4; ++s) stage[s] += span(static_cast<uint32_t>(t * kQueriesPerTile + s), static_cast<uint32_t>(t * kQueriesPerTile + s + 1));
                 mc2::fmt::print_err("[SHADOW_BAKE] gpu_ms window={:.2f} pcss={:.2f} march={:.2f} resolve={:.2f} mips={:.2f} object_map={:.2f} total={:.2f} cpu_ms={:.2f} tiles={}\n",
-                                    stage[0], stage[1], stage[2], stage[3], span(tail, tail + 1), object, span(0, tail + 3), cpuMs_, mc2::fmt::as_size(tiles));
+                                    stage[0], stage[1], stage[2], stage[3], span(tail, tail + 1), object, stage[0] + stage[1] + stage[2] + stage[3] + span(tail, tail + 1) + object, cpuMs_, mc2::fmt::as_size(tiles));
             } else {
                 mc2::fmt::print_err("[SHADOW_BAKE] gpu_ms object_map={:.2f} cpu_ms={:.2f}\n", object, cpuMs_);
             }
@@ -520,6 +530,38 @@ void ShadowBake::retire(uint64_t epoch) {
     if (completedMask) releaseTransients();
 }
 
+bool ShadowBake::readHeightGrid() {
+    const auto* store = gos_TerrainFieldStore();
+    if (!store) return false;
+    const int coarseSide = store->mapSide();
+    const bool visual = !store->visualHeight().empty() && store->visualSide() == (coarseSide - 1) * 4 + 1;
+    const int sourceSide = visual ? store->visualSide() : coarseSide;
+    heights_ = mc2shadow::maskHeightGrid(visual ? store->visualHeight() : store->height(), sourceSide, layout_.texels);
+    if (heights_.empty()) return false;
+    heightSide_ = (std::min)(sourceSide, layout_.texels + 1);
+    heightSpacing_ = float(coarseSide - 1) * mc2shadow::kWorldUnitsPerVertex / float(heightSide_ - 1);
+    return true;
+}
+
+bool ShadowBake::recordColdTile(VkCommandBuffer cb, const ShadowBakeInputs& in) {
+    const uint32_t t = coldNextTile_++;
+    const int tx = int(t) % layout_.tilesPerSide, ty = int(t) / layout_.tilesPerSide;
+    const auto& tile = tiles_[t];
+    const RegionJob job{mc2shadow::kTileTexels, mc2shadow::kRegionTexels, tx * mc2shadow::kTileTexels, ty * mc2shadow::kTileTexels};
+    recordRegion(cb, in, job, tile, std::span<const InstRun>(runs_.data() + tile.firstRun, tile.runCount), computeSet_, windowCasterSet_,
+                 t * uint32_t(kSlice), t * uint32_t(kSlice), 0, 0, queryCount_ ? int(t * kQueriesPerTile) : -1);
+    coldPending_ = coldNextTile_ < tiles_.size();
+    if (!coldPending_) {
+        const uint32_t tail = uint32_t(tiles_.size()) * kQueriesPerTile;
+        if (queryCount_) vkCmdWriteTimestamp(cb, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, queries_.get(), tail);
+        recordTopLevels(cb);
+        recordMaskToRead(cb, true);
+        if (queryCount_) vkCmdWriteTimestamp(cb, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, queries_.get(), tail + 1);
+        maskInitialized_ = true;
+    }
+    return true;
+}
+
 bool ShadowBake::recordBake(VkCommandBuffer cb, const ShadowBakeInputs& in) {
     using clk = std::chrono::steady_clock;
     const clk::time_point t0 = clk::now();
@@ -539,28 +581,17 @@ bool ShadowBake::recordBake(VkCommandBuffer cb, const ShadowBakeInputs& in) {
     const float softS = soft * soft * (3.0f - 2.0f * soft);
     fadeMax_ = mc2shadow::kFadeMax * (0.25f + 0.75f * softS);
 
-    // Heights: the visual bake when the map has one (what the terrain draws), else the 128 wu grid.
-    const int coarseSide = store->mapSide();
-    if (!store->visualHeight().empty() && store->visualSide() == (coarseSide - 1) * 4 + 1) {
-        heightSide_ = store->visualSide();
-        heightSpacing_ = mc2shadow::kWorldUnitsPerVertex / 4.0f;
-        heights_.assign(store->visualHeight().begin(), store->visualHeight().begin() + static_cast<size_t>(heightSide_) * heightSide_);
-    } else {
-        heightSide_ = coarseSide;
-        heightSpacing_ = mc2shadow::kWorldUnitsPerVertex;
-        heights_ = store->height();
+    if (recordedMask_) {
+        layout_ = mc2shadow::maskLayout(mapSide_, halfMap_, maskTarget(), maskCap());
+        if (layout_.texels == 0) { blog("map too small for a mask: no bake."); return false; }
     }
-    if (heights_.size() != static_cast<size_t>(heightSide_) * heightSide_) { blog("height field malformed: no bake."); return false; }
+    if (!readHeightGrid()) { blog("height field malformed: no bake."); return false; }
     terrainTop_ = -1e30f;
     terrainMin_ = 1e30f;
     for (float h : heights_) { terrainTop_ = (std::max)(terrainTop_, h); terrainMin_ = (std::min)(terrainMin_, h); }
     terrainMin_ = (std::max)(terrainMin_, waterZ_);
     if (recordedMask_) bakedHeightVersion_ = store->heightVersion();
 
-    if (recordedMask_) {
-        layout_ = mc2shadow::maskLayout(mapSide_, halfMap_, maskTarget(), maskCap());
-        if (layout_.texels == 0) { blog("map too small for a mask: no bake."); return false; }
-    }
     if (!ensureProducts(layout_.texels > 0 ? layout_.texels : maskTexels_)) return false;
     if (typeBounds_.empty() && in.vbo != VK_NULL_HANDLE && !computeTypeBounds(in)) { blog("static-prop geometry not readable: no bake."); return false; }
 
@@ -777,22 +808,16 @@ bool ShadowBake::recordBake(VkCommandBuffer cb, const ShadowBakeInputs& in) {
                               VK_ACCESS_TRANSFER_WRITE_BIT);
         vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
                              VK_PIPELINE_STAGE_TRANSFER_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 6, pre);
-        for (uint32_t t = 0; t < tileCount; ++t) {
-            const int tx = static_cast<int>(t) % layout_.tilesPerSide, ty = static_cast<int>(t) / layout_.tilesPerSide;
-            RegionJob job{mc2shadow::kTileTexels, mc2shadow::kRegionTexels, tx * mc2shadow::kTileTexels, ty * mc2shadow::kTileTexels};
-            recordRegion(cb, in, job, tiles_[t], std::span<const InstRun>(runs_.data() + tiles_[t].firstRun, tiles_[t].runCount), computeSet_, windowCasterSet_,
-                         t * static_cast<uint32_t>(kSlice), t * static_cast<uint32_t>(kSlice), 0, 0, queryCount_ ? static_cast<int>(t * kQueriesPerTile) : -1);
-        }
-        // The levels whose blocks span tiles, from the coarse top image; then the whole chain is sampled (and read back for the cache).
-        const uint32_t tail = tileCount * kQueriesPerTile;
-        stamp(tail);
-        recordTopLevels(cb);
-        recordMaskToRead(cb, true);
-        stamp(tail + 1);
-        maskInitialized_ = true;
+        maskReady_ = objectReady_ = false;
+        coldNextTile_ = 0;
+        // The object map and its allocations are prepared once, before spreading mask work over frames.
+        if (!recordObjectMap(cb, in, tileCount * kQueriesPerTile + 2)) return false;
+        coldPending_ = true;
+        recordedObjectGeneration_ = recordedObjectKey_;
+        if (!recordColdTile(cb, in)) return false;
         gpuScope.end();
     }
-    if (!recordObjectMap(cb, in, tileCount * kQueriesPerTile + 2)) return false;
+    if ((!recordedMask_ || warm) && !recordObjectMap(cb, in, tileCount * kQueriesPerTile + 2)) return false;
     recordedObjectGeneration_ = recordedObjectKey_;
     cpuMs_ = std::chrono::duration<double, std::milli>(clk::now() - t0).count();
     warmReadMs_ = warmReadMs;
@@ -1002,15 +1027,8 @@ bool ShadowBake::updateIncremental(VkCommandBuffer cb, uint64_t epoch, const Sha
     }
     ZoneScopedN("ShadowBake.Dirty");
     // CPU state the sub-tiles read: the heights (re-read after a patch) and the live casters (re-resolved after an event).
-    if (heightsMoved_ || incHeightsCpu_.empty()) {
-        if (!store) return false;
-        const int coarseSide = store->mapSide();
-        if (!store->visualHeight().empty() && store->visualSide() == (coarseSide - 1) * 4 + 1)
-            incHeightsCpu_.assign(store->visualHeight().begin(), store->visualHeight().begin() + static_cast<size_t>(heightSide_) * heightSide_);
-        else
-            incHeightsCpu_ = store->height();
-        if (incHeightsCpu_.size() != static_cast<size_t>(heightSide_) * heightSide_) return false;
-        heights_ = incHeightsCpu_;
+    if (heightsMoved_ || heights_.empty()) {
+        if (!readHeightGrid()) return false;
         heightsMoved_ = false;
         ++heightsGen_;
     }
@@ -1029,7 +1047,6 @@ bool ShadowBake::updateIncremental(VkCommandBuffer cb, uint64_t epoch, const Sha
         }
         incQueryUsed_[par] = false;
     }
-    if (heights_.size() != incHeightsCpu_.size()) heights_ = incHeightsCpu_;
     mc2shadow::DirtyBatch pendingBatch(dirty_, kSubTilesPerFrame);
     const auto& batch = pendingBatch.tiles;
     const float tanT = std::tan(mc2shadow::kSunAngularRadiusDeg * 0.01745329252f);
@@ -1057,8 +1074,8 @@ bool ShadowBake::updateIncremental(VkCommandBuffer cb, uint64_t epoch, const Sha
     if (!incParams_.upload(tp.data(), tp.size(), parBase) || !incCasterUbo_.upload(ubo.data(), ubo.size(), parBase) ||
         (!inst.empty() && !incInstances_.upload(inst.data(), inst.size() * sizeof(GpuStaticPropInstance), instBase))) return false;
     if (incHeightsGen_[par] != heightsGen_) {
-        if (!makeHostBuffer(incHeights_[par], allocator_, device_, incHeightsCpu_.size() * sizeof(float), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, "shadow.bake.dirtyHeights") ||
-            !incHeights_[par].upload(incHeightsCpu_.data(), incHeightsCpu_.size() * sizeof(float))) return false;
+        if (!makeHostBuffer(incHeights_[par], allocator_, device_, heights_.size() * sizeof(float), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, "shadow.bake.dirtyHeights") ||
+            !incHeights_[par].upload(heights_.data(), heights_.size() * sizeof(float))) return false;
         incHeightsGen_[par] = heightsGen_;
     }
     writeIncrementalSets(par);
@@ -1171,7 +1188,6 @@ void ShadowBake::releaseIncremental() {
     incHeights_[0].reset(); incHeights_[1].reset();
     incHeightsGen_[0] = incHeightsGen_[1] = 0;
     incQueryUsed_[0] = incQueryUsed_[1] = false;
-    incHeightsCpu_.clear();
 }
 
 // The live casters (the bake's caster set as the registry has it now) with their light boxes: built once, then edited by each event.

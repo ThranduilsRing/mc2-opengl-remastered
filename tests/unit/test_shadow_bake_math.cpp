@@ -190,3 +190,11 @@ TEST_CASE("shadow bake dirty tiles: aborted batches requeue until uploads commit
     { DirtyBatch uploaded(q, 2); uploaded.commit(); }
     CHECK(q.empty());
 }
+
+TEST_CASE("shadow bake: heights are bounded by mask resolution and preserve a planar surface") {
+    std::vector<float> visual(17 * 17);
+    for (int y = 0; y < 17; ++y) for (int x = 0; x < 17; ++x) visual[y * 17 + x] = float(x + 2 * y);
+    const auto grid = maskHeightGrid(visual, 17, 4);
+    REQUIRE(grid.size() == 25);
+    for (int y = 0; y < 5; ++y) for (int x = 0; x < 5; ++x) CHECK(grid[y * 5 + x] == float(4 * x + 8 * y));
+}
