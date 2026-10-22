@@ -604,6 +604,7 @@ void GroundVehicle::init (bool create) {
 	sensorSystem = nullptr;			//Make sure they start WITHOUT one or badness will insue
 	
 	isVehiclePilot = false;
+	exitTimer = 0.0f;
 
 	lowestWeaponNodeID = -2;
 

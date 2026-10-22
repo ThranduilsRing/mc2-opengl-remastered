@@ -43,6 +43,8 @@
 #include "vk_shared_gbuffer_gate.h"
 #include "vulkan_vfx_island.h"
 #include "vulkan_vfx_geometry.h"
+#include "vulkan_mover_shadow.h"
+#include "vulkan_shadow_island_live.h"
 #include "texture_decode.h"
 #include "../../RenderCore/KtxLoader.h"
 #include "ui_texture.h"
@@ -190,6 +192,11 @@ void write_ring_bindings(VfxIsland* s, uint32_t par, VkBuffer buf, VkDeviceSize 
     }
 }
 
+uint64_t white_texture_id(mc2vk::VulkanContext& ctx) {
+    static const auto white = std::make_shared<const std::vector<uint8_t>>(4, 255u);
+    return ctx.textures().legacyUiId(0, 1, 1, VK_FORMAT_R8G8B8A8_UNORM, white);
+}
+
 // Resolve after this parity's ticket retires. New/changed pages keep the other flight untouched.
 std::optional<VkDescriptorSet> get_page(VfxIsland* s,uint32_t handle,uint32_t par) {
     if (handle==0xffffffffu) return std::nullopt;
@@ -219,8 +226,7 @@ std::optional<VkDescriptorSet> get_page(VfxIsland* s,uint32_t handle,uint32_t pa
         }
         id = RenderCore::uiTextureId(s->vegetationTexture.get());
     } else if (handle==0) {
-        static const auto white=std::make_shared<const std::vector<uint8_t>>(4,255u);
-        id=ctx.textures().legacyUiId(0,1,1,VK_FORMAT_R8G8B8A8_UNORM,white);
+        id=white_texture_id(ctx);
     } else id=gos_GetUiTextureId(handle);
     if (!id) return std::nullopt;
     const uint64_t frame=ctx.tracker().frameNo();
@@ -410,21 +416,29 @@ bool init_island(VfxIsland* s, int w, int h) {
 
     // Descriptor set: UBO(0, vert) + particle SSBO(1, vert).
     {
-        VkDescriptorSetLayoutBinding b[2]{};
+        VkDescriptorSetLayoutBinding b[5]{};
         b[0].binding = 0; b[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
         b[0].descriptorCount = 1; b[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
         b[1].binding = 1; b[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
         b[1].descriptorCount = 1; b[1].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+        b[2].binding = 17; b[2].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        b[2].descriptorCount = 1; b[2].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+        b[3].binding = 24; b[3].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        b[3].descriptorCount = 1; b[3].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+        b[4].binding = 25; b[4].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        b[4].descriptorCount = 1; b[4].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
         VkDescriptorSetLayoutCreateInfo lci{};
         lci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-        lci.bindingCount = 2; lci.pBindings = b;
+        lci.bindingCount = 5; lci.pBindings = b;
         if (!mc2vk::create(s->dsl, s->device, [&](VkDescriptorSetLayout* o) { return vkCreateDescriptorSetLayout(s->device, &lci, nullptr, o); })) { vlog("vkCreateDescriptorSetLayout failed."); return false; }
-        VkDescriptorPoolSize sizes[2]{};
+        VkDescriptorPoolSize sizes[4]{};
         sizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC; sizes[0].descriptorCount = 2;
         sizes[1].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC; sizes[1].descriptorCount = 2;
+        sizes[2].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; sizes[2].descriptorCount = 4;
+        sizes[3].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER; sizes[3].descriptorCount = 2;
         VkDescriptorPoolCreateInfo pci{};
         pci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-        pci.maxSets = 2; pci.poolSizeCount = 2; pci.pPoolSizes = sizes;
+        pci.maxSets = 2; pci.poolSizeCount = 4; pci.pPoolSizes = sizes;
         if (!mc2vk::create(s->pool, s->device, [&](VkDescriptorPool* o) { return vkCreateDescriptorPool(s->device, &pci, nullptr, o); })) { vlog("vkCreateDescriptorPool failed."); return false; }
         VkDescriptorSetAllocateInfo dsai{};
         dsai.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
@@ -550,6 +564,26 @@ void fill_frame_params(void* dst, const float* worldToClipGL, const float* camRi
     std::memcpy(dst, &up, sizeof(up));
 }
 
+// Both draw paths borrow current shadow resources only after this parity retires.
+bool prepare_shadow_descriptors(VfxIsland* s, uint32_t par) {
+    if (!mc2vk::bindMoverShadowDescriptors(s->device,s->set[par])) return false;
+    // The white page is a valid fallback while the bake is pending. This set
+    // has retired its prior submission, so changing borrowed views is safe.
+    auto& ctx = mc2vk::getOrCreateEngineVulkanContext();
+    const uint64_t whiteId = white_texture_id(ctx);
+    if (!whiteId) return false;
+    const VkImageView white = ctx.textures().view(RenderCore::uiTextureHandle(whiteId));
+    if (!white) return false;
+    const VkImageView mask = mc2_vk_shadow_island_bake_ready()
+        ? reinterpret_cast<VkImageView>(mc2_vk_shadow_island_get_bake_mask_view()) : white;
+    const VkDescriptorImageInfo image{s->samp.get(),mask,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
+    VkWriteDescriptorSet write{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
+    write.dstSet=s->set[par]; write.dstBinding=17; write.descriptorCount=1;
+    write.descriptorType=VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; write.pImageInfo=&image;
+    vkUpdateDescriptorSets(s->device,1,&write,0,nullptr);
+    return true;
+}
+
 }  // namespace
 
 // ===========================================================================
@@ -584,6 +618,7 @@ extern "C" int mc2_vk_vfx_island_run(
         std::memcpy(static_cast<uint8_t*>(span.ptr) + partOff, particles, static_cast<size_t>(needBytes));
     }
     fill_frame_params(span.ptr, worldToClipGL, camRight, camUp);
+    if (!prepare_shadow_descriptors(s, par)) return 0;
     write_ring_bindings(s, par, span.buffer, span.range);
     const uint32_t dynOffsets[2] = {static_cast<uint32_t>(span.offset), static_cast<uint32_t>(span.offset + partOff)};
 
@@ -695,6 +730,7 @@ bool mc2_vk_vfx_vegetation_run(const mc2veg::CullParams& params, const float* wo
     s->nextSlot ^= 1u;
     if (!slotCtx.wait(mc2vk::GpuTicket{s->ticket[par], 0}, 5ull * 1000 * 1000 * 1000, "vfx_slot")) { setFallback("slot_timeout"); s->disabled = true; return false; }
     const VkDeviceSize align = slotCtx.frameAlignment();
+    if (!prepare_shadow_descriptors(s, par)) return false;
     s->groundLighting.copy(s->device, par, *ground);
     const VkDeviceSize cullOff = mc2vk::alignUp(sizeof(VfxVsParams), align);
     const VkDeviceSize visOff = mc2vk::alignUp(cullOff + sizeof(mc2veg::CullParams), align);

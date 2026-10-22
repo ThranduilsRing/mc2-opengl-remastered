@@ -36,7 +36,10 @@ add_executable(mc2_tests
     test_rendercore.cpp     # RENDERCORE-UNIT-TESTS-1: GL-free substrate invariants
     test_frame_arena.cpp    # FRAME-ARENA-1: FrameArena typed L2 allocator invariants
     test_depth_hzb.cpp      # HZB-DEPTH-CONVENTION-TESTS-1: reverse-Z / HZB reduction contract
-    test_shadow_static_runs.cpp  # the VK static shadow map drops every building on a map without static-prop geometry
+    test_shadow_bake_math.cpp  # the static shadow bake's mask layout, reach, footprint and caster-window math (header-only, no Vulkan)
+    test_shadow_mover_fit.cpp
+    test_static_caster_set.cpp
+    ../../GameOS/gameos/static_caster_set.cpp
     test_gate.cpp           # GATE-REGISTRY-G1A: truthiness matrix, slot cache, [CONFIG v1] dump
     test_tactical_overview.cpp   # TACTICAL-OVERVIEW-1: blend-state pure logic
     test_xform_convention.cpp    # XFORM-CONVENTION-HARNESS-1: clip-space convention lock
@@ -57,6 +60,7 @@ add_executable(mc2_tests
     test_handle_slots.cpp  # P3 handle slots: ticket-gated reuse, stale handles refused, generation wrap, range exhaustion (offline)
     test_frame_packets.cpp  # P1 frame packets: publish freezes a frame's views and lighting, per-slot arenas, republish and recycle (offline)
     test_det_rng.cpp        # DETERMINISTIC-RNG-1: LCG kernel determinism (offline)
+    test_arm_node_remap.cpp # arm-off weapon-node remap: valid node on the remaining body (named sim change)
     test_appearance_rng.cpp # the appearance-side random stream: replayable, in range, apart from the simulation's
     test_script_music.cpp   # the music state an ABL script sees: its own request on the scenario clock, never the device
     alloc_probe.cpp         # the allocation probe + ScopedLeakCheck, allocation accounting and standard-owner coverage
@@ -102,6 +106,7 @@ add_executable(mc2_tests
     test_pak_read_exact.cpp     # step 4 B4.1: mc2::pak::readExact, the size-checked packet read of the move maps (malformed pak rejected with one log line)
     test_tga_scratch.cpp        # step 4 B4.2a: the whole-file read and the TGA body-size check of the terrain texture loaders
     test_globalmap_limits.cpp   # step 4 B4.1c: the range checks of every count a global move map reads from a pak, plus the zeroed owner helper
+    test_terrain_part_chunk.cpp
     test_texture_ref.cpp        # step 4 B5.1: mc2::BasicTextureRef, one release per adopted texture node reference
     test_path_permutations.cpp  # META-FIX design E: canonical-key permutation matrix (issue #8 family)
     test_csvfile.cpp        # MINIMAL-VIABLE-HARNESS-2: real csvfile.cpp (Buildings.csv-shaped)
@@ -141,6 +146,9 @@ add_executable(mc2_tests
     ${MC2_WORKTREE_ROOT}/GameOS/gameos/terrain_field_store.cpp
     test_terrain_surface_asset.cpp
     ${MC2_WORKTREE_ROOT}/GameOS/gameos/terrain_surface_asset.cpp
+    ${MC2_WORKTREE_ROOT}/GameOS/gameos/cook_cache.cpp
+    test_shadow_mask_asset.cpp  # the shadow mask cook: header/payload validation, BC4 block packing, cold/warm/changed/healed cache
+    ${MC2_WORKTREE_ROOT}/GameOS/gameos/shadow_mask_asset.cpp
     test_terrain_surface_cook.cpp
     ${MC2_WORKTREE_ROOT}/GameOS/gameos/terrain_surface_cook.cpp
     test_vk_render_pass_timer.cpp  # VK pass timer tick math (counter wrap, valid bits); header-only, no Vulkan

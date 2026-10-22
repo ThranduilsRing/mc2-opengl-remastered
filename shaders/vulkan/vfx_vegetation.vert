@@ -25,6 +25,7 @@ layout(location = 5) out vec3 v_cardNormal;
 layout(location = 6) out vec3 v_worldPos;
 layout(location = 7) flat out vec3 v_rootPos;
 layout(location = 8) flat out uint v_atlasLayer;
+layout(location = 9) out vec3 v_shadowWorld;
 #include "include/vegetation_vk.glsl"
 
 void main() {

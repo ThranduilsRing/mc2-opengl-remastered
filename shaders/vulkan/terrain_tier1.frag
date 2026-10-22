@@ -30,14 +30,11 @@
 // (requires MC2_VK_TERRAIN_TIER1): OFF -> uT.lightingEnabled==0 -> the compose is the
 // identity (base only), byte-identical to the pre-lighting colormap+cement frame.
 #extension GL_GOOGLE_include_directive : require
-#include "include/lighting_shadow_vk.glsl"
 #ifndef PREC
 #define PREC highp
 #endif
 #include "../include/noise.hglsl"   // VK-PARITY-F3: fbm() for the GL colour break-up (terrain_lod_chunk.frag:1839)
 #include "include/terrain_frame_vk.glsl"   // TerrainFrameUBO + set-0 resources + CSM shadow helpers
-#include "include/terrain_static_visibility.glsl"
-#include "include/terrain_shadow_receiver.glsl"
 #include "include/ground_lighting.glsl"
 #include "../include/axis.hglsl"   // mc2ToRender: the POM view vector is built in the MC2 world frame
 #include "../include/edge_haze.hglsl"   // edgeHazeAmount + EDGE_HAZE_SKY, shared with GL
@@ -630,34 +627,12 @@ void main() {
         float normalLight = computeNdotLBand(N, lightDir);
         if (pureConcrete) normalLight = 1.0;                     // cement: flat-lit slab
 
-        // Shadow compose — mirrors terrain_lod_chunk.frag:896-907 EXACTLY:
-        //   staticS = calcShadow(...16);  dynS = calcDynamicShadow(...8);
-        //   shadow  = min(staticS, dynS);
-        //   shadow  = mix(shadow, dynS, pureConcrete);   // concrete: dyn only, static dropped
-        // GL callers pass shadowN = flat-up (0,0,1), NOT the perturbed N. computeBakedShadow
-        // is a VERBATIM match of the legacy calcDynamicShadow body (adaptiveScale 2.4->0.8,
-        // mix(0.4,1.0,shadow)); the GL static calcShadow uses the same PCF core here too.
-        // VK-PARITY-SHADOW-1: GL (STATIC-SHADOW-BANDING-2, default ON) feeds the MACRO slope
-        // normal as shadowN; calcShadow normal-offsets by it then resets to flat-up for
-        // guard+bias, calcDynamicShadow uses it for NdotL. Flag off -> legacy flat-up.
-        // (Skirt strips: GL keeps flat-up there; VK shares this frag, residual noted.)
-        LsvkShadowKnobs shKnobs = mv_shadowKnobs();
-        vec3 shadowN = vec3(0.0, 0.0, 1.0);
-        if ((shKnobs.flags & LSVK_KNOB_BANDFIX_V2) != 0) shadowN = mv_smoothTerrainNormal(v_worldPos.xy);
-        float staticS = 1.0;
-        if (uT.enableShadows != 0) {
-            staticS = terrainStaticShadow(v_worldPos, shadowN, lightDir, shKnobs);
-        }
-        // VK-TERRAIN-CSM-NEAR-1: near-cascade-array path when armed+valid (uT.csmEnabled),
-        // else the legacy single dynamic map. Both now carry the GL dist-fade + clamped sun.
-        float dynS = 1.0;
-        if (uT.csmEnabled != 0 || uT.enableDynShadows != 0) {
-            // T15: bounded terrain-only receiver (4 compare fetches); objects keep the tent.
-            vec3 shSun = lsvk_shadowSun(lightDir, shKnobs);         // TERRAIN-SHADOW-GUARD-1
-            dynS = terrainDynamicShadow(v_worldPos, shadowN, shSun);
-        }
+        // Static ground mask and current-frame movers share the same visibility
+        // floor. Cement receives both, exactly like the surrounding terrain.
+        vec3 shadowN=mv_smoothTerrainNormal(v_worldPos.xy);
+        float staticS=uT.enableShadows!=0?terrainStaticShadow(v_worldPos):1.0;
+        float dynS=terrainDynamicShadow(v_worldPos,shadowN);
         float shadow = min(staticS, dynS);
-        shadow = mix(shadow, dynS, pureConcrete ? 1.0 : 0.0);  // concrete: dynamic only
         lit = shadeGround(baseColor, N, normalLight, shadow, pureConcrete ? 1.0 : 0.0, v_worldPos);
 
         // TERRAIN-EDGE-FEATHER-1 (GL terrain_lod_chunk.frag, after the mover contact): the last tile band of the map fades to the sky haze

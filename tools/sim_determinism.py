@@ -3,8 +3,8 @@
 
 WHAT: reads the `[SIMID v1] simframe=N t=T n=C graded=.. visual=.. strict=..` line the engine prints for every sim frame
 (MC2_SIM_IDENTITY_TRACE) and compares two runs of one mission frame by frame over the frames both reached. It names the first divergent
-sim frame and prints both lines. `run` launches the mission twice through scripts/run_smoke.py under MC2_SMOKE_FIXED_TIMESTEP=1,
-MC2_DETERMINISTIC_RNG=1 and MC2_SIM_IDENTITY_TRACE=1 (the three gates that remove wall-clock and RNG-seed variation). `--baseline`
+sim frame and prints both lines. `run` launches the mission twice through scripts/run_smoke.py under MC2_SMOKE_FIXED_TIMESTEP=1
+and MC2_SIM_IDENTITY_TRACE=1 (MC2_DETERMINISTIC_RNG is default ON, so the runs prove the default). `--baseline`
 additionally compares the chain digest of the first N frames with a committed one (tests/smoke/sim_determinism/<mission>.json), which is
 the "SIMID unchanged" proof for a refactor (ownership, enum, math steps) across commits. A baseline pins the install data fingerprint, the
 mission seed and the extra env it was recorded under, so a check against other data or another seed fails instead of lying.
@@ -42,7 +42,8 @@ from repo_intel import lane_model  # noqa: E402
 
 PREFIX = "[SIMID v1] simframe="
 _STRICT = re.compile(r" strict=\w+")
-GATES = {"MC2_SMOKE_FIXED_TIMESTEP": "1", "MC2_DETERMINISTIC_RNG": "1", "MC2_SIM_IDENTITY_TRACE": "1"}
+# MC2_DETERMINISTIC_RNG is default ON now: the runs deliberately do not set it, so they prove the default.
+GATES = {"MC2_SMOKE_FIXED_TIMESTEP": "1", "MC2_SIM_IDENTITY_TRACE": "1"}
 #: A comparison over fewer frames proves nothing (the mission may not have left the loading screen).
 MIN_FRAMES = 300
 #: One baseline file per mission.

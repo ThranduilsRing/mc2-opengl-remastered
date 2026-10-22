@@ -38,6 +38,10 @@ namespace Stuff {
 		static void
 			TerminateClass();
 
+		// Per-mission restart of the effect table from the mission seed (deterministic, so effect-driven lifetimes replay).
+		static void
+			Reseed(unsigned int seed);
+
 	private:
 		static int
 			Numbers[250];		// the random number table

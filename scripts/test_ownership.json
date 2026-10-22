@@ -12,6 +12,7 @@
     {"module": "scripts/tests/test_check_ab_kit.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_check_background_launch.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_check_cxx_standard_floor.py", "owners": ["cxx_standard_floor"]},
+    {"module": "scripts/tests/test_check_doc_links.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_check_glm_convention.py", "owners": ["glm_convention"]},
     {"module": "scripts/tests/test_check_native_post_contracts.py", "owners": ["multiply_blend", "colormask_ownership", "mdi_submission"]},
     {"module": "scripts/tests/test_check_sim_fp_contract.py", "owners": ["sim_fp_contract"]},

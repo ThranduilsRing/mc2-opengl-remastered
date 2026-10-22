@@ -142,7 +142,7 @@ RE_VEC3_FILL = re.compile(
 # NdotL / shadow term so it cannot drag in unrelated mix() calls.
 RE_INLINE_MIX = re.compile(
     r"mix\(\s*([0-9]*\.?[0-9]+)\s*,\s*([0-9]*\.?[0-9]+)\s*,\s*(?:clamp\()?\s*"
-    r"(NdotL|ndl|ndotl|nDotL|NdL|shadow)\b")
+    r"(NdotL|ndl|ndotl|nDotL|NdL|shadow|moverShadow)\b")
 RE_INLINE_ADD = re.compile(
     r"\(\s*([0-9]*\.?[0-9]+)\s*\+\s*([0-9]*\.?[0-9]+)\s*\*\s*"
     r"(NdotL|ndl|ndotl|nDotL|NdL|ao|AO)\b")
@@ -257,11 +257,11 @@ BASELINE = {'ambient_floor_scalar': [('shaders/vulkan/mech_tier1.vert', 'kAmbien
                        ('shaders/vulkan/include/ground_lighting.glsl', 'ambSky', '0.55,0.62,0.75')],
  'inline_light_floor': [('shaders/include/shadow.hglsl', 'mix:shadow', '0.4->1.0'),
                         ('shaders/include/shadow.hglsl', 'mix:shadow', '0.4->1.0'),
-                        ('shaders/vulkan/include/lighting_shadow_vk.glsl', 'mix:shadow', '0.4->1.0'),
-                        ('shaders/vulkan/include/lighting_shadow_vk.glsl', 'mix:shadow', '0.4->1.0'),
-                        ('shaders/vulkan/include/lighting_shadow_vk.glsl', 'mix:shadow', '0.4->1.0'),
+                        ('shaders/vulkan/include/ground_shadow.glsl', 'mix:shadow', '0.4->1.0'),
+                        ('shaders/vulkan/include/ground_shadow.glsl', 'mix:shadow', '0.4->1.0'),
+                        ('shaders/vulkan/screen_shadow_csm.frag', 'mix:moverShadow', '0.4->1.0'),
                         ('shaders/vulkan/screen_shadow_csm.frag', 'mix:shadow', '0.4->1.0'),
-                        ('shaders/vulkan/screen_shadow_static.frag', 'mix:shadow', '0.4->1.0'),
+                        ('shaders/vulkan/screen_shadow_csm.frag', 'mix:moverShadow', '0.55->1.0'),
                         ('shaders/vulkan/include/ground_lighting.glsl', 'mix:shadow', '0.55->1.0')],
  'light_type_dispatch': [('shaders/include/lighting.hglsl',
                           ('AMBIENT', 'INFINITE', 'INFINITEWITHFALLOFF', 'POINT', 'SPOT', 'TERRAIN')),

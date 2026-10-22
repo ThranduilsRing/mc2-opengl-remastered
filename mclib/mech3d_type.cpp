@@ -3,6 +3,8 @@
 #include "mech3d_internal.h"
 #include "../RenderCore/axis_convert.h"
 #include <format>
+#include <vector>
+#include "arm_node_remap.h"
 
 constexpr int MAX_ANIMATION_FILES = 25;
 const char* MechAnimationNames[MaxGestures+2] = 
@@ -961,6 +963,25 @@ long Mech3DAppearance::resolveWeaponNodeBySocketName (const char* socketName)
 			return idx;
 	}
 	return -1;
+}
+
+// Read-only counterpart of getWeaponNode() for a weapon whose own node is on a lost arm (rules in mc2_arm_remap). The old
+// caller remapped by constants (1 -> 3, 2 -> 5) that are body-location numbers, not node indices.
+long Mech3DAppearance::remapLostArmWeaponNode (long node, long weaponType)
+{
+	const long numSmokeNodes = mechType->numSmokeNodes;
+	const long count = mechType->numWeaponNodes;
+	const long own = node - numSmokeNodes;
+	if ((own < 0) || (own >= count))
+		return node;
+
+	std::vector<mc2_arm_remap::Node> nodes(static_cast<size_t>(count));
+	for (long i = 0; i < count; i++)
+	{
+		const auto& nd = mechType->nodeData[numSmokeNodes + i];
+		nodes[i] = { nd.weaponType, nd.isRArmNode, nd.isLArmNode, nodeUsed[i] };
+	}
+	return mc2_arm_remap::remapLostArmNode(nodes, own, weaponType, rightArmOff, leftArmOff) + numSmokeNodes;
 }
 
 float Mech3DAppearance::getWeaponNodeRecycle (long node)

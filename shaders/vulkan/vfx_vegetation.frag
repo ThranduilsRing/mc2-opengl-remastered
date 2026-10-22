@@ -5,9 +5,6 @@
 #define TERRAIN_RESOURCE_SET 3
 #include "../include/render_contract.hglsl"
 #include "include/terrain_frame_vk.glsl"
-#include "include/terrain_static_visibility.glsl"
-#include "include/terrain_shadow_receiver.glsl"
-#include "include/mover_shadow.glsl"
 #include "include/ground_lighting.glsl"
 layout(set = 1, binding = 0) uniform sampler2DArray uAtlas;
 layout(set = 3, binding = 16) uniform sampler2D u_macroGradient;
@@ -18,6 +15,7 @@ layout(location = 5) in vec3 v_cardNormal;
 layout(location = 6) in vec3 v_worldPos;
 layout(location = 7) flat in vec3 v_rootPos;
 layout(location = 8) flat in uint v_atlasLayer;
+layout(location = 9) in vec3 v_shadowWorld;
 layout(location = 0) out vec4 o_color;
 layout(location = 1) out vec4 o_normal;
 
@@ -57,8 +55,8 @@ void main() {
     vec3 rootN = rootNormal();
     vec3 cardN = normalize(gl_FrontFacing ? v_cardNormal : -v_cardNormal);
     vec3 N = normalize(mix(rootN, cardN, 0.30*(1.0-v_vegData.y)));
-    float staticS = uT.enableShadows != 0 ? terrainStaticShadow(v_rootPos, rootN, uT.terrainLightDir.xyz, mv_shadowKnobs()) : 1.0;
-    float shadow = min(staticS, moverVisibility(v_worldPos, rootN));
+    float staticS = uT.enableShadows != 0 ? terrainStaticShadow(v_shadowWorld) : 1.0;
+    float shadow = min(staticS, terrainDynamicShadow(v_shadowWorld, rootN));
     float normalLight = computeNdotLBand(N, uT.terrainLightDir.xyz);
     // Thin-leaf transmission, bounded and shadowed with direct light once.
     normalLight += 0.08 * max(dot(-cardN, uT.terrainLightDir.xyz), 0.0) * (1.0-v_vegData.y);

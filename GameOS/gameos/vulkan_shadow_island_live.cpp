@@ -1,37 +1,4 @@
-// vulkan_shadow_island_live.cpp — VK-P8a SHADOW-INTEROP: the SECOND Vulkan GEOMETRY
-// region and the FIRST VK-PRODUCES-DEPTH region (water was the first geometry region,
-// GL-produces-color / VK-consumes; shadow REVERSES the direction).
-// =============================================================================
-// VK renders the DYNAMIC static-prop shadow-caster depth into an exportable D32
-// VkImageResource; GL binds that shared D32 in place of getDynamicShadowTexture()
-// and samples it via the UNCHANGED hardware sampler2DShadow calcShadow() path
-// (shadow.hglsl). This lights up the vk2gl back-channel (glVkToGlSem /
-// glInteropWaitFromVk) for the first time on a geometry region: VK submit SIGNALS
-// vk2gl, GL WAITS it, then samples.
-//
-// SHAPE (mirrors the P9 water island — the proven geometry-region template):
-//   - Device: BORROWED from the shared engine VulkanContext
-//     (ensureEngineVulkanContext + getOrCreateEngineVulkanContext). NO
-//     second device, NO volkLoadDevice. Requires the ctx was born wantInterop.
-//   - Feed (STEP 0 decision, .claude/VK-P8a-STEP0-CASTER-FEED-NOTE.md): the CPU
-//     GpuStaticPropInstance vector (dynShadowSet) the GL path already builds each
-//     frame is memcpy'd into a VK instance SSBO (no fenced GL buffer crosses); the
-//     shared static-prop VBO/IBO are copied ONCE per map into VK-owned immutable
-//     buffers (P8a fallback (B): VK owns a copy — simplest working feed; import of
-//     the GL buffer is a P8b optimization). Per-type packet ranges
-//     (baseVertex/firstIndex/indexCount) drive the instanced draws.
-//   - Pipeline: depth-only, no color attachment, depthTestEnable+depthWriteEnable,
-//     depthCompareOp=LESS (forward-Z, matching the GL dynamic shadow pass — NOT
-//     reverse-Z), cull NONE, depthBias set to the engine's glPolygonOffset
-//     (shadowBiasFactor_/shadowBiasUnits_) EXACTLY (the STOP-watch).
-//   - Output: VK renders the caster depth into the shared D32, signals vk2gl; GL
-//     waits + binds the shared D32 as shadowMap (compare-mode) — zero-copy on the
-//     depth surface; forbidden DEPTH-readback counters MUST stay 0.
-//
-// Under the VK umbrella (MC2_VK_SHADOW_INTEROP is its kill switch) the island is the producer; with the umbrella off the GL shadow path is untouched.
-// The whole TU compiles to nothing unless MC2_VULKAN_ISLAND is defined.
-// =============================================================================
-
+// One D16 mover map and the readiness-gated static bake, on the shared Vulkan device.
 #ifdef MC2_VULKAN_ISLAND
 
 #ifndef VK_USE_PLATFORM_WIN32_KHR
@@ -58,7 +25,12 @@
 #include "vk_depth_caster_pipeline.h"
 #include "vulkan_color_prop_island.h"
 #include "vulkan_shadow_mech_casters.h"
-#include "vulkan_shadow_static_map.h"
+#include "vulkan_shadow_bake.h"
+#include "vulkan_mover_shadow.h"
+#include "shadow_quality.h"
+#include "gos_postprocess.h"
+#include "gameos.hpp"
+#include "static_caster_set.h"
 #include "vk_shared_gbuffer_gate.h"
 
 #include <tracy/Tracy.hpp>   // VK-ISLAND-TRACY-1: per-frame CPU attribution zones
@@ -79,6 +51,8 @@
 // ---------------------------------------------------------------------------
 // Health snapshot (mirrors the water island's) — read by debug_state_dump.cpp.
 // ---------------------------------------------------------------------------
+float mc2ShadowMinSunAltDeg();
+
 namespace {
 
 struct ShadowIslandHealth {
@@ -106,8 +80,6 @@ ShadowIslandHealth g_health;
 // terrain island) can tell "is this frame's depth ready right now" without racing a
 // stale prior-frame flag into a later frame where the shadow island declined.
 bool g_dynShadowReadyThisFrame = false;
-bool g_csmFullMapReadyThisFrame = false;
-bool g_csmArrayReadyThisFrame = false;
 // One value per frame (bumped by the first pass, the dynamic map): the mech casters stage their feed once per epoch and every later pass reuses it.
 uint64_t g_shadowFrameEpoch = 0;
 
@@ -154,7 +126,6 @@ struct ShadowFrameUBO {
 static_assert(sizeof(ShadowFrameUBO) == 80, "ShadowFrameUBO std140 size (shadow_prop.vert)");
 static_assert(offsetof(ShadowFrameUBO, instBase) == 64, "ShadowFrameUBO instBase offset");
 
-const VkFormat kDepthFmt = VK_FORMAT_D32_SFLOAT;
 
 // Per-type packet (subset of GpuStaticPropPacket the draw loop needs). Copied once
 // per map from the batcher's accessor.
@@ -191,6 +162,7 @@ struct ShadowIsland : mc2vk::IslandState {
     bool directChain = false;
 
     int size = 0;   // square shadow map side (getDynamicShadowMapSize())
+    VkFormat depthFormat = VK_FORMAT_D16_UNORM;
 
     // Borrowed from the shared engine context (NOT owned).
     VkInstance       instance  = VK_NULL_HANDLE;
@@ -202,11 +174,6 @@ struct ShadowIsland : mc2vk::IslandState {
 
     // VK-PRODUCED D32 depth (the shadow map). Non-exportable; consumed via VkImageView. The image resources release their image in the destructor below.
     VkImageResource depthResource{};   // D32, depth attachment + sampled
-    VkImageResource csmFullMapResource{};
-    int               csmFullMapSize = 0;
-    int               csmArraySize = 0;
-    uint32_t          csmArrayLayers = 0;
-    uint32_t          csmArrayRenderedMask = 0;
 
     uint32_t      vertexStride = 0;
     bool          geomUploaded = false;
@@ -233,11 +200,7 @@ struct ShadowIsland : mc2vk::IslandState {
     // Foliage and fence casters. Per packet of the shared geometry: the layer of the colour island's alpha-ON array that the packet's colour-pass fragments sample,
     // and the UV sub-region scale (layer < 0: an opaque packet). Built once per map from the colour island's material feed; the array view is re-bound whenever the
     // colour island hands out a different one. Until both exist a frame draws those packets opaque (a solid shadow), as the first frames of a map always did.
-    struct PacketAlpha {
-        int32_t layer = -1;
-        float   scaleX = 1.0f;
-        float   scaleY = 1.0f;
-    };
+    using PacketAlpha = mc2vk::CasterPacketAlpha;
     std::vector<PacketAlpha> packetAlpha;
     bool        alphaTableBuilt = false;
     VkImageView alphaBoundView = VK_NULL_HANDLE;
@@ -245,13 +208,7 @@ struct ShadowIsland : mc2vk::IslandState {
     bool        alphaReady = false;   // this frame: the array is bound and the table is built
     // The single dynamic map is only the fallback of a receiver that has no cascades, so its pass is held until the frame's cascades are known: it is recorded
     // at the submit when the cascade array and the full-map cascade were not both produced, and never otherwise.
-    struct PendingDynamicMap {
-        bool  valid = false;
-        int   size = 0;
-        float lightSpace[16] = {};
-        float biasFactor = 0.0f;
-        float biasUnits = 0.0f;
-    } pendingDyn;
+
 
     // OWNED objects, declared in creation order: the destructor releases them in reverse, so a framebuffer goes before the view and render pass it uses.
     mc2vk::OwnedBuffer vbo;   // VK-owned copies of the shared static-prop VBO/IBO (P8a (B))
@@ -261,12 +218,6 @@ struct ShadowIsland : mc2vk::IslandState {
     mc2vk::OwnedImageView   depthAttView;   // depth-attachment view of the shared image
     mc2vk::OwnedRenderPass  rpass;
     mc2vk::OwnedFramebuffer fb;
-    mc2vk::OwnedImageView   csmFullMapDepthAttView;
-    mc2vk::OwnedFramebuffer csmFullMapFb;
-    mc2vk::OwnedImage       csmArrayImg;
-    mc2vk::OwnedImageView   csmArrayView;
-    std::vector<mc2vk::OwnedImageView>   csmArrayLayerViews;
-    std::vector<mc2vk::OwnedFramebuffer> csmArrayFbs;
     mc2vk::OwnedFence       frameFence[2];   // signalled when the submit of parity p has retired; created signalled
     mc2vk::OwnedDescriptorSetLayout dsl;
     mc2vk::OwnedDescriptorSetLayout alphaDsl;   // set 1 of the caster layout: the colour island's alpha-ON albedo array
@@ -283,17 +234,17 @@ struct ShadowIsland : mc2vk::IslandState {
     mc2vk::OwnedCommandPool         cpool;
     // The mech casters share the render pass and the UBO above, the static map the render pass and the geometry; declared last so they are released first.
     mc2vk::ShadowMechCasters        mech;
-    mc2vk::ShadowStaticMap          staticMap;
+    mc2vk::ShadowBake               bake;   // borrows the alpha layout and the caster geometry above, so it is released first
+    mc2vk::MoverShadowState         mover;
+    mc2vk::OwnedImageView           debugArrayView; // compatibility view of the same one-layer D16 map, never a second allocation
 
     ShadowIsland() = default;
     // The views and framebuffers over the two image resources go first; the resources hold their images with raw allocations and are released here.
     ~ShadowIsland() override {
+        debugArrayView.reset();
         fb.reset(); depthAttView.reset();
-        csmFullMapFb.reset(); csmFullMapDepthAttView.reset();
-        csmArrayFbs.clear(); csmArrayLayerViews.clear(); csmArrayView.reset();
         if (device != VK_NULL_HANDLE) {
             vkImageResourceDestroy(&depthResource, device);
-            vkImageResourceDestroy(&csmFullMapResource, device);
         }
     }
 };
@@ -400,6 +351,7 @@ bool create_caster_pipeline(ShadowIsland* s, mc2vk::OwnedPipeline& out, VkShader
 // depth-only render pass + framebuffer, instance/UBO buffers, pipeline, cmd pool.
 bool init_island(ShadowIsland* s, int size) {
     s->size = size;
+    s->depthFormat = VK_FORMAT_D16_UNORM;
     ++g_health.attempted;
     g_shadowInitReachedBuild = 0;   // reset; flips to 1 after readiness gates pass
 
@@ -434,7 +386,7 @@ bool init_island(ShadowIsland* s, int size) {
     // + DEPTH_STENCIL_ATTACHMENT (VK renders into it). Non-exportable (VK-RUNG8-ITEM6). ----
     const bool directChain = kShadowDirectChain;
     bool ok = vkImageResourceCreate(&s->depthResource, s->device, s->phys,
-                                    static_cast<uint32_t>(size), static_cast<uint32_t>(size), kDepthFmt,
+                                    static_cast<uint32_t>(size), static_cast<uint32_t>(size), s->depthFormat,
                                     VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT |
                                     VK_IMAGE_USAGE_SAMPLED_BIT);
     if (ok) mc2vk::nameObject(s->device, s->depthResource.image.get(), "shadow.depthResource");
@@ -449,7 +401,7 @@ bool init_island(ShadowIsland* s, int size) {
     g_health.directChain = 1;
     g_health.interopActive = 0;        // item-4: no interop handoff
     g_health.vk2glSemActive = 0;       // item-4: no vk2gl semaphore
-    vlog("depth producer ACTIVE — VK-native D32 shadow map (direct-chain; GL<->VK handoff deleted).");
+    vlog("depth producer ACTIVE - VK-native %s shadow map (direct-chain).","D16 movers");
 
     // ---- Depth-attachment view of the shared image (the interop view's own
     // .view is the SAMPLED view; the render pass needs a DEPTH-aspect attachment
@@ -458,10 +410,14 @@ bool init_island(ShadowIsland* s, int size) {
         VkImageViewCreateInfo vi{};
         vi.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
         vi.image = s->depthResource.image.get();
-        vi.viewType = VK_IMAGE_VIEW_TYPE_2D; vi.format = kDepthFmt;
+        vi.viewType = VK_IMAGE_VIEW_TYPE_2D; vi.format = s->depthFormat;
         vi.subresourceRange = {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, 1};
         if (!mc2vk::create(s->depthAttView, s->device, [&](auto* h) { return vkCreateImageView(s->device, &vi, nullptr, h); })) {
             vlog("depth attachment view failed."); return false;
+        }
+        {
+            vi.viewType = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
+            if (!mc2vk::create(s->debugArrayView,s->device,[&](auto* h) { return vkCreateImageView(s->device,&vi,nullptr,h); })) return false;
         }
     }
 
@@ -476,7 +432,7 @@ bool init_island(ShadowIsland* s, int size) {
     // but sync-val can't see across the GL boundary — the water WAW-fix pattern). ----
     {
         VkAttachmentDescription att{};
-        att.format = kDepthFmt; att.samples = VK_SAMPLE_COUNT_1_BIT;
+        att.format = s->depthFormat; att.samples = VK_SAMPLE_COUNT_1_BIT;
         att.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR; att.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
         att.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE; att.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
         // Cleared every frame -> prior contents irrelevant -> UNDEFINED initial (also
@@ -602,8 +558,10 @@ bool init_island(ShadowIsland* s, int size) {
     if (!s->mech.init(s->device, s->allocator, s->rpass.get(), s->ubo.get(), sizeof(ShadowFrameUBO), spv_dir()))
         vlog("mech casters unavailable: the cascades carry static-prop casters only.");
     // ---- Static sun shadow map: a failure leaves terrain and objects without building and terrain shadows (logged by the map). ----
-    if (!s->staticMap.init(s->device, s->allocator, s->rpass.get(), spv_dir()))
-        vlog("static shadow map unavailable: no static sun shadow on this device.");
+    // ---- Static shadow bake (mask + object map): a failure leaves the bake off (logged by the bake). ----
+    if (!s->bake.init(s->device, s->allocator, s->phys, s->alphaDsl.get(), spv_dir()))
+        vlog("static shadow bake unavailable on this device.");
+    if (!s->mover.init(ctx,true)) return false;
 
     // ---- Command pool + 2 command buffers (per parity). ----
     {
@@ -632,148 +590,21 @@ bool init_island(ShadowIsland* s, int size) {
 
     s->inited = true;
     setFallback("");
-    vlog("island initialized %dx%d (borrowed shared device; exportable D32 shadow map, "
-         "depth-only LESS forward-Z, depthBias dynamic; instanced static-prop casters).", size, size);
+    vlog("island initialized %dx%d (borrowed shared device; native %s depth map; "
+         "LESS forward-Z, dynamic depth bias).",size,size,"D16 movers");
     return true;
 }
 
-bool ensure_csm_fullmap_target(ShadowIsland* s, int size) {
-    if (!s || size <= 0 || !s->rpass) return false;
-    if (s->csmFullMapResource.image.get() != VK_NULL_HANDLE && s->csmFullMapSize == size)
-        return true;
 
-    mc2vk::getOrCreateEngineVulkanContext().waitIdle("shadow_csm_fullmap_rebuild");
-    s->csmFullMapFb.reset();   // the framebuffer and the view go before the image they cover
-    s->csmFullMapDepthAttView.reset();
-    if (s->csmFullMapResource.image.get() != VK_NULL_HANDLE)
-        vkImageResourceDestroy(&s->csmFullMapResource, s->device);
-    s->csmFullMapResource = {};
-    s->csmFullMapSize = 0;
 
-    // VK-RUNG8-ITEM6: non-exportable; consumed via VkImageView (csmFullMapDepthAttView).
-    bool ok = vkImageResourceCreate(&s->csmFullMapResource, s->device, s->phys,
-                                    static_cast<uint32_t>(size), static_cast<uint32_t>(size), kDepthFmt,
-                                    VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT |
-                                    VK_IMAGE_USAGE_SAMPLED_BIT);
-    if (ok) mc2vk::nameObject(s->device, s->csmFullMapResource.image.get(), "shadow.csmFullMap");
-    if (!ok) {
-        vkImageResourceDestroy(&s->csmFullMapResource, s->device);
-        setFallback("csm_fullmap_resource_setup_failed");
-        return false;
-    }
 
-    VkImageViewCreateInfo vi{};
-    vi.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-    vi.image = s->csmFullMapResource.image.get();
-    vi.viewType = VK_IMAGE_VIEW_TYPE_2D;
-    vi.format = kDepthFmt;
-    vi.subresourceRange = {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, 1};
-    if (!mc2vk::create(s->csmFullMapDepthAttView, s->device, [&](auto* h) { return vkCreateImageView(s->device, &vi, nullptr, h); })) {
-        setFallback("csm_fullmap_att_view_failed");
-        return false;
-    }
-
-    VkFramebufferCreateInfo fci{};
-    fci.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-    const VkImageView fullMapView = s->csmFullMapDepthAttView.get();
-    fci.renderPass = s->rpass.get();
-    fci.attachmentCount = 1;
-    fci.pAttachments = &fullMapView;
-    fci.width = static_cast<uint32_t>(size);
-    fci.height = static_cast<uint32_t>(size);
-    fci.layers = 1;
-    if (!mc2vk::create(s->csmFullMapFb, s->device, [&](auto* h) { return vkCreateFramebuffer(s->device, &fci, nullptr, h); })) {
-        setFallback("csm_fullmap_framebuffer_failed");
-        return false;
-    }
-    s->csmFullMapSize = size;
-    vlog("CSM full-map target initialized %dx%d (exportable D32, direct terrain binding 9).",
-         size, size);
-    return true;
-}
-
-bool ensure_csm_array_target(ShadowIsland* s, int size, uint32_t layers) {
-    if (!s || size <= 0 || layers == 0 || layers > 31 || !s->rpass) return false;
-    if (s->csmArrayImg && s->csmArraySize == size && s->csmArrayLayers == layers)
-        return true;
-
-    mc2vk::getOrCreateEngineVulkanContext().waitIdle("shadow_csm_array_rebuild");
-    s->csmArrayFbs.clear();   // framebuffers and views go before the image they cover
-    s->csmArrayLayerViews.clear();
-    s->csmArrayView.reset();
-    s->csmArrayImg.reset();
-    s->csmArraySize = 0;
-    s->csmArrayLayers = 0;
-    s->csmArrayRenderedMask = 0;
-
-    VkImageCreateInfo ici{};
-    ici.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-    ici.imageType = VK_IMAGE_TYPE_2D;
-    ici.format = kDepthFmt;
-    ici.extent = {static_cast<uint32_t>(size), static_cast<uint32_t>(size), 1};
-    ici.mipLevels = 1;
-    ici.arrayLayers = layers;
-    ici.samples = VK_SAMPLE_COUNT_1_BIT;
-    ici.tiling = VK_IMAGE_TILING_OPTIMAL;
-    ici.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
-    ici.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    VmaAllocationCreateInfo aci{};
-    aci.usage = VMA_MEMORY_USAGE_AUTO;
-    if (!s->csmArrayImg.create(s->allocator, s->device, ici, aci, "shadow.csmArray")) {
-        setFallback("csm_array_image_failed");
-        return false;
-    }
-
-    VkImageViewCreateInfo vci{};
-    vci.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-    vci.image = s->csmArrayImg.get();
-    vci.viewType = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
-    vci.format = kDepthFmt;
-    vci.subresourceRange = {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, layers};
-    if (!mc2vk::create(s->csmArrayView, s->device, [&](auto* h) { return vkCreateImageView(s->device, &vci, nullptr, h); })) {
-        setFallback("csm_array_view_failed");
-        return false;
-    }
-
-    s->csmArrayLayerViews.resize(layers);
-    s->csmArrayFbs.resize(layers);
-    for (uint32_t layer = 0; layer < layers; ++layer) {
-        VkImageViewCreateInfo lvi{};
-        lvi.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-        lvi.image = s->csmArrayImg.get();
-        lvi.viewType = VK_IMAGE_VIEW_TYPE_2D;
-        lvi.format = kDepthFmt;
-        lvi.subresourceRange = {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, layer, 1};
-        if (!mc2vk::create(s->csmArrayLayerViews[layer], s->device, [&](auto* h) { return vkCreateImageView(s->device, &lvi, nullptr, h); })) {
-            setFallback("csm_array_layer_view_failed");
-            return false;
-        }
-        VkFramebufferCreateInfo fci{};
-        fci.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-        const VkImageView layerView = s->csmArrayLayerViews[layer].get();
-        fci.renderPass = s->rpass.get();
-        fci.attachmentCount = 1;
-        fci.pAttachments = &layerView;
-        fci.width = static_cast<uint32_t>(size);
-        fci.height = static_cast<uint32_t>(size);
-        fci.layers = 1;
-        if (!mc2vk::create(s->csmArrayFbs[layer], s->device, [&](auto* h) { return vkCreateFramebuffer(s->device, &fci, nullptr, h); })) {
-            setFallback("csm_array_framebuffer_failed");
-            return false;
-        }
-    }
-    s->csmArraySize = size;
-    s->csmArrayLayers = layers;
-    vlog("CSM array target initialized %dx%d layers=%u (VK D32 array, direct terrain binding 8).",
-         size, size, layers);
-    return true;
-}
 
 void release_geometry(ShadowIsland* s) {
     if (s->vbo || s->ibo) mc2vk::getOrCreateEngineVulkanContext().waitIdle("shadow_geometry_release");
     s->vbo.reset();
     s->ibo.reset();
     s->geomUploaded = false;
+    s->mover.clearGeometry();
     s->packets.clear();
     s->typeRuns.clear();
     s->packetAlpha.clear();
@@ -822,6 +653,7 @@ bool upload_geometry_once(ShadowIsland* s) {
         s->typeRuns[t].packetCount = feed.typePacketCount[t];
     }
     g_health.geomVerts = static_cast<unsigned long>((feed.vboBytes / (feed.vertexStride ? feed.vertexStride : 1)));
+    if (!s->mover.cacheGeometry(feed,vboCpu,iboCpu)) return false;
     s->geomUploaded = true;
     vlog("caster geometry uploaded once: vbo=%llu B ibo=%llu B stride=%u packets=%u types=%u.",
          static_cast<unsigned long long>(feed.vboBytes), static_cast<unsigned long long>(feed.iboBytes),
@@ -833,157 +665,6 @@ bool upload_geometry_once(ShadowIsland* s) {
 // MC2_VK_SHADOW_MATRIX_DIAG (Trace gate, default OFF). Evidence-only: matrices as
 // received by the island per map, GL/VK depth readbacks -> normalized gray PNG.
 // ===========================================================================
-bool diagOn() {
-    static const bool on = mc2::gate::get<"MC2_VK_SHADOW_MATRIX_DIAG">();
-    return on;
-}
-struct DiagRecv { bool have = false; int size = 0; int layers = 0; float m[16] = {0}; };
-DiagRecv g_diagDyn, g_diagFull, g_diagArr[4];
-bool g_diagTerrainArm = false;
-void diagRecordDyn(int size, const float* m) {
-    if (!diagOn()) return;
-    g_diagDyn.have = true; g_diagDyn.size = size; std::memcpy(g_diagDyn.m, m, 64);
-}
-void diagRecordFull(int size, const float* m) {
-    if (!diagOn()) return;
-    g_diagFull.have = true; g_diagFull.size = size; std::memcpy(g_diagFull.m, m, 64);
-}
-void diagRecordArr(int size, int layers, int layer, const float* m) {
-    if (!diagOn() || layer < 0 || layer >= 4) return;
-    g_diagArr[layer].have = true; g_diagArr[layer].size = size; g_diagArr[layer].layers = layers;
-    std::memcpy(g_diagArr[layer].m, m, 64);
-}
-void diagPrintMat(const char* tag, const float* m, int n = 16) {
-    char buf[1024]; int o = 0;
-    for (int i = 0; i < n; ++i) o += std::snprintf(buf + o, sizeof(buf) - o, "%s%.6g", i ? "," : "", m[i]);
-    std::fprintf(stderr, "[VK_SHADOW_MATRIX v1] %s = [%s]\n", tag, buf);
-}
-uint32_t diagCrc(const unsigned char* p, size_t n, uint32_t crc) {
-    static uint32_t table[256]; static bool init = false;
-    if (!init) { for (uint32_t i = 0; i < 256; ++i) { uint32_t c = i;
-        for (int k = 0; k < 8; ++k) c = (c & 1) ? (0xEDB88320u ^ (c >> 1)) : (c >> 1);
-        table[i] = c; } init = true; }
-    crc ^= 0xFFFFFFFFu;
-    for (size_t i = 0; i < n; ++i) crc = table[(crc ^ p[i]) & 0xFF] ^ (crc >> 8);
-    return crc ^ 0xFFFFFFFFu;
-}
-void diagBe32(std::vector<unsigned char>& o, uint32_t v) {
-    o.push_back(static_cast<unsigned char>((v >> 24))); o.push_back(static_cast<unsigned char>((v >> 16)));
-    o.push_back(static_cast<unsigned char>((v >> 8)));  o.push_back(static_cast<unsigned char>(v));
-}
-void diagChunk(std::vector<unsigned char>& o, const char tag[4], const unsigned char* d, size_t n) {
-    diagBe32(o, static_cast<uint32_t>(n)); size_t st = o.size(); o.insert(o.end(), tag, tag + 4);
-    if (n) o.insert(o.end(), d, d + n);
-    diagBe32(o, diagCrc(o.data() + st, 4 + n, 0));
-}
-bool diagWriteGrayPng(const char* path, int w, int h, const std::vector<unsigned char>& g) {
-    std::vector<unsigned char> z; z.push_back(0x78); z.push_back(0x01);
-    const size_t rowB = 1 + static_cast<size_t>(w), total = rowB * static_cast<size_t>(h);
-    uint32_t a = 1, b = 0; size_t off = 0;
-    std::vector<unsigned char> blk;
-    while (off < total) {
-        size_t n = std::min<size_t>(65535, total - off);
-        blk.resize(n);
-        for (size_t i = 0; i < n; ++i) {
-            size_t pos = off + i, y = pos / rowB, x = pos % rowB;
-            blk[i] = x == 0 ? 0 : g[y * static_cast<size_t>(w) + (x - 1)];
-            a = (a + blk[i]) % 65521; b = (b + a) % 65521;
-        }
-        bool last = off + n >= total;
-        z.push_back(last ? 1 : 0);
-        z.push_back(static_cast<unsigned char>((n & 0xFF))); z.push_back(static_cast<unsigned char>((n >> 8)));
-        z.push_back(static_cast<unsigned char>((~n & 0xFF))); z.push_back(static_cast<unsigned char>(((~n >> 8) & 0xFF)));
-        z.insert(z.end(), blk.begin(), blk.end());
-        off += n;
-    }
-    diagBe32(z, (b << 16) | a);
-    std::vector<unsigned char> out; const unsigned char sig[8] = {137,80,78,71,13,10,26,10};
-    out.insert(out.end(), sig, sig + 8);
-    unsigned char ih[13] = {0};
-    ih[0]=static_cast<unsigned char>((w>>24)); ih[1]=static_cast<unsigned char>((w>>16)); ih[2]=static_cast<unsigned char>((w>>8)); ih[3]=static_cast<unsigned char>(w);
-    ih[4]=static_cast<unsigned char>((h>>24)); ih[5]=static_cast<unsigned char>((h>>16)); ih[6]=static_cast<unsigned char>((h>>8)); ih[7]=static_cast<unsigned char>(h);
-    ih[8] = 8; ih[9] = 0;
-    diagChunk(out, "IHDR", ih, 13); diagChunk(out, "IDAT", z.data(), z.size()); diagChunk(out, "IEND", nullptr, 0);
-    FILE* f = std::fopen(path, "wb"); if (!f) return false;
-    std::fwrite(out.data(), 1, out.size(), f); std::fclose(f); return true;
-}
-// Normalize [min,max] -> gray, log stats, write PNG. Depth 1.0 = cleared background.
-// Row 0 of the buffer = texture row 0 (v=0) for BOTH GL and VK readbacks (no flip applied).
-void diagDumpDepth(const char* mapName, const char* side, const std::vector<float>& d, int dim) {
-    if (d.empty()) { std::fprintf(stderr, "[VK_SHADOW_MATRIX v1] dump map=%s side=%s EMPTY\n", mapName, side); return; }
-    float mn = 1e30f, mx = -1e30f; size_t covered = 0; int x0 = dim, y0 = dim, x1 = -1, y1 = -1;
-    for (size_t i = 0; i < d.size(); ++i) {
-        float v = d[i]; if (v < mn) mn = v; if (v > mx) mx = v;
-        if (v < 0.9999f) { ++covered; int x = static_cast<int>((i % dim)), y = static_cast<int>((i / dim));
-            if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
-    }
-    std::fprintf(stderr, "[VK_SHADOW_MATRIX v1] dump map=%s side=%s dim=%d min=%.6f max=%.6f covered(<0.9999)=%zu (%.4f%%) bbox=[%d,%d]-[%d,%d]\n",
-                 mapName, side, dim, mn, mx, covered, 100.0 * static_cast<double>(covered) / static_cast<double>(d.size()), x0, y0, x1, y1);
-    std::vector<unsigned char> g(d.size());
-    const float span = (mx > mn) ? (mx - mn) : 1.0f;
-    for (size_t i = 0; i < d.size(); ++i) g[i] = static_cast<unsigned char>(std::lround(255.0f * (d[i] - mn) / span));
-    char path[128]; std::snprintf(path, sizeof(path), "vk_shadowdiag_%s_%s.png", mapName, side);
-    std::fprintf(stderr, "[VK_SHADOW_MATRIX v1] wrote %s ok=%d\n", path, diagWriteGrayPng(path, dim, dim, g) ? 1 : 0);
-    // The raw depths too: the PNG is normalized per map, so two runs' PNGs do not compare texel for texel.
-    std::snprintf(path, sizeof(path), "vk_shadowdiag_%s_%s.f32", mapName, side);
-    bool rawOk = false;
-    if (FILE* f = std::fopen(path, "wb")) { rawOk = std::fwrite(d.data(), sizeof(float), d.size(), f) == d.size(); std::fclose(f); }
-    std::fprintf(stderr, "[VK_SHADOW_MATRIX v1] wrote %s ok=%d\n", path, rawOk ? 1 : 0);
-    std::fflush(stderr);
-}
-// One-shot VK readback of a D32 image layer (layout READ_ONLY_OPTIMAL in/out).
-void diagVkRead(ShadowIsland* s, VkImage img, uint32_t layer, int dim, std::vector<float>& out) {
-    out.clear(); if (!s || !img || dim <= 0 || !s->cpool) return;
-    const VkDeviceSize bytes = static_cast<VkDeviceSize>(dim) * dim * 4;
-    mc2vk::OwnedBuffer staging;
-    if (!make_buffer(s, staging, bytes, VK_BUFFER_USAGE_TRANSFER_DST_BIT, true, "shadow.diagReadback")) return;
-    const VkBuffer buf = staging.get(); const VmaAllocation al = staging.allocation();
-    VkCommandBufferAllocateInfo cai{VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO};
-    cai.commandPool = s->cpool.get(); cai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; cai.commandBufferCount = 1;
-    VkCommandBuffer cb = VK_NULL_HANDLE;
-    if (vkAllocateCommandBuffers(s->device, &cai, &cb) != VK_SUCCESS) return;
-    VkCommandBufferBeginInfo bi{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
-    bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-    vkBeginCommandBuffer(cb, &bi);
-    VkImageMemoryBarrier br{VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER};
-    br.srcQueueFamilyIndex = br.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED; br.image = img;
-    br.subresourceRange = {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, layer, 1};
-    br.oldLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL; br.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-    br.srcAccessMask = VK_ACCESS_MEMORY_WRITE_BIT; br.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-    vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &br);
-    VkBufferImageCopy rg{}; rg.imageSubresource = {VK_IMAGE_ASPECT_DEPTH_BIT, 0, layer, 1};
-    rg.imageExtent = {static_cast<uint32_t>(dim), static_cast<uint32_t>(dim), 1};
-    vkCmdCopyImageToBuffer(cb, img, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, buf, 1, &rg);
-    br.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL; br.newLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
-    br.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT; br.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-    vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, 0, nullptr, 0, nullptr, 1, &br);
-    vkEndCommandBuffer(cb);
-    VkSubmitInfo si{VK_STRUCTURE_TYPE_SUBMIT_INFO}; si.commandBufferCount = 1; si.pCommandBuffers = &cb;
-    if (mc2vk::submitAndWait(mc2vk::getOrCreateEngineVulkanContext(), si, 5ull * 1000 * 1000 * 1000, "shadow diagnostic readback")) {
-        void* p = nullptr;
-        if (vmaMapMemory(s->allocator, al, &p) == VK_SUCCESS) {
-            vmaInvalidateAllocation(s->allocator, al, 0, VK_WHOLE_SIZE);
-            out.resize(static_cast<size_t>(dim) * dim); std::memcpy(out.data(), p, static_cast<size_t>(bytes));
-            vmaUnmapMemory(s->allocator, al);
-        }
-    }
-    vkFreeCommandBuffers(s->device, s->cpool.get(), 1, &cb);
-}
-
-// The matrix diag's VK depth dumps of the frame just submitted.
-bool g_diagVkDumpPending = false;
-void diagDumpVk(ShadowIsland* s) {
-    std::vector<float> d;
-    if (g_dynShadowReadyThisFrame) { diagVkRead(s, s->depthResource.image.get(), 0, s->size, d); diagDumpDepth("dyn", "vk", d, s->size); }
-    else std::fprintf(stderr, "[VK_SHADOW_MATRIX v1] VK dyn map not recorded this frame\n");
-    if (g_csmArrayReadyThisFrame) { diagVkRead(s, s->csmArrayImg.get(), 0, s->csmArraySize, d); diagDumpDepth("csm0", "vk", d, s->csmArraySize); }
-    else std::fprintf(stderr, "[VK_SHADOW_MATRIX v1] VK csm array not recorded this frame\n");
-    if (g_csmFullMapReadyThisFrame) { diagVkRead(s, s->csmFullMapResource.image.get(), 0, s->csmFullMapSize, d); diagDumpDepth("full", "vk", d, s->csmFullMapSize); }
-    else std::fprintf(stderr, "[VK_SHADOW_MATRIX v1] VK csm fullmap not recorded this frame\n");
-    if (s->staticMap.view() != VK_NULL_HANDLE) { diagVkRead(s, s->staticMap.image(), 0, s->staticMap.size(), d); diagDumpDepth("static", "vk", d, s->staticMap.size()); }
-    else std::fprintf(stderr, "[VK_SHADOW_MATRIX v1] VK static map not built\n");
-}
-
 } // namespace
 
 // ===========================================================================
@@ -1028,7 +709,6 @@ static bool begin_frame(ShadowIsland* s, uint64_t epoch) {
     s->stagedInstances = nullptr;
     s->stagedInstanceCount = 0;
     s->instRuns.clear();
-    s->pendingDyn.valid = false;
     return true;
 }
 
@@ -1118,30 +798,50 @@ static void refresh_alpha_casters(ShadowIsland* s) {
 
 // Appends the static map's build to the frame's recording when the engine has a generation the map has not built (a map load, a destroy rebake): once
 // per generation, never per frame. It counts as a pass of the frame, so the frame is submitted even when every other pass declines.
-static void record_static_map_if_stale(ShadowIsland* s) {
-    if (!s->staticMap.stale()) return;
-    std::vector<uint32_t> firstPacket(s->typeRuns.size()), packetCount(s->typeRuns.size());
-    for (size_t t = 0; t < s->typeRuns.size(); ++t) { firstPacket[t] = s->typeRuns[t].firstPacket; packetCount[t] = s->typeRuns[t].packetCount; }
-    mc2vk::StaticPropGeometryView geometry{s->vbo.get(), s->ibo.get(), s->packets, firstPacket, packetCount};
-    if (s->staticMap.record(s->cbuf[s->parity], geometry)) ++s->passCount;
+// Static inputs and dirty versions schedule the bake independently of camera motion.
+
+
+static bool mover_shadows_enabled() {
+    static const bool enabled=mc2::gate::get<"MC2_SHADOW_ENABLE">();
+    const auto* pp=getGosPostProcess();
+    return enabled && pp && pp->shadowsEnabled_;
+}
+
+
+
+// The static shadow bake: retires a finished bake and records the next one when its inputs are ready and differ from the last. Like the static map it
+// counts as a pass, so its frame is submitted even when every other pass declines.
+static void record_bake(ShadowIsland* s) {
+
+    mc2vk::ShadowBakeInputs in;
+    std::vector<uint32_t> firstPacket, packetCount;
+    if (s->geomUploaded) {
+        firstPacket.resize(s->typeRuns.size());
+        packetCount.resize(s->typeRuns.size());
+        for (size_t t = 0; t < s->typeRuns.size(); ++t) { firstPacket[t] = s->typeRuns[t].firstPacket; packetCount[t] = s->typeRuns[t].packetCount; }
+        in.vbo = s->vbo.get();
+        in.ibo = s->ibo.get();
+        in.packets = s->packets;
+        in.typeFirstPacket = firstPacket;
+        in.typePacketCount = packetCount;
+        in.packetAlpha = s->packetAlpha;
+        in.alphaSet = s->alphaSet;
+        in.alphaReady = s->alphaReady;
+        in.alphaContentHash = mc2_color_prop_island_alpha_content_hash();
+    }
+    if (!in.alphaReady) {
+        Mc2ColorPropMaterialFeed mf{};
+        in.alphaAbsent = mc2_color_prop_island_get_material_feed(&mf) && mf.arrayKeyOn == 0;
+    }
+    if (s->bake.update(s->cbuf[s->parity], s->recordEpoch, in)) ++s->passCount;
 }
 
 // The start every pass shares: the island is up, the caster geometry is resident, the frame's recording is open and the casters are staged.
-static ShadowIsland* prepare_pass(const void* instances, unsigned int instanceCount) {
-    ShadowIsland* s = parkedIsland();
-    if (!s || s->disabled || !s->inited || !(s->useInterop || s->directChain)) return nullptr;
-    if (!upload_geometry_once(s)) { setFallback("geometry_not_ready"); return nullptr; }
-    if (!begin_frame(s, g_shadowFrameEpoch)) return nullptr;
-    if (!stage_instances(s, instances, instanceCount)) return nullptr;
-    refresh_alpha_casters(s);
-    s->mech.stage(g_shadowFrameEpoch);
-    record_static_map_if_stale(s);
-    return s;
-}
+
 
 // Appends one depth-only render pass to the frame's command buffer: the static-prop casters, then the mech casters, into `fb`. The light-space matrix goes to
 // this pass's own slice of the frame UBO, so no pass reads a matrix a later pass overwrote. Nothing here waits for the GPU.
-static bool record_pass(ShadowIsland* s, VkFramebuffer fb, int size, const float* lightSpace16, float biasFactor, float biasUnits) {
+static bool record_pass(ShadowIsland* s, VkFramebuffer fb, int size, const float* lightSpace16, float biasFactor, float biasUnits, bool drawCasters = true) {
     if (s->passCount >= kMaxPassesPerFrame) { setFallback("too_many_passes"); return false; }
     const VkDeviceSize uboOffset = (static_cast<VkDeviceSize>(s->parity) * kMaxPassesPerFrame + s->passCount) * kUboSliceBytes;
     {
@@ -1186,6 +886,7 @@ static bool record_pass(ShadowIsland* s, VkFramebuffer fb, int size, const float
     const VkBuffer vertexBuf = s->vbo.get();
     vkCmdBindVertexBuffers(cb, 0, 1, &vertexBuf, &vboOff);
     vkCmdBindIndexBuffer(cb, s->ibo.get(), 0, VK_INDEX_TYPE_UINT32);
+    if (drawCasters) {
     for (const InstRun& run : s->instRuns) {
         if (run.typeID >= s->typeRuns.size()) continue;
         const TypeRun& tr = s->typeRuns[run.typeID];
@@ -1212,6 +913,7 @@ static bool record_pass(ShadowIsland* s, VkFramebuffer fb, int size, const float
         }
     }
     s->mech.record(cb, s->parity, dynamicOffset);
+    }
     vkCmdEndRenderPass(cb);
     gpuScope.end();
     ++s->passCount;
@@ -1219,28 +921,9 @@ static bool record_pass(ShadowIsland* s, VkFramebuffer fb, int size, const float
     return true;
 }
 
-// The dynamic (single) shadow map, and the first pass of every frame: it counts the frame's epoch even when it declines. Inputs, all from the GL side at
-// dynamic-shadow-pass time:
-//   size          -- square shadow map side (getDynamicShadowMapSize()).
-//   lightSpace16  -- the 16 raw floats GL uploads (GL_FALSE) for lightSpaceMatrix.
-//   instances     -- the CPU GpuStaticPropInstance vector (112B each).
-//   instanceCount -- caster instance count.
-//   biasFactor/biasUnits -- glPolygonOffset(shadowBiasFactor_, shadowBiasUnits_).
-// The pass is only RECORDED here; the frame is submitted by mc2_vk_shadow_island_submit_frame(). Always returns 0: the consumers read the product through the
-// view accessors.
-extern "C" unsigned int mc2_vk_shadow_island_run(
-    int size, const float* lightSpace16,
-    const void* instances, unsigned int instanceCount,
-    float biasFactor, float biasUnits) {
-    g_dynShadowReadyThisFrame = false;   // set true only after this frame's recording of the pass succeeds
-    g_csmFullMapReadyThisFrame = false;  // CSM full-map direct view must be same-frame fresh too
-    g_csmArrayReadyThisFrame = false;    // CSM array direct view must be same-frame fresh too
-    ++g_shadowFrameEpoch;
-    if (size <= 0 || !lightSpace16) return 0;
-    ZoneScopedN("VKIsl.Shadow.Run");   // VK-ISLAND-TRACY-1 per-frame island total (CPU)
-
+static bool ensure_island(int size) {
     // Item-2 boot-level native-or-decline: a prior PERMANENT init failure declined this island for the whole session -> GL owns the dynamic shadow pass.
-    if (g_shadowSessionDeclined) return 0;
+    if (g_shadowSessionDeclined) return false;
     // Lazy init / rebuild on size change.
     mc2vk::VulkanContext& slotCtx = mc2vk::getOrCreateEngineVulkanContext();
     if (const ShadowIsland* parked = parkedIsland(); parked && parked->size != size) slotCtx.retireIsland(mc2vk::IslandSlot::Shadow);
@@ -1264,84 +947,66 @@ extern "C" unsigned int mc2_vk_shadow_island_run(
                     s_transientLogged = true;
                 }
             }
-            return 0;
+            return false;
         }
         islandSlot() = std::move(fresh);
     }
-    using clk = std::chrono::steady_clock;
-    const clk::time_point t0 = clk::now();
-    ShadowIsland* s = prepare_pass(instances, instanceCount);
-    if (!s) return 0;
-    diagRecordDyn(size, lightSpace16);
-    s->pendingDyn.valid = true;
-    s->pendingDyn.size = size;
-    std::memcpy(s->pendingDyn.lightSpace, lightSpace16, sizeof(s->pendingDyn.lightSpace));
-    s->pendingDyn.biasFactor = biasFactor;
-    s->pendingDyn.biasUnits = biasUnits;
-    g_health.vkDraws = 1;
-    g_health.totalUs = std::chrono::duration<double, std::micro>(clk::now() - t0).count();
-    return 0u;
+    return true;
 }
+
+bool mc2vk::bindMoverShadowDescriptors(VkDevice device, VkDescriptorSet set) {
+    ShadowIsland* s=parkedIsland();
+    if (!s) {
+        if (!ensure_island(1)) return false; // inactive descriptors need no full-size map
+        s=parkedIsland();
+    }
+    const bool ready=mover_shadows_enabled() && productReady(g_dynShadowReadyThisFrame);
+    return s->mover.bind(device,set,s->depthResource.view.get(),ready);
+}
+
+extern "C" void mc2_vk_shadow_island_run_movers(const float cameraRows[16], const float sun[3],
+                                                const void* instances, unsigned int instanceCount) {
+    g_dynShadowReadyThisFrame=false;
+    ++g_shadowFrameEpoch;
+    if (!cameraRows || !sun || !mover_shadows_enabled() || !ensure_island(mc2shadow::shadowQuality().mapSide)) return;
+    ShadowIsland* s=parkedIsland();
+    if (!s || s->disabled || !upload_geometry_once(s) || !begin_frame(s,g_shadowFrameEpoch)) return;
+    refresh_alpha_casters(s);
+    s->mech.stage(g_shadowFrameEpoch);
+    record_bake(s);
+    const auto start=std::chrono::steady_clock::now();
+    const auto light=mc2shadow::clampSunAltitude({sun[0],sun[1],sun[2]},mc2ShadowMinSunAltDeg());
+    const auto props=std::span(static_cast<const GpuStaticPropInstance*>(instances),instanceCount);
+    if (!s->mover.prepare(s->size,cameraRows,light,props,s->bake.ready())) return;
+    const auto& selected=s->mover.props();
+    if (!stage_instances(s,selected.data(),static_cast<uint32_t>(selected.size()))) return;
+    const auto& frame=s->mover.frame();
+    if (!record_pass(s,s->fb.get(),s->size,frame.matrix,1.0f,2.0f,frame.flags[0]!=0)) return;
+    g_dynShadowReadyThisFrame=true;
+    static uint64_t frames=0;
+    if (++frames%600==1) {
+        const double us=std::chrono::duration<double,std::micro>(std::chrono::steady_clock::now()-start).count();
+        vlog("movers actors_feed=%u actors_visible=%u rigid_leaves=%zu map=%d format=D16 texel_wu=%.3f depth_span=%.1f cpu_fit_and_record_us=%.1f resident_mb=%.1f coverage_kb=8",
+             s->mover.actorCount(),s->mover.visibleActorCount(),selected.size(),s->size,frame.params[0],frame.params[1]>0?1.0f/frame.params[1]:0.0f,us,double(s->size)*s->size*2/1048576.0);
+    }
+}
+
+// The dynamic (single) shadow map, and the first pass of every frame: it counts the frame's epoch even when it declines. Inputs, all from the GL side at
+// dynamic-shadow-pass time:
+//   size          -- square shadow map side (getDynamicShadowMapSize()).
+//   lightSpace16  -- the 16 raw floats GL uploads (GL_FALSE) for lightSpaceMatrix.
+//   instances     -- the CPU GpuStaticPropInstance vector (112B each).
+//   instanceCount -- caster instance count.
+//   biasFactor/biasUnits -- glPolygonOffset(shadowBiasFactor_, shadowBiasUnits_).
+// The pass is only RECORDED here; the frame is submitted by mc2_vk_shadow_island_submit_frame(). Always returns 0: the consumers read the product through the
+// view accessors.
+
 
 // The catch-all (full-map) cascade: the last cascade matrix into a separate D32 image the terrain island binds directly.
-extern "C" unsigned int mc2_vk_shadow_island_run_csm_fullmap(
-    int size, const float* lightSpace16,
-    const void* instances, unsigned int instanceCount,
-    float biasFactor, float biasUnits) {
-    g_csmFullMapReadyThisFrame = false;
-    if (size <= 0 || !lightSpace16) return 0;
-    ShadowIsland* s = parkedIsland();
-    if (!s || s->disabled || !s->inited || !(s->useInterop || s->directChain)) return 0;
-    ZoneScopedN("VKIsl.Shadow.CsmFullMap");
-    if (!upload_geometry_once(s)) { setFallback("geometry_not_ready"); return 0; }
-    if (!ensure_csm_fullmap_target(s, size)) return 0;
-    s = prepare_pass(instances, instanceCount);
-    if (!s) return 0;
-    diagRecordFull(size, lightSpace16);
-    if (!record_pass(s, s->csmFullMapFb.get(), size, lightSpace16, biasFactor, biasUnits)) return 0;
-    static bool s_firstOk = false;
-    if (!s_firstOk) {
-        vlog("first VK CSM full-map recorded: instCount=%u typeRuns=%lu view=%p (direct VK consumers only).",
-             instanceCount, g_health.typeRuns, static_cast<void*>(s->csmFullMapResource.view.get()));
-        s_firstOk = true;
-    }
-    g_csmFullMapReadyThisFrame = true;
-    return 0u;   // native; consumers use mc2_vk_shadow_island_get_csm_fullmap_view()
-}
+
 
 // One near cascade layer of the VK D32 array the terrain island binds at binding 8. The array is ready once every layer of the frame has been recorded.
-extern "C" unsigned int mc2_vk_shadow_island_run_csm_array_layer(
-    int size, int layers, int layerIndex, const float* lightSpace16,
-    const void* instances, unsigned int instanceCount,
-    float biasFactor, float biasUnits) {
-    if (layerIndex == 0) {
-        g_csmArrayReadyThisFrame = false;
-        if (ShadowIsland* parked = parkedIsland()) parked->csmArrayRenderedMask = 0;
-    }
-    if (size <= 0 || layers <= 0 || layerIndex < 0 || layerIndex >= layers) return 0;
-    if (!lightSpace16) return 0;
-    ShadowIsland* s = parkedIsland();
-    if (!s || s->disabled || !s->inited || !(s->useInterop || s->directChain)) return 0;
-    ZoneScopedN("VKIsl.Shadow.CsmArrayLayer");
-    const uint32_t layerCount = static_cast<uint32_t>(layers);
-    const uint32_t layer = static_cast<uint32_t>(layerIndex);
-    if (!upload_geometry_once(s)) { setFallback("geometry_not_ready"); return 0; }
-    if (!ensure_csm_array_target(s, size, layerCount)) return 0;
-    s = prepare_pass(instances, instanceCount);
-    if (!s) return 0;
-    diagRecordArr(size, layers, layerIndex, lightSpace16);
-    if (!record_pass(s, s->csmArrayFbs[layer].get(), size, lightSpace16, biasFactor, biasUnits)) return 0;
 
-    s->csmArrayRenderedMask |= (1u << layer);
-    const uint32_t readyMask = (1u << layerCount) - 1u;
-    g_csmArrayReadyThisFrame = ((s->csmArrayRenderedMask & readyMask) == readyMask);
-    static bool s_firstOk = false;
-    if (g_csmArrayReadyThisFrame && !s_firstOk) {
-        vlog("first VK CSM array recorded: layers=%u instCount=%u typeRuns=%lu.", layerCount, instanceCount, g_health.typeRuns);
-        s_firstOk = true;
-    }
-    return g_csmArrayReadyThisFrame ? 1u : 0u;
-}
 
 // Ends the frame's recording and submits it, once. Called after the last shadow pass of the frame and before any consumer reads a product. No fence wait
 // follows: the render pass dependencies order the consumers behind the writes, and the parity's fence retires the buffers two frames later.
@@ -1349,36 +1014,17 @@ extern "C" void mc2_vk_shadow_island_submit_frame() {
     ShadowIsland* s = parkedIsland();
     if (!s) return;
     if (!s->recording) {
-        // No caster pass opened the frame (a map without registry props has no prop caster geometry): the static sun map still builds once per
-        // generation, so terrain keeps its static shadow.
-        if (s->disabled || !s->inited || !(s->useInterop || s->directChain) || !s->staticMap.stale()) return;
-        if (!begin_frame(s, g_shadowFrameEpoch)) return;
-        record_static_map_if_stale(s);
+        ++g_shadowFrameEpoch;
+        if (s->disabled || !s->inited || !s->bake.wantsFrame()) return;
+        if (!begin_frame(s,g_shadowFrameEpoch)) return;
+        record_bake(s);
     }
-    VkCommandBuffer cb = s->cbuf[s->parity];
-    // The single dynamic map is recorded only when a receiver would otherwise have no dynamic shadow at all.
-    if (s->pendingDyn.valid && !(g_csmArrayReadyThisFrame && g_csmFullMapReadyThisFrame)) {
-        const auto& d = s->pendingDyn;
-        if (record_pass(s, s->fb.get(), d.size, d.lightSpace, d.biasFactor, d.biasUnits)) {
-            g_dynShadowReadyThisFrame = true;
-            static bool s_firstOk = false;
-            if (!s_firstOk) {
-                vlog("first VK dynamic shadow map recorded (no cascades this frame): instCount=%u view=%p.", s->stagedInstanceCount, static_cast<void*>(s->depthResource.view.get()));
-                s_firstOk = true;
-            }
-        }
-    }
-    s->pendingDyn.valid = false;
-    s->recording = false;
-    // The bracket opened in begin_frame: it is cancelled on every return that does not submit, including the
-    // all-declined one just below.
+    VkCommandBuffer cb=s->cbuf[s->parity];
+    s->recording=false;
     vk_render_pass_timer::CancelUnlessSubmitted timerGuard(gos_render_pass_timer::Pass_ShadowDyn);
-    if (s->passCount == 0) return;   // every pass declined: nothing to submit, the products stay not-ready
-    auto disableFrame = [&]() {
-        s->disabled = true;
-        g_dynShadowReadyThisFrame = g_csmFullMapReadyThisFrame = g_csmArrayReadyThisFrame = false;
-    };
-    vk_render_pass_timer::End(cb, gos_render_pass_timer::Pass_ShadowDyn);
+    if (s->passCount==0) return;
+    auto disableFrame=[&]() { s->disabled=true; g_dynShadowReadyThisFrame=false; };
+    vk_render_pass_timer::End(cb,gos_render_pass_timer::Pass_ShadowDyn);
     if (vkEndCommandBuffer(cb) != VK_SUCCESS) { setFallback("record_failed"); disableFrame(); return; }
     const VkFence fence = s->frameFence[s->parity].get();
     vkResetFences(s->device, 1, &fence);
@@ -1389,8 +1035,7 @@ extern "C" void mc2_vk_shadow_island_submit_frame() {
     ZoneScopedN("VKIsl.Shadow.Submit");
     if (mc2vk::submitGraphics(si, fence) != VK_SUCCESS) { setFallback("submit_failed"); disableFrame(); return; }
     timerGuard.submitted();
-    s->staticMap.markSubmitted();
-    if (g_diagVkDumpPending) { g_diagVkDumpPending = false; diagDumpVk(s); }
+    s->bake.markSubmitted(s->recordEpoch);
 }
 
 // VK-SHADOW-DIRECT-CONSUME-1: raw VK-side view/ready accessors for the terrain
@@ -1399,97 +1044,53 @@ extern "C" void mc2_vk_shadow_island_submit_frame() {
 // depth image content + layout transition to DEPTH_STENCIL_READ_ONLY_OPTIMAL are
 // already complete) and reset false at the top of every call (including a failed/
 // declined one), so a stale prior-frame view is never reported ready this frame.
-extern "C" void* mc2_vk_shadow_island_get_dyn_shadow_view() {
-    return productReady(g_dynShadowReadyThisFrame)
-        ? reinterpret_cast<void*>(parkedIsland()->depthResource.view.get()) : nullptr;
-}
-extern "C" void* mc2_vk_shadow_island_get_dyn_shadow_sampler() {
-    // The shadow island itself has no VkSampler (GL owned all sampling before this
-    // slice); the terrain island's own compare-mode PCF sampler is reused by the
-    // caller instead. Kept as a stub for API symmetry / future direct-VK sampler use.
-    return nullptr;
-}
-extern "C" int mc2_vk_shadow_island_dyn_shadow_ready() {
+
+
+extern "C" int mc2_vk_shadow_island_movers_ready() {
     return productReady(g_dynShadowReadyThisFrame) ? 1 : 0;
 }
 
-extern "C" void* mc2_vk_shadow_island_get_csm_fullmap_view() {
-    return productReady(g_csmFullMapReadyThisFrame)
-        ? reinterpret_cast<void*>(parkedIsland()->csmFullMapResource.view.get()) : nullptr;
-}
-extern "C" void* mc2_vk_shadow_island_get_csm_fullmap_image() {
-    return productReady(g_csmFullMapReadyThisFrame)
-        ? reinterpret_cast<void*>(parkedIsland()->csmFullMapResource.image.get()) : nullptr;
-}
-extern "C" int mc2_vk_shadow_island_csm_fullmap_ready() {
-    return productReady(g_csmFullMapReadyThisFrame) ? 1 : 0;
-}
+
+
+
 
 // The static sun shadow map of the last submitted build, in DEPTH_STENCIL_READ_ONLY, and the engine generation it was built from; null / 0 before the
 // first build of the map. A consumer pairs the view with the light matrix of the same generation.
-extern "C" void* mc2_vk_shadow_island_get_static_view() {
-    const ShadowIsland* s = parkedIsland();
-    return s ? reinterpret_cast<void*>(s->staticMap.view()) : nullptr;
-}
-extern "C" uint64_t mc2_vk_shadow_island_static_generation() {
-    const ShadowIsland* s = parkedIsland();
-    return s && s->staticMap.view() != VK_NULL_HANDLE ? s->staticMap.generation() : 0;
-}
-extern "C" void* mc2_vk_shadow_island_get_static_visibility_tiles() {
-    const ShadowIsland* s = parkedIsland();
-    return s ? reinterpret_cast<void*>(s->staticMap.visibilityTilesView()) : nullptr;
+// With the bake on, the static map is the bake's D16 object map (terrain, buildings, trees and props with the same static light matrix).
+extern "C" void* mc2_vk_shadow_island_get_object_view() {
+    const auto* s=parkedIsland(); return s?reinterpret_cast<void*>(s->bake.objectView()):nullptr;
 }
 
-extern "C" void* mc2_vk_shadow_island_get_csm_array_view() {
-    return productReady(g_csmArrayReadyThisFrame)
-        ? reinterpret_cast<void*>(parkedIsland()->csmArrayView.get()) : nullptr;
+extern "C" int mc2_vk_shadow_island_get_object_matrix(float* matrix16) {
+    const auto* s=parkedIsland();
+    if (!s || !matrix16 || !s->bake.objectView()) return 0;
+    std::memcpy(matrix16,s->bake.objectMatrix(),16*sizeof(float));
+    return 1;
 }
-extern "C" void* mc2_vk_shadow_island_get_csm_array_image() {
-    return productReady(g_csmArrayReadyThisFrame)
-        ? reinterpret_cast<void*>(parkedIsland()->csmArrayImg.get()) : nullptr;
+extern "C" int mc2_vk_shadow_island_bake_ready() {
+    const ShadowIsland* s = parkedIsland();
+    return s && s->bake.ready() ? 1 : 0;
 }
-extern "C" int mc2_vk_shadow_island_csm_array_ready() {
-    return productReady(g_csmArrayReadyThisFrame) ? 1 : 0;
+extern "C" void* mc2_vk_shadow_island_get_bake_mask_view() {
+    const ShadowIsland* s = parkedIsland();
+    return s ? reinterpret_cast<void*>(s->bake.maskView()) : nullptr;
 }
+
+
+extern "C" void* mc2_vk_shadow_island_get_mover_debug_view() {
+    return productReady(g_dynShadowReadyThisFrame)?reinterpret_cast<void*>(parkedIsland()->debugArrayView.get()):nullptr;
+}
+
+
 
 // MC2_VK_SHADOW_MATRIX_DIAG public entries.
 // Matrix qualifiers (all verified by grep: NO row_major/column_major anywhere in the shadow-related VK
 // shaders): shadow_prop.vert ShadowFrameUBO std140 default (column-major) mat4 lightSpaceMatrix fed RAW
 // (same as GL's glUniformMatrix4fv GL_FALSE); terrain_tier1.frag UBO dynamicLightSpaceMatrix /
 // csmCascadeMatrices[3] std140 default column-major, fed RAW memcpy of the same GL arrays.
-extern "C" int mc2_vk_shadow_matrix_diag_enabled() { return diagOn() ? 1 : 0; }
-extern "C" int mc2_vk_shadow_matrix_diag_take_terrain_arm() {
-    if (!g_diagTerrainArm) return 0;
-    g_diagTerrainArm = false; return 1;
-}
-extern "C" void mc2_vk_shadow_matrix_diag_tick(const float* glDynMat, int dynSize,
-                                               const float* glCascMats, int csmN, int arrSize,
-                                               int fullSize, float fullTexelWorld) {
-    if (!diagOn()) return;
-    // The dump runs before a capture's frame (431 by default, after a 30-frame settle): the capture harness ends the process once it has its frame,
-    // so a later dump never reached the log.
-    static int s_tick = 0; ++s_tick;
-    if (s_tick != 200 && s_tick != 1200) return;
-    const bool dump = (s_tick == 200);
-    std::fprintf(stderr, "[VK_SHADOW_MATRIX v1] ==== tick=%d csmN=%d dynSize=%d arrSize=%d fullSize=%d fullTexelWorld=%.6g (all mats: 16 floats raw memory order, GLSL column-major load) ====\n",
-                 s_tick, csmN, dynSize, arrSize, fullSize, fullTexelWorld);
-    if (glDynMat) diagPrintMat("GL dynamic(getDynamicLightSpaceMatrix@tick)", glDynMat);
-    for (int i = 0; glCascMats && i < csmN && i < 4; ++i) {
-        char tg[96]; std::snprintf(tg, sizeof(tg), "GL cascade[%d]%s", i, i == csmN - 1 ? " (=full-map)" : "");
-        diagPrintMat(tg, glCascMats + i * 16);
-    }
-    if (g_diagDyn.have)  { char tg[64]; std::snprintf(tg, sizeof(tg), "VK island recv dyn size=%d", g_diagDyn.size); diagPrintMat(tg, g_diagDyn.m); }
-    if (g_diagFull.have) { char tg[64]; std::snprintf(tg, sizeof(tg), "VK island recv fullmap size=%d", g_diagFull.size); diagPrintMat(tg, g_diagFull.m); }
-    for (int i = 0; i < 4; ++i) if (g_diagArr[i].have) {
-        char tg[80]; std::snprintf(tg, sizeof(tg), "VK island recv arrayLayer[%d] size=%d layers=%d", i, g_diagArr[i].size, g_diagArr[i].layers);
-        diagPrintMat(tg, g_diagArr[i].m);
-    }
-    g_diagTerrainArm = true;   // terrain island prints its UBO sampling matrices next
-    // The VK side is read after this frame's submit (mc2_vk_shadow_island_submit_frame): read here it would be the previous frame's maps, whose
-    // camera-fitted cascades sit some texels away from this frame's GL ones.
-    if (dump && parkedIsland()) g_diagVkDumpPending = true;
-    std::fflush(stderr);
-}
+
+
+
 
 // Health accessor (mirrors mc2_render_backend_water_region_health).
 extern "C" void mc2_render_backend_shadow_region_health(
@@ -1529,7 +1130,9 @@ extern "C" void mc2_vk_shadow_island_invalidate_geometry() {
     ShadowIsland* parked = parkedIsland();
     if (!parked) return;
     release_geometry(parked);
-    parked->staticMap.invalidate();
+    // The bake's products may still be read by a frame in flight; a map boundary idles once rather than ever on a rebake.
+    if (parked->bake.hasProducts()) mc2vk::getOrCreateEngineVulkanContext().waitIdle("shadow_bake_release");
+    parked->bake.invalidate();
     vlog("caster geometry invalidated (map boundary).");
 }
 

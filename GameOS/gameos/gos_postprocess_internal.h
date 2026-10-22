@@ -51,23 +51,7 @@ extern gosPostProcess* s_postProcess;
 
 
 // Free functions defined in the split pieces.
-bool mc2ShadowCsmEnabled();
-int mc2ShadowCsmCount();
-int mc2ShadowMapSize();
-bool mc2ShadowFullMapSeparate();
-int mc2ShadowFullMapSize();
-float mc2ShadowCsmR0();
-float mc2ShadowCsmR1();
-float mc2ShadowCsmSoftness();
-float mc2ShadowDistFadeWu();
-float mc2ShadowDistFadeMax();
-bool mc2ShadowFadeCont();
-bool mc2ShadowFadeRamp0();
-bool mc2ShadowAltScale();
-float mc2ShadowObjNormalBias();
 float mc2ShadowMechSoft();
-int mc2PropShadowReceive();
-bool mc2ShadowGuardClampedSun();
 bool mc2CloudShadowEnabled();
 void mc2ClampShadowSunAltitude(float& fx, float& fy, float& fz);
 

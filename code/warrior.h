@@ -451,8 +451,8 @@ struct _MoveOrders {
 	glm::vec3				originalGlobalGoal[2];	// 0 = original final goal, 1 = actual final goal
 	glm::vec3				globalGoalLocation;
 	GlobalPathStep				globalPath[MAX_GLOBAL_PATH];
-	char						numGlobalSteps;
-	char						curGlobalStep;
+	short						numGlobalSteps;
+	short						curGlobalStep;
 	MovePathPtr					path[2];				// 0 = current path, 1 = next path
 	float						timeOfLastStep;			// last time a step was reached for this order
 	long						moveState;				// forward, reverse, paused, etc.
@@ -491,7 +491,7 @@ struct _SaveableMoveOrders {
 	char						pathType;				// "quick" path or global/long-range?
 	glm::vec3				originalGlobalGoal[2];	// 0 = original final goal, 1 = actual final goal
 	glm::vec3				globalGoalLocation;
-	GlobalPathStep				globalPath[MAX_GLOBAL_PATH];
+	GlobalPathStep				globalPath[MAX_SAVED_GLOBAL_PATH];
 	char						numGlobalSteps;
 	char						curGlobalStep;
 	MovePath					path[2];				// 0 = current path, 1 = next path
@@ -525,9 +525,9 @@ struct _SaveableMoveOrders {
 		originalGlobalGoal[0] = orders.originalGlobalGoal[0];
 		originalGlobalGoal[1] = orders.originalGlobalGoal[1];
 		globalGoalLocation = orders.globalGoalLocation;
-		memcpy(globalPath,orders.globalPath,sizeof(GlobalPathStep) * MAX_GLOBAL_PATH);
-		numGlobalSteps = orders.numGlobalSteps;
-		curGlobalStep = orders.curGlobalStep;
+		memcpy(globalPath,orders.globalPath,sizeof(globalPath));
+		numGlobalSteps = static_cast<char>(orders.numGlobalSteps);
+		curGlobalStep = static_cast<char>(orders.curGlobalStep);
 		path[0] = *(orders.path[0]);
 		path[1] = *(orders.path[1]);
 		// The record is written raw: its padding must be zero however the live MovePath was built, copied or loaded.
@@ -541,6 +541,18 @@ struct _SaveableMoveOrders {
 		yieldState = orders.yieldState;
 		waitForPointTime = orders.waitForPointTime;
 		run = orders.run;
+		if (orders.numGlobalSteps > MAX_SAVED_GLOBAL_PATH) {
+			// Keep the final order, but never serialize a truncated active route.
+			newGoal = true;
+			nextUpdate = 0.0f;
+			pathType = MOVEPATH_UNDEFINED;
+			numGlobalSteps = curGlobalStep = 0;
+			for (auto& localPath : path) {
+				localPath.numSteps = localPath.numStepsWhenNotPaused = 0;
+				localPath.curStep = 0;
+				localPath.globalStep = -1;
+			}
+		}
 	}
 
 	void copyTo (MoveOrders &orders)
@@ -564,7 +576,7 @@ struct _SaveableMoveOrders {
 		orders.originalGlobalGoal[0] = originalGlobalGoal[0];
 		orders.originalGlobalGoal[1] = originalGlobalGoal[1];
 		orders.globalGoalLocation = globalGoalLocation;
-		memcpy(orders.globalPath,globalPath,sizeof(GlobalPathStep) * MAX_GLOBAL_PATH);
+		memcpy(orders.globalPath,globalPath,sizeof(globalPath));
 		orders.numGlobalSteps = numGlobalSteps;
 		orders.curGlobalStep = curGlobalStep;
 		for (long i = 0; i < 2; i++)
@@ -744,7 +756,7 @@ struct _MechWarriorData
 	glm::vec3			mainGoalLocation;
 	float					mainGoalControlRadius;
 	short					lastGoalPathSize;
-	short					lastGoalPath[MAX_GLOBAL_PATH];
+	short					lastGoalPath[MAX_SAVED_GLOBAL_PATH];
 
 	bool					newTacOrderReceived[NUM_ORDERSTATES];
 	TacticalOrder			tacOrder[NUM_ORDERSTATES];
@@ -2166,7 +2178,6 @@ class MechWarrior {
 
 extern MovePathManagerPtr	PathManager;
 
-void SeedRandomNumbers (void);
 long RandomNumber (long range);
 bool RollDice (long percent);
 long SignedRandomNumber (long range);

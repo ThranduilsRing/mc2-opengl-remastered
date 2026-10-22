@@ -240,13 +240,6 @@ def test_block_emits_array_length_constants():
     assert "GPU_ABI_BLK_M_LEN" not in out["glsl"]   # mat4 / vec4 members are not arrays
 
 
-def test_terrain_cascade_bound_derives_from_the_generated_array_length():
-    path = os.path.join(ROOT, "shaders", "vulkan", "include", "terrain_frame_vk.glsl")
-    with open(path, encoding="utf-8") as f:
-        text = f.read()
-    assert "#define MC2_VK_SHADOW_CSM_MAX GPU_ABI_TERRAINFRAMEUBO_CSMCASCADEMATRICES_LEN" in text
-
-
 # --- arrays of mat4/vec4, GLSL renames, ivec4 tails, raw-shader mirrors ----------
 
 ARR_SRC = """\

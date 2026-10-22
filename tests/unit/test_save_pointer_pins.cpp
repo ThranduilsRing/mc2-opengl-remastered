@@ -56,6 +56,40 @@ std::string functionBody(const std::string &source, const char *signature)
 
 } // namespace
 
+TEST_CASE("area-cap runtime refusal guards builder writes and final allocation")
+{
+	const auto source = readSource("mclib/move_globalmap_build.cpp");
+	for (const char* signature : {"bool GlobalMap::fillArea (", "bool GlobalMap::fillSpecialArea ("}) {
+		const auto body = functionBody(source, signature);
+		const auto guard = body.find("if (!mc2::globalmap::areaCountInRange(area + 1)) Fatal(");
+		REQUIRE(guard != std::string::npos);
+		CHECK(guard < body.find("areaView[row, col] = area;"));
+	}
+	const auto body = functionBody(source, "void GlobalMap::calcAreas (");
+	const auto guard = body.find("if (!mc2::globalmap::areaCountInRange(numAreas)) Fatal(");
+	REQUIRE(guard != std::string::npos);
+	CHECK(guard < body.find("ownZeroed(areasStore"));
+}
+
+TEST_CASE("tactical unpack drops absent terrain targets and load filters before marker restore")
+{
+	const auto body = functionBody(readSource("code/tacordr.cpp"), "long TacticalOrder::unpack (");
+	const std::string lookup = "GameObjectPtr obj = targetPartId ? ObjectManager->findByPartId(*targetPartId) : nullptr;";
+	const std::string drop = "targetWID = obj ? obj->getWatchID() : 0;";
+	const auto first = body.find(lookup);
+	REQUIRE(first != std::string::npos);
+	const auto second = body.find(lookup, first + lookup.size());
+	REQUIRE(second != std::string::npos);
+	CHECK(body.find(drop, first) < second);
+	CHECK(body.find(drop, second) != std::string::npos);
+	CHECK(body.find("NULL Terrain Target") == std::string::npos);
+	const auto load = functionBody(readSource("code/warrior_state.cpp"), "void MechWarrior::copyFromData (");
+	const auto filter = load.find("dropCompactTerrainOrdersOnLoad(");
+	REQUIRE(filter != std::string::npos);
+	CHECK(load.find("MemCpy(tacOrderQueue,data.tacOrderQueue);") < filter);
+	CHECK(filter < load.find("mc2::restoreQueueMarkers("));
+}
+
 TEST_CASE("source pin: Gate::CopyTo writes the blocker pointer as null")
 {
 	const std::string body = functionBody(readSource("code/gate.cpp"), "void Gate::CopyTo (GateData *data)");

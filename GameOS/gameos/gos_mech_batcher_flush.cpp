@@ -458,6 +458,7 @@ void MechFlushFrame::snapshotFrame() {
     s_vkMechObjectDepthBias = mc2depth::OBJECT_DEPTH_BIAS;   // mclib/terrain_depth_bias.h
     s_vkMechSnapshotGeomGen = s_vkMechGeomGen;
     s_vkMechFrameReady = (totalInstances > 0 && !s_vkMechRunSnapshot.empty());
+    s_vkMechShadowReady = s_vkMechFrameReady;
     static const bool s_shadowEnabled = mc2::gate::get<"MC2_SHADOW_ENABLE">();
     if (s_shadowEnabled) {
         s_shadowTypesDrawn = static_cast<int>(drawCalls.size());
@@ -542,6 +543,8 @@ void GpuMechBatcher::executorApplyMechOpaqueState() {
 // and the VK shadow cascades consume, then persist the frame for the extract snapshot. Each phase is a helper above,
 // in execution order. Nothing here touches the GPU: the island does the drawing.
 void GpuMechBatcher::flush() {
+    // An empty current frame must not replay last frame's caster poses.
+    s_vkMechShadowReady = false;
     finalizePending();
     traceLatch();
 

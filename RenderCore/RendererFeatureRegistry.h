@@ -682,7 +682,7 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "MC2_DETERMINISTIC_RNG",
         "MC2_DETERMINISTIC_RNG",
         EnvVarKind::Feature,
-        false,
+        true,
         "Route all randomness (incl.",
     },
     {
@@ -1078,20 +1078,6 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "SPIRV-CONSUMER-PILOT-BUILD-1: DEFAULT-OFF debug gate.",
     },
     {
-        "MC2_TUNE_SHADOW_BOUNDED_NEAR_RADIUS",
-        "MC2_SHADOW_BOUNDED_NEAR_RADIUS",
-        EnvVarKind::Trace,
-        false,
-        "SHADOW-BOUNDED-NEAR-FIT-1 tunable: bounded near-fit radius in world units (default 2500, clamped 512..mapClampR).",
-    },
-    {
-        "MC2_SHADOW_CASTER_CULL_CACHE",
-        "MC2_SHADOW_CASTER_CULL_CACHE",
-        EnvVarKind::Feature,
-        false,
-        "SHADOW-CASTER-CULL-CACHE-1 (TXMMGR-PERF-EASYWINS-1): reuse the Shadow.CasterCull result (mclib/txmmgr.cpp DynamicShadowPass) across frames when BOTH the...",
-    },
-    {
         "MC2_DIAG_SHADOW_DEBUG_MODE",
         "MC2_SHADOW_DEBUG_MODE",
         EnvVarKind::Trace,
@@ -1099,25 +1085,11 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "SHADOW-ENV-DEBUG-MODE-1: selects shadow debug map overlay without ImGui.",
     },
     {
-        "MC2_FEATURE_SHADOW_DYNAMIC_PROP_CASTERS",
-        "MC2_SHADOW_DYNAMIC_PROP_CASTERS",
-        EnvVarKind::Feature,
-        true,
-        "SHADOW-DYNAMIC-PROP-CASTERS-1: feed the per-frame DYNAMIC sun-shadow caster pass from the full registry (registered props, visibility-independent) instead...",
-    },
-    {
         "MC2_TRACE_SHADOW_FRUSTUM",
         "MC2_SHADOW_FRUSTUM_DIAG",
         EnvVarKind::Trace,
         false,
         "SHADOW-FRUSTUM-AUDIT-1: read-only per-frame dynamic sun-shadow coverage probe in buildDynamicLightMatrix (sun dir, frustum XY, fit/xy radius, map clamp...",
-    },
-    {
-        "MC2_FEATURE_SHADOW_GUARD_CLAMPED_SUN",
-        "MC2_SHADOW_GUARD_CLAMPED_SUN",
-        EnvVarKind::Feature,
-        true,
-        "SHADOW-SUNCLAMP-1: feed the shadow_screen.frag back-face guard (`if (NdotL < 0.05) return 1.0;`) the SAME altitude-clamped sun the shadow matrices are built...",
     },
     {
         "MC2_TUNE_SHADOW_MIN_SUN_ALT",
@@ -1293,13 +1265,6 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         EnvVarKind::Feature,
         false,
         "TERRAIN-OVERLAY-V2-PARITY-1: override the overlay_v2 sidecar path (default data/missions/<stem>.beauty/overlay_v2.png).",
-    },
-    {
-        "MC2_FEATURE_TERRAIN_SHADOW_GUARD_CLAMPED_SUN",
-        "MC2_TERRAIN_SHADOW_GUARD_CLAMPED_SUN",
-        EnvVarKind::Feature,
-        true,
-        "TERRAIN-SHADOW-GUARD-1: the TERRAIN-side twin of SHADOW-SUNCLAMP-1, and the one that actually moves world pixels.",
     },
     {
         "MC2_TERRAIN_VISUAL_DISPLACE_OBJFADE",

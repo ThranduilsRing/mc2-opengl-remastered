@@ -790,6 +790,8 @@ class Mech3DAppearance: public ObjectAppearance
 		virtual long getLowestWeaponNode (void);
 		
 		virtual float getWeaponNodeRecycle (long node);
+
+		virtual long remapLostArmWeaponNode (long node, long weaponType);
 		
 		virtual void resetWeaponNodes (void);
 		

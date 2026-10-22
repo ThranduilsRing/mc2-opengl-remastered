@@ -53,6 +53,20 @@ void
 //###########################################################################
 //###########################################################################
 //
+// Refills the table from a private gos_rand stream seeded from `seed`. The caller (Mission::init) re-seeds the simulation
+// stream straight afterwards, so this does not shift the sim draw sequence.
+void Random::Reseed(unsigned int seed)
+{
+	if (Instance == nullptr)
+		return;
+	gos_srand(seed ^ 0x5F0C3A11u);
+	Init();
+}
+
+//
+//###########################################################################
+//###########################################################################
+//
 void Random::Init()
 {
 	//

@@ -1,3 +1,4 @@
+#include "shadow_quality.h"
 // gameos_graphics: terrain program-id accessors and the terrain surface, indirect, mask, mine and decal draw bridges.
 // Declared in the class headers; shared names in gameos_graphics_material_internal.h.
 #include "gameos_graphics_material_internal.h"
@@ -33,11 +34,11 @@ bool gos_getShadowsEnabled() {
 }
 int gos_getShadowMapSize() {
     gosPostProcess* pp = getGosPostProcess();
-    return pp ? pp->getShadowMapSize() : 0;
+    return mc2shadow::shadowQuality().mapSide;
 }
 int gos_getDynShadowMapSize() {
     gosPostProcess* pp = getGosPostProcess();
-    return pp ? pp->getDynamicShadowMapSize() : 0;
+    return mc2shadow::shadowQuality().mapSide;
 }
 uint64_t gos_GetTerrainMaterialNormalVersion() {
     gosRenderer* r = getGosRenderer();

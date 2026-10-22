@@ -288,6 +288,11 @@ def overlay_mod(layer: Path, target: Path, link_ok: bool = True) -> dict:
     if not data.is_dir():
         raise FileNotFoundError(f'mod has no data dir: {data}')
     stats = place_tree(data, target / 'data', link_ok=False)
+    assets = layer / 'assets'
+    if assets.is_dir():
+        extra = place_tree(assets, target / 'assets', link_ok=False)
+        stats['files'] += extra['files']
+        stats['bytes'] += extra['bytes']
     stock = {s.lower() for s in STOCK_ROOT_FILES}
     for entry in sorted(layer.iterdir()):
         if not entry.is_file() or entry.name.lower() in stock:
@@ -680,6 +685,7 @@ def battery(args) -> int:
         staged = run_root / folder
         staged.mkdir()
         stats = stage_mod(cache, layers, staged, stem, base_install)
+        _load_deploy_payload().ensure_terrain_materials(str(staged))
         print(f'[mod_smoke] {display}: mission {stem} ({how}); staged {stats}', flush=True)
         result = run_mod(staged, stem, args.duration, args.timeout)
         result.update({'mod': display, 'mission': stem, 'mission_source': how,

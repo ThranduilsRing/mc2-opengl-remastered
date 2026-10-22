@@ -3,6 +3,7 @@
 #include "bdactor_internal.h"
 #include "../RenderCore/axis_convert.h"
 #include "mc2fmt.h"
+#include "../GameOS/gameos/static_caster_set.h"   // shadow-bake caster events
 
 // BLDG-TYPE-ANIM-GATE-FIX-1 kill-switch.
 // Unset/1 = new: idle animatable-type buildings eligible for static path.
@@ -372,6 +373,7 @@ void BldgAppearance::registerStatic() {
 		staticReg.registered  = true;
 		staticReg.shape       = bldgShape;
 		staticReg.recipeIndex = regIdx;
+		mc2shadow::staticCasterSet().ownerRegistered(static_cast<const Appearance*>(this), regIdx);
 		// TERRAIN-DECAL-SLICE-0C: capture this decal's live-update context so the
 		// "Cliff Decal" ImGui panel can recompute + re-upload its transform when a
 		// slider moves. Only for the CLIFF_WALL decal (useCliffWallFrame); other
@@ -684,40 +686,18 @@ void BldgAppearance::touchSerialCommit()
 	// NOTE: bldgShape->Touch() is in touchWorkerPrepass() (verified lock-free)
 }
 
-// STATIC-BLDG-SHADOW-REBAKE-1: re-arm the one-shot world-fixed static-shadow
-// latch (mclib/txmmgr.cpp gos_StaticLightMatrixBuilt()) so the static shadow
-// (terrain + buildings) replays fresh next frame without a since-destroyed
-// building (docs/known_issues.md "Static building shadow goes stale on
-// destroy"). Called from the two places a building's static registration
-// actually becomes stale mid-mission-relevant: (1) BldgAppearance::setObjStatus
-// transitioning to OBJECT_STATUS_DESTROYED -- the REAL in-game combat-destroy
-// event (swaps to appearType->bldgDmgShape; a later touch()/update() detects
-// the staticReg.shape mismatch and re-registers the rubble recipe through the
-// ordinary shape-swap path, but that generic re-registration does NOT itself
-// trigger a shadow rebake, hence this dedicated hook); and (2)
-// BldgAppearance::destroy() -- mission-end/pool-recycle teardown, cheap
-// insurance for the case a registered building never went through (1) first.
-// Only worth the rebake cost (a full-map static shadow replay,
-// ZoneScopedN("Shadow.StaticFullMapBuild") in txmmgr.cpp) when this
-// building actually had a static registration.
-void bldgTriggerStaticShadowRebake(bool wasRegistered)
-{
-	if (!wasRegistered) return;
-	gos_ResetStaticLightMatrix();
-}
-
+// Recipe invalidation queues the old leaves for incremental shadow updates.
 void BldgAppearance::invalidateStaticRegistration()
 {
-	if (staticReg.registered && staticReg.recipeIndex >= 0)
+	if (staticReg.registered && staticReg.recipeIndex >= 0) {
+		mc2shadow::staticCasterSet().ownerInvalidated(static_cast<const Appearance*>(this), staticReg.recipeIndex);
 		GameAdapters::StaticProp::destroyStaticPropByIndex(staticReg.recipeIndex);
+	}
 	staticReg = {};
 }
 
 void BldgAppearance::destroy (void)
 {
-	// Capture BEFORE invalidateStaticRegistration() clears staticReg below.
-	const bool    wasStaticRegistered   = staticReg.registered;
-
 	// Stage 3.D: NULL the registry's RecipeRange::multi pointer before
 	// bldgShape is freed below. Mirrors TreeAppearance::destroy ordering.
 	invalidateStaticRegistration();
@@ -726,7 +706,6 @@ void BldgAppearance::destroy (void)
 	// comment. In practice combat-destroyed buildings are already re-armed
 	// earlier via setObjStatus(OBJECT_STATUS_DESTROYED); this covers the
 	// mission-end/pool-recycle path.
-	bldgTriggerStaticShadowRebake(wasStaticRegistered);
 
 	if ( bldgShape )
 	{

@@ -1,3 +1,4 @@
+#include "stdafx.h"
 #include "vk_scene_renderer.h"
 #include "render_submissions.h"
 #include "Gates/preferences_legacy.h"
@@ -11,7 +12,6 @@
 * CHANGES: Remove temporary Editor startup/update trace calls after port validation.
 ****************************************************************/
 
-#include "stdafx.h"
 
 #ifndef EDITORINTERFACE_H
 #include "EditorInterface.h"

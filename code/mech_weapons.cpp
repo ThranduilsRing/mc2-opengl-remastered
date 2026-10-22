@@ -133,12 +133,12 @@ long BattleMech::fireWeapon (GameObjectPtr target, float targetTime, long weapon
 	else
 		sourceHotSpot = MECH3D_WEAPONTYPE_ENERGY;
 
+	const long weaponNodeType = sourceHotSpot;
 	sourceHotSpot = inventory[weaponIndex].facing;
-	if (appearance->getRightArmOff() && (sourceHotSpot == 1))
-		sourceHotSpot = 3;	//Force into right torso.  Arm is gone.
-
-	if (appearance->getLeftArmOff() && (sourceHotSpot == 2))
-		sourceHotSpot = 5;	//Force into left torso.  Arm is gone.
+	// The weapon's node sits on an arm that is gone: fire from another valid weapon node of the right type on the
+	// remaining body (the old 1 -> 3 / 2 -> 5 remap treated node indices as body locations).
+	if (appearance->getRightArmOff() || appearance->getLeftArmOff())
+		sourceHotSpot = appearance->remapLostArmWeaponNode(sourceHotSpot, weaponNodeType);
 
 	float recycleTime = appearance->getWeaponNodeRecycle(sourceHotSpot);
 	if (recycleTime > 0.0f)

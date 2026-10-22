@@ -497,7 +497,11 @@ long GlobalMap::calcPath (long startArea,
 		// Number of doors to travel to, including the "goal door". We don't care
 		// about the "start door" in the path...
 		long numDoors = numSteps - 1;
-		gosASSERT((numDoors < MAX_GLOBAL_PATH));
+		if (numDoors > MAX_GLOBAL_PATH) {
+			mc2::fmt::print_err("[PATH v1] event=global_path_capacity steps={:d} capacity={:d}\n",
+				mc2::fmt::as_i32(numDoors), mc2::fmt::as_i32(MAX_GLOBAL_PATH));
+			return 0;
+		}
 
 		curDoor = goalDoor;
 		long curPathDoor = numDoors;

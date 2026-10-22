@@ -290,7 +290,7 @@ void __stdcall gos_Free(void* ptr)
 ////////////////////////////////////////////////////////////////////////////////
 
 // DETERMINISTIC-RNG-1: seedable per-process LCG behind gos_rand/gos_srand,
-// gated by MC2_DETERMINISTIC_RNG (default-OFF). When the gate is OFF every line
+// gated by MC2_DETERMINISTIC_RNG (default ON; =0 is the kill-switch). When the gate is OFF every line
 // below is the original CRT srand/rand path => byte-identical to stock.
 static uint32_t s_lcg_state     = 0u;
 

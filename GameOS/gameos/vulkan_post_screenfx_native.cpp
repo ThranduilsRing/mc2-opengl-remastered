@@ -67,7 +67,7 @@
 #define MC2_VULKAN_SHARED_SCENE_DEPTH_IMPL_ISLAND
 #include "vulkan_shared_scene_depth.h"
 #include "vulkan_shadow_island_live.h"
-#include "static_shadow_spec.h"
+#include "vulkan_mover_shadow.h"
 #include "gos_postprocess_internal.h"   // mc2ShadowGuardClampedSun, mc2ClampShadowSunAltitude
 #include "vk_shared_gbuffer_gate.h"
 
@@ -133,11 +133,6 @@ void setFallback(const char* reason) {
     g_fx.fallbackReason[sizeof(g_fx.fallbackReason) - 1] = '\0';
 }
 
-float shadow_softness_default() {
-    static const float s_s = mc2::gate::get<"MC2_SHADOW_CSM_SOFTNESS">();   // row: default 0.9, clamps to [0.1, 6]
-    return s_s;
-}
-
 std::string spv_dir() { return vk_island_util::spvDir(); }
 
 VkShaderModule load_spv(VkDevice device, std::string_view path) {
@@ -171,27 +166,13 @@ struct ScreenFxShoreParams {
 };
 static_assert(sizeof(ScreenFxShoreParams) == 16, "ScreenFxShoreParams std140 offsets drifted");
 
-struct ScreenFxShadowStaticParams {
-    float invViewProj[16];       // off 0
-    float lightSpaceMatrix[16];  // off 64
-    float dynamicCascadeMatrices[16 * 3]; // off 128
-    float dynamicCascadeTexelWorld[4];    // off 320
-    float screenSize[2];         // off 336
-    int   enableShadows;         // off 344
-    int   enableDynamicShadows;  // off 348
-    int   dynamicCsmCount;       // off 352
-    int   debugMode;             // off 356
-    float shadowSoftness;        // off 360
-    float csmDepthSpan;          // off 364
-    float dynamicFullMapTexelWorld; // off 368
-    float objNormalBiasScale;    // off 372
-    float _padBeforeLight[2];    // off 376..380
-    float lightDir[4];           // off 384, xyz used
-    float mechSoft;              // off 400
-    int   propShadowReceive;     // off 404 (options.cfg PropShadowReceive)
-    float _pad1, _pad2;          // off 408..412
+struct ScreenFxShadowParams {
+    float invViewProj[16], lightSpaceMatrix[16];
+    int enableShadows, enableDynamicShadows;
+    float mechSoft;
+    int debugMode;
 };
-static_assert(sizeof(ScreenFxShadowStaticParams) == 416, "ScreenFxShadowStaticParams std140 offsets drifted");
+static_assert(sizeof(ScreenFxShadowParams)==144,"ScreenShadowParams std140");
 
 } // namespace
 
@@ -213,8 +194,6 @@ struct gosPostProcess::VkPostScreenFx {
     VkImageResource* sColorRes  = nullptr;
     VkImageResource* sNormalRes = nullptr;
     VkImageResource* sDepthRes  = nullptr;
-    VkImageView      csmArrayView = VK_NULL_HANDLE;    // borrowed; shadow island owns it
-    VkImageView      csmFullMapView = VK_NULL_HANDLE;  // borrowed; shadow island owns it
     // VK-RUNG8-ITEM5: shared scene is VK-only (no GL view); direct-chain only.
     // The static sun map comes from the shadow island (binding 2, rewritten every draw), the cascades too (bindings 4 and 5).
 
@@ -241,11 +220,10 @@ struct gosPostProcess::VkPostScreenFx {
     mc2vk::OwnedPipelineLayout shadowPlayout;
     mc2vk::OwnedShaderModule cloudVert, cloudFrag;
     mc2vk::OwnedShaderModule shoreVert, shoreFrag;
-    mc2vk::OwnedShaderModule shadowVert, shadowFrag, shadowCsmFrag;
+    mc2vk::OwnedShaderModule shadowVert, shadowFrag;
     mc2vk::OwnedPipeline    cloudPipe;
     mc2vk::OwnedPipeline    shorePipe;
     mc2vk::OwnedPipeline    shadowPipe;
-    mc2vk::OwnedPipeline    shadowCsmPipe;
     mc2vk::OwnedCommandPool cpool;
     uint64_t ticket[2] = {0, 0};   // timeline value of this pass's last submit (0 = never): waited at the NEXT run, not inline after the submit
 };
@@ -356,7 +334,7 @@ bool build_state(gosPostProcess::VkPostScreenFx* s, int w, int h) {
 
     if (!make_buffer(s, s->cloudUbo, sizeof(ScreenFxCloudParams), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, "screenfx.cloudUbo")) return false;
     if (!make_buffer(s, s->shoreUbo, sizeof(ScreenFxShoreParams), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, "screenfx.shoreUbo")) return false;
-    if (!make_buffer(s, s->shadowUbo, sizeof(ScreenFxShadowStaticParams), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, "screenfx.shadowUbo")) return false;
+    if (!make_buffer(s, s->shadowUbo, sizeof(ScreenFxShadowParams), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, "screenfx.shadowUbo")) return false;
 
     // Render pass: 1 attachment = SHARED scene color0. LOAD (multiply blends
     // against the scene), STORE; layout-STABLE COLOR_ATTACHMENT both ends
@@ -440,17 +418,17 @@ bool build_state(gosPostProcess::VkPostScreenFx* s, int w, int h) {
         shadowBinds[2].descriptorCount = 1; shadowBinds[2].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
         shadowBinds[3].binding = 3; shadowBinds[3].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         shadowBinds[3].descriptorCount = 1; shadowBinds[3].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-        shadowBinds[4].binding = 4; shadowBinds[4].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        shadowBinds[4].descriptorCount = 1; shadowBinds[4].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-        shadowBinds[5].binding = 5; shadowBinds[5].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        shadowBinds[5].descriptorCount = 1; shadowBinds[5].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+        shadowBinds[4].binding=24; shadowBinds[4].descriptorType=VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        shadowBinds[4].descriptorCount=1; shadowBinds[4].stageFlags=VK_SHADER_STAGE_FRAGMENT_BIT;
+        shadowBinds[5].binding=25; shadowBinds[5].descriptorType=VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        shadowBinds[5].descriptorCount=1; shadowBinds[5].stageFlags=VK_SHADER_STAGE_FRAGMENT_BIT;
         lci.bindingCount = 6; lci.pBindings = shadowBinds;
         r = mc2vk::createChecked(s->shadowDsl, s->device, [&](auto* h) { return vkCreateDescriptorSetLayout(s->device, &lci, nullptr, h); });
         if (r != VK_SUCCESS) { vlog("vkCreateDescriptorSetLayout(shadow) failed (%d).", static_cast<int>(r)); return false; }
 
         VkDescriptorPoolSize sizes[2]{};
-        sizes[0].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; sizes[0].descriptorCount = 8;
-        sizes[1].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;         sizes[1].descriptorCount = 3;
+        sizes[0].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; sizes[0].descriptorCount = 7;
+        sizes[1].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;         sizes[1].descriptorCount = 4;
         VkDescriptorPoolCreateInfo pci{};
         pci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
         pci.maxSets = 3; pci.poolSizeCount = 2; pci.pPoolSizes = sizes;
@@ -538,11 +516,10 @@ bool build_state(gosPostProcess::VkPostScreenFx* s, int w, int h) {
         s->cloudFrag = mc2vk::OwnedShaderModule(s->device, load_spv(s->device, spv_dir() + "cloud_shadow.frag.spv"));
         s->shoreVert = mc2vk::OwnedShaderModule(s->device, load_spv(s->device, spv_dir() + "shoreline.vert.spv"));
         s->shoreFrag = mc2vk::OwnedShaderModule(s->device, load_spv(s->device, spv_dir() + "shoreline.frag.spv"));
-        s->shadowVert = mc2vk::OwnedShaderModule(s->device, load_spv(s->device, spv_dir() + "screen_shadow_static.vert.spv"));
-        s->shadowFrag = mc2vk::OwnedShaderModule(s->device, load_spv(s->device, spv_dir() + "screen_shadow_static.frag.spv"));
-        s->shadowCsmFrag = mc2vk::OwnedShaderModule(s->device, load_spv(s->device, spv_dir() + "screen_shadow_csm.frag.spv"));
+        s->shadowVert = mc2vk::OwnedShaderModule(s->device, load_spv(s->device, spv_dir() + "screen_shadow_csm.vert.spv"));
+        s->shadowFrag = mc2vk::OwnedShaderModule(s->device, load_spv(s->device, spv_dir() + "screen_shadow_csm.frag.spv"));
         if (!s->cloudVert || !s->cloudFrag || !s->shoreVert || !s->shoreFrag ||
-            !s->shadowVert || !s->shadowFrag || !s->shadowCsmFrag) {
+            !s->shadowVert || !s->shadowFrag) {
             setFallback("spv_load_failed"); return false;
         }
         VkPipelineLayoutCreateInfo plci{};
@@ -620,7 +597,6 @@ bool build_state(gosPostProcess::VkPostScreenFx* s, int w, int h) {
         if (!make_pipeline(s->cloudVert.get(), s->cloudFrag.get(), s->cloudPlayout.get(), s->cloudPipe, "screenfx.cloudPipe")) return false;
         if (!make_pipeline(s->shoreVert.get(), s->shoreFrag.get(), s->shorePlayout.get(), s->shorePipe, "screenfx.shorePipe")) return false;
         if (!make_pipeline(s->shadowVert.get(), s->shadowFrag.get(), s->shadowPlayout.get(), s->shadowPipe, "screenfx.shadowPipe")) return false;
-        if (!make_pipeline(s->shadowVert.get(), s->shadowCsmFrag.get(), s->shadowPlayout.get(), s->shadowCsmPipe, "screenfx.shadowCsmPipe")) return false;
     }
 
     {
@@ -680,17 +656,12 @@ bool gosPostProcess::vkPostScreenFxNativeEnabled()
 
 bool gosPostProcess::runVkPostScreenShadowStaticNative()
 {
-    const bool dynamicCasterActive = mc2::gate::get<"MC2_SHADOW_ENABLE">();   // DEFAULT ON; =0 kill-switch
-    const bool csmActive = dynamicCasterActive && csmBuilt_;
-    const bool csmDirectReady = csmActive
-        && mc2_vk_shadow_island_csm_array_ready()
-        && mc2_vk_shadow_island_csm_fullmap_ready()
-        && mc2_vk_shadow_island_get_csm_array_view() != nullptr
-        && mc2_vk_shadow_island_get_csm_fullmap_view() != nullptr;
-    const bool dynamicActive = dynamicCasterActive && (csmActive || dynShadowBuilt_);
+    const bool dynamicCasterActive=mc2::gate::get<"MC2_SHADOW_ENABLE">();
+    const bool moverReady=dynamicCasterActive && mc2_vk_shadow_island_movers_ready();
+    const bool dynamicActive=dynamicCasterActive;
     const bool wantShadow = g_fx.shadowGate != 0
         && screenShadowEnabled_ && sceneHasTerrain_
-        && shadowsEnabled_ && (!dynamicActive || csmDirectReady) && screenShadowDebug_ == 0;
+        && shadowsEnabled_ && (!dynamicActive || moverReady) && screenShadowDebug_ == 0;
     if (!wantShadow || width_ <= 0 || height_ <= 0) return false;
 
     if (!vkPostScreenFx_) vkPostScreenFx_.reset(new VkPostScreenFx());
@@ -721,50 +692,24 @@ bool gosPostProcess::runVkPostScreenShadowStaticNative()
             return false;
         }
     }
+    if (!mc2vk::bindMoverShadowDescriptors(s->device,s->shadowSet)) { setFallback("mover_receiver_unavailable"); return false; }
     // The static sun map is the shadow island's, used only when its build is of the engine's current generation, so it pairs with
     // staticLightSpaceMatrix_ below. Without it and without the cascades this pass declines and the GL screen-shadow pass runs.
-    StaticShadowSpec staticSpec;
-    const VkImageView staticView = reinterpret_cast<VkImageView>(mc2_vk_shadow_island_get_static_view());
-    const bool hasStaticShadow = staticView != VK_NULL_HANDLE && gos_GetStaticShadowSpec(&staticSpec)
-        && mc2_vk_shadow_island_static_generation() == staticSpec.generation;
-    if ((!hasStaticShadow && !csmDirectReady) || !s->shadowSet ||
-        !s->shadowPipe || (csmDirectReady && !s->shadowCsmPipe)) {
+    float objectMatrix[16]{};
+    const VkImageView staticView=reinterpret_cast<VkImageView>(mc2_vk_shadow_island_get_object_view());
+    const bool hasStaticShadow=staticView && mc2_vk_shadow_island_get_object_matrix(objectMatrix);
+    if ((!hasStaticShadow && !moverReady) || !s->shadowSet ||
+        !s->shadowPipe) {
         setFallback("static_shadow_substrate_not_ready");
         return false;
     }
-    s->csmArrayView = csmDirectReady
-        ? reinterpret_cast<VkImageView>(mc2_vk_shadow_island_get_csm_array_view()) : VK_NULL_HANDLE;
-    s->csmFullMapView = csmDirectReady
-        ? reinterpret_cast<VkImageView>(mc2_vk_shadow_island_get_csm_fullmap_view()) : VK_NULL_HANDLE;
-
-    ScreenFxShadowStaticParams p{};
+    ScreenFxShadowParams p{};
     std::memcpy(p.invViewProj, inverseViewProj_, 16 * sizeof(float));
-    std::memcpy(p.lightSpaceMatrix, staticLightSpaceMatrix_, 16 * sizeof(float));
-    if (csmDirectReady) {
-        std::memcpy(p.dynamicCascadeMatrices, dynamicCascadeMatrices_, 16 * 3 * sizeof(float));
-        std::memcpy(p.dynamicCascadeTexelWorld, dynamicCascadeTexelWorld_, 3 * sizeof(float));
-        p.dynamicCsmCount = csmCount_;
-        p.csmDepthSpan = csmDepthSpan_;
-        p.dynamicFullMapTexelWorld = dynamicFullMapTexelWorld_;
-        p.enableDynamicShadows = 1;
-        // Same rows as the GL path (gos_postprocess_gates.cpp): default 2, clamps to [0, 16] and default 1, [0, 4].
-        p.objNormalBiasScale = mc2::gate::get<"MC2_SHADOW_OBJ_NORMAL_BIAS">();
-        p.mechSoft = mc2::gate::get<"MC2_SHADOW_MECH_SOFT">();
-        p.propShadowReceive = mc2::options::current().propShadowReceive;   // the option the GL screen shadow reads
-        float lx = 0.0f, ly = 0.0f, lz = 1.0f;
-        gos_GetTerrainLightDir(&lx, &ly, &lz);
-        float len = sqrtf(lx*lx + ly*ly + lz*lz);
-        if (len > 1e-6f) { lx /= len; ly /= len; lz /= len; }
-        p.lightDir[0] = -lx; p.lightDir[1] = -ly; p.lightDir[2] = -lz; p.lightDir[3] = 0.0f;
-        // The back-face guard takes the same altitude-clamped sun the shadow matrices were built with, as the GL screen shadow does
-        // (MC2_SHADOW_GUARD_CLAMPED_SUN): on a low-sun map the raw sun leaves the lit faces of props below the guard, so they never received.
-        if (mc2ShadowGuardClampedSun()) mc2ClampShadowSunAltitude(p.lightDir[0], p.lightDir[1], p.lightDir[2]);
-    }
-    p.screenSize[0] = static_cast<float>(width_);
-    p.screenSize[1] = static_cast<float>(height_);
+    std::memcpy(p.lightSpaceMatrix, objectMatrix, sizeof(objectMatrix));
+    p.enableDynamicShadows=moverReady?1:0;
+    p.mechSoft=mc2::gate::get<"MC2_SHADOW_MECH_SOFT">();
     p.enableShadows = hasStaticShadow ? 1 : 0;
     p.debugMode = 0;
-    p.shadowSoftness = shadow_softness_default();
     void* m = nullptr;
     if ((m = s->shadowUbo.map()) != nullptr) {
         std::memcpy(m, &p, sizeof(p));
@@ -782,26 +727,7 @@ bool gosPostProcess::runVkPostScreenShadowStaticNative()
         w.pImageInfo = &staticInfo;
         vkUpdateDescriptorSets(s->device, 1, &w, 0, nullptr);
     }
-    if (csmDirectReady) {
-        VkDescriptorImageInfo csmArrayInfo{};
-        csmArrayInfo.sampler = s->shadowCompareSampler.get();
-        csmArrayInfo.imageView = s->csmArrayView;
-        csmArrayInfo.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
-        VkDescriptorImageInfo csmFullMapInfo{};
-        csmFullMapInfo.sampler = s->shadowCompareSampler.get();
-        csmFullMapInfo.imageView = s->csmFullMapView;
-        csmFullMapInfo.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
-        VkWriteDescriptorSet writes[2]{};
-        writes[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        writes[0].dstSet = s->shadowSet; writes[0].dstBinding = 4; writes[0].descriptorCount = 1;
-        writes[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        writes[0].pImageInfo = &csmArrayInfo;
-        writes[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        writes[1].dstSet = s->shadowSet; writes[1].dstBinding = 5; writes[1].descriptorCount = 1;
-        writes[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        writes[1].pImageInfo = &csmFullMapInfo;
-        vkUpdateDescriptorSets(s->device, 2, writes, 0, nullptr);
-    }
+
 
     ++g_fx.attempted;
     using clk = std::chrono::steady_clock;
@@ -856,7 +782,7 @@ bool gosPostProcess::runVkPostScreenShadowStaticNative()
     rbi.renderArea = {{0, 0}, {static_cast<uint32_t>(s->width), static_cast<uint32_t>(s->height)}};
     MC2_VK_GPU_SCOPE(gpuScope, cb, "VKIsl.Post.ShadowResolve");
     vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
-    vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, csmDirectReady ? s->shadowCsmPipe.get() : s->shadowPipe.get());
+    vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->shadowPipe.get());
     vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->shadowPlayout.get(), 0, 1, &s->shadowSet, 0, nullptr);
     vkCmdDraw(cb, 3, 1, 0, 0);
     vkCmdEndRenderPass(cb);
@@ -896,8 +822,8 @@ bool gosPostProcess::runVkPostScreenShadowStaticNative()
     ++g_fx.glSkipped;
     // The receipt that the VK screen shadow drew, with the inputs that decide what props receive.
     if ((g_fx.shadowFrames % 600) == 1)
-        vlog("screen shadow drawn: shadow_frames=%lu attempted=%lu csm_count=%d prop_shadow_receive=%d static_map=%d",
-             g_fx.shadowFrames, g_fx.attempted, csmCount_, mc2::options::current().propShadowReceive, hasStaticShadow ? 1 : 0);
+        vlog("screen shadow drawn: shadow_frames=%lu attempted=%lu static_map=%d",
+             g_fx.shadowFrames, g_fx.attempted, hasStaticShadow ? 1 : 0);
     setFallback("");
     return true;
 }

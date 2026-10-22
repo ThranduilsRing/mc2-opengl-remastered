@@ -185,6 +185,176 @@ bool Camera::screenToGroundPlaneApprox (long screenX, long screenY, glm::vec3 &o
 }
 
 //---------------------------------------------------------------------------
+// Double-precision Gauss-Jordan inverse used only by pickTerrainRay: the float
+// inverse loses ~1e-3 relative on a reverse-Z projection, which is metres of ray
+// drift at the far end of a 1K-map ray.
+static bool pickInvert4x4d (const double (&m)[4][4], double (&out)[4][4])
+{
+	double a[4][8];
+	for (int r = 0; r < 4; ++r)
+		for (int c = 0; c < 4; ++c)
+		{ a[r][c] = m[r][c]; a[r][c+4] = (r==c)?1.0:0.0; }
+	for (int col = 0; col < 4; ++col)
+	{
+		int piv = col; double best = fabs(a[col][col]);
+		for (int r = col+1; r < 4; ++r)
+			if (fabs(a[r][col]) > best) { best = fabs(a[r][col]); piv = r; }
+		if (best < 1e-300) return false;
+		if (piv != col) for (int k = 0; k < 8; ++k) { double t=a[col][k]; a[col][k]=a[piv][k]; a[piv][k]=t; }
+		const double inv = 1.0 / a[col][col];
+		for (int k = 0; k < 8; ++k) a[col][k] *= inv;
+		for (int r = 0; r < 4; ++r) if (r != col)
+		{ const double f=a[r][col]; for (int k=0;k<8;++k) a[r][k]-=f*a[col][k]; }
+	}
+	for (int r = 0; r < 4; ++r)
+		for (int c = 0; c < 4; ++c)
+			out[r][c] = a[r][c+4];
+	return true;
+}
+
+// MC2_TERRAIN_PICK_PARITY diagnostic: names which gate of pickTerrainRay refused (first few only).
+static bool pickFail (int code, long sx, long sy)
+{
+	static const bool s_dbg = mc2::gate::get<"MC2_TERRAIN_PICK_PARITY">();
+	static int s_left = 12;
+	if (s_dbg && s_left > 0)
+	{
+		--s_left;
+		mc2::fmt::print_out("[PICK_RAY_PARITY v1] event=ray_refused code={:d} px=({:d},{:d})\n", mc2::fmt::as_i32(code), mc2::fmt::as_i32(sx), mc2::fmt::as_i32(sy));
+	}
+	return false;
+}
+
+bool Camera::pickTerrainRay (long screenX, long screenY, glm::vec3 &outWorld, glm::vec3 *rawHit)
+{
+	if (turn < 4 || !land || !Terrain::mapData)
+		return pickFail(1, screenX, screenY);
+	const double w = screenResolution.x;
+	const double h = screenResolution.y;
+	if (w <= 0.0 || h <= 0.0)
+		return pickFail(2, screenX, screenY);
+
+	// Row-vector convention (clip = p * G), G(r,c) = Mf[c][r] as in projectModernClipGL.
+	// Inverse: p = clip * Gi, so p_i = sum_k clip_k * Gi[k][i].
+	const glm::mat4 Mf = worldToClipGL();
+	double G[4][4], Gi[4][4];
+	for (int r = 0; r < 4; ++r)
+		for (int c = 0; c < 4; ++c)
+			G[r][c] = static_cast<double>(Mf[c][r]);
+	if (!pickInvert4x4d(G, Gi))
+		return pickFail(3, screenX, screenY);
+
+	const double ndcX =  2.0 * (static_cast<double>(screenX) / w) - 1.0;
+	const double ndcY =  1.0 - 2.0 * (static_cast<double>(screenY) / h);
+	auto unproject = [&](double nz, double (&o)[3]) -> bool {
+		const double clip[4] = { ndcX, ndcY, nz, 1.0 };
+		double p[4];
+		for (int i = 0; i < 4; ++i)
+			p[i] = clip[0]*Gi[0][i] + clip[1]*Gi[1][i] + clip[2]*Gi[2][i] + clip[3]*Gi[3][i];
+		if (fabs(p[3]) < 1e-12) return pickFail(4, screenX, screenY);
+		// worldToClipGL() = kAxisSwapMC2toGL * view * proj in row-vector order, i.e. it takes a RAW MC2
+		// world point (the swap is its first factor, exactly as projectModernClipGL feeds it), so the
+		// inverse returns MC2 world directly. The older helpers swap AGAIN after the inverse; that second
+		// swap is why their ray came out with a collapsed X response and a far point above the camera.
+		o[0] = p[0] / p[3]; o[1] = p[1] / p[3]; o[2] = p[2] / p[3];
+		return true;
+	};
+
+	// REVERSE-Z, ZERO_TO_ONE: near plane is NDC z=1; any other depth of the same pixel lies on the same
+	// ray. Origin = the near-plane point, direction = toward NDC z=0.5 (z=0 is infinity: w -> 0). Both
+	// come from the matrix, so the ray is the one the GPU rasterises (physicalPos is NOT used: it is
+	// stored in render space and is not the MC2 eye).
+	double ro[3], midPt[3];
+	if (!unproject(1.0, ro))
+		return pickFail(5, screenX, screenY);
+	if (!unproject(0.5, midPt))
+		return pickFail(6, screenX, screenY);
+	double d[3] = { midPt[0]-ro[0], midPt[1]-ro[1], midPt[2]-ro[2] };
+	const double dl = sqrt(d[0]*d[0] + d[1]*d[1] + d[2]*d[2]);
+	if (dl < 1e-9) return pickFail(7, screenX, screenY);
+	for (int i = 0; i < 3; ++i) d[i] /= dl;
+	if (d[2] > -1e-6)            // a ray that never descends cannot hit the surface
+		return pickFail(8, screenX, screenY);
+
+	// Advance the origin to where the ray enters the map's XY box so the DDA starts
+	// on-map (raycastTerrain stops at the first off-map cell). Slab clip in XY.
+	const double half = static_cast<double>(Terrain::worldUnitsMapSide) * 0.5 - 1.0;
+	double t0 = 0.0, t1 = 1e30;
+	for (int ax = 0; ax < 2; ++ax)
+	{
+		if (fabs(d[ax]) < 1e-12)
+		{
+			if (ro[ax] < -half || ro[ax] > half) return pickFail(9, screenX, screenY);
+			continue;
+		}
+		double ta = (-half - ro[ax]) / d[ax];
+		double tb = ( half - ro[ax]) / d[ax];
+		if (ta > tb) { const double t = ta; ta = tb; tb = t; }
+		if (ta > t0) t0 = ta;
+		if (tb < t1) t1 = tb;
+	}
+	if (t0 > t1) return pickFail(10, screenX, screenY);
+	const double ox = ro[0] + t0*d[0], oy = ro[1] + t0*d[1], oz = ro[2] + t0*d[2];
+
+	float hx, hy, hz;
+	if (!Terrain::raycastTerrain(static_cast<float>(ox), static_cast<float>(oy), static_cast<float>(oz),
+	                             static_cast<float>(d[0]), static_cast<float>(d[1]), static_cast<float>(d[2]),
+	                             &hx, &hy, &hz))
+		return pickFail(11, screenX, screenY);
+
+	// Verify against the forward projection the GPU and inverseProject use: the hit
+	// must land back on the cursor pixel. Anything else (degenerate matrix, a ray the
+	// DDA mis-walked) is a miss so the caller falls back.
+	{
+		glm::vec3 hp(hx, hy, hz);
+		Stuff::Vector4D sc;
+		projectForSelectionPicking(hp, sc);
+		const float ex = sc.x - static_cast<float>(screenX);
+		const float ey = sc.y - static_cast<float>(screenY);
+		if (!(sc.z >= 0.0f && sc.z < 1.0f) || ex*ex + ey*ey > 9.0f)
+			return pickFail(12, screenX, screenY);
+	}
+	if (rawHit) { rawHit->x = hx; rawHit->y = hy; rawHit->z = hz; }
+
+	glm::vec3 hp(hx, hy, hz);
+	if (land->getNumQuads() == 0)
+	{
+		// The production ground picker whenever the quadList is empty (LOD-chunk terrain path) is
+		// inverseProject's "closest vertex in screen space" fallback: reproduce it from the four
+		// corners of the quad the ray hit (the nearest projected vertex to a surface point is one of
+		// them), so the answer is the same point the O(vertices) walk returns.
+		int tileR = 0, tileC = 0;
+		land->worldToTile(hp, tileR, tileC);
+		const int side = static_cast<int>(Terrain::realVerticesMapSide);
+		float bestD = 1.0e30f;
+		for (int dr = 0; dr < 2; ++dr)
+			for (int dc = 0; dc < 2; ++dc)
+			{
+				int r = tileR + dr, c = tileC + dc;
+				if (r < 0) r = 0; else if (r >= side) r = side - 1;
+				if (c < 0) c = 0; else if (c >= side) c = side - 1;
+				glm::vec3 vw(Terrain::tileColToWorldCoord[c], Terrain::tileRowToWorldCoord[r], land->getTerrainElevation(r, c));
+				Stuff::Vector4D sc;
+				projectForSelectionPicking(vw, sc);
+				const float dx = sc.x - static_cast<float>(screenX), dy = sc.y - static_cast<float>(screenY);
+				const float d = dx*dx + dy*dy;
+				if (d < bestD) { bestD = d; outWorld = vw; }
+			}
+		return true;
+	}
+
+	// Snap to the containing cell's centre (the point inverseProject returns for a populated quadList).
+	int cellR = 0, cellC = 0;
+	land->worldToCell(hp, cellR, cellC);
+	const int maxCell = static_cast<int>(Terrain::realVerticesMapSide) * MAPCELL_DIM - 1;
+	if (cellR < 0) cellR = 0; else if (cellR > maxCell) cellR = maxCell;
+	if (cellC < 0) cellC = 0; else if (cellC > maxCell) cellC = maxCell;
+	mapCellToWorldPos(cellR, cellC, outWorld);
+	outWorld.z = land->getTerrainElevation(outWorld);
+	return true;
+}
+
+//---------------------------------------------------------------------------
 bool Camera::screenToTerrainApprox (long screenX, long screenY, glm::vec3 &outWorld)
 {
 	outWorld.x = outWorld.y = outWorld.z = 0.0f;

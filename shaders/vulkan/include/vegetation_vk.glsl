@@ -62,6 +62,7 @@ void mc2VegetationVertex(vec3 i_worldPos, float i_yaw, float i_scale, float i_se
 
 
 
+    v_shadowWorld = worldPos;
     v_vegData.y  = 1.0 - a_card.y;
     v_vegData.x        = i_seed;
 

@@ -9,6 +9,7 @@
 //===========================================================================//
 
 #ifndef MCLIB_H
+#include "terrain_part_chunk.h"
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include"mclib.h"
 #include "gos_crashbundle.h"
@@ -671,7 +672,7 @@ void WeaponFireChunk::pack (GameObjectPtr attacker) {
 			//-------------------------
 			// Terrain Object Target...
 			// current size is 
-			data |= (targetId - MIN_TERRAIN_PART_ID);
+			data |= terrain_part_chunk::pack(targetId);
 			if (numMissiles > 0) {
 				//------------------------------
 				// Weapon is a missile weapon...
@@ -803,7 +804,7 @@ void WeaponFireChunk::unpack (GameObjectPtr attacker) {
 				numMissiles = (tempData & WEAPONFIRECHUNK_MISSILES_MASK);
 				tempData >>= WEAPONFIRECHUNK_MISSILES_BITS;
 			}
-			targetId = MIN_TERRAIN_PART_ID + (tempData & WEAPONFIRECHUNK_TARGETID_MASK);
+			targetId = terrain_part_chunk::unpack(tempData & WEAPONFIRECHUNK_TARGETID_MASK).value_or(-1);
 			tempData >>= WEAPONFIRECHUNK_TARGETID_BITS;
 			break;
 		case WEAPONFIRECHUNK_TARGET_SPECIAL:
@@ -1272,7 +1273,7 @@ void WeaponHitChunk::pack (void) {
 		case WEAPONHITCHUNK_TARGET_TERRAIN:
 			//-------------------------
 			// Terrain Object Target...
-			data |= (targetId - MIN_TERRAIN_PART_ID);
+			data |= terrain_part_chunk::pack(targetId);
 			data <<= WEAPONHITCHUNK_DAMAGE_BITS;
 			break;
 		case WEAPONHITCHUNK_TARGET_SPECIAL:
@@ -1333,7 +1334,7 @@ void WeaponHitChunk::unpack (void) {
 		case WEAPONHITCHUNK_TARGET_TERRAIN:
 			//-------------------------
 			// Terrain Object Target...
-			targetId = MIN_TERRAIN_PART_ID + (tempData & WEAPONHITCHUNK_TARGETID_MASK);
+			targetId = terrain_part_chunk::unpack(tempData & WEAPONHITCHUNK_TARGETID_MASK).value_or(-1);
 			tempData >>= WEAPONHITCHUNK_TARGETID_BITS;
 			break;
 		case WEAPONHITCHUNK_TARGET_SPECIAL:

@@ -361,7 +361,7 @@ void __stdcall InitializeGameEngine()
 	// DETERMINISTIC-RNG-1: under MC2_DETERMINISTIC_RNG the startup seed must be
 	// pinned too, otherwise pre-mission (menu/startup) gos_rand calls vary per
 	// run and break replay before Mission::init's per-mission reseed lands.
-	// Gate OFF: unchanged wall-clock seed => byte-identical to stock.
+	// Default ON; MC2_DETERMINISTIC_RNG=0 (kill-switch) restores the stock wall-clock seed.
 	{
 		const bool detRng = mc2::gate::get<"MC2_DETERMINISTIC_RNG">();
 		if (detRng) {

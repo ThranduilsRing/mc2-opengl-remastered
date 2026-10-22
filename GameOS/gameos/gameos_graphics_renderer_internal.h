@@ -607,7 +607,7 @@ class gosRenderer {
         // Registered at init; called by Tasks 3+ to draw GPU-batched mechs/buildings
         // into the dynamic shadow FBO.
         bool shadow_mode_ = false;
-        float terrain_shadow_softness_ = mc2ShadowCsmSoftness();  // env-overridable via MC2_SHADOW_CSM_SOFTNESS
+        float terrain_shadow_softness_ = 2.5f;
         bool terrain_draw_enabled_ = true;
 
         // Terrain splatting textures (from main source, needed for material normal maps)

@@ -10,13 +10,9 @@
 # WHY VK IS ALLOWLISTED AT ALL AND GL IS NOT
 #   The GL half of Census 1 is ZERO-TOLERANCE and has no allowlist: every
 #   shaders/*.frag attachment-1 write routes through an rc_* helper today, and
-#   must keep doing so. The Vulkan shaders under shaders/vulkan/ are compiled by
-#   glslangValidator/glslc (GameOS/gameos/CMakeLists.txt:300-380) from a source
-#   tree that does NOT include shaders/include/, so they cannot call the helpers.
-#   The house convention -- established by shaders/vulkan/water_geom.frag:13-14
-#   ("value inlined (render_contract.hglsl) so the VK shader needs no GL include")
-#   -- is to INLINE the helper's literal value. That convention is fine, but it
-#   makes the constant invisible to the contract: nothing stopped VK from drifting.
+#   must keep doing so. Vulkan shaders can include the same helpers by relative
+#   path (water_geom.frag does). Older ports inline the helper's literal value;
+#   those remaining writes are frozen here so they cannot silently drift.
 #   It already had. See the color_prop_tier1.frag entry below.
 #
 # WHAT AN ENTRY ACTUALLY BUYS YOU -- READ THIS BEFORE ADDING ONE
@@ -123,15 +119,6 @@ shaders/vulkan/terrain_decal_tier1.frag::GBuffer1 = vec4(0.5, 0.5, 1.0, 1.0);
 # OUTSIDE the (0.15, 0.35) water band -- punch holes in shoreline foam. If you
 # ever set that mask non-zero, this entry must be re-adjudicated, not carried.
 shaders/vulkan/vfx_particle.frag::o_normal = vec4(0.0);
-
-# WATER GEOMETRY. vulkan_water_island.cpp:881 sets `cba[1].colorWriteMask = 0`,
-# with the reason stated inline there: GL's water GBuffer1 output has src.a = 0,
-# so under GL's SRC_ALPHA blend it contributes nothing, and writeMask = 0 is the
-# exact no-op without requiring independentBlend. Doubly safe: the value
-# (0.5, 0.5, 1.0, 0.0) is also exactly rc_gbuffer1_screenShadowEligible(0,0,1),
-# matching the GL producer gos_terrain_water_mdi.frag:551, so even if the mask
-# were opened the constant would still be contract-correct.
-shaders/vulkan/water_geom.frag::GBuffer1 = vec4(0.5, 0.5, 1.0, 0.0);
 
 # VK-PARITY-F1 LEGACY SHAPE (ground vehicles etc.). Ports shaders/gos_tex_vertex.frag
 # whose GL write is rc_gbuffer1_screenShadowEligible(vec3(0,0,1)) = vec4(0.5,0.5,1.0,0.0)

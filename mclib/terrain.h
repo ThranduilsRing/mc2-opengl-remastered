@@ -52,7 +52,7 @@
 inline constexpr int MAPCELL_DIM = 3;
 // MOVE grid side limit (cells). 720 was the stock cap; fan campaign maps (REAP3) are 900 cells/side.
 // Per-map storage is sized from the loaded header; only tileMulMAPCELL_DIM[] and the trigger tile map are sized by this.
-inline constexpr int MAX_MAP_CELL_WIDTH = 1024;
+inline constexpr int MAX_MAP_CELL_WIDTH = 3072;
 // Terrain part ids are MIN_TERRAIN_PART_ID + row * stride + col. The stride stays 720 for every map that fits it (so stock
 // ids, saved ids and mission-file ids are unchanged) and widens to the map width only for a larger map.
 inline constexpr int TERRAIN_PART_ID_STRIDE_STOCK = 720;

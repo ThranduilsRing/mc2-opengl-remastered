@@ -38,7 +38,9 @@ def _run(cache, repo):
     return cache.finish("m", "cmd", out, True, 0.1, None)
 
 
-def test_records_reads_listings_and_ignores_outputs(tmp_path):
+def test_records_reads_listings_and_ignores_outputs(tmp_path, monkeypatch):
+    # The outer --no-cache board must not disable the cache under test.
+    monkeypatch.delenv("CONTRACTS_NO_CACHE", raising=False)
     repo = _repo(tmp_path)
     cache = mtc.ModuleTestCache(str(repo), "t")
     assert not cache.lookup("m", "cmd")            # nothing stored yet
@@ -50,7 +52,8 @@ def test_records_reads_listings_and_ignores_outputs(tmp_path):
     assert cache.lookup("m", "cmd")
 
 
-def test_hit_needs_every_recorded_input(tmp_path):
+def test_hit_needs_every_recorded_input(tmp_path, monkeypatch):
+    monkeypatch.delenv("CONTRACTS_NO_CACHE", raising=False)
     repo = _repo(tmp_path)
     cache = mtc.ModuleTestCache(str(repo), "t")
     _run(cache, repo)
@@ -78,3 +81,13 @@ def test_classify_child_processes(tmp_path):
     assert cache.classify({"toks": ["git", "status", "--porcelain"], "cwd": root})[0] == "tree"
     assert cache.classify({"toks": ["sh", "x.sh"], "cwd": root})[0] == "tree"
     assert cache.classify({"toks": ["glslc", "a.frag"], "cwd": root})[0] == "tool"
+
+
+def test_off_switch_disables_cache(tmp_path, monkeypatch):
+    monkeypatch.setenv("CONTRACTS_NO_CACHE", "1")
+    repo = _repo(tmp_path)
+    cache = mtc.ModuleTestCache(str(repo), "t")
+    _run(cache, repo)
+    assert not cache.enabled
+    assert not cache.entries
+    assert not cache.lookup("m", "cmd")

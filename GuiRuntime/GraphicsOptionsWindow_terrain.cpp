@@ -309,16 +309,6 @@ void drawTerrainTuningSection() {
     ImGui::SameLine();
     if (ImGui::SmallButton("Reset##cs")) gos_SetTerrainTintStrengthScale(1.0f);
 
-    ImGui::SeparatorText("Shadow");
-
-    float softness = gos_GetTerrainShadowSoftness();
-    if (ImGui::SliderFloat("Shadow softness##ss", &softness, 0.0f, 1.0f))
-        gos_SetTerrainShadowSoftness(softness);
-    if (ImGui::IsItemHovered())
-        ImGui::SetTooltip("PCF penumbra radius. 0=hard shadows, 1=maximum softness. Default: 0.9");
-    ImGui::SameLine();
-    if (ImGui::SmallButton("Reset##ss")) gos_SetTerrainShadowSoftness(0.9f);
-
     ImGui::SeparatorText("Cell-Bomb Noise");
     ImGui::TextDisabled("Hash-based breakup applied on top of normal maps.");
 
