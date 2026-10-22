@@ -1,0 +1,68 @@
+// Vegetation GPU cull: one workgroup per region. Region sphere vs frustum planes and MC2_VEG_MAX_DIST, then the per-instance
+// planes, block visibility, distance fade and screen-size density thinning. Survivors are rank-compacted in population order
+// inside the region (the draw has no depth write and no blend, so draw order is visible and must match the CPU walk it replaced).
+#version 450
+#extension GL_GOOGLE_include_directive : require
+layout(local_size_x = 64) in;
+#include "include/vegetation_cull_common.glsl"
+shared uint s_scan[64];
+bool survives(VegInstance i, bool force) {
+    uint role = (i.atlasFrame >> 4u) & 3u;
+    float scale = i.scale * (role == 3u ? 0.25 : role == 2u ? 0.6 : 1.0);
+    if (force) return true;
+    for (int k = 0; k < 4; ++k)
+        if (P.plane[k].x * i.pos.x + P.plane[k].y * i.pos.y + P.plane[k].z * i.pos.z + P.plane[k].w < -1.5 * scale * P.planeLen[k]) return false;
+    uint vis = 2u;
+    int chunkSide = int(P.counts.w);
+    if (chunkSide > 0 && P.grid.y > 0.0) {
+        int col = clamp(int((i.pos.x + P.grid.x) / P.grid.y), 0, chunkSide - 1);
+        int row = clamp(int((-i.pos.y + P.grid.x) / P.grid.y), 0, chunkSide - 1);
+        uint block = uint(row) * uint(chunkSide) + uint(col);
+        if (block < P.counts.z) vis = blockVis[block];
+    }
+    float dx = i.pos.x - P.cam.x, dy = i.pos.y - P.cam.y;
+    float distSq = dx * dx + dy * dy;
+    float maxDist = P.cam.w;
+    if (distSq > maxDist * maxDist && i.seed < 1.0) return false;
+    float dist2 = sqrt(distSq);
+    if (vis == 0u || i.seed < vegSmooth(P.misc.x, maxDist, dist2)) return false;
+    float clipW = P.clipRow.x * i.pos.x + P.clipRow.y * i.pos.y + P.clipRow.z * i.pos.z + P.clipRow.w;
+    if (clipW <= 0.001) return false;
+    float pixels = scale * P.misc.y / clipW;
+    float density = vegSmooth(3.0, 12.0, pixels) * (vis >= 2u ? 1.0 : 0.4);
+    float s = i.seed * 17.371 + 0.137;
+    return s - floor(s) < density;
+}
+void main() {
+    uint r = gl_WorkGroupID.y * P.flags.y + gl_WorkGroupID.x;
+    if (r >= P.counts.x) return;
+    uint lid = gl_LocalInvocationIndex;
+    VegRegion R = region[r];
+    bool force = P.flags.x != 0u;
+    if (!force) {
+        bool outside = false;
+        for (int k = 0; k < 4; ++k)
+            if (P.plane[k].x * R.sphere.x + P.plane[k].y * R.sphere.y + P.plane[k].z * R.sphere.z + P.plane[k].w < -R.sphere.w * P.planeLen[k]) outside = true;
+        float dx = R.sphere.x - P.cam.x, dy = R.sphere.y - P.cam.y, range = P.cam.w + R.sphere.w;
+        if (outside || dx * dx + dy * dy > range * range) { if (lid == 0u) counts[r] = 0u; return; }
+    }
+    uint n = R.last - R.first, base = 0u;
+    for (uint c = 0u; c < n; c += 64u) {
+        uint idx = c + lid, id = R.first + idx;
+        bool keep = idx < n && survives(inst[id], force);
+        uint v = keep ? 1u : 0u;
+        s_scan[lid] = v;
+        barrier();
+        for (uint off = 1u; off < 64u; off <<= 1u) {
+            uint t = lid >= off ? s_scan[lid - off] : 0u;
+            barrier();
+            v += t;
+            s_scan[lid] = v;
+            barrier();
+        }
+        if (keep) scratch[R.first + base + v - 1u] = id;
+        base += s_scan[63];
+        barrier();
+    }
+    if (lid == 0u) counts[r] = base;
+}

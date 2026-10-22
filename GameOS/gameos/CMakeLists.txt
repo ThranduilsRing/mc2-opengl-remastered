@@ -104,6 +104,7 @@ set(SOURCES ${SOURCES}
     gpu_cull_parity.cpp
     gpu_cull_compute.cpp
     vk_actor_cull_native.cpp
+    vk_vegetation_state.cpp
     vk_scene_readback.cpp
     native_render_state.cpp
     gpu_cull_readback.cpp
@@ -388,7 +389,7 @@ if(MC2_VULKAN)
     # vulkan_vfx_island.cpp via load_spv(spv_dir()+"vfx_particle.*.spv").
     set(MC2_VK_SHADER_BASENAMES edge_fog fog_oob hzb_reduce hzb_cull shadow_debug_overlay water_geom shadow_prop shadow_prop_alpha shadow_mech shadow_terrain_static color_prop_tier1 terrain_tier1 terrain_tier1_skirt mech_tier1 legacy_shape_tier1 terrain_overlay_tier1 terrain_decal_tier1 hdri_sky cloud_shadow shoreline screen_shadow_static screen_shadow_csm postprocess postprocess_visual hud_color hud_tex vfx_particle)
     set(MC2_VK_SPV_OUTPUTS "")
-    list(APPEND MC2_VK_SHADER_BASENAMES terrain_static_visibility)
+    list(APPEND MC2_VK_SHADER_BASENAMES terrain_static_visibility vegetation_cull vegetation_scan vegetation_compact vfx_vegetation)
     # Output stages that bake from another basename's source: the skirt pipeline needs its
     # own .frag.spv name but runs the main-patch fragment program, so one source feeds both.
     # check-vk-pipeline-layout.py carries the same alias.

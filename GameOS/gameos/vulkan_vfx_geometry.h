@@ -4,6 +4,7 @@
 #pragma once
 #include <cstdint>
 #include <cstddef>
+#include <span>
 #include "vulkan_vfx_island.h"
 
 inline constexpr uint32_t kVfxGeometryAtlas = 0xffffffffu;
@@ -11,6 +12,9 @@ inline constexpr uint32_t kVfxVegetationAtlas = 0xfffffffeu;
 struct GosTexels;
 #ifdef MC2_VULKAN_ISLAND
 void mc2_vk_vfx_vegetation_atlas(const GosTexels& atlas);
+namespace mc2veg { struct CullParams; }
+// GPU-culled vegetation draw (vulkan_vfx_island.cpp). False: nothing was submitted this frame.
+bool mc2_vk_vfx_vegetation_run(const mc2veg::CullParams& params, const float* worldToClipGL, std::span<const uint32_t> visibility, int w, int h);
 #else
 inline void mc2_vk_vfx_vegetation_atlas(const GosTexels&) {}
 #endif

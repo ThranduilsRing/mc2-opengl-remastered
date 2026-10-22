@@ -1,0 +1,9 @@
+{
+  "defines": [],
+  "outputs": [],
+  "shader": "shaders/terrain_lod_chunk.tese",
+  "ssbos": [],
+  "stage": "tese",
+  "ubos": [],
+  "variant": "default"
+}

@@ -72,7 +72,7 @@ struct IslandState {
     virtual ~IslandState() = default;
 };
 // One slot per island that has been moved under the context; the next converted island adds its name here.
-enum class IslandSlot : size_t { Vfx, Sky, LegacyShape, Preview, Mech, ColorProp, Water, Shadow, Terrain, PassTimer, ActorCull, Count };
+enum class IslandSlot : size_t { Vfx, Sky, LegacyShape, Preview, Mech, ColorProp, Water, Shadow, Terrain, PassTimer, ActorCull, Vegetation, Count };
 #endif
 
 // The standalone shared engine Vulkan context. Owns instance + physical device
