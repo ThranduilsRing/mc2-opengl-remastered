@@ -14,6 +14,7 @@ from tools.mapgen.analyze import aggregate, measure
 from tools.mapgen.common import load_json, mask_of, spans
 from tools.mapgen.generate import PROFILE_PATH, generate, route
 from tools.mapgen.validate import validate
+from tools.mapgen.scale_metrics import measure_scale
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -36,6 +37,23 @@ class GeneratedLayoutTests(unittest.TestCase):
         self.assertEqual(layout["size"]["rows"], 1024)
         self.assertGreater(len(layout["bases"]), 20)
         self.assertEqual(validate(layout, self.profile), [])
+
+        metrics = measure_scale(layout)
+        self.assertGreater(metrics['nn_cv'], .4)
+        self.assertGreater(metrics['empty_land_fraction'], .70)
+        self.assertGreater(metrics['parcel_area_max_min'], 25)
+        self.assertGreater(metrics['tree_bin_cv'], .8)
+        self.assertGreater(metrics['tiny_site_fraction'], .4)
+        self.assertGreater(metrics['largest_site_structures'], 70)
+        self.assertEqual(metrics['road_largest_fraction'], 1)
+        self.assertEqual({b['region'] for b in layout['bases']} - {'wilderness'},
+                         {'farmland','urban_core','industrial','military'})
+
+        # A diagonal may only cross terrain reserved by the routed network.
+        road = next(r for r in layout['roads_wu'] if any(a[0]!=b[0] and a[1]!=b[1]
+                    for a,b in zip(r['points'],r['points'][1:])))
+        road['points'] = [[-19000.,19000.],[-18000.,18000.]]
+        self.assertTrue(any('unrouted diagonal' in e for e in validate(layout,self.profile)))
 
     def test_1024_vertex_domain_reaches_terrain_validation(self):
         # This boundary must accept 3072 cells before checking the supplied land.

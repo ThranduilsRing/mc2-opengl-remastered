@@ -35,6 +35,12 @@ def synthetic_terrain(size, seed):
         height += rng.uniform(20, 80)*np.exp(-((rr-r)**2+(cc-c)**2)/(2*radius**2))
     lake_r, lake_c = size*.24, size*.28
     wet = ((rr-lake_r)/(size*.065))**2 + ((cc-lake_c)/(size*.09))**2 < 1
+    if size >= 1024:
+        # Irregular shores and broad drainage relief only affect the large-map path.
+        angle = np.arctan2((rr-lake_r)/.065,(cc-lake_c)/.09)
+        radius = ((rr-lake_r)/(size*.065))**2+((cc-lake_c)/(size*.09))**2
+        wet = radius < (1+.18*np.sin(angle*3+seed)+.10*np.sin(angle*7))**2
+        height += 90*np.sin(rr/size*math.pi*2+.6)*np.sin(cc/size*math.pi*3)**2
     height[wet] = 120
     height[(cc > size*.91) & (rr < size*.4)] += 450
     return np.round(height, 3), wet
@@ -160,13 +166,27 @@ def plan_cells(size=300, seed=42, heightfield=None, water=None, profile=None, st
         roads[area] |= mainland[area]
 
     slope_cost = slopes / 25
+    macro, site_specs, forest_field = None, None, None
+    if size >= 1024:
+        from tools.mapgen.macro import plan
+        density = stats["metrics"]["enemy_bases_per_100k_cells"]["median"] or 4
+        count = max(28,min(220,round(density*size*size/100000*(1024/size)**.75)))
+        macro, site_specs, paths, forest_field = plan(mainland,heights,slopes,wet,seed,count)
+        for path,width in paths:
+            road_paths.append((path,width))
+            for cell in path:
+                paint_road(cell)
+        hub = tuple(site_specs[0]['anchor'])
     for endpoint in endpoints:
+        if macro:
+            hub = min((tuple(s['anchor']) for s in site_specs[:macro['major_count']]),
+                      key=lambda p:distance(p,endpoint))
         path = route(endpoint, hub, mainland, slope_cost)
         road_paths.append((path, 64.0))
         for cell in path:
             paint_road(cell)
     # A secondary dogleg provides settlement frontage away from the main junction.
-    for target in ((size*.3, size*.7), (size*.72, size*.72)):
+    for target in (() if macro else ((size*.3, size*.7), (size*.72, size*.72))):
         node = nearest(mainland, target)
         path = route(hub, node, mainland, slope_cost)
         road_paths.append((path, 64.0))
@@ -196,7 +216,7 @@ def plan_cells(size=300, seed=42, heightfield=None, water=None, profile=None, st
         return obj
 
     density = stats["metrics"]["enemy_bases_per_100k_cells"]["median"] or 4
-    target_bases = max(3, min(512, round(density*size*size/100000)))
+    target_bases = len(site_specs) if macro else max(3, min(512, round(density*size*size/100000)))
     archetypes = sorted(stats["archetypes"])
     weights = [stats["archetypes"][name]["count"] for name in archetypes]
     road_positions = [tuple(map(int, v)) for v in np.argwhere(roads)]
@@ -204,7 +224,11 @@ def plan_cells(size=300, seed=42, heightfield=None, water=None, profile=None, st
     # the measured archetype weights. The validator checks corpus envelopes.
     forms = ["walled_compound", "outpost", "town"]
     for index in range(target_bases):
-        kind = forms[index] if index < len(forms) else rng.choices(archetypes, weights=weights)[0]
+        spec = site_specs[index] if macro else None
+        kind = spec['kind'] if spec else forms[index] if index < len(forms) else rng.choices(archetypes, weights=weights)[0]
+        frontage = road_positions
+        if spec:
+            frontage = [p for p in road_positions if distance(p,spec['anchor'])<max(spec['width'],spec['height'])*(1.8 if index<macro['major_count'] else .9)]
         distribution = stats["archetypes"][kind]
         if not distribution["count"]:
             distribution = profile["pooled"]["archetypes"][kind]
@@ -214,7 +238,13 @@ def plan_cells(size=300, seed=42, heightfield=None, water=None, profile=None, st
             max_side = min(42, size//3, min_side+4 if attempt >= 150 else 42)
             width = sample(rng, distribution["width"], min_side, max_side)
             height = sample(rng, distribution["height"], min_side, max_side)
-            road_r, road_c = rng.choice(road_positions)
+            if spec:
+                width = max(min_side if kind=='walled_compound' else 10,round(spec['width']*rng.uniform(.85,1.1)))
+                height = max(min_side if kind=='walled_compound' else 10,round(spec['height']*rng.uniform(.85,1.1)))
+                envelope = profile['pooled']['archetypes'][kind]
+                width = min(width,int(envelope['width']['max']))
+                height = min(height,int(envelope['height']['max']))
+            road_r, road_c = rng.choice(frontage)
             side = rng.choice(("N", "S", "W", "E"))
             gap = rng.randint(3, 6)
             # side names identify the parcel edge facing its access road.
@@ -296,6 +326,8 @@ def plan_cells(size=300, seed=42, heightfield=None, water=None, profile=None, st
             add("gate", gate, team, base_id, parent=gate_control,
                 rotation=0 if side in ("N", "S") else 90, wall_axis="horizontal" if side in ("N", "S") else "vertical")
         defended = kind in ("walled_compound", "turret_battery") or (kind in ("outpost", "airfield_hq") and rng.random() < .5)
+        if spec and spec['population']<12:
+            defended = False
         if defended:
             anchor = ((r0+r1)//2-3, (c0+c1)//2-3)
             generator_cell = choose(anchor)
@@ -314,6 +346,8 @@ def plan_cells(size=300, seed=42, heightfield=None, water=None, profile=None, st
                         add("turret", cell, team, base_id, parent=control)
         current = len(objects)-begin
         target_count = 0 if kind == "turret_battery" else max(3, sample(rng, distribution["objects"], 4, 28)-current)
+        if spec:
+            target_count = max(1,spec['population']-current)
         mix = distribution["mix"]
         role_names = ["military", "industrial", "town", "airfield", "hq"]
         role_weights = [mix.get(name, 0) for name in role_names]
@@ -325,6 +359,10 @@ def plan_cells(size=300, seed=42, heightfield=None, water=None, profile=None, st
             if cell is None:
                 break
             role = "town" if kind == "town" else rng.choices(role_names, weights=role_weights)[0]
+            if spec and spec['region']=='farmland':
+                role = rng.choices(('town','industrial'),weights=(8,1))[0]
+            elif spec and spec['region']=='military':
+                role = rng.choices(('military','hq','industrial'),weights=(8,1,2))[0]
             if kind == "industrial" and number < 3:
                 role = "industrial"
             if kind == "airfield_hq" and number == 0:
@@ -333,6 +371,9 @@ def plan_cells(size=300, seed=42, heightfield=None, water=None, profile=None, st
         bases.append({"id": base_id, "archetype": kind, "team": team,
                       "bounds": [r0,c0,r1,c1], "entry_cell": list(gate),
                       "road_anchor": [road_r,road_c], "walled": walled})
+        if spec:
+            bases[-1].update(region=spec['region'],rank=spec['rank'],requested_population=spec['population'],
+                             macro_node=index)
         if team == 1:
             target = next((o["cell"] for o in objects[begin:] if o["class"] == "building"), list(centre))
             objectives.append({"id": f"objective_{len(objectives)}", "title": f"Capture or clear {kind} {base_id}",
@@ -343,6 +384,12 @@ def plan_cells(size=300, seed=42, heightfield=None, water=None, profile=None, st
     road_distance = distance_field(roads)
     base_distance = distance_field(reserved)
     tree_allowed = mainland & (base_distance >= 4) & (road_distance >= 4) & ~occupied
+    region_grid = None
+    if macro:
+        region_grid = np.asarray(macro['regions'],dtype=np.uint8)
+        forest = (region_grid==0) & (forest_field>.38)
+        forest_full = np.repeat(np.repeat(forest,8,axis=0),8,axis=1)
+        tree_allowed[:forest_full.shape[0],:forest_full.shape[1]] &= forest_full
     tree_allowed[max(0,start[0]-5):start[0]+6, max(0,start[1]-5):start[1]+6] = False
     tree_density = stats["metrics"]["tree_objects_per_100k_cells"]["median"] or 0
     tree_target = min(180000, round(size*size*tree_density/100000))
@@ -355,7 +402,11 @@ def plan_cells(size=300, seed=42, heightfield=None, water=None, profile=None, st
             if tree_count >= tree_target:
                 break
             centre = rng.choice(cluster_centres)
-            r, c = round(rng.gauss(centre[0], 6)), round(rng.gauss(centre[1], 6))
+            radius = 6
+            if macro:
+                moisture = forest_field[min(centre[0]//8,len(forest_field)-1),min(centre[1]//8,len(forest_field)-1)]
+                radius = 4+36*moisture**2
+            r, c = round(rng.gauss(centre[0], radius)), round(rng.gauss(centre[1], radius))
             if 0 <= r < size and 0 <= c < size and tree_allowed[r,c] and not occupied[r,c]:
                 add("tree", (r,c), -1)
                 tree_count += 1
@@ -376,6 +427,7 @@ def plan_cells(size=300, seed=42, heightfield=None, water=None, profile=None, st
                      "vertices": size//3 if size%3 == 0 else None},
             "objects": objects, "parts": parts, "player_start": list(start), "objectives": objectives,
             "roads_wu": world_roads(road_paths,mainland,size),
+            **({"macro":macro} if macro else {}),
             "bases": bases, "terrain": {"cell_step": 1, "elevation_wu": heights.tolist(),
                 "slope_deg": np.round(slopes, 3).tolist(), "terrain_type": terrain_type.tolist(),
                 "overlay_type": np.where(roads, 0, -1).tolist(), "water_elevation_wu": None},

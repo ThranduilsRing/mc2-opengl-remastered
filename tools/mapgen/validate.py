@@ -293,8 +293,30 @@ def validate_footprints(layout, profile=None):
             errors.append("invalid width polyline")
             continue
         for a,b in zip(road["points"],road["points"][1:]):
-            if not all(math.isfinite(v) for v in (*a,*b)) or (a[0]!=b[0] and a[1]!=b[1]):
+            diagonal = a[0]!=b[0] and a[1]!=b[1]
+            if not all(math.isfinite(v) for v in (*a,*b)) or (diagonal and not layout.get('macro')):
                 errors.append("road polyline has a nonfinite or unrouted diagonal segment")
+                continue
+            if diagonal:
+                # Regional A* permits diagonals. Check the swept strip in short
+                # sections, rather than its potentially enormous global AABB.
+                length = math.dist(a,b)
+                half = road['width_wu']/2
+                dx,dy = -(b[1]-a[1])*half/length,(b[0]-a[0])*half/length
+                samples = np.linspace(a,b,max(2,math.ceil(length/(CELL_WU/2))+1))
+                for p,q in zip(samples,samples[1:]):
+                    poly = [(p[0]+dx,p[1]+dy),(q[0]+dx,q[1]+dy),
+                            (q[0]-dx,q[1]-dy),(p[0]-dx,p[1]-dy)]
+                    r0,c0,r1,c1 = covered_cells(layout,poly)
+                    r0,c0,r1,c1 = max(0,r0),max(0,c0),min(shape[0],r1),min(shape[1],c1)
+                    if r1<=r0 or c1<=c0 or not allowed[r0:r1,c0:c1].all():
+                        errors.append('road width crosses water or slopes')
+                        break
+                for p in samples:
+                    r,c = cell_of(layout,p)
+                    if not (0<=r<shape[0] and 0<=c<shape[1] and roads[r,c]):
+                        errors.append('road polyline has an unrouted diagonal segment')
+                        break
                 continue
             # Sweep width over the terrain, including the half width beside the
             # centreline. Map edges are intentional road exits, so clip there.

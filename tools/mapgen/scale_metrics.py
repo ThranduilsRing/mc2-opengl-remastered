@@ -37,4 +37,9 @@ def measure_scale(layout):
         areas = [(b['bounds'][2]-b['bounds'][0])*(b['bounds'][3]-b['bounds'][1]) for b in layout['bases']]
         result['parcel_area_p10_p50_p90'] = np.percentile(areas,[10,50,90]).tolist()
         result['parcel_area_max_min'] = max(areas)/min(areas)
+        members = Counter(o.get('base_id') for o in structural(layout['objects']))
+        sizes = [members[b['id']] for b in layout['bases']]
+        result['parcel_structures_p10_p50_p90'] = np.percentile(sizes,[10,50,90]).tolist()
+        result['tiny_site_fraction'] = sum(n<=3 for n in sizes)/len(sizes)
+        result['largest_site_structures'] = max(sizes)
     return result

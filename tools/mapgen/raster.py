@@ -127,6 +127,18 @@ def render(layout, out, wu_per_pixel=None, crop=None, hillshade=False, catalog=N
     tr,tc = rr//step,cc//step
     types = np.asarray(terrain["terrain_type"],dtype=np.uint8)
     base = terrain_palette(surface)[types[tr[:,None],tc[None,:]]]
+    if layout.get('macro'):
+        macro = layout['macro']
+        regional = np.asarray(macro['regions'],dtype=np.uint8)
+        # Interpolate region membership, not integer labels (which would invent
+        # intermediate land uses). This hides the planning grid at full-map scale.
+        scores = [np.asarray(Image.fromarray((regional==i).astype(np.uint8)*255).resize(
+                  (cols,rows),Image.Resampling.BILINEAR)) for i in range(5)]
+        labels = np.argmax(np.stack(scores),axis=0)
+        # Muted land-use colours keep native model silhouettes legible.
+        palette = np.array([(78,96,60),(112,115,73),(117,109,82),
+                            (94,104,70),(112,112,91)],dtype=np.uint8)
+        base = palette[labels[rr[:,None],cc[None,:]]]
     if hillshade:
         h = np.asarray(terrain["elevation_wu"],dtype=float)[tr[:,None],tc[None,:]]
         if min(h.shape)>1:

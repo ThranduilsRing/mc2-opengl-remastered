@@ -141,6 +141,8 @@ def upgrade(layout, profile):
                 return False
         if tuple(obj["cell"]) in occupied:
             return False
+        if not seam and roads[tuple(obj['cell'])]:
+            return False
         if obj["class"]=="tree" and (tree_road_distance[tuple(obj["cell"])]<4 or
                                       tree_base_distance[tuple(obj["cell"])]<4):
             return False
