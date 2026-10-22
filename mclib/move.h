@@ -56,8 +56,8 @@ extern uint64_t g_moveRecon_offmap_noops;
 
 #define	USE_FORESTS			0
 
-inline constexpr int MAX_GLOBALMAP_DOORS = 10000;
-inline constexpr int MAX_GLOBALMAP_AREAS = 10000;
+inline constexpr int MAX_GLOBALMAP_DOORS = 60000;
+inline constexpr int MAX_GLOBALMAP_AREAS = 30000;
 
 inline constexpr int NUM_EXTRA_DOOR_LINKS = 2;
 

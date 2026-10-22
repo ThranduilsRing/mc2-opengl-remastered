@@ -1,5 +1,7 @@
 // Pathfinding: GlobalMap construction: area flood fill, special areas, door collection and the packet read/write.
 // Declared in the class headers; shared names in move_internal.h.
+#include <array>
+#include <vector>
 #include "move_internal.h"
 #include "../GameOS/gameos/utils/mc2log.h"
 #include <mdspan>
@@ -637,7 +639,7 @@ long GlobalMap::write (PacketFilePtr packetFile, long whichPacket) {
 	if (result <= 0)
 		Fatal(result, " GlobalMap.write: Unable to write areaMap packet ");
 
-	DoorInfoPtr doorInfoSave[MAX_GLOBALMAP_AREAS];
+	std::vector<DoorInfoPtr> doorInfoSave(MAX_GLOBALMAP_AREAS);
 	for (int i = 0; i < numAreas; i++) {
 		doorInfoSave[i] = areas_doors[i];
 		areas_doors[i] = nullptr;
@@ -682,7 +684,7 @@ long GlobalMap::write (PacketFilePtr packetFile, long whichPacket) {
 		}
 	Assert(numDoorInfosWritten == numDoorInfos, 0, " GlobalMap.write: Error in writing DoorInfos ");
 
-	DoorLinkPtr doorLinkSave[MAX_GLOBALMAP_DOORS][2];
+	std::vector<std::array<DoorLinkPtr, 2>> doorLinkSave(MAX_GLOBALMAP_DOORS);
 	for (int i = 0; i < numDoors + NUM_DOOR_OFFSETS; i++) {
 		doorLinkSave[i][0] = doors_links[i][0];
 		doorLinkSave[i][1] = doors_links[i][1];

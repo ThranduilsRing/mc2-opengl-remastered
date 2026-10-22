@@ -245,6 +245,7 @@ L(Presence, "MC2_FF_TRACE", Bool, false, "unclassified", "", "", verified),
 L(Lead0P, "MC2_FIRE_DECISION_TRACE", Bool, false, "mech", "", "ISSUE-17 fire-refusal instrumentation (default OFF = byte-identical; needs MC2_DIAG_TAGS=...,COMBAT).", passthrough | registry(Trace, "MC2_TRACE_FIRE_DECISION", -1, false) | verified),
 // history: docs/gate-history.md#MC2_FIXTURE_ORDER_LIVENESS
 L(Lead0P, "MC2_FIXTURE_ORDER_LIVENESS", Bool, false, "code", "", "META-FIX design F behavioral fixture (code/mission.cpp soak namespace; requires MC2_SOAK_AUTOWIN): at 20% of the autowin timer every armed home mech gets a...", passthrough | registry(Trace, "MC2_TRACE_FIXTURE_ORDER_LIVENESS", -1, false) | verified),
+P("MC2_FIXTURE_ORDER_MOVE_M", Float, 300.0, "code", "", "Meters the MC2_FIXTURE_ORDER_LIVENESS move order travels toward the map centre (default 300); long values drive a cross-map path on big maps.", clampRange(1.0, 1.0e7) | verified),
 // FOG-HORIZON-CLAMP-1: reshape OOB/edge fog to a horizon elevation profile.
 L(Lead0, "MC2_FORCE_43", Bool, false, "gameos", "", "Default-OFF gate (matches the launcher toggle model: checked -> MC2_FORCE_43=1, unchecked -> unset).", passthrough | verified),
 // history: docs/gate-history.md#MC2_FORCE_ALL_VISIBLE

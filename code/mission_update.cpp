@@ -169,6 +169,7 @@ namespace {
 	struct OrderLivenessEntry {
 		unsigned long   wid;
 		glm::vec3 startPos;
+		glm::vec3 goalPos;
 	};
 	static const int kOrderLivenessCap = 32;   // bounded, s_firedWIDs precedent
 	static OrderLivenessEntry s_olEntries[kOrderLivenessCap];
@@ -970,7 +971,7 @@ void Mission::updateOrderLiveness() {
 		{
 			extern float metersPerWorldUnit;
 			const float stepWU = (metersPerWorldUnit > 0.0f)
-				? (300.0f / metersPerWorldUnit) : 300.0f;
+				? (mc2::gate::get<"MC2_FIXTURE_ORDER_MOVE_M">() / metersPerWorldUnit) : mc2::gate::get<"MC2_FIXTURE_ORDER_MOVE_M">();
 			for (int mi = 0; mi < ObjectManager->numMechs &&
 				 s_olIssuedMove < kOrderLivenessCap; ++mi)
 			{
@@ -993,6 +994,7 @@ void Mission::updateOrderLiveness() {
 					olGoal, -1, TACORDER_PARAM_RUN);
 				s_olEntries[s_olIssuedMove].wid = pM->getWatchID();
 				s_olEntries[s_olIssuedMove].startPos = olPos;
+				s_olEntries[s_olIssuedMove].goalPos = olGoal;
 				++s_olIssuedMove;
 				printf("[ORDER_FIXTURE] kind=move wid=%lu tgt=0 t=%.1f\n",
 					static_cast<unsigned long>(pM->getWatchID()), static_cast<float>(scenarioTime));
@@ -1017,6 +1019,9 @@ void Mission::updateOrderLiveness() {
 					continue;   // dead-unit exemption
 				const float distM =
 					obj->distanceFrom(s_olEntries[i].startPos);   // meters
+				printf("[ORDER_FIXTURE] kind=progress wid=%lu moved_m=%.0f to_goal_m=%.0f\n",
+					static_cast<unsigned long>(s_olEntries[i].wid), static_cast<double>(distM),
+					static_cast<double>(obj->distanceFrom(s_olEntries[i].goalPos)));
 				if (distM >= 25.0f)
 					++olMoved;
 				else if (LastMoveCalcErr != 0)

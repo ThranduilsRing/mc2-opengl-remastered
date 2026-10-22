@@ -10,9 +10,9 @@ namespace mc2::globalmap
 {
 // The design limits of the map builder (move.h MAX_GLOBALMAP_AREAS / MAX_GLOBALMAP_DOORS, terrain.h MAX_MAP_CELL_WIDTH);
 // move_internal.h pins them equal with a static_assert.
-inline constexpr long kMaxCellsPerSide = 1024;
-inline constexpr long kMaxAreas = 10000;
-inline constexpr long kMaxDoors = 10000;
+inline constexpr long kMaxCellsPerSide = 3072;
+inline constexpr long kMaxAreas = 30000;
+inline constexpr long kMaxDoors = 60000;
 // The builder refuses an area with more than 255 doors, so a door side links at most 255 other doors plus the start and goal scratch links.
 inline constexpr long kMaxDoorsPerArea = 255;
 inline constexpr long kDoorScratchLinks = 2;

@@ -9,6 +9,7 @@
 //***************************************************************************
 
 #ifndef MCLIB
+#include "terrain_part_chunk.h"
 #include"mclib.h"
 #endif
 
@@ -480,7 +481,7 @@ long TacticalOrder::pack (MoverGroupPtr group, MoverPtr point) {
 				break;
 			case 1: {
 				// Terrain
-				tempData |= (curTarget->getPartId() - MIN_TERRAIN_PART_ID);
+				tempData |= terrain_part_chunk::pack(curTarget->getPartId());
 				tempData <<= TACORDERCHUNK_TARGETTYPE_BITS;
 
 				tempData |= 1;
@@ -645,7 +646,7 @@ long TacticalOrder::unpack (void) {
 					}
 				else if (targetType == 1) {
 					// Terrain
-					unsigned long targetPartId = (tempData & TACORDERCHUNK_TERRAINPARTID_MASK) + MIN_TERRAIN_PART_ID;
+					unsigned long targetPartId = static_cast<unsigned long>(terrain_part_chunk::unpack(tempData & TACORDERCHUNK_TERRAINPARTID_MASK));
 					tempData >>= TACORDERCHUNK_TERRAINPARTID_BITS;
 
 					GameObjectPtr obj = ObjectManager->findByPartId(targetPartId);
@@ -677,7 +678,7 @@ long TacticalOrder::unpack (void) {
 				}
 			else if (targetType == 1) {
 				// Terrain
-				unsigned long targetPartId = (tempData & TACORDERCHUNK_TERRAINPARTID_MASK) + MIN_TERRAIN_PART_ID;
+				unsigned long targetPartId = static_cast<unsigned long>(terrain_part_chunk::unpack(tempData & TACORDERCHUNK_TERRAINPARTID_MASK));
 				tempData >>= TACORDERCHUNK_TERRAINPARTID_BITS;
 
 				GameObjectPtr obj = ObjectManager->findByPartId(targetPartId);

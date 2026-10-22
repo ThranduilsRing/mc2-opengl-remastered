@@ -1,5 +1,6 @@
 // Mover: multiplayer MoveChunk/StatusChunk build, pack, unpack and compare, plus MoverDynamics and MoverControl.
 // Declared in mover.h; shared names in mover_internal.h.
+#include "terrain_part_chunk.h"
 #include "mover_internal.h"
 #include "mc2fmt.h"
 
@@ -408,7 +409,7 @@ void StatusChunk::pack (MoverPtr mover) {
 				data <<= STATUSCHUNK_TARGETTYPE_BITS;
 				break;
 			case STATUSCHUNK_TARGET_TERRAIN:
-				data |= (targetId - MIN_TERRAIN_PART_ID);
+				data |= terrain_part_chunk::pack(targetId);
 				data <<= STATUSCHUNK_TARGETTYPE_BITS;
 				break;
 			case STATUSCHUNK_TARGET_SPECIAL:
@@ -537,7 +538,7 @@ void StatusChunk::unpack (MoverPtr mover) {
 				targetId = (tempData & STATUSCHUNK_MOVERINDEX_MASK);
 				break;
 			case STATUSCHUNK_TARGET_TERRAIN:
-				targetId = (tempData & STATUSCHUNK_TERRAINPARTID_MASK) + MIN_TERRAIN_PART_ID;
+				targetId = terrain_part_chunk::unpack(tempData & STATUSCHUNK_TERRAINPARTID_MASK);
 				break;
 			case STATUSCHUNK_TARGET_SPECIAL:
 				targetVertexOrCarNumber = (tempData & STATUSCHUNK_TRAIN_MASK);
