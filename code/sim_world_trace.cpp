@@ -21,6 +21,10 @@ std::string identity(GameObject* object) {
     return std::format("{}:{}:{}", object->getHandle(), object->getWatchID(false), object->getExists() ? 1 : 0);
 }
 
+void recordEvent(const char* action, GameObject* object, long detail) {
+    if (recording) record(std::format("event={} id={} detail={}", action, identity(object), detail));
+}
+
 template<class T>
 void view(const char* name, T* const* objects, long count, long cursor = -1) {
     std::string body = std::format("view={} n={} cursor={} slots=", name, count, cursor);
@@ -37,6 +41,7 @@ void begin(long simTick) {
     ordinal = 0;
     transcript.clear();
     recording = true;
+    detail::eventSink = recordEvent;
     record("begin");
 }
 
@@ -46,6 +51,7 @@ void end() {
     // One buffered write per tick avoids interleaved diagnostic fragments.
     mc2::fmt::print_out("{}", transcript);
     recording = false;
+    detail::eventSink = nullptr;
 }
 
 void snapshot(GameObjectManager& w, const char* phase) {
@@ -96,7 +102,4 @@ void update(const char* name, GameObject* object) {
     if (recording) record(std::format("update={} id={}", name, identity(object)));
 }
 
-void event(const char* action, GameObject* object, long detail) {
-    if (recording) record(std::format("event={} id={} detail={}", action, identity(object), detail));
-}
 }

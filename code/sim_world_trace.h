@@ -14,7 +14,15 @@ void begin(long tick);
 void end();
 void snapshot(GameObjectManager& world, const char* phase);
 void update(const char* view, GameObject* object);
-void event(const char* action, GameObject* object, long detail = 0);
+// Header-only object facades also serve standalone tests. A tick-local sink
+// keeps their existence setter independent of the engine recorder at link time.
+namespace detail {
+using EventSink = void (*)(const char*, GameObject*, long);
+inline EventSink eventSink = nullptr;
+}
+inline void event(const char* action, GameObject* object, long value = 0) {
+    if (detail::eventSink) detail::eventSink(action, object, value);
+}
 
 struct TickScope {
     bool active;
