@@ -67,3 +67,17 @@ def test_extra_sim_rng_draw_fails(tmp_path):
     assert not sim.compare(a, b, 5)[0]
     assert not sim.check_baseline(b, baseline(tmp_path, a))[0]
     assert not sim.compare(a, [line.replace(" rng=1/2/3", "") for line in a], 5)[0]   # a missing field is an incomplete observation
+
+
+def test_rejected_log_leaves_existing_baseline(tmp_path, monkeypatch):
+    log = tmp_path / "bad.log"
+    good = observations()
+    log.write_text("\n".join(good[:2] + good[3:]) + "\n", encoding="utf-8")   # a skipped tick
+    out = tmp_path / "base.json"
+    out.write_text("KEEP", encoding="utf-8")
+    monkeypatch.setattr(sim, "data_fingerprint", lambda *a, **k: {"digest": "d", "problems": []})
+    monkeypatch.setattr(sys, "argv", ["sim_determinism.py", "write-baseline", str(log), "--frames", "4", "--mission", "m", "--out", str(out)])
+    with pytest.raises(SystemExit):
+        sim.main()
+    assert out.read_text(encoding="utf-8") == "KEEP"
+    assert not (tmp_path / "base.json.tmp").exists()

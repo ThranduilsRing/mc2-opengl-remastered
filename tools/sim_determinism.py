@@ -599,17 +599,19 @@ def main(argv=None) -> int:
         if fp["problems"]:
             sys.exit("the install is not the declared stock-plus-overlay data set; no baseline written:\n  " + "\n  ".join(fp["problems"]))
         out = args.out or baseline_path(args.mission)
+        error = observation_error(lines[:args.frames])
+        if error:
+            sys.exit(error)   # before anything is opened: a rejected log must leave an existing baseline untouched
         os.makedirs(os.path.dirname(out), exist_ok=True)
-        with open(out, "w", encoding="utf-8", newline="\n") as fh:
-            error = observation_error(lines[:args.frames])
-            if error:
-                sys.exit(error)
+        tmp = out + ".tmp"
+        with open(tmp, "w", encoding="utf-8", newline="\n") as fh:
             json.dump({"mission": args.mission, "frames": args.frames, "chain_schema": 2,
                        "chain": chain(lines, args.frames), "full": full_chain(lines, args.frames), "visible_chain": visible_chain(lines, args.frames),
                        "sha": _build_sha(args.log) or _git_sha(), "seed": _seed(args.log), "data_fingerprint": fp,
                        "gates": GATES, "env": dict(kv.split("=", 1) for kv in args.env),
                        "about": "chain digest of the first N [SIMID v1] lines; tools/sim_determinism.py check <mission>"}, fh, indent=1)
             fh.write("\n")
+        os.replace(tmp, out)
         print(f"sim_determinism: wrote {os.path.relpath(out, ROOT)}")
         return 0
     if args.cmd == "compare":
