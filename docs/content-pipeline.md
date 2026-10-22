@@ -52,8 +52,12 @@ is destroyed (collision/passability stay stock); `conditions.{worn,abandoned}` w
 `destroyed`; `materials` v2 slots `{slot, class, alphaMode, normal, orm, scalars, uvScale}`.
 `conditions.json` picks a condition per mission (`"*"` or per appearance; default pristine).
 Runtime GLBs bake every node transform (the engine's static import also applies node transforms
-and instancing now), carry identity nodes and are validated (`validate.py`: Khronos-style
-structure + MC2 runtime profile). Stock-policy base colour is referenced by name, never copied.
+and instancing now), carry identity nodes with unique names and are validated (`validate.py`:
+Khronos-style structure + MC2 runtime profile). Stock-policy base colour is referenced by name,
+never copied. Engine-special nodes (`SpotLight_`, `LitWin`, `_PAB`, `LOS_`) keep a legacy slot.
+Building cooks report outer-hull faces that point inward (culled from outside = see-through
+wall); `repair_inward_hull` flips them on authored intact chains. Collision, passability and LOS
+always come from the stock shapes, whatever renders.
 
 ## Texture cook contract (`texcook.py`, `mc2-texcook/1`)
 
@@ -63,7 +67,8 @@ structure + MC2 runtime profile). Stock-policy base colour is referenced by name
 | normal | linear (OpenGL +Y) | BC5 (Z rebuilt at runtime) | averaged + renormalised |
 | orm (R AO, G rough, B metal, A coverage) | linear | BC7 | box |
 
-Base colour tiers `data/tgl/{32..1024}` are real downscales (never enlarged). Detail maps share
+Base colour tiers `data/tgl/{32..1024}` are real downscales (never enlarged); a unique-bake atlas
+sets `texel_scale` (tier t holds t x scale) to match stock on-screen texel density. Detail maps share
 one 512 extent per mission (one array). Blocks are encoded with the installed DirectXTex texconv
 (CPU codec, deterministic); the KTX2 container is written here. Cache (`cache.py`): key = contract
 + params + sha256 of **resolved bytes**, entries `<prefix><16 hex><ext>`, temp-file + atomic
