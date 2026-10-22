@@ -13,8 +13,8 @@ Then validates against the rules mclib/model_override_registry.cpp enforces
 (type/renderOnly/fallback/scale/safe-source) plus GLB sanity (TEXCOORD_0, bounds
 vs the stock-derived GLB, tri budget, texture URIs resolvable in the bundle).
 
-  py -3 tools/blender_pipeline/fence_bundle.py --out G:/mc2-assets/out/fence-procedural
-  py -3 tools/blender_pipeline/fence_bundle.py --out ... --validate-only
+  py -3 tools/blender_pipeline/fence_bundle.py --srcdata <stock-tgl-dir> --out <bundle-dir>
+  py -3 tools/blender_pipeline/fence_bundle.py --srcdata <stock-tgl-dir> --out <bundle-dir> --validate-only
 """
 import argparse
 import json
@@ -41,13 +41,6 @@ JOBS = {
 }
 LATTICE = "a_wirefence_proc"
 METAL = "fence_metal_proc"
-
-
-def default_srcdata():
-    for c in ("A:/Games/mc2-srcdata/tgl", "A:/Games/mc2-opengl/mc2srcdata-fresh/tgl"):
-        if Path(c, "wirefence.ase").is_file():
-            return Path(c)
-    raise SystemExit("stock srcdata tgl dir not found; pass --srcdata")
 
 
 def glb_json(path):
@@ -169,12 +162,12 @@ def validate(out, srcdata, stock_glb_dir):
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[1])
     ap.add_argument("--out", required=True)
-    ap.add_argument("--srcdata")
+    ap.add_argument("--srcdata", required=True, help="explicit directory containing the stock fence ASE/INI pairs")
     ap.add_argument("--blender")
     ap.add_argument("--validate-only", action="store_true")
     a = ap.parse_args(argv)
     out = Path(a.out)
-    srcdata = Path(a.srcdata) if a.srcdata else default_srcdata()
+    srcdata = Path(a.srcdata)
     work = out / "_work"
     if not a.validate_only:
         build(out, srcdata, work, a.blender)
