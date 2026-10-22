@@ -6,7 +6,12 @@ Task date: owner 2026-10-22. Inspected base `a52697077` on
 
 ## Decision
 
-Use the task's explicit stop-after-a-clear-plan fallback. Vulkan static props
+Owner approved implementation on 2026-10-22, superseding the original
+stop-after-plan decision below. Worktree: `A:/Games/mc2-fence`, branch
+`claude/blender-redux-pbr`; install: `E:/mc2-lane5`. Acknowledged pre-existing
+scratch files remain untouched and must never be staged.
+
+Original reconnaissance decision: use the stop-after-plan fallback. Vulkan static props
 sample albedo only. Normal, roughness, metalness and AO maps cannot be delivered
 by merely adding glTF material nodes or cooking texture sidecars. Implementing
 them crosses the asset-to-runtime seam, CPU material assembly, Vulkan resource
@@ -17,6 +22,57 @@ No engine, asset, install or material changes were made during reconnaissance.
 No source assets were copied or downloaded. No game was launched. No before/after
 montages exist. The requested contracts, unit harnesses and smoke-lite have not
 been run: this checkpoint contains documentation only, not an engine change.
+
+## Why earlier attempts failed / what we do differently
+
+Read-only archaeology on 2026-10-22: inspected the following branch logs and
+commit diffs without checking them out or merging them. Historical smoke passes
+establish execution, not material quality; no historical montage was re-viewed
+in this pass. Do not treat an implementation or a branch name as visual proof.
+
+| History inspected | Finding and consequence for this attempt |
+|---|---|
+| `559714587`, `e9e3f19d6`, `d18fd8ef1` | StaticPropPbr went ON, then OFF by owner ruling 2026-10-13: most props lacked PBR data; fallback sheen looked like metallic cloth and clustered in one screen corner. The OFF evidence was GL day 25 changed pixels against 20 pixels noise, night zero; this is not strict byte equality and is not Vulkan proof. No fallback specular or sheen is allowed on untagged props in the new path. |
+| `ee3016909`, `9a0b0ac35`; BUGS rows 41-44 at `e98f0e3be` | Vulkan gained the old scalar sun lobe, then GL's roughness override 0.95 instead of 1.0. Matching that effect did not supply material maps. Row 42 was a culling mismatch, 43 an unpinned GL shadow-compare issue, 44 the scalar roughness gap; row 41 concerned movement-map refusal, not PBR. Keep geometry/culling/shadow classes unchanged and do not confuse a light artifact with asset quality. |
+| `claude/building-materialgpu-v1` (`9ebca1129`) | WIP, default-OFF, tier1 5/5. Shader reads material row zero, uses hardcoded light/view assumptions, adds fixed ambient and multiplies diffuse by AO. Its derivative frame normalizes unchecked vectors. A working GL draw is not a Vulkan material transport. Use per-packet IDs, actual mission inputs, ambient-only AO and a degenerate/mirrored-UV-safe frame. |
+| `claude/mech-pbr-material-v1` (`b7cd138c6`); `codex/p1g-building-pbr-rc1` (`f75d8a112`, `bc31d6f32`) | Generic layered paint/metal and triplanar detail were enabled; later defaults returned to passthrough, with a subtle ORM-only profile explicit. The latter branch's name is not evidence of a finished building renderer. Material response must come from reviewed prop/atlas-region mappings, never colour-derived metal or one generic metal coat. Preserve stock albedo hue, pattern and alpha. |
+| `claude/mech-material-ssbo-owner-1` (`8cd14c796`); `claude/staticprop-material-ssbo-owner-1` (`14dccb59a`) | GL buffer ownership wrappers preserve calls and lifetime; they do not add missing texture consumers. Reuse current Vulkan resident-resource lifetime mechanisms, updating both descriptor parity sets and unload cleanup. |
+| `claude/staticprop-material-orm-normal-recon-1` (`be0443480`, `135ad8bc1`, `1eb534061`); `rescue/mc2-staticprop-material-orm-normal-recon-wip` (`8455d9e5f`) | ORM roughness/metal sampling depended on BC7/coalesce gates. A later fix explicitly disabled sampling outside the bound-array path. Normal mapping remained a design; rescue added capture artifacts, not normal implementation. The review correctly found that moving all Gouraud lighting per fragment cannot preserve unmapped pixels, and called out handedness, degenerate UVs, ABI and double lighting. Only valid authored IDs enter new shading; absent IDs retain old arithmetic and GBuffer output. A neutral material is a separate case from absent material. |
+| `claude/sp-material-m0-1` (`360b0815e`, `c448477b6`) | Roughness defaults were reconciled to 1.0; texture identity semantics were documented without rewiring consumers. Keep the 32-byte MaterialGpu ABI if used; explicitly distinguish albedo layers, material IDs and detail layers. Deduplicate by full override/provider/slot identity, not albedo stem. |
+| `claude/road-pbr-abandon-1` (`bd7e64f83`, `b2b39d5b7`) | Owner rejected the asphalt look and permanently restored stock roads. Earlier unconditional material selection also made missing-map installs black. Presence must mean successfully decoded usable resources; malformed optional packages fall back safely. Do not revive the road experiment. |
+| `claude/water-material-v1` (`d9516f3a4`, `2d9fed308`) | Shoreline noise experiments were parked after blurry wash/speckle failed the visual gate; a binary quad silhouette was a structural limit. Extra texture detail cannot repair an incorrect rendering seam. Judge full gameplay frames before celebrating close-up detail. No water changes here. |
+| `terrain-pbr-mod` (`baeb0ab8a`, `b9d8eda24`) | Stale GL terrain/POM/material-splat experiments include fixed isometric view assumptions and sampler-unit hazards. They are not native prop implementation and must not be merged. Terrain palette classification is distinct from per-prop material identity. |
+| GL deletion `ec516734a`, `17d7fac41` | Mech GL programs, buffer binding, PBR tuning/wear/back-fill UI and their dead gates were deleted. Do not resurrect those controls or mistake their removed consumers for live Vulkan support. |
+
+Read the requested memories: `mission-data/HANDOFF_2026_06_17_asset_mod_pipeline_v0.md`,
+`rendering/classify_materials_workflow.md`, `terrain/ktx2_texture_format_decision.md`
+and `mission-data/nonmech_glb_probe_landed.md`. They establish useful ASE/GLB,
+classification and cook tools, but explicitly describe missing non-mech material
+wiring and LOD0-only import. The TGA/KTX recommendations contradict themselves
+(including the nonsensical phrase "BC7 decoder for TGA"); the old proposed KTX
+record also differs from today's 32-byte ABI. Follow the live, proven TGA override
+route for this packet; compression is not evidence of end-to-end sampling.
+`classify_materials.py` emits suggestions requiring review, never approval.
+
+**Acceptance rules for this implementation:**
+
+- No fallback sheen/specular for props without authored PBR. Untagged props must
+  remain BYTE-IDENTICAL to today's Vulkan output, proved by deterministic day
+  and night captures, not a noise allowance or low whole-frame difference score.
+- Never infer metal from colour. An explicit, reviewed mapping selects material
+  class per prop/slot and masked atlas region. Rust, paint, cloth and wood must
+  not inherit bare-metal response.
+- View matched before/after montages at gameplay zoom on `mc2_01` day and
+  `mc2_10` night, plus close crops. Inspect all screen corners and camera/view
+  changes for glints clustering in one corner; numeric differences alone pass
+  nothing. Preserve stock silhouettes, faction colours, pattern and alpha.
+- Anything not clearly better on the viewed montages does not ship default-ON.
+  Report failed or inconclusive material candidates honestly and leave them out.
+  Authored, accepted materials activate by presence; no new default-OFF gate.
+- L6 alignment: material evaluation produces `SurfaceMaterial` with linear base
+  color, render-space normal, roughness, metallic, AO, linear emission and explicit
+  material class. Keep this input independent of the current lighting adapter so
+  L6 can consume it unchanged. Do not implement the lighting library in this arc.
 
 ## Source evidence (live code takes precedence over historical notes)
 
