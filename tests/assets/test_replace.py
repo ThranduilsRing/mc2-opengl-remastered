@@ -31,7 +31,7 @@ def cube(tmp_path):
         "accessors": [{"bufferView": 0, "componentType": 5126, "count": 8, "type": "VEC3"},
                       {"bufferView": 1, "componentType": 5123, "count": 36, "type": "SCALAR"}],
         "materials": [{"pbrMetallicRoughness": {"baseColorFactor": [.8, .3, .1, 1]}}],
-        "meshes": [{"primitives": [{"attributes": {"POSITION": 0}, "indices": 1}]}],
+        "meshes": [{"primitives": [{"attributes": {"POSITION": 0}, "indices": 1, "material": 0}]}],
         "nodes": [{"translation": [10, 20, 30], "scale": [2, 2, 2], "mesh": 0}],
         "scenes": [{"nodes": [0]}], "scene": 0}
     path = tmp_path/"warehouse.gltf"
@@ -104,6 +104,24 @@ def test_loader_bakes_scene_transforms(cube):
     assert candidate.mesh.triangles == 12
     # glTF factors are linear; the cooked base-color image is sRGB encoded.
     assert candidate.images[0].getpixel((0, 0)) == (231, 149, 89, 255)
+
+
+def test_omitted_material_uses_default_without_requiring_uv(cube):
+    doc = json.loads(cube.read_text())
+    del doc["meshes"][0]["primitives"][0]["material"]
+    Image.new("RGBA", (1, 1), "red").save(cube.parent/"red.png")
+    doc["images"] = [{"uri": "red.png"}]
+    doc["textures"] = [{"source": 0}]
+    doc["materials"][0]["pbrMetallicRoughness"]["baseColorTexture"] = {"index": 0}
+    cube.write_text(json.dumps(doc))
+    candidate = load_gltf(cube)
+    assert set(candidate.mesh.materials) == {1}
+    assert candidate.images[1].getpixel((0, 0)) == (255, 255, 255, 255)
+    del doc["materials"]
+    cube.write_text(json.dumps(doc))
+    candidate = load_gltf(cube)
+    assert set(candidate.mesh.materials) == {0}
+    assert candidate.images[0].getpixel((0, 0)) == (255, 255, 255, 255)
 
 
 def test_loader_rejects_network_and_path_escape(cube):

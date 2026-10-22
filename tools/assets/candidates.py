@@ -109,7 +109,10 @@ def load_gltf(path):
         return arr
 
     images = []
-    materials = doc.get("materials", []) or [{}]
+    materials = list(doc.get("materials", []))
+    default_material = len(materials)
+    if any("material" not in p for mesh in doc.get("meshes", []) for p in mesh["primitives"]):
+        materials.append({})  # glTF's implicit material is independent of slot zero.
     for material in materials:
         pbr = material.get("pbrMetallicRoughness", {})
         factor = np.array(pbr.get("baseColorFactor", [1, 1, 1, 1]))
@@ -161,8 +164,8 @@ def load_gltf(path):
                 if np.linalg.det(transform[:3, :3]) < 0:
                     idx = idx[:, [0, 2, 1]]
                 tex = accessor(attrs["TEXCOORD_0"]) if "TEXCOORD_0" in attrs else np.zeros((len(v), 2))
-                material = primitive.get("material", 0)
-                if material >= len(images) or tex.shape != (len(v), 2):
+                material = primitive.get("material", default_material)
+                if material < 0 or material >= len(images) or tex.shape != (len(v), 2):
                     raise ValueError("invalid glTF UV/material")
                 if "TEXCOORD_0" not in attrs and "baseColorTexture" in materials[material].get("pbrMetallicRoughness", {}):
                     raise ValueError("textured primitive has no TEXCOORD_0")
