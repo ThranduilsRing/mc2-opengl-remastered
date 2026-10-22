@@ -493,6 +493,8 @@ ArtilleryPtr GameObjectManager::createArtillery (long artilleryType, glm::vec3& 
 
 void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool other)
 {
+	if (mc2::world_trace::enabled()) mc2::world_trace::snapshot(*this, "gom_begin");
+	MC2_WORLD_EVENT("appearance_only", nullptr, 0);
 
 	if (terrain && renderObjects)
 	{
@@ -524,6 +526,8 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 							int teamID = objList[objIndex]->getTeamId();
 							objList[objIndex]->getAppearance()->setObjectParameters(pos,rot,drawFlags,teamID,Team::getRelation(teamID, Team::home->getId()));
 
+							MC2_WORLD_UPDATE("appearance_terrain", objList[objIndex]);
+
 							objList[objIndex]->getAppearance()->update( false );
 							objList[objIndex]->getAppearance()->setVisibility(true, true);	
 						}
@@ -552,6 +556,8 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 					int teamID = mechs[i]->getTeamId();
 					mechs[i]->getAppearance()->setObjectParameters(pos,rot,mechs[i]->drawFlags,teamID,Team::getRelation(teamID, Team::home->getId()));
 
+					MC2_WORLD_UPDATE("appearance_mechs", mechs[i]);
+
 					mechs[i]->getAppearance()->update( false );
 					mechs[i]->getAppearance()->setVisibility(inView,true);
 				}
@@ -574,6 +580,7 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 					bool selected = vehicles[i]->isSelected();
 					int teamID = vehicles[i]->getTeamId();
 					vehicles[i]->getAppearance()->setObjectParameters(pos, rot, vehicles[i]->drawFlags, teamID, Team::getRelation(teamID, Team::home->getId()));
+					MC2_WORLD_UPDATE("appearance_vehicles", vehicles[i]);
 					vehicles[i]->getAppearance()->update( false );
 					vehicles[i]->getAppearance()->setInView( inView );
 				}
@@ -599,6 +606,8 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 						bool selected = turrets[i]->isSelected();
 						int teamID = turrets[i]->getTeamId();
 						turrets[i]->getAppearance()->setObjectParameters(pos,rot,selected,teamID,Team::getRelation(teamID, Team::home->getId()));
+
+						MC2_WORLD_UPDATE("appearance_turrets", turrets[i]);
 
 						turrets[i]->getAppearance()->update( false );
 						turrets[i]->getAppearance()->setInView( 1 );
@@ -635,6 +644,7 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 				{
 					if (lights[i]->getAppearance()->recalcBounds() )
 					{
+						MC2_WORLD_UPDATE("appearance_lights", lights[i]);
 						lights[i]->getAppearance()->update( false );
 						lights[i]->getAppearance()->setInView( 1 );
 					}
@@ -652,6 +662,7 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 				{
 					if (artillery[i]->getAppearance()->recalcBounds() )
 					{
+						MC2_WORLD_UPDATE("appearance_artillery", artillery[i]);
 						artillery[i]->getAppearance()->update( false );
 						artillery[i]->getAppearance()->setInView( 1 );
 					}

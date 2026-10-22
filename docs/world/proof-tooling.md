@@ -42,8 +42,9 @@ Mover-list mutation, mission removal and trade events retain their actual
 order. Update records precede each object-manager `update()` call, including
 duplicate visits. Mission scope also captures events from collisions and ABL.
 Load-time creation before the first tick is represented by the initial
-snapshot, rather than tick-local events. Pause appearance refreshes are not
-simulation object updates.
+snapshot, rather than tick-local events. Paused mission invocations carry an
+`appearance_only` marker, the same snapshot, and `appearance_*` update labels
+so their refresh order remains observable without counting them as sim updates.
 
 Compare retained harness logs with:
 
