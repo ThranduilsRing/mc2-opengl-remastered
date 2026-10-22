@@ -97,9 +97,17 @@ def plan(mainland, heights, slopes, wet, seed, count):
     regions[(suitability > np.quantile(suitability[allowed],.48)) & allowed] = 1
     rr,cc = np.mgrid[:n,:n]
     hub_regions = (4,3,2,4,2,3,4,2,3)
+    warp_r = noise((n,n),seed ^ 0x832,max(8,n/9))-.5
+    warp_c = noise((n,n),seed ^ 0x934,max(8,n/9))-.5
     for i,(r,c) in enumerate(hubs):
-        influence = ((rr-r)/(n*.075))**2+((cc-c)/(n*.10))**2
-        regions[(influence < 1+.5*moisture) & allowed] = hub_regions[i]
+        angle = i*2.399+seed*.1
+        dr = rr-r+(warp_r-warp_r[r,c])*n*.13
+        dc = cc-c+(warp_c-warp_c[r,c])*n*.13
+        u,v = dr*math.cos(angle)-dc*math.sin(angle),dr*math.sin(angle)+dc*math.cos(angle)
+        influence = (u/(n*(.032+.009*(i%3))))**2+(v/(n*(.05+.012*(i%2))))**2
+        # Development follows locally gentle terrain, with irregular boundaries
+        # rather than identical clearing ellipses around every population node.
+        regions[(influence < 1+.7*(moisture-.5)-s/30) & allowed] = hub_regions[i]
     nodes = list(hubs)
     owners = list(range(len(hubs)))
     for _ in range(count*150):
