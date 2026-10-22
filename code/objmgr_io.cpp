@@ -1365,6 +1365,7 @@ std::vector<uint8_t> GameObjectManager::saveAnimationState() {
         int32_t handle = static_cast<int32_t>(i);
         archive(handle, *object->getAppearance()->simulationAnimation());
     }
+    if (!archive.good()) Fatal(0, "Unable to serialize authoritative animation state");
     return archive.bytes();
 }
 bool GameObjectManager::restoreAnimationState(const std::vector<uint8_t>& bytes) {

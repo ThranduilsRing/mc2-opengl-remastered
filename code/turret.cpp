@@ -2295,6 +2295,7 @@ void Turret::Load (TurretData *data)
 void Turret::updatePresentationLighting()
 {
 	const float ourExtentRadius = getExtentRadius();
+	const bool active = getAwake();
 	//-------------------------------------
 	// Are we a spotlight?
 	if ((static_cast<TurretTypePtr>(getObjectType()))->weaponMasterId[0] == -1)

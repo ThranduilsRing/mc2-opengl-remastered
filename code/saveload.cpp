@@ -1,4 +1,5 @@
 #include "save_archive.h"
+#include "simulation_save_section.h"
 #include "utils/mc2log.h"
 //******************************************************************************************
 //	saveload.cpp - This file contains the mission Save Load class code
@@ -262,9 +263,10 @@ void Mission::save (const char *saveFileName)
 
     // Optional versioned section follows the unchanged legacy END packet.
     mc2::save::Archive extension;
-    uint32_t tag = 0x4E413252u, version = 1;
+    uint32_t tag = 0x4E413252u, version = 2;
     auto animation = ObjectManager->saveAnimationState();
-    extension(tag, version, animation);
+    extension(tag, version);
+    mc2::sim::serializeAnimationBlob(extension, animation);
     orderIngress.queue().serialize(extension);
     if (!extension.good()) Fatal(0, "R2 animation save section failed");
     saveFile.writePacket(currentPacket, const_cast<MemoryPtr>(extension.bytes().data()),

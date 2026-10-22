@@ -6,8 +6,26 @@
 #include <vector>
 #include "unit_anim_state.h"
 #include "save_archive.h"
+#include "simulation_save_section.h"
 
 namespace ar = mc2_appearance_rng;
+
+TEST_CASE("mission animation payload exceeds 64K and rejects truncation") {
+    mc2::save::Bytes original(100000, 0x5a), decoded;
+    mc2::save::Archive write;
+    mc2::sim::serializeAnimationBlob(write, original);
+    REQUIRE(write.good());
+    mc2::save::Archive read(write.bytes());
+    mc2::sim::serializeAnimationBlob(read, decoded);
+    REQUIRE(read.finish());
+    CHECK(original == decoded);
+    auto truncated = write.bytes(); truncated.pop_back();
+    mc2::save::Archive invalid(truncated);
+    decoded.clear();
+    mc2::sim::serializeAnimationBlob(invalid, decoded);
+    CHECK_FALSE(invalid.good());
+    CHECK(decoded.empty());
+}
 
 TEST_CASE("unit animation save preserves gameplay clocks and imported clip transitions") {
     mc2::sim::UnitAnimState before;
