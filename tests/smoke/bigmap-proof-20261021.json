@@ -1,0 +1,22 @@
+{
+  "evidence_root": "E:/mc2-archive-2026-10/evidence/bigmap-sol-20261021",
+  "step1": {
+    "engine_commit": "ee9a46bea53dce63e39e2da578360efd12cc3905",
+    "offline_corrections_commit": "9bd6ebcb298f",
+    "build": "RelWithDebInfo, clean binary fingerprint verified",
+    "unit": "3358 active cases passed; production seam, installed-content census, both negative controls, and four Python harnesses passed",
+    "additional_codec_cases": "two new cases passed; stock/mod stride identity and 20-bit alias separation",
+    "contracts": {"passed": 123, "failed": 0, "log": "contracts-step1-final.log"},
+    "mc2_03": {"identical_pair_frames": 3409, "baseline_frames": 1000, "baseline_chain": "3bfc7e1947c403dc"},
+    "mc2_24": {"identical_pair_frames": 16517, "baseline_frames": 1000, "baseline_chain": "e835863671799429"},
+    "baseline_data_identity": {
+      "matches": false,
+      "install_digest": "c4dffcb86c8d8bef",
+      "baseline_digest": "9ffe5ce425438ded",
+      "note": "The check command fails the install fingerprint; separate comparison of the first 1000 frames matches every baseline digest. Baselines and data-overlay declarations were not changed."
+    },
+    "smoke_lite": {"duration_s": 30, "mc2_01_frames": 3748, "mc2_10_frames": 3513, "unexpected_destroys": 0, "passed": true},
+    "smoke_lite_initial_10s": "mc2_10 failed video_floor_missing after only two frames; the 30-second rerun exercised the required video path and passed",
+    "1kbasicmap": {"move_cells_per_side": 3060, "cap": 3072, "frames": 2736, "average_fps": 91, "passed": true}
+  }
+}
