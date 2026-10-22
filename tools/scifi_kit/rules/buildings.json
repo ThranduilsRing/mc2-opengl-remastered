@@ -3,7 +3,7 @@
   "seeds": [17, 42],
   "types": {
     "mech_hangar": {"stock": "hangar", "roof": "barrel", "height_fraction": 0.72, "door": "mech", "door_count": 2, "buttress_every_m": 6.0, "windows": true, "roof_plant": 2, "catwalk": true, "antenna": true, "label": "MECH OPERATIONS"},
-    "barracks": {"stock": "barracks", "roof": "flat", "height_fraction": 0.70, "door": "infantry", "door_count": 1, "buttress_every_m": 4.5, "windows": true, "roof_plant": 2, "catwalk": false, "antenna": true, "label": "GARRISON"},
+    "barracks": {"stock": "barracks", "roof": "flat", "height_fraction": 0.81, "sign_drop_m": 0.33, "door": "infantry", "door_count": 1, "buttress_every_m": 4.5, "windows": true, "roof_plant": 2, "catwalk": false, "antenna": true, "label": "GARRISON"},
     "factory": {"stock": "factorymd", "roof": "clerestory", "height_fraction": 0.64, "door": "vehicle", "door_count": 1, "buttress_every_m": 6.0, "windows": true, "roof_plant": 3, "catwalk": true, "antenna": false, "label": "FIELD FABRICATION"}
   },
   "footprint_policy": "Default exact stock bounding rectangle. Custom simple polygons use conservative grid rectangles wholly inside the lot; adjacent rectangles form wings. This is a stepped approximation for diagonal edges, not a polygon-exact facade solver. Minimum wing 3m; geometry inset for trims and access steps. Reject self-intersections, holes, and undersized lots."

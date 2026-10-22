@@ -242,7 +242,7 @@ def build(job):
     for x0,y0,x1,y1 in job['wings_m']:
         margin=min(.95,(x1-x0)*.09,(y1-y0)*.09);wh=max(2.0,job['height_m']*job['rule']['height_fraction'])
         curve=bpy.data.curves.new('Unit signage','FONT');curve.body=job['rule']['label']+' / '+str(job['seed']);curve.align_x='CENTER';curve.align_y='CENTER';curve.size=min(.40,wh*.055);curve.resolution_u=2
-        text=bpy.data.objects.new('Original unit lettering',curve);bpy.context.collection.objects.link(text);text.location=((x0+x1)/2,y0+margin-.305,wh-.48);text.rotation_euler=(math.pi/2,0,0);text.data.materials.append(material('sign ink',[.79,.80,.64]))
+        text=bpy.data.objects.new('Original unit lettering',curve);bpy.context.collection.objects.link(text);text.location=((x0+x1)/2,y0+margin-.305,wh-job['rule'].get('sign_drop_m',.48));text.rotation_euler=(math.pi/2,0,0);text.data.materials.append(material('sign ink',[.79,.80,.64]))
         bpy.context.view_layer.update()
         limit=min((x1-x0-2*margin)*.46,6.6)
         if text.dimensions.x>limit:text.scale.x*=limit/text.dimensions.x

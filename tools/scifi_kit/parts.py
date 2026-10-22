@@ -234,7 +234,8 @@ def assemble(job,style):
         front_width=w
         dw,dh=style['dimensions'][r['door']+'_door_m']['value']
         count=min(r['door_count'],max(1,int(w/(dw+1.7))))
-        dw=min(dw,(front_width-1.2)/count-1.0);dh=min(dh,wh-1.45)
+        dw=min(dw,(front_width-1.2)/count-1.0)
+        dh=min(dh,wh-(.95 if r['door']=='infantry' else 1.45))
         dw,dh=max(.8,dw),max(1.3,dh)
         openings=[((i-(count-1)/2)*(dw+1.5),dw) for i in range(count)]
         # Four segmented walls; no full solid mesh lies behind an opening.
@@ -260,7 +261,7 @@ def assemble(job,style):
                         previous=x+ow/2+.50
                     if previous<length/2:
                         kit.box(((previous+length/2)/2,.20,(wh+.5)/2),(length/2-previous,.34,wh-.5),'armour')
-                    kit.signage(min(length*.5,7),min(.7,wh*.10),wh-.48)
+                    kit.signage(min(length*.5,7),min(.7,wh*.10),wh-r.get('sign_drop_m',.48))
                     # Heavy front shoulders and layered lintel keep the bay
                     # legible when glazing and rails fall below a pixel.
                     for sign in [-1,1]:
@@ -308,6 +309,11 @@ def assemble(job,style):
                     kit.cylinder((w*.34,d*.32,wh+h*.23),.78,.22,'steel')
             for i in range(r['roof_plant']):
                 vx=(-.28+i*.25)*w;vy=d*(.15+rng.uniform(-.06,.06))
+                if r['roof']=='clerestory':
+                    # Mount on the clear shoulder decks, outside the raised
+                    # central mass and away from its chimney service zone.
+                    vx=(-.36 if i%2==0 else .36)*w
+                    vy=d*(-.25+(i//2)*.42+rng.uniform(-.035,.035))
                 # Roof plant on shoulders avoids floating on a vault.
                 vz=wh+(h*.21*math.sin(math.pi*(vx/w+.5)) if r['roof']=='barrel' else 0)+.14
                 ox,oy,oz=kit.origin
