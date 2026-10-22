@@ -3,6 +3,9 @@
 // per-tile caster window (it must hold every receiver of the tile and every caster that can shadow one) and the window matrix.
 #include "doctest.h"
 #include "gameos/shadow_bake_math.h"
+#include "gameos/shadow_dirty_tiles.h"
+
+#include <algorithm>
 
 #include <cmath>
 
@@ -131,4 +134,36 @@ TEST_CASE("shadow bake: neighbouring tiles share the window texel grid") {
     REQUIRE(a.texelWorld == c.texelWorld);
     const float shift = (c.lx0 - a.lx0) / a.texelWorld;
     CHECK(shift == doctest::Approx(std::round(shift)).epsilon(1e-4));
+}
+
+TEST_CASE("shadow bake dirty tiles: a footprint covers its sub-tiles plus one of margin, clipped to the mask") {
+    const MaskLayout m = maskLayout(101, 101 * 64.0f, 1.5f, 12288);
+    const float st = static_cast<float>(kSubTileTexels) * m.texelWorld;
+    // A rect inside sub-tile (3, 4): 3x3 sub-tiles with the margin.
+    const float x = m.originX + 3.5f * st, y = m.originYNorth - 4.5f * st;
+    const auto tiles = subTilesForRect(m, {x - 1.0f, y - 1.0f, x + 1.0f, y + 1.0f});
+    CHECK(tiles.size() == 9);
+    CHECK(std::find(tiles.begin(), tiles.end(), SubTile{3, 4}) != tiles.end());
+    // The map corner clips the margin.
+    CHECK(subTilesForRect(m, {m.originX, m.originYNorth - 1.0f, m.originX + 1.0f, m.originYNorth}).size() == 4);
+    // Off the map: nothing.
+    CHECK(subTilesForRect(m, {m.originX - 5000.0f, 0.0f, m.originX - 4000.0f, 10.0f}).empty());
+    // A sub-tile's region is its texels plus the apron on every side.
+    const Rect r = subTileRegionWorld(m, {0, 0});
+    CHECK(r.x1 - r.x0 == doctest::Approx(static_cast<float>(kSubTileTexels + 2 * kTileApron) * m.texelWorld));
+}
+
+TEST_CASE("shadow bake dirty tiles: the queue keeps each sub-tile once, in order, under a budget") {
+    DirtyQueue q;
+    q.reset(8);
+    CHECK(q.add({{1, 1}, {2, 1}, {1, 1}}) == 2);
+    CHECK(q.add({{2, 1}, {3, 3}, {9, 9}}) == 1);   // a repeat and an out-of-range tile are dropped
+    CHECK(q.size() == 3);
+    const auto first = q.take(2);
+    REQUIRE(first.size() == 2);
+    CHECK(first[0] == SubTile{1, 1});
+    CHECK(first[1] == SubTile{2, 1});
+    CHECK(q.add({{1, 1}}) == 1);   // taken tiles can be queued again
+    CHECK(q.take(4).size() == 2);
+    CHECK(q.empty());
 }

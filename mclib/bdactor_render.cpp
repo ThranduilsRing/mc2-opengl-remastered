@@ -7,6 +7,7 @@
 
 #include <cstdlib>
 #include <string>
+#include "../GameOS/gameos/static_caster_set.h"   // shadow-bake caster events
 
 namespace {
 // Parity row 28 oracle: a fixed highlight on every building so a frozen-sim capture can compare the GL and VK highlight
@@ -265,6 +266,7 @@ long BldgAppearance::render (long depthFixup)
 					(void)GameAdapters::StaticProp::syncStaticProp(
 						bldgShape, batch.data(), batch.size(), &legacyIdx);
 					staticReg.recipeIndex = legacyIdx;
+					mc2shadow::staticCasterSet().ownerRegistered(static_cast<const Appearance*>(this), legacyIdx);
 					staticReg.registered  = (staticReg.recipeIndex >= 0);
 					staticReg.shape       = bldgShape;
 					if (staticReg.registered) {

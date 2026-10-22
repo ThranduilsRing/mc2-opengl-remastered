@@ -3,6 +3,7 @@
 #include "bdactor_internal.h"
 #include "../RenderCore/axis_convert.h"
 #include "mc2fmt.h"
+#include "../GameOS/gameos/static_caster_set.h"   // shadow-bake caster events
 
 void TreeAppearance::touch()
 {
@@ -135,8 +136,10 @@ void TreeAppearance::invalidateStaticRegistration()
 {
 	// TREE-OVERRIDE-LOD-MVP Task 2: tear down every registered LOD recipe.
 	for (long lod = 0; lod < MAX_LODS; ++lod) {
-		if (staticReg[lod].registered && staticReg[lod].recipeIndex >= 0)
+		if (staticReg[lod].registered && staticReg[lod].recipeIndex >= 0) {
+			if (lod == 0) mc2shadow::staticCasterSet().ownerInvalidated(static_cast<const Appearance*>(this), staticReg[0].recipeIndex);
 			GameAdapters::StaticProp::destroyStaticPropByIndex(staticReg[lod].recipeIndex);
+		}
 		staticReg[lod] = StaticRegistration{};
 	}
 }
@@ -330,6 +333,7 @@ void TreeAppearance::registerStatic() {
 			// key when activeLOD!=0; recovery check is activeLOD==0-only).
 			staticReg[lod].shape       = (lod == 0) ? treeShape : nullptr;
 			staticReg[lod].recipeIndex = regIdx;
+			if (lod == 0) mc2shadow::staticCasterSet().ownerRegistered(static_cast<const Appearance*>(this), regIdx);
 			anyRegistered = true;
 
 			// COUNTER-HONESTY-1: tag the recipe Tree. Until this lane, ONLY the

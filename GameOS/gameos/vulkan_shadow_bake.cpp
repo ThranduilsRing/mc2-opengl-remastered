@@ -9,8 +9,10 @@
 #include "../../RenderCore/gpu_abi/GpuStaticPropInstance.h"
 #include "gos_postprocess.h"
 #include "mc2fmt.h"
+#include "Gates/gate.h"
 #include "gameos.hpp"   // gos_GetUserDataDirectory
 #include "shadow_mask_asset.h"
+#include "shadow_dirty_tiles.h"
 #include "static_caster_set.h"
 #include "static_shadow_spec.h"
 #include "terrain_field_store.h"
@@ -23,6 +25,7 @@
 #include <tracy/Tracy.hpp>
 
 #include <algorithm>
+#include <array>
 #include <chrono>
 #include <cmath>
 #include <cstring>
@@ -43,7 +46,10 @@ constexpr VkFormat kWindowFmt = VK_FORMAT_D32_SFLOAT;
 constexpr VkFormat kObjectFmt = VK_FORMAT_D16_UNORM;
 constexpr VkFormat kMaskFmt = VK_FORMAT_BC4_UNORM_BLOCK;   // the product (P4: half the R8 footprint)
 constexpr VkFormat kWorkFmt = VK_FORMAT_R8_UNORM;          // a tile's resolved levels and the coarse top image, before BC4
-constexpr uint32_t kTileMips = 8;                          // 512 .. 4: every level of a tile that still holds a whole BC4 block
+constexpr uint32_t kTileLevels = 6;                        // levels 0..5 of a tile (512..16) or a sub-tile (128..4) are encoded where they lie
+constexpr uint32_t kTopLevel = 5;                          // the coarse top image is mask level 5; the levels below it are re-derived from it
+constexpr uint32_t kSubTilesPerFrame = 4;                  // the dirty-update budget (about 0.3 ms of GPU on the 7900 XTX)
+constexpr uint32_t kSliceSubTile = kTileLevels;            // encoder parameter slices: 0..5 tile levels, 6..11 sub-tile levels, then the top
 constexpr int kObjectMapSize = 4096;              // High preset (D4); presets arrive with P7
 constexpr float kMaskTargetTexelWorld = 1.5f;     // High preset target (D1)
 constexpr int kMaskCapTexels = 12288;
@@ -60,18 +66,7 @@ struct CasterUBO {
 };
 static_assert(sizeof(CasterUBO) == 80, "ShadowFrameUBO std140 size");
 
-// LOCKSTEP with shaders/vulkan/include/shadow_bake_common.glsl BakeTile (std140).
-struct BakeTileParams {
-    float window[16];
-    float region[4];
-    int32_t regionInfo[4];
-    float sun[4];
-    float windowInfo[4];
-    float heightInfo[4];
-    float fade[4];
-    float march[4];
-};
-static_assert(sizeof(BakeTileParams) == 176, "BakeTile std140 size (shadow_bake_common.glsl)");
+static_assert(sizeof(ShadowBakeTileParams) == 176, "BakeTile std140 size (shadow_bake_common.glsl)");
 
 void blog(std::string_view what) { mc2::fmt::print_err("[SHADOW_BAKE] {}\n", what); }
 
@@ -206,17 +201,19 @@ bool ShadowBake::init(VkDevice device, VmaAllocator allocator, VkPhysicalDevice 
     plci.setLayoutCount = 2; plci.pSetLayouts = setLayouts;
     plci.pushConstantRangeCount = 1; plci.pPushConstantRanges = &pcr;
     if (!create(casterLayout_, device_, [&](auto* h) { return vkCreatePipelineLayout(device_, &plci, nullptr, h); })) { blog("caster pipeline layout failed."); return false; }
-    VkDescriptorPoolSize sizes[2] = {{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 2}, {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 2}};
+    VkDescriptorPoolSize sizes[2] = {{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 4}, {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 4}};
     VkDescriptorPoolCreateInfo pci{VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO};
-    pci.maxSets = 2; pci.poolSizeCount = 2; pci.pPoolSizes = sizes;
+    pci.maxSets = 4; pci.poolSizeCount = 2; pci.pPoolSizes = sizes;
     if (!create(casterPool_, device_, [&](auto* h) { return vkCreateDescriptorPool(device_, &pci, nullptr, h); })) { blog("caster pool failed."); return false; }
-    const VkDescriptorSetLayout two[2] = {casterDsl_.get(), casterDsl_.get()};
+    const VkDescriptorSetLayout four[4] = {casterDsl_.get(), casterDsl_.get(), casterDsl_.get(), casterDsl_.get()};
     VkDescriptorSetAllocateInfo dsai{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO};
-    dsai.descriptorPool = casterPool_.get(); dsai.descriptorSetCount = 2; dsai.pSetLayouts = two;
-    VkDescriptorSet sets[2]{};
+    dsai.descriptorPool = casterPool_.get(); dsai.descriptorSetCount = 4; dsai.pSetLayouts = four;
+    VkDescriptorSet sets[4]{};
     if (vkAllocateDescriptorSets(device_, &dsai, sets) != VK_SUCCESS) { blog("caster sets failed."); return false; }
     windowCasterSet_ = sets[0];
     objectCasterSet_ = sets[1];
+    incWindowSet_[0] = sets[2];
+    incWindowSet_[1] = sets[3];
 
     opaqueFrag_ = OwnedShaderModule(device_, vk_island_util::loadSpv(device_, dir + "shadow_prop.frag.spv", nullptr));
     alphaFrag_ = OwnedShaderModule(device_, vk_island_util::loadSpv(device_, dir + "shadow_prop_alpha.frag.spv", nullptr));
@@ -262,15 +259,19 @@ bool ShadowBake::init(VkDevice device, VmaAllocator allocator, VkPhysicalDevice 
         blog("compute SPIR-V missing: no bake.");
         return false;
     }
-    const VkDescriptorPoolSize csizes[4] = {{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 2}, {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 2},
-                                            {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 2}, {VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 4}};
+    const VkDescriptorPoolSize csizes[4] = {{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 6}, {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 6},
+                                            {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 6}, {VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 12}};
     VkDescriptorPoolCreateInfo cpci{VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO};
-    cpci.maxSets = 1; cpci.poolSizeCount = 4; cpci.pPoolSizes = csizes;
+    cpci.maxSets = 3; cpci.poolSizeCount = 4; cpci.pPoolSizes = csizes;
     if (!create(computePool_, device_, [&](auto* h) { return vkCreateDescriptorPool(device_, &cpci, nullptr, h); })) { blog("compute pool failed."); return false; }
-    const VkDescriptorSetLayout cdsl = pcss_.setLayout();
+    const VkDescriptorSetLayout cdsl[3] = {pcss_.setLayout(), pcss_.setLayout(), pcss_.setLayout()};
     VkDescriptorSetAllocateInfo cai{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO};
-    cai.descriptorPool = computePool_.get(); cai.descriptorSetCount = 1; cai.pSetLayouts = &cdsl;
-    if (vkAllocateDescriptorSets(device_, &cai, &computeSet_) != VK_SUCCESS) { blog("compute set failed."); return false; }
+    cai.descriptorPool = computePool_.get(); cai.descriptorSetCount = 3; cai.pSetLayouts = cdsl;
+    VkDescriptorSet csets[3]{};
+    if (vkAllocateDescriptorSets(device_, &cai, csets) != VK_SUCCESS) { blog("compute set failed."); return false; }
+    computeSet_ = csets[0];
+    incComputeSet_[0] = csets[1];
+    incComputeSet_[1] = csets[2];
 
     // Outside the window everything is lit: a white border is the far plane.
     VkSamplerCreateInfo sci{VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO};
@@ -351,6 +352,13 @@ void ShadowBake::invalidate() {
     maskInitialized_ = objectInitialized_ = false;
     maskReady_ = objectReady_ = false;
     recorded_ = submitted_ = recordedMask_ = false;
+    releaseIncremental();
+    incQueries_.reset();
+    incActive_ = heightsMoved_ = eventsSinceDrain_ = false;
+    diagRequest_ = diagPending_ = diagForceFull_ = false;
+    diagBuf_.reset();
+    diagInc_.clear();
+    heights_.clear();
     bakedKey_ = objectKey_ = recordedKey_ = recordedObjectKey_ = 0;
     objectGeneration_ = recordedObjectGeneration_ = 0;
     waitFrames_ = 0;
@@ -419,10 +427,11 @@ bool ShadowBake::ensureProducts(int maskTexels) {
     maskTexels_ = maskTexels;
     maskMips_ = mips;
     maskInitialized_ = false;
-    // The coarse top image: mask level kTileMips-1 (4 texels a tile) and its own mips, the levels whose blocks span more than one tile. Kept with the
+    // The coarse top image: mask level kTopLevel (4 texels a sub-tile) and its own mips, the levels whose blocks span more than one sub-tile. Kept with the
     // mask so a later tile rebake (P5) can rebuild the top levels without the rest of the map.
-    topSide_ = static_cast<uint32_t>(maskTexels) >> (kTileMips - 1);
-    topMips_ = mips - (kTileMips - 1);
+    topSide_ = static_cast<uint32_t>(maskTexels) >> kTopLevel;
+    topMips_ = mips - kTopLevel;
+    dirty_.reset(maskTexels / mc2shadow::kSubTileTexels);
     if (!makeImage(topR8_, topR8View_, allocator_, device_, kWorkFmt, topSide_, topMips_,
                    VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, VK_IMAGE_ASPECT_COLOR_BIT, "shadow.bake.maskTop")) {
         blog("mask top image creation failed.");
@@ -460,7 +469,7 @@ bool ShadowBake::ensureTransients() {
         VmaAllocationCreateInfo aci{};
         aci.usage = VMA_MEMORY_USAGE_AUTO;
         if (!staging_.create(allocator_, device_, bci, aci, "shadow.bake.staging")) { blog("staging buffer failed."); return false; }
-        if (!makeImage(tileR8_, tileR8View_, allocator_, device_, kWorkFmt, mc2shadow::kTileTexels, kTileMips,
+        if (!makeImage(tileR8_, tileR8View_, allocator_, device_, kWorkFmt, mc2shadow::kTileTexels, kTileLevels,
                        VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, VK_IMAGE_ASPECT_COLOR_BIT, "shadow.bake.tileLevels")) {
             blog("tile level image creation failed.");
             return false;
@@ -537,9 +546,10 @@ bool ShadowBake::update(VkCommandBuffer cb, uint64_t epoch, const ShadowBakeInpu
     const std::optional<BakeKeys> keys = inputsReady(in);
     if (!keys) return false;
     const uint64_t key = keys->mask, objectKey = keys->object;
-    const bool needMask = key != bakedKey_;
+    const bool needMask = key != bakedKey_ || diagForceFull_;
     const bool needObject = needMask || objectKey != objectKey_;
-    if (!needMask && !needObject) return false;
+    if (!needMask && !needObject) return updateIncremental(cb, epoch, in);
+    if (incActive_ && epoch < lastIncEpoch_ + 2) return false;   // a dirty batch still in flight shares the transients
     recordedKey_ = key;
     recordedObjectKey_ = objectKey;
     recordedMask_ = needMask;
@@ -648,7 +658,9 @@ bool ShadowBake::recordBake(VkCommandBuffer cb, const ShadowBakeInputs& in) {
     }
     if (heights_.size() != static_cast<size_t>(heightSide_) * heightSide_) { blog("height field malformed: no bake."); return false; }
     terrainTop_ = -1e30f;
-    for (float h : heights_) terrainTop_ = (std::max)(terrainTop_, h);
+    terrainMin_ = 1e30f;
+    for (float h : heights_) { terrainTop_ = (std::max)(terrainTop_, h); terrainMin_ = (std::min)(terrainMin_, h); }
+    terrainMin_ = (std::max)(terrainMin_, waterZ_);
     if (recordedMask_) bakedHeightVersion_ = store->heightVersion();
 
     if (recordedMask_) {
@@ -677,6 +689,7 @@ bool ShadowBake::recordBake(VkCommandBuffer cb, const ShadowBakeInputs& in) {
         casterTop = (std::max)(casterTop, hi.z);
     }
     if (casterTop < -1e29f) casterTop = terrainTop_;
+    casterTop_ = casterTop;
 
     // Object map instances: every live leaf, sorted by type.
     std::vector<uint32_t> objOrder = live;
@@ -697,7 +710,8 @@ bool ShadowBake::recordBake(VkCommandBuffer cb, const ShadowBakeInputs& in) {
         const clk::time_point r0 = clk::now();
         cached = mc2shadow::loadCachedShadowMask(cacheDir_, contentKey_);
         warmReadMs = std::chrono::duration<double, std::milli>(clk::now() - r0).count();
-        warm = cached && cached->texels == static_cast<uint32_t>(layout_.texels) && cached->mips == maskMips_;
+        warm = !diagForceFull_ && cached && cached->texels == static_cast<uint32_t>(layout_.texels) && cached->mips == maskMips_;
+        diagForceFull_ = false;
     }
     warm_ = warm;
 
@@ -705,53 +719,18 @@ bool ShadowBake::recordBake(VkCommandBuffer cb, const ShadowBakeInputs& in) {
     tiles_.clear();
     runs_.clear();
     std::vector<GpuStaticPropInstance> tileInst;
-    std::vector<BakeTileParams> params;
+    std::vector<ShadowBakeTileParams> params;
     const float region = static_cast<float>(mc2shadow::kRegionTexels) * layout_.texelWorld;
     if (recordedMask_ && !warm) {
         const int tps = layout_.tilesPerSide;
         for (int ty = 0; ty < tps; ++ty) {
             for (int tx = 0; tx < tps; ++tx) {
                 const mc2shadow::Rect r = mc2shadow::tileRegionWorld(layout_, tx, ty);
-                // The region's receiver height range, from the height samples it covers (one sample of margin).
-                float hMin = 1e30f, hMax = -1e30f;
-                const float hx0 = -halfMap_, hyN = halfMap_;
-                const int gx0 = std::clamp(static_cast<int>(std::floor((r.x0 - hx0) / heightSpacing_)) - 1, 0, heightSide_ - 1);
-                const int gx1 = std::clamp(static_cast<int>(std::ceil((r.x1 - hx0) / heightSpacing_)) + 1, 0, heightSide_ - 1);
-                const int gy0 = std::clamp(static_cast<int>(std::floor((hyN - r.y1) / heightSpacing_)) - 1, 0, heightSide_ - 1);
-                const int gy1 = std::clamp(static_cast<int>(std::ceil((hyN - r.y0) / heightSpacing_)) + 1, 0, heightSide_ - 1);
-                for (int gy = gy0; gy <= gy1; ++gy)
-                    for (int gx = gx0; gx <= gx1; ++gx) {
-                        const float h = (std::max)(heights_[static_cast<size_t>(gx) + static_cast<size_t>(gy) * heightSide_], waterZ_);
-                        hMin = (std::min)(hMin, h); hMax = (std::max)(hMax, h);
-                    }
                 TileWork tw;
-                tw.window = mc2shadow::casterWindow(basis_, r, hMin, hMax, casterTop, tanT);
-                tw.casterTop = hMax;
-                std::vector<uint32_t> picked;
-                for (size_t c = 0; c < boxes.size(); ++c)
-                    if (mc2shadow::casterInWindow(boxes[c], tw.window)) { picked.push_back(live[c]); tw.casterTop = (std::max)(tw.casterTop, tops[c]); }
-                std::sort(picked.begin(), picked.end(), [this](uint32_t a, uint32_t b) { return leaves_[a].typeID < leaves_[b].typeID; });
-                std::vector<uint32_t> types;
-                for (uint32_t i : picked) types.push_back(leaves_[i].typeID);
-                tw.firstRun = static_cast<uint32_t>(runs_.size());
-                appendRuns(runs_, types, static_cast<uint32_t>(tileInst.size()));
-                tw.runCount = static_cast<uint32_t>(runs_.size()) - tw.firstRun;
-                for (uint32_t i : picked) tileInst.push_back(leaves_[i]);
+                ShadowBakeTileParams p{};
+                planRegion(r, tx * mc2shadow::kTileTexels, ty * mc2shadow::kTileTexels, mc2shadow::kRegionTexels, casterTop, tanT,
+                           CasterView{&leaves_, &boxes, &tops, &live}, runs_, tileInst, tw, p);
                 tiles_.push_back(tw);
-
-                BakeTileParams p{};
-                mc2shadow::windowMatrix(basis_, tw.window, p.window);
-                p.region[0] = r.x0; p.region[1] = r.y1; p.region[2] = layout_.texelWorld; p.region[3] = waterZ_;
-                p.regionInfo[0] = mc2shadow::kRegionTexels;
-                p.regionInfo[1] = tx * mc2shadow::kTileTexels - mc2shadow::kTileApron;
-                p.regionInfo[2] = ty * mc2shadow::kTileTexels - mc2shadow::kTileApron;
-                p.regionInfo[3] = mc2shadow::kTileApron;
-                p.sun[0] = sun_.x; p.sun[1] = sun_.y; p.sun[2] = sun_.z; p.sun[3] = tanT;
-                p.windowInfo[0] = tw.window.dMin; p.windowInfo[1] = tw.window.dMax;
-                p.windowInfo[2] = tw.window.texelWorld; p.windowInfo[3] = static_cast<float>(tw.window.texels);
-                p.heightInfo[0] = hx0; p.heightInfo[1] = hyN; p.heightInfo[2] = heightSpacing_; p.heightInfo[3] = static_cast<float>(heightSide_);
-                p.fade[0] = mc2shadow::kFadeStartWorld; p.fade[1] = mc2shadow::kFadeEndWorld; p.fade[2] = fadeMax_; p.fade[3] = tw.casterTop;
-                p.march[0] = terrainTop_; p.march[1] = 4.0f; p.march[2] = 1.07f; p.march[3] = layout_.span * 1.5f;
                 params.push_back(p);
             }
         }
@@ -802,12 +781,12 @@ bool ShadowBake::recordBake(VkCommandBuffer cb, const ShadowBakeInputs& in) {
             return false;
         }
         std::vector<uint8_t> tp(std::max<uint32_t>(tileCount, 1) * kSlice, 0);
-        for (uint32_t t = 0; t < tileCount; ++t) std::memcpy(tp.data() + t * kSlice, &params[t], sizeof(BakeTileParams));
+        for (uint32_t t = 0; t < tileCount; ++t) std::memcpy(tp.data() + t * kSlice, &params[t], sizeof(ShadowBakeTileParams));
         std::vector<uint8_t> pp3(3 * kSlice, 0);
         for (int32_t m = 0; m < 3; ++m) std::memcpy(pp3.data() + m * kSlice, &m, sizeof(m));
         if (!tileParams_.upload(tp.data(), tp.size()) || !passParams_.upload(pp3.data(), pp3.size()) ||
             !heightBuf_.upload(heights_.data(), heights_.size() * sizeof(float))) { blog("bake upload failed."); return false; }
-        const VkDescriptorBufferInfo tile{tileParams_.get(), 0, sizeof(BakeTileParams)};
+        const VkDescriptorBufferInfo tile{tileParams_.get(), 0, sizeof(ShadowBakeTileParams)};
         const VkDescriptorBufferInfo pass{passParams_.get(), 0, 16};
         const VkDescriptorImageInfo raw{depthRawSampler_.get(), windowView_.get(), VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL};
         const VkDescriptorImageInfo cmp{depthCompareSampler_.get(), windowView_.get(), VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL};
@@ -857,56 +836,11 @@ bool ShadowBake::recordBake(VkCommandBuffer cb, const ShadowBakeInputs& in) {
                               VK_ACCESS_TRANSFER_WRITE_BIT);
         vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
                              VK_PIPELINE_STAGE_TRANSFER_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 6, pre);
-        const uint32_t regionGroups = (mc2shadow::kRegionTexels + 7) / 8;
-        const VkDeviceSize zero = 0;
         for (uint32_t t = 0; t < tileCount; ++t) {
-            const TileWork& tw = tiles_[t];
-            const uint32_t q = t * kQueriesPerTile;
-            const uint32_t tileOff = t * static_cast<uint32_t>(kSlice);
-            stamp(q);
-            // The previous tile's reads of the scratch images and its staging copy finish before this tile writes them.
-            cmdBarrier(cb, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_TRANSFER_READ_BIT,
-                       VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT);
-            VkClearValue clear{};
-            clear.depthStencil = {1.0f, 0};
-            VkRenderPassBeginInfo rbi{VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO};
-            rbi.renderPass = windowPass_.get(); rbi.framebuffer = windowFb_.get();
-            rbi.renderArea = {{0, 0}, {static_cast<uint32_t>(mc2shadow::kWindowMaxTexels), static_cast<uint32_t>(mc2shadow::kWindowMaxTexels)}};
-            rbi.clearValueCount = 1; rbi.pClearValues = &clear;
-            vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
-            if (tw.runCount > 0) {
-                const float side = static_cast<float>(mc2shadow::kWindowMaxTexels);
-                const VkViewport vp{0.0f, 0.0f, side, side, 0.0f, 1.0f};
-                const VkRect2D sc{{0, 0}, {static_cast<uint32_t>(mc2shadow::kWindowMaxTexels), static_cast<uint32_t>(mc2shadow::kWindowMaxTexels)}};
-                vkCmdSetViewport(cb, 0, 1, &vp);
-                vkCmdSetScissor(cb, 0, 1, &sc);
-                vkCmdSetDepthBias(cb, 0.0f, 0.0f, 0.0f);
-                vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, windowOpaque_.get());
-                vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, casterLayout_.get(), 0, 1, &windowCasterSet_, 1, &tileOff);
-                vkCmdBindVertexBuffers(cb, 0, 1, &in.vbo, &zero);
-                vkCmdBindIndexBuffer(cb, in.ibo, 0, VK_INDEX_TYPE_UINT32);
-                bool alphaBound = false;
-                drawRuns(cb, in, std::span<const InstRun>(runs_.data() + tw.firstRun, tw.runCount), alphaBound, windowOpaque_.get(), windowAlpha_.get());
-            }
-            vkCmdEndRenderPass(cb);
-            stamp(q + 1);
-            const uint32_t offs0[2] = {tileOff, 0};
-            pcss_.bind(cb, computeSet_, offs0);
-            vkCmdDispatch(cb, regionGroups, regionGroups, 1);
-            stamp(q + 2);
-            march_.bind(cb, computeSet_, offs0);
-            vkCmdDispatch(cb, regionGroups, regionGroups, 1);
-            stamp(q + 3);
-            for (uint32_t mode = 0; mode < 3; ++mode) {
-                cmdBarrier(cb, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_WRITE_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT);
-                const uint32_t offs[2] = {tileOff, mode * static_cast<uint32_t>(kSlice)};
-                resolve_.bind(cb, computeSet_, offs);
-                if (mode < 2) vkCmdDispatch(cb, regionGroups, regionGroups, 1);
-                else vkCmdDispatch(cb, mc2shadow::kTileTexels / 4 / 8, mc2shadow::kTileTexels / 8, 1);
-            }
-            cmdBarrier(cb, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_WRITE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_READ_BIT);
-            recordTileEncode(cb, static_cast<int>(t) % layout_.tilesPerSide, static_cast<int>(t) / layout_.tilesPerSide);
-            stamp(q + 4);
+            const int tx = static_cast<int>(t) % layout_.tilesPerSide, ty = static_cast<int>(t) / layout_.tilesPerSide;
+            RegionJob job{mc2shadow::kTileTexels, mc2shadow::kRegionTexels, tx * mc2shadow::kTileTexels, ty * mc2shadow::kTileTexels};
+            recordRegion(cb, in, job, tiles_[t], std::span<const InstRun>(runs_.data() + tiles_[t].firstRun, tiles_[t].runCount), computeSet_, windowCasterSet_,
+                         t * static_cast<uint32_t>(kSlice), t * static_cast<uint32_t>(kSlice), 0, 0, queryCount_ ? static_cast<int>(t * kQueriesPerTile) : -1);
         }
         // The levels whose blocks span tiles, from the coarse top image; then the whole chain is sampled (and read back for the cache).
         const uint32_t tail = tileCount * kQueriesPerTile;
@@ -961,11 +895,11 @@ uint64_t ShadowBake::contentKey(const ShadowBakeInputs& in, uint64_t casterHash)
     return h | 1u;
 }
 
-// The BC4 encoder's buffers: one tile's level chain plus the top image's chain, and one parameter slice per level.
+// The BC4 encoder's buffers: one tile's level chain plus the top image's chain, and one parameter slice per level (tile, sub-tile, top).
 bool ShadowBake::ensureEncoder() {
     if (blockStaging_ && bc4Params_) return true;
     VkDeviceSize off = 0;
-    for (uint32_t m = 0; m < kTileMips; ++m) { tileLevelOff_[m] = off; off += mc2shadow::bc4ChainBytes(mc2shadow::kTileTexels >> m, 1); }
+    for (uint32_t m = 0; m < kTileLevels; ++m) { tileLevelOff_[m] = off; off += mc2shadow::bc4ChainBytes(mc2shadow::kTileTexels >> m, 1); }
     topLevelOff_.assign(topMips_, 0);
     for (uint32_t k = 0; k < topMips_; ++k) { topLevelOff_[k] = off; off += mc2shadow::bc4ChainBytes((std::max)(topSide_ >> k, 1u), 1); }
     VkBufferCreateInfo bci{VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
@@ -974,15 +908,18 @@ bool ShadowBake::ensureEncoder() {
     VmaAllocationCreateInfo aci{};
     aci.usage = VMA_MEMORY_USAGE_AUTO;
     if (!blockStaging_.create(allocator_, device_, bci, aci, "shadow.bake.blocks")) { blog("block buffer failed."); return false; }
-    const uint32_t slices = kTileMips + topMips_;
+    const uint32_t slices = 2 * kTileLevels + topMips_;
     if (!makeHostBuffer(bc4Params_, allocator_, device_, slices * kSlice, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, "shadow.bake.bc4Params")) return false;
     std::vector<uint8_t> p(slices * kSlice, 0);
     auto slice = [&](uint32_t i, int32_t side, VkDeviceSize byteOff, int32_t mip) {
         const int32_t v[4] = {side, static_cast<int32_t>(byteOff / 4), mip, 0};
         std::memcpy(p.data() + i * kSlice, v, sizeof(v));
     };
-    for (uint32_t m = 0; m < kTileMips; ++m) slice(m, static_cast<int32_t>(mc2shadow::kTileTexels >> m), tileLevelOff_[m], static_cast<int32_t>(m));
-    for (uint32_t k = 0; k < topMips_; ++k) slice(kTileMips + k, static_cast<int32_t>((std::max)(topSide_ >> k, 1u)), topLevelOff_[k], static_cast<int32_t>(k));
+    for (uint32_t m = 0; m < kTileLevels; ++m) {
+        slice(m, static_cast<int32_t>(mc2shadow::kTileTexels >> m), tileLevelOff_[m], static_cast<int32_t>(m));
+        slice(kSliceSubTile + m, static_cast<int32_t>(mc2shadow::kSubTileTexels >> m), tileLevelOff_[m], static_cast<int32_t>(m));
+    }
+    for (uint32_t k = 0; k < topMips_; ++k) slice(2 * kTileLevels + k, static_cast<int32_t>((std::max)(topSide_ >> k, 1u)), topLevelOff_[k], static_cast<int32_t>(k));
     if (!bc4Params_.upload(p.data(), p.size())) return false;
     const VkDescriptorBufferInfo par{bc4Params_.get(), 0, 16};
     const VkDescriptorBufferInfo out{blockStaging_.get(), 0, VK_WHOLE_SIZE};
@@ -1007,11 +944,10 @@ void ShadowBake::encodeLevel(VkCommandBuffer cb, VkDescriptorSet set, uint32_t s
     vkCmdDispatch(cb, groups, groups, 1);
 }
 
-// One tile's resolved texels (the staging words) become its levels 512..4 in the tile image, those levels become BC4 blocks at the tile's place in the
-// mask, and its 4x4 level goes to the top image.
-void ShadowBake::recordTileEncode(VkCommandBuffer cb, int tx, int ty) {
-    const uint32_t T = mc2shadow::kTileTexels;
-    VkImageMemoryBarrier toDst = imageBarrier(tileR8_.get(), VK_IMAGE_ASPECT_COLOR_BIT, 0, kTileMips, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+// One tile's (or sub-tile's) resolved texels (the staging words) become its levels 0..5 in the tile image, those levels become BC4 blocks at its place
+// in the mask, and its level 5 (4 texels a sub-tile) goes to the top image.
+void ShadowBake::recordTileEncode(VkCommandBuffer cb, int originX, int originY, uint32_t T, uint32_t sliceBase) {
+    VkImageMemoryBarrier toDst = imageBarrier(tileR8_.get(), VK_IMAGE_ASPECT_COLOR_BIT, 0, kTileLevels, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                                               0, VK_ACCESS_TRANSFER_WRITE_BIT);
     vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &toDst);
     VkBufferImageCopy copy{};
@@ -1020,7 +956,7 @@ void ShadowBake::recordTileEncode(VkCommandBuffer cb, int tx, int ty) {
     copy.imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
     copy.imageExtent = {T, T, 1};
     vkCmdCopyBufferToImage(cb, staging_.get(), tileR8_.get(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copy);
-    for (uint32_t m = 1; m < kTileMips; ++m) {
+    for (uint32_t m = 1; m < kTileLevels; ++m) {
         VkImageMemoryBarrier toSrc = imageBarrier(tileR8_.get(), VK_IMAGE_ASPECT_COLOR_BIT, m - 1, 1, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                                                   VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_TRANSFER_READ_BIT);
         vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &toSrc);
@@ -1031,45 +967,44 @@ void ShadowBake::recordTileEncode(VkCommandBuffer cb, int tx, int ty) {
         blit.dstOffsets[1] = {static_cast<int32_t>(T >> m), static_cast<int32_t>(T >> m), 1};
         vkCmdBlitImage(cb, tileR8_.get(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, tileR8_.get(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &blit, VK_FILTER_LINEAR);
     }
-    // The 4x4 level to the top image, then every level is read by the encoder.
-    VkImageMemoryBarrier lastSrc = imageBarrier(tileR8_.get(), VK_IMAGE_ASPECT_COLOR_BIT, kTileMips - 1, 1, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+    VkImageMemoryBarrier lastSrc = imageBarrier(tileR8_.get(), VK_IMAGE_ASPECT_COLOR_BIT, kTileLevels - 1, 1, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                                                 VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_TRANSFER_READ_BIT);
     vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &lastSrc);
-    const uint32_t q = T >> (kTileMips - 1);
+    const uint32_t q = T >> kTopLevel;
     VkImageCopy ic{};
-    ic.srcSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, kTileMips - 1, 0, 1};
+    ic.srcSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, kTopLevel, 0, 1};
     ic.dstSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
-    ic.dstOffset = {static_cast<int32_t>(static_cast<uint32_t>(tx) * q), static_cast<int32_t>(static_cast<uint32_t>(ty) * q), 0};
+    ic.dstOffset = {originX >> kTopLevel, originY >> kTopLevel, 0};
     ic.extent = {q, q, 1};
     vkCmdCopyImage(cb, tileR8_.get(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, topR8_.get(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &ic);
-    VkImageMemoryBarrier toRead = imageBarrier(tileR8_.get(), VK_IMAGE_ASPECT_COLOR_BIT, 0, kTileMips, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+    VkImageMemoryBarrier toRead = imageBarrier(tileR8_.get(), VK_IMAGE_ASPECT_COLOR_BIT, 0, kTileLevels, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
                                                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_ACCESS_TRANSFER_READ_BIT | VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT);
     vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &toRead);
-    for (uint32_t m = 0; m < kTileMips; ++m) encodeLevel(cb, bc4TileSet_, m, T >> m);
+    for (uint32_t m = 0; m < kTileLevels; ++m) encodeLevel(cb, bc4TileSet_, sliceBase + m, T >> m);
     cmdBarrier(cb, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_WRITE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_READ_BIT);
-    VkBufferImageCopy lv[kTileMips]{};
-    for (uint32_t m = 0; m < kTileMips; ++m) {
+    VkBufferImageCopy lv[kTileLevels]{};
+    for (uint32_t m = 0; m < kTileLevels; ++m) {
         const uint32_t side = T >> m;
         lv[m].bufferOffset = tileLevelOff_[m];
         lv[m].imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, m, 0, 1};
-        lv[m].imageOffset = {static_cast<int32_t>(static_cast<uint32_t>(tx) * side), static_cast<int32_t>(static_cast<uint32_t>(ty) * side), 0};
+        lv[m].imageOffset = {originX >> m, originY >> m, 0};
         lv[m].imageExtent = {side, side, 1};
     }
-    vkCmdCopyBufferToImage(cb, blockStaging_.get(), maskImage_.get(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, kTileMips, lv);
+    vkCmdCopyBufferToImage(cb, blockStaging_.get(), maskImage_.get(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, kTileLevels, lv);
 }
 
-// The mask levels below the tile grid: the top image's mips (from the tiles' 4x4 levels), encoded and copied to mask levels kTileMips.. .
+// The mask levels below the sub-tile grid: the top image's mips, encoded and copied to mask levels kTopLevel+1.. .
 void ShadowBake::recordTopLevels(VkCommandBuffer cb) {
     recordTopLevelsMipsOnly(cb);
     if (topMips_ <= 1) return;
-    for (uint32_t k = 1; k < topMips_; ++k) encodeLevel(cb, bc4TopSet_, kTileMips + k, (std::max)(topSide_ >> k, 1u));
+    for (uint32_t k = 1; k < topMips_; ++k) encodeLevel(cb, bc4TopSet_, 2 * kTileLevels + k, (std::max)(topSide_ >> k, 1u));
     cmdBarrier(cb, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_WRITE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_READ_BIT);
     std::vector<VkBufferImageCopy> lv;
     for (uint32_t k = 1; k < topMips_; ++k) {
         const uint32_t side = (std::max)(topSide_ >> k, 1u);
         VkBufferImageCopy c{};
         c.bufferOffset = topLevelOff_[k];
-        c.imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, kTileMips - 1 + k, 0, 1};
+        c.imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, kTopLevel + k, 0, 1};
         c.imageExtent = {side, side, 1};
         lv.push_back(c);
     }
@@ -1114,15 +1049,15 @@ void ShadowBake::recordMaskToRead(VkCommandBuffer cb, bool readback) {
     maskInitialized_ = true;
 }
 
-// A warm load: the cooked blocks into the mask (every level) and the cooked level kTileMips-1, decoded, into the top image.
+// A warm load: the cooked blocks into the mask (every level) and the cooked level kTopLevel, decoded, into the top image.
 bool ShadowBake::recordWarmUpload(VkCommandBuffer cb, const mc2shadow::ShadowMaskAsset& asset) {
     const uint32_t topBytes = topSide_ * topSide_;
     const VkDeviceSize total = asset.blocks.size() + topBytes;
     if (!makeHostBuffer(transfer_, allocator_, device_, total, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, "shadow.bake.upload")) return false;
     std::vector<uint8_t> top(topBytes, 255);
-    {   // the level that is 4 texels a tile, in the chain right after the first kTileMips-1 levels
+    {   // level kTopLevel, in the chain right after the levels above it
         VkDeviceSize off = 0;
-        for (uint32_t m = 0; m + 1 < kTileMips; ++m) off += mc2shadow::bc4ChainBytes((std::max)(static_cast<uint32_t>(maskTexels_) >> m, 1u), 1);
+        for (uint32_t m = 0; m < kTopLevel; ++m) off += mc2shadow::bc4ChainBytes((std::max)(static_cast<uint32_t>(maskTexels_) >> m, 1u), 1);
         const uint32_t blocks = topSide_ / 4;
         for (uint32_t by = 0; by < blocks; ++by)
             for (uint32_t bx = 0; bx < blocks; ++bx) {
@@ -1194,9 +1129,405 @@ void ShadowBake::storeReadback() {
     vmaInvalidateAllocation(allocator_, transfer_.allocation(), 0, VK_WHOLE_SIZE);
     std::memcpy(asset.blocks.data(), p, asset.blocks.size());
     transfer_.unmap();
+    if (!diagInc_.empty()) {
+        compareChains(diagInc_, asset.blocks);
+        diagInc_.clear();
+    }
     const bool ok = mc2shadow::storeCachedShadowMask(cacheDir_, asset);
     mc2::fmt::print_err("[SHADOW_BAKE] cook cache store: {} key={:016x} mb={:.1f} ms={:.2f}\n", ok ? "ok" : "failed", mc2::fmt::as_u64(contentKey_),
                         static_cast<double>(asset.blocks.size()) / 1048576.0, std::chrono::duration<double, std::milli>(clk::now() - t0).count());
+}
+
+// One region's plan: its receiver height range, its caster window, the casters that can reach it (appended to `runs` / `inst`) and its parameters.
+void ShadowBake::planRegion(mc2shadow::Rect r, int originX, int originY, int regionTexels, float casterTop, float tanT, const CasterView& cv,
+                            std::vector<InstRun>& runs, std::vector<GpuStaticPropInstance>& inst, TileWork& tw, ShadowBakeTileParams& p) const {
+    float hMin = 1e30f, hMax = -1e30f;
+    const float hx0 = -halfMap_, hyN = halfMap_;
+    const int gx0 = std::clamp(static_cast<int>(std::floor((r.x0 - hx0) / heightSpacing_)) - 1, 0, heightSide_ - 1);
+    const int gx1 = std::clamp(static_cast<int>(std::ceil((r.x1 - hx0) / heightSpacing_)) + 1, 0, heightSide_ - 1);
+    const int gy0 = std::clamp(static_cast<int>(std::floor((hyN - r.y1) / heightSpacing_)) - 1, 0, heightSide_ - 1);
+    const int gy1 = std::clamp(static_cast<int>(std::ceil((hyN - r.y0) / heightSpacing_)) + 1, 0, heightSide_ - 1);
+    for (int gy = gy0; gy <= gy1; ++gy)
+        for (int gx = gx0; gx <= gx1; ++gx) {
+            const float h = (std::max)(heights_[static_cast<size_t>(gx) + static_cast<size_t>(gy) * heightSide_], waterZ_);
+            hMin = (std::min)(hMin, h); hMax = (std::max)(hMax, h);
+        }
+    tw.window = mc2shadow::casterWindow(basis_, r, hMin, hMax, casterTop, tanT);
+    tw.casterTop = hMax;
+    std::vector<uint32_t> picked;
+    for (size_t c = 0; c < cv.boxes->size(); ++c)
+        if (mc2shadow::casterInWindow((*cv.boxes)[c], tw.window)) { picked.push_back((*cv.live)[c]); tw.casterTop = (std::max)(tw.casterTop, (*cv.tops)[c]); }
+    const auto& leaves = *cv.leaves;
+    std::sort(picked.begin(), picked.end(), [&leaves](uint32_t a, uint32_t b) { return leaves[a].typeID < leaves[b].typeID; });
+    std::vector<uint32_t> types;
+    for (uint32_t i : picked) types.push_back(leaves[i].typeID);
+    tw.firstRun = static_cast<uint32_t>(runs.size());
+    appendRuns(runs, types, static_cast<uint32_t>(inst.size()));
+    tw.runCount = static_cast<uint32_t>(runs.size()) - tw.firstRun;
+    for (uint32_t i : picked) inst.push_back(leaves[i]);
+
+    p = {};
+    mc2shadow::windowMatrix(basis_, tw.window, p.window);
+    p.region[0] = r.x0; p.region[1] = r.y1; p.region[2] = layout_.texelWorld; p.region[3] = waterZ_;
+    p.regionInfo[0] = regionTexels;
+    p.regionInfo[1] = originX - mc2shadow::kTileApron;
+    p.regionInfo[2] = originY - mc2shadow::kTileApron;
+    p.regionInfo[3] = mc2shadow::kTileApron;
+    p.sun[0] = sun_.x; p.sun[1] = sun_.y; p.sun[2] = sun_.z; p.sun[3] = tanT;
+    p.windowInfo[0] = tw.window.dMin; p.windowInfo[1] = tw.window.dMax;
+    p.windowInfo[2] = tw.window.texelWorld; p.windowInfo[3] = static_cast<float>(tw.window.texels);
+    p.heightInfo[0] = hx0; p.heightInfo[1] = hyN; p.heightInfo[2] = heightSpacing_; p.heightInfo[3] = static_cast<float>(heightSide_);
+    p.fade[0] = mc2shadow::kFadeStartWorld; p.fade[1] = mc2shadow::kFadeEndWorld; p.fade[2] = fadeMax_; p.fade[3] = tw.casterTop;
+    p.march[0] = terrainTop_; p.march[1] = 4.0f; p.march[2] = 1.07f; p.march[3] = layout_.span * 1.5f;
+}
+
+// One region (a 512 tile of a full bake, or a 128 dirty sub-tile): the caster window, PCSS, terrain march, the resolve, and the BC4 encode into the mask.
+// queryBase >= 0 stamps the window / pcss / march / resolve boundaries (full bakes only).
+void ShadowBake::recordRegion(VkCommandBuffer cb, const ShadowBakeInputs& in, const RegionJob& job, const TileWork& tw, std::span<const InstRun> runs,
+                              VkDescriptorSet computeSet, VkDescriptorSet windowSet, uint32_t paramOff, uint32_t casterOff, uint32_t passBase,
+                              uint32_t sliceBase, int queryBase) {
+    auto stamp = [&](int k) { if (queryBase >= 0) vkCmdWriteTimestamp(cb, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, queries_.get(), static_cast<uint32_t>(queryBase + k)); };
+    const uint32_t groups = (static_cast<uint32_t>(job.regionTexels) + 7) / 8;
+    const VkDeviceSize zero = 0;
+    stamp(0);
+    // The previous region's reads of the scratch images and its staging copy finish before this region writes them.
+    cmdBarrier(cb, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_TRANSFER_READ_BIT,
+               VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT);
+    VkClearValue clear{};
+    clear.depthStencil = {1.0f, 0};
+    VkRenderPassBeginInfo rbi{VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO};
+    rbi.renderPass = windowPass_.get(); rbi.framebuffer = windowFb_.get();
+    rbi.renderArea = {{0, 0}, {static_cast<uint32_t>(mc2shadow::kWindowMaxTexels), static_cast<uint32_t>(mc2shadow::kWindowMaxTexels)}};
+    rbi.clearValueCount = 1; rbi.pClearValues = &clear;
+    vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
+    if (!runs.empty()) {
+        const float side = static_cast<float>(mc2shadow::kWindowMaxTexels);
+        const VkViewport vp{0.0f, 0.0f, side, side, 0.0f, 1.0f};
+        const VkRect2D sc{{0, 0}, {static_cast<uint32_t>(mc2shadow::kWindowMaxTexels), static_cast<uint32_t>(mc2shadow::kWindowMaxTexels)}};
+        vkCmdSetViewport(cb, 0, 1, &vp);
+        vkCmdSetScissor(cb, 0, 1, &sc);
+        vkCmdSetDepthBias(cb, 0.0f, 0.0f, 0.0f);
+        vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, windowOpaque_.get());
+        vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, casterLayout_.get(), 0, 1, &windowSet, 1, &casterOff);
+        vkCmdBindVertexBuffers(cb, 0, 1, &in.vbo, &zero);
+        vkCmdBindIndexBuffer(cb, in.ibo, 0, VK_INDEX_TYPE_UINT32);
+        bool alphaBound = false;
+        drawRuns(cb, in, runs, alphaBound, windowOpaque_.get(), windowAlpha_.get());
+    }
+    vkCmdEndRenderPass(cb);
+    stamp(1);
+    const uint32_t offs0[2] = {paramOff, passBase};
+    pcss_.bind(cb, computeSet, offs0);
+    vkCmdDispatch(cb, groups, groups, 1);
+    stamp(2);
+    march_.bind(cb, computeSet, offs0);
+    vkCmdDispatch(cb, groups, groups, 1);
+    stamp(3);
+    for (uint32_t mode = 0; mode < 3; ++mode) {
+        cmdBarrier(cb, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_WRITE_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT);
+        const uint32_t offs[2] = {paramOff, passBase + mode * static_cast<uint32_t>(kSlice)};
+        resolve_.bind(cb, computeSet, offs);
+        if (mode < 2) vkCmdDispatch(cb, groups, groups, 1);
+        else vkCmdDispatch(cb, job.tile / 4 / 8, job.tile / 8, 1);
+    }
+    cmdBarrier(cb, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_WRITE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_READ_BIT);
+    recordTileEncode(cb, job.originX, job.originY, job.tile, sliceBase);
+    stamp(4);
+}
+
+// The world rectangle a caster's leaves can shadow (their boxes swept down-sun to the lowest receiver), or an empty rect for no leaves.
+std::optional<mc2shadow::Rect> ShadowBake::leavesFootprint(const std::vector<GpuStaticPropInstance>& leaves) const {
+    std::optional<mc2shadow::Rect> out;
+    const float tanT = std::tan(mc2shadow::kSunAngularRadiusDeg * 0.01745329252f);
+    for (const GpuStaticPropInstance& leaf : leaves) {
+        if (leaf.typeID >= typeBounds_.size() || !typeBounds_[leaf.typeID].valid) continue;
+        mc2shadow::Vec3 lo, hi;
+        instanceBox(leaf.modelMatrix, typeBounds_[leaf.typeID].mn, typeBounds_[leaf.typeID].mx, lo, hi);
+        const mc2shadow::Rect r = mc2shadow::shadowFootprint(lo, hi, sun_, (std::min)(terrainMin_, lo.z), tanT);
+        if (!out) out = r;
+        else out = mc2shadow::Rect{(std::min)(out->x0, r.x0), (std::min)(out->y0, r.y0), (std::max)(out->x1, r.x1), (std::max)(out->y1, r.y1)};
+    }
+    return out;
+}
+
+// The incremental path (P5): caster events and height patches become dirty sub-tiles, recomputed in place a budget's worth per frame inside the frame's
+// own command buffer (no waitIdle, no second mask). True when it recorded a batch.
+bool ShadowBake::updateIncremental(VkCommandBuffer cb, uint64_t epoch, const ShadowBakeInputs& in) {
+    if (!maskReady_ || layout_.texels == 0) return false;
+    retireIncremental(epoch);
+    mc2shadow::StaticCasterSet& set = mc2shadow::staticCasterSet();
+    mc2terrain::TerrainFieldStore* store = gos_TerrainFieldStore();
+    bool castersMoved = false;
+    if (set.hasEvents()) {
+        for (const auto& ev : set.takeEvents()) {
+            for (const auto* side : {&ev.before, &ev.after}) {
+                if (const auto r = leavesFootprint(*side)) {
+                    const size_t added = dirty_.add(mc2shadow::subTilesForRect(layout_, *r));
+                    if (eventsLogged_ < 16) {
+                        ++eventsLogged_;
+                        mc2::fmt::print_err("[SHADOW_BAKE] caster event: {} leaves {} footprint=({:.0f},{:.0f})-({:.0f},{:.0f}) dirty_sub_tiles+={}\n",
+                                            side == &ev.before ? "removed" : "added", mc2::fmt::as_size(side->size()), r->x0, r->y0, r->x1, r->y1,
+                                            mc2::fmt::as_size(added));
+                    }
+                }
+            }
+        }
+        castersMoved = true;
+        eventsSinceDrain_ = true;
+    }
+    if (store) {
+        const auto patches = store->takeHeightPatches();
+        if (!patches.empty()) {
+            const float tanT = std::tan(mc2shadow::kSunAngularRadiusDeg * 0.01745329252f);
+            for (const auto& hp : patches) {
+                float top = -1e30f;
+                for (int gy = hp.y0; gy <= hp.y1; ++gy)
+                    for (int gx = hp.x0; gx <= hp.x1; ++gx) top = (std::max)(top, store->height()[static_cast<size_t>(gx) + static_cast<size_t>(gy) * store->mapSide()]);
+                const mc2shadow::Vec3 lo{hp.x0 * mc2shadow::kWorldUnitsPerVertex - halfMap_, halfMap_ - hp.y1 * mc2shadow::kWorldUnitsPerVertex, terrainMin_};
+                const mc2shadow::Vec3 hi{hp.x1 * mc2shadow::kWorldUnitsPerVertex - halfMap_, halfMap_ - hp.y0 * mc2shadow::kWorldUnitsPerVertex, (std::max)(top, terrainMin_)};
+                dirty_.add(mc2shadow::subTilesForRect(layout_, mc2shadow::shadowFootprint(lo, hi, sun_, terrainMin_, tanT)));
+            }
+            heightsMoved_ = true;
+            eventsSinceDrain_ = true;
+        }
+    }
+    if (dirty_.empty()) {
+        if (incActive_ && epoch >= lastIncEpoch_ + 2) {
+            incActive_ = false;
+            mc2::fmt::print_err("[SHADOW_BAKE] dirty queue drained: sub_tiles={} batches={} max_batch_gpu_ms={:.3f}\n", incSubTiles_, incBatches_, incMaxGpuMs_);
+            incSubTiles_ = incBatches_ = 0;
+            incMaxGpuMs_ = 0.0;
+            releaseTransients();
+            releaseIncremental();
+            if (eventsSinceDrain_ && diagOn()) diagRequest_ = true;
+            eventsSinceDrain_ = false;
+        }
+        if (diagRequest_ && !incActive_) return recordDiagReadback(cb, epoch);
+        return false;
+    }
+    ZoneScopedN("ShadowBake.Dirty");
+    // CPU state the sub-tiles read: the heights (re-read after a patch) and the live casters (re-resolved after an event).
+    if (heightsMoved_ || heights_.empty()) {
+        if (!store) return false;
+        const int coarseSide = store->mapSide();
+        if (!store->visualHeight().empty() && store->visualSide() == (coarseSide - 1) * 4 + 1)
+            heights_.assign(store->visualHeight().begin(), store->visualHeight().begin() + static_cast<size_t>(heightSide_) * heightSide_);
+        else
+            heights_ = store->height();
+        if (heights_.size() != static_cast<size_t>(heightSide_) * heightSide_) return false;
+        heightsMoved_ = false;
+        ++heightsGen_;
+    }
+    if (castersMoved || liveLeaves_.empty()) {
+        set.resolve(liveLeaves_);
+        liveBoxes_.clear(); liveTops_.clear(); liveIdx_.clear();
+        for (uint32_t i = 0; i < liveLeaves_.size(); ++i) {
+            const GpuStaticPropInstance& leaf = liveLeaves_[i];
+            if (leaf.typeID >= typeBounds_.size() || !typeBounds_[leaf.typeID].valid) continue;
+            mc2shadow::Vec3 lo, hi;
+            instanceBox(leaf.modelMatrix, typeBounds_[leaf.typeID].mn, typeBounds_[leaf.typeID].mx, lo, hi);
+            liveBoxes_.push_back(mc2shadow::lightBox(basis_, lo, hi));
+            liveTops_.push_back(hi.z);
+            liveIdx_.push_back(i);
+        }
+    }
+    if (!ensureTransients() || !ensureIncremental()) return false;
+    const uint32_t par = static_cast<uint32_t>(epoch & 1u);
+    // This parity's last batch retired when the island waited its fence: its timestamps are final and its buffers and sets free to rewrite.
+    if (incQueryUsed_[par]) {
+        uint64_t ts[2] = {0, 0};
+        if (vkGetQueryPoolResults(device_, incQueries_.get(), par * 2, 2, sizeof(ts), ts, sizeof(uint64_t), VK_QUERY_RESULT_64_BIT) == VK_SUCCESS)
+            incMaxGpuMs_ = (std::max)(incMaxGpuMs_, static_cast<double>(ts[1] - ts[0]) * timestampPeriodNs_ * 1e-6);
+        incQueryUsed_[par] = false;
+    }
+    const std::vector<mc2shadow::SubTile> batch = dirty_.take(kSubTilesPerFrame);
+    const float tanT = std::tan(mc2shadow::kSunAngularRadiusDeg * 0.01745329252f);
+    std::vector<InstRun> runs;
+    std::vector<GpuStaticPropInstance> inst;
+    std::vector<TileWork> works(batch.size());
+    std::vector<uint8_t> tp(kSubTilesPerFrame * kSlice, 0), ubo(kSubTilesPerFrame * kSlice, 0);
+    for (size_t i = 0; i < batch.size(); ++i) {
+        ShadowBakeTileParams p{};
+        planRegion(mc2shadow::subTileRegionWorld(layout_, batch[i]), batch[i].x * mc2shadow::kSubTileTexels, batch[i].y * mc2shadow::kSubTileTexels,
+                   mc2shadow::kSubTileTexels + 2 * mc2shadow::kTileApron, casterTop_, tanT, CasterView{&liveLeaves_, &liveBoxes_, &liveTops_, &liveIdx_},
+                   runs, inst, works[i], p);
+        std::memcpy(tp.data() + i * kSlice, &p, sizeof(p));
+        CasterUBO u{};
+        std::memcpy(u.lightSpace, p.window, sizeof(u.lightSpace));
+        std::memcpy(ubo.data() + i * kSlice, &u, sizeof(u));
+    }
+    if (inst.size() > incInstanceCap_) {
+        blog("a dirty batch has more casters than its buffer: the batch waits for the next frame.");
+        return false;
+    }
+    const VkDeviceSize parBase = static_cast<VkDeviceSize>(par) * kSubTilesPerFrame * kSlice;
+    const VkDeviceSize instBase = static_cast<VkDeviceSize>(par) * incInstanceCap_ * sizeof(GpuStaticPropInstance);
+    for (InstRun& r : runs) r.firstInstance += static_cast<uint32_t>(par * incInstanceCap_);
+    if (!incParams_.upload(tp.data(), tp.size(), parBase) || !incCasterUbo_.upload(ubo.data(), ubo.size(), parBase) ||
+        (!inst.empty() && !incInstances_.upload(inst.data(), inst.size() * sizeof(GpuStaticPropInstance), instBase))) return false;
+    if (incHeightsGen_[par] != heightsGen_) {
+        if (!makeHostBuffer(incHeights_[par], allocator_, device_, heights_.size() * sizeof(float), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, "shadow.bake.dirtyHeights") ||
+            !incHeights_[par].upload(heights_.data(), heights_.size() * sizeof(float))) return false;
+        incHeightsGen_[par] = heightsGen_;
+    }
+    writeIncrementalSets(par);
+
+    MC2_VK_GPU_SCOPE(gpuScope, cb, "VKIsl.Shadow.BakeDirty");
+    vkCmdResetQueryPool(cb, incQueries_.get(), par * 2, 2);
+    vkCmdWriteTimestamp(cb, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, incQueries_.get(), par * 2);
+    // The mask and the top image are rewritten in place: their earlier readers (the terrain, water and overlay passes) finish first.
+    VkImageMemoryBarrier pre[6];
+    pre[0] = imageBarrier(maskImage_.get(), VK_IMAGE_ASPECT_COLOR_BIT, 0, maskMips_, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                          0, VK_ACCESS_TRANSFER_WRITE_BIT);
+    pre[1] = imageBarrier(topR8_.get(), VK_IMAGE_ASPECT_COLOR_BIT, 0, topMips_, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                          0, VK_ACCESS_TRANSFER_WRITE_BIT);
+    for (int i = 0; i < 4; ++i)
+        pre[2 + i] = imageBarrier(scratch_[i].get(), VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL, 0,
+                                  VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT);
+    vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                         VK_PIPELINE_STAGE_TRANSFER_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 6, pre);
+    for (size_t i = 0; i < batch.size(); ++i) {
+        RegionJob job{mc2shadow::kSubTileTexels, mc2shadow::kSubTileTexels + 2 * mc2shadow::kTileApron, batch[i].x * mc2shadow::kSubTileTexels,
+                      batch[i].y * mc2shadow::kSubTileTexels};
+        const uint32_t off = static_cast<uint32_t>(parBase + i * kSlice);
+        recordRegion(cb, in, job, works[i], std::span<const InstRun>(runs.data() + works[i].firstRun, works[i].runCount), incComputeSet_[par],
+                     incWindowSet_[par], off, off, 0, kSliceSubTile, -1);
+    }
+    recordTopLevels(cb);
+    recordMaskToRead(cb, false);
+    vkCmdWriteTimestamp(cb, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, incQueries_.get(), par * 2 + 1);
+    gpuScope.end();
+    incQueryUsed_[par] = true;
+    incActive_ = true;
+    lastIncEpoch_ = epoch;
+    incSubTiles_ += static_cast<uint32_t>(batch.size());
+    ++incBatches_;
+    return true;
+}
+
+// The incremental path's own buffers and descriptor sets: per-parity slices of the region parameters, caster matrices and casters, and a set per parity
+// (rewritten only on its own parity's frame, after the island waited that parity's fence).
+bool ShadowBake::ensureIncremental() {
+    if (incParams_) return true;
+    incInstanceCap_ = 65536;
+    if (!makeHostBuffer(incParams_, allocator_, device_, 2 * kSubTilesPerFrame * kSlice, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, "shadow.bake.dirtyParams") ||
+        !makeHostBuffer(incCasterUbo_, allocator_, device_, 2 * kSubTilesPerFrame * kSlice, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, "shadow.bake.dirtyCasterUbo") ||
+        !makeHostBuffer(incPass_, allocator_, device_, 3 * kSlice, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, "shadow.bake.dirtyPass") ||
+        !makeHostBuffer(incInstances_, allocator_, device_, 2 * incInstanceCap_ * sizeof(GpuStaticPropInstance), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, "shadow.bake.dirtyInstances")) {
+        blog("dirty-update buffers failed.");
+        return false;
+    }
+    std::vector<uint8_t> pp3(3 * kSlice, 0);
+    for (int32_t m = 0; m < 3; ++m) std::memcpy(pp3.data() + m * kSlice, &m, sizeof(m));
+    if (!incPass_.upload(pp3.data(), pp3.size())) return false;
+    if (!incQueries_) {
+        VkQueryPoolCreateInfo qci{VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO};
+        qci.queryType = VK_QUERY_TYPE_TIMESTAMP;
+        qci.queryCount = 4;
+        if (!create(incQueries_, device_, [&](auto* h) { return vkCreateQueryPool(device_, &qci, nullptr, h); })) { blog("dirty query pool failed."); return false; }
+    }
+    incHeightsGen_[0] = incHeightsGen_[1] = 0;
+    incQueryUsed_[0] = incQueryUsed_[1] = false;
+    return true;
+}
+
+void ShadowBake::writeIncrementalSets(uint32_t par) {
+    const VkDescriptorBufferInfo tile{incParams_.get(), 0, sizeof(ShadowBakeTileParams)};
+    const VkDescriptorBufferInfo pass{incPass_.get(), 0, 16};
+    const VkDescriptorImageInfo raw{depthRawSampler_.get(), windowView_.get(), VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL};
+    const VkDescriptorImageInfo cmp{depthCompareSampler_.get(), windowView_.get(), VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL};
+    const VkDescriptorBufferInfo hb{incHeights_[par].get(), 0, VK_WHOLE_SIZE};
+    const VkDescriptorBufferInfo sb{staging_.get(), 0, VK_WHOLE_SIZE};
+    VkDescriptorImageInfo si[4];
+    for (int i = 0; i < 4; ++i) si[i] = {VK_NULL_HANDLE, scratchView_[i].get(), VK_IMAGE_LAYOUT_GENERAL};
+    const VkDescriptorBufferInfo ubo{incCasterUbo_.get(), 0, sizeof(CasterUBO)};
+    const VkDescriptorBufferInfo insts{incInstances_.get(), 0, VK_WHOLE_SIZE};
+    VkWriteDescriptorSet w[12]{};
+    for (int i = 0; i < 12; ++i) { w[i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[i].dstSet = incComputeSet_[par]; w[i].descriptorCount = 1; }
+    w[0].dstBinding = 0; w[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC; w[0].pBufferInfo = &tile;
+    w[1].dstBinding = 9; w[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC; w[1].pBufferInfo = &pass;
+    w[2].dstBinding = 1; w[2].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; w[2].pImageInfo = &raw;
+    w[3].dstBinding = 2; w[3].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; w[3].pImageInfo = &cmp;
+    w[4].dstBinding = 3; w[4].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; w[4].pBufferInfo = &hb;
+    for (int i = 0; i < 4; ++i) { w[5 + i].dstBinding = static_cast<uint32_t>(4 + i); w[5 + i].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE; w[5 + i].pImageInfo = &si[i]; }
+    w[9].dstBinding = 8; w[9].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; w[9].pBufferInfo = &sb;
+    w[10].dstSet = incWindowSet_[par]; w[10].dstBinding = 0; w[10].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC; w[10].pBufferInfo = &ubo;
+    w[11].dstSet = incWindowSet_[par]; w[11].dstBinding = 1; w[11].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; w[11].pBufferInfo = &insts;
+    vkUpdateDescriptorSets(device_, 12, w, 0, nullptr);
+}
+
+void ShadowBake::retireIncremental(uint64_t epoch) {
+    if (!diagPending_ || epoch < diagEpoch_ + 2 || (epoch & 1u) != (diagEpoch_ & 1u)) return;
+    diagPending_ = false;
+    void* p = diagBuf_.map();
+    if (p) {
+        vmaInvalidateAllocation(allocator_, diagBuf_.allocation(), 0, VK_WHOLE_SIZE);
+        diagInc_.assign(static_cast<const uint8_t*>(p), static_cast<const uint8_t*>(p) + mc2shadow::bc4ChainBytes(static_cast<uint32_t>(maskTexels_), maskMips_));
+        diagBuf_.unmap();
+        diagForceFull_ = true;   // the next update re-bakes the whole mask from the same state, without the cache, and compares
+    }
+    diagBuf_.reset();
+}
+
+void ShadowBake::releaseIncremental() {
+    incParams_.reset(); incCasterUbo_.reset(); incPass_.reset(); incInstances_.reset();
+    incHeights_[0].reset(); incHeights_[1].reset();
+    incHeightsGen_[0] = incHeightsGen_[1] = 0;
+    incQueryUsed_[0] = incQueryUsed_[1] = false;
+    liveLeaves_.clear(); liveBoxes_.clear(); liveTops_.clear(); liveIdx_.clear();
+}
+
+bool ShadowBake::diagOn() {
+    static const bool s_on = mc2::gate::get<"MC2_SHADOW_DIAG">();
+    return s_on;
+}
+
+// MC2_SHADOW_DIAG: the mask after its dirty updates is read back; once it retires, a fresh bake of the same state is compared with it texel by texel.
+bool ShadowBake::recordDiagReadback(VkCommandBuffer cb, uint64_t epoch) {
+    diagRequest_ = false;
+    const uint64_t chain = mc2shadow::bc4ChainBytes(static_cast<uint32_t>(maskTexels_), maskMips_);
+    if (!makeHostBuffer(diagBuf_, allocator_, device_, chain, VK_BUFFER_USAGE_TRANSFER_DST_BIT, "shadow.bake.diag")) return false;
+    VkImageMemoryBarrier toSrc = imageBarrier(maskImage_.get(), VK_IMAGE_ASPECT_COLOR_BIT, 0, maskMips_, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                              VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, 0, VK_ACCESS_TRANSFER_READ_BIT);
+    vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &toSrc);
+    const std::vector<VkBufferImageCopy> lv = chainRegions();
+    vkCmdCopyImageToBuffer(cb, maskImage_.get(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, diagBuf_.get(), maskMips_, lv.data());
+    cmdBarrier(cb, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_HOST_BIT, VK_ACCESS_HOST_READ_BIT);
+    VkImageMemoryBarrier toRead = imageBarrier(maskImage_.get(), VK_IMAGE_ASPECT_COLOR_BIT, 0, maskMips_, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                                               VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_ACCESS_TRANSFER_READ_BIT, VK_ACCESS_SHADER_READ_BIT);
+    vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &toRead);
+    diagPending_ = true;
+    diagEpoch_ = epoch;
+    return true;
+}
+
+// Level 0 of two BC4 chains, decoded and compared: the dirty-updated mask against a fresh bake of the same state (the save/load claim: a load bakes the
+// loaded state afresh, so the two must agree).
+void ShadowBake::compareChains(const std::vector<uint8_t>& a, const std::vector<uint8_t>& b) const {
+    const size_t blocks = static_cast<size_t>(maskTexels_ / 4) * static_cast<size_t>(maskTexels_ / 4);
+    if (a.size() < blocks * 8 || b.size() < blocks * 8) return;
+    uint64_t hashA = mc2shadow::hashWords(a.data(), blocks * 8), hashB = mc2shadow::hashWords(b.data(), blocks * 8);
+    std::vector<uint32_t> hist(256, 0);
+    double sum = 0.0;
+    int maxDiff = 0;
+    for (size_t i = 0; i < blocks; ++i) {
+        std::array<uint8_t, 8> ba{}, bb{};
+        std::memcpy(ba.data(), a.data() + i * 8, 8);
+        std::memcpy(bb.data(), b.data() + i * 8, 8);
+        const auto pa = mc2shadow::decodeBc4Block(ba), pb = mc2shadow::decodeBc4Block(bb);
+        for (int k = 0; k < 16; ++k) {
+            const int d = std::abs(int(pa[static_cast<size_t>(k)]) - int(pb[static_cast<size_t>(k)]));
+            ++hist[static_cast<size_t>(d)];
+            sum += d;
+            maxDiff = (std::max)(maxDiff, d);
+        }
+    }
+    const uint64_t total = static_cast<uint64_t>(blocks) * 16;
+    uint64_t acc = 0;
+    int p999 = 0;
+    for (int d = 0; d < 256; ++d) { acc += hist[static_cast<size_t>(d)]; if (acc * 1000 >= total * 999) { p999 = d; break; } }
+    mc2::fmt::print_err("[SHADOW_BAKE] diag dirty_vs_fresh: hash_dirty={:016x} hash_fresh={:016x} max_abs={} mean_abs={:.4f} p99.9_abs={} texels={}\n",
+                        mc2::fmt::as_u64(hashA), mc2::fmt::as_u64(hashB), maxDiff, sum / static_cast<double>(total), p999, mc2::fmt::as_u64(total));
 }
 
 // The object map: the whole height field as the old static map drew it, then every caster, with the engine's static light matrix.

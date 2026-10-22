@@ -17,6 +17,7 @@
 #include <volk.h>
 
 #include "shadow_bake_math.h"
+#include "shadow_dirty_tiles.h"
 #include "shadow_mask_asset.h"
 #include "vk_compute_pipeline.h"
 #include "vk_owned.h"
@@ -51,6 +52,18 @@ struct ShadowBakeInputs {
     VkDescriptorSet alphaSet = VK_NULL_HANDLE;
     bool alphaReady = false;    // the alpha-ON array is bound and the table built
     bool alphaAbsent = false;   // the map has no alpha-ON group, so there is nothing to wait for
+};
+
+// LOCKSTEP with shaders/vulkan/include/shadow_bake_common.glsl BakeTile (std140).
+struct ShadowBakeTileParams {
+    float window[16];
+    float region[4];
+    int32_t regionInfo[4];
+    float sun[4];
+    float windowInfo[4];
+    float heightInfo[4];
+    float fade[4];
+    float march[4];
 };
 
 class ShadowBake {
@@ -88,6 +101,13 @@ private:
         uint32_t firstRun = 0, runCount = 0;
     };
     struct InstRun { uint32_t typeID, firstInstance, count; };
+    struct CasterView {
+        const std::vector<GpuStaticPropInstance>* leaves;
+        const std::vector<mc2shadow::LightBox>* boxes;
+        const std::vector<float>* tops;
+        const std::vector<uint32_t>* live;   // index into leaves of each box
+    };
+    struct RegionJob { uint32_t tile; int regionTexels; int originX, originY; };
 
     struct BakeKeys { uint64_t mask = 0, object = 0; };
     std::optional<BakeKeys> inputsReady(const ShadowBakeInputs& in);
@@ -101,7 +121,21 @@ private:
     uint64_t contentKey(const ShadowBakeInputs& in, uint64_t casterHash) const;
     bool ensureEncoder();
     void encodeLevel(VkCommandBuffer cb, VkDescriptorSet set, uint32_t slice, uint32_t side);
-    void recordTileEncode(VkCommandBuffer cb, int tx, int ty);
+    void recordTileEncode(VkCommandBuffer cb, int originX, int originY, uint32_t tile, uint32_t sliceBase);
+    void planRegion(mc2shadow::Rect r, int originX, int originY, int regionTexels, float casterTop, float tanT, const CasterView& cv,
+                    std::vector<InstRun>& runs, std::vector<GpuStaticPropInstance>& inst, TileWork& tw, ShadowBakeTileParams& p) const;
+    void recordRegion(VkCommandBuffer cb, const ShadowBakeInputs& in, const RegionJob& job, const TileWork& tw, std::span<const InstRun> runs,
+                      VkDescriptorSet computeSet, VkDescriptorSet windowSet, uint32_t paramOff, uint32_t casterOff, uint32_t passBase, uint32_t sliceBase,
+                      int queryBase);
+    std::optional<mc2shadow::Rect> leavesFootprint(const std::vector<GpuStaticPropInstance>& leaves) const;
+    bool updateIncremental(VkCommandBuffer cb, uint64_t epoch, const ShadowBakeInputs& in);
+    bool ensureIncremental();
+    void writeIncrementalSets(uint32_t par);
+    void retireIncremental(uint64_t epoch);
+    void releaseIncremental();
+    static bool diagOn();
+    bool recordDiagReadback(VkCommandBuffer cb, uint64_t epoch);
+    void compareChains(const std::vector<uint8_t>& a, const std::vector<uint8_t>& b) const;
     void recordTopLevels(VkCommandBuffer cb);
     void recordTopLevelsMipsOnly(VkCommandBuffer cb);
     void recordMaskToRead(VkCommandBuffer cb, bool readback);
@@ -132,7 +166,7 @@ private:
     mc2shadow::MaskLayout layout_;
     mc2shadow::LightBasis basis_;
     mc2shadow::Vec3 sun_;
-    float waterZ_ = 0.0f, terrainTop_ = 0.0f, halfMap_ = 0.0f, fadeMax_ = 0.0f;
+    float waterZ_ = 0.0f, terrainTop_ = 0.0f, terrainMin_ = 0.0f, halfMap_ = 0.0f, fadeMax_ = 0.0f, casterTop_ = 0.0f;
     int mapSide_ = 0, heightSide_ = 0;
     float heightSpacing_ = 0.0f;
     std::vector<float> heights_;
@@ -162,6 +196,27 @@ private:
     bool warm_ = false, readbackPending_ = false;
     double warmReadMs_ = 0.0;
     VkDeviceSize tileLevelOff_[8] = {};
+
+    // The incremental path (P5): dirty sub-tiles, the live casters they bin, and per-parity buffers and sets.
+    mc2shadow::DirtyQueue dirty_;
+    std::vector<GpuStaticPropInstance> liveLeaves_;
+    std::vector<mc2shadow::LightBox> liveBoxes_;
+    std::vector<float> liveTops_;
+    std::vector<uint32_t> liveIdx_;
+    bool incActive_ = false, heightsMoved_ = false, eventsSinceDrain_ = false;
+    uint64_t lastIncEpoch_ = 0, heightsGen_ = 1, incHeightsGen_[2] = {0, 0};
+    uint32_t incSubTiles_ = 0, incBatches_ = 0, eventsLogged_ = 0;
+    double incMaxGpuMs_ = 0.0;
+    uint32_t incInstanceCap_ = 0;
+    bool incQueryUsed_[2] = {false, false};
+    OwnedBuffer incParams_, incCasterUbo_, incPass_, incInstances_, incHeights_[2];
+    OwnedQueryPool incQueries_;
+    VkDescriptorSet incComputeSet_[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE}, incWindowSet_[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE};
+    // MC2_SHADOW_DIAG: the dirty-updated mask read back and compared with a fresh bake of the same state.
+    bool diagRequest_ = false, diagPending_ = false, diagForceFull_ = false;
+    uint64_t diagEpoch_ = 0;
+    OwnedBuffer diagBuf_;
+    std::vector<uint8_t> diagInc_;
     std::vector<VkDeviceSize> topLevelOff_;
     OwnedDescriptorPool computePool_;
     VkDescriptorSet computeSet_ = VK_NULL_HANDLE;   // allocated from computePool_ with pcss_'s layout (the three layouts are identical)

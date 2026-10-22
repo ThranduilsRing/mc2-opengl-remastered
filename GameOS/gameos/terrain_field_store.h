@@ -49,6 +49,10 @@ public:
     // the stored map of the same side.
     bool patchHeight(const float* rows, int originX, int originY, int quadCountX, int quadCountY, int mapSide);
 
+    // The grid rectangles written by patchHeight since the last take (x0, y0, x1, y1 in vertices, inclusive); a whole-map setHeight clears it.
+    struct HeightPatch { int x0, y0, x1, y1; };
+    std::vector<HeightPatch> takeHeightPatches() { std::vector<HeightPatch> out; out.swap(patches_); return out; }
+
     const std::vector<float>& height() const { return height_; }
     int mapSide() const { return mapSide_; }
     uint64_t heightVersion() const { return heightVersion_; }
@@ -99,6 +103,7 @@ public:
 
 private:
     std::vector<float> height_;
+    std::vector<HeightPatch> patches_;
     int mapSide_ = 0;
     uint64_t heightVersion_ = 0;
     std::vector<uint32_t> cement_;

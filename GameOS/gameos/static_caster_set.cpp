@@ -23,11 +23,15 @@ StaticCasterSet& staticCasterSet() {
 void StaticCasterSet::beginRebuild() {
     entries_.clear();
     recipeMask_.clear();
+    byOwner_.clear();
+    removed_.clear();
+    events_.clear();
     building_ = true;
 }
 
 void StaticCasterSet::add(const StaticCasterEntry& entry) {
     if (!building_ || entry.recipeIndex < 0) return;
+    if (entry.owner) byOwner_[entry.owner] = static_cast<uint32_t>(entries_.size());
     entries_.push_back(entry);
     const size_t r = static_cast<size_t>(entry.recipeIndex);
     if (recipeMask_.size() <= r) recipeMask_.resize(r + 1, 0);
@@ -46,8 +50,69 @@ void StaticCasterSet::endRebuild() {
 void StaticCasterSet::clear() {
     entries_.clear();
     recipeMask_.clear();
+    byOwner_.clear();
+    removed_.clear();
+    events_.clear();
     version_ = 0;
     building_ = false;
+}
+
+namespace {
+bool sameLeaves(const std::vector<GpuStaticPropInstance>& a, const std::vector<GpuStaticPropInstance>& b) {
+    if (a.size() != b.size()) return false;
+    for (size_t i = 0; i < a.size(); ++i)
+        if (a[i].typeID != b[i].typeID || std::memcmp(a[i].modelMatrix, b[i].modelMatrix, sizeof(a[i].modelMatrix)) != 0) return false;
+    return true;
+}
+}  // namespace
+
+void StaticCasterSet::ownerInvalidated(const void* owner, int32_t oldRecipe) {
+    if (building_ || version_ == 0 || !owner) return;
+    const auto it = byOwner_.find(owner);
+    if (it == byOwner_.end()) return;
+    StaticCasterEntry& e = entries_[it->second];
+    if (e.recipeIndex < 0 || e.recipeIndex != oldRecipe) return;
+    std::vector<GpuStaticPropInstance> leaves;
+    GpuStaticPropRegistry::getRecipeShadowLeaves(oldRecipe, leaves);
+    if (static_cast<size_t>(oldRecipe) < recipeMask_.size()) recipeMask_[static_cast<size_t>(oldRecipe)] = 0;
+    e.recipeIndex = -1;
+    e.damageState = 1;
+    removed_[owner] = std::move(leaves);
+}
+
+void StaticCasterSet::ownerRegistered(const void* owner, int32_t newRecipe) {
+    if (building_ || version_ == 0 || !owner || newRecipe < 0) return;
+    const auto it = byOwner_.find(owner);
+    if (it == byOwner_.end()) return;
+    StaticCasterEntry& e = entries_[it->second];
+    if (e.recipeIndex == newRecipe) return;
+    CasterEvent ev;
+    GpuStaticPropRegistry::getRecipeShadowLeaves(newRecipe, ev.after);
+    if (const auto r = removed_.find(owner); r != removed_.end()) {
+        ev.before = std::move(r->second);
+        removed_.erase(r);
+    }
+    e.recipeIndex = newRecipe;
+    const size_t idx = static_cast<size_t>(newRecipe);
+    if (recipeMask_.size() <= idx) recipeMask_.resize(idx + 1, 0);
+    recipeMask_[idx] = 1;
+    ++deltaVersion_;
+    if (sameLeaves(ev.before, ev.after)) return;   // a re-registration of the same leaves: nothing to rebake
+    events_.push_back(std::move(ev));
+}
+
+std::vector<StaticCasterSet::CasterEvent> StaticCasterSet::takeEvents() {
+    // Owners that lost their recipe and never got one back (a felled tree still falling, a building with no rubble shape) are removals.
+    for (auto& [owner, leaves] : removed_) {
+        CasterEvent ev;
+        ev.before = std::move(leaves);
+        events_.push_back(std::move(ev));
+        ++deltaVersion_;
+    }
+    removed_.clear();
+    std::vector<CasterEvent> out;
+    out.swap(events_);
+    return out;
 }
 
 uint64_t StaticCasterSet::resolve(std::vector<GpuStaticPropInstance>& leaves) const {

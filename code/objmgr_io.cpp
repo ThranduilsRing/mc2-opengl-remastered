@@ -435,6 +435,7 @@ void GameObjectManager::buildStaticShadowCasterSet() {
 			const int32_t recipe = app->getShadowCasterRecipeIndex();
 			if (recipe < 0) continue;
 			mc2shadow::StaticCasterEntry e;
+			e.owner = app;
 			e.gameHandle = static_cast<uint32_t>(obj->getHandle());
 			e.recipeIndex = recipe;
 			e.kind = kind;

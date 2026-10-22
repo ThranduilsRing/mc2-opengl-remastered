@@ -3,6 +3,7 @@
 #include "bdactor_internal.h"
 #include "../RenderCore/axis_convert.h"
 #include "mc2fmt.h"
+#include "../GameOS/gameos/static_caster_set.h"   // shadow-bake caster events
 
 // BLDG-TYPE-ANIM-GATE-FIX-1 kill-switch.
 // Unset/1 = new: idle animatable-type buildings eligible for static path.
@@ -372,6 +373,7 @@ void BldgAppearance::registerStatic() {
 		staticReg.registered  = true;
 		staticReg.shape       = bldgShape;
 		staticReg.recipeIndex = regIdx;
+		mc2shadow::staticCasterSet().ownerRegistered(static_cast<const Appearance*>(this), regIdx);
 		// TERRAIN-DECAL-SLICE-0C: capture this decal's live-update context so the
 		// "Cliff Decal" ImGui panel can recompute + re-upload its transform when a
 		// slider moves. Only for the CLIFF_WALL decal (useCliffWallFrame); other
@@ -702,14 +704,19 @@ void BldgAppearance::touchSerialCommit()
 // building actually had a static registration.
 void bldgTriggerStaticShadowRebake(bool wasRegistered)
 {
-	if (!wasRegistered) return;
+	// With the shadow bake on (MC2_SHADOW_BAKE, default) a destroy reaches the shadows as a caster event and dirty sub-tiles; the full-map re-arm
+	// (and the old map's waitIdle rebuild it triggered) only serves the kill-switch path.
+	static const bool s_bakeOn = mc2::gate::get<"MC2_SHADOW_BAKE">();
+	if (!wasRegistered || s_bakeOn) return;
 	gos_ResetStaticLightMatrix();
 }
 
 void BldgAppearance::invalidateStaticRegistration()
 {
-	if (staticReg.registered && staticReg.recipeIndex >= 0)
+	if (staticReg.registered && staticReg.recipeIndex >= 0) {
+		mc2shadow::staticCasterSet().ownerInvalidated(static_cast<const Appearance*>(this), staticReg.recipeIndex);
 		GameAdapters::StaticProp::destroyStaticPropByIndex(staticReg.recipeIndex);
+	}
 	staticReg = {};
 }
 
