@@ -54,6 +54,16 @@ TEST_CASE("producer follows analytic pad edge instead of skipped overlay alpha")
     CHECK((kWeedFlagBit & 0x3fu) == 0);
 }
 
+TEST_CASE("producer retains cement beneath dirt-road and rough overlays") {
+    const auto slab = [](int, int) { return 0x80000000u; };
+    const auto dirt = [](int, int) { return 0u; };
+    for (float overlayAlpha : {0.0f, 0.5f, 1.0f}) {
+        const float cement = cementWordCoverage(0,0,0.5f,0.5f,0,slab);
+        CHECK(renderedHardSurfaceCoverage(cement, overlayAlpha, false) == 1);
+        CHECK(renderedHardSurfaceCoverage(cementWordCoverage(0,0,0.5f,0.5f,0,dirt), overlayAlpha, false) == 0);
+    }
+}
+
 TEST_CASE("placement samples coverage and keeps weeds sparse away from seams") {
     const auto flat = [](float, float) { return 1.0f; };
     const auto open = [](float, float) { return 0.0f; };

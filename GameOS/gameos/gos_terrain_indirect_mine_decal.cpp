@@ -684,7 +684,8 @@ void BuildHardSurfaceField() {
             if (!e || !e->isValid() || (!e->isCement() && !wordAt(tr, tc))) continue;
             Overlays ovT = INVALID_OVERLAY; DWORD ovO = 0;
             Terrain::mapData->getOverlay(tr, tc, ovT, ovO);
-            if (ovT == ROUGH || ovT == DIRT_ROAD) { ++g_hs.tilesRoadSkipped; continue; }
+            const bool softOverlay = ovT == ROUGH || ovT == DIRT_ROAD;
+            if (softOverlay) ++g_hs.tilesRoadSkipped;
 
             const bool alphaTile = e->isAlpha() && e->overlayHandle != 0xffffffffu;
             std::shared_ptr<const RenderCore::KtxImage> img;
@@ -728,7 +729,7 @@ void BuildHardSurfaceField() {
                     }
                 }
             }
-            const bool overlayDrawn = alphaTile && !CementWordSuppressesDecal(e, ovT, tr, tc);
+            const bool overlayDrawn = alphaTile && !softOverlay && !CementWordSuppressesDecal(e, ovT, tr, tc);
             const uint32_t word = wordAt(tr, tc);
             for (int row = 0; row < kHsRes; ++row) {
                 for (int col = 0; col < kHsRes; ++col) {
