@@ -297,6 +297,20 @@ std::expected<mc2::sim::MissionReceipt, mc2::sim::OrderError> Mission::submitMis
     MissionOrderApplication application(MissionOrderAccess{*this});
     return orderIngress.submit(session, std::move(envelope), application);
 }
+// Wall-clock seconds since the last call (0 on the first frame of a mission), or the harness clock's virtual frame. Kept out of
+// mission_update.cpp, which is sim code and may not read the wall clock.
+double Mission::pollRealFrameSeconds(float harnessFrameSeconds) {
+	const bool firstFrame = (LastTimeGetTime == 0xffffffff);
+	const DWORD now = timeGetTime();
+	const double seconds = SmokeMode::fixedTimestepEnabled() ? static_cast<double>(harnessFrameSeconds)
+		: (firstFrame ? 0.0 : static_cast<double>(now - LastTimeGetTime) / 1000.0);
+	LastTimeGetTime = now;
+	return seconds;
+}
+
+// A running tick means the sim is not paused, so the sound system resumes.
+void Mission::resumeTickAudio() { soundSystem->clearIsPaused(); }
+
 void Mission::beginOrderSimulationTick() {
     for (const auto& binding : orderRecipients) resolveOrderRecipient(binding.ref);
     MissionOrderApplication application(MissionOrderAccess{*this});

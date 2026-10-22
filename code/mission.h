@@ -563,6 +563,8 @@ class Mission
 		void updateDevHotkeys();
 		void updateFrameClock();
 		void updateTickClock(bool advanceTime);
+		double pollRealFrameSeconds(float harnessFrameSeconds);
+		void resumeTickAudio();
 		void updatePathManager();
 		void updatePresentationOnly();
 		bool updatePass(bool tickMode, bool runFrame, bool runSim, bool advanceTime, long& earlyResult);

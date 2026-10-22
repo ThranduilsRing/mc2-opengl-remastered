@@ -390,7 +390,7 @@ void Mission::updateTickClock(bool advanceTime) {
 			SmokeMode::fixedTimestepOnSimFrame(static_cast<double>(scenarioTime));
 	}
 	simClockTraceTick(scenarioTime);
-	soundSystem->clearIsPaused();
+	resumeTickAudio();
 	actualTime = scenarioTime;
 }
 
@@ -1345,10 +1345,7 @@ long Mission::update (void)
 		else
 		{
 			const bool firstFrame = (LastTimeGetTime == 0xffffffff);
-			const DWORD now = timeGetTime();
-			const double realSeconds = SmokeMode::fixedTimestepEnabled() ? static_cast<double>(renderLength)
-				: (firstFrame ? 0.0 : static_cast<double>(now - LastTimeGetTime) / 1000.0);
-			LastTimeGetTime = now;
+			const double realSeconds = pollRealFrameSeconds(renderLength);
 			const int ticks = firstFrame ? 1 : s_tickClock.advance(realSeconds, simSpeedGetMultiplier());
 			if (ticks == 0)
 			{
