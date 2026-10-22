@@ -3,7 +3,52 @@
   "mission": "mc2_10",
   "_note": "Procedural wirefence override A/B, night: straight run (typeNum 440) along x=-4672, y 576..661.",
   "bookmarks": [
-    { "name": "fence_night_close", "pos": [-4672.0, 620.0, 0.0], "rot": 45.0, "proj": 18.0, "alt": 350.0,  "covers": ["static_prop", "fence"] },
-    { "name": "fence_night_far",   "pos": [-4672.0, 620.0, 0.0], "rot": 45.0, "proj": 40.0, "alt": 1800.0, "covers": ["static_prop", "fence", "far_lod"] }
+    {
+      "name": "fence_night_close",
+      "pos": [
+        -4672.0,
+        620.0,
+        0.0
+      ],
+      "rot": 45.0,
+      "proj": 18.0,
+      "alt": 350.0,
+      "covers": [
+        "static_prop",
+        "fence"
+      ]
+    },
+    {
+      "name": "fence_night_far",
+      "pos": [
+        -4672.0,
+        620.0,
+        0.0
+      ],
+      "rot": 45.0,
+      "proj": 40.0,
+      "alt": 1800.0,
+      "covers": [
+        "static_prop",
+        "fence",
+        "far_lod"
+      ]
+    },
+    {
+      "name": "fence_corner",
+      "pos": [
+        -4672,
+        704,
+        0
+      ],
+      "rot": 45.0,
+      "proj": 18.0,
+      "alt": 350.0,
+      "covers": [
+        "static_prop",
+        "fence",
+        "corner"
+      ]
+    }
   ]
 }

@@ -8,13 +8,14 @@ vertex frame, plus a tileable alpha diamond-lattice TGA.
 Frame: the stock ASE loader puts ASE z (height) on engine Y (up) and ASE y
 (run) on engine Z; the assimp importer maps glb (x,y,z) -> engine (-x,-y,z).
 Geometry is designed here as x=thickness, y=run (-L..0), z=height and emitted
-as glb = (-x, -z, RUN_SIGN*y) (base at max Y, same as the 180-degree X flip rule).
+as glb = (-x, -z, -y). Stock ASE run is POSITIVE: tgl_parse.cpp loads
+ASE y directly into Stuff z; the converter GLB's negative y is not that frame.
 Exported with export_yup=False so Blender coords == glTF coords. Pre-fix builds
 that emitted the ASE-ish frame rendered the fence standing on end (43 tall).
 Placement pitch in mc2_01 is 42.667 (straight) and 42.667*sqrt2=60.340 (diag): posts sit on the
 pitch boundaries (nominal run y 0..-L) so neighbours share a post instead of overlapping 0.67.
-Stock numbers (wirefence): y -42.9175..0.4255, z 0..15.9699, x -0.1576..0.2036.
-Stock numbers (wirefencediag): y -60.6417..0.3017, z -0.0243..15.9757.
+Stock ASE (wirefence): y -0.4255..42.9175, z 0..15.9699, x -0.2036..0.1576.
+Stock ASE (wirefencediag): y -0.3017..60.6417, z -0.0243..15.9757.
 
 Args (after `--`):
   --out=PATH         output GLB
@@ -36,12 +37,12 @@ from _recipe_util import arg, emit_stats, script_args  # noqa: E402
 
 VARIANTS = {
     # y0, y1, z0, z1, x_center, sheet half-gap, mid posts
-    "wirefence":     dict(y0=-42.667, y1=0.0, z0=0.0,     z1=15.9699, cx=0.0230, gap=0.12, mids=1),
-    "wirefencediag": dict(y0=-60.340, y1=0.0, z0=-0.0243, z1=15.9757, cx=0.0828, gap=0.05, mids=2),
+    "wirefence":     dict(y0=-128.0/3, y1=0.0, z0=0.0, z1=15.9699, cx=0.0, gap=0.12, mids=1),
+    "wirefencediag": dict(y0=-128.0/3*math.sqrt(2), y1=0.0, z0=0.0, z1=15.9699, cx=0.0, gap=0.05, mids=2),
 }
 TILE_U = 5.418   # world units per lattice tile along the run
 TILE_V = 5.32    # world units per lattice tile in height
-RUN_SIGN = 1     # glb z = RUN_SIGN * run; verified in-game against stock placement
+RUN_SIGN = -1    # recipe run is negative; ASE/Stuff run is positive
 
 
 def hex_prism(cx, cy, r, z0, z1, n=6):
@@ -88,8 +89,9 @@ def build(variant):
     px = [y0, y1] + [y0 + L * (k + 1) / (v["mids"] + 1) for k in range(v["mids"])]
     for i, py in enumerate(px):
         r = 0.55 if i < 2 else 0.42
-        metal += hex_prism(cx, py, r, z0, z1 - 0.35)
-        metal += cone_cap(cx, py, r * 1.15, z1 - 0.35, z1)
+        # Octagonal endpoint posts coincide under both 45 and 90 degree turns.
+        metal += hex_prism(cx, py, r, z0, z1 - 0.35, n=8)
+        metal += cone_cap(cx, py, r * 1.15, z1 - 0.35, z1, n=8)
     metal += run_tube(cx, z1 - 0.9, y0, y1, 0.28, 6)
     metal += run_tube(cx, z0 + 0.45, y0, y1, 0.14, 4)
     sz0, sz1 = z0 + 0.7, z1 - 1.2

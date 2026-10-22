@@ -138,6 +138,12 @@ def validate(out, srcdata, stock_glb_dir):
             errs.append(f"{key}: source missing {glb}")
             continue
         st = glb_stats(glb)
+        # ASE y -> Stuff z is positive. Size-only checks miss a reversed run,
+        # which looks continuous in a straight line but overshoots every turn.
+        import math
+        pitch = 128.0 / 3 * (math.sqrt(2) if name == "wirefencediag" else 1.0)
+        if abs(st["min"][2] + 0.6325) > 0.01 or abs(st["max"][2] - pitch - 0.6325) > 0.01:
+            errs.append(f"{key}: endpoints must be at positive stock run 0..{pitch:.6f}")
         if st["tris"] > TRI_BUDGET: errs.append(f"{key}: {st['tris']} tris > {TRI_BUDGET}")
         for uri in st["images"]:
             if not (out / "data" / "tgl" / "128" / uri).is_file():
