@@ -23,7 +23,7 @@ def inside(point, polygon):
     result = False
     for a, b in zip(polygon, polygon[1:] + polygon[:1]):
         cross = (x-a[0])*(b[1]-a[1])-(y-a[1])*(b[0]-a[0])
-        if abs(cross) < 1e-8 and min(a[0], b[0])-1e-8 <= x <= max(a[0], b[0])+1e-8 and min(a[1], b[1])-1e-8 <= y <= max(a[1], b[1])+1e-8:
+        if abs(cross) < 1e-5 and min(a[0], b[0])-1e-5 <= x <= max(a[0], b[0])+1e-5 and min(a[1], b[1])-1e-5 <= y <= max(a[1], b[1])+1e-5:
             return True
         if (a[1] > y) != (b[1] > y) and x < (b[0]-a[0])*(y-a[1])/(b[1]-a[1])+a[0]:
             result = not result
