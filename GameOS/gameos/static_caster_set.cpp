@@ -103,9 +103,9 @@ void StaticCasterSet::ownerRegistered(const void* owner, int32_t newRecipe) {
     GpuStaticPropRegistry::getRecipeShadowLeaves(newRecipe, ev.after);
     if (auto node = removed_.extract(owner); !node.empty()) ev.before = std::move(node.mapped());
     e.recipeIndex = newRecipe;
-    const size_t idx = static_cast<size_t>(newRecipe);
-    if (recipeMask_.size() <= idx) recipeMask_.resize(idx + 1, 0);
-    recipeMask_[idx] = 1;
+    const size_t r = static_cast<size_t>(newRecipe);
+    if (recipeMask_.size() <= r) recipeMask_.resize(r + 1, 0);
+    recipeMask_[r] = 1;
     ++deltaVersion_;
     if (sameLeaves(ev.before, ev.after)) return;   // a re-registration of the same leaves: nothing to rebake
     // Turrets turn: their shadow is a mover's (P6). Until then the bake keeps their pristine pose and their re-registrations queue nothing.
