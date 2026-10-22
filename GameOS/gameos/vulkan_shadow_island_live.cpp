@@ -61,6 +61,7 @@
 #include "vulkan_shadow_static_map.h"
 #include "vulkan_shadow_bake.h"
 #include "vulkan_mover_shadow.h"
+#include "shadow_quality.h"
 #include "gos_postprocess.h"
 #include "gameos.hpp"
 #include "static_caster_set.h"
@@ -1326,7 +1327,7 @@ extern "C" void mc2_vk_shadow_island_run_movers(const float cameraRows[16], cons
                                                 const void* instances, unsigned int instanceCount) {
     g_dynShadowReadyThisFrame=g_csmFullMapReadyThisFrame=g_csmArrayReadyThisFrame=false;
     ++g_shadowFrameEpoch;
-    if (!cameraRows || !sun || !bake_enabled() || !mover_shadows_enabled() || !ensure_island(4096)) return;
+    if (!cameraRows || !sun || !bake_enabled() || !mover_shadows_enabled() || !ensure_island(mc2shadow::shadowQuality().mapSide)) return;
     ShadowIsland* s=parkedIsland();
     if (!s || s->disabled || !upload_geometry_once(s) || !begin_frame(s,g_shadowFrameEpoch)) return;
     refresh_alpha_casters(s);
@@ -1344,8 +1345,8 @@ extern "C" void mc2_vk_shadow_island_run_movers(const float cameraRows[16], cons
     static uint64_t frames=0;
     if (++frames%600==1) {
         const double us=std::chrono::duration<double,std::micro>(std::chrono::steady_clock::now()-start).count();
-        vlog("movers actors_feed=%u actors_visible=%u rigid_leaves=%zu map=%d format=D16 texel_wu=%.3f depth_span=%.1f cpu_fit_and_record_us=%.1f resident_mb=32 coverage_kb=8",
-             s->mover.actorCount(),s->mover.visibleActorCount(),selected.size(),s->size,frame.params[0],frame.params[1]>0?1.0f/frame.params[1]:0.0f,us);
+        vlog("movers actors_feed=%u actors_visible=%u rigid_leaves=%zu map=%d format=D16 texel_wu=%.3f depth_span=%.1f cpu_fit_and_record_us=%.1f resident_mb=%.1f coverage_kb=8",
+             s->mover.actorCount(),s->mover.visibleActorCount(),selected.size(),s->size,frame.params[0],frame.params[1]>0?1.0f/frame.params[1]:0.0f,us,double(s->size)*s->size*2/1048576.0);
     }
 }
 

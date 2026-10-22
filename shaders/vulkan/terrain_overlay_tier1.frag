@@ -103,7 +103,9 @@ void main() {
                      : lsvk_calcShadow(WorldPos, shadowN, lightDir3, u_staticShadow,
                                        uT.staticLightSpaceMatrix, uT.shadowSoftness, 8, shKnobs);
     float dynamicShadow = 1.0;
-    if (uT.csmEnabled != 0) {
+    if (moverFrame.flags.w != 0) {
+            dynamicShadow = mix(0.4, 1.0, moverVisibility(WorldPos, shadowN));
+        } else if (uT.csmEnabled != 0) {
         vec3 shSun = lsvk_shadowSun(lightDir3, shKnobs);
         float NdotLdyn = max(dot(shadowN, shSun), 0.0);
         dynamicShadow = (NdotLdyn < 0.05) ? 1.0

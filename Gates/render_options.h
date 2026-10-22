@@ -26,6 +26,7 @@ struct RenderOptions {
     int   tonemapMode      = 0;       // 0 off, 1 AgX, 2 Hable, 3 Reinhard
 
     // Shadows and terrain lighting.
+    int shadowQuality = 2; // 0 Potato, 1 Medium, 2 High
     bool shadowCsm               = true;    // cascaded dynamic shadow maps (off = the single legacy dynamic map)
     bool shadowBoundedNearFit    = true;    // crisp near shadows: bound the near cascade fit radius
     int  propShadowReceive       = 0;       // 1 = static props receive the dynamic cascade shadow
@@ -71,6 +72,7 @@ inline constexpr Option kOptions[] = {
     detail::boolOpt ("PostCAS",                       &RenderOptions::postCas),
     detail::floatOpt("PostCASSharpness",              &RenderOptions::postCasSharpness, 0.0, 1.0),
     detail::longOpt ("TonemapMode",                   &RenderOptions::tonemapMode, 0, 3),
+    detail::longOpt ("ShadowQuality", &RenderOptions::shadowQuality, 0, 2),
     detail::boolOpt ("ShadowCSM",                     &RenderOptions::shadowCsm),
     detail::boolOpt ("ShadowBoundedNearFit",          &RenderOptions::shadowBoundedNearFit),
     detail::longOpt ("PropShadowReceive",             &RenderOptions::propShadowReceive, 0, 1),

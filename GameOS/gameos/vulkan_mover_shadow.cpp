@@ -1,5 +1,6 @@
 #ifdef MC2_VULKAN_ISLAND
 #include "vulkan_mover_shadow.h"
+#include "shadow_quality.h"
 #include "vulkan_context.h"
 #include "Gates/gate.h"
 #include "mc2fmt.h"
@@ -156,7 +157,7 @@ bool MoverShadowState::prepare(int mapSide, const float cameraRows[16], Vec3 sun
     }
     appendMechs(cameraRows,sun,ground_);
     frame_={};
-    frame_.flags[0]=spheres_.empty()?0:1; frame_.flags[1]=1; frame_.flags[2]=2; frame_.flags[3]=1;
+    frame_.flags[0]=spheres_.empty()?0:1; frame_.flags[1]=shadowQuality().level==0?0:1; frame_.flags[2]=shadowQuality().level; frame_.flags[3]=1;
     frame_.sun[0]=sun.x; frame_.sun[1]=sun.y; frame_.sun[2]=sun.z;
     int side=0; float halfMap=0; gos_GetTerrainChunkGridInfo(&side,&halfMap);
     frame_.mask[0]=-halfMap; frame_.mask[1]=halfMap;
@@ -167,7 +168,7 @@ bool MoverShadowState::prepare(int mapSide, const float cameraRows[16], Vec3 sun
         windowMatrix(basis,window,frame_.matrix);
         frame_.params[0]=window.texelWorld; frame_.params[1]=1.0f/(window.dMax-window.dMin);
         frame_.params[2]=(std::max)(0.2f,window.texelWorld*0.35f); frame_.params[3]=1.0f/mapSide;
-        buildMoverCoverage(frame_,spheres_,basis,window);
+        if (frame_.flags[1]) buildMoverCoverage(frame_,spheres_,basis,window);
     }
     auto& ctx=getOrCreateEngineVulkanContext();
     active_=ctx.frameAlloc(sizeof(frame_));

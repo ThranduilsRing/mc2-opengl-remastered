@@ -5217,7 +5217,7 @@
         },
         {
           "path": "tests/smoke/test_render_options_pin.py",
-          "line": 144,
+          "line": 145,
           "evidence": "import",
           "reference": "scripts.smoke_lib.gates",
           "text": "from scripts.smoke_lib.gates import Verdict"
@@ -5423,7 +5423,7 @@
         },
         {
           "path": "tests/smoke/test_render_options_pin.py",
-          "line": 145,
+          "line": 146,
           "evidence": "import",
           "reference": "scripts.smoke_lib.logparse",
           "text": "from scripts.smoke_lib.logparse import LogSummary"
@@ -11697,7 +11697,7 @@
       "callers_by_basename": [
         {
           "path": "tests/smoke/test_render_options_pin.py",
-          "line": 121,
+          "line": 122,
           "evidence": "load module",
           "reference": "tools/tracy_capture_compare.py",
           "text": "spec = importlib.util.spec_from_file_location(\"tracy_capture_compare_under_test\", ROOT / \"tools\" / \"tracy_capture_compare.py\")"
@@ -12442,7 +12442,7 @@
       "callers_by_stem": [
         {
           "path": "tests/smoke/test_render_options_pin.py",
-          "line": 101,
+          "line": 102,
           "evidence": "import",
           "reference": "capture_ab",
           "text": "import capture_ab"

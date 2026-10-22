@@ -2,6 +2,7 @@
 #pragma once
 
 #include "vulkan_shadow_bake.h"
+#include "shadow_quality.h"
 #include "../../RenderCore/axis_convert.h"
 #include "mc2fmt.h"
 #include "vk_island_util.h"
@@ -22,9 +23,9 @@ constexpr uint32_t kSubTilesPerFrame = 2;                  // the dirty-update b
 constexpr uint64_t kDirtyIdleFrames = 1800;               // the dirty path's transients go after this long without a batch (about 30 s)
 constexpr int kDirtyGrowTexels = 24;                       // the blurred fade (16) and the 3x3 resolve (1) read this far past a change
 constexpr uint32_t kSliceSubTile = kTileLevels;            // encoder parameter slices: 0..5 tile levels, 6..11 sub-tile levels, then the top
-constexpr int kObjectMapSize = 4096;              // High preset (D4); presets arrive with P7
-constexpr float kMaskTargetTexelWorld = 1.5f;     // High preset target (D1)
-constexpr int kMaskCapTexels = 12288;
+inline int objectMapSize() { return mc2shadow::shadowQuality().mapSide; }
+inline float maskTarget() { return mc2shadow::shadowQuality().maskTarget; }
+inline int maskCap() { return mc2shadow::shadowQuality().maskCap; }
 constexpr VkDeviceSize kSlice = 256;              // >= any device's minUniformBufferOffsetAlignment
 constexpr uint32_t kQueriesPerTile = 5;
 // Waiting this many frames for a late alpha-ON array, the bake goes ahead with those casters opaque (a solid canopy shadow) and says so.

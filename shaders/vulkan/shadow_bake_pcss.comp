@@ -29,9 +29,10 @@ void main() {
     float jitter = bakeHash(t);
 
     float found = 0.0, total = 0.0, sumD = 0.0;
-    for (int j = 0; j < 8; ++j) {
+    int searchRows = uP.mode.y == 0 ? 4 : 8;
+    for (int j = 0; j < searchRows; ++j) {
         for (int i = 0; i < 8; ++i) {
-            vec2 o = ((vec2(i, j) + 0.5 + 0.5 * (jitter - 0.5)) / 8.0 * 2.0 - 1.0) * search;
+            vec2 o = ((vec2(i, j) + 0.5 + 0.5 * (jitter - 0.5)) / vec2(8.0, float(searchRows)) * 2.0 - 1.0) * search;
             vec4 g = textureGather(u_windowDepth, uv + o / extent, 0);
             float reach = length(o) - uB.windowInfo.z;
             for (int k = 0; k < 4; ++k) {
@@ -55,7 +56,7 @@ void main() {
     // At least 0.75 mask texel wide, so the mask never holds an edge sharper than it can sample without stair-steps.
     float w = max(meanD * tanT, 0.75 * uB.region.z);
     float wt = w / uB.windowInfo.z;
-    int taps = clamp(int(ceil(wt * wt * 0.6)), 12, 64);
+    int taps = clamp(int(ceil(wt * wt * 0.6)), uP.mode.y == 0 ? 6 : 12, uP.mode.y == 0 ? 32 : 64);
     float rot = jitter * 6.2831853;
     float vis = 0.0;
     for (int i = 0; i < 64; ++i) {

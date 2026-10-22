@@ -312,9 +312,9 @@ bool ShadowBake::ensureProducts(int maskTexels) {
     }
     topInitialized_ = false;
     if (!objectImage_) {
-        if (!makeImage(objectImage_, objectView_, allocator_, device_, kObjectFmt, kObjectMapSize, 1,
+        if (!makeImage(objectImage_, objectView_, allocator_, device_, kObjectFmt, objectMapSize(), 1,
                        VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_DEPTH_BIT, "shadow.bake.objectMap") ||
-            !makeFramebuffer(objectFb_, device_, objectPass_.get(), objectView_.get(), kObjectMapSize)) {
+            !makeFramebuffer(objectFb_, device_, objectPass_.get(), objectView_.get(), objectMapSize())) {
             blog("object map creation failed.");
             return false;
         }
@@ -325,9 +325,9 @@ bool ShadowBake::ensureProducts(int maskTexels) {
 
 bool ShadowBake::ensureTransients() {
     if (!windowImage_) {
-        if (!makeImage(windowImage_, windowView_, allocator_, device_, kWindowFmt, mc2shadow::kWindowMaxTexels, 1,
+        if (!makeImage(windowImage_, windowView_, allocator_, device_, kWindowFmt, mc2shadow::shadowQuality().windowSide, 1,
                        VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_DEPTH_BIT, "shadow.bake.window") ||
-            !makeFramebuffer(windowFb_, device_, windowPass_.get(), windowView_.get(), mc2shadow::kWindowMaxTexels)) {
+            !makeFramebuffer(windowFb_, device_, windowPass_.get(), windowView_.get(), mc2shadow::shadowQuality().windowSide)) {
             blog("caster window creation failed.");
             return false;
         }
@@ -349,7 +349,7 @@ bool ShadowBake::ensureTransients() {
         }
     }
     const VkDeviceSize region = static_cast<VkDeviceSize>(mc2shadow::kRegionTexels) * mc2shadow::kRegionTexels;
-    transientBytes_ = static_cast<VkDeviceSize>(mc2shadow::kWindowMaxTexels) * mc2shadow::kWindowMaxTexels * 4 + region * (8 + 4 + 8 + 4) +
+    transientBytes_ = static_cast<VkDeviceSize>(mc2shadow::shadowQuality().windowSide) * mc2shadow::shadowQuality().windowSide * 4 + region * (8 + 4 + 8 + 4) +
                       static_cast<VkDeviceSize>(mc2shadow::kTileTexels) * mc2shadow::kTileTexels * 7 / 3;
     return ensureEncoder();
 }
@@ -493,11 +493,14 @@ void ShadowBake::retire(uint64_t epoch) {
     }
     if (recordedMask_ && !warm_) storeReadback();
     const VkDeviceSize maskBytes = mc2shadow::bc4ChainBytes(static_cast<uint32_t>(maskTexels_), maskMips_);
-    const VkDeviceSize objectBytes = static_cast<VkDeviceSize>(kObjectMapSize) * kObjectMapSize * 2;
+    const VkDeviceSize objectBytes = static_cast<VkDeviceSize>(objectMapSize()) * objectMapSize() * 2;
     mc2::fmt::print_err("[SHADOW_BAKE] vram resident_mb={:.1f} (mask {:.1f} + object_map {:.1f}) transient_peak_mb={:.1f} {}\n",
                         static_cast<double>(maskBytes + objectBytes) / 1048576.0, static_cast<double>(maskBytes) / 1048576.0,
                         static_cast<double>(objectBytes) / 1048576.0, static_cast<double>(transientBytes_) / 1048576.0,
                         recordedMask_?"released":"retained for dirty updates");
+    mc2::fmt::print_err("[SHADOW_BAKE] ledger preset={} mask_mb={:.2f} object_mb={:.2f} mover_mb={:.2f} resident_mb={:.2f} transient_peak_mb={:.2f}\n",
+        mc2shadow::shadowQuality().level,double(maskBytes)/1048576.0,double(objectBytes)/1048576.0,
+        double(objectBytes)/1048576.0,double(maskBytes+2*objectBytes)/1048576.0,double(transientBytes_)/1048576.0);
     const bool completedMask=recordedMask_;
     recordedMask_ = false;
     // Object-only rebuilds share the dirty path's retained window/encoder images.
@@ -543,7 +546,7 @@ bool ShadowBake::recordBake(VkCommandBuffer cb, const ShadowBakeInputs& in) {
     if (recordedMask_) bakedHeightVersion_ = store->heightVersion();
 
     if (recordedMask_) {
-        layout_ = mc2shadow::maskLayout(mapSide_, halfMap_, kMaskTargetTexelWorld, kMaskCapTexels);
+        layout_ = mc2shadow::maskLayout(mapSide_, halfMap_, maskTarget(), maskCap());
         if (layout_.texels == 0) { blog("map too small for a mask: no bake."); return false; }
     }
     if (!ensureProducts(layout_.texels > 0 ? layout_.texels : maskTexels_)) return false;
@@ -692,7 +695,10 @@ bool ShadowBake::recordBake(VkCommandBuffer cb, const ShadowBakeInputs& in) {
         std::vector<uint8_t> tp(std::max<uint32_t>(tileCount, 1) * kSlice, 0);
         for (uint32_t t = 0; t < tileCount; ++t) std::memcpy(tp.data() + t * kSlice, &params[t], sizeof(ShadowBakeTileParams));
         std::vector<uint8_t> pp3(3 * kSlice, 0);
-        for (int32_t m = 0; m < 3; ++m) std::memcpy(pp3.data() + m * kSlice, &m, sizeof(m));
+        for (int32_t m = 0; m < 3; ++m) {
+        const int32_t pass[4]={m,mc2shadow::shadowQuality().level,0,0};
+        std::memcpy(pp3.data()+m*kSlice,pass,sizeof(pass));
+    }
         if (!tileParams_.upload(tp.data(), tp.size()) || !passParams_.upload(pp3.data(), pp3.size()) ||
             !heightBuf_.upload(heights_.data(), heights_.size() * sizeof(float))) { blog("bake upload failed."); return false; }
         const VkDescriptorBufferInfo tile{tileParams_.get(), 0, sizeof(ShadowBakeTileParams)};
@@ -793,7 +799,7 @@ void ShadowBake::planRegion(mc2shadow::Rect r, int originX, int originY, int reg
             const float h = (std::max)(heights_[static_cast<size_t>(gx) + static_cast<size_t>(gy) * heightSide_], waterZ_);
             hMin = (std::min)(hMin, h); hMax = (std::max)(hMax, h);
         }
-    tw.window = mc2shadow::casterWindow(basis_, r, hMin, hMax, casterTop, tanT);
+    tw.window = mc2shadow::casterWindow(basis_, r, hMin, hMax, casterTop, tanT, mc2shadow::shadowQuality().windowSide);
     tw.casterTop = hMax;
     std::vector<uint32_t> picked;
     for (size_t c = 0; c < cv.boxes->size(); ++c)
@@ -838,13 +844,13 @@ void ShadowBake::recordRegion(VkCommandBuffer cb, const ShadowBakeInputs& in, co
     clear.depthStencil = {1.0f, 0};
     VkRenderPassBeginInfo rbi{VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO};
     rbi.renderPass = windowPass_.get(); rbi.framebuffer = windowFb_.get();
-    rbi.renderArea = {{0, 0}, {static_cast<uint32_t>(mc2shadow::kWindowMaxTexels), static_cast<uint32_t>(mc2shadow::kWindowMaxTexels)}};
+    rbi.renderArea = {{0, 0}, {static_cast<uint32_t>(mc2shadow::shadowQuality().windowSide), static_cast<uint32_t>(mc2shadow::shadowQuality().windowSide)}};
     rbi.clearValueCount = 1; rbi.pClearValues = &clear;
     vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
     if (!runs.empty()) {
-        const float side = static_cast<float>(mc2shadow::kWindowMaxTexels);
+        const float side = static_cast<float>(mc2shadow::shadowQuality().windowSide);
         const VkViewport vp{0.0f, 0.0f, side, side, 0.0f, 1.0f};
-        const VkRect2D sc{{0, 0}, {static_cast<uint32_t>(mc2shadow::kWindowMaxTexels), static_cast<uint32_t>(mc2shadow::kWindowMaxTexels)}};
+        const VkRect2D sc{{0, 0}, {static_cast<uint32_t>(mc2shadow::shadowQuality().windowSide), static_cast<uint32_t>(mc2shadow::shadowQuality().windowSide)}};
         vkCmdSetViewport(cb, 0, 1, &vp);
         vkCmdSetScissor(cb, 0, 1, &sc);
         vkCmdSetDepthBias(cb, 0.0f, 0.0f, 0.0f);
@@ -959,10 +965,11 @@ bool ShadowBake::updateIncremental(VkCommandBuffer cb, uint64_t epoch, const Sha
             if (eventsSinceDrain_ && diagOn()) diagRequest_ = true;
             eventsSinceDrain_ = false;
         }
-        if (!incActive_ && incParams_ && epoch >= lastIncEpoch_ + kDirtyIdleFrames) {
+        const uint64_t idleFrames=mc2shadow::shadowQuality().level==0?60:kDirtyIdleFrames;
+        if (!incActive_ && incParams_ && epoch >= lastIncEpoch_ + idleFrames) {
             releaseTransients();
             releaseIncremental();
-            mc2::fmt::print_err("[SHADOW_BAKE] dirty path idle {} frames: transients released\n", kDirtyIdleFrames);
+            mc2::fmt::print_err("[SHADOW_BAKE] dirty path idle {} frames: transients released\n", idleFrames);
         }
         if (diagRequest_ && !incActive_) { incRecordedEpoch_ = epoch; return recordDiagReadback(cb, epoch); }
         return false;
@@ -1077,7 +1084,10 @@ bool ShadowBake::ensureIncremental() {
         return false;
     }
     std::vector<uint8_t> pp3(3 * kSlice, 0);
-    for (int32_t m = 0; m < 3; ++m) std::memcpy(pp3.data() + m * kSlice, &m, sizeof(m));
+    for (int32_t m = 0; m < 3; ++m) {
+        const int32_t pass[4]={m,mc2shadow::shadowQuality().level,0,0};
+        std::memcpy(pp3.data()+m*kSlice,pass,sizeof(pass));
+    }
     if (!incPass_.upload(pp3.data(), pp3.size())) return false;
     if (!incQueries_) {
         VkQueryPoolCreateInfo qci{VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO};
@@ -1291,11 +1301,11 @@ bool ShadowBake::recordObjectMap(VkCommandBuffer cb, const ShadowBakeInputs& in,
     clear.depthStencil = {1.0f, 0};
     VkRenderPassBeginInfo rbi{VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO};
     rbi.renderPass = objectPass_.get(); rbi.framebuffer = objectFb_.get();
-    rbi.renderArea = {{0, 0}, {static_cast<uint32_t>(kObjectMapSize), static_cast<uint32_t>(kObjectMapSize)}};
+    rbi.renderArea = {{0, 0}, {static_cast<uint32_t>(objectMapSize()), static_cast<uint32_t>(objectMapSize())}};
     rbi.clearValueCount = 1; rbi.pClearValues = &clear;
     vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
-    const VkViewport vp{0.0f, 0.0f, static_cast<float>(kObjectMapSize), static_cast<float>(kObjectMapSize), 0.0f, 1.0f};
-    const VkRect2D sc{{0, 0}, {static_cast<uint32_t>(kObjectMapSize), static_cast<uint32_t>(kObjectMapSize)}};
+    const VkViewport vp{0.0f, 0.0f, static_cast<float>(objectMapSize()), static_cast<float>(objectMapSize()), 0.0f, 1.0f};
+    const VkRect2D sc{{0, 0}, {static_cast<uint32_t>(objectMapSize()), static_cast<uint32_t>(objectMapSize())}};
     vkCmdSetViewport(cb, 0, 1, &vp);
     vkCmdSetScissor(cb, 0, 1, &sc);
     const uint32_t objOff = static_cast<uint32_t>(tiles_.size()) * static_cast<uint32_t>(kSlice);

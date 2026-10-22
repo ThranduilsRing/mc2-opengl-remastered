@@ -26,11 +26,11 @@ uint64_t ShadowBake::contentKey(const ShadowBakeInputs& in, uint64_t casterHash)
         if (in.alphaReady) keyParts_[3] = mc2shadow::fnv1a(in.packetAlpha.data(), in.packetAlpha.size_bytes());
     }
     const float scalars[13] = {sun_.x, sun_.y, sun_.z, waterZ_, halfMap_, static_cast<float>(mapSide_), static_cast<float>(layout_.texels),
-                               kMaskTargetTexelWorld, mc2shadow::kSunAngularRadiusDeg, mc2shadow::kFadeStartWorld, mc2shadow::kFadeEndWorld,
+                               maskTarget(), mc2shadow::kSunAngularRadiusDeg, mc2shadow::kFadeStartWorld, mc2shadow::kFadeEndWorld,
                                mc2shadow::kFadeMax, mc2shadow::kTerrainConeScale};
     keyParts_[4] = mc2shadow::fnv1a(scalars, sizeof(scalars));
-    const uint32_t versions[4] = {mc2shadow::ShadowMaskAsset::kSchema, mc2shadow::ShadowMaskAsset::kEvaluator, static_cast<uint32_t>(kMaskCapTexels),
-                                  static_cast<uint32_t>(heightSide_)};
+    const uint32_t versions[5] = {mc2shadow::ShadowMaskAsset::kSchema, mc2shadow::ShadowMaskAsset::kEvaluator, static_cast<uint32_t>(maskCap()),
+                                  static_cast<uint32_t>(heightSide_), static_cast<uint32_t>(mc2shadow::shadowQuality().level)};
     keyParts_[5] = mc2shadow::fnv1a(versions, sizeof(versions));
     return mc2shadow::fnv1a(keyParts_.data(), sizeof(keyParts_)) | 1u;
 }

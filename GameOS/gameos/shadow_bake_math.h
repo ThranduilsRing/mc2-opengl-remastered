@@ -141,7 +141,7 @@ struct Window {
     int texels = 0;
     float texelWorld = 0.0f;
 };
-inline Window casterWindow(const LightBasis& b, Rect region, float hMin, float hMax, float casterTopZ, float tanTheta) {
+inline Window casterWindow(const LightBasis& b, Rect region, float hMin, float hMax, float casterTopZ, float tanTheta, int maxTexels = kWindowMaxTexels) {
     Window w;
     float lx0 = 1e30f, ly0 = 1e30f, lx1 = -1e30f, ly1 = -1e30f, d0 = 1e30f, d1 = -1e30f;
     for (int c = 0; c < 8; ++c) {
@@ -157,12 +157,12 @@ inline Window casterWindow(const LightBasis& b, Rect region, float hMin, float h
     const float margin = 2.0f * penumbraWorld(maxRay, tanTheta) + 4.0f;
     lx0 -= margin; ly0 -= margin; lx1 += margin; ly1 += margin;
     const float extent = (std::max)(lx1 - lx0, ly1 - ly0);
-    w.texelWorld = (std::max)(kWindowTexelWorld, extent / static_cast<float>(kWindowMaxTexels - 2));
+    w.texelWorld = (std::max)(kWindowTexelWorld, extent / static_cast<float>(maxTexels - 2));
     // Snap the origin to the texel grid so the overlapping aprons of two tiles see identical texels.
     w.lx0 = std::floor(lx0 / w.texelWorld) * w.texelWorld;
     w.ly0 = std::floor(ly0 / w.texelWorld) * w.texelWorld;
     // Always the full window: the raster grid is then the same texel grid in every tile.
-    w.texels = kWindowMaxTexels;
+    w.texels = maxTexels;
     w.lx1 = w.lx0 + static_cast<float>(w.texels) * w.texelWorld;
     w.ly1 = w.ly0 + static_cast<float>(w.texels) * w.texelWorld;
     // A caster that shadows a receiver sits on its ray at most maxRay toward the sun from it; d grows toward the sun.

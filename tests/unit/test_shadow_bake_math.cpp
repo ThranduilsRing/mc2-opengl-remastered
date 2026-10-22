@@ -167,3 +167,16 @@ TEST_CASE("shadow bake dirty tiles: the queue keeps each sub-tile once, in order
     CHECK(q.take(4).size() == 2);
     CHECK(q.empty());
 }
+
+#include "shadow_quality.h"
+TEST_CASE("Shadow preset dimensions bound potato resident memory") {
+    using namespace mc2shadow;
+    const auto p=qualityForLevel(0), m=qualityForLevel(1), h=qualityForLevel(2);
+    CHECK(p.mapSide==2048); CHECK(p.windowSide==2048); CHECK(p.maskCap==4096);
+    CHECK(m.maskTarget==2.0f); CHECK(m.maskCap==8192); CHECK(h.maskTarget==1.5f);
+    const uint64_t resident=uint64_t(p.maskCap)*p.maskCap*2/3+uint64_t(p.mapSide)*p.mapSide*4;
+    CHECK(resident<=32*1024*1024);
+    const auto basis=lightBasis({1,0,1});
+    const auto window=casterWindow(basis,{-256,-256,256,256},0,100,200,0.03f,p.windowSide);
+    CHECK(window.texels==2048); CHECK(window.texelWorld>0);
+}
