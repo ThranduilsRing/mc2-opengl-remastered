@@ -886,22 +886,24 @@ void measureClipStrides(ImportedAnimEntry& e) {
                 pos[k].push_back(aiVector3D(M.a4, M.b4, M.c4));
             }
         }
+        // One gait cycle moves each foot through its full fore-aft range twice (stance back,
+        // swing forward); the planted half covers that range at ground speed, so speed =
+        // 2 * range / duration along the foot's dominant horizontal axis. (A per-frame
+        // "lowest frames" test picked swing frames on in-place BT clips and over-read ~4x.)
         float sum = 0.0f; int n = 0;
         for (int k = 0; k < 2; ++k) {
             if (pos[k].size() < 3) continue;
-            float lo = 1e30f, hi = -1e30f;
-            for (const aiVector3D& p : pos[k]) { lo = std::min(lo, p.y); hi = std::max(hi, p.y); }
-            const float planted = lo + 0.15f * (hi - lo);
-            for (size_t f = 1; f < pos[k].size(); ++f) {
-                if (pos[k][f].y > planted || pos[k][f - 1].y > planted) continue;
-                const float dx = pos[k][f].x - pos[k][f - 1].x, dz = pos[k][f].z - pos[k][f - 1].z;
-                sum += sqrtf(dx * dx + dz * dz) * 30.0f;
-                ++n;
+            float xlo = 1e30f, xhi = -1e30f, zlo = 1e30f, zhi = -1e30f;
+            for (const aiVector3D& p : pos[k]) {
+                xlo = std::min(xlo, p.x); xhi = std::max(xhi, p.x);
+                zlo = std::min(zlo, p.z); zhi = std::max(zhi, p.z);
             }
+            sum += 2.0f * std::max(xhi - xlo, zhi - zlo) / *dur;
+            ++n;
         }
         if (n > 0 && sum / n > 0.5f) {
             e.strideSpeed[clip] = sum / n;
-            mc2::fmt::print_err("[MECH_IMPORT] stride '{}' planted-foot speed={:.2f} u/s ({:d} samples)\n", clip, sum / n, n);
+            mc2::fmt::print_err("[MECH_IMPORT] stride '{}' planted-foot speed={:.2f} u/s (cycle {:.2f}s)\n", clip, sum / n, *dur);
         }
     }
 }
