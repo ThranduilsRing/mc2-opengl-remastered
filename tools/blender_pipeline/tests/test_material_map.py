@@ -76,6 +76,20 @@ def test_archive_leaves_source_untouched(tmp_path):
     assert report[0]["sha256"] == mm.digest(source)
 
 
+def test_window_overlay_shares_albedo_but_has_no_authored_material():
+    # A real failure: the window overlay's constant UV lies in the roof mask.
+    # Separate slots must preserve the shared colour source and leave body on 0.
+    g = {"materials": [{"name": "roof", "pbrMetallicRoughness": {"baseColorTexture": {"index": 0}}}],
+         "meshes": [{"name": "body", "primitives": [{"material": 0}]},
+                    {"name": "LitWin_Quonset2", "primitives": [{"material": 0}]}]}
+    mm.exclude_nodes(g, ["LitWin_Quonset2"])
+    assert g["meshes"][0]["primitives"][0]["material"] == 0
+    assert g["meshes"][1]["primitives"][0]["material"] == 1
+    assert g["materials"][0]["pbrMetallicRoughness"] == g["materials"][1]["pbrMetallicRoughness"]
+    with pytest.raises(ValueError, match="unknown excluded nodes"):
+        mm.exclude_nodes(g, ["unreviewed_typo"])
+
+
 def test_stock_hot_color_tags_survive_extract(tmp_path):
     from test_ase_submaterial import SINGLE_MAT_ASE
     colors = """

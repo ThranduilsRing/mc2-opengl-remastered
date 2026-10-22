@@ -7,6 +7,7 @@ are copied into the authoring archive before use; Downloads remains read-only.
 Run: py -3 tools/blender_pipeline/material_map.py mapping.json --out BUNDLE
 """
 import argparse
+import copy
 import hashlib
 import json
 import math
@@ -56,6 +57,9 @@ def validate_mapping(mapping):
         if name in names:
             raise ValueError("duplicate prop")
         names.add(name)
+        excluded = prop.get("excludeNodes", [])
+        if not isinstance(excluded, list) or any(not isinstance(n, str) or not n for n in excluded) or len(set(excluded)) != len(excluded):
+            raise ValueError("excludeNodes requires distinct explicit mesh names")
         slots = set()
         for row in prop["slots"]:
             slot = row["slot"]
@@ -186,6 +190,31 @@ def add_stock_colors(gltf, raw, geometry, source_text):
     return bytes(binary)
 
 
+def exclude_nodes(gltf, names):
+    """Keep explicitly reviewed overlays on unmapped slots, sharing their albedo.
+
+    Lit windows can reuse a roof texel, so an atlas mask alone cannot exclude
+    them. Preserve those primitives and their lighting tags, changing only the
+    material index. The engine then routes them through the legacy branch.
+    """
+    unknown = set(names) - {mesh["name"] for mesh in gltf["meshes"]}
+    if unknown:
+        raise ValueError("unknown excluded nodes: " + ", ".join(sorted(unknown)))
+    legacy = {}
+    for mesh in gltf["meshes"]:
+        if mesh["name"] not in names:
+            continue
+        for primitive in mesh["primitives"]:
+            original = primitive["material"]
+            if original not in legacy:
+                index = len(gltf["materials"])
+                material = copy.deepcopy(gltf["materials"][original])
+                material["name"] = material.get("name", "material") + "_legacy_" + str(index)
+                gltf["materials"].append(material)
+                legacy[original] = index
+            primitive["material"] = legacy[original]
+
+
 def stock_glb(ase_path):
     """Use stock extractor, baking its node translations and axis into vertices.
 
@@ -286,6 +315,7 @@ def build(mapping, out, archive, srcdata, textures, size=512, only=None):
             gltf["textures"].append({"source": len(gltf["images"])})
             gltf["images"].append({"uri": private})
             slots[slot] = source_name.lower()
+        exclude_nodes(gltf, prop.get("excludeNodes", []))
         runtime = []
         for row in prop["slots"]:
             if slots.get(row["slot"]) != row["stockAlbedo"].lower():

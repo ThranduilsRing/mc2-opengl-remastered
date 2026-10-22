@@ -6647,7 +6647,7 @@
       "callers_by_stem": [
         {
           "path": "tools/blender_pipeline/material_map.py",
-          "line": 24,
+          "line": 25,
           "evidence": "import",
           "reference": "ase_to_glb",
           "text": "import ase_to_glb as ase"
@@ -6965,7 +6965,7 @@
         },
         {
           "path": "tools/blender_pipeline/material_map.py",
-          "line": 26,
+          "line": 27,
           "evidence": "import",
           "reference": "batch_driver",
           "text": "import batch_driver as pipeline"
@@ -7189,7 +7189,7 @@
         },
         {
           "path": "tools/blender_pipeline/material_map.py",
-          "line": 27,
+          "line": 28,
           "evidence": "import",
           "reference": "srcdata",
           "text": "from srcdata import find_tgl_dir"
@@ -7275,14 +7275,14 @@
         },
         {
           "path": "tools/blender_pipeline/tests/test_material_map.py",
-          "line": 78,
+          "line": 94,
           "evidence": "import",
           "reference": "test_ase_submaterial",
           "text": "from test_ase_submaterial import SINGLE_MAT_ASE"
         },
         {
           "path": "tools/blender_pipeline/tests/test_material_map.py",
-          "line": 95,
+          "line": 111,
           "evidence": "import",
           "reference": "test_ase_submaterial",
           "text": "from test_ase_submaterial import SINGLE_MAT_ASE"

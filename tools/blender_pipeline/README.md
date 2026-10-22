@@ -230,6 +230,10 @@ CC0 `license`, and `provider` (`ambientCG` or `Poly Haven`). Supply NormalGL
 `rotation`, and optional grayscale `mask` or normalized `maskRects` control the
 cook. Exclusions become flat, rough dielectric regions. Metal is never inferred
 from colour. Detail tiling/rotation is baked before the stock-atlas exclusions.
+`excludeNodes` lists exact reviewed mesh names that must retain legacy lighting
+(for example `LitWin_Quonset2`). They share their unchanged albedo on an unmapped
+slot: atlas masks alone cannot exclude overlays that reuse a roof texel. Unknown
+or duplicate names fail the cook.
 
 The candidate bundle contains mod metadata, `models.json`, stock-geometry GLBs,
 private byte-for-byte TGA albedos (plus their stock KTX2 sidecars when present),
