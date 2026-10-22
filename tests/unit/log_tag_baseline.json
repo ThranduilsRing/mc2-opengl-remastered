@@ -10236,7 +10236,7 @@
    "ver": 1,
    "stream": "stderr",
    "keys": [
-    "shadow_refused",
+    "feature_refused",
     "bytes"
    ],
    "count": 1

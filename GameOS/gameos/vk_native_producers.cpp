@@ -50,18 +50,12 @@ bool NativeProducers::makeDevice(OwnedBuffer& buf, VkDeviceSize size, VkBufferUs
     return true;
 }
 
-bool NativeProducers::init(const VulkanContext& ctx, uint32_t numVertices, uint32_t recipeCount, VkBuffer recipes, uint32_t waterEligibleBound) {
-    ready_ = false;
+bool NativeProducers::prewarmPipelines(const VulkanContext& ctx) {
     ctx_ = &ctx;
     device_ = ctx.device();
     allocator_ = ctx.allocator();
-    numVertices_ = numVertices;
-    recipeCount_ = recipeCount;
-    recipes_ = recipes;
-    // Capacity follows the map: the cull emits only water-eligible quads, so the bound (not the recipe total) is what must fit.
-    maxThin_ = std::min<uint32_t>(recipeCount, std::clamp<uint32_t>(waterEligibleBound, kMaxThin, kMaxThinCeiling));
-    if (device_ == VK_NULL_HANDLE || !allocator_ || numVertices == 0 || recipeCount == 0 || recipes == VK_NULL_HANDLE) return false;
-
+    if (!device_ || !allocator_) return false;
+    if (lightP_ && cullP_ && argsP_ && lightSets_.set(kSlots-1) && cullSets_.set(kSlots-1) && argsSets_.set(kSlots-1)) return true;
     const std::string dir = vk_island_util::spvDir();
     const VkDescriptorType S = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, U = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     const VkDescriptorType SD = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, UD = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;   // frame-ring bindings
@@ -70,6 +64,17 @@ bool NativeProducers::init(const VulkanContext& ctx, uint32_t numVertices, uint3
     if (!argsP_.create(device_, dir + "water_draw_args.comp.spv", {{0, S}, {1, S}, {2, U}}, "producers.waterArgs")) return false;
     if (!lightSets_.create(device_, lightP_, kSlots, "producers.lightSets") || !cullSets_.create(device_, cullP_, kSlots, "producers.cullSets") ||
         !argsSets_.create(device_, argsP_, kSlots, "producers.argsSets")) return false;
+    return true;
+}
+
+bool NativeProducers::init(const VulkanContext& ctx, uint32_t numVertices, uint32_t recipeCount, VkBuffer recipes, uint32_t waterEligibleBound) {
+    ready_ = false;
+    numVertices_ = numVertices;
+    recipeCount_ = recipeCount;
+    recipes_ = recipes;
+    // Capacity follows the map: the cull emits only water-eligible quads, so the bound (not the recipe total) is what must fit.
+    maxThin_ = std::min<uint32_t>(recipeCount, std::clamp<uint32_t>(waterEligibleBound, kMaxThin, kMaxThinCeiling));
+    if (numVertices == 0 || recipeCount == 0 || recipes == VK_NULL_HANDLE || !prewarmPipelines(ctx)) return false;
 
     const VkBufferUsageFlags dst = VK_BUFFER_USAGE_TRANSFER_DST_BIT, src = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
     if (!makeDevice(lightOut_, static_cast<VkDeviceSize>(numVertices) * 8u, kStorage | dst | src, "producers.lightOut")) return false;

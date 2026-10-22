@@ -1326,6 +1326,11 @@ bool ensureImguiVulkan(EnginePresentVk::Impl& s) {
     info.PhysicalDevice = s.phys;
     info.Device = s.dev;
     info.PipelineCache = mc2vk::infra::cacheHandle();
+    info.MemoryAllocated = [](auto memory, auto bytes, auto name) {
+        mc2vk::infra::allocation(reinterpret_cast<uint64_t>(memory), bytes, name, true);
+        mc2vk::infra::breadcrumb("resource", name, reinterpret_cast<uint64_t>(memory));
+    };
+    info.MemoryFreed = [](auto memory) { mc2vk::infra::release(reinterpret_cast<uint64_t>(memory)); };
     info.QueueFamily = s.gfxFamily;
     info.Queue = s.gfxQ;
     info.RenderPass = s.imguiRenderPass.get();
@@ -2157,6 +2162,13 @@ bool EnginePresentVk::renderNativeCsmShadowDebugOverlay(void* csmArrayView, int 
     s.pendingShadowDebugView = arrayView;
     s.pendingShadowDebugLayer = layer < 0 ? 0 : layer;
     return true;
+}
+
+bool EnginePresentVk::prewarmPipelines() {
+    if (!created_ || !impl_) return false;
+    Impl& s=*impl_;
+    return ensureCompositeObjects(s) && ensureHudColorObjects(s) && ensureHudTexObjects(s) &&
+        (!ImGui::GetCurrentContext() || ensureImguiVulkan(s));
 }
 
 bool EnginePresentVk::prepareImguiVulkanFrame() {

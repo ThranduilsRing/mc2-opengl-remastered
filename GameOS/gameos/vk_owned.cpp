@@ -96,14 +96,14 @@ bool OwnedImage::create(VmaAllocator allocator, VkDevice device, const VkImageCr
     reset();
     VkImage image = VK_NULL_HANDLE;
     VmaAllocation allocation = nullptr;
-    if (name.find("shadow") != name.npos) {
-        // Ask Vulkan for the exact allocation requirement before committing a shadow feature image.
+    if (name.find("shadow") != name.npos || name.find("post") != name.npos || name.find("scene") != name.npos || name.find("targets") != name.npos) {
+        // Admit shadow and render-target images using the exact requirement, including driver alignment.
         VkImage probe=VK_NULL_HANDLE;
         if(vkCreateImage(device,&info,nullptr,&probe)!=VK_SUCCESS) return false;
         VkMemoryRequirements requirements{}; vkGetImageMemoryRequirements(device,probe,&requirements);
         vkDestroyImage(device,probe,nullptr);
         if(!infra::admit(requirements.size)) {
-            std::fprintf(stderr,"[VK_RESIDENCY v1] shadow_refused=%.*s bytes=%llu\n",int(name.size()),name.data(),requirements.size);
+            std::fprintf(stderr,"[VK_RESIDENCY v1] feature_refused=%.*s bytes=%llu\n",int(name.size()),name.data(),requirements.size);
             return false;
         }
     }

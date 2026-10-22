@@ -100,7 +100,8 @@ bool vkImageResourceCreate(VkImageResource* r, VkDevice device, VkPhysicalDevice
     mai.pNext = &ded;
     mai.allocationSize = mr.size;
     mai.memoryTypeIndex = memIdx;
-    if(name.find("shadow")!=name.npos && !mc2vk::infra::admit(mr.size)) return fail("shadow residency admission");
+    const bool budgeted = name.find("shadow")!=name.npos || name.find("post")!=name.npos || name.find("scene")!=name.npos || name.find("targets")!=name.npos;
+    if(budgeted && !mc2vk::infra::admit(mr.size)) return fail("feature residency admission");
     if (!mc2vk::create(r->memory, device, [&](VkDeviceMemory* out) { return vkAllocateMemory(device, &mai, nullptr, out); })) return fail("vkAllocateMemory");
     mc2vk::infra::allocation(reinterpret_cast<uint64_t>(r->memory.get()), mr.size,
         name, true);

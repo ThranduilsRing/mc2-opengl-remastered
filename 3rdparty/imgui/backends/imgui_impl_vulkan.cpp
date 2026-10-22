@@ -436,6 +436,23 @@ static inline VkDeviceSize AlignBufferSize(VkDeviceSize size, VkDeviceSize align
     return (size + alignment - 1) & ~(alignment - 1);
 }
 
+static VkResult ImGui_ImplVulkan_AllocateMemory(VkDevice device, const VkMemoryAllocateInfo* info, const VkAllocationCallbacks* allocator, VkDeviceMemory* memory, const char* name)
+{
+    VkResult result = vkAllocateMemory(device, info, allocator, memory);
+    ImGui_ImplVulkan_Data* bd = ImGui_ImplVulkan_GetBackendData();
+    if (result == VK_SUCCESS && bd && bd->VulkanInitInfo.MemoryAllocated)
+        bd->VulkanInitInfo.MemoryAllocated(*memory, info->allocationSize, name);
+    return result;
+}
+
+static void ImGui_ImplVulkan_FreeMemory(VkDevice device, VkDeviceMemory memory, const VkAllocationCallbacks* allocator)
+{
+    ImGui_ImplVulkan_Data* bd = ImGui_ImplVulkan_GetBackendData();
+    if (memory && bd && bd->VulkanInitInfo.MemoryFreed)
+        bd->VulkanInitInfo.MemoryFreed(memory);
+    vkFreeMemory(device, memory, allocator);
+}
+
 static void CreateOrResizeBuffer(VkBuffer& buffer, VkDeviceMemory& buffer_memory, VkDeviceSize& buffer_size, VkDeviceSize new_size, VkBufferUsageFlagBits usage)
 {
     ImGui_ImplVulkan_Data* bd = ImGui_ImplVulkan_GetBackendData();
@@ -444,7 +461,7 @@ static void CreateOrResizeBuffer(VkBuffer& buffer, VkDeviceMemory& buffer_memory
     if (buffer != VK_NULL_HANDLE)
         vkDestroyBuffer(v->Device, buffer, v->Allocator);
     if (buffer_memory != VK_NULL_HANDLE)
-        vkFreeMemory(v->Device, buffer_memory, v->Allocator);
+        ImGui_ImplVulkan_FreeMemory(v->Device, buffer_memory, v->Allocator);
 
     VkDeviceSize buffer_size_aligned = AlignBufferSize(IM_MAX(v->MinAllocationSize, new_size), bd->BufferMemoryAlignment);
     VkBufferCreateInfo buffer_info = {};
@@ -462,7 +479,7 @@ static void CreateOrResizeBuffer(VkBuffer& buffer, VkDeviceMemory& buffer_memory
     alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
     alloc_info.allocationSize = req.size;
     alloc_info.memoryTypeIndex = ImGui_ImplVulkan_MemoryType(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, req.memoryTypeBits);
-    err = vkAllocateMemory(v->Device, &alloc_info, v->Allocator, &buffer_memory);
+    err = ImGui_ImplVulkan_AllocateMemory(v->Device, &alloc_info, v->Allocator, &buffer_memory, "geometry.imgui.draw");
     check_vk_result(err);
 
     err = vkBindBufferMemory(v->Device, buffer, buffer_memory, 0);
@@ -740,7 +757,7 @@ bool ImGui_ImplVulkan_CreateFontsTexture()
         alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
         alloc_info.allocationSize = IM_MAX(v->MinAllocationSize, req.size);
         alloc_info.memoryTypeIndex = ImGui_ImplVulkan_MemoryType(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, req.memoryTypeBits);
-        err = vkAllocateMemory(v->Device, &alloc_info, v->Allocator, &backend_tex->Memory);
+        err = ImGui_ImplVulkan_AllocateMemory(v->Device, &alloc_info, v->Allocator, &backend_tex->Memory, "texture.imgui");
         check_vk_result(err);
         err = vkBindImageMemory(v->Device, backend_tex->Image, backend_tex->Memory, 0);
         check_vk_result(err);
@@ -781,7 +798,7 @@ bool ImGui_ImplVulkan_CreateFontsTexture()
         alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
         alloc_info.allocationSize = IM_MAX(v->MinAllocationSize, req.size);
         alloc_info.memoryTypeIndex = ImGui_ImplVulkan_MemoryType(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, req.memoryTypeBits);
-        err = vkAllocateMemory(v->Device, &alloc_info, v->Allocator, &upload_buffer_memory);
+        err = ImGui_ImplVulkan_AllocateMemory(v->Device, &alloc_info, v->Allocator, &upload_buffer_memory, "staging.imgui.textureUpload");
         check_vk_result(err);
         err = vkBindBufferMemory(v->Device, upload_buffer, upload_buffer_memory, 0);
         check_vk_result(err);
@@ -857,7 +874,7 @@ bool ImGui_ImplVulkan_CreateFontsTexture()
     check_vk_result(err);
 
     vkDestroyBuffer(v->Device, upload_buffer, v->Allocator);
-    vkFreeMemory(v->Device, upload_buffer_memory, v->Allocator);
+    ImGui_ImplVulkan_FreeMemory(v->Device, upload_buffer_memory, v->Allocator);
 
     return true;
 }
@@ -879,7 +896,7 @@ void ImGui_ImplVulkan_DestroyFontsTexture()
     }
     if (backend_tex->ImageView) { vkDestroyImageView(v->Device, backend_tex->ImageView, v->Allocator); backend_tex->ImageView = VK_NULL_HANDLE; }
     if (backend_tex->Image)     { vkDestroyImage(v->Device, backend_tex->Image, v->Allocator); backend_tex->Image = VK_NULL_HANDLE; }
-    if (backend_tex->Memory)    { vkFreeMemory(v->Device, backend_tex->Memory, v->Allocator); backend_tex->Memory = VK_NULL_HANDLE; }
+    if (backend_tex->Memory)    { ImGui_ImplVulkan_FreeMemory(v->Device, backend_tex->Memory, v->Allocator); backend_tex->Memory = VK_NULL_HANDLE; }
 }
 
 static void ImGui_ImplVulkan_CreateShaderModules(VkDevice device, const VkAllocationCallbacks* allocator)
@@ -1304,9 +1321,9 @@ void ImGui_ImplVulkan_RemoveTexture(VkDescriptorSet descriptor_set)
 void ImGui_ImplVulkan_DestroyFrameRenderBuffers(VkDevice device, ImGui_ImplVulkan_FrameRenderBuffers* buffers, const VkAllocationCallbacks* allocator)
 {
     if (buffers->VertexBuffer) { vkDestroyBuffer(device, buffers->VertexBuffer, allocator); buffers->VertexBuffer = VK_NULL_HANDLE; }
-    if (buffers->VertexBufferMemory) { vkFreeMemory(device, buffers->VertexBufferMemory, allocator); buffers->VertexBufferMemory = VK_NULL_HANDLE; }
+    if (buffers->VertexBufferMemory) { ImGui_ImplVulkan_FreeMemory(device, buffers->VertexBufferMemory, allocator); buffers->VertexBufferMemory = VK_NULL_HANDLE; }
     if (buffers->IndexBuffer) { vkDestroyBuffer(device, buffers->IndexBuffer, allocator); buffers->IndexBuffer = VK_NULL_HANDLE; }
-    if (buffers->IndexBufferMemory) { vkFreeMemory(device, buffers->IndexBufferMemory, allocator); buffers->IndexBufferMemory = VK_NULL_HANDLE; }
+    if (buffers->IndexBufferMemory) { ImGui_ImplVulkan_FreeMemory(device, buffers->IndexBufferMemory, allocator); buffers->IndexBufferMemory = VK_NULL_HANDLE; }
     buffers->VertexBufferSize = 0;
     buffers->IndexBufferSize = 0;
 }

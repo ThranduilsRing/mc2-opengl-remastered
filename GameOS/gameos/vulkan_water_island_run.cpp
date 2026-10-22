@@ -23,11 +23,14 @@ extern "C" int mc2_vk_water_island_prewarm(int w,int h) {
     auto& ctx=mc2vk::getOrCreateEngineVulkanContext();
     if(!ctx.valid() || w<=0 || h<=0) return 0;
     auto& slot=ctx.islandSlot(mc2vk::IslandSlot::Water);
-    if(slot) return 1;
-    auto fresh=std::make_unique<WaterIsland>();
-    if(!init_island(fresh.get(),w,h)) { ctx.waitIdle("water_prewarm_failure"); return 0; }
-    slot=std::move(fresh);
-    return 1;
+    if(!slot) {
+        auto fresh=std::make_unique<WaterIsland>();
+        if(!init_island(fresh.get(),w,h)) { ctx.waitIdle("water_prewarm_failure"); return 0; }
+        slot=std::move(fresh);
+    }
+    auto* s=parkedIsland();
+    if(!s->native) s->native=std::make_unique<mc2vk::NativeProducers>();
+    return s->native->prewarmPipelines(ctx) ? 1 : 0;
 }
 
 extern "C" int mc2_vk_water_island_run(
@@ -129,11 +132,11 @@ extern "C" int mc2_vk_water_island_run(
     }
 
     // STEP 3.4P: bring the native producers up once the recipes and the first lighting snapshot exist.
-    if (!s->native && !s->nativeFailed) {
+    if ((!s->native || !s->native->ready()) && !s->nativeFailed) {
         gos_terrain_lighting::VkProducerSnapshot snap0{};
         if (gos_terrain_lighting::GetVkProducerSnapshot(snap0) && snap0.numVertices > 0) {
             slotCtx.waitIdle("water_native_init");
-            auto np = std::make_unique<mc2vk::NativeProducers>();
+            auto np = s->native ? std::move(s->native) : std::make_unique<mc2vk::NativeProducers>();
             // Upper bound on the quads the cull can emit: the shader's water-eligibility predicate (water bit on any corner, or any
             // corner under waterElevation + shoreExt) counted over the CPU recipes once, plus headroom. Sizes the thin buffers from the map.
             uint32_t eligibleBound = 0;

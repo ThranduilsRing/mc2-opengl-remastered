@@ -2,6 +2,7 @@
 #define NOMINMAX
 #include "vk_render_infra.h"
 #include "vulkan_context.h"
+#include "engine_present_vk.h"
 #include "vk_owned.h"
 #include "imgui.h"
 #include "gos_crashbundle.h"
@@ -514,9 +515,10 @@ void prewarm(int width,int height) {
     ready+=mc2_vk_shadow_island_prewarm(width,height);
     mc2_vk_overlay_prewarm(width,height);
     if(auto* post=getGosPostProcess()) { post->prewarmVkFog(); post->prewarmVkScreenFx(); post->prewarmVkHzb(); }
+    ready+=getOrCreateEnginePresentVk().prewarmPipelines() ? 1 : 0;
     saveCache();
     s.prewarmCreations=s.creations; s.firstFrames.clear(); s.measureFrames=true; s.firstFrameStarted=false;
-    std::fprintf(stderr,"[VK_PIPELINE_PREWARM v1] ready=%d families=8 pipelines=%llu ms=%.3f size=%dx%d\n",ready,s.creations-before,std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-begin).count(),width,height);
+    std::fprintf(stderr,"[VK_PIPELINE_PREWARM v1] ready=%d families=9 pipelines=%llu ms=%.3f size=%dx%d\n",ready,s.creations-before,std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-begin).count(),width,height);
 }
 void deviceLost() {
     auto& s=state();
