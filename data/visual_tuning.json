@@ -24,15 +24,13 @@
     "mc2_10": {
       "shadowSoftness": 1.2,
       "staticPropIblStrength": 0.6,
-      "mechAmbientStrength": 0.26,
-      "exposure": 1.05
+      "mechAmbientStrength": 0.26
     },
     "mc2_17": {
       "mechAmbientStrength": 0.28,
       "shadowSoftness": 1.4
     },
     "mc2_24": {
-      "exposure": 1.1,
       "shadowSoftness": 1.15,
       "staticPropIblStrength": 0.6,
       "mechAmbientStrength": 0.25

@@ -54,7 +54,12 @@ bool s_hasFile = false;
 int s_appliedKeys = 0;
 
 std::map<std::string, float> engineDefaults() {
-    return {{"exposure",1}, {"shadowSoftness",2.5f}, {"staticPropIblStrength",0.5f},
+    return {{"gradeR",1}, {"gradeG",1}, {"gradeB",1},
+        {"gradeShadowsR",1}, {"gradeShadowsG",1}, {"gradeShadowsB",1},
+        {"gradeHighlightsR",1}, {"gradeHighlightsG",1}, {"gradeHighlightsB",1},
+        {"topWarmthR",1}, {"topWarmthG",1}, {"topWarmthB",1},
+        {"vignette",0}, {"topWarmthStrength",0},
+        {"exposure",1}, {"shadowSoftness",2.5f}, {"staticPropIblStrength",0.5f},
         {"waterSkyTintStrength",0}, {"vfxBrightness",1}, {"vfxAdditiveBrightness",1},
         {"vfxLitStrength",0.7f}, {"mechAmbientStrength",0.15f}, {"mechSpecularStrength",0.05f},
         {"terrainClassGrassGmRLo",-0.02f}, {"terrainClassGrassGmRHi",0.06f},
@@ -67,7 +72,9 @@ bool validValue(std::string_view key, double value) {
     if (!std::isfinite(value)) return false;
     float hi = 64;
     float lo = 0;
-    if (key == "staticPropIblStrength") hi = 3;
+    if (key == "vignette" || key == "topWarmthStrength") hi = 1;
+    else if (key.starts_with("grade") || key.starts_with("topWarmth")) hi = 2;
+    else if (key == "staticPropIblStrength") hi = 3;
     else if (key == "mechAmbientStrength") hi = 2;
     else if (key == "mechSpecularStrength") hi = 4;
     else if (key == "vfxBrightness" || key == "vfxAdditiveBrightness") hi = 8;
@@ -83,6 +90,12 @@ Json environmentDocument(const Environment& env) {
     const auto& l = env.lighting;
     Json output{{"exposureMultiplier",env.output.exposureMultiplier}, {"transform",env.output.transform}};
     output["exposureEV"] = env.output.exposureEV ? Json(*env.output.exposureEV) : Json(nullptr);
+    output["grade"] = env.output.grade;
+    output["shadows"] = env.output.shadows;
+    output["highlights"] = env.output.highlights;
+    output["topWarmth"] = env.output.topWarmth;
+    output["vignette"] = env.output.vignette;
+    output["topWarmthStrength"] = env.output.topWarmthStrength;
     return {{"schemaVersion",Environment::kSchemaVersion}, {"sourceSchemaVersion",env.sourceSchemaVersion},
         {"mission",env.mission}, {"colorContract",env.colorContract}, {"directionalSource",env.directionalSource},
         {"lighting",{{"cameraDirection",l.cameraDirection}, {"effectiveDirection",l.effectiveDirection},
@@ -97,6 +110,17 @@ Json environmentDocument(const Environment& env) {
 }
 
 void finish(Environment& env) {
+    const auto rgb = [&](const char* prefix) {
+        const std::string key(prefix);
+        return std::array<float,3>{env.legacyTuning.at(key+"R"),
+            env.legacyTuning.at(key+"G"),env.legacyTuning.at(key+"B")};
+    };
+    env.output.grade = rgb("grade");
+    env.output.shadows = rgb("gradeShadows");
+    env.output.highlights = rgb("gradeHighlights");
+    env.output.topWarmth = rgb("topWarmth");
+    env.output.vignette = env.legacyTuning.at("vignette");
+    env.output.topWarmthStrength = env.legacyTuning.at("topWarmthStrength");
     env.output.exposureMultiplier = env.legacyTuning.at("exposure");
     env.output.exposureEV = env.output.exposureMultiplier > 0
         ? std::optional<float>(std::log2(env.output.exposureMultiplier)) : std::nullopt;
@@ -343,7 +367,7 @@ bool visualTuning_saveCurrentToMission() {
     }
 
     // Snapshot all current tunable values.
-    std::map<std::string,float> current;
+    std::map<std::string,float> current = s_environment.legacyTuning;
     current["exposure"]                  = gos_GetExposure();
     current["shadowSoftness"]            = gos_GetTerrainShadowSoftness();
     current["staticPropIblStrength"]     = g_iblShStrength;

@@ -58,7 +58,7 @@ TEST_CASE("MissionEnvironment/version migration preserves exact shipped tuning")
         CHECK(current.sourceSchemaVersion==2);
         CHECK(current.legacyTuning.at("staticPropIblStrength")==0.6f);
         CHECK(current.legacyTuning.at("mechSpecularStrength")==0.05f);
-        CHECK(current.output.exposureMultiplier==(std::string(mission)=="mc2_10" ? 1.05f : 1.0f));
+        CHECK(current.output.exposureMultiplier==1.0f);
         CHECK(current.legacyTuning.at("mechAmbientStrength")== (std::string(mission)=="mc2_10" ? 0.26f : 0.24f));
     }
 }
@@ -71,6 +71,22 @@ TEST_CASE("MissionEnvironment/default mission session precedence and missing mis
     CHECK(b.output.exposureMultiplier==1.2f);
     CHECK(b.legacyTuning.at("mechAmbientStrength")==0.15f);
     CHECK(visualTuning_resolve("c",{}).legacyTuning.at("vfxBrightness")==1.0f);
+}
+
+TEST_CASE("MissionEnvironment/output defaults neutral and mission grade resets") {
+    const auto profile=source(R"({"missions":{"warm":{"gradeR":1.05,"gradeShadowsB":1.04,"vignette":0.18,"topWarmthR":1.1,"topWarmthStrength":0.25}}})");
+    const auto warm=visualTuning_resolve("warm",{profile});
+    CHECK(warm.output.grade[0]==1.05f);
+    CHECK(warm.output.shadows[2]==1.04f);
+    CHECK(warm.output.vignette==0.18f);
+    CHECK(warm.output.topWarmthStrength==0.25f);
+    const auto neutral=visualTuning_resolve("day",{profile});
+    for (const auto* rgb : {&neutral.output.grade,&neutral.output.shadows,
+             &neutral.output.highlights,&neutral.output.topWarmth})
+        CHECK(*rgb==std::array<float,3>{1,1,1});
+    CHECK(neutral.output.vignette==0);
+    CHECK(neutral.output.topWarmthStrength==0);
+    CHECK(neutral.effectiveHash!=warm.effectiveHash);
 }
 
 TEST_CASE("MissionEnvironment/reject invalid versions colors types and ranges without stale values") {

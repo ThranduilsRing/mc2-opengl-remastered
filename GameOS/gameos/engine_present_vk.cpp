@@ -15,6 +15,7 @@
 
 #include <algorithm>
 #include "engine_present_vk.h"
+#include "visual_tuning_profile.h"
 #include "Gates/gate.h"
 #include "gos_visual_capture.h"   // VK-VISUAL-CAPTURE-1
 #include "gos_screenshot.h"
@@ -705,7 +706,7 @@ bool ensureCompositeObjects(EnginePresentVk::Impl& s) {
     if (!s.compositeLayout) {
         VkPushConstantRange pc{};
         pc.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-        pc.size = sizeof(float) * 16;
+        pc.size = sizeof(float) * 32;
         VkPipelineLayoutCreateInfo ci{VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO};
         const VkDescriptorSetLayout compositeDslHandle = s.compositeDsl.get();
         ci.setLayoutCount = 1; ci.pSetLayouts = &compositeDslHandle;
@@ -2087,7 +2088,8 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
     vkCmdBindPipeline(cc, VK_PIPELINE_BIND_POINT_GRAPHICS, s.compositePipe.get());
     vkCmdBindDescriptorSets(cc, VK_PIPELINE_BIND_POINT_GRAPHICS, s.compositeLayout.get(),
                             0, 1, &s.compositeSet, 0, nullptr);
-    float pc[16] = {
+    const auto& output = visualTuning_environment().output;
+    float pc[32] = {
         exposure,
         1.0f / static_cast<float>(s.imgW),
         1.0f / static_cast<float>(s.imgH),
@@ -2103,7 +2105,11 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
         lowLightTint ? lowLightTint[2] : 0.6f,
         static_cast<float>(engineIdxBase),
         casSharpness,
-        static_cast<float>(tonemapMode)
+        static_cast<float>(tonemapMode),
+        output.grade[0], output.grade[1], output.grade[2], output.vignette,
+        output.shadows[0], output.shadows[1], output.shadows[2], output.topWarmthStrength,
+        output.highlights[0], output.highlights[1], output.highlights[2], 0,
+        output.topWarmth[0], output.topWarmth[1], output.topWarmth[2], 0
     };
     vkCmdPushConstants(cc, s.compositeLayout.get(), VK_SHADER_STAGE_FRAGMENT_BIT,
                        0, sizeof(pc), pc);

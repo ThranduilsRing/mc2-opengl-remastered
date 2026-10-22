@@ -43,7 +43,13 @@ struct MissionEnvironment {
     struct Output {
         float exposureMultiplier = 1;
         std::optional<float> exposureEV = 0;
-        std::string transform = "legacy-grade";
+        std::array<float, 3> grade{1, 1, 1};
+        std::array<float, 3> shadows{1, 1, 1};
+        std::array<float, 3> highlights{1, 1, 1};
+        std::array<float, 3> topWarmth{1, 1, 1};
+        float vignette = 0;
+        float topWarmthStrength = 0;
+        std::string transform = "profile-grade";
     } output;
     std::string atmosphere = "legacy-per-receiver";
     std::string localLights = "legacy-SUM/MAX-compression-pad-spill";
