@@ -38,6 +38,7 @@
 #include "include/terrain_frame_vk.glsl"   // TerrainFrameUBO + set-0 resources + CSM shadow helpers
 #include "include/terrain_static_visibility.glsl"
 #include "include/terrain_shadow_receiver.glsl"
+#include "include/concrete_detail_vk.glsl"
 #include "../include/axis.hglsl"   // mc2ToRender: the POM view vector is built in the MC2 world frame
 #include "../include/edge_haze.hglsl"   // edgeHazeAmount + EDGE_HAZE_SKY, shared with GL
 
@@ -376,6 +377,8 @@ void main() {
     // Valid even for quads straddling cement, zero weights or the LOD fade.
     vec2 detailUv = v_worldPos.xy * (uT.detailTiling / MATV_WU_PER_TILE);
     vec2 detailUvDx = dFdx(detailUv), detailUvDy = dFdy(detailUv);
+    vec2 cdWpDx = dFdx(v_worldPos.xy), cdWpDy = dFdy(v_worldPos.xy);   // CONCRETE-ROAD-PBR-DETAIL: uniform-flow derivatives
+    float cdW = 0.0;   // how much of this fragment is cement slab (alpha on transition edges), weights the detail
     vec3 base;
     float cookedBreakup = 0.5;
     // VK-TERRAIN-LIGHTING: track whether this fragment resolved to a solid cement slab.
@@ -449,6 +452,7 @@ void main() {
             if (isTransition && cementOwnAlpha) {
                 float cOwnA = cementTexel.a;
                 base = mix(base, cementColor, cOwnA);
+                cdW = cOwnA;
                 if (cOwnA > 0.5) { cementHit = true; pureConcrete = true; }
             } else if (isTransition) {
                 if (uT.useTransitionMask != 0) {
@@ -507,10 +511,12 @@ void main() {
                         alpha = max(cCutLt((1.0 - u) + v, cFu + cFv), cCutLt(u + (1.0 - v), cFu + cFv));
                     }
                     base = mix(base, cementColor, alpha);
+                    cdW = alpha;
                     if (alpha > 0.5) { cementHit = true; pureConcrete = true; }
                 }
             } else {
                 base = cementColor;
+                cdW = 1.0;
                 cementHit = true;
                 pureConcrete = true;
             }
@@ -538,6 +544,7 @@ void main() {
                     vec2 dAtlasUV = (vec2(float(dCol), float(dRow)) + dSampleUV) / float(dGridSide);
                     base = textureLod(u_cementAtlas, dAtlasUV, cLod).rgb * vec3(uT.missionFlatR, uT.missionFlatG, uT.missionFlatB);  // CEMENT-NIGHT-LIGHT-1
                     pureConcrete = true;
+                    cdW = 1.0;
                     cementHit = true;   // as GL's diag-connect branch
                 }
             }
@@ -628,6 +635,17 @@ void main() {
 
         float normalLight = computeNdotLBand(N, lightDir);
         if (pureConcrete) normalLight = 1.0;                     // cement: flat-lit slab
+        // CONCRETE-ROAD-PBR-DETAIL: MC2's slab colour stays; the PBR set adds occlusion, a relative sun shading from the detail
+        // normal and a roughness sheen on top of it.
+        vec3 cdSpec = vec3(0.0);
+        if (uT.concreteDetail != 0 && cdW > 0.0) {
+            MaterialDetail cd = cdEval(CD_LAYER_PAD, v_worldPos.xy, cdWpDx, cdWpDy);
+            float cdDiff; vec3 cdSp;
+            cdShade(cd, normalize(lightDir), uT.ambientDayGate, cdDiff, cdSp);
+            baseColor *= mix(1.0, cd.ao, 0.6 * cdW);
+            normalLight *= mix(1.0, cdDiff, cdW);
+            cdSpec = cdSp * cdW;
+        }
 
         // Shadow compose — mirrors terrain_lod_chunk.frag:896-907 EXACTLY:
         //   staticS = calcShadow(...16);  dynS = calcDynamicShadow(...8);
@@ -656,8 +674,8 @@ void main() {
             dynS = terrainDynamicShadow(v_worldPos, shadowN, shSun);
         }
         float shadow = min(staticS, dynS);
-        shadow = mix(shadow, dynS, pureConcrete ? 1.0 : 0.0);  // concrete: dynamic only
-        lit = baseColor * normalLight * shadow;
+        // no concrete shadow exemption: cement receives the static and the dynamic shadow like the ground around it
+        lit = baseColor * normalLight * shadow + cdSpec * shadow;
 
         // VK-PARITY-TERRAIN-2: NIGHT-LIGHT-POOLS-1..4 / LIGHT-CLUSTER-PERF-1 /
         // MOVER-CONTACT-SHADOW-1 — the SAME shared body GL runs (terrain_lod_chunk.frag

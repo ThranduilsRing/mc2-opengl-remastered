@@ -118,5 +118,7 @@ layout(set = 0, binding = 0, std140) uniform TerrainFrameUBO {
     float shoreFieldBoundsY;  // off 844
     float shoreFieldBoundsW;  // off 848
     float shoreFieldBoundsH;  // off 852
+    int   concreteDetail;  // off 856
+    float concreteDetailStrength;  // off 860
 } uT;
 #endif

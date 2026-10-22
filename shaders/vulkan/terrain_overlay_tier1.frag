@@ -3,7 +3,7 @@
 // Port of shaders/terrain_overlay.frag (authored-art cement/pad/runway/road overlays and
 // the cement transition tiles): decal texture albedo, OVERLAY-CEMENT-ADOPT-1 cement-atlas
 // adoption on bare cement tiles, RUNWAY-CLOSE-1 flat-light arm, CEMENT-NIGHT-LIGHT-1
-// mission flat light, static x dynamic sun shadow (static dropped on cement tiles),
+// mission flat light, static x dynamic sun shadow (no cement exemption),
 // in-shader distance fog (skipped on cement), NIGHT-LIGHT-POOLS additive light pools,
 // PAD-AREA-GLOW-1, map-edge haze. Co-writes MRT0 color + MRT1 = shadowHandled flat-up
 // (0.5,0.5,1,1) into the shared scene GBuffer, binary-alpha (discard a < 0.5), opaque.
@@ -16,6 +16,7 @@
 #define PREC highp
 #endif
 #include "include/terrain_frame_vk.glsl"
+#include "include/concrete_detail_vk.glsl"
 
 layout(location = 0) in vec3  WorldPos;
 layout(location = 1) in vec2  Texcoord;
@@ -76,6 +77,7 @@ void main() {
         return;
     }
     vec4 tex_color = texture(tex1, Texcoord);
+    vec2 cdWpDx = dFdx(WorldPos.xy), cdWpDy = dFdy(WorldPos.xy);   // CONCRETE-ROAD-PBR-DETAIL: uniform-flow derivatives
     vec3 missionFlat = vec3(uT.missionFlatR, uT.missionFlatG, uT.missionFlatB);
 
     uint ovCw          = overlayCementWord(WorldPos.xy);
@@ -111,8 +113,17 @@ void main() {
                                                      uT.dynamicLightSpaceMatrix, uT.shadowSoftness, 4, shKnobs);
     }
     float shadow = staticShadow * dynamicShadow;
-    if (ovCementTile) shadow = dynamicShadow;                  // concrete exemption (static dropped)
-    c.rgb *= shadow;
+    // CONCRETE-ROAD-PBR-DETAIL: MC2's own overlay colour stays; asphalt (roads, runway) or concrete (adopted cement tiles) detail
+    // adds occlusion, relative sun shading and a roughness sheen.
+    vec3 cdSpec = vec3(0.0);
+    if (uT.concreteDetail != 0) {
+        MaterialDetail cd = cdEval(ovAdoptAlbedo ? CD_LAYER_PAD : CD_LAYER_ROAD, WorldPos.xy, cdWpDx, cdWpDy);
+        float cdDiff; vec3 cdSp;
+        cdShade(cd, lightDir3, uT.ambientDayGate, cdDiff, cdSp);
+        c.rgb *= mix(1.0, cd.ao, 0.6) * cdDiff;
+        cdSpec = cdSp;
+    }
+    c.rgb = c.rgb * shadow + cdSpec * shadow;
 
     // In-shader distance fog (skipped on cement tiles: the shared screen-space fog does it once).
     float camDist2D = distance(WorldPos.xy, uT.cameraPosMC2.xy);

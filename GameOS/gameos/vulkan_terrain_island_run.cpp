@@ -183,6 +183,8 @@ void fill_frame_ubo(TerrainIsland* s, const Mc2TerrainTier1Feed& feed,
     // 0: not imported, 1: imported, 2: imported and carrying the cliff layer (layer 5), which the cliff material samples.
     u.detailReady    = !s->matNormalReady ? 0 : (s->matNormalLayers > 5u ? 2 : 1);
     u.nfhStrength    = feed.nfhStrength;
+    u.concreteDetail = (s->concreteDetailReady && feed.lightingEnabled && feed.detailEnabled) ? 1 : 0;   // detail toggle off = base game look
+    u.concreteDetailStrength = 1.0f;
     u.detailTiling   = feed.detailTiling;
     u.detailStrength = feed.detailStrength;
     // VK-TERRAIN-DYNSHADOW: enable only when the sub-gate is on AND a real GL
@@ -414,6 +416,7 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     // once imported / while the gate is off (feed.matNormalVersion==0). Fail-soft: leaves
     // the flat-normal dummy bound (matNormalReady=false) -> FS uses macro-slope-only normal.
     import_matnormal(s, feed);
+    import_concrete_detail(s);
     }   // VK-FLIP-FIELD-REPORT-1: close VK-terrain-interop-copies zone
 
     // VK-SHADOW-COPY-ONCE-1 evidence: optional per-frame ms log for the interop-copies

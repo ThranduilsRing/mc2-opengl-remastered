@@ -261,6 +261,11 @@ struct TerrainIsland : mc2vk::IslandState {
     uint64_t      matNormalVersionRejected = 0;      // rejected source version, logged once
     uint32_t      matNormalLayers = 0;               // layer count of the imported array
     bool          matNormalReady = false;            // set once the real array is live
+    // CONCRETE-ROAD-PBR-DETAIL: binding 18, 2-layer RGBA8 array (0 pad concrete, 1 road asphalt): normal xy, roughness, AO.
+    mc2vk::ResidentTextureRef concreteDetailTexture;
+    mc2vk::OwnedSampler     concreteDetailSamp;
+    bool          concreteDetailReady = false;
+    bool          concreteDetailTried = false;
 
     // Per-patch dynamic UBO (one 512B slot per LOD0 patch this frame; 512 is a multiple
     // of the 256B minUniformBufferOffsetAlignment — grew from 256 for the dynshadow mat4).
@@ -369,6 +374,8 @@ bool ensure_dummy_csm(TerrainIsland* s);
 bool copy_csm_shadows(TerrainIsland* s, const Mc2TerrainTier1Feed& feed);
 bool ensure_dummy_matnormal(TerrainIsland* s);
 void import_matnormal(TerrainIsland* s, const Mc2TerrainTier1Feed& feed);
+bool ensure_dummy_concrete_detail(TerrainIsland* s);
+void import_concrete_detail(TerrainIsland* s);
 
 }  // namespace vk_terrain_detail
 using namespace vk_terrain_detail;
