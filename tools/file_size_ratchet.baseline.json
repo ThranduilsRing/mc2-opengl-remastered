@@ -14,14 +14,13 @@
  ],
  "files_over_1500": {
   "GameOS/gameos/engine_present_vk.cpp": 2793,
-  "GameOS/gameos/vulkan_color_prop_island.cpp": 1725,
-  "GameOS/gameos/vulkan_shadow_island_live.cpp": 1550,
-  "GameOS/include/gameos.hpp": 3721,
-  "RenderCore/RendererFeatureRegistry.h": 1596,
+  "GameOS/gameos/vulkan_color_prop_island.cpp": 1726,
+  "GameOS/include/gameos.hpp": 3661,
+  "RenderCore/RendererFeatureRegistry.h": 1561,
   "code/artlry.cpp": 1833,
   "code/bldng.cpp": 1691,
   "code/brain_special_dispatch.cpp": 2771,
-  "code/gamecam.cpp": 1609,
+  "code/gamecam.cpp": 1604,
   "code/gameobj.cpp": 2242,
   "code/infowindow.cpp": 1730,
   "code/logisticsdialog.cpp": 2149,
@@ -56,7 +55,7 @@
   "mclib/terrtxm.cpp": 1816,
   "mclib/tgl.h": 1799
  },
- "head": "c4258db68",
+ "head": "7547f1aa8",
  "per_dir": {
   "GameAdapters": {
    "files": 9,
@@ -65,10 +64,10 @@
    "max_lines": 466
   },
   "GameOS": {
-   "files": 349,
-   "files_over_1500": 4,
+   "files": 359,
+   "files_over_1500": 3,
    "files_over_3000": 1,
-   "max_lines": 3721
+   "max_lines": 3661
   },
   "GuiRuntime": {
    "files": 14,
@@ -80,7 +79,7 @@
    "files": 58,
    "files_over_1500": 1,
    "files_over_3000": 0,
-   "max_lines": 1596
+   "max_lines": 1561
   },
   "RenderWorld": {
    "files": 8,
@@ -113,10 +112,10 @@
    "max_lines": 2518
   },
   "shaders": {
-   "files": 89,
+   "files": 90,
    "files_over_1500": 0,
    "files_over_3000": 0,
-   "max_lines": 775
+   "max_lines": 759
   }
  },
  "thresholds": [
@@ -126,7 +125,7 @@
  "top": [
   {
    "file": "GameOS/include/gameos.hpp",
-   "lines": 3721
+   "lines": 3661
   },
   {
    "file": "GameOS/gameos/engine_present_vk.cpp",
@@ -246,10 +245,10 @@
   }
  ],
  "total": {
-  "files": 1821,
-  "files_over_1500": 42,
+  "files": 1832,
+  "files_over_1500": 41,
   "files_over_3000": 1,
-  "max_lines": 3721
+  "max_lines": 3661
  },
  "version": 1
 }
