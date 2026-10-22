@@ -181,6 +181,10 @@ def validate_runtime_glb(path, *, max_triangles=None, texture_root=None):
     for i, n in enumerate(doc.get("nodes", [])):
         if any(k in n for k in ("matrix", "translation", "rotation", "scale")) or n.get("children"):
             _err(issues, "RUNTIME_NODE", f"node {i} is not an identity leaf (transforms must be baked)")
+    names = [n.get("name", "") for n in doc.get("nodes", [])]
+    dups = sorted({n for n in names if n and names.count(n) > 1})
+    if dups:
+        _err(issues, "RUNTIME_NODE_NAME", f"duplicate node names {dups[:4]} (the importer keys shapes by node name)")
     tris = 0
     for mi, mesh in enumerate(doc["meshes"]):
         for p in mesh["primitives"]:

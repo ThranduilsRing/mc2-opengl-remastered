@@ -392,7 +392,12 @@ def write_runtime_glb(scene: Scene, materials: list[Material], texture_names: di
             textures.append({"source": len(images) - 1})
             out["pbrMetallicRoughness"]["baseColorTexture"] = {"index": len(textures) - 1}
         doc["materials"].append(out)
+    used = {}
     for node_name, prim in scene.flattened():
+        # The engine importer keys shapes by node name: every runtime node name is unique.
+        k = used.get(node_name, 0)
+        used[node_name] = k + 1
+        node_name = node_name if k == 0 else f"{node_name}_{k}"
         prim = transform_primitive(prim, to_runtime)
         normals = prim.normals if prim.normals is not None else smooth_normals(prim.positions, prim.indices)
         attrs = {"POSITION": b.add(prim.positions.astype("<f4"), "VEC3", 5126, 34962, minmax=True),

@@ -44,8 +44,13 @@ def _apply_classes(materials, classes):
 
 
 def read_scene(path, meta, extract_dir, classes=None, allow_skin=False):
+    classes = classes or {}
+
+    def class_of(name, extras):
+        spec = classes.get(name)
+        return spec if isinstance(spec, str) else (spec or {}).get("class")
     scene, materials, info = gltf_io.read_gltf(
-        path, frame=meta.get("frame", "gltf"), wu_per_unit=float(meta.get("wu_per_unit", 1.0)),
+        path, class_of=class_of, frame=meta.get("frame", "gltf"), wu_per_unit=float(meta.get("wu_per_unit", 1.0)),
         yaw_degrees=float(meta.get("yaw_degrees", 0.0)), extract_dir=extract_dir, allow_skin=allow_skin,
         texture_roots=tuple(meta.get("texture_roots", ())), unclassified=meta.get("unclassified", "error"))
     return scene, _apply_classes(materials, classes or {}), info
@@ -61,7 +66,8 @@ def merge_materials(base, extra, scene):
 
 
 def to_ir(asset_id, replaces, intact, *, kind="building", lods=(), destroyed=None, shadows=None,
-          conditions=None, classes=None, meta=None, work_dir=None, allow_skin=False, sockets=(), parts=()):
+          conditions=None, classes=None, meta=None, work_dir=None, allow_skin=False, sockets=(), parts=(),
+          base_color=None, texel_scale=1):
     """intact/destroyed/LOD/condition entries are GLB paths (destroyed may also be a
     ready (Scene, materials) pair from another frontend, e.g. stock damage)."""
     work = Path(work_dir or tempfile.mkdtemp(prefix=f"cp-{asset_id}-"))
@@ -93,6 +99,14 @@ def to_ir(asset_id, replaces, intact, *, kind="building", lods=(), destroyed=Non
             cond[name]["intact"].append(ir.Lod(load(path, f"geometry_{name}_lod"), float(distance)))
         if spec.get("destroyed") is not None:
             cond[name]["destroyed"] = [ir.Lod(load(spec["destroyed"], f"geometry_{name}_destroyed"))]
+    # An authoring tool may name a display texture (e.g. AO pre-multiplied for a diffuse-only path) in
+    # the GLB; the recipe points the slot at the pure base colour instead. AO belongs in ORM.R.
+    for name, path in (base_color or {}).items():
+        slot = next((m for m in materials if m.name == name), None)
+        if slot is None:
+            raise ValueError(f"{asset_id}: base_color override names unknown material {name!r}")
+        slot.base_color = ir.TextureRef.of(path, "base_color")
+        slot.base_color_policy = "authored"
     for m in materials:
         for ref in (m.base_color, m.normal, m.orm, m.emissive):
             if ref is not None:
@@ -102,6 +116,6 @@ def to_ir(asset_id, replaces, intact, *, kind="building", lods=(), destroyed=Non
         skeleton = ir.SkeletonRef(ir.Source.of("skeleton", intact), info["joints"], info["clips"])
     return ir.Asset(id=asset_id, kind=kind, replaces=replaces, materials=materials, states=states,
                     shadows=shadow_scenes, conditions=cond, skeleton=skeleton, provenance=provenance,
-                    frontend={"name": "gltf_file", "source": str(intact), "meta": meta,
+                    frontend={"name": "gltf_file", "source": str(intact), "meta": meta, "texel_scale": texel_scale,
                               "unsupported_extensions_ignored": info["extensionsUsed"]},
                     sockets=list(sockets), parts=list(parts)).check()

@@ -94,7 +94,7 @@ def cook_asset(asset: ir.Asset, out: Path, *, compress=True, max_triangles=None,
         name = _texture_name(aid, slot, m)
         names[slot] = name
         cutoff = m.alpha_cutoff if m.alpha_mode == "MASK" else None
-        for tier, img in texcook.base_color_tiers(rgba).items():
+        for tier, img in texcook.base_color_tiers(rgba, texel_scale=int(asset.frontend.get("texel_scale", 1))).items():
             tdir = out / "data" / "tgl" / str(tier)
             texcook.write_tga(tdir / name, img)
             _write(tdir / Path(name).with_suffix(".ktx2"),

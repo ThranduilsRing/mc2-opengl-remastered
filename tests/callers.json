@@ -691,7 +691,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/deploy_payload.py",
-          "line": 1628,
+          "line": 1618,
           "evidence": "command",
           "reference": "scripts/check-deploy-hygiene.py",
           "text": "r = subprocess.run([sys.executable, hygiene, target],"
@@ -2858,6 +2858,13 @@
           "text": "import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)"
         },
         {
+          "path": "tools/assets/candidates.py",
+          "line": 263,
+          "evidence": "import",
+          "reference": "console_child",
+          "text": "import console_child"
+        },
+        {
           "path": "tools/axis_swizzle_ratchet.py",
           "line": 51,
           "evidence": "import",
@@ -2968,6 +2975,13 @@
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)"
+        },
+        {
+          "path": "tools/content_pipeline/texcook.py",
+          "line": 169,
+          "evidence": "import",
+          "reference": "console_child",
+          "text": "import console_child"
         },
         {
           "path": "tools/cook_bc6h_hdri.py",
@@ -4493,14 +4507,14 @@
         },
         {
           "path": "scripts/deploy_payload.py",
-          "line": 720,
+          "line": 710,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from scripts.smoke_lib import deploy_lease"
         },
         {
           "path": "scripts/deploy_payload.py",
-          "line": 760,
+          "line": 750,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from scripts.smoke_lib import bounded_wait"
@@ -4908,7 +4922,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/deploy_payload.py",
-          "line": 760,
+          "line": 750,
           "evidence": "import",
           "reference": "scripts.smoke_lib.bounded_wait",
           "text": "from scripts.smoke_lib import bounded_wait"
@@ -5074,7 +5088,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/deploy_payload.py",
-          "line": 720,
+          "line": 710,
           "evidence": "import",
           "reference": "scripts.smoke_lib.deploy_lease",
           "text": "from scripts.smoke_lib import deploy_lease"
@@ -6667,18 +6681,18 @@
       ],
       "callers_by_stem": [
         {
-          "path": "tools/blender_pipeline/material_map.py",
-          "line": 24,
-          "evidence": "import",
-          "reference": "ase_to_glb",
-          "text": "import ase_to_glb as ase"
-        },
-        {
           "path": "tools/blender_pipeline/tests/test_ase_submaterial.py",
           "line": 9,
           "evidence": "import",
           "reference": "ase_to_glb",
           "text": "import ase_to_glb as a2g  # noqa: E402"
+        },
+        {
+          "path": "tools/content_pipeline/frontends/stock_ase.py",
+          "line": 29,
+          "evidence": "import",
+          "reference": "ase_to_glb",
+          "text": "import ase_to_glb as ase  # noqa: E402"
         }
       ]
     },
@@ -6863,6 +6877,229 @@
       "callers_by_stem": []
     },
     {
+      "path": "tools/assets/__init__.py",
+      "basename": "__init__.py",
+      "stem": "__init__",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "tools/assets/candidates.py",
+      "basename": "candidates.py",
+      "stem": "candidates",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tests/assets/test_replace.py",
+          "line": 12,
+          "evidence": "import",
+          "reference": "tools.assets.candidates",
+          "text": "from tools.assets.candidates import Candidate, load_candidate, load_gltf"
+        },
+        {
+          "path": "tools/assets/replace.py",
+          "line": 24,
+          "evidence": "import",
+          "reference": "tools.assets.candidates",
+          "text": "from tools.assets.candidates import Candidate, load_candidate"
+        },
+        {
+          "path": "tools/assets/replace.py",
+          "line": 333,
+          "evidence": "import",
+          "reference": "tools.assets.candidates",
+          "text": "from tools.assets.candidates import convert_fbx"
+        }
+      ]
+    },
+    {
+      "path": "tools/assets/catalog.py",
+      "basename": "catalog.py",
+      "stem": "catalog",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tests/assets/test_catalog.py",
+          "line": 6,
+          "evidence": "import",
+          "reference": "tools.assets.catalog",
+          "text": "from tools.assets.catalog import OBJECT, object_records, priority"
+        }
+      ]
+    },
+    {
+      "path": "tools/assets/common.py",
+      "basename": "common.py",
+      "stem": "common",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tests/assets/test_catalog.py",
+          "line": 7,
+          "evidence": "import",
+          "reference": "tools.assets.common",
+          "text": "from tools.assets.common import bounds, model_refs, model_sections, parse_tgl"
+        },
+        {
+          "path": "tests/assets/test_replace.py",
+          "line": 13,
+          "evidence": "import",
+          "reference": "tools.assets.common",
+          "text": "from tools.assets.common import Mesh, OUT_ROOT, bounds, output_path"
+        },
+        {
+          "path": "tools/assets/candidates.py",
+          "line": 18,
+          "evidence": "import",
+          "reference": "tools.assets.common",
+          "text": "from tools.assets.common import Mesh, bounds, face_normals, output_path, transform_normals"
+        },
+        {
+          "path": "tools/assets/catalog.py",
+          "line": 18,
+          "evidence": "import",
+          "reference": "tools.assets.common",
+          "text": "from tools.assets.common import (INSTALL_ROOT, INSTALLS, Install, bounds, fit_sections,"
+        },
+        {
+          "path": "tools/assets/examples.py",
+          "line": 15,
+          "evidence": "import",
+          "reference": "tools.assets.common",
+          "text": "from tools.assets.common import parse_tgl, stock_install, write_json"
+        },
+        {
+          "path": "tools/assets/render.py",
+          "line": 11,
+          "evidence": "import",
+          "reference": "tools.assets.common",
+          "text": "from tools.assets.common import bounds, output_path, parse_tgl, texture_image, write_json"
+        },
+        {
+          "path": "tools/assets/replace.py",
+          "line": 22,
+          "evidence": "import",
+          "reference": "tools.assets.common",
+          "text": "from tools.assets.common import (INSTALL_ROOT, OUT_ROOT, Mesh, bounds, output_path,"
+        }
+      ]
+    },
+    {
+      "path": "tools/assets/examples.py",
+      "basename": "examples.py",
+      "stem": "examples",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "tools/assets/mapgen_data.py",
+      "basename": "mapgen_data.py",
+      "stem": "mapgen_data",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tests/assets/test_catalog.py",
+          "line": 8,
+          "evidence": "import",
+          "reference": "tools.assets.mapgen_data",
+          "text": "from tools.assets.mapgen_data import fit_sections, packet"
+        },
+        {
+          "path": "tools/assets/catalog.py",
+          "line": 21,
+          "evidence": "import",
+          "reference": "tools.assets.mapgen_data",
+          "text": "from tools.assets.mapgen_data import catalog as type_catalog, packet"
+        },
+        {
+          "path": "tools/assets/common.py",
+          "line": 19,
+          "evidence": "import",
+          "reference": "tools.assets.mapgen_data",
+          "text": "from tools.assets.mapgen_data import Install, fit_sections, key"
+        }
+      ]
+    },
+    {
+      "path": "tools/assets/render.py",
+      "basename": "render.py",
+      "stem": "render",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tests/assets/test_replace.py",
+          "line": 202,
+          "evidence": "import",
+          "reference": "tools.assets.render",
+          "text": "from tools.assets.render import render"
+        },
+        {
+          "path": "tools/assets/catalog.py",
+          "line": 287,
+          "evidence": "import",
+          "reference": "tools.assets.render",
+          "text": "from tools.assets.render import sheets"
+        },
+        {
+          "path": "tools/assets/examples.py",
+          "line": 16,
+          "evidence": "import",
+          "reference": "tools.assets.render",
+          "text": "from tools.assets.render import comparison, mesh_textures, render"
+        }
+      ]
+    },
+    {
+      "path": "tools/assets/replace.py",
+      "basename": "replace.py",
+      "stem": "replace",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tests/assets/test_replace.py",
+          "line": 14,
+          "evidence": "import",
+          "reference": "tools.assets.replace",
+          "text": "from tools.assets.replace import (fit_candidate, orientation_matrix, rank_candidate,"
+        },
+        {
+          "path": "tests/assets/test_replace.py",
+          "line": 84,
+          "evidence": "import",
+          "reference": "tools.assets.replace",
+          "text": "from tools.assets.replace import package"
+        },
+        {
+          "path": "tests/assets/test_replace.py",
+          "line": 220,
+          "evidence": "import",
+          "reference": "tools.assets.replace",
+          "text": "from tools.assets.replace import package"
+        },
+        {
+          "path": "tests/assets/test_replace.py",
+          "line": 256,
+          "evidence": "import",
+          "reference": "tools.assets.replace",
+          "text": "from tools.assets.replace import package"
+        },
+        {
+          "path": "tests/assets/test_replace.py",
+          "line": 267,
+          "evidence": "import",
+          "reference": "tools.assets.replace",
+          "text": "from tools.assets.replace import package"
+        },
+        {
+          "path": "tools/assets/examples.py",
+          "line": 17,
+          "evidence": "import",
+          "reference": "tools.assets.replace",
+          "text": "from tools.assets.replace import search, select, target_spec"
+        }
+      ]
+    },
+    {
       "path": "tools/axis_swizzle_ratchet.py",
       "basename": "axis_swizzle_ratchet.py",
       "stem": "axis_swizzle_ratchet",
@@ -6985,13 +7222,6 @@
           "text": "import batch_driver  # noqa: E402"
         },
         {
-          "path": "tools/blender_pipeline/material_map.py",
-          "line": 26,
-          "evidence": "import",
-          "reference": "batch_driver",
-          "text": "import batch_driver as pipeline"
-        },
-        {
           "path": "tools/blender_pipeline/sweep.py",
           "line": 38,
           "evidence": "import",
@@ -7076,21 +7306,6 @@
           "evidence": "import",
           "reference": "tools.blender_pipeline.fence_bundle",
           "text": "from tools.blender_pipeline import fence_bundle"
-        }
-      ]
-    },
-    {
-      "path": "tools/blender_pipeline/material_map.py",
-      "basename": "material_map.py",
-      "stem": "material_map",
-      "callers_by_basename": [],
-      "callers_by_stem": [
-        {
-          "path": "tools/blender_pipeline/tests/test_material_map.py",
-          "line": 10,
-          "evidence": "import",
-          "reference": "material_map",
-          "text": "import material_map as mm"
         }
       ]
     },
@@ -7209,13 +7424,6 @@
           "text": "from srcdata import (  # noqa: E402"
         },
         {
-          "path": "tools/blender_pipeline/material_map.py",
-          "line": 27,
-          "evidence": "import",
-          "reference": "srcdata",
-          "text": "from srcdata import find_tgl_dir"
-        },
-        {
           "path": "tools/blender_pipeline/mc2asset.py",
           "line": 24,
           "evidence": "import",
@@ -7286,29 +7494,7 @@
       "basename": "test_ase_submaterial.py",
       "stem": "test_ase_submaterial",
       "callers_by_basename": [],
-      "callers_by_stem": [
-        {
-          "path": "tools/blender_pipeline/tests/test_material_map.py",
-          "line": 48,
-          "evidence": "import",
-          "reference": "test_ase_submaterial",
-          "text": "from test_ase_submaterial import SINGLE_MAT_ASE"
-        },
-        {
-          "path": "tools/blender_pipeline/tests/test_material_map.py",
-          "line": 78,
-          "evidence": "import",
-          "reference": "test_ase_submaterial",
-          "text": "from test_ase_submaterial import SINGLE_MAT_ASE"
-        },
-        {
-          "path": "tools/blender_pipeline/tests/test_material_map.py",
-          "line": 95,
-          "evidence": "import",
-          "reference": "test_ase_submaterial",
-          "text": "from test_ase_submaterial import SINGLE_MAT_ASE"
-        }
-      ]
+      "callers_by_stem": []
     },
     {
       "path": "tools/blender_pipeline/tests/test_asset_edit.py",
@@ -7342,13 +7528,6 @@
       "path": "tools/blender_pipeline/tests/test_manifest.py",
       "basename": "test_manifest.py",
       "stem": "test_manifest",
-      "callers_by_basename": [],
-      "callers_by_stem": []
-    },
-    {
-      "path": "tools/blender_pipeline/tests/test_material_map.py",
-      "basename": "test_material_map.py",
-      "stem": "test_material_map",
       "callers_by_basename": [],
       "callers_by_stem": []
     },
@@ -7628,6 +7807,464 @@
       "stem": "conftest",
       "callers_by_basename": [],
       "callers_by_stem": []
+    },
+    {
+      "path": "tools/content_pipeline/__init__.py",
+      "basename": "__init__.py",
+      "stem": "__init__",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tests/assets/test_replace.py",
+          "line": 221,
+          "evidence": "import",
+          "reference": "tools.content_pipeline",
+          "text": "from tools.content_pipeline import cache, gltf_io, validate"
+        },
+        {
+          "path": "tests/assets/test_replace.py",
+          "line": 257,
+          "evidence": "import",
+          "reference": "tools.content_pipeline",
+          "text": "from tools.content_pipeline import cache"
+        },
+        {
+          "path": "tools/assets/replace.py",
+          "line": 280,
+          "evidence": "import",
+          "reference": "tools.content_pipeline",
+          "text": "from tools.content_pipeline import ir, package as cp_package"
+        },
+        {
+          "path": "tools/content_pipeline/cook.py",
+          "line": 30,
+          "evidence": "import",
+          "reference": "tools.content_pipeline",
+          "text": "from tools.content_pipeline import package  # noqa: E402"
+        },
+        {
+          "path": "tools/content_pipeline/frontends/bt2018.py",
+          "line": 22,
+          "evidence": "import",
+          "reference": "tools.content_pipeline",
+          "text": "from .. import ir"
+        },
+        {
+          "path": "tools/content_pipeline/frontends/gltf_file.py",
+          "line": 16,
+          "evidence": "import",
+          "reference": "tools.content_pipeline",
+          "text": "from .. import gltf_io, ir"
+        },
+        {
+          "path": "tools/content_pipeline/frontends/stock_ase.py",
+          "line": 25,
+          "evidence": "import",
+          "reference": "tools.content_pipeline",
+          "text": "from .. import gltf_io, ir"
+        },
+        {
+          "path": "tools/content_pipeline/package.py",
+          "line": 25,
+          "evidence": "import",
+          "reference": "tools.content_pipeline",
+          "text": "from . import gltf_io, ir, texcook, validate"
+        },
+        {
+          "path": "tools/content_pipeline/tests/test_content_pipeline.py",
+          "line": 13,
+          "evidence": "import",
+          "reference": "tools.content_pipeline",
+          "text": "from tools.content_pipeline import cache, gltf_io, ir, package, texcook, validate  # noqa: E402"
+        },
+        {
+          "path": "tools/content_pipeline/tests/test_schema_sync.py",
+          "line": 8,
+          "evidence": "import",
+          "reference": "tools.content_pipeline",
+          "text": "from tools.content_pipeline import ir  # noqa: E402"
+        },
+        {
+          "path": "tools/content_pipeline/texcook.py",
+          "line": 34,
+          "evidence": "import",
+          "reference": "tools.content_pipeline",
+          "text": "from . import cache"
+        },
+        {
+          "path": "tools/content_pipeline/validate.py",
+          "line": 15,
+          "evidence": "import",
+          "reference": "tools.content_pipeline",
+          "text": "from . import gltf_io"
+        }
+      ]
+    },
+    {
+      "path": "tools/content_pipeline/cache.py",
+      "basename": "cache.py",
+      "stem": "cache",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tests/assets/test_replace.py",
+          "line": 221,
+          "evidence": "import",
+          "reference": "tools.content_pipeline.cache",
+          "text": "from tools.content_pipeline import cache, gltf_io, validate"
+        },
+        {
+          "path": "tests/assets/test_replace.py",
+          "line": 257,
+          "evidence": "import",
+          "reference": "tools.content_pipeline.cache",
+          "text": "from tools.content_pipeline import cache"
+        },
+        {
+          "path": "tools/content_pipeline/tests/test_content_pipeline.py",
+          "line": 13,
+          "evidence": "import",
+          "reference": "tools.content_pipeline.cache",
+          "text": "from tools.content_pipeline import cache, gltf_io, ir, package, texcook, validate  # noqa: E402"
+        },
+        {
+          "path": "tools/content_pipeline/texcook.py",
+          "line": 34,
+          "evidence": "import",
+          "reference": "tools.content_pipeline.cache",
+          "text": "from . import cache"
+        }
+      ]
+    },
+    {
+      "path": "tools/content_pipeline/cook.py",
+      "basename": "cook.py",
+      "stem": "cook",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "tools/content_pipeline/frontends/__init__.py",
+      "basename": "__init__.py",
+      "stem": "__init__",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tools/assets/replace.py",
+          "line": 250,
+          "evidence": "import",
+          "reference": "tools.content_pipeline.frontends",
+          "text": "from tools.content_pipeline.frontends import gltf_file"
+        },
+        {
+          "path": "tools/content_pipeline/cook.py",
+          "line": 31,
+          "evidence": "import",
+          "reference": "tools.content_pipeline.frontends",
+          "text": "from tools.content_pipeline.frontends import gltf_file, stock_ase  # noqa: E402"
+        },
+        {
+          "path": "tools/content_pipeline/frontends/bt2018.py",
+          "line": 23,
+          "evidence": "import",
+          "reference": "tools.content_pipeline.frontends",
+          "text": "from . import gltf_file"
+        },
+        {
+          "path": "tools/content_pipeline/tests/test_content_pipeline.py",
+          "line": 14,
+          "evidence": "import",
+          "reference": "tools.content_pipeline.frontends",
+          "text": "from tools.content_pipeline.frontends import gltf_file, stock_ase  # noqa: E402"
+        }
+      ]
+    },
+    {
+      "path": "tools/content_pipeline/frontends/bt2018.py",
+      "basename": "bt2018.py",
+      "stem": "bt2018",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "tools/content_pipeline/frontends/gltf_file.py",
+      "basename": "gltf_file.py",
+      "stem": "gltf_file",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tools/assets/replace.py",
+          "line": 250,
+          "evidence": "import",
+          "reference": "tools.content_pipeline.frontends.gltf_file",
+          "text": "from tools.content_pipeline.frontends import gltf_file"
+        },
+        {
+          "path": "tools/content_pipeline/cook.py",
+          "line": 31,
+          "evidence": "import",
+          "reference": "tools.content_pipeline.frontends.gltf_file",
+          "text": "from tools.content_pipeline.frontends import gltf_file, stock_ase  # noqa: E402"
+        },
+        {
+          "path": "tools/content_pipeline/frontends/bt2018.py",
+          "line": 23,
+          "evidence": "import",
+          "reference": "tools.content_pipeline.frontends.gltf_file",
+          "text": "from . import gltf_file"
+        },
+        {
+          "path": "tools/content_pipeline/tests/test_content_pipeline.py",
+          "line": 14,
+          "evidence": "import",
+          "reference": "tools.content_pipeline.frontends.gltf_file",
+          "text": "from tools.content_pipeline.frontends import gltf_file, stock_ase  # noqa: E402"
+        }
+      ]
+    },
+    {
+      "path": "tools/content_pipeline/frontends/stock_ase.py",
+      "basename": "stock_ase.py",
+      "stem": "stock_ase",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tools/content_pipeline/cook.py",
+          "line": 31,
+          "evidence": "import",
+          "reference": "tools.content_pipeline.frontends.stock_ase",
+          "text": "from tools.content_pipeline.frontends import gltf_file, stock_ase  # noqa: E402"
+        },
+        {
+          "path": "tools/content_pipeline/tests/test_content_pipeline.py",
+          "line": 14,
+          "evidence": "import",
+          "reference": "tools.content_pipeline.frontends.stock_ase",
+          "text": "from tools.content_pipeline.frontends import gltf_file, stock_ase  # noqa: E402"
+        }
+      ]
+    },
+    {
+      "path": "tools/content_pipeline/gltf_io.py",
+      "basename": "gltf_io.py",
+      "stem": "gltf_io",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tests/assets/test_replace.py",
+          "line": 221,
+          "evidence": "import",
+          "reference": "tools.content_pipeline.gltf_io",
+          "text": "from tools.content_pipeline import cache, gltf_io, validate"
+        },
+        {
+          "path": "tools/content_pipeline/frontends/gltf_file.py",
+          "line": 16,
+          "evidence": "import",
+          "reference": "tools.content_pipeline.gltf_io",
+          "text": "from .. import gltf_io, ir"
+        },
+        {
+          "path": "tools/content_pipeline/frontends/stock_ase.py",
+          "line": 25,
+          "evidence": "import",
+          "reference": "tools.content_pipeline.gltf_io",
+          "text": "from .. import gltf_io, ir"
+        },
+        {
+          "path": "tools/content_pipeline/package.py",
+          "line": 25,
+          "evidence": "import",
+          "reference": "tools.content_pipeline.gltf_io",
+          "text": "from . import gltf_io, ir, texcook, validate"
+        },
+        {
+          "path": "tools/content_pipeline/tests/test_content_pipeline.py",
+          "line": 13,
+          "evidence": "import",
+          "reference": "tools.content_pipeline.gltf_io",
+          "text": "from tools.content_pipeline import cache, gltf_io, ir, package, texcook, validate  # noqa: E402"
+        },
+        {
+          "path": "tools/content_pipeline/validate.py",
+          "line": 15,
+          "evidence": "import",
+          "reference": "tools.content_pipeline.gltf_io",
+          "text": "from . import gltf_io"
+        }
+      ]
+    },
+    {
+      "path": "tools/content_pipeline/ir.py",
+      "basename": "ir.py",
+      "stem": "ir",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tools/assets/replace.py",
+          "line": 280,
+          "evidence": "import",
+          "reference": "tools.content_pipeline.ir",
+          "text": "from tools.content_pipeline import ir, package as cp_package"
+        },
+        {
+          "path": "tools/content_pipeline/frontends/bt2018.py",
+          "line": 22,
+          "evidence": "import",
+          "reference": "tools.content_pipeline.ir",
+          "text": "from .. import ir"
+        },
+        {
+          "path": "tools/content_pipeline/frontends/gltf_file.py",
+          "line": 16,
+          "evidence": "import",
+          "reference": "tools.content_pipeline.ir",
+          "text": "from .. import gltf_io, ir"
+        },
+        {
+          "path": "tools/content_pipeline/frontends/stock_ase.py",
+          "line": 25,
+          "evidence": "import",
+          "reference": "tools.content_pipeline.ir",
+          "text": "from .. import gltf_io, ir"
+        },
+        {
+          "path": "tools/content_pipeline/gltf_io.py",
+          "line": 21,
+          "evidence": "import",
+          "reference": "tools.content_pipeline.ir",
+          "text": "from .ir import Material, Mesh, Node, Primitive, Scene, TextureRef, sha256_bytes, transform_primitive"
+        },
+        {
+          "path": "tools/content_pipeline/gltf_io.py",
+          "line": 192,
+          "evidence": "import",
+          "reference": "tools.content_pipeline.ir",
+          "text": "from .ir import CLASS_DEFAULTS"
+        },
+        {
+          "path": "tools/content_pipeline/package.py",
+          "line": 25,
+          "evidence": "import",
+          "reference": "tools.content_pipeline.ir",
+          "text": "from . import gltf_io, ir, texcook, validate"
+        },
+        {
+          "path": "tools/content_pipeline/tests/test_content_pipeline.py",
+          "line": 13,
+          "evidence": "import",
+          "reference": "tools.content_pipeline.ir",
+          "text": "from tools.content_pipeline import cache, gltf_io, ir, package, texcook, validate  # noqa: E402"
+        },
+        {
+          "path": "tools/content_pipeline/tests/test_schema_sync.py",
+          "line": 8,
+          "evidence": "import",
+          "reference": "tools.content_pipeline.ir",
+          "text": "from tools.content_pipeline import ir  # noqa: E402"
+        },
+        {
+          "path": "tools/content_pipeline/validate.py",
+          "line": 16,
+          "evidence": "import",
+          "reference": "tools.content_pipeline.ir",
+          "text": "from .ir import ALPHA_MODES, MATERIAL_CLASSES"
+        }
+      ]
+    },
+    {
+      "path": "tools/content_pipeline/package.py",
+      "basename": "package.py",
+      "stem": "package",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tools/assets/replace.py",
+          "line": 280,
+          "evidence": "import",
+          "reference": "tools.content_pipeline.package",
+          "text": "from tools.content_pipeline import ir, package as cp_package"
+        },
+        {
+          "path": "tools/content_pipeline/cook.py",
+          "line": 30,
+          "evidence": "import",
+          "reference": "tools.content_pipeline.package",
+          "text": "from tools.content_pipeline import package  # noqa: E402"
+        },
+        {
+          "path": "tools/content_pipeline/tests/test_content_pipeline.py",
+          "line": 13,
+          "evidence": "import",
+          "reference": "tools.content_pipeline.package",
+          "text": "from tools.content_pipeline import cache, gltf_io, ir, package, texcook, validate  # noqa: E402"
+        }
+      ]
+    },
+    {
+      "path": "tools/content_pipeline/tests/test_content_pipeline.py",
+      "basename": "test_content_pipeline.py",
+      "stem": "test_content_pipeline",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "tools/content_pipeline/tests/test_schema_sync.py",
+      "basename": "test_schema_sync.py",
+      "stem": "test_schema_sync",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "tools/content_pipeline/texcook.py",
+      "basename": "texcook.py",
+      "stem": "texcook",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tools/content_pipeline/package.py",
+          "line": 25,
+          "evidence": "import",
+          "reference": "tools.content_pipeline.texcook",
+          "text": "from . import gltf_io, ir, texcook, validate"
+        },
+        {
+          "path": "tools/content_pipeline/tests/test_content_pipeline.py",
+          "line": 13,
+          "evidence": "import",
+          "reference": "tools.content_pipeline.texcook",
+          "text": "from tools.content_pipeline import cache, gltf_io, ir, package, texcook, validate  # noqa: E402"
+        }
+      ]
+    },
+    {
+      "path": "tools/content_pipeline/validate.py",
+      "basename": "validate.py",
+      "stem": "validate",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tests/assets/test_replace.py",
+          "line": 221,
+          "evidence": "import",
+          "reference": "tools.content_pipeline.validate",
+          "text": "from tools.content_pipeline import cache, gltf_io, validate"
+        },
+        {
+          "path": "tools/content_pipeline/package.py",
+          "line": 25,
+          "evidence": "import",
+          "reference": "tools.content_pipeline.validate",
+          "text": "from . import gltf_io, ir, texcook, validate"
+        },
+        {
+          "path": "tools/content_pipeline/tests/test_content_pipeline.py",
+          "line": 13,
+          "evidence": "import",
+          "reference": "tools.content_pipeline.validate",
+          "text": "from tools.content_pipeline import cache, gltf_io, ir, package, texcook, validate  # noqa: E402"
+        }
+      ]
     },
     {
       "path": "tools/contract_harness_common/contract_harness.py",
@@ -8671,6 +9308,13 @@
           "evidence": "import",
           "reference": "tools.mc2x_import.fst",
           "text": "from tools.mc2x_import.fst import fst_entries, decompress_entry  # noqa: E402"
+        },
+        {
+          "path": "tools/assets/mapgen_data.py",
+          "line": 14,
+          "evidence": "import",
+          "reference": "tools.mc2x_import.fst",
+          "text": "from tools.mc2x_import.fst import decompress_entry"
         },
         {
           "path": "tools/list_free_ordinals.py",

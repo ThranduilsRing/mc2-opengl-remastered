@@ -96,6 +96,8 @@ def test_ir_round_trip_preserves_transforms_normals_alpha(tmp_path):
     glb = tmp_path / "rt.glb"
     glb.write_bytes(gltf_io.write_runtime_glb(again.lod0(), again.materials, {0: "a_panel.tga"}))
     assert validate.errors(validate.validate_runtime_glb(glb)) == []
+    rt, _ = gltf_io.split_glb(glb.read_bytes())
+    assert len({n["name"] for n in rt["nodes"]}) == len(rt["nodes"])   # importer keys shapes by node name
     back, mats, _ = gltf_io.read_gltf(glb, frame="mc2_runtime", texture_roots=None)
     flat = back.flattened()
     assert mats[0].alpha_mode == "MASK" and mats[0].alpha_cutoff == pytest.approx(0.4)

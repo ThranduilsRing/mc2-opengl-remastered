@@ -50,7 +50,8 @@ def build_asset(spec, recipe, work):
         return gltf_file.to_ir(spec["id"], spec["replaces"], spec["intact"], kind=spec.get("kind", "building"),
                                lods=[tuple(x) for x in spec.get("lods", [])], destroyed=destroyed,
                                conditions=spec.get("conditions"), classes=spec.get("classes"),
-                               meta=meta, work_dir=work / spec["id"])
+                               meta=meta, work_dir=work / spec["id"], base_color=spec.get("base_color"),
+                               texel_scale=spec.get("texel_scale", 1))
     raise ValueError(f"unknown frontend {front!r} (stock_ase | gltf)")
 
 

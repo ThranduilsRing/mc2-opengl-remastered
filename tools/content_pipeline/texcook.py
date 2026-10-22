@@ -296,7 +296,14 @@ def write_tga(path, rgba: np.ndarray):
     Image.fromarray(rgba if has_alpha else rgba[..., :3], "RGBA" if has_alpha else "RGB").save(path, compression=None)
 
 
-def base_color_tiers(rgba: np.ndarray, tiers=TIERS):
-    """{tier: image} real downscales; a tier never exceeds the source edge."""
+def base_color_tiers(rgba: np.ndarray, tiers=TIERS, texel_scale: int = 1):
+    """{tier: image} real downscales; a tier never exceeds the source edge.
+
+    ObjectTextureRes names a quality level sized for stock atlases. texel_scale states how
+    much more texture an authored asset needs for the same on-screen texel density (a unique
+    bake atlas spends ~4x the texels of a tiled stock atlas): tier t then holds an edge of
+    t * texel_scale, still a real downscale per tier and never above the source."""
+    if texel_scale not in (1, 2, 4, 8):
+        raise ValueError("texel_scale must be 1, 2, 4 or 8")
     src = resize_pow2(rgba, max(rgba.shape[:2]))
-    return {t: resize_pow2(src, t) for t in tiers}
+    return {t: resize_pow2(src, t * texel_scale) for t in tiers}
