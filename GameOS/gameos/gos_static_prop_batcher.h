@@ -10,6 +10,7 @@
 #include "tgl.h"
 #include "msl.h"
 #include "texture_decode.h"
+#include "gos_prop_material_cpu.h"
 #include "../../RenderCore/RenderDebugView.h"  // DEBUG-VIEW-REGISTRY-1: StaticPropViewToShaderMode / StaticPropShaderModeToView
 
 // MaterialGpu-3: forward declare RenderCore::MaterialGpu so batcher_getMaterialGpuEntry
@@ -113,6 +114,7 @@ struct GpuStaticPropType {
     // batcher routes such packets to a valid default texture layer so the
     // override RASTERIZES (flat/wrong-texture box) instead of vanishing.
     bool     isOverride;
+    const ModelOverrideRecord* materialSource = nullptr;
 };
 
 // Forward declaration needed for flush() signature (v2.3).
@@ -153,12 +155,16 @@ public:
     // isOverride: tag every leaf type registered here as a modder glTF
     // render-override (see GpuStaticPropType::isOverride). Default false keeps
     // the stock call sites byte-identical.
-    void registerMultiShape(TG_TypeMultiShape* multiShape, bool isOverride = false);
+    void registerMultiShape(TG_TypeMultiShape* multiShape, bool isOverride = false,
+                            const ModelOverrideRecord* materialSource = nullptr);
+    const mc2prop::MaterialSources& materialSources() const { return materialSources_; }
 
     // Called at end of registration to upload the immutable VBO/IBO.
     void finalizeGeometry();
 
 private:
+    mc2prop::MaterialSources materialSources_;
+    void buildAuthoredMaterials();
     // GpuStaticPropBatcher::finalizeGeometry phases (gos_static_prop_batcher_finalize*.cpp); callers use finalizeGeometry().
     static bool packetHasAlpha(const GpuStaticPropPacket& pkt, const TG_TypeShape* src);
     void finalizePrologue();

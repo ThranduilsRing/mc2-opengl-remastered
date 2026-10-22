@@ -5360,6 +5360,16 @@
    "count": 1
   },
   {
+   "tag": "MODOVERRIDE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "slot",
+    "id"
+   ],
+   "count": 1
+  },
+  {
    "tag": "MODOVERRIDE_TEX",
    "ver": -1,
    "stream": "stderr",

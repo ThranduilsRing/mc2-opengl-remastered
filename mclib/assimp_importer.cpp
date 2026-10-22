@@ -35,6 +35,7 @@
 #include <cmath>
 #include <cstdio>
 #include <optional>
+#include <algorithm>
 
 #include "msl.h"
 #include "tgl.h"
@@ -374,7 +375,7 @@ void BuildTextureList(const aiScene* scene, TG_TypeMultiShape* out) {
 // Returns 0 on success, -1 on failure.
 long ImportShapeFromMesh(const aiScene* scene, unsigned meshIdx,
                          TG_TypeShape* outShape, TG_TypeMultiShape* outMulti,
-                         SkelBake* bake = nullptr) {
+                         SkelBake* bake = nullptr, bool authoredColors = false) {
 	const aiMesh* mesh = scene->mMeshes[meshIdx];
 	if (mesh->mNumVertices == 0 || mesh->mNumFaces == 0) {
 		// Empty mesh — leave shape inited but do not populate. Engine treats
@@ -468,6 +469,17 @@ long ImportShapeFromMesh(const aiScene* scene, unsigned meshIdx,
 		// shows (unlit, matching the "draw foliage UNLIT" prior art). When a bake
 		// DOES run it overwrites this, so stock-lit shapes are unaffected.
 		verts[v].aRGBLight = 0xffffffff;
+        if (authoredColors) {
+            verts[v].aRGBLight = 0xff000000;
+            if (mesh->HasVertexColors(0)) {
+                const auto& color = mesh->mColors[0][v];
+                auto channel = [](float value) -> uint32_t {
+                    if (!std::isfinite(value)) return 0;
+                    return static_cast<uint32_t>(std::lround(std::clamp(value, 0.0f, 1.0f) * 255.0f));
+                };
+                verts[v].aRGBLight |= (channel(color.r) << 16) | (channel(color.g) << 8) | channel(color.b);
+            }
+        }
 
 		// MODEL-OVERRIDE / Track C: vertex-tight bounding box, mesh-local.
 		// Accumulate over the SAME positions stored into the vertex buffer (no
@@ -1339,7 +1351,7 @@ void mc2mechanim::TickImportedMechs(float dt, unsigned frameStamp, const MechMot
 
 //=============================================================================
 // Public entry point.
-long ImportGeometryFromFile(const char* path, TG_TypeMultiShape* out, bool autoGround) {
+long ImportGeometryFromFile(const char* path, TG_TypeMultiShape* out, bool autoGround, bool authoredColors) {
 	if (!path || !out) return -1;
 
 
@@ -1528,7 +1540,7 @@ long ImportGeometryFromFile(const char* path, TG_TypeMultiShape* out, bool autoG
 		if (!slot || slot->GetNodeType() != SHAPE_NODE)
 			continue;
 		long r = ImportShapeFromMesh(scene, i, static_cast<TG_TypeShape*>(slot), out,
-		                             bake.active ? &bake : nullptr);
+		                             bake.active ? &bake : nullptr, authoredColors);
 		if (r != 0) {
 			return r;
 		}

@@ -32,6 +32,7 @@
 #include "../../RenderCore/gpu_abi/GpuStaticPropInstance.h"  // single-source 112B instance record
 #include "../../RenderCore/gpu_abi/GpuObjectLights.h"  // single-source per-object light record
 #include "../../RenderCore/gpu_abi/GpuColorFrameUBO.h"  // single-source per-frame UBO
+#include "../../RenderCore/PropMaterialGpu.h"
 #include "vk_image_resource.h"
 #include "vk_island_util.h"
 #include "gos_visual_capture.h"      // mc2CaptureGaitFreezeActive() (extern "C")
@@ -196,6 +197,9 @@ struct ColorPropIsland : mc2vk::IslandState {
     // global packet index (same indexing as `packets` above). -1 = no texture.
     std::vector<int32_t>        packetLayerOff;
     std::vector<int32_t>        packetLayerOn;
+    std::vector<int32_t>        packetMaterialIds;
+    bool authoredReady = false;
+    bool authoredAttempted = false;
     // FENCE-UVSCALE-1: per-packet UV sub-region scale, same indexing as
     // packetLayerOff/On above. Default 1.0 (no crop) until the feed populates
     // it -- matches GL's PerDrawEntry.uvScaleX/Y default (gos_static_prop_batcher.cpp
@@ -263,6 +267,9 @@ struct ColorPropIsland : mc2vk::IslandState {
     mc2vk::OwnedSampler albedoOnSamp;
     mc2vk::OwnedBuffer  layerOnBuf;       // per-type int layer SSBO (class 1)
     mc2vk::OwnedBuffer  hotBuf;           // per-type hot-colour night emission colours (3 vec4 per type)
+    mc2vk::ResidentTextureRef normalTexture, ormTexture;
+    mc2vk::OwnedSampler detailSampler;
+    mc2vk::OwnedBuffer materialBuf;
     mc2vk::OwnedShaderModule t1_vert, t1_frag;
     mc2vk::OwnedPipelineLayout playout;
     mc2vk::OwnedPipeline t1_pipe;         // depthWrite ON GEQUAL, 2 outputs, no blend
@@ -382,6 +389,21 @@ void write_descriptors(ColorPropIsland* s, int parity = -1) {
     }
     if (n) vkUpdateDescriptorSets(s->device, n, w, 0, nullptr);
     if (m) vkUpdateDescriptorSets(s->device, m, wm, 0, nullptr);
+    if (s->normalTexture && s->ormTexture && s->detailSampler && s->materialBuf) {
+        VkDescriptorImageInfo detail[2] = {
+            {s->detailSampler.get(), s->normalTexture.view(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL},
+            {s->detailSampler.get(), s->ormTexture.view(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL}};
+        VkDescriptorBufferInfo table{s->materialBuf.get(), 0, VK_WHOLE_SIZE};
+        VkWriteDescriptorSet writes[3]{};
+        for (uint32_t j = 0; j < 3; ++j) {
+            writes[j].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            writes[j].dstSet = s->set[i]; writes[j].dstBinding = 10 + j;
+            writes[j].descriptorCount = 1;
+            writes[j].descriptorType = j < 2 ? VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER : VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+            if (j < 2) writes[j].pImageInfo = &detail[j]; else writes[j].pBufferInfo = &table;
+        }
+        vkUpdateDescriptorSets(s->device, 3, writes, 0, nullptr);
+    }
     }   // per-parity set loop
 }
 
@@ -592,6 +614,51 @@ bool cp_import_albedo_array(ColorPropIsland* s, const AlbedoTarget& tgt, uint32_
     *tgt.ready = true;
     vlog("%s albedo 2D_ARRAY imported: %ux%u layers=%u mips=%u fmt=%s (%zu B).",
          tgt.tag, a->width, a->height, a->layers, mips, bc7 ? "BC7" : "RGBA8", blob.size());
+    return true;
+}
+
+// Texture/table replacement happens only at map transitions, after retiring
+// earlier draws; descriptor writes remain deferred to each retired parity slot.
+bool cp_import_authored(ColorPropIsland* s, const Mc2ColorPropMaterialFeed* feed) {
+    const bool have = feed && feed->materialCount && feed->materials && feed->packetMaterialIds;
+    auto upload = [&](mc2vk::ResidentTextureRef& texture, const mc2tex::TextureArrayCpu* array,
+                      const uint8_t neutral[4]) {
+        uint32_t layers = 0, key = 0; bool ready = false;
+        AlbedoTarget target{&texture, &s->detailSampler, &layers, &key, &ready, "authored-detail"};
+        if (array && array->layers) return cp_import_albedo_array(s, target, s->mapGeneration + 1, array);
+        std::vector<VkBufferImageCopy> regions(1);
+        regions[0].imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
+        regions[0].imageExtent = {1,1,1};
+        return cp_upload_albedo_array(s, target, VK_FORMAT_R8G8B8A8_UNORM, 1,1,1,1,false,neutral,4,regions);
+    };
+    mc2vk::getOrCreateEngineVulkanContext().waitIdle("color_prop_authored_materials");
+    if (!s->detailSampler) {
+        VkSamplerCreateInfo info{VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO};
+        info.magFilter = info.minFilter = VK_FILTER_LINEAR;
+        info.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+        info.addressModeU = info.addressModeV = info.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+        info.maxLod = VK_LOD_CLAMP_NONE;
+        if (!mc2vk::create(s->detailSampler, s->device, [&](VkSampler* h) { return vkCreateSampler(s->device, &info, nullptr, h); })) return false;
+    }
+    const uint8_t normal[4] = {128,128,255,255}, orm[4] = {255,255,0,255};
+    mc2vk::ResidentTextureRef nextNormal, nextOrm;
+    mc2vk::OwnedBuffer nextTable;
+    if (!upload(nextNormal, have ? feed->normal : nullptr, normal) ||
+        !upload(nextOrm, have ? feed->orm : nullptr, orm)) return false;
+    RenderCore::PropMaterialGpu neutral{};
+    const auto bytes = static_cast<VkDeviceSize>(have ? feed->materialCount : 1u) * sizeof(neutral);
+    if (!make_buffer(s, nextTable, bytes, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, true, "colorprop.materials")) return false;
+    void* mapped = nextTable.map();
+    if (!mapped) return false;
+    std::memcpy(mapped, have ? feed->materials : &neutral, static_cast<size_t>(bytes));
+    nextTable.unmap();
+    s->normalTexture = std::move(nextNormal);
+    s->ormTexture = std::move(nextOrm);
+    s->materialBuf = std::move(nextTable);
+    s->packetMaterialIds.clear();
+    if (have) s->packetMaterialIds.assign(feed->packetMaterialIds, feed->packetMaterialIds + feed->packetCount);
+    s->authoredReady = feed != nullptr;
+    write_descriptors(s);
     return true;
 }
 
@@ -830,7 +897,7 @@ bool init_island(ColorPropIsland* s, int w, int h) {
         // Base bindings 0(UBO),1(inst SSBO); optional +4(LightsData SSBO, VS). Material
         // (tier1 + MC2_VK_PROP_MATERIAL): +2(alpha-OFF layer SSBO VS), 3(alpha-OFF albedo
         // FS), 5(alpha-ON layer SSBO VS), 6(alpha-ON albedo FS).
-        VkDescriptorSetLayoutBinding b[10]{};
+        VkDescriptorSetLayoutBinding b[13]{};
         uint32_t nb = 0;
         b[nb].binding = 0; b[nb].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
         b[nb].descriptorCount = 1; b[nb].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT; ++nb;
@@ -860,6 +927,15 @@ bool init_island(ColorPropIsland* s, int w, int h) {
         }
         b[nb].binding = 9; b[nb].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
         b[nb].descriptorCount = 1; b[nb].stageFlags = VK_SHADER_STAGE_VERTEX_BIT; ++nb;
+        b[nb].binding = 10; b[nb].descriptorCount = 1;
+        b[nb].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        b[nb].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT; ++nb;
+        b[nb].binding = 11; b[nb].descriptorCount = 1;
+        b[nb].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        b[nb].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT; ++nb;
+        b[nb].binding = 12; b[nb].descriptorCount = 1;
+        b[nb].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        b[nb].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT; ++nb;
         VkDescriptorSetLayoutCreateInfo lci{};
         lci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
         lci.bindingCount = nb; lci.pBindings = b;
@@ -872,8 +948,8 @@ bool init_island(ColorPropIsland* s, int w, int h) {
         uint32_t nsz = 0;
         sizes[nsz++] = {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 2};
         sizes[nsz++] = {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 2u * (1u + (lightBinding ? 1u : 0u) + (s->tier1 ? 1u : 0u))};
-        sizes[nsz++] = {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 2u * ((materialBindings ? 2u : 0u) + (s->tier1 ? 1u : 0u) + 1u)};
-        if (materialBindings) sizes[nsz++] = {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 4u};
+        sizes[nsz++] = {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 2u * ((materialBindings ? 2u : 0u) + (s->tier1 ? 1u : 0u) + 2u)};
+        sizes[nsz++] = {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, (materialBindings ? 4u : 0u) + 4u};
         VkDescriptorPoolCreateInfo pci{};
         pci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
         pci.maxSets = 2; pci.poolSizeCount = nsz; pci.pPoolSizes = sizes;
@@ -888,6 +964,7 @@ bool init_island(ColorPropIsland* s, int w, int h) {
             vlog("vkAllocateDescriptorSets failed."); return false;
         }
         if (s->tier1 && !cp_upload_hot_table(s, {})) { setFallback("hot_buf_failed"); return false; }
+        if (!cp_import_authored(s, nullptr)) { setFallback("authored_material_dummy_failed"); return false; }
         write_descriptors(s);
     }
 
@@ -917,7 +994,7 @@ bool init_island(ColorPropIsland* s, int w, int h) {
         // pack into half floats or move to the per-instance SSBO path.
         VkPushConstantRange pcr{};
         pcr.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
-        pcr.offset = 0; pcr.size = 28; // int32 packetLayerOff, int32 packetLayerOn, float uvScaleX, float uvScaleY, int32 packetAlphaTest,
+        pcr.offset = 0; pcr.size = 32; // layer pair, UV scale, alpha, fringe, HZB, authored material ID
                                        // int32 coverageFringePass (PROP-COVERAGE-1)
 
         VkPipelineLayoutCreateInfo plci{};
@@ -1147,6 +1224,9 @@ extern "C" void mc2_vk_color_prop_island_invalidate_geometry() {
     s->materialReady = false;
     s->materialReadyOn = false;
     s->hotReady = false;
+    s->authoredReady = false;
+    s->authoredAttempted = false;
+    s->packetMaterialIds.clear();
     ++s->mapGeneration;
 }
 
@@ -1220,6 +1300,11 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
     if (s->wantMaterial && s->tier1 && (!s->materialReady || !s->materialReadyOn)) {
         Mc2ColorPropMaterialFeed mf{};
         if (mc2_color_prop_island_get_material_feed(&mf) && mf.arrayKeyOff != 0 && !mf.bucketed) {
+            if (!s->authoredAttempted) {
+                s->authoredAttempted = true;
+                if (!cp_import_authored(s, &mf))
+                    vlog("authored material upload failed; keeping legacy packet routing.");
+            }
             s->terrainSunMC2[0] = mf.terrainSunMC2[0];
             s->terrainSunMC2[1] = mf.terrainSunMC2[1];
             s->terrainSunMC2[2] = mf.terrainSunMC2[2];
@@ -1574,7 +1659,7 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
                     // FENCE-UVSCALE-1: push this packet's own uvScaleX/Y alongside
                     // its layer -- default 1.0 (no crop) matches pre-fix behavior
                     // for any packet the feed didn't cover.
-                    struct { int32_t layerOff, layerOn; float uvScaleX, uvScaleY; int32_t alphaTest, fringe, hzb; } pc = {
+                    struct { int32_t layerOff, layerOn; float uvScaleX, uvScaleY; int32_t alphaTest, fringe, hzb, materialId; } pc = {
                         (pk < s->packetLayerOff.size())  ? s->packetLayerOff[pk]  : -1,
                         (pk < s->packetLayerOn.size())   ? s->packetLayerOn[pk]   : -1,
                         (pk < s->packetUvScaleX.size())  ? s->packetUvScaleX[pk]  : 1.0f,
@@ -1582,6 +1667,7 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
                         mc2_static_prop_packet_alpha_test(pk),
                         fringePass,
                         hzbCulled ? 1 : 0,
+                        s->authoredReady && pk < s->packetMaterialIds.size() ? s->packetMaterialIds[pk] : -1,
                     };
                     // Only packets the FS can alpha-test have a fringe (the alpha-ON layer or the per-packet bit).
                     if (fringePass == 1 && pc.layerOn < 0 && pc.alphaTest == 0) continue;

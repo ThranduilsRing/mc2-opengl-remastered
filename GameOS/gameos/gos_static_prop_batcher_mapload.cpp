@@ -53,6 +53,7 @@ GpuStaticPropBatcher& GpuStaticPropBatcher::instance() {
 }
 
 void GpuStaticPropBatcher::onMapLoad() {
+    materialSources_ = {};
     s_packets.clear();
     s_packetAlphaBaked.clear();
     s_types.clear();
@@ -313,7 +314,8 @@ void GpuStaticPropBatcher::registerType(TG_TypeShape* typeShape, TG_TypeMultiSha
     }
 }
 
-void GpuStaticPropBatcher::registerMultiShape(TG_TypeMultiShape* multiShape, bool isOverride) {
+void GpuStaticPropBatcher::registerMultiShape(TG_TypeMultiShape* multiShape, bool isOverride,
+                                            const ModelOverrideRecord* materialSource) {
     if (!multiShape) return;
     const long n       = multiShape->GetNumShapes();
     const long numTxms = multiShape->GetNumTextures();
@@ -330,6 +332,7 @@ void GpuStaticPropBatcher::registerMultiShape(TG_TypeMultiShape* multiShape, boo
                 auto tit = s_typeIndex.find(typeShape);
                 if (tit != s_typeIndex.end() && tit->second < s_types.size()) {
                     s_types[tit->second].isOverride = true;
+                    s_types[tit->second].materialSource = materialSource;
                 }
             }
             // GPU-offloaded actors bypass TransformMultiShape, so the leaf

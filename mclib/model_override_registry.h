@@ -7,6 +7,20 @@
 #include <string>
 #include <string_view>
 #include <vector>
+#include <cstdint>
+
+// Authored linear detail only. Albedo remains the override's stock pixels.
+struct ModelOverrideMaterial {
+    uint32_t slot = 0;
+    uint32_t materialClass = 0; // 1 dielectric, 2 painted metal, 3 bare metal, 4 rust
+    std::string normalPath;
+    std::string ormPath;
+    float uvScale[2] = {1.0f, 1.0f};
+    float normalStrength = 1.0f;
+    float aoStrength = 1.0f;
+    float roughness = 1.0f;
+    float metallic = 0.0f;
+};
 
 // TREE-OVERRIDE-LOD-MVP-1 Task 3/4: one lower-detail LOD source for an override.
 // lod is the LOD index (>=1; LOD0 is the record's own `source`). distance is the
@@ -20,6 +34,7 @@ struct ModelOverrideLod {
 };
 
 struct ModelOverrideRecord {
+    std::vector<ModelOverrideMaterial> materials;
     std::string overrideClass;   // "staticprop" | "tree" — NORMALIZED lowercase
     std::string appearanceName;  // from "replaces" after ':' — NORMALIZED lowercase
     std::string sourceRelPath;   // .glb/.gltf relative to manifestDir (validated safe)

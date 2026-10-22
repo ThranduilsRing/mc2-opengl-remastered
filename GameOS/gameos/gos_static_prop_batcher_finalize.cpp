@@ -3,6 +3,7 @@
 #include "gos_static_prop_batcher_internal.h"
 #include "../../mclib/texture_assets.h"
 #include <cstring>
+#include <map>
 #include "gos_static_prop_finalize_frame.h"
 #include "vulkan_color_prop_island.h"   // mc2_static_prop_geometry_cpu
 #include "mc2fmt.h"
@@ -643,12 +644,42 @@ void GpuStaticPropBatcher::armCoalesce(StaticPropFinalizeFrame& f) {
 // Builds the shared geometry buffers, the coalesce layout, the texture arrays and the per-packet draw tables once per map.
 // The already-finalized bail-out stays here; each phase is a member helper declared in gos_static_prop_batcher.h.
 // A helper returns true when the original function would have returned at that point.
+void GpuStaticPropBatcher::buildAuthoredMaterials() {
+    materialSources_ = {};
+    materialSources_.packetIds.assign(s_packets.size(), -1);
+    // Record identity includes the winning manifest/provider and override, then
+    // the authored slot. Albedo sharing cannot collapse different detail sets.
+    std::map<std::pair<const ModelOverrideRecord*, uint32_t>, int32_t> ids;
+    for (size_t pi = 0; pi < s_packets.size(); ++pi) {
+        const auto& packet = s_packets[pi];
+        if (packet.owningTypeID >= s_types.size()) continue;
+        const auto& type = s_types[packet.owningTypeID];
+        const auto* owner = type.isOverride ? type.materialSource : nullptr;
+        if (!owner) continue;
+        for (const auto& input : owner->materials) {
+            if (input.slot != packet.textureSlot) continue;
+            const auto key = std::make_pair(owner, input.slot);
+            auto found = ids.find(key);
+            if (found == ids.end()) {
+                const int32_t id = static_cast<int32_t>(materialSources_.table.size());
+                const bool ok = mc2prop::addMaterial(materialSources_, *owner, input);
+                found = ids.emplace(key, ok ? id : -1).first;
+                mc2::fmt::print_err("[MODOVERRIDE] authored material {} slot={} id={}\n",
+                    owner->appearanceName, input.slot, found->second);
+            }
+            materialSources_.packetIds[pi] = found->second;
+            break;
+        }
+    }
+}
+
 void GpuStaticPropBatcher::finalizeGeometry() {
     if (s_geometryFinalized) return;
 
     StaticPropFinalizeFrame f;
     finalizePrologue();
     publishGeometry();
+    buildAuthoredMaterials();
 
     //
     // Step 5.1 — §CRITICAL-C invariant (pure documentation):

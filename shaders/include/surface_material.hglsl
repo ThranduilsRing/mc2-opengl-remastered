@@ -1,0 +1,14 @@
+#ifndef MC2_SURFACE_MATERIAL
+#define MC2_SURFACE_MATERIAL
+// Material input for the future L6 lighting consumer. Color/emission are linear;
+// normal is normalized render space. Class is explicit authoring metadata.
+struct SurfaceMaterial {
+    vec3 baseColor;
+    vec3 normal;
+    float roughness;
+    float metallic;
+    float ao;
+    vec3 emission;
+    uint materialClass;
+};
+#endif

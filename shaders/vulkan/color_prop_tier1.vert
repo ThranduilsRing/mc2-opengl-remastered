@@ -38,24 +38,7 @@ layout(set = 0, binding = 4, std430) readonly buffer LightsData {
 // SH-L2 evaluator -- verbatim port of static_prop.vert::evalShL2 (Ramamoorthi-Hanrahan
 // diffuse-irradiance reconstruction). Coefficients arrive pre-convolved (see
 // RenderCore/IblShCoeffs.h header comment); do not re-apply the cosine kernel here.
-vec3 evalShL2(vec3 n, vec3 sh[9]) {
-    const float kSH_c1 = 0.429043;
-    const float kSH_c2 = 0.511664;
-    const float kSH_c3 = 0.743125;
-    const float kSH_c4 = 0.886227;
-    const float kSH_c5 = 0.247708;
-    return
-          kSH_c1 * sh[8] * (n.x * n.x - n.z * n.z)
-        + kSH_c3 * sh[6] * (n.y * n.y)
-        + kSH_c4 * sh[0]
-        - kSH_c5 * sh[6]
-        + 2.0 * kSH_c1 * sh[4] * (n.x * n.y)
-        + 2.0 * kSH_c1 * sh[5] * (n.y * n.z)
-        + 2.0 * kSH_c1 * sh[7] * (n.x * n.z)
-        + 2.0 * kSH_c2 * sh[3] * n.x
-        + 2.0 * kSH_c2 * sh[1] * n.y
-        + 2.0 * kSH_c2 * sh[2] * n.z;
-}
+#include "include/prop_sh_l2.glsl"
 
 // VK-FLIP-FIELD-REPORT-2 BLACK-FENCE FIX: per-PACKET (not per-type) albedo layer,
 // pushed fresh before each vkCmdDrawIndexed. GL's coalesce path samples texArrayLayer
@@ -80,6 +63,7 @@ layout(push_constant) uniform PacketLayerPC {
     int   packetAlphaTest;   // GL's live per-packet ALPHA_TEST bit (the FS reads it)
     int   coverageFringePass;   // PROP-COVERAGE-1 (FS only)
     int   hzbEnabled;
+    int   materialId;
 } uPacket;
 
 #include "../include/gpu_abi_static_prop_instance.gen.hglsl"
@@ -113,6 +97,10 @@ flat layout(location = 8) out vec3 vSunColor;
 // Per-instance objective / selection highlight (static_prop.vert step 6 + static_prop.frag): added to the vertex light and,
 // alpha-weighted, to the fragment colour; zero when the game highlights nothing.
 flat layout(location = 9) out vec4 vHighlight;
+layout(location = 10) out vec3 vMaterialSeed;
+flat layout(location = 11) out vec3 vMaterialAmbient;
+flat layout(location = 12) out vec3 vMaterialSun;
+flat layout(location = 13) out uint vMaterialFlags;
 
 // Per-type hot-colour magic: the emission colours of the three night tags (windows, outside building lights, building base lights), taken from the type's ini.
 // Three vec4 per type in the order pink, yellow, green; indexed by inst.typeID. Same table the GL prop shader reads.
@@ -232,6 +220,10 @@ void main() {
                                   hotOk ? uTypeHot.c[hotBase + 2u].rgb : vec3(0.0));
     // A window node carries only its hot-colour light: no ambient, sun or IBL (they would wash out the night glow and the by-day grey).
     vHighlight = inst.aRGBHighlight;
+    vMaterialSeed = seed;
+    vMaterialAmbient = vec3(0);
+    vMaterialSun = vec3(0);
+    vMaterialFlags = inst.flags;
     if ((inst.flags & kFlagIsWindow) != 0u) {
         vArgb = clamp(seed + inst.aRGBHighlight.rgb, 0.0, 1.0);
         return;
@@ -323,6 +315,8 @@ void main() {
     // Use the real scanned sun color when the feed is live (GL parity). Only the
     // fail-soft branch (no feed) falls back to the neutral kSunColor stand-in.
     vec3 sunTerm = (uFrame.lightingReady != 0) ? sunColorFed : kSunColor;
+    vMaterialAmbient = ambientTerm;
+    vMaterialSun = sunTerm;
     vSunDirStuff = sunDirFed;
     vSunColor = sunFound ? sunColorFed : vec3(0.0);
 

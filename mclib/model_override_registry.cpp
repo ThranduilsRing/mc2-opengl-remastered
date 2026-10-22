@@ -7,6 +7,7 @@
 #include <fstream>
 #include <mutex>
 #include <utility>
+#include <cmath>
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"
 #include "mc2fmt.h"
@@ -44,6 +45,73 @@ static std::string trimSource(std::string_view s) {
     while (b < en && std::isspace(static_cast<unsigned char>(s[b]))) ++b;
     while (en > b && std::isspace(static_cast<unsigned char>(s[en - 1]))) --en;
     return std::string(s.substr(b, en - b));
+}
+
+static void parseMaterials(const json& entry, ModelOverrideRecord& rec) {
+    if (!entry.contains("materials")) return;
+    try {
+        const auto& package = entry.at("materials");
+        if (!package.at("version").is_number_integer() || package.at("version").get<int>() != 1 || !package.at("slots").is_array())
+            throw std::runtime_error("unsupported material package");
+        std::vector<ModelOverrideMaterial> parsed;
+        auto ranged = [](const json& row, const char* key, float fallback, float hi) {
+            if (row.contains(key) && !row.at(key).is_number())
+                throw std::runtime_error("material scalar must be numeric");
+            const float v = row.value(key, fallback);
+            if (!std::isfinite(v) || v < 0.0f || v > hi)
+                throw std::runtime_error("material scalar out of range");
+            return v;
+        };
+        auto path = [](const json& row, const char* key) {
+            std::string s = row.value(key, std::string());
+            if (s.empty()) return s;
+            for (const unsigned char c : s)
+                if (c < 32u) throw std::runtime_error("control character in material path");
+            if (s.front() == '/' || s.front() == '\\' || s.find(':') != std::string::npos ||
+                s.find("..") != std::string::npos || s.find('\\') != std::string::npos ||
+                s.size() < 4 || s.substr(s.size() - 4) != ".tga")
+                throw std::runtime_error("unsafe/non-TGA material path");
+            return s;
+        };
+        for (const auto& row : package.at("slots")) {
+            if (!row.at("reviewed").get<bool>()) throw std::runtime_error("unreviewed material");
+            ModelOverrideMaterial m;
+            if (!row.at("slot").is_number_integer()) throw std::runtime_error("material slot must be integer");
+            const int slot = row.at("slot").get<int>();
+            if (slot < 0 || slot > 255) throw std::runtime_error("invalid material slot");
+            m.slot = static_cast<uint32_t>(slot);
+            for (const auto& prior : parsed)
+                if (prior.slot == m.slot) throw std::runtime_error("duplicate material slot");
+            const std::string cls = row.at("class").get<std::string>();
+            m.materialClass = cls == "dielectric" ? 1u : cls == "painted_metal" ? 2u :
+                              cls == "bare_metal" ? 3u : cls == "rust" ? 4u : 0u;
+            if (!m.materialClass) throw std::runtime_error("unknown material class");
+            m.normalPath = path(row, "normal"); m.ormPath = path(row, "orm");
+            if (m.normalPath.empty() && m.ormPath.empty()) throw std::runtime_error("empty material");
+            m.normalStrength = ranged(row, "normalStrength", 1.0f, 2.0f);
+            m.aoStrength = ranged(row, "aoStrength", 1.0f, 1.0f);
+            m.roughness = ranged(row, "roughness", 1.0f, 1.0f);
+            m.metallic = ranged(row, "metallic", 0.0f, 1.0f);
+            if (m.materialClass == 1u && m.metallic != 0.0f)
+                throw std::runtime_error("dielectric cannot be metallic");
+            if (row.contains("uvScale")) {
+                const auto& uv = row.at("uvScale");
+                if (!uv.is_array() || uv.size() != 2) throw std::runtime_error("invalid UV scale");
+                for (int i = 0; i < 2; ++i) {
+                    if (!uv[i].is_number()) throw std::runtime_error("UV scale must be numeric");
+                    m.uvScale[i] = uv[i].get<float>();
+                    if (!std::isfinite(m.uvScale[i]) || m.uvScale[i] <= 0.0f || m.uvScale[i] > 64.0f)
+                        throw std::runtime_error("invalid UV scale");
+                }
+            }
+            parsed.push_back(std::move(m));
+        }
+        rec.materials = std::move(parsed);
+    } catch (const std::exception& error) {
+        // Reject the optional package atomically, preserving the model override.
+        logDrop(error.what(), rec.overrideClass + ":" + rec.appearanceName + ":materials");
+        rec.materials.clear();
+    }
 }
 
 // Parse manifestPath and return all valid records stamped with dir.
@@ -100,6 +168,7 @@ static std::vector<ModelOverrideRecord> parseManifest(
         rec.sourceRelPath  = source;
         rec.manifestDir    = dir;
         rec.scale          = scale;
+        parseMaterials(e, rec);
 
         // TREE-OVERRIDE-LOD-MVP-1 Task 3/4: optional lower-detail LOD chain.
         // Minimal-but-safe parse: each entry must be an object with int `lod`>=1

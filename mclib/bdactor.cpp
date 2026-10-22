@@ -375,7 +375,8 @@ void BldgAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 		// override would never rasterize. Damage stays stock (out of MVP).
 		const bool _bldgIsOverride = (appearType->bldgRenderShape != nullptr);
 		for (int i = 0; i < MAX_LODS; ++i)
-			GpuStaticPropBatcher::instance().registerMultiShape(appearType->getBldgRenderShape(i), _bldgIsOverride);
+			GpuStaticPropBatcher::instance().registerMultiShape(appearType->getBldgRenderShape(i), _bldgIsOverride,
+                _bldgIsOverride ? appearType->propMaterialSource : nullptr);
 		GpuStaticPropBatcher::instance().registerMultiShape(appearType->bldgDmgShape);
 	}
 }
