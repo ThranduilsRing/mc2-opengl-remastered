@@ -35,3 +35,5 @@ py -3 scripts/run_battle_bench.py --diff G:/mc2-proof/battle-bench/<before>/batt
 ```
 
 The tiny diff prints before/after p95 CPU, tick and GPU times and refuses different scenario or content fingerprints. Budgets: total native 4K GPU 5 ms, 1080p CPU frame 1 ms; terrain p95 0.50 ms at 4K and 0.15 ms at 1080p on the reference RX 7900 XTX. Other pass timings identify where that total is spent; no invented per-pass budgets.
+
+First recorded numbers and contention qualifications: [2026-10-22 baseline](battle-benchmark-baseline-2026-10-22.md). CPU frame/tick are PROVISIONAL pending the orchestrator's overnight quiet rerun; GPU per-pass measurements are the baseline.
