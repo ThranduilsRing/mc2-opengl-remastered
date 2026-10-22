@@ -119,6 +119,7 @@
   "tools/blender_pipeline/tests/test_asset_edit.py": "Dynamically discovered pytest/script-style module through scripts/run_tools_tests.py:70-85 (tools_tests); no literal caller names the module.",
   "tools/blender_pipeline/tests/test_asset_hd.py": "Dynamically discovered pytest/script-style module through scripts/run_tools_tests.py:70-85 (tools_tests); no literal caller names the module.",
   "tools/blender_pipeline/tests/test_driver_dryrun.py": "Dynamically discovered pytest/script-style module through scripts/run_tools_tests.py:70-85 (tools_tests); no literal caller names the module.",
+  "tools/blender_pipeline/tests/test_fence.py": "Dynamically discovered pytest module through scripts/run_tools_tests.py (tools_tests); exercises the fence recipe and signed bundle validation.",
   "tools/blender_pipeline/tests/test_manifest.py": "Dynamically discovered pytest/script-style module through scripts/run_tools_tests.py:70-85 (tools_tests); no literal caller names the module.",
   "tools/blender_pipeline/tests/test_sweep.py": "Dynamically discovered pytest/script-style module through scripts/run_tools_tests.py:70-85 (tools_tests); no literal caller names the module.",
   "tools/blender_pipeline/tests/test_tex_hd.py": "Dynamically discovered pytest/script-style module through scripts/run_tools_tests.py:70-85 (tools_tests); no literal caller names the module.",
