@@ -9,7 +9,7 @@
   "settle_frames": 30,
   "bookmarks": [
     {"name": "tactical", "pos": [-763, 2652, 0], "rot": 20, "proj": 42, "alt": 1800, "covers": ["base_battle", "movers", "buildings", "destruction"]},
-    {"name": "max_zoom_out", "pos": [-763, 2652, 0], "rot": 20, "proj": 55, "alt": 6400, "covers": ["max_zoom_out", "terrain", "shadows"]},
+    {"name": "max_zoom_out", "pos": [-763, 2652, 0], "rot": 20, "proj": 88, "alt": 6400, "covers": ["max_zoom_out", "terrain", "shadows"]},
     {"name": "low_close", "pos": [-763, 2652, 0], "rot": 165, "proj": 18, "alt": 650, "covers": ["low_angle", "mechs", "effects", "props"]},
     {"name": "forest_concrete", "pos": [-400, 1200, 0], "rot": 20, "proj": 45, "alt": 1100, "covers": ["forest_edge", "concrete", "vegetation", "mover_shadows"]}
   ]
