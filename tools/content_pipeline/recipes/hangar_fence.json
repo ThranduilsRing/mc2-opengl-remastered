@@ -19,9 +19,9 @@
           "class": "painted_metal",
           "metallic": 0,
           "roughness": 1,
-          "normalStrength": 0.6,
+          "normalStrength": 1.0,
           "aoStrength": 0.5,
-          "reviewNote": "Stock atlas viewed (a_hangar 128 tier). Corrugated roof strip and window wall get vertical-rib corrugated detail at the painted rib frequency (43 ribs per atlas unit, measured); lintel band, lower panels, side panel columns, end-wall arches and door frame get concrete detail. Window glass (stock alpha) and the roller door keep the legacy response. Painted surfaces are dielectric: metal is never taken from colour.",
+          "reviewNote": "Stock atlas viewed (a_hangar 128 tier). Corrugated roof strip and window wall get vertical-rib corrugated detail at the painted rib frequency (43 ribs per atlas unit, measured); lintel band and lower panels get concrete detail (side columns and end-wall arches were dropped after the viewed capture: stretched UVs streaked). Window glass (stock alpha) and the roller door keep the legacy response. Painted surfaces are dielectric: metal is never taken from colour.",
           "regions": [
             {
               "provider": "ambientCG", "license": "CC0",
@@ -40,8 +40,7 @@
               "roughnessMap": "G:/mc2-assets/pbr/scifi-kit/concrete_wall_003/concrete_wall_003_rough_2k.jpg",
               "uvScale": [3, 3],
               "roughnessRange": [0.8, 1.0],
-              "maskRects": [[0, 0.235, 0.585, 0.345], [0, 0.6, 0.585, 0.75], [0.59, 0, 0.75, 0.585],
-                            [0.76, 0, 1, 0.585], [0, 0.77, 1, 0.84]],
+              "maskRects": [[0, 0.235, 0.585, 0.345], [0, 0.6, 0.585, 0.75]],
               "excludeAlpha": true
             }
           ]

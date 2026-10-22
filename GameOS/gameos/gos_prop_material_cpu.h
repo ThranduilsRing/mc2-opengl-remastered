@@ -139,10 +139,11 @@ inline bool addMaterial(MaterialSources& dst, const ModelOverrideRecord& owner,
 }
 
 // The per-packet alpha class (0 opaque, 1 stock coverage, 2 depth-writing cutout) for a packet whose
-// texture has alpha. An authored slot's explicit alpha mode wins; an override without one is a cutout
-// (procedural fences), stock is the coverage policy.
+// texture has alpha. An authored slot's explicit alpha mode wins. A package that declares materials
+// owns its unmapped slots too: those are legacy (stock-derived) slots and keep the stock coverage
+// policy. An override with no material package at all is a cutout (procedural fences); stock is coverage.
 inline uint32_t packetAlphaClass(bool isOverride, const ModelOverrideRecord* source, uint32_t textureSlot) {
-    if (isOverride && source)
+    if (isOverride && source && !source->materials.empty()) {
         for (const auto& m : source->materials)
             if (m.slot == textureSlot)
                 switch (static_cast<RenderCore::SurfaceAlpha>(m.alphaMode)) {
@@ -150,6 +151,8 @@ inline uint32_t packetAlphaClass(bool isOverride, const ModelOverrideRecord* sou
                     case RenderCore::SurfaceAlpha::Mask:   return 2u;
                     default:                               return 1u;
                 }
+        return 1u;
+    }
     return isOverride ? 2u : 1u;
 }
 }
