@@ -3,6 +3,8 @@
 // Declared in the class headers; shared names in mission_internal.h.
 #include "mission_internal.h"
 #include "sim_world_trace.h"
+#include "../GameOS/gameos/sim_tick_clock.h"
+#include <optional>
 #include <utility>
 #include "../GameOS/gameos/utils/mc2log.h"
 
@@ -28,6 +30,9 @@ static inline bool mc2SimTickFrozen(MissionInterfaceManager* mim)
 {
 	return (mim && mim->isPaused()) || (mc2FreezeMoversActive() != 0);
 }
+
+//: True for the second and later sim ticks of one render frame (set by Mission::update).
+static bool s_extraTickInFrame = false;
 
 static void simClockTraceTick(float scenarioTimeNow)
 {
@@ -364,6 +369,31 @@ void Mission::updateFrameClock() {
 		actualTime = scenarioTime;
 }
 
+// The tick-mode clock: one call per sim tick. A tick is always kTickSeconds of sim time, whatever the frame rate or game
+// speed. The in-mission save runs at the tick boundary, before the clock moves.
+void Mission::updateTickClock(bool advanceTime) {
+	dynamicFrameTiming = true;
+
+	if (saveInMissionSave)
+	{
+		char savegame_path[1024];
+		S_snprintf(savegame_path, sizeof(savegame_path)/sizeof(savegame_path[0]), "%s" PATH_SEPARATOR "testgame.ims", savePath);
+		save(savegame_path);
+		saveInMissionSave = false;
+	}
+
+	if (advanceTime)
+	{
+		scenarioTime += static_cast<float>(mc2::sim::kTickSeconds);
+		// Counts the ticks that advanced the clock, so SIMID frame N means tick N under the harness clock.
+		if (SmokeMode::fixedTimestepEnabled())
+			SmokeMode::fixedTimestepOnSimFrame(static_cast<double>(scenarioTime));
+	}
+	simClockTraceTick(scenarioTime);
+	soundSystem->clearIsPaused();
+	actualTime = scenarioTime;
+}
+
 // Update the interface, camera, terrain, weather, waypoints and the path manager.
 void Mission::updateFrontEnd() {
 	{ ZoneScopedN("Mission.clearArrays"); MisScope _ms(MS_CLEARARRAYS); mc2::VkSceneRenderer::beginFrame(); }
@@ -405,10 +435,25 @@ void Mission::updateFrontEnd() {
 #ifdef USE_PATH_COST_TABLE
 	GlobalMoveMap[0]->resetPathCostTable();
 #endif
-	{ ZoneScopedN("GameLogic.PathManager"); MisScope _ms(MS_PATHMGR); PathManager->update(); }
-
 	if (KillAmbientLight) {
 	}
+}
+
+// The path manager serves queued path requests: sim, once per tick.
+void Mission::updatePathManager() {
+	{ ZoneScopedN("GameLogic.PathManager"); MisScope _ms(MS_PATHMGR); PathManager->update(); }
+}
+
+// A render frame with no sim tick: draw the unchanged sim state again. This is the paused-frame path (appearances re-pose
+// from object positions) with the clock at zero and Mech3DAppearance::update told not to advance sim state.
+void Mission::updatePresentationOnly() {
+	gpu_cull::substrate_frameBegin();
+	const float renderLength = frameLength;
+	frameLength = 0.0f;
+	simPresentationPass = true;
+	ObjectManager->updateAppearancesOnly( true, true, true );
+	simPresentationPass = false;
+	frameLength = renderLength;
 }
 
 // Clear the terrain object flags and process the terrain geometry.
@@ -436,8 +481,12 @@ void Mission::advanceCombatClock(float seconds)
 
 // Begin the GPU cull frame and update the objects, or only their appearances while frozen.
 void Mission::updateObjectManager() {
-	// Render submissions continue while paused; stale substrate records would smear props.
-	gpu_cull::substrate_frameBegin();
+	// Render submissions continue while paused; stale substrate records would smear props. A further tick of the same render
+	// frame restarts the dynamic records in the same ring slot.
+	if (s_extraTickInFrame)
+		gpu_cull::substrate_frameRewind();
+	else
+		gpu_cull::substrate_frameBegin();
 
 	// Frozen actors keep drawing while gameplay, gait and aim remain suspended.
 	if ( mc2SimTickFrozen(missionInterface) && !MPlayer )
@@ -1109,23 +1158,26 @@ void Mission::updateSoakPilotPromote() {
 	}
 }
 
-// Per-frame mission update. The timing scopes, the active guard, the Tracy zone, the mission brain call (its 9999
-// result ends the update) and the LAB_ONLY timing sum stay here; each other phase is a member helper declared in
-// mission.h, run in the original order.
-long Mission::update (void)
+// One pass of the mission update, in the legacy order. Two parts:
+//   frame part: dev hotkeys, interface, camera, terrain, weather, waypoints, terrain geometry (render frame time);
+//   sim part:   clock, ABL timers, path manager, objects, sensors, collisions, brains, termination (one tick).
+// The legacy pass (tickMode false) runs both under one frameLength. In tick mode the first tick of a frame runs both, with
+// frameLength switched between the render frame and the tick length around each step, and further ticks run the sim part
+// alone. Returns true when the mission brain ended the update (earlyResult).
+bool Mission::updatePass(bool tickMode, bool runFrame, bool runSim, bool advanceTime, long& earlyResult)
 {
-	ZoneScopedN("Mission::update");
-	if (s_misSplit) {
-		if (!s_misAtexit) { s_misAtexit = true; std::atexit(misEmit); }
-		++s_misFrames;
-	}
-	MisScope _msTotal(MS_TOTAL);  // whole Mission::update; TOTAL - sum(subcalls) = unbracketed
-	if (active)
+	const float renderLength = frameLength;
+	auto simLength = [&] { if (tickMode) frameLength = static_cast<float>(mc2::sim::kTickSeconds); };
+	auto frameLen = [&] { frameLength = renderLength; };
+
+	// Every opened tick must complete, including the mission brain's 9999 return.
+	std::optional<mc2::sim::SimulationOrderCompletion<Mission>> orderTickCompletion;
+	std::optional<mc2::world_trace::TickScope> worldOrderTick;
+	if (runSim)
 	{
-		// Every opened tick must complete, including the mission brain's 9999 return.
-		mc2::sim::SimulationOrderCompletion<Mission> orderTickCompletion{*this};
+		orderTickCompletion.emplace(*this);
 		turn++;
-		mc2::world_trace::TickScope worldOrderTick{turn};
+		worldOrderTick.emplace(turn);
 
 		memset(ObjectManager->moverLineOfSightTable, -1, ObjectManager->maxMovers*ObjectManager->maxMovers);
 
@@ -1133,15 +1185,41 @@ long Mission::update (void)
 		MCTimeLOSCalc = 0;
 		MCTimeAnimationCalc = 0;
 #endif
+		simLength();
+		if (timerManager)
+			timerManager->update();
+	}
 
-		if (forcedFrameRate != -1.0f)
-			frameLength /= forcedFrameRate;
-
+	if (runFrame)
+	{
+		frameLen();
 		updateDevHotkeys();
-		updateFrameClock();
-		ZoneScopedN("GameLogic.Mission.Update");
+	}
+	if (runSim)
+	{
+		simLength();
+		if (tickMode) updateTickClock(advanceTime);
+		else updateFrameClock();
+	}
+	ZoneScopedN("GameLogic.Mission.Update");
+	if (runFrame)
+	{
+		frameLen();
 		updateFrontEnd();
+	}
+	if (runSim)
+	{
+		simLength();
+		updatePathManager();
+	}
+	if (runFrame)
+	{
+		frameLen();
 		updateTerrainGeometry();
+	}
+	if (runSim)
+	{
+		simLength();
 		updateObjectManager();
 		updateCratersAndDamp();
 		updateSimSystems();
@@ -1162,7 +1240,9 @@ long Mission::update (void)
 						observation->Emit("resolve", 0, std::format("{{\"scope\":\"mission\",\"stage\":\"final\",\"old\":{},\"new\":9999}}", observation->finalResult));
 						observation->finalResult = 9999;
 					}
-					return terminationResult;
+					frameLen();
+					earlyResult = terminationResult;
+					return true;
 				}
 				if (!MPlayer)
 					terminationResult = missionResult;
@@ -1176,48 +1256,120 @@ long Mission::update (void)
 
 		updateTraceHooks();
 		updateTermination();
+	}
+	if (runFrame)
+	{
+		frameLen();
 		updateCheatsAndFrameRate();
+	}
+	if (runSim)
+	{
+		simLength();
 		updateSoakAutoWin();
 		updateSoakKillEnemy();
 		updateOrderLiveness();
 		updateSoakPilotPromote();
+	}
+	frameLen();
 
 #ifdef LAB_ONLY
-		MCTimeMissionTotal 		= MCTimeTerrainUpdate +
-									MCTimeCameraUpdate +
-									MCTimeWeatherUpdate + 
-									MCTimePathManagerUpdate +
-									MCTimeRunBrainUpdate +
-									MCTimePath1Update + 
-									MCTimePath2Update + 
-									MCTimePath3Update + 
-									MCTimePath4Update + 
-									MCTimePath5Update + 
-									MCTimeCalcPath1Update +
-									MCTimeCalcPath2Update +
-									MCTimeCalcPath3Update +
-									MCTimeCalcPath4Update +
-									MCTimeCalcPath5Update +
-									MCTimeCalcGoal1Update + 
-									MCTimeCalcGoal2Update + 
-									MCTimeCalcGoal3Update + 
-									MCTimeCalcGoal4Update + 
-									MCTimeCalcGoal5Update + 
-									MCTimeCalcGoal6Update + 
-									MCTimeTerrainGeometry +
-									MCTimeInterfaceUpdate +
-									MCTimeCraterUpdate +
-									MCTimeTXMManagerUpdate +
-									MCTimeSensorUpdate +
-									MCTimeLOSUpdate +
-									MCTimeCollisionUpdate +
-									MCTimeMissionScript+ 
-									MCTimeTerrainObjectsUpdate +
-									MCTimeMechsUpdate +
-									MCTimeVehiclesUpdate +
-									MCTimeTurretsUpdate +
-									MCTimeAllElseUpdate;
+	MCTimeMissionTotal 		= MCTimeTerrainUpdate +
+								MCTimeCameraUpdate +
+								MCTimeWeatherUpdate +
+								MCTimePathManagerUpdate +
+								MCTimeRunBrainUpdate +
+								MCTimePath1Update +
+								MCTimePath2Update +
+								MCTimePath3Update +
+								MCTimePath4Update +
+								MCTimePath5Update +
+								MCTimeCalcPath1Update +
+								MCTimeCalcPath2Update +
+								MCTimeCalcPath3Update +
+								MCTimeCalcPath4Update +
+								MCTimeCalcPath5Update +
+								MCTimeCalcGoal1Update +
+								MCTimeCalcGoal2Update +
+								MCTimeCalcGoal3Update +
+								MCTimeCalcGoal4Update +
+								MCTimeCalcGoal5Update +
+								MCTimeCalcGoal6Update +
+								MCTimeTerrainGeometry +
+								MCTimeInterfaceUpdate +
+								MCTimeCraterUpdate +
+								MCTimeTXMManagerUpdate +
+								MCTimeSensorUpdate +
+								MCTimeLOSUpdate +
+								MCTimeCollisionUpdate +
+								MCTimeMissionScript+
+								MCTimeTerrainObjectsUpdate +
+								MCTimeMechsUpdate +
+								MCTimeVehiclesUpdate +
+								MCTimeTurretsUpdate +
+								MCTimeAllElseUpdate;
 #endif
+	return false;
+}
+
+// Per-frame mission update. Normal play runs on the fixed 30 Hz sim tick (GameOS/gameos/sim_tick_clock.h): the frame's
+// real time x game speed is banked, whole ticks run out of the bank, and a frame that banks no tick only redraws the
+// unchanged sim state. A paused or frozen sim and multiplayer keep the old one-pass-per-frame update.
+long Mission::update (void)
+{
+	ZoneScopedN("Mission::update");
+	if (s_misSplit) {
+		if (!s_misAtexit) { s_misAtexit = true; std::atexit(misEmit); }
+		++s_misFrames;
+	}
+	MisScope _msTotal(MS_TOTAL);  // whole Mission::update; TOTAL - sum(subcalls) = unbracketed
+	if (active)
+	{
+		long earlyResult = 0;
+		static mc2::sim::TickClock s_tickClock;
+		static long s_turnAfterLastPass = -1;
+		if (turn != s_turnAfterLastPass)
+			s_tickClock.reset();   // a new mission or a loaded save: no banked time carries over
+		const float renderLength = frameLength;   // DoGameLogic: this render frame's length (1/30 s per virtual frame under the harness clock)
+
+		if (MPlayer || mc2SimTickFrozen(missionInterface))
+		{
+			s_tickClock.reset();
+			if (!SmokeMode::fixedTimestepEnabled())
+				frameLength *= simSpeedGetMultiplier();
+			if (forcedFrameRate != -1.0f)
+				frameLength /= forcedFrameRate;
+			if (updatePass(false, true, true, true, earlyResult))
+				return earlyResult;
+		}
+		else
+		{
+			const bool firstFrame = (LastTimeGetTime == 0xffffffff);
+			const DWORD now = timeGetTime();
+			const double realSeconds = SmokeMode::fixedTimestepEnabled() ? static_cast<double>(renderLength)
+				: (firstFrame ? 0.0 : static_cast<double>(now - LastTimeGetTime) / 1000.0);
+			LastTimeGetTime = now;
+			const int ticks = firstFrame ? 1 : s_tickClock.advance(realSeconds, simSpeedGetMultiplier());
+			if (ticks == 0)
+			{
+				// No tick is due: the frame part runs (camera and UI stay at render rate), the sim stands still.
+				if (updatePass(true, true, false, false, earlyResult))
+					return earlyResult;
+				updatePresentationOnly();
+			}
+			for (int tick = 0; tick < ticks; ++tick)
+			{
+				// One logic pass per frame-counter value: per-frame-keyed sim paths (animation advance, the brain tick
+				// accumulator, light-row stamps) see each tick as its own frame.
+				s_extraTickInFrame = tick > 0;
+				if (tick > 0)
+					++g_mc2FrameCounter;
+				const bool ended = updatePass(true, tick == 0, true, !firstFrame, earlyResult);
+				s_extraTickInFrame = false;
+				if (ended)
+					return earlyResult;
+			}
+		}
+		s_turnAfterLastPass = turn;
 	}
 
 	if (auto* observation = objectiveObservation(); observation && scenarioResult != mis_PLAYING &&

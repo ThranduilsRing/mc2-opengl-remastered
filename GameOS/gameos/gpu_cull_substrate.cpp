@@ -164,13 +164,26 @@ void substrate_shutdown() {
 // substrate_frameBegin
 // ---------------------------------------------------------------------------
 
+static void substrate_resetSlotCounts();
+
 void substrate_frameBegin() {
     if (!substrate_isEnabled() || !s_initialized) return;
 
     // Advance ring slot.
     s_frameSlot = (s_frameSlot + 1) % RING_FRAMES;
 
-    // Reset the per-frame record count for this slot.
+    substrate_resetSlotCounts();
+    SUBSTRATE_TRACE("event=frame_begin slot=%u", s_frameSlot);
+}
+
+void substrate_frameRewind() {
+    if (!substrate_isEnabled() || !s_initialized) return;
+    substrate_resetSlotCounts();
+    SUBSTRATE_TRACE("event=frame_rewind slot=%u", s_frameSlot);
+}
+
+// Reset the per-frame record count of the current slot.
+static void substrate_resetSlotCounts() {
     if (s_staticFrozen && s_staticPrefixCount > 0u) {
         // M1: static records are a FROZEN prefix [0,S). Refill THIS ring slot
         // from the CPU golden copy if it is dirty (per-slot, lazy, after the
@@ -195,8 +208,6 @@ void substrate_frameBegin() {
         s_cpuVisibleCount = 0;
     }
     s_overflowLoggedThisFrame = false;  // 2026-05-11 reset overflow log latch
-
-    SUBSTRATE_TRACE("event=frame_begin slot=%u", s_frameSlot);
 }
 
 // ---------------------------------------------------------------------------

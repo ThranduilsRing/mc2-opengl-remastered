@@ -562,6 +562,10 @@ class Mission
 	// Mission::update phases (mission_update.cpp); callers use update().
 		void updateDevHotkeys();
 		void updateFrameClock();
+		void updateTickClock(bool advanceTime);
+		void updatePathManager();
+		void updatePresentationOnly();
+		bool updatePass(bool tickMode, bool runFrame, bool runSim, bool advanceTime, long& earlyResult);
 		void updateFrontEnd();
 		void updateTerrainGeometry();
 		void updateObjectManager();

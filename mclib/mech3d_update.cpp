@@ -17,6 +17,10 @@ long Mech3DAppearance::update (bool animate)
 	if (!mechShape)
 		return TRUE;
 
+	// A render frame with no sim tick re-poses the mech from unchanged sim state. The gesture state machine, the idle
+	// timer, the dice and the weapon recycle clocks are SIM state and advance only on a tick (R1).
+	if (!simPresentationPass)
+	{
 	if (!nodeRecycle.empty())
 	{
 		for (long i=0;i<mechType->numWeaponNodes;i++)
@@ -386,6 +390,7 @@ long Mech3DAppearance::update (bool animate)
 		
 	if ((currentFrame > 0.0f) && (currentFrame >= mechType->getNumFrames(currentGestureId)))
 		currentFrame = 0.0f;
+	} // end !simPresentationPass
 		
 	// LIGHT-CULL-RADIUS-1 freshness (batch-6 item 5 ext a/c): the light
 	// owner-intent writers live in updateGeometry, which is frustum-culled
