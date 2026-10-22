@@ -1,6 +1,7 @@
 // GameObjectManager: GameObjectManager::update with its GOM_UPDATE_COST spans, in-view conflation probe, GPU-cull record and static-skip gates.
 // Declared in the class headers; shared names in objmgr_internal.h.
 #include "objmgr_internal.h"
+#include "sim_world_trace.h"
 #include "mc2fmt.h"
 #include <utility>
 #include "diagnostic_trace.h"
@@ -724,6 +725,7 @@ void GameObjectManager::updateTerrainObjects(int& frameJobsPrePassCount) {
 	{
 		if (specialBuildings[spBuilding] && specialBuildings[spBuilding]->getExists())
 		{
+			MC2_WORLD_UPDATE("special", specialBuildings[spBuilding]);
 			long updateRet_instr = specialBuildings[spBuilding]->update();
 			specialBuildings[spBuilding]->lastUpdateRet = static_cast<int32_t>(updateRet_instr);
 			if (!updateRet_instr)
@@ -750,6 +752,7 @@ void GameObjectManager::updateTerrainObjects(int& frameJobsPrePassCount) {
 	{
 		if (gates[nGates] && gates[nGates]->getExists())
 		{
+			MC2_WORLD_UPDATE("gates", gates[nGates]);
 			long updateRet_instr = gates[nGates]->update();
 			gates[nGates]->lastUpdateRet = static_cast<int32_t>(updateRet_instr);
 			if (!updateRet_instr)
@@ -1080,6 +1083,7 @@ void GameObjectManager::updateTerrainObjects(int& frameJobsPrePassCount) {
 
 					{
 						ZoneScopedN("GOM.TerrainObjects.ObjUpdate");
+						MC2_WORLD_UPDATE("terrain", objList[objIndex]);
 						long updateRet_instr = objList[objIndex]->update();
 						objList[objIndex]->lastUpdateRet = static_cast<int32_t>(updateRet_instr);
 						if (!updateRet_instr)
@@ -1199,6 +1203,7 @@ void GameObjectManager::updateMoverWalk(MoverPtr (&removeList)[MAX_MOVERS], long
 			MoverPtr mover = mechs[i];
 			if (mover && mover->getExists())
 			{
+				MC2_WORLD_UPDATE("mechs", mover);
 				long updateRet_instr = mover->update();
 				mover->lastUpdateRet = static_cast<int32_t>(updateRet_instr);
 				if (!updateRet_instr)
@@ -1222,6 +1227,7 @@ void GameObjectManager::updateMoverWalk(MoverPtr (&removeList)[MAX_MOVERS], long
 			MoverPtr mover = vehicles[i];
 			if (mover && mover->getExists())
 			{
+				MC2_WORLD_UPDATE("vehicles", mover);
 				long updateRet_instr = mover->update();
 				mover->lastUpdateRet = static_cast<int32_t>(updateRet_instr);
 				if (!updateRet_instr)
@@ -1299,6 +1305,7 @@ void GameObjectManager::updateOtherFx() {
 		{
 			if (turrets[i] && turrets[i]->getExists())
 			{
+				MC2_WORLD_UPDATE("turrets", turrets[i]);
 				long updateRet_instr = turrets[i]->update();
 				turrets[i]->lastUpdateRet = static_cast<int32_t>(updateRet_instr);
 				if (!updateRet_instr)
@@ -1314,6 +1321,7 @@ void GameObjectManager::updateOtherFx() {
 	if (weapons) {
 		for (long i=0;i<numWeapons;i++) {
 			if (weapons[i] && weapons[i]->getExists()) {
+				MC2_WORLD_UPDATE("weapons", weapons[i]);
 				long updateRet_instr = weapons[i]->update();
 				weapons[i]->lastUpdateRet = static_cast<int32_t>(updateRet_instr);
 				if (combatTraceEnabled) {
@@ -1331,6 +1339,7 @@ void GameObjectManager::updateOtherFx() {
 	if (carnage) {
 		for (long i = 0; i < numCarnage; i++) {
 			if (carnage[i] && carnage[i]->getExists()) {
+				MC2_WORLD_UPDATE("carnage", carnage[i]);
 				long updateRet_instr = carnage[i]->update();
 				carnage[i]->lastUpdateRet = static_cast<int32_t>(updateRet_instr);
 				if (combatTraceEnabled) {
@@ -1348,6 +1357,7 @@ void GameObjectManager::updateOtherFx() {
 	if (lights) {
 		for (long i = 0; i < numLights; i++) {
 			if (lights[i] && lights[i]->getExists()) {
+				MC2_WORLD_UPDATE("lights", lights[i]);
 				long updateRet_instr = lights[i]->update();
 				lights[i]->lastUpdateRet = static_cast<int32_t>(updateRet_instr);
 				if (!updateRet_instr)
@@ -1359,6 +1369,7 @@ void GameObjectManager::updateOtherFx() {
 	if (artillery) {
 		for (long i = 0; i < numArtillery; i++) {
 			if (artillery[i] && artillery[i]->getExists()) {
+				MC2_WORLD_UPDATE("artillery", artillery[i]);
 				long updateRet_instr = artillery[i]->update();
 				artillery[i]->lastUpdateRet = static_cast<int32_t>(updateRet_instr);
 				if (!updateRet_instr)
@@ -1372,6 +1383,7 @@ void GameObjectManager::updateOtherFx() {
 // brackets the same phases; each phase body is a member helper declared in objmgr.h, in execution order.
 void GameObjectManager::update (bool terrain, bool movers, bool other)
 {
+	if (mc2::world_trace::enabled()) mc2::world_trace::snapshot(*this, "gom_begin");
 	ZoneScopedN("GameObjectManager::update");
 	gomcost::TotalSpan _gomTotalSpan;  // [GOM_UPDATE_COST v1] first-constructed => dtor last
 

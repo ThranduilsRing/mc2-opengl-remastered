@@ -1540,6 +1540,13 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "NOFOCUS-HARDEN-1: create the SDL window HIDDEN at (-32000,-32000) and keep it there, so an agent-launched engine window never occupies visible desktop area...",
     },
     {
+        "MC2_WORLD_ORDER_TRACE",
+        "MC2_WORLD_ORDER_TRACE",
+        EnvVarKind::Trace,
+        false,
+        "W2: emit ordered world views, terrain activity, lifecycle events and update calls per mission tick. Diagnostic only.",
+    },
+    {
         "MC2_XFORM_PARITY_FATAL",
         "MC2_XFORM_PARITY_FATAL",
         EnvVarKind::Trace,

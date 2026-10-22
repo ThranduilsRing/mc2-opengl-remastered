@@ -1595,7 +1595,7 @@
       "callers_by_basename": [
         {
           "path": "CMakeLists.txt",
-          "line": 929,
+          "line": 930,
           "evidence": "cmake command",
           "reference": "${CMAKE_SOURCE_DIR}/scripts/check-shader-schema.sh",
           "text": "COMMAND ${BASH_EXECUTABLE} ${CMAKE_SOURCE_DIR}/scripts/check-shader-schema.sh"
@@ -6451,6 +6451,13 @@
       "callers_by_stem": []
     },
     {
+      "path": "scripts/tests/test_sim_determinism_strict.py",
+      "basename": "test_sim_determinism_strict.py",
+      "stem": "test_sim_determinism_strict",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
       "path": "scripts/tests/test_sim_include_firewall.py",
       "basename": "test_sim_include_firewall.py",
       "stem": "test_sim_include_firewall",
@@ -6497,6 +6504,13 @@
       "path": "scripts/tests/test_vk_offline_proofs.py",
       "basename": "test_vk_offline_proofs.py",
       "stem": "test_vk_offline_proofs",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "scripts/tests/test_world_order_diff.py",
+      "basename": "test_world_order_diff.py",
+      "stem": "test_world_order_diff",
       "callers_by_basename": [],
       "callers_by_stem": []
     },
@@ -9820,7 +9834,7 @@
       "callers_by_basename": [
         {
           "path": "CMakeLists.txt",
-          "line": 907,
+          "line": 908,
           "evidence": "cmake command",
           "reference": "${CMAKE_SOURCE_DIR}/tools/shader_reflect/reflect.py",
           "text": "COMMAND ${Python3_EXECUTABLE}"
@@ -9860,7 +9874,7 @@
           "line": 1331,
           "evidence": "command",
           "reference": "tools/sim_determinism.py",
-          "text": "run_check \"sim_determinism\"             \"py -3 tools/sim_determinism.py selftest\""
+          "text": "run_check \"sim_determinism\"             \"py -3 tools/sim_determinism.py selftest && py -3 -B -m pytest scripts/tests/test_sim_determinism_strict.py scripts/tests/test_world_order_diff.py -q -p no:cacheprovider\""
         }
       ],
       "callers_by_stem": [
@@ -9870,6 +9884,13 @@
           "evidence": "import",
           "reference": "sim_determinism",
           "text": "import sim_determinism as sd  # noqa: E402"
+        },
+        {
+          "path": "scripts/tests/test_sim_determinism_strict.py",
+          "line": 10,
+          "evidence": "import",
+          "reference": "sim_determinism",
+          "text": "import sim_determinism as sim"
         },
         {
           "path": "tools/battery.py",
@@ -12728,6 +12749,21 @@
       "stem": "witness_smoke",
       "callers_by_basename": [],
       "callers_by_stem": []
+    },
+    {
+      "path": "tools/world_order_diff.py",
+      "basename": "world_order_diff.py",
+      "stem": "world_order_diff",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "scripts/tests/test_world_order_diff.py",
+          "line": 8,
+          "evidence": "import",
+          "reference": "world_order_diff",
+          "text": "import world_order_diff as diff"
+        }
+      ]
     }
   ]
 }

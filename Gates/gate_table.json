@@ -1,6 +1,6 @@
 {
  "version": 1,
- "count": 928,
+ "count": 929,
  "gates": [
   {"name": "MC2_3DVIEW_DIAG", "kind": "Bool", "rule": "Presence", "default": false, "owner": "gameos", "retireBy": "", "doc": "", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": false, "verified": false, "registry": null, "logTopic": ""},
   {"name": "MC2_ABL_ARG_GUARD", "kind": "Bool", "rule": "Lead1", "default": false, "owner": "code", "retireBy": "", "doc": "ABL crash-safety gates (ABL-OPCODE-BOUNDS-HARDEN) MC2_ABL_ARG_GUARD=1 - enables dispatch-bounds soft path + out-ptr null guards MC2_ABL_RUNTIME_SOFTFAIL=1 -...", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": true, "verified": true, "registry": null, "logTopic": ""},
@@ -929,6 +929,7 @@
   {"name": "MC2_WINDOWED", "kind": "Bool", "rule": "Lead0", "default": false, "owner": "gameos", "retireBy": "", "doc": "", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": true, "verified": true, "registry": null, "logTopic": ""},
   {"name": "MC2_WINDOW_OFFSCREEN", "kind": "Bool", "rule": "Lead0", "default": false, "owner": "unclassified", "retireBy": "", "doc": "NOFOCUS-HARDEN-1: create the SDL window HIDDEN at (-32000,-32000) and keep it there, so an agent-launched engine window never occupies visible desktop area...", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": true, "verified": true, "registry": {"featureId": "MC2_TRACE_WINDOW_OFFSCREEN", "kind": "Trace", "order": -1, "defaultOn": false}, "logTopic": ""},
   {"name": "MC2_WINDOW_RESIZABLE", "kind": "Bool", "rule": "Lead0Kill", "default": true, "owner": "gameos", "retireBy": "", "doc": "", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": false, "verified": true, "registry": null, "logTopic": ""},
+  {"name": "MC2_WORLD_ORDER_TRACE", "kind": "Bool", "rule": "Std", "default": false, "owner": "code", "retireBy": "", "doc": "W2: emit ordered world views, terrain activity, lifecycle events and update calls per mission tick. Diagnostic only.", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": true, "verified": true, "registry": {"featureId": "MC2_WORLD_ORDER_TRACE", "kind": "Trace", "order": -1, "defaultOn": false}, "logTopic": ""},
   {"name": "MC2_XFORM_PARITY_FATAL", "kind": "Bool", "rule": "Lead1", "default": false, "owner": "code", "retireBy": "", "doc": "XFORM-CONVENTION-HARNESS-1: promote the F1-3C clip-space parity probe (code/gamecam.cpp) to a HARD invariant.", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": false, "verified": true, "registry": {"featureId": "MC2_XFORM_PARITY_FATAL", "kind": "Trace", "order": -1, "defaultOn": false}, "logTopic": ""}
  ]
 }

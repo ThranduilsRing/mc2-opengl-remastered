@@ -1,4 +1,5 @@
 // Mission: createPartObject, addMover, removeMover, tradeMover, drop zones and gate queries.
+#include "sim_world_trace.h"
 // Declared in the class headers; shared names in mission_internal.h.
 #include "mission_internal.h"
 #include "mc2fmt.h"
@@ -387,6 +388,7 @@ typedef struct _MoverInitData {
             // how it works on Windows... who knows.
 			mover->setOnGUI(true);
 
+			MC2_WORLD_EVENT("spawn_mover", mover, 0);
 			return(mover->getHandle());
 		}
 	}
@@ -476,6 +478,7 @@ long Mission::addMover (MoverInitData* moveSpec, LogisticsMech* mechData)
 void DEBUGWINS_removeGameObject (GameObjectPtr obj);
 
 long Mission::removeMover (MoverPtr mover) {
+	MC2_WORLD_EVENT("remove_mover", mover, 0);
 
 	DEBUGWINS_removeGameObject(static_cast<GameObjectPtr>(mover));
 	missionInterface->removeMover(mover);
@@ -489,6 +492,7 @@ long Mission::removeMover (MoverPtr mover) {
 
 
 void Mission::tradeMover (MoverPtr mover, long newTeamID, long newCommanderID, char* pilotFileName, const char* brainFileName) {
+	MC2_WORLD_EVENT("trade_mover", mover, newTeamID);
 
 	missionInterface->removeMover(mover);
 	if (MPlayer) {

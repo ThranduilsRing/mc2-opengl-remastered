@@ -506,6 +506,7 @@ set(SOURCES
     "code/mission_parts_archive.cpp"
     "code/mission2.cpp"
     "code/sim_identity.cpp"
+    "code/sim_world_trace.cpp"
     "code/objective.cpp"
     "code/objective_flags.cpp"
     "code/objective_text.cpp"

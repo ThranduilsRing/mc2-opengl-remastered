@@ -10,7 +10,7 @@
 
 namespace mc2::gate::detail {
 
-inline constexpr std::size_t kGateCount = 928;
+inline constexpr std::size_t kGateCount = 929;
 
 inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_3DVIEW_DIAG", Kind::Bool, Rule::Presence, {}},
@@ -940,6 +940,7 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_WINDOWED", Kind::Bool, Rule::Lead0, {}},
     {"MC2_WINDOW_OFFSCREEN", Kind::Bool, Rule::Lead0, {}},
     {"MC2_WINDOW_RESIZABLE", Kind::Bool, Rule::Lead0Kill, {}},
+    {"MC2_WORLD_ORDER_TRACE", Kind::Bool, Rule::Std, {}},
     {"MC2_XFORM_PARITY_FATAL", Kind::Bool, Rule::Lead1, {}},
 };
 

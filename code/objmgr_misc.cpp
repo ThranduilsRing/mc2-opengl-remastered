@@ -1,6 +1,7 @@
 // GameObjectManager: mover lists, object types, part ids, collision lists, captures, effects spawn and appearance-only update.
 // Declared in the class headers; shared names in objmgr_internal.h.
 #include "objmgr_internal.h"
+#include "sim_world_trace.h"
 
 
 //---------------------------------------------------------------------------
@@ -39,6 +40,7 @@ long GameObjectManager::buildMoverLists (void) {
 //---------------------------------------------------------------------------
 
 bool GameObjectManager::modifyMoverLists (MoverPtr mover, long action) {
+	MC2_WORLD_EVENT("mover_list", mover, action);
 
 	switch (action) {
 		case MOVERLIST_DELETE: {
@@ -361,6 +363,7 @@ CarnagePtr GameObjectManager::createFire (ObjectTypeNumber fireObjTypeHandle,
 			fire->setTonnage(tonnage);
 			fire->setPosition(position);
 			fire->setExists(true);
+			MC2_WORLD_EVENT("spawn", fire, 0);
 		}
 	}
 	return(fire);
@@ -390,6 +393,7 @@ CarnagePtr GameObjectManager::createExplosion (long effectId,
 				explosion->setExtentRadius(radius);
 				explosion->setExplDmg(damage);
 				explosion->setExists(true);
+				MC2_WORLD_EVENT("spawn", explosion, 0);
 				explosion->setOwner(owner);
 				return(explosion);
 			}
@@ -402,6 +406,7 @@ CarnagePtr GameObjectManager::createExplosion (long effectId,
 				explosion->setExtentRadius(radius);
 				explosion->setExplDmg(damage);
 				explosion->setExists(true);
+				MC2_WORLD_EVENT("spawn", explosion, 0);
 				explosion->setOwner(owner);
 				return(explosion);
 			}
@@ -436,6 +441,7 @@ LightPtr GameObjectManager::createLight (ObjectTypeNumber lightObjTypeHandle) {
 		startPosition = glm::vec3(0.0f);
 		light->setPosition(startPosition);
 		light->setExists(true);
+		MC2_WORLD_EVENT("spawn", light, 0);
 	}
 	return(light);
 }
@@ -463,6 +469,7 @@ WeaponBoltPtr GameObjectManager::createWeaponBolt (long effectId)
 		weaponBolt->init(effectId);
 		weaponBolt->init(false, objectType);
 		weaponBolt->setExists(true);
+		MC2_WORLD_EVENT("spawn", weaponBolt, 0);
 	}
 
 	return(weaponBolt);
@@ -484,6 +491,7 @@ ArtilleryPtr GameObjectManager::createArtillery (long artilleryType, glm::vec3& 
 		artillery->init(false, objectType);
 		artillery->setPosition(position);
 		artillery->setExists(true);
+		MC2_WORLD_EVENT("spawn", artillery, 0);
 	}
 	
 	return(artillery);

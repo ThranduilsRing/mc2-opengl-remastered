@@ -1,5 +1,4 @@
 """Negative controls for W1: raw bits and complete observations are mandatory."""
-import importlib.util
 import json
 import sys
 from pathlib import Path

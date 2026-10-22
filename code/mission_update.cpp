@@ -2,6 +2,7 @@
 // Mission: the per-frame Mission::update with its MC2_MISSION_SPLIT timing, mover bridge, soak hooks and coherence audit.
 // Declared in the class headers; shared names in mission_internal.h.
 #include "mission_internal.h"
+#include "sim_world_trace.h"
 #include <utility>
 #include "../GameOS/gameos/utils/mc2log.h"
 
@@ -1124,6 +1125,7 @@ long Mission::update (void)
 		// Every opened tick must complete, including the mission brain's 9999 return.
 		mc2::sim::SimulationOrderCompletion<Mission> orderTickCompletion{*this};
 		turn++;
+		mc2::world_trace::TickScope worldOrderTick{turn};
 
 		memset(ObjectManager->moverLineOfSightTable, -1, ObjectManager->maxMovers*ObjectManager->maxMovers);
 
