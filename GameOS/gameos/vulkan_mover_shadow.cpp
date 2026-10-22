@@ -1,6 +1,8 @@
 #ifdef MC2_VULKAN_ISLAND
 #include "vulkan_mover_shadow.h"
 #include "vulkan_context.h"
+#include "Gates/gate.h"
+#include "mc2fmt.h"
 #include "vk_one_shot.h"
 #include "vulkan_mech_island.h"
 #include "terrain_field_store.h"
@@ -172,12 +174,21 @@ bool MoverShadowState::prepare(int mapSide, const float cameraRows[16], Vec3 sun
     if (!active_) return false;
     std::memcpy(active_.ptr,&frame_,sizeof(frame_)); // the engine ring is host coherent
     activeFrame_=ctx.frameContext().frame;
+    if (mc2::gate::get<"MC2_SHADOW_DIAG">() && activeFrame_%600==0 && !spheres_.empty()) {
+        const auto c=spheres_.front().center;
+        const auto p=applyMatrix(frame_.matrix,c);
+        mc2::fmt::print_err("[SHADOW_BAKE] mover_diag frame={} center={:.1f},{:.1f},{:.1f} ground={:.1f} projected={:.3f},{:.3f},{:.3f} sun={:.3f},{:.3f},{:.3f}\n",
+            activeFrame_,c.x,c.y,c.z,ground_,p.x,p.y,p.z,sun.x,sun.y,sun.z);
+    }
     return true;
 }
 
 bool MoverShadowState::bind(VkDevice device, VkDescriptorSet set, VkImageView depth, bool ready) const {
     if (!inactive_ || !dummyView_ || !sampler_) return false;
     ready=ready && active_ && activeFrame_==getOrCreateEngineVulkanContext().frameContext().frame;
+    if (mc2::gate::get<"MC2_SHADOW_DIAG">() && getOrCreateEngineVulkanContext().frameContext().frame%600==0)
+        mc2::fmt::print_err("[SHADOW_BAKE] mover_bind frame={} producer_frame={} ready={} active={}\n",
+            getOrCreateEngineVulkanContext().frameContext().frame,activeFrame_,ready,frame_.flags[0]);
     const VkDescriptorImageInfo image{sampler_.get(),ready?depth:dummyView_.get(),ready?VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL:VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
     const VkDescriptorBufferInfo buffer{ready?active_.buffer:inactive_.get(),ready?active_.offset:0,sizeof(MoverShadowFrame)};
     VkWriteDescriptorSet writes[2]{};

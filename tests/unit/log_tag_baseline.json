@@ -7590,6 +7590,31 @@
    "ver": -1,
    "stream": "stderr",
    "keys": [
+    "frame",
+    "center",
+    "ground",
+    "projected",
+    "sun"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SHADOW_BAKE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "frame",
+    "producer_frame",
+    "ready",
+    "active"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SHADOW_BAKE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
     "generation",
     "casters"
    ],
