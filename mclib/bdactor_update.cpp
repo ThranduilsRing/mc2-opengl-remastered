@@ -26,9 +26,11 @@ long BldgAppearance::update (bool animate)
 	glm::quat rot;
 
 
-    if (!simPresentationPass) {
-	if (unitAnim().lastAnimAdvanceFrame == static_cast<uint32_t>(turn)) { updateSimPose(); return TRUE; }
-	unitAnim().lastAnimAdvanceFrame = static_cast<uint32_t>(turn);
+    if (!simPresentationPass || !simulationOwned()) {
+	if (simulationOwned()) {
+		if (unitAnim().lastAnimAdvanceFrame == static_cast<uint32_t>(turn)) { updateSimPose(); return TRUE; }
+		unitAnim().lastAnimAdvanceFrame = static_cast<uint32_t>(turn);
+	}
 	// Recycle the weapon Nodes
 	if (!unitAnim().nodeRecycle.empty())
 	{
@@ -43,7 +45,7 @@ long BldgAppearance::update (bool animate)
 		}
 	}
 	float oldFrame = unitAnim().currentFrame;
-	if (!simPresentationPass && animate && unitAnim().bdFrameRate != 0.0f)
+	if (animate && unitAnim().bdFrameRate != 0.0f)
 	{
 		// Make sure animation runs no faster than bdFrameRate fps.
 		float frameInc = unitAnim().bdFrameRate * frameLength;
@@ -92,8 +94,7 @@ long BldgAppearance::update (bool animate)
 		
 	}
 
-        updateSimPose();
-        return TRUE;
+        if (simulationOwned()) { updateSimPose(); return TRUE; }
     }
 
    	if (appearType->terrainLightRGB != 0xffffffff && (eye->nightFactor > 0.0f) && !forceLightsOut)

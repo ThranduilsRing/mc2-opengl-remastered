@@ -1357,11 +1357,13 @@ std::vector<uint8_t> GameObjectManager::saveAnimationState() {
     uint32_t animState = mc2_anim_rng::state(), animDraws = mc2_anim_rng::drawCount();
     uint32_t count = 0;
     for (long i = 1; i <= getMaxObjects(); ++i)
-        if (objList[i] && objList[i]->getExists() && objList[i]->getAppearance()) ++count;
+        if (objList[i] && objList[i]->getExists() && objList[i]->getAppearance() &&
+            objList[i]->getAppearance()->simulationOwned()) ++count;
     archive(state, draws, animState, animDraws, count);
     for (long i = 1; i <= getMaxObjects(); ++i) {
         auto* object = objList[i];
-        if (!object || !object->getExists() || !object->getAppearance()) continue;
+        if (!object || !object->getExists() || !object->getAppearance() ||
+            !object->getAppearance()->simulationOwned()) continue;
         int32_t handle = static_cast<int32_t>(i);
         archive(handle, *object->getAppearance()->simulationAnimation());
     }
@@ -1380,7 +1382,8 @@ bool GameObjectManager::restoreAnimationState(const std::vector<uint8_t>& bytes)
         mc2::sim::UnitAnimState animation;
         archive(handle, animation);
         if (!archive.good() || handle < 1 || handle > getMaxObjects() ||
-            !objList[handle] || !objList[handle]->getAppearance()) return false;
+              !objList[handle] || !objList[handle]->getAppearance() ||
+              !objList[handle]->getAppearance()->simulationOwned()) return false;
         const auto& expected = *objList[handle]->getAppearance()->simulationAnimation();
         if (handle <= previousHandle ||
             animation.nodeUsed.size() != expected.nodeUsed.size() ||

@@ -535,7 +535,7 @@ long GVAppearance::update (bool animate)
 	}
 	if (simPresentationPass) presentEffects();
 
-	if (!simPresentationPass) {
+	if (!simPresentationPass || !simulationOwned()) {
 
 	if (!unitAnim().nodeRecycle.empty())
 	{
@@ -552,6 +552,7 @@ long GVAppearance::update (bool animate)
 
 	}
 
+	if (simPresentationPass || !simulationOwned()) {
 	//Update flashing regardless of view!!!
 	// FREEZE-MOVERS-1: same wall-clock blink as the mech path; see mech3d.cpp.
 	if (duration > 0.0f && (mc2FreezeMoversActive() == 0))
@@ -582,6 +583,7 @@ long GVAppearance::update (bool animate)
 		gvShape->SetLightsOut(true);
 	else
 		gvShape->SetLightsOut(false);
+	}
 
 	// FREEZE-MOVERS-1: the VEHICLE track/limb animation had NO freeze guard at
 	// all -- not the mech path's ANIM-CADENCE-FIX, not a capture check. Since
@@ -589,7 +591,7 @@ long GVAppearance::update (bool animate)
 	// with the default animate=true, and LOS resolution still runs while movers
 	// are frozen, a frozen vehicle's animation could keep ticking off the
 	// wall-clock frameLength. Same mech-vs-vehicle asymmetry as sensorSpin.
- 	if (!simPresentationPass && animate && unitAnim().gvFrameRate != 0.0f)
+ 	if ((!simPresentationPass || !simulationOwned()) && animate && unitAnim().gvFrameRate != 0.0f)
 	{
 		//--------------------------------------------------------
 		// Make sure animation runs no faster than bdFrameRate fps.
@@ -634,7 +636,7 @@ long GVAppearance::update (bool animate)
 		gvShape->SetFrameNum(unitAnim().currentFrame);
 	}
 
-	if (!simPresentationPass && actorHandle_ >= 0) { updateSimPose(); return TRUE; }
+	if (!simPresentationPass && simulationOwned() && actorHandle_ >= 0) { updateSimPose(); return TRUE; }
 
 	// LIGHT-CULL-RADIUS-1 freshness (batch-6 item 5 ext a/c): light owner
 	// intent + coarse position refreshed EVERY frame even when

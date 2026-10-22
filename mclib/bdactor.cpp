@@ -195,7 +195,8 @@ void BldgAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 	simulationShape_.reset();
 	simulationType_ = nullptr;
 	simPose->ready = false;
-	Appearance::init(tree,obj);
+	// Artillery markers are cosmetic children, rather than gameplay animation owners.
+	Appearance::init(tree, obj && obj->getObjectClass() != ARTILLERY ? obj : nullptr);
 	appearType = static_cast<BldgAppearanceType *>(tree);
 
 	shapeMin.x = shapeMin.y = -25;

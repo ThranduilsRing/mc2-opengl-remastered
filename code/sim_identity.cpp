@@ -351,7 +351,7 @@ extern "C" void mc2SimIdentityTraceFrame(double scenarioTimeNow, long simFrame) 
         for (long i = 1; i <= ObjectManager->getMaxObjects(); ++i) {
             auto* mover = ObjectManager->get(i);
             if (!mover || !mover->getExists()) continue;
-            if (!mover->getAppearance()) continue;
+            if (!mover->getAppearance() || !mover->getAppearance()->simulationOwned()) continue;
             auto& a = *mover->getAppearance()->simulationAnimation();
             auto id = mover->getPartId();
             animation(i, id, a);

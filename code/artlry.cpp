@@ -871,6 +871,8 @@ void Artillery::updatePresentation()
 	if (inView) windowsVisible = turn;
 	if (!presentationInitialized) {
 		presentationInitialized = true;
+		appearance->presentAnimation(*appearance->simulationAnimation());
+		if (bomber) bomber->presentAnimation(*bomber->simulationAnimation());
 		//Create the GOSFX here.
 		if (strcmp(weaponEffects->GetEffectName(effectId),"NONE") != 0)
 		{

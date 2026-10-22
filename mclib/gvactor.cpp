@@ -640,7 +640,8 @@ float GVAppearance::getWeaponNodeRecycle (long node)
 //-----------------------------------------------------------------------------
 void GVAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 {
-	Appearance::init(tree,obj);
+	// Artillery's bomber is a cosmetic child; its frame clock belongs to presentation.
+	Appearance::init(tree, obj && obj->getObjectClass() != ARTILLERY ? obj : nullptr);
 	appearType = static_cast<GVAppearanceType *>(tree);
 
 	// C3: cache owner handle for GPU-cull node-position early-outs.
