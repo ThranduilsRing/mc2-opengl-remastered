@@ -111,11 +111,11 @@ class Install:
                     self.collisions.append(name)
                 self.files[name] = (archive, offset, comp, size, magic == 0xFADDECAF)
         # Limit the loose scan to relevant data, excluding backup/mod overlays.
-        for relative in ("data/missions", "data/objects", "data/art", "data/textures"):
+        for relative in ("data/missions", "data/objects", "data/art", "data/textures", "data/tgl"):
             folder = self.root / relative
             if folder.exists():
                 for path in sorted(folder.rglob("*")):
-                    if path.is_file() and path.suffix.lower() in (".fit", ".pak", ".csv"):
+                    if path.is_file() and path.suffix.lower() in (".fit", ".pak", ".csv", ".ini", ".tgl", ".ase", ".tga"):
                         self.files[key(path.relative_to(self.root))] = (path,)
 
     def has(self, name):
