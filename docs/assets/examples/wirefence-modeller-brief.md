@@ -11,5 +11,6 @@ must preserve footprint and silhouette. Use opaque structural posts plus a spars
 alpha lattice for wire fences, rather than thousands of tiny wire cylinders.
 Current runtime activates intact staticProp replacement only; destroyed geometry
 stays stock, while this texture package reworks both states via stock TGL clones.
-Authoring mips and luminance-derived normals are included for editing, not runtime
-binding. Lanczos interpolation adds pixels but cannot recover missing detail.
+Tier 256 retains the enlarged image; lower tiers halve each dimension per step.
+Material authoring belongs to the Blender/PBR pipeline. Lanczos interpolation
+adds pixels but cannot recover missing detail.

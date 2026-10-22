@@ -16,7 +16,7 @@ if __package__ in (None, ""):
 from tools.assets.common import OUT_ROOT, parse_tgl, stock_install, write_json
 from tools.assets.render import comparison, mesh_textures, render
 from tools.assets.replace import search, select, target_spec
-from tools.assets.rework import offline_upscalers, rework
+from tools.assets.rework import rework
 
 
 def main(argv=None):
@@ -66,7 +66,6 @@ def main(argv=None):
                 comparison(original, cooked, mesh_textures(original, stock), tex, out/f"{name}-{state}-rework.png")
                 comparison(original, cooked, mesh_textures(original, stock), tex, destination/f"preview-{state}.png")
     write_json(out/"results.json", results)
-    write_json(out/"offline-upscalers.json", offline_upscalers())
     top = sorted((r for r in data["objects"] if r["category"] not in ("tree", "mech")), key=lambda r: (-r["priority"], r["id"]))[:20]
     write_json(Path("docs/assets/top20.json"), [{"rank": i+1, "id": r["id"], "category": r["category"], "instances": r["instances"], "priority": r["priority"]} for i, r in enumerate(top)])
     rows = ["# Top 20 modernization priorities", "", "Vegetation and mechs are listed separately in [catalog.md](catalog.md). Scores use the documented usage/size/quality heuristic.", "",

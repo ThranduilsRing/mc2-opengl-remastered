@@ -38,7 +38,24 @@
         256,
         256
       ],
-      "mip_levels": 9
+      "tier_resolutions": {
+        "32": [
+          32,
+          32
+        ],
+        "64": [
+          64,
+          64
+        ],
+        "128": [
+          128,
+          128
+        ],
+        "256": [
+          256,
+          256
+        ]
+      }
     },
     {
       "stock": "a_wirefencedamaged.tga",
@@ -47,30 +64,25 @@
         256,
         256
       ],
-      "mip_levels": 9
+      "tier_resolutions": {
+        "32": [
+          32,
+          32
+        ],
+        "64": [
+          64,
+          64
+        ],
+        "128": [
+          128,
+          128
+        ],
+        "256": [
+          256,
+          256
+        ]
+      }
     }
   ],
-  "runtime": "stock TGL clones, texture name fields only; installed mods untouched",
-  "mips_normals": "authoring artifacts only: generic model_override loader disables mipmaps and has no generic normal binding; not auto-activated",
-  "upscalers": {
-    "builtin": "Pillow Lanczos + unsharp; no learned detail synthesis",
-    "path_binaries": {
-      "realesrgan-ncnn-vulkan": null,
-      "upscayl-bin": null,
-      "waifu2x-ncnn-vulkan": null,
-      "magick": null,
-      "texconv": null,
-      "toktx": null,
-      "blender": "C:\\Program Files\\Blender Foundation\\Blender 5.1\\blender.exe"
-    },
-    "known_local_locations": [
-      "C:\\Program Files\\Upscayl",
-      "C:\\Users\\Joe\\AppData\\Local\\Programs\\upscayl",
-      "G:\\mc2-assets\\tools",
-      "C:\\Users\\Joe\\.cache\\torch\\hub\\checkpoints"
-    ],
-    "local_binaries_or_weights": [],
-    "downloads_performed": false,
-    "scope": "PATH and listed local locations only; no claim to scan every disk"
-  }
+  "runtime": "stock TGL clones, texture name fields only; installed mods untouched"
 }

@@ -42,13 +42,13 @@ uses actual mesh bounds for fitting. Runtime keys come from LOD0 filenames:
 
 Two complete local draft mods were generated:
 
-- `G:/mc2-assets/out/asset-rework-hangar/`: intact, LOD1 and destroyed TGL clones;
+- `G:/mc2-assets/out/astra-review-e3c01ef28/asset-rework-hangar/`: intact, LOD1 and destroyed TGL clones;
   four private 512×512 textures, including isolated rubble.
-- `G:/mc2-assets/out/asset-rework-wirefence/`: intact, LOD1 and destroyed TGL
+- `G:/mc2-assets/out/astra-review-e3c01ef28/asset-rework-wirefence/`: intact, LOD1 and destroyed TGL
   clones; two private 256×256 textures.
 
 Both include `mod.json`, a modeller brief, target spec, geometry-equality report,
-runtime TGA textures, separate authoring mip chains/normal maps, and stock/rework
+runtime TGA texture tiers and stock/rework
 comparison PNGs. They have **not** been copied into any game install.
 
 Review [intact Hangar](examples/hangar-intact-rework.png),
@@ -64,12 +64,11 @@ option. Alpha wraps are preserved in the preview, including stock U values near
 2.0. Texture renaming changes no vertex, UV or material-index bytes, and shared
 stock rubble remains unchanged outside this selection.
 
-The [offline tool inventory](examples/offline-upscalers.json) found Pillow and
-Blender 5.1. Real-ESRGAN, Upscayl, waifu2x, ImageMagick, texconv and toktx were not
-on PATH; no learned-upscaler binaries/weights were found in the explicitly
-checked locations. This does not claim to inventory every disk. Mips and
-luminance-derived normal maps are authoring artifacts, not automatically bound
-runtime PBR materials.
+The regenerated packages keep full resolution in tier 256. Hangar tiers are
+64/128/256/512 pixels; WireFence tiers are 32/64/128/256 pixels. Comparisons use
+the runtime's default 128 tier. Geometry-equality checks pass for all six TGLs.
+Automatic normal maps, mip artifacts and upscaler discovery were removed;
+material authoring belongs to `claude/blender-redux-pbr`.
 
 ## Replacement constraints
 

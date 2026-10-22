@@ -131,12 +131,11 @@ the missing material work.
 
 ## Texture rework
 
-The cheap path uses premultiplied-alpha Lanczos resizing and mild RGB sharpening,
-then writes alpha-coverage-aware mip images and luminance-derived normal maps.
-These normals are an editing starting point, not recovered surface geometry.
-Mips/normals are authoring artifacts; the generic override loader does not enable
-them automatically. The report inventories PATH tools and known local weight
-locations; it does not install or fetch an upscaler.
+The cheap path uses premultiplied-alpha Lanczos resizing and mild RGB sharpening.
+Tier 256 retains the enlarged image; each lower tier halves both dimensions,
+preserving alpha-test coverage as closely as discrete pixels allow. Reports list
+each tier's dimensions. Material authoring belongs to `claude/blender-redux-pbr`;
+this frontend does not generate normal maps, mip artifacts or tool inventories.
 
 Rework clones only the selected intact/LOD/damage TGL files, replacing fixed-size
 texture-name fields with private names. Every geometry/UV/material index is

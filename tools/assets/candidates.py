@@ -12,7 +12,7 @@ import subprocess
 import numpy as np
 from PIL import Image
 
-from tools.assets.common import Mesh, bounds, face_normals, output_path, transform_normals
+from tools.assets.common import Mesh, bounds, face_normals, output_path, texture_tiers, transform_normals
 
 
 @dataclass
@@ -306,10 +306,10 @@ def export_runtime_gltf(candidate, folder, stem, max_texture_edge):
         image.save(folder/(name+".tga"))
         # Runtime searches data/tgl/ObjectTextureSize, not manifestDir.
         modroot = folder.parents[2]
-        for tier in (32, 64, 128, 256):
+        for tier, reduced in texture_tiers(image):
             target = output_path(modroot/"data"/"tgl"/str(tier), mod=True)
             target.mkdir(parents=True, exist_ok=True)
-            image.save(target/(name+".tga"))
+            reduced.save(target/(name+".tga"))
         doc["images"].append({"uri": name+".png", "name": name})
         doc["textures"].append({"source": index})
         doc["materials"].append({"name": name, "doubleSided": alpha,

@@ -13,7 +13,7 @@ from tools.assets.candidates import Candidate, export_runtime_gltf, load_candida
 from tools.assets.common import Mesh, OUT_ROOT, bounds, output_path
 from tools.assets.replace import (fit_candidate, orientation_matrix, rank_candidate,
                                   safe_mod_id, search, select, target_spec, validate)
-from tools.assets.rework import mip_chain, normal_map, rename_tgl_textures, upscale
+from tools.assets.rework import rename_tgl_textures, upscale
 from test_catalog import tgl_fixture
 
 
@@ -254,18 +254,43 @@ def test_rework_isolates_texture_names_and_preserves_geometry_bytes():
     assert b"a_unique.tga" in cooked[:268]
 
 
-def test_alpha_upscale_mips_and_normal_range():
+def test_alpha_upscale():
     image = Image.new("RGBA", (8, 8), (150, 180, 200, 0))
-    for x in range(4):
-        for y in range(8):
-            image.putpixel((x, y), (150, 180, 200, 255))
     large = upscale(image, 4, 64)
     assert large.size == (32, 32)
-    mips = mip_chain(large)
-    assert mips[-1].size == (1, 1)
-    assert abs(float(np.mean(np.asarray(mips[2])[:, :, 3] >= 128))-.5) <= .125
-    normal = normal_map(Image.new("RGBA", (4, 4), (100, 100, 100, 255)))
-    assert normal.getpixel((0, 0)) == (127, 127, 255)
+    assert large.getextrema()[3] == (0, 0)
+
+
+@pytest.mark.parametrize("workflow", ["candidate", "rework"])
+def test_packages_write_smaller_alpha_preserving_tiers(workflow, cube, entry, artifact_root, monkeypatch):
+    from tools.assets.rework import rework
+    image = Image.new("RGBA", (64, 32), (150, 180, 200, 0))
+    image.paste((150, 180, 200, 255), (0, 0, 32, 32))
+    large = upscale(image, 4, 1024)
+    if workflow == "candidate":
+        candidate = load_gltf(cube)
+        candidate.images = [large]
+        out = artifact_root/"tiers"
+        _, _, names = export_runtime_gltf(candidate, out/"data"/"model_overrides"/"cooked", "tiers", 1024)
+        name = names[0]
+    else:
+        class FakeStock:
+            def read(self, name):
+                return tgl_fixture(), "fixture"
+        monkeypatch.setattr("tools.assets.rework.stock_install", lambda root: FakeStock())
+        monkeypatch.setattr("tools.assets.rework.texture_image", lambda stock, name: (image, name, "fixture"))
+        monkeypatch.setattr("tools.assets.render.mesh_textures", lambda mesh, stock: [image])
+        out = rework(entry, "tiers")
+        report = json.loads((out/"rework-report.json").read_text())
+        name = report["textures"][0]["cooked"]
+        assert not (out/"authoring").exists()
+    for tier in (32, 64, 128, 256):
+        with Image.open(out/"data"/"tgl"/str(tier)/name) as reduced:
+            assert reduced.size == (tier, tier//2)
+            coverage = float(np.mean(np.asarray(reduced)[:, :, 3] >= 128))
+            assert abs(coverage-.5) <= 1/tier
+            if tier == 256:
+                np.testing.assert_array_equal(np.asarray(reduced), np.asarray(large))
 
 
 def test_renderer_repeats_uvs_instead_of_clamping():
