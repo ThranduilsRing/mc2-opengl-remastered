@@ -146,19 +146,31 @@
     },
     {
       "mission": "mc2_10",
-      "result": "PENDING",
-      "verdicts": [],
+      "result": "PASS",
+      "verdicts": [
+        "sim_determinism: PASS identical over 2629 sim frames (chain 75d337dfffbcc99c; runs had 2629 and 3682)",
+        "sim_determinism: baseline PASS first 1000 frames match the baseline chain fe69b943f4bc71ee in every digest"
+      ],
       "log": "E:\\mc2-archive-2026-10\\proofs\\detrng-resume\\determinism-mc2_10.log",
       "artifacts": "E:\\mc2-archive-2026-10\\proofs\\detrng-resume\\determinism-mc2_10",
       "baseline_changed": false
     },
     {
       "mission": "mc2_16",
-      "result": "PENDING",
-      "verdicts": [],
+      "result": "PASS",
+      "verdicts": [
+        "sim_determinism: note: smoke run a returned 1 (a smoke gate verdict); its SIMID stream is still compared",
+        "sim_determinism: note: smoke run b returned 1 (a smoke gate verdict); its SIMID stream is still compared",
+        "sim_determinism: PASS identical over 2578 sim frames (chain 9f899d90e3d4c56c; runs had 2578 and 3445)",
+        "sim_determinism: baseline PASS first 1000 frames match the baseline chain 381fe40d96777ed3 in every digest"
+      ],
       "log": "E:\\mc2-archive-2026-10\\proofs\\detrng-resume\\determinism-mc2_16.log",
       "artifacts": "E:\\mc2-archive-2026-10\\proofs\\detrng-resume\\determinism-mc2_16",
-      "baseline_changed": false
+      "baseline_changed": false,
+      "inner_smoke_exit_notes": [
+        "sim_determinism: note: smoke run a returned 1 (a smoke gate verdict); its SIMID stream is still compared",
+        "sim_determinism: note: smoke run b returned 1 (a smoke gate verdict); its SIMID stream is still compared"
+      ]
     }
   ],
   "withdrawal": [
@@ -175,7 +187,8 @@
       ],
       "pilot_trace": "E:\\mc2-archive-2026-10\\proofs\\detrng-resume\\withdraw-far-bridge\\pilot-status.json",
       "readbacks": "E:\\mc2-archive-2026-10\\proofs\\detrng-resume\\withdraw-far-bridge\\commands.txt.ack",
-      "engine_log": "E:\\mc2-archive-2026-10\\proofs\\detrng-resume\\withdraw-far-bridge\\engine.log"
+      "engine_log": "E:\\mc2-archive-2026-10\\proofs\\detrng-resume\\withdraw-far-bridge\\engine.log",
+      "supplemental_pngs": []
     },
     {
       "camera": "near-bridge",
@@ -190,7 +203,13 @@
       ],
       "pilot_trace": "E:\\mc2-archive-2026-10\\proofs\\detrng-resume\\withdraw-near-bridge\\pilot-status.json",
       "readbacks": "E:\\mc2-archive-2026-10\\proofs\\detrng-resume\\withdraw-near-bridge\\commands.txt.ack",
-      "engine_log": "E:\\mc2-archive-2026-10\\proofs\\detrng-resume\\withdraw-near-bridge\\engine.log"
+      "engine_log": "E:\\mc2-archive-2026-10\\proofs\\detrng-resume\\withdraw-near-bridge\\engine.log",
+      "supplemental_pngs": [
+        "E:\\mc2-archive-2026-10\\proofs\\detrng-resume\\withdraw-near-bridge\\withdraw-after-crop.png",
+        "E:\\mc2-archive-2026-10\\proofs\\detrng-resume\\withdraw-near-bridge\\withdraw-after.png",
+        "E:\\mc2-archive-2026-10\\proofs\\detrng-resume\\withdraw-near-bridge\\withdraw-before-crop.png",
+        "E:\\mc2-archive-2026-10\\proofs\\detrng-resume\\withdraw-near-bridge\\withdraw-before.png"
+      ]
     }
   ],
   "visual_captures": [
@@ -247,13 +266,18 @@
     }
   ],
   "open": [
-    "Complete determinism pair and existing-baseline check: mc2_10",
-    "Complete determinism pair and existing-baseline check: mc2_16"
+    "mc2_16 order-liveness guard: both smoke wrappers exit 1. The committed baseline env enables MC2_FIXTURE_ORDER_LIVENESS without MC2_SOAK_AUTOWIN; ORDER_LIVENESS_SUMMARY is absent. Ordinary report rows and fingerprints pass; determinism and baseline comparisons pass. Stopped further runtime work under the user guard rule; baseline and guard unchanged."
   ],
   "inherited_proofs": {
     "source": "E:/mc2-archive-2026-10/plans/detrng-handoff-2026-10-21.md",
     "tier1": "5/5 PASS at handoff tip; not rerun as a tier after the span-only API change",
     "save_load": "mc2_01 first-save-only PASS against existing masked baseline at handoff tip"
+  },
+  "scratch_side_effect": {
+    "cause": "The required production seam harness tests/unit/test_authored_movement_fixture.cpp writes fixed mvh_scratch_* names in its working directory.",
+    "observed": "Existing mvh_scratch_objective_bonus.fit and mvh_scratch_objective_observation.{fit,pak,trace} were regenerated at 2026-10-21 22:51:54 local time; the associated logistics fixture directory is also used by that test.",
+    "handling": "These paths remain untracked and were never staged, committed, deleted, or manually edited. Original pre-run bytes were not captured, so byte identity with the previous scratch files is unknown.",
+    "future_run": "Isolate this harness working directory before rerunning; do not run it over existing scratch fixtures."
   },
   "withdrawal_note": "Authoritative completion is pilot status withdrawn, not object deallocation. Screenshots are supplemental; no visual-disappearance claim. Earlier driver attempts had a class-name casing error, not an engine failure.",
   "edge_crops": [
