@@ -411,13 +411,26 @@ void GameObjectManager::updateDestroyTestHook() {
 	{
 		static const long s_destroyTestFrame = static_cast<long>(mc2::gate::get<"MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE_TEST_DESTROY_AT_FRAME">());
 		if (s_destroyTestFrame >= 0 && static_cast<long>(g_mc2FrameCounter) == s_destroyTestFrame) {
+			// Content-pipeline proof: when a mounted package cooked a destroyed render shape, destroy
+			// every live building of those appearances (the destroyed-state capture); otherwise the
+			// first live building, as the shadow-rebake repro always did.
+			auto hasDestroyedOverride = [](BuildingPtr b) {
+				AppearancePtr app = b->getAppearance();
+				AppearanceTypePtr type = app ? app->getAppearanceType() : nullptr;
+				return type && type->getAppearanceClass() == BLDG_TYPE &&
+				       static_cast<BldgAppearanceType*>(type)->bldgDmgRenderShape != nullptr;
+			};
+			bool any = false;
+			for (long bi = 0; bi < numBuildings && !any; ++bi)
+				any = buildings[bi] && !buildings[bi]->isDestroyed() && hasDestroyedOverride(buildings[bi]);
 			for (long bi = 0; bi < numBuildings; ++bi) {
 				BuildingPtr b = buildings[bi];
 				if (!b || b->isDestroyed() || !b->getExists()) continue;
+				if (any && !hasDestroyedOverride(b)) continue;
 				mc2::fmt::print_err("[SHADOW_STATIC_BLDG_REBAKE_TEST v1] event=test_destroy frame={:d} buildingIndex={:d}\n", mc2::fmt::as_u32(g_mc2FrameCounter), mc2::fmt::as_i32(bi));
 				fflush(stderr);
 				b->setDamage(b->getDamageLevel());
-				break;
+				if (!any) break;
 			}
 		}
 	}
