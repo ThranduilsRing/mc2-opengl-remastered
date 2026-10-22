@@ -4,8 +4,45 @@
 #include "mclib/det_rng.h"
 
 #include <vector>
+#include "unit_anim_state.h"
+#include "save_archive.h"
 
 namespace ar = mc2_appearance_rng;
+
+TEST_CASE("unit animation save preserves gameplay clocks and imported clip transitions") {
+    mc2::sim::UnitAnimState before;
+    before.currentGestureId = 4;
+    before.currentFrame = 3.25f;
+    before.inJump = true;
+    before.jumpVelocity = {1, 2, 3};
+    before.nodeUsed = {1, 2};
+    before.nodeRecycle = {0.25f, 0.5f};
+    before.activityEffect = 42;
+    before.ejectionSerial = 3;
+    before.imported.activeClip = "walk";
+    before.imported.pendingClip = "hit_front";
+    before.imported.pendingStreak = 2;
+    before.imported.clipTimeSec = 0.375f;
+    before.imported.lastFrame = 19;
+    mc2::save::Archive write;
+    write(before);
+    REQUIRE(write.good());
+    mc2::sim::UnitAnimState after;
+    mc2::save::Archive read(write.bytes());
+    read(after);
+    REQUIRE(read.finish());
+    CHECK(after.imported.pendingClip == "hit_front");
+    CHECK(after.imported.activeClip == "walk");
+    CHECK(after.currentFrame == 3.25f);
+    CHECK(after.nodeRecycle == before.nodeRecycle);
+    mc2::save::Archive canonical;
+    canonical(after);
+    CHECK(canonical.bytes() == write.bytes());
+    before.imported.activeClip.assign(257, 'x');
+    mc2::save::Archive invalid;
+    invalid(before);
+    CHECK_FALSE(invalid.good());
+}
 
 TEST_CASE("animation_rng: cosmetic draws cannot alter gameplay animation and saved state resumes") {
     mc2_anim_rng::reseed(17);

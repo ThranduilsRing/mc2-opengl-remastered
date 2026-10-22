@@ -65,9 +65,15 @@ struct UnitAnimState {
     long bdAnimationState = 0;
     float bdFrameRate = 0;
     float withdrawSeconds = 0;
+    long smokeLevel = 0;
+    bool wakeRequested = false;
+    long activityEffect = -1;
+    bool activityLoop = false;
+    uint32_t ejectionSerial = 0;
+    uint32_t destructionSerial = 0;
     ImportedAnimState imported;
     template<class Archive> void serialize(Archive& a) {
-        a(mechFrameRate, leftArmOff, rightArmOff, fallen, forceStop, atTransitionToNextGesture, inReverse, inJump, jumpSetup, jumpAirborne, oncePerFrame, lockRotation, velocity, currentStateGoal, currentGestureId, transitionState, oldStateGoal, hitGestureId, currentFrame, lastAnimAdvanceFrame, idleTime, jumpDestination.x, jumpDestination.y, jumpDestination.z, jumpVelocity.x, jumpVelocity.y, jumpVelocity.z, nodeUsed, nodeRecycle, inCombatMode, torsoRotation, turretRotation, pitch, roll, velocityMagnitude, gvAnimationState, gvFrameRate, isReversed, isLooping, setFirstFrame, canTransition, bdAnimationState, bdFrameRate, withdrawSeconds, imported);
+        a(mechFrameRate, leftArmOff, rightArmOff, fallen, forceStop, atTransitionToNextGesture, inReverse, inJump, jumpSetup, jumpAirborne, oncePerFrame, lockRotation, velocity, currentStateGoal, currentGestureId, transitionState, oldStateGoal, hitGestureId, currentFrame, lastAnimAdvanceFrame, idleTime, jumpDestination.x, jumpDestination.y, jumpDestination.z, jumpVelocity.x, jumpVelocity.y, jumpVelocity.z, nodeUsed, nodeRecycle, inCombatMode, torsoRotation, turretRotation, pitch, roll, velocityMagnitude, gvAnimationState, gvFrameRate, isReversed, isLooping, setFirstFrame, canTransition, bdAnimationState, bdFrameRate, withdrawSeconds, smokeLevel, wakeRequested, activityEffect, activityLoop, ejectionSerial, destructionSerial, imported);
     }
 };
 struct SimPose {

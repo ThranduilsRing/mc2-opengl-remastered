@@ -246,11 +246,7 @@ void IfaceCallStrike (long strikeID,
 // ARTILLERY CHUNK
 //***************************************************************************
 
-
-
 //---------------------------------------------------------------------------
-
-
 
 //---------------------------------------------------------------------------
 
@@ -646,6 +642,7 @@ void Artillery::init (bool create)
 	if (!create)
 		destroy();
 
+	presentationInitialized = presentationImpactStarted = false;
 	artilleryType = ARTILLERY_SMALL;
 
 	initFlags();
@@ -799,6 +796,81 @@ void Artillery::setJustCreated (void)
 				effectId--;
 		}
 		
+		if (info.strike.sensorRange)
+		{
+			SensorSystemPtr sensor = SensorManager->newSensor();
+			info.strike.sensorSystemIndex = sensor->id;
+			setSensorData(getTeam());
+
+		}
+	}
+}
+
+//---------------------------------------------------------------------------
+long Artillery::update(void)
+{
+	if (getFlag(OBJECT_FLAG_JUSTCREATED)) setJustCreated();
+	else { info.strike.timeToImpact -= frameLength; info.strike.timeToLaunch -= frameLength; }
+	auto* type = static_cast<ArtilleryTypePtr>(getObjectType());
+	if (type->nominalDamage > 0.0f) {
+		if (getFlag(OBJECT_FLAG_BOOM)) {
+			setFlag(OBJECT_FLAG_TANGIBLE, false);
+			return false;
+		}
+		if (info.strike.timeToImpact <= 0.0f) {
+			setFlag(OBJECT_FLAG_BOOM, true);
+			setFlag(OBJECT_FLAG_TANGIBLE, true);
+		}
+	}
+	if (info.strike.timeToImpact <= 5.5f && !getFlag(OBJECT_FLAG_WHOOSH)) {
+		setFlag(OBJECT_FLAG_WHOOSH, true);
+		if (soundSystem && type->nominalDamage > 0.0f) soundSystem->playDigitalSample(INCOMING_AIRSTRIKE, position, true);
+	}
+	//----------------------------------------------------------------------------
+	// Sensor round is ticking now.  Update Everything.
+	if ((info.strike.timeToBlind > 0.0) && getFlag(OBJECT_FLAG_SENSORS_GOING))
+	{
+		info.strike.timeToBlind -= frameLength;
+		info.strike.sensorRange = info.strike.timeToBlind / type->nominalSensorTime;
+		info.strike.sensorRange *= type->nominalSensorRange;
+		info.strike.sensorRange *= worldUnitsPerMeter;
+		SensorSystemPtr sensor = SensorManager->getSensor(info.strike.sensorSystemIndex);
+		Assert(sensor != nullptr, 0, " Artillery.update: NULL sensor ");
+		sensor->setRange(info.strike.sensorRange * metersPerWorldUnit);
+
+		//--------------------------------------
+		// Actual scan is done in team update...
+	}
+	else if ((info.strike.timeToBlind <= 0.0) && getFlag(OBJECT_FLAG_SENSORS_GOING))
+	{
+		//---------------------------------------------------
+		// All done, return FALSE;
+		SensorSystemPtr sensor = SensorManager->getSensor(info.strike.sensorSystemIndex);
+		SensorManager->removeTeamSensor(getTeam()->getId(), sensor);
+		SensorManager->freeSensor(sensor);
+		return(0);
+	}
+
+	//-------------------------------------------------------------------------------------------
+	// If we are a sensor round, start the sensor countdown.  ALWAYS on, even before effect hits.
+	// time to blind is being reset everytime without this else
+	else if (type->nominalSensorTime > 0)
+	{
+		info.strike.timeToBlind = type->nominalSensorTime;
+		setFlag(OBJECT_FLAG_SENSORS_GOING, true);
+	}
+
+	return true;
+}
+
+void Artillery::updatePresentation()
+{
+	if (getFlag(OBJECT_FLAG_JUSTCREATED)) return;
+	auto* type = static_cast<ArtilleryTypePtr>(getObjectType());
+	recalcBounds(eye);
+	if (inView) windowsVisible = turn;
+	if (!presentationInitialized) {
+		presentationInitialized = true;
 		//Create the GOSFX here.
 		if (strcmp(weaponEffects->GetEffectName(effectId),"NONE") != 0)
 		{
@@ -839,107 +911,7 @@ void Artillery::setJustCreated (void)
 			}
 		}
 		
-		if (info.strike.sensorRange) 
-		{
-			SensorSystemPtr sensor = SensorManager->newSensor();
-			info.strike.sensorSystemIndex = sensor->id;
-			setSensorData(getTeam());
-			
-			if ((info.strike.timeToBlind == 0.0f) && !getFlag(OBJECT_FLAG_SENSORS_GOING))
-			{
-				if (hitEffect)
-				{ 
-					glm::mat4 	shapeOrigin;
-					
-					glm::vec3 actualPosition;
-					mc2ToRender(actualPosition, position);
-					
-					mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
-					mc2::math::buildTranslation(shapeOrigin, actualPosition);
-					
-					gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,nullptr);
-					hitEffect->Start(&info);
-				} 
-			}
-		}
 	}
-}	
-
-//---------------------------------------------------------------------------
-long Artillery::update (void) 
-{
-	if (getFlag(OBJECT_FLAG_JUSTCREATED)) 
-	{
-		setJustCreated();
-	}
-	else
-	{
-		info.strike.timeToImpact -= frameLength;
-		info.strike.timeToLaunch -= frameLength;	
-	}
-
-	ArtilleryTypePtr type = static_cast<ArtilleryTypePtr>(getObjectType());
-
-	
-	recalcBounds(eye);		//Are we even visible?
-	if (inView)
-	{
-		windowsVisible = turn;
-	}
-	
-	//-------------------------------------------------------------------------------
-	// Special Cases here.  If we are an explosive round, let everyone know we went.
-	if (getFlag(OBJECT_FLAG_BOOM) && (type->nominalDamage > 0.0)) 
-	{
-		setFlag(OBJECT_FLAG_TANGIBLE, false);
-#ifdef MC2_ALLOC_STATS
-		if (!hitEffect || !hitEffect->IsExecuted())
-			++g_mc2ArtBoomNoFx;
-#endif
-		
-		//------------------------------------------------
-		// Update GOSFX
-		if (hitEffect && hitEffect->IsExecuted())
-		{
-			glm::vec3 actualPosition;
-			mc2ToRender(actualPosition, position);
-		
-			glm::mat4 	shapeOrigin;
-				
-			mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
-			mc2::math::buildTranslation(shapeOrigin, actualPosition);
-	
-			mc2::math::Obb boundingBox;
-			gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,&boundingBox);
-	
-			bool result = hitEffect->Execute(&info);
-			if (!result)
-			{
-				hitEffect->Kill();		//Effect is over.  Otherwise, wait until hit!
-				hitEffect.reset();
-				
-				bomber.reset();
-
-				if (leftContrail)
-				{
-					leftContrail->Kill();
-					leftContrail.reset();
-				}
-				
-				if (rightContrail)
-				{
-					rightContrail->Kill();
-					rightContrail.reset();
-				}
-				
-#ifdef MC2_ALLOC_STATS
-				++g_mc2ArtEnded;
-#endif
- 				return false;			//Strike is also over
-			}
-		}
-	}
-	
 	if ((info.strike.timeToImpact > 0.0f) || (type->nominalDamage == 0.0))
 	{
 		bool oldShadows = useShadows;
@@ -1038,125 +1010,17 @@ long Artillery::update (void)
 		}
 	}
 	
-	if ((info.strike.timeToImpact <= 5.5) && !getFlag(OBJECT_FLAG_WHOOSH)) 
-	{
-		if (soundSystem && (type->nominalDamage > 0.0)) 
-		{
-			setFlag(OBJECT_FLAG_WHOOSH, true);
-			soundSystem->playDigitalSample(INCOMING_AIRSTRIKE,position,true);
+	if ((getFlag(OBJECT_FLAG_BOOM) || type->nominalDamage == 0.0f) && hitEffect) {
+		glm::vec3 at; mc2ToRender(at, position);
+		glm::mat4 origin(1.0f); mc2::math::buildTranslation(origin, at);
+		mc2::math::Obb bounds;
+		gosFX::Effect::ExecuteInfo fx((Stuff::Time)scenarioTime, &origin, &bounds);
+		if (!presentationImpactStarted) { presentationImpactStarted = true; hitEffect->Start(&fx); }
+		if (!hitEffect->Execute(&fx)) {
+			hitEffect->Kill(); hitEffect.reset();
+			bomber.reset(); leftContrail.reset(); rightContrail.reset();
 		}
 	}
-
-	if (!getFlag(OBJECT_FLAG_BOOM) && (info.strike.timeToImpact <= 0.0) && (type->nominalDamage > 0.0)) 
-	{
-		glm::vec3	actualPosition = position;
-
-		//-----------------------------------
-		// Create the giant artillery blast.
-		// GOS Fx now.
-		if (hitEffect && hitEffect->IsExecuted())
-		{
-			glm::mat4 	shapeOrigin;
-			
-			glm::vec3 actualPosition;
-			mc2ToRender(actualPosition, position);
-
-			mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
-			mc2::math::buildTranslation(shapeOrigin, actualPosition);
-			
-			gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,nullptr);
-			hitEffect->Start(&info);
-		}
-		
-		//------------------------------------------------
-		// Update GOSFX -- One free update here.
-		if (hitEffect && hitEffect->IsExecuted())
-		{
-			glm::vec3 actualPosition;
-			mc2ToRender(actualPosition, position);
-		
-			glm::mat4 	shapeOrigin;
-				
-			mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
-			mc2::math::buildTranslation(shapeOrigin, actualPosition);
-	
-			mc2::math::Obb boundingBox;
-			gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,&boundingBox);
-	
-			bool result = hitEffect->Execute(&info);
-			if (!result)
-			{
-				hitEffect->Kill();		//Effect is over.  Otherwise, wait until hit!
-				hitEffect.reset();
-			}
-		}
-  	
-		setFlag(OBJECT_FLAG_BOOM, true);
-		setFlag(OBJECT_FLAG_TANGIBLE, true);
-	}
-	
-	//----------------------------------------------------------------------------
-	// Sensor round is ticking now.  Update Everything.
-	if ((info.strike.timeToBlind > 0.0) && getFlag(OBJECT_FLAG_SENSORS_GOING)) 
-	{
-		info.strike.timeToBlind -= frameLength;
-		info.strike.sensorRange = info.strike.timeToBlind / type->nominalSensorTime;
-		info.strike.sensorRange *= type->nominalSensorRange;
-		info.strike.sensorRange *= worldUnitsPerMeter;
-		SensorSystemPtr sensor = SensorManager->getSensor(info.strike.sensorSystemIndex);
-		Assert(sensor != nullptr, 0, " Artillery.update: NULL sensor ");
-		sensor->setRange(info.strike.sensorRange * metersPerWorldUnit);
-
-		//--------------------------------------
-		// Actual scan is done in team update...
-	}
-	else if ((info.strike.timeToBlind <= 0.0) && getFlag(OBJECT_FLAG_SENSORS_GOING)) 
-	{
-		//---------------------------------------------------
-		// All done, return FALSE;
-		SensorSystemPtr sensor = SensorManager->getSensor(info.strike.sensorSystemIndex);
-		SensorManager->removeTeamSensor(getTeam()->getId(), sensor);
-		SensorManager->freeSensor(sensor);
-		return(0);
-	}
-	
-	//-------------------------------------------------------------------------------------------
-	// If we are a sensor round, start the sensor countdown.  ALWAYS on, even before effect hits.
-	// time to blind is being reset everytime without this else
-	else if (type->nominalSensorTime > 0) 
-	{
-		info.strike.timeToBlind = type->nominalSensorTime;
-		setFlag(OBJECT_FLAG_SENSORS_GOING, true);
-	}
-
-	if (type->nominalDamage == 0)
-	{
-		//-------------------------------------
-		// Create the Sensor Probe Landing now
-		// GOS Fx now.
-		if (hitEffect)
-		{
-			glm::vec3 actualPosition;
-			mc2ToRender(actualPosition, position);
-		
-			glm::mat4 	shapeOrigin;
-				
-			mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
-			mc2::math::buildTranslation(shapeOrigin, actualPosition);
-	
-			mc2::math::Obb boundingBox;
-			gosFX::Effect::ExecuteInfo xinfo((Stuff::Time)scenarioTime,&shapeOrigin,&boundingBox);
-	
-			bool result = hitEffect->Execute(&xinfo);
-			if (!result)
-			{
-				hitEffect->Kill();		//Effect is over.  Otherwise, wait until hit!
-				hitEffect.reset();
-			}
-		}
-	}
-	
-	return(1);
 }
 
 //---------------------------------------------------------------------------
@@ -1594,6 +1458,7 @@ void Artillery::init (bool create, ObjectTypePtr _type)
 			}
 			
 			bombRunStarted = false;
+			presentationInitialized = presentationImpactStarted = false;
 		}
 		break;
 		
@@ -1661,6 +1526,7 @@ void Artillery::init (bool create, ObjectTypePtr _type)
 			}
 			
 			bombRunStarted = false;
+			presentationInitialized = presentationImpactStarted = false;
 		}
 		break;
 		

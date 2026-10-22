@@ -64,11 +64,43 @@ class Appearance
 {
     std::shared_ptr<mc2::sim::UnitAnimState> simAnim_ = std::make_shared<mc2::sim::UnitAnimState>();
     mc2::sim::UnitAnimState renderAnim_;
+    bool simulationOwned_ = false;
 public:
+    bool simulationOwned() const { return simulationOwned_; }
     mc2::sim::UnitAnimState& unitAnim() { return simPresentationPass ? renderAnim_ : *simAnim_; }
     const mc2::sim::UnitAnimState& unitAnim() const { return simPresentationPass ? renderAnim_ : *simAnim_; }
     auto simulationAnimation() const { return simAnim_; }
     void presentAnimation(const mc2::sim::UnitAnimState& value) { renderAnim_ = value; }
+    void presentEffects() {
+        const auto& value = renderAnim_;
+        // Requests are tick-owned; effect creation, random debris and shape edits
+        // occur only while consuming the completed presentation snapshot.
+        if (appliedEffects_.smokeLevel != value.smokeLevel) startSmoking(value.smokeLevel);
+        if (appliedEffects_.wakeRequested != value.wakeRequested) {
+            if (value.wakeRequested) startWaterWake(); else stopWaterWake();
+        }
+        if (appliedEffects_.activityEffect != value.activityEffect || appliedEffects_.activityLoop != value.activityLoop) {
+            if (value.activityEffect >= 0) startActivity(value.activityEffect, value.activityLoop);
+            else if (value.activityEffect == -2) stopActivity();
+        }
+        if (appliedEffects_.ejectionSerial != value.ejectionSerial) playEjection();
+        if (appliedEffects_.destructionSerial != value.destructionSerial) playDestruction();
+        if (value.leftArmOff && !appliedEffects_.leftArmOff) { renderAnim_.leftArmOff = false; blowLeftArm(); }
+        if (value.rightArmOff && !appliedEffects_.rightArmOff) { renderAnim_.rightArmOff = false; blowRightArm(); }
+        appliedEffects_.smokeLevel = value.smokeLevel;
+        appliedEffects_.wakeRequested = value.wakeRequested;
+        appliedEffects_.activityEffect = value.activityEffect;
+        appliedEffects_.activityLoop = value.activityLoop;
+        appliedEffects_.ejectionSerial = value.ejectionSerial;
+        appliedEffects_.destructionSerial = value.destructionSerial;
+        appliedEffects_.leftArmOff = value.leftArmOff;
+        appliedEffects_.rightArmOff = value.rightArmOff;
+    }
+    struct AppliedEffects {
+        long smokeLevel = 0, activityEffect = -1;
+        uint32_t ejectionSerial = 0, destructionSerial = 0;
+        bool wakeRequested = false, activityLoop = false, leftArmOff = false, rightArmOff = false;
+    } appliedEffects_;
     virtual void refreshSimPose() {}
     std::shared_ptr<mc2::sim::SimPose> simPose = std::make_shared<mc2::sim::SimPose>();
 
@@ -137,6 +169,7 @@ public:
 
 		virtual void init (AppearanceTypePtr tree = nullptr, GameObjectPtr obj = nullptr)
 		{
+			simulationOwned_ = obj != nullptr;
 			inView = FALSE;
 			// alpha-Stage 1 v3 §5 Stage 1 init zero-init contract
 			// (mirror of ctor — see Appearance() above for rationale).

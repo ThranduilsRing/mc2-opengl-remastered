@@ -77,7 +77,7 @@ void Mech3DAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 	rightShoulderPos.x = rightShoulderPos.y = rightShoulderPos.z = -99999.9f;
 	leftShoulderPos.x = leftShoulderPos.y = leftShoulderPos.z = -99999.9f;
 
-	unitAnim().idleTime = mc2_anim_rng::randomNumber(idleMAX);
+	unitAnim().idleTime = obj ? mc2_anim_rng::randomNumber(idleMAX) : mc2_appearance_rng::randomNumber(idleMAX);
 	
 	hazeFactor = 0.0f;
 

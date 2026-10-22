@@ -580,6 +580,8 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 	{
         updateReadbackSnapshot();
         updateActiveSweep();
+		int frameJobsPrePassCount = 0;
+		updateFrameJobsPrepass(frameJobsPrePassCount);
 		for (long terrainBlock = 0; terrainBlock < Terrain::numObjBlocks; terrainBlock++)
 		{
 			// Cull-cascade consumer (object collect). Post-8c source of truth for
@@ -612,6 +614,7 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 
 							auto* appearance = objList[objIndex]->getAppearance();
                             appearance->presentAnimation(*appearance->simulationAnimation());
+                            appearance->presentEffects();
                             if (appearance->IsStaticNow() && !objList[objIndex]->getFlag(OBJECT_FLAG_FALLING))
                                 appearance->touch();
                             else
@@ -707,23 +710,23 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 			}
 		}
 		
-/*		if (weapons) {
+		if (weapons) {
 			for (long i=0;i<numWeapons;i++) {
-				if (weapons[i] && weapons[i]->getExists()) {
-					if (!weapons[i]->update())
-						MC2_DESTROY(weapons[i], "update_false");
+				if (weapons[i] && weapons[i]->hasPresentation()) {
+					weapons[i]->updatePresentation();
 				}
 			}
-		}*/
+		}
 
-		/*if (carnage) {
+		if (carnage) {
 			for (long i = 0; i < numCarnage; i++) {
-				if (carnage[i] && carnage[i]->getExists()) {
-					if (!carnage[i]->update())
-						MC2_DESTROY(carnage[i], "update_false");
+				if (carnage[i] && carnage[i]->carnageType == CARNAGE_EXPLOSION &&
+				    !carnage[i]->getFlag(OBJECT_FLAG_JUSTCREATED) &&
+				    (carnage[i]->getExists() || !carnage[i]->presentationStarted || carnage[i]->gosEffect)) {
+					carnage[i]->updatePresentation();
 				}
 			}
-		}*/
+		}
 
 		if (lights) 
 		{
@@ -747,16 +750,9 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 		{
 			for (long i = 0; i < numArtillery; i++) 
 			{
-				if (artillery[i] && artillery[i]->getExists()) 
+				if (artillery[i] && (artillery[i]->getExists() || artillery[i]->hasPresentation()))
 				{
-					if (artillery[i]->getAppearance()->recalcBounds() )
-					{
-						MC2_WORLD_UPDATE("appearance_artillery", artillery[i]);
-						artillery[i]->getAppearance()->update( false );
-						artillery[i]->getAppearance()->setInView( 1 );
-					}
-					else
-						artillery[i]->getAppearance()->setInView( 0 );
+					artillery[i]->updatePresentation();
 				}
 			}
 		}

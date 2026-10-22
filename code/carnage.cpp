@@ -455,7 +455,7 @@ bool ExplosionType::handleCollision (GameObjectPtr collidee, GameObjectPtr colli
 bool ExplosionType::handleDestruction (GameObjectPtr collidee, GameObjectPtr collider) {
 
 	//-------------------------------------------------------
-	// The laser ceases to exist when its effect is done.
+	// Retirement follows the authoritative collision pulse.
 	// always return FALSE or the collision will make it
 	// go away!
 	
@@ -653,16 +653,35 @@ void Carnage::addTimeLeft (float timeLeft)
 }
 
 //---------------------------------------------------------------------------
-long Carnage::update (void) 
+long Carnage::update(void)
+{
+	if (carnageType != CARNAGE_EXPLOSION) return true;
+	setFlag(OBJECT_FLAG_JUSTCREATED, false);
+	if (auto* owner = getOwner()) position = owner->getPosition();
+	// Remain tangible for exactly one collision pass, independent of FX lifetime.
+	if (getTangible()) {
+		setFlag(OBJECT_FLAG_TANGIBLE, false);
+		return false;
+	}
+	info.explosion.timer -= frameLength;
+	if (info.explosion.timer <= 0.0f) {
+		setFlag(OBJECT_FLAG_TANGIBLE, true);
+		traceCombat("collision_armed");
+	}
+	return true;
+}
+
+void Carnage::updatePresentation()
 {
 	if (carnageType == CARNAGE_FIRE) 
 	{
 	}
 	else if (carnageType == CARNAGE_EXPLOSION) 
 	{
-		if (getFlag(OBJECT_FLAG_JUSTCREATED)) 
+		if (!presentationStarted)
 		{
-			setFlag(OBJECT_FLAG_JUSTCREATED, false);
+			presentationStarted = true;
+			createPresentationEffect();
 				
 			glm::mat4 	shapeOrigin;
 			glm::mat4	localToWorld;
@@ -678,9 +697,7 @@ long Carnage::update (void)
 				gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,nullptr);
 				gosEffect->Start(&info);
 			}
-			
-			setExists(true);
-			
+
 			//------------------------------------------
 			// If just created, play our sound effect...
 			if ((static_cast<ExplosionTypePtr>(getObjectType()))->soundEffectId != -1)
@@ -712,13 +729,6 @@ long Carnage::update (void)
 					duration = 0.0f;
 				}
 			}
-		}
-		
-		//------------------------------------------------
-		// Attach explosion to thing dying if we need to.
-		if (ownerWID)
-		{
-			position = ObjectManager->getByWatchID(ownerWID)->getPosition();
 		}
 		
 		//------------------------------------------------
@@ -759,18 +769,6 @@ long Carnage::update (void)
 			}
 		}
 
-		setFlag(OBJECT_FLAG_TANGIBLE, false);
-
-		if (info.explosion.timer > 0.0f)
-		{
-			info.explosion.timer -= frameLength;
-			if (info.explosion.timer <= 0.0f)
-			{
-				setFlag(OBJECT_FLAG_TANGIBLE, true);
-				traceCombat("collision_armed");
-			}
-		}
-
 		//------------------------------------------------
 		// Update GOSFX
 		if (gosEffect && gosEffect->IsExecuted())
@@ -801,10 +799,10 @@ long Carnage::update (void)
 					pointLight = nullptr;
 				}
 		
-				return false;			//Tell the object system to stop updating, too.
+				return;			// The visual tail has finished; gameplay retirement is independent.
 			}
 		}
-		else if (info.explosion.timer <= 0.0f)	//If we had no GosEffect, make sure we've collided and then move on.
+		else	// An absent cosmetic effect has no authority over collision.
 		{
 			if (pointLight)
 			{
@@ -813,11 +811,11 @@ long Carnage::update (void)
 				pointLight = nullptr;
 			}
 
-			return false;
+			return;
 		}
 	}
 	
-	return (true);
+	return;
 }
 
 //---------------------------------------------------------------------------
@@ -861,7 +859,6 @@ void Carnage::render (void)
 }
 
 //---------------------------------------------------------------------------
-
 
 // Combat diagnostics retain object identity and event order without owning gameplay state.
 void Carnage::traceCombat(std::string_view event, std::string_view reason,
@@ -909,6 +906,7 @@ void Carnage::init (bool create, ObjectTypePtr _type)
 	GameObject::init(true, _type);
 
 	gosEffect = nullptr;
+	presentationStarted = false;
 	pointLight = nullptr;
 	setFlag(OBJECT_FLAG_JUSTCREATED, true);
 	
@@ -919,23 +917,6 @@ void Carnage::init (bool create, ObjectTypePtr _type)
 	{
 		info.explosion.chunkSize = (static_cast<ExplosionType *>(_type))->chunkSize;
 		info.explosion.timer = (static_cast<ExplosionType *>(_type))->delayUntilCollidable;
-			
-		if (S_stricmp(weaponEffects->GetEffectName(effectId),"NONE") != 0)
-		{
-			//--------------------------------------------------------------
-			// We need to create the GOSFX we need for this explosion here.
-			// The name of the GOSFX is stored as the appearanceName in the Type.
-			// ONLY Execute.  Explosions just run once!
-			unsigned flags = gosFX::Effect::ExecuteFlag;
-	
-			Check_Object(gosFX::EffectLibrary::Instance);
-			gosFX::Effect::Specification* gosEffectSpec = gosFX::EffectLibrary::Instance->Find(weaponEffects->GetEffectName(effectId));
-			
-			gosEffect = gosFX::EffectLibrary::Instance->MakeEffect(gosEffectSpec->m_effectID, flags);
-			gosASSERT(gosEffect != NULL);
-			
-			MidLevelRenderer::MLRTexturePool::Instance->LoadImages();
-		}
 
 		setFlag(OBJECT_FLAG_TANGIBLE, false);
 	}
@@ -983,3 +964,23 @@ void Carnage::Load (CarnageData *data)
 
 //---------------------------------------------------------------------------
 
+void Carnage::createPresentationEffect()
+{
+		if (S_stricmp(weaponEffects->GetEffectName(effectId),"NONE") != 0)
+		{
+			//--------------------------------------------------------------
+			// We need to create the GOSFX we need for this explosion here.
+			// The name of the GOSFX is stored as the appearanceName in the Type.
+			// ONLY Execute.  Explosions just run once!
+			unsigned flags = gosFX::Effect::ExecuteFlag;
+
+			Check_Object(gosFX::EffectLibrary::Instance);
+			gosFX::Effect::Specification* gosEffectSpec = gosFX::EffectLibrary::Instance->Find(weaponEffects->GetEffectName(effectId));
+
+			gosEffect = gosFX::EffectLibrary::Instance->MakeEffect(gosEffectSpec->m_effectID, flags);
+			gosASSERT(gosEffect != NULL);
+
+			MidLevelRenderer::MLRTexturePool::Instance->LoadImages();
+		}
+
+}

@@ -529,6 +529,8 @@ void GVAppearance::updateGeometry (void)
 
 long GVAppearance::update (bool animate) 
 {
+	if (simPresentationPass) presentEffects();
+
 	if (!simPresentationPass) {
 
 	if (!unitAnim().nodeRecycle.empty())
@@ -769,6 +771,8 @@ void GVAppearance::destroy (void)
 
 void GVAppearance::startWaterWake (void)
 {
+	if (!simPresentationPass) { unitAnim().wakeRequested = true; return; }
+
 	
 	if (!waterWake && useNonWeaponEffects)
 	{
@@ -818,6 +822,8 @@ void GVAppearance::startWaterWake (void)
 
 void GVAppearance::stopWaterWake (void)
 {
+	if (!simPresentationPass) { unitAnim().wakeRequested = false; return; }
+
 	if (waterWake && isWaking)		//Stop the effect if we are running it!!
 	{
 		waterWake->Kill();
@@ -828,6 +834,8 @@ void GVAppearance::stopWaterWake (void)
 
 void GVAppearance::startActivity (long effectId, bool loop)
 {
+	if (!simPresentationPass) { unitAnim().activityEffect = effectId; unitAnim().activityLoop = loop; return; }
+
 	
 	//First, check if its even loaded.
 	// can easily preload this.  Should we?  NO.  We don't know what will be passed in.
@@ -880,6 +888,8 @@ void GVAppearance::startActivity (long effectId, bool loop)
 
 void GVAppearance::stopActivity (void)
 {
+	if (!simPresentationPass) { unitAnim().activityEffect = -2; return; }
+
 	if (activity && isActivitying)		//Stop the effect if we are running it!!
 	{
 		activity->Kill();

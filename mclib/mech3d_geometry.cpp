@@ -1072,6 +1072,8 @@ void Mech3DAppearance::updateSimPose (bool advanceClock)
     rotationalNodeIndex = -1;
     hitLeftNodeIndex = hitRightNodeIndex = -1;
     simPose->ready = false;
+    if (unitAnim().leftArmOff) mechShape->StopUsing("joint_luarm");
+    if (unitAnim().rightArmOff) mechShape->StopUsing("joint_ruarm");
 
 	// The same pose updateGeometry sets before its body transform; the hierarchy-only transform needs no camera and fills
 	// the per-node shapeToWorld that getWeaponNodePosition / getNodeIdPosition read.

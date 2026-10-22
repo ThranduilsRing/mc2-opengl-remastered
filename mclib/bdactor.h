@@ -403,7 +403,7 @@ class BldgAppearance : public ObjectAppearance
 		
 		virtual long getCurrentGestureId (void)
 		{
-
+			return unitAnim().bdAnimationState;
 		}
 
 		virtual unsigned long getAppearanceClass (void)

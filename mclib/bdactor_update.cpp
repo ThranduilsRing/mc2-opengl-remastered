@@ -17,6 +17,8 @@ static unsigned long s_spotDiagBldgCalls      = 0;   // update() call counter
 
 long BldgAppearance::update (bool animate)
 {
+	if (simPresentationPass) presentEffects();
+
 	::mc2_object_recon::Scope _recon_bldg_(
 		&::mc2_object_recon::g_per_frame.bldg_update_ns,
 		&::mc2_object_recon::g_per_frame.bldg_update_calls);
@@ -825,6 +827,8 @@ long BldgAppearance::update (bool animate)
 
 void BldgAppearance::startActivity (long effectId, bool loop)
 {
+	if (!simPresentationPass) { unitAnim().activityEffect = effectId; unitAnim().activityLoop = loop; return; }
+
 	//Check if we are already playing one.  If not, be active!
 	
 	//First, check if its even loaded.
@@ -937,6 +941,8 @@ void BldgAppearance::startActivity (long effectId, bool loop)
 
 void BldgAppearance::stopActivity (void)
 {
+	if (!simPresentationPass) { unitAnim().activityEffect = -2; return; }
+
 	if (isActivitying)		//Stop the effect if we are running it!!
 	{
 		if(activity) //sebi

@@ -47,6 +47,7 @@
 #include "warrior.h"
 #include "bldng.h"
 #include "turret.h"
+#include "combat_sim_hash.h"
 #include "weather.h"
 #include "../mclib/abl.h"
 #include "../mclib/mathfunc.h"
@@ -343,9 +344,14 @@ extern "C" void mc2SimIdentityTraceFrame(double scenarioTimeNow, long simFrame) 
 
     if (mc2::replay::active()) {
         mc2::save::Archive animation;
+        mc2::save::Archive objects;
+        auto sceneryHash = mc2_sim_identity::digestObjects(objs);
+        auto combatHash = combatSimulationHash(*ObjectManager);
+        objects(sceneryHash, combatHash);
         for (long i = 1; i <= ObjectManager->getMaxObjects(); ++i) {
             auto* mover = ObjectManager->get(i);
-            if (!mover || !mover->getExists() || !mover->getAppearance()) continue;
+            if (!mover || !mover->getExists()) continue;
+            if (!mover->getAppearance()) continue;
             auto& a = *mover->getAppearance()->simulationAnimation();
             auto id = mover->getPartId();
             animation(i, id, a);
@@ -358,10 +364,12 @@ extern "C" void mc2SimIdentityTraceFrame(double scenarioTimeNow, long simFrame) 
         }
         std::uint64_t animHash = 14695981039346656037ull;
         for (auto byte : animation.bytes()) animHash = (animHash ^ byte) * 1099511628211ull;
+        std::uint64_t objectHash = 14695981039346656037ull;
+        for (auto byte : objects.bytes()) objectHash = (objectHash ^ byte) * 1099511628211ull;
         const std::uint64_t rngHash = (static_cast<std::uint64_t>(mc2_anim_rng::state()) << 32) ^
             mc2_anim_rng::drawCount() ^ (static_cast<std::uint64_t>(SimRandomDraws()) * 1099511628211ull) ^ mc2GetSimRngState();
         mc2::replay::hashes(static_cast<std::uint64_t>(turn), {strict,
-            mc2_sim_identity::digestObjects(objs), mc2_sim_identity::digestAbl(abl), animHash, rngHash});
+            objectHash, mc2_sim_identity::digestAbl(abl), animHash, rngHash});
     }
 
 	// Fixed-arity, fixed-width: two runs' logs diff cleanly and the first

@@ -240,7 +240,9 @@ void GVAppearance::setGesture (unsigned long gestureId)
 	
 	if (appearType->isRandom(unitAnim().gvAnimationState))
 	{
-		unitAnim().currentFrame = mc2_anim_rng::randomNumber(appearType->getNumFrames(unitAnim().gvAnimationState)-1);
+		const long count = appearType->getNumFrames(unitAnim().gvAnimationState)-1;
+		unitAnim().currentFrame = simPresentationPass || !simulationOwned() ?
+			mc2_appearance_rng::randomNumber(count) : mc2_anim_rng::randomNumber(count);
 	}
 	
 	unitAnim().isLooping = appearType->isLooped(unitAnim().gvAnimationState);

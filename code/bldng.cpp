@@ -819,9 +819,9 @@ long Building::update (void)
 			// + recalcBounds already ran above.
 			appearance->update();
 
-			if (inView)
 			{
-				windowsVisible = turn;
+				// Activity is a presentation request; camera visibility cannot
+				// decide whether the authoritative snapshot carries it.
 	
 				// TERRAIN-RUNTIME-CONSUMER-GROUNDING-1: grounding routed through the
 				// spine chokepoint (gate MC2_TERRAIN_RUNTIME_GROUNDING, byte-identical).

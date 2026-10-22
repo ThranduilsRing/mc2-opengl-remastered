@@ -639,6 +639,7 @@ void Mission::forceTerminate (unsigned long result) {
 
 long Mission::render (void)
 {
+	mc2::sim::PresentationScope presentationScope;
 	ZoneScopedN("Camera.UpdateRenderers Mission.render");
 	if (active)
 	{

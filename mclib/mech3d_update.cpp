@@ -9,6 +9,8 @@
 
 long Mech3DAppearance::update (bool animate) 
 {
+	if (simPresentationPass) presentEffects();
+
 
 	// DEGRADE-DON'T-CRASH: partial import with no base shape -> nothing to
 	// animate; the many mechShape-> derefs below are unsafe. Return as if the
@@ -152,7 +154,7 @@ long Mech3DAppearance::update (bool animate)
 		// Just set stateGoal to 7 or 8 if its not.
 		if (unitAnim().currentStateGoal < 7)
 		{
-			if (mc2_anim_rng::rollDice(50))
+			if (simulationOwned() ? mc2_anim_rng::rollDice(50) : mc2_appearance_rng::rollDice(50))
 			{
 				setGestureGoal(7);
 			}
@@ -259,34 +261,8 @@ long Mech3DAppearance::update (bool animate)
 			{
 				if (!setFirstFrame)		//DO NOT ANIMATE ON FIRST FRAME!  Wait a bit!
 				{
-					// ANIM-CADENCE-FIX: advance the gait at MOST
-					// once per render frame. Mover::getLOSPosition() (mover.cpp) calls a
-					// second appearance->update() in combat to refresh weapon-node geometry,
-					// which otherwise ticks the animation a 2nd time the same frame => visible
-					// double-step (proven: 19390 advanced_twice events, gestures 2/4/7 == the
-					// getLOSPosition gesture filter). If we already advanced this
-					// g_mc2FrameCounter, skip the increment; downstream geometry still
-					// recomputes at the current frame, so the LOS refresh gets valid nodes
-					// without an extra gait step.
-					// User-confirmed fix (mc2_17 Catapult/Bushwacker).
+					// Gameplay animation advances once per authoritative tick.
 					const bool _alreadyAdvanced = (unitAnim().lastAnimAdvanceFrame == static_cast<uint32_t>(turn));
-					// VK-MECH-CAPTURE-DETERMINISM-1: during a frozen visual-capture
-					// sweep (sim paused) the render path still ticks this gait via the
-					// wall-clock frameLength, so a mech's pose drifted run-to-run and
-					// forced OBJ_BOX masking in the near-oracle. Freeze the gait advance
-					// while the capture sim is frozen. Capture-mode-only: the shim is 0
-					// whenever no MC2_VISUAL_* capture is active -> byte-identical live
-					// behavior. See gos_visual_capture.cpp mc2CaptureGaitFreezeActive().
-					// FREEZE-MOVERS-1: the cadence guard alone is NOT enough under
-					// freeze_movers. Mover::getLOSPosition (code/mover.cpp)
-					// calls appearance->update() with the DEFAULT animate=true, and
-					// LOS resolution still runs while movers are frozen. Because the
-					// normal walk is skipped, lastAnimAdvanceFrame was never stamped
-					// this frame, so _alreadyAdvanced is false and the first
-					// LOS-triggered call would silently tick the gait -- precisely
-					// the run-to-run pose drift this feature exists to remove.
-					// Pause and explicit mover freezes stop the owning tick. A
-					// presentation or capture setting cannot stop a gameplay clock.
 					if (!_alreadyAdvanced)
 					{
 						if (unitAnim().inReverse)
@@ -655,6 +631,8 @@ long Mech3DAppearance::update (bool animate)
 
 void Mech3DAppearance::blowLeftArm (void)
 {
+	if (!simPresentationPass) { unitAnim().leftArmOff = true; return; }
+
 	if (unitAnim().leftArmOff)
 		return;
 		
@@ -770,6 +748,8 @@ void Mech3DAppearance::blowLeftArm (void)
 
 void Mech3DAppearance::blowRightArm (void)
 {
+	if (!simPresentationPass) { unitAnim().rightArmOff = true; return; }
+
 	if (unitAnim().rightArmOff)
 		return;
 		
@@ -885,6 +865,8 @@ void Mech3DAppearance::blowRightArm (void)
 		
 void Mech3DAppearance::startSmoking (long smokeLvl)
 {
+	if (!simPresentationPass) { unitAnim().smokeLevel = smokeLvl; return; }
+
 	
 	
 	if (!useNonWeaponEffects)
@@ -964,6 +946,8 @@ void Mech3DAppearance::startSmoking (long smokeLvl)
 
 void Mech3DAppearance::startWaterWake (void)
 {
+	if (!simPresentationPass) { unitAnim().wakeRequested = true; return; }
+
 	
 	if (isHelicopter || unitAnim().currentGestureId == 20)
 		return;
@@ -1021,6 +1005,8 @@ void Mech3DAppearance::startWaterWake (void)
 
 void Mech3DAppearance::stopWaterWake (void)
 {
+	if (!simPresentationPass) { unitAnim().wakeRequested = false; return; }
+
 	if (waterWake && isWaking)		//Stop the effect if we are running it!!
 		waterWake->Kill();
 	
@@ -1029,6 +1015,8 @@ void Mech3DAppearance::stopWaterWake (void)
 
 void Mech3DAppearance::playEjection (void)
 {
+	if (!simPresentationPass) { ++unitAnim().ejectionSerial; return; }
+
 	if (InEditor)
 		return;
 

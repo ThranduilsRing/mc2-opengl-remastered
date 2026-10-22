@@ -621,7 +621,9 @@ void BldgAppearance::setGesture (unsigned long gestureId)
 	
 	if (appearType->isRandom(unitAnim().bdAnimationState))
 	{
-		unitAnim().currentFrame = mc2_anim_rng::randomNumber(appearType->getNumFrames(unitAnim().bdAnimationState)-1);
+		const long count = appearType->getNumFrames(unitAnim().bdAnimationState)-1;
+		unitAnim().currentFrame = simPresentationPass || !simulationOwned() ?
+			mc2_appearance_rng::randomNumber(count) : mc2_anim_rng::randomNumber(count);
 	}
 	
 	unitAnim().isLooping = appearType->isLooped(unitAnim().bdAnimationState);
@@ -762,6 +764,12 @@ void BldgAppearance::recalcBoundsAndStamp() {
 
 bool BldgAppearance::playDestruction (void)
 {
+	if (!simPresentationPass) {
+		const bool available = appearType->destructEffect[0] &&
+			gosFX::EffectLibrary::Instance->Find(appearType->destructEffect);
+		if (available) ++unitAnim().destructionSerial;
+		return available;
+	}
 	//Check if there is a Destruct FX
 	if (appearType->destructEffect[0])
 	{

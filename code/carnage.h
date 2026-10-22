@@ -125,6 +125,9 @@ class Carnage : public GameObject
 			virtual bool onScreen (void);
 
 			virtual long update (void);
+			void updatePresentation();
+			void createPresentationEffect();
+			bool presentationStarted = false;
 
 			virtual void render (void);
 
