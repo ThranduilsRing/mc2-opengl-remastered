@@ -6,6 +6,7 @@ No stock object's path graph is inherited. Special/destructible areas are not
 supported yet: obstacles remain blocked after destruction.
 """
 from collections import deque
+import heapq
 import struct
 
 import numpy as np
@@ -22,17 +23,26 @@ def scalar(n):
 
 
 def distances(area_map, start, area):
+    """Stock calcLinkCost movement: 10 straight, 15 diagonal, one flank open."""
     found = {start: 0}
-    queue = deque([start])
+    queue = [(0, start)]
     h, w = area_map.shape
     while queue:
-        r, c = queue.popleft()
-        for dr, dc in DIRS:
+        cost, (r, c) = heapq.heappop(queue)
+        if cost != found[r, c]:
+            continue
+        for dr, dc in (*DIRS, (-1, -1), (-1, 1), (1, -1), (1, 1)):
             p = r+dr, c+dc
-            if (0 <= p[0] < h and 0 <= p[1] < w and p not in found
-                    and area_map[p] == area):
-                found[p] = found[r, c]+1
-                queue.append(p)
+            if not (0 <= p[0] < h and 0 <= p[1] < w and area_map[p] == area):
+                continue
+            diagonal = dr != 0 and dc != 0
+            # MoveMap::calcPath rejects diagonals only when BOTH flanks block.
+            if diagonal and area_map[r+dr, c] != area and area_map[r, c+dc] != area:
+                continue
+            candidate = cost + (15 if diagonal else 10)
+            if candidate < found.get(p, float('inf')):
+                found[p] = candidate
+                heapq.heappush(queue, (candidate, p))
     return found
 
 

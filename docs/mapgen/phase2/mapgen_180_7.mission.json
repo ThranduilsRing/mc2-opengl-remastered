@@ -27,7 +27,7 @@
   ],
   "objects": 430,
   "packet_count": 739,
-  "pak_sha256": "1c5cf2a86f51017ae43bea6c500924c87c3edf7c2d65becd9231610da836c509",
+  "pak_sha256": "8b6603133234dacd3dc91beb506e7aca2d9d2ddc0f7c9f40b6775800da875675",
   "source_fit": "A:\\Games\\mc2-opengl\\mc2-win64-v0.4\\mission.fst::data/missions/mc2_01.fit",
   "source_pak": "A:\\Games\\mc2-opengl\\mc2-win64-v0.4\\mission.fst::data/missions/mc2_01.pak",
   "source_pak_sha256": "2939c6364b05efc0445e7fd19e9bf1da0e76ff60876ed0c4c696d884b3eff21e",
