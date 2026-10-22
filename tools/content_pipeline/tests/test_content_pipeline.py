@@ -253,3 +253,20 @@ def test_stock_detail_mask_keeps_legacy_regions(tmp_path):
     for bad in ({"metallic": 0.5}, {"provider": "x"}, {"reviewed": False}, {"class": "legacy_prelit"}):
         with pytest.raises(ValueError):
             stock_ase.validate_slot({**row, **bad})
+
+
+def test_inward_hull_faces_found_and_repaired():
+    """A wall on the outer skin that faces into the building is culled from outside (see-through)."""
+    pos = np.array([[0, 0, 0], [4, 0, 0], [4, 4, 0], [0, 4, 0],      # front wall z=0, should face -z
+                    [0, 0, 4], [4, 0, 4], [4, 4, 4], [0, 4, 4]], float)
+    front_inward = [[0, 1, 2], [0, 2, 3]]                              # normal +z: points inside
+    back_outward = [[4, 5, 6], [4, 6, 7]]                              # normal +z at z=4: outside
+    prim = ir.Primitive(pos, np.array(front_inward + back_outward), 0,
+                        normals=np.tile([0.0, 0.0, 1.0], (8, 1)))
+    scene = ir.Scene([ir.Node("root", -1, np.eye(4), 0)], [ir.Mesh("box", [prim])])
+    faces = ir.inward_hull_faces(scene)
+    assert [list(t) for _, _, t in faces] == [[0, 1]]
+    assert ir.flip_faces(scene, faces) == 2
+    assert ir.inward_hull_faces(scene) == []
+    assert np.allclose(prim.normals[[1, 2, 3]], [0, 0, -1])               # exclusive front vertices flipped
+    assert np.allclose(prim.normals[4], [0, 0, 1])                        # back wall untouched

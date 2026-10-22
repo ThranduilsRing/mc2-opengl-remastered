@@ -51,7 +51,7 @@ def build_asset(spec, recipe, work):
                                lods=[tuple(x) for x in spec.get("lods", [])], destroyed=destroyed,
                                conditions=spec.get("conditions"), classes=spec.get("classes"),
                                meta=meta, work_dir=work / spec["id"], base_color=spec.get("base_color"),
-                               texel_scale=spec.get("texel_scale", 1))
+                               texel_scale=spec.get("texel_scale", 1), repair_inward_hull=spec.get("repair_inward_hull", False))
     raise ValueError(f"unknown frontend {front!r} (stock_ase | gltf)")
 
 

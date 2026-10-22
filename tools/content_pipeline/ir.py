@@ -370,6 +370,45 @@ def transform_primitive(prim: Primitive, matrix) -> Primitive:
                      None if prim.color0 is None else prim.color0.copy())
 
 
+def inward_hull_faces(scene: Scene, epsilon: float = 0.25):
+    """Triangles lying on the asset's bounding-box planes whose normal points into the box.
+
+    A building's outer skin on a bbox plane must face out; an inward one is back-face culled from
+    outside and the wall reads as a hole (the sci-fi kit hangar's front gable). Returns
+    [(node index, primitive index, triangle indices)] in the scene's world space."""
+    lo, hi = scene.bounds()
+    found = []
+    worlds = scene.world_matrices()
+    for ni, node in enumerate(scene.nodes):
+        if node.mesh is None:
+            continue
+        for pi, prim in enumerate(scene.meshes[node.mesh].primitives):
+            p = transform_primitive(prim, worlds[ni])
+            t = p.positions[p.indices]
+            c = t.mean(axis=1)
+            n = np.cross(t[:, 1] - t[:, 0], t[:, 2] - t[:, 0])
+            n /= np.maximum(np.linalg.norm(n, axis=1, keepdims=True), 1e-20)
+            bad = np.zeros(len(c), dtype=bool)
+            for axis in range(3):
+                bad |= (np.abs(c[:, axis] - lo[axis]) < epsilon) & (n[:, axis] > 0.5)
+                bad |= (np.abs(c[:, axis] - hi[axis]) < epsilon) & (n[:, axis] < -0.5)
+            if bad.any():
+                found.append((ni, pi, np.nonzero(bad)[0]))
+    return found
+
+
+def flip_faces(scene: Scene, faces):
+    """Reverse winding (and the vertex normals they use) of the listed triangles."""
+    for ni, pi, tris in faces:
+        prim = scene.meshes[scene.nodes[ni].mesh].primitives[pi]
+        prim.indices[tris] = prim.indices[tris][:, [0, 2, 1]]
+        if prim.normals is not None:
+            others = np.setdiff1d(np.arange(len(prim.indices)), tris)
+            exclusive = np.setdiff1d(np.unique(prim.indices[tris]), np.unique(prim.indices[others]))
+            prim.normals[exclusive] = -prim.normals[exclusive]   # shared vertices keep their smooth normal
+    return sum(len(t) for _, _, t in faces)
+
+
 # --------------------------------------------------------------------------- JSON
 
 def _arr(a):

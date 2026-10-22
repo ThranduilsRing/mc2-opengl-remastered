@@ -95,6 +95,18 @@ def cook_asset(asset: ir.Asset, out: Path, *, compress=True, max_triangles=None,
     """Cook one asset into the package at out; returns its models.json record."""
     asset.check()
     isolate_engine_nodes(asset)
+    hull = {}
+    if asset.kind == "building":
+        for cond, state, lods in asset.variants():
+            for i, lod in enumerate(lods):
+                faces = ir.inward_hull_faces(lod.scene)
+                if faces:
+                    key = f"{cond}_{state}_lod{i}"
+                    count = sum(len(t) for _, _, t in faces)
+                    # Repair only authored intact chains: a destroyed chain may be stock rubble whose
+                    # look must stay byte-for-byte stock.
+                    repair = asset.frontend.get("repair_inward_hull") and state == "intact"
+                    hull[key] = {"repaired": ir.flip_faces(lod.scene, faces)} if repair else {"unrepaired": count}
     aid = _safe(asset.id)
     mo = out / "data" / "model_overrides"
     folder = mo / aid
@@ -102,6 +114,9 @@ def cook_asset(asset: ir.Asset, out: Path, *, compress=True, max_triangles=None,
     entry = {"id": aid, "replaces": asset.replaces, "ir_fingerprint": ir.fingerprint(asset),
              "frontend": asset.frontend, "provenance": [s.__dict__ for s in asset.provenance],
              "files": {}, "validation": {}}
+    if hull:
+        # Outer-skin triangles facing into the building are culled from outside (a see-through wall).
+        entry["inward_hull_faces"] = hull
 
     # Base colour: stock slots name stock textures; authored slots get real tiers.
     names = {}

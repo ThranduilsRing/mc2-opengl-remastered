@@ -67,7 +67,7 @@ def merge_materials(base, extra, scene):
 
 def to_ir(asset_id, replaces, intact, *, kind="building", lods=(), destroyed=None, shadows=None,
           conditions=None, classes=None, meta=None, work_dir=None, allow_skin=False, sockets=(), parts=(),
-          base_color=None, texel_scale=1):
+          base_color=None, texel_scale=1, repair_inward_hull=False):
     """intact/destroyed/LOD/condition entries are GLB paths (destroyed may also be a
     ready (Scene, materials) pair from another frontend, e.g. stock damage)."""
     work = Path(work_dir or tempfile.mkdtemp(prefix=f"cp-{asset_id}-"))
@@ -117,5 +117,6 @@ def to_ir(asset_id, replaces, intact, *, kind="building", lods=(), destroyed=Non
     return ir.Asset(id=asset_id, kind=kind, replaces=replaces, materials=materials, states=states,
                     shadows=shadow_scenes, conditions=cond, skeleton=skeleton, provenance=provenance,
                     frontend={"name": "gltf_file", "source": str(intact), "meta": meta, "texel_scale": texel_scale,
+                              "repair_inward_hull": repair_inward_hull,
                               "unsupported_extensions_ignored": info["extensionsUsed"]},
                     sockets=list(sockets), parts=list(parts)).check()

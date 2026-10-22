@@ -18,6 +18,7 @@
       "base_color": {"scifi_mech_hangar_17": "G:/mc2-assets/out/scifi-kit/mech_hangar_17/mech_hangar_17_basecolor.png"},
       "classes": {"scifi_mech_hangar_17": {"class": "painted_metal", "roughness": 1.0, "metallic": 0.0}},
       "texel_scale": 4,
+      "repair_inward_hull": true,
       "destroyed": {"stock_ase": "hangardam"}
     }
   ]
