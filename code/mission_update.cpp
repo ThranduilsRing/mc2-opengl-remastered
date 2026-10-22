@@ -2,7 +2,7 @@
 // Mission: the per-frame Mission::update with its MC2_MISSION_SPLIT timing, mover bridge, soak hooks and coherence audit.
 // Declared in the class headers; shared names in mission_internal.h.
 #include "mission_internal.h"
-#include "move_recon.h"
+#include "move_recon_stats.h"
 #include <utility>
 #include "../GameOS/gameos/utils/mc2log.h"
 
