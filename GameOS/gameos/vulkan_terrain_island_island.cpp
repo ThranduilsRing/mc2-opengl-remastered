@@ -530,8 +530,9 @@ bool init_island(TerrainIsland* s, int w, int h) {
         b[6].descriptorCount = 1; b[6].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
         // VK-PARITY-TERRAIN-2: bindings 11/12/13 = light pool / grid header / grid index SSBOs (FS).
         for (int k = 11; k <= 13; ++k) {
-            b[k].binding = static_cast<uint32_t>(k); b[k].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
-            b[k].descriptorCount = 1; b[k].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+            auto& binding = b[k - 4];
+            binding.binding = static_cast<uint32_t>(k); binding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
+            binding.descriptorCount = 1; binding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
         }
         // TERRAIN-SHORELINE-V3: binding 14 = shoreline mask sidecar sampler2D (FS).
         b[10].binding = 14; b[10].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
