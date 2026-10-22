@@ -39,7 +39,7 @@ MaterialDetail cdEval(int layer, vec2 wp, vec2 dx, vec2 dy) {
     MaterialDetail d;
     d.n = normalize(vec3(nxy, 1.0));
     d.roughness = 0.5 * (a.z + b.z);
-    d.ao = clamp(1.0 + (0.5 * (a.w + b.w) - 1.0) * 2.0, 0.0, 1.0);   // contrast stretch: the cooked AO is mild
+    d.ao = clamp(1.0 + (0.5 * (a.w + b.w) - 1.0) * 3.0, 0.0, 1.0);   // contrast stretch: the cooked AO is mild
     return d;
 }
 
@@ -48,13 +48,16 @@ MaterialDetail cdEval(int layer, vec2 wp, vec2 dx, vec2 dy) {
 void cdShade(MaterialDetail d, vec3 L, float dayGate, out float diff, out vec3 spec) {
     float lz = max(L.z, 0.35);
     float rel = 1.0 + (dot(d.n, L) - L.z) / lz;
-    diff = clamp(mix(1.0, rel, 0.7), 0.55, 1.5);
+    diff = clamp(mix(1.0, rel, 1.0), 0.55, 1.5);
     // top-down view: half vector between the sun and straight up; GGX lobe, dielectric F0 0.04
     vec3 H = normalize(L + vec3(0.0, 0.0, 1.0));
     float nh = max(dot(d.n, H), 0.0);
     float a2 = pow(clamp(d.roughness, 0.08, 1.0), 4.0);
     float den = nh * nh * (a2 - 1.0) + 1.0;
     float D = a2 / (3.14159265 * den * den);
-    spec = vec3(D * 0.04 * 3.0 * clamp(dayGate, 0.0, 1.0));
+    // signed against the flat slab's lobe so the mean colour does not shift: glints brighten, facing-away texels darken
+    float den0 = H.z * H.z * (a2 - 1.0) + 1.0;
+    float D0 = a2 / (3.14159265 * den0 * den0);
+    spec = vec3((D - D0) * 0.25 * clamp(dayGate, 0.0, 1.0));
 }
 #endif

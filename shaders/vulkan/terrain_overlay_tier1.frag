@@ -123,7 +123,7 @@ void main() {
         c.rgb *= mix(1.0, cd.ao, 0.9) * cdDiff;
         cdSpec = cdSp;
     }
-    c.rgb = c.rgb * shadow + cdSpec * shadow;
+    c.rgb = max(c.rgb * shadow + cdSpec * shadow, vec3(0.0));
 
     // In-shader distance fog (skipped on cement tiles: the shared screen-space fog does it once).
     float camDist2D = distance(WorldPos.xy, uT.cameraPosMC2.xy);

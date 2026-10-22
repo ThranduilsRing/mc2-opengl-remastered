@@ -675,7 +675,7 @@ void main() {
         }
         float shadow = min(staticS, dynS);
         // no concrete shadow exemption: cement receives the static and the dynamic shadow like the ground around it
-        lit = baseColor * normalLight * shadow + cdSpec * shadow;
+        lit = max(baseColor * normalLight * shadow + cdSpec * shadow, vec3(0.0));
 
         // VK-PARITY-TERRAIN-2: NIGHT-LIGHT-POOLS-1..4 / LIGHT-CLUSTER-PERF-1 /
         // MOVER-CONTACT-SHADOW-1 — the SAME shared body GL runs (terrain_lod_chunk.frag
