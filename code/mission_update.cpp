@@ -457,7 +457,7 @@ void Mission::updatePresentationOnly(bool moversOnly, float alpha) {
 	if (!moversOnly)
 		gpu_cull::substrate_frameBegin();
 	const float renderLength = frameLength;
-	simPresentationPass = true;
+	mc2::sim::PresentationScope presentationScope;
 	ObjectManager->setPresentationAlpha(alpha);
 	if (moversOnly)
 		ObjectManager->updateAppearancesOnly( false, true, false );
@@ -466,7 +466,6 @@ void Mission::updatePresentationOnly(bool moversOnly, float alpha) {
 	ObjectManager->updatePresentationCull();
 	updateCratersAndDamp();
 	ObjectManager->setPresentationAlpha(1.0f);
-	simPresentationPass = false;
 	frameLength = renderLength;
 }
 

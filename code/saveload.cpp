@@ -266,7 +266,7 @@ void Mission::save (const char *saveFileName)
     auto animation = ObjectManager->saveAnimationState();
     extension(tag, version, animation);
     orderIngress.queue().serialize(extension);
-    if (!extension.good()) STOP(("R2 animation save section failed"));
+    if (!extension.good()) Fatal(0, "R2 animation save section failed");
     saveFile.writePacket(currentPacket, const_cast<MemoryPtr>(extension.bytes().data()),
         static_cast<unsigned int>(extension.bytes().size()), STORAGE_TYPE_ZLIB);
     ++currentPacket;

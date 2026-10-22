@@ -603,7 +603,7 @@ void Mission::loadLogistics(MissionLoadFrame& f) {
     if (currentPacket + 1 < loadFile.getNumPackets()) {
         loadFile.seekPacket(currentPacket + 1);
         const auto size = loadFile.getPacketSize();
-        if (size <= 0 || size > static_cast<int>(mc2::save::maxFileBytes)) STOP(("Invalid R2 save section size"));
+        if (size <= 0 || size > static_cast<int>(mc2::save::maxFileBytes)) Fatal(0, "Invalid R2 save section size");
         mc2::save::Bytes bytes(static_cast<size_t>(size));
         loadFile.readPacket(currentPacket + 1, bytes.data());
         mc2::save::Archive extension(bytes);
@@ -611,11 +611,11 @@ void Mission::loadLogistics(MissionLoadFrame& f) {
         std::vector<uint8_t> animation;
         extension(tag, version);
         if (tag == 0x4E413252u) {
-            if (version != 1) STOP(("Unsupported R2 animation section"));
+            if (version != 1) Fatal(0, "Unsupported R2 animation section");
             extension(animation);
             auto queue = orderIngress.queue();
             queue.serialize(extension);
-            if (!extension.finish() || !ObjectManager->restoreAnimationState(animation)) STOP(("Invalid R2 animation section"));
+            if (!extension.finish() || !ObjectManager->restoreAnimationState(animation)) Fatal(0, "Invalid R2 animation section");
             orderIngress.queue() = std::move(queue);
         }
     }

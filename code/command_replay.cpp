@@ -119,8 +119,8 @@ void begin(std::string_view mission, std::uint32_t seed) {
     if (!ended || session.checkpoints.empty()) throw std::runtime_error("incomplete replay recording");
     session.playback = true;
 }
-bool active() { return session.playback || session.record.is_open(); }
-bool playing() { return session.playback; }
+bool active() { return !session.complete && (session.playback || session.record.is_open()); }
+bool playing() { return session.playback && !session.complete; }
 bool complete() { return session.complete; }
 bool failed() { return session.failed; }
 
@@ -163,7 +163,14 @@ void hashes(std::uint64_t tick, const std::array<std::uint64_t, 5>& values) {
     }
     if (!playing() || session.failed || session.complete) return;
     const auto& expected = session.checkpoints[session.nextHash];
-    if (tick != expected.tick) throw std::runtime_error("replay tick sequence mismatch");
+    if (tick != expected.tick) {
+        session.failed = true;
+        std::fprintf(stderr, "[REPLAY_DIVERGED v1] tick=%llu subsystem=clock expected=%llu actual=%llu\n",
+            static_cast<unsigned long long>(expected.tick), static_cast<unsigned long long>(expected.tick),
+            static_cast<unsigned long long>(tick));
+        std::fflush(stderr);
+        return;
+    }
     for (std::size_t i = 0; i < values.size(); ++i) if (values[i] != expected.values[i]) {
         session.failed = true;
         std::fprintf(stderr, "[REPLAY_DIVERGED v1] tick=%llu subsystem=%s expected=%016llx actual=%016llx\n",

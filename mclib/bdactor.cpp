@@ -126,7 +126,7 @@ glm::vec3 BldgAppearance::getWeaponNodePosition (long nodeId)
    	xlatPosition.z = position.y;
    
    	glm::quat torsoRot;
-   	torsoRot = mc2::math::quatFromEuler(mc2::math::Euler(0.0f,(unitAnim().turretRotation * DEGREES_TO_RADS),0.0f));
+	torsoRot = mc2::math::quatFromEuler(mc2::math::Euler(0.0f,(unitAnim().turretRotation * DEGREES_TO_RADS),0.0f));
 	if (rotationalNodeId == -1)
 	{
 		if (S_stricmp(appearType->rotationalNodeId,"NONE") != 0)
@@ -863,7 +863,8 @@ void BldgAppearance::updateSimPose()
         simulationType_ = source;
     }
     auto* shape = simulationShape_.get();
-    if (status != OBJECT_STATUS_DESTROYED) appearType->setAnimation(shape, unitAnim().bdAnimationState);
+    if (status != OBJECT_STATUS_DESTROYED && unitAnim().bdAnimationState >= 0 && unitAnim().bdAnimationState < MAX_BD_ANIMATIONS)
+        appearType->setAnimation(shape, unitAnim().bdAnimationState);
     shape->SetFrameNum(unitAnim().currentFrame);
     auto aim = mc2::math::quatFromEuler(mc2::math::Euler(unitAnim().pitch * DEGREES_TO_RADS, unitAnim().turretRotation * DEGREES_TO_RADS, 0.0f));
     shape->SetNodeRotation(appearType->rotationalNodeId, &aim);

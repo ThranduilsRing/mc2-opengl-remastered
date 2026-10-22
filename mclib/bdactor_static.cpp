@@ -698,6 +698,9 @@ void BldgAppearance::invalidateStaticRegistration()
 
 void BldgAppearance::destroy (void)
 {
+	simulationShape_.reset();
+	simulationType_ = nullptr;
+	simPose->ready = false;
 	// Stage 3.D: NULL the registry's RecipeRange::multi pointer before
 	// bldgShape is freed below. Mirrors TreeAppearance::destroy ordering.
 	invalidateStaticRegistration();
