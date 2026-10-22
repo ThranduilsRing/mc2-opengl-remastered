@@ -941,6 +941,8 @@ TEST_CASE("AuthoredOrderProduction/blank MOVE initializes passability before bui
     CHECK(GameMap->getPassable(90, 90));
     for (int level : {0, 1}) {
         REQUIRE(GlobalMoveMap[level] != nullptr);
+        GlobalMoveMap[level]->isGateDisabledCallback = [](int) { return false; };
+        GlobalMoveMap[level]->isGateOpenCallback = [](int) { return true; };
         const long start = GlobalMoveMap[level]->calcArea(90, 40);
         const long goal = GlobalMoveMap[level]->calcArea(90, 140);
         INFO("level=" << level << " areas=" << GlobalMoveMap[level]->numAreas);

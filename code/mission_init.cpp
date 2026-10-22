@@ -827,8 +827,13 @@ void Mission::initPathfinding(MissionInitFrame& f) {
 				mc2::fmt::print_out("[MISSION] WARNING: terrain is {:d} cells/side but the MOVE grid is capped at {:d}; cells beyond row/col {:d} (top-left anchored) have no pathing\n", mc2::fmt::as_i32(terrainCells), mc2::fmt::as_i32(moveSide), mc2::fmt::as_i32(moveSide));
 			fflush(stdout);
 			MOVE_buildData(moveSide, moveSide, nullptr /*all-passable blank*/, 0, nullptr);
-			if (GameMap)
+			if (GameMap) {
 				GameMap->placeMoversCallback = PlaceMovers;
+				for (int level = 0; level < 3; ++level) {
+					GlobalMoveMap[level]->isGateDisabledCallback = IsGateDisabled;
+					GlobalMoveMap[level]->isGateOpenCallback = IsGateOpen;
+				}
+			}
 		}
 	}
 
