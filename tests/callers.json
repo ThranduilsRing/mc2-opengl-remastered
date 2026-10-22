@@ -5507,14 +5507,14 @@
         },
         {
           "path": "tools/test_sim_determinism.py",
-          "line": 32,
+          "line": 33,
           "evidence": "import",
           "reference": "scripts.smoke_lib.logparse",
           "text": "from scripts.smoke_lib.logparse import parse_log"
         },
         {
           "path": "tools/test_sim_determinism.py",
-          "line": 38,
+          "line": 39,
           "evidence": "import",
           "reference": "scripts.smoke_lib.logparse",
           "text": "from scripts.smoke_lib.logparse import parse_log"
@@ -9754,7 +9754,7 @@
         },
         {
           "path": "tools/test_sim_determinism.py",
-          "line": 39,
+          "line": 40,
           "evidence": "import",
           "reference": "saveload_roundtrip",
           "text": "import saveload_roundtrip as rt"
