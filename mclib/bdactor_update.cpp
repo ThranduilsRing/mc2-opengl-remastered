@@ -595,10 +595,8 @@ long BldgAppearance::update (bool animate)
 			// BUILDING-PBR: the gated PBR path currently renders through the same
 			// CPU MLR queue, so it needs that full bake too. Keep this in lockstep
 			// with the render-side GPU submit bypass.
-			const bool buildingPbrCpuRenderActive = appearType && appearType->buildingPbrEnabled;
 			gpuEligible = g_useGpuObjects &&
 			              (g_mechPreviewRenderDepth == 0) &&
-			              !buildingPbrCpuRenderActive &&
 			              !needsFullBakeNextFrame &&
 			              GpuStaticPropBatcher::instance().isMultiShapeEligibleForGpuObjects(bldgShape);
 		}
@@ -639,9 +637,7 @@ long BldgAppearance::update (bool animate)
 			// runs to seed the light index. MC2_LEGACY_INSTANCE_POOLS=1 reverts.
 			// PREVIEW-FIX: force the full bake in the SimpleCamera preview so the
 			// CPU MLR draw has complete listOfVertices (hierarchy-only leaves it stale).
-			const bool buildingPbrCpuRenderActive = appearType && appearType->buildingPbrEnabled;
-			if (!buildingPbrCpuRenderActive &&
-			    !gos_StaticPropLegacyInstancePools() &&
+			if (!gos_StaticPropLegacyInstancePools() &&
 			    (g_mechPreviewRenderDepth == 0) &&
 			    GpuStaticPropBatcher::instance().isMultiShapeEligibleForGpuObjects(bldgShape))
 			{

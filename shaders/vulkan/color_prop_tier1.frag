@@ -147,6 +147,7 @@ vec3 propPoolLight(vec3 albedo) {
 
 #include "include/prop_sh_l2.glsl"
 #include "include/prop_material_vk.glsl"
+#include "include/prop_lighting_compat_vk.glsl"
 
 void main() {
     vec3 rgb;

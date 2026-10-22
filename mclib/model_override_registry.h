@@ -1,20 +1,26 @@
-// model_override_registry.h — MODEL-OVERRIDE-MVP-1 Slice 1.
-// Engine-independent parse of model_overrides/models.json. No TG_*/GameOS deps.
-// Render-only model overrides keyed by "<class>:<appearanceName>". MVP rules:
-// renderOnly must be true, fallback must be "stock". Invalid entries are logged
-// and dropped, never fatal. See docs/model-override-mvp-plan.md.
+// model_override_registry.h -- render-only model overrides from model_overrides/models.json.
+// Engine-independent parse (no TG_*/GameOS deps). Records are keyed by "<class>:<appearanceName>";
+// renderOnly must be true and fallback "stock". Invalid entries are logged and dropped, never fatal.
+//
+// A record carries what tools/content_pipeline/package.py cooks: the intact LOD chain, an optional
+// destroyed chain (the engine renders it when the building is destroyed; collision and passability
+// stay stock), condition variants (pristine is the record itself; worn/abandoned are opt-in per
+// mission via conditions.json) and per-slot authored material inputs (materials v1/v2).
+// Every mounted mod's models.json merges in VFS priority order (lowest first, later wins).
 #pragma once
+#include <cstdint>
 #include <string>
 #include <string_view>
 #include <vector>
-#include <cstdint>
 
-// Authored linear detail only. Albedo remains the override's stock pixels.
+// Authored material inputs for one slot. Base colour stays the GLB's texture (stock or authored).
 struct ModelOverrideMaterial {
     uint32_t slot = 0;
-    uint32_t materialClass = 0; // 1 dielectric, 2 painted metal, 3 bare metal, 4 rust
-    std::string normalPath;
-    std::string ormPath;
+    uint32_t materialClass = 0;   // RenderCore::SurfaceClass
+    uint32_t alphaMode = 0;       // RenderCore::SurfaceAlpha (Stock keeps the stock coverage policy)
+    float alphaCutoff = 0.5f;
+    std::string normalPath;       // .tga or .ktx2 (BC5 / RGBA8), manifest-relative; empty = flat
+    std::string ormPath;          // .tga or .ktx2 (BC7 / RGBA8); empty = class scalars, full coverage
     float uvScale[2] = {1.0f, 1.0f};
     float normalStrength = 1.0f;
     float aoStrength = 1.0f;
@@ -22,50 +28,65 @@ struct ModelOverrideMaterial {
     float metallic = 0.0f;
 };
 
-// TREE-OVERRIDE-LOD-MVP-1 Task 3/4: one lower-detail LOD source for an override.
-// lod is the LOD index (>=1; LOD0 is the record's own `source`). distance is the
-// camera-distance band at which this LOD becomes active (Task 5 consumes it; Task
-// 3 only needs the source registered+baked). Minimal parse here (full validation
-// + unit tests land in Task 4) — kept safe: isSafeSource + ascending lod.
 struct ModelOverrideLod {
-    int         lod = 0;          // LOD index (1..MAX_LODS-1 for entries; LOD0 = record.source)
-    std::string sourceRelPath;   // .glb/.gltf relative to manifest dir (validated safe)
-    float       distance = 0.0f; // activation distance (Task 5); 0 = unset
+    int         lod = 0;          // LOD index (>=1; LOD0 is the chain's own source)
+    std::string sourceRelPath;    // .glb/.gltf relative to the manifest dir (validated safe)
+    float       distance = 0.0f;  // activation distance; 0 = unset
+};
+
+// One state's geometry: LOD0 source plus ascending lower LODs. Empty source = absent.
+struct ModelOverrideChain {
+    std::string sourceRelPath;
+    std::vector<ModelOverrideLod> lods;
+    bool present() const { return !sourceRelPath.empty(); }
+};
+
+struct ModelOverrideCondition {
+    std::string name;             // "worn" | "abandoned"
+    ModelOverrideChain intact;
+    ModelOverrideChain destroyed; // absent = the record's (pristine) destroyed chain
 };
 
 struct ModelOverrideRecord {
     std::vector<ModelOverrideMaterial> materials;
-    std::string overrideClass;   // "staticprop" | "tree" — NORMALIZED lowercase
-    std::string appearanceName;  // from "replaces" after ':' — NORMALIZED lowercase
-    std::string sourceRelPath;   // .glb/.gltf relative to manifestDir (validated safe)
-    std::string manifestDir;     // directory from which this record's source paths resolve
-    float       scale = 1.0f;    // MVP requires exactly 1.0
-    // TREE-OVERRIDE-LOD-MVP-1: optional lower-detail LOD chain (LOD0 == source).
-    // Ascending `lod`, each source isSafeSource. Empty = single-LOD (LOD0 only).
-    std::vector<ModelOverrideLod> lods;
-    // MVP invariants (validated at load; entry dropped + logged if violated):
-    //   type=="model", renderOnly==true, fallback=="stock", scale==1.0,
-    //   safe relative .glb/.gltf source, class in {staticProp,tree},
-    //   class field (if present) agrees with replaces. Duplicate key: first wins.
+    std::string overrideClass;    // "staticprop" | "tree" -- NORMALIZED lowercase
+    std::string appearanceName;   // from "replaces" after ':' -- NORMALIZED lowercase
+    std::string sourceRelPath;    // pristine intact LOD0 (.glb/.gltf, manifest-relative)
+    std::string manifestDir;      // directory from which this record's paths resolve
+    float       scale = 1.0f;     // must be exactly 1.0
+    std::vector<ModelOverrideLod> lods;        // pristine intact LOD1.. (ascending)
+    ModelOverrideChain destroyed;              // pristine destroyed chain (optional)
+    std::vector<ModelOverrideCondition> conditions;
+
+    // The condition variant by name; nullptr = pristine (the record's own chains).
+    const ModelOverrideCondition* condition(std::string_view name) const;
 };
 
 class ModelOverrideRegistry {
 public:
     // Clears registry then loads from manifestPath. Returns count.
-    int loadFromFile(const std::string& manifestPath,
-                     std::string_view manifestDir);
-    // Additive: loads manifestPath without clearing. Mod entries WIN on dup key.
+    int loadFromFile(const std::string& manifestPath, std::string_view manifestDir);
+    // Additive: loads manifestPath without clearing. Later files WIN on dup key.
     // Returns count of entries merged in (not total).
-    int mergeFromFile(const std::string& manifestPath,
-                      std::string_view manifestDir);
-    const ModelOverrideRecord* resolve(const char* overrideClass,
-                                       const char* appearanceName) const;
+    int mergeFromFile(const std::string& manifestPath, std::string_view manifestDir);
+    // conditions.json: {"version":1,"missions":{"<mission>":{"*":"worn","<appearance>":"abandoned"}}}.
+    // Later files win per (mission, appearance). Returns selections merged.
+    int mergeConditionsFromFile(const std::string& path);
+    // The condition chosen for an appearance in a mission ("" = pristine, the default).
+    std::string selectedCondition(std::string_view mission, std::string_view appearanceName) const;
+    const ModelOverrideRecord* resolve(const char* overrideClass, const char* appearanceName) const;
     int count() const { return static_cast<int>(records_.size()); }
-    // Manifest dir the records were loaded from; override source paths are
-    // resolved relative to it (avoids hardcoding the literal at call sites).
     const std::string& manifestDir() const { return manifestDir_; }
     static ModelOverrideRegistry& instance();
 private:
+    struct Selection { std::string mission, appearance, condition; };
     std::vector<ModelOverrideRecord> records_;
-    std::string manifestDir_;   // retained for Slice 2 relative source-path resolution
+    std::vector<Selection> selections_;
+    std::string manifestDir_;
 };
+
+// Mounted mod roots ("mods/<id>"), lowest priority first, in the order the file VFS mounts
+// them (mclib/file_mod.inc InitModSearchPaths): MC2_MOD_DEPS and the active mod.json's
+// dependencies below the active mod. modJsonDeps is the active mod's declared dependency list.
+std::vector<std::string> modelOverrideMountOrder(std::string_view activeMod, std::string_view envDeps,
+                                                 const std::vector<std::string>& modJsonDeps);

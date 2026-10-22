@@ -86,8 +86,7 @@ long BldgAppearance::render (long depthFixup)
 		// static-prop submit (the batcher flushes with the world snapshot/terrain
 		// MVP, not the UI camera) so submittedToGpu stays false and the legacy CPU
 		// bldgShape->Render() below runs, honoring this SimpleCamera.
-		const bool buildingPbrOverrideActive = appearType && buildingPbrRenderActive;
-		if (g_useGpuObjects && g_mechPreviewRenderDepth == 0 && !buildingPbrOverrideActive)
+		if (g_useGpuObjects && g_mechPreviewRenderDepth == 0)
 		{
 			GpuStaticPropBatcher::instance().recordEligibleActor(
 				GpuStaticPropPopulation::Building);
@@ -289,18 +288,13 @@ long BldgAppearance::render (long depthFixup)
 		// with slice 1 — gated on !g_useGpuObjects so the two paths cannot
 		// coexist. Tagged Legacy so Gate F's fallback-rate is computed only
 		// over slice-1 populations. See spec R1.
-		if (!submittedToGpu && !g_useGpuObjects && g_useGpuStaticProps && bldgShape && !buildingPbrOverrideActive)
+		if (!submittedToGpu && !g_useGpuObjects && g_useGpuStaticProps && bldgShape)
 		{
 			submittedToGpu = GpuStaticPropBatcher::instance().submitMultiShape(
 				bldgShape, GpuStaticPropPopulation::Legacy);
 		}
 		if (!submittedToGpu)
 		{
-			if (buildingPbrOverrideActive)
-				submitBuildingFootprintShadow(this);
-			if (buildingPbrOverrideActive) {
-				TG_SetRenderShapePbrOverride();
-			}
 			if (appearType->spinMe)
 				bldgShape->Render(false,0.00001f);
 			else if (!depthFixup)
@@ -309,8 +303,6 @@ long BldgAppearance::render (long depthFixup)
 				bldgShape->Render(false,0.9999999f);
 			else if (depthFixup < 0)
 				bldgShape->Render(false,0.00001f);
-			if (buildingPbrOverrideActive)
-				TG_ClearRenderShapePbrOverride();
 		}
 
 		if (selected & DRAW_BARS)

@@ -1245,8 +1245,6 @@ public:
 ////////////////////////////////////////////////////////////////////////////////
 
 // CPU routing for sidecar override shapes; no GL material is involved.
-void TG_SetRenderShapePbrOverride();
-void TG_ClearRenderShapePbrOverride();
 
 
 //Pools are defined here.

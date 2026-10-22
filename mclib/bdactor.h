@@ -58,13 +58,9 @@ class BldgAppearanceType : public AppearanceType
 		// NULL = no override → render falls back to stock bldgShape[lod].
 		// Collision/damage NEVER read this; they read bldgShape[lod] directly.
 		TG_TypeMultiShapePtr		bldgRenderShape;
+		// Destroyed-state render override (the cooked "destroyed" chain); NULL = stock bldgDmgShape.
+		TG_TypeMultiShapePtr		bldgDmgRenderShape;
         const ModelOverrideRecord* propMaterialSource = nullptr; // transient; registry owns it
-		bool						buildingPbrEnabled;
-		bool						buildingPbrPreserveLegacyAlpha;
-		bool						buildingFootprintShadowEnabled;
-		float						buildingFootprintShadowStrength;
-		float						buildingFootprintShadowSoftness;
-		float						buildingFootprintShadowHeightBias;
 
 		TG_TypeMultiShapePtr		bldgDmgShape;
 		
@@ -101,13 +97,8 @@ class BldgAppearanceType : public AppearanceType
 			}
 
 			bldgRenderShape = nullptr;   // MODEL-OVERRIDE dual-shape: no override by default
+			bldgDmgRenderShape = nullptr;
             propMaterialSource = nullptr;
-			buildingPbrEnabled = false;
-			buildingPbrPreserveLegacyAlpha = false;
-			buildingFootprintShadowEnabled = false;
-			buildingFootprintShadowStrength = 0.0f;
-			buildingFootprintShadowSoftness = 0.0f;
-			buildingFootprintShadowHeightBias = 0.05f;
 			bldgDmgShape = nullptr;
 			
 			for (i=0;i<MAX_BD_ANIMATIONS;i++)
@@ -206,6 +197,12 @@ class BldgAppearanceType : public AppearanceType
 		// Collision authority: ALWAYS stock. Collision must never call the
 		// render accessor (it already reads bldgShape[lod] directly).
 		TG_TypeMultiShape* getBldgCollisionShape (long lod) { return bldgShape[lod]; }
+		// Destroyed render authority: the override's destroyed chain if cooked, else stock damage.
+		TG_TypeMultiShape* getBldgDmgRenderShape (void) { return bldgDmgRenderShape ? bldgDmgRenderShape : bldgDmgShape; }
+		// Registers every render shape (LODs + destroyed) with the GPU static-prop batcher, tagging
+		// override shapes with their material source. Idempotent; the per-instance init and the
+		// mission-load pre-pass both go through here.
+		void registerRenderShapes (void);
 
 };
 
@@ -220,7 +217,6 @@ class BldgAppearance : public ObjectAppearance
 
 		BldgAppearanceType*							appearType;
 		TG_MultiShapePtr							bldgShape;
-		bool										buildingPbrRenderActive;
 
 		// Slice 2 (object-offload): set true by the GPU-object batcher's
 		// late-registration branch when a leaf type is encountered for the

@@ -334,7 +334,7 @@ void GpuStaticPropBatcher::registerMultiShape(TG_TypeMultiShape* multiShape, boo
                     const auto& [registeredShape, typeId] = *tit;
                     if (typeId < s_types.size()) {
                         s_types[typeId].isOverride = true;
-                        s_types[typeId].materialSource = materialSource;
+                        if (materialSource) s_types[typeId].materialSource = materialSource;
                     }
                 }
             }

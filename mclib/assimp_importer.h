@@ -37,7 +37,11 @@ class TG_TypeMultiShape;
 // (cooked from .tgl) — they already carry the stock pivot; grounding would shift them.
 // authoredColors preserves stock lighting tags carried by COLOR_0 in reviewed
 // prop packages. False retains the existing white-seed behavior for all imports.
+// bakeNodeTransforms (static-prop / building overrides): every (node, mesh) instance
+// becomes one shape with the node's WORLD transform baked into positions/normals, so
+// hierarchy, node TRS and mesh instancing survive. Off for mechs, whose node
+// translations are animation pivots.
 long ImportGeometryFromFile(const char* path, TG_TypeMultiShape* out, bool autoGround = true,
-                            bool authoredColors = false);
+                            bool authoredColors = false, bool bakeNodeTransforms = false);
 
 #endif // ENABLE_ASSIMP_IMPORTER

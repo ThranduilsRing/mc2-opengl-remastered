@@ -1,14 +1,16 @@
-// model_override_registry.cpp — MODEL-OVERRIDE-MVP-1 Slice 1.
+// model_override_registry.cpp -- see the header.
 // ONLY engine TU permitted to include nlohmann/json (scripts/check-json-isolation.sh).
 #include "model_override_registry.h"
 #include <nlohmann/json.hpp>
+#include <algorithm>
 #include <cctype>
+#include <cmath>
 #include <cstdio>
+#include <filesystem>
 #include <fstream>
 #include <mutex>
 #include <utility>
-#include <cmath>
-#include <filesystem>
+#include "../RenderCore/SurfaceMaterial.h"
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"
 #include "mc2fmt.h"
@@ -29,16 +31,20 @@ static std::string normalizeKey(std::string_view s) {
     return out;
 }
 
+static bool endsWith(std::string_view s, std::string_view suffix) {
+    if (s.size() < suffix.size()) return false;
+    for (size_t i = 0; i < suffix.size(); ++i)
+        if (std::tolower(static_cast<unsigned char>(s[s.size() - suffix.size() + i])) != suffix[i]) return false;
+    return true;
+}
+
 static bool isSafeSource(std::string_view s) {
     if (s.empty()) return false;
     if (s[0] == '/' || s[0] == '\\') return false;
     if (s.size() >= 2 && s[1] == ':') return false;
     // conservative: rejects any "..", including the rare literal "a..b.glb"; traversal safety > that edge case.
     if (s.find("..") != std::string::npos) return false;
-    std::string low(s); for (char& c : low) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
-    const bool glb  = low.size() >= 4 && low.compare(low.size() - 4, 4, ".glb")  == 0;
-    const bool gltf = low.size() >= 5 && low.compare(low.size() - 5, 5, ".gltf") == 0;
-    return glb || gltf;
+    return endsWith(s, ".glb") || endsWith(s, ".gltf");
 }
 
 static std::string trimSource(std::string_view s) {
@@ -48,12 +54,23 @@ static std::string trimSource(std::string_view s) {
     return std::string(s.substr(b, en - b));
 }
 
+const ModelOverrideCondition* ModelOverrideRecord::condition(std::string_view name) const {
+    for (const auto& c : conditions)
+        if (c.name == name) return &c;
+    return nullptr;
+}
+
+// materials v1 (redux-pbr: normal or ORM TGA required) and v2 (content pipeline: .tga/.ktx2 maps,
+// map-less class scalars, explicit alpha mode, the full SurfaceClass vocabulary). The class decides
+// whether metal is allowed at all; scalars absent in v2 take the class defaults.
 static void parseMaterials(const json& entry, ModelOverrideRecord& rec) {
     if (!entry.contains("materials")) return;
     try {
         const auto& package = entry.at("materials");
-        if (!package.at("version").is_number_integer() || package.at("version") != 1 || !package.at("slots").is_array())
+        if (!package.at("version").is_number_integer() || !package.at("slots").is_array())
             throw std::runtime_error("unsupported material package");
+        const int64_t version = package.at("version").get<int64_t>();
+        if (version != 1 && version != 2) throw std::runtime_error("unsupported material package");
         std::vector<ModelOverrideMaterial> parsed;
         auto ranged = [](const json& row, std::string_view key, float fallback, float hi) {
             if (row.contains(key) && !row.at(key).is_number())
@@ -63,16 +80,17 @@ static void parseMaterials(const json& entry, ModelOverrideRecord& rec) {
                 throw std::runtime_error("material scalar out of range");
             return v;
         };
-        auto path = [](const json& row, std::string_view key) {
+        auto path = [version](const json& row, std::string_view key) {
             std::string s = row.value(key, std::string());
             if (s.empty()) return s;
             for (const unsigned char c : s)
                 if (c < 32u) throw std::runtime_error("control character in material path");
             const std::filesystem::path candidate(s);
+            const bool typeOk = endsWith(s, ".tga") || (version >= 2 && endsWith(s, ".ktx2"));
             if (candidate.has_root_name() || candidate.has_root_directory() ||
                 candidate.generic_string() != s || s.find(':') != std::string::npos ||
-                s.find("..") != std::string::npos || candidate.extension() != ".tga")
-                throw std::runtime_error("unsafe/non-TGA material path");
+                s.find("..") != std::string::npos || !typeOk)
+                throw std::runtime_error("unsafe/unsupported material map path");
             return s;
         };
         for (const auto& row : package.at("slots")) {
@@ -84,18 +102,24 @@ static void parseMaterials(const json& entry, ModelOverrideRecord& rec) {
             m.slot = static_cast<uint32_t>(slot);
             for (const auto& prior : parsed)
                 if (prior.slot == m.slot) throw std::runtime_error("duplicate material slot");
-            const std::string cls = row.at("class").get<std::string>();
-            m.materialClass = cls == "dielectric" ? 1u : cls == "painted_metal" ? 2u :
-                              cls == "bare_metal" ? 3u : cls == "rust" ? 4u : 0u;
-            if (!m.materialClass) throw std::runtime_error("unknown material class");
-            m.normalPath = path(row, "normal"); m.ormPath = path(row, "orm");
-            if (m.normalPath.empty() && m.ormPath.empty()) throw std::runtime_error("empty material");
+            const auto cls = RenderCore::surfaceClassFromName(row.at("class").get<std::string>());
+            if (!cls || (version == 1 && static_cast<uint32_t>(*cls) > 4u))
+                throw std::runtime_error("unknown material class");
+            m.materialClass = static_cast<uint32_t>(*cls);
+            const auto defaults = RenderCore::kSurfaceClassDefaults[m.materialClass];
+            m.normalPath = path(row, "normal");
+            m.ormPath = path(row, "orm");
+            if (version == 1 && m.normalPath.empty() && m.ormPath.empty()) throw std::runtime_error("empty material");
+            const auto alpha = RenderCore::surfaceAlphaFromName(row.value("alphaMode", std::string("STOCK")));
+            if (!alpha || *alpha == RenderCore::SurfaceAlpha::Blend) throw std::runtime_error("unsupported alpha mode");
+            m.alphaMode = static_cast<uint32_t>(*alpha);
+            m.alphaCutoff = ranged(row, "alphaCutoff", 0.5f, 1.0f);
             m.normalStrength = ranged(row, "normalStrength", 1.0f, 2.0f);
             m.aoStrength = ranged(row, "aoStrength", 1.0f, 1.0f);
-            m.roughness = ranged(row, "roughness", 1.0f, 1.0f);
-            m.metallic = ranged(row, "metallic", 0.0f, 1.0f);
-            if (m.materialClass == 1u && m.metallic != 0.0f)
-                throw std::runtime_error("dielectric cannot be metallic");
+            m.roughness = ranged(row, "roughness", version == 1 ? 1.0f : defaults.roughness, 1.0f);
+            m.metallic = ranged(row, "metallic", version == 1 ? 0.0f : defaults.metallic, 1.0f);
+            if (m.metallic != 0.0f && !RenderCore::surfaceClassMayBeMetallic(*cls))
+                throw std::runtime_error("material class cannot be metallic");
             if (row.contains("uvScale")) {
                 const auto& uv = row.at("uvScale");
                 if (!uv.is_array() || uv.size() != 2) throw std::runtime_error("invalid UV scale");
@@ -116,12 +140,43 @@ static void parseMaterials(const json& entry, ModelOverrideRecord& rec) {
     }
 }
 
-// Parse manifestPath and return all valid records stamped with dir.
-// No duplicate-key check here — callers apply their own policy.
-static std::vector<ModelOverrideRecord> parseManifest(
-        const std::string& manifestPath, std::string_view dir) {
-    std::vector<ModelOverrideRecord> out;
+// LOD chain entries: each must be an object with integer `lod` >= 1 (strictly ascending; LOD0 is the
+// chain's own source) and a safe source. A bad entry drops only itself (logged).
+static std::vector<ModelOverrideLod> parseLods(const json& e, std::string_view key) {
+    std::vector<ModelOverrideLod> out;
+    if (!e.contains("lods") || !e["lods"].is_array()) return out;
+    int lastLod = 0;
+    for (const auto& le : e["lods"]) {
+        if (!le.is_object()) { logDrop("lods entry not an object", key); continue; }
+        if (!le.contains("lod") || !le["lod"].is_number_integer()) { logDrop("lods entry missing integer 'lod'", key); continue; }
+        const int lod = le["lod"].get<int>();
+        if (lod <= lastLod) { logDrop("lods 'lod' not strictly ascending (LOD0=source)", key); continue; }
+        std::string lsrc = trimSource(le.value("source", std::string()));
+        if (!isSafeSource(lsrc)) { logDrop("lods entry unsafe/non-glTF source", key); continue; }
+        out.push_back({lod, std::move(lsrc), le.value("distance", 0.0f)});
+        lastLod = lod;
+    }
+    return out;
+}
 
+// An optional chain object {"source", "lods"}; an invalid one is dropped (logged), never the record.
+static ModelOverrideChain parseChain(const json& e, std::string_view field, std::string_view key) {
+    ModelOverrideChain chain;
+    if (!e.contains(field)) return chain;
+    const auto& c = e.at(field);
+    const std::string where = std::string(key) + ":" + std::string(field);
+    if (!c.is_object()) { logDrop("chain is not an object", where); return chain; }
+    std::string source = trimSource(c.value("source", std::string()));
+    if (!isSafeSource(source)) { logDrop("unsafe/non-glTF chain source", where); return chain; }
+    chain.sourceRelPath = std::move(source);
+    chain.lods = parseLods(c, where);
+    return chain;
+}
+
+// Parse manifestPath and return all valid records stamped with dir.
+// No duplicate-key check here -- callers apply their own policy.
+static std::vector<ModelOverrideRecord> parseManifest(const std::string& manifestPath, std::string_view dir) {
+    std::vector<ModelOverrideRecord> out;
     std::ifstream in(manifestPath.c_str());
     if (!in.is_open()) return out;
     json root;
@@ -134,164 +189,190 @@ static std::vector<ModelOverrideRecord> parseManifest(
         mc2::fmt::print_err("[MODOVERRIDE] {}: missing 'overrides' array\n", manifestPath.c_str());
         return out;
     }
-
     for (const auto& e : root["overrides"]) {
         try {
-        if (!e.is_object()) { logDrop("entry is not an object", "<non-object>"); continue; }
-        std::string replaces = e.value("replaces", std::string());
-        const std::string key = replaces.empty() ? "<no-replaces>" : replaces;
-
-        if (e.value("type", std::string()) != "model") { logDrop("type!=model", key); continue; }
-        if (!e.value("renderOnly", false))             { logDrop("renderOnly!=true", key); continue; }
-        if (e.value("fallback", std::string()) != "stock") { logDrop("fallback!=stock", key); continue; }
-
-        const float scale = e.value("scale", 1.0f);
-        if (scale != 1.0f) { logDrop("scale!=1.0 (MVP requires 1.0)", key); continue; }
-
-        // split on FIRST ':'; MC2 appearance names contain no ':' so a trailing ':' in name is not expected.
-        size_t colon = replaces.find(':');
-        if (colon == std::string::npos) { logDrop("replaces not '<class>:<name>'", key); continue; }
-        std::string cls  = normalizeKey(replaces.substr(0, colon));
-        std::string name = normalizeKey(replaces.substr(colon + 1));
-        if (cls.empty() || name.empty()) { logDrop("empty class or name in replaces", key); continue; }
-
-        if (cls != "staticprop" && cls != "tree") { logDrop("class not staticProp|tree", key); continue; }
-        if (e.contains("class")) {
-            std::string clsField = normalizeKey(e.value("class", std::string()));
-            if (clsField != cls) { logDrop("class field disagrees with replaces", key); continue; }
-        }
-
-        std::string source = trimSource(e.value("source", std::string()));
-        if (!isSafeSource(source)) { logDrop("unsafe/non-glTF source path", key); continue; }
-
-        ModelOverrideRecord rec;
-        rec.overrideClass  = cls;
-        rec.appearanceName = name;
-        rec.sourceRelPath  = source;
-        rec.manifestDir    = dir;
-        rec.scale          = scale;
-        parseMaterials(e, rec);
-
-        // TREE-OVERRIDE-LOD-MVP-1 Task 3/4: optional lower-detail LOD chain.
-        // Minimal-but-safe parse: each entry must be an object with int `lod`>=1
-        // and a safe `source`; entries kept in ascending-lod order; a non-
-        // ascending or duplicate lod, or an unsafe/missing source, drops THAT
-        // LOD entry (logged) but keeps the record's LOD0. (Full validation +
-        // unit tests are Task 4.)
-        if (e.contains("lods") && e["lods"].is_array()) {
-            int lastLod = 0;  // LOD0 implied by `source`
-            for (const auto& le : e["lods"]) {
-                if (!le.is_object()) { logDrop("lods entry not an object", key); continue; }
-                if (!le.contains("lod") || !le["lod"].is_number_integer()) {
-                    logDrop("lods entry missing integer 'lod'", key); continue;
-                }
-                const int lod = le["lod"].get<int>();
-                if (lod <= lastLod) { logDrop("lods 'lod' not strictly ascending (LOD0=source)", key); continue; }
-
-                std::string lsrc = trimSource(le.value("source", std::string()));
-                if (!isSafeSource(lsrc)) { logDrop("lods entry unsafe/non-glTF source", key); continue; }
-
-                ModelOverrideLod l;
-                l.lod          = lod;
-                l.sourceRelPath = lsrc;
-                l.distance     = le.value("distance", 0.0f);
-                rec.lods.push_back(std::move(l));
-                lastLod = lod;
+            if (!e.is_object()) { logDrop("entry is not an object", "<non-object>"); continue; }
+            std::string replaces = e.value("replaces", std::string());
+            const std::string key = replaces.empty() ? "<no-replaces>" : replaces;
+            if (e.value("type", std::string()) != "model") { logDrop("type!=model", key); continue; }
+            if (!e.value("renderOnly", false))             { logDrop("renderOnly!=true", key); continue; }
+            if (e.value("fallback", std::string()) != "stock") { logDrop("fallback!=stock", key); continue; }
+            const float scale = e.value("scale", 1.0f);
+            if (scale != 1.0f) { logDrop("scale!=1.0 (MVP requires 1.0)", key); continue; }
+            // split on FIRST ':'; MC2 appearance names contain no ':'.
+            size_t colon = replaces.find(':');
+            if (colon == std::string::npos) { logDrop("replaces not '<class>:<name>'", key); continue; }
+            std::string cls  = normalizeKey(replaces.substr(0, colon));
+            std::string name = normalizeKey(replaces.substr(colon + 1));
+            if (cls.empty() || name.empty()) { logDrop("empty class or name in replaces", key); continue; }
+            if (cls != "staticprop" && cls != "tree") { logDrop("class not staticProp|tree", key); continue; }
+            if (e.contains("class") && normalizeKey(e.value("class", std::string())) != cls) {
+                logDrop("class field disagrees with replaces", key); continue;
             }
-        }
+            std::string source = trimSource(e.value("source", std::string()));
+            if (!isSafeSource(source)) { logDrop("unsafe/non-glTF source path", key); continue; }
 
-        out.push_back(std::move(rec));
+            ModelOverrideRecord rec;
+            rec.overrideClass  = cls;
+            rec.appearanceName = name;
+            rec.sourceRelPath  = source;
+            rec.manifestDir    = dir;
+            rec.scale          = scale;
+            parseMaterials(e, rec);
+            rec.lods = parseLods(e, key);
+            rec.destroyed = parseChain(e, "destroyed", key);
+            if (e.contains("conditions") && e["conditions"].is_object()) {
+                for (const auto& [condName, c] : e["conditions"].items()) {
+                    const std::string cn = normalizeKey(condName);
+                    if (cn != "worn" && cn != "abandoned") { logDrop("unknown condition " + cn, key); continue; }
+                    const json wrapped = {{"intact", c}};
+                    ModelOverrideCondition cond{cn, parseChain(wrapped, "intact", key),
+                                                c.is_object() ? parseChain(c, "destroyed", key) : ModelOverrideChain{}};
+                    if (!cond.intact.present()) continue;   // parseChain logged why
+                    rec.conditions.push_back(std::move(cond));
+                }
+            }
+            out.push_back(std::move(rec));
         } catch (const std::exception& ex) {
-            logDrop(ex.what(), "<entry>"); continue;
+            logDrop(ex.what(), "<entry>");
         }
     }
     return out;
 }
 
-int ModelOverrideRegistry::loadFromFile(const std::string& manifestPath,
-                                        std::string_view manifestDir) {
+int ModelOverrideRegistry::loadFromFile(const std::string& manifestPath, std::string_view manifestDir) {
     records_.clear();
     manifestDir_ = manifestDir;
-
-    auto parsed = parseManifest(manifestPath, manifestDir);
     // Dup check: first entry wins within a single file.
-    for (auto& rec : parsed) {
-        bool dup = false;
-        for (const auto& r : records_)
-            if (r.overrideClass == rec.overrideClass && r.appearanceName == rec.appearanceName)
-                { dup = true; break; }
+    for (auto& rec : parseManifest(manifestPath, manifestDir)) {
+        const bool dup = std::any_of(records_.begin(), records_.end(), [&](const auto& r) {
+            return r.overrideClass == rec.overrideClass && r.appearanceName == rec.appearanceName; });
         if (dup) { logDrop("duplicate key (first entry wins)", rec.overrideClass + ":" + rec.appearanceName); continue; }
         records_.push_back(std::move(rec));
     }
     return static_cast<int>(records_.size());
 }
 
-int ModelOverrideRegistry::mergeFromFile(const std::string& manifestPath,
-                                         std::string_view manifestDir) {
-    auto parsed = parseManifest(manifestPath, manifestDir);
+int ModelOverrideRegistry::mergeFromFile(const std::string& manifestPath, std::string_view manifestDir) {
     int merged = 0;
-    for (auto& rec : parsed) {
-        // Mod wins on dup key: replace existing base record if present.
-        bool replaced = false;
-        for (auto& r : records_) {
-            if (r.overrideClass == rec.overrideClass && r.appearanceName == rec.appearanceName) {
-                r = std::move(rec);
-                replaced = true;
-                ++merged;
-                break;
-            }
-        }
-        if (!replaced) {
-            records_.push_back(std::move(rec));
-            ++merged;
-        }
+    for (auto& rec : parseManifest(manifestPath, manifestDir)) {
+        auto it = std::find_if(records_.begin(), records_.end(), [&](const auto& r) {
+            return r.overrideClass == rec.overrideClass && r.appearanceName == rec.appearanceName; });
+        if (it != records_.end()) *it = std::move(rec);
+        else records_.push_back(std::move(rec));
+        ++merged;
     }
     return merged;
 }
 
-const ModelOverrideRecord* ModelOverrideRegistry::resolve(
-        const char* overrideClass, const char* appearanceName) const {
+int ModelOverrideRegistry::mergeConditionsFromFile(const std::string& path) {
+    std::ifstream in(path.c_str());
+    if (!in.is_open()) return 0;
+    int merged = 0;
+    try {
+        json root;
+        in >> root;
+        if (!root.is_object() || root.value("version", 0) != 1 || !root.contains("missions") || !root["missions"].is_object())
+            throw std::runtime_error("needs version 1 and a missions object");
+        for (const auto& [mission, picks] : root["missions"].items()) {
+            if (!picks.is_object()) continue;
+            for (const auto& [appearance, cond] : picks.items()) {
+                const std::string c = cond.is_string() ? normalizeKey(cond.get<std::string>()) : std::string();
+                if (c != "pristine" && c != "worn" && c != "abandoned") { logDrop("unknown condition", path + ":" + appearance); continue; }
+                Selection s{normalizeKey(mission), normalizeKey(appearance), c == "pristine" ? std::string() : c};
+                auto it = std::find_if(selections_.begin(), selections_.end(), [&](const Selection& x) {
+                    return x.mission == s.mission && x.appearance == s.appearance; });
+                if (it != selections_.end()) *it = std::move(s);
+                else selections_.push_back(std::move(s));
+                ++merged;
+            }
+        }
+    } catch (const std::exception& e) {
+        mc2::fmt::print_err("[MODOVERRIDE] {}: conditions ignored ({})\n", path.c_str(), mc2::fmt::safe(e.what()));
+    }
+    return merged;
+}
+
+std::string ModelOverrideRegistry::selectedCondition(std::string_view mission, std::string_view appearanceName) const {
+    // Missions arrive as paths or stems; compare the lowercase stem.
+    std::string m = normalizeKey(mission);
+    if (const size_t slash = m.find_last_of("/\\"); slash != std::string::npos) m.erase(0, slash + 1);
+    if (const size_t dot = m.find_last_of('.'); dot != std::string::npos) m.erase(dot);
+    const std::string a = normalizeKey(appearanceName);
+    const Selection* wildcard = nullptr;
+    for (const auto& s : selections_) {
+        if (s.mission != m) continue;
+        if (s.appearance == a) return s.condition;
+        if (s.appearance == "*") wildcard = &s;
+    }
+    return wildcard ? wildcard->condition : std::string();
+}
+
+const ModelOverrideRecord* ModelOverrideRegistry::resolve(const char* overrideClass, const char* appearanceName) const {
     if (!overrideClass || !appearanceName) return nullptr;
     const std::string cls  = normalizeKey(overrideClass);
     const std::string name = normalizeKey(appearanceName);
-    for (const auto& r : records_) {
+    for (const auto& r : records_)
         if (r.overrideClass == cls && r.appearanceName == name) return &r;
-    }
     return nullptr;
+}
+
+std::vector<std::string> modelOverrideMountOrder(std::string_view activeMod, std::string_view envDeps,
+                                                 const std::vector<std::string>& modJsonDeps) {
+    // file_mod.inc: deps = mod.json deps, then MC2_MOD_DEPS (comma/semicolon, highest-priority-first),
+    // de-duplicated; priority active > deps[0] > ... > deps[N-1] > base.
+    std::vector<std::string> deps = modJsonDeps;
+    const std::string all(envDeps);
+    for (size_t i = 0; i <= all.size();) {
+        size_t j = all.find_first_of(",;", i);
+        if (j == std::string::npos) j = all.size();
+        std::string d = trimSource(std::string_view(all).substr(i, j - i));
+        if (!d.empty() && std::find(deps.begin(), deps.end(), d) == deps.end()) deps.push_back(d);
+        i = j + 1;
+    }
+    std::vector<std::string> out;
+    for (auto it = deps.rbegin(); it != deps.rend(); ++it)
+        if (*it != activeMod) out.push_back("mods/" + *it);
+    if (!activeMod.empty()) out.push_back("mods/" + std::string(activeMod));
+    return out;
+}
+
+static std::vector<std::string> activeModJsonDeps(const std::string& activeMod) {
+    std::vector<std::string> deps;
+    if (activeMod.empty()) return deps;
+    std::ifstream in(("mods/" + activeMod + "/mod.json").c_str());
+    if (!in.is_open()) return deps;
+    try {
+        json root;
+        in >> root;
+        if (root.is_object() && root.contains("dependencies") && root["dependencies"].is_array())
+            for (const auto& d : root["dependencies"])
+                if (d.is_string()) deps.push_back(d.get<std::string>());
+    } catch (const std::exception&) {}
+    return deps;
 }
 
 ModelOverrideRegistry& ModelOverrideRegistry::instance() {
     static ModelOverrideRegistry g;
     static std::once_flag once;
-    std::call_once(once, []{
-        // Always load base registry first.
+    std::call_once(once, [] {
         int base = g.loadFromFile("data/model_overrides/models.json", "data/model_overrides");
+        g.mergeConditionsFromFile("data/model_overrides/conditions.json");
         mc2::fmt::print_err("[MODOVERRIDE] base registry: {:d} override(s)\n", mc2::fmt::as_i32(base));
-        fflush(stderr);
-
-        // Additive mod merge: mod entries WIN on dup key (mod overrides base).
-        // Source paths in the mod's models.json must be relative to the mod's
-        // manifestDir (mods/<id>/data/model_overrides), not full data-relative.
-        // GLB load uses ImportGeometryFromFile (raw Assimp, not File::open),
-        // so per-record manifestDir is the only way to route to the mod's files.
-        const std::string activeModStr = mc2::gate::str<"MC2_ACTIVE_MOD">();
-        const char* activeMod = activeModStr.c_str();
-        if (activeMod[0]) {
-            std::string modManifest = std::string("mods/") + activeMod
-                                      + "/data/model_overrides/models.json";
-            std::string modDir      = std::string("mods/") + activeMod
-                                      + "/data/model_overrides";
-            std::ifstream probe(modManifest.c_str());
-            if (probe.is_open()) {
-                probe.close();
-                int n = g.mergeFromFile(modManifest, modDir);
-                mc2::fmt::print_err("[MODOVERRIDE] mod '{}': {:d} override(s) merged (total {:d})\n", mc2::fmt::safe(activeMod), mc2::fmt::as_i32(n), mc2::fmt::as_i32(g.count()));
-                fflush(stderr);
-            } else {
-                mc2::fmt::print_err("[MODOVERRIDE] mod '{}' has no models.json; base only\n", mc2::fmt::safe(activeMod));
-                fflush(stderr);
-            }
+        // Every mounted mod (content packs ride MC2_MOD_DEPS beside any campaign mod) merges in VFS
+        // priority order, so the highest-priority provider wins a duplicate key. Source paths are
+        // relative to that mod's model_overrides directory: Assimp opens files directly, so the
+        // per-record manifestDir is what routes a GLB to its provider.
+        const std::string active = mc2::gate::str<"MC2_ACTIVE_MOD">();
+        for (const auto& root : modelOverrideMountOrder(active, mc2::gate::str<"MC2_MOD_DEPS">(), activeModJsonDeps(active))) {
+            const std::string dir = root + "/data/model_overrides";
+            const int n = g.mergeFromFile(dir + "/models.json", dir);
+            const int c = g.mergeConditionsFromFile(dir + "/conditions.json");
+            if (n || c)
+                mc2::fmt::print_err("[MODOVERRIDE] {}: {:d} override(s), {:d} condition pick(s) merged (total {:d})\n",
+                                    root.c_str(), mc2::fmt::as_i32(n), mc2::fmt::as_i32(c), mc2::fmt::as_i32(g.count()));
         }
+        fflush(stderr);
     });
     return g;
 }

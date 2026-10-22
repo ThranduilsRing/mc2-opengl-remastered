@@ -20,7 +20,7 @@
               2,
               3
             ],
-            "metallic": 0.1
+            "metallic": 0.0
           }
         ]
       }
@@ -45,7 +45,7 @@
               2,
               3
             ],
-            "metallic": 0.1
+            "metallic": 0.0
           }
         ]
       }
@@ -95,7 +95,7 @@
               2,
               3
             ],
-            "metallic": 0.1
+            "metallic": 0.0
           }
         ]
       }
@@ -120,7 +120,7 @@
               0,
               1
             ],
-            "metallic": 0.1
+            "metallic": 0.0
           }
         ]
       }
@@ -145,7 +145,7 @@
               2,
               3
             ],
-            "metallic": 0.1,
+            "metallic": 0.0,
             "aoStrength": 2
           }
         ]
@@ -184,7 +184,7 @@
       "scale": 1,
       "replaces": "staticProp:bad_version",
       "materials": {
-        "version": 2,
+        "version": 3,
         "slots": [
           {
             "slot": 0,
@@ -196,7 +196,7 @@
               2,
               3
             ],
-            "metallic": 0.1
+            "metallic": 0.0
           }
         ]
       }
@@ -221,7 +221,7 @@
               2,
               3
             ],
-            "metallic": 0.1
+            "metallic": 0.0
           },
           {
             "slot": 0,
@@ -233,7 +233,7 @@
               2,
               3
             ],
-            "metallic": 0.1
+            "metallic": 0.0
           }
         ]
       }
@@ -258,7 +258,7 @@
               2,
               3
             ],
-            "metallic": 0.1
+            "metallic": 0.0
           },
           {
             "slot": 1,
@@ -270,7 +270,7 @@
               2,
               3
             ],
-            "metallic": 0.1
+            "metallic": 0.0
           }
         ]
       }
@@ -295,7 +295,7 @@
               2,
               3
             ],
-            "metallic": 0.1
+            "metallic": 0.0
           }
         ]
       }
@@ -320,6 +320,26 @@
               2,
               3
             ],
+            "metallic": 0.0
+          }
+        ]
+      }
+    },
+    {
+      "type": "model",
+      "replaces": "staticProp:rust_metal",
+      "source": "x.glb",
+      "renderOnly": true,
+      "fallback": "stock",
+      "scale": 1.0,
+      "materials": {
+        "version": 1,
+        "slots": [
+          {
+            "slot": 0,
+            "reviewed": true,
+            "class": "rust",
+            "orm": "detail/orm.tga",
             "metallic": 0.1
           }
         ]

@@ -294,3 +294,64 @@ TEST_CASE("authored prop detail: failed map never creates a material, absent cha
     CHECK(sources.table.size()==1);
     CHECK(sources.normal.layers==1);
 }
+
+TEST_CASE("content cook contract: class-scalar slot, BC5 Z rebuild, explicit alpha class") {
+    mc2prop::MaterialSources sources;
+    ModelOverrideRecord owner;
+    owner.manifestDir = std::filesystem::temp_directory_path().generic_string();
+    ModelOverrideMaterial bare;
+    bare.materialClass = static_cast<uint32_t>(RenderCore::SurfaceClass::BareMetal);
+    bare.metallic = 1.0f; bare.roughness = 0.45f;
+    REQUIRE(mc2prop::addMaterial(sources, owner, bare));          // no maps: class scalars, no layers
+    CHECK(sources.table.size() == 1);
+    CHECK(sources.normal.layers == 0);
+    CHECK(sources.table[0].material.metallicRoughnessTex == RenderCore::kMaterialTexAbsent);
+    CHECK(sources.table[0].material.metallicFactor == 1.0f);
+    CHECK(sources.table[0].materialClass == 3u);
+
+    std::vector<uint8_t> xy = {218,128,0,255, 128,128,0,255};       // BC5 decodes X/Y with B = 0
+    mc2prop::rebuildNormalZ(xy);
+    CHECK(xy[2] > 200);                                            // tilted: z = sqrt(1 - x^2)
+    CHECK(xy[6] == 255);                                           // flat: z = 1
+
+    owner.materials = {bare};
+    owner.materials[0].slot = 3;
+    owner.materials[0].alphaMode = static_cast<uint32_t>(RenderCore::SurfaceAlpha::Mask);
+    CHECK(mc2prop::packetAlphaClass(true, &owner, 3) == 2u);
+    owner.materials[0].alphaMode = static_cast<uint32_t>(RenderCore::SurfaceAlpha::Stock);
+    CHECK(mc2prop::packetAlphaClass(true, &owner, 3) == 1u);
+    owner.materials[0].alphaMode = static_cast<uint32_t>(RenderCore::SurfaceAlpha::Opaque);
+    CHECK(mc2prop::packetAlphaClass(true, &owner, 3) == 0u);
+    CHECK(mc2prop::packetAlphaClass(true, &owner, 7) == 2u);       // unmapped override slot: cutout
+    CHECK(mc2prop::packetAlphaClass(false, nullptr, 0) == 1u);     // stock: coverage policy
+}
+
+TEST_CASE("content cook contract: a cooked KTX2 detail chain is used as stored") {
+    // 2x2 RGBA8 KTX2 with two levels; level 1 deliberately differs from the box filter of level 0.
+    const std::vector<uint8_t> l0 = {10,20,30,255, 10,20,30,255, 10,20,30,255, 10,20,30,255};
+    const std::vector<uint8_t> l1 = {200,100,50,255};
+    std::vector<uint8_t> f = {0xAB,0x4B,0x54,0x58,0x20,0x32,0x30,0xBB,0x0D,0x0A,0x1A,0x0A};
+    auto u32 = [&](uint32_t v) { for (int i = 0; i < 4; ++i) f.push_back(uint8_t(v >> (8*i))); };
+    auto u64 = [&](uint64_t v) { for (int i = 0; i < 8; ++i) f.push_back(uint8_t(v >> (8*i))); };
+    for (uint32_t v : {37u, 1u, 2u, 2u, 0u, 0u, 1u, 2u, 0u}) u32(v);
+    for (int i = 0; i < 4; ++i) u32(0);
+    u64(0); u64(0);
+    const uint64_t data = 80 + 2 * 24;
+    u64(data + 4); u64(16); u64(16);       // level 0 stored after level 1 (smallest first)
+    u64(data); u64(4); u64(4);
+    f.insert(f.end(), l1.begin(), l1.end());
+    f.insert(f.end(), l0.begin(), l0.end());
+    ModelOverrideRecord owner;
+    owner.manifestDir = std::filesystem::temp_directory_path().generic_string();
+    const auto file = std::filesystem::path(owner.manifestDir) / "mc2-content-doctest-orm.ktx2";
+    { std::ofstream out(file, std::ios::binary); out.write(reinterpret_cast<const char*>(f.data()), f.size()); }
+    mc2prop::MaterialSources sources;
+    ModelOverrideMaterial input;
+    input.ormPath = file.filename().generic_string();
+    const bool loaded = mc2prop::addMaterial(sources, owner, input);
+    std::filesystem::remove(file);
+    REQUIRE(loaded);
+    REQUIRE(sources.orm.levels.size() == 2);
+    CHECK(sources.orm.levels[0] == l0);
+    CHECK(sources.orm.levels[1] == l1);
+}

@@ -1,3 +1,6 @@
+// Static-prop material INPUTS: the authored per-slot row + normal/ORM arrays -> SurfaceMaterial.
+// No lighting here: composition (ambient, hemisphere, SH, sun, specular) lives in
+// prop_lighting_compat_vk.glsl, owned by the lighting lane.
 #include "../../include/surface_material.hglsl"
 #include "../../include/material_gpu.hglsl"
 struct PropMaterialGpu {
@@ -5,7 +8,7 @@ struct PropMaterialGpu {
     vec2 uvScale;
     float normalStrength;
     float aoStrength;
-    uvec4 metadata;
+    uvec4 metadata;          // x = SURF_CLASS_*, y = SURF_ALPHA_*
 };
 layout(set = 0, binding = 10) uniform sampler2DArray uPropNormal;
 layout(set = 0, binding = 11) uniform sampler2DArray uPropOrm;
@@ -13,13 +16,8 @@ layout(set = 0, binding = 12, std430) readonly buffer PropMaterials {
     PropMaterialGpu materials[];
 } uPropMaterials;
 
-vec3 propDecodeColor(vec3 c) {
-    return mix(c / 12.92, pow((c + 0.055) / 1.055, vec3(2.4)), greaterThan(c, vec3(0.04045)));
-}
-vec3 propEncodeColor(vec3 c) {
-    c = max(c, vec3(0));
-    return mix(c * 12.92, 1.055 * pow(c, vec3(1.0/2.4)) - 0.055, greaterThan(c, vec3(0.0031308)));
-}
+vec3 propDecodeColor(vec3 c) { return surfaceDecodeSrgb(c); }
+vec3 propEncodeColor(vec3 c) { return surfaceEncodeSrgb(c); }
 
 // Derivatives use continuous detail UVs (before repeat), world positions and a
 // render-space normal. Solving both axes preserves mirrored UV handedness.
@@ -52,6 +50,7 @@ SurfaceMaterial propSurface(int id, vec3 albedo) {
         vec3 sampleN = texture(uPropNormal, vec3(uv, float(row.material.normalTex))).rgb;
         s.normal = propDetailNormal(s.normal, uv, sampleN, row.normalStrength);
     }
+    // No ORM map: the class scalars (row factors) with neutral AO and full coverage.
     vec3 orm = vec3(1);
     if (row.material.metallicRoughnessTex != 0xffffffffu)
         orm = texture(uPropOrm, vec3(uv, float(row.material.metallicRoughnessTex))).rgb;
@@ -59,6 +58,7 @@ SurfaceMaterial propSurface(int id, vec3 albedo) {
     s.roughness = clamp(orm.g * row.material.roughnessFactor, 0.3, 1.0);
     s.metallic = clamp(orm.b * row.material.metallicFactor, 0.0, 1.0);
     s.emission = propDecodeColor(vMaterialSeed);
+    s.alphaMode = row.metadata.y;
     s.materialClass = row.metadata.x;
     return s;
 }
@@ -69,47 +69,4 @@ float propMaterialCoverage(int id) {
     PropMaterialGpu row = uPropMaterials.materials[id];
     if (row.material.metallicRoughnessTex == 0xffffffffu) return 1.0;
     return texture(uPropOrm, vec3(vUv * row.uvScale, float(row.material.metallicRoughnessTex))).a;
-}
-
-// Compatibility lighting adapter for authored props only. Material evaluation
-// above stays independent of this pre-L6 lighting/output convention.
-vec3 propAuthoredColor(SurfaceMaterial s, bool alphaTest) {
-    if ((vMaterialFlags & 2u) != 0u)
-        return propEncodeColor(s.baseColor * s.emission) + vHighlight.rgb * vHighlight.a;
-    vec3 nStuff = renderToMc2(s.normal);
-    vec3 L = normalize(uFrame.terrainSunMC2.xyz);
-    float raw = dot(s.normal, L);
-    bool twoSided = (vMaterialFlags & 4u) != 0u;
-    float ndl = twoSided ? abs(raw) : max(raw, 0.0);
-    float wrap = twoSided ? 1.0 : mix(0.55, 1.0, 0.5 + 0.5 * raw);
-    vec3 ambient = vMaterialAmbient;
-    if (uFrame.lightingReady == 0)
-        ambient = mix(vec3(0.14,0.13,0.11), vec3(0.00,0.02,0.08), clamp(0.5+0.5*nStuff.y,0.0,1.0));
-    vec3 hemi = mix(vec3(0.10,0.09,0.07), vec3(0.20,0.22,0.28), 0.5+0.5*nStuff.y) * uFrame.ambientV1Strength;
-    vec3 sh[9];
-    for (int k=0; k<9; ++k) sh[k] = uFrame.iblSh[k].xyz;
-    vec3 ibl = uFrame.iblShStrength > 0.0 ? evalShL2(normalize(nStuff), sh)*uFrame.iblShStrength : vec3(0);
-    // AO affects ambient fill only; emission, direct sun and local pools survive.
-    vec3 lit = vMaterialSeed * wrap + (ambient*wrap + hemi + ibl)*s.ao + vMaterialSun*ndl;
-    lit = clamp(clamp(lit,0.0,1.0) + vHighlight.rgb,0.0,1.0);
-    if (alphaTest) lit = max(lit,vec3(0.5));
-    vec3 color = s.baseColor * propDecodeColor(lit) * (1.0 - 0.65*s.metallic);
-    vec3 V = uFrame.cameraWorldPos.xyz - vWorldPos;
-    if (dot(V,V) > 1e-8 && dot(vSunColor,vSunColor) > 0.0) {
-        V = normalize(V);
-        vec3 H = L + V;
-        if (dot(H,H) > 1e-8) {
-            H = normalize(H);
-            float nh = max(dot(s.normal,H),0.0), nv = max(dot(s.normal,V),0.0);
-            float a2 = pow(s.roughness,4.0);
-            float d = nh*nh*(a2-1.0)+1.0;
-            float D = a2 / max(3.14159265*d*d,1e-5);
-            float k = (s.roughness+1.0)*(s.roughness+1.0)/8.0;
-            float G = nv/(nv*(1.0-k)+k) * ndl/(ndl*(1.0-k)+k);
-            vec3 F0 = mix(vec3(0.04),s.baseColor,s.metallic);
-            vec3 F = F0 + (1.0-F0)*pow(1.0-clamp(dot(V,H),0.0,1.0),5.0);
-            color += propDecodeColor(vSunColor)*D*G*F*ndl/max(4.0*nv*ndl,1e-4);
-        }
-    }
-    return propEncodeColor(color) + vHighlight.rgb*vHighlight.a + propPoolLight(propEncodeColor(s.baseColor));
 }

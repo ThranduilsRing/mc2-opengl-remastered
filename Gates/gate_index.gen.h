@@ -10,7 +10,7 @@
 
 namespace mc2::gate::detail {
 
-inline constexpr std::size_t kGateCount = 929;
+inline constexpr std::size_t kGateCount = 926;
 
 inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_3DVIEW_DIAG", Kind::Bool, Rule::Presence, {}},
@@ -92,9 +92,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_BRIDGE_MOVER_STATE", Kind::Bool, Rule::Presence, {}},
     {"MC2_BUCKET_CENSUS", Kind::Bool, Rule::Presence, {}},
     {"MC2_BUCKET_HEADER_TRACE", Kind::Bool, Rule::Presence, {}},
-    {"MC2_BUILDING_FOOTPRINT_SHADOW", Kind::Bool, Rule::Lead0Kill, {}},
-    {"MC2_BUILDING_PBR", Kind::Bool, Rule::Exact1, {}},
-    {"MC2_BUILDING_PBR_TRACE", Kind::Bool, Rule::Presence, {}},
     {"MC2_BURNIN_NO_JPG", Kind::Bool, Rule::Presence, {}},
     {"MC2_CALLED_SHOT_FIX", Kind::Bool, Rule::Lead0P, {}},
     {"MC2_CAMERA_ASPECT_NATIVE", Kind::Bool, Rule::Lead0Kill, {}},
