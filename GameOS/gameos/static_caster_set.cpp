@@ -7,6 +7,7 @@
 #include "shadow_bake_math.h"
 
 #include <algorithm>
+#include <optional>
 #include <cmath>
 #include <cstring>
 
@@ -77,11 +78,11 @@ void StaticCasterSet::clear() {
 
 namespace {
 template <class Map>
-const typename Map::mapped_type* findOwner(const Map& m, const void* owner) {
+std::optional<typename Map::mapped_type> findOwner(const Map& m, const void* owner) {
     const auto it = m.find(owner);
-    if (it == m.end()) return nullptr;
+    if (it == m.end()) return {};
     const auto& [key, value] = *it;
-    return &value;
+    return value;
 }
 // Within a texel of the mask: a re-registration that moves a caster by less than this changes no shadow worth a rebake (the matrix is rebuilt from
 // the object's float state each time and wobbles in the last bits).
@@ -100,7 +101,7 @@ bool sameLeaves(const std::vector<GpuStaticPropInstance>& a, const std::vector<G
 
 void StaticCasterSet::ownerInvalidated(const void* owner, int32_t oldRecipe) {
     if (building_ || version_ == 0 || !owner) return;
-    const uint32_t* idx = findOwner(byOwner_, owner);
+    auto idx = findOwner(byOwner_, owner);
     if (!idx) return;
     StaticCasterEntry& e = entries_[*idx];
     if (e.recipeIndex < 0 || e.recipeIndex != oldRecipe) return;
@@ -114,7 +115,7 @@ void StaticCasterSet::ownerInvalidated(const void* owner, int32_t oldRecipe) {
 
 void StaticCasterSet::ownerRegistered(const void* owner, int32_t newRecipe) {
     if (building_ || version_ == 0 || !owner || newRecipe < 0) return;
-    const uint32_t* idx = findOwner(byOwner_, owner);
+    auto idx = findOwner(byOwner_, owner);
     if (!idx) return;
     StaticCasterEntry& e = entries_[*idx];
     if (e.recipeIndex == newRecipe) return;
