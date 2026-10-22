@@ -10,7 +10,7 @@ namespace mc2::vegetation {
 inline constexpr float kHardFalloffLo   = 0.15f;  // coverage where cover starts thinning
 inline constexpr float kHardFalloffHi   = 0.60f;  // coverage where normal cover is gone
 inline constexpr float kWeedMinCoverage = 0.50f;  // weeds only live on real hard surface
-inline constexpr float kWeedDensity     = 0.08f;  // fraction of full density kept as weeds
+inline constexpr float kWeedDensity     = 0.16f;  // fraction of full density kept as weeds
 inline constexpr unsigned kWeedFlagBit  = 0x40u;  // atlasFrame bit 6 (bits 0-5 are frame + card role)
 
 [[nodiscard]] inline float smoothstep01(float lo, float hi, float x) noexcept {
@@ -34,7 +34,7 @@ inline constexpr unsigned kWeedFlagBit  = 0x40u;  // atlasFrame bit 6 (bits 0-5 
 // Probability that an instance that lost the cover test becomes a crack weed.
 [[nodiscard]] inline float weedKeepProbability(float cov, float crack) noexcept {
     if (cov < kWeedMinCoverage) return 0.0f;
-    return kWeedDensity * (0.3f + 0.7f * std::clamp(crack, 0.0f, 1.0f));
+    return kWeedDensity * (0.15f + 0.85f * std::clamp(crack, 0.0f, 1.0f));
 }
 
 }  // namespace mc2::vegetation
