@@ -8,6 +8,7 @@
 #include "Gates/render_options.h"
 #include "bldng.h"
 #include "../mclib/camera.h"
+#include "../RenderCore/axis_convert.h"
 #include "gameobj.h"
 #include "objmgr.h"
 #include "../mclib/cmponent.h"
@@ -119,7 +120,8 @@ void fixtureVolley() {
     }
     if (scenarioTime < s_next) return;
     s_next = scenarioTime + 1.5f;
-    const glm::vec3 camO = eye->getCameraOrigin();
+    // The camera origin is held in the render axis order (y = elevation); bring it back to MC2 space.
+    const glm::vec3 camO = renderToMc2(eye->getCameraOrigin());
     GameObject* best[2] = {nullptr, nullptr};   // [0] sheet metal, [1] concrete
     float bestD[2] = {1e30f, 1e30f};
     for (long i = 0; i < ObjectManager->getNumBuildings(); ++i) {
