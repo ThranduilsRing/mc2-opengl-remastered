@@ -1,7 +1,55 @@
 # Stock inventory and original blend drafts, 2026-10-22
 
 Art worktree only; no engine changes, game launches, install writes or pushes.
-Outputs remain on G:. Continue the art direction in `scifi-kit-art-review.md`.
+Current round: `E:/mc2-ref/scifi-kit/`. See `scifi-kit-content-handoff.md` for the
+content IR, material and light-socket contract. The G: sections below are the
+historical six-draft round at `975cc2c41`, not the current delivery.
+
+## Revised round: mc2-r5
+
+* Inventory/mapping: `E:/mc2-ref/scifi-kit/mapping/`; 269 declarations, 44 freshly
+  scanned stock missions, 306 BT2018 families, exact part-donor notes per row.
+* Eight selections / seven distinct geometry sets: the six original selections,
+  three-barrel prop and rusty quonset palette. Clean/rust geometry, tangents and
+  UVs match in all 15 condition/LOD pairs.
+* Five states each: pristine, worn, abandoned, intermediate partial, destroyed.
+  Four building selections fully collapse; fence topples; wall retains the
+  stock short jagged remnant. Two crates have two draped canvas covers.
+* `art/mc2-r5/pbr/`: 120 GLBs, three LODs each, authored 2048 basecolour,
+  OpenGL tangent normal and ORM atlases baked from the high-detail kit source.
+* `content/mc2-r5/`: eight validated IR files, cooker recipe, source-validation
+  hashes and `light-sockets.json`. There are 42 light positions across the
+  pristine selections, repeated for worn; abandoned/partial/destroyed have none.
+* `mapping/counts/<id>/`: stock evidence and signed-off four-side render counts
+  for all eight drafted selections. Other inventory entries explicitly retain
+  unknown feature counts until their own pre-authoring audit.
+* `mapping/drafts-contact-sheet.png` and `mapping/drafts/*-review.png`: stock,
+  references, baked mesh, common-scale RTS proxy, partial and final destruction.
+* `mapping/proof.json`, `mapping/drafts/REVIEW.md`, `studies/final-*.png`: export
+  validation and visual review. The existing 64 art tests pass.
+
+The repair facility has one centred entry on each stock end face, clear of the
+four roof ribs. Its four elevated side service closures remain in the source
+positions. The lookout's stock texture repeats a door on all four base faces
+and three cabin windows on each face; the delivered model matches those counts.
+Stock models/textures are read only as count/bounds evidence, never used as
+production mesh, UV, texture or tracing data.
+
+```powershell
+py -3 tools/scifi_kit/art/inventory.py
+py -3 tools/scifi_kit/art/run.py build --pass mc2-r5 --samples 32
+py -3 tools/scifi_kit/art/content.py --source E:/mc2-ref/scifi-kit/art/mc2-r5 --out E:/mc2-ref/scifi-kit/content/mc2-r5
+py -3 tools/scifi_kit/art/review_drafts.py --pass mc2-r5
+```
+
+Remaining weaknesses: dense LOD0 meshes (the quonset is about 85k triangles),
+procedural abandoned wear and thin rubble sheets need art polish. RTS fence
+contrast remains faint. The source/IR delivery is validated; engine appearance,
+runtime LOD transitions and R3 socket consumption are not verified here. The
+parked cooker drops empty-node light metadata; the authoritative source GLBs and
+sidecar must be consumed by its owning lane. No cooked install is claimed.
+
+## Historical six-draft round
 
 ## Inventory and mapping
 

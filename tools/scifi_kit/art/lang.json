@@ -33,6 +33,7 @@
     "char":   {"metallic": 0.0, "roughness": 0.98, "base": "torn edges and burned interior, destroyed only"}
   },
   "palettes": {
+    "hazard_yellow": {"source":"stock crateswithtarp: olive canvas over warm timber cases; corr slot is canvas here","main":[0.62,0.38,0.015],"second":[0.37,0.22,0.015],"trim":[0.03,0.03,0.025],"ferro":[0.24,0.23,0.2],"roof":[0.06,0.12,0.045],"accent":[0.62,0.38,0.015],"metal":[0.17,0.18,0.16],"corr":[0.62,0.38,0.015],"glass":[0.03,0.05,0.05]},
     "galvanised": {"source": "stock razorwirefence: pale galvanised strands, dark hardware", "main": [0.33,0.35,0.36], "second": [0.22,0.24,0.24], "trim": [0.10,0.12,0.12], "ferro": [0.25,0.25,0.23], "roof": [0.20,0.21,0.21], "accent": [0.30,0.28,0.20], "metal": [0.46,0.49,0.50], "corr": [0.40,0.42,0.42], "glass": [0.03,0.05,0.05]},
     "wall_cast": {"source": "stock s_lightwall: cool grey cast wall, dark terminal cap", "main": [0.33,0.34,0.33], "second": [0.17,0.18,0.17], "trim": [0.12,0.13,0.13], "ferro": [0.28,0.29,0.29], "roof": [0.20,0.21,0.21], "accent": [0.32,0.30,0.25], "metal": [0.28,0.29,0.29], "corr": [0.28,0.29,0.29], "glass": [0.03,0.05,0.05]},
     "repair_sand": {"source": "stock rpbuilding: pale structural ribs, brown-silver industrial cladding", "main": [0.43,0.40,0.32], "second": [0.17,0.15,0.12], "trim": [0.12,0.12,0.11], "ferro": [0.38,0.36,0.30], "roof": [0.26,0.24,0.21], "accent": [0.47,0.23,0.07], "metal": [0.28,0.27,0.24], "corr": [0.29,0.27,0.22], "glass": [0.03,0.05,0.05]},
@@ -47,6 +48,8 @@
     "gunmetal": {"source": "Godfrey C6 / F-posts: dark blue-grey gunmetal with orange band", "main": [0.075,0.085,0.095], "second": [0.12,0.13,0.14], "trim": [0.04,0.045,0.05], "ferro": [0.30,0.29,0.26], "roof": [0.10,0.11,0.12], "accent": [0.70,0.30,0.04], "metal": [0.25,0.25,0.25], "corr": [0.10,0.11,0.12], "glass": [0.03,0.06,0.08]}
   },
   "conditions": {
+    "rubble": {"edge_wear":0.55,"dirt":0.18,"grunge":0.12,"streaks":0.18,"rust":0.15,"cracks":0.25,"glass_cracks":1.0,"fade":0.16,"peel":0.15,"moss":0,"missing_panels":0.0,"broken_glass":1.0,"litter":0},
+    "partial": {"edge_wear":0.55,"dirt":0.55,"grunge":0.5,"streaks":0.6,"rust":0.35,"cracks":0.45,"glass_cracks":1.0,"fade":0.15,"peel":0.15,"moss":0.0,"missing_panels":0.0,"broken_glass":1.0,"litter":0},
     "about": "Parameters follow Godfrey's Substance building graph (Edge_Wear, Dirt Level, Grunge, FerrocreteRust, CrackIntensity, Glass_Cracks, Paint_On) plus fade, peel, streaks and moss for the abandoned look. Destroyed = worn weathering + local physical damage (geometry) + soot.",
     "pristine":  {"edge_wear": 0.06, "dirt": 0.08, "grunge": 0.08, "streaks": 0.05, "rust": 0.00, "cracks": 0.00, "glass_cracks": 0.0, "fade": 0.00, "peel": 0.00, "moss": 0.0, "missing_panels": 0.0, "broken_glass": 0.0, "litter": 0},
     "worn":      {"edge_wear": 0.65, "dirt": 0.62, "grunge": 0.55, "streaks": 0.75, "rust": 0.35, "cracks": 0.25, "glass_cracks": 0.2, "fade": 0.12, "peel": 0.08, "moss": 0.0, "missing_panels": 0.0, "broken_glass": 0.0, "litter": 0},

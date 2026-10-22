@@ -20,9 +20,9 @@ ROOT = HERE.parents[2]
 sys.path.insert(0, str(ROOT / 'tools/blender_pipeline'))
 from blender_runner import find_blender_exe  # noqa: E402
 
-OUT = Path('G:/mc2-assets/out/scifi-kit/art')
+OUT = Path('E:/mc2-ref/scifi-kit/art')
 THUMBS = Path('E:/mc2-archive-2026-10/asset-modernize/docs/assets/sheets/thumbs')
-CONDITIONS = ['pristine', 'worn', 'abandoned', 'destroyed']
+CONDITIONS = ['pristine', 'worn', 'abandoned', 'partial', 'destroyed']
 
 
 def blender(job, log):

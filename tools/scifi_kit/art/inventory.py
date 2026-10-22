@@ -25,7 +25,7 @@ from tools.mc2x_import.fst import decompress_entry  # noqa: E402
 
 CATALOG = Path('E:/mc2-archive-2026-10/asset-modernize/docs/assets/catalog.json')
 INSTALL = Path('A:/Games/mc2-opengl/mc2-win64-v0.4')
-OUT = Path('G:/mc2-assets/out/scifi-kit/mapping')
+OUT = Path('E:/mc2-ref/scifi-kit/mapping')
 REF = Path('G:/mc2-assets/ref/buildings')
 STYLE = Path('G:/mc2-assets/ref/style/MW5 and MWO')
 THUMBS = CATALOG.parent / 'sheets/thumbs'
@@ -297,16 +297,53 @@ def mapping(obj):
         uncertainty='high'
     elif re.match(r'[dls]_',name) or group in ('bridge','gantry','agriculture glazing','perimeter wire'):
         uncertainty='medium'
+    donors={
+        'perimeter wire':('post boot plates, wire clamps and tension end fittings','wire attachment brackets and small bolt seats'),
+        'light wall':('cap seam and casting joint bevels','pier-to-panel socket seam and small access recess'),
+        'medium wall':('panel edge rebates and cap fasteners','wall-to-pier seam covers and service hatch frame'),
+        'heavy wall':('footing edge chamfers and buttress joint plates','panel socket trim and recessed fasteners'),
+        'gate and checkpoint':('roller guide tracks and hinge cover joints','door jamb layering and threshold wear'),
+        'repair facility':('roll-up slat edges, guide channel and recessed latch detail','bay jamb bevels and protected electrical service box'),
+        'quonset':('sheet lap seams, roof fastening and window gaskets','door hood joint, thin end-cap trim and grounded broken roof panels'),
+        'tarp storage':('case corner fasteners and timber framing joint detail','handling plate recess and canvas tie attachment; retain timber and canvas'),
+        'small storage':('rim seams, closure fittings and handling recesses','strap attachment fasteners and welded seam wear; retain original contents/count'),
+        'lookout tower':('cabin glazing gaskets and door frame rebates','shaft panel seam cover and coping edge bevel'),
+        'defence turret':('turntable bearing seam, barrel collar and recoil sleeve detail','weapon mount bolts, casing access seam and base service hatch'),
+        'hangar':('door guide channels, jamb fasteners and arch joint plates','sheet edge folds and roof drainage connections'),
+        'military low-rise':('door reveal bevels, panel gaskets and coping joints','small wall vent louvers and plinth expansion seams'),
+        'tank and silo':('weld bead courses, nozzle flanges and rail foot fittings','access hatch hinge/lock and ladder rung connection detail'),
+        'agriculture glazing':('glazing gaskets and frame-to-base bolts','structural node caps and service hatch edging; retain stock glazing grid'),
+        'industrial plant':('corrugated sheet overlaps, vent grille depth and pipe brackets','roof service box seams and footplate fasteners'),
+        'industrial services':('pipe flange bolts and access cover rebates','electrical box latches and vent louvers'),
+        'urban civic':('window reveal depth, sill drip edges and parapet seams','facade panel fasteners and roof hatch hinges'),
+        'civilian habitation':('small door frame bevels and rain drip trims','window gaskets and service cover latches'),
+        'civilian shed':('sheet folded edges and overlapped joint fastening','door jamb recess and hinge plates'),
+        'communications':('dish yoke joint bolts and cable clamp detail','mast footplate layering and electronics hatch latches'),
+        'bridge':('deck expansion joints and bearing shoes','rail-to-deck bolts and service plate seams'),
+        'gantry':('bracing gusset plates and plated foot joints','ladder attachments and handrail end connections'),
+        'pipework':('flange bolts, elbow weld seams and saddle clamps','valve stem fittings and support foot plates'),
+        'lighting':('lamp mounting brackets and junction cover seams','post footplate bolts and cable entry grommets'),
+        'timber fence':('plank end wear and fastening placement only; retain wood','small bracket bolts only; retain plank count and wood grain'),
+        'canvas shelter':('canvas hem/tie construction only; retain cloth','pole fastening and ground anchor fittings only'),
+        'wreckage':('fracture edge roughness and material-specific weathering only','ground contact/scorch distribution only; retain wood/canvas where present'),
+    }
+    mwbits,btbits=donors.get(group,('small bracket joints, fastener recesses and material-specific edge wear only',
+                                  'access-cover hinge/latch detail and seam treatment only'))
+    mw_take=f'{mw}: {mwbits}'
+    bt_take=f'{bt}: {btbits}'
+    take=mw_take+'; '+bt_take+'; Godfrey: material zoning and mask-authored wear applied to the original stock wood/canvas/paint/metal/concrete; Halim: seam-led local breakage'
+    if obj['category']=='building':take+='; BT2018 generic_rubble_piles: low debris heap, broken frame and slab resting arrangement only, in this stock asset\'s materials/colours'
     return dict(group=group,mw5_family=mw,bt2018_family=bt,mw5_sheet=mw_path.as_posix(),
                 bt2018_sheet=bt_path.as_posix(),reference_take=take,
-                mw5_take='Construction detail: '+take.split(';')[0],
-                bt2018_take='Mass layering, base/body junctions and protected attachments; preserve '+name+' outline',
+                mw5_take=mw_take,bt2018_take=bt_take,
                 owner_type_folder=(REF/owner_folder).as_posix(),
-                silhouette_source='MC2 stock '+name+'; references influence parts, not lot outline',
+                silhouette_source='MC2 stock '+name+' owns silhouette, proportions, palette, counts and placement; donor parts only',
                 material_reference=(STYLE/BT_MATERIAL).as_posix(),
                 detail_reference=(STYLE/BT_PROPS).as_posix(),
                 damage_reference=(STYLE/HALIM).as_posix(),
-                damage_take='Halim: local seam-led buckling, exposed support, grounded matching debris and rising soot',
+                rubble_reference=(REF/'bt2018/generic_rubble_piles/reference-sheet.png').as_posix() if obj['category']=='building' else '',
+                damage_take=('Halim: local seam-led buckling for partial; BT2018 generic_rubble_piles: low slab heap, exposed broken frame and ground-resting fragments for full collapse; own stock materials/palette.'
+                             if obj['category']=='building' else 'Stock destroyed-model behaviour owns the outline; Halim donates seam tears and material-specific scorch only. Fence topples; wall stays a shortened remnant.'),
                 identity=identity,confidence=uncertainty)
 
 
@@ -364,6 +401,8 @@ def census(data,usage,out):
                             models=[{k:v for k,v in m.items() if k in ('role','lod','tgl','bounds','sha256','error')} for m in obj['models']]))
     rows.sort(key=lambda r:(-r['visibility_priority'],-r['stock_instances'],-r['mod_instances'],r['id']))
     for i,row in enumerate(rows,1):row['rank']=i
+    import counts
+    counts.write_all(rows,out)
     csv_write(out/'mapping.csv',rows);csv_write(out/'inventory.csv',rows)
     all_usage=usage+[dict(id=o['id'],**m) for o in data['objects'] for m in o['missions'] if m['corpus']!='stock']
     selected={r['id'] for r in rows}
@@ -381,23 +420,24 @@ def docs(rows,out):
     questions=[
         ('Perimeter pieces dominate the usage ranking. Continue them before rarer hero buildings?', 'Yes; six drafts sample the leading perimeter assets and the most repeated repair/storage types.'),
         ('Should Davion, Steiner and Liao civic walls/buildings share one material language?', 'Share construction/detail scale, keep each stock faction silhouette, roof vocabulary and colour identity.'),
-        ('Clean and rusty quonsets share the same barrel. Separate meshes or palette/condition variants?', 'One authored arch system with separate clean-silver and rust-brown stock palettes; keep quonset2 roof hardware.'),
+        ('Clean and rusty quonsets share the same barrel. Separate meshes or palette/condition variants?', 'OWNER ANSWER: one mesh, two palettes/material sets. quonset2 remains its own stock hardware variant.'),
         ('Parked ground vehicles and aircraft have no close building-reference analogue. Include them in this kit?', 'Inventory them, preserve stock silhouette; use architectural references only for hardware/materials. Defer full vehicle remakes.'),
         ('Flags and mission markers are mission-visible but are not normal architecture. Remodel them?', 'Keep their own stock identity; flag cloth may gain brackets, mission markers stay separate from world architecture.'),
         ('Timber fences, canvas tents and wreckage have weak structural matches in the supplied references. Convert them to sci-fi steel?', 'No; keep timber/canvas/wreck identity and borrow only fasteners, supports and weathering logic.'),
-        ('Dome/greenhouse reference families have different framing. Use their panel pattern?', 'Preserve MC2 dome and greenhouse outline; author a new glazing grid and service base.'),
+        ('Dome/greenhouse reference families have different framing. Use their panel pattern?', 'Preserve MC2 outline AND glazing counts/placements; references donate gasket, fastening and service-base detail only.'),
         ('Keep faction insignia and weapon glow colours?', 'Preserve MC2 identity; do not borrow logos, decals, emissive graphics or textures from reference games.'),
-        ('How much destruction should a still-standing stock tower show?', 'Local breach plus lost cabin panels and grounded rubble; defer total-collapse alternatives until an owner comparison.'),
+        ('How much destruction should a still-standing stock tower show?', 'OWNER ANSWER: keep local partial damage as intermediate; every building also gets fully collapsed matching rubble. Fence topples; wall follows stock damaged remnant.'),
         ('The supplied perimeter families are mostly solid walls, while MC2 wire fences are open. Add dense chain-link?', 'Keep each stock fence openness and strand rhythm; borrow only clamp, boot and tension-joint vocabulary.'),
         ('Should missing declared damage models be fabricated for inventory?', 'No; report declarations and decode status exactly. Original destroyed drafts are separate authoring outputs.'),
         ('How should mod-only usages influence the priority?', 'Show all 16 mod-only selections separately; order first by stock projected visibility and then mod instance count.'),
-        ('Are the beauty materials ready for engine import?', 'No; review GLBs retain factor materials. Bake authored PBR/atlas and produce LODs in the content pipeline after design approval.'),
+        ('Are the beauty materials ready for engine import?', 'OWNER ANSWER: bake high-detail authored shaders to pure base colour, tangent +Y normal and ORM atlas; three LODs; explicit SurfaceMaterial classes. No AO multiplied into base colour.'),
     ]
     unresolved=[r['id'] for r in rows if r['group']=='unresolved prop']
     if unresolved:
         questions.append(('No direct reference match for '+', '.join(unresolved)+'. Preferred treatment?',
                           'Retain each stock silhouette/colour; use the mapped generic kit only for material and connection vocabulary; defer individual remakes.'))
-    text=['# Owner mapping questions','','Defaults below are already applied; work did not wait for answers.','']
+    text=['# Owner mapping questions','','All original defaults accepted by owner, with Q3/Q6/Q13 and full-rubble direction applied below. '
+          'Barrels resolved from stock model/crop and confirmed by owner: THREE. No further question blocks this round.','']
     for i,(q,a) in enumerate(questions,1):text += [f'{i}. {q}',f'   Recommended default: {a}','']
     (out/'QUESTIONS.md').write_text('\n'.join(text),encoding='utf8')
     summary=[
@@ -421,27 +461,35 @@ def docs(rows,out):
         '[model-details.json](model-details.json) retains exact bounds, declared states and collision fields. '
         '[mission-usage.csv](mission-usage.csv) lists every mission/count; [mission-scan.json](mission-scan.json) records hashes and comparison with the archive.',
         '',
-        'All mappings are editorial blends. MC2 supplies footprint, silhouette and colour. MW5 and BT2018 supply independently studied part vocabulary; '
+        'KEEP THE MC2 STYLE. MC2 supplies footprint, silhouette, proportions, palette, feature counts and placement. MW5 and BT2018 donate only the exact parts/techniques named per row; '
         'Godfrey supplies construction/material zoning and mask vocabulary; Halim supplies local damage and abandonment. '
         'Reference thumbnails are private study material. No reference mesh, texture, UV, traced image or decal is shipped in draft GLBs. '
         'Colour descriptions are conservative type-based notes, supported by three measured thumbnail swatches per selection; '
         'swatches are lit sRGB preview samples, not recovered material albedos. High/medium uncertainty is explicit in the confidence column.',
         '',
         'Owner per-type folders and _inbox were checked and are empty in this snapshot; each mapping retains its intended owner folder. '
-        'BT2018 full-install families are used where present, alongside the original 37 dump families. The current catalog includes the full-install supplement.',
+        'BT2018 expanded catalog re-read: 306 families, including the full-install supplement. No donor geometry or textures are shipped.',
+        '',
+        'COUNT BEFORE BUILD: each row links counts.json and carries all requested count/placement columns. '
+        'Unknown means not audited, never zero. Eight current draft selections have stock evidence contracts; '
+        'the remaining selections require a visual count audit before modelling. Count fields describe primary visible features; '
+        'fasteners, bevel strips and subdivisions inside one continuous glazing band are secondary detail. '
+        'Per-draft render review is recorded separately and must pass before a draft is called verified.',
         '',
         'Draft batch: razorwirefence (rank 1), s_lightwall (rank 3), rpbuilding (rank 11), quonsetclean (rank 12), '
         'crateswithtarp (rank 14), lookouttower (rank 17). This deliberately samples perimeter, low buildings, storage and a tower '
         'instead of filling all six slots with faction wall variants. '
         '[Draft contact sheet](drafts-contact-sheet.png). [Questions/defaults](QUESTIONS.md).',
         '',
-        '| Rank | Stock ID | Type | Stock count / missions | Footprint XZ x height (WU) | Identity | MW5 / BT2018 | Take / confidence |',
+        '| Rank | Stock ID | Type | Stock count / missions | Footprint XZ x height (WU) | Identity | Exact donor parts and techniques | Counts |',
         '|---:|---|---|---:|---|---|---|---|',
     ]
     for r in rows:
         summary.append(f'| {r["rank"]} | {r["id"]} | {r["category"]} | {r["stock_instances"]} / {r["stock_missions"]} | '
                        f'{r["footprint_x_wu"]:.1f} x {r["footprint_z_wu"]:.1f} x {r["height_y_wu"]:.1f} | '
-                       f'{r["identity"]} | {r["mw5_family"]} / {r["bt2018_family"]} | {r["reference_take"]}; {r["confidence"]} uncertainty |')
+                       f'{r["identity"]} | {r["reference_take"]}; {r["confidence"]} uncertainty | '
+                       f'[{r["counts_status"]}](counts/{r["id"]}/counts.json): '+
+                       '; '.join(key.replace('count_','')+'='+str(value) for key,value in r.items() if key.startswith('count_') and key!='count_notes')+' |')
     pages=math.ceil(len(rows)/6)
     summary += ['','Mapping sheets: '+', '.join(f'[page {i}](mapping-{i:02}.png)' for i in range(1,pages+1)),
                 '',f'{len(questions)} questions; recommended defaults applied.']
@@ -485,7 +533,7 @@ def sheets(rows,out):
     for start in range(0,len(rows),6):
         im=Image.new('RGB',(1800,1800),(24,28,33));d=ImageDraw.Draw(im)
         d.text((18,8),f'MC2 / ORIGINAL BLEND MAPPING / {start+1}-{min(start+6,len(rows))} / reference-only thumbnails',font=font(23),fill='white')
-        for j,label in enumerate(['STOCK / footprint & identity','MW5 / connections & parts','BT2018 / mass vocabulary','GODFREY / material process','HALIM / local destruction']):
+        for j,label in enumerate(['STOCK / footprint & identity','MW5 / connections & parts','BT2018 / parts & damage','GODFREY / material process','HALIM / local destruction']):
             d.text((j*360+12,47),label,font=font(16),fill='#c5cbd0')
         for i,r in enumerate(rows[start:start+6]):
             y=82+i*282

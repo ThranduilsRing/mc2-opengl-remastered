@@ -17,6 +17,7 @@ from pathlib import Path
 LANG = json.loads((Path(__file__).resolve().parent / 'lang.json').read_text(encoding='utf-8'))
 P = LANG['profiles']
 G = LANG['grid']
+GAME_MESH = False
 
 
 # ---------------------------------------------------------------- math utils
@@ -162,7 +163,10 @@ class Kit:
     def add(self, verts, faces, mat, role='detail', **flags):
         piece = dict(v=[self.world(p) for p in verts], f=[tuple(f) for f in faces], m=mat, role=role,
                      group=flags.pop('group', self.group), **flags)
-        self.pieces.append(piece)
+        # Microdetail is projected into the game atlas, not retained as hundreds
+        # of disconnected beveled cubes. Silhouette/frame/glazing stay geometry.
+        if not (GAME_MESH and role=='detail' and not mat.startswith('lamp')):
+            self.pieces.append(piece)
         return piece
 
     # shapes -------------------------------------------------------------
@@ -223,6 +227,7 @@ class Kit:
 
     def cyl(self, c, r, h, mat, role='detail', sides=32, top=0.0, bot=0.0, **flags):
         x, y, z = c
+        if GAME_MESH:sides=min(sides,20)
         return self.prism(reg_poly(r, sides, cx=x, cy=y), z - h / 2, z + h / 2, mat, role, top, bot, **flags)
 
     def extrude(self, profile, w0, w1, mat, role='detail', axis='x', **flags):
@@ -230,6 +235,7 @@ class Kit:
         return self.prism(profile, w0, w1, mat, role, axis=axis, **flags)
 
     def beam(self, a, b, w, mat='metal', role='frame', h=None, seg=1, **flags):
+        if GAME_MESH:seg=1
         h = h or w
         dx, dy, dz = b[0] - a[0], b[1] - a[1], b[2] - a[2]
         length = math.sqrt(dx * dx + dy * dy + dz * dz)
@@ -258,6 +264,8 @@ class Kit:
 
     def tube(self, pts, r, mat='metal', role='frame', sides=12, **flags):
         """Polyline tube (pipes, rails, cables) with mitred rings."""
+        if GAME_MESH and len(pts)>8:pts=pts[::4]+([pts[-1]] if pts[::4][-1]!=pts[-1] else [])
+        if GAME_MESH:sides=min(sides,8)
         verts, faces = [], []
         n = len(pts)
         for k, p in enumerate(pts):
@@ -336,6 +344,8 @@ class Kit:
 
     def corr_sheet(self, x0, x1, z0, z1, yf, mat, removable=True, pitch=.152, amp=.028, vertical=True):
         """Real corrugation geometry: a waved sheet with thickness (vertical ribs)."""
+        if GAME_MESH:
+            return self.slab(x0,x1,z0,z1,yf-amp*.5,yf+.012,mat,'skin',removable=removable)
         n = max(4, int((x1 - x0) / pitch * 4))
         rowsz = max(2, int((z1 - z0) / 0.75) + 1)
         verts, faces = [], []
@@ -566,9 +576,9 @@ def p_quonset_shell(k, length=9.0, radius=5.0, waves=None, end_walls=False, wind
         with k.at((s * radius, 0, 0), yaw=-math.pi / 2 if s < 0 else math.pi / 2):
             k.plinth(-L / 2, L / 2, -.10, depth=.5, h=curb)
     zc = curb
-    nth = 200
-    amp = .045
-    rows = 7
+    nth = 48 if GAME_MESH else 200
+    amp = 0 if GAME_MESH else .045
+    rows = 2 if GAME_MESH else 7
     for b in range(bays):
         y0, y1 = -L / 2 + b * G['bay_m'] + .02, -L / 2 + (b + 1) * G['bay_m'] - .02
         verts, faces = [], []

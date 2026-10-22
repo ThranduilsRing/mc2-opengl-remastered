@@ -249,7 +249,7 @@ def material(key, palette_name, cond_name):
         metallic = b.mixf(rust, metallic, .1)
         rough_s = b.mixf(rust, rough, .85)
     elif cls == 'ferro':
-        c0 = pal['ferro']
+        c0 = pal.get(slot, pal['ferro'])
         img = b.node('ShaderNodeTexImage', projection='BOX', projection_blend=.25)
         img.image = image(TEX / 'concrete_wall_003/concrete_wall_003_diff_2k.jpg')
         b.feed(img.inputs['Vector'], b.vscale(P, (.35, .35, .35)))
@@ -378,12 +378,13 @@ def mesh_from_pieces(name, pieces, palette, cond_name, collection, role):
 def build_objects(k, cond_name, collection, near=None):
     """One object per structural role. With `near` (hits), pieces close to a hit
     become their own objects so booleans always act on closed, non-overlapping meshes."""
+    if k.meta.get('collapse')=='full-rubble':cond_name='rubble'
     objs = {}
     for role in ROLES:
         pieces = [p for p in k.pieces if p['role'] == role]
         if not pieces:
             continue
-        if not near:
+        if near is None:
             objs[role] = mesh_from_pieces(f'{k.name}_{role}', pieces, k.palette, cond_name, collection, role)
             continue
         close, far = [], []
@@ -826,7 +827,7 @@ def primitive_job(job):
             scene = bpy.context.scene
             col = scene.collection
             k = geo.build(name, cond, job.get('seed', 17))
-            if cond == 'destroyed' and not k.meta.get('authored_damage'):
+            if cond in ('partial','destroyed') and not k.meta.get('authored_damage'):
                 groups = build_objects(k, cond, col, near=k.hits)
                 for g in groups.values():
                     for ob in g:
@@ -865,14 +866,14 @@ def assembly_job(job):
     report = {}
     for name in job['assemblies']:
         framing = None
-        for cond in job['conditions']:
+        for cond in job.get('conditions_by_asset',{}).get(name,job['conditions']):
             t0 = time.time()
             reset()
             MAT_CACHE.clear()
             scene = bpy.context.scene
             col = scene.collection
             k = assemble.build(name, cond, job.get('seed', 17))
-            if cond == 'destroyed' and not k.meta.get('authored_damage'):
+            if cond in ('partial','destroyed') and not k.meta.get('authored_damage'):
                 groups = build_objects(k, cond, col, near=k.hits)
                 for g in groups.values():
                     for ob in g:
@@ -880,7 +881,7 @@ def assembly_job(job):
                 objs = destroy(groups, k, cond, col)
             else:
                 objs = build_objects(k, cond, col)
-                if cond == 'destroyed':
+                if cond in ('partial','destroyed'):
                     soot(list(objs.values()), k.hits)
             for ob in objs.values():
                 recalc(ob)
@@ -888,15 +889,26 @@ def assembly_job(job):
             cam = look_scene(scene)
             if framing is None:
                 framing = frame_camera(cam, list(objs.values()), margin=1.08, aspect=1100 / 760)
+            baked=None
+            if k.meta.get('draft') and job.get('export',True):
+                import bake
+                low,baked=bake.bake(list(objs.values()),k,cond,out/'pbr')
             cam.data.ortho_scale, cam.location, cam.rotation_euler = framing[0], framing[1], framing[2]
             render(out / f'{name}_{cond}_beauty.png', (1100, 760), job.get('samples', 48))
             if cond == 'pristine':
-                frame_camera(cam, list(objs.values()), direction=(-1.0, -1.25, 2.4), margin=2.6, aspect=2.0)
+                frame_camera(cam, [low] if baked else list(objs.values()), direction=(-1.0, -1.25, 2.4), margin=2.6, aspect=2.0)
                 # One world scale across the batch: 0.24 authoring m per pixel.
                 # This is a declared RTS proxy, not a runtime camera capture.
                 cam.data.ortho_scale = 360 * .24
                 render(out / f'{name}_pristine_rts.png', (360, 180), 32)
-            if job.get('export', True):
+                # All sides are visible in the count proof, including the left
+                # tower door and rear quonset end omitted by the beauty camera.
+                for side,direction in [('front',(0,-1,.08)),('left',(-1,0,.08)),
+                                       ('rear',(0,1,.08)),('right',(1,0,.08))]:
+                    frame_camera(cam,[low] if baked else list(objs.values()),
+                                 direction=direction,margin=1.14,aspect=1.4)
+                    render(out/f'{name}_count_{side}.png',(700,500),16)
+            if job.get('export', True) and not baked:
                 glb = out / 'glb' / f'{name}_{cond}.glb'
                 glb.parent.mkdir(parents=True, exist_ok=True)
                 export_glb(list(objs.values()), glb, k, cond)
@@ -905,6 +917,7 @@ def assembly_job(job):
             report[f'{name}_{cond}'] = {'triangles': tris, 'pieces': len(k.pieces), 'palette': k.palette,
                                       'bounds_xyz_m': [max(v[i] for v in bounds)-min(v[i] for v in bounds) for i in range(3)],
                                       'stock_size_m': k.meta.get('size'), 'fit_scale_xyz': k.meta.get('fit_scale_xyz')}
+            if baked:report[f'{name}_{cond}']['bake']=baked
             print('[art] done', name, cond, tris, 's', round(time.time() - t0, 1), flush=True)
     (out / f'report_{job.get("tag", "asm")}.json').write_text(json.dumps(report, indent=1), encoding='utf-8')
 
@@ -916,3 +929,6 @@ if __name__ == '__main__':
         primitive_job(job)
     elif job['kind'] == 'assembly':
         assembly_job(job)
+    elif job['kind'] == 'baked_review':
+        import baked_review
+        baked_review.run(job,sys.modules[__name__])

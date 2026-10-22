@@ -497,8 +497,11 @@ def build(name, condition, seed=17):
 
 # ------------------------------------------------------------------ CLI hook (called by run.py)
 def run(a, out, blender):
-    names = a.only.split(',') if a.only else list(ASSEMBLIES)
+    names = a.only.split(',') if a.only else list(DRAFTS)
     conds = a.conditions.split(',')
+    if 'quonset' in names and 'partial' in conds and 'quonsetclean' not in names:
+        if not (out/a.tag/'pbr/quonsetclean_partial_lod0.glb').is_file():
+            names.insert(0,'quonsetclean')
     job = {'kind': 'assembly', 'tag': a.tag, 'out': str(out / a.tag), 'assemblies': names, 'conditions': conds, 'samples': a.samples, 'export': not a.no_export}
     blender(job, out / 'logs' / f'{a.tag}.log')
     for n in names:
@@ -512,7 +515,7 @@ def montage(d, name, conds):
 
     def font(s):
         return ImageFont.truetype('C:/Windows/Fonts/segoeui.ttf', s)
-    W = 1900
+    W = max(1900, 20 + len(conds) * 470)
     im = Image.new('RGB', (W, 1440), (24, 28, 32))
     dr = ImageDraw.Draw(im)
     dr.text((20, 12), f'{name.upper()}  /  palette {info["palette"]}  /  stock {info["stock"]}  /  built only from kit-language primitives', font=font(30), fill=(232, 234, 230))
@@ -527,15 +530,15 @@ def montage(d, name, conds):
             else:
                 t = ImageOps.contain(src, (box[2], box[3]), Image.Resampling.LANCZOS)
             im.paste(t, (box[0] + (box[2] - t.width) // 2, box[1] + (box[3] - t.height) // 2))
-    panel(d / f'{name}_pristine_beauty.png', (20, 90, 1100, 760), 'HIGH SOURCE / pristine / Cycles sun + sky')
-    panel(d / f'{name}_pristine_rts.png', (1140, 90, 740, 300), 'MC2 RTS zoom (source mesh at game pixel size, 2x nearest)', nearest=True)
+    panel(d / f'{name}_pristine_beauty.png', (20, 90, 1100, 760), 'BAKED GAME MESH / pristine / Cycles sun + sky')
+    panel(d / f'{name}_pristine_rts.png', (1140, 90, 740, 300), 'MC2 RTS proxy (baked mesh at game pixel size, 2x nearest)', nearest=True)
     panel(THUMBS / f'{info["stock"]}.png', (1140, 440, 360, 230), f'STOCK {info["stock"]} (catalog)')
     panel(REF / info['ref'], (1520, 440, 360, 230), 'MW5/MWO artist ref (study only)')
     r1 = ROUND1 / (info.get('round1') or '_none') / 'beauty.png'
     if r1.is_file():
         panel(r1, (1140, 720, 740, 300), 'ROUND-1 draft (owner liked) for comparison')
     y = 1060
-    dr.text((20, y - 34), 'CONDITIONS  pristine | worn | abandoned | destroyed', font=font(22), fill=(232, 234, 230))
+    dr.text((20, y - 34), 'CONDITIONS  ' + ' | '.join(conds), font=font(22), fill=(232, 234, 230))
     for i, c in enumerate(conds):
         panel(d / f'{name}_{c}_beauty.png', (20 + i * 470, y + 20, 460, 340), c)
     im.save(d.parent / f'assembly-{name}.png')
