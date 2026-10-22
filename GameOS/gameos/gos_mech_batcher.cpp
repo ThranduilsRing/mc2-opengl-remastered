@@ -77,6 +77,7 @@ std::vector<Mc2MechDrawRun>  s_vkMechRunSnapshot;
 float                        s_vkMechWorldToClipGL[16] = {0};
 float                        s_vkMechObjectDepthBias   = 0.0f;
 bool                         s_vkMechFrameReady        = false;
+bool                         s_vkMechShadowReady       = false;
 
 // Exact bytes uploaded to s_sharedVbo (the normals-recomputed `work` copy —
 // s_stagingVbo alone is NOT the uploaded bytes when s_mechNormalsMode != 0).
@@ -353,6 +354,7 @@ void GpuMechBatcher::onMapLoad() {
     s_vkMechBoneSnapshot.clear();
     s_vkMechRunSnapshot.clear();
     s_vkMechFrameReady = false;
+    s_vkMechShadowReady = false;
     // Mech-1: reset the MaterialGpu tables on map load
     s_mechMaterialTable.clear();
     s_mechHandleToMaterialIdx.clear();
@@ -408,6 +410,7 @@ void GpuMechBatcher::onMapUnload() {
     s_vkMechBoneSnapshot.clear();
     s_vkMechRunSnapshot.clear();
     s_vkMechFrameReady = false;
+    s_vkMechShadowReady = false;
     s_mechMaterialTable.clear();
     s_mechHandleToMaterialIdx.clear();
     s_mechDrawMaterialIdx.clear();

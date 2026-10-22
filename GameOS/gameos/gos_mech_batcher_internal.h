@@ -144,6 +144,7 @@ extern std::vector<Mc2MechDrawRun>  s_vkMechRunSnapshot;
 extern float                        s_vkMechWorldToClipGL[16];
 extern float                        s_vkMechObjectDepthBias;
 extern bool                         s_vkMechFrameReady;
+extern bool                         s_vkMechShadowReady;
 extern std::vector<uint8_t>         s_vkVboNativeCopy;
 extern uint32_t                     s_vkMechGeomGen;
 extern uint32_t                     s_vkMechSnapshotGeomGen;

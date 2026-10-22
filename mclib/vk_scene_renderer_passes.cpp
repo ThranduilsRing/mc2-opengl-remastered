@@ -22,6 +22,9 @@ void mc2::VkSceneRenderer::renderListsDynamicShadowPass (RenderSubmissions& subm
 #ifdef MC2_VULKAN_ISLAND
 	static const bool unionMovers=mc2::gate::get<"MC2_SHADOW_BAKE">();
 	if (unionMovers) {
+		// Publish this frame's poses before fitting or drawing the mover map.
+		// The colour island consumes this same snapshot after terrain.
+		GpuMechBatcher::instance().flush();
 		if (gos_IsModernShadowPathActive() && (g_useGpuObjects || g_useGpuMechs)) {
 			const glm::mat4 camera=eye->worldToClipGL();
 			float rows[16];
@@ -613,7 +616,7 @@ void mc2::VkSceneRenderer::renderListsGpuStaticProps (RenderSubmissions& submiss
 			// VK-P14 MECH TIER-1: flush() BUILDS the instance/bone/run feeds (CPU only); the island
 			// then co-writes the skinned mechs IN-PLACE into the shared GBuffer. Fail-soft (island 0)
 			// = mechs dropped this frame, no corruption.
-			GpuMechBatcher::instance().flush();
+			if (!mc2::gate::get<"MC2_SHADOW_BAKE">()) GpuMechBatcher::instance().flush();
 #ifdef MC2_VULKAN_ISLAND
 			if (mc2_vk_mech_island_enabled()) {
 				ZoneScopedN("Render.GpuMechs.VkTier1");

@@ -35,6 +35,7 @@ extern "C" int mc2_mech_island_get_geometry_feed(Mc2MechGeomFeed* out) {
 }
 
 extern "C" int mc2_mech_island_get_shadow_feed(Mc2MechShadowFeed* out) {
+    if (!s_vkMechShadowReady) return 0;
     if (!out) return 0;
     if (!mc2::gate::get<"MC2_SHADOW_ENABLE">()) return 0;
     if (!g_useGpuMechs || !s_geometryFinalized) return 0;
