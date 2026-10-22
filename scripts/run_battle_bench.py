@@ -290,7 +290,13 @@ def main():
               "render_options": render_options_pin.record(args.exe.parent, {})["values"], "duration_s": args.duration,
               "load_policy": "first-process (cold) and repeat-process (warm); OS cache not evicted", "runs": []}
     # Acquire before the smoke timer starts; lease contention must never become a gameplay timeout.
-    host_lease.acquire("integrated battle benchmark", exclusive=True)
+    while True:
+        try:
+            host_lease.acquire("integrated battle benchmark", exclusive=True)
+            break
+        except host_lease.HostLeaseBusy:
+            print("[battle-bench] lease still occupied; retrying", flush=True)
+            time.sleep(1)
     images = []
     for i in range(1, args.runs + 1):
         run = {"index": i, "perf": {}, "captures": []}
