@@ -143,7 +143,7 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_DEPTHBIAS_CALIB", Kind::Bool, Rule::Presence, {}},
     {"MC2_DEPTH_TRANSITION_PROBE", Kind::Bool, Rule::Presence, {}},
     {"MC2_DESTROY_TRACE", Kind::Bool, Rule::Presence, {}},
-    {"MC2_DETERMINISTIC_RNG", Kind::Bool, Rule::Lead0, {}},
+    {"MC2_DETERMINISTIC_RNG", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_DEV_SHELL", Kind::Bool, Rule::Lead1, {}},
     {"MC2_DEV_SHELL_PORT", Kind::Int, Rule::Prefix, {}},
     {"MC2_DIAGNOSTIC_TRACE_FILE", Kind::String, Rule::Std, {}},

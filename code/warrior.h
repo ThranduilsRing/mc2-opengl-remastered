@@ -2166,7 +2166,6 @@ class MechWarrior {
 
 extern MovePathManagerPtr	PathManager;
 
-void SeedRandomNumbers (void);
 long RandomNumber (long range);
 bool RollDice (long percent);
 long SignedRandomNumber (long range);
