@@ -9,6 +9,7 @@
 #include "globalmap_limits.h"
 
 #include <cstdint>
+#include <limits>
 #include <string>
 #include <vector>
 
@@ -106,6 +107,22 @@ TEST_CASE("per-area and per-door-side counts are range checked")
 	CHECK(gm::doorLinkCountInRange(gm::kMaxDoorsPerArea));
 	CHECK_FALSE(gm::doorLinkCountInRange(-1));
 	CHECK_FALSE(gm::doorLinkCountInRange(gm::kMaxDoorsPerArea + 1));
+}
+
+TEST_CASE("global door counts leave both scratch indices representable in signed 16 bits")
+{
+	constexpr long maxDoors = std::numeric_limits<int16_t>::max() - 1;
+	CHECK(gm::kMaxDoors <= maxDoors);
+	for (long count : {20000L, maxDoors}) {
+		auto c = stock();
+		c.numDoors = count;
+		CHECK(gm::rejectHeaderCounts(c) == nullptr);
+	}
+	auto over = stock();
+	over.numDoors = maxDoors + 1;
+	const char* reason = gm::rejectHeaderCounts(over);
+	REQUIRE(reason != nullptr);
+	CHECK(std::string(reason) == "numDoors");
 }
 
 TEST_CASE("a packet larger than the struct array is tolerated within the slack and refused beyond it")
