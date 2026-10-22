@@ -26,7 +26,7 @@ PASSES = {
     "terrain": ("VKIsl.Terrain",),
     "shadows": ("VKIsl.Shadow.",), "vegetation": ("VKIsl.Vegetation", "VKIsl.Veg"),
     "props": ("VKIsl.Props",), "mechs": ("VKIsl.Mech",), "water": ("VKIsl.Water",),
-    "post": ("VKIsl.Post.",), "vfx": ("VKIsl.Vfx",),
+    "post": ("VKIsl.Post.", "VKIsl.Present.Composite"), "vfx": ("VKIsl.Vfx",),
 }
 
 
