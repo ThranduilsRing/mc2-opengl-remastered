@@ -35,7 +35,7 @@ GOLDEN_INSTALL = 'mc2-win64-v0.4c'
 # (display name, install folder, mission stem, where the mission lives)
 BATTERY = (
     ('MC2X-CVE-G', 'MC2X-CVE-G', 'mc2_01', 'mission.fst'),
-    ('MC2X-REAP3', 'MC2X-REAP3', 'mc2_01', 'mission.fst'),
+    ('MC2X-REAP3', 'MC2X-REAP3', 'reap3m01', 'mission.fst'),
     ('MC2-Exodus', 'MC2-Exodus', 'a_0_1', 'loose'),
     ('MC2-MagicExpansion', 'MC2-MagicExpansion', 'mc2_01', 'loose'),
     ('MechCommanderOmnitech', 'MechCommanderOmnitech', 'a_0_1', 'loose'),
@@ -153,6 +153,14 @@ def stage_mod(mod_dir: Path, target: Path, stem: str, shape: str,
     if not data.is_dir():
         raise FileNotFoundError(f'mod has no data dir: {data}')
     stats['files'], stats['bytes'] = copy_tree(data, target / 'data')
+    # Runtime fonts live outside data/. Preserve mod overrides and fill absent
+    # engine assets from the read-only base, just as for stock fast files below.
+    asset_sources = ([base_install / 'assets'] if base_install else []) + [mod_dir / 'assets']
+    for assets in asset_sources:
+        if assets.is_dir():
+            count, size = copy_tree(assets, target / 'assets')
+            stats['files'] += count
+            stats['bytes'] += size
     stock = {s.lower() for s in STOCK_ROOT_FILES}
     for entry in sorted(mod_dir.iterdir()):
         if not entry.is_file() or entry.name.lower() in stock:

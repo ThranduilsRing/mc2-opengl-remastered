@@ -4254,7 +4254,7 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 243,
+          "line": 251,
           "evidence": "command",
           "reference": "scripts/run_smoke.py",
           "text": "proc = subprocess.run(cmd, cwd=str(ROOT), capture_output=True,"
@@ -8509,7 +8509,7 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 204,
+          "line": 212,
           "evidence": "import_module",
           "reference": "fst",
           "text": "fst_lib = importlib.import_module('fst')"
