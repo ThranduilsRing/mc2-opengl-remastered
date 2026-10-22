@@ -3784,6 +3784,13 @@
           "text": "import manifest_schema  # noqa: E402"
         },
         {
+          "path": "scripts/run_battle_bench.py",
+          "line": 18,
+          "evidence": "import",
+          "reference": "manifest_schema",
+          "text": "import manifest_schema as ms"
+        },
+        {
           "path": "scripts/run_visual_capture.py",
           "line": 92,
           "evidence": "import",
@@ -4089,6 +4096,21 @@
       "stem": "run-unit-tests",
       "callers_by_basename": [],
       "callers_by_stem": []
+    },
+    {
+      "path": "scripts/run_battle_bench.py",
+      "basename": "run_battle_bench.py",
+      "stem": "run_battle_bench",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "scripts/tests/test_battle_bench.py",
+          "line": 9,
+          "evidence": "import",
+          "reference": "run_battle_bench",
+          "text": "import run_battle_bench as bench"
+        }
+      ]
     },
     {
       "path": "scripts/run_brain_apply_ab.ps1",
@@ -4404,6 +4426,13 @@
           "evidence": "import",
           "reference": "run_visual_capture",
           "text": "import run_visual_capture"
+        },
+        {
+          "path": "scripts/run_battle_bench.py",
+          "line": 19,
+          "evidence": "import",
+          "reference": "run_visual_capture",
+          "text": "import run_visual_capture as capture"
         },
         {
           "path": "tools/visual_verify/capture.py",
@@ -6055,6 +6084,13 @@
       "path": "scripts/tests/test_axis_swizzle_ratchet.py",
       "basename": "test_axis_swizzle_ratchet.py",
       "stem": "test_axis_swizzle_ratchet",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "scripts/tests/test_battle_bench.py",
+      "basename": "test_battle_bench.py",
+      "stem": "test_battle_bench",
       "callers_by_basename": [],
       "callers_by_stem": []
     },

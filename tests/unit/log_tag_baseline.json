@@ -429,6 +429,21 @@
    "count": 1
   },
   {
+   "tag": "BENCH_DEVICE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "device",
+    "vendor",
+    "device_id",
+    "driver_name",
+    "driver_info",
+    "driver_version",
+    "api_version"
+   ],
+   "count": 1
+  },
+  {
    "tag": "BLDG_DIAG",
    "ver": 1,
    "stream": "stderr",

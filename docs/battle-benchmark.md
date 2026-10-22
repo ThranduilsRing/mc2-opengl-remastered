@@ -2,6 +2,8 @@
 
 Vegetation has its own GPU scope inside the shared VFX pass. The inclusive VFX timing also contains vegetation; do not add those two timings together. Total GPU time uses the measured span, never a sum of overlapping passes.
 
+Content bytes are hashed after the timed runs so fingerprinting does not warm the first-load OS cache. Stock has no active mod; installed mod manifests are recorded separately, and inactive mod payloads do not enter the workload fingerprint.
+
 Commit, build RelWithDebInfo, and deploy the combined engine to the idle benchmark install. From this checkout:
 
 ```powershell

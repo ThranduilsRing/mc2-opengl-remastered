@@ -1,4 +1,5 @@
 {
+  "scripts/tests/test_battle_bench.py": "Discovered dynamically by scripts/run_scripts_tests.py through scripts/test_ownership.json; validates integrated battle evidence and workload identity.",
   "scripts/tests/test_check_doc_links.py": "Discovered dynamically by scripts/run_scripts_tests.py through scripts/test_ownership.json; exercises the tracked-document link contract.",
   "scripts/bake_colormap_ktx2.py": "Existing script at 97949f0f5 with no resolved executable caller; retained pending coordinator cull review. This exception does not certify live use.",
   "scripts/build_release.sh": "Existing script at 97949f0f5 with no resolved executable caller; retained pending coordinator cull review. This exception does not certify live use.",

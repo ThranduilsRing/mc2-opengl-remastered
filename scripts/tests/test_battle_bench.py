@@ -65,3 +65,18 @@ def test_diff_refuses_content_changes():
     after = {"scenario_sha256": "x", "content": {"sha256": "b"}}
     with pytest.raises(ValueError, match="not comparable"):
         bench.diff(before, after)
+
+
+def test_inactive_mod_bytes_do_not_change_stock_identity(tmp_path):
+    (tmp_path / "mission.fst").write_bytes(b"stock")
+    mod = tmp_path / "mods/inactive"
+    mod.mkdir(parents=True)
+    (mod / "mod.json").write_text('{"id":"inactive"}', encoding="utf-8")
+    payload = mod / "unused.fst"
+    payload.write_bytes(b"before")
+    before = bench.content_identity(tmp_path)
+    payload.write_bytes(b"after")
+    after = bench.content_identity(tmp_path)
+    assert before["sha256"] == after["sha256"]
+    assert before["installed_mod_manifests"] == after["installed_mod_manifests"]
+    assert before["active_mod"] is None

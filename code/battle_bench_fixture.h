@@ -1,6 +1,6 @@
 // Real attack orders and world counters for the versioned battle fixture.
 #pragma once
-#include "../GameOS/gameos/battle_bench.h"
+#include "../mclib/battle_bench_sink.h"
 #include "bldng.h"
 #include "turret.h"
 #include <unordered_set>

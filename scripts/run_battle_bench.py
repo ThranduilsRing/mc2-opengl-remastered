@@ -47,16 +47,18 @@ def sha_file(path):
 
 
 def content_identity(install):
-    # Hash actual payload bytes, including every installed mod; caches/logs/saves are excluded.
+    # Stock is pinned: inactive mod payloads do not participate in file resolution.
     files = set(install.glob("*.fst"))
-    for directory in ("data", "mods", "assets", "shaders"):
+    for directory in ("data", "assets", "shaders"):
         files.update(p for p in (install / directory).rglob("*") if p.is_file()
                      and not any(x.lower() in {"cache", ".cache", "debug_state"} for x in p.parts)
                      and p.suffix.lower() not in {".log", ".tmp"})
     rows = [{"path": p.relative_to(install).as_posix(), "bytes": p.stat().st_size, "sha256": sha_file(p)}
             for p in sorted(files)]
     digest = hashlib.sha256(json.dumps(rows, sort_keys=True).encode()).hexdigest()
-    return {"sha256": digest, "files": rows, "active_mod": None, "mod_policy": "stock; no active mod"}
+    mods = [{"path": p.relative_to(install).as_posix(), "sha256": sha_file(p)} for p in sorted((install / "mods").glob("*/mod.json"))]
+    return {"sha256": digest, "files": rows, "active_mod": None, "installed_mod_manifests": mods,
+            "mod_policy": "stock; inactive mod bytes excluded"}
 
 
 def view_command(mark):
@@ -284,7 +286,7 @@ def main():
         if key.startswith("MC2_") and not key.startswith("MC2_HOST_LEASE"):
             del os.environ[key]
     report = {"schema": "battle-bench/1", "sha": sha, "identity": identity, "scenario": scenario, "build_config": "RelWithDebInfo",
-              "scenario_sha256": sha_file(SCENARIO), "content": content_identity(args.exe.parent), "profile": "stock/default-on native Vulkan",
+              "scenario_sha256": sha_file(SCENARIO), "content": None, "profile": "stock/default-on native Vulkan",
               "render_options": render_options_pin.record(args.exe.parent, {})["values"], "duration_s": args.duration,
               "load_policy": "first-process (cold) and repeat-process (warm); OS cache not evicted", "runs": []}
     # Acquire before the smoke timer starts; lease contention must never become a gameplay timeout.
@@ -319,6 +321,8 @@ def main():
             if measured > budget:
                 violations.append({"scene": scene, "metric": metric, "p95_ms": measured, "budget_ms": budget, "over_ms": measured-budget})
     report["budget_violations"] = sorted(violations, key=lambda v: v["over_ms"], reverse=True)
+    print("[battle-bench] hashing runtime content after timing (preserves the first-load cache state)", flush=True)
+    report["content"] = content_identity(args.exe.parent)
     montage(images, out / "montage.png")
     write_report(report, out)
     print("\n".join(table(report)))
