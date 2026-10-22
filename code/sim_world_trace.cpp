@@ -86,7 +86,7 @@ void snapshot(GameObjectManager& w, const char* phase) {
             auto* object = w.objList[block.firstHandle + i];
             if (i) body += ',';
             body += identity(object);
-            body += std::format(":{}", object && Terrain::objVertexActive[object->getVertexNum()] ? 1 : 0);
+            body += std::format(":{}", object && Terrain::getObjVertexActive(object->getVertexNum()) ? 1 : 0);
         }
         record(body);
     }
