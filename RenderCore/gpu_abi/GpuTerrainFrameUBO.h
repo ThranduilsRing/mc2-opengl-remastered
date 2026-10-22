@@ -25,7 +25,7 @@
 #include <cstdint>
 #include <type_traits>
 
-// @gpu std140 glsl=TerrainFrameUBO block=uT set=0 binding=0 slot=1024
+// @gpu std140 glsl=TerrainFrameUBO block=uT set=0 set_macro=TERRAIN_RESOURCE_SET binding=0 slot=1024
 struct TerrainFrameUBO {
     float   worldToClipGL[16];  // @mat4
     int32_t mapSide;

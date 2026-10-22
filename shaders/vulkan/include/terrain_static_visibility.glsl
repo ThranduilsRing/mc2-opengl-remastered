@@ -1,6 +1,6 @@
 #ifndef TERRAIN_STATIC_VISIBILITY_GLSL
 #define TERRAIN_STATIC_VISIBILITY_GLSL
-layout(set=0, binding=17) uniform sampler2D u_staticVisibilityTiles;
+layout(set=TERRAIN_RESOURCE_SET, binding=17) uniform sampler2D u_staticVisibilityTiles;
 
 vec2 terrainStaticTile(ivec2 tile) {
     ivec2 size = textureSize(u_staticVisibilityTiles,0);

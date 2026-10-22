@@ -13,11 +13,11 @@
 
 #include "terrain_frame_ubo_vk.glsl"
 
-layout(set = 0, binding = 2) uniform sampler2D u_colormap;
+layout(set = TERRAIN_RESOURCE_SET, binding = 2) uniform sampler2D u_colormap;
 // CEMENT/ROAD: the VK-owned copy-once import of the GL cement atlas (REPEAT sampler) +
 // the map-load snapshot of the GL per-vertex cement-word SSBO (GL binding 25).
-layout(set = 0, binding = 3) uniform sampler2D u_cementAtlas;
-layout(set = 0, binding = 4, std430) readonly buffer TerrainCementBuf {
+layout(set = TERRAIN_RESOURCE_SET, binding = 3) uniform sampler2D u_cementAtlas;
+layout(set = TERRAIN_RESOURCE_SET, binding = 4, std430) readonly buffer TerrainCementBuf {
     uint cementWordsF[];
 } uC;
 
@@ -35,13 +35,13 @@ struct PoolLight {
     float _plPad1;         // >0.5 = mover-attached (producer flag)
     float _plPad2;
 };
-layout(set = 0, binding = 11, std430) readonly buffer TerrainLightPoolVK {
+layout(set = TERRAIN_RESOURCE_SET, binding = 11, std430) readonly buffer TerrainLightPoolVK {
     PoolLight poolLights[];
 };
-layout(set = 0, binding = 12, std430) readonly buffer TerrainLightGridHeaderVK {
+layout(set = TERRAIN_RESOURCE_SET, binding = 12, std430) readonly buffer TerrainLightGridHeaderVK {
     uvec2 lightGridCells[];   // {firstIndex, count} per cell, row-major y*dim + x
 };
-layout(set = 0, binding = 13, std430) readonly buffer TerrainLightGridIndicesVK {
+layout(set = TERRAIN_RESOURCE_SET, binding = 13, std430) readonly buffer TerrainLightGridIndicesVK {
     uint  lightGridIndices[];
 };
 #define TLP_CEMENT_WORD(i) uC.cementWordsF[i]
@@ -51,17 +51,17 @@ layout(set = 0, binding = 13, std430) readonly buffer TerrainLightGridIndicesVK 
 // COMPARE image. HW LINEAR compare, compareOp=LESS_OR_EQUAL, CLAMP_TO_BORDER white=1.0
 // (matches GL sampler2DShadow). Always a valid descriptor (1x1 dummy until imported);
 // uT.enableShadows gates whether it is actually sampled.
-layout(set = 0, binding = 5) uniform sampler2DShadow u_staticShadow;
+layout(set = TERRAIN_RESOURCE_SET, binding = 5) uniform sampler2DShadow u_staticShadow;
 // VK-TERRAIN-DYNSHADOW: the DYNAMIC (building/mech) sun shadow map — a VK-owned per-frame
 // copy of the GL dynamic shadow depth texture (pp->getDynamicShadowTexture(), legacy
 // single-map path). Same D32 depth-COMPARE format/sampler as static. Always a valid
 // descriptor (1x1 dummy until imported); uT.enableDynShadows gates the sample.
-layout(set = 0, binding = 7) uniform sampler2DShadow u_dynamicShadow;
+layout(set = TERRAIN_RESOURCE_SET, binding = 7) uniform sampler2DShadow u_dynamicShadow;
 // VK-TERRAIN-CSM-NEAR-1: near-cascade array (D32 depth-COMPARE, VK_IMAGE_VIEW_TYPE_2D_ARRAY,
 // layers = csmCount-1) + the separate lower-res full-map catch-all cascade (last cascade).
 // Both always valid descriptors (1x1/1x1x1 dummies until imported); uT.csmEnabled gates use.
-layout(set = 0, binding = 8) uniform sampler2DArrayShadow u_dynamicShadowArray;
-layout(set = 0, binding = 9) uniform sampler2DShadow u_dynamicFullMapShadow;
+layout(set = TERRAIN_RESOURCE_SET, binding = 8) uniform sampler2DArrayShadow u_dynamicShadowArray;
+layout(set = TERRAIN_RESOURCE_SET, binding = 9) uniform sampler2DShadow u_dynamicFullMapShadow;
 
 // VK-TERRAIN-CSM-NEAR-1: verbatim port of GL's csmSampleLayer/csmSampleFullMap/csmProject/
 // calcDynamicShadow cascade-select (shadow.hglsl). Same Poisson-16 disk, gradient-adaptive

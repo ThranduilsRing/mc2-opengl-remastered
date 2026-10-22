@@ -358,3 +358,13 @@ def test_vk_frame_ubos_are_registered_with_their_historical_sizes(header, size, 
         info = g.parse_source(f.read(), block)
     _, _, sz = g.struct_offsets(info["fields"], "std140")
     assert sz == size and info["block"] == "uFrame"
+
+
+def test_block_can_relocate_set_without_copying_abi():
+    _, out = _build_block(BLOCK_SRC.replace("set=1", "set=1 set_macro=GROUND_SET"))
+    assert "#ifndef GROUND_SET\n#define GROUND_SET 1\n#endif" in out["glsl"]
+    assert "layout(set = GROUND_SET, binding = 3, std140)" in out["glsl"]
+    _, original = _build_block()
+    assert out["layout"] == original["layout"]  # descriptor relocation never changes CPU packing
+    with pytest.raises(g.AbiError, match="invalid descriptor set macro"):
+        _build_block(BLOCK_SRC.replace("set=1", "set=1 set_macro=bad-set"))
