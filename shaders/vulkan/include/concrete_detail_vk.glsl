@@ -60,4 +60,14 @@ void cdShade(MaterialDetail d, vec3 L, float dayGate, out float diff, out vec3 s
     float D0 = a2 / (3.14159265 * den0 * den0);
     spec = vec3((D - D0) * 0.25 * clamp(dayGate, 0.0, 1.0));
 }
+
+// One call for a surface: evaluates the detail and applies it to the caller's colour (AO), sun-shading term and sheen, weighted by w.
+void cdApply(int layer, vec2 wp, vec2 dx, vec2 dy, vec3 L, float w, inout vec3 color, inout float nl, inout vec3 spec) {
+    MaterialDetail d = cdEval(layer, wp, dx, dy);
+    float diff; vec3 sp;
+    cdShade(d, normalize(L), uT.ambientDayGate, diff, sp);
+    color *= mix(1.0, d.ao, 0.9 * w);
+    nl *= mix(1.0, diff, w);
+    spec += sp * w;
+}
 #endif

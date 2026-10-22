@@ -691,7 +691,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/deploy_payload.py",
-          "line": 1628,
+          "line": 1630,
           "evidence": "command",
           "reference": "scripts/check-deploy-hygiene.py",
           "text": "r = subprocess.run([sys.executable, hygiene, target],"
@@ -4472,14 +4472,14 @@
         },
         {
           "path": "scripts/deploy_payload.py",
-          "line": 720,
+          "line": 722,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from scripts.smoke_lib import deploy_lease"
         },
         {
           "path": "scripts/deploy_payload.py",
-          "line": 760,
+          "line": 762,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from scripts.smoke_lib import bounded_wait"
@@ -4887,7 +4887,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/deploy_payload.py",
-          "line": 760,
+          "line": 762,
           "evidence": "import",
           "reference": "scripts.smoke_lib.bounded_wait",
           "text": "from scripts.smoke_lib import bounded_wait"
@@ -5053,7 +5053,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/deploy_payload.py",
-          "line": 720,
+          "line": 722,
           "evidence": "import",
           "reference": "scripts.smoke_lib.deploy_lease",
           "text": "from scripts.smoke_lib import deploy_lease"
@@ -8365,11 +8365,25 @@
       "callers_by_stem": []
     },
     {
+      "path": "tools/mc2texcook/cook_concrete_detail.py",
+      "basename": "cook_concrete_detail.py",
+      "stem": "cook_concrete_detail",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
       "path": "tools/mc2texcook/cook_pbr_maps.py",
       "basename": "cook_pbr_maps.py",
       "stem": "cook_pbr_maps",
       "callers_by_basename": [],
       "callers_by_stem": [
+        {
+          "path": "tools/mc2texcook/cook_concrete_detail.py",
+          "line": 22,
+          "evidence": "import",
+          "reference": "cook_pbr_maps",
+          "text": "import cook_pbr_maps as pbr  # noqa: E402"
+        },
         {
           "path": "tools/mc2texcook/cook_terrain_layers.py",
           "line": 48,

@@ -377,9 +377,7 @@ void main() {
     // Valid even for quads straddling cement, zero weights or the LOD fade.
     vec2 detailUv = v_worldPos.xy * (uT.detailTiling / MATV_WU_PER_TILE);
     vec2 detailUvDx = dFdx(detailUv), detailUvDy = dFdy(detailUv);
-    vec2 cdWpDx = dFdx(v_worldPos.xy), cdWpDy = dFdy(v_worldPos.xy);   // CONCRETE-ROAD-PBR-DETAIL: uniform-flow derivatives
-    float cdRoad = 0.0;   // the cement atlas also carries the road and runway tiles: dark asphalt texels take the asphalt detail
-    float cdW = 0.0;   // how much of this fragment is cement slab (alpha on transition edges), weights the detail
+    vec2 cdWpDx = dFdx(v_worldPos.xy), cdWpDy = dFdy(v_worldPos.xy); float cdRoad = 0.0, cdW = 0.0;   // CONCRETE-ROAD-PBR-DETAIL: uniform derivatives; asphalt-texel flag; slab share
     vec3 base;
     float cookedBreakup = 0.5;
     // VK-TERRAIN-LIGHTING: track whether this fragment resolved to a solid cement slab.
@@ -445,8 +443,7 @@ void main() {
             if (uT.cementAtlasSeamFix != 0)
                 cSampleUV = clamp(cTileUV, vec2(cInsetLod), vec2(1.0 - cInsetLod));   // CEMENT-MIP-EDGE-1
             vec2 cAtlasUV = (vec2(float(cCol), float(cRow)) + cSampleUV) / float(cGridSide);
-            vec4 cementTexel = textureLod(u_cementAtlas, cAtlasUV, cLod);
-            cdRoad = 1.0 - smoothstep(0.20, 0.30, dot(cementTexel.rgb, vec3(0.299, 0.587, 0.114)));
+            vec4 cementTexel = textureLod(u_cementAtlas, cAtlasUV, cLod); cdRoad = 1.0 - smoothstep(0.20, 0.30, dot(cementTexel.rgb, vec3(0.299, 0.587, 0.114)));
             vec3 cementColor = cementTexel.rgb * vec3(uT.missionFlatR, uT.missionFlatG, uT.missionFlatB);  // CEMENT-NIGHT-LIGHT-1
             // CEMENT-ALPHA-LAND-1 (terrain_lod_chunk.frag:1009-1015): OWN_ALPHA transition.
             // Word bit23 => the atlas cell carries its own coverage in alpha; composite OVER base.
@@ -454,8 +451,7 @@ void main() {
             if (isTransition && cementOwnAlpha) {
                 float cOwnA = cementTexel.a;
                 base = mix(base, cementColor, cOwnA);
-                cdW = cOwnA;
-                if (cOwnA > 0.5) { cementHit = true; pureConcrete = true; }
+                cdW = cOwnA; if (cOwnA > 0.5) { cementHit = true; pureConcrete = true; }
             } else if (isTransition) {
                 if (uT.useTransitionMask != 0) {
                     bool nXm = false, nXp = false, nYm = false, nYp = false;
@@ -513,12 +509,10 @@ void main() {
                         alpha = max(cCutLt((1.0 - u) + v, cFu + cFv), cCutLt(u + (1.0 - v), cFu + cFv));
                     }
                     base = mix(base, cementColor, alpha);
-                    cdW = alpha;
-                    if (alpha > 0.5) { cementHit = true; pureConcrete = true; }
+                    cdW = alpha; if (alpha > 0.5) { cementHit = true; pureConcrete = true; }
                 }
             } else {
-                base = cementColor;
-                cdW = 1.0;
+                base = cementColor; cdW = 1.0;
                 cementHit = true;
                 pureConcrete = true;
             }
@@ -545,8 +539,7 @@ void main() {
                         dSampleUV = clamp(dTileUV, vec2(cInsetLod), vec2(1.0 - cInsetLod));
                     vec2 dAtlasUV = (vec2(float(dCol), float(dRow)) + dSampleUV) / float(dGridSide);
                     base = textureLod(u_cementAtlas, dAtlasUV, cLod).rgb * vec3(uT.missionFlatR, uT.missionFlatG, uT.missionFlatB);  // CEMENT-NIGHT-LIGHT-1
-                    pureConcrete = true;
-                    cdW = 1.0;
+                    pureConcrete = true; cdW = 1.0;
                     cementHit = true;   // as GL's diag-connect branch
                 }
             }
@@ -637,17 +630,8 @@ void main() {
 
         float normalLight = computeNdotLBand(N, lightDir);
         if (pureConcrete) normalLight = 1.0;                     // cement: flat-lit slab
-        // CONCRETE-ROAD-PBR-DETAIL: MC2's slab colour stays; the PBR set adds occlusion, a relative sun shading from the detail
-        // normal and a roughness sheen on top of it.
-        vec3 cdSpec = vec3(0.0);
-        if (uT.concreteDetail != 0 && cdW > 0.0) {
-            MaterialDetail cd = cdEval(cdRoad > 0.5 ? CD_LAYER_ROAD : CD_LAYER_PAD, v_worldPos.xy, cdWpDx, cdWpDy);
-            float cdDiff; vec3 cdSp;
-            cdShade(cd, normalize(lightDir), uT.ambientDayGate, cdDiff, cdSp);
-            baseColor *= mix(1.0, cd.ao, 0.9 * cdW);
-            normalLight *= mix(1.0, cdDiff, cdW);
-            cdSpec = cdSp * cdW;
-        }
+        vec3 cdSpec = vec3(0.0);   // CONCRETE-ROAD-PBR-DETAIL: detail only (AO, relative sun shading, sheen), MC2's colour stays
+        if (uT.concreteDetail != 0 && cdW > 0.0) cdApply(cdRoad > 0.5 ? CD_LAYER_ROAD : CD_LAYER_PAD, v_worldPos.xy, cdWpDx, cdWpDy, lightDir, cdW, baseColor, normalLight, cdSpec);
 
         // Shadow compose — mirrors terrain_lod_chunk.frag:896-907 EXACTLY:
         //   staticS = calcShadow(...16);  dynS = calcDynamicShadow(...8);
@@ -676,7 +660,6 @@ void main() {
             dynS = terrainDynamicShadow(v_worldPos, shadowN, shSun);
         }
         float shadow = min(staticS, dynS);
-        // no concrete shadow exemption: cement receives the static and the dynamic shadow like the ground around it
         lit = max(baseColor * normalLight * shadow + cdSpec * shadow, vec3(0.0));
 
         // VK-PARITY-TERRAIN-2: NIGHT-LIGHT-POOLS-1..4 / LIGHT-CLUSTER-PERF-1 /
@@ -783,9 +766,6 @@ void main() {
         else if (uT.csmDebugMode == 6) { fragColor = vec4(baseColor, 1.0); GBuffer1 = vec4(0.5,0.5,1.0,1.0); return; }   // VK-PARITY-F3: albedo (GL MC2_LIGHTING_DEBUG_VIEW=40)
         else if (uT.csmDebugMode == 7) { fragColor = vec4(vec3(clamp(dot(N, lightDir), 0.02, 1.0)), 1.0); GBuffer1 = vec4(0.5,0.5,1.0,1.0); return; }   // sun N.L diffuse (GL MC2_LIGHTING_DEBUG_VIEW=sun)
         else if (uT.csmDebugMode == 8) { fragColor = vec4(N * 0.5 + 0.5, 1.0); GBuffer1 = vec4(0.5,0.5,1.0,1.0); return; }   // surface normal (GL ...=normal)
-        else if (uT.csmDebugMode == 6) { fragColor = vec4(dbgBaseN * 0.5 + 0.5, 1.0); GBuffer1 = vec4(0.5,0.5,1.0,1.0); return; }
-        else if (uT.csmDebugMode == 7) { fragColor = vec4(dbgDN * 0.5 + 0.5, 1.0); GBuffer1 = vec4(0.5,0.5,1.0,1.0); return; }
-        else if (uT.csmDebugMode == 8) { fragColor = vec4(N * 0.5 + 0.5, 1.0); GBuffer1 = vec4(0.5,0.5,1.0,1.0); return; }
     }
 
     fragColor = vec4(lit, 1.0);   // opaque in-place (a=1, NOT premult)

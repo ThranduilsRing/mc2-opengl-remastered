@@ -162,6 +162,7 @@
   "tools/mc2texcook/batch_upscale_cook.py": "Existing script at 97949f0f5 with no resolved executable caller; retained pending coordinator cull review. This exception does not certify live use.",
   "tools/mc2texcook/burnin_jpeg.py": "Existing script at 97949f0f5 with no resolved executable caller; retained pending coordinator cull review. This exception does not certify live use.",
   "tools/mc2texcook/burnin_zcompress.py": "Existing script at 97949f0f5 with no resolved executable caller; retained pending coordinator cull review. This exception does not certify live use.",
+  "tools/mc2texcook/cook_concrete_detail.py": "Offline cooker run by hand (usage in its docstring) to regenerate data/terrain_layers/concrete_detail_*.ktx2; no executable caller by design.",
   "tools/mc2texcook/cook_tgl_tiers.py": "Existing script at 97949f0f5 with no resolved executable caller; retained pending coordinator cull review. This exception does not certify live use.",
   "tools/mc2texcook/cook_tgl_upscale_single.py": "Existing script at 97949f0f5 with no resolved executable caller; retained pending coordinator cull review. This exception does not certify live use.",
   "tools/mc2texcook/tests/test_cook_terrain_layers.py": "Dynamically discovered pytest/script-style module through scripts/run_tools_tests.py:70-85 (tools_tests); no literal caller names the module.",
