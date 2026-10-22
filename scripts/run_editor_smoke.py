@@ -124,15 +124,20 @@ def parse_panels(text: str) -> dict:
 def grade_shadow_edits(text: str) -> str:
     """Require rendered edits, not just synchronous model undo/redo."""
     stages = list(re.finditer(r"\[EDITOR_CLI v1\] event=shadow_edit stage=(\d+) ok=(\d+) frame=(\d+)", text))
-    if [m.group(1) for m in stages] != ["0", "1", "2", "3"] or any(m.group(2) != "1" for m in stages):
+    if [m.group(1) for m in stages] != [str(i) for i in range(6)] or any(m.group(2) != "1" for m in stages):
         return "shadow edits: missing or unsuccessful height/undo/place/delete stage"
+    receipts = re.findall(r"\[EDITOR_CLI v1\] event=shadow_delete recipe=(\d+) tracked_recipe=(\d+) undo_index=\d+ found=1", text)
+    if len(receipts) != 2 or any(recipe != tracked for recipe, tracked in receipts):
+        return "shadow edits: placed object was not a live, tracked caster before deletion"
     for i, stage in enumerate(stages):
         end = stages[i + 1].start() if i + 1 < len(stages) else len(text)
         segment = text[stage.end():end]
         if "[SHADOW_BAKE] dirty queue drained:" not in segment:
             return f"shadow edits: stage {i} did not drain"
-        if i >= 2 and f"[SHADOW_BAKE] caster event: {'added' if i == 2 else 'removed'}" not in segment:
+        if i >= 2 and f"[SHADOW_BAKE] caster event: {'added' if i % 2 == 0 else 'removed'}" not in segment:
             return f"shadow edits: stage {i} missing caster event"
+        if i == 2 and segment.count("[SHADOW_BAKE] caster event: added") != 1:
+            return "shadow edits: placement admitted more than its one scene caster (preview leak)"
     return ""
 
 
@@ -907,11 +912,15 @@ def run_case(name: str, exe: Path, deploy: Path, exit_sec: int, timeout: int,
     # Per-case expectation -------------------------------------------------------
     detail = ""
     if not bucket and expect == "workflows":
-        detail = grade_workflows(combined) or grade_shadow_edits(combined)
+        detail = grade_workflows(combined)
         if detail:
             bucket = "workflow_probe_failed"
         elif esmoke.get("saved") != "1":
             bucket, detail = "save_failed", "workflow export did not save"
+    if not bucket and expect == "shadow_edits":
+        detail = grade_shadow_edits(combined)
+        if detail:
+            bucket = "shadow_edit_probe_failed"
     if not bucket and expect:
         fc = int(esmoke.get("foliage_count", "-1"))
         if expect == "foliage_present" and fc <= 0:
@@ -1079,6 +1088,7 @@ def rand_gen_flag():
 def build_suite(deploy: Path):
     cases = {
         "gen_map_basic":   (["-gen-map=0,0"], None),                    # launch+generate+render+exit
+        "shadow_edits":    (["-mission=data/missions/mc2_01.pak", "-smoke-shadow-edits"], "shadow_edits"),
         "foliage_present": (["-gen-map=0,0", "-smoke-foliage"], "foliage_present"),
         "foliage_missing": (["-gen-map=0,0", "-smoke-foliage=terrain_gen_out\\__does_not_exist__.json"], "foliage_tolerated"),
         "foliage_garbage": (["-gen-map=0,0", "-smoke-foliage=terrain_gen_out\\garbage.foliage.json"], "foliage_tolerated"),
@@ -1948,7 +1958,8 @@ def main() -> int:
             results.append(r2)
         else:
             flags, expect = suite[c]
-            results.append(run_case_with_retry(c, exe, deploy, args.exit_sec, args.timeout, list(flags), expect))
+            exit_sec = max(args.exit_sec, 75) if c == "shadow_edits" else args.exit_sec
+            results.append(run_case_with_retry(c, exe, deploy, exit_sec, args.timeout, list(flags), expect))
 
     # Report
     try:

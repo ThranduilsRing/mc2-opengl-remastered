@@ -112,17 +112,22 @@ void StaticCasterSet::ownerInvalidated(const void* owner, int32_t oldRecipe) {
     removed_[owner] = std::move(leaves);
 }
 
+void StaticCasterSet::admitOwner(const void* owner, CasterKind kind) {
+    if (building_ || version_ == 0 || !owner || findOwner(byOwner_, owner)) return;
+    StaticCasterEntry fresh;
+    fresh.owner = owner;
+    fresh.gameHandle = nextGameHandle_++;
+    fresh.kind = kind;
+    byOwner_[owner] = static_cast<uint32_t>(entries_.size());
+    entries_.push_back(fresh);
+}
+
 void StaticCasterSet::ownerRegistered(const void* owner, int32_t newRecipe) {
     if (building_ || version_ == 0 || !owner || newRecipe < 0) return;
     auto idx = findOwner(byOwner_, owner);
     if (!idx) {
         if (!admitNewOwners_) return;
-        StaticCasterEntry fresh;
-        fresh.owner = owner;
-        fresh.gameHandle = nextGameHandle_++;
-        fresh.recipeIndex = -1;
-        byOwner_[owner] = static_cast<uint32_t>(entries_.size());
-        entries_.push_back(fresh);
+        admitOwner(owner);
         idx = findOwner(byOwner_, owner);
     }
     StaticCasterEntry& e = entries_[*idx];

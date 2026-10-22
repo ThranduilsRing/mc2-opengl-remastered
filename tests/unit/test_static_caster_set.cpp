@@ -80,6 +80,31 @@ TEST_CASE("static caster set: a removal without replacement queues its old leave
     CHECK_FALSE(set.hasEvents());
 }
 
+TEST_CASE("static caster set: explicit placements admit late recipes and exclude previews") {
+    RecipeFeed feed;
+    int placed = 0, preview = 0;
+    mc2shadow::StaticCasterSet set;
+    set.beginRebuild();
+    set.endRebuild();
+    set.admitOwner(&placed);
+    REQUIRE(set.entries().size() == 1);
+    CHECK(set.entries()[0].recipeIndex == -1);
+    feed.add(1, 20);
+    set.ownerRegistered(&preview, 1);
+    CHECK_FALSE(set.hasEvents());
+    set.ownerRegistered(&placed, 1);
+    auto events = set.takeEvents();
+    REQUIRE(events.size() == 1);
+    REQUIRE(events[0].after.size() == 1);
+    CHECK(events[0].after[0].typeID == 20);
+    set.ownerInvalidated(&placed, 1);
+    events = set.takeEvents();
+    REQUIRE(events.size() == 1);
+    CHECK(events[0].after.empty());
+    REQUIRE(events[0].before.size() == 1);
+    CHECK(events[0].before[0].typeID == 20);
+}
+
 TEST_CASE("static caster set: identical registration cancels a change and map reset disables admission") {
     RecipeFeed feed;
     feed.add(1, 10);

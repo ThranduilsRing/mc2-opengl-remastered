@@ -22,10 +22,12 @@ spec.loader.exec_module(smoke)
 class ShadowEditGradingTests(unittest.TestCase):
     def test_each_edit_must_reach_and_drain_the_renderer(self):
         lines = []
-        for stage in range(4):
+        for stage in range(6):
+            if stage >= 3 and stage % 2 == 1:
+                lines.append("[EDITOR_CLI v1] event=shadow_delete recipe=7 tracked_recipe=7 undo_index=0 found=1")
             lines.append(f"[EDITOR_CLI v1] event=shadow_edit stage={stage} ok=1 frame={240 * (stage + 1)}")
             if stage >= 2:
-                lines.append(f"[SHADOW_BAKE] caster event: {'added' if stage == 2 else 'removed'} leaves 1")
+                lines.append(f"[SHADOW_BAKE] caster event: {'added' if stage % 2 == 0 else 'removed'} leaves 1")
             lines.append("[SHADOW_BAKE] dirty queue drained: sub_tiles=4")
         proof = "\n".join(lines)
         self.assertEqual(smoke.grade_shadow_edits(proof), "")
@@ -33,6 +35,8 @@ class ShadowEditGradingTests(unittest.TestCase):
             self.assertTrue(smoke.grade_shadow_edits(proof.replace(line, "", 1)))
         self.assertTrue(smoke.grade_shadow_edits(proof.replace("ok=1", "ok=0", 1)))
         self.assertTrue(smoke.grade_shadow_edits(proof + "\n" + lines[0]))
+        self.assertTrue(smoke.grade_shadow_edits(proof.replace("tracked_recipe=7", "tracked_recipe=8")))
+        self.assertTrue(smoke.grade_shadow_edits(proof.replace("caster event: added leaves 1", "caster event: added leaves 1\n[SHADOW_BAKE] caster event: added leaves 1")))
 
 
 class ObjectiveScalarGradingTests(unittest.TestCase):

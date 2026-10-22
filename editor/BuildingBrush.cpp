@@ -252,6 +252,13 @@ bool BuildingBrush::BuildingAction::redo()
 		if (pObj)
 		{
 			(*pObj).CastAndCopy((*(*iter)));
+			// Undo retired the shared snapshot's recipe. CastAndCopy replaces the
+			// temporary appearance addBuilding just registered with that snapshot.
+			const int type = (pObj->getID() >> 24) & 0xff;
+			if (type != GV_TYPE && type != MECH_TYPE) {
+				pObj->appearance()->registerStatic();
+				if (eye && eye->getNumLights() > 0) pObj->appearance()->prewarmStaticLightBake(eye);
+			}
 		}
 		else
 		{

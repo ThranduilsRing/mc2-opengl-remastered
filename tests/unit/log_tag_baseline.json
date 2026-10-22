@@ -2815,6 +2815,19 @@
    "stream": "stderr",
    "keys": [
     "event",
+    "recipe",
+    "tracked_recipe",
+    "undo_index",
+    "found"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "EDITOR_CLI",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
     "selected",
     "type"
    ],

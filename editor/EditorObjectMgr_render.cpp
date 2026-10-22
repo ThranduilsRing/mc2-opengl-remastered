@@ -444,7 +444,8 @@ void EditorObjectMgr::registerStaticPropsForMissionLoad()
 			set.add(e);
 		}
 		set.endRebuild();
-		set.setAdmitNewOwners(true);
+		// Only addBuilding admits a new scene owner; brush preview recipes do not bake.
+		set.setAdmitNewOwners(false);
 	}
 	MC2_DIAGFE(stderr, "[STATIC_PROP_REG v1] event=editor_load enumerated=%d registered=%d skipped=%d\n",
 	        total, registered, total - registered);

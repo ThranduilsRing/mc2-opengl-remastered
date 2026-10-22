@@ -11,14 +11,16 @@
 #include <memory>
 #include <array>
 #include <cstdio>
+#include "../GameOS/gameos/static_caster_set.h"
 
 // Unlike the synchronous authoring probes, leave each edit alive across rendered
-// frames so the shadow job can consume it. These run only under -smoke-workflows.
+// frames so the shadow job can consume it. These run only under -smoke-shadow-edits.
 void EditorInterface::tickShadowEditSmoke(long frame)
 {
 	static long nextFrame = 0;
 	static int stage = 0;
-	if (!land || stage == 4) return;
+	static const Appearance* placedOwner = nullptr;
+	if (!land || stage == 6) return;
 	if (!nextFrame) { nextFrame = frame + 240; return; }
 	if (frame < nextFrame) return;
 	bool ok = false;
@@ -49,10 +51,30 @@ void EditorInterface::tickShadowEditSmoke(long frame)
 					brush->beginPaint();
 					ok = brush->paint(point, 0, 0);
 					undoMgr.AddAction(brush->endPaint());
+					if (ok) {
+						auto* placed = mgr->getObjectAtLocation(point.x, point.y);
+						placedOwner = placed->appearance();
+					}
 				}
 		}
+	} else if (stage == 4) {
+		ok = undoMgr.Redo();
 	} else {
+		if (stage >= 3) {
+			const Appearance* owner = nullptr;
+			for (auto* object : EditorObjectMgr::instance()->getBuildings())
+				if (object->appearance() == placedOwner) owner = object->appearance();
+			int trackedRecipe = -2;
+			for (const auto& entry : mc2shadow::staticCasterSet().entries())
+				if (entry.owner == owner) trackedRecipe = entry.recipeIndex;
+			fprintf(stderr, "[EDITOR_CLI v1] event=shadow_delete recipe=%d tracked_recipe=%d undo_index=%d found=%d\n",
+				owner ? owner->getShadowCasterRecipeIndex() : -1, trackedRecipe, undoMgr.GetCurrentPosition(), owner ? 1 : 0);
+		}
 		ok = undoMgr.Undo();
+		if (stage >= 3) {
+			for (auto* object : EditorObjectMgr::instance()->getBuildings())
+				if (object->appearance() == placedOwner) ok = false;
+		}
 	}
 	fprintf(stderr, "[EDITOR_CLI v1] event=shadow_edit stage=%d ok=%d frame=%ld\n", stage, ok ? 1 : 0, frame);
 	fflush(stderr);

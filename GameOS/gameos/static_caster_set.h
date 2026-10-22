@@ -46,6 +46,9 @@ public:
     // exactly the leaves it removed cancels out. Unknown owners are ignored unless editor admission is enabled; neither call changes version().
     // In the editor objects are placed after the load walk: an unknown owner that registers a shadow recipe joins the set (and queues its leaves).
     void setAdmitNewOwners(bool admit) { admitNewOwners_ = admit; }
+    // Explicit editor placement ownership, including recipes that register later.
+    // Preview cursors never call this and cannot join the bake.
+    void admitOwner(const void* owner, CasterKind kind = CasterKind::TerrainObject);
     void ownerInvalidated(const void* owner, int32_t oldRecipe);
     void ownerRegistered(const void* owner, int32_t newRecipe);
 
