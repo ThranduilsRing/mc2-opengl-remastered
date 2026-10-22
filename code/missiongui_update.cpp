@@ -2,33 +2,10 @@
 // Declared in the class headers; shared names in missiongui_shared_internal.h.
 #include "missiongui_shared_internal.h"
 #include "mc2fmt.h"
+#include "cursor_world_pick.h"
 #include "../GameOS/gameos/utils/mc2log.h"
 
 namespace {
-	// Per-frame cursor -> terrain cell centre in O(ray length). The old per-frame
-	// eye->inverseProject walked every terrain quad (85-126 ms on a 1024-cell map).
-	// A miss (cursor over sky / off the map / a failed forward-projection check) is
-	// answered with the z=0 ground-plane point clamped onto the map, and as a last
-	// resort the previous good value; it never falls back to the O(quads) walk.
-	// Discrete click paths still call inverseProject for the exact answer.
-	bool pickCursorWorld (Camera* cam, long mx, long my, glm::vec3& out, const glm::vec3& prev, bool prevValid)
-	{
-		if (cam->pickTerrainRay(mx, my, out))
-			return true;
-		glm::vec3 g;
-		if (cam->screenToGroundPlaneApprox(mx, my, g))
-		{
-			const float lim = Terrain::worldUnitsMapSide * 0.5f - Terrain::worldUnitsPerCell;
-			if (g.x < -lim) g.x = -lim; else if (g.x > lim) g.x = lim;
-			if (g.y < -lim) g.y = -lim; else if (g.y > lim) g.y = lim;
-			g.z = land ? land->getTerrainElevation(g) : 0.0f;
-			out = g;
-			return false;
-		}
-		if (prevValid)
-			out = prev;
-		return false;
-	}
 
 	// MC2_TERRAIN_PICK_PARITY: every 40 cursor-change frames compare the ray pick
 	// against the legacy inverseProject over a 7x4 grid of screen points and log the

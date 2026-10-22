@@ -4,6 +4,24 @@
 
 #include "doctest.h"
 #include "../../RenderWorld/ScreenPick.h"
+#include "cursor_world_pick.h"
+
+TEST_CASE("cursor pick miss keeps previous position without a fallback projection") {
+    struct Camera {
+        bool hit = false;
+        int calls = 0;
+        bool pickTerrainRay(long, long, int& out) { ++calls; out = 99; return hit; }
+    } camera;
+    int out = 7;
+    CHECK_FALSE(pickCursorWorld(&camera, 0, 0, out, 42, true));
+    CHECK(out == 42);
+    CHECK_FALSE(pickCursorWorld(&camera, 0, 0, out, 0, false));
+    CHECK(out == 42);
+    camera.hit = true;
+    CHECK(pickCursorWorld(&camera, 0, 0, out, 42, true));
+    CHECK(out == 99);
+    CHECK(camera.calls == 3);
+}
 
 TEST_CASE("screenPickCompute full-screen identity: mouse pixel == FBO pixel") {
     RenderWorld::ScreenPickContext ctx{};
