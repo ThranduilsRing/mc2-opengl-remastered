@@ -107,12 +107,10 @@ void Light::init (bool create) {
 long Light::update (void) {
 
 	if (!getFlag(OBJECT_FLAG_DONE)) {
-		//----------------------------------
-		//-- Always force position altitude 'cause set every frame.
-		position.z += (static_cast<LightTypePtr>(getObjectType()))->altitudeOffset;
-		setPosition(position);
-	
 		if (getFlag(OBJECT_FLAG_JUSTCREATED)) {
+			//-- Apply the type's altitude offset once (it used to be added every tick and accumulated).
+			position.z += (static_cast<LightTypePtr>(getObjectType()))->altitudeOffset;
+			setPosition(position);
 			setFlag(OBJECT_FLAG_JUSTCREATED, false);
 			setFlag(OBJECT_FLAG_TANGIBLE, false);
 		}
