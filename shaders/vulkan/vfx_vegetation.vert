@@ -14,7 +14,6 @@ layout(set = 0, binding = 0, std140) uniform VfxVsParams {
 #include "include/vegetation_structs.glsl"
 layout(std430, set = 2, binding = 0) readonly buffer VegInst { VegInstance inst[]; };
 layout(std430, set = 2, binding = 1) readonly buffer VegDense { uint dense[]; };
-layout(std430, set = 2, binding = 3) readonly buffer VegDrawVis { uint blockVis[]; };
 layout(set = 2, binding = 2, std140) uniform VegDrawParams { VegParamsData D; };   // the frame's cull parameters
 
 layout(location = 0) out vec2 v_uv;
@@ -33,9 +32,7 @@ void main() {
     float dist3 = length(i.pos - D.cam.xyz);
     float fadeStart = D.misc.x;
     float windFade = 1.0 - smoothstep(fadeStart * 0.8, fadeStart, dist3);
-    uint block = vegBlockIndex(i, D);
-    uint visibility = block < D.counts.z ? blockVis[block] : 2u;
-    float shrink = vegLodScale(i, D, visibility);
+    float shrink = vegLodScale(i, D);
     v_color = vec4(0.0);
     mc2VegetationVertex(i.pos, i.yaw, i.scale * shrink, i.seed, i.atlasFrame, shrink, windFade, D.misc.z, D.misc.w);
 }

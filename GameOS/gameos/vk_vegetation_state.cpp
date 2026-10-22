@@ -161,10 +161,8 @@ bool State::record(mc2vk::VulkanContext& ctx, VkCommandBuffer cb, uint32_t par, 
         slot_[par].statsPending = false;
     }
     paramsDynOffset_[par] = static_cast<uint32_t>(span.offset + paramsOff);
-    visibilityDynOffset_[par] = static_cast<uint32_t>(span.offset + visOff);
     if (drawSets_[par] && drawRingBound_[par] != span.buffer) {
         mc2vk::writeDynamicBinding(ctx.device(), drawSets_[par], 2, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, span.buffer, sizeof(CullParams));
-        mc2vk::writeDynamicBinding(ctx.device(), drawSets_[par], 3, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, span.buffer, span.range);
         drawRingBound_[par] = span.buffer;
     }
     const VkDescriptorSet set = sets_.set(par);
@@ -198,18 +196,18 @@ bool State::record(mc2vk::VulkanContext& ctx, VkCommandBuffer cb, uint32_t par, 
 bool State::ensureDrawLayout(mc2vk::VulkanContext& ctx) {
     if (drawTried_) return drawDsl_ && drawSets_[0];
     drawTried_ = true;
-    VkDescriptorSetLayoutBinding b[4]{};
-    for (uint32_t i = 0; i < 4; ++i) {
+    VkDescriptorSetLayoutBinding b[3]{};
+    for (uint32_t i = 0; i < 3; ++i) {
         b[i].binding = i; b[i].descriptorCount = 1; b[i].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-        b[i].descriptorType = i < 2 ? VK_DESCRIPTOR_TYPE_STORAGE_BUFFER : i == 2 ? VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC : VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
+        b[i].descriptorType = i < 2 ? VK_DESCRIPTOR_TYPE_STORAGE_BUFFER : VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
     }
     VkDescriptorSetLayoutCreateInfo lci{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO};
-    lci.bindingCount = 4; lci.pBindings = b;
+    lci.bindingCount = 3; lci.pBindings = b;
     const VkDevice dev = ctx.device();
     if (!mc2vk::create(drawDsl_, dev, [&](VkDescriptorSetLayout* o) { return vkCreateDescriptorSetLayout(dev, &lci, nullptr, o); })) return false;
-    const VkDescriptorPoolSize sizes[3] = {{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 2 * kSlots}, {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, kSlots}, {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, kSlots}};
+    const VkDescriptorPoolSize sizes[2] = {{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 2 * kSlots}, {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, kSlots}};
     VkDescriptorPoolCreateInfo pci{VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO};
-    pci.maxSets = kSlots; pci.poolSizeCount = 3; pci.pPoolSizes = sizes;
+    pci.maxSets = kSlots; pci.poolSizeCount = 2; pci.pPoolSizes = sizes;
     if (!mc2vk::create(drawPool_, dev, [&](VkDescriptorPool* o) { return vkCreateDescriptorPool(dev, &pci, nullptr, o); })) return false;
     const VkDescriptorSetLayout layouts[kSlots] = {drawDsl_.get(), drawDsl_.get()};
     VkDescriptorSetAllocateInfo ai{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO};

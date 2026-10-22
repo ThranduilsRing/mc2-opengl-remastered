@@ -14,7 +14,7 @@ bool survives(VegInstance i, bool force) {
         if (P.plane[k].x * i.pos.x + P.plane[k].y * i.pos.y + P.plane[k].z * i.pos.z + P.plane[k].w < -1.5 * scale * P.planeLen[k]) return false;
     uint block = vegBlockIndex(i, P);
     uint visibility = block < P.counts.z ? blockVis[block] : 2u;
-    return vegLodScale(i, P, visibility) > 0.0;
+    return visibility != 0u && vegLodScale(i, P) > 0.0;
 }
 void main() {
     uint r = gl_WorkGroupID.y * P.flags.y + gl_WorkGroupID.x;

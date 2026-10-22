@@ -23,16 +23,16 @@ uint vegBlockIndex(VegInstance i, VegParamsData p) {
 
 // One rank and one continuous scale, shared by the cull and draw. No alpha
 // fade, frame-dependent noise or separate binary distance/population tests.
-float vegLodScale(VegInstance i, VegParamsData p, uint visibility) {
+float vegLodScale(VegInstance i, VegParamsData p) {
     if (p.flags.x != 0u) return 1.0;
-    if (visibility == 0u) return 0.0;
     uint role = (i.atlasFrame >> 4u) & 3u;
     float height = i.scale * (role == 3u ? 0.25 : role == 2u ? 0.6 : 1.0);
     float clipW = dot(p.clipRow, vec4(i.pos, 1.0));
     if (clipW <= 0.001) return 0.0;
     float pixels = height * p.misc.y / clipW;
     float distanceFade = 1.0 - smoothstep(p.misc.x, p.cam.w, length(i.pos - p.cam.xyz));
-    float density = min(distanceFade, smoothstep(3.0, 12.0, pixels)) * (visibility >= 2u ? 1.0 : 0.4);
+    // Terrain LOD is discrete; only the continuous cover metric controls density.
+    float density = min(distanceFade, smoothstep(3.0, 12.0, pixels));
     float rank = fract(i.seed * 17.371 + 0.137);
     return clamp((density - rank) / 0.15, 0.0, 1.0);
 }

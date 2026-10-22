@@ -720,9 +720,9 @@ bool mc2_vk_vfx_vegetation_run(const mc2veg::CullParams& params, const float* wo
         vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->vegetationPipe.get());
         vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->vegLayout.get(), 0, 1, &s->set[par], 2, dynOffsets);
         vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->vegLayout.get(), 1, 1, &page->set[par], 0, nullptr);
-        const uint32_t drawDyn[2] = {veg->paramsDynamicOffset(par), veg->visibilityDynamicOffset(par)};
+        const uint32_t drawDyn = veg->paramsDynamicOffset(par);
         const VkDescriptorSet drawSet = veg->drawSet(par);
-        vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->vegLayout.get(), 2, 1, &drawSet, 2, drawDyn);
+        vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->vegLayout.get(), 2, 1, &drawSet, 1, &drawDyn);
         veg->drawIndirect(cb, par);
         vkCmdEndRenderPass(cb);
         gpuScope.end();

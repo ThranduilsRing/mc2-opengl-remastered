@@ -94,7 +94,6 @@ public:
     VkDescriptorSet drawSet(uint32_t par) const { return par < kSlots ? drawSets_[par] : VK_NULL_HANDLE; }
     // Dynamic offset of the cull parameters inside the ring span passed to the last record() of this parity.
     uint32_t paramsDynamicOffset(uint32_t par) const { return paramsDynOffset_[par]; }
-    uint32_t visibilityDynamicOffset(uint32_t par) const { return visibilityDynOffset_[par]; }
     // The two indirect strips (first vertex 0 and 8) of the parity's survivor arguments.
     void drawIndirect(VkCommandBuffer cb, uint32_t par) const;
 
@@ -120,7 +119,6 @@ private:
     uint64_t frameUploadBytes_ = 0;
     uint32_t lastSurvivors_ = 0;
     uint32_t paramsDynOffset_[kSlots] = {};
-    uint32_t visibilityDynOffset_[kSlots] = {};
     mc2vk::OwnedDescriptorSetLayout drawDsl_;
     mc2vk::OwnedDescriptorPool drawPool_;
     VkDescriptorSet drawSets_[kSlots] = {};
