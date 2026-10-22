@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in mech_internal.h.
 #include "mech_internal.h"
 #include "mc2fmt.h"
+#include "package_chassis.h"
 #include <algorithm>
 #include <utility>
 
@@ -243,8 +244,9 @@ long BattleMech::resolveWeaponMountNode (const InventoryItem& item, long sourceW
 	// effect is preserved exactly (parity), whichever node we ultimately mount to.
 	const long roundRobinNode = appearance->getWeaponNode(sourceWeaponType);
 
-	// Fast path / stock parity: gate OFF or no declared hardpoint -> fallback.
-	if (!mc2UnitProfileDataEnabled() || item.hardpointId == 0)
+	// Fast path / stock parity: gate OFF or no declared hardpoint -> fallback. A package
+	// chassis always routes declared mounts (its sockets are the only correct origins).
+	if ((!mc2UnitProfileDataEnabled() && !isPackageChassis()) || item.hardpointId == 0)
 		return roundRobinNode;
 
 	// Declared hardpoint: resolve id -> profile -> socket name -> node index.
@@ -255,6 +257,45 @@ long BattleMech::resolveWeaponMountNode (const InventoryItem& item, long sourceW
 		                 ->resolveWeaponNodeBySocketName(hp.socket.c_str());
 
 	return chooseWeaponNode(/*hasHardpoint*/ true, socketNode, roundRobinNode);
+}
+
+bool BattleMech::isPackageChassis (void) const
+{
+	return packageChassisByTypeNum(typeHandle) != nullptr;
+}
+
+bool BattleMech::resolveHardpoint (unsigned int hardpointId, HardpointProfile& out) const
+{
+	const mc2pkg::PackageChassis* pc = packageChassisByTypeNum(typeHandle);
+	const mc2pkg::Hardpoint* hp = pc ? pc->hardpointByKey(hardpointId) : nullptr;
+	if (!hp)
+		return false;
+	out = HardpointProfile();
+	out.id = HardpointId(hp->id.c_str());
+	switch (hp->mount) {
+		case mc2pkg::Mount::Energy:        addWeaponTag(out, WTAG_ENERGY); break;
+		case mc2pkg::Mount::Ballistic:     addWeaponTag(out, WTAG_BALLISTIC); break;
+		case mc2pkg::Mount::Missile:       addWeaponTag(out, WTAG_MISSILE); break;
+		case mc2pkg::Mount::AntiPersonnel: addWeaponTag(out, WTAG_ANTIPERSONNEL); break;
+		default: break;
+	}
+	static const struct { const char* name; DamageLocationId loc; } kLocs[] = {
+		{"Head", DLOC_MECH_HEAD}, {"CenterTorso", DLOC_MECH_CTORSO}, {"LeftTorso", DLOC_MECH_LTORSO},
+		{"RightTorso", DLOC_MECH_RTORSO}, {"LeftArm", DLOC_MECH_LARM}, {"RightArm", DLOC_MECH_RARM},
+		{"LeftLeg", DLOC_MECH_LLEG}, {"RightLeg", DLOC_MECH_RLEG}};
+	for (const auto& l : kLocs)
+		if (hp->location == l.name)
+			out.damageLocation = l.loc;
+	out.socket = HardpointSocketName(hp->socket.c_str());
+	out.muzzle = HardpointSocketName(hp->socket.c_str());
+	return true;
+}
+
+void BattleMech::setPendingPackageMounts (const unsigned int* keys, long count)
+{
+	numPendingPackageMounts = 0;
+	for (long i = 0; keys && i < count && i < MAX_MOVER_INVENTORY_ITEMS; ++i)
+		pendingPackageMounts[numPendingPackageMounts++] = keys[i];
 }
 
 long BattleMech::init (FitIniFile* mechFile) {

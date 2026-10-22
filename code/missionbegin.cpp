@@ -1217,6 +1217,30 @@ void MissionBegin::updateSoakAutoPurchase() {
 							if ( w < lightestW ) { lightestW = w; lightest = v; }
 							if ( w <= cap && w > pickW ) { pickW = w; pick = v; }
 						}
+						// BT2018-FIRST-CLASS P4: when a mounted package offers a purchasable
+						// chassis, the soak buys that (heaviest within the cap, ignoring the cap
+						// if none fits) so automated runs exercise the package's buy -> deploy
+						// path. No package mounted -> the stock pick above, unchanged.
+						{
+							LogisticsVariant* pkgPick = nullptr;
+							int pkgW = -1;
+							for ( int i = 0; i < mechCount; ++i )
+							{
+								LogisticsVariant* v = pool[ mechIdx[i] ];
+								if ( !v->getChassis() || !v->getChassis()->getPackage() )
+									continue;
+								const int w = static_cast<int>(v->getMaxWeight());
+								const bool fits = w <= cap;
+								const bool bestFits = pkgPick && static_cast<int>(pkgPick->getMaxWeight()) <= cap;
+								if ( !pkgPick || ( fits && !bestFits ) || ( fits == bestFits && w > pkgW ) )
+								{
+									pkgPick = v;
+									pkgW = w;
+								}
+							}
+							if ( pkgPick )
+								pick = pkgPick;
+						}
 						if ( !pick )
 							pick = lightest;
 						if ( !pick && n > 0 )

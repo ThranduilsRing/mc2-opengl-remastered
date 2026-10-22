@@ -40,6 +40,9 @@ static std::unordered_map<std::string, ModFileEntry> g_modIndex;
 static std::unordered_map<std::string, std::vector<std::string>> g_shadowedBy;
 static std::string g_activeModId;
 static std::unordered_map<std::string, int> g_modPriority;
+// mod.json "capabilities" per mounted mod id (active + deps). A package capability switches on the
+// engine paths that package needs (imported mechs, package chassis, equipment ADD) for that package only.
+static std::unordered_map<std::string, std::vector<std::string>> g_modCapabilities;
 // logFileResolve: 0=off, 1=level-1 stdout tags, 2=level-1+JSONL trace
 static int logFileResolve = 0;
 
@@ -518,7 +521,7 @@ static std::vector<std::string> JsonGetStringArray(const char* json, const char*
     return result;
 }
 
-struct ModJson { std::string id, name; std::vector<std::string> deps; };
+struct ModJson { std::string id, name; std::vector<std::string> deps, capabilities; };
 
 // Read mod.json at jsonPath. Returns nullopt if file not found or has no id.
 static std::optional<ModJson> ReadModJson(const char* jsonPath) {
@@ -531,7 +534,8 @@ static std::optional<ModJson> ReadModJson(const char* jsonPath) {
     CloseHandle(fh);
     buf[read] = '\0';
 
-    ModJson mj{JsonGetString(buf, "id"), JsonGetString(buf, "name"), JsonGetStringArray(buf, "dependencies")};
+    ModJson mj{JsonGetString(buf, "id"), JsonGetString(buf, "name"), JsonGetStringArray(buf, "dependencies"),
+               JsonGetStringArray(buf, "capabilities")};
     if (mj.id.empty()) return std::nullopt;
     return mj;
 }
@@ -604,6 +608,31 @@ const char* LookupModOwner(const char* dataPath) {
     return it->second.modId.c_str();
 }
 
+const char* LookupModAbsolutePath(const char* dataPath) {
+    if (g_modIndex.empty() || !dataPath) return nullptr;
+    auto it = g_modIndex.find(NormalizeKey(dataPath));
+    return it == g_modIndex.end() ? nullptr : it->second.path.c_str();
+}
+
+bool ModHasCapability(const char* modId, const char* capability) {
+    if (!modId || !capability) return false;
+    auto it = g_modCapabilities.find(modId);
+    if (it == g_modCapabilities.end()) return false;
+    for (const std::string& c : it->second)
+        if (_stricmp(c.c_str(), capability) == 0) return true;
+    return false;
+}
+
+bool ModCapabilityMounted(const char* capability) {
+    for (const auto& entry : g_modCapabilities)
+        if (ModHasCapability(entry.first.c_str(), capability)) return true;
+    return false;
+}
+
+bool ModOwnerHasCapability(const char* dataPath, const char* capability) {
+    return ModHasCapability(LookupModOwner(dataPath), capability);
+}
+
 // No-ops — mod is selected at launcher time, not at campaign-select time.
 // Kept for call-site compatibility in logisticsdata.cpp / logisticsdialog.cpp / mission.cpp.
 void ActivateCampaignMod(const char* /*campaignFitName*/) {}
@@ -651,6 +680,7 @@ void InitModSearchPaths(const char* modsRoot) {
     g_modPriority.clear();
     g_shadowedBy.clear();
     g_activeModId.clear();
+    g_modCapabilities.clear();
 
     // Parse MC2_LOG_FILE_RESOLVE: absent/empty -> 0; any non-numeric non-empty -> 1 (compat);
     // numeric -> atoi (so "1" -> 1, "2" -> 2).
@@ -745,6 +775,7 @@ void InitModSearchPaths(const char* modsRoot) {
         modName = "";
     } else if (auto mj = ReadModJson(jsonPath)) {
         modId = mj->id; modName = mj->name; deps = mj->deps;
+        if (!mj->capabilities.empty()) g_modCapabilities[modId] = mj->capabilities;
     } else {
         // No mod.json — treat the folder name as the id. Dependencies (the compat
         // layer) come from MC2_MOD_DEPS instead (see below) — the launcher lets the
@@ -813,6 +844,13 @@ void InitModSearchPaths(const char* modsRoot) {
             printf("[mod] dep '%s' not found at %s, skipping\n", dep.c_str(), depDataDir);
             fflush(stdout);
             continue;
+        }
+        {
+            char depJson[MAX_PATH];
+            _snprintf(depJson, sizeof(depJson), "%s%s/mod.json", absRoot, dep.c_str());
+            depJson[sizeof(depJson)-1] = '\0';
+            if (auto dj = ReadModJson(depJson); dj && !dj->capabilities.empty())
+                g_modCapabilities[dep] = dj->capabilities;
         }
         size_t before = g_modIndex.size();
         if (!TryLoadModCache(g_modIndex, absRoot, dep.c_str(), depDataDir))

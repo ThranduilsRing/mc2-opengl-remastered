@@ -6,6 +6,7 @@
 #include "Gates/gate.h"
 #include "mc2fmt.h"
 #include "../RenderCore/TextureService.h"
+#include "package_chassis.h"
 
 //--------------------------------------------------------------------------
 // FREEZE-MOVERS-1 (GAMEPLAY-DRIVER-3): deterministic mover freeze.
@@ -282,9 +283,15 @@ bool MissionInterfaceManager::uiCmdFixture(UiCmdCtx& c)
 						data.variant = (wantCls == BATTLEMECH)
 							? static_cast<DWORD>((static_cast<BattleMechPtr>(tmpl))->variantID) : 0;
 					}
+				} else if (strchr(kind, ':')) {
+					// BT2018-FIRST-CLASS P3: a package chassis by qualified id (bt2018:marauder).
+					// Its object-type number is a runtime allocation, so drivers name the id.
+					const mc2pkg::PackageChassis* pc = packageChassisById(kind);
+					if (!pc || pc->objTypeNum < 0) { ok = false; result = "blocked"; note = "no registered package chassis with that id"; }
+					else data.objNumber = pc->objTypeNum;
 				} else {
 					char* end = nullptr; const long on = strtol(kind, &end, 10);
-					if (!end || *end != '\0') { ok = false; note = "kind: clone|vehicle|infantry|<objNum>"; }
+					if (!end || *end != '\0') { ok = false; note = "kind: clone|vehicle|infantry|<objNum>|<ns:chassis>"; }
 					else data.objNumber = on;
 				}
 				if (ok) {

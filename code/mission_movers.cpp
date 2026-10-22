@@ -467,7 +467,31 @@ long Mission::addMover (MoverInitData* moveSpec, LogisticsMech* mechData)
 	}
 	
 	
-	(static_cast<BattleMechPtr>(mMech))->resetComponents(totalComponents,componentList);
+	// BT2018-FIRST-CLASS P7: a package chassis deploys each weapon on the BT mount the mech lab
+	// assigned it. Keys go over in weapon order, which is the order resetComponents installs
+	// weapons in (component-list order).
+	BattleMechPtr bMech = static_cast<BattleMechPtr>(mMech);
+	bMech->setPendingPackageMounts(nullptr, 0);
+	if ( totalComponents && bMech->isPackageChassis() )
+	{
+		std::vector<unsigned int> keys(static_cast<size_t>(totalComponents), 0u);
+		long keyCount = totalComponents;
+		if ( mechData->getPackageMounts(keyCount, keys.data()) == 0 )
+		{
+			std::vector<unsigned int> weaponKeys;
+			for ( long i = 0; i < keyCount; i++ )
+			{
+				const long form = MasterComponent::masterList[componentList[i]].getForm();
+				if ( form == COMPONENT_FORM_WEAPON || form == COMPONENT_FORM_WEAPON_ENERGY ||
+					 form == COMPONENT_FORM_WEAPON_BALLISTIC || form == COMPONENT_FORM_WEAPON_MISSILE )
+					weaponKeys.push_back(keys[i]);
+			}
+			bMech->setPendingPackageMounts(weaponKeys.data(), static_cast<long>(weaponKeys.size()));
+		}
+	}
+
+	bMech->resetComponents(totalComponents,componentList);
+	bMech->setPendingPackageMounts(nullptr, 0);
 	
 	return moverHandle;
 }

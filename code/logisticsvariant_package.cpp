@@ -1,0 +1,106 @@
+// BT2018-FIRST-CLASS P7: LogisticsVariant rules for package chassis. Every rule itself is the
+// pure mc2pkg::checkAdd / assignMounts in code/package_chassis.h; this file only adapts
+// LogisticsComponent placements to it. Stock chassis (getPackage() == nullptr) never reach here.
+#include "logisticsvariant_internal.h"
+#include "package_chassis.h"
+
+namespace {
+
+mc2pkg::Mount categoryOf(const LogisticsComponent* c) {
+    switch (c->getType()) {
+        case COMPONENT_FORM_WEAPON_ENERGY:    return mc2pkg::Mount::Energy;
+        case COMPONENT_FORM_WEAPON_BALLISTIC: return mc2pkg::Mount::Ballistic;
+        case COMPONENT_FORM_WEAPON_MISSILE:   return mc2pkg::Mount::Missile;
+        case COMPONENT_FORM_WEAPON:           return mc2pkg::Mount::Energy;   // untyped legacy weapon: energy, as the equipment schema defaults
+        default:                              return mc2pkg::Mount::None;
+    }
+}
+
+mc2pkg::Placed placedOf(const LogisticsComponent* c, long x, long y) {
+    mc2pkg::Placed p;
+    p.x = static_cast<int>(x);
+    p.y = static_cast<int>(y);
+    p.w = c->getComponentWidth();
+    p.h = c->getComponentHeight();
+    p.category = categoryOf(c);
+    p.ordinal = c->getID();
+    p.weight = c->getWeight();
+    return p;
+}
+
+} // namespace
+
+int LogisticsVariant::packageCheck( LogisticsComponent* pComponent, long x, long y ) const
+{
+    const mc2pkg::PackageChassis* pc = chassis->getPackage();
+    if ( !pc )
+        return 0;
+    std::vector<mc2pkg::Placed> existing;
+    existing.reserve( componentCount );
+    for ( int i = 0; i < componentCount; ++i )
+        existing.push_back( placedOf( components[i].component, components[i].xCoord, components[i].yCoord ) );
+    // Jump jets and head electronics live in their own legacy slots (-2/-3): mass only.
+    const bool slotItem = ( x < 0 && y < 0 && ( x == -2 || x == -3 ) );
+    mc2pkg::Placed cand = placedOf( pComponent, slotItem ? -1 : x, slotItem ? -1 : y );
+    if ( slotItem )
+        cand.category = mc2pkg::Mount::None;
+    switch ( mc2pkg::checkAdd( *pc, existing, cand ) )
+    {
+        case mc2pkg::Verdict::Legal:         return 0;
+        case mc2pkg::Verdict::OverPayload:   return COMPONENT_TOO_HEAVY;
+        case mc2pkg::Verdict::OutsideRegion: return INVALID_LOCATION;
+        case mc2pkg::Verdict::NoFreeMount:   return NO_COMPATIBLE_MOUNT;
+    }
+    return ADD_COMPONENT_FAILED;
+}
+
+// Auto-place (x == y == -1): the first free grid spot that lies wholly in one region AND
+// passes the package rules, scanning regions in their declared order.
+bool LogisticsVariant::packageAutoPlace( LogisticsComponent* pComponent, long& x, long& y ) const
+{
+    const mc2pkg::PackageChassis* pc = chassis->getPackage();
+    if ( !pc )
+        return false;
+    const int w = pComponent->getComponentWidth();
+    const int h = pComponent->getComponentHeight();
+    for ( const mc2pkg::Region& r : pc->regions )
+    {
+        for ( int j = r.y; j + h <= r.y + r.h; ++j )
+        {
+            for ( int i = r.x; i + w <= r.x + r.w; ++i )
+            {
+                bool free = true;
+                for ( int l = 0; l < h && free; ++l )
+                    for ( int k = 0; k < w && free; ++k )
+                        if ( getComponentAtLocation( i + k, j + l ) )
+                            free = false;
+                if ( free && packageCheck( pComponent, i, j ) == 0 )
+                {
+                    x = i;
+                    y = j;
+                    return true;
+                }
+            }
+        }
+    }
+    return false;
+}
+
+int LogisticsVariant::getPackageMounts( long& count, unsigned int* keys ) const
+{
+    const mc2pkg::PackageChassis* pc = chassis->getPackage();
+    if ( !pc || count < componentCount )
+    {
+        count = componentCount;
+        return pc ? NEED_BIGGER_ARRAY : -1;
+    }
+    std::vector<mc2pkg::Placed> items;
+    items.reserve( componentCount );
+    for ( int i = 0; i < componentCount; ++i )
+        items.push_back( placedOf( components[i].component, components[i].xCoord, components[i].yCoord ) );
+    const std::vector<int> mounts = mc2pkg::assignMounts( *pc, items );
+    for ( int i = 0; i < componentCount; ++i )
+        keys[i] = mounts[i] >= 0 ? pc->hardpoints[mounts[i]].key : 0u;
+    count = componentCount;
+    return 0;
+}

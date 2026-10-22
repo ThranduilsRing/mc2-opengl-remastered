@@ -430,7 +430,13 @@ void reportAddFinding(const ModderFinding& f) {
 } // namespace
 
 size_t applyEquipmentAddFillIfEnabled(float baseSensorRange) {
-    if (!mc2UnitProfileDataEnabled() || !mc2EquipmentAddEnabled())
+    // BT2018-FIRST-CLASS P7: a mounted package with the "equipment_add" capability ships
+    // its own definitions (e.g. BT rack sizes) ON; only that package's defs are filled then.
+    // MC2_EQUIPMENT_ADD=0 stays the kill switch.
+    const bool envGates = mc2UnitProfileDataEnabled() && mc2EquipmentAddEnabled();
+    const bool packageGate = ModCapabilityMounted("equipment_add") &&
+        mc2::gate::state<"MC2_EQUIPMENT_ADD">() != mc2::gate::Tri::Off;
+    if (!envGates && !packageGate)
         return 0;                          // both gates default OFF -> no-op
     if (!MasterComponent::masterList)
         return 0;
@@ -445,6 +451,14 @@ size_t applyEquipmentAddFillIfEnabled(float baseSensorRange) {
 
     std::vector<std::string> defPaths;
     EnumerateModFitFiles("data/defs/equipment/", collectEquipDefPath, &defPaths);
+    if (!envGates) {
+        std::erase_if(defPaths, [](const std::string& abs) {
+            std::string key = abs;
+            for (char& c : key) c = (c == '\\') ? '/' : static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+            const size_t at = key.find("data/defs/equipment/");
+            return at == std::string::npos || !ModOwnerHasCapability(key.c_str() + at, "equipment_add");
+        });
+    }
     if (defPaths.empty())
         return 0;                          // no active mod defs -> nothing to add
 
@@ -552,9 +566,15 @@ size_t applyEquipmentAddFillIfEnabled(float baseSensorRange) {
             if (gen.readIdString("RangeBucket", bucket, sizeof(bucket) - 1) == NO_ERR)
                 rf.rangeOrdinal = mc2GeneratedRangeBucketToOrdinal(bucket, -1);
         }
-        if (gen.seekBlock("WeaponAmmo") == NO_ERR &&
-            gen.readIdLong("AmmoMasterId", lv) == NO_ERR)
-            rf.ammoMasterId = lv;
+        if (gen.seekBlock("WeaponAmmo") == NO_ERR) {
+            if (gen.readIdLong("AmmoMasterId", lv) == NO_ERR)
+                rf.ammoMasterId = lv;
+            // Optional compbas missile-type token (LRM / SRM / ST): the stock missile
+            // flight model keys on it; absent -> the generic finite-ammo token.
+            char missile[16] = {0};
+            if (gen.readIdString("MissileType", missile, sizeof(missile) - 1) == NO_ERR)
+                rf.ammoToken = missile;
+        }
         if (gen.seekBlock("WeaponFit") == NO_ERR) {
             if (gen.readIdLong("CritSlots", lv) == NO_ERR)  rf.critSlots = static_cast<int>(lv);
             if (gen.readIdFloat("Tonnage", fv) == NO_ERR)   rf.tonnage = fv;
