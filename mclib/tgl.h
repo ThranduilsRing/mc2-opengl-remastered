@@ -245,7 +245,10 @@ struct _TG_Light
 	void SetaRGB (DWORD newaRGB)
 	{
 		OEMaRGB = aRGB = newaRGB;
+		intensity = 1.0f;
 	}
+
+	DWORD GetSourceRGB () const { return OEMaRGB; }
 
 	DWORD GetaRGB (void)
 	{
@@ -274,6 +277,9 @@ struct _TG_Light
 	{
 		if (intensity > 1.0f)
 			intensity = 1.0f;
+		if (intensity < 0.0f)
+			intensity = 0.0f;
+		this->intensity = intensity;
 
 		//Scale aRGB by intensity
 		DWORD r,g,b;

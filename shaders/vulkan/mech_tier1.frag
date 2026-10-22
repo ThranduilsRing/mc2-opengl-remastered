@@ -44,7 +44,7 @@ struct PoolLight {
     float farDistance;
     float oneOverDistance;
     float _plPad1;
-    float _plPad2;
+    float intensity;
 };
 layout(set = 0, binding = 5, std430) readonly buffer MechPoolLightsVK {
     PoolLight poolLights[];

@@ -54,7 +54,7 @@ struct MissionEnvironment {
         std::string transform = "profile-grade";
     } output;
     std::string atmosphere = "legacy-per-receiver";
-    std::string localLights = "legacy-SUM/MAX-compression-pad-spill";
+    std::string localLights = "building-anchored-SUM/MAX-compression";
     std::string clouds = "legacy-whole-color-multiply";
     std::string cacheStatus = "legacy-no-environment-cook";
     std::map<std::string, float> legacyTuning;

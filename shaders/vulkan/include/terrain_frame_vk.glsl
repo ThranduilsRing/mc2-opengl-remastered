@@ -33,7 +33,7 @@ struct PoolLight {
     float farDistance;
     float oneOverDistance;
     float _plPad1;         // >0.5 = mover-attached (producer flag)
-    float _plPad2;
+    float intensity;
 };
 layout(set = 0, binding = 11, std430) readonly buffer TerrainLightPoolVK {
     PoolLight poolLights[];

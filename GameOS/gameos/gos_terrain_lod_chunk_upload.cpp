@@ -258,15 +258,8 @@ int gos_TerrainLightPoolCount()
 
 void gos_TerrainPadGlowRGB(float out[3])
 {
-    float fr = 1.f, fg = 1.f, fb = 1.f;
-    gos_GetTerrainMissionFlatLight(&fr, &fg, &fb);
-    float flMax = fr;                     // (std::max unusable: windows.h max macro)
-    if (fg > flMax) flMax = fg;
-    if (fb > flMax) flMax = fb;
-    float nf = 1.0f - flMax;
-    nf = std::clamp(nf, 0.0f, 1.0f);
-    const float s = gos_TerrainPadGlowStrength() * nf;
-    out[0] = s * 1.00f; out[1] = s * 0.88f; out[2] = s * 0.70f;
+    // Compatibility UBO slots remain neutral; occupied buildings own spill now.
+    out[0] = out[1] = out[2] = 0.0f;
 }
 
 // VK-PARITY-TERRAIN-2: the NIGHT-LIGHT-POOLS-2..4 / MOVER-CONTACT-SHADOW-1 knob

@@ -391,6 +391,19 @@ void BldgAppearance::setObjStatus (long oStatus)
 {
 	if (status != oStatus)
 	{
+		if (oStatus == OBJECT_STATUS_DESTROYED) {
+			forceLightsOut = true;
+			if (pointLight) {
+				pointLight->SetIntensity(0.0f);
+				pointLight->active = false;
+				pointLight->ownerEnabled = 0;
+			}
+			for (auto* light : spotlightLights_) {
+				light->SetIntensity(0.0f);
+				light->active = false;
+				light->ownerEnabled = 0;
+			}
+		}
 		// STATIC-BLDG-SHADOW-REBAKE-1: this is the REAL mid-mission "building
 		// destroyed" event (combat damage reaching the threshold ->
 		// Building::setDamage -> here). Only OBJECT_STATUS_DESTROYED, not

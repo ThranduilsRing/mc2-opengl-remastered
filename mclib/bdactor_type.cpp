@@ -422,6 +422,17 @@ void BldgAppearanceType::init (const char * fileName)
 		if (bldgShape[i])
 			bldgShape[i]->SetLightRGBs(hotPinkRGB, hotGreenRGB, hotYellowRGB);
 	}
+
+	// An authored window color is the legacy signal for an occupied building.
+	// Give it restrained warm foundation spill when no terrain lamp was authored.
+	if (terrainLightRGB == 0xffffffff && hotPinkRGB != 0xffff00ff
+		&& (hotPinkRGB & 0x00ffffff) != 0 && !isForestClump)
+	{
+		terrainLightRGB = 0xffe8c870;
+		terrainLightIntensity = 0.12f;
+		terrainLightInnerRadius = 0.0f;
+		terrainLightOuterRadius = 96.0f;
+	}
 }
 
 void BldgAppearanceType::destroy (void)
