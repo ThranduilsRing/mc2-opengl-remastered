@@ -6,6 +6,9 @@
 #include "abl_string_append.h"
 #include "mc2fmt.h"
 #include "sim_trace.h"
+#include "Gates/gate.h"
+#include "det_rng.h"
+#include "mathfunc.h"
 
 
 //***************************************************************************
@@ -480,10 +483,11 @@ void execStdSeedRandom (void) {
 
 	int seed  = ABLi_popInteger();
 
-	if (seed == -1)
-		ABLSeedRandomCallback(static_cast<unsigned int>(time(nullptr)));
-	else
-		ABLSeedRandomCallback(static_cast<unsigned int>(seed));
+	// DETERMINISTIC-RNG-1: under MC2_DETERMINISTIC_RNG seedRandom(-1) reseeds from the deterministic sim seed (startup or
+	// mission), never the wall clock. With the gate off it keeps the stock time(nullptr) seed.
+	const bool detRng = mc2::gate::get<"MC2_DETERMINISTIC_RNG">();
+	const uint32_t simSeed = static_cast<uint32_t>(SimMissionSeed());
+	ABLSeedRandomCallback(mc2_det_rng::resolveSeedRandom(seed, detRng, simSeed, static_cast<uint32_t>(time(nullptr))));
 }
 
 //-----------------------------------------------------------------------------

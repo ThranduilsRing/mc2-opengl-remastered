@@ -76,6 +76,7 @@ void Mission::initPrologue(MissionInitFrame& f) {
 		const std::string seedText = mc2::gate::str<"MC2_RNG_SEED">();   // "" when unset or empty
 		if (!seedText.empty())
 			seed = static_cast<uint32_t>(strtoul(seedText.c_str(), nullptr, 0));
+		SetSimMissionSeed(seed);   // ABL seedRandom(-1) under MC2_DETERMINISTIC_RNG reseeds from this, never the clock
 		mc2_appearance_rng::reseed(seed);
 		ResetSimRandomDraws();
 		if (mc2::gate::get<"MC2_DETERMINISTIC_RNG">()) {

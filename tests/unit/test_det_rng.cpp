@@ -8,6 +8,7 @@
 
 using mc2_det_rng::next15;
 using mc2_det_rng::hashMissionName;
+using mc2_det_rng::resolveSeedRandom;
 
 TEST_CASE("det_rng: same seed yields identical sequence") {
     uint32_t a = 0xCAFEBABEu;
@@ -50,4 +51,19 @@ TEST_CASE("det_rng: mission-name hash is stable and name-sensitive") {
     CHECK(hashMissionName("mc2_01") == hashMissionName("mc2_01"));
     CHECK(hashMissionName("mc2_01") != hashMissionName("mc2_24"));
     CHECK(hashMissionName(nullptr) == hashMissionName(""));  // both = FNV offset basis
+}
+
+TEST_CASE("det_rng: seedRandom(-1) under the gate reseeds from the sim seed, never the clock") {
+    CHECK(resolveSeedRandom(-1, true, 0x1234u, 0xDEADu) == 0x1234u);
+    // Whatever the wall clock reads, the reseed value does not change.
+    CHECK(resolveSeedRandom(-1, true, 0x1234u, 1u) == resolveSeedRandom(-1, true, 0x1234u, 999999u));
+}
+
+TEST_CASE("det_rng: seedRandom(-1) with the gate off keeps the clock seed") {
+    CHECK(resolveSeedRandom(-1, false, 0x1234u, 0xDEADu) == 0xDEADu);
+}
+
+TEST_CASE("det_rng: explicit seedRandom(n) is used as-is regardless of the gate") {
+    CHECK(resolveSeedRandom(42, true, 0x1234u, 0xDEADu) == 42u);
+    CHECK(resolveSeedRandom(42, false, 0x1234u, 0xDEADu) == 42u);
 }
