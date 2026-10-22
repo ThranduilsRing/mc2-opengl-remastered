@@ -71,14 +71,14 @@ std::vector<MissionCheck> MissionValidator::ValidateForPakSave() {
     //    a) Map too large for legacy MOVE  → Info (not a failure; expected for generated maps)
     //    b) Map within range but not built → Warning with "Build MOVE" button
     //
-    //    Legacy MOVE grid limit: moveSide = cellSide * MAPCELL_DIM(3) <= MAX_MAP_CELL_WIDTH(720)
-    //    → max supported cellSide = 240 cells/side.
-    //    Generated maps at 260/520/1020 cells all exceed this and should never see
+    //    Legacy MOVE grid limit: moveSide = cellSide * MAPCELL_DIM(3) <= MAX_MAP_CELL_WIDTH (mclib/terrain.h)
+    //    → max supported cellSide = MAX_MAP_CELL_WIDTH / MAPCELL_DIM.
+    //    Maps above that cellSide should never see
     //    a "Build MOVE" button — just a clear explanation of why MOVE is unavailable.
     {
         const int cellSide  = land->realVerticesMapSide - 1;
         const int moveSide  = cellSide * MAPCELL_DIM;     // MAPCELL_DIM = 3
-        const int maxCellSide = MAX_MAP_CELL_WIDTH / MAPCELL_DIM;  // 240
+        const int maxCellSide = MAX_MAP_CELL_WIDTH / MAPCELL_DIM;
         const bool tooLarge = (moveSide > MAX_MAP_CELL_WIDTH);
         const bool moveReady = EditorData::IsMoveDataReadyForFullSave();
 

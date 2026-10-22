@@ -370,6 +370,7 @@ void __stdcall InitializeGameEngine()
 			if (!seedText.empty())
 				seed = static_cast<uint32_t>(strtoul(seedText.c_str(), nullptr, 0));
 			gos_srand(seed);
+			SetSimMissionSeed(seed);   // pre-mission ABL seedRandom(-1) reseeds from the startup seed
 		} else {
 			gos_srand(timeGetTime());
 		}
