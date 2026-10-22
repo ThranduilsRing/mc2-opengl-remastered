@@ -21,7 +21,7 @@ import numpy as np
 if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from tools.assets.common import (INSTALL_ROOT, OUT_ROOT, Mesh, bounds, output_path,
-    parse_tgl, stock_install, texture_image, write_json)
+    parse_tgl, stock_install, texture_image, transform_normals, write_json)
 from tools.assets.candidates import Candidate, export_runtime_gltf, load_candidate, load_gltf
 
 CANDIDATES = Path("G:/mc2-assets/candidates")
@@ -114,7 +114,8 @@ def metadata_for(path):
 
 def orient(candidate, metadata, yaw=0):
     m = orientation_matrix(metadata, yaw)
-    mesh = dataclass_replace(candidate.mesh, vertices=candidate.mesh.vertices @ m.T)
+    mesh = dataclass_replace(candidate.mesh, vertices=candidate.mesh.vertices @ m.T,
+                             normals=transform_normals(candidate.mesh.normals, m))
     return Candidate(mesh, candidate.images, candidate.source), m
 
 
@@ -142,7 +143,8 @@ def fit_candidate(candidate, spec, metadata=None, *, yaw=0, stretch=False):
     anchor = np.array([(lo[0]+hi[0])/2, lo[1], (lo[2]+hi[2])/2])
     delta = np.array(spec["base_center_wu"])-anchor
     points += delta
-    fitted = Candidate(dataclass_replace(candidate.mesh, vertices=points), candidate.images, candidate.source)
+    fitted = Candidate(dataclass_replace(candidate.mesh, vertices=points,
+        normals=transform_normals(candidate.mesh.normals, np.diag(scale))), candidate.images, candidate.source)
     return fitted, {"orientation_matrix": matrix.tolist(), "scale_xyz": scale.tolist(),
                     "translation_wu": delta.tolist(), "stretch": stretch, "requested_yaw_degrees": yaw,
                     "metadata": metadata or {}, "semantic_orientation_verified": bool(metadata and metadata.get("orientation_reviewed"))}
@@ -278,7 +280,8 @@ def _package(entry, spec, candidate_path, mod_id, *, root=INSTALL_ROOT, yaw=0,
     gltf, images, texnames = export_runtime_gltf(candidate, folder, mod_id, spec["budgets"]["max_texture_edge"])
     # Read exported data, simulate the engine's actual default mapping, validate again.
     roundtrip = load_gltf(gltf)
-    engine_mesh = dataclass_replace(roundtrip.mesh, vertices=roundtrip.mesh.vertices*[-1, -1, 1])
+    engine_mesh = dataclass_replace(roundtrip.mesh, vertices=roundtrip.mesh.vertices*[-1, -1, 1],
+                                   normals=roundtrip.mesh.normals*[-1, -1, 1])
     cooked = Candidate(engine_mesh, roundtrip.images, gltf)
     final = validate(cooked, spec, transform)
     if not final["valid"]:

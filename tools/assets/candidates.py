@@ -12,7 +12,7 @@ import subprocess
 import numpy as np
 from PIL import Image
 
-from tools.assets.common import Mesh, bounds, output_path
+from tools.assets.common import Mesh, bounds, face_normals, output_path, transform_normals
 
 
 @dataclass
@@ -139,7 +139,7 @@ def load_gltf(path):
         if material.get("alphaMode", "OPAQUE") == "OPAQUE":
             rgba[:, :, 3] = 255
         images.append(Image.fromarray(rgba))
-    positions, uv, slots, nodes = [], [], [], []
+    positions, uv, slots, nodes, normals = [], [], [], [], []
 
     def walk(index, parent, chain):
         if index in chain:
@@ -170,6 +170,13 @@ def load_gltf(path):
                 if "TEXCOORD_0" not in attrs and "baseColorTexture" in materials[material].get("pbrMetallicRoughness", {}):
                     raise ValueError("textured primitive has no TEXCOORD_0")
                 positions.append(v[idx].reshape(-1, 3)); uv.append(tex[idx].reshape(-1, 2))
+                if "NORMAL" in attrs:
+                    n = accessor(attrs["NORMAL"])
+                    if n.shape != (len(v), 3):
+                        raise ValueError("NORMAL must match POSITION VEC3")
+                    normals.append(transform_normals(n, transform[:3, :3])[idx].reshape(-1, 3))
+                else:
+                    normals.append(face_normals(positions[-1]))
                 slots.append(np.full(len(idx), material, dtype=int))
             nodes.append({"name": node.get("name", str(index)), "transform_baked": True})
         for child in node.get("children", []):
@@ -185,7 +192,7 @@ def load_gltf(path):
         raise ValueError("candidate scene has no triangles")
     mesh = Mesh(np.concatenate(positions), np.concatenate(uv), np.concatenate(slots),
                 [f"material_{i}" for i in range(len(images))], nodes,
-                [im.getextrema()[3][0] < 255 for im in images])
+                [im.getextrema()[3][0] < 255 for im in images], np.concatenate(normals))
     bounds(mesh.vertices)
     return Candidate(mesh, images, path)
 
@@ -198,7 +205,7 @@ def load_candidate(path):
         raise ValueError("use GLB/glTF/OBJ; convert local FBX with the documented Blender adapter")
     import trimesh
     scene = trimesh.load(path, force="scene", process=False)
-    vertices, uv, mats, images = [], [], [], []
+    vertices, uv, mats, images, normals = [], [], [], [], []
     for node in sorted(scene.graph.nodes_geometry):
         transform, geom = scene.graph[node]
         g = scene.geometry[geom]
@@ -223,12 +230,13 @@ def load_candidate(path):
             idx = idx[:, [0, 2, 1]]
         points = np.asarray(g.vertices) @ transform[:3, :3].T + transform[:3, 3]
         vertices.append(points[idx].reshape(-1, 3)); uv.append(tex[idx].reshape(-1, 2))
+        normals.append(transform_normals(g.vertex_normals, transform[:3, :3])[idx].reshape(-1, 3))
         mats.append(np.full(len(idx), len(images), dtype=int)); images.append(image)
     if not vertices:
         raise ValueError("OBJ has no triangles")
     mesh = Mesh(np.concatenate(vertices), np.concatenate(uv), np.concatenate(mats),
                 [f"material_{i}" for i in range(len(images))], [],
-                [im.getextrema()[3][0] < 255 for im in images])
+                [im.getextrema()[3][0] < 255 for im in images], np.concatenate(normals))
     bounds(mesh.vertices)
     if not np.isfinite(mesh.uv).all():
         raise ValueError("nonfinite OBJ UVs")
@@ -313,11 +321,10 @@ def export_runtime_gltf(candidate, folder, stem, max_texture_edge):
         face_mask = mesh.materials == material
         positions = mesh.vertices.reshape(-1, 3, 3)[face_mask].reshape(-1, 3)*[-1, -1, 1]
         tex = mesh.uv.reshape(-1, 3, 2)[face_mask].reshape(-1, 2)
-        triangles = positions.reshape(-1, 3, 3)
-        normals = np.cross(triangles[:, 1]-triangles[:, 0], triangles[:, 2]-triangles[:, 0])
-        normals /= np.maximum(np.linalg.norm(normals, axis=1)[:, None], 1e-12)
+        normals = (face_normals(positions) if mesh.normals is None else
+                   mesh.normals.reshape(-1, 3, 3)[face_mask].reshape(-1, 3)*[-1, -1, 1])
         attrs = {"POSITION": accessor(positions, "VEC3"),
-                 "NORMAL": accessor(np.repeat(normals, 3, axis=0), "VEC3"),
+                 "NORMAL": accessor(normals, "VEC3"),
                  "TEXCOORD_0": accessor(tex, "VEC2")}
         doc["meshes"][0]["primitives"].append({"attributes": attrs, "material": material, "mode": 4})
     doc["buffers"] = [{"uri": stem+".bin", "byteLength": len(binary)}]

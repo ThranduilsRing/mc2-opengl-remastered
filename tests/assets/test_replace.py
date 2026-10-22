@@ -196,6 +196,39 @@ def test_runtime_export_inverts_axis_and_binds_real_texture_names(cube, entry, a
     assert cooked.images[0].getpixel((0, 0)) == images[0].getpixel((0, 0))
 
 
+def test_authored_corner_normals_survive_scene_fit_and_export(cube, entry, artifact_root):
+    doc = json.loads(cube.read_text())
+    payload = base64.b64decode(doc["buffers"][0]["uri"].split(",")[1])
+    authored = np.array([[1+i, 2, 3] for i in range(8)], dtype="<f4")
+    authored /= np.linalg.norm(authored, axis=1, keepdims=True)
+    doc["bufferViews"].append({"buffer": 0, "byteOffset": len(payload), "byteLength": authored.nbytes})
+    payload += authored.tobytes()
+    doc["buffers"][0] = {"uri": "data:application/octet-stream;base64,"+base64.b64encode(payload).decode(), "byteLength": len(payload)}
+    doc["accessors"].append({"bufferView": 2, "componentType": 5126, "count": 8, "type": "VEC3"})
+    doc["meshes"][0]["primitives"][0]["attributes"]["NORMAL"] = 2
+    doc["nodes"][0]["scale"] = [-2, 3, 4]
+    cube.write_text(json.dumps(doc))
+    candidate = load_gltf(cube)
+    idx = np.frombuffer(payload, dtype="<u2", count=36, offset=8*3*4).reshape(-1, 3)[:, [0, 2, 1]].ravel()
+    expected = authored[idx]/[-2, 3, 4]
+    expected /= np.linalg.norm(expected, axis=1, keepdims=True)
+    np.testing.assert_allclose(candidate.mesh.normals, expected)
+    rotation = orientation_matrix({"forward_axis": "-z"}, yaw=90)
+    rotated = candidate.mesh.vertices @ rotation.T
+    entry["models"][0]["bounds"] = bounds((rotated-rotated.min(axis=0))*[1, 1.1, 1.2])
+    fitted, _ = fit_candidate(candidate, target_spec(entry), {"forward_axis": "-z"}, yaw=90, stretch=True)
+    expected = (expected @ rotation.T)/[1, 1.1, 1.2]
+    expected /= np.linalg.norm(expected, axis=1, keepdims=True)
+    np.testing.assert_allclose(fitted.mesh.normals, expected, atol=1e-6)
+    path, _, _ = export_runtime_gltf(fitted, artifact_root/"normal"/"data"/"model_overrides"/"cooked", "normal", 512)
+    exported = json.loads(path.read_text())
+    a = exported["accessors"][exported["meshes"][0]["primitives"][0]["attributes"]["NORMAL"]]
+    view = exported["bufferViews"][a["bufferView"]]
+    actual = np.frombuffer(path.with_suffix(".bin").read_bytes(), dtype="<f4", count=a["count"]*3, offset=view["byteOffset"]).reshape(-1, 3)
+    np.testing.assert_allclose(actual*[-1, -1, 1], expected, atol=1e-6)
+    np.testing.assert_allclose(load_gltf(path).mesh.normals, actual, atol=1e-6)
+
+
 def test_orientation_uses_declared_z_up_and_front():
     matrix = orientation_matrix({"up_axis": "z", "forward_axis": "y"})
     np.testing.assert_allclose(matrix@[0, 0, 1], [0, 1, 0])

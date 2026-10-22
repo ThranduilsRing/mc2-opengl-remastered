@@ -63,6 +63,7 @@ class Mesh:
     textures: list[str]
     nodes: list[dict]
     texture_alpha: list[bool]
+    normals: np.ndarray | None = None
 
     @property
     def triangles(self):
@@ -72,6 +73,23 @@ class Mesh:
         return {"triangles": self.triangles, "bounds": bounds(self.vertices),
                 "textures": self.textures, "texture_alpha": self.texture_alpha,
                 "nodes": self.nodes}
+
+
+def transform_normals(normals, linear):
+    if normals is None:
+        return None
+    transformed = np.asarray(normals) @ np.linalg.inv(linear)
+    lengths = np.linalg.norm(transformed, axis=1, keepdims=True)
+    if not np.isfinite(transformed).all() or np.any(lengths < 1e-12):
+        raise ValueError("invalid vertex normals")
+    return transformed/lengths
+
+
+def face_normals(vertices):
+    triangles = np.asarray(vertices).reshape(-1, 3, 3)
+    normals = np.cross(triangles[:, 1]-triangles[:, 0], triangles[:, 2]-triangles[:, 0])
+    normals /= np.maximum(np.linalg.norm(normals, axis=1, keepdims=True), 1e-12)
+    return np.repeat(normals, 3, axis=0)
 
 
 def parse_tgl(raw):
