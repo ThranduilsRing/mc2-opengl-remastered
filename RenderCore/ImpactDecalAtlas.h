@@ -121,7 +121,7 @@ inline Texel paint(Tile tile, float u, float v) {
     case Tile::BlastMetal: {
         const float rr = 0.3f * (0.8f + 0.45f * angleNoise(th, 3.0f, salt));
         const float petals = 0.5f + 0.5f * std::cos(th * 9.0f + 5.0f * angleNoise(th, 2.0f, salt + 9u));
-        if (d < rr) { t.height = -1.0f; t.albedo = 0.02f; t.coverage = 1.0f; t.emissive = 0.3f; break; }
+        if (d < rr) { t.height = -1.0f; t.albedo = 0.02f; t.coverage = 1.0f; t.emissive = 0.8f * sstep(rr * 0.8f, rr, d); break; }
         const float petalZone = 1.0f - sstep(rr, rr + 0.25f * (0.5f + petals), d);
         t.height = 0.85f * petalZone * (0.3f + 0.7f * petals);
         const float soot = 1.0f - sstep(rr, 0.95f, d + 0.25f * (n - 0.5f));
