@@ -31,22 +31,10 @@ static unsigned long s_spotDiagGvOverflows  = 0;
 static unsigned long s_spotDiagGvActors     = 0;
 static unsigned long s_spotDiagGvCalls      = 0;
 
-void GVAppearance::updateGeometry (void)
+glm::quat GVAppearance::poseRotation() const
 {
-		if (rotation > 180)
-			rotation -= 360;
-	
-		if (rotation < -180)
-			rotation += 360;
-	
-		if (turretRotation > 180)
-			turretRotation -= 360;
-	
-		if (turretRotation < -180)
-			turretRotation += 360;
-	
-		float pitchAngle = pitch;
-		float rollAngle = roll;
+		float pitchAngle = unitAnim().pitch;
+		float rollAngle = unitAnim().roll;
 
 		if ((status == OBJECT_STATUS_NORMAL || status == OBJECT_STATUS_SHUTDOWN) && land)  //Are we still oK?
 		{
@@ -96,6 +84,25 @@ void GVAppearance::updateGeometry (void)
 		pitchRoll = mc2::math::quatFromEuler(mc2::math::Euler(pitchAngle, 0.0f, rollAngle));
 		totalRotation = mc2::math::composeQuat(pitchRoll, rot);
 	
+    return totalRotation;
+}
+
+void GVAppearance::updateGeometry (void)
+{
+		if (rotation > 180)
+			rotation -= 360;
+	
+		if (rotation < -180)
+			rotation += 360;
+	
+		if (unitAnim().turretRotation > 180)
+			unitAnim().turretRotation -= 360;
+	
+		if (unitAnim().turretRotation < -180)
+			unitAnim().turretRotation += 360;
+	
+		auto totalRotation = poseRotation();
+
 		unsigned char lightr,lightg,lightb;
 		float lightIntensity = 1.0f;
 		if (land)
@@ -151,7 +158,7 @@ void GVAppearance::updateGeometry (void)
 			gvShape->SetFogRGB(0xffffffff);
 	
 		glm::quat turretRot;
-		turretRot = mc2::math::quatFromEuler(mc2::math::Euler(0.0f,(turretRotation * DEGREES_TO_RADS),0.0f));
+		turretRot = mc2::math::quatFromEuler(mc2::math::Euler(0.0f,(unitAnim().turretRotation * DEGREES_TO_RADS),0.0f));
 		if (rotationalNodeIndex == -1)
 		   	rotationalNodeIndex = gvShape->SetNodeRotation(appearType->rotationalNodeId,&turretRot);
 
@@ -519,17 +526,21 @@ void GVAppearance::updateGeometry (void)
 
 long GVAppearance::update (bool animate) 
 {
-	if (!nodeRecycle.empty())
+	if (!simPresentationPass) {
+
+	if (!unitAnim().nodeRecycle.empty())
 	{
 		for (long i=0;i<appearType->numWeaponNodes;i++)
 		{
-			if (nodeRecycle[i] > 0.0f)
+			if (unitAnim().nodeRecycle[i] > 0.0f)
 			{
-				nodeRecycle[i] -= frameLength;
-				if (nodeRecycle[i] < 0.0f)
-					nodeRecycle[i] = 0.0f;
+				unitAnim().nodeRecycle[i] -= frameLength;
+				if (unitAnim().nodeRecycle[i] < 0.0f)
+					unitAnim().nodeRecycle[i] = 0.0f;
 			}
 		}
+	}
+
 	}
 
 	//Update flashing regardless of view!!!
@@ -569,50 +580,52 @@ long GVAppearance::update (bool animate)
 	// with the default animate=true, and LOS resolution still runs while movers
 	// are frozen, a frozen vehicle's animation could keep ticking off the
 	// wall-clock frameLength. Same mech-vs-vehicle asymmetry as sensorSpin.
- 	if (animate && gvFrameRate != 0.0f && (mc2FreezeMoversActive() == 0))
+ 	if (!simPresentationPass && animate && unitAnim().gvFrameRate != 0.0f && (mc2FreezeMoversActive() == 0))
 	{
 		//--------------------------------------------------------
 		// Make sure animation runs no faster than bdFrameRate fps.
-		float frameInc = gvFrameRate * frameLength;
+		float frameInc = unitAnim().gvFrameRate * frameLength;
 		
 		if (frameInc != 0.0f)
 		{
-			if (!setFirstFrame)		//DO NOT ANIMATE ON FIRST FRAME!  Wait a bit!
+			if (!unitAnim().setFirstFrame)		//DO NOT ANIMATE ON FIRST FRAME!  Wait a bit!
 			{
-				if (isReversed)
-					currentFrame -= frameInc;
+				if (unitAnim().isReversed)
+					unitAnim().currentFrame -= frameInc;
 				else
-					currentFrame += frameInc;
+					unitAnim().currentFrame += frameInc;
 			}
 			else
 			{
-				setFirstFrame = false;
+				unitAnim().setFirstFrame = false;
 			}
 	
-			if (currentFrame >= appearType->getNumFrames(gvAnimationState))
+			if (unitAnim().currentFrame >= appearType->getNumFrames(unitAnim().gvAnimationState))
 			{
-				if (isLooping)
-					currentFrame -= appearType->getNumFrames(gvAnimationState);
+				if (unitAnim().isLooping)
+					unitAnim().currentFrame -= appearType->getNumFrames(unitAnim().gvAnimationState);
 				else
-					currentFrame = appearType->getNumFrames(gvAnimationState) - 1;
+					unitAnim().currentFrame = appearType->getNumFrames(unitAnim().gvAnimationState) - 1;
 					
-				canTransition = true;		//Whenever we have completed one cycle or at last frame, OK to move on!
+				unitAnim().canTransition = true;		//Whenever we have completed one cycle or at last frame, OK to move on!
 			}
 			
 	
-			if (currentFrame < 0)
+			if (unitAnim().currentFrame < 0)
 			{
-				if (isLooping)
-					currentFrame += appearType->getNumFrames(gvAnimationState); 
+				if (unitAnim().isLooping)
+					unitAnim().currentFrame += appearType->getNumFrames(unitAnim().gvAnimationState); 
 				else
-					currentFrame = 0.0f; 
+					unitAnim().currentFrame = 0.0f; 
 					
-				canTransition = true;		//Whenever we have completed one cycle or at last frame, OK to move on!
+				unitAnim().canTransition = true;		//Whenever we have completed one cycle or at last frame, OK to move on!
 			}
 		}
 		
-		gvShape->SetFrameNum(currentFrame);
+		gvShape->SetFrameNum(unitAnim().currentFrame);
 	}
+
+	if (!simPresentationPass && actorHandle_ >= 0) { updateSimPose(); return TRUE; }
 
 	// LIGHT-CULL-RADIUS-1 freshness (batch-6 item 5 ext a/c): light owner
 	// intent + coarse position refreshed EVERY frame even when
@@ -884,4 +897,36 @@ void GVAppearance::flashBuilding (float dur, float fDuration, DWORD color)
 	flashColor = color;
 	drawFlash = true;
 	currentFlash = flashDuration;
+}
+
+void GVAppearance::updateSimPose() {
+    if (!gvShape) return;
+    simPose->ready = false;
+    glm::vec3 translation;
+    mc2ToRender(translation, position);
+    auto rootRotation = poseRotation();
+    auto turret = mc2::math::quatFromEuler(mc2::math::Euler(0.0f, unitAnim().turretRotation * DEGREES_TO_RADS, 0.0f));
+    gvShape->SetNodeRotation(appearType->rotationalNodeId, &turret);
+    gvShape->SetFrameNum(unitAnim().currentFrame);
+    gvShape->TransformMultiShape_BuildRecipe(&translation, &rootRotation);
+    simPose->root = position;
+    simPose->heading = rotation;
+    simPose->nodes.resize(appearType->getTotalNodes());
+    for (long i = 0; i < appearType->getTotalNodes(); ++i) {
+        if (i >= appearType->numSmokeNodes && i < appearType->numSmokeNodes + appearType->numWeaponNodes) {
+            const auto index = i - appearType->numSmokeNodes;
+            weaponNodeId[index] = gvShape->GetNodeNameId(appearType->nodeData[i].nodeId);
+            if (weaponNodeId[index] < 0) weaponNodeId[index] = -2;
+        }
+        simPose->nodes[i] = gvShape->GetTransformedNodePosition(&translation, &rootRotation, appearType->nodeData[i].nodeId);
+        if (simPose->nodes[i] == glm::vec3(0.0f)) simPose->nodes[i] = position;
+    }
+    simPose->shapeNodes.resize(gvShape->GetNumShapes());
+    for (long i = 0; i < gvShape->GetNumShapes(); ++i)
+        simPose->shapeNodes[i] = gvShape->GetTransformedNodePosition(&translation, &rootRotation, i);
+    const auto hit = gvShape->GetNodeNameId("hitnode");
+    simPose->hitLeft = hit >= 0 && static_cast<size_t>(hit) < simPose->shapeNodes.size()
+        ? simPose->shapeNodes[hit] : position;
+    simPose->hitRight = simPose->hitLeft;
+    simPose->ready = true;
 }

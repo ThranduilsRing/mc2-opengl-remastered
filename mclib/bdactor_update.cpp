@@ -23,19 +23,81 @@ long BldgAppearance::update (bool animate)
 	glm::vec3 xlatPosition;
 	glm::quat rot;
 
+
+    if (!simPresentationPass) {
 	// Recycle the weapon Nodes
-	if (!nodeRecycle.empty())
+	if (!unitAnim().nodeRecycle.empty())
 	{
 		for (long i=0;i<appearType->numWeaponNodes;i++)
 		{
-			if (nodeRecycle[i] > 0.0f)
+			if (unitAnim().nodeRecycle[i] > 0.0f)
 			{
-				nodeRecycle[i] -= frameLength;
-				if (nodeRecycle[i] < 0.0f)
-					nodeRecycle[i] = 0.0f;
+				unitAnim().nodeRecycle[i] -= frameLength;
+				if (unitAnim().nodeRecycle[i] < 0.0f)
+					unitAnim().nodeRecycle[i] = 0.0f;
 			}
 		}
 	}
+	float oldFrame = unitAnim().currentFrame;
+	if (!simPresentationPass && animate && unitAnim().bdFrameRate != 0.0f)
+	{
+		// Make sure animation runs no faster than bdFrameRate fps.
+		float frameInc = unitAnim().bdFrameRate * frameLength;
+		
+		// Increment Frames -- Everything else!
+		if (frameInc != 0.0f)
+		{
+			if (!unitAnim().setFirstFrame)		//DO NOT ANIMATE ON FIRST FRAME!  Wait a bit!
+			{
+				if (simPresentationPass && mc2::animationsFrozen())
+				{
+					// MC2_SMOKE_FREEZE_ANIM: the frame stays where it is
+				}
+				else if (unitAnim().isReversed)
+					unitAnim().currentFrame -= frameInc;
+				else
+					unitAnim().currentFrame += frameInc;
+			}
+			else
+			{
+				unitAnim().setFirstFrame = false;
+			}
+	
+			//Check Positive overflow of Animation
+			if (unitAnim().currentFrame >= appearType->getNumFrames(unitAnim().bdAnimationState))
+			{
+				if (unitAnim().isLooping)
+					unitAnim().currentFrame -= appearType->getNumFrames(unitAnim().bdAnimationState);
+				else
+					unitAnim().currentFrame = appearType->getNumFrames(unitAnim().bdAnimationState) - 1;
+					
+				unitAnim().canTransition = true;		//Whenever we have completed one cycle or at last frame, OK to move on!
+			}
+			
+			//Check negative overflow of gesture
+			if (unitAnim().currentFrame < 0)
+			{
+				if (unitAnim().isLooping)
+					unitAnim().currentFrame += appearType->getNumFrames(unitAnim().bdAnimationState); 
+				else
+					unitAnim().currentFrame = 0.0f; 
+					
+				unitAnim().canTransition = true;		//Whenever we have completed one cycle or at last frame, OK to move on!
+			}
+		}
+		
+		bldgShape->SetFrameNum(unitAnim().currentFrame);
+	}
+
+        if (bldgShape && (appearType->numWeaponNodes > 0 || unitAnim().bdFrameRate != 0.0f)) {
+            mc2ToRender(xlatPosition, position);
+            rot = mc2::math::quatFromEuler(mc2::math::Euler(0.0f, rotation * DEGREES_TO_RADS, 0.0f));
+            auto aim = mc2::math::quatFromEuler(mc2::math::Euler(turretPitch * DEGREES_TO_RADS, turretYaw * DEGREES_TO_RADS, 0.0f));
+            bldgShape->SetNodeRotation(appearType->rotationalNodeId, &aim);
+            bldgShape->TransformMultiShape_BuildRecipe(&xlatPosition, &rot);
+        }
+        return TRUE;
+    }
 
    	if (appearType->terrainLightRGB != 0xffffffff && (eye->nightFactor > 0.0f) && !forceLightsOut)
    	{
@@ -498,56 +560,8 @@ long BldgAppearance::update (bool animate)
 	   	bldgShape->SetNodeRotation(rotationalNodeId,&turretRot);
 	}
 
-	float oldFrame = currentFrame;
-	if (animate && bdFrameRate != 0.0f)
-	{
-		// Make sure animation runs no faster than bdFrameRate fps.
-		float frameInc = bdFrameRate * frameLength;
-		
-		// Increment Frames -- Everything else!
-		if (frameInc != 0.0f)
-		{
-			if (!setFirstFrame)		//DO NOT ANIMATE ON FIRST FRAME!  Wait a bit!
-			{
-				if (mc2::animationsFrozen())
-				{
-					// MC2_SMOKE_FREEZE_ANIM: the frame stays where it is
-				}
-				else if (isReversed)
-					currentFrame -= frameInc;
-				else
-					currentFrame += frameInc;
-			}
-			else
-			{
-				setFirstFrame = false;
-			}
-	
-			//Check Positive overflow of Animation
-			if (currentFrame >= appearType->getNumFrames(bdAnimationState))
-			{
-				if (isLooping)
-					currentFrame -= appearType->getNumFrames(bdAnimationState);
-				else
-					currentFrame = appearType->getNumFrames(bdAnimationState) - 1;
-					
-				canTransition = true;		//Whenever we have completed one cycle or at last frame, OK to move on!
-			}
-			
-			//Check negative overflow of gesture
-			if (currentFrame < 0)
-			{
-				if (isLooping)
-					currentFrame += appearType->getNumFrames(bdAnimationState); 
-				else
-					currentFrame = 0.0f; 
-					
-				canTransition = true;		//Whenever we have completed one cycle or at last frame, OK to move on!
-			}
-		}
-		
-		bldgShape->SetFrameNum(currentFrame);
-	}
+	float oldFrame = unitAnim().currentFrame;
+	bldgShape->SetFrameNum(unitAnim().currentFrame);
 
 	// Under the GPU static-prop path we need listOfColors / shapeToWorld
 	// fresh every frame regardless of inView so the batcher can safely

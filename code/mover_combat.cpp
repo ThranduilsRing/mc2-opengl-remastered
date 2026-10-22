@@ -299,8 +299,7 @@ glm::vec3 Mover::getLOSPosition (void)
 	float jumpLowestNode = 0.0f;
 	if (appearance)
 	{
-		bool oldInView = appearance->canBeSeen();
-		appearance->setInView(true);
+
 
 		if ((getStatus() == OBJECT_STATUS_NORMAL) &&
 			((appearance->getCurrentGestureId() == 2) || 
@@ -313,7 +312,7 @@ glm::vec3 Mover::getLOSPosition (void)
 			{
 				//We must not have ever rendered this guy.  Probably multiplayer.
 				// Update his Geometry.
-				appearance->update();
+
 
 				lowestWeaponNodeID = appearance->getLowestWeaponNode();
 			}
@@ -342,7 +341,7 @@ glm::vec3 Mover::getLOSPosition (void)
 			lowestWeaponNodeZ = nodePos.z - land->getTerrainElevation(nodePos);
 		}
 
-		appearance->setInView(oldInView);
+
 	}
 
 	glm::vec3 losPos = position;

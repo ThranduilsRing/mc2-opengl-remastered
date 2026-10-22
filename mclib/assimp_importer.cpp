@@ -12,6 +12,7 @@
 // Plan: docs/superpowers/plans/2026-04-27-assimp-mech-importer.md
 // Findings: docs/superpowers/explorations/2026-05-02-track-d-mvp-adversarial-findings.md
 #include "assimp_importer.h"
+#include "unit_anim_state.h"
 #include "mech_texname_derive.h"  // GLB-TEXNAME-DERIVE-EXTRACT-1 pure name rules
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"
@@ -701,13 +702,7 @@ namespace {
 // STATIC data (scene, skeleton, invMWrest, per-vertex bone…); this holds the per-frame
 // mutable state. (The CPU re-bake path uses one shared instance — it mutates the shared
 // listOfTypeVertices, so it cannot be per-actor without per-instance vertex buffers.)
-struct ActorAnimState {
-    std::string activeClip, pendingClip;
-    int   pendingStreak = 0, turnStreak = 0;
-    bool  havePrev = false;
-    float prevPx = 0, prevPy = 0, prevPz = 0, prevHeading = 0;
-    float clipTimeSec = 0.0f, durationSec = 1.0f;
-    unsigned lastFrame = 0xFFFFFFFFu;       // per-actor idempotency (combat double-update)
+struct ActorAnimState : mc2::sim::ImportedAnimState {
     std::vector<float> modelDelta;          // jointCount*16 row-major (placement-free)
     float gpuLift = 0.0f;                    // world-up foot-ground lift (per-frame)
     std::vector<mc2skel::GpuBone> lastGlobals;  // 1A: last-frame clip bone GLOBALS (FK),
@@ -1050,6 +1045,55 @@ void mc2mechanim::UnregisterImportedActor(const void* actorKey) {
         e.actors.erase(actorKey);
 }
 
+namespace {
+void buildGpuModelDelta(const ImportedAnimEntry&, ActorAnimState&, const std::vector<mc2skel::GpuBone>&);
+}
+static void rebakeImportedPresentation(ImportedAnimEntry& e, const std::vector<mc2skel::GpuBone>& globals) {
+    TG_TypeVertex* vt = e.shape->GetTypeVerticesMutable();
+    if (!vt) return;
+    ResetBoundingBox(e.multi);
+    for (const ImportPartRec& pr : e.parts) {
+        const aiMesh* me = e.scene->mMeshes[pr.meshIndex];
+        const float* rm = (pr.boneIndex >= 0 && pr.boneIndex < static_cast<int>(globals.size()))
+                              ? globals[pr.boneIndex].m : nullptr;
+        for (unsigned v = 0; v < pr.vCount && v < me->mNumVertices; ++v) {
+            aiVector3D p, n;
+            if (rm) {
+                p = applyRowMajor16(rm, pr.off * me->mVertices[v]) * e.scale;
+                n = rotRowMajor16(rm, aiMatrix3x3(pr.off) * me->mNormals[v]);
+            } else {
+                p = me->mVertices[v] * e.scale;
+                n = me->mNormals[v];
+            }
+            n.Normalize();
+            TG_TypeVertex& d = vt[pr.vOff + v];
+            d.position   = mechToMC2Pos(p);
+            d.position.y += e.groundDy;          // preserve the import-grounded offset
+            d.normal     = mechToMC2Vec(n);
+            if (d.position.x < e.multi->minBox.x) e.multi->minBox.x = d.position.x;
+            if (d.position.y < e.multi->minBox.y) e.multi->minBox.y = d.position.y;
+            if (d.position.z < e.multi->minBox.z) e.multi->minBox.z = d.position.z;
+            if (d.position.x > e.multi->maxBox.x) e.multi->maxBox.x = d.position.x;
+            if (d.position.y > e.multi->maxBox.y) e.multi->maxBox.y = d.position.y;
+            if (d.position.z > e.multi->maxBox.z) e.multi->maxBox.z = d.position.z;
+        }
+    }
+    ComputeBoundingBox(e.multi);
+}
+
+void mc2mechanim::CopyImportedActorPose(const void* source, const void* destination) {
+    if (!source || !destination) return;
+    for (auto& entry : g_importedAnims) {
+        const auto found = entry.actors.find(source);
+        if (found != entry.actors.end()) {
+            entry.actors[destination] = found->second;
+            auto& draw = entry.actors[destination];
+            if (entry.gpuMode) buildGpuModelDelta(entry, draw, draw.lastGlobals);
+            else rebakeImportedPresentation(entry, draw.lastGlobals);
+        }
+    }
+}
+
 bool mc2mechanim::ImportedGpuEnabled() { return mechImportGpuEnabled(); }
 
 int mc2mechanim::ImportedGpuTypeInfo(const void* typeMulti,
@@ -1154,7 +1198,7 @@ bool mc2mechanim::GetImportedNodeWorld(const void* actorKey, const void* typeKey
         ActorAnimState* s = nullptr;
         auto ait = e.actors.find(actorKey);
         if (ait != e.actors.end()) s = &ait->second;
-        else if (!e.cpuState.lastGlobals.empty()) s = &e.cpuState;  // CPU lockstep fallback
+        else if (!actorKey && !e.cpuState.lastGlobals.empty()) s = &e.cpuState;
         if (!s || idx >= static_cast<int>(s->lastGlobals.size())) {
             if (diag) { static int w=0; if (w++<8) mc2::fmt::print_err("[NODE-DIAG] '{}' joint '{}' idx={:d}: no actor state / lastGlobals empty (actors={:d})\n", mc2::fmt::safe(mc2Name), mit->second.c_str(), mc2::fmt::as_i32(idx), mc2::fmt::as_size(e.actors.size())); }
             return false;
@@ -1174,8 +1218,7 @@ bool mc2mechanim::GetImportedNodeWorld(const void* actorKey, const void* typeKey
         float gx = w[0]*mx + w[1]*my + w[2]*mz  + w[3];
         float gy = w[4]*mx + w[5]*my + w[6]*mz  + w[7];
         float gz = w[8]*mx + w[9]*my + w[10]*mz + w[11];
-        const int la = mechImportGpuLiftAxis() & 3;
-        if (la == 0) gx += s->gpuLift; else if (la == 1) gy += s->gpuLift; else gz += s->gpuLift;
+        gy += e.restLift; // gameplay sockets use fixed authored grounding, independent of visual lift settings
         outXYZ[0] = -gx;   // result.x = -entries[3]
         outXYZ[1] =  gz;   // result.y =  entries[11]
         outXYZ[2] =  gy;   // result.z =  entries[7]  (world elevation)
@@ -1260,7 +1303,8 @@ void buildGpuModelDelta(const ImportedAnimEntry& e, ActorAnimState& s,
 } // namespace
 
 void mc2mechanim::TickImportedMechs(float dt, unsigned frameStamp, const MechMotion& motion,
-                                    const void* actorKey, const void* typeKey, bool advanceClock) {
+                                    const void* actorKey, const void* typeKey, bool advanceClock,
+                                    mc2::sim::ImportedAnimState* authoritative) {
     if (g_importedAnims.empty()) return;
     if (dt <= 0.0f) dt = 1.0f / 30.0f;   // defensive: never divide by zero below
     // Find the type entry for this actor's chassis (keyed by its TG_TypeMultiShape).
@@ -1270,21 +1314,22 @@ void mc2mechanim::TickImportedMechs(float dt, unsigned frameStamp, const MechMot
     if (!te) return;
     ImportedAnimEntry& e = *te;
 
-    if (e.gpuMode) {
+    {
         // PER-ACTOR: each actor instance advances its OWN clip + model-delta palette.
         ActorAnimState& s = e.actors[actorKey];
-        if (s.modelDelta.empty()) {                 // first tick for this actor
+        if (authoritative) static_cast<mc2::sim::ImportedAnimState&>(s) = *authoritative;
+        if (s.activeClip.empty()) {                 // first tick for this actor
             s.activeClip   = e.initialClip;
             s.durationSec  = e.initialDuration;
             s.modelDelta.assign(e.invMWrest.size() * 16, 0.0f);
         }
-        if (s.lastFrame == frameStamp) return;      // per-actor idempotency (combat double-update)
+        if (s.lastFrame == frameStamp && !s.lastGlobals.empty()) return;
         s.lastFrame = frameStamp;
         std::vector<mc2skel::GpuBone> globals;
         if (sampleActorClip(e, s, dt, motion, globals, advanceClock)) {
-            buildGpuModelDelta(e, s, globals);
             s.lastGlobals = std::move(globals);   // 1A: firepoint/hit-node source
         }
+        if (authoritative) *authoritative = static_cast<const mc2::sim::ImportedAnimState&>(s);
         // Prune despawned actors' states (untouched for a while).
         for (auto it = e.actors.begin(); it != e.actors.end(); ) {
             const unsigned age = frameStamp - it->second.lastFrame;
@@ -1295,46 +1340,7 @@ void mc2mechanim::TickImportedMechs(float dt, unsigned frameStamp, const MechMot
         return;
     }
 
-    // CPU path (MC2_GPU_MECHS=0): ONE shared state re-bakes the shared
-    // listOfTypeVertices, so it is lockstep across actors of this chassis (per-actor
-    // would need per-instance vertex buffers — a deeper change; GPU is the per-actor path).
-    ActorAnimState& s = e.cpuState;
-    if (s.activeClip.empty()) { s.activeClip = e.initialClip; s.durationSec = e.initialDuration; }
-    if (s.lastFrame == frameStamp) return;
-    s.lastFrame = frameStamp;
-    std::vector<mc2skel::GpuBone> globals;
-    if (!sampleActorClip(e, s, dt, motion, globals, advanceClock)) return;
-    s.lastGlobals = globals;                      // 1A: firepoint/hit-node source (shared CPU state)
-    TG_TypeVertex* vt = e.shape->GetTypeVerticesMutable();
-    if (!vt) return;
-    ResetBoundingBox(e.multi);
-    for (const ImportPartRec& pr : e.parts) {
-        const aiMesh* me = e.scene->mMeshes[pr.meshIndex];
-        const float* rm = (pr.boneIndex >= 0 && pr.boneIndex < static_cast<int>(globals.size()))
-                              ? globals[pr.boneIndex].m : nullptr;
-        for (unsigned v = 0; v < pr.vCount && v < me->mNumVertices; ++v) {
-            aiVector3D p, n;
-            if (rm) {
-                p = applyRowMajor16(rm, pr.off * me->mVertices[v]) * e.scale;
-                n = rotRowMajor16(rm, aiMatrix3x3(pr.off) * me->mNormals[v]);
-            } else {
-                p = me->mVertices[v] * e.scale;
-                n = me->mNormals[v];
-            }
-            n.Normalize();
-            TG_TypeVertex& d = vt[pr.vOff + v];
-            d.position   = mechToMC2Pos(p);
-            d.position.y += e.groundDy;          // preserve the import-grounded offset
-            d.normal     = mechToMC2Vec(n);
-            if (d.position.x < e.multi->minBox.x) e.multi->minBox.x = d.position.x;
-            if (d.position.y < e.multi->minBox.y) e.multi->minBox.y = d.position.y;
-            if (d.position.z < e.multi->minBox.z) e.multi->minBox.z = d.position.z;
-            if (d.position.x > e.multi->maxBox.x) e.multi->maxBox.x = d.position.x;
-            if (d.position.y > e.multi->maxBox.y) e.multi->maxBox.y = d.position.y;
-            if (d.position.z > e.multi->maxBox.z) e.multi->maxBox.z = d.position.z;
-        }
-    }
-    ComputeBoundingBox(e.multi);
+
 }
 
 //=============================================================================

@@ -23,6 +23,8 @@
 #endif
 
 #include<stuff/stuff.hpp>
+#include "unit_anim_state.h"
+#include "presentation_phase.h"
 // Forward declaration for prewarmStaticLightBake parameter.
 class Camera;
 //---------------------------------------------------------------------------
@@ -60,6 +62,16 @@ struct _GameObjectFootPrint;
 // Class definitions
 class Appearance
 {
+    std::shared_ptr<mc2::sim::UnitAnimState> simAnim_ = std::make_shared<mc2::sim::UnitAnimState>();
+    mc2::sim::UnitAnimState renderAnim_;
+public:
+    mc2::sim::UnitAnimState& unitAnim() { return simPresentationPass ? renderAnim_ : *simAnim_; }
+    const mc2::sim::UnitAnimState& unitAnim() const { return simPresentationPass ? renderAnim_ : *simAnim_; }
+    auto simulationAnimation() const { return simAnim_; }
+    void presentAnimation(const mc2::sim::UnitAnimState& value) { renderAnim_ = value; }
+    virtual void refreshSimPose() {}
+    std::shared_ptr<mc2::sim::SimPose> simPose = std::make_shared<mc2::sim::SimPose>();
+
 	//Data Members
 	//-------------
 	protected:

@@ -1,0 +1,81 @@
+#pragma once
+#include <cstdint>
+#include <memory>
+#include <vector>
+#include <string>
+#include "math/glm_config.h"
+
+namespace mc2::sim {
+struct ImportedAnimState {
+    std::string activeClip, pendingClip;
+    int pendingStreak = 0, turnStreak = 0;
+    bool havePrev = false;
+    float prevPx = 0, prevPy = 0, prevPz = 0, prevHeading = 0;
+    float clipTimeSec = 0, durationSec = 1;
+    uint32_t lastFrame = 0xffffffffu;
+    template<class Archive> void serialize(Archive& a) {
+        std::vector<uint8_t> active(activeClip.begin(), activeClip.end()), pending(pendingClip.begin(), pendingClip.end());
+        a.sequence(active, 256); a.sequence(pending, 256);
+        if (a.reading()) {
+            activeClip.assign(active.begin(), active.end()); pendingClip.assign(pending.begin(), pending.end());
+        }
+        a(pendingStreak, turnStreak, havePrev,
+            prevPx, prevPy, prevPz, prevHeading, clipTimeSec, durationSec, lastFrame);
+    }
+};
+// Advanced only by the fixed tick; copied into immutable render snapshots.
+struct UnitAnimState {
+    float mechFrameRate{};
+    bool leftArmOff{};
+    bool rightArmOff{};
+    bool fallen{};
+    bool forceStop{};
+    bool atTransitionToNextGesture{};
+    bool inReverse{};
+    bool inJump{};
+    bool jumpSetup{};
+    bool jumpAirborne{};
+    bool oncePerFrame{};
+    bool lockRotation{};
+    float velocity{};
+    long currentStateGoal{};
+    long currentGestureId{};
+    long transitionState{};
+    long oldStateGoal{};
+    long hitGestureId{};
+    float currentFrame{};
+    uint32_t lastAnimAdvanceFrame{};
+    float idleTime{};
+    glm::vec3 jumpDestination{};
+    glm::vec3 jumpVelocity{};
+    std::vector<long> nodeUsed{};
+    std::vector<float> nodeRecycle{};
+    bool inCombatMode{};
+    float torsoRotation{};
+    float turretRotation{};
+    float pitch{};
+    float roll{};
+    float velocityMagnitude{};
+    long gvAnimationState{};
+    float gvFrameRate{};
+    bool isReversed{};
+    bool isLooping{};
+    bool setFirstFrame{};
+    bool canTransition{};
+    long bdAnimationState = 0;
+    float bdFrameRate = 0;
+    float withdrawSeconds = 0;
+    ImportedAnimState imported;
+    template<class Archive> void serialize(Archive& a) {
+        a(mechFrameRate, leftArmOff, rightArmOff, fallen, forceStop, atTransitionToNextGesture, inReverse, inJump, jumpSetup, jumpAirborne, oncePerFrame, lockRotation, velocity, currentStateGoal, currentGestureId, transitionState, oldStateGoal, hitGestureId, currentFrame, lastAnimAdvanceFrame, idleTime, jumpDestination.x, jumpDestination.y, jumpDestination.z, jumpVelocity.x, jumpVelocity.y, jumpVelocity.z, nodeUsed, nodeRecycle, inCombatMode, torsoRotation, turretRotation, pitch, roll, velocityMagnitude, gvAnimationState, gvFrameRate, isReversed, isLooping, setFirstFrame, canTransition, bdAnimationState, bdFrameRate, withdrawSeconds, imported);
+    }
+};
+struct SimPose {
+    glm::vec3 root{};
+    float heading = 0;
+    std::vector<glm::vec3> nodes;
+    std::vector<glm::vec3> shapeNodes;
+    glm::vec3 hitLeft{}, hitRight{}, cockpit{};
+    bool ready = false;
+};
+}

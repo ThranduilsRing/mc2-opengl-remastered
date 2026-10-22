@@ -1,4 +1,5 @@
 #include "vk_scene_renderer.h"
+#include "sim_tick_cost.h"
 // Mission: the per-frame Mission::update with its MC2_MISSION_SPLIT timing, mover bridge, soak hooks and coherence audit.
 // Declared in the class headers; shared names in mission_internal.h.
 #include "mission_internal.h"
@@ -449,29 +450,24 @@ void Mission::updatePathManager() {
 	{ ZoneScopedN("GameLogic.PathManager"); MisScope _ms(MS_PATHMGR); PathManager->update(); }
 }
 
-//: True while mover appearances hold an interpolated (drawn) pose rather than the sim pose; cleared by an exact re-pose.
-static bool s_moversInterpolated = false;
-
-// Presentation without sim: the paused-frame path (appearances re-pose from object positions) with the clock at zero and
-// Mech3DAppearance::update told not to advance sim state. A render frame with no tick re-poses everything (moversOnly
-// false); the frame after a tick re-poses only the movers. Mechs and vehicles are drawn alpha of the way from their pose at
-// the start of the latest tick to their pose now (alpha 1 = the sim pose exactly).
+// Presentation consumes the last completed tick's snapshots, including during pause.
 void Mission::updatePresentationOnly(bool moversOnly, float alpha) {
+    if (mc2::gate::get<"MC2_PRESENTATION_DISABLED">()) return;
 	MisScope _ms(MS_PRESENT);
 	if (!moversOnly)
 		gpu_cull::substrate_frameBegin();
 	const float renderLength = frameLength;
-	frameLength = 0.0f;
 	simPresentationPass = true;
 	ObjectManager->setPresentationAlpha(alpha);
 	if (moversOnly)
 		ObjectManager->updateAppearancesOnly( false, true, false );
 	else
 		ObjectManager->updateAppearancesOnly( true, true, true );
+	ObjectManager->updatePresentationCull();
+	updateCratersAndDamp();
 	ObjectManager->setPresentationAlpha(1.0f);
 	simPresentationPass = false;
 	frameLength = renderLength;
-	s_moversInterpolated = alpha < 1.0f;
 }
 
 // Clear the terrain object flags and process the terrain geometry.
@@ -499,30 +495,11 @@ void Mission::advanceCombatClock(float seconds)
 
 // Begin the GPU cull frame and update the objects, or only their appearances while frozen.
 void Mission::updateObjectManager() {
-	// Render submissions continue while paused; stale substrate records would smear props. A further tick of the same render
-	// frame restarts the dynamic records in the same ring slot.
-	if (s_extraTickInFrame)
-		gpu_cull::substrate_frameRewind();
-	else
-		gpu_cull::substrate_frameBegin();
-
-	// Frozen actors keep drawing while gameplay, gait and aim remain suspended.
-	if ( mc2SimTickFrozen(missionInterface) && !MPlayer )
-		ObjectManager->updateAppearancesOnly( true, true, true );
-	else
-		{ // The sim reads the mover poses the last tick left (node positions): put back any interpolated drawn pose first.
-			if (s_moversInterpolated && !s_extraTickInFrame)
-				updatePresentationOnly(true, 1.0f);
-			ObjectManager->snapshotMoverPoses();
-			// Ingress precedes actor updates so orders belong to this simulation tick.
-			beginOrderSimulationTick();
-			advanceCombatClock(frameLength);
-			MisScope _ms(MS_OBJMGR); ObjectManager->update(true, true, true); }
-
-	// Dynamic actor parity is available before the render-time static prop flush.
-	if (gpu_cull::compute_isEnabled()) {
-		gpu_cull::compute_emitParitySummary();
-	}
+	ObjectManager->snapshotMoverPoses();
+	beginOrderSimulationTick();
+	advanceCombatClock(frameLength);
+	MisScope _ms(MS_OBJMGR);
+	ObjectManager->update(true, true, true);
 }
 
 // Update the craters and the mover visual-displacement damp.
@@ -590,7 +567,7 @@ void Mission::updateTraceHooks() {
 	// which is correct, because determinism is not claimed at all then.
 	mc2SimIdentityTraceFrame(
 		static_cast<double>(scenarioTime),
-		static_cast<long>((SmokeMode::fixedClockSeconds() * 30.0 + 0.5)));
+		turn);
 
 	// META-FIX design A: mover-registry coherence audit (~1 Hz walk over
 	// home-commander movers + force-bar icons; read-only). No-op unless
@@ -1219,8 +1196,9 @@ void Mission::updateSoakPilotPromote() {
 bool Mission::updatePass(bool tickMode, bool runFrame, bool runSim, bool advanceTime, long& earlyResult)
 {
 	const float renderLength = frameLength;
-	auto simLength = [&] { if (tickMode) frameLength = static_cast<float>(mc2::sim::kTickSeconds); };
-	auto frameLen = [&] { frameLength = renderLength; };
+    mc2::diagnostic::TickCost tickCost(s_misSplit && runSim);
+	auto simLength = [&] { tickCost.begin(); if (tickMode) frameLength = static_cast<float>(mc2::sim::kTickSeconds); };
+	auto frameLen = [&] { tickCost.end(); frameLength = renderLength; };
 
 	// Every opened tick must complete, including the mission brain's 9999 return.
 	std::optional<mc2::sim::SimulationOrderCompletion<Mission>> orderTickCompletion;
@@ -1273,7 +1251,6 @@ bool Mission::updatePass(bool tickMode, bool runFrame, bool runSim, bool advance
 	{
 		simLength();
 		updateObjectManager();
-		updateCratersAndDamp();
 		updateSimSystems();
 
 		if (missionBrain)
@@ -1306,6 +1283,7 @@ bool Mission::updatePass(bool tickMode, bool runFrame, bool runSim, bool advance
 			}
 		}
 
+		ObjectManager->extractRenderSnapshots();
 		updateTraceHooks();
 		updateTermination();
 	}
@@ -1390,8 +1368,9 @@ long Mission::update (void)
 				frameLength *= simSpeedGetMultiplier();
 			if (forcedFrameRate != -1.0f)
 				frameLength /= forcedFrameRate;
-			if (updatePass(false, true, true, true, earlyResult))
+			if (updatePass(false, true, MPlayer != nullptr, true, earlyResult))
 				return earlyResult;
+			updatePresentationOnly(false, 1.0f);
 		}
 		else
 		{
@@ -1417,8 +1396,8 @@ long Mission::update (void)
 				if (ended)
 					return earlyResult;
 			}
-			if (ticks > 0 && !firstFrame)
-				updatePresentationOnly(true, static_cast<float>(s_tickClock.alpha()));
+			if (ticks > 0)
+				updatePresentationOnly(false, static_cast<float>(s_tickClock.alpha()));
 		}
 		s_turnAfterLastPass = turn;
 	}

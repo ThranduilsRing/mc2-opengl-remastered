@@ -403,31 +403,21 @@ void GVAppearance::setWeaponNodeUsed (long weaponNode)
 	weaponNode -= appearType->numSmokeNodes;
    	if ((weaponNode >= 0) && (weaponNode < appearType->numWeaponNodes))
 	{
-		nodeUsed[weaponNode]++;
-		nodeRecycle[weaponNode] = BASE_NODE_RECYCLE_TIME;
+		unitAnim().nodeUsed[weaponNode]++;
+		unitAnim().nodeRecycle[weaponNode] = BASE_NODE_RECYCLE_TIME;
 	}
 }
 
 //-----------------------------------------------------------------------------
 glm::vec3 GVAppearance::getWeaponNodePosition (long nodeId)
 {
+    if (!simPresentationPass && simPose->ready) return nodeId >= 0 && static_cast<size_t>(nodeId) < simPose->nodes.size() ? simPose->nodes[nodeId] : simPose->root;
+
 	glm::vec3 result = position;
 	if ((nodeId < appearType->numSmokeNodes) || (nodeId >= (appearType->numSmokeNodes+appearType->numWeaponNodes)))
 		return result;
 
-	// C3: route to GPU-lagged visibility when killswitch is enabled.
-	// 1-frame weapon-spawn-root artifact on visibility transition: accepted by design.
-	if (s_gpuCullLifecycle) {
-		if (!gpu_cull::readback_isActorVisibleLagged(static_cast<uint32_t>(actorHandle_))) {
-			++s_lcSkipCountGV;
-			if (s_lcSkipCountGV == 1u || (s_lcSkipCountGV % 600u) == 0u)
-				LCGV_TRACE("event=node_skip actorHandle=%ld total=%u", actorHandle_, s_lcSkipCountGV);
-			return result;
-		}
-	} else {
-		if (!inView)
-			return result;
-	}
+
 
 	//We already know we are using this node.  Do NOT increment recycle or nodeUsed!
 	
@@ -441,7 +431,7 @@ glm::vec3 GVAppearance::getWeaponNodePosition (long nodeId)
    	mc2ToRender(xlatPosition, position);
    
    	glm::quat torsoRot;
-   	torsoRot = mc2::math::quatFromEuler(mc2::math::Euler(0.0f,(turretRotation * DEGREES_TO_RADS),0.0f));
+   	torsoRot = mc2::math::quatFromEuler(mc2::math::Euler(0.0f,(unitAnim().turretRotation * DEGREES_TO_RADS),0.0f));
 	if (rotationalNodeIndex == -1)
 	   	rotationalNodeIndex = gvShape->SetNodeRotation(appearType->rotationalNodeId,&torsoRot);
 
@@ -473,14 +463,7 @@ glm::vec3 GVAppearance::getSmokeNodePosition (long nodeId)
 	if ((nodeId < 0) || (nodeId >= appearType->numSmokeNodes))
 		return result;
 
-	// C3: route to GPU-lagged visibility when killswitch is enabled.
-	if (s_gpuCullLifecycle) {
-		if (!gpu_cull::readback_isActorVisibleLagged(static_cast<uint32_t>(actorHandle_)))
-			return result;
-	} else {
-		if (!inView)
-			return result;
-	}
+
 
 	//-------------------------------------------
    	// Create Matrix to conform to.
@@ -492,7 +475,7 @@ glm::vec3 GVAppearance::getSmokeNodePosition (long nodeId)
    	mc2ToRender(xlatPosition, position);
    
    	glm::quat torsoRot;
-   	torsoRot = mc2::math::quatFromEuler(mc2::math::Euler(0.0f,(turretRotation * DEGREES_TO_RADS),0.0f));
+   	torsoRot = mc2::math::quatFromEuler(mc2::math::Euler(0.0f,(unitAnim().turretRotation * DEGREES_TO_RADS),0.0f));
 	if (rotationalNodeIndex == -1)
 	   	rotationalNodeIndex = gvShape->SetNodeRotation(appearType->rotationalNodeId,&torsoRot);
 
@@ -510,14 +493,7 @@ glm::vec3 GVAppearance::getDustNodePosition (long nodeId)
 	if ((nodeId < 0) || (nodeId >= appearType->numFootNodes))
 		return result;
 
-	// C3: route to GPU-lagged visibility when killswitch is enabled.
-	if (s_gpuCullLifecycle) {
-		if (!gpu_cull::readback_isActorVisibleLagged(static_cast<uint32_t>(actorHandle_)))
-			return result;
-	} else {
-		if (!inView)
-			return result;
-	}
+
 
    	//-------------------------------------------
    	// Create Matrix to conform to.
@@ -529,7 +505,7 @@ glm::vec3 GVAppearance::getDustNodePosition (long nodeId)
    	mc2ToRender(xlatPosition, position);
    
    	glm::quat torsoRot;
-   	torsoRot = mc2::math::quatFromEuler(mc2::math::Euler(0.0f,(turretRotation * DEGREES_TO_RADS),0.0f));
+   	torsoRot = mc2::math::quatFromEuler(mc2::math::Euler(0.0f,(unitAnim().turretRotation * DEGREES_TO_RADS),0.0f));
 	if (rotationalNodeIndex == -1)
 	   	rotationalNodeIndex = gvShape->SetNodeRotation(appearType->rotationalNodeId,&torsoRot);
 
@@ -588,9 +564,9 @@ long GVAppearance::getWeaponNode (long weaponType)
 				{
 //					if (getWeaponNodePosition(i + numSmokeNodes).z != position.z)
 //					{
-						if (nodeUsed[i] < leastUsed)
+						if (unitAnim().nodeUsed[i] < leastUsed)
 						{
-							leastUsed = nodeUsed[i];
+							leastUsed = unitAnim().nodeUsed[i];
 							bestNode = i + numSmokeNodes;
 						}
 //					}
@@ -604,9 +580,9 @@ long GVAppearance::getWeaponNode (long weaponType)
 				{
 //					if (getWeaponNodePosition(i + numSmokeNodes).z != position.z)
 //					{
-	 					if (nodeUsed[i] < leastUsed)
+	 					if (unitAnim().nodeUsed[i] < leastUsed)
 						{
-							leastUsed = nodeUsed[i];
+							leastUsed = unitAnim().nodeUsed[i];
 							bestNode = i + numSmokeNodes;
 						}
 //					}
@@ -619,9 +595,9 @@ long GVAppearance::getWeaponNode (long weaponType)
 				{
 //					if (getWeaponNodePosition(i + numSmokeNodes).z != position.z)
 //					{
-	 					if (nodeUsed[i] < leastUsed)
+	 					if (unitAnim().nodeUsed[i] < leastUsed)
 						{
-							leastUsed = nodeUsed[i];
+							leastUsed = unitAnim().nodeUsed[i];
 							bestNode = i + numSmokeNodes;
 						}
 //					}
@@ -631,9 +607,9 @@ long GVAppearance::getWeaponNode (long weaponType)
 			case MECH3D_WEAPONTYPE_ANY:
 //				if (getWeaponNodePosition(i + numSmokeNodes).z != position.z)
 //				{
-	 				if (nodeUsed[i] < leastUsed)
+	 				if (unitAnim().nodeUsed[i] < leastUsed)
 					{
-						leastUsed = nodeUsed[i];
+						leastUsed = unitAnim().nodeUsed[i];
 						bestNode = i + numSmokeNodes;
 					}
 //				}
@@ -656,7 +632,7 @@ float GVAppearance::getWeaponNodeRecycle (long node)
 	node -= appearType->numSmokeNodes;
 	
  	if ((node >=0) && (node < appearType->numWeaponNodes))
-		return nodeRecycle[node];
+		return unitAnim().nodeRecycle[node];
 		
 	return 9999.0f;		//NOT a weapon node.  Never recycled!!
 }
@@ -693,12 +669,12 @@ void GVAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 	screenPos.x = screenPos.y = screenPos.z = screenPos.w = -999.0f;
 	position = glm::vec3(0.0f);
 	rotation = 0.0;;
-	turretRotation= 0.0;
+	unitAnim().turretRotation= 0.0;
 	selected = 0;
 	teamId = -1;
 	homeTeamRelationship = 0;
 	actualRotation = rotation;
-	actualTurretRotation = turretRotation;
+	actualTurretRotation = unitAnim().turretRotation;
 	inDebugMoveMode = false;
 
 	sensorLevel = 0;
@@ -706,7 +682,7 @@ void GVAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 	destructFX = nullptr;
 	
 	status = 0;
-	roll = pitch = 0.0f;
+	unitAnim().roll = unitAnim().pitch = 0.0f;
 
 	currentLOD = 0;
 	
@@ -714,13 +690,13 @@ void GVAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 
 	sensorSpin = 0.0f;
 	
-	gvAnimationState =-1;
-	currentFrame = 0.0f;
-	gvFrameRate = 0.0f;
-	isReversed = false;
-	isLooping = false;
-	setFirstFrame = false;
-	canTransition = true;
+	unitAnim().gvAnimationState =-1;
+	unitAnim().currentFrame = 0.0f;
+	unitAnim().gvFrameRate = 0.0f;
+	unitAnim().isReversed = false;
+	unitAnim().isLooping = false;
+	unitAnim().setFirstFrame = false;
+	unitAnim().canTransition = true;
  
 	localTextureHandle = 0xffffffff;
 	
@@ -978,8 +954,8 @@ void GVAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 		
 		if (appearType->numWeaponNodes > 0)
 		{
-			nodeUsed.assign(static_cast<size_t>(appearType->numWeaponNodes), 0);
-			nodeRecycle.assign(static_cast<size_t>(appearType->numWeaponNodes), 0.0f);
+			unitAnim().nodeUsed.assign(static_cast<size_t>(appearType->numWeaponNodes), 0);
+			unitAnim().nodeRecycle.assign(static_cast<size_t>(appearType->numWeaponNodes), 0.0f);
 		}
 			
 		if (!InEditor)

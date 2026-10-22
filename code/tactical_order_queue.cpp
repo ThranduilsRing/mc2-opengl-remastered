@@ -351,6 +351,13 @@ std::expected<void, OrderError> TacticalOrderQueue::registerSource(OrderSource s
     sources_.insert(position, std::move(source));
     return {};
 }
+std::expected<void, OrderError> TacticalOrderQueue::useReplaySource(std::uint32_t sourceId) {
+    auto source = std::ranges::lower_bound(sources_, sourceId, {}, &OrderSource::sourceId);
+    if (source == sources_.end() || source->sourceId != sourceId)
+        return registerSource({sourceId, SourceKind::Replay});
+    source->kind = SourceKind::Replay;
+    return {};
+}
 std::expected<OrderReceipt, OrderError> TacticalOrderQueue::submitNext(OrderEnvelope envelope,
     const OrderAdmissionValidator& validator) {
     const auto boundary = admissionBoundary();

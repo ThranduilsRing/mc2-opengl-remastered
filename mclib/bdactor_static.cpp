@@ -84,7 +84,7 @@ bool BldgAppearance::isStaticEligible() const
 	const bool overrideStatic =
 		appearType->bldgRenderShape && !bldgTypeHasAnimations(appearType) && !hasRotationalNode;
 	const bool activeGestureHasAnimation =
-		bdAnimationState != -1 && bldgGestureHasAnimation(appearType, bdAnimationState);
+		unitAnim().bdAnimationState != -1 && bldgGestureHasAnimation(appearType, unitAnim().bdAnimationState);
 	if (activeGestureHasAnimation && !overrideStatic) return false;  // currently animating
 	return true;
 }
@@ -510,7 +510,7 @@ void BldgAppearance::touch()
 	// BLDG-TYPE-ANIM-GATE-FIX-1: count touch() calls for newly-eligible pop:
 	// type has animation data, instance is idle (bdAnimationState==-1), and
 	// currently registered (staticReg.registered). Nonzero delta proves fix works.
-	if (bldgTypeHasAnimations(appearType) && bdAnimationState == -1 && staticReg.registered)
+	if (bldgTypeHasAnimations(appearType) && unitAnim().bdAnimationState == -1 && staticReg.registered)
 		s_animTypeIdleNowStatic.fetch_add(1, std::memory_order_relaxed);
 	// MC2_STATIC_UPDATE_SKIP defaults TRUE (terrobj.cpp); touch() is the
 	// DEFAULT path. update() runs only when the env var is explicitly cleared.
@@ -598,7 +598,7 @@ void BldgAppearance::touch()
 // s_animTypeIdleNowStatic.fetch_add is atomic — worker-safe.
 void BldgAppearance::touchWorkerPrepass()
 {
-	if (bldgTypeHasAnimations(appearType) && bdAnimationState == -1 && staticReg.registered)
+	if (bldgTypeHasAnimations(appearType) && unitAnim().bdAnimationState == -1 && staticReg.registered)
 		s_animTypeIdleNowStatic.fetch_add(1, std::memory_order_relaxed);
 	if (bldgShape)
 		bldgShape->Touch();

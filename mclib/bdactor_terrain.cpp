@@ -22,8 +22,8 @@ long BldgAppearance::calcCellsCovered (glm::vec3& pos, short* cellList) {
 	
 		bldgShape = appearType->bldgShape[currentLOD]->CreateFrom();
 		buildingPbrRenderActive = false;
-		if (bdAnimationState != -1)
-			appearType->setAnimation(bldgShape,bdAnimationState);
+		if (unitAnim().bdAnimationState != -1)
+			appearType->setAnimation(bldgShape,unitAnim().bdAnimationState);
 	}
 
 	for (int i=0;i<bldgShape->GetNumShapes();i++)
@@ -81,8 +81,8 @@ void BldgAppearance::markTerrain (_ScenarioMapCellInfo* pInfo, int type, int cou
 	
 		bldgShape = appearType->bldgShape[currentLOD]->CreateFrom();
 		buildingPbrRenderActive = false;
-		if (bdAnimationState != -1)
-			appearType->setAnimation(bldgShape,bdAnimationState);
+		if (unitAnim().bdAnimationState != -1)
+			appearType->setAnimation(bldgShape,unitAnim().bdAnimationState);
 	}
 
 	int cellR, cellC;
@@ -140,8 +140,8 @@ void BldgAppearance::markTerrain (_ScenarioMapCellInfo* pInfo, int type, int cou
 					
 				bldgShape = appearType->bldgShape[0]->CreateFrom();
 				buildingPbrRenderActive = false;
-				if (bdAnimationState != -1)
-					appearType->setAnimation(bldgShape,bdAnimationState);
+				if (unitAnim().bdAnimationState != -1)
+					appearType->setAnimation(bldgShape,unitAnim().bdAnimationState);
 			}
 		}
 
@@ -155,8 +155,8 @@ void BldgAppearance::markTerrain (_ScenarioMapCellInfo* pInfo, int type, int cou
 					
 				bldgShape = appearType->bldgDmgShape->CreateFrom();
 				buildingPbrRenderActive = false;
-				if (bdAnimationState != -1)
-					appearType->setAnimation(bldgShape,bdAnimationState);
+				if (unitAnim().bdAnimationState != -1)
+					appearType->setAnimation(bldgShape,unitAnim().bdAnimationState);
 			}
 		}
 
@@ -237,8 +237,8 @@ void BldgAppearance::markTerrain (_ScenarioMapCellInfo* pInfo, int type, int cou
 					
 				bldgShape = appearType->bldgDmgShape->CreateFrom();
 				buildingPbrRenderActive = false;
-				if (bdAnimationState != -1)
-					appearType->setAnimation(bldgShape,bdAnimationState);
+				if (unitAnim().bdAnimationState != -1)
+					appearType->setAnimation(bldgShape,unitAnim().bdAnimationState);
 			}
 		}
 
@@ -252,8 +252,8 @@ void BldgAppearance::markTerrain (_ScenarioMapCellInfo* pInfo, int type, int cou
 					
 				bldgShape = appearType->bldgShape[0]->CreateFrom();
 				buildingPbrRenderActive = false;
-				if (bdAnimationState != -1)
-					appearType->setAnimation(bldgShape,bdAnimationState);
+				if (unitAnim().bdAnimationState != -1)
+					appearType->setAnimation(bldgShape,unitAnim().bdAnimationState);
 			}
 		}
 
@@ -305,8 +305,8 @@ void BldgAppearance::markTerrain (_ScenarioMapCellInfo* pInfo, int type, int cou
 						
 			bldgShape = appearType->bldgShape[0]->CreateFrom();
 			buildingPbrRenderActive = false;
-			if (bdAnimationState != -1)
-				appearType->setAnimation(bldgShape,bdAnimationState);
+			if (unitAnim().bdAnimationState != -1)
+				appearType->setAnimation(bldgShape,unitAnim().bdAnimationState);
 		}
 		else if ((status == OBJECT_STATUS_DESTROYED) && appearType->bldgDmgShape)
 		{
@@ -316,8 +316,8 @@ void BldgAppearance::markTerrain (_ScenarioMapCellInfo* pInfo, int type, int cou
 					
 			bldgShape = appearType->bldgDmgShape->CreateFrom();
 			buildingPbrRenderActive = false;
-			if (bdAnimationState != -1)
-				appearType->setAnimation(bldgShape,bdAnimationState);
+			if (unitAnim().bdAnimationState != -1)
+				appearType->setAnimation(bldgShape,unitAnim().bdAnimationState);
 		}
 	}
 }
@@ -336,8 +336,8 @@ long BldgAppearance::markMoveMap (bool passable, long* lineOfSightRect, bool use
 	if (currentLOD)
 	{
 		tempBldgShape = appearType->bldgShape[currentLOD]->CreateFrom();
-		if (bdAnimationState != -1)
-			appearType->setAnimation(tempBldgShape,bdAnimationState);
+		if (unitAnim().bdAnimationState != -1)
+			appearType->setAnimation(tempBldgShape,unitAnim().bdAnimationState);
 	}
 
 	int numCoords = 0;
@@ -450,8 +450,8 @@ void BldgAppearance::markLOS (bool clearIt)
 	if (currentLOD)
 	{
 		tempBldgShape = appearType->bldgShape[0]->CreateFrom();
-		if (bdAnimationState != -1)
-			appearType->setAnimation(tempBldgShape,bdAnimationState);
+		if (unitAnim().bdAnimationState != -1)
+			appearType->setAnimation(tempBldgShape,unitAnim().bdAnimationState);
 	}
 
 	for (int i=0;i<tempBldgShape->GetNumShapes();i++)
@@ -519,8 +519,8 @@ void BldgAppearance::calcAdjCell (long& row, long& col)
 	
 		bldgShape = appearType->bldgShape[currentLOD]->CreateFrom();
 		buildingPbrRenderActive = false;
-		if (bdAnimationState != -1)
-			appearType->setAnimation(bldgShape,bdAnimationState);
+		if (unitAnim().bdAnimationState != -1)
+			appearType->setAnimation(bldgShape,unitAnim().bdAnimationState);
 	}
 
 	int numVert = 0;

@@ -48,7 +48,7 @@ class MoverOrderApplication final : public OrderAdmissionValidator, public Order
 public:
     explicit MoverOrderApplication(Access access) : access_(access) {}
     bool permitted(const OrderSource& source, const OrderEnvelope& e) const override {
-        if (source.kind != SourceKind::MissionContent && source.kind != SourceKind::UI) return false;
+        if (source.kind != SourceKind::MissionContent && source.kind != SourceKind::UI && source.kind != SourceKind::Replay) return false;
         if (source.kind == SourceKind::MissionContent && e.payload.origin != OrderOrigin::Commander) return false;
         if (source.kind == SourceKind::UI && e.payload.origin != OrderOrigin::Player) return false;
         for (std::uint32_t i = 0; i < e.recipients.size(); ++i)

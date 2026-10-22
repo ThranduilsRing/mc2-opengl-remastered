@@ -97,8 +97,8 @@ void BldgAppearance::setWeaponNodeUsed (long weaponNode)
 	weaponNode -= appearType->numWeaponNodes;
    	if ((weaponNode >= 0) && (weaponNode < appearType->numWeaponNodes))
 	{
-		nodeUsed[weaponNode]++;
-		nodeRecycle[weaponNode] = BASE_NODE_RECYCLE_TIME;
+		unitAnim().nodeUsed[weaponNode]++;
+		unitAnim().nodeRecycle[weaponNode] = BASE_NODE_RECYCLE_TIME;
 	}
 }
 
@@ -159,9 +159,9 @@ long BldgAppearance::getWeaponNode (long weaponType)
 	long bestNode = -1;
 	for (long i=0;i<appearType->numWeaponNodes;i++)
 	{
-		if (nodeUsed[i] < leastUsed)
+		if (unitAnim().nodeUsed[i] < leastUsed)
 		{
-			leastUsed = nodeUsed[i];
+			leastUsed = unitAnim().nodeUsed[i];
 			bestNode = i;
 		}
 	}
@@ -175,7 +175,7 @@ long BldgAppearance::getWeaponNode (long weaponType)
 float BldgAppearance::getWeaponNodeRecycle (long node)
 {
 	if ((node >= 0) && (node < appearType->numWeaponNodes))
-		return nodeRecycle[node];
+		return unitAnim().nodeRecycle[node];
 		
 	return 0.0f;
 }
@@ -190,13 +190,13 @@ void BldgAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 
     status = OBJECT_STATUS_NORMAL; // sebi: init so will not be garbage
 
-	bdAnimationState =-1;
-	currentFrame = 0.0f;
-	bdFrameRate = 0.0f;
-	isReversed = false;
-	isLooping = false;
-	setFirstFrame = false;
-	canTransition = true;
+	unitAnim().bdAnimationState =-1;
+	unitAnim().currentFrame = 0.0f;
+	unitAnim().bdFrameRate = 0.0f;
+	unitAnim().isReversed = false;
+	unitAnim().isLooping = false;
+	unitAnim().setFirstFrame = false;
+	unitAnim().canTransition = true;
 
 	// Slice 2 (object-offload) substrate: never set true in Stage 2.A.
 	needsFullBakeNextFrame = false;
@@ -358,8 +358,8 @@ void BldgAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 		
 		if (appearType->numWeaponNodes > 0)
 		{
-			nodeUsed.assign(static_cast<size_t>(appearType->numWeaponNodes), 0);
-			nodeRecycle.assign(static_cast<size_t>(appearType->numWeaponNodes), 0.0f);
+			unitAnim().nodeUsed.assign(static_cast<size_t>(appearType->numWeaponNodes), 0);
+			unitAnim().nodeRecycle.assign(static_cast<size_t>(appearType->numWeaponNodes), 0.0f);
 		}
 
 		// Register this building's TG_TypeShape variants with the GPU static
@@ -431,8 +431,8 @@ void BldgAppearance::setObjStatus (long oStatus)
 				
 				bldgShape = appearType->bldgDmgShape->CreateFrom();
 				buildingPbrRenderActive = false;
-				if (bdAnimationState != -1)
-					appearType->setAnimation(bldgShape,bdAnimationState);
+				if (unitAnim().bdAnimationState != -1)
+					appearType->setAnimation(bldgShape,unitAnim().bdAnimationState);
 				
 				beenInView = false; 
 				currentLOD = 0;
@@ -456,8 +456,8 @@ void BldgAppearance::setObjStatus (long oStatus)
 				// shape via the render accessor (override if present, else stock).
 				bldgShape = appearType->getBldgRenderShape(0)->CreateFrom();
 				buildingPbrRenderActive = appearType->buildingPbrEnabled;
-				if (bdAnimationState != -1)
-					appearType->setAnimation(bldgShape,bdAnimationState);
+				if (unitAnim().bdAnimationState != -1)
+					appearType->setAnimation(bldgShape,unitAnim().bdAnimationState);
 
 				beenInView = false;
 			}
@@ -567,7 +567,7 @@ void BldgAppearance::setGesture (unsigned long gestureId)
 	if ((status == OBJECT_STATUS_DESTROYED) || (status == OBJECT_STATUS_DISABLED))
 		return;
 		
-	if (gestureId == bdAnimationState)
+	if (gestureId == unitAnim().bdAnimationState)
 		return;
 
 	const bool naturalStaticExempt =
@@ -582,7 +582,7 @@ void BldgAppearance::setGesture (unsigned long gestureId)
 	// false, and the next update() runs the full bake naturally.
 	// State-to-state (bdAnimationState != -1 → new state): already dynamic,
 	// not registered, no action needed.
-	if (bdAnimationState == -1 && staticReg.registered) {
+	if (unitAnim().bdAnimationState == -1 && staticReg.registered) {
 		// Some natural props are authored as BUILDING appearances and receive a
 		// dummy gesture=0 startup state even though there is no real animation
 		// payload. Keep their static registration intact so pure render-static
@@ -599,40 +599,40 @@ void BldgAppearance::setGesture (unsigned long gestureId)
 	// setGesture() itself guards gestureId >= MAX_BD_ANIMATIONS (blocking the
 	// unsigned cast of -1). If a future refactor adds an idle-reset, this block
 	// will need re-evaluation.
-	if (bdAnimationState != -1) {
+	if (unitAnim().bdAnimationState != -1) {
 		++s_animStateToStateGesture;
 	}
 
 	// If state is OK, set animation data, set first frame, set loop and
 	// reverse flag, and start it going until you hear otherwise.
 	appearType->setAnimation(bldgShape,gestureId);
-	bdAnimationState = gestureId;
-	currentFrame = 0.0f;
+	unitAnim().bdAnimationState = gestureId;
+	unitAnim().currentFrame = 0.0f;
 	if (appearType->bdStartF[gestureId])
-		currentFrame = appearType->bdStartF[gestureId];
+		unitAnim().currentFrame = appearType->bdStartF[gestureId];
 		
-	isReversed = false;
+	unitAnim().isReversed = false;
 	
-	if (appearType->isReversed(bdAnimationState))
+	if (appearType->isReversed(unitAnim().bdAnimationState))
 	{
-		currentFrame = appearType->getNumFrames(bdAnimationState)-1;
-		isReversed = true;
+		unitAnim().currentFrame = appearType->getNumFrames(unitAnim().bdAnimationState)-1;
+		unitAnim().isReversed = true;
 	}
 	
-	if (appearType->isRandom(bdAnimationState))
+	if (appearType->isRandom(unitAnim().bdAnimationState))
 	{
-		currentFrame = mc2_appearance_rng::randomNumber(appearType->getNumFrames(bdAnimationState)-1);
+		unitAnim().currentFrame = mc2_anim_rng::randomNumber(appearType->getNumFrames(unitAnim().bdAnimationState)-1);
 	}
 	
-	isLooping = appearType->isLooped(bdAnimationState);
+	unitAnim().isLooping = appearType->isLooped(unitAnim().bdAnimationState);
 	
-	bdFrameRate = appearType->getFrameRate(bdAnimationState);
+	unitAnim().bdFrameRate = appearType->getFrameRate(unitAnim().bdAnimationState);
 	
-	setFirstFrame = true;
-	if (bdFrameRate > Stuff::SMALL)
-		canTransition = false;
+	unitAnim().setFirstFrame = true;
+	if (unitAnim().bdFrameRate > Stuff::SMALL)
+		unitAnim().canTransition = false;
 	else
-		canTransition = true;		//We can change immediately to another animation because we have no animation for this state!
+		unitAnim().canTransition = true;		//We can change immediately to another animation because we have no animation for this state!
 }
 
 void BldgAppearance::setMoverParameters (float turretRot, float lArmRot, float rArmRot, bool isAirborne)

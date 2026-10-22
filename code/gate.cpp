@@ -335,7 +335,9 @@ long Gate::update (void)
 		// Make damned sure the LOD updates!!!!!
 		if (appearance)
 		{
-			bool inView = appearance->recalcBounds();
+			const bool inView = false;
+			position.z = TerrainRuntime::groundElevation(position);
+			setPosition(position);
 
 			// this has to be done before we set the object parameters.
 			if ( parent && 

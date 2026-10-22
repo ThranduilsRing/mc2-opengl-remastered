@@ -7,6 +7,19 @@
 
 namespace ar = mc2_appearance_rng;
 
+TEST_CASE("animation_rng: cosmetic draws cannot alter gameplay animation and saved state resumes") {
+    mc2_anim_rng::reseed(17);
+    const auto first = mc2_anim_rng::randomNumber(1000);
+    const auto saved = mc2_anim_rng::state(), draws = mc2_anim_rng::drawCount();
+    const auto next = mc2_anim_rng::randomNumber(1000);
+    mc2_anim_rng::restore(saved, draws);
+    for (int i = 0; i < 1000; ++i) ar::randomNumber(1000);
+    CHECK(mc2_anim_rng::randomNumber(1000) == next);
+    CHECK(mc2_anim_rng::drawCount() == draws + 1);
+    mc2_anim_rng::reseed(17);
+    CHECK(mc2_anim_rng::randomNumber(1000) == first);
+}
+
 TEST_CASE("appearance_rng: the same seed replays the same sequence and draw count") {
 	ar::reseed(0x1234u);
 	std::vector<long> first;

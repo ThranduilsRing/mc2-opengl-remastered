@@ -1,3 +1,4 @@
+#include "save_archive.h"
 // Mission: the second half of the Mission::load sequence -- the managers, terrain, movement data and mission script,
 // the warriors, parts, teams and objects, the commanders, the HUD and the geometry finalize. The first half and the
 // orchestrator are in saveload.cpp.
@@ -598,6 +599,26 @@ void Mission::loadLogistics(MissionLoadFrame& f) {
 	LogisticsData::instance->setCurrentMissionNum(currentMissionNum);
 	currentPacket++;
 	//-------------------------------------------------------------------------------------------
+    // currentPacket names END; old saves legitimately have no extension.
+    if (currentPacket + 1 < loadFile.getNumPackets()) {
+        loadFile.seekPacket(currentPacket + 1);
+        const auto size = loadFile.getPacketSize();
+        if (size <= 0 || size > static_cast<int>(mc2::save::maxFileBytes)) STOP(("Invalid R2 save section size"));
+        mc2::save::Bytes bytes(static_cast<size_t>(size));
+        loadFile.readPacket(currentPacket + 1, bytes.data());
+        mc2::save::Archive extension(bytes);
+        uint32_t tag = 0, version = 0;
+        std::vector<uint8_t> animation;
+        extension(tag, version);
+        if (tag == 0x4E413252u) {
+            if (version != 1) STOP(("Unsupported R2 animation section"));
+            extension(animation);
+            auto queue = orderIngress.queue();
+            queue.serialize(extension);
+            if (!extension.finish() || !ObjectManager->restoreAnimationState(animation)) STOP(("Invalid R2 animation section"));
+            orderIngress.queue() = std::move(queue);
+        }
+    }
 	loadFile.close();
 }
 

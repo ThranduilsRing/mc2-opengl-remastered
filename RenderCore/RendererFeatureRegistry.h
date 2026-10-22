@@ -461,6 +461,14 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "COLORMAP-CPU-RETIRE-1 parity probe: logs displacement magnitude (maxDispMag in wu) from the CPU colormap displacement path.",
     },
     {
+        "MC2_COMMAND_REPLAY_PLAY", "MC2_COMMAND_REPLAY_PLAY", EnvVarKind::Trace, false,
+        "Play a command replay through the existing Replay queue source.",
+    },
+    {
+        "MC2_COMMAND_REPLAY_RECORD", "MC2_COMMAND_REPLAY_RECORD", EnvVarKind::Trace, false,
+        "Record accepted tactical commands and per-tick subsystem hashes.",
+    },
+    {
         "MC2_FEATURE_CONE_POOL_POLICY", "MC2_CONE_POOL_POLICY", EnvVarKind::Feature, true,
         "CONE-SPILL-POLICY-1: pool-placement policy for building/beacon spotlight ground pools on the DEFAULT path (MC2_CONE_SPILL_COUPLING OFF).",
     },
@@ -693,6 +701,10 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "DEFAULT 0 (OFF).",
     },
     {
+        "MC2_PRESENTATION_DISABLED", "MC2_PRESENTATION_DISABLED", EnvVarKind::Trace, false,
+        "Replay proof: suppress presentation extraction updates while simulation continues.",
+    },
+    {
         "MC2_PROJECTILE_SPEED_MULT", "MC2_PROJECTILE_SPEED_MULT", EnvVarKind::Feature, false,
         "Direct-fire projectile speed multiplier (PPC/autocannon/gauss = non-arc bolts).",
     },
@@ -703,6 +715,10 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
     {
         "MC2_FEATURE_RENDER_PASS_ORDER", "MC2_RENDER_PASS_ORDER", EnvVarKind::Feature, false,
         "CONTRACT-3: per-frame resource-ordering audit (mclib/render_contract.cpp) - checks each pass's reads[] are satisfied by a prior write before beginPass.",
+    },
+    {
+        "MC2_REPLAY_CONTENT", "MC2_REPLAY_CONTENT", EnvVarKind::Trace, false,
+        "Mission/mod content digest supplied and checked by tools/command_replay.py.",
     },
     {
         "MC2_TRACE_RESOLVE_TRACE_FILE", "MC2_RESOLVE_TRACE_FILE", EnvVarKind::Trace, false,
@@ -963,6 +979,10 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
     {
         "MC2_TRACE_WINDOW_OFFSCREEN", "MC2_WINDOW_OFFSCREEN", EnvVarKind::Trace, false,
         "NOFOCUS-HARDEN-1: create the SDL window HIDDEN at (-32000,-32000) and keep it there, so an agent-launched engine window never occupies visible desktop area...",
+    },
+    {
+        "MC2_WORLD_ORDER_TRACE", "MC2_WORLD_ORDER_TRACE", EnvVarKind::Trace, false,
+        "W2: emit ordered world views, terrain activity, lifecycle events and update calls per mission tick. Diagnostic only.",
     },
     {
         "MC2_XFORM_PARITY_FATAL", "MC2_XFORM_PARITY_FATAL", EnvVarKind::Trace, false,

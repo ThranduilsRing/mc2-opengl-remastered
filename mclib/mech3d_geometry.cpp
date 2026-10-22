@@ -24,7 +24,7 @@ void Mech3DAppearance::setObjStatus (long oStatus)
 	{
 		if (oStatus == OBJECT_STATUS_DESTROYED)
 		{
-			if (currentGestureId == 23)
+			if (unitAnim().currentGestureId == 23)
 			{
 				if (mechType->mechForwardDmgShape)
 				{
@@ -36,7 +36,7 @@ void Mech3DAppearance::setObjStatus (long oStatus)
 					mechShape = mechType->mechForwardDmgShape->CreateFrom();
 				}
 			}
-			else if (currentGestureId == 24)
+			else if (unitAnim().currentGestureId == 24)
 			{
 				if (mechType->mechBackwardDmgShape)
 				{
@@ -119,6 +119,7 @@ void Mech3DAppearance::setObjStatus (long oStatus)
 
 void Mech3DAppearance::updateGeometry (void)
 {
+    mc2mechanim::CopyImportedActorPose(simulationShape_.get(), mechShape);
 	ZoneScopedN("GameLogic.Mech3D.UpdateGeometry");
 	// F3 CPU projection cost-baseline: sidecar bucket (NEVER in
 	// projection_total). One scope per visible mech per frame.
@@ -130,47 +131,6 @@ void Mech3DAppearance::updateGeometry (void)
 	// below. Idempotent on g_mc2FrameCounter (the second combat update() is a no-op
 	// here); near-free when no imported animated mech is registered. 1C selects the
 	// clip from this mech's movement (gesture + position/leg-heading deltas).
-	{
-		mc2mechanim::MechMotion _mm;
-		_mm.gestureId = static_cast<int>(currentGestureId);
-		_mm.px = position.x; _mm.py = position.y; _mm.pz = position.z;
-		_mm.legHeadingDeg = rotation;
-		// PER-ACTOR: actorKey = this instance shape; typeKey = the chassis type shape
-		// (== the batcher's rec.importedGpuType / desc.mechShape keying).
-		const void* _typeKey = (mechType ? static_cast<const void*>(mechType->mechShape[currentLOD]) : nullptr);
-		// ASSIMP-MECH-PAUSE-GATE-1: stock mechs freeze their gait while paused (the
-		// if(animate) guard below at ~5000). Imported mechs advance through updateGeometry
-		// regardless, so they kept striding in place during pause. Freeze the imported clip
-		// clock when gamePaused (timing.h global). Killswitch MC2_ASSIMP_PAUSE_GATE=0 restores
-		// the old always-advance behavior for A/B.
-		extern bool gamePaused;  // mclib/timing.h
-		static const bool s_assimpPauseGate = mc2::gate::get<"MC2_ASSIMP_PAUSE_GATE">();
-		// VK-MECH-CAPTURE-DETERMINISM-1: also freeze the imported clip clock during a
-		// frozen capture sweep (gamePaused is NOT set by the capture pause path — it
-		// drives bPaused only — so without this an imported mech kept striding through
-		// the render-path tick and jittered run-to-run). Capture-mode-only; byte-safe.
-		const bool _captureFroze = (mc2CaptureGaitFreezeActive() != 0);
-		const bool _advanceClock = (s_assimpPauseGate ? !gamePaused : true) && !_captureFroze;
-		mc2mechanim::TickImportedMechs(frameLength, static_cast<unsigned>(g_mc2FrameCounter), _mm,
-		                               static_cast<const void*>(mechShape), _typeKey, _advanceClock);
-		// ANIM-FROZEN-WARNING-FIX-1: imported-mech GPU animation IS implemented and
-		// working at shipped defaults (per-actor model-delta palette; proven by
-		// IMPORTED-GPU-ANIM-READPATH-RECON-1). It is armed by MC2_MECH_IMPORT_GPU.
-		// The pose is only FROZEN when the GPU mech path is on but that import-GPU
-		// gate is OFF (the stock per-node branch then draws the immutable rest VBO).
-		// So warn ONLY in that genuinely-frozen case (was firing unconditionally and
-		// LYING whenever the import-GPU path was armed). Both workarounds given.
-		if (g_useGpuMechs && mc2mechanim::AnyImportedAnim() &&
-		    !mc2mechanim::ImportedGpuEnabled()) {
-			static bool s_warnedImportGpu = false;
-			if (!s_warnedImportGpu) {
-				s_warnedImportGpu = true;
-				fprintf(stderr, "[MECH_IMPORT] animated imported mech with the import-GPU "
-				                "palette OFF shows a FROZEN pose; set MC2_MECH_IMPORT_GPU=1 "
-				                "(or run MC2_GPU_MECHS=0)\n");
-			}
-		}
-	}
 
 	//Always override with our local instance.
 	mechShape->SetTextureHandle(0,localTextureHandle);
@@ -541,18 +501,18 @@ void Mech3DAppearance::updateGeometry (void)
 		{ ZoneScopedN("Mech3D.UpdateGeometry.AnimPose");
 		if (status != OBJECT_STATUS_DESTROYED)
 		{
-			mechType->setAnimation(mechShape,currentGestureId);
-			mechShape->SetFrameNum(currentFrame);
+			mechType->setAnimation(mechShape,unitAnim().currentGestureId);
+			mechShape->SetFrameNum(unitAnim().currentFrame);
 
 			if (mechShadowShape && !stripShadowState)
 			{
-				mechType->setAnimation(mechShadowShape,currentGestureId);
-				mechShadowShape->SetFrameNum(currentFrame);
+				mechType->setAnimation(mechShadowShape,unitAnim().currentGestureId);
+				mechShadowShape->SetFrameNum(unitAnim().currentFrame);
 			}
 		}
 	
 		glm::quat torsoRot;
-		torsoRot = mc2::math::quatFromEuler(mc2::math::Euler(0.0f,(torsoRotation * DEGREES_TO_RADS),0.0f));
+		torsoRot = mc2::math::quatFromEuler(mc2::math::Euler(0.0f,(unitAnim().torsoRotation * DEGREES_TO_RADS),0.0f));
 		if (rotationalNodeIndex == -1)
 	   		rotationalNodeIndex = mechShape->SetNodeRotation("joint_torso",&torsoRot);
 
@@ -655,12 +615,12 @@ void Mech3DAppearance::updateGeometry (void)
 		lFootPos = getNodePosition(footId0);
 	
 		if (!rightFootDone0 &&
-			(currentFrame >= (mechType->gestures[currentGestureId].rightFootDownFrame0-FOOTPRINT_SLOP)) &&
-			(currentFrame <= (mechType->gestures[currentGestureId].rightFootDownFrame0+FOOTPRINT_SLOP)))
+			(unitAnim().currentFrame >= (mechType->gestures[unitAnim().currentGestureId].rightFootDownFrame0-FOOTPRINT_SLOP)) &&
+			(unitAnim().currentFrame <= (mechType->gestures[unitAnim().currentGestureId].rightFootDownFrame0+FOOTPRINT_SLOP)))
 		{
 			rightFootDone0 = true;
 	
-			if (rightDustPoofEffect[currentRightPoof] && (currentGestureId != 13))
+			if (rightDustPoofEffect[currentRightPoof] && (unitAnim().currentGestureId != 13))
 			{
 				glm::vec3			actualPosition;
 				glm::mat4 	shapeOrigin;
@@ -685,12 +645,12 @@ void Mech3DAppearance::updateGeometry (void)
 		}
 		
 		if (!rightFootDone1 && 
-			(currentFrame >= (mechType->gestures[currentGestureId].rightFootDownFrame1-FOOTPRINT_SLOP)) &&
-			(currentFrame <= (mechType->gestures[currentGestureId].rightFootDownFrame1+FOOTPRINT_SLOP)))
+			(unitAnim().currentFrame >= (mechType->gestures[unitAnim().currentGestureId].rightFootDownFrame1-FOOTPRINT_SLOP)) &&
+			(unitAnim().currentFrame <= (mechType->gestures[unitAnim().currentGestureId].rightFootDownFrame1+FOOTPRINT_SLOP)))
 		{
 			rightFootDone1 = true;
 	
-			if (rightDustPoofEffect[currentRightPoof] && (currentGestureId != 13))
+			if (rightDustPoofEffect[currentRightPoof] && (unitAnim().currentGestureId != 13))
 			{
 				glm::vec3			actualPosition;
 				glm::mat4 	shapeOrigin;
@@ -715,26 +675,26 @@ void Mech3DAppearance::updateGeometry (void)
 		}
 		
 		if (rightFootDone0 &&
-			(currentFrame < (mechType->gestures[currentGestureId].rightFootDownFrame0-FOOTPRINT_SLOP)) ||
-		INT32	(currentFrame > (mechType->gestures[currentGestureId].rightFootDownFrame0+FOOTPRINT_SLOP)))
+			(unitAnim().currentFrame < (mechType->gestures[unitAnim().currentGestureId].rightFootDownFrame0-FOOTPRINT_SLOP)) ||
+		INT32	(unitAnim().currentFrame > (mechType->gestures[unitAnim().currentGestureId].rightFootDownFrame0+FOOTPRINT_SLOP)))
 		{
 			rightFootDone0 = false;
 		}
 		
 		if (rightFootDone1 &&
-			(currentFrame < (mechType->gestures[currentGestureId].rightFootDownFrame1-FOOTPRINT_SLOP)) ||
-			(currentFrame > (mechType->gestures[currentGestureId].rightFootDownFrame1+FOOTPRINT_SLOP)))
+			(unitAnim().currentFrame < (mechType->gestures[unitAnim().currentGestureId].rightFootDownFrame1-FOOTPRINT_SLOP)) ||
+			(unitAnim().currentFrame > (mechType->gestures[unitAnim().currentGestureId].rightFootDownFrame1+FOOTPRINT_SLOP)))
 		{
 			rightFootDone1 = false;
 		}
 		
 		if (!leftFootDone0 && 
-			(currentFrame >= (mechType->gestures[currentGestureId].leftFootDownFrame0-FOOTPRINT_SLOP)) &&
-			(currentFrame <= (mechType->gestures[currentGestureId].leftFootDownFrame0+FOOTPRINT_SLOP)))
+			(unitAnim().currentFrame >= (mechType->gestures[unitAnim().currentGestureId].leftFootDownFrame0-FOOTPRINT_SLOP)) &&
+			(unitAnim().currentFrame <= (mechType->gestures[unitAnim().currentGestureId].leftFootDownFrame0+FOOTPRINT_SLOP)))
 		{
 			leftFootDone0 = true;
 	
-			if (leftDustPoofEffect[currentLeftPoof] && (currentGestureId != 13))
+			if (leftDustPoofEffect[currentLeftPoof] && (unitAnim().currentGestureId != 13))
 			{
 				glm::vec3			actualPosition;
 				glm::mat4 	shapeOrigin;
@@ -759,12 +719,12 @@ void Mech3DAppearance::updateGeometry (void)
 		}
 		
 		if (!leftFootDone1 && 
-			(currentFrame >= (mechType->gestures[currentGestureId].leftFootDownFrame1-FOOTPRINT_SLOP)) &&
-			(currentFrame <= (mechType->gestures[currentGestureId].leftFootDownFrame1+FOOTPRINT_SLOP)))
+			(unitAnim().currentFrame >= (mechType->gestures[unitAnim().currentGestureId].leftFootDownFrame1-FOOTPRINT_SLOP)) &&
+			(unitAnim().currentFrame <= (mechType->gestures[unitAnim().currentGestureId].leftFootDownFrame1+FOOTPRINT_SLOP)))
 		{
 			leftFootDone1 = true;
 	
-			if (leftDustPoofEffect[currentLeftPoof] && (currentGestureId != 13))
+			if (leftDustPoofEffect[currentLeftPoof] && (unitAnim().currentGestureId != 13))
 			{
 				glm::vec3			actualPosition;
 				glm::mat4 	shapeOrigin;
@@ -789,15 +749,15 @@ void Mech3DAppearance::updateGeometry (void)
 		}
 		
 		if (leftFootDone0 &&
-			(currentFrame < (mechType->gestures[currentGestureId].leftFootDownFrame0-FOOTPRINT_SLOP)) ||
-			(currentFrame > (mechType->gestures[currentGestureId].leftFootDownFrame0+FOOTPRINT_SLOP)))
+			(unitAnim().currentFrame < (mechType->gestures[unitAnim().currentGestureId].leftFootDownFrame0-FOOTPRINT_SLOP)) ||
+			(unitAnim().currentFrame > (mechType->gestures[unitAnim().currentGestureId].leftFootDownFrame0+FOOTPRINT_SLOP)))
 		{
 			leftFootDone0 = false;
 		}
 		
 		if (leftFootDone1 &&
-			(currentFrame < (mechType->gestures[currentGestureId].leftFootDownFrame1-FOOTPRINT_SLOP)) ||
-			(currentFrame > (mechType->gestures[currentGestureId].leftFootDownFrame1+FOOTPRINT_SLOP)))
+			(unitAnim().currentFrame < (mechType->gestures[unitAnim().currentGestureId].leftFootDownFrame1-FOOTPRINT_SLOP)) ||
+			(unitAnim().currentFrame > (mechType->gestures[unitAnim().currentGestureId].leftFootDownFrame1+FOOTPRINT_SLOP)))
 		{
 			leftFootDone1 = false;
 		}
@@ -849,7 +809,7 @@ void Mech3DAppearance::updateGeometry (void)
 	} // end !skipSensors
 	} // end Sensors zone
 	
-	if (!jumpFXSetup && (currentGestureId == GestureJump) && inJump && jumpJetEffect)
+	if (!jumpFXSetup && (unitAnim().currentGestureId == GestureJump) && unitAnim().inJump && jumpJetEffect)
 	{
 		long jumpNodeId = mechType->numSmokeNodes + mechType->numWeaponNodes;
 		glm::vec3 jumpNodePos = getNodePosition(jumpNodeId);
@@ -914,7 +874,7 @@ void Mech3DAppearance::updateGeometry (void)
 		}
 	}
 	
-	if ((currentGestureId == GestureJump) && inJump && jumpJetEffect && jumpJetEffect->IsExecuted())
+	if ((unitAnim().currentGestureId == GestureJump) && unitAnim().inJump && jumpJetEffect && jumpJetEffect->IsExecuted())
 	{
 		long jumpNodeId = mechType->numSmokeNodes + mechType->numWeaponNodes;
 		glm::vec3 jumpNodePos = getNodePosition(jumpNodeId);
@@ -939,7 +899,7 @@ void Mech3DAppearance::updateGeometry (void)
 		jumpJetEffect->Execute(&info);
 	}
 	
-	if (!inJump && jumpFXSetup)
+	if (!unitAnim().inJump && jumpFXSetup)
 	{
 		jumpJetEffect->Stop();
 		jumpFXSetup = false;
@@ -1057,7 +1017,7 @@ void Mech3DAppearance::updateGeometry (void)
 				
 		glm::quat effectRot;
 		effectRot = mc2::math::quatFromEuler(mc2::math::Euler(90.0f * DEGREES_TO_RADS,rotation * DEGREES_TO_RADS,0.0f));
-		if (!inReverse)
+		if (!unitAnim().inReverse)
 			localToWorld = mc2::math::multiply(gosFX::Effect_Against_Motion, effectRot);
 		else
 			localToWorld = mc2::math::multiply(gosFX::Effect_Into_Motion, effectRot);
@@ -1096,22 +1056,33 @@ void Mech3DAppearance::updateGeometry (void)
 }	
 
 
-void Mech3DAppearance::updateSimPose (void)
+void Mech3DAppearance::updateSimPose (bool advanceClock)
 {
 	ZoneScopedN("GameLogic.Mech3D.UpdateSimPose");
 	if (!mechShape)
 		return;
 
+    if (!simulationShape_) simulationShape_.reset(mechType->mechShape[0]->CreateFrom());
+    auto* drawShape = mechShape;
+    mechShape = simulationShape_.get();
+    const long drawLOD = currentLOD;
+    const long drawRotationNode = rotationalNodeIndex;
+    const long drawHitLeft = hitLeftNodeIndex, drawHitRight = hitRightNodeIndex;
+    currentLOD = 0;
+    rotationalNodeIndex = -1;
+    hitLeftNodeIndex = hitRightNodeIndex = -1;
+    simPose->ready = false;
+
 	// The same pose updateGeometry sets before its body transform; the hierarchy-only transform needs no camera and fills
 	// the per-node shapeToWorld that getWeaponNodePosition / getNodeIdPosition read.
 	if (status != OBJECT_STATUS_DESTROYED)
 	{
-		mechType->setAnimation(mechShape,currentGestureId);
-		mechShape->SetFrameNum(currentFrame);
+		mechType->setAnimation(mechShape,unitAnim().currentGestureId);
+		mechShape->SetFrameNum(unitAnim().currentFrame);
 	}
 
 	glm::quat torsoRot;
-	torsoRot = mc2::math::quatFromEuler(mc2::math::Euler(0.0f,(torsoRotation * DEGREES_TO_RADS),0.0f));
+	torsoRot = mc2::math::quatFromEuler(mc2::math::Euler(0.0f,(unitAnim().torsoRotation * DEGREES_TO_RADS),0.0f));
 	if (rotationalNodeIndex == -1)
 		rotationalNodeIndex = mechShape->SetNodeRotation("joint_torso",&torsoRot);
 	mechShape->SetNodeRotation(rotationalNodeIndex,&torsoRot);
@@ -1121,14 +1092,58 @@ void Mech3DAppearance::updateSimPose (void)
 	glm::vec3 xlatPosition;
 	mc2ToRender(xlatPosition, position);
 	mechShape->TransformMultiShape_BuildRecipe(&xlatPosition, &qRotation);
+	{
+		mc2mechanim::MechMotion _mm;
+		_mm.gestureId = static_cast<int>(unitAnim().currentGestureId);
+		_mm.px = position.x; _mm.py = position.y; _mm.pz = position.z;
+		_mm.legHeadingDeg = rotation;
+		// PER-ACTOR: actorKey = this instance shape; typeKey = the chassis type shape
+		// (== the batcher's rec.importedGpuType / desc.mechShape keying).
+		const void* _typeKey = (mechType ? static_cast<const void*>(mechType->mechShape[currentLOD]) : nullptr);
+		mc2mechanim::TickImportedMechs(frameLength, static_cast<unsigned>(turn), _mm,
+		                               static_cast<const void*>(mechShape), _typeKey, advanceClock, &unitAnim().imported);
+		// ANIM-FROZEN-WARNING-FIX-1: imported-mech GPU animation IS implemented and
+		// working at shipped defaults (per-actor model-delta palette; proven by
+		// IMPORTED-GPU-ANIM-READPATH-RECON-1). It is armed by MC2_MECH_IMPORT_GPU.
+		// The pose is only FROZEN when the GPU mech path is on but that import-GPU
+		// gate is OFF (the stock per-node branch then draws the immutable rest VBO).
+		// So warn ONLY in that genuinely-frozen case (was firing unconditionally and
+		// LYING whenever the import-GPU path was armed). Both workarounds given.
+		if (g_useGpuMechs && mc2mechanim::AnyImportedAnim() &&
+		    !mc2mechanim::ImportedGpuEnabled()) {
+			static bool s_warnedImportGpu = false;
+			if (!s_warnedImportGpu) {
+				s_warnedImportGpu = true;
+				fprintf(stderr, "[MECH_IMPORT] animated imported mech with the import-GPU "
+				                "palette OFF shows a FROZEN pose; set MC2_MECH_IMPORT_GPU=1 "
+				                "(or run MC2_GPU_MECHS=0)\n");
+			}
+		}
+	}
+
+
+    simPose->root = position;
+    simPose->heading = rotation;
+    simPose->nodes.resize(mechType->getTotalNodes());
+    for (long i = 0; i < mechType->getTotalNodes(); ++i) simPose->nodes[i] = (i >= mechType->numSmokeNodes && i < mechType->numSmokeNodes + mechType->numWeaponNodes) ? getWeaponNodePosition(i) : getNodePosition(i);
+    simPose->hitLeft = getHitNodeLeft();
+    simPose->hitRight = getHitNodeRight();
+    simPose->cockpit = getNodeNamePosition("cockpit");
+    simPose->shapeNodes.resize(mechShape->GetNumShapes());
+    for (long i = 0; i < mechShape->GetNumShapes(); ++i) simPose->shapeNodes[i] = getNodeIdPosition(i);
+    simPose->ready = true;
+    rotationalNodeIndex = drawRotationNode;
+    hitLeftNodeIndex = drawHitLeft; hitRightNodeIndex = drawHitRight;
+    currentLOD = drawLOD;
+    mechShape = drawShape;
 }
 
 bool Mech3DAppearance::setJumpParameters (glm::vec3 &end)
 {
-	if (!inJump)
+	if (!unitAnim().inJump)
 	{
-		jumpSetup = true;
-		jumpDestination = end;
+		unitAnim().jumpSetup = true;
+		unitAnim().jumpDestination = end;
 
 		return true;
 	}

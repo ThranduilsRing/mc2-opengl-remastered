@@ -21,44 +21,44 @@ long Mech3DAppearance::update (bool animate)
 	// timer, the dice and the weapon recycle clocks are SIM state and advance only on a tick (R1).
 	if (!simPresentationPass)
 	{
-	if (!nodeRecycle.empty())
+	if (!unitAnim().nodeRecycle.empty())
 	{
 		for (long i=0;i<mechType->numWeaponNodes;i++)
 		{
-			if (nodeRecycle[i] > 0.0f)
+			if (unitAnim().nodeRecycle[i] > 0.0f)
 			{
-				nodeRecycle[i] -= frameLength;
-				if (nodeRecycle[i] < 0.0f)
-					nodeRecycle[i] = 0.0f;
+				unitAnim().nodeRecycle[i] -= frameLength;
+				if (unitAnim().nodeRecycle[i] < 0.0f)
+					unitAnim().nodeRecycle[i] = 0.0f;
 			}
 		}
 	}
 
-	oncePerFrame = false;
+	unitAnim().oncePerFrame = false;
 	bool setFirstFrame = false;
 
-	if ((currentGestureId == GestureHitFront) ||
-		(currentGestureId == GestureHitBack) || 
-		(currentGestureId == GestureHitLeft) || 
-		(currentGestureId == GestureHitRight))
+	if ((unitAnim().currentGestureId == GestureHitFront) ||
+		(unitAnim().currentGestureId == GestureHitBack) || 
+		(unitAnim().currentGestureId == GestureHitLeft) || 
+		(unitAnim().currentGestureId == GestureHitRight))
 	{
-		if (atTransitionToNextGesture)
+		if (unitAnim().atTransitionToNextGesture)
 		{
-			currentGestureId = hitGestureId;
-			hitGestureId = -1;
+			unitAnim().currentGestureId = unitAnim().hitGestureId;
+			unitAnim().hitGestureId = -1;
 			setFirstFrame = true;
-			long firstFrame = mechType->gestures[currentGestureId].frameStart;
+			long firstFrame = mechType->gestures[unitAnim().currentGestureId].frameStart;
 
 			if (firstFrame < 0)			//Start at end of animation.  Probably to reverse.  Like StandToPark
-				firstFrame = mechType->getNumFrames(currentGestureId)-1;
+				firstFrame = mechType->getNumFrames(unitAnim().currentGestureId)-1;
 
-			inReverse = false;
-			if (mechType->getFrameRate(currentGestureId) < 0.0)
-				inReverse = true;
+			unitAnim().inReverse = false;
+			if (mechType->getFrameRate(unitAnim().currentGestureId) < 0.0)
+				unitAnim().inReverse = true;
 
-			atTransitionToNextGesture = false;
+			unitAnim().atTransitionToNextGesture = false;
 			
-			currentFrame = firstFrame;
+			unitAnim().currentFrame = firstFrame;
 		}
 	}
 	
@@ -69,84 +69,84 @@ long Mech3DAppearance::update (bool animate)
 	// silently changes which animation a "pinned" mech is posed in, so two
 	// arms of the same A/B can differ by a whole gesture. Frozen only when
 	// freeze_movers armed it; stock and capture paths are untouched.
-	if (!inCombatMode && (currentGestureId == 2) && (mc2FreezeMoversActive() == 0))
+	if (!unitAnim().inCombatMode && (unitAnim().currentGestureId == 2) && (mc2FreezeMoversActive() == 0))
 	{
-		idleTime += frameLength;
-		if (idleTime > idleMAX)
+		unitAnim().idleTime += frameLength;
+		if (unitAnim().idleTime > idleMAX)
 		{
-			currentGestureId = 13;
+			unitAnim().currentGestureId = 13;
 		}
 	}
 	else
 	{
-		idleTime = 0.0f;
+		unitAnim().idleTime = 0.0f;
 	}
 	
-	if ((currentGestureId == 13) && atTransitionToNextGesture)
+	if ((unitAnim().currentGestureId == 13) && unitAnim().atTransitionToNextGesture)
 	{
-		currentGestureId = 2;
+		unitAnim().currentGestureId = 2;
 		
-		currentFrame = 0;
+		unitAnim().currentFrame = 0;
 	}
 	
-	if (checkStop() && !inDebugMoveMode && !jumpSetup && (getVelocityMagnitude() != 0.0f) && (currentGestureId != GestureJump))
+	if (checkStop() && !inDebugMoveMode && !unitAnim().jumpSetup && (getVelocityMagnitude() != 0.0f) && (unitAnim().currentGestureId != GestureJump))
 	{
-		currentGestureId = 2;		//Force us to the stand gesture
-		oldStateGoal = 1;			//We always came FROM STAND
-		currentStateGoal = -1;		//Not going anywhere
-		transitionState = 0;		//No Transition necessary.  So be ready at beginning if we need one!
-		currentFrame = 0;			//In the "how did this ever work file"  Duh, need to reset the frame!
+		unitAnim().currentGestureId = 2;		//Force us to the stand gesture
+		unitAnim().oldStateGoal = 1;			//We always came FROM STAND
+		unitAnim().currentStateGoal = -1;		//Not going anywhere
+		unitAnim().transitionState = 0;		//No Transition necessary.  So be ready at beginning if we need one!
+		unitAnim().currentFrame = 0;			//In the "how did this ever work file"  Duh, need to reset the frame!
 	}
 	
 	long newGestureId = -1;			//Assume we do not need to transition.
 	
-	if (currentStateGoal != -1)
+	if (unitAnim().currentStateGoal != -1)
 	{
 		// Find out how we get to Goal.  If result is
 		// -1, we are already at goal.
-		long arrayIdx = (oldStateGoal * GESTURE_OFFSET_SIZE) + (currentStateGoal *  MAX_TRANSITION_GESTURES) + transitionState;
+		long arrayIdx = (unitAnim().oldStateGoal * GESTURE_OFFSET_SIZE) + (unitAnim().currentStateGoal *  MAX_TRANSITION_GESTURES) + unitAnim().transitionState;
 		newGestureId = transitionArray[arrayIdx];
 
-		if (atTransitionToNextGesture)	//This is only set when we are ready for the next gesture if these is one!
+		if (unitAnim().atTransitionToNextGesture)	//This is only set when we are ready for the next gesture if these is one!
 		{
-			transitionState++;		//Ready to go to next state.  Increment the transition counter for next frame!
+			unitAnim().transitionState++;		//Ready to go to next state.  Increment the transition counter for next frame!
 
-			long firstFrame = currentFrame;
+			long firstFrame = unitAnim().currentFrame;
 			if (newGestureId == -1)		//We have reached our goal.
 			{
-				oldStateGoal = currentStateGoal;
-				if (oldStateGoal == MECH_STATE_JUMPING)
-					oldStateGoal = 1;		//We are always standing AFTER a jump or a fall!
+				unitAnim().oldStateGoal = unitAnim().currentStateGoal;
+				if (unitAnim().oldStateGoal == MECH_STATE_JUMPING)
+					unitAnim().oldStateGoal = 1;		//We are always standing AFTER a jump or a fall!
 				
-				currentStateGoal = -1;
-				transitionState = 0;
-				atTransitionToNextGesture = false;
+				unitAnim().currentStateGoal = -1;
+				unitAnim().transitionState = 0;
+				unitAnim().atTransitionToNextGesture = false;
 				
-				if (mechType->getFrameRate(currentGestureId) < 0.0)
-					inReverse = true;
+				if (mechType->getFrameRate(unitAnim().currentGestureId) < 0.0)
+					unitAnim().inReverse = true;
 			}
 			else
 			// reset all frames to zero for this gesture.
 			// NOTE:  This may be a two way gesture.  Most will be
 			// set to zero, but some may need to be set to last.
 			{
-				currentGestureId = newGestureId;
+				unitAnim().currentGestureId = newGestureId;
 				setFirstFrame = true;
-				firstFrame = mechType->gestures[currentGestureId].frameStart;
-				if (currentGestureId == GestureJump)
+				firstFrame = mechType->gestures[unitAnim().currentGestureId].frameStart;
+				if (unitAnim().currentGestureId == GestureJump)
 					firstFrame = 0;			//We store information in the firstFrame of the jump.  They always start at 0!
 
 				if (firstFrame < 0)			//Start at end of animation.  Probably to reverse.  Like StandToPark
-					firstFrame = mechType->getNumFrames(currentGestureId)-1;
+					firstFrame = mechType->getNumFrames(unitAnim().currentGestureId)-1;
 
-				inReverse = false;
-				if (mechType->getFrameRate(currentGestureId) < 0.0)
-					inReverse = true;
+				unitAnim().inReverse = false;
+				if (mechType->getFrameRate(unitAnim().currentGestureId) < 0.0)
+					unitAnim().inReverse = true;
 
-				atTransitionToNextGesture = false;
+				unitAnim().atTransitionToNextGesture = false;
 			}
 
-			currentFrame = firstFrame;
+			unitAnim().currentFrame = firstFrame;
 		}
 	}
 		
@@ -154,9 +154,9 @@ long Mech3DAppearance::update (bool animate)
 	{
 		// This will bypass animation if we go the old way.
 		// Just set stateGoal to 7 or 8 if its not.
-		if (currentStateGoal < 7)
+		if (unitAnim().currentStateGoal < 7)
 		{
-			if (mc2_appearance_rng::rollDice(50))
+			if (mc2_anim_rng::rollDice(50))
 			{
 				setGestureGoal(7);
 			}
@@ -167,15 +167,15 @@ long Mech3DAppearance::update (bool animate)
 		}
 	}
 
-	mechFrameRate = mechType->getFrameRate(currentGestureId);
+	unitAnim().mechFrameRate = mechType->getFrameRate(unitAnim().currentGestureId);
 
-	if (mechFrameRate < 0.0)
-		mechFrameRate = -mechFrameRate;
+	if (unitAnim().mechFrameRate < 0.0)
+		unitAnim().mechFrameRate = -unitAnim().mechFrameRate;
 
-	if ((currentGestureId == GestureJump) && !inJump)
+	if ((unitAnim().currentGestureId == GestureJump) && !unitAnim().inJump)
 	{
-		inJump = true;
-		jumpSetup = false;
+		unitAnim().inJump = true;
+		unitAnim().jumpSetup = false;
 		
 		// Distance is straight line distance.  This is only
 		// the case if the mech is FACING the correct way.  If
@@ -184,28 +184,28 @@ long Mech3DAppearance::update (bool animate)
 		float landingFrame = mechType->getJumpLandFrame();
 
 		glm::vec3 ownerPosition = position;
-		glm::vec3 targetPosition = jumpDestination;
-		jumpVelocity = targetPosition - ownerPosition;
+		glm::vec3 targetPosition = unitAnim().jumpDestination;
+		unitAnim().jumpVelocity = targetPosition - ownerPosition;
 					
-		float velMag = glm::length(jumpVelocity) / ((landingFrame - takeoffFrame) / 30.0f);
-		jumpVelocity = glm::normalize(jumpVelocity);
-		jumpVelocity *= velMag;
+		float velMag = glm::length(unitAnim().jumpVelocity) / ((landingFrame - takeoffFrame) / 30.0f);
+		unitAnim().jumpVelocity = glm::normalize(unitAnim().jumpVelocity);
+		unitAnim().jumpVelocity *= velMag;
 		
 		// Jump Velocity is now a velocity vector which 
 		// will move the mech WITHOUT turning to the landing point.
 	}
 	
-	if (currentGestureId == GestureJump && inJump)
+	if (unitAnim().currentGestureId == GestureJump && unitAnim().inJump)
 	{
-		if (currentFrame >= mechType->getJumpTakeoffFrame())
+		if (unitAnim().currentFrame >= mechType->getJumpTakeoffFrame())
 		{
-			jumpAirborne = true;
+			unitAnim().jumpAirborne = true;
 		}
 		
-		if ((currentFrame >= mechType->getJumpLandFrame()) && jumpAirborne)
+		if ((unitAnim().currentFrame >= mechType->getJumpLandFrame()) && unitAnim().jumpAirborne)
 		{
-			jumpAirborne = false;
-			jumpVelocity = glm::vec3(0.0f);
+			unitAnim().jumpAirborne = false;
+			unitAnim().jumpVelocity = glm::vec3(0.0f);
 			
 			if (jumpJetEffect)
 			{
@@ -214,12 +214,12 @@ long Mech3DAppearance::update (bool animate)
 		}
 	}
  	
-	fallen = FALSE;
-	if ((currentGestureId == GestureFallenForward) || (currentGestureId == GestureFallenBackward))
+	unitAnim().fallen = FALSE;
+	if ((unitAnim().currentGestureId == GestureFallenForward) || (unitAnim().currentGestureId == GestureFallenBackward))
 	{
-		fallen = TRUE;
-		if (currentStateGoal != -1)
-			atTransitionToNextGesture = TRUE;
+		unitAnim().fallen = TRUE;
+		if (unitAnim().currentStateGoal != -1)
+			unitAnim().atTransitionToNextGesture = TRUE;
 			
 		//Try playing the helicopter dust cloud for grins to see how it looks!
 		// Only play once!!!  Until they get back up.
@@ -229,11 +229,11 @@ long Mech3DAppearance::update (bool animate)
 			fallDust = true;
 		}
 	}
-	else if (currentGestureId == GesturePark)
+	else if (unitAnim().currentGestureId == GesturePark)
 	{
 		fallDust = false;
-		if (currentStateGoal != -1)
-			atTransitionToNextGesture = TRUE;
+		if (unitAnim().currentStateGoal != -1)
+			unitAnim().atTransitionToNextGesture = TRUE;
 	}
 	else	//Normal Frame Increment
 	{
@@ -252,12 +252,12 @@ long Mech3DAppearance::update (bool animate)
 			else if (!singleStepMode)
 			{
 				// Make sure animation runs no faster than mechFrameRate fps.
-				frameInc = mechFrameRate * frameLength;
+				frameInc = unitAnim().mechFrameRate * frameLength;
 			}
 			
 			// Always ASSUME we cannot transition yet.
 			// Saves myriad compares below.
-			atTransitionToNextGesture = FALSE;
+			unitAnim().atTransitionToNextGesture = FALSE;
 					
 			if ((frameInc != 0.0f) || (singleStepMode))
 			{
@@ -273,7 +273,7 @@ long Mech3DAppearance::update (bool animate)
 					// recomputes at the current frame, so the LOS refresh gets valid nodes
 					// without an extra gait step.
 					// User-confirmed fix (mc2_17 Catapult/Bushwacker).
-					const bool _alreadyAdvanced = (lastAnimAdvanceFrame == g_mc2FrameCounter);
+					const bool _alreadyAdvanced = (unitAnim().lastAnimAdvanceFrame == static_cast<uint32_t>(turn));
 					// VK-MECH-CAPTURE-DETERMINISM-1: during a frozen visual-capture
 					// sweep (sim paused) the render path still ticks this gait via the
 					// wall-clock frameLength, so a mech's pose drifted run-to-run and
@@ -293,11 +293,11 @@ long Mech3DAppearance::update (bool animate)
 					                           (mc2FreezeMoversActive() != 0) || mc2::animationsFrozen();
 					if (!_alreadyAdvanced && !_captureFroze)
 					{
-						if (inReverse)
-							currentFrame -= frameInc;
+						if (unitAnim().inReverse)
+							unitAnim().currentFrame -= frameInc;
 						else
-							currentFrame += frameInc;
-						lastAnimAdvanceFrame = g_mc2FrameCounter;
+							unitAnim().currentFrame += frameInc;
+						unitAnim().lastAnimAdvanceFrame = static_cast<uint32_t>(turn);
 					}
 				}
 
@@ -329,7 +329,7 @@ long Mech3DAppearance::update (bool animate)
 								if (mc2_diag::tagEnabled("ANIM_CADENCE"))
 								{
 									char _ac_buf[256];
-									mc2::fmt::to_buf(_ac_buf, "{{\"event\":\"advanced_twice_same_frame\",\"ptr\":\"{:016X}\",\"gesture\":{:d},\"frame\":{:d},\"frameInc\":{:.4f},\"doubles\":{:d},\"advances\":{:d}}}", mc2::fmt::as_ptr(static_cast<void*>(this)), mc2::fmt::as_i32(static_cast<int>(currentGestureId)), mc2::fmt::as_u32(_ac_frame), frameInc, mc2::fmt::as_u64(static_cast<unsigned long long>(s_ac_doubles)), mc2::fmt::as_u64(static_cast<unsigned long long>(s_ac_advances)));
+									mc2::fmt::to_buf(_ac_buf, "{{\"event\":\"advanced_twice_same_frame\",\"ptr\":\"{:016X}\",\"gesture\":{:d},\"frame\":{:d},\"frameInc\":{:.4f},\"doubles\":{:d},\"advances\":{:d}}}", mc2::fmt::as_ptr(static_cast<void*>(this)), mc2::fmt::as_i32(static_cast<int>(unitAnim().currentGestureId)), mc2::fmt::as_u32(_ac_frame), frameInc, mc2::fmt::as_u64(static_cast<unsigned long long>(s_ac_doubles)), mc2::fmt::as_u64(static_cast<unsigned long long>(s_ac_advances)));
 									mc2_diag::writeEvent("ANIM_CADENCE", 1, static_cast<uint64_t>(_ac_frame), _ac_buf);
 								}
 							}
@@ -337,61 +337,63 @@ long Mech3DAppearance::update (bool animate)
 					}
 				}
 
-				if (currentFrame >= mechType->getNumFrames(currentGestureId))
+				if (unitAnim().currentFrame >= mechType->getNumFrames(unitAnim().currentGestureId))
 				{
-					if ((currentStateGoal == -1) && (hitGestureId == -1) && (currentGestureId != GestureIdle))		//Are we just Looping or transitioning?
+					if ((unitAnim().currentStateGoal == -1) && (unitAnim().hitGestureId == -1) && (unitAnim().currentGestureId != GestureIdle))		//Are we just Looping or transitioning?
 					{
-						currentFrame -= mechType->getNumFrames(currentGestureId);
+						unitAnim().currentFrame -= mechType->getNumFrames(unitAnim().currentGestureId);
 					}
 					else
 					{
 						// We are at the end and ready to transition
 						// Force us back to the previous frame so draw
 						// doesn't go off into lala land.
-						atTransitionToNextGesture = TRUE;
-						currentFrame = mechType->getNumFrames(currentGestureId) - 1.0f;
+						unitAnim().atTransitionToNextGesture = TRUE;
+						unitAnim().currentFrame = mechType->getNumFrames(unitAnim().currentGestureId) - 1.0f;
 						
-						if (currentGestureId == GestureJump)
+						if (unitAnim().currentGestureId == GestureJump)
 						{
-							inJump = false;
-							jumpSetup = false;
-							oldStateGoal = 1;		//We always started a Jump standing!
+							unitAnim().inJump = false;
+							unitAnim().jumpSetup = false;
+							unitAnim().oldStateGoal = 1;		//We always started a Jump standing!
 						}
 					}
 				}
 	
-				if (currentFrame < 0)
+				if (unitAnim().currentFrame < 0)
 				{
-					if ((currentStateGoal == -1) && (hitGestureId == -1))
+					if ((unitAnim().currentStateGoal == -1) && (unitAnim().hitGestureId == -1))
 					{
-						currentFrame += mechType->getNumFrames(currentGestureId);
+						unitAnim().currentFrame += mechType->getNumFrames(unitAnim().currentGestureId);
 					}
 					else
 					{
 						// We are at the end and ready to transition
 						// Force us back to the previous frame so draw
 						// doesn't go off into lala land.
-						atTransitionToNextGesture = TRUE;
-						currentFrame = 0.0f;
+						unitAnim().atTransitionToNextGesture = TRUE;
+						unitAnim().currentFrame = 0.0f;
 					}
 				}
 			}
 			else		//This is a  single frame gesture.  We are ALWAYS ready to transition in this case!
 			{
-				if (currentStateGoal != -1)
-					atTransitionToNextGesture = TRUE;
+				if (unitAnim().currentStateGoal != -1)
+					unitAnim().atTransitionToNextGesture = TRUE;
 			}
 		}
 	}
 
-	if (currentFrame < 0.0f)
-		currentFrame = 0.0f;
+	if (unitAnim().currentFrame < 0.0f)
+		unitAnim().currentFrame = 0.0f;
 //		STOP(("CurrentFrame of animation can never be less then zero.  Frame %f,  NumFrames %f, GestureId %d",currentFrame,mechType->getNumFrames(currentGestureId),currentGestureId));
 		
-	if ((currentFrame > 0.0f) && (currentFrame >= mechType->getNumFrames(currentGestureId)))
-		currentFrame = 0.0f;
+	if ((unitAnim().currentFrame > 0.0f) && (unitAnim().currentFrame >= mechType->getNumFrames(unitAnim().currentGestureId)))
+		unitAnim().currentFrame = 0.0f;
 	} // end !simPresentationPass
 		
+	if (!simPresentationPass && actorHandle_ >= 0) { updateSimPose(); return TRUE; }
+
 	// LIGHT-CULL-RADIUS-1 freshness (batch-6 item 5 ext a/c): the light
 	// owner-intent writers live in updateGeometry, which is frustum-culled
 	// below — an OFF-SCREEN mech never refreshed its light state, so (a) a
@@ -462,10 +464,8 @@ long Mech3DAppearance::update (bool animate)
 		const bool gpuVis = s_gpuCullLifecycle
 			? gpu_cull::readback_isActorVisibleLagged(static_cast<uint32_t>(actorHandle_))
 			: inView;
-		if ((turn < 3) || gpuVis || (currentGestureId == GestureJump) || g_useGpuStaticProps)
+		if ((turn < 3) || gpuVis || (unitAnim().currentGestureId == GestureJump) || g_useGpuStaticProps)
 			updateGeometry();
-		else
-			updateSimPose();
 
 		// Slice B1: refresh per-actor LightsData UBO slot index for the
 		// GPU mech batcher path. Mirrors bdactor.cpp pattern. No-op
@@ -497,7 +497,7 @@ long Mech3DAppearance::update (bool animate)
 	// MUST do every frame.  We don't know where the arms are!!!
 	glm::vec3 xlatPosition;
 	glm::quat qRotation;
- 	if (leftArmOff && leftArm && leftArmRecalc())
+ 	if (unitAnim().leftArmOff && leftArm && leftArmRecalc())
 	{
 		float speed = glm::length(dVel[1]);
 		if (speed)
@@ -574,7 +574,7 @@ long Mech3DAppearance::update (bool animate)
 		}
 	}
 	
-	if (rightArmOff && rightArm && rightArmRecalc())
+	if (unitAnim().rightArmOff && rightArm && rightArmRecalc())
 	{
 		float speed = glm::length(dVel[0]);
 		if (speed)
@@ -659,7 +659,7 @@ long Mech3DAppearance::update (bool animate)
 
 void Mech3DAppearance::blowLeftArm (void)
 {
-	if (leftArmOff)
+	if (unitAnim().leftArmOff)
 		return;
 		
 	// For now, the shoulder just gets a location which does not change.
@@ -742,7 +742,7 @@ void Mech3DAppearance::blowLeftArm (void)
 		leftArmSmoke->Start(&info);
 	}
 	
-	leftArmOff = true;
+	unitAnim().leftArmOff = true;
 	
 	long xlatBase = 12.0f + 50.0 / 2.0f;
 	long upBase = 25.0f + 100.0;
@@ -774,7 +774,7 @@ void Mech3DAppearance::blowLeftArm (void)
 
 void Mech3DAppearance::blowRightArm (void)
 {
-	if (rightArmOff)
+	if (unitAnim().rightArmOff)
 		return;
 		
 	// For now, the shoulder just gets a location which does not change.
@@ -857,7 +857,7 @@ void Mech3DAppearance::blowRightArm (void)
 		rightArmSmoke->Start(&info);
 	}
 
-	rightArmOff = true;
+	unitAnim().rightArmOff = true;
 
 	long xlatBase = 12.0f + 50.0 / 2.0f;
 	long upBase = 25.0f + 100.0;
@@ -969,7 +969,7 @@ void Mech3DAppearance::startSmoking (long smokeLvl)
 void Mech3DAppearance::startWaterWake (void)
 {
 	
-	if (isHelicopter || currentGestureId == 20)
+	if (isHelicopter || unitAnim().currentGestureId == 20)
 		return;
 
 	if (!useNonWeaponEffects)
@@ -1010,7 +1010,7 @@ void Mech3DAppearance::startWaterWake (void)
 				
 		glm::quat effectRot;
 		effectRot = mc2::math::quatFromEuler(mc2::math::Euler(90.0f * DEGREES_TO_RADS,rotation * DEGREES_TO_RADS,0.0f));
-		if (!inReverse)
+		if (!unitAnim().inReverse)
 			localToWorld = mc2::math::multiply(gosFX::Effect_Against_Motion, effectRot);
 		else
 			localToWorld = mc2::math::multiply(gosFX::Effect_Into_Motion, effectRot);

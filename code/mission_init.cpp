@@ -1,6 +1,7 @@
 // Mission: Mission::init, the mission load sequence.
 // Declared in the class headers; shared names in mission_internal.h.
 #include "mission_internal.h"
+#include "command_replay.h"
 #include "mission_init_frame.h"
 #include <new>
 
@@ -77,12 +78,14 @@ void Mission::initPrologue(MissionInitFrame& f) {
 		if (!seedText.empty())
 			seed = static_cast<uint32_t>(strtoul(seedText.c_str(), nullptr, 0));
 		mc2_appearance_rng::reseed(seed);
+		mc2_anim_rng::reseed(seed);
 		ResetSimRandomDraws();
 		if (mc2::gate::get<"MC2_DETERMINISTIC_RNG">()) {
 			Stuff::Random::Reseed(seed);   // gosFX effect table: same mission seed, before the sim stream restarts
 			gos_srand(seed);
 			mc2::fmt::print_err("[DET_RNG] mission={} reseed=0x{:08X} (MC2_DETERMINISTIC_RNG=1)\n", mc2::fmt::safe(missionName ? missionName : "(null)"), mc2::fmt::as_u32(seed));
 		}
+        mc2::replay::begin(missionName, seed);
 	}
 
 	neverEndingStory = false;

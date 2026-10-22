@@ -493,7 +493,13 @@ ArtilleryPtr GameObjectManager::createArtillery (long artilleryType, glm::vec3& 
 
 namespace {
 // Where each mover stood when the latest sim tick began (indexed by object handle; the stamp says the entry is current).
-struct InterpPose { glm::vec3 pos{}; float rot = 0.0f; uint32_t stamp = 0; };
+struct InterpPose {
+    glm::vec3 pos{}, current{};
+    float rot = 0.0f, heading = 0.0f;
+    uint32_t stamp = 0;
+    mc2::sim::UnitAnimState previousAnimation, animation;
+    mc2::sim::SimPose attachments;
+};
 std::vector<InterpPose> s_interpPose;
 uint32_t s_interpStamp = 1;
 float s_presentationAlpha = 1.0f;
@@ -502,14 +508,22 @@ float s_presentationAlpha = 1.0f;
 // the sim never sees it (Mission::updateObjectManager re-poses every mover exactly before the next tick).
 void presentationPose(GameObject* object, glm::vec3& pos, float& rot)
 {
-	if (s_presentationAlpha >= 1.0f) return;
+	
 	const long handle = object->getHandle();
 	if (handle < 0 || static_cast<size_t>(handle) >= s_interpPose.size()) return;
 	const InterpPose& prev = s_interpPose[handle];
 	if (prev.stamp != s_interpStamp) return;   // spawned since the snapshot: nothing to blend from
+	auto animation = prev.animation;
+	if (animation.currentGestureId == prev.previousAnimation.currentGestureId &&
+        animation.currentFrame >= prev.previousAnimation.currentFrame)
+        animation.currentFrame = prev.previousAnimation.currentFrame +
+            (animation.currentFrame - prev.previousAnimation.currentFrame) * s_presentationAlpha;
+	object->getAppearance()->presentAnimation(animation);
+	pos = prev.current; rot = prev.heading;
 	const float a = s_presentationAlpha;
 	pos.x = prev.pos.x + (pos.x - prev.pos.x) * a;
 	pos.y = prev.pos.y + (pos.y - prev.pos.y) * a;
+	pos.z = prev.pos.z + (pos.z - prev.pos.z) * a;
 	float delta = std::fmod(rot - prev.rot, 360.0f);
 	if (delta > 180.0f) delta -= 360.0f;
 	else if (delta < -180.0f) delta += 360.0f;
@@ -528,8 +542,28 @@ void GameObjectManager::snapshotMoverPoses()
 		if (!mover || !mover->getExists()) continue;
 		const long handle = mover->getHandle();
 		if (handle < 0 || static_cast<size_t>(handle) >= s_interpPose.size()) continue;
-		s_interpPose[handle] = { mover->getPosition(), mover->getRotation(), s_interpStamp };
+		auto& pose = s_interpPose[handle];
+        pose.pos = mover->getPosition(); pose.rot = mover->getRotation(); pose.stamp = s_interpStamp;
+        pose.previousAnimation = *mover->getAppearance()->simulationAnimation();
 	}
+}
+
+void GameObjectManager::extractRenderSnapshots() {
+    for (long i = 0; i < numMovers; ++i) {
+        auto* mover = moverList[i];
+        if (!mover || !mover->getExists() || !mover->getAppearance()) continue;
+        const long handle = mover->getHandle();
+        if (handle < 0 || static_cast<size_t>(handle) >= s_interpPose.size()) continue;
+        auto& proxy = s_interpPose[handle];
+        proxy.current = mover->getPosition(); proxy.heading = mover->getRotation();
+        proxy.animation = *mover->getAppearance()->simulationAnimation();
+        proxy.attachments = *mover->getAppearance()->simPose;
+        if (proxy.stamp != s_interpStamp) {
+            proxy.pos = proxy.current; proxy.rot = proxy.heading;
+            proxy.previousAnimation = proxy.animation;
+            proxy.stamp = s_interpStamp;
+        }
+    }
 }
 
 void GameObjectManager::setPresentationAlpha( float alpha )
@@ -544,6 +578,8 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 
 	if (terrain && renderObjects)
 	{
+        updateReadbackSnapshot();
+        updateActiveSweep();
 		for (long terrainBlock = 0; terrainBlock < Terrain::numObjBlocks; terrainBlock++)
 		{
 			// Cull-cascade consumer (object collect). Post-8c source of truth for
@@ -574,7 +610,12 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 
 							MC2_WORLD_UPDATE("appearance_terrain", objList[objIndex]);
 
-							objList[objIndex]->getAppearance()->update( false );
+							auto* appearance = objList[objIndex]->getAppearance();
+                            appearance->presentAnimation(*appearance->simulationAnimation());
+                            if (appearance->IsStaticNow() && !objList[objIndex]->getFlag(OBJECT_FLAG_FALLING))
+                                appearance->touch();
+                            else
+                                appearance->update(false);
 							objList[objIndex]->getAppearance()->setVisibility(true, true);	
 						}
 					}
@@ -598,14 +639,15 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 					glm::vec3 pos = mechs[i]->getPosition();
 					float rot = mechs[i]->getRotation();
 					presentationPose(mechs[i], pos, rot);
-					pos.z = TerrainRuntime::groundElevation(pos);
 					bool selected = mechs[i]->isSelected();
 					int teamID = mechs[i]->getTeamId();
 					mechs[i]->getAppearance()->setObjectParameters(pos,rot,mechs[i]->drawFlags,teamID,Team::getRelation(teamID, Team::home->getId()));
 
 					MC2_WORLD_UPDATE("appearance_mechs", mechs[i]);
 
+					presentationPose(mechs[i], pos, rot);
 					mechs[i]->getAppearance()->update( false );
+                    mechs[i]->getAppearance()->updateFootprints();
 					mechs[i]->getAppearance()->setVisibility(inView,true);
 				}
 		}
@@ -622,13 +664,11 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 					glm::vec3 pos = vehicles[i]->getPosition();
 					float rot = vehicles[i]->getRotation();
 					presentationPose(vehicles[i], pos, rot);
-					pos.z = TerrainRuntime::groundElevation(pos);
-					if ((pos.z < MapData::waterDepth))
-						pos.z = MapData::waterDepth;
 					bool selected = vehicles[i]->isSelected();
 					int teamID = vehicles[i]->getTeamId();
 					vehicles[i]->getAppearance()->setObjectParameters(pos, rot, vehicles[i]->drawFlags, teamID, Team::getRelation(teamID, Team::home->getId()));
 					MC2_WORLD_UPDATE("appearance_vehicles", vehicles[i]);
+					presentationPose(vehicles[i], pos, rot);
 					vehicles[i]->getAppearance()->update( false );
 					vehicles[i]->getAppearance()->setInView( inView );
 				}
@@ -657,7 +697,8 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 
 						MC2_WORLD_UPDATE("appearance_turrets", turrets[i]);
 
-						turrets[i]->getAppearance()->update( false );
+						turrets[i]->getAppearance()->presentAnimation(*turrets[i]->getAppearance()->simulationAnimation());
+                            turrets[i]->getAppearance()->update( false );
 						turrets[i]->getAppearance()->setInView( 1 );
 					}
 					else

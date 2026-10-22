@@ -269,13 +269,13 @@ class BldgAppearance : public ObjectAppearance
 		};
 		PickScreenRectCache							pickCache_;
 
-		long										bdAnimationState;
-		float										currentFrame;
-		float										bdFrameRate;
-		bool										isReversed;
-		bool										isLooping;
-		bool										setFirstFrame;
-		bool										canTransition;
+
+
+
+
+
+
+
 		
 		float										turretYaw;
 		float										turretPitch;
@@ -302,8 +302,8 @@ class BldgAppearance : public ObjectAppearance
 		
 		long										currentLOD;
 		
- 		std::vector<long>										nodeUsed;				//Used to stagger the weapon nodes for firing.
-		std::vector<float>										nodeRecycle;			//Used for ripple fire to find out if the node has fired recently.
+
+
 		
 		TG_LightPtr									pointLight;
 		DWORD										lightId;
@@ -391,7 +391,7 @@ class BldgAppearance : public ObjectAppearance
 
 		virtual bool getInTransition (void)
 		{
-			return (canTransition == false);
+			return (unitAnim().canTransition == false);
 		}
 
 		void setFadeTable (MemoryPtr fTable)
@@ -403,7 +403,7 @@ class BldgAppearance : public ObjectAppearance
 		
 		virtual long getCurrentGestureId (void)
 		{
-			return bdAnimationState;
+
 		}
 
 		virtual unsigned long getAppearanceClass (void)

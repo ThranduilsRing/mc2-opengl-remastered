@@ -272,3 +272,4 @@ L(Lead0Kill, "MC2_WINDOW_RESIZABLE", Bool, true, "gameos", "", "", verified),
 G("MC2_WORLD_ORDER_TRACE", Bool, false, "code", "", "W2: emit ordered world views, terrain activity, lifecycle events and update calls per mission tick. Diagnostic only.", passthrough | registry(Trace, "MC2_WORLD_ORDER_TRACE", -1, false) | verified),
 // history: docs/gate-history.md#MC2_XFORM_PARITY_FATAL
 L(Lead1, "MC2_XFORM_PARITY_FATAL", Bool, false, "code", "", "XFORM-CONVENTION-HARNESS-1: promote the F1-3C clip-space parity probe (code/gamecam.cpp) to a HARD invariant.", registry(Trace, "MC2_XFORM_PARITY_FATAL", -1, false) | verified),
+

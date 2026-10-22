@@ -578,7 +578,7 @@ long Turret::update (void)
 		appearance->setMoverParameters(turretRotation,0.0f,0.0f);
 		bool inView = appearance->recalcBounds();
 	
-		if (inView || !didReveal || (turn < 4))
+		if (appearance)
 		{
 			appearance->setInView(true);
 			appearance->update();
@@ -796,10 +796,10 @@ long Turret::update (void)
 		
  	appearance->setObjectParameters(position, rotation, TacticalOverview::maskWorldBars(drawFlags), teamId,Team::getRelation(teamId, Team::home->getId()));
 	appearance->setMoverParameters(turretRotation,turretPitch,0.0f);
-	bool inView = appearance->recalcBounds();
+	bool inView = false;
 	long canFire = updateAnimations();
 
-	if (inView || !didReveal || (turn < 4))
+	if (appearance)
 	{
 		appearance->setInView(true);
 		appearance->update();

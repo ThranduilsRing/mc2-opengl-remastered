@@ -793,7 +793,10 @@ long Building::update (void)
 	
 			
 			appearance->setObjectParameters(position,(static_cast<ObjectAppearance*>(appearance))->rotation, drawFlags,getTeamId(),Team::getRelation(getTeamId(), Team::home->getId()));
-			bool inView = appearance->recalcBounds();
+			// Grounding and animation are authoritative even when the building is off-screen.
+			const bool inView = false;
+			position.z = TerrainRuntime::groundElevation(position);
+			setPosition(position);
 	
 			//------------------------------------------------
 			if (getObjectType()->getObjTypeNum() == GENERIC_DESTRUCTIBLE_RESOURCE_BUILDING_OBJNUM) 
@@ -814,10 +817,7 @@ long Building::update (void)
 			// touch() path (was running a full BldgAppearance::update — spotlight
 			// SetPosition loop + hierarchy transform — every frame). updateAnimations()
 			// + recalcBounds already ran above.
-			if (appearance->IsStaticNow() && !getFlag(OBJECT_FLAG_FALLING))
-				appearance->touch();
-			else
-				appearance->update();
+			appearance->update();
 
 			if (inView)
 			{

@@ -16,6 +16,42 @@
 #include "mission_internal.h"
 #include "render_resource_owners.h"
 #include "mc2fmt.h"
+#include "command_replay.h"
+#include "sim_tick_cost.h"
+#include <algorithm>
+#include <chrono>
+#include <cstdio>
+#include <vector>
+
+void mc2::diagnostic::TickCost::begin() {
+    if (enabled_ && !running_) {
+        started_ = static_cast<std::uint64_t>(std::chrono::duration_cast<std::chrono::nanoseconds>(
+            std::chrono::steady_clock::now().time_since_epoch()).count());
+        running_ = true;
+    }
+}
+void mc2::diagnostic::TickCost::end() {
+    if (!running_) return;
+    const auto now = static_cast<std::uint64_t>(std::chrono::duration_cast<std::chrono::nanoseconds>(
+        std::chrono::steady_clock::now().time_since_epoch()).count());
+    milliseconds_ += static_cast<double>(now - started_) / 1000000.0;
+    running_ = false;
+}
+mc2::diagnostic::TickCost::~TickCost() {
+    if (!enabled_) return;
+    end();
+    static std::vector<double> samples;
+    samples.push_back(milliseconds_);
+    if (samples.size() < 180) return;
+    double total = 0;
+    for (auto value : samples) total += value;
+    std::sort(samples.begin(), samples.end());
+    std::printf("[SIM_TICK_COST v1] ticks=%zu avg_ms=%.4f p95_ms=%.4f p99_ms=%.4f max_ms=%.4f\n",
+        samples.size(), total / samples.size(), samples[samples.size() * 95 / 100],
+        samples[samples.size() * 99 / 100], samples.back());
+    std::fflush(stdout);
+    samples.clear();
+}
 #include "../GameOS/gameos/gos_dev_shell.h"
 #include <algorithm>
 #include <limits>
@@ -295,7 +331,10 @@ std::optional<mc2::sim::ObjectRef> Mission::orderRecipient(long partId) const {
 std::expected<mc2::sim::MissionReceipt, mc2::sim::OrderError> Mission::submitMissionOrder(
     std::uint64_t session, mc2::sim::OrderEnvelope envelope) {
     MissionOrderApplication application(MissionOrderAccess{*this});
-    return orderIngress.submit(session, std::move(envelope), application);
+    if (session != orderSession()) return std::unexpected(mc2::sim::OrderError::Permission);
+    const auto result = mc2::replay::submit(orderIngress.queue(), std::move(envelope), application);
+    if (!result) return std::unexpected(result.error());
+    return mc2::sim::MissionReceipt{session, result->receiptId};
 }
 // Wall-clock seconds since the last call (0 on the first frame of a mission), or the harness clock's virtual frame. Kept out of
 // mission_update.cpp, which is sim code and may not read the wall clock.
@@ -314,6 +353,7 @@ void Mission::resumeTickAudio() { soundSystem->clearIsPaused(); }
 void Mission::beginOrderSimulationTick() {
     for (const auto& binding : orderRecipients) resolveOrderRecipient(binding.ref);
     MissionOrderApplication application(MissionOrderAccess{*this});
+    mc2::replay::pump(orderIngress.queue(), application);
     const auto result = orderIngress.beginSimulationTick(true, false, MPlayer != nullptr, application);
     if (!result) mc2::fmt::print_err("[ORDER_INGRESS v1] begin_error={}\n", static_cast<int>(result.error()));
     using namespace mc2::sim;
