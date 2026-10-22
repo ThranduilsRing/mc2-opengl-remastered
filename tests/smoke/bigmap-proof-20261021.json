@@ -6,57 +6,198 @@
     "build": "RelWithDebInfo, clean binary fingerprint verified",
     "unit": "3358 active cases passed; production seam, installed-content census, both negative controls, and four Python harnesses passed",
     "additional_codec_cases": "two new cases passed; stock/mod stride identity and 20-bit alias separation",
-    "contracts": {"passed": 123, "failed": 0, "log": "contracts-step1-final.log"},
-    "mc2_03": {"identical_pair_frames": 3409, "baseline_frames": 1000, "baseline_chain": "3bfc7e1947c403dc"},
-    "mc2_24": {"identical_pair_frames": 16517, "baseline_frames": 1000, "baseline_chain": "e835863671799429"},
+    "contracts": {
+      "passed": 123,
+      "failed": 0,
+      "log": "contracts-step1-final.log"
+    },
+    "mc2_03": {
+      "identical_pair_frames": 3409,
+      "baseline_frames": 1000,
+      "baseline_chain": "3bfc7e1947c403dc"
+    },
+    "mc2_24": {
+      "identical_pair_frames": 16517,
+      "baseline_frames": 1000,
+      "baseline_chain": "e835863671799429"
+    },
     "baseline_data_identity": {
       "matches": false,
       "install_digest": "c4dffcb86c8d8bef",
       "baseline_digest": "9ffe5ce425438ded",
       "note": "The check command fails the install fingerprint; separate comparison of the first 1000 frames matches every baseline digest. Baselines and data-overlay declarations were not changed."
     },
-    "smoke_lite": {"duration_s": 30, "mc2_01_frames": 3748, "mc2_10_frames": 3513, "unexpected_destroys": 0, "passed": true},
+    "smoke_lite": {
+      "duration_s": 30,
+      "mc2_01_frames": 3748,
+      "mc2_10_frames": 3513,
+      "unexpected_destroys": 0,
+      "passed": true
+    },
     "smoke_lite_initial_10s": "mc2_10 failed video_floor_missing after only two frames; the 30-second rerun exercised the required video path and passed",
-    "1kbasicmap": {"move_cells_per_side": 3060, "cap": 3072, "frames": 2736, "average_fps": 91, "passed": true}
+    "1kbasicmap": {
+      "move_cells_per_side": 3060,
+      "cap": 3072,
+      "frames": 2736,
+      "average_fps": 91,
+      "passed": true
+    }
   },
   "step2": {
-    "commits": ["9654ce7d9", "7744f1d40"],
+    "commits": [
+      "9654ce7d9",
+      "7744f1d40"
+    ],
     "root_cause": "MOVE_buildData(nullptr) called MissionMap::init(height,width), which only allocates zeroed cells. Their passable bits remain false, so ground/hover area building omits the interior and calcArea returns -1. Long orders enter the escape path and report MOVEPATH_ERR_LR_NOT_ENABLED (-5) without global A*.",
     "fix": "Use the four-argument initializer for both populated and blank MOVE data; also wire the mission's gate callbacks on synthesized maps.",
     "regression_before": "180-cell production builder: interior passable=false; ground and hover start/goal areas=-1; five assertions fail",
     "regression_after": "13 assertions pass; both ground and hover global paths are found",
-    "production_seam": {"cases": 39, "assertions": 3651, "passed": true},
-    "1k_2000m_order_before": {"moved_m": 0, "remaining_m": 2000, "global_astar_calls": 0},
-    "1k_2000m_order_after": {"moved_m": 96, "remaining_m": 1904, "last_move_error": 0, "refused": 0, "offmap_noops": 0},
+    "production_seam": {
+      "cases": 39,
+      "assertions": 3651,
+      "passed": true
+    },
+    "1k_2000m_order_before": {
+      "moved_m": 0,
+      "remaining_m": 2000,
+      "global_astar_calls": 0
+    },
+    "1k_2000m_order_after": {
+      "moved_m": 96,
+      "remaining_m": 1904,
+      "last_move_error": 0,
+      "refused": 0,
+      "offmap_noops": 0
+    },
     "fixture_smoke_verdict": "The autowin probe exits before its 30-second wall budget, so run_smoke reports early_exit. The order, movement, error and path-solve evidence comes from the retained engine log."
   },
   "step3": {
-    "engine_commit": "f7a18da202f3",
+    "engine_commit": "16a412097d85",
     "route_capacity_commit": "6eab65eaf",
     "fixture": "1kcrossmap: 1kbasicmap terrain, one unmodified stock Raven (object 48 from mc2_08), one warrior/part, no opponent",
-    "start_world_units": [-64800, 64800],
-    "goal_world_units": [64799.930, -64799.930],
+    "start_world_units": [
+      -64800,
+      64800
+    ],
+    "goal_world_units": [
+      64799.93,
+      -64799.93
+    ],
     "requested_m": 36656.398,
     "moved_m": 36646.648,
     "remaining_m": 9.751,
     "arrival_tolerance_m": 10,
     "travel_sim_seconds": 1357.169,
     "global_steps": 203,
-    "global_solve_total_ms": 5.1122,
-    "global_solve_max_ms": 3.2114,
+    "global_solve_total_ms": 4.7125,
+    "global_solve_max_ms": 2.9338,
     "global_solve_calls": 2,
-    "local_solve_total_ms": 39.5155,
+    "local_solve_total_ms": 42.3468,
     "local_solve_calls": 203,
     "local_goals_found": 203,
     "local_goals_missed": 0,
     "offmap_noops": 0,
     "clock": "fixed 1/30-second steps, four steps per drawn frame",
     "fixture_timer": "Initial autowin 1200 s issues the move at t=600; the witness then extends the autowin to 5000 s through the dev shell. It quits gracefully after validating the arrival. Unit speed and movement physics are unchanged.",
-    "witness": "crossmap-arrival.json",
-    "engine_log": "crossmap-corrected.game.log",
-    "trace": "crossmap-corrected.tracy",
+    "witness": "crossmap-final-arrival.json",
+    "engine_log": "crossmap-final.game.log",
+    "trace": "crossmap-final.tracy",
+    "terrain_pak_sha256": "7060cc31a8ae5c367014a57f3a650c9b237d450457b7522f35ca109b85cf2c06",
+    "terrain_identity": "The 1kbasicmap, 1kpath and 1kcrossmap PAKs are byte-identical; only the cross-map FIT's unit and part setup differs.",
+    "door_limit_audit": {
+      "signed_index_bits": 16,
+      "max_doors": 32766,
+      "observed_doors": 21822,
+      "observed_areas": 11011,
+      "old_60000_boundary_test": "two assertions fail",
+      "fixed_boundary_test": "passes"
+    },
     "passed": true,
     "save_compatibility": "Live routes/counters are expanded, serialized arrays remain 50 entries. Stock active paths round-trip; longer live paths preserve their final order and are replanned on load.",
-    "offline_final": {"unit_cases_passed": 3360, "production_seam_cases_passed": 41, "production_seam_assertions_passed": 3673, "negative_controls_passed": 2, "contracts_passed": 123, "contracts_failed": 0}
+    "offline_final": {
+      "unit_cases_passed": 3361,
+      "production_seam_cases_passed": 41,
+      "production_seam_assertions_passed": 3673,
+      "negative_controls_passed": 2,
+      "contracts_passed": 123,
+      "contracts_failed": 0
+    },
+    "distance_measurement": "moved_m is net displacement from the start, not integrated path length; travel_sim_seconds is simulation time, not wall time."
+  },
+  "final_regression": {
+    "engine_commit": "16a412097d85",
+    "exe_sha256": "d82112e8decf43d74a6c033aae461a7ac41eb09dc6ee103603aacc06cc79b430",
+    "mc2_03": {
+      "identical_pair_frames": 11017,
+      "baseline_frames": 1000,
+      "baseline_chain": "3bfc7e1947c403dc",
+      "log": "door-limit-mc2_03.log"
+    },
+    "mc2_24": {
+      "identical_pair_frames": 6505,
+      "baseline_frames": 1000,
+      "baseline_chain": "e835863671799429",
+      "log": "door-limit-mc2_24.log"
+    },
+    "baseline_data_identity": {
+      "matches": false,
+      "install_digest": "76c86b16ebb3d842",
+      "baseline_digest": "9ffe5ce425438ded",
+      "note": "Both check commands exit 1 for the known install-data fingerprint mismatch. Both runs of each mission separately match all first 1000 baseline simulation digests. No baseline or manifest was changed."
+    },
+    "mod_smoke": {
+      "passed": 6,
+      "failed": 0,
+      "duration_s_per_mod": 30,
+      "report": "mod-smoke/20261021-232918/battery.json",
+      "mods": [
+        {
+          "mod": "MC2X-CVE-G",
+          "mission": "mc2_01",
+          "rendering_ok": true,
+          "ai_ok": true
+        },
+        {
+          "mod": "MC2X-REAP3",
+          "mission": "reap3m01",
+          "rendering_ok": true,
+          "ai_ok": true
+        },
+        {
+          "mod": "MC2-Exodus",
+          "mission": "a_0_1",
+          "rendering_ok": true,
+          "ai_ok": true
+        },
+        {
+          "mod": "MC2-MagicExpansion",
+          "mission": "mc2_01",
+          "rendering_ok": true,
+          "ai_ok": true
+        },
+        {
+          "mod": "MechCommanderOmnitech",
+          "mission": "a_0_1",
+          "rendering_ok": true,
+          "ai_ok": true
+        },
+        {
+          "mod": "MCO-Carver5",
+          "mission": "mc2_01",
+          "rendering_ok": true,
+          "ai_ok": true
+        }
+      ],
+      "staging": "Isolated E: copies; original mod installs untouched."
+    },
+    "smoke_lite": {
+      "passed": true,
+      "missions_passed": 2,
+      "duration_s": 30,
+      "mc2_01_frames": 2909,
+      "mc2_10_frames": 2901,
+      "unexpected_destroys": 0,
+      "log": "smoke-lite-final.log"
+    }
   }
 }
