@@ -112,9 +112,13 @@ void fixtureVolley() {
     if (!s_on || !eye || !ObjectManager || scenarioTime < 4.0f) return;
     const glm::vec3 focus = eye->getPosition();
     const float moved = (focus.x - s_lastFocus.x) * (focus.x - s_lastFocus.x) + (focus.y - s_lastFocus.y) * (focus.y - s_lastFocus.y);
-    if (scenarioTime < s_next && moved < 150.0f * 150.0f) return;   // a camera cut fires at once
+    if (moved >= 150.0f * 150.0f) {   // a camera cut: fire shortly after, once the camera origin has caught up
+        s_lastFocus = focus;
+        s_next = scenarioTime + 0.25f;
+        return;
+    }
+    if (scenarioTime < s_next) return;
     s_next = scenarioTime + 1.5f;
-    s_lastFocus = focus;
     const glm::vec3 camO = eye->getCameraOrigin();
     GameObject* best[2] = {nullptr, nullptr};   // [0] sheet metal, [1] concrete
     float bestD[2] = {1e30f, 1e30f};
