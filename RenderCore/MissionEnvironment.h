@@ -42,6 +42,8 @@ struct MissionEnvironment {
         std::array<float, 3> hemisphereSky{};
         std::array<float, 3> hemisphereGround{};
     } sky;
+    float unitAmbientScale = 1.2f;
+    float buildingSpillIntensityScale = 1.0f;
     struct Output {
         float exposureMultiplier = 1;
         std::optional<float> exposureEV = 0;

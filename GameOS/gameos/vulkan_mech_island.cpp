@@ -866,7 +866,8 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
       u.poolI[2] = feed.poolMoverMax; u.poolI[3] = feed.poolCompress;
       u.miscI[0] = feed.specDebugMask;
       const auto& ambient = visualTuning_environment().sky.hemisphereSky;
-      std::copy_n(ambient.data(),3,u.environmentAmbient);
+      for (size_t c=0; c<3; ++c)
+          u.environmentAmbient[c] = ambient[c] * visualTuning_environment().unitAmbientScale;
       std::memcpy(mainPtr, &u, sizeof(u)); }
     // Every scheme set of this parity follows the buffers the spans came from; the draw passes the offsets.
     sync_ring_bindings(s, par, mainSpan, lightSpan);

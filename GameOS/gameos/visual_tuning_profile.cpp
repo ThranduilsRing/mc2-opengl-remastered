@@ -59,6 +59,7 @@ std::map<std::string, float> engineDefaults() {
         {"gradeHighlightsR",1}, {"gradeHighlightsG",1}, {"gradeHighlightsB",1},
         {"topWarmthR",1}, {"topWarmthG",1}, {"topWarmthB",1},
         {"vignette",0}, {"topWarmthStrength",0},
+        {"unitAmbientScale",1.2f}, {"buildingSpillIntensityScale",1.0f},
         {"exposure",1}, {"shadowSoftness",2.5f}, {"staticPropIblStrength",0.5f},
         {"waterSkyTintStrength",0}, {"vfxBrightness",1}, {"vfxAdditiveBrightness",1},
         {"vfxLitStrength",0.7f}, {"mechAmbientStrength",0.15f}, {"mechSpecularStrength",0.05f},
@@ -74,6 +75,7 @@ bool validValue(std::string_view key, double value) {
     float lo = 0;
     if (key == "vignette" || key == "topWarmthStrength") hi = 1;
     else if (key.starts_with("grade") || key.starts_with("topWarmth")) hi = 2;
+    else if (key == "unitAmbientScale" || key == "buildingSpillIntensityScale") hi = 2;
     else if (key == "staticPropIblStrength") hi = 3;
     else if (key == "mechAmbientStrength") hi = 2;
     else if (key == "mechSpecularStrength") hi = 4;
@@ -105,6 +107,8 @@ Json environmentDocument(const Environment& env) {
         {"sky",{{"asset",env.sky.asset}, {"provider",env.sky.provider}, {"shIdentity",env.sky.shIdentity},
             {"shConvention",env.sky.shConvention}, {"orientation",env.sky.orientation}, {"diffuseSh",env.sky.diffuseSh},
             {"hemisphereSky",env.sky.hemisphereSky}, {"hemisphereGround",env.sky.hemisphereGround}}},
+        {"unitAmbientScale",env.unitAmbientScale},
+        {"buildingSpillIntensityScale",env.buildingSpillIntensityScale},
         {"output",output}, {"atmosphere",env.atmosphere}, {"localLights",env.localLights},
         {"clouds",env.clouds}, {"cacheStatus",env.cacheStatus}, {"legacyTuning",env.legacyTuning},
         {"providers",env.providers}};
@@ -116,6 +120,8 @@ void finish(Environment& env) {
         return std::array<float,3>{env.legacyTuning.at(key+"R"),
             env.legacyTuning.at(key+"G"),env.legacyTuning.at(key+"B")};
     };
+    env.unitAmbientScale = env.legacyTuning.at("unitAmbientScale");
+    env.buildingSpillIntensityScale = env.legacyTuning.at("buildingSpillIntensityScale");
     env.output.grade = rgb("grade");
     env.output.shadows = rgb("gradeShadows");
     env.output.highlights = rgb("gradeHighlights");

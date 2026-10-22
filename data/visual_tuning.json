@@ -2,6 +2,8 @@
   "schemaVersion": 2,
   "colorContract": "legacy-authored-v1",
   "defaults": {
+    "unitAmbientScale": 1.2,
+    "buildingSpillIntensityScale": 1.0,
     "exposure": 1.0,
     "shadowSoftness": 0.9,
     "staticPropIblStrength": 0.55,

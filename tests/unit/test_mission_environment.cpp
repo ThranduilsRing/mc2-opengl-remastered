@@ -44,6 +44,20 @@ void gos_GetTerrainClassGrass(float* a,float* b,float* c,float* d) { *a=grass[0]
 void gos_SetTerrainClassDirt(float a,float b,float c,float d) { dirt={a,b,c,d}; }
 void gos_GetTerrainClassDirt(float* a,float* b,float* c,float* d) { *a=dirt[0];*b=dirt[1];*c=dirt[2];*d=dirt[3]; }
 
+TEST_CASE("MissionEnvironment/unit fill and building spill profile bounds and mission reset") {
+    const auto profile = source(R"({"defaults":{"unitAmbientScale":1.2,"buildingSpillIntensityScale":1},"missions":{"a":{"unitAmbientScale":1.4,"buildingSpillIntensityScale":0.5},"invalid":{"unitAmbientScale":2.1,"buildingSpillIntensityScale":-1}}})");
+    const auto a = visualTuning_resolve("a", {profile});
+    CHECK(a.unitAmbientScale == 1.4f);
+    CHECK(a.buildingSpillIntensityScale == 0.5f);
+    const auto b = visualTuning_resolve("b", {profile});
+    CHECK(b.unitAmbientScale == 1.2f);
+    CHECK(b.buildingSpillIntensityScale == 1.0f);
+    CHECK(a.effectiveHash != b.effectiveHash);
+    const auto invalid = visualTuning_resolve("invalid", {profile});
+    CHECK(invalid.unitAmbientScale == 1.2f);
+    CHECK(invalid.buildingSpillIntensityScale == 1.0f);
+}
+
 TEST_CASE("MissionEnvironment/version migration preserves exact shipped tuning") {
     std::ifstream file(std::filesystem::path(__FILE__).parent_path()/"../../data/visual_tuning.json");
     REQUIRE(bool(file));
