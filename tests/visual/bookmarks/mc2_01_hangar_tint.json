@@ -5,6 +5,7 @@
  "bookmarks": [
   {"name": "saved_hangar_tint", "pos": [3174.0, -346.0, 0.0], "rot": -135.0, "proj": 30.0, "alt": 700.0, "covers": ["terrain_cement", "static_prop_wall"]},
   {"name": "saved_hangar_tint_dup", "pos": [3174.0, -346.0, 0.0], "rot": -135.0, "proj": 30.0, "alt": 700.0, "covers": ["terrain_cement", "static_prop_wall"]},
-  {"name": "saved_hangar_pad_edge", "pos": [2814.0, -706.0, 0.0], "rot": -135.0, "proj": 35.0, "alt": 1000.0, "covers": ["terrain_cement", "vegetation", "pad_edge"]}
+  {"name": "saved_hangar_pad_edge", "pos": [3874.0, -1046.0, 0.0], "rot": -135.0, "proj": 40.0, "alt": 900.0, "covers": ["terrain_cement", "vegetation", "pad_edge"]},
+  {"name": "saved_hangar_pad_overview", "pos": [3174.0, -346.0, 0.0], "rot": -135.0, "proj": 40.0, "alt": 2000.0, "covers": ["terrain_cement", "vegetation", "pad_edge"]}
  ]
 }
