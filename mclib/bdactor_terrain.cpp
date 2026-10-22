@@ -323,11 +323,17 @@ long BldgAppearance::markMoveMap (bool passable, long* lineOfSightRect, bool use
 
 	//MUST force building to HIGHEST LOD!!!  IMpassability data is only valid at this LOD!!
 	// Building will reset its LOD on next draw!!
+	// The per-instance bldgShape is the RENDER shape; a model override replaces it, so passability
+	// then comes from the stock collision shape of the current state (never the override mesh).
 	TG_MultiShapePtr tempBldgShape = bldgShape;
+	const bool renderOverridden = appearType->bldgRenderShape || appearType->bldgDmgRenderShape;
 
-	if (currentLOD)
+	if (currentLOD || renderOverridden)
 	{
-		tempBldgShape = appearType->bldgShape[currentLOD]->CreateFrom();
+		TG_TypeMultiShape* source = appearType->bldgShape[currentLOD];
+		if (renderOverridden && status == OBJECT_STATUS_DESTROYED && appearType->bldgDmgShape)
+			source = appearType->bldgDmgShape;
+		tempBldgShape = source->CreateFrom();
 		if (bdAnimationState != -1)
 			appearType->setAnimation(tempBldgShape,bdAnimationState);
 	}
@@ -438,10 +444,15 @@ void BldgAppearance::markLOS (bool clearIt)
 {
 	//MUST force building to HIGHEST LOD!!!  IMpassability data is only valid at this LOD!!
 	// Building will reset its LOD on next draw!!
+	// Line of sight comes from the stock shape, never a render override (see markMoveMap).
 	TG_MultiShapePtr tempBldgShape = bldgShape;
-	if (currentLOD)
+	const bool renderOverridden = appearType->bldgRenderShape || appearType->bldgDmgRenderShape;
+	if (currentLOD || renderOverridden)
 	{
-		tempBldgShape = appearType->bldgShape[0]->CreateFrom();
+		TG_TypeMultiShape* source = appearType->bldgShape[0];
+		if (renderOverridden && status == OBJECT_STATUS_DESTROYED && appearType->bldgDmgShape)
+			source = appearType->bldgDmgShape;
+		tempBldgShape = source->CreateFrom();
 		if (bdAnimationState != -1)
 			appearType->setAnimation(tempBldgShape,bdAnimationState);
 	}

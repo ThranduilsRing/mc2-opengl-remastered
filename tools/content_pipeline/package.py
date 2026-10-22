@@ -63,9 +63,38 @@ def _detail(material: ir.Material, which: str, report: dict, compress: bool):
     return texcook.cook_ktx2(rgba, which, compress=compress, source_sha256=source)
 
 
+ENGINE_NODE_PREFIXES = ("spotlight_", "litwin", "_pab", "los_")   # tgl_types.cpp / msl_load.cpp name rules
+
+
+def isolate_engine_nodes(asset: ir.Asset):
+    """Spotlight cones, lit windows, passability and LOS helpers are engine-special nodes driven by
+    the legacy light tags; authored material inputs must not reach them. Their primitives move to a
+    legacy_prelit twin of the slot (same base colour), so the stock response is kept."""
+    twins = {}
+    for _, _, lods in asset.variants():
+        for lod in lods:
+            scene = lod.scene
+            for node in scene.nodes:
+                if node.mesh is None or not node.name.lower().startswith(ENGINE_NODE_PREFIXES):
+                    continue
+                for prim in scene.meshes[node.mesh].primitives:
+                    m = asset.materials[prim.material]
+                    if not m.authored():
+                        continue
+                    if prim.material not in twins:
+                        twins[prim.material] = len(asset.materials)
+                        asset.materials.append(ir.Material(name=f"{m.name}_legacy", base_color=m.base_color,
+                                                           base_color_policy=m.base_color_policy,
+                                                           alpha_mode=m.alpha_mode, alpha_cutoff=m.alpha_cutoff,
+                                                           double_sided=m.double_sided))
+                    prim.material = twins[prim.material]
+    return twins
+
+
 def cook_asset(asset: ir.Asset, out: Path, *, compress=True, max_triangles=None, report=None):
     """Cook one asset into the package at out; returns its models.json record."""
     asset.check()
+    isolate_engine_nodes(asset)
     aid = _safe(asset.id)
     mo = out / "data" / "model_overrides"
     folder = mo / aid
