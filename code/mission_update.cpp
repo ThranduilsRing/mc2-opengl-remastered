@@ -2,6 +2,7 @@
 // Mission: the per-frame Mission::update with its MC2_MISSION_SPLIT timing, mover bridge, soak hooks and coherence audit.
 // Declared in the class headers; shared names in mission_internal.h.
 #include "mission_internal.h"
+#include "move_recon.h"
 #include <utility>
 #include "../GameOS/gameos/utils/mc2log.h"
 
@@ -170,6 +171,9 @@ namespace {
 		unsigned long   wid;
 		glm::vec3 startPos;
 		glm::vec3 goalPos;
+		float issuedAt;
+		bool arrived;
+		int maxGlobalSteps;
 	};
 	static const int kOrderLivenessCap = 32;   // bounded, s_firedWIDs precedent
 	static OrderLivenessEntry s_olEntries[kOrderLivenessCap];
@@ -995,12 +999,38 @@ void Mission::updateOrderLiveness() {
 				s_olEntries[s_olIssuedMove].wid = pM->getWatchID();
 				s_olEntries[s_olIssuedMove].startPos = olPos;
 				s_olEntries[s_olIssuedMove].goalPos = olGoal;
+				s_olEntries[s_olIssuedMove].issuedAt = scenarioTime;
+				s_olEntries[s_olIssuedMove].arrived = false;
+				s_olEntries[s_olIssuedMove].maxGlobalSteps = 0;
+				mc2::fmt::print_out("[ORDER_FIXTURE] kind=route wid={:d} start_x_wu={:.3f} start_y_wu={:.3f} goal_x_wu={:.3f} goal_y_wu={:.3f} distance_m={:.3f}\n",
+					mc2::fmt::as_u64(static_cast<unsigned long long>(pM->getWatchID())),
+					olPos.x, olPos.y, olGoal.x, olGoal.y, pM->distanceFrom(olGoal));
 				++s_olIssuedMove;
 				printf("[ORDER_FIXTURE] kind=move wid=%lu tgt=0 t=%.1f\n",
 					static_cast<unsigned long>(pM->getWatchID()), static_cast<float>(scenarioTime));
 			}
 			fflush(stdout);
 			s_olMoveIssued = true;
+		}
+
+		for (int i = 0; i < s_olIssuedMove; ++i) {
+			auto& entry = s_olEntries[i];
+			GameObjectPtr obj = ObjectManager->getByWatchID(entry.wid);
+			if (entry.arrived || !obj || obj->isDestroyed() || obj->isDisabled()) continue;
+			if (obj->isMover()) {
+				if (auto* pilot = static_cast<Mover*>(obj)->getPilot())
+					entry.maxGlobalSteps = std::max(entry.maxGlobalSteps, static_cast<int>(pilot->getMoveNumGlobalSteps()));
+			}
+			const float remaining = obj->distanceFrom(entry.goalPos);
+			if (remaining > 10.0f) continue;
+			entry.arrived = true;
+			const auto pos = obj->getPosition();
+			mc2::fmt::print_out("[ORDER_FIXTURE] kind=arrival wid={:d} travel_s={:.3f} moved_m={:.3f} to_goal_m={:.3f} x_wu={:.3f} y_wu={:.3f} global_steps={:d} recon={:d} global_solve_ms={:.3f} global_solve_max_ms={:.3f} local_solve_ms={:.3f}\n",
+				mc2::fmt::as_u64(static_cast<unsigned long long>(entry.wid)), static_cast<double>(scenarioTime - entry.issuedAt),
+				obj->distanceFrom(entry.startPos), remaining, pos.x, pos.y, entry.maxGlobalSteps,
+				static_cast<int>(g_moveReconEnabled), g_moveRecon_astar_global_ns / 1.0e6,
+				g_moveRecon_max_astar_global_ns / 1.0e6, g_moveRecon_astar_local_ns / 1.0e6);
+			fflush(stdout);
 		}
 
 		// PHASE S (t = 90% win): self-asserting summary. moved = net

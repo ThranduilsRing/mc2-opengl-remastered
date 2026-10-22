@@ -556,7 +556,7 @@ long Mover::calcMoveGoal (GameObjectPtr target,
 					if (moveLevel < 2) {
 						if (GlobalMoveMap[moveLevel]->getPathExists(curArea, area) == GLOBALPATH_EXISTS_UNKNOWN) {
 							if (CalcValidAreaTable) {
-								GlobalPathStep globalPath[128];
+								GlobalPathStep globalPath[MAX_GLOBAL_PATH];
 								long numSteps = GlobalMoveMap[moveLevel]->calcPath(curArea, area, globalPath);
 								if (numSteps > 0) {
 									for (long j = 0; j < numSteps; j++)

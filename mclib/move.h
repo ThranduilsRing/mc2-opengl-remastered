@@ -189,7 +189,11 @@ inline constexpr int RELPOS_FLAG_ABS = 1;
 inline constexpr int RELPOS_FLAG_PASSABLE_START = 2;
 inline constexpr int RELPOS_FLAG_PASSABLE_GOAL = 4;
 
-inline constexpr int MAX_GLOBAL_PATH = 50;
+// Runtime routes must span both axes of the largest blank map. Save records
+// retain their original 50-step layout; longer live routes are replanned on load.
+inline constexpr int MAX_SAVED_GLOBAL_PATH = 50;
+inline constexpr int MAX_GLOBAL_PATH = 256;
+static_assert(2 * (MAX_MAP_CELL_WIDTH / SECTOR_DIM) + 2 <= MAX_GLOBAL_PATH);
 
 inline constexpr int NUM_MOVE_LEVELS = 2;
 

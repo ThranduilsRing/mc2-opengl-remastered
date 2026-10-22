@@ -151,7 +151,7 @@ long MechWarrior::calcTacOrder (long goalAction,
 
 	newTacOrder.init(ORDER_ORIGIN_COMMANDER, TACTICAL_ORDER_NONE);
 	if (currentAction == GOAL_ACTION_MOVE) {
-		GlobalPathStep globalPath[50];
+		GlobalPathStep globalPath[MAX_GLOBAL_PATH];
 		long numSteps = 0;
 		if (currentTarget)
 			numSteps = getVehicle()->calcGlobalPath(globalPath, currentTarget, nullptr, true);
@@ -261,7 +261,7 @@ long MechWarrior::calcTacOrder (long goalAction,
 		}
 		}
 	else if (currentAction == GOAL_ACTION_ATTACK) {
-		GlobalPathStep globalPath[50];
+		GlobalPathStep globalPath[MAX_GLOBAL_PATH];
 		long numSteps = getVehicle()->calcGlobalPath(globalPath, currentTarget, nullptr, true);
 		if (numSteps > 0) {
 			lastGoalPathSize = numSteps;
@@ -368,7 +368,7 @@ long MechWarrior::calcTacOrder (long goalAction,
 				currentLocation = glm::vec3(0.0f);
 				currentTarget = blockerList[blockerToAttack];
 			}
-			GlobalPathStep globalPath[50];
+			GlobalPathStep globalPath[MAX_GLOBAL_PATH];
 			long numSteps = getVehicle()->calcGlobalPath(globalPath, currentTarget, nullptr, true);
 			if (numSteps > 0) {
 				lastGoalPathSize = numSteps;
@@ -589,8 +589,8 @@ void MechWarrior::copyToData (MechWarriorData &data)
 	data.mainGoalObjectWID = mainGoalObjectWID;
 	data.mainGoalLocation = mainGoalLocation;
 	data.mainGoalControlRadius = mainGoalControlRadius;
-	data.lastGoalPathSize = lastGoalPathSize;
-	MemCpy(data.lastGoalPath,lastGoalPath);
+	data.lastGoalPathSize = lastGoalPathSize <= MAX_SAVED_GLOBAL_PATH ? lastGoalPathSize : 0;
+	std::copy_n(lastGoalPath, MAX_SAVED_GLOBAL_PATH, data.lastGoalPath);
 	
 	MemCpy(data.newTacOrderReceived,newTacOrderReceived);
 	MemCpy(data.tacOrder,tacOrder);
@@ -716,7 +716,7 @@ void MechWarrior::copyFromData (MechWarriorData &data)
 	mainGoalLocation = data.mainGoalLocation;
 	mainGoalControlRadius = data.mainGoalControlRadius;
 	lastGoalPathSize = data.lastGoalPathSize;
-	MemCpy(lastGoalPath,data.lastGoalPath);
+	std::copy_n(data.lastGoalPath, MAX_SAVED_GLOBAL_PATH, lastGoalPath);
 	
 	MemCpy(newTacOrderReceived, data.newTacOrderReceived);
 	MemCpy(tacOrder, data.tacOrder);

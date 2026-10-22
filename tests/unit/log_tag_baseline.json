@@ -5917,10 +5917,45 @@
    "keys": [
     "kind",
     "wid",
+    "start_x_wu",
+    "start_y_wu",
+    "goal_x_wu",
+    "goal_y_wu",
+    "distance_m"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "ORDER_FIXTURE",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "kind",
+    "wid",
     "tgt",
     "t"
    ],
    "count": 2
+  },
+  {
+   "tag": "ORDER_FIXTURE",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "kind",
+    "wid",
+    "travel_s",
+    "moved_m",
+    "to_goal_m",
+    "x_wu",
+    "y_wu",
+    "global_steps",
+    "recon",
+    "global_solve_ms",
+    "global_solve_max_ms",
+    "local_solve_ms"
+   ],
+   "count": 1
   },
   {
    "tag": "ORDER_INGRESS",
@@ -6218,6 +6253,17 @@
     "id"
    ],
    "count": 2
+  },
+  {
+   "tag": "PATH",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "steps",
+    "capacity"
+   ],
+   "count": 1
   },
   {
    "tag": "PATROL",
