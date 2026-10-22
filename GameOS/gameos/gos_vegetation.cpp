@@ -8,6 +8,7 @@
 #endif
 #include "texture_decode.h"
 #include "vegetation_cutout.h"
+#include "../../GameAdapters/vegetation_budget.h"
 #include "../../RenderCore/KtxLoader.h"
 #include <optional>
 #include <string>
@@ -168,6 +169,17 @@ void GosVegetation::shutdown() {
     if (mc2veg::State::exists()) mc2veg::State::instance().clear(mc2vk::getOrCreateEngineVulkanContext());
 #endif
 }
+uint32_t GosVegetation::populationCapacity(uint32_t requested) {
+#ifdef MC2_VULKAN_ISLAND
+    if (!mc2vk::engineVulkanContextValid()) return 0;
+    VkPhysicalDeviceProperties properties{};
+    vkGetPhysicalDeviceProperties(mc2vk::getOrCreateEngineVulkanContext().physicalDevice(), &properties);
+    return mc2::vegetation::storagePopulationCapacity(requested, properties.limits.maxStorageBufferRange);
+#else
+    return 0;
+#endif
+}
+
 void GosVegetation::uploadInstances(const Instance* data, uint32_t count) {
     if (!initialized) return;
     populationCount = 0;

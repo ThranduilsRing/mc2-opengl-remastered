@@ -24,6 +24,7 @@ namespace GosVegetation {
     void init();
     void shutdown();
     void setAtlasPath(const char* path);
+    uint32_t populationCapacity(uint32_t requested);
     void uploadInstances(const Instance* instances, uint32_t count);
 
     // Per-block visibility: 1=draw, 0=cull.  Derived from Terrain::s_blockMeta[i].lodLevel.

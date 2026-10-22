@@ -46,6 +46,14 @@ void State::clear(mc2vk::VulkanContext& ctx) {
 bool State::upload(mc2vk::VulkanContext& ctx, std::span<const GpuInstance> instances, std::span<const GpuRegion> regions) {
     clear(ctx);
     if (instances.empty() || regions.empty()) return true;   // an empty population is a valid population
+    VkPhysicalDeviceProperties properties{};
+    vkGetPhysicalDeviceProperties(ctx.physicalDevice(), &properties);
+    const VkDeviceSize maxRange = properties.limits.maxStorageBufferRange;
+    // Validate every whole-buffer descriptor before allocation or narrowing.
+    if (instances.size_bytes() > maxRange || regions.size_bytes() > maxRange) {
+        mc2::fmt::print_err("[VEG_GPU] population upload failed: storage descriptor range exceeded\n");
+        return false;
+    }
     const uint32_t instanceCount = static_cast<uint32_t>(instances.size()), regionCount = static_cast<uint32_t>(regions.size());
     const VkDeviceSize instBytes = instances.size_bytes(), regBytes = regions.size_bytes();
     const VkBufferUsageFlags kStore = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;

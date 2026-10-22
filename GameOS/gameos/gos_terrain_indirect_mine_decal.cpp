@@ -31,7 +31,7 @@ void BuildMineStaticVBO() {
         return;
     }
 
-    // Empirically tiny in stock content â€” start with 64 cell capacity.
+    // Empirically tiny in stock content — start with 64 cell capacity.
     std::vector<MineVert> verts;
     verts.reserve(64 * 6);
 
@@ -159,20 +159,20 @@ void gos_terrain_indirect_MarkMineDirty() { gos_terrain_indirect::MarkMineDirty(
 // IsFrameMineArmed / DrawMineStatic, ~line 3119-3398 above). Same lifetime
 // discipline: one GL_STATIC_DRAW buffer kept across missions, CPU state reset
 // on mission load + destroy, lazy rebuild-if-dirty on first armed draw (R7
-// timing-trap mitigation: do NOT eager-build at primeMissionTerrainCache â€”
+// timing-trap mitigation: do NOT eager-build at primeMissionTerrainCache —
 // the overlay tex handles lazy-load in TerrainQuad::setupTextures during the
 // first paint cycle, before Render.TerrainOverlaysStatic fires).
 //
 // What it bakes: the per-quad M2d cement-overlay producer (mclib/quad.cpp
 // `if (useOverlayTexture && overlayHandle != 0xffffffff)`). Decal inputs are
-// map-stable â€” corner world XYZ, overlayHandle, uvMode are all derivable from
+// map-stable — corner world XYZ, overlayHandle, uvMode are all derivable from
 // the map-immutable Shape-C terrain face cache (MapData::buildTerrainFaceCache)
 // + MapData::blocks. The bake reproduces M2d's 4-corner WorldOverlayVert build
-// + per-uvMode tri emit UNCONDITIONALLY (no pzTri camera cull â€” plan's pz-cull
+// + per-uvMode tri emit UNCONDITIONALLY (no pzTri camera cull — plan's pz-cull
 // policy; cement is sparse, GPU clips, mirrors DrawMineStatic's unconditional
 // static draw). Vertex argb/fog are forced to 0xffffffff / 1.0: shaders/
 // terrain_overlay.frag never reads the Color/FogValue varyings (explicit
-// comment at terrain_overlay.frag:48 â€” it recomputes lighting/fog from WorldPos
+// comment at terrain_overlay.frag:48 — it recomputes lighting/fog from WorldPos
 // + live uniforms), so a geometry-only bake is lighting-identical to M2d, the
 // same way MineVert is pos/uv/layer-only.
 // ---------------------------------------------------------------------------
@@ -180,13 +180,13 @@ void gos_terrain_indirect_MarkMineDirty() { gos_terrain_indirect::MarkMineDirty(
 namespace {
 
 // WorldOverlayVert layout MUST byte-match GameOS/include/gameos.hpp's struct
-// (28-byte stride) â€” the bridge VAO (drawDecalStaticBatch / makeOverlayVAO)
+// (28-byte stride) — the bridge VAO (drawDecalStaticBatch / makeOverlayVAO)
 // reads attribs 0..3 at offsets 0/12/20/24.
 struct DecalVert {
-    float        wx, wy, wz;   // offset  0  â€” MC2 world (x=east, y=north, z=elev)
+    float        wx, wy, wz;   // offset  0  — MC2 world (x=east, y=north, z=elev)
     float        u, v;         // offset 12
-    float        fog;          // offset 20  â€” forced 1.0 (frag discards it)
-    uint32_t     argb;         // offset 24  â€” forced 0xffffffff (frag discards it)
+    float        fog;          // offset 20  — forced 1.0 (frag discards it)
+    uint32_t     argb;         // offset 24  — forced 0xffffffff (frag discards it)
 };
 
 // Per-overlayTexId draw range (mirror gameos_graphics.cpp OverlayBatchEntry_
@@ -234,8 +234,8 @@ void RebuildCementAtlas() {
 // breaks in-flight GL draw state if called MID-FRAME (the editor used to call it
 // straight from refreshTerrainAfterEdit and that reset normal/detail tiling
 // map-wide). So instead a cement-affecting brush stroke MARKS the atlas dirty here,
-// and RebuildCementAtlasIfDirty() fires the actual rebuild at FRAME-START â€” before
-// any terrain/GL draws â€” where the readback is safe. BuildCementCatalogAtlas()
+// and RebuildCementAtlasIfDirty() fires the actual rebuild at FRAME-START — before
+// any terrain/GL draws — where the readback is safe. BuildCementCatalogAtlas()
 // itself save/restores GL_ACTIVE_TEXTURE + GL_TEXTURE_BINDING_2D + pack/unpack
 // alignment (gos_terrain_indirect.cpp:1231-1273) and only touches GL_TEXTURE0, so
 // the rebuild does not intrinsically disturb normal/detail bindings.
@@ -251,7 +251,7 @@ void RebuildCementAtlasIfDirty() {
     RebuildCementAtlas();
 }
 
-// Mirror MarkMineDirty â€” idempotent; multiple cement mutations between paints
+// Mirror MarkMineDirty — idempotent; multiple cement mutations between paints
 // debounce to one rebuild via the dirty flag.
 void MarkDecalDirty() {
     InvalidateHardSurfaceField();
@@ -286,12 +286,12 @@ bool CementWordSuppressesDecal(const MapData::WorldQuadTerrainCacheEntry* e,
                 // a true CONCRETE transition the frag cement-word edge system
                 // redraws. WRONG on mc2_10: its roads + the airbase runway are
                 // authored as cement-ALPHA transition tile art over SNOW terrain
-                // (type 68) with NO &Overlays id â€” no corner vertex has a cement
+                // (type 68) with NO &Overlays id — no corner vertex has a cement
                 // terrain type, so PopulateRecipeCementWords bakes NO word
                 // (maskId needs >=1 cement corner) and the frag draws nothing;
                 // skipping the legacy decal too left the runway/roads INVISIBLE
                 // (tile census: e.g. tex=771 n=93, tex=774 n=80, all ov=-1).
-                // Skip ONLY when the cement-word system actually owns the tile â€”
+                // Skip ONLY when the cement-word system actually owns the tile —
                 // same corner predicate PopulateRecipeCementWords uses (>=1
                 // corner terrainType mapping to a cement catalog layer AND a
                 // valid mask). Otherwise fall through and bake the decal (the
@@ -316,7 +316,7 @@ bool CementWordSuppressesDecal(const MapData::WorldQuadTerrainCacheEntry* e,
                                    && deriveMaskIdFromCorners(c0, c1, c2, c3) >= 0;
                     // PAD-EDGE-ROAD-1: road-adjacent pad-edge transition tiles
                     // revert to the stock decal (PopulateRecipeCementWords
-                    // bakes NO cement word for them â€” complementary predicate).
+                    // bakes NO cement word for them — complementary predicate).
                     if (fragOwnsTile && PadEdgeRoadFixEnabled()
                         && TileRoadAdjacent8(tileR, tileC, mapSide, blocks))
                         fragOwnsTile = false;
@@ -390,7 +390,7 @@ void BuildDecalStaticVBO() {
 
     // First collect (texId -> tri verts) so draws can be grouped per texId
     // (mirror OverlayBatch_'s verts + draws split / pushToOverlayBatch_).
-    // overlay tile count is empirically tiny â€” a flat scan + run-grouping is
+    // overlay tile count is empirically tiny — a flat scan + run-grouping is
     // fine (cement sparse, matches DrawMineStatic's tileHasMines short-circuit
     // in spirit).
     struct PendingTri { uint32_t texId; DecalVert v[3]; };
@@ -431,7 +431,7 @@ void BuildDecalStaticVBO() {
             // CEMENT-ROAD-SPLIT-1: the earlier "isCement()&&isAlpha() is concrete-only"
             // assumption was WRONG. isCement() is a MISNOMER for "uses the cement/
             // transition texture machinery": terrtxm.cpp:1493 sets CEMENT_FLAG on EVERY
-            // createTransition â€” roads/runways/bridges included (see the explicit comment
+            // createTransition — roads/runways/bridges included (see the explicit comment
             // terrtxm.cpp:1501-1504 "If we are a road ... ALPHA is TRUE"). So &Overlays
             // road/runway/bridge tiles ALSO satisfy isCement()&&isAlpha() and were being
             // wrongly skipped, making dirt/regular roads vanish. The frag cement-word
@@ -467,7 +467,7 @@ void BuildDecalStaticVBO() {
                 }
             }
 
-            // 4 corners â€” mirror buildTerrainFaceCache (mapdata.cpp:266-275)
+            // 4 corners — mirror buildTerrainFaceCache (mapdata.cpp:266-275)
             // and fillWorldCacheVertex (mapdata.cpp:125-132). Quad
             // vertices[0..3] == cache worldVertices[0..3] (verified vs
             // MapData::makeLists v0=v(x,y) v1=v(x+1,y) v2=v(x+1,y+1)
@@ -522,7 +522,7 @@ void BuildDecalStaticVBO() {
                 }
             }
 
-            // [TERRAIN_OVERLAY v1] decal_corner_probe â€” env-gated
+            // [TERRAIN_OVERLAY v1] decal_corner_probe — env-gated
             // (MC2_TERRAIN_INDIRECT_TRACE), first few cement tiles only,
             // SILENT by default. Retained dormant diagnostic (demote-not-
             // delete per the debug-instrumentation rule): prints the bake's
@@ -530,7 +530,7 @@ void BuildDecalStaticVBO() {
             // from + an ELEV_IDENTICAL flag. The raster-sheet bug it was
             // built for was root-caused (unconditional all-map draw vs the
             // non-clip-safe terrain_overlay.vert) and FIXED 2026-05-17 (the
-            // px.z in [0,1) guard) â€” the bake coords were proven correct, so
+            // px.z in [0,1) guard) — the bake coords were proven correct, so
             // this stays as a coord-sanity check for any future bake-source
             // change, not an active investigation. Background:
             // memory/drawpass_retirement_decal_bake_state_and_raster_sheet_trap.md
@@ -547,7 +547,7 @@ void BuildDecalStaticVBO() {
                 }
             }
             // ROAD-PBR-ABANDON-1: the per-tile PBR material-id bake
-            // (ROAD-PBR-ASPHALT-1/GRAVEL-1, d7c0ff2d) is retired â€” stock form
+            // (ROAD-PBR-ASPHALT-1/GRAVEL-1, d7c0ff2d) is retired — stock form
             // restored: every tile takes the legacy tgl road-tile path.
             for (int k = 0; k < 4; ++k) {
                 c[k].fog  = 1.0f;          // frag discards FogValue (terrain_overlay.frag:48)
@@ -622,7 +622,7 @@ void BuildDecalStaticVBO() {
 
 }
 
-// Mirror RebuildMineStaticVBOIfDirty (no texture-array first-build step â€”
+// Mirror RebuildMineStaticVBOIfDirty (no texture-array first-build step —
 // cement overlay uses the existing per-mission terrain texture nodes via
 // tex_resolve, not a dedicated 2-layer array).
 void RebuildDecalStaticVBOIfDirty() {
@@ -791,12 +791,12 @@ int          GetDecalVertCount()    { return g_decalVertCount; }
 
 // Mirror DrawMineStatic. Lazy rebuild-if-dirty on first armed draw, single
 // bridge dispatch, NO clear (static buffer persists). Returns true on a
-// successful zero-emit frame (mission has no cement overlay) â€” the M2d gate-
+// successful zero-emit frame (mission has no cement overlay) — the M2d gate-
 // off is still the point.
 bool DrawDecalStatic() {
     RebuildDecalStaticVBOIfDirty();
     if (g_decalVertCount <= 0 || g_decalDrawRanges.empty()) {
-        return true;  // no cement overlay this mission â€” successful no-op
+        return true;  // no cement overlay this mission — successful no-op
     }
     static_assert(sizeof(DecalDrawRange) == sizeof(GosDecalStaticDraw),
                   "DecalDrawRange must layout-match GosDecalStaticDraw");
@@ -826,7 +826,7 @@ bool DrawDecalStatic() {
 // bldng.cpp bridge-destroy + mclib/terrain.cpp Terrain::setOverlay). Mirrors
 // gos_terrain_indirect_MarkMineDirty: forward-declared `extern void
 // gos_terrain_indirect_MarkDecalDirty();` at the call sites so widely-included
-// headers do not need gos_terrain_indirect.h. Idempotent â€” chain mutations
+// headers do not need gos_terrain_indirect.h. Idempotent — chain mutations
 // debounce to one rebuild/paint via the dirty flag.
 void gos_terrain_indirect_MarkDecalDirty() {
     gos_terrain_indirect::MarkDecalDirty();
