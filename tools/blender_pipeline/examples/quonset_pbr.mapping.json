@@ -1,0 +1,44 @@
+{
+  "version": 1,
+  "id": "reduxpbr",
+  "props": [
+    {
+      "prop": "quonset2",
+      "slots": [
+        {
+          "slot": 0,
+          "stockAlbedo": "A_Quonset.tga",
+          "reviewed": true,
+          "class": "rust",
+          "provider": "ambientCG",
+          "license": "CC0",
+          "sourceUrl": "https://ambientcg.com/view?id=CorrugatedSteel009",
+          "normal": "C:\\Users\\Joe\\Downloads\\GameAsset\\Materials\\CorrugatedSteel009_1K-PNG\\CorrugatedSteel009_1K-PNG_NormalGL.png",
+          "roughnessMap": "C:\\Users\\Joe\\Downloads\\GameAsset\\Materials\\CorrugatedSteel009_1K-PNG\\CorrugatedSteel009_1K-PNG_Roughness.png",
+          "metallic": 0,
+          "roughness": 1,
+          "normalStrength": 0.5,
+          "aoStrength": 0.4,
+          "uvScale": [
+            1,
+            2
+          ],
+          "maskRects": [
+            [
+              0,
+              0,
+              1,
+              0.235
+            ]
+          ],
+          "reviewNote": "Owner selected rusty quonset. Stock atlas viewed: only upper corrugated roof strip receives detail; doors, windows, pallets and end wall excluded. All rust is dielectric, no colour-inferred metal.",
+          "ao": "C:\\Users\\Joe\\Downloads\\GameAsset\\Materials\\CorrugatedSteel009_1K-PNG\\CorrugatedSteel009_1K-PNG_AmbientOcclusion.png",
+          "roughnessRange": [
+            0.8,
+            1
+          ]
+        }
+      ]
+    }
+  ]
+}
