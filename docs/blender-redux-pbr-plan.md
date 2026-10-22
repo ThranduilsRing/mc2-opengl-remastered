@@ -208,3 +208,96 @@ fact, rather than mislabel displacement as authored AO.
 No numerical whole-frame difference score substitutes for viewed material proof.
 The go/no-go point is the first rusty-quonset day/night pair: retain the stock
 look and demonstrate material relief before expanding the bundle.
+
+## Implementation checkpoint — 2026-10-22 (visual acceptance incomplete)
+
+Local commits, in order: `7a0927989` archaeology first, `701564b90` engine,
+`eceaa787c` mapping CLI, `e4fc07232` atlas exclusions/contracts, and `25b254a0d`
+stock alpha coverage. No branches were merged and nothing was pushed. The
+acknowledged scratch paths remain untouched and uncommitted.
+
+Implemented the optional reviewed per-slot package, CPU normal/ORM mip arrays,
+64-byte native material rows, per-packet IDs, Vulkan descriptors/uploads and
+mapped-only derivative normals and lighting. Unmapped packets use ID -1 and
+receive no fallback specular. Stock-derived packages retain stock alpha
+coverage; procedural fence coverage remains distinct. `SurfaceMaterial` carries
+linear base colour/emission, render-space normal, roughness, metallic, AO and
+explicit class. The lighting library itself was not started.
+
+The mapping CLI retains stock geometry, UVs, vertex lighting tags and byte-for-byte
+albedo TGA/KTX2 sources. Normal and ORM are linear RGBA TGA; ORM alpha is authored
+coverage, so excluded atlas regions retain legacy response. Sources are archived
+by hash before cooking. The quonset candidate uses local ambientCG
+CorrugatedSteel009 detail on the roof strip only, dielectric rust (metallic 0),
+roughness 0.8–1.0, with doors/windows/pallets excluded. Its report still says
+`accepted:false`. No material has passed the visual gate or been shipped.
+
+### Offline checks and installed build
+
+- Final engine commit `25b254a0d378`: clean RelWithDebInfo build in the existing
+  `build64-ninja`; deployed with the repository harness to `E:/mc2-lane5`.
+  Deployment manifest records that source fingerprint. This subsequent
+  documentation-only checkpoint is not embedded in the installed executable.
+- Contracts: **123/123**, `E:/mc2-pbr-checks/pbr-coverage-contracts.log`.
+- Native unit harnesses: **3360 cases passed**; authored detail CPU tests:
+  **2 cases / 21 assertions**; override registry: **12 records passed**.
+- Mapping CLI: **17 pytest cases passed**. Vulkan shader compilation: **55**;
+  pipeline lint clean. Native results/logs remain in `E:/mc2-pbr-checks`.
+- Smoke-lite on lane5 is **not run** at this checkpoint.
+
+### Capture evidence: partial byte proof, no material acceptance
+
+Evidence root: `G:/mc2-assets/out/blender-redux-pbr/proof/`.
+
+The install had persisted `StaticPropPbr=True`, despite the owner/default OFF
+ruling. Valid old/new references explicitly declare
+`MC2_OPTIONS_OVERRIDE=StaticPropPbr=0`; options.cfg was not edited. Old binary
+fingerprint is `a52697077e93`, new is `25b254a0d378`. The initial `baseline/`
+captures used the persisted True option and are excluded from proof.
+
+- Valid original mission references: `baseline-default/day` (7 poses) and
+  `baseline-default/night` (9). New captures: `candidate-default/day` (7).
+  All were harness-launched in background with `--no-kill` and a fixed clock.
+- Full-frame day comparison **failed strict equality**: 29,724 changed pixels
+  over seven poses. The viewed montage shows differences in edge vegetation;
+  that observation is not a noise allowance or full-frame pass. Preserve
+  `parity/day/comparison.json` and `parity/day/montage-1.png` through `-3.png`.
+- Four explicitly bounded day prop regions compare **exactly**, zero changed
+  pixels and matching RGB-byte SHA256 hashes, with no tolerance. Regions include
+  the quonset/crate cluster and both hangar views. Coordinates and hashes:
+  `parity/day-prop-crops/comparison.json`; viewed example:
+  `parity/day-prop-crops/mc2_01_props_56_1100_crop.png`. This proves those day
+  regions only, not every prop or night parity.
+- The original night mission has no rusty quonset2 or hangar. A separate private
+  witness mission overlay places six stock prefabs in each mission, preserving
+  all original object records and other packet payloads. Its V2 report is
+  `witness-mod/fixture-report.json`; old-engine references are
+  `witness-stock-v2/day` and `night` (5 views each). V1 `witness-stock/` is
+  excluded because an initial quonset placement intersected sloped terrain.
+  Mission overlays must never be included in the shipping material bundle.
+- Candidate source bundle:
+  `G:/mc2-assets/out/blender-redux-pbr/quonset-candidate`. Private installed
+  proof overlays are `E:/mc2-lane5/mods/pbrwitness` and `reduxpbrwitness`;
+  neither was made the default active mod. No mapped candidate capture exists.
+
+### Actual tooling refusal and remaining work
+
+After the first new day capture, a normal batch lease was requested for the
+remaining chain. `run_visual_capture.py` refused the next launch in
+`smoke_lib.host_lease.acquire` with:
+`HostLeaseBusy: cannot upgrade a held normal slot; release it before requesting exclusive`.
+The ambient batch variable was also scrubbed by the environment pin. No game
+was launched by that failed command. Our own batch
+`redux-pbr-proof-20261022` was released; other lanes/processes were untouched.
+Work stopped under the owner's actual-tooling-refusal rule, without changing
+the lease guard or retrying around it.
+
+Open: complete night unmapped parity; isolate/full-frame vegetation differences
+without weakening the exact prop-byte requirement; capture and view authored
+quonset day/night gameplay montages and close crops; verify actual native
+material IDs/uploads, normal/ORM response and camera-dependent corner glints;
+then expand to hangar, lookout, crates and walls in that order, committing each
+validated group. Run lane5 smoke-lite and record its fingerprint. Intact-only
+override damage/LOD stock fallback remains an explicit limitation. No visual
+improvement, corner-glint clearance, full byte-identical proof or completed
+steps 2–4 is claimed by this checkpoint.
