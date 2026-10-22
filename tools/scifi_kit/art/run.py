@@ -141,6 +141,11 @@ def before_after(pass_dir, names, out_name='before-after'):
 
 
 def main():
+    import psutil
+    parent = psutil.Process()
+    # The child inherits this affinity at spawn, before its own explicit pin.
+    parent.cpu_affinity(list(range(psutil.cpu_count()))[2:4])
+    parent.nice(psutil.BELOW_NORMAL_PRIORITY_CLASS)
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument('command', choices=['prims', 'sheet', 'build', 'beforeafter'])
     ap.add_argument('--pass', dest='tag', required=True)

@@ -461,8 +461,24 @@ ASSEMBLIES = {
     'barracks_stock': barracks_stock,
 }
 
+# Draft names are also available through the existing build CLI.
+from drafts import DRAFTS  # noqa: E402
+ASSEMBLIES.update({name: (lambda k, n=name: _draft_info(k, n)) for name in DRAFTS})
+
+
+def _draft_info(k, name):
+    import drafts
+    result = drafts.build(name, 'pristine', k.seed)
+    k.pieces = result.pieces
+    k.hits = result.hits
+    k.moss_sites = result.moss_sites
+    return result.meta
+
 
 def build(name, condition, seed=17):
+    if name in DRAFTS:
+        import drafts
+        return drafts.build(name, condition, seed)
     info_k = Kit(name, 'slate_oxide', seed)
     info = ASSEMBLIES[name](info_k)
     k = Kit(name, info['palette'], seed)

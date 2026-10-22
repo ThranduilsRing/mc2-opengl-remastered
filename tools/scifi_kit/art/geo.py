@@ -221,7 +221,7 @@ class Kit:
         """Wall-plane slab: rect in (x,z), front face at yf with chamfer `front`."""
         return self.prism(rect_poly(x0, z0, x1, z1, ch), yf, yb, mat, role, top=back, bot=front, axis='y', **flags)
 
-    def cyl(self, c, r, h, mat, role='detail', sides=16, top=0.0, bot=0.0, **flags):
+    def cyl(self, c, r, h, mat, role='detail', sides=32, top=0.0, bot=0.0, **flags):
         x, y, z = c
         return self.prism(reg_poly(r, sides, cx=x, cy=y), z - h / 2, z + h / 2, mat, role, top, bot, **flags)
 
@@ -256,7 +256,7 @@ class Kit:
         faces.append((seg * 4, seg * 4 + 1, seg * 4 + 2, seg * 4 + 3))
         return self.add(verts, faces, mat, role, **flags)
 
-    def tube(self, pts, r, mat='metal', role='frame', sides=8, **flags):
+    def tube(self, pts, r, mat='metal', role='frame', sides=12, **flags):
         """Polyline tube (pipes, rails, cables) with mitred rings."""
         verts, faces = [], []
         n = len(pts)
@@ -434,6 +434,28 @@ class Kit:
         self.cyl((0, d * .05, .12 + h + .09), r + .06, .18, 'paint.trim', 'detail', sides=16, top=.04)
         self.cyl((0, d * .05, .12 + h + .16), r * .85, .05, 'grate', 'detail', sides=16)
 
+    def service_panel(self, x=0.0, z=1.5, yf=0.0, w=.9, h=.65):
+        """Recessed louvres, fastened surround and a conduit-fed junction box.
+
+        Shared secondary scale for walls, repair bays and tower service zones;
+        authored geometry, with no source texture or reference mesh dependency.
+        """
+        self.slab(x-w/2-.07, x+w/2+.07, z-h/2-.07, z+h/2+.07,
+                  yf-.11, yf+.03, 'paint.trim', 'detail', front=.035)
+        self.slab(x-w/2, x+w/2, z-h/2, z+h/2, yf-.12, yf-.10,
+                  'rubber', 'detail')
+        for j in range(8):
+            zz = z-h*.43+j*h*.12
+            self.slab(x-w*.46, x+w*.46, zz, zz+h*.065,
+                      yf-.17, yf-.115, 'metal', 'detail', front=.012)
+        for xx in (x-w/2-.035, x+w/2+.035):
+            for zz in (z-h/2-.035, z+h/2+.035):
+                self.box((xx,yf-.14,zz),(.035,.035,.035),'metal','detail')
+        self.box((x+w*.85,yf-.15,z-.1),(.22,.18,.32),'paint.second','detail',ch=.035,top=.025)
+        self.tube([(x+w*.85,yf-.11,z+.08),(x+w*.85,yf-.11,z+.5),
+                   (x+w*.62,yf-.11,z+.65),(x-w*.4,yf-.11,z+.65)],
+                  .032,'metal','detail')
+
     def mast(self, h=3.0, w=.22):
         """Godfrey A2: chamfered slab mast on a splayed footing with an accent band and red tip."""
         self.box((0, 0, .08), (w * 3.2, w * 2.4, .16), 'paint.trim', 'detail', ch=.08, top=.05)
@@ -479,6 +501,9 @@ def wall_segment(k, x0, x1, h, openings=(), style='inset', mat='paint.main', pil
         for x in (x0 + .18, x1 - .18):
             k.pilaster(x, ph, top)
     k.coping(x0, x1, top, 0.0)
+    # One service cluster per uninterrupted run; keep openings and signs clear.
+    if not holes and x1-x0 >= 4.0 and top-ph > 2.0:
+        k.service_panel(x0+(x1-x0)*.23, ph+.85, w=.85, h=.55)
 
 
 # ---------------------------------------------------------------- primitives
@@ -531,7 +556,7 @@ def p_sloped_wall(k):
     k.meta.update(size=(w, batter + 1, h))
 
 
-def p_quonset_shell(k, length=9.0, radius=5.0, waves=None, end_walls=False):
+def p_quonset_shell(k, length=9.0, radius=5.0, waves=None, end_walls=False, window_stride=1):
     """Stock-identity quonset barrel: rust corrugated sheets on steel arch ribs, ferro curbs."""
     bays = max(1, round(length / G['bay_m']))
     L = bays * G['bay_m']
@@ -575,25 +600,30 @@ def p_quonset_shell(k, length=9.0, radius=5.0, waves=None, end_walls=False):
         # lap strap over each sheet joint
     for b in range(bays + 1):
         y = -L / 2 + b * G['bay_m']
-        pts = [((radius + .07) * math.cos(math.pi * i / 24), y, zc + (radius + .07) * math.sin(math.pi * i / 24)) for i in range(25)]
-        k.tube(pts, .05, 'paint.trim', 'detail', sides=6)
+        pts = [((radius + .07) * math.cos(math.pi * i / 64), y, zc + (radius + .07) * math.sin(math.pi * i / 64)) for i in range(65)]
+        k.tube(pts, .05, 'paint.trim', 'detail', sides=12)
         # arch ribs inside: the frame that survives
-        pts = [((radius - .22) * math.cos(math.pi * i / 24), y, zc + (radius - .22) * math.sin(math.pi * i / 24)) for i in range(25)]
+        pts = [((radius - .22) * math.cos(math.pi * i / 64), y, zc + (radius - .22) * math.sin(math.pi * i / 64)) for i in range(65)]
         for a, c in zip(pts, pts[1:]):
             k.beam(a, c, .18, 'metal', 'frame', h=.30, seg=1)
     # ridge vent cap and side windows (stock: square olive-framed windows low on the barrel)
     k.box((0, 0, zc + radius + .10), (.5, L - .3, .16), 'paint.trim', 'detail', ch=.05, top=.05)
     for b in range(bays):
         y = -L / 2 + (b + .5) * G['bay_m']
+        if b % window_stride != window_stride // 2:
+            continue
         for s in (-1, 1):
             th = math.radians(28)
             # dormer box: vertical window frame emerging from the barrel
-            x = s * (radius * math.cos(th) - .05)
+            x = s * (radius * math.cos(th) + .35)
             z = zc + radius * math.sin(th)
-            with k.at((x, y, z - .55), yaw=s * math.pi / 2):
+            with k.at((x, y, z - .55), yaw=s * math.pi / 2), k.tagged(f'dormer_{b}_{s}'):
                 k.box((0, .30, .55), (1.2, .8, 1.15), 'corr.corr', 'skin', top=.0)
-                k.slab(-.42, .42, .20, .95, -.12, .02, 'paint.second', 'frame', front=.03)
-                k.slab(-.33, .33, .28, .87, -.06, -.02, 'glass', 'glass', pane=True)
+                # A border with a real aperture: the old solid frame slab hid
+                # the glazing behind it and sometimes behind the barrel skin.
+                for a,c,bz,dz in [(-.42,-.33,.20,.95),(.33,.42,.20,.95),(-.33,.33,.20,.28),(-.33,.33,.87,.95)]:
+                    k.slab(a,c,bz,dz,-.16,.02,'paint.second','frame',front=.025)
+                k.slab(-.33, .33, .28, .87, -.145, -.12, 'glass', 'glass', pane=True)
                 k.slab(-.02, .02, .28, .87, -.10, -.04, 'paint.second', 'frame')
                 k.slab(-.33, .33, .56, .60, -.10, -.04, 'paint.second', 'frame')
                 k.slab(-.55, .55, 1.08, 1.18, -.25, .55, 'paint.trim', 'frame', front=.03)
@@ -1062,10 +1092,13 @@ def chunk(k, c, size, mat, rng, flat=False):
     """Irregular chamfered rubble chunk resting on the ground."""
     n = rng.choice([5, 6, 7])
     r = size / 2
-    poly = [(c[0] + r * rng.uniform(.6, 1.1) * math.cos(a), c[1] + r * rng.uniform(.6, 1.1) * math.sin(a)) for a in sorted(rng.uniform(0, math.tau) for _ in range(n))]
-    # ensure convex-ish ordering by angle: sorted angles already CCW
+    # Even angular spacing avoids nearly collinear corners. The old random
+    # angles could make the inset chamfer intersect metres beyond a small chip.
+    phase = rng.uniform(0, math.tau)
+    poly = [(c[0] + r * rng.uniform(.92, 1.08) * math.cos(phase+i*math.tau/n),
+             c[1] + r * rng.uniform(.92, 1.08) * math.sin(phase+i*math.tau/n)) for i in range(n)]
     h = size * (rng.uniform(.12, .25) if flat else rng.uniform(.35, .7))
-    p = k.prism(poly, c[2], c[2] + h, mat, 'detail', top=min(.05, h * .3) if not flat else 0, debris=True)
+    p = k.prism(poly, c[2], c[2] + h, mat, 'detail', top=min(size*.08, h * .2) if not flat else 0, debris=True)
     if p and not flat:
         tilt = rng.uniform(-.35, .35)
         cc = centroid(p)
@@ -1164,6 +1197,27 @@ def apply_destroyed(k):
                     transform_piece(piece, lambda q: rotate_about(q, (5.5 - .42, 0, kz), (0, 1, 0), -.75))
                 if piece.get('group') == 'bridge':
                     transform_piece(piece, lambda q: rotate_about(q, (-5.5, 0, 8.4), (0, 1, 0), .56))
+    # Roof-mounted windows are one supported module. If their parent roof bay
+    # is breached, frame, hood and box fall together instead of hanging in air.
+    modules = {}
+    for pc in k.pieces:
+        group = pc.get('group')
+        if group and group.startswith('dormer_'):
+            modules.setdefault(group, []).append(pc)
+    for pieces in modules.values():
+        verts = [v for pc in pieces for v in pc['v']]
+        c = tuple(sum(v[i] for v in verts)/len(verts) for i in range(3))
+        roof_hit = next((hit for hit in k.hits if hit['d'][2] < -.7
+                        and abs(c[1]-hit['p'][1]) < hit['r']*1.4
+                        and abs(c[0]-hit['p'][0]) < hit['r']*1.6), None)
+        if roof_hit:
+            sign = 1 if c[0] > 0 else -1
+            for pc in pieces:
+                transform_piece(pc, lambda q: rotate_about(q,c,(0,1,0),sign*1.25))
+            low = min(v[2] for pc in pieces for v in pc['v'])
+            for pc in pieces:
+                transform_piece(pc, lambda q: (q[0]+sign*.8,q[1],q[2]-low+.04))
+                pc['debris'] = True
     # sheets that land become rubble that matches the part (debris chunks added in Blender)
     k.pieces.extend(landed)
 

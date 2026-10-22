@@ -232,6 +232,15 @@ def material(key, palette_name, cond_name):
         rust = b.mul(cond['rust'], b.add(b.mul(streak, .7), b.mul(wear, .8)), True)
         rust = b.mul(rust, b.remap(b.noise(P, 3.2, 6), .35, .6))
         col = b.mix(rust, col, (0.13, 0.05, 0.018))
+    elif cls in ('wood', 'canvas'):
+        c0 = pal.get(slot, pal['main'])
+        stretch = (0.25, 12.0, 10.0) if cls == 'wood' else (25.0, 25.0, 25.0)
+        grain = b.noise(b.vscale(P, stretch), 2.2, 3, .6)
+        col = b.mix(b.remap(grain,.2,.8), tuple(c*.65 for c in c0), tuple(c*1.2 for c in c0))
+        faded = tuple(lum(c0)*1.2+.035+(c-lum(c0))*.45 for c in c0)
+        col = b.mix(cond['fade'], col, faded)
+        rough_s = .88 if cls == 'wood' else .96
+        bump_h = b.mul(grain, .18 if cls == 'wood' else .05)
     elif cls == 'metal' or cls == 'grate':
         c0 = pal['metal'] if cls == 'metal' else [c * .6 for c in pal['metal']]
         col = tuple(c0)
@@ -419,16 +428,26 @@ def recalc(ob):
 
 
 def finish(ob, bevel=True):
-    for p in ob.data.polygons:
-        p.use_smooth = False
+    # Smooth only connected shallow angles: cylindrical rails and dense arches
+    # catch continuous highlights while panel seams and torn edges stay hard.
+    bm = bmesh.new()
+    bm.from_mesh(ob.data)
+    for f in bm.faces:
+        f.smooth = True
+    for e in bm.edges:
+        e.smooth = e.is_manifold and e.calc_face_angle() < math.radians(35)
+    bm.to_mesh(ob.data)
+    bm.free()
     if bevel:
         mod = ob.modifiers.new('edge catch', 'BEVEL')
-        mod.width = .012
-        mod.segments = 1
+        mod.width = .024
+        mod.segments = 3
         mod.limit_method = 'ANGLE'
         mod.angle_limit = math.radians(40)
         mod.use_clamp_overlap = True
-        mod.harden_normals = False
+        mod.harden_normals = True
+        normals = ob.modifiers.new('area weighted panel normals', 'WEIGHTED_NORMAL')
+        normals.keep_sharp = True
 
 
 # ------------------------------------------------------------------ destroyed
@@ -807,7 +826,7 @@ def primitive_job(job):
             scene = bpy.context.scene
             col = scene.collection
             k = geo.build(name, cond, job.get('seed', 17))
-            if cond == 'destroyed':
+            if cond == 'destroyed' and not k.meta.get('authored_damage'):
                 groups = build_objects(k, cond, col, near=k.hits)
                 for g in groups.values():
                     for ob in g:
@@ -853,7 +872,7 @@ def assembly_job(job):
             scene = bpy.context.scene
             col = scene.collection
             k = assemble.build(name, cond, job.get('seed', 17))
-            if cond == 'destroyed':
+            if cond == 'destroyed' and not k.meta.get('authored_damage'):
                 groups = build_objects(k, cond, col, near=k.hits)
                 for g in groups.values():
                     for ob in g:
@@ -861,6 +880,8 @@ def assembly_job(job):
                 objs = destroy(groups, k, cond, col)
             else:
                 objs = build_objects(k, cond, col)
+                if cond == 'destroyed':
+                    soot(list(objs.values()), k.hits)
             for ob in objs.values():
                 recalc(ob)
                 finish(ob, bevel=ob.get('mc2_role') not in ('glass',))
@@ -871,13 +892,19 @@ def assembly_job(job):
             render(out / f'{name}_{cond}_beauty.png', (1100, 760), job.get('samples', 48))
             if cond == 'pristine':
                 frame_camera(cam, list(objs.values()), direction=(-1.0, -1.25, 2.4), margin=2.6, aspect=2.0)
+                # One world scale across the batch: 0.24 authoring m per pixel.
+                # This is a declared RTS proxy, not a runtime camera capture.
+                cam.data.ortho_scale = 360 * .24
                 render(out / f'{name}_pristine_rts.png', (360, 180), 32)
             if job.get('export', True):
                 glb = out / 'glb' / f'{name}_{cond}.glb'
                 glb.parent.mkdir(parents=True, exist_ok=True)
                 export_glb(list(objs.values()), glb, k, cond)
             tris = sum(sum(len(p.vertices) - 2 for p in ob.data.polygons) for ob in objs.values())
-            report[f'{name}_{cond}'] = {'triangles': tris, 'pieces': len(k.pieces), 'palette': k.palette}
+            bounds = [ob.matrix_world @ Vector(v) for ob in objs.values() for v in ob.bound_box]
+            report[f'{name}_{cond}'] = {'triangles': tris, 'pieces': len(k.pieces), 'palette': k.palette,
+                                      'bounds_xyz_m': [max(v[i] for v in bounds)-min(v[i] for v in bounds) for i in range(3)],
+                                      'stock_size_m': k.meta.get('size'), 'fit_scale_xyz': k.meta.get('fit_scale_xyz')}
             print('[art] done', name, cond, tris, 's', round(time.time() - t0, 1), flush=True)
     (out / f'report_{job.get("tag", "asm")}.json').write_text(json.dumps(report, indent=1), encoding='utf-8')
 
