@@ -89,9 +89,9 @@ static bool s_moveDirty = false;
 		return false;
 	}
 
-	// ── Size gate: MOVE arrays are bounded by MAX_MAP_CELL_WIDTH (720 MOVE cells/side) ──
-	// moveSide = cellSide*3, so max supported cellSide = 240.
-	// Maps larger than this (260, 520, 1020 cells) would overflow fixed MOVE arrays
+	// ── Size gate: MOVE arrays are bounded by MAX_MAP_CELL_WIDTH (MOVE cells/side) ──
+	// moveSide = cellSide*3, so max supported cellSide = MAX_MAP_CELL_WIDTH / 3.
+	// Larger maps would overflow fixed MOVE arrays
 	// (tileMulMAPCELL_DIM[], trigger maps, etc.) and exceed systemHeap capacity.
 	// Terrain save/load still works; AI pathfinding is not supported at this size.
 	if (moveSide > MAX_MAP_CELL_WIDTH) {
