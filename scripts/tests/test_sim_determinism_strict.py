@@ -49,12 +49,21 @@ def test_missing_tick_and_truncated_run_fail(tmp_path):
     assert not sim.check_baseline(a[:2], baseline(tmp_path, a))[0]
 
 
-def test_rng_counts_reported_but_excluded(tmp_path):
+def test_only_nonsim_rng_counts_are_excluded(tmp_path):
     a = observations()
-    b = [line.replace("rng=1/2/3", "rng=4/5/6") for line in a]
+    b = [line.replace("rng=1/2/3", "rng=1/5/6") for line in a]   # appearance and weather draws differ, sim draws agree
     assert sim.chain(a) == sim.chain(b)
     assert sim.full_chain(a) != sim.full_chain(b)
     ok, message = sim.compare(a, b, 5)
-    assert ok and "1/2/3" in message and "4/5/6" in message
+    assert ok and "1/2/3" in message and "1/5/6" in message
     assert sim.check_baseline(b, baseline(tmp_path, a))[0]
     assert not sim.check_baseline(b, baseline(tmp_path, a, legacy=True))[0]
+
+
+def test_extra_sim_rng_draw_fails(tmp_path):
+    a = observations()
+    b = [line.replace("rng=1/2/3", "rng=2/2/3") for line in a]
+    assert sim.chain(a) != sim.chain(b)
+    assert not sim.compare(a, b, 5)[0]
+    assert not sim.check_baseline(b, baseline(tmp_path, a))[0]
+    assert not sim.compare(a, [line.replace(" rng=1/2/3", "") for line in a], 5)[0]   # a missing field is an incomplete observation

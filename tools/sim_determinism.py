@@ -42,7 +42,10 @@ from repo_intel import lane_model  # noqa: E402
 
 PREFIX = "[SIMID v1] simframe="
 _STRICT = re.compile(r" strict=\w+")
-_RNG_COUNTS = re.compile(r" rng=\d+/\d+/\d+(?=\s|$)")
+_RNG_COUNTS = re.compile(r" rng=(\d+)/\d+/\d+(?=\s|$)")
+#: Only the appearance and weather draw counts are non-sim (D3 splits the appearance stream); the SIMULATION draw count stays in
+#: every comparison and graded hash, so one extra discarded sim draw (which shifts all later gameplay randomness) fails.
+_RNG_NONSIM = r" rng=\1"
 _COUNTS = ("n", "nobj", "nabl")
 
 
@@ -54,6 +57,8 @@ def observation_error(lines) -> str:
         for key in ("simframe", *_COUNTS):
             if not fields.get(key, "").isdigit():
                 return f"missing or invalid observation count {key} at index {i}"
+        if not _RNG_COUNTS.search(line):
+            return f"missing or invalid rng=sim/app/wx counts at index {i}"
         for key in ("graded", "visual", "strict", "objects", "abl"):
             if not re.fullmatch(r"[0-9a-fA-F]+", fields.get(key, "")):
                 return f"missing or invalid {key} digest at index {i}"
@@ -157,7 +162,7 @@ def load_simid(path: str) -> list:
 
 def chain(lines, frames: int | None = None) -> str:
     """Graded acceptance chain: all fields, including strict, except RNG draw counts."""
-    return full_chain([_RNG_COUNTS.sub("", ln.rstrip()) for ln in lines], frames)
+    return full_chain([_RNG_COUNTS.sub(_RNG_NONSIM, ln.rstrip()) for ln in lines], frames)
 
 
 def full_chain(lines, frames: int | None = None) -> str:
@@ -186,7 +191,7 @@ def compare(a, b, min_frames: int = MIN_FRAMES):
         if error:
             return False, error
     for i in range(common):
-        if _RNG_COUNTS.sub("", a[i]) != _RNG_COUNTS.sub("", b[i]):
+        if _RNG_COUNTS.sub(_RNG_NONSIM, a[i]) != _RNG_COUNTS.sub(_RNG_NONSIM, b[i]):
             prev = a[i - 1] if i else "(first frame)"
             return False, (f"DIVERGED at sim frame index {i}\n  run a: {a[i]}\n  run b: {b[i]}\n  last agreed: {prev}\n"
                            "  rerun with MC2_SIM_IDENTITY_TRACE_DETAIL=1 for the per-mover lines of that frame")
