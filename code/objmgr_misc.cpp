@@ -491,6 +491,52 @@ ArtilleryPtr GameObjectManager::createArtillery (long artilleryType, glm::vec3& 
 	return(artillery);
 }
 
+namespace {
+// Where each mover stood when the latest sim tick began (indexed by object handle; the stamp says the entry is current).
+struct InterpPose { glm::vec3 pos{}; float rot = 0.0f; uint32_t stamp = 0; };
+std::vector<InterpPose> s_interpPose;
+uint32_t s_interpStamp = 1;
+float s_presentationAlpha = 1.0f;
+
+// The pose a mover is DRAWN at: between its pose at the start of the latest tick and its pose now. Presentation only;
+// the sim never sees it (Mission::updateObjectManager re-poses every mover exactly before the next tick).
+void presentationPose(GameObject* object, glm::vec3& pos, float& rot)
+{
+	if (s_presentationAlpha >= 1.0f) return;
+	const long handle = object->getHandle();
+	if (handle < 0 || static_cast<size_t>(handle) >= s_interpPose.size()) return;
+	const InterpPose& prev = s_interpPose[handle];
+	if (prev.stamp != s_interpStamp) return;   // spawned since the snapshot: nothing to blend from
+	const float a = s_presentationAlpha;
+	pos.x = prev.pos.x + (pos.x - prev.pos.x) * a;
+	pos.y = prev.pos.y + (pos.y - prev.pos.y) * a;
+	float delta = std::fmod(rot - prev.rot, 360.0f);
+	if (delta > 180.0f) delta -= 360.0f;
+	else if (delta < -180.0f) delta += 360.0f;
+	rot = prev.rot + delta * a;
+}
+}
+
+void GameObjectManager::snapshotMoverPoses()
+{
+	if (s_interpPose.size() < static_cast<size_t>(getMaxObjects()) + 1)
+		s_interpPose.resize(static_cast<size_t>(getMaxObjects()) + 1);
+	++s_interpStamp;
+	for (long i = 0; i < numMovers; i++)
+	{
+		MoverPtr mover = moverList[i];
+		if (!mover || !mover->getExists()) continue;
+		const long handle = mover->getHandle();
+		if (handle < 0 || static_cast<size_t>(handle) >= s_interpPose.size()) continue;
+		s_interpPose[handle] = { mover->getPosition(), mover->getRotation(), s_interpStamp };
+	}
+}
+
+void GameObjectManager::setPresentationAlpha( float alpha )
+{
+	s_presentationAlpha = alpha;
+}
+
 void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool other)
 {
 	if (mc2::world_trace::enabled()) mc2::world_trace::snapshot(*this, "gom_begin");
@@ -551,6 +597,7 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 					// Must force here as well.
 					glm::vec3 pos = mechs[i]->getPosition();
 					float rot = mechs[i]->getRotation();
+					presentationPose(mechs[i], pos, rot);
 					pos.z = TerrainRuntime::groundElevation(pos);
 					bool selected = mechs[i]->isSelected();
 					int teamID = mechs[i]->getTeamId();
@@ -574,6 +621,7 @@ void GameObjectManager::updateAppearancesOnly( bool terrain, bool movers, bool o
 					// Must force here as well.
 					glm::vec3 pos = vehicles[i]->getPosition();
 					float rot = vehicles[i]->getRotation();
+					presentationPose(vehicles[i], pos, rot);
 					pos.z = TerrainRuntime::groundElevation(pos);
 					if ((pos.z < MapData::waterDepth))
 						pos.z = MapData::waterDepth;

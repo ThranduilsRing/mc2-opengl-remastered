@@ -444,17 +444,29 @@ void Mission::updatePathManager() {
 	{ ZoneScopedN("GameLogic.PathManager"); MisScope _ms(MS_PATHMGR); PathManager->update(); }
 }
 
-// A render frame with no sim tick: draw the unchanged sim state again. This is the paused-frame path (appearances re-pose
-// from object positions) with the clock at zero and Mech3DAppearance::update told not to advance sim state.
-void Mission::updatePresentationOnly() {
+//: True while mover appearances hold an interpolated (drawn) pose rather than the sim pose; cleared by an exact re-pose.
+static bool s_moversInterpolated = false;
+
+// Presentation without sim: the paused-frame path (appearances re-pose from object positions) with the clock at zero and
+// Mech3DAppearance::update told not to advance sim state. A render frame with no tick re-poses everything (moversOnly
+// false); the frame after a tick re-poses only the movers. Mechs and vehicles are drawn alpha of the way from their pose at
+// the start of the latest tick to their pose now (alpha 1 = the sim pose exactly).
+void Mission::updatePresentationOnly(bool moversOnly, float alpha) {
 	MisScope _ms(MS_PRESENT);
-	gpu_cull::substrate_frameBegin();
+	if (!moversOnly)
+		gpu_cull::substrate_frameBegin();
 	const float renderLength = frameLength;
 	frameLength = 0.0f;
 	simPresentationPass = true;
-	ObjectManager->updateAppearancesOnly( true, true, true );
+	ObjectManager->setPresentationAlpha(alpha);
+	if (moversOnly)
+		ObjectManager->updateAppearancesOnly( false, true, false );
+	else
+		ObjectManager->updateAppearancesOnly( true, true, true );
+	ObjectManager->setPresentationAlpha(1.0f);
 	simPresentationPass = false;
 	frameLength = renderLength;
+	s_moversInterpolated = alpha < 1.0f;
 }
 
 // Clear the terrain object flags and process the terrain geometry.
@@ -493,7 +505,11 @@ void Mission::updateObjectManager() {
 	if ( mc2SimTickFrozen(missionInterface) && !MPlayer )
 		ObjectManager->updateAppearancesOnly( true, true, true );
 	else
-		{ // Ingress precedes actor updates so orders belong to this simulation tick.
+		{ // The sim reads the mover poses the last tick left (node positions): put back any interpolated drawn pose first.
+			if (s_moversInterpolated && !s_extraTickInFrame)
+				updatePresentationOnly(true, 1.0f);
+			ObjectManager->snapshotMoverPoses();
+			// Ingress precedes actor updates so orders belong to this simulation tick.
 			beginOrderSimulationTick();
 			advanceCombatClock(frameLength);
 			MisScope _ms(MS_OBJMGR); ObjectManager->update(true, true, true); }
@@ -1352,7 +1368,7 @@ long Mission::update (void)
 				// No tick is due: the frame part runs (camera and UI stay at render rate), the sim stands still.
 				if (updatePass(true, true, false, false, earlyResult))
 					return earlyResult;
-				updatePresentationOnly();
+				updatePresentationOnly(false, static_cast<float>(s_tickClock.alpha()));
 			}
 			for (int tick = 0; tick < ticks; ++tick)
 			{
@@ -1366,6 +1382,8 @@ long Mission::update (void)
 				if (ended)
 					return earlyResult;
 			}
+			if (ticks > 0 && !firstFrame)
+				updatePresentationOnly(true, static_cast<float>(s_tickClock.alpha()));
 		}
 		s_turnAfterLastPass = turn;
 	}
