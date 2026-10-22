@@ -2,7 +2,7 @@
 """cook_concrete_detail.py -- cook the concrete/road PBR DETAIL maps (detail only, never colour).
 
 Each output is a BC7 linear KTX2, RGBA = (normal.x, normal.y, roughness, ao), 1024x1024, full mip chain:
-  concrete_detail_pad.ktx2   <- Poly Haven concrete_layers_02 (CC0): nor_gl + rough; AO = cavity derived from disp
+  concrete_detail_pad.ktx2   <- Poly Haven painted_concrete_02 (CC0): nor_gl + ARM (AO, rough)
   concrete_detail_road.ktx2  <- Poly Haven clean_asphalt (CC0): nor_gl + ARM (AO, rough)
 Normal z is rebuilt in the shader. The albedo of these sets is never read: MC2 keeps its own colour.
 
@@ -75,22 +75,19 @@ def equalize(chans, target):
 
 
 def finish(nx, ny, rough, ao):
-    nx, ny = equalize([nx, ny], 0.010)
-    (rough,) = equalize([rough], 0.04)
-    (ao,) = equalize([ao], 0.035)
+    nx, ny = equalize([nx, ny], 0.004)
+    (rough,) = equalize([rough], 0.05)
+    (ao,) = equalize([ao], 0.03)
     ao = np.clip(ao + (0.97 - ao.mean()), 0.0, 1.0)      # cavities darken, the mean stays near 1 so the colour keeps its tone
     return np.clip(nx, 0, 1), np.clip(ny, 0, 1), np.clip(rough, 0, 1), ao
 
 
 def pad_maps(src):
-    d = os.path.join(src, "concrete_layers_02", "textures")
-    n = rs(load(os.path.join(d, "concrete_layers_02_nor_gl_2k.exr")))
-    r = rs(gray(load(os.path.join(d, "concrete_layers_02_rough_2k.exr"))))
-    h = rs(gray(load(os.path.join(d, "concrete_layers_02_disp_2k.png"))))
-    # no AO channel in this set: cavity = how far the height sits below its local mean (only ever darkens)
-    blur = cv2.GaussianBlur(h, (0, 0), 24)
-    ao = np.clip(1.0 + (h - blur) * 4.0, 0.0, 1.0)
-    return finish(n[:, :, 0], n[:, :, 1], r, ao)
+    # painted_concrete_02: a smooth floor slab (normal std ~0.02, flat AO); its look is carried by roughness and AO, not relief
+    d = os.path.join(src, "painted_concrete_02", "textures")
+    n = rs(load(os.path.join(d, "painted_concrete_02_nor_gl_2k.jpg")))
+    arm = rs(load(os.path.join(d, "painted_concrete_02_arm_2k.jpg")))
+    return finish(n[:, :, 0], n[:, :, 1], arm[:, :, 1], arm[:, :, 0])
 
 
 def road_maps(src):

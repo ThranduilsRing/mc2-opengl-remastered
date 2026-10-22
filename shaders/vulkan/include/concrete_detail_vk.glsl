@@ -30,14 +30,14 @@ float cdVNoise(vec2 p) {   // value noise 0..1, four hashes
     return mix(mix(cdHash(i), cdHash(i + vec2(1.0, 0.0)), f.x), mix(cdHash(i + vec2(0.0, 1.0)), cdHash(i + vec2(1.0, 1.0)), f.x), f.y);
 }
 
-// Micro detail: two fine tilings (100 wu and a rotated 64 wu patch, so a pebble or crack is pebble-sized next to a mech), each with a
+// Micro detail: two fine tilings (60 wu and a rotated 38 wu patch, so a pebble or crack is pebble-sized next to a mech), each with a
 // hashed per-cell UV offset so the repeat does not read at RTS zoom (no extra fetches). Macro variation is ALU-only value noise at
 // slab-to-patch scales (tens to hundreds of wu) plus a per-slab (128 wu) hash: small luminance / roughness / AO shifts, never colour.
 // `dx`/`dy` are the screen derivatives of the world XY, taken in uniform control flow by the caller (this runs in divergent branches).
 MaterialDetail cdEval(int layer, vec2 wp, vec2 dx, vec2 dy) {
     const mat2 R = mat2(0.8, -0.6, 0.6, 0.8);
-    const float kScaleA = 1.0 / 100.0;
-    const float kScaleB = 1.0 / 64.0;
+    const float kScaleA = 1.0 / 60.0;
+    const float kScaleB = 1.0 / 38.0;
     vec2 uvA = wp * kScaleA + cdHash2(floor(wp / 700.0));
     vec2 uvB = R * wp * kScaleB + 0.37 + cdHash2(floor(wp / 450.0) + 31.0);
     vec4 a = textureGrad(u_concreteDetail, vec3(uvA, float(layer)), dx * kScaleA * 0.5, dy * kScaleA * 0.5);
