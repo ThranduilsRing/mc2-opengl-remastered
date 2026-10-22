@@ -20,8 +20,8 @@ std::uint64_t combatSimulationHash(GameObjectManager& manager)
         if (auto* bolt = dynamic_cast<WeaponBolt*>(object)) {
             auto hash = bolt->simulationHash(); state(i, hash);
         } else if (auto* explosion = dynamic_cast<Carnage*>(object)) {
-            auto tangible = explosion->getTangible();
-            state(i, explosion->carnageType, explosion->ownerWID,
+            auto carnageKind = static_cast<std::uint32_t>(explosion->carnageType);
+            state(i, carnageKind, explosion->ownerWID,
                   explosion->info.explosion.timer, explosion->info.explosion.radius,
                   explosion->info.explosion.chunkSize, tangible);
         } else if (auto* artillery = dynamic_cast<Artillery*>(object)) {

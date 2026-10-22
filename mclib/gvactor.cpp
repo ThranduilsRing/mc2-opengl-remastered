@@ -519,6 +519,7 @@ glm::vec3 GVAppearance::getDustNodePosition (long nodeId)
 //-----------------------------------------------------------------------------
 long GVAppearance::getLowestWeaponNode (void)
 {
+	const auto root = !simPresentationPass && simPose->ready ? simPose->root : position;
 	//------------------------------------------------
 	// Scan all weapon nodes and find least used one.
 	long bestNode = -1;
@@ -528,9 +529,9 @@ long GVAppearance::getLowestWeaponNode (void)
 	for (long i=0;i<appearType->numWeaponNodes;i++)
 	{
 		glm::vec3 nodePosition = getWeaponNodePosition(i+numSmokeNodes);
-		if (((nodePosition.z - position.z) < lowestPosZ) && (nodePosition.z != position.z))
+		if (((nodePosition.z - root.z) < lowestPosZ) && (nodePosition.z != root.z))
 		{
-			lowestPosZ = nodePosition.z - position.z;
+			lowestPosZ = nodePosition.z - root.z;
 			bestNode = i+numSmokeNodes;
 		}
 	}
