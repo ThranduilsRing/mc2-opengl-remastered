@@ -13,6 +13,9 @@
 #include <string>
 #include <vector>
 #include <optional>
+#include <algorithm>
+#include <cctype>
+#include <string_view>
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"
 #include "../GameOS/gameos/utils/mc2log.h"
@@ -608,29 +611,36 @@ const char* LookupModOwner(const char* dataPath) {
     return it->second.modId.c_str();
 }
 
-const char* LookupModAbsolutePath(const char* dataPath) {
-    if (g_modIndex.empty() || !dataPath) return nullptr;
-    auto it = g_modIndex.find(NormalizeKey(dataPath));
-    return it == g_modIndex.end() ? nullptr : it->second.path.c_str();
+const char* LookupModAbsolutePath(std::string_view dataPath) {
+    const std::string key = NormalizeKey(std::string(dataPath).c_str());
+    if (const auto it = g_modIndex.find(key); it != g_modIndex.end()) {
+        const auto& [indexKey, entry] = *it;
+        return entry.path.c_str();
+    }
+    return static_cast<const char*>(nullptr);
 }
 
-bool ModHasCapability(const char* modId, const char* capability) {
-    if (!modId || !capability) return false;
-    auto it = g_modCapabilities.find(modId);
-    if (it == g_modCapabilities.end()) return false;
-    for (const std::string& c : it->second)
-        if (_stricmp(c.c_str(), capability) == 0) return true;
+static bool capabilityEquals(std::string_view a, std::string_view b) {
+    return std::ranges::equal(a, b, [](char x, char y) {
+        return std::tolower(static_cast<unsigned char>(x)) == std::tolower(static_cast<unsigned char>(y)); });
+}
+
+bool ModHasCapability(std::string_view modId, std::string_view capability) {
+    for (const auto& [id, caps] : g_modCapabilities)
+        if (id == modId)
+            return std::ranges::any_of(caps, [&](const std::string& c) { return capabilityEquals(c, capability); });
     return false;
 }
 
-bool ModCapabilityMounted(const char* capability) {
-    for (const auto& entry : g_modCapabilities)
-        if (ModHasCapability(entry.first.c_str(), capability)) return true;
-    return false;
+bool ModCapabilityMounted(std::string_view capability) {
+    return std::ranges::any_of(g_modCapabilities, [&](const auto& kv) {
+        const auto& [id, caps] = kv;
+        return ModHasCapability(id, capability); });
 }
 
-bool ModOwnerHasCapability(const char* dataPath, const char* capability) {
-    return ModHasCapability(LookupModOwner(dataPath), capability);
+bool ModOwnerHasCapability(std::string_view dataPath, std::string_view capability) {
+    const char* owner = LookupModOwner(std::string(dataPath).c_str());
+    return owner && ModHasCapability(owner, capability);
 }
 
 // No-ops — mod is selected at launcher time, not at campaign-select time.
@@ -846,10 +856,8 @@ void InitModSearchPaths(const char* modsRoot) {
             continue;
         }
         {
-            char depJson[MAX_PATH];
-            _snprintf(depJson, sizeof(depJson), "%s%s/mod.json", absRoot, dep.c_str());
-            depJson[sizeof(depJson)-1] = '\0';
-            if (auto dj = ReadModJson(depJson); dj && !dj->capabilities.empty())
+            const std::string depJson = std::string(absRoot) + dep + "/mod.json";
+            if (auto dj = ReadModJson(depJson.c_str()); dj && !dj->capabilities.empty())
                 g_modCapabilities[dep] = dj->capabilities;
         }
         size_t before = g_modIndex.size();

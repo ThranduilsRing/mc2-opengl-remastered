@@ -5,6 +5,7 @@
 #include "mc2fmt.h"
 #include "mc2str.h"
 #include "package_chassis.h"
+#include <filesystem>
 
 #include <format>
 #include <string>
@@ -207,8 +208,7 @@ long LogisticsData::updateAvailability()
 	// available in this campaign stays out of the shop.
 	for ( auto vIter = variants.begin(); vIter != variants.end(); ++vIter )
 	{
-		char stem[256];
-		_splitpath( (*vIter)->getFileName().c_str(), nullptr, nullptr, stem, nullptr );
+		const std::string stem = std::filesystem::path( (*vIter)->getFileName() ).stem().string();
 		const mc2pkg::PackageChassis* pc = packageChassisByStem( stem );
 		if ( !pc || !pc->purchasable || (*vIter)->isAvailable() )
 			continue;

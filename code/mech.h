@@ -12,6 +12,7 @@
 #define MECH_H
 
 #ifndef MCLIB_H
+#include <span>
 #include"mclib.h"
 #endif
 
@@ -666,9 +667,8 @@ class BattleMech : public Mover {
 		// mounts; each weapon carries its mount's key in InventoryItem::hardpointId and fires
 		// from that mount's socket. Deployment hands the mech-lab mount assignment over with
 		// setPendingPackageMounts() before resetComponents(); keys are in component-list order.
-		bool resolveHardpoint (unsigned int hardpointId, HardpointProfile& out) const override;
 		bool isPackageChassis (void) const;
-		void setPendingPackageMounts (const unsigned int* keys, long count);
+		void setPendingPackageMounts (std::span<const unsigned int> keys);
 		unsigned int pendingPackageMounts[MAX_MOVER_INVENTORY_ITEMS] = {};
 		long numPendingPackageMounts = 0;
 

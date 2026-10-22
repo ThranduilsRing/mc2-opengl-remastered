@@ -319,11 +319,12 @@ ObjectTypePtr ObjectTypeManager::load (ObjectTypeNumber objTypeNum, bool noCache
 		File fitFile;
 		if (fitFile.open(packageType->fitPath.c_str()) != NO_ERR)
 			Fatal(objTypeNum, " ObjectTypeManager.load: package chassis definition did not open ");
-		objType = new BattleMechType;
-		objType->setObjTypeNum(objTypeNum);
-		if (objType->init(&fitFile, fitFile.fileSize()) != NO_ERR)
+		auto packageMechType = std::make_unique<BattleMechType>();
+		packageMechType->setObjTypeNum(objTypeNum);
+		if (packageMechType->init(&fitFile, fitFile.fileSize()) != NO_ERR)
 			Fatal(objTypeNum, " ObjectTypeManager.load: unable to init package Mech type ");
 		fitFile.close();
+		objType = packageMechType.release();   // typeStore below takes ownership
 		objectTypeNum = BATTLEMECH_TYPE;
 	}
 	else if ((objTypeNum == bridgeTypeHandle) ||

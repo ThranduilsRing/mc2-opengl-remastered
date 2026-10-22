@@ -19,7 +19,9 @@
 //   * locomotion clips play at the rate that matches the measured stride to the actor's
 //     actual speed, so planted feet stop sliding.
 
+#include <algorithm>
 #include <cstring>
+#include <string_view>
 
 namespace mc2clip {
 
@@ -45,8 +47,9 @@ inline constexpr int kGestureWalk = 4, kGestureRun = 7, kGestureReverse = 9, kGe
                      kGestureJump = 20, kGestureRollover = 21, kGestureGetUp = 22,
                      kGestureFallenForward = 23, kGestureFallenBackward = 24;
 
-inline Choice once(const char* c) { Choice ch; ch.clip = c; ch.mode = Mode::Once; ch.immediate = true; return ch; }
-inline Choice loop(const char* c, bool loco = false) { Choice ch; ch.clip = c; ch.locomotion = loco; return ch; }
+// Clip names are string literals, so the view's data() stays valid for the Choice's lifetime.
+inline Choice once(std::string_view c) { Choice ch; ch.clip = c.data(); ch.mode = Mode::Once; ch.immediate = true; return ch; }
+inline Choice loop(std::string_view c, bool loco = false) { Choice ch; ch.clip = c.data(); ch.locomotion = loco; return ch; }
 
 // activeClipFinished: the currently playing Once clip reached its end (drives jump start ->
 // airborne and land -> locomotion). destroyed: the mech is dead (death clips instead of knockdowns).
@@ -110,10 +113,7 @@ inline Choice select(int gesture, float speed, float turnRate, int turnStreak, b
 // freezes or spins the legs; a clip without a measured stride plays at 1.
 inline float strideRate(float actualSpeed, float clipStrideSpeed) {
     if (clipStrideSpeed <= 1e-3f) return 1.0f;
-    float r = actualSpeed / clipStrideSpeed;
-    if (r < 0.35f) r = 0.35f;
-    if (r > 2.0f) r = 2.0f;
-    return r;
+    return std::clamp(actualSpeed / clipStrideSpeed, 0.35f, 2.0f);
 }
 
 // Residual planted-foot drift (world units/s) left after rate matching.

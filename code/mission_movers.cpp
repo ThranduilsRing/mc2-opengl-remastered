@@ -471,7 +471,7 @@ long Mission::addMover (MoverInitData* moveSpec, LogisticsMech* mechData)
 	// assigned it. Keys go over in weapon order, which is the order resetComponents installs
 	// weapons in (component-list order).
 	BattleMechPtr bMech = static_cast<BattleMechPtr>(mMech);
-	bMech->setPendingPackageMounts(nullptr, 0);
+	bMech->setPendingPackageMounts({});
 	if ( totalComponents && bMech->isPackageChassis() )
 	{
 		std::vector<unsigned int> keys(static_cast<size_t>(totalComponents), 0u);
@@ -486,12 +486,12 @@ long Mission::addMover (MoverInitData* moveSpec, LogisticsMech* mechData)
 					 form == COMPONENT_FORM_WEAPON_BALLISTIC || form == COMPONENT_FORM_WEAPON_MISSILE )
 					weaponKeys.push_back(keys[i]);
 			}
-			bMech->setPendingPackageMounts(weaponKeys.data(), static_cast<long>(weaponKeys.size()));
+			bMech->setPendingPackageMounts(weaponKeys);
 		}
 	}
 
 	bMech->resetComponents(totalComponents,componentList);
-	bMech->setPendingPackageMounts(nullptr, 0);
+	bMech->setPendingPackageMounts({});
 	
 	return moverHandle;
 }

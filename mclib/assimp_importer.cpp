@@ -35,6 +35,8 @@
 #include <cmath>
 #include <cstdio>
 #include <optional>
+#include <ranges>
+#include <algorithm>
 
 #include "msl.h"
 #include "tgl.h"
@@ -893,11 +895,8 @@ void measureClipStrides(ImportedAnimEntry& e) {
         float sum = 0.0f; int n = 0;
         for (int k = 0; k < 2; ++k) {
             if (pos[k].size() < 3) continue;
-            float xlo = 1e30f, xhi = -1e30f, zlo = 1e30f, zhi = -1e30f;
-            for (const aiVector3D& p : pos[k]) {
-                xlo = std::min(xlo, p.x); xhi = std::max(xhi, p.x);
-                zlo = std::min(zlo, p.z); zhi = std::max(zhi, p.z);
-            }
+            const auto [xlo, xhi] = std::ranges::minmax(pos[k] | std::views::transform([](const aiVector3D& p) { return p.x; }));
+            const auto [zlo, zhi] = std::ranges::minmax(pos[k] | std::views::transform([](const aiVector3D& p) { return p.z; }));
             sum += 2.0f * std::max(xhi - xlo, zhi - zlo) / *dur;
             ++n;
         }
@@ -1221,8 +1220,8 @@ bool mc2mechanim::GetImportedNodeWorld(const void* actorKey, const void* typeKey
         aiMatrix4x4 M = e.AS1 * rowMajorToAi(s->lastGlobals[idx].m);
         float mx = M.a4, my = M.b4, mz = M.c4;
         // P10: a socket with an authored local point fires from actor x posed joint x point.
-        if (auto so = e.socketOffsets.find(mc2Name); so != e.socketOffsets.end()) {
-            const aiVector3D p = M * so->second;
+        if (e.socketOffsets.contains(mc2Name)) {
+            const aiVector3D p = M * e.socketOffsets.at(mc2Name);
             mx = p.x; my = p.y; mz = p.z;
         }
         const float* w = rootToWorld12;
@@ -1294,8 +1293,8 @@ bool sampleActorClip(const ImportedAnimEntry& e, ActorAnimState& s, float dt,
         }
         s.playRate = 1.0f;
         if (s.locomotion) {
-            auto st = e.strideSpeed.find(s.activeClip);
-            if (st != e.strideSpeed.end()) s.playRate = mc2clip::strideRate(speed, st->second);
+            if (e.strideSpeed.contains(s.activeClip))
+                s.playRate = mc2clip::strideRate(speed, e.strideSpeed.at(s.activeClip));
         }
     }
     const bool holdAtEnd = e.pinnedClip.empty() && s.mode == mc2clip::Mode::Once;

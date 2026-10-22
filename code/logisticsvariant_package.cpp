@@ -44,14 +44,9 @@ int LogisticsVariant::packageCheck( LogisticsComponent* pComponent, long x, long
     mc2pkg::Placed cand = placedOf( pComponent, slotItem ? -1 : x, slotItem ? -1 : y );
     if ( slotItem )
         cand.category = mc2pkg::Mount::None;
-    switch ( mc2pkg::checkAdd( *pc, existing, cand ) )
-    {
-        case mc2pkg::Verdict::Legal:         return 0;
-        case mc2pkg::Verdict::OverPayload:   return COMPONENT_TOO_HEAVY;
-        case mc2pkg::Verdict::OutsideRegion: return INVALID_LOCATION;
-        case mc2pkg::Verdict::NoFreeMount:   return NO_COMPATIBLE_MOUNT;
-    }
-    return ADD_COMPONENT_FAILED;
+    // Verdict order: Legal, OutsideRegion, NoFreeMount, OverPayload (package_chassis.h).
+    static constexpr int kErrorFor[] = { 0, INVALID_LOCATION, NO_COMPATIBLE_MOUNT, COMPONENT_TOO_HEAVY };
+    return kErrorFor[ static_cast<int>( mc2pkg::checkAdd( *pc, existing, cand ) ) ];
 }
 
 // Auto-place (x == y == -1): the first free grid spot that lies wholly in one region AND

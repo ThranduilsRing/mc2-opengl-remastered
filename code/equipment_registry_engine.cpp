@@ -18,6 +18,8 @@
 
 #include <cstdio>
 #include <cstring>
+#include <filesystem>
+#include <string_view>
 
 #include "modder_finding.h"   // MODDER-FIRST-ERROR-SURFACE-1: shared context format
 #include "platform_str.h"     // S_stricmp (EQUIP-ADD-FILL-1 def-leaf filter)
@@ -452,9 +454,9 @@ size_t applyEquipmentAddFillIfEnabled(float baseSensorRange) {
     std::vector<std::string> defPaths;
     EnumerateModFitFiles("data/defs/equipment/", collectEquipDefPath, &defPaths);
     if (!envGates) {
-        std::erase_if(defPaths, [](const std::string& abs) {
-            std::string key = abs;
-            for (char& c : key) c = (c == '\\') ? '/' : static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+        std::erase_if(defPaths, [](std::string_view abs) {
+            std::string key = std::filesystem::path(abs).generic_string();
+            for (char& c : key) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
             const size_t at = key.find("data/defs/equipment/");
             return at == std::string::npos || !ModOwnerHasCapability(key.c_str() + at, "equipment_add");
         });

@@ -25,6 +25,7 @@ MechIcon.cpp			: Implementation of the MechIcon component.
 #include <map>
 #include <memory>
 #include <string>
+#include <string_view>
 #include "mc2fmt.h"
 
 #ifndef MISSION_H
@@ -51,17 +52,17 @@ std::map<std::string, PackageHudStrip>& packageHudStrips()
 	static std::map<std::string, PackageHudStrip> strips;
 	return strips;
 }
-const PackageHudStrip* loadPackageHudStrip( const std::string& base, float iconX, float iconY )
+const PackageHudStrip* loadPackageHudStrip( std::string_view base, float iconX, float iconY )
 {
 	char path[512];
 	mc2::fmt::to_buf( path, "{}{}_{:d}x{:d}.tga", mc2::fmt::safe(artPath), base,
 		static_cast<int>(iconX), static_cast<int>(iconY) );
 	S_strlwr( path );
 	auto& cache = packageHudStrips();
-	auto it = cache.find( path );
-	if ( it == cache.end() )
+	const bool fresh = !cache.contains( path );
+	PackageHudStrip& strip = cache[ path ];
+	if ( fresh )
 	{
-		PackageHudStrip strip;
 		File file;
 		if ( NO_ERR == file.open( path ) )
 		{
@@ -80,9 +81,8 @@ const PackageHudStrip* loadPackageHudStrip( const std::string& base, float iconX
 				strip.key = AssetScale::key( path );
 			}
 		}
-		it = cache.emplace( path, std::move(strip) ).first;
 	}
-	return it->second.bytes ? &it->second : nullptr;
+	return strip.bytes ? &strip : static_cast<const PackageHudStrip*>(nullptr);
 }
 } // namespace
 
