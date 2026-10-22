@@ -200,26 +200,9 @@ void gosPostProcess::init(int w, int h)
         }
     }
 
-    // POST-FX-FXAA-1: FXAA gate + tunables, resolved once from env. Default OFF
-    // -> composite uploads u_fxaaEnabled=0 -> single tap (byte-identical).
-    // Defaults = "sharper" preset (subpix 0.25 / edge 0.166 / edgeMin 0.0833).
-    {
-        const char* fxEnv = mc2::gate::raw<"MC2_FXAA">();   // echoed as typed
-        fxaaEnabled_         = mc2::gate::get<"MC2_FXAA">();
-        fxaaSubpix_          = 0.25f;
-        fxaaEdgeThreshold_   = 0.166f;
-        fxaaEdgeThresholdMin_= 0.0833f;
-        if (mc2::gate::isSet<"MC2_FXAA_SUBPIX">())            { const float v = mc2::gate::get<"MC2_FXAA_SUBPIX">(); if (v >= 0.0f) fxaaSubpix_ = v; }
-        if (mc2::gate::isSet<"MC2_FXAA_EDGE_THRESHOLD">())    { const float v = mc2::gate::get<"MC2_FXAA_EDGE_THRESHOLD">(); if (v >  0.0f) fxaaEdgeThreshold_ = v; }
-        if (mc2::gate::isSet<"MC2_FXAA_EDGE_THRESHOLD_MIN">()){ const float v = mc2::gate::get<"MC2_FXAA_EDGE_THRESHOLD_MIN">(); if (v >  0.0f) fxaaEdgeThresholdMin_ = v; }
-        MC2_DIAGFE(stderr, "[FXAA v1] enabled=%d subpix=%.3f edge=%.3f edgeMin=%.4f (MC2_FXAA=%s)\n",
-                     fxaaEnabled_ ? 1 : 0, fxaaSubpix_, fxaaEdgeThreshold_, fxaaEdgeThresholdMin_,
-                     fxEnv ? fxEnv : "(unset)");
-    }
-
     // POST-FX-CAS-1: AMD FidelityFX Contrast Adaptive Sharpening, from options.cfg
     // (PostCAS, PostCASSharpness). Off by default; sharpness 0..1, default 0.5. Applied
-    // to the final graded LDR color, after FXAA/grade, before UI.
+    // to the final graded LDR color, after grade, before spatial AA and UI.
     {
         casEnabled_   = s_postFxOptions.casEnabled;
         casSharpness_ = s_postFxOptions.casSharpness;
@@ -370,7 +353,7 @@ void gosPostProcess::endScene()
 #ifdef MC2_VULKAN
     auto& present=mc2vk::getOrCreateEnginePresentVk();
     if (present.beginNativeComposite()) (void)present.renderNativeCompositeVisual(
-        exposure_,fxaaEnabled_,fxaaSubpix_,fxaaEdgeThreshold_,fxaaEdgeThresholdMin_,mode,
+        exposure_,mode,
         sceneObjectIdReady() ? int(RenderWorld::MechHandleIndexBase()) : 0,
         lowLightGain_,lowLightTint_,casEnabled_,casSharpness_,tonemapMode_,x,y,w,h);
 #endif

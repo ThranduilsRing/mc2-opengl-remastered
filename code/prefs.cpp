@@ -55,6 +55,15 @@ int CPrefs::applyPrefs(bool applyRes) {
 			}
 		}
 		mc2::options::publish(effective);
+		mc2::options::saveSpatialAA = [](int mode) {
+			const int previous = prefs.render.spatialAA;
+			prefs.render.spatialAA = mode;
+			if (prefs.save() != 0) { prefs.render.spatialAA = previous; return false; }
+			auto options = mc2::options::current();
+			options.spatialAA = mode;
+			mc2::options::publish(options);
+			return true;
+		};
 		// Quiet when every reader saw the published values; a reader that cached its value before the publish names itself.
 		if (report && (mc2::options::earlyReads() > 0 || mc2::options::publishChangedValues()))
 			mc2::fmt::print_err("[OPTIONS v1] event=stale_reader early_reads={} first={}:{} changed_since_start={}\n", mc2::options::earlyReads(), mc2::fmt::safe(mc2::options::firstEarlyFile()), mc2::options::firstEarlyLine(), mc2::options::publishChangedValues() ? 1 : 0);

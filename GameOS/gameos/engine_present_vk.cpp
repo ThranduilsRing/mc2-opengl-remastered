@@ -38,6 +38,8 @@
 #include "vk_texture_residency.h"
 #include "mc2_diag_verbose.h"
 #include "vk_image_resource.h"
+#include "vulkan_spatial_aa.h"
+#include "Gates/render_options.h"
 // VK-RUNG8-ITEM8: the present tail no longer uses gl_interop_view (GL view /
 // copy-1 / GL->VK handoff all deleted).
 #define MC2_VULKAN_SHARED_SCENE_COLOR_IMPL_ISLAND
@@ -146,6 +148,7 @@ struct EnginePresentVk::Impl {
     // the shared VK-only present image (native VK composite writes it, VK blits it
     // into the swapchain). VK-RUNG8-ITEM8: no GL interop view / copy FBO any more.
     VkImageResource sharedImg{};
+    SpatialAA spatialAA;
     uint32_t        imgW = 0, imgH = 0;
 
     // readback (T5 content verification)
@@ -267,6 +270,7 @@ struct EnginePresentVk::Impl {
     // The shared present image holds raw allocations that vkImageResourceDestroy releases (and counts); the framebuffers over its view go first. Every
     // other member is an owner and follows in reverse declaration order.
     ~Impl() {
+        spatialAA.reset();
         imguiFramebuffer.reset();
         hudColorFramebuffer.reset();
         compositeFramebuffer.reset();
@@ -1789,6 +1793,7 @@ uint32_t recordPendingHudColorProof(EnginePresentVk::Impl& s, VkCommandBuffer cb
 // the present tail (Metal-gate: item 2/1 lose their present-tail caller).
 bool buildSharedImage(EnginePresentVk::Impl& s, uint32_t w, uint32_t h, std::string& reason) {
     // Tear down prior.
+    s.spatialAA.reset();
     destroyImguiFramebuffer(s);
     destroyHudColorFramebuffer(s);
     destroyCompositeFramebuffer(s);
@@ -1802,6 +1807,7 @@ bool buildSharedImage(EnginePresentVk::Impl& s, uint32_t w, uint32_t h, std::str
                                VK_FORMAT_R8G8B8A8_UNORM,
                                VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
                                VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
+                               VK_IMAGE_USAGE_STORAGE_BIT |
                                VK_IMAGE_USAGE_TRANSFER_DST_BIT)) {
         reason = "vkImageResourceCreate(VK-only RGBA8) failed";
         return false;
@@ -1973,10 +1979,6 @@ bool EnginePresentVk::beginNativeComposite() {
 }
 
 bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
-                                                  bool fxaaEnabled,
-                                                  float fxaaSubpix,
-                                                  float fxaaEdgeThreshold,
-                                                  float fxaaEdgeThresholdMin,
                                                   int viewMode,
                                                   int engineIdxBase,
                                                   float lowLightGain,
@@ -2048,6 +2050,8 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
 
     // Record into the composite's OWN cbuf; the submit happens in presentFrame as
     // half of the single {compositeCbuf, cbuf} submission.
+    const int aaMode = mc2::options::current().spatialAA;
+    const bool aaReady = s.spatialAA.prepare(*s.ctx, s.sharedImg, aaMode);
     ZoneNamedN(zCompRec, "VKIsl.Present.CompositeRecord", true);   // VK-ISLAND-TRACY-1 (to fn return)
     VkCommandBuffer cc = s.curCompositeCbuf();
     s.compositePending = false;
@@ -2091,10 +2095,10 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
         exposure,
         1.0f / static_cast<float>(s.imgW),
         1.0f / static_cast<float>(s.imgH),
-        fxaaEnabled ? 1.0f : 0.0f,
-        fxaaSubpix,
-        fxaaEdgeThreshold,
-        fxaaEdgeThresholdMin,
+        0.0f, // AA runs on the final output color below, after tone/output.
+        0.0f,
+        0.0f,
+        0.0f,
         casEnabled ? 1.0f : 0.0f,
         static_cast<float>(viewMode),
         lowLightGain,
@@ -2110,6 +2114,8 @@ bool EnginePresentVk::renderNativeCompositeVisual(float exposure,
     vkCmdDraw(cc, 3, 1, 0, 0);
     vkCmdEndRenderPass(cc);
     gpuScope.end();
+
+    if (aaReady) s.spatialAA.record(cc, s.sharedImg);
 
     barrier(cc, scene->image.get(),
             VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
@@ -2535,6 +2541,7 @@ bool EnginePresentVk::presentFrameBody(uint32_t drawableW, uint32_t drawableH,
         return false;
     }
 
+    s.spatialAA.submitted();
     VkPresentInfoKHR pi{VK_STRUCTURE_TYPE_PRESENT_INFO_KHR};
     pi.waitSemaphoreCount = 1;
     pi.pWaitSemaphores    = &imgRenderSem;

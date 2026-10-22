@@ -277,7 +277,7 @@ if(MC2_VULKAN)
         # present window + surface + swapchain + the exportable interop image. Uses
         # the interop primitives above, so it is gated on MC2_VULKAN_ISLAND (the TU
         # #if requires BOTH MC2_VULKAN and MC2_VULKAN_ISLAND). No new link libs.
-        list(APPEND SOURCES engine_present_vk.cpp)
+        list(APPEND SOURCES engine_present_vk.cpp vulkan_spatial_aa.cpp)
     endif()
 endif()
 
@@ -391,6 +391,7 @@ if(MC2_VULKAN)
     # vulkan_vfx_island.cpp via load_spv(spv_dir()+"vfx_particle.*.spv").
     set(MC2_VK_SHADER_BASENAMES edge_fog fog_oob hzb_reduce hzb_cull shadow_debug_overlay water_geom shadow_prop shadow_prop_alpha shadow_mech shadow_terrain_static color_prop_tier1 terrain_tier1 terrain_tier1_skirt mech_tier1 legacy_shape_tier1 terrain_overlay_tier1 terrain_decal_tier1 hdri_sky cloud_shadow shoreline screen_shadow_csm postprocess postprocess_visual hud_color hud_tex vfx_particle)
     set(MC2_VK_SPV_OUTPUTS "")
+    list(APPEND MC2_VK_SHADER_BASENAMES aa_smaa_edges aa_smaa_weights aa_smaa_blend aa_fxaa)
     list(APPEND MC2_VK_SHADER_BASENAMES shadow_bake_pcss shadow_bake_terrain_march shadow_bake_resolve shadow_bake_bc4)
     # Output stages that bake from another basename's source: the skirt pipeline needs its
     # own .frag.spv name but runs the main-patch fragment program, so one source feeds both.
@@ -401,6 +402,7 @@ if(MC2_VULKAN)
     # DEPENDS so editing an include re-bakes the SPIR-V (the bake step has no depfile).
     file(GLOB MC2_VK_SHADER_INCLUDES CONFIGURE_DEPENDS
         "${MC2_VK_SHADER_SRC_DIR}/include/*.glsl"
+        "${CMAKE_SOURCE_DIR}/3rdparty/smaa/SMAA.hlsl"
         "${CMAKE_SOURCE_DIR}/shaders/include/*.hglsl")
     if(MC2_GLSLANG_VALIDATOR OR MC2_GLSLC)
         foreach(_base ${MC2_VK_SHADER_BASENAMES})
@@ -437,6 +439,20 @@ if(MC2_VULKAN)
     else()
         message(WARNING "VULKAN-SHADER-TOOLCHAIN-1: neither glslangValidator nor glslc found (Vulkan SDK tools); skipping SPIR-V compile. Shader probe will fail-soft.")
     endif()
+    find_program(MC2_DXC NAMES dxc HINTS "$ENV{VULKAN_SDK}/Bin" "${Vulkan_INCLUDE_DIR}/../Bin")
+    if(NOT MC2_DXC)
+        message(FATAL_ERROR "Spatial CMAA2 requires Vulkan SDK dxc (HLSL to SPIR-V).")
+    endif()
+    foreach(_entry EdgesColor2x2CS ComputeDispatchArgsCS ProcessCandidatesCS DeferredColorApply2x2CS)
+        set(_spv "${MC2_VK_SPV_OUT_DIR}/aa_cmaa2_${_entry}.comp.spv")
+        add_custom_command(OUTPUT "${_spv}"
+            COMMAND "${MC2_DXC}" -spirv -fspv-target-env=vulkan1.1 -T cs_6_0 -E "${_entry}"
+                -fvk-t-shift 8 0 -DCMAA2_UAV_STORE_TYPED=1 -DCMAA2_UAV_STORE_CONVERT_TO_SRGB=1
+                -DCMAA2_UAV_STORE_TYPED_UNORM_FLOAT=1 -DCMAA2_STATIC_QUALITY_PRESET=1 -DCMAA_MSAA_SAMPLE_COUNT=1
+                "${CMAKE_SOURCE_DIR}/3rdparty/cmaa2/CMAA2.hlsl" -Fo "${_spv}"
+            DEPENDS "${CMAKE_SOURCE_DIR}/3rdparty/cmaa2/CMAA2.hlsl" VERBATIM)
+        list(APPEND MC2_VK_SPV_OUTPUTS "${_spv}")
+    endforeach()
     file(GLOB MC2_VK_SLANG_STAGES CONFIGURE_DEPENDS
         "${MC2_VK_SHADER_SRC_DIR}/*.vert.slang"
         "${MC2_VK_SHADER_SRC_DIR}/*.frag.slang"

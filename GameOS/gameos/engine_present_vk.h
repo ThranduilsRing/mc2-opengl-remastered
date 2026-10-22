@@ -200,10 +200,6 @@ public:
     // false unless the direct-present shared FBO is live. The caller supplies the
     // composite viewport; narrower FORCE-43 viewports are drawn over a VK black clear.
     bool renderNativeCompositeVisual(float exposure,
-                                     bool fxaaEnabled,
-                                     float fxaaSubpix,
-                                     float fxaaEdgeThreshold,
-                                     float fxaaEdgeThresholdMin,
                                      int viewMode,
                                      int engineIdxBase,
                                      float lowLightGain,

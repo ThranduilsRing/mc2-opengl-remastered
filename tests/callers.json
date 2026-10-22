@@ -691,7 +691,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/deploy_payload.py",
-          "line": 1628,
+          "line": 1636,
           "evidence": "command",
           "reference": "scripts/check-deploy-hygiene.py",
           "text": "r = subprocess.run([sys.executable, hygiene, target],"
@@ -5252,7 +5252,7 @@
         },
         {
           "path": "tests/smoke/test_render_options_pin.py",
-          "line": 145,
+          "line": 146,
           "evidence": "import",
           "reference": "scripts.smoke_lib.gates",
           "text": "from scripts.smoke_lib.gates import Verdict"
@@ -5458,7 +5458,7 @@
         },
         {
           "path": "tests/smoke/test_render_options_pin.py",
-          "line": 146,
+          "line": 147,
           "evidence": "import",
           "reference": "scripts.smoke_lib.logparse",
           "text": "from scripts.smoke_lib.logparse import LogSummary"
@@ -9798,7 +9798,7 @@
       "callers_by_basename": [
         {
           "path": "GameOS/gameos/CMakeLists.txt",
-          "line": 462,
+          "line": 478,
           "evidence": "cmake command",
           "reference": "${CMAKE_SOURCE_DIR}/tools/shader_offline_build/slang_compile.py",
           "text": "COMMAND \"${Python3_EXECUTABLE}\""
@@ -11811,7 +11811,7 @@
       "callers_by_basename": [
         {
           "path": "tests/smoke/test_render_options_pin.py",
-          "line": 122,
+          "line": 123,
           "evidence": "load module",
           "reference": "tools/tracy_capture_compare.py",
           "text": "spec = importlib.util.spec_from_file_location(\"tracy_capture_compare_under_test\", ROOT / \"tools\" / \"tracy_capture_compare.py\")"
@@ -12556,7 +12556,7 @@
       "callers_by_stem": [
         {
           "path": "tests/smoke/test_render_options_pin.py",
-          "line": 102,
+          "line": 103,
           "evidence": "import",
           "reference": "capture_ab",
           "text": "import capture_ab"

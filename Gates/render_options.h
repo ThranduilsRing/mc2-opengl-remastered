@@ -24,6 +24,7 @@ struct RenderOptions {
     bool  postCas          = false;   // contrast-adaptive sharpening on the final image
     float postCasSharpness = 0.5f;
     int   tonemapMode      = 0;       // 0 off, 1 AgX, 2 Hable, 3 Reinhard
+    int   spatialAA        = 1;       // 0 off, 1 SMAA 1x, 2 FXAA, 3 CMAA2; no history or jitter
 
     // Shadows and terrain lighting.
     int shadowQuality = 2; // 0 Potato, 1 Medium, 2 High
@@ -69,6 +70,7 @@ inline constexpr Option kOptions[] = {
     detail::boolOpt ("PostCAS",                       &RenderOptions::postCas),
     detail::floatOpt("PostCASSharpness",              &RenderOptions::postCasSharpness, 0.0, 1.0),
     detail::longOpt ("TonemapMode",                   &RenderOptions::tonemapMode, 0, 3),
+    detail::longOpt ("SpatialAA",                     &RenderOptions::spatialAA, 0, 3),
     detail::longOpt ("ShadowQuality", &RenderOptions::shadowQuality, 0, 2),
     detail::boolOpt ("ShorelineLegacySuppress",       &RenderOptions::shorelineLegacySuppress),
     detail::boolOpt ("CpuPhongRetire",                &RenderOptions::cpuPhongRetire),
@@ -237,6 +239,8 @@ inline void publish(const RenderOptions& o) {
 }
 inline int  earlyReads() { return g_earlyReads; }
 inline bool publishChangedValues() { return g_publishChanged; }
+// The game owns the preference draft and atomic save; shared graphics UI cannot depend on CPrefs.
+inline bool (*saveSpatialAA)(int) = nullptr;
 inline const char* firstEarlyFile() { return g_firstEarlyFile; }
 inline unsigned    firstEarlyLine() { return g_firstEarlyLine; }
 
