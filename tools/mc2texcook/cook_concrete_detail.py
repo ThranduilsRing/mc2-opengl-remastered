@@ -55,7 +55,7 @@ def _blur_wrap(a, sigma):
     return cv2.GaussianBlur(t, (0, 0), sigma)[n:2 * n, n:2 * n]
 
 
-SIGMAS = (1.0, 2.0, 4.0, 8.0, 16.0, 32.0, 64.0)
+SIGMAS = (1.0, 2.0, 4.0, 8.0, 16.0, 32.0)   # the slower octaves are dropped: they read as terraces, not material
 
 
 def equalize(chans, target):
@@ -75,10 +75,10 @@ def equalize(chans, target):
 
 
 def finish(nx, ny, rough, ao):
-    nx, ny = equalize([nx, ny], 0.045)
-    (rough,) = equalize([rough], 0.05)
-    (ao,) = equalize([ao], 0.07)
-    ao = np.clip(ao + (0.96 - ao.mean()), 0.0, 1.0)      # cavities darken, the mean stays near 1 so the colour keeps its tone
+    nx, ny = equalize([nx, ny], 0.010)
+    (rough,) = equalize([rough], 0.04)
+    (ao,) = equalize([ao], 0.035)
+    ao = np.clip(ao + (0.97 - ao.mean()), 0.0, 1.0)      # cavities darken, the mean stays near 1 so the colour keeps its tone
     return np.clip(nx, 0, 1), np.clip(ny, 0, 1), np.clip(rough, 0, 1), ao
 
 
