@@ -29,10 +29,10 @@ def main():
             r0,c0,r1,c1 = base['bounds']
             x,y = ((c0+c1)/2-size/2)*128/3,(size/2-(r0+r1)/2)*128/3
             poses.append({'name':f'base{i}_topdown','pos':[x,y,1000],
-                          'rot':0,'proj':75,'alt':1600,'covers':['generated_base'],
+                          'rot':0,'proj':75,'alt':4000,'covers':['generated_base'],
                           '_note':'Generated inspection pose from parcel bounds; no golden/parity claim.'})
         poses.append({'name':'player_lance','pos':layout['player_start_wu'],
-                      'rot':0,'proj':55,'alt':1100,'covers':['generated_player_units']})
+                      'rot':0,'proj':55,'alt':3000,'covers':['generated_player_units']})
         write_json(out/'bookmarks'/(name+'.json'),{'schema_v':1,'mission':name,'bookmarks':poses},pretty=True)
         print(report,flush=True)
 

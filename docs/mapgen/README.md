@@ -1,4 +1,8 @@
-# MC2 map layout generator: pixel-art phase 1b
+# MC2 map layout generator: pixel-art phases 1b/1c and playable phase 2
+
+**Phase 2:** [playable PAK/FIT writer, runtime results and viewed comparisons](phase2/README.md).
+The 180- and 720-cell flat demos load through the ordinary stock PacketFile path.
+Road texture baking and destruction-aware native collision templates remain pending.
 
 Offline Python 3 + numpy + Pillow tools. Source installs are read-only. No engine, game,
 deployment or mission binary writes are involved. Run commands from the repo root.

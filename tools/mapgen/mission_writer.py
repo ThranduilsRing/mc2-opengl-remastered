@@ -302,7 +302,7 @@ def emit(layout, source, out, name=None):
               'source_pak':pak_source, 'source_fit':fit_source,
               'source_pak_sha256':hashlib.sha256(template_pak).hexdigest(),
               'pak_sha256':hashlib.sha256(raw).hexdigest(), 'fit_sha256':hashlib.sha256(fit).hexdigest(),
-              'abl_sha256':hashlib.sha256(script.encode('ascii')).hexdigest(),
+              'abl_sha256':hashlib.sha256(stem.with_suffix('.abl').read_bytes()).hexdigest(),
               'validation':'all packets + FIT + extraction + parent links + spawn connectivity passed',
               'limitations':['flat grass terrain; planned roads/cement are not texture-baked',
                              'conservative model rectangles; no destruction-aware special areas',

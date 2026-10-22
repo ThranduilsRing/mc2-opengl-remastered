@@ -4,8 +4,7 @@ import unittest
 import numpy as np
 
 from tools.mapgen.generate import generate
-from tools.mapgen.mission_writer import snapped, collision_grid, place_units, mission_fit
-from tools.mapgen.data import fit_sections
+from tools.mapgen.mission_writer import snapped, collision_grid, place_units
 
 
 class MissionWriterTest(unittest.TestCase):
