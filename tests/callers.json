@@ -3569,7 +3569,7 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 359,
+          "line": 375,
           "evidence": "import",
           "reference": "deploy_payload",
           "text": "from deploy_payload import ensure_terrain_materials"
@@ -4261,7 +4261,7 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 283,
+          "line": 299,
           "evidence": "command",
           "reference": "scripts/run_smoke.py",
           "text": "proc = subprocess.run(cmd, cwd=str(ROOT), capture_output=True,"
@@ -8516,7 +8516,7 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 244,
+          "line": 260,
           "evidence": "import_module",
           "reference": "fst",
           "text": "fst_lib = importlib.import_module('fst')"

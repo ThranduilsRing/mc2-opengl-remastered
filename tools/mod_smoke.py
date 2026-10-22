@@ -238,6 +238,22 @@ def stage_mod(mod_dir: Path, target: Path, stem: str, shape: str,
     return stats
 
 
+def stage_battery_mod(source_root: Path, folder: str, target: Path,
+                      stem: str, shape: str, base_install: Path | None) -> dict:
+    # Carver5 is a campaign overlay, not a standalone mod (its Readme.txt).
+    # Its object types and ABL includes come from Omnitech before the overlay.
+    parent = None
+    if folder == 'MCO-Carver5':
+        parent = stage_mod(source_root / 'MechCommanderOmnitech', target,
+                           'a_0_1', 'loose', base_install)
+    stats = stage_mod(source_root / folder, target, stem, shape, base_install)
+    if parent:
+        stats['files'] += parent['files']
+        stats['bytes'] += parent['bytes']
+        stats['parent_mod'] = 'MechCommanderOmnitech'
+    return stats
+
+
 def extract_mission(fst: Path, stem: str, out: Path) -> None:
     import importlib
     sys.path.insert(0, str(ROOT / 'tools' / 'mc2x_import'))
@@ -354,7 +370,7 @@ def _run_battery(args, build, build64, run_root, source_root, selected, base_ins
         staged = run_root / folder
         staged.mkdir()
         copied, _ = stage_engine(build, build64, staged)
-        stats = stage_mod(mod_dir, staged, stem, shape, base_install)
+        stats = stage_battery_mod(source_root, folder, staged, stem, shape, base_install)
         # Apply the same verified renderer assets as a regular game deployment.
         from deploy_payload import ensure_terrain_materials
         ensure_terrain_materials(str(staged))
