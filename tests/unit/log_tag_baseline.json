@@ -5297,8 +5297,17 @@
    "tag": "MISSION",
    "ver": -1,
    "stream": "stdout",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "MISSION",
+   "ver": -1,
+   "stream": "stdout",
    "keys": [
     "moveSide",
+    "terrainCells",
+    "cap",
     "terrainVtx"
    ],
    "count": 1
@@ -6304,6 +6313,62 @@
     "cell",
     "dWorld",
     "raycastHit"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "PICK_RAY_PARITY",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "event",
+    "code",
+    "px"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "PICK_RAY_PARITY",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "event",
+    "n",
+    "points",
+    "both_hit",
+    "exact_cell",
+    "within_1p5_cells",
+    "far",
+    "ray_only",
+    "legacy_only",
+    "neither",
+    "max_dist_wu",
+    "ray_avg_us",
+    "legacy_avg_ms"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "PICK_RAY_PARITY",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "event",
+    "px",
+    "legacy"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "PICK_RAY_PARITY",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "event",
+    "px",
+    "ray",
+    "legacy",
+    "dist"
    ],
    "count": 1
   },

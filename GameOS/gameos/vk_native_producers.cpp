@@ -50,7 +50,7 @@ bool NativeProducers::makeDevice(OwnedBuffer& buf, VkDeviceSize size, VkBufferUs
     return true;
 }
 
-bool NativeProducers::init(const VulkanContext& ctx, uint32_t numVertices, uint32_t recipeCount, VkBuffer recipes) {
+bool NativeProducers::init(const VulkanContext& ctx, uint32_t numVertices, uint32_t recipeCount, VkBuffer recipes, uint32_t waterEligibleBound) {
     ready_ = false;
     ctx_ = &ctx;
     device_ = ctx.device();
@@ -58,7 +58,8 @@ bool NativeProducers::init(const VulkanContext& ctx, uint32_t numVertices, uint3
     numVertices_ = numVertices;
     recipeCount_ = recipeCount;
     recipes_ = recipes;
-    maxThin_ = std::min<uint32_t>(recipeCount, kMaxThin);
+    // Capacity follows the map: the cull emits only water-eligible quads, so the bound (not the recipe total) is what must fit.
+    maxThin_ = std::min<uint32_t>(recipeCount, std::clamp<uint32_t>(waterEligibleBound, kMaxThin, kMaxThinCeiling));
     if (device_ == VK_NULL_HANDLE || !allocator_ || numVertices == 0 || recipeCount == 0 || recipes == VK_NULL_HANDLE) return false;
 
     const std::string dir = vk_island_util::spvDir();
@@ -91,8 +92,12 @@ bool NativeProducers::init(const VulkanContext& ctx, uint32_t numVertices, uint3
         for (uint32_t p = 0; p < kSlots; ++p) ringBound_[p] = VK_NULL_HANDLE;
     }
     ready_ = true;
-    if (recipeCount > kMaxThin)
-        plog("WARNING: %u water recipes exceed the native thin capacity %u: the surplus quads are dropped.", recipeCount, kMaxThin);
+    // Warn only when quads the cull can really emit may not fit (a bound above the capacity), not on the raw recipe total.
+    const uint32_t needed = std::min(waterEligibleBound, recipeCount);   // 0 = bound unknown: nothing to warn about
+    if (needed > maxThin_)
+        plog("WARNING: up to %u water quads can be emitted but the native thin capacity is %u (VRAM ceiling %u): the surplus quads are dropped.", needed, maxThin_, kMaxThinCeiling);
+    plog("thin capacity %u records/slot (%.1f MB x %u slots): recipes=%u waterEligibleBound=%u", maxThin_,
+         static_cast<double>(maxThin_) * 48.0 / (1024.0 * 1024.0), kSlots, recipeCount, waterEligibleBound);
     if (const uint32_t bad = selfTestLighting(); bad != 0) {
         // A lighting mismatch against the reference transcription means this driver/compile differs from GL: do not ship it.
         plog("native lighting self-test FAILED (%u mismatches): native producers refused, the GL cull/pack feed stays in use.", bad);
