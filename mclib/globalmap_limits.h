@@ -12,6 +12,7 @@ namespace mc2::globalmap
 // move_internal.h pins them equal with a static_assert.
 inline constexpr long kMaxCellsPerSide = 3072;
 inline constexpr long kMaxAreas = 30000;
+inline bool areaCountInRange(long count) { return count >= 0 && count <= kMaxAreas; }
 // DoorInfo/DoorLink store signed 16-bit indices. The two scratch doors
 // occupy numDoors and numDoors + 1, so both must remain <= 32767.
 inline constexpr long kMaxDoors = 32766;

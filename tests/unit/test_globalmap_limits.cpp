@@ -15,6 +15,14 @@
 
 namespace gm = mc2::globalmap;
 
+TEST_CASE("area-cap refusal precedes signed area-id overflow")
+{
+	CHECK(gm::areaCountInRange(gm::kMaxAreas));
+	CHECK_FALSE(gm::areaCountInRange(gm::kMaxAreas + 1));
+	CHECK_FALSE(gm::areaCountInRange(32768));
+	CHECK_FALSE(gm::areaCountInRange(-1));
+}
+
 namespace
 {
 gm::HeaderCounts stock ()

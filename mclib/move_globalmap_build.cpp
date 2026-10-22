@@ -817,6 +817,8 @@ long GlobalMap::setTempArea (long tileR, long tileC, long cost) {
 
 bool GlobalMap::fillSpecialArea (long row, long col, long area, long specialID) {
 
+	if (!mc2::globalmap::areaCountInRange(area + 1))
+		Fatal(area, "[MOVE-refuse] Too many Global Areas");
 	std::mdspan<short, std::dextents<std::size_t, 2>> areaView(areaMap, static_cast<std::size_t>(height), static_cast<std::size_t>(width));
 	areaView[row, col] = area;
 	GameMap->setBuildNotSet(row, col, false);
@@ -866,6 +868,8 @@ bool GlobalMap::fillArea (long row, long col, long area, bool offMap) {
 	}
 
 	gosASSERT(area != -1);
+	if (!mc2::globalmap::areaCountInRange(area + 1))
+		Fatal(area, "[MOVE-refuse] Too many Global Areas");
 	areaView[row, col] = area;
 	for (long dir = 0; dir < 4; dir ++) {
 		long adjR = row + adjTile[dir][0];
@@ -925,7 +929,8 @@ void GlobalMap::calcAreas (void) {
 
 	// NOTE: We allocate one extra area--this is used by the calcPath routine
 	// as a "scratch" area in some cases...
-	gosASSERT(numAreas <= MAX_GLOBALMAP_AREAS);
+	if (!mc2::globalmap::areaCountInRange(numAreas))
+		Fatal(numAreas, "[MOVE-refuse] Too many Global Areas");
 	areas = mc2::globalmap::ownZeroed(areasStore, static_cast<size_t>(numAreas) + 1);
 	// The build path owns both pointer tables too: the packet-load path sizes them before it calls anything else.
 	if (!areas_doors)

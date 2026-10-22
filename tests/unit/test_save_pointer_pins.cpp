@@ -56,6 +56,21 @@ std::string functionBody(const std::string &source, const char *signature)
 
 } // namespace
 
+TEST_CASE("area-cap runtime refusal guards builder writes and final allocation")
+{
+	const auto source = readSource("mclib/move_globalmap_build.cpp");
+	for (const char* signature : {"bool GlobalMap::fillArea (", "bool GlobalMap::fillSpecialArea ("}) {
+		const auto body = functionBody(source, signature);
+		const auto guard = body.find("if (!mc2::globalmap::areaCountInRange(area + 1)) Fatal(");
+		REQUIRE(guard != std::string::npos);
+		CHECK(guard < body.find("areaView[row, col] = area;"));
+	}
+	const auto body = functionBody(source, "void GlobalMap::calcAreas (");
+	const auto guard = body.find("if (!mc2::globalmap::areaCountInRange(numAreas)) Fatal(");
+	REQUIRE(guard != std::string::npos);
+	CHECK(guard < body.find("ownZeroed(areasStore"));
+}
+
 TEST_CASE("source pin: Gate::CopyTo writes the blocker pointer as null")
 {
 	const std::string body = functionBody(readSource("code/gate.cpp"), "void Gate::CopyTo (GateData *data)");

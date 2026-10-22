@@ -509,7 +509,9 @@ long Mover::calcMoveGoal (GameObjectPtr target,
 		}
 	}
 
-	std::vector<char> validAreaTable(MAX_GLOBALMAP_AREAS);
+	// Reuse scratch storage; grow only when a larger map is encountered.
+	static std::vector<char> validAreaTable;
+	validAreaTable.resize(GlobalMoveMap[moveLevel]->numAreas);
 	for (long i = 0; i < GlobalMoveMap[moveLevel]->numAreas; i++)
 		validAreaTable[i] = -1;
 	long curArea = GlobalMoveMap[moveLevel]->calcArea(cellPositionRow, cellPositionCol);
