@@ -1,5 +1,6 @@
 // vk_gpu_profile.cpp -- see the header.
 #include "vk_gpu_profile.h"
+#include "battle_bench.h"
 #include "mc2_diag_verbose.h"
 
 #ifdef MC2_VULKAN_ISLAND
@@ -50,6 +51,7 @@ struct State {
     uint64_t        validMask = ~0ull;
     std::atomic<uint32_t> count[kRing]{};
     const char*     names[kRing][kMaxScopes] = {};
+    uint64_t        benchFrames[kRing] = {};
     std::atomic<uint64_t> frame{0};
     // window aggregation
     Row             rows[kMaxNames];
@@ -142,6 +144,15 @@ void readSlot(uint32_t slot, uint32_t& used) {
         if (k < nNames) { perName[k] += ms; ++callsOf[k]; }
     }
     if (!any) return;
+    if (mc2::battlebench::output) {
+        std::fprintf(mc2::battlebench::output, "{\"type\":\"gpu\",\"frame\":%llu,\"ms\":%.6f,\"recorded\":%u,\"valid\":%u,\"passes\":{",
+            static_cast<unsigned long long>(g.benchFrames[slot]),
+            static_cast<double>(maxEnd - minBegin) * g.nsPerTick / 1.0e6, recorded,
+            [&] { uint32_t n = 0; for (uint32_t k = 0; k < nNames; ++k) n += callsOf[k]; return n; }());
+        for (uint32_t k = 0; k < nNames; ++k)
+            std::fprintf(mc2::battlebench::output, "%s\"%s\":%.6f", k ? "," : "", nameOf[k], perName[k]);
+        std::fprintf(mc2::battlebench::output, "}}\n");
+    }
     for (uint32_t k = 0; k < nNames; ++k) {
         Row& row = rowFor(std::string_view(nameOf[k]));
         row.sumMs += perName[k];
@@ -179,6 +190,11 @@ void init(VulkanContext& ctx) {
     const bool tsOk = props.limits.timestampPeriod > 0.0f && fam < qfc && qfs[fam].timestampValidBits != 0;
 
     if (mc2vkts::timestampsEnabled() && tsOk) {
+        VkPhysicalDeviceDriverProperties driver{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRIVER_PROPERTIES};
+        VkPhysicalDeviceProperties2 identity{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2, &driver};
+        vkGetPhysicalDeviceProperties2(ctx.physicalDevice(), &identity);
+        std::fprintf(stderr, "[BENCH_DEVICE v1] device=\"%s\" vendor=%u device_id=%u driver_name=\"%s\" driver_info=\"%s\" driver_version=%u api_version=%u\n",
+            props.deviceName, props.vendorID, props.deviceID, driver.driverName, driver.driverInfo, props.driverVersion, props.apiVersion);
         g.nsPerTick = props.limits.timestampPeriod;
         const uint32_t bits = qfs[fam].timestampValidBits;
         g.validMask = (bits >= 64) ? ~0ull : ((1ull << bits) - 1ull);
@@ -287,6 +303,7 @@ Scope::Scope(VkCommandBuffer cb, std::string_view nameSv, [[maybe_unused]] std::
         const uint64_t f = g.frame.load(std::memory_order_relaxed);
         const uint32_t slot = static_cast<uint32_t>(f % kRing);
         const uint32_t idx = g.count[slot].fetch_add(1, std::memory_order_relaxed);
+        if (idx == 0) g.benchFrames[slot] = mc2::battlebench::frame;
         if (idx < kMaxScopes) {
             g.names[slot][idx] = name;
             tsSlot_ = slot;

@@ -593,6 +593,7 @@ extern "C" int mc2_vk_vfx_island_run(
         const VfxGroupPush push{ {d.u0, d.v0}, {d.us, d.vs}, d.atlasColumns, d.additive == VFX_ADD_ONE_ONE ? 1u : 0u };
         vkCmdPushConstants(cb, s->playout.get(), VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(push), &push);
         if (d.atlasColumns == kVfxVegetationAtlas) {
+            MC2_VK_GPU_SCOPE(vegetationScope, cb, "VKIsl.Vegetation");
             vkCmdDraw(cb, 8u, d.count, 0u, d.start);
             vkCmdDraw(cb, 8u, d.count, 8u, d.start);
             groupsDrawn+=2;

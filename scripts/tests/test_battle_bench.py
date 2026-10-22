@@ -1,0 +1,67 @@
+"""Frame tails, catch-up bursts and failed workloads must survive the report boundary."""
+import json
+from pathlib import Path
+import sys
+
+import pytest
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import run_battle_bench as bench
+
+
+@pytest.fixture
+def evidence(tmp_path):
+    rows = [{"type": "world", "frame": 1, "sim_s": 0, "movers": 50, "units_alive": 50, "mechs": 48, "destroyed": 7},
+            {"type": "world", "frame": 10, "sim_s": 3, "movers": 50, "units_alive": 49, "mechs": 48, "destroyed": 8},
+            {"type": "orders", "sim_s": 1, "attacks": 48}]
+    for frame in range(10, 110):
+        ms = 100 if frame == 109 else 1
+        rows += [{"type": "gpu", "frame": frame, "ms": ms, "recorded": 1, "valid": 1, "passes": {"VKIsl.Terrain": ms}},
+                 {"type": "cpu", "frame": frame, "ms": ms, "ticks": 3 if frame == 109 else 1, "tick_total_ms": ms},
+                 {"type": "tick", "frame": frame, "ms": ms}]
+    (tmp_path / "commands.txt.ack").write_text("spawn clone 0 0 -> ok (spawned id=1 hp=1.000)\n", encoding="utf-8")
+    return tmp_path, rows
+
+
+def summarize(evidence):
+    path, rows = evidence
+    (path / "frames.jsonl").write_text("\n".join(json.dumps(r) for r in rows), encoding="utf-8")
+    return bench.summarize(path, "[TIMING v1] event=mission_ready elapsed_ms=123.4", {"spawn": {"count": 1}})
+
+
+def test_frame_tails_spikes_and_bursts_are_not_window_means(evidence):
+    report = summarize(evidence)
+    assert report["gpu_frame"]["p99_ms"] == 1
+    assert report["gpu_frame"]["max_ms"] == 100
+    assert report["gpu_frame"]["n"] == 100
+    assert report["gpu_passes"]["terrain"]["timing"] == report["gpu_frame"]
+    assert report["gpu_passes"]["water"]["timing"] is None
+    assert len(report["tick_spikes_over_1ms"]) == 1
+    assert report["catch_up_bursts"][0]["ticks"] == 3
+    assert report["world"]["new_destructions"] == 1  # initial wrecks do not count
+    assert report["load_ms"] == 123.4
+
+
+def test_incomplete_timestamp_frame_refused(evidence):
+    evidence[1][-3]["valid"] = 0
+    with pytest.raises(ValueError, match="incomplete"):
+        summarize(evidence)
+
+
+def test_idle_workload_refused(evidence):
+    evidence[1][1]["destroyed"] = 7
+    with pytest.raises(ValueError, match="battle did not"):
+        summarize(evidence)
+
+
+def test_inert_clone_refused(evidence):
+    (evidence[0] / "commands.txt.ack").write_text("spawn clone 0 0 -> ok (hp=0 WARNING:bad hp)\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="health"):
+        summarize(evidence)
+
+
+def test_diff_refuses_content_changes():
+    before = {"scenario_sha256": "x", "content": {"sha256": "a"}}
+    after = {"scenario_sha256": "x", "content": {"sha256": "b"}}
+    with pytest.raises(ValueError, match="not comparable"):
+        bench.diff(before, after)

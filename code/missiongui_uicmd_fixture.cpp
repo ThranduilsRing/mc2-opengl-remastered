@@ -6,6 +6,7 @@
 #include "Gates/gate.h"
 #include "mc2fmt.h"
 #include "../RenderCore/TextureService.h"
+#include "../GameOS/gameos/battle_bench.h"
 
 //--------------------------------------------------------------------------
 // FREEZE-MOVERS-1 (GAMEPLAY-DRIVER-3): deterministic mover freeze.
@@ -124,6 +125,29 @@ bool MissionInterfaceManager::uiCmdFixture(UiCmdCtx& c)
 	const char*& result = c.result;
 	std::string& note = c.note;
 	std::string& extra = c.extra;
+	if (line.rfind("bench_output ", 0) == 0) {
+		result = mc2::gate::get<"MC2_TEST_SPAWN">() && mc2::battlebench::arm(line.c_str() + 13) ? "ok" : "blocked";
+		return true;
+	}
+	if (line == "bench_attack") {
+		if (mc2::gate::get<"MC2_TEST_SPAWN">()) { mc2::battlebench::attack = true; result = "ok"; }
+		else result = "blocked";
+		return true;
+	}
+	if (line.rfind("bench_view ", 0) == 0) {
+		float x = 0, y = 0, yaw = 0, altitude = 0, pitch = 0;
+		if (!mc2::gate::get<"MC2_TEST_SPAWN">() || !eye ||
+			sscanf(line.c_str() + 11, "%f %f %f %f %f", &x, &y, &yaw, &altitude, &pitch) != 5) result = "blocked";
+		else {
+			glm::vec3 pos(x, y, 0); if (land) pos.z = land->getTerrainElevation(pos);
+			eye->setPosition(pos, false); eye->setRotation(glm::vec3(pitch, yaw, altitude));
+			eye->freezeScriptedCameraForCapture(); result = "ok";
+			if (mc2::battlebench::output) std::fprintf(mc2::battlebench::output,
+				"{\"type\":\"view\",\"frame\":%llu,\"sim_s\":%.6f,\"pos\":[%.3f,%.3f],\"yaw\":%.3f,\"alt\":%.3f,\"pitch\":%.3f}\n",
+				static_cast<unsigned long long>(mc2::battlebench::frame), double(scenarioTime), x, y, yaw, altitude, pitch);
+		}
+		return true;
+	}
 
     if (line.rfind("texture_retire ",0)==0) {
         unsigned long long id=0;
