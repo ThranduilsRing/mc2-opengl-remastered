@@ -144,11 +144,16 @@ def validate(out, srcdata, stock_glb_dir):
                 errs.append(f"{key}: texture {uri} not in bundle data/tgl/128")
         ref = stock_glb_dir / f"stock_{name}.glb"
         if ref.is_file():
+            # stock-converter GLB is ASE-ish (x thick, y run, z height); the engine frame is
+            # glb=(-x,-height,run). Compare SIZES + base height, not the run offset.
             r = glb_stats(ref)
-            for i, ax in enumerate("xyz"):
-                for side in ("min", "max"):
-                    if abs(st[side][i] - r[side][i]) > BOUNDS_TOL:
-                        errs.append(f"{key}: {side}.{ax} {st[side][i]:.2f} vs stock {r[side][i]:.2f}")
+            rs = [r["max"][i] - r["min"][i] for i in range(3)]       # thick, run, height
+            ns = [st["max"][i] - st["min"][i] for i in range(3)]     # new glb: thick, height, run
+            for label, a, b in (("run", ns[2], rs[1]), ("height", ns[1], rs[2])):
+                if abs(a - b) > BOUNDS_TOL:
+                    errs.append(f"{key}: {label} extent {a:.2f} vs stock {b:.2f}")
+            if abs(-st["max"][1] - r["min"][2]) > BOUNDS_TOL:
+                errs.append(f"{key}: base height {-st['max'][1]:.2f} vs stock {r['min'][2]:.2f}")
         print(f"[validate] {key}: {st['tris']} tris, bounds {st['min']} .. {st['max']}, textures {st['images']}")
     return errs
 

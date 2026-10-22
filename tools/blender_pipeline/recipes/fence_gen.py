@@ -5,11 +5,14 @@ Replaces the stock 4-triangle wirefence quad pair with a real fence (posts,
 top rail, tension wire, double-sided chain-link sheet) built in the STOCK
 vertex frame, plus a tileable alpha diamond-lattice TGA.
 
-Frame (GLB frame as written by tools/ase_to_glb.py for the stock asset; the
-engine importer maps glb (x,y,z) -> engine (-x,-y,z), i.e. back to the ASE
-frame, so stock-derived GLBs need NO extra flip):
-  x = thickness, y = run (Y0..Y1), z = height (0..H). Built here with
-  export_yup=False so Blender coords == glTF coords.
+Frame: the stock ASE loader puts ASE z (height) on engine Y (up) and ASE y
+(run) on engine Z; the assimp importer maps glb (x,y,z) -> engine (-x,-y,z).
+Geometry is designed here as x=thickness, y=run (-L..0), z=height and emitted
+as glb = (-x, -z, RUN_SIGN*y) (base at max Y, same as the 180-degree X flip rule).
+Exported with export_yup=False so Blender coords == glTF coords. Pre-fix builds
+that emitted the ASE-ish frame rendered the fence standing on end (43 tall).
+Placement pitch in mc2_01 is 42.667 (straight) and 42.667*sqrt2=60.340 (diag): posts sit on the
+pitch boundaries (nominal run y 0..-L) so neighbours share a post instead of overlapping 0.67.
 Stock numbers (wirefence): y -42.9175..0.4255, z 0..15.9699, x -0.1576..0.2036.
 Stock numbers (wirefencediag): y -60.6417..0.3017, z -0.0243..15.9757.
 
@@ -33,11 +36,12 @@ from _recipe_util import arg, emit_stats, script_args  # noqa: E402
 
 VARIANTS = {
     # y0, y1, z0, z1, x_center, sheet half-gap, mid posts
-    "wirefence":     dict(y0=-42.9175, y1=0.4255, z0=0.0,     z1=15.9699, cx=0.0230, gap=0.12, mids=1),
-    "wirefencediag": dict(y0=-60.6417, y1=0.3017, z0=-0.0243, z1=15.9757, cx=0.0828, gap=0.05, mids=2),
+    "wirefence":     dict(y0=-42.667, y1=0.0, z0=0.0,     z1=15.9699, cx=0.0230, gap=0.12, mids=1),
+    "wirefencediag": dict(y0=-60.340, y1=0.0, z0=-0.0243, z1=15.9757, cx=0.0828, gap=0.05, mids=2),
 }
 TILE_U = 5.418   # world units per lattice tile along the run
 TILE_V = 5.32    # world units per lattice tile in height
+RUN_SIGN = 1     # glb z = RUN_SIGN * run; verified in-game against stock placement
 
 
 def hex_prism(cx, cy, r, z0, z1, n=6):
@@ -223,12 +227,18 @@ def main():
     bpy.ops.wm.read_factory_settings(use_empty=True)
     me = bpy.data.meshes.new(variant)
     verts, faces, uvs, mats = [], [], [], []
+    det_flip = RUN_SIGN > 0   # mapping (-x,-z,s*y) has det -s: reflection when s=+1
     for polys, uvf, mi in ((sheet, sheet_uv, 0), (metal, metal_uv, 1)):
         for p in polys:
             base = len(verts)
-            verts += p
+            pts = [(-q[0], -q[2], RUN_SIGN * q[1]) for q in p]
+            uv = [uvf(q) for q in p]
+            if det_flip:
+                pts = pts[::-1]
+                uv = uv[::-1]
+            verts += pts
             faces.append(tuple(range(base, base + len(p))))
-            uvs += [uvf(q) for q in p]
+            uvs += uv
             mats.append(mi)
     me.from_pydata(verts, [], faces)
     for name in ("fence_lattice", "fence_metal"):
