@@ -19,40 +19,7 @@ layout(location = 2) flat in uint v_flags;   // bit 0 = head sprite, bit 1 = pur
 layout(location = 0) out vec4 o_color;   // shared scene color0
 layout(location = 1) out vec4 o_normal;  // shared scene normal (writemask 0 -> inert)
 
-layout(location = 3) in vec4 v_vegData;
-layout(location = 4) in vec2 v_vegAux;
 void main() {
-    if ((v_flags & 16u) != 0u) {
-    // Whole-clump projected-size/distance LOD is resolved before upload.
-    vec4 col = texture(uAtlas, v_uv);
-
-    // Alpha test: top/cap cards use softer threshold (0.25) for wispy edges.
-    float alphaThresh = mix(0.50, 0.25, v_vegData.z);
-    if (col.a < alphaThresh) discard;
-
-    // Desaturate to reduce uniform vivid-green look.
-    float lum = dot(col.rgb, vec3(0.299, 0.587, 0.114));
-    col.rgb = mix(col.rgb, vec3(lum), 0.30);
-
-    // Per-instance warmth variation: some cards yellower, some cooler.
-    col.r += (v_vegData.x - 0.5) * 0.07;
-    col.b -= v_vegData.x * 0.05;
-
-    // Lighting. Top/cap cards are slightly darker: horizontal face = less direct sun.
-    float NdotL = v_vegData.w;
-    float topDim = mix(1.0, 0.80, v_vegData.z);
-    col.rgb *= (0.60 + 0.38 * NdotL) * topDim;
-
-    // Root lift.
-    col.rgb += vec3(v_vegData.y * 0.08);
-
-    col.rgb = min(vec3(1.0), col.rgb);
-
-    o_color = vec4(col.rgb, 1.0);
-    // Sets GBuffer1.a > 0.5 so post-screen-shadow pass skips vegetation.
-    o_normal = vec4(0.5,0.5,1.0,1.0);
-        return;
-    }
     // The billboard sampler repeats; mesh/ribbon UVs retain their CLAMP_TO_EDGE policy.
     vec2 uv = v_uv;
     if ((v_flags & 12u) != 0u) {

@@ -24,6 +24,7 @@ DeviceCaps gather(VkPhysicalDevice pd, uint32_t instanceApi) {
     VkPhysicalDeviceFeatures core10{};
     vkGetPhysicalDeviceFeatures(pd, &core10);
     c.independentBlend = core10.independentBlend == VK_TRUE;
+    c.samplerAnisotropy = core10.samplerAnisotropy == VK_TRUE;
 
     if (c.usableApi() >= makeApi(1, 1)) {             // physical-device properties2 is core from 1.1
         VkPhysicalDeviceIDProperties id{};

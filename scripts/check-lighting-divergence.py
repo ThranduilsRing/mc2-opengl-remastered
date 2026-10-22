@@ -255,7 +255,7 @@ BASELINE = {'ambient_floor_scalar': [('shaders/vulkan/mech_tier1.vert', 'kAmbien
                        ('shaders/vulkan/color_prop_tier1.vert', 'kAmbientSky', '0.00,0.02,0.08'),
                        ('shaders/vulkan/terrain_tier1.frag', 'ambGnd', '0.34,0.30,0.24'),
                        ('shaders/vulkan/terrain_tier1.frag', 'ambSky', '0.55,0.62,0.75')],
- 'inline_light_floor': [('shaders/vulkan/vfx_particle.frag', 'add:NdotL', '0.60+0.38'),
+ 'inline_light_floor': [('shaders/vulkan/vfx_vegetation.frag', 'add:NdotL', '0.60+0.38'),
                         ('shaders/include/shadow.hglsl', 'mix:shadow', '0.4->1.0'),
                         ('shaders/include/shadow.hglsl', 'mix:shadow', '0.4->1.0'),
                         ('shaders/vulkan/include/lighting_shadow_vk.glsl', 'mix:shadow', '0.4->1.0'),

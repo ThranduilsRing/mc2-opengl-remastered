@@ -7,6 +7,10 @@
 #include "vulkan_context.h"
 #endif
 #include "texture_decode.h"
+#include "vegetation_cutout.h"
+#include "../../RenderCore/KtxLoader.h"
+#include <optional>
+#include <string>
 #include "gos_postprocess.h"
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"
@@ -30,6 +34,7 @@ uint32_t peak = 0;
 int frameDraws = 0, sessionDraws = 0;
 const char* reason = "no_call";
 const char* atlasOverride = nullptr;
+bool trimCards = false;
 
 // The old private vegetation_atlas_v2.png was never part of the payload. Build
 // its eight shader slots from the tracked cards so a clean install is complete.
@@ -60,34 +65,89 @@ std::optional<mc2tex::DecodedTexture> builtinAtlas() {
     }
     return atlas;
 }
+std::optional<mc2tex::TextureArrayCpu> builtinCards() {
+    constexpr std::array<const char*, 8> names{"grass_01", "grass_02", "grass_03", "grass_04",
+        "fern_01", "fern_02", "fern_03", "fern_04"};
+    mc2tex::TextureArrayCpu array;
+    array.width = array.height = 512; array.layers = 8;
+    array.vkFormat = mc2tex::kVkFormatBc7Unorm;
+    array.levels.resize(10);
+    for (const auto* name : names) {
+        RenderCore::KtxImage tile;
+        const auto path = std::string("data/vegetation/cooked/") + name + ".ktx2";
+        if (!RenderCore::ktxLoadRgba8(path.c_str(), tile) || tile.width != 512 || tile.height != 512 ||
+            tile.mipCount != 10 || tile.vkFormat != array.vkFormat) return std::nullopt;
+        for (int level = 0; level < tile.mipCount; ++level) {
+            const auto begin = tile.mipByteOffsets[level];
+            const auto end = level + 1 < tile.mipCount ? tile.mipByteOffsets[level + 1] : tile.pixels.size();
+            auto& dest = array.levels[level];
+            dest.insert(dest.end(), tile.pixels.begin() + begin, tile.pixels.begin() + end);
+        }
+    }
+    return array;
+}
+
+// Legacy/mod atlas overrides keep their eight slots, with isolated layers and
+// coverage-preserving mips. Their geometry stays untrimmed because its alpha
+// hull is not the stock cook's hull.
+mc2tex::TextureArrayCpu cardsFromAtlas(const mc2tex::DecodedTexture& decoded) {
+    mc2tex::TextureArrayCpu array;
+    if (decoded.width % 4 || decoded.height % 2) return array;
+    uint32_t w = uint32_t(decoded.width / 4), h = uint32_t(decoded.height / 2);
+    if (!w || !h) return array;
+    array.width = w; array.height = h; array.layers = 8; array.vkFormat = mc2tex::kVkFormatRgba8Unorm;
+    const size_t components = decoded.layout == mc2tex::PixelLayout::RGB8 ? 3 : 4;
+    std::array<std::vector<uint8_t>, 8> layer;
+    std::array<float, 8> coverage{};
+    for (size_t k = 0; k < layer.size(); ++k) {
+        layer[k].resize(size_t(w) * h * 4);
+        for (uint32_t y = 0; y < h; ++y) {
+            for (uint32_t x = 0; x < w; ++x) {
+                const size_t src = ((k / 4 * h + y) * decoded.width + k % 4 * w + x) * components;
+                const size_t dst = (size_t(y) * w + x) * 4;
+                std::copy_n(decoded.pixels.data() + src, 3, layer[k].data() + dst);
+                layer[k][dst + 3] = components == 4 ? decoded.pixels[src + 3] : 255;
+            }
+        }
+        coverage[k] = mc2::vegetation::cutoutCoverage(layer[k]);
+        mc2::vegetation::dilateCutoutRgb(layer[k], w, h);
+    }
+    for (;;) {
+        auto& level = array.levels.emplace_back();
+        for (const auto& tile : layer) level.insert(level.end(), tile.begin(), tile.end());
+        if (w == 1 && h == 1) break;
+        for (size_t k = 0; k < layer.size(); ++k) {
+            layer[k] = mc2tex::boxDownsampleRgba8(layer[k], w, h);
+            mc2::vegetation::preserveCutoutAlpha(layer[k], coverage[k]);
+            mc2::vegetation::dilateCutoutRgb(layer[k], std::max(1u, w / 2), std::max(1u, h / 2));
+        }
+        w = std::max(1u, w / 2); h = std::max(1u, h / 2);
+    }
+    return array;
+}
+
 }
 bool GosVegetation::isEnabled() { return mc2::gate::get<"MC2_VEGETATION_CARDS">(); }
 uint32_t GosVegetation::instanceCount() { return populationCount; }
 void GosVegetation::setAtlasPath(const char* path) { atlasOverride = path; }
 void GosVegetation::init() {
-    if (initialized) return;
+    if (initialized || !isEnabled()) return;
     const auto envPath = mc2::gate::str<"MC2_VEGETATION_ATLAS">();
-    const char* path = !envPath.empty() ? envPath.c_str() : atlasOverride ? atlasOverride : "data/textures/vegetation_atlas_v2.png";
-    const auto decoded = (!envPath.empty() || atlasOverride)
-        ? mc2tex::decodeFile(path, gos_Texture_Alpha, 0) : builtinAtlas();
-    if (decoded) {
-        GosTexels atlas;
-        atlas.status = GosTexels::Status::Ready;
-        atlas.width = decoded->width;
-        atlas.height = decoded->height;
-        atlas.vkFormat = mc2tex::kVkFormatRgba8Unorm;
-        // decodeFile may return RGB8; publish the same RGBA alpha policy as ordinary textures.
-        auto bytes = std::make_shared<std::vector<uint8_t>>();
-        if (decoded->layout == mc2tex::PixelLayout::RGB8) {
-            bytes->reserve(size_t(atlas.width)*atlas.height*4);
-            for (size_t i=0; i<decoded->pixels.size(); i+=3) {
-                bytes->insert(bytes->end(), decoded->pixels.begin()+i, decoded->pixels.begin()+i+3);
-                bytes->push_back(255);
+    const char* path = !envPath.empty() ? envPath.c_str() : atlasOverride;
+    const auto cooked = path ? std::nullopt : builtinCards();
+    if (cooked) {
+        mc2_vk_vfx_vegetation_atlas(*cooked);
+        atlasReady = trimCards = true;
+    } else {
+        const auto decoded = path ? mc2tex::decodeFile(path, gos_Texture_Alpha, 0) : builtinAtlas();
+        if (decoded) {
+            const auto array = cardsFromAtlas(*decoded);
+            if (!array.levels.empty()) {
+                mc2_vk_vfx_vegetation_atlas(array);
+                atlasReady = true;
             }
-        } else *bytes = decoded->pixels;
-        atlas.bytes = bytes;
-        mc2_vk_vfx_vegetation_atlas(atlas);
-        atlasReady = true;
+        }
+        trimCards = false;
     }
     std::atexit([] { GosVegetation::emitSummary(); });
     initialized = true;
@@ -100,7 +160,7 @@ void GosVegetation::shutdown() {
     peak = 0;
     frameDraws = sessionDraws = 0;
     reason = "no_call";
-    mc2_vk_vfx_vegetation_atlas(GosTexels{});
+    mc2_vk_vfx_vegetation_atlas(mc2tex::TextureArrayCpu{});
 #ifdef MC2_VULKAN_ISLAND
     if (mc2veg::State::exists()) mc2veg::State::instance().clear(mc2vk::getOrCreateEngineVulkanContext());
 #endif
@@ -177,6 +237,7 @@ void GosVegetation::flush(float lx, float ly, float lz, float lw, float time,
     cp.grid[0]=halfMap; cp.grid[1]=blockSide;
     cp.counts[3]=chunkSide>0 ? uint32_t(chunkSide) : 0u;
     cp.flags[0]=force ? 1u : 0u;
+    cp.flags[2]=trimCards ? 1u : 0u;
     if (mc2_vk_vfx_vegetation_run(cp,mvp,visibility,pp->getWidth(),pp->getHeight())) {
         frameDraws=1; ++sessionDraws; reason="submitted";
     } else reason="gpu_declined";

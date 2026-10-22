@@ -180,6 +180,8 @@ ISLANDS = {
         "Native Vulkan vegetation GPU cull (packet V2/V3 of the 2026-10-20 VK optimization design); no GL shader pair. Replaces the CPU per-instance walk; proof is the CPU/GPU survivor comparison, viewed A/B captures and the Tracy vegetationFlush before/after.",
     "shaders/vulkan/vegetation_compact.comp":
         "Native Vulkan vegetation GPU cull (packet V2/V3 of the 2026-10-20 VK optimization design); no GL shader pair. Replaces the CPU per-instance walk; proof is the CPU/GPU survivor comparison, viewed A/B captures and the Tracy vegetationFlush before/after.",
+    "shaders/vulkan/vfx_vegetation.frag":
+        "native Vulkan vegetation cutout, coverage mips and depth-writing geometry; runtime day/night montage parity verifies the split from generic particles.",
     "shaders/vulkan/vfx_vegetation.vert":
         "Native Vulkan vegetation GPU cull (packet V2/V3 of the 2026-10-20 VK optimization design); no GL shader pair. Replaces the CPU per-instance walk; proof is the CPU/GPU survivor comparison, viewed A/B captures and the Tracy vegetationFlush before/after.",
     "shaders/vulkan/hzb_cull.comp":

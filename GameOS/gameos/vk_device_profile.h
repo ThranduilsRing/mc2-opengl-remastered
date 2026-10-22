@@ -74,6 +74,7 @@ struct DeviceCaps {
     // A core 1.0 feature (VkPhysicalDeviceFeatures): the terrain, water, VFX and legacy-shape pipelines write two colour attachments with a different blend
     // state each (blended colour, untouched normal / object-id target), which is invalid without it.
     bool independentBlend = false;
+    bool samplerAnisotropy = false;
     // Limits.
     uint32_t maxImageDimension2D = 0;
     uint32_t maxBoundDescriptorSets = 0;
@@ -110,7 +111,7 @@ struct Evaluation {
 
 // The facility ids, in the order the log line lists them. One place, so the table, the line and the tests cannot drift.
 inline constexpr std::string_view kItemIds[] = {"api_1_2", "swapchain", "limits", "timeline_semaphore", "buffer_device_address", "descriptor_indexing",
-                                                "dynamic_rendering", "synchronization2", "independent_blend", "memory_budget"};
+                                                "dynamic_rendering", "synchronization2", "independent_blend", "memory_budget", "sampler_anisotropy"};
 
 inline constexpr std::string_view kExtDynamicRendering = "VK_KHR_dynamic_rendering";
 inline constexpr std::string_view kExtSynchronization2 = "VK_KHR_synchronization2";
@@ -186,6 +187,9 @@ inline Evaluation evaluate(const DeviceCaps& c, bool wantPresent) {
     const bool budget = c.hasExtension(kExtMemoryBudget);
     add("memory_budget", Need::Wanted, budget, Route::Ext);
     if (budget) e.deviceExtensions.emplace_back(kExtMemoryBudget);
+
+    add("sampler_anisotropy", Need::Wanted, c.samplerAnisotropy, Route::Core);
+    if (c.samplerAnisotropy) e.enabledFeatures.push_back("samplerAnisotropy");
 
     e.accepted = e.missingRequired.empty();
     if (!e.accepted) {                               // a refused device gets nothing enabled

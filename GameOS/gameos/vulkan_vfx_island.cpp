@@ -44,6 +44,7 @@
 #include "vulkan_vfx_island.h"
 #include "vulkan_vfx_geometry.h"
 #include "texture_decode.h"
+#include "../../RenderCore/KtxLoader.h"
 #include "ui_texture.h"
 #include "vk_texture_residency.h"
 #include "vk_vegetation_state.h"
@@ -78,7 +79,7 @@ struct VfxIslandHealth {
     unsigned long nativeMeshDraws = 0, nativeTubeDraws = 0, nativeVegetationDraws = 0;
 };
 VfxIslandHealth g_health;
-GosTexels vegetationAtlas;
+std::shared_ptr<const mc2tex::TextureArrayCpu> vegetationAtlas;
 
 void setFallback(const char* reason) {
     std::strncpy(g_health.fallbackReason, reason ? reason : "",
@@ -148,9 +149,11 @@ struct VfxIsland : mc2vk::IslandState {
     // submit completed.
     VkDescriptorSet  set[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE};
     VkBuffer         ringBound[2][2] = {};
-    mc2vk::OwnedShaderModule vert, frag;
+    mc2vk::OwnedShaderModule vert, frag, vegFrag;
     mc2vk::OwnedSampler samp;
     mc2vk::OwnedSampler vegetationSampler;
+    mc2vk::ResidentTextureRef vegetationTexture;
+    std::shared_ptr<const mc2tex::TextureArrayCpu> loadedVegetation;
     mc2vk::OwnedDescriptorSetLayout spriteDsl;
     mc2vk::OwnedDescriptorPool spritePool;
     std::unordered_map<uint64_t, SpritePage> pages; // keyed on full service identity, never a mutable gos name
@@ -190,9 +193,28 @@ const SpritePage* get_page(VfxIsland* s,uint32_t handle,uint32_t par) {
     auto& ctx=mc2vk::getOrCreateEngineVulkanContext();
     uint64_t id=0;
     if (handle==kVfxVegetationAtlas) {
-        if (vegetationAtlas.status!=GosTexels::Status::Ready || !vegetationAtlas.bytes) return nullptr;
-        id=ctx.textures().legacyUiId(handle,vegetationAtlas.width,vegetationAtlas.height,
-            mc2vk::texelFormat(vegetationAtlas.vkFormat),vegetationAtlas.bytes);
+        if (!vegetationAtlas) return nullptr;
+        if (s->loadedVegetation != vegetationAtlas) {
+            RenderCore::KtxImage image;
+            image.width = int(vegetationAtlas->width); image.height = int(vegetationAtlas->height);
+            image.vkFormat = vegetationAtlas->vkFormat; image.mipCount = int(vegetationAtlas->levels.size());
+            image.isCompressed = image.vkFormat == mc2tex::kVkFormatBc7Unorm;
+            image.blockSizeBytes = image.isCompressed ? 16 : 0;
+            for (const auto& level : vegetationAtlas->levels) {
+                image.mipByteOffsets.push_back(image.pixels.size());
+                image.pixels.insert(image.pixels.end(), level.begin(), level.end());
+            }
+            RenderCore::TextureKey key;
+            key.source = RenderCore::makeTextureSourceId("vegetation:P2", "cards",
+                RenderCore::textureContentHash(image.pixels.data(), image.pixels.size()));
+            key.format = image.vkFormat; key.hints = gosHint_MipmapFilter0;
+            const uint32_t width = vegetationAtlas->width, height = vegetationAtlas->height;
+            s->vegetationTexture = ctx.textures().acquire(key, image, {width, height, width, height}, 8, true);
+            if (!s->vegetationTexture) return nullptr;
+            s->loadedVegetation = vegetationAtlas;
+            vlog("vegetation_cards layers=8 mips=%d depth_write=1 cutoff=0.5", image.mipCount);
+        }
+        id = RenderCore::uiTextureId(s->vegetationTexture.get());
     } else if (handle==0) {
         static const auto white=std::make_shared<const std::vector<uint8_t>>(4,255u);
         id=ctx.textures().legacyUiId(0,1,1,VK_FORMAT_R8G8B8A8_UNORM,white);
@@ -249,7 +271,7 @@ mc2vk::OwnedPipeline make_pipeline(VfxIsland* s, int w, int h, bool additive, bo
     VkPipelineDepthStencilStateCreateInfo ds{};
     ds.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
     ds.depthTestEnable = VK_TRUE;
-    ds.depthWriteEnable = VK_FALSE;
+    ds.depthWriteEnable = vegetation ? VK_TRUE : VK_FALSE;
     ds.depthCompareOp = vegetation ? VK_COMPARE_OP_GREATER : VK_COMPARE_OP_GREATER_OR_EQUAL;
     // color0: straight-alpha (FS emits straight rgb,a; src-alpha factor premults in HW).
     //   alpha    = SRC_ALPHA / ONE_MINUS_SRC_ALPHA  (GL alpha groups)
@@ -278,7 +300,7 @@ mc2vk::OwnedPipeline make_pipeline(VfxIsland* s, int w, int h, bool additive, bo
     stages[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
     stages[0].stage = VK_SHADER_STAGE_VERTEX_BIT; stages[0].module = vegetation ? s->vegVert.get() : s->vert.get(); stages[0].pName = "main";
     stages[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    stages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT; stages[1].module = s->frag.get(); stages[1].pName = "main";
+    stages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT; stages[1].module = vegetation ? s->vegFrag.get() : s->frag.get(); stages[1].pName = "main";
     VkGraphicsPipelineCreateInfo gp{};
     gp.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
     gp.stageCount = 2; gp.pStages = stages;
@@ -362,12 +384,13 @@ bool init_island(VfxIsland* s, int w, int h) {
         deps[0].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
         deps[0].dstStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
         deps[0].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT |
-                                VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
+                                VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
         deps[1].srcSubpass = 0; deps[1].dstSubpass = VK_SUBPASS_EXTERNAL;
-        deps[1].srcStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-        deps[1].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-        deps[1].dstStageMask  = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
-        deps[1].dstAccessMask = 0;
+        deps[1].srcStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+        deps[1].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+        deps[1].dstStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+        deps[1].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT |
+                                VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
         VkRenderPassCreateInfo rpci{};
         rpci.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
         rpci.attachmentCount = 3; rpci.pAttachments = att;
@@ -411,7 +434,8 @@ bool init_island(VfxIsland* s, int w, int h) {
     {
         s->vert = mc2vk::OwnedShaderModule(s->device, load_spv(s->device, spv_dir() + "vfx_particle.vert.spv"));
         s->frag = mc2vk::OwnedShaderModule(s->device, load_spv(s->device, spv_dir() + "vfx_particle.frag.spv"));
-        if (!s->vert || !s->frag) { setFallback("spv_load_failed"); return false; }
+        s->vegFrag = mc2vk::OwnedShaderModule(s->device, load_spv(s->device, spv_dir() + "vfx_vegetation.frag.spv"));
+        if (!s->vert || !s->frag || !s->vegFrag) { setFallback("spv_load_failed"); return false; }
         // Sprite pages: set 1 = one combined sampler (LINEAR, no mips -- the FS samples level 0 like the GL path).
         VkSamplerCreateInfo sci{};
         sci.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
@@ -420,7 +444,13 @@ bool init_island(VfxIsland* s, int w, int h) {
         sci.addressModeU = sci.addressModeV = sci.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
         if (!mc2vk::create(s->samp, s->device, [&](VkSampler* o) { return vkCreateSampler(s->device, &sci, nullptr, o); })) { vlog("vkCreateSampler failed."); return false; }
         sci.magFilter = sci.minFilter = VK_FILTER_LINEAR;
-        sci.addressModeU = sci.addressModeV = sci.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+        sci.addressModeU = sci.addressModeV = sci.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        sci.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+        sci.maxLod = VK_LOD_CLAMP_NONE;
+        VkPhysicalDeviceProperties vegetationProps{};
+        vkGetPhysicalDeviceProperties(s->phys, &vegetationProps);
+        sci.anisotropyEnable = mc2vk::profile::featureEnabled(ctx.profile(), "samplerAnisotropy") ? VK_TRUE : VK_FALSE;
+        sci.maxAnisotropy = std::min(8.0f, vegetationProps.limits.maxSamplerAnisotropy);
         if (!mc2vk::create(s->vegetationSampler, s->device, [&](VkSampler* o) { return vkCreateSampler(s->device, &sci, nullptr, o); })) return false;
 
         VkDescriptorSetLayoutBinding sb{};
@@ -690,9 +720,9 @@ bool mc2_vk_vfx_vegetation_run(const mc2veg::CullParams& params, const float* wo
         vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->vegetationPipe.get());
         vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->vegLayout.get(), 0, 1, &s->set[par], 2, dynOffsets);
         vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->vegLayout.get(), 1, 1, &page->set[par], 0, nullptr);
-        const uint32_t drawDyn = veg->paramsDynamicOffset(par);
+        const uint32_t drawDyn[2] = {veg->paramsDynamicOffset(par), veg->visibilityDynamicOffset(par)};
         const VkDescriptorSet drawSet = veg->drawSet(par);
-        vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->vegLayout.get(), 2, 1, &drawSet, 1, &drawDyn);
+        vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->vegLayout.get(), 2, 1, &drawSet, 2, drawDyn);
         veg->drawIndirect(cb, par);
         vkCmdEndRenderPass(cb);
         gpuScope.end();
@@ -715,7 +745,9 @@ bool mc2_vk_vfx_vegetation_run(const mc2veg::CullParams& params, const float* wo
     return true;
 }
 
-void mc2_vk_vfx_vegetation_atlas(const GosTexels& atlas) { vegetationAtlas = atlas; }
+void mc2_vk_vfx_vegetation_atlas(const mc2tex::TextureArrayCpu& atlas) {
+    vegetationAtlas = atlas.levels.empty() ? nullptr : std::make_shared<mc2tex::TextureArrayCpu>(atlas);
+}
 
 extern "C" void mc2_vk_vfx_island_destroy() {
     vlog("native_mesh_draws=%lu native_tube_draws=%lu native_vegetation_draws=%lu",
