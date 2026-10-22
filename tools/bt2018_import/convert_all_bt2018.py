@@ -78,23 +78,34 @@ def derive_tga_name(png_name):
     return stem.lower() + ".tga"
 
 
+def raw_glb_path(out_dir, btname):
+    """FBX2glTF output cache. Retargeting reads this and writes <out>/<btname>.glb, so a
+    repeat cook starts from the same bytes and produces the same hash."""
+    return os.path.join(out_dir, "_raw", f"{btname}.glb")
+
+
 def convert_one(fbx, btname, args):
     out_dir = args.out
     glb = os.path.join(out_dir, f"{btname}.glb")
     asset_dir = os.path.join(out_dir, btname)
     os.makedirs(asset_dir, exist_ok=True)
+    raw = raw_glb_path(out_dir, btname)
 
-    # 1. FBX2glTF (skip if present unless --force)
-    if args.force or not os.path.isfile(glb):
-        r = subprocess.run([args.fbx2gltf, "-i", fbx, "-o", os.path.join(out_dir, btname), "-b"],
+    # 1. FBX2glTF into the raw cache (skip if present unless --force). Nothing writes the
+    #    raw GLB after FBX2glTF.
+    if args.force or not os.path.isfile(raw):
+        os.makedirs(os.path.dirname(raw), exist_ok=True)
+        r = subprocess.run([args.fbx2gltf, "-i", fbx, "-o", os.path.splitext(raw)[0], "-b"],
                            stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, **console_child.child_kwargs(redirected=True))
-        if not os.path.isfile(glb):
+        if not os.path.isfile(raw):
             print(f"[FAIL] {btname}: FBX2glTF produced no glb\n{r.stdout[-400:]}")
             return None
 
-    # 2. retarget clips in place (atlas reference). Atlas itself = identity no-op.
+    # 2. retarget clips raw -> final (atlas reference). Always from the raw bind, never from a
+    #    previous output: retargeting an already-retargeted GLB in place stacked the bind
+    #    correction on every repeat run. Atlas itself = identity no-op.
     try:
-        retarget_file(glb, args.atlas_ref, glb)
+        retarget_file(raw, args.atlas_ref, glb)
     except Exception as e:
         print(f"[FAIL] {btname}: retarget error: {e}")
         return None
