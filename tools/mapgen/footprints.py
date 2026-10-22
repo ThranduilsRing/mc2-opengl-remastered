@@ -41,7 +41,7 @@ def hull(points):
 def tgl_points(raw):
     """32-bit disk structs from tgl_types.cpp, bounds rules from msl_load.cpp.
 
-    TGL is X,Y-up,Z-depth. The engine maps local X,Z to world X,Y.
+    TGL is X,Y-up,Z-depth. renderToMc2 maps local -X,Z to world X,Y.
     Relative node centres, already stored in the file, match LoadBinaryCopy.
     """
     offset = 0
@@ -78,7 +78,7 @@ def tgl_points(raw):
         take(25)
         if len(verts) and not name.startswith((b"_pab", b"los_", b"spotlight")):
             verts += np.asarray(centres[3:])
-            result.extend(verts[:, [0, 2, 1]].tolist())
+            result.extend((verts[:, [0, 2, 1]]*[-1,1,1]).tolist())
     if offset != len(raw) or not result or not np.isfinite(result).all():
         raise ValueError("empty, nonfinite or unsupported TGL layout")
     return np.asarray(result)
@@ -94,7 +94,7 @@ def ase_points(raw):
             continue
         for match in re.finditer(r"\*MESH_VERTEX\s+\d+\s+([-\d.eE+]+)\s+([-\d.eE+]+)\s+([-\d.eE+]+)", block):
             x, y, z = map(float, match.groups())
-            result.append([-x, y, z])
+            result.append([x, y, z])
     if not result or not np.isfinite(result).all():
         raise ValueError("empty/nonfinite ASE")
     return np.asarray(result)

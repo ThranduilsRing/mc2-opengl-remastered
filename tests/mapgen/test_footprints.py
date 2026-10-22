@@ -21,7 +21,7 @@ class FootprintTests(unittest.TestCase):
         raw += node("building", [(-10, 0, -20), (30, 50, 40)], (5, 10, 15))
         raw += node("LOS_helper", [(-900, -900, -900), (900, 900, 900)])
         result = measure(tgl_points(raw))
-        self.assertEqual(result["bounds_wu"], [[-5, -5, 10], [35, 55, 60]])
+        self.assertEqual(result["bounds_wu"], [[-35, -5, 10], [5, 55, 60]])
         self.assertEqual([result[k] for k in ("width_wu", "depth_wu", "height_wu")], [40, 60, 50])
         for invalid in (raw[:-1], bytes(12), raw+b"trailing"):
             with self.assertRaises(ValueError):
@@ -33,7 +33,7 @@ class FootprintTests(unittest.TestCase):
         *MESH_VERTEX 1 40 -50 60
         } *GEOMOBJECT { *NODE_NAME "SpotLight_1"
         *MESH_VERTEX 0 999 999 999 }'''
-        np.testing.assert_array_equal(ase_points(raw), [[10,20,30],[-40,-50,60]])
+        np.testing.assert_array_equal(ase_points(raw), [[-10,20,30],[40,-50,60]])
 
     def test_fallback_never_calls_unknown_dimensions_real(self):
         self.assertEqual(radius_footprint(12)["width_wu"], 24)

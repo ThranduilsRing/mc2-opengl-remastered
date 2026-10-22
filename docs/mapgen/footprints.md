@@ -16,12 +16,16 @@ second choice if TGL is missing/unsupported; no ASE fallback was needed here.
 TGL decoding follows `mclib/tgl_types.cpp`'s disk structs and
 `mclib/msl_load.cpp:LoadBinaryCopy`: include stored relative node offsets; exclude
 `_PAB`, `LOS_` and `SpotLight` helpers. TGL coordinates are X, vertical Y, depth Z;
-the output is local world X,Y with vertical Z, as used by `bdactor.cpp` bounds.
+the output uses world `(-tglX, tglZ, tglY)`, following
+`RenderCore/axis_convert.h` and the `bdactor_update.cpp` render transform.
+Positive engine yaw becomes a counterclockwise world X,Y rotation; legacy
+screen/cull bounds in `bdactor.cpp` alone do not establish that axis sign.
 Bounds preserve offsets from the original pivot, not just width/depth. Outlines
 are convex hulls of projected visible vertices. They include roof overhangs and
 canopies; these are conservative visual envelopes, not MOVE collision templates.
-ASE vertices are absolute before the engine recenters them; convert their X sign
-and retain ground Y/vertical Z. Dimensions and outlines are rounded to 0.001 wu.
+ASE vertices are absolute before the engine recenters them; the ASE-to-TGL X
+reflection cancels the TGL-to-world reflection. Retain ASE X,Y,Z as world-local
+ground X,Y/vertical Z. Dimensions and outlines are rounded to 0.001 wu.
 
 When neither shape is readable, the object's positive ExtentRadius supplies a
 square of diameter 2r and an explicitly labeled approximate height of 2r. Zero or
