@@ -119,9 +119,12 @@ mc2tex::TextureArrayCpu cardsFromAtlas(const mc2tex::DecodedTexture& decoded) {
         for (size_t k = 0; k < layer.size(); ++k) {
             layer[k] = mc2tex::boxDownsampleRgba8(layer[k], w, h);
             mc2::vegetation::preserveCutoutAlpha(layer[k], coverage[k]);
-            mc2::vegetation::dilateCutoutRgb(layer[k], std::max(1u, w / 2), std::max(1u, h / 2));
+            const uint32_t nextWidth = std::max(1u, w / 2);
+            const uint32_t nextHeight = std::max(1u, h / 2);
+            mc2::vegetation::dilateCutoutRgb(layer[k], nextWidth, nextHeight);
         }
-        w = std::max(1u, w / 2); h = std::max(1u, h / 2);
+        w = std::max(1u, w / 2);
+        h = std::max(1u, h / 2);
     }
     return array;
 }

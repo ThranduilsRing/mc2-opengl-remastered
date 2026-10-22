@@ -59,6 +59,7 @@
 #include <cstdint>
 #include <cstddef>   // offsetof (M2 layout asserts)
 #include <memory>
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -188,12 +189,12 @@ void write_ring_bindings(VfxIsland* s, uint32_t par, VkBuffer buf, VkDeviceSize 
 }
 
 // Resolve after this parity's ticket retires. New/changed pages keep the other flight untouched.
-const SpritePage* get_page(VfxIsland* s,uint32_t handle,uint32_t par) {
-    if (handle==0xffffffffu) return nullptr;
+std::optional<VkDescriptorSet> get_page(VfxIsland* s,uint32_t handle,uint32_t par) {
+    if (handle==0xffffffffu) return std::nullopt;
     auto& ctx=mc2vk::getOrCreateEngineVulkanContext();
     uint64_t id=0;
     if (handle==kVfxVegetationAtlas) {
-        if (!vegetationAtlas) return nullptr;
+        if (!vegetationAtlas) return std::nullopt;
         if (s->loadedVegetation != vegetationAtlas) {
             RenderCore::KtxImage image;
             image.width = int(vegetationAtlas->width); image.height = int(vegetationAtlas->height);
@@ -210,7 +211,7 @@ const SpritePage* get_page(VfxIsland* s,uint32_t handle,uint32_t par) {
             key.format = image.vkFormat; key.hints = gosHint_MipmapFilter0;
             const uint32_t width = vegetationAtlas->width, height = vegetationAtlas->height;
             s->vegetationTexture = ctx.textures().acquire(key, image, {width, height, width, height}, 8, true);
-            if (!s->vegetationTexture) return nullptr;
+            if (!s->vegetationTexture) return std::nullopt;
             s->loadedVegetation = vegetationAtlas;
             vlog("vegetation_cards layers=8 mips=%d depth_write=1 cutoff=0.5", image.mipCount);
         }
@@ -219,21 +220,21 @@ const SpritePage* get_page(VfxIsland* s,uint32_t handle,uint32_t par) {
         static const auto white=std::make_shared<const std::vector<uint8_t>>(4,255u);
         id=ctx.textures().legacyUiId(0,1,1,VK_FORMAT_R8G8B8A8_UNORM,white);
     } else id=gos_GetUiTextureId(handle);
-    if (!id) return nullptr;
+    if (!id) return std::nullopt;
     const uint64_t frame=ctx.tracker().frameNo();
     auto it=s->pages.find(id);
     if (it==s->pages.end()) {
         SpritePage page;
         if (s->pages.size()>=kMaxSpritePages) {
             auto victim=std::min_element(s->pages.begin(),s->pages.end(),[](const auto& a,const auto& b){return a.second.lastUsedFrame<b.second.lastUsedFrame;});
-            if (victim==s->pages.end() || victim->second.lastUsedFrame==frame) return nullptr;
+            if (victim==s->pages.end() || victim->second.lastUsedFrame==frame) return std::nullopt;
             page=victim->second; page.bound[0]=page.bound[1]=VK_NULL_HANDLE;
             s->pages.erase(victim);
         } else {
             const VkDescriptorSetLayout layouts[2]={s->spriteDsl.get(),s->spriteDsl.get()};
             VkDescriptorSetAllocateInfo alloc{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO};
             alloc.descriptorPool=s->spritePool.get();alloc.descriptorSetCount=2;alloc.pSetLayouts=layouts;
-            if (vkAllocateDescriptorSets(s->device,&alloc,page.set)!=VK_SUCCESS) return nullptr;
+            if (vkAllocateDescriptorSets(s->device,&alloc,page.set)!=VK_SUCCESS) return std::nullopt;
         }
         it=s->pages.emplace(id,page).first;
         vlog("sprite page identity: source=%u texture=%llu (%zu/%u).",handle,static_cast<unsigned long long>(id),s->pages.size(),kMaxSpritePages);
@@ -248,7 +249,7 @@ const SpritePage* get_page(VfxIsland* s,uint32_t handle,uint32_t par) {
         write.descriptorType=VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;write.pImageInfo=&image;
         vkUpdateDescriptorSets(s->device,1,&write,0,nullptr);page.bound[par]=view;
     }
-    page.lastUsedFrame=frame;return &page;
+    page.lastUsedFrame=frame;return page.set[par];
 }
 
 // VfxDrawGroup::additive values (LOCKSTEP with ADDITIVE_* in shaders/vulkan/vfx_particle.vert).
@@ -584,7 +585,7 @@ extern "C" int mc2_vk_vfx_island_run(
     const uint32_t dynOffsets[2] = {static_cast<uint32_t>(span.offset), static_cast<uint32_t>(span.offset + partOff)};
 
     // Resolve service pages after parity retirement; uploads stay asynchronous.
-    std::vector<const SpritePage*> groupPage(drawCount, nullptr);
+    std::vector<std::optional<VkDescriptorSet>> groupPage(drawCount);
     for (uint32_t gi = 0; gi < drawCount; ++gi) {
         if (draws[gi].count != 0 && (draws[gi].texture != 0 || draws[gi].atlasColumns == kVfxGeometryAtlas))
             groupPage[gi] = get_page(s, draws[gi].texture, par);
@@ -623,7 +624,7 @@ extern "C" int mc2_vk_vfx_island_run(
         if (d.atlasColumns == kVfxVegetationAtlas) continue;   // vegetation draws through mc2_vk_vfx_vegetation_run
         VkPipeline want = d.additive == VFX_ADD_ONE_ONE ? s->oneOnePipe.get() : d.additive == VFX_ADD_SRC_ALPHA ? s->addPipe.get() : s->alphaPipe.get();
         if (want != bound) { vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, want); bound = want; }
-        vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 1, 1, &groupPage[gi]->set[par], 0, nullptr);
+        vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 1, 1, &*groupPage[gi], 0, nullptr);
         const VfxGroupPush push{ {d.u0, d.v0}, {d.us, d.vs}, d.atlasColumns, d.additive == VFX_ADD_ONE_ONE ? 1u : 0u };
         vkCmdPushConstants(cb, s->playout.get(), VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(push), &push);
         {
@@ -696,7 +697,7 @@ bool mc2_vk_vfx_vegetation_run(const mc2veg::CullParams& params, const float* wo
     fill_frame_params(span.ptr, worldToClipGL, nullptr, nullptr);
     write_ring_bindings(s, par, span.buffer, span.range);
     const uint32_t dynOffsets[2] = {static_cast<uint32_t>(span.offset), static_cast<uint32_t>(span.offset + cullOff)};
-    const SpritePage* page = get_page(s, kVfxVegetationAtlas, par);
+    const auto page = get_page(s, kVfxVegetationAtlas, par);
     if (!page || s->disabled) return false;
 
     VkCommandBuffer cb = s->cbuf[par];
@@ -719,7 +720,7 @@ bool mc2_vk_vfx_vegetation_run(const mc2veg::CullParams& params, const float* wo
         vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
         vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->vegetationPipe.get());
         vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->vegLayout.get(), 0, 1, &s->set[par], 2, dynOffsets);
-        vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->vegLayout.get(), 1, 1, &page->set[par], 0, nullptr);
+        vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->vegLayout.get(), 1, 1, &*page, 0, nullptr);
         const uint32_t drawDyn = veg->paramsDynamicOffset(par);
         const VkDescriptorSet drawSet = veg->drawSet(par);
         vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->vegLayout.get(), 2, 1, &drawSet, 1, &drawDyn);
