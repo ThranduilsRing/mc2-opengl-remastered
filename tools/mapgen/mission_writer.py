@@ -1,7 +1,7 @@
 """Emit playable flat stock missions through the ordinary PacketFile load path.
 
 py -3 -m tools.mapgen.mission_writer layout.json --out G:/mapgen/missions
-Only stock assets, square maps in multiples of 30 cells, and flat dry terrain
+Only stock assets, square maps in multiples of 60 cells, and flat dry terrain
 are accepted. Input layouts are never silently flattened or rescaled.
 """
 from __future__ import annotations
@@ -46,8 +46,11 @@ def set_field(block, name, value, kind=None):
 def snapped(layout):
     result = copy.deepcopy(layout)
     side = result['size']['rows']
-    if side != result['size']['cols'] or side % 30 or not 180 <= side <= 720:
-        raise ValueError('supported mission sizes: square 180..720 cells, divisible by 30')
+    # Terrain object arrays require whole 20-vertex blocks (three cells/vertex).
+    if side != result['size']['cols'] or side % 60 or not 180 <= side <= 720:
+        raise ValueError('supported mission sizes: square 180..720 cells, divisible by 60')
+    if result['size']['vertices'] != side // 3:
+        raise ValueError('size.vertices must equal the cell dimension / 3')
     if result['source'].get('asset_install') != 'stock':
         raise ValueError('mission writer requires stock native footprints')
     height = np.asarray(result['terrain']['elevation_wu'])

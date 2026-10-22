@@ -38,3 +38,15 @@ class MissionWriterTest(unittest.TestCase):
         layout['objects'][1]['position_wu'] = layout['objects'][0]['position_wu'][:]
         with self.assertRaisesRegex(ValueError,'ambiguous cell'):
             snapped(layout)
+
+    def test_reject_incomplete_object_blocks_and_mismatched_vertices(self):
+        for side in (210, 270):
+            with self.subTest(side=side):
+                layout = copy.deepcopy(self.layout)
+                layout['size'].update(rows=side, cols=side, vertices=side // 3)
+                with self.assertRaisesRegex(ValueError, 'divisible by 60'):
+                    snapped(layout)
+        layout = copy.deepcopy(self.layout)
+        layout['size']['vertices'] += 20
+        with self.assertRaisesRegex(ValueError, 'size.vertices'):
+            snapped(layout)
