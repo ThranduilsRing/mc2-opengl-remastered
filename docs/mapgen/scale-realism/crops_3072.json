@@ -1,0 +1,33 @@
+{
+  "baseline": "6c0b66726",
+  "crops": [
+    {
+      "cells": [
+        1620,
+        631,
+        1644,
+        655
+      ],
+      "region": "urban_core"
+    },
+    {
+      "cells": [
+        509,
+        1518,
+        533,
+        1542
+      ],
+      "region": "industrial"
+    },
+    {
+      "cells": [
+        1134,
+        2737,
+        1158,
+        2761
+      ],
+      "region": "wilderness"
+    }
+  ],
+  "wu_per_pixel": 1
+}

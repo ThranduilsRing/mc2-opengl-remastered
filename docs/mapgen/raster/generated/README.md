@@ -13,8 +13,8 @@ The earlier 1024-cell example is retained as a separate, smaller size.
 | 180 / 7 | 3 | 416 | [183x183](generated_180_7.png) | [732x732](generated_180_7_4x.png) | [36x35](generated_180_7_base.png) | [144x140](generated_180_7_base_4x.png) | [JSON](generated_180_7.json) |
 | 360 / 17 | 7 | 1,473 | [366x366](generated_360_17.png) | [1464x1464](generated_360_17_4x.png) | [43x42](generated_360_17_base.png) | [172x168](generated_360_17_base_4x.png) | [JSON](generated_360_17.json) |
 | 720 / 23 | 28 | 5,962 | [731x731](generated_720_23.png) | [2924x2924](generated_720_23_4x.png) | [34x42](generated_720_23_base.png) | [136x168](generated_720_23_base_4x.png) | [JSON](generated_720_23.json) |
-| 1024 / 42 | 57 | 12,144 | [1039x1039](generated_1024_42.png) | [4156x4156](generated_1024_42_4x.png) | [41x33](generated_1024_42_base.png) | [164x132](generated_1024_42_base_4x.png) | [JSON](generated_1024_42.json) |
-| **3072 / 42 (1024 vertices)** | **478** | **108,616** | [3115x3115](generated_3072_42.png) | [12460x12460](generated_3072_42_4x.png) | [41x33](generated_3072_42_base.png) | [164x132](generated_3072_42_base_4x.png) | [JSON.gz](generated_3072_42.json.gz) |
+| 1024 / 42 | 41 | 12,112 | [1039x1039](generated_1024_42.png) | [4156x4156](generated_1024_42_4x.png) | [59x97](generated_1024_42_base.png) | [236x388](generated_1024_42_base_4x.png) | [JSON](generated_1024_42.json) |
+| 3072 / 42 (1024 vertices) | 174 | 105,709 | [3115x3115](generated_3072_42.png) | [12460x12460](generated_3072_42_4x.png) | [77x58](generated_3072_42_base.png) | [308x232](generated_3072_42_base_4x.png) | [JSON.gz](generated_3072_42.json.gz) |
 
 Re-render existing layouts without changing their geometry:
 
@@ -36,11 +36,11 @@ py -3 -B -m unittest discover -s tests/mapgen -v
 
 All five layouts pass the corpus plausibility and native geometry validator.
 The 3072-cell layout also passes after a compressed-JSON readback. Its heightfield
-retains all 3072x3072 samples, with no reduction in geometry fidelity. The 29.4 MB
+retains all 3072x3072 samples, with no reduction in geometry fidelity. The 37.5 MB
 `.json.gz` is a complete, lossless layout, emitted with a reproducible gzip header
 and a streaming JSON encoder. All mapgen readers accept it through `load_json`.
 
-The **38-test** offline suite includes Quonset pixel dimensions, single-pixel
+The **42-test** offline suite includes Quonset pixel dimensions, single-pixel
 team turrets, equal default scale for maps/crops, exact 4x replication, marker
 XYZ coordinates, deterministic gzip round trips, 3072-cell bounds, native overlap/
 ring/spacing checks, supplied terrain, the 24-seed sweep and process determinism.
@@ -50,3 +50,8 @@ launched, and source installs remain read-only.
 Phase 2 still needs PacketFile/FIT serialization, MOVE/collision templates, a
 snap policy with parent revalidation, concrete units and objective conditions.
 Pixel snapping only affects display; JSON retains native world-unit placements.
+
+Phase 1c large maps use regional land use, a settlement hierarchy and terrain-aware
+transport. The 180/360/720 examples retain their baseline layouts. Diagnosis,
+statistics, before/after sheets and 1 wu/pixel regional crop pairs are in
+[scale-realism.md](../../scale-realism.md).

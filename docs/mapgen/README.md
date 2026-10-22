@@ -213,6 +213,29 @@ base crop at Quonset scale, plus exact 4x viewing versions. The old cell example
 above are historical phase-1 artifacts. Playable mission logic remains unassigned;
 objective markers are suggestions with no FIT conditions.
 
+## Large-map realism (phase 1c)
+
+Phase 1c changes generation at **1024 movement cells and above**. A terrain-
+conditioned macro layer assigns wilderness, farmland, industrial, military and
+urban regions before placement. Separated major centres and clustered satellites
+use a truncated rank-size population law, with large developed sites and many
+lone outposts. Terrain-aware trunk MST routes, redundant major links and minor
+branches replace the fixed six-route skeleton. Forest extent, radius and density
+vary regionally. The 180/360/720 layouts retain exact baseline generator hashes.
+See [scale diagnosis and measurements](scale-realism.md), including before/after
+sheets and three regional detail pairs per large example at **1 wu/pixel**.
+
+Rebuild the comparison evidence after generating both large examples:
+
+```
+py -3 -B -m tools.mapgen.scale_review
+py -3 -B -m tools.mapgen.scale_metrics
+```
+
+The first command uses committed baseline `6c0b66726` from local git and the new
+generated JSONs. The second recomputes group medians over the extracted corpus.
+Neither command launches the game or writes to installs.
+
 ## Boundaries for phase 2
 
 Concrete models, native bounds, pivots and parent cells are assigned for layout

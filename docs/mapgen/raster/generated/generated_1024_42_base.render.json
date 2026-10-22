@@ -1,16 +1,16 @@
 {
   "crop_cells": [
-    503,
-    277,
-    535,
-    317
+    485,
+    28,
+    580,
+    86
   ],
   "header_pixels": 0,
   "hillshade": false,
   "install": "stock",
   "map_pixels": [
-    41,
-    33
+    59,
+    97
   ],
   "mission": "generated_1024_42",
   "north_up": true,
@@ -98,8 +98,8 @@
   },
   "png": "generated_1024_42_base.png",
   "preview_pixels": [
-    164,
-    132
+    236,
+    388
   ],
   "preview_png": "generated_1024_42_base_4x.png",
   "preview_scale": 4,

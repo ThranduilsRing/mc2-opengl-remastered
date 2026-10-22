@@ -1,573 +1,299 @@
 generated/generated_3072_42 | 3072x3072 cells | 24 cells/char
-North up; cell crop [0,0)..[3072,3072); objects by team: {-1: 754, 1: 8112}
+North up; cell crop [0,0)..[3072,3072); objects by team: {-1: 234, 1: 527}
 @ player start; O visible objective; B military; h town; I industry; H HQ/sensor; A airfield
 # wall/fence; + gate; T turret; C turret control; G generator; c gate control
 = road/bridge; : runway; . cement; ~ water; t trees; ^ slope>=35deg; % rock; , prop; ? unresolved
 +--------------------------------------------------------------------------------------------------------------------------------+
-|     tt   tt   tttt     ttt  ttttttttt    tt                   TOO==OOOOIOOOhTOOOTOO      tt                 tt   ttt           |
-|     tttt      tt tt   tttt   ttttttttt   tt tt            tt BTOOOOTtt   tthh  T###      tt             ttt tt   ttt           |
-|tttt   tt         tttt  t   t  t     tt    tttt            tt #OB  ttt ttttt    tt                        tt  tt   t^           |
-|ttt   tt  ttt  tt  ttt  t  tttt         tt ttt      t ttt     TOO ttt  ttttt tt   tt                       tt tt    ^           |
-|ttt   tt  tttt tt  t   ttttt tt   tt    tt tt       tt t      IOO tt   tt    tt  ttt       tt     tt       tt       ^           |
-|tt         ttttt        tt tt     ttt tt  ttt   ttt   tt      BTAtt t  tt        t          t     tt     tt  tt     ^           |
-|       tt   tttt            t      ttttt  tt    ttt   tt  tt  hhOtttt   t       ttt    t      tt     tttttt  tt     ^           |
-|tt tt  ttt tttttt  tt        tt       tt         t        tt   OO   tt           t    ttt tt  tt     tttttttt   tt tt           |
-|t  ttt  t    tttt  tt         t       tt tt   tt tt    tt      OO    tt        tt         tt        tt     tt  ttt tt           |
-|   tttt            tt  tt     tt              ttttt    tt      TC#      tt     ttt              t   tt      tttt    ^           |
-|tt   tt  tt tttt   tt  tt     tt              tttt     tttt   O+O#      ttt     tt      tt      tt  tt    t tttttt tt           |
-|tt    tt  t ttt  t    tt             tt       ttt        ttt  TOOtt      tttt     t    ttt      tt   t   tt  ttttt tt           |
-|    tttt ttt t   tt  tttt           ttt   ttt                 #OOIt tt   tttttttt tt                         ttttt  t           |
-|     t  tttt    tttttttttt      tttt tt   ttt t       ttt tt   OO: tttt   t    t     tt tt           tttt  tttttttt ^           |
-|     tt  tt     ttttt t tt    ttttttttt tt   tt       ttt tt   OO  tttt        tt   ttt  t    tttt   tt t tttt tttt ^           |
-|  tt tt       t    t ttt      ttttttt   tttttt    tt    tt     OT   tt           tt  tt       tttt  tttt   ttt tt   ^           |
-|tttt     ttt tt     ttttt      tt  tt  t    t     ttttt  t     TO  tttt ttt      tt  tt  t tt tt   ttttt        tttt^           |
-|tt     ttttt t     ttt ttttt      ttt  tt    tt  ttttt        TOhh   tttttt             ttttt tt   tt           ttttt           |
-|      tttt tt t    tttttttttt   tt           tt ttt t   tt  t #Oh    tt ttt               tt     ttt      tt    ttttt           |
-|t tt  ttttttt tt    tttttttt   ttt    tt       tt  tttttttt tt#+O    ttttt         tt     t     tttt      t    ttttt^           |
-|t ttt tt      tt        tt     tt     tt   tt     t ttttttt   #O=h    tttt        ttt       tt  ttt           tttt t^           |
-|   tt tt                       tt     t    tttt   tt   tt  tttt=T#  tttttt        tt    tt  tt   tt  tt       tt  ttt           |
-|  tt        ttt                tt~~~~~tt   tttt   t    tt tttttOO#t tt t   tt t tt      tt  ttt  tt ttt   tt   t  tt^           |
-|   t       tttt              tt~~~~~~~~~~~~  t           tttttthOt   ttttt tt tttt  t         ttt tt      tt    tttt^           |
-|         ttt  ttttt        ~~~~~~~~~~~~~~~~~tt     tt   tt tt ABTO   ttttt  t t  t  tt  tt     t tt             ttt ^           |
-|     ttt  tt  ttttt       ~~~~~~~~~~~~~~~~~~~tt    tt   ttt t OI+#     ttt tttttttt     tt    tt  t            tttt ^           |
-|     ttt   ttt tttt    t ~~~~~~~~~~~~~~~~~~~~ttt         tt   IOO#         ttttt t      tt    tt         tt  tttt   ^           |
-|     ttt  tt t tt t    tt~~~~~~~~~~~~~~~~~~~~~tt    ttt tt     GC#         tttt      tt ttt   tt      tt tt  tttttt ^           |
-|    ttttt  t  ttt      tt~~~~~~~~~~~~~~~~~~~~~~~     tt tt tt  OO#  t      tttt   t  tt  tt    tt     tt      ttttt ^           |
-|    tttttt tt  tt      tt~~~~~~~~~~~~~~~~~~~~~~~           tt O+O  ttt   tt     tttt      tt                 ttt    ^           |
-|ttt  ttt tt ttt tt      ~~~~~~~~~~~~~~~~~~~~~~~~      tt   t  #O+#  tt  ttt    tttttt     tt tt tt  t        ttttt tt           |
-|tttt  tttt   t tt       ~~~~~~~~~~~~~~~~~~~~~~~~       t   tt  OO# ttt  tt      ttttt     ttt t tt tt          ttt tt           |
-|   t tttt    tttt tt    ~~~~~~~~~~~~~~~~~~~~~~~~           tt tOO tttt tt  tt    t         tt tt tttt        tt    t^           |
-|    ttt     t t   t   t ~~~~~~~~~~~~~~~~~~~~~~tt ttt tt    t  tOO ttt  tt  ttt tt          tt tt ttt  tt     tt  tttt           |
-|    ttt  t  tt    tttttt ~~~~~~~~~~~~~~~~~~~~ttt tttttt        OOttt        tt ttt     tt  tt    ttt  tt         t tt           |
-|    ttt  tt t   tttttttt tt~~~~~~~~~~~~~~~~~~tt tttt        tt##httt tt     tt  tt   tttt   t tt                    ^           |
-|   ttt   tt     ttt tt  t t~~~~~~~~~~~~~~~~~~   tttt tt  tt ttTOOtttttt            tt tt   tt ttt     tt   t     tt ^           |
-|   tttt           t tt tt   ~~~~~~~~~~~~~~~~tt   t    t      tTTOtttt          IOITOBOBOOI  tt tt tt  t   tt     tt ^           |
-| ttt ttttttt  ttt      t    tt~~~~~~~~tt~~  tt  tt   tttt   tt OC#ttt         OIT+OhO+O+OOO    t tttt tt  tt        ^           |
-| tttt tttttt  tttt    tttttttt tt ~~~^tt  tt  tttt   tttt    t O+Ottt       t OOTOhhOThGTB  tt   tttt tt  tt  tt    ^           |
-|   tt   tttt    tt     ttttt   tt         tt  tt     t       ttO##tttt tt   t#+Btt  ##tt t  tt  t     tt ttt  tt    ^           |
-|  tt    tttt     ttt     tt  ttt              tt            ttCOO#t ttttt    #OO#     tttt   ttttt    tt ttttttt  ttt           |
-|tttt   tttt   t   tt  tt tt  ttt ttt   t       t      ttt   tt#OOt       t   #O+Ot     ttt   ttttt        tttttttttt^           |
-|tt     tt    tttt     tttt        tt  ttt          t ttt    tttOOt      tttt O+O#t tt tt      tttt       t  t  tttt ^           |
-|tt      tt   t tt ttt   ttt        ttttt         ttttttt   ttttO+O      tttttBOT# ttttttt  t  tttt   tttttttt    ttt^           |
-|        t ttttt    t    ttt        ttttt    tt   ttttttt   tt T+T#   t  ttttttTO#ttttt ttttt         tttttt t    ttt^           |
-|      tt  tt ttt      ttttttt      tt tt  tttt  t   ttt     t OTO    ttt tttt O##tt     ttt       t tt tt           ^           |
-|   t  tt     ttt ttt  tt tttt    tt   tt  ttt  tt  tttt    ttt OO    ttttttt  OOt       tt      tttttt              ^           |
-|  ttt tt    ttt tttt     ttt    tt     tt   tt  t   t      ttt OO      ttttt  Oh        t    ttttttt       tttt     ^           |
-| ttttttt     tttttttt    ttt     ttt   tt   tt    t         tt OT       t    BOOB  t   tttt  tttttt        tttt     ^           |
-|  tttt      ttt    tt     ttttttttttt ttt   t tt ttt           OO#   tt  ttt  OII tt  ttttt  tttttt      ttttt      ^           |
-|  ttttt   tttt      ttt   ttt  ttttt tt tt tt tttt tt          O+O   tt tttt  OO      tt         tttt    tt ttt     ^^tt^^^^^^^^|
-| tttttt   ttt tt    tttt  t      tt  tt tt tt   tt ttttt     ttO## tt    t   tOO           tt     ttt       ttttt     ttt     tt|
-| ttttt    tt  tt      t  ttt  tt        tt          tttt     ttIO  tt tt    ttOO ttt       tt   t  ttt      tttttttt   ttt    tt|
-|   tttt  tttt  t   t  tt  t   tt  tttttttttttt      ttttt   tt#O+Ott  tt    thh+Tttt tt tt     tt tttt        tttttt   tt    tt |
-|   tttttttttt      tt t   tt   tttt tt    tttt         tt   t #OT#tt   tt    hOO# ttttt tt        ttt            t tt  ttt   t  |
-|   ttt tttttt   t         tt   tt   t    tt t             tttthThhtttt tt    CThIt       t  tt    tt                t    tt     |
-|       t ttttttttt      tt      t        tttt     tttt    tttthhhh  tt  tttttTOOBt    ttttt ttt   tt  ttttt     tt tt  ttttttt  |
-|            tt ttt      tt tt     t       ttt     tttt         OOh      tt ttBOO t  tttttt   ttt ttttttt tt     tt tt  ttt  tt  |
-|       tt   tt tt    tt    tt    tt    t ttt                   OI    tt      OT  tttttttt    tttttttttt    tt    tt     tt  ttt |
-|t    t t    tt       tt    tt tt       ttttt    t             #G##   tt      OOt ttttt       tt  t      t ttt tt tt tttttttt t  |
-|t  tttt    ttt      ttt       tt   tt  t  tt   tttt  tt      t#OOT   tttt   OO#tt t tt       t          tt    tt   tttt t tt    |
-|   ttt      t     t tt       ttt  ttt    t      ttt  ttt   ttttOO tt tttt tOO##  tt              ttttt  t     tt  tttt          |
-|tttttt tt     t t tt  tt     ttt   tt tttttt         ttt ttttttOO#tt   tt tOT t  t               t  t    t  tttt                |
-|ttttt  t    TTttttt   t  tt        tt tttttt       tttt  tt   tTO#ttt  ttthTO   tt      tt       tt    tttt tttt                |
-|TThOOIOITTOTO#GhBBOGOTTTOOTOOB#OTO#OTOTBO OOG  T#OOGIOOBOOCGBOOOOOItTTOhTT#OItt ttt     tt tt t  tt    tt  ttttt     tt         |
-|#O+++TGOOO+T+OOhOITO+OO+++T++OTOT+#+OTOOOTOTOOTOO+#OOOTOTOOOOOOOO+OOOOOIOOO=Ot   t tt      ttttt           tt  t tt ttt         |
-|##OTOOOOOTOOIIOOTOOTOOIOOOOTOOTTOOOOTBOIOCOOOOOOTO#OOBhOhOTTOTII O#OBBTOOOhhO     ttttt     ttt     t     ttt tt tttttttt       |
-|OT ##tt ttt    tt  tttt ##    ttt    AOT   ###   ##  :t          ##    t##TOO tt  tt tt ### t      ttAI   #t  t  t##tt ttt CO   |
-|+O tt   tttttttt   tt           ttt  hh              tt      ttt  t t ttt hhhOOITThTOOOO#TTOOOOOOhhOIOTIOOOOThOOOOTOOOOOtOBOTOTO|
-|OBtt    tttttttt  ttt           ttt   =    t      t ttt      tt  tttt ttt hhB#+OOTOhO#+OOOOGOTTOBOTOOGOOTC+OOO#+TO#OOTOTIO#O++OT|
-|=Btt       tt tt  ttttt    t   ttt    =    ttt tttt  tt   tt tt ttttttt    OOTOITOIhhOOBIOTOTOTTItOTTIThTOOTIT#O#BO ICTOITOCBhTh|
-|O    t      ttt   ttttt    tt  ttt    =    tttttttt  ttt  tt tttttt ttttt hAO t tt ttttt ttt tt  tt                  ttt tttt   |
-|Ott tt       tt tt tt      tt         =   tt tttttt  tt t tt     t   t tt IOOtt tt ttttt  tt ttt     tt  tt           tt   tt  t|
-|Ottttt  tt      tttttt      tttt      =   t t       tttttt    ttt         hTO ttt  tt tt       tt    ttttttt    tt             t|
-|Otttt  ttt        tt t      t tttt    =t    tt     tt   t  tt tt  tt      OIh  tt ttt    tt     t  tttttttt     tt              |
-|O      tt              t        tt    =t    tt      t      tt     tt tt   ITOtt   tt    ttt    tt  ttttt tt  t     ttt          |
-|O    ttt              ttt             =          tt           tt  tt tt    Ohtt     tttttt     tt t ttttttt tt     tttt    tttt |
-|OT   tt              tt         ttttt =t   tttt  tt tt   tt       tt  tt  TOOt      tttt tttt    tt tt  ttt ttt     t      tttt |
-|O#  tt         tt    tt      tt  tttt =t   tttt   tttt   tt  tt   tt  ttttTTTt      t   tttttt   tt t    t tttt      t     tt   |
-|BI ttt         tt  ttt       tt  tt  t=t   tt     ttttt   tt tttt    tttttOOO  ttt       tttttt    ttt      tt       t          |
-|O   ttt          tttttt         ttt  t=    tt        tt  ttt ttt     tttttC+O  ttt          tttt   ttt    tt  t tt tt      t    |
-|+T tttttt       tttttttt         ttttt=                  tt tt    ttttt    OOt ttt tttt     t   tt      tttttttttttt       t    |
-|O#ttttttt  ttt  tt    tt            tt=             t tt     t    tt tttt TOOt tt ttttt     tt  tttt t  tt    t   tt            |
-|  t t  tt   tt ttt                 ttt=             tttt        tttt t tt  OOt           t tt     ttttt          tt   tt   tt   |
-|             t tt     tttttt       ttt=             tt     ttt  ttttttt    hT#         ttttt      tttttt t       ttt  tt   tt   |
-|        tt tt   tt    ttt ttt       tt=          ttttt         ttt  tttt tth+O     tt tttt           ttttt t tt  ttt ttt        |
-|        tt tt            tttt     t tt=          tt tttt  t tt  t     ttttIOI      tt tttt  t   tt   ttttt tttt  t  ttttt       |
-|    ttt      t     tt     tt     tt tt= tt          ttttttttttt  ttt  tt   OO           tttttt   ttt       ttt ttt tttttt tt    |
-|tt  ttt ttttttt tt t    t  t     tt tt=ttt             tttttttttt t        OO    ttt    tttttt    t           tttt tt  t  tt  tt|
-|tttt    ttt  tt tt   t ttt    ttt t   =tt  t t  tttt  ttt      tttt t     #OI B hhtTG#TtthO#           tt     tt        ttt tttt|
-| ttt                tt tt      tt     = ttttttt  ttt  ttt       ttt tt t  O+OOTO+#OO#OOOOh+TOtt        tt tt        ttt tttttt  |
-|      tt      tt    ttttt       tt    = tttt t        ttttt      t  t tt  ##OTO#OOTOOO=OT+#O#tttt   tt tt tt      tt t   ttttt  |
-|      tt     ttt  tttt tt   t    t    =                 ttt   tttt   tttt   ##t######  C#O#T#  tt   ttttt  tt     tt      tt    |
-|            tttt  tttt t   ttt     tt =            t     t    ttt    tt tt t  tt  tt   tt tt      tt  tt  ttt      ttt  tt      |
-|            ttt    ttt            ttt =    tt  tttttt    tt    tt          tt tt  tt   tttttt      t           tt  tttt tt      |
-|     tt     ttt    tttt tt            = ttttt  tttttttttttt    tt    ttt    ttttt   ttttt  tt                  tt  tttttt       |
-|     tt     ttt        ttttt          =  ttt   tt tt ttt              t      ttt     tttt           tt             t tttt       |
-|      tt     t            tt          =        t  tt                    t     t       ttttt    tt   ttt    tt        tttt t  t  |
-|     ttt                tt            =   tt          t tt             ttt  ttttt      t tt    tt   ttt    ttt         tttt  t  |
-|    ttttt            t  tt  ttt    tt =tt tt      tt  tt tt             tt ttttttt                 tttt     ttt              ttt|
-|   ttt  tttt         tt tt  tttt   tt @tt         tt    ttt tttttt        ttt    t    tt    tt      t  ttt   t         t  tt  tt|
-|tt ttt  tttt           ttt   ttt      =  tt     tttttt  t   t tttt    t   tt     tt   ttt  ttttt  tt    t             ttt ttt   |
-|ttttt t  ttt        tt tt    tt       = ttt     tttttt   tt   tt     ttt         t     tt  ttttttttt   tt                  ttt  |
-| ttttttt tttt       tt       t        = tt   ttt tt tt  ttt         tttt tt          tt         tt   tttt tt    tt   t    ttttt |
-| tt   t   tttt       ttt  tt          =    tttttttt tttttt          tt   tt         ttt              tt tttt    ttt  tt   ttt   |
-|      ttt   tttt tt  ttttttt          =   tttt  ttt                 tt        tt   tttt              ttttt       ttt t      tt  |
-|      ttt ttttttt ttt   tt            =t  ttt  tttttt                         tt   tttt               tt    tt             tt   |
-|tttt     ttt   t  ttt t  tt           =t  ttt  tt ttt  tttt      tt    tt   t tt ttttt   ttt      t    tttttttt            tt   |
-|tttttt tt tt      tt  tt tt        tt =  t tt tt tt tttttt    tt tt    tt  tt tt ttttt tt t     ttttttttttttttt  ttttttttt      |
-|    tt t  tt      tt  ttttt   ttt ttt =  ttttttt  ttttt    tt tt ttt    t    tt  ttttt tt  tt   ttttttttt   tt   ttttttttt   ttt|
-|          ttt       ttttttt   tttttttt=     ttt    t    t  tt     tt   ttt tttt    ttt  tttttttttt t tttt   tt   tttt       tttt|
-|tttt       tt      ttttt tt    ttt    =tt    ttt        tt  ttt      t  tt tttt    tt tt t    tttt   tt            tt           |
-|tttt        tt         ttt    tt tt   =ttttt  t      t tt   ttt     ttt    tttt     tttt tttt   t    t              tt          |
-|tt  tt   tt tt   tt    tt     t ttt   =tttttt        tttt    t      ttt    tt ttt   tttt ttttt      tt         tt   tt          |
-|t tttt   ttt t   tt    tttt    tttt   =t   t     ttt  ttt   ttt     ttt    tt ttt          tt tt  tttt         tttt    tt tt    |
-|  tt       tttt    tt   ttt    tttt   =t    tt   ttttttt    ttt     ttt     t         tt  ttt tt ttttt                ttt ttt   |
-| tt        ttttt    t    tt tt        =ttt  tt  ttt ttt            ttt     ttt        tt ttttt  t  tt  t tttt   ttt   ttt  tt tt|
-|ttt      ttt tttt    ttttttttt  t     = tt tt t tt tttt    ttt        tt  t ttt          tt tt tt  tt tt tttt tttttt    t    ttt|
-|tt  t   tttttttttt   tttt  tt  tt tt t=    tt tt            t   tt    ttttt  t     tt  tt ttttttt     tttt    tttttt    tt   tt |
-|t  tt  tttt t   t          tt   t  t t=  tt t tt             t ttt ttt tttt   tttt tt  tt tttt tt   tttttt      tt      tt   t  |
-|tt tt   ttt   tttt    tt   tt  ttt  t =t tt    tt        tt tt  ttt tt   t   tttttt         t       tttttttt    t  tt    t      |
-| ttt    tt    ttttt   tt   t   tttt tt=t       t      tttttt  ttttt      ttt tt tt tt       tt    t    ttt t   tttttt    tt   tt|
-| ttt    t       ttt     ttt      ttttt=tt  tt    tt ttttt  tt tt    tt tt tt tt tt tt     tttt t  tttt  tt       tttt   tttt  tt|
-|                t     tttttt       tt =tt  ttt    t tt  tt tt  ttttttt tttt ttt   t      ttt   tt tttttt tttt  t    ttt tttt    |
-|                tt   ttt tt  tt    tt =t            tt   t  ttt ttt tt  tt  tt    ttttt   tt tttt    tttt   t ttttt tt   tttt   |
-|              ttt    ttttt  ttt       =    tt      ttt     tttttttt tt      t     t  t        t    tt  t        ttt        tttt |
-|    tt        tt     t  tt  t         =tt  t   tt  t     tttt   tt      ttt                        tt           tt           tt |
+|tttttttttttttttttttttttttttttttt                                                   =                                ^           |
+|tttttttttttttttttttttttttttttttt                                                   =                  ==O====       ^           |
+|ttttttttttttttttttttttttttttttt                                                    =                 ===   ===      ^           |
+|tttttttttttttttttttttttttttttttt                                  ==================                 ===    =O      ^           |
+|tttttttttttttttttttttttttttt ttttt                                =           h=                     = =            ^           |
+|ttttttttttttttttttttttttttttttttttttt         t              =O   =           O==========O           O =            ^           |
+|tttttttttttttttttttttttttttttttttttttt  ttt  tt              O    =           =          =             =            ^           |
+|tttttttttttttttttttttttttt tttttttttttttttt  tt              =    =           =          =             =   =        ^           |
+|ttttttttttttttttttttttttttttt tttt ttttttttt tt              =    =        =  =          =             ==  OhIh     ^           |
+|tttttttttttttttttttttt tttttttttttt tttttttttttt             =    =        O  =          ==             ====hhO     ^           |
+|tttttttttttttttttttttttttttttttttttttttttttttttt             =    = =O==   =  =          ===          O= ==  ====  O^           |
+|tttttttttttttttttttttttttttttttttttttttttttttttt             =    = =  O   =  =           ===          ==== === O  =^           |
+|ttttttttttttttttttttttttttttttttttttttttttttttttt           h=    =    =O  =  =            ===          O==h==    ==^           |
+|ttttttttttttttttttttttttttttttttttO=========ttttt          OO==  ==O=======O  =             =O           ===O=    =O^           |
+|ttttttttttttttttttttttttttttttttttttttttttt====tt   ========= ====O     = == ==            ==            = ===  === ^           |
+|tttttttttttttttttttttttttttttttttttttttttttttt===t ==          ==O=O  O=O   ==             ==            =  O =hh   ^           |
+|tttttttttttttttttttttttt ttttttttttttttttttttttt==O=           =====       ==             ==         O====O=O==hh   ^           |
+|tttttttO=tttttttttttttttttttttttttttttttttttttttt==           == =====O=====O======      ===            O===== =    ^           |
+|ttttttt===ttttttttttt tt t tttttttttttttttttttttt=t          ==O =O   ==hI=      =======================Ohh== O===  ^           |
+|ttttttt=t==Otttttttt t tttttttttttttttttttttO=ttt=tt        O=  ===O= =O==               O           O== hh  ==  == ^           |
+|ttttttt=tt==ttttttttttttttttttttttttttttttttt==tt=ttt          IO= = O===                          O==    =  O    O ^           |
+|ttttttt=tttttttttttttttttttttttttttttttttttttt==t=tttt         IOh   = O                                 O=O        ^           |
+|tttttt==tttttttttttttttttt tttttttttt~ttttttttt===tttt         hB=O   ==                                            ^           |
+|  tttt=tttttttttttttttttttttttttttt~~~~~~~~~tttt=Ottt           =    O==              ttt                           ^           |
+| ttttt=tttttttttttttttttttttttttt~~~~~~~~~~~~~~ttttt            =     ===           tttttt tt                       ^           |
+|tttt t=ttttttttttttttttttt~~~~~~~~~~~~~~~~~~~~~ttttt            =      =O       tttttttttttttt                      ^           |
+|tttttt=tttttttttttttttttt~~~~~~~~~~~~~~~~~~~~~tttttt            =       =====O  ttttttttttttt ttt                   ^           |
+|tttttt=ttttttttt ttttttt~~~~~~~~~~~~~~~~~~~~~~ttttttt           =           ==ttttttttt ttttttttt  tt               ^           |
+|tttt t= ttttttt  ttttttt~~~~~~~~~~~~~~~~~~~~~tttttttt           =        t == tttttttttttttttttt ttttt              ^           |
+|tttttt=ttttttttttttttttt~~~~~~~~~~~~~~~~~~~~~ttttttttt    t     =       ttO= ttttttttttttttttttt tttttttttttt       ^           |
+|tttttt=tttt ttttttttt t~~~~~~~~~~~~~~~~~~~~~~tttttttttt  ttt   ==      ttttt ttttttttttttttttttt tttttttttttt tt    ^           |
+|tttttt=ttttttttttttttt~~~~~~~~~~~~~~~~~~~~~~~ttttttttttttttt   =       tttttttttttttttttttttttttttttttttttt tttt ttt^           |
+|tttttt=tttttttttttttttt~~~~~~~~~~~~~~~~~~~~~~~tttttttttttttt   =       ttttttttttttttttttttttttttttttttttt tttttttttt           |
+|tt    =ttttttttttttttttt~~~~~~~~~~~~~~~~~~~~~ttttttttttttttt   =       ttttttttttttttttttttttttttttttttttttttttttttt^           |
+|      =tttttttttttttttttttttt~~~~~~~~~~~~~~~tttttttttttttttt   =       ttttttttttttttttttttttttttttttttttt   tttttttt           |
+|      = tttttttttttt tttttttt~~~~~~~~~~~~~~~tt   tttttttttt    =       tttttttttttttttttttttttttttttttttttttttttttttt           |
+|      =  ttttttttttttttttttttt~~~~~~~~~~~~~~t     ttttttttt =O==       ttttttttttttttttttttttttttttttttttttttttttttt^           |
+|      =   tttt ttt tttttttttttt~~~~~~~~~~~~~       tt ttttt ===        tttttttttttttttttttttttttttttttttttttt ttttttt           |
+|      =    tttttttttttttttttttttttttt~~~~~~~           tt   ==         ttttttttttttttttttttttttttttttttttttttt  ttttt           |
+|      =    tttttttttttttttttttttttttt~~~~~~~            O  ==         ttttttttttttttttttttttttttttttttttttttttt ttttt           |
+|     =O    tttttttttttttttttttttttttt ~~~~~             ====O         ttttttttttttttttttttttttttttttttttttttttttttttt           |
+|    O==    tttttttttttttttttttttttttt                      ==         tttttttttttttttttttttttttttttttttttttttttttttt^           |
+|    =      ttttttttttttttttttttttttt                       =          ttttttttttttttttttttttttttttttttttttttttttttttt           |
+|    =      tttttttttttttttttttttttttt        O       O===O ==        tttttttttttttttttttttttttttttttttttttttttttttttt           |
+|    =        tttttttttttttttttttttttt      ============O==O==O       tttttttttttttttttttttttttttttttttttttttttttttttt           |
+|    =      ttttttttttttttttttttt ttt      ===          =====#OT=     tttttttttttttttttttttttttttttttttttttttttttttttt           |
+|    =      ttttttttttttttttttttt    t    ===          ==== =#C#O    ttttttttttttttttttttttttttttttttttttttttttttttttt           |
+|    =       ttttttttttttttttttttt  tt   ===          ====  ===     tttttttttttttttttttttttttttttt ttttttttttttttttttt           |
+|    =         tttttttttttttttttttt tt  ===          O===  =====    tttttttttttttttttttttttttttttttttttttttttttttttttt           |
+|    =          tttttttttttt ttttttttt O==         ttt==   O=t O  ttttttttttttttttttttttttttttttttttttttttttttttt ttt^           |
+|    =            ttttttttttttttttttttt            tt==tt   =tt ttttttttttttttttttttttt tttttttttttttttttttt tttt ttt^           |
+|    =              tttttttt tttttttttt           tt==tt    =tttttttttttttttttttttttttt ttttttttttttttttttttttttttttt^^^ttO^^^^^^|
+|    =                ttttttttttttttttt           t==tt    t=tttttttttttttttttttttttttttttttttttttttttttttttttt============      |
+|    =                ttttttttt ttttttt           ==ttt  ttt=ttttttttttttttttttttttttttttttttttttttttttttttttt==ttttttt          |
+|    =                  =ttttt tttttttt          == t     tt=tttttttttttttttttttttttttttttttttttttttttttttttt==tttttttt          |
+|    =                 =O=tttt tttttttt         ==       ttt=tttttttttttt ttttttttttttttt ttttttttttttt tttt==ttttttttt          |
+|    =                 ====tt  tttttt tt       ==           =     ttttttttttttttttttttttttttttttttttttttttt==tttttttt            |
+|    =                 =  == ttttttttttt      ==            =        ttttttttttttttttttttttttttttttttttttt== ttttttt             |
+|    =                 =   == ttttttttttt    ==             =          ttttttttttttttttttttttttttttt tttt==tttttttt              |
+|    =                 =    == ttttt ttttt  ==              =           ttttttttttttttttttttttttt t tttt==ttttttt                |
+|    =                O=     O=  tt  tttttt==               =             tttt tttttttttttttt ttttttttt==ttt ttt                 |
+|    =                        ==     ttttt==t               =              tttttttttttttttttt tttttttt==ttttt                    |
+|   =O======                   =        t==                 =               ttttttttttttttttt ttttttt==tt ttt                    |
+|  ==     h==                  =        ==                  =               tttttttttttttttttttttttt==tttt                       |
+|  =       ===                 hh   =====                   =               ttttttttttttttttttttttt== tttt tt                    |
+|  =        ===                hh  ==O=  tt                 =               tt tttttttttt ttt tttt==ttt t tttt                   |
+|  =         ==========================O tt           =O    =              ttttttttttttttttttttttB=ttttttttttttt                 |
+|  =                       hhO = O=O===  ttt          =     =              tttttttttttttttttttttO=tt ttttttttttttt               |
+|  =                       hh= ======O    tt          =     =    O        ttttttttttttttttttttt==ttttttttttttttttt               |
+|==========================O==O===hO=     tt          O     =    =       ttttttttttttttttttttt==ttttttttttttttttt                |
+|= O                      =  =====hO     ttt          =     =    ==      tttttttttt ttttttttt==ttttttttttttt=====================|
+|=                        = ======== O===ttt          ==    =    ===    tttttttttttttttttt  ==tttttttttttttt=t                   |
+|=                         === ======== ==tt           ==   =     =O    tttttttttttttttttt O=ttttttttttttttt=                    |
+|=                        ===  == ==  ==t==O            ==  =    ==    tttt ttttttttttttttt=tttttttttttttttt=                    |
+|=                  ========   == =    ==tt             hO= =   ==     tttttttttttttttttttt=tttttttttttttttt=                    |
+|=                       ====  ==       ==       tt      ========      tttttttttttttttttttt=tttttttttttttt ==                    |
+|=                          == ==        ==      tt       O = hh      ttttttttttt   ttttttt=ttttttttttttt  = O=                  |
+|=                           ====         ==     ttt        = =       tttttttttt ttt ttttt==tttttttttttt   =  ==                 |
+|=                             ===         ===========      = =       tttt tttttttttttttt==tttttttttttt    =   ==                |
+|=                             = ==              ttt O==OO  =O=      ttttttttttttttttttt==tttttttttt       =    ==               |
+|=                             =  ==             tttt====   ===O  O  tttttttttttttttttt==ttttttttttt       =     ==       O=     |
+|=                             =   ==         ========O==   O==O =hh  ttt  ttttttttttt==tttttttt          ==      ==      ==     |
+|=                             =    ==        =        ===  ==O  =h   ttttttttttttttt==ttOt               =        ==    ==      |
+|=tt ttttttt               ==  =             ==============O=========================O  ==                =         =   ==       |
+|tttttttttttttt             == =            ===   ttt   O=OO=    O=O  ttttttttttt===== ==                 =         =  ==        |
+|ttttttttttttttt             = =           ===   tttt    ====O       tttttttttt   h============ O=        =         ====         |
+|ttttttttttttttttt           ===          ===    ttttt   ==OOI       tttttttt     h  hO       ====        =         ==           |
+|tttttttttttttttttt          ===         ===     ttttt  ===II        tttttt      ==            O=      =============O=           |
+|tttttttttttttttttt           ==  =========      ttttt =O==O        tttttt      ===             ==O   O===           O           |
+|ttttttttttttttttttt         === ===   ===        tttt==            ttttt      ===              ====O===O=====O=                 |
+|tttttttttttttttttttt      === ====   ====        tttt==            tttt      O==               O =====  =     ==                |
+|tttttttttttttttttttt         ====   ===          ttttt==           tttt                        == ====##+#     ==               |
+|tttttttttttttttttttt         ===   ===   =       ttttt ==           ttt                         OB==  #GOT      ==              |
+|tttttttttttttttttttt         ==   ===  ===       ttttt  ==          ttt                      ===B==  =#O##=      =O             |
+|ttttttttttttttttttttt        =======   ==         ttttt  ==      tttttt                 O===O=  =O====    ==                    |
+|ttt  tttttttttttttttt         =====    ==         ttttt   =     ttttttt                         =O==O=O    ==                   |
+|ttt ttttttttttttttttt         ====      =         tttttt  =     tttttt                          = ==        ==                  |
+| t tttttttttttttttttt         ===       ========   ttttttt=t    ttttttt                         = O=         ==              =O |
+|    tttttttt ttt tttt      =====       ==      === ttttttt=Ott ttttttttt                        =  =          ==            ==  |
+|      t=====================  ==  ==  ==           tttttttttttttttttttttt                       =  =           ==          ==   |
+|         ttttttttttt     ==   === =  ===            tttttttttttttttttttttt                      =  =            ==        ==    |
+|        ttttttt ttt=====@==== =   = ===              tttttttttttttttttttttt                     =  =             ==      ==     |
+|        tt ttttttt==        = =   ====             tttttt   ttttttttttttttt                     =  =              ==O   ==      |
+|         tttttt   =           =======             ttttttttt  ttttt tttttt tt                    =  =               ======       |
+|         ttttttt            = ===                  ttttttt   tttt ttt tttttt                    =  =                            |
+|         tttt               ====                    tttttt   ttttttt tttttt                     =  =                            |
+|         t                  ===                      ttttt  tttt ttt tttttt                  =======                            |
+|                            = =                      ttttt tttttttt  tttttt                  O  ====                            |
+|                            = =                     ttttttttttttt t  tttttt                     = ===                           |
+|                            = =                      ttttttttttt tttt ttttt                    ==  ==O                          |
+|                            = =                        tttttttttttttt ttttt                   ==                                |
+|                            ====                        ttttttttttttt ttttt                  ==                                 |
+|                               ==                     ttttttttttttttttttttt                 ==                                  |
+|                                ==                     t t  ttttttttt tttt                 ==                                   |
+|                                 ==                         tttttttt                      ==                                    |
+|                                  ==                                                 tt t==                                     |
+|                                  ==                                          ttt  ttttt==                                      |
+|                                   ==                                        tttt tttttO= t  t                                  |
+|                                    ==                                       tttttttttt  ttttttttttttttt                        |
+|                                     ==                                        tttttttttttttttttttttttttttt                     |
+|                                      =                                          tttttttttttttttttttttttttttttt                 |
+|                                      =                                      tttttttttttttttttttttttttttttttttttttt             |
+|                                      =                                      tttttttttttttttttttttttttttttttttttttttttt         |
+|                                      =                                     ttt  tttttttttttttttttttttttttttttttttttttttt       |
+|                                      =                                     tt   tttttttttttttttttttttttttttttttttttttttttt     |
+|                                      =                                     tttt tttttttttttttttttttttttttttttttttttttttttt ttt |
+|                                      =                                     ttt tttttttttttttttttttttttttttttttttttttttttt  tttt|
+|                                      =                                     ttt ttttttttt tttttt ttttttttttttttt tttttttt   tttt|
 +--------------------------------------------------------------------------------------------------------------------------------+
 Visible objectives (O; symbols may share a character):
-  [1586, 35]: Capture or clear walled_compound base_0
-  [1608, 1617]: Capture or clear outpost base_1
-  [1820, 15]: Capture or clear turret_battery base_3
-  [1704, 2367]: Capture or clear turret_battery base_4
-  [1664, 2440]: Capture or clear airfield_hq base_5
-  [1311, 1523]: Capture or clear walled_compound base_6
-  [1704, 2757]: Capture or clear industrial base_7
-  [1609, 647]: Capture or clear turret_battery base_8
-  [994, 1910]: Capture or clear industrial base_9
-  [1621, 1748]: Capture or clear walled_compound base_10
-  [865, 1527]: Capture or clear walled_compound base_11
-  [1969, 1826]: Capture or clear outpost base_12
-  [1992, 21]: Capture or clear walled_compound base_13
-  [1413, 1544]: Capture or clear industrial base_14
-  [531, 1527]: Capture or clear outpost base_15
-  [1665, 2219]: Capture or clear airfield_hq base_16
-  [1138, 1525]: Capture or clear outpost base_17
-  [2190, 2009]: Capture or clear turret_battery base_18
-  [1609, 973]: Capture or clear turret_battery base_20
-  [1382, 1880]: Capture or clear walled_compound base_21
-  [952, 1909]: Capture or clear industrial base_22
-  [1854, 1805]: Capture or clear turret_battery base_23
-  [1022, 1549]: Capture or clear outpost base_24
-  [1610, 769]: Capture or clear turret_battery base_25
-  [989, 1885]: Capture or clear walled_compound base_26
-  [95, 1548]: Capture or clear outpost base_27
-  [2067, 1850]: Capture or clear walled_compound base_28
-  [1705, 2077]: Capture or clear walled_compound base_29
-  [592, 1560]: Capture or clear walled_compound base_30
-  [1622, 1192]: Capture or clear walled_compound base_31
-  [904, 2102]: Capture or clear walled_compound base_32
-  [941, 2035]: Capture or clear walled_compound base_33
-  [811, 1525]: Capture or clear outpost base_34
-  [1638, 913]: Capture or clear airfield_hq base_35
-  [272, 1546]: Capture or clear turret_battery base_36
-  [2229, 2004]: Capture or clear walled_compound base_37
-  [1619, 1459]: Capture or clear airfield_hq base_38
-  [1702, 3029]: Capture or clear turret_battery base_39
-  [1401, 1903]: Capture or clear industrial base_40
-  [1194, 1911]: Capture or clear airfield_hq base_41
-  [333, 1548]: Capture or clear industrial base_42
-  [1585, 1556]: Capture or clear outpost base_43
-  [1699, 1906]: Capture or clear industrial base_44
-  [953, 1882]: Capture or clear airfield_hq base_45
-  [77, 1551]: Capture or clear outpost base_46
-  [1055, 1524]: Capture or clear industrial base_47
-  [1704, 2143]: Capture or clear airfield_hq base_48
-  [2190, 1870]: Capture or clear outpost base_49
-  [1585, 465]: Capture or clear turret_battery base_50
-  [602, 1506]: Capture or clear airfield_hq base_51
-  [673, 1522]: Capture or clear turret_battery base_52
-  [1232, 1527]: Capture or clear outpost base_53
-  [1617, 55]: Capture or clear walled_compound base_54
-  [1252, 1881]: Capture or clear outpost base_55
-  [1606, 532]: Capture or clear industrial base_56
-  [1109, 1509]: Capture or clear walled_compound base_57
-  [1587, 1250]: Capture or clear industrial base_58
-  [1678, 2320]: Capture or clear outpost base_59
-  [1379, 1915]: Capture or clear airfield_hq base_60
-  [1683, 2404]: Capture or clear industrial base_61
-  [1706, 1840]: Capture or clear airfield_hq base_62
-  [1678, 2070]: Capture or clear outpost base_64
-  [1585, 943]: Capture or clear industrial base_65
-  [1626, 1830]: Capture or clear outpost base_66
-  [2187, 1830]: Capture or clear outpost base_67
-  [1208, 1881]: Capture or clear turret_battery base_68
-  [915, 2074]: Capture or clear outpost base_69
-  [1674, 2669]: Capture or clear outpost base_70
-  [1734, 1826]: Capture or clear airfield_hq base_71
-  [1707, 2946]: Capture or clear walled_compound base_72
-  [311, 1552]: Capture or clear airfield_hq base_73
-  [114, 1521]: Capture or clear airfield_hq base_74
-  [1940, 1796]: Capture or clear walled_compound base_75
-  [1664, 25]: Capture or clear walled_compound base_76
-  [1667, 3005]: Capture or clear walled_compound base_77
-  [87, 1520]: Capture or clear walled_compound base_78
-  [1586, 1137]: Capture or clear turret_battery base_79
-  [247, 1504]: Capture or clear walled_compound base_80
-  [1114, 1546]: Capture or clear industrial base_81
-  [2230, 2187]: Capture or clear walled_compound base_82
-  [1587, 1621]: Capture or clear industrial base_83
-  [1162, 1885]: Capture or clear industrial base_84
-  [1574, 623]: Capture or clear walled_compound base_86
-  [1682, 2491]: Capture or clear outpost base_87
-  [1617, 128]: Capture or clear airfield_hq base_88
-  [494, 1520]: Capture or clear outpost base_89
-  [1677, 2386]: Capture or clear outpost base_90
-  [912, 2019]: Capture or clear outpost base_91
-  [1992, 1808]: Capture or clear turret_battery base_93
-  [1071, 1566]: Capture or clear walled_compound base_94
-  [1446, 1881]: Capture or clear outpost base_95
-  [1038, 1870]: Capture or clear walled_compound base_96
-  [1675, 2764]: Capture or clear walled_compound base_97
-  [1580, 1300]: Capture or clear outpost base_98
-  [1680, 2145]: Capture or clear walled_compound base_99
-  [1649, 928]: Capture or clear outpost base_101
-  [1697, 2715]: Capture or clear airfield_hq base_102
-  [211, 1524]: Capture or clear turret_battery base_103
-  [711, 1546]: Capture or clear airfield_hq base_104
-  [1576, 263]: Capture or clear walled_compound base_105
-  [946, 1522]: Capture or clear industrial base_106
-  [1609, 857]: Capture or clear walled_compound base_107
-  [1341, 1523]: Capture or clear turret_battery base_108
-  [1709, 2678]: Capture or clear walled_compound base_109
-  [1677, 2053]: Capture or clear outpost base_110
-  [13, 1909]: Capture or clear turret_battery base_111
-  [1292, 1881]: Capture or clear industrial base_114
-  [1322, 1911]: Capture or clear walled_compound base_115
-  [989, 1554]: Capture or clear walled_compound base_116
-  [1776, 16]: Capture or clear turret_battery base_117
-  [1677, 3059]: Capture or clear turret_battery base_120
-  [786, 1523]: Capture or clear turret_battery base_121
-  [1610, 409]: Capture or clear outpost base_123
-  [1612, 1713]: Capture or clear industrial base_124
-  [1228, 1903]: Capture or clear outpost base_125
-  [1704, 2251]: Capture or clear turret_battery base_126
-  [2216, 1893]: Capture or clear industrial base_127
-  [1586, 1075]: Capture or clear turret_battery base_128
-  [932, 1879]: Capture or clear industrial base_129
-  [2221, 2100]: Capture or clear walled_compound base_130
-  [2217, 2061]: Capture or clear industrial base_131
-  [10, 1929]: Capture or clear walled_compound base_132
-  [1280, 1550]: Capture or clear turret_battery base_133
-  [1579, 1506]: Capture or clear industrial base_134
-  [1685, 1898]: Capture or clear outpost base_135
-  [16, 1971]: Capture or clear industrial base_136
-  [1789, 1828]: Capture or clear outpost base_137
-  [1708, 2879]: Capture or clear industrial base_138
-  [1585, 1659]: Capture or clear walled_compound base_139
-  [34, 1576]: Capture or clear turret_battery base_140
-  [1709, 2524]: Capture or clear airfield_hq base_141
-  [1586, 1764]: Capture or clear walled_compound base_142
-  [1409, 1520]: Capture or clear outpost base_143
-  [1607, 1288]: Capture or clear airfield_hq base_144
-  [1496, 1551]: Capture or clear turret_battery base_145
-  [50, 1522]: Capture or clear airfield_hq base_146
-  [1679, 2531]: Capture or clear turret_battery base_147
-  [1674, 2874]: Capture or clear outpost base_148
-  [2124, 1807]: Capture or clear turret_battery base_149
-  [207, 1548]: Capture or clear turret_battery base_150
-  [1421, 1865]: Capture or clear industrial base_151
-  [1675, 2271]: Capture or clear turret_battery base_152
-  [1587, 702]: Capture or clear industrial base_153
-  [1610, 213]: Capture or clear walled_compound base_154
-  [1676, 2730]: Capture or clear turret_battery base_155
-  [1580, 1391]: Capture or clear outpost base_156
-  [1696, 1939]: Capture or clear walled_compound base_157
-  [1605, 1525]: Capture or clear industrial base_158
-  [1053, 1912]: Capture or clear walled_compound base_159
-  [480, 1523]: Capture or clear walled_compound base_160
-  [2206, 1788]: Capture or clear walled_compound base_161
-  [1676, 2019]: Capture or clear turret_battery base_162
-  [1587, 1423]: Capture or clear turret_battery base_163
-  [1579, 305]: Capture or clear walled_compound base_164
-  [918, 1519]: Capture or clear turret_battery base_165
-  [1609, 1012]: Capture or clear outpost base_166
-  [1582, 1688]: Capture or clear outpost base_167
-  [1581, 116]: Capture or clear outpost base_168
-  [1307, 1561]: Capture or clear walled_compound base_169
-  [1701, 2833]: Capture or clear outpost base_170
-  [1702, 2328]: Capture or clear industrial base_171
-  [1576, 1582]: Capture or clear industrial base_172
-  [774, 1550]: Capture or clear outpost base_173
-  [538, 1553]: Capture or clear walled_compound base_174
-  [1609, 276]: Capture or clear turret_battery base_175
-  [1609, 341]: Capture or clear turret_battery base_176
-  [1677, 2908]: Capture or clear outpost base_177
-  [1266, 1911]: Capture or clear industrial base_179
-  [1704, 2564]: Capture or clear turret_battery base_180
-  [1578, 662]: Capture or clear walled_compound base_181
-  [1609, 1252]: Capture or clear turret_battery base_182
-  [8, 1805]: Capture or clear industrial base_183
-  [1605, 1833]: Capture or clear outpost base_184
-  [1608, 175]: Capture or clear industrial base_185
-  [1679, 2698]: Capture or clear turret_battery base_186
-  [1588, 403]: Capture or clear outpost base_187
-  [828, 1554]: Capture or clear turret_battery base_188
-  [1616, 928]: Capture or clear industrial base_189
-  [187, 1549]: Capture or clear turret_battery base_190
-  [13, 1875]: Capture or clear turret_battery base_191
-  [1915, 11]: Capture or clear airfield_hq base_192
-  [1585, 346]: Capture or clear turret_battery base_193
-  [1890, 1832]: Capture or clear industrial base_194
-  [2185, 2086]: Capture or clear airfield_hq base_195
-  [383, 1530]: Capture or clear outpost base_196
-  [1572, 1192]: Capture or clear walled_compound base_197
-  [2038, 1832]: Capture or clear outpost base_199
-  [1271, 1512]: Capture or clear industrial base_200
-  [1580, 849]: Capture or clear walled_compound base_201
-  [2119, 1834]: Capture or clear industrial base_202
-  [1610, 622]: Capture or clear turret_battery base_203
-  [1574, 1345]: Capture or clear airfield_hq base_204
-  [1696, 2027]: Capture or clear industrial base_205
-  [876, 1540]: Capture or clear outpost base_206
-  [2023, 1812]: Capture or clear industrial base_208
-  [1757, 1807]: Capture or clear industrial base_209
-  [1616, 808]: Capture or clear walled_compound base_210
-  [1588, 979]: Capture or clear outpost base_211
-  [1607, 1686]: Capture or clear airfield_hq base_213
-  [1604, 1650]: Capture or clear outpost base_214
-  [1624, 583]: Capture or clear walled_compound base_215
-  [935, 2118]: Capture or clear airfield_hq base_216
-  [1466, 1521]: Capture or clear walled_compound base_217
-  [1627, 1583]: Capture or clear walled_compound base_218
-  [1603, 744]: Capture or clear outpost base_219
-  [1019, 1926]: Capture or clear walled_compound base_220
-  [1583, 804]: Capture or clear walled_compound base_221
-  [1637, 1801]: Capture or clear outpost base_222
-  [33, 1598]: Capture or clear outpost base_223
-  [1583, 1465]: Capture or clear outpost base_224
-  [28, 1614]: Capture or clear industrial base_225
-  [709, 1509]: Capture or clear walled_compound base_226
-  [914, 1968]: Capture or clear industrial base_227
-  [16, 1724]: Capture or clear industrial base_228
-  [1539, 1553]: Capture or clear walled_compound base_229
-  [1697, 2452]: Capture or clear airfield_hq base_230
-  [1674, 2239]: Capture or clear outpost base_231
-  [1708, 1806]: Capture or clear outpost base_232
-  [1675, 2589]: Capture or clear turret_battery base_233
-  [1920, 1800]: Capture or clear airfield_hq base_236
-  [1952, 1832]: Capture or clear turret_battery base_237
-  [1703, 2280]: Capture or clear walled_compound base_239
-  [1615, 1077]: Capture or clear walled_compound base_240
-  [1576, 744]: Capture or clear walled_compound base_241
-  [1615, 245]: Capture or clear airfield_hq base_242
-  [1588, 1322]: Capture or clear outpost base_243
-  [1204, 1549]: Capture or clear turret_battery base_244
-  [807, 1549]: Capture or clear turret_battery base_245
-  [1611, 487]: Capture or clear turret_battery base_246
-  [1586, 522]: Capture or clear walled_compound base_247
-  [1190, 1518]: Capture or clear industrial base_248
-  [1609, 1137]: Capture or clear walled_compound base_249
-  [1608, 1042]: Capture or clear outpost base_250
-  [1171, 1548]: Capture or clear turret_battery base_251
-  [1584, 1795]: Capture or clear industrial base_252
-  [1229, 1560]: Capture or clear walled_compound base_253
-  [2153, 1830]: Capture or clear industrial base_255
-  [835, 1523]: Capture or clear turret_battery base_256
-  [1703, 2218]: Capture or clear turret_battery base_257
-  [1582, 432]: Capture or clear outpost base_258
-  [1606, 1496]: Capture or clear industrial base_259
-  [1888, 1803]: Capture or clear turret_battery base_261
-  [998, 1513]: Capture or clear walled_compound base_262
-  [2201, 2103]: Capture or clear outpost base_263
-  [902, 2131]: Capture or clear airfield_hq base_264
-  [1653, 2978]: Capture or clear walled_compound base_265
-  [1701, 2174]: Capture or clear walled_compound base_266
-  [1075, 1880]: Capture or clear airfield_hq base_267
-  [311, 1524]: Capture or clear turret_battery base_269
-  [1702, 1987]: Capture or clear industrial base_270
-  [1089, 1906]: Capture or clear walled_compound base_271
-  [2189, 1978]: Capture or clear outpost base_272
-  [12, 1752]: Capture or clear airfield_hq base_273
-  [1611, 1337]: Capture or clear industrial base_274
-  [11, 1699]: Capture or clear airfield_hq base_275
-  [1272, 1883]: Capture or clear outpost base_276
-  [1615, 374]: Capture or clear industrial base_277
-  [1131, 1547]: Capture or clear turret_battery base_278
-  [1584, 204]: Capture or clear turret_battery base_279
-  [1156, 1525]: Capture or clear turret_battery base_281
-  [1618, 429]: Capture or clear industrial base_282
-  [1407, 1884]: Capture or clear outpost base_284
-  [2183, 2180]: Capture or clear walled_compound base_285
-  [1763, 1824]: Capture or clear airfield_hq base_286
-  [1494, 1521]: Capture or clear outpost base_287
-  [1675, 2836]: Capture or clear airfield_hq base_288
-  [971, 1523]: Capture or clear turret_battery base_289
-  [1605, 24]: Capture or clear industrial base_290
-  [1838, 8]: Capture or clear outpost base_291
-  [1672, 2088]: Capture or clear walled_compound base_292
-  [1583, 492]: Capture or clear walled_compound base_293
-  [144, 1554]: Capture or clear airfield_hq base_294
-  [895, 2048]: Capture or clear airfield_hq base_295
-  [1588, 1154]: Capture or clear outpost base_297
-  [244, 1546]: Capture or clear walled_compound base_298
-  [644, 1523]: Capture or clear industrial base_299
-  [944, 1564]: Capture or clear walled_compound base_300
-  [1583, 898]: Capture or clear airfield_hq base_301
-  [1713, 1878]: Capture or clear walled_compound base_302
-  [1585, 175]: Capture or clear industrial base_303
-  [1607, 1414]: Capture or clear turret_battery base_304
-  [1583, 1216]: Capture or clear industrial base_305
-  [1226, 1883]: Capture or clear outpost base_308
-  [939, 1946]: Capture or clear walled_compound base_309
-  [911, 1994]: Capture or clear turret_battery base_310
-  [1613, 1121]: Capture or clear airfield_hq base_311
-  [1582, 147]: Capture or clear industrial base_312
-  [1679, 2960]: Capture or clear airfield_hq base_314
-  [1573, 1051]: Capture or clear industrial base_315
-  [1701, 2623]: Capture or clear walled_compound base_316
-  [1610, 1379]: Capture or clear walled_compound base_319
-  [1702, 2402]: Capture or clear airfield_hq base_320
-  [2007, 1835]: Capture or clear outpost base_321
-  [2227, 1926]: Capture or clear walled_compound base_322
-  [1622, 719]: Capture or clear walled_compound base_323
-  [2232, 2141]: Capture or clear walled_compound base_324
-  [1920, 1843]: Capture or clear walled_compound base_325
-  [1578, 1020]: Capture or clear airfield_hq base_326
-  [1577, 1819]: Capture or clear airfield_hq base_327
-  [900, 1920]: Capture or clear airfield_hq base_328
-  [1702, 2975]: Capture or clear outpost base_329
-  [1697, 11]: Capture or clear airfield_hq base_330
-  [1573, 581]: Capture or clear walled_compound base_331
-  [1585, 1735]: Capture or clear turret_battery base_332
-  [1118, 1883]: Capture or clear turret_battery base_333
-  [1612, 1099]: Capture or clear outpost base_334
-  [564, 1556]: Capture or clear industrial base_335
-  [333, 1524]: Capture or clear turret_battery base_336
-  [1612, 453]: Capture or clear turret_battery base_341
-  [1704, 2861]: Capture or clear airfield_hq base_342
-  [1537, 1837]: Capture or clear industrial base_343
-  [682, 1546]: Capture or clear walled_compound base_344
-  [1679, 1881]: Capture or clear turret_battery base_345
-  [17, 1673]: Capture or clear turret_battery base_346
-  [2212, 1961]: Capture or clear airfield_hq base_347
-  [931, 2140]: Capture or clear industrial base_349
-  [1678, 2822]: Capture or clear turret_battery base_350
-  [752, 1546]: Capture or clear walled_compound base_351
-  [1867, 10]: Capture or clear industrial base_352
-  [1734, 13]: Capture or clear turret_battery base_353
-  [113, 1555]: Capture or clear airfield_hq base_354
-  [911, 1545]: Capture or clear industrial base_355
-  [43, 1549]: Capture or clear turret_battery base_356
-  [1684, 1942]: Capture or clear airfield_hq base_357
-  [1142, 1913]: Capture or clear outpost base_358
-  [1702, 2584]: Capture or clear industrial base_359
-  [1562, 1521]: Capture or clear turret_battery base_360
-  [1522, 1519]: Capture or clear outpost base_362
-  [414, 1521]: Capture or clear walled_compound base_363
-  [1832, 1828]: Capture or clear turret_battery base_364
-  [15, 1539]: Capture or clear outpost base_365
-  [1663, 2185]: Capture or clear walled_compound base_366
-  [1606, 313]: Capture or clear industrial base_367
-  [1009, 1880]: Capture or clear walled_compound base_368
-  [1610, 152]: Capture or clear turret_battery base_370
-  [742, 1526]: Capture or clear outpost base_371
-  [2152, 1810]: Capture or clear turret_battery base_372
-  [1587, 549]: Capture or clear walled_compound base_373
-  [1622, 677]: Capture or clear walled_compound base_375
-  [1510, 1843]: Capture or clear outpost base_376
-  [1702, 2103]: Capture or clear outpost base_377
-  [19, 1649]: Capture or clear turret_battery base_380
-  [2217, 1836]: Capture or clear walled_compound base_381
-  [1615, 831]: Capture or clear outpost base_382
-  [1285, 1906]: Capture or clear outpost base_383
-  [1667, 2564]: Capture or clear walled_compound base_385
-  [359, 1550]: Capture or clear turret_battery base_386
-  [1189, 1887]: Capture or clear airfield_hq base_387
-  [1882, 9]: Capture or clear walled_compound base_388
-  [1208, 1526]: Capture or clear outpost base_389
-  [2215, 2025]: Capture or clear airfield_hq base_390
-  [2096, 1807]: Capture or clear industrial base_391
-  [1340, 1887]: Capture or clear industrial base_392
-  [1633, 10]: Capture or clear walled_compound base_393
-  [1618, 102]: Capture or clear walled_compound base_394
-  [1136, 1890]: Capture or clear outpost base_395
-  [1793, 11]: Capture or clear industrial base_396
-  [1585, 1445]: Capture or clear outpost base_397
-  [1667, 2302]: Capture or clear industrial base_398
-  [2192, 2051]: Capture or clear walled_compound base_399
-  [940, 1909]: Capture or clear industrial base_400
-  [911, 1933]: Capture or clear outpost base_401
-  [1957, 18]: Capture or clear industrial base_402
-  [1703, 2923]: Capture or clear walled_compound base_403
-  [1587, 227]: Capture or clear turret_battery base_404
-  [1475, 1864]: Capture or clear walled_compound base_405
-  [1702, 2802]: Capture or clear outpost base_406
-  [1581, 87]: Capture or clear walled_compound base_407
-  [2196, 2208]: Capture or clear walled_compound base_408
-  [283, 1525]: Capture or clear walled_compound base_409
-  [1677, 2795]: Capture or clear turret_battery base_410
-  [641, 1555]: Capture or clear walled_compound base_411
-  [1675, 1852]: Capture or clear outpost base_412
-  [1531, 1809]: Capture or clear turret_battery base_414
-  [1704, 1955]: Capture or clear outpost base_415
-  [1674, 2654]: Capture or clear outpost base_416
-  [187, 1525]: Capture or clear turret_battery base_417
-  [624, 1517]: Capture or clear industrial base_418
-  [1482, 1830]: Capture or clear turret_battery base_419
-  [1047, 1546]: Capture or clear industrial base_420
-  [443, 1523]: Capture or clear airfield_hq base_421
-  [1823, 1791]: Capture or clear industrial base_422
-  [356, 1524]: Capture or clear turret_battery base_423
-  [11, 1994]: Capture or clear walled_compound base_424
-  [1606, 395]: Capture or clear outpost base_425
-  [1682, 2116]: Capture or clear industrial base_426
-  [1515, 1548]: Capture or clear industrial base_427
-  [1469, 1557]: Capture or clear walled_compound base_428
-  [291, 1548]: Capture or clear turret_battery base_429
-  [9, 1564]: Capture or clear industrial base_430
-  [388, 1552]: Capture or clear airfield_hq base_431
-  [1077, 1519]: Capture or clear outpost base_432
-  [1605, 1027]: Capture or clear outpost base_433
-  [2193, 1855]: Capture or clear industrial base_434
-  [1587, 1371]: Capture or clear turret_battery base_435
-  [1255, 1527]: Capture or clear industrial base_436
-  [1607, 886]: Capture or clear outpost base_437
-  [1683, 2465]: Capture or clear outpost base_438
-  [1586, 1486]: Capture or clear outpost base_439
-  [1587, 1604]: Capture or clear outpost base_440
-  [1586, 1102]: Capture or clear outpost base_441
-  [762, 1523]: Capture or clear industrial base_442
-  [15, 1790]: Capture or clear industrial base_443
-  [1432, 1521]: Capture or clear industrial base_444
-  [1676, 2509]: Capture or clear turret_battery base_445
-  [1584, 920]: Capture or clear walled_compound base_446
-  [1580, 969]: Capture or clear outpost base_447
-  [1447, 1848]: Capture or clear outpost base_448
-  [1580, 1284]: Capture or clear airfield_hq base_449
-  [1705, 2194]: Capture or clear turret_battery base_450
-  [1698, 2387]: Capture or clear outpost base_451
-  [1605, 1632]: Capture or clear outpost base_452
-  [2192, 1898]: Capture or clear airfield_hq base_453
-  [1761, 9]: Capture or clear industrial base_454
-  [1683, 2609]: Capture or clear industrial base_455
-  [1029, 1520]: Capture or clear industrial base_456
-  [1970, 1808]: Capture or clear industrial base_457
-  [1583, 683]: Capture or clear turret_battery base_458
-  [1705, 2046]: Capture or clear industrial base_459
-  [1585, 1232]: Capture or clear turret_battery base_460
-  [1608, 564]: Capture or clear industrial base_461
-  [1612, 1230]: Capture or clear outpost base_462
-  [920, 2164]: Capture or clear airfield_hq base_463
-  [1994, 1827]: Capture or clear outpost base_464
-  [1608, 1773]: Capture or clear outpost base_465
-  [1710, 2543]: Capture or clear industrial base_466
-  [2198, 2128]: Capture or clear outpost base_467
-  [1700, 2781]: Capture or clear industrial base_468
-  [1607, 917]: Capture or clear industrial base_469
-  [1603, 1443]: Capture or clear industrial base_471
-  [1642, 1835]: Capture or clear outpost base_472
-  [1508, 1816]: Capture or clear turret_battery base_473
-  [2171, 1807]: Capture or clear turret_battery base_474
-  [470, 1542]: Capture or clear industrial base_475
-  [1569, 1550]: Capture or clear industrial base_476
-  [1610, 509]: Capture or clear industrial base_477
+  [2226, 2513]: Capture or clear walled_compound base_0
+  [499, 1536]: Capture or clear industrial base_1
+  [2073, 1416]: Capture or clear industrial base_3
+  [1092, 1465]: Capture or clear walled_compound base_4
+  [2027, 1372]: Capture or clear industrial base_16
+  [2227, 2325]: Capture or clear outpost base_17
+  [373, 1569]: Capture or clear outpost base_18
+  [2072, 1400]: Capture or clear outpost base_19
+  [121, 1882]: Capture or clear outpost base_20
+  [1734, 2178]: Capture or clear outpost base_21
+  [329, 1623]: Capture or clear outpost base_22
+  [1782, 1348]: Capture or clear outpost base_23
+  [39, 2501]: Capture or clear outpost base_24
+  [2100, 2768]: Capture or clear outpost base_25
+  [447, 2652]: Capture or clear outpost base_26
+  [302, 1732]: Capture or clear outpost base_27
+  [1700, 833]: Capture or clear outpost base_28
+  [968, 1452]: Capture or clear outpost base_29
+  [312, 1448]: Capture or clear outpost base_30
+  [1062, 1408]: Capture or clear outpost base_31
+  [407, 2553]: Capture or clear outpost base_32
+  [1585, 914]: Capture or clear outpost base_33
+  [2823, 2098]: Capture or clear outpost base_34
+  [235, 2660]: Capture or clear outpost base_35
+  [569, 1675]: Capture or clear outpost base_36
+  [511, 1709]: Capture or clear outpost base_37
+  [1054, 1101]: Capture or clear outpost base_38
+  [453, 1588]: Capture or clear outpost base_39
+  [509, 1558]: Capture or clear outpost base_40
+  [90, 2627]: Capture or clear outpost base_41
+  [1608, 2303]: Capture or clear outpost base_42
+  [1165, 1267]: Capture or clear outpost base_43
+  [2074, 2041]: Capture or clear outpost base_44
+  [538, 1584]: Capture or clear outpost base_45
+  [2332, 2372]: Capture or clear outpost base_46
+  [1663, 700]: Capture or clear outpost base_47
+  [488, 2625]: Capture or clear outpost base_48
+  [371, 1613]: Capture or clear outpost base_49
+  [1501, 107]: Capture or clear outpost base_50
+  [405, 2597]: Capture or clear outpost base_51
+  [413, 1686]: Capture or clear outpost base_52
+  [478, 2443]: Capture or clear outpost base_53
+  [411, 1839]: Capture or clear outpost base_54
+  [1732, 1598]: Capture or clear outpost base_55
+  [2638, 2430]: Capture or clear outpost base_56
+  [1659, 626]: Capture or clear outpost base_57
+  [296, 2505]: Capture or clear outpost base_58
+  [2299, 2415]: Capture or clear outpost base_59
+  [2255, 2494]: Capture or clear outpost base_60
+  [334, 1821]: Capture or clear outpost base_61
+  [1909, 1448]: Capture or clear outpost base_62
+  [1658, 1286]: Capture or clear outpost base_63
+  [388, 1219]: Capture or clear outpost base_64
+  [999, 104]: Capture or clear outpost base_65
+  [1960, 1495]: Capture or clear outpost base_66
+  [1899, 1254]: Capture or clear outpost base_67
+  [1987, 2116]: Capture or clear outpost base_68
+  [380, 1750]: Capture or clear outpost base_69
+  [1708, 881]: Capture or clear outpost base_70
+  [639, 1865]: Capture or clear outpost base_71
+  [352, 1585]: Capture or clear outpost base_72
+  [409, 2499]: Capture or clear outpost base_73
+  [217, 1802]: Capture or clear outpost base_74
+  [2470, 2784]: Capture or clear outpost base_75
+  [1638, 1538]: Capture or clear outpost base_76
+  [2138, 2476]: Capture or clear outpost base_77
+  [324, 2763]: Capture or clear outpost base_78
+  [165, 1468]: Capture or clear outpost base_79
+  [439, 1515]: Capture or clear outpost base_80
+  [2272, 2231]: Capture or clear outpost base_81
+  [1632, 878]: Capture or clear outpost base_82
+  [1069, 1334]: Capture or clear outpost base_83
+  [1176, 1501]: Capture or clear outpost base_84
+  [557, 1184]: Capture or clear outpost base_85
+  [1988, 1480]: Capture or clear outpost base_86
+  [1831, 1380]: Capture or clear outpost base_87
+  [2178, 2291]: Capture or clear outpost base_88
+  [492, 1675]: Capture or clear outpost base_89
+  [958, 1360]: Capture or clear outpost base_90
+  [392, 2441]: Capture or clear outpost base_91
+  [1562, 877]: Capture or clear outpost base_92
+  [1247, 2906]: Capture or clear outpost base_93
+  [1198, 1397]: Capture or clear outpost base_94
+  [1923, 1574]: Capture or clear outpost base_95
+  [1040, 1292]: Capture or clear outpost base_96
+  [1042, 1378]: Capture or clear outpost base_97
+  [2062, 2301]: Capture or clear outpost base_98
+  [435, 2513]: Capture or clear outpost base_99
+  [424, 168]: Capture or clear outpost base_100
+  [471, 1454]: Capture or clear outpost base_101
+  [2130, 2438]: Capture or clear outpost base_102
+  [602, 1735]: Capture or clear outpost base_103
+  [2124, 1402]: Capture or clear outpost base_104
+  [2154, 2629]: Capture or clear outpost base_105
+  [129, 2442]: Capture or clear outpost base_106
+  [134, 2156]: Capture or clear outpost base_107
+  [2016, 1341]: Capture or clear outpost base_108
+  [2301, 2351]: Capture or clear outpost base_109
+  [1589, 1319]: Capture or clear outpost base_110
+  [1463, 695]: Capture or clear outpost base_111
+  [274, 1706]: Capture or clear outpost base_112
+  [134, 1490]: Capture or clear outpost base_113
+  [2332, 3032]: Capture or clear outpost base_114
+  [1949, 1275]: Capture or clear outpost base_115
+  [1072, 1477]: Capture or clear outpost base_116
+  [495, 2398]: Capture or clear outpost base_117
+  [2007, 1408]: Capture or clear outpost base_118
+  [1939, 2926]: Capture or clear outpost base_119
+  [1963, 1429]: Capture or clear outpost base_120
+  [517, 2536]: Capture or clear outpost base_121
+  [1619, 779]: Capture or clear outpost base_122
+  [1761, 1018]: Capture or clear outpost base_123
+  [281, 2698]: Capture or clear outpost base_124
+  [313, 2241]: Capture or clear outpost base_125
+  [1107, 1534]: Capture or clear outpost base_126
+  [361, 2601]: Capture or clear outpost base_127
+  [2568, 2249]: Capture or clear outpost base_128
+  [1935, 1500]: Capture or clear outpost base_129
+  [1689, 49]: Capture or clear outpost base_130
+  [1320, 561]: Capture or clear outpost base_131
+  [1910, 1322]: Capture or clear outpost base_132
+  [1619, 691]: Capture or clear outpost base_133
+  [2132, 1335]: Capture or clear outpost base_134
+  [468, 1704]: Capture or clear outpost base_135
+  [2138, 2385]: Capture or clear outpost base_136
+  [244, 2461]: Capture or clear outpost base_137
+  [1184, 935]: Capture or clear outpost base_138
+  [335, 1425]: Capture or clear outpost base_139
+  [375, 1691]: Capture or clear outpost base_140
+  [261, 1657]: Capture or clear outpost base_141
+  [198, 2570]: Capture or clear outpost base_142
+  [1611, 827]: Capture or clear outpost base_143
+  [325, 823]: Capture or clear outpost base_144
+  [484, 2741]: Capture or clear outpost base_145
+  [2119, 2332]: Capture or clear outpost base_146
+  [2060, 1459]: Capture or clear outpost base_147
+  [1677, 816]: Capture or clear outpost base_148
+  [2174, 1869]: Capture or clear outpost base_149
+  [477, 1625]: Capture or clear outpost base_150
+  [2366, 1427]: Capture or clear outpost base_151
+  [465, 1074]: Capture or clear outpost base_152
+  [1826, 2608]: Capture or clear outpost base_153
+  [2029, 1586]: Capture or clear outpost base_154
+  [2257, 2344]: Capture or clear outpost base_155
+  [2277, 2122]: Capture or clear outpost base_156
+  [514, 2584]: Capture or clear outpost base_157
+  [321, 2615]: Capture or clear outpost base_158
+  [472, 267]: Capture or clear outpost base_159
+  [2253, 2737]: Capture or clear outpost base_160
+  [2030, 1411]: Capture or clear outpost base_161
+  [1460, 520]: Capture or clear outpost base_162
+  [2025, 1553]: Capture or clear outpost base_163
+  [1904, 1356]: Capture or clear outpost base_164
+  [887, 1470]: Capture or clear outpost base_165
+  [456, 2152]: Capture or clear outpost base_166
+  [975, 163]: Capture or clear outpost base_167
+  [713, 1799]: Capture or clear outpost base_168
+  [2103, 2256]: Capture or clear outpost base_169
+  [2127, 2792]: Capture or clear outpost base_170
+  [259, 2760]: Capture or clear outpost base_171
+  [2014, 2017]: Capture or clear outpost base_172
+  [2297, 2460]: Capture or clear outpost base_173
 Coarse preview: highest-priority feature wins each character; object footprints are not drawn.
