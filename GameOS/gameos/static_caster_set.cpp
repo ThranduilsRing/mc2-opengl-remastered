@@ -59,6 +59,11 @@ void StaticCasterSet::clear() {
 }
 
 namespace {
+template <class Map>
+const typename Map::mapped_type* findOwner(const Map& m, const void* owner) {
+    const auto it = m.find(owner);
+    return it == m.end() ? nullptr : &it->second;
+}
 // Within a texel of the mask: a re-registration that moves a caster by less than this changes no shadow worth a rebake (the matrix is rebuilt from
 // the object's float state each time and wobbles in the last bits).
 bool sameLeaves(const std::vector<GpuStaticPropInstance>& a, const std::vector<GpuStaticPropInstance>& b) {
@@ -76,9 +81,9 @@ bool sameLeaves(const std::vector<GpuStaticPropInstance>& a, const std::vector<G
 
 void StaticCasterSet::ownerInvalidated(const void* owner, int32_t oldRecipe) {
     if (building_ || version_ == 0 || !owner) return;
-    const auto it = byOwner_.find(owner);
-    if (it == byOwner_.end()) return;
-    StaticCasterEntry& e = entries_[it->second];
+    const uint32_t* idx = findOwner(byOwner_, owner);
+    if (!idx) return;
+    StaticCasterEntry& e = entries_[*idx];
     if (e.recipeIndex < 0 || e.recipeIndex != oldRecipe) return;
     std::vector<GpuStaticPropInstance> leaves;
     GpuStaticPropRegistry::getRecipeShadowLeaves(oldRecipe, leaves);
@@ -90,16 +95,13 @@ void StaticCasterSet::ownerInvalidated(const void* owner, int32_t oldRecipe) {
 
 void StaticCasterSet::ownerRegistered(const void* owner, int32_t newRecipe) {
     if (building_ || version_ == 0 || !owner || newRecipe < 0) return;
-    const auto it = byOwner_.find(owner);
-    if (it == byOwner_.end()) return;
-    StaticCasterEntry& e = entries_[it->second];
+    const uint32_t* idx = findOwner(byOwner_, owner);
+    if (!idx) return;
+    StaticCasterEntry& e = entries_[*idx];
     if (e.recipeIndex == newRecipe) return;
     CasterEvent ev;
     GpuStaticPropRegistry::getRecipeShadowLeaves(newRecipe, ev.after);
-    if (const auto r = removed_.find(owner); r != removed_.end()) {
-        ev.before = std::move(r->second);
-        removed_.erase(r);
-    }
+    if (auto node = removed_.extract(owner); !node.empty()) ev.before = std::move(node.mapped());
     e.recipeIndex = newRecipe;
     const size_t idx = static_cast<size_t>(newRecipe);
     if (recipeMask_.size() <= idx) recipeMask_.resize(idx + 1, 0);
@@ -114,7 +116,7 @@ void StaticCasterSet::ownerRegistered(const void* owner, int32_t newRecipe) {
 std::vector<StaticCasterSet::CasterEvent> StaticCasterSet::takeEvents() {
     // Owners that lost their recipe and never got one back (a felled tree still falling, a building with no rubble shape) are removals.
     for (auto& [owner, leaves] : removed_) {
-        if (const auto it = byOwner_.find(owner); it != byOwner_.end() && entries_[it->second].kind == CasterKind::Turret) continue;
+        if (const uint32_t* idx = findOwner(byOwner_, owner); idx && entries_[*idx].kind == CasterKind::Turret) continue;
         CasterEvent ev;
         ev.before = std::move(leaves);
         events_.push_back(std::move(ev));

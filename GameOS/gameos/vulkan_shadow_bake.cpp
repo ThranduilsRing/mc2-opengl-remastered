@@ -1573,7 +1573,7 @@ void ShadowBake::compareChains(const std::vector<uint8_t>& a, const std::vector<
                 img[o3 + 1] = pb[0];
                 img[o3 + 2] = static_cast<uint8_t>((std::min)(255, std::abs(int(pa[0]) - int(pb[0])) * 4));
             }
-        const std::string path = cacheDir_ + "/diag_dirty_fresh_diff.ppm";
+        const std::string path = (std::filesystem::path(cacheDir_) / "diag_dirty_fresh_diff.ppm").string();
         if (std::FILE* f = std::fopen(path.c_str(), "wb")) {
             std::fprintf(f, "P6\n%u %u\n255\n", q, q);
             std::fwrite(img.data(), 1, img.size(), f);
