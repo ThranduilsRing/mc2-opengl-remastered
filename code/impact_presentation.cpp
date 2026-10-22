@@ -27,6 +27,8 @@
 #include <cstdio>
 #include <cmath>
 #include <cstring>
+#include <optional>
+#include <string_view>
 
 namespace impact_presentation {
 namespace {
@@ -36,13 +38,12 @@ impact::EventQueue g_queue;
 impact::Pool g_pool;
 impact::GpuDecal g_gpu[impact::kMaxDecals];
 
-bool containsNoCase(const char* hay, const char* needle) {
-    if (!hay) return false;
-    const size_t n = std::strlen(needle);
-    for (const char* p = hay; *p; ++p) {
+bool containsNoCase(std::string_view hay, std::string_view needle) {
+    if (needle.size() > hay.size()) return false;
+    for (size_t p = 0; p + needle.size() <= hay.size(); ++p) {
         size_t i = 0;
-        while (i < n && p[i] && std::tolower(static_cast<unsigned char>(p[i])) == needle[i]) ++i;
-        if (i == n) return true;
+        while (i < needle.size() && std::tolower(static_cast<unsigned char>(hay[p + i])) == needle[i]) ++i;
+        if (i == needle.size()) return true;
     }
     return false;
 }
@@ -54,6 +55,7 @@ impact::Material buildingMaterial(GameObject* obj) {
                                    "turret", "gate", "dropship", "generator", "radar", "antenna", "truck", "train",
                                    "car", "derrick", "pump", "refinery", "crane", "bridge", "light", "dish", "shed"};
     const char* name = obj->getName();
+    if (!name) return impact::Material::Concrete;
     for (const char* k : kMetal) if (containsNoCase(name, k)) return impact::Material::SheetMetal;
     return impact::Material::Concrete;
 }
@@ -159,7 +161,7 @@ void fixtureVolley() {
         }
         if (s_logs < 4) {
             ++s_logs;
-            std::fprintf(stderr, "[IMPACT_FIXTURE] volley building=%s wid=%u pos=%.0f,%.0f,%.0f extent=%.0f material=%s\n",
+            std::fprintf(stderr, "[IMPACT_FIXTURE] volley sample=%d/4 building=%s wid=%u pos=%.0f,%.0f,%.0f extent=%.0f material=%s\n", s_logs,
                          b->getName() ? b->getName() : "?", wid, bp.x, bp.y, bp.z, r,
                          buildingMaterial(b) == impact::Material::SheetMetal ? "sheet_metal" : "concrete");
         }
@@ -220,6 +222,12 @@ void reset() {
 
 void frame() {
     ZoneScopedN("Impact.Presentation");
+    // A new mission (or a load) replaces the object manager and restarts the clock: its decals and pending events belong to
+    // the old world.
+    static const void* s_world = nullptr;
+    static float s_lastTime = 0.0f;
+    if (ObjectManager != s_world || scenarioTime + 0.5f < s_lastTime) { reset(); s_world = ObjectManager; }
+    s_lastTime = scenarioTime;
     const int q = quality();
     g_pool.setCapacity(impact::capacityForQuality(q));
     g_pool.beginFrame();
@@ -247,13 +255,13 @@ void frame() {
         const impact::AnchorPose pose = resolveAnchor(e.anchorKind, e.anchorId);
         if (!pose.valid) return;
         const impact::Recipe recipe = impact::recipeFor(e.weapon, e.material, e.magnitude);
-        const int slot = g_pool.spawn(e, recipe, pose);
+        const std::optional<uint32_t> slot = g_pool.spawn(e, recipe, pose);
         static int s_logs = 0;   // receipt of the first spawns: what the library chose for what the sim reported
         if (s_logs < 16) {
             ++s_logs;
-            std::fprintf(stderr, "[IMPACT_DECAL] spawn tick=%u weapon=%d material=%d anchor=%d id=%u pos=%.0f,%.0f,%.0f tile=%d/%d radius=%.1f slot=%d\n",
+            std::fprintf(stderr, "[IMPACT_DECAL] spawn sample=%d/16 tick=%u weapon=%d material=%d anchor=%d id=%u pos=%.0f,%.0f,%.0f tile=%d/%d radius=%.1f slot=%d\n", s_logs,
                          e.tick, int(e.weapon), int(e.material), int(e.anchorKind), e.anchorId, e.pos[0], e.pos[1], e.pos[2],
-                         int(recipe.tileHit), int(recipe.tileGround), recipe.radius, slot);
+                         int(recipe.tileHit), int(recipe.tileGround), recipe.radius, slot ? int(*slot) : -1);
         }
     });
     g_pool.update(scenarioTime, resolveAnchor);

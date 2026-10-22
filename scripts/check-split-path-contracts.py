@@ -157,6 +157,8 @@ ISLANDS = {
     "shaders/vulkan/fog_oob.frag": "Native Vulkan fog; the GL twin was retired in s63.",
     "shaders/vulkan/edge_fog.vert":   "VK fullscreen-triangle VS for edge_fog; GL pass has no dedicated .vert sibling",
     "shaders/vulkan/fog_oob.vert":    "VK fullscreen-triangle VS for fog_oob; GL pass has no dedicated .vert sibling",
+    "shaders/vulkan/impact_decal.vert": "Native Vulkan weapon impact box decals (docs/impact-damage-design.md); no GL twin, GL is being deleted.",
+    "shaders/vulkan/impact_decal.frag": "Native Vulkan weapon impact box decals (docs/impact-damage-design.md); no GL twin, GL is being deleted.",
     # --- Native VK tier-1 islands. One shared reason.
     "shaders/vulkan/cloud_shadow.vert":
         "native VK tier-1 island (VULKAN-BACKEND-L6/P-ladder): structural rewrite of the GL pass (Vulkan bindings/push-constants/SPIR-V), NOT a text-lockstep sibling. Parity is enforced at runtime pixel level per RendererFeatureRegistry convention (VK arc GL/VK visual capture pairs, VFX-9 2026-07-16 + tier1 smoke), not by RULE4 hash lockstep. Declared island-only at MERGE-WAVE-2 checker reconcile 2026-07-22.",

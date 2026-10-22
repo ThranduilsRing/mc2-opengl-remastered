@@ -10,7 +10,6 @@
 #include "../GameAdapters/VegetationAdapter.h"
 #include "../GameOS/gameos/visual_tuning_profile.h"
 #include "../GameOS/gameos/terrain_material_lib.h"
-#include "impact_presentation.h"
 #include <new>
 
 
@@ -59,7 +58,6 @@ void Mission::loadAblAndManagers(MissionLoadFrame& f) {
 		
 	result = craterManager->init(1000,20479,"feet");
 	gosASSERT(result == NO_ERR);
-	impact_presentation::reset();
 	
 	ObjectManager = new GameObjectManager;
 	if (!ObjectManager)

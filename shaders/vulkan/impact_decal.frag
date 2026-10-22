@@ -6,15 +6,8 @@
 // no knowledge of how the surface was lit: a darker albedo scales diffuse light linearly.
 #version 450
 
-struct ImpactDecal { vec4 v[8]; };
-layout(std430, set = 0, binding = 5) readonly buffer Decals { ImpactDecal d[]; } decals;
-layout(std140, set = 0, binding = 4) uniform ImpactFrame {
-    mat4 viewProj;
-    mat4 invViewProj;
-    vec4 eye;
-    vec4 lightDir;
-    vec4 screen;
-} F;
+#extension GL_GOOGLE_include_directive : require
+#include "include/impact_decal_common.glsl"
 layout(set = 0, binding = 0) uniform sampler2D sceneDepth;
 layout(set = 0, binding = 1) uniform sampler2D sceneNormal;       // .a = surface class
 layout(set = 0, binding = 2) uniform sampler2DArray surfaceAtlas; // r albedo*0.5, g emissive, b char, a coverage

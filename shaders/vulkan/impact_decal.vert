@@ -3,15 +3,8 @@
 // camera is inside the box. The box lives in MC2 world space, the space the terrain world-to-clip matrix takes.
 #version 450
 
-struct ImpactDecal { vec4 v[8]; };
-layout(std430, set = 0, binding = 5) readonly buffer Decals { ImpactDecal d[]; } decals;
-layout(std140, set = 0, binding = 4) uniform ImpactFrame {
-    mat4 viewProj;
-    mat4 invViewProj;
-    vec4 eye;        // homogeneous camera point
-    vec4 lightDir;   // toward the sun; w = ambient share
-    vec4 screen;     // w, h, 1/w, 1/h
-} F;
+#extension GL_GOOGLE_include_directive : require
+#include "include/impact_decal_common.glsl"
 
 layout(location = 0) flat out uint vInstance;
 

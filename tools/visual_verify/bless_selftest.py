@@ -307,8 +307,8 @@ def main() -> int:
 
         # T6 (+T3, +T4) -- the clean 3-run path.
         g = blesslib.bless([r1, r2, r3], tmp / "g_ok")
-        check("T6 the golden records the 17 render options, the declared env and the backend",
-              g["capture_env"]["render_options"] == _default_options() and len(g["capture_env"]["render_options"]) == 17
+        check("T6 the golden records the 18 render options, the declared env and the backend",
+              g["capture_env"]["render_options"] == _default_options() and len(g["capture_env"]["render_options"]) == 18
               and g["capture_env"]["declared_env"] == {"MC2_SMOKE_FREEZE_ANIM": "1"}
               and g["capture_env"]["backend"] == {"requested": "gl", "drew": ["gl"]})
         # T16 -- verify.py grades only a candidate whose options agree with the golden's (or whose differing keys --vary names).

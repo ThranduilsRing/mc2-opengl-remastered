@@ -56,6 +56,7 @@ No active pairs remain. The GL fog, water and shadow counterparts were retired i
 |---|---|
 | `shaders/vulkan/edge_fog.vert` | VK fullscreen-triangle VS; the GL edge_fog pass has no dedicated `.vert` |
 | `shaders/vulkan/fog_oob.vert` | VK fullscreen-triangle VS; the GL fog_oob pass has no dedicated `.vert` |
+| `shaders/vulkan/impact_decal.{vert,frag}` | Native Vulkan weapon impact box decals; no GL twin |
 
 Every NEW file under `shaders/vulkan/` must be added to one of the two tables
 or the checker fails (self-registration forcing function).

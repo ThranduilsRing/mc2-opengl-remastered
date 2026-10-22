@@ -4279,6 +4279,38 @@
    "count": 1
   },
   {
+   "tag": "IMPACT_DECAL",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "sample",
+    "tick",
+    "weapon",
+    "material",
+    "anchor",
+    "id",
+    "pos",
+    "tile",
+    "radius",
+    "slot"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "IMPACT_FIXTURE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "sample",
+    "building",
+    "wid",
+    "pos",
+    "extent",
+    "material"
+   ],
+   "count": 1
+  },
+  {
    "tag": "INSTR",
    "ver": 1,
    "stream": "buffer",
@@ -9788,6 +9820,35 @@
    "stream": "stderr",
    "keys": [
     "texture_cmds_skipped"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_IMPACT_DECALS",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 2
+  },
+  {
+   "tag": "VK_IMPACT_DECALS",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "frames",
+    "decals",
+    "hot",
+    "declined"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_IMPACT_DECALS",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "reason",
+    "sample"
    ],
    "count": 1
   },

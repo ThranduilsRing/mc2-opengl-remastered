@@ -13,6 +13,7 @@
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
+#include <optional>
 
 namespace impact {
 
@@ -39,7 +40,7 @@ inline constexpr uint32_t kTileCount = static_cast<uint32_t>(Tile::Count);
 
 // Which surfaces a decal may touch, matched in the shader against the scene normal target's class alpha
 // (terrain writes 1.0, static props and buildings 0.1875..0.25, mechs/vehicles/legacy shapes 0).
-enum AffectBits : uint8_t { kAffectTerrain = 1, kAffectProp = 2, kAffectUnit = 4 };
+inline constexpr uint8_t kAffectTerrain = 1, kAffectProp = 2, kAffectUnit = 4;
 
 // What the decal is attached to. World decals sit on terrain; Static decals belong to a building/prop and die with it;
 // Mover decals follow a mech or vehicle root every frame.
@@ -281,10 +282,10 @@ public:
     const PoolStats& stats() const { return stats_; }
     const Decal& at(uint32_t i) const { return d_[i]; }
 
-    // Spawn or merge. Returns the slot index used, or -1 when dropped (quality off, burst cap).
-    int spawn(const Event& e, const Recipe& r, const AnchorPose& anchorAtSpawn) {
-        if (capacity_ == 0) return -1;
-        if (spawnsThisFrame_ >= kMaxSpawnsPerFrame) { ++stats_.droppedBurst; return -1; }
+    // Spawn or merge. Returns the slot used; empty when dropped (quality off, burst cap).
+    std::optional<uint32_t> spawn(const Event& e, const Recipe& r, const AnchorPose& anchorAtSpawn) {
+        if (capacity_ == 0) return std::nullopt;
+        if (spawnsThisFrame_ >= kMaxSpawnsPerFrame) { ++stats_.droppedBurst; return std::nullopt; }
         ++spawnsThisFrame_;
         float local[3], ldir[3];
         toAnchorFrame(e, anchorAtSpawn, local, ldir);
@@ -300,20 +301,20 @@ public:
             d.intensity = std::min(1.0f, d.intensity + 0.25f);
             d.sizeScale = std::min(1.6f, d.sizeScale * 1.12f);
             ++stats_.merged;
-            return static_cast<int>(i);
+            return i;
         }
 
-        int slot = -1;
-        for (uint32_t i = 0; i < capacity_ && slot < 0; ++i) if (!d_[i].live) slot = static_cast<int>(i);
-        if (slot < 0) {   // full: evict the decal with the least remaining life (fraction), lowest index on ties
+        uint32_t slot = capacity_;
+        for (uint32_t i = 0; i < capacity_ && slot == capacity_; ++i) if (!d_[i].live) slot = i;
+        if (slot == capacity_) {   // full: evict the decal with the least remaining life (fraction), lowest index on ties
             float best = 2.0f;
             for (uint32_t i = 0; i < capacity_; ++i) {
                 const float rem = remainingFraction(d_[i], e.time);
-                if (rem < best) { best = rem; slot = static_cast<int>(i); }
+                if (rem < best) { best = rem; slot = i; }
             }
             ++stats_.evicted;
         }
-        Decal& d = d_[static_cast<uint32_t>(slot)];
+        Decal& d = d_[slot];
         d = Decal{};
         d.live = true;
         d.anchorKind = e.anchorKind; d.anchorId = e.anchorId; d.weapon = e.weapon;
@@ -383,8 +384,7 @@ public:
         float halfX = r.radius * r.elongation * scale, halfY = r.radius * scale, halfZ;
         float centre[3];
         const float up[3] = {0.0f, 0.0f, 1.0f};
-        switch (d.anchorKind) {
-        case AnchorKind::World: {
+        if (d.anchorKind == AnchorKind::World) {
             // Terrain: project straight down; the in-plane x axis follows the shot's horizontal heading (laser tracks run along it).
             const float hx = z[0], hy = z[1];
             const float hl = std::sqrt(hx * hx + hy * hy);
@@ -396,23 +396,15 @@ public:
             else { const float a = seedUnit(d.seed, 2) * 6.2831853f; x[0] = std::cos(a); x[1] = std::sin(a); }
             float y[3]; cross(z, x, y);
             finish(g, centre, x, y, z, halfX, halfY, halfZ);
-            break;
-        }
-        case AnchorKind::Static: {
-            // Building: the hit point may lie inside the hull, so the box reaches back toward the shooter to find the facing wall.
+        } else {
+            // Objects project along the shot. A building's hit point may lie inside its hull, so its box reaches back toward the
+            // shooter (35% of its depth) to find the facing wall; a mover's hit node is on the body.
             normalize(z);
-            halfZ = std::clamp(std::max(r.radius * 1.5f, d.extent), 8.0f, 60.0f);
-            for (int k = 0; k < 3; ++k) centre[k] = hitR[k] - z[k] * halfZ * 0.35f;
+            const bool building = d.anchorKind == AnchorKind::Static;
+            halfZ = building ? std::clamp(std::max(r.radius * 1.5f, d.extent), 8.0f, 60.0f) : std::max(r.radius * 1.5f, 4.0f);
+            const float back = building ? halfZ * 0.35f : 0.0f;
+            for (int k = 0; k < 3; ++k) centre[k] = hitR[k] - z[k] * back;
             orthoFrame(d, z, up, halfX, halfY, halfZ, centre, g);
-            break;
-        }
-        default: {
-            normalize(z);
-            halfZ = std::max(r.radius * 1.5f, 4.0f);
-            for (int k = 0; k < 3; ++k) centre[k] = hitR[k];
-            orthoFrame(d, z, up, halfX, halfY, halfZ, centre, g);
-            break;
-        }
         }
         const float h = heat(d, now);
         g.v[0][3] = fadeAlpha(d, now);

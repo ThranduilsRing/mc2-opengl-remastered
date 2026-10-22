@@ -76,7 +76,7 @@ TEST_CASE("impact: the pool never exceeds its capacity and evicts the least rema
         for (int i = 0; i < 20; ++i) {
             const int k = frame * 20 + i;
             const Event e = ev(WeaponClass::Ballistic, float(k) * 100.0f, 0.0f, float(frame));
-            if (pool.spawn(e, recipeFor(e.weapon, Material::Soil, 5), AnchorPose{}) >= 0) ++spawned;
+            if (pool.spawn(e, recipeFor(e.weapon, Material::Soil, 5), AnchorPose{})) ++spawned;
         }
         CHECK(pool.liveCount() <= 96);
     }
@@ -91,7 +91,7 @@ TEST_CASE("impact: the pool never exceeds its capacity and evicts the least rema
     pool.setCapacity(capacityForQuality(0));   // potato: off
     CHECK(pool.liveCount() == 0);
     pool.beginFrame();
-    CHECK(pool.spawn(ev(WeaponClass::Laser, 0, 0), recipeFor(WeaponClass::Laser, Material::Soil, 5), AnchorPose{}) == -1);
+    CHECK(pool.spawn(ev(WeaponClass::Laser, 0, 0), recipeFor(WeaponClass::Laser, Material::Soil, 5), AnchorPose{}).has_value() == false);
     CHECK(capacityForQuality(2) == kMaxDecals);
 }
 
@@ -108,17 +108,18 @@ TEST_CASE("impact: sustained fire on one spot merges instead of stacking") {
     Pool pool;
     pool.beginFrame();
     const Recipe r = recipeFor(WeaponClass::Ballistic, Material::Concrete, 5);
-    const int a = pool.spawn(ev(WeaponClass::Ballistic, 10, 10, 0.0f), r, AnchorPose{});
-    const int b = pool.spawn(ev(WeaponClass::Ballistic, 10.5f, 10, 1.0f), r, AnchorPose{});
-    const int c = pool.spawn(ev(WeaponClass::Laser, 10.5f, 10, 1.0f), recipeFor(WeaponClass::Laser, Material::Concrete, 5), AnchorPose{});
-    CHECK(a == b);
-    CHECK(c != a);                                   // a different weapon class is its own decal
+    const auto a = pool.spawn(ev(WeaponClass::Ballistic, 10, 10, 0.0f), r, AnchorPose{});
+    const auto b = pool.spawn(ev(WeaponClass::Ballistic, 10.5f, 10, 1.0f), r, AnchorPose{});
+    const auto c = pool.spawn(ev(WeaponClass::Laser, 10.5f, 10, 1.0f), recipeFor(WeaponClass::Laser, Material::Concrete, 5), AnchorPose{});
+    REQUIRE(a); REQUIRE(b); REQUIRE(c);
+    CHECK(*a == *b);
+    CHECK(*c != *a);                                   // a different weapon class is its own decal
     CHECK(pool.liveCount() == 2);
     CHECK(pool.stats().merged == 1);
-    CHECK(pool.at(uint32_t(a)).spawnTime == 1.0f);   // refreshed
-    CHECK(pool.at(uint32_t(a)).sizeScale > 1.0f);    // grown, bounded
+    CHECK(pool.at(*a).spawnTime == 1.0f);   // refreshed
+    CHECK(pool.at(*a).sizeScale > 1.0f);    // grown, bounded
     for (int i = 0; i < 50; ++i) pool.spawn(ev(WeaponClass::Ballistic, 10, 10, 2.0f), r, AnchorPose{});
-    CHECK(pool.at(uint32_t(a)).sizeScale <= 1.6f);
+    CHECK(pool.at(*a).sizeScale <= 1.6f);
 }
 
 TEST_CASE("impact: fade, laser glow cooling and the hot-first record order") {

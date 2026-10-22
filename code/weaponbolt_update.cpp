@@ -18,6 +18,14 @@
 // is LED by the target's velocity over the bolt's flight time, so a pre-rolled
 // hit on a moving target still lands. LRM (arcEffect) + beams keep tracking.
 // MC2_PROJECTILE_SPEED_MULT scales direct-fire travel speed (default 1.0).
+// Presentation only: the impact decal library reads this event; the simulation never reads it back and draws no RNG for it.
+static void emitImpact(const WeaponBoltType* t, const WeaponShotInfo& shot, const glm::vec3& from, const glm::vec3& at,
+                       unsigned long targetWID)
+{
+	impact_presentation::onWeaponImpact(shot.masterId, t->isBeam, t->areaEffectDmg > 0.0f && t->areaEffectRad > 0.0f,
+	                                    shot.damage, from, at, targetWID);
+}
+
 static bool directFireStraightEnabled (void)
 {
 	static const bool s = mc2::gate::get<"MC2_DIRECT_FIRE_STRAIGHT">();
@@ -299,11 +307,7 @@ long WeaponBolt::update (void)
 
 					}
 
-					// Presentation only: the impact decal library reads this event; the simulation never reads it back.
-					impact_presentation::onWeaponImpact(weaponShot.masterId, boltType->isBeam,
-						boltType->areaEffectDmg > 0.0f && boltType->areaEffectRad > 0.0f, weaponShot.damage,
-						boltType->isBeam ? position : ownerPosition, hotSpot, targetWID);
-
+					emitImpact(boltType, weaponShot, ownerPosition, hotSpot, targetWID);   // projectile arrival
 					if (hitEffect && hitEffect->IsExecuted())
 					{
 						glm::vec3			tPosition;
@@ -367,9 +371,7 @@ long WeaponBolt::update (void)
 					else
 					{
 						traceCombat("impact", "miss");
-						impact_presentation::onWeaponImpact(weaponShot.masterId, boltType->isBeam,
-							boltType->areaEffectDmg > 0.0f && boltType->areaEffectRad > 0.0f, weaponShot.damage,
-							boltType->isBeam ? position : ownerPosition, hotSpot, 0);
+						emitImpact(boltType, weaponShot, ownerPosition, hotSpot, 0);   // projectile ground miss
 						if (missEffect && missEffect->IsExecuted())
 						{
 							glm::vec3			tPosition;
@@ -547,11 +549,7 @@ long WeaponBolt::update (void)
 							hotSpot = target->appearance->getHitNodeRight();
 					}
 
-					// Presentation only: the impact decal library reads this event; the simulation never reads it back.
-					impact_presentation::onWeaponImpact(weaponShot.masterId, boltType->isBeam,
-						boltType->areaEffectDmg > 0.0f && boltType->areaEffectRad > 0.0f, weaponShot.damage,
-						boltType->isBeam ? position : ownerPosition, hotSpot, targetWID);
-
+					emitImpact(boltType, weaponShot, position, hotSpot, targetWID);   // beam end on the target
 					if (hitEffect && hitEffect->IsExecuted())
 					{
 						glm::vec3			tPosition;
@@ -613,9 +611,7 @@ long WeaponBolt::update (void)
 					else
 					{
 						traceCombat("impact", "miss");
-						impact_presentation::onWeaponImpact(weaponShot.masterId, boltType->isBeam,
-							boltType->areaEffectDmg > 0.0f && boltType->areaEffectRad > 0.0f, weaponShot.damage,
-							boltType->isBeam ? position : ownerPosition, hotSpot, 0);
+						emitImpact(boltType, weaponShot, position, hotSpot, 0);   // beam end on the ground
 						if (missEffect && missEffect->IsExecuted())
 						{
 							glm::vec3			tPosition;

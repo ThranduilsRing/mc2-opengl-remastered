@@ -48,9 +48,6 @@ extern "C" void mc2_vk_impact_decals_health(Mc2ImpactDecalHealth* out) {
 #define VK_USE_PLATFORM_WIN32_KHR
 #endif
 #include <volk.h>
-#define VMA_STATIC_VULKAN_FUNCTIONS 0
-#define VMA_DYNAMIC_VULKAN_FUNCTIONS 0
-#include <vk_mem_alloc.h>
 
 #include "gos_postprocess.h"
 #include "vk_gpu_profile.h"
@@ -67,26 +64,24 @@ extern "C" void mc2_vk_impact_decals_health(Mc2ImpactDecalHealth* out) {
 #include <tracy/Tracy.hpp>
 
 #include <cmath>
-#include <cstdarg>
+#include <cstdio>
+#include <algorithm>
 #include <memory>
 #include <string>
+#include <string_view>
 
 extern void gos_GetTerrainLightDir(float* x, float* y, float* z);
 
 namespace {
 
-void vlog(const char* fmt, ...) {
-    va_list ap; va_start(ap, fmt);
-    vk_island_util::vlogv512("[VK_IMPACT_DECALS] ", fmt, ap);
-    va_end(ap);
-}
-
-void decline(const char* reason) {
+void decline(std::string_view reason) {
     ++g_health.declined;
-    if (std::strcmp(reason, g_health.reason) != 0) {
-        static int s_logs = 0;
-        if (s_logs++ < 8) vlog("declined: %s", reason);
-        std::strncpy(g_health.reason, reason, sizeof(g_health.reason) - 1);
+    if (reason != g_health.reason) {
+        static int s_logs = 0;   // each new reason is logged, capped because a pose can alternate between two
+        if (s_logs++ < 8) std::fprintf(stderr, "[VK_IMPACT_DECALS] declined: reason=%.*s sample=%d/8\n", int(reason.size()), reason.data(), s_logs);
+        const size_t n = std::min(reason.size(), sizeof(g_health.reason) - 1);
+        std::memcpy(g_health.reason, reason.data(), n);
+        g_health.reason[n] = '\0';
     }
 }
 
@@ -147,14 +142,6 @@ void destroy(State* s) {
     s->disabled = disabled;
 }
 
-bool make_buffer(State* s, mc2vk::OwnedBuffer& out, VkDeviceSize size, VkBufferUsageFlags usage, const char* name, int i) {
-    VkBufferCreateInfo bci{VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
-    bci.size = size; bci.usage = usage;
-    VmaAllocationCreateInfo aci{};
-    aci.usage = VMA_MEMORY_USAGE_AUTO;
-    aci.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT;
-    return out.create(s->allocator, s->device, bci, aci, name, i, -1);
-}
 
 bool build(State* s, int w, int h) {
     s->w = w; s->h = h;
@@ -195,8 +182,9 @@ bool build(State* s, int w, int h) {
         if (!s->surfaceAtlas || !s->normalAtlas) { decline("atlas_upload_failed"); return false; }
     }
     for (uint32_t i = 0; i < kSlots; ++i) {
-        if (!make_buffer(s, s->ubo[i], sizeof(FrameUbo), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, "impact.ubo", int(i)) ||
-            !make_buffer(s, s->ssbo[i], sizeof(impact::GpuDecal) * impact::kMaxDecals, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, "impact.ssbo", int(i))) {
+        if (!s->ubo[i].createHostWritable(s->allocator, s->device, sizeof(FrameUbo), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, "impact.ubo", int(i)) ||
+            !s->ssbo[i].createHostWritable(s->allocator, s->device, sizeof(impact::GpuDecal) * impact::kMaxDecals,
+                                           VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, "impact.ssbo", int(i))) {
             decline("buffer_create_failed"); return false;
         }
     }
@@ -209,17 +197,13 @@ bool build(State* s, int w, int h) {
         VkAttachmentReference ref{0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
         VkSubpassDescription sub{};
         sub.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS; sub.colorAttachmentCount = 1; sub.pColorAttachments = &ref;
-        VkSubpassDependency deps[2]{};
-        deps[0].srcSubpass = VK_SUBPASS_EXTERNAL; deps[0].dstSubpass = 0;
-        deps[0].srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-        deps[0].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-        deps[0].dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-        deps[0].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-        deps[1].srcSubpass = 0; deps[1].dstSubpass = VK_SUBPASS_EXTERNAL;
-        deps[1].srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-        deps[1].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-        deps[1].dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-        deps[1].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+        // Colour writes before and after the pass are ordered against its blend reads/writes (the depth and normal barriers
+        // are recorded around the pass).
+        constexpr VkPipelineStageFlags kColorStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        constexpr VkAccessFlags kColorRW = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+        const VkSubpassDependency deps[2] = {
+            {VK_SUBPASS_EXTERNAL, 0, kColorStage, kColorStage, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, kColorRW, 0},
+            {0, VK_SUBPASS_EXTERNAL, kColorStage, kColorStage, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, kColorRW, 0}};
         VkRenderPassCreateInfo rpci{VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO};
         rpci.attachmentCount = 1; rpci.pAttachments = &att; rpci.subpassCount = 1; rpci.pSubpasses = &sub;
         rpci.dependencyCount = 2; rpci.pDependencies = deps;
@@ -269,15 +253,15 @@ bool build(State* s, int w, int h) {
         }
     }
     {   // pipelines: same shaders, two blend states
-        s->vert = mc2vk::OwnedShaderModule(dev, vk_island_util::loadSpv(dev, vk_island_util::spvDir() + "impact_decal.vert.spv", vlog));
-        s->frag = mc2vk::OwnedShaderModule(dev, vk_island_util::loadSpv(dev, vk_island_util::spvDir() + "impact_decal.frag.spv", vlog));
+        s->vert = mc2vk::OwnedShaderModule(dev, vk_island_util::loadSpv(dev, vk_island_util::spvDir() + "impact_decal.vert.spv", nullptr));
+        s->frag = mc2vk::OwnedShaderModule(dev, vk_island_util::loadSpv(dev, vk_island_util::spvDir() + "impact_decal.frag.spv", nullptr));
         if (!s->vert || !s->frag) { decline("spv_load_failed"); return false; }
         const VkDescriptorSetLayout l = s->dsl.get();
         VkPushConstantRange pcr{VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(PushMode)};
         VkPipelineLayoutCreateInfo plci{VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO};
         plci.setLayoutCount = 1; plci.pSetLayouts = &l; plci.pushConstantRangeCount = 1; plci.pPushConstantRanges = &pcr;
         if (!mc2vk::create(s->playout, dev, [&](auto* o) { return vkCreatePipelineLayout(dev, &plci, nullptr, o); })) return false;
-        auto make = [&](bool additive, mc2vk::OwnedPipeline& out, const char* name) {
+        auto make = [&](bool additive, mc2vk::OwnedPipeline& out, std::string_view name) {
             VkPipelineShaderStageCreateInfo st[2]{};
             st[0].sType = st[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
             st[0].stage = VK_SHADER_STAGE_VERTEX_BIT; st[0].module = s->vert.get(); st[0].pName = "main";
@@ -323,7 +307,7 @@ bool build(State* s, int w, int h) {
         if (vkAllocateCommandBuffers(dev, &cai, s->cbuf) != VK_SUCCESS) return false;
     }
     s->inited = true;
-    vlog("initialized %dx%d: box decals over shared depth/normal, %u-layer procedural atlas, cap %u.", w, h,
+    std::fprintf(stderr, "[VK_IMPACT_DECALS] initialized %dx%d: box decals over shared depth/normal, %u-layer procedural atlas, cap %u.\n", w, h,
          impact::kTileCount, impact::kMaxDecals);
     return true;
 }
@@ -365,7 +349,7 @@ extern "C" int mc2_vk_impact_decals_run(int w, int h) {
     if (s->disabled) return 0;
     if (s->inited && (s->w != w || s->h != h)) destroy(s);
     if (!s->inited && !build(s, w, h)) {
-        vlog("init failed (%s): impact decals stay off this session.", g_health.reason);
+        std::fprintf(stderr, "[VK_IMPACT_DECALS] init failed (%s): impact decals stay off this session.\n", g_health.reason);
         destroy(s); s->disabled = true; return 0;
     }
     ZoneScopedN("VK-impact-decals");
@@ -448,7 +432,7 @@ extern "C" int mc2_vk_impact_decals_run(int w, int h) {
     if (ctx.submit(si, VK_NULL_HANDLE, &s->ticket[slot]) != VK_SUCCESS) { decline("submit_failed"); s->disabled = true; return 0; }
     ++g_health.framesDrawn;
     if ((g_health.framesDrawn % 600) == 1)
-        vlog("drawn: frames=%lu decals=%u hot=%u declined=%lu", g_health.framesDrawn, count, g_frameHot, g_health.declined);
+        std::fprintf(stderr, "[VK_IMPACT_DECALS] drawn: frames=%lu decals=%u hot=%u declined=%lu\n", g_health.framesDrawn, count, g_frameHot, g_health.declined);
     return 1;
 }
 
