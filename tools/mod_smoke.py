@@ -18,6 +18,7 @@ import datetime as dt
 import hashlib
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -146,6 +147,33 @@ def stage_engine(build: Path, build64: Path, target: Path) -> tuple[list[str], l
     return copied, missing
 
 
+def stage_stock_fallback(base_install: Path, target: Path) -> tuple[int, int]:
+    """Append read-only stock archives after mod archives, at entry granularity."""
+    cfg = target / 'system.cfg'
+    text = cfg.read_text(encoding='utf-8')
+    section = re.search(r'(?ims)^\[FastFiles\][^\r\n]*\r?\n(.*?)(?=^\[|\Z)', text)
+    if not section:
+        raise ValueError(f'missing FastFiles block in staged config: {cfg}')
+    entries = re.findall(r'(?im)^\s*st\s+File(\d+)\s*=\s*"([^"\r\n]+)"', section.group(1))
+    entries.sort(key=lambda item: int(item[0]))
+    if [int(index) for index, _ in entries] != list(range(len(entries))):
+        raise ValueError(f'non-contiguous FastFiles block: {cfg}')
+    names = [name for _, name in entries if not name.startswith('stock_fallback/')]
+    files = total = 0
+    for name in STOCK_FSTS:
+        source = base_install / name
+        if not source.is_file():
+            raise FileNotFoundError(f'missing stock fallback archive: {source}')
+        copy_file(source, target / 'stock_fallback' / name)
+        files += 1
+        total += source.stat().st_size
+        names.append('stock_fallback/' + name)
+    block = '[FastFiles]\nl NumFastFiles = ' + str(len(names)) + '\n'
+    block += ''.join(f'st File{i}="{name}"\n' for i, name in enumerate(names)) + '\n'
+    cfg.write_text(text[:section.start()] + block + text[section.end():], encoding='utf-8')
+    return files, total
+
+
 def stage_mod(mod_dir: Path, target: Path, stem: str, shape: str,
               base_install: Path | None = None) -> dict:
     stats = {'files': 0, 'bytes': 0, 'mission_source': shape}
@@ -203,6 +231,10 @@ def stage_mod(mod_dir: Path, target: Path, stem: str, shape: str,
         fit = mod_dir / 'data' / 'missions' / f'{stem}.fit'
         if not fit.is_file():
             raise FileNotFoundError(f'mapped mission not found: {fit}')
+    if base_install:
+        files, size = stage_stock_fallback(base_install, target)
+        stats['files'] += files
+        stats['bytes'] += size
     return stats
 
 
@@ -323,6 +355,9 @@ def _run_battery(args, build, build64, run_root, source_root, selected, base_ins
         staged.mkdir()
         copied, _ = stage_engine(build, build64, staged)
         stats = stage_mod(mod_dir, staged, stem, shape, base_install)
+        # Apply the same verified renderer assets as a regular game deployment.
+        from deploy_payload import ensure_terrain_materials
+        ensure_terrain_materials(str(staged))
         identity = tree_identity(staged)
         result = run_mod(staged, stem, args.duration, args.timeout)
         result.update({'mod': display, 'mission': stem, 'staged': str(staged), 'data_identity': identity, 'runtime_files': copied})

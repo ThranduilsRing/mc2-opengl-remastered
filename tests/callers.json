@@ -3076,7 +3076,7 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 27,
+          "line": 28,
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child  # noqa: E402  (windowless console children)"
@@ -3566,6 +3566,13 @@
           "evidence": "import",
           "reference": "deploy_payload",
           "text": "import deploy_payload as dp                          # noqa: E402"
+        },
+        {
+          "path": "tools/mod_smoke.py",
+          "line": 359,
+          "evidence": "import",
+          "reference": "deploy_payload",
+          "text": "from deploy_payload import ensure_terrain_materials"
         }
       ]
     },
@@ -4254,7 +4261,7 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 251,
+          "line": 283,
           "evidence": "command",
           "reference": "scripts/run_smoke.py",
           "text": "proc = subprocess.run(cmd, cwd=str(ROOT), capture_output=True,"
@@ -8509,7 +8516,7 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 212,
+          "line": 244,
           "evidence": "import_module",
           "reference": "fst",
           "text": "fst_lib = importlib.import_module('fst')"
@@ -8761,7 +8768,15 @@
       "basename": "mod_smoke.py",
       "stem": "mod_smoke",
       "callers_by_basename": [],
-      "callers_by_stem": []
+      "callers_by_stem": [
+        {
+          "path": "tests/smoke/test_mod_smoke_staging.py",
+          "line": 6,
+          "evidence": "import",
+          "reference": "tools.mod_smoke",
+          "text": "from tools import mod_smoke"
+        }
+      ]
     },
     {
       "path": "tools/objective_outcomes.py",

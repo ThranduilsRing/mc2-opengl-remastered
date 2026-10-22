@@ -36,6 +36,7 @@ void CB_PRINTF(std::format_string<Args...> fmt, Args&&... args)
 #endif
 
 #include"lz.h"
+#include "fst_hash.h"
 
 #include<zlib.h>
 
@@ -242,6 +243,13 @@ long FastFile::open (const char* fName)
 
 		unsigned long result = 0;
 		result = static_cast<unsigned long>(fread(files[i].pfe,1,sizeof(FILEENTRY),handle));
+
+		// Legacy mods pack backslash and mixed-case names. The lookup side
+		// uses canonical keys; normalize this in-memory index to match it.
+		// Archive bytes, payload offsets and the loose-file precedence stay intact.
+		files[i].pfe->name[MAX_FILENAME_SIZE - 1] = '\0';
+		fst_normalize_loose_key_inplace(files[i].pfe->name);
+		files[i].pfe->hash = elfHash(files[i].pfe->name);
 
 		files[i].inuse = FALSE;
 		files[i].pos = 0;

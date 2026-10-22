@@ -23,6 +23,9 @@
 #include "fastfile.h"
 
 #include <cstdio>
+#include <fstream>
+#include <filesystem>
+#include <iterator>
 #include <cstring>
 #include <string>
 
@@ -159,6 +162,33 @@ TEST_CASE("packed serves when loose absent; loose overrides packed")
 
 	remove(fstPath.c_str());
 	remove(kFstEntryName);
+}
+
+TEST_CASE("legacy archive keys resolve canonically without rewriting the archive")
+{
+    const auto fstPath = scratchPath("legacy_keys.fst");
+    constexpr char packedName[] = "DaTa\\ArT\\mvh_scratch_legacy_key.txt";
+    constexpr char canonicalName[] = "data/art/mvh_scratch_legacy_key.txt";
+    authorFst(fstPath, packedName, kFstPayload, static_cast<int>(std::size(kFstPayload) - 1));
+    const auto archiveBytes = [&] {
+        std::ifstream archive(fstPath, std::ios::binary);
+        return std::string(std::istreambuf_iterator<char>(archive), {});
+    };
+    const auto before = archiveBytes();
+    {
+        FstRegistry registry(fstPath.c_str());
+        REQUIRE(registry.ok);
+        CHECK(fileExists(canonicalName) == 2);
+        File file;
+        REQUIRE(file.open(canonicalName) == NO_ERR);
+        CHECK(readAll(file) == kFstPayload);
+        file.close();
+        File variant;
+        REQUIRE(variant.open("DATA\\ART\\MVH_SCRATCH_LEGACY_KEY.TXT") == NO_ERR);
+        CHECK(readAll(variant) == kFstPayload);
+    }
+    CHECK(archiveBytes() == before);
+    std::filesystem::remove(fstPath);
 }
 
 TEST_CASE("fileExists reports loose (1) vs FST (2) tiers")
