@@ -1,5 +1,7 @@
 // Pathfinding: GlobalMap construction: area flood fill, special areas, door collection and the packet read/write.
 // Declared in the class headers; shared names in move_internal.h.
+#include <array>
+#include <vector>
 #include "move_internal.h"
 #include "../GameOS/gameos/utils/mc2log.h"
 #include <mdspan>
@@ -637,7 +639,7 @@ long GlobalMap::write (PacketFilePtr packetFile, long whichPacket) {
 	if (result <= 0)
 		Fatal(result, " GlobalMap.write: Unable to write areaMap packet ");
 
-	DoorInfoPtr doorInfoSave[MAX_GLOBALMAP_AREAS];
+	std::vector<DoorInfoPtr> doorInfoSave(MAX_GLOBALMAP_AREAS);
 	for (int i = 0; i < numAreas; i++) {
 		doorInfoSave[i] = areas_doors[i];
 		areas_doors[i] = nullptr;
@@ -682,7 +684,7 @@ long GlobalMap::write (PacketFilePtr packetFile, long whichPacket) {
 		}
 	Assert(numDoorInfosWritten == numDoorInfos, 0, " GlobalMap.write: Error in writing DoorInfos ");
 
-	DoorLinkPtr doorLinkSave[MAX_GLOBALMAP_DOORS][2];
+	std::vector<std::array<DoorLinkPtr, 2>> doorLinkSave(MAX_GLOBALMAP_DOORS);
 	for (int i = 0; i < numDoors + NUM_DOOR_OFFSETS; i++) {
 		doorLinkSave[i][0] = doors_links[i][0];
 		doorLinkSave[i][1] = doors_links[i][1];
@@ -815,6 +817,8 @@ long GlobalMap::setTempArea (long tileR, long tileC, long cost) {
 
 bool GlobalMap::fillSpecialArea (long row, long col, long area, long specialID) {
 
+	if (!mc2::globalmap::areaCountInRange(area + 1))
+		Fatal(area, "[MOVE-refuse] Too many Global Areas");
 	std::mdspan<short, std::dextents<std::size_t, 2>> areaView(areaMap, static_cast<std::size_t>(height), static_cast<std::size_t>(width));
 	areaView[row, col] = area;
 	GameMap->setBuildNotSet(row, col, false);
@@ -864,6 +868,8 @@ bool GlobalMap::fillArea (long row, long col, long area, bool offMap) {
 	}
 
 	gosASSERT(area != -1);
+	if (!mc2::globalmap::areaCountInRange(area + 1))
+		Fatal(area, "[MOVE-refuse] Too many Global Areas");
 	areaView[row, col] = area;
 	for (long dir = 0; dir < 4; dir ++) {
 		long adjR = row + adjTile[dir][0];
@@ -923,7 +929,8 @@ void GlobalMap::calcAreas (void) {
 
 	// NOTE: We allocate one extra area--this is used by the calcPath routine
 	// as a "scratch" area in some cases...
-	gosASSERT(numAreas <= MAX_GLOBALMAP_AREAS);
+	if (!mc2::globalmap::areaCountInRange(numAreas))
+		Fatal(numAreas, "[MOVE-refuse] Too many Global Areas");
 	areas = mc2::globalmap::ownZeroed(areasStore, static_cast<size_t>(numAreas) + 1);
 	// The build path owns both pointer tables too: the packet-load path sizes them before it calls anything else.
 	if (!areas_doors)

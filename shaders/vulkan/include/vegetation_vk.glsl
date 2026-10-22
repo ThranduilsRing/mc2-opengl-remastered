@@ -66,6 +66,7 @@ void mc2VegetationVertex() {
 
 
 
+    v_shadowWorld = worldPos;
     v_vegData.y  = 1.0 - a_card.y;
     v_vegData.x        = i_seed;
 

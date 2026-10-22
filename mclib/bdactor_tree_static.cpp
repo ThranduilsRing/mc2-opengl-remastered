@@ -3,6 +3,7 @@
 #include "bdactor_internal.h"
 #include "../RenderCore/axis_convert.h"
 #include "mc2fmt.h"
+#include "../GameOS/gameos/static_caster_set.h"   // shadow-bake caster events
 
 void TreeAppearance::touch()
 {
@@ -135,8 +136,10 @@ void TreeAppearance::invalidateStaticRegistration()
 {
 	// TREE-OVERRIDE-LOD-MVP Task 2: tear down every registered LOD recipe.
 	for (long lod = 0; lod < MAX_LODS; ++lod) {
-		if (staticReg[lod].registered && staticReg[lod].recipeIndex >= 0)
+		if (staticReg[lod].registered && staticReg[lod].recipeIndex >= 0) {
+			if (lod == 0) mc2shadow::staticCasterSet().ownerInvalidated(static_cast<const Appearance*>(this), staticReg[0].recipeIndex);
 			GameAdapters::StaticProp::destroyStaticPropByIndex(staticReg[lod].recipeIndex);
+		}
 		staticReg[lod] = StaticRegistration{};
 	}
 }
@@ -144,6 +147,7 @@ void TreeAppearance::invalidateStaticRegistration()
 // Task 5 (Track B): mission-load bulk static-prop registration (mirror of
 // BldgAppearance::registerStatic). HC-1: writes directly to typed staticReg.
 void TreeAppearance::registerStatic() {
+	if (shadowIsMoving()) return;
 	const bool seamProbe = (mc2::gate::get<"MC2_MODOVERRIDE_TRACE">())
 		&& appearType && appearType->treeRenderShape[0];
 	if (seamProbe)
@@ -330,6 +334,7 @@ void TreeAppearance::registerStatic() {
 			// key when activeLOD!=0; recovery check is activeLOD==0-only).
 			staticReg[lod].shape       = (lod == 0) ? treeShape : nullptr;
 			staticReg[lod].recipeIndex = regIdx;
+			if (lod == 0) mc2shadow::staticCasterSet().ownerRegistered(static_cast<const Appearance*>(this), regIdx);
 			anyRegistered = true;
 
 			// COUNTER-HONESTY-1: tag the recipe Tree. Until this lane, ONLY the
@@ -433,6 +438,11 @@ bool TreeAppearance::isStaticRegistered() const { return staticReg[activeLOD].re
 
 int32_t TreeAppearance::getStaticRecipeIndex() const {
     return staticReg[activeLOD].registered ? staticReg[activeLOD].recipeIndex : -1;
+}
+
+// The shadow LOD is LOD0 whatever LOD is drawn: the far LODs are registered no-shadow.
+int32_t TreeAppearance::getShadowCasterRecipeIndex() const {
+    return staticReg[0].registered ? staticReg[0].recipeIndex : -1;
 }
 
 // STATIC-REG-PREWARM-QUEUE-1: mission-load off-screen light bake for trees.

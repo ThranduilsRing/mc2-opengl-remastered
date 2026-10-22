@@ -9,10 +9,19 @@
 #include "globalmap_limits.h"
 
 #include <cstdint>
+#include <limits>
 #include <string>
 #include <vector>
 
 namespace gm = mc2::globalmap;
+
+TEST_CASE("area-cap refusal precedes signed area-id overflow")
+{
+	CHECK(gm::areaCountInRange(gm::kMaxAreas));
+	CHECK_FALSE(gm::areaCountInRange(gm::kMaxAreas + 1));
+	CHECK_FALSE(gm::areaCountInRange(32768));
+	CHECK_FALSE(gm::areaCountInRange(-1));
+}
 
 namespace
 {
@@ -45,10 +54,10 @@ TEST_CASE("a header with in-range counts is accepted, including the limits thems
 	CHECK(gm::rejectHeaderCounts(top) == nullptr);
 }
 
-TEST_CASE("fan campaign maps (900 and 1024 cells per side) are accepted, stock 720 unchanged")
+TEST_CASE("fan campaign and 1K vertex maps are accepted, stock 720 unchanged")
 {
-	static_assert(gm::kMaxCellsPerSide >= 1024);
-	for (long side : {720L, 900L, 1024L})
+	static_assert(gm::kMaxCellsPerSide == 3072);
+	for (long side : {720L, 900L, 1024L, 1025L, 3060L, 3072L})
 	{
 		gm::HeaderCounts c = stock();
 		c.height = side;
@@ -56,7 +65,7 @@ TEST_CASE("fan campaign maps (900 and 1024 cells per side) are accepted, stock 7
 		CHECK(gm::rejectHeaderCounts(c) == nullptr);
 	}
 	gm::HeaderCounts over = stock();
-	over.height = 1025;
+	over.height = gm::kMaxCellsPerSide + 1;
 	CHECK(std::string(gm::rejectHeaderCounts(over)) == "height");
 }
 
@@ -106,6 +115,22 @@ TEST_CASE("per-area and per-door-side counts are range checked")
 	CHECK(gm::doorLinkCountInRange(gm::kMaxDoorsPerArea));
 	CHECK_FALSE(gm::doorLinkCountInRange(-1));
 	CHECK_FALSE(gm::doorLinkCountInRange(gm::kMaxDoorsPerArea + 1));
+}
+
+TEST_CASE("global door counts leave both scratch indices representable in signed 16 bits")
+{
+	constexpr long maxDoors = std::numeric_limits<int16_t>::max() - 1;
+	CHECK(gm::kMaxDoors <= maxDoors);
+	for (long count : {20000L, maxDoors}) {
+		auto c = stock();
+		c.numDoors = count;
+		CHECK(gm::rejectHeaderCounts(c) == nullptr);
+	}
+	auto over = stock();
+	over.numDoors = maxDoors + 1;
+	const char* reason = gm::rejectHeaderCounts(over);
+	REQUIRE(reason != nullptr);
+	CHECK(std::string(reason) == "numDoors");
 }
 
 TEST_CASE("a packet larger than the struct array is tolerated within the slack and refused beyond it")

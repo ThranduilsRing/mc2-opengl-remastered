@@ -4,6 +4,9 @@
 #include "vk_render_pass_timer.h"
 #include "vk_gpu_profile.h"   // VK-GPU-ZONES: MC2_VK_GPU_SCOPE
 #include "mc2fmt.h"
+#include "vulkan_shadow_island_live.h"   // the bake mask
+#include "vulkan_mover_shadow.h"
+void gos_GetTerrainChunkGridInfo(int* mapSide, float* halfMap);
 #include "mc2_diag_verbose.h"
 
 #ifdef MC2_VULKAN_ISLAND
@@ -101,6 +104,7 @@ extern "C" int mc2_vk_water_island_run(
       fsC = vkImageResourceBeginFrame(s->sColorRes); }
     us_fence_wait = usSince(tFence0);
     const uint32_t par = fsC.parity & 1u;
+    if (!mc2vk::bindMoverShadowDescriptors(s->device,s->set[par])) { setFallback("mover_receiver_unavailable"); s->disabled=true; return 0; }
 
     const clk::time_point tStage0 = clk::now();
     const WaterStream::VkNativeInputs* nat = nullptr;   // STEP 3.4P: set in the feed block when the native producers run this frame
@@ -119,7 +123,21 @@ extern "C" int mc2_vk_water_island_run(
         if (gos_terrain_lighting::GetVkProducerSnapshot(snap0) && snap0.numVertices > 0) {
             slotCtx.waitIdle("water_native_init");
             auto np = std::make_unique<mc2vk::NativeProducers>();
-            if (np->init(slotCtx, snap0.numVertices, recipeCount, s->recipeBuf.get())) {
+            // Upper bound on the quads the cull can emit: the shader's water-eligibility predicate (water bit on any corner, or any
+            // corner under waterElevation + shoreExt) counted over the CPU recipes once, plus headroom. Sizes the thin buffers from the map.
+            uint32_t eligibleBound = 0;
+            {
+                const WaterStream::VkNativeInputs* in0 = static_cast<const WaterStream::VkNativeInputs*>(nativeInputsIn);
+                const WaterStream::WaterRecipe* rc = static_cast<const WaterStream::WaterRecipe*>(recipes);
+                const float thr = in0->waterElevation + in0->shoreExt + 64.0f;   // +64 wu: slack for a later alphaDepth / shore change
+                uint32_t n = 0;
+                for (uint32_t i = 0; i < recipeCount; ++i) {
+                    const WaterStream::WaterRecipe& r = rc[i];
+                    if ((r.waterBits & 0x01010101u) != 0u || r.v0e < thr || r.v1e < thr || r.v2e < thr || r.v3e < thr) ++n;
+                }
+                eligibleBound = n + n / 8u + 4096u;
+            }
+            if (np->init(slotCtx, snap0.numVertices, recipeCount, s->recipeBuf.get(), eligibleBound)) {
                 s->native = std::move(np);
                 s->thinNative[0] = s->thinNative[1] = true;
                 write_descriptors(s);   // binding 6 -> the GPU-produced thin buffers
@@ -142,7 +160,9 @@ extern "C" int mc2_vk_water_island_run(
     }
     g_health.thinRecords = 0;   // GPU-produced: the count lives in the draw args
 
-    const std::array<VkImageView,3> views{s->hdriTexture.view(),s->shHTexture.view(),s->shMTexture.view()};
+    s->maskView = (mc2_vk_shadow_island_bake_ready() && s->hdriSampler)
+                      ? reinterpret_cast<VkImageView>(mc2_vk_shadow_island_get_bake_mask_view()) : VK_NULL_HANDLE;
+    const std::array<VkImageView,4> views{s->hdriTexture.view(),s->shHTexture.view(),s->shMTexture.view(),s->maskView};
     if (s->imageDescriptorsDirty[par] || s->boundTextures[par]!=views) {
         write_descriptors(s,int(par)); s->boundTextures[par]=views;
     }
@@ -169,6 +189,15 @@ extern "C" int mc2_vk_water_island_run(
             const int shMode = static_cast<int>(fsLocal.f4[0] + 0.5f);
             fsLocal.f4[1] = (shMode >= 2 && shoreSdf) ? 1.0f : 0.0f;
             fsLocal.f4[2] = (shMode >= 1 && s->shMReal) ? 1.0f : 0.0f;
+        }
+        // The bake mask: its world span (the terrain grid, as the terrain shader maps it) and whether binding 7 holds it this frame.
+        {
+            int side = 0;
+            float halfMap = 0.0f;
+            gos_GetTerrainChunkGridInfo(&side, &halfMap);
+            fsLocal.f7[1] = 128.0f * static_cast<float>(side > 1 ? side - 1 : 1);
+            fsLocal.f7[2] = (s->maskView != VK_NULL_HANDLE) ? 1.0f : 0.0f;
+            fsLocal.f7[3] = halfMap;
         }
         std::memcpy(base + fsUboOff, &fsLocal, sizeof(WaterFsParams));
         if (s->ringBound[par] != uboSpan.buffer) {

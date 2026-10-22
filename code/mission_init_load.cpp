@@ -666,7 +666,6 @@ void Mission::initGpuAndLighting() {
 	// CP-1: new mission - re-prime the world-fixed static shadow map and the
 	// static light matrix (both are process-scoped and otherwise carry over
 	// the previous mission's state into this mission).
-	gos_ResetStaticShadowPriming();
 
 	if (mc2::gate::get<"MC2_DECOR_SHADOW_TRACE">()) {
 		mc2::fmt::print_out("[DECOR_SHADOW v1] event=mission_reset_priming frame={:d}\n", mc2::fmt::as_u32(g_mc2FrameCounter)); fflush(stdout);
@@ -999,6 +998,8 @@ void Mission::initFinalizeGeometry() {
 	{ ZoneScopedN("Mission::init prewarmStaticPropLightBakes");
 	  eye->primeActiveLightsForPrewarm();
 	  ObjectManager->prewarmStaticPropLightBakes(eye); }
+	{ ZoneScopedN("Mission::init buildStaticShadowCasterSet");
+	  ObjectManager->buildStaticShadowCasterSet(); }
 	mission_phase_mark("gpu_finalize_ready"); // LOAD-PHASE-FACTS-1: geometry finalize + indirect-buffer build + light-bake prewarm done
 
 	// Vegetation card system — notify adapter that terrain + move map are ready.

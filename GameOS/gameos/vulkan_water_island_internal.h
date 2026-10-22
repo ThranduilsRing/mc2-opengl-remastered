@@ -114,7 +114,7 @@ struct WaterFsParams {
     float f4[4];             // off 112 u_shoreMode, u_hasShoreHeight, u_hasShoreMask, u_shoreFeatherWu
     float f5[4];             // off 128 u_shoreHeightBounds
     float f6[4];             // off 144 u_shoreMaskBounds
-    float f7[4];             // off 160 waterElevation, pad x3
+    float f7[4];             // off 160 waterElevation, mask span (wu), mask bound (0/1), terrain grid halfMap
     // VK-PARITY-F3: LOCKSTEP with water_geom.frag f8/f9.
     float f8[4];             // off 176 edgeFeather, edgeFeatherStrength, halfMap, skyTintStrength
     float f9[4];             // off 192 skyTintColor.xyz, projAspect
@@ -199,7 +199,9 @@ struct WaterIsland : mc2vk::IslandState {
     mc2vk::OwnedDescriptorSetLayout dsl;
     mc2vk::OwnedDescriptorPool pool;
     bool imageDescriptorsDirty[2]={true,true};
-    std::array<VkImageView,3> boundTextures[2]{};
+    std::array<VkImageView,4> boundTextures[2]{};
+    // The shadow bake's mask (binding 7) while the bake is ready; the shader reads it only when the frame's f7.z says so.
+    VkImageView maskView = VK_NULL_HANDLE;
     bool hdriSourceReal=false,shHSourceReal=false,shMSourceReal=false;
     mc2vk::ResidentTextureRef hdriTexture;
     mc2vk::OwnedSampler   hdriSampler;

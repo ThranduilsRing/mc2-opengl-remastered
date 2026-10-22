@@ -1,3 +1,4 @@
+#include "shadow_quality.h"
 #include "debug_state_dump.h"
 
 #include "gameos.hpp"           // SHADOW-OBSERVABILITY-1: mc2ShadowCsm* accessors
@@ -467,14 +468,10 @@ std::string buildSnapshotJson(const RenderSnapshot& snap,
     // tunables via mc2-render-state instead of re-deriving from launcher_env.json.
     {
         gosPostProcess* ppShadow = getGosPostProcess();
-        const bool csmBuilt = ppShadow && ppShadow->csmBuilt();
+        const bool enabled=ppShadow && ppShadow->shadowsEnabled_;
         s << "  \"shadow\": {\n";
-        s << "    \"csmActive\": "; b(s, mc2ShadowCsmEnabled()); s << ",\n";
-        s << "    \"cascadeCount\": " << mc2ShadowCsmCount() << ",\n";
-        s << "    \"r0\": " << mc2ShadowCsmR0() << ",\n";
-        s << "    \"lambda\": " << mc2ShadowCsmLambda() << ",\n";
-        s << "    \"mapSize\": " << mc2ShadowMapSize() << ",\n";
-        s << "    \"csmBuilt\": "; b(s, csmBuilt); s << "\n";
+        s << "    \"mapSize\": " << mc2shadow::shadowQuality().mapSide << ",\n";
+        s << "    \"enabled\": "; b(s, enabled); s << "\n";
         s << "  },\n";
     }
     s << "  \"registeredViews\": [\n";

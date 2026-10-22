@@ -101,37 +101,7 @@ void mc2::VkSceneRenderer::renderListsPostObjectsStateRestore (RenderSubmissions
 	} // end RenderLists.PostObjectsStateRestore
 }
 
-void mc2::VkSceneRenderer::renderListsStaticShadowBuild (RenderSubmissions& submissions)
-{
-	// VPL-#shadow Phase 1+2 (arch-doc docs/plans/static-terrain-shadow-
-	// architecture.md): build the static terrain shadow from the FULL map
-	// ONCE. Was: a prime + a camera-windowed accumulate behind a >100u
-	// camera-move gate -> the shadow FBO was fed only the ~110 visible
-	// terrain nodes and never cleared -> a near-empty depth atlas ->
-	// soft half-map shadow wash. Root cause is feed-scope and was
-	// probe-proven: the world-fixed ortho light matrix is correct and
-	// built-once ([SHADOWFRUSTUM v1] n=1 mapHalfExtent=6400
-	// orthoHalf=9503.5; build & sample share getLightSpaceMatrix()).
-	// Phase 1 retires the prime block, the camera-motion gate, and the
-	// gos_*ShadowRebuild* API (this was their only caller). The build is
-	// gated solely by the gos_StaticLightMatrixBuilt() latch, which
-	// Terrain::destroy re-arms per mission (C-1) so mission 2+ rebuilds
-	// against fresh blocks[]. The MapData full-map feed is stock-safe
-	// (no-ops if blocks[] unallocated -> shadow simply absent, never a
-	// crash, never worse than a missing shadow).
-	// ISSUE-34: keyed on the modern shadow path (shadow_terrain material),
-	// not tessellation — static shadow map still builds when tess is off.
-	if (gos_IsModernShadowPathActive() && !gos_StaticLightMatrixBuilt() &&
-	    Terrain::mapData) {
-		ZoneScopedN("Shadow.StaticFullMapBuild");
 
-		gos_BuildStaticLightMatrix();   // world-fixed, camera-independent
-		gos_MarkStaticLightMatrixBuilt();
-
-		// The static shadow map itself is the VK shadow island's (it draws the terrain and the buildings from the map data); this is only the matrix
-		// and the build generation the island and the terrain feed key on.
-	}
-}
 
 void mc2::VkSceneRenderer::renderListsStaticPropRegistryFlush (RenderSubmissions& submissions)
 {

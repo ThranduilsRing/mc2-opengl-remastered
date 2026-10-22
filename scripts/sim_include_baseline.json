@@ -2634,28 +2634,6 @@
       "occurrence": 1
     },
     {
-      "tu": "code/warrior.cpp",
-      "file": "code/warrior.cpp",
-      "chain": [
-        "code/warrior.cpp"
-      ],
-      "rule": "rng",
-      "subject": "srand",
-      "evidence": "srand(static_cast<unsigned>(time(nullptr)));",
-      "occurrence": 1
-    },
-    {
-      "tu": "code/warrior.cpp",
-      "file": "code/warrior.cpp",
-      "chain": [
-        "code/warrior.cpp"
-      ],
-      "rule": "wall-clock",
-      "subject": "time",
-      "evidence": "srand(static_cast<unsigned>(time(nullptr)));",
-      "occurrence": 1
-    },
-    {
       "tu": "code/mission_update.cpp",
       "file": "code/mission_update.cpp",
       "chain": [

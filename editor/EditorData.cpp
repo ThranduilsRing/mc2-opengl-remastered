@@ -1,3 +1,4 @@
+#include "stdafx.h"
 #include "vk_scene_renderer.h"
 #include "effect_resources.h"
 #include "render_submissions.h"

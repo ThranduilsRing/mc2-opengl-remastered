@@ -161,9 +161,7 @@ G("MC2_DEBUG_OVERLAY_PREDICATE_MODE", Enum, "", "code", "", "", tokens("|Legacy|
 // history: docs/gate-history.md#MC2_DEBUG_RENDERER
 L(Lead0, "MC2_DEBUG_RENDERER", Bool, false, "code", "", "Debug overlay renderer (GuiRuntime/EditorInspector.cpp).", registry(Feature, "MC2_FEATURE_DEBUG_RENDERER", 8, false) | verified),
 L(Lead0, "MC2_DEBUG_RENDERER_TEST", Bool, false, "gameos", "", "", verified),
-L(Presence, "MC2_DEBUG_SHADOW_FRUSTUM", Bool, false, "post", "", "[SHADOWFRUSTUM v1] VPL-#shadow: prove the static-shadow CLIPPER is correct (user suspected light/clipper; render-expert grep says it's feed-scope, not the...", verified),
 L(Presence, "MC2_DEBUG_SHADOW_STATIC", Bool, false, "code", "", ""),
-L(Presence, "MC2_DEBUG_SHADOW_ZRANGE", Bool, false, "post", "", "[SHADOWZRANGE v1] VPL-#10: prove the [0,1] ZERO_TO_ONE conversion is correct.", verified),
 // history: docs/gate-history.md#MC2_DEBUG_STATE_DUMP
 L(Lead0, "MC2_DEBUG_STATE_DUMP", Bool, false, "gameos", "", "DEBUG-STATE-DUMP-1: write a JSON render-state snapshot to debug_state/latest_render_state.json every 300 frames (and at frame 1).", passthrough | registry(Trace, "MC2_DIAG_DEBUG_STATE_DUMP", -1, false) | verified),
 // history: docs/gate-history.md#MC2_DEBUG_STATE_DUMP_DIR
@@ -183,7 +181,7 @@ L(Presence, "MC2_DEPTH_TRANSITION_PROBE", Bool, false, "terrain", "", "", passth
 L(Presence, "MC2_DESTROY_TRACE", Bool, false, "gameos", "", "", passthrough | verified),
 // DEV-DETERMINISM: single shared RNG stream for reproducible runs.
 // history: docs/gate-history.md#MC2_DETERMINISTIC_RNG
-L(Lead0, "MC2_DETERMINISTIC_RNG", Bool, false, "mech", "", "Route all randomness (incl.", passthrough | registry(Feature, "MC2_DETERMINISTIC_RNG", -1, false) | verified),
+L(Lead0Kill, "MC2_DETERMINISTIC_RNG", Bool, true, "mech", "", "Route all randomness (incl.", passthrough | registry(Feature, "MC2_DETERMINISTIC_RNG", -1, true) | verified),
 L(Lead1, "MC2_DEV_SHELL", Bool, false, "unclassified", "", "", verified),
 P("MC2_DEV_SHELL_PORT", Int, 0, "gameos", "", "", verified),  // default not derivable from the tree
 G("MC2_DIAGNOSTIC_TRACE_FILE", String, "", "unclassified", "", "", passthrough | verified),  // default not derivable from the tree
@@ -245,6 +243,7 @@ L(Presence, "MC2_FF_TRACE", Bool, false, "unclassified", "", "", verified),
 L(Lead0P, "MC2_FIRE_DECISION_TRACE", Bool, false, "mech", "", "ISSUE-17 fire-refusal instrumentation (default OFF = byte-identical; needs MC2_DIAG_TAGS=...,COMBAT).", passthrough | registry(Trace, "MC2_TRACE_FIRE_DECISION", -1, false) | verified),
 // history: docs/gate-history.md#MC2_FIXTURE_ORDER_LIVENESS
 L(Lead0P, "MC2_FIXTURE_ORDER_LIVENESS", Bool, false, "code", "", "META-FIX design F behavioral fixture (code/mission.cpp soak namespace; requires MC2_SOAK_AUTOWIN): at 20% of the autowin timer every armed home mech gets a...", passthrough | registry(Trace, "MC2_TRACE_FIXTURE_ORDER_LIVENESS", -1, false) | verified),
+P("MC2_FIXTURE_ORDER_MOVE_M", Float, 300.0, "code", "", "Meters the MC2_FIXTURE_ORDER_LIVENESS move order travels toward the map centre (default 300); long values drive a cross-map path on big maps.", clampRange(1.0, 1.0e7) | verified),
 // FOG-HORIZON-CLAMP-1: reshape OOB/edge fog to a horizon elevation profile.
 L(Lead0, "MC2_FORCE_43", Bool, false, "gameos", "", "Default-OFF gate (matches the launcher toggle model: checked -> MC2_FORCE_43=1, unchecked -> unset).", passthrough | verified),
 // history: docs/gate-history.md#MC2_FORCE_ALL_VISIBLE

@@ -92,10 +92,6 @@ REGISTRY = [
     # wrapper, the early-out gate and the camera/world spellings back to GL's.
 
 
-    # The VK caller passes sunAltSin in (clamp(shSun.z,0,1)); GL derives it inline.
-    Port("calcDynamicShadowCsm", "shaders/include/shadow.hglsl", "shaders/vulkan/include/terrain_frame_vk.glsl",
-         rename=[MV_PREFIX],
-         gl_drop=[r"^float sunAltSin = clamp\(lightDir\.z, 0\.0, 1\.0\);"]),
     # visualDisplaceFar is NOT registered: it has VK markers (terrain_tier1.vert,
     # terrain_tier1_skirt.vert; the VK block spans an else-branch boundary) but no GL
     # markers in shaders/terrain_lod_chunk.vert, so there is nothing to diff. Re-add

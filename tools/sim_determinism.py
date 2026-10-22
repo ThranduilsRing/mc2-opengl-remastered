@@ -67,7 +67,7 @@ def observation_error(lines) -> str:
             return f"missing or repeated observation at index {i}: simframe {previous} -> {tick}"
         previous = tick
     return ""
-GATES = {"MC2_SMOKE_FIXED_TIMESTEP": "1", "MC2_DETERMINISTIC_RNG": "1", "MC2_SIM_IDENTITY_TRACE": "1"}
+GATES = {"MC2_SMOKE_FIXED_TIMESTEP": "1", "MC2_SIM_IDENTITY_TRACE": "1"}
 #: A comparison over fewer frames proves nothing (the mission may not have left the loading screen).
 MIN_FRAMES = 300
 #: One baseline file per mission.

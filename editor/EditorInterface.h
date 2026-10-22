@@ -98,6 +98,7 @@ public:
 	// value (mclib/dmapdata.h); brushId/menuId use a synthetic-negative range.
 	void setPaintMaterialBrush( int terrainType );
 	void runWorkflowSmoke(const char* campaignPath);
+	void tickShadowEditSmoke(long frame);
 	void runCatalogReferenceSmoke();
 	void renderTerrainSelection();
 

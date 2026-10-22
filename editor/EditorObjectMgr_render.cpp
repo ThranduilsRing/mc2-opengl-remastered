@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in EditorObjectMgr_internal.h.
 #include "EditorObjectMgr_internal.h"
 #include "Gates/gate.h"
+#include "../GameOS/gameos/static_caster_set.h"   // the shadow bake's caster set
 
 
 // --------------------------------------------------------------------------
@@ -421,6 +422,33 @@ void EditorObjectMgr::registerStaticPropsForMissionLoad()
 		app->registerStatic();
 		if (app->isStaticRegistered())
 			++registered;
+	}
+	// The shadow bake's caster set: every registered building / tree / prop, as GameObjectManager::buildStaticShadowCasterSet does in the game.
+	{
+		mc2shadow::StaticCasterSet& set = mc2shadow::staticCasterSet();
+		set.beginRebuild();
+		uint32_t handle = 1;
+		for (auto iter = buildings.begin(); iter != buildings.end(); iter++)
+		{
+			EditorObject* obj = *iter;
+			if (!obj || !obj->appearance())
+				continue;
+			const Appearance* app = obj->appearance();
+			const int32_t recipe = app->getShadowCasterRecipeIndex();
+			const int special=getSpecialType(obj->getID());
+			if (recipe < 0 && special!=EDITOR_TURRET)
+				continue;
+			mc2shadow::StaticCasterEntry e;
+			e.owner = app;
+			e.gameHandle = handle++;
+			e.recipeIndex = recipe;
+			e.kind=special==EDITOR_TURRET?mc2shadow::CasterKind::Turret:
+				special==EDITOR_GATE?mc2shadow::CasterKind::Gate:mc2shadow::CasterKind::TerrainObject;
+			set.add(e);
+		}
+		set.endRebuild();
+		// Only addBuilding admits a new scene owner; brush preview recipes do not bake.
+		set.setAdmitNewOwners(false);
 	}
 	MC2_DIAGFE(stderr, "[STATIC_PROP_REG v1] event=editor_load enumerated=%d registered=%d skipped=%d\n",
 	        total, registered, total - registered);

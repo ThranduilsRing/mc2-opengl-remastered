@@ -39,6 +39,7 @@ static const bool s_vehicleLitPath = mc2::gate::get<"MC2_VEHICLE_LIT_PATH">();
 
 long GVAppearance::render (long depthFixup)
 {
+	if (visible && gos_IsModernShadowPathActive()) GpuStaticPropBatcher::instance().captureMoverShadowShape(static_cast<const Appearance*>(this),gvShape);
 	gvShape->SetTextureHandle(0,localTextureHandle);
 
 	// C3: render gate — GPU-lagged visibility when killswitch is enabled.

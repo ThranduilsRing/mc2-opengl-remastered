@@ -10,6 +10,7 @@
 
 #include "EditorObjectMgr_internal.h"
 #include "Gates/gate.h"
+#include "../GameOS/gameos/static_caster_set.h"
 
 void EditorObjMgrTrace(const char* fmt, ...)
 {
@@ -661,6 +662,9 @@ EditorObject* EditorObjectMgr::addBuilding( const glm::vec3& position, unsigned 
 		// registerStaticPropsForMissionLoad (buildings/trees/nav markers); units
 		// (separate list) excluded -- registerStatic corrupts a Unit (see
 		// EditorInterface.cpp:6462). Must run AFTER final position/rotation/scale.
+		const auto shadowKind=specialType==EDITOR_TURRET?mc2shadow::CasterKind::Turret:
+			specialType==EDITOR_GATE?mc2shadow::CasterKind::Gate:mc2shadow::CasterKind::TerrainObject;
+		mc2shadow::staticCasterSet().admitOwner(static_cast<const Appearance*>(a),shadowKind);
 		a->registerStatic();
 
 		// registerStatic arms the light-bake latch. The load-time drain is one-shot,

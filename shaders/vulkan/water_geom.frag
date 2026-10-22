@@ -15,6 +15,8 @@
 #version 450
 #extension GL_GOOGLE_include_directive : require
 #define PREC highp
+#include "include/mover_shadow.glsl"
+#include "../include/render_contract.hglsl"
 
 layout(location = 0) in PREC vec4  Color;
 layout(location = 1) in PREC vec2  Texcoord;
@@ -38,7 +40,7 @@ layout(set = 0, binding = 1, std140) uniform WaterFsParams {
     vec4 f4;              // (u_shoreMode, u_hasShoreHeight, u_hasShoreMask, u_shoreFeatherWu)
     vec4 f5;              // u_shoreHeightBounds (topLeftX, topLeftY, spanX, spanY)
     vec4 f6;              // u_shoreMaskBounds   (topLeftX, topLeftY, sizeX, sizeY)
-    vec4 f7;              // (waterElevation, pad, pad, pad)
+    vec4 f7;              // (waterElevation, mask span (wu), mask bound (0/1), terrain grid halfMap)
     // VK-PARITY-F3 (water brightness): GL-default features missing in VK.
     vec4 f8;              // (u_waterEdgeFeather, u_waterEdgeFeatherStrength, u_halfMap, u_waterSkyTintStrength)
     vec4 f9;              // (u_waterSkyTintColor.xyz, u_waterProjAspect)
@@ -54,6 +56,9 @@ layout(set = 0, binding = 2) uniform sampler2D u_hdri;
 // data the GL water FS samples): R32F hi-res visual height, RGBA8 shoreline mask.
 layout(set = 0, binding = 3) uniform sampler2D u_shoreHeightTex;
 layout(set = 0, binding = 4) uniform sampler2D u_shoreMask;
+// The static shadow bake's mask (R8 + mips over the terrain grid, row 0 north, evaluated at max(terrain, water)): the same texel the ground at
+// the shoreline reads, so the shadow runs across the coast without a cut. Read only when F.f7.z says it is bound.
+layout(set = 0, binding = 7) uniform sampler2D u_staticMask;
 #include "../include/water_shore_edge.hglsl"
 #include "../include/edge_haze.hglsl"   // VK-PARITY-F3: WATER-EDGE-FEATHER-1 (EDGE_HAZE_SKY, edgeHazeAmount)
 
@@ -209,7 +214,14 @@ void main(void)
     PREC float glint = smoothstep(GLINT_THRESH, 0.80, nz);
     col += glint * GLINT_GAIN * waveLOD * GLINT_TINT;
     //PORT-END:waterBaseColor
+    // Static shadow on the light the surface scatters and glints (the reflected sky is untouched), with the receivers' 0.4 floor.
+    if (F.f7.z > 0.5) {
+        vec2 maskUv = vec2(WorldPos.x + F.f7.w, F.f7.w - WorldPos.y) / max(F.f7.y, 1.0);
+        if (all(greaterThanEqual(maskUv, vec2(0.0))) && all(lessThanEqual(maskUv, vec2(1.0))))
+            col *= mix(0.4, 1.0, texture(u_staticMask, maskUv).r);
+    }
     // WATER-VISUAL-FIRST-SLICE sky tint (strength 0 default -> mix returns col; GL line 328).
+    col *= mix(0.4,1.0,moverVisibility(WorldPos,vec3(0.0,0.0,1.0)));
     col = mix(col, F.f9.xyz, clamp(F.f8.w, 0.0, 1.0));
 
     // ---- RUNG-6.5 WATER-REFLECTION PORT (WATER-SKY-REFLECTION-1 + WATER-HDRI-REFL-1) ----
@@ -270,5 +282,5 @@ void main(void)
     // composites onto MainColor (GL_ONE / GL_ONE_MINUS_SRC_ALPHA) == GL's native one-stage
     // col*a + bg*(1-a) blend, bit-exact. (Straight-alpha two-stage double-applied alpha.)
     FragColor = vec4(col * waterA, waterA);
-    GBuffer1  = vec4(0.5, 0.5, 1.0, 0.0);   // rc_gbuffer1_screenShadowEligible(0,0,1)
+    GBuffer1 = rc_gbuffer1_shadowHandled(vec3(0.0,0.0,1.0));
 }

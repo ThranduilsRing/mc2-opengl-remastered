@@ -1,3 +1,4 @@
+#include "vulkan_shadow_island_live.h"
 // main: the per-frame helpers -- draw-packet emit, the screenshot oracle, the load-race probes, the camera park and the swap.
 // The orchestrator is in gameosmain.cpp.
 #include "gameosmain_internal.h"
@@ -283,14 +284,13 @@ void frameEmitDrawPackets(RenderSnapshot& snap) {
                 extern uint32_t gos_getTerrainShadowProgramId();
                 extern uint32_t gos_getStaticPropShadowProgramId();
                 extern bool     gos_getShadowsEnabled();
-                extern bool     gos_StaticLightMatrixBuilt();
                 extern int      gos_getShadowMapSize();
                 extern int      gos_getDynShadowMapSize();
                 EditorInspector::ShadowPassSnapshot sp;
                 sp.terrainShadowProgramId      = gos_getTerrainShadowProgramId();
                 sp.staticPropShadowProgramId   = gos_getStaticPropShadowProgramId();
                 sp.shadowsEnabled              = gos_getShadowsEnabled();
-                sp.staticLightMatrixBuilt      = gos_StaticLightMatrixBuilt();
+                sp.staticLightMatrixBuilt      = mc2_vk_shadow_island_bake_ready()!=0;
                 sp.shadowMapSize               = gos_getShadowMapSize();
                 sp.dynShadowMapSize            = gos_getDynShadowMapSize();
                 sp.mechShadowTypesDrawn        = gos_getMechShadowTypesDrawn();

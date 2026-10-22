@@ -177,7 +177,6 @@ extern float SensorSkill;
 extern long RamObjectWID;
 extern GameObjectPtr LastCoreAttackTarget;
 extern const char* pilotAlarmFunctionName[NUM_PILOT_ALARMS];
-void SeedRandomNumbers (void);
 long SignedRandomNumber (long range);
 long GetMissionTurn (void);
 

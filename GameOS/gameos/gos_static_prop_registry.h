@@ -206,6 +206,13 @@ void getBuildingShadowInstances(std::vector<GpuStaticPropInstance>& out);
 // that reached s_typeRanges. Buildings are EXCLUDED (they cast via the
 // world-fixed static map): the inverse filter of getBuildingShadowInstances.
 void getDynamicPropShadowInstances(std::vector<GpuStaticPropInstance>& out);
+// The same set without the recipes the static shadow bake owns (excludedRecipes[recipeIndex] != 0): what is left are the props
+// no gameplay object put in the bake's caster set, and they keep casting in the cascades.
+void getDynamicPropShadowInstancesExcluding(std::vector<GpuStaticPropInstance>& out, const std::vector<uint8_t>& excludedRecipes);
+
+// The static shadow bake's caster lookup: appends the leaves (baked modelMatrix + typeID) of one live, shadow-casting recipe to `out` and
+// returns how many; 0, with nothing appended, for an out-of-range, tombstoned or no-shadow recipe.
+size_t getRecipeShadowLeaves(int32_t recipeIndex, std::vector<GpuStaticPropInstance>& out);
 
 // Returns RecipeRange::extentRadius. Value is from the previous frame's markVisible()
 // call; 0.0f if markVisible was never called for this recipe.

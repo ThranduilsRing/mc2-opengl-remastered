@@ -17,9 +17,9 @@ FAILS the checker unless it carries `# background-launch: allow <why>`.
 | `scripts/renderdoc_capture.py` | 265 | `subprocess.run` **raw, allowed:** renderdoccmd convert is a console file converter, not the game; windowless via hidden_kwargs | offscreen |
 | `scripts/run_editor_capture.py` | 47 | `nofocus.spawn` | offscreen |
 | `scripts/run_editor_playtest_smoke.py` | 246 | `nofocus.spawn` | offscreen |
-| `scripts/run_editor_smoke.py` | 851 | `nofocus.spawn` | offscreen |
-| `scripts/run_editor_smoke.py` | 1153 | `nofocus.spawn` | offscreen |
-| `scripts/run_editor_smoke.py` | 1679 | `nofocus.spawn` | offscreen |
+| `scripts/run_editor_smoke.py` | 880 | `nofocus.spawn` | offscreen |
+| `scripts/run_editor_smoke.py` | 1192 | `nofocus.spawn` | offscreen |
+| `scripts/run_editor_smoke.py` | 1718 | `nofocus.spawn` | offscreen |
 | `scripts/run_smoke.py` | 380 | `nofocus.spawn` | offscreen |
 | `scripts/run_smoke_asan.py` | 203 | `nofocus.spawn` | offscreen |
 | `scripts/run_tool_capture.py` | 106 | `nofocus.spawn` | offscreen |

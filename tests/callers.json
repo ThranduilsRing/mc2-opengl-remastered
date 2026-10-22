@@ -45,7 +45,7 @@
         },
         {
           "path": "tools/build_contract_harnesses.py",
-          "line": 130,
+          "line": 131,
           "evidence": "import",
           "reference": "bootstrap_worktree_build",
           "text": "from bootstrap_worktree_build import cache_args"
@@ -791,6 +791,13 @@
           "evidence": "command",
           "reference": "scripts/check-doc-links.py",
           "text": "run_check \"doc_links\"             \"py -3 scripts/check-doc-links.py --quiet\""
+        },
+        {
+          "path": "scripts/tests/test_check_doc_links.py",
+          "line": 9,
+          "evidence": "load module",
+          "reference": "scripts/check-doc-links.py",
+          "text": "spec = importlib.util.spec_from_file_location('check_doc_links', source)"
         }
       ],
       "callers_by_stem": []
@@ -2207,7 +2214,7 @@
         },
         {
           "path": "tools/build_contract_harnesses.py",
-          "line": 19,
+          "line": 20,
           "evidence": "import",
           "reference": "configure_ninja",
           "text": "import configure_ninja as cn"
@@ -2578,6 +2585,13 @@
           "text": "import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)"
         },
         {
+          "path": "scripts/tests/test_check_doc_links.py",
+          "line": 12,
+          "evidence": "import",
+          "reference": "console_child",
+          "text": "import console_child"
+        },
+        {
           "path": "scripts/tests/test_check_staged_hygiene.py",
           "line": 21,
           "evidence": "import",
@@ -2908,7 +2922,7 @@
         },
         {
           "path": "tools/build_contract_harnesses.py",
-          "line": 18,
+          "line": 19,
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child"
@@ -4275,7 +4289,7 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 588,
+          "line": 593,
           "evidence": "command",
           "reference": "scripts/run_smoke.py",
           "text": "proc = subprocess.run(cmd, cwd=str(ROOT), capture_output=True,"
@@ -5238,7 +5252,7 @@
         },
         {
           "path": "tests/smoke/test_render_options_pin.py",
-          "line": 144,
+          "line": 145,
           "evidence": "import",
           "reference": "scripts.smoke_lib.gates",
           "text": "from scripts.smoke_lib.gates import Verdict"
@@ -5444,7 +5458,7 @@
         },
         {
           "path": "tests/smoke/test_render_options_pin.py",
-          "line": 145,
+          "line": 146,
           "evidence": "import",
           "reference": "scripts.smoke_lib.logparse",
           "text": "from scripts.smoke_lib.logparse import LogSummary"
@@ -6097,6 +6111,13 @@
       "path": "scripts/tests/test_check_cxx_standard_floor.py",
       "basename": "test_check_cxx_standard_floor.py",
       "stem": "test_check_cxx_standard_floor",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "scripts/tests/test_check_doc_links.py",
+      "basename": "test_check_doc_links.py",
+      "stem": "test_check_doc_links",
       "callers_by_basename": [],
       "callers_by_stem": []
     },
@@ -8565,14 +8586,14 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 412,
+          "line": 417,
           "evidence": "import_module",
           "reference": "fst",
           "text": "fst_lib = importlib.import_module('fst')"
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 448,
+          "line": 453,
           "evidence": "import_module",
           "reference": "fst",
           "text": "fst_lib = importlib.import_module('fst')"
@@ -8769,14 +8790,14 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 328,
+          "line": 333,
           "evidence": "import",
           "reference": "fst_listing",
           "text": "import fst_listing"
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 430,
+          "line": 435,
           "evidence": "import",
           "reference": "fst_listing",
           "text": "import fst_listing"
@@ -8860,7 +8881,15 @@
           "text": "_spec = importlib.util.spec_from_file_location(\"mod_smoke\", ROOT / \"tools\" / \"mod_smoke.py\")"
         }
       ],
-      "callers_by_stem": []
+      "callers_by_stem": [
+        {
+          "path": "tests/smoke/test_mod_smoke_staging.py",
+          "line": 7,
+          "evidence": "import",
+          "reference": "tools.mod_smoke",
+          "text": "from tools import mod_smoke"
+        }
+      ]
     },
     {
       "path": "tools/objective_outcomes.py",
@@ -9454,7 +9483,7 @@
         },
         {
           "path": "scripts/run_editor_smoke.py",
-          "line": 1634,
+          "line": 1673,
           "evidence": "import",
           "reference": "tools.repo_intel.lane_model",
           "text": "from tools.repo_intel.lane_model import lane_for"
@@ -9783,7 +9812,7 @@
       "callers_by_basename": [
         {
           "path": "GameOS/gameos/CMakeLists.txt",
-          "line": 459,
+          "line": 462,
           "evidence": "cmake command",
           "reference": "${CMAKE_SOURCE_DIR}/tools/shader_offline_build/slang_compile.py",
           "text": "COMMAND \"${Python3_EXECUTABLE}\""
@@ -11803,7 +11832,7 @@
       "callers_by_basename": [
         {
           "path": "tests/smoke/test_render_options_pin.py",
-          "line": 121,
+          "line": 122,
           "evidence": "load module",
           "reference": "tools/tracy_capture_compare.py",
           "text": "spec = importlib.util.spec_from_file_location(\"tracy_capture_compare_under_test\", ROOT / \"tools\" / \"tracy_capture_compare.py\")"
@@ -12548,7 +12577,7 @@
       "callers_by_stem": [
         {
           "path": "tests/smoke/test_render_options_pin.py",
-          "line": 101,
+          "line": 102,
           "evidence": "import",
           "reference": "capture_ab",
           "text": "import capture_ab"

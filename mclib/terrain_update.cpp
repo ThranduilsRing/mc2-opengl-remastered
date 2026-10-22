@@ -516,28 +516,6 @@ long Terrain::update (void)
 		int    tierChunks[4] = {0, 0, 0, 0};      // tier 0/1/2/3 chunk counts
 		double tierArea[4]   = {0.0, 0.0, 0.0, 0.0};
 
-		// --- Slice B: shadow-tier cascade center + near-cascade outer radius. ---
-		// The shadow tier is a coarse per-chunk proxy for receiver importance,
-		// thresholded at the CSM cascade geometry (NOT camera-altitude LOD).
-		// Cascade center == the shadow focus == eye->getPosition() (the orbit
-		// target, MC2-world east/north; .x=east, .y=north). This matches the
-		// CSM center fed to gos_BuildDynamicLightMatrix in txmmgr.cpp:2318-2319.
-		// NOTE: eyeX/eyeY (used above for LOD) is getCameraOrigin() = the HIGH-UP
-		// eye, NOT the target -- so we deliberately use getPosition() here so the
-		// tier tracks the cascade center, not the camera altitude.
-		// mc2ShadowCsmR0/R1() live in gos_postprocess.cpp (no header); declare
-		// them extern so the tier tracks the same env (MC2_SHADOW_CSM_R0/R1) the
-		// cascade radii use. Defaults R0=512, R1=4096.
-		extern float mc2ShadowCsmR0();
-		extern float mc2ShadowCsmR1();
-		const glm::vec3 shadowTierCenter = eye->getPosition();  // cascade center
-		const float shadowR1 = mc2ShadowCsmR1();   // near-cascade outer radius (~4096)
-		// Mid/far split: chunks past the near cascades but within a few R1 still
-		// receive the full-map cascade at usable density -> tier 1 (coarse
-		// dynamic); only the far tail is a static-only candidate. The 2.5x factor
-		// is a starting guess kept as a clearly-labeled local for tuning.
-		const float shadowMidFarMult = 2.5f;
-
 		// --- Phase 5 Pass 3: emit draw commands using lodLevel -> lodStep ---
 		// --- Phase 6: also compute per-block skirt depth (parallel array) ---
 		for (int by = 0; by < s_terrainChunkSide; ++by)
@@ -547,26 +525,13 @@ long Terrain::update (void)
 				const TerrainBlockMeta& bm = s_blockMeta[bx + by * s_terrainChunkSide];
 				if (!bm.inFrustum) continue;
 
-				// --- Slice B: classify this visible chunk into a shadow tier. ---
-				// DISTANCE-from-cascade-center heuristic (replaces lodLevel-based:
-				// at MC2 zoom the camera maxes ~6400 WU altitude so lodLevel stays
-				// 0-1 map-wide -> the whole map classified tier 0). Distance to the
-				// shadow focus, thresholded at the CSM cascade radii, properly
-				// discriminates near (crisp cascades) vs far (full-map cascade).
-				// Chunk center XY uses the SAME conversion as the LOD site above
-				// (worldX = mapX*128 - halfMap; worldY = halfMap - mapY*128).
+				// World centers also drive terrain geomorph below.
 				const float chunkCenterX =
 					float(bm.originX) * 128.0f + float(bm.quadCountX) * 0.5f * 128.0f - halfMap;
 				const float chunkCenterY =
 					halfMap - (float(bm.originY) * 128.0f + float(bm.quadCountY) * 0.5f * 128.0f);
-				const float stDx = chunkCenterX - shadowTierCenter.x;
-				const float stDy = chunkCenterY - shadowTierCenter.y;
-				const float stDist = sqrtf(stDx * stDx + stDy * stDy);
-				int shadowTier;
-				if (!bm.inFrustum)                              shadowTier = 3; // culled (completeness)
-				else if (stDist < shadowR1)                     shadowTier = 0; // near cascades -> crisp dynamic
-				else if (stDist < shadowR1 * shadowMidFarMult)  shadowTier = 1; // full-map cascade mid -> coarse dynamic
-				else                                            shadowTier = 2; // far -> static-only candidate
+				// Every visible chunk uses the same mask and mover receiver.
+				constexpr int shadowTier = 0;
 				s_shadowTierVec[s_cmdCount] = shadowTier;
 				// TERRAIN-LOD-GEOMORPH-1: geomorph factor from the block's FINAL
 				// lodLevel (post cement/neighbor clamps) + center distance to the

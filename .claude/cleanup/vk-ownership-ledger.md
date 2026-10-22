@@ -87,7 +87,7 @@ Release tokens inside the destructors of the owner types: every one runs once, f
 | post_hzb | DescriptorSets | 2 | 0 |
 | post_screenfx | CommandBuffers | 1 | 0 |
 | post_screenfx | DescriptorSets | 3 | 0 |
-| shadow | CommandBuffers | 2 | 1 |
+| shadow | CommandBuffers | 1 | 0 |
 | shadow | DescriptorSets | 2 | 0 |
 | sky | CommandBuffers | 2 | 1 |
 | sky | DescriptorSets | 1 | 0 |

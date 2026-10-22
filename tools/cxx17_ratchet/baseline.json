@@ -51,20 +51,20 @@
    "LG02": 52,
    "LG03": 104,
    "LG04": 5,
-   "LG05": 104,
-   "LG06": 367,
+   "LG05": 102,
+   "LG06": 362,
    "LG07": 0,
-   "LG08": 161,
+   "LG08": 158,
    "LG09": 4,
-   "LG10": 15,
+   "LG10": 11,
    "LG11": 75,
    "LG12a": 61,
    "LG12b": 26,
-   "LG13": 304,
+   "LG13": 302,
    "LG14": 55,
    "LG15": 0,
    "LG16": 5,
-   "LG17": 75,
+   "LG17": 70,
    "LG18": 17,
    "LG19": 1,
    "LG20": 6
@@ -251,7 +251,7 @@
    "LG17": 0,
    "LG18": 0,
    "LG19": 1,
-   "LG20": 50
+   "LG20": 48
   }
  },
  "dirs": [
@@ -405,9 +405,6 @@
    "LG17": 5,
    "LG18": 1
   },
-  "GameOS/gameos/gameos_graphics_shadow.cpp": {
-   "LG05": 1
-  },
   "GameOS/gameos/gameos_graphics_texture.cpp": {
    "LG06": 2,
    "LG11": 1
@@ -520,9 +517,6 @@
   "GameOS/gameos/gos_postprocess.h": {
    "LG06": 1
   },
-  "GameOS/gameos/gos_postprocess_shadow.cpp": {
-   "LG10": 4
-  },
   "GameOS/gameos/gos_postprocess_targets.cpp": {
    "LG06": 2
   },
@@ -596,7 +590,7 @@
   },
   "GameOS/gameos/gos_static_prop_registry.cpp": {
    "LG05": 14,
-   "LG08": 25,
+   "LG08": 22,
    "LG12a": 4
   },
   "GameOS/gameos/gos_static_prop_registry.h": {
@@ -722,9 +716,6 @@
    "LG05": 2,
    "LG06": 2,
    "LG17": 1
-  },
-  "GameOS/gameos/static_shadow_spec.h": {
-   "LG05": 1
   },
   "GameOS/gameos/terrain_field_store.cpp": {
    "LG17": 1
@@ -897,13 +888,9 @@
    "LG13": 2
   },
   "GameOS/gameos/vulkan_shadow_island_live.cpp": {
-   "LG06": 5,
+   "LG06": 2,
    "LG13": 2,
-   "LG17": 5
-  },
-  "GameOS/gameos/vulkan_shadow_static_map.cpp": {
-   "LG06": 1,
-   "LG13": 2
+   "LG17": 1
   },
   "GameOS/gameos/vulkan_shared_scene_color.cpp": {
    "LG03": 1,
@@ -934,10 +921,6 @@
   },
   "GameOS/gameos/vulkan_terrain_island_overlay.cpp": {
    "LG08": 7
-  },
-  "GameOS/gameos/vulkan_terrain_island_run.cpp": {
-   "LG06": 1,
-   "LG17": 1
   },
   "GameOS/gameos/vulkan_vfx_island.cpp": {
    "LG05": 5,
@@ -3531,7 +3514,7 @@
   },
   "tools/mc2_launcher/mc2_launcher.cpp": {
    "LG19": 1,
-   "LG20": 41
+   "LG20": 39
   },
   "tools/mc2fx_preview/main.cpp": {
    "LG20": 1
@@ -3540,7 +3523,7 @@
    "LG20": 3
   }
  },
- "head": "563443d20",
+ "head": "7547f1aa8",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

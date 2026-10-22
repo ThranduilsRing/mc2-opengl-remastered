@@ -6,6 +6,7 @@
 
 #include <cstddef>
 #include <cstring>
+#include <type_traits>
 #include <vector>
 
 namespace {
@@ -117,4 +118,56 @@ TEST_CASE("old record with nonzero padding: copyTo (load) then copy (re-save) wr
 		CHECK(resaved.path[i].cost == 99);
 		CHECK(resaved.path[i].stepList[199].distanceToGoal == doctest::Approx(99.5f));
 	}
+}
+
+TEST_CASE("stock global routes retain the 50-step save layout and active path") {
+	static_assert(std::extent_v<decltype(SaveableMoveOrders::globalPath)> == 50);
+	static_assert(std::extent_v<decltype(MechWarriorData::lastGoalPath)> == 50);
+	for (short count : {49, 50}) {
+		MovePath first{}, second{}, restoredFirst{}, restoredSecond{};
+		fillMeaningful(first); fillMeaningful(second);
+		MoveOrders live{}, restored{};
+		live.path[0] = &first; live.path[1] = &second;
+		restored.path[0] = &restoredFirst; restored.path[1] = &restoredSecond;
+		live.pathType = MOVEPATH_COMPLEX;
+		live.numGlobalSteps = count;
+		live.curGlobalStep = count - 1;
+		live.globalPath[count - 1].goalDoor = 123;
+		SaveableMoveOrders saved{};
+		saved.copy(live);
+		saved.copyTo(restored);
+		CHECK(restored.pathType == MOVEPATH_COMPLEX);
+		CHECK(restored.numGlobalSteps == count);
+		CHECK(restored.curGlobalStep == count - 1);
+		CHECK(restored.globalPath[count - 1].goalDoor == 123);
+		CHECK(restored.path[0]->numSteps == 7);
+	}
+}
+
+TEST_CASE("a 200-step live route survives signed-byte limits and replans after save-load") {
+	MovePath first{}, second{}, restoredFirst{}, restoredSecond{};
+	fillMeaningful(first); fillMeaningful(second);
+	MoveOrders live{}, restored{};
+	live.path[0] = &first; live.path[1] = &second;
+	restored.path[0] = &restoredFirst; restored.path[1] = &restoredSecond;
+	live.pathType = MOVEPATH_COMPLEX;
+	live.numGlobalSteps = 200;
+	live.curGlobalStep = 150;
+	live.goalType = MOVEGOAL_LOCATION;
+	live.goalLocation = glm::vec3(60000.0f, -60000.0f, 0.0f);
+	CHECK(live.numGlobalSteps == 200);
+	CHECK(live.curGlobalStep == 150);
+	SaveableMoveOrders saved{};
+	saved.copy(live);
+	saved.copyTo(restored);
+	CHECK(restored.goalType == MOVEGOAL_LOCATION);
+	CHECK(restored.goalLocation == live.goalLocation);
+	CHECK(restored.newGoal);
+	CHECK(restored.pathType == MOVEPATH_UNDEFINED);
+	CHECK(restored.numGlobalSteps == 0);
+	CHECK(restored.curGlobalStep == 0);
+	CHECK(restored.path[0]->numStepsWhenNotPaused == 0);
+	CHECK(restored.path[1]->numStepsWhenNotPaused == 0);
+	CHECK(live.numGlobalSteps == 200);
+	CHECK(live.path[0]->numSteps == 7);
 }

@@ -1,5 +1,7 @@
 // Mover: move goals, line of sight, global/local path calculation and path locking.
 // Declared in mover.h; shared names in mover_internal.h.
+#include <array>
+#include <vector>
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "mover_internal.h"
 
@@ -507,7 +509,9 @@ long Mover::calcMoveGoal (GameObjectPtr target,
 		}
 	}
 
-	char validAreaTable[MAX_GLOBALMAP_AREAS];
+	// Reuse scratch storage; grow only when a larger map is encountered.
+	static std::vector<char> validAreaTable;
+	validAreaTable.resize(GlobalMoveMap[moveLevel]->numAreas);
 	for (long i = 0; i < GlobalMoveMap[moveLevel]->numAreas; i++)
 		validAreaTable[i] = -1;
 	long curArea = GlobalMoveMap[moveLevel]->calcArea(cellPositionRow, cellPositionCol);
@@ -554,7 +558,7 @@ long Mover::calcMoveGoal (GameObjectPtr target,
 					if (moveLevel < 2) {
 						if (GlobalMoveMap[moveLevel]->getPathExists(curArea, area) == GLOBALPATH_EXISTS_UNKNOWN) {
 							if (CalcValidAreaTable) {
-								GlobalPathStep globalPath[128];
+								GlobalPathStep globalPath[MAX_GLOBAL_PATH];
 								long numSteps = GlobalMoveMap[moveLevel]->calcPath(curArea, area, globalPath);
 								if (numSteps > 0) {
 									for (long j = 0; j < numSteps; j++)

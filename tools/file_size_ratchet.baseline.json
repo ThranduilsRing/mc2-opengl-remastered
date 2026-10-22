@@ -14,15 +14,14 @@
  ],
  "files_over_1500": {
   "GameOS/gameos/engine_present_vk.cpp": 2793,
-  "GameOS/gameos/vulkan_color_prop_island.cpp": 1725,
-  "GameOS/gameos/vulkan_shadow_island_live.cpp": 1550,
-  "GameOS/include/gameos.hpp": 3721,
-  "RenderCore/RendererFeatureRegistry.h": 1596,
+  "GameOS/gameos/vulkan_color_prop_island.cpp": 1726,
+  "GameOS/include/gameos.hpp": 3661,
+  "RenderCore/RendererFeatureRegistry.h": 1561,
   "code/artlry.cpp": 1833,
   "code/bldng.cpp": 1691,
   "code/brain_special_dispatch.cpp": 2771,
-  "code/gamecam.cpp": 1609,
-  "code/gameobj.cpp": 2241,
+  "code/gamecam.cpp": 1604,
+  "code/gameobj.cpp": 2242,
   "code/infowindow.cpp": 1730,
   "code/logisticsdialog.cpp": 2149,
   "code/mechicon.cpp": 1981,
@@ -35,28 +34,28 @@
   "code/objective.cpp": 2437,
   "code/optionsarea.cpp": 1837,
   "code/pilotreviewarea.cpp": 1843,
-  "code/tacordr.cpp": 2109,
+  "code/tacordr.cpp": 2106,
   "code/terrobj.cpp": 1721,
   "code/turret.cpp": 2338,
-  "code/warrior.cpp": 2692,
-  "code/warrior.h": 2177,
+  "code/warrior.cpp": 2699,
+  "code/warrior.h": 2188,
   "editor/tests/test_objectives.cpp": 1996,
   "gui/alistbox.cpp": 1513,
   "mclib/ablenv.cpp": 1585,
   "mclib/ablrtn.cpp": 1799,
   "mclib/assimp_importer.cpp": 1577,
-  "mclib/camera.h": 1815,
+  "mclib/camera.h": 1828,
   "mclib/file.cpp": 1736,
   "mclib/gosfx/fcurve.cpp": 1923,
   "mclib/mapdata.cpp": 2518,
   "mclib/mlr/mlrlightmap.cpp": 1648,
   "mclib/mlr/mlrprimitiveclipping.hpp": 1722,
   "mclib/mlr/mlrtriangleclipping.hpp": 2112,
-  "mclib/move.h": 1891,
+  "mclib/move.h": 1895,
   "mclib/terrtxm.cpp": 1816,
   "mclib/tgl.h": 1799
  },
- "head": "b4998cb6e",
+ "head": "7547f1aa8",
  "per_dir": {
   "GameAdapters": {
    "files": 9,
@@ -65,10 +64,10 @@
    "max_lines": 466
   },
   "GameOS": {
-   "files": 349,
-   "files_over_1500": 4,
+   "files": 359,
+   "files_over_1500": 3,
    "files_over_3000": 1,
-   "max_lines": 3721
+   "max_lines": 3661
   },
   "GuiRuntime": {
    "files": 14,
@@ -80,7 +79,7 @@
    "files": 58,
    "files_over_1500": 1,
    "files_over_3000": 0,
-   "max_lines": 1596
+   "max_lines": 1561
   },
   "RenderWorld": {
    "files": 8,
@@ -89,7 +88,7 @@
    "max_lines": 1027
   },
   "code": {
-   "files": 411,
+   "files": 414,
    "files_over_1500": 22,
    "files_over_3000": 0,
    "max_lines": 2771
@@ -107,16 +106,16 @@
    "max_lines": 1513
   },
   "mclib": {
-   "files": 567,
+   "files": 569,
    "files_over_1500": 13,
    "files_over_3000": 0,
    "max_lines": 2518
   },
   "shaders": {
-   "files": 89,
+   "files": 90,
    "files_over_1500": 0,
    "files_over_3000": 0,
-   "max_lines": 775
+   "max_lines": 759
   }
  },
  "thresholds": [
@@ -126,7 +125,7 @@
  "top": [
   {
    "file": "GameOS/include/gameos.hpp",
-   "lines": 3721
+   "lines": 3661
   },
   {
    "file": "GameOS/gameos/engine_present_vk.cpp",
@@ -138,7 +137,7 @@
   },
   {
    "file": "code/warrior.cpp",
-   "lines": 2692
+   "lines": 2699
   },
   {
    "file": "mclib/mapdata.cpp",
@@ -158,11 +157,11 @@
   },
   {
    "file": "code/gameobj.cpp",
-   "lines": 2241
+   "lines": 2242
   },
   {
    "file": "code/warrior.h",
-   "lines": 2177
+   "lines": 2188
   },
   {
    "file": "code/missionbegin.cpp",
@@ -178,7 +177,7 @@
   },
   {
    "file": "code/tacordr.cpp",
-   "lines": 2109
+   "lines": 2106
   },
   {
    "file": "editor/tests/test_objectives.cpp",
@@ -202,7 +201,7 @@
   },
   {
    "file": "mclib/move.h",
-   "lines": 1891
+   "lines": 1895
   },
   {
    "file": "code/multplyr.h",
@@ -221,12 +220,12 @@
    "lines": 1833
   },
   {
-   "file": "mclib/terrtxm.cpp",
-   "lines": 1816
+   "file": "mclib/camera.h",
+   "lines": 1828
   },
   {
-   "file": "mclib/camera.h",
-   "lines": 1815
+   "file": "mclib/terrtxm.cpp",
+   "lines": 1816
   },
   {
    "file": "mclib/ablrtn.cpp",
@@ -246,10 +245,10 @@
   }
  ],
  "total": {
-  "files": 1816,
-  "files_over_1500": 42,
+  "files": 1832,
+  "files_over_1500": 41,
   "files_over_3000": 1,
-  "max_lines": 3721
+  "max_lines": 3661
  },
  "version": 1
 }

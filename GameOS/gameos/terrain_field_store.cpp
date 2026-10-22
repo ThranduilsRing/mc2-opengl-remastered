@@ -30,6 +30,7 @@ bool TerrainFieldStore::setHeight(const float* elevations, int mapSide) {
     }
     height_.assign(elevations, elevations + static_cast<size_t>(mapSide) * static_cast<size_t>(mapSide));
     mapSide_ = mapSide;
+    patches_.clear();   // a whole new field is a new bake, not a patch
     heightVersion_ = nextVersion();
     return true;
 }
@@ -50,6 +51,7 @@ bool TerrainFieldStore::patchHeight(const float* rows, int originX, int originY,
         float* dst = height_.data() + static_cast<size_t>((originY + row)) * static_cast<size_t>(mapSide_) + static_cast<size_t>(originX);
         std::copy(src, src + w, dst);
     }
+    if (patches_.size() < 4096) patches_.push_back({originX, originY, originX + quadCountX, originY + quadCountY});
     heightVersion_ = nextVersion();
     return true;
 }

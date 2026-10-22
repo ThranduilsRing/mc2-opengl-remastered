@@ -17,6 +17,7 @@
 namespace RenderCore { struct MaterialGpu; }
 namespace RenderCore { struct StaticPropTypeDesc; }
 
+
 #include "../../RenderCore/gpu_abi/GpuStaticPropInstance.h"
 
 struct PerDrawEntry {
@@ -292,6 +293,9 @@ public:
             uint32_t fogARGB,
             uint32_t flags,
             GpuStaticPropInstance* outRecipe) const;
+
+    // Copies only geometry and current transforms, without a colour submit or lighting gather.
+    void captureMoverShadowShape(const void* owner, TG_MultiShape* shape);
 
 private:
     GpuStaticPropBatcher() = default;
