@@ -74,6 +74,17 @@ class RasterTests(unittest.TestCase):
             with Image.open(path) as png:
                 self.assertEqual(list(png.getdata()).count(TEAM_COLOURS[1]),1)
 
+    def test_tree_canopy_uses_native_size_in_detail_crop(self):
+        asset = table()['types']['stock:335']
+        obj = dict(id='tree',**{'class':'tree'},type_id=335,position_wu=[0,0,0],
+                   rotation=0,team=-1,footprint=asset)
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory)/'tree.png'
+            render(self.fixture([obj]),path,1)
+            with Image.open(path) as png:
+                points = np.argwhere(np.all(np.asarray(png)==COLOURS['tree'],axis=2))
+                self.assertEqual(tuple(np.ptp(points,axis=0)+1),(84,43))
+
     def test_player_start_accepts_world_xyz(self):
         layout = self.fixture()
         layout["player_start"] = [3,3]

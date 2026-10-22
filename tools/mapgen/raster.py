@@ -7,7 +7,7 @@ from pathlib import Path
 import sys
 
 import numpy as np
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFilter
 
 if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
@@ -132,7 +132,8 @@ def render(layout, out, wu_per_pixel=None, crop=None, hillshade=False, catalog=N
         regional = np.asarray(macro['regions'],dtype=np.uint8)
         # Interpolate region membership, not integer labels (which would invent
         # intermediate land uses). This hides the planning grid at full-map scale.
-        scores = [np.asarray(Image.fromarray((regional==i).astype(np.uint8)*255).resize(
+        scores = [np.asarray(Image.fromarray((regional==i).astype(np.uint8)*255).filter(
+                  ImageFilter.GaussianBlur(1.25)).resize(
                   (cols,rows),Image.Resampling.BILINEAR)) for i in range(5)]
         labels = np.argmax(np.stack(scores),axis=0)
         # Muted land-use colours keep native model silhouettes legible.
@@ -242,8 +243,7 @@ def render(layout, out, wu_per_pixel=None, crop=None, hillshade=False, catalog=N
         elif cls=="tree":
             draw.point((x,y),fill=COLOURS["tree"])
             if max(fp["width_wu"],fp["depth_wu"])>=3*wu_per_pixel:
-                draw.point((x-1,y),fill=COLOURS["tree"])
-                draw.point((x+1,y),fill=COLOURS["tree"])
+                draw.ellipse((x-pw//2,y-ph//2,x+(pw-1)//2,y+(ph-1)//2),fill=COLOURS["tree"])
         else:
             left,top = x-pw//2,y-ph//2
             draw.rectangle((left,top,left+pw-1,top+ph-1),fill=colour)
