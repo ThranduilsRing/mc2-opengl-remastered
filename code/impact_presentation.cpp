@@ -140,11 +140,11 @@ void fixtureVolley() {
         g_queue.push(fixtureEvent(impact::WeaponClass::Missile, bp + side * (r * 0.5f) + up * (r * 0.35f), shot, wid));
         if (!groundDone) {
             groundDone = true;
-            const glm::vec3 base = bp - dir * (r + 55.0f);
+            const glm::vec3 base = bp - dir * (r + 75.0f);
             const glm::vec3 ground = glm::normalize(dir - up * 0.6f);
-            g_queue.push(fixtureEvent(impact::WeaponClass::Ballistic, base - side * 40.0f, ground, 0));
+            g_queue.push(fixtureEvent(impact::WeaponClass::Ballistic, base - side * 65.0f, ground, 0));
             g_queue.push(fixtureEvent(impact::WeaponClass::Laser, base, ground, 0));
-            g_queue.push(fixtureEvent(impact::WeaponClass::Missile, base + side * 45.0f, ground, 0));
+            g_queue.push(fixtureEvent(impact::WeaponClass::Missile, base + side * 70.0f, ground, 0));
         }
         if (s_logs < 4) {
             ++s_logs;
@@ -235,7 +235,15 @@ void frame() {
         }
         const impact::AnchorPose pose = resolveAnchor(e.anchorKind, e.anchorId);
         if (!pose.valid) return;
-        g_pool.spawn(e, impact::recipeFor(e.weapon, e.material, e.magnitude), pose);
+        const impact::Recipe recipe = impact::recipeFor(e.weapon, e.material, e.magnitude);
+        const int slot = g_pool.spawn(e, recipe, pose);
+        static int s_logs = 0;   // receipt of the first spawns: what the library chose for what the sim reported
+        if (s_logs < 16) {
+            ++s_logs;
+            std::fprintf(stderr, "[IMPACT_DECAL] spawn tick=%u weapon=%d material=%d anchor=%d id=%u pos=%.0f,%.0f,%.0f tile=%d/%d radius=%.1f slot=%d\n",
+                         e.tick, int(e.weapon), int(e.material), int(e.anchorKind), e.anchorId, e.pos[0], e.pos[1], e.pos[2],
+                         int(recipe.tileHit), int(recipe.tileGround), recipe.radius, slot);
+        }
     });
     g_pool.update(scenarioTime, resolveAnchor);
     uint32_t hot = 0;

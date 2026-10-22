@@ -84,10 +84,10 @@ inline Texel paint(Tile tile, float u, float v) {
         if (d < rr) {
             const float q = d / rr;
             t.height = -0.9f * (1.0f - q * q) + 0.25f * (nf - 0.5f);
-            t.albedo = (nf > 0.62f ? 0.55f : 1.3f) * lerp(0.6f, 1.0f, q);   // fresh aggregate, dark pits, darker core
+            t.albedo = (nf > 0.58f ? 0.35f : 1.15f) * lerp(0.35f, 1.0f, q);   // fresh aggregate, dark pits, dark core
             t.coverage = 1.0f;
         } else {
-            t.albedo = lerp(1.15f, 1.0f, sstep(rr, 0.9f, d));          // dust halo
+            t.albedo = lerp(0.7f, 1.0f, sstep(rr, 0.9f, d + 0.2f * (n - 0.5f)));   // powder-burn halo
             t.coverage = 1.0f - sstep(rr, 0.92f, d + 0.15f * n);
         }
         t.albedo = lerp(t.albedo, 0.45f, cracks);

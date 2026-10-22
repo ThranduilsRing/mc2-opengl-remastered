@@ -152,14 +152,14 @@ inline Recipe recipeFor(WeaponClass w, Material m, float magnitude) {
     switch (w) {
     case WeaponClass::Ballistic:
         r.tileHit = metal ? Tile::BulletMetal : Tile::BulletConcrete;
-        r.radius = metal ? 3.6f : (m == Material::Soil ? 5.0f : 4.2f);
+        r.radius = metal ? 7.0f : (m == Material::Soil ? 9.0f : 8.0f);
         r.lifetime = 45.0f;
         if (metal) { r.glow = 1.5f; r.glowTau = 0.25f; }
         r.normalStrength = 1.2f;
         break;
     case WeaponClass::Laser:
         r.tileHit = metal ? Tile::LaserMetal : Tile::LaserConcrete;
-        r.radius = 3.0f; r.elongation = metal ? 2.8f : 2.5f;
+        r.radius = 4.5f; r.elongation = metal ? 3.0f : 2.6f;
         r.lifetime = 50.0f;
         r.glow = metal ? 5.0f : 3.5f; r.glowTau = metal ? 1.6f : 1.0f;
         r.glowColor[0] = 1.0f; r.glowColor[1] = 0.62f; r.glowColor[2] = 0.25f;
@@ -167,7 +167,7 @@ inline Recipe recipeFor(WeaponClass w, Material m, float magnitude) {
         break;
     case WeaponClass::Ppc:
         r.tileHit = Tile::PpcScorch;
-        r.radius = 7.5f;
+        r.radius = 14.0f;
         r.lifetime = 60.0f;
         r.glow = 3.5f; r.glowTau = 0.6f;
         r.glowColor[0] = 0.45f; r.glowColor[1] = 0.7f; r.glowColor[2] = 1.0f;
@@ -175,8 +175,8 @@ inline Recipe recipeFor(WeaponClass w, Material m, float magnitude) {
         break;
     case WeaponClass::Missile: {
         r.tileHit = metal ? Tile::BlastMetal : Tile::BlastGround;
-        const float dmgScale = std::clamp(0.8f + magnitude / 20.0f, 0.8f, 1.5f);
-        r.radius = (metal ? 8.5f : (m == Material::Soil ? 12.0f : 9.5f)) * dmgScale;
+        const float dmgScale = std::clamp(0.8f + magnitude / 25.0f, 0.8f, 1.3f);
+        r.radius = (metal ? 15.0f : (m == Material::Soil ? 22.0f : 18.0f)) * dmgScale;
         r.lifetime = 90.0f;
         r.glow = 2.5f; r.glowTau = 0.45f;
         r.normalStrength = 1.4f;
@@ -184,13 +184,13 @@ inline Recipe recipeFor(WeaponClass w, Material m, float magnitude) {
     }
     case WeaponClass::Splash:
         r.tileHit = Tile::SplashScorch;
-        r.radius = std::clamp(magnitude * 0.6f, 14.0f, 50.0f);
+        r.radius = std::clamp(magnitude * 0.8f, 20.0f, 70.0f);
         r.lifetime = 75.0f;
         r.normalStrength = 0.0f;
         break;
     case WeaponClass::Artillery:
         r.tileHit = Tile::BlastGround;
-        r.radius = std::clamp(magnitude * 0.5f, 24.0f, 48.0f);
+        r.radius = std::clamp(magnitude * 0.6f, 40.0f, 80.0f);
         r.lifetime = 120.0f;
         r.glow = 2.0f; r.glowTau = 0.6f;
         r.normalStrength = 1.6f;
@@ -199,7 +199,7 @@ inline Recipe recipeFor(WeaponClass w, Material m, float magnitude) {
     }
     r.tileGround = (m == Material::Soil || m == Material::Concrete) ? r.tileHit : groundTileFor(w);
     if (m == Material::Armor) {          // mover plating: smaller, shorter, never paints the ground under a walking mech
-        r.radius *= 0.7f;
+        r.radius *= 0.6f;
         r.lifetime = std::min(r.lifetime, 25.0f);
         r.affect = kAffectUnit;
     }
