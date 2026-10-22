@@ -82,6 +82,20 @@ def test_selection_accepts_type_id_and_rejects_ambiguity(entry):
         select({"objects": [entry, entry]}, "hangar")
 
 
+def test_animated_buildings_require_review(entry):
+    from tools.assets.replace import _package
+    catalog = json.loads(Path("docs/assets/catalog.json").read_text())
+    for name in ("repairbay", "rpbuilding", "sensortower"):
+        assert not target_spec(select(catalog, name))["package_supported"]
+    for sections in ({"Animation:0": {}}, {"TGLData": {"AnimationNodeId": "dish"}},
+                     {"TGLData": {"SpinMe": True}}):
+        entry["ini_sections"] = sections
+        spec = target_spec(entry)
+        assert not spec["package_supported"]
+        with pytest.raises(ValueError, match="runtime|static props"):
+            _package(entry, spec, "unused.gltf", "animated", allow_stock_damage=True)
+
+
 def test_loader_bakes_scene_transforms(cube):
     candidate = load_candidate(cube)
     b = bounds(candidate.mesh.vertices)
@@ -241,7 +255,8 @@ def test_package_end_to_end_schema_textures_preview_and_stock_damage(cube, entry
         package(entry, spec, cube, "good", allow_stock_damage=True)
 
 
-def test_destroyed_review_package_cannot_silently_activate(cube, entry, artifact_root, monkeypatch):
+@pytest.mark.parametrize("state", ["destroyed", "animated"])
+def test_destroyed_review_package_cannot_silently_activate(cube, entry, artifact_root, monkeypatch, state):
     from tools.assets.replace import package
     class FakeStock:
         def read(self, name):
@@ -250,7 +265,9 @@ def test_destroyed_review_package_cannot_silently_activate(cube, entry, artifact
     monkeypatch.setattr("tools.assets.render.mesh_textures", lambda mesh, stock: [Image.new("RGBA", (2, 2), "white")])
     cube.with_suffix(".asset.json").write_text(json.dumps({"category": "building", "forward_axis": "-z",
         "source_url": "local:pytest-cube", "license": "test-fixture"}))
-    spec = target_spec(entry, "destroyed")
+    if state == "animated":
+        entry["ini_sections"] = {"animation:0": {"animationname": "hangar"}}
+    spec = target_spec(entry, "destroyed" if state == "destroyed" else "intact")
     with pytest.raises(ValueError):
         package(entry, spec, cube, "refused", allow_stock_damage=True)
     out = package(entry, spec, cube, "review", review_only=True)

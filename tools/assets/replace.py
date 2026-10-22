@@ -45,7 +45,14 @@ def target_spec(entry, state="intact"):
     peak = max((m["instances"] for m in entry["missions"]), default=0)
     tri_cap = max(base["triangles"], min(12000, max(64, int(250000/max(peak, 1)))))
     klass = "tree" if entry["category"] == "tree" else "staticProp"
-    supported = entry["category"] not in ("mech", "vehicle", "tree", "unreferenced", "gate", "turret") and state == "intact"
+    sections = entry["ini_sections"]
+    animated = any(name.lower().startswith("animation:") for name in sections)
+    for fields in sections.values():
+        animated |= any(key.lower() == "animationnodeid" and str(value).lower() not in ("", "none")
+                        or key.lower() == "spinme" and str(value).lower() in ("true", "t", "1")
+                        for key, value in fields.items())
+    supported = (not animated and entry["category"] not in
+                 ("mech", "vehicle", "tree", "unreferenced", "gate", "turret") and state == "intact")
     destroyed = [m for m in entry["models"] if m["role"] == "destroyed"]
     return {"schema": "mc2-target-spec-1", "id": entry["id"], "state": state,
         "category": entry["category"], "selection_key": f"{klass}:{Path(intact['tgl']).stem}",
