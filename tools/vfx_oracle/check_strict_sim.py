@@ -15,7 +15,8 @@ def check(base: dict, runs: list[list[str]]) -> dict:
         raise ValueError("baseline must cover at least 300 frames")
     if len(runs) != 4:
         raise ValueError("two pre-change and two post-change logs required")
-    chains = [sim.chain(run, count) for run in runs]
+    digest = sim.chain if base.get("chain_schema") == 2 else sim.full_chain
+    chains = [digest(run, count) for run in runs]
     if any(len(run) < count for run in runs):
         failures.append("short run")
     if any(value != base["chain"] for value in chains):
