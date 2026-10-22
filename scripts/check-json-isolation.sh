@@ -7,8 +7,8 @@
 # iterating a hit list and finding nothing un-allowlisted. An EMPTY hit list
 # reaches the same "json isolation OK" -- so a renamed vendor header, a moved
 # source tree, or simply running from the wrong cwd turns this into a
-# permanent silent green that guards nothing. The three registry TUs plus the
-# test are the whole legitimate population (4 when this floor was set), so a
+# permanent silent green that guards nothing. Private registry/profile parser
+# TUs and their focused tests are the legitimate population, so a
 # floor of 1 is enough to distinguish "clean" from "looked at nothing" while
 # staying immune to a legitimate consolidation.
 set -e
@@ -31,6 +31,8 @@ for f in $hits; do
     mclib/anim_override_registry.cpp) ;;
     mclib/fx_def_registry.cpp) ;;
     tests/model_override/test_model_override_registry.cpp) ;;
+    GameOS/gameos/visual_tuning_profile.cpp) ;;
+    tests/unit/test_mission_environment.cpp) ;;
     */model_override_registry.cpp) ;;
     */anim_override_registry.cpp) ;;
     */fx_def_registry.cpp) ;;

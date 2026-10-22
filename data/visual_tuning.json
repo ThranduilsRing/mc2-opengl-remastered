@@ -1,4 +1,6 @@
 {
+  "schemaVersion": 2,
+  "colorContract": "legacy-authored-v1",
   "defaults": {
     "exposure": 1.0,
     "shadowSoftness": 0.9,
