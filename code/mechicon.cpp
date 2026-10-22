@@ -51,11 +51,11 @@ std::map<std::string, PackageHudStrip>& packageHudStrips()
 	static std::map<std::string, PackageHudStrip> strips;
 	return strips;
 }
-const PackageHudStrip* loadPackageHudStrip( const std::string& base )
+const PackageHudStrip* loadPackageHudStrip( const std::string& base, float iconX, float iconY )
 {
 	char path[512];
-	mc2::fmt::to_buf( path, "{}{}_{:d}x{:d}.tga", artPath, base,
-		static_cast<int>(ForceGroupIcon::unitIconX), static_cast<int>(ForceGroupIcon::unitIconY) );
+	mc2::fmt::to_buf( path, "{}{}_{:d}x{:d}.tga", mc2::fmt::safe(artPath), base,
+		static_cast<int>(iconX), static_cast<int>(iconY) );
 	S_strlwr( path );
 	auto& cache = packageHudStrips();
 	auto it = cache.find( path );
@@ -69,9 +69,9 @@ const PackageHudStrip* loadPackageHudStrip( const std::string& base )
 			strip.bytes = std::make_unique<char[]>( size );
 			file.read( reinterpret_cast<BYTE*>(strip.bytes.get()), size );
 			auto* hdr = reinterpret_cast<TGAFileHeader*>(strip.bytes.get());
-			if ( hdr->pixel_depth != 32 || hdr->width < ForceGroupIcon::unitIconX || hdr->height < 2 * ForceGroupIcon::unitIconY )
+			if ( hdr->pixel_depth != 32 || hdr->width < iconX || hdr->height < 2 * iconY )
 			{
-				mc2::fmt::print_out( "[mechicon] package HUD strip '{}' is not 32-bit {:.0f}x{:.0f}x2 -- stock icon used\n", path, ForceGroupIcon::unitIconX, ForceGroupIcon::unitIconY );
+				mc2::fmt::print_out( "[mechicon] package HUD strip '{}' is not 32-bit {:.0f}x{:.0f}x2 -- stock icon used\n", mc2::fmt::safe(path), iconX, iconY );
 				strip.bytes.reset();
 			}
 			else
@@ -92,7 +92,7 @@ MechIcon::HudIconSource MechIcon::hudIconSourceFor( Mover* pUnit, long stockColu
 	const mc2pkg::PackageChassis* pc = pUnit ? packageChassisByTypeNum( pUnit->getTypeHandle() ) : nullptr;
 	if ( pc && !pc->hudIcon.empty() )
 	{
-		if ( const PackageHudStrip* strip = loadPackageHudStrip( pc->hudIcon ) )
+		if ( const PackageHudStrip* strip = loadPackageHudStrip( pc->hudIcon, unitIconX, unitIconY ) )
 		{
 			src.atlas = reinterpret_cast<const TGAFileHeader*>(strip->bytes.get());
 			src.key = strip->key;
@@ -775,7 +775,7 @@ bool MechIcon::init( long whichIndex )
 				pDestRow += textureData.Width;
 				continue;
 			}
-			DWORD* pSrcRow = reinterpret_cast<DWORD*>(pTmp) + static_cast<long>(srcY) * static_cast<long>(actualW);
+			const DWORD* pSrcRow = reinterpret_cast<const DWORD*>(pTmp) + static_cast<long>(srcY) * static_cast<long>(actualW);
 			for ( int i = 0; i < unitIconX; ++i ) // do four icons per row
 			{
 				int srcX = static_cast<int>((offsetX * f.x)) + static_cast<int>((i * f.x));
