@@ -12,7 +12,7 @@ void mc2VegetationVertex(vec3 i_worldPos, float i_yaw, float i_scale, float i_se
     v_atlasLayer = atlasIdx;
     v_rootPos = i_worldPos;
     v_vegData.w=lightZ;
-    v_flags=16u;
+    v_flags=i_atlasFrame;
     // Card role from bits 4-5 of i_atlasFrame:
     //   0 = vertical    (~40% of instances, 0° tilt)
     //   1 = tilted      (~25% of instances, 45° from vertical)

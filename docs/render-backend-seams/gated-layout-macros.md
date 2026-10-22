@@ -1278,6 +1278,30 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
+- Header: `GameOS/gameos/vk_vegetation_ground.h:9`
+- Class: `GroundLighting`  (data-member)
+- Member: `mc2vk::OwnedDescriptorSetLayout layout_;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vk_vegetation_ground.h:10`
+- Class: `GroundLighting`  (data-member)
+- Member: `mc2vk::OwnedDescriptorPool pool_;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
+- Header: `GameOS/gameos/vk_vegetation_ground.h:19`
+- Class: `GroundLighting`  (data-member)
+- Member: `const uint32_t b = bindings_[k];`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
 - Header: `GameOS/gameos/vk_vegetation_state.h:29`
 - Class: `GpuInstance`  (data-member)
 - Member: `float x, y, z, yaw;`
@@ -1734,6 +1758,14 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
+- Header: `GameOS/gameos/vulkan_ground_lighting.h:8`
+- Class: `Mc2GroundLightingFrame`  (data-member)
+- Member: `VkDescriptorSet set = VK_NULL_HANDLE;`
+- Consuming targets: gameos
+- Reached by define: gameos[gameos(PUBLIC)]
+
+## PASS  (`MC2_VULKAN_ISLAND`)
+
 - Header: `GameOS/gameos/vulkan_shadow_mech_casters.h:56`
 - Class: `ShadowMechCasters`  (data-member)
 - Member: `VkDevice device_ = VK_NULL_HANDLE;`
@@ -2134,4 +2166,4 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ---
 
-Result: 266 guard(s) analyzed, 0 violation(s).
+Result: 270 guard(s) analyzed, 0 violation(s).

@@ -326,6 +326,8 @@ void sync_ring_bindings(TerrainIsland* s, uint32_t par, const mc2vk::FrameAlloc&
         mc2vk::writeDynamicBinding(s->device, s->set[par], 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, ubo.buffer, sizeof(TerrainFrameUBO));
         s->ringBound[par][0] = ubo.buffer;
     }
+    s->groundFrame = {s->set[par], {uint32_t(ubo.offset), uint32_t(lp[0].offset), uint32_t(lp[1].offset), uint32_t(lp[2].offset)}};
+    s->groundFrameNo = mc2vk::getOrCreateEngineVulkanContext().tracker().frameNo();
     for (uint32_t k = 0; k < 3; ++k) {
         if (s->ringBound[par][1 + k] == lp[k].buffer) continue;
         mc2vk::writeDynamicBinding(s->device, s->set[par], 11 + k, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, lp[k].buffer, lp[k].range);
@@ -762,5 +764,13 @@ bool init_island(TerrainIsland* s, int w, int h) {
 }
 
 } // namespace
+
+std::optional<Mc2GroundLightingFrame> mc2_vk_ground_lighting_frame() {
+    if (!mc2vk::engineVulkanContextValid()) return std::nullopt;
+    const auto* s = vk_terrain_detail::parkedIsland();
+    if (!s || !s->inited || !s->groundFrame.set ||
+        s->groundFrameNo != mc2vk::getOrCreateEngineVulkanContext().tracker().frameNo()) return std::nullopt;
+    return s->groundFrame;
+}
 
 #endif // MC2_VULKAN_ISLAND

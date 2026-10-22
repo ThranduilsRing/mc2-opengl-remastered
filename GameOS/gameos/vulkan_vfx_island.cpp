@@ -48,6 +48,7 @@
 #include "ui_texture.h"
 #include "vk_texture_residency.h"
 #include "vk_vegetation_state.h"
+#include "vk_vegetation_ground.h"
 
 #include <tracy/Tracy.hpp>   // VK-ISLAND-TRACY-1: per-frame CPU attribution zones
 
@@ -158,6 +159,7 @@ struct VfxIsland : mc2vk::IslandState {
     mc2vk::OwnedDescriptorSetLayout spriteDsl;
     mc2vk::OwnedDescriptorPool spritePool;
     std::unordered_map<uint64_t, SpritePage> pages; // keyed on full service identity, never a mutable gos name
+    mc2veg::GroundLighting groundLighting;
     mc2vk::OwnedPipelineLayout playout;
     mc2vk::OwnedPipeline alphaPipe;
     mc2vk::OwnedPipeline addPipe;
@@ -481,10 +483,11 @@ bool init_island(VfxIsland* s, int w, int h) {
             if (!veg.ensureDrawLayout(ctx)) { setFallback("vegetation_draw_layout_failed"); return false; }
             s->vegVert = mc2vk::OwnedShaderModule(s->device, load_spv(s->device, spv_dir() + "vfx_vegetation.vert.spv"));
             if (!s->vegVert) { setFallback("spv_load_failed"); return false; }
-            const VkDescriptorSetLayout vegHandles[3] = { s->dsl.get(), s->spriteDsl.get(), veg.drawLayout() };
+            if (!s->groundLighting.init(s->device)) return false;
+            const VkDescriptorSetLayout vegHandles[4] = { s->dsl.get(), s->spriteDsl.get(), veg.drawLayout(), s->groundLighting.layout() };
             VkPipelineLayoutCreateInfo vlci{};
             vlci.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-            vlci.setLayoutCount = 3; vlci.pSetLayouts = vegHandles;
+            vlci.setLayoutCount = 4; vlci.pSetLayouts = vegHandles;
             if (!mc2vk::create(s->vegLayout, s->device, [&](VkPipelineLayout* o) { return vkCreatePipelineLayout(s->device, &vlci, nullptr, o); })) { vlog("vkCreatePipelineLayout(vegetation) failed."); return false; }
         }
         s->vegetationPipe = make_pipeline(s, w, h, false, false, true);
@@ -682,6 +685,8 @@ bool mc2_vk_vfx_vegetation_run(const mc2veg::CullParams& params, const float* wo
     mc2veg::State& vegState = mc2veg::State::instance();
     mc2veg::State* veg = &vegState;
     if (!veg->ready()) return false;
+    const auto ground = mc2_vk_ground_lighting_frame();
+    if (!ground) return false;
     ZoneScopedN("VKIsl.Vfx.Vegetation");
     mc2vk::VulkanContext& slotCtx = mc2vk::getOrCreateEngineVulkanContext();
     VfxIsland* s = acquire_island(w, h);
@@ -690,6 +695,7 @@ bool mc2_vk_vfx_vegetation_run(const mc2veg::CullParams& params, const float* wo
     s->nextSlot ^= 1u;
     if (!slotCtx.wait(mc2vk::GpuTicket{s->ticket[par], 0}, 5ull * 1000 * 1000 * 1000, "vfx_slot")) { setFallback("slot_timeout"); s->disabled = true; return false; }
     const VkDeviceSize align = slotCtx.frameAlignment();
+    s->groundLighting.copy(s->device, par, *ground);
     const VkDeviceSize cullOff = mc2vk::alignUp(sizeof(VfxVsParams), align);
     const VkDeviceSize visOff = mc2vk::alignUp(cullOff + sizeof(mc2veg::CullParams), align);
     const mc2vk::FrameAlloc span = slotCtx.frameAlloc(visOff + std::max<VkDeviceSize>(visibility.size_bytes(), 16));
@@ -724,6 +730,8 @@ bool mc2_vk_vfx_vegetation_run(const mc2veg::CullParams& params, const float* wo
         const uint32_t drawDyn = veg->paramsDynamicOffset(par);
         const VkDescriptorSet drawSet = veg->drawSet(par);
         vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->vegLayout.get(), 2, 1, &drawSet, 1, &drawDyn);
+        const VkDescriptorSet groundSet = s->groundLighting.set(par);
+        vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->vegLayout.get(), 3, 1, &groundSet, 4, ground->offsets.data());
         veg->drawIndirect(cb, par);
         vkCmdEndRenderPass(cb);
         gpuScope.end();
