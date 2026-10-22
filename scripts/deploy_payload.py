@@ -150,6 +150,8 @@ TERRAIN_LAYER_PAYLOAD = [
     "data/terrain_layers/concrete_albedo.ktx2",
     "data/terrain_layers/snow_albedo.ktx2",
     "data/terrain_layers/cliff_albedo.ktx2",
+    "data/terrain_layers/concrete_detail_pad.ktx2",    # CONCRETE-ROAD-PBR-DETAIL (cook_concrete_detail.py)
+    "data/terrain_layers/concrete_detail_road.ktx2",
 ]
 
 # EXAMPLE-MODS-1: worked example checkbox mods, source-tracked under
