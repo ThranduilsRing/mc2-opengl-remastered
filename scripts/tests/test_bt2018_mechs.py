@@ -344,3 +344,23 @@ def test_hud_icons_use_only_the_exact_region_palette():
         assert {194 + 2, 194 + 6, 194 + 1} & reds          # region offset is in the red channel
         rear = strip[h:]
         assert not ({194 + 2, 194 + 1} & {int(v) for v in rear[:, :, 0][rear[:, :, 3] > 0]})   # no limbs on the rear row
+
+
+MARAUDER_GLB = Path("A:/Games/mc2-opengl/MC2Conversions/marauder.glb")
+
+
+@pytest.mark.skipif(not MARAUDER_GLB.is_file(), reason="converted Marauder not present")
+def test_muzzle_sockets_sit_on_geometry_not_joint_centres(marauder_recipe):
+    from tools.bt2018_mechs import sockets as SK
+    import numpy as np
+    joints = {"weapon_leftarm": "j_LForearm", "weapon_leftarm2": "j_LForearm",
+              "weapon_rightarm": "j_RForearm", "weapon_centertorso": "j_Spine2"}
+    off = SK.socket_offsets(MARAUDER_GLB, joints)
+    assert set(off) == set(joints)
+    for name, v in off.items():
+        assert np.linalg.norm(v) > 1e-3, name               # not the joint centre
+    assert off["weapon_leftarm"] != off["weapon_leftarm2"]   # two mounts, two muzzles
+    pkg = C.emit_package_json({"nodes": {"weapon_leftarm": "j_LForearm", "weapon_rightarm": "j_RForearm",
+                                         "weapon_lefttorso": "j_LClavicle", "weapon_righttorso": "j_RClavicle",
+                                         "weapon_centertorso": "j_Spine2"}}, marauder_recipe, off)
+    assert len(pkg["socketOffsets"]["weapon_leftarm"].split()) == 3

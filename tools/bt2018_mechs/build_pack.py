@@ -159,7 +159,15 @@ def build(args, out: Path):
         model = recipe["mc2"]["model"]
         pack_path = model["pack_path"]
         base_pkg = C.load_json(conv / model["package_json"])
-        files[f"data/tgl/{pack_path}.package.json"] = json.dumps(C.emit_package_json(base_pkg, recipe), indent=2) + "\n"
+        from tools.bt2018_mechs import sockets as SK
+        socket_joints = {}
+        for loc_sockets in recipe["mc2"]["sockets"].values():
+            for sname in loc_sockets:
+                joint = base_pkg["nodes"].get(sname) or base_pkg["nodes"].get(sname.rstrip("0123456789"))
+                if joint:
+                    socket_joints[sname] = joint
+        offsets = SK.socket_offsets(conv / model["source_glb"], socket_joints)
+        files[f"data/tgl/{pack_path}.package.json"] = json.dumps(C.emit_package_json(base_pkg, recipe, offsets), indent=2) + "\n"
         write_text(out / "content" / f"{fam}.profile.json", json.dumps(p, indent=2, sort_keys=True) + "\n")
 
     files["data/defs/text/en_us/bt2018_mechs.fit"] = C.emit_strings(profiles)

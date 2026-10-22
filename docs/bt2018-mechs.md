@@ -53,6 +53,16 @@ location (AntiPersonnel-capable items may use AP mounts); total equipment mass s
 `Payload`. Deployment hands the mech-lab mount assignment to `BattleMech` so each weapon
 fires from its mount's socket (`weapon_<location>[n]` -> joint via the package node manifest).
 
+### Icons (P6)
+
+`tools/bt2018_mechs/render_icons.py` renders, from the same converted model, the HUD
+force-group strip `data/art/<stem>_hud_<W>x<H>.tga` (25x30, 32x38, 40x48; row 0 front,
+row 1 rear) in the exact region palette `code/mechicon.cpp` recolours (damageColors[0] with
+the body-region index added to red: 0 LL, 1 RL, 2 LA, 3 RA, 4 RT, 5 LT, 6 CT, 7 Head), plus
+a lit bay portrait. `[Chassis] HudIcon` names the strip; `MechIcon::hudIconSourceFor` blits
+it at column 0 for that chassis only. Bay/mech-lab list icons still borrow the host's until
+the logistics icon loader takes a package source the same way.
+
 ### Animation states (P9)
 
 `mclib/mech_clip_state.h` maps the simulation's gesture state to the render clip and is a

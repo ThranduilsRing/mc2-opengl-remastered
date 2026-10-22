@@ -541,7 +541,7 @@ def parse_fit_blocks(text):
     return blocks
 
 
-def emit_package_json(base_package: dict, recipe) -> dict:
+def emit_package_json(base_package: dict, recipe, socket_offsets: dict | None = None) -> dict:
     """Model package sidecar: the converted model's node manifest plus every socket this chassis names."""
     pkg = copy.deepcopy(base_package)
     nodes = pkg.setdefault("nodes", {})
@@ -554,6 +554,10 @@ def emit_package_json(base_package: dict, recipe) -> dict:
                 else:
                     raise ProfileError(f"socket {s} has no joint in the model package node manifest")
     pkg["chassisId"] = recipe["chassis_id"]
+    if socket_offsets:
+        # P10: muzzle points in each socket joint's local frame (sockets.py); "x y z" strings keep the
+        # engine's flat-map reader.
+        pkg["socketOffsets"] = {k: " ".join(f"{c:.4f}" for c in v) for k, v in sorted(socket_offsets.items())}
     return pkg
 
 

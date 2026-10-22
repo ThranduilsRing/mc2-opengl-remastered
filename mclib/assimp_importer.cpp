@@ -731,6 +731,7 @@ struct ImportedAnimEntry {
     std::string         initialClip;       // clip seeded into each new actor state
     std::map<std::string, float> strideSpeed;  // P9: locomotion clip -> planted-foot speed (world units/s)
     std::map<std::string, std::string> nodeManifest;  // 1A: MC2 node name -> source joint
+    std::map<std::string, aiVector3D> socketOffsets;  // P10: socket name -> point in its joint's local frame
                                             // (from bt2018_mech_package.json "nodes").
     std::string aoTexName;                  // AO-1: materials.ao.tga (deriveName stem +
                                             // .tga); empty = no AO. Loaded -> unit 6.
@@ -910,7 +911,8 @@ void measureClipStrides(ImportedAnimEntry& e) {
 // <stem>.package.json. Minimal flat-map scan (no JSON dependency; the generator
 // controls the format). Leaves the map empty (→ legacy node lookup) if absent.
 void LoadMechPackage(const char* glbPath, std::map<std::string, std::string>& out,
-                     std::string& aoOut, std::string& normalOut) {
+                     std::string& aoOut, std::string& normalOut,
+                     std::map<std::string, aiVector3D>* socketOut = nullptr) {
     if (!glbPath) return;
     std::string p(glbPath);
     size_t dot = p.rfind(".glb");
@@ -940,6 +942,23 @@ void LoadMechPackage(const char* glbPath, std::map<std::string, std::string>& ou
                 out[buf.substr(k0 + 1, k1 - k0 - 1)] = buf.substr(v0 + 1, v1 - v0 - 1);
                 i = v1 + 1;
             }
+        }
+    }
+    // P10: "socketOffsets" flat map, socket -> "x y z" in the joint's local frame
+    // (tools/bt2018_mechs/sockets.py). Muzzles sit on the geometry, not at joint centres.
+    if (socketOut) {
+        size_t so = buf.find("\"socketOffsets\"");
+        size_t b2 = (so == std::string::npos) ? so : buf.find('{', so);
+        size_t e2 = (b2 == std::string::npos) ? b2 : buf.find('}', b2);
+        for (size_t i = (b2 == std::string::npos ? 0 : b2 + 1); b2 != std::string::npos && i < e2; ) {
+            size_t k0 = buf.find('"', i); if (k0 == std::string::npos || k0 >= e2) break;
+            size_t k1 = buf.find('"', k0 + 1); if (k1 == std::string::npos || k1 >= e2) break;
+            size_t v0 = buf.find('"', k1 + 1); if (v0 == std::string::npos || v0 >= e2) break;
+            size_t v1 = buf.find('"', v0 + 1); if (v1 == std::string::npos || v1 > e2) break;
+            float x = 0, y = 0, z = 0;
+            if (sscanf(buf.substr(v0 + 1, v1 - v0 - 1).c_str(), "%f %f %f", &x, &y, &z) == 3)
+                (*socketOut)[buf.substr(k0 + 1, k1 - k0 - 1)] = aiVector3D(x, y, z);
+            i = v1 + 1;
         }
     }
     // AO-1: materials.ao.tga (runtime texture name; .ktx2 sidecar resolves it).
@@ -989,7 +1008,7 @@ void RegisterImportedAnim(const char* path, TG_TypeMultiShape* out, const SkelBa
     e.shape = static_cast<TG_TypeShape*>(slot);
     e.multi = out;
     e.names = bake.names;
-    LoadMechPackage(path, e.nodeManifest, e.aoTexName, e.normalTexName);  // 1A nodes + AO + NORMALS tex names
+    LoadMechPackage(path, e.nodeManifest, e.aoTexName, e.normalTexName, &e.socketOffsets);  // 1A nodes + AO + NORMALS tex names
     e.pinnedClip = bake.forcedClip;   // empty -> 1C dynamic selection
     // Initial clip: the pinned clip if any, else idle. Fall back to whatever the
     // scene's first clip is when even idle is absent, so the tick always animates.
@@ -1198,7 +1217,12 @@ bool mc2mechanim::GetImportedNodeWorld(const void* actorKey, const void* typeKey
         // (.z = world elevation). Lift is applied in the pre-permute frame on the
         // liftAxis component, matching the batcher (F[3+4*liftAxis] += lift).
         aiMatrix4x4 M = e.AS1 * rowMajorToAi(s->lastGlobals[idx].m);
-        const float mx = M.a4, my = M.b4, mz = M.c4;
+        float mx = M.a4, my = M.b4, mz = M.c4;
+        // P10: a socket with an authored local point fires from actor x posed joint x point.
+        if (auto so = e.socketOffsets.find(mc2Name); so != e.socketOffsets.end()) {
+            const aiVector3D p = M * so->second;
+            mx = p.x; my = p.y; mz = p.z;
+        }
         const float* w = rootToWorld12;
         float gx = w[0]*mx + w[1]*my + w[2]*mz  + w[3];
         float gy = w[4]*mx + w[5]*my + w[6]*mz  + w[7];
