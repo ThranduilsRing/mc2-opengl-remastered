@@ -401,7 +401,8 @@ public:
             // shooter (35% of its depth) to find the facing wall; a mover's hit node is on the body.
             normalize(z);
             const bool building = d.anchorKind == AnchorKind::Static;
-            halfZ = building ? std::clamp(std::max(r.radius * 1.5f, d.extent), 8.0f, 60.0f) : std::max(r.radius * 1.5f, 4.0f);
+            const float reach = building ? std::max(r.radius * 1.5f, d.extent) : r.radius * 1.5f;
+            halfZ = building ? std::clamp(reach, 8.0f, 60.0f) : std::max(reach, 4.0f);
             const float back = building ? halfZ * 0.35f : 0.0f;
             for (int k = 0; k < 3; ++k) centre[k] = hitR[k] - z[k] * back;
             orthoFrame(d, z, up, halfX, halfY, halfZ, centre, g);
