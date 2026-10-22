@@ -48,7 +48,7 @@ MaterialDetail cdEval(int layer, vec2 wp, vec2 dx, vec2 dy) {
 void cdShade(MaterialDetail d, vec3 L, float dayGate, out float diff, out vec3 spec) {
     float lz = max(L.z, 0.35);
     float rel = 1.0 + (dot(d.n, L) - L.z) / lz;
-    diff = clamp(mix(1.0, rel, 0.8), 0.75, 1.3);
+    diff = clamp(mix(1.0, rel, 0.8), 0.85, 1.2);
     // top-down view: half vector between the sun and straight up; GGX lobe, dielectric F0 0.04
     vec3 H = normalize(L + vec3(0.0, 0.0, 1.0));
     float nh = max(dot(d.n, H), 0.0);
