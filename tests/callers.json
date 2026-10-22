@@ -2907,13 +2907,6 @@
           "text": "import console_child  # noqa: E402"
         },
         {
-          "path": "tools/blender_pipeline/tex_hd.py",
-          "line": 70,
-          "evidence": "import",
-          "reference": "console_child",
-          "text": "import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)"
-        },
-        {
           "path": "tools/bt2018_import/convert_all_bt2018.py",
           "line": 42,
           "evidence": "import",
@@ -3075,22 +3068,8 @@
           "text": "import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)"
         },
         {
-          "path": "tools/mc2texcook/batch_upscale_cook.py",
-          "line": 36,
-          "evidence": "import",
-          "reference": "console_child",
-          "text": "import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)"
-        },
-        {
           "path": "tools/mc2texcook/cook_pbr_maps.py",
           "line": 35,
-          "evidence": "import",
-          "reference": "console_child",
-          "text": "import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)"
-        },
-        {
-          "path": "tools/mc2texcook/cook_tgl_upscale_single.py",
-          "line": 42,
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)"
@@ -7144,7 +7123,7 @@
       "callers_by_stem": [
         {
           "path": "tools/blender_pipeline/mc2asset.py",
-          "line": 21,
+          "line": 17,
           "evidence": "import",
           "reference": "asset_edit",
           "text": "import asset_edit  # noqa: E402"
@@ -7166,35 +7145,6 @@
       "callers_by_stem": []
     },
     {
-      "path": "tools/blender_pipeline/asset_hd.py",
-      "basename": "asset_hd.py",
-      "stem": "asset_hd",
-      "callers_by_basename": [],
-      "callers_by_stem": [
-        {
-          "path": "tools/blender_pipeline/mc2asset.py",
-          "line": 20,
-          "evidence": "import",
-          "reference": "asset_hd",
-          "text": "import asset_hd  # noqa: E402"
-        },
-        {
-          "path": "tools/blender_pipeline/tests/test_asset_hd.py",
-          "line": 10,
-          "evidence": "import",
-          "reference": "asset_hd",
-          "text": "import asset_hd as ah  # noqa: E402"
-        },
-        {
-          "path": "tools/blender_pipeline/tests/test_unify.py",
-          "line": 11,
-          "evidence": "import",
-          "reference": "asset_hd",
-          "text": "import asset_hd as ah  # noqa: E402"
-        }
-      ]
-    },
-    {
       "path": "tools/blender_pipeline/batch_driver.py",
       "basename": "batch_driver.py",
       "stem": "batch_driver",
@@ -7208,13 +7158,6 @@
           "text": "import batch_driver as bd  # noqa: E402  (reuse GLB/ini/inject helpers)"
         },
         {
-          "path": "tools/blender_pipeline/asset_hd.py",
-          "line": 28,
-          "evidence": "import",
-          "reference": "batch_driver",
-          "text": "import batch_driver as bd  # noqa: E402"
-        },
-        {
           "path": "tools/blender_pipeline/fence_bundle.py",
           "line": 30,
           "evidence": "import",
@@ -7222,22 +7165,8 @@
           "text": "import batch_driver  # noqa: E402"
         },
         {
-          "path": "tools/blender_pipeline/sweep.py",
-          "line": 38,
-          "evidence": "import",
-          "reference": "batch_driver",
-          "text": "import batch_driver as bd  # noqa: E402"
-        },
-        {
           "path": "tools/blender_pipeline/tests/test_asset_edit.py",
           "line": 12,
-          "evidence": "import",
-          "reference": "batch_driver",
-          "text": "import batch_driver as bd  # noqa: E402"
-        },
-        {
-          "path": "tools/blender_pipeline/tests/test_asset_hd.py",
-          "line": 11,
           "evidence": "import",
           "reference": "batch_driver",
           "text": "import batch_driver as bd  # noqa: E402"
@@ -7252,13 +7181,6 @@
         {
           "path": "tools/blender_pipeline/tests/test_manifest.py",
           "line": 9,
-          "evidence": "import",
-          "reference": "batch_driver",
-          "text": "import batch_driver as bd  # noqa: E402"
-        },
-        {
-          "path": "tools/blender_pipeline/tests/test_sweep.py",
-          "line": 13,
           "evidence": "import",
           "reference": "batch_driver",
           "text": "import batch_driver as bd  # noqa: E402"
@@ -7284,13 +7206,6 @@
           "evidence": "import",
           "reference": "blender_runner",
           "text": "from blender_runner import build_blender_cmd, find_blender_exe, run_blender_script  # noqa: E402"
-        },
-        {
-          "path": "tools/blender_pipeline/sweep.py",
-          "line": 39,
-          "evidence": "import",
-          "reference": "blender_runner",
-          "text": "from blender_runner import find_blender_exe  # noqa: E402"
         }
       ]
     },
@@ -7317,7 +7232,7 @@
       "callers_by_stem": [
         {
           "path": "tools/blender_pipeline/tests/test_unify.py",
-          "line": 13,
+          "line": 11,
           "evidence": "import",
           "reference": "mc2asset",
           "text": "import mc2asset  # noqa: E402"
@@ -7417,25 +7332,11 @@
           "text": "from srcdata import SRCDATA_ROOT_PROBES  # noqa: E402"
         },
         {
-          "path": "tools/blender_pipeline/asset_hd.py",
-          "line": 29,
-          "evidence": "import",
-          "reference": "srcdata",
-          "text": "from srcdata import (  # noqa: E402"
-        },
-        {
           "path": "tools/blender_pipeline/mc2asset.py",
-          "line": 24,
+          "line": 18,
           "evidence": "import",
           "reference": "srcdata",
           "text": "import srcdata  # noqa: E402"
-        },
-        {
-          "path": "tools/blender_pipeline/sweep.py",
-          "line": 40,
-          "evidence": "import",
-          "reference": "srcdata",
-          "text": "from srcdata import find_srcdata, enumerate_assets  # noqa: E402"
         },
         {
           "path": "tools/blender_pipeline/tests/test_unify.py",
@@ -7443,42 +7344,6 @@
           "evidence": "import",
           "reference": "srcdata",
           "text": "import srcdata  # noqa: E402"
-        },
-        {
-          "path": "tools/blender_pipeline/tex_hd.py",
-          "line": 66,
-          "evidence": "import",
-          "reference": "srcdata",
-          "text": "import srcdata as _srcdata  # noqa: E402"
-        }
-      ]
-    },
-    {
-      "path": "tools/blender_pipeline/sweep.py",
-      "basename": "sweep.py",
-      "stem": "sweep",
-      "callers_by_basename": [],
-      "callers_by_stem": [
-        {
-          "path": "tools/blender_pipeline/mc2asset.py",
-          "line": 22,
-          "evidence": "import",
-          "reference": "sweep",
-          "text": "import sweep  # noqa: E402"
-        },
-        {
-          "path": "tools/blender_pipeline/tests/test_sweep.py",
-          "line": 14,
-          "evidence": "import",
-          "reference": "sweep",
-          "text": "import sweep  # noqa: E402"
-        },
-        {
-          "path": "tools/blender_pipeline/tests/test_unify.py",
-          "line": 12,
-          "evidence": "import",
-          "reference": "sweep",
-          "text": "import sweep  # noqa: E402"
         }
       ]
     },
@@ -7504,13 +7369,6 @@
       "callers_by_stem": []
     },
     {
-      "path": "tools/blender_pipeline/tests/test_asset_hd.py",
-      "basename": "test_asset_hd.py",
-      "stem": "test_asset_hd",
-      "callers_by_basename": [],
-      "callers_by_stem": []
-    },
-    {
       "path": "tools/blender_pipeline/tests/test_driver_dryrun.py",
       "basename": "test_driver_dryrun.py",
       "stem": "test_driver_dryrun",
@@ -7532,47 +7390,11 @@
       "callers_by_stem": []
     },
     {
-      "path": "tools/blender_pipeline/tests/test_sweep.py",
-      "basename": "test_sweep.py",
-      "stem": "test_sweep",
-      "callers_by_basename": [],
-      "callers_by_stem": []
-    },
-    {
-      "path": "tools/blender_pipeline/tests/test_tex_hd.py",
-      "basename": "test_tex_hd.py",
-      "stem": "test_tex_hd",
-      "callers_by_basename": [],
-      "callers_by_stem": []
-    },
-    {
       "path": "tools/blender_pipeline/tests/test_unify.py",
       "basename": "test_unify.py",
       "stem": "test_unify",
       "callers_by_basename": [],
       "callers_by_stem": []
-    },
-    {
-      "path": "tools/blender_pipeline/tex_hd.py",
-      "basename": "tex_hd.py",
-      "stem": "tex_hd",
-      "callers_by_basename": [],
-      "callers_by_stem": [
-        {
-          "path": "tools/blender_pipeline/mc2asset.py",
-          "line": 23,
-          "evidence": "import",
-          "reference": "tex_hd",
-          "text": "import tex_hd  # noqa: E402"
-        },
-        {
-          "path": "tools/blender_pipeline/tests/test_tex_hd.py",
-          "line": 10,
-          "evidence": "import",
-          "reference": "tex_hd",
-          "text": "import tex_hd as th  # noqa: E402"
-        }
-      ]
     },
     {
       "path": "tools/bt2018_import/build_bt2018_mod.py",
@@ -8904,24 +8726,17 @@
         },
         {
           "path": "tools/blender_pipeline/tests/test_unify.py",
-          "line": 67,
+          "line": 65,
           "evidence": "import",
           "reference": "stock_corpus",
           "text": "import stock_corpus as sc"
         },
         {
           "path": "tools/blender_pipeline/tests/test_unify.py",
-          "line": 86,
+          "line": 84,
           "evidence": "import",
           "reference": "stock_corpus",
           "text": "import stock_corpus as sc"
-        },
-        {
-          "path": "tools/blender_pipeline/tex_hd.py",
-          "line": 67,
-          "evidence": "import",
-          "reference": "stock_corpus",
-          "text": "from stock_corpus import add_allow_nonstock_arg  # noqa: E402"
         },
         {
           "path": "tools/mc2texcook/ase_geo_audit.py",
@@ -9132,13 +8947,6 @@
       ]
     },
     {
-      "path": "tools/mc2texcook/batch_upscale_cook.py",
-      "basename": "batch_upscale_cook.py",
-      "stem": "batch_upscale_cook",
-      "callers_by_basename": [],
-      "callers_by_stem": []
-    },
-    {
       "path": "tools/mc2texcook/burnin_jpeg.py",
       "basename": "burnin_jpeg.py",
       "stem": "burnin_jpeg",
@@ -9193,13 +9001,6 @@
       "path": "tools/mc2texcook/cook_tgl_tiers.py",
       "basename": "cook_tgl_tiers.py",
       "stem": "cook_tgl_tiers",
-      "callers_by_basename": [],
-      "callers_by_stem": []
-    },
-    {
-      "path": "tools/mc2texcook/cook_tgl_upscale_single.py",
-      "basename": "cook_tgl_upscale_single.py",
-      "stem": "cook_tgl_upscale_single",
       "callers_by_basename": [],
       "callers_by_stem": []
     },

@@ -215,7 +215,7 @@ drift. See the note under "Remaining unknowns".
 
 The four sites listed above as "adjacent, latent, unfixed" are now closed
 (2026-07-30). They had the same shape — a source tree assumed authoritative,
-never checked — in `tools/blender_pipeline/{srcdata,tex_hd}.py`,
+never checked — in `tools/blender_pipeline/srcdata.py` (and the retired tex_hd.py),
 `tools/mc2texcook/ase_geo_audit.py`, `tools/terrain_beautify/
 test_cook_markings.py` and `tools/mc2weapon/mc2weapon.py`.
 

@@ -8,8 +8,6 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import srcdata  # noqa: E402
-import asset_hd as ah  # noqa: E402
-import sweep  # noqa: E402
 import mc2asset  # noqa: E402
 
 
@@ -97,58 +95,8 @@ def test_synthetic_tree_is_refused_without_the_opt_out(tmp_path, monkeypatch):
 
 
 # ---------------------------------------------------------------------------
-# Cross-module agreement: asset_hd.py and sweep.py resolve the same root
-# ---------------------------------------------------------------------------
-
-def test_asset_hd_and_sweep_agree_on_root(tmp_path, monkeypatch):
-    root = tmp_path / "srcdata"
-    tgl = _make_tgl(root)
-    monkeypatch.setattr(srcdata, "SRCDATA_ROOT_PROBES", (root,))
-    monkeypatch.delenv("MC2_SRCDATA", raising=False)
-
-    hd_tgl = ah.find_tgl_dir(None)
-    sweep_tgl = sweep.find_srcdata(None)
-    assert hd_tgl == sweep_tgl == tgl
-
-
-def test_asset_hd_and_sweep_agree_via_explicit_root(tmp_path):
-    root = tmp_path / "srcdata"
-    tgl = _make_tgl(root)
-    assert ah.find_tgl_dir(str(root)) == tgl
-    assert sweep.find_srcdata(str(tgl)) == tgl  # sweep takes the tgl dir directly
-
-
-# ---------------------------------------------------------------------------
 # Dispatcher
 # ---------------------------------------------------------------------------
-
-def test_dispatcher_forwards_to_hd(monkeypatch):
-    called = {}
-
-    def fake_main(argv):
-        called["argv"] = argv
-        return 0
-
-    monkeypatch.setattr(mc2asset, "DISPATCH",
-                        {**mc2asset.DISPATCH, "hd": fake_main})
-    rc = mc2asset.main(["hd", "quonset", "--dry-run"])
-    assert rc == 0
-    assert called["argv"] == ["quonset", "--dry-run"]
-
-
-def test_dispatcher_forwards_to_sweep(monkeypatch):
-    called = {}
-
-    def fake_main(argv):
-        called["argv"] = argv
-        return 3
-
-    monkeypatch.setattr(mc2asset, "DISPATCH",
-                        {**mc2asset.DISPATCH, "sweep": fake_main})
-    rc = mc2asset.main(["sweep", "--filter", "tree*"])
-    assert rc == 3
-    assert called["argv"] == ["--filter", "tree*"]
-
 
 def test_dispatcher_forwards_to_edit(monkeypatch):
     called = {}
