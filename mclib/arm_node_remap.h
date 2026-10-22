@@ -2,6 +2,8 @@
 // A weapon assigned to a node that sits on a lost arm fires from another weapon node of a compatible type on the remaining body.
 #pragma once
 
+#include <span>
+
 namespace mc2_arm_remap {
 
 // Mirrors the MECH3D_WEAPONTYPE_* values of objectappearance.h.
@@ -25,14 +27,14 @@ inline bool nodeAccepts(long nodeType, long weaponType) {
 
 // own = weapon-node index (0..count-1) the weapon was assigned to. Returns the weapon-node index to fire from; own when
 // the node is still usable or no replacement exists. Least-used node wins, ties go to the lowest index.
-inline long remapLostArmNode(const Node* nodes, long count, long own, long weaponType, bool rightArmOff, bool leftArmOff) {
-	if (own < 0 || own >= count)
+inline long remapLostArmNode(std::span<const Node> nodes, long own, long weaponType, bool rightArmOff, bool leftArmOff) {
+	if (own < 0 || static_cast<size_t>(own) >= nodes.size())
 		return own;
 	const auto lost = [&](long i) { return (rightArmOff && nodes[i].onRightArm) || (leftArmOff && nodes[i].onLeftArm); };
 	if (!lost(own))
 		return own;
 	long best = -1, least = 999999999;
-	for (long i = 0; i < count; ++i) {
+	for (long i = 0; static_cast<size_t>(i) < nodes.size(); ++i) {
 		if (lost(i) || !nodeAccepts(nodes[i].weaponType, weaponType))
 			continue;
 		if (nodes[i].used < least) {

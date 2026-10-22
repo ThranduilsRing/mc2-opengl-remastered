@@ -30,22 +30,22 @@ TEST_CASE("arm remap: before - legacy constants name the wrong nodes") {
 
 TEST_CASE("arm remap: after - lost-arm node moves to a compatible node on the remaining body") {
 	// energy weapon on the lost right arm (w0): the intact left-arm energy node is the least-used compatible one
-	CHECK(remapLostArmNode(kNodes, 5, 0, kEnergy, true, false) == 1);
+	CHECK(remapLostArmNode(kNodes, 0, kEnergy, true, false) == 1);
 	// energy weapon on the lost left arm (w1) with the right arm intact: the right-arm node
-	CHECK(remapLostArmNode(kNodes, 5, 1, kEnergy, false, true) == 0);
+	CHECK(remapLostArmNode(kNodes, 1, kEnergy, false, true) == 0);
 	// both arms gone, energy weapon: the center-torso node is all that is left
-	CHECK(remapLostArmNode(kNodes, 5, 0, kEnergy, true, true) == 2);
+	CHECK(remapLostArmNode(kNodes, 0, kEnergy, true, true) == 2);
 }
 
 TEST_CASE("arm remap: usable nodes and impossible remaps are unchanged") {
-	CHECK(remapLostArmNode(kNodes, 5, 3, kMissile, true, true) == 3);    // torso node, arms irrelevant
-	CHECK(remapLostArmNode(kNodes, 5, 0, kEnergy, false, true) == 0);    // its own arm is intact
-	CHECK(remapLostArmNode(kNodes, 5, 9, kEnergy, true, true) == 9);     // not a weapon node
+	CHECK(remapLostArmNode(kNodes, 3, kMissile, true, true) == 3);    // torso node, arms irrelevant
+	CHECK(remapLostArmNode(kNodes, 0, kEnergy, false, true) == 0);    // its own arm is intact
+	CHECK(remapLostArmNode(kNodes, 9, kEnergy, true, true) == 9);     // not a weapon node
 	const Node onlyArms[] = {{kAny, true, false, 0}, {kAny, false, true, 0}};
-	CHECK(remapLostArmNode(onlyArms, 2, 0, kEnergy, true, true) == 0);   // nowhere to go: keep the node
+	CHECK(remapLostArmNode(onlyArms, 0, kEnergy, true, true) == 0);   // nowhere to go: keep the node
 }
 
 TEST_CASE("arm remap: least-used compatible node wins, ties go to the lowest index") {
 	const Node nodes[] = {{kAny, true, false, 0}, {kAny, false, false, 3}, {kAny, false, false, 1}, {kAny, false, false, 1}};
-	CHECK(remapLostArmNode(nodes, 4, 0, kBallistic, true, false) == 2);
+	CHECK(remapLostArmNode(nodes, 0, kBallistic, true, false) == 2);
 }

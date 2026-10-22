@@ -981,7 +981,7 @@ long Mech3DAppearance::remapLostArmWeaponNode (long node, long weaponType)
 		const auto& nd = mechType->nodeData[numSmokeNodes + i];
 		nodes[i] = { nd.weaponType, nd.isRArmNode, nd.isLArmNode, nodeUsed[i] };
 	}
-	return mc2_arm_remap::remapLostArmNode(nodes.data(), count, own, weaponType, rightArmOff, leftArmOff) + numSmokeNodes;
+	return mc2_arm_remap::remapLostArmNode(nodes, own, weaponType, rightArmOff, leftArmOff) + numSmokeNodes;
 }
 
 float Mech3DAppearance::getWeaponNodeRecycle (long node)
