@@ -813,13 +813,18 @@ void Mission::initPathfinding(MissionInitFrame& f) {
 	// GlobalMap::build's assertion passes on non-standard map sizes.
 	if (!GameMap) {
 		int cellSide = Terrain::realVerticesMapSide - 1;
-		int moveSide = cellSide * MAPCELL_DIM;
-		if (moveSide % SECTOR_DIM != 0)
-			moveSide = (moveSide / SECTOR_DIM) * SECTOR_DIM;  // round down
+		const int terrainCells = cellSide * MAPCELL_DIM;
+		// Size the grid from the terrain, clamp to the engine cap FIRST, then round down to a
+		// SECTOR_DIM multiple (rounding before the clamp left a 1024 side, which is not one).
+		int moveSide = terrainCells;
 		if (moveSide > MAX_MAP_CELL_WIDTH)
 			moveSide = MAX_MAP_CELL_WIDTH;
+		if (moveSide % SECTOR_DIM != 0)
+			moveSide = (moveSide / SECTOR_DIM) * SECTOR_DIM;  // round down
 		if (moveSide > 0) {
-			mc2::fmt::print_out("[MISSION] synthesizing blank MOVE: moveSide={:d} (terrainVtx={:d})\n", mc2::fmt::as_i32(moveSide), mc2::fmt::as_i32(static_cast<int>(Terrain::realVerticesMapSide)));
+			mc2::fmt::print_out("[MISSION] synthesizing blank MOVE: moveSide={:d} terrainCells={:d} cap={:d} (terrainVtx={:d})\n", mc2::fmt::as_i32(moveSide), mc2::fmt::as_i32(terrainCells), mc2::fmt::as_i32(MAX_MAP_CELL_WIDTH), mc2::fmt::as_i32(static_cast<int>(Terrain::realVerticesMapSide)));
+			if (terrainCells > moveSide)
+				mc2::fmt::print_out("[MISSION] WARNING: terrain is {:d} cells/side but the MOVE grid is capped at {:d}; cells beyond row/col {:d} (top-left anchored) have no pathing\n", mc2::fmt::as_i32(terrainCells), mc2::fmt::as_i32(moveSide), mc2::fmt::as_i32(moveSide));
 			fflush(stdout);
 			MOVE_buildData(moveSide, moveSide, nullptr /*all-passable blank*/, 0, nullptr);
 			if (GameMap)
