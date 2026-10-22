@@ -4,6 +4,8 @@
 #include "../../mclib/model_override_registry.h"
 #include <cmath>
 #include <algorithm>
+#include <filesystem>
+#include <string_view>
 
 namespace mc2prop {
 struct MaterialSources {
@@ -34,16 +36,19 @@ inline void appendLayer(mc2tex::TextureArrayCpu& a, uint32_t width, uint32_t hei
         if (w == 1 && h == 1) break;
         pixels = mc2tex::boxDownsampleRgba8(pixels, w, h);
         if (normal) normalizeNormals(pixels);
-        w = std::max(1u, w / 2); h = std::max(1u, h / 2); ++level;
+        ++level;
+        w = mc2tex::mipExtent(width, level);
+        h = mc2tex::mipExtent(height, level);
     }
     ++a.layers;
 }
 
 inline bool addMaterial(MaterialSources& dst, const ModelOverrideRecord& owner,
                          const ModelOverrideMaterial& input) {
-    auto read = [&](const std::string& path) -> std::optional<mc2tex::DecodedTexture> {
-        if (path.empty()) return std::nullopt;
-        return mc2tex::decodeFile((owner.manifestDir + "/" + path).c_str(), gos_Texture_Alpha, 0);
+    auto read = [&](std::string_view source) -> std::optional<mc2tex::DecodedTexture> {
+        if (source.empty()) return std::nullopt;
+        const auto path = (std::filesystem::path(owner.manifestDir) / source).generic_string();
+        return mc2tex::decodeFile(path.c_str(), gos_Texture_Alpha, 0);
     };
     auto normal = read(input.normalPath), orm = read(input.ormPath);
     if ((!input.normalPath.empty() && !normal) || (!input.ormPath.empty() && !orm)) return false;

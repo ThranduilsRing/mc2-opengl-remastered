@@ -55,16 +55,7 @@ layout(set = 0, binding = 4, std430) readonly buffer LightsData {
 // forwarded to the FS via vUvScale (flat) so the FS applies the identical crop
 // right where GL does, instead of assuming 1.0 (full layer -> narrower/gapped
 // panels wherever a packet's unique texture is smaller than the group max).
-layout(push_constant) uniform PacketLayerPC {
-    int   packetLayerOff;
-    int   packetLayerOn;
-    float packetUvScaleX;
-    float packetUvScaleY;
-    int   packetAlphaTest;   // GL's live per-packet ALPHA_TEST bit (the FS reads it)
-    int   coverageFringePass;   // PROP-COVERAGE-1 (FS only)
-    int   hzbEnabled;
-    int   materialId;
-} uPacket;
+#include "include/prop_packet_vk.glsl"
 
 #include "../include/gpu_abi_static_prop_instance.gen.hglsl"
 #include "../include/axis.hglsl"

@@ -36,8 +36,8 @@ def test_mask_preserves_exclusions_and_orm_channels(tmp_path):
     Image.new("L", (4, 4), 200).save(metal)
     Image.fromarray(np.array([[255, 255, 0, 0]]*4, dtype=np.uint8)).save(mask)
     n, orm = mm.cook_detail({"rotation": 90}, 4, {"normal": normal, "roughnessMap": rough, "metallicMap": metal, "mask": mask})
-    assert orm.getpixel((0, 0)) == (255, 80, 200)  # absent AO neutral, not displacement
-    assert orm.getpixel((3, 0)) == (255, 255, 0)
+    assert orm.getpixel((0, 0)) == (255, 80, 200, 255)  # absent AO neutral, not displacement
+    assert orm.getpixel((3, 0)) == (255, 255, 0, 0)  # excluded means no new shading/specular
     assert n.getpixel((3, 0)) == (128, 128, 255)
     assert n.getpixel((0, 0))[1] > 200  # normal components rotate with the image
 

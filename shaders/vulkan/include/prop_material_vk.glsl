@@ -63,6 +63,14 @@ SurfaceMaterial propSurface(int id, vec3 albedo) {
     return s;
 }
 
+// ORM alpha is authored coverage, separate from the stock albedo's cutout alpha.
+// Zero coverage keeps the legacy material response, including zero new specular.
+float propMaterialCoverage(int id) {
+    PropMaterialGpu row = uPropMaterials.materials[id];
+    if (row.material.metallicRoughnessTex == 0xffffffffu) return 1.0;
+    return texture(uPropOrm, vec3(vUv * row.uvScale, float(row.material.metallicRoughnessTex))).a;
+}
+
 // Compatibility lighting adapter for authored props only. Material evaluation
 // above stays independent of this pre-L6 lighting/output convention.
 vec3 propAuthoredColor(SurfaceMaterial s, bool alphaTest) {

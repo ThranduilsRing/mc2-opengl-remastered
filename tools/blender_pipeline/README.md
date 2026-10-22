@@ -234,7 +234,9 @@ from colour. Detail tiling/rotation is baked before the stock-atlas exclusions.
 The candidate bundle contains mod metadata, `models.json`, stock-geometry GLBs,
 private byte-for-byte TGA albedos (plus their stock KTX2 sidecars when present),
 linear uncompressed **32-bit RGBA TGA** normal/ORM maps and a source-hash report.
-ORM is R=AO/G=roughness/B=metallic. All detail maps in a mission use the same
+ORM is R=AO/G=roughness/B=metallic/A=authored coverage. A=0 keeps the legacy
+response without new specular, protecting excluded cloth/windows/atlas regions.
+All detail maps in a mission use the same
 power-of-two extent (CLI default 512); the native loader rejects incompatible or
 malformed declarations safely. A versioned `materials` package in each override
 record selects the authored slot; material IDs are independent of albedo layers.

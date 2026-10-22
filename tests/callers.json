@@ -6646,6 +6646,13 @@
       ],
       "callers_by_stem": [
         {
+          "path": "tools/blender_pipeline/material_map.py",
+          "line": 24,
+          "evidence": "import",
+          "reference": "ase_to_glb",
+          "text": "import ase_to_glb as ase"
+        },
+        {
           "path": "tools/blender_pipeline/tests/test_ase_submaterial.py",
           "line": 9,
           "evidence": "import",
@@ -6957,6 +6964,13 @@
           "text": "import batch_driver  # noqa: E402"
         },
         {
+          "path": "tools/blender_pipeline/material_map.py",
+          "line": 26,
+          "evidence": "import",
+          "reference": "batch_driver",
+          "text": "import batch_driver as pipeline"
+        },
+        {
           "path": "tools/blender_pipeline/sweep.py",
           "line": 38,
           "evidence": "import",
@@ -7041,6 +7055,21 @@
           "evidence": "import",
           "reference": "tools.blender_pipeline.fence_bundle",
           "text": "from tools.blender_pipeline import fence_bundle"
+        }
+      ]
+    },
+    {
+      "path": "tools/blender_pipeline/material_map.py",
+      "basename": "material_map.py",
+      "stem": "material_map",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tools/blender_pipeline/tests/test_material_map.py",
+          "line": 10,
+          "evidence": "import",
+          "reference": "material_map",
+          "text": "import material_map as mm"
         }
       ]
     },
@@ -7159,6 +7188,13 @@
           "text": "from srcdata import (  # noqa: E402"
         },
         {
+          "path": "tools/blender_pipeline/material_map.py",
+          "line": 27,
+          "evidence": "import",
+          "reference": "srcdata",
+          "text": "from srcdata import find_tgl_dir"
+        },
+        {
           "path": "tools/blender_pipeline/mc2asset.py",
           "line": 24,
           "evidence": "import",
@@ -7229,7 +7265,29 @@
       "basename": "test_ase_submaterial.py",
       "stem": "test_ase_submaterial",
       "callers_by_basename": [],
-      "callers_by_stem": []
+      "callers_by_stem": [
+        {
+          "path": "tools/blender_pipeline/tests/test_material_map.py",
+          "line": 48,
+          "evidence": "import",
+          "reference": "test_ase_submaterial",
+          "text": "from test_ase_submaterial import SINGLE_MAT_ASE"
+        },
+        {
+          "path": "tools/blender_pipeline/tests/test_material_map.py",
+          "line": 78,
+          "evidence": "import",
+          "reference": "test_ase_submaterial",
+          "text": "from test_ase_submaterial import SINGLE_MAT_ASE"
+        },
+        {
+          "path": "tools/blender_pipeline/tests/test_material_map.py",
+          "line": 95,
+          "evidence": "import",
+          "reference": "test_ase_submaterial",
+          "text": "from test_ase_submaterial import SINGLE_MAT_ASE"
+        }
+      ]
     },
     {
       "path": "tools/blender_pipeline/tests/test_asset_edit.py",
@@ -7263,6 +7321,13 @@
       "path": "tools/blender_pipeline/tests/test_manifest.py",
       "basename": "test_manifest.py",
       "stem": "test_manifest",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "tools/blender_pipeline/tests/test_material_map.py",
+      "basename": "test_material_map.py",
+      "stem": "test_material_map",
       "callers_by_basename": [],
       "callers_by_stem": []
     },

@@ -330,9 +330,12 @@ void GpuStaticPropBatcher::registerMultiShape(TG_TypeMultiShape* multiShape, boo
             // layer instead of culling them. Look up by source ptr.
             if (isOverride) {
                 auto tit = s_typeIndex.find(typeShape);
-                if (tit != s_typeIndex.end() && tit->second < s_types.size()) {
-                    s_types[tit->second].isOverride = true;
-                    s_types[tit->second].materialSource = materialSource;
+                if (tit != s_typeIndex.end()) {
+                    const auto& [registeredShape, typeId] = *tit;
+                    if (typeId < s_types.size()) {
+                        s_types[typeId].isOverride = true;
+                        s_types[typeId].materialSource = materialSource;
+                    }
                 }
             }
             // GPU-offloaded actors bypass TransformMultiShape, so the leaf

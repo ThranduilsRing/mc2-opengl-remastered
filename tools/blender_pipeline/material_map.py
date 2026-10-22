@@ -142,7 +142,8 @@ def cook_detail(row, size, paths):
     n /= np.maximum(np.linalg.norm(n, axis=2, keepdims=True), 1e-8)
     def image(array):
         return Image.fromarray(np.rint(np.clip(array, 0, 1) * 255).astype(np.uint8))
-    return image(n * 0.5 + 0.5), image(orm)
+    coverage = np.ones((size, size), dtype=np.float32) if mask is None else mask
+    return image(n * 0.5 + 0.5), image(np.dstack((orm, coverage)))
 
 
 def add_stock_colors(gltf, raw, geometry, source_text):

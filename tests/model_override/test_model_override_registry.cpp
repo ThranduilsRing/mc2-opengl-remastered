@@ -46,14 +46,14 @@ int main(int argc, char** argv) {
     {   ModelOverrideRegistry r; CHECK(r.loadFromFile(fx("does_not_exist.json"), dir) == 0); }
     {   ModelOverrideRegistry r; CHECK(r.loadFromFile(fx("type_mismatch.json"), dir) == 0); }
     {   ModelOverrideRegistry r;
-        CHECK(r.loadFromFile(fx("pbr.json"), dir) == 10);
+        CHECK(r.loadFromFile(fx("pbr.json"), dir) == 12);
         const auto* good = r.resolve("staticProp", "valid");
         CHECK(good && good->materials.size() == 1);
         if (good && !good->materials.empty()) {
             CHECK(good->materials[0].materialClass == 4);
             CHECK(good->materials[0].uvScale[1] == 3);
         }
-        for (const char* name : {"unreviewed", "bad_class", "unsafe", "bad_uv", "bad_scalar", "dielectric_metal", "bad_version", "duplicate"}) {
+        for (const char* name : {"unreviewed", "bad_class", "unsafe", "bad_uv", "bad_scalar", "dielectric_metal", "bad_version", "duplicate", "huge_slot", "huge_version"}) {
             const auto* bad = r.resolve("staticProp", name);
             CHECK(bad != nullptr); // bad detail keeps the geometry override
             if (bad) CHECK(bad->materials.empty());
@@ -64,7 +64,7 @@ int main(int argc, char** argv) {
         CHECK(empty.loadFromFile(fx("valid.json"), dir) == 1);
         const auto* unmapped = empty.resolve("staticProp", "example_name");
         CHECK(unmapped && unmapped->materials.empty());
-        CHECK(r.mergeFromFile(fx("pbr.json"), "another-provider") == 10);
+        CHECK(r.mergeFromFile(fx("pbr.json"), "another-provider") == 12);
         const auto* replaced = r.resolve("staticProp", "valid");
         CHECK(replaced && replaced->manifestDir == "another-provider");
     }

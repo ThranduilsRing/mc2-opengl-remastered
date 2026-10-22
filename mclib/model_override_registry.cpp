@@ -8,6 +8,7 @@
 #include <mutex>
 #include <utility>
 #include <cmath>
+#include <filesystem>
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"
 #include "mc2fmt.h"
@@ -51,10 +52,10 @@ static void parseMaterials(const json& entry, ModelOverrideRecord& rec) {
     if (!entry.contains("materials")) return;
     try {
         const auto& package = entry.at("materials");
-        if (!package.at("version").is_number_integer() || package.at("version").get<int>() != 1 || !package.at("slots").is_array())
+        if (!package.at("version").is_number_integer() || package.at("version") != 1 || !package.at("slots").is_array())
             throw std::runtime_error("unsupported material package");
         std::vector<ModelOverrideMaterial> parsed;
-        auto ranged = [](const json& row, const char* key, float fallback, float hi) {
+        auto ranged = [](const json& row, std::string_view key, float fallback, float hi) {
             if (row.contains(key) && !row.at(key).is_number())
                 throw std::runtime_error("material scalar must be numeric");
             const float v = row.value(key, fallback);
@@ -62,14 +63,15 @@ static void parseMaterials(const json& entry, ModelOverrideRecord& rec) {
                 throw std::runtime_error("material scalar out of range");
             return v;
         };
-        auto path = [](const json& row, const char* key) {
+        auto path = [](const json& row, std::string_view key) {
             std::string s = row.value(key, std::string());
             if (s.empty()) return s;
             for (const unsigned char c : s)
                 if (c < 32u) throw std::runtime_error("control character in material path");
-            if (s.front() == '/' || s.front() == '\\' || s.find(':') != std::string::npos ||
-                s.find("..") != std::string::npos || s.find('\\') != std::string::npos ||
-                s.size() < 4 || s.substr(s.size() - 4) != ".tga")
+            const std::filesystem::path candidate(s);
+            if (candidate.has_root_name() || candidate.has_root_directory() ||
+                candidate.generic_string() != s || s.find(':') != std::string::npos ||
+                s.find("..") != std::string::npos || candidate.extension() != ".tga")
                 throw std::runtime_error("unsafe/non-TGA material path");
             return s;
         };
@@ -77,7 +79,7 @@ static void parseMaterials(const json& entry, ModelOverrideRecord& rec) {
             if (!row.at("reviewed").get<bool>()) throw std::runtime_error("unreviewed material");
             ModelOverrideMaterial m;
             if (!row.at("slot").is_number_integer()) throw std::runtime_error("material slot must be integer");
-            const int slot = row.at("slot").get<int>();
+            const int64_t slot = row.at("slot").get<int64_t>();
             if (slot < 0 || slot > 255) throw std::runtime_error("invalid material slot");
             m.slot = static_cast<uint32_t>(slot);
             for (const auto& prior : parsed)

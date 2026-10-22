@@ -82,16 +82,7 @@ flat layout(location = 12) in vec3 vMaterialSun;
 flat layout(location = 13) in uint vMaterialFlags;
 
 // The vertex stage's push block; the FS reads only packetAlphaTest.
-layout(push_constant) uniform PacketLayerPC {
-    int   packetLayerOff;
-    int   packetLayerOn;
-    float packetUvScaleX;
-    float packetUvScaleY;
-    int   packetAlphaTest;
-    int   coverageFringePass;   // PROP-COVERAGE-1: 0 = core (cutout) pass, 1 = blended fringe pass
-    int   hzbEnabled;
-    int   materialId;
-} uPacket;
+#include "include/prop_packet_vk.glsl"
 
 layout(location = 0) out vec4 oColor;     // MRT0 lit color
 layout(location = 1) out vec4 oGBuffer1;  // MRT1 normal + shadow class
@@ -227,8 +218,11 @@ void main() {
     if (uPacket.coverageFringePass != 0 && !alphaTestClass) discard;
     if (haveAlbedo && uPacket.materialId >= 0 && uPacket.materialId < uPropMaterials.materials.length()) {
         SurfaceMaterial surface = propSurface(uPacket.materialId, materialAlbedo);
-        rgb = propAuthoredColor(surface, alphaTestClass);
-        outputNormalStuff = renderToMc2(surface.normal);
+        float materialCoverage = propMaterialCoverage(uPacket.materialId);
+        if (materialCoverage > 0.0) {
+            rgb = mix(rgb, propAuthoredColor(surface, alphaTestClass), materialCoverage);
+            outputNormalStuff = mix(vNormalStuff, renderToMc2(surface.normal), materialCoverage);
+        }
     }
     oColor = vec4(rgb, cover);
 

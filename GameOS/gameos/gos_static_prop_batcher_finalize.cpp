@@ -659,15 +659,16 @@ void GpuStaticPropBatcher::buildAuthoredMaterials() {
         for (const auto& input : owner->materials) {
             if (input.slot != packet.textureSlot) continue;
             const auto key = std::make_pair(owner, input.slot);
-            auto found = ids.find(key);
-            if (found == ids.end()) {
+            auto [item, added] = ids.try_emplace(key, -1);
+            auto& [identity, materialId] = *item;
+            if (added) {
                 const int32_t id = static_cast<int32_t>(materialSources_.table.size());
                 const bool ok = mc2prop::addMaterial(materialSources_, *owner, input);
-                found = ids.emplace(key, ok ? id : -1).first;
+                materialId = ok ? id : -1;
                 mc2::fmt::print_err("[MODOVERRIDE] authored material {} slot={} id={}\n",
-                    owner->appearanceName, input.slot, found->second);
+                    owner->appearanceName, input.slot, materialId);
             }
-            materialSources_.packetIds[pi] = found->second;
+            materialSources_.packetIds[pi] = materialId;
             break;
         }
     }

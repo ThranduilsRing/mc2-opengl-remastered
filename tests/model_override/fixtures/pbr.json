@@ -274,6 +274,56 @@
           }
         ]
       }
+    },
+    {
+      "type": "model",
+      "source": "model.glb",
+      "renderOnly": true,
+      "fallback": "stock",
+      "scale": 1,
+      "replaces": "staticProp:huge_slot",
+      "materials": {
+        "version": 1,
+        "slots": [
+          {
+            "slot": 4294967296,
+            "reviewed": true,
+            "class": "rust",
+            "normal": "detail/normal.tga",
+            "orm": "detail/orm.tga",
+            "uvScale": [
+              2,
+              3
+            ],
+            "metallic": 0.1
+          }
+        ]
+      }
+    },
+    {
+      "type": "model",
+      "source": "model.glb",
+      "renderOnly": true,
+      "fallback": "stock",
+      "scale": 1,
+      "replaces": "staticProp:huge_version",
+      "materials": {
+        "version": 4294967297,
+        "slots": [
+          {
+            "slot": 0,
+            "reviewed": true,
+            "class": "rust",
+            "normal": "detail/normal.tga",
+            "orm": "detail/orm.tga",
+            "uvScale": [
+              2,
+              3
+            ],
+            "metallic": 0.1
+          }
+        ]
+      }
     }
   ]
 }
