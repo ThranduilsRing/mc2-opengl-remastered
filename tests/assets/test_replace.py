@@ -88,7 +88,8 @@ def test_loader_bakes_scene_transforms(cube):
     assert b["min"] == [10, 20, 30]
     assert b["max"] == [14, 28, 42]
     assert candidate.mesh.triangles == 12
-    assert candidate.images[0].getpixel((0, 0)) == (204, 76, 25, 255)
+    # glTF factors are linear; the cooked base-color image is sRGB encoded.
+    assert candidate.images[0].getpixel((0, 0)) == (231, 149, 89, 255)
 
 
 def test_loader_rejects_network_and_path_escape(cube):
@@ -126,6 +127,16 @@ def test_fit_preserves_stock_pivot_and_detects_bad_bounds(cube, entry):
     np.testing.assert_allclose(bounds(candidate.mesh.vertices)["min"], [0, 0, 0])
     moved = Candidate(dc_replace(candidate.mesh, vertices=candidate.mesh.vertices+[5, 0, 0]), candidate.images, cube)
     assert not validate(moved, spec, transform)["valid"]
+
+
+def test_fit_planar_damage_geometry_uses_nonzero_dimensions(cube, entry):
+    candidate = load_candidate(cube)
+    candidate.mesh.vertices[:, 1] = 0
+    flat = bounds([[0, 0, 0], [4, 0, 12]])
+    entry["models"][0]["bounds"] = flat
+    spec = target_spec(entry)
+    fitted, transform = fit_candidate(candidate, spec, {"forward_axis": "-z"})
+    assert validate(fitted, spec, transform)["valid"]
 
 
 def test_validation_blocks_triangle_budget_nonfinite_and_rotation(cube, entry):

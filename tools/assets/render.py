@@ -114,6 +114,8 @@ def sheets(catalog, install, out):
         for model in obj["models"]:
             if model["role"] in ("intact", "destroyed"):
                 groups[obj["category"]].append((obj["id"], model))
+            elif "shadow" in model["role"]:
+                groups["shadow"].append((obj["id"], model))
     # Include remaining binary shapes so the sheet index accounts for the full archive.
     for model in catalog["unassigned_models"]:
         groups["unassigned"].append((Path(model["tgl"]).stem, model))
@@ -156,5 +158,14 @@ def sheets(catalog, install, out):
             links.append(f"- [{category} {offset//30+1}]({filename})")
         print(f"Sheets: {category}, {len(items)} tiles", flush=True)
     index["unique_thumbnails"] = len(rendered)
+    index["present_tgl_files"] = sum(install.has(path) for path in rendered)
+    index["decoded_thumbnails"] = len(rendered)-len(failures)
+    expected_thumbs = {Path(path).stem+".png" for path in rendered}
+    # Only remove obsolete generated thumbnails inside the resolved output root.
+    for path in (out/"thumbs").glob("*.png"):
+        if path.name not in expected_thumbs:
+            if not path.resolve().is_relative_to(out):
+                raise ValueError(f"thumbnail escapes sheet output: {path}")
+            path.unlink()
     write_json(out/"index.json", index)
     (out/"index.md").write_text("\n".join(links)+"\n", encoding="utf-8")

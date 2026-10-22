@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 
 from tools.assets.catalog import OBJECT, object_records, priority
-from tools.assets.common import bounds, model_refs, parse_tgl
+from tools.assets.common import bounds, model_refs, model_sections, parse_tgl
 from tools.assets.mapgen_data import fit_sections, packet
 
 
@@ -64,6 +64,13 @@ def test_packet_and_object_decoding_match_mapgen_layout():
     assert object_records(packet(pak, 0))[0][0] == 559
     with pytest.raises(ValueError, match="count/size"):
         object_records(payload[:-1])
+
+
+def test_stock_wirefence_continued_shadow_filename():
+    ini = '[TGLData]\nst FileName="WireFence"\n[TGLDamage]\nst FileName="WireFenceDam"\nst ShadowName="wirefence\r\nDamX"\n'
+    refs = model_refs(model_sections(ini))
+    assert refs[-1]["tgl"] == "data/tgl/wirefencedamx.tgl"
+    assert refs[0]["tgl"] == "data/tgl/wirefence.tgl"
 
 
 def test_priority_uses_usage_size_and_both_quality_signals():

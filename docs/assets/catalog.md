@@ -10,7 +10,7 @@ Priority: `instances * sqrt(0.5*x*z + 0.70710678*y*(x+z)) * (0.5*128/min_texture
 
 The score is an authoring heuristic, not a frame-cost measurement. Mechs are listed separately. Unassigned binaries include shadows, encyclopedia models, limbs and effects.
 
-Coverage: `{'appearances': 1271, 'with_base': 767, 'stock_tgl_files': 2030, 'referenced_tgl_files': 1957, 'unassigned_tgl_files': 73, 'model_errors': 43, 'missions': 319}`.
+Coverage: `{'appearances': 1271, 'with_base': 767, 'stock_tgl_files': 2030, 'referenced_tgl_files': 1958, 'unassigned_tgl_files': 72, 'model_errors': 42, 'missions': 319}`.
 
 | Corpus | Missions | Stock instances | Custom/missing | Errors |
 |---|---:|---:|---:|---:|

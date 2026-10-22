@@ -8,6 +8,7 @@ from __future__ import annotations
 import io
 import json
 import math
+import re
 import struct
 from dataclasses import dataclass
 from pathlib import Path
@@ -156,6 +157,20 @@ def model_refs(sections):
             result.append({"role": role, "lod": lod, "distance_wu": values.get(f"distance{lod}", 0),
                            "tgl": f"data/tgl/{base}.tgl", "ase": f"data/tgl/{base}.ase"})
     return result
+
+
+def model_sections(raw):
+    """Fold continued quoted INI filenames (stock WireFence damage shadow).
+
+    The generic mapgen scalar parser only reads single-line strings. Restrict
+    this repair to typed assignments so adjacent, well-formed strings cannot
+    accidentally be joined across sections.
+    """
+    text = raw.decode("latin1") if isinstance(raw, bytes) else raw
+    text = text.replace("\r\n", "\n").replace("\r", "\n")
+    pattern = r'(?m)(^\s*\w+\s+\w+\s*=\s*)"([^"]*)"'
+    text = re.sub(pattern, lambda m: m[1]+'"'+re.sub(r"\n\s*", "", m[2])+'"', text)
+    return fit_sections(text)
 
 
 def texture_image(install, name):

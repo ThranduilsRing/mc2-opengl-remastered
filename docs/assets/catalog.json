@@ -547668,7 +547668,7 @@
         },
         "tgldamage": {
           "filename": "wireFencedam",
-          "shadowname": "wirefenc"
+          "shadowname": "wirefenceDamX"
         }
       },
       "models": [
@@ -548036,10 +548036,10 @@
           "role": "damage_shadow",
           "lod": 0,
           "distance_wu": 0,
-          "tgl": "data/tgl/wirefenc.tgl",
-          "ase": "data/tgl/wirefenc.ase",
+          "tgl": "data/tgl/wirefencedamx.tgl",
+          "ase": "data/tgl/wirefencedamx.ase",
           "ase_present": false,
-          "error": "A:\\Games\\mc2-opengl\\mc2-win64-v0.4: data/tgl/wirefenc.tgl"
+          "error": "TGL has no visible triangles"
         }
       ],
       "missions": [
@@ -578427,15 +578427,6 @@
       "role": "unassigned",
       "lod": 0,
       "distance_wu": 0,
-      "tgl": "data/tgl/wirefencedamx.tgl",
-      "ase": "data/tgl/wirefencedamx.ase",
-      "ase_present": false,
-      "error": "TGL has no visible triangles"
-    },
-    {
-      "role": "unassigned",
-      "lod": 0,
-      "distance_wu": 0,
       "tgl": "data/tgl/wolfhoundfallbackwarddam.tgl",
       "ase": "data/tgl/wolfhoundfallbackwarddam.ase",
       "ase_present": false,
@@ -578762,9 +578753,9 @@
     "appearances": 1271,
     "with_base": 767,
     "stock_tgl_files": 2030,
-    "referenced_tgl_files": 1957,
-    "unassigned_tgl_files": 73,
-    "model_errors": 43,
+    "referenced_tgl_files": 1958,
+    "unassigned_tgl_files": 72,
+    "model_errors": 42,
     "missions": 319
   }
 }

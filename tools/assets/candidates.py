@@ -65,6 +65,8 @@ def load_gltf(path):
             raise ValueError("invalid GLB header")
         pos, doc = 12, None
         while pos < len(raw):
+            if pos+8 > len(raw):
+                raise ValueError("truncated GLB chunk header")
             length, kind = struct.unpack_from("<II", raw, pos); pos += 8
             if pos+length > len(raw):
                 raise ValueError("truncated GLB chunk")
@@ -125,7 +127,12 @@ def load_gltf(path):
             img = Image.open(io.BytesIO(content)).convert("RGBA")
         else:
             img = Image.new("RGBA", (1, 1), (255, 255, 255, 255))
-        rgba = np.clip(np.asarray(img).astype(float)*factor, 0, 255).astype(np.uint8)
+        rgba = np.array(img)
+        srgb = rgba[:, :, :3].astype(float)/255
+        linear = np.where(srgb <= .04045, srgb/12.92, ((srgb+.055)/1.055)**2.4)*factor[:3]
+        encoded = np.where(linear <= .0031308, linear*12.92, 1.055*np.maximum(linear, 0)**(1/2.4)-.055)
+        rgba[:, :, :3] = np.clip(np.round(encoded*255), 0, 255).astype(np.uint8)
+        rgba[:, :, 3] = np.clip(np.round(rgba[:, :, 3].astype(float)*factor[3]), 0, 255).astype(np.uint8)
         if material.get("alphaMode", "OPAQUE") == "OPAQUE":
             rgba[:, :, 3] = 255
         images.append(Image.fromarray(rgba))

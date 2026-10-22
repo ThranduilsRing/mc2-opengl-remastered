@@ -115,9 +115,17 @@ def fit_candidate(candidate, spec, metadata=None, *, yaw=0, stretch=False):
     candidate, matrix = orient(candidate, metadata or {}, yaw)
     current = bounds(candidate.mesh.vertices)
     sizes, desired = np.array(current["size"]), np.array(spec["bounds"]["size"])
-    if np.any(sizes < 1e-8):
-        raise ValueError("candidate has zero thickness; author physical post/roof thickness before fitting")
-    ratios = desired/sizes
+    active = sizes >= 1e-8
+    absolute = spec["validation"]["absolute_bounds_tolerance_wu"]
+    if not active.any() or np.any((~active) & (desired > 2*absolute)):
+        raise ValueError("candidate is planar on an axis with a substantial target extent")
+    # A card fence or flattened damage mesh may legitimately be planar. Fit
+    # nonzero dimensions and let final bounds validation decide the thin axis.
+    ratios = np.ones(3)
+    ratios[active] = desired[active]/sizes[active]
+    if np.any(ratios[active] <= 0):
+        raise ValueError("non-planar source cannot fit a zero-thickness target; author a flattened export")
+    ratios[~active] = np.exp(np.log(ratios[active]).mean())
     distortion = float(ratios.max()/ratios.min())
     if stretch and distortion > spec["validation"]["max_stretch_ratio"]:
         raise ValueError(f"requested stretch {distortion:.3f} exceeds limit")

@@ -16,7 +16,7 @@ import sys
 if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from tools.assets.common import (INSTALL_ROOT, INSTALLS, Install, bounds, fit_sections,
-                                 model_refs, output_path, parse_tgl, stock_install,
+                                 model_refs, model_sections, output_path, parse_tgl, stock_install,
                                  texture_image, write_json)
 from tools.assets.mapgen_data import catalog as type_catalog, packet
 
@@ -112,7 +112,7 @@ def build_catalog(root=INSTALL_ROOT):
         sections, source = {}, None
         if stock.has(ini):
             raw, source = stock.read(ini)
-            sections = fit_sections(raw)
+            sections = model_sections(raw)
         refs = model_refs(sections)
         # An object may have a direct TGL but no INI in incomplete stock data.
         if not refs and stock.has(f"data/tgl/{name}.tgl"):
@@ -165,7 +165,7 @@ def build_catalog(root=INSTALL_ROOT):
                 if info:
                     appearance = info["appearance"].lower()
                     ini = f"data/tgl/{appearance}.ini"
-                    refs = model_refs(fit_sections(install.read(ini)[0])) if install.has(ini) else []
+                    refs = model_refs(model_sections(install.read(ini)[0])) if install.has(ini) else []
                     path = next((r["tgl"] for r in refs if r["role"] == "intact" and r["lod"] == 0), f"data/tgl/{appearance}.tgl")
                     if install.has(path):
                         digest = hashlib.sha256(install.read(path)[0]).hexdigest()
