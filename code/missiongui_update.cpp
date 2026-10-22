@@ -4,6 +4,92 @@
 #include "mc2fmt.h"
 #include "../GameOS/gameos/utils/mc2log.h"
 
+namespace {
+	// Per-frame cursor -> terrain cell centre in O(ray length). The old per-frame
+	// eye->inverseProject walked every terrain quad (85-126 ms on a 1024-cell map).
+	// A miss (cursor over sky / off the map / a failed forward-projection check) is
+	// answered with the z=0 ground-plane point clamped onto the map, and as a last
+	// resort the previous good value; it never falls back to the O(quads) walk.
+	// Discrete click paths still call inverseProject for the exact answer.
+	bool pickCursorWorld (Camera* cam, long mx, long my, glm::vec3& out, const glm::vec3& prev, bool prevValid)
+	{
+		if (cam->pickTerrainRay(mx, my, out))
+			return true;
+		glm::vec3 g;
+		if (cam->screenToGroundPlaneApprox(mx, my, g))
+		{
+			const float lim = Terrain::worldUnitsMapSide * 0.5f - Terrain::worldUnitsPerCell;
+			if (g.x < -lim) g.x = -lim; else if (g.x > lim) g.x = lim;
+			if (g.y < -lim) g.y = -lim; else if (g.y > lim) g.y = lim;
+			g.z = land ? land->getTerrainElevation(g) : 0.0f;
+			out = g;
+			return false;
+		}
+		if (prevValid)
+			out = prev;
+		return false;
+	}
+
+	// MC2_TERRAIN_PICK_PARITY: every 40 cursor-change frames compare the ray pick
+	// against the legacy inverseProject over a 7x4 grid of screen points and log the
+	// per-sweep and cumulative result. Diagnostic only; never changes wPos.
+	void pickRayParitySweep (Camera* cam)
+	{
+		if (turn < 30)
+			return;
+		static unsigned long s_frames = 0, s_sweeps = 0;
+		static unsigned long s_tot = 0, s_both = 0, s_exact = 0, s_adj = 0, s_far = 0, s_rayOnly = 0, s_legOnly = 0, s_neither = 0;
+		static double s_rayNs = 0.0, s_legNs = 0.0, s_maxD = 0.0;
+		if ((++s_frames % 40) != 1)
+			return;
+		const float W = Environment.screenWidth, H = Environment.screenHeight;
+		for (int gy = 0; gy < 4; ++gy)
+			for (int gx = 0; gx < 7; ++gx)
+			{
+				Stuff::Vector2DOf<long> sp;
+				sp.x = static_cast<long>(W * (gx + 1) / 8.0f);
+				sp.y = static_cast<long>(H * (gy + 1) / 5.0f);
+				glm::vec3 a(0.f), b(0.f), raw(0.f);
+				const auto r0 = std::chrono::steady_clock::now();
+				const bool rayOk = cam->pickTerrainRay(sp.x, sp.y, a, &raw);
+				const auto r1 = std::chrono::steady_clock::now();
+				const unsigned long legRet = cam->inverseProject(sp, b);
+				const auto r2 = std::chrono::steady_clock::now();
+				++s_tot;
+				s_rayNs += static_cast<double>(std::chrono::duration_cast<std::chrono::nanoseconds>(r1 - r0).count());
+				s_legNs += static_cast<double>(std::chrono::duration_cast<std::chrono::nanoseconds>(r2 - r1).count());
+				// legacy ret 1 = "no quad under the cursor": b is then the closest map vertex (the production
+				// ground pick with an empty quadList), still a valid point to compare against.
+				const bool legOk = (legRet == 0) || (b.x != 0.0f || b.y != 0.0f);
+				if (rayOk && legOk)
+				{
+					++s_both;
+					const double dx = a.x - b.x, dy = a.y - b.y;
+					const double dist = sqrt(dx*dx + dy*dy);
+					if (dist > s_maxD) s_maxD = dist;
+					if (dist < 0.01) ++s_exact;
+					else if (dist <= Terrain::worldUnitsPerCell * 1.5) ++s_adj;
+					else
+					{
+						++s_far;
+						mc2::fmt::print_out("[PICK_RAY_PARITY v1] event=far px=({:d},{:d}) ray=({:.1f},{:.1f},{:.1f}) legacy=({:.1f},{:.1f},{:.1f}) dist={:.1f}\n",
+							mc2::fmt::as_i32(sp.x), mc2::fmt::as_i32(sp.y), a.x, a.y, a.z, b.x, b.y, b.z, dist);
+					}
+				}
+				else if (rayOk) ++s_rayOnly;
+				else if (legOk) { ++s_legOnly;
+					mc2::fmt::print_out("[PICK_RAY_PARITY v1] event=ray_miss_legacy_hit px=({:d},{:d}) legacy=({:.1f},{:.1f},{:.1f})\n",
+						mc2::fmt::as_i32(sp.x), mc2::fmt::as_i32(sp.y), b.x, b.y, b.z); }
+				else ++s_neither;
+			}
+		++s_sweeps;
+		mc2::fmt::print_out("[PICK_RAY_PARITY v1] event=sweep n={:d} points={:d} both_hit={:d} exact_cell={:d} within_1p5_cells={:d} far={:d} ray_only={:d} legacy_only={:d} neither={:d} max_dist_wu={:.1f} ray_avg_us={:.1f} legacy_avg_ms={:.2f}\n",
+			mc2::fmt::as_u64(s_sweeps), mc2::fmt::as_u64(s_tot), mc2::fmt::as_u64(s_both), mc2::fmt::as_u64(s_exact), mc2::fmt::as_u64(s_adj),
+			mc2::fmt::as_u64(s_far), mc2::fmt::as_u64(s_rayOnly), mc2::fmt::as_u64(s_legOnly), mc2::fmt::as_u64(s_neither), s_maxD,
+			s_tot ? s_rayNs / s_tot / 1000.0 : 0.0, s_tot ? s_legNs / s_tot / 1.0e6 : 0.0);
+		std::fflush(stdout);
+	}
+}
 
 void MissionInterfaceManager::update (void)
 {
@@ -779,20 +865,25 @@ void MissionInterfaceManager::update (void)
 		ZoneScopedN("MIF.InverseProject");
 		MifScope _mInv(MF_INVPROJ);
 		if (s_mfOn) { ++s_mfInvWalks; ++s_mfWinWalks; }
-		// Per-frame cursor world position. screenToGroundPlaneApprox (the O(1)
-		// inverse-clip/z=0 unproject) shares the same broken worldToClipGL inverse
-		// as the chunk raycast picker (collapsed X response / wrong eye), so it
-		// returned a near-constant garbage world point -> the hover passability
-		// check flagged walkable terrain as a red-X "dead area" across the screen,
-		// and dragStart (= wPos) anchored the select box off-screen. Use the
-		// legacy forward-projection inverseProject instead (correct, same picker
-		// the discrete move click uses). The delta-cache above limits this to
-		// cursor/camera-change frames; the O(quads) cost only matters on the
-		// oversized 1K map (a separate, known perf concern), not normal maps.
+		// Per-frame cursor world position: ray-march the camera ray over the
+		// heightfield (pickTerrainRay, O(ray length), forward-projection verified).
+		// History: the z=0 plane approx (screenToGroundPlaneApprox) was dropped here
+		// because it returned a near-constant garbage point (hover passability showed a
+		// red-X "dead area", dragStart anchored off-screen). Root cause: worldToClipGL()
+		// already has the MC2->GL axis swap as its first factor, so its inverse returns MC2
+		// world directly; those helpers swapped a second time, which collapsed the X response
+		// and put the far point above the camera. pickTerrainRay does not swap again, builds the
+		// ray from the matrix alone, intersects the real heightfield, and rejects any hit that
+		// does not project back onto the cursor.
+		// The legacy inverseProject walked every quad per cursor/camera-change frame
+		// (85-126 ms on a 1024-cell map); it is now only the discrete-click path.
+		static const bool s_pickParityDiag = mc2::gate::get<"MC2_TERRAIN_PICK_PARITY">();
 		const std::chrono::steady_clock::time_point _cpuT0 =
 			s_gpParityOn ? std::chrono::steady_clock::now()
 			             : std::chrono::steady_clock::time_point{};
-		eye->inverseProject(mouseXY, wPos);
+		pickCursorWorld(eye, mouseX, mouseY, wPos, cachedWPos, inverseProjectCacheValid);
+		if (s_pickParityDiag)
+			pickRayParitySweep(eye);
 		// GPU-GROUND-PICK-PARITY-1: oracle fires only on the quad-walk branch (the
 		// exact O(quads) cost the GPU depth-unproject would replace); the cache-hit
 		// branch above skips both paths, matching the recon's "per cursor-move
