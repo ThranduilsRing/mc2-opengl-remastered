@@ -42,7 +42,9 @@
  },
  "env": {
   "MC2_FIXTURE_ORDER_LIVENESS": "1",
-  "MC2_SOAK_AUTOWIN": "1"
+  "MC2_SOAK_AUTOWIN": "1",
+  "MC2_SOAK_WIN_AFTER_SEC": "190",
+  "MC2_FPS_CAP": "95"
  },
  "about": "chain digest of the first N [SIMID v1] lines; tools/sim_determinism.py check <mission>"
 }
