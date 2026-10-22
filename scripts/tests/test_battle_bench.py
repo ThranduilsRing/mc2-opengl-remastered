@@ -106,6 +106,7 @@ def test_scenario_uses_an_authored_mission_pilot(tmp_path):
     scenario = json.loads(bench.SCENARIO.read_text(encoding="utf-8"))
     channel = bench.prepare(tmp_path, scenario, "day")
     assert "spawn clone -980 2350 0 0 pmp_dagger" in channel.read_text(encoding="utf-8")
+    assert "set_light day" not in channel.read_text(encoding="utf-8")
 
 
 @pytest.mark.parametrize("sha,dirty", [("b" * 12, 0), ("a" * 12, 1)])

@@ -6,6 +6,8 @@ Content bytes are hashed after the timed runs so fingerprinting does not warm th
 
 Shader byte hashes describe the build separately from the game-content fingerprint, so shader optimizations can be compared with the same scenario and content.
 
+Day keeps the mission's authored lighting; only the night variant changes time of day.
+
 Commit, build RelWithDebInfo, and deploy the combined engine to the idle benchmark install. From this checkout:
 
 ```powershell

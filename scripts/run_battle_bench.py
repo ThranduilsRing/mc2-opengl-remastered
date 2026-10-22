@@ -74,7 +74,8 @@ def prepare(directory, scenario, phase):
     directory.mkdir(parents=True, exist_ok=True)
     channel = directory / "commands.txt"
     spawn = scenario["spawn"]
-    commands = [f"bench_output {directory / 'frames.jsonl'}", f"set_light {phase}"]
+    commands = [f"bench_output {directory / 'frames.jsonl'}"]
+    if phase == "night": commands.append("set_light night")
     for i in range(spawn["count"]):
         x = spawn["origin"][0] + i % spawn["columns"] * spawn["spacing"]
         y = spawn["origin"][1] + i // spawn["columns"] * spawn["spacing"]
