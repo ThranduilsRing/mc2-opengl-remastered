@@ -168,7 +168,7 @@ private:
     std::array<float,16> objectMatrix_{}, recordedObjectMatrix_{};
     uint32_t waitFrames_ = 0;
     bool loggedWait_ = false, loggedHeightDrift_ = false;
-    uint64_t bakedHeightVersion_ = 0;
+    uint64_t bakedHeightVersion_ = 0, bakedSetVersion_ = 0;
 
     // This bake's inputs (CPU).
     mc2shadow::MaskLayout layout_;

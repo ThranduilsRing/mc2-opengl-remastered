@@ -233,6 +233,7 @@ void ShadowBake::invalidate() {
     waitFrames_ = 0;
     loggedWait_ = loggedHeightDrift_ = false;
     bakedHeightVersion_ = 0;
+    bakedSetVersion_ = 0;
     layout_ = {};
 }
 
@@ -450,7 +451,7 @@ void ShadowBake::markSubmitted(uint64_t epoch) {
     if (!recorded_ || submitted_) return;
     submitted_ = true;
     submittedEpoch_ = epoch;
-    if (recordedMask_) { bakedKey_ = recordedKey_; maskReady_ = true; }
+    if (recordedMask_) { bakedKey_ = recordedKey_; bakedSetVersion_ = mc2shadow::staticCasterSet().version(); maskReady_ = true; }
     objectKey_ = recordedObjectKey_;
     objectGeneration_ = recordedObjectGeneration_;
     objectMatrix_ = recordedObjectMatrix_;
@@ -553,9 +554,9 @@ bool ShadowBake::recordBake(VkCommandBuffer cb, const ShadowBakeInputs& in) {
 
     // Casters: the gameplay set resolved to registry leaves, each with its world box and light-space box.
     const clk::time_point tResolve = clk::now();
-    // The load snapshot, not the set as it is now: the key then does not depend on how far combat got before the bake (events since are dirty tiles).
+    // Snapshot only on the first mask of this set; subsequent rebakes key and render the live state.
     const auto& casters=mc2shadow::staticCasterSet();
-    const uint64_t casterHash=recordedMask_?casters.loadSnapshot(leaves_):casters.resolve(leaves_);
+    const uint64_t casterHash=recordedMask_?casters.resolveForBake(bakedSetVersion_, leaves_):casters.resolve(leaves_);
     if (recordedMask_) casters.logDriftSinceLoad(6);
     cpuStage_[0] = std::chrono::duration<double, std::milli>(clk::now() - tResolve).count();
     std::vector<mc2shadow::LightBox> boxes;
@@ -576,8 +577,7 @@ bool ShadowBake::recordBake(VkCommandBuffer cb, const ShadowBakeInputs& in) {
     if (casterTop < -1e29f) casterTop = terrainTop_;
     casterTop_ = casterTop;
 
-    // The mask/cache uses pristine load leaves. Object receivers always use
-    // current gameplay leaves, including on a full mask rebake after an edit.
+    // Object receivers always use current gameplay leaves.
     std::vector<GpuStaticPropInstance> objInst;
     casters.resolve(objInst);
     std::erase_if(objInst, [this](const auto& leaf) {

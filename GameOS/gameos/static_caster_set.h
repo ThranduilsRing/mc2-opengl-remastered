@@ -70,6 +70,10 @@ public:
     // The set as endRebuild() resolved it, before the mission ran a frame. The cold bake renders this (so its key does not depend on what combat did
     // before the bake ran); every event since is queued for the dirty path anyway.
     uint64_t loadSnapshot(std::vector<GpuStaticPropInstance>& leaves) const { leaves = loadLeaves_; return loadHash_; }
+    // Only the first mask of a set uses the load snapshot; later full rebakes include consumed edits.
+    uint64_t resolveForBake(uint64_t bakedSetVersion, std::vector<GpuStaticPropInstance>& leaves) const {
+        return bakedSetVersion != version() ? loadSnapshot(leaves) : resolve(leaves);
+    }
     // Logs the entries whose leaves differ from the load snapshot ([SHADOW_BAKE] caster drift): what moved between load and the bake.
     void logDriftSinceLoad(uint32_t maxLines) const;
 

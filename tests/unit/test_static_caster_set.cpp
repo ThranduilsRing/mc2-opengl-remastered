@@ -183,3 +183,22 @@ TEST_CASE("static caster set: pending removals follow gameplay handles") {
     CHECK(events[0].before[0].typeID == 10);
     CHECK(events[1].before[0].typeID == 30);
 }
+
+TEST_CASE("static caster set: a second full bake uses live casters after events were drained") {
+    RecipeFeed feed;
+    feed.add(1, 10); feed.add(2, 20);
+    int destroyed = 0, placed = 0;
+    mc2shadow::StaticCasterSet set;
+    set.beginRebuild(); set.add({&destroyed, 1, 1}); set.endRebuild();
+    std::vector<GpuStaticPropInstance> leaves;
+    const auto first = set.resolveForBake(0, leaves);
+    REQUIRE(leaves.size() == 1); CHECK(leaves[0].typeID == 10);
+    const auto version = set.version();
+    set.ownerInvalidated(&destroyed, 1);
+    set.setAdmitNewOwners(true); set.ownerRegistered(&placed, 2);
+    set.takeEvents();
+    const auto second = set.resolveForBake(version, leaves);
+    REQUIRE(leaves.size() == 1); CHECK(leaves[0].typeID == 20);
+    CHECK(second != first);
+    CHECK(second == set.resolve(leaves));
+}
