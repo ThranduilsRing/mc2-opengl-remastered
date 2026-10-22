@@ -19,6 +19,22 @@ smoke = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(smoke)
 
 
+class ShadowEditGradingTests(unittest.TestCase):
+    def test_each_edit_must_reach_and_drain_the_renderer(self):
+        lines = []
+        for stage in range(4):
+            lines.append(f"[EDITOR_CLI v1] event=shadow_edit stage={stage} ok=1 frame={240 * (stage + 1)}")
+            if stage >= 2:
+                lines.append(f"[SHADOW_BAKE] caster event: {'added' if stage == 2 else 'removed'} leaves 1")
+            lines.append("[SHADOW_BAKE] dirty queue drained: sub_tiles=4")
+        proof = "\n".join(lines)
+        self.assertEqual(smoke.grade_shadow_edits(proof), "")
+        for line in lines:
+            self.assertTrue(smoke.grade_shadow_edits(proof.replace(line, "", 1)))
+        self.assertTrue(smoke.grade_shadow_edits(proof.replace("ok=1", "ok=0", 1)))
+        self.assertTrue(smoke.grade_shadow_edits(proof + "\n" + lines[0]))
+
+
 class ObjectiveScalarGradingTests(unittest.TestCase):
     def test_legacy_reload_grades_values_and_rejects_noop_or_wrong_resave(self):
         from editor.tests.legacy_reference import FROZEN

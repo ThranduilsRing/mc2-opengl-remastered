@@ -12,6 +12,54 @@
 #include <array>
 #include <cstdio>
 
+// Unlike the synchronous authoring probes, leave each edit alive across rendered
+// frames so the shadow job can consume it. These run only under -smoke-workflows.
+void EditorInterface::tickShadowEditSmoke(long frame)
+{
+	static long nextFrame = 0;
+	static int stage = 0;
+	if (!land || stage == 4) return;
+	if (!nextFrame) { nextFrame = frame + 240; return; }
+	if (frame < nextFrame) return;
+	bool ok = false;
+	if (stage == 0) {
+		const int mid = (land->realVerticesMapSide - 1) / 2;
+		glm::vec3 point(land->mapTopLeft3d.x + mid * land->worldUnitsPerVertex,
+			land->mapTopLeft3d.y - mid * land->worldUnitsPerVertex, 0.0f);
+		point.z = land->getTerrainElevation(point);
+		HeightBrush brush(HeightBrush::RAISE, land->worldUnitsPerVertex * 0.25f, 32.0f);
+		brush.beginPaint();
+		ok = brush.paint(point, 0, 0);
+		undoMgr.AddAction(brush.endPaint());
+		ok = ok && land->getTerrainElevation(point) > point.z;
+	} else if (stage == 2) {
+		unsigned long group{}, index{};
+		auto* mgr = EditorObjectMgr::instance();
+		// A known stock static prop; never choose a marker or a mover.
+		if (mgr->getBuildingFromID(263, group, index, true)) {
+			setActiveBrush(new BuildingBrush(group, index, 0), -500, -500);
+			auto* brush = dynamic_cast<BuildingBrush*>(curBrush);
+			const int mid = (land->realVerticesMapSide - 1) / 2;
+			for (int row = mid; row < mid + 24 && !ok; ++row)
+				for (int col = mid; col < mid + 24 && !ok; ++col) {
+					glm::vec3 point{};
+					land->cellToWorld(row, col, point);
+					point.z = land->getTerrainElevation(point);
+					if (!brush->canPaint(point, 0, 0, 0)) continue;
+					brush->beginPaint();
+					ok = brush->paint(point, 0, 0);
+					undoMgr.AddAction(brush->endPaint());
+				}
+		}
+	} else {
+		ok = undoMgr.Undo();
+	}
+	fprintf(stderr, "[EDITOR_CLI v1] event=shadow_edit stage=%d ok=%d frame=%ld\n", stage, ok ? 1 : 0, frame);
+	fflush(stderr);
+	++stage;
+	nextFrame = frame + 240;
+}
+
 void EditorInterface::runCatalogReferenceSmoke()
 {
 	if (!land || !EditorData::instance || !EditorObjectMgr::instance()) return;

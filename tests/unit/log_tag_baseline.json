@@ -2860,6 +2860,18 @@
    "stream": "stderr",
    "keys": [
     "event",
+    "stage",
+    "ok",
+    "frame"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "EDITOR_CLI",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
     "status"
    ],
    "count": 1
@@ -10686,6 +10698,7 @@
   "DHRF",
   "EDITOR_CAPTURE",
   "EDITOR_CHOOSER_VIEW",
+  "EDITOR_CLI",
   "EDITOR_DEFINITIONS",
   "EDITOR_DOCUMENT",
   "EDITOR_FILE",
@@ -10711,6 +10724,7 @@
   "SHADER",
   "SHADER ERROR",
   "SHADER_SCHEMA",
+  "SHADOW_BAKE",
   "SIMID",
   "SMOKE",
   "SOAK",

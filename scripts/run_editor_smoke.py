@@ -121,6 +121,21 @@ def parse_panels(text: str) -> dict:
     return panels
 
 
+def grade_shadow_edits(text: str) -> str:
+    """Require rendered edits, not just synchronous model undo/redo."""
+    stages = list(re.finditer(r"\[EDITOR_CLI v1\] event=shadow_edit stage=(\d+) ok=(\d+) frame=(\d+)", text))
+    if [m.group(1) for m in stages] != ["0", "1", "2", "3"] or any(m.group(2) != "1" for m in stages):
+        return "shadow edits: missing or unsuccessful height/undo/place/delete stage"
+    for i, stage in enumerate(stages):
+        end = stages[i + 1].start() if i + 1 < len(stages) else len(text)
+        segment = text[stage.end():end]
+        if "[SHADOW_BAKE] dirty queue drained:" not in segment:
+            return f"shadow edits: stage {i} did not drain"
+        if i >= 2 and f"[SHADOW_BAKE] caster event: {'added' if i == 2 else 'removed'}" not in segment:
+            return f"shadow edits: stage {i} missing caster event"
+    return ""
+
+
 def grade_workflows(text: str) -> str:
     try:
         panels = parse_panels(text)
@@ -892,7 +907,7 @@ def run_case(name: str, exe: Path, deploy: Path, exit_sec: int, timeout: int,
     # Per-case expectation -------------------------------------------------------
     detail = ""
     if not bucket and expect == "workflows":
-        detail = grade_workflows(combined)
+        detail = grade_workflows(combined) or grade_shadow_edits(combined)
         if detail:
             bucket = "workflow_probe_failed"
         elif esmoke.get("saved") != "1":

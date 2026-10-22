@@ -914,6 +914,8 @@ static DWORD WINAPI s_smoke_thread(LPVOID)
 // driver never reached Start() (process_timeout). Both callers run on the main thread.
 void EditorPlaytestSmokeDriverTick()
 {
+	if (g_cliSmokeWorkflows && g_cliSmokeWorkDone && EditorInterface::instance())
+		EditorInterface::instance()->tickShadowEditSmoke(g_cliFrameCounter);
 	// -playtest END-TO-END SMOKE driver (main thread). Runs once the auto-load
 	// work is done. Warms a few frames, fires the REAL EditorPlaytest::Start()
 	// (the toolbar button path) with the child in smoke mode, then polls
