@@ -1,10 +1,12 @@
-# MC2 map layout generator: ASCII phase
+# MC2 map layout generator: pixel-art phase 1b
 
-Offline Python 3 + numpy tools. Source installs are read-only. No engine, game,
+Offline Python 3 + numpy + Pillow tools. Source installs are read-only. No engine, game,
 deployment or mission binary writes are involved. Run commands from the repo root.
 
 ```
 py -3 -B tools/mapgen/extract.py --all
+py -3 -B tools/mapgen/footprints.py
+py -3 -B tools/mapgen/raster.py --all
 py -3 -B tools/mapgen/ascii.py --examples
 py -3 -B tools/mapgen/analyze.py
 py -3 -B tools/mapgen/generate.py --size 300 --seed 42
@@ -23,6 +25,15 @@ Stock includes all paired missions in the install, including the 24 campaign map
 Loose files take precedence over FST members. Inactive launcher `mods/` overlays
 and backup directories are not mounted. Explicit install catalogs are recorded;
 this is a survey of these installations, not a claim of pristine original media.
+
+The owner means **top-down pixel art**, like a more detailed tacmap. Raster PNGs
+are the primary output; the phase-1 ASCII tools and examples remain available.
+See [raster examples](raster/README.md) and [model footprint methods/coverage](footprints.md).
+All 320 stock/mod corpus missions have full-map PNGs. Two stock base crops and
+every generated base crop use 1 world unit per pixel. Full maps automatically use
+2..8 wu/px, with explicit size guards. PNGs include class colours, team tint,
+player start, visible objectives, native object outlines, authored road alpha
+masks, terrain colours and optional hillshade.
 
 ## JSON schema `mc2-mapgen-1`
 
@@ -80,18 +91,20 @@ labels and slope/proximity measurements are coarse, documented approximations.
 
 ## Generating layouts
 
-`generate.py --size N --seed S --out DIRECTORY` writes JSON and ASCII. Sizes
+`generate.py --size N --seed S --out DIRECTORY` writes JSON, full-map PNG, a
+1 wu/px base PNG, render sidecars, and a legacy ASCII preview. Sizes
 96..1024 cells are supported. Default `--style stock` calibrates from the 24 stock
 missions; `--style mixed` uses the deduplicated stock/mod pool, or supply an install
 label from the corpus. Profile hashes and terrain hashes are recorded in output.
-Same seed, profile, style and terrain produce the same JSON bytes across processes.
+Same seed, profile, footprint table, style and terrain produce the same JSON bytes
+across processes.
 
 The generator lays a connected road skeleton between reachable map edges, reserves
 flat parcels along it, adds access spurs, buildings, walls/gates, linked turret
 batteries, then tree clusters. Compounds have cement inset two cells from the wall
-ring; each road entry replaces a wall segment with a controlled gate. Abstract
-corner/straight wall shapes are explicit. Open sites have no cement ring. Player
-starts are on the network; enemy sites stay at least 0.25 map sides away.
+ring; each road entry replaces wall segments with a controlled native gate.
+Open sites have no cement ring. Player starts are on the network; enemy sites
+stay at least 0.25 map sides away.
 
 First sites demonstrate a compound, an open outpost and a roadside town; later
 sites sample measured archetype weights. Parcel dimensions sample p10..p90 with
@@ -126,7 +139,7 @@ stored classification. Corpus envelopes are broad min/max plausibility limits,
 not a claim of statistical equivalence; the small-map demonstration floor is
 excluded from mission-wide density checks.
 
-Run `py -3 -B -m unittest discover -s tests/mapgen -v` (22 tests passing). The offline suite covers
+Run `py -3 -B -m unittest discover -s tests/mapgen -v`. The offline suite covers
 binary packet/FST fixtures, mod catalog differences, source provenance, a 24-seed
 sweep, 1024x1024 generation, supplied water/cliff obstacles, impossible terrain,
 process/hash-seed determinism, population summaries, and deliberate gate/road/
@@ -150,14 +163,53 @@ All four pass the plausibility checker. Reproduce the large layout locally:
 py -3 -B tools/mapgen/generate.py --size 1024 --seed 42 --cells-per-char 8
 ```
 
-Outputs are cell-level plans: model IDs, exact footprints and playable mission
-logic remain unassigned. Objective markers are suggestions, with no FIT conditions.
+Phase 1b adds concrete install-specific type IDs, rotations and `position_wu`
+(world X,Y,Z at the original model pivot). `cell` and packed parent cells are
+recomputed from these final positions. `footprint_key` references the measured
+table; embedded `footprint` records preserve unscaled bounds and outlines.
+`roads_wu` contains width-bearing world X,Y polylines; `wall_edges_wu` describes
+four connected edges per compound and their wall/gate IDs. `player_start_wu`,
+part positions and objective suggestions support a later binary writer.
+
+The phase-1 cell planner supplies terrain, reserved road corridors, parcels and
+requested class/role mixes. A continuous placement pass replaces all abstract
+objects. It samples measured native models and accepts placements using whole
+rotated rectangles, four-wu clearance, dry/flat footprint coverage, road
+reservations and measured neighbour/link ranges converted to world units.
+Buildings stay parallel/perpendicular to road frontage. Parent-first placement
+samples turret/control/generator distances from the stock corpus p10..p90,
+constrained by the parcel; final distances must remain inside observed min/max.
+Roles with >=20 same-role adjacency samples also enforce observed neighbour
+min/max; sparse roles do not claim a robust spacing rule.
+
+Walls use the minimum number of unscaled native segments needed to cover each
+edge. End caps overlap by at most half the shorter segment; ring corners may
+join. Gates occupy their actual native width where access roads cross. Buildings
+and canopies have no overlap allowance. Tree clusters become continuous jittered
+point sets rejected against native canopy bounds. Coarse road/cement masks remain
+planning reservations; PNGs draw generated roads from their world polylines.
+Main routes use 64 wu where the terrain admits their full width, narrowing to
+40 wu beside obstacles; access spurs use 40 wu. These are design widths, while
+authored-map road silhouettes come directly from the install's overlay masks.
+
+The validator retains phase-1 terrain/network/team/envelope checks and adds
+native-ID/dimension checks, pivot/cell agreement, convex separating-axis overlap
+checks, physical wall interval coverage, world-unit parent distances, role
+spacing and swept road width checks. It distinguishes permitted wall joins from
+solid footprint overlaps. Conservative model rectangles include overhangs;
+neither these nor visual road widths prove engine MOVE passability.
+
+New examples are in [raster/generated](raster/generated/): 180/7, 360/17, 720/23,
+1024/42, each with JSON, a full map and a 1 wu/px base crop. The old cell examples
+above are historical phase-1 artifacts. Playable mission logic remains unassigned;
+objective markers are suggestions with no FIT conditions.
 
 ## Boundaries for phase 2
 
-Choose concrete models from each target install's object2.pak/Buildings.csv and
-measure their footprint, pivot, wall tier and corner/diagonal variants. Validate
-parent cells after snapping. Buildings belong in Packet 1; units and objectives
+Concrete models, native bounds, pivots and parent cells are assigned for layout
+planning. Phase 2 still needs collision-template/passability validation, deliberate
+wall tier/corner selection and any engine-required snap policy, then packed-parent
+revalidation after snapping. Buildings belong in Packet 1; units and objectives
 belong in FIT. A complete writer must handle Packet 0 terrain, Packet 3 tacmap,
 Packet 4 MOVE and matching FIT extents, or use an explicitly verified same-grid
 template. Do not extend the divergent direct terrain initialization path. No

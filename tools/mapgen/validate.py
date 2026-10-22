@@ -49,6 +49,7 @@ def validate(layout, profile=None):
     if edges < 2:
         errors.append("roads do not reach two map edges")
     objects = layout["objects"]
+    precise = layout.get("generation", {}).get("placement_version") == 2
     by_id = {o["id"]: o for o in objects}
     if len(by_id) != len(objects):
         errors.append("object IDs are not unique")
@@ -96,7 +97,7 @@ def validate(layout, profile=None):
             continue
         along = ((r,c-1),(r,c+1)) if obj.get("wall_axis") == "horizontal" else ((r-1,c),(r+1,c))
         across = ((r-1,c),(r+1,c)) if obj.get("wall_axis") == "horizontal" else ((r,c-1),(r,c+1))
-        if any(by_cell.get(cell, {}).get("class") != "wall" for cell in along):
+        if not precise and any(by_cell.get(cell, {}).get("class") != "wall" for cell in along):
             errors.append(f"{obj['id']}: gate is not between two wall segments")
         if any(not (0 <= rr < rows and 0 <= cc < cols and roads[rr,cc]) for rr, cc in across) or not roads[r,c]:
             errors.append(f"{obj['id']}: gate is not on a road crossing")
@@ -133,9 +134,9 @@ def validate(layout, profile=None):
             perimeter = {(r,c) for r in range(r0,r1) for c in range(c0,c1)
                          if r in (r0,r1-1) or c in (c0,c1-1)}
             actual = {tuple(o["cell"]) for o in members if o["class"] in ("wall", "gate")}
-            if actual != perimeter:
+            if not precise and actual != perimeter:
                 errors.append(f"{base['id']}: wall and gate ring is incomplete")
-            if any(roads[cell] and by_cell.get(cell, {}).get("class") != "gate" for cell in perimeter):
+            if not precise and any(roads[cell] and by_cell.get(cell, {}).get("class") != "gate" for cell in perimeter):
                 errors.append(f"{base['id']}: road crosses wall outside a gate")
         if profile:
             envelope = profile["pooled"]["archetypes"][base["archetype"]]
@@ -174,6 +175,136 @@ def validate(layout, profile=None):
                 envelope = metrics[field]
                 if not envelope["min"] <= value <= envelope["max"]:
                     errors.append(f"{field}={value:.3f} outside corpus range")
+    if precise:
+        errors.extend(validate_footprints(layout, profile))
+    return errors
+
+
+def validate_footprints(layout, profile=None):
+    """Native geometry, continuous pivots, ring coverage and world link distances."""
+    import math
+    from tools.mapgen.common import CELL_WU, building_role
+    from tools.mapgen.footprints import table
+    from tools.mapgen.placement import Spatial, bounds, cell_of, covered_cells, overlaps
+    from tools.mapgen.raster import polygon
+    errors = []
+    native = table()["types"]
+    by_id = {o["id"]:o for o in layout["objects"]}
+    shape = (layout["size"]["rows"],layout["size"]["cols"])
+    allowed = ~mask_of(layout,"water") & (slope_grid(layout["terrain"]["elevation_wu"]) < FLAT_DEG)
+    roads = mask_of(layout,"roads")
+    spatial, polys = Spatial(), {}
+    edges = layout.get("wall_edges_wu",[])
+    for obj in by_id.values():
+        pos,fp = obj.get("position_wu"),obj.get("footprint")
+        if not pos or len(pos)!=3 or not all(math.isfinite(v) for v in pos) or not fp or not math.isfinite(obj.get("rotation",0)):
+            errors.append(f"{obj['id']}: missing/invalid native footprint or position")
+            continue
+        asset = native.get(obj.get("footprint_key"))
+        if not asset or asset["type_id"] != obj.get("type_id") or any(fp.get(k)!=asset[k] for k in
+                ("width_wu","depth_wu","height_wu","bounds_wu","outline_wu")):
+            errors.append(f"{obj['id']}: footprint/type differs from native model")
+        if cell_of(layout,pos) != obj["cell"]:
+            errors.append(f"{obj['id']}: world position and cell disagree")
+            if obj["class"]=="gate":
+                errors.append(f"{obj['id']}: gate is not between native wall segments; ring is incomplete")
+        poly = polygon(obj,fp,pos,rectangle=True)
+        polys[obj["id"]] = poly
+        r0,c0,r1,c1 = covered_cells(layout,poly)
+        if min(r0,c0)<0 or r1>shape[0] or c1>shape[1] or not allowed[r0:r1,c0:c1].all():
+            errors.append(f"{obj['id']}: footprint crosses water, slope or map edge")
+        if obj["class"] not in ("gate","wall") and roads[max(0,r0):r1,max(0,c0):c1].any():
+            errors.append(f"{obj['id']}: footprint blocks a road")
+        for other,op in spatial.candidates(poly):
+            if not overlaps(poly,op,clearance=3.99):
+                continue
+            both_wall = obj["class"]==other["class"]=="wall" and obj.get("base_id")==other.get("base_id")
+            wall_gate = {obj["class"],other["class"]} <= {"wall","gate"} and obj.get("base_id")==other.get("base_id")
+            if both_wall or wall_gate:
+                # Connected wall silhouettes intentionally share end caps. Bound
+                # their overlap to half the shorter native piece, including joins.
+                a,b = bounds(poly),bounds(op)
+                overlap_area = max(0,min(a[2],b[2])-max(a[0],b[0]))*max(0,min(a[3],b[3])-max(a[1],b[1]))
+                thickness = max(min(fp["width_wu"],fp["depth_wu"]),min(other["footprint"]["width_wu"],other["footprint"]["depth_wu"]))
+                length_cap = min(max(fp["width_wu"],fp["depth_wu"]),
+                                 max(other["footprint"]["width_wu"],other["footprint"]["depth_wu"]))/2
+                if overlap_area <= thickness*max(thickness,length_cap)+1:
+                    continue
+            errors.append(f"{obj['id']}: footprint overlaps/violates clearance with {other['id']}")
+        spatial.add(obj,poly)
+        parent = by_id.get(obj.get("parent_link"))
+        if profile and parent and obj["class"] in ("turret","turret_control","gate"):
+            stats = profile["groups"]["stock"]["links"].get(f"{obj['class']} -> {parent['class']}")
+            d = math.dist(pos[:2],parent["position_wu"][:2])/CELL_WU
+            if stats and not stats["min"] <= d <= stats["max"]:
+                errors.append(f"{obj['id']}: world parent distance outside measured range")
+    for base in layout["bases"]:
+        if base["walled"] and sum(e["base_id"]==base["id"] for e in edges)!=4:
+            errors.append(f"{base['id']}: native wall ring is incomplete")
+        if base["walled"]:
+            r0,c0,r1,c1 = base["bounds"]
+            x0,x1 = (c0+.5-shape[1]/2)*CELL_WU,(c1-.5-shape[1]/2)*CELL_WU
+            y0,y1 = (shape[0]/2-r1+.5)*CELL_WU,(shape[0]/2-r0-.5)*CELL_WU
+            expected = {((x0,y1),(x1,y1)),((x1,y1),(x1,y0)),((x1,y0),(x0,y0)),((x0,y0),(x0,y1))}
+            actual = {(tuple(e["start"]),tuple(e["end"])) for e in edges if e["base_id"]==base["id"]}
+            if expected != actual:
+                errors.append(f"{base['id']}: native wall ring differs from parcel")
+        members = [o for o in by_id.values() if o.get("base_id")==base["id"]]
+        if profile:
+            for obj in members:
+                role = building_role(obj) if obj["class"]=="building" else obj["class"]
+                stats = profile["groups"]["stock"]["adjacency"].get(f"{role} -> {role}",{})
+                peers = [o for o in members if o is not obj and
+                         (building_role(o) if o["class"]=="building" else o["class"])==role]
+                if peers and stats.get("n",0)>=20:
+                    nearest = min(math.dist(obj["position_wu"][:2],o["position_wu"][:2]) for o in peers)/CELL_WU
+                    if not stats["min"] <= nearest <= stats["max"]:
+                        errors.append(f"{obj['id']}: {role} neighbour spacing outside corpus range")
+    for edge in edges:
+        a,b = edge["start"],edge["end"]
+        length = math.dist(a,b)
+        if length <= 0:
+            errors.append("zero length wall edge")
+            continue
+        ux,uy = (b[0]-a[0])/length,(b[1]-a[1])/length
+        intervals = []
+        ids = edge["wall_ids"]+([edge["gate_id"]] if edge.get("gate_id") else [])
+        for ident in ids:
+            obj,poly = by_id.get(ident),polys.get(ident)
+            if not obj or not poly:
+                continue
+            along = [(x-a[0])*ux+(y-a[1])*uy for x,y in poly]
+            across = [(x-a[0])*uy-(y-a[1])*ux for x,y in poly]
+            if min(across)>1e-3 or max(across)<-1e-3:
+                errors.append(f"{ident}: native wall moved off its edge")
+                continue
+            intervals.append((min(along),max(along)))
+        end = 0
+        for lo,hi in sorted(intervals):
+            if lo > end+.01:
+                errors.append(f"{edge['base_id']}: native wall ring is incomplete (gap {lo-end:.2f} wu)")
+            end = max(end,hi)
+        if end < length-.01:
+            errors.append(f"{edge['base_id']}: native wall ring is incomplete")
+    if not layout.get("roads_wu"):
+        errors.append("missing width polylines")
+    for road in layout.get("roads_wu",[]):
+        if not math.isfinite(road["width_wu"]) or road["width_wu"] <= 0 or len(road["points"])<2:
+            errors.append("invalid width polyline")
+            continue
+        for a,b in zip(road["points"],road["points"][1:]):
+            if not all(math.isfinite(v) for v in (*a,*b)) or (a[0]!=b[0] and a[1]!=b[1]):
+                errors.append("road polyline has a nonfinite or unrouted diagonal segment")
+                continue
+            # Sweep width over the terrain, including the half width beside the
+            # centreline. Map edges are intentional road exits, so clip there.
+            half = road["width_wu"]/2
+            dx,dy = (half,0) if a[0]==b[0] else (0,half)
+            poly = [(a[0]+dx,a[1]+dy),(b[0]+dx,b[1]+dy),(b[0]-dx,b[1]-dy),(a[0]-dx,a[1]-dy)]
+            r0,c0,r1,c1 = covered_cells(layout,poly)
+            r0,c0,r1,c1 = max(0,r0),max(0,c0),min(shape[0],r1),min(shape[1],c1)
+            if r1<=r0 or c1<=c0 or not allowed[r0:r1,c0:c1].all():
+                errors.append("road width crosses water or slopes")
     return errors
 
 

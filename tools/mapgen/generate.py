@@ -1,4 +1,4 @@
-"""Seeded cell layouts calibrated from the measured corpus; no model/binary writes."""
+"""Seeded world-unit footprint layouts calibrated from the measured corpus."""
 from __future__ import annotations
 
 import argparse
@@ -114,7 +114,7 @@ def nearest(mask, target):
     return tuple(map(int, cells[position]))
 
 
-def generate(size=300, seed=42, heightfield=None, water=None, profile=None, style="stock"):
+def plan_cells(size=300, seed=42, heightfield=None, water=None, profile=None, style="stock"):
     if not 96 <= size <= 1024:
         raise ValueError("size must be between 96 and 1024 cells")
     profile = profile or load_json(PROFILE_PATH)
@@ -149,6 +149,7 @@ def generate(size=300, seed=42, heightfield=None, water=None, profile=None, styl
     if len(set(endpoints)) < 2:
         raise ValueError("dry flat road network must reach at least two map edges")
     roads = np.zeros_like(flat)
+    road_paths = []
     road_radius = 0 if size < 180 else 1
 
     def paint_road(cell):
@@ -160,12 +161,15 @@ def generate(size=300, seed=42, heightfield=None, water=None, profile=None, styl
     slope_cost = slopes / 25
     for endpoint in endpoints:
         path = route(endpoint, hub, mainland, slope_cost)
+        road_paths.append((path, 64.0))
         for cell in path:
             paint_road(cell)
     # A secondary dogleg provides settlement frontage away from the main junction.
     for target in ((size*.3, size*.7), (size*.72, size*.72)):
         node = nearest(mainland, target)
-        for cell in route(hub, node, mainland, slope_cost):
+        path = route(hub, node, mainland, slope_cost)
+        road_paths.append((path, 64.0))
+        for cell in path:
             paint_road(cell)
     start = nearest(roads, (size*.79, size*.19))
     layers = {name: np.zeros_like(flat) for name in LAYERS}
@@ -250,6 +254,7 @@ def generate(size=300, seed=42, heightfield=None, water=None, profile=None, styl
         reserved[r0:r1, c0:c1] = True
         for cell in spur:
             roads[cell] = True
+        road_paths.append((spur, CELL_WU))
         walled = kind == "walled_compound"
         if walled:
             layers["cement"][r0+2:r1-2, c0+2:c1-2] = True
@@ -269,6 +274,10 @@ def generate(size=300, seed=42, heightfield=None, water=None, profile=None, styl
                 strip = np.s_[r0+2:r1-2, (c0+c1)//2]
             layers["runway"][strip] = True
             roads[strip] = True
+            runway_mask = np.zeros_like(flat)
+            runway_mask[strip] = True
+            runway_cells = [tuple(map(int,v)) for v in np.argwhere(runway_mask)]
+            road_paths.append((runway_cells, CELL_WU))
         inset = 4 if walled else 2
         slots = [(r, c) for r in range(r0+inset, r1-inset, 2)
                  for c in range(c0+inset, c1-inset, 2) if not roads[r, c]]
@@ -364,6 +373,7 @@ def generate(size=300, seed=42, heightfield=None, water=None, profile=None, styl
                        "heightfield_sha256": hashlib.sha256(heights.astype("<f8").tobytes()+wet.tobytes()).hexdigest()},
             "size": {"rows": size, "cols": size, "cell_wu": CELL_WU, "vertices": None},
             "objects": objects, "parts": parts, "player_start": list(start), "objectives": objectives,
+            "roads_wu": world_roads(road_paths,mainland,size),
             "bases": bases, "terrain": {"cell_step": 1, "elevation_wu": heights.tolist(),
                 "slope_deg": np.round(slopes, 3).tolist(), "terrain_type": terrain_type.tolist(),
                 "overlay_type": np.where(roads, 0, -1).tolist(), "water_elevation_wu": None},
@@ -371,6 +381,31 @@ def generate(size=300, seed=42, heightfield=None, water=None, profile=None, styl
             "generation": {"requested_sites": target_bases, "placed_sites": len(bases),
                            "flat_limit_deg": FLAT_DEG, "road_edge_cells": [list(c) for c in endpoints],
                            "wall_cement_inset_cells": 2, "model_footprints": "unassigned"}}
+
+
+def simplify_path(path):
+    """Keep bends/endpoints of the exact routed centreline."""
+    return [p for i,p in enumerate(path) if i in (0,len(path)-1) or
+            (p[0]-path[i-1][0],p[1]-path[i-1][1]) != (path[i+1][0]-p[0],path[i+1][1]-p[1])]
+
+
+def world_roads(paths,allowed,size):
+    result = []
+    for path,width in paths:
+        # A routed cell guarantees 42 2/3 wu of dry surface. Broader roads need
+        # dry neighbours as well; narrow an entire route beside an obstacle.
+        near_obstacle = any(not allowed[max(0,r-1):r+2,max(0,c-1):c+2].all() for r,c in path)
+        if width <= CELL_WU or near_obstacle:
+            width = 40.0
+        result.append({"points": [[round((c+.5-size/2)*CELL_WU,4),round((size/2-r-.5)*CELL_WU,4)]
+                                  for r,c in simplify_path(path)],"width_wu":width})
+    return result
+
+
+def generate(size=300, seed=42, heightfield=None, water=None, profile=None, style="stock"):
+    from tools.mapgen.placement import upgrade
+    profile = profile or load_json(PROFILE_PATH)
+    return upgrade(plan_cells(size,seed,heightfield,water,profile,style),profile)
 
 
 def main(argv=None):
@@ -399,6 +434,9 @@ def main(argv=None):
         write_json(out / (layout["name"]+".json"), layout)
         path = out / (layout["name"]+".txt")
         path.write_text(render(layout, args.cells_per_char), encoding="ascii")
+        from tools.mapgen.raster import render as raster, crop_base
+        raster(layout,out/(layout["name"]+".png"))
+        raster(layout,out/(layout["name"]+"_base.png"),1,crop_base(layout))
         print(f"{path}: {len(layout['bases'])} sites, {len(layout['objects'])} objects; plausibility PASS")
     except (ValueError, KeyError) as error:
         parser.exit(2, f"generation failed: {error}\n")

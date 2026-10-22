@@ -27,7 +27,8 @@ class RasterTests(unittest.TestCase):
             path = Path(directory)/"map.png"
             meta = render(layout,path,1,catalog={"types":{},"surfaces":{}})
             self.assertEqual(meta["map_pixels"],[256,256])
-            self.assertEqual(Image.open(path).size,(600,324))
+            with Image.open(path) as png:
+                self.assertEqual(png.size,(600,324))
             self.assertTrue(path.with_suffix(".render.json").exists())
             with self.assertRaisesRegex(ValueError,"too large"):
                 render(layout,path,.001,catalog={"types":{},"surfaces":{}})
