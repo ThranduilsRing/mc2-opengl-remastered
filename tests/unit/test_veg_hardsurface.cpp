@@ -2,6 +2,7 @@
 // (offline, header-only logic).
 #include "doctest.h"
 #include "GameAdapters/vegetation_hardsurface.h"
+#include "GameOS/gameos/vegetation_cutout.h"
 
 using namespace mc2::vegetation;
 
@@ -64,4 +65,27 @@ TEST_CASE("placement samples coverage and keeps weeds sparse away from seams") {
     CHECK(hardSurfacePlacement(0, 64, 128, flat, rolls()) == HardSurfacePlacement::Weed);
 }
 
+}
+
+TEST_CASE("vegetation mips preserve hard-test coverage without making empty texels opaque") {
+    std::vector<uint8_t> rgba(64 * 4);
+    for (size_t i = 0; i < 64; ++i) rgba[i * 4 + 3] = uint8_t(i);
+    mc2::vegetation::preserveCutoutAlpha(rgba, 0.5f);
+    CHECK(mc2::vegetation::cutoutCoverage(rgba) == doctest::Approx(0.5f));
+    CHECK(rgba[3] == 0);
+    std::fill(rgba.begin(), rgba.end(), uint8_t(0));
+    mc2::vegetation::preserveCutoutAlpha(rgba, 0.5f);
+    CHECK(mc2::vegetation::cutoutCoverage(rgba) == 0.0f);
+}
+
+TEST_CASE("vegetation colour dilation keeps alpha and filled texels intact") {
+    std::vector<uint8_t> rgba(3 * 3 * 4, 0);
+    rgba[16] = 120; rgba[17] = 80; rgba[18] = 40; rgba[19] = 255;
+    mc2::vegetation::dilateCutoutRgb(rgba, 3, 3);
+    CHECK(rgba[16] == 120);
+    CHECK(rgba[20] == 120);
+    CHECK(rgba[21] == 80);
+    CHECK(rgba[22] == 40);
+    CHECK(rgba[23] == 0);
+    CHECK(mc2::vegetation::cutoutCoverage(rgba) == doctest::Approx(1.0f / 9.0f));
 }

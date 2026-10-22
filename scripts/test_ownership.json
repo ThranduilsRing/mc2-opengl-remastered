@@ -2,6 +2,7 @@
   "schema_version": 1,
   "aggregate_owner": "scripts_tests",
   "tests": [
+    {"module": "scripts/tests/test_veg_card_cook.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_axis_swizzle_ratchet.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_board_selftests.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_bootstrap_worktree_build.py", "owners": ["native_render_hosts"]},

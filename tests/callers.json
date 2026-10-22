@@ -691,7 +691,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/deploy_payload.py",
-          "line": 1628,
+          "line": 1636,
           "evidence": "command",
           "reference": "scripts/check-deploy-hygiene.py",
           "text": "r = subprocess.run([sys.executable, hygiene, target],"
@@ -2964,6 +2964,13 @@
           "text": "import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)"
         },
         {
+          "path": "tools/cook/veg_card_cook.py",
+          "line": 20,
+          "evidence": "import",
+          "reference": "console_child",
+          "text": "import console_child"
+        },
+        {
           "path": "tools/cook_bc6h_hdri.py",
           "line": 33,
           "evidence": "import",
@@ -4487,14 +4494,14 @@
         },
         {
           "path": "scripts/deploy_payload.py",
-          "line": 720,
+          "line": 728,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from scripts.smoke_lib import deploy_lease"
         },
         {
           "path": "scripts/deploy_payload.py",
-          "line": 760,
+          "line": 768,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from scripts.smoke_lib import bounded_wait"
@@ -4902,7 +4909,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/deploy_payload.py",
-          "line": 760,
+          "line": 768,
           "evidence": "import",
           "reference": "scripts.smoke_lib.bounded_wait",
           "text": "from scripts.smoke_lib import bounded_wait"
@@ -5068,7 +5075,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/deploy_payload.py",
-          "line": 720,
+          "line": 728,
           "evidence": "import",
           "reference": "scripts.smoke_lib.deploy_lease",
           "text": "from scripts.smoke_lib import deploy_lease"
@@ -6509,6 +6516,13 @@
       "callers_by_stem": []
     },
     {
+      "path": "scripts/tests/test_veg_card_cook.py",
+      "basename": "test_veg_card_cook.py",
+      "stem": "test_veg_card_cook",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
       "path": "scripts/tests/test_vk_offline_proofs.py",
       "basename": "test_vk_offline_proofs.py",
       "stem": "test_vk_offline_proofs",
@@ -7526,6 +7540,21 @@
           "evidence": "import",
           "reference": "contract_harness",
           "text": "from contract_harness import Harness, Ctx              # noqa: E402"
+        }
+      ]
+    },
+    {
+      "path": "tools/cook/veg_card_cook.py",
+      "basename": "veg_card_cook.py",
+      "stem": "veg_card_cook",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "scripts/tests/test_veg_card_cook.py",
+          "line": 9,
+          "evidence": "import",
+          "reference": "tools.cook.veg_card_cook",
+          "text": "from tools.cook import veg_card_cook as cook"
         }
       ]
     },

@@ -132,6 +132,14 @@ GAME_DATA_PAYLOAD = [
     "data/vegetation/cards/fern_02.png",
     "data/vegetation/cards/fern_03.png",
     "data/vegetation/cards/fern_04.png",
+    "data/vegetation/cooked/grass_01.ktx2",
+    "data/vegetation/cooked/grass_02.ktx2",
+    "data/vegetation/cooked/grass_03.ktx2",
+    "data/vegetation/cooked/grass_04.ktx2",
+    "data/vegetation/cooked/fern_01.ktx2",
+    "data/vegetation/cooked/fern_02.ktx2",
+    "data/vegetation/cooked/fern_03.ktx2",
+    "data/vegetation/cooked/fern_04.ktx2",
 
 
 ]
