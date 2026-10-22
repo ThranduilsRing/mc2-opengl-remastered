@@ -45,10 +45,10 @@ TEST_CASE("a header with in-range counts is accepted, including the limits thems
 	CHECK(gm::rejectHeaderCounts(top) == nullptr);
 }
 
-TEST_CASE("fan campaign maps (900 and 1024 cells per side) are accepted, stock 720 unchanged")
+TEST_CASE("fan campaign and 1K vertex maps are accepted, stock 720 unchanged")
 {
-	static_assert(gm::kMaxCellsPerSide >= 1024);
-	for (long side : {720L, 900L, 1024L})
+	static_assert(gm::kMaxCellsPerSide == 3072);
+	for (long side : {720L, 900L, 1024L, 1025L, 3060L, 3072L})
 	{
 		gm::HeaderCounts c = stock();
 		c.height = side;
@@ -56,7 +56,7 @@ TEST_CASE("fan campaign maps (900 and 1024 cells per side) are accepted, stock 7
 		CHECK(gm::rejectHeaderCounts(c) == nullptr);
 	}
 	gm::HeaderCounts over = stock();
-	over.height = 1025;
+	over.height = gm::kMaxCellsPerSide + 1;
 	CHECK(std::string(gm::rejectHeaderCounts(over)) == "height");
 }
 
