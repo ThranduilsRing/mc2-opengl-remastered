@@ -20,22 +20,40 @@ long BldgAppearance::calcCellsCovered (glm::vec3& pos, short* cellList) {
 		delete bldgShape;
 		bldgShape = nullptr;
 	
-		bldgShape = appearType->bldgShape[currentLOD]->CreateFrom();
+		bldgShape = appearType->getBldgRenderShape(currentLOD)->CreateFrom();   // render shape stays the override
 		if (bdAnimationState != -1)
 			appearType->setAnimation(bldgShape,bdAnimationState);
 	}
 
-	for (int i=0;i<bldgShape->GetNumShapes();i++)
+	// Cell coverage comes from the stock collision shape: a model override owns the per-instance
+	// RENDER shape (bldgShape) and must never become the passability source.
+	TG_MultiShapePtr coverShape = bldgShape;
+	const bool renderOverridden = appearType->bldgRenderShape || appearType->bldgDmgRenderShape;
+	if (renderOverridden)
+	{
+		TG_TypeMultiShape* source = appearType->bldgShape[0];
+		if (status == OBJECT_STATUS_DESTROYED && appearType->bldgDmgShape)
+			source = appearType->bldgDmgShape;
+		coverShape = source->CreateFrom();
+		if (bdAnimationState != -1)
+			appearType->setAnimation(coverShape,bdAnimationState);
+	}
+	struct CoverShapeRelease {
+		TG_MultiShapePtr shape, render;
+		~CoverShapeRelease() { if (shape != render) { shape->ClearAnimation(); delete shape; } }
+	} release{coverShape, bldgShape};
+
+	for (int i=0;i<coverShape->GetNumShapes();i++)
 	{
 		//Check if the artists meant for this piece to NOT block passability!!
-		if (S_strnicmp(bldgShape->GetNodeId(i),"_PAB",4) != 0)
+		if (S_strnicmp(coverShape->GetNodeId(i),"_PAB",4) != 0)
 		{
-			for (int j=0;j<bldgShape->GetNumVerticesInShape(i);j++) 
+			for (int j=0;j<coverShape->GetNumVerticesInShape(i);j++)
 			{
 				glm::vec3 vertexPos, worldPos;
-				vertexPos = bldgShape->GetShapeVertexInEditor(i,j,-rotation);
+				vertexPos = coverShape->GetShapeVertexInEditor(i,j,-rotation);
 				worldPos = pos + vertexPos;
-	
+
 				bool recordCell = false;
 				if (appearType->isForestClump)
 					recordCell = (vertexPos.z <= 1.0f);
