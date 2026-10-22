@@ -80,3 +80,15 @@ def test_inactive_mod_bytes_do_not_change_stock_identity(tmp_path):
     assert before["sha256"] == after["sha256"]
     assert before["installed_mod_manifests"] == after["installed_mod_manifests"]
     assert before["active_mod"] is None
+
+
+def test_shader_edits_change_build_identity_and_preserve_workload_identity(tmp_path):
+    (tmp_path / "mission.fst").write_bytes(b"stock")
+    shader = tmp_path / "shaders/test.comp"
+    shader.parent.mkdir()
+    shader.write_bytes(b"before")
+    before = bench.content_identity(tmp_path)
+    shader.write_bytes(b"after")
+    after = bench.content_identity(tmp_path)
+    assert before["sha256"] == after["sha256"]
+    assert before["shaders_sha256"] != after["shaders_sha256"]

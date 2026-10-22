@@ -55,9 +55,13 @@ def content_identity(install):
                      and p.suffix.lower() not in {".log", ".tmp"})
     rows = [{"path": p.relative_to(install).as_posix(), "bytes": p.stat().st_size, "sha256": sha_file(p)}
             for p in sorted(files)]
-    digest = hashlib.sha256(json.dumps(rows, sort_keys=True).encode()).hexdigest()
+    shader_rows = [r for r in rows if r["path"].startswith("shaders/")]
+    content_rows = [r for r in rows if not r["path"].startswith("shaders/")]
+    digest = hashlib.sha256(json.dumps(content_rows, sort_keys=True).encode()).hexdigest()
+    shader_digest = hashlib.sha256(json.dumps(shader_rows, sort_keys=True).encode()).hexdigest()
     mods = [{"path": p.relative_to(install).as_posix(), "sha256": sha_file(p)} for p in sorted((install / "mods").glob("*/mod.json"))]
-    return {"sha256": digest, "files": rows, "active_mod": None, "installed_mod_manifests": mods,
+    return {"sha256": digest, "files": content_rows, "shaders_sha256": shader_digest, "shader_files": shader_rows,
+            "active_mod": None, "installed_mod_manifests": mods,
             "mod_policy": "stock; inactive mod bytes excluded"}
 
 

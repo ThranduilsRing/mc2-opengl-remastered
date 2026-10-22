@@ -4,6 +4,8 @@ Vegetation has its own GPU scope inside the shared VFX pass. The inclusive VFX t
 
 Content bytes are hashed after the timed runs so fingerprinting does not warm the first-load OS cache. Stock has no active mod; installed mod manifests are recorded separately, and inactive mod payloads do not enter the workload fingerprint.
 
+Shader byte hashes describe the build separately from the game-content fingerprint, so shader optimizations can be compared with the same scenario and content.
+
 Commit, build RelWithDebInfo, and deploy the combined engine to the idle benchmark install. From this checkout:
 
 ```powershell
