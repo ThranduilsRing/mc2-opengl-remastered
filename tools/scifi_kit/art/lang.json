@@ -1,0 +1,49 @@
+{
+  "schema": "mc2-scifi-artlang-1",
+  "about": "One kit language for every primitive and assembly. Dimensions in metres, Z up, front faces -Y. Colours are LINEAR RGB. Derived from the MW5/MWO artist references (Godfrey Urban Warfare, Halim MW5 sets) and the stock MC2 textures; see docs/scifi-kit-art-review.md.",
+  "grid": {
+    "bay_m": 3.0,
+    "sub_m": 0.75,
+    "floor_m": 3.6,
+    "wall_thickness_m": 0.40,
+    "basis": "3m bay, 0.75m panel subdivision. Every primitive's width is a multiple of sub_m, so seams, plinth joints and coping joints meet across parts."
+  },
+  "profiles": {
+    "chamfer": {"major": 0.30, "mid": 0.12, "minor": 0.045, "basis": "Godfrey: 45-degree chamfers on the primary masses, small chamfers on trims; no rounded bevels."},
+    "plinth": {"height": 0.60, "proud": 0.18, "top_chamfer": 0.12, "material": "ferro", "basis": "Ferrocrete base course shared by every grounded part"},
+    "base_band": {"height": 0.14, "material": "paint.accent", "basis": "Single thin accent band where the cladding meets the plinth (Godfrey C6 / Halim spacetower)"},
+    "coping": {"height": 0.30, "overhang": 0.14, "chamfer": 0.10, "material": "paint.trim"},
+    "reveal": {"depth": 0.32, "jamb": 0.24, "chamfer": 0.07, "material": "paint.trim", "basis": "Every opening sits in a chamfered reveal cut into a wall; openings never float"},
+    "panel": {"seam": 0.035, "inset": 0.05, "face_chamfer": 0.045},
+    "rivet_pitch": 0.375
+  },
+  "material_classes": {
+    "paint":  {"metallic": 0.0, "roughness": 0.62, "base": "painted metal; wears to primer then bare steel"},
+    "metal":  {"metallic": 0.9, "roughness": 0.42, "base": "bare / galvanised steel; rusts"},
+    "corr":   {"metallic": 0.0, "roughness": 0.66, "base": "corrugated sheet, painted or rusted; real corrugation geometry"},
+    "ferro":  {"metallic": 0.0, "roughness": 0.90, "base": "ferrocrete; cracks, rust bleed from rebar, chips on edges"},
+    "glass":  {"metallic": 0.0, "roughness": 0.08, "alpha": 0.85, "base": "armoured glazing; cracks then breaks"},
+    "grate":  {"metallic": 0.9, "roughness": 0.55, "base": "grating and rails"},
+    "rubber": {"metallic": 0.0, "roughness": 0.95, "base": "seals, bumpers, hoses, cable"},
+    "gravel": {"metallic": 0.0, "roughness": 0.97, "base": "gravel roof membrane (Godfrey roofs)"},
+    "hazard": {"metallic": 0.0, "roughness": 0.60, "base": "accent paint with black chevrons"},
+    "lamp":   {"metallic": 0.0, "roughness": 0.30, "emissive": true},
+    "char":   {"metallic": 0.0, "roughness": 0.98, "base": "torn edges and burned interior, destroyed only"}
+  },
+  "palettes": {
+    "slate_oxide": {"source": "round-1 drafts the owner liked", "main": [0.29,0.35,0.37], "second": [0.21,0.26,0.28], "trim": [0.10,0.13,0.15], "ferro": [0.36,0.36,0.33], "roof": [0.17,0.19,0.19], "accent": [0.62,0.24,0.08], "metal": [0.30,0.31,0.31], "corr": [0.24,0.29,0.31], "glass": [0.05,0.10,0.12]},
+    "barracks_sage": {"source": "stock a_barracks.tga: khaki ferrocrete, sage inset panels, grey gravel roof, red utility box", "main": [0.30,0.28,0.17], "second": [0.14,0.19,0.11], "trim": [0.08,0.09,0.07], "ferro": [0.32,0.30,0.20], "roof": [0.075,0.078,0.072], "accent": [0.45,0.10,0.07], "metal": [0.26,0.26,0.24], "corr": [0.20,0.22,0.15], "glass": [0.03,0.05,0.05]},
+    "quonset_rust": {"source": "stock a_quonset.tga: rust-brown corrugated barrel, weathered grey end walls, olive frames", "main": [0.30,0.29,0.26], "second": [0.10,0.11,0.05], "trim": [0.07,0.075,0.035], "ferro": [0.30,0.29,0.25], "roof": [0.15,0.065,0.030], "accent": [0.55,0.33,0.06], "metal": [0.28,0.27,0.25], "corr": [0.16,0.072,0.032], "glass": [0.03,0.04,0.04]},
+    "hangar_sand": {"source": "stock a_hangar.tga: pale beige concrete panels, dark louvres and slits", "main": [0.40,0.36,0.27], "second": [0.30,0.27,0.20], "trim": [0.09,0.09,0.08], "ferro": [0.38,0.35,0.27], "roof": [0.22,0.22,0.20], "accent": [0.62,0.36,0.06], "metal": [0.27,0.27,0.26], "corr": [0.30,0.29,0.26], "glass": [0.03,0.05,0.06]},
+    "factory_steel": {"source": "stock factorymd: silver vertical corrugated cladding, dark roller doors, grey roof", "main": [0.27,0.28,0.27], "second": [0.15,0.16,0.16], "trim": [0.06,0.065,0.065], "ferro": [0.33,0.32,0.29], "roof": [0.10,0.105,0.10], "accent": [0.62,0.34,0.06], "metal": [0.30,0.30,0.29], "corr": [0.28,0.29,0.29], "glass": [0.03,0.05,0.06]},
+    "tank_hazard": {"source": "stock largefueltank: pale grey drum, yellow-black hazard band, ferro hex base", "main": [0.42,0.40,0.34], "second": [0.28,0.27,0.24], "trim": [0.08,0.08,0.075], "ferro": [0.34,0.32,0.26], "roof": [0.30,0.29,0.26], "accent": [0.70,0.48,0.05], "metal": [0.28,0.28,0.27], "corr": [0.30,0.29,0.26], "glass": [0.03,0.05,0.06]},
+    "gunmetal": {"source": "Godfrey C6 / F-posts: dark blue-grey gunmetal with orange band", "main": [0.075,0.085,0.095], "second": [0.12,0.13,0.14], "trim": [0.04,0.045,0.05], "ferro": [0.30,0.29,0.26], "roof": [0.10,0.11,0.12], "accent": [0.70,0.30,0.04], "metal": [0.25,0.25,0.25], "corr": [0.10,0.11,0.12], "glass": [0.03,0.06,0.08]}
+  },
+  "conditions": {
+    "about": "Parameters follow Godfrey's Substance building graph (Edge_Wear, Dirt Level, Grunge, FerrocreteRust, CrackIntensity, Glass_Cracks, Paint_On) plus fade, peel, streaks and moss for the abandoned look. Destroyed = worn weathering + local physical damage (geometry) + soot.",
+    "pristine":  {"edge_wear": 0.06, "dirt": 0.08, "grunge": 0.08, "streaks": 0.05, "rust": 0.00, "cracks": 0.00, "glass_cracks": 0.0, "fade": 0.00, "peel": 0.00, "moss": 0.0, "missing_panels": 0.0, "broken_glass": 0.0, "litter": 0},
+    "worn":      {"edge_wear": 0.65, "dirt": 0.62, "grunge": 0.55, "streaks": 0.75, "rust": 0.35, "cracks": 0.25, "glass_cracks": 0.2, "fade": 0.12, "peel": 0.08, "moss": 0.0, "missing_panels": 0.0, "broken_glass": 0.0, "litter": 0},
+    "abandoned": {"edge_wear": 0.80, "dirt": 0.80, "grunge": 0.75, "streaks": 1.00, "rust": 0.75, "cracks": 0.60, "glass_cracks": 1.0, "fade": 0.55, "peel": 0.60, "moss": 0.85, "missing_panels": 0.14, "broken_glass": 0.65, "litter": 14},
+    "destroyed": {"edge_wear": 0.55, "dirt": 0.55, "grunge": 0.50, "streaks": 0.60, "rust": 0.35, "cracks": 0.45, "glass_cracks": 1.0, "fade": 0.15, "peel": 0.15, "moss": 0.0, "missing_panels": 0.0, "broken_glass": 1.0, "litter": 0}
+  }
+}
