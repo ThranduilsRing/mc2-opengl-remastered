@@ -254,10 +254,10 @@
    "delete_array": 0,
    "files": {
     "code/objtype.cpp": {
-     "new": 2
+     "new": 3
     }
    },
-   "new": 2,
+   "new": 3,
    "new_array": 0,
    "owners": []
   },
@@ -379,21 +379,6 @@
    "new_array": 0,
    "owners": [
     "MechWarrior"
-   ]
-  },
-  "BreakPointManager": {
-   "delete": 1,
-   "delete_array": 0,
-   "files": {
-    "mclib/ablenv.cpp": {
-     "delete": 1,
-     "new": 2
-    }
-   },
-   "new": 2,
-   "new_array": 0,
-   "owners": [
-    "ABLModule"
    ]
   },
   "Building": {
@@ -1142,21 +1127,6 @@
    "owners": [
     "",
     "ClipPolygon2"
-   ]
-  },
-  "CollisionGrid": {
-   "delete": 1,
-   "delete_array": 0,
-   "files": {
-    "code/collsn.cpp": {
-     "delete": 1,
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": [
-    "CollisionSystem"
    ]
   },
   "CollisionSystem": {
@@ -2075,21 +2045,6 @@
    "new_array": 0,
    "owners": []
   },
-  "GpuActorRecord": {
-   "delete": 0,
-   "delete_array": 1,
-   "files": {
-    "GameOS/gameos/gpu_cull_substrate.cpp": {
-     "delete_array": 1,
-     "new_array": 1
-    }
-   },
-   "new": 0,
-   "new_array": 1,
-   "owners": [
-    ""
-   ]
-  },
   "GroundVehicle": {
    "delete": 1,
    "delete_array": 0,
@@ -2245,10 +2200,10 @@
    "delete_array": 0,
    "files": {
     "code/missionbegin.cpp": {
-     "new": 2
+     "new": 1
     }
    },
-   "new": 2,
+   "new": 1,
    "new_array": 0,
    "owners": []
   },
@@ -3025,18 +2980,6 @@
    "new_array": 0,
    "owners": []
   },
-  "MechBayScreen": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/missionbegin.cpp": {
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": []
-  },
   "MechBrainRuntime": {
    "delete": 1,
    "delete_array": 0,
@@ -3073,18 +3016,6 @@
    "new_array": 0,
    "owners": []
   },
-  "MechLabScreen": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/missionbegin.cpp": {
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": []
-  },
   "MechListBoxItem": {
    "delete": 0,
    "delete_array": 0,
@@ -3103,18 +3034,6 @@
     }
    },
    "new": 7,
-   "new_array": 0,
-   "owners": []
-  },
-  "MechPurchaseScreen": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/missionbegin.cpp": {
-     "new": 1
-    }
-   },
-   "new": 1,
    "new_array": 0,
    "owners": []
   },
@@ -3330,18 +3249,6 @@
    "new_array": 0,
    "owners": []
   },
-  "MissionBriefingScreen": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/missionbegin.cpp": {
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": []
-  },
   "MissionInfo": {
    "delete": 0,
    "delete_array": 0,
@@ -3376,18 +3283,6 @@
    "owners": [
     "Mission"
    ]
-  },
-  "MissionSelectionScreen": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/missionbegin.cpp": {
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": []
   },
   "ModifyBuildingAction": {
    "delete": 9,
@@ -3588,21 +3483,6 @@
    "new_array": 0,
    "owners": []
   },
-  "OptionsXScreen": {
-   "delete": 1,
-   "delete_array": 0,
-   "files": {
-    "code/optionsscreenwrapper.cpp": {
-     "delete": 1,
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": [
-    "OptionsScreenWrapper"
-   ]
-  },
   "OverlayBrush": {
    "delete": 0,
    "delete_array": 0,
@@ -3656,18 +3536,6 @@
    "owners": [
     "ActivePilotListItem"
    ]
-  },
-  "PilotReadyScreen": {
-   "delete": 0,
-   "delete_array": 0,
-   "files": {
-    "code/missionbegin.cpp": {
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": []
   },
   "PlugIteratorOf<T>": {
    "delete": 0,
@@ -3849,22 +3717,16 @@
    ]
   },
   "SortedChainIterator": {
-   "delete": 1,
+   "delete": 0,
    "delete_array": 0,
    "files": {
-    "mclib/stuff/hash.cpp": {
-     "delete": 1,
-     "new": 1
-    },
     "mclib/stuff/sortedchain.cpp": {
      "new": 1
     }
    },
-   "new": 2,
+   "new": 1,
    "new_array": 0,
-   "owners": [
-    "HashIterator"
-   ]
+   "owners": []
   },
   "SortedChainIteratorOf<DirectoryEntry*,MString>": {
    "delete": 1,
@@ -4262,21 +4124,6 @@
    "new_array": 0,
    "owners": []
   },
-  "TeamSensorSystem": {
-   "delete": 1,
-   "delete_array": 0,
-   "files": {
-    "code/contact.cpp": {
-     "delete": 1,
-     "new": 1
-    }
-   },
-   "new": 1,
-   "new_array": 0,
-   "owners": [
-    "SensorSystemManager"
-   ]
-  },
   "TeamsAction": {
    "delete": 0,
    "delete_array": 0,
@@ -4648,21 +4495,6 @@
    "new_array": 0,
    "owners": []
   },
-  "WatchManager": {
-   "delete": 1,
-   "delete_array": 0,
-   "files": {
-    "mclib/ablenv.cpp": {
-     "delete": 1,
-     "new": 2
-    }
-   },
-   "new": 2,
-   "new_array": 0,
-   "owners": [
-    "ABLModule"
-   ]
-  },
   "WeaponBolt": {
    "delete": 1,
    "delete_array": 0,
@@ -4851,13 +4683,9 @@
    ]
   },
   "aObject": {
-   "delete": 4,
+   "delete": 3,
    "delete_array": 2,
    "files": {
-    "code/missionbriefingscreen.cpp": {
-     "delete": 1,
-     "new": 1
-    },
     "code/mpparameterscreen.cpp": {
      "delete_array": 1,
      "new_array": 2
@@ -4877,12 +4705,11 @@
      "new_array": 2
     }
    },
-   "new": 8,
+   "new": 7,
    "new_array": 4,
    "owners": [
     "ActivePilotListItem",
     "LogisticsScreen",
-    "MissionBriefingScreen",
     "SpecialtyListItem",
     "aPlayerParams"
    ]
@@ -5600,7 +5427,7 @@
   }
  },
  "untyped_frees": {
-  "GameOS/gameos/gameos.cpp": 2,
+  "GameOS/gameos/gameos.cpp": 1,
   "GameOS/gameos/gameos_fileio.cpp": 1,
   "GameOS/gameos/gameos_graphics.cpp": 1,
   "GameOS/gameos/gameos_graphics_font.cpp": 14,
@@ -5609,7 +5436,6 @@
   "GameOS/gameos/gameos_graphics_renderer_internal.h": 1,
   "GameOS/gameos/gameos_sound.cpp": 1,
   "GameOS/gameos/gos_font.cpp": 6,
-  "GameOS/gameos/utils/Image.cpp": 5,
   "GameOS/gameos/utils/stream.cpp": 1,
   "GameOS/gameos/vulkan_post_fog_native.cpp": 1,
   "GameOS/gameos/vulkan_post_hzb_native.cpp": 1,
@@ -5629,8 +5455,7 @@
   "code/mechicon.cpp": 2,
   "code/mission.cpp": 3,
   "code/mission_init.cpp": 1,
-  "code/missionbegin.cpp": 4,
-  "code/missionbriefingscreen.cpp": 1,
+  "code/missionbegin.cpp": 3,
   "code/mpparameterscreen.cpp": 1,
   "code/objmgr.cpp": 1,
   "editor/Action.cpp": 5,
@@ -5734,11 +5559,10 @@
   "mclib/stuff/chain.cpp": 2,
   "mclib/stuff/filestream.cpp": 1,
   "mclib/stuff/hash.cpp": 1,
-  "mclib/stuff/memorystream.cpp": 5,
+  "mclib/stuff/memorystream.cpp": 1,
   "mclib/stuff/mstring.hpp": 1,
   "mclib/stuff/node.cpp": 1,
   "mclib/stuff/plug.cpp": 4,
-  "mclib/stuff/random.cpp": 1,
   "mclib/stuff/registeredclass.cpp": 1,
   "mclib/stuff/socket.cpp": 1,
   "mclib/stuff/sortedchain.cpp": 2,
