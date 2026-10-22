@@ -88,13 +88,10 @@ void GpuStaticPropBatcher::publishGeometry() {
     for (size_t pi = 0; pi < s_packets.size(); ++pi) {
         const auto& pkt = s_packets[pi];
         const auto* type = pkt.owningTypeID < s_types.size() ? &s_types[pkt.owningTypeID] : nullptr;
-        // Authored override cutouts must occlude later vegetation. Stock partial
-        // coverage retains PROP-COVERAGE-1; opaque override packets stay opaque.
+        // Coverage semantics are explicit, never inferred from override provenance.
         if (packetHasAlpha(pkt, type ? type->source : nullptr)) {
-            // Stock-derived material packages retain stock coverage for their
-            // copied albedo alpha. Procedural fences keep the override cutout.
-            const bool stockMaterial = type && type->materialSource && !type->materialSource->materials.empty();
-            s_packetAlphaBaked[pi] = type && type->isOverride && !stockMaterial ? 2u : 1u;
+            s_packetAlphaBaked[pi] = type && type->materialSource &&
+                type->materialSource->lateCoverageFringe ? 2u : 1u;
         }
     }
 

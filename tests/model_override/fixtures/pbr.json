@@ -7,6 +7,7 @@
       "fallback": "stock",
       "scale": 1,
       "replaces": "staticProp:valid",
+      "lateCoverageFringe": true,
       "materials": {
         "version": 1,
         "slots": [

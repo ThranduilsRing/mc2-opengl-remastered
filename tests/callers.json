@@ -6638,7 +6638,7 @@
         },
         {
           "path": "tools/blender_pipeline/fence_bundle.py",
-          "line": 180,
+          "line": 181,
           "evidence": "command",
           "reference": "tools/ase_to_glb.py",
           "text": "subprocess.run([sys.executable, str(HERE.parent / \"ase_to_glb.py\"),"

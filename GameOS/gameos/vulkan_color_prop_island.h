@@ -38,6 +38,8 @@ int mc2_color_prop_island_get_alpha_array(void** view, uint32_t* generation);
 // Returns 1 if the VK color pass rendered this frame; 0 = fell back
 // (caller must then run the GL flush() so props still draw).
 int mc2_vk_color_prop_island_run(int w, int h);
+// Composite explicitly opted-in thin geometry after vegetation; consumes this frame's saved draws.
+void mc2_vk_color_prop_island_late_fringe();
 // Clears the static-prop batcher per-frame buckets (GL flush() is skipped when the island runs).
 void mc2_color_prop_island_end_frame(void);
 
@@ -45,8 +47,8 @@ void mc2_color_prop_island_end_frame(void);
 // geometry finalize until the next map load. Returns 0 before finalize. Lets a backend build its own buffers without a GL
 // readback; implemented by the static-prop batcher (gos_static_prop_batcher_finalize.cpp).
 int mc2_static_prop_geometry_cpu(const void** vbo, uint64_t* vboBytes, const void** ibo, uint64_t* iboBytes);
-// Baked packet coverage: 0 opaque, 1 stock core/fringe, 2 override hard cutout.
-// Both nonzero modes alpha-test; mode 2 writes surviving coverage into scene depth.
+// Baked packet coverage: 0 opaque, 1 normal core/fringe, 2 explicit late fringe.
+// Both nonzero modes keep LOD-aware coverage and depth-writing opaque cores.
 int mc2_static_prop_packet_alpha_test(uint32_t packet);
 
 // Health accessor (mirrors mc2_render_backend_shadow_region_health).

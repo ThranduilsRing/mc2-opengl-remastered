@@ -179,6 +179,8 @@ bool getMaterialGpuData(uint32_t materialHandleBits, RenderCore::MaterialGpu* ou
 // Returns true when the MaterialGpu sidecar table is active (MC2_MATERIAL_GPU=1
 // and at least one entry has been uploaded this mission).
 bool isMaterialGpuActive();
+// Thin-geometry coverage composited after the vegetation draw.
+void flushLateCoverage();
 
 } // namespace StaticProp
 } // namespace GameAdapters

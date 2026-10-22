@@ -34,6 +34,8 @@ struct ModelOverrideLod {
 };
 
 struct ModelOverrideRecord {
+    // Explicit opt-in for thin fence coverage composited after vegetation.
+    bool lateCoverageFringe = false;
     std::vector<ModelOverrideMaterial> materials;
     std::string overrideClass;   // "staticprop" | "tree" — NORMALIZED lowercase
     std::string appearanceName;  // from "replaces" after ':' — NORMALIZED lowercase

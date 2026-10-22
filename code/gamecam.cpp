@@ -918,6 +918,7 @@ void GameCamera::render (void)
 				GameAdapters::Vegetation::flush(terrainLightDir_4f, missionTime,
 				                                vegCamCX, vegCamCY, vegCamCZ);
 			}
+			GameAdapters::StaticProp::flushLateCoverage();
 
 			// GPU particle batcher flush — Stage 2' and beyond.
 			// MUST run after renderLists() so the scene depth buffer is

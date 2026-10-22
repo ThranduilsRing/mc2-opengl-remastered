@@ -170,6 +170,8 @@ static std::vector<ModelOverrideRecord> parseManifest(
         rec.sourceRelPath  = source;
         rec.manifestDir    = dir;
         rec.scale          = scale;
+        rec.lateCoverageFringe = e.contains("lateCoverageFringe") &&
+            e["lateCoverageFringe"].is_boolean() && e["lateCoverageFringe"].get<bool>();
         parseMaterials(e, rec);
 
         // TREE-OVERRIDE-LOD-MVP-1 Task 3/4: optional lower-detail LOD chain.

@@ -76,7 +76,7 @@ def run_tube(cx, z, y0, y1, r, n):
         a1 = 2 * math.pi * (i + 1) / n + math.pi / n
         p0 = (cx + r * math.cos(a0), z + r * math.sin(a0))
         p1 = (cx + r * math.cos(a1), z + r * math.sin(a1))
-        out.append([(p0[0], y0, p0[1]), (p1[0], y0, p1[1]), (p1[0], y1, p1[1]), (p0[0], y1, p0[1])])
+        out.append([(p0[0], y1, p0[1]), (p1[0], y1, p1[1]), (p1[0], y0, p1[1]), (p0[0], y0, p0[1])])
     return out
 
 

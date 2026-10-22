@@ -242,6 +242,11 @@ malformed declarations safely. A versioned `materials` package in each override
 record selects the authored slot; material IDs are independent of albedo layers.
 No material package means legacy Vulkan shading, without fallback sheen.
 
+The generated fence bundle explicitly sets `lateCoverageFringe:true` on its
+override records. It uses the normal mip-aware, depth-writing core and blends
+the remaining coverage after vegetation. Other overrides default to the normal
+core/fringe schedule; being an override does not select a hard alpha cutoff.
+
 The report says `accepted:false` until viewed day/night gameplay montages and
 close crops pass. A cooked candidate is not shipped art. Intact render shapes
 only: collision, damage shapes and stock fallback LODs are not upgraded.
