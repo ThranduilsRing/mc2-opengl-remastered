@@ -112,3 +112,15 @@ TEST_CASE("cook cache: each kind keeps its own newest entries") {
     CHECK(others == 2);
     CHECK(loadCachedShadowMask(dir, 106));   // the entry just written always survives its own sweep
 }
+
+TEST_CASE("shadow mask: cache key changes with alpha texels and compiled shader bytes") {
+    const std::array<uint8_t, 4> alpha = {255, 255, 255, 0}, reskin = {255, 255, 255, 255};
+    const std::array<uint32_t, 4> spv = {0x07230203, 1, 2, 3}, editedSpv = {0x07230203, 1, 2, 4};
+    const auto key = [](const auto& pixels, const auto& code) {
+        std::array<uint64_t, 6> parts = {11, 22, 33, 44, 55, 66};
+        return shadowMaskContentKey(parts, fnv1a(pixels.data(), sizeof(pixels)), fnv1a(code.data(), sizeof(code)));
+    };
+    CHECK(key(alpha, spv) == key(alpha, spv));
+    CHECK(key(alpha, spv) != key(reskin, spv));
+    CHECK(key(alpha, spv) != key(alpha, editedSpv));
+}

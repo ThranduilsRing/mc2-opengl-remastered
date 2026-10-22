@@ -50,6 +50,18 @@ bool ShadowBake::init(VkDevice device, VmaAllocator allocator, VkPhysicalDevice 
     phys_ = phys;
     alphaDsl_ = alphaDsl;
     const std::string dir(spvDir);
+    shaderContentHash_ = mc2shadow::fnv1a(nullptr, 0);
+    for (const char* name : {"shadow_bake_pcss.comp.spv", "shadow_bake_terrain_march.comp.spv", "shadow_bake_resolve.comp.spv", "shadow_bake_bc4.comp.spv"}) {
+        std::FILE* file = std::fopen((dir + name).c_str(), "rb");
+        if (!file) { blog("bake shader bytes missing: no bake."); return false; }
+        std::array<uint8_t, 4096> bytes;
+        size_t n;
+        while ((n = std::fread(bytes.data(), 1, bytes.size(), file)) != 0)
+            shaderContentHash_ = mc2shadow::fnv1a(bytes.data(), n, shaderContentHash_);
+        const bool failed = std::ferror(file) != 0;
+        std::fclose(file);
+        if (failed) return false;
+    }
     if (!makeDepthPass(windowPass_, device_, kWindowFmt) || !makeDepthPass(objectPass_, device_, kObjectFmt)) { blog("render pass creation failed: no bake."); return false; }
 
     // The caster layout: set 0 = the per-pass matrix (dynamic UBO) + the instances, set 1 = the island's alpha-ON array, a per-packet push constant.

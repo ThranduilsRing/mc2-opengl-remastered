@@ -52,6 +52,7 @@ struct ShadowBakeInputs {
     std::span<const uint32_t> typePacketCount;
     std::span<const CasterPacketAlpha> packetAlpha;
     VkDescriptorSet alphaSet = VK_NULL_HANDLE;
+    uint64_t alphaContentHash = 0;
     bool alphaReady = false;    // the alpha-ON array is bound and the table built
     bool alphaAbsent = false;   // the map has no alpha-ON group, so there is nothing to wait for
 };
@@ -207,7 +208,7 @@ private:
     // Only owned bytes cross the worker boundary; no renderer or registry state is read there.
     std::future<CacheLoad> cacheLoad_;
     uint64_t cacheLoadKey_ = 0;
-    uint64_t contentKey_ = 0;
+    uint64_t contentKey_ = 0, shaderContentHash_ = 0;
     std::array<uint64_t, 6> keyParts_{};   // heights, casters, geometry, alpha cut-outs, scalars, versions
     bool warm_ = false, readbackPending_ = false;
     double warmReadMs_ = 0.0;

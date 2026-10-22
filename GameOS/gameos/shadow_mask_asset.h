@@ -7,6 +7,7 @@
 #pragma once
 
 #include "cook_cache.h"
+#include "shadow_bake_math.h"
 
 #include <array>
 #include <cstdint>
@@ -16,6 +17,13 @@
 #include <vector>
 
 namespace mc2shadow {
+
+// The shared-profile cache includes uploaded cut-out bytes and the executing shader bytes.
+inline uint64_t shadowMaskContentKey(std::array<uint64_t, 6>& parts, uint64_t alphaBytes, uint64_t shaderBytes) {
+    parts[3] = fnv1a(&alphaBytes, sizeof(alphaBytes), parts[3]);
+    parts[5] = fnv1a(&shaderBytes, sizeof(shaderBytes), parts[5]);
+    return fnv1a(parts.data(), sizeof(parts)) | 1u;
+}
 
 struct ShadowMaskAsset {
     static constexpr uint32_t kSchema = 2;   // 2: word-wise payload hash

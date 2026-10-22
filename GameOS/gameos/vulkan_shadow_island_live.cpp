@@ -827,6 +827,7 @@ static void record_bake(ShadowIsland* s) {
         in.packetAlpha = s->packetAlpha;
         in.alphaSet = s->alphaSet;
         in.alphaReady = s->alphaReady;
+        in.alphaContentHash = mc2_color_prop_island_alpha_content_hash();
     }
     if (!in.alphaReady) {
         Mc2ColorPropMaterialFeed mf{};

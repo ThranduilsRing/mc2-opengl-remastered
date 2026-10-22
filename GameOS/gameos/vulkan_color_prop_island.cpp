@@ -232,6 +232,7 @@ struct ColorPropIsland : mc2vk::IslandState {
     VkDeviceSize  layerCapBytes = 0;
     VkDeviceSize  hotCapBytes = 0;
     uint32_t      mapGeneration = 0;        // bumped at every map change; consumers of the albedo arrays rebind on a change
+    uint64_t alphaContentHash = 0;
     bool          hotReady = false;         // the hot-colour table was uploaded for the current map (cleared at a map change)
     float         terrainSunMC2[3] = {0.0f, 0.0f, 1.0f};
 
@@ -532,6 +533,12 @@ bool cp_upload_albedo_array(ColorPropIsland* s, const AlbedoTarget& tgt,
     key.format=uint32_t(fmt); key.hints=mips>1 ? gosHint_MipmapFilter0 : 0;
     auto texture=mc2vk::getOrCreateEngineVulkanContext().textures().acquire(key,image,{w,h,w,h},layers,true);
     if (!texture) return false;
+    if (tgt.texture == &s->albedoOnTexture) {
+        // Bytes plus their interpretation identify the actual alpha-ON upload across installs/mods.
+        const uint32_t shape[] = {uint32_t(fmt), w, h, layers, mips};
+        for (uint32_t v : shape) { hash ^= v; hash *= 1099511628211ull; }
+        s->alphaContentHash = hash;
+    }
     *tgt.texture=std::move(texture); *tgt.layers=layers;
     return true;
 }
@@ -1148,6 +1155,11 @@ extern "C" void mc2_vk_color_prop_island_invalidate_geometry() {
     s->materialReadyOn = false;
     s->hotReady = false;
     ++s->mapGeneration;
+}
+
+extern "C" uint64_t mc2_color_prop_island_alpha_content_hash() {
+    const auto* s = parkedIsland();
+    return s && s->materialReadyOn ? s->alphaContentHash : 0;
 }
 
 extern "C" int mc2_color_prop_island_get_alpha_array(void** view, uint32_t* generation) {

@@ -32,7 +32,7 @@ uint64_t ShadowBake::contentKey(const ShadowBakeInputs& in, uint64_t casterHash)
     const uint32_t versions[5] = {mc2shadow::ShadowMaskAsset::kSchema, mc2shadow::ShadowMaskAsset::kEvaluator, static_cast<uint32_t>(maskCap()),
                                   static_cast<uint32_t>(heightSide_), static_cast<uint32_t>(mc2shadow::shadowQuality().level)};
     keyParts_[5] = mc2shadow::fnv1a(versions, sizeof(versions));
-    return mc2shadow::fnv1a(keyParts_.data(), sizeof(keyParts_)) | 1u;
+    return mc2shadow::shadowMaskContentKey(keyParts_, in.alphaReady ? in.alphaContentHash : 0, shaderContentHash_);
 }
 
 // The BC4 encoder's buffers: one tile's level chain plus the top image's chain, and one parameter slice per level (tile, sub-tile, top).
