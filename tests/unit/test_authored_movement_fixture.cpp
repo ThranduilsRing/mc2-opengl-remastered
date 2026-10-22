@@ -933,6 +933,25 @@ TEST_CASE("AuthoredOrderProduction/brain and general-slot purges release ownersh
     }
 }
 
+TEST_CASE("AuthoredOrderProduction/blank MOVE initializes passability before building areas") {
+    MovementWorld world;
+    MOVE_init(21);
+    MOVE_buildData(180, 180, nullptr, 0, nullptr);
+    REQUIRE(GameMap != nullptr);
+    CHECK(GameMap->getPassable(90, 90));
+    for (int level : {0, 1}) {
+        REQUIRE(GlobalMoveMap[level] != nullptr);
+        const long start = GlobalMoveMap[level]->calcArea(90, 40);
+        const long goal = GlobalMoveMap[level]->calcArea(90, 140);
+        INFO("level=" << level << " areas=" << GlobalMoveMap[level]->numAreas);
+        CHECK(start >= 0);
+        CHECK(goal >= 0);
+        if (start < 0 || goal < 0) continue;
+        GlobalPathStep path[MAX_GLOBAL_PATH];
+        CHECK(GlobalMoveMap[level]->calcPath(start, goal, path, 90, 40, 90, 140) > 0);
+    }
+}
+
 TEST_CASE("AuthoredOrderProduction/classification uses the requested buffer and retries a ready zero-step path") {
     using namespace mc2::sim;
     for (bool zeroSteps : {false, true}) {
