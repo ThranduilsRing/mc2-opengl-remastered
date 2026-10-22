@@ -791,6 +791,13 @@
           "evidence": "command",
           "reference": "scripts/check-doc-links.py",
           "text": "run_check \"doc_links\"             \"py -3 scripts/check-doc-links.py --quiet\""
+        },
+        {
+          "path": "scripts/tests/test_check_doc_links.py",
+          "line": 9,
+          "evidence": "load module",
+          "reference": "scripts/check-doc-links.py",
+          "text": "spec = importlib.util.spec_from_file_location('check_doc_links', source)"
         }
       ],
       "callers_by_stem": []
@@ -2576,6 +2583,13 @@
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)"
+        },
+        {
+          "path": "scripts/tests/test_check_doc_links.py",
+          "line": 12,
+          "evidence": "import",
+          "reference": "console_child",
+          "text": "import console_child"
         },
         {
           "path": "scripts/tests/test_check_staged_hygiene.py",
@@ -6097,6 +6111,13 @@
       "path": "scripts/tests/test_check_cxx_standard_floor.py",
       "basename": "test_check_cxx_standard_floor.py",
       "stem": "test_check_cxx_standard_floor",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "scripts/tests/test_check_doc_links.py",
+      "basename": "test_check_doc_links.py",
+      "stem": "test_check_doc_links",
       "callers_by_basename": [],
       "callers_by_stem": []
     },

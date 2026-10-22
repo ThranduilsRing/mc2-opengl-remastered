@@ -429,6 +429,13 @@ class Appearance
 			return 0.0f;
 		}
 
+		// A weapon assigned to a node on an arm that has since been shot off fires from another valid weapon node of
+		// a compatible type on the remaining body. Returns node unchanged when it is still usable (read-only, no node bookkeeping).
+		virtual long remapLostArmWeaponNode (long node, long weaponType)
+		{
+			return node;
+		}
+
 		virtual void resetWeaponNodes (void)
 		{
 		}

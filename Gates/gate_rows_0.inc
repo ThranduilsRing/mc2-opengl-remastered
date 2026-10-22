@@ -183,7 +183,7 @@ L(Presence, "MC2_DEPTH_TRANSITION_PROBE", Bool, false, "terrain", "", "", passth
 L(Presence, "MC2_DESTROY_TRACE", Bool, false, "gameos", "", "", passthrough | verified),
 // DEV-DETERMINISM: single shared RNG stream for reproducible runs.
 // history: docs/gate-history.md#MC2_DETERMINISTIC_RNG
-L(Lead0, "MC2_DETERMINISTIC_RNG", Bool, false, "mech", "", "Route all randomness (incl.", passthrough | registry(Feature, "MC2_DETERMINISTIC_RNG", -1, false) | verified),
+L(Lead0Kill, "MC2_DETERMINISTIC_RNG", Bool, true, "mech", "", "Route all randomness (incl.", passthrough | registry(Feature, "MC2_DETERMINISTIC_RNG", -1, true) | verified),
 L(Lead1, "MC2_DEV_SHELL", Bool, false, "unclassified", "", "", verified),
 P("MC2_DEV_SHELL_PORT", Int, 0, "gameos", "", "", verified),  // default not derivable from the tree
 G("MC2_DIAGNOSTIC_TRACE_FILE", String, "", "unclassified", "", "", passthrough | verified),  // default not derivable from the tree

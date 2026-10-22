@@ -10,6 +10,11 @@
 // MC2_GPU_CULL_LIFECYCLE=1 routes AI canBeSeen() combat gates to GPU-lagged visibility.
 static const bool s_gpuCullLifecycle = mc2::gate::get<"MC2_GPU_CULL_LIFECYCLE">();
 
+// Sim-time stand-ins for "has left the screen" (camera-independent): how long a withdrawing vehicle / an ejected vehicle
+// pilot lives before it is removed.
+static constexpr float GV_WITHDRAW_SEQUENCE_SECONDS = 3.0f;
+static constexpr float GV_VEHICLE_PILOT_RUN_SECONDS = 4.0f;
+
 long GroundVehicle::update (void)
 {
 	if (withdrawing && (pilot->getStatus() == WARRIOR_STATUS_WITHDRAWN)) 
@@ -288,10 +293,19 @@ long GroundVehicle::update (void)
 		velMag = velocityMag;
 
 
-	if (withdrawing && !inView && (pilot->getStatus() != WARRIOR_STATUS_WITHDRAWN))
+	// The old tests used the local inView, which is still false here, so a withdrawing vehicle was destroyed on its first
+	// withdrawing tick and a vehicle pilot on its first tick. The legacy intent is "gone once it has left the screen",
+	// as for mechs; the camera-independent form is a fixed sim-time sequence (a move off the map still ends it earlier,
+	// in Mover::setPosition).
+	if (withdrawing || isVehiclePilot)
+		exitTimer += frameLength;
+	else
+		exitTimer = 0.0f;
+
+	if (withdrawing && (exitTimer >= GV_WITHDRAW_SEQUENCE_SECONDS) && (pilot->getStatus() != WARRIOR_STATUS_WITHDRAWN))
 		getObjectType()->handleDestruction(this, nullptr);
 
-	if (isVehiclePilot && !inView)
+	if (isVehiclePilot && (exitTimer >= GV_VEHICLE_PILOT_RUN_SECONDS))
 		MC2_DESTROY(this, "vehicle_pilot_offscreen");
 
 	if (isVehiclePilot && (pilot->getCurTacOrder()->code == TACTICAL_ORDER_NONE) )

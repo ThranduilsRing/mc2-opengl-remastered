@@ -142,6 +142,7 @@ void __stdcall gos_DrawTriangles(gos_VERTEX*, int) {}
 void __stdcall gos_SetRenderState(gos_RenderState, int) {}
 void __stdcall gos_GetViewport(float*, float*, float*, float*) {}
 int  __stdcall gos_rand() { return std::rand(); }
+void __stdcall gos_srand(unsigned int seed) { std::srand(seed); }
 __int64 __stdcall gos_GetTimeDate() { return 0; }
 
 // ===========================================================================

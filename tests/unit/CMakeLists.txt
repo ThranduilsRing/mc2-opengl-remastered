@@ -57,6 +57,7 @@ add_executable(mc2_tests
     test_handle_slots.cpp  # P3 handle slots: ticket-gated reuse, stale handles refused, generation wrap, range exhaustion (offline)
     test_frame_packets.cpp  # P1 frame packets: publish freezes a frame's views and lighting, per-slot arenas, republish and recycle (offline)
     test_det_rng.cpp        # DETERMINISTIC-RNG-1: LCG kernel determinism (offline)
+    test_arm_node_remap.cpp # arm-off weapon-node remap: valid node on the remaining body (named sim change)
     test_appearance_rng.cpp # the appearance-side random stream: replayable, in range, apart from the simulation's
     test_script_music.cpp   # the music state an ABL script sees: its own request on the scenario clock, never the device
     alloc_probe.cpp         # the allocation probe + ScopedLeakCheck, allocation accounting and standard-owner coverage

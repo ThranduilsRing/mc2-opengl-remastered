@@ -366,7 +366,7 @@ void execObjectVisible (void) {
 			// Can anyone in the group see the object?
 			long numObjects = getMovers(objectId1, moverList);
 			for (long i = 0; i < numObjects; i++)
-				if (object1->lineOfSight(moverList[i])) {
+				if (moverList[i]->lineOfSight(object2)) {
 					result = 1;
 					break;
 				}

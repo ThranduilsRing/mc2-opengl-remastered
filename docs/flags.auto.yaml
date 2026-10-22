@@ -1004,13 +1004,13 @@ flags:
     verified: true
   - name: MC2_DETERMINISTIC_RNG
     kind: Bool
-    default: false
-    rule: Lead0
+    default: true
+    rule: Lead0Kill
     owner: mech
     doc: "Route all randomness (incl."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_DETERMINISTIC_RNG, kind: Feature, order: -1, default_on: false}
+    registry: {feature_id: MC2_DETERMINISTIC_RNG, kind: Feature, order: -1, default_on: true}
   - name: MC2_DEV_SHELL
     kind: Bool
     default: false

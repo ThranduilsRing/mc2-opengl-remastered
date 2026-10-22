@@ -682,7 +682,7 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "MC2_DETERMINISTIC_RNG",
         "MC2_DETERMINISTIC_RNG",
         EnvVarKind::Feature,
-        false,
+        true,
         "Route all randomness (incl.",
     },
     {

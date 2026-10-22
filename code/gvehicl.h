@@ -263,6 +263,7 @@ class GroundVehicle : public Mover {
 		float				timeInCurrent;					//Used by MineLayers to lay mines better
 
 		bool				isVehiclePilot;					//Is this a pilot running away?
+		float				exitTimer;						//Sim seconds spent withdrawing / running away (not saved; restarts after a load)
 		
 		//Destruction Coolness
 		glm::vec3		dVel;

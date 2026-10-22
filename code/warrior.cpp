@@ -325,11 +325,6 @@ GameObjectPtr LastCoreAttackTarget = nullptr;
 
 // MISC routines
 
-void SeedRandomNumbers (void) {
-
-	srand(static_cast<unsigned>(time(nullptr)));
-}
-
 long SignedRandomNumber (long range) {
 
 	return(RandomNumber(range << 1) - range);
