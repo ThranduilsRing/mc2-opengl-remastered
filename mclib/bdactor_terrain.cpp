@@ -19,6 +19,12 @@ TG_MultiShapePtr stockCollisionInstance(BldgAppearanceType* type, long status, l
 		type->setAnimation(instance, animation);
 	return instance;
 }
+
+glm::vec3 terrainQueryVertex(TG_MultiShapePtr shape, long node, long vertex, float rotation, bool untransformed)
+{
+	return untransformed ? shape->GetShapeVertexInEditor(node, vertex, rotation)
+		: shape->GetShapeVertexInWorld(node, vertex, rotation);
+}
 }
 
 inline constexpr float HEIGHT_THRESHOLD = 10.0f;
@@ -378,9 +384,7 @@ long BldgAppearance::markMoveMap (bool passable, long* lineOfSightRect, bool use
 				for (int j=0;j<tempBldgShape->GetNumVerticesInShape(i);j++) 
 				{
 					glm::vec3 vertexPos, worldPos;
-					vertexPos = collision.active()
-						? tempBldgShape->GetShapeVertexInEditor(i,j,-rotation)
-						: tempBldgShape->GetShapeVertexInWorld(i,j,-rotation);
+					vertexPos = terrainQueryVertex(tempBldgShape, i, j, -rotation, collision.active());
 					worldPos = position + vertexPos;
 	
 					int cellR, cellC;
@@ -418,9 +422,7 @@ long BldgAppearance::markMoveMap (bool passable, long* lineOfSightRect, bool use
 				for (int j=0;j<tempBldgShape->GetNumVerticesInShape(i);j++)
 				{
 					glm::vec3 vertexPos, worldPos;
-					vertexPos = collision.active()
-						? tempBldgShape->GetShapeVertexInEditor(i,j,-rotation)
-						: tempBldgShape->GetShapeVertexInWorld(i,j,-rotation);
+					vertexPos = terrainQueryVertex(tempBldgShape, i, j, -rotation, collision.active());
 					worldPos = position + vertexPos;
 	
 					int cellR, cellC;
@@ -562,9 +564,7 @@ void BldgAppearance::calcAdjCell (long& row, long& col)
 		for (int j=0;j<bldgShape->GetNumVerticesInShape(i);j++)
 		{
 			glm::vec3 vertexPos, worldPos;
-			vertexPos = collision.active()
-				? bldgShape->GetShapeVertexInEditor(i,j,-rotation)
-				: bldgShape->GetShapeVertexInWorld(i,j,-rotation);
+			vertexPos = terrainQueryVertex(bldgShape, i, j, -rotation, collision.active());
 			worldPos = position + vertexPos;
 
 			{
