@@ -128,6 +128,7 @@ private:
                       VkDescriptorSet computeSet, VkDescriptorSet windowSet, uint32_t paramOff, uint32_t casterOff, uint32_t passBase, uint32_t sliceBase,
                       int queryBase);
     std::optional<mc2shadow::Rect> leavesFootprint(const std::vector<GpuStaticPropInstance>& leaves) const;
+    mc2shadow::Rect grownForDirty(mc2shadow::Rect r) const;
     bool updateIncremental(VkCommandBuffer cb, uint64_t epoch, const ShadowBakeInputs& in);
     bool ensureIncremental();
     void writeIncrementalSets(uint32_t par);
@@ -206,7 +207,8 @@ private:
     bool incActive_ = false, heightsMoved_ = false, eventsSinceDrain_ = false;
     uint64_t lastIncEpoch_ = 0, incRecordedEpoch_ = ~0ull, heightsGen_ = 1, incHeightsGen_[2] = {0, 0};
     uint32_t incSubTiles_ = 0, incBatches_ = 0, eventsLogged_ = 0;
-    double incMaxGpuMs_ = 0.0;
+    double incMaxGpuMs_ = 0.0, incSumGpuMs_ = 0.0;
+    uint32_t incTimed_ = 0;
     uint32_t incInstanceCap_ = 0;
     bool incQueryUsed_[2] = {false, false};
     OwnedBuffer incParams_, incCasterUbo_, incPass_, incInstances_, incHeights_[2];

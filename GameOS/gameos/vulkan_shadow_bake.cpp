@@ -49,7 +49,8 @@ constexpr VkFormat kMaskFmt = VK_FORMAT_BC4_UNORM_BLOCK;   // the product (P4: h
 constexpr VkFormat kWorkFmt = VK_FORMAT_R8_UNORM;          // a tile's resolved levels and the coarse top image, before BC4
 constexpr uint32_t kTileLevels = 6;                        // levels 0..5 of a tile (512..16) or a sub-tile (128..4) are encoded where they lie
 constexpr uint32_t kTopLevel = 5;                          // the coarse top image is mask level 5; the levels below it are re-derived from it
-constexpr uint32_t kSubTilesPerFrame = 4;                  // the dirty-update budget (about 0.3 ms of GPU on the 7900 XTX)
+constexpr uint32_t kSubTilesPerFrame = 2;                  // the dirty-update budget: about 0.12 ms of GPU each on the 7900 XTX (0.3 ms target)
+constexpr int kDirtyGrowTexels = 24;                       // the blurred fade (16) and the 3x3 resolve (1) read this far past a change
 constexpr uint32_t kSliceSubTile = kTileLevels;            // encoder parameter slices: 0..5 tile levels, 6..11 sub-tile levels, then the top
 constexpr int kObjectMapSize = 4096;              // High preset (D4); presets arrive with P7
 constexpr float kMaskTargetTexelWorld = 1.5f;     // High preset target (D1)
@@ -1236,6 +1237,12 @@ void ShadowBake::recordRegion(VkCommandBuffer cb, const ShadowBakeInputs& in, co
     stamp(4);
 }
 
+// A changed rect grown by the texels whose resolve reads into it.
+mc2shadow::Rect ShadowBake::grownForDirty(mc2shadow::Rect r) const {
+    const float g = static_cast<float>(kDirtyGrowTexels) * layout_.texelWorld;
+    return {r.x0 - g, r.y0 - g, r.x1 + g, r.y1 + g};
+}
+
 // The world rectangle a caster's leaves can shadow (their boxes swept down-sun to the lowest receiver), or an empty rect for no leaves.
 std::optional<mc2shadow::Rect> ShadowBake::leavesFootprint(const std::vector<GpuStaticPropInstance>& leaves) const {
     std::optional<mc2shadow::Rect> out;
@@ -1275,7 +1282,7 @@ bool ShadowBake::updateIncremental(VkCommandBuffer cb, uint64_t epoch, const Sha
         for (const auto& ev : set.takeEvents()) {
             for (const auto* side : {&ev.before, &ev.after}) {
                 if (const auto r = leavesFootprint(*side)) {
-                    const size_t added = dirty_.add(mc2shadow::subTilesForRect(layout_, *r));
+                    const size_t added = dirty_.add(mc2shadow::subTilesForRect(layout_, grownForDirty(*r), 0));
                     if (eventsLogged_ < 16) {
                         ++eventsLogged_;
                         mc2::fmt::print_err("[SHADOW_BAKE] caster event: {} leaves {} footprint=({:.0f},{:.0f})-({:.0f},{:.0f}) dirty_sub_tiles+={}\n",
@@ -1298,7 +1305,7 @@ bool ShadowBake::updateIncremental(VkCommandBuffer cb, uint64_t epoch, const Sha
                     for (int gx = hp.x0; gx <= hp.x1; ++gx) top = (std::max)(top, store->height()[static_cast<size_t>(gx) + static_cast<size_t>(gy) * store->mapSide()]);
                 const mc2shadow::Vec3 lo{hp.x0 * mc2shadow::kWorldUnitsPerVertex - halfMap_, halfMap_ - hp.y1 * mc2shadow::kWorldUnitsPerVertex, terrainMin_};
                 const mc2shadow::Vec3 hi{hp.x1 * mc2shadow::kWorldUnitsPerVertex - halfMap_, halfMap_ - hp.y0 * mc2shadow::kWorldUnitsPerVertex, (std::max)(top, terrainMin_)};
-                dirty_.add(mc2shadow::subTilesForRect(layout_, mc2shadow::shadowFootprint(lo, hi, sun_, terrainMin_, tanT)));
+                dirty_.add(mc2shadow::subTilesForRect(layout_, grownForDirty(mc2shadow::shadowFootprint(lo, hi, sun_, terrainMin_, tanT)), 0));
             }
             heightsMoved_ = true;
             eventsSinceDrain_ = true;
@@ -1307,9 +1314,10 @@ bool ShadowBake::updateIncremental(VkCommandBuffer cb, uint64_t epoch, const Sha
     if (dirty_.empty()) {
         if (incActive_ && epoch >= lastIncEpoch_ + 2) {
             incActive_ = false;
-            mc2::fmt::print_err("[SHADOW_BAKE] dirty queue drained: sub_tiles={} batches={} max_batch_gpu_ms={:.3f}\n", incSubTiles_, incBatches_, incMaxGpuMs_);
-            incSubTiles_ = incBatches_ = 0;
-            incMaxGpuMs_ = 0.0;
+            mc2::fmt::print_err("[SHADOW_BAKE] dirty queue drained: sub_tiles={} batches={} batch_gpu_ms mean={:.3f} max={:.3f} (budget {} sub-tiles a frame)\n",
+                                incSubTiles_, incBatches_, incTimed_ ? incSumGpuMs_ / incTimed_ : 0.0, incMaxGpuMs_, kSubTilesPerFrame);
+            incSubTiles_ = incBatches_ = incTimed_ = 0;
+            incMaxGpuMs_ = incSumGpuMs_ = 0.0;
             releaseTransients();
             releaseIncremental();
             if (eventsSinceDrain_ && diagOn()) diagRequest_ = true;
@@ -1350,7 +1358,12 @@ bool ShadowBake::updateIncremental(VkCommandBuffer cb, uint64_t epoch, const Sha
     if (incQueryUsed_[par]) {
         uint64_t ts[2] = {0, 0};
         if (vkGetQueryPoolResults(device_, incQueries_.get(), par * 2, 2, sizeof(ts), ts, sizeof(uint64_t), VK_QUERY_RESULT_64_BIT) == VK_SUCCESS)
-            incMaxGpuMs_ = (std::max)(incMaxGpuMs_, static_cast<double>(ts[1] - ts[0]) * timestampPeriodNs_ * 1e-6);
+        {
+            const double ms = static_cast<double>(ts[1] - ts[0]) * timestampPeriodNs_ * 1e-6;
+            incMaxGpuMs_ = (std::max)(incMaxGpuMs_, ms);
+            incSumGpuMs_ += ms;
+            ++incTimed_;
+        }
         incQueryUsed_[par] = false;
     }
     const std::vector<mc2shadow::SubTile> batch = dirty_.take(kSubTilesPerFrame);
