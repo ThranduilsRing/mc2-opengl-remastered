@@ -6,7 +6,7 @@
   "HostServices": 0,
   "RenderCore": 402,
   "RenderWorld": 0,
-  "code": 14499,
+  "code": 14487,
   "mclib": 28940,
   "shaders": 920
  },
@@ -228,7 +228,7 @@
   "code/sensor_trace.h": 8,
   "code/sim_identity.cpp": 20,
   "code/simplecamera.cpp": 47,
-  "code/tacordr.cpp": 224,
+  "code/tacordr.cpp": 220,
   "code/team.cpp": 81,
   "code/team_los.cpp": 40,
   "code/terrobj.cpp": 113,
@@ -236,7 +236,7 @@
   "code/turret.cpp": 521,
   "code/turret.h": 36,
   "code/warrior.cpp": 215,
-  "code/warrior.h": 214,
+  "code/warrior.h": 206,
   "code/warrior_alarms.cpp": 49,
   "code/warrior_core_orders.cpp": 42,
   "code/warrior_draw.cpp": 18,
@@ -532,8 +532,8 @@
   "shaders/vulkan/terrain_tier1.vert": 78,
   "shaders/vulkan/terrain_tier1_skirt.vert": 78
  },
- "head": "0c9487a3c",
+ "head": "c4258db68",
  "n": 8,
- "total": 47279,
+ "total": 47267,
  "version": 1
 }

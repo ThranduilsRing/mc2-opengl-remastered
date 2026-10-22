@@ -22,7 +22,7 @@
   "code/bldng.cpp": 1691,
   "code/brain_special_dispatch.cpp": 2771,
   "code/gamecam.cpp": 1609,
-  "code/gameobj.cpp": 2241,
+  "code/gameobj.cpp": 2242,
   "code/infowindow.cpp": 1730,
   "code/logisticsdialog.cpp": 2149,
   "code/mechicon.cpp": 1981,
@@ -35,28 +35,28 @@
   "code/objective.cpp": 2437,
   "code/optionsarea.cpp": 1837,
   "code/pilotreviewarea.cpp": 1843,
-  "code/tacordr.cpp": 2109,
+  "code/tacordr.cpp": 2106,
   "code/terrobj.cpp": 1721,
   "code/turret.cpp": 2338,
   "code/warrior.cpp": 2699,
-  "code/warrior.h": 2176,
+  "code/warrior.h": 2188,
   "editor/tests/test_objectives.cpp": 1996,
   "gui/alistbox.cpp": 1513,
   "mclib/ablenv.cpp": 1585,
   "mclib/ablrtn.cpp": 1799,
   "mclib/assimp_importer.cpp": 1577,
-  "mclib/camera.h": 1815,
+  "mclib/camera.h": 1828,
   "mclib/file.cpp": 1736,
   "mclib/gosfx/fcurve.cpp": 1923,
   "mclib/mapdata.cpp": 2518,
   "mclib/mlr/mlrlightmap.cpp": 1648,
   "mclib/mlr/mlrprimitiveclipping.hpp": 1722,
   "mclib/mlr/mlrtriangleclipping.hpp": 2112,
-  "mclib/move.h": 1891,
+  "mclib/move.h": 1895,
   "mclib/terrtxm.cpp": 1816,
   "mclib/tgl.h": 1799
  },
- "head": "8d061a019",
+ "head": "c4258db68",
  "per_dir": {
   "GameAdapters": {
    "files": 9,
@@ -89,7 +89,7 @@
    "max_lines": 1027
   },
   "code": {
-   "files": 411,
+   "files": 414,
    "files_over_1500": 22,
    "files_over_3000": 0,
    "max_lines": 2771
@@ -107,7 +107,7 @@
    "max_lines": 1513
   },
   "mclib": {
-   "files": 568,
+   "files": 569,
    "files_over_1500": 13,
    "files_over_3000": 0,
    "max_lines": 2518
@@ -158,11 +158,11 @@
   },
   {
    "file": "code/gameobj.cpp",
-   "lines": 2241
+   "lines": 2242
   },
   {
    "file": "code/warrior.h",
-   "lines": 2176
+   "lines": 2188
   },
   {
    "file": "code/missionbegin.cpp",
@@ -178,7 +178,7 @@
   },
   {
    "file": "code/tacordr.cpp",
-   "lines": 2109
+   "lines": 2106
   },
   {
    "file": "editor/tests/test_objectives.cpp",
@@ -202,7 +202,7 @@
   },
   {
    "file": "mclib/move.h",
-   "lines": 1891
+   "lines": 1895
   },
   {
    "file": "code/multplyr.h",
@@ -221,12 +221,12 @@
    "lines": 1833
   },
   {
-   "file": "mclib/terrtxm.cpp",
-   "lines": 1816
+   "file": "mclib/camera.h",
+   "lines": 1828
   },
   {
-   "file": "mclib/camera.h",
-   "lines": 1815
+   "file": "mclib/terrtxm.cpp",
+   "lines": 1816
   },
   {
    "file": "mclib/ablrtn.cpp",
@@ -246,7 +246,7 @@
   }
  ],
  "total": {
-  "files": 1817,
+  "files": 1821,
   "files_over_1500": 42,
   "files_over_3000": 1,
   "max_lines": 3721
