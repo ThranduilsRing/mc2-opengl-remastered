@@ -23,7 +23,7 @@ import archetypes
 
 HERE = Path(__file__).resolve().parent
 THRESH = HERE / 'assets' / 'validate_thresholds.json'
-THRESH_SHA = 'fbbdb30c73a13df4'        # sha256[:16] of assets/validate_thresholds.json; `validate --calibrate` prints the new value to paste here
+THRESH_SHA = '786e2ebabb311ced'        # sha256[:16] of assets/validate_thresholds.json; `validate --calibrate` prints the new value to paste here
 PALETTE_DE = 18.0                       # per-slot and area-weighted mean: the approved closed solids top out at about 14
 SIZE_TOL = .02
 WAIVER_KEYS = dict(archetype=(), size=(), counts=('field',), features=('side', 'kind'), palette=('slot',), fit=('axis',), silhouette=('view',),
@@ -33,7 +33,7 @@ CODE_FILES = ('contract.py', 'validate.py', 'archetypes.py', 'arch_props.py', 'b
 
 # ------------------------------------------------------------------ hashes
 def file_sha(path):
-    return hashlib.sha256(Path(path).read_bytes()).hexdigest()[:16]
+    return hashlib.sha256(Path(path).read_bytes().replace(b'\r\n', b'\n')).hexdigest()[:16]      # newline-insensitive (CRLF working copies)
 
 
 def params_sha(p):
