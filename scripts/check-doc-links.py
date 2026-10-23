@@ -94,31 +94,14 @@ def is_archived(relpath):
     return relpath.endswith(".original.md")
 
 
-def ignored_docs():
-    """Paths git ignores under docs/ (local scratch such as docs/beta): not part of the repo, so not part of its link contract."""
-    try:
-        out = subprocess.run(["git", "-C", REPO_ROOT, "ls-files", "-z", "--others", "--ignored", "--exclude-standard", "--", "docs"],
-                             text=True, check=False, **console_child.child_kwargs(redirected=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)).stdout
-    except OSError:
-        return set()
-    return {os.path.normpath(p) for p in out.split("\0") if p}
-
-
 def collect_md_files():
-    out = []
-    ignored = ignored_docs()
-    for name in os.listdir(REPO_ROOT):
-        if name.endswith(".md"):
-            out.append(name)
-    docs_root = os.path.join(REPO_ROOT, "docs")
-    for dirpath, dirnames, filenames in os.walk(docs_root):
-        for name in filenames:
-            if name.endswith(".md"):
-                full = os.path.join(dirpath, name)
-                rel = os.path.relpath(full, REPO_ROOT)
-                if os.path.normpath(rel) not in ignored:
-                    out.append(rel)
-    return sorted(out)
+    # Local chat histories and scratch docs are outside the committed-doc contract.
+    result = subprocess.run(["git", "-C", REPO_ROOT, "ls-files", "-z"],
+                            text=True, check=True,
+                            **console_child.child_kwargs(redirected=True, stdout=subprocess.PIPE))
+    return sorted(p for p in result.stdout.split("\0")
+                  if p.endswith(".md") and ("/" not in p or p.startswith("docs/"))
+                  and os.path.isfile(os.path.join(REPO_ROOT, p)))
 
 
 def resolve(target, containing_dir):

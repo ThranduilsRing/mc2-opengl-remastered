@@ -2753,6 +2753,13 @@
           "text": "import console_child  # noqa: E402"
         },
         {
+          "path": "tests/mapgen/test_generate.py",
+          "line": 12,
+          "evidence": "import",
+          "reference": "scripts.console_child",
+          "text": "from scripts import console_child"
+        },
+        {
           "path": "tests/smoke/objectives_e6e/generate_assets.py",
           "line": 15,
           "evidence": "import",
@@ -3038,6 +3045,13 @@
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)"
+        },
+        {
+          "path": "tools/mapgen/scale_review.py",
+          "line": 13,
+          "evidence": "import",
+          "reference": "scripts.console_child",
+          "text": "from scripts import console_child"
         },
         {
           "path": "tools/mc2texcook/batch_upscale_cook.py",
@@ -8060,6 +8074,763 @@
       "callers_by_stem": []
     },
     {
+      "path": "tools/mapgen/__init__.py",
+      "basename": "__init__.py",
+      "stem": "__init__",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "tools/mapgen/analyze.py",
+      "basename": "analyze.py",
+      "stem": "analyze",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tests/mapgen/test_corpus.py",
+          "line": 6,
+          "evidence": "import",
+          "reference": "tools.mapgen.analyze",
+          "text": "from tools.mapgen.analyze import archetype, clusters"
+        },
+        {
+          "path": "tests/mapgen/test_generate.py",
+          "line": 14,
+          "evidence": "import",
+          "reference": "tools.mapgen.analyze",
+          "text": "from tools.mapgen.analyze import aggregate, measure"
+        },
+        {
+          "path": "tools/mapgen/raster.py",
+          "line": 49,
+          "evidence": "import",
+          "reference": "tools.mapgen.analyze",
+          "text": "from tools.mapgen.analyze import clusters, valid_objects"
+        },
+        {
+          "path": "tools/mapgen/scale_metrics.py",
+          "line": 4,
+          "evidence": "import",
+          "reference": "tools.mapgen.analyze",
+          "text": "from tools.mapgen.analyze import clusters, structural, valid_objects"
+        }
+      ]
+    },
+    {
+      "path": "tools/mapgen/ascii.py",
+      "basename": "ascii.py",
+      "stem": "ascii",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tests/mapgen/test_ascii.py",
+          "line": 5,
+          "evidence": "import",
+          "reference": "tools.mapgen.ascii",
+          "text": "from tools.mapgen.ascii import render"
+        },
+        {
+          "path": "tools/mapgen/generate.py",
+          "line": 17,
+          "evidence": "import",
+          "reference": "tools.mapgen.ascii",
+          "text": "from tools.mapgen.ascii import render"
+        }
+      ]
+    },
+    {
+      "path": "tools/mapgen/common.py",
+      "basename": "common.py",
+      "stem": "common",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tests/mapgen/test_ascii.py",
+          "line": 6,
+          "evidence": "import",
+          "reference": "tools.mapgen.common",
+          "text": "from tools.mapgen.common import distance_field, spans"
+        },
+        {
+          "path": "tests/mapgen/test_corpus.py",
+          "line": 7,
+          "evidence": "import",
+          "reference": "tools.mapgen.common",
+          "text": "from tools.mapgen.common import load_json, output_path"
+        },
+        {
+          "path": "tests/mapgen/test_extract.py",
+          "line": 10,
+          "evidence": "import",
+          "reference": "tools.mapgen.common",
+          "text": "from tools.mapgen.common import mask_of, packed_cell, spans, world_cell"
+        },
+        {
+          "path": "tests/mapgen/test_generate.py",
+          "line": 15,
+          "evidence": "import",
+          "reference": "tools.mapgen.common",
+          "text": "from tools.mapgen.common import load_json, mask_of, spans"
+        },
+        {
+          "path": "tests/mapgen/test_macro.py",
+          "line": 6,
+          "evidence": "import",
+          "reference": "tools.mapgen.common",
+          "text": "from tools.mapgen.common import FLAT_DEG, slope_grid"
+        },
+        {
+          "path": "tests/mapgen/test_pixel_generate.py",
+          "line": 5,
+          "evidence": "import",
+          "reference": "tools.mapgen.common",
+          "text": "from tools.mapgen.common import CELL_WU, load_json"
+        },
+        {
+          "path": "tests/mapgen/test_raster.py",
+          "line": 9,
+          "evidence": "import",
+          "reference": "tools.mapgen.common",
+          "text": "from tools.mapgen.common import CELL_WU, load_json, write_json"
+        },
+        {
+          "path": "tests/mapgen/test_suburban_forest.py",
+          "line": 7,
+          "evidence": "import",
+          "reference": "tools.mapgen.common",
+          "text": "from tools.mapgen.common import load_json, mask_of"
+        },
+        {
+          "path": "tools/mapgen/analyze.py",
+          "line": 17,
+          "evidence": "import",
+          "reference": "tools.mapgen.common",
+          "text": "from tools.mapgen.common import (CELL_WU, FLAT_DEG, STEEP_DEG, building_role, components,"
+        },
+        {
+          "path": "tools/mapgen/ascii.py",
+          "line": 13,
+          "evidence": "import",
+          "reference": "tools.mapgen.common",
+          "text": "from tools.mapgen.common import building_role, load_json, output_path"
+        },
+        {
+          "path": "tools/mapgen/comparison.py",
+          "line": 11,
+          "evidence": "import",
+          "reference": "tools.mapgen.common",
+          "text": "from tools.mapgen.common import load_json, output_path"
+        },
+        {
+          "path": "tools/mapgen/extract.py",
+          "line": 17,
+          "evidence": "import",
+          "reference": "tools.mapgen.common",
+          "text": "from tools.mapgen.common import (CELL_WU, SCHEMA, STEEP_DEG, INSTALL_ROOT,"
+        },
+        {
+          "path": "tools/mapgen/footprints.py",
+          "line": 18,
+          "evidence": "import",
+          "reference": "tools.mapgen.common",
+          "text": "from tools.mapgen.common import CELL_WU, INSTALL_ROOT, building_role, load_json, spans, write_json"
+        },
+        {
+          "path": "tools/mapgen/generate.py",
+          "line": 18,
+          "evidence": "import",
+          "reference": "tools.mapgen.common",
+          "text": "from tools.mapgen.common import (CELL_WU, FLAT_DEG, LAYERS, SCHEMA, STEEP_DEG,"
+        },
+        {
+          "path": "tools/mapgen/macro.py",
+          "line": 10,
+          "evidence": "import",
+          "reference": "tools.mapgen.common",
+          "text": "from tools.mapgen.common import components, distance_field"
+        },
+        {
+          "path": "tools/mapgen/mission_writer.py",
+          "line": 19,
+          "evidence": "import",
+          "reference": "tools.mapgen.common",
+          "text": "from tools.mapgen.common import (CELL_WU, load_json, mask_of, output_path, packed_cell,"
+        },
+        {
+          "path": "tools/mapgen/placement.py",
+          "line": 12,
+          "evidence": "import",
+          "reference": "tools.mapgen.common",
+          "text": "from tools.mapgen.common import CELL_WU, FLAT_DEG, distance_field, mask_of, packed_cell, slope_grid"
+        },
+        {
+          "path": "tools/mapgen/placement.py",
+          "line": 283,
+          "evidence": "import",
+          "reference": "tools.mapgen.common",
+          "text": "from tools.mapgen.common import spans"
+        },
+        {
+          "path": "tools/mapgen/playable_demo.py",
+          "line": 7,
+          "evidence": "import",
+          "reference": "tools.mapgen.common",
+          "text": "from tools.mapgen.common import output_path, write_json"
+        },
+        {
+          "path": "tools/mapgen/raster.py",
+          "line": 14,
+          "evidence": "import",
+          "reference": "tools.mapgen.common",
+          "text": "from tools.mapgen.common import CELL_WU, building_role, load_json, mask_of, output_path, write_json"
+        },
+        {
+          "path": "tools/mapgen/scale_metrics.py",
+          "line": 5,
+          "evidence": "import",
+          "reference": "tools.mapgen.common",
+          "text": "from tools.mapgen.common import components, mask_of"
+        },
+        {
+          "path": "tools/mapgen/scale_metrics.py",
+          "line": 58,
+          "evidence": "import",
+          "reference": "tools.mapgen.common",
+          "text": "from tools.mapgen.common import load_json,write_json"
+        },
+        {
+          "path": "tools/mapgen/scale_review.py",
+          "line": 14,
+          "evidence": "import",
+          "reference": "tools.mapgen.common",
+          "text": "from tools.mapgen.common import load_json,output_path,write_json"
+        },
+        {
+          "path": "tools/mapgen/suburban_forest.py",
+          "line": 16,
+          "evidence": "import",
+          "reference": "tools.mapgen.common",
+          "text": "from tools.mapgen.common import (CELL_WU, distance_field, mask_of, output_path,"
+        },
+        {
+          "path": "tools/mapgen/validate.py",
+          "line": 13,
+          "evidence": "import",
+          "reference": "tools.mapgen.common",
+          "text": "from tools.mapgen.common import (FLAT_DEG, SCHEMA, components, distance, distance_field,"
+        },
+        {
+          "path": "tools/mapgen/validate.py",
+          "line": 186,
+          "evidence": "import",
+          "reference": "tools.mapgen.common",
+          "text": "from tools.mapgen.common import CELL_WU, building_role"
+        }
+      ]
+    },
+    {
+      "path": "tools/mapgen/comparison.py",
+      "basename": "comparison.py",
+      "stem": "comparison",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "tools/mapgen/data.py",
+      "basename": "data.py",
+      "stem": "data",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tests/mapgen/test_extract.py",
+          "line": 11,
+          "evidence": "import",
+          "reference": "tools.mapgen.data",
+          "text": "from tools.mapgen.data import Install, catalog, fit_sections, packet"
+        },
+        {
+          "path": "tools/mapgen/extract.py",
+          "line": 19,
+          "evidence": "import",
+          "reference": "tools.mapgen.data",
+          "text": "from tools.mapgen.data import Install, catalog, fit_sections, overlay_catalog, packet"
+        },
+        {
+          "path": "tools/mapgen/footprints.py",
+          "line": 19,
+          "evidence": "import",
+          "reference": "tools.mapgen.data",
+          "text": "from tools.mapgen.data import Install, catalog, fit_sections, packet"
+        },
+        {
+          "path": "tools/mapgen/mission_writer.py",
+          "line": 21,
+          "evidence": "import",
+          "reference": "tools.mapgen.data",
+          "text": "from tools.mapgen.data import Install, catalog, fit_sections, packet, overlay_catalog"
+        },
+        {
+          "path": "tools/mapgen/playable_demo.py",
+          "line": 8,
+          "evidence": "import",
+          "reference": "tools.mapgen.data",
+          "text": "from tools.mapgen.data import Install"
+        }
+      ]
+    },
+    {
+      "path": "tools/mapgen/extract.py",
+      "basename": "extract.py",
+      "stem": "extract",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tests/mapgen/test_extract.py",
+          "line": 12,
+          "evidence": "import",
+          "reference": "tools.mapgen.extract",
+          "text": "from tools.mapgen.extract import OBJECT, VERTEX, extract_mission"
+        },
+        {
+          "path": "tests/mapgen/test_suburban_forest.py",
+          "line": 8,
+          "evidence": "import",
+          "reference": "tools.mapgen.extract",
+          "text": "from tools.mapgen.extract import VERTEX"
+        },
+        {
+          "path": "tools/mapgen/footprints.py",
+          "line": 20,
+          "evidence": "import",
+          "reference": "tools.mapgen.extract",
+          "text": "from tools.mapgen.extract import DEFAULT_OUT, INSTALLS"
+        },
+        {
+          "path": "tools/mapgen/mission_writer.py",
+          "line": 22,
+          "evidence": "import",
+          "reference": "tools.mapgen.extract",
+          "text": "from tools.mapgen.extract import OBJECT, VERTEX, extract_mission"
+        }
+      ]
+    },
+    {
+      "path": "tools/mapgen/footprints.py",
+      "basename": "footprints.py",
+      "stem": "footprints",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tests/mapgen/test_footprints.py",
+          "line": 7,
+          "evidence": "import",
+          "reference": "tools.mapgen.footprints",
+          "text": "from tools.mapgen.footprints import ase_points, hull, measure, radius_footprint, tgl_points"
+        },
+        {
+          "path": "tests/mapgen/test_pixel_generate.py",
+          "line": 7,
+          "evidence": "import",
+          "reference": "tools.mapgen.footprints",
+          "text": "from tools.mapgen.footprints import table"
+        },
+        {
+          "path": "tests/mapgen/test_raster.py",
+          "line": 10,
+          "evidence": "import",
+          "reference": "tools.mapgen.footprints",
+          "text": "from tools.mapgen.footprints import table"
+        },
+        {
+          "path": "tools/mapgen/placement.py",
+          "line": 13,
+          "evidence": "import",
+          "reference": "tools.mapgen.footprints",
+          "text": "from tools.mapgen.footprints import table"
+        },
+        {
+          "path": "tools/mapgen/raster.py",
+          "line": 15,
+          "evidence": "import",
+          "reference": "tools.mapgen.footprints",
+          "text": "from tools.mapgen.footprints import lookup, table"
+        },
+        {
+          "path": "tools/mapgen/validate.py",
+          "line": 187,
+          "evidence": "import",
+          "reference": "tools.mapgen.footprints",
+          "text": "from tools.mapgen.footprints import table"
+        }
+      ]
+    },
+    {
+      "path": "tools/mapgen/generate.py",
+      "basename": "generate.py",
+      "stem": "generate",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tests/mapgen/test_generate.py",
+          "line": 16,
+          "evidence": "import",
+          "reference": "tools.mapgen.generate",
+          "text": "from tools.mapgen.generate import PROFILE_PATH, generate, route"
+        },
+        {
+          "path": "tests/mapgen/test_macro.py",
+          "line": 7,
+          "evidence": "import",
+          "reference": "tools.mapgen.generate",
+          "text": "from tools.mapgen.generate import generate, synthetic_terrain"
+        },
+        {
+          "path": "tests/mapgen/test_mission_writer.py",
+          "line": 6,
+          "evidence": "import",
+          "reference": "tools.mapgen.generate",
+          "text": "from tools.mapgen.generate import generate"
+        },
+        {
+          "path": "tests/mapgen/test_pixel_generate.py",
+          "line": 6,
+          "evidence": "import",
+          "reference": "tools.mapgen.generate",
+          "text": "from tools.mapgen.generate import PROFILE_PATH, generate"
+        },
+        {
+          "path": "tests/mapgen/test_suburban_forest.py",
+          "line": 9,
+          "evidence": "import",
+          "reference": "tools.mapgen.generate",
+          "text": "from tools.mapgen.generate import generate"
+        },
+        {
+          "path": "tools/mapgen/playable_demo.py",
+          "line": 9,
+          "evidence": "import",
+          "reference": "tools.mapgen.generate",
+          "text": "from tools.mapgen.generate import generate"
+        },
+        {
+          "path": "tools/mapgen/suburban_forest.py",
+          "line": 31,
+          "evidence": "import",
+          "reference": "tools.mapgen.generate",
+          "text": "from tools.mapgen.generate import nearest, plan_cells, route"
+        }
+      ]
+    },
+    {
+      "path": "tools/mapgen/macro.py",
+      "basename": "macro.py",
+      "stem": "macro",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tests/mapgen/test_macro.py",
+          "line": 8,
+          "evidence": "import",
+          "reference": "tools.mapgen.macro",
+          "text": "from tools.mapgen.macro import plan, valley_route"
+        },
+        {
+          "path": "tools/mapgen/generate.py",
+          "line": 171,
+          "evidence": "import",
+          "reference": "tools.mapgen.macro",
+          "text": "from tools.mapgen.macro import plan"
+        }
+      ]
+    },
+    {
+      "path": "tools/mapgen/mission_writer.py",
+      "basename": "mission_writer.py",
+      "stem": "mission_writer",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tests/mapgen/test_mission_writer.py",
+          "line": 7,
+          "evidence": "import",
+          "reference": "tools.mapgen.mission_writer",
+          "text": "from tools.mapgen.mission_writer import snapped, collision_grid, place_units"
+        },
+        {
+          "path": "tests/mapgen/test_suburban_forest.py",
+          "line": 10,
+          "evidence": "import",
+          "reference": "tools.mapgen.mission_writer",
+          "text": "from tools.mapgen.mission_writer import collision_grid, place_units, snapped, terrain_packet"
+        },
+        {
+          "path": "tools/mapgen/playable_demo.py",
+          "line": 10,
+          "evidence": "import",
+          "reference": "tools.mapgen.mission_writer",
+          "text": "from tools.mapgen.mission_writer import STOCK, emit"
+        }
+      ]
+    },
+    {
+      "path": "tools/mapgen/move_writer.py",
+      "basename": "move_writer.py",
+      "stem": "move_writer",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tests/mapgen/test_move_writer.py",
+          "line": 6,
+          "evidence": "import",
+          "reference": "tools.mapgen.move_writer",
+          "text": "from tools.mapgen.move_writer import build_move, validate_move, distances, global_packets"
+        },
+        {
+          "path": "tools/mapgen/mission_writer.py",
+          "line": 23,
+          "evidence": "import",
+          "reference": "tools.mapgen.move_writer",
+          "text": "from tools.mapgen.move_writer import build_move, validate_move"
+        },
+        {
+          "path": "tools/mapgen/mission_writer.py",
+          "line": 151,
+          "evidence": "import",
+          "reference": "tools.mapgen.move_writer",
+          "text": "from tools.mapgen.move_writer import distances"
+        }
+      ]
+    },
+    {
+      "path": "tools/mapgen/placement.py",
+      "basename": "placement.py",
+      "stem": "placement",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tests/mapgen/test_pixel_generate.py",
+          "line": 8,
+          "evidence": "import",
+          "reference": "tools.mapgen.placement",
+          "text": "from tools.mapgen.placement import Spatial, cell_of, overlaps"
+        },
+        {
+          "path": "tools/mapgen/generate.py",
+          "line": 460,
+          "evidence": "import",
+          "reference": "tools.mapgen.placement",
+          "text": "from tools.mapgen.placement import upgrade"
+        },
+        {
+          "path": "tools/mapgen/mission_writer.py",
+          "line": 24,
+          "evidence": "import",
+          "reference": "tools.mapgen.placement",
+          "text": "from tools.mapgen.placement import Spatial, covered_cells, overlaps"
+        },
+        {
+          "path": "tools/mapgen/validate.py",
+          "line": 188,
+          "evidence": "import",
+          "reference": "tools.mapgen.placement",
+          "text": "from tools.mapgen.placement import Spatial, bounds, cell_of, covered_cells, overlaps"
+        }
+      ]
+    },
+    {
+      "path": "tools/mapgen/playable_demo.py",
+      "basename": "playable_demo.py",
+      "stem": "playable_demo",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "tools/mapgen/raster.py",
+      "basename": "raster.py",
+      "stem": "raster",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tests/mapgen/test_pixel_generate.py",
+          "line": 9,
+          "evidence": "import",
+          "reference": "tools.mapgen.raster",
+          "text": "from tools.mapgen.raster import polygon"
+        },
+        {
+          "path": "tests/mapgen/test_raster.py",
+          "line": 11,
+          "evidence": "import",
+          "reference": "tools.mapgen.raster",
+          "text": "from tools.mapgen.raster import (COLOURS, TEAM_COLOURS, TERRAIN_COLOURS,"
+        },
+        {
+          "path": "tools/mapgen/comparison.py",
+          "line": 12,
+          "evidence": "import",
+          "reference": "tools.mapgen.raster",
+          "text": "from tools.mapgen.raster import crop_base, render"
+        },
+        {
+          "path": "tools/mapgen/generate.py",
+          "line": 502,
+          "evidence": "import",
+          "reference": "tools.mapgen.raster",
+          "text": "from tools.mapgen.raster import render as raster, crop_base"
+        },
+        {
+          "path": "tools/mapgen/mission_writer.py",
+          "line": 25,
+          "evidence": "import",
+          "reference": "tools.mapgen.raster",
+          "text": "from tools.mapgen.raster import polygon, render"
+        },
+        {
+          "path": "tools/mapgen/placement.py",
+          "line": 14,
+          "evidence": "import",
+          "reference": "tools.mapgen.raster",
+          "text": "from tools.mapgen.raster import polygon, world_position"
+        },
+        {
+          "path": "tools/mapgen/scale_review.py",
+          "line": 15,
+          "evidence": "import",
+          "reference": "tools.mapgen.raster",
+          "text": "from tools.mapgen.raster import render"
+        },
+        {
+          "path": "tools/mapgen/validate.py",
+          "line": 189,
+          "evidence": "import",
+          "reference": "tools.mapgen.raster",
+          "text": "from tools.mapgen.raster import polygon"
+        }
+      ]
+    },
+    {
+      "path": "tools/mapgen/scale_metrics.py",
+      "basename": "scale_metrics.py",
+      "stem": "scale_metrics",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tests/mapgen/test_generate.py",
+          "line": 18,
+          "evidence": "import",
+          "reference": "tools.mapgen.scale_metrics",
+          "text": "from tools.mapgen.scale_metrics import measure_scale"
+        },
+        {
+          "path": "tools/mapgen/scale_review.py",
+          "line": 16,
+          "evidence": "import",
+          "reference": "tools.mapgen.scale_metrics",
+          "text": "from tools.mapgen.scale_metrics import measure_scale"
+        }
+      ]
+    },
+    {
+      "path": "tools/mapgen/scale_review.py",
+      "basename": "scale_review.py",
+      "stem": "scale_review",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "tools/mapgen/suburban_forest.py",
+      "basename": "suburban_forest.py",
+      "stem": "suburban_forest",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tools/mapgen/generate.py",
+          "line": 465,
+          "evidence": "import",
+          "reference": "tools.mapgen.suburban_forest",
+          "text": "from tools.mapgen.suburban_forest import plan"
+        },
+        {
+          "path": "tools/mapgen/generate.py",
+          "line": 506,
+          "evidence": "import",
+          "reference": "tools.mapgen.suburban_forest",
+          "text": "from tools.mapgen.suburban_forest import feature_mask"
+        },
+        {
+          "path": "tools/mapgen/mission_writer.py",
+          "line": 201,
+          "evidence": "import",
+          "reference": "tools.mapgen.suburban_forest",
+          "text": "from tools.mapgen.suburban_forest import colours"
+        },
+        {
+          "path": "tools/mapgen/mission_writer.py",
+          "line": 318,
+          "evidence": "import",
+          "reference": "tools.mapgen.suburban_forest",
+          "text": "from tools.mapgen.suburban_forest import cook_colormap"
+        },
+        {
+          "path": "tools/mapgen/mission_writer.py",
+          "line": 365,
+          "evidence": "import",
+          "reference": "tools.mapgen.suburban_forest",
+          "text": "from tools.mapgen.suburban_forest import feature_mask"
+        },
+        {
+          "path": "tools/mapgen/raster.py",
+          "line": 131,
+          "evidence": "import",
+          "reference": "tools.mapgen.suburban_forest",
+          "text": "from tools.mapgen.suburban_forest import colours"
+        }
+      ]
+    },
+    {
+      "path": "tools/mapgen/validate.py",
+      "basename": "validate.py",
+      "stem": "validate",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tests/mapgen/test_generate.py",
+          "line": 17,
+          "evidence": "import",
+          "reference": "tools.mapgen.validate",
+          "text": "from tools.mapgen.validate import validate"
+        },
+        {
+          "path": "tests/mapgen/test_pixel_generate.py",
+          "line": 10,
+          "evidence": "import",
+          "reference": "tools.mapgen.validate",
+          "text": "from tools.mapgen.validate import validate"
+        },
+        {
+          "path": "tests/mapgen/test_suburban_forest.py",
+          "line": 11,
+          "evidence": "import",
+          "reference": "tools.mapgen.validate",
+          "text": "from tools.mapgen.validate import validate, validate_footprints"
+        },
+        {
+          "path": "tools/mapgen/generate.py",
+          "line": 21,
+          "evidence": "import",
+          "reference": "tools.mapgen.validate",
+          "text": "from tools.mapgen.validate import validate"
+        },
+        {
+          "path": "tools/mapgen/mission_writer.py",
+          "line": 284,
+          "evidence": "import",
+          "reference": "tools.mapgen.validate",
+          "text": "from tools.mapgen.validate import validate"
+        }
+      ]
+    },
+    {
       "path": "tools/material_cook/tests/run_tests.sh",
       "basename": "run_tests.sh",
       "stem": "run_tests",
@@ -8983,6 +9754,13 @@
       "stem": "pak_append",
       "callers_by_basename": [],
       "callers_by_stem": [
+        {
+          "path": "tools/mapgen/mission_writer.py",
+          "line": 26,
+          "evidence": "import",
+          "reference": "tools.pak_append",
+          "text": "from tools.pak_append import PacketRecord, make_zlib_payload, write_pak"
+        },
         {
           "path": "tools/terrain_beautify/scatter_tool.py",
           "line": 63,

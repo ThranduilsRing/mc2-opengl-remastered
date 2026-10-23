@@ -1,4 +1,8 @@
 {
+  "tools/mapgen/__init__.py": "Python package marker for the mapgen command modules; not an executable entry point.",
+  "tools/mapgen/comparison.py": "Manual mapgen plan/capture review sheet command documented in docs/mapgen/phase2/README.md.",
+  "tools/mapgen/playable_demo.py": "Manual stock mission and bookmark generator documented in docs/mapgen/suburban_forest.md.",
+  "tools/mapgen/scale_review.py": "Manual historical seed comparison and scale review command; consumes local git artifacts.",
   "scripts/bake_colormap_ktx2.py": "Existing script at 97949f0f5 with no resolved executable caller; retained pending coordinator cull review. This exception does not certify live use.",
   "scripts/build_release.sh": "Existing script at 97949f0f5 with no resolved executable caller; retained pending coordinator cull review. This exception does not certify live use.",
   "scripts/camera_sweep_smoke.py": "Existing script at 97949f0f5 with no resolved executable caller; retained pending coordinator cull review. This exception does not certify live use.",

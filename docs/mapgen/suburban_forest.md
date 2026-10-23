@@ -46,3 +46,13 @@ native baker. Ground and hover currently share a conservative water-blocked
 graph. Existing rectangle collision remains blocked after destruction, and
 gates use initially passable apertures. This adds no editor UI or campaign,
 victory/save/reload proof.
+
+Farm-furrows material follow-up: the owner's
+`C:/Users/Joe/Downloads/GameAsset/Materials/Ground/farm_furrows_2k/textures/`
+contains `farm_furrows_diff_2k.jpg`, `farm_furrows_nor_gl_2k.jpg` and
+`farm_furrows_arm_2k.jpg` (all 2K). This branch binds terrain detail materials
+globally; the stock mission/colormap path cannot select a new parcel-only PBR
+layer or its cultivation direction. Retain the generated unlit parcel colours
+until that shared terrain path accepts parcel identity and UV direction.
+Then cook diffuse and GL normal, with ARM decoded as AO/roughness/metallic;
+do not replace the global dirt layer or treat ARM as displacement.
