@@ -604,6 +604,9 @@ bool init_island(TerrainIsland* s, int w, int h) {
         plci.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
         const VkDescriptorSetLayout setLayout = s->dsl.get();
         plci.setLayoutCount = 1; plci.pSetLayouts = &setLayout;
+        const VkPushConstantRange patchRange{VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(TerrainPatchConstants)};
+        plci.pushConstantRangeCount = 1;
+        plci.pPushConstantRanges = &patchRange;
         if (!mc2vk::create(s->playout, s->device, [&](auto* h) { return vkCreatePipelineLayout(s->device, &plci, nullptr, h); })) {
             vlog("vkCreatePipelineLayout failed."); return false;
         }

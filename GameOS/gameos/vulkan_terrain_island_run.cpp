@@ -360,7 +360,7 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     // frame, not to the parity, so staging here races nothing): the per-patch dynamic UBO and the light pool + grid spans.
     mc2vk::VulkanContext& rctx = mc2vk::getOrCreateEngineVulkanContext();
     const uint32_t patchCount = feed.patchCount;
-    const mc2vk::FrameAlloc uboSpan = rctx.frameAlloc(static_cast<VkDeviceSize>(patchCount) * sizeof(TerrainFrameUBO));
+    const mc2vk::FrameAlloc uboSpan = rctx.frameAlloc(sizeof(TerrainFrameUBO));
     int32_t vkPoolLights = feed.numPoolLights;
     int32_t vkGridDim    = feed.lightGridDim;
     mc2vk::FrameAlloc lpSpans[3];
@@ -386,24 +386,28 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
 
     const clk::time_point tUboFill0 = clk::now();
 
-    // Fill one dynamic-UBO slot per LOD0 patch (shared MVP/mapSide/halfMap + per-patch
-    // blockOrigin). quadCount comes from the patch record (drives grid rebuild).
-    {
-        ZoneScopedN("VKIsl.Terrain.UboFill");   // VK-ISLAND-TRACY-1: per-patch dynamic-UBO fill
-        uint8_t* slots = static_cast<uint8_t*>(uboSpan.ptr);   // memcpy, not a typed store: the span offset is not guaranteed to match the struct's alignment
-        for (uint32_t i = 0; i < patchCount; ++i) {
-            TerrainFrameUBO u{};
-            fill_frame_ubo(s, feed, feed.patches[i], vkPoolLights, vkGridDim, u);
-            std::memcpy(slots + static_cast<size_t>(i) * sizeof(TerrainFrameUBO), &u, sizeof(TerrainFrameUBO));
-        }
-    }
+    // Common frame data is staged once; only vertex patch constants vary per draw.
+    TerrainFrameUBO common{};
+    fill_frame_ubo(s, feed, Mc2TerrainTier1Patch{}, vkPoolLights, vkGridDim, common);
+    std::memcpy(uboSpan.ptr, &common, sizeof(common));
     sync_ring_bindings(s, par, uboSpan, lpSpans);
     if (mc2_terrain_feed_observation_enabled()) {
+        // Preserve the observation boundary's expanded legacy feed for exact A/B.
+        std::vector<TerrainFrameUBO> expanded(patchCount, common);
+        for (uint32_t i = 0; i < patchCount; ++i) {
+            const auto& p = feed.patches[i];
+            auto& u = expanded[i];
+            u.blockOriginX = p.blockOriginX; u.blockOriginY = p.blockOriginY;
+            u.quadCountX = p.quadCountX; u.quadCountY = p.quadCountY;
+            u.edgeStitch = static_cast<int32_t>(p.edgeStitch);
+            u.visualMode = (p.visualMode == 2 && s->visualHeightReady && feed.visualSide > 1) ? 2 : 0;
+            u.skirtDepth = p.skirtDepth;
+        }
         const uint64_t imported[] = {s->heightVersionCopied, s->cementVersionCopied, s->visualHeightVersionCopied,
             s->colormapVersionImported, s->cementVersionImported, s->shoreMaskVersionImported,
             s->materialSurfaceVersion, s->matNormalVersionImported};
-        mc2_terrain_feed_dump_consumed(&feed, g_mc2RenderFrame, w, h, {static_cast<const uint8_t*>(uboSpan.ptr),
-            static_cast<size_t>(patchCount) * sizeof(TerrainFrameUBO)}, vkPoolLights, vkGridDim, imported);
+        mc2_terrain_feed_dump_consumed(&feed, g_mc2RenderFrame, w, h, {reinterpret_cast<const uint8_t*>(expanded.data()),
+            expanded.size() * sizeof(TerrainFrameUBO)}, vkPoolLights, vkGridDim, imported);
     }
     g_health.stageUs = usStagePre + usSince(tUboFill0);
     g_health.patchRecords = patchCount;
@@ -462,15 +466,20 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     // VK-DRAW-PERF-1: stamp draws-start (gap 0->1 = setup + clear/load).
     s->gpuTimer.write(cb, 1);
 
+    const uint32_t dynOffs[4] = {static_cast<uint32_t>(uboSpan.offset), static_cast<uint32_t>(lpSpans[0].offset),
+                                 static_cast<uint32_t>(lpSpans[1].offset), static_cast<uint32_t>(lpSpans[2].offset)};
+    vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 0, 1, &s->set[par], 4, dynOffs);
+
     unsigned long drawn = 0;
     unsigned long skirtDrawn = 0;  // VK-TERRAIN-SKIRT (rung 4): skirt edge-strip draw count
     for (uint32_t i = 0; i < patchCount; ++i) {
         const Mc2TerrainTier1Patch& pr = feed.patches[i];
         const PatchMesh* pm = getOrBuildPatch(s, pr.quadCountX, pr.quadCountY, pr.lodStep);
         if (!pm || pm->indexCount == 0) continue;
-        const uint32_t dynOffs[4] = {static_cast<uint32_t>(uboSpan.offset + i * sizeof(TerrainFrameUBO)), static_cast<uint32_t>(lpSpans[0].offset),
-                                     static_cast<uint32_t>(lpSpans[1].offset), static_cast<uint32_t>(lpSpans[2].offset)};
-        vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 0, 1, &s->set[par], 4, dynOffs);
+        const TerrainPatchConstants patch{pr.blockOriginX, pr.blockOriginY, pr.quadCountX, pr.quadCountY,
+            static_cast<int32_t>(pr.edgeStitch),
+            (pr.visualMode == 2 && s->visualHeightReady && feed.visualSide > 1) ? 2 : 0, pr.skirtDepth};
+        vkCmdPushConstants(cb, s->playout.get(), VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(patch), &patch);
         mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->pipe.get());
         VkDeviceSize vboOff = 0;
         { const VkBuffer vb = pm->vbo.get(); vkCmdBindVertexBuffers(cb, 0, 1, &vb, &vboOff); }

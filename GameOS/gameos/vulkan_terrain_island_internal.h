@@ -392,6 +392,15 @@ OvlTex* ovl_get_tex(TerrainIsland* s, OvlState* o, uint32_t gosHandle);
 bool ovl_init(TerrainIsland* s, OvlState* o, int w, int h);
 }  // namespace vk_terrain_detail
 
+// Main terrain patches share one frame UBO. Overlays retain the original UBO ABI.
+struct TerrainPatchConstants {
+    int32_t blockOriginX, blockOriginY;
+    int32_t quadCountX, quadCountY;
+    int32_t edgeStitch, visualMode;
+    float skirtDepth;
+};
+static_assert(sizeof(TerrainPatchConstants) == 28);
+
 // Run-piece helpers the overlay piece also calls.
 bool ensure_island_ready(int w, int h);
 // Stages this frame's light pool + grid into frame-ring spans lp[0..2] (bindings 11-13 are always bound: an unused one is a small placeholder). False when

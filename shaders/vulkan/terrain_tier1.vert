@@ -25,6 +25,7 @@
 layout(location = 0) in ivec2 localOffset;
 
 #include "include/terrain_frame_ubo_vk.glsl"
+#include "include/terrain_patch.glsl"
 
 // Height SSBO (VK-owned snapshot of the GL height field, binding 23 semantics).
 layout(set = 0, binding = 1, std430) readonly buffer TerrainHeightBuf {
@@ -49,32 +50,32 @@ float sampleH(int mx, int my) {
 }
 
 void main() {
-    int mapX = clamp(uT.blockOriginX + localOffset.x, 0, uT.mapSide - 1);
-    int mapY = clamp(uT.blockOriginY + localOffset.y, 0, uT.mapSide - 1);
+    int mapX = clamp(uP.blockOriginX + localOffset.x, 0, uT.mapSide - 1);
+    int mapY = clamp(uP.blockOriginY + localOffset.y, 0, uT.mapSide - 1);
     float h  = sampleH(mapX, mapY);
 
     // VK-TERRAIN-EDGE-STITCH-1: VERBATIM port of terrain_lod_chunk.vert's coarse
     // edge-stitch block for main-patch verts (isSkirtFlag==0 here).
-    if (uT.edgeStitch != 0) {
+    if (uP.edgeStitch != 0) {
         int  Sc = 0, along = 0;
         bool alongX = true;
-        if      (localOffset.y == 0             && ((uT.edgeStitch)       & 0xFF) > 0) { Sc = (uT.edgeStitch)       & 0xFF; along = localOffset.x; alongX = true;  }
-        else if (localOffset.y == uT.quadCountY && ((uT.edgeStitch >> 8)  & 0xFF) > 0) { Sc = (uT.edgeStitch >> 8)  & 0xFF; along = localOffset.x; alongX = true;  }
-        else if (localOffset.x == 0             && ((uT.edgeStitch >> 16) & 0xFF) > 0) { Sc = (uT.edgeStitch >> 16) & 0xFF; along = localOffset.y; alongX = false; }
-        else if (localOffset.x == uT.quadCountX && ((uT.edgeStitch >> 24) & 0xFF) > 0) { Sc = (uT.edgeStitch >> 24) & 0xFF; along = localOffset.y; alongX = false; }
+        if      (localOffset.y == 0             && ((uP.edgeStitch)       & 0xFF) > 0) { Sc = (uP.edgeStitch)       & 0xFF; along = localOffset.x; alongX = true;  }
+        else if (localOffset.y == uP.quadCountY && ((uP.edgeStitch >> 8)  & 0xFF) > 0) { Sc = (uP.edgeStitch >> 8)  & 0xFF; along = localOffset.x; alongX = true;  }
+        else if (localOffset.x == 0             && ((uP.edgeStitch >> 16) & 0xFF) > 0) { Sc = (uP.edgeStitch >> 16) & 0xFF; along = localOffset.y; alongX = false; }
+        else if (localOffset.x == uP.quadCountX && ((uP.edgeStitch >> 24) & 0xFF) > 0) { Sc = (uP.edgeStitch >> 24) & 0xFF; along = localOffset.y; alongX = false; }
         if (Sc > 0 && (along % Sc) != 0) {
             int   c0 = (along / Sc) * Sc;
             int   c1 = c0 + Sc;
             float t  = float(along - c0) / float(Sc);
             float h0, h1;
             if (alongX) {
-                int fy = uT.blockOriginY + localOffset.y;
-                h0 = sampleH(uT.blockOriginX + c0, fy);
-                h1 = sampleH(uT.blockOriginX + c1, fy);
+                int fy = uP.blockOriginY + localOffset.y;
+                h0 = sampleH(uP.blockOriginX + c0, fy);
+                h1 = sampleH(uP.blockOriginX + c1, fy);
             } else {
-                int fx = uT.blockOriginX + localOffset.x;
-                h0 = sampleH(fx, uT.blockOriginY + c0);
-                h1 = sampleH(fx, uT.blockOriginY + c1);
+                int fx = uP.blockOriginX + localOffset.x;
+                h0 = sampleH(fx, uP.blockOriginY + c0);
+                h1 = sampleH(fx, uP.blockOriginY + c1);
             }
             h = mix(h0, h1, t);
         }
@@ -88,34 +89,34 @@ void main() {
     // handling matches GL structurally: this is the main-patch VS (isSkirtFlag==0
     // always); the skirt VS ports the same block for its top verts. Local u_* aliases
     // keep the ported lines textually identical to the GL source.
-    if (uT.visualMode == 2) {
+    if (uP.visualMode == 2) {
         int u_visualSide = uT.visualSide;
         float u_visualDisplaceFar = uT.visualDisplaceFar;
         float hv;
         int fxV, fyV;
         int  Sc2 = 0, along2 = 0; bool alongX2 = true;
-        if      (localOffset.y == 0             && ((uT.edgeStitch)       & 0xFF) > 0) { Sc2 = (uT.edgeStitch)       & 0xFF; along2 = localOffset.x; alongX2 = true;  }
-        else if (localOffset.y == uT.quadCountY && ((uT.edgeStitch >> 8)  & 0xFF) > 0) { Sc2 = (uT.edgeStitch >> 8)  & 0xFF; along2 = localOffset.x; alongX2 = true;  }
-        else if (localOffset.x == 0             && ((uT.edgeStitch >> 16) & 0xFF) > 0) { Sc2 = (uT.edgeStitch >> 16) & 0xFF; along2 = localOffset.y; alongX2 = false; }
-        else if (localOffset.x == uT.quadCountX && ((uT.edgeStitch >> 24) & 0xFF) > 0) { Sc2 = (uT.edgeStitch >> 24) & 0xFF; along2 = localOffset.y; alongX2 = false; }
+        if      (localOffset.y == 0             && ((uP.edgeStitch)       & 0xFF) > 0) { Sc2 = (uP.edgeStitch)       & 0xFF; along2 = localOffset.x; alongX2 = true;  }
+        else if (localOffset.y == uP.quadCountY && ((uP.edgeStitch >> 8)  & 0xFF) > 0) { Sc2 = (uP.edgeStitch >> 8)  & 0xFF; along2 = localOffset.x; alongX2 = true;  }
+        else if (localOffset.x == 0             && ((uP.edgeStitch >> 16) & 0xFF) > 0) { Sc2 = (uP.edgeStitch >> 16) & 0xFF; along2 = localOffset.y; alongX2 = false; }
+        else if (localOffset.x == uP.quadCountX && ((uP.edgeStitch >> 24) & 0xFF) > 0) { Sc2 = (uP.edgeStitch >> 24) & 0xFF; along2 = localOffset.y; alongX2 = false; }
         if (Sc2 > 0 && (along2 % Sc2) != 0) {
             int c0 = (along2 / Sc2) * Sc2;
             int c1 = c0 + Sc2;
             float t2 = float(along2 - c0) / float(Sc2);
             float hv0, hv1;
             if (alongX2) {
-                int fyC = uT.blockOriginY + localOffset.y;
-                fxV = clamp((uT.blockOriginX + c0) * 4, 0, u_visualSide - 1);
+                int fyC = uP.blockOriginY + localOffset.y;
+                fxV = clamp((uP.blockOriginX + c0) * 4, 0, u_visualSide - 1);
                 int fyVc = clamp(fyC * 4, 0, u_visualSide - 1);
                 hv0 = heightsFine[fxV + fyVc * u_visualSide];
-                int fxV1 = clamp((uT.blockOriginX + c1) * 4, 0, u_visualSide - 1);
+                int fxV1 = clamp((uP.blockOriginX + c1) * 4, 0, u_visualSide - 1);
                 hv1 = heightsFine[fxV1 + fyVc * u_visualSide];
             } else {
-                int fxC = uT.blockOriginX + localOffset.x;
+                int fxC = uP.blockOriginX + localOffset.x;
                 int fxVc = clamp(fxC * 4, 0, u_visualSide - 1);
-                int fyV0 = clamp((uT.blockOriginY + c0) * 4, 0, u_visualSide - 1);
+                int fyV0 = clamp((uP.blockOriginY + c0) * 4, 0, u_visualSide - 1);
                 hv0 = heightsFine[fxVc + fyV0 * u_visualSide];
-                int fyV1 = clamp((uT.blockOriginY + c1) * 4, 0, u_visualSide - 1);
+                int fyV1 = clamp((uP.blockOriginY + c1) * 4, 0, u_visualSide - 1);
                 hv1 = heightsFine[fxVc + fyV1 * u_visualSide];
             }
             hv = mix(hv0, hv1, t2);
