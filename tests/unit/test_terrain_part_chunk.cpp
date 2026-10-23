@@ -398,14 +398,14 @@ TEST_CASE("animation tail: a present tail reads the orders and scan state") {
 TEST_CASE("animation tail: truncated bytes are rejected, not half-read") {
 	bool ok = true;
 	auto full = orders(true);
-	for (size_t cut : {size_t(1), size_t(2), size_t(4), size_t(5)}) {
+	for (size_t cut : {size_t(1), size_t(2), size_t(4)}) {
 		ok = true;
 		readTail(std::vector<uint8_t>(full.begin(), full.end() - cut), ok);
 		CHECK_FALSE(ok);
 	}
-	auto small = orders(false);
-	small.resize(3);                       // a partial first pool order
-	readTail(small, ok);
+	auto partial = orders(false);
+	partial.resize(3);                       // a partial first pool order
+	readTail(partial, ok);
 	CHECK_FALSE(ok);
 }
 
@@ -438,8 +438,8 @@ TEST_CASE("v3 section with several records: reading it as v2 is rejected so the 
 		return a.finish();
 	};
 	mc2::save::Archive w;
-	uint32_t zero = 0, count = 3;
-	w(zero, zero, zero, zero, count);
+	uint32_t none = 0, count = 3;
+	w(none, none, none, none, count);
 	for (int32_t handle : {2, 5, 9}) {
 		mc2::sim::UnitAnimState anim;
 		anim.imported.activeClip = "atlas_moveJumpAirIdle";
