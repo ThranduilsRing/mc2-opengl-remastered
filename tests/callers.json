@@ -705,7 +705,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/deploy_payload.py",
-          "line": 1749,
+          "line": 1809,
           "evidence": "command",
           "reference": "scripts/check-deploy-hygiene.py",
           "text": "r = subprocess.run([sys.executable, hygiene, target],"
@@ -2120,7 +2120,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1549,
+          "line": 1550,
           "evidence": "command",
           "reference": "scripts/check_sim_include_firewall.py",
           "text": "run_check \"sim_include_firewall\"        \"py -3 -B scripts/tests/test_sim_include_firewall.py && py -3 scripts/check_sim_include_firewall.py\""
@@ -2845,6 +2845,13 @@
           "text": "from scripts import console_child"
         },
         {
+          "path": "tests/mapgen/test_mission_codec.py",
+          "line": 11,
+          "evidence": "import",
+          "reference": "scripts.console_child",
+          "text": "from scripts import console_child"
+        },
+        {
           "path": "tests/smoke/objectives_e6e/generate_assets.py",
           "line": 15,
           "evidence": "import",
@@ -3098,7 +3105,7 @@
         },
         {
           "path": "tools/lane_merge.py",
-          "line": 47,
+          "line": 51,
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child  # noqa: E402  (windowless console children without a conhost each)"
@@ -3597,6 +3604,13 @@
           "text": "import deploy_payload as dp"
         },
         {
+          "path": "scripts/tests/test_deploy_bootstrap.py",
+          "line": 12,
+          "evidence": "import",
+          "reference": "scripts.deploy_payload",
+          "text": "from scripts import deploy_payload as dp  # noqa: E402"
+        },
+        {
           "path": "scripts/tests/test_deploy_build_layout.py",
           "line": 27,
           "evidence": "import",
@@ -4042,6 +4056,13 @@
       "stem": "ninja_build",
       "callers_by_basename": [
         {
+          "path": "tests/mapgen/test_mission_codec.py",
+          "line": 45,
+          "evidence": "command",
+          "reference": "scripts/ninja_build.py",
+          "text": "subprocess.run([sys.executable, str(ROOT / 'scripts/ninja_build.py'), 'editor_objective_reader_tests'], check=True,"
+        },
+        {
           "path": "tools/tools_smoke.py",
           "line": 86,
           "evidence": "command",
@@ -4347,7 +4368,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1527,
+          "line": 1528,
           "evidence": "command",
           "reference": "scripts/run_scripts_tests.py",
           "text": "run_check \"scripts_tests\"              \"py -3 scripts/run_scripts_tests.py\""
@@ -4511,7 +4532,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1548,
+          "line": 1549,
           "evidence": "command",
           "reference": "scripts/run_tools_tests.py",
           "text": "run_check_tri \"tools_tests\"             \"py -3 scripts/run_tools_tests.py\""
@@ -4650,14 +4671,14 @@
         },
         {
           "path": "scripts/deploy_payload.py",
-          "line": 720,
+          "line": 741,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from scripts.smoke_lib import deploy_lease"
         },
         {
           "path": "scripts/deploy_payload.py",
-          "line": 760,
+          "line": 781,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from scripts.smoke_lib import bounded_wait"
@@ -5065,7 +5086,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/deploy_payload.py",
-          "line": 760,
+          "line": 781,
           "evidence": "import",
           "reference": "scripts.smoke_lib.bounded_wait",
           "text": "from scripts.smoke_lib import bounded_wait"
@@ -5231,7 +5252,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/deploy_payload.py",
-          "line": 720,
+          "line": 741,
           "evidence": "import",
           "reference": "scripts.smoke_lib.deploy_lease",
           "text": "from scripts.smoke_lib import deploy_lease"
@@ -6462,6 +6483,13 @@
       "callers_by_stem": []
     },
     {
+      "path": "scripts/tests/test_deploy_bootstrap.py",
+      "basename": "test_deploy_bootstrap.py",
+      "stem": "test_deploy_bootstrap",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
       "path": "scripts/tests/test_deploy_build_layout.py",
       "basename": "test_deploy_build_layout.py",
       "stem": "test_deploy_build_layout",
@@ -6755,7 +6783,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1549,
+          "line": 1550,
           "evidence": "command",
           "reference": "scripts/tests/test_sim_include_firewall.py",
           "text": "run_check \"sim_include_firewall\"        \"py -3 -B scripts/tests/test_sim_include_firewall.py && py -3 scripts/check_sim_include_firewall.py\""
@@ -6892,7 +6920,7 @@
         },
         {
           "path": "tools/lane_merge.py",
-          "line": 49,
+          "line": 53,
           "evidence": "import",
           "reference": "_git_util",
           "text": "import _git_util  # noqa: E402  (shared git helpers)"
@@ -9173,7 +9201,7 @@
         },
         {
           "path": "tools/test_lane_merge.py",
-          "line": 297,
+          "line": 306,
           "evidence": "import",
           "reference": "lane_merge",
           "text": "import lane_merge as lm  # noqa: E402"
@@ -10111,7 +10139,7 @@
         },
         {
           "path": "tests/mapgen/test_mission_codec.py",
-          "line": 10,
+          "line": 15,
           "evidence": "import",
           "reference": "tools.mc2data.stock_missions",
           "text": "from tools.mc2data.stock_missions import resolve_missions_dir"
@@ -10706,7 +10734,7 @@
         },
         {
           "path": "tests/mapgen/test_mission_codec.py",
-          "line": 8,
+          "line": 13,
           "evidence": "import",
           "reference": "tools.mission_codec",
           "text": "from tools.mission_codec import (decode_move, encode_move, encode_objects,"
@@ -11030,7 +11058,7 @@
       "callers_by_stem": [
         {
           "path": "tests/mapgen/test_mission_codec.py",
-          "line": 11,
+          "line": 16,
           "evidence": "import",
           "reference": "tools.pak_append",
           "text": "from tools.pak_append import PacketRecord, make_zlib_payload, write_pak"
