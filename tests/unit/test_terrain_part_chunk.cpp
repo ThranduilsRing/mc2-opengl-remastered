@@ -178,3 +178,138 @@ TEST_CASE("v2 order paths retain 256 steps and a cursor beyond the legacy byte c
 	overflow(saved);
 	CHECK_FALSE(overflow.good());
 }
+
+// ---- Merge window 40: the four save changes together (WQT2 wide targets, R2 anim v3, pool-order trailer, exact clocks) ----
+#include "unit_anim_state.h"
+#include "simulation_save_section.h"
+#include "save_exactness.h"
+#include <cstdlib>
+
+namespace {
+struct FakeObj { int id; };
+}
+
+TEST_CASE("save v3 round trip: wide queue, anim v3 with jump phase, pool order and exact clocks together") {
+	SavedQueueTargets queue;
+	queue.targets = {70001, 0, 80002};
+	queue.globalPath.resize(MAX_GLOBAL_PATH);
+	queue.lastGoalPath.assign(MAX_GLOBAL_PATH, 29999);
+	queue.curGlobalStep = 200;
+	for (auto& step : queue.globalPath) step.thruArea = 29999;
+	mc2::sim::UnitAnimState anim;
+	anim.imported.activeClip = "atlas_moveJumpAirIdle";
+	anim.imported.phase.jumpStarted = true;
+	anim.imported.phase.landing = true;
+	anim.imported.phase.prevGesture = 4;
+	anim.imported.mode = mc2clip::Mode::Once;
+	anim.imported.locomotion = true;
+	std::vector<FakeObj> objs(5);
+	FakeObj* list[6] = {nullptr};
+	for (int i = 1; i <= 5; ++i) { objs[i - 1].id = i; list[i] = &objs[i - 1]; }
+	std::vector<int32_t> turretOrder = {3, 1, 2}, buildingOrder = {5, 4};
+	// One ulp above a 1/30 multiple: the legacy six-decimal text could not represent it.
+	const float clock = std::nextafter(1.0f / 30.0f * 7.0f, 10.0f);
+
+	mc2::save::Archive write;
+	uint32_t tag = 0x4E413252u, version = 3;
+	write(tag, version);
+	mc2::save::Bytes blob;
+	{
+		mc2::save::Archive inner;
+		int32_t handle = 7;
+		inner(handle, anim, turretOrder, buildingOrder);
+		REQUIRE(inner.good());
+		blob = inner.bytes();
+	}
+	mc2::sim::serializeAnimationBlob(write, blob);
+	queue.serialize(write);
+	REQUIRE(write.good());
+
+	mc2::save::Archive read(write.bytes());
+	uint32_t rtag = 0, rversion = 0;
+	read(rtag, rversion);
+	CHECK(rtag == tag);
+	CHECK(rversion == 3);
+	read.sectionVersion = rversion;
+	mc2::save::Bytes rblob;
+	mc2::sim::serializeAnimationBlob(read, rblob);
+	SavedQueueTargets rq;
+	rq.serialize(read);
+	REQUIRE(read.finish());
+	CHECK(rq.targets == queue.targets);
+	CHECK(rq.globalPath.size() == MAX_GLOBAL_PATH);
+	CHECK(rq.curGlobalStep == 200);
+
+	mc2::save::Archive inner(rblob);
+	int32_t handle = 0;
+	mc2::sim::UnitAnimState ranim;
+	std::vector<int32_t> rturrets, rbuildings;
+	inner(handle, ranim, rturrets, rbuildings);
+	REQUIRE(inner.finish());
+	CHECK(handle == 7);
+	CHECK(ranim.imported.phase.landing);
+	CHECK(ranim.imported.phase.jumpStarted);
+	CHECK(ranim.imported.phase.prevGesture == 4);
+	CHECK(ranim.imported.mode == mc2clip::Mode::Once);
+	CHECK(ranim.imported.locomotion);
+
+	FakeObj* turrets[3] = {&objs[0], &objs[1], &objs[2]};
+	mc2::save::applyPoolOrder(std::span<FakeObj*>(turrets, 3), rturrets, list, 5);
+	CHECK(turrets[0]->id == 3);
+	CHECK(turrets[1]->id == 1);
+	CHECK(turrets[2]->id == 2);
+	FakeObj* buildings[2] = {&objs[3], &objs[4]};
+	mc2::save::applyPoolOrder(std::span<FakeObj*>(buildings, 2), rbuildings, list, 5);
+	CHECK(buildings[0]->id == 5);
+	// A list that is not a permutation of the pool leaves it untouched.
+	FakeObj* stray[3] = {&objs[0], &objs[1], &objs[2]};
+	mc2::save::applyPoolOrder(std::span<FakeObj*>(stray, 3), std::vector<int32_t>{1, 2, 4}, list, 5);
+	CHECK(stray[0]->id == 1);
+	CHECK(stray[2]->id == 3);
+
+	char line[255];
+	mc2::save::exactFloatLine(line, "ActualTime", clock);
+	const char* eq = std::strchr(line, '=');
+	REQUIRE(eq);
+	CHECK(std::strtof(eq + 1, nullptr) == clock);
+}
+
+TEST_CASE("a pre-change R2 animation record (v2, no selector memory) loads with defaults; bad modes reject") {
+	mc2::sim::UnitAnimState v3;
+	v3.imported.activeClip = "walk";
+	v3.imported.clipTimeSec = 0.5f;
+	v3.imported.phase.landing = true;
+	v3.imported.mode = mc2clip::Mode::Once;
+	v3.imported.locomotion = true;
+	mc2::save::Archive current;
+	current(v3);
+	REQUIRE(current.good());
+	// Synthesised v2 blob: a v2 archive writes the record without the selector memory.
+	mc2::save::Archive legacy;
+	legacy.sectionVersion = 2;
+	legacy(v3);
+	REQUIRE(legacy.good());
+	CHECK(legacy.bytes().size() < current.bytes().size());
+	mc2::sim::UnitAnimState loaded;
+	mc2::save::Archive read(legacy.bytes());
+	read.sectionVersion = 2;
+	read(loaded);
+	REQUIRE(read.finish());
+	CHECK(loaded.imported.activeClip == "walk");
+	CHECK(loaded.imported.clipTimeSec == 0.5f);
+	CHECK_FALSE(loaded.imported.phase.landing);
+	CHECK(loaded.imported.mode == mc2clip::Mode::Loop);
+	CHECK_FALSE(loaded.imported.locomotion);
+	// The v2 bytes read as v3 must not pass silently.
+	mc2::sim::UnitAnimState wrong;
+	mc2::save::Archive misread(legacy.bytes());
+	misread(wrong);
+	CHECK_FALSE(misread.finish());
+	// imported is the last member: the final five bytes are modeInt (int32) and locomotion.
+	auto bad = current.bytes();
+	bad[bad.size() - 5] = 2;
+	mc2::sim::UnitAnimState rejected;
+	mc2::save::Archive badRead(bad);
+	badRead(rejected);
+	CHECK_FALSE(badRead.good());
+}
