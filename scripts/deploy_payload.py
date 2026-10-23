@@ -972,10 +972,14 @@ def enumerate_payload(src_root, build_dir, exe_name, pdb_name,
             rel = os.path.relpath(p, src_root).replace(os.sep, "/")
             items.append((p, rel, "shader"))
 
-    # Spatial AA reference sources and notices travel with their compiled shaders.
+    # Lookup textures are embedded in the exe; deploy notices, not reference sources.
     for tree in ("3rdparty/smaa", "3rdparty/cmaa2"):
+        if require_build and not os.path.isdir(os.path.join(src_root, tree)):
+            fail(f"spatial AA payload tree missing in source: {tree}")
         for directory, _dirs, files in os.walk(os.path.join(src_root, tree)):
             for fn in sorted(files):
+                if not fn.lower().startswith(("license", "notice", "upstream")):
+                    continue
                 path = os.path.join(directory, fn)
                 rel = os.path.relpath(path, src_root).replace(os.sep, "/")
                 items.append((path, rel, "support"))
@@ -1232,6 +1236,23 @@ def deploy(items, target_dir, allow_stale_pdb, preserve=(), cache=None,
         log("PDB check OK: unchanged (size+mtime_ns match the manifest)")
     else:
         log("PDB check OK: deployed PDB matches source hash")
+
+    # Retire only unchanged files owned by the previous deploy. Resolve paths before
+    # unlinking so a malformed manifest or a directory junction cannot escape the target.
+    root = Path(target_dir).resolve()
+    for rel, (digest, _size, _mtime) in read_manifest(target_dir).items():
+        if rel in src_hashes or rel in preserve:
+            continue
+        retired = root / rel
+        resolved = retired.resolve()
+        if not resolved.is_relative_to(root) or resolved == root:
+            fail(f"retired payload path escapes target: {rel}")
+        if retired.is_file():
+            if sha256_file(retired) != digest:
+                log(f"preserved modified retired payload: {rel}")
+                continue
+            retired.unlink()
+            log(f"pruned retired payload: {rel}")
 
     return src_hashes
 
