@@ -630,39 +630,44 @@ void main() {
             float nzc        = clamp(abs(macroN.z), 0.0, 0.9995);
             float sinSlope   = max(sqrt(max(1.0 - nzc * nzc, 1e-6)), 0.03);
             float horizDist  = max(aboveWater, 0.0) * (nzc / sinSlope);
-            float horizDistJ = max(horizDist + fbm(v_worldPos.xy * 0.055, 2) * uT.shorelineEdgeJitter, 0.0);
-            float slWet  = 1.0 - smoothstep(0.0, max(uT.shorelineWetRun, 1e-4), horizDistJ);
-            float slFoam = 1.0 - smoothstep(0.0, max(uT.shorelineFoamRun, 1e-4), horizDistJ);
-            float aboveFade = smoothstep(0.0, 1.5, horizDist);
-            slWet  *= aboveFade;
-            slFoam *= aboveFade;
-            if (uT.shorelineHasMask != 0) {
-                vec2 slUV = vec2((v_worldPos.x - uT.shorelineBoundsX) / max(uT.shorelineBoundsW, 1e-5),
-                                 (uT.shorelineBoundsY - v_worldPos.y) / max(uT.shorelineBoundsH, 1e-5));
-                if (slUV.x >= 0.0 && slUV.x <= 1.0 && slUV.y >= 0.0 && slUV.y <= 1.0) {
-                    vec4 sl = texture(u_shorelineMask, slUV);
-                    slWet  *= mix(1.0, clamp(sl.g, 0.0, 1.0), sl.a);
-                    slFoam *= mix(1.0, clamp(sl.b, 0.0, 1.0), sl.a);
+            // Both bands are zero outside (0, reach): aboveFade is 0 at the waterline and the smoothsteps are 0 past the runs, and
+            // |fbm(.., 2)| <= 0.75, so the jittered run cannot re-enter. Skipping there is exact and saves the noise on most pixels.
+            float shoreReach = max(uT.shorelineWetRun, uT.shorelineFoamRun) + abs(uT.shorelineEdgeJitter);
+            if (horizDist > 0.0 && horizDist < shoreReach) {
+                float horizDistJ = max(horizDist + fbm(v_worldPos.xy * 0.055, 2) * uT.shorelineEdgeJitter, 0.0);
+                float slWet  = 1.0 - smoothstep(0.0, max(uT.shorelineWetRun, 1e-4), horizDistJ);
+                float slFoam = 1.0 - smoothstep(0.0, max(uT.shorelineFoamRun, 1e-4), horizDistJ);
+                float aboveFade = smoothstep(0.0, 1.5, horizDist);
+                slWet  *= aboveFade;
+                slFoam *= aboveFade;
+                if (uT.shorelineHasMask != 0) {
+                    vec2 slUV = vec2((v_worldPos.x - uT.shorelineBoundsX) / max(uT.shorelineBoundsW, 1e-5),
+                                     (uT.shorelineBoundsY - v_worldPos.y) / max(uT.shorelineBoundsH, 1e-5));
+                    if (slUV.x >= 0.0 && slUV.x <= 1.0 && slUV.y >= 0.0 && slUV.y <= 1.0) {
+                        vec4 sl = texture(u_shorelineMask, slUV);
+                        slWet  *= mix(1.0, clamp(sl.g, 0.0, 1.0), sl.a);
+                        slFoam *= mix(1.0, clamp(sl.b, 0.0, 1.0), sl.a);
+                    }
                 }
-            }
-            float slopeAtten = clamp((N.z - 0.940) / (0.978 - 0.940), 0.0, 1.0);   // full at 12 deg, zero at 20 deg
-            vec4 slW = materialW; float slSnow = materialSnow;
-            slW = mix(slW, vec4(0.0, 0.0, 0.0, 1.0), F3pc);
-            slSnow *= (1.0 - F3pc);
-            float litLuma       = dot(lit, vec3(0.299, 0.587, 0.114));
-            float shoreAffinity = smoothstep(0.08, 0.26, litLuma) * clamp(1.0 - slW.x - slSnow, 0.0, 1.0);
-            if (slWet > 0.001 && !cementHit && slopeAtten > 0.0 && shoreAffinity > 0.001) {
-                float wetAmt = clamp(slWet, 0.0, 1.0) * (1.0 - F3pc) * slopeAtten * shoreAffinity * uT.shorelineStrength;
-                lit = mix(lit, vec3(1.16, 1.06, 0.78) * (litLuma * 0.90), clamp(wetAmt, 0.0, 1.0) * 0.85);
-            }
-            if (slFoam > 0.001 && slopeAtten > 0.0 && shoreAffinity > 0.001) {
-                float foamScroll = fbm(v_worldPos.xy * 0.09 + uT.shorelineTime * 0.15, 3) * 0.5 + 0.5;
-                float foamPulse  = fbm(v_worldPos.xy * 0.20 - uT.shorelineTime * 0.22 + 19.0, 2) * 0.5 + 0.5;
-                float foamNoise  = clamp(mix(foamScroll, foamPulse, 0.5), 0.0, 1.0);
-                float slF        = clamp(slFoam, 0.0, 1.0);
-                float coverage   = smoothstep(1.0 - slF * 0.85, 1.0, foamNoise + (1.0 - slF) * 0.15);
-                float foamAmt    = coverage * slopeAtten * uT.shorelineFoamStrength * shoreAffinity;
-                lit = mix(lit, vec3(0.92), clamp(foamAmt, 0.0, 1.0) * (1.0 - F3pc));
+                float slopeAtten = clamp((N.z - 0.940) / (0.978 - 0.940), 0.0, 1.0);   // full at 12 deg, zero at 20 deg
+                vec4 slW = materialW; float slSnow = materialSnow;
+                slW = mix(slW, vec4(0.0, 0.0, 0.0, 1.0), F3pc);
+                slSnow *= (1.0 - F3pc);
+                float litLuma       = dot(lit, vec3(0.299, 0.587, 0.114));
+                float shoreAffinity = smoothstep(0.08, 0.26, litLuma) * clamp(1.0 - slW.x - slSnow, 0.0, 1.0);
+                if (slWet > 0.001 && !cementHit && slopeAtten > 0.0 && shoreAffinity > 0.001) {
+                    float wetAmt = clamp(slWet, 0.0, 1.0) * (1.0 - F3pc) * slopeAtten * shoreAffinity * uT.shorelineStrength;
+                    lit = mix(lit, vec3(1.16, 1.06, 0.78) * (litLuma * 0.90), clamp(wetAmt, 0.0, 1.0) * 0.85);
+                }
+                if (slFoam > 0.001 && slopeAtten > 0.0 && shoreAffinity > 0.001) {
+                    float foamScroll = fbm(v_worldPos.xy * 0.09 + uT.shorelineTime * 0.15, 3) * 0.5 + 0.5;
+                    float foamPulse  = fbm(v_worldPos.xy * 0.20 - uT.shorelineTime * 0.22 + 19.0, 2) * 0.5 + 0.5;
+                    float foamNoise  = clamp(mix(foamScroll, foamPulse, 0.5), 0.0, 1.0);
+                    float slF        = clamp(slFoam, 0.0, 1.0);
+                    float coverage   = smoothstep(1.0 - slF * 0.85, 1.0, foamNoise + (1.0 - slF) * 0.15);
+                    float foamAmt    = coverage * slopeAtten * uT.shorelineFoamStrength * shoreAffinity;
+                    lit = mix(lit, vec3(0.92), clamp(foamAmt, 0.0, 1.0) * (1.0 - F3pc));
+                }
             }
         }
 
