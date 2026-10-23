@@ -120,3 +120,17 @@ TEST_CASE("vegetation placement budget covers both map edges without exhausting 
     }
     CHECK(mc2::vegetation::placementStep(700.0f,14.0f,25,5000000)==14.0f);
 }
+
+TEST_CASE("vegetation storage budget fits minimum device and whole-map placement") {
+    using namespace mc2::vegetation;
+    constexpr uint64_t limit = 128ull * 1024 * 1024;
+    const uint32_t cap = storagePopulationCapacity(5000000, limit);
+    CHECK(cap == 4194304);
+    CHECK(uint64_t(cap) * 32 <= limit);
+    CHECK(storagePopulationCapacity(1000, limit) == 1000);
+    CHECK(storagePopulationCapacity(1000, 31) == 0);
+    CHECK(storagePopulationCapacity(5000000, limit - 1) == cap - 1);
+    const float step = placementStep(131072, 14, 25, int(cap));
+    const uint64_t side = uint64_t(131072 / step) - 1;
+    CHECK(side * side * 12 <= cap);
+}

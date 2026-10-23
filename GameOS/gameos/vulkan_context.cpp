@@ -407,6 +407,7 @@ bool VulkanContext::init(bool wantPresent) {
     enS2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES_KHR;
     {
         enableFeatures.features.independentBlend = featureEnabled("independentBlend") ? VK_TRUE : VK_FALSE;
+        enableFeatures.features.samplerAnisotropy = featureEnabled("samplerAnisotropy") ? VK_TRUE : VK_FALSE;
         en12.timelineSemaphore = featureEnabled("timelineSemaphore") ? VK_TRUE : VK_FALSE;
         en12.bufferDeviceAddress = featureEnabled("bufferDeviceAddress") ? VK_TRUE : VK_FALSE;
         en12.descriptorIndexing = featureEnabled("descriptorIndexing") ? VK_TRUE : VK_FALSE;
@@ -501,7 +502,7 @@ void VulkanContext::retireIsland(IslandSlot slot) {
     std::unique_ptr<IslandState>& parked = islandSlot(slot);
     if (!parked) return;
     // The order of these lines is the shutdown order: with the image-owner lines of vk_image_resource.cpp they let a log show the destroy() precondition.
-    static constexpr const char* kSlotNames[] = {"Vfx", "Sky", "LegacyShape", "Preview", "Mech", "ColorProp", "Water", "Shadow", "Terrain", "PassTimer", "ActorCull"};
+    static constexpr const char* kSlotNames[] = {"Vfx", "Sky", "LegacyShape", "Preview", "Mech", "ColorProp", "Water", "Shadow", "Terrain", "PassTimer", "ActorCull", "Vegetation"};
     static_assert(sizeof(kSlotNames) / sizeof(kSlotNames[0]) == static_cast<size_t>(IslandSlot::Count), "name every island slot");
     if (mc2_diag::tagRequested("VK_SHUTDOWN")) ctxlog("retire island slot=%s.", kSlotNames[static_cast<size_t>(slot)]);
     waitIdle("retire_island");

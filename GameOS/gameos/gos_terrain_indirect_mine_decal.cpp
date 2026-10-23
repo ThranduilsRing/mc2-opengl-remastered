@@ -3,6 +3,9 @@
 #include "../../mclib/texture_assets.h"
 #include "mc2fmt.h"
 #include "texture_decode.h"
+#include <mdspan>
+#include "../../GameAdapters/vegetation_hardsurface.h"
+#include "terrain_field_store.h"
 
 namespace {
 struct MineVert { float pos[3]; float uv[2]; uint32_t layer; };
@@ -251,11 +254,13 @@ void RebuildCementAtlasIfDirty() {
 // Mirror MarkMineDirty — idempotent; multiple cement mutations between paints
 // debounce to one rebuild via the dirty flag.
 void MarkDecalDirty() {
+    InvalidateHardSurfaceField();
     g_decalVBODirty = true;
 }
 
 // Clear the mission-owned CPU decal bake; the native consumer owns its GPU copy.
 void ResetDecalStaticVBO() {
+    InvalidateHardSurfaceField();
     g_decalVertCount = 0;
     g_decalVBODirty  = true;
     g_decalDrawRanges.clear();
@@ -271,6 +276,56 @@ void ResetDecalStaticVBO() {
 // Mirror BuildMineStaticVBO. Iterates the map-immutable Shape-C terrain face
 // cache exactly as MapData::buildTerrainFaceCache does (mapdata.cpp:262-309):
 // same tile range, same 4-corner block layout, same worldQuadUVMode formula.
+bool CementWordSuppressesDecal(const MapData::WorldQuadTerrainCacheEntry* e,
+                                Overlays overlayType, long tileR, long tileC) {
+    const long mapSide = Terrain::realVerticesMapSide;
+    const auto blocks = Terrain::mapData->getBlocks();
+            if (e->isCement() && e->isAlpha() && overlayType == INVALID_OVERLAY) {
+                // MISSING-RUNWAY-1 (mc2_10 field report 2026-07-18): the blanket
+                // skip here assumed every isCement&&isAlpha&&no-&Overlays tile is
+                // a true CONCRETE transition the frag cement-word edge system
+                // redraws. WRONG on mc2_10: its roads + the airbase runway are
+                // authored as cement-ALPHA transition tile art over SNOW terrain
+                // (type 68) with NO &Overlays id — no corner vertex has a cement
+                // terrain type, so PopulateRecipeCementWords bakes NO word
+                // (maskId needs >=1 cement corner) and the frag draws nothing;
+                // skipping the legacy decal too left the runway/roads INVISIBLE
+                // (tile census: e.g. tex=771 n=93, tex=774 n=80, all ov=-1).
+                // Skip ONLY when the cement-word system actually owns the tile —
+                // same corner predicate PopulateRecipeCementWords uses (>=1
+                // corner terrainType mapping to a cement catalog layer AND a
+                // valid mask). Otherwise fall through and bake the decal (the
+                // tile texture IS the road/runway art). If the cement layer map
+                // is not ready yet, keep the old skip (conservative; the words
+                // bake before the first decal build in the mission-load order).
+                // Killswitch MC2_MISSING_RUNWAY_FIX=0 -> old blanket skip.
+                static const bool s_runwayFix = mc2::gate::get<"MC2_MISSING_RUNWAY_FIX">();
+                bool fragOwnsTile = true;
+                if (s_runwayFix && g_cementLayerMapReady && blocks) {
+                    auto cemCorner = [&](long r, long c2) -> bool {
+                        const size_t vi = static_cast<size_t>(r) * static_cast<size_t>(mapSide) + static_cast<size_t>(c2);
+                        const DWORD  vt = blocks[vi].terrainType;
+                        return vt < static_cast<DWORD>(MC_MAX_TERRAIN_TXMS)
+                               && g_cementLayerIndexBySlot[vt] != 0xFFFFu;
+                    };
+                    const bool c0 = cemCorner(tileR,     tileC);
+                    const bool c1 = cemCorner(tileR,     tileC + 1);
+                    const bool c2 = cemCorner(tileR + 1, tileC + 1);
+                    const bool c3 = cemCorner(tileR + 1, tileC);
+                    fragOwnsTile = (c0 || c1 || c2 || c3)
+                                   && deriveMaskIdFromCorners(c0, c1, c2, c3) >= 0;
+                    // PAD-EDGE-ROAD-1: road-adjacent pad-edge transition tiles
+                    // revert to the stock decal (PopulateRecipeCementWords
+                    // bakes NO cement word for them — complementary predicate).
+                    if (fragOwnsTile && PadEdgeRoadFixEnabled()
+                        && TileRoadAdjacent8(tileR, tileC, mapSide, blocks))
+                        fragOwnsTile = false;
+                }
+                return fragOwnsTile;
+            }
+    return false;
+}
+
 void BuildDecalStaticVBO() {
     g_decalVertCount = 0;
     g_decalDrawRanges.clear();
@@ -386,49 +441,7 @@ void BuildDecalStaticVBO() {
             Overlays decalOverlayType = INVALID_OVERLAY;
             DWORD    decalOverlayOffset = 0;
             Terrain::mapData->getOverlay(tileR, tileC, decalOverlayType, decalOverlayOffset);
-            if (e->isCement() && e->isAlpha() && decalOverlayType == INVALID_OVERLAY) {
-                // MISSING-RUNWAY-1 (mc2_10 field report 2026-07-18): the blanket
-                // skip here assumed every isCement&&isAlpha&&no-&Overlays tile is
-                // a true CONCRETE transition the frag cement-word edge system
-                // redraws. WRONG on mc2_10: its roads + the airbase runway are
-                // authored as cement-ALPHA transition tile art over SNOW terrain
-                // (type 68) with NO &Overlays id — no corner vertex has a cement
-                // terrain type, so PopulateRecipeCementWords bakes NO word
-                // (maskId needs >=1 cement corner) and the frag draws nothing;
-                // skipping the legacy decal too left the runway/roads INVISIBLE
-                // (tile census: e.g. tex=771 n=93, tex=774 n=80, all ov=-1).
-                // Skip ONLY when the cement-word system actually owns the tile —
-                // same corner predicate PopulateRecipeCementWords uses (>=1
-                // corner terrainType mapping to a cement catalog layer AND a
-                // valid mask). Otherwise fall through and bake the decal (the
-                // tile texture IS the road/runway art). If the cement layer map
-                // is not ready yet, keep the old skip (conservative; the words
-                // bake before the first decal build in the mission-load order).
-                // Killswitch MC2_MISSING_RUNWAY_FIX=0 -> old blanket skip.
-                static const bool s_runwayFix = mc2::gate::get<"MC2_MISSING_RUNWAY_FIX">();
-                bool fragOwnsTile = true;
-                if (s_runwayFix && g_cementLayerMapReady && blocks) {
-                    auto cemCorner = [&](long r, long c2) -> bool {
-                        const size_t vi = static_cast<size_t>(r) * static_cast<size_t>(mapSide) + static_cast<size_t>(c2);
-                        const DWORD  vt = blocks[vi].terrainType;
-                        return vt < static_cast<DWORD>(MC_MAX_TERRAIN_TXMS)
-                               && g_cementLayerIndexBySlot[vt] != 0xFFFFu;
-                    };
-                    const bool c0 = cemCorner(tileR,     tileC);
-                    const bool c1 = cemCorner(tileR,     tileC + 1);
-                    const bool c2 = cemCorner(tileR + 1, tileC + 1);
-                    const bool c3 = cemCorner(tileR + 1, tileC);
-                    fragOwnsTile = (c0 || c1 || c2 || c3)
-                                   && deriveMaskIdFromCorners(c0, c1, c2, c3) >= 0;
-                    // PAD-EDGE-ROAD-1: road-adjacent pad-edge transition tiles
-                    // revert to the stock decal (PopulateRecipeCementWords
-                    // bakes NO cement word for them — complementary predicate).
-                    if (fragOwnsTile && PadEdgeRoadFixEnabled()
-                        && TileRoadAdjacent8(tileR, tileC, mapSide, blocks))
-                        fragOwnsTile = false;
-                }
-                if (fragOwnsTile) continue;
-            }
+            if (CementWordSuppressesDecal(e, decalOverlayType, tileR, tileC)) continue;
 
             const DWORD overlayTexId = tex_resolve(overlayHandle);
             if (overlayTexId == 0) continue;
@@ -619,6 +632,161 @@ void RebuildDecalStaticVBOIfDirty() {
 }
 
 
+
+// ---------------------------------------------------------------------------
+// Vegetation coverage follows the terrain cement words plus decals that the
+// bake actually submits. Solid tiles use a sentinel; transitions use R8 blocks.
+// ---------------------------------------------------------------------------
+namespace {
+constexpr int kHsRes = 32;                       // texels per tile side (4 wu at 128 wu/tile)
+struct HardSurfaceField {
+    bool                 built = false;
+    long                 side = 0;               // tiles per side (cacheW)
+    long                 half = 0;
+    float                wupv = 128.0f;
+    std::vector<int32_t> blockOf;                // tile -> block index or -1
+    std::vector<uint8_t> texels;                 // blocks * kHsRes * kHsRes
+    int                  tilesAlpha = 0, tilesPure = 0, tilesNoImage = 0, tilesRoadSkipped = 0;
+};
+HardSurfaceField g_hs;
+
+inline uint8_t hsTexel(long ix, long iy) {
+    if (ix < 0 || iy < 0) return 0;
+    const long tc = ix / kHsRes, tr = iy / kHsRes;
+    if (tc >= g_hs.side || tr >= g_hs.side) return 0;
+    const int32_t b = g_hs.blockOf[static_cast<size_t>(tr) * static_cast<size_t>(g_hs.side) + static_cast<size_t>(tc)];
+    if (b == -2) return 255; // uniform solid coverage needs no texel block
+    if (b < 0) return 0;
+    return g_hs.texels[(static_cast<size_t>(b) * kHsRes + static_cast<size_t>(iy % kHsRes)) * kHsRes + static_cast<size_t>(ix % kHsRes)];
+}
+
+void BuildHardSurfaceField() {
+    g_hs = HardSurfaceField{};
+    g_hs.built = true;
+    if (!Terrain::mapData) return;
+    const long mapSide = Terrain::realVerticesMapSide;
+    const long cacheW  = mapSide - 1;
+    if (cacheW <= 0) return;
+    g_hs.side = cacheW;
+    g_hs.half = Terrain::halfVerticesMapSide;
+    g_hs.wupv = Terrain::worldUnitsPerVertex;
+    g_hs.blockOf.assign(static_cast<size_t>(cacheW) * static_cast<size_t>(cacheW), -1);
+
+    const auto* fields = gos_TerrainFieldStore();
+    const auto wordAt = [&](int row, int col) -> uint32_t {
+        if (!fields || row < 0 || col < 0 || row >= mapSide || col >= mapSide) return 0;
+        const size_t index = size_t(row) * size_t(mapSide) + size_t(col);
+        return index < fields->cementWords().size() ? fields->cementWords()[index] : 0;
+    };
+    for (long tr = 0; tr < cacheW; ++tr) {
+        for (long tc = 0; tc < cacheW; ++tc) {
+            const MapData::WorldQuadTerrainCacheEntry* e = Terrain::mapData->getTerrainFaceCacheEntry(tr, tc);
+            if (!e || !e->isValid() || (!e->isCement() && !wordAt(tr, tc))) continue;
+            Overlays ovT = INVALID_OVERLAY; DWORD ovO = 0;
+            Terrain::mapData->getOverlay(tr, tc, ovT, ovO);
+            const bool softOverlay = ovT == ROUGH || ovT == DIRT_ROAD;
+            if (softOverlay) ++g_hs.tilesRoadSkipped;
+
+            const bool alphaTile = e->isAlpha() && e->overlayHandle != 0xffffffffu;
+            std::shared_ptr<const RenderCore::KtxImage> img;
+            if (alphaTile && e->overlayHandle < static_cast<DWORD>(mc2::textures::kTextureAssetLimit))
+                img = mc2::textures::image(e->overlayHandle);
+            const bool imgOk = img && img->vkFormat == 37 && img->width > 0 && img->height > 0 &&
+                               img->pixels.size() >= static_cast<size_t>(img->width) * static_cast<size_t>(img->height) * 4u;
+
+            const int32_t b = static_cast<int32_t>(g_hs.texels.size() / (static_cast<size_t>(kHsRes) * kHsRes));
+            g_hs.texels.resize(g_hs.texels.size() + static_cast<size_t>(kHsRes) * kHsRes, 0);
+            uint8_t* blk = &g_hs.texels[static_cast<size_t>(b) * kHsRes * kHsRes];
+            const std::mdspan<uint8_t, std::extents<size_t, kHsRes, kHsRes>> coverage(blk);
+            if (!alphaTile || !imgOk) {
+                // Pure cement (class 3), or an alpha tile whose source pixels are
+                // unavailable: full coverage (conservative -- no vegetation).
+                memset(blk, 255, static_cast<size_t>(kHsRes) * kHsRes);
+                if (alphaTile) ++g_hs.tilesNoImage; else ++g_hs.tilesPure;
+            } else {
+                ++g_hs.tilesAlpha;
+                // The bake maps u along +x (tileC) and v along +row (south) over
+                // [kOldMin, kOldMax]; sample the same way (box-filtered per texel).
+                const int W = img->width, H = img->height;
+                const float u0 = kOldMinU, u1 = kOldMaxU, v0 = kOldMinV, v1 = kOldMaxV;
+                for (int r = 0; r < kHsRes; ++r) {
+                    for (int c = 0; c < kHsRes; ++c) {
+                        const float ua = u0 + (u1 - u0) * (static_cast<float>(c)     / kHsRes);
+                        const float ub = u0 + (u1 - u0) * (static_cast<float>(c + 1) / kHsRes);
+                        const float va = v0 + (v1 - v0) * (static_cast<float>(r)     / kHsRes);
+                        const float vb = v0 + (v1 - v0) * (static_cast<float>(r + 1) / kHsRes);
+                        const int x0 = std::clamp(static_cast<int>(ua * W), 0, W - 1);
+                        const int x1 = std::clamp(static_cast<int>(ub * W), x0, W - 1);
+                        const int y0 = std::clamp(static_cast<int>(va * H), 0, H - 1);
+                        const int y1 = std::clamp(static_cast<int>(vb * H), y0, H - 1);
+                        unsigned sum = 0, n = 0;
+                        for (int y = y0; y <= y1; ++y)
+                            for (int x = x0; x <= x1; ++x) {
+                                sum += img->pixels[(static_cast<size_t>(y) * W + x) * 4u + 3u];
+                                ++n;
+                            }
+                        coverage[r, c] = static_cast<uint8_t>(n ? (sum + n / 2) / n : 0);
+                    }
+                }
+            }
+            const bool overlayDrawn = alphaTile && !softOverlay && !CementWordSuppressesDecal(e, ovT, tr, tc);
+            const uint32_t word = wordAt(tr, tc);
+            for (int row = 0; row < kHsRes; ++row) {
+                for (int col = 0; col < kHsRes; ++col) {
+                    const float u = (float(col) + 0.5f) / kHsRes;
+                    const float v = (float(row) + 0.5f) / kHsRes;
+                    float atlasAlpha = coverage[row, col] / 255.0f;
+                    if ((word & 0x00800000u) && fields) {
+                        const auto& atlas = fields->cementAtlas();
+                        const int grid = g_cementAtlasGridSide;
+                        if (grid > 0 && atlas.width > 0 && atlas.height > 0 && !atlas.texels.empty()) {
+                            const int layer = int(word & 0xffffu);
+                            const int x = std::min(int((float(layer % grid) + u) * atlas.width / grid), atlas.width - 1);
+                            const int y = std::min(int((float(layer / grid) + v) * atlas.height / grid), atlas.height - 1);
+                            atlasAlpha = atlas.texels[(size_t(y) * atlas.width + x) * 4 + 3] / 255.0f;
+                        }
+                    }
+                    const float cement = mc2::vegetation::cementWordCoverage(int(tr), int(tc), u, v, atlasAlpha, wordAt);
+                    coverage[row, col] = uint8_t(255 * mc2::vegetation::renderedHardSurfaceCoverage(
+                        cement, coverage[row, col] / 255.0f, overlayDrawn) + 0.5f);
+                }
+            }
+            const bool solid = std::all_of(blk, blk + kHsRes * kHsRes, [](uint8_t value) { return value == 255; });
+            if (solid) g_hs.texels.resize(size_t(b) * kHsRes * kHsRes);
+            g_hs.blockOf[static_cast<size_t>(tr) * static_cast<size_t>(cacheW) + static_cast<size_t>(tc)] = solid ? -2 : b;
+        }
+    }
+    MC2_DIAGF("[VEG_HARDSURFACE v1] event=field_built tiles_alpha=%d tiles_pure=%d tiles_alpha_noimage=%d tiles_road_skipped=%d blocks=%zu\n",
+              g_hs.tilesAlpha, g_hs.tilesPure, g_hs.tilesNoImage, g_hs.tilesRoadSkipped,
+              g_hs.texels.size() / (static_cast<size_t>(kHsRes) * kHsRes));
+}
+
+// Pure bilinear of a texel fetcher; split out so the unit test can drive it.
+}  // namespace
+
+float HardSurfaceCoverage(float wx, float wy) {
+    if (!g_hs.built) BuildHardSurfaceField();
+    if (g_hs.blockOf.empty()) return 0.0f;
+    // Continuous texel coords; texel centres sit at +0.5.
+    const float X = (wx / g_hs.wupv + static_cast<float>(g_hs.half)) * kHsRes - 0.5f;
+    const float Y = (static_cast<float>(g_hs.half) - wy / g_hs.wupv) * kHsRes - 0.5f;
+    const float fxl = std::floor(X), fyl = std::floor(Y);
+    const float fx = X - fxl, fy = Y - fyl;
+    const long ix = static_cast<long>(fxl), iy = static_cast<long>(fyl);
+    const float a = static_cast<float>(hsTexel(ix, iy))     * (1.0f - fx) + static_cast<float>(hsTexel(ix + 1, iy))     * fx;
+    const float b = static_cast<float>(hsTexel(ix, iy + 1)) * (1.0f - fx) + static_cast<float>(hsTexel(ix + 1, iy + 1)) * fx;
+    return (a * (1.0f - fy) + b * fy) * (1.0f / 255.0f);
+}
+
+void InvalidateHardSurfaceField() { g_hs = HardSurfaceField{}; }
+
+void HardSurfaceStats(int* alpha, int* pure, int* noImage) {
+    if (!g_hs.built) BuildHardSurfaceField();
+    if (alpha) *alpha = g_hs.tilesAlpha;
+    if (pure) *pure = g_hs.tilesPure;
+    if (noImage) *noImage = g_hs.tilesNoImage;
+}
+
 int          GetDecalVertCount()    { return g_decalVertCount; }
 
 // Mirror DrawMineStatic. Lazy rebuild-if-dirty on first armed draw, single
@@ -662,4 +830,12 @@ bool DrawDecalStatic() {
 // debounce to one rebuild/paint via the dirty flag.
 void gos_terrain_indirect_MarkDecalDirty() {
     gos_terrain_indirect::MarkDecalDirty();
+}
+
+// VEG-CEMENT-1 C-linkage forwarders (VegetationAdapter avoids gos_terrain_indirect.h).
+float gos_terrain_indirect_HardSurfaceCoverage(float wx, float wy) {
+    return gos_terrain_indirect::HardSurfaceCoverage(wx, wy);
+}
+void gos_terrain_indirect_HardSurfaceStats(int* alpha, int* pure, int* noImage) {
+    gos_terrain_indirect::HardSurfaceStats(alpha, pure, noImage);
 }

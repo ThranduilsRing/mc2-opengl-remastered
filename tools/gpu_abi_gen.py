@@ -167,7 +167,7 @@ def parse_source(text, label):
     block = opts.get("block")
     if block and (rules != "std140" or "set" not in opts or "binding" not in opts):
         raise AbiError("%s: block= needs std140 plus set= and binding=" % label)
-    if set(opts) - {"block", "set", "binding", "slot", "cpp_align"}:
+    if set(opts) - {"block", "set", "binding", "slot", "cpp_align", "set_macro"}:
         raise AbiError("%s: unknown @gpu option(s) %s" % (label, sorted(opts)))
     if opts.get("cpp_align", "any") != "any":
         raise AbiError("%s: cpp_align= only accepts 'any'" % label)
@@ -280,6 +280,7 @@ def parse_source(text, label):
             "cpp_align": cpp_align, "cpp_align_any": opts.get("cpp_align") == "any",
             "fields": fields, "cpp_fields": cpp_fields,
             "block": block, "set": opts.get("set"), "binding": opts.get("binding"),
+            "set_macro": opts.get("set_macro"),
             "slot": int(opts["slot"]) if "slot" in opts else None}
 
 
@@ -332,7 +333,13 @@ def build(info, src_rel, glsl_rel):
                "#ifndef GPU_ABI_%s_GEN_GLSL" % g.upper(),
                "#define GPU_ABI_%s_GEN_GLSL" % g.upper()]
         gl += len_defs
-        gl += ["layout(set = %s, binding = %s, std140) uniform %s {" % (info["set"], info["binding"], g)]
+        descriptor_set = info["set"]
+        if info.get("set_macro"):
+            descriptor_set = info["set_macro"]
+            if not re.fullmatch(r"[A-Z][A-Z0-9_]*", descriptor_set):
+                raise AbiError("invalid descriptor set macro: " + descriptor_set)
+            gl += ["#ifndef " + descriptor_set, "#define %s %s" % (descriptor_set, info["set"]), "#endif"]
+        gl += ["layout(set = %s, binding = %s, std140) uniform %s {" % (descriptor_set, info["binding"], g)]
     else:
         gl += ["// %s rules, %d bytes. Include from the shader; the shader keeps its own" % (info["rules"], size),
                "// `layout(...) buffer` wrapper (GL and VK binding syntax differ).",

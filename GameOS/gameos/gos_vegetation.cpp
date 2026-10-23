@@ -1,7 +1,17 @@
-// CPU vegetation instances and native Vulkan crossed-card submission.
+// Vegetation population ownership and the per-frame GPU cull request. The population lives on the device (vk_vegetation_state);
+// the frame sends camera parameters and the block-visibility field, never a per-instance list.
 #include "gos_vegetation.h"
 #include "vulkan_vfx_geometry.h"
+#ifdef MC2_VULKAN_ISLAND
+#include "vk_vegetation_state.h"
+#include "vulkan_context.h"
+#endif
 #include "texture_decode.h"
+#include "vegetation_cutout.h"
+#include "../../GameAdapters/vegetation_budget.h"
+#include "../../RenderCore/KtxLoader.h"
+#include <optional>
+#include <string>
 #include "gos_postprocess.h"
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"
@@ -15,9 +25,7 @@
 #include <vector>
 extern const float* gos_GetTerrainMVPMat4();
 namespace {
-std::vector<GosVegetation::Instance> instances;
-struct Region { size_t begin, end; float x, y, z, radius; };
-std::vector<Region> regions;
+uint32_t populationCount = 0;   // instances resident on the device
 auto cell(const GosVegetation::Instance& i) {
     return std::pair{int(std::floor(i.x/128.0f)),int(std::floor(i.y/128.0f))};
 }
@@ -27,10 +35,7 @@ uint32_t peak = 0;
 int frameDraws = 0, sessionDraws = 0;
 const char* reason = "no_call";
 const char* atlasOverride = nullptr;
-float smooth(float a, float b, float x) {
-    float t = std::clamp((x-a)/(b-a), 0.0f, 1.0f);
-    return t*t*(3.0f-2.0f*t);
-}
+bool trimCards = false;
 
 // The old private vegetation_atlas_v2.png was never part of the payload. Build
 // its eight shader slots from the tracked cards so a clean install is complete.
@@ -61,167 +66,216 @@ std::optional<mc2tex::DecodedTexture> builtinAtlas() {
     }
     return atlas;
 }
+std::optional<mc2tex::TextureArrayCpu> builtinCards() {
+    constexpr std::array<const char*, 8> names{"grass_01", "grass_02", "grass_03", "grass_04",
+        "fern_01", "fern_02", "fern_03", "fern_04"};
+    mc2tex::TextureArrayCpu array;
+    array.width = array.height = 512; array.layers = 8;
+    array.vkFormat = mc2tex::kVkFormatBc7Unorm;
+    array.levels.resize(10);
+    for (const auto* name : names) {
+        RenderCore::KtxImage tile;
+        const auto path = std::string("data/vegetation/cooked/") + name + ".ktx2";
+        if (!RenderCore::ktxLoadRgba8(path.c_str(), tile) || tile.width != 512 || tile.height != 512 ||
+            tile.mipCount != 10 || tile.vkFormat != array.vkFormat) return std::nullopt;
+        for (int level = 0; level < tile.mipCount; ++level) {
+            const auto begin = tile.mipByteOffsets[level];
+            const auto end = level + 1 < tile.mipCount ? tile.mipByteOffsets[level + 1] : tile.pixels.size();
+            auto& dest = array.levels[level];
+            dest.insert(dest.end(), tile.pixels.begin() + begin, tile.pixels.begin() + end);
+        }
+    }
+    return array;
+}
+
+// Legacy/mod atlas overrides keep their eight slots, with isolated layers and
+// coverage-preserving mips. Their geometry stays untrimmed because its alpha
+// hull is not the stock cook's hull.
+mc2tex::TextureArrayCpu cardsFromAtlas(const mc2tex::DecodedTexture& decoded) {
+    mc2tex::TextureArrayCpu array;
+    if (decoded.width % 4 || decoded.height % 2) return array;
+    uint32_t w = uint32_t(decoded.width / 4), h = uint32_t(decoded.height / 2);
+    if (!w || !h) return array;
+    array.width = w; array.height = h; array.layers = 8; array.vkFormat = mc2tex::kVkFormatRgba8Unorm;
+    const size_t components = decoded.layout == mc2tex::PixelLayout::RGB8 ? 3 : 4;
+    std::array<std::vector<uint8_t>, 8> layer;
+    std::array<float, 8> coverage{};
+    for (size_t k = 0; k < layer.size(); ++k) {
+        layer[k].resize(size_t(w) * h * 4);
+        for (uint32_t y = 0; y < h; ++y) {
+            for (uint32_t x = 0; x < w; ++x) {
+                const size_t src = ((k / 4 * h + y) * decoded.width + k % 4 * w + x) * components;
+                const size_t dst = (size_t(y) * w + x) * 4;
+                std::copy_n(decoded.pixels.data() + src, 3, layer[k].data() + dst);
+                layer[k][dst + 3] = components == 4 ? decoded.pixels[src + 3] : 255;
+            }
+        }
+        coverage[k] = mc2::vegetation::cutoutCoverage(layer[k]);
+        mc2::vegetation::dilateCutoutRgb(layer[k], w, h);
+    }
+    for (;;) {
+        auto& level = array.levels.emplace_back();
+        for (const auto& tile : layer) level.insert(level.end(), tile.begin(), tile.end());
+        if (w == 1 && h == 1) break;
+        for (size_t k = 0; k < layer.size(); ++k) {
+            layer[k] = mc2tex::boxDownsampleRgba8(layer[k], w, h);
+            mc2::vegetation::preserveCutoutAlpha(layer[k], coverage[k]);
+            const uint32_t nextWidth = std::max(1u, w / 2);
+            const uint32_t nextHeight = std::max(1u, h / 2);
+            mc2::vegetation::dilateCutoutRgb(layer[k], nextWidth, nextHeight);
+        }
+        w = std::max(1u, w / 2);
+        h = std::max(1u, h / 2);
+    }
+    return array;
+}
+
 }
 bool GosVegetation::isEnabled() { return mc2::gate::get<"MC2_VEGETATION_CARDS">(); }
-uint32_t GosVegetation::instanceCount() { return static_cast<uint32_t>(instances.size()); }
+uint32_t GosVegetation::instanceCount() { return populationCount; }
 void GosVegetation::setAtlasPath(const char* path) { atlasOverride = path; }
 void GosVegetation::init() {
-    if (initialized) return;
+    if (initialized || !isEnabled()) return;
     const auto envPath = mc2::gate::str<"MC2_VEGETATION_ATLAS">();
-    const char* path = !envPath.empty() ? envPath.c_str() : atlasOverride ? atlasOverride : "data/textures/vegetation_atlas_v2.png";
-    const auto decoded = (!envPath.empty() || atlasOverride)
-        ? mc2tex::decodeFile(path, gos_Texture_Alpha, 0) : builtinAtlas();
-    if (decoded) {
-        GosTexels atlas;
-        atlas.status = GosTexels::Status::Ready;
-        atlas.width = decoded->width;
-        atlas.height = decoded->height;
-        atlas.vkFormat = mc2tex::kVkFormatRgba8Unorm;
-        // decodeFile may return RGB8; publish the same RGBA alpha policy as ordinary textures.
-        auto bytes = std::make_shared<std::vector<uint8_t>>();
-        if (decoded->layout == mc2tex::PixelLayout::RGB8) {
-            bytes->reserve(size_t(atlas.width)*atlas.height*4);
-            for (size_t i=0; i<decoded->pixels.size(); i+=3) {
-                bytes->insert(bytes->end(), decoded->pixels.begin()+i, decoded->pixels.begin()+i+3);
-                bytes->push_back(255);
+    const char* path = !envPath.empty() ? envPath.c_str() : atlasOverride;
+    const auto cooked = path ? std::nullopt : builtinCards();
+    if (cooked) {
+        mc2_vk_vfx_vegetation_atlas(*cooked);
+        atlasReady = trimCards = true;
+    } else {
+        const auto decoded = path ? mc2tex::decodeFile(path, gos_Texture_Alpha, 0) : builtinAtlas();
+        if (decoded) {
+            const auto array = cardsFromAtlas(*decoded);
+            if (!array.levels.empty()) {
+                mc2_vk_vfx_vegetation_atlas(array);
+                atlasReady = true;
             }
-        } else *bytes = decoded->pixels;
-        atlas.bytes = bytes;
-        mc2_vk_vfx_vegetation_atlas(atlas);
-        atlasReady = true;
+        }
+        trimCards = false;
     }
     std::atexit([] { GosVegetation::emitSummary(); });
     initialized = true;
 }
 void GosVegetation::shutdown() {
     emitSummary();
-    instances.clear();
-    regions.clear();
+    populationCount = 0;
     visibility.assign(1024, 2u);
     initialized = atlasReady = false;
     peak = 0;
     frameDraws = sessionDraws = 0;
     reason = "no_call";
-    mc2_vk_vfx_vegetation_atlas(GosTexels{});
+    mc2_vk_vfx_vegetation_atlas(mc2tex::TextureArrayCpu{});
+#ifdef MC2_VULKAN_ISLAND
+    if (mc2veg::State::exists()) mc2veg::State::instance().clear(mc2vk::getOrCreateEngineVulkanContext());
+#endif
 }
+uint32_t GosVegetation::populationCapacity(uint32_t requested) {
+#ifdef MC2_VULKAN_ISLAND
+    if (!mc2vk::engineVulkanContextValid()) return 0;
+    VkPhysicalDeviceProperties properties{};
+    vkGetPhysicalDeviceProperties(mc2vk::getOrCreateEngineVulkanContext().physicalDevice(), &properties);
+    return mc2::vegetation::storagePopulationCapacity(requested, properties.limits.maxStorageBufferRange);
+#else
+    return 0;
+#endif
+}
+
 void GosVegetation::uploadInstances(const Instance* data, uint32_t count) {
     if (!initialized) return;
-    instances.clear();
-    if (data && count) instances.assign(data, data+count);
-    // Placement is immutable between uploads. Group nearby clumps once so the
-    // frame walk rejects regions instead of revisiting the whole map.
-    std::sort(instances.begin(),instances.end(),[](const auto& a,const auto& b) { return cell(a)<cell(b); });
-    regions.clear();
-    for (size_t begin=0; begin<instances.size();) {
-        size_t end=begin+1;
-        const auto key=cell(instances[begin]);
-        while (end<instances.size() && cell(instances[end])==key) ++end;
-        float lo=instances[begin].z,hi=lo,pad=0.0f;
-        for (size_t j=begin;j<end;++j) {
-            lo=std::min(lo,instances[j].z); hi=std::max(hi,instances[j].z);
-            pad=std::max(pad,1.5f*instances[j].scale);
-        }
-        regions.push_back({begin,end,(key.first+0.5f)*128.0f,(key.second+0.5f)*128.0f,
-            (lo+hi)*0.5f,std::sqrt(2.0f*64.0f*64.0f+(hi-lo)*(hi-lo)*0.25f)+pad});
-        begin=end;
+    populationCount = 0;
+#ifdef MC2_VULKAN_ISLAND
+    if (!mc2vk::engineVulkanContextValid()) return;
+    mc2veg::State& gpu = mc2veg::State::instance();
+    if (!data || !count) { gpu.clear(mc2vk::getOrCreateEngineVulkanContext()); return; }
+    // Placement is immutable between uploads. Group nearby clumps once so the device walk rejects regions instead of revisiting the whole map.
+    std::vector<Instance> sorted(data, data + count);
+    std::sort(sorted.begin(), sorted.end(), [](const auto& a, const auto& b) { return cell(a) < cell(b); });
+    std::vector<mc2veg::GpuInstance> gpuInstances(sorted.size());
+    for (size_t k = 0; k < sorted.size(); ++k) {
+        const auto& i = sorted[k];
+        gpuInstances[k] = {i.x, i.y, i.z, i.yaw, i.scale, i.atlasFrame, i.seed, 0u};
     }
-    peak = std::max(peak, static_cast<uint32_t>(instances.size()));
+    std::vector<mc2veg::GpuRegion> gpuRegions;
+    for (size_t begin = 0; begin < sorted.size();) {
+        size_t end = begin + 1;
+        const auto key = cell(sorted[begin]);
+        while (end < sorted.size() && cell(sorted[end]) == key) ++end;
+        float lo = sorted[begin].z, hi = lo, pad = 0.0f;
+        for (size_t j = begin; j < end; ++j) {
+            lo = std::min(lo, sorted[j].z); hi = std::max(hi, sorted[j].z);
+            pad = std::max(pad, 1.5f * sorted[j].scale);
+        }
+        gpuRegions.push_back({(key.first + 0.5f) * 128.0f, (key.second + 0.5f) * 128.0f, (lo + hi) * 0.5f,
+            std::sqrt(2.0f * 64.0f * 64.0f + (hi - lo) * (hi - lo) * 0.25f) + pad, uint32_t(begin), uint32_t(end), 0u, 0u});
+        begin = end;
+    }
+    if (gpu.upload(mc2vk::getOrCreateEngineVulkanContext(), gpuInstances, gpuRegions)) {
+        populationCount = uint32_t(sorted.size());
+        peak = std::max(peak, populationCount);
+    }
+#else
+    (void)data; (void)count;
+#endif
 }
 void GosVegetation::setBlockVisibility(const uint32_t* data, uint32_t count) {
     if (data && count) visibility.assign(data, data+count);
 }
 void GosVegetation::flush(float lx, float ly, float lz, float lw, float time,
     float cx, float cy, float cz, float halfMap, float blockSide, int chunkSide) {
+    (void)lx; (void)ly; (void)lw;
     frameDraws = 0;
     if (!isEnabled()) { reason="disabled"; return; }
-    if (instances.empty()) { reason="no_instances"; return; }
+    if (populationCount == 0) { reason="no_instances"; return; }
     if (!atlasReady) { reason="no_atlas"; return; }
     const auto* mvp = gos_GetTerrainMVPMat4();
     auto* pp = getGosPostProcess();
     if (!mvp || !pp) { reason="missing_buffers"; return; }
+#ifdef MC2_VULKAN_ISLAND
     const bool force = mc2::gate::get<"MC2_VEG_DEBUG_FORCE_VISIBLE">();
     const float maxDist = mc2::gate::get<"MC2_VEG_MAX_DIST">();
     const float fadeStart = maxDist*0.5f;
-    static thread_local std::vector<VfxGeometryVertex> vertices;
-    vertices.clear();
-    // Conservative clip-space sphere planes reject whole clumps before upload.
-    std::array<std::array<float, 5>, 4> planes{};
+    // Conservative clip-space sphere planes (region sphere and per-instance tests run on the device).
+    mc2veg::CullParams cp{};
     for (int plane=0; plane<4; ++plane) {
         const int axis=plane/2;
         const float sign=(plane&1) ? -1.0f : 1.0f;
-        for (int c=0; c<4; ++c) planes[plane][c]=mvp[c*4+3]+sign*mvp[c*4+axis];
-        const auto& p=planes[plane];
-        planes[plane][4]=std::sqrt(p[0]*p[0]+p[1]*p[1]+p[2]*p[2]);
+        for (int c=0; c<4; ++c) cp.plane[plane][c]=mvp[c*4+3]+sign*mvp[c*4+axis];
+        const auto* p=cp.plane[plane];
+        cp.planeLen[plane]=std::sqrt(p[0]*p[0]+p[1]*p[1]+p[2]*p[2]);
     }
-    const float pixelScale=0.5f*pp->getHeight()*std::sqrt(mvp[1]*mvp[1]+mvp[5]*mvp[5]+mvp[9]*mvp[9]);
-    for (const auto& region : regions) {
-        if (!force) {
-            bool outside=false;
-            for (const auto& p : planes)
-                if (p[0]*region.x+p[1]*region.y+p[2]*region.z+p[3] < -region.radius*p[4]) { outside=true; break; }
-            const float dx=region.x-cx,dy=region.y-cy,range=maxDist+region.radius;
-            if (outside || dx*dx+dy*dy>range*range) continue;
-        }
-        for (size_t index=region.begin;index<region.end;++index) {
-        const auto& i=instances[index];
-        const uint32_t role=(i.atlasFrame>>4u)&3u;
-        const float scale=i.scale*(role==3u ? 0.25f : role==2u ? 0.6f : 1.0f);
-        if (!force) {
-            bool outside=false;
-            for (const auto& p : planes)
-                if (p[0]*i.x+p[1]*i.y+p[2]*i.z+p[3] < -1.5f*scale*p[4]) { outside=true; break; }
-            if (outside) continue;
-        }
-        uint32_t vis=2;
-        if (chunkSide>0 && blockSide>0) {
-            int col=std::clamp(int((i.x+halfMap)/blockSide),0,chunkSide-1);
-            int row=std::clamp(int((-i.y+halfMap)/blockSide),0,chunkSide-1);
-            size_t block=size_t(row)*chunkSide+col;
-            if (block<visibility.size()) vis=visibility[block];
-        }
-        float dx=i.x-cx,dy=i.y-cy,dz=i.z-cz;
-        const float distSq=dx*dx+dy*dy;
-        if (!force && distSq>maxDist*maxDist && i.seed<1.0f) continue;
-        float dist2=std::sqrt(distSq),dist3=std::sqrt(distSq+dz*dz);
-        if (!force && (vis==0 || i.seed<smooth(fadeStart,maxDist,dist2))) continue;
-        if (!force) {
-            const float clipW=mvp[3]*i.x+mvp[7]*i.y+mvp[11]*i.z+mvp[15];
-            if (clipW<=0.001f) continue;
-            const float pixels=scale*pixelScale/clipW;
-            const float density=smooth(3.0f,12.0f,pixels)*(vis>=2 ? 1.0f : 0.4f);
-            const float seed=i.seed*17.371f+0.137f;
-            if (seed-std::floor(seed)>=density) continue;
-        }
-        VfxGeometryVertex v{};
-        v.position[0]=i.x; v.position[1]=i.y; v.position[2]=i.z;
-        v.pad0=i.yaw;
-        v.color[0]=i.scale; v.color[1]=i.seed; v.color[2]=std::max(lz,0.0f);
-        v.flags=i.atlasFrame;
-        v.extra[0]=time; v.extra[1]=dist3;
-        v.extra[2]=1.0f; // whole-clump LOD replaces screen-space Bayer thinning
-        v.extra[3]=1.0f-smooth(fadeStart*0.8f,fadeStart,dist3);
-        vertices.push_back(v);
-        }
-    }
-    VfxParticleDraw draw{};
-    draw.count=static_cast<uint32_t>(vertices.size());
-    draw.texture=kVfxVegetationAtlas;
-    draw.atlasColumns=kVfxVegetationAtlas;
-#ifdef MC2_VULKAN_ISLAND
-    if (!vertices.empty() && mc2_vk_vfx_island_run(vertices.data(), draw.count, &draw, 1, mvp,
-        nullptr,nullptr,pp->getWidth(),pp->getHeight())) {
+    cp.clipRow[0]=mvp[3]; cp.clipRow[1]=mvp[7]; cp.clipRow[2]=mvp[11]; cp.clipRow[3]=mvp[15];
+    cp.cam[0]=cx; cp.cam[1]=cy; cp.cam[2]=cz; cp.cam[3]=maxDist;
+    cp.misc[0]=fadeStart;
+    cp.misc[1]=0.5f*pp->getHeight()*std::sqrt(mvp[1]*mvp[1]+mvp[5]*mvp[5]+mvp[9]*mvp[9]);
+    cp.misc[2]=std::max(lz,0.0f);
+    cp.misc[3]=time;
+    cp.grid[0]=halfMap; cp.grid[1]=blockSide;
+    cp.counts[3]=chunkSide>0 ? uint32_t(chunkSide) : 0u;
+    cp.flags[0]=force ? 1u : 0u;
+    cp.flags[2]=trimCards ? 1u : 0u;
+    if (mc2_vk_vfx_vegetation_run(cp,mvp,visibility,pp->getWidth(),pp->getHeight())) {
         frameDraws=1; ++sessionDraws; reason="submitted";
-    } else reason="culled";
+    } else reason="gpu_declined";
 #else
+    (void)lz; (void)time; (void)cx; (void)cy; (void)cz; (void)halfMap; (void)blockSide; (void)chunkSide;
     reason="native_unavailable";
 #endif
 }
 GosVegetation::VegFrameStats GosVegetation::getFrameStats() {
-    return {static_cast<int>(instances.size()),frameDraws,reason};
+    return {static_cast<int>(populationCount),frameDraws,reason};
 }
 void GosVegetation::emitSummary() {
     if (!isEnabled() || summaryEmitted) return;
     mc2::fmt::print_err("VEG_SUMMARY instance_count={:d} draw_calls={:d} flush_reason={}\n",
         mc2::fmt::as_u32(peak),mc2::fmt::as_i32(sessionDraws),reason);
+#ifdef MC2_VULKAN_ISLAND
+    // Upload volume follows population changes, not frames: these two numbers must not grow with the frame count.
+    if (mc2veg::State::exists()) {
+        const mc2veg::State& gpu = mc2veg::State::instance();
+        mc2::fmt::print_err("[VEG_GPU] summary population_uploads={:d} population_bytes={:d} frame_upload_bytes={:d} last_survivors={:d}\n",
+            mc2::fmt::as_u64(gpu.stats().uploads),mc2::fmt::as_u64(gpu.stats().uploadBytes),
+            mc2::fmt::as_u64(gpu.frameUploadBytes()),mc2::fmt::as_u32(gpu.lastSurvivors()));
+    }
+#endif
     std::fflush(stderr); summaryEmitted=true;
 }

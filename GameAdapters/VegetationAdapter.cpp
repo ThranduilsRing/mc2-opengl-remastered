@@ -6,6 +6,8 @@
 
 #include "VegetationAdapter.h"
 #include "vegetation_budget.h"
+#include "vegetation_noise.h"
+#include "vegetation_hardsurface.h"
 #include "mc2_diag_verbose.h"
 #include "Gates/gate.h"
 
@@ -26,6 +28,7 @@
 #include "../../GameOS/gameos/diagnostic_trace.h"
 
 #include <vector>
+#include <chrono>
 #include <algorithm> // std::max
 #include <cstdlib>   // std::getenv, std::atoi
 #include <cstdio>    // fprintf, snprintf
@@ -36,14 +39,14 @@
 // Internal helpers
 // ---------------------------------------------------------------------------
 
-namespace {
+// VEG-CEMENT-1: sub-cell hard-surface coverage from the decal/overlay bake
+// (GameOS/gameos/gos_terrain_indirect_mine_decal.cpp; C-linkage forwarders).
+extern float gos_terrain_indirect_HardSurfaceCoverage(float wx, float wy);
+extern void  gos_terrain_indirect_HardSurfaceStats(int* alpha, int* pure, int* noImage);
 
-// Cheap, deterministic hash in [0, 1).  Inputs are world-grid coordinates
-// plus a per-instance discriminator so each card within a cell differs.
-[[nodiscard]] float hashf(float a, float b) noexcept
-{
-    return fabsf(fmodf(sinf(a * 127.1f + b * 311.7f) * 43758.5f, 1.0f));
-}
+namespace {
+using mc2::vegetation::hashf;
+using mc2::vegetation::macroZone;
 
 // World-unit spacing between sample points.
 // ~5x area density vs 32: (32/14)^2 ≈ 5.2x more grid cells per area.
@@ -54,7 +57,7 @@ constexpr float kGridStep = 14.0f;
 // ---------------------------------------------------------------------------
 
 // Vegetation density tier from terrain material type (getTerrain codes).
-// kHard   = absolute no-vegetation: water, concrete, cement, cliff, none
+// kHard   = absolute no-vegetation: water, cliff, none
 // kNone   = hard exclude (kept for 15% fringe logic at borders)
 // kSparse = transitional surfaces: dirt, ash, mountain, slimy
 // kFull   = vegetated surfaces: grass, moss, forest floor, mud, tundra
@@ -87,8 +90,14 @@ struct FramePalette { uint8_t f[8]; int dominant; int n; };
         case MC_BLUEWATER_TYPE:
         case MC_GREEN_WATER_TYPE:
         // Paved / engineered surfaces — absolutely no vegetation.
-        case MC_CONCRETE_TYPE:
         case MC_CLIFF_TYPE:
+        case MC_NONE_TYPE:
+            return VegDensity::kHard;
+
+        // VEG-CEMENT-1: cement is no longer a per-cell reject. Its visible edge is the
+        // decal bake's alpha, so the sub-cell coverage field decides density (smooth
+        // falloff + crack weeds). The cell itself is a sparse stand-in.
+        case MC_CONCRETE_TYPE:
         case MC_CEMENT2_TYPE:
         case MC_CEMENT3_TYPE:
         case MC_CEMENT4_TYPE:
@@ -96,8 +105,7 @@ struct FramePalette { uint8_t f[8]; int dominant; int n; };
         case MC_CEMENT6_TYPE:
         case MC_CEMENT7_TYPE:
         case MC_CEMENT8_TYPE:
-        case MC_NONE_TYPE:
-            return VegDensity::kHard;
+            return VegDensity::kSparse;
 
         // Transitional / sparse ground.
         case MC_DIRT_TYPE:
@@ -116,26 +124,6 @@ struct FramePalette { uint8_t f[8]; int dominant; int n; };
             // Default kFull for any unknown code (future terrain types should be green).
             return VegDensity::kFull;
     }
-}
-
-// Bilinear-interpolated hash on a coarse grid → smooth spatial blobs.
-// Returns [0,1].  Used as secondary variation WITHIN terrain-type zones;
-// terrain type is still the primary gate.
-[[nodiscard]] float macroZone(float wx, float wy, float cellSize = 512.0f) noexcept
-{
-    const float gx = wx / cellSize;
-    const float gy = wy / cellSize;
-    const int cx = static_cast<int>(gx >= 0.0f ? gx : gx - 1.0f);
-    const int cy = static_cast<int>(gy >= 0.0f ? gy : gy - 1.0f);
-    float fx = gx - static_cast<float>(cx);
-    float fy = gy - static_cast<float>(cy);
-    fx = fx * fx * (3.0f - 2.0f * fx);
-    fy = fy * fy * (3.0f - 2.0f * fy);
-    const float h00 = hashf(static_cast<float>(cx    ), static_cast<float>(cy    ));
-    const float h10 = hashf(static_cast<float>(cx + 1), static_cast<float>(cy    ));
-    const float h01 = hashf(static_cast<float>(cx    ), static_cast<float>(cy + 1));
-    const float h11 = hashf(static_cast<float>(cx + 1), static_cast<float>(cy + 1));
-    return h00*(1-fx)*(1-fy) + h10*fx*(1-fy) + h01*(1-fx)*fy + h11*fx*fy;
 }
 
 } // anonymous namespace
@@ -167,7 +155,8 @@ void GameAdapters::Vegetation::missionLoaded(Terrain* land, MissionMap* gameMap)
     GosVegetation::init();  // no-op if already initialized
 
     const int density = mc2::gate::get<"MC2_VEGETATION_DENSITY">();
-    const int maxInst = mc2::gate::get<"MC2_VEGETATION_MAX">();
+    const int maxInst = int(GosVegetation::populationCapacity(uint32_t(mc2::gate::get<"MC2_VEGETATION_MAX">())));
+    if (maxInst == 0) return;
 
     // Terrain map is square.  mapTopLeft3d is the top-left (max-Y, min-X)
     // corner in world space.  worldUnitsMapSide is the total span.
@@ -187,6 +176,11 @@ void GameAdapters::Vegetation::missionLoaded(Terrain* land, MissionMap* gameMap)
     // Placement counters — logged + emitted as VEG_HEALTH JSONL at end.
     int diagCellsTotal = 0;
     int diagOOB = 0, diagHard = 0, diagNotGreen = 0, diagOverlay = 0, diagWater = 0;
+    int diagWeeds = 0, diagCoverKept = 0;
+    const auto hsT0 = std::chrono::steady_clock::now();
+    int hsAlpha = 0, hsPure = 0, hsNoImg = 0;
+    gos_terrain_indirect_HardSurfaceStats(&hsAlpha, &hsPure, &hsNoImg);   // builds the field once
+    const double hsBuildMs = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - hsT0).count();
     // Per-instance rejection counters (inside the clump loop).
     int instTriedTotal = 0, instRejWater = 0, instRejHard = 0, instRejNoneFringe = 0,
         instRejOverlay = 0, instRejSlope = 0;
@@ -296,20 +290,14 @@ void GameAdapters::Vegetation::missionLoaded(Terrain* land, MissionMap* gameMap)
                         if (instVdc == VegDensity::kHard) { ++instRejHard; continue; }
                     }
                 }
-                // Reject paved roads and bridges via overlay code.
-                // ROUGH (detail normal) and DIRT_ROAD are allowed; paved/bridges are not.
-                {
-                    int iTR = 0, iTC = 0, iSR = 0, iSC = 0;
-                    land->worldToTileCell(instPos, iTR, iTC, iSR, iSC);
-                    if (iTR >= 0 && iTC >= 0 &&
-                        iTR < static_cast<int>(mapSide) && iTC < static_cast<int>(mapSide)) {
-                        Overlays ovType = INVALID_OVERLAY;
-                        DWORD ovOffset = 0;
-                        land->getOverlay(static_cast<long>(iTR), static_cast<long>(iTC), ovType, ovOffset);
-                        if (ovType != INVALID_OVERLAY && ovType != ROUGH && ovType != DIRT_ROAD)
-                            { ++instRejOverlay; continue; }
-                    }
-                }
+                const auto hardSurface = mc2::vegetation::hardSurfacePlacement(
+                    instWx, instWy, Terrain::worldUnitsPerVertex,
+                    gos_terrain_indirect_HardSurfaceCoverage, hashf);
+                using enum mc2::vegetation::HardSurfacePlacement;
+                if (hardSurface == Reject) { ++instRejOverlay; continue; }
+                const bool isWeed = hardSurface == Weed;
+                if (isWeed) ++diagWeeds;
+                if (hardSurface == TransitionCover) ++diagCoverKept;
 
                 // Slope gate: getTerrainAngle() returns DEGREES.
                 // Hard limit 60°: cliff faces above this never get vegetation.
@@ -337,7 +325,8 @@ void GameAdapters::Vegetation::missionLoaded(Terrain* land, MissionMap* gameMap)
                 inst.y          = instWy - originY + mapHalf;
                 inst.z          = elevation + 0.5f;
                 inst.yaw        = h3 * 6.2831f;
-                inst.scale      = 1.0f + h4 * 5.0f;  // 1-6 WU range
+                inst.scale      = isWeed ? (0.5f + h4 * 1.0f)    // small crack weeds
+                                         : (1.0f + h4 * 5.0f);   // 1-6 WU range
                 // Species: dominant frame for this clump (70%), fill from palette (30%).
                 const FramePalette pal = framePalette(vdc);
                 const float domHash = hashf(clumpCx * 0.11f, clumpCy * 0.09f + 9999.0f);
@@ -347,7 +336,8 @@ void GameAdapters::Vegetation::missionLoaded(Terrain* land, MissionMap* gameMap)
                     : static_cast<uint32_t>(pal.f[static_cast<int>(h5 * static_cast<float>(pal.n)) % pal.n]);
                 // Card role (bits 4-5): 0=vertical 40%, 1=tilted 25%, 2=top 15%, 3=ground 20%.
                 const uint32_t cardRole = (h7 < 0.40f) ? 0u : (h7 < 0.65f) ? 1u : (h7 < 0.80f) ? 2u : 3u;
-                inst.atlasFrame = (cardRole << 4u) | (frame & 0x0Fu);
+                inst.atlasFrame = (cardRole << 4u) | (frame & 0x0Fu)
+                                | (isWeed ? mc2::vegetation::kWeedFlagBit : 0u);
                 inst.seed       = h6;
 
                 instances.push_back(inst);
@@ -363,11 +353,13 @@ void GameAdapters::Vegetation::missionLoaded(Terrain* land, MissionMap* gameMap)
     // Always log: needed to diagnose zero-instance cases without re-running.
     MC2_DIAGFE(stderr,
         "[VEG v3] placement_health cells_total=%d oob=%d terrain_type_reject=%d "
-        "water=%d density=%d overlay=%d instances=%u max=%d mapSpan=%.0f waterElev=%.2f\n",
+        "water=%d density=%d overlay=%d instances=%u max=%d mapSpan=%.0f waterElev=%.2f "
+        "hs_reject=%d hs_weeds=%d hs_cover_kept=%d hs_tiles_alpha=%d hs_tiles_pure=%d hs_tiles_noimg=%d hs_build_ms=%.2f\n",
         diagCellsTotal, diagOOB, diagHard,
         diagWater, diagNotGreen, diagOverlay,
         instCount, maxInst, static_cast<double>(mapSpan),
-        static_cast<double>(Terrain::waterElevation));
+        static_cast<double>(Terrain::waterElevation),
+        instRejOverlay, diagWeeds, diagCoverKept, hsAlpha, hsPure, hsNoImg, hsBuildMs);
     fflush(stderr);
 
     // Structured VEG_HEALTH JSONL placement event (MCP-queryable).
@@ -397,7 +389,7 @@ void GameAdapters::Vegetation::missionLoaded(Terrain* land, MissionMap* gameMap)
     // Also write to a file so we can read it without console access.
     if (FILE* diagF = fopen("veg_diag.txt", "w")) {
         mc2::fmt::print(diagF, "[VEG v3] placement_health cells_total={:d} oob={:d} terrain_type_reject={:d} water={:d} density={:d} overlay={:d} instances={:d} max={:d} mapSpan={:.0f} waterElev={:.2f} elevRange={:.2f}..{:.2f}\n", mc2::fmt::as_i32(diagCellsTotal), mc2::fmt::as_i32(diagOOB), mc2::fmt::as_i32(diagHard), mc2::fmt::as_i32(diagWater), mc2::fmt::as_i32(diagNotGreen), mc2::fmt::as_i32(diagOverlay), mc2::fmt::as_u32(instCount), mc2::fmt::as_i32(maxInst), static_cast<double>(mapSpan), static_cast<double>(Terrain::waterElevation), static_cast<double>(elevMin), static_cast<double>(elevMax));
-        mc2::fmt::print(diagF, "[VEG v3] per_inst tried={:d} rej_water={:d} rej_hard={:d} rej_none_fringe={:d} rej_overlay={:d} rej_slope={:d} passed={:d}\n", mc2::fmt::as_i32(instTriedTotal), mc2::fmt::as_i32(instRejWater), mc2::fmt::as_i32(instRejHard), mc2::fmt::as_i32(instRejNoneFringe), mc2::fmt::as_i32(instRejOverlay), mc2::fmt::as_i32(instRejSlope), mc2::fmt::as_u32(instCount));
+        mc2::fmt::print(diagF, "[VEG v3] per_inst tried={:d} rej_water={:d} rej_hard={:d} rej_none_fringe={:d} rej_overlay={:d} rej_slope={:d} passed={:d} hs_weeds={:d} hs_cover_kept={:d} hs_tiles_alpha={:d} hs_tiles_pure={:d} hs_tiles_noimg={:d} hs_build_ms={:.2f}\n", mc2::fmt::as_i32(instTriedTotal), mc2::fmt::as_i32(instRejWater), mc2::fmt::as_i32(instRejHard), mc2::fmt::as_i32(instRejNoneFringe), mc2::fmt::as_i32(instRejOverlay), mc2::fmt::as_i32(instRejSlope), mc2::fmt::as_u32(instCount), mc2::fmt::as_i32(diagWeeds), mc2::fmt::as_i32(diagCoverKept), mc2::fmt::as_i32(hsAlpha), mc2::fmt::as_i32(hsPure), mc2::fmt::as_i32(hsNoImg), hsBuildMs);
         // 5x5 terrain-type classification grid (rows: N..S, cols: W..E).
         mc2::fmt::print(diagF, "[VEG v3] terrain_type_class_grid 5x5 (row=N..S col=W..E): F=full S=sparse H=hard\n");
         for (int gr = 0; gr < 5; ++gr) {

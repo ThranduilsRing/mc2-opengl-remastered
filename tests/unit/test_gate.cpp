@@ -1506,7 +1506,7 @@ vkp::DeviceCaps fullCaps() {
     c.timelineSemaphore = c.bufferDeviceAddress = c.descriptorIndexing = c.runtimeDescriptorArray = true;
     c.shaderSampledImageArrayNonUniformIndexing = c.descriptorBindingPartiallyBound = true;
     c.dynamicRendering = c.synchronization2 = true;
-    c.independentBlend = true;
+    c.independentBlend = c.samplerAnisotropy = true;
     c.maxImageDimension2D = 16384;
     c.maxBoundDescriptorSets = 32;
     c.maxPushConstantsSize = 256;
@@ -1687,15 +1687,26 @@ TEST_CASE("vk profile: the memory-budget extension is optional: reported when mi
     CHECK(vkp::evaluate(fullCaps(), true).missingWanted.empty());
 }
 
+TEST_CASE("vk profile: vegetation anisotropy is optional and never raises the hardware floor") {
+    auto caps = fullCaps();
+    caps.samplerAnisotropy = false;
+    const auto missing = vkp::evaluate(caps, true);
+    CHECK(missing.accepted);
+    CHECK(missing.missingRequired.empty());
+    CHECK(hasId(missing.missingWanted, "sampler_anisotropy"));
+    CHECK_FALSE(vkp::featureEnabled(missing, "samplerAnisotropy"));
+    CHECK(vkp::featureEnabled(vkp::evaluate(fullCaps(), true), "samplerAnisotropy"));
+}
+
 TEST_CASE("vk profile: the line names the device, both versions, what is missing and what is enabled") {
     const vkp::DeviceCaps c = fullCaps();
     const vkp::Evaluation e = vkp::evaluate(c, true);
     const std::string line = vkp::formatLine("AMD Radeon RX 7900 XTX", c, e);
     CHECK(line == "[VK_PROFILE v1] verdict=ok device=\"AMD Radeon RX 7900 XTX\" api=1.4.0 instance_api=1.3.0 floor=1.2 required_missing=- wanted_missing=- "
                   "items=api_1_2:core,swapchain:ext,limits:limit,timeline_semaphore:core,buffer_device_address:core,descriptor_indexing:core,"
-                  "dynamic_rendering:core,synchronization2:core,independent_blend:core,memory_budget:ext enabled=timelineSemaphore,bufferDeviceAddress,"
+                  "dynamic_rendering:core,synchronization2:core,independent_blend:core,memory_budget:ext,sampler_anisotropy:core enabled=timelineSemaphore,bufferDeviceAddress,"
                   "descriptorIndexing,runtimeDescriptorArray,shaderSampledImageArrayNonUniformIndexing,descriptorBindingPartiallyBound,dynamicRendering,"
-                  "synchronization2,independentBlend "
+                  "synchronization2,independentBlend,samplerAnisotropy "
                   "extensions=VK_KHR_swapchain,VK_EXT_memory_budget");
     CHECK(vkp::floorText() == "1.2");                                   // the line states the floor of the table it was evaluated against
     const vkp::Evaluation lacking = vkp::evaluate(device12Caps(false), true);

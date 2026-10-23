@@ -9260,7 +9260,55 @@
     "rej_none_fringe",
     "rej_overlay",
     "rej_slope",
-    "passed"
+    "passed",
+    "hs_weeds",
+    "hs_cover_kept",
+    "hs_tiles_alpha",
+    "hs_tiles_pure",
+    "hs_tiles_noimg",
+    "hs_build_ms"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VEG_GPU",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 4
+  },
+  {
+   "tag": "VEG_GPU",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "instances",
+    "regions"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VEG_GPU",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "instances",
+    "regions",
+    "avg_per_region",
+    "uploaded_bytes",
+    "resident_output_bytes"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VEG_GPU",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "population_uploads",
+    "population_bytes",
+    "frame_upload_bytes",
+    "last_survivors"
    ],
    "count": 1
   },
