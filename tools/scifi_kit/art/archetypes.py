@@ -504,7 +504,9 @@ def draft_params(row, a, arch=None):
 
 def analysis_sha(name):
     import hashlib
-    return hashlib.sha256((ASSETS / f'{name}.analysis.json').read_bytes()).hexdigest()[:16]
+    # The recorded stamps were taken on CRLF working copies; hash the CRLF form so an LF checkout agrees.
+    raw = (ASSETS / f'{name}.analysis.json').read_bytes().replace(b'\r\n', b'\n').replace(b'\n', b'\r\n')
+    return hashlib.sha256(raw).hexdigest()[:16]
 
 
 def evidence_of(a, arch):

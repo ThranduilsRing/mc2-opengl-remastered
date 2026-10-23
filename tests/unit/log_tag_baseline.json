@@ -4639,6 +4639,16 @@
    "count": 1
   },
   {
+   "tag": "LIGHT_POOL_DUMP",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "slot_a",
+    "slot_b"
+   ],
+   "count": 1
+  },
+  {
    "tag": "LIGHT_ROW_CENSUS",
    "ver": 1,
    "stream": "stderr",
@@ -4761,6 +4771,20 @@
    "stream": "buffer",
    "keys": [
     "total"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "LOCAL_LIGHT_BEAM",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "node",
+    "beam",
+    "apex",
+    "aim",
+    "len",
+    "cosHalf"
    ],
    "count": 1
   },
@@ -5373,6 +5397,21 @@
     "sentry",
     "escort",
     "other"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "MISSION_LIGHT",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "mission",
+    "night",
+    "light_scale",
+    "ambient_scale",
+    "ground_scale",
+    "light",
+    "ambient"
    ],
    "count": 1
   },
@@ -8442,7 +8481,7 @@
    "ver": -1,
    "stream": "stdout",
    "keys": [],
-   "count": 5
+   "count": 6
   },
   {
    "tag": "SPLATTING",
@@ -8838,7 +8877,7 @@
    "ver": 1,
    "stream": "log",
    "keys": [],
-   "count": 6
+   "count": 7
   },
   {
    "tag": "TERRAIN_FIELDS",
