@@ -11,6 +11,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <filesystem>
 #include <mutex>
 #include <string>
 #include <vector>
@@ -141,4 +142,49 @@ TEST_CASE("AudioBackend/mixed PCM preserves center volume and pans independently
     CHECK(right[3] / right[2] > 0.4); CHECK(right[3] / right[2] < 0.6);
     std::printf("AudioBackend PCM: left=%.0f/%.0f center=%.0f/%.0f right=%.0f/%.0f quiet=%.0f/%.0f\n",
                 left[0], right[0], left[1], right[1], left[2], right[2], left[3], right[3]);
+}
+
+TEST_CASE("AudioBackend/predecoded music owns PCM across handles and cache release") {
+    AudioDevice device;
+    REQUIRE(gos_CreateAudio());
+    const auto path = std::filesystem::temp_directory_path() /
+        ("mc2-predecoded-" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()) + ".wav");
+    struct RemoveFile {
+        std::filesystem::path path;
+        ~RemoveFile() { std::error_code error; std::filesystem::remove(path, error); }
+    } cleanup{path};
+    const auto name = path.string();
+    CHECK_FALSE(gosAudio_PreloadMusic(name.c_str())); // Failed loads must be retryable.
+    Clip original;
+    SDL_RWops* file = SDL_RWFromFile(name.c_str(), "wb");
+    REQUIRE(file != nullptr);
+    SDL_RWwrite(file, "RIFF", 1, 4); SDL_WriteLE32(file, 36 + sizeof(original.pcm));
+    SDL_RWwrite(file, "WAVEfmt ", 1, 8); SDL_WriteLE32(file, 16);
+    SDL_WriteLE16(file, 1); SDL_WriteLE16(file, 2); SDL_WriteLE32(file, 22050);
+    SDL_WriteLE32(file, 88200); SDL_WriteLE16(file, 4); SDL_WriteLE16(file, 16);
+    SDL_RWwrite(file, "data", 1, 4); SDL_WriteLE32(file, sizeof(original.pcm));
+    SDL_RWwrite(file, original.pcm.data(), sizeof(original.pcm), 1); SDL_RWclose(file);
+    REQUIRE(gosAudio_PreloadMusic(name.c_str()));
+    REQUIRE(gosAudio_PreloadMusic(name.c_str()));
+    REQUIRE(std::filesystem::remove(path)); // Subsequent resource creation must perform no file I/O.
+    HGOSAUDIO first = nullptr, second = nullptr;
+    gosAudio_CreateResource(&first, gosAudio_StreamedFile, name.c_str());
+    gosAudio_CreateResource(&second, gosAudio_StreamedFile, name.c_str());
+    REQUIRE(first != nullptr); REQUIRE(second != nullptr); CHECK(first != second);
+    gosAudio_AssignResourceToChannel(0, first);
+    gosAudio_AssignResourceToChannel(1, second);
+    gosAudio_SetChannelSlider(1, gosAudio_Volume, 1.0f);
+    gosAudio_SetChannelSlider(1, gosAudio_Panning, 0.0f);
+    gosAudio_SetChannelPlayMode(1, gosAudio_Loop);
+    gosAudio_DestroyResource(&first);
+    gosAudio_ClearMusicCache();
+    CHECK(gosAudio_GetChannelPlayMode(1) == gosAudio_Loop);
+    Capture capture;
+    REQUIRE(capture.record());
+    CHECK(capture.mean(0) > 1000);
+    CHECK(capture.mean(0) == doctest::Approx(capture.mean(1)).epsilon(0.03));
+    gosAudio_DestroyResource(&second);
+    HGOSAUDIO missing = nullptr;
+    gosAudio_CreateResource(&missing, gosAudio_StreamedFile, name.c_str());
+    CHECK(missing == nullptr);
 }
