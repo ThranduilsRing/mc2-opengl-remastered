@@ -76,17 +76,13 @@ layout(location = 6) in vec3 vWorldPos;
 flat layout(location = 7) in vec3 vSunDirStuff;
 flat layout(location = 8) in vec3 vSunColor;
 flat layout(location = 9) in vec4 vHighlight;   // objective / selection highlight (static_prop.frag: c.rgb += rgb * a)
+layout(location = 10) in vec3 vMaterialSeed;
+flat layout(location = 11) in vec3 vMaterialAmbient;
+flat layout(location = 12) in vec3 vMaterialSun;
+flat layout(location = 13) in uint vMaterialFlags;
 
 // The vertex stage's push block; the FS reads only packetAlphaTest.
-layout(push_constant) uniform PacketLayerPC {
-    int   packetLayerOff;
-    int   packetLayerOn;
-    float packetUvScaleX;
-    float packetUvScaleY;
-    int   packetAlphaTest;
-    int   coverageFringePass;   // PROP-COVERAGE-1: 0 = core (cutout) pass, 1 = blended fringe pass
-    int   hzbEnabled;
-} uPacket;
+#include "include/prop_packet_vk.glsl"
 
 layout(location = 0) out vec4 oColor;     // MRT0 lit color
 layout(location = 1) out vec4 oGBuffer1;  // MRT1 normal + shadow class
@@ -149,24 +145,15 @@ vec3 propPoolLight(vec3 albedo) {
                                         uFrame.poolF.z);
 }
 
-// StaticPropPbr option: Schlick-Fresnel sun specular added to the lit prop colour. The albedo-tinted F0 and the power lobe are the GL terms; metallic 0 and roughness 1
-// are the GL literal defaults, because the island carries no per-material scalars; the GL roughness override (on at 0.95 by default) replaces the roughness as in GL.
-vec3 propSunSpecular(vec3 albedo) {
-    const float metallic  = 0.0;
-    const float roughness = uFrame.pbrV1RoughnessOverride >= 0.0 ? uFrame.pbrV1RoughnessOverride : 1.0;
-    vec3 N = mc2ToRender(normalize(vNormalStuff));
-    vec3 V = normalize(uFrame.cameraWorldPos.xyz - vWorldPos);
-    vec3 L = mc2ToRender(normalize(-vSunDirStuff));
-    vec3 H = normalize(L + V);
-    vec3 F0 = mix(vec3(0.04), albedo, metallic);
-    vec3 F  = F0 + (vec3(1.0) - F0) * pow(max(0.0, 1.0 - dot(N, V)), 5.0);
-    float smoothness = 1.0 - roughness;
-    float specPower  = mix(1.0, 512.0, smoothness * smoothness);
-    return vSunColor * F * pow(max(0.0, dot(N, H)), specPower) * max(0.0, dot(N, L));
-}
+#include "include/prop_sh_l2.glsl"
+#include "include/prop_material_vk.glsl"
+#include "include/prop_lighting_compat_vk.glsl"
 
 void main() {
     vec3 rgb;
+    vec3 materialAlbedo = vec3(0);
+    bool haveAlbedo = false;
+    vec3 outputNormalStuff = vNormalStuff;
     // VK-GBUFFER1-CENSUS-1: which GBuffer1 shadow CLASS this fragment belongs to.
     // Set true by the alpha-ON branch below -- see the oGBuffer1 write at the end
     // of main() for why the distinction exists and what its granularity is.
@@ -197,10 +184,10 @@ void main() {
         // color at max(litRgb, vec3(0.5)) so the dark, light-facing-falloff side doesn't
         // read pure black. VK omitted this -> alpha-test fences/cards rendered BLACK. Apply
         // the SAME floor verbatim before multiplying the albedo.
+        materialAlbedo = texc.rgb; haveAlbedo = true;
         rgb = texc.rgb * max(vArgb, vec3(0.5));
         rgb += vHighlight.rgb * vHighlight.a;
         rgb += propPoolLight(texc.rgb);
-        if (uFrame.pbrV1Strength > 0.0) rgb += propSunSpecular(texc.rgb) * uFrame.pbrV1Strength;
     } else if (uFrame.materialReady != 0 && vLayer >= 0) {
         // ALPHA-OFF group. Real albedo texture (GL_REPEAT restored via fract, then
         // cropped to this packet's sub-region -- FENCE-UVSCALE-1, mirrors GL's
@@ -210,6 +197,7 @@ void main() {
         vec2 uvContinuous = vUv * vUvScale;
         vec4 texOff = texture(uAlbedo, vec3(fract(uvContinuous), float(vLayer)));
         vec3 albedo = texOff.rgb;
+        materialAlbedo = albedo; haveAlbedo = true;
 
         // GL DEFAULT PROP MODEL (static_prop.frag:346): tex_color * v_argb, where v_argb
         // is the VERTEX-BAKED lit color (base_light seed + ambient + sun*NdotL). NOT PBR.
@@ -223,13 +211,20 @@ void main() {
         }
         rgb += vHighlight.rgb * vHighlight.a;
         rgb += propPoolLight(albedo);
-        if (uFrame.pbrV1Strength > 0.0) rgb += propSunSpecular(albedo) * uFrame.pbrV1Strength;
     } else {
         // Fail-soft flat teal placeholder. IN-PLACE opaque write.
         rgb = vec3(0.35, 0.62, 0.68) * (0.6 + 0.4 * vUv.x);
     }
     // PROP-COVERAGE-1: an opaque (non-alpha-tested) fragment belongs to the core pass only.
     if (uPacket.coverageFringePass != 0 && !alphaTestClass) discard;
+    if (haveAlbedo && uPacket.materialId >= 0 && uPacket.materialId < uPropMaterials.materials.length()) {
+        SurfaceMaterial surface = propSurface(uPacket.materialId, materialAlbedo);
+        float materialCoverage = propMaterialCoverage(uPacket.materialId);
+        if (materialCoverage > 0.0) {
+            rgb = mix(rgb, propAuthoredColor(surface, alphaTestClass), materialCoverage);
+            outputNormalStuff = mix(vNormalStuff, renderToMc2(surface.normal), materialCoverage);
+        }
+    }
     oColor = vec4(rgb, cover);
 
     // location 1: GBuffer1 — bit-adjacent to static_prop.frag:657-661, which selects
@@ -264,5 +259,5 @@ void main() {
     // inline only rc_pixelHandlesOwnShadow / rc_isStaticPropNoSelfShadow and have no
     // RECEIVE opt-in at all. Closing the granularity gap needs a per-packet alpha bit
     // on the feed; it is not required for class correctness and is NOT done here.
-    oGBuffer1 = vec4(normalize(vNormalStuff) * 0.5 + 0.5, alphaTestClass ? 0.1875 : 0.25);
+    oGBuffer1 = vec4(normalize(outputNormalStuff) * 0.5 + 0.5, alphaTestClass ? 0.1875 : 0.25);
 }

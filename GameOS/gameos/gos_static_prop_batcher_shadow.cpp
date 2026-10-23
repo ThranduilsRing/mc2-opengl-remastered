@@ -207,6 +207,12 @@ extern "C" int mc2_color_prop_island_get_material_feed(Mc2ColorPropMaterialFeed*
         s_typeAlbedoLayer.size() != s_types.size()) return 0;
 
     out->arrayKeyOff     = GpuStaticPropBatcher::instance().albedoKey(0);
+    const auto& authored = GpuStaticPropBatcher::instance().materialSources();
+    out->normal = &authored.normal; out->orm = &authored.orm;
+    out->materials = authored.table.data();
+    out->materialCount = static_cast<uint32_t>(authored.table.size());
+    out->packetMaterialIds = authored.packetIds.size() == s_packetTexArrayLayer.size()
+        ? authored.packetIds.data() : nullptr;
     // VK-P11 STATIC-PROP MATERIAL alpha-ON: expose the alpha-ON group array (0 if not
     // built). typeAlbedoLayer[] already carries the group-relative layer for class-1
     // types, so the island routes them into this array with the same layer table.

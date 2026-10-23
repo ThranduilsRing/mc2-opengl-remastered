@@ -130,10 +130,7 @@ void lbssRecordBldg(bool eligible, bool taken, bool blk_idx, bool blk_gen, bool 
 bool textureOrKtxSidecarExists(const char* tgaPath);
 bool staticRegIsNaturalBuildingName(const char* name);
 void bdLogStaticRegInvalid(const char* kind, int reason, int regIdx, const char* name);
-bool buildingPbrGateEnabled();
 void loadBuildingImportSourceWithSidecarAxis(TG_TypeMultiShape* shape, const char* importSourceBase, bool* failFlag);
-bool loadBuildingPbrFromSidecar(BldgAppearanceType* type, const char* sidecarPath);
-void submitBuildingFootprintShadow(const BldgAppearance* appearance);
 
 // [LIGHTSLOT v1] trace entry points (state is private to bdactor_diag.cpp).
 namespace mc2_lightslot_trace {

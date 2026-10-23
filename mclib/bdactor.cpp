@@ -247,7 +247,6 @@ void BldgAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 	
 	
 	beenInView = false;
-	buildingPbrRenderActive = false;
 
 	fogLightSet = false;
 	if (appearType)
@@ -256,7 +255,6 @@ void BldgAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 		// render accessor (override if present, else stock). Collision rebuilds
 		// this same member from stock bldgShape[lod] when it needs passability.
 		bldgShape = appearType->getBldgRenderShape(0)->CreateFrom();
-		buildingPbrRenderActive = appearType->buildingPbrEnabled;
 
 		// Load the texture and store its handle.
 		for (int i=0;i<bldgShape->GetNumTextures();i++)
@@ -272,9 +270,7 @@ void BldgAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 	
 			if (textureOrKtxSidecarExists(textureName))
 			{
-				const bool forceOpaquePbrTexture = buildingPbrRenderActive &&
-					!(appearType && appearType->buildingPbrPreserveLegacyAlpha);
-				if (!forceOpaquePbrTexture && S_strnicmp(txmName,"a_",2) == 0)
+				if (S_strnicmp(txmName,"a_",2) == 0)
 				{
 					DWORD gosTextureHandle = mc2::textures::load(textureName,gos_Texture_Alpha,gosHint_DisableMipmap | gosHint_DontShrink);
 					gosASSERT(gosTextureHandle != 0xffffffff);
@@ -373,10 +369,7 @@ void BldgAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 		// against. Registering the stock shape here would make submit() miss
 		// (render type-shape not in s_typeIndex) -> CPU-fallback/cull, and the
 		// override would never rasterize. Damage stays stock (out of MVP).
-		const bool _bldgIsOverride = (appearType->bldgRenderShape != nullptr);
-		for (int i = 0; i < MAX_LODS; ++i)
-			GpuStaticPropBatcher::instance().registerMultiShape(appearType->getBldgRenderShape(i), _bldgIsOverride);
-		GpuStaticPropBatcher::instance().registerMultiShape(appearType->bldgDmgShape);
+		appearType->registerRenderShapes();
 	}
 }
 
@@ -433,7 +426,8 @@ void BldgAppearance::setObjStatus (long oStatus)
 
 		if ((oStatus == OBJECT_STATUS_DESTROYED) || (oStatus == OBJECT_STATUS_DISABLED))
 		{
-			if (appearType->bldgDmgShape)
+			// Destroyed RENDER shape: the override's destroyed chain when cooked, else stock damage.
+			if (TG_TypeMultiShape* dmgRender = appearType->getBldgDmgRenderShape())
 			{
 				if (bldgShape)
 				{
@@ -442,8 +436,7 @@ void BldgAppearance::setObjStatus (long oStatus)
 					bldgShape = nullptr;
 				}
 				
-				bldgShape = appearType->bldgDmgShape->CreateFrom();
-				buildingPbrRenderActive = false;
+				bldgShape = dmgRender->CreateFrom();
 				if (bdAnimationState != -1)
 					appearType->setAnimation(bldgShape,bdAnimationState);
 				
@@ -468,7 +461,6 @@ void BldgAppearance::setObjStatus (long oStatus)
 				// MODEL-OVERRIDE dual-shape: restore the per-instance RENDER
 				// shape via the render accessor (override if present, else stock).
 				bldgShape = appearType->getBldgRenderShape(0)->CreateFrom();
-				buildingPbrRenderActive = appearType->buildingPbrEnabled;
 				if (bdAnimationState != -1)
 					appearType->setAnimation(bldgShape,bdAnimationState);
 

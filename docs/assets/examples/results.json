@@ -1,0 +1,194 @@
+[
+  {
+    "selection": "hangar",
+    "state": "intact",
+    "instances": 198,
+    "peak_mission_instances": 8,
+    "footprint_wu": [
+      191.0,
+      192.0
+    ],
+    "height_wu": 77.92009735107422,
+    "triangles": 98,
+    "budget_triangles": 12000,
+    "texture_edge_budget": 1024,
+    "candidate_count": 0,
+    "library_exists": true
+  },
+  {
+    "selection": "hangar",
+    "state": "destroyed",
+    "instances": 198,
+    "peak_mission_instances": 8,
+    "footprint_wu": [
+      191.0,
+      192.0124969482422
+    ],
+    "height_wu": 77.92009735107422,
+    "triangles": 172,
+    "budget_triangles": 12000,
+    "texture_edge_budget": 1024,
+    "candidate_count": 0,
+    "library_exists": true
+  },
+  {
+    "selection": "wirefence",
+    "state": "intact",
+    "instances": 9300,
+    "peak_mission_instances": 506,
+    "footprint_wu": [
+      0.3612000048160553,
+      43.34299835562706
+    ],
+    "height_wu": 15.969900131225586,
+    "triangles": 4,
+    "budget_triangles": 494,
+    "texture_edge_budget": 512,
+    "candidate_count": 0,
+    "library_exists": true
+  },
+  {
+    "selection": "wirefence",
+    "state": "destroyed",
+    "instances": 9300,
+    "peak_mission_instances": 506,
+    "footprint_wu": [
+      15.96989917755127,
+      43.34299835562706
+    ],
+    "height_wu": 0.0,
+    "triangles": 2,
+    "budget_triangles": 494,
+    "texture_edge_budget": 512,
+    "candidate_count": 0,
+    "library_exists": true
+  },
+  {
+    "selection": "wirefencediag",
+    "state": "intact",
+    "instances": 684,
+    "peak_mission_instances": 63,
+    "footprint_wu": [
+      0.11379999667406082,
+      60.943400740623474
+    ],
+    "height_wu": 16.000000378116965,
+    "triangles": 4,
+    "budget_triangles": 3968,
+    "texture_edge_budget": 1024,
+    "candidate_count": 0,
+    "library_exists": true
+  },
+  {
+    "selection": "wirefencediag",
+    "state": "destroyed",
+    "instances": 684,
+    "peak_mission_instances": 63,
+    "footprint_wu": [
+      16.00000074505806,
+      60.943400740623474
+    ],
+    "height_wu": 0.0,
+    "triangles": 2,
+    "budget_triangles": 3968,
+    "texture_edge_budget": 1024,
+    "candidate_count": 0,
+    "library_exists": true
+  },
+  {
+    "selection": "razorwirefence",
+    "state": "intact",
+    "instances": 12853,
+    "peak_mission_instances": 489,
+    "footprint_wu": [
+      8.61460018157959,
+      43.110700726509094
+    ],
+    "height_wu": 27.35460090637207,
+    "triangles": 8,
+    "budget_triangles": 511,
+    "texture_edge_budget": 512,
+    "candidate_count": 0,
+    "library_exists": true
+  },
+  {
+    "selection": "razorwirefence",
+    "state": "destroyed",
+    "instances": 12853,
+    "peak_mission_instances": 489,
+    "footprint_wu": [
+      28.90089988708496,
+      43.1856991648674
+    ],
+    "height_wu": 0.6826001405715942,
+    "triangles": 10,
+    "budget_triangles": 511,
+    "texture_edge_budget": 512,
+    "candidate_count": 0,
+    "library_exists": true
+  },
+  {
+    "selection": "razorwirefencediag",
+    "state": "intact",
+    "instances": 292,
+    "peak_mission_instances": 31,
+    "footprint_wu": [
+      8.61460018157959,
+      60.95469853281975
+    ],
+    "height_wu": 27.35460090637207,
+    "triangles": 8,
+    "budget_triangles": 8064,
+    "texture_edge_budget": 1024,
+    "candidate_count": 0,
+    "library_exists": true
+  },
+  {
+    "selection": "razorwirefencediag",
+    "state": "destroyed",
+    "instances": 292,
+    "peak_mission_instances": 31,
+    "footprint_wu": [
+      28.02790069580078,
+      60.97170063853264
+    ],
+    "height_wu": 3.003399968147278,
+    "triangles": 12,
+    "budget_triangles": 8064,
+    "texture_edge_budget": 1024,
+    "candidate_count": 0,
+    "library_exists": true
+  },
+  {
+    "selection": "vehiclehangar",
+    "state": "intact",
+    "instances": 449,
+    "peak_mission_instances": 24,
+    "footprint_wu": [
+      105.31989669799805,
+      113.76250076293945
+    ],
+    "height_wu": 59.47589874267578,
+    "triangles": 114,
+    "budget_triangles": 10416,
+    "texture_edge_budget": 1024,
+    "candidate_count": 0,
+    "library_exists": true
+  },
+  {
+    "selection": "vehiclehangar",
+    "state": "destroyed",
+    "instances": 449,
+    "peak_mission_instances": 24,
+    "footprint_wu": [
+      105.31990051269531,
+      113.7042007446289
+    ],
+    "height_wu": 16.247600555419922,
+    "triangles": 72,
+    "budget_triangles": 10416,
+    "texture_edge_budget": 1024,
+    "candidate_count": 0,
+    "library_exists": true
+  }
+]

@@ -3,9 +3,9 @@
 # Where each gate is read, what the smoke runner forwards and what tier1_env_vars.md says are not here: ask
 # tools/repo_intel (env_var, gate_status), which scan the sources.
 generator_version: "3.0.0"
-gate_count: 901
+gate_count: 898
 registry_entry_count: 181
-verified_count: 789
+verified_count: 786
 flags:
   - name: MC2_3DVIEW_DIAG
     kind: Bool
@@ -611,27 +611,6 @@ flags:
     rule: Presence
     owner: terrain
     doc: "Step 2b: bucket-header SSBO demoted behind MC2_BUCKET_HEADER_TRACE."
-  - name: MC2_BUILDING_FOOTPRINT_SHADOW
-    kind: Bool
-    default: true
-    rule: Lead0Kill
-    owner: props
-    doc: ""
-    verified: true
-  - name: MC2_BUILDING_PBR
-    kind: Bool
-    default: false
-    rule: Exact1
-    owner: props
-    doc: ""
-    verified: true
-  - name: MC2_BUILDING_PBR_TRACE
-    kind: Bool
-    default: false
-    rule: Presence
-    owner: code
-    doc: ""
-    verified: true
   - name: MC2_BURNIN_NO_JPG
     kind: Bool
     default: false

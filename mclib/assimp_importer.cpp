@@ -25,6 +25,7 @@
 #include <assimp/material.h>
 
 #include <memory>
+#include <tuple>
 #include <vector>
 #include <string>
 #include <string_view>
@@ -35,6 +36,7 @@
 #include <cmath>
 #include <cstdio>
 #include <optional>
+#include <algorithm>
 
 #include "msl.h"
 #include "tgl.h"
@@ -374,7 +376,8 @@ void BuildTextureList(const aiScene* scene, TG_TypeMultiShape* out) {
 // Returns 0 on success, -1 on failure.
 long ImportShapeFromMesh(const aiScene* scene, unsigned meshIdx,
                          TG_TypeShape* outShape, TG_TypeMultiShape* outMulti,
-                         SkelBake* bake = nullptr) {
+                         SkelBake* bake = nullptr, bool authoredColors = false,
+                         const aiNode* instanceNode = nullptr, const aiMatrix4x4* instanceWorld = nullptr) {
 	const aiMesh* mesh = scene->mMeshes[meshIdx];
 	if (mesh->mNumVertices == 0 || mesh->mNumFaces == 0) {
 		// Empty mesh — leave shape inited but do not populate. Engine treats
@@ -415,7 +418,7 @@ long ImportShapeFromMesh(const aiScene* scene, unsigned meshIdx,
 	// Resolve node identity by walking the scene graph for the node that
 	// references this mesh. Multi-mesh-per-node is allowed; we just take the
 	// first hit (the renderer iterates shapes, not nodes).
-	const aiNode* meshNode = FindNodeForMesh(scene->mRootNode, meshIdx).value_or(nullptr);
+	const aiNode* meshNode = instanceNode ? instanceNode : FindNodeForMesh(scene->mRootNode, meshIdx).value_or(nullptr);
 	const char* nodeNm = (meshNode && meshNode->mName.length > 0)
 	                     ? meshNode->mName.C_Str() : "";
 	const char* parentNm = "None";
@@ -430,11 +433,20 @@ long ImportShapeFromMesh(const aiScene* scene, unsigned meshIdx,
 	// channels, which are M2.)
 	glm::vec3 center;
 	center.x = center.y = center.z = 0.0f;
-	if (meshNode) {
+	if (meshNode && !instanceWorld) {
 		aiVector3D pos, scale;
 		aiQuaternion rot;
 		meshNode->mTransformation.Decompose(scale, rot, pos);
 		center = toMC2Pos(pos);
+	}
+	// Baked instance: positions by the world matrix, normals by its inverse transpose; a mirroring
+	// transform reverses winding so faces stay front-facing.
+	aiMatrix3x3 normalXform;
+	bool mirrored = false;
+	if (instanceWorld) {
+		const aiMatrix3x3 linear(*instanceWorld);
+		normalXform = aiMatrix3x3(linear).Inverse().Transpose();
+		mirrored = linear.Determinant() < 0.0f;
 	}
 
 	// Zeroed vertex + triangle vectors, moved into the shape once filled.
@@ -455,6 +467,11 @@ long ImportShapeFromMesh(const aiScene* scene, unsigned meshIdx,
 			aiVector3D nWorld = rotRowMajor16(restM, nLocal);
 			nWorld.Normalize();
 			verts[v].normal = toMC2Vec(nWorld);
+		} else if (instanceWorld) {
+			verts[v].position = toMC2Pos((*instanceWorld) * mesh->mVertices[v]);
+			aiVector3D n = normalXform * mesh->mNormals[v];
+			n.Normalize();
+			verts[v].normal = toMC2Vec(n);
 		} else {
 			verts[v].position  = toMC2Pos(mesh->mVertices[v]);
 			verts[v].normal    = toMC2Vec(mesh->mNormals[v]);
@@ -468,6 +485,17 @@ long ImportShapeFromMesh(const aiScene* scene, unsigned meshIdx,
 		// shows (unlit, matching the "draw foliage UNLIT" prior art). When a bake
 		// DOES run it overwrites this, so stock-lit shapes are unaffected.
 		verts[v].aRGBLight = 0xffffffff;
+        if (authoredColors) {
+            verts[v].aRGBLight = 0xff000000;
+            if (mesh->HasVertexColors(0)) {
+                const auto& color = mesh->mColors[0][v];
+                auto channel = [](float value) -> uint32_t {
+                    if (!std::isfinite(value)) return 0;
+                    return static_cast<uint32_t>(std::lround(std::clamp(value, 0.0f, 1.0f) * 255.0f));
+                };
+                verts[v].aRGBLight |= (channel(color.r) << 16) | (channel(color.g) << 8) | channel(color.b);
+            }
+        }
 
 		// MODEL-OVERRIDE / Track C: vertex-tight bounding box, mesh-local.
 		// Accumulate over the SAME positions stored into the vertex buffer (no
@@ -503,9 +531,10 @@ long ImportShapeFromMesh(const aiScene* scene, unsigned meshIdx,
 			return -1;
 		}
 		TG_TypeTriangle& t = tris[f];
+		const unsigned c1 = mirrored ? 2u : 1u, c2 = mirrored ? 1u : 2u;
 		t.Vertices[0] = face.mIndices[0];
-		t.Vertices[1] = face.mIndices[1];
-		t.Vertices[2] = face.mIndices[2];
+		t.Vertices[1] = face.mIndices[c1];
+		t.Vertices[2] = face.mIndices[c2];
 
 		// Material index → texture slot: 1:1 mapping per BuildTextureList
 		// (MVP scope; mech materials don't share atlases).
@@ -532,10 +561,10 @@ long ImportShapeFromMesh(const aiScene* scene, unsigned meshIdx,
 		if (hasUV) {
 			t.uvdata.u0 = mesh->mTextureCoords[0][face.mIndices[0]].x;
 			t.uvdata.v0 = toMC2V(mesh->mTextureCoords[0][face.mIndices[0]].y);
-			t.uvdata.u1 = mesh->mTextureCoords[0][face.mIndices[1]].x;
-			t.uvdata.v1 = toMC2V(mesh->mTextureCoords[0][face.mIndices[1]].y);
-			t.uvdata.u2 = mesh->mTextureCoords[0][face.mIndices[2]].x;
-			t.uvdata.v2 = toMC2V(mesh->mTextureCoords[0][face.mIndices[2]].y);
+			t.uvdata.u1 = mesh->mTextureCoords[0][face.mIndices[c1]].x;
+			t.uvdata.v1 = toMC2V(mesh->mTextureCoords[0][face.mIndices[c1]].y);
+			t.uvdata.u2 = mesh->mTextureCoords[0][face.mIndices[c2]].x;
+			t.uvdata.v2 = toMC2V(mesh->mTextureCoords[0][face.mIndices[c2]].y);
 		}
 	}
 
@@ -1339,7 +1368,19 @@ void mc2mechanim::TickImportedMechs(float dt, unsigned frameStamp, const MechMot
 
 //=============================================================================
 // Public entry point.
-long ImportGeometryFromFile(const char* path, TG_TypeMultiShape* out, bool autoGround) {
+// Every (node, mesh) pair under the root with its accumulated world transform, in depth-first
+// node order: the instance list a static import bakes (a mesh used by two nodes appears twice).
+static void CollectMeshInstances(const aiNode* node, const aiMatrix4x4& parent,
+                                 std::vector<std::tuple<unsigned, const aiNode*, aiMatrix4x4>>& out) {
+	const aiMatrix4x4 world = parent * node->mTransformation;
+	for (unsigned i = 0; i < node->mNumMeshes; ++i)
+		out.emplace_back(node->mMeshes[i], node, world);
+	for (unsigned c = 0; c < node->mNumChildren; ++c)
+		CollectMeshInstances(node->mChildren[c], world, out);
+}
+
+long ImportGeometryFromFile(const char* path, TG_TypeMultiShape* out, bool autoGround, bool authoredColors,
+                            bool bakeNodeTransforms) {
 	if (!path || !out) return -1;
 
 
@@ -1508,6 +1549,24 @@ long ImportGeometryFromFile(const char* path, TG_TypeMultiShape* out, bool autoG
 		if (animateImport) bake.recParts = &animParts;
 		long r = PopulateMergedSkinnedShape(scene, out, bake);
 		if (r != 0) return r;
+	} else if (bakeNodeTransforms) {
+	// Static override: one TG_TypeShape per (node, mesh) instance with its world transform baked.
+	std::vector<std::tuple<unsigned, const aiNode*, aiMatrix4x4>> instances;
+	CollectMeshInstances(scene->mRootNode, aiMatrix4x4(), instances);
+	out->AllocateImportedShapes(static_cast<int>(instances.size()));
+	BuildTextureList(scene, out);
+	ResetBoundingBox(out);
+	for (size_t i = 0; i < instances.size(); ++i) {
+		TG_TypeNodePtr slot = out->GetTypeNode(static_cast<long>(i));
+		if (!slot || slot->GetNodeType() != SHAPE_NODE)
+			continue;
+		const auto& [meshIdx, node, world] = instances[i];
+		long r = ImportShapeFromMesh(scene, meshIdx, static_cast<TG_TypeShape*>(slot), out, nullptr,
+		                             authoredColors, node, &world);
+		if (r != 0) {
+			return r;
+		}
+	}
 	} else {
 	// Allocate the multi-shape's listOfTypeShapes[] and per-slot TG_TypeShape
 	// instances. One Assimp mesh → one TG_TypeShape (MVP; LODs not embedded).
@@ -1528,7 +1587,7 @@ long ImportGeometryFromFile(const char* path, TG_TypeMultiShape* out, bool autoG
 		if (!slot || slot->GetNodeType() != SHAPE_NODE)
 			continue;
 		long r = ImportShapeFromMesh(scene, i, static_cast<TG_TypeShape*>(slot), out,
-		                             bake.active ? &bake : nullptr);
+		                             bake.active ? &bake : nullptr, authoredColors);
 		if (r != 0) {
 			return r;
 		}
@@ -1553,7 +1612,7 @@ long ImportGeometryFromFile(const char* path, TG_TypeMultiShape* out, bool autoG
 		static const int s_ground = mc2::gate::get<"MC2_GLTF_GROUND">();
 		if (s_ground && autoGround) {
 			const float dy = (s_ground==2) ? -out->minBox.y : -out->maxBox.y;
-			for (unsigned si=0; si<scene->mNumMeshes; ++si) {
+			for (unsigned si=0; si<static_cast<unsigned>(out->GetNumShapes()); ++si) {
 				TG_TypeNodePtr nd = out->GetTypeNode(static_cast<long>(si));
 				if (nd && nd->GetNodeType()==SHAPE_NODE)
 					static_cast<TG_TypeShape*>(nd)->TranslateTypeVerticesY(dy);

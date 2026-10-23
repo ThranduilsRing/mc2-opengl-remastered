@@ -30,16 +30,11 @@ from scripts import console_child  # noqa: E402
 
 def test_asset_sidecar_deploy_is_identical_across_checkout_roots(monkeypatch):
     monkeypatch.setattr(dp, "ensure_terrain_materials", lambda target: {})
-    rel = "data/tgl/QuonsetGLB.mcasset.json"
-    tracked = subprocess.run(["git", "-C", str(ROOT), "show", "HEAD:" + rel],
-                             check=True, stdout=subprocess.PIPE,
-                             **console_child.child_kwargs(redirected=True)).stdout
-    assert len(tracked) == 2642
-    crlf_lines = set(range(1, 5)) | set(range(6, 41)) | set(range(98, 118))
-    mixed = b"".join(line.replace(b"\n", b"\r\n") if i in crlf_lines else line
-                     for i, line in enumerate(tracked.splitlines(keepends=True), 1))
-    assert len(mixed) == 2701
-    assert mixed.replace(b"\r\n", b"\n") == tracked
+    rel = "data/tgl/Fixture.mcasset.json"
+    tracked = b"".join(b'{"line": %d}\n' % i for i in range(40))
+    mixed = b"".join(line.replace(b"\n", b"\r\n") if i % 3 else line
+                     for i, line in enumerate(tracked.splitlines(keepends=True)))
+    assert mixed != tracked and mixed.replace(b"\r\n", b"\n") == tracked
     outputs = []
     with ExitStack() as cleanup:
         for checkout_bytes in (mixed, tracked):

@@ -102,9 +102,6 @@ P("MC2_BRIDGE_MOVER_PERIOD_SEC", Float, 2.0, "code", "", "Seconds between bridge
 L(Presence, "MC2_BRIDGE_MOVER_STATE", Bool, false, "unclassified", "", "", passthrough | verified),
 L(Presence, "MC2_BUCKET_CENSUS", Bool, false, "terrain", "", ""),
 L(Presence, "MC2_BUCKET_HEADER_TRACE", Bool, false, "terrain", "", "Step 2b: bucket-header SSBO demoted behind MC2_BUCKET_HEADER_TRACE."),
-L(Lead0Kill, "MC2_BUILDING_FOOTPRINT_SHADOW", Bool, true, "props", "", "", verified),
-L(Exact1, "MC2_BUILDING_PBR", Bool, false, "props", "", "", verified),
-L(Presence, "MC2_BUILDING_PBR_TRACE", Bool, false, "code", "", "", verified),
 // history: docs/gate-history.md#MC2_BURNIN_NO_JPG
 L(Presence, "MC2_BURNIN_NO_JPG", Bool, false, "terrain", "", "BURNIN-DISK-JPEG kill-switch: when set, skip the <name>.burnin.jpg sidecar probe in TerrainColorMap::init and load the full <name>.burnin.tga (or .tga) instead.", registry(Feature, "MC2_FEATURE_BURNIN_NO_JPG", -1, false) | verified),
 // GitHub-issue fix batch 2026-07-16, part 2 (issues #9, #17)

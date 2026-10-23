@@ -7,18 +7,6 @@
 #include "Gates/gate.h"
 
 
-static bool s_renderShapePbrOverrideActive = false;
-
-void TG_SetRenderShapePbrOverride()
-{
-	s_renderShapePbrOverrideActive = true;
-}
-
-void TG_ClearRenderShapePbrOverride()
-{
-	s_renderShapePbrOverrideActive = false;
-}
-
 // (Removed dead #define TERRAIN_DEPTH_FUDGE (0.000f) 2026-05-16: zero
 // consumers in this TU; a translation-unit-local trap if any future
 // quad-style emit were added here. Bias single-sourced in
@@ -32,17 +20,6 @@ void TG_ClearRenderShapePbrOverride()
 //   tgl.cpp:2700-2730. Phase 1 documents only; centralization is F4.
 void TG_Shape::Render (float forceZ, bool isHudElement, BYTE alphaValue, bool isClamped, const glm::mat4* shapeToClip, const glm::mat4* shapeToWorld)
 {
-	const bool traceBuildingPbr = s_renderShapePbrOverrideActive && mc2::gate::get<"MC2_BUILDING_PBR_TRACE">();
-	if (traceBuildingPbr) {
-		static int s_pbrRenderTrace = 0;
-		if (s_pbrRenderTrace < 64) {
-			++s_pbrRenderTrace;
-			fprintf(stderr,
-				"[BUILDING_PBR_TRACE] TG_Shape::Render enter shape=%p verts=%ld visible=%ld last=%ld turn=%ld\n",
-				this, numVertices, numVisibleFaces, lastTurnTransformed, turn);
-			fflush(stderr);
-		}
-	}
 	if (!renderTGLShapes)
 		return;
 
@@ -60,13 +37,6 @@ void TG_Shape::Render (float forceZ, bool isHudElement, BYTE alphaValue, bool is
 		!listOfVisibleShadows ||
 		(/*(lastTurnTransformed != (turn-1)) &&*/ (lastTurnTransformed != turn)))
 	{
-		if (traceBuildingPbr) {
-			fprintf(stderr,
-				"[BUILDING_PBR_TRACE] TG_Shape::Render reject shape=%p lv=%p lc=%p lsv=%p lt=%p lvf=%p lvs=%p last=%ld turn=%ld\n",
-				this, listOfVertices, listOfColors, listOfShadowTVertices, listOfTriangles,
-				listOfVisibleFaces, listOfVisibleShadows, lastTurnTransformed, turn);
-			fflush(stderr);
-		}
 		return;
 	}
 
@@ -309,8 +279,7 @@ void TG_Shape::Render (float forceZ, bool isHudElement, BYTE alphaValue, bool is
 	// FIXME: this (listOfTypeTriangles[0]) is not correct if model has more than 1 texture!
 	const TG_TypeTriangle firstTriType = theShape->listOfTypeTriangles[0];
 	const bool firstTextureAlpha = materialTextures()[firstTriType.localTextureHandle].textureAlpha;
-	const bool pbrOverrideActive = s_renderShapePbrOverrideActive;
-	if (!isSpotlight && !isWindow && (!firstTextureAlpha || pbrOverrideActive) && (alphaValue == 0xff))
+	if (!isSpotlight && !isWindow && !firstTextureAlpha && (alphaValue == 0xff))
 	{
 		DWORD addFlags = 0;
 		if (isHudElement)
@@ -361,35 +330,8 @@ void TG_Shape::Render (float forceZ, bool isHudElement, BYTE alphaValue, bool is
             rs.isHudElement_ = isHudElement;
 
 			const DWORD texNode = materialTextures()[triType.localTextureHandle].mcTextureNodeIndex;
-			const DWORD renderFlags = MC2_DRAWSOLID | addFlags |
-				((pbrOverrideActive && firstTextureAlpha) ? MC2_ALPHATEST : 0);
-			if (pbrOverrideActive && firstTextureAlpha)
-				mc2::renderSubmissions().addRenderShape(texNode, renderFlags);
-			mc2::renderSubmissions().addRenderShape(texNode, &rs, renderFlags);
-			if (traceBuildingPbr) {
-				fprintf(stderr,
-					"[BUILDING_PBR_TRACE] TG_Shape::Render enqueue shape=%p texNode=%lu localTex=%lu visible=%ld\n",
-					this,
-					static_cast<unsigned long>(texNode),
-					static_cast<unsigned long>(triType.localTextureHandle),
-					numVisibleFaces);
-				fflush(stderr);
-			}
+			mc2::renderSubmissions().addRenderShape(texNode, &rs, MC2_DRAWSOLID | addFlags);
 		}
-		else if (traceBuildingPbr) {
-			fprintf(stderr, "[BUILDING_PBR_TRACE] TG_Shape::Render no buffers shape=%p ib=%p vb=%p\n",
-				this, static_cast<void*>(theShape->ib_), static_cast<void*>(theShape->vb_));
-			fflush(stderr);
-		}
-	}
-	else if (traceBuildingPbr) {
-		TG_TypeTriangle triType = theShape->listOfTypeTriangles[0];
-		fprintf(stderr,
-			"[BUILDING_PBR_TRACE] TG_Shape::Render skip indexed shape=%p spot=%d window=%d alpha=%d alphaValue=%u localTex=%lu\n",
-			this, static_cast<int>(isSpotlight), static_cast<int>(isWindow),
-			static_cast<int>(materialTextures()[triType.localTextureHandle].textureAlpha),
-			static_cast<unsigned>(alphaValue), static_cast<unsigned long>(triType.localTextureHandle));
-		fflush(stderr);
 	}
 
 	gos_SetRenderState( gos_State_Fog, 0);

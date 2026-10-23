@@ -1,0 +1,349 @@
+{
+  "overrides": [
+    {
+      "type": "model",
+      "source": "model.glb",
+      "renderOnly": true,
+      "fallback": "stock",
+      "scale": 1,
+      "replaces": "staticProp:valid",
+      "materials": {
+        "version": 1,
+        "slots": [
+          {
+            "slot": 0,
+            "reviewed": true,
+            "class": "rust",
+            "normal": "detail/normal.tga",
+            "orm": "detail/orm.tga",
+            "uvScale": [
+              2,
+              3
+            ],
+            "metallic": 0.0
+          }
+        ]
+      }
+    },
+    {
+      "type": "model",
+      "source": "model.glb",
+      "renderOnly": true,
+      "fallback": "stock",
+      "scale": 1,
+      "replaces": "staticProp:unreviewed",
+      "materials": {
+        "version": 1,
+        "slots": [
+          {
+            "slot": 0,
+            "reviewed": false,
+            "class": "rust",
+            "normal": "detail/normal.tga",
+            "orm": "detail/orm.tga",
+            "uvScale": [
+              2,
+              3
+            ],
+            "metallic": 0.0
+          }
+        ]
+      }
+    },
+    {
+      "type": "model",
+      "source": "model.glb",
+      "renderOnly": true,
+      "fallback": "stock",
+      "scale": 1,
+      "replaces": "staticProp:bad_class",
+      "materials": {
+        "version": 1,
+        "slots": [
+          {
+            "slot": 0,
+            "reviewed": true,
+            "class": "guess_from_color",
+            "normal": "detail/normal.tga",
+            "orm": "detail/orm.tga",
+            "uvScale": [
+              2,
+              3
+            ],
+            "metallic": 0.1
+          }
+        ]
+      }
+    },
+    {
+      "type": "model",
+      "source": "model.glb",
+      "renderOnly": true,
+      "fallback": "stock",
+      "scale": 1,
+      "replaces": "staticProp:unsafe",
+      "materials": {
+        "version": 1,
+        "slots": [
+          {
+            "slot": 0,
+            "reviewed": true,
+            "class": "rust",
+            "normal": "../normal.tga",
+            "orm": "detail/orm.tga",
+            "uvScale": [
+              2,
+              3
+            ],
+            "metallic": 0.0
+          }
+        ]
+      }
+    },
+    {
+      "type": "model",
+      "source": "model.glb",
+      "renderOnly": true,
+      "fallback": "stock",
+      "scale": 1,
+      "replaces": "staticProp:bad_uv",
+      "materials": {
+        "version": 1,
+        "slots": [
+          {
+            "slot": 0,
+            "reviewed": true,
+            "class": "rust",
+            "normal": "detail/normal.tga",
+            "orm": "detail/orm.tga",
+            "uvScale": [
+              0,
+              1
+            ],
+            "metallic": 0.0
+          }
+        ]
+      }
+    },
+    {
+      "type": "model",
+      "source": "model.glb",
+      "renderOnly": true,
+      "fallback": "stock",
+      "scale": 1,
+      "replaces": "staticProp:bad_scalar",
+      "materials": {
+        "version": 1,
+        "slots": [
+          {
+            "slot": 0,
+            "reviewed": true,
+            "class": "rust",
+            "normal": "detail/normal.tga",
+            "orm": "detail/orm.tga",
+            "uvScale": [
+              2,
+              3
+            ],
+            "metallic": 0.0,
+            "aoStrength": 2
+          }
+        ]
+      }
+    },
+    {
+      "type": "model",
+      "source": "model.glb",
+      "renderOnly": true,
+      "fallback": "stock",
+      "scale": 1,
+      "replaces": "staticProp:dielectric_metal",
+      "materials": {
+        "version": 1,
+        "slots": [
+          {
+            "slot": 0,
+            "reviewed": true,
+            "class": "dielectric",
+            "normal": "detail/normal.tga",
+            "orm": "detail/orm.tga",
+            "uvScale": [
+              2,
+              3
+            ],
+            "metallic": 0.5
+          }
+        ]
+      }
+    },
+    {
+      "type": "model",
+      "source": "model.glb",
+      "renderOnly": true,
+      "fallback": "stock",
+      "scale": 1,
+      "replaces": "staticProp:bad_version",
+      "materials": {
+        "version": 3,
+        "slots": [
+          {
+            "slot": 0,
+            "reviewed": true,
+            "class": "rust",
+            "normal": "detail/normal.tga",
+            "orm": "detail/orm.tga",
+            "uvScale": [
+              2,
+              3
+            ],
+            "metallic": 0.0
+          }
+        ]
+      }
+    },
+    {
+      "type": "model",
+      "source": "model.glb",
+      "renderOnly": true,
+      "fallback": "stock",
+      "scale": 1,
+      "replaces": "staticProp:duplicate",
+      "materials": {
+        "version": 1,
+        "slots": [
+          {
+            "slot": 0,
+            "reviewed": true,
+            "class": "rust",
+            "normal": "detail/normal.tga",
+            "orm": "detail/orm.tga",
+            "uvScale": [
+              2,
+              3
+            ],
+            "metallic": 0.0
+          },
+          {
+            "slot": 0,
+            "reviewed": true,
+            "class": "rust",
+            "normal": "detail/normal.tga",
+            "orm": "detail/orm.tga",
+            "uvScale": [
+              2,
+              3
+            ],
+            "metallic": 0.0
+          }
+        ]
+      }
+    },
+    {
+      "type": "model",
+      "source": "model.glb",
+      "renderOnly": true,
+      "fallback": "stock",
+      "scale": 1,
+      "replaces": "staticProp:two_slots",
+      "materials": {
+        "version": 1,
+        "slots": [
+          {
+            "slot": 0,
+            "reviewed": true,
+            "class": "rust",
+            "normal": "detail/normal.tga",
+            "orm": "detail/orm.tga",
+            "uvScale": [
+              2,
+              3
+            ],
+            "metallic": 0.0
+          },
+          {
+            "slot": 1,
+            "reviewed": true,
+            "class": "rust",
+            "normal": "detail/other.tga",
+            "orm": "detail/orm.tga",
+            "uvScale": [
+              2,
+              3
+            ],
+            "metallic": 0.0
+          }
+        ]
+      }
+    },
+    {
+      "type": "model",
+      "source": "model.glb",
+      "renderOnly": true,
+      "fallback": "stock",
+      "scale": 1,
+      "replaces": "staticProp:huge_slot",
+      "materials": {
+        "version": 1,
+        "slots": [
+          {
+            "slot": 4294967296,
+            "reviewed": true,
+            "class": "rust",
+            "normal": "detail/normal.tga",
+            "orm": "detail/orm.tga",
+            "uvScale": [
+              2,
+              3
+            ],
+            "metallic": 0.0
+          }
+        ]
+      }
+    },
+    {
+      "type": "model",
+      "source": "model.glb",
+      "renderOnly": true,
+      "fallback": "stock",
+      "scale": 1,
+      "replaces": "staticProp:huge_version",
+      "materials": {
+        "version": 4294967297,
+        "slots": [
+          {
+            "slot": 0,
+            "reviewed": true,
+            "class": "rust",
+            "normal": "detail/normal.tga",
+            "orm": "detail/orm.tga",
+            "uvScale": [
+              2,
+              3
+            ],
+            "metallic": 0.0
+          }
+        ]
+      }
+    },
+    {
+      "type": "model",
+      "replaces": "staticProp:rust_metal",
+      "source": "x.glb",
+      "renderOnly": true,
+      "fallback": "stock",
+      "scale": 1.0,
+      "materials": {
+        "version": 1,
+        "slots": [
+          {
+            "slot": 0,
+            "reviewed": true,
+            "class": "rust",
+            "orm": "detail/orm.tga",
+            "metallic": 0.1
+          }
+        ]
+      }
+    }
+  ]
+}

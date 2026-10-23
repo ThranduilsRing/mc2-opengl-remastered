@@ -7,7 +7,7 @@ truth) and checking them against the filesystem — no duplicated path lists, no
 deploy execution, no GL, no game.
 
 Default suite covers the source-tracked payload (must exist in the repo):
-  SUPPORT_SCRIPTS, EDITOR_SUPPORT_TREES, GAME_COOK_TOOLS, BUILDING_PBR_PAYLOAD
+  SUPPORT_SCRIPTS, EDITOR_SUPPORT_TREES, GAME_COOK_TOOLS, IMPORTED_STRUCTURE_PAYLOAD
 Plus regression guards (no stale v0.4c target; entries are repo-relative and do
 not escape src_root).
 
@@ -71,7 +71,7 @@ def test_game_cook_tools_exist(t: Ctx) -> bool:
 
 
 def test_building_pbr_payload_exists(t: Ctx) -> bool:
-    _check_all_exist(t, "BUILDING_PBR_PAYLOAD", list(dp.BUILDING_PBR_PAYLOAD))
+    _check_all_exist(t, "IMPORTED_STRUCTURE_PAYLOAD", list(dp.IMPORTED_STRUCTURE_PAYLOAD))
     return t.failures == 0
 
 
@@ -109,7 +109,7 @@ def test_payload_paths_repo_relative_no_escape(t: Ctx) -> bool:
     entries += [s for group in dp.SUPPORT_SCRIPTS.values() for s in group]
     entries += list(dp.EDITOR_SUPPORT_TREES)
     entries += list(dp.GAME_COOK_TOOLS)
-    entries += list(dp.BUILDING_PBR_PAYLOAD)
+    entries += list(dp.IMPORTED_STRUCTURE_PAYLOAD)
     root_real = os.path.realpath(SRC_ROOT)
     for e in entries:
         if os.path.isabs(e):

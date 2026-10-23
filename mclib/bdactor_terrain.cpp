@@ -1,6 +1,7 @@
 // BldgAppearance / TreeAppearance: BldgAppearance terrain/move-map/line-of-sight marking and cell coverage.
 // Declared in the class headers; shared names in bdactor_internal.h.
 #include "bdactor_internal.h"
+#include <memory>
 
 inline constexpr float HEIGHT_THRESHOLD = 10.0f;
 
@@ -20,23 +21,38 @@ long BldgAppearance::calcCellsCovered (glm::vec3& pos, short* cellList) {
 		delete bldgShape;
 		bldgShape = nullptr;
 	
-		bldgShape = appearType->bldgShape[currentLOD]->CreateFrom();
-		buildingPbrRenderActive = false;
+		bldgShape = appearType->getBldgRenderShape(currentLOD)->CreateFrom();   // render shape stays the override
 		if (bdAnimationState != -1)
 			appearType->setAnimation(bldgShape,bdAnimationState);
 	}
 
-	for (int i=0;i<bldgShape->GetNumShapes();i++)
+	// Cell coverage comes from the stock collision shape: a model override owns the per-instance
+	// RENDER shape (bldgShape) and must never become the passability source.
+	std::unique_ptr<TG_MultiShape> stockCover;          // owns the stock copy, if one is made
+	struct ClearOnExit { TG_MultiShape* s = nullptr; ~ClearOnExit() { if (s) s->ClearAnimation(); } } clearOnExit;
+	TG_MultiShapePtr coverShape = bldgShape;
+	if (appearType->bldgRenderShape || appearType->bldgDmgRenderShape)
+	{
+		TG_TypeMultiShape* source = appearType->bldgShape[0];
+		if (status == OBJECT_STATUS_DESTROYED && appearType->bldgDmgShape)
+			source = appearType->bldgDmgShape;
+		stockCover.reset(source->CreateFrom());
+		coverShape = clearOnExit.s = stockCover.get();
+		if (bdAnimationState != -1)
+			appearType->setAnimation(coverShape,bdAnimationState);
+	}
+
+	for (int i=0;i<coverShape->GetNumShapes();i++)
 	{
 		//Check if the artists meant for this piece to NOT block passability!!
-		if (S_strnicmp(bldgShape->GetNodeId(i),"_PAB",4) != 0)
+		if (S_strnicmp(coverShape->GetNodeId(i),"_PAB",4) != 0)
 		{
-			for (int j=0;j<bldgShape->GetNumVerticesInShape(i);j++) 
+			for (int j=0;j<coverShape->GetNumVerticesInShape(i);j++)
 			{
 				glm::vec3 vertexPos, worldPos;
-				vertexPos = bldgShape->GetShapeVertexInEditor(i,j,-rotation);
+				vertexPos = coverShape->GetShapeVertexInEditor(i,j,-rotation);
 				worldPos = pos + vertexPos;
-	
+
 				bool recordCell = false;
 				if (appearType->isForestClump)
 					recordCell = (vertexPos.z <= 1.0f);
@@ -80,7 +96,6 @@ void BldgAppearance::markTerrain (_ScenarioMapCellInfo* pInfo, int type, int cou
 		bldgShape = nullptr;
 	
 		bldgShape = appearType->bldgShape[currentLOD]->CreateFrom();
-		buildingPbrRenderActive = false;
 		if (bdAnimationState != -1)
 			appearType->setAnimation(bldgShape,bdAnimationState);
 	}
@@ -139,7 +154,6 @@ void BldgAppearance::markTerrain (_ScenarioMapCellInfo* pInfo, int type, int cou
 				bldgShape = nullptr;
 					
 				bldgShape = appearType->bldgShape[0]->CreateFrom();
-				buildingPbrRenderActive = false;
 				if (bdAnimationState != -1)
 					appearType->setAnimation(bldgShape,bdAnimationState);
 			}
@@ -154,7 +168,6 @@ void BldgAppearance::markTerrain (_ScenarioMapCellInfo* pInfo, int type, int cou
 				bldgShape = nullptr;
 					
 				bldgShape = appearType->bldgDmgShape->CreateFrom();
-				buildingPbrRenderActive = false;
 				if (bdAnimationState != -1)
 					appearType->setAnimation(bldgShape,bdAnimationState);
 			}
@@ -236,7 +249,6 @@ void BldgAppearance::markTerrain (_ScenarioMapCellInfo* pInfo, int type, int cou
 				bldgShape = nullptr;
 					
 				bldgShape = appearType->bldgDmgShape->CreateFrom();
-				buildingPbrRenderActive = false;
 				if (bdAnimationState != -1)
 					appearType->setAnimation(bldgShape,bdAnimationState);
 			}
@@ -251,7 +263,6 @@ void BldgAppearance::markTerrain (_ScenarioMapCellInfo* pInfo, int type, int cou
 				bldgShape = nullptr;
 					
 				bldgShape = appearType->bldgShape[0]->CreateFrom();
-				buildingPbrRenderActive = false;
 				if (bdAnimationState != -1)
 					appearType->setAnimation(bldgShape,bdAnimationState);
 			}
@@ -304,7 +315,6 @@ void BldgAppearance::markTerrain (_ScenarioMapCellInfo* pInfo, int type, int cou
 			bldgShape = nullptr;
 						
 			bldgShape = appearType->bldgShape[0]->CreateFrom();
-			buildingPbrRenderActive = false;
 			if (bdAnimationState != -1)
 				appearType->setAnimation(bldgShape,bdAnimationState);
 		}
@@ -315,7 +325,6 @@ void BldgAppearance::markTerrain (_ScenarioMapCellInfo* pInfo, int type, int cou
 			bldgShape = nullptr;
 					
 			bldgShape = appearType->bldgDmgShape->CreateFrom();
-			buildingPbrRenderActive = false;
 			if (bdAnimationState != -1)
 				appearType->setAnimation(bldgShape,bdAnimationState);
 		}
@@ -331,11 +340,17 @@ long BldgAppearance::markMoveMap (bool passable, long* lineOfSightRect, bool use
 
 	//MUST force building to HIGHEST LOD!!!  IMpassability data is only valid at this LOD!!
 	// Building will reset its LOD on next draw!!
+	// The per-instance bldgShape is the RENDER shape; a model override replaces it, so passability
+	// then comes from the stock collision shape of the current state (never the override mesh).
 	TG_MultiShapePtr tempBldgShape = bldgShape;
+	const bool renderOverridden = appearType->bldgRenderShape || appearType->bldgDmgRenderShape;
 
-	if (currentLOD)
+	if (currentLOD || renderOverridden)
 	{
-		tempBldgShape = appearType->bldgShape[currentLOD]->CreateFrom();
+		TG_TypeMultiShape* source = appearType->bldgShape[currentLOD];
+		if (renderOverridden && status == OBJECT_STATUS_DESTROYED && appearType->bldgDmgShape)
+			source = appearType->bldgDmgShape;
+		tempBldgShape = source->CreateFrom();
 		if (bdAnimationState != -1)
 			appearType->setAnimation(tempBldgShape,bdAnimationState);
 	}
@@ -446,10 +461,15 @@ void BldgAppearance::markLOS (bool clearIt)
 {
 	//MUST force building to HIGHEST LOD!!!  IMpassability data is only valid at this LOD!!
 	// Building will reset its LOD on next draw!!
+	// Line of sight comes from the stock shape, never a render override (see markMoveMap).
 	TG_MultiShapePtr tempBldgShape = bldgShape;
-	if (currentLOD)
+	const bool renderOverridden = appearType->bldgRenderShape || appearType->bldgDmgRenderShape;
+	if (currentLOD || renderOverridden)
 	{
-		tempBldgShape = appearType->bldgShape[0]->CreateFrom();
+		TG_TypeMultiShape* source = appearType->bldgShape[0];
+		if (renderOverridden && status == OBJECT_STATUS_DESTROYED && appearType->bldgDmgShape)
+			source = appearType->bldgDmgShape;
+		tempBldgShape = source->CreateFrom();
 		if (bdAnimationState != -1)
 			appearType->setAnimation(tempBldgShape,bdAnimationState);
 	}
@@ -518,7 +538,6 @@ void BldgAppearance::calcAdjCell (long& row, long& col)
 		bldgShape = nullptr;
 	
 		bldgShape = appearType->bldgShape[currentLOD]->CreateFrom();
-		buildingPbrRenderActive = false;
 		if (bdAnimationState != -1)
 			appearType->setAnimation(bldgShape,bdAnimationState);
 	}

@@ -1,0 +1,47 @@
+#ifndef MC2_SURFACE_MATERIAL
+#define MC2_SURFACE_MATERIAL
+// The one runtime material schema (GLSL side of RenderCore/SurfaceMaterial.h).
+// Material INPUT evaluators (prop_material_vk.glsl, mech_material_vk.glsl) fill it;
+// lighting composition consumes it and never re-derives material properties.
+//   baseColor  linear              normal     render space, normalized
+//   roughness  0..1                metallic   0..1 (only metal classes are ever > 0)
+//   ao         ambient occlusion; composition applies it to ambient/indirect light only
+//   emission   linear              alphaMode  SURF_ALPHA_*
+//   materialClass SURF_CLASS_* (explicit authoring metadata; never inferred from colour)
+const uint SURF_CLASS_LEGACY_PRELIT = 0u;   // stock art: keep the vertex-lit look, zero new specular
+const uint SURF_CLASS_DIELECTRIC    = 1u;
+const uint SURF_CLASS_PAINTED_METAL = 2u;
+const uint SURF_CLASS_BARE_METAL    = 3u;
+const uint SURF_CLASS_RUST          = 4u;
+const uint SURF_CLASS_CONCRETE      = 5u;
+const uint SURF_CLASS_GLASS         = 6u;
+const uint SURF_CLASS_GRATING       = 7u;
+const uint SURF_CLASS_WOOD          = 8u;
+const uint SURF_CLASS_FABRIC        = 9u;
+const uint SURF_CLASS_RUBBER        = 10u;
+const uint SURF_CLASS_EMISSIVE      = 11u;
+
+const uint SURF_ALPHA_STOCK  = 0u;   // stock coverage policy
+const uint SURF_ALPHA_OPAQUE = 1u;
+const uint SURF_ALPHA_MASK   = 2u;   // depth-writing cutout
+const uint SURF_ALPHA_BLEND  = 3u;   // reserved
+
+struct SurfaceMaterial {
+    vec3 baseColor;
+    vec3 normal;
+    float roughness;
+    float metallic;
+    float ao;
+    vec3 emission;
+    uint alphaMode;
+    uint materialClass;
+};
+
+vec3 surfaceDecodeSrgb(vec3 c) {
+    return mix(c / 12.92, pow((c + 0.055) / 1.055, vec3(2.4)), greaterThan(c, vec3(0.04045)));
+}
+vec3 surfaceEncodeSrgb(vec3 c) {
+    c = max(c, vec3(0));
+    return mix(c * 12.92, 1.055 * pow(c, vec3(1.0/2.4)) - 0.055, greaterThan(c, vec3(0.0031308)));
+}
+#endif

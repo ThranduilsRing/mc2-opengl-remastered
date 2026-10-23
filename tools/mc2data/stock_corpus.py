@@ -11,7 +11,7 @@ data". It then named four MORE sites of the same family and left them open:
 
   * `tools/blender_pipeline/srcdata.py`  -- probes for an mc2srcdata checkout
     and returns the first hit, unverified.
-  * `tools/blender_pipeline/tex_hd.py`   -- `--ase-root` defaulted to the
+  * the retired `tex_hd.py`               -- `--ase-root` defaulted to the
     absolute path `A:/Games/mc2-srcdata/tgl`.
   * `tools/mc2texcook/ase_geo_audit.py`  -- `--dir` defaulted to the same.
   * `tools/mc2weapon/mc2weapon.py`       -- searched the EDITABLE srcdata clone

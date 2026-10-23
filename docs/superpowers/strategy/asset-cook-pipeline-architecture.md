@@ -1,6 +1,8 @@
 <!-- doc-status: current | reviewed:2026-10-11 -->
 # MC2 Asset Cook Pipeline Architecture
 
+**Superseded (2026-10-22) for models and materials by [docs/content-pipeline.md](../../content-pipeline.md):** one IR, one cooker, one material schema. Track G (tools/asset_cook) manifests are not consumed by the engine.
+
 **Status:** Strategy / design doc (long-term), 2026-06-10.
 **Scope:** What stays source data vs becomes cooked runtime data; who owns cooking, validation, and consumption; manifest formats; cache layout; fallback policy; rollout order.
 **Siblings:** `mod-packaging-deploy-architecture.md` (packaging/deploy lane), `telemetry-oracle-cockpit-architecture.md` (observability), `mc2-modding-toolchain-architecture.md` (tool ownership). This doc owns the **cook lane**: source → validated → cooked → loaded.

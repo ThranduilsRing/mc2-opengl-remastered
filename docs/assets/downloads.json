@@ -1,0 +1,96 @@
+{
+  "checked_date": "2026-10-21",
+  "downloads_performed": false,
+  "license_identifier": "CC0-1.0 means Creative Commons Zero v1.0 Universal Public Domain Dedication",
+  "approval_candidates": [
+    {
+      "name": "Kenney Space Kit",
+      "url": "https://kenney.nl/assets/space-kit",
+      "license": "CC0-1.0",
+      "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "selection": "hangar",
+      "fetch": "Free pack; inspect hangar_largeA / hangar_largeB GLB variants if present in the approved archive",
+      "fit": "Hangar shell starting point. Exact filename availability and dimensions await an approved local archive; destroyed variant must be authored."
+    },
+    {
+      "name": "Kenney City Kit (Industrial)",
+      "url": "https://kenney.nl/assets/city-kit-industrial",
+      "license": "CC0-1.0",
+      "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "selection": "hangar",
+      "fetch": "Free 40-model industrial/warehouse pack",
+      "fit": "Alternate industrial shells; category match is plausible, shape fit is unmeasured; no verified destroyed counterpart."
+    },
+    {
+      "name": "Quaternius Metal Fence",
+      "url": "https://poly.pizza/m/qWKhREFj7H",
+      "license": "CC0-1.0",
+      "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "selection": "wirefence",
+      "fetch": "GLTF/FBX and textures; creator Quaternius; listing shows 218 triangles",
+      "fit": "Chain-link category match; inspect width/height and alpha, reduce triangles to target budget, author damaged and diagonal segments."
+    },
+    {
+      "name": "Poly Haven Modular Chainlink Fence",
+      "url": "https://polyhaven.com/a/modular_chainlink_fence",
+      "license": "CC0-1.0",
+      "license_url": "https://polyhaven.com/license",
+      "selection": "wirefence",
+      "fetch": "Prefer glTF with 1K textures and alpha maps, not the default 4K selection",
+      "fit": "89K-triangle full kit is a source for baking/simplification, not a drop-in. Extract a single panel and posts; retain alpha lattice."
+    },
+    {
+      "name": "Poly Haven Worn Corrugated Iron",
+      "url": "https://polyhaven.com/a/worn_corrugated_iron",
+      "license": "CC0-1.0",
+      "license_url": "https://polyhaven.com/license",
+      "selection": "hangar and destroyed hangar rework",
+      "fetch": "1K base color plus OpenGL normal/roughness for authoring",
+      "fit": "Roof/wall retexture source, not a hangar model; requires UV-aware atlas rebake. Normal/roughness are not automatically bound by the generic override path."
+    },
+    {
+      "name": "Quaternius Ultimate Modular Sci-Fi Pack",
+      "url": "https://quaternius.com/packs/ultimatemodularscifi.html",
+      "license": "CC0-1.0",
+      "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "selection": "hangar rework",
+      "fetch": "Free OBJ/FBX/Blend modular pieces",
+      "fit": "46-model interior/prop kit; useful panels/doors only, not a verified near-match exterior. Requires assembly and both damage states."
+    },
+    {
+      "name": "Quaternius Ultimate Modular Ruins Pack",
+      "url": "https://quaternius.com/packs/ultimatemodularruins.html",
+      "license": "CC0-1.0",
+      "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "selection": "destroyed hangar authoring",
+      "fetch": "Free OBJ/FBX/Blend modular ruins, 90 models",
+      "fit": "Masonry ruin pieces only; poor direct match to a metal hangar. Optional rubble reference, not a replacement recommendation."
+    },
+    {
+      "name": "Kenney Graveyard Kit",
+      "url": "https://kenney.nl/assets/graveyard-kit",
+      "license": "CC0-1.0",
+      "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "selection": "fence alternatives",
+      "fetch": "Free pack for metal fence/gate style alternatives",
+      "fit": "Ornamental fence style; less suitable than chain-link for stock wirefence. Inspect archive contents after approval."
+    }
+  ],
+  "sketchfab_license_conflicts_do_not_treat_as_verified_cc0": [
+    {
+      "name": "Military Outpost Kit 1.0 (CC0), britdawgmasterfunk",
+      "url": "https://sketchfab.com/3d-models/military-outpost-kit-10-cc0-010dc4f0a73a48e7a53598c6f24fe9cf",
+      "license": "author description dedicates CC0; platform license field says CC Attribution (CC BY, version not shown in fetched page)",
+      "fit": "229.8K-triangle full kit; bunker/outpost parts could help industrial destruction, no measured hangar near match",
+      "approval_status": "hold until original archive license/dedication is retained and owner resolves conflicting platform label"
+    },
+    {
+      "name": "CC0 - Woode Fence, plaggy",
+      "url": "https://sketchfab.com/3d-models/cc0-woode-fence-39c5f9ac62a64259aa3478040339fa2a",
+      "author_license_url": "https://plaggy.net/",
+      "license": "description explicitly states CC0 1.0 Universal; platform field says CC Attribution (CC BY, version not shown)",
+      "fit": "444 triangles, 4096x4096 PBR; wooden fence only, not chain-link; requires substantial reduction",
+      "approval_status": "hold until original license evidence resolves conflicting platform label"
+    }
+  ]
+}

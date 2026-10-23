@@ -17,6 +17,7 @@
 #include <cstdint>
 
 namespace mc2tex { struct TextureArrayCpu; }
+namespace RenderCore { struct PropMaterialGpu; }
 
 #ifdef __cplusplus
 extern "C" {
@@ -94,6 +95,11 @@ uint32_t mc2_static_prop_vertex_stride(void);
 // Buffers are batcher-owned and valid until onMapUnload(). Returns 0 if not finalized
 // or the alpha-OFF array is unavailable.
 struct Mc2ColorPropMaterialFeed {
+    const mc2tex::TextureArrayCpu* normal;
+    const mc2tex::TextureArrayCpu* orm;
+    const RenderCore::PropMaterialGpu* materials;
+    uint32_t materialCount;
+    const int32_t* packetMaterialIds; // -1 preserves the legacy shader
     uint32_t        arrayKeyOff;     // change key of the alpha-OFF group array (0 = not built; new serial per build)
     uint32_t        bucketed;        // 1 = BC7/bucketed (island fails soft, keeps teal)
     const int32_t*  typeAlbedoLayer; // [typeCount] group-relative layer (-1 = none)

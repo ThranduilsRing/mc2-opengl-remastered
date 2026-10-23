@@ -55,7 +55,7 @@ code — no pip deps anywhere in this pipeline) and
 |---|---|---|
 | `upscale_mesh` | weld ASE-split verts → crease hard edges → Catmull-Clark subdiv → shade smooth. Rounds bevels without collapsing silhouettes; MC2 buildings are ~76v/82t so subdiv 1–2 is cheap. | `subdiv` 1, `subdiv_type` CATMULL_CLARK\|SIMPLE, `weld` 1e-4, `crease_angle` 40, `shade_smooth` true |
 | `decimate_lods` | capability-survey #2 quick win: decimate loop emitting `<name>_lod1..N.glb` (LOD0 = untouched source). Each LOD decimates from the ORIGINAL, so ratios are absolute. | `ratios` (req, e.g. `[0.5,0.2]`), `distances` (default 600·n), `weld` 1e-4, `min_tris` 8 |
-| `rebake_pbr` | EXPERIMENTAL: join → Smart-UV atlas → Cycles-bake albedo/normal/ORM PNGs (feeds the `.mcasset` MC2_BUILDING_PBR sidecar path) + baked-material GLB. | `res` 1024, `samples` 16, `margin` 4, `uv` smart\|keep |
+| `rebake_pbr` | EXPERIMENTAL: join → Smart-UV atlas → Cycles-bake albedo/normal/ORM PNGs + baked-material GLB (feed the GLB to tools/content_pipeline with an explicit material class). | `res` 1024, `samples` 16, `margin` 4, `uv` smart\|keep |
 
 **rebake_pbr caution** (docs/asset-pipeline.md §6, capability-survey #6):
 in-game static-prop normal/ORM was ruled "on ≈ off" under the current lighting
@@ -84,52 +84,6 @@ Disable with `out.carry_textures: false`.
 
 ## Front-end CLIs (no manifest authoring needed)
 
-### asset_hd.py — one-command per-asset upscale
-
-```powershell
-py -3 tools/blender_pipeline/asset_hd.py quonset
-py -3 tools/blender_pipeline/asset_hd.py quonset --recipe decimate_lods `
-    --out-kind models_json --param ratios=0.5,0.2
-py -3 tools/blender_pipeline/asset_hd.py --list quon
-```
-
-Resolves stock asset names (case-insensitive) against the srcdata `tgl/*.ase`
-inventory (probes `mc2srcdata`/`mc2-srcdata` sibling checkouts, or pass
-`--srcdata-root`), synthesizes an in-memory batch manifest, writes it under
-`<out>/_synth/` for inspection/re-run, and hands it to batch_driver.
-Supports `--dry-run`, `--deploy-tgl-dir` (opt-in), multi-asset args, and
-`--param KEY=VALUE`. Exit codes mirror batch_driver: 0 ok, 2
-resolution/validation error, 1 stage failure. Warns when a run produces no
-transform stats or an unchanged tri count (possible no-op recipe).
-
-### sweep.py — bulk category sweep
-
-Enumerates `mc2srcdata/tgl/*.ase` assets with a matching `.ini` (~769
-base-asset pairs; damage/LOD variants without an ini are skipped),
-auto-generates a batch_driver manifest, and runs it sharded across
-`--jobs N` concurrent Blender processes (default 4).
-
-```powershell
-# plan only (default): writes sweep_manifest.json + prints the plan
-py -3 tools/blender_pipeline/sweep.py --filter "*" --limit 10
-
-# execute
-py -3 tools/blender_pipeline/sweep.py --filter "*civ*" --limit 10 `
-    --recipe upscale_mesh --jobs 4 --run
-```
-
-`--filter`/`--exclude` are repeatable case-insensitive stem globs (this is
-the category mechanism — stock inis carry no building/tree/vehicle class
-signal). `--limit` defaults to 10 (0 = everything). Per-asset `report.md` +
-`report.csv` (tris before→after, duration, status) land next to the
-manifest; rows with missing stats or unchanged tri counts are flagged
-`ok(no-stats)` / `ok(NO-CHANGE)` rather than reported green. Failures never
-abort the sweep. Exit 1 = jobs failed, 2 = usage error.
-
-**Quality gate rule:** run a small sampled batch and get a visual ruling
-(user-in-loop) before any wide `--run` sweep — a green report proves the
-pipeline ran, not that assets look better.
-
 ### asset_edit.py — interactive Blender edit round-trip
 
 ```powershell
@@ -148,22 +102,8 @@ if a primitive lost `TEXCOORD_0`, tri count is zero/absurd, or a material
 references a baseColorTexture with no image URI. `--background-selftest`
 proves the round-trip headlessly.
 
-### tex_hd.py — per-asset texture upscale (the visible axis)
-
-Deployed static props are albedo-only (see docs/asset-pipeline.md §6) and
-stock textures are 128² — texture upscaling is the documented visible win.
-
-```powershell
-py -3 tools/blender_pipeline/tex_hd.py quonset [--scale 4] [--dry-run]
-```
-
-Resolves texture refs via the asset's `.ini` shape list + `.ase` `*BITMAP`
-records, cooks each to 4× BC7 KTX2 via the existing mc2texcook machinery
-(PIL Lanczos + ktx.exe — same path that produced the shipped
-`fireantrgb.ktx2`). Engine pickup (only with explicit `--deploy-dir`,
-never the user-launch v0.4 install): sidecar `data/tgl/128/<stem>.ktx2`
-(`MC2_TEXMGR_COMPRESSED_UPLOAD=1`) or tier dir `data/tgl/<tier>/`
-(`MC2_STATICPROP_TEX_TIER`, engine default 512).
+Upscaling (asset_hd/sweep/tex_hd) was retired 2026-10-22: resampling or subdividing stock art is not
+a modernization; authored replacements cook through tools/content_pipeline.
 
 ## Tests
 
@@ -211,6 +151,13 @@ PNG. EEVEE neutral rig — silhouette/topology comparison only, NOT MC2
 shaders. The engine-faithful path is a follow-up: an asset_viewer
 `--render-glb-to-png` mode (planned, not implemented) reusing the existing `--smoke-backend-a-render`
 offscreen pathway.
+
+## Reviewed material mapping and packaging
+
+Reviewed CC0 detail on stock props, and packaging of any Blender export, go through the one
+content cooker: `py -3 tools/content_pipeline/cook.py tools/content_pipeline/recipes/quonset_redux.json`
+(stock_ase frontend; the former `material_map.py` mapping rows are its `slots`). See
+docs/content-pipeline.md for the IR, the material schema and the texture cook contract.
 
 ## Follow-ons (from .claude/BLENDER-CAPABILITY-SURVEY-1.md)
 

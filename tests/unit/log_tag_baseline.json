@@ -1839,93 +1839,6 @@
    "count": 1
   },
   {
-   "tag": "BUILDING_PBR",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "sidecar"
-   ],
-   "count": 2
-  },
-  {
-   "tag": "BUILDING_PBR",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "sidecar",
-    "normal",
-    "orm"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "BUILDING_PBR_TRACE",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "shape",
-    "ib",
-    "vb"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "BUILDING_PBR_TRACE",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "shape",
-    "lv",
-    "lc",
-    "lsv",
-    "lt",
-    "lvf",
-    "lvs",
-    "last",
-    "turn"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "BUILDING_PBR_TRACE",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "shape",
-    "spot",
-    "window",
-    "alpha",
-    "alphaValue",
-    "localTex"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "BUILDING_PBR_TRACE",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "shape",
-    "texNode",
-    "localTex",
-    "visible"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "BUILDING_PBR_TRACE",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "shape",
-    "verts",
-    "visible",
-    "last",
-    "turn"
-   ],
-   "count": 1
-  },
-  {
    "tag": "BUILD_FINGERPRINT",
    "ver": 1,
    "stream": "stdout",
@@ -5372,7 +5285,17 @@
    "ver": -1,
    "stream": "stderr",
    "keys": [],
-   "count": 18
+   "count": 17
+  },
+  {
+   "tag": "MODOVERRIDE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "condition",
+    "destroyed"
+   ],
+   "count": 1
   },
   {
    "tag": "MODOVERRIDE",
@@ -5380,6 +5303,16 @@
    "stream": "stderr",
    "keys": [
     "lodCount"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "MODOVERRIDE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "slot",
+    "id"
    ],
    "count": 1
   },

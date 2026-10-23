@@ -3,6 +3,45 @@
 #include "bdactor_internal.h"
 #include "texture_assets.h"
 #include "mc2fmt.h"
+#include "gos_static_prop_batcher.h"
+#include <string_view>
+
+extern char missionName[];
+
+// Imports one manifest-relative override GLB into shape and resolves its textures; false (logged)
+// on any failure, and the caller frees the shape and keeps stock. Static-prop overrides carry
+// their pivot already (no auto-ground) and have node transforms applied.
+static bool importOverrideRenderShape(const ModelOverrideRecord& ov, std::string_view relPath,
+                                      std::string_view baseName, std::string_view state, TG_TypeMultiShape* shape)
+{
+#ifdef ENABLE_ASSIMP_IMPORTER
+	char overridePath[1024];
+	mc2::fmt::to_buf(overridePath, "{}/{}", ov.manifestDir.c_str(), relPath);
+	// Guard the importer: Assimp may throw (DeadlyImportError); collapse any throw to stock.
+	try
+	{
+		const long r = ImportGeometryFromFile(overridePath, shape, /*autoGround=*/false, !ov.materials.empty(),
+		                                      /*bakeNodeTransforms=*/true);
+		if (r == 0 && shape->GetNumShapes() > 0)
+		{
+			LoadOverrideRenderShapeTextures(shape);
+			return true;
+		}
+		mc2::fmt::print_err("[MODOVERRIDE] staticProp '{}' {}: import failed ({}), using stock render\n",
+			baseName, state, mc2::fmt::safe(overridePath));
+	}
+	catch (...)
+	{
+		mc2::fmt::print_err("[MODOVERRIDE] staticProp '{}' {}: import threw ({}), using stock render\n",
+			baseName, state, mc2::fmt::safe(overridePath));
+	}
+	fflush(stderr);
+	return false;
+#else
+	mc2::fmt::print_err("[MODOVERRIDE] staticProp '{}': override resolved but importer disabled, using stock render\n", baseName);
+	return false;
+#endif
+}
 
 void BldgAppearanceType::init (const char * fileName)
 {
@@ -153,86 +192,44 @@ void BldgAppearanceType::init (const char * fileName)
 		strncpy(bldgBaseName, aseFileName, sizeof(bldgBaseName) - 1);
 	}
 
-	if (importSourceBase[0] && buildingPbrGateEnabled())
-	{
-		FullPathFileName sidecarName;
-		sidecarName.init(tglPath, importSourceBase, ".mcasset.json");
-		if (!loadBuildingPbrFromSidecar(this, sidecarName)) {
-			mc2::fmt::print_err("[BUILDING_PBR] disabled for import '{}' sidecar={}\n", mc2::fmt::safe(importSourceBase), mc2::fmt::safe(static_cast<const char*>(sidecarName)));
-			fflush(stderr);
-		}
-	}
-
-	// MODEL-OVERRIDE dual-shape: render-only override for static props. The
-	// stock bldgShape[] load above is UNCHANGED (collision authority). Here we
-	// resolve a registry override for the BASE shape and, on hit, load the
-	// replacement geometry into the separate render shape only. On any failure
-	// we delete + NULL the render shape so render falls back to stock.
+	// MODEL-OVERRIDE dual-shape: render-only overrides for static props. The stock
+	// bldgShape[] / bldgDmgShape loads stay UNCHANGED (collision, passability and LOS
+	// authority). A registry record supplies the intact render shape and, when it was
+	// cooked with one, the destroyed render shape; the mission's conditions.json may pick
+	// a worn/abandoned variant (default pristine). Any failure falls back to stock.
 	bldgBaseName[sizeof(bldgBaseName) - 1] = 0;
 	if (bldgBaseName[0])
 	{
-		// Env-gated discovery trace (matches MC2_ASSIMP_TRACE convention): logs every
-		// static-prop appearance name seen, so a manifest can target props actually
-		// present in a mission. No behavior change. MODEL-OVERRIDE Slice 3.
 		if (mc2::gate::get<"MC2_MODOVERRIDE_TRACE">())
 			mc2::fmt::print_err("[MODOVERRIDE_TRACE] staticProp '{}'\n", mc2::fmt::safe(bldgBaseName));
-		const ModelOverrideRecord* ov =
-			ModelOverrideRegistry::instance().resolve("staticProp", bldgBaseName);
-		if (ov)
+		if (const ModelOverrideRecord* ov = ModelOverrideRegistry::instance().resolve("staticProp", bldgBaseName))
 		{
-#ifdef ENABLE_ASSIMP_IMPORTER
+			const std::string condName = ModelOverrideRegistry::instance().selectedCondition(missionName, bldgBaseName);
+			const ModelOverrideCondition* cond = ov->condition(condName);
+			const std::string& intactSrc = cond ? cond->intact.sourceRelPath : ov->sourceRelPath;
+			const ModelOverrideChain& destroyed = (cond && cond->destroyed.present()) ? cond->destroyed : ov->destroyed;
 			bldgRenderShape = new TG_TypeMultiShape;
-			char overridePath[1024];
-			mc2::fmt::to_buf(overridePath, "{}/{}", ov->manifestDir.c_str(), ov->sourceRelPath.c_str());
-			// Guard the importer: Assimp may throw (DeadlyImportError). A throw
-			// here would leak the freshly-new'd render shape and unwind into
-			// non-exception-safe engine code, so collapse any throw to stock.
-			try
+			if (!importOverrideRenderShape(*ov, intactSrc, bldgBaseName, "intact", bldgRenderShape))
 			{
-				// staticprop overrides cooked from stock .tgl carry the stock pivot already
-				// -> no auto-ground (would shift them in depth). Trees keep autoGround=true.
-				long r = ImportGeometryFromFile(overridePath, bldgRenderShape, /*autoGround=*/false);
-				if (r != 0 || bldgRenderShape->GetNumShapes() == 0)
+				delete bldgRenderShape;
+				bldgRenderShape = nullptr;   // stock fallback
+			}
+			if (bldgRenderShape)
+			{
+				propMaterialSource = ov;
+				if (destroyed.present())
 				{
-					delete bldgRenderShape; bldgRenderShape = nullptr;   // stock fallback
-					mc2::fmt::print_err("[MODOVERRIDE] staticProp '{}': import failed ({}), using stock render\n",
-					        mc2::fmt::safe(bldgBaseName), mc2::fmt::safe(overridePath));
-					fflush(stderr);
-				}
-				else
-				{
-					// MODEL-OVERRIDE texture binding: resolve importer-assigned
-					// texture names to GOS handles on the TYPE render shape.
-					LoadOverrideRenderShapeTextures(bldgRenderShape);
-					mc2::fmt::print_err("[MODOVERRIDE] staticProp '{}': render override applied ({})\n", mc2::fmt::safe(bldgBaseName), mc2::fmt::safe(overridePath));
-					fflush(stderr);
-					if (buildingPbrGateEnabled())
+					bldgDmgRenderShape = std::make_unique<TG_TypeMultiShape>();
+					if (!importOverrideRenderShape(*ov, destroyed.sourceRelPath, bldgBaseName, "destroyed", bldgDmgRenderShape.get()))
 					{
-						char sidecarPath[1024];
-						mc2::fmt::to_buf(sidecarPath, "{}", mc2::fmt::safe(overridePath));
-						char* dot = strrchr(sidecarPath, '.');
-						if (dot)
-							strcpy(dot, ".mcasset.json");
-						else
-							strncat(sidecarPath, ".mcasset.json", sizeof(sidecarPath) - strlen(sidecarPath) - 1);
-						if (!loadBuildingPbrFromSidecar(this, sidecarPath)) {
-							mc2::fmt::print_err("[BUILDING_PBR] disabled for '{}' sidecar={}\n", mc2::fmt::safe(bldgBaseName), mc2::fmt::safe(sidecarPath));
-							fflush(stderr);
-						}
+						bldgDmgRenderShape.reset();   // stock damage fallback
 					}
 				}
-			}
-			catch (...)
-			{
-				delete bldgRenderShape; bldgRenderShape = nullptr;   // stock fallback
-				mc2::fmt::print_err("[MODOVERRIDE] staticProp '{}': import threw ({}), using stock render\n",
-				        mc2::fmt::safe(bldgBaseName), mc2::fmt::safe(overridePath));
+				mc2::fmt::print_err("[MODOVERRIDE] staticProp '{}': render override applied (condition={} destroyed={})\n",
+					mc2::fmt::safe(bldgBaseName), mc2::fmt::safe(cond ? condName.c_str() : "pristine"),
+					mc2::fmt::safe(bldgDmgRenderShape ? "override" : "stock"));
 				fflush(stderr);
 			}
-#else
-			mc2::fmt::print_err("[MODOVERRIDE] staticProp '{}': override resolved but importer disabled, using stock render\n", mc2::fmt::safe(bldgBaseName));
-			fflush(stderr);
-#endif
 		}
 	}
 
@@ -433,6 +430,22 @@ void BldgAppearanceType::init (const char * fileName)
 		terrainLightInnerRadius = 0.0f;
 		terrainLightOuterRadius = 96.0f;
 	}
+
+	// Stock-derived override GLBs carry the stock lighting tags (COLOR_0), so the
+	// hot colours apply to them exactly as to the stock shapes.
+	for (TG_TypeMultiShape* rs : {bldgRenderShape, bldgDmgRenderShape.get()})
+		if (rs && propMaterialSource && !propMaterialSource->materials.empty())
+			rs->SetLightRGBs(hotPinkRGB, hotGreenRGB, hotYellowRGB);
+}
+
+void BldgAppearanceType::registerRenderShapes (void)
+{
+	const bool isOverride = (bldgRenderShape != nullptr);
+	for (int i = 0; i < MAX_LODS; ++i)
+		GpuStaticPropBatcher::instance().registerMultiShape(getBldgRenderShape(i), isOverride,
+			isOverride ? propMaterialSource : nullptr);
+	GpuStaticPropBatcher::instance().registerMultiShape(getBldgDmgRenderShape(), bldgDmgRenderShape != nullptr,
+		bldgDmgRenderShape ? propMaterialSource : nullptr);
 }
 
 void BldgAppearanceType::destroy (void)
@@ -457,7 +470,8 @@ void BldgAppearanceType::destroy (void)
 		delete bldgRenderShape;
 		bldgRenderShape = nullptr;
 	}
-	buildingPbrEnabled = false;
+	bldgDmgRenderShape.reset();
+    propMaterialSource = nullptr;
 
  	if (bldgDmgShape)
 	{
