@@ -108,4 +108,6 @@ static_assert(offsetof(TerrainFrameUBO, shoreFieldBoundsX) == 840, "shoreFieldBo
 static_assert(offsetof(TerrainFrameUBO, shoreFieldBoundsY) == 844, "shoreFieldBoundsY offset");
 static_assert(offsetof(TerrainFrameUBO, shoreFieldBoundsW) == 848, "shoreFieldBoundsW offset");
 static_assert(offsetof(TerrainFrameUBO, shoreFieldBoundsH) == 852, "shoreFieldBoundsH offset");
-static_assert(offsetof(TerrainFrameUBO, _pad) == 856, "_pad offset");
+static_assert(offsetof(TerrainFrameUBO, concreteDetail) == 856, "concreteDetail offset");
+static_assert(offsetof(TerrainFrameUBO, concreteDetailStrength) == 860, "concreteDetailStrength offset");
+static_assert(offsetof(TerrainFrameUBO, _pad) == 864, "_pad offset");

@@ -36,6 +36,7 @@
 #include "../include/noise.hglsl"   // VK-PARITY-F3: fbm() for the GL colour break-up (terrain_lod_chunk.frag:1839)
 #include "include/terrain_frame_vk.glsl"   // TerrainFrameUBO + set-0 resources + CSM shadow helpers
 #include "include/ground_lighting.glsl"
+#include "include/concrete_detail_vk.glsl"
 #include "../include/axis.hglsl"   // mc2ToRender: the POM view vector is built in the MC2 world frame
 #include "../include/edge_haze.hglsl"   // edgeHazeAmount + EDGE_HAZE_SKY, shared with GL
 
@@ -340,6 +341,7 @@ void main() {
     // Valid even for quads straddling cement, zero weights or the LOD fade.
     vec2 detailUv = v_worldPos.xy * (uT.detailTiling / MATV_WU_PER_TILE);
     vec2 detailUvDx = dFdx(detailUv), detailUvDy = dFdy(detailUv);
+    vec2 cdWpDx = dFdx(v_worldPos.xy), cdWpDy = dFdy(v_worldPos.xy); float cdRoad = 0.0, cdW = 0.0;   // CONCRETE-ROAD-PBR-DETAIL: uniform derivatives; asphalt-texel flag; slab share
     vec3 base;
     float cookedBreakup = 0.5;
     vec4 materials = vec4(0.0);
@@ -407,7 +409,7 @@ void main() {
             if (uT.cementAtlasSeamFix != 0)
                 cSampleUV = clamp(cTileUV, vec2(cInsetLod), vec2(1.0 - cInsetLod));   // CEMENT-MIP-EDGE-1
             vec2 cAtlasUV = (vec2(float(cCol), float(cRow)) + cSampleUV) / float(cGridSide);
-            vec4 cementTexel = textureLod(u_cementAtlas, cAtlasUV, cLod);
+            vec4 cementTexel = textureLod(u_cementAtlas, cAtlasUV, cLod); cdRoad = 1.0 - smoothstep(0.20, 0.30, dot(cementTexel.rgb, vec3(0.299, 0.587, 0.114)));
             vec3 cementColor = cementTexel.rgb * vec3(uT.missionFlatR, uT.missionFlatG, uT.missionFlatB);  // CEMENT-NIGHT-LIGHT-1
             // CEMENT-ALPHA-LAND-1 (terrain_lod_chunk.frag:1009-1015): OWN_ALPHA transition.
             // Word bit23 => the atlas cell carries its own coverage in alpha; composite OVER base.
@@ -415,7 +417,7 @@ void main() {
             if (isTransition && cementOwnAlpha) {
                 float cOwnA = cementTexel.a;
                 base = mix(base, cementColor, cOwnA);
-                if (cOwnA > 0.5) { cementHit = true; pureConcrete = true; }
+                cdW = cOwnA; if (cOwnA > 0.5) { cementHit = true; pureConcrete = true; }
             } else if (isTransition) {
                 if (uT.useTransitionMask != 0) {
                     bool nXm = false, nXp = false, nYm = false, nYp = false;
@@ -473,10 +475,10 @@ void main() {
                         alpha = max(cCutLt((1.0 - u) + v, cFu + cFv), cCutLt(u + (1.0 - v), cFu + cFv));
                     }
                     base = mix(base, cementColor, alpha);
-                    if (alpha > 0.5) { cementHit = true; pureConcrete = true; }
+                    cdW = alpha; if (alpha > 0.5) { cementHit = true; pureConcrete = true; }
                 }
             } else {
-                base = cementColor;
+                base = cementColor; cdW = 1.0;
                 cementHit = true;
                 pureConcrete = true;
             }
@@ -503,7 +505,7 @@ void main() {
                         dSampleUV = clamp(dTileUV, vec2(cInsetLod), vec2(1.0 - cInsetLod));
                     vec2 dAtlasUV = (vec2(float(dCol), float(dRow)) + dSampleUV) / float(dGridSide);
                     base = textureLod(u_cementAtlas, dAtlasUV, cLod).rgb * vec3(uT.missionFlatR, uT.missionFlatG, uT.missionFlatB);  // CEMENT-NIGHT-LIGHT-1
-                    pureConcrete = true;
+                    pureConcrete = true; cdW = 1.0;
                     cementHit = true;   // as GL's diag-connect branch
                 }
             }
@@ -597,6 +599,11 @@ void main() {
         // Bound the grazing/back-facing ratio rather than re-lighting macro relief.
         float normalLight = clamp(max(dot(N, lightDir), 0.2) / macroNdotL, 0.5, 1.5);
 
+        // CONCRETE-ROAD-PBR-DETAIL: detail only (AO, relative sun shading, sheen), MC2 colour stays. Solid slabs only: those
+        // fragments skip the material detail-normal fetches, so the two concrete fetches replace them (no net fetch increase).
+        vec3 cdSpec = vec3(0.0);
+        if (uT.concreteDetail != 0 && pureConcrete) cdApply(cdRoad > 0.5 ? CD_LAYER_ROAD : CD_LAYER_PAD, v_worldPos.xy, cdWpDx, cdWpDy, lightDir, cdW, baseColor, normalLight, cdSpec);
+
         // Static ground mask and current-frame movers share the same visibility
         // floor. Cement receives both, exactly like the surrounding terrain.
         vec3 shadowN=baseNormal;
@@ -604,6 +611,7 @@ void main() {
         float dynS=terrainDynamicShadow(v_worldPos,shadowN);
         float shadow = min(staticS, dynS);
         lit = shadeGround(baseColor, N, normalLight, shadow, pureConcrete ? 1.0 : 0.0, v_worldPos);
+        lit = max(lit + cdSpec * shadow, vec3(0.0));
 
         // TERRAIN-EDGE-FEATHER-1 (GL terrain_lod_chunk.frag, after the mover contact): the last tile band of the map fades to the sky haze
         // colour so the straight map perimeter does not cut a hard edge. halfMap 0 means the map size is not known yet.

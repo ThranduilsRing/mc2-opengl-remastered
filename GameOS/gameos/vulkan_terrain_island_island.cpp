@@ -175,7 +175,7 @@ void write_descriptors(TerrainIsland* s, int parity) {
     }
     for (VkBuffer& b : s->ringBound[i]) b = VK_NULL_HANDLE;
     VkDescriptorBufferInfo hInfo{ s->heightBuf.get(), 0, VK_WHOLE_SIZE };
-    VkWriteDescriptorSet w[18]{};
+    VkWriteDescriptorSet w[20]{};
     uint32_t n = 0;
     w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = s->set[i];
     w[n].dstBinding = 1; w[n].descriptorCount = 1;
@@ -253,6 +253,14 @@ void write_descriptors(TerrainIsland* s, int parity) {
     w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = s->set[i];
     w[n].dstBinding = 17; w[n].descriptorCount = 1;
     w[n].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; w[n].pImageInfo = &visibilityInfo; ++n;
+    VkDescriptorImageInfo cdInfo{};
+    if (s->concreteDetailTexture && s->concreteDetailSamp) {
+        cdInfo.sampler = s->concreteDetailSamp.get(); cdInfo.imageView = s->concreteDetailTexture.view();
+        cdInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = s->set[i];
+        w[n].dstBinding = 18; w[n].descriptorCount = 1;
+        w[n].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; w[n].pImageInfo = &cdInfo; ++n;
+    }
     vkUpdateDescriptorSets(s->device, n, w, 0, nullptr);
     }   // per-parity set loop
 }
@@ -496,6 +504,7 @@ bool init_island(TerrainIsland* s, int w, int h) {
     // descriptor from frame 1 (matNormalReady stays false until MC2_VK_TERRAIN_DETAIL is on
     // AND the GL array is live -> FS uses macro-slope-only normal, no hole).
     if (!ensure_dummy_matnormal(s)) { setFallback("matnormal_dummy_failed"); return false; }
+    if (!ensure_dummy_concrete_detail(s)) { setFallback("concrete_detail_dummy_failed"); return false; }
     // VK-TERRAIN-CSM-NEAR-1: dummy 1x1(x1) near-cascade array + full-map depth-compare
     // (bindings 8/9) so both are valid descriptors from frame 1 (csmArrayReady/csmFullMapReady
     // stay false until MC2_VK_TERRAIN_CSM is armed AND GL CSM is actually built -> FS
@@ -503,7 +512,7 @@ bool init_island(TerrainIsland* s, int w, int h) {
 
     // ---- Descriptor layout: binding0 dynamic UBO (VS+FS), binding1 height SSBO (VS). ----
     {
-        VkDescriptorSetLayoutBinding b[16]{};
+        VkDescriptorSetLayoutBinding b[17]{};
         b[0].binding = 0; b[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
         b[0].descriptorCount = 1; b[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
         // VK-TERRAIN-DETAIL: binding 1 (height SSBO) is now ALSO read by the FS
@@ -550,9 +559,11 @@ bool init_island(TerrainIsland* s, int w, int h) {
         b[14].descriptorCount=1; b[14].stageFlags=VK_SHADER_STAGE_FRAGMENT_BIT;
         b[15].binding=25; b[15].descriptorType=VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         b[15].descriptorCount=1; b[15].stageFlags=VK_SHADER_STAGE_FRAGMENT_BIT;
+        b[16].binding = 18; b[16].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        b[16].descriptorCount = 1; b[16].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
         VkDescriptorSetLayoutCreateInfo lci{};
         lci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-        lci.bindingCount = 16; lci.pBindings = b;
+        lci.bindingCount = 17; lci.pBindings = b;
         if (!mc2vk::create(s->dsl, s->device, [&](auto* h) { return vkCreateDescriptorSetLayout(s->device, &lci, nullptr, h); })) {
             vlog("vkCreateDescriptorSetLayout failed."); return false;
         }

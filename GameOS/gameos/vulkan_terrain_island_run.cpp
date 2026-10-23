@@ -185,6 +185,8 @@ void fill_frame_ubo(TerrainIsland* s, const Mc2TerrainTier1Feed& feed,
     // 0: not imported, 1: imported, 2: imported and carrying the cliff layer (layer 5), which the cliff material samples.
     u.detailReady    = !s->matNormalReady ? 0 : (s->matNormalLayers > 5u ? 2 : 1);
     u.nfhStrength    = feed.nfhStrength;
+    u.concreteDetail = (s->concreteDetailReady && feed.lightingEnabled && feed.detailEnabled) ? 1 : 0;   // detail toggle off = base game look
+    u.concreteDetailStrength = 0.15f;   // normal gain over the cooked 2K sets; tuned in a viewed RTS-zoom montage
     u.detailTiling   = feed.detailTiling;
     u.detailStrength = feed.detailStrength;
     // VK-TERRAIN-LODFADE: camera pos + gate, precondition-chained on detail
@@ -314,6 +316,7 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     snapshot_cement(s, feed);
     import_shore_mask(s, feed);
     import_materials(s);
+    import_concrete_detail(s);
 
     // VK-TERRAIN-VISUALDISPLACE-FAR-1: version-gated mission-load snapshot of the 4x
     // visual-height bake (no-op unless the sub-gate armed the feed fields AND the bake

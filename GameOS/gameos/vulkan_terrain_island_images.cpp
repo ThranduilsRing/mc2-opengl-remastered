@@ -7,6 +7,7 @@
 #include "gameos.hpp"
 #include <array>
 #include <filesystem>
+#include "../../RenderCore/KtxLoader.h"
 #include "terrain_surface_cook.h"
 #include "../../3rdparty/glm/glm/gtc/packing.hpp"
 
@@ -572,6 +573,60 @@ bool bind_static_shadow(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
 // as fatal, so the first frame of a ShadowCSM=FALSE mission (shadow island not yet up) latched the whole terrain island off and the VK scene was never
 // cleared again (objects smeared over a frame with no terrain).
 
+
+
+// CONCRETE-ROAD-PBR-DETAIL: the concrete / road material DETAIL array (binding 18). Layer 0 = poured-concrete pad detail, layer 1 =
+// asphalt road/runway detail. Each texel is (normal.x, normal.y, roughness, AO) from CC0 PBR sets; the albedo of those sets is never
+// loaded, MC2's own colour stays the colour source. Cooked by tools/mc2texcook/cook_concrete_detail.py (BC7 KTX2), decoded to RGBA8
+// here and mip-chained by the residency service. Absent files leave the flat dummy bound and uT.concreteDetail = 0 (base game look).
+bool ensure_dummy_concrete_detail(TerrainIsland* s) {
+    if (!s->concreteDetailSamp) {
+        VkSamplerCreateInfo sci{};
+        sci.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+        sci.magFilter = VK_FILTER_LINEAR; sci.minFilter = VK_FILTER_LINEAR;
+        sci.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+        sci.addressModeU = sci.addressModeV = sci.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+        sci.maxLod = VK_LOD_CLAMP_NONE;
+        if (!mc2vk::create(s->concreteDetailSamp, s->device, [&](auto* h) { return vkCreateSampler(s->device, &sci, nullptr, h); })) return false;
+    }
+    if (s->concreteDetailTexture) return true;
+    const uint8_t px[8] = {128, 128, 200, 255, 128, 128, 200, 255};   // flat normal, mid roughness, no occlusion, x2 layers
+    return upload_sampled_image_array(s, s->concreteDetailTexture, VK_FORMAT_R8G8B8A8_UNORM, 1, 1, 2, px, sizeof(px));
+}
+
+void import_concrete_detail(TerrainIsland* s) {
+    if (s->concreteDetailPending) {                      // the upload is asynchronous: until it lands the residency service hands out a placeholder view
+        auto& tx = mc2vk::getOrCreateEngineVulkanContext().textures();
+        if (!tx.ready(s->concreteDetailPending.get())) return;
+        s->concreteDetailTexture = std::move(s->concreteDetailPending);
+        s->concreteDetailReady = true;
+        write_descriptors(s);
+        vlog("CONCRETE-DETAIL: the pad + road detail array is resident and bound.");
+        return;
+    }
+    if (s->concreteDetailTried) return;
+    s->concreteDetailTried = true;                       // one attempt per run; a missing sidecar is the base game look
+    static const char* const kFiles[2] = {"data/terrain_layers/concrete_detail_pad.ktx2", "data/terrain_layers/concrete_detail_road.ktx2"};
+    std::vector<uint8_t> px;
+    int w = 0, h = 0;
+    for (const char* f : kFiles) {
+        RenderCore::KtxImage img;
+        std::vector<uint8_t> rgba;
+        int lw = 0, lh = 0;
+        if (!RenderCore::ktxLoadRgba8(f, img) || !img.isCompressed || !RenderCore::ktxDecodeBc7ToRgba8(img, 0, rgba, &lw, &lh) ||
+            lw <= 0 || lh <= 0 || (w != 0 && (lw != w || lh != h))) {
+            vlog("CONCRETE-DETAIL: %s missing or unusable; concrete/road keep the base look.", f);
+            return;
+        }
+        w = lw; h = lh;
+        px.insert(px.end(), rgba.begin(), rgba.end());
+    }
+    auto tex = mc2vk::getOrCreateEngineVulkanContext().textures().acquirePixels(uint32_t(w), uint32_t(h), VK_FORMAT_R8G8B8A8_UNORM, px.data(), px.size(), true, 2, true);
+    if (tex) {
+        s->concreteDetailPending = std::move(tex);
+        vlog("CONCRETE-DETAIL: imported pad + road detail array %dx%d x2 layers.", w, h);
+    }
+}
 
 } // namespace
 
