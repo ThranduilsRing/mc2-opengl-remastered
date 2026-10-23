@@ -1396,6 +1396,56 @@ def staleness_report(target_dir):
     return rep
 
 
+REQUIRED_DIRS = ("assets", "data", "shaders")
+
+
+def _pe_imports(path):
+    """Imported + delay-loaded DLL names (lowercase) of a PE file; empty if pefile is missing or the file is unreadable."""
+    try:
+        import pefile
+        pe = pefile.PE(path, fast_load=True)
+        pe.parse_data_directories(directories=[pefile.DIRECTORY_ENTRY["IMAGE_DIRECTORY_ENTRY_IMPORT"],
+                                               pefile.DIRECTORY_ENTRY["IMAGE_DIRECTORY_ENTRY_DELAY_IMPORT"]])
+        names = {e.dll.decode().lower() for e in getattr(pe, "DIRECTORY_ENTRY_IMPORT", [])}
+        names |= {e.dll.decode().lower() for e in getattr(pe, "DIRECTORY_ENTRY_DELAY_IMPORT", [])}
+        pe.close()
+        return names
+    except Exception:  # noqa: BLE001
+        return set()
+
+
+def check_install_complete(target, exe_name, build_dir, fix=True):
+    """Every non-system DLL the exe (transitively) imports must sit next to it, and assets/ data/ shaders/ must exist and be non-empty.
+    Missing DLLs are copied from build_dir (fix=True); returns a sorted list of what is still missing (DLL names and 'dir/')."""
+    sysdirs = [os.path.join(os.environ.get("SystemRoot", "C:/Windows"), d) for d in ("System32", "SysWOW64")]
+
+    def is_system(n):
+        return n.startswith(("api-ms-", "ext-ms-")) or any(os.path.exists(os.path.join(d, n)) for d in sysdirs)
+
+    exe = next((c for c in (os.path.join(target, exe_name), os.path.join(build_dir, exe_name)) if os.path.isfile(c)), None)
+    todo = (_pe_imports(exe) if exe else set()) | {d.lower() for d in FFMPEG_DLLS}
+    seen, missing = set(), []
+    while todo:
+        n = todo.pop()
+        if n in seen or is_system(n):
+            continue
+        seen.add(n)
+        dst, src = os.path.join(target, n), os.path.join(build_dir, n)
+        if not os.path.isfile(dst):
+            if fix and os.path.isfile(src):
+                shutil.copy2(src, dst)
+                log(f"completeness: copied missing {n} from build dir")
+            else:
+                missing.append(n)
+                continue
+        todo |= _pe_imports(dst)
+    for d in REQUIRED_DIRS:
+        dpath = os.path.join(target, d)
+        if not (os.path.isdir(dpath) and any(os.scandir(dpath))):
+            missing.append(d + "/")
+    return sorted(missing)
+
+
 def verify_only(target_dir, strict):
     rep = staleness_report(target_dir)
     if not rep["has_manifest"]:
@@ -1523,6 +1573,8 @@ def main():
                     "Use as the final step of any OTHER deploy path "
                     "(deploy-editor.sh, manual recipe) so the CSV manifest "
                     "that --verify-only checks does not go stale.")
+    ap.add_argument("--check-only", action="store_true",
+                    help="only check the target has every runtime DLL the exe imports plus assets/ data/ shaders/; no copy; exit 7 if not")
     ap.add_argument("--strict", action="store_true",
                     help="with --verify-only: drift = nonzero exit")
     ap.add_argument("--require-clean", action="store_true",
@@ -1564,6 +1616,13 @@ def main():
         default_subdir = (preset["ninja_subdir"] if preset else "build64-ninja")
     build_dir = args.build_dir or os.path.join(src_root, default_subdir)
     pdb_name = os.path.splitext(exe_name)[0] + ".pdb"
+
+    if args.check_only:
+        gaps = check_install_complete(target, exe_name, build_dir, fix=False)
+        if gaps:
+            fail("INSTALL INCOMPLETE: " + ", ".join(gaps), 7)
+        log("install complete")
+        return
 
     if args.write_manifest_only:
         write_manifest_only(src_root, build_dir, exe_name, pdb_name, target,
@@ -1663,6 +1722,10 @@ def run_deploy(args, src_root, build_dir, target, exe_name, pdb_name):
                     cache=cache, full_verify=args.full_verify)
     write_manifest(target, hashes, src_commit)
     log("deploy COMPLETE — payload verified, manifest written")
+    gaps = check_install_complete(target, exe_name, build_dir)
+    if gaps:
+        fail("INSTALL INCOMPLETE (game would die with 0xC0000135 / missing assets): " + ", ".join(gaps) +
+             f"; copy them from a full install (e.g. {GOLDEN_MATERIAL_ROOT})", 7)
 
     # Post-deploy hygiene scan (Truth-First arc P1 #5/#7): the payload manifest
     # is a COMPLETENESS gate and never walks data/missions/*.beauty/, so a
