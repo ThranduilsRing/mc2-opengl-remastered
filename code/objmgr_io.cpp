@@ -1360,8 +1360,36 @@ std::vector<uint8_t> GameObjectManager::saveAnimationState() {
         int32_t handle = static_cast<int32_t>(i);
         archive(handle, *object->getAppearance()->simulationAnimation());
     }
+    // Pool order: the sim updates turrets, buildings, ... in pool order and a load fills each pool in handle order, so objects
+    // that draw from the sim RNG in the same tick (idle turrets) would draw in a different order after a load.
+    auto poolOrder = [&](auto* const* pool, long n) {
+        std::vector<int32_t> handles;
+        if (pool && n > 0 && n <= static_cast<long>(mc2::save::maxSequenceLength)) {
+            handles.reserve(static_cast<size_t>(n));
+            for (long i = 0; i < n; ++i) handles.push_back(pool[i] ? static_cast<int32_t>(pool[i]->getHandle()) : -1);
+        }
+        archive(handles);
+    };
+    poolOrder(turrets, numTurrets); poolOrder(buildings, numBuildings); poolOrder(gates, numGates);
+    poolOrder(artillery, numArtillery); poolOrder(carnage, numCarnage); poolOrder(weapons, numWeapons);
     if (!archive.good()) Fatal(0, "Unable to serialize authoritative animation state");
     return archive.bytes();
+}
+// Reorders a typed pool to the saved order when the saved handles name exactly the objects it holds; otherwise leaves it alone.
+template<class Pool>
+static void applyPoolOrder(Pool* pool, long n, const std::vector<int32_t>& handles, GameObjectPtr* objList, long maxObjects) {
+    if (!pool || n <= 0 || static_cast<long>(handles.size()) != n) return;
+    std::vector<Pool> next(static_cast<size_t>(n));
+    for (long i = 0; i < n; ++i) {
+        const int32_t h = handles[static_cast<size_t>(i)];
+        if (h < 1 || h > maxObjects || !objList[h]) return;
+        next[static_cast<size_t>(i)] = static_cast<Pool>(objList[h]);
+    }
+    std::vector<Pool> sortedNext = next, current(pool, pool + n);
+    std::sort(sortedNext.begin(), sortedNext.end());
+    std::sort(current.begin(), current.end());
+    if (sortedNext != current) return;
+    std::copy(next.begin(), next.end(), pool);
 }
 bool GameObjectManager::restoreAnimationState(const std::vector<uint8_t>& bytes) {
     mc2::save::Archive archive(bytes);
@@ -1384,7 +1412,14 @@ bool GameObjectManager::restoreAnimationState(const std::vector<uint8_t>& bytes)
         states.emplace_back(handle, std::move(animation));
         previousHandle = handle;
     }
+    // Pool orders follow the animation states; saves written before them end here and keep the pools in handle order.
+    std::vector<int32_t> order[6];
+    if (archive.remaining() > 0)
+        for (auto& handles : order) archive(handles);
     if (!archive.finish()) return false;
+    applyPoolOrder(turrets, numTurrets, order[0], objList, getMaxObjects()); applyPoolOrder(buildings, numBuildings, order[1], objList, getMaxObjects());
+    applyPoolOrder(gates, numGates, order[2], objList, getMaxObjects()); applyPoolOrder(artillery, numArtillery, order[3], objList, getMaxObjects());
+    applyPoolOrder(carnage, numCarnage, order[4], objList, getMaxObjects()); applyPoolOrder(weapons, numWeapons, order[5], objList, getMaxObjects());
     for (auto& [handle, animation] : states) {
         auto* appearance = objList[handle]->getAppearance();
         *appearance->simulationAnimation() = std::move(animation);
