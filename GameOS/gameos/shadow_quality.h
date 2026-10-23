@@ -20,9 +20,9 @@ constexpr ShadowQuality qualityForLevel(int level) {
 constexpr ShadowQuality qualityForLimit(int level, int limit) {
     while(level>0 && qualityForLevel(level).maskCap>limit) --level;
     auto q=qualityForLevel(level);
-    q.maskCap=std::min(q.maskCap,limit);
-    q.mapSide=std::min(q.mapSide,limit);
-    q.windowSide=std::min(q.windowSide,limit);
+    q.maskCap=(std::min)(q.maskCap,limit);
+    q.mapSide=(std::min)(q.mapSide,limit);
+    q.windowSide=(std::min)(q.windowSide,limit);
     return q;
 }
 inline const ShadowQuality& shadowQuality() {
