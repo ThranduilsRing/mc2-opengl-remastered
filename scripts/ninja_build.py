@@ -26,6 +26,22 @@ from configure_ninja import (DEFAULT_TARGETS, DEFAULT_TREE, NINJA, compile_cache
                              under_vcvars)  # noqa: E402
 
 
+PDB_MAX_BYTES = 4 * 1024 ** 3  # MSVC hit LNK1318 on a 6.3 GB mc2.pdb; the pdb is generated, so drop it before it can break the link
+
+
+def drop_oversize_pdb(root, tree, limit=PDB_MAX_BYTES):
+    pdb = os.path.join(root, tree, "mc2.pdb")
+    try:
+        size = os.path.getsize(pdb)
+        if size > limit:
+            os.remove(pdb)
+            print(f"[ninja_build] deleted {tree}/mc2.pdb ({size / 1024 ** 3:.1f} GB > {limit / 1024 ** 3:.0f} GB; LNK1318 guard)", flush=True)
+            return True
+    except OSError:
+        pass
+    return False
+
+
 def warm(root, argv, tree):
     """Start `ninja_build.py <argv> --warm-run` detached (log in the tree) and return."""
     base = None
@@ -75,6 +91,7 @@ def main():
     # build); it is configured on first use.
     if tree != DEFAULT_TREE and not os.path.exists(f"{root}/{tree}/build.ninja"):
         configure(root, tree)
+    drop_oversize_pdb(root, tree)
     env = compile_cache_env(root) if tree_uses_cache(root, tree) else None  # sccache tree (the default; configure_ninja.py --no-compile-cache opts out)
     if env:
         ensure_cache_server(root, env)

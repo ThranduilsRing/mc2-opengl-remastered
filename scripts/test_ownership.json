@@ -7,6 +7,7 @@
     {"module": "scripts/tests/test_battle_bench.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_axis_swizzle_ratchet.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_board_selftests.py", "owners": ["scripts_tests"]},
+    {"module": "scripts/tests/test_merge_speedups.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_bootstrap_worktree_build.py", "owners": ["native_render_hosts"]},
     {"module": "scripts/tests/test_bounded_wait.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_bt2018_mechs.py", "owners": ["scripts_tests"]},
