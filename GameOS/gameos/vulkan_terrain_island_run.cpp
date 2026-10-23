@@ -116,7 +116,7 @@ extern "C" int mc2_vk_terrain_island_prewarm(int w, int h) {
     import_cement(s, feed);
     snapshot_cement(s, feed);
     import_shore_mask(s, feed);
-    import_shore_field(s, feed);
+    import_materials(s);
     if (feed.visualHeightCpu) snapshot_visual_height(s, feed);
     return 1;
 }
