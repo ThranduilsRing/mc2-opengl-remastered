@@ -534,6 +534,7 @@ set(SOURCES
     "code/infowindow.cpp"
     "code/keyboardref.cpp"
     "code/mechicon.cpp"
+    "code/mechicon_package_hud.cpp"
     "code/icon_registry.cpp"
     "code/missiongui.cpp"
     "code/missiongui_diag.cpp"
