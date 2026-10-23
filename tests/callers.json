@@ -9939,7 +9939,7 @@
           "line": 7,
           "evidence": "import",
           "reference": "tools.mapgen.generate",
-          "text": "from tools.mapgen.generate import generate, synthetic_terrain"
+          "text": "from tools.mapgen.generate import generate, plan_cells, synthetic_terrain"
         },
         {
           "path": "tests/mapgen/test_mission_writer.py",
