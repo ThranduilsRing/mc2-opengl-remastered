@@ -37,6 +37,7 @@ extern "C" int mc2_vk_vfx_island_prewarm(int,int);
 extern "C" int mc2_vk_water_island_prewarm(int,int);
 extern "C" int mc2_vk_shadow_island_prewarm(int,int);
 extern "C" int mc2_vk_overlay_prewarm(int,int);
+extern "C" int mc2_vk_impact_decals_prewarm(int,int);
 
 namespace mc2vk::infra {
 namespace {
@@ -577,6 +578,7 @@ void prewarm(int width,int height) {
     ready+=mc2_vk_vfx_island_prewarm(width,height);
     ready+=mc2_vk_shadow_island_prewarm(width,height);
     mc2_vk_overlay_prewarm(width,height);
+    ready+=mc2_vk_impact_decals_prewarm(width,height);
     if(auto* post=getGosPostProcess()) { post->prewarmVkFog(); post->prewarmVkScreenFx(); post->prewarmVkHzb(); }
     ready+=getOrCreateEnginePresentVk().prewarmPipelines() ? 1 : 0;
     saveCache();

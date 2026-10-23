@@ -1826,7 +1826,7 @@ extern "C" void mc2_vk_color_prop_island_late_fringe() {
     VkViewport vp{0,0,static_cast<float>(s->w),static_cast<float>(s->h),0,1};
     VkRect2D scissor = rbi.renderArea;
     vkCmdSetViewport(cb,0,1,&vp); vkCmdSetScissor(cb,0,1,&scissor);
-    vkCmdBindPipeline(cb,VK_PIPELINE_BIND_POINT_GRAPHICS,s->t1_fringePipe.get());
+    mc2vk::infra::bind(cb,VK_PIPELINE_BIND_POINT_GRAPHICS,s->t1_fringePipe.get());
     vkCmdBindDescriptorSets(cb,VK_PIPELINE_BIND_POINT_GRAPHICS,s->playout.get(),0,1,&s->set[par],s->lateDynCount,s->lateOffsets);
     VkDeviceSize offset = 0; const VkBuffer vertexBuffer = s->vbo.get();
     vkCmdBindVertexBuffers(cb,0,1,&vertexBuffer,&offset);
