@@ -9357,6 +9357,26 @@
    "count": 1
   },
   {
+   "tag": "VEG_GPU",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "survivors",
+    "cap"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VEG_GPU",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "wanted",
+    "cap"
+   ],
+   "count": 1
+  },
+  {
    "tag": "VEG_SUMMARY",
    "ver": -1,
    "stream": "stderr",
@@ -11142,6 +11162,7 @@
   "TGL_POOL",
   "TIMING",
   "TOOLVK",
+  "VEG_GPU",
   "VEG_SUMMARY",
   "VERIFY",
   "VFX_",
