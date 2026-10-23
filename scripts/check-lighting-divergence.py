@@ -177,7 +177,6 @@ RE_SPL_DEFINE = re.compile(r"if\s*\(\s*ld\.numLights\.x\s*==\s*0\s*\)\s*return\s
 # (file, env var) -> the default literal returned when the var is unset. Read
 # FROM THE READER, never from the registry or the docs.
 CPP_FLOOR_GATES = (
-    ("GameOS/gameos/gos_terrain_lod_chunk_upload.cpp", "MC2_TERRAIN_AMBIENT_FLOOR"),
     ("mclib/camera.cpp", "MC2_NIGHT_AMBIENT_FLOOR"),
 )
 # A getenv("MC2_X") read or a typed gate::get<"MC2_X">() read: either names the gate the file still reads.
@@ -275,10 +274,7 @@ BASELINE = {'ambient_floor_scalar': [('shaders/vulkan/water_geom.frag', 'SKY_AMB
  'calc_light_definition': ['shaders/include/lighting.hglsl', 'shaders/vulkan/mech_tier1.vert'],
  'calc_light_callers': ['shaders/include/lighting.hglsl', 'shaders/vulkan/mech_tier1.vert'],
  'native_zero_light_returns_base': ['shaders/vulkan/mech_tier1.vert'],
- 'cpp_floor_gate_readers': [('GameOS/gameos/gos_terrain_lod_chunk_upload.cpp',
-                             'MC2_TERRAIN_AMBIENT_FLOOR',
-                             'present'),
-                            ('mclib/camera.cpp', 'MC2_NIGHT_AMBIENT_FLOOR', 'present')]}
+ 'cpp_floor_gate_readers': [('mclib/camera.cpp', 'MC2_NIGHT_AMBIENT_FLOOR', 'present')]}
 
 # ---------------------------------------------------------------------------
 # ANTI-BLINDNESS WITNESSES. Each is a claim about the LIVE tree that is only

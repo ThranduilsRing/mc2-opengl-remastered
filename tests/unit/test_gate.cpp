@@ -841,20 +841,20 @@ TEST_CASE("G3 float rows carry the bounds of the readers they replace") {
 }
 
 TEST_CASE("isNonEmpty is the old v && v[0] test, whatever the row kind") {
-    EnvVar env("MC2_TERRAIN_AMBIENT_FLOOR");
-    gate::invalidate("MC2_TERRAIN_AMBIENT_FLOOR");
-    CHECK_FALSE(gate::isNonEmpty<"MC2_TERRAIN_AMBIENT_FLOOR">());
-    CHECK_FALSE(gate::isSet<"MC2_TERRAIN_AMBIENT_FLOOR">());
-    CHECK(gate::get<"MC2_TERRAIN_AMBIENT_FLOOR">() == 0.35f);     // unset reads the default
+    EnvVar env("MC2_MECH_SPECULAR_STRENGTH");
+    gate::invalidate("MC2_MECH_SPECULAR_STRENGTH");
+    CHECK_FALSE(gate::isNonEmpty<"MC2_MECH_SPECULAR_STRENGTH">());
+    CHECK_FALSE(gate::isSet<"MC2_MECH_SPECULAR_STRENGTH">());
+    CHECK(gate::get<"MC2_MECH_SPECULAR_STRENGTH">() == 0.05f);     // unset reads the default
     env.set("0.5");
-    gate::invalidate("MC2_TERRAIN_AMBIENT_FLOOR");
-    CHECK(gate::isNonEmpty<"MC2_TERRAIN_AMBIENT_FLOOR">());
-    CHECK(gate::get<"MC2_TERRAIN_AMBIENT_FLOOR">() == 0.5f);
+    gate::invalidate("MC2_MECH_SPECULAR_STRENGTH");
+    CHECK(gate::isNonEmpty<"MC2_MECH_SPECULAR_STRENGTH">());
+    CHECK(gate::get<"MC2_MECH_SPECULAR_STRENGTH">() == 0.5f);
     env.set("9");
-    gate::invalidate("MC2_TERRAIN_AMBIENT_FLOOR");
-    CHECK(gate::get<"MC2_TERRAIN_AMBIENT_FLOOR">() == 2.0f);      // clampRange(0, 2)
+    gate::invalidate("MC2_MECH_SPECULAR_STRENGTH");
+    CHECK(gate::get<"MC2_MECH_SPECULAR_STRENGTH">() == 4.0f);      // clampRange(0, 4)
     env.set(nullptr);
-    gate::invalidate("MC2_TERRAIN_AMBIENT_FLOOR");
+    gate::invalidate("MC2_MECH_SPECULAR_STRENGTH");
 }
 
 TEST_CASE("MC2_WATER_SHORE_MODE tokens 0..3 resolve, anything else is the first (empty) token") {
