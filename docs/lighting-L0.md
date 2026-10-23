@@ -38,7 +38,7 @@ metadata inspection; they are not silently classified as unlit.
 `unit-baseline.txt` records successful doctest, engine-linked and Python harnesses.
 `contracts.txt` records the static contracts. The crossfade ownership failure is
 pre-existing: `preexisting-contract-parent.txt` reproduces the same orphan
-`tests/unit/test_music_crossfade.cpp` assertion at unchanged parent `a76005894`,
+test_music_crossfade assertion at unchanged parent `a76005894`,
 with the census held in temporary commit `0dfb6d512` and no stash used. That
 untracked test was never changed, staged, deleted or committed.
 
