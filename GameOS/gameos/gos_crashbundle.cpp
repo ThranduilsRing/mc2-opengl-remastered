@@ -12,7 +12,9 @@
 
 #include "gos_crashbundle.h"
 #include "crash_content.h"
+#ifdef _WIN32
 #include "crash_content_writer.h"
+#endif
 #include "Gates/gate.h"
 #include "build_identity.h"  // Stable build identity declarations
 #include "mc2fmt.h"
@@ -20,6 +22,11 @@
 #ifndef _WIN32
 extern "C" void crashbundle_init(void) {}
 extern "C" void crashbundle_append(const char*) {}
+extern "C" void crashbundle_content_fd(int, const char*, const char*) {}
+extern "C" void crashbundle_content_image(const char*, const void*, size_t) {}
+extern "C" void crashbundle_mod(const char*, int) {}
+extern "C" void crashbundle_save_point(const char*, const char*) {}
+extern "C" void crashbundle_device_lost(void) {}
 extern "C" void crashbundle_trigger_test_crash(void) {
     volatile int* p = 0;
     *p = 0xDEADC0DE;
