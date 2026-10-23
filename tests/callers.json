@@ -698,7 +698,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/deploy_payload.py",
-          "line": 1675,
+          "line": 1738,
           "evidence": "command",
           "reference": "scripts/check-deploy-hygiene.py",
           "text": "r = subprocess.run([sys.executable, hygiene, target],"
@@ -2221,6 +2221,13 @@
           "text": "from configure_ninja import (DEFAULT_TARGETS, DEFAULT_TREE, NINJA, compile_cache_env, configure, ensure_cache_server, tree_uses_cache,"
         },
         {
+          "path": "scripts/tests/test_rule_defaults.py",
+          "line": 74,
+          "evidence": "import",
+          "reference": "configure_ninja",
+          "text": "import configure_ninja"
+        },
+        {
           "path": "tests/analyze/analyze_dangling.py",
           "line": 37,
           "evidence": "import",
@@ -3576,6 +3583,13 @@
           "text": "from scripts import deploy_payload as dp  # noqa: E402"
         },
         {
+          "path": "scripts/tests/test_deploy_completeness.py",
+          "line": 10,
+          "evidence": "import",
+          "reference": "scripts.deploy_payload",
+          "text": "from scripts import deploy_payload as dp  # noqa: E402"
+        },
+        {
           "path": "scripts/tests/test_deploy_disk_space.py",
           "line": 10,
           "evidence": "import",
@@ -3616,6 +3630,13 @@
           "evidence": "import",
           "reference": "deploy_payload",
           "text": "import deploy_payload  # noqa: E402"
+        },
+        {
+          "path": "scripts/tests/test_rule_defaults.py",
+          "line": 79,
+          "evidence": "import",
+          "reference": "deploy_payload",
+          "text": "import deploy_payload as dp"
         },
         {
           "path": "tools/deploy_asset_contract_harness/deploy_asset_contract_harness.py",
@@ -4160,6 +4181,13 @@
           "evidence": "import",
           "reference": "run_battle_bench",
           "text": "import run_battle_bench as bench"
+        },
+        {
+          "path": "scripts/tests/test_rule_defaults.py",
+          "line": 60,
+          "evidence": "import",
+          "reference": "run_battle_bench",
+          "text": "import run_battle_bench as bench"
         }
       ]
     },
@@ -4412,6 +4440,13 @@
           "text": "from scripts import run_smoke"
         },
         {
+          "path": "scripts/tests/test_rule_defaults.py",
+          "line": 45,
+          "evidence": "import",
+          "reference": "run_smoke",
+          "text": "import run_smoke"
+        },
+        {
           "path": "tests/smoke/test_order_liveness_floor.py",
           "line": 6,
           "evidence": "import",
@@ -4505,6 +4540,13 @@
           "evidence": "import",
           "reference": "run_visual_capture",
           "text": "import run_visual_capture as capture"
+        },
+        {
+          "path": "scripts/tests/test_rule_defaults.py",
+          "line": 50,
+          "evidence": "import",
+          "reference": "run_visual_capture",
+          "text": "import run_visual_capture as rvc"
         },
         {
           "path": "tools/visual_verify/capture.py",
@@ -5347,6 +5389,13 @@
         {
           "path": "tests/smoke/test_marker_buckets.py",
           "line": 122,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib.gates",
+          "text": "from scripts.smoke_lib.gates import GateConfig, evaluate"
+        },
+        {
+          "path": "tests/smoke/test_marker_buckets.py",
+          "line": 141,
           "evidence": "import",
           "reference": "scripts.smoke_lib.gates",
           "text": "from scripts.smoke_lib.gates import GateConfig, evaluate"
@@ -6335,6 +6384,13 @@
       "callers_by_stem": []
     },
     {
+      "path": "scripts/tests/test_deploy_completeness.py",
+      "basename": "test_deploy_completeness.py",
+      "stem": "test_deploy_completeness",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
       "path": "scripts/tests/test_deploy_disk_space.py",
       "basename": "test_deploy_disk_space.py",
       "stem": "test_deploy_disk_space",
@@ -6576,6 +6632,13 @@
       "path": "scripts/tests/test_ref_passthrough.py",
       "basename": "test_ref_passthrough.py",
       "stem": "test_ref_passthrough",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "scripts/tests/test_rule_defaults.py",
+      "basename": "test_rule_defaults.py",
+      "stem": "test_rule_defaults",
       "callers_by_basename": [],
       "callers_by_stem": []
     },
@@ -11666,21 +11729,21 @@
       "callers_by_stem": [
         {
           "path": "tools/scifi_kit/art/bake.py",
-          "line": 162,
+          "line": 196,
           "evidence": "import",
           "reference": "assemble",
           "text": "import geo,assemble,sys"
         },
         {
           "path": "tools/scifi_kit/art/blend.py",
-          "line": 913,
+          "line": 937,
           "evidence": "import",
           "reference": "assemble",
           "text": "import assemble"
         },
         {
           "path": "tools/scifi_kit/art/drafts.py",
-          "line": 532,
+          "line": 560,
           "evidence": "import",
           "reference": "assemble",
           "text": "from assemble import end_wall"
@@ -11709,7 +11772,7 @@
       "callers_by_stem": [
         {
           "path": "tools/scifi_kit/art/blend.py",
-          "line": 944,
+          "line": 968,
           "evidence": "import",
           "reference": "bake",
           "text": "import bake"
@@ -11746,7 +11809,7 @@
       "callers_by_stem": [
         {
           "path": "tools/scifi_kit/art/blend.py",
-          "line": 993,
+          "line": 1017,
           "evidence": "import",
           "reference": "baked_review",
           "text": "import baked_review"
@@ -11761,10 +11824,25 @@
       "callers_by_stem": [
         {
           "path": "tools/scifi_kit/art/drafts.py",
-          "line": 1315,
+          "line": 1343,
           "evidence": "import",
           "reference": "batch2",
           "text": "import batch2  # noqa: E402: reuses the construction helpers above"
+        }
+      ]
+    },
+    {
+      "path": "tools/scifi_kit/art/batch3.py",
+      "basename": "batch3.py",
+      "stem": "batch3",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tools/scifi_kit/art/drafts.py",
+          "line": 1349,
+          "evidence": "import",
+          "reference": "batch3",
+          "text": "import batch3  # noqa: E402: construction helpers and batch two are registered first"
         }
       ]
     },
@@ -11783,14 +11861,14 @@
       "callers_by_stem": [
         {
           "path": "tools/scifi_kit/art/bake.py",
-          "line": 138,
+          "line": 172,
           "evidence": "import",
           "reference": "content",
           "text": "from content import source_lights"
         },
         {
           "path": "tools/scifi_kit/art/bake.py",
-          "line": 352,
+          "line": 390,
           "evidence": "import",
           "reference": "content",
           "text": "from content import shared_quonset_variant"
@@ -11812,7 +11890,7 @@
         },
         {
           "path": "tools/scifi_kit/art/drafts.py",
-          "line": 1279,
+          "line": 1307,
           "evidence": "import",
           "reference": "counts",
           "text": "import counts"
@@ -11820,6 +11898,13 @@
         {
           "path": "tools/scifi_kit/art/inventory.py",
           "line": 404,
+          "evidence": "import",
+          "reference": "counts",
+          "text": "import counts"
+        },
+        {
+          "path": "tools/scifi_kit/tests/test_art_kit.py",
+          "line": 135,
           "evidence": "import",
           "reference": "counts",
           "text": "import counts"
@@ -11859,6 +11944,13 @@
           "evidence": "import",
           "reference": "drafts",
           "text": "import drafts as kit  # noqa: E402: definitions must exist before draft registration"
+        },
+        {
+          "path": "tools/scifi_kit/art/batch3.py",
+          "line": 213,
+          "evidence": "import",
+          "reference": "drafts",
+          "text": "import drafts as kit  # noqa: E402: reuse the existing construction helpers"
         },
         {
           "path": "tools/scifi_kit/art/content.py",
@@ -11912,13 +12004,20 @@
         },
         {
           "path": "tools/scifi_kit/art/bake.py",
-          "line": 162,
+          "line": 196,
           "evidence": "import",
           "reference": "geo",
           "text": "import geo,assemble,sys"
         },
         {
           "path": "tools/scifi_kit/art/batch2.py",
+          "line": 5,
+          "evidence": "import",
+          "reference": "geo",
+          "text": "import geo"
+        },
+        {
+          "path": "tools/scifi_kit/art/batch3.py",
           "line": 5,
           "evidence": "import",
           "reference": "geo",
@@ -11998,7 +12097,7 @@
       "callers_by_stem": [
         {
           "path": "tools/scifi_kit/art/bake.py",
-          "line": 108,
+          "line": 142,
           "evidence": "import",
           "reference": "lights",
           "text": "from lights import from_kit"
@@ -12009,6 +12108,13 @@
           "evidence": "import",
           "reference": "lights",
           "text": "from lights import from_kit"
+        },
+        {
+          "path": "tools/scifi_kit/tests/test_art_kit.py",
+          "line": 136,
+          "evidence": "import",
+          "reference": "lights",
+          "text": "import lights"
         }
       ]
     },
@@ -12027,7 +12133,7 @@
         },
         {
           "path": "tools/scifi_kit/art/blend.py",
-          "line": 354,
+          "line": 378,
           "evidence": "import",
           "reference": "material_sources",
           "text": "from material_sources import lookup"
@@ -12063,12 +12169,19 @@
       "callers_by_stem": [
         {
           "path": "tools/scifi_kit/art/blend.py",
-          "line": 990,
+          "line": 1014,
           "evidence": "import",
           "reference": "stock_views",
           "text": "import stock_views"
         }
       ]
+    },
+    {
+      "path": "tools/scifi_kit/art/wear_metrics.py",
+      "basename": "wear_metrics.py",
+      "stem": "wear_metrics",
+      "callers_by_basename": [],
+      "callers_by_stem": []
     },
     {
       "path": "tools/scifi_kit/blender_build.py",
@@ -12280,6 +12393,13 @@
           "evidence": "import",
           "reference": "sim_determinism",
           "text": "import sim_determinism as sd  # noqa: E402"
+        },
+        {
+          "path": "scripts/tests/test_rule_defaults.py",
+          "line": 55,
+          "evidence": "import",
+          "reference": "sim_determinism",
+          "text": "import sim_determinism"
         },
         {
           "path": "scripts/tests/test_sim_determinism_strict.py",
@@ -14206,6 +14326,13 @@
         }
       ],
       "callers_by_stem": [
+        {
+          "path": "scripts/tests/test_rule_defaults.py",
+          "line": 68,
+          "evidence": "import",
+          "reference": "tracy_capture_compare",
+          "text": "import tracy_capture_compare as t"
+        },
         {
           "path": "scripts/tests/test_tracy_capture_compare.py",
           "line": 12,
