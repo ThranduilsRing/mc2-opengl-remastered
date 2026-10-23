@@ -696,7 +696,7 @@ extern "C" void crashbundle_device_lost(void)
     if (InterlockedCompareExchange(&g_in_filter, 1, 0) != 0) return;
     build_crash_folder();
     char reason[2048];
-    const int bytes = mc2::fmt::to_buf(reason, "Reason: Vulkan device lost\nFingerprint: {}\n", MC2_BUILD_FP_LITERAL);
+    const int bytes = mc2::fmt::to_buf(reason, "Reason: Vulkan device lost\nFingerprint: {}\n", mc2::fmt::safe(MC2_BUILD_FP_LITERAL));
     if (bytes > 0) write_file_all(g_crash_txtA, reason, DWORD(bytes));
     write_ring_snapshot();
     g_content.snapshot(g_crash_folderA);
