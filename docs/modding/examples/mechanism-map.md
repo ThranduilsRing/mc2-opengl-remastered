@@ -56,9 +56,9 @@ Start with [`getting-started.md`](getting-started.md) if you haven't set up a mo
 | Render-only model override registry | `ModelOverrideRegistry::instance()`/`loadFromFile`, `mclib/model_override_registry.cpp:37-146` (singleton load at `:158-166`) | — | `data/model_overrides/models.json` | Shipped. Entry: `{"type":"model","renderOnly":true,"fallback":"stock","scale":1.0,"replaces":"<class>:<name>","source":"<file>.glb"}` — `type` must be exactly `"model"`, `renderOnly` must be `true`, `fallback` must be exactly `"stock"`, and `scale` must be exactly `1.0` (any other value drops the entry, MVP limitation, `:63-68`) |
 | Class restriction | `mclib/model_override_registry.cpp:77` | — | `replaces` must be `"staticProp:<name>"` or `"tree:<name>"` | Shipped — no other override class is accepted |
 | Static-prop resolve seam | `mclib/bdactor.cpp:357` (`ModelOverrideRegistry::instance().resolve("staticProp", ...)`) | — | — | Shipped. `autoGround=false` for static props (`:373-374`) — the glTF must carry its own stock-matching pivot |
-| Tree resolve seam | `mclib/bdactor.cpp:4106` (`ModelOverrideRegistry::instance().resolve("tree", ...)`) | — | — | Shipped. Trees keep `autoGround=true` (base-snapped via `MC2_GLTF_GROUND`) |
+| Tree resolve seam | `mclib/bdactor.cpp:4106` (`ModelOverrideRegistry::instance().resolve("tree", ...)`) | — | — | Shipped. Trees use the common static override frontend: baked node transforms and authored pivot, `autoGround=false` |
 | Override trace | `mclib/bdactor.cpp:198,208,354,1444,3094,3139,4103,5395,5419` | `MC2_MODOVERRIDE_TRACE` | — | Shipped, logs live appearance-name matches to stderr |
-| Asset cook pipeline (Track G) | `tools/asset_cook/trackg_cook.py` | — | produces manifest entries + `manifest.json`/`materials.json` per cooked asset | Shipped tooling. Validate output with `py -3 tools/asset_cook/validate_asset_manifest.py` |
+| Content pipeline | `tools/content_pipeline/cook.py` | - | IR -> validated GLBs, texture tiers and `models.json` | Shared by stock, kit, catalog and tree frontends; see `docs/content-pipeline.md`. |
 
 ## Missions
 

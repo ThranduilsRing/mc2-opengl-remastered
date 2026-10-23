@@ -2129,6 +2129,21 @@
    "count": 1
   },
   {
+   "tag": "CONTENT_COOK",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "source",
+    "key",
+    "cache",
+    "nodes",
+    "materials",
+    "sockets",
+    "version"
+   ],
+   "count": 1
+  },
+  {
    "tag": "CPU_PROJ",
    "ver": 1,
    "stream": "stderr",
@@ -5371,7 +5386,7 @@
    "ver": -1,
    "stream": "stderr",
    "keys": [],
-   "count": 17
+   "count": 9
   },
   {
    "tag": "MODOVERRIDE",
@@ -5381,16 +5396,7 @@
     "condition",
     "destroyed"
    ],
-   "count": 1
-  },
-  {
-   "tag": "MODOVERRIDE",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "lodCount"
-   ],
-   "count": 1
+   "count": 2
   },
   {
    "tag": "MODOVERRIDE",
@@ -5741,13 +5747,6 @@
     "calcMovePath_calls",
     "offmap_noops"
    ],
-   "count": 1
-  },
-  {
-   "tag": "MSL",
-   "ver": -1,
-   "stream": "stdout",
-   "keys": [],
    "count": 1
   },
   {

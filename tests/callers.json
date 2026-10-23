@@ -2859,41 +2859,6 @@
           "text": "import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)"
         },
         {
-          "path": "tools/asset_cook/tests/test_g1_stage.py",
-          "line": 24,
-          "evidence": "import",
-          "reference": "console_child",
-          "text": "import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)"
-        },
-        {
-          "path": "tools/asset_cook/tests/test_g2_textures.py",
-          "line": 22,
-          "evidence": "import",
-          "reference": "console_child",
-          "text": "import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)"
-        },
-        {
-          "path": "tools/asset_cook/tests/test_g3b_assemble.py",
-          "line": 22,
-          "evidence": "import",
-          "reference": "console_child",
-          "text": "import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)"
-        },
-        {
-          "path": "tools/asset_cook/tests/test_g_pathb_2civliving.py",
-          "line": 29,
-          "evidence": "import",
-          "reference": "console_child",
-          "text": "import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)"
-        },
-        {
-          "path": "tools/asset_cook/trackg_cook.py",
-          "line": 40,
-          "evidence": "import",
-          "reference": "console_child",
-          "text": "import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)"
-        },
-        {
           "path": "tools/assets/candidates.py",
           "line": 263,
           "evidence": "import",
@@ -3050,13 +3015,6 @@
         {
           "path": "tools/dup_lines_ratchet.py",
           "line": 42,
-          "evidence": "import",
-          "reference": "console_child",
-          "text": "import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)"
-        },
-        {
-          "path": "tools/examples/build_modern_tree_pack.py",
-          "line": 25,
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)"
@@ -6818,17 +6776,10 @@
       "callers_by_stem": [
         {
           "path": "tools/asset_cook/cook_all_stock.py",
-          "line": 28,
+          "line": 9,
           "evidence": "import",
-          "reference": "asset_cook_classify",
-          "text": "import asset_cook_classify as acc   # noqa: E402"
-        },
-        {
-          "path": "tools/asset_cook/cook_all_stock.py",
-          "line": 29,
-          "evidence": "import",
-          "reference": "asset_cook_classify",
-          "text": "from asset_cook_classify import CookClass, classify_appearance, can_emit_override  # noqa: E402"
+          "reference": "tools.asset_cook.asset_cook_classify",
+          "text": "from tools.asset_cook.asset_cook_classify import classify_appearance, can_emit_override"
         },
         {
           "path": "tools/asset_cook/tests/test_classify.py",
@@ -6854,13 +6805,6 @@
       "callers_by_stem": []
     },
     {
-      "path": "tools/asset_cook/promote_cooked.py",
-      "basename": "promote_cooked.py",
-      "stem": "promote_cooked",
-      "callers_by_basename": [],
-      "callers_by_stem": []
-    },
-    {
       "path": "tools/asset_cook/tests/run_tests.py",
       "basename": "run_tests.py",
       "stem": "run_tests",
@@ -6873,86 +6817,6 @@
       "stem": "test_classify",
       "callers_by_basename": [],
       "callers_by_stem": []
-    },
-    {
-      "path": "tools/asset_cook/tests/test_g1_stage.py",
-      "basename": "test_g1_stage.py",
-      "stem": "test_g1_stage",
-      "callers_by_basename": [],
-      "callers_by_stem": []
-    },
-    {
-      "path": "tools/asset_cook/tests/test_g2_textures.py",
-      "basename": "test_g2_textures.py",
-      "stem": "test_g2_textures",
-      "callers_by_basename": [],
-      "callers_by_stem": []
-    },
-    {
-      "path": "tools/asset_cook/tests/test_g3b_assemble.py",
-      "basename": "test_g3b_assemble.py",
-      "stem": "test_g3b_assemble",
-      "callers_by_basename": [],
-      "callers_by_stem": []
-    },
-    {
-      "path": "tools/asset_cook/tests/test_g_pathb_2civliving.py",
-      "basename": "test_g_pathb_2civliving.py",
-      "stem": "test_g_pathb_2civliving",
-      "callers_by_basename": [],
-      "callers_by_stem": []
-    },
-    {
-      "path": "tools/asset_cook/tglmeshdump_to_glb.py",
-      "basename": "tglmeshdump_to_glb.py",
-      "stem": "tglmeshdump_to_glb",
-      "callers_by_basename": [],
-      "callers_by_stem": [
-        {
-          "path": "tools/asset_cook/cook_all_stock.py",
-          "line": 27,
-          "evidence": "import",
-          "reference": "tglmeshdump_to_glb",
-          "text": "import tglmeshdump_to_glb as t2g    # noqa: E402"
-        }
-      ]
-    },
-    {
-      "path": "tools/asset_cook/trackg_cook.py",
-      "basename": "trackg_cook.py",
-      "stem": "trackg_cook",
-      "callers_by_basename": [
-        {
-          "path": "tools/asset_cook/tests/test_g1_stage.py",
-          "line": 50,
-          "evidence": "command",
-          "reference": "tools/asset_cook/trackg_cook.py",
-          "text": "proc = subprocess.run("
-        },
-        {
-          "path": "tools/asset_cook/tests/test_g2_textures.py",
-          "line": 65,
-          "evidence": "command",
-          "reference": "tools/asset_cook/trackg_cook.py",
-          "text": "proc = subprocess.run("
-        }
-      ],
-      "callers_by_stem": [
-        {
-          "path": "tools/asset_cook/cook_all_stock.py",
-          "line": 26,
-          "evidence": "import",
-          "reference": "trackg_cook",
-          "text": "import trackg_cook as tc            # noqa: E402"
-        },
-        {
-          "path": "tools/asset_cook/promote_cooked.py",
-          "line": 29,
-          "evidence": "import",
-          "reference": "trackg_cook",
-          "text": "import trackg_cook as tc  # noqa: E402"
-        }
-      ]
     },
     {
       "path": "tools/asset_cook/validate_asset_manifest.py",
@@ -7826,18 +7690,18 @@
           "line": 31,
           "evidence": "import",
           "reference": "tools.content_pipeline",
-          "text": "from tools.content_pipeline import package  # noqa: E402"
+          "text": "from tools.content_pipeline import ir, package  # noqa: E402"
         },
         {
           "path": "tools/content_pipeline/frontends/bt2018.py",
-          "line": 22,
+          "line": 23,
           "evidence": "import",
           "reference": "tools.content_pipeline",
           "text": "from .. import ir"
         },
         {
           "path": "tools/content_pipeline/frontends/gltf_file.py",
-          "line": 16,
+          "line": 18,
           "evidence": "import",
           "reference": "tools.content_pipeline",
           "text": "from .. import gltf_io, ir"
@@ -7850,11 +7714,18 @@
           "text": "from .. import gltf_io, ir"
         },
         {
-          "path": "tools/content_pipeline/package.py",
-          "line": 25,
+          "path": "tools/content_pipeline/frontends/stock_meshdump.py",
+          "line": 7,
           "evidence": "import",
           "reference": "tools.content_pipeline",
-          "text": "from . import gltf_io, ir, texcook, validate"
+          "text": "from .. import ir"
+        },
+        {
+          "path": "tools/content_pipeline/package.py",
+          "line": 26,
+          "evidence": "import",
+          "reference": "tools.content_pipeline",
+          "text": "from . import cache, gltf_io, ir, texcook, validate"
         },
         {
           "path": "tools/content_pipeline/tests/test_content_pipeline.py",
@@ -7907,6 +7778,13 @@
           "text": "from tools.content_pipeline import cache"
         },
         {
+          "path": "tools/content_pipeline/package.py",
+          "line": 26,
+          "evidence": "import",
+          "reference": "tools.content_pipeline.cache",
+          "text": "from . import cache, gltf_io, ir, texcook, validate"
+        },
+        {
           "path": "tools/content_pipeline/tests/test_content_pipeline.py",
           "line": 14,
           "evidence": "import",
@@ -7927,7 +7805,43 @@
       "basename": "cook.py",
       "stem": "cook",
       "callers_by_basename": [],
-      "callers_by_stem": []
+      "callers_by_stem": [
+        {
+          "path": "tools/asset_cook/cook_all_stock.py",
+          "line": 8,
+          "evidence": "import",
+          "reference": "tools.content_pipeline.cook",
+          "text": "from tools.content_pipeline.cook import cook"
+        },
+        {
+          "path": "tools/content_pipeline/tests/test_content_pipeline.py",
+          "line": 125,
+          "evidence": "import",
+          "reference": "tools.content_pipeline.cook",
+          "text": "from tools.content_pipeline.cook import build_asset"
+        },
+        {
+          "path": "tools/content_pipeline/tests/test_content_pipeline.py",
+          "line": 193,
+          "evidence": "import",
+          "reference": "tools.content_pipeline.cook",
+          "text": "from tools.content_pipeline.cook import cook"
+        },
+        {
+          "path": "tools/content_pipeline/tests/test_content_pipeline.py",
+          "line": 206,
+          "evidence": "import",
+          "reference": "tools.content_pipeline.cook",
+          "text": "from tools.content_pipeline.cook import cook"
+        },
+        {
+          "path": "tools/examples/build_modern_tree_pack.py",
+          "line": 7,
+          "evidence": "import",
+          "reference": "tools.content_pipeline.cook",
+          "text": "from tools.content_pipeline.cook import cook"
+        }
+      ]
     },
     {
       "path": "tools/content_pipeline/frontends/__init__.py",
@@ -7947,11 +7861,11 @@
           "line": 32,
           "evidence": "import",
           "reference": "tools.content_pipeline.frontends",
-          "text": "from tools.content_pipeline.frontends import gltf_file, stock_ase  # noqa: E402"
+          "text": "from tools.content_pipeline.frontends import bt2018, gltf_file, stock_ase, stock_meshdump  # noqa: E402"
         },
         {
           "path": "tools/content_pipeline/frontends/bt2018.py",
-          "line": 23,
+          "line": 24,
           "evidence": "import",
           "reference": "tools.content_pipeline.frontends",
           "text": "from . import gltf_file"
@@ -7962,6 +7876,13 @@
           "evidence": "import",
           "reference": "tools.content_pipeline.frontends",
           "text": "from tools.content_pipeline.frontends import gltf_file, stock_ase  # noqa: E402"
+        },
+        {
+          "path": "tools/content_pipeline/tests/test_content_pipeline.py",
+          "line": 178,
+          "evidence": "import",
+          "reference": "tools.content_pipeline.frontends",
+          "text": "from tools.content_pipeline.frontends import stock_meshdump"
         }
       ]
     },
@@ -7970,7 +7891,15 @@
       "basename": "bt2018.py",
       "stem": "bt2018",
       "callers_by_basename": [],
-      "callers_by_stem": []
+      "callers_by_stem": [
+        {
+          "path": "tools/content_pipeline/cook.py",
+          "line": 31,
+          "evidence": "import",
+          "reference": "tools.content_pipeline.frontends.bt2018",
+          "text": "from tools.content_pipeline.frontends import bt2018, gltf_file, stock_ase, stock_meshdump  # noqa: E402"
+        }
+      ]
     },
     {
       "path": "tools/content_pipeline/frontends/gltf_file.py",
@@ -7990,11 +7919,11 @@
           "line": 32,
           "evidence": "import",
           "reference": "tools.content_pipeline.frontends.gltf_file",
-          "text": "from tools.content_pipeline.frontends import gltf_file, stock_ase  # noqa: E402"
+          "text": "from tools.content_pipeline.frontends import bt2018, gltf_file, stock_ase, stock_meshdump  # noqa: E402"
         },
         {
           "path": "tools/content_pipeline/frontends/bt2018.py",
-          "line": 23,
+          "line": 24,
           "evidence": "import",
           "reference": "tools.content_pipeline.frontends.gltf_file",
           "text": "from . import gltf_file"
@@ -8019,7 +7948,14 @@
           "line": 32,
           "evidence": "import",
           "reference": "tools.content_pipeline.frontends.stock_ase",
-          "text": "from tools.content_pipeline.frontends import gltf_file, stock_ase  # noqa: E402"
+          "text": "from tools.content_pipeline.frontends import bt2018, gltf_file, stock_ase, stock_meshdump  # noqa: E402"
+        },
+        {
+          "path": "tools/content_pipeline/frontends/stock_meshdump.py",
+          "line": 8,
+          "evidence": "import",
+          "reference": "tools.content_pipeline.frontends.stock_ase",
+          "text": "from .stock_ase import resolve_texture"
         },
         {
           "path": "tools/content_pipeline/tests/test_content_pipeline.py",
@@ -8027,6 +7963,28 @@
           "evidence": "import",
           "reference": "tools.content_pipeline.frontends.stock_ase",
           "text": "from tools.content_pipeline.frontends import gltf_file, stock_ase  # noqa: E402"
+        }
+      ]
+    },
+    {
+      "path": "tools/content_pipeline/frontends/stock_meshdump.py",
+      "basename": "stock_meshdump.py",
+      "stem": "stock_meshdump",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tools/content_pipeline/cook.py",
+          "line": 31,
+          "evidence": "import",
+          "reference": "tools.content_pipeline.frontends.stock_meshdump",
+          "text": "from tools.content_pipeline.frontends import bt2018, gltf_file, stock_ase, stock_meshdump  # noqa: E402"
+        },
+        {
+          "path": "tools/content_pipeline/tests/test_content_pipeline.py",
+          "line": 178,
+          "evidence": "import",
+          "reference": "tools.content_pipeline.frontends.stock_meshdump",
+          "text": "from tools.content_pipeline.frontends import stock_meshdump"
         }
       ]
     },
@@ -8045,7 +8003,7 @@
         },
         {
           "path": "tools/content_pipeline/frontends/gltf_file.py",
-          "line": 16,
+          "line": 18,
           "evidence": "import",
           "reference": "tools.content_pipeline.gltf_io",
           "text": "from .. import gltf_io, ir"
@@ -8059,10 +8017,10 @@
         },
         {
           "path": "tools/content_pipeline/package.py",
-          "line": 25,
+          "line": 26,
           "evidence": "import",
           "reference": "tools.content_pipeline.gltf_io",
-          "text": "from . import gltf_io, ir, texcook, validate"
+          "text": "from . import cache, gltf_io, ir, texcook, validate"
         },
         {
           "path": "tools/content_pipeline/tests/test_content_pipeline.py",
@@ -8094,15 +8052,22 @@
           "text": "from tools.content_pipeline import ir, package as cp_package"
         },
         {
+          "path": "tools/content_pipeline/cook.py",
+          "line": 30,
+          "evidence": "import",
+          "reference": "tools.content_pipeline.ir",
+          "text": "from tools.content_pipeline import ir, package  # noqa: E402"
+        },
+        {
           "path": "tools/content_pipeline/frontends/bt2018.py",
-          "line": 22,
+          "line": 23,
           "evidence": "import",
           "reference": "tools.content_pipeline.ir",
           "text": "from .. import ir"
         },
         {
           "path": "tools/content_pipeline/frontends/gltf_file.py",
-          "line": 16,
+          "line": 18,
           "evidence": "import",
           "reference": "tools.content_pipeline.ir",
           "text": "from .. import gltf_io, ir"
@@ -8113,6 +8078,13 @@
           "evidence": "import",
           "reference": "tools.content_pipeline.ir",
           "text": "from .. import gltf_io, ir"
+        },
+        {
+          "path": "tools/content_pipeline/frontends/stock_meshdump.py",
+          "line": 7,
+          "evidence": "import",
+          "reference": "tools.content_pipeline.ir",
+          "text": "from .. import ir"
         },
         {
           "path": "tools/content_pipeline/gltf_io.py",
@@ -8130,10 +8102,10 @@
         },
         {
           "path": "tools/content_pipeline/package.py",
-          "line": 25,
+          "line": 26,
           "evidence": "import",
           "reference": "tools.content_pipeline.ir",
-          "text": "from . import gltf_io, ir, texcook, validate"
+          "text": "from . import cache, gltf_io, ir, texcook, validate"
         },
         {
           "path": "tools/content_pipeline/tests/test_content_pipeline.py",
@@ -8176,7 +8148,7 @@
           "line": 31,
           "evidence": "import",
           "reference": "tools.content_pipeline.package",
-          "text": "from tools.content_pipeline import package  # noqa: E402"
+          "text": "from tools.content_pipeline import ir, package  # noqa: E402"
         },
         {
           "path": "tools/content_pipeline/tests/test_content_pipeline.py",
@@ -8209,10 +8181,10 @@
       "callers_by_stem": [
         {
           "path": "tools/content_pipeline/package.py",
-          "line": 25,
+          "line": 26,
           "evidence": "import",
           "reference": "tools.content_pipeline.texcook",
-          "text": "from . import gltf_io, ir, texcook, validate"
+          "text": "from . import cache, gltf_io, ir, texcook, validate"
         },
         {
           "path": "tools/content_pipeline/tests/test_content_pipeline.py",
@@ -8238,10 +8210,10 @@
         },
         {
           "path": "tools/content_pipeline/package.py",
-          "line": 25,
+          "line": 26,
           "evidence": "import",
           "reference": "tools.content_pipeline.validate",
-          "text": "from . import gltf_io, ir, texcook, validate"
+          "text": "from . import cache, gltf_io, ir, texcook, validate"
         },
         {
           "path": "tools/content_pipeline/tests/test_content_pipeline.py",
@@ -8499,11 +8471,11 @@
       "callers_by_basename": [],
       "callers_by_stem": [
         {
-          "path": "tests/examples/test_build_modern_tree_pack.py",
-          "line": 7,
+          "path": "tools/content_pipeline/tests/test_content_pipeline.py",
+          "line": 192,
           "evidence": "import",
-          "reference": "build_modern_tree_pack",
-          "text": "from build_modern_tree_pack import ("
+          "reference": "tools.examples.build_modern_tree_pack",
+          "text": "from tools.examples.build_modern_tree_pack import recipe"
         }
       ]
     },
@@ -8511,13 +8483,6 @@
       "path": "tools/examples/list_mission_assets.py",
       "basename": "list_mission_assets.py",
       "stem": "list_mission_assets",
-      "callers_by_basename": [],
-      "callers_by_stem": []
-    },
-    {
-      "path": "tools/examples/normalize_broadleaf_glb.py",
-      "basename": "normalize_broadleaf_glb.py",
-      "stem": "normalize_broadleaf_glb",
       "callers_by_basename": [],
       "callers_by_stem": []
     },

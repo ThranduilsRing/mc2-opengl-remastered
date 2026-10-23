@@ -113,7 +113,6 @@ void __stdcall gos_DestroyVertexDeclaration (HGOSVERTEXDECLARATION) { ++g_declRe
 // The other TG_TypeShape virtuals live in tgl_types.cpp (GL/GameOS dependent); they are never called here.
 long TG_TypeShape::ParseASEFile (BYTE*, const char*) { return 0; }
 long TG_TypeShape::MakeFromHelper (BYTE*, const char*) { return 0; }
-int TG_TypeShape::LoadTGShapeFromASE (const char*) { return 0; }
 long TG_TypeShape::SetTextureHandle (DWORD, DWORD) { return 0; }
 long TG_TypeShape::SetTextureAlpha (DWORD, bool) { return 0; }
 void TG_TypeShape::CreateListOfTextures (TG_TexturePtr, DWORD) {}
