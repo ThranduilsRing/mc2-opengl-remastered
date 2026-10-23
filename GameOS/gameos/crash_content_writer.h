@@ -35,8 +35,7 @@ class ContentWriter {
     std::string scrub(std::string_view p) const {
         if (p.starts_with("\\\\?\\")) p.remove_prefix(4);
         if (!profile_.empty() && p.size() >= profile_.size() &&
-            _strnicmp(p.data(), profile_.data(), profile_.size()) == 0 &&
-            (p.size() == profile_.size() || p[profile_.size()] == '\\'))
+            _strnicmp(p.data(), profile_.data(), profile_.size()) == 0)
             return "%USERPROFILE%" + std::string(p.substr(profile_.size()));
         return std::string(p);
     }

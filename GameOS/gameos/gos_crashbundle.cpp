@@ -749,11 +749,11 @@ extern "C" void crashbundle_init(void)
     DWORD got = GetModuleFileNameA(nullptr, exe_path, MAX_PATH);
     // No exception may leave this extern "C" function, and a path near MAX_PATH must not reach the CRT invalid-parameter handler.
     g_cfg.exe_dir[0] = '.'; g_cfg.exe_dir[1] = '\0';
-    if (got > 0 && got < MAX_PATH) {
-        char* slash = strrchr(exe_path, '\\');
-        if (slash) { *slash = '\0'; memcpy(g_cfg.exe_dir, exe_path, strlen(exe_path) + 1); }
-    }
     try {
+        if (got > 0 && got < MAX_PATH) {
+            const std::string exeDir = std::filesystem::path(exe_path).parent_path().string();
+            if (!exeDir.empty() && exeDir.size() < sizeof(g_cfg.exe_dir)) memcpy(g_cfg.exe_dir, exeDir.c_str(), exeDir.size() + 1);
+        }
         const auto journalDir = std::filesystem::path(g_cfg.exe_dir) / "debug_state";
         std::error_code journalEc;
         std::filesystem::create_directories(journalDir, journalEc);
