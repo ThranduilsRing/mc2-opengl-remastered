@@ -26,6 +26,7 @@
   "tools/tracy_capture_compare.py": "engine launcher through nofocus.spawn/run (vetted by exe_guard); launch-site audit 2026-10-10"
  },
  "direct_spawn": {
+  "tools/command_replay.py": "runs scripts/run_smoke.py under sys.executable through console_child.child_kwargs; the smoke harness owns the engine launch, host lease and background window policy",
   "tools/battery.py": "battery-lane tool: argv built from vetted runners and build tools (the game starts only inside run_smoke/deploy runners); every subprocess call goes through console_child.child_kwargs(redirected=True); merge window 27",
   "tools/mod_smoke.py": "battery-lane tool: argv built from vetted runners and build tools (the game starts only inside run_smoke/deploy runners); every subprocess call goes through console_child.child_kwargs(redirected=True); merge window 27",
   "tools/reload_leak.py": "battery-lane tool: argv built from vetted runners and build tools (the game starts only inside run_smoke/deploy runners); every subprocess call goes through console_child.child_kwargs(redirected=True); merge window 27",
