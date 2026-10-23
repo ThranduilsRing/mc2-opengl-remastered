@@ -112,7 +112,8 @@ def test_premain_line_for_a_non_vk_gate_is_not_this_bucket():
     assert s.marker_counts.get("config_premain_vk", 0) == 0
 
 
-VEG_OK = "native_geometry kind=vegetation gpu_cull=1 regions=12297 instances=2557829\n"
+VEG_OK = ("native_geometry kind=vegetation gpu_cull=1 regions=12297 instances=2557829\n"
+          "[VEG_GPU] visible survivors=0 cap=524288\n[VEG_GPU] visible survivors=1700 cap=524288\n")   # any one survivor line >= 100
 
 
 def test_changed_value_premain_line_alone_is_not_this_bucket():
@@ -153,12 +154,24 @@ def test_the_vegetation_floor_is_an_absence_rule_for_the_large_tier1_maps():
 
     drawn = VEG_OK + "[VK_VFX] native_vegetation_draws=0\n"   # the draw counter no longer matters
     refused = "[VK_VFX] native_mesh_draws=0 native_tube_draws=0 native_vegetation_draws=9000\n"   # frames drawn but no population line
-    thinned = "native_geometry kind=vegetation gpu_cull=1 regions=40 instances=412\n"
+    thinned = "native_geometry kind=vegetation gpu_cull=1 regions=9000 instances=39000\n"   # a 64x stride-thinned population
+    culled = ("native_geometry kind=vegetation gpu_cull=1 regions=12297 instances=2557829\n"
+              "[VEG_GPU] visible survivors=0 cap=524288\n[VEG_GPU] visible survivors=12 cap=524288\n")   # the cull drew nothing
     assert run("mc2_03", drawn + "[VIDEO v1] event=play_requested\n").passed
     bad = run("mc2_03", refused)
     assert not bad.passed and "vegetation_floor_missing" in bad.buckets
-    # mc2_17 and mc2_24 are in the floor too ; fewer than 1000 instances, or no population line at all, fails.
+    # mc2_17 and mc2_24 are in the floor too: under 100k instances, no population line, or a cull that draws nothing, fails.
     for stem in ("mc2_17", "mc2_24"):
         assert run(stem, drawn).passed
         assert "vegetation_floor_missing" in run(stem, refused).buckets
         assert "vegetation_floor_missing" in run(stem, thinned).buckets
+        assert "vegetation_visible_missing" in run(stem, culled).buckets
+        assert "vegetation_floor_missing" not in run(stem, culled).buckets
+        # The floor is the per-run MAX of the periodic survivor samples (>= 100): one low sample, first or last, cannot fail a run.
+        pop = "native_geometry kind=vegetation gpu_cull=1 regions=12297 instances=2557829\n"
+        for samples in ((94, 682, 120), (682, 94), (94, 100), (0, 94, 99, 682)):
+            text = pop + "".join("[VEG_GPU] visible survivors=%d cap=524288\n" % n for n in samples)
+            assert "vegetation_visible_missing" not in run(stem, text).buckets, samples
+        for samples in ((94,), (0, 94, 99)):
+            text = pop + "".join("[VEG_GPU] visible survivors=%d cap=524288\n" % n for n in samples)
+            assert "vegetation_visible_missing" in run(stem, text).buckets, samples

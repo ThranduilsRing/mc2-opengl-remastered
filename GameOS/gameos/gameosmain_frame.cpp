@@ -11,6 +11,9 @@
 
 // Throttle while the window is invisible, then run the game logic and the event pumps.
 void frameThrottleLogicEvents() {
+        // Explicit diagnostic injection, after startup has reached real mission frames.
+        static const auto crashFrame = mc2::gate::get<"MC2_TEST_CRASH_FRAME">();
+        if (crashFrame > 0 && g_mc2FrameCounter >= crashFrame) crashbundle_trigger_test_crash();
         // Throttle when the window is actually invisible (minimized / hidden),
         // NOT merely when it lacks keyboard focus. Plain focus loss happens
         // constantly during normal play (clicking a chat window, opening

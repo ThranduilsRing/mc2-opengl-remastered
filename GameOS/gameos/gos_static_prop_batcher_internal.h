@@ -15,7 +15,7 @@
 #include "../../RenderCore/IblShCoeffs.h"   // V-IBL-STATIC-1: SH-L2 constants
 #include "../../RenderCore/IblShRegistry.h"  // V-IBL-STATIC-2: per-mission SH set
 #include "../../RenderCore/StaticPropTypeDesc.h"  // v0: cross-seam immutable type table
-#include "../../RenderCore/KtxLoader.h"    // KTX2 sidecar loading (MC2_MATERIAL_KTX=1)
+#include "../../RenderCore/KtxLoader.h"    // KTX2 sidecar loading
 #include "../../RenderCore/RenderDebugView.h"  // DEBUG-VIEW-REGISTRY-1
 #include "draw_packet_emitter.h"
 #include "../../RenderCore/PipelineRegistry.h"   // direct include; do not rely on transitive

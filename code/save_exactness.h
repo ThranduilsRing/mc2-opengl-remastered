@@ -7,6 +7,7 @@
 #include <string_view>
 #include <vector>
 #include "mc2fmt.h"
+#include "save_archive.h"
 
 namespace mc2::save {
 // Nine significant digits round-trip a float exactly; atof reads them back as before (legacy "{:f}" saves load unchanged).
@@ -29,5 +30,22 @@ void applyPoolOrder(std::span<Pool> pool, const std::vector<int32_t>& handles, O
     std::sort(current.begin(), current.end());
     if (sortedNext != current) return;
     std::copy(next.begin(), next.end(), pool.begin());
+}
+
+// Tail of the animation section, after the per-object records: six pool orders, then the sensor scan cursor and LOS flag. Older saves end before
+// either; an absent part keeps its default. A part that is present but truncated or has a bad cursor rejects the archive.
+struct AnimationTail {
+    std::vector<int32_t> order[6];
+    int32_t scanCursor = 0;
+    bool enemyInLOS = false, hasScan = false;
+};
+inline void readAnimationTail(Archive& archive, AnimationTail& tail, int numTeams, bool haveSensor) {
+    if (archive.remaining() > 0)
+        for (auto& handles : tail.order) archive(handles);
+    if (archive.remaining() > 0) {
+        archive(tail.scanCursor, tail.enemyInLOS);
+        tail.hasScan = true;
+        if (archive.good() && (!haveSensor || tail.scanCursor < 0 || tail.scanCursor >= numTeams)) archive.reject("sensor_scan_cursor");
+    }
 }
 }

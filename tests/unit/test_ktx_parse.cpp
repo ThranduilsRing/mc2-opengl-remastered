@@ -5,7 +5,9 @@
 
 #include "KtxLoader.h"
 
+#include <cstdio>
 #include <cstring>
+#include <filesystem>
 #include <vector>
 
 namespace {
@@ -188,4 +190,84 @@ TEST_CASE("ktx2: BC1 alpha and BC5 channel fixtures") {
     img=RenderCore::ktxParse(bytes); REQUIRE(img.image);
     REQUIRE(RenderCore::ktxDecodeBlocksToRgba8(*img.image,0,rgba));
     CHECK(rgba[0]==255); CHECK(rgba[1]==128); CHECK(rgba[3]==255);
+}
+
+namespace {
+
+// A full BC7 chain for a square `edge` texture, every byte `fill`.
+std::vector<uint8_t> makeBc7Chain(uint32_t edge, uint8_t fill) {
+    std::vector<uint64_t> lens;
+    for (uint32_t e = edge;; e >>= 1) {
+        lens.push_back(uint64_t((e + 3) / 4) * ((e + 3) / 4) * 16);
+        if (e == 1) break;
+    }
+    const size_t dataAt = 80 + lens.size() * 24;
+    uint64_t total = 0;
+    for (auto l : lens) total += l;
+    std::vector<uint8_t> file = makeKtx2(kBc7Srgb, edge, edge, 0);
+    file.resize(dataAt + (size_t)total, fill);
+    putU32(file, 40, (uint32_t)lens.size());
+    uint64_t at = dataAt;
+    for (size_t lvl = 0; lvl < lens.size(); ++lvl) {
+        putU64(file, 80 + lvl * 24, at);
+        putU64(file, 88 + lvl * 24, lens[lvl]);
+        putU64(file, 96 + lvl * 24, lens[lvl]);
+        at += lens[lvl];
+    }
+    return file;
+}
+
+bool writeFile(const std::filesystem::path& p, const std::vector<uint8_t>& b) {
+    std::FILE* f = std::fopen(p.string().c_str(), "wb");
+    if (!f) return false;
+    const bool ok = std::fwrite(b.data(), 1, b.size(), f) == b.size();
+    std::fclose(f);
+    return ok;
+}
+
+}  // namespace
+
+// The static-prop BC7 group build (gos_static_prop_batcher_finalize_textures.cpp) loads each unique sidecar with
+// ktxLoadRgba8, requires isCompressed + vkFormat 145/146 + matching dims and mip count, then copies
+// ((w+3)/4)*((h+3)/4)*16 bytes per level from pixels + mipByteOffsets[lvl]. This replays that contract on a valid
+// 2-layer set (branch taken) and a truncated one (loader refuses, so the group falls back to RGBA8).
+TEST_CASE("static-prop BC7: a valid 2-layer 128px set satisfies the group-build contract; a truncated one is refused") {
+    const auto dir = std::filesystem::temp_directory_path() / "mc2_bc7_group_test";
+    std::filesystem::create_directories(dir);
+    const auto a = dir / "a.ktx2", b = dir / "b.ktx2", bad = dir / "bad.ktx2";
+    auto fb = makeBc7Chain(128, 0x22);
+    REQUIRE(writeFile(a, makeBc7Chain(128, 0x11)));
+    REQUIRE(writeFile(b, fb));
+    fb.resize(fb.size() - 7);
+    REQUIRE(writeFile(bad, fb));
+
+    RenderCore::KtxImage imgs[2];
+    REQUIRE(RenderCore::ktxLoadRgba8(a.string().c_str(), imgs[0]));
+    REQUIRE(RenderCore::ktxLoadRgba8(b.string().c_str(), imgs[1]));
+    const int levels = imgs[0].mipCount;
+    CHECK(levels == 8);
+    std::vector<std::vector<uint8_t>> out((size_t)levels);
+    for (auto& img : imgs) {
+        CHECK(img.isCompressed);
+        CHECK(img.vkFormat == kBc7Srgb);
+        CHECK(img.width == 128);
+        CHECK(img.height == 128);
+        CHECK(img.mipCount == levels);
+        for (int lvl = 0; lvl < levels; ++lvl) {
+            const int lw = (128 >> lvl) ? (128 >> lvl) : 1;
+            const size_t imageSize = size_t((lw + 3) / 4) * size_t((lw + 3) / 4) * 16;
+            REQUIRE(img.mipByteOffsets[(size_t)lvl] + imageSize <= img.pixels.size());
+            const uint8_t* blocks = img.pixels.data() + img.mipByteOffsets[(size_t)lvl];
+            out[(size_t)lvl].insert(out[(size_t)lvl].end(), blocks, blocks + imageSize);
+        }
+    }
+    CHECK(out[0].size() == 2u * 32u * 32u * 16u);
+    CHECK(out[0].front() == 0x11);
+    CHECK(out[0].back() == 0x22);
+
+    RenderCore::KtxImage badImg;
+    CHECK_FALSE(RenderCore::ktxLoadRgba8(bad.string().c_str(), badImg));
+    CHECK_FALSE(RenderCore::ktxLoadRgba8((dir / "absent.ktx2").string().c_str(), badImg));
+    std::error_code ec;
+    std::filesystem::remove_all(dir, ec);
 }

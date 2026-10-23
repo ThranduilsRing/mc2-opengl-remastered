@@ -1,5 +1,9 @@
 // Re-evaluate only surviving regions after the prefix sum. This keeps population
 // order without a population-sized scratch copy; the dense output has a fixed cap.
+// The region writes only its own slot range [offsets[r], next start): under the visible
+// cap the scan scaled those ranges, so the region keeps an even subset of its survivors
+// (survivor j takes slot floor(j*quota/n)), and a cull/compact disagreement can never
+// spill into the next region's slots.
 #version 450
 #extension GL_GOOGLE_include_directive : require
 layout(local_size_x = 64) in;
@@ -7,9 +11,13 @@ layout(local_size_x = 64) in;
 shared uint s_scan[64];
 void main() {
     uint r = gl_WorkGroupID.y * P.flags.y + gl_WorkGroupID.x;
-    if (r >= P.counts.x || counts[r] == 0u || offsets[r] >= P.flags.w) return;
+    if (r >= P.counts.x || counts[r] == 0u) return;
+    uint start = offsets[r];
+    uint end = r + 1u < P.counts.x ? offsets[r + 1u] : args[8];
+    if (end <= start) return;
+    uint quota = end - start, n = counts[r];
     VegRegion R = region[r];
-    uint lid = gl_LocalInvocationIndex, base = offsets[r];
+    uint lid = gl_LocalInvocationIndex, seen = 0u;
     for (uint c = R.first; c < R.last; c += 64u) {
         uint id = c + lid;
         bool keep = id < R.last && survives(unpackVegetation(inst[id]), P.flags.x != 0u);
@@ -23,9 +31,13 @@ void main() {
             s_scan[lid] = v;
             barrier();
         }
-        if (keep && base + v <= P.flags.w) dense[base + v - 1u] = id;
-        base += s_scan[63];
+        uint j = seen + v - 1u;   // this survivor's rank in the region
+        if (keep && j < n) {
+            uint slot = (j * quota) / n;
+            if (((j + 1u) * quota) / n > slot) dense[start + slot] = id;
+        }
+        seen += s_scan[63];
         barrier();
-        if (base >= P.flags.w) break;
+        if (seen >= n) break;
     }
 }

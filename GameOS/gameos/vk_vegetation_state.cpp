@@ -43,10 +43,11 @@ void State::clear(mc2vk::VulkanContext& ctx) {
     for (VkBuffer& b : ringBound_) b = VK_NULL_HANDLE;
     for (VkBuffer& b : drawRingBound_) b = VK_NULL_HANDLE;
     lastSurvivors_ = 0;
+    capLogged_ = false;
 }
 
 uint32_t State::strideFor(uint64_t instances, uint64_t regions) {
-    return RenderCore::vegetationStride(instances, regions, kSlots, RenderCore::gpuResidencyPolicy(mc2::options::current().shadowQuality).vegetation, mc2vk::infra::headroom());
+    return RenderCore::vegetationStride(instances, regions, RenderCore::gpuResidencyPolicy(mc2::options::current().shadowQuality).vegetation, mc2vk::infra::headroom());
 }
 
 bool State::upload(mc2vk::VulkanContext& ctx, std::span<const GpuInstance> instances, std::span<const GpuRegion> regions) {
@@ -58,16 +59,16 @@ bool State::upload(mc2vk::VulkanContext& ctx, std::span<const GpuInstance> insta
     const VkDeviceSize instBytes = instances.size_bytes(), regBytes = regions.size_bytes();
     const uint32_t visibleCapacity = uint32_t(std::min(instances.size(), size_t(mc2::vegetation::kVisibleCapacity)));
     const auto policy = RenderCore::gpuResidencyPolicy(mc2::options::current().shadowQuality);
-    // Both parity sets, the regions and the cooked eight-layer atlas, against the preset ceiling; the load-time staging
-    // overlap is added for the live-headroom admission.
-    const uint64_t residentBytes = instBytes + regBytes + uint64_t(visibleCapacity) * 8 + uint64_t(regions.size()) * 16 + 3 * 1024 * 1024 + 160;
-    const uint64_t bytes = residentBytes + instBytes + regBytes;
+    // The shared packed model (strideFor and the placer's capacity use the same one) against the preset ceiling; the
+    // load-time staging overlap is added for the live-headroom admission.
+    const uint64_t residentBytes = RenderCore::vegetationBytes(instances.size(), regions.size());
+    const uint64_t bytes = residentBytes + RenderCore::vegetationStagingBytes(instances.size(), regions.size());
     if (residentBytes > policy.vegetation || !mc2vk::infra::admit(bytes) || properties.limits.maxComputeWorkGroupInvocations < 128 ||
         properties.limits.maxComputeWorkGroupSize[0] < 128 || properties.limits.maxComputeSharedMemorySize < 128 * sizeof(uint32_t)) {
         std::fprintf(stderr, "[VK_RESIDENCY v1] refused=vegetation bytes=%llu policy=%llu fallback=off reason=preset_budget_or_device_limits\n", bytes, policy.vegetation);
         return true;
     }
-    if (instBytes > maxRange || regBytes > maxRange || residentBytes > mc2::vegetation::kResidentBudget) {
+    if (instBytes > maxRange || regBytes > maxRange) {
         mc2::fmt::print_err("[VEG_GPU] population upload failed: storage or residency budget exceeded\n");
         return false;
     }
@@ -180,8 +181,18 @@ bool State::record(mc2vk::VulkanContext& ctx, VkCommandBuffer cb, uint32_t par, 
     frameUploadBytes_ += sizeof(params) + visibility.size_bytes();
     ensureDrawLayout(ctx);
     if (slot_[par].statsPending) {   // this parity's previous submit retired before the caller got here
-        slot_[par].stats.read(&lastSurvivors_, sizeof(lastSurvivors_));
+        uint32_t survivors[2] = {};   // drawn (capped), wanted (unclamped)
+        slot_[par].stats.read(survivors, sizeof(survivors));
+        lastSurvivors_ = survivors[0];
         slot_[par].statsPending = false;
+        // Smoke floor input: what the cull actually drew, periodically (a once-per-run population line cannot see a cull to zero).
+        if ((statsReads_++ & 63u) == 0u)
+            mc2::fmt::print_err("[VEG_GPU] visible survivors={:d} cap={:d}\n", mc2::fmt::as_u32(survivors[0]), mc2::fmt::as_u32(params.flags[3]));
+        if (survivors[1] > params.flags[3] && !capLogged_) {
+            capLogged_ = true;
+            mc2::fmt::print_err("[VEG_GPU] visible cap reached: wanted={:d} cap={:d} (every region thinned evenly)\n",
+                                mc2::fmt::as_u32(survivors[1]), mc2::fmt::as_u32(params.flags[3]));
+        }
     }
     paramsDynOffset_[par] = static_cast<uint32_t>(span.offset + paramsOff);
     if (drawSets_[par] && drawRingBound_[par] != span.buffer) {
@@ -209,7 +220,7 @@ bool State::record(mc2vk::VulkanContext& ctx, VkCommandBuffer cb, uint32_t par, 
                       VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT | cs,
                       VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_INDIRECT_COMMAND_READ_BIT | VK_ACCESS_TRANSFER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT);
     // The survivor total, read back by the next frame of this parity (a diagnostic; nothing waits for it).
-    const VkBufferCopy total{32, 0, 4};
+    const VkBufferCopy total{32, 0, 8};   // args[8] drawn, args[9] unclamped
     vkCmdCopyBuffer(cb, slot_[par].args.get(), slot_[par].stats.get(), 1, &total);
     mc2vk::cmdBarrier(cb, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_HOST_BIT, VK_ACCESS_HOST_READ_BIT);
     slot_[par].statsPending = true;

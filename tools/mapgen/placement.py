@@ -87,6 +87,7 @@ def upgrade(layout, profile):
     segment length; no model is scaled to fit a cell.
     """
     rng = random.Random(layout["source"]["seed"] ^ 0x50495845)
+    from tools.mapgen.batteries import candidates as battery_candidates, in_firing_lane
     catalog = table()
     style = layout["source"]["style"]
     install = "stock" if style in ("stock","mixed") else style
@@ -119,6 +120,7 @@ def upgrade(layout, profile):
     vegetation_exclusion = mask_of(layout, 'vegetation_exclusion')
     allowed = ~mask_of(layout,"water") & (slope_grid(layout["terrain"]["elevation_wu"]) < FLAT_DEG)
     old_objects = layout["objects"]
+    planned_pivots = {o['id']: o.get('battery_target') for o in old_objects if o['class'] == 'turret'}
     final, by_id, occupied = [], {}, set()
     spatial = Spatial()
     wall_edges = []
@@ -161,12 +163,18 @@ def upgrade(layout, profile):
                 return False
         if tuple(obj["cell"]) in occupied:
             return False
+        if obj['class'] == 'turret' and obj.get('battery_target') and any(
+                peer['class'] == 'turret' and math.dist(peer['position_wu'][:2], obj['position_wu'][:2]) < 3*CELL_WU
+                for peer in final):
+            return False
         if not seam and roads[tuple(obj['cell'])]:
             return False
         if obj["class"]=="tree" and (tree_road_distance[tuple(obj["cell"])]<4 or
                                       tree_base_distance[tuple(obj["cell"])]<4):
             return False
         if obj['class'] == 'tree' and vegetation_exclusion[r0:r1,c0:c1].any():
+            return False
+        if in_firing_lane(layout, obj, planned_pivots):
             return False
         if not seam and roads[r0:r1,c0:c1].any():
             return False
@@ -175,7 +183,7 @@ def upgrade(layout, profile):
             return False
         role = obj.get("role") if obj["class"] == "building" else obj["class"]
         spacing = profile["groups"]["stock"]["adjacency"].get(f"{role} -> {role}",{})
-        if spacing.get("n",0) >= 20 and obj.get("base_id"):
+        if spacing.get("n",0) >= 20 and obj.get("base_id") and not obj.get('battery_target'):
             peers = [o for o in final if o.get("base_id")==obj["base_id"] and
                      (o.get("role") if o["class"]=="building" else o["class"])==role]
             if peers:
@@ -238,12 +246,14 @@ def upgrade(layout, profile):
                                    "gate_id":gate_obj["id"] if on_edge else None})
         # Parent-first placement means sampled distances refer to final pivots.
         priority = {"turret_generator":0,"gate_control":0,"turret_control":1,"turret":2,"building":3,"gate":4}
-        for request in sorted(requests,key=lambda o:(priority.get(o["class"],3),o["id"])):
+        for request in sorted(requests,key=lambda o:(-1 if o['id'].endswith('_tower_screen') else priority.get(o["class"],3),o["id"])):
             cls = request["class"]
             if cls == "gate":
                 continue
             role = request.get("role")
             assets = pool(cls,role)
+            if request.get('battery_type') is not None:
+                assets = [catalog['types'][f"{install}:{request['battery_type']}"]]
             target = world_position(layout,request)
             parent = by_id.get(request.get("parent_link"))
             link_stats = profile["groups"]["stock"]["links"].get(f"{cls} -> {parent['class']}") if parent else None
@@ -253,10 +263,25 @@ def upgrade(layout, profile):
             gate_link = profile['groups']['stock']['links']['gate -> gate_control'] if controlled_gate else None
             inset = 2 if base["walled"] else 1
             parcel = [r0+inset,c0+inset,r1-inset,c1-inset]
+            battery = next((b for b in layout.get('batteries', []) if b['control'] == request['id']), None)
+            conceal = None
+            if battery and (battery.get('flaw') or {}).get('type') != 'tower_sightline':
+                from tools.mapgen.fields_of_fire import bake, corridor_samples
+                conceal = bake({**layout, 'objects': final})
+                sample_points = corridor_samples(battery['approaches'][0])[0]
+                sample_points = sample_points[np.dot(sample_points-np.array(battery['entrance']), battery['inward']) < 0]
+                sample_sources = np.column_stack((sample_points, conceal.elevation(sample_points)+50))
             placed = False
-            for attempt in range(600):
+            turret_scene = None
+            if cls == 'turret' and request.get('battery_target'):
+                from tools.mapgen.fields_of_fire import bake, stock_assets
+                turret_scene = bake({**layout, 'objects': final})
+            centres = list(battery_candidates(request)) if request.get('battery_target') else None
+            for attempt in range(len(centres)*len(assets) if centres else 600):
                 asset = assets[attempt % len(assets)] if attempt >= 300 else rng.choice(assets)
-                if parent and link_stats:
+                if centres:
+                    centre = centres[attempt//len(assets)]
+                elif parent and link_stats:
                     radius = rng.triangular(link_stats["p10"],min(link_stats["p90"],max(r1-r0,c1-c0)*.65),
                                             min(link_stats["median"],max(r1-r0,c1-c0)*.5))*CELL_WU
                     angle = rng.uniform(0,math.tau)
@@ -271,18 +296,27 @@ def upgrade(layout, profile):
                     centre = (rng.uniform(c0+inset,c1-inset)*CELL_WU-size*CELL_WU/2,
                               size*CELL_WU/2-rng.uniform(r0+inset,r1-inset)*CELL_WU)
                 obj = make(request,asset,centre)
+                if obj and turret_scene is not None:
+                    local = turret_scene.fields['local_height'][tuple(obj['cell'])]*20.04
+                    if local >= stock_assets().turret(obj['type_id'])['muzzle_wu']:
+                        continue
+                if obj and conceal and conceal.rays(sample_sources,
+                        np.tile(obj['position_wu'][:2], (len(sample_sources), 1)),
+                        obj['footprint']['height_wu']/2, 35)[0].any():
+                    continue
                 if obj and controlled_gate:
                     separation = math.dist(obj['position_wu'][:2],controlled_gate['position_wu'][:2])/CELL_WU
                     if not gate_link['min']<=separation<=gate_link['max']:
                         continue
-                if obj and link_stats:
+                if obj and link_stats and not centres:
                     separation = math.dist(obj["position_wu"][:2],parent["position_wu"][:2])/CELL_WU
                     if not link_stats["min"] <= separation <= link_stats["max"]:
                         continue
-                if accept(obj,parcel):
+                apron = cls == 'turret' or cls == 'turret_generator' and battery is None and centres
+                if accept(obj,None if apron and centres else parcel):
                     placed = True
                     break
-            if not placed and cls != "building":
+            if not placed and (cls != "building" or request['id'].endswith('_tower_screen')):
                 raise ValueError(f"cannot fit native {cls} in {base['id']}")
         if gate_request:
             gate = by_id[gate_request["id"]]
@@ -340,4 +374,13 @@ def upgrade(layout, profile):
         r,c = part["cell"]
         part["position_wu"] = [round(x,4),round(y,4),layout["terrain"]["elevation_wu"][r][c]]
     layout["player_start_wu"] = layout["parts"][0]["position_wu"]
+    if layout.get('batteries'):
+        from tools.mapgen.fields_of_fire import bake, evaluate, stock_assets
+        from tools.mapgen.batteries import finish
+        scene = bake(layout)
+        finish(layout, scene, stock_assets())
+        layout['fields_of_fire'] = evaluate(layout, scene)
+        if layout['fields_of_fire']['status'] in ('FAIL', 'INCOMPLETE'):
+            raise ValueError('fields of fire: '+ '; '.join(
+                layout['fields_of_fire']['errors']+layout['fields_of_fire']['incomplete']))
     return layout

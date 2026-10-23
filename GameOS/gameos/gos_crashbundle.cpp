@@ -11,13 +11,25 @@
 //     the stack — no resource file required.
 
 #include "gos_crashbundle.h"
+#include "crash_content.h"
+#ifdef _WIN32
+#include "crash_content_writer.h"
+#endif
 #include "Gates/gate.h"
 #include "build_identity.h"  // Stable build identity declarations
 #include "mc2fmt.h"
+#include <filesystem>
+#include <string>
+#include <string_view>
 
 #ifndef _WIN32
 extern "C" void crashbundle_init(void) {}
 extern "C" void crashbundle_append(const char*) {}
+void crashbundle_content_fd(int, std::string_view, std::string_view) {}
+void crashbundle_content_image(std::string_view, const void*, size_t) {}
+void crashbundle_mod(std::string_view, int) {}
+void crashbundle_save_point(std::string_view, std::string_view) {}
+extern "C" void crashbundle_device_lost(void) {}
 extern "C" void crashbundle_trigger_test_crash(void) {
     volatile int* p = 0;
     *p = 0xDEADC0DE;
@@ -83,6 +95,12 @@ static struct {
 // Wide version for ShellExecuteW. ANSI used for WriteFile paths.
 static char  g_crash_folderA[MAX_PATH];
 static WCHAR g_crash_folderW[MAX_PATH];
+static mc2::crash::ContentWriter g_content;
+void crashbundle_content_fd(int fd, std::string_view name, std::string_view owner) { try { g_content.fd(fd, name, owner); } catch (...) {} }
+void crashbundle_content_image(std::string_view name, const void* bytes, size_t size) { try { g_content.image(name, bytes, size); } catch (...) {} }
+void crashbundle_mod(std::string_view id, int priority) { try { g_content.mod(id, priority); } catch (...) {} }
+void crashbundle_save_point(std::string_view op, std::string_view path) { try { g_content.savePoint(op, path); } catch (...) {} }
+extern "C" void mc2_log_set_crash_sink(void (*sink)(const char*));
 // Full path to crash.txt (for clipboard copy from dialog)
 static char  g_crash_txtA[MAX_PATH];
 
@@ -152,11 +170,11 @@ static void build_crash_folder(void)
     mc2::fmt::to_buf_n(crashes_root, _countof(crashes_root), "{}\\crashes", mc2::fmt::safe(g_cfg.exe_dir));
     CreateDirectoryA(crashes_root, nullptr); // OK if exists
 
-    _snprintf_s(g_crash_folderA, _countof(g_crash_folderA), _TRUNCATE,
-                "%s\\crash_%04u-%02u-%02u_%02u%02u%02u",
-                crashes_root,
-                st.wYear, st.wMonth, st.wDay,
-                st.wHour, st.wMinute, st.wSecond);
+    mc2::fmt::to_buf_n(g_crash_folderA, _countof(g_crash_folderA),
+                       "{}\\crash_{:04}-{:02}-{:02}_{:02}{:02}{:02}_{:03}_{}_{}",
+                       crashes_root,
+                       st.wYear, st.wMonth, st.wDay,
+                       st.wHour, st.wMinute, st.wSecond, st.wMilliseconds, GetCurrentProcessId(), GetTickCount64());
     CreateDirectoryA(g_crash_folderA, nullptr);
 
     MultiByteToWideChar(CP_ACP, 0, g_crash_folderA, -1,
@@ -180,7 +198,7 @@ static void write_minidump(EXCEPTION_POINTERS* ep)
     MINIDUMP_TYPE t = (MINIDUMP_TYPE)(
         MiniDumpNormal | MiniDumpWithIndirectlyReferencedMemory);
     MiniDumpWriteDump(GetCurrentProcess(), GetCurrentProcessId(),
-                      h, t, &mei, nullptr, nullptr);
+                      h, t, ep ? &mei : nullptr, nullptr, nullptr);
     CloseHandle(h);
 }
 
@@ -626,6 +644,7 @@ static LONG WINAPI crashbundle_filter(EXCEPTION_POINTERS* ep)
 
         // 3) Write last_trace.txt
         write_ring_snapshot();
+        g_content.snapshot(g_crash_folderA);
 #ifdef MC2_VULKAN_ISLAND
         __try { mc2vk::infra::crashSnapshot(g_crash_folderA); }
         __except(EXCEPTION_EXECUTE_HANDLER) { /* A damaged mapping must not prevent the CPU bundle. */ }
@@ -643,9 +662,9 @@ static LONG WINAPI crashbundle_filter(EXCEPTION_POINTERS* ep)
             // watching harness/MCP detects the crash + bundle path immediately,
             // then exit WITHOUT the modal dialog (no WaitForExit-timeout wait).
             char mk[MAX_PATH + 64];
-            int mn = _snprintf(mk, sizeof(mk),
-                               "\n[CRASH] FAST-EXIT code=0x%08lX bundle=%s\n",
-                               ep->ExceptionRecord->ExceptionCode, g_crash_folderA);
+            int mn = mc2::fmt::to_buf(mk, "\n[CRASH] FAST-EXIT code=0x{:08X} bundle={}\n",
+                                      ep->ExceptionRecord->ExceptionCode, g_crash_folderA);
+            if (mn >= static_cast<int>(sizeof(mk))) mn = static_cast<int>(sizeof(mk)) - 1;
             if (mn > 0) { fwrite(mk, 1, static_cast<size_t>(mn), stderr); fflush(stderr); }
             TerminateProcess(GetCurrentProcess(),
                              ep->ExceptionRecord->ExceptionCode);
@@ -670,6 +689,24 @@ static LONG WINAPI crashbundle_heap_corruption_handler(EXCEPTION_POINTERS* ep)
     if (ep->ExceptionRecord->ExceptionCode != kStatusHeapCorruption)
         return EXCEPTION_CONTINUE_SEARCH;
     return crashbundle_filter(ep);
+}
+
+extern "C" void crashbundle_device_lost(void)
+{
+    if (InterlockedCompareExchange(&g_in_filter, 1, 0) != 0) return;
+    build_crash_folder();
+    char reason[2048];
+    const int bytes = mc2::fmt::to_buf(reason, "Reason: Vulkan device lost\nFingerprint: {}\n", mc2::fmt::safe(MC2_BUILD_FP_LITERAL));
+    if (bytes > 0) write_file_all(g_crash_txtA, reason, DWORD(bytes));
+    write_ring_snapshot();
+    g_content.snapshot(g_crash_folderA);
+    write_profile_json();
+    write_minidump(nullptr); // Live-process dump: there is no CPU exception for device loss.
+#ifdef MC2_VULKAN_ISLAND
+    mc2vk::infra::crashSnapshot(g_crash_folderA);
+#endif
+    mc2::fmt::print_err("[CRASHBUNDLE] device_lost bundle={}\n", g_crash_folderA);
+    InterlockedExchange(&g_in_filter, 0);
 }
 
 // ---------------------------------------------------------------------------
@@ -711,25 +748,25 @@ extern "C" void crashbundle_init(void)
     char exe_path[MAX_PATH];
     DWORD got = GetModuleFileNameA(nullptr, exe_path, MAX_PATH);
     if (got > 0 && got < MAX_PATH) {
-        // strip to directory
-        for (int i = static_cast<int>(got) - 1; i >= 0; --i) {
-            if (exe_path[i] == '\\' || exe_path[i] == '/') {
-                exe_path[i] = '\0';
-                break;
-            }
-        }
-        strcpy_s(g_cfg.exe_dir, _countof(g_cfg.exe_dir), exe_path);
+        const std::string exeDir = std::filesystem::path(exe_path).parent_path().string();
+        strcpy_s(g_cfg.exe_dir, _countof(g_cfg.exe_dir), exeDir.c_str());
     } else {
         strcpy_s(g_cfg.exe_dir, _countof(g_cfg.exe_dir), ".");
     }
 
+    const auto journalDir = std::filesystem::path(g_cfg.exe_dir) / "debug_state";
+    std::error_code journalEc;
+    std::filesystem::create_directories(journalDir, journalEc);
+    g_content.init((journalDir / "crash_content.jsonl").string());
+    g_content.mod("base", -1);
+    mc2_log_set_crash_sink(crashbundle_append);
     SetUnhandledExceptionFilter(crashbundle_filter);
     AddVectoredExceptionHandler(1, crashbundle_heap_corruption_handler);
 }
 
 extern "C" void crashbundle_trigger_test_crash(void)
 {
-    fprintf(stderr, "[CRASHBUNDLE] RAlt+Shift+C test crash triggered\n");
+    mc2::fmt::print_err("[CRASHBUNDLE] RAlt+Shift+C test crash triggered\n");
     fflush(stderr);
     crashbundle_append("[CRASHBUNDLE] test crash triggered via RAlt+Shift+C");
     volatile int* p = static_cast<volatile int*>(nullptr);

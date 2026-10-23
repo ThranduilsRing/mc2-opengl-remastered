@@ -471,7 +471,7 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
     },
     {
         "MC2_FEATURE_STATICPROP_MATERIAL_PBR_SLOTS", nullptr, EnvVarKind::Feature, true,
-        "Use authored ORM sidecars; absent maps retain neutral material factors.",
+        "Reserved: no effect. Static-prop ORM is fed by the separate authored-material feed; the batcher always uses neutral factors.",
     },
     {
         "MC2_TRACE_FIRE_DECISION", "MC2_FIRE_DECISION_TRACE", EnvVarKind::Trace, false,

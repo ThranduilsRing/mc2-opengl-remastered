@@ -37,8 +37,11 @@ def drop_oversize_pdb(root, tree, limit=PDB_MAX_BYTES):
             os.remove(pdb)
             print(f"[ninja_build] deleted {tree}/mc2.pdb ({size / 1024 ** 3:.1f} GB > {limit / 1024 ** 3:.0f} GB; LNK1318 guard)", flush=True)
             return True
-    except OSError:
+    except FileNotFoundError:
         pass
+    except OSError as exc:   # an open pdb (a link or the debugger is using it) cannot be deleted: say so, the LNK1318 guard did nothing
+        print(f"[ninja_build] WARNING: could not delete oversize {tree}/mc2.pdb ({exc}); LNK1318 will recur until it is removed.",
+              file=sys.stderr, flush=True)
     return False
 
 

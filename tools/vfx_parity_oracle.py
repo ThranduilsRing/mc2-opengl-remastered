@@ -129,8 +129,7 @@ def runtime_provenance(record: dict, arm: str, experiment: str, base: Path, prim
     enabled = "1" if arm == "gpu" else "0"
     harvest = enabled if experiment == "harvested" else "0"
     expected = {"MC2_GPU_PARTICLES": enabled, "MC2_VFX_ORACLE_RENDER": harvest,
-                "MC2_VFX_ORACLE_TUBE": harvest, "MC2_VFX_ORACLE_SHAPE": harvest,
-                "MC2_VFX_GPU_SIM_CARDCLOUD": "0", "MC2_VFX_GPU_SIM_COMPARE": "0"}
+                "MC2_VFX_ORACLE_TUBE": harvest, "MC2_VFX_ORACLE_SHAPE": harvest}
     if gates != expected:
         raise ValueError("gate vector differs from the named experiment")
     process = runtime["process"]

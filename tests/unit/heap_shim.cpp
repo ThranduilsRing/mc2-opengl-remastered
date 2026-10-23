@@ -2,6 +2,7 @@
 #include <cstdarg>
 #include <cstdio>
 #include <cstdlib>
+#include <string_view>
 
 // Environment: file.cpp reads Environment.checkCDForFiles on the FST-miss
 // path. Zero-initialized => no CD probing, exactly what tests want.
@@ -62,4 +63,8 @@ void ExitGameOS (void) {}
 // Crash-bundle instrumentation ring (engine: GameOS/gameos/gos_crashbundle.cpp,
 // drags SEH/minidump machinery). FastFile::readFast appends trace lines.
 extern "C" void crashbundle_append (const char *) {}
+void crashbundle_content_fd(int, std::string_view, std::string_view) {}
+void crashbundle_content_image(std::string_view, const void*, size_t) {}
+void crashbundle_mod(std::string_view, int) {}
+void crashbundle_save_point(std::string_view, std::string_view) {}
 extern "C" void crashbundle_init (void) {}

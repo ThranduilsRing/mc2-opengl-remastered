@@ -220,8 +220,8 @@ struct ColorPropIsland : mc2vk::IslandState {
     // layer tables + albedo arrays are map-load writes that run right after a
     // cp_end_oneshot inline fence wait (which retires ALL earlier submission-order
     // work on the queue) — safe by construction.
-    // Per-frame data (UBO, instance rows, LightsData, night pool) lives in the engine frame ring; set[par] binds it with dynamic offsets (bindings 0, 1,
-    // 4, 8). ringBound[par][binding] = the ring buffer that binding of set[par] currently points at; a frame whose spans came from another buffer
+    // Per-frame data (UBO, instance rows, LightsData) lives in the engine frame ring; set[par] binds it with dynamic offsets (bindings 0, 1,
+    // 4). ringBound[par][binding] = the ring buffer that binding of set[par] currently points at; a frame whose spans came from another buffer
     // (the ring grew), or a set rewritten by write_descriptors, is re-pointed after beginFrame retired the parity.
     VkBuffer      ringBound[2][9] = {};
 
@@ -287,6 +287,8 @@ struct ColorPropIsland : mc2vk::IslandState {
     mc2vk::ResidentTextureRef normalTexture, ormTexture;
     mc2vk::OwnedSampler detailSampler, treeShadowSampler;
     mc2veg::GroundLighting groundLighting;
+    std::optional<Mc2GroundLightingFrame> lastGround;   // last terrain frame's offsets; see the run path
+    bool groundMissing = false;
     mc2vk::OwnedBuffer materialBuf;
     mc2vk::OwnedShaderModule t1_vert, t1_frag;
     mc2vk::OwnedPipelineLayout playout;
@@ -322,7 +324,7 @@ bool make_buffer(ColorPropIsland* s, mc2vk::OwnedBuffer& out, VkDeviceSize size,
 
 constexpr VkDeviceSize kFrameUboRange = sizeof(ColorFrameUBO);
 
-// Binding 4 (LightsData) is declared when tier1 && wantLighting, binding 8 (night pools) when tier1.
+// Binding 4 (LightsData) is declared when tier1 && wantLighting.
 void write_ring_bindings(ColorPropIsland* s, VkDescriptorSet set) {
     if (set == VK_NULL_HANDLE) return;
     const VkBuffer ring = mc2vk::getOrCreateEngineVulkanContext().frameRingBuffer();
@@ -331,7 +333,6 @@ void write_ring_bindings(ColorPropIsland* s, VkDescriptorSet set) {
     mc2vk::writeDynamicBinding(s->device, set, 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, ring, kFrameUboRange);
     mc2vk::writeDynamicBinding(s->device, set, 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, ring, range);
     if (s->tier1 && s->wantLighting) mc2vk::writeDynamicBinding(s->device, set, 4, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, ring, range);
-    if (s->tier1) mc2vk::writeDynamicBinding(s->device, set, 8, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, ring, range);
 }
 
 // Re-point set[par]'s ring bindings at the buffers this frame's spans live in (after beginFrame retired the parity). A binding already there is skipped.
@@ -340,11 +341,10 @@ void sync_ring_bindings(ColorPropIsland* s, uint32_t par, const mc2vk::FrameAllo
     const VkBuffer mainBuf = mainSpan.buffer;
     const VkBuffer lightBuf = lightSpan ? lightSpan.buffer : mainSpan.buffer;
     const VkDeviceSize lightRange = lightSpan ? lightSpan.range : mainSpan.range;
-    const Want want[4] = {
+    const Want want[3] = {
         {0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, mainBuf, kFrameUboRange, true},
         {1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, mainBuf, mainSpan.range, true},
         {4, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, lightBuf, lightRange, s->tier1 && s->wantLighting},
-        {8, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, mainBuf, mainSpan.range, s->tier1},
     };
     for (const Want& w : want) {
         if (!w.on || w.buf == VK_NULL_HANDLE || s->ringBound[par][w.binding] == w.buf) continue;
@@ -358,7 +358,7 @@ void write_descriptors(ColorPropIsland* s, int parity = -1) {
     for (int i=parity;i<=parity;++i) {
     s->descriptorsDirty[i]=false;
     if (s->set[i] == VK_NULL_HANDLE) continue;
-    // The ring bindings (0 UBO, 1 instances, 4 LightsData, 8 pool) at the frame ring's current buffer; the next frame of this parity re-points them at
+    // The ring bindings (0 UBO, 1 instances, 4 LightsData) at the frame ring's current buffer; the next frame of this parity re-points them at
     // the buffer its spans live in (ringBound is cleared).
     write_ring_bindings(s, s->set[i]);
     for (VkBuffer& b : s->ringBound[i]) b = VK_NULL_HANDLE;
@@ -947,8 +947,6 @@ bool init_island(ColorPropIsland* s, int w, int h) {
         if (s->tier1) {   // the hot-colour table is read by the tier-1 vertex shader in every mode
             b[nb].binding = 7; b[nb].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
             b[nb].descriptorCount = 1; b[nb].stageFlags = VK_SHADER_STAGE_VERTEX_BIT; ++nb;
-            b[nb].binding = 8; b[nb].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;   // night light pools
-            b[nb].descriptorCount = 1; b[nb].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT; ++nb;
         }
         b[nb].binding = 9; b[nb].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
         b[nb].descriptorCount = 1; b[nb].stageFlags = VK_SHADER_STAGE_VERTEX_BIT; ++nb;
@@ -974,11 +972,11 @@ bool init_island(ColorPropIsland* s, int w, int h) {
             vlog("vkCreateDescriptorSetLayout failed."); return false;
         }
         // VK-PROP-FENCE-DEFER-1: TWO sets (one per parity slot), so pool sizes double.
-        // Dynamic: 0 UBO; 1 + 4 (lights) + 8 (pools) SSBO. Static SSBOs: layer tables (2, 5) and the hot-colour table (7).
+        // Dynamic: 0 UBO; 1 + 4 (lights) SSBO. Static SSBOs: layer tables (2, 5) and the hot-colour table (7).
         VkDescriptorPoolSize sizes[5]{};
         uint32_t nsz = 0;
         sizes[nsz++] = {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 2};
-        sizes[nsz++] = {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 2u * (1u + (lightBinding ? 1u : 0u) + (s->tier1 ? 1u : 0u))};
+        sizes[nsz++] = {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 2u * (1u + (lightBinding ? 1u : 0u))};
         sizes[nsz++] = {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 2u * ((materialBindings ? 2u : 0u) + (s->tier1 ? 1u : 0u) + 2u)};
         sizes[nsz++] = {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, (materialBindings ? 4u : 0u) + 8u};
         sizes[nsz++] = {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 2};
@@ -1459,11 +1457,8 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
     const VkDeviceSize instBytes = static_cast<VkDeviceSize>(instanceCount) * sizeof(GpuStaticPropInstance);
     int poolN = (haveLightFeed && lightFeed.poolLights48 && lightFeed.numPoolLights > 0) ? lightFeed.numPoolLights : 0;
     if (poolN > kMaxPoolLights) poolN = kMaxPoolLights;
-    size_t poolBytes = 0;
-    const void* poolUpload = gos_terrain_lighting::GetObjectLightPoolUpload(poolBytes);
     const VkDeviceSize instOff = mc2vk::alignUp(sizeof(ColorFrameUBO), ringAlign);
-    const VkDeviceSize poolOff = mc2vk::alignUp(instOff + (instBytes ? instBytes : sizeof(GpuStaticPropInstance)), ringAlign);
-    const mc2vk::FrameAlloc mainSpan = rctx.frameAlloc(poolOff + poolBytes);
+    const mc2vk::FrameAlloc mainSpan = rctx.frameAlloc(instOff + (instBytes ? instBytes : sizeof(GpuStaticPropInstance)));
     if (!mainSpan) { setFallback("frame_ring_alloc_failed"); s->disabled = true; return 0; }
     uint8_t* const mainPtr = static_cast<uint8_t*>(mainSpan.ptr);
 
@@ -1480,8 +1475,16 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
     if (vkWaitForFences(s->device, 1, &lateFence, VK_TRUE, 5ull*1000*1000*1000) != VK_SUCCESS) {
         setFallback("late_fringe_fence_timeout"); s->disabled = true; return 0;
     }
-    const auto ground = mc2_vk_ground_lighting_frame();
-    if (!ground || !mc2vk::bindMoverShadowDescriptors(s->device, s->set[par])) return 0;
+    // Props do not depend on terrain readiness: with no ground-lighting frame this frame (terrain not inited, fell back, or a different frame) reuse
+    // the last frame's offsets over the descriptors this island's own set already holds; only a run that never had one skips the draw.
+    auto groundNow = mc2_vk_ground_lighting_frame();
+    if (groundNow) { s->lastGround = *groundNow; s->groundMissing = false; }
+    else if (!s->groundMissing) {
+        s->groundMissing = true;
+        vlog("no terrain ground-lighting frame this frame; %s.", s->lastGround ? "reusing the last ground lighting" : "props skipped until the first one");
+    }
+    if (!s->lastGround || !mc2vk::bindMoverShadowDescriptors(s->device, s->set[par])) return 0;
+    const Mc2GroundLightingFrame* ground = &*s->lastGround;
     s->groundLighting.copy(s->device, par, *ground);
     const auto objectView = reinterpret_cast<VkImageView>(mc2_vk_shadow_island_get_object_view());
     if (objectView) {
@@ -1605,9 +1608,6 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
         u.pbrV1Strength = haveLightFeed ? lightFeed.pbrV1Strength : 0.0f;
         u.pbrV1RoughnessOverride = haveLightFeed ? lightFeed.pbrV1RoughnessOverride : -1.0f;
         for (int k = 0; k < 4; ++k) u.cameraWorldPos[k] = haveLightFeed ? lightFeed.cameraWorldPos[k] : 0.0f;
-        // Night light pools: this frame's pool copy (GL caps the set at 256), flushed because the sequential-write placement need not be
-        // host-coherent; a failed upload turns the term off.
-        std::memcpy(mainPtr + poolOff, poolUpload, poolBytes);
         u.poolF[0] = lightFeed.poolMoverDim; u.poolF[1] = lightFeed.poolMoverScale; u.poolF[2] = lightFeed.poolObjScale; u.poolF[3] = mc2::options::current().shadowQuality == 0 ? 0.0f : objectView ? 2.0f : 1.0f;
         u.poolI[0] = poolN;                  u.poolI[1] = lightFeed.poolSoft;
         u.poolI[2] = lightFeed.poolMoverMax; u.poolI[3] = lightFeed.poolCompress;
@@ -1634,14 +1634,13 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
         }
         std::memcpy(mainPtr, &u, sizeof(u));
     }
-    // set[par] follows the buffers the spans came from; the draw passes the offsets (bindings 0, 1, then 4 when declared, then 8).
+    // set[par] follows the buffers the spans came from; the draw passes the offsets (bindings 0, 1, then 4 when declared).
     sync_ring_bindings(s, par, mainSpan, lightSpan);
-    uint32_t dynOffsets[4];
+    uint32_t dynOffsets[3];
     uint32_t nDyn = 0;
     dynOffsets[nDyn++] = static_cast<uint32_t>(mainSpan.offset);
     dynOffsets[nDyn++] = static_cast<uint32_t>(mainSpan.offset + instOff);
     if (s->tier1 && s->wantLighting) dynOffsets[nDyn++] = static_cast<uint32_t>(lightSpan ? lightSpan.offset : mainSpan.offset);
-    if (s->tier1) dynOffsets[nDyn++] = static_cast<uint32_t>(mainSpan.offset + poolOff);
     s->lateParity = par; s->lateDynCount = nDyn;
     std::copy_n(dynOffsets, nDyn, s->lateOffsets);
     g_health.stageInstUs = usSince(tStage0);

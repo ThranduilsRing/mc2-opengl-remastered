@@ -55,7 +55,7 @@ FIELD_ENV = {
 # whole point is proving the umbrella arms the present chain by itself. If any of
 # these leaks in from the outer shell we scrub it so the check stays honest.
 SCRUB = (
-    "MC2_VK_SHARED_SCENE_STRICT", "MC2_VK_PRESENT_NATIVE_STRICT",
+    "MC2_VK_PRESENT_NATIVE_STRICT",
     "MC2_VK_PRESENT_SKIP_GL_HANDOFF",
     "MC2_VISUAL_BOOKMARK_CAPTURE",
     "MC2_SMOKE_FIXED_TIMESTEP", "MC2_SMOKE_MODE",

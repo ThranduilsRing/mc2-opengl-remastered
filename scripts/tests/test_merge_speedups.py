@@ -28,14 +28,60 @@ def test_quick_rows_green_and_red():
     assert len(seen) == 2  # both rows ran
 
 
-def test_batch_stops_before_verify_when_quick_rows_red(monkeypatch):
+def _throwaway_repo(tmp_path):
+    import subprocess
+
+    def git(*a):
+        subprocess.run(["git", "-C", str(tmp_path), "-c", "user.name=t", "-c", "user.email=t@t", *a], check=True, capture_output=True)
+    git("init", "-q", "-b", "main")
+    (tmp_path / "a.txt").write_text("a")
+    (tmp_path / "ok.py").write_text("import sys; sys.exit(0)")
+    (tmp_path / "bad.py").write_text("import sys; print('boom'); sys.exit(1)")
+    git("add", "."); git("commit", "-q", "-m", "base")
+    git("checkout", "-q", "-b", "lane")
+    (tmp_path / "b.txt").write_text("b")
+    git("add", "."); git("commit", "-q", "-m", "lane work")
+    git("checkout", "-q", "main")
+    (tmp_path / "tools").mkdir()
+    return tmp_path
+
+
+def test_batch_exits_6_on_red_quick_row_before_verify(tmp_path, monkeypatch, capsys):
+    root = _throwaway_repo(tmp_path)
     verifies = []
-    monkeypatch.setattr(lm, "quick_rows", lambda root, runner=None: [("script_callers", 1, "bad")])
     monkeypatch.setattr(lm, "verify_merged", lambda *a, **k: verifies.append(a) or ("OK", []))
-    src = open(os.path.join(ROOT, "tools", "lane_merge.py"), encoding="utf-8").read()
-    # the gate sits between the merge loop and verify_merged, and exits 6 like the ratchet stop
-    i, j, k = src.index("qfailed = quick_rows(root)"), src.index("BATCH STOPPED at quick rows"), src.index("verify_merged(root, mode)")
-    assert i < j < k and "return 6" in src[j:k]
+    monkeypatch.setattr(lm, "RATCHETS", [])
+    monkeypatch.setattr(lm, "QUICK_ROWS", [("good_row", ["ok.py"]), ("bad_row", ["bad.py"])])
+    rc = lm.main(["--batch", "lane", "--root", str(root), "--tools-dir", str(root / "tools")])
+    out = capsys.readouterr()
+    assert rc == 6 and not verifies
+    assert "BATCH STOPPED at quick rows (bad_row)" in out.out and "boom" in out.err
+
+
+def test_batch_runs_verify_when_quick_rows_green(tmp_path, monkeypatch):
+    root = _throwaway_repo(tmp_path)
+    verifies = []
+    monkeypatch.setattr(lm, "verify_merged", lambda *a, **k: verifies.append(a) or ("OK", []))
+    monkeypatch.setattr(lm, "compiled_inputs_changed", lambda *a: True)
+    monkeypatch.setattr(lm, "RATCHETS", [])
+    monkeypatch.setattr(lm, "QUICK_ROWS", [("good_row", ["ok.py"])])
+    assert lm.main(["--batch", "lane", "--root", str(root), "--tools-dir", str(root / "tools")]) == 0
+    assert len(verifies) == 1
+
+
+def test_missing_quick_row_script_is_an_error_in_the_real_root_only(tmp_path, monkeypatch):
+    never = lambda root, cmd, env=None: _r(0)
+    monkeypatch.setattr(lm, "QUICK_ROWS", [("gone", ["tools/no_such_row.py"])])
+    assert lm.quick_rows(str(tmp_path), never) == []   # throwaway root: skipped
+    failed = lm.quick_rows(os.path.abspath(os.path.join(lm.HERE, "..")), never)
+    assert failed and failed[0][0] == "gone" and "missing" in failed[0][2]
+
+
+def test_real_quick_row_scripts_exist():
+    for _, args in lm.QUICK_ROWS:
+        for a in args:
+            if a.endswith(".py"):
+                assert os.path.exists(os.path.join(ROOT, a)), a
 
 
 def test_oversize_pdb_deleted_small_kept(tmp_path, capsys):
@@ -63,3 +109,14 @@ def test_trailer_defaults_from_commit_trailer_env():
     assert subprocess.run([sys.executable, "-c", code], env=env, capture_output=True, text=True, **console_child.child_kwargs(redirected=True)).stdout.strip() == "''"
     env["MC2_COMMIT_TRAILER"] = "Co-Authored-By: X <x@y>"
     assert "Co-Authored-By: X" in subprocess.run([sys.executable, "-c", code], env=env, capture_output=True, text=True, **console_child.child_kwargs(redirected=True)).stdout
+
+
+def test_oversize_pdb_that_cannot_be_deleted_is_reported(tmp_path, monkeypatch, capsys):
+    (tmp_path / "t").mkdir()
+    (tmp_path / "t" / "mc2.pdb").write_bytes(b"x" * 100)
+
+    def locked(path):
+        raise PermissionError(13, "in use")
+    monkeypatch.setattr(ninja_build.os, "remove", locked)
+    assert not ninja_build.drop_oversize_pdb(str(tmp_path), "t", limit=50)
+    assert "WARNING: could not delete oversize t/mc2.pdb" in capsys.readouterr().err

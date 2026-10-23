@@ -335,13 +335,10 @@ def plan_cells(size=300, seed=42, heightfield=None, water=None, profile=None, st
                 generator = add("turret_generator", generator_cell, team, base_id)
                 control_cell = choose((generator_cell[0]+3, generator_cell[1]))
                 control = add("turret_control", control_cell, team, base_id, parent=generator)
-                battery_stats = stats["metrics"]["battery_sizes"]
-                count = sample(rng, battery_stats, 3, 5)
-                targets = [(r0+inset, c0+inset), (r0+inset, c1-inset-1),
-                           (r1-inset-1, c1-inset-1), (r1-inset-1, c0+inset),
-                           (r0+inset, (c0+c1)//2)]
-                for target in targets[:count]:
-                    cell = choose(target)
+                # Requests preserve the parent topology; the road-frontage
+                # battery planner supplies count, type and final firing line.
+                for offset in (-3, 3):
+                    cell = choose((gate[0]+offset, gate[1]+offset))
                     if cell is not None:
                         add("turret", cell, team, base_id, parent=control)
         current = len(objects)-begin
@@ -456,17 +453,20 @@ def world_roads(paths,allowed,size):
     return result
 
 
-def generate(size=300, seed=42, heightfield=None, water=None, profile=None, style="stock", biome=None):
+def generate(size=300, seed=42, heightfield=None, water=None, profile=None, style="stock", biome=None,
+             difficulty='standard', flaw=None, flaw_type='exposed_generator'):
     from tools.mapgen.placement import upgrade
+    from tools.mapgen.batteries import plan as batteries
     profile = profile or load_json(PROFILE_PATH)
     if biome == 'suburban_forest':
         if heightfield is not None or water is not None or style != 'stock':
             raise ValueError('suburban_forest owns terrain and uses stock assets')
         from tools.mapgen.suburban_forest import plan
-        return upgrade(plan(size, seed, profile), profile)
+        return upgrade(batteries(plan(size, seed, profile), difficulty, flaw, flaw_type), profile)
     if biome is not None:
         raise ValueError(f'unknown biome: {biome}')
-    return upgrade(plan_cells(size,seed,heightfield,water,profile,style),profile)
+    return upgrade(batteries(plan_cells(size,seed,heightfield,water,profile,style),
+                             difficulty, flaw, flaw_type),profile)
 
 
 def main(argv=None):
@@ -474,6 +474,10 @@ def main(argv=None):
     parser.add_argument("--size", type=int, default=300)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--biome", choices=('suburban_forest',))
+    parser.add_argument('--difficulty', choices=('easy', 'standard', 'hard'), default='standard')
+    parser.add_argument('--flaw', choices=('on', 'off'), default=None)
+    parser.add_argument('--flaw-type', choices=('flank_route', 'lrm_pocket', 'exposed_generator', 'tower_sightline'),
+                        default='exposed_generator')
     parser.add_argument("--heightfield", type=Path)
     parser.add_argument("--water-level", type=float)
     parser.add_argument("--profile", type=Path, default=PROFILE_PATH)
@@ -489,7 +493,8 @@ def main(argv=None):
             terrain, wet = synthetic_terrain(args.size, args.seed)
             wet |= terrain <= args.water_level
         profile = load_json(args.profile)
-        layout = generate(args.size, args.seed, terrain, wet, profile, args.style, args.biome)
+        layout = generate(args.size, args.seed, terrain, wet, profile, args.style, args.biome,
+                          args.difficulty, None if args.flaw is None else args.flaw == 'on', args.flaw_type)
         errors = validate(layout, profile)
         if errors:
             raise ValueError("; ".join(errors[:8]))
@@ -505,6 +510,9 @@ def main(argv=None):
         if args.biome:
             from tools.mapgen.suburban_forest import feature_mask
             feature_mask(layout, out/(layout['name']+'_features.png'))
+        if layout.get('batteries'):
+            from tools.mapgen.fields_of_fire import overlay
+            overlay(layout, out/(layout['name']+'_fields_of_fire.png'))
         print(f"{path}: {len(layout['bases'])} sites, {len(layout['objects'])} objects; plausibility PASS")
     except (ValueError, KeyError) as error:
         parser.exit(2, f"generation failed: {error}\n")

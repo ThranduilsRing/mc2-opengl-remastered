@@ -1403,20 +1403,13 @@ bool GameObjectManager::restoreAnimationState(const std::vector<uint8_t>& bytes,
         states.emplace_back(handle, std::move(animation));
         previousHandle = handle;
     }
-    // Pool orders follow the animation states; saves written before them end here and keep the pools in handle order.
-    std::vector<int32_t> order[6];
-    if (archive.remaining() > 0)
-        for (auto& handles : order) archive(handles);
-    // Saves written before the sensor scan state end after the pool orders (or before them) and keep the defaults.
-    int32_t scanCursor = 0;
-    bool enemyInLOS = SensorSystemManager::enemyInLOS, hasScan = false;
-    if (archive.remaining() > 0) {
-        archive(scanCursor, enemyInLOS);
-        hasScan = true;
-        if (archive.good() && (!SensorManager || scanCursor < 0 || scanCursor >= Team::numTeams)) archive.reject("sensor_scan_cursor");
-    }
+    // Pool orders follow the animation states; saves written before them end there. The sensor scan state follows the orders; older saves keep the defaults.
+    mc2::save::AnimationTail tail;
+    tail.enemyInLOS = SensorSystemManager::enemyInLOS;
+    mc2::save::readAnimationTail(archive, tail, Team::numTeams, SensorManager != nullptr);
+    auto& order = tail.order;
     if (!archive.finish()) return false;
-    if (hasScan) SensorManager->restoreScan(scanCursor, enemyInLOS);
+    if (tail.hasScan) SensorManager->restoreScan(tail.scanCursor, tail.enemyInLOS);
     mc2::save::applyPoolOrder(std::span(turrets, static_cast<size_t>(numTurrets)), order[0], objList, getMaxObjects());
     mc2::save::applyPoolOrder(std::span(buildings, static_cast<size_t>(numBuildings)), order[1], objList, getMaxObjects());
     mc2::save::applyPoolOrder(std::span(gates, static_cast<size_t>(numGates)), order[2], objList, getMaxObjects());

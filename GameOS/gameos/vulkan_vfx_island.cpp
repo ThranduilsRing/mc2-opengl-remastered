@@ -741,7 +741,8 @@ bool mc2_vk_vfx_vegetation_run(const mc2veg::CullParams& params, const float* wo
     ZoneScopedN("VKIsl.Vfx.Vegetation");
     mc2vk::VulkanContext& slotCtx = mc2vk::getOrCreateEngineVulkanContext();
     VfxIsland* s = acquire_island(w, h);
-    if (!s) return false;
+    // The island skips the vegetation pipeline when vegetation was off at its creation; a later quality change does not re-create it.
+    if (!s || !s->vegetationPipe) return false;
     const uint32_t par = s->nextSlot;
     s->nextSlot ^= 1u;
     if (!slotCtx.wait(mc2vk::GpuTicket{s->ticket[par], 0}, 5ull * 1000 * 1000 * 1000, "vfx_slot")) { setFallback("slot_timeout"); s->disabled = true; return false; }

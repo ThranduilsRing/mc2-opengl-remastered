@@ -34,7 +34,7 @@ TEST_CASE("vfx_trace/combat trace assertions pass in an isolated diagnostic sink
     CHECK(result == 0);
 }
 
-TEST_CASE("vfx_frozen/fresh processes cover MLR and both GPU harvest gate vectors")
+TEST_CASE("vfx_frozen/fresh processes cover MLR and the GPU harvest gate vectors")
 {
     wchar_t module[32768];
     REQUIRE(GetModuleFileNameW(nullptr, module, 32768) != 0);
@@ -42,17 +42,15 @@ TEST_CASE("vfx_frozen/fresh processes cover MLR and both GPU harvest gate vector
     REQUIRE(std::filesystem::is_regular_file(executable));
     ContractEnvironment tube{"MC2_VFX_ORACLE_TUBE", "0"};
     ContractEnvironment shape{"MC2_VFX_ORACLE_SHAPE", "0"};
-    ContractEnvironment compare{"MC2_VFX_GPU_SIM_COMPARE", "0"};
     ContractEnvironment sanitizer{"ASAN_OPTIONS", "detect_leaks=0:halt_on_error=1:print_stacktrace=1"};
-    struct Arm { const char* gpu; const char* oracle; const char* log; const char* gpuSim; };
-    for (const auto arm : {Arm{"0", "0", "0", "0"}, Arm{"1", "0", "0", "0"},
-                           Arm{"1", "1", "1", "0"}, Arm{"1", "0", "0", "1"}}) {
+    struct Arm { const char* gpu; const char* oracle; const char* log; };
+    for (const auto arm : {Arm{"0", "0", "0"}, Arm{"1", "0", "0"},
+                           Arm{"1", "1", "1"}}) {
         INFO("gpu=" << std::string(arm.gpu) << " oracle=" << std::string(arm.oracle)
-            << " log=" << std::string(arm.log) << " gpuSim=" << std::string(arm.gpuSim));
+            << " log=" << std::string(arm.log));
         ContractEnvironment gpu{"MC2_GPU_PARTICLES", arm.gpu};
         ContractEnvironment oracle{"MC2_VFX_ORACLE_RENDER", arm.oracle};
         ContractEnvironment log{"MC2_GPU_PARTICLES_LOG", arm.log};
-        ContractEnvironment gpuSim{"MC2_VFX_GPU_SIM_CARDCLOUD", arm.gpuSim};
         std::wstring command = L"\"" + executable.wstring() + L"\" --no-breaks --test-case=vfx_frozen/*";
         STARTUPINFOW startup{};
         startup.cb = sizeof(startup);
