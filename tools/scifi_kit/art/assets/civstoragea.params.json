@@ -114,14 +114,8 @@
   }
  ],
  "dims": {
-  "roof": "gable",
   "skin": "corr",
-  "inset": false,
-  "bay_m": 4.5,
-  "peaks": 3,
-  "eave_h": 4.4,
-  "rise": 0.86,
-  "ridge_axis": "y"
+  "bay_m": 4.5
  },
  "detail": {
   "vents": 0,
@@ -138,7 +132,7 @@
  "status": {
   "state": "runner",
   "validated": {
-   "params_sha": "50fbb7e6c1099c49",
+   "params_sha": "c9ee981bb9413e79",
    "analysis_sha": "84a1714f62ddc50b",
    "at": "2026-10-23"
   }

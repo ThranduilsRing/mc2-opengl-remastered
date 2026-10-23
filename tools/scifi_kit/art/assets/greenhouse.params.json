@@ -13,9 +13,9 @@
  ],
  "palette": {
   "main": [
-   0.036,
-   0.034,
-   0.032
+   0.15,
+   0.137,
+   0.133
   ],
   "second": [
    0.222,
@@ -23,19 +23,19 @@
    0.211
   ],
   "trim": [
-   0.036,
-   0.034,
-   0.032
+   0.33,
+   0.325,
+   0.324
   ],
   "roof": [
-   0.076,
-   0.081,
-   0.061
+   0.116,
+   0.141,
+   0.084
   ],
   "ferro": [
-   0.034,
-   0.032,
-   0.03
+   0.092,
+   0.085,
+   0.081
   ],
   "accent": [
    0.092,
@@ -48,9 +48,9 @@
    0.448
   ],
   "corr": [
-   0.036,
-   0.034,
-   0.032
+   0.15,
+   0.137,
+   0.133
   ],
   "glass": [
    0.03,
@@ -59,42 +59,52 @@
   ]
  },
  "counts": {
-  "doors": 0,
-  "openings_bays": 0,
+  "doors": 2,
+  "openings_bays": 2,
   "windows": 0
  },
- "features": [],
- "dims": {
-  "batter": {
-   "x": [
-    [
-     0.0,
-     1.0
-    ],
-    [
-     1.0,
-     0.246
-    ]
-   ],
-   "y": [
-    [
-     0.0,
-     1.0
-    ],
-    [
-     1.0,
-     1.0
-    ]
-   ]
+ "features": [
+  {
+   "kind": "bay",
+   "side": "front",
+   "at": -0.5,
+   "z": 0.0,
+   "w": 4.0,
+   "h": 3.2
   },
-  "roof": "flat",
+  {
+   "kind": "bay",
+   "side": "rear",
+   "at": -0.5,
+   "z": 0.0,
+   "w": 4.0,
+   "h": 3.2
+  },
+  {
+   "kind": "door",
+   "side": "front",
+   "at": 2.4,
+   "z": 0.45,
+   "w": 0.9,
+   "h": 2.1
+  },
+  {
+   "kind": "door",
+   "side": "rear",
+   "at": 2.4,
+   "z": 0.45,
+   "w": 0.9,
+   "h": 2.1
+  }
+ ],
+ "dims": {
   "skin": "plate",
-  "inset": false,
   "bay_m": 4.5
  },
  "detail": {
   "vents": 0,
-  "service_panel": true
+  "service_panel": true,
+  "glazing": true
  },
  "notes": "auto-drafted from stock analysis (category building); counts/features are DRAFT (see analysis.json confidences)",
  "stock_model": "greenhouse",
@@ -106,7 +116,7 @@
  "status": {
   "state": "runner",
   "validated": {
-   "params_sha": "a86d05054c65eab4",
+   "params_sha": "e25856f0cb3de3c9",
    "analysis_sha": "9209d5d5b9ae0e4b",
    "at": "2026-10-23"
   }
@@ -125,5 +135,28 @@
    "openings_bays": 0
   }
  },
- "waivers": []
+ "waivers": [
+  {
+   "check": "counts",
+   "field": "doors",
+   "reason": "stock front and rear gable ends each paint a roll-up shutter left of centre and a white personnel door right of it (stock_front/rear views); the texture detector misses them on the triangular gable"
+  },
+  {
+   "check": "counts",
+   "field": "openings_bays",
+   "reason": "stock front and rear gable ends each paint a roll-up shutter left of centre and a white personnel door right of it (stock_front/rear views); the texture detector misses them on the triangular gable"
+  },
+  {
+   "check": "features",
+   "side": "front",
+   "kind": "door",
+   "reason": "stock front and rear gable ends each paint a roll-up shutter left of centre and a white personnel door right of it (stock_front/rear views); the texture detector misses them on the triangular gable"
+  },
+  {
+   "check": "features",
+   "side": "rear",
+   "kind": "door",
+   "reason": "stock front and rear gable ends each paint a roll-up shutter left of centre and a white personnel door right of it (stock_front/rear views); the texture detector misses them on the triangular gable"
+  }
+ ]
 }

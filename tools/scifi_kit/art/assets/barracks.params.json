@@ -130,43 +130,7 @@
   }
  ],
  "dims": {
-  "batter": {
-   "x": [
-    [
-     0.0,
-     1.0
-    ],
-    [
-     0.14,
-     0.993
-    ],
-    [
-     1.0,
-     0.672
-    ]
-   ],
-   "y": [
-    [
-     0.0,
-     1.0
-    ],
-    [
-     0.68,
-     1.0
-    ],
-    [
-     0.74,
-     0.852
-    ],
-    [
-     1.0,
-     0.808
-    ]
-   ]
-  },
-  "roof": "flat",
   "skin": "plate",
-  "inset": true,
   "bay_m": 4.5
  },
  "detail": {
@@ -187,7 +151,7 @@
  "status": {
   "state": "runner",
   "validated": {
-   "params_sha": "a627d256394acde8",
+   "params_sha": "57ae662d4b87555f",
    "analysis_sha": "dcb87ae9e8aab6ef",
    "at": "2026-10-23"
   }

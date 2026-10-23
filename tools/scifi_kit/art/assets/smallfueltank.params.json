@@ -82,7 +82,7 @@
  "status": {
   "state": "runner",
   "validated": {
-   "params_sha": "a86198826641de7d",
+   "params_sha": "97c586af7d105a07",
    "analysis_sha": "b4cfdb46a2709e5f",
    "at": "2026-10-23"
   }
@@ -97,11 +97,5 @@
   ],
   "counts": {}
  },
- "waivers": [
-  {
-   "check": "silhouette",
-   "view": "mean",
-   "reason": "stock top view is a hexagonal tank with a pyramid roof and a narrower skirt over a wider footing; the tank builder makes only round shells, so the mean IoU stays near 0.76"
-  }
- ]
+ "waivers": []
 }
