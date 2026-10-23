@@ -235,10 +235,10 @@ void write_descriptors(TerrainIsland* s, int parity) {
         w[n].dstBinding = 14; w[n].descriptorCount = 1;
         w[n].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; w[n].pImageInfo = &smInfo; ++n;
     }
-    // SHORE-FIELD-1: binding 15 water shore field (dummy until imported; uT.shoreFieldOn gates use).
+    // Baked semantic material weights; the old shore-image slot had no shader consumer.
     VkDescriptorImageInfo sfInfo{};
-    if (s->shoreFieldTexture && s->colormapSamp) {
-        sfInfo.sampler = s->colormapSamp.get(); sfInfo.imageView = s->shoreFieldTexture.view();
+    if (s->materialTexture && s->colormapSamp) {
+        sfInfo.sampler = s->colormapSamp.get(); sfInfo.imageView = s->materialTexture.view();
         sfInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = s->set[i];
         w[n].dstBinding = 15; w[n].descriptorCount = 1;
@@ -473,7 +473,7 @@ bool init_island(TerrainIsland* s, int w, int h) {
     // are ready -> FS ignores the cement branch -> colormap base, no hole).
     if (!ensure_dummy_cement(s)) { setFallback("cement_dummy_failed"); return false; }
     if (!ensure_dummy_shore_mask(s)) { setFallback("shore_mask_dummy_failed"); return false; }
-    if (!ensure_dummy_shore_field(s)) { setFallback("shore_field_dummy_failed"); return false; }
+    if (!ensure_dummy_materials(s)) { setFallback("material_dummy_failed"); return false; }
     if (!s->cementBuf) {
         if (!make_buffer(s, s->cementBuf, 16, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, true, "terrain.cementBuf")) {
             setFallback("cement_dummy_ssbo_failed"); return false;
@@ -539,7 +539,7 @@ bool init_island(TerrainIsland* s, int w, int h) {
         // TERRAIN-SHORELINE-V3: binding 14 = shoreline mask sidecar sampler2D (FS).
         b[10].binding = 14; b[10].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         b[10].descriptorCount = 1; b[10].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-        // SHORE-FIELD-1: binding 15 = water shore field sampler2D (FS, texelFetch only).
+        // Material weights, sampled with the macro atlas coordinates (FS).
         b[11].binding = 15; b[11].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         b[11].descriptorCount = 1; b[11].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
         b[12].binding = 16; b[12].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;

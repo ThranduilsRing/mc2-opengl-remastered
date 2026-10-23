@@ -16,6 +16,11 @@ static_assert(mc2terrain::ColormapAtlas::kRgba8 == mc2tex::kVkFormatRgba8Unorm &
 
 #ifdef MC2_VULKAN_ISLAND
 
+// Shared rendered-surface query: analytic cement, road alpha and vegetation exclusion.
+extern float gos_terrain_indirect_HardSurfaceCoverage(float wx, float wy);
+extern uint64_t gos_terrain_indirect_HardSurfaceVersion();
+extern int g_terrainMaterialProfile; // existing mission import profile; never sent to the shader
+
 
 namespace vk_terrain_detail {
 
@@ -288,46 +293,46 @@ bool ensure_dummy_shore_mask(TerrainIsland* s) {
     return true;
 }
 
-// SHORE-FIELD-1: binding 15 is always valid; the 1x1 dummy is unused while uT.shoreFieldOn is 0. The FS reads it with
-// texelFetch only (Catmull-Rom), so the sampler's filter never applies to the R32F texels.
-bool ensure_dummy_shore_field(TerrainIsland* s) {
+// Material weights share the macro atlas UV convention and clamp sampler.
+bool ensure_dummy_materials(TerrainIsland* s) {
     if (!create_colormap_sampler(s)) return false;
-    if (s->shoreFieldTexture) return true;
-    const float px[1] = {0.0f};
-    if (!upload_sampled_image(s, s->shoreFieldTexture, VK_FORMAT_R32_SFLOAT, 1, 1, px, sizeof(px))) return false;
-    s->shoreFieldReady = false;
-    return true;
+    if (s->materialTexture) return true;
+    const uint8_t rock[4] = {};
+    return upload_sampled_image(s, s->materialTexture, VK_FORMAT_R8G8B8A8_UNORM, 1, 1, rock, sizeof(rock));
 }
 
-// Copy-once import of the water shore field from the terrain field store, again whenever its version changes.
-void import_shore_field(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
-    if (!feed.shoreFieldTexels || feed.shoreFieldW <= 1 || feed.shoreFieldH <= 1 || feed.shoreFieldVersion == 0) {
-        if (!s->shoreFieldReady && s->shoreFieldVersionImported == 0) return;
-        s->shoreFieldVersionImported = 0;
-        s->shoreFieldReady = false;
-        if (s->shoreFieldTexture) {
-            mc2vk::getOrCreateEngineVulkanContext().waitIdle("terrain_shore_field_clear");
-            s->shoreFieldTexture = {};
-        }
-        ensure_dummy_shore_field(s);
-        write_descriptors(s);
-        return;
+void import_materials(TerrainIsland* s) {
+    const auto* fields = gos_TerrainFieldStore();
+    if (!fields) return;
+    const auto& surface = fields->surfaceAsset();
+    const auto& types = fields->terrainTypes();
+    const auto& control = fields->controlMap();
+    if (fields->surfaceVersion() == s->materialSurfaceVersion && types.version == s->materialTypesVersion &&
+        control.version == s->materialControlVersion &&
+        gos_terrain_indirect_HardSurfaceVersion() == s->materialCoverageVersion) return;
+    const uint32_t w = std::min(surface.width, 1024u), h = std::min(surface.height, 1024u);
+    auto weights = mc2terrain::cookSurfaceMaterials(surface, types.texels, uint32_t(types.width),
+                                                         control.texels, uint32_t(control.width), w, h, g_terrainMaterialProfile == 1);
+    const float span = s->colormapCookParams[2] > 0 ? 1.0f / s->colormapCookParams[2] : 0;
+    for (uint32_t y = 0; !weights.empty() && y < h; ++y) for (uint32_t x = 0; x < w; ++x) {
+        const float wx = s->colormapCookParams[0] + (float(x)+0.5f) / w * span;
+        const float wy = s->colormapCookParams[1] - (float(y)+0.5f) / h * span;
+        const float coverage = gos_terrain_indirect_HardSurfaceCoverage(wx, wy);
+        const size_t i = (size_t(y)*w+x)*4;
+        for (size_t k=0;k<3;++k) weights[i+k] = uint8_t(std::lround(weights[i+k] * (1.0f-coverage)));
+        weights[i+3] = std::max(weights[i+3], uint8_t(std::lround(coverage*255)));
     }
-    if (feed.shoreFieldVersion == s->shoreFieldVersionImported) return;
-    mc2vk::getOrCreateEngineVulkanContext().waitIdle("terrain_shore_field_reimport");
-    s->shoreFieldVersionImported = feed.shoreFieldVersion;
-    const auto w = static_cast<uint32_t>(feed.shoreFieldW), h = static_cast<uint32_t>(feed.shoreFieldH);
-    if (upload_sampled_image(s, s->shoreFieldTexture, VK_FORMAT_R32_SFLOAT, w, h,
-                             feed.shoreFieldTexels, static_cast<VkDeviceSize>(w) * h * 4u)) {
-        s->shoreFieldReady = true;
-        vlog("SHORE-FIELD: imported the shore field %ux%u for the coastal colormap (version %llu).", w, h,
-             static_cast<unsigned long long>(feed.shoreFieldVersion));
-    } else {
-        s->shoreFieldReady = false;
-        vlog("SHORE-FIELD: shore field %ux%u upload failed; coastal colormap unchanged.", w, h);
-        ensure_dummy_shore_field(s);
-    }
+    mc2vk::getOrCreateEngineVulkanContext().waitIdle("terrain_material_reimport");
+    // Discard the previous mission even when the replacement cook fails.
+    s->materialTexture = {};
+    if (weights.empty() || !upload_sampled_image(s, s->materialTexture, VK_FORMAT_R8G8B8A8_UNORM, w, h,
+                                                weights.data(), weights.size())) ensure_dummy_materials(s);
+    s->materialSurfaceVersion = fields->surfaceVersion();
+    s->materialTypesVersion = types.version;
+    s->materialControlVersion = control.version;
+    s->materialCoverageVersion = gos_terrain_indirect_HardSurfaceVersion();
     write_descriptors(s);
+    vlog("MATERIALS: baked %ux%u semantic weights (%zu bytes).", w, h, weights.size());
 }
 
 // Copy-once import of the mission's shoreline mask sidecar from the terrain field store, again whenever its version changes.

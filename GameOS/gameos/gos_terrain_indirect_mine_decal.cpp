@@ -649,6 +649,7 @@ struct HardSurfaceField {
     int                  tilesAlpha = 0, tilesPure = 0, tilesNoImage = 0, tilesRoadSkipped = 0;
 };
 HardSurfaceField g_hs;
+uint64_t g_hsVersion = 1;
 
 inline uint8_t hsTexel(long ix, long iy) {
     if (ix < 0 || iy < 0) return 0;
@@ -778,7 +779,8 @@ float HardSurfaceCoverage(float wx, float wy) {
     return (a * (1.0f - fy) + b * fy) * (1.0f / 255.0f);
 }
 
-void InvalidateHardSurfaceField() { g_hs = HardSurfaceField{}; }
+void InvalidateHardSurfaceField() { g_hs = HardSurfaceField{}; ++g_hsVersion; }
+uint64_t HardSurfaceVersion() { return g_hsVersion; }
 
 void HardSurfaceStats(int* alpha, int* pure, int* noImage) {
     if (!g_hs.built) BuildHardSurfaceField();
@@ -833,6 +835,9 @@ void gos_terrain_indirect_MarkDecalDirty() {
 }
 
 // VEG-CEMENT-1 C-linkage forwarders (VegetationAdapter avoids gos_terrain_indirect.h).
+uint64_t gos_terrain_indirect_HardSurfaceVersion() {
+    return gos_terrain_indirect::HardSurfaceVersion();
+}
 float gos_terrain_indirect_HardSurfaceCoverage(float wx, float wy) {
     return gos_terrain_indirect::HardSurfaceCoverage(wx, wy);
 }

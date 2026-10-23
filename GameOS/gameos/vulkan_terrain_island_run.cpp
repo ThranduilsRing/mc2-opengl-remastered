@@ -260,7 +260,7 @@ void fill_frame_ubo(TerrainIsland* s, const Mc2TerrainTier1Feed& feed,
     u.shorelineBoundsX = feed.shorelineBounds[0]; u.shorelineBoundsY = feed.shorelineBounds[1];
     u.shorelineBoundsW = feed.shorelineBounds[2]; u.shorelineBoundsH = feed.shorelineBounds[3];
     // SHORE-FIELD-1: coastal colormap follows the water's smooth shore field.
-    u.shoreFieldOn = s->shoreFieldReady && feed.shoreFieldTexels ? 1 : 0;
+    u.shoreFieldOn = 0; // coast-color repair is baked on the CPU
     u.shoreFieldIsSdf = feed.shoreFieldIsSdf;
     u.shoreFieldBoundsX = feed.shoreFieldBounds[0]; u.shoreFieldBoundsY = feed.shoreFieldBounds[1];
     u.shoreFieldBoundsW = feed.shoreFieldBounds[2]; u.shoreFieldBoundsH = feed.shoreFieldBounds[3];
@@ -313,7 +313,7 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     import_cement(s, feed);
     snapshot_cement(s, feed);
     import_shore_mask(s, feed);
-    import_shore_field(s, feed);   // SHORE-FIELD-1
+    import_materials(s);
 
     // VK-TERRAIN-VISUALDISPLACE-FAR-1: version-gated mission-load snapshot of the 4x
     // visual-height bake (no-op unless the sub-gate armed the feed fields AND the bake
@@ -357,7 +357,7 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     us_fence_wait = usSince(tFence0);
     const uint32_t par = fsC.parity & 1u;
     if (!mc2vk::bindMoverShadowDescriptors(s->device,s->set[par])) { setFallback("mover_receiver_unavailable"); s->disabled=true; return 0; }
-    const std::array<VkImageView,7> views{s->colormapTexture.view(),s->cementTexture.view(),s->shoreMaskTexture.view(),s->matNormalTexture.view(),s->shoreFieldTexture.view(),s->macroGradientTexture.view(),s->staticVisibilityDummy.view()};
+    const std::array<VkImageView,7> views{s->colormapTexture.view(),s->cementTexture.view(),s->shoreMaskTexture.view(),s->matNormalTexture.view(),s->materialTexture.view(),s->macroGradientTexture.view(),s->staticVisibilityDummy.view()};
     if (s->descriptorsDirty[par] || s->boundTextures[par]!=views) {
         write_descriptors(s,int(par)); s->boundTextures[par]=views;
     }
@@ -379,7 +379,7 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     if (mc2_terrain_feed_observation_enabled()) {
         const uint64_t imported[] = {s->heightVersionCopied, s->cementVersionCopied, s->visualHeightVersionCopied,
             s->colormapVersionImported, s->cementVersionImported, s->shoreMaskVersionImported,
-            s->shoreFieldVersionImported, s->matNormalVersionImported};
+            s->materialSurfaceVersion, s->matNormalVersionImported};
         mc2_terrain_feed_dump_consumed(&feed, g_mc2RenderFrame, w, h, {static_cast<const uint8_t*>(uboSpan.ptr),
             static_cast<size_t>(patchCount) * sizeof(TerrainFrameUBO)}, vkPoolLights, vkGridDim, imported);
     }
