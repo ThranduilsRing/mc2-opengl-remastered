@@ -78,11 +78,16 @@
   "crates": 0.5
  },
  "status": {
-  "state": "runner",
-  "validated": {
-   "params_sha": "1a62e532adf53d25",
-   "analysis_sha": "fd735fe73ee24698",
-   "at": "2026-10-23"
+  "state": "draft",
+  "demoted": {
+   "at": "2026-10-23",
+   "failures": [
+    "waiver: silhouette is a structural check and cannot be waived; if the builder cannot reach the stock shape the asset is needs_builder",
+    "waiver: silhouette is a structural check and cannot be waived; if the builder cannot reach the stock shape the asset is needs_builder",
+    "roof: the model top surface follows the stock on 32% of the plan (need 85%); stock extrude/stepped along y, 1 ridge(s), model extrude/flat along y, 1 ridge(s)",
+    "silhouette: front (side1) IoU 0.69 < 0.70",
+    "silhouette: rear (side3) IoU 0.69 < 0.70"
+   ]
   }
  },
  "evidence": {

@@ -1,0 +1,55 @@
+{
+ "schema": "mc2-kit-shape/1",
+ "size_m": [
+  10.648,
+  0.002,
+  2.935
+ ],
+ "footprint": {
+  "kind": "irregular",
+  "n": 0,
+  "edges": [],
+  "fill": 0.125,
+  "iou": 0.0
+ },
+ "roof": {
+  "inliers": {
+   "flat": 1.0,
+   "extrude_y": 1.0,
+   "extrude_x": 1.0,
+   "inset": 1.0
+  },
+  "tol": 0.25,
+  "fit": "flat",
+  "model": "flat",
+  "form": "flat",
+  "ridges": 0,
+  "eave": 0.0,
+  "top": 0.0,
+  "rim": 0.0,
+  "profile": []
+ },
+ "wall_profile": {
+  "x": [
+   [
+    0.0,
+    1.0
+   ],
+   [
+    1.0,
+    1.0
+   ]
+  ],
+  "y": [
+   [
+    0.0,
+    1.0
+   ],
+   [
+    1.0,
+    1.0
+   ]
+  ]
+ },
+ "features": []
+}

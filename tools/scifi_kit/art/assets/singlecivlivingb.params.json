@@ -338,64 +338,8 @@
   }
  ],
  "dims": {
-  "batter": {
-   "x": [
-    [
-     0.0,
-     1.0
-    ],
-    [
-     0.32,
-     0.938
-    ],
-    [
-     0.38,
-     0.732
-    ],
-    [
-     0.44,
-     0.66
-    ],
-    [
-     0.68,
-     0.161
-    ],
-    [
-     1.0,
-     0.119
-    ]
-   ],
-   "y": [
-    [
-     0.0,
-     1.0
-    ],
-    [
-     0.56,
-     1.0
-    ],
-    [
-     0.62,
-     0.5
-    ],
-    [
-     0.68,
-     0.231
-    ],
-    [
-     1.0,
-     0.183
-    ]
-   ]
-  },
-  "roof": "gable",
   "skin": "plate",
-  "inset": false,
-  "bay_m": 4.5,
-  "eave_h": 1.83,
-  "rise": 6,
-  "ridge_axis": "x",
-  "peaks": 2
+  "bay_m": 4.5
  },
  "detail": {
   "vents": 1,
@@ -411,11 +355,13 @@
   "crates": 0.4
  },
  "status": {
-  "state": "runner",
-  "validated": {
-   "params_sha": "c7968d977625016d",
-   "analysis_sha": "adbbf694d8a02e0e",
-   "at": "2026-10-23"
+  "state": "draft",
+  "demoted": {
+   "at": "2026-10-23",
+   "failures": [
+    "needs_builder: roof: no single roof model fits the stock (best 48% of the plan): compound roof (crossing wings, intersecting ridges)",
+    "needs_builder: roof: no single roof model fits the stock (best 48% of the plan): compound roof (crossing wings, intersecting ridges)"
+   ]
   }
  },
  "evidence": {

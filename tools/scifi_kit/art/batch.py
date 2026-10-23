@@ -537,12 +537,17 @@ def commit(args):
                 continue
             res = validate.validate(n, pass_dir=OUT / tag)
             fl = res['failures'] + (content_ir(tag, n) if res['ok'] else [])
-            fl += [] if fl else kit_pytest(n)
             if fl:
                 refused[n] = fl
                 continue
+            before = pp.read_text()
             p['status'] = dict(state='runner', validated=dict(params_sha=psha, analysis_sha=archetypes.analysis_sha(n), at=time.strftime('%Y-%m-%d')))
             pp.write_text(json.dumps(p, indent=1))
+            fl = kit_pytest(n)                  # with the stamp in place (the stamp test reads it); red -> unstamp and refuse
+            if fl:
+                pp.write_text(before)
+                refused[n] = fl
+                continue
             ok.append(n)
         except Exception as exc:
             refused[n] = [f'commit: {type(exc).__name__}: {exc}']

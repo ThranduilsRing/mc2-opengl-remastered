@@ -77,11 +77,12 @@
   "crates": 0.4
  },
  "status": {
-  "state": "runner",
-  "validated": {
-   "params_sha": "ff5391833f30ab32",
-   "analysis_sha": "408da147cd5ce2a4",
-   "at": "2026-10-23"
+  "state": "draft",
+  "demoted": {
+   "at": "2026-10-23",
+   "failures": [
+    "roof: the model top surface follows the stock on 33% of the plan (need 85%); stock extrude/stepped along y, 1 ridge(s), model extrude/stepped along y, 1 ridge(s)"
+   ]
   }
  },
  "evidence": {
