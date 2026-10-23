@@ -104,10 +104,10 @@ PRESENCE_RULES: tuple = (
     PresenceRule("mc2_10", re.compile(r"\[VIDEO v1\] event=play_requested"), "video_floor_missing",
                  "no [VIDEO v1] event=play_requested line: the in-mission video request path is gone"),
     # Vegetation must draw at default quality on every tier1 map (merge 38b: the residency preset refused it, fallback=off, and every gate
-    # stayed green). Measured 15 s runs print about 4100 draws on mc2_03/17/24 (about 8000 at 30 s), so a 1000 minimum (four digits) catches
-    # a thinned or stray-frame population that a bare "non-zero" rule would pass.
-    *(PresenceRule(stem, re.compile(r"native_vegetation_draws=[1-9][0-9]{3,}"), "vegetation_floor_missing",
-                   "native_vegetation_draws below 1000: GPU vegetation did not draw or drew a thinned population (residency refusal or declined cull)")
+    # stayed green). Gated on the population, not the per-frame draw counter (which scales with fps and run length): the once-per-run
+    # "native_geometry kind=vegetation ... instances=N" line. Current logs show N = 600k..2.5M on the tier1 maps; the floor is N >= 1000.
+    *(PresenceRule(stem, re.compile(r"native_geometry kind=vegetation\b.*\binstances=[1-9][0-9]{3,}\b"), "vegetation_floor_missing",
+                   "no native_geometry kind=vegetation line with instances >= 1000: GPU vegetation never started or its population was thinned (residency refusal)")
       for stem in ("mc2_01", "mc2_03", "mc2_10", "mc2_17", "mc2_24")),
 )
 

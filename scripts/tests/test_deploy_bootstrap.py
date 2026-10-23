@@ -53,3 +53,36 @@ def test_concrete_detail_is_cooked_on_demand_only_when_absent(tmp_path, monkeypa
             (tmp_path / rel).write_bytes(b"x")
     dp.ensure_concrete_detail(str(tmp_path), cooker)
     assert len(calls) == 1
+
+
+def test_bootstrap_fails_on_critical_disk_and_leaves_no_target(tmp_path, monkeypatch):
+    src, target = fake_install(tmp_path / "src"), tmp_path / "lane"
+    monkeypatch.setattr(dp, "disk_space", lambda *a, **k: (3, {}))
+    with pytest.raises(SystemExit):
+        dp.bootstrap_install(str(src), str(target), "mc2.exe", "mc2.pdb")
+    assert not target.exists() and not Path(str(target) + ".partial").exists()
+
+
+def test_bootstrap_failed_copy_leaves_no_half_install(tmp_path, monkeypatch):
+    src, target = fake_install(tmp_path / "src"), tmp_path / "lane"
+    def boom(*a, **k):
+        raise OSError("disk full")
+    monkeypatch.setattr(dp.shutil, "copy2", boom)
+    with pytest.raises(OSError):
+        dp.bootstrap_install(str(src), str(target), "mc2.exe", "mc2.pdb")
+    assert not target.exists()          # only <target>.partial exists, so the next run copies again
+    monkeypatch.undo()
+    dp.bootstrap_install(str(src), str(target), "mc2.exe", "mc2.pdb")
+    assert (target / "textures.fst").is_file() and not Path(str(target) + ".partial").exists()
+
+
+def test_concrete_cook_timeout_and_missing_source_are_loud(tmp_path, monkeypatch, capsys):
+    import subprocess
+    monkeypatch.setattr(dp, "CONCRETE_DETAIL_SRC", str(tmp_path / "nope"))
+    dp.ensure_concrete_detail(str(tmp_path))
+    assert "[DEPLOY] WARN" in capsys.readouterr().out
+    monkeypatch.setattr(dp, "CONCRETE_DETAIL_SRC", str(tmp_path))
+    def slow(cmd, **kw):
+        raise subprocess.TimeoutExpired(cmd, 300)
+    dp.ensure_concrete_detail(str(tmp_path), slow)
+    assert "timed out" in capsys.readouterr().out

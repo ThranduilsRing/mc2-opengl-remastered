@@ -330,7 +330,7 @@ def main():
     if provenance.get("dirty") or not provenance.get("available") or not provenance.get("source_head_matches_binary"):
         raise ValueError("commit, build and deploy a clean binary first")
     sha = identity["git"]["commit"]
-    out = (args.out or stages.default_root("run_battle_bench") / sha).resolve()
+    out = (args.out or Path("E:/mc2-archive-2026-10/proofs/run_battle_bench") / sha).resolve()
     stages.preflight(out)
     out.mkdir(parents=True, exist_ok=True)
     if (out / "battle-bench.json").exists():
