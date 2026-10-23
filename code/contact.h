@@ -376,7 +376,11 @@ class SensorSystemManager {
 		}
 		
 		void destroy (void);
-		
+
+		// The scan round-robin and the flag a script reads (getSensorsActive) are simulation state: a save keeps them.
+		long getScanCursor (void) const { return teamToUpdate; }
+		void restoreScan (long cursor, bool inLOS) { teamToUpdate = cursor; enemyInLOS = inLOS; }
+
 		void init (void) {
 			freeSensors = 0;
 			sensorPool = nullptr;
