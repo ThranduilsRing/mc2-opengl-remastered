@@ -1,5 +1,6 @@
 #include "save_archive.h"
 #include "simulation_save_section.h"
+#include "footprints.h"
 // Mission: the second half of the Mission::load sequence -- the managers, terrain, movement data and mission script,
 // the warriors, parts, teams and objects, the commanders, the HUD and the geometry finalize. The first half and the
 // orchestrator are in saveload.cpp.
@@ -15,7 +16,7 @@
 #include <new>
 
 
-// Create the trigger-area, crater and object managers.
+// Create the trigger-area and object managers.
 void Mission::loadAblAndManagers(MissionLoadFrame& f) {
 	auto& result = f.result; auto& missionFile = f.missionFile;
 #ifndef USE_ABL_LOAD
@@ -54,13 +55,8 @@ void Mission::loadAblAndManagers(MissionLoadFrame& f) {
 	if (Mover::triggerAreaMgr == nullptr)
 		STOP(("Mission.Load: unable to init triggerAreaMgr "));
 
-	craterManager = static_cast<CraterManagerPtr>(std::malloc(sizeof(CraterManager)));
-	gosASSERT(craterManager != nullptr);
-	::new (craterManager) CraterManager;
-		
-	result = craterManager->init(1000,20479,"feet");
-	gosASSERT(result == NO_ERR);
-	
+	Footprints::init();
+
 	ObjectManager = new GameObjectManager;
 	if (!ObjectManager)
 		Fatal(0, " Mission.init: unable to create ObjectManager ");

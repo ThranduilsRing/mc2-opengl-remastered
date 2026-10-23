@@ -3,6 +3,7 @@
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "texture_assets.h"
 #include "mech3d_internal.h"
+#include "footprints.h"
 #include "../RenderCore/axis_convert.h"
 #include <format>
 
@@ -640,8 +641,8 @@ void Mech3DAppearance::updateGeometry (void)
 					currentRightPoof = 0;
 			}
 			
-			if (craterManager && !isWaking)
-				craterManager->addCrater(mechType->rightFootprintType,rFootPos,rotation);
+			if (!isWaking)
+				Footprints::add(mechType->rightFootprintType,rFootPos,rotation);
 		}
 		
 		if (!rightFootDone1 && 
@@ -670,8 +671,8 @@ void Mech3DAppearance::updateGeometry (void)
 					currentRightPoof = 0;
 			}
 			
-			if (craterManager && !isWaking)
-				craterManager->addCrater(mechType->rightFootprintType,rFootPos,rotation);
+			if (!isWaking)
+				Footprints::add(mechType->rightFootprintType,rFootPos,rotation);
 		}
 		
 		if (rightFootDone0 &&
@@ -714,8 +715,8 @@ void Mech3DAppearance::updateGeometry (void)
 					currentLeftPoof = 0;
 			}
 			
-			if (craterManager && !isWaking)
-				craterManager->addCrater(mechType->leftFootprintType,lFootPos,rotation);
+			if (!isWaking)
+				Footprints::add(mechType->leftFootprintType,lFootPos,rotation);
 		}
 		
 		if (!leftFootDone1 && 
@@ -744,8 +745,8 @@ void Mech3DAppearance::updateGeometry (void)
 					currentLeftPoof = 0;
 			}
 			
-			if (craterManager && !isWaking)
-				craterManager->addCrater(mechType->leftFootprintType,lFootPos,rotation);
+			if (!isWaking)
+				Footprints::add(mechType->leftFootprintType,lFootPos,rotation);
 		}
 		
 		if (leftFootDone0 &&

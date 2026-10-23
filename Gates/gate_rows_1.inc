@@ -30,7 +30,7 @@ L(Presence, "MC2_FX_COUNT_LOG", Bool, false, "mech", "", "MC2_FX_COUNT_LOG=1: en
 L(Presence, "MC2_FX_DEFS", Bool, false, "mech", "", "FX-DEFS-SIDECAR-1: per-effect JSON sidecar overlay for the gosFX spec catalog (mc2::particles::SpecLibrary).", passthrough | registry(Feature, "MC2_FX_DEFS", -1, false) | verified),
 // FX-FORCE-SPAWN fixture (mech-fire tube)
 // history: docs/gate-history.md#MC2_FX_FORCE_SPAWN
-G("MC2_FX_FORCE_SPAWN", Enum, "", "code", "", "FX-FORCE-SPAWN v1 fixture: default-OFF.", passthrough | registry(Feature, "MC2_FX_FORCE_SPAWN", -1, false) | tokens("|0|1|2|3|4|5|6|7|8|9|loop") | verified),
+G("MC2_FX_FORCE_SPAWN", Enum, "", "code", "", "FX-FORCE-SPAWN v1 fixture: default-OFF. =impact: impact-decal volley.", passthrough | registry(Feature, "MC2_FX_FORCE_SPAWN", -1, false) | tokens("|0|1|2|3|4|5|6|7|8|9|loop|impact") | verified),
 L(Lead1, "MC2_FX_TRACE", Bool, false, "code", "", "", passthrough | verified),
 
 G("MC2_GAMEOS_UI_DEFS", Bool, true, "editor", "", "The data/defs GameOS UI path is the replacement path, not an opt-in demo.", verified),

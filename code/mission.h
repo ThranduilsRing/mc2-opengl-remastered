@@ -578,7 +578,7 @@ class Mission
 		void updateFrontEnd();
 		void updateTerrainGeometry();
 		void updateObjectManager();
-		void updateCratersAndDamp();
+		void updateDisplacementDamp();
 		void updateSimSystems();
 		void updateTraceHooks();
 		void updateTermination();

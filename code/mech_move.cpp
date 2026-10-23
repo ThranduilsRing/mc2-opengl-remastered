@@ -928,7 +928,6 @@ void BattleMech::createJumpFX (void) {
 		jumpJets[1] = reinterpret_cast<JetPtr>(createObject(JUMP_FX));
 		jumpJets[1]->setOwner(this);
 		
-		craterManager->addCrater(SCORCHMARKS,position,0);
 	}
 #endif
 }	

@@ -513,10 +513,6 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "Direct-fire de-curve: PPC/autocannon/gauss bolts fly STRAIGHT instead of re-tracking the moving target every frame (the janky homing curve).",
     },
     {
-        "MC2_FEATURE_DYNAMIC_DECALS", "MC2_DYNAMIC_DECALS", EnvVarKind::Feature, false,
-        "Dynamic decal ring (mclib/dynamic_decal_ring.cpp): spawn()/gatherToDecalBatch() are no-ops when off.",
-    },
-    {
         "MC2_TUNE_FAR_BACKDROP_LIT_FAR", "MC2_FAR_BACKDROP_LIT_FAR", EnvVarKind::Trace, false,
         "FAR-BACKDROP-LIT-IMPL-1: view-depth (clip.w, world units) where the night-shade fade completes (full substitution).",
     },
@@ -562,7 +558,7 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
     },
     {
         "MC2_FX_FORCE_SPAWN", "MC2_FX_FORCE_SPAWN", EnvVarKind::Feature, false,
-        "FX-FORCE-SPAWN v1 fixture: default-OFF.",
+        "FX-FORCE-SPAWN v1 fixture: default-OFF. =impact: impact-decal volley.",
     },
     {
         "MC2_GOM_UPDATE_COST_SPLIT", "MC2_GOM_UPDATE_COST_SPLIT", EnvVarKind::Trace, false,

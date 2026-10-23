@@ -3,9 +3,9 @@
 # Where each gate is read, what the smoke runner forwards and what tier1_env_vars.md says are not here: ask
 # tools/repo_intel (env_var, gate_status), which scan the sources.
 generator_version: "3.0.0"
-gate_count: 904
-registry_entry_count: 186
-verified_count: 791
+gate_count: 903
+registry_entry_count: 185
+verified_count: 790
 flags:
   - name: MC2_3DVIEW_DIAG
     kind: Bool
@@ -1120,14 +1120,6 @@ flags:
     owner: gameos
     doc: ""
     verified: true
-  - name: MC2_DYNAMIC_DECALS
-    kind: Bool
-    default: false
-    rule: Lead0P
-    owner: code
-    doc: "Dynamic decal ring (mclib/dynamic_decal_ring.cpp): spawn()/gatherToDecalBatch() are no-ops when off."
-    verified: true
-    registry: {feature_id: MC2_FEATURE_DYNAMIC_DECALS, kind: Feature, order: -1, default_on: false}
   - name: MC2_EDGE_FOG
     kind: Bool
     default: true
@@ -1620,8 +1612,8 @@ flags:
     default: ""
     rule: Std
     owner: code
-    doc: "FX-FORCE-SPAWN v1 fixture: default-OFF."
-    tokens: "|0|1|2|3|4|5|6|7|8|9|loop"
+    doc: "FX-FORCE-SPAWN v1 fixture: default-OFF. =impact: impact-decal volley."
+    tokens: "|0|1|2|3|4|5|6|7|8|9|loop|impact"
     smoke_passthrough: true
     verified: true
     registry: {feature_id: MC2_FX_FORCE_SPAWN, kind: Feature, order: -1, default_on: false}

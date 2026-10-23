@@ -85,6 +85,7 @@ set(SOURCES ${SOURCES}
     ablxstd_stack.cpp
     ablxstd_std.cpp
     ablxstmt.cpp
+    footprints.cpp
     camera.cpp
     camera_project.cpp
     camera_update.cpp
@@ -100,8 +101,6 @@ set(SOURCES ${SOURCES}
     projectz_overlay.cpp
     render_contract.cpp
     cpu_proj_cost_split.cpp
-    crater.cpp
-    dynamic_decal_ring.cpp
     mapdata.cpp
     quad.cpp
     quad_setup.cpp

@@ -460,7 +460,6 @@ long BattleMech::update (void)
 				else
 					ObjectManager->createExplosion(VEHICLE_EXPLOSION_ID,nullptr,cockpitPos,0.0f,0.0f);
 
-				craterManager->addCrater(CRATER_4,position,mc2_appearance_rng::randomNumber(180));
 				exploding = true;
 			}
 			else if (((timeLeft < -2.5f) && !mechRemoved && (getMoveType() != MOVETYPE_AIR)) ||

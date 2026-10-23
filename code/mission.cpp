@@ -1,3 +1,4 @@
+#include "footprints.h"
 #include "vk_scene_renderer.h"
 #include "effect_resources.h"
 #include "render_submissions.h"
@@ -1209,15 +1210,10 @@ void Mission::destroy (bool initLogistics)
 	if (weaponEffects)
 		weaponEffects->destroy();
 
+	Footprints::destroy();
+
 	ownedWeaponEffects.reset();
 	weaponEffects = nullptr;
-
-	if ( craterManager )
-	{
-		craterManager->~CraterManager();
-		std::free( craterManager );
-		craterManager = nullptr;
-	}
 
 
 	// Teardown order is documented at the declaration (contact.h): after the objects, before the teams.

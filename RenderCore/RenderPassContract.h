@@ -310,7 +310,7 @@ static constexpr RenderPassContract kRenderPassContracts[] = {
     {
         RenderPassId::TerrainDecal,
         "TerrainDecal",
-        "craterManager / quad.cpp",
+        "gos_PushDecal / quad.cpp",
         /*viewUniformsBound*/        false,
         /*pipelineDescRegistered*/   false, // native pipeline, no GL apply
         /*snapshotRowAuthoritative*/ false,

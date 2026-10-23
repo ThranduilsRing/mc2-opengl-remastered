@@ -20,10 +20,6 @@
 #include"vertex.h"
 #endif
 
-#ifndef CRATER_H
-#include"crater.h"
-#endif
-
 #ifndef TERRTXM_H
 #include"terrtxm.h"
 #endif

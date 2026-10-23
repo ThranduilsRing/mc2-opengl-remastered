@@ -1260,6 +1260,7 @@ TEST_CASE("render options default to what the gate rows they replaced defaulted 
     CHECK_FALSE(d.sunElevationFix);
     CHECK_FALSE(d.vfxSoftParticles);
     CHECK_FALSE(d.vfxLitParticles);
+    CHECK(d.impactDecals == 2);        // features ship on: full impact decals unless a preset or the player lowers them
 }
 
 TEST_CASE("render option keys are unique and findable") {
@@ -1270,7 +1271,7 @@ TEST_CASE("render option keys are unique and findable") {
     CHECK(mo::find("NotAnOption") == nullptr);
     CHECK(mo::find("cpuphongretire") == mo::find("CpuPhongRetire"));   // keys are case-insensitive like options.cfg
     CHECK(mo::find("PostCAS") != mo::find("PostCASSharpness"));
-    CHECK(mo::kOptionCount == 16);
+    CHECK(mo::kOptionCount == 17);
 }
 
 TEST_CASE("render option values outside their bounds, NaN and garbage are rejected and change nothing") {
@@ -1481,6 +1482,7 @@ TEST_CASE("the render options serialize as one JSON object of all option values 
     CHECK(d.find("\"StaticPropPbr\": false") != std::string::npos);
     CHECK(d.back() == '}');
     CHECK(std::count(d.begin(), d.end(), ':') == mo::kOptionCount);
+    CHECK(d.find("\"ImpactDecals\": 2") != std::string::npos);
     o.tonemapMode = 3;
     o.staticPropPbr = true;
     o.postCasSharpness = 0.25f;

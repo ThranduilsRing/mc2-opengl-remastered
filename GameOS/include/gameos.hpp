@@ -2373,7 +2373,7 @@ void __stdcall gos_SetTerrainViewport(float vmx, float vmy, float vax, float vay
 void __stdcall gos_SetTerrainCameraPos(float x, float y, float z);
 
 // World-space overlay batch API ─────────────────────────────────────────────
-// Accumulate world-space quads during land->render() / craterManager->render().
+// Accumulate world-space quads during land->render() and the decal producers.
 // gos_DrawTerrainOverlays / gos_DrawDecals are called from txmmgr::renderLists()
 // at the correct phase (after terrain DRAWALPHA detail, before 3D objects).
 //
@@ -2394,7 +2394,7 @@ struct WorldOverlayVert {
 void __stdcall gos_PushTerrainOverlay(const WorldOverlayVert* verts3, unsigned int texHandle);
 
 // Push one triangle (3 verts) to the decal batch.
-// Used for bomb craters and mech footprints.  texHandle identifies the decal atlas.
+// Used for ground decals.  texHandle identifies the decal atlas.
 void __stdcall gos_PushDecal(const WorldOverlayVert* verts3, unsigned int texHandle);
 
 // Flush batches to GPU — call from renderLists() after terrain DRAWALPHA detail.

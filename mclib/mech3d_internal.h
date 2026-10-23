@@ -92,9 +92,6 @@ extern "C" int mc2FreezeMoversActive();
 #include"weaponfx.h"
 #endif
 
-#ifndef CRATER_H
-#include"crater.h"
-#endif
 
 #ifndef GVACTOR_H
 #include"gvactor.h"

@@ -48,7 +48,7 @@ namespace TerrainRuntime
 	// Render/visual surface height. == gameplay height today; may diverge later.
 	float sampleVisualHeight(const glm::vec3& worldPos);
 
-	// Decal chokepoint: terrain decals (craters, impact rings) sit ON the rendered
+	// Decal chokepoint: terrain decals (footprints, contact blobs) sit ON the rendered
 	// surface, so they belong on VISUAL height — unlike grounding, which stays on
 	// gameplay height (TERRAIN-RUNTIME-CONSUMER-DECALS-1). Gate
 	// MC2_TERRAIN_RUNTIME_DECALS (default-OFF). Byte-identical today
