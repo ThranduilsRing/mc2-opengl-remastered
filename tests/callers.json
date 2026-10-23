@@ -3223,6 +3223,13 @@
           "text": "import console_child  # noqa: E402"
         },
         {
+          "path": "tools/scifi_kit/art/batch.py",
+          "line": 33,
+          "evidence": "import",
+          "reference": "console_child",
+          "text": "from console_child import child_kwargs"
+        },
+        {
           "path": "tools/scifi_kit/art/run.py",
           "line": 49,
           "evidence": "import",
@@ -12167,42 +12174,42 @@
       "callers_by_stem": [
         {
           "path": "tools/scifi_kit/art/batch.py",
-          "line": 133,
+          "line": 140,
           "evidence": "import",
           "reference": "analyze",
           "text": "import analyze"
         },
         {
           "path": "tools/scifi_kit/art/batch.py",
-          "line": 144,
+          "line": 151,
           "evidence": "import",
           "reference": "analyze",
           "text": "import analyze"
         },
         {
           "path": "tools/scifi_kit/art/batch.py",
-          "line": 202,
+          "line": 209,
           "evidence": "import",
           "reference": "analyze",
           "text": "import analyze"
         },
         {
           "path": "tools/scifi_kit/art/batch.py",
-          "line": 234,
+          "line": 241,
           "evidence": "import",
           "reference": "analyze",
           "text": "import analyze"
         },
         {
           "path": "tools/scifi_kit/art/batch.py",
-          "line": 511,
+          "line": 518,
           "evidence": "import",
           "reference": "analyze",
           "text": "import analyze"
         },
         {
           "path": "tools/scifi_kit/art/batch.py",
-          "line": 533,
+          "line": 540,
           "evidence": "import",
           "reference": "analyze",
           "text": "import analyze"
@@ -12294,7 +12301,7 @@
         },
         {
           "path": "tools/scifi_kit/art/batch.py",
-          "line": 221,
+          "line": 228,
           "evidence": "import",
           "reference": "arch_props",
           "text": "import arch_props"
@@ -12351,28 +12358,28 @@
         },
         {
           "path": "tools/scifi_kit/art/batch.py",
-          "line": 145,
+          "line": 152,
           "evidence": "import",
           "reference": "archetypes",
           "text": "import archetypes"
         },
         {
           "path": "tools/scifi_kit/art/batch.py",
-          "line": 203,
+          "line": 210,
           "evidence": "import",
           "reference": "archetypes",
           "text": "import archetypes"
         },
         {
           "path": "tools/scifi_kit/art/batch.py",
-          "line": 235,
+          "line": 242,
           "evidence": "import",
           "reference": "archetypes",
           "text": "import archetypes"
         },
         {
           "path": "tools/scifi_kit/art/batch.py",
-          "line": 549,
+          "line": 556,
           "evidence": "import",
           "reference": "archetypes",
           "text": "import archetypes"
@@ -12464,7 +12471,7 @@
         },
         {
           "path": "tools/scifi_kit/art/batch.py",
-          "line": 249,
+          "line": 256,
           "evidence": "import",
           "reference": "assemble",
           "text": "import assemble"
@@ -12703,7 +12710,7 @@
         },
         {
           "path": "tools/scifi_kit/art/batch.py",
-          "line": 305,
+          "line": 312,
           "evidence": "import",
           "reference": "content",
           "text": "import content"
@@ -12718,28 +12725,28 @@
       "callers_by_stem": [
         {
           "path": "tools/scifi_kit/art/batch.py",
-          "line": 117,
+          "line": 124,
           "evidence": "import",
           "reference": "contract",
           "text": "import contract"
         },
         {
           "path": "tools/scifi_kit/art/batch.py",
-          "line": 126,
+          "line": 133,
           "evidence": "import",
           "reference": "contract",
           "text": "import contract"
         },
         {
           "path": "tools/scifi_kit/art/batch.py",
-          "line": 341,
+          "line": 348,
           "evidence": "import",
           "reference": "contract",
           "text": "import contract"
         },
         {
           "path": "tools/scifi_kit/art/batch.py",
-          "line": 534,
+          "line": 541,
           "evidence": "import",
           "reference": "contract",
           "text": "import contract"
@@ -12881,7 +12888,7 @@
         },
         {
           "path": "tools/scifi_kit/art/batch.py",
-          "line": 146,
+          "line": 153,
           "evidence": "import",
           "reference": "drafts",
           "text": "import drafts"
@@ -13229,7 +13236,7 @@
         },
         {
           "path": "tools/scifi_kit/art/batch.py",
-          "line": 294,
+          "line": 301,
           "evidence": "import",
           "reference": "npviews",
           "text": "import npviews"
@@ -13273,7 +13280,7 @@
       "callers_by_stem": [
         {
           "path": "tools/scifi_kit/art/batch.py",
-          "line": 335,
+          "line": 342,
           "evidence": "import",
           "reference": "review_drafts",
           "text": "import review_drafts"
@@ -13288,7 +13295,7 @@
       "callers_by_stem": [
         {
           "path": "tools/scifi_kit/art/batch.py",
-          "line": 248,
+          "line": 255,
           "evidence": "import",
           "reference": "run",
           "text": "import run as runmod"
@@ -13390,28 +13397,28 @@
       "callers_by_stem": [
         {
           "path": "tools/scifi_kit/art/batch.py",
-          "line": 204,
+          "line": 211,
           "evidence": "import",
           "reference": "validate",
           "text": "import validate"
         },
         {
           "path": "tools/scifi_kit/art/batch.py",
-          "line": 342,
+          "line": 349,
           "evidence": "import",
           "reference": "validate",
           "text": "import validate"
         },
         {
           "path": "tools/scifi_kit/art/batch.py",
-          "line": 512,
+          "line": 519,
           "evidence": "import",
           "reference": "validate",
           "text": "import validate"
         },
         {
           "path": "tools/scifi_kit/art/batch.py",
-          "line": 535,
+          "line": 542,
           "evidence": "import",
           "reference": "validate",
           "text": "import validate"
