@@ -11,6 +11,8 @@
 //     the stack — no resource file required.
 
 #include "gos_crashbundle.h"
+#include "crash_content.h"
+#include "crash_content_writer.h"
 #include "Gates/gate.h"
 #include "build_identity.h"  // Stable build identity declarations
 #include "mc2fmt.h"
@@ -83,6 +85,12 @@ static struct {
 // Wide version for ShellExecuteW. ANSI used for WriteFile paths.
 static char  g_crash_folderA[MAX_PATH];
 static WCHAR g_crash_folderW[MAX_PATH];
+static mc2::crash::ContentWriter g_content;
+extern "C" void crashbundle_content_fd(int fd, const char* name, const char* owner) { try { g_content.fd(fd, name, owner); } catch (...) {} }
+extern "C" void crashbundle_content_image(const char* name, const void* bytes, size_t size) { try { g_content.image(name, bytes, size); } catch (...) {} }
+extern "C" void crashbundle_mod(const char* id, int priority) { try { g_content.mod(id, priority); } catch (...) {} }
+extern "C" void crashbundle_save_point(const char* op, const char* path) { try { g_content.savePoint(op, path); } catch (...) {} }
+extern "C" void mc2_log_set_crash_sink(void (*sink)(const char*));
 // Full path to crash.txt (for clipboard copy from dialog)
 static char  g_crash_txtA[MAX_PATH];
 
@@ -153,10 +161,10 @@ static void build_crash_folder(void)
     CreateDirectoryA(crashes_root, nullptr); // OK if exists
 
     _snprintf_s(g_crash_folderA, _countof(g_crash_folderA), _TRUNCATE,
-                "%s\\crash_%04u-%02u-%02u_%02u%02u%02u",
+                "%s\\crash_%04u-%02u-%02u_%02u%02u%02u_%03u_%lu_%llu",
                 crashes_root,
                 st.wYear, st.wMonth, st.wDay,
-                st.wHour, st.wMinute, st.wSecond);
+                st.wHour, st.wMinute, st.wSecond, st.wMilliseconds, GetCurrentProcessId(), GetTickCount64());
     CreateDirectoryA(g_crash_folderA, nullptr);
 
     MultiByteToWideChar(CP_ACP, 0, g_crash_folderA, -1,
@@ -180,7 +188,7 @@ static void write_minidump(EXCEPTION_POINTERS* ep)
     MINIDUMP_TYPE t = (MINIDUMP_TYPE)(
         MiniDumpNormal | MiniDumpWithIndirectlyReferencedMemory);
     MiniDumpWriteDump(GetCurrentProcess(), GetCurrentProcessId(),
-                      h, t, &mei, nullptr, nullptr);
+                      h, t, ep ? &mei : nullptr, nullptr, nullptr);
     CloseHandle(h);
 }
 
@@ -626,6 +634,7 @@ static LONG WINAPI crashbundle_filter(EXCEPTION_POINTERS* ep)
 
         // 3) Write last_trace.txt
         write_ring_snapshot();
+        g_content.snapshot(g_crash_folderA);
 #ifdef MC2_VULKAN_ISLAND
         __try { mc2vk::infra::crashSnapshot(g_crash_folderA); }
         __except(EXCEPTION_EXECUTE_HANDLER) { /* A damaged mapping must not prevent the CPU bundle. */ }
@@ -670,6 +679,23 @@ static LONG WINAPI crashbundle_heap_corruption_handler(EXCEPTION_POINTERS* ep)
     if (ep->ExceptionRecord->ExceptionCode != kStatusHeapCorruption)
         return EXCEPTION_CONTINUE_SEARCH;
     return crashbundle_filter(ep);
+}
+
+extern "C" void crashbundle_device_lost(void)
+{
+    if (InterlockedCompareExchange(&g_in_filter, 1, 0) != 0) return;
+    build_crash_folder();
+    const char reason[] = "Reason: Vulkan device lost\nFingerprint: " MC2_BUILD_FP_LITERAL "\n";
+    write_file_all(g_crash_txtA, reason, sizeof(reason) - 1);
+    write_ring_snapshot();
+    g_content.snapshot(g_crash_folderA);
+    write_profile_json();
+    write_minidump(nullptr); // Live-process dump: there is no CPU exception for device loss.
+#ifdef MC2_VULKAN_ISLAND
+    mc2vk::infra::crashSnapshot(g_crash_folderA);
+#endif
+    fprintf(stderr, "[CRASHBUNDLE] device_lost bundle=%s\n", g_crash_folderA);
+    InterlockedExchange(&g_in_filter, 0);
 }
 
 // ---------------------------------------------------------------------------
@@ -723,6 +749,13 @@ extern "C" void crashbundle_init(void)
         strcpy_s(g_cfg.exe_dir, _countof(g_cfg.exe_dir), ".");
     }
 
+    char journal[MAX_PATH];
+    sprintf_s(journal, "%s\\debug_state", g_cfg.exe_dir);
+    CreateDirectoryA(journal, nullptr);
+    sprintf_s(journal, "%s\\debug_state\\crash_content.jsonl", g_cfg.exe_dir);
+    g_content.init(journal);
+    g_content.mod("base", -1);
+    mc2_log_set_crash_sink(crashbundle_append);
     SetUnhandledExceptionFilter(crashbundle_filter);
     AddVectoredExceptionHandler(1, crashbundle_heap_corruption_handler);
 }

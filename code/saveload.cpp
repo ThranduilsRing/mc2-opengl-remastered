@@ -1,4 +1,5 @@
 #include "save_archive.h"
+#include "../GameOS/gameos/crash_content.h"
 #include "save_exactness.h"
 #include "simulation_save_section.h"
 #include "utils/mc2log.h"
@@ -72,6 +73,7 @@ void Part::Save (FitIniFilePtr file, long partNum)
 // so a bad slot/ordering is diagnosable after the fact.
 static void saveloadTrace(const char* op, const char* file, const char* missionFile)
 {
+    crashbundle_save_point(op, file);
     MC2_LOG(Io, Info, "[SAVELOAD] op={} file={} mission={}",
             op, file ? file : "(null)", missionFile ? missionFile : "(null)");
 }

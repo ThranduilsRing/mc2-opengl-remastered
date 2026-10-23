@@ -558,6 +558,7 @@ static std::optional<int> TryModOpen(const char* fileName, const char* req = nul
     }
     int h = _open(it->second.path.c_str(), _O_RDONLY | _O_BINARY);
     if (h == -1) return std::nullopt;
+    crashbundle_content_fd(h, fileName, it->second.modId.c_str());
     if (logFileResolve) {
         printf("[mod-hit] [%s] %s -> %s\n",
                it->second.modId.c_str(), key.c_str(), it->second.path.c_str());
@@ -858,6 +859,7 @@ void InitModSearchPaths(const char* modsRoot) {
     _snprintf(activeDataDir, sizeof(activeDataDir), "%s%s/data/", absRoot, envMod);
     activeDataDir[sizeof(activeDataDir)-1] = '\0';
     if (!stockMode && GetFileAttributesA(activeDataDir) != INVALID_FILE_ATTRIBUTES) {
+        crashbundle_mod(modId.c_str(), 0);
         size_t before = g_modIndex.size();
         if (!TryLoadModCache(g_modIndex, absRoot, modId.c_str(), activeDataDir))
             IndexModDataCached(g_modIndex, g_shadowedBy, absRoot, modId.c_str(), activeDataDir, "data/");
@@ -884,6 +886,7 @@ void InitModSearchPaths(const char* modsRoot) {
         size_t before = g_modIndex.size();
         if (!TryLoadModCache(g_modIndex, absRoot, dep.c_str(), depDataDir))
             IndexModDataCached(g_modIndex, g_shadowedBy, absRoot, dep.c_str(), depDataDir, "data/");
+        crashbundle_mod(dep.c_str(), int(i + 1));
         printf("[mod] [%zu/%zu] dep '%s': %zu new files\n",
                i+2, deps.size()+1, dep.c_str(), g_modIndex.size() - before);
     }

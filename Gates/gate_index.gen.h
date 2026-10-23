@@ -10,7 +10,7 @@
 
 namespace mc2::gate::detail {
 
-inline constexpr std::size_t kGateCount = 799;
+inline constexpr std::size_t kGateCount = 800;
 
 inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_ABL_ARG_GUARD", Kind::Bool, Rule::Lead1, {}},
@@ -668,6 +668,7 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_TERRAIN_VISUAL_DISPLACE_OBJFADE_RADIUS", Kind::Float, Rule::Prefix, {}},
     {"MC2_TERRAIN_VISUAL_HEIGHT", Kind::Bool, Rule::Lead0, {}},
     {"MC2_TERRAIN_VISUAL_HEIGHT_FILE", Kind::String, Rule::Std, {}},
+    {"MC2_TEST_CRASH_FRAME", Kind::Int, Rule::Std, {}},
     {"MC2_TEST_SPAWN", Kind::Bool, Rule::Lead1, {}},
     {"MC2_TEXMGR_KTX_PRIMARY", Kind::Int, Rule::Prefix, {}},
     {"MC2_TEXMGR_LOAD_TRACE", Kind::Bool, Rule::Presence, {}},

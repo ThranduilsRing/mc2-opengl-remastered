@@ -29,6 +29,7 @@ get_filename_component(MC2_WORKTREE_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../.." ABS
 
 add_executable(mc2_tests
     test_main.cpp           # owns DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
+    test_crash_bundle.cpp
     test_mission_environment.cpp
     ${MC2_WORKTREE_ROOT}/GameOS/gameos/visual_tuning_profile.cpp
     ${MC2_WORKTREE_ROOT}/GameAdapters/MissionEnvironmentAdapter.cpp
