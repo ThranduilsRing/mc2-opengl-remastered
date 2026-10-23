@@ -248,7 +248,8 @@ long GlobalMap::calcLinkCost (long startDoor, long thruArea, long goalDoor) {
 			auto hit = s_openLinkCost.find(openKey);
 			if (hit != s_openLinkCost.end()) {
 				ClearBridgeTiles = false;
-				return(hit->second);
+				[[maybe_unused]] const auto& [cachedKey, cachedCost] = *hit;
+				return(cachedCost);
 			}
 			haveOpenKey = true;
 		}

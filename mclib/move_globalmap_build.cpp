@@ -1026,7 +1026,7 @@ void GlobalMap::beginDoorProcessing (void) {
 void GlobalMap::addDoor (long area1, long area2, long row, long col, long length, long dir) {
 
 
-	bool newDoor = s_doorKeys.insert(doorKey(row, col, length, dir)).second;
+	[[maybe_unused]] const auto [doorSlot, newDoor] = s_doorKeys.insert(doorKey(row, col, length, dir));
 
 	if (newDoor) {
 		doorBuildList[numDoors].row = row;
