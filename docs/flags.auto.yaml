@@ -3,9 +3,9 @@
 # Where each gate is read, what the smoke runner forwards and what tier1_env_vars.md says are not here: ask
 # tools/repo_intel (env_var, gate_status), which scan the sources.
 generator_version: "3.0.0"
-gate_count: 893
-registry_entry_count: 182
-verified_count: 785
+gate_count: 892
+registry_entry_count: 181
+verified_count: 784
 flags:
   - name: MC2_3DVIEW_DIAG
     kind: Bool
@@ -2221,15 +2221,6 @@ flags:
     rule: Lead1
     owner: unclassified
     doc: ""
-  - name: MC2_ICON_FAILLOUD
-    kind: Bool
-    default: false
-    rule: Lead0
-    owner: mech
-    doc: "META-FIX design B PART 3 (code/mechicon.cpp iconTileChecked at the three CPU icon-tile blits): default OFF. =1 substitutes a solid MAGENTA tile when an icon..."
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_FEATURE_ICON_FAILLOUD, kind: Feature, order: -1, default_on: false}
   - name: MC2_IFACE_COST_SPLIT
     kind: Bool
     default: false

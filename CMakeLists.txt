@@ -532,6 +532,7 @@ set(SOURCES
     "code/infowindow.cpp"
     "code/keyboardref.cpp"
     "code/mechicon.cpp"
+    "code/icon_registry.cpp"
     "code/missiongui.cpp"
     "code/missiongui_diag.cpp"
     "code/missiongui_update.cpp"

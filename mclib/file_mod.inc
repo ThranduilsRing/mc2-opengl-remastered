@@ -639,6 +639,16 @@ void EnumerateModCampaignFiles(ModCampaignCallback cb, void* userData) {
     }
 }
 
+void EnumerateModFiles(std::string_view keyPrefix, ModFitCallback cb, void* userData) {
+    if (keyPrefix.empty() || !cb) return;
+    const std::string prefix = NormalizeKey(std::string(keyPrefix).c_str());
+    std::vector<std::string> keys;
+    for (const auto& [key, entry] : g_modIndex)
+        if (key.compare(0, prefix.size(), prefix) == 0) keys.push_back(key);
+    std::sort(keys.begin(), keys.end());
+    for (const auto& key : keys) cb(key.c_str(), userData);
+}
+
 void EnumerateModFitFiles(const char* keyPrefix, ModFitCallback cb, void* userData) {
     if (g_modIndex.empty() || !keyPrefix || !cb) return;
     std::string prefix = NormalizeKey(keyPrefix);
