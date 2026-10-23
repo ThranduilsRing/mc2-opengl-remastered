@@ -497,6 +497,7 @@ set(SOURCES
     "code/ablmc2_state.cpp"
     "code/gamecam.cpp"
     "code/mission.cpp"
+    "code/sim_tick_cost.cpp"
     "code/mission_update.cpp"
     "code/mission_update_audit.cpp"
     "code/mission_movers.cpp"

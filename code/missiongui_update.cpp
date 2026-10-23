@@ -145,8 +145,9 @@ void MissionInterfaceManager::update (void)
 			static bool s_qlDone = false;
 			// An intro camera can delay both thresholds. Keep the requested gap
 			// after the actual save, so load never races it or reads an older file.
+			const long requestedGap = std::max(1L, s_qlAt - s_qsAt);
 			const long loadAt = s_qsAt > 0 && s_qsIssuedAt >= 0
-				? std::max(s_qlAt, s_qsIssuedAt + std::max(1L, s_qlAt - s_qsAt)) : s_qlAt;
+				? std::max(s_qlAt, s_qsIssuedAt + requestedGap) : s_qlAt;
 			if (!s_qlDone && (s_qsAt <= 0 || s_qsIssuedAt >= 0) &&
 				static_cast<long>(g_mc2FrameCounter) >= loadAt &&
 				eye && !eye->inMovieMode) {
