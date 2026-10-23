@@ -175,18 +175,18 @@ static ModelOverrideChain parseChain(const json& e, std::string_view field, std:
 
 // Parse manifestPath and return all valid records stamped with dir.
 // No duplicate-key check here -- callers apply their own policy.
-static std::vector<ModelOverrideRecord> parseManifest(const std::string& manifestPath, std::string_view dir) {
+static std::vector<ModelOverrideRecord> parseManifest(std::string_view manifestPath, std::string_view dir) {
     std::vector<ModelOverrideRecord> out;
-    std::ifstream in(manifestPath.c_str());
+    std::ifstream in{std::filesystem::path(manifestPath)};
     if (!in.is_open()) return out;
     json root;
     try { in >> root; }
     catch (const std::exception& e) {
-        mc2::fmt::print_err("[MODOVERRIDE] parse error in {}: {}\n", manifestPath.c_str(), mc2::fmt::safe(e.what()));
+        mc2::fmt::print_err("[MODOVERRIDE] parse error in {}: {}\n", manifestPath, mc2::fmt::safe(e.what()));
         return out;
     }
     if (!root.is_object() || !root.contains("overrides") || !root["overrides"].is_array()) {
-        mc2::fmt::print_err("[MODOVERRIDE] {}: missing 'overrides' array\n", manifestPath.c_str());
+        mc2::fmt::print_err("[MODOVERRIDE] {}: missing 'overrides' array\n", manifestPath);
         return out;
     }
     for (const auto& e : root["overrides"]) {
@@ -242,7 +242,7 @@ static std::vector<ModelOverrideRecord> parseManifest(const std::string& manifes
     return out;
 }
 
-int ModelOverrideRegistry::loadFromFile(const std::string& manifestPath, std::string_view manifestDir) {
+int ModelOverrideRegistry::loadFromFile(std::string_view manifestPath, std::string_view manifestDir) {
     records_.clear();
     manifestDir_ = manifestDir;
     // Dup check: first entry wins within a single file.
@@ -255,7 +255,7 @@ int ModelOverrideRegistry::loadFromFile(const std::string& manifestPath, std::st
     return static_cast<int>(records_.size());
 }
 
-int ModelOverrideRegistry::mergeFromFile(const std::string& manifestPath, std::string_view manifestDir) {
+int ModelOverrideRegistry::mergeFromFile(std::string_view manifestPath, std::string_view manifestDir) {
     int merged = 0;
     for (auto& rec : parseManifest(manifestPath, manifestDir)) {
         auto it = std::find_if(records_.begin(), records_.end(), [&](const auto& r) {
@@ -343,7 +343,7 @@ std::vector<std::string> modelOverrideMountOrder(std::string_view activeMod, std
 static std::vector<std::string> activeModJsonDeps(const std::string& activeMod) {
     std::vector<std::string> deps;
     if (activeMod.empty()) return deps;
-    std::ifstream in(("mods/" + activeMod + "/mod.json").c_str());   // path-audit: loose-only (mod root metadata)
+    std::ifstream in(std::filesystem::path("mods") / activeMod / "mod.json");   // path-audit: loose-only (mod root metadata)
     if (!in.is_open()) return deps;
     try {
         json root;
@@ -368,7 +368,7 @@ ModelOverrideRegistry& ModelOverrideRegistry::instance() {
         // per-record manifestDir is what routes a GLB to its provider.
         const std::string active = mc2::gate::str<"MC2_ACTIVE_MOD">();
         for (const auto& root : modelOverrideMountOrder(active, mc2::gate::str<"MC2_MOD_DEPS">(), activeModJsonDeps(active))) {
-            const std::string dir = root + "/data/model_overrides";
+            const std::string dir = (std::filesystem::path(root) / "data/model_overrides").generic_string();
             const int n = g.mergeFromFile(dir + "/models.json", dir);
             const int c = g.mergeConditionsFromFile(dir + "/conditions.json");
             if (n || c)

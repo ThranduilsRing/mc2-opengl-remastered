@@ -85,10 +85,6 @@ extern "C" void  batcher_setMechNormalsSmoothDeg(float deg);
 extern "C" float batcher_getMechNormalsSmoothDeg();
 extern "C" void  batcher_rebuildMechNormals();
 // gated hemisphere ambient fill (per-flush uniform, no rebuild).
-extern "C" void  batcher_setMechAmbientEnabled(int on);
-extern "C" int   batcher_getMechAmbientEnabled();
-extern "C" void  batcher_setMechAmbientStrength(float s);
-extern "C" float batcher_getMechAmbientStrength();
 // MECH-SPECULAR-V1: gated Blinn specular sheen (per-flush uniforms, no rebuild).
 // Effective only when MC2_MECH_VIEWUNIFORMS=1 (shader has camera position data).
 extern "C" void  batcher_setMechSpecularEnabled(int on);
