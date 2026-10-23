@@ -258,6 +258,29 @@ def prepare(source,pipeline,out,only=None):
     return assets
 
 
+def validate_states(source,pipeline,name,states):
+    """Pristine-only gate: glTF validation + baked atlas + tangent data of the given states' 3 LODs (no IR / destroyed pairing). -> failure strings."""
+    sys.dont_write_bytecode=True
+    sys.path.insert(0,str(pipeline))
+    from tools.content_pipeline import gltf_io,validate
+    out=[]
+    for cond in states:
+        for i in range(3):
+            path=source/'pbr'/f'{name}_{cond}_lod{i}.glb'
+            if not path.is_file():
+                out.append(f'content: missing {path.name}');continue
+            errs=validate.errors(validate.validate_gltf(path))
+            if errs:out.append(f'content: {path.name}: {errs}');continue
+            doc,_=document(path)
+            if not doc.get('images'):out.append(f'content: {path.name}: no baked atlas')
+            _,buffers,_=gltf_io.load_document(path)
+            for mesh in doc['meshes']:
+                for p_ in mesh['primitives']:
+                    if not {'POSITION','NORMAL','TEXCOORD_0','TANGENT'}<=set(p_['attributes']):
+                        out.append(f'content: {path.name}: missing tangent-space vertex data')
+    return out
+
+
 def main():
     import psutil
     proc=psutil.Process();proc.cpu_affinity(list(range(psutil.cpu_count()))[2:4]);proc.nice(psutil.BELOW_NORMAL_PRIORITY_CLASS)

@@ -256,6 +256,7 @@ def main():
     ap.add_argument('--force-bake', action='store_true', help='owner tool (MC2_KIT_EXPERT=1)')
     ap.add_argument('--full', action='store_true', help='batch: full 5-state bake now (default: tier A first, full once the params hash is stable)')
     ap.add_argument('--retry-failed', action='store_true', help='batch: only failed/unfinished assets of the category')
+    ap.add_argument('--states', default=None, help='batch: "pristine" bakes/validates/commits the pristine state only (default: all five)')
     ap.add_argument('--commit', action='store_true', help='batch: commit the assets that pass today (stamps hashes; refuses failing ones)')
     ap.add_argument('--recheck', action='store_true', help='batch (owner): re-validate committed assets, demote failures to draft')
     ap.add_argument('--no-blender', action='store_true')

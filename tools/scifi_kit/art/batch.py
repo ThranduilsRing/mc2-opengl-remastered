@@ -64,6 +64,21 @@ HINTS = dict(counts='edit counts/features to the stock evidence (side views); a 
              pytest='the kit pytest is red for this asset: fix it before committing')
 
 
+def states_of(args):
+    """--states pristine -> ['pristine'] (owner 2026-10-23: pristine-only until the shapes are signed off); unset -> None (all five)."""
+    s = getattr(args, 'states', None)
+    if not s or s == 'all':
+        return None
+    if s != 'pristine':
+        raise SystemExit(f'--states: only "pristine" or "all" are supported (got {s!r})')
+    return ['pristine']
+
+
+def tier_key(tier, states):
+    """Stamp tier name; pristine-only stamps never satisfy a full-state gate."""
+    return tier + 'p' if states else tier
+
+
 def jobs_n():
     try:
         return int(JOBS_FILE.read_text().split()[0])
@@ -240,13 +255,13 @@ def run_blender(tag, names, suffix, samples, conds, export, threads):
         assemble.montage(OUT / tag, n, conds)
 
 
-def run_tier(tag, names, tier, samples, tag_suffix):
+def run_tier(tag, names, tier, samples, tag_suffix, states=None):
     """Blender for `names` in at most 2 processes, threads = JOBS // processes (lane rule: one number N). -> list of error strings."""
     if not names:
         return []
     groups = [g for g in ([names[i::2] for i in range(2)] if len(names) > 1 else [names]) if g]
     threads = max(1, jobs_n() // len(groups))
-    conds, export = (CONDS, True) if tier == 'B' else (TIER_A_CONDS, False)
+    conds, export = (states or CONDS, True) if tier == 'B' else (states or TIER_A_CONDS, False)
     errors = []
 
     def worker(g, i):
@@ -282,29 +297,32 @@ def stock_views(names):
             npviews.save_stock_views(n, STOCK_VIEWS)
 
 
-def content_ir(tag, name):
+def content_ir(tag, name, states=None):
     """content.py IR validation of the 15 baked glbs (ART-BAR 10.3); -> failure strings."""
     if not (PIPELINE / 'tools' / 'content_pipeline').is_dir():
         return [f'content: content pipeline not found at {PIPELINE}; IR validation cannot run']
     try:
         import content
+        if states:
+            return content.validate_states(OUT / tag, PIPELINE, name, states)
         content.prepare(OUT / tag, PIPELINE, OUT / tag / 'ir', [name])
         return []
     except Exception as exc:
         return [f'content: IR validation failed ({type(exc).__name__}: {str(exc)[:300]})']
 
 
-def contact_sheet(tag, names, path):
+def contact_sheet(tag, names, path, states=None):
     from PIL import Image, ImageDraw, ImageOps
     cell = 220
-    cols = ['stock front', 'stock left'] + CONDS
+    conds = states or CONDS
+    cols = ['stock front', 'stock left'] + conds
     im = Image.new('RGB', (150 + cell * len(cols), 40 + cell * len(names)), (24, 28, 32))
     d = ImageDraw.Draw(im)
     for c, label in enumerate(cols):
         d.text((150 + c * cell + 6, 14), label, fill=(190, 196, 190))
     for r, n in enumerate(names):
         d.text((6, 40 + r * cell + 6), n, fill=(232, 234, 230))
-        files = [STOCK_VIEWS / f'{n}_stock_front.png', STOCK_VIEWS / f'{n}_stock_left.png'] + [OUT / tag / f'{n}_{c}_beauty.png' for c in CONDS]
+        files = [STOCK_VIEWS / f'{n}_stock_front.png', STOCK_VIEWS / f'{n}_stock_left.png'] + [OUT / tag / f'{n}_{c}_beauty.png' for c in conds]
         for c, f in enumerate(files):
             if f.is_file():
                 t = ImageOps.contain(Image.open(f).convert('RGB'), (cell - 6, cell - 6))
@@ -332,6 +350,7 @@ def batch(args):
         print('[batch] --force-bake/--reanalyze are owner tools (set MC2_KIT_EXPERT=1); ignored')
         args.force_bake = args.reanalyze = False
     t_all = time.time()
+    states = states_of(args)
     names = pick(args)
     if not names:
         print('[batch] nothing to do')
@@ -348,7 +367,7 @@ def batch(args):
             s.update(archetype=p['archetype'], drafted=drafted, psha=contract.params_sha(p))
             s['stage'].update(t)
             t0 = time.time()
-            res = validate.validate(n)
+            res = validate.validate(n, states=states)
             s['stage']['validate_pre'] = round(time.time() - t0, 1)
             s['pre'] = res
             ok = res['ok']
@@ -379,9 +398,9 @@ def batch(args):
         psha = summary[n]['psha']
         if args.no_blender:
             continue
-        if stamp_ok(tag, n, 'B', psha):
+        if stamp_ok(tag, n, tier_key('B', states), psha):
             cached.append(n)
-        elif args.full or stamp_ok(tag, n, 'A', psha):
+        elif args.full or stamp_ok(tag, n, tier_key('A', states), psha):
             tierB.append(n)
         else:
             tierA.append(n)
@@ -389,16 +408,16 @@ def batch(args):
     summary_tier.update({n: 'A' for n in tierA})
     summary_tier.update({n: 'B' for n in tierB})
     print(f'[batch] bake: tier A {tierA}, tier B {tierB}, cached (params unchanged) {cached}', flush=True)
-    errs = run_tier(tag, tierA, 'A', args.samples, 'a') + run_tier(tag, tierB, 'B', args.samples, 'b')
+    errs = run_tier(tag, tierA, 'A', args.samples, 'a', states) + run_tier(tag, tierB, 'B', args.samples, 'b', states)
     bad = {e.split(':')[0] for e in errs}
     for e in errs:
         print('[batch] blender error:', e, flush=True)
     for n in tierA:
         if n not in bad:
-            stamp_write(tag, n, 'A', summary[n]['psha'])
+            stamp_write(tag, n, tier_key('A', states), summary[n]['psha'])
     for n in tierB:
         if n not in bad:
-            stamp_write(tag, n, 'B', summary[n]['psha'])
+            stamp_write(tag, n, tier_key('B', states), summary[n]['psha'])
     blender_wall = round(time.time() - t0, 1)
     secs = blender_seconds(tag, ready)
     # 4. post-bake validate + content IR (tier B / cached only), sheets
@@ -412,9 +431,9 @@ def batch(args):
             if n in bad:
                 res = dict(res, ok=False, failures=res['failures'] + [f'bake: Blender failed or timed out ({[e for e in errs if e.startswith(n + ":")]})'])
             elif s['tier'] in ('B', 'cached'):
-                res = validate.validate(n, pass_dir=OUT / tag)
+                res = validate.validate(n, pass_dir=OUT / tag, states=states)
                 if res['ok']:
-                    cf = content_ir(tag, n)
+                    cf = content_ir(tag, n, states)
                     res = dict(res, ok=not cf, failures=res['failures'] + cf)
                 s['post'] = res
             else:
@@ -437,7 +456,7 @@ def batch(args):
     shown = [n for n in ready if n not in bad]
     if not args.no_blender and shown:
         try:
-            sheets['contact'] = str(contact_sheet(tag, shown, OUT / tag / f'contact-{tag}.png'))
+            sheets['contact'] = str(contact_sheet(tag, shown, OUT / tag / f'contact-{tag}.png', states))
             sheets['five_sides'] = str(five_sides(tag, shown, OUT / tag / f'five-sides-{tag}.png'))
         except Exception as exc:
             print('[batch] sheet error:', exc)
@@ -515,6 +534,7 @@ def commit(args):
     import contract
     import validate
     tag = args.tag
+    states = states_of(args)
     st = load_status()
     names = [a.strip().lower() for a in args.assets.split(',') if a.strip()] if args.assets else [n for n, v in st.items() if v.get('state') == 'passed']
     names = names[:COMMIT_MAX]
@@ -532,11 +552,11 @@ def commit(args):
             if st.get(n, {}).get('state') != 'passed' or st[n].get('psha') != psha:
                 refused[n] = ['status: no passing batch for this exact params hash; re-run the batch']
                 continue
-            if not stamp_ok(tag, n, 'B', psha):
+            if not stamp_ok(tag, n, tier_key('B', states), psha):
                 refused[n] = ['bake: the full (tier B) bake is not current for these params/code']
                 continue
-            res = validate.validate(n, pass_dir=OUT / tag)
-            fl = res['failures'] + (content_ir(tag, n) if res['ok'] else [])
+            res = validate.validate(n, pass_dir=OUT / tag, states=states)
+            fl = res['failures'] + (content_ir(tag, n, states) if res['ok'] else [])
             if fl:
                 refused[n] = fl
                 continue

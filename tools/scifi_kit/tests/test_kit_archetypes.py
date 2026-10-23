@@ -391,3 +391,15 @@ def test_commit_refuses_failing_assets(tmp_path, monkeypatch):
     with pytest.raises(SystemExit):
         batch.commit(args)
     assert (ASSETS / 'barracks.params.json').read_text() == before
+
+
+def test_pristine_only_mode():
+    """--states pristine: only the pristine state is built/validated; stamps are kept apart from the full-state ones."""
+    assert batch.states_of(SimpleNamespace(states=None)) is None
+    assert batch.states_of(SimpleNamespace(states='pristine')) == ['pristine']
+    with pytest.raises(SystemExit):
+        batch.states_of(SimpleNamespace(states='worn'))
+    assert batch.tier_key('B', ['pristine']) != batch.tier_key('B', None)
+    res = validate.validate('smallfueltank', pre=True, states=['pristine'])
+    assert 'tris' in res['metrics'] or res['metrics'] is not None
+    assert set(res['metrics'].get('tris', {'pristine': 0})) == {'pristine'}

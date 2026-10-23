@@ -340,7 +340,7 @@ def glb_soup(path, name):
 
 
 # ------------------------------------------------------------------ the validator
-def validate(name, pass_dir=None, pre=False, with_masks=True, params=None):
+def validate(name, pass_dir=None, pre=False, with_masks=True, params=None, states=None):
     """-> dict(asset, ok, failures[], notes[], waivers[], metrics{}). `pass_dir` adds the post-bake checks; `params` overrides params.json (tests)."""
     th = thresholds()
     fails, notes, met = [], [], {}
@@ -364,7 +364,7 @@ def validate(name, pass_dir=None, pre=False, with_masks=True, params=None):
         raise
     # --- states
     ks = {}
-    for c in STATES:
+    for c in (states or STATES):
         try:
             ks[c] = build_game(name, c)
         except Exception as exc:     # a state that cannot be built is missing
@@ -449,7 +449,7 @@ def validate(name, pass_dir=None, pre=False, with_masks=True, params=None):
                 fails.append(f'silhouette: {view} (side{idx}) IoU {r["iou"]:.2f} < {need:.2f}')
     # --- post-bake
     if pass_dir:
-        fails.extend(check_baked(name, Path(pass_dir), bud, expect, th, met, p, a))
+        fails.extend(check_baked(name, Path(pass_dir), bud, expect, th, met, p, a, states))
     return dict(asset=name, ok=not fails, failures=fails, notes=notes, waivers=contract.waiver_list(p) if p else [], metrics=met)
 
 
@@ -604,11 +604,11 @@ def expected_sockets(name, k):
     return len(lights.light_specs(name, k.meta['size'], 'pristine'))
 
 
-def check_baked(name, d, bud, expect, th, met, p=None, a=None):
+def check_baked(name, d, bud, expect, th, met, p=None, a=None, states=None):
     out = []
     pbr = d / 'pbr'
     per = {}
-    for c in STATES:
+    for c in (states or STATES):
         for i in range(3):
             if not (pbr / f'{name}_{c}_lod{i}.glb').is_file():
                 out.append(f'bake: missing {name}_{c}_lod{i}.glb')
