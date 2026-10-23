@@ -10,7 +10,7 @@
 
 namespace mc2::gate::detail {
 
-inline constexpr std::size_t kGateCount = 802;
+inline constexpr std::size_t kGateCount = 799;
 
 inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_ABL_ARG_GUARD", Kind::Bool, Rule::Lead1, {}},
@@ -356,7 +356,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_M2D_PZ_PARITY", Kind::Bool, Rule::Presence, {}},
     {"MC2_MATERIAL_GPU", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_MATERIAL_GPU_SAMPLE", Kind::Bool, Rule::Lead0Kill, {}},
-    {"MC2_MATERIAL_KTX", Kind::Bool, Rule::Lead0P, {}},
     {"MC2_MDI_SUBMIT_TRACE", Kind::Bool, Rule::Presence, {}},
     {"MC2_MECH_ANIM_ROTATION_ONLY", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_MECH_BATCHER_STATS", Kind::Bool, Rule::Presence, {}},
@@ -556,8 +555,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_STABLE_LIGHT_SKIP", Kind::Bool, Rule::Std, {}},
     {"MC2_STABLE_LIGHT_SKIP_DIAG", Kind::Bool, Rule::Std, {}},
     {"MC2_STABLE_LIGHT_SKIP_TOUCH", Kind::Bool, Rule::Std, {}},
-    {"MC2_STATICPROP_BC7", Kind::Bool, Rule::Lead0P, {}},
-    {"MC2_STATICPROP_MATERIAL_PBR_SLOTS", Kind::Bool, Rule::Lead0, {}},
     {"MC2_STATICPROP_RECIPE_SPOTLIGHT_SKIP", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_STATICPROP_TEX_TIER", Kind::Int, Rule::Prefix, {}},
     {"MC2_STATIC_FORCE_ADMIT", Kind::Bool, Rule::Presence, {}},

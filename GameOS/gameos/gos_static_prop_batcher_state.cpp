@@ -181,13 +181,6 @@ bool pbrV1Enabled() {   // first-use read, see staticPropAmbientV1Enabled()
     return on;
 }
 
-// STATICPROP-MATERIAL-ORM-1: gate for per-bucket linear ORM (occlusion-
-// roughness-metallic) texture-array slots + sidecar feed. Default-OFF; "=1"
-// / any non-"0", non-empty value enables. Mirrors the s_pbrV1Enabled env-parse
-// idiom. When OFF, zero ORM arrays are built and zero extra sidecar I/O occurs
-// so the gate-OFF path is byte-identical.
-extern const bool s_ormSlotsEnabled = mc2::gate::get<"MC2_STATICPROP_MATERIAL_PBR_SLOTS">();
-
 // V-MATERIAL-PBR-2 safety interlock: when MC2_VIEW_UNIFORMS=0 the shader's
 // PBR block is excluded by `#if defined(MC2_USE_VIEW_UNIFORMS)` (compile-
 // time guard). This runtime flag is the belt to the compile-time
@@ -414,10 +407,9 @@ const float* iblShCoeffsForUpload() {
 //   6 = metallicFactor as grayscale  (V-MATERIAL-PBR-1)
 // Values outside the implemented range render as hot-pink in the shader.
 int s_staticPropDebugMaterialMode = 0;
-bool s_materialKtxEnabled = mc2::gate::get<"MC2_MATERIAL_KTX">();   // MC2_MATERIAL_KTX=1
 // MC2_STATICPROP_TEX_TIER: 128 | 256 | 512 (default) | 1024
 // Selects which cooked tier directory (data/tgl/<tier>/<name>.ktx2) is loaded
-// when MC2_MATERIAL_KTX=1. Launcher sets this from the Graphics / Texture Quality
+// when a KTX sidecar exists. Launcher sets this from the Graphics / Texture Quality
 // slider; engine reads it once at process start.
 int texTier() {   // first-use read, see staticPropAmbientV1Enabled()
     static const int tier = []() -> int {
@@ -426,11 +418,6 @@ int texTier() {   // first-use read, see staticPropAmbientV1Enabled()
     }();
     return tier;
 }
-// COMPRESSION-BC7-STATICPROP-1: gate for BC7-compressed KTX2 static-prop arrays.
-// Default-OFF; effective only when s_materialKtxEnabled is also true. When the
-// per-group BC7 conditions (all-or-nothing + uniform-dim) are not met, the group
-// falls back to the existing RGBA8 path → byte-identical to gate-OFF.
-bool s_staticPropBc7Enabled = mc2::gate::get<"MC2_STATICPROP_BC7">(); // MC2_STATICPROP_BC7=1
 // Tracks whether finalizeGeometry() produced a correctly-sized sidecar.
 // Reset to false at the start of every finalizeGeometry() call; set to true
 // only after the sidecar loop completes with size == emitted count.
@@ -462,19 +449,8 @@ std::vector<float> s_typeHotColors;
 std::unordered_map<uint32_t, uint32_t> s_typeInstanceCountPrevFrame;
 bool s_reinjectedThisFrame = false;  // item-4 once-per-frame guard
 
-std::vector<int32_t>              s_packetBucketIndex;  // per global packet; -1 if unassigned
 std::vector<uint8_t>              s_slotBucketIndex;    // per sorted draw slot
 std::vector<uint32_t>             s_bucketCmdCount;     // per bucket, in sorted-slot order
-
-// STATICPROP-MATERIAL-ORM-1 — per-bucket LINEAR ORM (occlusion-roughness-
-// metallic) sibling arrays. INVARIANT: s_ormBucketArrays.size() ==
-// s_bucketArrays.size(), and ORM layer k in bucket b corresponds to the SAME
-// unique as albedo layer k in bucket b (metallicRoughnessTex == albedoTex).
-// Each ORM array is DENSE/bindable: layers without a real sidecar get a 1x1-
-// replicated neutral (255,255,255,255) texel. s_ormLayerHasMap[b][k] records
-// whether bucket b layer k had a REAL ORM map (drives the material flag).
-// All three vectors stay empty when the gate (s_ormSlotsEnabled) is OFF.
-std::vector<std::vector<bool>>    s_ormLayerHasMap;     // per bucket, per bucket-relative layer
 
 std::vector<uint32_t> s_sortedTypeOrder;
 uint32_t s_alphaOffCount = 0;

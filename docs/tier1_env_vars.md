@@ -681,7 +681,6 @@ lights should remain visible at every angle instead of blinking out.
 - `MC2_VFX_DEBUG_MODE=N` — GPU particle frag debug (0=Final,1=Albedo,2=Alpha,3=Kind,4=Overdraw).
 - `MC2_VFX_AGE_SAMPLE=1` — sample curves at real m_age. Default **OFF**.
 - `MC2_VFX_ORACLE_RENDER=1` — Phase 1 originals-restoration (CardCloud+ShardCloud oracle). Default **OFF**.
-- `MC2_MATERIAL_KTX=1` — KTX2 sidecar loader for static-prop tex array. Default **OFF**.
 - **options.cfg `VfxSoftParticles`** (this was the env gate `MC2_VFX_SOFT_PARTICLES`, deleted 2026-10-12: the value is now the options.cfg key `VfxSoftParticles`, read once at startup; `=0`/`=1` in the text below means `FALSE`/`TRUE` (or the number); `MC2_OPTIONS_OVERRIDE="VfxSoftParticles=<value>"` sets it for one run without editing the file) — depth-fade soft particles. Default **OFF**.
 - **options.cfg `VfxLitParticles`** (this was the env gate `MC2_VFX_LIT_PARTICLES`, deleted 2026-10-12: the value is now the options.cfg key `VfxLitParticles`, read once at startup; `=0`/`=1` in the text below means `FALSE`/`TRUE` (or the number); `MC2_OPTIONS_OVERRIDE="VfxLitParticles=<value>"` sets it for one run without editing the file) — ambient+sun*0.5 fill on particles. Default **OFF**.
   tri-batch draws (`gosRenderer::drawTris` IsHUD branch) into one `hudBatch_` entry instead
