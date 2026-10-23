@@ -38,7 +38,7 @@ def hull(points):
     return [list(p) for p in chains[0]+chains[1]]
 
 
-def tgl_points(raw):
+def tgl_points(raw, node_positions=None):
     """32-bit disk structs from tgl_types.cpp, bounds rules from msl_load.cpp.
 
     TGL is X,Y-up,Z-depth. renderToMc2 maps local -X,Z to world X,Y.
@@ -76,6 +76,9 @@ def tgl_points(raw):
         centres = struct.unpack("<6f", take(24))
         name = take(25).split(b"\0")[0].lower()
         take(25)
+        if node_positions is not None:
+            # Muzzles need absolute node centres; relative centres omit parent height.
+            node_positions[name.decode('latin1')] = [-centres[0], centres[2], centres[1]]
         if len(verts) and not name.startswith((b"_pab", b"los_", b"spotlight")):
             verts += np.asarray(centres[3:])
             result.extend((verts[:, [0, 2, 1]]*[-1,1,1]).tolist())
@@ -84,10 +87,16 @@ def tgl_points(raw):
     return np.asarray(result)
 
 
-def ase_points(raw):
+def ase_points(raw, node_positions=None):
     # ASE MESH_VERTEX positions are absolute, before engine recentering.
     # Parse per GEOMOBJECT so helper/LOS/spotlight vertices stay excluded.
     result = []
+    if node_positions is not None:
+        for block in re.split(r'\*(?:GEOMOBJECT|HELPEROBJECT)\s*\{', raw.decode('latin1'))[1:]:
+            name = re.search(r'\*NODE_NAME\s+"([^"]+)"', block)
+            position = re.search(r'\*TM_POS\s+([-\d.eE+]+)\s+([-\d.eE+]+)\s+([-\d.eE+]+)', block)
+            if name and position:
+                node_positions[name[1].lower()] = list(map(float, position.groups()))
     for block in re.split(r"\*GEOMOBJECT\s*\{", raw.decode("latin1"))[1:]:
         name = re.search(r'\*NODE_NAME\s+"([^"]+)"', block)
         if name and name[1].lower().startswith(("_pab", "los_", "spotlight")):

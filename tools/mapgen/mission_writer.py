@@ -296,7 +296,12 @@ def emit(layout, source, out, name=None):
     for dependency in ('pmwhacksaw.fit', 'pmwregular.fit', 'pbrain.abl', 'sbguard.abl'):
         if not source.has('data/missions/warriors/'+dependency):
             raise ValueError(f'missing stock pilot/brain: {dependency}')
-    cells = np.where(blocked, 2, 0x402).astype('<u4')
+    if layout.get('batteries'):
+        from tools.mapgen.fields_of_fire import bake, Assets
+        fire_assets = Assets(source)
+        cells = bake(layout, fire_assets).cells.copy()
+    else:
+        cells = np.where(blocked, 2, 0x402).astype('<u4')
     cells[mask_of(layout, 'roads')] |= 0x02000000
     cells[mask_of(layout, 'water')] |= 0x08000000
     cells[[0,-1], :] |= 0x200
@@ -307,12 +312,37 @@ def emit(layout, source, out, name=None):
                 o['team'], o['parent_id_raw'], 0, 0) for o in layout['objects']]
     packets = [terrain_packet(layout, template_pak), encode_objects(records),
                struct.pack('<i',0), tacmap_packet(layout), *movement]
+    if layout.get('batteries'):
+        from tools.mapgen.fields_of_fire import MoveLOS, evaluate
+        from tools.mapgen.extract import VERTEX
+        vertices = np.frombuffer(packets[0], VERTEX)['height'].reshape(layout['size']['vertices'], -1)
+        layout['fields_of_fire'] = evaluate(layout, MoveLOS(vertices, cells, fire_assets.tree_limit,
+            layout['terrain'].get('water_elevation_wu')), fire_assets)
+        if layout['fields_of_fire']['status'] in ('FAIL', 'INCOMPLETE'):
+            raise ValueError('serialized fields of fire: '+ '; '.join(
+                layout['fields_of_fire']['errors']+layout['fields_of_fire']['incomplete']))
     stem = out/layout['name']
     fit = mission_fit(layout, template_fit)
     write_pak([PacketRecord(i,4,make_zlib_payload(p)) for i,p in enumerate(packets)], stem.with_suffix('.pak'))
     stem.with_suffix('.fit').write_bytes(fit)
     script = f'module {layout["name"]} : integer;\ncode\n    return(0);\nendmodule.\n'
     stem.with_suffix('.abl').write_text(script, encoding='ascii')
+    if layout.get('batteries'):
+        # Pilot skill is type data, absent from the 40-byte mission record.
+        # Emit an explicit companion catalog for this generated mission install.
+        object2 = source.read('data/objects/object2.pak')[0]
+        count = struct.unpack_from('<I', object2, 4)[0]//4-2
+        skills = {o['type_id']: o['pilot_skill'] for o in layout['objects'] if 'pilot_skill' in o}
+        catalog_packets = []
+        for i in range(count):
+            data = packet(object2, i)
+            if i in skills:
+                data, n = re.subn(rb'(l\s+PilotSkill\s*=\s*)\d+',
+                                 lambda m: m[1]+str(skills[i]).encode(), data, flags=re.I)
+                if n != 1:
+                    raise ValueError(f'cannot set pilot skill for type {i}')
+            catalog_packets.append(PacketRecord(i, 4, make_zlib_payload(data)))
+        write_pak(catalog_packets, out/'object2.pak')
     colormap = None
     if layout['source'].get('biome') == 'suburban_forest':
         from tools.mapgen.suburban_forest import cook_colormap
@@ -355,6 +385,12 @@ def emit(layout, source, out, name=None):
                              'flat grass terrain; planned roads/cement are not texture-baked']) + [
                              'conservative model rectangles; no destruction-aware special areas',
                              'gates use passable apertures; native collision-template baker pending']}
+    if layout.get('batteries'):
+        report['fields_of_fire'] = layout['fields_of_fire']
+        report['turret_catalog'] = {'file': 'object2.pak', 'install_path': 'data/objects/object2.pak',
+            'sha256': hashlib.sha256((out/'object2.pak').read_bytes()).hexdigest(),
+            'pilot_skills': skills,
+            'scope': 'type-wide companion catalog; use only in the generated mission install'}
     if colormap:
         report['colormap'] = {'path': 'data/textures/'+colormap.name,
             'sha256': hashlib.sha256(colormap.read_bytes()).hexdigest(),
