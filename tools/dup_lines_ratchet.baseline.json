@@ -7,8 +7,8 @@
   "RenderCore": 402,
   "RenderWorld": 0,
   "code": 14010,
-  "mclib": 28626,
-  "shaders": 632
+  "mclib": 28596,
+  "shaders": 602
  },
  "dirs": [
   "code",
@@ -322,7 +322,7 @@
   "mclib/gvactor.h": 17,
   "mclib/gvactor_geometry.cpp": 260,
   "mclib/gvactor_render.cpp": 100,
-  "mclib/gvactor_update.cpp": 273,
+  "mclib/gvactor_update.cpp": 258,
   "mclib/inifile.cpp": 298,
   "mclib/inifile.h": 9,
   "mclib/inifile_arrays.cpp": 706,
@@ -331,7 +331,7 @@
   "mclib/mathfunc.cpp": 18,
   "mclib/mech3d.cpp": 67,
   "mclib/mech3d.h": 8,
-  "mclib/mech3d_geometry.cpp": 302,
+  "mclib/mech3d_geometry.cpp": 287,
   "mclib/mech3d_init.cpp": 219,
   "mclib/mech3d_render.cpp": 272,
   "mclib/mech3d_type.cpp": 98,
@@ -497,9 +497,7 @@
   "shaders/include/light_pools.hglsl": 10,
   "shaders/include/lighting.hglsl": 20,
   "shaders/include/noise.hglsl": 40,
-  "shaders/include/object_light_pool.hglsl": 8,
   "shaders/include/shadow.hglsl": 136,
-  "shaders/include/terrain_light_pool.hglsl": 8,
   "shaders/vulkan/aa_fxaa.frag": 30,
   "shaders/vulkan/cloud_shadow.frag": 21,
   "shaders/vulkan/edge_fog.frag": 10,
@@ -514,11 +512,11 @@
   "shaders/vulkan/shoreline.frag": 40,
   "shaders/vulkan/terrain_decal_tier1.frag": 18,
   "shaders/vulkan/terrain_overlay_tier1.frag": 18,
-  "shaders/vulkan/terrain_tier1.vert": 78,
-  "shaders/vulkan/terrain_tier1_skirt.vert": 78
+  "shaders/vulkan/terrain_tier1.vert": 71,
+  "shaders/vulkan/terrain_tier1_skirt.vert": 71
  },
- "head": "2a71dd3fe",
+ "head": "173f225e5",
  "n": 8,
- "total": 45973,
+ "total": 45913,
  "version": 1
 }

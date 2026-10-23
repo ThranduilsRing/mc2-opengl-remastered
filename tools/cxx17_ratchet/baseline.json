@@ -54,7 +54,7 @@
    "LG05": 97,
    "LG06": 363,
    "LG07": 0,
-   "LG08": 157,
+   "LG08": 156,
    "LG09": 4,
    "LG10": 11,
    "LG11": 75,
@@ -189,12 +189,12 @@
    "LG02": 0,
    "LG03": 594,
    "LG04": 15,
-   "LG05": 112,
+   "LG05": 111,
    "LG06": 528,
    "LG07": 0,
    "LG08": 47,
    "LG09": 2,
-   "LG10": 20,
+   "LG10": 19,
    "LG11": 51,
    "LG12a": 117,
    "LG12b": 177,
@@ -626,7 +626,6 @@
   "GameOS/gameos/gos_terrain_lighting.cpp": {
    "LG04": 1,
    "LG05": 3,
-   "LG08": 1,
    "LG10": 1,
    "LG16": 1
   },
@@ -2420,7 +2419,7 @@
    "LG17": 2
   },
   "mclib/cone_glow.cpp": {
-   "LG05": 4,
+   "LG05": 3,
    "LG06": 3
   },
   "mclib/control_map_png_decode.cpp": {
@@ -3319,9 +3318,6 @@
   "mclib/terrain_surface_trace.h": {
    "LG12a": 1
   },
-  "mclib/terrain_update.cpp": {
-   "LG10": 1
-  },
   "mclib/terrtxm.cpp": {
    "LG06": 4,
    "LG11": 1,
@@ -3513,7 +3509,7 @@
    "LG20": 3
   }
  },
- "head": "32941c928",
+ "head": "173f225e5",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
