@@ -7,8 +7,8 @@
   "RenderCore": 402,
   "RenderWorld": 0,
   "code": 14487,
-  "mclib": 28940,
-  "shaders": 696
+  "mclib": 28888,
+  "shaders": 678
  },
  "dirs": [
   "code",
@@ -261,15 +261,14 @@
   "mclib/appear.cpp": 118,
   "mclib/appear.h": 28,
   "mclib/apprtype.cpp": 92,
-  "mclib/bdactor.cpp": 157,
+  "mclib/bdactor.cpp": 158,
   "mclib/bdactor.h": 52,
   "mclib/bdactor_render.cpp": 145,
-  "mclib/bdactor_sidecar.cpp": 22,
   "mclib/bdactor_static.cpp": 99,
-  "mclib/bdactor_terrain.cpp": 243,
+  "mclib/bdactor_terrain.cpp": 216,
   "mclib/bdactor_tree.cpp": 238,
   "mclib/bdactor_tree_static.cpp": 48,
-  "mclib/bdactor_type.cpp": 112,
+  "mclib/bdactor_type.cpp": 108,
   "mclib/bdactor_update.cpp": 175,
   "mclib/camera.h": 205,
   "mclib/camera_daylight.cpp": 60,
@@ -507,8 +506,7 @@
   "shaders/include/terrain_light_pool.hglsl": 20,
   "shaders/vulkan/aa_fxaa.frag": 30,
   "shaders/vulkan/cloud_shadow.frag": 21,
-  "shaders/vulkan/color_prop_tier1.frag": 19,
-  "shaders/vulkan/color_prop_tier1.vert": 9,
+  "shaders/vulkan/color_prop_tier1.frag": 10,
   "shaders/vulkan/edge_fog.frag": 10,
   "shaders/vulkan/hud_color.vert": 14,
   "shaders/vulkan/hud_tex.frag": 10,
@@ -524,8 +522,8 @@
   "shaders/vulkan/terrain_tier1.vert": 78,
   "shaders/vulkan/terrain_tier1_skirt.vert": 78
  },
- "head": "52e24bc4b",
+ "head": "25f0c4647",
  "n": 8,
- "total": 46846,
+ "total": 46776,
  "version": 1
 }

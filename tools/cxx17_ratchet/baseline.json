@@ -54,7 +54,7 @@
    "LG05": 97,
    "LG06": 362,
    "LG07": 0,
-   "LG08": 157,
+   "LG08": 155,
    "LG09": 4,
    "LG10": 11,
    "LG11": 75,
@@ -187,16 +187,16 @@
   "mclib": {
    "LG01": 3,
    "LG02": 0,
-   "LG03": 601,
+   "LG03": 600,
    "LG04": 15,
-   "LG05": 114,
-   "LG06": 538,
+   "LG05": 113,
+   "LG06": 536,
    "LG07": 0,
    "LG08": 46,
    "LG09": 2,
    "LG10": 20,
    "LG11": 53,
-   "LG12a": 122,
+   "LG12a": 117,
    "LG12b": 179,
    "LG13": 123,
    "LG14": 54,
@@ -575,8 +575,7 @@
    "LG12a": 2
   },
   "GameOS/gameos/gos_static_prop_batcher_mapload.cpp": {
-   "LG06": 1,
-   "LG08": 2
+   "LG06": 1
   },
   "GameOS/gameos/gos_static_prop_batcher_seam.cpp": {
    "LG05": 6,
@@ -2341,16 +2340,15 @@
    "LG13": 1
   },
   "mclib/bdactor_internal.h": {
-   "LG06": 5,
+   "LG06": 4,
    "LG13": 2
   },
   "mclib/bdactor_render.cpp": {
    "LG20": 2
   },
   "mclib/bdactor_sidecar.cpp": {
-   "LG05": 2,
-   "LG06": 9,
-   "LG11": 2,
+   "LG05": 1,
+   "LG06": 5,
    "LG20": 8
   },
   "mclib/bdactor_static.cpp": {
@@ -2366,7 +2364,7 @@
    "LG03": 1
   },
   "mclib/bdactor_type.cpp": {
-   "LG03": 25,
+   "LG03": 24,
    "LG06": 2
   },
   "mclib/burnin_jpeg_decode.cpp": {
@@ -2958,8 +2956,8 @@
   },
   "mclib/model_override_registry.cpp": {
    "LG05": 2,
-   "LG06": 2,
-   "LG11": 3
+   "LG06": 5,
+   "LG11": 5
   },
   "mclib/model_override_registry.h": {
    "LG06": 3
@@ -3414,9 +3412,6 @@
    "LG06": 3,
    "LG12b": 2
   },
-  "mclib/tgl_render.cpp": {
-   "LG12a": 5
-  },
   "mclib/tgl_shadows.cpp": {
    "LG04": 1
   },
@@ -3521,7 +3516,7 @@
    "LG20": 3
   }
  },
- "head": "bdda8eab6",
+ "head": "25f0c4647",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

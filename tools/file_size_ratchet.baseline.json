@@ -14,7 +14,7 @@
  ],
  "files_over_1500": {
   "GameOS/gameos/engine_present_vk.cpp": 2806,
-  "GameOS/gameos/vulkan_color_prop_island.cpp": 1726,
+  "GameOS/gameos/vulkan_color_prop_island.cpp": 1812,
   "GameOS/include/gameos.hpp": 3661,
   "RenderCore/RendererFeatureRegistry.h": 1561,
   "code/artlry.cpp": 1833,
@@ -43,7 +43,7 @@
   "gui/alistbox.cpp": 1513,
   "mclib/ablenv.cpp": 1585,
   "mclib/ablrtn.cpp": 1799,
-  "mclib/assimp_importer.cpp": 1577,
+  "mclib/assimp_importer.cpp": 1636,
   "mclib/camera.h": 1828,
   "mclib/file.cpp": 1736,
   "mclib/gosfx/fcurve.cpp": 1923,
@@ -53,9 +53,9 @@
   "mclib/mlr/mlrtriangleclipping.hpp": 2112,
   "mclib/move.h": 1895,
   "mclib/terrtxm.cpp": 1816,
-  "mclib/tgl.h": 1805
+  "mclib/tgl.h": 1803
  },
- "head": "52e24bc4b",
+ "head": "25f0c4647",
  "per_dir": {
   "GameAdapters": {
    "files": 13,
@@ -64,7 +64,7 @@
    "max_lines": 458
   },
   "GameOS": {
-   "files": 366,
+   "files": 367,
    "files_over_1500": 3,
    "files_over_3000": 1,
    "max_lines": 3661
@@ -76,7 +76,7 @@
    "max_lines": 1153
   },
   "RenderCore": {
-   "files": 59,
+   "files": 61,
    "files_over_1500": 1,
    "files_over_3000": 0,
    "max_lines": 1561
@@ -112,7 +112,7 @@
    "max_lines": 2518
   },
   "shaders": {
-   "files": 104,
+   "files": 110,
    "files_over_1500": 0,
    "files_over_3000": 0,
    "max_lines": 711
@@ -228,8 +228,12 @@
    "lines": 1816
   },
   {
+   "file": "GameOS/gameos/vulkan_color_prop_island.cpp",
+   "lines": 1812
+  },
+  {
    "file": "mclib/tgl.h",
-   "lines": 1805
+   "lines": 1803
   },
   {
    "file": "mclib/ablrtn.cpp",
@@ -238,14 +242,10 @@
   {
    "file": "mclib/file.cpp",
    "lines": 1736
-  },
-  {
-   "file": "code/infowindow.cpp",
-   "lines": 1730
   }
  ],
  "total": {
-  "files": 1858,
+  "files": 1867,
   "files_over_1500": 41,
   "files_over_3000": 1,
   "max_lines": 3661
