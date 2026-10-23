@@ -595,10 +595,14 @@ extern "C" int mc2_vk_vfx_island_prewarm(int w,int h) {
     auto& ctx=mc2vk::getOrCreateEngineVulkanContext();
     if(!ctx.valid() || w<=0 || h<=0) return 0;
     auto& slot=ctx.islandSlot(mc2vk::IslandSlot::Vfx);
-    if(slot) return 1;
-    auto fresh=std::make_unique<VfxIsland>();
-    if(!init_island(fresh.get(),w,h)) { ctx.waitIdle("vfx_prewarm_failure"); return 0; }
-    slot=std::move(fresh);
+    if(!slot) {
+        auto fresh=std::make_unique<VfxIsland>();
+        if(!init_island(fresh.get(),w,h)) { ctx.waitIdle("vfx_prewarm_failure"); return 0; }
+        slot=std::move(fresh);
+    }
+    if (vegetationAtlas) get_page(static_cast<VfxIsland*>(slot.get()),kVfxVegetationAtlas,0);
+    if (mc2veg::State::exists() && mc2veg::State::instance().ready() &&
+        !mc2veg::State::instance().prewarm(ctx)) return 0;
     return 1;
 }
 

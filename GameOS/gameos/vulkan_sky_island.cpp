@@ -377,11 +377,12 @@ extern "C" int mc2_vk_sky_island_prewarm(int w,int h) {
     auto& ctx=mc2vk::getOrCreateEngineVulkanContext();
     if(!ctx.valid() || w<=0 || h<=0) return 0;
     auto& slot=ctx.islandSlot(mc2vk::IslandSlot::Sky);
-    if(slot) return 1;
-    auto fresh=std::make_unique<Island>();
-    if(!init_island(fresh.get(),w,h)) { ctx.waitIdle("sky_prewarm_failure"); return 0; }
-    slot=std::move(fresh);
-    return 1;
+    if(!slot) {
+        auto fresh=std::make_unique<Island>();
+        if(!init_island(fresh.get(),w,h)) { ctx.waitIdle("sky_prewarm_failure"); return 0; }
+        slot=std::move(fresh);
+    }
+    return ensure_hdri(static_cast<Island*>(slot.get()), mc2vk::hdriCpuGeneration()) ? 1 : 0;
 }
 
 extern "C" int mc2_vk_sky_island_run(int w, int h) {

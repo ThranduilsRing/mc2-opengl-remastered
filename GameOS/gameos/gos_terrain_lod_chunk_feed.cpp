@@ -160,10 +160,9 @@ extern "C" void mc2_terrain_feed_dump_consumed(const Mc2TerrainTier1Feed* f, uin
     if (written && closed) mc2vkfeeddump::latch("terrain") = true;
 }
 
-extern "C" int mc2_terrain_tier1_get_frame_feed(Mc2TerrainTier1Feed* out)
+extern "C" int mc2_terrain_tier1_get_load_feed(Mc2TerrainTier1Feed* out)
 {
     if (!out) return 0;
-    if (!s_vkTerrainFeedValid || s_vkTerrainPatches.empty()) return 0;
     const mc2terrain::TerrainFieldStore* fields = gos_TerrainFieldStore();
     if (!fields || s_mapSide <= 0 || fields->mapSide() != s_mapSide) return 0;
     out->patches    = s_vkTerrainPatches.data();
@@ -401,5 +400,11 @@ extern "C" int mc2_terrain_tier1_get_frame_feed(Mc2TerrainTier1Feed* out)
     }
 
     return 1;
+}
+
+extern "C" int mc2_terrain_tier1_get_frame_feed(Mc2TerrainTier1Feed* out)
+{
+    if (!s_vkTerrainFeedValid || s_vkTerrainPatches.empty()) return 0;
+    return mc2_terrain_tier1_get_load_feed(out);
 }
 #endif

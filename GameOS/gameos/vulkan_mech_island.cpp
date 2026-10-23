@@ -877,11 +877,15 @@ extern "C" int mc2_vk_mech_island_prewarm(int w,int h) {
     auto& ctx=mc2vk::getOrCreateEngineVulkanContext();
     if(!ctx.valid() || w<=0 || h<=0) return 0;
     auto& slot=ctx.islandSlot(mc2vk::IslandSlot::Mech);
-    if(slot) return 1;
-    auto fresh=std::make_unique<MechIsland>();
-    if(!init_island(fresh.get(),w,h)) { ctx.waitIdle("mech_prewarm_failure"); return 0; }
-    slot=std::move(fresh);
-    return 1;
+    if(!slot) {
+        auto fresh=std::make_unique<MechIsland>();
+        if(!init_island(fresh.get(),w,h)) { ctx.waitIdle("mech_prewarm_failure"); return 0; }
+        slot=std::move(fresh);
+    }
+    auto* s=static_cast<MechIsland*>(slot.get());
+    // Empty mech geometry is valid on maps without mechs; the generation guard retries later.
+    upload_geometry_once(s);
+    return ensure_dummy_scheme(s) ? 1 : 0;
 }
 
 extern "C" int mc2_vk_mech_island_run(int w, int h) {

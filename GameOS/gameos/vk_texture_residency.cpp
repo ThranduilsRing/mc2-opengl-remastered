@@ -11,6 +11,8 @@
 #include <algorithm>
 #include <cstring>
 #include <utility>
+#include <chrono>
+#include <cstdio>
 
 namespace mc2vk {
 bool uiTextureServiceReady() { return engineVulkanContextValid() && getOrCreateEnginePresentVk().valid(); }
@@ -257,6 +259,29 @@ void TextureResidency::pump() {
 bool TextureResidency::ready(RenderCore::TextureHandle handle) const {
     auto it=residents_.find(handle.raw());
     return it!=residents_.end() && it->second.image && service_.isLive(handle);
+}
+void TextureResidency::finishLoading() {
+    const auto start=std::chrono::steady_clock::now();
+    worker_.waitIdle();
+    size_t previous=~size_t(0);
+    unsigned batches=0;
+    for (;;) {
+        pump();
+        const size_t remaining=pending_.size()+uploading_.size();
+        if (!remaining || uploading_.empty()) break;
+        // A full descriptor table retains placeholders and the pending queue;
+        // never spin indefinitely trying to publish into a full table.
+        if (remaining>=previous) break;
+        previous=remaining;
+        if (!ctx_.wait(uploading_.back().ticket,5000000000ull,"mission_texture_uploads")) break;
+        ++batches;
+    }
+    // Keep the progress UI's descriptor snapshot intact. Normal frame-boundary
+    // publication picks up the new table revision after its consumers retire.
+    const auto readyCount=std::count_if(residents_.begin(),residents_.end(),[](const auto& entry) { return bool(entry.second.image); });
+    std::fprintf(stderr,"[VK_LOAD_TEXTURES v1] ready=%zu batches=%u blocked=%zu ms=%.3f\n",
+        size_t(readyCount),batches,pending_.size()+uploading_.size(),
+        std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-start).count());
 }
 ResidentTextureRef TextureResidency::acquireLegacy(uint32_t width,uint32_t height,VkFormat format,const void* bytes,size_t count) {
     return acquirePixels(width,height,format,bytes,count,false);

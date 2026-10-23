@@ -10007,6 +10007,38 @@
    "count": 1
   },
   {
+   "tag": "VK_LOAD_RESOURCE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "family",
+    "ready",
+    "ms"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_LOAD_RESOURCE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "pipeline_creation_ms"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_LOAD_TEXTURES",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "ready",
+    "batches",
+    "blocked",
+    "ms"
+   ],
+   "count": 1
+  },
+  {
    "tag": "VK_MECH_FEED",
    "ver": -1,
    "stream": "stderr",

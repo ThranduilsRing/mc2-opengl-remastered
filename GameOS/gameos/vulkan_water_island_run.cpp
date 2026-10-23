@@ -29,6 +29,7 @@ extern "C" int mc2_vk_water_island_prewarm(int w,int h) {
         slot=std::move(fresh);
     }
     auto* s=parkedIsland();
+    if (!ensure_hdri(s, mc2vk::hdriCpuGeneration()) || !ensure_shore(s)) return 0;
     if(!s->native) s->native=std::make_unique<mc2vk::NativeProducers>();
     return s->native->prewarmPipelines(ctx) ? 1 : 0;
 }

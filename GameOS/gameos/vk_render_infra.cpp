@@ -4,6 +4,7 @@
 #include "vulkan_context.h"
 #include "engine_present_vk.h"
 #include "vk_owned.h"
+#include "vk_texture_residency.h"
 #include "imgui.h"
 #include "gos_crashbundle.h"
 #include "Gates/render_options.h"
@@ -27,7 +28,7 @@
 #include <utility>
 
 extern long turn;
-extern "C" int mc2_vk_terrain_island_prepare(int,int);
+extern "C" int mc2_vk_terrain_island_prewarm(int,int);
 extern "C" int mc2_vk_sky_island_prewarm(int,int);
 extern "C" int mc2_vk_mech_island_prewarm(int,int);
 extern "C" int mc2_vk_color_prop_island_prewarm(int,int);
@@ -504,19 +505,29 @@ void frame() {
 void prewarm(int width,int height) {
     if(width<=0 || height<=0 || !getOrCreateEngineVulkanContext().valid()) return;
     auto& s=state(); const auto begin=std::chrono::steady_clock::now(); const uint64_t before=s.creations;
+    const double pipelineMsBefore=s.creationMs;
+    const auto warm = [&](const char* family, int (*prepare)(int,int)) {
+        const auto started=std::chrono::steady_clock::now();
+        const int ready=prepare(width,height);
+        std::fprintf(stderr,"[VK_LOAD_RESOURCE v1] family=%s ready=%d ms=%.3f\n",family,ready,
+            std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-started).count());
+        return ready;
+    };
     int ready=0;
-    ready+=mc2_vk_terrain_island_prepare(width,height);
-    ready+=mc2_vk_color_prop_island_prewarm(width,height);
-    ready+=mc2_vk_mech_island_prewarm(width,height);
-    ready+=mc2_vk_legacy_shape_island_prewarm(width,height);
-    ready+=mc2_vk_sky_island_prewarm(width,height);
-    ready+=mc2_vk_water_island_prewarm(width,height);
-    ready+=mc2_vk_vfx_island_prewarm(width,height);
-    ready+=mc2_vk_shadow_island_prewarm(width,height);
+    ready+=warm("terrain",mc2_vk_terrain_island_prewarm);
+    ready+=warm("props",mc2_vk_color_prop_island_prewarm);
+    ready+=warm("mechs",mc2_vk_mech_island_prewarm);
+    ready+=warm("legacy",mc2_vk_legacy_shape_island_prewarm);
+    ready+=warm("sky",mc2_vk_sky_island_prewarm);
+    ready+=warm("water",mc2_vk_water_island_prewarm);
+    ready+=warm("vegetation",mc2_vk_vfx_island_prewarm);
+    ready+=warm("shadows",mc2_vk_shadow_island_prewarm);
     mc2_vk_overlay_prewarm(width,height);
     if(auto* post=getGosPostProcess()) { post->prewarmVkFog(); post->prewarmVkScreenFx(); post->prewarmVkHzb(); }
     ready+=getOrCreateEnginePresentVk().prewarmPipelines() ? 1 : 0;
+    getOrCreateEngineVulkanContext().textures().finishLoading();
     saveCache();
+    std::fprintf(stderr,"[VK_LOAD_RESOURCE v1] pipeline_creation_ms=%.3f\n",s.creationMs-pipelineMsBefore);
     s.prewarmCreations=s.creations; s.firstFrames.clear(); s.measureFrames=true; s.firstFrameStarted=false;
     std::fprintf(stderr,"[VK_PIPELINE_PREWARM v1] ready=%d families=9 pipelines=%llu ms=%.3f size=%dx%d\n",ready,s.creations-before,std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-begin).count(),width,height);
 }

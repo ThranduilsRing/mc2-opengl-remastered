@@ -1256,61 +1256,13 @@ extern "C" int mc2_vk_color_prop_island_enabled() {
     return 1;
 }
 
-extern "C" int mc2_vk_color_prop_island_prewarm(int w,int h) {
-    auto& ctx=mc2vk::getOrCreateEngineVulkanContext();
-    if(!ctx.valid() || w<=0 || h<=0) return 0;
-    auto& slot=ctx.islandSlot(mc2vk::IslandSlot::ColorProp);
-    if(slot) return 1;
-    auto fresh=std::make_unique<ColorPropIsland>();
-    if(!init_island(fresh.get(),w,h)) { ctx.waitIdle("color_prop_prewarm_failure"); return 0; }
-    slot=std::move(fresh);
-    return 1;
-}
-
-extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
-    ZoneScopedN("VK-props-island");   // VK-FLIP-FIELD-REPORT-1 coarse region zone
-    if (w <= 0 || h <= 0) return 0;
-
-    using clk = std::chrono::steady_clock;
-    auto usSince = [](clk::time_point t0){ return std::chrono::duration<double, std::micro>(clk::now() - t0).count(); };
-    const clk::time_point tTotal0 = clk::now();
-    const bool perf = propPerfGateRequested();
-    double us_fence_wait = 0.0;   // deferred retire (beginFrame wait) OR inline wait under the killswitch
-
-    // Pull the per-frame color instance feed (visible buckets + world->clip + bias).
-    Mc2ColorPropFeed feed{};
-    if (!mc2_color_prop_island_get_frame_feed(&feed)) { setFallback("no_color_feed"); return 0; }
-    if (!feed.instances112 || feed.count == 0) { setFallback("no_color_instances"); return 0; }
-    // MC2_VK_SHADOW_MATRIX_DIAG: the object matrix the props are projected with next to the live camera matrix, so a light-space leak into the colour pass shows.
-
-
-    // Lazy init / rebuild on size change.
-    mc2vk::VulkanContext& slotCtx = mc2vk::getOrCreateEngineVulkanContext();
-    if (const ColorPropIsland* parked = parkedIsland(); parked && (parked->w != w || parked->h != h)) slotCtx.retireIsland(mc2vk::IslandSlot::ColorProp);
-    if (!islandSlot()) {
-        auto fresh = std::make_unique<ColorPropIsland>();
-        if (!init_island(fresh.get(), w, h)) {
-            vlog("init failed (%s) — GL fallback.", g_health.fallbackReason);
-            slotCtx.waitIdle("color_prop_init_failure");   // objects made before the failure may have been submitted
-            return 0;
-        }
-        islandSlot() = std::move(fresh);
-    }
-    ColorPropIsland* s = parkedIsland();
-    // VK-OWNERSHIP-GAP-FIX (item-4 correctness): direct-chain sets useInterop=false
-    // (init:781) but the old guard '|| !s->useInterop' then bailed here, so under the
-    // strict umbrella the island returned 0 and GL silently drew props into the
-    // VK-owned GBuffer (used_vulkan=0). Enter the native render path when direct-chain
-    // OR the hybrid interop arm is armed -- mirrors mech/terrain (a0cba0c4/1f4a1a5a)
-    // whose guard is 'disabled || !inited' with directChain unconditional-native.
-    if (s->disabled || !s->inited) return 0;  // VK-RUNG8-ITEM5: direct-chain-native only
-
-    if (!upload_geometry_once(s)) { setFallback("geometry_not_ready"); return 0; }
+static bool prepare_mission_resources(ColorPropIsland* s) {
+    if (!upload_geometry_once(s)) { setFallback("geometry_not_ready"); return false; }
 
     // VK-P11 STATIC-PROP MATERIAL: copy-once import the alpha-OFF albedo 2D_ARRAY +
     // per-type layer table once geometry is finalized. Fail-soft: any miss (feed not
     // ready, BC7-bucketed, import failure) leaves materialReady=false -> FS keeps teal.
-    if (s->wantMaterial && s->tier1 && (!s->materialReady || !s->materialReadyOn)) {
+    if (s->wantMaterial && s->tier1) {
         Mc2ColorPropMaterialFeed mf{};
         if (mc2_color_prop_island_get_material_feed(&mf) && mf.arrayKeyOff != 0 && !mf.bucketed) {
             if (!s->authoredAttempted) {
@@ -1321,6 +1273,7 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
             s->terrainSunMC2[0] = mf.terrainSunMC2[0];
             s->terrainSunMC2[1] = mf.terrainSunMC2[1];
             s->terrainSunMC2[2] = mf.terrainSunMC2[2];
+            if (s->materialReady && s->materialReadyOn) return true;
             bool changed = false;
             // The night emission colours of the type table, once per map (like the material arrays).
             if (!s->hotReady && mf.typeHotColors && mf.typeCount > 0) {
@@ -1394,6 +1347,61 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
             if (!warned) { vlog("material feed is BC7-bucketed — DEFERRED; props keep flat teal."); warned = true; }
         }
     }
+
+    return true;
+}
+
+extern "C" int mc2_vk_color_prop_island_prewarm(int w,int h) {
+    auto& ctx=mc2vk::getOrCreateEngineVulkanContext();
+    if(!ctx.valid() || w<=0 || h<=0) return 0;
+    auto& slot=ctx.islandSlot(mc2vk::IslandSlot::ColorProp);
+    if(!slot) {
+        auto fresh=std::make_unique<ColorPropIsland>();
+        if(!init_island(fresh.get(),w,h)) { ctx.waitIdle("color_prop_prewarm_failure"); return 0; }
+        slot=std::move(fresh);
+    }
+    return prepare_mission_resources(static_cast<ColorPropIsland*>(slot.get())) ? 1 : 0;
+}
+
+extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
+    ZoneScopedN("VK-props-island");   // VK-FLIP-FIELD-REPORT-1 coarse region zone
+    if (w <= 0 || h <= 0) return 0;
+
+    using clk = std::chrono::steady_clock;
+    auto usSince = [](clk::time_point t0){ return std::chrono::duration<double, std::micro>(clk::now() - t0).count(); };
+    const clk::time_point tTotal0 = clk::now();
+    const bool perf = propPerfGateRequested();
+    double us_fence_wait = 0.0;   // deferred retire (beginFrame wait) OR inline wait under the killswitch
+
+    // Pull the per-frame color instance feed (visible buckets + world->clip + bias).
+    Mc2ColorPropFeed feed{};
+    if (!mc2_color_prop_island_get_frame_feed(&feed)) { setFallback("no_color_feed"); return 0; }
+    if (!feed.instances112 || feed.count == 0) { setFallback("no_color_instances"); return 0; }
+    // MC2_VK_SHADOW_MATRIX_DIAG: the object matrix the props are projected with next to the live camera matrix, so a light-space leak into the colour pass shows.
+
+
+    // Lazy init / rebuild on size change.
+    mc2vk::VulkanContext& slotCtx = mc2vk::getOrCreateEngineVulkanContext();
+    if (const ColorPropIsland* parked = parkedIsland(); parked && (parked->w != w || parked->h != h)) slotCtx.retireIsland(mc2vk::IslandSlot::ColorProp);
+    if (!islandSlot()) {
+        auto fresh = std::make_unique<ColorPropIsland>();
+        if (!init_island(fresh.get(), w, h)) {
+            vlog("init failed (%s) — GL fallback.", g_health.fallbackReason);
+            slotCtx.waitIdle("color_prop_init_failure");   // objects made before the failure may have been submitted
+            return 0;
+        }
+        islandSlot() = std::move(fresh);
+    }
+    ColorPropIsland* s = parkedIsland();
+    // VK-OWNERSHIP-GAP-FIX (item-4 correctness): direct-chain sets useInterop=false
+    // (init:781) but the old guard '|| !s->useInterop' then bailed here, so under the
+    // strict umbrella the island returned 0 and GL silently drew props into the
+    // VK-owned GBuffer (used_vulkan=0). Enter the native render path when direct-chain
+    // OR the hybrid interop arm is armed -- mirrors mech/terrain (a0cba0c4/1f4a1a5a)
+    // whose guard is 'disabled || !inited' with directChain unconditional-native.
+    if (s->disabled || !s->inited) return 0;  // VK-RUNG8-ITEM5: direct-chain-native only
+
+    if (!prepare_mission_resources(s)) return 0;
 
     // VK-PROP-FENCE-DEFER-1 (water-pilot template): begin the shared-slot frame BEFORE
     // any per-parity staging (the LightsData copy below is per-frame CPU staging). The
