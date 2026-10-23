@@ -35,7 +35,7 @@ DEFAULT_TARGETS = ["mc2", "mc2_launcher"]
 
 
 SCCACHE_EXE = os.environ.get("MC2_SCCACHE", "A:/Games/tools/sccache/sccache.exe")
-SCCACHE_DIR = os.environ.get("SCCACHE_DIR", "E:/mc2-installs/_sccache")
+SCCACHE_DIR = os.environ.get("SCCACHE_DIR", "E:/mc2-compile-cache")
 # Every cached compile goes through this wrapper, not sccache directly: see its docstring (replayed /showIncludes paths).
 LAUNCHER_SCRIPT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cc_launcher.py").replace("\\", "/")
 
@@ -140,7 +140,7 @@ def main():
                     help="also build mc2 + mc2_launcher after configuring")
     ap.add_argument("--compile-cache", action="store_true", help="(default now; kept for old command lines)")
     ap.add_argument("--no-compile-cache", action="store_true",
-                    help="opt out of the default: build through sccache (shared E:/mc2-installs/_sccache, Defender-excluded; SCCACHE_DIR overrides), /Zi -> /Z7, PCH off")
+                    help="opt out of the default: build through sccache (shared E:/mc2-compile-cache, Defender-excluded; SCCACHE_DIR overrides), /Zi -> /Z7, PCH off")
     ap.add_argument("--cache-pch", action="store_true", help="with --compile-cache: keep the precompiled header on")
     a = ap.parse_args()
     root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
