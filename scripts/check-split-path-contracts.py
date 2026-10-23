@@ -200,6 +200,14 @@ ISLANDS = {
         "native VK tier-1 island (VULKAN-BACKEND-L6/P-ladder): structural rewrite of the GL pass (Vulkan bindings/push-constants/SPIR-V), NOT a text-lockstep sibling. Parity is enforced at runtime pixel level per RendererFeatureRegistry convention (VK arc GL/VK visual capture pairs, VFX-9 2026-07-16 + tier1 smoke), not by RULE4 hash lockstep. Declared island-only at MERGE-WAVE-2 checker reconcile 2026-07-22.",
     "shaders/vulkan/postprocess_visual.frag":
         "native VK tier-1 island (VULKAN-BACKEND-L6/P-ladder): structural rewrite of the GL pass (Vulkan bindings/push-constants/SPIR-V), NOT a text-lockstep sibling. Parity is enforced at runtime pixel level per RendererFeatureRegistry convention (VK arc GL/VK visual capture pairs, VFX-9 2026-07-16 + tier1 smoke), not by RULE4 hash lockstep. Declared island-only at MERGE-WAVE-2 checker reconcile 2026-07-22.",
+    "shaders/vulkan/aa_fxaa.frag":
+        "Vulkan-only spatial AA after output and before HUD. Matched off/SMAA/FXAA/CMAA2 day/night captures and GPU timestamps grade this pass.",
+    "shaders/vulkan/aa_smaa_edges.frag":
+        "Vulkan-only reference SMAA 1x, display-encoded edge detection. Matched day/night readability captures grade the three-pass chain.",
+    "shaders/vulkan/aa_smaa_weights.frag":
+        "Vulkan-only reference SMAA 1x weights with upstream area/search lookups; no GL AA counterpart. Matched day/night readability captures grade the chain.",
+    "shaders/vulkan/aa_smaa_blend.frag":
+        "Vulkan-only reference SMAA 1x neighborhood blending before HUD; no history or GL AA counterpart. Matched day/night readability captures grade the chain.",
     "shaders/vulkan/screen_shadow_csm.vert":
         "native VK tier-1 island (VULKAN-BACKEND-L6/P-ladder): structural rewrite of the GL pass (Vulkan bindings/push-constants/SPIR-V), NOT a text-lockstep sibling. Parity is enforced at runtime pixel level per RendererFeatureRegistry convention (VK arc GL/VK visual capture pairs, VFX-9 2026-07-16 + tier1 smoke), not by RULE4 hash lockstep. Declared island-only at MERGE-WAVE-2 checker reconcile 2026-07-22.",
     "shaders/vulkan/screen_shadow_csm.frag":

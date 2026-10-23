@@ -1270,7 +1270,7 @@ TEST_CASE("render option keys are unique and findable") {
     CHECK(mo::find("NotAnOption") == nullptr);
     CHECK(mo::find("cpuphongretire") == mo::find("CpuPhongRetire"));   // keys are case-insensitive like options.cfg
     CHECK(mo::find("PostCAS") != mo::find("PostCASSharpness"));
-    CHECK(mo::kOptionCount == 15);
+    CHECK(mo::kOptionCount == 16);
 }
 
 TEST_CASE("render option values outside their bounds, NaN and garbage are rejected and change nothing") {
@@ -1476,7 +1476,7 @@ TEST_CASE("the render options serialize as one JSON object of all option values 
     namespace mo = mc2::options;
     mo::RenderOptions o{};
     const std::string d = mo::toJson(o);
-    CHECK(d.rfind("{\"PostCAS\": false, \"PostCASSharpness\": 0.5, \"TonemapMode\": 0, \"ShadowQuality\": 2", 0) == 0);
+    CHECK(d.rfind("{\"PostCAS\": false, \"PostCASSharpness\": 0.5, \"TonemapMode\": 0, \"SpatialAA\": 1, \"ShadowQuality\": 2", 0) == 0);
     CHECK(d.find("\"StaticPropIblSunRotateFloor\": 0.45") != std::string::npos);
     CHECK(d.find("\"StaticPropPbr\": false") != std::string::npos);
     CHECK(d.back() == '}');
@@ -1854,4 +1854,20 @@ TEST_CASE("MC2_RENDER_BACKEND text: gl/GL is the removed backend, a typo is flag
 	CHECK(mc2::backendRequestFromText("GL") == BackendRequest::RemovedGl);
 	for (const char* typo : {"opengl", "Vulkan", "Gl", "gl "})
 		CHECK(mc2::backendRequestFromText(typo) == BackendRequest::Unrecognized);
+}
+
+TEST_CASE("spatial AA defaults on and all four modes round-trip through options.cfg") {
+    namespace mo = mc2::options;
+    CHECK(mo::RenderOptions{}.spatialAA == 1);
+    const auto& option = *mo::find("SpatialAA");
+    for (int mode = 0; mode <= 3; ++mode) {
+        const std::string cfg = mo::cfg::set("[MechCommander2]\nFITend\n", option, std::to_string(mode));
+        mo::RenderOptions loaded;
+        CHECK(mo::cfg::loadFromText(loaded, cfg) == 1);
+        CHECK(loaded.spatialAA == mode);
+    }
+    mo::RenderOptions loaded;
+    CHECK(mo::setFromText(loaded, option, "4") == mo::Verdict::OutOfRange);
+    CHECK(mo::setFromText(loaded, option, "-1") == mo::Verdict::OutOfRange);
+    CHECK(loaded.spatialAA == 1);
 }

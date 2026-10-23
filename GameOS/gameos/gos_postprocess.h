@@ -74,17 +74,8 @@ public:
     // Toggles and parameters
     float exposure_;
 
-    // POST-FX-FXAA-1: FXAA post anti-aliasing. Default-OFF (byte-identical).
-    // Seeded from env (MC2_FXAA / MC2_FXAA_SUBPIX / MC2_FXAA_EDGE_THRESHOLD /
-    // MC2_FXAA_EDGE_THRESHOLD_MIN) at init; live-tunable via Graphics Options
-    // (Ctrl+Shift+G). Defaults = the "sharper" preset.
-    bool  fxaaEnabled_;
-    float fxaaSubpix_;
-    float fxaaEdgeThreshold_;
-    float fxaaEdgeThresholdMin_;
-
     // POST-FX-CAS-1: AMD FidelityFX Contrast Adaptive Sharpening, folded into the
-    // composite shader (same precedent as FXAA above). Applied to the final graded
+    // composite shader. Applied to the final graded
     // LDR color; off -> u_casEnabled==0 -> shader skips it.
     // Set from options.cfg (PostCAS / PostCASSharpness) through gos_SetPostFxOptions().
     bool  casEnabled_;

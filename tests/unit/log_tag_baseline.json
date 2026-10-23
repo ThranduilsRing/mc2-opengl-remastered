@@ -8298,6 +8298,28 @@
    "count": 1
   },
   {
+   "tag": "SPATIAL_AA",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "mode",
+    "extent",
+    "spatial",
+    "before_hud"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SPATIAL_AA",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "shader_error",
+    "mode"
+   ],
+   "count": 1
+  },
+  {
    "tag": "SPAWN_PROBE",
    "ver": -1,
    "stream": "stderr",

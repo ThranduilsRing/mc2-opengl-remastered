@@ -974,6 +974,14 @@ def enumerate_payload(src_root, build_dir, exe_name, pdb_name,
             rel = os.path.relpath(p, src_root).replace(os.sep, "/")
             items.append((p, rel, "shader"))
 
+    # Spatial AA reference sources and notices travel with their compiled shaders.
+    for tree in ("3rdparty/smaa", "3rdparty/cmaa2"):
+        for directory, _dirs, files in os.walk(os.path.join(src_root, tree)):
+            for fn in sorted(files):
+                path = os.path.join(directory, fn)
+                rel = os.path.relpath(path, src_root).replace(os.sep, "/")
+                items.append((path, rel, "support"))
+
     for rel in BUILDING_PBR_PAYLOAD:
         p = os.path.join(src_root, rel)
         if require_build and not os.path.isfile(p):
