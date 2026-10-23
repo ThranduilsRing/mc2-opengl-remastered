@@ -1043,6 +1043,24 @@ void Mission::updateOrderLiveness() {
 					olGoal.x = olPos.x + stepWU;
 				olPilot->orderMoveToPoint(false, true, ORDER_ORIGIN_COMMANDER,
 					olGoal, -1, TACORDER_PARAM_RUN);
+				// Keep a terrain-target queue pending while the move is active so the
+				// save/load fixture exercises the process-local compact-id boundary.
+				GameObjectPtr queueTarget = nullptr;
+				for (long oi = 1; oi <= ObjectManager->getMaxObjects(); ++oi) {
+					auto* candidate = ObjectManager->get(oi);
+					if (candidate && !candidate->isMover() && candidate->getPartId() >= MIN_TERRAIN_PART_ID &&
+						(!queueTarget || candidate->getPartId() > queueTarget->getPartId())) queueTarget = candidate;
+				}
+				if (queueTarget) {
+					olPilot->clearTacOrderQueue();
+					TacticalOrder queued;
+					queued.init(ORDER_ORIGIN_PLAYER, TACTICAL_ORDER_ATTACK_OBJECT);
+					queued.targetWID = queueTarget->getWatchID();
+					queued.pack(nullptr, nullptr);
+					olPilot->addQueuedTacOrder(queued);
+					olPilot->setTacOrderQueueLooping(true);
+					olPilot->lockTacOrderQueue();
+				}
 				s_olEntries[s_olIssuedMove].wid = pM->getWatchID();
 				s_olEntries[s_olIssuedMove].startPos = olPos;
 				s_olEntries[s_olIssuedMove].goalPos = olGoal;

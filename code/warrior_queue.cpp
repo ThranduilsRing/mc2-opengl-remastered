@@ -9,7 +9,10 @@
 bool MechWarrior::enableTacOrderQueue (void) {
 
 	// Capacity first: on failure the whole old binding (pointer, count, records, every marker owner) is preserved (B7o.4).
-	return(mc2::rebindQueue(tacOrderQueue, TacOrderQueue, MAX_QUEUED_TACORDERS, TacOrderQueuePos, numTacOrdersQueued, queueMarkers));
+	if (!mc2::rebindQueue(tacOrderQueue, TacOrderQueue, MAX_QUEUED_TACORDERS, TacOrderQueuePos, numTacOrdersQueued, queueMarkers))
+		return false;
+	queueTargets = {};
+	return true;
 }
 
 long MechWarrior::addQueuedTacOrder (TacticalOrder tacOrder) {
@@ -34,9 +37,11 @@ long MechWarrior::addQueuedTacOrder (TacticalOrder tacOrder) {
 		queueMarkers[numTacOrdersQueued] = getWayPointMarker( tacOrder.getWayPoint(0), "JumpWayPoint" );
 
 	tacOrderQueue[numTacOrdersQueued].point = tacOrder.getWayPoint(0);
+	tacOrderQueue[numTacOrdersQueued].id = tacOrder.id;
 	tacOrderQueue[numTacOrdersQueued].tactic = tacOrder.attackParams.tactic;
 	tacOrderQueue[numTacOrdersQueued].packedData[0] = tacOrder.data[0];
 	tacOrderQueue[numTacOrdersQueued].packedData[1] = tacOrder.data[1];
+	queueTargets[numTacOrdersQueued] = tacOrder.targetWID;
 	numTacOrdersQueued++;
 
 	if (numTacOrdersQueued == 1) {
@@ -67,10 +72,14 @@ long MechWarrior::removeQueuedTacOrder (TacticalOrderPtr tacOrder) {
 	TacticType tactic = static_cast<TacticType>(tacOrderQueue[tacOrderQueueIndex].tactic);
 
 	// Head marker deleted on purpose, records and owners shift (B7o.4: the legacy loop's slot-16 read at full capacity is gone).
+	const auto target = queueTargets[0];
+	for (int i = 1; i < numTacOrdersQueued; ++i) queueTargets[i - 1] = queueTargets[i];
+	queueTargets[numTacOrdersQueued - 1].reset();
 	mc2::shiftQueueDown(tacOrderQueue, queueMarkers, numTacOrdersQueued);
 	numTacOrdersQueued--;
 
 	tacOrder->unpack();
+	if (target) tacOrder->targetWID = *target;
 	tacOrder->attackParams.tactic = tactic;
 	tacOrder->setWayPoint(0, point);
 
@@ -91,6 +100,7 @@ long MechWarrior::getNextQueuedTacOrder (TacticalOrderPtr tacOrder) {
 	tacOrder->data[0] = tacOrderQueue[tacOrderQueueIndex].packedData[0];
 	tacOrder->data[1] = tacOrderQueue[tacOrderQueueIndex].packedData[1];
 	tacOrder->unpack();
+	if (queueTargets[tacOrderQueueIndex]) tacOrder->targetWID = *queueTargets[tacOrderQueueIndex];
 	tacOrder->setWayPoint(0, tacOrderQueue[tacOrderQueueIndex].point);
 	tacOrder->attackParams.tactic = static_cast<TacticType>(tacOrderQueue[tacOrderQueueIndex].tactic);
 
@@ -110,6 +120,8 @@ long MechWarrior::peekQueuedTacOrder (long index, TacticalOrderPtr tacOrder) {
 
 	if (index == -1)
 		index = numTacOrdersQueued - 1;
+	if (index < 0 || index >= numTacOrdersQueued)
+		return(2);
 
 	tacOrder->data[0] = tacOrderQueue[index].packedData[0];
 	tacOrder->data[1] = tacOrderQueue[index].packedData[1];
@@ -118,6 +130,7 @@ long MechWarrior::peekQueuedTacOrder (long index, TacticalOrderPtr tacOrder) {
 	long tacOrderId = tacOrderQueue[index].id;
 
 	tacOrder->unpack();
+	if (queueTargets[index]) tacOrder->targetWID = *queueTargets[index];
 	tacOrder->setWayPoint(0, point);
 	tacOrder->attackParams.tactic = tactic;
 	tacOrder->setId(tacOrderId);
@@ -128,6 +141,7 @@ long MechWarrior::peekQueuedTacOrder (long index, TacticalOrderPtr tacOrder) {
 void MechWarrior::clearTacOrderQueue (void) {
 
 	resetQueueMarkers();
+	queueTargets = {};
 
 	numTacOrdersQueued = 0;
 	tacOrderQueueIndex = 0;

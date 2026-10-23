@@ -3,6 +3,7 @@
 #include "warrior_internal.h"
 #include "mc2fmt.h"
 #include "tacorder_terrain_queue.h"
+static_assert(MAX_QUEUED_TACORDERS_PER_WARRIOR == 16, "WQT2 target count must match the runtime queue");
 
 
 std::unique_ptr<BldgAppearance> MechWarrior::getWayPointMarker( const glm::vec3& pos, const char* name )
@@ -647,7 +648,7 @@ void MechWarrior::copyToData (MechWarriorData &data)
 		data.warriorBrainHandle = -1;
 }
 
-void MechWarrior::copyFromData (MechWarriorData &data)
+void MechWarrior::copyFromData (MechWarriorData &data, bool wideTargets)
 {
 	used = data.used;
 
@@ -733,8 +734,10 @@ void MechWarrior::copyFromData (MechWarriorData &data)
 	numTacOrdersQueued = data.numTacOrdersQueued;
 	MemCpy(tacOrderQueue,data.tacOrderQueue);
 	tacOrderQueueIndex = data.tacOrderQueueIndex;
-	dropCompactTerrainOrdersOnLoad(tacOrderQueue, numTacOrdersQueued, tacOrderQueueIndex);
-	if (terrain_part_chunk::compact() && numTacOrdersQueued == 0) {
+	queueTargets = {};
+	if (!wideTargets)
+		dropCompactTerrainOrdersOnLoad(tacOrderQueue, numTacOrdersQueued, tacOrderQueueIndex);
+	if (!wideTargets && terrain_part_chunk::compact() && numTacOrdersQueued == 0) {
 		tacOrderQueueExecuting = false;
 		tacOrderQueueLooping = false;
 		curPlayerOrderFromQueue = false;
@@ -784,11 +787,11 @@ void MechWarrior::copyFromData (MechWarriorData &data)
 	warriorBrainHandle = data.warriorBrainHandle;
 }
 
-void MechWarrior::init (MechWarriorData& data)
+void MechWarrior::init (MechWarriorData& data, bool wideTargets)
 {
 	init(false);
 
-	copyFromData(data);
+	copyFromData(data, wideTargets);
 
 	if (warriorBrainHandle > -1) 
 	{
@@ -826,7 +829,22 @@ void MechWarrior::save (PacketFilePtr file, long packetNum)
 {
 	MC2_SAVE_STRUCT(MechWarriorData, warriorData);
 	copyToData(warriorData);
-	file->writePacket(packetNum,reinterpret_cast<MemoryPtr>(&warriorData),sizeof(warriorData),STORAGE_TYPE_ZLIB);
+	SavedQueueTargets targets;
+	for (int i = 0; i < numTacOrdersQueued; ++i) {
+		TacticalOrder order;
+		peekQueuedTacOrder(i, &order);
+		targets.targets.push_back(order.targetWID);
+		if (mc2::gate::get<"MC2_FIXTURE_ORDER_LIVENESS">())
+			mc2::fmt::print_out("[SAVE v1] event=queue_save pilot={} slot={} target={} cursor={} looping={} locked={} active={}\n",
+				index, i, order.targetWID, tacOrderQueueIndex, tacOrderQueueLooping, tacOrderQueueLocked, static_cast<int>(curTacOrder.code));
+	}
+	mc2::save::Archive archive;
+	archive(targets);
+	if (!archive.good()) Fatal(0, "Invalid queued order save");
+	mc2::save::Bytes bytes(sizeof(warriorData));
+	memcpy(bytes.data(), &warriorData, sizeof(warriorData));
+	bytes.insert(bytes.end(), archive.bytes().begin(), archive.bytes().end());
+	file->writePacket(packetNum, bytes.data(), static_cast<unsigned int>(bytes.size()), STORAGE_TYPE_ZLIB);
 }
 
 long MechWarrior::Save (PacketFilePtr file, long packetNum)
@@ -857,8 +875,30 @@ long MechWarrior::Save (PacketFilePtr file, long packetNum)
 void MechWarrior::load (PacketFilePtr file, long packetNum)
 {
 	MechWarriorData warriorData{};
-	file->readPacket(packetNum,reinterpret_cast<MemoryPtr>(&warriorData));
-	init(warriorData);
+	file->seekPacket(packetNum);
+	const auto size = file->getPacketSize();
+	if (size < sizeof(warriorData) || size > sizeof(warriorData) + 128) Fatal(0, "Invalid warrior packet size");
+	mc2::save::Bytes bytes(size);
+	file->readPacket(packetNum, bytes.data());
+	memcpy(&warriorData, bytes.data(), sizeof(warriorData));
+	if (warriorData.numTacOrdersQueued < 0 || warriorData.numTacOrdersQueued > MAX_QUEUED_TACORDERS_PER_WARRIOR ||
+		warriorData.tacOrderQueueIndex < 0 || (warriorData.numTacOrdersQueued && warriorData.tacOrderQueueIndex >= warriorData.numTacOrdersQueued))
+		Fatal(0, "Invalid saved order queue");
+	SavedQueueTargets targets;
+	const bool wide = size > sizeof(warriorData);
+	if (wide && (!mc2::save::decodeRecord(std::span(bytes).subspan(sizeof(warriorData)), targets) ||
+		targets.targets.size() != warriorData.numTacOrdersQueued)) Fatal(0, "Invalid saved queue targets");
+	init(warriorData, wide);
+	for (size_t i = 0; i < targets.targets.size(); ++i) queueTargets[i] = targets.targets[i];
+	if (wide && mc2::gate::get<"MC2_FIXTURE_ORDER_LIVENESS">()) {
+		for (int i = 0; i < numTacOrdersQueued; ++i) {
+			TacticalOrder order;
+			peekQueuedTacOrder(i, &order);
+			if (order.targetWID != targets.targets[i]) Fatal(0, "Queued target restore mismatch");
+			mc2::fmt::print_out("[SAVE v1] event=queue_load pilot={} slot={} target={} cursor={} looping={} locked={} active={}\n",
+				index, i, order.targetWID, tacOrderQueueIndex, tacOrderQueueLooping, tacOrderQueueLocked, static_cast<int>(curTacOrder.code));
+		}
+	}
 }
 
 long MechWarrior::Load (PacketFilePtr file, long packetNum)
@@ -867,6 +907,7 @@ long MechWarrior::Load (PacketFilePtr file, long packetNum)
 	file->readPacket(packetNum,reinterpret_cast<MemoryPtr>(&staticData));
 	packetNum++;
 
+	if (staticData.numWarriors < 0 || staticData.numWarriors > MAX_WARRIORS) Fatal(0, "Invalid saved warrior count");
 	numWarriors 			= staticData.numWarriors;
 	numWarriorsInCombat		= staticData.numWarriorsInCombat;
 

@@ -1,6 +1,22 @@
 #pragma once
 #include "tacordr.h"
 #include "terrain_part_chunk.h"
+#include "save_archive.h"
+
+// The legacy packet remains a prefix. Watch IDs are 32-bit, mission-stable identities;
+// unlike terrain chunk indices they survive a fresh process and registry.
+struct SavedQueueTargets {
+	static constexpr uint32_t tag = 0x32545157; // WQT2
+	std::vector<uint32_t> targets;
+	void serialize(mc2::save::Archive& archive) {
+		uint32_t signature = tag, version = 2;
+		archive(signature, version);
+		if (signature != tag || version != 2) archive.reject("queue_targets_version");
+		archive.sequence(targets, 16);
+		for (auto target : targets)
+			if (target > 0x7fffffffU) archive.reject("queue_target_identity");
+	}
+};
 
 // The target type follows nine flag bits in packedData[1]. Guard-point uses code 31.
 inline bool packedOrderTargetsTerrain(unsigned long first, unsigned long second)

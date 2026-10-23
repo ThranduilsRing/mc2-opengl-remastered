@@ -217,3 +217,22 @@ TEST_CASE("production binding retires stale mappings even when an actor address 
     CHECK(differentPart.binding.retired);
 }
 }
+#include "contact.h"
+#include "warrior.h"
+
+static_assert(MAX_MOVERS + 1 == MAX_WARRIORS && MAX_MOVERS == MAX_MOVERS_PER_TEAM);
+static_assert(MAX_QUEUED_TACORDERS >= MAX_WARRIORS * MAX_QUEUED_TACORDERS_PER_WARRIOR);
+static_assert(MAX_SENSORS_PER_TEAM == MAX_SENSORS);
+
+TEST_CASE("contacts retain every observer and wide object identities") {
+	ContactInfo info;
+	for (int i = 0; i < MAX_SENSORS; ++i) info.incContactCount(0);
+	CHECK(info.getContactCount(0) == MAX_SENSORS);
+	info.teamSpotter[0] = 1000000;
+	CHECK(info.teamSpotter[0] == 1000000);
+	info.setSensor(MAX_SENSORS - 1, MAX_CONTACTS_PER_SENSOR - 1);
+	CHECK(info.getSensor(MAX_SENSORS - 1) == MAX_CONTACTS_PER_SENSOR - 1);
+	for (int i = 0; i < MAX_SENSORS; ++i) info.decContactCount(0);
+	CHECK(info.getContactCount(0) == 0);
+}
+

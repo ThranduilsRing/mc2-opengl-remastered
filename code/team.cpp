@@ -11,6 +11,7 @@
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "team_internal.h"
 #include <algorithm>
+#include "save_archive.h"
 #include "../GameOS/gameos/utils/mc2log.h"
 
 
@@ -452,9 +453,17 @@ long Team::Save (PacketFilePtr file, long packetNum)
 		// would put heap leftovers into the save.
 		const long liveRoster = std::clamp<long>(teams[i]->rosterSize, 0, MAX_MOVERS_PER_TEAM);
 		data.rosterSize = liveRoster;
-		memcpy(data.roster,teams[i]->roster,sizeof(GameObjectWatchID) * liveRoster);
-
-		file->writePacket(packetNum,reinterpret_cast<MemoryPtr>(&data),sizeof(TeamData),STORAGE_TYPE_RAW);
+		memcpy(data.roster,teams[i]->roster,sizeof(GameObjectWatchID) * std::min<long>(liveRoster, 120));
+		mc2::save::Bytes bytes(sizeof(data));
+		memcpy(bytes.data(), &data, sizeof(data));
+		if (liveRoster > 120) {
+			std::vector<uint32_t> roster(teams[i]->roster, teams[i]->roster + liveRoster);
+			mc2::save::Archive archive;
+			archive.sequence(roster, MAX_MOVERS_PER_TEAM);
+			if (!archive.good()) Fatal(0, "Invalid team roster save");
+			bytes.insert(bytes.end(), archive.bytes().begin(), archive.bytes().end());
+		}
+		file->writePacket(packetNum, bytes.data(), static_cast<unsigned int>(bytes.size()), STORAGE_TYPE_RAW);
 		packetNum++;
 	}
 
@@ -476,7 +485,18 @@ long Team::Load (PacketFilePtr file, long packetNum)
 	for (long i=0;i<numTeams;i++)
 	{
 		TeamData data{};
-		file->readPacket(packetNum,reinterpret_cast<MemoryPtr>(&data));
+		file->seekPacket(packetNum);
+		const auto size = file->getPacketSize();
+		if (size < sizeof(data) || size > sizeof(data) + 4 + MAX_MOVERS_PER_TEAM * 4) Fatal(0, "Invalid team packet size");
+		mc2::save::Bytes bytes(size);
+		file->readPacket(packetNum, bytes.data());
+		memcpy(&data, bytes.data(), sizeof(data));
+		std::vector<uint32_t> roster;
+		if (size > sizeof(data)) {
+			mc2::save::Archive archive(std::span(bytes).subspan(sizeof(data)));
+			archive.sequence(roster, MAX_MOVERS_PER_TEAM);
+			if (!archive.finish() || roster.size() != data.rosterSize) Fatal(0, "Invalid extended roster");
+		} else if (data.rosterSize > 120) Fatal(0, "Missing extended roster");
 		packetNum++;
 
 		teams[i] = new Team;
@@ -493,7 +513,10 @@ long Team::Load (PacketFilePtr file, long packetNum)
 			data.rosterSize = 0;
 		}
 		teams[i]->rosterSize = data.rosterSize;
-		memcpy(teams[i]->roster,data.roster,sizeof(GameObjectWatchID) * MAX_MOVERS_PER_TEAM);
+		if (roster.empty())
+			memcpy(teams[i]->roster, data.roster, sizeof(GameObjectWatchID) * data.rosterSize);
+		else
+			std::copy(roster.begin(), roster.end(), teams[i]->roster);
 
 		if (data.id == staticData.homeTeamId)
 			home = teams[i];

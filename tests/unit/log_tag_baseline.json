@@ -7385,6 +7385,22 @@
    "count": 1
   },
   {
+   "tag": "SAVE",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "event",
+    "pilot",
+    "slot",
+    "target",
+    "cursor",
+    "looping",
+    "locked",
+    "active"
+   ],
+   "count": 2
+  },
+  {
    "tag": "SAVELOAD",
    "ver": -1,
    "stream": "log",

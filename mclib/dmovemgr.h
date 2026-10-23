@@ -14,6 +14,7 @@
 //***************************************************************************
 
 inline constexpr int MAX_MOVERS = 255; // Should probably equal that in Collision System
+static_assert(MAX_MOVERS <= 255, "Mover identities and contact sentinels reserve byte value 255");
 
 using PathQueueRecPtr = struct _PathQueueRec*;
 

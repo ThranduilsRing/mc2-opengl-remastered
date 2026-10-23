@@ -66,7 +66,7 @@ bool						SensorSystemManager::enemyInLOS = true;
 
 extern float scenarioTime;
 
-constexpr int VISUAL_CONTACT_FLAG = 0x8000;
+constexpr uint32_t VISUAL_CONTACT_FLAG = 0x80000000U;
 
 //***************************************************************************
 // CONTACT INFO class
@@ -165,7 +165,7 @@ void SensorSystem::setShutdown (bool setting) {
 		if (notShutdown) {
 			long i = 0;
 			while (i < numContacts) {
-				MoverPtr mover = static_cast<MoverPtr>(ObjectManager->get(contacts[i] & 0x7FFF));
+				MoverPtr mover = static_cast<MoverPtr>(ObjectManager->get(contacts[i] & 0x7FFFFFFF));
 				if (contacts[i] & VISUAL_CONTACT_FLAG) {
 					master->removeContact(this, mover);
 					i++;
@@ -180,7 +180,7 @@ void SensorSystem::setShutdown (bool setting) {
 	else {
 		if (!notShutdown)
 			for (long i = 0; i < numContacts; i++) {
-				MoverPtr mover = static_cast<MoverPtr>(ObjectManager->get(contacts[i] & 0x7FFF));
+				MoverPtr mover = static_cast<MoverPtr>(ObjectManager->get(contacts[i] & 0x7FFFFFFF));
 				if (contacts[i] & VISUAL_CONTACT_FLAG)
 					master->addContact(this, mover, i, CONTACT_VISUAL);
 				else
@@ -374,7 +374,7 @@ bool SensorSystem::isContact (MoverPtr mover) {
 	if (notShutdown)
 		return(mover->getContactInfo()->getSensor(id) < 255);
 	for (long i = 0; i < numContacts; i++)
-		if ((contacts[i] & 0x7FFF) == mover->getHandle())
+		if ((contacts[i] & 0x7FFFFFFF) == mover->getHandle())
 			return(true);
 	return(false);
 }
@@ -403,7 +403,7 @@ void SensorSystem::modifyContact (MoverPtr mover, bool visual) {
 	if (contactNum < MAX_CONTACTS_PER_SENSOR)
 	{
 		if (visual)
-			contacts[contactNum] =  mover->getHandle() | 0x8000;
+			contacts[contactNum] =  mover->getHandle() | VISUAL_CONTACT_FLAG;
 		else
 			contacts[contactNum] =  mover->getHandle();
 	}
@@ -419,8 +419,8 @@ void SensorSystem::removeContact (long contactIndex) {
 	//-----------------------------------------------
 	// This assumes the contactIndex is legitimate...
 
-	MoverPtr contact = static_cast<MoverPtr>(ObjectManager->get(contacts[contactIndex] & 0x7FFF));
-	Assert(contact != nullptr, contacts[contactIndex] & 0x7FFF, " SensorSystem.removeContact: bad contact ");
+	MoverPtr contact = static_cast<MoverPtr>(ObjectManager->get(contacts[contactIndex] & 0x7FFFFFFF));
+	Assert(contact != nullptr, contacts[contactIndex] & 0x7FFFFFFF, " SensorSystem.removeContact: bad contact ");
 	MC2_SIM_TRACE_LINE("SREM owner={:d} mv={:d}", static_cast<int32_t>(owner->getPartId()), static_cast<int32_t>(contact->getPartId()));
 	
 	numContacts--;
@@ -428,7 +428,7 @@ void SensorSystem::removeContact (long contactIndex) {
 		//-----------------------------------------------
 		// Fill vacated slot with contact in last slot...
 		contacts[contactIndex] = contacts[numContacts];
-		MoverPtr contact = static_cast<MoverPtr>(ObjectManager->get(contacts[numContacts] & 0x7FFF));
+		MoverPtr contact = static_cast<MoverPtr>(ObjectManager->get(contacts[numContacts] & 0x7FFFFFFF));
 		contact->getContactInfo()->sensors[id] = contactIndex;
 	}
 
@@ -474,7 +474,7 @@ void SensorSystem::updateContacts (void) {
 	long i = 0;
 	while (i < numContacts) 
 	{
-		MoverPtr contact = static_cast<MoverPtr>(ObjectManager->get(contacts[i] & 0x7FFF));
+		MoverPtr contact = static_cast<MoverPtr>(ObjectManager->get(contacts[i] & 0x7FFFFFFF));
 		long contactStatus = calcContactStatus(contact);
 		if (contactStatus == CONTACT_NONE)
 			removeContact(i);
@@ -482,14 +482,14 @@ void SensorSystem::updateContacts (void) {
 		{
 			contacts[i] =  contact->getHandle();
 			if (contactStatus == CONTACT_VISUAL)
-				contacts[i] |= 0x8000;
+				contacts[i] |= VISUAL_CONTACT_FLAG;
 			modifyContact(contact, contactStatus == CONTACT_VISUAL);
 			
 /*			if (teamContactStatus < contactStatus) {
 				//--------------------------------------------------
 				// Better sensor info, so update the team sensors...
 				contactInfo->contactStatus[owner->getTeamId()] = contactStatus;
-				contactInfo->teamSpotter[owner->getTeamId()] = (unsigned char)owner->getHandle();
+				contactInfo->teamSpotter[owner->getTeamId()] = static_cast<uint32_t>(owner->getHandle());
 			}
 */			i++;
 		}
@@ -1063,8 +1063,8 @@ void TeamSensorSystem::removeContact (SensorSystemPtr sensor, MoverPtr contact) 
 
 	ContactInfoPtr contactInfo = contact->getContactInfo();
 	contactInfo->sensors[sensor->id] = 255;
+	Assert(contactInfo->contactCount[teamId] > 0, 0, "Negative contact count");
 	contactInfo->contactCount[teamId]--;
-	Assert(contactInfo->contactCount[teamId] != 255, 0, "FUDGE");
 
 	if (contactInfo->contactCount[teamId] == 0) {
 		long contactIndex = contactInfo->teams[teamId];

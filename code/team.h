@@ -48,7 +48,7 @@ struct _TeamData
 {
 	long 				id;
 	long 				rosterSize;
-	GameObjectWatchID	roster[MAX_MOVERS_PER_TEAM];
+	GameObjectWatchID	roster[120]; // Frozen legacy save prefix.
 }; using TeamData = _TeamData;
 
 struct _TeamStaticData
