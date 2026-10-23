@@ -1374,6 +1374,10 @@ std::vector<uint8_t> GameObjectManager::saveAnimationState() {
     poolOrder(std::span(turrets, static_cast<size_t>(numTurrets))); poolOrder(std::span(buildings, static_cast<size_t>(numBuildings)));
     poolOrder(std::span(gates, static_cast<size_t>(numGates))); poolOrder(std::span(artillery, static_cast<size_t>(numArtillery)));
     poolOrder(std::span(carnage, static_cast<size_t>(numCarnage))); poolOrder(std::span(weapons, static_cast<size_t>(numWeapons)));
+    // Sensor scan state: one team scans per tick and getSensorsActive reads the flag the scans leave; mission scripts branch on it.
+    int32_t scanCursor = SensorManager ? static_cast<int32_t>(SensorManager->getScanCursor()) : 0;
+    bool enemyInLOS = SensorSystemManager::enemyInLOS;
+    archive(scanCursor, enemyInLOS);
     if (!archive.good()) Fatal(0, "Unable to serialize authoritative animation state");
     return archive.bytes();
 }
@@ -1403,7 +1407,16 @@ bool GameObjectManager::restoreAnimationState(const std::vector<uint8_t>& bytes,
     std::vector<int32_t> order[6];
     if (archive.remaining() > 0)
         for (auto& handles : order) archive(handles);
+    // Saves written before the sensor scan state end after the pool orders (or before them) and keep the defaults.
+    int32_t scanCursor = 0;
+    bool enemyInLOS = SensorSystemManager::enemyInLOS, hasScan = false;
+    if (archive.remaining() > 0) {
+        archive(scanCursor, enemyInLOS);
+        hasScan = true;
+        if (archive.good() && (!SensorManager || scanCursor < 0 || scanCursor >= Team::numTeams)) archive.reject("sensor_scan_cursor");
+    }
     if (!archive.finish()) return false;
+    if (hasScan) SensorManager->restoreScan(scanCursor, enemyInLOS);
     mc2::save::applyPoolOrder(std::span(turrets, static_cast<size_t>(numTurrets)), order[0], objList, getMaxObjects());
     mc2::save::applyPoolOrder(std::span(buildings, static_cast<size_t>(numBuildings)), order[1], objList, getMaxObjects());
     mc2::save::applyPoolOrder(std::span(gates, static_cast<size_t>(numGates)), order[2], objList, getMaxObjects());
