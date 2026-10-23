@@ -41,7 +41,7 @@
   "gui/alistbox.cpp": 1513,
   "mclib/ablenv.cpp": 1585,
   "mclib/ablrtn.cpp": 1799,
-  "mclib/assimp_importer.cpp": 1843,
+  "mclib/assimp_importer.cpp": 1841,
   "mclib/camera.h": 1828,
   "mclib/file.cpp": 1736,
   "mclib/gosfx/fcurve.cpp": 1923,
@@ -53,7 +53,7 @@
   "mclib/terrtxm.cpp": 1816,
   "mclib/tgl.h": 1809
  },
- "head": "160f70593",
+ "head": "d3cffaa12",
  "per_dir": {
   "GameAdapters": {
    "files": 13,
@@ -211,7 +211,7 @@
   },
   {
    "file": "mclib/assimp_importer.cpp",
-   "lines": 1843
+   "lines": 1841
   },
   {
    "file": "code/optionsarea.cpp",
