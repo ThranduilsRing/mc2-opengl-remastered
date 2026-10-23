@@ -152,8 +152,9 @@ def test_deploy_prunes_only_unchanged_manifest_files(tmp_path, monkeypatch):
     target = tmp_path / "install"
     target.mkdir()
     owned = {}
-    for rel in ("retired.spv", "modified.ini", "preserved.ini"):
+    for rel in ("retired.spv", "modified.ini", "preserved.ini", "mods/user/keep.fit", "data/savegame/save.fit"):
         path = target / rel
+        path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(b"original")
         owned[rel] = (dp.sha256_file(path), path.stat().st_size)
     dp.write_manifest(str(target), owned, "fixture")
@@ -164,6 +165,8 @@ def test_deploy_prunes_only_unchanged_manifest_files(tmp_path, monkeypatch):
     assert (target / "modified.ini").read_bytes() == b"user change"
     assert (target / "preserved.ini").exists()
     assert (target / "save.fit").read_bytes() == b"user save"
+    assert (target / "mods/user/keep.fit").exists()
+    assert (target / "data/savegame/save.fit").exists()
 
 
 def test_deploy_rejects_retired_path_outside_target(tmp_path, monkeypatch):

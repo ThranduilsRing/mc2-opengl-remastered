@@ -1247,6 +1247,9 @@ def deploy(items, target_dir, allow_stale_pdb, preserve=(), cache=None,
         resolved = retired.resolve()
         if not resolved.is_relative_to(root) or resolved == root:
             fail(f"retired payload path escapes target: {rel}")
+        parts = tuple(part.casefold() for part in Path(rel).parts)
+        if parts[0] in {"mods", "savegame"} or parts[:2] == ("data", "savegame"):
+            continue
         if retired.is_file():
             if sha256_file(retired) != digest:
                 log(f"preserved modified retired payload: {rel}")
