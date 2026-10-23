@@ -1,6 +1,7 @@
 // The real SDL_mixer backend: handle lifetime and audible stereo gains, without a game or window.
 #include "doctest.h"
 #include "gameos.hpp"
+#include "gameos_music_cache.h"
 #include "alloc_probe.h"
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_mixer.h>

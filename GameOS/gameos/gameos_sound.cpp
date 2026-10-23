@@ -1,4 +1,5 @@
 #include "gameos.hpp"
+#include "gameos_music_cache.h"
 #include "gos_profiler.h"
 #include <memory>
 #include <utility>
@@ -256,7 +257,8 @@ void __stdcall gosAudio_CreateResource( HGOSAUDIO* hgosaudio, enum gosAudio_Reso
         ZoneScopedN("Audio.Stream.LoadFile");
 
         if (auto cached = g_sound_engine->musicCache.find(file_name); cached != g_sound_engine->musicCache.end()) {
-            auto* audio = gosAudio::makeAudio(dst_fmt, dst_channels, dst_freq, cached->second.data, cached->second.size);
+            const auto& [path, music] = *cached;
+            auto* audio = gosAudio::makeAudio(dst_fmt, dst_channels, dst_freq, music.data, music.size);
             g_sound_engine->addAudio(audio);
             *hgosaudio = audio;
             return;
@@ -399,13 +401,14 @@ void __stdcall gosAudio_CreateResource( HGOSAUDIO* hgosaudio, enum gosAudio_Reso
     *hgosaudio = paudio;
 }
 
-bool gosAudio_PreloadMusic(const char* file_name) {
+bool gosAudio_PreloadMusic(std::string_view path) {
     ZoneScopedN("Audio.Music.Predecode");
-    if (!g_sound_engine || !file_name || !*file_name) return false;
+    if (!g_sound_engine || path.empty()) return false;
+    const std::string file_name(path);
     if (g_sound_engine->musicCache.contains(file_name)) return true;
     if (g_sound_engine->musicCacheBytes >= SoundEngine::MUSIC_CACHE_LIMIT) return false;
     HGOSAUDIO handle = nullptr;
-    gosAudio_CreateResource(&handle, gosAudio_StreamedFile, file_name);
+    gosAudio_CreateResource(&handle, gosAudio_StreamedFile, file_name.c_str());
     if (!handle) return false;
     const auto size = handle->mix_chunk_.alen;
     const bool fits = size <= SoundEngine::MUSIC_CACHE_LIMIT - g_sound_engine->musicCacheBytes;

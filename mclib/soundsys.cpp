@@ -1,4 +1,5 @@
 #include "Gates/preferences_legacy.h"
+#include "gameos_music_cache.h"
 //---------------------------------------------------------------------------
 // soundsys.cpp - This file is the sound system code
 //
@@ -269,7 +270,7 @@ long SoundSystem::init (const char *soundFileName)
 			if (useMusic && strncmp(musicName, "NONE", 4) != 0) {
 				FullPathFileName path;
 				path.init(soundPath, musicName, ".wav");
-				gosAudio_PreloadMusic(path);
+				gosAudio_PreloadMusic(static_cast<const char*>(path));
 			}
 		}
 
