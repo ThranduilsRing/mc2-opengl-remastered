@@ -32,6 +32,7 @@
 #include "gameos.hpp"
 #include "static_caster_set.h"
 #include "vk_shared_gbuffer_gate.h"
+#include "local_light_shadow.h"
 
 #include <tracy/Tracy.hpp>   // VK-ISLAND-TRACY-1: per-frame CPU attribution zones
 
@@ -144,7 +145,7 @@ struct InstRun {
 
 // The passes of one frame: the dynamic map, the near cascade layers and the full-map cascade. Each writes its light-space matrix to its own slice of the
 // frame UBO (bound with a dynamic offset), so the passes can be recorded back to back without the GPU having read the matrix of the previous one.
-constexpr uint32_t kMaxPassesPerFrame = 16;
+constexpr uint32_t kMaxPassesPerFrame = 40;   // LOCAL-LIGHTS-2: + up to 2 slices per local shadow tile
 // The largest minUniformBufferOffsetAlignment a Vulkan device may report.
 constexpr VkDeviceSize kUboSliceBytes = 256;
 
@@ -238,13 +239,37 @@ struct ShadowIsland : mc2vk::IslandState {
     mc2vk::MoverShadowState         mover;
     mc2vk::OwnedImageView           debugArrayView; // compatibility view of the same one-layer D16 map, never a second allocation
 
+    // LOCAL-LIGHTS-2: the local-light shadow atlas (local_light_shadow.h). `staticAtlas` keeps each tile's baked static casters
+    // (TRANSFER_SRC between frames); `liveAtlas` = static tile copy + this frame's mechs (DEPTH_STENCIL_READ_ONLY between frames),
+    // sampled by every pool receiver.
+    struct LocalShadow {
+        bool ok = false;           // images, passes and sets exist
+        bool layoutsReady = false; // the first-use transitions were recorded
+        bool ready = false;        // liveAtlas has been through a recorded frame
+        VkImageResource staticAtlas{}, liveAtlas{};   // their depth-aspect views serve as attachment and sampled view
+        mc2vk::OwnedRenderPass bakePass, livePass;
+        mc2vk::OwnedFramebuffer bakeFb, liveFb;
+        mc2vk::OwnedBuffer inst[2];
+        VkDeviceSize instCap[2] = {0, 0};
+        mc2vk::OwnedDescriptorPool pool;
+        VkDescriptorSet set[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE};
+        uint64_t bakedKey[mc2localshadow::kTiles] = {};
+        std::vector<GpuStaticPropInstance> leaves;   // the resolved static caster set
+        uint64_t leavesVersion = ~0ull, leavesDelta = ~0ull;
+        uint32_t tilesDrawn = 0;
+        uint64_t bakesTotal = 0;
+    } local;
+
     ShadowIsland() = default;
     // The views and framebuffers over the two image resources go first; the resources hold their images with raw allocations and are released here.
     ~ShadowIsland() override {
         debugArrayView.reset();
         fb.reset(); depthAttView.reset();
+        local.bakeFb.reset(); local.liveFb.reset();
         if (device != VK_NULL_HANDLE) {
             vkImageResourceDestroy(&depthResource, device);
+            vkImageResourceDestroy(&local.staticAtlas, device);
+            vkImageResourceDestroy(&local.liveAtlas, device);
         }
     }
 };
@@ -343,6 +368,73 @@ bool create_caster_pipeline(ShadowIsland* s, mc2vk::OwnedPipeline& out, VkShader
         return false;
     }
     mc2vk::nameObject(s->device, out.get(), name);
+    return true;
+}
+
+// LOCAL-LIGHTS-2: the local-light shadow atlas pair, its two render passes (both compatible with the caster pipelines' pass: one D16
+// attachment) and the descriptor sets over its own caster instance buffers. Failure leaves the island without local shadows (logged).
+static bool init_local_shadow(ShadowIsland* s) {
+    auto& L = s->local;
+    using namespace mc2localshadow;
+    if (!vkImageResourceCreate(&L.staticAtlas, s->device, s->phys, kAtlasW, kAtlasH, s->depthFormat,
+                               VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, "shadow.localStatic") ||
+        !vkImageResourceCreate(&L.liveAtlas, s->device, s->phys, kAtlasW, kAtlasH, s->depthFormat,
+                               VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+                               "shadow.localLive")) {
+        vlog("local light shadow atlas unavailable."); return false;
+    }
+    // bake: static tiles stay TRANSFER_SRC between frames (the live atlas copies them every frame).
+    // live: the copied tiles arrive TRANSFER_DST and leave DEPTH_STENCIL_READ_ONLY for the pool receivers.
+    // The subpass dependencies must equal the caster pipelines' pass (render-pass compatibility), so the transfer
+    // hazards are ordered by explicit barriers in record_local_shadows that chain into these dependencies.
+    const auto makePass = [&](mc2vk::OwnedRenderPass& out, VkImageLayout initial, VkImageLayout final) {
+        const VkPipelineStageFlags srcStage = VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+        const VkAccessFlags srcAccess = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT | VK_ACCESS_SHADER_READ_BIT;
+        const VkPipelineStageFlags dstStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+        const VkAccessFlags dstAccess = VK_ACCESS_SHADER_READ_BIT;
+        VkAttachmentDescription att{};
+        att.format = s->depthFormat; att.samples = VK_SAMPLE_COUNT_1_BIT;
+        att.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD; att.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+        att.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE; att.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        att.initialLayout = initial; att.finalLayout = final;
+        VkAttachmentReference ref{0, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL};
+        VkSubpassDescription sub{};
+        sub.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS; sub.pDepthStencilAttachment = &ref;
+        VkSubpassDependency deps[2]{};
+        deps[0].srcSubpass = VK_SUBPASS_EXTERNAL; deps[0].dstSubpass = 0;
+        deps[0].srcStageMask = srcStage; deps[0].srcAccessMask = srcAccess;
+        deps[0].dstStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+        deps[0].dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+        deps[1].srcSubpass = 0; deps[1].dstSubpass = VK_SUBPASS_EXTERNAL;
+        deps[1].srcStageMask = VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT; deps[1].srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+        deps[1].dstStageMask = dstStage; deps[1].dstAccessMask = dstAccess;
+        VkRenderPassCreateInfo rpci{VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO};
+        rpci.attachmentCount = 1; rpci.pAttachments = &att; rpci.subpassCount = 1; rpci.pSubpasses = &sub;
+        rpci.dependencyCount = 2; rpci.pDependencies = deps;
+        return mc2vk::create(out, s->device, [&](auto* h) { return vkCreateRenderPass(s->device, &rpci, nullptr, h); });
+    };
+    const auto makeFb = [&](mc2vk::OwnedFramebuffer& out, VkRenderPass pass, VkImageView view) {
+        VkFramebufferCreateInfo fci{VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO};
+        fci.renderPass = pass; fci.attachmentCount = 1; fci.pAttachments = &view;
+        fci.width = kAtlasW; fci.height = kAtlasH; fci.layers = 1;
+        return mc2vk::create(out, s->device, [&](auto* h) { return vkCreateFramebuffer(s->device, &fci, nullptr, h); });
+    };
+    if (!makePass(L.bakePass, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL) ||
+        !makePass(L.livePass, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL) ||
+        !makeFb(L.bakeFb, L.bakePass.get(), L.staticAtlas.view.get()) ||
+        !makeFb(L.liveFb, L.livePass.get(), L.liveAtlas.view.get())) {
+        vlog("local light shadow passes unavailable."); return false;
+    }
+    VkDescriptorPoolSize sizes[2]{{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 2}, {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 2}};
+    VkDescriptorPoolCreateInfo pci{VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO};
+    pci.maxSets = 2; pci.poolSizeCount = 2; pci.pPoolSizes = sizes;
+    if (!mc2vk::create(L.pool, s->device, [&](auto* h) { return vkCreateDescriptorPool(s->device, &pci, nullptr, h); })) return false;
+    const VkDescriptorSetLayout layouts[2] = {s->dsl.get(), s->dsl.get()};
+    VkDescriptorSetAllocateInfo dsai{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO};
+    dsai.descriptorPool = L.pool.get(); dsai.descriptorSetCount = 2; dsai.pSetLayouts = layouts;
+    if (vkAllocateDescriptorSets(s->device, &dsai, L.set) != VK_SUCCESS) return false;
+    L.ok = true;
+    vlog("local light shadow atlas %ux%u (%u tiles of %u^2, D16).", kAtlasW, kAtlasH, kTiles, kTileSide);
     return true;
 }
 
@@ -562,6 +654,8 @@ bool init_island(ShadowIsland* s, int size) {
     if (!s->bake.init(s->device, s->allocator, s->phys, s->alphaDsl.get(), spv_dir()))
         vlog("static shadow bake unavailable on this device.");
     if (!s->mover.init(ctx,true)) return false;
+    // ---- LOCAL-LIGHTS-2: Potato keeps unshadowed local lights. ----
+    if (mc2shadow::shadowQuality().level > 0) init_local_shadow(s);
 
     // ---- Command pool + 2 command buffers (per parity). ----
     {
@@ -921,6 +1015,265 @@ static bool record_pass(ShadowIsland* s, VkFramebuffer fb, int size, const float
     return true;
 }
 
+// ---- LOCAL-LIGHTS-2: local-light shadow tiles ----------------------------------------------------------------------------------------
+
+// Writes one light-space matrix to the next free slice of the frame UBO; the slice counts as a pass of the frame.
+static bool local_ubo_slice(ShadowIsland* s, const float* m16, uint32_t& dynOffset) {
+    if (s->passCount >= kMaxPassesPerFrame) return false;
+    const VkDeviceSize off = (static_cast<VkDeviceSize>(s->parity) * kMaxPassesPerFrame + s->passCount) * kUboSliceBytes;
+    ShadowFrameUBO u{};
+    std::memcpy(u.lightSpaceMatrix, m16, sizeof(u.lightSpaceMatrix));
+    void* mapped = nullptr;
+    if (vmaMapMemory(s->allocator, s->ubo.allocation(), &mapped) != VK_SUCCESS) return false;
+    std::memcpy(static_cast<uint8_t*>(mapped) + off, &u, sizeof(u));
+    vmaFlushAllocation(s->allocator, s->ubo.allocation(), off, sizeof(u));
+    vmaUnmapMemory(s->allocator, s->ubo.allocation());
+    dynOffset = static_cast<uint32_t>(off);
+    ++s->passCount;
+    return true;
+}
+
+static bool local_ensure_instances(ShadowIsland* s, uint32_t par, VkDeviceSize bytes) {
+    auto& L = s->local;
+    if (!L.inst[par] || bytes > L.instCap[par]) {
+        L.inst[par].reset();
+        const VkDeviceSize cap = bytes + bytes / 2 + 4096;
+        if (!make_buffer(s, L.inst[par], cap, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, true, "shadow.localInst", static_cast<int>(par))) return false;
+        L.instCap[par] = cap;
+        VkDescriptorBufferInfo uboInfo{s->ubo.get(), 0, sizeof(ShadowFrameUBO)};
+        VkDescriptorBufferInfo instInfo{L.inst[par].get(), 0, VK_WHOLE_SIZE};
+        VkWriteDescriptorSet w[2]{};
+        w[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[0].dstSet = L.set[par]; w[0].dstBinding = 0; w[0].descriptorCount = 1;
+        w[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC; w[0].pBufferInfo = &uboInfo;
+        w[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[1].dstSet = L.set[par]; w[1].dstBinding = 1; w[1].descriptorCount = 1;
+        w[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; w[1].pBufferInfo = &instInfo;
+        vkUpdateDescriptorSets(s->device, 2, w, 0, nullptr);
+    }
+    return true;
+}
+
+// The static-prop caster draws of one tile (the record_pass loop over a tile's own instance runs).
+static void local_draw_static(ShadowIsland* s, VkCommandBuffer cb, const std::vector<InstRun>& runs, uint32_t dynOffset) {
+    mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->pipe.get());
+    const VkDescriptorSet set = s->local.set[s->parity];
+    vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 0, 1, &set, 1, &dynOffset);
+    const VkDeviceSize vboOff = 0;
+    const VkBuffer vertexBuf = s->vbo.get();
+    vkCmdBindVertexBuffers(cb, 0, 1, &vertexBuf, &vboOff);
+    vkCmdBindIndexBuffer(cb, s->ibo.get(), 0, VK_INDEX_TYPE_UINT32);
+    bool alphaBound = false;
+    for (const InstRun& run : runs) {
+        if (run.typeID >= s->typeRuns.size()) continue;
+        const TypeRun& tr = s->typeRuns[run.typeID];
+        for (uint32_t k = 0; k < tr.packetCount; ++k) {
+            const uint32_t pk = tr.firstPacket + k;
+            if (pk >= s->packets.size()) break;
+            const Mc2ShadowPacket& pkt = s->packets[pk];
+            const bool alphaPacket = s->alphaReady && pk < s->packetAlpha.size() && s->packetAlpha[pk].layer >= 0;
+            if (alphaPacket) {
+                if (!alphaBound) {
+                    mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->alphaPipe.get());
+                    const VkDescriptorSet aset = s->alphaSet;
+                    vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 1, 1, &aset, 0, nullptr);
+                    alphaBound = true;
+                }
+                const ShadowIsland::PacketAlpha& pa = s->packetAlpha[pk];
+                const struct { float scale[2]; int32_t layer; int32_t pad; } pc = {{pa.scaleX, pa.scaleY}, pa.layer, 0};
+                vkCmdPushConstants(cb, s->playout.get(), VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(pc), &pc);
+            } else if (alphaBound) {
+                mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->pipe.get());
+                alphaBound = false;
+            }
+            vkCmdDrawIndexed(cb, pkt.indexCount, run.count, pkt.firstIndex, static_cast<int32_t>(pkt.baseVertex), run.firstInstance);
+        }
+    }
+}
+
+static void local_barrier(VkCommandBuffer cb, VkPipelineStageFlags src, VkAccessFlags srcAccess,
+                          VkPipelineStageFlags dst, VkAccessFlags dstAccess) {
+    VkMemoryBarrier mb{VK_STRUCTURE_TYPE_MEMORY_BARRIER};
+    mb.srcAccessMask = srcAccess; mb.dstAccessMask = dstAccess;
+    vkCmdPipelineBarrier(cb, src, dst, 0, 1, &mb, 0, nullptr, 0, nullptr);
+}
+
+static void local_tile_viewport(VkCommandBuffer cb, uint32_t t) {
+    using namespace mc2localshadow;
+    const float x = static_cast<float>((t % kCols) * kTileSide), y = static_cast<float>((t / kCols) * kTileSide);
+    const VkViewport vp{x, y, static_cast<float>(kTileSide), static_cast<float>(kTileSide), 0.0f, 1.0f};
+    const VkRect2D sc{{static_cast<int32_t>(x), static_cast<int32_t>(y)}, {kTileSide, kTileSide}};
+    vkCmdSetViewport(cb, 0, 1, &vp);
+    vkCmdSetScissor(cb, 0, 1, &sc);
+    vkCmdSetDepthBias(cb, 2.0f, 0.0f, 2.5f);
+}
+
+// Records this frame's local shadow tiles into the open frame: re-bakes the static casters of the tiles whose light changed, copies every
+// used tile to the live atlas and draws the mechs on top. Static casters are culled to the light's range on the CPU, once per bake.
+static void record_local_shadows(ShadowIsland* s) {
+    using namespace mc2localshadow;
+    auto& L = s->local;
+    L.tilesDrawn = 0;
+    if (!L.ok || !s->geomUploaded) return;
+    VkCommandBuffer cb = s->cbuf[s->parity];
+    const VkImageSubresourceRange depthRange{VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, 1};
+    if (!L.layoutsReady) {
+        VkImageMemoryBarrier b[2]{};
+        for (auto& x : b) { x.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER; x.srcQueueFamilyIndex = x.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED; x.subresourceRange = depthRange; x.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED; }
+        b[0].image = L.staticAtlas.image.get(); b[0].newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL; b[0].dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+        b[1].image = L.liveAtlas.image.get();   b[1].newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL; b[1].dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+        vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 2, b);
+        const VkClearDepthStencilValue one{1.0f, 0};
+        vkCmdClearDepthStencilImage(cb, L.liveAtlas.image.get(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &one, 1, &depthRange);
+        VkImageMemoryBarrier r = b[1];
+        r.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL; r.newLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+        r.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT; r.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+        vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &r);
+        L.layoutsReady = true;
+        ++s->passCount;   // the frame must be submitted for the transitions
+    }
+    L.ready = true;
+    uint32_t tileCount = 0;
+    const Tile* tiles = currentTiles(&tileCount);
+    if (!tiles || tileCount == 0) return;
+    ZoneScopedN("VKIsl.Shadow.LocalLights");
+
+    const auto& casterSet = mc2shadow::staticCasterSet();
+    if (casterSet.version() != L.leavesVersion || casterSet.deltaVersion() != L.leavesDelta) {
+        casterSet.resolve(L.leaves);
+        L.leavesVersion = casterSet.version();
+        L.leavesDelta = casterSet.deltaVersion();
+        for (auto& k : L.bakedKey) k = 0;
+    }
+
+    uint32_t bake[kTiles], bakeCount = 0, used[kTiles], usedCount = 0;
+    for (uint32_t t = 0; t < kTiles && t < tileCount; ++t) {
+        if (!tiles[t].used) continue;
+        used[usedCount++] = t;
+        if (tiles[t].key != L.bakedKey[t]) bake[bakeCount++] = t;
+    }
+    if (usedCount == 0) return;
+
+    if (bakeCount > 0) {
+        std::vector<GpuStaticPropInstance> staged;
+        std::vector<InstRun> runs[kTiles];
+        std::vector<uint32_t> pick;
+        for (uint32_t bi = 0; bi < bakeCount; ++bi) {
+            const Tile& T = tiles[bake[bi]];
+            float aim[3];
+            decodeAim(T.packedType, aim);
+            const float reach = T.farDistance + 40.0f;
+            pick.clear();
+            for (uint32_t i = 0; i < L.leaves.size(); ++i) {
+                const float* m = L.leaves[i].modelMatrix;
+                const float d[3] = {-m[3] - T.pos[0], m[11] - T.pos[1], m[7] - T.pos[2]};   // Stuff -> MC2 (-x, z, y)
+                if (d[0] * d[0] + d[1] * d[1] + d[2] * d[2] > reach * reach) continue;
+                if (d[0] * aim[0] + d[1] * aim[1] + d[2] * aim[2] < -40.0f) continue;
+                pick.push_back(i);
+            }
+            std::sort(pick.begin(), pick.end(), [&](uint32_t a, uint32_t b) { return L.leaves[a].typeID < L.leaves[b].typeID; });
+            for (size_t i = 0; i < pick.size();) {
+                const uint32_t tid = L.leaves[pick[i]].typeID;
+                size_t j = i;
+                while (j < pick.size() && L.leaves[pick[j]].typeID == tid) ++j;
+                runs[bi].push_back({tid, static_cast<uint32_t>(staged.size()), static_cast<uint32_t>(j - i)});
+                for (size_t k = i; k < j; ++k) staged.push_back(L.leaves[pick[k]]);
+                i = j;
+            }
+        }
+        const VkDeviceSize bytes = std::max<VkDeviceSize>(staged.size(), 1) * sizeof(GpuStaticPropInstance);
+        if (!local_ensure_instances(s, s->parity, bytes)) { L.ok = false; return; }
+        if (!staged.empty()) {
+            void* mapped = nullptr;
+            if (vmaMapMemory(s->allocator, s->local.inst[s->parity].allocation(), &mapped) != VK_SUCCESS) return;
+            std::memcpy(mapped, staged.data(), staged.size() * sizeof(GpuStaticPropInstance));
+            vmaFlushAllocation(s->allocator, s->local.inst[s->parity].allocation(), 0, VK_WHOLE_SIZE);
+            vmaUnmapMemory(s->allocator, s->local.inst[s->parity].allocation());
+        }
+        // The previous frame's tile copies read the static atlas (TRANSFER): the bake's layout transition and writes wait for
+        // them; the dst stages chain into the pass's external dependency.
+        local_barrier(cb, VK_PIPELINE_STAGE_TRANSFER_BIT, 0,
+                      VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0);
+        VkRenderPassBeginInfo rbi{VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO};
+        rbi.renderPass = L.bakePass.get(); rbi.framebuffer = L.bakeFb.get();
+        rbi.renderArea = {{0, 0}, {kAtlasW, kAtlasH}};
+        MC2_VK_GPU_SCOPE(bakeScope, cb, "VKIsl.Shadow.LocalBake");
+        vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
+        for (uint32_t bi = 0; bi < bakeCount; ++bi) {
+            const uint32_t t = bake[bi];
+            float m[16];
+            lightMatrix(tiles[t], m);
+            uint32_t dyn = 0;
+            if (!local_ubo_slice(s, m, dyn)) break;
+            local_tile_viewport(cb, t);
+            VkClearAttachment ca{VK_IMAGE_ASPECT_DEPTH_BIT, 0, {}};
+            ca.clearValue.depthStencil = {1.0f, 0};
+            const VkClearRect cr{{{static_cast<int32_t>((t % kCols) * kTileSide), static_cast<int32_t>((t / kCols) * kTileSide)}, {kTileSide, kTileSide}}, 0, 1};
+            vkCmdClearAttachments(cb, 1, &ca, 1, &cr);
+            local_draw_static(s, cb, runs[bi], dyn);
+            L.bakedKey[t] = tiles[t].key;
+            ++L.bakesTotal;
+        }
+        vkCmdEndRenderPass(cb);
+        bakeScope.end();
+        // The copy below reads what the bake wrote (the pass's exit dependency ends at FRAGMENT_SHADER).
+        local_barrier(cb, VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                      VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_READ_BIT);
+    }
+
+    // Live atlas: the baked static tiles, then this frame's mechs.
+    VkImageMemoryBarrier toDst{VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER};
+    toDst.srcQueueFamilyIndex = toDst.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    toDst.image = L.liveAtlas.image.get(); toDst.subresourceRange = depthRange;
+    toDst.oldLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL; toDst.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+    toDst.srcAccessMask = 0; toDst.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+    vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &toDst);
+    VkImageCopy regions[kTiles]{};
+    for (uint32_t i = 0; i < usedCount; ++i) {
+        const uint32_t t = used[i];
+        VkImageCopy& r = regions[i];
+        r.srcSubresource = r.dstSubresource = {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 0, 1};
+        r.srcOffset = r.dstOffset = {static_cast<int32_t>((t % kCols) * kTileSide), static_cast<int32_t>((t / kCols) * kTileSide), 0};
+        r.extent = {kTileSide, kTileSide, 1};
+    }
+    vkCmdCopyImage(cb, L.staticAtlas.image.get(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                   L.liveAtlas.image.get(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, usedCount, regions);
+    // The mech pass loads the copied tiles.
+    local_barrier(cb, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_WRITE_BIT,
+                  VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                  VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT);
+    VkRenderPassBeginInfo rbi{VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO};
+    rbi.renderPass = L.livePass.get(); rbi.framebuffer = L.liveFb.get();
+    rbi.renderArea = {{0, 0}, {kAtlasW, kAtlasH}};
+    MC2_VK_GPU_SCOPE(liveScope, cb, "VKIsl.Shadow.LocalLive");
+    vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
+    if (s->mech.hasCasters()) {
+        for (uint32_t i = 0; i < usedCount; ++i) {
+            const uint32_t t = used[i];
+            float m[16];
+            lightMatrix(tiles[t], m);
+            uint32_t dyn = 0;
+            if (!local_ubo_slice(s, m, dyn)) break;
+            local_tile_viewport(cb, t);
+            s->mech.record(cb, s->parity, dyn);
+        }
+    }
+    vkCmdEndRenderPass(cb);
+    liveScope.end();
+    L.tilesDrawn = usedCount;
+    ++s->passCount;
+    static uint64_t frames = 0;
+    if (++frames % 600 == 1)
+        vlog("[LOCAL_SHADOW v1] tiles=%u baked_now=%u bakes_total=%llu static_leaves=%zu mech_casters=%d",
+             usedCount, bakeCount, static_cast<unsigned long long>(L.bakesTotal), L.leaves.size(), s->mech.hasCasters() ? 1 : 0);
+    if (bakeCount > 0 && mc2::gate::get<"MC2_LIGHT_CONE_DIAG">())
+        for (uint32_t i = 0; i < usedCount; ++i) {
+            const Tile& T = tiles[used[i]];
+            float aim[3];
+            decodeAim(T.packedType, aim);
+            vlog("[LOCAL_SHADOW v1] tile=%u pos=(%.1f,%.1f,%.1f) aim=(%.2f,%.2f,%.2f) far=%.0f tanHalf=%.2f",
+                 used[i], T.pos[0], T.pos[1], T.pos[2], aim[0], aim[1], aim[2], T.farDistance, tanHalf(T.packedType));
+        }
+}
+
 static bool ensure_island(int size) {
     // A reduced map remains valid for the requested tier; pressure must not cause per-frame rebuilds.
     if (const ShadowIsland* parked=parkedIsland(); parked && parked->size<=size) return true;
@@ -986,6 +1339,7 @@ extern "C" void mc2_vk_shadow_island_run_movers(const float cameraRows[16], cons
     refresh_alpha_casters(s);
     s->mech.stage(g_shadowFrameEpoch);
     record_bake(s);
+    record_local_shadows(s);   // LOCAL-LIGHTS-2
     const auto start=std::chrono::steady_clock::now();
     const auto light=mc2shadow::clampSunAltitude({sun[0],sun[1],sun[2]},mc2ShadowMinSunAltDeg());
     const auto props=std::span(static_cast<const GpuStaticPropInstance*>(instances),instanceCount);
@@ -1060,6 +1414,18 @@ extern "C" void mc2_vk_shadow_island_submit_frame() {
 
 extern "C" int mc2_vk_shadow_island_movers_ready() {
     return productReady(g_dynShadowReadyThisFrame) ? 1 : 0;
+}
+
+// LOCAL-LIGHTS-2: the producer may assign shadow tiles only while the island renders them.
+extern "C" int mc2_vk_local_shadows_capable() {
+    const ShadowIsland* s = parkedIsland();
+    return (s && !s->disabled && s->local.ok && mover_shadows_enabled()) ? 1 : 0;
+}
+
+// The live local-light atlas (DEPTH_STENCIL_READ_ONLY), or null before its first-use transitions were recorded.
+extern "C" void* mc2_vk_shadow_island_get_local_atlas_view() {
+    const ShadowIsland* s = parkedIsland();
+    return (s && s->local.ok && s->local.ready) ? reinterpret_cast<void*>(s->local.liveAtlas.view.get()) : nullptr;
 }
 
 

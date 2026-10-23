@@ -84,9 +84,23 @@ float spill_scale();        // MC2_LIGHT_CONE_SPILL (0..3)
 // coneLenOut  — authored beam length in world units (shapeScalar applied).
 // Returns false (outputs untouched) when the node has no usable cone
 // geometry — caller falls back to its existing heuristic.
-// cosHalfOut  — optional: cosine of the authored beam's outer half-angle.
 bool GetNodeAim(TG_MultiShape* shape, long nodeId,
-                glm::vec3& aimWorldOut, float& coneLenOut, float* cosHalfOut = nullptr);
+                glm::vec3& aimWorldOut, float& coneLenOut);
+
+// LOCAL-LIGHTS-1: the authored beams of a cone leaf, one per bright apex vertex
+// (the lamp; the vertex-light tag fades to black at the beam's far end). All in
+// the MC2 world frame: apex = lamp position, aim = unit beam axis, length =
+// apex -> base centroid, cosHalf = cosine of the widest base vertex off the axis.
+// Returns the count written (0: no tagged apex -- caller falls back to GetNodeAim;
+// -1: the leaf has not been transformed yet -- caller keeps its last pose).
+// out == nullptr: count the tagged apexes only (no pose needed).
+struct NodeBeam {
+    glm::vec3 apex;
+    glm::vec3 aim;
+    float length;
+    float cosHalf;
+};
+int GetNodeBeams(TG_MultiShape* shape, long nodeId, NodeBeam* out, int maxBeams);
 
 // (B) Queue the cone mesh under `nodeId` for additive glow this frame.
 // argb = light color (alpha byte ignored), nightFactor 0..1 scales alpha.

@@ -51,4 +51,44 @@ float lpa_spotCone(vec3 delta, uint packed)
     float t = clamp((cd - cosOuter) / max(cosInner - cosOuter, 1e-4), 0.0, 1.0);
     return t * t * (3.0 - 2.0 * t);
 }
+
+// LOCAL-LIGHTS-2: shadow of a coned light that holds a tile of the local-light shadow atlas (bits 4-7 of lightType).
+// The projection is rebuilt from the record exactly as GameOS/gameos/local_light_shadow.h lightMatrix() (lockstep).
+// The includer defines MC2_LOCAL_SHADOW_ATLAS and declares `sampler2D u_localShadowAtlas` (D16 depth, 4x2 tiles of 512^2);
+// without it every light is unshadowed.
+float lpa_localShadow(vec3 wp, vec3 lightPos, uint packed, float farD)
+{
+#ifdef MC2_LOCAL_SHADOW_ATLAS
+    uint tile1 = (packed >> 4) & 15u;
+    if (tile1 == 0u) return 1.0;
+    vec3 f = lpa_spotAim(packed);
+    vec3 up = abs(f.z) < 0.95 ? vec3(0.0, 0.0, 1.0) : vec3(1.0, 0.0, 0.0);
+    vec3 r = normalize(cross(f, up));
+    vec3 u = cross(r, f);
+    float c = float(packed >> 24) * (1.0 / 255.0);
+    float tanHalf = sqrt(max(1.0 - c * c, 1e-6)) / max(c, 1e-3) * 1.05;
+    vec3 d = wp - lightPos;
+    float z = dot(d, f);
+    const float kNear = 12.0;   // clips the lamp's own housing (local_light_shadow.h kNear)
+    if (z <= kNear) return 1.0;
+    vec2 ndc = vec2(dot(d, r), dot(d, u)) / (z * tanHalf);
+    if (abs(ndc.x) >= 1.0 || abs(ndc.y) >= 1.0) return 1.0;
+    uint t = tile1 - 1u;
+    vec2 tileUV = clamp(ndc * 0.5 + 0.5, vec2(1.0 / 512.0), vec2(1.0 - 1.0 / 512.0));
+    vec2 uv = (vec2(float(t % 4u), float(t / 4u)) + tileUV) * vec2(0.25, 0.5);
+    float F = max(farD, kNear + 1.0);
+    float A = F / (F - kNear), B = -F * kNear / (F - kNear);
+    vec4 g = textureGather(u_localShadowAtlas, uv, 0);
+    vec4 zs = B / min(g - A, vec4(-1e-6));   // occluder distance along the aim; cleared 1.0 -> far
+    // Receivers carry no normal here, and ground-hugging casters (pads, rubble, flat props) sit at the
+    // receiving terrain's own depth at grazing angles: a generous distance-scaled bias keeps them from
+    // shadowing the ground under them while props and trees (tens of units tall) still cast.
+    float bias = 3.0 + 0.06 * z;
+    vec4 lit = step(vec4(z - bias), zs);
+    vec2 w = fract(uv * vec2(2048.0, 1024.0) - 0.5);
+    return mix(mix(lit.w, lit.z, w.x), mix(lit.x, lit.y, w.x), w.y);
+#else
+    return 1.0;
+#endif
+}
 #endif

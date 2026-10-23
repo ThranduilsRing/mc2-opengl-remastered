@@ -253,6 +253,14 @@ void write_descriptors(TerrainIsland* s, int parity) {
     w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = s->set[i];
     w[n].dstBinding = 17; w[n].descriptorCount = 1;
     w[n].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; w[n].pImageInfo = &visibilityInfo; ++n;
+    // LOCAL-LIGHTS-2: binding 19 local-light shadow atlas; the visibility dummy until the shadow island has one
+    // (no pool record carries a shadow tile before then, so the dummy is never sampled).
+    const VkDescriptorImageInfo localShadowInfo = s->localShadowBoundView
+        ? VkDescriptorImageInfo{s->colormapSamp.get(), s->localShadowBoundView, kDirectShadowLayout}
+        : VkDescriptorImageInfo{s->colormapSamp.get(), s->staticVisibilityDummy.view(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
+    w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = s->set[i];
+    w[n].dstBinding = 19; w[n].descriptorCount = 1;
+    w[n].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; w[n].pImageInfo = &localShadowInfo; ++n;
     VkDescriptorImageInfo cdInfo{};
     if (s->concreteDetailTexture && s->concreteDetailSamp) {
         cdInfo.sampler = s->concreteDetailSamp.get(); cdInfo.imageView = s->concreteDetailTexture.view();
@@ -512,7 +520,7 @@ bool init_island(TerrainIsland* s, int w, int h) {
 
     // ---- Descriptor layout: binding0 dynamic UBO (VS+FS), binding1 height SSBO (VS). ----
     {
-        VkDescriptorSetLayoutBinding b[17]{};
+        VkDescriptorSetLayoutBinding b[18]{};
         b[0].binding = 0; b[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
         b[0].descriptorCount = 1; b[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
         // VK-TERRAIN-DETAIL: binding 1 (height SSBO) is now ALSO read by the FS
@@ -561,9 +569,12 @@ bool init_island(TerrainIsland* s, int w, int h) {
         b[15].descriptorCount=1; b[15].stageFlags=VK_SHADER_STAGE_FRAGMENT_BIT;
         b[16].binding = 18; b[16].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         b[16].descriptorCount = 1; b[16].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+        // LOCAL-LIGHTS-2: binding 19 = local-light shadow atlas (D16, plain sampler2D + gather; FS).
+        b[17].binding = 19; b[17].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        b[17].descriptorCount = 1; b[17].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
         VkDescriptorSetLayoutCreateInfo lci{};
         lci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-        lci.bindingCount = 17; lci.pBindings = b;
+        lci.bindingCount = 18; lci.pBindings = b;
         if (!mc2vk::create(s->dsl, s->device, [&](auto* h) { return vkCreateDescriptorSetLayout(s->device, &lci, nullptr, h); })) {
             vlog("vkCreateDescriptorSetLayout failed."); return false;
         }
@@ -573,7 +584,7 @@ bool init_island(TerrainIsland* s, int w, int h) {
         sizes[1].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;          sizes[1].descriptorCount = 6;  // (height + cement + visual-height) x2
         // Image samplers per set: colormap, cement, static shadow, matNormalArray, dyn shadow, csm array, csm full map,
         // shoreline mask, shore field; two sets.
-        sizes[2].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;  sizes[2].descriptorCount = 24;
+        sizes[2].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;  sizes[2].descriptorCount = 26;   // + local shadow atlas x2
         sizes[3].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;  sizes[3].descriptorCount = 6;  // light pool + grid header + grid indices, x2
         sizes[4].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER; sizes[4].descriptorCount = 2;
         VkDescriptorPoolCreateInfo pci{};

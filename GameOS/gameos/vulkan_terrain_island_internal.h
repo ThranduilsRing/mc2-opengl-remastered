@@ -208,6 +208,7 @@ struct TerrainIsland : mc2vk::IslandState {
     mc2vk::OwnedSampler staticVisibilitySampler;
     VkImageView staticVisibilityExternalView = VK_NULL_HANDLE;
     VkImageView staticVisibilityBoundView = VK_NULL_HANDLE;
+    VkImageView localShadowBoundView = VK_NULL_HANDLE;   // LOCAL-LIGHTS-2: binding 19 (shadow island's live atlas)
 
     // VK-TERRAIN-DETAIL sub-slice: the material detail-normal ARRAY. A VK copy-once
     // import of the GL terrain_normal_array_tex_ (9-layer RGBA8 GL_TEXTURE_2D_ARRAY,

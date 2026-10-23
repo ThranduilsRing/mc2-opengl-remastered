@@ -10,13 +10,15 @@ class GroundLighting {
     mc2vk::OwnedDescriptorSetLayout layout_;
     mc2vk::OwnedDescriptorPool pool_;
     VkDescriptorSet sets_[2]{};
-    static constexpr uint32_t bindings_[]{0, 2, 3, 4, 11, 12, 13, 16};
+    // 19 = LOCAL-LIGHTS-2 local-light shadow atlas, read by the pool loop.
+    static constexpr uint32_t bindings_[]{0, 2, 3, 4, 11, 12, 13, 16, 19};
+    static constexpr size_t kN = sizeof(bindings_) / sizeof(bindings_[0]);
 public:
     VkDescriptorSetLayout layout() const { return layout_.get(); }
     VkDescriptorSet set(uint32_t parity) const { return sets_[parity]; }
     bool init(VkDevice device) {
-        VkDescriptorSetLayoutBinding bindings[8]{};
-        for (size_t k = 0; k < 8; ++k) {
+        VkDescriptorSetLayoutBinding bindings[kN]{};
+        for (size_t k = 0; k < kN; ++k) {
             const uint32_t b = bindings_[k];
             const auto type = b == 0 ? VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC :
                 b == 4 ? VK_DESCRIPTOR_TYPE_STORAGE_BUFFER :
@@ -25,13 +27,13 @@ public:
             bindings[k] = {b, type, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr};
         }
         VkDescriptorSetLayoutCreateInfo lci{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO};
-        lci.bindingCount = 8; lci.pBindings = bindings;
+        lci.bindingCount = static_cast<uint32_t>(kN); lci.pBindings = bindings;
         if (!mc2vk::create(layout_, device, [&](VkDescriptorSetLayout* out) { return vkCreateDescriptorSetLayout(device, &lci, nullptr, out); })) return false;
         const VkDescriptorPoolSize sizes[]{
             {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 2},
             {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 2},
             {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 6},
-            {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 6}};
+            {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 8}};
         VkDescriptorPoolCreateInfo pci{VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO};
         pci.maxSets = 2; pci.poolSizeCount = 4; pci.pPoolSizes = sizes;
         if (!mc2vk::create(pool_, device, [&](VkDescriptorPool* out) { return vkCreateDescriptorPool(device, &pci, nullptr, out); })) return false;
@@ -42,14 +44,14 @@ public:
     }
     // Caller must retire this VFX parity before changing its descriptors.
     void copy(VkDevice device, uint32_t parity, const Mc2GroundLightingFrame& source) {
-        VkCopyDescriptorSet copies[8]{};
-        for (size_t k = 0; k < 8; ++k) {
+        VkCopyDescriptorSet copies[kN]{};
+        for (size_t k = 0; k < kN; ++k) {
             copies[k].sType = VK_STRUCTURE_TYPE_COPY_DESCRIPTOR_SET;
             copies[k].srcSet = source.set; copies[k].srcBinding = bindings_[k];
             copies[k].dstSet = set(parity); copies[k].dstBinding = bindings_[k];
             copies[k].descriptorCount = 1;
         }
-        vkUpdateDescriptorSets(device, 0, nullptr, 8, copies);
+        vkUpdateDescriptorSets(device, 0, nullptr, static_cast<uint32_t>(kN), copies);
     }
 };
 }

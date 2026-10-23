@@ -347,6 +347,11 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
         s->staticVisibilityBoundView=mask;
         write_descriptors(s);
     }
+    // LOCAL-LIGHTS-2: the local-light shadow atlas appears once per session (binding 19).
+    if (const auto atlas=reinterpret_cast<VkImageView>(mc2_vk_shadow_island_get_local_atlas_view()); atlas!=s->localShadowBoundView) {
+        s->localShadowBoundView=atlas;
+        write_descriptors(s);
+    }
 
     } // texture imports and shadow-mask binding
 

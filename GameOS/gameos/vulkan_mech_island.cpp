@@ -59,6 +59,7 @@
 #include "vk_shared_gbuffer_gate.h"      // VK-P14 GATE-CONSOLIDATION-1 umbrella resolver
 #include "vk_shared_light_feed.h"        // VK-LIGHTFEED-DEDUP-1: shared per-frame LightsData SSBO
 #include "gos_terrain_lighting.h"
+#include "vulkan_shadow_island_live.h"   // LOCAL-LIGHTS-2: mc2_vk_shadow_island_get_local_atlas_view
 #include "light_pool_culling.h"
 #include "vk_gpu_timestamps.h"           // VK-DRAW-PERF-1: MC2_VK_GPU_TIMESTAMPS GPU segment timers
 #define MC2_VULKAN_SHARED_SCENE_COLOR_IMPL_ISLAND
@@ -198,6 +199,8 @@ struct MechIsland : mc2vk::IslandState {
     // offsets (bindings 0, 1, 2, 4, 5). ringBound[par][binding] = the ring buffer that binding of every scheme set of that parity points at; a frame
     // that allocated from another buffer (the ring grew) or a set created since rewrites it.
     VkBuffer ringBound[2][8] = {};
+    // LOCAL-LIGHTS-2: the local-light shadow atlas binding 8 of every scheme set of a parity (null = sets hold the dummy).
+    VkImageView localShadowBound[2] = {};
 
     // VK-MECH-MATERIAL-LIGHTING-1: per-frame LightsData span (binding 4) for calc_light.
     bool     wantLighting  = false;   // MC2_VK_MECH_LIGHTING gate
@@ -314,6 +317,19 @@ void sync_ring_bindings(MechIsland* s, uint32_t par, const mc2vk::FrameAlloc& ma
             if (e.set[par] != VK_NULL_HANDLE) mc2vk::writeDynamicBinding(s->device, e.set[par], w.binding, w.type, w.buf, w.range);
         s->ringBound[par][w.binding] = w.buf;
     }
+    // LOCAL-LIGHTS-2: point binding 8 at the shadow island's live local-light atlas once it exists.
+    const auto atlas = reinterpret_cast<VkImageView>(mc2_vk_shadow_island_get_local_atlas_view());
+    if (atlas != VK_NULL_HANDLE && s->localShadowBound[par] != atlas && s->albedoSamp) {
+        const VkDescriptorImageInfo info{s->albedoSamp.get(), atlas, VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL};
+        for (const auto& e : s->schemes) {
+            if (e.set[par] == VK_NULL_HANDLE) continue;
+            VkWriteDescriptorSet w{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
+            w.dstSet = e.set[par]; w.dstBinding = 8; w.descriptorCount = 1;
+            w.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; w.pImageInfo = &info;
+            vkUpdateDescriptorSets(s->device, 1, &w, 0, nullptr);
+        }
+        s->localShadowBound[par] = atlas;
+    }
 }
 
 // Point a scheme set's binding-3 (albedo) / 6 (AO) / 7 (normal) at its images + the
@@ -359,6 +375,15 @@ bool alloc_scheme_sets(MechIsland* s, VkImageView albedo, VkImageView ao, VkImag
         write_ring_bindings(s, out[par]);
         for (VkBuffer& b : s->ringBound[par]) b = VK_NULL_HANDLE;   // the next frame of this parity rewrites its sets at the buffers its spans live in
         bind_scheme_images(s, out[par], albedo, ao, nrm);
+        // LOCAL-LIGHTS-2: binding 8 holds a dummy until the next sync points every set of the parity at the atlas.
+        if (albedo != VK_NULL_HANDLE && s->albedoSamp) {
+            const VkDescriptorImageInfo info{s->albedoSamp.get(), albedo, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
+            VkWriteDescriptorSet w{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
+            w.dstSet = out[par]; w.dstBinding = 8; w.descriptorCount = 1;
+            w.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; w.pImageInfo = &info;
+            vkUpdateDescriptorSets(s->device, 1, &w, 0, nullptr);
+        }
+        s->localShadowBound[par] = VK_NULL_HANDLE;
     }
     return true;
 }
@@ -534,7 +559,7 @@ bool init_island(MechIsland* s, int w, int h) {
 
     // Descriptor layout: 0=UBO(VS/FS), 1=instance SSBO(VS), 2=bone SSBO(VS), 3=albedo(FS).
     {
-        VkDescriptorSetLayoutBinding b[8]{};
+        VkDescriptorSetLayoutBinding b[9]{};
         b[0].binding = 0; b[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
         b[0].descriptorCount = 1; b[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
         b[1].binding = 1; b[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
@@ -552,9 +577,12 @@ bool init_island(MechIsland* s, int w, int h) {
         b[6].descriptorCount = 1; b[6].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
         b[7].binding = 7; b[7].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         b[7].descriptorCount = 1; b[7].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+        // LOCAL-LIGHTS-2: 8 = local-light shadow atlas (FS, plain sampler2D + gather).
+        b[8].binding = 8; b[8].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        b[8].descriptorCount = 1; b[8].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
         VkDescriptorSetLayoutCreateInfo lci{};
         lci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-        lci.bindingCount = 8; lci.pBindings = b;
+        lci.bindingCount = 9; lci.pBindings = b;
         if (!mc2vk::create(s->dsl, s->device, [&](VkDescriptorSetLayout* h) { return vkCreateDescriptorSetLayout(s->device, &lci, nullptr, h); })) { vlog("dsl failed."); return false; }
         // Pool sized for kMaxSchemes descriptor sets (one per distinct paint scheme):
         // each set = 1 UBO + 4 SSBO (inst/bone/lights/pool) + 3 samplers (albedo/AO/normal).
@@ -562,7 +590,7 @@ bool init_island(MechIsland* s, int w, int h) {
         VkDescriptorPoolSize sizes[3]{};
         sizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC; sizes[0].descriptorCount = 2 * N;
         sizes[1].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC; sizes[1].descriptorCount = 8 * N;  // inst+bone+lights+pool, two parities
-        sizes[2].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; sizes[2].descriptorCount = 6 * N;  // albedo+AO+normal, two parities
+        sizes[2].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; sizes[2].descriptorCount = 8 * N;  // albedo+AO+normal+local shadow, two parities
         VkDescriptorPoolCreateInfo pci{};
         pci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
         pci.maxSets = 2 * N; pci.poolSizeCount = 3; pci.pPoolSizes = sizes;

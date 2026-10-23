@@ -7,6 +7,9 @@
 #include "anim_freeze.h"
 #include "../GameOS/gameos/visual_tuning_profile.h"
 
+// LOCAL-LIGHTS-1: authored lamps per SpotLight_ leaf (the stock leaves carry up to 3).
+static constexpr int kMaxBeamsPerNode = 8;
+
 // T1.15 SpotLight_ illumination diagnostic — registration probe (bldg class).
 // Env-gated per Debug Instrumentation Rule. First-hit is always-on (one stderr
 // line per BldgAppearance instance that walks the lazy-init block). Periodic
@@ -134,21 +137,27 @@ long BldgAppearance::update (bool animate)
 				long nodeId = bldgShape->GetNodeNameId(nodeName);
 				if (nodeId == -1) continue;
 
-				TG_LightPtr light = static_cast<TG_LightPtr>(malloc(sizeof(TG_Light)));
-				light->init(TG_LIGHT_POINT);            // v1 — POINT (OQ2)
-				light->SetaRGB(0xffe8c870);             // OQ3 warm hardcoded
-				light->SetIntensity(0.5f);              // OQ4 initial
-				light->SetFalloffDistances(20.0f, 80.0f); // OQ4
+				// LOCAL-LIGHTS-1: one light per authored beam of the leaf (a leaf may
+				// carry several lamps); the node id repeats once per beam, in beam order.
+				const int nBeams = std::max(1, mc2_cone_glow::GetNodeBeams(bldgShape, nodeId, nullptr, kMaxBeamsPerNode));
+				for (int beam = 0; beam < nBeams; ++beam)
+				{
+					TG_LightPtr light = static_cast<TG_LightPtr>(malloc(sizeof(TG_Light)));
+					light->init(TG_LIGHT_POINT);            // v1 — POINT (OQ2)
+					light->SetaRGB(0xffe8c870);             // OQ3 warm hardcoded
+					light->SetIntensity(0.5f);              // OQ4 initial
+					light->SetFalloffDistances(20.0f, 80.0f); // OQ4
 
-				long slotId = eye->addWorldLight(light);  // camera.h
-				if (slotId < 0) { free(light); continue; }  // pool overflow
+					long slotId = eye->addWorldLight(light);  // camera.h
+					if (slotId < 0) { free(light); break; }  // pool overflow
 
-				spotlightLights_.push_back(light);
-				spotlightSlotIds_.push_back(static_cast<DWORD>(slotId));
-				spotlightNodeIds_.push_back(static_cast<int>(nodeId));
-				// T1.16 — tag this slot as (E)-owned, source=Bldg, so the
-				// Camera::updateLights per-slot probe can recognize it.
-				mc2_spotlight_diag::tag_slot(slotId, mc2_spotlight_diag::Bldg, this);
+					spotlightLights_.push_back(light);
+					spotlightSlotIds_.push_back(static_cast<DWORD>(slotId));
+					spotlightNodeIds_.push_back(static_cast<int>(nodeId));
+					// T1.16 — tag this slot as (E)-owned, source=Bldg, so the
+					// Camera::updateLights per-slot probe can recognize it.
+					mc2_spotlight_diag::tag_slot(slotId, mc2_spotlight_diag::Bldg, this);
+				}
 				++diagRegistered;
 			}
 			// Pool overflow detection: any spotlight found but not registered
@@ -189,10 +198,22 @@ long BldgAppearance::update (bool animate)
 		// Per-frame in-place update. Runs UNCONDITIONALLY once registered
 		// (NOT inside the isNight gate above) — C-r2 C2: day->night->day
 		// transitions toggle active via the gate below; lights stay allocated.
+		mc2_cone_glow::NodeBeam beams[kMaxBeamsPerNode];
+		int nBeams = 0, beamIdx = 0;
+		long beamNode = -1;
 		for (size_t k = 0; k < spotlightLights_.size(); ++k)
 		{
 			glm::vec3 childPos =
 				getNodeIdPosition(spotlightNodeIds_[k]);
+			// LOCAL-LIGHTS-1: k-th light of a node = its k-th authored beam.
+			if (spotlightNodeIds_[k] != beamNode)
+			{
+				beamNode = spotlightNodeIds_[k];
+				nBeams = mc2_cone_glow::GetNodeBeams(bldgShape, beamNode, beams, kMaxBeamsPerNode);
+				beamIdx = 0;
+			}
+			else
+				++beamIdx;
 			// LIGHT-CONE-MODELS-1 (A/C): pool at the authored cone's FAR END
 			// (node transform × cone geometry axis), grounded on terrain —
 			// tower searchlights illuminate the compound they're aimed INTO,
@@ -208,28 +229,41 @@ long BldgAppearance::update (bool animate)
 			// half-angle; the per-fragment pool evaluates the cone on the ground,
 			// props, mechs and vegetation (light_pool_attenuation.hglsl). Sky
 			// beams keep the CONE-SPILL-POLICY-1 suppression below.
-			spotlightLights_[k]->spotCosOuter = 0.0f;
-			if (mc2_cone_glow::nodes_enabled())
+			// The cone leaf of a static building is only transformed while the building
+			// is drawn on the CPU path; until its first transform (nBeams < 0) a coned
+			// lamp keeps its last pose, and one never posed stays dark.
+			const bool keepPose = nBeams < 0 && spotlightLights_[k]->spotCosOuter > 0.0f;
+			if (nBeams < 0 && !keepPose) coneMissedGround = true;
+			if (keepPose) childPos = spotlightLights_[k]->position;
+			else spotlightLights_[k]->spotCosOuter = 0.0f;
+			if (mc2_cone_glow::nodes_enabled() && nBeams >= 0)
 			{
 				glm::vec3 aimW;
 				float coneLen = 0.0f;
-				float coneCos = 1.0f;
-				const bool haveAim =
-					mc2_cone_glow::GetNodeAim(bldgShape, spotlightNodeIds_[k], aimW, coneLen, &coneCos);
-				if (haveAim && aimW.z <= 0.15f)
+				bool haveAim = false;
+				if (beamIdx < nBeams && beams[beamIdx].aim.z <= 0.15f)
 				{
-					// Authored cones are narrow visual shafts; a lamp's light spreads
-					// wider than its drawn shaft. Range: the beam must reach the
-					// ground from a ~17-unit mount at a grazing aim.
-					const float halfDeg = glm::degrees(std::acos(std::clamp(coneCos, 0.0f, 1.0f)));
+					// The lamp sits at the beam apex. Authored cones are narrow visual
+					// shafts; a lamp's light spreads wider than its drawn shaft, and
+					// reaches past the shaft's ground footprint.
+					const mc2_cone_glow::NodeBeam& b = beams[beamIdx];
+					const float halfDeg = glm::degrees(std::acos(std::clamp(b.cosHalf, 0.0f, 1.0f)));
 					const float outerDeg = std::clamp(halfDeg * 1.6f + 8.0f, 18.0f, 55.0f);
 					spotlightLights_[k]->spotCosOuter = std::cos(glm::radians(outerDeg));
-					spotlightLights_[k]->spotDir = aimW;
-					const float range = std::clamp(coneLen * 2.2f, 180.0f, 420.0f);
-					spotlightLights_[k]->SetFalloffDistances(0.0f, range);
+					spotlightLights_[k]->spotDir = b.aim;
+					spotlightLights_[k]->SetFalloffDistances(0.0f, std::clamp(b.length * 2.5f, 120.0f, 360.0f));
+					childPos = b.apex;
+					static const bool s_beamDiag = mc2::gate::get<"MC2_LIGHT_CONE_DIAG">();
+					static unsigned long s_b = 0;
+					if (s_beamDiag && (s_b++ % 600) < 8)
+						mc2::fmt::print_err("[LOCAL_LIGHT_BEAM v1] node={:d} beam={:d}/{:d} apex=({:.1f},{:.1f},{:.1f}) aim=({:.3f},{:.3f},{:.3f}) len={:.1f} cosHalf={:.3f} outerDeg={:.1f}\n", mc2::fmt::as_i32(beamNode), mc2::fmt::as_i32(beamIdx), mc2::fmt::as_i32(nBeams), b.apex.x, b.apex.y, b.apex.z, b.aim.x, b.aim.y, b.aim.z, b.length, b.cosHalf, outerDeg);
 				}
 				else
+				{
+					// No tagged beam (or a sky beam): the CONE-SPILL-POLICY-1 ground pool.
+					haveAim = mc2_cone_glow::GetNodeAim(bldgShape, spotlightNodeIds_[k], aimW, coneLen);
 					spotlightLights_[k]->SetFalloffDistances(20.0f, 80.0f);
+				}
 				// CONE-SPILL-COUPLING-1 reach probe: does the BUILDING path
 				// actually get usable cone geometry? (GetNodeAim returns false
 				// for a lamp node with no cone mesh, in which case the pool
@@ -395,7 +429,7 @@ long BldgAppearance::update (bool animate)
 			// tower searchlights vanish when aimed at a wall.
 			const bool ownerLit = (eye && eye->isNight && visible && !forceLightsOut);
 			// LOCAL-LIGHTS-1: a coned lamp concentrates its light in the beam.
-			const float lampIntensity = spotlightLights_[k]->spotCosOuter > 0.0f ? 0.55f : 0.5f;
+			const float lampIntensity = spotlightLights_[k]->spotCosOuter > 0.0f ? 0.45f : 0.5f;
 			spotlightLights_[k]->SetIntensity(lampIntensity * visualTuning_environment().buildingSpillIntensityScale);
 			spotlightLights_[k]->active = ownerLit && !coneMissedGround;
 			// LIGHT-CULL-RADIUS-1: owner intent for the camera composition.
@@ -411,7 +445,7 @@ long BldgAppearance::update (bool animate)
 			// MC2_LIGHT_CONE_GLOW=0 kills it.
 			// Gated on ownerLit, NOT on ->active: a beam whose pool was
 			// suppressed for missing the ground is still a visible volume.
-			if (ownerLit)
+			if (ownerLit && beamIdx == 0)   // the glow draws the whole leaf once
 				mc2_cone_glow::QueueConeGlow(bldgShape, spotlightNodeIds_[k],
 					spotlightLights_[k]->GetaRGB(), eye->getNightFactor());
 		}

@@ -57,6 +57,9 @@ layout(push_constant) uniform MechRunPC {
     uint poolCount;
 } uRun;
 #define MC2_OBJECT_POOL_LIST 1
+// LOCAL-LIGHTS-2: local-light shadow atlas (shadow island; D16 depth, plain sampler + gather).
+layout(set = 0, binding = 8) uniform sampler2D u_localShadowAtlas;
+#define MC2_LOCAL_SHADOW_ATLAS 1
 #include "../include/object_light_pool.hglsl"
 #include "../include/mech_shading.hglsl"
 

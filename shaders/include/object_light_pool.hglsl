@@ -63,6 +63,7 @@ vec3 olp_objectPoolLight(vec3 worldPosMC2, int numPoolLights, int poolSoft,
                          poolLights[i].farDistance, poolLights[i].oneOverDistance, len, falloff)) continue;
         falloff *= lpa_spotCone(vtl, poolLights[i].lightType);   // LOCAL-LIGHTS-1
         if (falloff <= 0.0) continue;
+        falloff *= lpa_localShadow(worldPosMC2, poolLights[i].position, poolLights[i].lightType, poolLights[i].farDistance);   // LOCAL-LIGHTS-2
         vec3 plCol = poolLights[i].color * poolLights[i].intensity;
         if (mover) {
             plCol *= moverDim;
