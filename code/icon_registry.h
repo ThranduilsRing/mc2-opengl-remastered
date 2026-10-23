@@ -21,6 +21,7 @@ inline std::string legacyKey(std::string sheet, long index) {
 struct Icon {
     int width = 0, height = 0, x = 0, y = 0;
     std::vector<uint32_t> pixels; // BGRA, matching gos texture locks
+    std::vector<uint32_t> samplingBorder; // authored neighbors for legacy filtering
 };
 
 // Source keys survive packing. Only this load-time cache owns atlas coordinates.
@@ -49,8 +50,18 @@ public:
                 for (int y = 0; y < cellH; ++y)
                     std::copy_n(pixels.data() + size_t(row * cellH + y) * w + col * cellW,
                                 cellW, tile.data() + size_t(y) * cellW);
-                add(legacyKey(strip && row ? std::format("{}/back", key) : key,
-                              strip ? col : row * cols + col), cellW, cellH, tile);
+                const auto iconKey = legacyKey(strip && row ? std::format("{}/back", key) : key,
+                                               strip ? col : row * cols + col);
+                add(iconKey, cellW, cellH, tile);
+                if (!strip) {
+                    auto& border = icons.at(iconKey).samplingBorder;
+                    border.resize(size_t(cellW + 2) * (cellH + 2));
+                    for (int y = -1; y <= cellH; ++y)
+                        for (int x = -1; x <= cellW; ++x)
+                            border[size_t(y + 1) * (cellW + 2) + x + 1] =
+                                pixels[size_t(std::clamp(row * cellH + y, 0, h - 1)) * w +
+                                       std::clamp(col * cellW + x, 0, w - 1)];
+                }
             }
         }
     }
@@ -86,10 +97,12 @@ public:
             if (!fits) continue;
             atlas.assign(size_t(edge) * edge, 0);
             for (const Icon* icon : ordered) {
-                // Extruded borders keep filtering inside each icon.
+                // Preserve legacy sheet filtering; loose images extrude their own edge.
                 for (int dy = -1; dy <= icon->height; ++dy)
                     for (int dx = -1; dx <= icon->width; ++dx)
                         atlas[size_t(icon->y + dy) * edge + icon->x + dx] =
+                            !icon->samplingBorder.empty() ?
+                            icon->samplingBorder[size_t(dy + 1) * (icon->width + 2) + dx + 1] :
                             icon->pixels[size_t(std::clamp(dy, 0, icon->height - 1)) * icon->width +
                                          std::clamp(dx, 0, icon->width - 1)];
             }

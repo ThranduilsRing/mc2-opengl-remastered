@@ -22,6 +22,9 @@ TEST_CASE("icon_atlas_harness/source_keys_survive_packing") {
                 CHECK(r.atlas[(icon->y + y) * r.edge + icon->x + x] == expected);
             }
     }
+    // The old UV bias can sample this neighbor at the final screen pixel.
+    const auto* first = r.find("data/art/stock.tga:0");
+    CHECK(r.atlas[size_t(first->y + 30) * r.edge + first->x + 25] == stock[30 * 256 + 25]);
     CHECK_FALSE(r.find("data/art/stock.tga:80"));
     CHECK_FALSE(r.find("data/art/stock.tga:-1"));
 }
