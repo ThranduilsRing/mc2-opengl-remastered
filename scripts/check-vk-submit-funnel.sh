@@ -14,10 +14,10 @@ import re
 import sys
 sys.path.insert(0, "tools")
 from vk_ownership_ledger import blank
-calls = re.compile(r'\b(?:vkCreate\w*Pipelines|vkCmdBindPipeline)\s*\(')
+calls = re.compile(r'\b(?:vkCreate\w*Pipelines\w*|vkCmdBindPipeline)\s*\(')
 errors = []
 for path in Path("GameOS/gameos").rglob("*"):
-    if path.suffix not in {".cpp", ".h"} or path.name == "vk_render_infra.cpp":
+    if path.suffix not in {".cpp", ".h"} or path == Path("GameOS/gameos/vk_render_infra.cpp"):
         continue
     text = path.read_text(encoding="utf-8")
     if not calls.search(text):
