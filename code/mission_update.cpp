@@ -1210,6 +1210,7 @@ bool Mission::updatePass(bool tickMode, bool runFrame, bool runSim, bool advance
 	std::optional<mc2::world_trace::TickScope> worldOrderTick;
 	if (runSim)
 	{
+		tickCost.begin();
 		orderTickCompletion.emplace(*this);
 		turn++;
 		worldOrderTick.emplace(turn);
@@ -1274,6 +1275,7 @@ bool Mission::updatePass(bool tickMode, bool runFrame, bool runSim, bool advance
 						observation->Emit("resolve", 0, std::format("{{\"scope\":\"mission\",\"stage\":\"final\",\"old\":{},\"new\":9999}}", observation->finalResult));
 						observation->finalResult = 9999;
 					}
+					orderTickCompletion.reset();
 					frameLen();
 					earlyResult = terminationResult;
 					return true;
@@ -1305,6 +1307,8 @@ bool Mission::updatePass(bool tickMode, bool runFrame, bool runSim, bool advance
 		updateOrderLiveness();
 		updateSoakPilotPromote();
 	}
+	// Queue completion belongs to the tick, including its fixed frame length.
+	orderTickCompletion.reset();
 	frameLen();
 
 #ifdef LAB_ONLY
