@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in gos_static_prop_batcher_internal.h.
 #include "gos_static_prop_batcher_internal.h"
 #include "mc2fmt.h"
+#include "../../mclib/cone_glow.h"   // LOCAL-LIGHTS-5: SelfLitLeaf
 
 
 bool GpuStaticPropBatcher::submit(TG_Shape* shape,
@@ -551,6 +552,9 @@ bool GpuStaticPropBatcher::submitMultiShape(TG_MultiShape* multi,
         return false;
     }
 
+    // LOCAL-LIGHTS-5: an actor with a self-lit lamp leaf (mclib/cone_glow.cpp SelfLitLeaf).
+    const bool lampActor = mc2_cone_glow::SelfLitLeaf(multi) >= 0;
+
     // Second pass: submit each eligible child, silently skipping those the
     // CPU path would also skip (helpers, untransformed, daytime spotlights).
     for (int i = 0; i < n; ++i) {
@@ -611,6 +615,10 @@ bool GpuStaticPropBatcher::submitMultiShape(TG_MultiShape* multi,
         uint32_t flags = 0;
         if (child->lightsOut)   flags |= (1u << 0);
         if (child->isWindow)    flags |= (1u << 1);
+        // LOCAL-LIGHTS-5: bit-6 = the actor carries a self-lit lamp leaf (power generator
+        // Coil). The stock art cuts slots in the housing over that coil, which this path
+        // cannot show; color_prop_tier1.frag lights the cut-out texels as the lamp at night.
+        if (lampActor)          flags |= (1u << 6);
         // Bit-2: foliage/alpha-test. Enables abs(NdotL) two-sided lighting in
         // static_prop.vert so cross-quad tree faces light consistently from
         // all camera angles (face normals rotate with view → dark face shadow

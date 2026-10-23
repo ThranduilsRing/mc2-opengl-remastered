@@ -644,7 +644,12 @@ void PackAndDispatch() {
         if (dumpThisFrame) {
             if (TG_LightPtr* wl = eye->getWorldLights())
                 for (long s = 0; s < MAX_LIGHTS_IN_WORLD; ++s)
-                    if (wl[s]) ptrToSlot[wl[s]] = s;
+                    if (wl[s]) {
+                        // A light listed in two slots = a stale slot (freed owner, reused address).
+                        if (const auto it = ptrToSlot.find(wl[s]); it != ptrToSlot.end())
+                            MC2_EVENT(Terrain, "LIGHT_POOL_DUMP", 1, "dup_ptr slot_a={} slot_b={}", it->second, s);
+                        ptrToSlot[wl[s]] = s;
+                    }
             MC2_EVENT(Terrain, "LIGHT_POOL_DUMP", 1,
                 "frame_tick={} isNight={} nTerrainLights={}",
                 static_cast<unsigned long>(s_poolDumpFrame), eye->isNight ? 1 : 0,

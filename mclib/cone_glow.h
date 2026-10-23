@@ -102,6 +102,24 @@ struct NodeBeam {
 };
 int GetNodeBeams(TG_MultiShape* shape, long nodeId, NodeBeam* out, int maxBeams);
 
+// LOCAL-LIGHTS-3: turn `light` into the spot light of `beam` (position at the lamp,
+// aim, outer cone widened past the drawn shaft, range past its ground footprint).
+// One tuning for building and mover lamps.
+void ConfigureBeamLight(struct _TG_Light* light, const NodeBeam& beam);
+
+// Mover lamps: GetNodeBeams, or (untagged cone authored at the node pivot) one beam
+// from `nodeWorld` along GetNodeAim. Same return convention; out == nullptr counts
+// the tagged apexes only (0 then still means "one GetNodeAim beam").
+int GetMoverBeams(TG_MultiShape* shape, long nodeId, const glm::vec3& nodeWorld, NodeBeam* out, int maxBeams);
+
+// LOCAL-LIGHTS-5: a building's self-lit leaf -- every vertex carries the 0xffffffff
+// "other light, add as authored" tag (e.g. the power generator's rotating Coil).
+// Returns its listOfShapes index, or -1. Pose: the leaf's world centre and its local
+// X axis (MC2 frame), from the live (animated) shapeToWorld; false before the first
+// transform.
+int SelfLitLeaf(TG_MultiShape* shape);
+bool SelfLitLeafPose(TG_MultiShape* shape, int leaf, glm::vec3& centerOut, glm::vec3& axisOut);
+
 // (B) Queue the cone mesh under `nodeId` for additive glow this frame.
 // argb = light color (alpha byte ignored), nightFactor 0..1 scales alpha.
 // Transforms with the node's current shapeToWorld + TG_Shape camera statics,

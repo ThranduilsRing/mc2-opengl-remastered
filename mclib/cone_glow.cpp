@@ -527,6 +527,74 @@ int GetNodeBeams(TG_MultiShape* shape, long nodeId, NodeBeam* out, int maxBeams)
     return count;
 }
 
+int GetMoverBeams(TG_MultiShape* shape, long nodeId, const glm::vec3& nodeWorld, NodeBeam* out, int maxBeams)
+{
+    const int n = GetNodeBeams(shape, nodeId, out, maxBeams);
+    if (n != 0 || !out) return n;
+    // Untagged mover cone (apex authored at the node pivot): one beam from the node.
+    glm::vec3 aim;
+    float len = 0.0f;
+    if (!GetNodeAim(shape, nodeId, aim, len)) return 0;
+    out[0] = NodeBeam{nodeWorld, aim, len, 0.94f};
+    return 1;
+}
+
+int SelfLitLeaf(TG_MultiShape* shape)
+{
+    if (!shape) return -1;
+    for (int i = 0; i < shape->GetNumShapes(); ++i)
+    {
+        const TG_ShapeRec* rec = shape->GetShapeRec(i);
+        if (!rec || !rec->node || !rec->node->IsShapeNode()) continue;
+        const TG_TypeShape* ts = static_cast<const TG_TypeShape*>(rec->node->GetMyType());
+        if (!ts) continue;
+        const TG_TypeVertex* v = ts->GetTypeVertices();
+        const int n = const_cast<TG_TypeShape*>(ts)->GetNumTypeVertices();
+        if (!v || n < 3) continue;
+        bool all = true;
+        for (int k = 0; k < n && all; ++k) all = v[k].aRGBLight == 0xffffffffu;
+        if (all) return i;
+    }
+    return -1;
+}
+
+bool SelfLitLeafPose(TG_MultiShape* shape, int leaf, glm::vec3& centerOut, glm::vec3& axisOut)
+{
+    const TG_ShapeRec* rec = (shape && leaf >= 0) ? shape->GetShapeRec(leaf) : nullptr;
+    if (!rec || !rec->node) return false;
+    const float* m = glm::value_ptr(rec->shapeToWorld);
+    if (std::fabs(m[3]) + std::fabs(m[7]) + std::fabs(m[11]) < 0.01f) return false;
+    const glm::vec3 o = mc2::math::transformPoint(glm::vec3(0.0f), rec->shapeToWorld);
+    centerOut = glm::vec3(-o.x, o.z, o.y);   // Stuff -> MC2
+    // The most horizontal local axis: it sweeps around as the leaf spins.
+    float bestZ = 2.0f;
+    axisOut = glm::vec3(1.0f, 0.0f, 0.0f);
+    for (int k = 0; k < 3; ++k)
+    {
+        glm::vec3 e(0.0f); e[k] = 1.0f;
+        const glm::vec3 p = mc2::math::transformPoint(e, rec->shapeToWorld);
+        glm::vec3 a(-(p.x - o.x), p.z - o.z, p.y - o.y);
+        const float l = glm::length(a);
+        if (l < 1e-4f) continue;
+        a /= l;
+        if (std::fabs(a.z) < bestZ) { bestZ = std::fabs(a.z); axisOut = a; }
+    }
+    return true;
+}
+
+void ConfigureBeamLight(TG_Light* light, const NodeBeam& b)
+{
+    // A lamp spreads wider than its drawn shaft; the soft angular roll-off
+    // (lpa_spotCone) keeps most of the light near the axis anyway.
+    const float halfDeg = glm::degrees(std::acos(std::clamp(b.cosHalf, 0.0f, 1.0f)));
+    const float outerDeg = std::clamp(halfDeg * 2.0f + 12.0f, 25.0f, 60.0f);
+    light->spotCosOuter = std::cos(glm::radians(outerDeg));
+    light->spotDir = b.aim;
+    light->SetFalloffDistances(0.0f, std::clamp(b.length * 3.5f, 150.0f, 400.0f));
+    glm::vec3 apex = b.apex;
+    light->SetPosition(&apex);
+}
+
 // ---- (B) cone glow ----------------------------------------------------------
 
 void QueueConeGlow(TG_MultiShape* shape, long nodeId,

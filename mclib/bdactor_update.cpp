@@ -83,6 +83,18 @@ long BldgAppearance::update (bool animate)
 			mc2::math::buildRotation(lightToWorldMatrix, mc2::math::Euler(0.0f,0.0f,0.0f));
 			pointLight->SetLightToWorld(&lightToWorldMatrix);
 			pointLight->SetPosition(&position);
+			// LOCAL-LIGHTS-5: a building with a self-lit spinning leaf (the power
+			// generator's Coil) throws its light from that leaf, swept around with it.
+			if (const int litLeaf = mc2_cone_glow::SelfLitLeaf(bldgShape); litLeaf >= 0)
+			{
+				glm::vec3 c, axis;
+				if (mc2_cone_glow::SelfLitLeafPose(bldgShape, litLeaf, c, axis))
+				{
+					glm::vec3 orbit = c + glm::vec3(axis.x, axis.y, 0.0f) * 30.0f;
+					orbit.z = position.z;
+					pointLight->SetPosition(&orbit);
+				}
+			}
 			const float buildingLightIntensity = std::min(appearType->terrainLightIntensity * 3.0f, 0.35f);
 			pointLight->SetIntensity(buildingLightIntensity * eye->getNightFactor() *
                 visualTuning_environment().buildingSpillIntensityScale);
@@ -243,20 +255,14 @@ long BldgAppearance::update (bool animate)
 				bool haveAim = false;
 				if (beamIdx < nBeams && beams[beamIdx].aim.z <= 0.15f)
 				{
-					// The lamp sits at the beam apex. Authored cones are narrow visual
-					// shafts; a lamp's light spreads wider than its drawn shaft, and
-					// reaches past the shaft's ground footprint.
+					// The lamp sits at the beam apex (mc2_cone_glow::ConfigureBeamLight).
 					const mc2_cone_glow::NodeBeam& b = beams[beamIdx];
-					const float halfDeg = glm::degrees(std::acos(std::clamp(b.cosHalf, 0.0f, 1.0f)));
-					const float outerDeg = std::clamp(halfDeg * 1.6f + 8.0f, 18.0f, 55.0f);
-					spotlightLights_[k]->spotCosOuter = std::cos(glm::radians(outerDeg));
-					spotlightLights_[k]->spotDir = b.aim;
-					spotlightLights_[k]->SetFalloffDistances(0.0f, std::clamp(b.length * 2.5f, 120.0f, 360.0f));
+					mc2_cone_glow::ConfigureBeamLight(spotlightLights_[k], b);
 					childPos = b.apex;
 					static const bool s_beamDiag = mc2::gate::get<"MC2_LIGHT_CONE_DIAG">();
 					static unsigned long s_b = 0;
 					if (s_beamDiag && (s_b++ % 600) < 8)
-						mc2::fmt::print_err("[LOCAL_LIGHT_BEAM v1] node={:d} beam={:d}/{:d} apex=({:.1f},{:.1f},{:.1f}) aim=({:.3f},{:.3f},{:.3f}) len={:.1f} cosHalf={:.3f} outerDeg={:.1f}\n", mc2::fmt::as_i32(beamNode), mc2::fmt::as_i32(beamIdx), mc2::fmt::as_i32(nBeams), b.apex.x, b.apex.y, b.apex.z, b.aim.x, b.aim.y, b.aim.z, b.length, b.cosHalf, outerDeg);
+						mc2::fmt::print_err("[LOCAL_LIGHT_BEAM v1] node={:d} beam={:d}/{:d} apex=({:.1f},{:.1f},{:.1f}) aim=({:.3f},{:.3f},{:.3f}) len={:.1f} cosHalf={:.3f}\n", mc2::fmt::as_i32(beamNode), mc2::fmt::as_i32(beamIdx), mc2::fmt::as_i32(nBeams), b.apex.x, b.apex.y, b.apex.z, b.aim.x, b.aim.y, b.aim.z, b.length, b.cosHalf);
 				}
 				else
 				{
@@ -429,7 +435,7 @@ long BldgAppearance::update (bool animate)
 			// tower searchlights vanish when aimed at a wall.
 			const bool ownerLit = (eye && eye->isNight && visible && !forceLightsOut);
 			// LOCAL-LIGHTS-1: a coned lamp concentrates its light in the beam.
-			const float lampIntensity = spotlightLights_[k]->spotCosOuter > 0.0f ? 0.45f : 0.5f;
+			const float lampIntensity = spotlightLights_[k]->spotCosOuter > 0.0f ? 0.8f : 0.5f;
 			spotlightLights_[k]->SetIntensity(lampIntensity * visualTuning_environment().buildingSpillIntensityScale);
 			spotlightLights_[k]->active = ownerLit && !coneMissedGround;
 			// LIGHT-CULL-RADIUS-1: owner intent for the camera composition.

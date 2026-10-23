@@ -40,16 +40,24 @@ vec3 lpa_spotAim(uint packed)
 {
     return lpa_octDecode(vec2(float((packed >> 8) & 255u), float((packed >> 16) & 255u)) * (2.0 / 255.0) - 1.0);
 }
-// Cone factor for a fragment at light->fragment offset delta: 1 for omni lights.
-float lpa_spotCone(vec3 delta, uint packed)
+// LOCAL-LIGHTS-3: attenuation of a coned light, replacing the omni pool ramp. Angular:
+// measured in ANGLE (not cosine, whose flat top read as a disc with a thin blurred
+// rim), a squared smooth roll-off from the axis to the outer half-angle. Distance:
+// inverse-square with a smooth window to zero at farD, so the pool fades gradually
+// from the lamp instead of ending at an edge. Omni lights keep `omniFalloff`.
+float lpa_spotCone(vec3 delta, uint packed, float len, float farD, float omniFalloff)
 {
     uint c = packed >> 24;
-    if (c == 0u) return 1.0;
-    float cosOuter = float(c) * (1.0 / 255.0);
-    float cosInner = mix(cosOuter, 1.0, 0.75);   // wide penumbra: a lamp beam, not a stage spot
-    float cd = dot(delta, lpa_spotAim(packed)) * inversesqrt(max(dot(delta, delta), 1e-6));
-    float t = clamp((cd - cosOuter) / max(cosInner - cosOuter, 1e-4), 0.0, 1.0);
-    return t * t * (3.0 - 2.0 * t);
+    if (c == 0u) return omniFalloff;
+    float outer = acos(float(c) * (1.0 / 255.0));
+    float cd = dot(delta, lpa_spotAim(packed)) / max(len, 1e-3);
+    float t = clamp(1.0 - acos(clamp(cd, -1.0, 1.0)) / max(outer, 1e-3), 0.0, 1.0);
+    float angular = t * t * (3.0 - 2.0 * t) * t;
+    float d0 = 0.35 * farD;
+    float r = len / max(farD, 1e-3);
+    float window = clamp(1.0 - r * r * r * r, 0.0, 1.0);
+    float distance = window * window / (1.0 + (len / d0) * (len / d0));
+    return angular * distance * 2.0;
 }
 
 // LOCAL-LIGHTS-2: shadow of a coned light that holds a tile of the local-light shadow atlas (bits 4-7 of lightType).

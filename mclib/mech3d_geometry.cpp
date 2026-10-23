@@ -15,6 +15,11 @@ static unsigned long s_spotDiagMechOverflows  = 0;
 static unsigned long s_spotDiagMechActors     = 0;
 static unsigned long s_spotDiagMechCalls      = 0;
 
+// LOCAL-LIGHTS-3: mech lamps as real spot lights (lamps per SpotLight_ leaf; intensity
+// of a coned lamp -- no longer dimmed as a mover pool, so well below the building lamps).
+static constexpr int   kMaxMoverLamps      = 8;
+static constexpr float kMoverLampIntensity = 0.25f;
+
 #define SPIN_RATE		90.0f
 
 constexpr int FOOTPRINT_SLOP = 2;
@@ -345,18 +350,24 @@ void Mech3DAppearance::updateGeometry (void)
 					long nodeId = mechShape->GetNodeNameId(nodeName);
 					if (nodeId == -1) continue;
 
-					TG_LightPtr light = static_cast<TG_LightPtr>(malloc(sizeof(TG_Light)));
-					light->init(TG_LIGHT_POINT);              // v1 (OQ2/M6) — POINT
-					light->SetaRGB(mc2_spotlight_diag::mover_light_argb());
-					light->SetIntensity(0.15f);                // anubis default
-					light->SetFalloffDistances(50.0f, 250.0f); // anubis default
+					// LOCAL-LIGHTS-3: one light per authored lamp of the leaf (node id
+					// repeats once per lamp, in lamp order), as the building path does.
+					const int nLamps = std::max(1, mc2_cone_glow::GetMoverBeams(mechShape, nodeId, glm::vec3(0.0f), nullptr, kMaxMoverLamps));
+					for (int lamp = 0; lamp < nLamps; ++lamp)
+					{
+						TG_LightPtr light = static_cast<TG_LightPtr>(malloc(sizeof(TG_Light)));
+						light->init(TG_LIGHT_POINT);              // v1 (OQ2/M6) — POINT
+						light->SetaRGB(mc2_spotlight_diag::mover_light_argb());
+						light->SetIntensity(0.15f);                // anubis default
+						light->SetFalloffDistances(50.0f, 250.0f); // anubis default
 
-					long slotId = eye->addWorldLight(light);
-					if (slotId < 0) { free(light); continue; }
-					spotlightNodeIds_.push_back(nodeId);
-					spotlightLights_.push_back(light);
-					spotlightSlotIds_.push_back(static_cast<DWORD>(slotId));
-					mc2_spotlight_diag::tag_slot(slotId, mc2_spotlight_diag::Mech, this);
+						long slotId = eye->addWorldLight(light);
+						if (slotId < 0) { free(light); break; }
+						spotlightNodeIds_.push_back(nodeId);
+						spotlightLights_.push_back(light);
+						spotlightSlotIds_.push_back(static_cast<DWORD>(slotId));
+						mc2_spotlight_diag::tag_slot(slotId, mc2_spotlight_diag::Mech, this);
+					}
 					++diagRegistered;
 				}
 				diagOverflow = diagSpotlightsFound - diagRegistered;
@@ -391,17 +402,40 @@ void Mech3DAppearance::updateGeometry (void)
 			// (C-r2 C2: lights stay allocated across day/night; toggle active).
 			// active gate matches anubis verbatim (C-r1 C5): visible && (sensorLevel
 			// > 4) && !InEditor, plus isNight (bare field, no parens, per C-r3 C2).
+			mc2_cone_glow::NodeBeam lamps[kMaxMoverLamps];
+			int nLamps = 0, lampIdx = 0;
+			long lampNode = -1;
 			for (size_t k = 0; k < spotlightLights_.size(); ++k)
 			{
 				glm::vec3 childPos =
 					getNodeIdPosition(spotlightNodeIds_[k]);
+				// LOCAL-LIGHTS-3: k-th light of a node = its k-th lamp; a lamp is a
+				// real spot light at the lamp (soft cone, every receiver, shadow tile).
+				if (spotlightNodeIds_[k] != lampNode)
+				{
+					lampNode = spotlightNodeIds_[k];
+					nLamps = mc2_cone_glow::GetMoverBeams(mechShape, lampNode, childPos, lamps, kMaxMoverLamps);
+					lampIdx = 0;
+				}
+				else
+					++lampIdx;
+				spotlightLights_[k]->spotCosOuter = 0.0f;
+				bool coneAimed = false;
+				if (lampIdx < nLamps && lamps[lampIdx].aim.z <= 0.15f)
+				{
+					mc2_cone_glow::ConfigureBeamLight(spotlightLights_[k], lamps[lampIdx]);
+					childPos = lamps[lampIdx].apex;
+					coneAimed = true;
+				}
+				else
+					spotlightLights_[k]->SetFalloffDistances(50.0f, 250.0f);
+				spotlightLights_[k]->SetIntensity(coneAimed ? kMoverLampIntensity : 0.15f);
 				// LIGHT-CONE-MODELS-1 (A/C): pool at the authored cone's FAR
 				// END (node transform × cone geometry axis), grounded on
 				// terrain — the beam lights where it actually lands. Falls
 				// back to the facing heuristic below when the model has no
 				// usable cone. MC2_LIGHT_CONE_NODES=0 restores heuristic.
-				bool coneAimed = false;
-				if (mc2_cone_glow::nodes_enabled())
+				if (!coneAimed && mc2_cone_glow::nodes_enabled())
 				{
 					glm::vec3 aimW;
 					float coneLen = 0.0f;
@@ -488,7 +522,7 @@ void Mech3DAppearance::updateGeometry (void)
 				// LIGHT-CONE-MODELS-1 (B): visible glowing beam volume, tied
 				// to the SAME owner predicate — shutdown/dead/FoW-hidden
 				// mechs show no cone. MC2_LIGHT_CONE_GLOW=0 kills it.
-				if (spotlightLights_[k]->active)
+				if (spotlightLights_[k]->active && lampIdx == 0)   // the glow draws the whole leaf once
 					mc2_cone_glow::QueueConeGlow(mechShape, spotlightNodeIds_[k],
 						spotlightLights_[k]->GetaRGB(), eye->getNightFactor(),
 						/*ownerIsMover=*/true);
