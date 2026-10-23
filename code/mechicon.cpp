@@ -11,6 +11,11 @@ MechIcon.cpp			: Implementation of the MechIcon component.
 
 #include"mechicon.h"
 #include "icon_registry.h"
+#include "package_chassis.h"
+#include <map>
+#include <memory>
+#include <string>
+#include <string_view>
 #include <mdspan>
 #include "../GameOS/gameos/texture_decode.h"
 #include "mc2fmt.h"
@@ -23,6 +28,11 @@ MechIcon.cpp			: Implementation of the MechIcon component.
 #include"gamesound.h"
 #include"platform_windows.h"
 #include "Gates/gate.h"
+#include "package_chassis.h"
+#include <map>
+#include <memory>
+#include <string>
+#include <string_view>
 #include "mc2fmt.h"
 
 #ifndef MISSION_H
@@ -32,6 +42,79 @@ MechIcon.cpp			: Implementation of the MechIcon component.
 #ifndef MULTPLYR_H
 #include"multplyr.h"
 #endif
+
+// BT2018-FIRST-CLASS P6: package chassis HUD icons. A package chassis names a strip base in its
+// chassisdef.fit ([Chassis] HudIcon); the pack ships <base>_<W>x<H>.tga for each HUD size (one
+// column, row 0 front, row 1 rear, exact region palette; tools/bt2018_mechs/render_icons.py).
+// Stock units keep resolving through the name-keyed unit_icons registry; a package chassis with
+// a strip bypasses it and blits its own strip.
+namespace {
+struct PackageHudStrip {
+	std::unique_ptr<char[]> bytes;
+	AssetScale::AssetKey key;
+};
+std::map<std::string, PackageHudStrip>& packageHudStrips()
+{
+	static std::map<std::string, PackageHudStrip> strips;
+	return strips;
+}
+const PackageHudStrip* loadPackageHudStrip( std::string_view base, float iconX, float iconY )
+{
+	char path[512];
+	mc2::fmt::to_buf( path, "{}{}_{:d}x{:d}.tga", mc2::fmt::safe(artPath), base,
+		static_cast<int>(iconX), static_cast<int>(iconY) );
+	S_strlwr( path );
+	auto& cache = packageHudStrips();
+	const bool fresh = !cache.contains( path );
+	PackageHudStrip& strip = cache[ path ];
+	if ( fresh )
+	{
+		File file;
+		if ( NO_ERR == file.open( path ) )
+		{
+			const int size = file.getLength();
+			strip.bytes = std::make_unique<char[]>( size );
+			file.read( reinterpret_cast<BYTE*>(strip.bytes.get()), size );
+			auto* hdr = reinterpret_cast<TGAFileHeader*>(strip.bytes.get());
+			if ( hdr->pixel_depth != 32 || hdr->width < iconX || hdr->height < 2 * iconY )
+			{
+				mc2::fmt::print_out( "[mechicon] package HUD strip '{}' is not 32-bit {:.0f}x{:.0f}x2 -- stock icon used\n", mc2::fmt::safe(path), iconX, iconY );
+				strip.bytes.reset();
+			}
+			else
+			{
+				flipTopToBottom( reinterpret_cast<BYTE*>(hdr + 1), hdr->pixel_depth, hdr->width, hdr->height );
+				strip.key = AssetScale::key( path );
+			}
+		}
+	}
+	return strip.bytes ? &strip : static_cast<const PackageHudStrip*>(nullptr);
+}
+const PackageHudStrip* packageHudStripFor( Mover* pUnit, float iconX, float iconY )
+{
+	const mc2pkg::PackageChassis* pc = pUnit ? packageChassisByTypeNum( pUnit->getTypeHandle() ) : nullptr;
+	return ( pc && !pc->hudIcon.empty() ) ? loadPackageHudStrip( pc->hudIcon, iconX, iconY ) : nullptr;
+}
+// Column 0 of the strip: row 0 front, row 1 rear. Out-of-atlas samples stay blank.
+void blitPackageStrip( const PackageHudStrip& strip, bool back, uint32_t* dest, int stride, int width, int height )
+{
+	const auto* hdr = reinterpret_cast<const TGAFileHeader*>(strip.bytes.get());
+	const uint32_t actualW = static_cast<uint32_t>(hdr->width), actualH = static_cast<uint32_t>(hdr->height);
+	const AssetScale::Vec2 f = AssetScale::blitFactorFor( strip.key, actualW, actualH, "mechicon.blit" );
+	const auto* pixels = reinterpret_cast<const DWORD*>(hdr + 1);
+	const float offsetY = back ? static_cast<float>(height) : 0.f;
+	for ( int j = 0; j < height; ++j )
+	{
+		const int srcY = static_cast<int>(offsetY * f.y) + static_cast<int>(j * f.y);
+		for ( int i = 0; i < width; ++i )
+		{
+			const int srcX = static_cast<int>(i * f.x);
+			const bool inside = srcY >= 0 && static_cast<uint32_t>(srcY) < actualH && srcX >= 0 && static_cast<uint32_t>(srcX) < actualW;
+			dest[static_cast<size_t>(j) * stride + i] = inside ? pixels[static_cast<size_t>(srcY) * actualW + srcX] : 0u;
+		}
+	}
+}
+} // namespace
 
 // Damage images have packed rectangles; their slots are independent of source icon keys.
 static TEXTUREPTR lockIconPage(unsigned long handle)
@@ -307,8 +390,11 @@ void MechIcon::setDrawBack(bool bSet)
     TEXTUREPTR page = lockIconPage(handle);
     if (!page.pTexture) return;
     DWORD* dest = page.pTexture + rect.y * page.Width + rect.x;
-    unit_icons::blit(hudSheet(false), unit->getIconPictureIndex(), true,
-                     reinterpret_cast<uint32_t*>(dest), page.Width, int(unitIconX), int(unitIconY));
+    if (const auto* strip = packageHudStripFor(unit, unitIconX, unitIconY))
+        blitPackageStrip(*strip, true, reinterpret_cast<uint32_t*>(dest), page.Width, int(unitIconX), int(unitIconY));
+    else
+        unit_icons::blit(hudSheet(false), unit->getIconPictureIndex(), true,
+                         reinterpret_cast<uint32_t*>(dest), page.Width, int(unitIconX), int(unitIconY));
     std::mdspan<DWORD, std::dextents<size_t, 2>> pixels(page.pTexture, page.Height, page.Width);
     // Only the rear torso colours belong in the back paperdoll.
     for (int y = 0; y < unitIconY; ++y)
@@ -381,9 +467,12 @@ bool MechIcon::init( long whichIndex )
     const auto handle = unit_icons::damageTexture();
     TEXTUREPTR page = lockIconPage(handle);
     if (!page.pTexture) return false;
-    unit_icons::blit(hudSheet(false), whichIndex, false,
-                     reinterpret_cast<uint32_t*>(page.pTexture + rect.y * page.Width + rect.x),
-                     page.Width, int(unitIconX), int(unitIconY), unit ? unit->getObjectType()->getAppearanceTypeName() : "");
+    uint32_t* const dest = reinterpret_cast<uint32_t*>(page.pTexture + rect.y * page.Width + rect.x);
+    if (const auto* strip = packageHudStripFor(unit, unitIconX, unitIconY))
+        blitPackageStrip(*strip, false, dest, page.Width, int(unitIconX), int(unitIconY));
+    else
+        unit_icons::blit(hudSheet(false), whichIndex, false, dest,
+                         page.Width, int(unitIconX), int(unitIconY), unit ? unit->getObjectType()->getAppearanceTypeName() : "");
     gos_UnLockTexture(handle);
 
 	for ( int i = 0; i < 5; ++i )

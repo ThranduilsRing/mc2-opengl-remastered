@@ -4806,6 +4806,15 @@
    "ver": -1,
    "stream": "log",
    "keys": [
+    "available"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "LOGISTICS",
+   "ver": -1,
+   "stream": "log",
+   "keys": [
     "loaded"
    ],
    "count": 1
@@ -5153,6 +5162,15 @@
    "keys": [
     "ao",
     "normal"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "MECH_IMPORT",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "speed"
    ],
    "count": 1
   },
@@ -6193,6 +6211,26 @@
    "keys": [
     "tileEdge",
     "dir"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "PACKAGE_CHASSIS",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [],
+   "count": 2
+  },
+  {
+   "tag": "PACKAGE_CHASSIS",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "stem",
+    "objType",
+    "regions",
+    "hardpoints",
+    "payload"
    ],
    "count": 1
   },

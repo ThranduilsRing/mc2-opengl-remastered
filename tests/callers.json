@@ -73,6 +73,13 @@
       "callers_by_basename": [],
       "callers_by_stem": [
         {
+          "path": "scripts/tests/test_bt2018_mechs.py",
+          "line": 303,
+          "evidence": "import",
+          "reference": "bt2018_retarget_clips",
+          "text": "from bt2018_retarget_clips import retarget_file"
+        },
+        {
           "path": "tools/bt2018_import/convert_all_bt2018.py",
           "line": 39,
           "evidence": "import",
@@ -1602,7 +1609,7 @@
       "callers_by_basename": [
         {
           "path": "CMakeLists.txt",
-          "line": 933,
+          "line": 935,
           "evidence": "cmake command",
           "reference": "${CMAKE_SOURCE_DIR}/scripts/check-shader-schema.sh",
           "text": "COMMAND ${BASH_EXECUTABLE} ${CMAKE_SOURCE_DIR}/scripts/check-shader-schema.sh"
@@ -6138,6 +6145,13 @@
       "callers_by_stem": []
     },
     {
+      "path": "scripts/tests/test_bt2018_mechs.py",
+      "basename": "test_bt2018_mechs.py",
+      "stem": "test_bt2018_mechs",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
       "path": "scripts/tests/test_buffer_lifetime_ownership.py",
       "basename": "test_buffer_lifetime_ownership.py",
       "stem": "test_buffer_lifetime_ownership",
@@ -7436,7 +7450,15 @@
       "basename": "convert_all_bt2018.py",
       "stem": "convert_all_bt2018",
       "callers_by_basename": [],
-      "callers_by_stem": []
+      "callers_by_stem": [
+        {
+          "path": "scripts/tests/test_bt2018_mechs.py",
+          "line": 306,
+          "evidence": "import_module",
+          "reference": "convert_all_bt2018",
+          "text": "conv = importlib.import_module(\"convert_all_bt2018\")"
+        }
+      ]
     },
     {
       "path": "tools/bt2018_import/cook_ao_from_package.py",
@@ -7472,6 +7494,186 @@
       "stem": "gen_mech_package",
       "callers_by_basename": [],
       "callers_by_stem": []
+    },
+    {
+      "path": "tools/bt2018_mechs/__init__.py",
+      "basename": "__init__.py",
+      "stem": "__init__",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "scripts/tests/test_bt2018_mechs.py",
+          "line": 23,
+          "evidence": "import",
+          "reference": "tools.bt2018_mechs",
+          "text": "from tools.bt2018_mechs import btjson, compile as C  # noqa: E402"
+        },
+        {
+          "path": "scripts/tests/test_bt2018_mechs.py",
+          "line": 333,
+          "evidence": "import",
+          "reference": "tools.bt2018_mechs",
+          "text": "from tools.bt2018_mechs import render_icons as R"
+        },
+        {
+          "path": "scripts/tests/test_bt2018_mechs.py",
+          "line": 357,
+          "evidence": "import",
+          "reference": "tools.bt2018_mechs",
+          "text": "from tools.bt2018_mechs import sockets as SK"
+        },
+        {
+          "path": "tools/bt2018_mechs/build_pack.py",
+          "line": 31,
+          "evidence": "import",
+          "reference": "tools.bt2018_mechs",
+          "text": "from tools.bt2018_mechs import compile as C  # noqa: E402"
+        },
+        {
+          "path": "tools/bt2018_mechs/build_pack.py",
+          "line": 33,
+          "evidence": "import",
+          "reference": "tools.bt2018_mechs",
+          "text": "from . import compile as C"
+        },
+        {
+          "path": "tools/bt2018_mechs/build_pack.py",
+          "line": 162,
+          "evidence": "import",
+          "reference": "tools.bt2018_mechs",
+          "text": "from tools.bt2018_mechs import sockets as SK"
+        },
+        {
+          "path": "tools/bt2018_mechs/build_pack.py",
+          "line": 203,
+          "evidence": "import",
+          "reference": "tools.bt2018_mechs",
+          "text": "from tools.bt2018_mechs import render_icons"
+        },
+        {
+          "path": "tools/bt2018_mechs/compile.py",
+          "line": 29,
+          "evidence": "import",
+          "reference": "tools.bt2018_mechs",
+          "text": "from . import btjson"
+        },
+        {
+          "path": "tools/bt2018_mechs/sockets.py",
+          "line": 20,
+          "evidence": "import",
+          "reference": "tools.bt2018_mechs",
+          "text": "from . import render_icons as R"
+        }
+      ]
+    },
+    {
+      "path": "tools/bt2018_mechs/btjson.py",
+      "basename": "btjson.py",
+      "stem": "btjson",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "scripts/tests/test_bt2018_mechs.py",
+          "line": 23,
+          "evidence": "import",
+          "reference": "tools.bt2018_mechs.btjson",
+          "text": "from tools.bt2018_mechs import btjson, compile as C  # noqa: E402"
+        },
+        {
+          "path": "tools/bt2018_mechs/compile.py",
+          "line": 29,
+          "evidence": "import",
+          "reference": "tools.bt2018_mechs.btjson",
+          "text": "from . import btjson"
+        }
+      ]
+    },
+    {
+      "path": "tools/bt2018_mechs/build_pack.py",
+      "basename": "build_pack.py",
+      "stem": "build_pack",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "tools/bt2018_mechs/compile.py",
+      "basename": "compile.py",
+      "stem": "compile",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "scripts/tests/test_bt2018_mechs.py",
+          "line": 23,
+          "evidence": "import",
+          "reference": "tools.bt2018_mechs.compile",
+          "text": "from tools.bt2018_mechs import btjson, compile as C  # noqa: E402"
+        },
+        {
+          "path": "tools/bt2018_mechs/build_pack.py",
+          "line": 31,
+          "evidence": "import",
+          "reference": "tools.bt2018_mechs.compile",
+          "text": "from tools.bt2018_mechs import compile as C  # noqa: E402"
+        },
+        {
+          "path": "tools/bt2018_mechs/build_pack.py",
+          "line": 33,
+          "evidence": "import",
+          "reference": "tools.bt2018_mechs.compile",
+          "text": "from . import compile as C"
+        }
+      ]
+    },
+    {
+      "path": "tools/bt2018_mechs/render_icons.py",
+      "basename": "render_icons.py",
+      "stem": "render_icons",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "scripts/tests/test_bt2018_mechs.py",
+          "line": 333,
+          "evidence": "import",
+          "reference": "tools.bt2018_mechs.render_icons",
+          "text": "from tools.bt2018_mechs import render_icons as R"
+        },
+        {
+          "path": "tools/bt2018_mechs/build_pack.py",
+          "line": 203,
+          "evidence": "import",
+          "reference": "tools.bt2018_mechs.render_icons",
+          "text": "from tools.bt2018_mechs import render_icons"
+        },
+        {
+          "path": "tools/bt2018_mechs/sockets.py",
+          "line": 20,
+          "evidence": "import",
+          "reference": "tools.bt2018_mechs.render_icons",
+          "text": "from . import render_icons as R"
+        }
+      ]
+    },
+    {
+      "path": "tools/bt2018_mechs/sockets.py",
+      "basename": "sockets.py",
+      "stem": "sockets",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "scripts/tests/test_bt2018_mechs.py",
+          "line": 357,
+          "evidence": "import",
+          "reference": "tools.bt2018_mechs.sockets",
+          "text": "from tools.bt2018_mechs import sockets as SK"
+        },
+        {
+          "path": "tools/bt2018_mechs/build_pack.py",
+          "line": 162,
+          "evidence": "import",
+          "reference": "tools.bt2018_mechs.sockets",
+          "text": "from tools.bt2018_mechs import sockets as SK"
+        }
+      ]
     },
     {
       "path": "tools/build_all_targets.py",
@@ -8766,7 +8968,15 @@
           "text": "tools/list_free_ordinals.py tools/mc2x_import/fst.py \\"
         }
       ],
-      "callers_by_stem": []
+      "callers_by_stem": [
+        {
+          "path": "tools/bt2018_mechs/build_pack.py",
+          "line": 57,
+          "evidence": "import",
+          "reference": "list_free_ordinals",
+          "text": "import list_free_ordinals as lfo  # noqa: E402"
+        }
+      ]
     },
     {
       "path": "tools/log_identity.py",
@@ -9633,6 +9843,13 @@
           "text": "import stock_corpus as sc  # noqa: E402"
         },
         {
+          "path": "scripts/tests/test_bt2018_mechs.py",
+          "line": 24,
+          "evidence": "import",
+          "reference": "tools.mc2data.stock_corpus",
+          "text": "from tools.mc2data.stock_corpus import resolve, StockDataError  # noqa: E402"
+        },
+        {
           "path": "tools/blender_pipeline/srcdata.py",
           "line": 53,
           "evidence": "import",
@@ -9695,6 +9912,13 @@
           "evidence": "import",
           "reference": "stock_missions",
           "text": "import stock_missions as sm  # noqa: E402"
+        },
+        {
+          "path": "scripts/tests/test_bt2018_mechs.py",
+          "line": 376,
+          "evidence": "import",
+          "reference": "tools.mc2data.stock_missions",
+          "text": "from tools.mc2data import stock_missions as sm"
         },
         {
           "path": "tools/mc2data/stock_corpus.py",
@@ -10038,6 +10262,13 @@
           "evidence": "import",
           "reference": "tools.mc2x_import.fst",
           "text": "from tools.mc2x_import.fst import decompress_entry"
+        },
+        {
+          "path": "tools/bt2018_mechs/build_pack.py",
+          "line": 74,
+          "evidence": "import",
+          "reference": "fst",
+          "text": "import fst  # noqa: E402"
         },
         {
           "path": "tools/list_free_ordinals.py",
@@ -11360,7 +11591,7 @@
       "callers_by_basename": [
         {
           "path": "CMakeLists.txt",
-          "line": 911,
+          "line": 913,
           "evidence": "cmake command",
           "reference": "${CMAKE_SOURCE_DIR}/tools/shader_reflect/reflect.py",
           "text": "COMMAND ${Python3_EXECUTABLE}"

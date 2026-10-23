@@ -13,6 +13,9 @@
 #include <string>
 #include <vector>
 #include <optional>
+#include <algorithm>
+#include <cctype>
+#include <string_view>
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"
 #include "../GameOS/gameos/utils/mc2log.h"
@@ -40,6 +43,9 @@ static std::unordered_map<std::string, ModFileEntry> g_modIndex;
 static std::unordered_map<std::string, std::vector<std::string>> g_shadowedBy;
 static std::string g_activeModId;
 static std::unordered_map<std::string, int> g_modPriority;
+// mod.json "capabilities" per mounted mod id (active + deps). A package capability switches on the
+// engine paths that package needs (imported mechs, package chassis, equipment ADD) for that package only.
+static std::unordered_map<std::string, std::vector<std::string>> g_modCapabilities;
 // logFileResolve: 0=off, 1=level-1 stdout tags, 2=level-1+JSONL trace
 static int logFileResolve = 0;
 
@@ -518,7 +524,7 @@ static std::vector<std::string> JsonGetStringArray(const char* json, const char*
     return result;
 }
 
-struct ModJson { std::string id, name; std::vector<std::string> deps; };
+struct ModJson { std::string id, name; std::vector<std::string> deps, capabilities; };
 
 // Read mod.json at jsonPath. Returns nullopt if file not found or has no id.
 static std::optional<ModJson> ReadModJson(const char* jsonPath) {
@@ -531,7 +537,8 @@ static std::optional<ModJson> ReadModJson(const char* jsonPath) {
     CloseHandle(fh);
     buf[read] = '\0';
 
-    ModJson mj{JsonGetString(buf, "id"), JsonGetString(buf, "name"), JsonGetStringArray(buf, "dependencies")};
+    ModJson mj{JsonGetString(buf, "id"), JsonGetString(buf, "name"), JsonGetStringArray(buf, "dependencies"),
+               JsonGetStringArray(buf, "capabilities")};
     if (mj.id.empty()) return std::nullopt;
     return mj;
 }
@@ -615,6 +622,38 @@ ModFileSource ResolveModFileSource(std::string_view dataPath) {
     return source;
 }
 
+const char* LookupModAbsolutePath(std::string_view dataPath) {
+    const std::string key = NormalizeKey(std::string(dataPath).c_str());
+    if (const auto it = g_modIndex.find(key); it != g_modIndex.end()) {
+        const auto& [indexKey, entry] = *it;
+        return entry.path.c_str();
+    }
+    return static_cast<const char*>(nullptr);
+}
+
+static bool capabilityEquals(std::string_view a, std::string_view b) {
+    return std::ranges::equal(a, b, [](char x, char y) {
+        return std::tolower(static_cast<unsigned char>(x)) == std::tolower(static_cast<unsigned char>(y)); });
+}
+
+bool ModHasCapability(std::string_view modId, std::string_view capability) {
+    for (const auto& [id, caps] : g_modCapabilities)
+        if (id == modId)
+            return std::ranges::any_of(caps, [&](std::string_view c) { return capabilityEquals(c, capability); });
+    return false;
+}
+
+bool ModCapabilityMounted(std::string_view capability) {
+    return std::ranges::any_of(g_modCapabilities, [&](const auto& kv) {
+        const auto& [id, caps] = kv;
+        return ModHasCapability(id, capability); });
+}
+
+bool ModOwnerHasCapability(std::string_view dataPath, std::string_view capability) {
+    const char* owner = LookupModOwner(std::string(dataPath).c_str());
+    return owner && ModHasCapability(owner, capability);
+}
+
 // No-ops — mod is selected at launcher time, not at campaign-select time.
 // Kept for call-site compatibility in logisticsdata.cpp / logisticsdialog.cpp / mission.cpp.
 void ActivateCampaignMod(const char* /*campaignFitName*/) {}
@@ -672,6 +711,7 @@ void InitModSearchPaths(const char* modsRoot) {
     g_modPriority.clear();
     g_shadowedBy.clear();
     g_activeModId.clear();
+    g_modCapabilities.clear();
 
     // Parse MC2_LOG_FILE_RESOLVE: absent/empty -> 0; any non-numeric non-empty -> 1 (compat);
     // numeric -> atoi (so "1" -> 1, "2" -> 2).
@@ -766,6 +806,7 @@ void InitModSearchPaths(const char* modsRoot) {
         modName = "";
     } else if (auto mj = ReadModJson(jsonPath)) {
         modId = mj->id; modName = mj->name; deps = mj->deps;
+        if (!mj->capabilities.empty()) g_modCapabilities[modId] = mj->capabilities;
     } else {
         // No mod.json — treat the folder name as the id. Dependencies (the compat
         // layer) come from MC2_MOD_DEPS instead (see below) — the launcher lets the
@@ -834,6 +875,11 @@ void InitModSearchPaths(const char* modsRoot) {
             printf("[mod] dep '%s' not found at %s, skipping\n", dep.c_str(), depDataDir);
             fflush(stdout);
             continue;
+        }
+        {
+            const std::string depJson = std::string(absRoot) + dep + "/mod.json";
+            if (auto dj = ReadModJson(depJson.c_str()); dj && !dj->capabilities.empty())
+                g_modCapabilities[dep] = dj->capabilities;
         }
         size_t before = g_modIndex.size();
         if (!TryLoadModCache(g_modIndex, absRoot, dep.c_str(), depDataDir))

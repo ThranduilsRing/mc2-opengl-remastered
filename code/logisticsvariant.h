@@ -27,6 +27,8 @@ enum LOGISTICS_COMPONENT_LOCATION
 };
 
 
+namespace mc2pkg { struct PackageChassis; }
+
 class LogisticsChassis
 {
 public:
@@ -58,6 +60,9 @@ public:
 	// mission-only objTypeManager that loadObjectType derefs (which is null at the
 	// logistics/pilot-ready screen).
 	bool			isVehicle() const { return bIsVehicle; }
+	// BT2018-FIRST-CLASS P7: the package chassis record (regions, mounts, mass budget) when this
+	// chassis comes from a package; nullptr for every stock chassis.
+	const mc2pkg::PackageChassis* getPackage() const { return package; }
 
 protected:
 
@@ -108,6 +113,8 @@ protected:
 	long				uiEncyclopediaIDOverride; // -1 == unset
 
 	MechAppearance*		appearance; 
+
+	const mc2pkg::PackageChassis* package = nullptr;
 
 	friend class		LogisticsVariant;
 	friend class		LogisticsMech;
@@ -210,6 +217,10 @@ protected:
 
 		bool		allComponentsAvailable() const;
 
+		// BT2018-FIRST-CLASS P7: package chassis rules (code/package_chassis.h). Weapon hardpoint
+		// keys in getComponents() order (0 for non-weapons) -- what deployment hands BattleMech.
+		int			getPackageMounts( long& count, unsigned int* keys ) const;
+
 		int			getFileID() const { return fileID; }
 
 
@@ -239,6 +250,8 @@ protected:
 		bool				hasJumpJets() const;
 		bool				hasECM() const;
 		bool				hasSensor() const;
+		int					packageCheck( LogisticsComponent* pComponent, long x, long y ) const;
+		bool				packageAutoPlace( LogisticsComponent* pComponent, long& x, long& y ) const;
 
 		// SUPPRESSED
 		

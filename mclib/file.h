@@ -90,6 +90,13 @@ struct ModFileSource {
 ModFileSource ResolveModFileSource(std::string_view dataPath);
 // Lower values win; follows the same active/dependency order as File::open.
 int LookupModPriority(const char* dataPath);
+// Absolute disk path of the mounted mod file that serves dataPath, or nullptr when no mod owns it.
+// For readers that bypass File::open (Assimp, sidecar fopen); see the P2 boundary note in mclib/msl_load.cpp.
+const char* LookupModAbsolutePath(std::string_view dataPath);
+// Package capabilities: mod.json "capabilities" of the mounted mods (active + dependencies).
+bool ModHasCapability(std::string_view modId, std::string_view capability);
+bool ModCapabilityMounted(std::string_view capability);
+bool ModOwnerHasCapability(std::string_view dataPath, std::string_view capability);
 // Archive metadata for a loose override; the normal File::open precedence stays authoritative.
 std::vector<unsigned char> ReadArchiveBytes(const char* dataPath, size_t maxBytes);
 // Enumerate data/campaign/*.fit files from the active mod (for campaign list UI).

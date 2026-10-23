@@ -12,6 +12,7 @@
 #define MECH_H
 
 #ifndef MCLIB_H
+#include <span>
 #include"mclib.h"
 #endif
 
@@ -661,6 +662,15 @@ class BattleMech : public Mover {
 		// Stock items carry hardpointId==0 -> always fallback -> parity. Returns the
 		// same node-index domain inventory[].facing already stores.
 		long resolveWeaponMountNode (const InventoryItem& item, long sourceWeaponType);
+
+		// BT2018-FIRST-CLASS P7: a package chassis (code/package_chassis.h) declares its BT
+		// mounts; each weapon carries its mount's key in InventoryItem::hardpointId and fires
+		// from that mount's socket. Deployment hands the mech-lab mount assignment over with
+		// setPendingPackageMounts() before resetComponents(); keys are in component-list order.
+		bool isPackageChassis (void) const;
+		void setPendingPackageMounts (std::span<const unsigned int> keys);
+		unsigned int pendingPackageMounts[MAX_MOVER_INVENTORY_ITEMS] = {};
+		long numPendingPackageMounts = 0;
 
 		// LOCOMOTION-FACET-1 (slice 4): the mech-walker locomotion model is now a
 		// DATA facet set on the type profile at BattleMechType::init (see

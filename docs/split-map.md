@@ -233,6 +233,7 @@ Split commit: `aa9130de3`.
 | Piece | What it holds |
 |---|---|
 | `logisticsvariant.cpp` | keeps LogisticsChassis and the LogisticsVariant construction, init and addComponent |
+| `logisticsvariant_package.cpp` | BT2018-FIRST-CLASS P7: LogisticsVariant rules for package chassis. Every rule itself is the pure mc2pkg::checkAdd / assignMounts in code/package_chassis.h; this file only adapts |
 | `logisticsvariant_stats.cpp` | LogisticsVariant: the variant stat getters, component placement checks and lookups, save, and the LogisticsVehicle setup. |
 | `logisticsvariant_internal.h` | shared include bundle, extern globals and declarations of the pieces |
 

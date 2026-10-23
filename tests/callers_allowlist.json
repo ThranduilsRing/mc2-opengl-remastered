@@ -47,6 +47,8 @@
   "scripts/tests/conftest.py": "Implicit pytest configuration for descendant tests; pytest auto-loads this file, so no explicit script operand/import names it.",
   "scripts/tests/test_axis_swizzle_ratchet.py": "Pytest-discovered module through scripts/check-contracts.sh:1516 (scripts_tests); the executable command names the directory.",
   "scripts/tests/test_board_selftests.py": "Pytest-discovered module through the scripts_tests board row.",
+  "scripts/tests/test_bt2018_mechs.py": "Pytest module discovered by scripts/run_scripts_tests.py through scripts/test_ownership.json (scripts_tests); BT2018 data-mapping and cook tests.",
+  "tools/bt2018_mechs/build_pack.py": "Owner-run CLI that generates the personal-use BT2018 pack from the owner's own files (docs/bt2018-mechs.md); nothing in the tree invokes it.",
   "scripts/tests/test_bootstrap_worktree_build.py": "Pytest module discovered by scripts/run_scripts_tests.py through the scripts_tests contract row; discovery supplies the filenames at run time.",
   "scripts/tests/test_bounded_wait.py": "Pytest-discovered module through scripts/check-contracts.sh:1516 (scripts_tests); the executable command names the directory.",
   "scripts/tests/test_buffer_lifetime_ownership.py": "Pytest module discovered by scripts/run_scripts_tests.py through the scripts_tests contract row; discovery supplies the filenames at run time.",

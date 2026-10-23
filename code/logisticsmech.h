@@ -57,6 +57,11 @@ class LogisticsMech
 		{
 			return pVariant->getComponents( count, IDArray );
 		}
+		// BT2018-FIRST-CLASS P7: hardpoint keys aligned with getComponents (package chassis only).
+		int				getPackageMounts( long& count, unsigned int* keys ) const
+		{
+			return pVariant->getPackageMounts( count, keys );
+		}
 
 		void			setVariant( LogisticsVariant* pVariant );
 

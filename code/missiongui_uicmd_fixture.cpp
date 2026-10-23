@@ -7,6 +7,7 @@
 #include "mc2fmt.h"
 #include "../RenderCore/TextureService.h"
 #include "../GameOS/gameos/battle_bench.h"
+#include "package_chassis.h"
 
 //--------------------------------------------------------------------------
 // FREEZE-MOVERS-1 (GAMEPLAY-DRIVER-3): deterministic mover freeze.
@@ -259,7 +260,9 @@ bool MissionInterfaceManager::uiCmdFixture(UiCmdCtx& c)
 				const long homeCmdr = Commander::home ? Commander::home->getId() : 0;
 				const long homeTeam = Team::home ? Team::home->getId() : 0;
 				MoverInitData data; memset(&data, 0, sizeof(data));
-				strcpy(data.pilotFileName, "pmw00080");
+				// Flash is shipped in mission.fst. The prototype's pmw00080 was absent,
+				// leaving zero pilot skills and NaN status on every spawned chassis.
+				strcpy(data.pilotFileName, "pmp_flash");
 				if (nf >= 6) mc2::fmt::to_buf(data.pilotFileName, "{}", pilotProfile);
 				strcpy(data.brainFileName, "pbrain");
 				data.controlDataType = 0;
@@ -307,17 +310,24 @@ bool MissionInterfaceManager::uiCmdFixture(UiCmdCtx& c)
 						data.variant = (wantCls == BATTLEMECH)
 							? static_cast<DWORD>((static_cast<BattleMechPtr>(tmpl))->variantID) : 0;
 					}
+				} else if (strchr(kind, ':')) {
+					// BT2018-FIRST-CLASS P3: a package chassis by qualified id (bt2018:marauder).
+					// Its object-type number is a runtime allocation, so drivers name the id.
+					const mc2pkg::PackageChassis* pc = packageChassisById(kind);
+					if (!pc || pc->objTypeNum < 0) { ok = false; result = "blocked"; note = "no registered package chassis with that id"; }
+					else data.objNumber = pc->objTypeNum;
 				} else {
 					char* end = nullptr; const long on = strtol(kind, &end, 10);
-					if (!end || *end != '\0') { ok = false; note = "kind: clone|vehicle|infantry|<objNum>"; }
+					if (!end || *end != '\0') { ok = false; note = "kind: clone|vehicle|infantry|<objNum>|<ns:chassis>"; }
 					else data.objNumber = on;
 				}
 				if (ok) {
 					glm::vec3 pos; pos.x = x; pos.y = y; pos.z = 0.0f;
 					if (land) pos.z = land->getTerrainElevation(pos);
 					data.position = pos; data.rotation = 0;
-					data.controlType = (data.commanderID == static_cast<char>(homeCmdr) && !MPlayer)
-						? CONTROL_PLAYER : CONTROL_AI;
+					// Tactical orders run through the pilot's AI loop, including home units.
+					// CONTROL_PLAYER is the legacy keyboard/animation puppet mode.
+					data.controlType = CONTROL_AI;
 					const long h = mission ? mission->addMover(&data) : -1;
 					MoverPtr nm = (h > 0) ? static_cast<MoverPtr>(ObjectManager->get(h)) : nullptr;
 					if (!nm) { result = "blocked"; if (note.empty()) note = "addMover failed"; }
@@ -343,8 +353,8 @@ bool MissionInterfaceManager::uiCmdFixture(UiCmdCtx& c)
 						// scenario_runner only substring-matches acks, the
 						// report said ok=True. Surfacing hp here means a
 						// driver can assert on it. A non-positive OR NaN hp on
-						// a fresh spawn is the known defect -- use
-						// `unit <id>` for detail.
+						// a fresh spawn is invalid -- use `unit <id>` for detail.
+						// The watch id joins the ack to COMBAT fire events.
 						//
 						// Written as !(hp > 0) and NOT as (hp <= 0): a
 						// spawned BattleMech's getStatusRating() can come
@@ -354,7 +364,7 @@ bool MissionInterfaceManager::uiCmdFixture(UiCmdCtx& c)
 						// the warning exists to catch slip through acking a
 						// clean "ok".
 						const float spawnHp = nm->getStatusRating();
-						mc2::fmt::to_buf(b, "spawned id={:d} obj={:d} team={:d} hp={:.3f}{}", mc2::fmt::as_i32(nm->getPartId()), mc2::fmt::as_i32(static_cast<int>(data.objNumber)), mc2::fmt::as_i32(static_cast<int>(data.teamID)), spawnHp, mc2::fmt::safe(!(spawnHp > 0.0f)
+						mc2::fmt::to_buf(b, "spawned id={:d} obj={:d} team={:d} hp={:.3f} wid={:d}{}", mc2::fmt::as_i32(nm->getPartId()), mc2::fmt::as_i32(static_cast<int>(data.objNumber)), mc2::fmt::as_i32(static_cast<int>(data.teamID)), spawnHp, mc2::fmt::as_u32(nm->getWatchID(false)), mc2::fmt::safe(!(spawnHp > 0.0f)
 								? " WARNING:bad hp, spawned unit may be inert" : ""));
 						note = b;
 					}

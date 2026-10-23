@@ -422,7 +422,12 @@ long TG_TypeMultiShape::LoadFromFile(const char* baseName)
 				const bool exists = fileExists(probePath, FILE_ON_DISK);
 				if (exists)
 				{
-					long r = ImportGeometryFromFile(probePath, this);
+					// P2 BOUNDARY ADAPTER (bt2018 lane; thin, to be replaced by the content-pipeline
+					// resource provider): Assimp and the <stem>.package.json sidecar open files with
+					// raw OS calls that do not see the mod VFS. Hand them the mounted mod's real path
+					// when a mod serves this key; base-data paths pass through unchanged.
+					const char* modPath = LookupModAbsolutePath(static_cast<const char*>(probePath));
+					long r = ImportGeometryFromFile(modPath ? modPath : static_cast<const char*>(probePath), this);
 					if (r == 0)
 						return NO_ERR;
 					// META-FIX design B PART 0: probed file EXISTED but the
