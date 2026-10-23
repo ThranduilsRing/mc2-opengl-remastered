@@ -121,7 +121,7 @@ mods/<yourMod>/data/anim_overrides/my_strut.ase     # your clip (cooks to .agl h
 ## Swapping FX too (pointer)
 
 Weapon/explosion FX swap through a parallel path — a per-effect JSON sidecar
-(`data/effects/defs/<EffectName>.fxdef.json`, `MC2_FX_DEFS=1`) for retuning/replacing an
+(`data/effects/defs/<EffectName>.fxdef.json`, always loaded, no env var) for retuning/replacing an
 **existing** effect's texture/blend/color/scale, no `mc2.fx` rebuild required. See
 [modding-effects.md](modding-effects.md) (field reference, `fxlint`, worked example) for that
 path, or [gosfx-modder-dropin-path.md](gosfx-modder-dropin-path.md) for the whole-blob overlay +

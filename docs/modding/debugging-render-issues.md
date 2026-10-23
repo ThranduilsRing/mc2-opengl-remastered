@@ -96,7 +96,7 @@ For terrain hits: tile X/Z, quad index, splat weights (all four channels), heigh
 
 ### Material section
 
-Shows the GPU material table row for the selected object: albedo texture handle, normal/roughness/metallic packed handles, and the KTX sidecar path if `MC2_MATERIAL_KTX=1`.
+Shows the GPU material table row for the selected object: albedo texture handle, normal/roughness/metallic packed handles, and the KTX sidecar path when one is loaded.
 
 ### Lookup section
 

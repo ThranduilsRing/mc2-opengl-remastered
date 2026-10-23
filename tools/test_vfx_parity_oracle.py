@@ -120,8 +120,7 @@ def parity_case(monkeypatch):
                 "assets": {"mc2.fx": "a" * 64}, "birth_transcript": extract(raw_log.decode())["birth_transcript"],
                 "log_sha256": hashlib.sha256(raw_log).hexdigest(), "log": f"{arm}-{index}.log",
                 "gates": {"MC2_GPU_PARTICLES": enabled, "MC2_VFX_ORACLE_RENDER": enabled,
-                          "MC2_VFX_ORACLE_TUBE": enabled, "MC2_VFX_ORACLE_SHAPE": enabled,
-                          "MC2_VFX_GPU_SIM_CARDCLOUD": "0", "MC2_VFX_GPU_SIM_COMPARE": "0"},
+                          "MC2_VFX_ORACLE_TUBE": enabled, "MC2_VFX_ORACLE_SHAPE": enabled},
                 "draw_probe": {"scope": "all_draw_flush_cull", "unchanged": True, "frozen_repeats": 2}}
     monkeypatch.setattr(Image, "open", lambda path: controls[path].copy())
     return effect, [Image.new("RGB", (8, 8), "red") for _ in range(4)], controls

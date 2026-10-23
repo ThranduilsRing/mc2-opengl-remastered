@@ -40,7 +40,6 @@ These control the GPU-direct fast paths added in the 0.4 arc.
 | `MC2_GPU_DRIVEN` | off | Master gate for GPU-driven terrain/water fast paths |
 | `MC2_MATERIAL_GPU` | **on** | GPU material table for albedo lookup (PBR) |
 | `MC2_MATERIAL_GPU_SAMPLE` | **on** | Shader-side sampling from GPU material table |
-| `MC2_MATERIAL_KTX` | off | KTX2 sidecar texture loader (higher-quality asset path) |
 | `MC2_STATIC_PROP_LEGACY_DISPATCH` | off | Kill-switch: revert static props to legacy `glMultiDrawElementsIndirect` |
 | `MC2_OBJECT_ID_BUFFER` | off | Per-pixel object-ID readback buffer (required for Object Inspector) |
 
