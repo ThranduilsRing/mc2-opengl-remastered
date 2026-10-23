@@ -236,7 +236,9 @@ bool MissionInterfaceManager::uiCmdFixture(UiCmdCtx& c)
 				const long homeCmdr = Commander::home ? Commander::home->getId() : 0;
 				const long homeTeam = Team::home ? Team::home->getId() : 0;
 				MoverInitData data; memset(&data, 0, sizeof(data));
-				strcpy(data.pilotFileName, "pmw00080");
+				// Flash is shipped in mission.fst. The prototype's pmw00080 was absent,
+				// leaving zero pilot skills and NaN status on every spawned chassis.
+				strcpy(data.pilotFileName, "pmp_flash");
 				strcpy(data.brainFileName, "pbrain");
 				data.controlDataType = 0;
 				data.rosterIndex = 255;
@@ -325,8 +327,8 @@ bool MissionInterfaceManager::uiCmdFixture(UiCmdCtx& c)
 						// scenario_runner only substring-matches acks, the
 						// report said ok=True. Surfacing hp here means a
 						// driver can assert on it. A non-positive OR NaN hp on
-						// a fresh spawn is the known defect -- use
-						// `unit <id>` for detail.
+						// a fresh spawn is invalid -- use `unit <id>` for detail.
+						// The watch id joins the ack to COMBAT fire events.
 						//
 						// Written as !(hp > 0) and NOT as (hp <= 0): a
 						// spawned BattleMech's getStatusRating() can come
@@ -336,7 +338,7 @@ bool MissionInterfaceManager::uiCmdFixture(UiCmdCtx& c)
 						// the warning exists to catch slip through acking a
 						// clean "ok".
 						const float spawnHp = nm->getStatusRating();
-						mc2::fmt::to_buf(b, "spawned id={:d} obj={:d} team={:d} hp={:.3f}{}", mc2::fmt::as_i32(nm->getPartId()), mc2::fmt::as_i32(static_cast<int>(data.objNumber)), mc2::fmt::as_i32(static_cast<int>(data.teamID)), spawnHp, mc2::fmt::safe(!(spawnHp > 0.0f)
+						mc2::fmt::to_buf(b, "spawned id={:d} obj={:d} team={:d} hp={:.3f} wid={:d}{}", mc2::fmt::as_i32(nm->getPartId()), mc2::fmt::as_i32(static_cast<int>(data.objNumber)), mc2::fmt::as_i32(static_cast<int>(data.teamID)), spawnHp, mc2::fmt::as_u32(nm->getWatchID(false)), mc2::fmt::safe(!(spawnHp > 0.0f)
 								? " WARNING:bad hp, spawned unit may be inert" : ""));
 						note = b;
 					}

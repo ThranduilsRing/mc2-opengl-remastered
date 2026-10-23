@@ -8410,6 +8410,13 @@
           "text": "import stock_missions as sm  # noqa: E402"
         },
         {
+          "path": "scripts/tests/test_bt2018_mechs.py",
+          "line": 376,
+          "evidence": "import",
+          "reference": "tools.mc2data.stock_missions",
+          "text": "from tools.mc2data import stock_missions as sm"
+        },
+        {
           "path": "tools/mc2data/stock_corpus.py",
           "line": 161,
           "evidence": "import",

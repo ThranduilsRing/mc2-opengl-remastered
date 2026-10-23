@@ -367,3 +367,29 @@ def test_muzzle_sockets_sit_on_geometry_not_joint_centres(marauder_recipe):
                                          "weapon_lefttorso": "j_LClavicle", "weapon_righttorso": "j_RClavicle",
                                          "weapon_centertorso": "j_Spine2"}}, marauder_recipe, off)
     assert len(pkg["socketOffsets"]["weapon_leftarm"].split()) == 3
+
+
+def test_spawn_fixture_uses_a_shipped_pilot_with_combat_skills():
+    """A missing pilot leaves zero skills and turns weapon status into 0/0."""
+    import hashlib
+    import re
+    from tools.mc2data import stock_missions as sm
+
+    source = (REPO / "code/missiongui_uicmd_fixture.cpp").read_text(encoding="utf-8")
+    pilot = re.search(r'strcpy\(data\.pilotFileName,\s*"([^"]+)"\)', source)
+    assert pilot, "spawn fixture must name its pilot profile"
+    fst = sm.find_deployed_fst()
+    if fst is None:
+        pytest.skip("deployed stock mission.fst not present")
+    data, members = sm.fst_members(fst)
+    relative = f"warriors/{pilot.group(1)}.fit"
+    member = next((m for m in members if m[0] == "data/missions/" + relative), None)
+    assert member is not None, f"spawn pilot {relative} is absent from shipped mission.fst"
+    _, off, size, real = member
+    blob = sm.fst_blob(data, off, size, real)
+    assert blob is not None
+    assert hashlib.md5(blob).hexdigest() == sm.load_manifest()[relative]
+    text = blob.decode("latin-1")
+    for skill in ("Gunnery", "Piloting"):
+        value = re.search(rf"(?im)^\s*c\s+{skill}\s*=\s*(\d+)", text)
+        assert value and int(value.group(1)) > 0, f"spawn pilot needs usable {skill}"
