@@ -96,7 +96,7 @@ bool gosRenderer::drawDecalStaticBatch(unsigned int vboGL,
     return false;
 }
 
-// Draw the decal batch (bomb craters + mech footprints).
+// Draw the decal batch (world-space ground decals).
 // Render state: alpha blend, depth-write OFF, depth-test LEQUAL.
 // Batch cleared after draw.
 // [RENDER_CONTRACT:Pass=TerrainDecal id=gosRenderer_drawDecals]

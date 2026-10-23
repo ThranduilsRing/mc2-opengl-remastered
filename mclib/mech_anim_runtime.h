@@ -12,6 +12,7 @@
 // MC2_MECH_IMPORT_ANIMATE (default OFF, opt-in) + MC2_MECH_IMPORT_FORCE_CLIP
 // names the clip. Per-actor animation and the GPU mech path are deferred.
 #pragma once
+namespace mc2::sim { struct ImportedAnimState; }
 
 namespace mc2mechanim {
 
@@ -43,7 +44,8 @@ struct MechMotion {
 // and clip selection; the pose is still re-baked at the frozen time so geometry/skinning
 // keeps running. Defaults true so non-pause-aware callers are unchanged.
 void TickImportedMechs(float frameLengthSec, unsigned frameStamp, const MechMotion& motion,
-                       const void* actorKey, const void* typeKey, bool advanceClock = true);
+                       const void* actorKey, const void* typeKey, bool advanceClock = true,
+                       mc2::sim::ImportedAnimState* authoritative = nullptr);
 
 // True once at least one imported mech anim is registered (gate on + bones).
 bool AnyImportedAnim();
@@ -79,6 +81,7 @@ int ImportedGpuLiftAxis();
 // death-shape swap, final teardown) so a later allocation reusing the same address
 // cannot inherit a stale pose for a few frames. Safe/no-op if the key isn't present.
 void UnregisterImportedActor(const void* actorKey);
+void CopyImportedActorPose(const void* source, const void* destination);
 
 // AO-1: imported mech's AO texture name (materials.ao.tga from the package), or nullptr
 // if not imported / no AO declared. Caller loads it + binds on texture unit 6.

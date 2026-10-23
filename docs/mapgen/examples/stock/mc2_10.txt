@@ -1,0 +1,133 @@
+stock/mc2_10 | 360x360 cells | 3 cells/char
+North up; cell crop [0,0)..[360,360); objects by team: {-1: 253, 0: 22, 1: 133}
+@ player start; O visible objective; B military; h town; I industry; H HQ/sensor; A airfield
+# wall/fence; + gate; T turret; C turret control; G generator; c gate control
+= road/bridge; : runway; . cement; ~ water; t trees; ^ slope>=35deg; % rock; , prop; ? unresolved
++------------------------------------------------------------------------------------------------------------------------+
+|                                              ~~~              ~~~~~~~~      ~~~~~~~~~~~~~~~~~~~~~ =                    |
+|                                              ~~                 ~   ~~~     ~~~~~~~~~~~~~~~~~~~~              t t      |
+|                                                                              ~~~~~~~~~~~~~~~~~~                        |
+|                    t t t                                                   t ~~~~~~~~~~~~~~~~~                         |
+|                  t ttt                                                  t t   ~~~~~~~~~~~~~~    t  t                   |
+|         t      t    tt     t                                             tt  ~~~~~~~~~~~~~~  t   t             tt      |
+|   tt           t    tt                                                   ttt ~~~~~~~~~~~~   t  t                       |
+|                 t   ttt   t                                              tt t~~~~~~~~~~~~  t t                    t    |
+|         t    t      ttt   tt                                            tt t  ~~~~~~~~~~~  t        t           t      |
+|       t tttt  tt    t  t  t  t                                          t ttt ~~~~~~~~~~~ t  t            t    ttt     |
+|        tt   t tt            t                                          t  ttt ~~~~~~~~~~~t ttt     t           t       |
+|        t  t            tt t                                           t tt t  ~~~~~~~~~~                   t   t       |
+|                          t                                               t t t     ~~~~~                          t    |
+|                       t  t tt                                                t      ~~~~   t                t     t    |
+|     t   t               t  t                                               ttt    t ~~~~ :                  tt t       |
+|         t                tt t                                              t t T#I#,t #  :                 t   tt      |
+|             t   tt        ttt                                             t t  ##,#,,### :     tt         t    t       |
+|            t             t               t                                 t  tB====,##I : :              t            |
+|             t                                                                 T#C.G=,,#. : :      t   t   t t          |
+|                                                                               #TBT.B,::::B:::::   ^        O  t t      |
+|                                                                               #,.==O=,,  : :     t     t     t  t      |
+|                                             t                                 T#TT#.=I.G.: :           t     t tt      |
+|                                     t     tt        t                             T#=H,..: :                 t  t t    |
+|                                          t           tt                          ======C,: :       t           t tt    |
+|                              t               t t   t t                           =#####.#: :           ttt    t t t    |
+|                                           tttt tttt  tttt                        =T#T.T#T  :             t  t    tt    |
+|                t        t t  t             t  t  ttttttttttt                     =         :  t      t    t  t t t     |
+|            t t t         t  tt               ^t tt t     tttt                    =         :            tt  t   t t    |
+|          t   tt       t t    tt           ^ttt       t ttt t t                  t=            t     ttt t  t  t   t    |
+|              tt       t  tt t tt  t  t   =========   tt  ttttttt              ====t          t^     t ttt t t   ttt    |
+|         t   t   t t     t    t  t  t tt == t H   =          t ttt t           = t          t tt        t  tt tt  t     |
+|       t   t t  tt      tt       t t     =        ===   t    t  t              =            tt               ttt  t     |
+|     t  ttt  tt tt     t t      tttt =====  ^^^^^   =                          =                        t    ttt  tt    |
+|       t t  t tt       t t    tt ttB =     ^t%T  ^^ ===                    ttt =                        tt     tt tt    |
+|     tt t  t  tt      tt       ttt###=t  t^  #### %^  =                   tttt =                t       t     t  tt     |
+|     tt   t   tttt    t    ttt tt=#I#=Ht t## # BT# ^^ =                    t  t=                  t   t tttt tttt t     |
+|     tt   ttt ttt   t   t  tttttA==#T tt^#B#t# t ##t^ = t               tttttt =                      ttt t ttttttt     |
+|             tt    tt      tttt I=C = t^^BOB TBB B#   =  t            t ttt t  =                t      t  ttt t t       |
+|    t  t   ttt t t         t tt I=  = t^t#BT #=  B#   ===             tt t t   =               t t    t  ttt t         ^|
+|    t t t  t  t             ttt^IT  Ttt^ ###tT#T##T   = =t               t     =                     t   t tt tt        |
+|            t  tt         tt tt GB OT     =   T %      t=            tt t=======                      t      t          |
+|      tt ttt   t           ttt t =IT= tt  =   =       tt= t          tttt=                        t      tt ttt         |
+|       t t t               ttttt^ t ========  =         = tt     t   t  t=                        t      tt   ttt       |
+|                           tt   ^t        H====t        = tttt  ttt tt  t=                   t   tt        tttttt       |
+|                          tt   tt             =     ^t  =  ttt  t   t   t=                         tt ttt  t       t    |
+|   t           tt          tttt t             =    t^tt =  tt t  t t     =                                 t tttt       |
+|                           t tttt           t =    tttt =    t    t      =                        t ttt  tt tt    ttt   |
+|             t   t  t         tt ttt   t  tt  =     tttH=t  ttt    =======                      t   t t  t ttt tt       |
+|              t t  ,##       tt tttt   tt     = ^  t t   t  tt     =      ^                       t t     t  ttt        |
+|            tt     ,,I#     tt t  t     tttt  = ^ t tttttt ttt     =     ^                       tttttt  t  tt t t  t t |
+|            t     t#=h#    t t t tt     t t   =        t  t        =   ^                      t    tt        tt  t  tt  |
+|          t t t     #t    t   ttttt     tt   t=                    =                       t        t      ttt  t       |
+|         tt ttt     =  tt  t t    t         tt=t             =======  H                             tttt      tt    t   |
+|         ttttt tt ###BI t   t     t      t  tT=T             =  =     =                               tt  ttt       t   |
+|           tttttBt#I##B#   t t      t     t  t=t             =  =     =                                       t    tt   |
+|         tt  tt BB#I##=# t h     t            =              =  =======                                t   t tt   t     |
+|            ttt  ,#I=#I# tBI,  =======        =              =                            t  t     t t t  tt t          |
+|     t t     t t , I=#I#t#B ,# =     =      t = t            =                               t t     t t t        ttt   |
+|                 t,I=,I  #h tB =t    =       t=t             =                              t                    t      |
+|             t tt ,I==#=========     =      t =              =                                     t   tt tt            |
+|      t           h II    ,=   t     ========H=t             =                                     t    t tt      tt    |
+|                      t  tt=                  ================                                           ttt            |
+|           ^^^       tth,hh=  ttt                                                                          tt     tt    |
+|          ^^^^^^^  tttt =h#ht                                                tt                                         |
+|        ^^^^^^^^^^^  t hhhhh                   ~~                 t         t                             t t           |
+|       ^^^^    ^^^^^   th=#t tt   ^          ~~~~~~                           t                           t             |
+|     ^^^^^~~~~~~ ^^^^                      ~~~~~~~~                   t      t                             t            |
+|     ^^^~~~~~~~~~  ^^^^^^^^^^^       ~~~~~~~~~~~~~~~~~  ^           t t     tt                                          |
+|^   ^^^~~~~~~~~~~~~ ^^^^^^^^^^^^^  ~~~~~~~~~~~~~~~~~~~~  ^        t tttt t                                              |
+|^   ^^ ~~~~~~~~~~~~~~  ~~~    ^^  ~~~~~~~~~~~~~~~~~~~~   ^            t                                                 |
+|    ^^~~~~~~~~~~~~~~~~~~~~~~~   ~~~~~~~~  ~~~~~~~~~~~~~  ^            t     t                           t               |
+|    ^^ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   ^ ~~~~~~~~~~~~  ^      t   tt      t                                           |
+|    ^^ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ^^ ^^~~~~~~~~~~~  ^           ttt t  t                                            |
+|^       ~~~~ ~~~~~~~~~~~~~~~~~~~~~~  ^^  t^^~~~~~~~~~~ ^         t t    t t                                             |
+|^           ~~~~~~~~~~~~~~~~~~~~~~~  ^t    ^^~~~~~~~~~          tttt t  tttt                                            |
+|^^^ ^      ~~~~~~~~~~~~~~~~~~~~~~~~~ ^      ^^~~~~~~~         t    t tt  t                                              |
+| ^  ^^^   ~~~~~~~~~~   ^  ~~~~~~~~~~ ^^   ^  ^~~~~~~~    ^^    t  tttt                                                  |
+|~ ~~~~~~~~~~~~~~~~~~       ~~~~~~~~~~^^  ^   ^~~~~~~    ^^^       tttt     tt  t   t                                    |
+|~~~~~~~~~~~~~~~~~~~~~       ~~~~~~~~~~^^Ht ^ ^ ~~~~~  ^^^^   t  t t  t     t t    t                                     |
+|~~~~~~~~~~~~~~~~~~~~~        ~~~~~~~~~~^^   ^  ~~~~  ^^ ^     tt  ttt t          tt                                     |
+|~~~~~~~~~~~~~~~~~~~~          ~~~~~~~~~ t^^^^  ~~~~ ^^        ttttt t            t t t                                  |
+|~~~~~~~~~~~~~~~~~~~~  ^       ~~~~~~~~~~       ~~~  ^^       tt ttt                   t                                 |
+|~~~~~~~~~~~   ~~~~~   ^        ~~~~~~~~~~      ~~~  ^^        tt t  ttt  ttt                                            |
+|~~~~~~~~~            ^         ~~~~~~~~~~~    ~~~~ ^^        ttt t  t t     tt                                          |
+|~~~     ^^^^  ^                 ~~~~~~~~~~~   ~~~~ ^^        t ttt          tt                         t                |
+|        ^                       ~~~~~~~~~~~  ~~~~~  ^       ttttttt         tt                   t    t    t            |
+|                                ~~~~~~~ Tt T ~~~~  ^^^^    tt  ttt         t tt  t            tt  tttt  tt              |
+|                                ~~~~~~~ tBG  ~~~   ^^^      ttttttt                t          t  t  t tt ttt            |
+|   ^^^                          ~~~~~~~ TC,tt~~    ^^^      t ttttt                            t   t   t t ttt          |
+|    ^^                           ~~~~~~~    T     ^^^       tt ttt                        t      t t~~      ttt         |
+|^  ^                                   ~~        ^^^       t   tt                ~~~~     t    ttt t~~~~t               |
+|^                                               ^^          tt t                ~~~~~~~    t  t    ~~~~~ t              |
+|^                                              ^^^            t                ~~~~~~~~~t          ~~~~~                |
+|                                        ^^^^^^^^^             t                ~~~~~~~~~~ ~~~~ ttt ~~~~~    t t         |
+|                                      ^^^^^^^^^^                               ~~~~~~~~~~~~~~~   t  ~~~~ tt t t         |
+|                                  ^^^^^^^^^^^^^                               ~~~~~~~~~~~~~~~~  tttt~~~~  t tt          |
+|                                                                              ~~~~~~~~~~~~~~~~~~ tt  ~~~  tt t          |
+|                                     t                                       ~~~~~~~~~~~~~~~~~~~   ttt~t tttt           |
+|                        t            ttttttt                             ~~~~~~~~~~~~~~~~~~~~~~~  t t    tt             |
+|                   tttttt            ttttttt                           ~~~~~~~~~~~~~~~~~~~~~~~~~  t tttttt   t          |
+|                    t ttt            tttttt tttt t                     ~~~~~~~~~~~~~~~~~~~~~~~~~   ~t ttt               |
+|                 tt  tt t            ttttHttt ttt t                   ~~~~~~~~~~~~~~~~~~~~~~~~~~ ~~ t ttt t             |
+|                  tt@               ttttt        t t                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~     tt             |
+|                 tt                t   tt   t                         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  ttt              |
+|                ttt   tt  t       tttttt        t                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ tt t              |
+|                 tttttt  t  tt     tt tt                            t  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~    tt             |
+|                 t t ttt  t  tt t t  ttt  t  tt                    tt  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ t tt t           |
+|                    tt    tt ttttt   t       t                  t       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ t  t             |
+|                           ttt ttt ttt    t tt                   tt   t  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  ttt             |
+|                         t  ttt t  tttt     ttt                  tt tt    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   t             |
+|                          tt      ttttt ttt                        t t t     ~~~~~~~~~~~~~~~~~~~~~~~~~~                 |
+|                                  t t     ttt t                  tttt  t    ~~~~~~~~~~~~~~~~~~~~~~~~~~~t t t            |
+|                          t        t  t   t   t                    ttt tt  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~ t               |
+|                                   tt        t                  t     tt  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~                 |
+|                                  ttt    t                      tt t  t  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  t             |
+|                                 ttt  t   t                         t t  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~                 |
+|                                ttttt                        ~~~~    t   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   t             |
+|                                ttt t   t                    ~~            ~~~~~~~  ~~~~~~~~~~~~~~~~~~                  |
+|                                                              ~             ~~~   ~ ~~~~~~~~~~~~~~~~~        t          |
+|                                                                                                                        |
++------------------------------------------------------------------------------------------------------------------------+
+Visible objectives (O; symbols may share a character):
+  [113, 127]: Destroy all Gulag Defenders
+  [62, 254]: Destroy All Airfield Defenders
+  [59, 325]: Move All Surviving Mechs to Extraction Point
+  [120, 105]: Sec:  Capture Steiner Headquarters
+Coarse preview: highest-priority feature wins each character; object footprints are not drawn.

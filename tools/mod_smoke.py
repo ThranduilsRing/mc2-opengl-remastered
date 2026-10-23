@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 'Smoke every supported mod against the current mc2.exe: py -3 tools/mod_smoke.py --battery'
 #
-# Stages disposable installs under G:/mc2-battery/mod_smoke/<stamp>/ (never writes
+# Stages disposable installs under G:/mc2-installs/mod_smoke-battery/<stamp>/ (never writes
 # into a game install) and hands each one to scripts/run_smoke.py.
 #
 #     py -3 tools/mod_smoke.py --battery [--mod NAME[,NAME]] [--mission STEM]
@@ -45,7 +45,7 @@ import console_child  # noqa: E402  (windowless console children)
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_INSTALL_ROOT = Path('A:/Games/mc2-opengl')
-DEFAULT_BATTERY_ROOT = Path('G:/mc2-battery/mod_smoke')
+DEFAULT_BATTERY_ROOT = Path('G:/mc2-installs/mod_smoke-battery')
 DEFAULT_BASE_INSTALL = Path('A:/Games/mc2-opengl/mc2-win64-v0.4')
 GOLDEN_INSTALL = 'mc2-win64-v0.4c'
 

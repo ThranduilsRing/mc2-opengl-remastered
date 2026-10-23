@@ -64,7 +64,6 @@ Invalid values: clamped to safe range where applicable.
 | `aoRadius` | float | ≥0 | — | SSAO sample radius (visible only with `MC2_SSAO`) |
 | `aoStrength` | float | ≥0 | — | SSAO darkening strength (same gating) |
 | `aoBias` | float | ≥0 | — | SSAO depth bias (same gating) |
-| `mechAmbientStrength` | float | 0–2 | `MC2_MECH_AMBIENT_V1_STRENGTH` | Mech hemisphere ambient fill (gate `MC2_MECH_AMBIENT_V1`, default-ON) |
 | `mechSpecularStrength` | float | 0–4 | `MC2_MECH_SPECULAR_STRENGTH` | Mech Blinn specular strength (gate `MC2_MECH_SPECULAR_V1`, default-ON) |
 | `vfxLitStrength` | float | 0–1 | — | Per-mission lit-smoke strength (gate `MC2_VFX_LIT_PARTICLES` still controls whether lighting is applied at all) |
 | `terrainClassGrassGmRLo` | float | — | — | Terrain grass classifier: green-minus-red lower threshold |
@@ -164,14 +163,16 @@ cheapest, safest global levers per the proposal's "calibrate" framing.
 Per-mission intent (all values additive tweaks off the new defaults; keys not
 listed for a mission fall back to `defaults`):
 
-| Mission | `terrainLightingV2Floor` (retired) | `shadowSoftness` | `staticPropIblStrength` | `mechAmbientStrength` | `exposure` | Why |
-|---|---|---|---|---|---|---|
-| `mc2_01` | 0.36 | 1.1 | 0.6 | 0.24 | (default 1.0) | Dense-forest mission (see `run_smoke.py` instance-count note) — canopy casts heavy terrain shadow; floor lift keeps undergrowth readable, softness+IBL bump lift the shadowed forest floor without flattening it. |
-| `mc2_03` | 0.34 | 1.0 | 0.55 | 0.22 | (default 1.0) | Mildest bump of the set — used as the "restrained" reference point between the unlifted baseline and the more dramatic missions. |
-| `mc2_10` | 0.4 | 1.2 | 0.6 | 0.26 | 1.05 | Bigger floor lift + slight exposure bump — mission reads darker/more enclosed at default; the pair keeps shadowed geometry legible at top-down RTS zoom. |
-| `mc2_17` | 0.45 | 1.4 | (default 0.55) | 0.28 | (default 1.0) | Unchanged seed values (GROUND-CONTACT-BLOB-1 origin) — the most aggressive floor+softness pairing in the set, kept as the upper reference point the other missions grade toward. |
-| `mc2_24` | 0.38 | 1.15 | 0.6 | 0.25 | 1.1 | Existing `exposure: 1.1` override kept; floor/softness/IBL/mech keys added so the mission's shadow floor and prop fill match its already-brighter exposure instead of exposure being the only lever pulling it apart from its neighbors. |
-| `gaea_peaks_01` | 0.4 | 1.25 | 0.65 | 0.26 | 1.05 | Generated mountain terrain (`tools/terrain_gen/`) — tallest relief in the set, so cast shadows are longest; highest IBL of the pass compensates for large permanently-shadowed slope faces reading pure black. |
+| Mission | `staticPropIblStrength` | `exposure` |
+|---|---|---|
+| `mc2_01` | 0.6 | default 1.0 |
+| `mc2_03` | 0.55 | default 1.0 |
+| `mc2_10` | 0.6 | default 1.0 |
+| `mc2_17` | default 0.55 | default 1.0 |
+| `mc2_24` | 0.6 | default 1.0 |
+| `gaea_peaks_01` | 0.65 | default 1.0 |
+
+The legacy terrain-floor, shadow-softness and mech-ambient profile controls are retired.
 
 This is a "calibrate" pass, not a final grade: values are chosen to be visibly
 different from the pre-2026-07-01 flat profile (only `mc2_24.exposure` and the

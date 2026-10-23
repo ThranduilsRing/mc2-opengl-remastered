@@ -2,6 +2,7 @@
 // share these images; no parallel texture or framebuffer allocations exist.
 #include "gos_postprocess_internal.h"
 #include "mc2fmt.h"
+#include "vulkan_impact_decals.h"
 #ifdef MC2_VULKAN_ISLAND
 #include "vulkan_context.h"
 #endif
@@ -78,6 +79,7 @@ void gosPostProcess::destroySceneTargets() {
     destroyVkPostHzbNative();
     destroyVkPostFogNative();
     destroyVkPostScreenFxNative();
+    mc2_vk_impact_decals_destroy();
     mc2SharedSceneColorDestroy(sharedSceneObjectId_); sharedSceneObjectId_=nullptr;
     mc2SharedSceneColorDestroy(sharedSceneNormal_); sharedSceneNormal_=nullptr;
     mc2SharedSceneColorDestroy(sharedSceneColor_); sharedSceneColor_=nullptr;

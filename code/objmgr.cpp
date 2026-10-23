@@ -1239,14 +1239,14 @@ void GameObjectManager::render (bool terrain, bool movers, bool other) {
 		gos_SetRenderState(gos_State_IsHUD, 1);
 		if (weapons) {
 			for (long i = 0; i < numWeapons; i++) {
-				if (weapons[i] && weapons[i]->getExists())
+				if (weapons[i] && weapons[i]->hasPresentation())
 					weapons[i]->render();
 			}
 		}
 
 		if (carnage) {
 			for (long i = 0; i < numCarnage; i++) {
-				if (carnage[i] && carnage[i]->getExists())
+				if (carnage[i] && carnage[i]->gosEffect)
 				{
 					carnage[i]->render();
 				}
@@ -1262,7 +1262,7 @@ void GameObjectManager::render (bool terrain, bool movers, bool other) {
 
 		if (artillery) {
 			for (long i = 0; i < numArtillery; i++) {
-				if (artillery[i] && artillery[i]->getExists())
+				if (artillery[i] && (artillery[i]->getExists() || artillery[i]->hasPresentation()))
 					artillery[i]->render();
 			}
 		}

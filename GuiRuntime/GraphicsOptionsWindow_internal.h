@@ -7,7 +7,6 @@
 #include "GraphicsOptionsWindow.h"
 #include "imgui.h"
 #include "../mclib/particles/batcher.h"  // Batcher::is_enabled() (MC2_GPU_PARTICLES reader)
-#include "../mclib/dynamic_decal_ring.h"  // MC2_DYNAMIC_DECALS live count
 
 #include "../GameOS/gameos/gos_postprocess.h"
 #include "../GameOS/gameos/view_registry.h"
@@ -74,10 +73,6 @@ void gos_GetTerrainClassGrass(float* gMinusRLo, float* gMinusRHi, float* gBright
 void gos_SetTerrainClassDirt(float rMinusGLo, float rMinusGHi, float rBrightLo, float rBrightHi);
 void gos_GetTerrainClassDirt(float* rMinusGLo, float* rMinusGHi, float* rBrightLo, float* rBrightHi);
 // mech ambient + specular + PBR roughness (gos_mech_batcher.cpp).
-extern "C" int   batcher_getMechAmbientEnabled(void);
-extern "C" void  batcher_setMechAmbientEnabled(int on);
-extern "C" float batcher_getMechAmbientStrength(void);
-extern "C" void  batcher_setMechAmbientStrength(float s);
 extern "C" int   batcher_getMechSpecularEnabled(void);
 extern "C" void  batcher_setMechSpecularEnabled(int on);
 extern "C" float batcher_getMechSpecularStrength(void);

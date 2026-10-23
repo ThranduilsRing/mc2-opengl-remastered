@@ -3,7 +3,6 @@
 // The orchestrator is in gameosmain.cpp.
 #include "gameosmain_internal.h"
 #include "mc2fmt.h"
-#include "sim_substeps.h"
 #include "gos_host_vk.h"
 #include "vk_scene_readback.h"
 #include "terrain_field_store.h"
@@ -39,25 +38,8 @@ void frameThrottleLogicEvents() {
             if(gos_RenderGetEnableDebugDrawCalls()) {
                 gos_RenderUpdateDebugInput();
             } else {
-                // MC2_SIM_SPEED under the harness clock: N fixed steps per drawn frame. The frame counter advances
-                // between steps so every per-frame-keyed sim path (the brain tick accumulator among them) sees one
-                // logic pass per counter value, exactly as at 1x.
-                bool focused = false;
-                if (g_sdl_window)
-                    focused = (SDL_GetWindowFlags(g_sdl_window) & SDL_WINDOW_INPUT_FOCUS) != 0;
-                const int steps = mc2_sim_substeps::stepsPerFrame(mc2::gate::get<"MC2_SIM_SPEED">(),
-                    SmokeMode::fixedTimestepEnabled(), SmokeMode::missionHasStarted(), focused);
-                static int s_loggedSteps = 1;
-                if (steps != s_loggedSteps) {
-                    s_loggedSteps = steps;
-                    mc2::fmt::print_out("[SIM_SPEED v1] steps_per_frame={:d} frame={:d}\n",
-                        mc2::fmt::as_i32(steps), mc2::fmt::as_u32(g_mc2FrameCounter));
-                }
-                for (int i = 0; i < steps; ++i) {
-                    if (i > 0)
-                        ++g_mc2FrameCounter;
-                    Environment.DoGameLogic();
-                }
+                // One logic pass per frame; Mission::update runs 0..N fixed 30 Hz sim ticks inside it (sim_tick_clock.h).
+                Environment.DoGameLogic();
             }
         }
 

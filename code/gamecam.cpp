@@ -1,3 +1,4 @@
+#include "footprints.h"
 #include "vk_scene_renderer.h"
 #include "Gates/preferences_legacy.h"
 //---------------------------------------------------------------------------
@@ -83,6 +84,7 @@ extern "C" void mc2_vfx_pass_end();
 #include "../GameOS/gameos/gos_postprocess.h"  // VK-GL-LOST-DRAWS tags
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"   // str<>()
+#include "impact_presentation.h"
 
 namespace {
 // Marks the quads drawn inside a scope as exempt from the HUD batch's bottom-band shrink, then restores the previous state.
@@ -806,19 +808,14 @@ void GameCamera::render (void)
 
 		if (Environment.Renderer != 3)
 		{
-			// GROUND-CONTACT-BLOB-1: submitted BEFORE craterManager->render() so
-			// blobs land first (under) in the shared un-depth-sorted TerrainDecal
-			// batch -- footprints/craters composite on top of the contact disc,
-			// not the other way around (recon landmine 2). Gate-off: no-op.
+			// GROUND-CONTACT-BLOB-1: blobs go into the shared un-depth-sorted TerrainDecal
+			// batch before footprints so the stock prints remain on top.
 			ZoneScopedN("GameCamera::render groundContactBlobs");
 			renderGroundContactBlobs();
+			Footprints::render();
 		}
 
-		if (Environment.Renderer != 3)
-		{
-			ZoneScopedN("GameCamera::render craters");
-			craterManager->render();					//render the craters and footprints
-		}
+		impact_presentation::frame();				// weapon impact decals (read-only on the sim)
 
 		{
 			ZoneScopedN("GameCamera::render objects");
@@ -897,6 +894,7 @@ void GameCamera::render (void)
 				GameAdapters::Vegetation::flush(terrainLightDir_4f, missionTime,
 				                                vegCamCX, vegCamCY, vegCamCZ);
 			}
+			GameAdapters::StaticProp::flushLateCoverage();
 
 			// GPU particle batcher flush — Stage 2' and beyond.
 			// MUST run after renderLists() so the scene depth buffer is

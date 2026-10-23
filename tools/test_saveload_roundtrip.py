@@ -12,6 +12,16 @@ def test_selftest_passes():
     assert rt.selftest() == 0
 
 
+def test_restore_ignores_cosmetic_rng_and_detects_animation_rng_drift():
+    pre = [f"[SIMID v1] simframe={i} t={i / 30:.3f} n=1 graded=a visual=b strict=c rng={i}/2/3 animrng={i}"
+           for i in range(50)]
+    post = [f"[SIMID v1] simframe={50 + i} t={(20 + i) / 30:.3f} n=1 graded=a visual=b strict=c rng={20+i}/200/300 animrng={20+i}"
+            for i in range(20)]
+    assert rt.analyze(pre + post, frames_needed=10)[0]
+    post[0] = post[0].replace("animrng=20", "animrng=21")
+    assert not rt.analyze(pre + post, frames_needed=10)[0]
+
+
 def test_mover_detail_is_reported_for_the_first_divergent_frame():
     pre = [f"[SIMID v1] simframe={i} t={i / 30:.3f} n=1 graded=g{i} visual=v strict=s" for i in range(50)]
     pre += ["[SIMID v1 mover] simframe=20 id=7 gesture=1 pstep=0/3"]

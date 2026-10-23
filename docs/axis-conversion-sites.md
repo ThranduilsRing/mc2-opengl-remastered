@@ -10,7 +10,7 @@ The conversion is `(x, y, z) -> (-x, z, y)`; it is its own inverse, so the same 
 |---|---:|
 | Hand-written sites (ratcheted) | 4 |
 | Waived (`axis-swizzle: allow`) | 1 |
-| Helper-call sites (centralized) | 197 |
+| Helper-call sites (centralized) | 198 |
 | Helper definitions | 7 |
 | Matrix-form references (`kAxisSwapMC2toGL`, `makeAxisSwapMC2toGL`) | 9 |
 
@@ -45,8 +45,8 @@ Shaders that carry sites, with their counterpart in the other backend. Twins mus
 
 ### `mclib/assimp_importer.cpp` (2)
 
-- `mclib/assimp_importer.cpp:85` assign-scalars: `X=-v.x; Y= v.z; Z= v.y;`
-- `mclib/assimp_importer.cpp:792` assign-scalars: `X=-v.x; Y= v.z; Z= v.y;`
+- `mclib/assimp_importer.cpp:88` assign-scalars: `X=-v.x; Y= v.z; Z= v.y;`
+- `mclib/assimp_importer.cpp:791` assign-scalars: `X=-v.x; Y= v.z; Z= v.y;`
 
 ### `tools/asset_viewer/TglMeshLoader.cpp` (2)
 
@@ -61,6 +61,7 @@ Shaders that carry sites, with their counterpart in the other backend. Twins mus
 - `code/artlry.cpp`: 14
 - `code/carnage.cpp`: 4
 - `code/gamecam.cpp`: 3
+- `code/impact_presentation.cpp`: 1
 - `code/missiongui.cpp`: 3
 - `code/missiongui_input.cpp`: 1
 - `code/missiongui_style.cpp`: 3
@@ -83,7 +84,7 @@ Shaders that carry sites, with their counterpart in the other backend. Twins mus
 - `mclib/camera_matrix.cpp`: 1
 - `mclib/camera_project.cpp`: 8
 - `mclib/cone_glow.cpp`: 1
-- `mclib/crater.cpp`: 1
+- `mclib/footprints.cpp`: 1
 - `mclib/genactor.cpp`: 1
 - `mclib/genactor_frame.cpp`: 1
 - `mclib/gvactor.cpp`: 3

@@ -293,6 +293,8 @@ void __stdcall gos_Free(void* ptr)
 // gated by MC2_DETERMINISTIC_RNG (default ON; =0 is the kill-switch). When the gate is OFF every line
 // below is the original CRT srand/rand path => byte-identical to stock.
 static uint32_t s_lcg_state     = 0u;
+uint32_t mc2GetSimRngState() { return s_lcg_state; }
+void mc2RestoreSimRngState(uint32_t state) { s_lcg_state = state; }
 
 // MC2_DETERMINISTIC_RNG=1, read once on first use. A function-local static is initialised under the language's own lock,
 // so a gos_rand call on a worker thread cannot see the "checked" latch before the value (the old two-flag latch could).

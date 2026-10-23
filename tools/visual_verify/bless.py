@@ -342,7 +342,7 @@ def bless(run_dirs: "list[Path]", to_dir: Path, min_runs: int = MIN_RUNS, named_
     run_options = [render_options_pin.values_of({"values": r["cap"].get("render_options")}) for r in runs]
     if not all(run_options):
         raise SystemExit(
-            "[vv-bless] refusing to bless: a capture run carries no render-option record (capture_run.json `render_options`). The 17 options.cfg "
+            "[vv-bless] refusing to bless: a capture run carries no render-option record (capture_run.json `render_options`). The 18 options.cfg "
             "render options are an input of the picture; recapture with the current tools/visual_verify/capture.py, which records them.")
     for i, opts in enumerate(run_options[1:], start=2):
         diffs = render_options_pin.differences(run_options[0], opts)
@@ -666,7 +666,7 @@ def bless(run_dirs: "list[Path]", to_dir: Path, min_runs: int = MIN_RUNS, named_
         "settle": cap0.get("settle"),
         "deterministic_clock": cap0.get("deterministic_clock"),
         "effective_mc2_env": sorted(env_keys),
-        # What the frames were drawn with: the 17 render options (verify.py refuses a candidate whose options differ unless --vary names them),
+        # What the frames were drawn with: the 18 render options (verify.py refuses a candidate whose options differ unless --vary names them),
         # the declared environment (animation freeze, backend selector, clean-capture switches) and the backend that drew.
         "render_options": run_options[0],
         "declared_env": cap0.get("declared_env") or {},

@@ -16,6 +16,15 @@ static-prop material path in the engine. Entry point:
 | Catalog selection / fitting (`tools/assets/replace.py package`) | fits, then `gltf_file` |
 | BattleTech 2018 GLB + `bt2018_mech_package.json` | `frontends/bt2018.py` (IR only; runtime stays `[Import] Source=`) |
 
+The `stock_ase` asset may list `excludeNodes`: exact reviewed mesh names (for example `LitWin_Quonset2`) that keep
+legacy lighting. A lit window can reuse a roof texel, so an atlas mask cannot exclude it; the named meshes move to an
+appended legacy copy of their material (same albedo, unauthored). Unknown or duplicate names fail the cook. Meshes with
+no texture coordinates keep TG's `(0,0)` default (alpha included) instead of the extractor's flipped corner texel.
+
+A model-override record that sets `lateCoverageFringe: true` (the procedural fence bundle) composites its thin coverage
+after vegetation; the depth-writing core stays mip-aware. Overrides do not pick a hard alpha cutoff by provenance; an
+authored `MASK` slot also uses the late fringe.
+
 ## The IR (`ir.py`, `mc2-content-ir/1`)
 
 TG space (X lateral, +Y up, Z forward, world units), column-vector node matrices, TG texture v.

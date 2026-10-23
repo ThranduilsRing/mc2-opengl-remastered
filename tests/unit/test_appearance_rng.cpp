@@ -4,8 +4,91 @@
 #include "mclib/det_rng.h"
 
 #include <vector>
+#include "unit_anim_state.h"
+#include "save_archive.h"
+#include "simulation_save_section.h"
+#include "unit_animation_tick.h"
 
 namespace ar = mc2_appearance_rng;
+
+TEST_CASE("gameplay linear clips transition on fixed ticks in either direction") {
+    mc2::sim::UnitAnimState state;
+    state.setFirstFrame = true;
+    mc2::sim::advanceLinearAnimation(state, 30, 3, 1.0f / 30.0f);
+    CHECK(state.currentFrame == 0);
+    for (int i = 0; i < 3; ++i) mc2::sim::advanceLinearAnimation(state, 30, 3, 1.0f / 30.0f);
+    CHECK(state.currentFrame == 2);
+    CHECK(state.canTransition);
+    state.isReversed = state.isLooping = true;
+    state.currentFrame = 0;
+    mc2::sim::advanceLinearAnimation(state, 30, 3, 1.0f / 30.0f);
+    CHECK(state.currentFrame == 2);
+}
+
+TEST_CASE("mission animation payload exceeds 64K and rejects truncation") {
+    mc2::save::Bytes original(100000, 0x5a), decoded;
+    mc2::save::Archive write;
+    mc2::sim::serializeAnimationBlob(write, original);
+    REQUIRE(write.good());
+    mc2::save::Archive read(write.bytes());
+    mc2::sim::serializeAnimationBlob(read, decoded);
+    REQUIRE(read.finish());
+    CHECK(original == decoded);
+    auto truncated = write.bytes(); truncated.pop_back();
+    mc2::save::Archive invalid(truncated);
+    decoded.clear();
+    mc2::sim::serializeAnimationBlob(invalid, decoded);
+    CHECK_FALSE(invalid.good());
+    CHECK(decoded.empty());
+}
+
+TEST_CASE("unit animation save preserves gameplay clocks and imported clip transitions") {
+    mc2::sim::UnitAnimState before;
+    before.currentGestureId = 4;
+    before.currentFrame = 3.25f;
+    before.inJump = true;
+    before.jumpVelocity = {1, 2, 3};
+    before.nodeUsed = {1, 2};
+    before.nodeRecycle = {0.25f, 0.5f};
+    before.activityEffect = 42;
+    before.ejectionSerial = 3;
+    before.imported.activeClip = "walk";
+    before.imported.pendingClip = "hit_front";
+    before.imported.pendingStreak = 2;
+    before.imported.clipTimeSec = 0.375f;
+    before.imported.lastFrame = 19;
+    mc2::save::Archive write;
+    write(before);
+    REQUIRE(write.good());
+    mc2::sim::UnitAnimState after;
+    mc2::save::Archive read(write.bytes());
+    read(after);
+    REQUIRE(read.finish());
+    CHECK(after.imported.pendingClip == "hit_front");
+    CHECK(after.imported.activeClip == "walk");
+    CHECK(after.currentFrame == 3.25f);
+    CHECK(after.nodeRecycle == before.nodeRecycle);
+    mc2::save::Archive canonical;
+    canonical(after);
+    CHECK(canonical.bytes() == write.bytes());
+    before.imported.activeClip.assign(257, 'x');
+    mc2::save::Archive invalid;
+    invalid(before);
+    CHECK_FALSE(invalid.good());
+}
+
+TEST_CASE("animation_rng: cosmetic draws cannot alter gameplay animation and saved state resumes") {
+    mc2_anim_rng::reseed(17);
+    const auto first = mc2_anim_rng::randomNumber(1000);
+    const auto saved = mc2_anim_rng::state(), draws = mc2_anim_rng::drawCount();
+    const auto next = mc2_anim_rng::randomNumber(1000);
+    mc2_anim_rng::restore(saved, draws);
+    for (int i = 0; i < 1000; ++i) ar::randomNumber(1000);
+    CHECK(mc2_anim_rng::randomNumber(1000) == next);
+    CHECK(mc2_anim_rng::drawCount() == draws + 1);
+    mc2_anim_rng::reseed(17);
+    CHECK(mc2_anim_rng::randomNumber(1000) == first);
+}
 
 TEST_CASE("appearance_rng: the same seed replays the same sequence and draw count") {
 	ar::reseed(0x1234u);

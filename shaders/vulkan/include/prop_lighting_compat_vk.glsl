@@ -2,7 +2,7 @@
 // and local pools. Specular requires a valid authored ORM sidecar.
 vec3 propAuthoredColor(SurfaceMaterial s, bool alphaTest, bool authoredOrm) {
     if ((vMaterialFlags & 2u) != 0u)
-        return propEncodeColor(s.baseColor * s.emission) + vHighlight.rgb * vHighlight.a;
+        return propEncodeColor(s.emission) + vHighlight.rgb * vHighlight.a;   // window emission already carries the albedo
     vec3 nStuff = renderToMc2(s.normal);
     vec3 L = normalize(uFrame.terrainSunMC2.xyz);
     float raw = dot(s.normal, L);

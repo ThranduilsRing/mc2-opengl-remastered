@@ -262,6 +262,17 @@ bool fixedTimestepEnabled() { return g_state.fixedTimestep; }
 
 float fixedTimestepMs() { return 1000.0f / 30.0f; }
 
+float fixedFrameSeconds() {
+    // The virtual render frame of the harness clock. Unset (or 0) keeps the legacy 1/30 s, so one frame is exactly one sim
+    // tick and the committed SIMID baselines hold. MC2_FPS_CAP=N sets N virtual frames per second instead: the sim then runs
+    // 30 ticks per virtual second whatever N is, which is the frame-rate-independence proof (tools/sim_determinism.py --env-a/--env-b).
+    if (mc2::gate::isSet<"MC2_FPS_CAP">() && mc2::gate::isNonEmpty<"MC2_FPS_CAP">()) {
+        const int cap = mc2::gate::get<"MC2_FPS_CAP">();
+        if (cap > 0) return 1.0f / static_cast<float>(cap);
+    }
+    return 1.0f / 30.0f;
+}
+
 double fixedClockSeconds() {
     // S9E: shares the S9D fixed sim-frame counter (g_fixedSimFrame, advanced by
     // fixedTimestepOnSimFrame on each fixed-step sim frame). Frame N maps to a

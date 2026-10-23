@@ -245,6 +245,7 @@ TEST_CASE("typed movement attack support and execution records round trip and re
     move.move->keepMoving = true; move.move->fromArea = -1; payloads.push_back(move);
     auto attack = order().payload; attack.kind = OrderKind::AttackObject;
     attack.attack.emplace(); attack.attack->range = FireRange::Optimal;
+    attack.move.emplace(); attack.move->faceObject = true; attack.move->keepMoving = true;
     attack.attack->tactic = Tactic::HullDown; attack.target = ObjectRef{4,9}; payloads.push_back(attack);
     auto support = order().payload; support.kind = OrderKind::Airstrike;
     support.support = AirstrikeCommand{CommanderId{7},{1,2,3},StrikeKind::Large}; payloads.push_back(support);

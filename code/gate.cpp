@@ -335,7 +335,9 @@ long Gate::update (void)
 		// Make damned sure the LOD updates!!!!!
 		if (appearance)
 		{
-			bool inView = appearance->recalcBounds();
+			const bool inView = false;
+			position.z = TerrainRuntime::groundElevation(position);
+			setPosition(position);
 
 			// this has to be done before we set the object parameters.
 			if ( parent && 
@@ -345,15 +347,13 @@ long Gate::update (void)
 				setTargeted( true );
 			}
 			
-			appearance->setObjectParameters(position,(static_cast<ObjectAppearance*>(appearance))->rotation,drawFlags,getTeamId(),Team::getRelation(getTeamId(), Team::home->getId()));
+			appearance->setObjectParameters(position,rotation,drawFlags,getTeamId(),Team::getRelation(getTeamId(), Team::home->getId()));
 	
 			//------------------------------------------------
 			// MUST update appearance every frame or animation goes HINKY!
 			// Appearance update now checks inView and does NOT run transform math unless necessary!
 			// Whoops!
-			appearance->setInView(true);
 			appearance->update();
-			appearance->setInView(inView);
 			
 			if (inView)
 			{

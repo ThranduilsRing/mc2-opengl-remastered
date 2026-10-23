@@ -355,6 +355,7 @@ class TacticalOrderQueue {
 public:
     explicit TacticalOrderQueue(Tick completed = 0) : completed_(completed) {}
     std::expected<void, OrderError> registerSource(OrderSource source);
+    std::expected<void, OrderError> useReplaySource(std::uint32_t sourceId);
     std::expected<OrderReceipt, OrderError> submit(OrderEnvelope envelope, const OrderAdmissionValidator& validator);
     std::expected<OrderReceipt, OrderError> submitNext(OrderEnvelope envelope, const OrderAdmissionValidator& validator);
     std::expected<std::span<const OrderEnvelope>, OrderError> beginTick(Tick tick);

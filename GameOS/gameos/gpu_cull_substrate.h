@@ -7,6 +7,9 @@ namespace gpu_cull {
 void substrate_init(uint32_t maxActors);
 void substrate_shutdown();
 void substrate_frameBegin();
+// A further sim tick in the same render frame: drop this frame's dynamic records and start them again in the SAME ring slot
+// (frameBegin would advance the slot once per tick and could wrap onto one the GPU still reads).
+void substrate_frameRewind();
 void substrate_submitDynamicActor(const GpuActorRecord& record);
 void substrate_flushUpload();
 bool substrate_isEnabled();

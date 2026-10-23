@@ -1,9 +1,11 @@
 // GameObjectManager: GameObjectManager::update with its GOM_UPDATE_COST spans, in-view conflation probe, GPU-cull record and static-skip gates.
 // Declared in the class headers; shared names in objmgr_internal.h.
 #include "objmgr_internal.h"
+#include "sim_world_trace.h"
 #include "mc2fmt.h"
 #include <utility>
 #include "diagnostic_trace.h"
+#include "gpu_cull_compute.h"
 
 
 // ---------------------------------------------------------------------------
@@ -446,8 +448,8 @@ void GameObjectManager::updateReadbackSnapshot() {
 	// readback_buildActorVisSnapshot is no-op-cheap when no good slot exists.
 	if (s_gpuCullLifecycle || gpu_cull::readback_isEnabled()) {
 		ZoneScopedN("GOM.readbackSnapshot");
-		// Max handle is bounded by maxObjects + slack; 4096 is safe for MC2 (~2000 max).
-		gpu_cull::readback_buildActorVisSnapshot(4096u);
+		// Handles index objList, including every generated terrain object.
+		gpu_cull::readback_buildActorVisSnapshot(static_cast<uint32_t>(getMaxObjects())+1u);
 	}
 }
 
@@ -678,531 +680,38 @@ void GameObjectManager::updateFrameJobsPrepass(int& frameJobsPrePassCount) {
 
 // Update special buildings, gates and the terrain object blocks, then report the counters.
 void GameObjectManager::updateTerrainObjects(int& frameJobsPrePassCount) {
-	long specialBuildingsUpdated = 0;
-	long gatesUpdated = 0;
-	long activeBlocksVisited = 0;
-	long terrainObjectsUpdated = 0;
-	long terrainObjectsVisited = 0;
-	long cullRecordsEmitted = 0;
-	long skippedStaticNatural = 0;
-	long touchedLiveness = 0;   // R2B-STATIC-NATURAL-TOUCH-PRESERVE-1: liveness stamps applied in the skip path
-	long eligibleStaticNatural = 0;
-	long staticNaturalCandidates = 0;
-	long fallingNaturalUpdated = 0;
-	long justCreatedNaturalUpdated = 0;
-	long missNotStaticNow = 0;
-	long missStaticNotRegistered = 0;
-	long missStaticShapeMismatch = 0;
-	long missStaticNeedsFullBake = 0;
-	long missStaticOther = 0;
-	long missStaticUnregTreeAppearance = 0;
-	long missStaticUnregBldgAppearance = 0;
-	long missStaticUnregOtherAppearance = 0;
-	long missStaticUnregObjTree = 0;
-	long missStaticUnregObjTerrain = 0;
-	long missStaticUnregObjBuilding = 0;
-	long missStaticUnregObjOther = 0;
-	long missSpecial = 0;
-	long missAlarm = 0;
-	long missLookout = 0;
-	long missSensor = 0;
-	long missPower = 0;
-	long missControl = 0;
-	long missMechBay = 0;
-	long missFalling = 0;
-	long missJustCreated = 0;
-	long nonNaturalUpdated = 0;
-	long unknownUpdated = 0;
-	long staticBuildingCandidates = 0;
-	long skippedStaticBuildings = 0;
-	long missBuildingNotStaticNow = 0;
-	const bool skipStaticNatural = mc2SkipStaticNaturalEnabled();
-	const bool r2bTouchPreserve = mc2R2bTouchPreserveEnabled();   // R2B-STATIC-NATURAL-TOUCH-PRESERVE-1
-	const bool r2bTouchTrace = mc2R2bTouchTraceEnabled();
-	const bool skipStaticBuildings = mc2SkipStaticBuildingsEnabled();
-	const bool skipStaticNaturalDiag = mc2SkipStaticNaturalDiagEnabled();
-	const uint32_t staticDiagFrame = g_mc2FrameCounter;
-	const bool emitStaticDiagThisFrame = skipStaticNaturalDiag &&
-	                                   ((staticDiagFrame <= 5) || ((staticDiagFrame % 300) == 0));
-	long nonNaturalSampleCount = 0;
-	std::unordered_map<std::string, long> missStaticUnregTypeCounts;
-
-	// MC2_GOM_RECON: type classification & mutation tracking
-	long recon_buildings = 0, recon_gates = 0, recon_turrets = 0, recon_other = 0;
-	long recon_updated = 0, recon_multiShapeLoops = 0, recon_lightScans = 0;
-
-	//First Update all of the Special Buildings.
-	// They will mark themselves updated and not re-update below.
-	for (long spBuilding = 0; spBuilding < numSpecialBuildings;spBuilding++)
-	{
-		if (specialBuildings[spBuilding] && specialBuildings[spBuilding]->getExists())
-		{
-			long updateRet_instr = specialBuildings[spBuilding]->update();
-			specialBuildings[spBuilding]->lastUpdateRet = static_cast<int32_t>(updateRet_instr);
-			if (!updateRet_instr)
-			{
-				//-----------------------------------------
-				// Update failed, so it no longer exists...
-				MC2_DESTROY(specialBuildings[spBuilding], "update_false");
-			}
-			else
-			{
-				specialBuildingsUpdated++;
-			}
-			// C0-3: emit after update() so inView is fresh; gated on getExists()
-			if (specialBuildings[spBuilding] && specialBuildings[spBuilding]->getExists())
-				emitGpuCullRecord(specialBuildings[spBuilding], gpu_cull::Cat_Other,
-				                  gpu_cull::Consumer_RenderGate | gpu_cull::Consumer_LifecycleGate);
-		}
-	}
-
-	//Then update all of the gates.
-	// They too will mark themselves and not re-update.
-	// MUST update every frame or they don't open!!
-	for (long nGates = 0;nGates < numGates;nGates++)
-	{
-		if (gates[nGates] && gates[nGates]->getExists())
-		{
-			long updateRet_instr = gates[nGates]->update();
-			gates[nGates]->lastUpdateRet = static_cast<int32_t>(updateRet_instr);
-			if (!updateRet_instr)
-			{
-				//-----------------------------------------
-				// Update failed, so it no longer exists...
-				MC2_DESTROY(gates[nGates], "update_false");
-			}
-			else
-			{
-				gatesUpdated++;
-			}
-			// C0-3: emit after update() so inView is fresh; gated on getExists()
-			if (gates[nGates] && gates[nGates]->getExists())
-				emitGpuCullRecord(gates[nGates], gpu_cull::Cat_Gate,
-				                  gpu_cull::Consumer_RenderGate | gpu_cull::Consumer_LifecycleGate);
-		}
-	}
-
-	// C3: terrain block inner-loop GPU-visibility gate — deferred from C3-A.
-	// Adding a readback_isActorVisibleLagged() inner gate here would skip update()
-	// for objects in active blocks that happen to be GPU-invisible. That is UNSAFE:
-	// buildings and turrets in active AI blocks need update() even when offscreen
-	// (gate logic, turret tracking, power supply). The FPS win from this loop is
-	// small compared to mech/GV render paths (most mission time is at wolfman zoom
-	// with few active terrain blocks visible). The cascade structure is preserved
-	// unchanged as required by cull_gates_are_load_bearing.md.
-	for (long terrainBlock = 0; terrainBlock < Terrain::numObjBlocks; terrainBlock++)
-	{
-		// Cull-cascade consumer (object update). Post-8c source of truth for
-		// objBlockInfo[].active / objVertexActive[] is the cull-merged Step 6
-		// slim reduction loop in mclib/terrain.cpp (8c-part-1 merges the
-		// per-vertex cull writes into that loop) — NOT the deleted VPL body,
-		// NOT a "Step 5 / 5B slim pass" (that producer never existed; v3.2
-		// deleted it). See VPL-retirement plan v3.5 note (CRIT-0).
-		if (Terrain::objBlockInfo[terrainBlock].active)
-		{
-			activeBlocksVisited++;
-			long numObjs = Terrain::objBlockInfo[terrainBlock].numObjects;
-			long objIndex = Terrain::objBlockInfo[terrainBlock].firstHandle;
-			for (long terrainObj = 0; terrainObj < numObjs; terrainObj++,objIndex++)
-			{
-				{
-					ZoneScopedN("GOM.TerrainObjects.ActiveGate");
-					if (objList[objIndex] &&
-						Terrain::objVertexActive[objList[objIndex]->getVertexNum()] &&
-						objList[objIndex]->getExists())
-					{
-						terrainObjectsVisited++;
-					}
-				}
-				if (objList[objIndex] &&
-					Terrain::objVertexActive[objList[objIndex]->getVertexNum()] &&
-					objList[objIndex]->getExists())
-				{
-					eligibleStaticNatural++;
-
-					// MC2_GOM_RECON: classify object type
-					GameObjectPtr obj = objList[objIndex];
-					ObjectTypePtr objType = obj->getObjectType();
-					AppearancePtr appearance = obj->getAppearance();
-
-					const bool isJustCreated = obj->getFlag(OBJECT_FLAG_JUSTCREATED);
-					const bool isFalling = obj->getFlag(OBJECT_FLAG_FALLING);
-					const char* typeName = (objType && objType->getAppearanceTypeName()) ? objType->getAppearanceTypeName() : "<null>";
-					const bool isPineAppearance = mc2StaticTypeNameStartsWith(typeName, "Pine");
-					bool isTreeCandidate = false;
-					bool isPineStaticBuildingCandidate = false;
-					long pineSpecialBuilding = 0;
-					long pinePerimeterAlarm = 0;
-					long pineLookout = 0;
-					long pineSensor = 0;
-					long pinePowerSource = 0;
-					long pineControlBuilding = obj->getFlag(OBJECT_FLAG_CONTROLBUILDING) ? 1L : 0L;
-					long pineMechBay = obj->getFlag(OBJECT_FLAG_MECHBAY) ? 1L : 0L;
-
-					if (objType)
-					{
-						long objectClass = objType->getObjectClass();
-						if (objectClass == TREE)
-						{
-							isTreeCandidate = true;
-						}
-						else if (objectClass == TERRAINOBJECT)
-						{
-							TerrainObjectTypePtr terrainType = static_cast<TerrainObjectTypePtr>(objType);
-							isTreeCandidate = (terrainType->subType == TERROBJ_TREE);
-						}
-						else if ((objectClass == BUILDING) && (isPineAppearance || skipStaticBuildings))
-						{
-							BuildingPtr building = dynamic_cast<Building*>(obj);
-							BuildingTypePtr bldgType = dynamic_cast<BuildingTypePtr>(objType);
-							if (building && bldgType)
-							{
-								pineSpecialBuilding = building->isSpecialBuilding() ? 1L : 0L;
-								pinePerimeterAlarm = ((bldgType->perimeterAlarmRange > 0.0f) &&
-								                      (bldgType->perimeterAlarmTimer > 0.0f)) ? 1L : 0L;
-								pineLookout = (bldgType->lookoutTowerRange > 0.0f) ? 1L : 0L;
-								pineSensor = (bldgType->sensorRange > 0.0f) ? 1L : 0L;
-								pinePowerSource = bldgType->powerSource ? 1L : 0L;
-								isPineStaticBuildingCandidate =
-									isPineAppearance &&
-									!pineSpecialBuilding &&
-									!pinePerimeterAlarm &&
-									!pineLookout &&
-									!pineSensor &&
-									!pinePowerSource &&
-									!pineControlBuilding &&
-									!pineMechBay;
-							}
-							else
-							{
-								nonNaturalUpdated++;
-							}
-						}
-						else
-						{
-							nonNaturalUpdated++;
-						}
-					}
-					else
-					{
-						unknownUpdated++;
-					}
-
-					if (isTreeCandidate)
-					{
-						staticNaturalCandidates++;
-						if (skipStaticNatural && (turn >= 3) && !isFalling && !isJustCreated)
-						{
-							// R2B-STATIC-NATURAL-TOUCH-PRESERVE-1: skipping update()
-							// would freeze this tree's registered cachedFrame_, so the
-							// static-prop registry flush drops it from the instance SSBO
-							// (black-tree-bug class). Stamp liveness without the expensive
-							// update. Gated for A/B by MC2_R2B_TOUCH_PRESERVE.
-							if (r2bTouchPreserve &&
-							    mc2R2bTouchStaticLiveness(appearance, g_mc2FrameCounter))
-								touchedLiveness++;
-							skippedStaticNatural++;
-							continue;
-						}
-						if (isFalling)
-						{
-							fallingNaturalUpdated++;
-							missFalling++;
-						}
-						else if (isJustCreated)
-						{
-							justCreatedNaturalUpdated++;
-							missJustCreated++;
-						}
-					}
-					else if (isPineStaticBuildingCandidate)
-					{
-						staticNaturalCandidates++;
-						const long staticNow = appearance ? (appearance->IsStaticNow() ? 1L : 0L) : 0L;
-						if (skipStaticNatural && (turn >= 3) && staticNow && !isFalling && !isJustCreated)
-						{
-							// Power-out propagation must run even for skipped buildings.
-							// Replicates bldng.cpp:889 with an added null guard.
-							BuildingPtr __skipBldg = dynamic_cast<Building*>(obj);
-							if (__skipBldg && __skipBldg->powerSupply && appearance)
-							{
-								GameObjectPtr __powerObj = ObjectManager->getByWatchID(__skipBldg->powerSupply);
-								if (__powerObj && __powerObj->getStatus() == OBJECT_STATUS_DESTROYED)
-									appearance->setLightsOut(true);
-							}
-							// R2B-STATIC-NATURAL-TOUCH-PRESERVE-1: same liveness stamp as
-							// the tree branch — keep the skipped static building in the
-							// registry flush instead of letting cachedFrame_ go stale.
-							if (r2bTouchPreserve &&
-							    mc2R2bTouchStaticLiveness(appearance, g_mc2FrameCounter))
-								touchedLiveness++;
-							skippedStaticNatural++;
-							continue;
-						}
-						if (isFalling)
-						{
-							fallingNaturalUpdated++;
-							missFalling++;
-						}
-						else if (isJustCreated)
-						{
-							justCreatedNaturalUpdated++;
-							missJustCreated++;
-						}
-						else if (!staticNow)
-						{
-							missNotStaticNow++;
-							bool staticReasonRecorded = false;
-							if (TreeAppearance* treeAppearance = dynamic_cast<TreeAppearance*>(appearance))
-							{
-								missStaticUnregTreeAppearance++;
-								const long activeLod = treeAppearance->activeLOD;
-								const bool registered = (activeLod >= 0) && (activeLod < MAX_LODS) &&
-								                        treeAppearance->staticReg[activeLod].registered;
-								const bool shapeMatch = (activeLod != 0) ||
-								                        (treeAppearance->staticReg[0].shape == treeAppearance->treeShape);
-								if (!registered)
-								{
-									missStaticNotRegistered++;
-									staticReasonRecorded = true;
-								}
-								else if (!shapeMatch)
-								{
-									missStaticShapeMismatch++;
-									staticReasonRecorded = true;
-								}
-								else if (treeAppearance->needsFullBakeNextFrame)
-								{
-									missStaticNeedsFullBake++;
-									staticReasonRecorded = true;
-								}
-							}
-							else if (BldgAppearance* bldgAppearance = dynamic_cast<BldgAppearance*>(appearance))
-							{
-								missStaticUnregBldgAppearance++;
-								if (!bldgAppearance->staticReg.registered)
-								{
-									missStaticNotRegistered++;
-									staticReasonRecorded = true;
-								}
-								else if (bldgAppearance->staticReg.shape != bldgAppearance->bldgShape)
-								{
-									missStaticShapeMismatch++;
-									staticReasonRecorded = true;
-								}
-								else if (bldgAppearance->needsFullBakeNextFrame)
-								{
-									missStaticNeedsFullBake++;
-									staticReasonRecorded = true;
-								}
-							}
-							else
-							{
-								missStaticUnregOtherAppearance++;
-							}
-							switch (obj->getObjectClass())
-							{
-							case TREE:
-								missStaticUnregObjTree++;
-								break;
-							case TERRAINOBJECT:
-								missStaticUnregObjTerrain++;
-								break;
-							case BUILDING:
-								missStaticUnregObjBuilding++;
-								break;
-							default:
-								missStaticUnregObjOther++;
-								break;
-							}
-							if (typeName && typeName[0])
-								missStaticUnregTypeCounts[std::string(typeName)]++;
-							else
-								missStaticUnregTypeCounts[std::string("<null>")]++;
-							if (!staticReasonRecorded)
-								missStaticOther++;
-						}
-					}
-					else if (skipStaticBuildings && !isPineStaticBuildingCandidate &&
-					         (objType && objType->getObjectClass() == BUILDING))
-					{
-						// Broadened static-building skip: all BUILDING-class objects that are
-						// NOT already handled by the Pine path above (isPineStaticBuildingCandidate
-						// covered those).  Only active when MC2_SKIP_STATIC_BUILDINGS=1.
-						// mustUpdate exclusion set mirrors the Pine candidacy check above.
-						BuildingPtr building = dynamic_cast<Building*>(obj);
-						BuildingTypePtr bldgType = dynamic_cast<BuildingTypePtr>(objType);
-						if (building && bldgType)
-						{
-							const bool mustUpdate =
-								building->isSpecialBuilding() ||
-								((bldgType->perimeterAlarmRange > 0.0f) && (bldgType->perimeterAlarmTimer > 0.0f)) ||
-								(bldgType->lookoutTowerRange > 0.0f) ||
-								(bldgType->sensorRange > 0.0f) ||
-								bldgType->powerSource ||
-								obj->getFlag(OBJECT_FLAG_CONTROLBUILDING) ||
-								obj->getFlag(OBJECT_FLAG_MECHBAY);
-							if (!mustUpdate)
-							{
-								staticBuildingCandidates++;
-								const long staticNow = appearance ? (appearance->IsStaticNow() ? 1L : 0L) : 0L;
-								if ((turn >= 3) && staticNow && !isFalling && !isJustCreated)
-								{
-									// Power-out propagation must run even for skipped buildings.
-									// Replicates bldng.cpp:889 with an added null guard.
-									if (building->powerSupply && appearance)
-									{
-										GameObjectPtr __powerObj = ObjectManager->getByWatchID(building->powerSupply);
-										if (__powerObj && __powerObj->getStatus() == OBJECT_STATUS_DESTROYED)
-											appearance->setLightsOut(true);
-									}
-									skippedStaticBuildings++;
-									continue;
-								}
-								if (!staticNow)
-									missBuildingNotStaticNow++;
-							}
-						}
-					}
-					// Per-object sample lines removed — use MC2_SKIP_STATIC_TREES_DIAG summary instead.
-
-					if (isPineAppearance && !isPineStaticBuildingCandidate)
-					{
-						if (pineSpecialBuilding)
-							missSpecial++;
-						if (pinePerimeterAlarm)
-							missAlarm++;
-						if (pineLookout)
-							missLookout++;
-						if (pineSensor)
-							missSensor++;
-						if (pinePowerSource)
-							missPower++;
-						if (pineControlBuilding)
-							missControl++;
-						if (pineMechBay)
-							missMechBay++;
-					}
-
-					if (MC2_GOM_RECON_ENABLED()) {
-						if (dynamic_cast<Building*>(obj)) recon_buildings++;
-						else if (dynamic_cast<Gate*>(obj)) recon_gates++;
-						else if (dynamic_cast<Turret*>(obj)) recon_turrets++;
-						else recon_other++;
-					}
-
-					{
-						ZoneScopedN("GOM.TerrainObjects.ObjUpdate");
-						long updateRet_instr = objList[objIndex]->update();
-						objList[objIndex]->lastUpdateRet = static_cast<int32_t>(updateRet_instr);
-						if (!updateRet_instr)
-						{
-							//-----------------------------------------
-							// Update failed, so it no longer exists...
-							MC2_DESTROY(objList[objIndex], "update_false");
-						}
-						else
-						{
-							terrainObjectsUpdated++;
-							if (MC2_GOM_RECON_ENABLED()) {
-								recon_updated++;
-							}
-						}
-					}
-					// C0-3: emit after update() so inView is fresh; gated on getExists()
-					if (objList[objIndex] && objList[objIndex]->getExists())
-					{
-						ZoneScopedN("GOM.TerrainObjects.GpuCullRecord");
-						emitGpuCullRecord(objList[objIndex], gpu_cull::Cat_Other,
-						                  gpu_cull::Consumer_RenderGate | gpu_cull::Consumer_LifecycleGate);
-						cullRecordsEmitted++;
-					}
-				}
-			}
-		}
-	}
-
-	// MC2_GOM_RECON: emit object type classification
-	if (MC2_GOM_RECON_ENABLED()) {
-		static uint32_t lastReconFrame = 0;
-		uint32_t curFrame = g_mc2FrameCounter;
-		if (curFrame != lastReconFrame) {
-			lastReconFrame = curFrame;
-			SPEWALWAYS(("GOM_RECON", "frame=%u buildings=%ld gates=%ld turrets=%ld other=%ld updated=%ld",
-			             curFrame, recon_buildings, recon_gates, recon_turrets, recon_other, recon_updated));
-		}
-	}
-
-	// R2B-STATIC-NATURAL-TOUCH-PRESERVE-1 trace (MC2_R2B_STATIC_NATURAL_TRACE=1).
-	// touched_liveness should track skipped_full_update closely (every skipped
-	// REGISTERED static prop gets its cachedFrame_ stamped). Correlate with the
-	// registry's STATIC_PROP_REGISTRY stale-drop counter: with preserve=1 the
-	// tree-typeID stale drops go to ~0; with MC2_R2B_TOUCH_PRESERVE=0 they spike.
-	if (r2bTouchTrace && ((g_mc2FrameCounter <= 3u) || (g_mc2FrameCounter % 300u) == 0u)) {
-		mc2::fmt::print_err("R2B_STATIC_NATURAL: frame={:d} skipped_full_update={:d} touched_liveness={:d} preserve={:d}\n", mc2::fmt::as_u32(g_mc2FrameCounter), mc2::fmt::as_i32(skippedStaticNatural), mc2::fmt::as_i32(touchedLiveness), mc2::fmt::as_i32(r2bTouchPreserve ? 1 : 0));
-		std::fflush(stderr);
-	}
-
-	if (skipStaticNaturalDiag) {
-		static uint32_t lastStaticSkipFrame = 0;
-		if ((staticDiagFrame <= 5) || ((staticDiagFrame % 300) == 0)) {
-			if (staticDiagFrame != lastStaticSkipFrame) {
-				lastStaticSkipFrame = staticDiagFrame;
-				mc2::fmt::print_err("[STATIC_NATURAL_SKIP] frame={:d} eligible={:d} natural={:d} skipped={:d} falling={:d} justCreated={:d} miss_notStaticNow={:d} miss_static_unregistered={:d} miss_static_shape={:d} miss_static_fullBake={:d} miss_static_other={:d} miss_unreg_treeAppr={:d} miss_unreg_bldgAppr={:d} miss_unreg_otherAppr={:d} miss_unreg_objTree={:d} miss_unreg_objTerrain={:d} miss_unreg_objBuilding={:d} miss_unreg_objOther={:d} miss_special={:d} miss_alarm={:d} miss_lookout={:d} miss_sensor={:d} miss_power={:d} miss_control={:d} miss_mechBay={:d} miss_falling={:d} miss_justCreated={:d} nonNatural={:d} unknown={:d} updated={:d} bldg_candidates={:d} bldg_skipped={:d} bldg_miss_notStaticNow={:d}\n", mc2::fmt::as_u32(staticDiagFrame), mc2::fmt::as_i32(eligibleStaticNatural), mc2::fmt::as_i32(staticNaturalCandidates), mc2::fmt::as_i32(skippedStaticNatural), mc2::fmt::as_i32(fallingNaturalUpdated), mc2::fmt::as_i32(justCreatedNaturalUpdated), mc2::fmt::as_i32(missNotStaticNow), mc2::fmt::as_i32(missStaticNotRegistered), mc2::fmt::as_i32(missStaticShapeMismatch), mc2::fmt::as_i32(missStaticNeedsFullBake), mc2::fmt::as_i32(missStaticOther), mc2::fmt::as_i32(missStaticUnregTreeAppearance), mc2::fmt::as_i32(missStaticUnregBldgAppearance), mc2::fmt::as_i32(missStaticUnregOtherAppearance), mc2::fmt::as_i32(missStaticUnregObjTree), mc2::fmt::as_i32(missStaticUnregObjTerrain), mc2::fmt::as_i32(missStaticUnregObjBuilding), mc2::fmt::as_i32(missStaticUnregObjOther), mc2::fmt::as_i32(missSpecial), mc2::fmt::as_i32(missAlarm), mc2::fmt::as_i32(missLookout), mc2::fmt::as_i32(missSensor), mc2::fmt::as_i32(missPower), mc2::fmt::as_i32(missControl), mc2::fmt::as_i32(missMechBay), mc2::fmt::as_i32(missFalling), mc2::fmt::as_i32(missJustCreated), mc2::fmt::as_i32(nonNaturalUpdated), mc2::fmt::as_i32(unknownUpdated), mc2::fmt::as_i32(terrainObjectsUpdated), mc2::fmt::as_i32(staticBuildingCandidates), mc2::fmt::as_i32(skippedStaticBuildings), mc2::fmt::as_i32(missBuildingNotStaticNow));
-				if (!missStaticUnregTypeCounts.empty())
-				{
-					std::vector<std::pair<std::string, long>> topUnregTypes(
-						missStaticUnregTypeCounts.begin(), missStaticUnregTypeCounts.end());
-					std::sort(topUnregTypes.begin(), topUnregTypes.end(),
-					          [](const std::pair<std::string, long>& a, const std::pair<std::string, long>& b) {
-						          if (a.second != b.second)
-							          return a.second > b.second;
-						          return a.first < b.first;
-					          });
-					const size_t topCount = std::min<size_t>(8, topUnregTypes.size());
-					for (size_t i = 0; i < topCount; ++i)
-					{
-						mc2::fmt::print_err("[STATIC_REG_HEALTH] unreg_rank={:d} type={} count={:d}\n", mc2::fmt::as_u32(static_cast<unsigned>(i)), topUnregTypes[i].first.c_str(), mc2::fmt::as_i32(topUnregTypes[i].second));
-					}
-				}
-				std::fflush(stderr);
-			}
-		}
-	}
-
-	TracyPlot("TerrainObjects specialBuildings updated", int64_t(specialBuildingsUpdated));
-	TracyPlot("TerrainObjects gates updated", int64_t(gatesUpdated));
-	TracyPlot("TerrainObjects active blocks", int64_t(activeBlocksVisited));
-	TracyPlot("TerrainObjects visible objects updated", int64_t(terrainObjectsUpdated));
-	TracyPlot("TerrainObjects dynamic updates", int64_t(g_staticUpdateRunCount()));
-	TracyPlot("TerrainObjects static skipped",  int64_t(g_staticUpdateSkipCount()));
-	TracyPlot("GOM.TerrainObjects.ActiveBlocks", int64_t(activeBlocksVisited));
-	TracyPlot("GOM.TerrainObjects.VisitedObjects", int64_t(terrainObjectsVisited));
-	TracyPlot("GOM.TerrainObjects.UpdatedObjects", int64_t(terrainObjectsUpdated));
-	TracyPlot("GOM.TerrainObjects.CullRecords", int64_t(cullRecordsEmitted));
-
-	const uint32_t curFrame = g_mc2FrameCounter;
-	if (curFrame > 0 && (curFrame % 600) == 0 &&
-	    curFrame != g_staticUpdateLastSummaryFrame_get()) {
-		g_staticUpdateEmitSummary(curFrame);
-	}
-	// [TOBJSPLIT v1] once-per-frame roll + 600-frame summary, placed at the
-	// end of the per-frame loop (frame counter lives in terrobj.cpp). The
-	// analogous terrain SlimSplit roll was removed by 8Z-DEADCODE-SWEEP-1.
-	g_tobjSplitRollAndMaybeEmit();
-	// [TOBJPARITY v1] once-per-frame roll + 120-frame summary for the
-	// superset-parity counter probe (proof-gate #2). Called here at the
-	// same per-frame boundary as TOBJSPLIT (see static_update_counters.h).
-	g_tobjParityRollAndMaybeEmit();
-
-	// FRAME-JOBS-1: per-frame trace
-	if (frameJobsEnabled() && frameJobsTrace()) {
-		FrameJobsFrameStats stats = frameJobsGetFrameStats();
-		mc2::fmt::print_out("FRAME_JOBS: workers={:d} chunks={:d} handles={:d} serial={}\n", mc2::fmt::as_i32(stats.workerCount), mc2::fmt::as_i32(stats.chunksExecuted), mc2::fmt::as_i32(frameJobsPrePassCount), mc2::fmt::safe(stats.serialFallback ? "yes" : "no"));
-	}
+    auto advance = [](GameObjectPtr object) {
+        if (!object || !object->getExists()) return;
+        MC2_WORLD_UPDATE("terrain", object);
+        const long result = object->update();
+        object->lastUpdateRet = static_cast<int32_t>(result);
+        if (!result) MC2_DESTROY(object, "update_false");
+    };
+    // These lists overlap the terrain blocks. Preserve their early update order
+    // while advancing each object only once per tick.
+    std::vector<GameObjectPtr> advanced;
+    advanced.reserve(numSpecialBuildings + numGates);
+    auto once = [&](GameObjectPtr object) {
+        if (std::find(advanced.begin(), advanced.end(), object) != advanced.end()) return;
+        advanced.push_back(object);
+        advance(object);
+    };
+    for (long i = 0; i < numSpecialBuildings; ++i) once(specialBuildings[i]);
+    for (long i = 0; i < numGates; ++i) once(gates[i]);
+    for (long block = 0; block < Terrain::numObjBlocks; ++block) {
+        const auto& info = Terrain::objBlockInfo[block];
+        for (long i = 0; i < info.numObjects; ++i) {
+            auto* object = objList[info.firstHandle + i];
+            if (!object || !object->getExists()) continue;
+            if (std::find(advanced.begin(), advanced.end(), object) != advanced.end()) continue;
+            const auto kind = object->getObjectClass();
+            if ((kind == TREE || kind == TERRAINOBJECT) &&
+                !object->getFlag(OBJECT_FLAG_FALLING) && !object->getFlag(OBJECT_FLAG_JUSTCREATED)) continue;
+            advance(object);
+        }
+    }
 }
 
-// Update every mech and vehicle and queue removed movers.
 void GameObjectManager::updateMoverWalk(MoverPtr (&removeList)[MAX_MOVERS], long& numRemoved) {
 	if (mechs)
 	{
@@ -1212,17 +721,13 @@ void GameObjectManager::updateMoverWalk(MoverPtr (&removeList)[MAX_MOVERS], long
 			MoverPtr mover = mechs[i];
 			if (mover && mover->getExists())
 			{
+				MC2_WORLD_UPDATE("mechs", mover);
 				long updateRet_instr = mover->update();
 				mover->lastUpdateRet = static_cast<int32_t>(updateRet_instr);
 				if (!updateRet_instr)
 					MC2_DESTROY(mover, "update_false");
 				if (mover->getFlag(OBJECT_FLAG_REMOVED))
 					removeList[numRemoved++] = mover;
-				// C0-3: emit after update() so inView is fresh; gated on getExists()
-				if (mover->getExists())
-					emitGpuCullRecord(mover, gpu_cull::Cat_Mech,
-					                  gpu_cull::Consumer_AIGate | gpu_cull::Consumer_WeaponSpawnNode |
-					                  gpu_cull::Consumer_LifecycleGate | gpu_cull::Consumer_RenderGate);
 			}
 		}
 	}
@@ -1235,17 +740,13 @@ void GameObjectManager::updateMoverWalk(MoverPtr (&removeList)[MAX_MOVERS], long
 			MoverPtr mover = vehicles[i];
 			if (mover && mover->getExists())
 			{
+				MC2_WORLD_UPDATE("vehicles", mover);
 				long updateRet_instr = mover->update();
 				mover->lastUpdateRet = static_cast<int32_t>(updateRet_instr);
 				if (!updateRet_instr)
 					MC2_DESTROY(mover, "update_false");
 				if (mover->getFlag(OBJECT_FLAG_REMOVED))
 					removeList[numRemoved++] = mover;
-				// C0-3: emit after update() so inView is fresh; gated on getExists()
-				if (mover->getExists())
-					emitGpuCullRecord(mover, gpu_cull::Cat_GroundVeh,
-					                  gpu_cull::Consumer_AIGate | gpu_cull::Consumer_WeaponSpawnNode |
-					                  gpu_cull::Consumer_LifecycleGate | gpu_cull::Consumer_RenderGate);
 			}
 		}
 	}
@@ -1312,14 +813,11 @@ void GameObjectManager::updateOtherFx() {
 		{
 			if (turrets[i] && turrets[i]->getExists())
 			{
+				MC2_WORLD_UPDATE("turrets", turrets[i]);
 				long updateRet_instr = turrets[i]->update();
 				turrets[i]->lastUpdateRet = static_cast<int32_t>(updateRet_instr);
 				if (!updateRet_instr)
 					MC2_DESTROY(turrets[i], "update_false");
-				// C0-3: emit after update() so inView is fresh; gated on getExists()
-				if (turrets[i] && turrets[i]->getExists())
-					emitGpuCullRecord(turrets[i], gpu_cull::Cat_Turret,
-					                  gpu_cull::Consumer_RenderGate | gpu_cull::Consumer_LifecycleGate);
 			}
 		}
 	}
@@ -1327,6 +825,7 @@ void GameObjectManager::updateOtherFx() {
 	if (weapons) {
 		for (long i=0;i<numWeapons;i++) {
 			if (weapons[i] && weapons[i]->getExists()) {
+				MC2_WORLD_UPDATE("weapons", weapons[i]);
 				long updateRet_instr = weapons[i]->update();
 				weapons[i]->lastUpdateRet = static_cast<int32_t>(updateRet_instr);
 				if (combatTraceEnabled) {
@@ -1344,6 +843,7 @@ void GameObjectManager::updateOtherFx() {
 	if (carnage) {
 		for (long i = 0; i < numCarnage; i++) {
 			if (carnage[i] && carnage[i]->getExists()) {
+				MC2_WORLD_UPDATE("carnage", carnage[i]);
 				long updateRet_instr = carnage[i]->update();
 				carnage[i]->lastUpdateRet = static_cast<int32_t>(updateRet_instr);
 				if (combatTraceEnabled) {
@@ -1361,6 +861,7 @@ void GameObjectManager::updateOtherFx() {
 	if (lights) {
 		for (long i = 0; i < numLights; i++) {
 			if (lights[i] && lights[i]->getExists()) {
+				MC2_WORLD_UPDATE("lights", lights[i]);
 				long updateRet_instr = lights[i]->update();
 				lights[i]->lastUpdateRet = static_cast<int32_t>(updateRet_instr);
 				if (!updateRet_instr)
@@ -1372,6 +873,7 @@ void GameObjectManager::updateOtherFx() {
 	if (artillery) {
 		for (long i = 0; i < numArtillery; i++) {
 			if (artillery[i] && artillery[i]->getExists()) {
+				MC2_WORLD_UPDATE("artillery", artillery[i]);
 				long updateRet_instr = artillery[i]->update();
 				artillery[i]->lastUpdateRet = static_cast<int32_t>(updateRet_instr);
 				if (!updateRet_instr)
@@ -1385,6 +887,7 @@ void GameObjectManager::updateOtherFx() {
 // brackets the same phases; each phase body is a member helper declared in objmgr.h, in execution order.
 void GameObjectManager::update (bool terrain, bool movers, bool other)
 {
+	if (mc2::world_trace::enabled()) mc2::world_trace::snapshot(*this, "gom_begin");
 	ZoneScopedN("GameObjectManager::update");
 	gomcost::TotalSpan _gomTotalSpan;  // [GOM_UPDATE_COST v1] first-constructed => dtor last
 
@@ -1393,8 +896,7 @@ void GameObjectManager::update (bool terrain, bool movers, bool other)
 	//----------------------------
 	// Now, update game objects...
 
-	updateReadbackSnapshot();
-	updateActiveSweep();
+
 
 	// 2026-05-13: substrate_frameBegin() was MOVED to Mission::update
 	// (code/mission.cpp, immediately before the
@@ -1415,10 +917,10 @@ void GameObjectManager::update (bool terrain, bool movers, bool other)
 
 	{ ZoneScopedN("GOM.captureList"); updateCaptureList(); }
 
-	if (terrain && renderObjects)
+	if (terrain)
 	{
 		int frameJobsPrePassCount = 0; // FRAME-JOBS-1: handle count for per-frame trace
-		updateFrameJobsPrepass(frameJobsPrePassCount);
+
 		ZoneScopedN("GameLogic.Units.TerrainObjects");
 		gomcost::Span _gomStaticTouch(gomcost::Phase::kStaticTouch); // [GOM_UPDATE_COST v1]
 		updateTerrainObjects(frameJobsPrePassCount);
@@ -1443,11 +945,6 @@ void GameObjectManager::update (bool terrain, bool movers, bool other)
 		updateOtherFx();
 	}
 
-	// C0-3: finalize GPU cull substrate SSBO for this frame.
-	// Called unconditionally — substrate_flushUpload internally checks isEnabled().
-	{ ZoneScopedN("GOM.substrateFlushUpload");
-	  gomcost::Span _gomSubstrate(gomcost::Phase::kSubstrateFlush); // [GOM_UPDATE_COST v1]
-	  gpu_cull::substrate_flushUpload(); }
 
 	// MC2_MOVE_RECON: per-frame tick (lazy init, atexit register, periodic emit).
 	moveReconFrameTick();
@@ -1461,4 +958,18 @@ GameObjectPtr GameObjectManager::get (GameObjectHandle handle) {
 		return(nullptr);
 
 	return(objList[handle]);
+}
+
+void GameObjectManager::updatePresentationCull() {
+    for (long i = 0; i < numMechs; ++i)
+        if (mechs[i] && mechs[i]->getExists())
+            emitGpuCullRecord(mechs[i], gpu_cull::Cat_Mech, gpu_cull::Consumer_RenderGate);
+    for (long i = 0; i < numVehicles; ++i)
+        if (vehicles[i] && vehicles[i]->getExists())
+            emitGpuCullRecord(vehicles[i], gpu_cull::Cat_GroundVeh, gpu_cull::Consumer_RenderGate);
+    for (long i = 0; i < numTurrets; ++i)
+        if (turrets[i] && turrets[i]->getExists())
+            emitGpuCullRecord(turrets[i], gpu_cull::Cat_Turret, gpu_cull::Consumer_RenderGate);
+    gpu_cull::substrate_flushUpload();
+    if (gpu_cull::compute_isEnabled()) gpu_cull::compute_emitParitySummary();
 }

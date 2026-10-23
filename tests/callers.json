@@ -191,7 +191,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1447,
+          "line": 1448,
           "evidence": "command",
           "reference": "scripts/check-agents-md.sh",
           "text": "run_check \"agents_md\"                  \"sh scripts/check-agents-md.sh\""
@@ -206,7 +206,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 976,
+          "line": 977,
           "evidence": "command",
           "reference": "scripts/check-apply-pass-bumped.py",
           "text": "run_check \"apply_pass_bumped\"      \"py -3 scripts/check-apply-pass-bumped.py --quiet\""
@@ -221,7 +221,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1448,
+          "line": 1449,
           "evidence": "command",
           "reference": "scripts/check-asset-manifest-fixtures.py",
           "text": "run_check \"asset_manifest_fixtures\"    \"py -3 scripts/check-asset-manifest-fixtures.py\""
@@ -236,7 +236,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1481,
+          "line": 1482,
           "evidence": "command",
           "reference": "scripts/check-asset-manifests.py",
           "text": "run_check \"asset_manifests\"            \"py -3 scripts/check-asset-manifests.py --quiet\""
@@ -251,7 +251,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1449,
+          "line": 1450,
           "evidence": "command",
           "reference": "scripts/check-asset-pipeline-doc.sh",
           "text": "run_check \"asset_pipeline_doc\"         \"sh scripts/check-asset-pipeline-doc.sh\""
@@ -266,7 +266,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1482,
+          "line": 1483,
           "evidence": "command",
           "reference": "scripts/check-asset-scale-callers.sh",
           "text": "run_check \"asset_scale_callers\"        \"sh scripts/check-asset-scale-callers.sh\""
@@ -281,7 +281,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1029,
+          "line": 1030,
           "evidence": "command",
           "reference": "scripts/check-background-launch.py",
           "text": "run_check \"background_launch\"      \"py -3 scripts/check-background-launch.py --quiet\""
@@ -303,7 +303,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1306,
+          "line": 1307,
           "evidence": "command",
           "reference": "scripts/check-beauty-sidecars.py",
           "text": "run_check \"beauty_sidecars\"          \"py -3 scripts/check-beauty-sidecars.py --no-lanes --quiet\""
@@ -325,7 +325,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 899,
+          "line": 900,
           "evidence": "command",
           "reference": "scripts/check-binding-slots.py",
           "text": "run_check \"binding_slots\"          \"py -3 scripts/check-binding-slots.py --quiet\""
@@ -340,7 +340,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1114,
+          "line": 1115,
           "evidence": "command",
           "reference": "scripts/check-brain-fit-schema.py",
           "text": "run_check \"brain_fit_schema\"       \"py -3 scripts/check-brain-fit-schema.py --quiet\""
@@ -355,7 +355,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 979,
+          "line": 980,
           "evidence": "command",
           "reference": "scripts/check-buffer-lifetime-ownership.py",
           "text": "run_check \"buffer_lifetime\"        \"py -3 scripts/check-buffer-lifetime-ownership.py --quiet\""
@@ -377,7 +377,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1059,
+          "line": 1060,
           "evidence": "command",
           "reference": "scripts/check-capture-determinism.py",
           "text": "run_check \"capture_determinism\"    \"py -3 scripts/check-capture-determinism.py --quiet\""
@@ -399,7 +399,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1088,
+          "line": 1089,
           "evidence": "command",
           "reference": "scripts/check-capture-env-declared.py",
           "text": "run_check \"capture_env_declared\"   \"py -3 scripts/check-capture-env-declared.py\""
@@ -421,7 +421,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1393,
+          "line": 1394,
           "evidence": "command",
           "reference": "scripts/check-capture-provenance.py",
           "text": "run_check_tri \"capture_provenance\"      \"py -3 scripts/check-capture-provenance.py --quiet\""
@@ -465,7 +465,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1450,
+          "line": 1451,
           "evidence": "command",
           "reference": "scripts/check-claude-md-pointer.sh",
           "text": "run_check \"claude_md_pointer\"          \"sh scripts/check-claude-md-pointer.sh\""
@@ -480,7 +480,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 972,
+          "line": 973,
           "evidence": "command",
           "reference": "scripts/check-colormask-ownership.py",
           "text": "run_check \"colormask_ownership\"    \"py -3 scripts/check-colormask-ownership.py --quiet && py -3 -B -m pytest scripts/tests/test_check_native_post_contracts.py -k color_mask -q -p no:cacheprovider\""
@@ -509,7 +509,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1245,
+          "line": 1246,
           "evidence": "command",
           "reference": "scripts/check-counter-honesty.py",
           "text": "run_check \"counter_honesty\"          \"py -3 scripts/check-counter-honesty.py --quiet\""
@@ -568,7 +568,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1049,
+          "line": 1050,
           "evidence": "command",
           "reference": "scripts/check-default-build-quiet.py",
           "text": "run_check \"default_build_quiet\"    \"py -3 scripts/check-default-build-quiet.py\""
@@ -583,14 +583,14 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1143,
+          "line": 1144,
           "evidence": "command",
           "reference": "scripts/check-delivery.py",
           "text": "run_check \"delivery_manifest\"      \"py -3 scripts/check-delivery.py --contract --quiet\""
         },
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1187,
+          "line": 1188,
           "evidence": "command",
           "reference": "scripts/check-delivery.py",
           "text": "run_check \"delivery_installs\"      \"py -3 scripts/check-delivery.py --quiet\""
@@ -676,7 +676,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1118,
+          "line": 1119,
           "evidence": "command",
           "reference": "scripts/check-deploy-data-parity.py",
           "text": "run_check \"deploy_data_parity\"     \"py -3 scripts/check-deploy-data-parity.py --quiet\""
@@ -691,7 +691,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/deploy_payload.py",
-          "line": 1634,
+          "line": 1658,
           "evidence": "command",
           "reference": "scripts/check-deploy-hygiene.py",
           "text": "r = subprocess.run([sys.executable, hygiene, target],"
@@ -706,7 +706,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1112,
+          "line": 1113,
           "evidence": "command",
           "reference": "scripts/check-deploy-lane-parity.py",
           "text": "run_check \"deploy_lane_parity\"     \"py -3 scripts/check-deploy-lane-parity.py --allow-unresolved\""
@@ -743,7 +743,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 897,
+          "line": 898,
           "evidence": "command",
           "reference": "scripts/check-destroy-invariant.sh",
           "text": "run_check \"destroy_invariant\"      \"sh scripts/check-destroy-invariant.sh\""
@@ -787,7 +787,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1196,
+          "line": 1197,
           "evidence": "command",
           "reference": "scripts/check-doc-links.py",
           "text": "run_check \"doc_links\"             \"py -3 scripts/check-doc-links.py --quiet\""
@@ -809,7 +809,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 975,
+          "line": 976,
           "evidence": "command",
           "reference": "scripts/check-drawbuffer-ownership.py",
           "text": "run_check \"drawbuffer_ownership\"   \"py -3 scripts/check-drawbuffer-ownership.py --quiet\""
@@ -824,7 +824,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1190,
+          "line": 1191,
           "evidence": "command",
           "reference": "scripts/check-editor-pass-contract-parity.py",
           "text": "run_check \"editor_pass_parity\"     \"py -3 scripts/check-editor-pass-contract-parity.py --quiet\""
@@ -839,7 +839,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1104,
+          "line": 1105,
           "evidence": "command",
           "reference": "scripts/check-env-drive-guard.py",
           "text": "run_check \"env_drive_guard\"        \"py -3 scripts/check-env-drive-guard.py --quiet\""
@@ -883,7 +883,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1191,
+          "line": 1192,
           "evidence": "command",
           "reference": "scripts/check-gated-layout-macros.py",
           "text": "run_check \"gated_layout_macros\"    \"py -3 scripts/check-gated-layout-macros.py --quiet\""
@@ -913,7 +913,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 924,
+          "line": 925,
           "evidence": "command",
           "reference": "scripts/check-golden-coverage.py",
           "text": "run_check \"golden_coverage\"          \"py -3 scripts/check-golden-coverage.py --quiet\""
@@ -972,7 +972,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1040,
+          "line": 1041,
           "evidence": "command",
           "reference": "scripts/check-input-capture-visibility.py",
           "text": "run_check \"input_capture_visibility\"          \"py -3 scripts/check-input-capture-visibility.py --quiet\""
@@ -994,7 +994,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1451,
+          "line": 1452,
           "evidence": "command",
           "reference": "scripts/check-json-isolation.sh",
           "text": "run_check \"json_isolation\"             \"sh scripts/check-json-isolation.sh\""
@@ -1009,7 +1009,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1214,
+          "line": 1215,
           "evidence": "command",
           "reference": "scripts/check-launcher-ascii.py",
           "text": "run_check \"launcher_ascii\"         \"py -3 scripts/check-launcher-ascii.py --quiet\""
@@ -1031,7 +1031,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 902,
+          "line": 903,
           "evidence": "command",
           "reference": "scripts/check-light-loop-numlights-bound.py",
           "text": "run_check \"light_loop_numlights\"   \"py -3 scripts/check-light-loop-numlights-bound.py --quiet\""
@@ -1046,7 +1046,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 908,
+          "line": 909,
           "evidence": "command",
           "reference": "scripts/check-light-row-freshness.py",
           "text": "run_check \"light_row_freshness\"          \"py -3 scripts/check-light-row-freshness.py --quiet\""
@@ -1068,7 +1068,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 917,
+          "line": 918,
           "evidence": "command",
           "reference": "scripts/check-lighting-divergence.py",
           "text": "run_check \"lighting_divergence\"    \"py -3 scripts/check-lighting-divergence.py\""
@@ -1090,7 +1090,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1489,
+          "line": 1490,
           "evidence": "command",
           "reference": "scripts/check-manifest-schema.py",
           "text": "run_check \"manifest_schema\"            \"py -3 scripts/check-manifest-schema.py --strict\""
@@ -1127,7 +1127,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 978,
+          "line": 979,
           "evidence": "command",
           "reference": "scripts/check-mdi-submission-ownership.py",
           "text": "run_check \"mdi_submission\"         \"py -3 scripts/check-mdi-submission-ownership.py --quiet && py -3 -B -m pytest scripts/tests/test_check_native_post_contracts.py -k mdi -q -p no:cacheprovider\""
@@ -1142,7 +1142,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1452,
+          "line": 1453,
           "evidence": "command",
           "reference": "scripts/check-memory-size.py",
           "text": "run_check \"memory_size\"                \"py -3 scripts/check-memory-size.py\""
@@ -1157,7 +1157,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1453,
+          "line": 1454,
           "evidence": "command",
           "reference": "scripts/check-mlr-leaves-gated.sh",
           "text": "run_check \"mlr_leaves_gated\"           \"sh scripts/check-mlr-leaves-gated.sh\""
@@ -1172,7 +1172,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1226,
+          "line": 1227,
           "evidence": "command",
           "reference": "scripts/check-mover-registry-coherence.sh",
           "text": "run_check \"mover_registry_coherence\" \"sh scripts/check-mover-registry-coherence.sh\""
@@ -1194,7 +1194,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 971,
+          "line": 972,
           "evidence": "command",
           "reference": "scripts/check-multiply-blend.py",
           "text": "run_check \"multiply_blend\"         \"py -3 scripts/check-multiply-blend.py --quiet && py -3 -B -m pytest scripts/tests/test_check_native_post_contracts.py -k multiply -q -p no:cacheprovider\""
@@ -1209,7 +1209,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1189,
+          "line": 1190,
           "evidence": "command",
           "reference": "scripts/check-native-render-hosts.py",
           "text": "run_check \"native_render_hosts\"    \"py -3 scripts/check-native-render-hosts.py --quiet && py -3 -B -m pytest scripts/tests/test_native_render_hosts.py scripts/tests/test_bootstrap_worktree_build.py -q -p no:cacheprovider\""
@@ -1231,7 +1231,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 974,
+          "line": 975,
           "evidence": "command",
           "reference": "scripts/check-native-scene-targets.py",
           "text": "run_check \"native_scene_targets\"   \"py -3 scripts/check-native-scene-targets.py --quiet && py -3 -B -m pytest scripts/tests/test_native_scene_targets.py scripts/tests/test_native_executor_health.py -q -p no:cacheprovider\""
@@ -1253,7 +1253,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 985,
+          "line": 986,
           "evidence": "command",
           "reference": "scripts/check-no-gl-compiler.py",
           "text": "run_check \"no_gl_compiler\"         \"py -3 scripts/check-no-gl-compiler.py --quiet && py -3 -B -m pytest scripts/tests/test_no_gl_compiler.py -q -p no:cacheprovider\""
@@ -1290,7 +1290,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1454,
+          "line": 1455,
           "evidence": "command",
           "reference": "scripts/check-object-mvp-currency.py",
           "text": "run_check \"object_mvp_currency\"        \"py -3 scripts/check-object-mvp-currency.py\""
@@ -1312,7 +1312,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1465,
+          "line": 1466,
           "evidence": "command",
           "reference": "scripts/check-oracle-registry.py",
           "text": "run_check \"oracle_registry\"            \"py -3 scripts/check-oracle-registry.py --allow-missing-artifacts\""
@@ -1327,7 +1327,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1219,
+          "line": 1220,
           "evidence": "command",
           "reference": "scripts/check-order-gate-coverage.py",
           "text": "run_check \"order_gate_coverage\"    \"py -3 scripts/check-order-gate-coverage.py --quiet\""
@@ -1349,7 +1349,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1455,
+          "line": 1456,
           "evidence": "command",
           "reference": "scripts/check-particles-no-cpu-projection.sh",
           "text": "run_check \"particles_no_cpu_projection\" \"sh scripts/check-particles-no-cpu-projection.sh\""
@@ -1364,7 +1364,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 973,
+          "line": 974,
           "evidence": "command",
           "reference": "scripts/check-pass-attachment-contract.py",
           "text": "run_check \"pass_attachment\"        \"py -3 scripts/check-pass-attachment-contract.py --quiet\""
@@ -1379,7 +1379,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1188,
+          "line": 1189,
           "evidence": "command",
           "reference": "scripts/check-pass-coverage.py",
           "text": "run_check \"pass_coverage\"          \"py -3 scripts/check-pass-coverage.py --quiet\""
@@ -1394,7 +1394,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1204,
+          "line": 1205,
           "evidence": "command",
           "reference": "scripts/check-path-normalization.sh",
           "text": "run_check \"path_normalization\"     \"sh scripts/check-path-normalization.sh\""
@@ -1416,7 +1416,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 953,
+          "line": 954,
           "evidence": "command",
           "reference": "scripts/check-pipeline-desc.py",
           "text": "run_check \"pipeline_desc\"          \"py -3 scripts/check-pipeline-desc.py --quiet\""
@@ -1431,7 +1431,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 969,
+          "line": 970,
           "evidence": "command",
           "reference": "scripts/check-pipeline-key.py",
           "text": "run_check \"pipeline_key\"           \"py -3 scripts/check-pipeline-key.py --quiet\""
@@ -1446,7 +1446,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1012,
+          "line": 1013,
           "evidence": "command",
           "reference": "scripts/check-render-contract-alpha-classes.py",
           "text": "run_check \"render_contract_alpha_classes\"          \"py -3 scripts/check-render-contract-alpha-classes.py\""
@@ -1468,7 +1468,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 898,
+          "line": 899,
           "evidence": "command",
           "reference": "scripts/check-render-contract-gbuffer1.sh",
           "text": "run_check \"render_contract_gbuf1\"  \"sh scripts/check-render-contract-gbuffer1.sh\""
@@ -1483,7 +1483,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 980,
+          "line": 981,
           "evidence": "command",
           "reference": "scripts/check-render-resource-ids.py",
           "text": "run_check \"render_resource_ids\"    \"py -3 scripts/check-render-resource-ids.py\""
@@ -1498,7 +1498,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1209,
+          "line": 1210,
           "evidence": "command",
           "reference": "scripts/check-res-aspect-contract.py",
           "text": "run_check \"res_aspect_contract\"    \"py -3 scripts/check-res-aspect-contract.py --quiet\""
@@ -1520,7 +1520,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1414,
+          "line": 1415,
           "evidence": "command",
           "reference": "scripts/check-review-anchor-stability.py",
           "text": "run_check \"review_anchor_stability\"          \"py -3 scripts/check-review-anchor-stability.py --quiet\""
@@ -1557,7 +1557,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 918,
+          "line": 919,
           "evidence": "command",
           "reference": "scripts/check-sampler-bindings.py",
           "text": "run_check \"sampler_bindings\"       \"py -3 scripts/check-sampler-bindings.py --quiet\""
@@ -1572,7 +1572,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 968,
+          "line": 969,
           "evidence": "command",
           "reference": "scripts/check-shader-injectors.py",
           "text": "run_check \"shader_injectors\"       \"py -3 scripts/check-shader-injectors.py --quiet\""
@@ -1587,7 +1587,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 992,
+          "line": 993,
           "evidence": "command",
           "reference": "scripts/check-shader-package.py",
           "text": "run_check \"shader_package\"         \"py -3 scripts/check-shader-package.py --quiet\""
@@ -1602,14 +1602,14 @@
       "callers_by_basename": [
         {
           "path": "CMakeLists.txt",
-          "line": 929,
+          "line": 932,
           "evidence": "cmake command",
           "reference": "${CMAKE_SOURCE_DIR}/scripts/check-shader-schema.sh",
           "text": "COMMAND ${BASH_EXECUTABLE} ${CMAKE_SOURCE_DIR}/scripts/check-shader-schema.sh"
         },
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1021,
+          "line": 1022,
           "evidence": "command",
           "reference": "scripts/check-shader-schema.sh",
           "text": "run_check \"shader_schema\"          \"bash scripts/check-shader-schema.sh --quiet\""
@@ -1639,7 +1639,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 894,
+          "line": 895,
           "evidence": "command",
           "reference": "scripts/check-sim-no-audio-reads.sh",
           "text": "run_check \"sim_no_audio_reads\"     \"sh scripts/check-sim-no-audio-reads.sh\""
@@ -1669,7 +1669,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1075,
+          "line": 1076,
           "evidence": "command",
           "reference": "scripts/check-smoke-fingerprint-honesty.py",
           "text": "run_check \"smoke_fingerprint_honesty\" \"py -3 scripts/check-smoke-fingerprint-honesty.py --quiet\""
@@ -1691,7 +1691,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1483,
+          "line": 1484,
           "evidence": "command",
           "reference": "scripts/check-smoke-matrices.py",
           "text": "run_check \"smoke_matrices\"             \"py -3 scripts/check-smoke-matrices.py --quiet\""
@@ -1706,7 +1706,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 986,
+          "line": 987,
           "evidence": "command",
           "reference": "scripts/check-spirv-artifacts.py",
           "text": "run_check \"spirv_artifacts\"        \"py -3 scripts/check-spirv-artifacts.py --quiet\""
@@ -1721,7 +1721,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 990,
+          "line": 991,
           "evidence": "command",
           "reference": "scripts/check-spirv-reflection-contract.py",
           "text": "run_check \"spirv_reflection\"       \"py -3 scripts/check-spirv-reflection-contract.py --quiet\""
@@ -1736,7 +1736,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1201,
+          "line": 1202,
           "evidence": "command",
           "reference": "scripts/check-split-path-contracts.py",
           "text": "run_check \"split_path_contracts\"   \"py -3 scripts/check-split-path-contracts.py --quiet\""
@@ -1758,7 +1758,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1031,
+          "line": 1032,
           "evidence": "command",
           "reference": "scripts/check-staged-hygiene.py",
           "text": "run_check \"staged_hygiene\"         \"py -3 scripts/check-staged-hygiene.py --range --quiet\""
@@ -1787,7 +1787,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 977,
+          "line": 978,
           "evidence": "command",
           "reference": "scripts/check-static-prop-family.py",
           "text": "run_check \"static_prop_family\"     \"py -3 scripts/check-static-prop-family.py --quiet\""
@@ -1802,7 +1802,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1329,
+          "line": 1330,
           "evidence": "command",
           "reference": "scripts/check-stock-mission-data.py",
           "text": "run_check \"stock_mission_data\"          \"py -3 scripts/check-stock-mission-data.py --no-data --quiet\""
@@ -1824,7 +1824,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1195,
+          "line": 1196,
           "evidence": "command",
           "reference": "scripts/check-terrain-daylight-constants.py",
           "text": "run_check \"terrain_daylight_consts\"  \"py -3 scripts/check-terrain-daylight-constants.py --quiet\""
@@ -1846,7 +1846,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1231,
+          "line": 1232,
           "evidence": "command",
           "reference": "scripts/check-tgl-load-callers.sh",
           "text": "run_check \"tgl_load_callers\"   \"sh scripts/check-tgl-load-callers.sh\""
@@ -1868,7 +1868,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1456,
+          "line": 1457,
           "evidence": "command",
           "reference": "scripts/check-toolchain-bom.py",
           "text": "run_check \"toolchain_bom\"              \"py -3 scripts/check-toolchain-bom.py\""
@@ -1883,7 +1883,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1457,
+          "line": 1458,
           "evidence": "command",
           "reference": "scripts/check-unified-projection-retirement.sh",
           "text": "run_check \"unified_projection_retirement\" \"sh scripts/check-unified-projection-retirement.sh\""
@@ -1898,7 +1898,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 896,
+          "line": 897,
           "evidence": "command",
           "reference": "scripts/check-veg-gpu-cull.py",
           "text": "run_check \"veg_gpu_cull\"             \"py -3 scripts/check-veg-gpu-cull.py\"   # vegetation culls on the GPU: no CPU per-instance path, C++/GLSL parameter block in lockstep"
@@ -1913,7 +1913,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 970,
+          "line": 971,
           "evidence": "command",
           "reference": "scripts/check-vfx-blend-distinction.py",
           "text": "run_check \"vfx_blend_distinction\"  \"py -3 scripts/check-vfx-blend-distinction.py --quiet && py -3 -B -m pytest scripts/tests/test_check_vfx_blend_distinction.py -q -p no:cacheprovider\""
@@ -1935,7 +1935,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 895,
+          "line": 896,
           "evidence": "command",
           "reference": "scripts/check-vfx-no-objectid.sh",
           "text": "run_check \"vfx_no_objectid\"        \"sh scripts/check-vfx-no-objectid.sh\""
@@ -1965,7 +1965,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1041,
+          "line": 1042,
           "evidence": "command",
           "reference": "scripts/check-visual-bookmark-honesty.py",
           "text": "run_check \"bookmark_honesty\"       \"py -3 scripts/check-visual-bookmark-honesty.py\""
@@ -1980,7 +1980,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 991,
+          "line": 992,
           "evidence": "command",
           "reference": "scripts/check-vk-pipeline-layout.py",
           "text": "run_check \"vk_pipeline_layout\"    \"py -3 scripts/check-vk-pipeline-layout.py --quiet && py -3 -B -m pytest scripts/tests/test_check_vk_pipeline_layout.py -q -p no:cacheprovider\""
@@ -1999,6 +1999,13 @@
           "evidence": "command",
           "reference": "scripts/check-vk-submit-funnel.sh",
           "text": "run_check \"vk_submit_funnel\"       \"sh scripts/check-vk-submit-funnel.sh\""
+        },
+        {
+          "path": "scripts/check-contracts.sh",
+          "line": 894,
+          "evidence": "command",
+          "reference": "scripts/check-vk-submit-funnel.sh",
+          "text": "run_check \"vk_pipeline_infra\"      \"sh scripts/check-vk-submit-funnel.sh --pipelines\""
         }
       ],
       "callers_by_stem": []
@@ -2010,7 +2017,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 981,
+          "line": 982,
           "evidence": "command",
           "reference": "scripts/check-vulkan-bindings.py",
           "text": "run_check \"vulkan_bindings\"        \"py -3 scripts/check-vulkan-bindings.py --quiet\""
@@ -2039,7 +2046,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1116,
+          "line": 1117,
           "evidence": "command",
           "reference": "scripts/check_brain_fixture_deploy_sync.py",
           "text": "run_check \"brain_fixture_deploy\"   \"py -3 scripts/check_brain_fixture_deploy_sync.py --quiet\""
@@ -2054,7 +2061,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1115,
+          "line": 1116,
           "evidence": "command",
           "reference": "scripts/check_brain_fixture_manifest.py",
           "text": "run_check \"brain_fixture_manifest\" \"py -3 scripts/check_brain_fixture_manifest.py --quiet\""
@@ -2069,7 +2076,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1117,
+          "line": 1118,
           "evidence": "command",
           "reference": "scripts/check_brain_relaxed_guard_doc.py",
           "text": "run_check \"brain_relaxed_guard\"    \"py -3 scripts/check_brain_relaxed_guard_doc.py --quiet\""
@@ -2099,7 +2106,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1548,
+          "line": 1549,
           "evidence": "command",
           "reference": "scripts/check_sim_include_firewall.py",
           "text": "run_check \"sim_include_firewall\"        \"py -3 -B scripts/tests/test_sim_include_firewall.py && py -3 scripts/check_sim_include_firewall.py\""
@@ -2789,6 +2796,13 @@
           "text": "import console_child  # noqa: E402"
         },
         {
+          "path": "tests/mapgen/test_generate.py",
+          "line": 12,
+          "evidence": "import",
+          "reference": "scripts.console_child",
+          "text": "from scripts import console_child"
+        },
+        {
           "path": "tests/smoke/objectives_e6e/generate_assets.py",
           "line": 15,
           "evidence": "import",
@@ -2985,6 +2999,13 @@
           "text": "import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)"
         },
         {
+          "path": "tools/command_replay.py",
+          "line": 16,
+          "evidence": "import",
+          "reference": "console_child",
+          "text": "import console_child"
+        },
+        {
           "path": "tools/comment_guard.py",
           "line": 71,
           "evidence": "import",
@@ -3095,6 +3116,13 @@
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)"
+        },
+        {
+          "path": "tools/mapgen/scale_review.py",
+          "line": 13,
+          "evidence": "import",
+          "reference": "scripts.console_child",
+          "text": "from scripts import console_child"
         },
         {
           "path": "tools/mc2texcook/cook_pbr_maps.py",
@@ -3813,6 +3841,13 @@
           "text": "import manifest_schema  # noqa: E402"
         },
         {
+          "path": "scripts/run_battle_bench.py",
+          "line": 19,
+          "evidence": "import",
+          "reference": "manifest_schema",
+          "text": "import manifest_schema as ms"
+        },
+        {
           "path": "scripts/run_visual_capture.py",
           "line": 92,
           "evidence": "import",
@@ -4120,6 +4155,21 @@
       "callers_by_stem": []
     },
     {
+      "path": "scripts/run_battle_bench.py",
+      "basename": "run_battle_bench.py",
+      "stem": "run_battle_bench",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "scripts/tests/test_battle_bench.py",
+          "line": 9,
+          "evidence": "import",
+          "reference": "run_battle_bench",
+          "text": "import run_battle_bench as bench"
+        }
+      ]
+    },
+    {
       "path": "scripts/run_brain_apply_ab.ps1",
       "basename": "run_brain_apply_ab.ps1",
       "stem": "run_brain_apply_ab",
@@ -4254,7 +4304,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1526,
+          "line": 1527,
           "evidence": "command",
           "reference": "scripts/run_scripts_tests.py",
           "text": "run_check \"scripts_tests\"              \"py -3 scripts/run_scripts_tests.py\""
@@ -4301,6 +4351,13 @@
           "evidence": "command",
           "reference": "scripts/run_smoke.py",
           "text": "subprocess.run([sys.executable, str(ROOT / 'scripts/run_smoke.py'), '--exe', str(stage / 'mc2.exe'), '--mission', 'a_0_1',"
+        },
+        {
+          "path": "tools/command_replay.py",
+          "line": 60,
+          "evidence": "command",
+          "reference": "scripts/run_smoke.py",
+          "text": "result = subprocess.run(command, cwd=ROOT, env=env, capture_output=True, text=True,"
         },
         {
           "path": "tools/mission_order_ingress_witness.py",
@@ -4397,7 +4454,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1547,
+          "line": 1548,
           "evidence": "command",
           "reference": "scripts/run_tools_tests.py",
           "text": "run_check_tri \"tools_tests\"             \"py -3 scripts/run_tools_tests.py\""
@@ -4433,6 +4490,13 @@
           "evidence": "import",
           "reference": "run_visual_capture",
           "text": "import run_visual_capture"
+        },
+        {
+          "path": "scripts/run_battle_bench.py",
+          "line": 20,
+          "evidence": "import",
+          "reference": "run_visual_capture",
+          "text": "import run_visual_capture as capture"
         },
         {
           "path": "tools/visual_verify/capture.py",
@@ -5281,7 +5345,7 @@
         },
         {
           "path": "tests/smoke/test_render_options_pin.py",
-          "line": 146,
+          "line": 147,
           "evidence": "import",
           "reference": "scripts.smoke_lib.gates",
           "text": "from scripts.smoke_lib.gates import Verdict"
@@ -5487,7 +5551,7 @@
         },
         {
           "path": "tests/smoke/test_render_options_pin.py",
-          "line": 147,
+          "line": 148,
           "evidence": "import",
           "reference": "scripts.smoke_lib.logparse",
           "text": "from scripts.smoke_lib.logparse import LogSummary"
@@ -5550,14 +5614,14 @@
         },
         {
           "path": "tools/test_sim_determinism.py",
-          "line": 32,
+          "line": 33,
           "evidence": "import",
           "reference": "scripts.smoke_lib.logparse",
           "text": "from scripts.smoke_lib.logparse import parse_log"
         },
         {
           "path": "tools/test_sim_determinism.py",
-          "line": 38,
+          "line": 39,
           "evidence": "import",
           "reference": "scripts.smoke_lib.logparse",
           "text": "from scripts.smoke_lib.logparse import parse_log"
@@ -6088,6 +6152,13 @@
       "callers_by_stem": []
     },
     {
+      "path": "scripts/tests/test_battle_bench.py",
+      "basename": "test_battle_bench.py",
+      "stem": "test_battle_bench",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
       "path": "scripts/tests/test_board_selftests.py",
       "basename": "test_board_selftests.py",
       "stem": "test_board_selftests",
@@ -6501,13 +6572,20 @@
       "callers_by_stem": []
     },
     {
+      "path": "scripts/tests/test_sim_determinism_strict.py",
+      "basename": "test_sim_determinism_strict.py",
+      "stem": "test_sim_determinism_strict",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
       "path": "scripts/tests/test_sim_include_firewall.py",
       "basename": "test_sim_include_firewall.py",
       "stem": "test_sim_include_firewall",
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1548,
+          "line": 1549,
           "evidence": "command",
           "reference": "scripts/tests/test_sim_include_firewall.py",
           "text": "run_check \"sim_include_firewall\"        \"py -3 -B scripts/tests/test_sim_include_firewall.py && py -3 scripts/check_sim_include_firewall.py\""
@@ -6554,6 +6632,13 @@
       "path": "scripts/tests/test_vk_offline_proofs.py",
       "basename": "test_vk_offline_proofs.py",
       "stem": "test_vk_offline_proofs",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "scripts/tests/test_world_order_diff.py",
+      "basename": "test_world_order_diff.py",
+      "stem": "test_world_order_diff",
       "callers_by_basename": [],
       "callers_by_stem": []
     },
@@ -6695,7 +6780,7 @@
         },
         {
           "path": "tools/blender_pipeline/fence_bundle.py",
-          "line": 180,
+          "line": 181,
           "evidence": "command",
           "reference": "tools/ase_to_glb.py",
           "text": "subprocess.run([sys.executable, str(HERE.parent / \"ase_to_glb.py\"),"
@@ -6711,7 +6796,7 @@
         },
         {
           "path": "tools/content_pipeline/frontends/stock_ase.py",
-          "line": 29,
+          "line": 30,
           "evidence": "import",
           "reference": "ase_to_glb",
           "text": "import ase_to_glb as ase  # noqa: E402"
@@ -6946,6 +7031,27 @@
           "evidence": "import",
           "reference": "tools.assets.catalog",
           "text": "from tools.assets.catalog import OBJECT, object_records, priority"
+        },
+        {
+          "path": "tests/assets/test_replace.py",
+          "line": 85,
+          "evidence": "import",
+          "reference": "tools.assets.catalog",
+          "text": "from tools.assets.catalog import load_catalog"
+        },
+        {
+          "path": "tools/assets/examples.py",
+          "line": 24,
+          "evidence": "import",
+          "reference": "tools.assets.catalog",
+          "text": "from tools.assets.catalog import load_catalog"
+        },
+        {
+          "path": "tools/assets/replace.py",
+          "line": 335,
+          "evidence": "import",
+          "reference": "tools.assets.catalog",
+          "text": "from tools.assets.catalog import load_catalog"
         }
       ]
     },
@@ -6978,7 +7084,7 @@
         },
         {
           "path": "tools/assets/catalog.py",
-          "line": 18,
+          "line": 19,
           "evidence": "import",
           "reference": "tools.assets.common",
           "text": "from tools.assets.common import (INSTALL_ROOT, INSTALLS, Install, bounds, fit_sections,"
@@ -7028,7 +7134,7 @@
         },
         {
           "path": "tools/assets/catalog.py",
-          "line": 21,
+          "line": 22,
           "evidence": "import",
           "reference": "tools.assets.mapgen_data",
           "text": "from tools.assets.mapgen_data import catalog as type_catalog, packet"
@@ -7050,14 +7156,14 @@
       "callers_by_stem": [
         {
           "path": "tests/assets/test_replace.py",
-          "line": 202,
+          "line": 206,
           "evidence": "import",
           "reference": "tools.assets.render",
           "text": "from tools.assets.render import render"
         },
         {
           "path": "tools/assets/catalog.py",
-          "line": 287,
+          "line": 306,
           "evidence": "import",
           "reference": "tools.assets.render",
           "text": "from tools.assets.render import sheets"
@@ -7093,21 +7199,21 @@
         },
         {
           "path": "tests/assets/test_replace.py",
-          "line": 220,
+          "line": 224,
           "evidence": "import",
           "reference": "tools.assets.replace",
           "text": "from tools.assets.replace import package"
         },
         {
           "path": "tests/assets/test_replace.py",
-          "line": 256,
+          "line": 260,
           "evidence": "import",
           "reference": "tools.assets.replace",
           "text": "from tools.assets.replace import package"
         },
         {
           "path": "tests/assets/test_replace.py",
-          "line": 267,
+          "line": 271,
           "evidence": "import",
           "reference": "tools.assets.replace",
           "text": "from tools.assets.replace import package"
@@ -7128,7 +7234,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 937,
+          "line": 938,
           "evidence": "command",
           "reference": "tools/axis_swizzle_ratchet.py",
           "text": "run_check \"axis_swizzle_ratchet\"     \"py -3 tools/axis_swizzle_ratchet.py --check\""
@@ -7304,7 +7410,7 @@
         },
         {
           "path": "tools/blender_pipeline/recipes/rebake_pbr.py",
-          "line": 36,
+          "line": 35,
           "evidence": "import",
           "reference": "_recipe_util",
           "text": "from _recipe_util import (  # noqa: E402"
@@ -7402,7 +7508,15 @@
       "basename": "test_ase_submaterial.py",
       "stem": "test_ase_submaterial",
       "callers_by_basename": [],
-      "callers_by_stem": []
+      "callers_by_stem": [
+        {
+          "path": "tools/content_pipeline/tests/test_content_pipeline.py",
+          "line": 293,
+          "evidence": "import",
+          "reference": "test_ase_submaterial",
+          "text": "from test_ase_submaterial import SINGLE_MAT_ASE"
+        }
+      ]
     },
     {
       "path": "tools/blender_pipeline/tests/test_asset_edit.py",
@@ -7546,7 +7660,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1341,
+          "line": 1342,
           "evidence": "command",
           "reference": "tools/callers.py",
           "text": "run_check \"script_callers\"              \"py -3 tools/callers.py --check\""
@@ -7598,7 +7712,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 998,
+          "line": 999,
           "evidence": "command",
           "reference": "tools/check_ubo_layout.py",
           "text": "run_check \"vk_ubo_layout\"          \"py -3 tools/check_ubo_layout.py\""
@@ -7613,7 +7727,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1000,
+          "line": 1001,
           "evidence": "command",
           "reference": "tools/check_vk_shaders.py",
           "text": "run_check \"vk_shaders_compile\"     \"py -3 tools/check_vk_shaders.py\""
@@ -7652,6 +7766,13 @@
       "callers_by_stem": []
     },
     {
+      "path": "tools/command_replay.py",
+      "basename": "command_replay.py",
+      "stem": "command_replay",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
       "path": "tools/comment_guard.py",
       "basename": "comment_guard.py",
       "stem": "comment_guard",
@@ -7681,14 +7802,14 @@
       "callers_by_stem": [
         {
           "path": "tests/assets/test_replace.py",
-          "line": 221,
+          "line": 225,
           "evidence": "import",
           "reference": "tools.content_pipeline",
           "text": "from tools.content_pipeline import cache, gltf_io, validate"
         },
         {
           "path": "tests/assets/test_replace.py",
-          "line": 257,
+          "line": 261,
           "evidence": "import",
           "reference": "tools.content_pipeline",
           "text": "from tools.content_pipeline import cache"
@@ -7702,7 +7823,7 @@
         },
         {
           "path": "tools/content_pipeline/cook.py",
-          "line": 30,
+          "line": 31,
           "evidence": "import",
           "reference": "tools.content_pipeline",
           "text": "from tools.content_pipeline import package  # noqa: E402"
@@ -7723,7 +7844,7 @@
         },
         {
           "path": "tools/content_pipeline/frontends/stock_ase.py",
-          "line": 25,
+          "line": 26,
           "evidence": "import",
           "reference": "tools.content_pipeline",
           "text": "from .. import gltf_io, ir"
@@ -7737,7 +7858,7 @@
         },
         {
           "path": "tools/content_pipeline/tests/test_content_pipeline.py",
-          "line": 13,
+          "line": 14,
           "evidence": "import",
           "reference": "tools.content_pipeline",
           "text": "from tools.content_pipeline import cache, gltf_io, ir, package, texcook, validate  # noqa: E402"
@@ -7773,21 +7894,21 @@
       "callers_by_stem": [
         {
           "path": "tests/assets/test_replace.py",
-          "line": 221,
+          "line": 225,
           "evidence": "import",
           "reference": "tools.content_pipeline.cache",
           "text": "from tools.content_pipeline import cache, gltf_io, validate"
         },
         {
           "path": "tests/assets/test_replace.py",
-          "line": 257,
+          "line": 261,
           "evidence": "import",
           "reference": "tools.content_pipeline.cache",
           "text": "from tools.content_pipeline import cache"
         },
         {
           "path": "tools/content_pipeline/tests/test_content_pipeline.py",
-          "line": 13,
+          "line": 14,
           "evidence": "import",
           "reference": "tools.content_pipeline.cache",
           "text": "from tools.content_pipeline import cache, gltf_io, ir, package, texcook, validate  # noqa: E402"
@@ -7823,7 +7944,7 @@
         },
         {
           "path": "tools/content_pipeline/cook.py",
-          "line": 31,
+          "line": 32,
           "evidence": "import",
           "reference": "tools.content_pipeline.frontends",
           "text": "from tools.content_pipeline.frontends import gltf_file, stock_ase  # noqa: E402"
@@ -7837,7 +7958,7 @@
         },
         {
           "path": "tools/content_pipeline/tests/test_content_pipeline.py",
-          "line": 14,
+          "line": 15,
           "evidence": "import",
           "reference": "tools.content_pipeline.frontends",
           "text": "from tools.content_pipeline.frontends import gltf_file, stock_ase  # noqa: E402"
@@ -7866,7 +7987,7 @@
         },
         {
           "path": "tools/content_pipeline/cook.py",
-          "line": 31,
+          "line": 32,
           "evidence": "import",
           "reference": "tools.content_pipeline.frontends.gltf_file",
           "text": "from tools.content_pipeline.frontends import gltf_file, stock_ase  # noqa: E402"
@@ -7880,7 +8001,7 @@
         },
         {
           "path": "tools/content_pipeline/tests/test_content_pipeline.py",
-          "line": 14,
+          "line": 15,
           "evidence": "import",
           "reference": "tools.content_pipeline.frontends.gltf_file",
           "text": "from tools.content_pipeline.frontends import gltf_file, stock_ase  # noqa: E402"
@@ -7895,14 +8016,14 @@
       "callers_by_stem": [
         {
           "path": "tools/content_pipeline/cook.py",
-          "line": 31,
+          "line": 32,
           "evidence": "import",
           "reference": "tools.content_pipeline.frontends.stock_ase",
           "text": "from tools.content_pipeline.frontends import gltf_file, stock_ase  # noqa: E402"
         },
         {
           "path": "tools/content_pipeline/tests/test_content_pipeline.py",
-          "line": 14,
+          "line": 15,
           "evidence": "import",
           "reference": "tools.content_pipeline.frontends.stock_ase",
           "text": "from tools.content_pipeline.frontends import gltf_file, stock_ase  # noqa: E402"
@@ -7917,7 +8038,7 @@
       "callers_by_stem": [
         {
           "path": "tests/assets/test_replace.py",
-          "line": 221,
+          "line": 225,
           "evidence": "import",
           "reference": "tools.content_pipeline.gltf_io",
           "text": "from tools.content_pipeline import cache, gltf_io, validate"
@@ -7931,7 +8052,7 @@
         },
         {
           "path": "tools/content_pipeline/frontends/stock_ase.py",
-          "line": 25,
+          "line": 26,
           "evidence": "import",
           "reference": "tools.content_pipeline.gltf_io",
           "text": "from .. import gltf_io, ir"
@@ -7945,7 +8066,7 @@
         },
         {
           "path": "tools/content_pipeline/tests/test_content_pipeline.py",
-          "line": 13,
+          "line": 14,
           "evidence": "import",
           "reference": "tools.content_pipeline.gltf_io",
           "text": "from tools.content_pipeline import cache, gltf_io, ir, package, texcook, validate  # noqa: E402"
@@ -7988,7 +8109,7 @@
         },
         {
           "path": "tools/content_pipeline/frontends/stock_ase.py",
-          "line": 25,
+          "line": 26,
           "evidence": "import",
           "reference": "tools.content_pipeline.ir",
           "text": "from .. import gltf_io, ir"
@@ -8016,7 +8137,7 @@
         },
         {
           "path": "tools/content_pipeline/tests/test_content_pipeline.py",
-          "line": 13,
+          "line": 14,
           "evidence": "import",
           "reference": "tools.content_pipeline.ir",
           "text": "from tools.content_pipeline import cache, gltf_io, ir, package, texcook, validate  # noqa: E402"
@@ -8052,14 +8173,14 @@
         },
         {
           "path": "tools/content_pipeline/cook.py",
-          "line": 30,
+          "line": 31,
           "evidence": "import",
           "reference": "tools.content_pipeline.package",
           "text": "from tools.content_pipeline import package  # noqa: E402"
         },
         {
           "path": "tools/content_pipeline/tests/test_content_pipeline.py",
-          "line": 13,
+          "line": 14,
           "evidence": "import",
           "reference": "tools.content_pipeline.package",
           "text": "from tools.content_pipeline import cache, gltf_io, ir, package, texcook, validate  # noqa: E402"
@@ -8095,7 +8216,7 @@
         },
         {
           "path": "tools/content_pipeline/tests/test_content_pipeline.py",
-          "line": 13,
+          "line": 14,
           "evidence": "import",
           "reference": "tools.content_pipeline.texcook",
           "text": "from tools.content_pipeline import cache, gltf_io, ir, package, texcook, validate  # noqa: E402"
@@ -8110,7 +8231,7 @@
       "callers_by_stem": [
         {
           "path": "tests/assets/test_replace.py",
-          "line": 221,
+          "line": 225,
           "evidence": "import",
           "reference": "tools.content_pipeline.validate",
           "text": "from tools.content_pipeline import cache, gltf_io, validate"
@@ -8124,7 +8245,7 @@
         },
         {
           "path": "tools/content_pipeline/tests/test_content_pipeline.py",
-          "line": 13,
+          "line": 14,
           "evidence": "import",
           "reference": "tools.content_pipeline.validate",
           "text": "from tools.content_pipeline import cache, gltf_io, ir, package, texcook, validate  # noqa: E402"
@@ -8196,7 +8317,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 927,
+          "line": 928,
           "evidence": "command",
           "reference": "tools/cxx17_ratchet/cxx17_ratchet.py",
           "text": "run_check \"cxx17_ratchet\"            \"py -3 tools/cxx17_ratchet/cxx17_ratchet.py --check\""
@@ -8349,7 +8470,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 932,
+          "line": 933,
           "evidence": "command",
           "reference": "tools/dup_lines_ratchet.py",
           "text": "run_check \"dup_lines_ratchet\"        \"py -3 tools/dup_lines_ratchet.py --check\""
@@ -8407,7 +8528,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 946,
+          "line": 947,
           "evidence": "command",
           "reference": "tools/file_size_ratchet.py",
           "text": "run_check \"file_size_ratchet\"        \"py -3 tools/file_size_ratchet.py --check\""
@@ -8533,7 +8654,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 999,
+          "line": 1000,
           "evidence": "command",
           "reference": "tools/glsl_port_diff.py",
           "text": "run_check \"glsl_port_diff\"         \"py -3 tools/glsl_port_diff.py --all\""
@@ -8548,7 +8669,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 989,
+          "line": 990,
           "evidence": "command",
           "reference": "tools/gpu_abi_gen.py",
           "text": "run_check \"gpu_abi\"                \"py -3 tools/gpu_abi_gen.py --check && py -3 -B -m pytest scripts/tests/test_gpu_abi_gen.py -q -p no:cacheprovider\""
@@ -8607,7 +8728,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 941,
+          "line": 942,
           "evidence": "command",
           "reference": "tools/journal_comment_ratchet.py",
           "text": "run_check \"journal_comment_ratchet\"  \"py -3 tools/journal_comment_ratchet.py --check\""
@@ -8733,6 +8854,777 @@
       "stem": "make_handoff",
       "callers_by_basename": [],
       "callers_by_stem": []
+    },
+    {
+      "path": "tools/mapgen/__init__.py",
+      "basename": "__init__.py",
+      "stem": "__init__",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "tools/mapgen/analyze.py",
+      "basename": "analyze.py",
+      "stem": "analyze",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tests/mapgen/test_corpus.py",
+          "line": 6,
+          "evidence": "import",
+          "reference": "tools.mapgen.analyze",
+          "text": "from tools.mapgen.analyze import archetype, clusters"
+        },
+        {
+          "path": "tests/mapgen/test_generate.py",
+          "line": 14,
+          "evidence": "import",
+          "reference": "tools.mapgen.analyze",
+          "text": "from tools.mapgen.analyze import aggregate, measure"
+        },
+        {
+          "path": "tools/mapgen/raster.py",
+          "line": 49,
+          "evidence": "import",
+          "reference": "tools.mapgen.analyze",
+          "text": "from tools.mapgen.analyze import clusters, valid_objects"
+        },
+        {
+          "path": "tools/mapgen/scale_metrics.py",
+          "line": 4,
+          "evidence": "import",
+          "reference": "tools.mapgen.analyze",
+          "text": "from tools.mapgen.analyze import clusters, structural, valid_objects"
+        }
+      ]
+    },
+    {
+      "path": "tools/mapgen/ascii.py",
+      "basename": "ascii.py",
+      "stem": "ascii",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tests/mapgen/test_ascii.py",
+          "line": 5,
+          "evidence": "import",
+          "reference": "tools.mapgen.ascii",
+          "text": "from tools.mapgen.ascii import render"
+        },
+        {
+          "path": "tools/mapgen/generate.py",
+          "line": 17,
+          "evidence": "import",
+          "reference": "tools.mapgen.ascii",
+          "text": "from tools.mapgen.ascii import render"
+        }
+      ]
+    },
+    {
+      "path": "tools/mapgen/common.py",
+      "basename": "common.py",
+      "stem": "common",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tests/mapgen/test_ascii.py",
+          "line": 6,
+          "evidence": "import",
+          "reference": "tools.mapgen.common",
+          "text": "from tools.mapgen.common import distance_field, spans"
+        },
+        {
+          "path": "tests/mapgen/test_corpus.py",
+          "line": 7,
+          "evidence": "import",
+          "reference": "tools.mapgen.common",
+          "text": "from tools.mapgen.common import load_json, output_path"
+        },
+        {
+          "path": "tests/mapgen/test_extract.py",
+          "line": 10,
+          "evidence": "import",
+          "reference": "tools.mapgen.common",
+          "text": "from tools.mapgen.common import mask_of, packed_cell, spans, world_cell"
+        },
+        {
+          "path": "tests/mapgen/test_generate.py",
+          "line": 15,
+          "evidence": "import",
+          "reference": "tools.mapgen.common",
+          "text": "from tools.mapgen.common import load_json, mask_of, spans"
+        },
+        {
+          "path": "tests/mapgen/test_macro.py",
+          "line": 6,
+          "evidence": "import",
+          "reference": "tools.mapgen.common",
+          "text": "from tools.mapgen.common import FLAT_DEG, slope_grid"
+        },
+        {
+          "path": "tests/mapgen/test_pixel_generate.py",
+          "line": 5,
+          "evidence": "import",
+          "reference": "tools.mapgen.common",
+          "text": "from tools.mapgen.common import CELL_WU, load_json"
+        },
+        {
+          "path": "tests/mapgen/test_raster.py",
+          "line": 9,
+          "evidence": "import",
+          "reference": "tools.mapgen.common",
+          "text": "from tools.mapgen.common import CELL_WU, load_json, write_json"
+        },
+        {
+          "path": "tests/mapgen/test_suburban_forest.py",
+          "line": 10,
+          "evidence": "import",
+          "reference": "tools.mapgen.common",
+          "text": "from tools.mapgen.common import load_json, mask_of"
+        },
+        {
+          "path": "tools/mapgen/analyze.py",
+          "line": 17,
+          "evidence": "import",
+          "reference": "tools.mapgen.common",
+          "text": "from tools.mapgen.common import (CELL_WU, FLAT_DEG, STEEP_DEG, building_role, components,"
+        },
+        {
+          "path": "tools/mapgen/ascii.py",
+          "line": 13,
+          "evidence": "import",
+          "reference": "tools.mapgen.common",
+          "text": "from tools.mapgen.common import building_role, load_json, output_path"
+        },
+        {
+          "path": "tools/mapgen/comparison.py",
+          "line": 11,
+          "evidence": "import",
+          "reference": "tools.mapgen.common",
+          "text": "from tools.mapgen.common import load_json, output_path"
+        },
+        {
+          "path": "tools/mapgen/extract.py",
+          "line": 17,
+          "evidence": "import",
+          "reference": "tools.mapgen.common",
+          "text": "from tools.mapgen.common import (CELL_WU, SCHEMA, STEEP_DEG, INSTALL_ROOT,"
+        },
+        {
+          "path": "tools/mapgen/footprints.py",
+          "line": 18,
+          "evidence": "import",
+          "reference": "tools.mapgen.common",
+          "text": "from tools.mapgen.common import CELL_WU, INSTALL_ROOT, building_role, load_json, spans, write_json"
+        },
+        {
+          "path": "tools/mapgen/generate.py",
+          "line": 18,
+          "evidence": "import",
+          "reference": "tools.mapgen.common",
+          "text": "from tools.mapgen.common import (CELL_WU, FLAT_DEG, LAYERS, SCHEMA, STEEP_DEG,"
+        },
+        {
+          "path": "tools/mapgen/macro.py",
+          "line": 10,
+          "evidence": "import",
+          "reference": "tools.mapgen.common",
+          "text": "from tools.mapgen.common import components, distance_field"
+        },
+        {
+          "path": "tools/mapgen/mission_writer.py",
+          "line": 19,
+          "evidence": "import",
+          "reference": "tools.mapgen.common",
+          "text": "from tools.mapgen.common import (CELL_WU, load_json, mask_of, output_path, packed_cell,"
+        },
+        {
+          "path": "tools/mapgen/placement.py",
+          "line": 12,
+          "evidence": "import",
+          "reference": "tools.mapgen.common",
+          "text": "from tools.mapgen.common import CELL_WU, FLAT_DEG, distance_field, mask_of, packed_cell, slope_grid"
+        },
+        {
+          "path": "tools/mapgen/placement.py",
+          "line": 299,
+          "evidence": "import",
+          "reference": "tools.mapgen.common",
+          "text": "from tools.mapgen.common import spans"
+        },
+        {
+          "path": "tools/mapgen/playable_demo.py",
+          "line": 7,
+          "evidence": "import",
+          "reference": "tools.mapgen.common",
+          "text": "from tools.mapgen.common import output_path, write_json"
+        },
+        {
+          "path": "tools/mapgen/raster.py",
+          "line": 14,
+          "evidence": "import",
+          "reference": "tools.mapgen.common",
+          "text": "from tools.mapgen.common import CELL_WU, building_role, load_json, mask_of, output_path, write_json"
+        },
+        {
+          "path": "tools/mapgen/scale_metrics.py",
+          "line": 5,
+          "evidence": "import",
+          "reference": "tools.mapgen.common",
+          "text": "from tools.mapgen.common import components, mask_of"
+        },
+        {
+          "path": "tools/mapgen/scale_metrics.py",
+          "line": 58,
+          "evidence": "import",
+          "reference": "tools.mapgen.common",
+          "text": "from tools.mapgen.common import load_json,write_json"
+        },
+        {
+          "path": "tools/mapgen/scale_review.py",
+          "line": 14,
+          "evidence": "import",
+          "reference": "tools.mapgen.common",
+          "text": "from tools.mapgen.common import load_json,output_path,write_json"
+        },
+        {
+          "path": "tools/mapgen/suburban_forest.py",
+          "line": 17,
+          "evidence": "import",
+          "reference": "tools.mapgen.common",
+          "text": "from tools.mapgen.common import (CELL_WU, distance_field, mask_of, output_path,"
+        },
+        {
+          "path": "tools/mapgen/validate.py",
+          "line": 13,
+          "evidence": "import",
+          "reference": "tools.mapgen.common",
+          "text": "from tools.mapgen.common import (FLAT_DEG, SCHEMA, components, distance, distance_field,"
+        },
+        {
+          "path": "tools/mapgen/validate.py",
+          "line": 186,
+          "evidence": "import",
+          "reference": "tools.mapgen.common",
+          "text": "from tools.mapgen.common import CELL_WU, building_role"
+        }
+      ]
+    },
+    {
+      "path": "tools/mapgen/comparison.py",
+      "basename": "comparison.py",
+      "stem": "comparison",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "tools/mapgen/data.py",
+      "basename": "data.py",
+      "stem": "data",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tests/mapgen/test_extract.py",
+          "line": 11,
+          "evidence": "import",
+          "reference": "tools.mapgen.data",
+          "text": "from tools.mapgen.data import Install, catalog, fit_sections, packet"
+        },
+        {
+          "path": "tools/mapgen/extract.py",
+          "line": 19,
+          "evidence": "import",
+          "reference": "tools.mapgen.data",
+          "text": "from tools.mapgen.data import Install, catalog, fit_sections, overlay_catalog, packet"
+        },
+        {
+          "path": "tools/mapgen/footprints.py",
+          "line": 19,
+          "evidence": "import",
+          "reference": "tools.mapgen.data",
+          "text": "from tools.mapgen.data import Install, catalog, fit_sections, packet"
+        },
+        {
+          "path": "tools/mapgen/mission_writer.py",
+          "line": 21,
+          "evidence": "import",
+          "reference": "tools.mapgen.data",
+          "text": "from tools.mapgen.data import Install, catalog, fit_sections, packet, overlay_catalog"
+        },
+        {
+          "path": "tools/mapgen/playable_demo.py",
+          "line": 8,
+          "evidence": "import",
+          "reference": "tools.mapgen.data",
+          "text": "from tools.mapgen.data import Install"
+        }
+      ]
+    },
+    {
+      "path": "tools/mapgen/extract.py",
+      "basename": "extract.py",
+      "stem": "extract",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tests/mapgen/test_extract.py",
+          "line": 12,
+          "evidence": "import",
+          "reference": "tools.mapgen.extract",
+          "text": "from tools.mapgen.extract import OBJECT, VERTEX, extract_mission"
+        },
+        {
+          "path": "tests/mapgen/test_suburban_forest.py",
+          "line": 11,
+          "evidence": "import",
+          "reference": "tools.mapgen.extract",
+          "text": "from tools.mapgen.extract import VERTEX"
+        },
+        {
+          "path": "tools/mapgen/footprints.py",
+          "line": 20,
+          "evidence": "import",
+          "reference": "tools.mapgen.extract",
+          "text": "from tools.mapgen.extract import DEFAULT_OUT, INSTALLS"
+        },
+        {
+          "path": "tools/mapgen/mission_writer.py",
+          "line": 22,
+          "evidence": "import",
+          "reference": "tools.mapgen.extract",
+          "text": "from tools.mapgen.extract import OBJECT, VERTEX, extract_mission"
+        }
+      ]
+    },
+    {
+      "path": "tools/mapgen/footprints.py",
+      "basename": "footprints.py",
+      "stem": "footprints",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tests/mapgen/test_footprints.py",
+          "line": 7,
+          "evidence": "import",
+          "reference": "tools.mapgen.footprints",
+          "text": "from tools.mapgen.footprints import ase_points, hull, measure, radius_footprint, tgl_points"
+        },
+        {
+          "path": "tests/mapgen/test_pixel_generate.py",
+          "line": 7,
+          "evidence": "import",
+          "reference": "tools.mapgen.footprints",
+          "text": "from tools.mapgen.footprints import table"
+        },
+        {
+          "path": "tests/mapgen/test_raster.py",
+          "line": 10,
+          "evidence": "import",
+          "reference": "tools.mapgen.footprints",
+          "text": "from tools.mapgen.footprints import table"
+        },
+        {
+          "path": "tools/mapgen/placement.py",
+          "line": 13,
+          "evidence": "import",
+          "reference": "tools.mapgen.footprints",
+          "text": "from tools.mapgen.footprints import table"
+        },
+        {
+          "path": "tools/mapgen/raster.py",
+          "line": 15,
+          "evidence": "import",
+          "reference": "tools.mapgen.footprints",
+          "text": "from tools.mapgen.footprints import lookup, table"
+        },
+        {
+          "path": "tools/mapgen/validate.py",
+          "line": 187,
+          "evidence": "import",
+          "reference": "tools.mapgen.footprints",
+          "text": "from tools.mapgen.footprints import table"
+        }
+      ]
+    },
+    {
+      "path": "tools/mapgen/generate.py",
+      "basename": "generate.py",
+      "stem": "generate",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tests/mapgen/test_generate.py",
+          "line": 16,
+          "evidence": "import",
+          "reference": "tools.mapgen.generate",
+          "text": "from tools.mapgen.generate import PROFILE_PATH, generate, route"
+        },
+        {
+          "path": "tests/mapgen/test_macro.py",
+          "line": 7,
+          "evidence": "import",
+          "reference": "tools.mapgen.generate",
+          "text": "from tools.mapgen.generate import generate, synthetic_terrain"
+        },
+        {
+          "path": "tests/mapgen/test_mission_writer.py",
+          "line": 6,
+          "evidence": "import",
+          "reference": "tools.mapgen.generate",
+          "text": "from tools.mapgen.generate import generate"
+        },
+        {
+          "path": "tests/mapgen/test_pixel_generate.py",
+          "line": 6,
+          "evidence": "import",
+          "reference": "tools.mapgen.generate",
+          "text": "from tools.mapgen.generate import PROFILE_PATH, generate"
+        },
+        {
+          "path": "tests/mapgen/test_suburban_forest.py",
+          "line": 12,
+          "evidence": "import",
+          "reference": "tools.mapgen.generate",
+          "text": "from tools.mapgen.generate import generate"
+        },
+        {
+          "path": "tools/mapgen/playable_demo.py",
+          "line": 9,
+          "evidence": "import",
+          "reference": "tools.mapgen.generate",
+          "text": "from tools.mapgen.generate import generate"
+        },
+        {
+          "path": "tools/mapgen/suburban_forest.py",
+          "line": 34,
+          "evidence": "import",
+          "reference": "tools.mapgen.generate",
+          "text": "from tools.mapgen.generate import nearest, plan_cells, route"
+        }
+      ]
+    },
+    {
+      "path": "tools/mapgen/macro.py",
+      "basename": "macro.py",
+      "stem": "macro",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tests/mapgen/test_macro.py",
+          "line": 8,
+          "evidence": "import",
+          "reference": "tools.mapgen.macro",
+          "text": "from tools.mapgen.macro import plan, valley_route"
+        },
+        {
+          "path": "tools/mapgen/generate.py",
+          "line": 171,
+          "evidence": "import",
+          "reference": "tools.mapgen.macro",
+          "text": "from tools.mapgen.macro import plan"
+        }
+      ]
+    },
+    {
+      "path": "tools/mapgen/mission_writer.py",
+      "basename": "mission_writer.py",
+      "stem": "mission_writer",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tests/mapgen/test_mission_writer.py",
+          "line": 7,
+          "evidence": "import",
+          "reference": "tools.mapgen.mission_writer",
+          "text": "from tools.mapgen.mission_writer import snapped, collision_grid, place_units"
+        },
+        {
+          "path": "tests/mapgen/test_suburban_forest.py",
+          "line": 13,
+          "evidence": "import",
+          "reference": "tools.mapgen.mission_writer",
+          "text": "from tools.mapgen.mission_writer import collision_grid, place_units, snapped, terrain_packet"
+        },
+        {
+          "path": "tools/mapgen/playable_demo.py",
+          "line": 10,
+          "evidence": "import",
+          "reference": "tools.mapgen.mission_writer",
+          "text": "from tools.mapgen.mission_writer import STOCK, emit"
+        }
+      ]
+    },
+    {
+      "path": "tools/mapgen/move_writer.py",
+      "basename": "move_writer.py",
+      "stem": "move_writer",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tests/mapgen/test_move_writer.py",
+          "line": 6,
+          "evidence": "import",
+          "reference": "tools.mapgen.move_writer",
+          "text": "from tools.mapgen.move_writer import build_move, validate_move, distances, global_packets"
+        },
+        {
+          "path": "tools/mapgen/mission_writer.py",
+          "line": 23,
+          "evidence": "import",
+          "reference": "tools.mapgen.move_writer",
+          "text": "from tools.mapgen.move_writer import build_move, validate_move"
+        },
+        {
+          "path": "tools/mapgen/mission_writer.py",
+          "line": 151,
+          "evidence": "import",
+          "reference": "tools.mapgen.move_writer",
+          "text": "from tools.mapgen.move_writer import distances"
+        }
+      ]
+    },
+    {
+      "path": "tools/mapgen/placement.py",
+      "basename": "placement.py",
+      "stem": "placement",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tests/mapgen/test_pixel_generate.py",
+          "line": 8,
+          "evidence": "import",
+          "reference": "tools.mapgen.placement",
+          "text": "from tools.mapgen.placement import Spatial, cell_of, overlaps"
+        },
+        {
+          "path": "tests/mapgen/test_suburban_forest.py",
+          "line": 16,
+          "evidence": "import",
+          "reference": "tools.mapgen.placement",
+          "text": "from tools.mapgen.placement import interlocking_crowns"
+        },
+        {
+          "path": "tools/mapgen/generate.py",
+          "line": 460,
+          "evidence": "import",
+          "reference": "tools.mapgen.placement",
+          "text": "from tools.mapgen.placement import upgrade"
+        },
+        {
+          "path": "tools/mapgen/mission_writer.py",
+          "line": 24,
+          "evidence": "import",
+          "reference": "tools.mapgen.placement",
+          "text": "from tools.mapgen.placement import Spatial, covered_cells, overlaps, interlocking_crowns"
+        },
+        {
+          "path": "tools/mapgen/validate.py",
+          "line": 188,
+          "evidence": "import",
+          "reference": "tools.mapgen.placement",
+          "text": "from tools.mapgen.placement import Spatial, bounds, cell_of, covered_cells, overlaps, interlocking_crowns"
+        }
+      ]
+    },
+    {
+      "path": "tools/mapgen/playable_demo.py",
+      "basename": "playable_demo.py",
+      "stem": "playable_demo",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "tools/mapgen/raster.py",
+      "basename": "raster.py",
+      "stem": "raster",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tests/mapgen/test_pixel_generate.py",
+          "line": 9,
+          "evidence": "import",
+          "reference": "tools.mapgen.raster",
+          "text": "from tools.mapgen.raster import polygon"
+        },
+        {
+          "path": "tests/mapgen/test_raster.py",
+          "line": 11,
+          "evidence": "import",
+          "reference": "tools.mapgen.raster",
+          "text": "from tools.mapgen.raster import (COLOURS, TEAM_COLOURS, TERRAIN_COLOURS,"
+        },
+        {
+          "path": "tools/mapgen/comparison.py",
+          "line": 12,
+          "evidence": "import",
+          "reference": "tools.mapgen.raster",
+          "text": "from tools.mapgen.raster import crop_base, render"
+        },
+        {
+          "path": "tools/mapgen/generate.py",
+          "line": 502,
+          "evidence": "import",
+          "reference": "tools.mapgen.raster",
+          "text": "from tools.mapgen.raster import render as raster, crop_base"
+        },
+        {
+          "path": "tools/mapgen/mission_writer.py",
+          "line": 25,
+          "evidence": "import",
+          "reference": "tools.mapgen.raster",
+          "text": "from tools.mapgen.raster import polygon, render"
+        },
+        {
+          "path": "tools/mapgen/placement.py",
+          "line": 14,
+          "evidence": "import",
+          "reference": "tools.mapgen.raster",
+          "text": "from tools.mapgen.raster import polygon, world_position"
+        },
+        {
+          "path": "tools/mapgen/scale_review.py",
+          "line": 15,
+          "evidence": "import",
+          "reference": "tools.mapgen.raster",
+          "text": "from tools.mapgen.raster import render"
+        },
+        {
+          "path": "tools/mapgen/validate.py",
+          "line": 189,
+          "evidence": "import",
+          "reference": "tools.mapgen.raster",
+          "text": "from tools.mapgen.raster import polygon"
+        }
+      ]
+    },
+    {
+      "path": "tools/mapgen/scale_metrics.py",
+      "basename": "scale_metrics.py",
+      "stem": "scale_metrics",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tests/mapgen/test_generate.py",
+          "line": 18,
+          "evidence": "import",
+          "reference": "tools.mapgen.scale_metrics",
+          "text": "from tools.mapgen.scale_metrics import measure_scale"
+        },
+        {
+          "path": "tools/mapgen/scale_review.py",
+          "line": 16,
+          "evidence": "import",
+          "reference": "tools.mapgen.scale_metrics",
+          "text": "from tools.mapgen.scale_metrics import measure_scale"
+        }
+      ]
+    },
+    {
+      "path": "tools/mapgen/scale_review.py",
+      "basename": "scale_review.py",
+      "stem": "scale_review",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "tools/mapgen/suburban_forest.py",
+      "basename": "suburban_forest.py",
+      "stem": "suburban_forest",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tests/mapgen/test_suburban_forest.py",
+          "line": 15,
+          "evidence": "import",
+          "reference": "tools.mapgen.suburban_forest",
+          "text": "from tools.mapgen.suburban_forest import cook_colormap"
+        },
+        {
+          "path": "tools/mapgen/generate.py",
+          "line": 465,
+          "evidence": "import",
+          "reference": "tools.mapgen.suburban_forest",
+          "text": "from tools.mapgen.suburban_forest import plan"
+        },
+        {
+          "path": "tools/mapgen/generate.py",
+          "line": 506,
+          "evidence": "import",
+          "reference": "tools.mapgen.suburban_forest",
+          "text": "from tools.mapgen.suburban_forest import feature_mask"
+        },
+        {
+          "path": "tools/mapgen/mission_writer.py",
+          "line": 201,
+          "evidence": "import",
+          "reference": "tools.mapgen.suburban_forest",
+          "text": "from tools.mapgen.suburban_forest import colours"
+        },
+        {
+          "path": "tools/mapgen/mission_writer.py",
+          "line": 318,
+          "evidence": "import",
+          "reference": "tools.mapgen.suburban_forest",
+          "text": "from tools.mapgen.suburban_forest import cook_colormap"
+        },
+        {
+          "path": "tools/mapgen/mission_writer.py",
+          "line": 368,
+          "evidence": "import",
+          "reference": "tools.mapgen.suburban_forest",
+          "text": "from tools.mapgen.suburban_forest import feature_mask"
+        },
+        {
+          "path": "tools/mapgen/raster.py",
+          "line": 131,
+          "evidence": "import",
+          "reference": "tools.mapgen.suburban_forest",
+          "text": "from tools.mapgen.suburban_forest import colours"
+        }
+      ]
+    },
+    {
+      "path": "tools/mapgen/validate.py",
+      "basename": "validate.py",
+      "stem": "validate",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tests/mapgen/test_generate.py",
+          "line": 17,
+          "evidence": "import",
+          "reference": "tools.mapgen.validate",
+          "text": "from tools.mapgen.validate import validate"
+        },
+        {
+          "path": "tests/mapgen/test_pixel_generate.py",
+          "line": 10,
+          "evidence": "import",
+          "reference": "tools.mapgen.validate",
+          "text": "from tools.mapgen.validate import validate"
+        },
+        {
+          "path": "tests/mapgen/test_suburban_forest.py",
+          "line": 14,
+          "evidence": "import",
+          "reference": "tools.mapgen.validate",
+          "text": "from tools.mapgen.validate import validate, validate_footprints"
+        },
+        {
+          "path": "tools/mapgen/generate.py",
+          "line": 21,
+          "evidence": "import",
+          "reference": "tools.mapgen.validate",
+          "text": "from tools.mapgen.validate import validate"
+        },
+        {
+          "path": "tools/mapgen/mission_writer.py",
+          "line": 284,
+          "evidence": "import",
+          "reference": "tools.mapgen.validate",
+          "text": "from tools.mapgen.validate import validate"
+        }
+      ]
     },
     {
       "path": "tools/material_cook/tests/run_tests.sh",
@@ -9617,7 +10509,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1338,
+          "line": 1339,
           "evidence": "command",
           "reference": "tools/own_inventory.py",
           "text": "run_check \"own_inventory\"               \"py -3 tools/own_inventory.py --check\""
@@ -9638,6 +10530,13 @@
       "stem": "pak_append",
       "callers_by_basename": [],
       "callers_by_stem": [
+        {
+          "path": "tools/mapgen/mission_writer.py",
+          "line": 26,
+          "evidence": "import",
+          "reference": "tools.pak_append",
+          "text": "from tools.pak_append import PacketRecord, make_zlib_payload, write_pak"
+        },
         {
           "path": "tools/terrain_beautify/scatter_tool.py",
           "line": 63,
@@ -9798,7 +10697,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1339,
+          "line": 1340,
           "evidence": "command",
           "reference": "tools/pointer_order_scan.py",
           "text": "run_check \"pointer_order_scan\"          \"py -3 tools/pointer_order_scan.py --check\""
@@ -10298,7 +11197,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1335,
+          "line": 1336,
           "evidence": "command",
           "reference": "tools/save_inspect.py",
           "text": "run_check \"save_inspect\"                \"py -3 tools/save_inspect.py selftest\""
@@ -10335,7 +11234,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1342,
+          "line": 1343,
           "evidence": "command",
           "reference": "tools/savegame_backup.py",
           "text": "run_check \"savegame_backup\"             \"py -3 tools/savegame_backup.py selftest\""
@@ -10386,7 +11285,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1334,
+          "line": 1335,
           "evidence": "command",
           "reference": "tools/saveload_roundtrip.py",
           "text": "run_check \"saveload_roundtrip\"          \"py -3 tools/saveload_roundtrip.py selftest\""
@@ -10409,7 +11308,7 @@
         },
         {
           "path": "tools/test_sim_determinism.py",
-          "line": 39,
+          "line": 40,
           "evidence": "import",
           "reference": "saveload_roundtrip",
           "text": "import saveload_roundtrip as rt"
@@ -10438,7 +11337,7 @@
       "callers_by_basename": [
         {
           "path": "GameOS/gameos/CMakeLists.txt",
-          "line": 480,
+          "line": 483,
           "evidence": "cmake command",
           "reference": "${CMAKE_SOURCE_DIR}/tools/shader_offline_build/slang_compile.py",
           "text": "COMMAND \"${Python3_EXECUTABLE}\""
@@ -10496,7 +11395,7 @@
       "callers_by_basename": [
         {
           "path": "CMakeLists.txt",
-          "line": 907,
+          "line": 910,
           "evidence": "cmake command",
           "reference": "${CMAKE_SOURCE_DIR}/tools/shader_reflect/reflect.py",
           "text": "COMMAND ${Python3_EXECUTABLE}"
@@ -10541,10 +11440,10 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1332,
+          "line": 1333,
           "evidence": "command",
           "reference": "tools/sim_determinism.py",
-          "text": "run_check \"sim_determinism\"             \"py -3 tools/sim_determinism.py selftest\""
+          "text": "run_check \"sim_determinism\"             \"py -3 tools/sim_determinism.py selftest && py -3 -B -m pytest scripts/tests/test_sim_determinism_strict.py scripts/tests/test_world_order_diff.py -q -p no:cacheprovider\""
         }
       ],
       "callers_by_stem": [
@@ -10554,6 +11453,13 @@
           "evidence": "import",
           "reference": "sim_determinism",
           "text": "import sim_determinism as sd  # noqa: E402"
+        },
+        {
+          "path": "scripts/tests/test_sim_determinism_strict.py",
+          "line": 10,
+          "evidence": "import",
+          "reference": "sim_determinism",
+          "text": "import sim_determinism as sim"
         },
         {
           "path": "tools/battery.py",
@@ -10672,7 +11578,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 948,
+          "line": 949,
           "evidence": "command",
           "reference": "tools/split/split_map.py",
           "text": "run_check \"split_map\"                 \"py -3 tools/split/split_map.py --check\""
@@ -12466,7 +13372,7 @@
       "callers_by_basename": [
         {
           "path": "tests/smoke/test_render_options_pin.py",
-          "line": 123,
+          "line": 124,
           "evidence": "load module",
           "reference": "tools/tracy_capture_compare.py",
           "text": "spec = importlib.util.spec_from_file_location(\"tracy_capture_compare_under_test\", ROOT / \"tools\" / \"tracy_capture_compare.py\")"
@@ -12924,7 +13830,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1340,
+          "line": 1341,
           "evidence": "command",
           "reference": "tools/verified.py",
           "text": "run_check \"verified_ledger\"             \"py -3 tools/verified.py check\""
@@ -13211,7 +14117,7 @@
       "callers_by_stem": [
         {
           "path": "tests/smoke/test_render_options_pin.py",
-          "line": 103,
+          "line": 104,
           "evidence": "import",
           "reference": "capture_ab",
           "text": "import capture_ab"
@@ -13398,7 +14304,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1052,
+          "line": 1053,
           "evidence": "command",
           "reference": "tools/vk_ownership_ledger.py",
           "text": "run_check \"vk_ownership_ledger\"    \"py -3 tools/vk_ownership_ledger.py --check\""
@@ -13412,6 +14318,21 @@
       "stem": "witness_smoke",
       "callers_by_basename": [],
       "callers_by_stem": []
+    },
+    {
+      "path": "tools/world_order_diff.py",
+      "basename": "world_order_diff.py",
+      "stem": "world_order_diff",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "scripts/tests/test_world_order_diff.py",
+          "line": 8,
+          "evidence": "import",
+          "reference": "world_order_diff",
+          "text": "import world_order_diff as diff"
+        }
+      ]
     }
   ]
 }

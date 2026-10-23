@@ -1,3 +1,4 @@
+#include "vtol_simulation.h"
 // MissionInterfaceManager: air strikes, reinforcements, VTOL calls, salvage, repair, pause API, nav markers and sensor strikes.
 // Declared in the class headers; shared names in missiongui_shared_internal.h.
 #include "missiongui_shared_internal.h"
@@ -275,15 +276,15 @@ void MissionInterfaceManager::beginVtol (long supportID, long commanderID, glm::
 	
 	vTol[commanderID]->setObjectParameters( newPos, 0, false, Team::home->id, 0);
 	eye->update();
-	vTol[commanderID]->update();
+	// The tick advances its authoritative clip; presentation poses the new actor.
 	vTol[commanderID]->setInView( true );
 	vTol[commanderID]->setVisibility( 1, 1 );
 	vTol[commanderID]->rotation = rotation;
 	
 	if (vehicleID[commanderID] != 147)
-		vTol[commanderID]->setGesture(0);		//Start Animation at beginning
+		setVtolSimulationGesture(*vTol[commanderID], 0);		//Start Animation at beginning
 	else
-		vTol[commanderID]->setGesture(1);		//Start Animation with Landing -- KARNOV
+		setVtolSimulationGesture(*vTol[commanderID], 1);		//Start Animation with Landing -- KARNOV
 
 	if (dustCloud[commanderID])
 	{

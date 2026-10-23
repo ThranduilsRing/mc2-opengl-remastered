@@ -225,30 +225,32 @@ void GVAppearance::setGesture (unsigned long gestureId)
 		return;
 		
 	appearType->setAnimation(gvShape,gestureId);
-	gvAnimationState = gestureId;
-	currentFrame = 0.0f;
+	unitAnim().gvAnimationState = gestureId;
+	unitAnim().currentFrame = 0.0f;
 	if (appearType->gvStartF[gestureId])
-		currentFrame = appearType->gvStartF[gestureId];
+		unitAnim().currentFrame = appearType->gvStartF[gestureId];
 		
-	isReversed = false;
+	unitAnim().isReversed = false;
 	
-	if (appearType->isReversed(gvAnimationState))
+	if (appearType->isReversed(unitAnim().gvAnimationState))
 	{
-		currentFrame = appearType->getNumFrames(gvAnimationState)-1;
-		isReversed = true;
+		unitAnim().currentFrame = appearType->getNumFrames(unitAnim().gvAnimationState)-1;
+		unitAnim().isReversed = true;
 	}
 	
-	if (appearType->isRandom(gvAnimationState))
+	if (appearType->isRandom(unitAnim().gvAnimationState))
 	{
-		currentFrame = mc2_appearance_rng::randomNumber(appearType->getNumFrames(gvAnimationState)-1);
+		const long count = appearType->getNumFrames(unitAnim().gvAnimationState)-1;
+		unitAnim().currentFrame = simPresentationPass || !simulationOwned() ?
+			mc2_appearance_rng::randomNumber(count) : mc2_anim_rng::randomNumber(count);
 	}
 	
-	isLooping = appearType->isLooped(gvAnimationState);
+	unitAnim().isLooping = appearType->isLooped(unitAnim().gvAnimationState);
 	
-	gvFrameRate = appearType->getFrameRate(gvAnimationState);
+	unitAnim().gvFrameRate = appearType->getFrameRate(unitAnim().gvAnimationState);
 	
-	setFirstFrame = true;
-	canTransition = false;
+	unitAnim().setFirstFrame = true;
+	unitAnim().canTransition = false;
 }
 
 glm::vec3 GVAppearance::getHitNode (void)
@@ -267,7 +269,7 @@ void GVAppearance::setObjectParameters (const glm::vec3 &pos, float Rot, long se
 		movedThisFrame = true;
 	
 	rotation = Rot;
-	turretRotation = Rot;
+	unitAnim().turretRotation = Rot;
 
 	position = pos;
 
@@ -281,9 +283,9 @@ void GVAppearance::setObjectParameters (const glm::vec3 &pos, float Rot, long se
 
 void GVAppearance::setMoverParameters (float turretRot, float lArmRot, float rArmRot, bool isAirborne)
 {
-	turretRotation = turretRot;
-	pitch = lArmRot;
-	roll = rArmRot;
+	unitAnim().turretRotation = turretRot;
+	unitAnim().pitch = lArmRot;
+	unitAnim().roll = rArmRot;
 	isInfantry = isAirborne;
 }	
 
@@ -599,8 +601,8 @@ bool GVAppearance::recalcBounds (void)
 							gvShape = nullptr;
 
 							gvShape = appearType->gvShape[currentLOD]->CreateFrom();
-							if (gvAnimationState != -1)
-								appearType->setAnimation(gvShape,gvAnimationState);
+							if (unitAnim().gvAnimationState != -1)
+								appearType->setAnimation(gvShape,unitAnim().gvAnimationState);
 
 							gvShape->SetAlphaValue(alphaValue);
 
@@ -748,6 +750,11 @@ bool GVAppearance::playDestruction (void)
 
 glm::vec3 GVAppearance::getNodeNamePosition (const char *nodeName)
 {
+    if (!simPresentationPass && simPose->ready) {
+        const auto node = gvShape->GetNodeNameId(nodeName);
+        return node >= 0 && static_cast<size_t>(node) < simPose->shapeNodes.size()
+            ? simPose->shapeNodes[node] : simPose->root;
+    }
 	glm::vec3 result = position;
 
 	// C3: route to GPU-lagged visibility when killswitch is enabled.
@@ -767,7 +774,7 @@ glm::vec3 GVAppearance::getNodeNamePosition (const char *nodeName)
    	mc2ToRender(xlatPosition, position);
    
    	glm::quat torsoRot;
-   	torsoRot = mc2::math::quatFromEuler(mc2::math::Euler(0.0f,(turretRotation * DEGREES_TO_RADS),0.0f));
+   	torsoRot = mc2::math::quatFromEuler(mc2::math::Euler(0.0f,(unitAnim().turretRotation * DEGREES_TO_RADS),0.0f));
 	if (rotationalNodeIndex == -1)
 	   	rotationalNodeIndex = gvShape->SetNodeRotation(appearType->rotationalNodeId,&torsoRot);
 
@@ -785,6 +792,8 @@ glm::vec3 GVAppearance::getNodeNamePosition (const char *nodeName)
 
 glm::vec3 GVAppearance::getNodeIdPosition (long nodeId)
 {
+    if (!simPresentationPass && simPose->ready) return nodeId >= 0 && static_cast<size_t>(nodeId) < simPose->shapeNodes.size() ? simPose->shapeNodes[nodeId] : simPose->root;
+
 	glm::vec3 result = position;
 
 	// C3: route to GPU-lagged visibility when killswitch is enabled.
@@ -804,7 +813,7 @@ glm::vec3 GVAppearance::getNodeIdPosition (long nodeId)
    	mc2ToRender(xlatPosition, position);
    
    	glm::quat torsoRot;
-   	torsoRot = mc2::math::quatFromEuler(mc2::math::Euler(0.0f,(turretRotation * DEGREES_TO_RADS),0.0f));
+   	torsoRot = mc2::math::quatFromEuler(mc2::math::Euler(0.0f,(unitAnim().turretRotation * DEGREES_TO_RADS),0.0f));
 	if (rotationalNodeIndex == -1)
 	   	rotationalNodeIndex = gvShape->SetNodeRotation(appearType->rotationalNodeId,&torsoRot);
 

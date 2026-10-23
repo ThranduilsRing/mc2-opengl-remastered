@@ -1,0 +1,58 @@
+{
+  "after": {
+    "empty_land_fraction": 0.8642128823675702,
+    "largest_site_structures": 150,
+    "nn_cv": 0.20747761797528577,
+    "nn_median_cells": 163.4267113666226,
+    "parcel_area_max_min": 40.8,
+    "parcel_area_p10_p50_p90": [
+      110.0,
+      130.0,
+      180.0
+    ],
+    "parcel_nn_cv": 0.5035807843214732,
+    "parcel_structures_p10_p50_p90": [
+      1.0,
+      1.0,
+      5.0
+    ],
+    "road_components": 1,
+    "road_largest_fraction": 1.0,
+    "sites": 5,
+    "size_p10_p50_p90": [
+      6.2,
+      58.0,
+      123.2
+    ],
+    "tiny_site_fraction": 0.8780487804878049,
+    "tree_bin_cv": 1.2001690938624558
+  },
+  "before": {
+    "empty_land_fraction": 0.6078528827037774,
+    "largest_site_structures": 25,
+    "nn_cv": 0.35990815184921593,
+    "nn_median_cells": 33.31252115652025,
+    "parcel_area_max_min": 7.224852071005917,
+    "parcel_area_p10_p50_p90": [
+      209.2,
+      342.0,
+      817.5999999999997
+    ],
+    "parcel_nn_cv": 0.3395414284371569,
+    "parcel_structures_p10_p50_p90": [
+      6.0,
+      10.0,
+      16.799999999999997
+    ],
+    "road_components": 1,
+    "road_largest_fraction": 1.0,
+    "sites": 55,
+    "size_p10_p50_p90": [
+      6.0,
+      11.0,
+      18.6
+    ],
+    "tiny_site_fraction": 0.0,
+    "tree_bin_cv": 0.5185388420527434
+  }
+}

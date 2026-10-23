@@ -27,7 +27,7 @@ Read this file when working on coordinate spaces; verify pipeline claims against
 ## Render Pipeline
 - **Per-node VBO:** Terrain extras stored in texture manager nodes, filled per-node by quad.cpp, drawn per-batch by txmmgr.cpp renderLists().
 - **Post-process:** Scene -> RGBA16F FBO -> bloom (half-res ping-pong) -> composite fullscreen quad. All fullscreen draws disable GL_CULL_FACE.
-- **Render order (gamecam.cpp, CANNOT change):** land->render() (queues terrain) -> craterManager->render() (queues craters) -> ObjectManager->render() (DRAWS objects immediately via MLR) -> land->renderWater() (queues water) -> renderLists() (FLUSHES all queued).
+- **Render order (gamecam.cpp, CANNOT change):** land->render() (queues terrain) -> ObjectManager->render() (DRAWS objects immediately via MLR) -> land->renderWater() (queues water) -> renderLists() (FLUSHES all queued).
 - **renderLists() phases:** (1) Shadow pre-pass, (2) DRAWSOLID terrain (tessellated), (3) DRAWALPHA detail, (4) DRAWALPHA+ISCRATERS overlays, (5) non-terrain craters, (6) non-terrain alpha, (7) water, (8) terrain shadows.
 
 ## Shadow Pipeline

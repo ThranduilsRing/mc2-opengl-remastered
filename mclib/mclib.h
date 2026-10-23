@@ -143,9 +143,6 @@
 #include"dbasegui.h"
 #endif
 
-#ifndef CRATER_H
-#include"crater.h"
-#endif
 
 #ifndef FLOATHELP_H
 #include"floathelp.h"

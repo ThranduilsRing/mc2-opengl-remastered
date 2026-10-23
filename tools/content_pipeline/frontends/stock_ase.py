@@ -11,6 +11,7 @@ the albedo colour.
 """
 from __future__ import annotations
 
+import dataclasses
 import math
 import re
 import shutil
@@ -180,6 +181,7 @@ def _stock_colors(gltf, raw, geometry, source_text):
 def _runtime_frame_glb(ase_path):
     """Stock extractor output re-expressed in the importer frame (positions, normals, UVs)."""
     geometry, materials, helpers = ase.parse_ase(str(ase_path))
+    uv_present = {obj.node_name: bool(obj.tverts and obj.tfaces) for obj in geometry}
     gltf, raw, stats = ase.build_glb_data(geometry, materials, helpers)
     raw = _stock_colors(gltf, raw, geometry, Path(ase_path).read_text(encoding="utf-8", errors="replace"))
     binary = bytearray(raw)
@@ -197,7 +199,8 @@ def _runtime_frame_glb(ase_path):
     shifts = [translation(i) for i in range(len(nodes))]
     seen = set()
     for i, node in enumerate(nodes):
-        for prim in gltf["meshes"][node["mesh"]]["primitives"] if "mesh" in node else []:
+        mesh = gltf["meshes"][node["mesh"]] if "mesh" in node else {"primitives": []}
+        for prim in mesh["primitives"]:
             for semantic in ("POSITION", "NORMAL", "TEXCOORD_0"):
                 index = prim["attributes"][semantic]
                 if index in seen:
@@ -209,6 +212,11 @@ def _runtime_frame_glb(ase_path):
                 if semantic == "TEXCOORD_0":
                     # The extractor already writes glTF V (1 - v_ase), which the engine importer
                     # (Assimp's glTF flip + toMC2V) returns to stock TG V: keep it as written.
+                    if not uv_present.get(mesh.get("name"), True):
+                        # A mesh with no TFACE data samples TG's (0,0) default, not the extractor's flipped
+                        # default (0,1): helpers, windows and cones keep that exact texel, alpha included.
+                        for v in range(acc["count"]):
+                            struct.pack_into("<2f", binary, offset + v * 8, 0, 0)
                     continue
                 values = []
                 for v in range(acc["count"]):
@@ -272,8 +280,32 @@ def parse_ini(path):
     return ase.parse_fitini(str(path))
 
 
+def exclude_nodes(scene, materials, names):
+    """Keep explicitly reviewed overlays on legacy lighting, sharing their unchanged albedo.
+
+    A lit window can reuse a roof texel, so an atlas mask alone cannot exclude it. Each excluded
+    mesh's primitives move to an appended legacy copy of their material; the engine then routes
+    them through the legacy branch while the original slot becomes the authored one.
+    """
+    if not isinstance(names, (list, tuple)) or any(not isinstance(n, str) or not n for n in names) or len(set(names)) != len(names):
+        raise ValueError("excludeNodes requires distinct explicit mesh names")
+    unknown = set(names) - {m.name for m in scene.meshes}
+    if unknown:
+        raise ValueError("unknown excluded nodes: " + ", ".join(sorted(unknown)))
+    legacy = {}
+    for mesh in scene.meshes:
+        if mesh.name not in names:
+            continue
+        for prim in mesh.primitives:
+            if prim.material not in legacy:
+                legacy[prim.material] = len(materials)
+                materials.append(dataclasses.replace(materials[prim.material],
+                                                     name=f"{materials[prim.material].name}_legacy_{len(materials)}"))
+            prim.material = legacy[prim.material]
+
+
 def to_ir(prop, *, srcdata, texture_roots, slots=(), kind="building", work_dir=None, destroyed=True,
-          provenance_extra=(), detail_size=512):
+          provenance_extra=(), detail_size=512, exclude=()):
     """IR for one stock appearance; slots are reviewed detail mappings (may be empty)."""
     prop = checked_name(prop)
     srcdata = Path(srcdata)
@@ -296,6 +328,7 @@ def to_ir(prop, *, srcdata, texture_roots, slots=(), kind="building", work_dir=N
     for m in materials:
         if m.base_color:
             provenance.append(ir.Source("base_color", m.base_color.path, m.base_color.sha256, "stock"))
+    exclude_nodes(scene, materials, exclude)   # copies the still-legacy materials, before any slot is upgraded
     for row in slots:
         validate_slot(row)
         slot = row["slot"]
@@ -330,4 +363,5 @@ def to_ir(prop, *, srcdata, texture_roots, slots=(), kind="building", work_dir=N
     provenance += list(provenance_extra)
     return ir.Asset(id=prop.lower(), kind=kind, replaces=f"staticProp:{lod0.lower()}", materials=materials,
                     states=states, provenance=provenance,
-                    frontend={"name": "stock_ase", "prop": prop, "slots": [dict(r) for r in slots]}).check()
+                    frontend={"name": "stock_ase", "prop": prop, "slots": [dict(r) for r in slots],
+                              "excludeNodes": list(exclude)}).check()

@@ -1,0 +1,128 @@
+MagicExpansion/ai_glenn | 360x360 cells | 3 cells/char
+North up; cell crop [0,0)..[360,360); objects by team: {-1: 3, 0: 3, 1: 59}
+@ player start; O visible objective; B military; h town; I industry; H HQ/sensor; A airfield
+# wall/fence; + gate; T turret; C turret control; G generator; c gate control
+= road/bridge; : runway; . cement; ~ water; t trees; ^ slope>=35deg; % rock; , prop; ? unresolved
++------------------------------------------------------------------------------------------------------------------------+
+|                                                                                                                        |
+|                                                                                                                        |
+|                                                                                                                        |
+|                                                                                                                        |
+|                                                                                                                        |
+|                                                                                                                        |
+|                                                                                                                        |
+|                                                                                                                        |
+|                                                                                                                        |
+|                                                                                                                        |
+|                                                                                                                        |
+|                                                                                                                        |
+|                                                                                                                        |
+|                                                                                                                        |
+|                                                                                                                        |
+|                                                                                                                        |
+|                                                                                                                        |
+|                                                                                                                        |
+|                                                                                                                        |
+|                                                                                                                        |
+|                                                                                                                        |
+|                                                                                                                        |
+|                                                                                                                        |
+|                                                                                                                        |
+|                                                                                                                        |
+|                                                                                                                        |
+|                                                                                                                        |
+|                                                                                                                        |
+|                                                                                                                        |
+|                                                                                                                        |
+|                                                                                                                        |
+|                                                                                                                        |
+|                                                                                                                        |
+|                                                                                                                        |
+|                                                                                                                        |
+|                                                     tt                                                                 |
+|                                                      tt                                                                |
+|                                                        tttttttt                                                        |
+|                                                                                                                        |
+|                                                                    ~~                                                  |
+|                                                                    ~~                                                  |
+|                                     .              c.                                                                  |
+|                                    ...            ###+#### +###                                                        |
+|                                     .             #.....#...c.#                                                        |
+|                                                   #T....+.....#                                                        |
+|                                                   #..T........#                                                        |
+|                                                  t#C.T.G#.B.B.#                                                        |
+|                                                  t#############          .                                             |
+|                                                 t       #...@.#         ...                                            |
+|                                                 t  T G  #..B..#          .                                             |
+|                                                  t      #.....#                                                        |
+|                                               t tt C t  #.....#                                                        |
+|                                               t t    t  #######                                                        |
+|                                                 ttttttttt                                                              |
+|                                                  t                      .                                              |
+|                                                                        ...                                             |
+|                                                                         .                                              |
+|                                                                                                                        |
+|                                                                                                                        |
+|                                                                                                                        |
+|                                                                                                                        |
+|                                                                                                                        |
+|                                                                                                                        |
+|                                                                                                                        |
+|                                                                                                                        |
+|                                                                                                                        |
+|                                                                                                                        |
+|                                                                                                                        |
+|                                                                                                                        |
+|                                                                                                                        |
+|                                                                                                                        |
+|                                                                                                                        |
+|                                                                                                                        |
+|                                                                                                                        |
+|                                                                                                                        |
+|                                                                                                                        |
+|                                                                         tt                                             |
+|                                                                        tt t                                            |
+|                                                                       tt tt                                            |
+|                                                                       tttttt                                           |
+|                                                                       ttt t                                            |
+|                                                                       ttttt                                            |
+|                                                                       ttt                                              |
+|                                                                                                                        |
+|                                                                        tttt                                            |
+|                                                                        tttt                                            |
+|                                                                       ttttt                                            |
+|                                                                       ttttt                                            |
+|                                                                       ttttt                                            |
+|                                                                                                                        |
+|                                                                                                                        |
+|                                                                        tt                                              |
+|                                                                        ttt t                                           |
+|                                                                        ttt                                             |
+|                                                                        tt t                                            |
+|                                                                        ttt                                             |
+|                                                                        t                                               |
+|                                                                                                                        |
+|                                                                                                                        |
+|                                                                                                                        |
+|                                                                                                                        |
+|                                                                                                                        |
+|                                                                                                                        |
+|                                                                                                                        |
+|                                                                                                                        |
+|                                                                                                                        |
+|                                                                                                                        |
+|                                                                                                                        |
+|                                                                                                                        |
+|                                                                                                                        |
+|                                                                                                                        |
+|                                                                                                                        |
+|                                                                                                                        |
+|                                                                                                                        |
+|                                                                                                                        |
+|                                                                                                                        |
+|                                                                                                                        |
+|                                                                                                                        |
+|                                                                                                                        |
+|                                                                                                                        |
++------------------------------------------------------------------------------------------------------------------------+
+Coarse preview: highest-priority feature wins each character; object footprints are not drawn.

@@ -10,6 +10,7 @@
 
 #ifndef MOVER_H
 #define MOVER_H
+#include "unit_anim_state.h"
 
 #ifndef MCLIB_H
 #include"mclib.h"
@@ -774,6 +775,9 @@ enum MoveType {
 class LogisticsPilot;
 
 class Mover : public GameObject {
+public:
+    std::shared_ptr<mc2::sim::UnitAnimState> unitAnimation;
+    std::shared_ptr<mc2::sim::SimPose> simulationPose;
 
 	//------------
 	//Data Members

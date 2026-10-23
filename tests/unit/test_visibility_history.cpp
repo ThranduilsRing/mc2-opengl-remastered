@@ -4,6 +4,19 @@ using RenderCore::VisibilityHistory;
 using RenderCore::VisibilityTier;
 
 TEST_SUITE("VisibilityHistory") {
+TEST_CASE("dense terrain missions retain high actor IDs across range changes") {
+    VisibilityHistory h(1); h.advance();
+    auto high=[](uint32_t slot, VisibilityHistory::Sample& s) {
+        if (slot!=0) return false;
+        s.count=1; s.ids[0]=45000; s.bits[0]=0; return true;
+    };
+    REQUIRE(h.consume(high)==VisibilityTier::Tier1_NMinusOne);
+    CHECK(h.buildSnapshot(60001,false).overflow==0);
+    CHECK_FALSE(h.isVisible(45000));
+    CHECK(h.isVisible(60000)); // no submitted record stays conservative
+    CHECK(h.buildSnapshot(100,false).overflow==45000);
+    CHECK(h.isVisible(45000)); // stale/out-of-range handles fail open
+}
 TEST_CASE("accepted IDs remain paired across ring reuse and conservative OR") {
     VisibilityHistory h(3);
     auto first=[](uint32_t slot, VisibilityHistory::Sample& s) {

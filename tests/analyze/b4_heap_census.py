@@ -35,7 +35,6 @@ BATCHES = {
                      "mclib/mapdata.cpp", "mclib/mapdata.h"],
     "B4.3-txm": ["mclib/txmmgr*.cpp", "mclib/txmmgr*.h"],
     "B4.4-sound": ["mclib/soundsys.cpp", "mclib/soundsys.h", "code/gamesound.cpp", "code/gamesound.h", "code/radio.cpp", "code/radio.h"],
-    "B4.5-crater": ["mclib/crater.cpp", "mclib/crater.h"],
     "B4.6-collision": ["code/collsn.cpp", "code/collsn.h"],
 }
 
