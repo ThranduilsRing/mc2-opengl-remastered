@@ -958,7 +958,13 @@ static bool ensure_island(int size) {
     return true;
 }
 
-extern "C" int mc2_vk_shadow_island_prewarm(int,int) { return ensure_island(mc2shadow::shadowQuality().mapSide) ? 1 : 0; }
+extern "C" int mc2_vk_shadow_island_prewarm(int,int) {
+    if (!ensure_island(mc2shadow::shadowQuality().mapSide)) return 0;
+    auto* s=parkedIsland();
+    upload_geometry_once(s);
+    refresh_alpha_casters(s);
+    return 1;
+}
 
 bool mc2vk::bindMoverShadowDescriptors(VkDevice device, VkDescriptorSet set) {
     ShadowIsland* s=parkedIsland();

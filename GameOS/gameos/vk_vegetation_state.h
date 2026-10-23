@@ -90,6 +90,8 @@ public:
     // The draw side. Set 2 of the vegetation graphics pipeline layout: 0 = instances, 1 = dense survivor list, 2 = the frame's cull parameters (dynamic).
     // The layout exists before any population does; the island builds its pipeline layout from it.
     bool ensureDrawLayout(mc2vk::VulkanContext& ctx);
+    // Load-time creation of cull/scan/compact pipelines and population bindings.
+    bool prewarm(mc2vk::VulkanContext& ctx) { return ensurePipelines(ctx); }
     VkDescriptorSetLayout drawLayout() const { return drawDsl_.get(); }
     VkDescriptorSet drawSet(uint32_t par) const { return par < kSlots ? drawSets_[par] : VK_NULL_HANDLE; }
     // Dynamic offset of the cull parameters inside the ring span passed to the last record() of this parity.

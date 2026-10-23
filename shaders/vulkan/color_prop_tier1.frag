@@ -127,8 +127,12 @@ struct PoolLight {
     float intensity;
 };
 layout(set = 0, binding = 8, std430) readonly buffer PropPoolLightsVK {
-    PoolLight poolLights[];
+    PoolLight poolLights[256];
+    vec4 poolGridMinInv;
+    uvec4 poolGridInfo;
+    uint poolGridWords[];
 };
+#define MC2_OBJECT_POOL_GRID 1
 #include "../include/object_light_pool.hglsl"
 
 // GL static_prop.frag's pool term: albedo-modulated additive pool light at the MC2-frame world position.

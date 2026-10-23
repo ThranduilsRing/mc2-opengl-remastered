@@ -106,6 +106,21 @@ extern "C" int mc2_vk_terrain_island_prepare(int w, int h) {
     return ensure_island_ready(w, h) ? 1 : 0;
 }
 
+extern "C" int mc2_vk_terrain_island_prewarm(int w, int h) {
+    if (!ensure_island_ready(w, h)) return 0;
+    Mc2TerrainTier1Feed feed{};
+    if (!mc2_terrain_tier1_get_load_feed(&feed)) return 0;
+    auto* s = parkedIsland();
+    if (!snapshot_height(s, feed)) return 0;
+    import_colormap(s, feed);
+    import_cement(s, feed);
+    snapshot_cement(s, feed);
+    import_shore_mask(s, feed);
+    import_shore_field(s, feed);
+    if (feed.visualHeightCpu) snapshot_visual_height(s, feed);
+    return 1;
+}
+
 // VK-PARITY-TERRAIN-2: stage this frame's light pool + grid into slot [par] (same
 // per-frame cadence as GL's PackAndDispatch/BuildAndUploadLightGrid uploads). Any
 // staging failure degrades to "no pools" (numPoolLights=0), never a hole.

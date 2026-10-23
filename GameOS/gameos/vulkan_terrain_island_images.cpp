@@ -174,6 +174,7 @@ void import_colormap(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
                 // sRGB sources store the sRGB-encoded rgb (the sampler decodes to the same linear values the cook
                 // computed, with sRGB's dark-end precision); alpha is the cooked breakup in [0,1]. Half the VRAM
                 // of the former R16G16B16A16_SFLOAT upload (64 MB vs 128 MB at 4096^2).
+                const auto packStart = std::chrono::steady_clock::now();
                 const auto toByte = [](float v) { return uint8_t(std::lround(std::clamp(v, 0.0f, 1.0f) * 255.0f)); };
                 const auto encode = [&](float v) {
                     v = std::clamp(v, 0.0f, 1.0f);
@@ -185,6 +186,8 @@ void import_colormap(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
                     packedColors[i] = uint32_t(encode(c[0])) | uint32_t(encode(c[1])) << 8 | uint32_t(encode(c[2])) << 16 |
                                       uint32_t(toByte(c[3])) << 24;
                 }
+                const double packMs = std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-packStart).count();
+                const auto uploadStart = std::chrono::steady_clock::now();
                 if (upload_colormap_image(s, input.srgb ? VK_FORMAT_R8G8B8A8_SRGB : VK_FORMAT_R8G8B8A8_UNORM, surface.width, surface.height,
                         packedColors.data(), packedColors.size() * sizeof(uint32_t))) {
                     s->colormapVersionImported = feed.colormapVersion;
@@ -193,8 +196,9 @@ void import_colormap(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
                     s->colormapReady = true;
                     s->colormapBreakup = true;
                     write_descriptors(s);
-                    vlog("COLORMAP-BASE: cooked macro color %ux%u source=%llu coast=%d origin=%s resolve_ms=%.1f.", surface.width, surface.height,
-                         static_cast<unsigned long long>(source), int(input.followCoast), cookOrigin, resolveMs);
+                    const double uploadMs = std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-uploadStart).count();
+                    vlog("COLORMAP-BASE: cooked macro color %ux%u source=%llu coast=%d origin=%s resolve_ms=%.1f pack_ms=%.1f enqueue_ms=%.1f.", surface.width, surface.height,
+                         static_cast<unsigned long long>(source), int(input.followCoast), cookOrigin, resolveMs, packMs, uploadMs);
                     return;
                 }
             }

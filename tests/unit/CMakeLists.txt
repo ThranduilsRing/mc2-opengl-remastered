@@ -55,6 +55,7 @@ add_executable(mc2_tests
     test_deferred_destroy.cpp  # the Vulkan deferred-destroy queue: not before the ticket, after it, negative control (offline)
     test_frame_ring.cpp  # the Vulkan frame ring offset arithmetic: slots, alignment, growth sizing (offline)
     test_readback.cpp  # the Vulkan readback ring: ticket, tag and generation checks, wrong-tag negative control (offline)
+    test_light_pool_culling.cpp
     test_texture_service.cpp  # P4a texture/material identity: key dedupe, mod precedence, paint variants, stale handles, material sets (offline)
     test_visibility_history.cpp # native actor visibility: paired IDs, lagged tiers, OR, stale fail-open
     test_texture_sources.cpp    # session source admission, strong refs, mission scopes, no renderer

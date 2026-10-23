@@ -1,0 +1,23 @@
+#ifndef MC2_LIGHT_POOL_ATTENUATION_HGLSL
+#define MC2_LIGHT_POOL_ATTENUATION_HGLSL
+
+// Shared object/terrain pool attenuation. nearD returns the scaled contact radius.
+bool lpa_falloff(vec3 delta, bool mover, float moverScale, int soft,
+                 inout float nearD, float farD, float ooD,
+                 out float len, out float falloff)
+{
+    if (mover && moverScale < 0.999) {
+        float scale = max(moverScale, 0.05);
+        farD *= scale; nearD *= scale; ooD /= scale;
+    }
+    float distance2 = dot(delta, delta);
+    if (farD <= 0.0 || distance2 >= farD * farD) return false;
+    len = sqrt(distance2);
+    falloff = (len <= nearD) ? 1.0 : (farD - len) * ooD;
+    if (soft != 0) {
+        float t = clamp(falloff, 0.0, 1.0);
+        falloff = t * t * (3.0 - 2.0 * t);
+    }
+    return true;
+}
+#endif
