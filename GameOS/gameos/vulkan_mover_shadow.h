@@ -48,7 +48,7 @@ private:
     OwnedSampler sampler_;
 };
 
-// Fixed set-0 bindings 24 (depth compare) and 25 (frame UBO), shared by every
+// Fixed set-0 bindings 24 (raw depth) and 25 (frame UBO), shared by every
 // receiver. Call after retiring the receiver's descriptor set for this frame.
 bool bindMoverShadowDescriptors(VkDevice device, VkDescriptorSet set);
 }
