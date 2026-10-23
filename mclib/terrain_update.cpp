@@ -52,14 +52,50 @@ static float lodDistScale()
     return s_distScale;
 }
 
+// Choose LOD level (0-5) for a block given squared distance and previous level.
+// Promotion (going finer) is immediate; demotion (going coarser) uses 10%
+// hysteresis in linear distance (= 1.21x in distSq) to prevent flickering.
+static uint8_t chooseLodLevel(float distSq, uint8_t prevLevel)
+{
+    const int forceLod = lodForceLevel();
+    if (forceLod >= 0)
+        return static_cast<uint8_t>((forceLod > 5 ? 5 : forceLod));
+
+    const float s_distScale = lodDistScale();
+
+    uint8_t desired = 5;
+    for (int k = 0; k < 5; ++k) {
+        float t = LOD_DIST_THRESH[k] * s_distScale;
+        if (distSq < t * t) {
+            desired = static_cast<uint8_t>(k);
+            break;
+        }
+    }
+    if (desired > prevLevel) {
+        // Demotion — only commit if clearly past the current fine threshold.
+        float thresh = LOD_DIST_THRESH[desired - 1] * s_distScale;
+        if (distSq < thresh * thresh * 1.21f)
+            return prevLevel; // stay fine
+    }
+    return desired;
+}
+
 // Render-only LOD: bound the fine-mesh height error in screen pixels. Heights
 // and activity admission remain authoritative and are never modified here.
 static uint8_t chooseProjectedLod(const TerrainBlockMeta& bm, float halfMap, Camera* camera)
 {
     if (lodForceLevel() >= 0) return static_cast<uint8_t>(std::min(lodForceLevel(), 5));
     const auto* store = gos_TerrainFieldStore();
-    // The authored visual-height mode has a different reference mesh.
-    if (!store || !store->heightVersion() || !store->visualHeight().empty()) return 0;
+    // Authored visual-height data uses a different reference mesh. Preserve its
+    // established selection (including cement contacts) until its errors are cooked.
+    if (!store || !store->heightVersion() || !store->visualHeight().empty()) {
+        const auto origin = camera->getCameraOrigin();
+        const float dx = (bm.originX + bm.quadCountX * 0.5f) * 128.0f - halfMap + origin.x;
+        const float dy = halfMap - (bm.originY + bm.quadCountY * 0.5f) * 128.0f - origin.z;
+        auto level = chooseLodLevel(dx * dx + dy * dy, bm.lodLevel);
+        if (bm.hasConcrete) level = std::min(level, static_cast<uint8_t>(mc2::gate::get<"MC2_TERRAIN_LOD_CHUNK_CEMENT_MAXLOD">()));
+        return level;
+    }
     static uint64_t cachedVersion = 0;
     static std::vector<std::array<float, 6>> errors;
     const int side = store->mapSide();
