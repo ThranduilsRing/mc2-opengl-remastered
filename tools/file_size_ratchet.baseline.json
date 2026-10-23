@@ -19,7 +19,7 @@
   "code/artlry.cpp": 1701,
   "code/bldng.cpp": 1692,
   "code/brain_special_dispatch.cpp": 2771,
-  "code/gamecam.cpp": 1588,
+  "code/gamecam.cpp": 1585,
   "code/gameobj.cpp": 2242,
   "code/infowindow.cpp": 1730,
   "code/logisticsdialog.cpp": 2149,
@@ -54,7 +54,7 @@
   "mclib/terrtxm.cpp": 1816,
   "mclib/tgl.h": 1803
  },
- "head": "c942515a8",
+ "head": "479a7ca8f",
  "per_dir": {
   "GameAdapters": {
    "files": 13,
@@ -63,7 +63,7 @@
    "max_lines": 458
   },
   "GameOS": {
-   "files": 369,
+   "files": 371,
    "files_over_1500": 3,
    "files_over_3000": 1,
    "max_lines": 3661
@@ -75,7 +75,7 @@
    "max_lines": 1153
   },
   "RenderCore": {
-   "files": 61,
+   "files": 63,
    "files_over_1500": 0,
    "files_over_3000": 0,
    "max_lines": 1490
@@ -87,7 +87,7 @@
    "max_lines": 1027
   },
   "code": {
-   "files": 426,
+   "files": 428,
    "files_over_1500": 22,
    "files_over_3000": 0,
    "max_lines": 2771
@@ -105,13 +105,13 @@
    "max_lines": 1513
   },
   "mclib": {
-   "files": 575,
+   "files": 573,
    "files_over_1500": 13,
    "files_over_3000": 0,
    "max_lines": 2518
   },
   "shaders": {
-   "files": 110,
+   "files": 113,
    "files_over_1500": 0,
    "files_over_3000": 0,
    "max_lines": 711
@@ -244,7 +244,7 @@
   }
  ],
  "total": {
-  "files": 1887,
+  "files": 1894,
   "files_over_1500": 40,
   "files_over_3000": 1,
   "max_lines": 3661

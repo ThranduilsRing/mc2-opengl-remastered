@@ -6,8 +6,8 @@
   "HostServices": 0,
   "RenderCore": 402,
   "RenderWorld": 0,
-  "code": 14168,
-  "mclib": 28790,
+  "code": 14140,
+  "mclib": 28736,
   "shaders": 678
  },
  "dirs": [
@@ -116,7 +116,6 @@
   "code/gametacmap.cpp": 26,
   "code/gate.cpp": 63,
   "code/gate.h": 30,
-  "code/ground_contact_blob.cpp": 8,
   "code/group_goals.cpp": 8,
   "code/gvehicl.cpp": 92,
   "code/gvehicl.h": 66,
@@ -168,7 +167,7 @@
   "code/mechpurchasescreen.cpp": 21,
   "code/mission.cpp": 108,
   "code/mission2.cpp": 45,
-  "code/mission_init.cpp": 66,
+  "code/mission_init.cpp": 56,
   "code/mission_init_load.cpp": 88,
   "code/mission_movers.cpp": 63,
   "code/mission_update.cpp": 54,
@@ -219,7 +218,7 @@
   "code/pilotreviewarea.cpp": 44,
   "code/salvagemecharea.cpp": 31,
   "code/saveload.cpp": 72,
-  "code/saveload_load.cpp": 66,
+  "code/saveload_load.cpp": 56,
   "code/sensor_trace.h": 8,
   "code/sim_identity.cpp": 20,
   "code/simplecamera.cpp": 47,
@@ -452,7 +451,7 @@
   "mclib/quad_draw.cpp": 348,
   "mclib/quad_lines.cpp": 307,
   "mclib/quad_setup.cpp": 143,
-  "mclib/quad_water.cpp": 334,
+  "mclib/quad_water.cpp": 326,
   "mclib/render_contract.cpp": 45,
   "mclib/render_submissions.h": 146,
   "mclib/resizeimage.h": 96,
@@ -520,8 +519,8 @@
   "shaders/vulkan/terrain_tier1.vert": 78,
   "shaders/vulkan/terrain_tier1_skirt.vert": 78
  },
- "head": "c942515a8",
+ "head": "479a7ca8f",
  "n": 8,
- "total": 46359,
+ "total": 46277,
  "version": 1
 }
