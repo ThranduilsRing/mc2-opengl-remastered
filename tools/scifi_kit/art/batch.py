@@ -25,6 +25,13 @@ from types import SimpleNamespace
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[2]
+
+
+def _child_kwargs():
+    """No console window for the git / pytest children (scripts/console_child.py)."""
+    sys.path.insert(0, str(ROOT / 'scripts'))
+    from console_child import child_kwargs
+    return child_kwargs(redirected=True)
 OUT = Path('E:/mc2-ref/scifi-kit/art')
 STOCK_VIEWS = Path('E:/mc2-ref/scifi-kit/studies/stock-views')
 INVENTORY = Path('E:/mc2-ref/scifi-kit/mapping/inventory.csv')
@@ -499,7 +506,7 @@ def batch(args):
 def kit_pytest(name):
     """The kit pytest for this asset's parametrised cases (build, damage lockstep, budgets); -> failure strings (empty when green)."""
     r = subprocess.run([sys.executable, '-B', '-m', 'pytest', str(ROOT / 'tools' / 'scifi_kit' / 'tests'), '-q', '-p', 'no:cacheprovider', '-k', name],
-                       capture_output=True, text=True, cwd=str(ROOT))
+                       capture_output=True, text=True, cwd=str(ROOT), **_child_kwargs())
     if r.returncode == 0:
         return []
     tail = [ln for ln in r.stdout.splitlines() if ln.startswith(('FAILED', 'ERROR'))][:6] or r.stdout.splitlines()[-3:]
@@ -575,11 +582,11 @@ def commit(args):
         print(f'[commit] REFUSED {n}:\n   ' + '\n   '.join(fl))
     if ok:
         paths = [f'tools/scifi_kit/art/assets/{n}.{k}.json' for n in ok for k in ('params', 'analysis', 'shape')]
-        subprocess.run(['git', '-C', str(ROOT), 'add', '--'] + paths, check=True)
+        subprocess.run(['git', '-C', str(ROOT), 'add', '--'] + paths, check=True, **_child_kwargs())
         msg = f'feat(scifi-art): archetype batch {", ".join(ok)}'
         if os.environ.get('MC2_COMMIT_TRAILER'):
             msg += '\n\n' + os.environ['MC2_COMMIT_TRAILER']
-        subprocess.run(['git', '-C', str(ROOT), 'commit', '-m', msg, '--'] + paths, check=True)
+        subprocess.run(['git', '-C', str(ROOT), 'commit', '-m', msg, '--'] + paths, check=True, **_child_kwargs())
         set_status(ok, 'committed')
         print(f'[commit] committed {ok}')
     if refused:
