@@ -212,7 +212,7 @@ RENDERED BY: mech.vert  +  mech.frag
     hemisphere ambient, glass/cockpit mask, fog, GBuffer1 normal)
 ```
 
-- **Gates:** `MC2_GPU_MECHS`, `MC2_MECH_VIEWUNIFORMS`, `MC2_MECH_SPECULAR_V1`, `MC2_MECH_AMBIENT_V1`
+- **Gates:** `MC2_GPU_MECHS`, `MC2_MECH_VIEWUNIFORMS`, `MC2_MECH_SPECULAR_V1`
   (all DEFAULT ON); `MC2_MECH_NORMALS_MODE` (default 2 = angle-threshold smoothed); plus the
   `MC2_GPU_MECH_*` skip-slice cohort (leaf/sensor/shadow skips, all ON).
 

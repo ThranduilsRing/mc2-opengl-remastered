@@ -5,6 +5,7 @@
 #include "vk_image_resource.h"
 #include "vk_island_util.h"
 #include "vk_gpu_profile.h"
+#include "vk_render_infra.h"
 #include "../../3rdparty/smaa/AreaTex.h"
 #include "../../3rdparty/smaa/SearchTex.h"
 #include <vk_mem_alloc.h>
@@ -143,6 +144,7 @@ struct SpatialAA::Impl {
         }
         const char* names[] = {smaa ? "aa_smaa_edges.frag.spv" : "aa_fxaa.frag.spv", "aa_smaa_weights.frag.spv", "aa_smaa_blend.frag.spv"};
         VkImageView targets[] = {smaa ? edges.view.get() : output.view.get(), weights.view.get(), output.view.get()};
+        // loadSpv registers every AA module with infra::shader for reload and breadcrumbs.
         OwnedShaderModule vs(dev, vk_island_util::loadSpv(dev, vk_island_util::spvDir() + "postprocess.vert.spv", nullptr));
         if (!vs) return false;
         for (uint32_t i = 0; i < (smaa ? 3u : 1u); ++i) {
@@ -183,7 +185,7 @@ struct SpatialAA::Impl {
         ci.pViewportState = &vp; ci.pRasterizationState = &rs; ci.pMultisampleState = &ms; ci.pColorBlendState = &bs; ci.pDynamicState = &ds;
         ci.layout = layout.get(); ci.renderPass = renderPass.get();
         OwnedPipeline pipe;
-        mc2vk::create(pipe, dev, [&](auto* hnd) { return vkCreateGraphicsPipelines(dev, VK_NULL_HANDLE, 1, &ci, nullptr, hnd); });
+        mc2vk::create(pipe, dev, [&](auto* hnd) { return infra::graphics(dev, VK_NULL_HANDLE, 1, &ci, nullptr, hnd); });
         return pipe;
     }
     bool initCompute(const VkImageResource& output) {
@@ -234,7 +236,7 @@ struct SpatialAA::Impl {
             VkComputePipelineCreateInfo ci{VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO};
             ci.layout = computeLayout.get(); ci.stage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
             ci.stage.stage = VK_SHADER_STAGE_COMPUTE_BIT; ci.stage.module = mod.get(); ci.stage.pName = entries[i];
-            if (!mc2vk::create(compute[i], dev, [&](auto* hnd) { return vkCreateComputePipelines(dev, VK_NULL_HANDLE, 1, &ci, nullptr, hnd); })) return false;
+            if (!mc2vk::create(compute[i], dev, [&](auto* hnd) { return infra::compute(dev, VK_NULL_HANDLE, 1, &ci, nullptr, hnd); })) return false;
         }
         return true;
     }
@@ -259,7 +261,7 @@ struct SpatialAA::Impl {
             vkCmdBeginRenderPass(cb, &ri, VK_SUBPASS_CONTENTS_INLINE);
             VkViewport vp{0, 0, float(w), float(h), 0, 1}; VkRect2D sc{{0, 0}, {w, h}};
             vkCmdSetViewport(cb, 0, 1, &vp); vkCmdSetScissor(cb, 0, 1, &sc);
-            vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, graphics[i].get());
+            infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, graphics[i].get());
             vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, layout.get(), 0, 1, &sets[i], 0, nullptr);
             float metrics[] = {1.0f / static_cast<float>(w), 1.0f / static_cast<float>(h), float(w), float(h)};
             vkCmdPushConstants(cb, layout.get(), VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(metrics), metrics);
@@ -284,17 +286,17 @@ struct SpatialAA::Impl {
         memoryBarrier(cb, VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
         vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_COMPUTE, computeLayout.get(), 0, 1, &computeSet, 0, nullptr);
         auto dispatch = [&](int pipeline, uint32_t x, uint32_t y) {
-            vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_COMPUTE, compute[pipeline].get()); vkCmdDispatch(cb, x, y, 1);
+            infra::bind(cb, VK_PIPELINE_BIND_POINT_COMPUTE, compute[pipeline].get()); vkCmdDispatch(cb, x, y, 1);
             memoryBarrier(cb, VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_INDIRECT_COMMAND_READ_BIT,
                           VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT);
         };
         dispatch(0, (w + 27) / 28, (h + 27) / 28);
         dispatch(1, 2, 1);
-        vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_COMPUTE, compute[2].get()); vkCmdDispatchIndirect(cb, work[4].get(), 0);
+        infra::bind(cb, VK_PIPELINE_BIND_POINT_COMPUTE, compute[2].get()); vkCmdDispatchIndirect(cb, work[4].get(), 0);
         memoryBarrier(cb, VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_INDIRECT_COMMAND_READ_BIT,
                       VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
         dispatch(1, 1, 2);
-        vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_COMPUTE, compute[3].get()); vkCmdDispatchIndirect(cb, work[4].get(), 0);
+        infra::bind(cb, VK_PIPELINE_BIND_POINT_COMPUTE, compute[3].get()); vkCmdDispatchIndirect(cb, work[4].get(), 0);
         imageBarrier(cb, output.image.get(), VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
             VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
             VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);

@@ -29,10 +29,7 @@ extern "C" void  gos_vfx_setLitStrength(float v);   // VFX-LIT-PARTICLES-MVP-1
 extern "C" float gos_vfx_getLitStrength(void);      // VFX-LIT-PARTICLES-MVP-1
 // Getters for the post-stack keys (reader already had the setters above) so the
 // writer can round-trip the full reader vocabulary (fixes the 8-vs-13 asymmetry).
-// MISSION-LIGHTING-PROFILE-FIELDS-1: mech lane ambient + specular. Both gates
-// (MC2_MECH_AMBIENT_V1 / MC2_MECH_SPECULAR_V1) are default-ON, so these are live.
-extern "C" void  batcher_setMechAmbientStrength(float s);
-extern "C" float batcher_getMechAmbientStrength();
+// Mech specular tuning.
 extern "C" void  batcher_setMechSpecularStrength(float s);
 extern "C" float batcher_getMechSpecularStrength();
 // TERRAIN-CLASSIFY-TUNING-1: RGB classifier thresholds (defined in gameos_graphics.cpp).
@@ -60,7 +57,7 @@ std::map<std::string, float> engineDefaults() {
         {"unitAmbientScale",1.2f}, {"buildingSpillIntensityScale",1.0f},
         {"exposure",1}, {"shadowSoftness",2.5f}, {"staticPropIblStrength",0.5f},
         {"waterSkyTintStrength",0}, {"vfxBrightness",1}, {"vfxAdditiveBrightness",1},
-        {"vfxLitStrength",0.7f}, {"mechAmbientStrength",0.15f}, {"mechSpecularStrength",0.05f},
+        {"vfxLitStrength",0.7f}, {"mechSpecularStrength",0.05f},
         {"terrainClassGrassGmRLo",-0.02f}, {"terrainClassGrassGmRHi",0.06f},
         {"terrainClassGrassBrLo",0.22f}, {"terrainClassGrassBrHi",0.40f},
         {"terrainClassDirtRmGLo",-0.02f}, {"terrainClassDirtRmGHi",0.06f},
@@ -75,7 +72,6 @@ bool validValue(std::string_view key, double value) {
     else if (key.starts_with("grade") || key.starts_with("topWarmth")) hi = 2;
     else if (key == "unitAmbientScale" || key == "buildingSpillIntensityScale") hi = 2;
     else if (key == "staticPropIblStrength") hi = 3;
-    else if (key == "mechAmbientStrength") hi = 2;
     else if (key == "mechSpecularStrength") hi = 4;
     else if (key == "vfxBrightness" || key == "vfxAdditiveBrightness") hi = 8;
     else if (key == "vfxLitStrength") hi = 1;
@@ -283,14 +279,6 @@ static void applyKey(const char* key, float val, int& count) {
         // MC2_VFX_LIT_PARTICLES still controls whether lighting is applied.
         gos_vfx_setLitStrength(val);
         count++;
-    } else if (strcmp(key, "mechAmbientStrength") == 0) {
-        // MISSION-LIGHTING-PROFILE-FIELDS-1: env value-var wins over profile,
-        // matching the IBL/water/VFX env-guard convention. Gate
-        // MC2_MECH_AMBIENT_V1 still controls whether the term is applied at all.
-        {
-            batcher_setMechAmbientStrength(val);
-            count++;
-        }
     } else if (strcmp(key, "mechSpecularStrength") == 0) {
         {
             batcher_setMechSpecularStrength(val);
@@ -354,8 +342,6 @@ void visualTuning_applyProfile(const char* missionName) {
     s_profilePath = s_editableSource.path;
     std::map<std::string,float> session;
     if (mc2::gate::get<"MC2_WATER_SKYTINT">()) session["waterSkyTintStrength"] = 0.15f;
-    if (mc2::gate::isNonEmpty<"MC2_MECH_AMBIENT_V1_STRENGTH">())
-        session["mechAmbientStrength"] = mc2::gate::get<"MC2_MECH_AMBIENT_V1_STRENGTH">();
     if (mc2::gate::isNonEmpty<"MC2_MECH_SPECULAR_STRENGTH">())
         session["mechSpecularStrength"] = mc2::gate::get<"MC2_MECH_SPECULAR_STRENGTH">();
     s_environment = visualTuning_resolve(missionName ? missionName : "",sources,session);
@@ -394,7 +380,6 @@ bool visualTuning_saveCurrentToMission() {
     // (8-vs-13 asymmetry) -- round-trip them so "Set as Mission Defaults" keeps
     // any live bloom/AO tuning instead of silently losing it.
     // MISSION-LIGHTING-PROFILE-FIELDS-1 mech lane.
-    current["mechAmbientStrength"]       = batcher_getMechAmbientStrength();
     current["mechSpecularStrength"]      = batcher_getMechSpecularStrength();
     // TERRAIN-CLASSIFY-TUNING-1: RGB classifier thresholds.
     {

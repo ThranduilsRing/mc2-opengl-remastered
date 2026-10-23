@@ -216,39 +216,11 @@ void gos_GetTerrainChunkGridInfo(int* mapSide, float* halfMap)
     if (halfMap) *halfMap = s_halfMap;
 }
 
-float gos_TerrainPadGlowStrength()
-{
-    static const float s_v = mc2::gate::get<"MC2_PAD_AREA_GLOW">();
-    return s_v;
-}
-
 float gos_TerrainSnowBrightnessDampen()
 {
     static const float s_v = mc2::gate::get<"MC2_TERRAIN_SNOW_BRIGHTNESS_DAMPEN">();
     return s_v;
 }
-float gos_TerrainAmbientFloor()
-{
-    // Row: default 0.35 (DEFAULT-ON), clampRange(0, 2).
-    static const float s_v = mc2::gate::get<"MC2_TERRAIN_AMBIENT_FLOOR">();
-    return s_v;
-}
-bool gos_TerrainAmbientFloorEnvSet() { return mc2::gate::isNonEmpty<"MC2_TERRAIN_AMBIENT_FLOOR">(); }
-float gos_TerrainAmbientNightFloor()
-{
-    // Row: default 0 (DEFAULT-OFF), clampRange(0, 1).
-    static const float s_v = mc2::gate::get<"MC2_TERRAIN_AMBIENT_FLOOR_NIGHT">();
-    return s_v;
-}
-bool gos_TerrainAmbientNightFloorEnvSet() { return mc2::gate::isNonEmpty<"MC2_TERRAIN_AMBIENT_FLOOR_NIGHT">(); }
-// Daylight gate actually uploaded: max(daylight level, night floor).
-float gos_TerrainAmbientDayGate()
-{
-    const float raw = gos_GetTerrainDaylightLevel();
-    const float nf  = gos_TerrainAmbientNightFloor();
-    return (raw > nf) ? raw : nf;
-}
-
 int gos_TerrainLightPoolCount()
 {
     uint32_t count=0;

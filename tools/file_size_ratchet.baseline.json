@@ -13,13 +13,13 @@
   "gui"
  ],
  "files_over_1500": {
-  "GameOS/gameos/engine_present_vk.cpp": 2823,
-  "GameOS/gameos/vulkan_color_prop_island.cpp": 1823,
+  "GameOS/gameos/engine_present_vk.cpp": 2804,
+  "GameOS/gameos/vulkan_color_prop_island.cpp": 1893,
   "GameOS/include/gameos.hpp": 3661,
   "code/artlry.cpp": 1701,
   "code/bldng.cpp": 1692,
   "code/brain_special_dispatch.cpp": 2771,
-  "code/gamecam.cpp": 1585,
+  "code/gamecam.cpp": 1586,
   "code/gameobj.cpp": 2242,
   "code/infowindow.cpp": 1730,
   "code/logisticsdialog.cpp": 2149,
@@ -54,7 +54,7 @@
   "mclib/terrtxm.cpp": 1816,
   "mclib/tgl.h": 1803
  },
- "head": "479a7ca8f",
+ "head": "60c7d2518",
  "per_dir": {
   "GameAdapters": {
    "files": 13,
@@ -72,7 +72,7 @@
    "files": 14,
    "files_over_1500": 0,
    "files_over_3000": 0,
-   "max_lines": 1153
+   "max_lines": 1133
   },
   "RenderCore": {
    "files": 63,
@@ -128,7 +128,7 @@
   },
   {
    "file": "GameOS/gameos/engine_present_vk.cpp",
-   "lines": 2823
+   "lines": 2804
   },
   {
    "file": "code/brain_special_dispatch.cpp",
@@ -203,6 +203,10 @@
    "lines": 1895
   },
   {
+   "file": "GameOS/gameos/vulkan_color_prop_island.cpp",
+   "lines": 1893
+  },
+  {
    "file": "code/multplyr.h",
    "lines": 1845
   },
@@ -217,10 +221,6 @@
   {
    "file": "mclib/camera.h",
    "lines": 1828
-  },
-  {
-   "file": "GameOS/gameos/vulkan_color_prop_island.cpp",
-   "lines": 1823
   },
   {
    "file": "mclib/terrtxm.cpp",
