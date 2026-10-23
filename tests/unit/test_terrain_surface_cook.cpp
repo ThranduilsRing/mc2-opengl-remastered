@@ -20,6 +20,11 @@ TEST_CASE("terrain projected error: plane, interior ridge and partial edge") {
     for (size_t i = 1; i < errors.size(); ++i) CHECK(std::isinf(errors[i]));
     errors = mc2terrain::terrainPatchHeightErrors({}, 21, 0, 0, 20, 20);
     CHECK(std::isinf(errors[1]));
+    // A folded TL-BR surface is exactly representable by two triangles, while
+    // bilinear reconstruction would incorrectly introduce an interior error.
+    const std::vector<float> folded = {0, 0, 0, 0, 2, 2, 0, 2, 4};
+    errors = mc2terrain::terrainPatchHeightErrors(folded, 3, 0, 0, 2, 2);
+    CHECK(errors[1] == 0);
 }
 
 TEST_CASE("surface materials: muted sand follows semantic dirt, not hue") {
