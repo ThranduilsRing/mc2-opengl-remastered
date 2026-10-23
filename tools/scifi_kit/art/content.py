@@ -167,7 +167,7 @@ def deduplicate(asset):
     return asset.check()
 
 
-def prepare(source,pipeline,out):
+def prepare(source,pipeline,out,only=None):
     sys.dont_write_bytecode=True
     sys.path.insert(0,str(pipeline))
     from tools.content_pipeline import gltf_io,ir,validate
@@ -176,7 +176,7 @@ def prepare(source,pipeline,out):
     recipe=dict(mod_id='mc2-stock-kit-r5',name='MC2 stock art upgrades',
                 out=(out/'package').as_posix(),assets=[])
     assets=[];proof=[];lights={}
-    for name in drafts.DRAFTS:
+    for name in (only or drafts.DRAFTS):
         folder=source/'pbr'
         files={cond:[folder/f'{name}_{cond}_lod{i}.glb' for i in range(3)]
                for cond in ('pristine','worn','abandoned','partial','destroyed')}
@@ -245,9 +245,9 @@ def prepare(source,pipeline,out):
         asset.check();ir.save(asset,out/'ir'/f'{name}.json');assets.append(asset)
         evidence.update(material_slots=len(asset.materials),ir=(out/'ir'/f'{name}.json').as_posix())
         proof.append(evidence)
-    clean=next(p for p in proof if p['asset']=='quonsetclean')
-    rusty=next(p for p in proof if p['asset']=='quonset')
-    matches=[a['geometry_sha256']==b['geometry_sha256'] for a,b in zip(clean['files'],rusty['files'])]
+    clean=next((p for p in proof if p['asset']=='quonsetclean'),None)
+    rusty=next((p for p in proof if p['asset']=='quonset'),None)
+    matches=[a['geometry_sha256']==b['geometry_sha256'] for a,b in zip(clean['files'],rusty['files'])] if clean and rusty else []
     if not all(matches):
         bad=[Path(a['path']).name for a,ok in zip(clean['files'],matches) if not ok]
         raise ValueError('clean/rusty quonset geometry or UVs differ: '+', '.join(bad))
@@ -265,7 +265,8 @@ def main():
     ap.add_argument('--pipeline',type=Path,default=Path('A:/Games/mc2-flash4'))
     ap.add_argument('--out',type=Path,required=True)
     ap.add_argument('--cook',action='store_true')
-    args=ap.parse_args();assets=prepare(args.source,args.pipeline,args.out)
+    ap.add_argument('--only',help='comma list of assets (batch validation)')
+    args=ap.parse_args();assets=prepare(args.source,args.pipeline,args.out,args.only.split(',') if args.only else None)
     if args.cook:
         from tools.content_pipeline import package
         package.build_package(assets,args.out/'package',mod_id='mc2-stock-kit-r5',name='MC2 stock art upgrades')

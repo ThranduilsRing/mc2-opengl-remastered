@@ -13,6 +13,7 @@ SIZES = {
     'wirefence': (.09030, 10.83575, 3.99248),
     'l_heavywall': (9.40500, 36.45998, 22.25758),
     'd_lightwall': (5.67315, 34.85180, 5.61175),
+    'd_heavywall': (6.87240, 35.42655, 22.32495),
 }
 
 
@@ -25,6 +26,8 @@ def wall(k):
     wh = h * (.86 if family == 's' else .83 if family == 'd' else .90)
     if family == 's' and heavy:
         wh = 21.48
+    if family == 'd' and heavy:
+        wh = 21.18
     thickness = w * (.47 if family == 's' else .43)
     pier_d = w
     py = d/2-pier_d/2
@@ -114,9 +117,39 @@ def wall(k):
         for p in k.pieces[first:]:
             p['wall_span'] = j
         k.moss_sites.append(((-kit.wall_hw(k.name,0)-.12,a,footing),(-kit.wall_hw(k.name,0)-.12,b,footing)))
+    if family == 'd' and heavy:
+        # Stock lower truss: a chain of two hexagonal braced fields under a horizontal belt.
+        lo, hi = footing + .5, wh * .40
+        mid = (lo + hi) / 2
+        L = end - start
+        def tag(y0, y1):
+            return min(spans - 1, max(0, int(((y0 + y1) / 2 - start) / step)))
+        for cy in (start + L * .27, start + L * .73):
+            hw = L * .19
+            pts = [(cy - hw, mid), (cy - hw * .45, hi), (cy + hw * .45, hi), (cy + hw, mid), (cy + hw * .45, lo), (cy - hw * .45, lo)]
+            for side in (-1, 1):
+                for (y0, z0), (y1, z1) in zip(pts, pts[1:] + pts[:1]):
+                    hx = kit.wall_hw(k.name, (z0 + z1) / 2 / wh) + .03
+                    b = k.beam((side * hx, y0, z0), (side * hx, y1, z1), .26, 'ferro.pale', 'frame')
+                    b['wall_span'] = tag(y0, y1)
+        for side in (-1, 1):
+            for j in range(spans):
+                a0, b0 = edges[j], edges[j + 1]
+                h0 = kit.wall_hw(k.name, (footing + .1) / wh) + .035
+                h1 = kit.wall_hw(k.name, (hi + .3) / wh) + .035
+                fq = [(side * h0, a0 + .05, footing + .1), (side * h0, b0 - .05, footing + .1), (side * h1, b0 - .05, hi + .3), (side * h1, a0 + .05, hi + .3)]
+                bq = [(x - side * .12, y, z) for x, y, z in fq]
+                if side < 0:
+                    fq, bq = fq[::-1], bq[::-1]
+                b = kit.hexa(k, fq, bq, 'ferro.pale', 'skin', removable=True)
+                b['wall_span'] = j
+                for zz, ww in ((hi + .45, .5), (footing + .12, .35)):
+                    hx = kit.wall_hw(k.name, zz / wh) + .04
+                    b = k.beam((side * hx, a0 + .03, zz), (side * hx, b0 - .03, zz), ww, 'ferro.pale', 'frame')
+                    b['wall_span'] = j
     # One stock terminal pier. Cast stages and inset fields follow its taper.
     first = len(k.pieces)
-    stages = 2 if light else 3
+    stages = 2 if light else 4 if (family == 'd' and heavy) else 3
     for j in range(stages):
         z0, z1 = h*j/stages, h*(j+1)/stages
         r0, r1 = w/2*(1-.40*j/stages), w/2*(1-.40*(j+1)/stages)
