@@ -677,7 +677,7 @@ class gosRenderer {
         float terrain_cliff_shadow_floor_ = 0.0f;
 
         // ── World-space overlay batches ────────────────────────────────────────
-        // Both terrain overlays (cement perimeter) and decals (craters, footprints)
+        // Both terrain overlays (cement perimeter) and decals (footprints)
         // use the same vertex layout (WorldOverlayVert, 28 bytes) and VAO setup.
         // Per-draw texture grouping: multiple addTriangle calls within a frame with
         // different texHandle values are batched into separate draw entries.

@@ -466,17 +466,6 @@ long WeaponBolt::update (void)
 				}
 				else if (targetPosition)
 				{
-					long randomCrater = 0;
-					if (weaponShot.damage > 9)
-						randomCrater = 3;
-					else if (weaponShot.damage > 6)
-						randomCrater = 2;
-					else if (weaponShot.damage > 3)
-						randomCrater = 1;
-						
-					if (missEffect)		//We missed and hit land.  Otherwise, we hit water, do NOT add crater
-						craterManager->addCrater(CRATER_1+randomCrater,*targetPosition,mc2_appearance_rng::randomNumber(180));
-		
 					{
 						int cellRow, cellCol;
 		
@@ -703,17 +692,6 @@ long WeaponBolt::update (void)
 				}
 				else if (targetPosition) 
 				{
-					long randomCrater = 0;
-					if (weaponShot.damage > 9)
-						randomCrater = 3;
-					else if (weaponShot.damage > 6)
-						randomCrater = 2;
-					else if (weaponShot.damage > 3)
-						randomCrater = 1;
-						
- 					if (missEffect)
-						craterManager->addCrater(CRATER_1+randomCrater,*targetPosition,mc2_appearance_rng::randomNumber(180));
-		
 					{
 						int cellRow, cellCol;
 		

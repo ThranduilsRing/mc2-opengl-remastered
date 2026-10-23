@@ -599,7 +599,7 @@ void mc2::VkSceneRenderer::renderListsOverlayBatches (RenderSubmissions& submiss
 
 	// ── New world-space overlay batches ──────────────────────────────────────
 	// These draw calls flush batches accumulated during land->render() and
-	// craterManager->render().  They set their own GL state and restore it.
+	// the ground-decal producers.  They set their own GL state and restore it.
 	// Render order matches design: terrain → cement overlays → decals → (old overlays).
 	{
 		ZoneScopedN("Render.TerrainOverlays");
@@ -621,7 +621,7 @@ void mc2::VkSceneRenderer::renderListsOverlayBatches (RenderSubmissions& submiss
 	}
 	// PR2c Stage 2c — mine static-bake draw. Hooks between TerrainOverlays
 	// and Decals so mines composite ABOVE cement/road overlays and BENEATH
-	// crater decals (state=2 blown-mine sprites coexist with crater decals).
+	// the decal batch (state=2 blown-mine sprites coexist with its decals).
 	// Default-off: IsFrameMineArmed() returns false unless
 	// MC2_TERRAIN_INDIRECT_MINE=1 AND the texture-array has been built.
 	{
@@ -632,10 +632,6 @@ void mc2::VkSceneRenderer::renderListsOverlayBatches (RenderSubmissions& submiss
 	}
 	{
 		ZoneScopedN("Render.Decals");
-		// MC2_DYNAMIC_DECALS: push dynamic impact decals into the batch before flushing.
-		// Gate-off: gatherToDecalBatch() is a no-op; gate-on: pushes faded quads.
-		// frameLength = duration of last frame in seconds (timing.h).
-		DynDecal::gatherToDecalBatch(frameLength);
 		gos_DrawDecals();
 	}
 #ifdef MC2_VULKAN_ISLAND

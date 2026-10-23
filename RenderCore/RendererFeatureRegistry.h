@@ -700,13 +700,6 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "Direct-fire de-curve: PPC/autocannon/gauss bolts fly STRAIGHT instead of re-tracking the moving target every frame (the janky homing curve).",
     },
     {
-        "MC2_FEATURE_DYNAMIC_DECALS",
-        "MC2_DYNAMIC_DECALS",
-        EnvVarKind::Feature,
-        false,
-        "Dynamic decal ring (mclib/dynamic_decal_ring.cpp): spawn()/gatherToDecalBatch() are no-ops when off.",
-    },
-    {
         "MC2_TUNE_FAR_BACKDROP_LIT_FAR",
         "MC2_FAR_BACKDROP_LIT_FAR",
         EnvVarKind::Trace,

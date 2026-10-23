@@ -1,3 +1,4 @@
+#include "footprints.h"
 // Mission: Mission::init, the mission load sequence.
 // Declared in the class headers; shared names in mission_internal.h.
 #include "mission_internal.h"
@@ -676,7 +677,7 @@ void Mission::initTriggerAndDropZone(MissionInitFrame& f) {
 #endif
 }
 
-// Read the mission settings, create the crater and object managers.
+// Read the mission settings, create the object manager.
 void Mission::initMissionSettings(MissionInitFrame& f) {
 	auto& result = f.result;
 	result = missionFile->seekBlock("MissionSettings");
@@ -703,13 +704,8 @@ void Mission::initMissionSettings(MissionInitFrame& f) {
 		result = missionFile->readIdULong("NumRandomRPbuildings", MPlayer->numRandomResourceBuildings);
 	}
 
-	craterManager = static_cast<CraterManagerPtr>(std::malloc(sizeof(CraterManager)));
-	gosASSERT(craterManager != nullptr);
-	::new (craterManager) CraterManager;
-		
-	result = craterManager->init(1000,20479,"feet");
-	gosASSERT(result == NO_ERR);
-	
+	Footprints::init();
+
 	ObjectManager = new GameObjectManager;
 	if (!ObjectManager)
 		Fatal(0, " Mission.init: unable to create ObjectManager ");

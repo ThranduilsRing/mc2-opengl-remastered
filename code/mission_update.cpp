@@ -458,10 +458,8 @@ void Mission::updateObjectManager() {
 	}
 }
 
-// Update the craters and the mover visual-displacement damp.
-void Mission::updateCratersAndDamp() {
-	{ ZoneScopedN("GameLogic.Mission.Craters"); craterManager->update(); }
-
+// Update the mover visual-displacement damp.
+void Mission::updateDisplacementDamp() {
 	// TERRAIN-REAUTH-UNPIN-1 Half B: near-object displacement fade, mover
 	// half. Gathers live mover positions in coarse-cell space and stamps
 	// them into the visual-displacement damp map (min-combined with the
@@ -1176,7 +1174,7 @@ long Mission::update (void)
 		updateFrontEnd();
 		updateTerrainGeometry();
 		updateObjectManager();
-		updateCratersAndDamp();
+		updateDisplacementDamp();
 		updateSimSystems();
 
 		if (missionBrain)

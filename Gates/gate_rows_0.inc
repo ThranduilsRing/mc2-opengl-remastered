@@ -201,8 +201,6 @@ L(Lead1, "MC2_DRAW_PACKET_COMPARE_VERBOSE", Bool, false, "gameos", "", "", passt
 L(Lead1, "MC2_DRAW_PACKET_STATIC_PROP_V6_TRACE", Bool, false, "props", "", "", passthrough | verified),
 L(Lead1, "MC2_DRAW_PACKET_V3", Bool, false, "gameos", "", "", passthrough | verified),
 L(Lead1, "MC2_DRAW_PACKET_WARN", Bool, false, "gameos", "", "", verified),
-// history: docs/gate-history.md#MC2_DYNAMIC_DECALS
-L(Lead0P, "MC2_DYNAMIC_DECALS", Bool, false, "code", "", "Dynamic decal ring (mclib/dynamic_decal_ring.cpp): spawn()/gatherToDecalBatch() are no-ops when off.", registry(Feature, "MC2_FEATURE_DYNAMIC_DECALS", -1, false) | verified),
 L(Lead0Kill, "MC2_EDGE_FOG", Bool, true, "post", "", "", verified),
 P("MC2_EDGE_FOG_HEIGHT", Float, 0.0, "post", "", "", verified),  // default not derivable from the tree
 P("MC2_EDGE_FOG_MAX", Float, 0.0, "post", "", "", verified),  // default not derivable from the tree

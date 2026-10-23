@@ -103,5 +103,5 @@ share (0.55); the lighting lane owns that number.
   mover anchors, box geometry, queue overflow, seed purity, atlas determinism and clean edges).
 - Fixture: `MC2_FX_FORCE_SPAWN=impact` fires a ballistic/laser/missile volley at the nearest sheet-metal and concrete
   buildings to the camera focus and at the ground in front, every 1.5 s, through the same queue.
-- Open: limb-following mover scars; per-pixel material from the kit (needs a material id in the G-buffer); retiring the
-  legacy permanent `CraterManager` craters and the default-OFF `MC2_DYNAMIC_DECALS` ring this supersedes.
+- Open: limb-following mover scars; per-pixel material from the kit (needs a material id in the G-buffer).
+- Retired 2026-10-22: the legacy permanent `CraterManager` craters and the default-OFF `MC2_DYNAMIC_DECALS` ring (deleted; the impact decals replace them). Stock mech footprints remain in `mclib/footprints.cpp` with the `feet0001.tga` atlas and all four gait triggers.

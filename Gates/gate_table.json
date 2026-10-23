@@ -1,6 +1,6 @@
 {
  "version": 1,
- "count": 929,
+ "count": 928,
  "gates": [
   {"name": "MC2_3DVIEW_DIAG", "kind": "Bool", "rule": "Presence", "default": false, "owner": "gameos", "retireBy": "", "doc": "", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": false, "verified": false, "registry": null, "logTopic": ""},
   {"name": "MC2_ABL_ARG_GUARD", "kind": "Bool", "rule": "Lead1", "default": false, "owner": "code", "retireBy": "", "doc": "ABL crash-safety gates (ABL-OPCODE-BOUNDS-HARDEN) MC2_ABL_ARG_GUARD=1 - enables dispatch-bounds soft path + out-ptr null guards MC2_ABL_RUNTIME_SOFTFAIL=1 -...", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": true, "verified": true, "registry": null, "logTopic": ""},
@@ -148,7 +148,6 @@
   {"name": "MC2_DRAW_PACKET_STATIC_PROP_V6_TRACE", "kind": "Bool", "rule": "Lead1", "default": false, "owner": "props", "retireBy": "", "doc": "", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": true, "verified": true, "registry": null, "logTopic": ""},
   {"name": "MC2_DRAW_PACKET_V3", "kind": "Bool", "rule": "Lead1", "default": false, "owner": "gameos", "retireBy": "", "doc": "", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": true, "verified": true, "registry": null, "logTopic": ""},
   {"name": "MC2_DRAW_PACKET_WARN", "kind": "Bool", "rule": "Lead1", "default": false, "owner": "gameos", "retireBy": "", "doc": "", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": false, "verified": true, "registry": null, "logTopic": ""},
-  {"name": "MC2_DYNAMIC_DECALS", "kind": "Bool", "rule": "Lead0P", "default": false, "owner": "code", "retireBy": "", "doc": "Dynamic decal ring (mclib/dynamic_decal_ring.cpp): spawn()/gatherToDecalBatch() are no-ops when off.", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": false, "verified": true, "registry": {"featureId": "MC2_FEATURE_DYNAMIC_DECALS", "kind": "Feature", "order": -1, "defaultOn": false}, "logTopic": ""},
   {"name": "MC2_EDGE_FOG", "kind": "Bool", "rule": "Lead0Kill", "default": true, "owner": "post", "retireBy": "", "doc": "", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": false, "verified": true, "registry": null, "logTopic": ""},
   {"name": "MC2_EDGE_FOG_HEIGHT", "kind": "Float", "rule": "Prefix", "default": 0, "owner": "post", "retireBy": "", "doc": "", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": false, "verified": true, "registry": null, "logTopic": ""},
   {"name": "MC2_EDGE_FOG_MAX", "kind": "Float", "rule": "Prefix", "default": 0, "owner": "post", "retireBy": "", "doc": "", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": false, "verified": true, "registry": null, "logTopic": ""},

@@ -206,8 +206,6 @@ long GroundVehicle::update (void)
 						ObjectManager->createExplosion(INFANTRY_BOOM_EFFECT,nullptr,position, 0.0f,0.0f);
 					}
 				}
-					
-				craterManager->addCrater(CRATER_4,position,mc2_appearance_rng::randomNumber(180));
 			}
 
 			exploding = true;

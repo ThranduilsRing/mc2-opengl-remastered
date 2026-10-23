@@ -3,9 +3,9 @@
 # Where each gate is read, what the smoke runner forwards and what tier1_env_vars.md says are not here: ask
 # tools/repo_intel (env_var, gate_status), which scan the sources.
 generator_version: "3.0.0"
-gate_count: 929
-registry_entry_count: 186
-verified_count: 824
+gate_count: 928
+registry_entry_count: 185
+verified_count: 823
 flags:
   - name: MC2_3DVIEW_DIAG
     kind: Bool
@@ -1129,14 +1129,6 @@ flags:
     owner: gameos
     doc: ""
     verified: true
-  - name: MC2_DYNAMIC_DECALS
-    kind: Bool
-    default: false
-    rule: Lead0P
-    owner: code
-    doc: "Dynamic decal ring (mclib/dynamic_decal_ring.cpp): spawn()/gatherToDecalBatch() are no-ops when off."
-    verified: true
-    registry: {feature_id: MC2_FEATURE_DYNAMIC_DECALS, kind: Feature, order: -1, default_on: false}
   - name: MC2_EDGE_FOG
     kind: Bool
     default: true

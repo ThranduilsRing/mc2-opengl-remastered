@@ -375,7 +375,7 @@ CarnagePtr GameObjectManager::createExplosion (long effectId,
 											   float damage,
 											   float radius) 
 {
-	// Presentation only: scorch/crater for mines, deaths and airstrikes (bolt impacts emit their own event).
+	// Presentation only: impact decals for mines, deaths and airstrikes (bolt impacts emit their own event).
 	impact_presentation::onExplosion(effectId, position, radius);
 	long explosionObjTypeHandle = weaponEffects->GetEffectObjNum(effectId);
 	if (explosionObjTypeHandle != INVALID_OBJECT) 

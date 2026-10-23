@@ -2447,13 +2447,6 @@
    "LG06": 2,
    "LG14": 2
   },
-  "mclib/crater.cpp": {
-   "LG06": 1
-  },
-  "mclib/crater.h": {
-   "LG06": 1,
-   "LG14": 1
-  },
   "mclib/csvfile.cpp": {
    "LG05": 3,
    "LG06": 1,

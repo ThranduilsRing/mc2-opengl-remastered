@@ -10,7 +10,7 @@
 
 namespace mc2::gate::detail {
 
-inline constexpr std::size_t kGateCount = 929;
+inline constexpr std::size_t kGateCount = 928;
 
 inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_3DVIEW_DIAG", Kind::Bool, Rule::Presence, {}},
@@ -159,7 +159,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_DRAW_PACKET_STATIC_PROP_V6_TRACE", Kind::Bool, Rule::Lead1, {}},
     {"MC2_DRAW_PACKET_V3", Kind::Bool, Rule::Lead1, {}},
     {"MC2_DRAW_PACKET_WARN", Kind::Bool, Rule::Lead1, {}},
-    {"MC2_DYNAMIC_DECALS", Kind::Bool, Rule::Lead0P, {}},
     {"MC2_EDGE_FOG", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_EDGE_FOG_HEIGHT", Kind::Float, Rule::Prefix, {}},
     {"MC2_EDGE_FOG_MAX", Kind::Float, Rule::Prefix, {}},

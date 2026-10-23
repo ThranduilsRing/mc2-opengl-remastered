@@ -7,7 +7,6 @@
 #include "GraphicsOptionsWindow.h"
 #include "imgui.h"
 #include "../mclib/particles/batcher.h"  // Batcher::is_enabled() (MC2_GPU_PARTICLES reader)
-#include "../mclib/dynamic_decal_ring.h"  // MC2_DYNAMIC_DECALS live count
 
 #include "../GameOS/gameos/gos_postprocess.h"
 #include "../GameOS/gameos/view_registry.h"

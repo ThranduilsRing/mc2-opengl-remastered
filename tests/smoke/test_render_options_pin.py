@@ -19,10 +19,11 @@ def values(**changes):
     return v
 
 
-def test_table_is_the_engines_seventeen_options_with_their_defaults():
+def test_table_is_the_engines_options_with_their_defaults():
     t = {o.key: o for o in rop.table()}
-    assert len(t) == 17
+    assert len(t) == 18
     assert t["ShadowCSM"].default is True and t["StaticPropPbr"].default is False and t["StaticPropAmbient"].default is True
+    assert t["ImpactDecals"].default == 2 and t["ImpactDecals"].hi == 2
     assert t["SunAxisFix"].default is False
     assert t["PostCASSharpness"].default == 0.5 and t["PostCASSharpness"].hi == 1.0
     assert t["TonemapMode"].kind == "long" and (t["TonemapMode"].lo, t["TonemapMode"].hi) == (0, 3)

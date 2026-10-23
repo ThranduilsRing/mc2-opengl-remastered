@@ -79,7 +79,6 @@
 #include "../RenderCore/top_level_pass_executor.h"  // APPLY-STATE-MECHOPAQUE-1: findTopLevelStateDesc
 #include "../GameOS/gameos/gpu_cull_compute.h"  // C1b: compute_dispatch() moved here from mission.cpp
 #include "../GameOS/gameos/gpu_cull_substrate.h"
-#include "dynamic_decal_ring.h"  // MC2_DYNAMIC_DECALS gather before gos_DrawDecals
 #include "Gates/gate.h"
 
 // Borrowed engine scene state shared by the native preparation code.

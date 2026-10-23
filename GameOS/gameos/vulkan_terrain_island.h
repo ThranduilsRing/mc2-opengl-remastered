@@ -308,7 +308,7 @@ void mc2_render_backend_terrain_region_health(
 // mc2::textures::ready()::renderLists flushes after the terrain / objects:
 //   kind 0  terrain overlays (mission-static cement/pad/runway/road art bake from
 //           gos_terrain_indirect::DrawDecalStatic, + the legacy per-frame batch)
-//   kind 1  decals (craters, footprints, contact blobs, dynamic decals)
+//   kind 1  decals (footprints, contact blobs)
 // When mc2_vk_overlay_enabled() the GL producers (gosRenderer::drawTerrainOverlays /
 // drawDecals / drawDecalStaticBatch) queue their WorldOverlayVert data here INSTEAD of
 // drawing into the (VK-discarded) GL scene FBO; renderLists then calls mc2_vk_overlay_run

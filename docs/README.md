@@ -59,7 +59,6 @@
 - [docs/renderworld_arc_status.md](renderworld_arc_status.md)
 - Historical arc docs (model-override, R-V arc recons, terrain-8z, trackv, superpowers, observations, plans, recon, seam recon-1 reports) were archived 2026-10-09 to `E:/mc2-archive-2026-10/docs/arc-docs-2026-10-09.tar.gz` (sha256 beside it); recover single files from git history.
 - [docs/render-perf-snapshot.md](render-perf-snapshot.md)
-- [DECAL-INTEGRATE-1.md](DECAL-INTEGRATE-1.md) - DECAL-INTEGRATE-1 - joining the two parked projected-decal branches
 - [POSTPROCESS-COMPUTE-BLUR-1.md](POSTPROCESS-COMPUTE-BLUR-1.md) - POSTPROCESS-COMPUTE-BLUR-1
 - [VFX-DISTORTION-1.md](VFX-DISTORTION-1.md) - VFX-DISTORTION-1 - heat-haze refraction (procedural, clean-room)
 - [VFX-SCENECOLOR-GRAB-1.md](VFX-SCENECOLOR-GRAB-1.md) - VFX-SCENECOLOR-GRAB-1
