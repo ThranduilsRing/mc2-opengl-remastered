@@ -398,16 +398,13 @@ static bool init_local_shadow(ShadowIsland* s) {
         att.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE; att.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
         att.initialLayout = initial; att.finalLayout = final;
         VkAttachmentReference ref{0, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL};
-        VkSubpassDescription sub{};
-        sub.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS; sub.pDepthStencilAttachment = &ref;
-        VkSubpassDependency deps[2]{};
-        deps[0].srcSubpass = VK_SUBPASS_EXTERNAL; deps[0].dstSubpass = 0;
-        deps[0].srcStageMask = srcStage; deps[0].srcAccessMask = srcAccess;
-        deps[0].dstStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-        deps[0].dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-        deps[1].srcSubpass = 0; deps[1].dstSubpass = VK_SUBPASS_EXTERNAL;
-        deps[1].srcStageMask = VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT; deps[1].srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-        deps[1].dstStageMask = dstStage; deps[1].dstAccessMask = dstAccess;
+        VkSubpassDescription sub{}; sub.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS; sub.pDepthStencilAttachment = &ref;
+        const VkPipelineStageFlags testStages = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+        VkSubpassDependency deps[2]{
+            {VK_SUBPASS_EXTERNAL, 0, srcStage, testStages, srcAccess,
+             VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT, 0},
+            {0, VK_SUBPASS_EXTERNAL, VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT, dstStage,
+             VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT, dstAccess, 0}};
         VkRenderPassCreateInfo rpci{VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO};
         rpci.attachmentCount = 1; rpci.pAttachments = &att; rpci.subpassCount = 1; rpci.pSubpasses = &sub;
         rpci.dependencyCount = 2; rpci.pDependencies = deps;
@@ -933,6 +930,35 @@ static void record_bake(ShadowIsland* s) {
 // The start every pass shares: the island is up, the caster geometry is resident, the frame's recording is open and the casters are staged.
 
 
+// The static-prop caster draws of a run list (alpha-tested packets switch to the alpha pipeline and set 1, and back).
+static void draw_static_runs(ShadowIsland* s, VkCommandBuffer cb, const std::vector<InstRun>& runs, bool& alphaBound) {
+    for (const InstRun& run : runs) {
+        if (run.typeID >= s->typeRuns.size()) continue;
+        const TypeRun& tr = s->typeRuns[run.typeID];
+        for (uint32_t k = 0; k < tr.packetCount; ++k) {
+            const uint32_t pk = tr.firstPacket + k;
+            if (pk >= s->packets.size()) break;
+            const Mc2ShadowPacket& pkt = s->packets[pk];
+            const bool alphaPacket = s->alphaReady && pk < s->packetAlpha.size() && s->packetAlpha[pk].layer >= 0;
+            if (alphaPacket) {
+                if (!alphaBound) {
+                    mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->alphaPipe.get());
+                    const VkDescriptorSet aset = s->alphaSet;
+                    vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 1, 1, &aset, 0, nullptr);
+                    alphaBound = true;
+                }
+                const ShadowIsland::PacketAlpha& pa = s->packetAlpha[pk];
+                const struct { float scale[2]; int32_t layer; int32_t pad; } pc = {{pa.scaleX, pa.scaleY}, pa.layer, 0};
+                vkCmdPushConstants(cb, s->playout.get(), VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(pc), &pc);
+            } else if (alphaBound) {
+                mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->pipe.get());
+                alphaBound = false;
+            }
+            vkCmdDrawIndexed(cb, pkt.indexCount, run.count, pkt.firstIndex, static_cast<int32_t>(pkt.baseVertex), run.firstInstance);
+        }
+    }
+}
+
 // Appends one depth-only render pass to the frame's command buffer: the static-prop casters, then the mech casters, into `fb`. The light-space matrix goes to
 // this pass's own slice of the frame UBO, so no pass reads a matrix a later pass overwrote. Nothing here waits for the GPU.
 static bool record_pass(ShadowIsland* s, VkFramebuffer fb, int size, const float* lightSpace16, float biasFactor, float biasUnits, bool drawCasters = true) {
@@ -981,31 +1007,7 @@ static bool record_pass(ShadowIsland* s, VkFramebuffer fb, int size, const float
     vkCmdBindVertexBuffers(cb, 0, 1, &vertexBuf, &vboOff);
     vkCmdBindIndexBuffer(cb, s->ibo.get(), 0, VK_INDEX_TYPE_UINT32);
     if (drawCasters) {
-    for (const InstRun& run : s->instRuns) {
-        if (run.typeID >= s->typeRuns.size()) continue;
-        const TypeRun& tr = s->typeRuns[run.typeID];
-        for (uint32_t k = 0; k < tr.packetCount; ++k) {
-            const uint32_t pk = tr.firstPacket + k;
-            if (pk >= s->packets.size()) break;
-            const Mc2ShadowPacket& pkt = s->packets[pk];
-            const bool alphaPacket = s->alphaReady && pk < s->packetAlpha.size() && s->packetAlpha[pk].layer >= 0;
-            if (alphaPacket) {
-                if (!alphaBound) {
-                    mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->alphaPipe.get());
-                    const VkDescriptorSet aset = s->alphaSet;
-                    vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 1, 1, &aset, 0, nullptr);
-                    alphaBound = true;
-                }
-                const ShadowIsland::PacketAlpha& pa = s->packetAlpha[pk];
-                const struct { float scale[2]; int32_t layer; int32_t pad; } pc = {{pa.scaleX, pa.scaleY}, pa.layer, 0};
-                vkCmdPushConstants(cb, s->playout.get(), VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(pc), &pc);
-            } else if (alphaBound) {
-                mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->pipe.get());
-                alphaBound = false;
-            }
-            vkCmdDrawIndexed(cb, pkt.indexCount, run.count, pkt.firstIndex, static_cast<int32_t>(pkt.baseVertex), run.firstInstance);
-        }
-    }
+    draw_static_runs(s, cb, s->instRuns, alphaBound);
     s->mech.record(cb, s->parity, dynamicOffset);
     }
     vkCmdEndRenderPass(cb);
@@ -1062,31 +1064,7 @@ static void local_draw_static(ShadowIsland* s, VkCommandBuffer cb, const std::ve
     vkCmdBindVertexBuffers(cb, 0, 1, &vertexBuf, &vboOff);
     vkCmdBindIndexBuffer(cb, s->ibo.get(), 0, VK_INDEX_TYPE_UINT32);
     bool alphaBound = false;
-    for (const InstRun& run : runs) {
-        if (run.typeID >= s->typeRuns.size()) continue;
-        const TypeRun& tr = s->typeRuns[run.typeID];
-        for (uint32_t k = 0; k < tr.packetCount; ++k) {
-            const uint32_t pk = tr.firstPacket + k;
-            if (pk >= s->packets.size()) break;
-            const Mc2ShadowPacket& pkt = s->packets[pk];
-            const bool alphaPacket = s->alphaReady && pk < s->packetAlpha.size() && s->packetAlpha[pk].layer >= 0;
-            if (alphaPacket) {
-                if (!alphaBound) {
-                    mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->alphaPipe.get());
-                    const VkDescriptorSet aset = s->alphaSet;
-                    vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 1, 1, &aset, 0, nullptr);
-                    alphaBound = true;
-                }
-                const ShadowIsland::PacketAlpha& pa = s->packetAlpha[pk];
-                const struct { float scale[2]; int32_t layer; int32_t pad; } pc = {{pa.scaleX, pa.scaleY}, pa.layer, 0};
-                vkCmdPushConstants(cb, s->playout.get(), VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(pc), &pc);
-            } else if (alphaBound) {
-                mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->pipe.get());
-                alphaBound = false;
-            }
-            vkCmdDrawIndexed(cb, pkt.indexCount, run.count, pkt.firstIndex, static_cast<int32_t>(pkt.baseVertex), run.firstInstance);
-        }
-    }
+    draw_static_runs(s, cb, runs, alphaBound);
 }
 
 static void local_barrier(VkCommandBuffer cb, VkPipelineStageFlags src, VkAccessFlags srcAccess,
@@ -1158,18 +1136,7 @@ static void record_local_shadows(ShadowIsland* s) {
         std::vector<uint32_t> pick;
         for (uint32_t bi = 0; bi < bakeCount; ++bi) {
             const Tile& T = tiles[bake[bi]];
-            float aim[3];
-            decodeAim(T.packedType, aim);
-            const float reach = T.farDistance + 40.0f;
-            pick.clear();
-            for (uint32_t i = 0; i < L.leaves.size(); ++i) {
-                const float* m = L.leaves[i].modelMatrix;
-                const float d[3] = {-m[3] - T.pos[0], m[11] - T.pos[1], m[7] - T.pos[2]};   // Stuff -> MC2 (-x, z, y)
-                if (d[0] * d[0] + d[1] * d[1] + d[2] * d[2] > reach * reach) continue;
-                if (d[0] * aim[0] + d[1] * aim[1] + d[2] * aim[2] < -40.0f) continue;
-                pick.push_back(i);
-            }
-            std::sort(pick.begin(), pick.end(), [&](uint32_t a, uint32_t b) { return L.leaves[a].typeID < L.leaves[b].typeID; });
+            pickTileCasters(L.leaves, T, pick);
             for (size_t i = 0; i < pick.size();) {
                 const uint32_t tid = L.leaves[pick[i]].typeID;
                 size_t j = i;

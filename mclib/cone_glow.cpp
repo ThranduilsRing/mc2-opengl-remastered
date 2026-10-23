@@ -22,8 +22,10 @@
 #include <cmath>
 #include <cstdio>    // CONE-AIM-DIAG-1 / GHOST-LIGHT-DUMP-1 throttled dumps
 #include <cstdlib>
+#include <optional>
 #include <vector>
 #include "Gates/gate.h"
+#include "../RenderCore/axis_convert.h"
 #include "mc2fmt.h"
 
 namespace mc2_cone_glow {
@@ -54,20 +56,18 @@ long s_queueTurn = -1;
 const int   kMaxConeVerts = 512;
 const size_t kMaxFrameTris = 8192;
 
-// Resolve nodeId -> (rec, typeShape) or nullptrs.
-const TG_ShapeRec* resolveSpotNode(TG_MultiShape* shape, long nodeId,
-                                   const TG_TypeShape** outType)
+// Resolve nodeId -> (rec, typeShape), or nothing.
+struct SpotNode { const TG_ShapeRec* rec; const TG_TypeShape* ts; };
+std::optional<SpotNode> resolveSpotNode(TG_MultiShape* shape, long nodeId)
 {
-    *outType = nullptr;
-    if (!shape) return nullptr;
+    if (!shape) return std::nullopt;
     const TG_ShapeRec* rec = shape->GetShapeRec(static_cast<int>(nodeId));
-    if (!rec || !rec->node || !rec->processMe) return nullptr;
+    if (!rec || !rec->node || !rec->processMe) return std::nullopt;
     TG_TypeNodePtr tn = rec->node->GetMyType();
-    if (!tn || tn->GetNodeType() != SHAPE_NODE) return nullptr;
+    if (!tn || tn->GetNodeType() != SHAPE_NODE) return std::nullopt;
     const TG_TypeShape* ts = static_cast<const TG_TypeShape*>(tn);
-    if (!ts->GetTypeVertices()) return nullptr;
-    *outType = ts;
-    return rec;
+    if (!ts->GetTypeVertices()) return std::nullopt;
+    return SpotNode{rec, ts};
 }
 
 // Node-local cone axis (unit) + length from the type geometry. The cone apex
@@ -395,9 +395,10 @@ static bool aim_flip_enabled()
 bool GetNodeAim(TG_MultiShape* shape, long nodeId,
                 glm::vec3& aimWorldOut, float& coneLenOut)
 {
-    const TG_TypeShape* ts = nullptr;
-    const TG_ShapeRec* rec = resolveSpotNode(shape, nodeId, &ts);
-    if (!rec) return false;
+    const auto node = resolveSpotNode(shape, nodeId);
+    if (!node) return false;
+    const TG_ShapeRec* rec = node->rec;
+    const TG_TypeShape* ts = node->ts;
 
     glm::vec3 axisLocal;
     float lenLocal = 0.0f;
@@ -459,14 +460,15 @@ bool GetNodeAim(TG_MultiShape* shape, long nodeId,
 static bool isApexTag(DWORD tag)
 {
     const DWORD r = (tag >> 16) & 0xffu, g = (tag >> 8) & 0xffu, b = tag & 0xffu;
-    return std::max(r, std::max(g, b)) >= 0x40u;
+    return std::max({r, g, b}) >= 0x40u;
 }
 
 int GetNodeBeams(TG_MultiShape* shape, long nodeId, NodeBeam* out, int maxBeams)
 {
-    const TG_TypeShape* ts = nullptr;
-    const TG_ShapeRec* rec = resolveSpotNode(shape, nodeId, &ts);
-    if (!rec || maxBeams <= 0) return 0;
+    const auto node = resolveSpotNode(shape, nodeId);
+    if (!node || maxBeams <= 0) return 0;
+    const TG_ShapeRec* rec = node->rec;
+    const TG_TypeShape* ts = node->ts;
     const TG_TypeVertex* verts = ts->GetTypeVertices();
     const TG_TypeTriangle* tris = ts->GetTypeTriangles();
     const int nVerts = const_cast<TG_TypeShape*>(ts)->GetNumTypeVertices();
@@ -485,7 +487,7 @@ int GetNodeBeams(TG_MultiShape* shape, long nodeId, NodeBeam* out, int maxBeams)
     const float sc = scalar > 0.0f ? scalar : 1.0f;
     const auto toWorld = [&](const glm::vec3& local) {
         const glm::vec3 w = mc2::math::transformPoint(local * sc, rec->shapeToWorld);
-        return glm::vec3(-w.x, w.z, w.y);   // Stuff -> MC2 frame
+        return mc2ToRender(w);   // Stuff -> MC2 frame
     };
     int count = 0;
     for (int a = 0; a < nVerts && count < maxBeams; ++a)
@@ -565,7 +567,7 @@ bool SelfLitLeafPose(TG_MultiShape* shape, int leaf, glm::vec3& centerOut, glm::
     const float* m = glm::value_ptr(rec->shapeToWorld);
     if (std::fabs(m[3]) + std::fabs(m[7]) + std::fabs(m[11]) < 0.01f) return false;
     const glm::vec3 o = mc2::math::transformPoint(glm::vec3(0.0f), rec->shapeToWorld);
-    centerOut = glm::vec3(-o.x, o.z, o.y);   // Stuff -> MC2
+    centerOut = mc2ToRender(o);   // Stuff -> MC2
     // The most horizontal local axis: it sweeps around as the leaf spins.
     float bestZ = 2.0f;
     axisOut = glm::vec3(1.0f, 0.0f, 0.0f);
@@ -604,9 +606,10 @@ void QueueConeGlow(TG_MultiShape* shape, long nodeId,
     if (!glow_enabled() || !eye) return;
     if (nightFactor <= 0.001f) return;
 
-    const TG_TypeShape* ts = nullptr;
-    const TG_ShapeRec* rec = resolveSpotNode(shape, nodeId, &ts);
-    if (!rec) return;
+    const auto node = resolveSpotNode(shape, nodeId);
+    if (!node) return;
+    const TG_ShapeRec* rec = node->rec;
+    const TG_TypeShape* ts = node->ts;
 
     // GHOST-LIGHT-VISIBILITY-1 (user report, mc2_10 @ 212019: "the mech model is
     // not visible but its light cone is ... if the mech is marked as not
@@ -776,7 +779,7 @@ void QueueConeGlow(TG_MultiShape* shape, long nodeId,
         for (int j = 0; j < nVerts; ++j)
         {
             const DWORD t = verts[j].aRGBLight;
-            const float lum = static_cast<float>(std::max((t >> 16) & 0xffu, std::max((t >> 8) & 0xffu, t & 0xffu))) / 255.0f;
+            const float lum = static_cast<float>(std::max({(t >> 16) & 0xffu, (t >> 8) & 0xffu, t & 0xffu})) / 255.0f;
             xv[j].fade = lum;
         }
     if (realism && haveAxis && nVerts > 0 && !tagFade)

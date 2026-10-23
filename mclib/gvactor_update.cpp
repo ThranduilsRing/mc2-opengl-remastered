@@ -6,11 +6,8 @@
 #include "Gates/gate.h"
 #include "../RenderCore/axis_convert.h"
 #include "mc2fmt.h"
+#include "mover_lamps.h"
 
-// LOCAL-LIGHTS-3: vehicle lamps as real spot lights (lamps per SpotLight_ leaf; intensity
-// of a coned lamp -- no longer dimmed as a mover pool), as Mech3DAppearance does.
-static constexpr int   kMaxMoverLamps      = 8;
-static constexpr float kMoverLampIntensity = 0.25f;
 
 // Slice GV-shadow-skip (2026-05-09): skip gvShadowShape->TransformMultiShape
 // when modern engine has terrain tessellation active. Mirrors mech D-shadow-skip
@@ -227,28 +224,9 @@ void GVAppearance::updateGeometry (void)
 					long nodeId = gvShape->GetNodeNameId(nodeName);
 					if (nodeId == -1) continue;
 
-					// LOCAL-LIGHTS-3: one light per authored lamp of the leaf (node id
-					// repeats once per lamp, in lamp order), as for mechs and buildings.
-					const int nLamps = std::max(1, mc2_cone_glow::GetMoverBeams(gvShape, nodeId, glm::vec3(0.0f), nullptr, kMaxMoverLamps));
-					long slotId = -1;
-					for (int lamp = 0; lamp < nLamps; ++lamp)
-					{
-						TG_LightPtr light = static_cast<TG_LightPtr>(malloc(sizeof(TG_Light)));
-						light->init(TG_LIGHT_POINT);              // v1 (OQ2/M6) — POINT
-						// MOVER-LIGHT-HALOGEN-1: warm halogen, not legacy yellow.
-						light->SetaRGB(mc2_spotlight_diag::mover_light_argb());
-						light->SetIntensity(0.15f);                // anubis default
-						light->SetFalloffDistances(50.0f, 250.0f); // anubis default
-
-						slotId = eye->addWorldLight(light);
-						if (slotId < 0) { free(light); break; }
-						spotlightNodeIds_.push_back(nodeId);
-						spotlightLights_.push_back(light);
-						spotlightSlotIds_.push_back(static_cast<DWORD>(slotId));
-						// T1.16 — tag this slot as (E)-owned, source=Gv.
-						mc2_spotlight_diag::tag_slot(slotId, mc2_spotlight_diag::Gv, this);
-					}
-					if (slotId < 0) continue;
+					if (!mc2_mover_lamps::registerLamps(gvShape, nodeId, spotlightNodeIds_, spotlightLights_, spotlightSlotIds_,
+					                                    mc2_spotlight_diag::Gv, this))
+						continue;
 					++diagRegistered;
 
 					// First-hit trace (gv-side) — one stderr line per
@@ -258,7 +236,7 @@ void GVAppearance::updateGeometry (void)
 					MC2_DIAGFE(stderr,
 						"[SPOTLIGHT_REAL_TRACE v1] event=gv_first_hit"
 						" actorHandle=%ld node=%s slot=%ld\n",
-						actorHandle_, nodeName, slotId);
+						actorHandle_, nodeName, static_cast<long>(spotlightSlotIds_.back()));
 				}
 				diagOverflow = diagSpotlightsFound - diagRegistered;
 				if (diagOverflow < 0) diagOverflow = 0;
@@ -288,34 +266,12 @@ void GVAppearance::updateGeometry (void)
 			// (lights stay allocated across day/night; toggle active).
 			// active gate matches the mech/building pattern verbatim:
 			// visible && (sensorLevel > 4) && !InEditor, plus isNight.
-			mc2_cone_glow::NodeBeam lamps[kMaxMoverLamps];
-			int nLamps = 0, lampIdx = 0;
-			long lampNode = -1;
+			mc2_mover_lamps::LampCursor lampCursor;
 			for (size_t k = 0; k < spotlightLights_.size(); ++k)
 			{
 				glm::vec3 childPos =
 					getNodeIdPosition(spotlightNodeIds_[k]);
-				// LOCAL-LIGHTS-3: k-th light of a node = its k-th lamp; a lamp is a
-				// real spot light at the lamp (soft cone, every receiver, shadow tile).
-				if (spotlightNodeIds_[k] != lampNode)
-				{
-					lampNode = spotlightNodeIds_[k];
-					nLamps = mc2_cone_glow::GetMoverBeams(gvShape, lampNode, childPos, lamps, kMaxMoverLamps);
-					lampIdx = 0;
-				}
-				else
-					++lampIdx;
-				spotlightLights_[k]->spotCosOuter = 0.0f;
-				bool coneAimed = false;
-				if (lampIdx < nLamps && lamps[lampIdx].aim.z <= 0.15f)
-				{
-					mc2_cone_glow::ConfigureBeamLight(spotlightLights_[k], lamps[lampIdx]);
-					childPos = lamps[lampIdx].apex;
-					coneAimed = true;
-				}
-				else
-					spotlightLights_[k]->SetFalloffDistances(50.0f, 250.0f);
-				spotlightLights_[k]->SetIntensity(coneAimed ? kMoverLampIntensity : 0.15f);
+				bool coneAimed = lampCursor.next(gvShape, spotlightNodeIds_[k], spotlightLights_[k], childPos);
 				// LIGHT-CONE-MODELS-1 (A/C): place the pool at the authored
 				// cone's FAR END — aim comes from the node's live transform
 				// composed with the cone type geometry's own axis, then the
@@ -398,7 +354,7 @@ void GVAppearance::updateGeometry (void)
 				// LIGHT-CONE-MODELS-1 (B): visible glowing beam volume, tied
 				// to the SAME owner predicate — shutdown/dead/FoW-hidden
 				// vehicles show no cone. MC2_LIGHT_CONE_GLOW=0 kills it.
-				if (spotlightLights_[k]->active && lampIdx == 0)   // the glow draws the whole leaf once
+				if (spotlightLights_[k]->active && lampCursor.lampIdx == 0)   // the glow draws the whole leaf once
 					mc2_cone_glow::QueueConeGlow(gvShape, spotlightNodeIds_[k],
 						spotlightLights_[k]->GetaRGB(), eye->getNightFactor(),
 						/*ownerIsMover=*/true);

@@ -641,13 +641,18 @@ void PackAndDispatch() {
         static unsigned long s_poolDumpFrame = 0;
         const bool dumpThisFrame = s_poolDump && ((s_poolDumpFrame++ % 240) == 0);
         std::unordered_map<const void*, long> ptrToSlot;
+        const auto slotOf = [&ptrToSlot](const void* p) {
+            long r = -1;
+            if (const auto it = ptrToSlot.find(p); it != ptrToSlot.end()) { const auto& [key, v] = *it; r = v; }
+            return r;
+        };
         if (dumpThisFrame) {
             if (TG_LightPtr* wl = eye->getWorldLights())
                 for (long s = 0; s < MAX_LIGHTS_IN_WORLD; ++s)
                     if (wl[s]) {
                         // A light listed in two slots = a stale slot (freed owner, reused address).
-                        if (const auto it = ptrToSlot.find(wl[s]); it != ptrToSlot.end())
-                            MC2_EVENT(Terrain, "LIGHT_POOL_DUMP", 1, "dup_ptr slot_a={} slot_b={}", it->second, s);
+                        if (const long prevSlot = slotOf(wl[s]); prevSlot >= 0)
+                            MC2_EVENT(Terrain, "LIGHT_POOL_DUMP", 1, "dup_ptr slot_a={} slot_b={}", prevSlot, s);
                         ptrToSlot[wl[s]] = s;
                     }
             MC2_EVENT(Terrain, "LIGHT_POOL_DUMP", 1,
@@ -666,9 +671,7 @@ void PackAndDispatch() {
             TG_LightPtr tl = eye->getTerrainLight(i);
             if (!tl) continue;
             if (dumpThisFrame) {
-                long slot = -1;
-                auto its = ptrToSlot.find(tl);
-                if (its != ptrToSlot.end()) slot = its->second;
+                const long slot = slotOf(tl);
                 mc2_spotlight_diag::SourceClass src;
                 const bool eOwned = mc2_spotlight_diag::is_e_slot(slot, &src);
                 // owner prints like printf %p on MSVC x64: 16 upper-case hex digits, no 0x.
@@ -809,7 +812,7 @@ void PackAndDispatch() {
         const bool shadowTiles = false;
 #endif
         const float camX = eye ? eye->getPosition().x : 0.0f, camY = eye ? eye->getPosition().y : 0.0f;
-        mc2localshadow::selectTiles(s_lightBuf.data(), numLights, camX, camY, shadowTiles);
+        mc2localshadow::selectTiles(std::span(s_lightBuf.data(), numLights), camX, camY, shadowTiles);
     }
     // NIGHT-LIGHT-POOLS-1: publish this frame's packed count for the forward
     // consumer (LOD-chunk terrain per-fragment light loop).

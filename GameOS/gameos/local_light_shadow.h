@@ -11,6 +11,9 @@
 #pragma once
 #include <cmath>
 #include <cstdint>
+#include <algorithm>
+#include <span>
+#include <vector>
 
 namespace mc2localshadow {
 
@@ -100,7 +103,8 @@ inline uint64_t tileKey(const float pos[3], uint32_t packed, float farDistance) 
 // (so its baked static casters stay valid) and writes tile+1 into bits 4-7 of the chosen records. `enabled` false clears
 // every tile (no record then carries a tile). Light = gos_terrain_lighting::GpuTerrainLight.
 template <class Light>
-inline void selectTiles(Light* lights, uint32_t count, float camX, float camY, bool enabled) {
+inline void selectTiles(std::span<Light> lights, float camX, float camY, bool enabled) {
+    const uint32_t count = static_cast<uint32_t>(lights.size());
     struct Cand { uint32_t index; float d2; uint64_t key; int tile; };
     Cand best[kTiles];
     uint32_t nBest = 0;
@@ -143,6 +147,24 @@ inline void selectTiles(Light* lights, uint32_t count, float camX, float camY, b
     for (uint32_t k = 0; k < nBest; ++k)
         if (best[k].tile >= 0)
             lights[best[k].index].lightType = (lights[best[k].index].lightType & ~0xF0u) | ((static_cast<uint32_t>(best[k].tile) + 1u) << 4);
+}
+
+// The static casters that can shadow tile `T`: within its reach and not behind its aim, grouped by type id (indices into `leaves`).
+// Leaf = GpuStaticPropInstance (modelMatrix in the Stuff frame, typeID).
+template <class Leaf>
+inline void pickTileCasters(const std::vector<Leaf>& leaves, const Tile& T, std::vector<uint32_t>& pick) {
+    float aim[3];
+    decodeAim(T.packedType, aim);
+    const float reach = T.farDistance + 40.0f;
+    pick.clear();
+    for (uint32_t i = 0; i < leaves.size(); ++i) {
+        const float* m = leaves[i].modelMatrix;
+        const float d[3] = {-m[3] - T.pos[0], m[11] - T.pos[1], m[7] - T.pos[2]};   // Stuff -> MC2 (-x, z, y)
+        if (d[0] * d[0] + d[1] * d[1] + d[2] * d[2] > reach * reach) continue;
+        if (d[0] * aim[0] + d[1] * aim[1] + d[2] * aim[2] < -40.0f) continue;
+        pick.push_back(i);
+    }
+    std::sort(pick.begin(), pick.end(), [&](uint32_t a, uint32_t b) { return leaves[a].typeID < leaves[b].typeID; });
 }
 
 } // namespace mc2localshadow

@@ -151,12 +151,11 @@ float g_sceneLightScale = 1.0f;
 
 const MissionLightProfile& missionLightProfile()
 {
-	const char* name = missionName;
-	for (const char* p = missionName; *p; ++p)
-		if (*p == '/' || *p == '\\') name = p + 1;
+	const std::string_view full(missionName);
+	const std::string_view name = full.substr(full.find_last_of("/\\") + 1);
 	for (const auto& profile : kMissionLightProfiles) {
 		const size_t n = std::strlen(profile.mission);
-		if (S_strnicmp(name, profile.mission, n) == 0 && (name[n] == 0 || name[n] == '.'))
+		if (name.size() >= n && S_strnicmp(name.data(), profile.mission, n) == 0 && (name.size() == n || name[n] == '.'))
 			return profile;
 	}
 	return kDefaultNightProfile;
