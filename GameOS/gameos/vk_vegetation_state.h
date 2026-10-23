@@ -71,6 +71,8 @@ public:
 
     // Replaces the population: device-local copies of the instances and regions, and fresh per-parity output buffers sized to it. Waits for the device
     // (load-time work, never per frame). False leaves no population.
+    // Keep-every-Nth thinning stride (1 = whole population) that fits the quality preset and the live GPU headroom; 0 = no vegetation fits.
+    static uint32_t strideFor(uint64_t instances, uint64_t regions);
     bool upload(mc2vk::VulkanContext& ctx, std::span<const GpuInstance> instances, std::span<const GpuRegion> regions);
     void clear(mc2vk::VulkanContext& ctx);
 

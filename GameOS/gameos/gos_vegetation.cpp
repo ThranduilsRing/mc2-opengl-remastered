@@ -190,6 +190,19 @@ void GosVegetation::uploadInstances(const Instance* data, uint32_t count) {
     // Placement is immutable between uploads. Group nearby clumps once so the device walk rejects regions instead of revisiting the whole map.
     std::vector<Instance> sorted(data, data + count);
     std::sort(sorted.begin(), sorted.end(), [](const auto& a, const auto& b) { return cell(a) < cell(b); });
+    // Over the preset ceiling or the live GPU headroom: keep every Nth clump (the sort keeps the thinning even per cell) instead of dropping all vegetation.
+    {
+        size_t regions0 = 0;
+        for (size_t k = 0; k < sorted.size(); ++k) if (k == 0 || cell(sorted[k]) != cell(sorted[k - 1])) ++regions0;
+        const uint32_t stride = mc2veg::State::strideFor(sorted.size(), regions0);
+        if (stride > 1) {
+            const size_t before = sorted.size();
+            size_t kept = 0;
+            for (size_t k = 0; k < sorted.size(); k += stride) sorted[kept++] = sorted[k];
+            sorted.resize(kept);
+            mc2::fmt::print_err("[VK_RESIDENCY v1] thinned=vegetation stride={:d} instances={:d}->{:d}\n", mc2::fmt::as_u32(stride), mc2::fmt::as_u64(before), mc2::fmt::as_u64(kept));
+        }
+    }
     std::vector<mc2veg::GpuInstance> gpuInstances(sorted.size());
     for (size_t k = 0; k < sorted.size(); ++k) {
         const auto& i = sorted[k];

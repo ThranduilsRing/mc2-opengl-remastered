@@ -121,6 +121,7 @@ def test_changed_value_premain_line_alone_is_not_this_bucket():
 def test_the_in_mission_video_floor_is_an_absence_rule_for_mc2_10():
     from scripts.smoke_lib.gates import GateConfig, evaluate
     play = "[VIDEO v1] event=play_requested name=MC2_10A\n"
+    play += "native_vegetation_draws=7\n"   # the vegetation floor also applies to mc2_10
 
     def run(stem, text):
         s = parse_log(text)
@@ -131,6 +132,25 @@ def test_the_in_mission_video_floor_is_an_absence_rule_for_mc2_10():
         return evaluate(s, cfg, exit_code=0, walltime_s=31)
 
     assert run("mc2_10", play).passed
-    gone = run("mc2_10", "")
+    gone = run("mc2_10", "native_vegetation_draws=7\n")
     assert not gone.passed and "video_floor_missing" in gone.buckets
-    assert run("mc2_01", "").passed                       # the rule belongs to mc2_10 only
+    assert run("mc2_17", "").passed                       # the rule belongs to mc2_10 only
+
+
+def test_the_vegetation_floor_is_an_absence_rule_for_the_large_tier1_maps():
+    from scripts.smoke_lib.gates import GateConfig, evaluate
+
+    def run(stem, text):
+        s = parse_log(text)
+        s.instr_banner_seen = s.smoke_banner_seen = s.mission_resolve_seen = True
+        s.smoke_summary_result, s.mission_ready_ms, s.heartbeats_play, s.last_heartbeat_wall_s_play = "pass", 5000.0, 30, 30.5
+        s.perf = PerfRow(avg_fps=60)
+        cfg = GateConfig(heartbeat_timeout_load_s=60, heartbeat_timeout_play_s=3, duration_s=30, stem=stem)
+        return evaluate(s, cfg, exit_code=0, walltime_s=31)
+
+    drawn = "[VK_VFX] native_mesh_draws=0 native_tube_draws=0 native_vegetation_draws=412\n"
+    refused = "[VK_VFX] native_mesh_draws=0 native_tube_draws=0 native_vegetation_draws=0\n"
+    assert run("mc2_03", drawn + "[VIDEO v1] event=play_requested\n").passed
+    bad = run("mc2_03", refused)
+    assert not bad.passed and "vegetation_floor_missing" in bad.buckets
+    assert run("mc2_17", refused).passed
