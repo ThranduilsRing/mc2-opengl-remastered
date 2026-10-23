@@ -159,7 +159,9 @@ bool ensure_hdri(Island* s, uint64_t generation) {
         dims.assign(1, {1, 1});
     }
 
-    {
+    // The image and its staging copy are admitted by OwnedImage/OwnedBuffer (residency ledger). A refused real HDRI degrades to the 1x1
+    // black dummy, the same as an absent one, instead of failing the island.
+    auto createImage = [&]() -> bool {
         VkImageCreateInfo ii{};
         ii.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
         ii.imageType = VK_IMAGE_TYPE_2D; ii.format = fmt;
@@ -174,7 +176,16 @@ bool ensure_hdri(Island* s, uint64_t generation) {
         vi.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
         vi.image = s->hdriImg.get(); vi.viewType = VK_IMAGE_VIEW_TYPE_2D; vi.format = fmt;
         vi.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, mips, 0, 1};
-        if (!mc2vk::create(s->hdriView, s->device, [&](VkImageView* h) { return vkCreateImageView(s->device, &vi, nullptr, h); })) return false;
+        return mc2vk::create(s->hdriView, s->device, [&](VkImageView* h) { return vkCreateImageView(s->device, &vi, nullptr, h); });
+    };
+    if (!createImage()) {
+        if (!haveReal) return false;
+        vlog("HDRI refused by residency or allocation -- black sky.");
+        s->hdriView.reset(); s->hdriImg.reset();
+        haveReal = false; fmt = VK_FORMAT_R16G16B16A16_SFLOAT; w = 1; h = 1; mips = 1;
+        levels.assign(1, std::vector<unsigned char>(8, 0));
+        dims.assign(1, {1, 1});
+        if (!createImage()) return false;
     }
 
     std::vector<VkDeviceSize> offs(levels.size());
