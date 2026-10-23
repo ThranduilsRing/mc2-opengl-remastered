@@ -4591,28 +4591,6 @@
    "count": 1
   },
   {
-   "tag": "LIGHT_ROW_PURE",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "checked",
-    "mismatched"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "LIGHT_ROW_PURE",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "sample",
-    "class",
-    "legacyLights",
-    "pureLights"
-   ],
-   "count": 1
-  },
-  {
    "tag": "LINKUP",
    "ver": -1,
    "stream": "stdout",

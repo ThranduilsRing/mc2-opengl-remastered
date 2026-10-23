@@ -128,9 +128,8 @@ enum class RendererFeature : int {
     ViewmodeFramework        = 17,  // MC2_VIEWMODE_FRAMEWORK
     // Default-ON render-only prop occlusion from same-frame Vulkan depth.
     HzbBuild                 = 18,  // MC2_HZB_BUILD
-    // COMPRESSION-BC7-STATICPROP-1: BC7-compressed KTX2 static-prop texture
-    // arrays through the existing static-prop KTX path. Default-OFF; requires
-    // MC2_MATERIAL_KTX. All-or-nothing + uniform-dim per array (see batcher).
+    // Compatible BC7 sidecars use compressed buckets; absent or incompatible
+    // sidecars retain the RGBA fallback.
     StaticPropBc7            = 19,  // compatible sidecars, always enabled
     // COLORMAP-CPU-RETIRE-1: free cpuColorMap + cpuDispAlpha immediately after
     // BuildColormapAtlas uploads to GPU. The indirect path (default-ON) has no
