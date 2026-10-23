@@ -50,6 +50,10 @@ def light_specs(name, size, condition):
             for j in (-1,0,1):
                 add(f'window_{side}_{j+2:02}',(x*w*.40+y*j*w*.20,y*d*.40-x*j*d*.20,h*.90),
                     (x,y,0),'point',intensity='window')
+    else:
+        import batch_son
+        for label, pos, direction, kind, intensity in batch_son.LIGHTS.get(name, lambda size: [])(size):
+            add(label, pos, direction, kind, intensity=intensity)
     return result
 
 

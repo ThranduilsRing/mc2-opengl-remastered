@@ -226,6 +226,7 @@ WALL_PROFILE = {
     'd_mediumwall': ((0, 2.51), (1, 1.31)),
     'l_heavywall': ((0, 2.77), (17.9 / 21.3, 1.62), (1, 1.62)),
     'd_lightwall': ((0, 2.0), (1, 1.31)),
+    'd_heavywall': ((0, 2.92), (1, 1.51)),
 }
 
 
@@ -1142,6 +1143,8 @@ def full_rubble(k, name):
     carrier rebuild is the same wreck."""
     if name in ('singlecivlivinga', 'portable'):
         return batch2.rubble(k, name)
+    if name in batch_son.RUBBLE:
+        return batch_son.rubble(k, name)
     rng = random.Random(k.seed * 31 + 7)
     w, d, h = SIZES[name]
     spec = RUBBLE[name]
@@ -1368,6 +1371,12 @@ import batch3  # noqa: E402: construction helpers and batch two are registered f
 SIZES.update(batch3.SIZES)
 DRAFTS.update(batch3.DRAFTS)
 DAMAGE.update(batch3.DAMAGE)
+
+import batch_son  # noqa: E402: Sonnet runner batches (building / turret / wall)
+SIZES.update(batch_son.SIZES)
+DRAFTS.update(batch_son.DRAFTS)
+DAMAGE.update(batch_son.DAMAGE)
+BUILDINGS.update(batch_son.BUILDINGS)
 
 import archetypes  # noqa: E402: params-driven assets (assets/*.params.json) join the registries last
 LEGACY = tuple(DRAFTS)

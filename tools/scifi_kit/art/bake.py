@@ -16,6 +16,8 @@ CLASSES = {'paint':'painted_metal','corr':'painted_metal','hazard':'painted_meta
            'wood':'wood','canvas':'fabric','rubber':'rubber','gravel':'dielectric',
            'char':'dielectric','veg':'dielectric','lamp':'emissive','lamp_red':'emissive'}
 from bake_budget import BUDGETS, budget  # noqa: F401
+# Sonnet runner buildings: panelled shells keep whole faces at distance (generic collapse bottoms out above 18%).
+PANEL_LOD_BUILDINGS = ('genericmilitary','geodesicdome','liquidstorage','largefueltank','ammodump')
 
 
 def select(active, others=()):
@@ -365,7 +367,7 @@ def bake(objs,k,condition,out,res=2048):
         if i:
             ob=low.copy();ob.data=low.data.copy();bpy.context.collection.objects.link(ob)
             ob.name=name+f'_LOD{i}';select(ob)
-            if k.meta['stock'] in ('woodencrates','singlecivlivinga','portable','wirefence') or 'wall_layout' in k.meta:
+            if k.meta['stock'] in ('woodencrates','singlecivlivinga','portable','wirefence') or k.meta['stock'] in PANEL_LOD_BUILDINGS or 'wall_layout' in k.meta:
                 ob=panel_lod(ob,ratio,exterior='wall_layout' in k.meta)
             else:
                 mod=ob.modifiers.new('Distance LOD','DECIMATE');mod.ratio=ratio
