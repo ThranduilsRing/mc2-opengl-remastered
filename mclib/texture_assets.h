@@ -3,6 +3,8 @@
 #include <gameos.hpp>
 #include <cstdint>
 #include <memory>
+#include <optional>
+#include <string_view>
 namespace RenderCore { struct KtxImage; }
 
 namespace mc2::textures {
@@ -11,7 +13,7 @@ DWORD assetCapacity();
 void startSources();
 bool ready();
 // The <source>.ktx2 sidecar, unless the source comes from a higher-priority provider (a mod TGA beats a base KTX).
-bool loadCookedSidecar(const char* source, RenderCore::KtxImage& out);
+std::optional<RenderCore::KtxImage> loadCookedSidecar(std::string_view source);
 void flushSources(bool all);
 void adoptOwned(DWORD asset) noexcept;
 void disown(DWORD asset) noexcept;

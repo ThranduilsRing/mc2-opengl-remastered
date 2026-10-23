@@ -719,7 +719,9 @@ long TerrainColorMap::init (char *fileName)
 			for (int mat = 0; mat < 6 && all; mat++) {
 				FullPathFileName nmPath;
 				nmPath.init(texturePath, normalNames[mat], ".tga");
-				all = mc2::textures::loadCookedSidecar(static_cast<const char*>(nmPath), cooked[mat]);
+				auto layer = mc2::textures::loadCookedSidecar(static_cast<const char*>(nmPath));
+				all = layer.has_value();
+				if (all) cooked[mat] = std::move(*layer);
 			}
 			const bool used = all && fields->setMaterialNormals(cooked);
 			if (!used) fields->setMaterialNormals({});

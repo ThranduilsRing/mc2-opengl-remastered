@@ -21,7 +21,6 @@ layout(location = 0) in ivec2 localOffset;
 layout(location = 1) in int   isSkirtFlag;
 
 #include "include/terrain_frame_ubo_vk.glsl"
-#include "include/terrain_patch.glsl"
 
 layout(set = 0, binding = 1, std430) readonly buffer TerrainHeightBuf {
     float heights[];
@@ -31,6 +30,8 @@ layout(set = 0, binding = 1, std430) readonly buffer TerrainHeightBuf {
 layout(set = 0, binding = 10, std430) readonly buffer TerrainVisualHeightBuf {
     float heightsFine[];
 };
+
+#include "include/terrain_patch.glsl"
 
 layout(location = 0) out vec3 v_worldPos;
 

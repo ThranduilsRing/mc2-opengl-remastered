@@ -104,7 +104,9 @@ static uint8_t chooseProjectedLod(const TerrainBlockMeta& bm, float halfMap, Cam
         errors.resize(size_t(blockSide) * blockSide);
         for (int y = 0; y < blockSide; ++y) for (int x = 0; x < blockSide; ++x)
             errors[x + y * blockSide] = mc2terrain::terrainPatchHeightErrors(store->height(), side,
-                x * 20, y * 20, std::min(20, side - 1 - x * 20), std::min(20, side - 1 - y * 20));
+                x * 20, y * 20,
+                std::min(20, side - 1 - x * 20),
+                std::min(20, side - 1 - y * 20));
         cachedVersion = store->heightVersion();
     }
     const auto& error = errors[bm.originX / 20 + bm.originY / 20 * blockSide];
@@ -121,7 +123,8 @@ static uint8_t chooseProjectedLod(const TerrainBlockMeta& bm, float halfMap, Cam
         const float z = (corner & 4) ? bm.maxElev : bm.minElev;
         Stuff::Vector4D clip;
         clip.MultiplyPoint(glm::vec3(-x, z, y), camera->getWorldToClip());
-        minW = std::min(minW, clip.w); maxW = std::max(maxW, clip.w);
+        minW = std::min(minW, clip.w);
+        maxW = std::max(maxW, clip.w);
         nx = std::max(nx, std::abs(ax * clip.w - clip.x * aw));
         ny = std::max(ny, std::abs(ay * clip.w - clip.y * aw));
     }
@@ -654,8 +657,8 @@ long Terrain::update (void)
 						static const float s_skirtMax = mc2::gate::get<"MC2_TERRAIN_LOD_CHUNK_SKIRT_MAX">();
 						float elevRange = bm.maxElev - bm.minElev;
 						float depth     = elevRange * 0.5f + 32.0f;
-						if (depth > s_skirtMax) depth = s_skirtMax;
-						if (depth < 32.0f)      depth = 32.0f;
+						depth = std::min(depth, s_skirtMax);
+						depth = std::max(depth, 32.0f);
 						s_skirtDepths[s_cmdCount] = depth;
 					}
 					else
