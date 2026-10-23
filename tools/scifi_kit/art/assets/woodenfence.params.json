@@ -1,0 +1,103 @@
+{
+ "asset": "woodenfence",
+ "archetype": "fence",
+ "size": [
+  0.04505,
+  10.84323,
+  2.80867
+ ],
+ "origin": [
+  -0.001625,
+  -5.328613,
+  0.00085
+ ],
+ "palette": {
+  "main": [
+   0.401,
+   0.3104,
+   0.1729
+  ],
+  "second": [
+   0.401,
+   0.31,
+   0.173
+  ],
+  "trim": [
+   0.0609,
+   0.0455,
+   0.0173
+  ],
+  "roof": [
+   0.1669,
+   0.1206,
+   0.0542
+  ],
+  "ferro": [
+   0.1669,
+   0.1206,
+   0.0542
+  ],
+  "accent": [
+   0.693,
+   0.453,
+   0.0
+  ],
+  "metal": [
+   0.3,
+   0.3,
+   0.3
+  ],
+  "corr": [
+   0.401,
+   0.3104,
+   0.1729
+  ],
+  "glass": [
+   0.03,
+   0.05,
+   0.05
+  ]
+ },
+ "counts": {
+  "legs_supports": 4,
+  "panels_sections": 3
+ },
+ "features": [],
+ "dims": {
+  "style": "wood"
+ },
+ "detail": {},
+ "notes": "auto-drafted from stock analysis (name /sandbag|fence|barricade|shanty/); counts/features are DRAFT (see analysis.json confidences)",
+ "stock_model": "woodenfence",
+ "round_parts": [],
+ "round": [],
+ "draft_confidence": {
+  "panels_sections": 0.3,
+  "legs_supports": 0.5
+ },
+ "status": {
+  "state": "runner",
+  "validated": {
+   "params_sha": "86e2446ed01d48b6",
+   "analysis_sha": "6747709487e533fb",
+   "at": "2026-10-23"
+  }
+ },
+ "evidence": {
+  "analysis_sha": "6747709487e533fb",
+  "archetype": "fence",
+  "size_m": [
+   0.045,
+   10.843,
+   2.809
+  ],
+  "counts": {}
+ },
+ "waivers": [
+  {
+   "check": "palette",
+   "slot": "mean",
+   "reason": "63% of the stock texture is black background texels no triangle uses (UV-unused), so the stock mean is not the visible wood colour; slots are checked against the dominant colours"
+  }
+ ]
+}

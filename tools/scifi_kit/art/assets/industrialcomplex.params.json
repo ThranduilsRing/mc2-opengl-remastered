@@ -1,0 +1,426 @@
+{
+ "asset": "industrialcomplex",
+ "archetype": "box",
+ "size": [
+  30.21,
+  31.13097,
+  16.99313
+ ],
+ "origin": [
+  -0.507825,
+  0.158638,
+  0.0
+ ],
+ "palette": {
+  "main": [
+   0.161,
+   0.16,
+   0.152
+  ],
+  "second": [
+   0.231,
+   0.231,
+   0.217
+  ],
+  "trim": [
+   0.031,
+   0.03,
+   0.029
+  ],
+  "roof": [
+   0.2,
+   0.195,
+   0.177
+  ],
+  "ferro": [
+   0.153,
+   0.152,
+   0.144
+  ],
+  "accent": [
+   0.311,
+   0.308,
+   0.28
+  ],
+  "metal": [
+   0.42,
+   0.417,
+   0.397
+  ],
+  "corr": [
+   0.161,
+   0.16,
+   0.152
+  ],
+  "glass": [
+   0.03,
+   0.05,
+   0.05
+  ]
+ },
+ "counts": {
+  "doors": 0,
+  "openings_bays": 1,
+  "windows": 34
+ },
+ "features": [
+  {
+   "kind": "window",
+   "side": "front",
+   "at": -0.5,
+   "z": 11.7,
+   "w": 0.5,
+   "h": 0.4
+  },
+  {
+   "kind": "window",
+   "side": "front",
+   "at": -0.1,
+   "z": 2.15,
+   "w": 0.7,
+   "h": 0.3
+  },
+  {
+   "kind": "window",
+   "side": "front",
+   "at": 1.6,
+   "z": 2.15,
+   "w": 0.7,
+   "h": 0.3
+  },
+  {
+   "kind": "window",
+   "side": "front",
+   "at": -0.1,
+   "z": 1.25,
+   "w": 0.7,
+   "h": 0.3
+  },
+  {
+   "kind": "window",
+   "side": "left",
+   "at": 15.0,
+   "z": 15.75,
+   "w": 0.4,
+   "h": 0.3
+  },
+  {
+   "kind": "window",
+   "side": "left",
+   "at": -8.6,
+   "z": 11.45,
+   "w": 0.7,
+   "h": 0.3
+  },
+  {
+   "kind": "window",
+   "side": "left",
+   "at": -7.5,
+   "z": 11.45,
+   "w": 1.0,
+   "h": 0.3
+  },
+  {
+   "kind": "window",
+   "side": "left",
+   "at": -0.2,
+   "z": 11.45,
+   "w": 0.5,
+   "h": 0.3
+  },
+  {
+   "kind": "window",
+   "side": "left",
+   "at": 6.8,
+   "z": 11.45,
+   "w": 1.9,
+   "h": 0.3
+  },
+  {
+   "kind": "window",
+   "side": "left",
+   "at": 0.4,
+   "z": 9.8,
+   "w": 0.7,
+   "h": 0.4
+  },
+  {
+   "kind": "window",
+   "side": "left",
+   "at": 0.8,
+   "z": 8.45,
+   "w": 1.2,
+   "h": 0.3
+  },
+  {
+   "kind": "window",
+   "side": "left",
+   "at": -0.2,
+   "z": 5.7,
+   "w": 0.5,
+   "h": 0.4
+  },
+  {
+   "kind": "window",
+   "side": "left",
+   "at": -1.0,
+   "z": 4.35,
+   "w": 0.5,
+   "h": 0.3
+  },
+  {
+   "kind": "window",
+   "side": "left",
+   "at": 1.7,
+   "z": 4.35,
+   "w": 1.0,
+   "h": 0.3
+  },
+  {
+   "kind": "window",
+   "side": "left",
+   "at": -13.2,
+   "z": 1.6,
+   "w": 0.7,
+   "h": 0.6
+  },
+  {
+   "kind": "window",
+   "side": "rear",
+   "at": -4.4,
+   "z": 10.15,
+   "w": 1.4,
+   "h": 0.3
+  },
+  {
+   "kind": "window",
+   "side": "rear",
+   "at": 13.1,
+   "z": 9.8,
+   "w": 0.5,
+   "h": 0.4
+  },
+  {
+   "kind": "window",
+   "side": "rear",
+   "at": 13.4,
+   "z": 6.55,
+   "w": 0.5,
+   "h": 0.5
+  },
+  {
+   "kind": "window",
+   "side": "rear",
+   "at": -1.6,
+   "z": 2.15,
+   "w": 0.7,
+   "h": 0.3
+  },
+  {
+   "kind": "window",
+   "side": "rear",
+   "at": 0.1,
+   "z": 2.15,
+   "w": 0.7,
+   "h": 0.3
+  },
+  {
+   "kind": "window",
+   "side": "rear",
+   "at": 0.1,
+   "z": 1.25,
+   "w": 0.7,
+   "h": 0.3
+  },
+  {
+   "kind": "window",
+   "side": "right",
+   "at": -15.0,
+   "z": 15.75,
+   "w": 0.5,
+   "h": 0.3
+  },
+  {
+   "kind": "window",
+   "side": "right",
+   "at": -11.2,
+   "z": 11.4,
+   "w": 0.5,
+   "h": 0.4
+  },
+  {
+   "kind": "window",
+   "side": "right",
+   "at": 1.9,
+   "z": 11.4,
+   "w": 0.5,
+   "h": 0.4
+  },
+  {
+   "kind": "window",
+   "side": "right",
+   "at": 4.2,
+   "z": 11.4,
+   "w": 0.5,
+   "h": 0.4
+  },
+  {
+   "kind": "window",
+   "side": "right",
+   "at": 11.7,
+   "z": 11.4,
+   "w": 1.0,
+   "h": 0.4
+  },
+  {
+   "kind": "window",
+   "side": "right",
+   "at": -9.4,
+   "z": 9.7,
+   "w": 0.6,
+   "h": 1.0
+  },
+  {
+   "kind": "window",
+   "side": "right",
+   "at": -9.4,
+   "z": 7.45,
+   "w": 0.6,
+   "h": 0.5
+  },
+  {
+   "kind": "window",
+   "side": "right",
+   "at": -9.3,
+   "z": 6.75,
+   "w": 0.4,
+   "h": 0.5
+  },
+  {
+   "kind": "window",
+   "side": "right",
+   "at": -13.8,
+   "z": 5.9,
+   "w": 0.6,
+   "h": 1.2
+  },
+  {
+   "kind": "window",
+   "side": "right",
+   "at": -9.4,
+   "z": 5.1,
+   "w": 0.6,
+   "h": 0.4
+  },
+  {
+   "kind": "window",
+   "side": "right",
+   "at": -13.1,
+   "z": 2.7,
+   "w": 0.5,
+   "h": 0.4
+  },
+  {
+   "kind": "window",
+   "side": "right",
+   "at": -1.9,
+   "z": 1.65,
+   "w": 0.5,
+   "h": 0.3
+  },
+  {
+   "kind": "window",
+   "side": "right",
+   "at": 9.8,
+   "z": 1.65,
+   "w": 0.4,
+   "h": 0.3
+  },
+  {
+   "kind": "bay",
+   "side": "front",
+   "at": 0.0,
+   "z": 0.05,
+   "w": 7.0,
+   "h": 4.5
+  }
+ ],
+ "dims": {
+  "skin": "plate",
+  "bay_m": 4.5
+ },
+ "detail": {
+  "vents": 0,
+  "service_panel": true
+ },
+ "notes": "auto-drafted from stock analysis (category building); counts/features are DRAFT (see analysis.json confidences)",
+ "stock_model": "industrialcomplex",
+ "round_parts": [],
+ "round": [],
+ "draft_confidence": {
+  "windows": 0.79,
+  "panels_sections": 0.3,
+  "crates": 0.4,
+  "arches_ribs": 0.4,
+  "legs_supports": 0.55
+ },
+ "status": {
+  "state": "runner",
+  "validated": {
+   "params_sha": "4d00f2e512201b9f",
+   "analysis_sha": "75ad82e83f899a81",
+   "at": "2026-10-23"
+  }
+ },
+ "evidence": {
+  "analysis_sha": "75ad82e83f899a81",
+  "archetype": "box",
+  "size_m": [
+   30.21,
+   31.131,
+   16.993
+  ],
+  "counts": {
+   "doors": 0,
+   "windows": 34,
+   "openings_bays": 0
+  }
+ },
+ "waivers": [
+  {
+   "check": "features",
+   "side": "front",
+   "kind": "window",
+   "reason": "stock front paints no discrete windows, only a louvered roll-up bay under a green strip; the detector reads 4 openings from the strip and bay, the model has 6"
+  },
+  {
+   "check": "features",
+   "side": "right",
+   "kind": "window",
+   "reason": "stock right side shows a continuous clerestory band of small panes along the top; the detector counts 13 and the model carries 12 openings in the same band"
+  },
+  {
+   "check": "features",
+   "side": "left",
+   "kind": "window",
+   "reason": "stock left side shows a clerestory band of small panes along the top plus short end bands; the detector counts 11 and the model carries 10 in the same bands"
+  },
+  {
+   "check": "counts",
+   "field": "openings_bays",
+   "reason": "stock front shows a large louvered roll-up bay at ground level centre below a green strip; the detector missed it"
+  },
+  {
+   "check": "features",
+   "side": "front",
+   "kind": "bay",
+   "reason": "stock front shows a large louvered roll-up bay at ground level centre below a green strip; the detector missed it"
+  },
+  {
+   "check": "features",
+   "side": "front",
+   "kind": "door",
+   "reason": "stock front paints one louvered roll-up shutter at ground level and no door leaf; the model has that single bay opening, which the check reads as a door"
+  }
+ ]
+}

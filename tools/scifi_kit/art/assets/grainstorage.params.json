@@ -1,0 +1,460 @@
+{
+ "asset": "grainstorage",
+ "archetype": "box",
+ "size": [
+  21.07057,
+  10.3252,
+  18.94502
+ ],
+ "origin": [
+  -5.318162,
+  0.004075,
+  0.0
+ ],
+ "palette": {
+  "main": [
+   0.167,
+   0.166,
+   0.163
+  ],
+  "second": [
+   0.103,
+   0.102,
+   0.103
+  ],
+  "trim": [
+   0.04,
+   0.04,
+   0.043
+  ],
+  "roof": [
+   0.188,
+   0.183,
+   0.171
+  ],
+  "ferro": [
+   0.158,
+   0.158,
+   0.154
+  ],
+  "accent": [
+   0.04,
+   0.04,
+   0.043
+  ],
+  "metal": [
+   0.836,
+   0.836,
+   0.836
+  ],
+  "corr": [
+   0.167,
+   0.166,
+   0.163
+  ],
+  "glass": [
+   0.03,
+   0.05,
+   0.05
+  ]
+ },
+ "counts": {
+  "doors": 0,
+  "openings_bays": 0,
+  "windows": 44
+ },
+ "features": [
+  {
+   "kind": "window",
+   "side": "front",
+   "at": -9.3,
+   "z": 15.3,
+   "w": 1.3,
+   "h": 0.6
+  },
+  {
+   "kind": "window",
+   "side": "front",
+   "at": -7.7,
+   "z": 15.3,
+   "w": 1.3,
+   "h": 0.6
+  },
+  {
+   "kind": "window",
+   "side": "front",
+   "at": -6.2,
+   "z": 15.3,
+   "w": 1.4,
+   "h": 0.6
+  },
+  {
+   "kind": "window",
+   "side": "front",
+   "at": -4.7,
+   "z": 15.3,
+   "w": 1.3,
+   "h": 0.6
+  },
+  {
+   "kind": "window",
+   "side": "front",
+   "at": -3.1,
+   "z": 15.3,
+   "w": 1.3,
+   "h": 0.6
+  },
+  {
+   "kind": "window",
+   "side": "front",
+   "at": -1.6,
+   "z": 15.3,
+   "w": 1.3,
+   "h": 0.6
+  },
+  {
+   "kind": "window",
+   "side": "front",
+   "at": 8.7,
+   "z": 15.3,
+   "w": 1.3,
+   "h": 0.6
+  },
+  {
+   "kind": "window",
+   "side": "front",
+   "at": 6.7,
+   "z": 3.0,
+   "w": 4.4,
+   "h": 1.2
+  },
+  {
+   "kind": "window",
+   "side": "front",
+   "at": -4.9,
+   "z": 1.8,
+   "w": 0.9,
+   "h": 1.2
+  },
+  {
+   "kind": "window",
+   "side": "left",
+   "at": -3.6,
+   "z": 15.2,
+   "w": 1.4,
+   "h": 0.8
+  },
+  {
+   "kind": "window",
+   "side": "left",
+   "at": -2.0,
+   "z": 15.2,
+   "w": 1.4,
+   "h": 0.8
+  },
+  {
+   "kind": "window",
+   "side": "left",
+   "at": 2.7,
+   "z": 11.95,
+   "w": 4.4,
+   "h": 0.7
+  },
+  {
+   "kind": "window",
+   "side": "rear",
+   "at": -9.2,
+   "z": 13.7,
+   "w": 1.4,
+   "h": 0.4
+  },
+  {
+   "kind": "window",
+   "side": "rear",
+   "at": -7.7,
+   "z": 13.7,
+   "w": 1.3,
+   "h": 0.4
+  },
+  {
+   "kind": "window",
+   "side": "rear",
+   "at": -6.2,
+   "z": 13.7,
+   "w": 1.3,
+   "h": 0.4
+  },
+  {
+   "kind": "window",
+   "side": "rear",
+   "at": -4.7,
+   "z": 13.7,
+   "w": 1.3,
+   "h": 0.4
+  },
+  {
+   "kind": "window",
+   "side": "rear",
+   "at": -3.1,
+   "z": 13.7,
+   "w": 1.3,
+   "h": 0.4
+  },
+  {
+   "kind": "window",
+   "side": "rear",
+   "at": -1.6,
+   "z": 13.7,
+   "w": 1.3,
+   "h": 0.4
+  },
+  {
+   "kind": "window",
+   "side": "rear",
+   "at": -0.1,
+   "z": 13.7,
+   "w": 1.3,
+   "h": 0.4
+  },
+  {
+   "kind": "window",
+   "side": "rear",
+   "at": 1.5,
+   "z": 13.7,
+   "w": 1.3,
+   "h": 0.4
+  },
+  {
+   "kind": "window",
+   "side": "rear",
+   "at": 3.0,
+   "z": 13.7,
+   "w": 1.3,
+   "h": 0.4
+  },
+  {
+   "kind": "window",
+   "side": "rear",
+   "at": 4.5,
+   "z": 13.7,
+   "w": 1.4,
+   "h": 0.4
+  },
+  {
+   "kind": "window",
+   "side": "rear",
+   "at": 6.1,
+   "z": 13.7,
+   "w": 1.3,
+   "h": 0.4
+  },
+  {
+   "kind": "window",
+   "side": "rear",
+   "at": 7.6,
+   "z": 13.7,
+   "w": 1.3,
+   "h": 0.4
+  },
+  {
+   "kind": "window",
+   "side": "rear",
+   "at": 9.1,
+   "z": 13.7,
+   "w": 1.3,
+   "h": 0.4
+  },
+  {
+   "kind": "window",
+   "side": "rear",
+   "at": -9.2,
+   "z": 13.15,
+   "w": 1.4,
+   "h": 0.3
+  },
+  {
+   "kind": "window",
+   "side": "rear",
+   "at": -7.7,
+   "z": 13.15,
+   "w": 1.3,
+   "h": 0.3
+  },
+  {
+   "kind": "window",
+   "side": "rear",
+   "at": -6.2,
+   "z": 13.15,
+   "w": 1.3,
+   "h": 0.3
+  },
+  {
+   "kind": "window",
+   "side": "rear",
+   "at": -4.7,
+   "z": 13.15,
+   "w": 1.3,
+   "h": 0.3
+  },
+  {
+   "kind": "window",
+   "side": "rear",
+   "at": -3.1,
+   "z": 13.15,
+   "w": 1.3,
+   "h": 0.3
+  },
+  {
+   "kind": "window",
+   "side": "rear",
+   "at": -1.6,
+   "z": 13.15,
+   "w": 1.3,
+   "h": 0.3
+  },
+  {
+   "kind": "window",
+   "side": "rear",
+   "at": -0.1,
+   "z": 13.15,
+   "w": 1.3,
+   "h": 0.3
+  },
+  {
+   "kind": "window",
+   "side": "rear",
+   "at": 1.5,
+   "z": 13.15,
+   "w": 1.3,
+   "h": 0.3
+  },
+  {
+   "kind": "window",
+   "side": "rear",
+   "at": 3.0,
+   "z": 13.15,
+   "w": 1.3,
+   "h": 0.3
+  },
+  {
+   "kind": "window",
+   "side": "rear",
+   "at": 4.5,
+   "z": 13.15,
+   "w": 1.4,
+   "h": 0.3
+  },
+  {
+   "kind": "window",
+   "side": "rear",
+   "at": 6.1,
+   "z": 13.15,
+   "w": 1.3,
+   "h": 0.3
+  },
+  {
+   "kind": "window",
+   "side": "rear",
+   "at": 7.6,
+   "z": 13.15,
+   "w": 1.3,
+   "h": 0.3
+  },
+  {
+   "kind": "window",
+   "side": "rear",
+   "at": 9.1,
+   "z": 13.15,
+   "w": 1.3,
+   "h": 0.3
+  },
+  {
+   "kind": "window",
+   "side": "rear",
+   "at": -3.3,
+   "z": 12.15,
+   "w": 3.7,
+   "h": 0.5
+  },
+  {
+   "kind": "window",
+   "side": "rear",
+   "at": -0.7,
+   "z": 12.15,
+   "w": 1.2,
+   "h": 0.5
+  },
+  {
+   "kind": "window",
+   "side": "rear",
+   "at": 1.9,
+   "z": 12.15,
+   "w": 3.6,
+   "h": 0.5
+  },
+  {
+   "kind": "window",
+   "side": "right",
+   "at": 2.0,
+   "z": 15.2,
+   "w": 1.4,
+   "h": 0.8
+  },
+  {
+   "kind": "window",
+   "side": "right",
+   "at": 3.6,
+   "z": 15.2,
+   "w": 1.4,
+   "h": 0.8
+  },
+  {
+   "kind": "window",
+   "side": "right",
+   "at": -2.7,
+   "z": 11.95,
+   "w": 4.4,
+   "h": 0.7
+  }
+ ],
+ "dims": {
+  "skin": "corr",
+  "bay_m": 4.5
+ },
+ "detail": {
+  "vents": 0,
+  "service_panel": true
+ },
+ "notes": "auto-drafted from stock analysis (category building); counts/features are DRAFT (see analysis.json confidences)",
+ "stock_model": "grainstorage",
+ "round_parts": [],
+ "round": [],
+ "draft_confidence": {
+  "windows": 0.82,
+  "panels_sections": 0.3,
+  "crates": 0.4
+ },
+ "status": {
+  "state": "runner",
+  "validated": {
+   "params_sha": "ddda9b2a116319da",
+   "analysis_sha": "807fe5d7310a2021",
+   "at": "2026-10-23"
+  }
+ },
+ "evidence": {
+  "analysis_sha": "807fe5d7310a2021",
+  "archetype": "box",
+  "size_m": [
+   21.071,
+   10.325,
+   18.945
+  ],
+  "counts": {
+   "doors": 0,
+   "windows": 44,
+   "openings_bays": 0
+  }
+ },
+ "waivers": []
+}

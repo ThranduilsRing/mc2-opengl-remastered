@@ -1,0 +1,108 @@
+{
+ "asset": "shantyfence",
+ "archetype": "fence",
+ "size": [
+  10.64797,
+  0.00178,
+  2.93475
+ ],
+ "origin": [
+  5.332662,
+  -0.003638,
+  -0.01405
+ ],
+ "palette": {
+  "main": [
+   0.192,
+   0.138,
+   0.1
+  ],
+  "second": [
+   0.255,
+   0.191,
+   0.145
+  ],
+  "trim": [
+   0.014,
+   0.01,
+   0.007
+  ],
+  "roof": [
+   0.221,
+   0.162,
+   0.12
+  ],
+  "ferro": [
+   0.183,
+   0.131,
+   0.095
+  ],
+  "accent": [
+   0.131,
+   0.086,
+   0.056
+  ],
+  "metal": [
+   0.396,
+   0.345,
+   0.303
+  ],
+  "corr": [
+   0.192,
+   0.138,
+   0.1
+  ],
+  "glass": [
+   0.03,
+   0.05,
+   0.05
+  ]
+ },
+ "counts": {
+  "legs_supports": 0,
+  "panels_sections": 1
+ },
+ "features": [],
+ "dims": {
+  "style": "sheet"
+ },
+ "detail": {},
+ "notes": "auto-drafted from stock analysis (name /sandbag|fence|barricade|shanty/); counts/features are DRAFT (see analysis.json confidences)",
+ "stock_model": "shantyfence",
+ "round_parts": [],
+ "round": [],
+ "draft_confidence": {
+  "panels_sections": 0.3,
+  "legs_supports": 0.5
+ },
+ "status": {
+  "state": "runner",
+  "validated": {
+   "params_sha": "dfdb726057d18dcc",
+   "analysis_sha": "17f1e83e50ebf32e",
+   "at": "2026-10-23"
+  }
+ },
+ "evidence": {
+  "analysis_sha": "17f1e83e50ebf32e",
+  "archetype": "fence",
+  "size_m": [
+   10.648,
+   0.002,
+   2.935
+  ],
+  "counts": {}
+ },
+ "waivers": [
+  {
+   "check": "counts",
+   "field": "legs_supports",
+   "reason": "stock shanty fence is one continuous ragged plank sheet with no separate posts visible in the front view"
+  },
+  {
+   "check": "counts",
+   "field": "panels_sections",
+   "reason": "stock shanty fence front view is a single continuous plank sheet, not three separate panels"
+  }
+ ]
+}

@@ -1,0 +1,173 @@
+{
+ "asset": "civstoragea",
+ "archetype": "box",
+ "size": [
+  9.63735,
+  16.44,
+  5.25497
+ ],
+ "origin": [
+  0.0,
+  -4.95305,
+  0.0
+ ],
+ "palette": {
+  "main": [
+   0.071,
+   0.06,
+   0.047
+  ],
+  "second": [
+   0.115,
+   0.097,
+   0.076
+  ],
+  "trim": [
+   0.038,
+   0.031,
+   0.025
+  ],
+  "roof": [
+   0.08,
+   0.068,
+   0.055
+  ],
+  "ferro": [
+   0.068,
+   0.057,
+   0.045
+  ],
+  "accent": [
+   0.115,
+   0.097,
+   0.076
+  ],
+  "metal": [
+   0.399,
+   0.393,
+   0.383
+  ],
+  "corr": [
+   0.071,
+   0.06,
+   0.047
+  ],
+  "glass": [
+   0.03,
+   0.05,
+   0.05
+  ]
+ },
+ "counts": {
+  "doors": 0,
+  "openings_bays": 2,
+  "windows": 4
+ },
+ "features": [
+  {
+   "kind": "window",
+   "side": "left",
+   "at": -5.7,
+   "z": 2.5,
+   "w": 0.6,
+   "h": 0.4
+  },
+  {
+   "kind": "window",
+   "side": "left",
+   "at": -1.9,
+   "z": 2.5,
+   "w": 0.7,
+   "h": 0.4
+  },
+  {
+   "kind": "window",
+   "side": "left",
+   "at": 3.8,
+   "z": 2.5,
+   "w": 0.9,
+   "h": 0.4
+  },
+  {
+   "kind": "window",
+   "side": "right",
+   "at": 2.0,
+   "z": 2.4,
+   "w": 1.0,
+   "h": 0.4
+  },
+  {
+   "kind": "bay",
+   "side": "front",
+   "at": 0.0,
+   "z": 0.0,
+   "w": 3.6,
+   "h": 3.2
+  },
+  {
+   "kind": "bay",
+   "side": "rear",
+   "at": 0.0,
+   "z": 0.0,
+   "w": 3.6,
+   "h": 3.2
+  }
+ ],
+ "dims": {
+  "skin": "corr",
+  "bay_m": 4.5
+ },
+ "detail": {
+  "vents": 0,
+  "service_panel": true
+ },
+ "notes": "auto-drafted from stock analysis (category building); counts/features are DRAFT (see analysis.json confidences)",
+ "stock_model": "civstoragea",
+ "round_parts": [],
+ "round": [],
+ "draft_confidence": {
+  "windows": 0.75,
+  "panels_sections": 0.3
+ },
+ "status": {
+  "state": "runner",
+  "validated": {
+   "params_sha": "c9ee981bb9413e79",
+   "analysis_sha": "84a1714f62ddc50b",
+   "at": "2026-10-23"
+  }
+ },
+ "evidence": {
+  "analysis_sha": "84a1714f62ddc50b",
+  "archetype": "box",
+  "size_m": [
+   9.637,
+   16.44,
+   5.255
+  ],
+  "counts": {
+   "doors": 0,
+   "windows": 4,
+   "openings_bays": 0
+  }
+ },
+ "waivers": [
+  {
+   "check": "features",
+   "side": "front",
+   "kind": "door",
+   "reason": "stock front and rear paint a light grey roll-up shutter bay (see five-sides sheet); the dark-rectangle detector misses light panels"
+  },
+  {
+   "check": "features",
+   "side": "rear",
+   "kind": "door",
+   "reason": "stock front and rear paint a light grey roll-up shutter bay (see five-sides sheet); the dark-rectangle detector misses light panels"
+  },
+  {
+   "check": "counts",
+   "field": "openings_bays",
+   "reason": "stock front and rear paint a light grey roll-up shutter bay (see five-sides sheet); the dark-rectangle detector misses light panels"
+  }
+ ]
+}

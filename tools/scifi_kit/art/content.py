@@ -167,7 +167,7 @@ def deduplicate(asset):
     return asset.check()
 
 
-def prepare(source,pipeline,out):
+def prepare(source,pipeline,out,only=None):
     sys.dont_write_bytecode=True
     sys.path.insert(0,str(pipeline))
     from tools.content_pipeline import gltf_io,ir,validate
@@ -176,8 +176,9 @@ def prepare(source,pipeline,out):
     recipe=dict(mod_id='mc2-stock-kit-r5',name='MC2 stock art upgrades',
                 out=(out/'package').as_posix(),assets=[])
     assets=[];proof=[];lights={}
-    for name in drafts.DRAFTS:
+    for name in (only or drafts.DRAFTS):
         folder=source/'pbr'
+        if not (folder/f'{name}_pristine_lod0.glb').is_file():continue        # params-driven assets join only passes that baked them
         files={cond:[folder/f'{name}_{cond}_lod{i}.glb' for i in range(3)]
                for cond in ('pristine','worn','abandoned','partial','destroyed')}
         evidence=dict(asset=name,files=[],lights={})
@@ -245,9 +246,9 @@ def prepare(source,pipeline,out):
         asset.check();ir.save(asset,out/'ir'/f'{name}.json');assets.append(asset)
         evidence.update(material_slots=len(asset.materials),ir=(out/'ir'/f'{name}.json').as_posix())
         proof.append(evidence)
-    clean=next(p for p in proof if p['asset']=='quonsetclean')
-    rusty=next(p for p in proof if p['asset']=='quonset')
-    matches=[a['geometry_sha256']==b['geometry_sha256'] for a,b in zip(clean['files'],rusty['files'])]
+    clean=next((p for p in proof if p['asset']=='quonsetclean'),None)
+    rusty=next((p for p in proof if p['asset']=='quonset'),None)
+    matches=[a['geometry_sha256']==b['geometry_sha256'] for a,b in zip(clean['files'],rusty['files'])] if clean and rusty else []
     if not all(matches):
         bad=[Path(a['path']).name for a,ok in zip(clean['files'],matches) if not ok]
         raise ValueError('clean/rusty quonset geometry or UVs differ: '+', '.join(bad))
@@ -255,6 +256,29 @@ def prepare(source,pipeline,out):
     (out/'light-sockets.json').write_text(json.dumps(dict(schema='mc2-building-light/1',assets=lights),indent=2))
     (out/'validation.json').write_text(json.dumps(proof,indent=2))
     return assets
+
+
+def validate_states(source,pipeline,name,states):
+    """Pristine-only gate: glTF validation + baked atlas + tangent data of the given states' 3 LODs (no IR / destroyed pairing). -> failure strings."""
+    sys.dont_write_bytecode=True
+    sys.path.insert(0,str(pipeline))
+    from tools.content_pipeline import gltf_io,validate
+    out=[]
+    for cond in states:
+        for i in range(3):
+            path=source/'pbr'/f'{name}_{cond}_lod{i}.glb'
+            if not path.is_file():
+                out.append(f'content: missing {path.name}');continue
+            errs=validate.errors(validate.validate_gltf(path))
+            if errs:out.append(f'content: {path.name}: {errs}');continue
+            doc,_=document(path)
+            if not doc.get('images'):out.append(f'content: {path.name}: no baked atlas')
+            _,buffers,_=gltf_io.load_document(path)
+            for mesh in doc['meshes']:
+                for p_ in mesh['primitives']:
+                    if not {'POSITION','NORMAL','TEXCOORD_0','TANGENT'}<=set(p_['attributes']):
+                        out.append(f'content: {path.name}: missing tangent-space vertex data')
+    return out
 
 
 def main():
@@ -265,7 +289,8 @@ def main():
     ap.add_argument('--pipeline',type=Path,default=Path('A:/Games/mc2-flash4'))
     ap.add_argument('--out',type=Path,required=True)
     ap.add_argument('--cook',action='store_true')
-    args=ap.parse_args();assets=prepare(args.source,args.pipeline,args.out)
+    ap.add_argument('--only',help='comma list of assets (batch validation)')
+    args=ap.parse_args();assets=prepare(args.source,args.pipeline,args.out,args.only.split(',') if args.only else None)
     if args.cook:
         from tools.content_pipeline import package
         package.build_package(assets,args.out/'package',mod_id='mc2-stock-kit-r5',name='MC2 stock art upgrades')

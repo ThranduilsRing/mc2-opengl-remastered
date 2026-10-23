@@ -1,0 +1,246 @@
+{
+ "asset": "2storycivliving",
+ "archetype": "box",
+ "size": [
+  8.6239,
+  16.57503,
+  6.93848
+ ],
+ "origin": [
+  0.0,
+  -5.269963,
+  0.0
+ ],
+ "palette": {
+  "main": [
+   0.041,
+   0.036,
+   0.029
+  ],
+  "second": [
+   0.113,
+   0.098,
+   0.079
+  ],
+  "trim": [
+   0.041,
+   0.036,
+   0.029
+  ],
+  "roof": [
+   0.07,
+   0.067,
+   0.061
+  ],
+  "ferro": [
+   0.039,
+   0.034,
+   0.028
+  ],
+  "accent": [
+   0.076,
+   0.064,
+   0.049
+  ],
+  "metal": [
+   0.428,
+   0.422,
+   0.413
+  ],
+  "corr": [
+   0.041,
+   0.036,
+   0.029
+  ],
+  "glass": [
+   0.03,
+   0.05,
+   0.05
+  ]
+ },
+ "counts": {
+  "doors": 0,
+  "openings_bays": 0,
+  "windows": 15
+ },
+ "features": [
+  {
+   "kind": "window",
+   "side": "front",
+   "at": 1.8,
+   "z": 1.85,
+   "w": 0.4,
+   "h": 0.5
+  },
+  {
+   "kind": "window",
+   "side": "front",
+   "at": -1.8,
+   "z": 1.9,
+   "w": 0.5,
+   "h": 0.4
+  },
+  {
+   "kind": "window",
+   "side": "left",
+   "at": -0.4,
+   "z": 5.35,
+   "w": 0.5,
+   "h": 0.3
+  },
+  {
+   "kind": "window",
+   "side": "left",
+   "at": 1.6,
+   "z": 5.35,
+   "w": 0.8,
+   "h": 0.3
+  },
+  {
+   "kind": "window",
+   "side": "left",
+   "at": 2.8,
+   "z": 1.85,
+   "w": 0.8,
+   "h": 0.5
+  },
+  {
+   "kind": "window",
+   "side": "left",
+   "at": 5.7,
+   "z": 1.85,
+   "w": 0.7,
+   "h": 0.5
+  },
+  {
+   "kind": "window",
+   "side": "left",
+   "at": -3.9,
+   "z": 1.85,
+   "w": 0.8,
+   "h": 0.5
+  },
+  {
+   "kind": "window",
+   "side": "rear",
+   "at": -1.7,
+   "z": 5.3,
+   "w": 1.0,
+   "h": 0.4
+  },
+  {
+   "kind": "window",
+   "side": "rear",
+   "at": 1.6,
+   "z": 5.3,
+   "w": 0.7,
+   "h": 0.4
+  },
+  {
+   "kind": "window",
+   "side": "rear",
+   "at": -1.7,
+   "z": 1.95,
+   "w": 0.8,
+   "h": 0.5
+  },
+  {
+   "kind": "window",
+   "side": "right",
+   "at": -1.6,
+   "z": 5.35,
+   "w": 0.8,
+   "h": 0.3
+  },
+  {
+   "kind": "window",
+   "side": "right",
+   "at": 0.4,
+   "z": 5.35,
+   "w": 0.5,
+   "h": 0.3
+  },
+  {
+   "kind": "window",
+   "side": "right",
+   "at": -5.7,
+   "z": 1.85,
+   "w": 0.7,
+   "h": 0.5
+  },
+  {
+   "kind": "window",
+   "side": "right",
+   "at": -2.8,
+   "z": 1.85,
+   "w": 0.8,
+   "h": 0.5
+  },
+  {
+   "kind": "window",
+   "side": "right",
+   "at": 3.9,
+   "z": 1.85,
+   "w": 0.8,
+   "h": 0.5
+  }
+ ],
+ "dims": {
+  "skin": "plate",
+  "bay_m": 4.5
+ },
+ "detail": {
+  "vents": 0,
+  "service_panel": true
+ },
+ "notes": "auto-drafted from stock analysis (category building); counts/features are DRAFT (see analysis.json confidences)",
+ "stock_model": "2storycivliving",
+ "round_parts": [],
+ "round": [],
+ "draft_confidence": {
+  "windows": 0.77,
+  "panels_sections": 0.3
+ },
+ "status": {
+  "state": "runner",
+  "validated": {
+   "params_sha": "850af1e6cd90d0f5",
+   "analysis_sha": "725d8f5e4af517de",
+   "at": "2026-10-23"
+  }
+ },
+ "evidence": {
+  "analysis_sha": "725d8f5e4af517de",
+  "archetype": "box",
+  "size_m": [
+   8.624,
+   16.575,
+   6.938
+  ],
+  "counts": {
+   "doors": 0,
+   "windows": 15,
+   "openings_bays": 0
+  }
+ },
+ "waivers": [
+  {
+   "check": "features",
+   "side": "right",
+   "kind": "window",
+   "reason": "stock right view shows 4 small framed windows on the low block plus two clerestory strips on the tall block; the detector counts strip panes as 5 and the model carries 6 openings in the same layout"
+  },
+  {
+   "check": "features",
+   "side": "left",
+   "kind": "window",
+   "reason": "stock left view shows 4 small framed windows on the low block plus two clerestory strips on the tall block; the detector counts 5 and the model carries 6 openings in the same layout"
+  },
+  {
+   "check": "features",
+   "side": "rear",
+   "kind": "window",
+   "reason": "stock rear view shows a 3-pane clerestory strip over two lower framed windows; the detector reads the strip as 3 panes and the model keeps the strip features"
+  }
+ ]
+}

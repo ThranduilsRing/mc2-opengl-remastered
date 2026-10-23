@@ -1,0 +1,186 @@
+{
+ "asset": "barracks",
+ "archetype": "box",
+ "size": [
+  10.5269,
+  21.17745,
+  4.37787
+ ],
+ "origin": [
+  -0.013025,
+  -5.34225,
+  0.00205
+ ],
+ "palette": {
+  "main": [
+   0.09,
+   0.095,
+   0.089
+  ],
+  "second": [
+   0.256,
+   0.236,
+   0.174
+  ],
+  "trim": [
+   0.045,
+   0.044,
+   0.04
+  ],
+  "roof": [
+   0.085,
+   0.089,
+   0.09
+  ],
+  "ferro": [
+   0.085,
+   0.09,
+   0.085
+  ],
+  "accent": [
+   0.256,
+   0.236,
+   0.174
+  ],
+  "metal": [
+   0.578,
+   0.564,
+   0.544
+  ],
+  "corr": [
+   0.09,
+   0.095,
+   0.089
+  ],
+  "glass": [
+   0.03,
+   0.05,
+   0.05
+  ]
+ },
+ "counts": {
+  "doors": 2,
+  "openings_bays": 0,
+  "windows": 6
+ },
+ "features": [
+  {
+   "kind": "door",
+   "side": "front",
+   "at": -0.0,
+   "z": 0.05,
+   "w": 2.0,
+   "h": 2.9
+  },
+  {
+   "kind": "window",
+   "side": "left",
+   "at": -0.0,
+   "z": 1.75,
+   "w": 2.6,
+   "h": 0.7
+  },
+  {
+   "kind": "window",
+   "side": "left",
+   "at": -5.8,
+   "z": 1.75,
+   "w": 2.6,
+   "h": 0.7
+  },
+  {
+   "kind": "window",
+   "side": "left",
+   "at": 5.7,
+   "z": 1.75,
+   "w": 2.6,
+   "h": 0.7
+  },
+  {
+   "kind": "window",
+   "side": "right",
+   "at": 0.0,
+   "z": 1.75,
+   "w": 2.6,
+   "h": 0.7
+  },
+  {
+   "kind": "window",
+   "side": "right",
+   "at": -5.7,
+   "z": 1.75,
+   "w": 2.6,
+   "h": 0.7
+  },
+  {
+   "kind": "window",
+   "side": "right",
+   "at": 5.8,
+   "z": 1.75,
+   "w": 2.6,
+   "h": 0.7
+  },
+  {
+   "kind": "door",
+   "side": "rear",
+   "at": 0.0,
+   "z": 0.05,
+   "w": 2.0,
+   "h": 2.9
+  }
+ ],
+ "dims": {
+  "skin": "plate",
+  "bay_m": 4.5
+ },
+ "detail": {
+  "vents": 0,
+  "service_panel": true
+ },
+ "notes": "auto-drafted from stock analysis (category building); counts/features are DRAFT (see analysis.json confidences)",
+ "stock_model": "barracks",
+ "round_parts": [],
+ "round": [],
+ "draft_confidence": {
+  "doors": 0.8,
+  "windows": 0.84,
+  "panels_sections": 0.3,
+  "crates": 0.4,
+  "arches_ribs": 0.4
+ },
+ "status": {
+  "state": "runner",
+  "validated": {
+   "params_sha": "57ae662d4b87555f",
+   "analysis_sha": "dcb87ae9e8aab6ef",
+   "at": "2026-10-23"
+  }
+ },
+ "evidence": {
+  "analysis_sha": "dcb87ae9e8aab6ef",
+  "archetype": "box",
+  "size_m": [
+   10.527,
+   21.177,
+   4.378
+  ],
+  "counts": {
+   "doors": 1,
+   "windows": 6,
+   "openings_bays": 0
+  }
+ },
+ "waivers": [
+  {
+   "check": "counts",
+   "field": "doors",
+   "reason": "stock rear end paints the same door as the front (dark upper panel over a blue-grey leaf, five-sides sheet); the detector finds only the front one"
+  },
+  {
+   "check": "features",
+   "side": "rear",
+   "kind": "door",
+   "reason": "stock rear end paints the same door as the front (dark upper panel over a blue-grey leaf, five-sides sheet); the detector finds only the front one"
+  }
+ ]
+}

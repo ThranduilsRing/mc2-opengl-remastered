@@ -1,0 +1,136 @@
+{
+ "asset": "munitionscrates",
+ "archetype": "container",
+ "size": [
+  10.5547,
+  2.12125,
+  3.38187
+ ],
+ "origin": [
+  0.030625,
+  -0.00535,
+  0.0
+ ],
+ "palette": {
+  "main": [
+   0.363,
+   0.266,
+   0.15
+  ],
+  "second": [
+   0.034,
+   0.019,
+   0.007
+  ],
+  "trim": [
+   0.034,
+   0.019,
+   0.007
+  ],
+  "roof": [
+   0.405,
+   0.273,
+   0.165
+  ],
+  "ferro": [
+   0.345,
+   0.253,
+   0.143
+  ],
+  "accent": [
+   0.218,
+   0.144,
+   0.051
+  ],
+  "metal": [
+   0.613,
+   0.607,
+   0.586
+  ],
+  "corr": [
+   0.363,
+   0.266,
+   0.15
+  ],
+  "glass": [
+   0.03,
+   0.05,
+   0.05
+  ]
+ },
+ "counts": {
+  "crates": 1,
+  "doors": 0
+ },
+ "features": [],
+ "dims": {
+  "lid": 0,
+  "ribs": 21
+ },
+ "detail": {},
+ "notes": "auto-drafted from stock analysis (name /munitions/); counts/features are DRAFT (see analysis.json confidences)",
+ "stock_model": "munitionscrates",
+ "round_parts": [],
+ "round": [],
+ "draft_confidence": {
+  "doors": 0.8,
+  "panels_sections": 0.3,
+  "crates": 0.5
+ },
+ "status": {
+  "state": "draft",
+  "demoted": {
+   "at": "2026-10-23",
+   "failures": [
+    "waiver: silhouette is a structural check and cannot be waived; if the builder cannot reach the stock shape the asset is needs_builder",
+    "waiver: silhouette is a structural check and cannot be waived; if the builder cannot reach the stock shape the asset is needs_builder",
+    "roof: the model top surface follows the stock on 32% of the plan (need 85%); stock extrude/stepped along y, 1 ridge(s), model extrude/flat along y, 1 ridge(s)",
+    "silhouette: front (side1) IoU 0.69 < 0.70",
+    "silhouette: rear (side3) IoU 0.69 < 0.70"
+   ]
+  }
+ },
+ "evidence": {
+  "analysis_sha": "fd735fe73ee24698",
+  "archetype": "container",
+  "size_m": [
+   10.555,
+   2.121,
+   3.382
+  ],
+  "counts": {
+   "doors": 2,
+   "windows": 0,
+   "openings_bays": 0
+  }
+ },
+ "waivers": [
+  {
+   "check": "counts",
+   "field": "doors",
+   "reason": "the dark/outlier rectangles the detector reads as doors on the two ends are the faces of the stacked crates (hazard-striped crate fronts), not doors"
+  },
+  {
+   "check": "features",
+   "side": "left",
+   "kind": "door",
+   "reason": "the dark/outlier rectangles the detector reads as doors on the two ends are the faces of the stacked crates (hazard-striped crate fronts), not doors"
+  },
+  {
+   "check": "features",
+   "side": "right",
+   "kind": "door",
+   "reason": "the dark/outlier rectangles the detector reads as doors on the two ends are the faces of the stacked crates (hazard-striped crate fronts), not doors"
+  },
+  {
+   "check": "silhouette",
+   "view": "front",
+   "reason": "stock is a stepped stack of 5 crates (3 + 2); the container builder makes one block, IoU 0.69 vs the 0.70 floor; stacking is a builder gap for the owner"
+  },
+  {
+   "check": "silhouette",
+   "view": "rear",
+   "reason": "stock is a stepped stack of 5 crates (3 + 2); the container builder makes one block, IoU 0.69 vs the 0.70 floor; stacking is a builder gap for the owner"
+  }
+ ]
+}

@@ -1,0 +1,108 @@
+{
+ "asset": "sandbagwall",
+ "archetype": "fence",
+ "size": [
+  0.82985,
+  10.5441,
+  1.0853
+ ],
+ "origin": [
+  0.022225,
+  -0.01505,
+  0.001475
+ ],
+ "palette": {
+  "main": [
+   0.016,
+   0.013,
+   0.01
+  ],
+  "second": [
+   0.122,
+   0.1,
+   0.071
+  ],
+  "trim": [
+   0.016,
+   0.013,
+   0.01
+  ],
+  "roof": [
+   0.256,
+   0.209,
+   0.146
+  ],
+  "ferro": [
+   0.015,
+   0.012,
+   0.009
+  ],
+  "accent": [
+   0.253,
+   0.209,
+   0.145
+  ],
+  "metal": [
+   0.3,
+   0.3,
+   0.3
+  ],
+  "corr": [
+   0.016,
+   0.013,
+   0.01
+  ],
+  "glass": [
+   0.03,
+   0.05,
+   0.05
+  ]
+ },
+ "counts": {
+  "legs_supports": 0,
+  "panels_sections": 0
+ },
+ "features": [],
+ "dims": {
+  "style": "sandbag"
+ },
+ "detail": {},
+ "notes": "auto-drafted from stock analysis (name /sandbag|fence|barricade|shanty/); counts/features are DRAFT (see analysis.json confidences)",
+ "stock_model": "sandbagwall",
+ "round_parts": [],
+ "round": [],
+ "draft_confidence": {
+  "panels_sections": 0.3,
+  "legs_supports": 0.5
+ },
+ "status": {
+  "state": "runner",
+  "validated": {
+   "params_sha": "76e67231a9e6ce80",
+   "analysis_sha": "566c0fc1d8cafb99",
+   "at": "2026-10-23"
+  }
+ },
+ "evidence": {
+  "analysis_sha": "566c0fc1d8cafb99",
+  "archetype": "fence",
+  "size_m": [
+   0.83,
+   10.544,
+   1.085
+  ],
+  "counts": {}
+ },
+ "waivers": [
+  {
+   "check": "counts",
+   "field": "legs_supports",
+   "reason": "stock sandbag wall is one continuous stack of sandbags with no posts visible in the front, side or top views"
+  },
+  {
+   "check": "counts",
+   "field": "panels_sections",
+   "reason": "stock sandbag wall is one continuous stack of sandbags with no separate panels visible in the front, side or top views"
+  }
+ ]
+}

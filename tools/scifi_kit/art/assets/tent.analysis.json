@@ -1,0 +1,369 @@
+{
+ "schema": "mc2-kit-analysis/1",
+ "asset": "tent",
+ "source": "G:\\mc2-assets\\out\\scifi-kit\\round2\\stock\\tent.json",
+ "bounds": {
+  "size_m": [
+   8.89157,
+   10.1339,
+   3.95588
+  ],
+  "footprint_m2": 90.11,
+  "height_m": 3.956,
+  "tris": 20,
+  "origin_offset_m": [
+   -0.005262,
+   -0.019125,
+   0.012225
+  ]
+ },
+ "parts": [
+  {
+   "name": "Tent1",
+   "tris": 20,
+   "role": "body",
+   "round": null,
+   "bbox_lo": [
+    -4.446,
+    -5.067,
+    0.0
+   ],
+   "bbox_hi": [
+    4.446,
+    5.067,
+    3.956
+   ],
+   "profile_x": [
+    [
+     0.0,
+     4.446
+    ],
+    [
+     0.44,
+     4.446
+    ],
+    [
+     1.0,
+     0.16
+    ]
+   ],
+   "profile_y": [
+    [
+     0.0,
+     5.067
+    ],
+    [
+     1.0,
+     5.067
+    ]
+   ]
+  }
+ ],
+ "stock_model": {
+  "asset": "tent",
+  "intact_stem": "tent",
+  "destroyed_stem": "tentdam",
+  "mesh": "G:\\mc2-assets\\out\\scifi-kit\\round2\\stock\\tent.json",
+  "parts": [
+   [
+    "Tent1",
+    "body"
+   ]
+  ],
+  "resolved_from": "catalog.json models[role=intact,lod=0]"
+ },
+ "round_parts": [],
+ "round": [],
+ "profile": {
+  "x_all": [
+   [
+    0.0,
+    4.446
+   ],
+   [
+    0.44,
+    4.446
+   ],
+   [
+    1.0,
+    0.16
+   ]
+  ],
+  "y_all": [
+   [
+    0.0,
+    5.067
+   ],
+   [
+    1.0,
+    5.067
+   ]
+  ],
+  "x_body": [
+   [
+    0.0,
+    4.446
+   ],
+   [
+    0.44,
+    4.446
+   ],
+   [
+    1.0,
+    0.16
+   ]
+  ],
+  "long_axis": "y",
+  "note": "half-extent (m) vs height fraction; x_body = the end of the long axis away from the +Y terminal pier"
+ },
+ "roof": {
+  "type": "gable",
+  "ridge_axis": "x",
+  "eave_h": 1.806,
+  "ridge_h": 3.91,
+  "rise_m": 2.104,
+  "pitch_deg": 25.8,
+  "residual": 0.0,
+  "flat_residual": 0.633,
+  "confidence": 0.95
+ },
+ "palette": {
+  "dominant": [
+   {
+    "linear": [
+     0.0619,
+     0.0921,
+     0.0424
+    ],
+    "hex": "#46563a",
+    "fraction": 0.255
+   },
+   {
+    "linear": [
+     0.0491,
+     0.0722,
+     0.0333
+    ],
+    "hex": "#3f4c33",
+    "fraction": 0.233
+   },
+   {
+    "linear": [
+     0.0759,
+     0.1184,
+     0.053
+    ],
+    "hex": "#4e6141",
+    "fraction": 0.202
+   },
+   {
+    "linear": [
+     0.041,
+     0.0522,
+     0.0278
+    ],
+    "hex": "#39412e",
+    "fraction": 0.174
+   },
+   {
+    "linear": [
+     0.1039,
+     0.149,
+     0.0655
+    ],
+    "hex": "#5b6c48",
+    "fraction": 0.119
+   },
+   {
+    "linear": [
+     0.2649,
+     0.2185,
+     0.1294
+    ],
+    "hex": "#8d8165",
+    "fraction": 0.017
+   }
+  ],
+  "roof_dominant": [
+   {
+    "linear": [
+     0.0949,
+     0.1477,
+     0.0724
+    ],
+    "hex": "#576b4c",
+    "fraction": 0.415
+   },
+   {
+    "linear": [
+     0.0777,
+     0.1195,
+     0.0592
+    ],
+    "hex": "#4f6145",
+    "fraction": 0.358
+   },
+   {
+    "linear": [
+     0.0608,
+     0.0939,
+     0.0468
+    ],
+    "hex": "#46563d",
+    "fraction": 0.226
+   }
+  ],
+  "mean_linear": [
+   0.0669,
+   0.0955,
+   0.0444
+  ],
+  "mean_hex": "#49573b",
+  "wear": {
+   "n": 5350,
+   "value_mean": 0.337,
+   "value_std": 0.062,
+   "sat_mean": 0.319,
+   "sat_std": 0.04,
+   "rust_cov": 0.0,
+   "dark_stain": 0.0
+  },
+  "texels": 5350,
+  "draft": {
+   "main": [
+    0.062,
+    0.092,
+    0.042
+   ],
+   "second": [
+    0.076,
+    0.118,
+    0.053
+   ],
+   "trim": [
+    0.041,
+    0.052,
+    0.028
+   ],
+   "roof": [
+    0.095,
+    0.148,
+    0.072
+   ],
+   "ferro": [
+    0.059,
+    0.088,
+    0.04
+   ],
+   "accent": [
+    0.104,
+    0.149,
+    0.066
+   ],
+   "metal": [
+    0.3,
+    0.3,
+    0.3
+   ],
+   "corr": [
+    0.062,
+    0.092,
+    0.042
+   ],
+   "glass": [
+    0.03,
+    0.05,
+    0.05
+   ]
+  }
+ },
+ "counts": {
+  "doors": {
+   "n": 2,
+   "conf": 0.74,
+   "where": [
+    {
+     "side": "front",
+     "at_m": [
+      0.1,
+      1.2
+     ],
+     "size_m": [
+      2.1,
+      2.4
+     ],
+     "conf": 0.74,
+     "source": "stock texture: ground-standing colour panel in the textured side view"
+    },
+    {
+     "side": "rear",
+     "at_m": [
+      -0.1,
+      1.2
+     ],
+     "size_m": [
+      2.1,
+      2.4
+     ],
+     "conf": 0.74,
+     "source": "stock texture: ground-standing colour panel in the textured side view"
+    }
+   ]
+  },
+  "windows": {
+   "n": 0,
+   "conf": 0.5,
+   "where": []
+  },
+  "openings_bays": {
+   "n": 0,
+   "conf": 0.5,
+   "where": []
+  },
+  "panels_sections": {
+   "n": 1,
+   "conf": 0.3,
+   "where": []
+  },
+  "crates": {
+   "n": 0,
+   "conf": 0.5,
+   "where": []
+  },
+  "barrels": {
+   "n": 0,
+   "conf": 0.5,
+   "where": []
+  },
+  "tanks": {
+   "n": 0,
+   "conf": 0.5,
+   "where": []
+  },
+  "arches_ribs": {
+   "n": 0,
+   "conf": 0.5,
+   "where": []
+  },
+  "legs_supports": {
+   "n": 0,
+   "conf": 0.5,
+   "where": []
+  },
+  "antennas_dishes": {
+   "n": 0,
+   "conf": 0.3,
+   "where": []
+  },
+  "stairs_ladders": {
+   "n": 0,
+   "conf": 0.3,
+   "where": []
+  }
+ },
+ "archetype_guess": {
+  "archetype": "tent",
+  "why": "name /^(tent|longtent|htent|camonetting)$/",
+  "supported": true
+ }
+}

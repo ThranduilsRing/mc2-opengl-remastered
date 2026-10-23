@@ -1,0 +1,596 @@
+{
+ "asset": "hangar",
+ "archetype": "box",
+ "size": [
+  47.75,
+  48.0,
+  19.48002
+ ],
+ "origin": [
+  -0.125,
+  -0.0,
+  0.0
+ ],
+ "palette": {
+  "main": [
+   0.198,
+   0.183,
+   0.144
+  ],
+  "second": [
+   0.27,
+   0.252,
+   0.193
+  ],
+  "trim": [
+   0.029,
+   0.027,
+   0.025
+  ],
+  "roof": [
+   0.3,
+   0.282,
+   0.224
+  ],
+  "ferro": [
+   0.188,
+   0.173,
+   0.136
+  ],
+  "accent": [
+   0.27,
+   0.252,
+   0.193
+  ],
+  "metal": [
+   0.509,
+   0.489,
+   0.408
+  ],
+  "corr": [
+   0.198,
+   0.183,
+   0.144
+  ],
+  "glass": [
+   0.03,
+   0.05,
+   0.05
+  ]
+ },
+ "counts": {
+  "doors": 0,
+  "openings_bays": 1,
+  "windows": 60
+ },
+ "features": [
+  {
+   "kind": "bay",
+   "side": "rear",
+   "at": -17.9,
+   "z": 0.25,
+   "w": 5.4,
+   "h": 3.3
+  },
+  {
+   "kind": "window",
+   "side": "front",
+   "at": -21.7,
+   "z": 18.8,
+   "w": 0.5,
+   "h": 0.4
+  },
+  {
+   "kind": "window",
+   "side": "front",
+   "at": -12.2,
+   "z": 18.8,
+   "w": 0.5,
+   "h": 0.4
+  },
+  {
+   "kind": "window",
+   "side": "front",
+   "at": -2.6,
+   "z": 18.8,
+   "w": 0.5,
+   "h": 0.4
+  },
+  {
+   "kind": "window",
+   "side": "front",
+   "at": 7.0,
+   "z": 18.8,
+   "w": 0.5,
+   "h": 0.4
+  },
+  {
+   "kind": "window",
+   "side": "front",
+   "at": -22.9,
+   "z": 11.75,
+   "w": 0.9,
+   "h": 0.7
+  },
+  {
+   "kind": "window",
+   "side": "front",
+   "at": -12.2,
+   "z": 10.75,
+   "w": 0.5,
+   "h": 0.5
+  },
+  {
+   "kind": "window",
+   "side": "front",
+   "at": -3.2,
+   "z": 7.85,
+   "w": 0.5,
+   "h": 0.5
+  },
+  {
+   "kind": "window",
+   "side": "front",
+   "at": 6.4,
+   "z": 7.85,
+   "w": 0.5,
+   "h": 0.5
+  },
+  {
+   "kind": "window",
+   "side": "front",
+   "at": 22.1,
+   "z": 7.4,
+   "w": 1.0,
+   "h": 1.0
+  },
+  {
+   "kind": "window",
+   "side": "front",
+   "at": -2.7,
+   "z": 7.35,
+   "w": 0.5,
+   "h": 0.5
+  },
+  {
+   "kind": "window",
+   "side": "front",
+   "at": 6.9,
+   "z": 7.35,
+   "w": 0.5,
+   "h": 0.5
+  },
+  {
+   "kind": "window",
+   "side": "front",
+   "at": -18.8,
+   "z": 2.2,
+   "w": 5.3,
+   "h": 2.0
+  },
+  {
+   "kind": "window",
+   "side": "front",
+   "at": -14.3,
+   "z": 2.2,
+   "w": 2.8,
+   "h": 2.0
+  },
+  {
+   "kind": "window",
+   "side": "front",
+   "at": -9.5,
+   "z": 2.2,
+   "w": 5.8,
+   "h": 2.0
+  },
+  {
+   "kind": "window",
+   "side": "front",
+   "at": -20.8,
+   "z": 1.35,
+   "w": 0.5,
+   "h": 0.5
+  },
+  {
+   "kind": "window",
+   "side": "front",
+   "at": -16.9,
+   "z": 1.35,
+   "w": 0.5,
+   "h": 0.5
+  },
+  {
+   "kind": "window",
+   "side": "front",
+   "at": -15.5,
+   "z": 1.35,
+   "w": 1.4,
+   "h": 0.5
+  },
+  {
+   "kind": "window",
+   "side": "front",
+   "at": -4.2,
+   "z": 0.75,
+   "w": 0.5,
+   "h": 0.5
+  },
+  {
+   "kind": "window",
+   "side": "front",
+   "at": 5.4,
+   "z": 0.75,
+   "w": 0.5,
+   "h": 0.5
+  },
+  {
+   "kind": "window",
+   "side": "left",
+   "at": 4.6,
+   "z": 12.85,
+   "w": 0.5,
+   "h": 0.5
+  },
+  {
+   "kind": "window",
+   "side": "rear",
+   "at": -16.5,
+   "z": 18.8,
+   "w": 0.5,
+   "h": 0.4
+  },
+  {
+   "kind": "window",
+   "side": "rear",
+   "at": -6.9,
+   "z": 18.8,
+   "w": 0.5,
+   "h": 0.4
+  },
+  {
+   "kind": "window",
+   "side": "rear",
+   "at": 2.7,
+   "z": 18.8,
+   "w": 0.5,
+   "h": 0.4
+  },
+  {
+   "kind": "window",
+   "side": "rear",
+   "at": 12.3,
+   "z": 18.8,
+   "w": 0.5,
+   "h": 0.4
+  },
+  {
+   "kind": "window",
+   "side": "rear",
+   "at": 21.7,
+   "z": 18.8,
+   "w": 0.5,
+   "h": 0.4
+  },
+  {
+   "kind": "window",
+   "side": "rear",
+   "at": -21.2,
+   "z": 17.1,
+   "w": 3.4,
+   "h": 1.0
+  },
+  {
+   "kind": "window",
+   "side": "rear",
+   "at": -17.4,
+   "z": 17.1,
+   "w": 3.3,
+   "h": 1.0
+  },
+  {
+   "kind": "window",
+   "side": "rear",
+   "at": -11.7,
+   "z": 17.1,
+   "w": 3.3,
+   "h": 1.0
+  },
+  {
+   "kind": "window",
+   "side": "rear",
+   "at": -7.9,
+   "z": 17.1,
+   "w": 3.4,
+   "h": 1.0
+  },
+  {
+   "kind": "window",
+   "side": "rear",
+   "at": -2.2,
+   "z": 17.1,
+   "w": 3.4,
+   "h": 1.0
+  },
+  {
+   "kind": "window",
+   "side": "rear",
+   "at": 1.7,
+   "z": 17.1,
+   "w": 3.4,
+   "h": 1.0
+  },
+  {
+   "kind": "window",
+   "side": "rear",
+   "at": 7.4,
+   "z": 17.1,
+   "w": 3.4,
+   "h": 1.0
+  },
+  {
+   "kind": "window",
+   "side": "rear",
+   "at": 11.3,
+   "z": 17.1,
+   "w": 3.4,
+   "h": 1.0
+  },
+  {
+   "kind": "window",
+   "side": "rear",
+   "at": 16.9,
+   "z": 17.1,
+   "w": 3.4,
+   "h": 1.0
+  },
+  {
+   "kind": "window",
+   "side": "rear",
+   "at": 20.8,
+   "z": 17.1,
+   "w": 3.3,
+   "h": 1.0
+  },
+  {
+   "kind": "window",
+   "side": "rear",
+   "at": -21.2,
+   "z": 15.0,
+   "w": 3.4,
+   "h": 2.0
+  },
+  {
+   "kind": "window",
+   "side": "rear",
+   "at": -17.4,
+   "z": 15.0,
+   "w": 3.3,
+   "h": 2.0
+  },
+  {
+   "kind": "window",
+   "side": "rear",
+   "at": -11.7,
+   "z": 15.0,
+   "w": 3.3,
+   "h": 2.0
+  },
+  {
+   "kind": "window",
+   "side": "rear",
+   "at": -7.9,
+   "z": 15.0,
+   "w": 3.4,
+   "h": 2.0
+  },
+  {
+   "kind": "window",
+   "side": "rear",
+   "at": -2.2,
+   "z": 15.0,
+   "w": 3.4,
+   "h": 2.0
+  },
+  {
+   "kind": "window",
+   "side": "rear",
+   "at": 1.7,
+   "z": 15.0,
+   "w": 3.4,
+   "h": 2.0
+  },
+  {
+   "kind": "window",
+   "side": "rear",
+   "at": 7.4,
+   "z": 15.0,
+   "w": 3.4,
+   "h": 2.0
+  },
+  {
+   "kind": "window",
+   "side": "rear",
+   "at": 11.3,
+   "z": 15.0,
+   "w": 3.4,
+   "h": 2.0
+  },
+  {
+   "kind": "window",
+   "side": "rear",
+   "at": 16.9,
+   "z": 15.0,
+   "w": 3.4,
+   "h": 2.0
+  },
+  {
+   "kind": "window",
+   "side": "rear",
+   "at": 20.8,
+   "z": 15.0,
+   "w": 3.3,
+   "h": 2.0
+  },
+  {
+   "kind": "window",
+   "side": "rear",
+   "at": 0.1,
+   "z": 2.2,
+   "w": 5.8,
+   "h": 2.0
+  },
+  {
+   "kind": "window",
+   "side": "rear",
+   "at": 12.9,
+   "z": 2.2,
+   "w": 5.6,
+   "h": 2.0
+  },
+  {
+   "kind": "window",
+   "side": "rear",
+   "at": 18.8,
+   "z": 2.2,
+   "w": 5.3,
+   "h": 2.0
+  },
+  {
+   "kind": "window",
+   "side": "right",
+   "at": -16.0,
+   "z": 14.35,
+   "w": 2.0,
+   "h": 1.9
+  },
+  {
+   "kind": "window",
+   "side": "right",
+   "at": 14.2,
+   "z": 15.35,
+   "w": 1.0,
+   "h": 0.9
+  },
+  {
+   "kind": "window",
+   "side": "right",
+   "at": 15.3,
+   "z": 15.35,
+   "w": 0.5,
+   "h": 0.5
+  },
+  {
+   "kind": "window",
+   "side": "right",
+   "at": 13.9,
+   "z": 14.35,
+   "w": 0.5,
+   "h": 0.5
+  },
+  {
+   "kind": "window",
+   "side": "right",
+   "at": -21.7,
+   "z": 12.35,
+   "w": 0.9,
+   "h": 0.5
+  },
+  {
+   "kind": "window",
+   "side": "right",
+   "at": -22.6,
+   "z": 11.85,
+   "w": 1.0,
+   "h": 0.5
+  },
+  {
+   "kind": "window",
+   "side": "right",
+   "at": -11.7,
+   "z": 11.05,
+   "w": 0.5,
+   "h": 0.5
+  },
+  {
+   "kind": "window",
+   "side": "right",
+   "at": 14.2,
+   "z": 4.7,
+   "w": 1.0,
+   "h": 1.0
+  },
+  {
+   "kind": "window",
+   "side": "right",
+   "at": 0.3,
+   "z": 1.9,
+   "w": 5.8,
+   "h": 2.0
+  },
+  {
+   "kind": "window",
+   "side": "right",
+   "at": 6.5,
+   "z": 1.9,
+   "w": 5.8,
+   "h": 2.0
+  },
+  {
+   "kind": "window",
+   "side": "right",
+   "at": 19.2,
+   "z": 1.9,
+   "w": 5.3,
+   "h": 2.0
+  },
+  {
+   "kind": "window",
+   "side": "right",
+   "at": 13.5,
+   "z": 0.95,
+   "w": 0.5,
+   "h": 0.5
+  }
+ ],
+ "dims": {
+  "skin": "plate",
+  "bay_m": 6.0
+ },
+ "detail": {
+  "service_panel": true
+ },
+ "notes": "auto-drafted from stock analysis (category building); counts/features are DRAFT (see analysis.json confidences)",
+ "stock_model": "hangar",
+ "round_parts": [],
+ "round": [],
+ "draft_confidence": {
+  "windows": 0.79,
+  "openings_bays": 0.83,
+  "panels_sections": 0.3,
+  "arches_ribs": 0.4
+ },
+ "status": {
+  "state": "runner",
+  "validated": {
+   "params_sha": "341f42b95b8d46d1",
+   "analysis_sha": "5e1d333de5a54488",
+   "at": "2026-10-23"
+  }
+ },
+ "evidence": {
+  "analysis_sha": "5e1d333de5a54488",
+  "archetype": "box",
+  "size_m": [
+   47.75,
+   48.0,
+   19.48
+  ],
+  "counts": {
+   "doors": 0,
+   "windows": 60,
+   "openings_bays": 1
+  }
+ },
+ "waivers": []
+}

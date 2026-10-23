@@ -1,0 +1,97 @@
+{
+ "asset": "wirefencediag",
+ "archetype": "fence",
+ "size": [
+  0.02845,
+  15.23585,
+  4.0
+ ],
+ "origin": [
+  0.0207,
+  -7.5425,
+  -0.006075
+ ],
+ "palette": {
+  "main": [
+   0.386,
+   0.386,
+   0.386
+  ],
+  "second": [
+   0.261,
+   0.261,
+   0.261
+  ],
+  "trim": [
+   0.215,
+   0.215,
+   0.215
+  ],
+  "roof": [
+   0.378,
+   0.378,
+   0.378
+  ],
+  "ferro": [
+   0.367,
+   0.367,
+   0.367
+  ],
+  "accent": [
+   0.401,
+   0.396,
+   0.396
+  ],
+  "metal": [
+   0.445,
+   0.442,
+   0.442
+  ],
+  "corr": [
+   0.386,
+   0.386,
+   0.386
+  ],
+  "glass": [
+   0.03,
+   0.05,
+   0.05
+  ]
+ },
+ "counts": {
+  "legs_supports": 5,
+  "panels_sections": 4
+ },
+ "features": [],
+ "dims": {
+  "style": "chain"
+ },
+ "detail": {},
+ "notes": "auto-drafted from stock analysis (name /sandbag|fence|barricade|shanty/); counts/features are DRAFT (see analysis.json confidences)",
+ "stock_model": "wirefencediag",
+ "round_parts": [],
+ "round": [],
+ "draft_confidence": {
+  "panels_sections": 0.3,
+  "legs_supports": 0.5
+ },
+ "status": {
+  "state": "runner",
+  "validated": {
+   "params_sha": "a63a0ebd02031df3",
+   "analysis_sha": "8d9c4fe9a58cce18",
+   "at": "2026-10-23"
+  }
+ },
+ "evidence": {
+  "analysis_sha": "8d9c4fe9a58cce18",
+  "archetype": "fence",
+  "size_m": [
+   0.028,
+   15.236,
+   4.0
+  ],
+  "counts": {}
+ },
+ "waivers": []
+}

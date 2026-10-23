@@ -11,5 +11,10 @@ BUDGETS = {'rpbuilding': 15000, 'quonsetclean': 8000, 'quonset': 8000,
            'corrigatedmetalbarricade': 3000}
 
 
+# Sonnet runner (building / turret / wall) classes: large 15k, small 8k, props 3k.
+BUDGETS.update({'genericmilitary': 15000, 'liquidstorage': 15000, 'largefueltank': 15000,
+                'geodesicdome': 8000, 'ammodump': 8000})
+
+
 def budget(name):
     return BUDGETS.get(name, 3000)

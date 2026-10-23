@@ -1,0 +1,338 @@
+{
+ "schema": "mc2-kit-analysis/1",
+ "asset": "sandbagwall",
+ "source": "G:\\mc2-assets\\out\\scifi-kit\\round2\\stock\\sandbagwall.json",
+ "bounds": {
+  "size_m": [
+   0.82985,
+   10.5441,
+   1.0853
+  ],
+  "footprint_m2": 8.75,
+  "height_m": 1.085,
+  "tris": 30,
+  "origin_offset_m": [
+   0.022225,
+   -0.01505,
+   0.001475
+  ]
+ },
+ "parts": [
+  {
+   "name": "sandbagwall04",
+   "tris": 30,
+   "role": "body",
+   "round": null,
+   "bbox_lo": [
+    -0.415,
+    -5.272,
+    0.0
+   ],
+   "bbox_hi": [
+    0.415,
+    5.272,
+    1.085
+   ],
+   "profile_x": [
+    [
+     0.0,
+     0.415
+    ],
+    [
+     1.0,
+     0.415
+    ]
+   ],
+   "profile_y": [
+    [
+     0.0,
+     5.271
+    ],
+    [
+     0.92,
+     5.272
+    ],
+    [
+     1.0,
+     2.895
+    ]
+   ]
+  }
+ ],
+ "stock_model": {
+  "asset": "sandbagwall",
+  "intact_stem": "sandbagwall",
+  "destroyed_stem": "sandbagwalldam",
+  "mesh": "G:\\mc2-assets\\out\\scifi-kit\\round2\\stock\\sandbagwall.json",
+  "parts": [
+   [
+    "sandbagwall04",
+    "body"
+   ]
+  ],
+  "resolved_from": "catalog.json models[role=intact,lod=0]"
+ },
+ "round_parts": [],
+ "round": [],
+ "profile": {
+  "x_all": [
+   [
+    0.0,
+    0.415
+   ],
+   [
+    1.0,
+    0.415
+   ]
+  ],
+  "y_all": [
+   [
+    0.0,
+    5.271
+   ],
+   [
+    0.92,
+    5.272
+   ],
+   [
+    1.0,
+    2.895
+   ]
+  ],
+  "x_body": [
+   [
+    0.0,
+    0.415
+   ],
+   [
+    1.0,
+    0.415
+   ]
+  ],
+  "long_axis": "y",
+  "note": "half-extent (m) vs height fraction; x_body = the end of the long axis away from the +Y terminal pier"
+ },
+ "roof": {
+  "type": "flat",
+  "ridge_axis": "y",
+  "eave_h": 1.018,
+  "ridge_h": 1.084,
+  "rise_m": 0.075,
+  "pitch_deg": 0.0,
+  "residual": 0.021,
+  "flat_residual": 0.021,
+  "confidence": 0.7
+ },
+ "palette": {
+  "dominant": [
+   {
+    "linear": [
+     0.0159,
+     0.013,
+     0.0099
+    ],
+    "hex": "#221e19",
+    "fraction": 0.204
+   },
+   {
+    "linear": [
+     0.1221,
+     0.1001,
+     0.0705
+    ],
+    "hex": "#62594b",
+    "fraction": 0.198
+   },
+   {
+    "linear": [
+     0.0831,
+     0.0676,
+     0.0482
+    ],
+    "hex": "#514a3e",
+    "fraction": 0.167
+   },
+   {
+    "linear": [
+     0.0468,
+     0.0381,
+     0.0276
+    ],
+    "hex": "#3d372e",
+    "fraction": 0.163
+   },
+   {
+    "linear": [
+     0.1771,
+     0.1454,
+     0.1018
+    ],
+    "hex": "#756a5a",
+    "fraction": 0.161
+   },
+   {
+    "linear": [
+     0.2529,
+     0.2086,
+     0.1454
+    ],
+    "hex": "#8a7e6a",
+    "fraction": 0.108
+   }
+  ],
+  "roof_dominant": [
+   {
+    "linear": [
+     0.2558,
+     0.2091,
+     0.1461
+    ],
+    "hex": "#8a7e6b",
+    "fraction": 0.571
+   },
+   {
+    "linear": [
+     0.1884,
+     0.1499,
+     0.1011
+    ],
+    "hex": "#786c5a",
+    "fraction": 0.329
+   },
+   {
+    "linear": [
+     0.0596,
+     0.0487,
+     0.0343
+    ],
+    "hex": "#453e34",
+    "fraction": 0.1
+   }
+  ],
+  "mean_linear": [
+   0.1345,
+   0.1098,
+   0.0768
+  ],
+  "mean_hex": "#675d4e",
+  "wear": {
+   "n": 1024,
+   "value_mean": 0.37,
+   "value_std": 0.146,
+   "sat_mean": 0.237,
+   "sat_std": 0.024,
+   "rust_cov": 0.0,
+   "dark_stain": 0.207
+  },
+  "texels": 1024,
+  "draft": {
+   "main": [
+    0.016,
+    0.013,
+    0.01
+   ],
+   "second": [
+    0.122,
+    0.1,
+    0.071
+   ],
+   "trim": [
+    0.016,
+    0.013,
+    0.01
+   ],
+   "roof": [
+    0.256,
+    0.209,
+    0.146
+   ],
+   "ferro": [
+    0.015,
+    0.012,
+    0.009
+   ],
+   "accent": [
+    0.253,
+    0.209,
+    0.145
+   ],
+   "metal": [
+    0.3,
+    0.3,
+    0.3
+   ],
+   "corr": [
+    0.016,
+    0.013,
+    0.01
+   ],
+   "glass": [
+    0.03,
+    0.05,
+    0.05
+   ]
+  }
+ },
+ "counts": {
+  "doors": {
+   "n": 0,
+   "conf": 0.5,
+   "where": []
+  },
+  "windows": {
+   "n": 0,
+   "conf": 0.5,
+   "where": []
+  },
+  "openings_bays": {
+   "n": 0,
+   "conf": 0.5,
+   "where": []
+  },
+  "panels_sections": {
+   "n": 5,
+   "conf": 0.3,
+   "where": []
+  },
+  "crates": {
+   "n": 0,
+   "conf": 0.5,
+   "where": []
+  },
+  "barrels": {
+   "n": 0,
+   "conf": 0.5,
+   "where": []
+  },
+  "tanks": {
+   "n": 0,
+   "conf": 0.5,
+   "where": []
+  },
+  "arches_ribs": {
+   "n": 0,
+   "conf": 0.5,
+   "where": []
+  },
+  "legs_supports": {
+   "n": 0,
+   "conf": 0.5,
+   "where": []
+  },
+  "antennas_dishes": {
+   "n": 0,
+   "conf": 0.3,
+   "where": []
+  },
+  "stairs_ladders": {
+   "n": 0,
+   "conf": 0.3,
+   "where": []
+  }
+ },
+ "archetype_guess": {
+  "archetype": "fence",
+  "why": "name /sandbag|fence|barricade|shanty/",
+  "supported": true
+ }
+}

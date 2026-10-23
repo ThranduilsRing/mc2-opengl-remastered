@@ -1,0 +1,267 @@
+{
+ "asset": "2civliving",
+ "archetype": "box",
+ "size": [
+  17.63565,
+  17.47058,
+  3.86695
+ ],
+ "origin": [
+  -4.855875,
+  4.907787,
+  0.0
+ ],
+ "palette": {
+  "main": [
+   0.072,
+   0.053,
+   0.034
+  ],
+  "second": [
+   0.11,
+   0.087,
+   0.062
+  ],
+  "trim": [
+   0.04,
+   0.031,
+   0.022
+  ],
+  "roof": [
+   0.087,
+   0.078,
+   0.068
+  ],
+  "ferro": [
+   0.068,
+   0.05,
+   0.033
+  ],
+  "accent": [
+   0.072,
+   0.053,
+   0.034
+  ],
+  "metal": [
+   0.387,
+   0.383,
+   0.376
+  ],
+  "corr": [
+   0.072,
+   0.053,
+   0.034
+  ],
+  "glass": [
+   0.03,
+   0.05,
+   0.05
+  ]
+ },
+ "counts": {
+  "doors": 0,
+  "openings_bays": 0,
+  "windows": 20
+ },
+ "features": [
+  {
+   "kind": "window",
+   "side": "front",
+   "at": -4.7,
+   "z": 2.15,
+   "w": 1.0,
+   "h": 0.5
+  },
+  {
+   "kind": "window",
+   "side": "front",
+   "at": -2.7,
+   "z": 2.15,
+   "w": 0.5,
+   "h": 0.5
+  },
+  {
+   "kind": "window",
+   "side": "front",
+   "at": 4.1,
+   "z": 2.1,
+   "w": 0.6,
+   "h": 0.4
+  },
+  {
+   "kind": "window",
+   "side": "front",
+   "at": -4.7,
+   "z": 1.4,
+   "w": 1.0,
+   "h": 0.6
+  },
+  {
+   "kind": "window",
+   "side": "front",
+   "at": -2.9,
+   "z": 1.4,
+   "w": 0.8,
+   "h": 0.6
+  },
+  {
+   "kind": "window",
+   "side": "left",
+   "at": -4.0,
+   "z": 2.15,
+   "w": 0.6,
+   "h": 0.5
+  },
+  {
+   "kind": "window",
+   "side": "left",
+   "at": 2.8,
+   "z": 2.15,
+   "w": 0.5,
+   "h": 0.5
+  },
+  {
+   "kind": "window",
+   "side": "left",
+   "at": 4.8,
+   "z": 2.15,
+   "w": 1.0,
+   "h": 0.5
+  },
+  {
+   "kind": "window",
+   "side": "left",
+   "at": 4.8,
+   "z": 1.35,
+   "w": 1.0,
+   "h": 0.7
+  },
+  {
+   "kind": "window",
+   "side": "rear",
+   "at": -4.9,
+   "z": 2.05,
+   "w": 1.0,
+   "h": 0.5
+  },
+  {
+   "kind": "window",
+   "side": "rear",
+   "at": 0.6,
+   "z": 1.25,
+   "w": 0.9,
+   "h": 1.3
+  },
+  {
+   "kind": "window",
+   "side": "rear",
+   "at": 1.9,
+   "z": 1.25,
+   "w": 1.4,
+   "h": 1.3
+  },
+  {
+   "kind": "window",
+   "side": "rear",
+   "at": 3.2,
+   "z": 1.25,
+   "w": 0.9,
+   "h": 1.3
+  },
+  {
+   "kind": "window",
+   "side": "rear",
+   "at": -4.9,
+   "z": 1.3,
+   "w": 1.0,
+   "h": 0.6
+  },
+  {
+   "kind": "window",
+   "side": "right",
+   "at": 4.9,
+   "z": 2.05,
+   "w": 1.0,
+   "h": 0.5
+  },
+  {
+   "kind": "window",
+   "side": "right",
+   "at": -3.3,
+   "z": 1.25,
+   "w": 0.9,
+   "h": 1.3
+  },
+  {
+   "kind": "window",
+   "side": "right",
+   "at": -2.0,
+   "z": 1.25,
+   "w": 1.4,
+   "h": 1.3
+  },
+  {
+   "kind": "window",
+   "side": "right",
+   "at": -0.8,
+   "z": 1.25,
+   "w": 0.9,
+   "h": 1.3
+  },
+  {
+   "kind": "window",
+   "side": "right",
+   "at": -6.3,
+   "z": 1.9,
+   "w": 0.6,
+   "h": 0.4
+  },
+  {
+   "kind": "window",
+   "side": "right",
+   "at": 4.9,
+   "z": 1.25,
+   "w": 1.0,
+   "h": 0.7
+  }
+ ],
+ "dims": {
+  "skin": "plate",
+  "bay_m": 4.5
+ },
+ "detail": {
+  "vents": 0,
+  "service_panel": true
+ },
+ "notes": "auto-drafted from stock analysis (category building); counts/features are DRAFT (see analysis.json confidences)",
+ "stock_model": "2civliving",
+ "round_parts": [],
+ "round": [],
+ "draft_confidence": {
+  "windows": 0.8,
+  "panels_sections": 0.3
+ },
+ "status": {
+  "state": "runner",
+  "validated": {
+   "params_sha": "d346e44745785235",
+   "analysis_sha": "d83fb0a99d76cbf7",
+   "at": "2026-10-23"
+  }
+ },
+ "evidence": {
+  "analysis_sha": "d83fb0a99d76cbf7",
+  "archetype": "box",
+  "size_m": [
+   17.636,
+   17.471,
+   3.867
+  ],
+  "counts": {
+   "doors": 0,
+   "windows": 20,
+   "openings_bays": 0
+  }
+ },
+ "waivers": []
+}

@@ -1,0 +1,323 @@
+{
+ "schema": "mc2-kit-analysis/1",
+ "asset": "wirefencediag",
+ "source": "G:\\mc2-assets\\out\\scifi-kit\\round2\\stock\\wirefencediag.json",
+ "bounds": {
+  "size_m": [
+   0.02845,
+   15.23585,
+   4.0
+  ],
+  "footprint_m2": 0.43,
+  "height_m": 4.0,
+  "tris": 4,
+  "origin_offset_m": [
+   0.0207,
+   -7.5425,
+   -0.006075
+  ]
+ },
+ "parts": [
+  {
+   "name": "medium wirefence",
+   "tris": 4,
+   "role": "body",
+   "round": null,
+   "bbox_lo": [
+    -0.014,
+    -7.618,
+    0.0
+   ],
+   "bbox_hi": [
+    0.014,
+    7.618,
+    4.0
+   ],
+   "profile_x": [
+    [
+     0.0,
+     0.014
+    ],
+    [
+     1.0,
+     0.014
+    ]
+   ],
+   "profile_y": [
+    [
+     0.0,
+     7.618
+    ],
+    [
+     1.0,
+     7.618
+    ]
+   ]
+  }
+ ],
+ "stock_model": {
+  "asset": "wirefencediag",
+  "intact_stem": "wirefencediag",
+  "destroyed_stem": "wirefencediagdam",
+  "mesh": "G:\\mc2-assets\\out\\scifi-kit\\round2\\stock\\wirefencediag.json",
+  "parts": [
+   [
+    "medium wirefence",
+    "body"
+   ]
+  ],
+  "resolved_from": "catalog.json models[role=intact,lod=0]"
+ },
+ "round_parts": [],
+ "round": [],
+ "profile": {
+  "x_all": [
+   [
+    0.0,
+    0.014
+   ],
+   [
+    1.0,
+    0.014
+   ]
+  ],
+  "y_all": [
+   [
+    0.0,
+    7.618
+   ],
+   [
+    1.0,
+    7.618
+   ]
+  ],
+  "x_body": [
+   [
+    0.0,
+    0.0
+   ],
+   [
+    1.0,
+    0.0
+   ]
+  ],
+  "long_axis": "y",
+  "note": "half-extent (m) vs height fraction; x_body = the end of the long axis away from the +Y terminal pier"
+ },
+ "roof": {
+  "type": "none",
+  "confidence": 0.3
+ },
+ "palette": {
+  "dominant": [
+   {
+    "linear": [
+     0.3864,
+     0.3864,
+     0.3864
+    ],
+    "hex": "#a7a7a7",
+    "fraction": 0.508
+   },
+   {
+    "linear": [
+     0.261,
+     0.261,
+     0.261
+    ],
+    "hex": "#8c8c8c",
+    "fraction": 0.198
+   },
+   {
+    "linear": [
+     0.3465,
+     0.3455,
+     0.3455
+    ],
+    "hex": "#9f9f9f",
+    "fraction": 0.14
+   },
+   {
+    "linear": [
+     0.215,
+     0.215,
+     0.215
+    ],
+    "hex": "#808080",
+    "fraction": 0.108
+   },
+   {
+    "linear": [
+     0.4451,
+     0.4424,
+     0.4424
+    ],
+    "hex": "#b2b1b1",
+    "fraction": 0.031
+   },
+   {
+    "linear": [
+     0.4011,
+     0.3959,
+     0.3959
+    ],
+    "hex": "#aaa9a9",
+    "fraction": 0.016
+   }
+  ],
+  "roof_dominant": [
+   {
+    "linear": [
+     0.3784,
+     0.378,
+     0.378
+    ],
+    "hex": "#a5a5a5",
+    "fraction": 0.663
+   },
+   {
+    "linear": [
+     0.2447,
+     0.2447,
+     0.2447
+    ],
+    "hex": "#888888",
+    "fraction": 0.306
+   },
+   {
+    "linear": [
+     0.4451,
+     0.4424,
+     0.4424
+    ],
+    "hex": "#b2b1b1",
+    "fraction": 0.031
+   }
+  ],
+  "mean_linear": [
+   0.3395,
+   0.3392,
+   0.3392
+  ],
+  "mean_hex": "#9d9d9d",
+  "wear": {
+   "n": 4096,
+   "value_mean": 0.614,
+   "value_std": 0.059,
+   "sat_mean": 0.0,
+   "sat_std": 0.001,
+   "rust_cov": 0.0,
+   "dark_stain": 0.0
+  },
+  "texels": 4096,
+  "draft": {
+   "main": [
+    0.386,
+    0.386,
+    0.386
+   ],
+   "second": [
+    0.261,
+    0.261,
+    0.261
+   ],
+   "trim": [
+    0.215,
+    0.215,
+    0.215
+   ],
+   "roof": [
+    0.378,
+    0.378,
+    0.378
+   ],
+   "ferro": [
+    0.367,
+    0.367,
+    0.367
+   ],
+   "accent": [
+    0.401,
+    0.396,
+    0.396
+   ],
+   "metal": [
+    0.445,
+    0.442,
+    0.442
+   ],
+   "corr": [
+    0.386,
+    0.386,
+    0.386
+   ],
+   "glass": [
+    0.03,
+    0.05,
+    0.05
+   ]
+  }
+ },
+ "counts": {
+  "doors": {
+   "n": 0,
+   "conf": 0.5,
+   "where": []
+  },
+  "windows": {
+   "n": 0,
+   "conf": 0.5,
+   "where": []
+  },
+  "openings_bays": {
+   "n": 0,
+   "conf": 0.5,
+   "where": []
+  },
+  "panels_sections": {
+   "n": 1,
+   "conf": 0.3,
+   "where": []
+  },
+  "crates": {
+   "n": 0,
+   "conf": 0.5,
+   "where": []
+  },
+  "barrels": {
+   "n": 0,
+   "conf": 0.5,
+   "where": []
+  },
+  "tanks": {
+   "n": 0,
+   "conf": 0.5,
+   "where": []
+  },
+  "arches_ribs": {
+   "n": 0,
+   "conf": 0.5,
+   "where": []
+  },
+  "legs_supports": {
+   "n": 0,
+   "conf": 0.5,
+   "where": []
+  },
+  "antennas_dishes": {
+   "n": 0,
+   "conf": 0.3,
+   "where": []
+  },
+  "stairs_ladders": {
+   "n": 0,
+   "conf": 0.3,
+   "where": []
+  }
+ },
+ "archetype_guess": {
+  "archetype": "fence",
+  "why": "name /sandbag|fence|barricade|shanty/",
+  "supported": true
+ }
+}

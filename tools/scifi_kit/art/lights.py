@@ -50,12 +50,30 @@ def light_specs(name, size, condition):
             for j in (-1,0,1):
                 add(f'window_{side}_{j+2:02}',(x*w*.40+y*j*w*.20,y*d*.40-x*j*d*.20,h*.90),
                     (x,y,0),'point',intensity='window')
+    else:
+        import batch_son
+        for label, pos, direction, kind, intensity in batch_son.LIGHTS.get(name, lambda size: [])(size):
+            add(label, pos, direction, kind, intensity=intensity)
     return result
+
+
+def sockets_from_meta(k,condition):
+    """Archetype builders record their emitters in k.meta['sockets'] (already in the fitted frame)."""
+    if condition in ('destroyed','partial','abandoned'):return []
+    out=[]
+    for s in k.meta['sockets']:
+        length=sum(v*v for v in s['direction'])**.5 or 1
+        out.append(dict(name=s['name'],position_m=tuple(s['position_m']),direction=tuple(v/length for v in s['direction']),
+                        type=s['type'],colour_linear=s.get('colour_linear',(1,.78,.48)),intensity_class=s['intensity_class'],
+                        range_m=s.get('range_m',5 if s['intensity_class']=='door' else 8),outer_cone_degrees=65,
+                        active=True,lights_out_on_destroy=True))
+    return out
 
 
 def from_kit(k,condition):
     """Snap emitter positions to actual authored lamp/glass pieces, after fitting."""
     from geo import centroid
+    if k.meta.get('sockets') is not None:return sockets_from_meta(k,condition)
     specs=light_specs(k.meta['stock'],k.meta['size'],condition)
     if not specs:return []
     lamps=[centroid(p) for p in k.pieces if p['m'].startswith('lamp')]

@@ -1,0 +1,122 @@
+{
+ "asset": "l_heavypost",
+ "archetype": "wall",
+ "size": [
+  9.405,
+  9.01855,
+  22.25758
+ ],
+ "origin": [
+  -0.004075,
+  -10.577375,
+  -0.057075
+ ],
+ "palette": {
+  "main": [
+   0.338,
+   0.333,
+   0.322
+  ],
+  "second": [
+   0.276,
+   0.269,
+   0.253
+  ],
+  "trim": [
+   0.121,
+   0.105,
+   0.076
+  ],
+  "roof": [
+   0.251,
+   0.246,
+   0.234
+  ],
+  "ferro": [
+   0.321,
+   0.316,
+   0.306
+  ],
+  "accent": [
+   0.121,
+   0.105,
+   0.076
+  ],
+  "metal": [
+   0.416,
+   0.412,
+   0.406
+  ],
+  "corr": [
+   0.338,
+   0.333,
+   0.322
+  ],
+  "glass": [
+   0.03,
+   0.05,
+   0.05
+  ],
+  "pier": [
+   0.321,
+   0.316,
+   0.306
+  ]
+ },
+ "counts": {
+  "legs_supports": 1
+ },
+ "features": [],
+ "dims": {
+  "profile": [
+   [
+    0.0,
+    4.64
+   ],
+   [
+    0.38,
+    3.562
+   ],
+   [
+    0.74,
+    3.448
+   ],
+   [
+    1.0,
+    2.062
+   ]
+  ],
+  "family": "l",
+  "variant": "heavy",
+  "post": true
+ },
+ "detail": {},
+ "notes": "auto-drafted from stock analysis (name /(light|medium|heavy)post(diag)?$/); counts/features are DRAFT (see analysis.json confidences)",
+ "stock_model": "l_heavypost",
+ "round_parts": [],
+ "round": [],
+ "draft_confidence": {
+  "windows": 0.71,
+  "panels_sections": 0.3,
+  "legs_supports": 0.5
+ },
+ "status": {
+  "state": "runner",
+  "validated": {
+   "params_sha": "a854ca0382568660",
+   "analysis_sha": "a1ba3784dc5ff60a",
+   "at": "2026-10-23"
+  }
+ },
+ "evidence": {
+  "analysis_sha": "a1ba3784dc5ff60a",
+  "archetype": "wall",
+  "size_m": [
+   9.405,
+   9.019,
+   22.258
+  ],
+  "counts": {}
+ },
+ "waivers": []
+}

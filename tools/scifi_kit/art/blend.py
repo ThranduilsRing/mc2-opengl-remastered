@@ -27,7 +27,7 @@ def reset():
     scene = bpy.context.scene
     scene.render.engine = 'CYCLES'
     scene.render.threads_mode = 'FIXED'
-    scene.render.threads = 4
+    scene.render.threads = int(__import__('os').environ.get('MC2_BLENDER_THREADS', '4'))
     scene.cycles.use_denoising = True
     scene.view_settings.view_transform = 'AgX'
     try:

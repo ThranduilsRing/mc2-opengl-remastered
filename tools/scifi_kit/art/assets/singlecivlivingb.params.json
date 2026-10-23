@@ -1,0 +1,412 @@
+{
+ "asset": "singlecivlivingb",
+ "archetype": "box",
+ "size": [
+  10.09195,
+  17.14945,
+  9.11155
+ ],
+ "origin": [
+  0.043825,
+  -5.3,
+  -5e-05
+ ],
+ "palette": {
+  "main": [
+   0.041,
+   0.039,
+   0.035
+  ],
+  "second": [
+   0.09,
+   0.083,
+   0.068
+  ],
+  "trim": [
+   0.041,
+   0.039,
+   0.035
+  ],
+  "roof": [
+   0.212,
+   0.202,
+   0.203
+  ],
+  "ferro": [
+   0.039,
+   0.037,
+   0.033
+  ],
+  "accent": [
+   0.09,
+   0.083,
+   0.068
+  ],
+  "metal": [
+   0.648,
+   0.643,
+   0.641
+  ],
+  "corr": [
+   0.041,
+   0.039,
+   0.035
+  ],
+  "glass": [
+   0.03,
+   0.05,
+   0.05
+  ]
+ },
+ "counts": {
+  "doors": 2,
+  "openings_bays": 0,
+  "windows": 32
+ },
+ "features": [
+  {
+   "kind": "window",
+   "side": "left",
+   "at": 1.1,
+   "z": 8.55,
+   "w": 0.4,
+   "h": 0.5
+  },
+  {
+   "kind": "window",
+   "side": "left",
+   "at": -6.4,
+   "z": 4.2,
+   "w": 0.8,
+   "h": 0.4
+  },
+  {
+   "kind": "window",
+   "side": "left",
+   "at": 6.4,
+   "z": 4.2,
+   "w": 0.8,
+   "h": 0.4
+  },
+  {
+   "kind": "window",
+   "side": "left",
+   "at": -2.1,
+   "z": 3.85,
+   "w": 0.8,
+   "h": 0.7
+  },
+  {
+   "kind": "window",
+   "side": "left",
+   "at": 1.9,
+   "z": 3.85,
+   "w": 0.8,
+   "h": 0.7
+  },
+  {
+   "kind": "window",
+   "side": "left",
+   "at": -6.4,
+   "z": 3.65,
+   "w": 0.8,
+   "h": 0.5
+  },
+  {
+   "kind": "window",
+   "side": "left",
+   "at": 6.4,
+   "z": 3.65,
+   "w": 0.8,
+   "h": 0.5
+  },
+  {
+   "kind": "window",
+   "side": "left",
+   "at": -2.1,
+   "z": 3.1,
+   "w": 0.8,
+   "h": 0.6
+  },
+  {
+   "kind": "window",
+   "side": "left",
+   "at": 1.9,
+   "z": 3.1,
+   "w": 0.8,
+   "h": 0.6
+  },
+  {
+   "kind": "window",
+   "side": "left",
+   "at": 6.5,
+   "z": 3.1,
+   "w": 0.9,
+   "h": 0.4
+  },
+  {
+   "kind": "window",
+   "side": "rear",
+   "at": 0.6,
+   "z": 3.1,
+   "w": 0.7,
+   "h": 0.4
+  },
+  {
+   "kind": "window",
+   "side": "rear",
+   "at": 4.0,
+   "z": 1.65,
+   "w": 0.5,
+   "h": 0.9
+  },
+  {
+   "kind": "window",
+   "side": "right",
+   "at": -2.2,
+   "z": 5.3,
+   "w": 3.9,
+   "h": 0.6
+  },
+  {
+   "kind": "window",
+   "side": "right",
+   "at": 1.2,
+   "z": 5.3,
+   "w": 1.9,
+   "h": 0.6
+  },
+  {
+   "kind": "window",
+   "side": "right",
+   "at": -6.5,
+   "z": 4.2,
+   "w": 0.8,
+   "h": 0.4
+  },
+  {
+   "kind": "window",
+   "side": "right",
+   "at": -3.6,
+   "z": 4.2,
+   "w": 0.8,
+   "h": 0.4
+  },
+  {
+   "kind": "window",
+   "side": "right",
+   "at": 3.4,
+   "z": 4.2,
+   "w": 0.8,
+   "h": 0.4
+  },
+  {
+   "kind": "window",
+   "side": "right",
+   "at": 6.3,
+   "z": 4.2,
+   "w": 0.4,
+   "h": 0.4
+  },
+  {
+   "kind": "window",
+   "side": "right",
+   "at": 6.7,
+   "z": 4.2,
+   "w": 0.4,
+   "h": 0.4
+  },
+  {
+   "kind": "window",
+   "side": "right",
+   "at": -3.5,
+   "z": 3.4,
+   "w": 0.5,
+   "h": 0.6
+  },
+  {
+   "kind": "window",
+   "side": "right",
+   "at": 3.4,
+   "z": 3.4,
+   "w": 0.8,
+   "h": 0.6
+  },
+  {
+   "kind": "window",
+   "side": "right",
+   "at": 6.5,
+   "z": 3.4,
+   "w": 0.8,
+   "h": 0.6
+  },
+  {
+   "kind": "window",
+   "side": "right",
+   "at": -3.7,
+   "z": 2.9,
+   "w": 0.5,
+   "h": 0.4
+  },
+  {
+   "kind": "window",
+   "side": "right",
+   "at": 3.2,
+   "z": 2.7,
+   "w": 0.8,
+   "h": 0.6
+  },
+  {
+   "kind": "window",
+   "side": "right",
+   "at": -8.0,
+   "z": 1.85,
+   "w": 0.9,
+   "h": 0.3
+  },
+  {
+   "kind": "window",
+   "side": "right",
+   "at": -6.8,
+   "z": 1.85,
+   "w": 1.2,
+   "h": 0.3
+  },
+  {
+   "kind": "window",
+   "side": "right",
+   "at": -5.5,
+   "z": 1.85,
+   "w": 1.2,
+   "h": 0.3
+  },
+  {
+   "kind": "window",
+   "side": "right",
+   "at": -3.5,
+   "z": 1.85,
+   "w": 2.6,
+   "h": 0.3
+  },
+  {
+   "kind": "window",
+   "side": "right",
+   "at": 2.6,
+   "z": 1.65,
+   "w": 1.2,
+   "h": 0.5
+  },
+  {
+   "kind": "window",
+   "side": "right",
+   "at": 3.9,
+   "z": 1.6,
+   "w": 1.2,
+   "h": 0.6
+  },
+  {
+   "kind": "window",
+   "side": "right",
+   "at": 5.3,
+   "z": 1.65,
+   "w": 1.2,
+   "h": 0.5
+  },
+  {
+   "kind": "window",
+   "side": "right",
+   "at": 7.9,
+   "z": 1.85,
+   "w": 1.1,
+   "h": 0.3
+  },
+  {
+   "kind": "door",
+   "side": "right",
+   "at": -1.0,
+   "z": 0.05,
+   "w": 1.5,
+   "h": 2.5
+  },
+  {
+   "kind": "door",
+   "side": "right",
+   "at": 1.0,
+   "z": 0.05,
+   "w": 1.5,
+   "h": 2.5
+  }
+ ],
+ "dims": {
+  "skin": "plate",
+  "bay_m": 4.5
+ },
+ "detail": {
+  "vents": 1,
+  "service_panel": true
+ },
+ "notes": "auto-drafted from stock analysis (category building); counts/features are DRAFT (see analysis.json confidences)",
+ "stock_model": "singlecivlivingb",
+ "round_parts": [],
+ "round": [],
+ "draft_confidence": {
+  "windows": 0.78,
+  "panels_sections": 0.3,
+  "crates": 0.4
+ },
+ "status": {
+  "state": "draft",
+  "demoted": {
+   "at": "2026-10-23",
+   "failures": [
+    "needs_builder: roof: no single roof model fits the stock (best 48% of the plan): compound roof (crossing wings, intersecting ridges)",
+    "needs_builder: roof: no single roof model fits the stock (best 48% of the plan): compound roof (crossing wings, intersecting ridges)"
+   ]
+  }
+ },
+ "evidence": {
+  "analysis_sha": "adbbf694d8a02e0e",
+  "archetype": "box",
+  "size_m": [
+   10.092,
+   17.149,
+   9.112
+  ],
+  "counts": {
+   "doors": 0,
+   "windows": 32,
+   "openings_bays": 0
+  }
+ },
+ "waivers": [
+  {
+   "check": "features",
+   "side": "front",
+   "kind": "window",
+   "reason": "stock front end paints a 3-pane window strip over the arched dome and no discrete windows; the detector reads none, the model's one opening there is the same strip"
+  },
+  {
+   "check": "features",
+   "side": "rear",
+   "kind": "window",
+   "reason": "stock rear end paints a 3-pane window strip over the arched dome, the model's 3 openings match that strip; the detector reads it as 2"
+  },
+  {
+   "check": "features",
+   "side": "right",
+   "kind": "window",
+   "reason": "stock right side shows 4 large framed windows plus two 8-pane clerestory strips and glazed lower bays; the detector counts 20 pane fragments, the model carries 18 openings covering the same strips"
+  },
+  {
+   "check": "counts",
+   "field": "doors",
+   "reason": "stock right side paints two side-by-side white-framed doors with a small window each at the centre of the ground floor; the detector missed them"
+  },
+  {
+   "check": "features",
+   "side": "right",
+   "kind": "door",
+   "reason": "stock right side paints two side-by-side white-framed doors with a small window each at the centre of the ground floor; the detector missed them"
+  }
+ ]
+}

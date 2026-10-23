@@ -13,30 +13,39 @@ SIZES = {
     'wirefence': (.09030, 10.83575, 3.99248),
     'l_heavywall': (9.40500, 36.45998, 22.25758),
     'd_lightwall': (5.67315, 34.85180, 5.61175),
+    'd_heavywall': (6.87240, 35.42655, 22.32495),
 }
 
 
-def wall(k):
-    """Footing, segmented cast units, joint steel, face fields, coping, fasteners."""
+def wall(k, p=None, tag=True):
+    """Footing, segmented cast units, joint steel, face fields, coping, fasteners.
+    p (archetype params) may override family / variant / spans / wh / post; defaults reproduce the stock walls."""
+    g = (p or {}).get('dims', {})
+    first_piece = len(k.pieces)
     w, d, h = SIZES[k.name]
-    family = k.name[0]
-    heavy = 'heavy' in k.name
-    light = 'light' in k.name
-    wh = h * (.86 if family == 's' else .83 if family == 'd' else .90)
-    if family == 's' and heavy:
+    family = g.get('family', k.name[0])
+    variant = g.get('variant', 'heavy' if 'heavy' in k.name else 'light' if 'light' in k.name else 'medium')
+    heavy = variant == 'heavy'
+    light = variant == 'light'
+    post = bool(g.get('post'))
+    wh = h * g.get('wh', .86 if family == 's' else .83 if family == 'd' else .90)
+    if family == 's' and heavy and 'wh' not in g and k.name == 's_heavywall':
         wh = 21.48
+    if family == 'd' and heavy:
+        wh = 21.18
     thickness = w * (.47 if family == 's' else .43)
     pier_d = w
     py = d/2-pier_d/2
     start, end = -d/2, py-pier_d*.35
-    spans = 4 if family == 's' else 6 if family == 'd' else 3
-    step = (end-start)/spans
+    spans = 0 if post else g.get('spans', 4 if family == 's' else 6 if family == 'd' else 3)
+    step = (end-start)/spans if spans else 0.0
     edges = [start+i*step for i in range(spans+1)]
-    if family == 'l' and not light:
+    if family == 'l' and not light and not post and 'spans' not in g:
         edges = [start, -9.29 if heavy else -8.45, 4.77 if heavy else 4.94, end]
     footing = .18 if light else .32
-    k.box((0, (start+end)/2, footing/2),
-          (2*kit.wall_hw(k.name, 0)+.1, end-start, footing), 'ferro', 'mass', ch=kit.C(.08))
+    if spans:
+        k.box((0, (start+end)/2, footing/2),
+              (2*kit.wall_hw(k.name, 0)+.1, end-start, footing), 'ferro', 'mass', ch=kit.C(.08))
     for j in range(spans):
         first = len(k.pieces)
         a, b = edges[j]+.035, edges[j+1]-.035
@@ -114,9 +123,39 @@ def wall(k):
         for p in k.pieces[first:]:
             p['wall_span'] = j
         k.moss_sites.append(((-kit.wall_hw(k.name,0)-.12,a,footing),(-kit.wall_hw(k.name,0)-.12,b,footing)))
+    if family == 'd' and heavy and not post:      # a standalone post has no spans to brace
+        # Stock lower truss: a chain of two hexagonal braced fields under a horizontal belt.
+        lo, hi = footing + .5, wh * .40
+        mid = (lo + hi) / 2
+        L = end - start
+        def tag(y0, y1):
+            return min(spans - 1, max(0, int(((y0 + y1) / 2 - start) / step)))
+        for cy in (start + L * .27, start + L * .73):
+            hw = L * .19
+            pts = [(cy - hw, mid), (cy - hw * .45, hi), (cy + hw * .45, hi), (cy + hw, mid), (cy + hw * .45, lo), (cy - hw * .45, lo)]
+            for side in (-1, 1):
+                for (y0, z0), (y1, z1) in zip(pts, pts[1:] + pts[:1]):
+                    hx = kit.wall_hw(k.name, (z0 + z1) / 2 / wh) + .03
+                    b = k.beam((side * hx, y0, z0), (side * hx, y1, z1), .26, 'ferro.pale', 'frame')
+                    b['wall_span'] = tag(y0, y1)
+        for side in (-1, 1):
+            for j in range(spans):
+                a0, b0 = edges[j], edges[j + 1]
+                h0 = kit.wall_hw(k.name, (footing + .1) / wh) + .035
+                h1 = kit.wall_hw(k.name, (hi + .3) / wh) + .035
+                fq = [(side * h0, a0 + .05, footing + .1), (side * h0, b0 - .05, footing + .1), (side * h1, b0 - .05, hi + .3), (side * h1, a0 + .05, hi + .3)]
+                bq = [(x - side * .12, y, z) for x, y, z in fq]
+                if side < 0:
+                    fq, bq = fq[::-1], bq[::-1]
+                b = kit.hexa(k, fq, bq, 'ferro.pale', 'skin', removable=True)
+                b['wall_span'] = j
+                for zz, ww in ((hi + .45, .5), (footing + .12, .35)):
+                    hx = kit.wall_hw(k.name, zz / wh) + .04
+                    b = k.beam((side * hx, a0 + .03, zz), (side * hx, b0 - .03, zz), ww, 'ferro.pale', 'frame')
+                    b['wall_span'] = j
     # One stock terminal pier. Cast stages and inset fields follow its taper.
     first = len(k.pieces)
-    stages = 2 if light else 3
+    stages = 2 if light else 4 if (family == 'd' and heavy) else 3
     for j in range(stages):
         z0, z1 = h*j/stages, h*(j+1)/stages
         r0, r1 = w/2*(1-.40*j/stages), w/2*(1-.40*(j+1)/stages)
@@ -136,8 +175,53 @@ def wall(k):
              (-w*.28,py-w*.28,w*.28,py+w*.28),h,'ferro.main','frame')
     for p in k.pieces[first:]:
         p['pier'] = True
+    if p and tag:
+        for pc in k.pieces[first_piece:]:
+            if pc.get('pier'):
+                pc['group'] = 'support:0'
+            elif 'wall_span' in pc:
+                pc['group'] = f'panel:{pc["wall_span"]}'
     k.meta['wall_layout'] = (edges,thickness,wh,py)
-    k.hits = [dict(p=(0,start+step*1.5,wh*.48),d=(1,0,0),r=step*.65,depth=0,sag=0)]
+    k.hits = [dict(p=(0,start+step*1.5,wh*.48),d=(1,0,0),r=max(step*.65,w*.6),depth=0,sag=0)]
+
+
+def gate(k, p):
+    """Two battered wall runs with terminal piers, a lintel-free central opening and a pair of gate leaves
+    (frame first, then separate skin panels). Built from wall() so the piers/profile/courses are shared."""
+    import drafts
+    w, d, h = SIZES[k.name]
+    g = p.get('dims', {})
+    gap = g.get('gap', d * .46)
+    seg = (d - gap) / 2
+    saved = SIZES[k.name]
+    try:
+        SIZES[k.name] = (w, seg, h)
+        drafts.SIZES[k.name] = SIZES[k.name]
+        for sgn in (-1, 1):
+            with k.at((0, sgn * (gap / 2 + seg / 2), 0), yaw=math.pi if sgn < 0 else 0.0):
+                wall(k, dict(p, dims=dict(g, spans=g.get('spans_each', 2))), tag=False)
+    finally:
+        SIZES[k.name] = saved
+        drafts.SIZES[k.name] = saved
+    k.meta.pop('wall_layout', None)
+    lh = g.get('leaf_h', h * .85)
+    t = g.get('leaf_t', min(w * .3, 2.5))
+    gw = gap / 2 - .25
+    for sgn in (-1, 1):
+        with k.tagged(f'panel:{0 if sgn < 0 else 1}'):
+            y0, y1 = sgn * .12, sgn * (gw + .1)
+            ya, yb = min(y0, y1), max(y0, y1)
+            for z in (.3, lh - .3):
+                k.beam((0, ya, z), (0, yb, z), .3, 'metal', 'frame', h=.3)
+            for i in range(5):
+                y = ya + (yb - ya) * i / 4
+                k.beam((0, y, .3), (0, y, lh - .3), .3, 'metal', 'frame', h=.28)
+            rows = max(2, round(lh / 3.2))
+            rh = (lh - .8) / rows
+            for r in range(rows):
+                k.box((0, (ya + yb) / 2, .4 + (r + .5) * rh), (t, yb - ya - .2, rh - .06), 'paint.main', 'skin', ch=kit.C(.03), removable=True)
+            k.box((0, (ya + yb) / 2, lh * .45), (t + .08, yb - ya - .2, .7), 'hazard', 'detail')
+    k.hits.append(dict(p=(0, 0, lh * .5), d=(1, 0, 0), r=min(gap * .3, 8), depth=0, sag=0))
 
 
 def wall_damage(k, condition):

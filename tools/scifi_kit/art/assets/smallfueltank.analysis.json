@@ -1,0 +1,511 @@
+{
+ "schema": "mc2-kit-analysis/1",
+ "asset": "smallfueltank",
+ "source": "G:\\mc2-assets\\out\\scifi-kit\\round2\\stock\\smallfueltank.json",
+ "bounds": {
+  "size_m": [
+   9.5868,
+   10.48962,
+   10.71968
+  ],
+  "footprint_m2": 100.56,
+  "height_m": 10.72,
+  "tris": 78,
+  "origin_offset_m": [
+   -0.2268,
+   0.008563,
+   0.0325
+  ]
+ },
+ "parts": [
+  {
+   "name": "smallfueltank",
+   "tris": 78,
+   "role": "body",
+   "round": null,
+   "bbox_lo": [
+    -4.793,
+    -5.245,
+    0.0
+   ],
+   "bbox_hi": [
+    4.793,
+    5.245,
+    10.72
+   ],
+   "profile_x": [
+    [
+     0.0,
+     4.703
+    ],
+    [
+     0.08,
+     4.406
+    ],
+    [
+     0.14,
+     3.779
+    ],
+    [
+     0.26,
+     4.285
+    ],
+    [
+     0.62,
+     4.278
+    ],
+    [
+     0.74,
+     2.951
+    ],
+    [
+     0.8,
+     1.487
+    ],
+    [
+     0.92,
+     1.366
+    ],
+    [
+     1.0,
+     0.342
+    ]
+   ],
+   "profile_y": [
+    [
+     0.0,
+     5.036
+    ],
+    [
+     0.08,
+     4.351
+    ],
+    [
+     0.14,
+     2.931
+    ],
+    [
+     0.2,
+     3.343
+    ],
+    [
+     0.26,
+     4.098
+    ],
+    [
+     0.62,
+     4.083
+    ],
+    [
+     0.68,
+     2.62
+    ],
+    [
+     0.74,
+     2.063
+    ],
+    [
+     0.92,
+     1.876
+    ],
+    [
+     1.0,
+     0.469
+    ]
+   ]
+  }
+ ],
+ "stock_model": {
+  "asset": "smallfueltank",
+  "intact_stem": "smallfueltank",
+  "destroyed_stem": "smallfueltankdam",
+  "mesh": "G:\\mc2-assets\\out\\scifi-kit\\round2\\stock\\smallfueltank.json",
+  "parts": [
+   [
+    "smallfueltank",
+    "body"
+   ]
+  ],
+  "resolved_from": "catalog.json models[role=intact,lod=0]"
+ },
+ "round_parts": [],
+ "round": [],
+ "profile": {
+  "x_all": [
+   [
+    0.0,
+    4.703
+   ],
+   [
+    0.08,
+    4.406
+   ],
+   [
+    0.14,
+    3.779
+   ],
+   [
+    0.26,
+    4.285
+   ],
+   [
+    0.62,
+    4.278
+   ],
+   [
+    0.74,
+    2.951
+   ],
+   [
+    0.8,
+    1.487
+   ],
+   [
+    0.92,
+    1.366
+   ],
+   [
+    1.0,
+    0.342
+   ]
+  ],
+  "y_all": [
+   [
+    0.0,
+    5.036
+   ],
+   [
+    0.08,
+    4.351
+   ],
+   [
+    0.14,
+    2.931
+   ],
+   [
+    0.2,
+    3.343
+   ],
+   [
+    0.26,
+    4.098
+   ],
+   [
+    0.62,
+    4.083
+   ],
+   [
+    0.68,
+    2.62
+   ],
+   [
+    0.74,
+    2.063
+   ],
+   [
+    0.92,
+    1.876
+   ],
+   [
+    1.0,
+    0.469
+   ]
+  ],
+  "x_body": [
+   [
+    0.0,
+    4.361
+   ],
+   [
+    0.14,
+    3.15
+   ],
+   [
+    0.26,
+    3.752
+   ],
+   [
+    0.62,
+    4.039
+   ],
+   [
+    0.68,
+    3.454
+   ],
+   [
+    0.74,
+    0.743
+   ],
+   [
+    0.8,
+    0.092
+   ],
+   [
+    1.0,
+    0.0
+   ]
+  ],
+  "long_axis": "y",
+  "note": "half-extent (m) vs height fraction; x_body = the end of the long axis away from the +Y terminal pier"
+ },
+ "roof": {
+  "type": "arch",
+  "ridge_axis": "y",
+  "eave_h": 0.067,
+  "ridge_h": 8.285,
+  "rise_m": 8.219,
+  "pitch_deg": 0.0,
+  "residual": 0.783,
+  "flat_residual": 3.162,
+  "confidence": 0.75
+ },
+ "palette": {
+  "dominant": [
+   {
+    "linear": [
+     0.119,
+     0.1003,
+     0.0498
+    ],
+    "hex": "#61593f",
+    "fraction": 0.235
+   },
+   {
+    "linear": [
+     0.0449,
+     0.0376,
+     0.0197
+    ],
+    "hex": "#3c3726",
+    "fraction": 0.217
+   },
+   {
+    "linear": [
+     0.1845,
+     0.177,
+     0.1254
+    ],
+    "hex": "#777563",
+    "fraction": 0.195
+   },
+   {
+    "linear": [
+     0.3372,
+     0.3149,
+     0.2414
+    ],
+    "hex": "#9d9887",
+    "fraction": 0.158
+   },
+   {
+    "linear": [
+     0.2955,
+     0.2437,
+     0.1124
+    ],
+    "hex": "#94875e",
+    "fraction": 0.111
+   },
+   {
+    "linear": [
+     0.4526,
+     0.4287,
+     0.3387
+    ],
+    "hex": "#b3af9d",
+    "fraction": 0.083
+   }
+  ],
+  "roof_dominant": [
+   {
+    "linear": [
+     0.2673,
+     0.2389,
+     0.1778
+    ],
+    "hex": "#8d8675",
+    "fraction": 0.422
+   },
+   {
+    "linear": [
+     0.1756,
+     0.1511,
+     0.1081
+    ],
+    "hex": "#746c5c",
+    "fraction": 0.361
+   },
+   {
+    "linear": [
+     0.3992,
+     0.369,
+     0.2891
+    ],
+    "hex": "#a9a492",
+    "fraction": 0.217
+   }
+  ],
+  "mean_linear": [
+   0.1986,
+   0.1795,
+   0.119
+  ],
+  "mean_hex": "#7b7561",
+  "wear": {
+   "n": 3275,
+   "value_mean": 0.452,
+   "value_std": 0.162,
+   "sat_mean": 0.288,
+   "sat_std": 0.259,
+   "rust_cov": 0.0003,
+   "dark_stain": 0.146
+  },
+  "texels": 3275,
+  "draft": {
+   "main": [
+    0.119,
+    0.1,
+    0.05
+   ],
+   "second": [
+    0.045,
+    0.038,
+    0.02
+   ],
+   "trim": [
+    0.045,
+    0.038,
+    0.02
+   ],
+   "roof": [
+    0.267,
+    0.239,
+    0.178
+   ],
+   "ferro": [
+    0.113,
+    0.095,
+    0.047
+   ],
+   "accent": [
+    0.295,
+    0.244,
+    0.112
+   ],
+   "metal": [
+    0.3,
+    0.3,
+    0.3
+   ],
+   "corr": [
+    0.119,
+    0.1,
+    0.05
+   ],
+   "glass": [
+    0.03,
+    0.05,
+    0.05
+   ]
+  }
+ },
+ "counts": {
+  "doors": {
+   "n": 0,
+   "conf": 0.5,
+   "where": []
+  },
+  "windows": {
+   "n": 2,
+   "conf": 0.72,
+   "where": [
+    {
+     "side": "right",
+     "at_m": [
+      -0.1,
+      5.8
+     ],
+     "size_m": [
+      2.1,
+      2.7
+     ],
+     "conf": 0.73,
+     "source": "stock texture: dark rectangle in the textured side view"
+    },
+    {
+     "side": "right",
+     "at_m": [
+      -2.6,
+      3.4
+     ],
+     "size_m": [
+      1.0,
+      1.1
+     ],
+     "conf": 0.71,
+     "source": "stock texture: dark rectangle in the textured side view"
+    }
+   ]
+  },
+  "openings_bays": {
+   "n": 0,
+   "conf": 0.5,
+   "where": []
+  },
+  "panels_sections": {
+   "n": 5,
+   "conf": 0.3,
+   "where": []
+  },
+  "crates": {
+   "n": 0,
+   "conf": 0.5,
+   "where": []
+  },
+  "barrels": {
+   "n": 0,
+   "conf": 0.5,
+   "where": []
+  },
+  "tanks": {
+   "n": 1,
+   "conf": 0.5,
+   "where": [
+    {
+     "at_m": [
+      0.2,
+      0.0
+     ],
+     "conf": 0.5
+    }
+   ]
+  },
+  "arches_ribs": {
+   "n": 1,
+   "conf": 0.4,
+   "where": [
+    "barrel vault"
+   ]
+  },
+  "legs_supports": {
+   "n": 0,
+   "conf": 0.5,
+   "where": []
+  },
+  "antennas_dishes": {
+   "n": 0,
+   "conf": 0.3,
+   "where": []
+  },
+  "stairs_ladders": {
+   "n": 0,
+   "conf": 0.3,
+   "where": []
+  }
+ },
+ "archetype_guess": {
+  "archetype": "tank",
+  "why": "name /fueltank|liquidstorage|pipetank|watertower/",
+  "supported": true
+ }
+}

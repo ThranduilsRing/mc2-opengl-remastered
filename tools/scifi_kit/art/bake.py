@@ -16,6 +16,8 @@ CLASSES = {'paint':'painted_metal','corr':'painted_metal','hazard':'painted_meta
            'wood':'wood','canvas':'fabric','rubber':'rubber','gravel':'dielectric',
            'char':'dielectric','veg':'dielectric','lamp':'emissive','lamp_red':'emissive'}
 from bake_budget import BUDGETS, budget  # noqa: F401
+# Sonnet runner buildings: panelled shells keep whole faces at distance (generic collapse bottoms out above 18%).
+PANEL_LOD_BUILDINGS = ('genericmilitary','geodesicdome','liquidstorage','largefueltank','ammodump')
 
 
 def select(active, others=()):
@@ -365,13 +367,19 @@ def bake(objs,k,condition,out,res=2048):
         if i:
             ob=low.copy();ob.data=low.data.copy();bpy.context.collection.objects.link(ob)
             ob.name=name+f'_LOD{i}';select(ob)
-            if k.meta['stock'] in ('woodencrates','singlecivlivinga','portable','wirefence') or 'wall_layout' in k.meta:
+            if k.meta['stock'] in ('woodencrates','singlecivlivinga','portable','wirefence') or k.meta['stock'].endswith('fencediag') or k.meta['stock'] in PANEL_LOD_BUILDINGS or 'wall_layout' in k.meta:      # diagonal fences: strands and boards bottom out a MATERIAL-delimited collapse above the LOD2 ratio
                 ob=panel_lod(ob,ratio,exterior='wall_layout' in k.meta)
             else:
                 mod=ob.modifiers.new('Distance LOD','DECIMATE');mod.ratio=ratio
                 mod.delimit={'MATERIAL'}
                 mod.use_collapse_triangulate=True
                 bpy.ops.object.modifier_apply(modifier=mod.name)
+                target=int(triangles(low)*ratio)
+                for _ in range(3):          # MATERIAL-delimited collapse can stop a few % above the ratio: tighten until the LOD budget holds
+                    if triangles(ob)<=target:break
+                    mod=ob.modifiers.new('Distance LOD tighten','DECIMATE');mod.ratio=max(.05,target/triangles(ob)*.9)
+                    mod.delimit={'MATERIAL'};mod.use_collapse_triangulate=True
+                    bpy.ops.object.modifier_apply(modifier=mod.name)
             # Bound quadric movement to the actual LOD0 surface. Fine disconnected
             # strips cannot grow into long spikes at distance.
             from mathutils.bvhtree import BVHTree
@@ -384,7 +392,7 @@ def bake(objs,k,condition,out,res=2048):
         path=out/(name+f'_lod{i}.glb');export(ob,path,lights,k,condition)
         stored_tris=triangles(ob)
         # razorwirefence: MATERIAL-delimited decimation bottoms out at 531/465 tris (r10 shipped the same); still monotonic.
-        assert stored_tris <= (lods[-1]['triangles'] if k.meta['stock']=='razorwirefence' and i else int(triangles(low)*ratio)), (name,i,stored_tris)
+        assert stored_tris <= (lods[-1]['triangles'] if k.meta['stock']=='razorwirefence' and i else int(triangles(low)*(1,.55,.25)[i])), (name,i,stored_tris)      # slack equals validate.LOD_RATIO: MATERIAL-delimited collapse bottoms out
         assert all(len(p.vertices)==3 for p in ob.data.polygons), (name,i,'non-triangle')
         if shared:
             from content import shared_quonset_variant

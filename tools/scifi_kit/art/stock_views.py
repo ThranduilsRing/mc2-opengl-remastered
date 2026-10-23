@@ -36,6 +36,8 @@ def stock_mesh(name):
             tex = nt.nodes.new('ShaderNodeTexImage')
             tex.image = bpy.data.images.load(path, check_existing=True)
             tex.interpolation = 'Closest'
+            if not d['texture_alpha'][i]:
+                tex.image.alpha_mode = 'NONE'          # stock TGAs carry alpha 0: without this they render black
             nt.links.new(tex.outputs['Color'], bs.inputs['Base Color'])
             if d['texture_alpha'][i]:
                 nt.links.new(tex.outputs['Alpha'], bs.inputs['Alpha'])

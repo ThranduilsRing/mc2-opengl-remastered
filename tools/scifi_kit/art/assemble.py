@@ -94,17 +94,18 @@ def barracks(k):
     return dict(size=(w, d, h), stock='barracks', palette='slate_oxide', ref='paul-santoro-ma-fanart-barracks-img1.jpg', round1='barracks_17')
 
 
-def infantry_door_parts(k, ow, oh):
+def infantry_door_parts(k, ow, oh, apron=True):
     k.reveal(-ow / 2, ow / 2, .45, .45 + oh, 0.0, sill=False)
     k.slab(-ow / 2 + .02, ow / 2 - .02, .45, .45 + oh, .14, .22, 'paint.second', 'skin', front=.03)
     k.slab(-ow / 2 + .25, ow / 2 - .25, .45 + oh * .62, .45 + oh * .86, .10, .14, 'glass', 'glass', pane=True)
-    k.slab(-ow / 2 - .6, ow / 2 + .6, .45 + oh + .38, .45 + oh + .58, -1.05, .02, 'paint.trim', 'frame', front=.12)
-    k.slab(-ow / 2 - .6, ow / 2 + .6, .45 + oh + .58, .45 + oh + .66, -1.0, -.6, 'paint.accent', 'detail')
+    dp = 1.05 if apron else .5          # params assets: a shallow canopy and no invented steps (they reach outside the stock bounds)
+    k.slab(-ow / 2 - .6, ow / 2 + .6, .45 + oh + .38, .45 + oh + .58, -dp, .02, 'paint.trim', 'frame', front=.12)
+    k.slab(-ow / 2 - .6, ow / 2 + .6, .45 + oh + .58, .45 + oh + .66, -dp + .05, -dp * .55, 'paint.accent', 'detail')
     for s in (-1, 1):
         with k.at((s * (ow / 2 + .5), 0, .45 + oh + .38)):
-            k.extrude([(-.9, 0), (0, -.55), (0, 0)], -.06, .06, 'paint.trim', 'frame')
+            k.extrude([(-dp * .85, 0), (0, -.55), (0, 0)], -.06, .06, 'paint.trim', 'frame')
     k.lamp_head(0, .45 + oh + .30, -.35, w=.45)
-    for d, z in [(1.3, .45), (.75, .225)]:
+    for d, z in ([(1.3, .45), (.75, .225)] if apron else []):
         k.slab(-ow / 2 - .45, ow / 2 + .45, 0, z, -d, .02, 'ferro', 'mass', front=.04)
         k.slab(-ow / 2 - .45, ow / 2 + .45, z - .05, z, -d - .01, -d + .07, 'hazard', 'detail')
     k.box((ow / 2 + .45, -.08, 1.55), (.22, .12, .32), 'paint.accent', 'detail', ch=.03)
@@ -172,7 +173,7 @@ def factory(k):
     return dict(size=(w, d, h + 5), stock='factorymd', palette='slate_oxide', ref='viona-halim-spacetower01.jpg', round1='factory_17')
 
 
-def rollup(k, ow, oh):
+def rollup(k, ow, oh, apron=True):
     k.reveal(-ow / 2, ow / 2, 0.0, oh, 0.0, depth=.45, sill=False)
     n = int(oh / .28)
     for i in range(n):
@@ -182,10 +183,12 @@ def rollup(k, ow, oh):
     k.slab(-ow / 2 - .45, ow / 2 + .45, oh + .44, oh + .56, -.57, -.50, 'paint.accent', 'detail')
     for s in (-1, 1):
         k.slab(s * ow / 2 - .08, s * ow / 2 + .08, 0, oh + .3, .10, .36, 'metal', 'frame')
-        k.bollard(s * (ow / 2 + .55), -1.0, 1.05)
+        if apron:
+            k.bollard(s * (ow / 2 + .55), -1.0, 1.05)
     k.lamp_head(0, oh + 1.25, 0.0)
-    k.slab(-ow / 2 - .3, ow / 2 + .3, -.02, .05, -2.2, .30, 'ferro', 'mass')
-    k.hazard_strip(-ow / 2, ow / 2, -.42, -.10, .05)
+    if apron:        # loading apron + hazard strip reach 2.2 m outside the stock bounds: off for params assets (fit would stretch the model)
+        k.slab(-ow / 2 - .3, ow / 2 + .3, -.02, .05, -2.2, .30, 'ferro', 'mass')
+        k.hazard_strip(-ow / 2, ow / 2, -.42, -.10, .05)
 
 
 def catwalk(k, x0, x1, z):

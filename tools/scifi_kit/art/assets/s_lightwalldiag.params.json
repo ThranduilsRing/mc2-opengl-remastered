@@ -1,0 +1,114 @@
+{
+ "asset": "s_lightwalldiag",
+ "archetype": "wall",
+ "size": [
+  7.13098,
+  48.84105,
+  5.57755
+ ],
+ "origin": [
+  0.009412,
+  5.751075,
+  -0.0086
+ ],
+ "palette": {
+  "main": [
+   0.124,
+   0.118,
+   0.118
+  ],
+  "second": [
+   0.088,
+   0.08,
+   0.076
+  ],
+  "trim": [
+   0.044,
+   0.032,
+   0.023
+  ],
+  "roof": [
+   0.217,
+   0.214,
+   0.213
+  ],
+  "ferro": [
+   0.118,
+   0.112,
+   0.112
+  ],
+  "accent": [
+   0.044,
+   0.032,
+   0.023
+  ],
+  "metal": [
+   0.448,
+   0.444,
+   0.444
+  ],
+  "corr": [
+   0.124,
+   0.118,
+   0.118
+  ],
+  "glass": [
+   0.03,
+   0.05,
+   0.05
+  ]
+ },
+ "counts": {
+  "legs_supports": 1,
+  "panels_sections": 4
+ },
+ "features": [],
+ "dims": {
+  "profile": [
+   [
+    0.0,
+    1.846
+   ],
+   [
+    0.68,
+    1.61
+   ],
+   [
+    1.0,
+    1.32
+   ]
+  ],
+  "family": "s",
+  "variant": "light",
+  "post": false
+ },
+ "detail": {},
+ "notes": "auto-drafted from stock analysis (name /wall(diag)?$/); counts/features are DRAFT (see analysis.json confidences)",
+ "stock_model": "s_lightwalldiag",
+ "round_parts": [],
+ "round": [],
+ "draft_confidence": {
+  "windows": 0.71,
+  "panels_sections": 0.3,
+  "legs_supports": 0.5
+ },
+ "status": {
+  "state": "runner",
+  "validated": {
+   "params_sha": "628090c5ce798f62",
+   "analysis_sha": "861d3b9958587fe4",
+   "at": "2026-10-23"
+  }
+ },
+ "evidence": {
+  "analysis_sha": "861d3b9958587fe4",
+  "archetype": "wall",
+  "size_m": [
+   7.131,
+   48.841,
+   5.578
+  ],
+  "counts": {}
+ },
+ "waivers": []
+}
