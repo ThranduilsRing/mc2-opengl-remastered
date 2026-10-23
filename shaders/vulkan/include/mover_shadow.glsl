@@ -58,11 +58,15 @@ float moverVisibility(vec3 worldPos, vec3 N) {
     float meanD = sumD / found;
     float lift = 1.0 + 2.0 * (1.0 - clamp(meanD / 200.0, 0.0, 1.0));
     float radius = max(meanD * tanT * lift, 0.75 * moverFrame.params.x);
-    int count = moverFrame.flags.z == 0 ? 6 : 12;
+    int count = moverFrame.flags.z == 0 ? 12 : 32;
+    // World-anchored rotation breaks up repeated edge bands without a temporal
+    // sequence or a camera-dependent pattern.
+    vec2 cell = floor(worldPos.xy / max(0.5 * moverFrame.params.x, 1.0));
+    float rotation = fract(sin(dot(cell, vec2(12.9898, 78.233))) * 43758.5453) * 6.2831853;
     float visibility = 0.0;
     for (int i = 0; i < count; ++i) {
         float r = sqrt((float(i) + 0.5) / float(count)) * radius;
-        float angle = float(i) * 2.39996323;
+        float angle = float(i) * 2.39996323 + rotation;
         visibility += moverCompare(pc.xy + r * vec2(cos(angle), sin(angle)) * worldToUV, pc.z - bias);
     }
     float soft = 1.0 - smoothstep(0.21, 0.57, moverFrame.sun.z);
