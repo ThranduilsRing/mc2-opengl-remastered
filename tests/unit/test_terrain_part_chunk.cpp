@@ -1,6 +1,32 @@
 #include "doctest.h"
 #include "terrain_part_chunk.h"
 #include "tacorder_terrain_queue.h"
+#include "save_struct_zero.h"
+
+TEST_CASE("saved active order retains identity and mid-order execution state") {
+	MC2_SAVE_STRUCT(TacticalOrder, active);
+	active.id = 70001;
+	active.code = TACTICAL_ORDER_ATTACK_POINT;
+	active.targetWID = 80002;
+	active.lastMoveGoal = glm::vec3(60000.0f, -50000.0f, 12.0f);
+	active.attackParams.targetPoint = active.lastMoveGoal;
+	active.stage = 2;
+	active.statusCode = 3;
+	active.time = 15.5f;
+	active.moveParams.wayPath.curPoint = 2;
+	MC2_SAVE_STRUCT(TacticalOrder, saved);
+	copySavedTacticalOrder(saved, active);
+	MC2_SAVE_STRUCT(TacticalOrder, loaded);
+	copySavedTacticalOrder(loaded, saved);
+	CHECK(loaded.id == active.id);
+	CHECK(loaded.targetWID == active.targetWID);
+	CHECK(loaded.lastMoveGoal == active.lastMoveGoal);
+	CHECK(loaded.attackParams.targetPoint == active.attackParams.targetPoint);
+	CHECK(loaded.stage == active.stage);
+	CHECK(loaded.statusCode == active.statusCode);
+	CHECK(loaded.time == active.time);
+	CHECK(loaded.moveParams.wayPath.curPoint == 2);
+}
 namespace {
 struct ChunkScope {
 	long stride = gTerrainPartIdStride;

@@ -3,6 +3,15 @@
 #include "terrain_part_chunk.h"
 #include "save_archive.h"
 
+// Ordinary assignment starts a new order; a save copy must retain execution state.
+inline void copySavedTacticalOrder(TacticalOrder& to, const TacticalOrder& from)
+{
+	to = from;
+	to.id = from.id;
+	to.lastMoveGoal = from.lastMoveGoal;
+	to.statusCode = from.statusCode;
+}
+
 // The legacy packet remains a prefix. Watch IDs are 32-bit, mission-stable identities;
 // unlike terrain chunk indices they survive a fresh process and registry.
 struct SavedQueueTargets {

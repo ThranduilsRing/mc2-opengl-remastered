@@ -18,6 +18,7 @@
 WQT2 is a bounded, little-endian v2 target supplement to each unchanged native
 warrior packet. The mission-stable watch table is restored by the object manager.
 Queue count, cursor, flags, markers, order parameters and active orders retain their
-legacy fields; target identities no longer depend on network roster unpacking or
+legacy fields. Save copies now preserve the active/last order ID, last move goal
+and status, which ordinary tactical-order assignment resets. Target identities no longer depend on network roster unpacking or
 the terrain registry. This is not a conversion of the entire legacy mission save
 to a portable schema. Legacy packets without the suffix still load.

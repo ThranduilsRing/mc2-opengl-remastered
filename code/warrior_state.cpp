@@ -596,8 +596,8 @@ void MechWarrior::copyToData (MechWarriorData &data)
 	
 	MemCpy(data.newTacOrderReceived,newTacOrderReceived);
 	MemCpy(data.tacOrder,tacOrder);
-	data.lastTacOrder = lastTacOrder;
-	data.curTacOrder = curTacOrder;
+	copySavedTacticalOrder(data.lastTacOrder, lastTacOrder);
+	copySavedTacticalOrder(data.curTacOrder, curTacOrder);
 	MemCpy(data.alarm,alarm);
 	MemCpy(data.alarmHistory,alarmHistory);	// used by brain update in ABL
 	data.alarmPriority = alarmPriority;
@@ -722,8 +722,8 @@ void MechWarrior::copyFromData (MechWarriorData &data, bool wideTargets)
 	
 	MemCpy(newTacOrderReceived, data.newTacOrderReceived);
 	MemCpy(tacOrder, data.tacOrder);
-	lastTacOrder = data.lastTacOrder;
-	curTacOrder = data.curTacOrder;
+	copySavedTacticalOrder(lastTacOrder, data.lastTacOrder);
+	copySavedTacticalOrder(curTacOrder, data.curTacOrder);
 	MemCpy(alarm,data.alarm);
 	MemCpy(alarmHistory,data.alarmHistory);	// used by brain update in ABL
 	alarmPriority = data.alarmPriority;
