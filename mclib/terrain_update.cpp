@@ -3,6 +3,8 @@
 #include <algorithm>
 #include "terrain_internal.h"
 #include "mc2fmt.h"
+#include "terrain_field_store.h"
+#include "terrain_surface_cook.h"
 
 
 // Phase 7.5 diagnostic: streak counter for frames where LOD chunk is enabled
@@ -50,32 +52,56 @@ static float lodDistScale()
     return s_distScale;
 }
 
-// Choose LOD level (0-5) for a block given squared distance and previous level.
-// Promotion (going finer) is immediate; demotion (going coarser) uses 10%
-// hysteresis in linear distance (= 1.21x in distSq) to prevent flickering.
-static uint8_t chooseLodLevel(float distSq, uint8_t prevLevel)
+// Render-only LOD: bound the fine-mesh height error in screen pixels. Heights
+// and activity admission remain authoritative and are never modified here.
+static uint8_t chooseProjectedLod(const TerrainBlockMeta& bm, float halfMap, Camera* camera)
 {
-    const int forceLod = lodForceLevel();
-    if (forceLod >= 0)
-        return static_cast<uint8_t>((forceLod > 5 ? 5 : forceLod));
-
-    const float s_distScale = lodDistScale();
-
-    uint8_t desired = 5;
-    for (int k = 0; k < 5; ++k) {
-        float t = LOD_DIST_THRESH[k] * s_distScale;
-        if (distSq < t * t) {
-            desired = static_cast<uint8_t>(k);
-            break;
-        }
+    if (lodForceLevel() >= 0) return static_cast<uint8_t>(std::min(lodForceLevel(), 5));
+    const auto* store = gos_TerrainFieldStore();
+    // The authored visual-height mode has a different reference mesh.
+    if (!store || !store->heightVersion() || !store->visualHeight().empty()) return 0;
+    static uint64_t cachedVersion = 0;
+    static std::vector<std::array<float, 6>> errors;
+    const int side = store->mapSide();
+    const int blockSide = (side - 1 + 19) / 20;
+    if (cachedVersion != store->heightVersion()) {
+        errors.resize(size_t(blockSide) * blockSide);
+        for (int y = 0; y < blockSide; ++y) for (int x = 0; x < blockSide; ++x)
+            errors[x + y * blockSide] = mc2terrain::terrainPatchHeightErrors(store->height(), side,
+                x * 20, y * 20, std::min(20, side - 1 - x * 20), std::min(20, side - 1 - y * 20));
+        cachedVersion = store->heightVersion();
     }
-    if (desired > prevLevel) {
-        // Demotion — only commit if clearly past the current fine threshold.
-        float thresh = LOD_DIST_THRESH[desired - 1] * s_distScale;
-        if (distSq < thresh * thresh * 1.21f)
-            return prevLevel; // stay fine
+    const auto& error = errors[bm.originX / 20 + bm.originY / 20 * blockSide];
+    // Projection derivatives use the camera's own transform and pixel convention.
+    // The absolute numerator is affine over the box; its extrema are at corners.
+    Stuff::Vector4D zero, up;
+    zero.MultiplyPoint(glm::vec3(0, 0, 0), camera->getWorldToClip());
+    up.MultiplyPoint(glm::vec3(0, 1, 0), camera->getWorldToClip());
+    const float ax = up.x - zero.x, ay = up.y - zero.y, aw = up.w - zero.w;
+    float minW = 1e30f, maxW = -1e30f, nx = 0, ny = 0;
+    for (int corner = 0; corner < 8; ++corner) {
+        const float x = (bm.originX + ((corner & 1) ? bm.quadCountX : 0)) * 128.0f - halfMap;
+        const float y = halfMap - (bm.originY + ((corner & 2) ? bm.quadCountY : 0)) * 128.0f;
+        const float z = (corner & 4) ? bm.maxElev : bm.minElev;
+        Stuff::Vector4D clip;
+        clip.MultiplyPoint(glm::vec3(-x, z, y), camera->getWorldToClip());
+        minW = std::min(minW, clip.w); maxW = std::max(maxW, clip.w);
+        nx = std::max(nx, std::abs(ax * clip.w - clip.x * aw));
+        ny = std::max(ny, std::abs(ay * clip.w - clip.y * aw));
     }
-    return desired;
+    if (minW <= 0 && maxW >= 0) return 0;
+    const float w = std::min(std::abs(minW), std::abs(maxW));
+    const float numerator = std::max(nx * camera->fgetScreenResX(), ny * camera->fgetScreenResY());
+    // Coarsen below 0.05 pixel, refine at 0.1 pixel. Keep contacts and skyline
+    // changes far below a pixel while avoiding oscillation on camera motion.
+    for (int level = 5; level > 0; --level) {
+        const float e = error[level];
+        const float denominator = w * (w - e * std::abs(aw));
+        const float tolerance = level <= bm.lodLevel ? 0.1f : 0.05f;
+        if (std::isfinite(e) && denominator > 1e-8f && e * numerator <= tolerance * denominator)
+            return static_cast<uint8_t>(level);
+    }
+    return 0;
 }
 
 // TERRAIN-LOD-GEOMORPH-1 rung a: per-block geomorph factor m in [0,1].
@@ -392,14 +418,8 @@ long Terrain::update (void)
 							                : eye->quadAabbInFrustum(planes, bmMn, bmMx));
 						bm.inFrustum = passedCull;
 
-						// Phase 5: compute block center in MC2 world space and choose LOD.
-						// Block center vertex = (originX + quadCountX*0.5, originY + quadCountY*0.5).
-						// MC2 world: worldX = mapX * 128 - halfMap; worldY = halfMap - mapY * 128.
-						float cX = float(bm.originX) * 128.0f + float(bm.quadCountX) * 0.5f * 128.0f - halfMap;
-						float cY = halfMap - (float(bm.originY) * 128.0f + float(bm.quadCountY) * 0.5f * 128.0f);
-						float dx2 = cX - eyeX, dy2 = cY - eyeY;
-						float distSq = dx2 * dx2 + dy2 * dy2;
-						bm.lodLevel = chooseLodLevel(distSq, bm.lodLevel);
+
+						bm.lodLevel = chooseProjectedLod(bm, halfMap, eye);
 					}
 				}
 			}
@@ -437,30 +457,15 @@ long Terrain::update (void)
 					if (!nearVis) continue;
 					TerrainBlockMeta& bm = s_blockMeta[bx + by * side];
 					if (bm.dirtyAabb) recomputeBlockAabb(bm);
-					float cX = float(bm.originX) * 128.0f + float(bm.quadCountX) * 0.5f * 128.0f - halfMap;
-					float cY = halfMap - (float(bm.originY) * 128.0f + float(bm.quadCountY) * 0.5f * 128.0f);
-					float dx2 = cX - eyeX, dy2 = cY - eyeY;
-					bm.lodLevel  = chooseLodLevel(dx2 * dx2 + dy2 * dy2, bm.lodLevel);
+
+					bm.lodLevel  = chooseProjectedLod(bm, halfMap, eye);
 					bm.inFrustum = true;   // render this apron block
 				}
 			}
 		}
 
-		// --- Step 5c: clamp CONCRETE blocks to fine LOD ---
-		// The cement word is per-tile; at coarse LOD a triangle spans several
-		// tiles and samples one tile's cement-atlas layer -> torn/garbled runways.
-		// Force concrete blocks to LOD 0 (per-tile accurate). Done BEFORE the delta
-		// clamp so neighbors ramp down gracefully into the cement area.
-		// MC2_TERRAIN_LOD_CHUNK_CEMENT_MAXLOD=k relaxes the cap (default 0).
-		{
-			static const int s_cementMaxLod = mc2::gate::get<"MC2_TERRAIN_LOD_CHUNK_CEMENT_MAXLOD">();
-			for (int i = 0; i < s_terrainChunkSide * s_terrainChunkSide; ++i)
-			{
-				TerrainBlockMeta& bm = s_blockMeta[i];
-				if (bm.inFrustum && bm.hasConcrete && bm.lodLevel > (unsigned char)s_cementMaxLod)
-					bm.lodLevel = static_cast<unsigned char>(s_cementMaxLod);
-			}
-		}
+		// Cement identity is resolved per fragment; the same geometric error bound
+		// protects its depth/contact surface without a material-driven density clamp.
 
 		// --- Phase 5 Pass 2: neighbor LOD delta clamp (visible blocks only) ---
 		// Iterates until stable so chains (e.g., LOD0 next to LOD5) propagate.

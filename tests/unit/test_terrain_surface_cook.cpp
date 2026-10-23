@@ -7,6 +7,21 @@
 #include <cmath>
 #include <limits>
 
+TEST_CASE("terrain projected error: plane, interior ridge and partial edge") {
+    std::vector<float> heights(21 * 21);
+    for (int y = 0; y < 21; ++y) for (int x = 0; x < 21; ++x) heights[x + y * 21] = float(x + 2 * y);
+    auto errors = mc2terrain::terrainPatchHeightErrors(heights, 21, 0, 0, 20, 20);
+    for (float e : errors) CHECK(e < 0.00001f);
+    heights[1 + 21] += 17;
+    errors = mc2terrain::terrainPatchHeightErrors(heights, 21, 0, 0, 20, 20);
+    CHECK(errors[0] == 0);
+    for (size_t i = 1; i < errors.size(); ++i) CHECK(errors[i] >= 17);
+    errors = mc2terrain::terrainPatchHeightErrors(heights, 21, 0, 0, 19, 20);
+    for (size_t i = 1; i < errors.size(); ++i) CHECK(std::isinf(errors[i]));
+    errors = mc2terrain::terrainPatchHeightErrors({}, 21, 0, 0, 20, 20);
+    CHECK(std::isinf(errors[1]));
+}
+
 TEST_CASE("surface materials: muted sand follows semantic dirt, not hue") {
     mc2terrain::SurfaceAsset surface;
     surface.width = surface.height = 2; surface.sourceHash = 1;
