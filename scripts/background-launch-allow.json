@@ -28,6 +28,7 @@
  "direct_spawn": {
   "tools/cook/veg_card_cook.py": "Offline card cooker invokes only the supplied local KTX CLI (create/transcode), never the game; captured console output uses console_child.child_kwargs.",
   "scripts/vk_shader_reload.py": "Developer command runs the discovered glslangValidator shader compiler with captured output through console_child.child_kwargs; it publishes a request to an already-running game and never launches the game",
+  "tools/command_replay.py": "runs scripts/run_smoke.py under sys.executable through console_child.child_kwargs; the smoke harness owns the engine launch, host lease and background window policy",
   "tools/battery.py": "battery-lane tool: argv built from vetted runners and build tools (the game starts only inside run_smoke/deploy runners); every subprocess call goes through console_child.child_kwargs(redirected=True); merge window 27",
   "tools/mod_smoke.py": "battery-lane tool: argv built from vetted runners and build tools (the game starts only inside run_smoke/deploy runners); every subprocess call goes through console_child.child_kwargs(redirected=True); merge window 27",
   "tools/reload_leak.py": "battery-lane tool: argv built from vetted runners and build tools (the game starts only inside run_smoke/deploy runners); every subprocess call goes through console_child.child_kwargs(redirected=True); merge window 27",

@@ -136,7 +136,7 @@ add_executable(mc2_tests
     test_input_capture_policy.cpp  # I3: pure input capture/focus/modal policy + press/release edge kernel (offline)
     test_infowindow_model.cpp  # HUD-IMGUI slice D: info-window component aggregation kernel (offline)
     test_terrain_material.cpp  # TERRAIN-MATERIAL-SINGLE-SOURCE: terrain type -> material table (type 20 = Concrete)
-    test_sim_substeps.cpp   # sim steps per rendered frame under the harness clock (MC2_SIM_SPEED)
+    test_sim_tick_clock.cpp  # R1: the fixed 30 Hz sim tick accumulator (frame-rate independence, game-speed scaling)
     test_mc2log.cpp         # LOGGING-FACADE-P0: mc2::log facade (level gate, vformat fail-soft, MC2_EVENT bytes, MC2_LOG spec)
     test_mc2fmt.cpp         # STEP3-LOGGING-B0: mc2fmt.h to_buf/to_buf_n/safe/as_* vs snprintf (offline)
     test_printf_corpus.cpp  # STEP3-LOGGING-B0: generated format corpus, printf vs mc2::fmt::to_buf byte equality
@@ -171,6 +171,7 @@ add_executable(mc2_tests
     # Leaf-TU engine sources (no transitive engine include drag).
     ${MC2_WORKTREE_ROOT}/mclib/fst_hash.cpp
     ${MC2_WORKTREE_ROOT}/mclib/appearance_rng.cpp
+    ${MC2_WORKTREE_ROOT}/mclib/unit_animation_tick.cpp
     ${MC2_WORKTREE_ROOT}/mclib/resource_strings.cpp
     ${MC2_WORKTREE_ROOT}/mclib/alloc_probe.cpp       # allocation accounting seam (portable, proof builds + this tier)
     ${MC2_WORKTREE_ROOT}/mclib/xform_conventions.cpp  # XFORM-CONVENTION-HARNESS-1: GL-free leaf TU
@@ -414,6 +415,8 @@ set_source_files_properties("${MC2_WORKTREE_ROOT}/tools/vfx_oracle/lifecycle_pla
 target_sources(mc2_tests PRIVATE test_vfx_frozen_driver.cpp)
 target_sources(mc2_tests PRIVATE
     test_sim_rng.cpp test_tactical_order_queue.cpp test_mission_order_ingress.cpp test_authored_route.cpp
+    test_command_replay.cpp
+    ${MC2_WORKTREE_ROOT}/code/command_replay.cpp
     ${MC2_WORKTREE_ROOT}/code/sim_rng.cpp
     ${MC2_WORKTREE_ROOT}/code/tactical_order_queue.cpp
 )

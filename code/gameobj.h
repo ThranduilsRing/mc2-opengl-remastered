@@ -20,6 +20,7 @@
 #endif
 
 #include <memory>
+#include "sim_world_trace.h"
 
 #ifndef DOBJTYPE_H
 #include"dobjtype.h"
@@ -920,6 +921,8 @@ class GameObject {
 		}
 
 		virtual void setExists (bool set) {
+			if (mc2::world_trace::enabled() && getExists() != set)
+				mc2::world_trace::event(set ? "spawn" : "remove", this);
 			if (set)
 				flags |= OBJECT_FLAG_EXISTS;
 			else

@@ -5952,6 +5952,16 @@
    "ver": 1,
    "stream": "stderr",
    "keys": [
+    "part",
+    "reason"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "ORDER_INGRESS",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
     "source",
     "sequence",
     "reason"
@@ -7132,6 +7142,40 @@
    "count": 9
   },
   {
+   "tag": "REPLAY_COMPLETE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "tick",
+    "commands",
+    "checkpoints"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "REPLAY_DIVERGED",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "tick",
+    "subsystem",
+    "expected",
+    "actual"
+   ],
+   "count": 2
+  },
+  {
+   "tag": "REPLAY_RECORDED",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "tick",
+    "commands",
+    "checkpoints"
+   ],
+   "count": 1
+  },
+  {
    "tag": "RESOLUTION",
    "ver": -1,
    "stream": "stdout",
@@ -7929,17 +7973,21 @@
     "objects",
     "nabl",
     "abl",
-    "rng"
+    "rng",
+    "animrng"
    ],
    "count": 1
   },
   {
-   "tag": "SIM_SPEED",
+   "tag": "SIM_TICK_COST",
    "ver": 1,
    "stream": "stdout",
    "keys": [
-    "steps_per_frame",
-    "frame"
+    "ticks",
+    "avg_ms",
+    "p95_ms",
+    "p99_ms",
+    "max_ms"
    ],
    "count": 1
   },
@@ -8478,47 +8526,6 @@
    "count": 1
   },
   {
-   "tag": "STATIC_NATURAL_SKIP",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "frame",
-    "eligible",
-    "natural",
-    "skipped",
-    "falling",
-    "justCreated",
-    "miss_notStaticNow",
-    "miss_static_unregistered",
-    "miss_static_shape",
-    "miss_static_fullBake",
-    "miss_static_other",
-    "miss_unreg_treeAppr",
-    "miss_unreg_bldgAppr",
-    "miss_unreg_otherAppr",
-    "miss_unreg_objTree",
-    "miss_unreg_objTerrain",
-    "miss_unreg_objBuilding",
-    "miss_unreg_objOther",
-    "miss_special",
-    "miss_alarm",
-    "miss_lookout",
-    "miss_sensor",
-    "miss_power",
-    "miss_control",
-    "miss_mechBay",
-    "miss_falling",
-    "miss_justCreated",
-    "nonNatural",
-    "unknown",
-    "updated",
-    "bldg_candidates",
-    "bldg_skipped",
-    "bldg_miss_notStaticNow"
-   ],
-   "count": 1
-  },
-  {
    "tag": "STATIC_PROP",
    "ver": -1,
    "stream": "stdout",
@@ -8554,17 +8561,6 @@
    "stream": "stderr",
    "keys": [
     "typeID"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "STATIC_REG_HEALTH",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "unreg_rank",
-    "type",
-    "count"
    ],
    "count": 1
   },
@@ -10861,6 +10857,7 @@
   "MOVER_COHERENCE",
   "ORDER_LIVENESS_SUMMARY",
   "PERF",
+  "REPLAY_DIVERGED",
   "RESOLUTION",
   "RGBA",
   "SHADER",
@@ -10886,7 +10883,8 @@
   "VK_GPU_PASSES",
   "VK_PROFILE",
   "VK_VALIDATION",
-  "VRAM"
+  "VRAM",
+  "WORLD_ORDER"
  ],
  "plain_tags": [
   "VEG_SUMMARY",

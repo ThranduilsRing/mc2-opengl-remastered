@@ -218,6 +218,10 @@ class BldgAppearance : public ObjectAppearance
 
 		BldgAppearanceType*							appearType;
 		TG_MultiShapePtr							bldgShape;
+		std::unique_ptr<TG_MultiShape> simulationShape_;
+		TG_TypeMultiShape* simulationType_ = nullptr;
+		void updateSimPose();
+		void refreshSimPose() override { updateSimPose(); }
 
 		// Slice 2 (object-offload): set true by the GPU-object batcher's
 		// late-registration branch when a leaf type is encountered for the
@@ -269,16 +273,14 @@ class BldgAppearance : public ObjectAppearance
 		};
 		PickScreenRectCache							pickCache_;
 
-		long										bdAnimationState;
-		float										currentFrame;
-		float										bdFrameRate;
-		bool										isReversed;
-		bool										isLooping;
-		bool										setFirstFrame;
-		bool										canTransition;
+
+
+
+
+
+
+
 		
-		float										turretYaw;
-		float										turretPitch;
 		
 		float										hazeFactor;
 		
@@ -302,8 +304,8 @@ class BldgAppearance : public ObjectAppearance
 		
 		long										currentLOD;
 		
- 		std::vector<long>										nodeUsed;				//Used to stagger the weapon nodes for firing.
-		std::vector<float>										nodeRecycle;			//Used for ripple fire to find out if the node has fired recently.
+
+
 		
 		TG_LightPtr									pointLight;
 		DWORD										lightId;
@@ -391,7 +393,7 @@ class BldgAppearance : public ObjectAppearance
 
 		virtual bool getInTransition (void)
 		{
-			return (canTransition == false);
+			return (unitAnim().canTransition == false);
 		}
 
 		void setFadeTable (MemoryPtr fTable)
@@ -403,7 +405,7 @@ class BldgAppearance : public ObjectAppearance
 		
 		virtual long getCurrentGestureId (void)
 		{
-			return bdAnimationState;
+			return unitAnim().bdAnimationState;
 		}
 
 		virtual unsigned long getAppearanceClass (void)

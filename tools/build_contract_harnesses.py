@@ -143,7 +143,8 @@ def build_and_run_order_seam(run, cache=False, jobs=None, seam_tree=None, seam_p
     else:
         commands = [
             [cmake_exe(), "-S", str(REPO_ROOT), "-B", str(bdir), "-A", "x64", *cache_args(str(REPO_ROOT))],
-            [cmake_exe(), "--build", str(bdir), "--config", "RelWithDebInfo", "--target", "mc2_authored_order_seam"],
+            [cmake_exe(), "--build", str(bdir), "--config", "RelWithDebInfo", "--target", "mc2_authored_order_seam",
+             "--parallel", str(jobs or "2").lstrip("j")],
         ]
     for command in commands:
         if cache:

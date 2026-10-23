@@ -284,6 +284,10 @@ class Artillery : public GameObject
 		virtual void destroy (void);
 		
 		virtual long update (void);
+		void updatePresentation();
+		bool hasPresentation() const { return hitEffect || bomber; }
+		bool presentationInitialized = false;
+		bool presentationImpactStarted = false;
 
 		virtual void render (void);
 

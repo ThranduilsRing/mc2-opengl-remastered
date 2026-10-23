@@ -40,10 +40,17 @@ def test_unchanged_log_flag_cannot_override_snapshot_observations(field, value):
     assert not extract(line.replace(token, field + "=" + value))["draw_probe"]["unchanged"]
 
 
-def test_strict_bits_cannot_pass_on_matching_graded_chains():
-    lines = [f"[SIMID v1] simframe={i} t=0 n=1 graded=aaaa visual=aaaa strict=aaaa" for i in range(310)]
-    base = {"frames": 300, "chain": sim.chain(lines, 300)}
+@pytest.mark.parametrize("schema", [1, 2])
+def test_strict_bits_cannot_pass_on_matching_graded_chains(schema):
+    lines = [f"[SIMID v1] simframe={i} t=0 n=1 graded=aaaa visual=aaaa strict=aaaa "
+             "nobj=1 objects=bbbb nabl=1 abl=cccc rng=1/2/3" for i in range(310)]
+    digest = sim.chain if schema == 2 else sim.full_chain
+    base = {"frames": 300, "chain": digest(lines, 300), "chain_schema": schema}
     assert check(base, [lines] * 4)["accepted"]
+    counters = [line.replace("rng=1/2/3", "rng=1/5/6") for line in lines]   # appearance and weather counts only
+    assert check(base, [lines, lines, counters, counters])["accepted"] == (schema == 2)
+    sim_draw = [line.replace("rng=1/2/3", "rng=4/2/3") for line in lines]   # the simulation count is never excluded
+    assert not check(base, [lines, lines, sim_draw, sim_draw])["accepted"]
     drift = [line.replace("strict=aaaa", "strict=bbbb") for line in lines]
     assert sim.visible_chain(lines) == sim.visible_chain(drift)
     assert not check(base, [lines, lines, drift, drift])["accepted"]

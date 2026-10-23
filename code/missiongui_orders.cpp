@@ -747,13 +747,11 @@ int MissionInterfaceManager::handleOrders( TacticalOrder& order)
 				order.pack( nullptr, nullptr );
 				if ( userInput->getKeyDown( WAYPOINT_KEY ) ) // way point one
 				{
-					pMover->getPilot()->setExecutingQueue(FALSE);
-					pMover->getPilot()->addQueuedTacOrder(order);					
+					pMover->handleTacticalOrder(order, 0, true);
 				}
 				else if ( controlGui.getMines() )
 				{
-					pMover->getPilot()->addQueuedTacOrder(order);
-					pMover->getPilot()->setExecutingQueue(TRUE);
+					pMover->handleTacticalOrder(order, 0, true);
 				}
 				else
 					pMover->handleTacticalOrder(order);

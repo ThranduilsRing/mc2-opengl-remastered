@@ -578,7 +578,7 @@ long Turret::update (void)
 		appearance->setMoverParameters(turretRotation,0.0f,0.0f);
 		bool inView = appearance->recalcBounds();
 	
-		if (inView || !didReveal || (turn < 4))
+		if (appearance)
 		{
 			appearance->setInView(true);
 			appearance->update();
@@ -796,10 +796,10 @@ long Turret::update (void)
 		
  	appearance->setObjectParameters(position, rotation, TacticalOverview::maskWorldBars(drawFlags), teamId,Team::getRelation(teamId, Team::home->getId()));
 	appearance->setMoverParameters(turretRotation,turretPitch,0.0f);
-	bool inView = appearance->recalcBounds();
+	bool inView = false;
 	long canFire = updateAnimations();
 
-	if (inView || !didReveal || (turn < 4))
+	if (appearance)
 	{
 		appearance->setInView(true);
 		appearance->update();
@@ -807,36 +807,7 @@ long Turret::update (void)
 		didReveal = true;
 	}
 
-	//-------------------------------------
-	// Are we a spotlight?
 	if ((static_cast<TurretTypePtr>(getObjectType()))->weaponMasterId[0] == -1)
-	{
-		//---------------------------------
-		// Yes we are.  Check if night.
-		// If night and no spotlight yet, create one.
-		// Move it with turret's rotation below.
-		//
-		// For E3, have the spotlights create the light immediately or we run out of light sources!
-		if (active && eye->getIsNight() && (pointLight == nullptr) && (getStatus() != OBJECT_STATUS_DESTROYED))
-		{
-			pointLight = static_cast<TG_LightPtr>(malloc(sizeof(TG_Light)));
-			pointLight->init(TG_LIGHT_SPOT);
-			lightId = eye->addWorldLight(pointLight);
-
-			pointLight->SetaRGB(0xffffffee);
-			pointLight->SetIntensity(0.25f);
-			pointLight->SetFalloffDistances(50.0f, 450.0f);
-		}
-		
-		if ((!active || !eye->getIsNight()) && pointLight)
-		{
-			eye->removeWorldLight(lightId,pointLight);
-			free(pointLight);
-			pointLight = nullptr;
-		}
-	}
-
-	if (pointLight)	
 	{
 		//----------------------------------------------
 		// Must move light if spotlight is MOVING!
@@ -844,8 +815,6 @@ long Turret::update (void)
 		// find distance from that vector.
 		// move distance proportional to rotation this frame divided by rotation left to hit target.
 		// Store newly derived position as oldPosition.
-		glm::vec3 xlatPos;
-		glm::vec3 ourPosition;
 		if (turretTurnRate == 0.0f)
 		{
 			//We are on Target.  Light is at same position as thing we are illuminating.
@@ -893,20 +862,6 @@ long Turret::update (void)
 			}
 		}
 	
-		ourPosition = oldPosition;
-		mc2ToRender(xlatPos, ourPosition);
-
-		pointLight->direction = xlatPos;
-		
-		mc2ToRender(pointLight->spotDir, position);
-		
-		pointLight->maxSpotLength = ourExtentRadius * 1.5f;
-
-		glm::mat4 lightToWorldMatrix;
-		mc2::math::buildTranslation(lightToWorldMatrix, xlatPos);
-		mc2::math::buildRotation(lightToWorldMatrix, mc2::math::Euler(0.0f,0.0f,0.0f));
-		pointLight->SetLightToWorld(&lightToWorldMatrix);
-		pointLight->SetPosition(&ourPosition);
 	}
 
 	setFlag(OBJECT_FLAG_CAN_FIRE, true);
@@ -2336,3 +2291,56 @@ void Turret::Load (TurretData *data)
 
 //***************************************************************************
 
+
+void Turret::updatePresentationLighting()
+{
+	const float ourExtentRadius = getExtentRadius();
+	const bool active = getAwake();
+	//-------------------------------------
+	// Are we a spotlight?
+	if ((static_cast<TurretTypePtr>(getObjectType()))->weaponMasterId[0] == -1)
+	{
+		//---------------------------------
+		// Yes we are.  Check if night.
+		// If night and no spotlight yet, create one.
+		// Move it with turret's rotation below.
+		//
+		// For E3, have the spotlights create the light immediately or we run out of light sources!
+		if (active && eye->getIsNight() && (pointLight == nullptr) && (getStatus() != OBJECT_STATUS_DESTROYED))
+		{
+			pointLight = static_cast<TG_LightPtr>(malloc(sizeof(TG_Light)));
+			pointLight->init(TG_LIGHT_SPOT);
+			lightId = eye->addWorldLight(pointLight);
+
+			pointLight->SetaRGB(0xffffffee);
+			pointLight->SetIntensity(0.25f);
+			pointLight->SetFalloffDistances(50.0f, 450.0f);
+		}
+
+		if ((!active || !eye->getIsNight()) && pointLight)
+		{
+			eye->removeWorldLight(lightId,pointLight);
+			free(pointLight);
+			pointLight = nullptr;
+		}
+	}
+
+	if (pointLight) {
+		glm::vec3 ourPosition = oldPosition;
+		glm::vec3 xlatPos;
+		mc2ToRender(xlatPos, ourPosition);
+
+		pointLight->direction = xlatPos;
+
+		mc2ToRender(pointLight->spotDir, position);
+
+		pointLight->maxSpotLength = ourExtentRadius * 1.5f;
+
+		glm::mat4 lightToWorldMatrix;
+		mc2::math::buildTranslation(lightToWorldMatrix, xlatPos);
+		mc2::math::buildRotation(lightToWorldMatrix, mc2::math::Euler(0.0f,0.0f,0.0f));
+		pointLight->SetLightToWorld(&lightToWorldMatrix);
+		pointLight->SetPosition(&ourPosition);
+	}
+
+}

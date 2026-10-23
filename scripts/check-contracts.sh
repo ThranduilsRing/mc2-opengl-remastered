@@ -1329,7 +1329,7 @@ run_check "beauty_sidecars"          "py -3 scripts/check-beauty-sidecars.py --n
 run_check "stock_mission_data"          "py -3 scripts/check-stock-mission-data.py --no-data --quiet"
 # STEP-3.5 (2026-10-11): the comparator behind "SIMID unchanged" -- two runs of one mission under the determinism gates must agree frame by frame.
 # The selftest is offline; the live proof is `py -3 tools/sim_determinism.py run mc2_03 --baseline` (launches the game twice; run it at the program boundaries).
-run_check "sim_determinism"             "py -3 tools/sim_determinism.py selftest"
+run_check "sim_determinism"             "py -3 tools/sim_determinism.py selftest && py -3 -B -m pytest scripts/tests/test_sim_determinism_strict.py scripts/tests/test_world_order_diff.py -q -p no:cacheprovider"
 # The save/load round trip (tools/saveload_roundtrip.py run) launches the game; this row proves its analysis. Live result at 2026-10-11: FAILS (see lane1-state).
 run_check "saveload_roundtrip"          "py -3 tools/saveload_roundtrip.py selftest"
 run_check "save_inspect"                "py -3 tools/save_inspect.py selftest"

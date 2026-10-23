@@ -191,6 +191,7 @@ class Turret : public TerrainObject {
 		virtual void destroy (void);
 		
 		virtual long update (void);
+		void updatePresentationLighting();
 		
 		virtual void render (void);
 		

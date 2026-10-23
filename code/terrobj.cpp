@@ -803,6 +803,9 @@ long TerrainObject::update (void) {
 			appearance->setObjectParameters(position,rotation,FALSE,getTeamId(),terrainObjectHomeRelation(getTeamId()));
 			appearance->setMoverParameters(pitchAngle);
 		}
+		// Falling and terrain-map effects above are simulation. Geometry and
+		// dust effects are refreshed by the presentation pass.
+		if (!simPresentationPass) return 1;
 		bool inView = false;
 		{
 			if (gpu_cull::readback_isEnabled()) {

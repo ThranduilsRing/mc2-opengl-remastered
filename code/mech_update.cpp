@@ -15,6 +15,9 @@ constexpr int GestureGoalFallenBackward = 8;
 
 long BattleMech::update (void)
 {
+    unitAnimation = appearance->simulationAnimation();
+    simulationPose = appearance->simPose;
+
 	positionNormal = land->getTerrainNormal(position);
 
 	getPilot()->getIndex();
@@ -301,11 +304,13 @@ long BattleMech::update (void)
 		QueryPerformanceCounter(startCk);
 		#endif
 
-		bool inView = appearance->recalcBounds();
+		bool inView = false;
 		if (inView)
 			windowsVisible = turn;
 			
-		if (withdrawing && !inView && (pilot->getStatus() != WARRIOR_STATUS_WITHDRAWN))
+		if (withdrawing) unitAnimation->withdrawSeconds += frameLength;
+        else unitAnimation->withdrawSeconds = 0;
+		if (withdrawing && unitAnimation->withdrawSeconds >= 3.0f && (pilot->getStatus() != WARRIOR_STATUS_WITHDRAWN))
 			ObjectManager->getObjectType(typeHandle)->handleDestruction(this, nullptr);
 
 		if (appearance) {
@@ -361,7 +366,7 @@ long BattleMech::update (void)
 
 		setPosition(newPosition);
 
-		bool inView = appearance->recalcBounds();
+		bool inView = false;
 		if (inView)
 			windowsVisible = turn;
 	
@@ -425,7 +430,7 @@ long BattleMech::update (void)
 			playedHeloDestruct = true;
 		}
 
-		bool inView = appearance->recalcBounds();
+		bool inView = false;
 		if (inView)
 			windowsVisible = turn;
 	
@@ -624,7 +629,7 @@ long BattleMech::update (void)
 
 	appearance->update();
 
-	appearance->updateFootprints();
+
 	
 	float barStatus = getTotalEffectiveness();
 	

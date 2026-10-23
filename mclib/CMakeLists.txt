@@ -21,6 +21,7 @@ set(SOURCES ${SOURCES}
     paths.cpp
     routines.cpp
     appearance_rng.cpp
+    unit_animation_tick.cpp
     sim_trace.cpp
     alloc_probe.cpp
     tgainfo.cpp

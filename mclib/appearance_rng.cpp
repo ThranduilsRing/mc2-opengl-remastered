@@ -36,3 +36,23 @@ uint32_t drawCount()
 }
 
 } // namespace mc2_appearance_rng
+
+namespace mc2_anim_rng {
+namespace {
+uint32_t s_state = 0x414E494Du;
+uint32_t s_draws = 0;
+}
+void reseed(uint32_t seed) { s_state = seed ^ 0x414E494Du; s_draws = 0; }
+long randomNumber(long range) {
+    if (range <= 0) return 0;
+    ++s_draws;
+    return static_cast<long>(mc2_det_rng::next15(s_state) % static_cast<uint32_t>(range));
+}
+bool rollDice(long percent) {
+    ++s_draws;
+    return ((static_cast<long>(mc2_det_rng::next15(s_state)) * 100) >> 15) < percent;
+}
+uint32_t drawCount() { return s_draws; }
+uint32_t state() { return s_state; }
+void restore(uint32_t value, uint32_t draws) { s_state = value; s_draws = draws; }
+}

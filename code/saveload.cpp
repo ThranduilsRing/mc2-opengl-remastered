@@ -1,3 +1,5 @@
+#include "save_archive.h"
+#include "simulation_save_section.h"
 #include "utils/mc2log.h"
 //******************************************************************************************
 //	saveload.cpp - This file contains the mission Save Load class code
@@ -64,6 +66,11 @@ static void saveloadTrace(const char* op, const char* file, const char* missionF
 
 void Mission::save (const char *saveFileName)
 {
+	struct SimulationPhase {
+		bool previous = simPresentationPass;
+		SimulationPhase() { simPresentationPass = false; }
+		~SimulationPhase() { simPresentationPass = previous; }
+	} simulationPhase;
 	saveloadTrace("save", saveFileName, missionFileName);
 	char currentPath[1024];
 	gos_GetCurrentPath( currentPath, 1023 );
@@ -258,6 +265,18 @@ void Mission::save (const char *saveFileName)
 
 	saveFile.writePacket(currentPacket,reinterpret_cast<MemoryPtr>(const_cast<char*>("END")),4,STORAGE_TYPE_RAW);
 	currentPacket++;
+
+    // Optional versioned section follows the unchanged legacy END packet.
+    mc2::save::Archive extension;
+    uint32_t tag = 0x4E413252u, version = 2;
+    auto animation = ObjectManager->saveAnimationState();
+    extension(tag, version);
+    mc2::sim::serializeAnimationBlob(extension, animation);
+    orderIngress.queue().serialize(extension);
+    if (!extension.good()) Fatal(0, "R2 animation save section failed");
+    saveFile.writePacket(currentPacket, const_cast<MemoryPtr>(extension.bytes().data()),
+        static_cast<unsigned int>(extension.bytes().size()), STORAGE_TYPE_ZLIB);
+    ++currentPacket;
 
 	saveFile.close();
 
@@ -809,6 +828,11 @@ void Mission::loadMissionSettings(MissionLoadFrame& f) {
 // MissionLoadFrame.
 void Mission::load (const char *loadFileName)
 {
+	struct SimulationPhase {
+		bool previous = simPresentationPass;
+		SimulationPhase() { simPresentationPass = false; }
+		~SimulationPhase() { simPresentationPass = previous; }
+	} simulationPhase;
 	MissionLoadFrame f;
 	f.loadFileName = loadFileName;
 	loadPrologue(f);

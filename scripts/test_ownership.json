@@ -64,11 +64,13 @@
     {"module": "scripts/tests/test_raw_gl_firewall.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_ref_passthrough.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_runner_env_drop.py", "owners": ["scripts_tests"]},
+    {"module": "scripts/tests/test_sim_determinism_strict.py", "owners": ["sim_determinism"]},
     {"module": "scripts/tests/test_sim_include_firewall.py", "owners": ["sim_include_firewall"]},
     {"module": "scripts/tests/test_slang_build.py", "owners": ["slang_build"]},
     {"module": "scripts/tests/test_terrain_feed_compare.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_terrain_perf_report.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_tracy_capture_compare.py", "owners": ["scripts_tests"]},
-    {"module": "scripts/tests/test_vk_offline_proofs.py", "owners": ["scripts_tests"]}
+    {"module": "scripts/tests/test_vk_offline_proofs.py", "owners": ["scripts_tests"]},
+    {"module": "scripts/tests/test_world_order_diff.py", "owners": ["sim_determinism"]}
   ]
 }
