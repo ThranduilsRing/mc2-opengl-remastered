@@ -2,6 +2,8 @@
 // Declared in the class headers; shared names in move_internal.h.
 #include "move_internal.h"
 #include <mdspan>
+#include <unordered_map>
+#include <vector>
 
 
 constexpr int MAX_DOORS_PER_SECTOR = 500;		// This should be WAY more than we'll ever need...
@@ -122,6 +124,27 @@ void GlobalMap::calcAreaDoors (void) {
 	}
 }
 
+// Build-time link-cost memo. A sector whose 60x60 cells are all plain open ground (nothing off-map, wet, gated, blocked, forested
+// or path-locked) costs the same A* for the same start/goal offsets wherever it sits, so a blank or mostly-open big map solves each
+// distinct geometry once instead of once per door pair (3060-cell blank map: ~30 s -> under 1 s).
+namespace {
+std::vector<signed char> s_openSector;             // per sector: -1 unknown, 0 mixed, 1 uniformly open
+std::unordered_map<uint32_t, long> s_openLinkCost; // (hover, start r/c, goal r/c within the sector) -> link cost
+
+bool sectorUniformlyOpen (long mapULr, long mapULc) {
+	for (long r = 0; r < SECTOR_DIM; r++)
+		for (long c = 0; c < SECTOR_DIM; c++) {
+			if (!GameMap->inBounds(mapULr + r, mapULc + c))
+				return(false);
+			MapCellPtr cell = GameMap->getCell(mapULr + r, mapULc + c);
+			if (cell->getOffMap() || cell->getShallowWater() || cell->getDeepWater() || cell->getGate() ||
+				!cell->getPassable() || cell->getForest() || cell->getPathlock(false))
+				return(false);
+		}
+	return(true);
+}
+}
+
 long GlobalMap::calcLinkCost (long startDoor, long thruArea, long goalDoor) {
 
 	if ((doors[startDoor].area[0] != thruArea) && (doors[startDoor].area[1] != thruArea))
@@ -179,6 +202,8 @@ long GlobalMap::calcLinkCost (long startDoor, long thruArea, long goalDoor) {
 	// Let's make sure the bridge tiles are NOT blocked here (since, during the
 	// game, they won't be, unless destroyed, in which case we won't care since
 	// they're their own area)...
+	uint32_t openKey = 0;
+	bool haveOpenKey = false;
 	MovePath newPath;
 	if (blank) {
 		newPath.numSteps = 10;
@@ -193,6 +218,21 @@ long GlobalMap::calcLinkCost (long startDoor, long thruArea, long goalDoor) {
 		ClearBridgeTiles = true;
 		long mapULr = areas[thruArea].sectorR * SECTOR_DIM;
 		long mapULc = areas[thruArea].sectorC * SECTOR_DIM;
+		const size_t sectorIndex = static_cast<size_t>(areas[thruArea].sectorR) * sectorWidth + areas[thruArea].sectorC;
+		if (s_openSector.size() != static_cast<size_t>(sectorWidth) * sectorHeight)
+			s_openSector.assign(static_cast<size_t>(sectorWidth) * sectorHeight, -1);
+		if (s_openSector[sectorIndex] < 0)
+			s_openSector[sectorIndex] = sectorUniformlyOpen(mapULr, mapULc) ? 1 : 0;
+		if (s_openSector[sectorIndex] == 1) {
+			openKey = (hover ? 1u << 24 : 0u) | (static_cast<uint32_t>(startRow - mapULr) << 18) | (static_cast<uint32_t>(startCol - mapULc) << 12) |
+				(static_cast<uint32_t>(goalRow - mapULr) << 6) | static_cast<uint32_t>(goalCol - mapULc);
+			auto hit = s_openLinkCost.find(openKey);
+			if (hit != s_openLinkCost.end()) {
+				ClearBridgeTiles = false;
+				return(hit->second);
+			}
+			haveOpenKey = true;
+		}
 		long moveParams = MOVEPARAM_NONE;
 		if (hover)
 			moveParams |= (MOVEPARAM_WATER_SHALLOW + MOVEPARAM_WATER_DEEP);
@@ -222,14 +262,16 @@ long GlobalMap::calcLinkCost (long startDoor, long thruArea, long goalDoor) {
 	if (newPath.numSteps == 0) {
 		// If the cost is 1, then our start and goal cells are the same. Thus, there
 		// is a path, it's just REALLY short :)
-		if (newPath.cost == 1)
-			return(1);
-		else
-			return(9999);
+		cost = (newPath.cost == 1) ? 1 : 9999;
+		if (haveOpenKey)
+			s_openLinkCost[openKey] = cost;
+		return(cost);
 		}
 	else
 		cost = newPath.getCost();
 	gosASSERT(cost != 0);
+	if (haveOpenKey)
+		s_openLinkCost[openKey] = cost;
 	return(cost);
 }
 
@@ -248,6 +290,8 @@ void GlobalMap::changeAreaLinkCost (long area, long cost) {
 }
 
 void GlobalMap::calcDoorLinks (void) {
+	s_openSector.clear();
+	s_openLinkCost.clear();
 
 	numDoorLinks = 0;
 
