@@ -41,6 +41,11 @@ uint32_t captureForcedBuildingHighlight()
 
 long BldgAppearance::render (long depthFixup)
 {
+	if (gos_IsModernShadowPathActive() && !isStaticEligible() && mc2::gate::isSet<"MC2_VISUAL_BOOKMARK_CAPTURE">()) {
+		static std::set<const void*> logged;
+		if (logged.insert(this).second)
+			mc2::fmt::print_err("[SHADOW_ADMISSION] name={} pos={:.1f},{:.1f} spin={} flash={} destruct={} activity={} activity1={} anim={}\n", mc2::fmt::safe(appearType->name), position.x, position.y, appearType->spinMe, drawFlash, destructFX != nullptr, activity != nullptr, activity1 != nullptr, unitAnim().bdAnimationState);
+	}
 	if (gos_IsModernShadowPathActive() &&
 		(mc2shadow::staticCasterSet().isMoverOwner(static_cast<const Appearance*>(this)) || !isStaticEligible()))
 		GpuStaticPropBatcher::instance().captureMoverShadowShape(static_cast<const Appearance*>(this),bldgShape);
