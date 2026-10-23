@@ -51,6 +51,8 @@ def summarise(folder: Path) -> tuple[str, bool]:
         lines.append(f"WARNING: {invalid} invalid/truncated journal records")
     complete = not missing and not invalid and bool(mods) and bool(content) and bool(save)
     lines.append("Result: " + ("complete" if complete else "incomplete"))
+    # Journal strings (mod ids, file names) are untrusted: no raw control characters (terminal escapes) reach the output.
+    lines = ["".join(c if c >= " " and c != "\x7f" else f"\\x{ord(c):02x}" for c in line) for line in lines]
     return "\n".join(lines), complete
 
 

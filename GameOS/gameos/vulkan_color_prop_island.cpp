@@ -289,6 +289,7 @@ struct ColorPropIsland : mc2vk::IslandState {
     mc2veg::GroundLighting groundLighting;
     std::optional<Mc2GroundLightingFrame> lastGround;   // last terrain frame's offsets; see the run path
     bool groundMissing = false;
+    uint32_t groundMissingFrames = 0;       // consecutive frames without a live terrain frame; stale offsets/copies are dropped past a short grace
     bool groundCopied[2] = {false, false};   // this parity's own ground-lighting set holds a copy from a live terrain frame
     mc2vk::OwnedBuffer materialBuf;
     mc2vk::OwnedShaderModule t1_vert, t1_frag;
@@ -1479,8 +1480,11 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
     // Props do not depend on terrain readiness: with no ground-lighting frame this frame (terrain not inited, fell back, or a different frame) reuse
     // the last frame's offsets over the descriptors this island's own set already holds; only a run that never had one skips the draw.
     auto groundNow = mc2_vk_ground_lighting_frame();
-    if (groundNow) { s->lastGround = *groundNow; s->groundMissing = false; }
-    else if (!s->groundMissing) {
+    if (groundNow) { s->lastGround = *groundNow; s->groundMissing = false; s->groundMissingFrames = 0; }
+    else if (++s->groundMissingFrames > 2) {   // terrain gone (teardown, ring growth, mission change): the cached offsets and copied set may name freed/recycled resources
+        s->lastGround.reset(); s->groundCopied[0] = s->groundCopied[1] = false;
+    }
+    if (!groundNow && !s->groundMissing) {
         s->groundMissing = true;
         vlog("no terrain ground-lighting frame this frame; %s.", s->lastGround ? "reusing the last ground lighting" : "props skipped until the first one");
     }

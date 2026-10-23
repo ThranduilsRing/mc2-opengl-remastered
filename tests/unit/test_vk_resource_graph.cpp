@@ -43,8 +43,12 @@ TEST_CASE("VkResourceGraph/readers accumulate and imported images never alias") 
     REQUIRE(p.valid);
     CHECK(p.slots == 0);
     CHECK(p.lifetimes[0].slot == -1);
+    CHECK(p.barriers[1].size() == 1); // a reader in a new stage needs its own visibility barrier
     CHECK(p.barriers[2][0].before.stages == 6);
     CHECK(p.barriers[2][0].before.access == 6);
+    p = compile({{{}, true, write}}, {{{{0, read}}}, {{{0, read}}}});
+    REQUIRE(p.valid);
+    CHECK(p.barriers[1].empty()); // same stage/access reader: still no barrier
     p = compile({scratch(), scratch(), scratch()}, {{{{0, write}}}, {{{1, write}}}, {{{2, write}}}});
     REQUIRE(p.valid);
     CHECK(p.slots == 1);
