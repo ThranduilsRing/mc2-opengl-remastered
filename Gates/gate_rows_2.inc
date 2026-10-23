@@ -107,7 +107,7 @@ L(Lead0, "MC2_OVERLAY_BIAS_LEGACY", Bool, false, "gameos", "", "", verified),
 // OVERLAY-CEMENT-ADOPT-1 (CONCRETE-DELIVER-1): the DELIVERED cure for the
 // concrete patchwork. Default ON. Supersedes MC2_OVERLAY_CEMENT_SHADOW_MATCH.
 // history: docs/gate-history.md#MC2_OVERLAY_CEMENT_ADOPT
-L(Lead0Kill, "MC2_OVERLAY_CEMENT_ADOPT", Bool, true, "terrain", "", "OVERLAY-CEMENT-ADOPT-1: closes the two-shader concrete seam CEMENT-PATCHY-CAUSE-1 attributed but explicitly left open as a design call ('either the overlay...", passthrough | registry(Feature, "MC2_FEATURE_OVERLAY_CEMENT_ADOPT", 26, true) | verified),
+L(Lead0Kill, "MC2_OVERLAY_CEMENT_ADOPT", Bool, true, "terrain", "", "OVERLAY-CEMENT-ADOPT-1: closes the two-shader concrete seam CEMENT-PATCHY-CAUSE-1 attributed but explicitly left open as a design call ('either the overlay...", passthrough | registry(Feature, "MC2_FEATURE_OVERLAY_CEMENT_ADOPT", 25, true) | verified),
 // CEMENT-PATCHY-CAUSE-1: the concrete patchwork is a TWO-SHADER SEAM, not
 // an atlas-tone problem. Attribution receipt in .claude/CEMENT-PATCHY-CAUSE-1-STATUS.md.
 L(Presence, "MC2_OVERLAY_MAGENTA_TRACE", Bool, false, "gameos", "", "", verified),
@@ -122,8 +122,6 @@ L(Presence, "MC2_PATCHSTREAM_THIN_RECORDS_DRAW", Bool, false, "terrain", "", "",
 L(Presence, "MC2_PATCHSTREAM_THIN_RECORD_FASTPATH", Bool, false, "terrain", "", "", passthrough | verified),
 L(Presence, "MC2_PATH_JUMP_FAIL_BACKOFF", Bool, false, "code", "", "PATHFINDING-JUMP-FAIL-1: backoff gate + constants.", passthrough | verified),
 L(Lead1, "MC2_PATH_SOLVE_ISOLATED", Bool, false, "code", "", "", passthrough | verified),
-// history: docs/gate-history.md#MC2_PAVED_OVERLAY_CLASS
-P("MC2_PAVED_OVERLAY_CLASS", Int, 0, "terrain", "", "DEFAULT 0 (OFF).", passthrough | registry(Feature, "MC2_FEATURE_PAVED_OVERLAY_CLASS", -1, false) | range(0, 2) | verified),
 L(Presence, "MC2_PICK_BEHIND_LEGACY", Bool, false, "code", "", "INPUT-CURSOR-OFFSCREEN-TARGET-RECON-1 / -FIX-1: a near-plane-clipped OBB corner projects to (0,0) with w<=1e-4 (camera.h:860-862).", verified),
 L(Presence, "MC2_PICK_CAP_TRACE", Bool, false, "code", "", "", passthrough | verified),
 L(Presence, "MC2_PICK_RECON", Bool, false, "code", "", "", passthrough | verified),
@@ -203,4 +201,4 @@ G("MC2_SELECTION_PICKING_PREDICATE_MODE", Enum, "", "code", "", "", tokens("|Leg
 L(Lead0, "MC2_SENSOR_SCAN_FACTS", Bool, false, "code", "", "", verified),
 // SetupTexturesLegacyForce (TRACKV-CI-GATE-RESTORE-1)
 // history: docs/gate-history.md#MC2_SETUPTEXTURES_LEGACY_FORCE
-L(Presence, "MC2_SETUPTEXTURES_LEGACY_FORCE", Bool, false, "terrain", "", "TRACKV-CI-GATE-RESTORE-1: setupTextures legacy path kill-switch.", registry(Feature, "MC2_FEATURE_SETUPTEXTURES_LEGACY_FORCE", 22, false) | verified),
+L(Presence, "MC2_SETUPTEXTURES_LEGACY_FORCE", Bool, false, "terrain", "", "TRACKV-CI-GATE-RESTORE-1: setupTextures legacy path kill-switch.", registry(Feature, "MC2_FEATURE_SETUPTEXTURES_LEGACY_FORCE", 21, false) | verified),

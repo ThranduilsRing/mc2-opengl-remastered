@@ -10,7 +10,7 @@
 
 namespace mc2::gate::detail {
 
-inline constexpr std::size_t kGateCount = 802;
+inline constexpr std::size_t kGateCount = 799;
 
 inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_ABL_ARG_GUARD", Kind::Bool, Rule::Lead1, {}},
@@ -446,7 +446,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_PATCHSTREAM_THIN_RECORD_FASTPATH", Kind::Bool, Rule::Presence, {}},
     {"MC2_PATH_JUMP_FAIL_BACKOFF", Kind::Bool, Rule::Presence, {}},
     {"MC2_PATH_SOLVE_ISOLATED", Kind::Bool, Rule::Lead1, {}},
-    {"MC2_PAVED_OVERLAY_CLASS", Kind::Int, Rule::Prefix, {}},
     {"MC2_PICK_BEHIND_LEGACY", Kind::Bool, Rule::Presence, {}},
     {"MC2_PICK_CAP_TRACE", Kind::Bool, Rule::Presence, {}},
     {"MC2_PICK_RECON", Kind::Bool, Rule::Presence, {}},
@@ -592,7 +591,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_TARGETING_GUARD", Kind::Bool, Rule::Presence, {}},
     {"MC2_TERRAIN_ADMISSION_LEGACY", Kind::Bool, Rule::Presence, {}},
     {"MC2_TERRAIN_CEMENT_DIAG_CONNECT", Kind::Bool, Rule::Lead0, {}},
-    {"MC2_TERRAIN_CLIFF_DISPLACE_MAXTESS", Kind::Float, Rule::Prefix, {}},
     {"MC2_TERRAIN_CLIFF_SHADOW_FLOOR", Kind::Bool, Rule::Lead0, {}},
     {"MC2_TERRAIN_CONTROLMAP", Kind::Bool, Rule::Lead0, {}},
     {"MC2_TERRAIN_CONTROLMAP_ALBEDO", Kind::Bool, Rule::Lead0, {}},
@@ -715,7 +713,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_VERTEX_PROJECT_PARITY", Kind::Bool, Rule::Presence, {}},
     {"MC2_VFX_AGE_SAMPLE", Kind::Bool, Rule::Lead1, {}},
     {"MC2_VFX_DEBUG_MODE", Kind::Int, Rule::Prefix, {}},
-    {"MC2_VFX_GPU_SIM_CARDCLOUD", Kind::Bool, Rule::Lead1, {}},
     {"MC2_VFX_ORACLE_RENDER", Kind::Bool, Rule::Lead1, {}},
     {"MC2_VFX_ORACLE_SHAPE", Kind::Bool, Rule::DefOnLead0, {}},
     {"MC2_VFX_ORACLE_SHAPE_LOG", Kind::Bool, Rule::Lead1, {}},

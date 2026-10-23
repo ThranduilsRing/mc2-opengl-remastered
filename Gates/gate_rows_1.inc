@@ -109,7 +109,7 @@ L(Lead0, "MC2_HUD_SIM_SPEED", Bool, false, "code", "", "SIM-SPEED-BUTTON-1: doub
 // history: docs/gate-history.md#MC2_HUD_TABS_TEST
 L(Lead0, "MC2_HUD_TABS_TEST", Bool, false, "code", "", "IN-MISSION-HUD-IMGUI-SCOPE-1 slice C witness: register a 4th 'test' tab (no legacy button; ImGui chrome via HudImGui::hudShrinkPoint + hudToDisplay, trivial...", registry(Feature, "MC2_FEATURE_HUD_TABS_TEST", -1, false) | verified),
 // history: docs/gate-history.md#MC2_HZB_BUILD
-G("MC2_HZB_BUILD", Bool, true, "post", "", "Render-only static-prop culling from same-frame Vulkan depth; exact ceil-ladder MIN footprints and per-object LOD. MC2_HZB_BUILD=0 keeps every instance.", passthrough | registry(Feature, "MC2_FEATURE_HZB_BUILD", 18, true) | verified),
+G("MC2_HZB_BUILD", Bool, true, "post", "", "Render-only static-prop culling from same-frame Vulkan depth; exact ceil-ladder MIN footprints and per-object LOD. MC2_HZB_BUILD=0 keeps every instance.", passthrough | registry(Feature, "MC2_FEATURE_HZB_BUILD", 17, true) | verified),
 L(Presence, "MC2_HZB_FORCE_HORIZON", Bool, false, "code", "", "", verified),
 P("MC2_HZB_FORCE_HORIZON_ALT", Float, 150.0, "code", "", "", verified),
 P("MC2_HZB_FORCE_HORIZON_ANGLE", Float, 12.0, "code", "", "", verified),
@@ -134,7 +134,7 @@ L(Lead0Kill, "MC2_LAUNCHER_ENV_JSON", Bool, true, "gameos", "", "", verified),
 L(Lead0P, "MC2_LEGACY_INSTANCE_POOLS", Bool, false, "props", "", "", verified),
 // LegacyLitMc2Frame (VEHICLE-NIGHT-LIT-1)
 // history: docs/gate-history.md#MC2_LEGACY_LIT_MC2_FRAME
-L(Lead0Kill, "MC2_LEGACY_LIT_MC2_FRAME", Bool, true, "code", "", "[DEFAULT-ON as of VEHICLE-LIGHTING-PATH-1; MC2_LEGACY_LIT_MC2_FRAME=0 reverts.", passthrough | registry(Feature, "MC2_LEGACY_LIT_MC2_FRAME", 23, true)),
+L(Lead0Kill, "MC2_LEGACY_LIT_MC2_FRAME", Bool, true, "code", "", "[DEFAULT-ON as of VEHICLE-LIGHTING-PATH-1; MC2_LEGACY_LIT_MC2_FRAME=0 reverts.", passthrough | registry(Feature, "MC2_LEGACY_LIT_MC2_FRAME", 22, true)),
 L(Presence, "MC2_LEGACY_LOAD_BANNER", Bool, false, "code", "", "", verified),
 // LetterboxOpaque (DETERMINISM-RATCHET-2)
 // history: docs/gate-history.md#MC2_LETTERBOX_OPAQUE
@@ -197,7 +197,7 @@ L(Lead0Kill, "MC2_LIGHT_POOL_SOFT", Bool, true, "terrain", "", "", passthrough |
 L(Lead0Kill, "MC2_LIGHT_POOL_VIS_GATE", Bool, true, "terrain", "", "", verified),
 // LightPosColumnFix (LIGHT-POS-COLUMN-1)
 // history: docs/gate-history.md#MC2_LIGHT_POS_COLUMN_FIX
-L(Lead0Kill, "MC2_LIGHT_POS_COLUMN_FIX", Bool, true, "code", "", "[DEFAULT-ON as of VEHICLE-LIGHTING-PATH-1; MC2_LIGHT_POS_COLUMN_FIX=0 reverts.", passthrough | registry(Feature, "MC2_LIGHT_POS_COLUMN_FIX", 24, true) | verified),
+L(Lead0Kill, "MC2_LIGHT_POS_COLUMN_FIX", Bool, true, "code", "", "[DEFAULT-ON as of VEHICLE-LIGHTING-PATH-1; MC2_LIGHT_POS_COLUMN_FIX=0 reverts.", passthrough | registry(Feature, "MC2_LIGHT_POS_COLUMN_FIX", 23, true) | verified),
 // history: docs/gate-history.md#MC2_LIGHT_PREFIX_GPU_COPY
 // PERF-HARNESS-TRUTH-1: registered while measuring its cost. It was
 // allowlisted for smoke but neither registered nor documented, so the gate

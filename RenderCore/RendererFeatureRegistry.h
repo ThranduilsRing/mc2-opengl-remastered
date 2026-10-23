@@ -116,59 +116,54 @@ enum class RendererFeature : int {
     // CPU sim's live per-particle records (CardCloud first; PointCloud births 0
     // in tier1). Default-OFF parity bridge; placeholder byte-identical when off.
     VfxOracleRender          = 15,  // MC2_VFX_ORACLE_RENDER
-    // VFX-GPU-SIM-CARDCLOUD-BUFFER-1: compare-only GPU sim for CardCloud.
-    // _CARDCLOUD gathers live CPU state into a persistent GPU sim SSBO
-    // (observe-only, no integration/readback/render); _COMPARE emits integrity
-    // logs. Default-OFF. Substrate for the eventual GPU-owned sim.
-    VfxGpuSimCardCloud       = 16,  // MC2_VFX_GPU_SIM_CARDCLOUD
     // TRACKV-POST-GROUNDING-MVP: experimental visual post-process + grounding
     // gates. ALL default-OFF (enforced by the Track-V guardrail unit test).
     // Promotion to default-ON is a deliberate edit here AND in that test.
     // VIEWMODE-POSTPROCESS-PRESENTATION-1: view-mode presentation framework.
-    ViewmodeFramework        = 17,  // MC2_VIEWMODE_FRAMEWORK
+    ViewmodeFramework        = 16,  // MC2_VIEWMODE_FRAMEWORK
     // Default-ON render-only prop occlusion from same-frame Vulkan depth.
-    HzbBuild                 = 18,  // MC2_HZB_BUILD
+    HzbBuild                 = 17,  // MC2_HZB_BUILD
     // Compatible BC7 sidecars use compressed buckets; absent or incompatible
     // sidecars retain the RGBA fallback.
-    StaticPropBc7            = 19,  // compatible sidecars, always enabled
+    StaticPropBc7            = 18,  // compatible sidecars, always enabled
     // COLORMAP-CPU-RETIRE-1: free cpuColorMap + cpuDispAlpha immediately after
     // BuildColormapAtlas uploads to GPU. The indirect path (default-ON) has no
     // geometry displacement (thin vert, no TES), so the CPU elevation's null-guard
     // at mapdata.cpp:2435 becomes the correct state. Default-ON; kill-switch =0.
-    ColormapCpuRetire        = 20,  // MC2_COLORMAP_CPU_RETIRE
+    ColormapCpuRetire        = 19,  // MC2_COLORMAP_CPU_RETIRE
     // COLORMAP-BC7-KTX2-1: prefer .burnin.ktx2 BC7 sidecar in BuildColormapAtlas.
     // Falls back to RGBA8 when sidecar absent or BPTC cap missing. Default-ON.
-    ColormapKtx2             = 21,  // MC2_COLORMAP_KTX2
+    ColormapKtx2             = 20,  // MC2_COLORMAP_KTX2
     // TRACKV-CI-GATE-RESTORE-1: setupTextures legacy path kill-switch.
     // Default-OFF = new/optimized setupTextures path active; ON = legacy path forced.
-    SetupTexturesLegacyForce = 22,  // MC2_SETUPTEXTURES_LEGACY_FORCE
+    SetupTexturesLegacyForce = 21,  // MC2_SETUPTEXTURES_LEGACY_FORCE
     // VEHICLE-NIGHT-LIT-1: coordinate-frame fix for the legacy lit shader path
     // (gos_tex_vertex_lighted.vert) — the program that draws ground vehicles.
     // It fed calc_light Stuff-frame position + normal while the ObjectLights
     // rows (and the mech.vert / static_prop.vert consumers) are MC2-frame, so
     // every positional light type failed its falloff distance test and vehicles
     // received no pool / cone light at night. Default-OFF -> byte-identical.
-    LegacyLitMc2Frame        = 23,  // MC2_LEGACY_LIT_MC2_FRAME
-    LightPosColumnFix        = 24,  // MC2_LIGHT_POS_COLUMN_FIX
+    LegacyLitMc2Frame        = 22,  // MC2_LEGACY_LIT_MC2_FRAME
+    LightPosColumnFix        = 23,  // MC2_LIGHT_POS_COLUMN_FIX
     // VEHICLE-LIGHTING-PATH-1: populate the ground-vehicle light row before the
     // legacy draw. GVAppearance called neither CacheGpuLightData nor
     // submitMultiShape, so its lightData_ stayed all-zero and calc_light
     // returned vec3(1,1,1) -> vehicles rendered at raw albedo, fully unlit.
     // Default-ON; =0 restores the shipped unlit behavior.
-    VehicleLitPath           = 25,  // MC2_VEHICLE_LIT_PATH
+    VehicleLitPath           = 24,  // MC2_VEHICLE_LIT_PATH
     // OVERLAY-CEMENT-ADOPT-1 (CONCRETE-DELIVER-1): on a cement tile the
     // overlay/decal layer adopts terrain_lod_chunk.frag's concrete albedo +
     // lighting model, closing the two-shader seam that made concrete a
     // patchwork -- including the in-shader distance fog the overlay applies
     // and the chunk frag does not. Default-ON; =0 restores stock.
-    OverlayCementAdopt       = 26,  // MC2_OVERLAY_CEMENT_ADOPT
+    OverlayCementAdopt       = 25,  // MC2_OVERLAY_CEMENT_ADOPT
     // VEHICLE-AMBIENT-FLOOR-1: finishes VEHICLE-LIGHTING-PATH-1 by giving the
     // legacy lit vehicle path mech.vert's kAmbientFloor = 0.35 seed and its
     // clamp(0,1). Without them a gathered vehicle computes base_light+A+S*ndl
     // against a mech's clamp(0.35+A+S*ndl,0,1), so the truck still reads darker
     // than the mech beside it. Default-ON; =0 restores no-floor/no-clamp.
-    VehicleAmbientFloor      = 27,  // MC2_VEHICLE_AMBIENT_FLOOR
-    COUNT                    = 28,
+    VehicleAmbientFloor      = 26,  // MC2_VEHICLE_AMBIENT_FLOOR
+    COUNT                    = 27,
 };
 
 // ---------------------------------------------------------------------------
@@ -260,62 +255,57 @@ static constexpr EnvVarDesc kFeatureTable[] = {
         "MC2_FEATURE_VFX_ORACLE_RENDER", "MC2_VFX_ORACLE_RENDER", EnvVarKind::Feature, false,
         "VFX-ORIGINAL-RECORD-ABI-1 (Phase 1 of the originals-restoration arc; see docs/vfx-originals-restoration-design.md)."
     },
-    // [16] VfxGpuSimCardCloud
-    {
-        "MC2_FEATURE_VFX_GPU_SIM_CARDCLOUD", "MC2_VFX_GPU_SIM_CARDCLOUD", EnvVarKind::Feature, false,
-        "VFX-GPU-SIM-CARDCLOUD-BUFFER-1 (Stage 2 of the originals-restoration arc; docs/vfx-gpu-sim-spec.md)."
-    },
-    // [17] ViewmodeFramework
+    // [16] ViewmodeFramework
     {
         "MC2_FEATURE_VIEWMODE_FRAMEWORK", "MC2_VIEWMODE_FRAMEWORK", EnvVarKind::Feature, false,
         "VIEWMODE-POSTPROCESS-PRESENTATION-1: enables the view-mode presentation framework that wires ViewMode::ObjectIdDebug (and future sensor modes) through the..."
     },
-    // [18] HzbBuild
+    // [17] HzbBuild
     {
         "MC2_FEATURE_HZB_BUILD", "MC2_HZB_BUILD", EnvVarKind::Feature, true,
         "Render-only static-prop culling from same-frame Vulkan depth; exact ceil-ladder MIN footprints and per-object LOD. MC2_HZB_BUILD=0 keeps every instance."
     },
-    // [19] StaticPropBc7
+    // [18] StaticPropBc7
     {
         "MC2_FEATURE_STATICPROP_BC7", nullptr, EnvVarKind::Feature, true,
         "Use compatible BC7 sidecars; incompatible or absent sidecars retain RGBA fallback buckets."
     },
-    // [20] ColormapCpuRetire
+    // [19] ColormapCpuRetire
     {
         "MC2_FEATURE_COLORMAP_CPU_RETIRE", "MC2_COLORMAP_CPU_RETIRE", EnvVarKind::Feature, true,
         "COLORMAP-CPU-RETIRE-1: free cpuColorMap + cpuDispAlpha in BuildColormapAtlas immediately after GPU atlas upload."
     },
-    // [21] ColormapKtx2
+    // [20] ColormapKtx2
     {
         "MC2_FEATURE_COLORMAP_KTX2", "MC2_COLORMAP_KTX2", EnvVarKind::Feature, true,
         "COLORMAP-BC7-KTX2-1: prefer .burnin.ktx2 BC7 sidecar in BuildColormapAtlas (gos_terrain_indirect.cpp)."
     },
-    // [22] SetupTexturesLegacyForce
+    // [21] SetupTexturesLegacyForce
     {
         "MC2_FEATURE_SETUPTEXTURES_LEGACY_FORCE", "MC2_SETUPTEXTURES_LEGACY_FORCE", EnvVarKind::Feature, false,
         "TRACKV-CI-GATE-RESTORE-1: setupTextures legacy path kill-switch."
     },
-    // [23] LegacyLitMc2Frame
+    // [22] LegacyLitMc2Frame
     {
         "MC2_LEGACY_LIT_MC2_FRAME", "MC2_LEGACY_LIT_MC2_FRAME", EnvVarKind::Feature, true,
         "[DEFAULT-ON as of VEHICLE-LIGHTING-PATH-1; MC2_LEGACY_LIT_MC2_FRAME=0 reverts."
     },
-    // [24] LightPosColumnFix
+    // [23] LightPosColumnFix
     {
         "MC2_LIGHT_POS_COLUMN_FIX", "MC2_LIGHT_POS_COLUMN_FIX", EnvVarKind::Feature, true,
         "[DEFAULT-ON as of VEHICLE-LIGHTING-PATH-1; MC2_LIGHT_POS_COLUMN_FIX=0 reverts."
     },
-    // [25] VehicleLitPath
+    // [24] VehicleLitPath
     {
         "MC2_VEHICLE_LIT_PATH", "MC2_VEHICLE_LIT_PATH", EnvVarKind::Feature, true,
         "VEHICLE-LIGHTING-PATH-1: put GROUND VEHICLES on the same lighting path as every other object class."
     },
-    // [26] OverlayCementAdopt
+    // [25] OverlayCementAdopt
     {
         "MC2_FEATURE_OVERLAY_CEMENT_ADOPT", "MC2_OVERLAY_CEMENT_ADOPT", EnvVarKind::Feature, true,
         "OVERLAY-CEMENT-ADOPT-1: closes the two-shader concrete seam CEMENT-PATCHY-CAUSE-1 attributed but explicitly left open as a design call ('either the overlay..."
     },
-    // [27] VehicleAmbientFloor
+    // [26] VehicleAmbientFloor
     {
         "MC2_VEHICLE_AMBIENT_FLOOR", "MC2_VEHICLE_AMBIENT_FLOOR", EnvVarKind::Feature, true,
         "VEHICLE-AMBIENT-FLOOR-1: DEFAULT-ON."
@@ -620,10 +610,6 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "OVERLAY-TILE-HIRES-1: honor the overlay tile TGA's actual dimensions instead of the legacy hard-assumed 64px (initOverlay header resync mirrors...",
     },
     {
-        "MC2_FEATURE_PAVED_OVERLAY_CLASS", "MC2_PAVED_OVERLAY_CLASS", EnvVarKind::Feature, false,
-        "DEFAULT 0 (OFF).",
-    },
-    {
         "MC2_PRESENTATION_DISABLED", "MC2_PRESENTATION_DISABLED", EnvVarKind::Trace, false,
         "Replay proof: suppress presentation extraction updates while simulation continues.",
     },
@@ -694,10 +680,6 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
     {
         "MC2_FEATURE_TACTICAL_ARC_OVERLAY", "MC2_TACTICAL_ARC_OVERLAY", EnvVarKind::Feature, false,
         "TACTICAL-ARC-OVERLAY-MVP-1: world-space range ring + facing line on each SELECTED mover, drawn in-scene by the debug renderer just before its flush...",
-    },
-    {
-        "MC2_TUNE_TERRAIN_CLIFF_MAXTESS", "MC2_TERRAIN_CLIFF_DISPLACE_MAXTESS", EnvVarKind::Trace, false,
-        "SLICE 3 knob: max tessellation factor (float; C++ default 4.0, clamped to GL_MAX_TESS_GEN_LEVEL at program build).",
     },
     {
         "MC2_TERRAIN_CONTROLMAP", "MC2_TERRAIN_CONTROLMAP", EnvVarKind::Feature, false,

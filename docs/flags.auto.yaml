@@ -3,9 +3,9 @@
 # Where each gate is read, what the smoke runner forwards and what tier1_env_vars.md says are not here: ask
 # tools/repo_intel (env_var, gate_status), which scan the sources.
 generator_version: "3.0.0"
-gate_count: 802
-registry_entry_count: 162
-verified_count: 762
+gate_count: 799
+registry_entry_count: 159
+verified_count: 761
 flags:
   - name: MC2_ABL_ARG_GUARD
     kind: Bool
@@ -714,7 +714,7 @@ flags:
     owner: terrain
     doc: "COLORMAP-CPU-RETIRE-1: free cpuColorMap + cpuDispAlpha in BuildColormapAtlas immediately after GPU atlas upload."
     verified: true
-    registry: {feature_id: MC2_FEATURE_COLORMAP_CPU_RETIRE, kind: Feature, order: 20, default_on: true}
+    registry: {feature_id: MC2_FEATURE_COLORMAP_CPU_RETIRE, kind: Feature, order: 19, default_on: true}
   - name: MC2_COLORMAP_DISPLACE_PROBE
     kind: Bool
     default: false
@@ -730,7 +730,7 @@ flags:
     owner: terrain
     doc: "COLORMAP-BC7-KTX2-1: prefer .burnin.ktx2 BC7 sidecar in BuildColormapAtlas (gos_terrain_indirect.cpp)."
     verified: true
-    registry: {feature_id: MC2_FEATURE_COLORMAP_KTX2, kind: Feature, order: 21, default_on: true}
+    registry: {feature_id: MC2_FEATURE_COLORMAP_KTX2, kind: Feature, order: 20, default_on: true}
   - name: MC2_COMMAND_REPLAY_PLAY
     kind: String
     default: ""
@@ -1954,7 +1954,7 @@ flags:
     doc: "Render-only static-prop culling from same-frame Vulkan depth; exact ceil-ladder MIN footprints and per-object LOD. MC2_HZB_BUILD=0 keeps every instance."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_FEATURE_HZB_BUILD, kind: Feature, order: 18, default_on: true}
+    registry: {feature_id: MC2_FEATURE_HZB_BUILD, kind: Feature, order: 17, default_on: true}
   - name: MC2_HZB_FORCE_HORIZON
     kind: Bool
     default: false
@@ -2098,7 +2098,7 @@ flags:
     owner: code
     doc: "[DEFAULT-ON as of VEHICLE-LIGHTING-PATH-1; MC2_LEGACY_LIT_MC2_FRAME=0 reverts."
     smoke_passthrough: true
-    registry: {feature_id: MC2_LEGACY_LIT_MC2_FRAME, kind: Feature, order: 23, default_on: true}
+    registry: {feature_id: MC2_LEGACY_LIT_MC2_FRAME, kind: Feature, order: 22, default_on: true}
   - name: MC2_LEGACY_LOAD_BANNER
     kind: Bool
     default: false
@@ -2410,7 +2410,7 @@ flags:
     doc: "[DEFAULT-ON as of VEHICLE-LIGHTING-PATH-1; MC2_LIGHT_POS_COLUMN_FIX=0 reverts."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_LIGHT_POS_COLUMN_FIX, kind: Feature, order: 24, default_on: true}
+    registry: {feature_id: MC2_LIGHT_POS_COLUMN_FIX, kind: Feature, order: 23, default_on: true}
   - name: MC2_LIGHT_REALISM
     kind: Bool
     default: true
@@ -3266,7 +3266,7 @@ flags:
     doc: "OVERLAY-CEMENT-ADOPT-1: closes the two-shader concrete seam CEMENT-PATCHY-CAUSE-1 attributed but explicitly left open as a design call ('either the overlay..."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_FEATURE_OVERLAY_CEMENT_ADOPT, kind: Feature, order: 26, default_on: true}
+    registry: {feature_id: MC2_FEATURE_OVERLAY_CEMENT_ADOPT, kind: Feature, order: 25, default_on: true}
   - name: MC2_OVERLAY_MAGENTA_TRACE
     kind: Bool
     default: false
@@ -3347,16 +3347,6 @@ flags:
     doc: ""
     smoke_passthrough: true
     verified: true
-  - name: MC2_PAVED_OVERLAY_CLASS
-    kind: Int
-    default: 0
-    rule: Prefix
-    owner: terrain
-    doc: "DEFAULT 0 (OFF)."
-    range: {lo: 0, hi: 2, style: reject}
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_FEATURE_PAVED_OVERLAY_CLASS, kind: Feature, order: -1, default_on: false}
   - name: MC2_PICK_BEHIND_LEGACY
     kind: Bool
     default: false
@@ -3845,7 +3835,7 @@ flags:
     owner: terrain
     doc: "TRACKV-CI-GATE-RESTORE-1: setupTextures legacy path kill-switch."
     verified: true
-    registry: {feature_id: MC2_FEATURE_SETUPTEXTURES_LEGACY_FORCE, kind: Feature, order: 22, default_on: false}
+    registry: {feature_id: MC2_FEATURE_SETUPTEXTURES_LEGACY_FORCE, kind: Feature, order: 21, default_on: false}
   - name: MC2_SHADER_HOT_RELOAD
     kind: Bool
     default: false
@@ -4457,14 +4447,6 @@ flags:
     owner: terrain
     doc: ""
     verified: true
-  - name: MC2_TERRAIN_CLIFF_DISPLACE_MAXTESS
-    kind: Float
-    default: 4
-    rule: Prefix
-    owner: terrain
-    doc: "SLICE 3 knob: max tessellation factor (float; C++ default 4.0, clamped to GL_MAX_TESS_GEN_LEVEL at program build)."
-    smoke_passthrough: true
-    registry: {feature_id: MC2_TUNE_TERRAIN_CLIFF_MAXTESS, kind: Trace, order: -1, default_on: false}
   - name: MC2_TERRAIN_CLIFF_SHADOW_FLOOR
     kind: Bool
     default: false
@@ -5347,7 +5329,7 @@ flags:
     owner: code
     doc: "VEHICLE-AMBIENT-FLOOR-1: DEFAULT-ON."
     smoke_passthrough: true
-    registry: {feature_id: MC2_VEHICLE_AMBIENT_FLOOR, kind: Feature, order: 27, default_on: true}
+    registry: {feature_id: MC2_VEHICLE_AMBIENT_FLOOR, kind: Feature, order: 26, default_on: true}
   - name: MC2_VEHICLE_LIT_PATH
     kind: Bool
     default: true
@@ -5356,7 +5338,7 @@ flags:
     doc: "VEHICLE-LIGHTING-PATH-1: put GROUND VEHICLES on the same lighting path as every other object class."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_VEHICLE_LIT_PATH, kind: Feature, order: 25, default_on: true}
+    registry: {feature_id: MC2_VEHICLE_LIT_PATH, kind: Feature, order: 24, default_on: true}
   - name: MC2_VERIFY_MODE
     kind: String
     default: ""
@@ -5399,13 +5381,6 @@ flags:
     smoke_passthrough: true
     verified: true
     registry: {feature_id: MC2_DIAG_VFX_DEBUG_MODE, kind: Trace, order: -1, default_on: false}
-  - name: MC2_VFX_GPU_SIM_CARDCLOUD
-    kind: Bool
-    default: false
-    rule: Lead1
-    owner: code
-    doc: "VFX-GPU-SIM-CARDCLOUD-BUFFER-1 (Stage 2 of the originals-restoration arc; docs/vfx-gpu-sim-spec.md)."
-    registry: {feature_id: MC2_FEATURE_VFX_GPU_SIM_CARDCLOUD, kind: Feature, order: 16, default_on: false}
   - name: MC2_VFX_ORACLE_RENDER
     kind: Bool
     default: false
@@ -5452,7 +5427,7 @@ flags:
     doc: "VIEWMODE-POSTPROCESS-PRESENTATION-1: enables the view-mode presentation framework that wires ViewMode::ObjectIdDebug (and future sensor modes) through the..."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_FEATURE_VIEWMODE_FRAMEWORK, kind: Feature, order: 17, default_on: false}
+    registry: {feature_id: MC2_FEATURE_VIEWMODE_FRAMEWORK, kind: Feature, order: 16, default_on: false}
   - name: MC2_VIEW_MODE
     kind: String
     default: ""
@@ -6189,5 +6164,5 @@ feature_only_rows:   # registry entries with no environment variable
   - {feature_id: MC2_FEATURE_REVERSE_Z, kind: Feature, order: 4, default_on: true}
   - {feature_id: MC2_FX_DEFS, kind: Feature, order: -1, default_on: true}
   - {feature_id: MC2_FEATURE_MATERIAL_KTX, kind: Feature, order: 11, default_on: true}
-  - {feature_id: MC2_FEATURE_STATICPROP_BC7, kind: Feature, order: 19, default_on: true}
+  - {feature_id: MC2_FEATURE_STATICPROP_BC7, kind: Feature, order: 18, default_on: true}
   - {feature_id: MC2_FEATURE_STATICPROP_MATERIAL_PBR_SLOTS, kind: Feature, order: -1, default_on: true}

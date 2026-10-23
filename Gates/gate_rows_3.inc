@@ -145,10 +145,7 @@ L(AtoiNZ, "MC2_TACTIC_WEIGHTS", Bool, false, "code", "", "TACTIC-WEIGHTS-A: load
 L(AtoiNZ, "MC2_TACTIC_WEIGHTS_B", Bool, false, "code", "", "", verified),
 L(Presence, "MC2_TARGETING_GUARD", Bool, false, "code", "", "", passthrough | verified),
 L(Presence, "MC2_TERRAIN_ADMISSION_LEGACY", Bool, false, "terrain", "", "", verified),
-// history: docs/gate-history.md#MC2_TERRAIN_CLIFF_DISPLACE
-// history: docs/gate-history.md#MC2_TERRAIN_CLIFF_DISPLACE_MAXTESS
 L(Lead0, "MC2_TERRAIN_CEMENT_DIAG_CONNECT", Bool, false, "terrain", "", "", verified),
-P("MC2_TERRAIN_CLIFF_DISPLACE_MAXTESS", Float, 4.0, "terrain", "", "SLICE 3 knob: max tessellation factor (float; C++ default 4.0, clamped to GL_MAX_TESS_GEN_LEVEL at program build).", passthrough | registry(Trace, "MC2_TUNE_TERRAIN_CLIFF_MAXTESS", -1, false)),
 L(Lead0, "MC2_TERRAIN_CLIFF_SHADOW_FLOOR", Bool, false, "terrain", "", "", verified),
 // TERRAIN-CLIFF-MATERIAL-TRIPLANAR-1: world-axis triplanar ROCK NORMAL + relief
 // on steep terrain cells (terrain_lod_chunk.frag useTriplanarCliff branch,

@@ -15,7 +15,6 @@ TEST_CASE("vfx_oracle/CardCloud lifecycle in an isolated platform")
     mc2::gate::ScopedOverride<"MC2_VFX_ORACLE_RENDER"> oracle{"0"};
     mc2::gate::ScopedOverride<"MC2_VFX_ORACLE_TUBE"> tube{"0"};
     mc2::gate::ScopedOverride<"MC2_VFX_ORACLE_SHAPE"> shape{"0"};
-    mc2::gate::ScopedOverride<"MC2_VFX_GPU_SIM_CARDCLOUD"> gpuSim{"0"};
     mc2::gate::ScopedOverride<"MC2_GPU_PARTICLES_LOG"> log{"0"};
     // MLR retains its first value beyond the gate cache; every child must start enabled.
     mc2::gate::ScopedOverride<"MC2_DISABLE_GOSFX"> mlrEnabled{"0"};

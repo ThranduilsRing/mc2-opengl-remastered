@@ -124,11 +124,11 @@ L(Lead0, "MC2_CLOUD_SHADOW", Bool, false, "post", "", "", passthrough | verified
 G("MC2_COALESCE_FORCE_DISARM", Enum, "", "props", "", "Step 12B.1 - exact, case-sensitive string match on the four valid values; anything else (including unset) leaves None.", tokens("|alloc_failed|mixed_alpha|no_extension|size_mismatch") | verified),
 L(Lead0, "MC2_COLLISION_FACTS", Bool, false, "code", "", "", verified),
 // history: docs/gate-history.md#MC2_COLORMAP_CPU_RETIRE
-L(Lead0Kill, "MC2_COLORMAP_CPU_RETIRE", Bool, true, "terrain", "", "COLORMAP-CPU-RETIRE-1: free cpuColorMap + cpuDispAlpha in BuildColormapAtlas immediately after GPU atlas upload.", registry(Feature, "MC2_FEATURE_COLORMAP_CPU_RETIRE", 20, true) | verified),
+L(Lead0Kill, "MC2_COLORMAP_CPU_RETIRE", Bool, true, "terrain", "", "COLORMAP-CPU-RETIRE-1: free cpuColorMap + cpuDispAlpha in BuildColormapAtlas immediately after GPU atlas upload.", registry(Feature, "MC2_FEATURE_COLORMAP_CPU_RETIRE", 19, true) | verified),
 // history: docs/gate-history.md#MC2_COLORMAP_DISPLACE_PROBE
 L(Presence, "MC2_COLORMAP_DISPLACE_PROBE", Bool, false, "code", "", "COLORMAP-CPU-RETIRE-1 parity probe: logs displacement magnitude (maxDispMag in wu) from the CPU colormap displacement path.", registry(Trace, "MC2_TRACE_COLORMAP_DISPLACE_PROBE", -1, false) | verified),
 // history: docs/gate-history.md#MC2_COLORMAP_KTX2
-L(Lead0Kill, "MC2_COLORMAP_KTX2", Bool, true, "terrain", "", "COLORMAP-BC7-KTX2-1: prefer .burnin.ktx2 BC7 sidecar in BuildColormapAtlas (gos_terrain_indirect.cpp).", registry(Feature, "MC2_FEATURE_COLORMAP_KTX2", 21, true) | verified),
+L(Lead0Kill, "MC2_COLORMAP_KTX2", Bool, true, "terrain", "", "COLORMAP-BC7-KTX2-1: prefer .burnin.ktx2 BC7 sidecar in BuildColormapAtlas (gos_terrain_indirect.cpp).", registry(Feature, "MC2_FEATURE_COLORMAP_KTX2", 20, true) | verified),
 G("MC2_COMMAND_REPLAY_PLAY", String, "", "code", "", "Play a command replay through the existing Replay queue source.", passthrough | registry(Trace, "MC2_COMMAND_REPLAY_PLAY", -1, false) | verified),
 G("MC2_COMMAND_REPLAY_RECORD", String, "", "code", "", "Record accepted tactical commands and per-tick subsystem hashes.", passthrough | registry(Trace, "MC2_COMMAND_REPLAY_RECORD", -1, false) | verified),
 P("MC2_COMMAND_REPLAY_TICKS", Int, 180, "gameos", "", "Number of fixed ticks in a command replay recording.", range(1, 108000) | passthrough | verified),
