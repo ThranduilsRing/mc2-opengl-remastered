@@ -178,6 +178,7 @@ def prepare(source,pipeline,out):
     assets=[];proof=[];lights={}
     for name in drafts.DRAFTS:
         folder=source/'pbr'
+        if not (folder/f'{name}_pristine_lod0.glb').is_file():continue        # params-driven assets join only passes that baked them
         files={cond:[folder/f'{name}_{cond}_lod{i}.glb' for i in range(3)]
                for cond in ('pristine','worn','abandoned','partial','destroyed')}
         evidence=dict(asset=name,files=[],lights={})

@@ -1147,7 +1147,9 @@ def full_rubble(k, name):
     spec = RUBBLE[name]
     k.pieces, k.hits = [], []
     hgt = h * spec['heap']
-    fw, fd = (w * .98, d * .98) if name == 'lookouttower' else (w * .86, d * .86)
+    foot = spec.get('foot', .98 if name == 'lookouttower' else .86)
+    fw, fd = w * foot, d * foot
+    sc = spec.get('scale', 1.0)       # props/small assets shrink the fixed-metre debris; legacy specs are 1.0
     mound(k, fw, fd, hgt, spec['core'], power=.5)
 
     def hm(x, y):
@@ -1166,29 +1168,29 @@ def full_rubble(k, name):
         bend = (kneel[0] + rng.uniform(-.25, .25), kneel[1] + rng.uniform(-.25, .25), kneel[2])
         top_ = (top_[0] + rng.uniform(-.6, .6), top_[1] + rng.uniform(-.6, .6), top_[2] - rng.uniform(0, .5))
         if spec['frame'] == 'column':
-            loft(k, (x - .45, y - .45, x + .45, y + .45), base[2], (x - .38, y - .38, x + .38, y + .38), base[2] + 3.2, 'paint.main', 'frame', ch0=.08)
+            loft(k, (x - .45 * sc, y - .45 * sc, x + .45 * sc, y + .45 * sc), base[2], (x - .38 * sc, y - .38 * sc, x + .38 * sc, y + .38 * sc), base[2] + 3.2 * sc, 'paint.main', 'frame', ch0=.08 * sc)
         else:
-            ibeam(k, base, bend, d=.30, w=.18)
-            ibeam(k, bend, top_, d=.30, w=.18)
+            ibeam(k, base, bend, d=.30 * sc, w=.18 * sc)
+            ibeam(k, bend, top_, d=.30 * sc, w=.18 * sc)
         lean_dir = ang + rng.uniform(2.4, 3.9)
-        dist = rng.uniform(1.4, 2.4)
+        dist = rng.uniform(1.4, 2.4) * sc
         foot = (x + math.cos(lean_dir) * dist, y + math.sin(lean_dir) * dist)
         foot = (foot[0], foot[1], hm(*foot) * .9)
         rest = (bend if spec['frame'] != 'column' else (x, y, base[2] + 3.0))
         dx, dy, dz = rest[0] - foot[0], rest[1] - foot[1], rest[2] - foot[2]
         horiz = math.hypot(dx, dy) or .01
         length = math.sqrt(horiz * horiz + dz * dz)
-        sw, th = rng.uniform(1.8, 3.4), rng.uniform(.30, .50)
+        sw, th = rng.uniform(1.8, 3.4) * sc, rng.uniform(.30, .50) * sc
         with k.at(((foot[0] + rest[0]) / 2, (foot[1] + rest[1]) / 2, (foot[2] + rest[2]) / 2),
                   yaw=math.atan2(dy, dx) - math.pi / 2, pitch=math.atan2(dz, horiz)):
             k.box((0, 0, -th / 2), (sw, length + .5, th), spec['slab'], 'mass', ch=C(.05), top=C(.05))
     skin = {'lap': 'paint.main', 'arc': 'corr.corr', 'plate': 'paint.second'}[spec['panel']]
-    for i in range(14 if name == 'rpbuilding' else 9):
+    for i in range(spec.get('panels', 14 if name == 'rpbuilding' else 9)):
         x, y = rng.uniform(-fw * .38, fw * .38), rng.uniform(-fd * .38, fd * .38)
         ln = rng.uniform(.15, .30) * max(w, d)
         yaw = rng.uniform(-math.pi, math.pi)
         kink = rng.uniform(.25, .7)
-        R = rng.uniform(2.6, 4.2)
+        R = rng.uniform(2.6, 4.2) * sc
         ca, sa = math.cos(yaw), math.sin(yaw)
         if spec['frame'] == 'arc':
             # Buckled arch rib lying on its side across the heap.
@@ -1206,15 +1208,15 @@ def full_rubble(k, name):
             size = (.5, .5, 'paint.main') if spec['frame'] == 'column' else (.28, .16, 'metal')
             ibeam(k, a, m, d=size[0], w=size[1], mat=size[2])
             ibeam(k, m, b, d=size[0], w=size[1], mat=size[2])
-    for i in range(26 if name == 'rpbuilding' else 18):
+    for i in range(spec.get('chunks', 26 if name == 'rpbuilding' else 18)):
         x, y = rng.uniform(-fw * .40, fw * .40), rng.uniform(-fd * .40, fd * .40)
         yaw, pitch, roll = rng.uniform(-math.pi, math.pi), rng.uniform(-.55, .55), rng.uniform(-.45, .45)
-        nb, ln, R, th0 = rng.randint(3, 6), rng.uniform(2.0, 3.8), rng.uniform(3.5, 5.0), rng.uniform(.3, 1.2)
-        pw, pd, pm = rng.uniform(1.2, 2.2), rng.uniform(1.6, 2.8), rng.random()
+        nb, ln, R, th0 = rng.randint(3, 6), rng.uniform(2.0, 3.8) * sc, rng.uniform(3.5, 5.0) * sc, rng.uniform(.3, 1.2)
+        pw, pd, pm = rng.uniform(1.2, 2.2) * sc, rng.uniform(1.6, 2.8) * sc, rng.random()
         with k.at((x, y, hm(x, y) + .05), yaw=yaw, pitch=pitch, roll=roll):
             if spec['panel'] == 'lap':
                 for j in range(nb):
-                    k.box((0, j * .5 - nb * .25, .02 * j), (ln, .56, .035), skin, 'skin')
+                    k.box((0, (j * .5 - nb * .25) * sc, .02 * j * sc), (ln, .56 * sc, .035), skin, 'skin')
                 k.box((0, 0, -.12), (ln * .9, .12, .18), 'metal', 'frame')
             elif spec['panel'] == 'arc':
                 with k.at((0, 0, -R * math.sin(th0 + .22) + .15)):
@@ -1223,7 +1225,7 @@ def full_rubble(k, name):
                 k.box((0, 0, 0), (pw, pd, .14), skin if pm < .5 else 'paint.main', 'skin', ch=C(.03))
     for i in range(4):
         x, y = rng.uniform(-fw * .25, fw * .25), rng.uniform(-fd * .25, fd * .25)
-        sa_, sb_ = rng.uniform(1.4, 3.8), rng.uniform(2.2, 6.0)
+        sa_, sb_ = rng.uniform(1.4, 3.8) * sc, rng.uniform(2.2, 6.0) * sc
         with k.at((x, y, hm(x, y) * .9 + .15), yaw=rng.uniform(-math.pi, math.pi), pitch=rng.uniform(-.4, .4), roll=rng.uniform(-.3, .3)):
             if name == 'lookouttower':
                 k.box((0, 0, 0), (sa_, min(sb_, 3.2), .46), 'paint.main', 'roof', ch=C(.1))
@@ -1231,9 +1233,9 @@ def full_rubble(k, name):
                 k.box((0, 0, 0), (sa_ * .6, .6, .5), 'ferro', 'mass', ch=C(.08))
             else:
                 k.box((0, 0, 0), (min(sa_, 2.4), sb_, .58), 'ferro', 'frame', ch=C(.1))
-    for i in range(40):
+    for i in range(spec.get('rocks', 40)):
         x, y = rng.uniform(-fw * .46, fw * .46), rng.uniform(-fd * .46, fd * .46)
-        size = rng.uniform(.45, 1.4) * (1.3 if name == 'lookouttower' else 1)
+        size = rng.uniform(.45, 1.4) * (1.3 if name == 'lookouttower' else 1) * sc
         if (x / (fw * .5)) ** 2 + (y / (fd * .5)) ** 2 > 1:
             rng.random()
             continue
@@ -1244,6 +1246,17 @@ def full_rubble(k, name):
         k.prism(rect_poly(x - .55, y - .7, x + .55, y + .7, C(.18)), 0, 3.6, 'ferro', 'frame', top=C(.3))
         k.add([(x - .4, y, 0), (x - 1.6, y - 3.9, 0), (x - .4, y, 3.3), (x + .4, y, 0), (x - .8, y - 3.9, 0), (x + .4, y, 3.3)],
               [(2, 1, 0), (3, 4, 5), (0, 1, 4, 3), (1, 2, 5, 4), (2, 0, 3, 5)], 'ferro', 'frame')
+    elif spec['remnant'] == 'corner':
+        # One corner column and a short wall stub still stand (the building's identity cue).
+        x, y = -w / 2 + .5 * sc + .4, -d / 2 + .5 * sc + .4
+        top_h = min(h * .55, 3.6)
+        k.prism(rect_poly(x - .3, y - .3, x + .3, y + .3, C(.06)), 0, top_h, 'paint.trim', 'frame', top=C(.05))
+        k.box((x + min(w * .12, 2.2), y, top_h * .3), (min(w * .24, 4.4), .30, top_h * .6), 'ferro', 'mass', ch=C(.04))
+    elif spec['remnant'] == 'stub':
+        # A broken pedestal of the main mass survives under the heap.
+        r = min(w, d) * .22
+        loft(k, (-r, -r, r, r), 0, (-r * .8, -r * .8, r * .8, r * .8), min(h * .22, 2.6), spec['slab'], 'mass', ch0=.1, rebar=True)
+        rock(k, (r * .3, -r * .2, min(h * .22, 2.6)), r * .9, spec['slab'], rng)
     elif spec['remnant'] == 'endarch':
         y, R = -d / 2 + .6, 4.4
         for s in range(7):
@@ -1275,6 +1288,7 @@ DRAFTS = {
     'barrels': (hazard_barrels, 'hazard_yellow'),
     'quonset': (quonset_build, 'quonset_rust'),
 }
+ARCH_OF = {}
 DAMAGE = {'razorwirefence': fence_damage, 's_lightwall': wall_damage,
           'crateswithtarp': crate_damage, 'barrels': barrel_damage}
 
@@ -1299,6 +1313,8 @@ def fit_stock(k, name):
         hit['p'] = point(hit['p'])
         hit['r'] *= sum(scales) / 3
     k.moss_sites = [tuple(point(v) for v in pair) for pair in k.moss_sites]
+    for sk in k.meta.get('sockets', []):
+        sk['position_m'] = point(sk['position_m'])
     k.meta['fit_scale_xyz'] = scales
     k.meta['fit_center'] = center
 
@@ -1337,6 +1353,8 @@ def build(name, condition, seed=17):
                   ref='alina-godfrey-battletech-urbanwarfare-props-5.jpg', round1=None,
                   construction_order=True)
     k.meta['stock_origin_offset_m'] = counts.origin(name)
+    if name in ARCH_OF:
+        k.meta['archetype'] = ARCH_OF[name]
     return k
 
 
@@ -1350,3 +1368,7 @@ import batch3  # noqa: E402: construction helpers and batch two are registered f
 SIZES.update(batch3.SIZES)
 DRAFTS.update(batch3.DRAFTS)
 DAMAGE.update(batch3.DAMAGE)
+
+import archetypes  # noqa: E402: params-driven assets (assets/*.params.json) join the registries last
+LEGACY = tuple(DRAFTS)
+archetypes.register_all()

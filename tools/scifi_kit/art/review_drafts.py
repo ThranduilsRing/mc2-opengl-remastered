@@ -87,12 +87,13 @@ def _cell(im, path, box, nearest=False):
     im.paste(t, (box[0] + (box[2] - t.width) // 2, box[1] + (box[3] - t.height) // 2))
 
 
-def count_sheet(tag, out=None):
+def count_sheet(tag, out=None, names=None):
     """Stock-side-N next to remake-side-N, all five sides (full stock model, never one iso)."""
     out = out or OUT / f'count-sides-{tag}.png'
     cw, ch, head, lab = 210, 150, 92, 170
+    names = list(names or drafts.DRAFTS)
     W = lab + len(SIDES) * 2 * cw + 20
-    im = Image.new('RGB', (W, head + len(drafts.DRAFTS) * (ch + 10)), (24, 28, 33))
+    im = Image.new('RGB', (W, head + len(names) * (ch + 10)), (24, 28, 33))
     d = ImageDraw.Draw(im)
     d.text((14, 8), f'COUNT / SILHOUETTE PROOF: decoded stock model (textured) vs remake LOD0, same camera per side  /  pass {tag}', font=inv.font(22), fill='white')
     for j, side in enumerate(SIDES):
@@ -100,7 +101,7 @@ def count_sheet(tag, out=None):
         d.text((x + 8, 56), f'stock / {side}', font=inv.font(15), fill='#c9c39a')
         d.text((x + cw + 8, 56), f'remake / {side}', font=inv.font(15), fill='#96c8a0')
         d.line([(x - 3, 50), (x - 3, im.height)], fill=(70, 76, 80), width=2)
-    for i, name in enumerate(drafts.DRAFTS):
+    for i, name in enumerate(names):
         y = head + i * (ch + 10)
         d.text((12, y + ch // 2 - 12), name, font=inv.font(18), fill='white')
         for j, side in enumerate(SIDES):
