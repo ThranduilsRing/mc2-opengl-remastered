@@ -52,14 +52,14 @@
         },
         {
           "path": "tools/reload_leak.py",
-          "line": 51,
+          "line": 52,
           "evidence": "import",
           "reference": "bootstrap_worktree_build",
           "text": "from bootstrap_worktree_build import cache_args  # noqa: E402"
         },
         {
           "path": "tools/sim_trace_diff.py",
-          "line": 134,
+          "line": 135,
           "evidence": "import",
           "reference": "bootstrap_worktree_build",
           "text": "import bootstrap_worktree_build as bootstrap"
@@ -170,6 +170,13 @@
         {
           "path": "scripts/tests/test_build_compiler_presets.py",
           "line": 309,
+          "evidence": "import",
+          "reference": "cc_launcher",
+          "text": "import cc_launcher as cl"
+        },
+        {
+          "path": "scripts/tests/test_cc_launcher_negative_control.py",
+          "line": 13,
           "evidence": "import",
           "reference": "cc_launcher",
           "text": "import cc_launcher as cl"
@@ -698,7 +705,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/deploy_payload.py",
-          "line": 1738,
+          "line": 1749,
           "evidence": "command",
           "reference": "scripts/check-deploy-hygiene.py",
           "text": "r = subprocess.run([sys.executable, hygiene, target],"
@@ -2221,6 +2228,13 @@
           "text": "from configure_ninja import (DEFAULT_TARGETS, DEFAULT_TREE, NINJA, compile_cache_env, configure, ensure_cache_server, tree_uses_cache,"
         },
         {
+          "path": "scripts/tests/test_cc_launcher_negative_control.py",
+          "line": 15,
+          "evidence": "import",
+          "reference": "configure_ninja",
+          "text": "import configure_ninja as cn"
+        },
+        {
           "path": "scripts/tests/test_rule_defaults.py",
           "line": 74,
           "evidence": "import",
@@ -2271,7 +2285,7 @@
         },
         {
           "path": "tools/reload_leak.py",
-          "line": 50,
+          "line": 51,
           "evidence": "import",
           "reference": "configure_ninja",
           "text": "from configure_ninja import NINJA, find_cmake, under_vcvars  # noqa: E402"
@@ -2363,7 +2377,7 @@
         },
         {
           "path": "scripts/cc_launcher.py",
-          "line": 21,
+          "line": 22,
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child  # same directory: python puts the script dir on sys.path even under -S -E"
@@ -2612,6 +2626,13 @@
           "evidence": "import",
           "reference": "scripts.console_child",
           "text": "from scripts import console_child"
+        },
+        {
+          "path": "scripts/tests/test_cc_launcher_negative_control.py",
+          "line": 14,
+          "evidence": "import",
+          "reference": "console_child",
+          "text": "import console_child"
         },
         {
           "path": "scripts/tests/test_check_ab_kit.py",
@@ -3584,7 +3605,7 @@
         },
         {
           "path": "scripts/tests/test_deploy_completeness.py",
-          "line": 10,
+          "line": 12,
           "evidence": "import",
           "reference": "scripts.deploy_payload",
           "text": "from scripts import deploy_payload as dp  # noqa: E402"
@@ -3633,7 +3654,7 @@
         },
         {
           "path": "scripts/tests/test_rule_defaults.py",
-          "line": 79,
+          "line": 82,
           "evidence": "import",
           "reference": "deploy_payload",
           "text": "import deploy_payload as dp"
@@ -3654,7 +3675,7 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 168,
+          "line": 169,
           "evidence": "import_module",
           "reference": "deploy_payload",
           "text": "return importlib.import_module('deploy_payload')"
@@ -4022,7 +4043,7 @@
       "callers_by_basename": [
         {
           "path": "tools/tools_smoke.py",
-          "line": 84,
+          "line": 86,
           "evidence": "command",
           "reference": "scripts/ninja_build.py",
           "text": "proc = subprocess.run(cmd, capture_output=True, text=True, cwd=str(ROOT), env=env,"
@@ -4397,21 +4418,21 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 595,
+          "line": 596,
           "evidence": "command",
           "reference": "scripts/run_smoke.py",
           "text": "proc = subprocess.run(cmd, cwd=str(ROOT), capture_output=True,"
         },
         {
           "path": "tools/sim_trace_diff.py",
-          "line": 220,
+          "line": 221,
           "evidence": "command",
           "reference": "scripts/run_smoke.py",
           "text": "proc = subprocess.run(cmd, cwd=str(ROOT), env=env, capture_output=True,"
         },
         {
           "path": "tools/sound_smoke.py",
-          "line": 111,
+          "line": 112,
           "evidence": "command",
           "reference": "scripts/run_smoke.py",
           "text": "proc = subprocess.run(cmd, capture_output=True, text=True, env=env, cwd=str(ROOT),"
@@ -4536,7 +4557,7 @@
         },
         {
           "path": "scripts/run_battle_bench.py",
-          "line": 20,
+          "line": 21,
           "evidence": "import",
           "reference": "run_visual_capture",
           "text": "import run_visual_capture as capture"
@@ -6145,6 +6166,70 @@
       ]
     },
     {
+      "path": "scripts/stage_root.py",
+      "basename": "stage_root.py",
+      "stem": "stage_root",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "scripts/run_battle_bench.py",
+          "line": 20,
+          "evidence": "import",
+          "reference": "stage_root",
+          "text": "import stage_root as stages"
+        },
+        {
+          "path": "scripts/tests/test_stage_root.py",
+          "line": 13,
+          "evidence": "import",
+          "reference": "stage_root",
+          "text": "import stage_root"
+        },
+        {
+          "path": "tools/battery.py",
+          "line": 37,
+          "evidence": "import",
+          "reference": "stage_root",
+          "text": "import stage_root as stages  # noqa: E402  (default staging roots on E:, free-space preflight)"
+        },
+        {
+          "path": "tools/mod_smoke.py",
+          "line": 45,
+          "evidence": "import",
+          "reference": "stage_root",
+          "text": "import stage_root as stages  # noqa: E402  (default staging roots on E:, free-space preflight)"
+        },
+        {
+          "path": "tools/reload_leak.py",
+          "line": 49,
+          "evidence": "import",
+          "reference": "stage_root",
+          "text": "import stage_root as stages  # noqa: E402  (default staging roots on E:, free-space preflight)"
+        },
+        {
+          "path": "tools/sim_trace_diff.py",
+          "line": 32,
+          "evidence": "import",
+          "reference": "stage_root",
+          "text": "import stage_root as stages  # noqa: E402  (default staging roots on E:, free-space preflight)"
+        },
+        {
+          "path": "tools/sound_smoke.py",
+          "line": 25,
+          "evidence": "import",
+          "reference": "stage_root",
+          "text": "import stage_root as stages  # noqa: E402  (default staging roots on E:, free-space preflight)"
+        },
+        {
+          "path": "tools/tools_smoke.py",
+          "line": 25,
+          "evidence": "import",
+          "reference": "stage_root",
+          "text": "import stage_root as stages  # noqa: E402  (default staging roots on E:, free-space preflight)"
+        }
+      ]
+    },
+    {
       "path": "scripts/sweep_campaign.py",
       "basename": "sweep_campaign.py",
       "stem": "sweep_campaign",
@@ -6254,6 +6339,13 @@
       "path": "scripts/tests/test_build_compiler_presets.py",
       "basename": "test_build_compiler_presets.py",
       "stem": "test_build_compiler_presets",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "scripts/tests/test_cc_launcher_negative_control.py",
+      "basename": "test_cc_launcher_negative_control.py",
+      "stem": "test_cc_launcher_negative_control",
       "callers_by_basename": [],
       "callers_by_stem": []
     },
@@ -6675,6 +6767,13 @@
       "path": "scripts/tests/test_slang_build.py",
       "basename": "test_slang_build.py",
       "stem": "test_slang_build",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "scripts/tests/test_stage_root.py",
+      "basename": "test_stage_root.py",
+      "stem": "test_stage_root",
       "callers_by_basename": [],
       "callers_by_stem": []
     },
@@ -10411,14 +10510,14 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 419,
+          "line": 420,
           "evidence": "import_module",
           "reference": "fst",
           "text": "fst_lib = importlib.import_module('fst')"
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 455,
+          "line": 456,
           "evidence": "import_module",
           "reference": "fst",
           "text": "fst_lib = importlib.import_module('fst')"
@@ -10700,21 +10799,21 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 210,
+          "line": 211,
           "evidence": "import",
           "reference": "fst_listing",
           "text": "import fst_listing"
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 335,
+          "line": 336,
           "evidence": "import",
           "reference": "fst_listing",
           "text": "import fst_listing"
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 437,
+          "line": 438,
           "evidence": "import",
           "reference": "fst_listing",
           "text": "import fst_listing"
@@ -11656,7 +11755,7 @@
         },
         {
           "path": "tools/reload_leak.py",
-          "line": 49,
+          "line": 50,
           "evidence": "import",
           "reference": "savegame_backup",
           "text": "import savegame_backup  # noqa: E402  (back the owner's quicksave up around the fixture)"
@@ -12410,7 +12509,7 @@
         },
         {
           "path": "tools/battery.py",
-          "line": 91,
+          "line": 92,
           "evidence": "import",
           "reference": "sim_determinism",
           "text": "from sim_determinism import smoke_target as _target"

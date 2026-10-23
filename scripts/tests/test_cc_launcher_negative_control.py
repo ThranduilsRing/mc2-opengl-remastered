@@ -11,6 +11,7 @@ import pytest
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
 import cc_launcher as cl
+import console_child
 import configure_ninja as cn
 
 DEAD_ROOT = "E:/mc2-archive-2099-01/builds/gone-lane"  # matches the archived-build pattern; never exists
@@ -55,7 +56,8 @@ def test_header_edit_rebuilds_after_cache_replay_from_deleted_tree(tmp_path):
         py=py, launcher=cl.__file__.replace("\\", "/"), own=str(own).replace("\\", "/"), fake=str(fake).replace("\\", "/")))
 
     def ninja(*args):
-        r = subprocess.run([cn.NINJA, "-C", str(own), *args], capture_output=True, text=True)
+        r = subprocess.run([cn.NINJA, "-C", str(own), *args], capture_output=True, text=True,  # background-launch: allow ninja on a temp tree, windowless
+                           **console_child.child_kwargs(redirected=True))
         assert r.returncode == 0, r.stdout + r.stderr
         return r.stdout
 
