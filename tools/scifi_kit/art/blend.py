@@ -332,6 +332,30 @@ def material(key, palette_name, cond_name):
             tint = b.node('ShaderNodeAttribute', attribute_name='tint').outputs['Fac']
             tone = b.mul(b.remap(tint, 0, 1, .94, 1.06), b.remap(z, 0, 5, .92, 1.03))
             col = b.mix(1., col, tone, blend='MULTIPLY')
+        if cls in ('ferro', 'paint', 'corr', 'hazard', 'wood', 'canvas', 'metal', 'grate'):
+            # Shared grime layer, driven only by the per-state WEAR table (lang.json
+            # conditions): tonal blotch, speckle, base gradient, edge dirt, dark stains,
+            # seam-led rust streaks. Keys missing from a state read as 0 (unchanged look).
+            wg = cond.get
+            if wg('tonal', 0) or wg('speckle', 0):
+                blot = b.mul(b.add(b.noise(P, .85, 4, .55), -.5), 2.0 * wg('tonal', 0))
+                spk = b.mul(b.add(b.noise(P, 30.0, 4, .6), -.5), 2.0 * wg('speckle', 0))
+                tone2 = b.add(b.add(blot, spk), 1.0)
+                col = b.mix(1., col, tone2, blend='MULTIPLY')
+            if wg('base_grime', 0):
+                grad = b.remap(z, 0.0, 2.4, 1.0 - .55 * wg('base_grime', 0), 1.0, smooth=True)
+                col = b.mix(1., col, grad, blend='MULTIPLY')
+                splash = b.mul(b.remap(z, 1.1, 0.0), b.remap(b.noise(P, 2.2, 5), .35, .62, .35, 1.0))
+                col = b.mix(b.mul(splash, wg('base_grime', 0) * .8), col, (0.085, 0.066, 0.04))
+            if wg('edge_dirt', 0):
+                col = b.mix(b.mul(b.mul(cavity, wg('edge_dirt', 0)), b.remap(grunge, .25, .7, .5, 1.0)), col, (0.05, 0.043, 0.034))
+            if wg('stain', 0):
+                st = b.remap(b.noise(b.vscale(P, (1.0, 1.0, .55)), .75, 5, .55), .62 - wg('stain', 0) * .3, .86 - wg('stain', 0) * .3)
+                col = b.mix(b.mul(st, .6), col, (0.05, 0.043, 0.036))
+            if wg('seam_rust', 0):
+                sr = b.mul(b.remap(seam_attr, 0.0, 1.6, 1.0, 0.0), b.remap(b.noise(b.vscale(P, (9.0, 9.0, .22)), 1.0, 4, .6), .38, .62))
+                sr = b.mul(sr, b.remap(b.noise(P, 1.6, 3), .25, .6, .4, 1.0))
+                col = b.mix(b.mul(sr, min(1.0, wg('seam_rust', 0))), col, (0.19, 0.075, 0.025))
         dirt_amt = b.mul(cond['dirt'], b.add(b.mul(height_dirt, .9), b.mul(cavity, .8)), True)
         col = b.mix(dirt_amt, col, (0.075, 0.062, 0.045))
         g = b.mul(cond['grunge'] * .45, b.remap(grunge, .35, .75))
