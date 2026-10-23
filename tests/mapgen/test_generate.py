@@ -9,6 +9,7 @@ import unittest
 from pathlib import Path
 
 import numpy as np
+from scripts import console_child
 
 from tools.mapgen.analyze import aggregate, measure
 from tools.mapgen.common import load_json, mask_of, spans
@@ -160,7 +161,8 @@ class GeneratedLayoutTests(unittest.TestCase):
         for hash_seed in ("1", "993"):
             env = dict(os.environ, PYTHONHASHSEED=hash_seed)
             result = subprocess.run([sys.executable, "-B", "-c", code], cwd=ROOT,
-                                    env=env, text=True, capture_output=True, check=True)
+                                    env=env, text=True, capture_output=True, check=True,
+                                    **console_child.child_kwargs(redirected=True))
             digests.append(result.stdout.strip())
         self.assertEqual(digests[0], digests[1])
         another = generate(128,72,profile=self.profile)

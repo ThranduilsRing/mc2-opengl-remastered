@@ -83,6 +83,10 @@ def upgrade(layout, profile):
     assets = [v for v in catalog["types"].values() if v["install"] == install and v["method"] in ("tgl","ase")]
     pools = defaultdict(list)
     for asset in sorted(assets,key=lambda a:a["type_id"]):
+        if layout['source'].get('biome') == 'suburban_forest' and asset['class'] == 'tree':
+            name = asset['type_name'].lower()
+            if not name.startswith(('birch', 'oak', 'maple', 'pine', 'willow')) or 'dead' in name:
+                continue
         if asset["class"] == "building" and any(s in asset["type_name"].lower() for s in ("nav", "marker", "crash", "spotlight")):
             continue
         if asset["class"] == "building" and max(asset["width_wu"],asset["depth_wu"]) > 300:
@@ -102,6 +106,7 @@ def upgrade(layout, profile):
         r0,c0,r1,c1 = base["bounds"]
         parcels[r0:r1,c0:c1] = True
     tree_road_distance,tree_base_distance = distance_field(roads),distance_field(parcels)
+    vegetation_exclusion = mask_of(layout, 'vegetation_exclusion')
     allowed = ~mask_of(layout,"water") & (slope_grid(layout["terrain"]["elevation_wu"]) < FLAT_DEG)
     old_objects = layout["objects"]
     final, by_id, occupied = [], {}, set()
@@ -145,6 +150,8 @@ def upgrade(layout, profile):
             return False
         if obj["class"]=="tree" and (tree_road_distance[tuple(obj["cell"])]<4 or
                                       tree_base_distance[tuple(obj["cell"])]<4):
+            return False
+        if obj['class'] == 'tree' and vegetation_exclusion[r0:r1,c0:c1].any():
             return False
         if not seam and roads[r0:r1,c0:c1].any():
             return False
@@ -238,6 +245,10 @@ def upgrade(layout, profile):
                                             min(link_stats["median"],max(r1-r0,c1-c0)*.5))*CELL_WU
                     angle = rng.uniform(0,math.tau)
                     centre = (parent["position_wu"][0]+radius*math.cos(angle),parent["position_wu"][1]+radius*math.sin(angle))
+                elif request.get('frontage'):
+                    # Keep ordered frontage at its authored yard, even if a
+                    # large native model must give way to another house model.
+                    centre = (target[0]+rng.uniform(-8,8),target[1]+rng.uniform(-8,8))
                 elif attempt < 80:
                     centre = (target[0]+rng.uniform(-60,60),target[1]+rng.uniform(-60,60))
                 else:
@@ -263,6 +274,20 @@ def upgrade(layout, profile):
             link = profile["groups"]["stock"]["links"]["gate -> gate_control"]
             if not link["min"] <= math.dist(gate["position_wu"][:2],parent["position_wu"][:2])/CELL_WU <= link["max"]:
                 raise ValueError("gate control outside measured distance")
+    for marker,base in zip(layout["objectives"],[b for b in layout["bases"] if b["team"]>0]):
+        target = next((o for o in final if o.get("base_id")==base["id"] and o["class"]=="building"),None)
+        if target:
+            marker["cell"] = target["cell"]
+            marker["position_wu"] = target["position_wu"]
+    if layout['source'].get('biome') == 'suburban_forest':
+        from tools.mapgen.common import spans
+        zones = mask_of(layout, 'objective_zones')
+        for marker in layout['objectives']:
+            r, c = marker['cell']
+            zones[max(0,r-6):r+7, max(0,c-6):c+7] = True
+        vegetation_exclusion |= zones
+        layout['layers']['objective_zones'] = spans(zones)
+        layout['layers']['vegetation_exclusion'] = spans(vegetation_exclusion)
     # Cluster membership survives from the cell plan, positions gain continuous
     # jitter and native canopy rejection. Forests remain point sets in world units.
     for request in old_objects:
@@ -286,11 +311,6 @@ def upgrade(layout, profile):
     layout["generation"]["placement_version"] = 2
     layout["generation"]["clearance_wu"] = 4
     layout["generation"]["wall_seam_allowance"] = "connected end caps/corners, at most half the shorter native segment"
-    for marker,base in zip(layout["objectives"],[b for b in layout["bases"] if b["team"]>0]):
-        target = next((o for o in final if o.get("base_id")==base["id"] and o["class"]=="building"),None)
-        if target:
-            marker["cell"] = target["cell"]
-            marker["position_wu"] = target["position_wu"]
     for part in layout["parts"]:
         x,y = world_position(layout,part)
         r,c = part["cell"]

@@ -127,6 +127,9 @@ def render(layout, out, wu_per_pixel=None, crop=None, hillshade=False, catalog=N
     tr,tc = rr//step,cc//step
     types = np.asarray(terrain["terrain_type"],dtype=np.uint8)
     base = terrain_palette(surface)[types[tr[:,None],tc[None,:]]]
+    if layout.get('regions', {}).get('biome') == 'suburban_forest':
+        from tools.mapgen.suburban_forest import colours
+        base = colours(layout)[rr[:,None],cc[None,:]]
     if layout.get('macro'):
         macro = layout['macro']
         regional = np.asarray(macro['regions'],dtype=np.uint8)

@@ -10,6 +10,7 @@ import subprocess
 from pathlib import Path
 import numpy as np
 from PIL import Image,ImageDraw,ImageFont
+from scripts import console_child
 from tools.mapgen.common import load_json,output_path,write_json
 from tools.mapgen.raster import render
 from tools.mapgen.scale_metrics import measure_scale
@@ -18,7 +19,8 @@ from tools.mapgen.scale_metrics import measure_scale
 def baseline(size, revision):
     suffix = '.json.gz' if size>1024 else '.json'
     path = f'docs/mapgen/raster/generated/generated_{size}_42{suffix}'
-    raw = subprocess.run(['git','show',f'{revision}:{path}'],capture_output=True,check=True).stdout
+    raw = subprocess.run(['git','show',f'{revision}:{path}'],capture_output=True,check=True,
+                         **console_child.child_kwargs(redirected=True)).stdout
     return json.loads(gzip.decompress(raw) if suffix.endswith('.gz') else raw)
 
 
@@ -46,7 +48,7 @@ def review(size,revision,out):
     after = load_json(folder/(name+('.json.gz' if size>1024 else '.json')))
     before = baseline(size,revision)
     png = subprocess.run(['git','show',f'{revision}:docs/mapgen/raster/generated/{name}.png'],
-                         capture_output=True,check=True).stdout
+                         capture_output=True,check=True, **console_child.child_kwargs(redirected=True)).stdout
     output_path(out/f'before_{size}.png').write_bytes(png)
     before_metrics,after_metrics = measure_scale(before),measure_scale(after)
     write_json(out/f'metrics_{size}.json',dict(before=before_metrics,after=after_metrics),pretty=True)

@@ -456,9 +456,16 @@ def world_roads(paths,allowed,size):
     return result
 
 
-def generate(size=300, seed=42, heightfield=None, water=None, profile=None, style="stock"):
+def generate(size=300, seed=42, heightfield=None, water=None, profile=None, style="stock", biome=None):
     from tools.mapgen.placement import upgrade
     profile = profile or load_json(PROFILE_PATH)
+    if biome == 'suburban_forest':
+        if heightfield is not None or water is not None or style != 'stock':
+            raise ValueError('suburban_forest owns terrain and uses stock assets')
+        from tools.mapgen.suburban_forest import plan
+        return upgrade(plan(size, seed, profile), profile)
+    if biome is not None:
+        raise ValueError(f'unknown biome: {biome}')
     return upgrade(plan_cells(size,seed,heightfield,water,profile,style),profile)
 
 
@@ -466,6 +473,7 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--size", type=int, default=300)
     parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--biome", choices=('suburban_forest',))
     parser.add_argument("--heightfield", type=Path)
     parser.add_argument("--water-level", type=float)
     parser.add_argument("--profile", type=Path, default=PROFILE_PATH)
@@ -481,7 +489,7 @@ def main(argv=None):
             terrain, wet = synthetic_terrain(args.size, args.seed)
             wet |= terrain <= args.water_level
         profile = load_json(args.profile)
-        layout = generate(args.size, args.seed, terrain, wet, profile, args.style)
+        layout = generate(args.size, args.seed, terrain, wet, profile, args.style, args.biome)
         errors = validate(layout, profile)
         if errors:
             raise ValueError("; ".join(errors[:8]))
@@ -494,6 +502,9 @@ def main(argv=None):
         from tools.mapgen.raster import render as raster, crop_base
         raster(layout,out/(layout["name"]+".png"),args.wu_per_pixel,hillshade=args.hillshade)
         raster(layout,out/(layout["name"]+"_base.png"),args.wu_per_pixel,crop_base(layout),args.hillshade)
+        if args.biome:
+            from tools.mapgen.suburban_forest import feature_mask
+            feature_mask(layout, out/(layout['name']+'_features.png'))
         print(f"{path}: {len(layout['bases'])} sites, {len(layout['objects'])} objects; plausibility PASS")
     except (ValueError, KeyError) as error:
         parser.exit(2, f"generation failed: {error}\n")

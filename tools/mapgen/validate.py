@@ -193,6 +193,7 @@ def validate_footprints(layout, profile=None):
     shape = (layout["size"]["rows"],layout["size"]["cols"])
     allowed = ~mask_of(layout,"water") & (slope_grid(layout["terrain"]["elevation_wu"]) < FLAT_DEG)
     roads = mask_of(layout,"roads")
+    vegetation_exclusion = mask_of(layout, 'vegetation_exclusion')
     spatial, polys = Spatial(), {}
     edges = layout.get("wall_edges_wu",[])
     for obj in by_id.values():
@@ -215,6 +216,8 @@ def validate_footprints(layout, profile=None):
             errors.append(f"{obj['id']}: footprint crosses water, slope or map edge")
         if obj["class"] not in ("gate","wall") and roads[max(0,r0):r1,max(0,c0):c1].any():
             errors.append(f"{obj['id']}: footprint blocks a road")
+        if obj['class'] == 'tree' and vegetation_exclusion[max(0,r0):r1,max(0,c0):c1].any():
+            errors.append(f"{obj['id']}: footprint crosses shared vegetation exclusion")
         for other,op in spatial.candidates(poly):
             if not overlaps(poly,op,clearance=3.99):
                 continue

@@ -1,4 +1,4 @@
-"""Reproducible flat playable demos and capture poses; never launches the game."""
+"""Reproducible stock playable demos and capture poses; never launches the game."""
 import argparse
 from pathlib import Path
 
@@ -15,13 +15,18 @@ def main():
     parser.add_argument('--out',type=Path,required=True)
     parser.add_argument('--source',type=Path,default=STOCK)
     parser.add_argument('--size',type=int,choices=(180,360,720),action='append')
+    parser.add_argument('--biome',choices=('suburban_forest',))
+    parser.add_argument('--seed',type=int,action='append',help='repeat for a seed batch (one size)')
     args = parser.parse_args()
     out = output_path(args.out,[args.source])
     source = Install(args.source)
-    for size in args.size or (180,720):
-        seed = {180:7,360:17,720:23}[size]
-        layout = generate(size,seed,np.full((size,size),1000.))
-        name = f'mapgen_{size}_{seed}'
+    sizes = args.size or ((360,) if args.biome else (180,720))
+    if args.seed and len(sizes) != 1:
+        parser.error('--seed batches require one --size')
+    jobs = [(size,seed) for size in sizes for seed in (args.seed or [{180:7,360:17,720:23}[size]])]
+    for size, seed in jobs:
+        layout = generate(size,seed,None if args.biome else np.full((size,size),1000.),biome=args.biome)
+        name = layout['name'] if args.biome else f'mapgen_{size}_{seed}'
         write_json(out/'layouts'/(name+'.json'),layout)
         report = emit(layout,source,out/'missions',name)
         poses = []
@@ -33,6 +38,9 @@ def main():
                           '_note':'Generated inspection pose from parcel bounds; no golden/parity claim.'})
         poses.append({'name':'player_lance','pos':layout['player_start_wu'],
                       'rot':0,'proj':55,'alt':3000,'covers':['generated_player_units']})
+        if args.biome:
+            poses.insert(0, {'name':'biome_overview','pos':[0,0,1000],
+                'rot':0,'proj':85,'alt':18000,'covers':['parcels','forest','river','villages']})
         write_json(out/'bookmarks'/(name+'.json'),{'schema_v':1,'mission':name,'bookmarks':poses},pretty=True)
         print(report,flush=True)
 

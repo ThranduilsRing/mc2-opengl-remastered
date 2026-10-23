@@ -1,8 +1,8 @@
-"""Emit playable flat stock missions through the ordinary PacketFile load path.
+"""Emit stock missions through the ordinary PacketFile load path.
 
 py -3 -m tools.mapgen.mission_writer layout.json --out G:/mapgen/missions
-Only stock assets, square maps in multiples of 60 cells, and flat dry terrain
-are accepted. Input layouts are never silently flattened or rescaled.
+Accept stock assets, square 180..720 maps in multiples of 60 cells, and either
+flat dry terrain or the low-relief suburban_forest recipe. Never rescale input.
 """
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ from pathlib import Path
 import numpy as np
 from PIL import Image, ImageDraw
 
-from tools.mapgen.common import (CELL_WU, load_json, output_path, packed_cell,
+from tools.mapgen.common import (CELL_WU, load_json, mask_of, output_path, packed_cell,
                                  world_cell, write_json)
 from tools.mapgen.data import Install, catalog, fit_sections, packet, overlay_catalog
 from tools.mapgen.extract import OBJECT, VERTEX, extract_mission
@@ -54,15 +54,19 @@ def snapped(layout):
     if result['source'].get('asset_install') != 'stock':
         raise ValueError('mission writer requires stock native footprints')
     height = np.asarray(result['terrain']['elevation_wu'])
-    if not np.isfinite(height).all() or np.ptp(height) > .001 or result['layers']['water']:
+    biome = result['source'].get('biome') == 'suburban_forest'
+    if height.shape != (side, side) or not np.isfinite(height).all():
+        raise ValueError('terrain dimensions or finite-value check failed')
+    if not biome and (np.ptp(height) > .001 or result['layers']['water']):
         raise ValueError('phase 2 writer requires flat dry input terrain')
-    z = float(height.flat[0])
+    if biome and (np.ptp(height) > 32 or result['terrain']['water_elevation_wu'] is None):
+        raise ValueError('suburban_forest requires low relief and an explicit water level')
     by_id, by_cell, spatial = {}, {}, Spatial()
     for obj in result['objects']:
         # Stock object loading accepts world pivots. Keep sub-cell placement;
         # quantize to 1/256 wu then serialize to the actual engine float32.
         obj['position_wu'] = [float(np.float32(round(v*256)/256))
-                              for v in (*obj['position_wu'][:2], z)]
+                              for v in (*obj['position_wu'][:2], height[tuple(obj['cell'])])]
         obj['rotation'] = float(np.float32(obj['rotation']))
         obj['cell'] = world_cell(*obj['position_wu'][:2], side//3)
         cell = tuple(obj['cell'])
@@ -101,7 +105,7 @@ def collision_grid(layout):
     template baker. Buildings/trees/walls stay blocked after destruction.
     """
     side = layout['size']['rows']
-    blocked = np.zeros((side, side), dtype=bool)
+    blocked = mask_of(layout, 'water') | mask_of(layout, 'cliffs')
     for obj in layout['objects']:
         if obj['class'] == 'gate':
             continue
@@ -136,7 +140,7 @@ def place_units(layout, blocked):
             occupied.add(cell)
             rr, cc = cell
             pos = [(cc+.5-len(blocked)/2)*CELL_WU, (len(blocked)/2-rr-.5)*CELL_WU,
-                   layout['objects'][0]['position_wu'][2]]
+                   layout['terrain']['elevation_wu'][rr][cc]]
             units.append({**part, 'id': f'part{len(units)+1}', 'cell': list(cell),
                           'position_wu': pos, 'type_name': 'Bushwacker' if part['player'] else 'UrbanMech'})
     layout['parts'] = units
@@ -148,6 +152,17 @@ def place_units(layout, blocked):
     reachable = distances(np.where(blocked, -1, 0), start, 0)
     if any(tuple(p['cell']) not in reachable for p in units):
         raise ValueError('unit spawn disconnected from player')
+    for marker in layout['objectives']:
+        target = next((o for o in layout['objects'] if o['cell'] == marker['cell']), None)
+        if target is None:
+            raise ValueError('objective target is missing')
+        r0, c0, r1, c1 = covered_cells(layout, polygon(target, target['footprint'],
+                                                      target['position_wu'], rectangle=True))
+        approaches = ((r,c) for r in range(max(1,r0-3), min(len(blocked)-1,r1+3))
+                      for c in range(max(1,c0-3), min(len(blocked)-1,c1+3))
+                      if not (r0 <= r < r1 and c0 <= c < c1))
+        if not any(cell in reachable for cell in approaches):
+            raise ValueError(f"objective has no reachable attack approach: {marker['id']}")
     return units
 
 
@@ -165,14 +180,28 @@ def terrain_packet(layout, stock_pak):
     vertices['height'] = layout['terrain']['elevation_wu'][0][0]
     for field in ('water', 'selected', 'shadow', 'highlight'):
         vertices[field] = 0
-    # The chosen authored texture handle is a known valid stock tile. Matching
-    # cement/road transition baking remains outside this first flat-map writer.
+    if layout['source'].get('biome') == 'suburban_forest':
+        height = np.asarray(layout['terrain']['elevation_wu'])[::3, ::3]
+        vertices['height'] = height
+        dr, dc = np.gradient(height, 128.)
+        normal = np.stack((-dc, dr, np.ones_like(height)), axis=-1)
+        vertices['normal'] = normal / np.linalg.norm(normal, axis=-1, keepdims=True)
+        vertices['type'] = np.asarray(layout['terrain']['terrain_type'])[::3, ::3]
+        vertices['water'] = mask_of(layout, 'water')[::3, ::3].astype(np.uint8)
+        # MapData::calcTransitions resolves the low handle from the four native
+        # terrain types on ordinary load. No opaque stock blend handle is reused.
+        vertices['texture'] = 0xffff0000
+    # Legacy flat layouts retain their actual known-valid stock grass handle.
     return vertices.tobytes()
 
 
 def tacmap_packet(layout):
     side = layout['size']['rows']
-    image = Image.new('RGB', (128, 128), (85, 105, 58))
+    if layout['source'].get('biome') == 'suburban_forest':
+        from tools.mapgen.suburban_forest import colours
+        image = Image.fromarray(colours(layout)).resize((128, 128), Image.Resampling.BOX)
+    else:
+        image = Image.new('RGB', (128, 128), (85, 105, 58))
     draw = ImageDraw.Draw(image)
     for obj in layout['objects']:
         r, c = obj['cell']
@@ -195,11 +224,17 @@ def mission_fit(layout, template):
     half = layout['size']['vertices']*64
     for k, v in (('TerrainMinX', -half), ('TerrainMinY', half)):
         selected['terrain'] = set_field(selected['terrain'], k, v)
-    selected['water'] = set_field(selected['water'], 'Elevation', -10000)
+    selected['water'] = set_field(selected['water'], 'Elevation',
+        layout['terrain'].get('water_elevation_wu') or -10000)
+    if layout['source'].get('biome') == 'suburban_forest':
+        selected['water'] = set_field(selected['water'], 'ShallowDepth', 4)
+        selected['water'] = set_field(selected['water'], 'Ampliture', 1)
     for k, v in (('MissionName', f'"{layout["name"]}"'), ('MissionNameUseResourceString', 'FALSE'),
                  ('BlurbUseResourceString', 'FALSE'), ('Blurb2UseResourceString', 'FALSE')):
         selected['missionsettings'] = set_field(selected['missionsettings'], k, v)
     sections = ['FITini\n', *selected.values()]
+    if layout['source'].get('biome') == 'suburban_forest':
+        sections.append(f'[ColorMap]\nst ColorMapName = "{layout["name"]}"\n')
     n = len(layout['parts'])
     sections += [f'[Warriors]\nul NumWarriors = {n}\n', f'[Parts]\nul NumParts = {n}\n', '[Teams]\n']
     for commander in (0, 1):
@@ -262,6 +297,8 @@ def emit(layout, source, out, name=None):
         if not source.has('data/missions/warriors/'+dependency):
             raise ValueError(f'missing stock pilot/brain: {dependency}')
     cells = np.where(blocked, 2, 0x402).astype('<u4')
+    cells[mask_of(layout, 'roads')] |= 0x02000000
+    cells[mask_of(layout, 'water')] |= 0x08000000
     cells[[0,-1], :] |= 0x200
     cells[:, [0,-1]] |= 0x200
     movement = build_move(cells)
@@ -276,6 +313,10 @@ def emit(layout, source, out, name=None):
     stem.with_suffix('.fit').write_bytes(fit)
     script = f'module {layout["name"]} : integer;\ncode\n    return(0);\nendmodule.\n'
     stem.with_suffix('.abl').write_text(script, encoding='ascii')
+    colormap = None
+    if layout['source'].get('biome') == 'suburban_forest':
+        from tools.mapgen.suburban_forest import cook_colormap
+        colormap = cook_colormap(layout, out/'textures'/(layout['name']+'.tga'))
     # Read every packet using the repo's strict decoder, not just our encoder.
     raw = stem.with_suffix('.pak').read_bytes()
     for i,p in enumerate(packets):
@@ -306,13 +347,23 @@ def emit(layout, source, out, name=None):
               'source_pak_sha256':hashlib.sha256(template_pak).hexdigest(),
               'pak_sha256':hashlib.sha256(raw).hexdigest(), 'fit_sha256':hashlib.sha256(fit).hexdigest(),
               'abl_sha256':hashlib.sha256(stem.with_suffix('.abl').read_bytes()).hexdigest(),
-              'validation':'all packets + FIT + extraction + parent links + spawn connectivity passed',
-              'limitations':['flat grass terrain; planned roads/cement are not texture-baked',
+              'validation':'all packets + FIT + extraction + parent links + spawn/objective connectivity passed',
+              'limitations':([
+                             'dry causeways reserve river crossings; no native bridge geometry',
+                             'ground and hover share a conservative water-blocked graph'] if colormap else [
+                             'flat grass terrain; planned roads/cement are not texture-baked']) + [
                              'conservative model rectangles; no destruction-aware special areas',
                              'gates use passable apertures; native collision-template baker pending']}
+    if colormap:
+        report['colormap'] = {'path': 'data/textures/'+colormap.name,
+            'sha256': hashlib.sha256(colormap.read_bytes()).hexdigest(),
+            'lighting': 'unlit albedo; ordinary engine burnin owns lighting and shadows'}
     write_json(stem.with_suffix('.mission.json'),report,pretty=True)
     write_json(stem.with_suffix('.layout.json'),layout)
     render(layout,stem.with_suffix('.plan.png'))
+    if colormap:
+        from tools.mapgen.suburban_forest import feature_mask
+        feature_mask(layout, stem.with_suffix('.features.png'))
     return report
 
 
