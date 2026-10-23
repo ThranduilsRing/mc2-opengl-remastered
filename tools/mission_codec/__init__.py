@@ -1,18 +1,82 @@
-"""Strict PacketFile decoding and loose-over-FST install reads."""
+"""Mission FIT, PacketFile, object and MOVE codecs shared by offline tools."""
 from __future__ import annotations
 
 import csv
 import hashlib
 import io
+import math
 import json
 import re
 import struct
-import sys
 import zlib
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from mc2x_import.fst import decompress_entry
+import numpy as np
+
+from tools.mc2x_import.fst import decompress_entry
+
+
+OBJECT = struct.Struct("<i4f5i")
+PASSABLE = 0x400
+
+
+def parent_cell(parent):
+    """Runtime parent identity is a packed cell; both sentinels mean no parent."""
+    parent &= 0xFFFFFFFF
+    return None if parent in (0, 0xFFFFFFFF) else [parent >> 16, parent & 0xFFFF]
+
+
+def packed_cell(cell):
+    row, col = map(int, cell)
+    if not (0 <= row <= 0xFFFF and 0 <= col <= 0xFFFF):
+        raise ValueError("parent cell outside packed range")
+    return (row << 16) | col
+
+
+def object_records(raw):
+    if len(raw) < 4:
+        raise ValueError("missing object count")
+    count, = struct.unpack_from("<i", raw)
+    if count < 0 or len(raw) != 4 + count * OBJECT.size:
+        raise ValueError("mission object count/size mismatch")
+    records = list(OBJECT.iter_unpack(raw[4:]))
+    if any(not all(math.isfinite(v) for v in r[1:5]) for r in records):
+        raise ValueError("nonfinite mission object position")
+    return records
+
+
+def encode_objects(records):
+    records = list(records)
+    raw = struct.pack("<i", len(records)) + b"".join(OBJECT.pack(*r) for r in records)
+    object_records(raw)
+    return raw
+
+
+def decode_move(packets, first=0):
+    """Read the four MissionMap packets, without reconstructing derived paths."""
+    try:
+        height, width, planet = (struct.unpack("<i", packets[first+i])[0] for i in range(3))
+        if not (0 < height <= 3072 and 0 < width <= 3072):
+            raise ValueError("MOVE local dimensions out of range")
+        cells = np.frombuffer(packets[first+3], "<u4").reshape(height, width)
+    except (IndexError, struct.error, ValueError) as error:
+        raise ValueError("MOVE local dimensions/packet size mismatch") from error
+    return height, width, planet, cells
+
+
+def encode_move(cells, planet=0):
+    cells = np.asarray(cells, dtype="<u4")
+    height, width = cells.shape
+    packets = [struct.pack("<i", n) for n in (height, width, planet)] + [cells.tobytes()]
+    decode_move(packets)
+    return packets
+
+
+def move_fields(cells):
+    """Local LOS height is a 4-bit level, not terrain elevation in world units."""
+    return {"passable": (cells & PASSABLE) != 0,
+            "local_height": (cells >> 18) & 15,
+            "forest": (cells & 0x10000000) != 0}
 
 
 def key(name):
@@ -28,9 +92,9 @@ def fit_sections(data):
         if match:
             current = sections.setdefault(match[1].strip().lower(), {})
         elif current is not None:
-            match = re.match(r"\s*\w+(?:\[\d+\])?\s+([^=]+?)\s*=\s*(.*)", line)
+            match = re.match(r"\s*(\w+)(?:\[\d+\])?\s+([^=]+?)\s*=\s*(.*)", line)
             if match:
-                raw = match[2].strip()
+                raw = match[3].strip()
                 if raw.startswith('"'):
                     value = raw[1:raw.find('"', 1)]
                 else:
@@ -45,7 +109,9 @@ def fit_sections(data):
                                 value = float(raw)
                             except ValueError:
                                 value = raw
-                current[match[1].strip().lower()] = value
+                if match[1].lower() == "ul" and isinstance(value, int):
+                    value &= 0xFFFFFFFF
+                current[match[2].strip().lower()] = value
     return sections
 
 
@@ -88,7 +154,7 @@ class Install:
     A supplied fallback supplies dependencies absent from expansion-only installs.
     """
 
-    def __init__(self, root, fallback=None):
+    def __init__(self, root, fallback=None, *, include_loose=True):
         self.root = Path(root).resolve()
         self.fallback = fallback
         self.files = {}
@@ -111,7 +177,7 @@ class Install:
                     self.collisions.append(name)
                 self.files[name] = (archive, offset, comp, size, magic == 0xFADDECAF)
         # Limit the loose scan to relevant data, excluding backup/mod overlays.
-        for relative in ("data/missions", "data/objects", "data/art", "data/textures", "data/tgl"):
+        for relative in (("data/missions", "data/objects", "data/art", "data/textures", "data/tgl") if include_loose else ()):
             folder = self.root / relative
             if folder.exists():
                 for path in sorted(folder.rglob("*")):

@@ -1,5 +1,6 @@
 #include "MissionDocument.h"
 #include "FitReader.h"
+#include "mission_codec.h"
 
 #include <algorithm>
 #include <bit>
@@ -172,6 +173,13 @@ bool MissionDocument::hasMarkerReference(EntityId id) const
     const auto reference = markerReference(id);
     return !reference || reference->has_value();
 }
+std::optional<std::array<std::uint32_t, 2>> MissionDocument::parentCell(EntityId id) const
+{
+    const auto* selected = entity(id);
+    if (!selected || !selected->packetRecord) return {};
+    return mc2::mission::parentCell(mc2::mission::objectRecord(placements_, *selected->packetRecord).parentId);
+}
+
 bool MissionDocument::isMarkerPacket(const Entity& entity) const
 {
     return entity.packetRecord && std::ranges::find(markerObjects_, entity.objectNumber) != markerObjects_.end();
@@ -436,12 +444,12 @@ std::expected<void, LoadError> MissionDocument::validateSemantics()
     const auto& placements = pak_.packets[1].decoded;
     if (!placements.empty()) {
         if (placements.size() < 4) return reject("Packet1", "truncated_placements");
-        const auto count = u32(placements, 0);
-        if (count > nodeLimit || placements.size() != 4 + static_cast<std::size_t>(count) * 40) return reject("Packet1", "placement_count_mismatch");
-        for (std::size_t i = 0; i < count; ++i) {
-            const auto p = 4 + i * 40;
-            Entity entity{EntityId{entities_.size() + 1}, {}, {}, i, u32(placements, p), {}, f32(placements, p + 16), std::bit_cast<std::int32_t>(u32(placements, p + 24))};
-            for (std::size_t j = 0; j < 3; ++j) entity.position[j] = f32(placements, p + 4 + j * 4);
+        const auto count = mc2::mission::objectCount(placements);
+        if (!count || *count > nodeLimit) return reject("Packet1", "placement_count_mismatch");
+        for (std::size_t i = 0; i < *count; ++i) {
+            const auto record = mc2::mission::objectRecord(placements, i);
+            Entity entity{EntityId{entities_.size() + 1}, {}, {}, i, static_cast<std::uint32_t>(record.type), {}, record.rotation, record.team};
+            for (std::size_t j = 0; j < 3; ++j) entity.position[j] = record.position[j];
             if (!std::isfinite(entity.rotation) || !std::isfinite(entity.position[0]) || !std::isfinite(entity.position[1]) || !std::isfinite(entity.position[2])) return reject("Packet1", "nonfinite_placement");
             if (entity.team < -1 || entity.team >= teamCount) return reject("Packet1/TeamID", "out_of_range");
             entities_.push_back(entity);

@@ -10,6 +10,8 @@ from pathlib import Path
 
 import numpy as np
 
+from tools.mission_codec import packed_cell
+
 SCHEMA = "mc2-mapgen-1"
 CELL_WU = 128 / 3
 STEEP_DEG = 35.0
@@ -57,10 +59,6 @@ def load_json(path):
 def world_cell(x, y, vertices):
     half = vertices * 64.0
     return [int((half - y) * 3 / 128), int((x + half) * 3 / 128)]
-
-
-def packed_cell(cell):
-    return (int(cell[0]) << 16) | int(cell[1])
 
 
 def slope_grid(height, spacing=CELL_WU):

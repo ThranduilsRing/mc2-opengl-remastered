@@ -11,6 +11,8 @@ import struct
 
 import numpy as np
 
+from tools.mission_codec import PASSABLE, decode_move, encode_move
+
 AREA = struct.Struct('<hhIihi b??I')
 DOOR = struct.Struct('<hhb?bhhhhbbhhII7i')
 INFO = struct.Struct('<hb')
@@ -136,11 +138,10 @@ def global_packets(passable):
 
 
 def build_move(cells):
-    passable = (cells & 0x400) != 0
-    h, w = cells.shape
+    passable = (cells & PASSABLE) != 0
     normal = global_packets(passable)
     flying = global_packets(np.ones_like(passable))
-    return ([scalar(h), scalar(w), scalar(0), cells.astype('<u4').tobytes()]
+    return (encode_move(cells)
             + normal + normal + flying + [scalar(0), scalar(0)])
 
 
@@ -152,7 +153,7 @@ def validate_move(packets, side):
         return struct.unpack('<i', packets[i])[0]
     if (integer(0), integer(1)) != (side, side) or len(packets[3]) != side*side*4:
         raise ValueError('MOVE local dimensions mismatch')
-    local = np.frombuffer(packets[3], '<u4').reshape(side, side)
+    local = decode_move(packets)[3]
     cursor = 4
     summaries = []
     for level in range(3):
@@ -162,7 +163,7 @@ def validate_move(packets, side):
         amap = np.frombuffer(packets[cursor+10], '<i2').reshape(side, side)
         if np.any((amap < -1) | (amap >= na)):
             raise ValueError('MOVE invalid area index')
-        if level < 2 and not np.array_equal(amap >= 0, (local & 0x400) != 0):
+        if level < 2 and not np.array_equal(amap >= 0, (local & PASSABLE) != 0):
             raise ValueError('MOVE passability/area mismatch')
         areas = list(AREA.iter_unpack(packets[cursor+11]))
         if len(areas) != na or sum(a[4] for a in areas) != ni:

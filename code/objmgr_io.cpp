@@ -8,6 +8,7 @@
 #include <span>
 #include "objmgr_internal.h"
 #include "saved_objects_check.h"
+#include "mission_codec.h"
 #include "mc2fmt.h"
 #include "../GameOS/gameos/static_caster_set.h"
 
@@ -44,10 +45,13 @@ void GameObjectManager::countTerrainObjects (PacketFile* terrainFile, long first
 		terrainFile->readPacket( packet, pBuffer.get() );
 	gosASSERT( bytesRead == size );
 	
-	File terrainObjectFile;
-	terrainObjectFile.open( reinterpret_cast<char*>(pBuffer.get()), size );
-	
-	totalObjCount = terrainObjectFile.readInt();
+	const auto records = std::as_bytes(std::span(pBuffer.get(), static_cast<std::size_t>(size)));
+	const auto count = mc2::mission::objectCount(records);
+	if (!count) {
+		STOP(("Invalid mission object packet count/size"));
+		return;
+	}
+	totalObjCount = *count;
 
 	if (totalObjCount)
 	{
@@ -62,20 +66,13 @@ void GameObjectManager::countTerrainObjects (PacketFile* terrainFile, long first
 	ObjDataLoader *data = objData;
 	for ( int i = 0; i < totalObjCount; ++i )
 	{
-		data->objTypeNum = terrainObjectFile.readInt();
-		data->vector.x = terrainObjectFile.readFloat();
-		data->vector.y = terrainObjectFile.readFloat();
-		data->vector.z = terrainObjectFile.readFloat();
-
-		data->rotation = terrainObjectFile.readFloat();		
-		data->damage = terrainObjectFile.readInt();
-
-		data->teamId = terrainObjectFile.readInt();
-		data->parentId = terrainObjectFile.readInt();
-		
-		// padding
-		terrainObjectFile.readInt();
-		terrainObjectFile.readInt();
+		const auto record = mc2::mission::objectRecord(records, i);
+		data->objTypeNum = record.type;
+		data->vector = glm::vec3(record.position[0], record.position[1], record.position[2]);
+		data->rotation = record.rotation;
+		data->damage = record.damage;
+		data->teamId = record.team;
+		data->parentId = record.parentId;
 
 		// convert to block and vertex
 		int tileCol;
@@ -103,10 +100,6 @@ void GameObjectManager::countTerrainObjects (PacketFile* terrainFile, long first
 		Terrain::objBlockInfo[i].firstHandle = curHandle;
 		curHandle += Terrain::objBlockInfo[i].numObjects;						
 	}
-
-	terrainObjectFile.close();
-	pBuffer.reset();
-
 }
 
 void GameObjectManager::countObject( ObjDataLoader *data)
@@ -225,7 +218,7 @@ void GameObjectManager::loadTerrainObjects (PacketFile* terrainFile,
 	{ ZoneScopedN("GameObjectManager::loadTerrainObjects turretLinks");
 	for (int i = 0; i < numTurrets; i++) 
 	{
-		if ((turrets[i]->parentId != 0xffffffff) && (turrets[i]->parentId != 0)) 
+		if (mc2::mission::parentCell(turrets[i]->parentId).has_value())
 		{
 			BuildingPtr controlBuilding = static_cast<BuildingPtr>(ObjectManager->findByCellPosition((turrets[i]->parentId>>16),(turrets[i]->parentId & 0x0000ffff)));
 			if (controlBuilding && !controlBuilding->getFlag(OBJECT_FLAG_CONTROLBUILDING)) 
@@ -250,7 +243,7 @@ void GameObjectManager::loadTerrainObjects (PacketFile* terrainFile,
 	{ ZoneScopedN("GameObjectManager::loadTerrainObjects gateLinks");
 	for (int i = 0; i < numGates; i++) 
 	{
-		if ((gates[i]->parentId != 0xffffffff) && (gates[i]->parentId != 0))
+		if (mc2::mission::parentCell(gates[i]->parentId).has_value())
 		{
 			BuildingPtr controlBuilding = static_cast<BuildingPtr>(ObjectManager->findByCellPosition((gates[i]->parentId>>16),(gates[i]->parentId & 0x0000ffff)));
 			if (controlBuilding && !controlBuilding->getFlag(OBJECT_FLAG_CONTROLBUILDING)) 
@@ -1202,7 +1195,7 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum)
 	// Finally, let's build the control building lists...
 	for (i = 0; i < numTurrets; i++) 
 	{
-		if ((turrets[i]->parentId != 0xffffffff) && (turrets[i]->parentId != 0)) 
+		if (mc2::mission::parentCell(turrets[i]->parentId).has_value())
 		{
 			BuildingPtr controlBuilding = static_cast<BuildingPtr>(ObjectManager->findByCellPosition((turrets[i]->parentId>>16),(turrets[i]->parentId & 0x0000ffff)));
 			if (controlBuilding && !controlBuilding->getFlag(OBJECT_FLAG_CONTROLBUILDING)) 
@@ -1225,7 +1218,7 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum)
 
 	for (i = 0; i < numGates; i++) 
 	{
-		if ((gates[i]->parentId != 0xffffffff) && (gates[i]->parentId != 0))
+		if (mc2::mission::parentCell(gates[i]->parentId).has_value())
 		{
 			BuildingPtr controlBuilding = static_cast<BuildingPtr>(ObjectManager->findByCellPosition((gates[i]->parentId>>16),(gates[i]->parentId & 0x0000ffff)));
 			if (controlBuilding && !controlBuilding->getFlag(OBJECT_FLAG_CONTROLBUILDING)) 

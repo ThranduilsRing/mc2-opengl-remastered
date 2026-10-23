@@ -8,7 +8,7 @@ from pathlib import Path
 import numpy as np
 
 from tools.mapgen.common import mask_of, packed_cell, spans, world_cell
-from tools.mapgen.data import Install, catalog, fit_sections, packet
+from tools.mission_codec import Install, catalog, fit_sections, packet
 from tools.mapgen.extract import OBJECT, VERTEX, extract_mission
 
 
@@ -100,14 +100,15 @@ class ExtractionTests(unittest.TestCase):
         result = extract_mission(install, "test", {1: {"class": "turret_control", "type_name": "control"},
             2: {"class": "turret", "type_name": "turret"}}, {}, {255: {"id": 0}}, None, "fixture")
         self.assertEqual(result["objects"][1]["cell"], [3, 3])
-        self.assertEqual(result["objects"][1]["parent_link"], "object_0")
+        self.assertIsNone(result["objects"][1]["parent_link"])
+        self.assertIsNone(result["objects"][1]["parent_cell"])
         self.assertEqual(int(mask_of(result, "water").sum()), 9)
         self.assertEqual(int(mask_of(result, "roads").sum()), 9)
         self.assertEqual(result["player_start"], [3, 3])
 
     def test_fit_scalars_and_span_roundtrip(self):
-        fit = fit_sections('[Obj]\r\nst Name="Airfield"\r\nl TeamID=-1\r\nb Active=TRUE\r\nf X=2.5\r\n')
-        self.assertEqual(fit["obj"], {"name": "Airfield", "teamid": -1, "active": True, "x": 2.5})
+        fit = fit_sections('[Obj]\r\nst Name="Airfield"\r\nl TeamID=-1\r\nul Color=-1\r\nb Active=TRUE\r\nf X=2.5\r\n')
+        self.assertEqual(fit["obj"], {"name": "Airfield", "teamid": -1, "color": 0xFFFFFFFF, "active": True, "x": 2.5})
         raster = np.array([[True, False, True], [False, True, True]])
         layout = {"size": {"rows": 2, "cols": 3}, "layers": {"roads": spans(raster)}}
         np.testing.assert_array_equal(mask_of(layout, "roads"), raster)
