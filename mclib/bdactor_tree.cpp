@@ -158,6 +158,7 @@ void TreeAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 	}
 
 	pitch = yaw = 0.0f;
+	shadowMoving = false;
 }
 
 void TreeAppearance::setObjStatus (long oStatus)

@@ -723,6 +723,8 @@ void TerrainObject::primeAppearanceForMissionLoad (void)
 	{
 		appearance->setObjectParameters(position,rotation,FALSE,getTeamId(),terrainObjectHomeRelation(getTeamId()));
 		appearance->setMoverParameters(pitchAngle);
+		if (appearance->getAppearanceClass() == TREE_APPR_TYPE)
+			static_cast<TreeAppearance*>(appearance)->setShadowMoving(getFlag(OBJECT_FLAG_FALLING));
 	}
 
 	bool inView = false;
@@ -802,6 +804,8 @@ long TerrainObject::update (void) {
 		{
 			appearance->setObjectParameters(position,rotation,FALSE,getTeamId(),terrainObjectHomeRelation(getTeamId()));
 			appearance->setMoverParameters(pitchAngle);
+			if (appearance->getAppearanceClass() == TREE_APPR_TYPE)
+				static_cast<TreeAppearance*>(appearance)->setShadowMoving(getFlag(OBJECT_FLAG_FALLING));
 		}
 		// Falling and terrain-map effects above are simulation. Geometry and
 		// dust effects are refreshed by the presentation pass.
