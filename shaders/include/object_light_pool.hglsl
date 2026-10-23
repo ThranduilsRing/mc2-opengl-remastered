@@ -28,6 +28,11 @@ vec3 olp_objectPoolLight(vec3 worldPosMC2, int numPoolLights, int poolSoft,
     vec3 poolMover = vec3(0.0);
     int lo = 0, hi = numPoolLights;
     bool indexed = false;
+#ifdef MC2_OBJECT_POOL_LIST
+    lo = int(uRun.poolFirst);
+    hi = lo + int(uRun.poolCount);
+    if (lo == hi) return vec3(0.0);
+#endif
 #ifdef MC2_OBJECT_POOL_GRID
     if (poolGridInfo.x > 0u) {
         ivec2 cell = ivec2(floor((worldPosMC2.xy - poolGridMinInv.xy) * poolGridMinInv.zw));

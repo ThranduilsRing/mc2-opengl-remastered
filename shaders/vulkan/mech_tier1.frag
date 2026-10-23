@@ -47,18 +47,16 @@ struct PoolLight {
     float intensity;
 };
 layout(set = 0, binding = 5, std430) readonly buffer MechPoolLightsVK {
-    PoolLight poolLights[256];
-    vec4 poolGridMinInv;
-    uvec4 poolGridInfo;
-    uint poolGridWords[];
+    PoolLight poolLights[];
 };
-#define MC2_OBJECT_POOL_GRID 1
-#include "../include/object_light_pool.hglsl"
-#include "../include/mech_shading.hglsl"
-
 layout(push_constant) uniform MechRunPC {
     uint materialFlags;    // bit0 = ALPHA_TEST (mech.frag ALPHA_TEST_BIT)
+    uint poolFirst;
+    uint poolCount;
 } uRun;
+#define MC2_OBJECT_POOL_LIST 1
+#include "../include/object_light_pool.hglsl"
+#include "../include/mech_shading.hglsl"
 
 layout(location = 0) in vec2 vUv;
 layout(location = 1) in vec3 vNormalGL;

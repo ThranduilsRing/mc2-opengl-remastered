@@ -75,6 +75,11 @@
 #include <vector>
 #include <string>
 #include <chrono>
+#include <map>
+#include <tuple>
+#include <limits>
+#include <cmath>
+#include "../../RenderCore/gpu_abi/GpuMechInstance.h"
 #include <tracy/Tracy.hpp>   // VK-FLIP-FIELD-REPORT-1: coarse per-region frame zones
 
 namespace {
@@ -152,6 +157,13 @@ const uint32_t kMaxPoolLights = 256;
 
 const VkFormat kColorFmt = VK_FORMAT_R16G16B16A16_SFLOAT;
 
+struct MechRunPC { uint32_t materialFlags, poolFirst, poolCount; };
+static_assert(sizeof(MechRunPC) == 12);
+struct BoneBounds {
+    uint32_t bone;
+    std::array<float,3> lo, hi;
+};
+using RunKey = std::tuple<uint32_t,uint32_t,int32_t>;
 struct MechIsland : mc2vk::IslandState {
     bool disabled = false;
     bool inited   = false;
@@ -177,6 +189,7 @@ struct MechIsland : mc2vk::IslandState {
     // Copy-once mech geometry (VK-owned copies of the shared mech VBO/IBO).
     uint32_t vertexStride = 48;
     bool     geomUploaded = false;
+    std::map<RunKey, std::vector<BoneBounds>> lightBounds;
     uint32_t geomGen = 0;   // generation of the feed the buffers were filled from
 
     // Per-frame data (UBO, instance + bone snapshots, LightsData, night pool) lives in the engine frame ring; every scheme set binds it with dynamic
@@ -566,7 +579,7 @@ bool init_island(MechIsland* s, int w, int h) {
 
         // VK-PARITY-MECH-1: per-run materialFlags (ALPHA_TEST discard, mech.frag:177).
         VkPushConstantRange pcr{};
-        pcr.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT; pcr.offset = 0; pcr.size = 4;
+        pcr.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT; pcr.offset = 0; pcr.size = sizeof(MechRunPC);
         VkPipelineLayoutCreateInfo plci{};
         plci.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
         const VkDescriptorSetLayout dslHandle = s->dsl.get();
@@ -690,12 +703,108 @@ bool upload_geometry_once(MechIsland* s) {
         s->ibo.reset();
         return false;
     }
+    s->lightBounds.clear();
     s->geomGen = feed.geomGen;
     g_health.geomVerts = static_cast<unsigned long>((feed.vboBytes / (feed.vertexStride ? feed.vertexStride : 1)));
     s->geomUploaded = true;
     vlog("mech geometry uploaded once: vbo=%llu B ibo=%llu B stride=%u source=cpu-native.",
          static_cast<unsigned long long>(feed.vboBytes), static_cast<unsigned long long>(feed.iboBytes), feed.vertexStride);
     return true;
+}
+
+// Cache local bounds per influenced bone, independent of pose. Skin weights are
+// nonnegative and sum to one; their transformed union bounds the skinned mesh.
+// Invalid/unsupported input returns an empty cache entry and uses the full pool.
+const std::vector<BoneBounds>& light_bounds(MechIsland* s, const Mc2MechDrawRun& run) {
+    const RunKey key{run.firstIndex,run.indexCount,run.baseVertex};
+    auto [it, fresh] = s->lightBounds.try_emplace(key);
+    if (!fresh) return it->second;
+    Mc2MechGeomFeed geom{};
+    if (!mc2_mech_island_get_geometry_feed(&geom) || !geom.vboCpu || !geom.iboCpu ||
+        geom.vertexStride != 48 || uint64_t(run.firstIndex)+run.indexCount > geom.iboBytes/4) return it->second;
+    std::map<uint32_t,BoneBounds> bounds;
+    const auto* indices=static_cast<const uint32_t*>(geom.iboCpu);
+    for (uint32_t j=0;j<run.indexCount;++j) {
+        const int64_t vi=int64_t(indices[run.firstIndex+j])+run.baseVertex;
+        if (vi<0 || uint64_t(vi)>=geom.vboBytes/geom.vertexStride) return it->second;
+        const auto* v=static_cast<const uint8_t*>(geom.vboCpu)+vi*geom.vertexStride;
+        float pos[3]; std::memcpy(pos,v,sizeof(pos));
+        // GpuMechVertex: boneIndices at 32, UNORM8 boneWeights at 36.
+        unsigned sum=0; for(unsigned b=0;b<4;++b) sum+=v[36+b];
+        if(sum!=255) return it->second;
+        for(unsigned b=0;b<4;++b) if(v[36+b]) {
+            const uint32_t bone=v[32+b];
+            auto [bi,added]=bounds.try_emplace(bone,BoneBounds{bone,{pos[0],pos[1],pos[2]},{pos[0],pos[1],pos[2]}});
+            for(unsigned a=0;a<3;++a) {
+                if(!std::isfinite(pos[a])) return it->second;
+                bi->second.lo[a]=std::min(bi->second.lo[a],pos[a]);
+                bi->second.hi[a]=std::max(bi->second.hi[a],pos[a]);
+            }
+        }
+    }
+    for(const auto& b:bounds) it->second.push_back(b.second);
+    return it->second;
+}
+
+bool posed_light_bounds(const std::vector<BoneBounds>& local, const Mc2MechFrameFeed& feed,
+                        uint32_t instance, float* lo, float* hi) {
+    if(local.empty() || instance>=feed.instanceCount || !feed.instances64 || !feed.bones64) return false;
+    const auto& inst=static_cast<const GpuMechInstance*>(feed.instances64)[instance];
+    const auto* bones=static_cast<const float*>(feed.bones64);
+    for(unsigned a=0;a<3;++a) {lo[a]=std::numeric_limits<float>::infinity();hi[a]=-lo[a];}
+    for(const auto& b:local) {
+        const uint64_t idx=uint64_t(inst.baseBoneOffset)+b.bone;
+        if(idx>=feed.boneCount) return false;
+        const float* m=bones+idx*16;
+        for(unsigned corner=0;corner<8;++corner) {
+            float p[3];for(unsigned a=0;a<3;++a)p[a]=(corner&(1u<<a))?b.hi[a]:b.lo[a];
+            float w[3];for(unsigned a=0;a<3;++a)w[a]=m[a]*p[0]+m[4+a]*p[1]+m[8+a]*p[2]+m[12+a];
+            const float mc2[3]={-w[0],w[2],w[1]};
+            for(unsigned a=0;a<3;++a) {
+                if(!std::isfinite(mc2[a]))return false;
+                lo[a]=std::min(lo[a],mc2[a]);hi[a]=std::max(hi[a],mc2[a]);
+            }
+        }
+    }
+    return true;
+}
+
+// Contiguous per-draw lights keep fragment addresses uniform across a wave.
+// The 64-light draw budget is an allocation cap, never an energy cap: overflow
+// draws use the original full 256-light pool in source order.
+void build_draw_lights(MechIsland* s,const Mc2MechFrameFeed& feed,int count,
+                       std::vector<gos_terrain_lighting::GpuTerrainLight>& lights,
+                       std::vector<std::vector<MechRunPC>>& draws) {
+    using Light=gos_terrain_lighting::GpuTerrainLight;
+    const auto* pool=static_cast<const Light*>(feed.poolLights48);
+    lights.resize(kMaxPoolLights);if(count)std::copy_n(pool,count,lights.begin());
+    draws.resize(feed.runCount);
+    const bool cull=mc2::gate::get<"MC2_LIGHT_GRID">();
+    for(uint32_t r=0;r<feed.runCount;++r) {
+        const auto& run=feed.runs[r];
+        // Preserve instancing in daylight and for the diagnostic linear fallback.
+        if(!count || !cull) {draws[r].push_back({run.materialFlags,0,uint32_t(count)});continue;}
+        const auto& local=light_bounds(s,run);
+        for(uint32_t n=0;n<run.instanceCount;++n) {
+            MechRunPC pc{run.materialFlags,0,uint32_t(count)};
+            float lo[3],hi[3];
+            if(posed_light_bounds(local,feed,run.instanceBase+n,lo,hi)) {
+                const auto first=lights.size();
+                for(int i=0;i<count;++i) {
+                    const auto& l=pool[i];if(!l.lightType)continue;
+                    float radius=l.farDistance;
+                    if(l._pad1>0.5f && feed.poolMoverScale<0.999f)radius*=std::max(feed.poolMoverScale,0.05f);
+                    float d2=0;
+                    for(unsigned a=0;a<3;++a) {const float d=std::max({lo[a]-l.position[a],0.0f,l.position[a]-hi[a]});d2+=d*d;}
+                    if(radius>0 && d2<=radius*radius*1.00001f)lights.push_back(l);
+                }
+                const auto selected=lights.size()-first;
+                if(selected<=64)pc={run.materialFlags,uint32_t(first),uint32_t(selected)};
+                else lights.resize(first); // exact, stable full-pool overflow fallback
+            }
+            draws[r].push_back(pc);
+        }
+    }
 }
 
 } // namespace
@@ -799,8 +908,11 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
     const bool nativeLight = feed.lightDataCpu && feed.lightDataCpuBytes >= 3600ull;
     int poolN = (feed.poolLights48 && feed.numPoolLights > 0) ? feed.numPoolLights : 0;
     if (poolN > (int)kMaxPoolLights) poolN = static_cast<int>(kMaxPoolLights);
-    size_t poolBytes = 0;
-    const void* poolUpload = gos_terrain_lighting::GetObjectLightPoolUpload(poolBytes);
+    std::vector<gos_terrain_lighting::GpuTerrainLight> drawLights;
+    std::vector<std::vector<MechRunPC>> drawPCs;
+    build_draw_lights(s,feed,poolN,drawLights,drawPCs);
+    const size_t poolBytes=drawLights.size()*sizeof(drawLights[0]);
+    const void* poolUpload=drawLights.data();
     const VkDeviceSize instOff = mc2vk::alignUp(sizeof(MechFrameUBO), ringAlign);
     const VkDeviceSize boneOff = mc2vk::alignUp(instOff + (instBytes ? instBytes : 64ull), ringAlign);
     const VkDeviceSize poolOff = mc2vk::alignUp(boneOff + boneBytes, ringAlign);
@@ -950,11 +1062,14 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
             boundSet = set;
         }
         // VK-PARITY-MECH-1: per-run ALPHA_TEST flag (mech.frag u_materialFlags).
-        const uint32_t mflags = run.materialFlags;
-        vkCmdPushConstants(cb, s->playout.get(), VK_SHADER_STAGE_FRAGMENT_BIT, 0, 4, &mflags);
-        vkCmdDrawIndexed(cb, run.indexCount, run.instanceCount, run.firstIndex,
-                         run.baseVertex, run.instanceBase);
-        ++runs;
+        const auto& pcs=drawPCs[r];
+        const bool split=poolN>0 && mc2::gate::get<"MC2_LIGHT_GRID">();
+        for(uint32_t n=0;n<pcs.size();++n) {
+            vkCmdPushConstants(cb,s->playout.get(),VK_SHADER_STAGE_FRAGMENT_BIT,0,sizeof(MechRunPC),&pcs[n]);
+            vkCmdDrawIndexed(cb,run.indexCount,split?1:run.instanceCount,run.firstIndex,
+                             run.baseVertex,run.instanceBase+n);
+            ++runs;
+        }
     }
     g_health.runs = runs;
 
