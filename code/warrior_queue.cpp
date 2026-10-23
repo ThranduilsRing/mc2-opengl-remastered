@@ -74,12 +74,14 @@ long MechWarrior::removeQueuedTacOrder (TacticalOrderPtr tacOrder) {
 
 	// Head marker deleted on purpose, records and owners shift (B7o.4: the legacy loop's slot-16 read at full capacity is gone).
 	const auto target = queueTargets[0];
+	const auto orderId = tacOrderQueue[0].id;
 	for (int i = 1; i < numTacOrdersQueued; ++i) queueTargets[i - 1] = queueTargets[i];
 	queueTargets[numTacOrdersQueued - 1].reset();
 	mc2::shiftQueueDown(tacOrderQueue, queueMarkers, numTacOrdersQueued);
 	numTacOrdersQueued--;
 
 	tacOrder->unpack();
+	tacOrder->setId(orderId);
 	if (target) tacOrder->targetWID = *target;
 	tacOrder->attackParams.tactic = tactic;
 	if (tacOrder->code == TACTICAL_ORDER_ATTACK_POINT) tacOrder->attackParams.targetPoint = point;
@@ -102,6 +104,7 @@ long MechWarrior::getNextQueuedTacOrder (TacticalOrderPtr tacOrder) {
 	tacOrder->data[0] = tacOrderQueue[tacOrderQueueIndex].packedData[0];
 	tacOrder->data[1] = tacOrderQueue[tacOrderQueueIndex].packedData[1];
 	tacOrder->unpack();
+	tacOrder->setId(tacOrderQueue[tacOrderQueueIndex].id);
 	if (queueTargets[tacOrderQueueIndex]) tacOrder->targetWID = *queueTargets[tacOrderQueueIndex];
 	if (tacOrder->code == TACTICAL_ORDER_ATTACK_POINT) tacOrder->attackParams.targetPoint = tacOrderQueue[tacOrderQueueIndex].point;
 	else tacOrder->setWayPoint(0, tacOrderQueue[tacOrderQueueIndex].point);
