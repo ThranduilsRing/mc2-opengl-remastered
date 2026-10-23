@@ -5,6 +5,7 @@ migration the key was ignored and the choice reset silently. The tests run the r
 Skipped when the launcher is not built in build64-ninja.
 """
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -17,7 +18,8 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
 import console_child  # noqa: E402  (windowless console children, scripts/console_child.py)
 
-LAUNCHER = ROOT / "build64-ninja" / "out" / "mc2_launcher" / "mc2-launcher.exe"
+NINJA_TREE = Path(os.environ.get("MC2_NINJA_TREE", ROOT / "build64-ninja"))
+LAUNCHER = NINJA_TREE / "out" / "mc2_launcher" / "mc2-launcher.exe"
 needs_launcher = pytest.mark.skipif(not LAUNCHER.is_file(), reason="mc2-launcher.exe is not built in build64-ninja")
 
 # The launcher these tests run must be built from the source on disk: a test against an exe older than its sources grades the old code. The launcher's
@@ -25,7 +27,6 @@ needs_launcher = pytest.mark.skipif(not LAUNCHER.is_file(), reason="mc2-launcher
 # touches unrelated files cannot turn this red. Without the record the four files the tests exercise are compared by modification time.
 LAUNCHER_SOURCES = [ROOT / "tools" / "mc2_launcher" / "mc2_launcher.cpp", ROOT / "Gates" / "render_options.h",
                     ROOT / "Gates" / "render_options_cfg.h", ROOT / "Gates" / "render_options_legacy_env.h"]
-NINJA_TREE = ROOT / "build64-ninja"
 LAUNCHER_OBJ = "out/tools/mc2_launcher/CMakeFiles/mc2_launcher.dir/mc2_launcher.cpp.obj"
 
 
