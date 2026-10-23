@@ -24,6 +24,8 @@ MechCommander 2 engine port: modern GL renderer transitioning to Vulkan, PBR ter
 ```bash
 # dev build = Ninja tree (exact header deps, no stale-binary traps; fresh tree: py -3 scripts/configure_ninja.py)
 py -3 scripts/ninja_build.py
+# lane prep after a base switch: detach at <ref> and build the tree in the background (no daemon; log in build64-ninja/warm.log)
+py -3 scripts/ninja_build.py --warm --base <ref> -j3
 # deploy (sha256-verified; exe fingerprint embeds git sha, so COMMIT FIRST)
 py -3 scripts/deploy_payload.py --target game --ninja
 # release / fallback = VS tree (fresh tree: py -3 scripts/bootstrap_worktree_build.py --build)
