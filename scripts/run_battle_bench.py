@@ -311,6 +311,7 @@ def main():
         diff(*(json.loads(p.read_text(encoding="utf-8")) for p in args.diff)); return 0
     if args.runs < 1 or not 20 <= args.duration <= 30:
         parser.error("--runs >=1 and --duration 20..30 required")
+    started = time.monotonic()
     scenario = json.loads(SCENARIO.read_text(encoding="utf-8"))
     hold_install(args.exe.parent.resolve())
     identity = ms.identity_block(generator="battle_bench", exe_path=args.exe, repo_root=ROOT, deploy_target=args.exe.parent)
@@ -330,16 +331,22 @@ def main():
               "scenario_sha256": sha_file(SCENARIO), "content": None, "profile": "stock/default-on native Vulkan",
               "render_options": render_options_pin.record(args.exe.parent, {})["values"], "duration_s": args.duration,
               "load_policy": "first-process (cold) and repeat-process (warm); OS cache not evicted", "runs": []}
-    # Acquire before the smoke timer starts; lease contention must never become a gameplay timeout.
-    while True:
-        try:
-            host_lease.acquire("integrated battle benchmark", exclusive=True)
-            break
-        except host_lease.HostLeaseBusy:
-            print("[battle-bench] lease still occupied; retrying", flush=True)
-            time.sleep(1)
-    if sha_file(args.exe) != identity["exe"]["sha256"]:
-        raise ValueError("install binary changed while waiting; redeploy the recorded build")
+    held_s = [0.0]
+    def measured(run):
+        """Exclusive host lease for one launch only; hashing, summaries and waits between launches use no slot."""
+        while True:
+            try:
+                with host_lease.exclusive_window("integrated battle benchmark"):
+                    if sha_file(args.exe) != identity["exe"]["sha256"]:
+                        raise ValueError("install binary changed while waiting; redeploy the recorded build")
+                    t0 = time.monotonic()
+                    try:
+                        return run()
+                    finally:
+                        held_s[0] += time.monotonic() - t0
+            except host_lease.HostLeaseBusy:
+                print("[battle-bench] lease still occupied; retrying", flush=True)
+                time.sleep(1)
     images = []
     for i in range(1, args.runs + 1):
         run = {"index": i, "perf": {}, "captures": []}
@@ -347,8 +354,8 @@ def main():
             for name, size in (("4k", (3840, 2160)), ("1080p", (1920, 1080))):
                 key = f"{phase}-{name}"
                 print(f"[battle-bench] run {i}/{args.runs} {key}", flush=True)
-                run["perf"][key] = perf_run(args.exe.resolve(), out / f"run{i}" / key, scenario, phase, size, args.duration, sha)
-            paths = capture_run(args.exe.resolve(), out / f"run{i}" / f"capture-{phase}", scenario, phase, sha)
+                run["perf"][key] = measured(lambda: perf_run(args.exe.resolve(), out / f"run{i}" / key, scenario, phase, size, args.duration, sha))
+            paths = measured(lambda: capture_run(args.exe.resolve(), out / f"run{i}" / f"capture-{phase}", scenario, phase, sha))
             run["captures"] += paths
             if i == args.runs:
                 images += paths
@@ -375,6 +382,7 @@ def main():
     montage(images, out / "montage.png")
     write_report(report, out)
     print("\n".join(table(report)))
+    print(f"[battle-bench] exclusive lease held {held_s[0]:.0f} s of {time.monotonic() - started:.0f} s wall")
     print(f"[battle-bench] evidence: {out}")
     return 0
 

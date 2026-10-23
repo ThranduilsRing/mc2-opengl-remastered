@@ -371,6 +371,19 @@ def acquire(label: str, *, wait: bool = True, timeout_s: Optional[float] = None,
             _write_record(path, {"tickets": [t for t in queue if t != ticket and _holder_alive(t)]})
 
 
+@contextmanager
+def exclusive_window(label: str, **kwargs):
+    """Hold every slot only for the body (one measured window), then give them back so other lanes' normal runs interleave.
+
+    A held normal slot cannot be upgraded, so call this from a process that holds nothing outside the window."""
+    release()
+    acquire(label, exclusive=True, **kwargs)
+    try:
+        yield
+    finally:
+        release()
+
+
 def _managed_engine(pid, holders):
     rec = child_registry.read_record(pid)
     if not rec or rec.get("create_time") != child_registry.process_create_time(pid):
