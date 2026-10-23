@@ -68,7 +68,7 @@ long BldgAppearance::update (bool animate)
 			// lamp over a 450-550 unit disc at 0.05-0.1 additive: the power generator's
 			// light read as off. Same energy idea, concentrated: half the reach, no flat
 			// plateau, intensity raised below (BuildingLightIntensity).
-   			pointLight->SetFalloffDistances(0.0f, appearType->terrainLightOuterRadius * 0.5f);
+   			pointLight->SetFalloffDistances(0.0f, appearType->terrainLightOuterRadius * 0.35f);   // LIGHTS-R3: tighter pools
    		}
 		
 		if (pointLight)
@@ -95,7 +95,9 @@ long BldgAppearance::update (bool animate)
 					pointLight->SetPosition(&orbit);
 				}
 			}
-			const float buildingLightIntensity = std::min(appearType->terrainLightIntensity * 3.0f, 0.35f);
+			// LIGHTS-R3: occupancy spill, not a stage light -- several of these overlap in a
+			// base centre (owner: "too bright in the middle compared to the ambient").
+			const float buildingLightIntensity = std::min(appearType->terrainLightIntensity * 1.5f, 0.15f);
 			pointLight->SetIntensity(buildingLightIntensity * eye->getNightFactor() *
                 visualTuning_environment().buildingSpillIntensityScale);
 		}
@@ -435,7 +437,7 @@ long BldgAppearance::update (bool animate)
 			// tower searchlights vanish when aimed at a wall.
 			const bool ownerLit = (eye && eye->isNight && visible && !forceLightsOut);
 			// LOCAL-LIGHTS-1: a coned lamp concentrates its light in the beam.
-			const float lampIntensity = spotlightLights_[k]->spotCosOuter > 0.0f ? 0.8f : 0.5f;
+			const float lampIntensity = spotlightLights_[k]->spotCosOuter > 0.0f ? 0.6f : 0.5f;
 			spotlightLights_[k]->SetIntensity(lampIntensity * visualTuning_environment().buildingSpillIntensityScale);
 			spotlightLights_[k]->active = ownerLit && !coneMissedGround;
 			// LIGHT-CULL-RADIUS-1: owner intent for the camera composition.

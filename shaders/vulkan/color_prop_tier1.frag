@@ -153,7 +153,6 @@ float treeVisibility(vec3 N) {
 }
 void main() {
     vec3 rgb;
-    bool lampSlot = false;
     vec3 materialAlbedo = vec3(0);
     bool haveAlbedo = false;
     float materialAO = 1.0;
@@ -182,9 +181,7 @@ void main() {
         float lodOn = 0.5 * log2(max(max(dot(duv1, duv1), dot(duv2, duv2)), 1e-12));
         lodOn = max(lodOn, 0.0);
         vec4 texc = textureLod(uAlbedoOn, vec3(uvSampledOn, float(vLayerOn)), lodOn);
-        // LOCAL-LIGHTS-5: a lamp housing's cut-out slots are the lit lamp at night (kept, not discarded).
-        lampSlot = (vMaterialFlags & 64u) != 0u && texc.a < 0.5 && uFrame.nightFactor > 0.0;
-        cover = lampSlot ? 1.0 : propCoverage(texc.a, lodOn);   // PROP-COVERAGE-1 (replaces the Bayer screen-door dither)
+        cover = propCoverage(texc.a, lodOn);   // PROP-COVERAGE-1 (replaces the Bayer screen-door dither)
         // ★VK-FLIP-FIELD-REPORT-1 BLACK-FENCE FIX: the alpha-ON group is the ALPHA_TEST
         // class (tree cards / fences / foliage). GL static_prop.frag:339 floors their lit
         // color at max(litRgb, vec3(0.5)) so the dark, light-facing-falloff side doesn't
@@ -202,7 +199,6 @@ void main() {
         // no-op there).
         vec2 uvContinuous = vUv * vUvScale;
         vec4 texOff = texture(uAlbedo, vec3(fract(uvContinuous), float(vLayer)));
-        lampSlot = (vMaterialFlags & 64u) != 0u && texOff.a < 0.5 && uFrame.nightFactor > 0.0;   // LOCAL-LIGHTS-5
         vec3 albedo = texOff.rgb;
         materialAlbedo = albedo; haveAlbedo = true;
 
@@ -212,7 +208,7 @@ void main() {
         // A packet GL alpha-tests although its type sits in the alpha-OFF group (its texture's alpha flag is set after the arrays
         // were built, e.g. the hex lattice props): GL's dither discard, its alpha-test light floor and its alpha-test shadow class.
         if (uPacket.packetAlphaTest != 0) {
-            cover = lampSlot ? 1.0 : propCoverage(texOff.a, textureQueryLod(uAlbedo, uvContinuous).y);   // PROP-COVERAGE-1
+            cover = propCoverage(texOff.a, textureQueryLod(uAlbedo, uvContinuous).y);   // PROP-COVERAGE-1
             rgb = albedo * max(vArgb, vec3(0.5));
             alphaTestClass = true;
         }
@@ -251,15 +247,6 @@ void main() {
         // SH already contains linear irradiance. Preserve the stock albedo exposure ceiling.
         rgb = propEncodeColor(min(albedo,composeGroundLighting(albedo,max(ambient,vec3(0))*vTree.x*materialAO,direct,treeVisibility(N),vec3(0))));
         rgb += propPoolLight(propEncodeColor(albedo)) + vHighlight.rgb*vHighlight.a;
-    }
-    // LOCAL-LIGHTS-5: the slots of a lamp housing (the power generator) are the lamp: the
-    // stock art cuts them out over a spinning self-lit coil the modern path cannot show,
-    // so at night they emit the generator light colour (TerrainLightRGB 0x99cccc) instead.
-    // Brightest on the side the spinning coil faces: the generator's own light orbits with the
-    // coil (BldgAppearance::update), so the pool term at this slot sweeps around the housing.
-    if (lampSlot && uFrame.nightFactor > 0.0) {
-        float sweep = dot(propPoolLight(vec3(1.0)), vec3(0.333));
-        rgb = vec3(0.30, 0.62, 1.0) * uFrame.nightFactor * (0.55 + 2.5 * sweep);
     }
     oColor = vec4(rgb, cover);
 
