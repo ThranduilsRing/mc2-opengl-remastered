@@ -1,7 +1,32 @@
 #include "doctest.h"
 #include "terrain_part_chunk.h"
 #include "tacorder_terrain_queue.h"
+#include "save_struct_zero.h"
 
+TEST_CASE("saved active order retains identity and mid-order execution state") {
+	MC2_SAVE_STRUCT(TacticalOrder, active);
+	active.id = 70001;
+	active.code = TACTICAL_ORDER_ATTACK_POINT;
+	active.targetWID = 80002;
+	active.lastMoveGoal = glm::vec3(60000.0f, -50000.0f, 12.0f);
+	active.attackParams.targetPoint = active.lastMoveGoal;
+	active.stage = 2;
+	active.statusCode = 3;
+	active.time = 15.5f;
+	active.moveParams.wayPath.curPoint = 2;
+	MC2_SAVE_STRUCT(TacticalOrder, saved);
+	copySavedTacticalOrder(saved, active);
+	MC2_SAVE_STRUCT(TacticalOrder, loaded);
+	copySavedTacticalOrder(loaded, saved);
+	CHECK(loaded.id == active.id);
+	CHECK(loaded.targetWID == active.targetWID);
+	CHECK(loaded.lastMoveGoal == active.lastMoveGoal);
+	CHECK(loaded.attackParams.targetPoint == active.attackParams.targetPoint);
+	CHECK(loaded.stage == active.stage);
+	CHECK(loaded.statusCode == active.statusCode);
+	CHECK(loaded.time == active.time);
+	CHECK(loaded.moveParams.wayPath.curPoint == 2);
+}
 namespace {
 struct ChunkScope {
 	long stride = gTerrainPartIdStride;
@@ -81,4 +106,75 @@ TEST_CASE("terrain chunks distinguish big-map cells with identical low 20 bits")
 	CHECK(terrain_part_chunk::unpack(b) == alias);
 	CHECK(terrain_part_chunk::unpack(c) == corner);
 	CHECK_FALSE(terrain_part_chunk::unpack(c + 1).has_value());
+}
+
+TEST_CASE("v2 queued targets survive stock and big map save load with a fresh registry") {
+	ChunkScope scope;
+	for (long side : {720L, 3072L}) {
+		gTerrainPartIdStride = side;
+		const long part = MIN_TERRAIN_PART_ID + side * side - 1;
+		const auto compact = terrain_part_chunk::pack(part);
+		// The watch table is restored by ObjectManager::Load; the queue carries its
+		// full watch identity, never the process-local terrain registry index.
+		SavedQueueTargets saved{{70001, 0, 80002}};
+		mc2::save::Archive write;
+		write(saved);
+		REQUIRE(write.good());
+		terrain_part_chunk::registry() = {};
+		terrain_part_chunk::pack(MIN_TERRAIN_PART_ID + 99);
+		if (side > 1024) CHECK(terrain_part_chunk::unpack(compact) != part);
+		SavedQueueTargets loaded;
+		REQUIRE(mc2::save::decodeRecord(write.bytes(), loaded));
+		CHECK(loaded.targets == saved.targets);
+	}
+}
+
+TEST_CASE("v2 queued target codec rejects overflow truncation and unknown versions") {
+	SavedQueueTargets saved;
+	saved.targets.resize(17);
+	mc2::save::Archive tooMany;
+	tooMany(saved);
+	CHECK_FALSE(tooMany.good());
+	saved.targets.resize(16, 70001);
+	mc2::save::Archive write;
+	write(saved);
+	auto bytes = write.bytes();
+	SavedQueueTargets loaded;
+	bytes.pop_back();
+	CHECK_FALSE(mc2::save::decodeRecord(bytes, loaded));
+	bytes = write.bytes();
+	bytes[4] = 3;
+	CHECK_FALSE(mc2::save::decodeRecord(bytes, loaded));
+}
+
+TEST_CASE("v2 order paths retain 256 steps and a cursor beyond the legacy byte count") {
+	SavedQueueTargets saved;
+	saved.globalPath.resize(MAX_GLOBAL_PATH);
+	saved.lastGoalPath.assign(MAX_GLOBAL_PATH, 29999);
+	saved.curGlobalStep = 200;
+	for (auto& step : saved.globalPath) {
+		step.startDoor = -1;
+		step.thruArea = 29999;
+		step.goalDoor = 32765;
+		step.start = glm::vec3(-60000.0f, 50000.0f, 0.0f);
+		step.goal = glm::vec3(60000.0f, -50000.0f, 0.0f);
+		step.goalCell[0] = step.goalCell[1] = 3071;
+		step.costToGoal = 1000000;
+	}
+	mc2::save::Archive write;
+	write(saved);
+	REQUIRE(write.good());
+	SavedQueueTargets loaded;
+	REQUIRE(mc2::save::decodeRecord(write.bytes(), loaded));
+	CHECK(loaded.globalPath.size() == MAX_GLOBAL_PATH);
+	CHECK(loaded.curGlobalStep == 200);
+	CHECK(loaded.lastGoalPath == saved.lastGoalPath);
+	CHECK(loaded.globalPath.back().thruArea == 29999);
+	CHECK(loaded.globalPath.back().goalDoor == 32765);
+	CHECK(loaded.globalPath.back().goalCell[1] == 3071);
+	CHECK(loaded.globalPath.back().goal == saved.globalPath.back().goal);
+	saved.globalPath.resize(MAX_GLOBAL_PATH + 1);
+	mc2::save::Archive overflow;
+	overflow(saved);
+	CHECK_FALSE(overflow.good());
 }

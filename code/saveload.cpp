@@ -18,6 +18,8 @@
 #include "mc2_dialog.h"
 #include "../GameAdapters/MechRenderAdapter.h"
 extern float MaxExtractUnitDistance;
+// Old readers must reject extended warrior packets before reading their native prefix.
+static constexpr char orderSaveVersion[] = "MC2SAVE.WQT2";
 //----------------------------------------------------------------------------------------------------
 // Save.
 void Part::Save (FitIniFilePtr file, long partNum)
@@ -104,10 +106,13 @@ void Mission::save (const char *saveFileName)
 
 	loadProgress = 1.0f;
 
-	saveFile.reserve(20000);
+	// MOVE's count-only writer includes the map's door packets. A fixed 20000
+	// slots cannot hold a big map plus its objects and pilot records.
+	saveFile.reserve(std::max(20000L, MOVE_saveData(nullptr, 0) + ObjectManager->getMaxObjects() +
+		MAX_WARRIORS + MAX_TEAMS + MAX_COMMANDERS + 32));
 	DWORD currentPacket = 0;
 
-	saveFile.writePacket(currentPacket,reinterpret_cast<MemoryPtr>(versionStamp),strlen(versionStamp)+1,STORAGE_TYPE_RAW);
+	saveFile.writePacket(currentPacket,reinterpret_cast<MemoryPtr>(const_cast<char*>(orderSaveVersion)),sizeof(orderSaveVersion),STORAGE_TYPE_RAW);
 	currentPacket++;
 
 	saveFile.writePacket(currentPacket,reinterpret_cast<MemoryPtr>(const_cast<char*>(cmpName)),strlen(cmpName)+1, STORAGE_TYPE_RAW);
@@ -449,10 +454,11 @@ bool Mission::openSaveFile(MissionLoadFrame& f) {
 
 	char versionCheck[1024]{};
 	loadFile.seekPacket(currentPacket);
-	const auto versionSize = strlen(versionStamp) + 1;
-	if (loadFile.getPacketSize() != versionSize ||
+	const auto versionSize = loadFile.getPacketSize();
+	if (versionSize <= 0 || versionSize > sizeof(versionCheck) ||
 		loadFile.readPacket(currentPacket, reinterpret_cast<MemoryPtr>(versionCheck)) != versionSize ||
-		memcmp(versionCheck, versionStamp, versionSize) != 0) {
+		!((versionSize == sizeof(orderSaveVersion) && memcmp(versionCheck, orderSaveVersion, versionSize) == 0) ||
+		  (versionSize == strlen(versionStamp) + 1 && memcmp(versionCheck, versionStamp, versionSize) == 0))) {
 		mc2::fmt::print_err("[SAVE v1] event=reject reason=version file={}\n", mc2::fmt::safe(loadFileName));
 		f.incompatibleSave = true;
 		return true;
