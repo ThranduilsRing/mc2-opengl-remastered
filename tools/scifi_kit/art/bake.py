@@ -15,9 +15,13 @@ CLASSES = {'paint':'painted_metal','corr':'painted_metal','hazard':'painted_meta
            'metal':'bare_metal','grate':'grating','ferro':'concrete','glass':'glass',
            'wood':'wood','canvas':'fabric','rubber':'rubber','gravel':'dielectric',
            'char':'dielectric','veg':'dielectric','lamp':'emissive','lamp_red':'emissive'}
-BUDGETS = {'rpbuilding':18000,'quonsetclean':14000,'quonset':14000,
-           'lookouttower':14000,'razorwirefence':10000,'s_lightwall':6000,
-           'crateswithtarp':10000,'barrels':5000}
+BUDGETS = {'rpbuilding':15000,'quonsetclean':8000,'quonset':8000,
+           'lookouttower':8000,'razorwirefence':3000,'s_lightwall':3000,
+           'crateswithtarp':3000,'barrels':3000}
+
+
+def budget(name):
+    return BUDGETS.get(name,3000)
 
 
 def select(active, others=()):
@@ -88,7 +92,7 @@ def export(ob,path,nodes,k,condition):
     from content import source_lights
     source_lights(path,k.meta['stock'],condition)
     path.with_suffix('.asset.json').write_text(json.dumps(dict(frame='gltf',wu_per_unit=4,
-        license='Original MC2 kit geometry and authored shaders; CC0 Poly Haven concrete detail',
+        license='Original MC2 kit geometry and authored shaders; CC0 Poly Haven base detail',
         source_url='local:tools/scifi_kit/art',condition=condition,
         stock=k.meta['stock'],light_schema='mc2-building-light/1'),indent=2))
 
@@ -112,9 +116,9 @@ def bake(objs,k,condition,out,res=2048):
     import geo,assemble,sys
     blend=sys.modules['__main__']
     canonical=out/f'quonsetclean_{condition}_lod0.glb'
-    shared=k.meta['stock']=='quonset' and condition=='partial' and canonical.is_file()
-    if k.meta['stock']=='quonset' and condition=='partial' and not shared:
-        raise ValueError('Build the clean quonset intermediate first; the rust palette shares that mesh and UVs')
+    shared=k.meta['stock']=='quonset' and canonical.is_file()
+    if k.meta['stock']=='quonset' and not shared:
+        raise ValueError('Build the matching clean quonset state first; the rust palette shares its mesh and UVs')
     # Regenerate the same assembly with flat corrugation carriers and simplified
     # tubes. Never quadric-collapse the disconnected thin high-detail sheets.
     if shared:
@@ -152,7 +156,6 @@ def bake(objs,k,condition,out,res=2048):
         planar=low.modifiers.new('Remove coplanar damage tessellation','DECIMATE')
         planar.decimate_type='DISSOLVE';planar.angle_limit=.005
         planar.delimit={'MATERIAL'};bpy.ops.object.modifier_apply(modifier=planar.name)
-        reduce_on_surface(low,BUDGETS[k.meta['stock']])
     # Align material indices to the high source before installing atlas targets.
     oldslots=list(low.data.materials);indices=[sources_index.name for sources_index in oldslots]
     polygon_indices=[p.material_index for p in low.data.polygons]
@@ -162,17 +165,25 @@ def bake(objs,k,condition,out,res=2048):
     if shared:
         import re
         by_key={mat.name.split('|')[0]:i for i,mat in enumerate(high.data.materials)}
-        lookup={n:by_key[re.sub(r'\.\d{3}$','',n.removeprefix('quonsetclean_partial_'))] for n in indices}
+        lookup={n:by_key[re.sub(r'\.\d{3}$','',n.removeprefix(f'quonsetclean_{condition}_'))] for n in indices}
     for p,index in zip(low.data.polygons,polygon_indices):p.material_index=lookup[indices[index]]
     # Two-segment game bevels retain a rounded catch at intermediate zoom; the
     # three-segment source and shader grain supply the remaining atlas detail.
     select(low)
-    if condition!='partial':
+    if condition!='partial' and not shared:
         bevel=low.modifiers.new('Game edge catches','BEVEL');bevel.width=.018
         bevel.segments=2;bevel.limit_method='ANGLE';bevel.angle_limit=.7
         bpy.ops.object.modifier_apply(modifier=bevel.name)
     # Triangulate before baking to freeze the tangent basis used by the exporter.
     if not shared:
+        # Enforce the class budget AFTER bevels, BEFORE UVs and the actual bake.
+        # The headroom covers Blender's final triangulation of collapsed faces.
+        target=budget(k.meta['stock'])
+        for attempt in range(4):
+            if triangles(low)<=target:break
+            reduce_on_surface(low,int(target*.97))
+        if triangles(low)>target:
+            raise ValueError(f'{name}: {triangles(low)} exceeds budget {target}')
         mod=low.modifiers.new('Stable atlas tangent basis','TRIANGULATE')
         bpy.ops.object.modifier_apply(modifier=mod.name)
         bpy.ops.object.mode_set(mode='EDIT');bpy.ops.mesh.select_all(action='SELECT')
@@ -232,6 +243,10 @@ def bake(objs,k,condition,out,res=2048):
     # Shared atlas, separate material classes for each original authored surface.
     for mat,node in zip(targets,bake_nodes):
         nt=mat.node_tree;bs=nt.nodes.get('Principled BSDF')
+        if mat['mc2_material_class']=='emissive' and condition in ('pristine','worn'):
+            red='lamp_red' in mat.name
+            bs.inputs['Emission Color'].default_value=(1,.04,.02,1) if red else (1,.78,.30,1)
+            bs.inputs['Emission Strength'].default_value=2.
         node.image=maps['basecolor'];nt.links.new(node.outputs['Color'],bs.inputs['Base Color'])
         normal=nt.nodes.new('ShaderNodeTexImage');normal.image=maps['normal']
         nm=nt.nodes.new('ShaderNodeNormalMap');nt.links.new(normal.outputs[0],nm.inputs['Color']);nt.links.new(nm.outputs[0],bs.inputs['Normal'])
@@ -276,7 +291,7 @@ def bake(objs,k,condition,out,res=2048):
         lods.append(dict(path=path.as_posix(),triangles=stored_tris,distance_wu=(0,350,700)[i]))
         if i:ob.hide_render=True;ob.hide_set(True)
     result=dict(asset=k.meta['stock'],condition=condition,atlas_resolution=res,
-                high_triangles=triangles(high),lods=lods,
+                high_triangles=triangles(high),triangle_budget=budget(k.meta['stock']),lods=lods,
                 maps={key:(out/(name+'_'+key+'.png')).as_posix() for key in ('basecolor','normal','orm')},
                 lights=light_specs(k,condition),material_classes=sorted(set(m['mc2_material_class'] for m in targets)))
     (out/(name+'-bake.json')).write_text(json.dumps(result,indent=2))

@@ -499,8 +499,8 @@ def build(name, condition, seed=17):
 def run(a, out, blender):
     names = a.only.split(',') if a.only else list(DRAFTS)
     conds = a.conditions.split(',')
-    if 'quonset' in names and 'partial' in conds and 'quonsetclean' not in names:
-        if not (out/a.tag/'pbr/quonsetclean_partial_lod0.glb').is_file():
+    if 'quonset' in names and 'quonsetclean' not in names:
+        if any(not (out/a.tag/f'pbr/quonsetclean_{c}_lod0.glb').is_file() for c in conds):
             names.insert(0,'quonsetclean')
     job = {'kind': 'assembly', 'tag': a.tag, 'out': str(out / a.tag), 'assemblies': names, 'conditions': conds, 'samples': a.samples, 'export': not a.no_export}
     blender(job, out / 'logs' / f'{a.tag}.log')

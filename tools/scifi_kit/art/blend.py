@@ -188,6 +188,9 @@ def material(key, palette_name, cond_name):
     streak = b.mul(b.remap(streak_n, .48, .72), vertical)
     height_dirt = b.mul(b.remap(z, 1.6, 0.0), b.remap(b.noise(P, 1.3, 4), .3, .65, .45, 1.0))
     dmg_attr = b.node('ShaderNodeAttribute', attribute_name='dmg').outputs['Fac']
+    # Streaks originate at panel tops (fasteners, laps, sills) and fade over ~1.4 m.
+    seam_attr = b.node('ShaderNodeAttribute', attribute_name='seamd').outputs['Fac']
+    streak = b.mul(streak, b.remap(seam_attr, 0.0, 1.4, 1.0, 0.18))
 
     base = pal.get(slot) if slot in pal else None
     metallic, rough = LANG['material_classes'].get(cls, {'metallic': 0, 'roughness': .7})['metallic'], LANG['material_classes'].get(cls, {'roughness': .7})['roughness']
@@ -199,8 +202,8 @@ def material(key, palette_name, cond_name):
     if cls in ('paint', 'corr', 'hazard'):
         if cls == 'hazard':
             add3 = b.node('ShaderNodeVectorMath', operation='DOT_PRODUCT')
-            b.feed(add3.inputs[0], P)
-            add3.inputs[1].default_value = (1, .6, 1)
+            b.feed(add3.inputs[0], tc.outputs['UV'] if slot=='wrap' else P)
+            add3.inputs[1].default_value = (5.28, .44, 0) if slot=='wrap' else (1, .6, 1)
             ping = b.math('PINGPONG', add3.outputs['Value'], .22)
             stripe = b.math('GREATER_THAN', ping, .11)
             col = b.mix(stripe, (0.025, 0.025, 0.022), tuple(pal['accent']))
@@ -331,6 +334,22 @@ def material(key, palette_name, cond_name):
         col = b.mix(b.mul(heat, .5), col, (0.10, 0.05, 0.025))
         rough_s = b.mixf(soot, rough_s, .95)
         metallic = b.mixf(soot, metallic, 0.0)
+    # CC0 base sources contribute grain/roughness without replacing MC2 colour.
+    from material_sources import lookup
+    source=lookup(key)
+    if source:
+        tex=b.node('ShaderNodeTexImage');tex.image=image(source['colour'])
+        tex.projection='BOX';tex.projection_blend=.15
+        b.feed(tex.inputs['Vector'],b.vscale(P,(.35,.35,.35)))
+        bw=b.node('ShaderNodeRGBToBW');b.feed(bw.inputs[0],tex.outputs['Color'])
+        grain=b.remap(bw.outputs[0],.05,.85,.72,1.15)
+        col=b.mix(.30,col,b.mix(1.,col,grain,blend='MULTIPLY'))
+        mat['mc2_base_source']=str(source['colour'])
+        if source.get('height') and source['height'].is_file():
+            hx=b.node('ShaderNodeTexImage');hx.image=image(source['height'],True)
+            hx.projection='BOX';hx.projection_blend=.15
+            b.feed(hx.inputs['Vector'],b.vscale(P,(.35,.35,.35)))
+            bump_h=b.add(bump_h if bump_h is not None else grunge,b.mul(hx.outputs['Color'],.6))
     b.feed(bs.inputs['Base Color'], col)
     b.feed(bs.inputs['Metallic'], metallic)
     b.feed(bs.inputs['Roughness'], rough_s)
@@ -352,12 +371,17 @@ ROLES = ['mass', 'skin', 'frame', 'roof', 'glass', 'detail']
 
 
 def mesh_from_pieces(name, pieces, palette, cond_name, collection, role):
-    verts, faces, mats, keys = [], [], [], []
+    verts, faces, mats, keys, uvs, seam = [], [], [], [], [], []
     for pc in pieces:
         off = len(verts)
         verts += pc['v']
+        # Distance below the piece's top edge: fastener rows and laps sit at
+        # panel tops, so rust and dirt streaks start there and fade downward.
+        top = max(v[2] for v in pc['v'])
+        seam += [top - v[2] for v in pc['v']]
         for f in pc['f']:
             faces.append(tuple(off + i for i in f))
+            uvs.append([pc.get('uv',[(0.,0.)]*len(pc['v']))[i] for i in f])
             if pc['m'] not in keys:
                 keys.append(pc['m'])
             mats.append(keys.index(pc['m']))
@@ -365,6 +389,12 @@ def mesh_from_pieces(name, pieces, palette, cond_name, collection, role):
     me.from_pydata(verts, [], faces)
     me.validate(clean_customdata=False)
     me.update()
+    if len(me.vertices) == len(seam):
+        attr = me.attributes.new('seamd', 'FLOAT', 'POINT')
+        attr.data.foreach_set('value', seam)
+    uv=me.uv_layers.new(name='UVMap')
+    for poly,coords in zip(me.polygons,uvs):
+        for loop,co in zip(poly.loop_indices,coords):uv.data[loop].uv=co
     for key in keys:
         me.materials.append(material(key, palette, cond_name))
     for poly, mi in zip(me.polygons, mats):
@@ -896,6 +926,12 @@ def assembly_job(job):
             cam.data.ortho_scale, cam.location, cam.rotation_euler = framing[0], framing[1], framing[2]
             render(out / f'{name}_{cond}_beauty.png', (1100, 760), job.get('samples', 48))
             if cond == 'pristine':
+                scene.render.film_transparent=True
+                scene.render.image_settings.color_mode='RGBA'
+                bpy.data.objects['ground'].hide_render=True
+                render(out/f'{name}_palette.png',(440,304),16)
+                bpy.data.objects['ground'].hide_render=False
+                scene.render.film_transparent=False
                 frame_camera(cam, [low] if baked else list(objs.values()), direction=(-1.0, -1.25, 2.4), margin=2.6, aspect=2.0)
                 # One world scale across the batch: 0.24 authoring m per pixel.
                 # This is a declared RTS proxy, not a runtime camera capture.

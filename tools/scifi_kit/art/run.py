@@ -34,9 +34,12 @@ def blender(job, log):
     cmd = [str(find_blender_exe()), '--background', '--factory-startup', '--threads', '2', '--python-exit-code', '1',
            '--python', str(HERE / 'blend.py'), '--', str(path)]
     print('[art]', ' '.join(cmd), flush=True)
-    flags = 0x00004000 | 0x08000000  # BELOW_NORMAL_PRIORITY_CLASS | CREATE_NO_WINDOW
+    sys.path.insert(0,str(ROOT/'scripts'))
+    from console_child import child_kwargs
+    kwargs=child_kwargs(redirected=True)
+    kwargs['creationflags']=kwargs.get('creationflags',0)|0x00004000
     with log.open('w', encoding='utf-8') as fh:
-        proc = subprocess.Popen(cmd, stdout=fh, stderr=subprocess.STDOUT, creationflags=flags)
+        proc = subprocess.Popen(cmd, stdout=fh, stderr=subprocess.STDOUT, **kwargs)
         try:
             cores = list(range(psutil.cpu_count()))
             psutil.Process(proc.pid).cpu_affinity(cores[2:4])
