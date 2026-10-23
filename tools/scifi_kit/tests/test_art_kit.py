@@ -11,6 +11,16 @@ import geo  # noqa: E402
 CONDITIONS = ['pristine', 'worn', 'abandoned', 'destroyed']
 
 
+def _parked(fn, *a):
+    """Build, or skip an asset whose stock shape needs a builder capability that does not exist yet (state needs_builder)."""
+    try:
+        return fn(*a)
+    except ValueError as exc:
+        if str(exc).startswith('needs_builder:'):
+            pytest.skip(str(exc))
+        raise
+
+
 def _valid(k):
     assert k.pieces
     for pc in k.pieces:
@@ -35,7 +45,7 @@ def test_primitives_build(name, cond):
 @pytest.mark.parametrize('name', list(assemble.ASSEMBLIES))
 def test_assemblies_build(name):
     for cond in ('pristine', 'destroyed'):
-        k = assemble.build(name, cond)
+        k = _parked(assemble.build, name, cond)
         _valid(k)
         assert k.meta['palette'] in geo.LANG['palettes']
 
@@ -93,7 +103,7 @@ def test_tarp_drapes_over_the_wood_everywhere():
 @pytest.mark.parametrize('cond', STATES)
 def test_high_and_game_damage_in_lockstep(name, cond):
     drafts.FIT_CACHE.clear()
-    hi = drafts.build(name, cond)
+    hi = _parked(drafts.build, name, cond)
     lo = _game(name, cond)
     _valid(hi)
     _valid(lo)
@@ -105,14 +115,19 @@ def test_high_and_game_damage_in_lockstep(name, cond):
 def test_game_carrier_leaves_bevel_headroom(name):
     import bake_budget
     for cond in STATES:
-        lo = _game(name, cond)
+        lo = _parked(_game, name, cond)
         tris = sum(sum(len(f) - 2 for f in p['f']) for p in lo.pieces)
         assert tris <= bake_budget.BUDGETS.get(name, 3000), (name, cond, tris)
 
 
 def test_rubble_is_volumetric():
     for name in drafts.BUILDINGS:
-        k = drafts.build(name, 'destroyed')
+        try:
+            k = drafts.build(name, 'destroyed')
+        except ValueError as exc:
+            if str(exc).startswith('needs_builder:'):
+                continue
+            raise
         top = max(v[2] for p in k.pieces for v in p['v'])
         assert top > .14 * drafts.SIZES[name][2], name
         assert any(p['role'] == 'frame' for p in k.pieces), 'rubble keeps a bent frame'

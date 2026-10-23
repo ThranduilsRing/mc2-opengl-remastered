@@ -23,12 +23,14 @@ import archetypes
 
 HERE = Path(__file__).resolve().parent
 THRESH = HERE / 'assets' / 'validate_thresholds.json'
-THRESH_SHA = '786e2ebabb311ced'        # sha256[:16] of assets/validate_thresholds.json; `validate --calibrate` prints the new value to paste here
+THRESH_SHA = 'ff9c0abac8a80088'        # sha256[:16] of assets/validate_thresholds.json; `validate --calibrate` prints the new value to paste here
 PALETTE_DE = 18.0                       # per-slot and area-weighted mean: the approved closed solids top out at about 14
 SIZE_TOL = .02
-WAIVER_KEYS = dict(archetype=(), size=(), counts=('field',), features=('side', 'kind'), palette=('slot',), fit=('axis',), silhouette=('view',),
-                   round=('part',), lod=())
-CODE_FILES = ('contract.py', 'validate.py', 'archetypes.py', 'arch_props.py', 'batch3.py', 'drafts.py', 'geo.py', 'npviews.py', 'analyze.py', 'bake.py', 'blend.py', 'lang.json')
+WAIVER_KEYS = dict(counts=('field',), features=('side', 'kind'), palette=('slot',), lod=())
+# gross-shape checks: never waived. A builder that cannot reach them sends the asset to state needs_builder (batch), not to a waiver.
+STRUCTURAL = ('archetype', 'size', 'fit', 'silhouette', 'round', 'shape', 'footprint', 'roof')
+SHAPE_BUILT = ('box', 'tank')           # archetypes whose gross shape is built from shape.json (shell.py)
+CODE_FILES = ('shape.py', 'shell.py', 'contract.py', 'validate.py', 'archetypes.py', 'arch_props.py', 'batch3.py', 'drafts.py', 'geo.py', 'npviews.py', 'analyze.py', 'bake.py', 'blend.py', 'lang.json')
 
 
 # ------------------------------------------------------------------ hashes
@@ -72,6 +74,9 @@ def waiver_problems(p):
         return ['waiver: params.waivers must be a list of {check, <keys>, reason}']
     for w in ws:
         chk = w.get('check') if isinstance(w, dict) else None
+        if chk in STRUCTURAL:
+            out.append(f'waiver: {chk} is a structural check and cannot be waived; if the builder cannot reach the stock shape the asset is needs_builder')
+            continue
         if chk not in WAIVER_KEYS:
             out.append(f'waiver: unknown check {chk!r} (allowed: {", ".join(WAIVER_KEYS)})')
             continue
@@ -84,6 +89,8 @@ def waiver_problems(p):
 
 
 def waived(p, check, **q):
+    if check in STRUCTURAL:
+        return False
     for w in p.get('waivers', []):
         if isinstance(w, dict) and w.get('check') == check and len(str(w.get('reason', '')).strip()) >= 15 and all(w.get(k) == v for k, v in q.items()):
             return True
@@ -114,6 +121,16 @@ def analysis_intact(name):
     if cur != fresh:
         keys = sorted(k for k in set(cur) | set(fresh) if cur.get(k) != fresh.get(k))
         return [f'integrity: {name}.analysis.json differs from the stock re-derivation in {keys}; analysis is evidence, not an editable input']
+    return []
+
+
+def shape_intact(name):
+    """shape.json must equal what the stock mesh derives today (shape.py); like analysis.json it is evidence, not an input."""
+    sp = analyze.ASSETS / f'{name}.shape.json'
+    if not sp.is_file():
+        return [f'integrity: {name}.shape.json is missing (run `run.py analyze {name}`)']
+    if json.loads(sp.read_text()) != analyze.shape_of(name):
+        return [f'integrity: {name}.shape.json differs from the stock re-derivation (shape.py); the shape is evidence, not an editable input']
     return []
 
 
@@ -189,6 +206,7 @@ def pre_gate(name, p, deep=True):
     a = json.loads(ap.read_text())
     if deep:
         fails += analysis_intact(name)
+        fails += shape_intact(name)
     arch = p.get('archetype')
     # --- archetype lock
     row = analyze.inventory_row(name)
@@ -196,8 +214,8 @@ def pre_gate(name, p, deep=True):
     met['archetype'] = cls
     if cls == 'manual':
         fails.append(f'archetype: {name} classifies as manual (turret/dropship/...): it is not batch-built (TODO turret part-identity gate)')
-    elif arch != cls and not waived(p, 'archetype'):
-        fails.append(f'archetype: params say {arch!r} but classify/analysis evidence says {cls!r}; the archetype is locked (waive {{check:archetype, reason}} only with a stock-evidence reason)')
+    elif arch != cls:
+        fails.append(f'archetype: params say {arch!r} but classify/analysis evidence says {cls!r}; the archetype is locked (structural: not waivable)')
     fails += check_schema(p, arch)
     if arch in archetypes.DIM_KEYS:
         pass
@@ -208,8 +226,7 @@ def pre_gate(name, p, deep=True):
     bs = a['bounds']['size_m']
     sz = p.get('size', [])
     if len(sz) != 3 or any(abs(x - y) > SIZE_TOL * max(y, .05) for x, y in zip(sz, bs)):
-        if not waived(p, 'size'):
-            fails.append(f'size: params.size {list(sz)} differs from the stock bounds {bs} by more than {SIZE_TOL:.0%} (waive {{check:size, reason}} with stock evidence)')
+        fails.append(f'size: params.size {list(sz)} differs from the stock bounds {bs} by more than {SIZE_TOL:.0%} (structural: not waivable)')
     # --- evidence + counts
     fails += evidence_ok(p, a, cls if cls != 'manual' else arch)
     ev = archetypes.evidence_of(a, arch)['counts']
@@ -227,6 +244,13 @@ def pre_gate(name, p, deep=True):
     for f in ev:
         if f in ('doors', 'windows', 'openings_bays') and ev[f] and f not in tagged and not waived(p, 'counts', field=f):
             fails.append(f'counts: the stock shows {ev[f]} painted {f} but {arch} models cannot carry/verify them; waive {{check:counts, field:{f}, reason}} if that is right')
+    # --- builder capability for the stock shape (shape-built archetypes): a missing capability is needs_builder, not a params fix
+    if arch in SHAPE_BUILT and (analyze.ASSETS / f'{name}.shape.json').is_file():
+        import shell
+        S = json.loads((analyze.ASSETS / f'{name}.shape.json').read_text())
+        why = shell.unsupported(S, arch)
+        if why and not (arch == 'tank' and S['footprint']['kind'] == 'circle'):
+            fails.append(f'needs_builder: {why}')
     # --- palette
     pf, pm = check_palette(p, a)
     fails += pf

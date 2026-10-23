@@ -257,18 +257,42 @@ def tank(k, p):
     """Footing ring -> legs or skirt -> stiffener rings -> shell plates by course -> roof cap -> hazard band, ladder, catwalk."""
     w, d, h = p['size']
     n = max(1, n_of(p, 'tanks', 1))
+    import shell as shellmod
+    S = shellmod.load(p['asset'])
+    if S is not None and S['footprint']['kind'] != 'circle':
+        why = shellmod.unsupported(S, 'tank') or (None if n == 1 else f'tank: {n} tanks on a {S["footprint"]["kind"]} plan')
+        if why:
+            raise ValueError(f'needs_builder: {why}')
+        with k.tagged('tank:0'):
+            shellmod.build(k, p, S)
+        return
+    body = S['footprint'] if (S is not None and n == 1) else None      # the measured round body (may sit off the bbox centre)
     along_y = d >= w
     legs = int(D(p, 'legs', 0))
     leg_h = D(p, 'leg_h', h * .35 if legs else .5)
     cap_h = D(p, 'cap_h', min(h * .12, 2.5))
     R = min((w if along_y else d) / 2, ((d if along_y else w) / n) / 2) * .96
+    R_foot = R_waist = None
+    if body:            # body, waist and footing radii from the measured wall profile (the stock skirt narrows under the shell)
+        wp = S['wall_profile']
+        ip = lambda kn, t: next((v0 + (v1 - v0) * (t - t0) / max(t1 - t0, 1e-9) for (t0, v0), (t1, v1) in zip(kn, kn[1:]) if t <= t1), kn[-1][1])  # noqa: E731
+        rad = lambda t: (ip(wp['x'], t) * w / 2 + ip(wp['y'], t) * d / 2) / 2  # noqa: E731
+        R = rad(1.0)
+        R_foot = max(min(body['radii']), R)
+        R_waist = min(R, min(rad(t / 20) for t in range(1, 8)))
     shell = h - leg_h - cap_h
+    cone = bool(body and S['roof']['model'] == 'inset')
+    if cone:            # the measured body: walls to the stock eave, a conical roof to the stock roof top (not the bbox top)
+        cap_h = max(.3, S['roof']['top'] - S['roof']['eave'])
+        shell = max(1.0, S['roof']['eave'] - leg_h)
     N = 28 if geo.GAME_MESH else 56          # truly round: no era faceting
     for i in range(n):
         c = -(d if along_y else w) / 2 + ((d if along_y else w) / n) * (i + .5)
         cx, cy = (0.0, c) if along_y else (c, 0.0)
+        if body:
+            cx, cy = body['center']
         with k.tagged(f'tank:{i}'):
-            k.prism(geo.reg_poly(R + .25, N, cx=cx, cy=cy), 0, .3, 'ferro', 'mass', top=C(.08), part='footing')
+            k.prism(geo.reg_poly(R_foot or R + .25, N, cx=cx, cy=cy), 0, .3, 'ferro', 'mass', top=C(.08), part='footing')
             if legs:
                 for q in range(legs):
                     a = q * math.tau / legs + math.pi / legs
@@ -281,13 +305,13 @@ def tank(k, p):
                     kit.ibeam(k, (p0[0], p0[1], .4), (p1[0], p1[1], leg_h * .62), d=.12, w=.08)
                     kit.ibeam(k, (p1[0], p1[1], .4), (p0[0], p0[1], leg_h * .62), d=.12, w=.08)
             else:
-                k.prism(geo.reg_poly(R * .96, N, cx=cx, cy=cy), .3, leg_h, 'ferro', 'mass', top=C(.05))
+                k.prism(geo.reg_poly(R_waist or R * .96, N, cx=cx, cy=cy), .3, leg_h, 'ferro', 'mass', top=C(.05))
             k.prism(geo.reg_poly(R + .06, N, cx=cx, cy=cy), leg_h - .12, leg_h + .12, 'paint.trim', 'frame')
             courses = max(2, round(shell / 2.6))
             ch = shell / courses
             for c_ in range(courses):
                 z0 = leg_h + c_ * ch
-                per = 8 if not geo.GAME_MESH else 6
+                per = 6          # removable plates: identical on the high source and the game carrier (uid lockstep)
                 for s_ in range(per):
                     th0 = s_ * math.tau / per + (c_ % 2) * math.pi / per
                     arc_plate(k, R, th0 - .01, th0 + math.tau / per + .01, z0 + .01, z0 + ch - .01, .05 + .012 * ((s_ + c_) % 2), 'paint.main', cx, cy, removable=True)
@@ -295,8 +319,11 @@ def tank(k, p):
             if D(p, 'band', True):
                 with k.at((cx, cy, 0)):
                     kit.wrapped_band(k, R + .02, leg_h + shell * .42, leg_h + shell * .62, 0.0, 1.6)
-            k.cyl((cx, cy, leg_h + shell + cap_h * .25), R * .98, cap_h * .5, 'paint.second', 'skin', sides=N, top=C(R * .15), removable=True)
-            k.cyl((cx, cy, leg_h + shell + cap_h * .75), R * .55, cap_h * .5, 'paint.second', 'skin', sides=N, top=C(R * .1), removable=True)
+            if cone:
+                k.prism(geo.reg_poly(R * 1.01, N, cx=cx, cy=cy), leg_h + shell, leg_h + shell + cap_h, 'paint.roof', 'roof', top=R * .9, top_h=cap_h, removable=True)
+            else:
+                k.cyl((cx, cy, leg_h + shell + cap_h * .25), R * .98, cap_h * .5, 'paint.second', 'skin', sides=N, top=C(R * .15), removable=True)
+                k.cyl((cx, cy, leg_h + shell + cap_h * .75), R * .55, cap_h * .5, 'paint.second', 'skin', sides=N, top=C(R * .1), removable=True)
             # access: ladder up the shell and a catwalk ring (detail)
             for z in range(1, int(shell / .35)):
                 k.box((cx + R + .05, cy, leg_h + z * .35), (.05, .4, .05), 'metal', 'detail')
@@ -304,6 +331,8 @@ def tank(k, p):
             k.box((cx + R + .12, cy + .2, leg_h + shell / 2), (.05, .05, shell), 'metal', 'detail')
             k.moss_sites.append(((cx - R, cy - R - .3, .3), (cx + R, cy - R - .3, .3)))
     k.hits.append(dict(p=(0, 0, leg_h + shell * .45), d=(0, -1, 0), r=max(2.0, R * .9), depth=0, sag=.3))
+    if body:            # measured side/rooftop features (the stock's oval side cylinder, vents) at their stock positions
+        shellmod._features(k, S, h)
 
 
 # ------------------------------------------------------------------ turret

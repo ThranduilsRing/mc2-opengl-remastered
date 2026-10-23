@@ -176,174 +176,13 @@ def apply_batter(k, h, px, py, first=0):
 
 # ------------------------------------------------------------------ box building
 def box_building(k, p):
-    """Podium -> columns and roof framing -> girts/purlins -> lapped skin panels -> openings -> roof -> trim -> fasteners."""
-    from assemble import infantry_door_parts, rollup
-    w, d, h = p['size']
-    g = p.get('dims', {})
-    det = p.get('detail', {})
-    roof = g.get('roof', 'flat')
-    rise = g.get('rise', 0.0) if roof != 'flat' else 0.0
-    eave = g.get('eave_h') or (h - rise - (.45 if roof == 'flat' else 0.0))      # flat: the roof sheets and parapet stand .45 m above the eave line
-    corr = g.get('skin', 'plate') == 'corr'
-    skin_mat = 'corr.corr' if corr else 'paint.main'
-    plinth = .45
-    t = .24
-    bay = g.get('bay_m', 4.5)
-    bx = int(g.get('bays_x') or max(1, round(w / bay)))
-    by = int(g.get('bays_y') or max(1, round(d / bay)))
-    feats = plan_features(p, w, d, eave)
-    # 1. podium / footing
-    k.box((0, 0, plinth / 2), (w + .3, d + .3, plinth), 'ferro', 'mass', ch=C(.08), top=C(.05), part='footing')
-    # 2. primary frame: perimeter columns on the bay lines + rafters across the short span
-    xs = [-w / 2 + t / 2 + (w - t) * i / bx for i in range(bx + 1)]
-    ys = [-d / 2 + t / 2 + (d - t) * j / by for j in range(by + 1)]
-    for x in xs:
-        for y in (ys[0], ys[-1]):
-            kit.ibeam(k, (x, y, plinth), (x, y, eave), d=.26, w=.16)
-    for y in ys[1:-1]:
-        for x in (xs[0], xs[-1]):
-            kit.ibeam(k, (x, y, plinth), (x, y, eave), d=.26, w=.16)
-    ridge_x = g.get('ridge_axis', 'y' if d >= w else 'x') == 'x'
-    span, run = (d, w) if ridge_x else (w, d)
-    nb = bx if ridge_x else by
-    npk = int(g.get('peaks', 1)) if roof == 'gable' else 1                # sawtooth/multi-gable: `peaks` gables side by side across the span
-    pk = [(-span / 2 + span / npk * (i + .5), span / npk / 2) for i in range(npk)]     # (centre, half span) of each gable in the ridge frame
-    rl = [-run / 2 + t / 2 + (run - t) * j / nb for j in range(nb + 1)]
-    with k.at((0, 0, 0), yaw=math.pi / 2 if ridge_x else 0.0):       # local frame: x across the ridge, y along it
-        for q in rl:
-            a0, b0 = (-span / 2 + t / 2, q, eave), (span / 2 - t / 2, q, eave)
-            if roof == 'flat':
-                kit.ibeam(k, a0, b0, d=.30, w=.16)
-            elif roof == 'mono':
-                kit.ibeam(k, a0, (b0[0], b0[1], eave + rise), d=.30, w=.16)
-            else:
-                for pc_, ph_ in pk:
-                    a1 = (pc_ - ph_ + (t / 2 if pc_ == pk[0][0] else 0.0), q, eave)
-                    b1 = (pc_ + ph_ - (t / 2 if pc_ == pk[-1][0] else 0.0), q, eave)
-                    m = (pc_, q, eave + rise)
-                    kit.ibeam(k, a1, m, d=.28, w=.15)
-                    kit.ibeam(k, m, b1, d=.28, w=.15)
-    # 3. secondary steel: wall girts behind the skin, roof purlins
-    girt_z = [plinth + (eave - plinth) * f for f in ((1 / 3, 2 / 3) if eave > 4 else (.5,))]
-    for z in girt_z:
-        cs = [(-w / 2 + t, -d / 2 + t, z), (w / 2 - t, -d / 2 + t, z), (w / 2 - t, d / 2 - t, z), (-w / 2 + t, d / 2 - t, z)]
-        for a, b in zip(cs, cs[1:] + cs[:1]):
-            kit.cee(k, a, b, d=.18, w=.06)
-    # 4. wall skin per face, hung on the frame, cut around the planned openings
-    skin_top = eave
-    rows = max(1, round((skin_top - plinth) / 3.0))
-    rh = (skin_top - plinth) / rows
-    face_len = {'front': w, 'rear': w, 'right': d, 'left': d}
-    insets = g.get('inset', False)
-    for side in SIDES:
-        o, yaw, L = face_frame(side, w, d)
-        lines = [-L / 2 + t / 2 + (L - t) * i / (bx if L == w else by) for i in range((bx if L == w else by) + 1)]
-        holes = []
-        for kind in ('door', 'bay', 'window'):
-            for f in feats[kind]:
-                if f['side'] == side:
-                    holes.append((f['at'] - f['w'] / 2 - .05, f['z'] - .05 if kind != 'window' else f['z'] - .05, f['at'] + f['w'] / 2 + .05, f['z'] + f['h'] + .05))
-        with k.at(o, yaw=yaw):
-            for i in range(len(lines) - 1):
-                for r in range(rows):
-                    a = lines[i] - (.03 if i else 0) - (.03 if i % 2 == 0 and i else 0)
-                    b = lines[i + 1] + (.03 if i < len(lines) - 2 else 0) + (.06 if i % 2 == 0 and i < len(lines) - 2 else 0)
-                    z0, z1 = plinth + r * rh - (.0 if r == 0 else .03), plinth + (r + 1) * rh
-                    proud = .014 * ((i + r) % 2)
-                    for q in subtract_rect((a, z0, b, z1), holes):
-                        if corr:
-                            k.corr_sheet(q[0], q[2], q[1], q[3], -.02 - proud, skin_mat, removable=True)
-                        else:
-                            k.slab(q[0], q[2], q[1], q[3], -.02 - proud, .03, skin_mat, 'skin', front=C(.012), removable=True)
-                            if insets and (i + r) % 2 == 0 and q[2] - q[0] > .9 and q[3] - q[1] > .9:
-                                k.slab(q[0] + .22, q[2] - .22, q[1] + .22, q[3] - .22, -.035 - proud, -.01, 'paint.second', 'skin', front=C(.015), rides=True)
-            # gable end triangle sits on the faces perpendicular to the ridge
-            if roof == 'gable' and ((side in ('front', 'rear')) != ridge_x):
-                for pc_, ph_ in pk:
-                    k.prism([(pc_ - ph_, eave), (pc_ + ph_, eave), (pc_, eave + rise)], -.02, .03, skin_mat, 'skin', axis='y', removable=True)
-            # openings: frame, leaf, glazing, lamp
-            for kind in ('door', 'bay', 'window'):
-                for idx, f in enumerate(feats[kind]):
-                    if f['side'] != side:
-                        continue
-                    with k.tagged(f'{kind}:{idx}'):
-                        with k.at((f['at'], 0, 0)):
-                            if kind == 'door':
-                                infantry_door_parts(k, f['w'], f['h'], apron=False)
-                            elif kind == 'bay':
-                                rollup(k, f['w'], f['h'], apron=False)
-                            else:
-                                k.window(-f['w'] / 2, f['w'] / 2, f['z'], f['z'] + f['h'], 0.0, mullions=1 if f['w'] > 1.0 else 0)
-            # corner trim + fastener rows along the girts
-            for z in girt_z:
-                kit.bolts(k, (-L / 2 + .3, -.06, z), (L / 2 - .3, -.06, z), pitch=.6)
-            k.moss_sites.append(((-L / 2 + .3, -.2, plinth), (L / 2 - .3, -.2, plinth)))
-            if det.get('service_panel', True) and side == 'rear':
-                k.service_panel(-L / 4, 1.7, w=.8, h=.55)
-    for sx in (-1, 1):
-        for sy in (-1, 1):
-            k.box((sx * (w / 2 - .04), sy * (d / 2 - .04), (plinth + eave) / 2), (.34, .34, eave - plinth), 'paint.trim', 'frame', ch=C(.03))
-    # 5. roof
-    lap = .06
-    if roof == 'flat':
-        nx, ny = max(1, bx), max(1, by)
-        sx_, sy_ = (w - .5) / nx, (d - .5) / ny
-        for i in range(nx):
-            for j in range(ny):
-                k.box((-w / 2 + .25 + (i + .5) * sx_, -d / 2 + .25 + (j + .5) * sy_, eave + .06), (sx_ - .01, sy_ - .01, .14), 'gravel', 'roof', removable=True, slab=(i, j))
-        for (cx, cy, sx2, sy2) in ((0, -d / 2 + .1, w + .3, .24), (0, d / 2 - .1, w + .3, .24), (-w / 2 + .1, 0, .24, d), (w / 2 - .1, 0, .24, d)):
-            k.box((cx, cy, eave + .3), (sx2, sy2, .30), 'paint.trim', 'frame', ch=C(.03), top=C(.03))
-        k.moss_sites.append(((-w / 2 + .4, -d / 2 + .4, eave + .13), (w / 2 - .4, -d / 2 + .4, eave + .13)))
-        for q in range(int(det.get('vents', 1))):
-            with k.at((w * (.18 - .3 * q), d * .12, eave + .13)):
-                k.hvac(1.8, 1.4, .9)
-    else:
-        ov = .35
-        roofmat = 'corr.corr' if (corr or g.get('roof_mat') == 'corr') else 'paint.roof'
-        with k.at((0, 0, 0), yaw=math.pi / 2 if ridge_x else 0.0):
-            for pi_, (pc_, ph_) in enumerate(pk if roof == 'gable' else [(0.0, span / 2)]):
-              for sgn in ((-1, 1) if roof == 'gable' else (1,)):
-                for j in range(nb):
-                    a0 = -run / 2 + run * j / nb - (lap if j else 0)
-                    a1 = -run / 2 + run * (j + 1) / nb
-                    if roof == 'gable':
-                        ovx = ov if ((sgn < 0 and pi_ == 0) or (sgn > 0 and pi_ == npk - 1)) else 0.0        # eaves overhang only at the building edge
-                        e = (pc_ + sgn * (ph_ + ovx), eave - ovx * rise / ph_)
-                        rd = (pc_, eave + rise)
-                    else:
-                        e = (-span / 2 - ov, eave - ov * rise / span)
-                        rd = (span / 2 + ov, eave + rise + ov * rise / span)
-                    dx, dz = rd[0] - e[0], rd[1] - e[1]
-                    ln = math.hypot(dx, dz) or 1
-                    nrm = (-dz / ln, dx / ln)
-                    if nrm[1] < 0:
-                        nrm = (-nrm[0], -nrm[1])
-                    tk = .035 + .014 * (j % 2)
-                    fr = [(e[0], a0, e[1]), (rd[0], a0, rd[1]), (rd[0], a1, rd[1]), (e[0], a1, e[1])]
-                    if (sgn > 0) == (roof == 'gable'):
-                        fr = fr[::-1]
-                    bk = [(x + nrm[0] * tk, y, z + nrm[1] * tk) for x, y, z in fr]
-                    kit.hexa(k, fr, bk, roofmat, 'roof', removable=True, sheet=(sgn, j, pi_))
-            if roof == 'gable':
-                for pc_, _ in pk:
-                    k.box((pc_, 0, eave + rise + .05), (.45, run + .2, .12), 'paint.trim', 'frame')
-        for q in range(int(det.get('vents', 1))):
-            k.box((w * (.12 - .24 * q) * (0 if ridge_x else 1), d * (.15 - .3 * q) * (1 if not ridge_x else 0), eave + rise * .55 + .3), (.5, .5, .3), 'paint.trim', 'detail', ch=.04)
-    # 6. sockets from the feature tags (door spot, window point)
-    for idx, f in enumerate(feats['door'] + feats['bay']):
-        pos = face_world(f['side'], w, d, f['at'], .5, f['z'] + f['h'] + .35)
-        dr = face_dir(f['side'])
-        add_socket(k, f'door_{idx + 1:02}', 'spot', pos, (dr[0], dr[1], -.6), 'door')
-    for idx, f in enumerate(feats['window']):
-        pos = face_world(f['side'], w, d, f['at'], .08, f['z'] + f['h'] / 2)
-        add_socket(k, f'window_{idx + 1:02}', 'point', pos, face_dir(f['side']), 'window')
-    # 7. hit zones for the partial state: one wall zone on the long face, one roof corner
-    long_side = 'right' if d >= w else 'front'
-    hp = face_world(long_side, w, d, 0.0, 0.0, eave * .55)
-    k.hits.append(dict(p=hp, d=(-face_dir(long_side)[0], -face_dir(long_side)[1], 0), r=max(2.0, min(w, d) * .22), depth=0, sag=.35))
-    k.hits.append(dict(p=(w * .2, d * .15, eave), d=(0, 0, -1), r=max(1.6, min(w, d) * .16), depth=0, sag=.3))
-    if g.get('batter'):
-        apply_batter(k, h, g['batter']['x'], g['batter']['y'])
+    """Shape-derived shell (shell.py): outline, roof and rooftop features from assets/<asset>.shape.json; params refine detail only."""
+    import shell
+    S = shell.load(p['asset'])
+    why = shell.unsupported(S, 'box')
+    if why:
+        raise ValueError(f'needs_builder: {why}')
+    shell.build(k, p, S)
 
 
 # ------------------------------------------------------------------ quonset (legacy builder, parametrised through Q)
@@ -415,8 +254,12 @@ def contract(p):
 
 
 def class_budget(p):
+    """Per class AND size: buildings 8000 (15000 over 450 m2 or 14 m tall); props 3000, 8000 once they are building-sized
+    (grain silos, generators: over 60 m2 of plan or 8 m tall)."""
     w, d, h = p['size']
-    return 8000 if (p['archetype'] in ('box', 'quonset', 'tower', 'tank') and w * d <= 450 and h <= 14) else 15000 if p['archetype'] in ('box', 'tower', 'tank') and w * d > 450 else 3000
+    if p['archetype'] in ('box', 'quonset', 'tower', 'tank'):
+        return 15000 if (w * d > 450 or h > 14) else 8000
+    return 8000 if (w * d > 60 or h > 8) else 3000
 
 
 def budget_of(p):
@@ -427,10 +270,10 @@ def budget_of(p):
 # ------------------------------------------------------------------ params schema (unknown keys fail in contract.py)
 TOP_KEYS = ('asset', 'archetype', 'size', 'origin', 'palette', 'counts', 'features', 'dims', 'detail', 'damage', 'rubble', 'budget', 'notes',
             'draft_confidence', 'stock_model', 'round_parts', 'round', 'status', 'evidence', 'waivers')
-DETAIL_KEYS = ('vents', 'service_panel')
+DETAIL_KEYS = ('vents', 'service_panel', 'glazing')
 DAMAGE_ALLOWED = ('rubble', 'collapse', 'wall', 'fence', 'topple', 'crate', 'barrel')
 DIM_KEYS = dict(
-    box=('roof', 'rise', 'eave_h', 'skin', 'inset', 'bay_m', 'bays_x', 'bays_y', 'ridge_axis', 'batter', 'roof_mat', 'peaks', 'profile'),
+    box=('skin', 'bay_m', 'roof_mat'),                 # outline, roof form, eave, ridge, peaks, batter: shape.json (derived), never params
     quonset=('L', 'R', 'curb', 'bays', 'profile'),
     wall=('family', 'variant', 'post', 'wh', 'spans', 'profile'),
     gate=('family', 'variant', 'post', 'wh', 'spans', 'gap', 'leaf_h', 'leaf_t', 'spans_each', 'profile'),
@@ -439,7 +282,7 @@ DIM_KEYS = dict(
     container=('lid', 'lid_h', 'ribs', 'profile'),
     crate=('end_midrail', 'tarp', 'profile'),
     barrel=('flame', 'profile'),
-    tank=('band', 'cap_h', 'leg_h', 'legs', 'profile'),
+    tank=('band', 'cap_h', 'leg_h', 'legs', 'profile', 'skin', 'bay_m', 'roof_mat'),
     turret=('barrel_len', 'barrels', 'base_h', 'base_r', 'house', 'popup', 'profile'),
     vehicle=('axles', 'cab_frac', 'cab_h', 'cargo', 'wheel_r', 'profile'),
     pylon=('head_h', 'kind', 'lamp_mat', 'plate_mat', 'plate_w', 'pole_w', 'wedge', 'profile'),
@@ -578,17 +421,9 @@ def draft_params(row, a, arch=None):
     g = p['dims']
     n_ = lambda f: int(c[f]['n'])  # noqa: E731
     if arch == 'box':
-        kind = roof.get('type', 'flat') if roof.get('confidence', 0) >= .6 else 'flat'
-        bat = _batter_of(a)
-        if bat:
-            g['batter'] = bat
-            kind = 'flat' if kind == 'arch' else kind
-        kind = kind if kind in ('gable', 'mono') else 'flat'
-        g.update(roof=kind, skin='corr' if 'corrugated' in ident else 'plate', inset='inset' in ident, bay_m=4.5 if max(w, d) < 40 else 6.0)
-        if kind != 'flat':
-            g.update(eave_h=round(roof['eave_h'], 2), rise=round(max(.3, roof['ridge_h'] - roof['eave_h']), 2), ridge_axis=roof.get('ridge_axis', 'y'))
+        g.update(skin='corr' if 'corrugated' in ident else 'plate', bay_m=4.5 if max(w, d) < 40 else 6.0)
         p['features'] = _feats(a, 'doors', 'door') + _feats(a, 'openings_bays', 'bay') + _feats(a, 'windows', 'window')
-        p['detail'] = dict(vents=0 if kind == 'flat' else 1 + (w * d > 300), service_panel=True)      # a flat roof has no headroom for vents inside the stock bounds
+        p['detail'] = dict(service_panel=True)          # rooftop vents/fans come from shape.json features, not a count
         p['counts'].update(doors=len([f for f in p['features'] if f['kind'] == 'door']), openings_bays=len([f for f in p['features'] if f['kind'] == 'bay']),
                            windows=len([f for f in p['features'] if f['kind'] == 'window']))
     elif arch == 'quonset':

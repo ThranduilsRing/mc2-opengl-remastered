@@ -123,7 +123,7 @@ def wall(k, p=None, tag=True):
         for p in k.pieces[first:]:
             p['wall_span'] = j
         k.moss_sites.append(((-kit.wall_hw(k.name,0)-.12,a,footing),(-kit.wall_hw(k.name,0)-.12,b,footing)))
-    if family == 'd' and heavy:
+    if family == 'd' and heavy and not post:      # a standalone post has no spans to brace
         # Stock lower truss: a chain of two hexagonal braced fields under a horizontal belt.
         lo, hi = footing + .5, wh * .40
         mid = (lo + hi) / 2

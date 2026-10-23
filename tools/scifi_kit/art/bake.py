@@ -367,7 +367,7 @@ def bake(objs,k,condition,out,res=2048):
         if i:
             ob=low.copy();ob.data=low.data.copy();bpy.context.collection.objects.link(ob)
             ob.name=name+f'_LOD{i}';select(ob)
-            if k.meta['stock'] in ('woodencrates','singlecivlivinga','portable','wirefence') or k.meta['stock'] in PANEL_LOD_BUILDINGS or 'wall_layout' in k.meta:
+            if k.meta['stock'] in ('woodencrates','singlecivlivinga','portable','wirefence') or k.meta['stock'].endswith('fencediag') or k.meta['stock'] in PANEL_LOD_BUILDINGS or 'wall_layout' in k.meta:      # diagonal fences: strands and boards bottom out a MATERIAL-delimited collapse above the LOD2 ratio
                 ob=panel_lod(ob,ratio,exterior='wall_layout' in k.meta)
             else:
                 mod=ob.modifiers.new('Distance LOD','DECIMATE');mod.ratio=ratio

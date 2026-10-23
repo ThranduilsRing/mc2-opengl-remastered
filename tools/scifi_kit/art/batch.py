@@ -4,7 +4,10 @@ Per asset: analyze -> params (auto-draft, never overwrites an edited file) -> re
 seconds, no Blender) -> numpy stock views -> Blender in two tiers -> post-bake validate + content.py IR -> sheets.
 
 * status file (arch-proof/status.json) drives pick(): failed / unfinished / tier-A assets are re-selected by `--category X --next N`
-  before any fresh one; an asset is never silently dropped. `--retry-failed` selects only those.
+  before any fresh one; an asset is never silently dropped. `--retry-failed` selects only those (and `stuck` ones), any category.
+* `needs_builder`: the stock shape needs a builder capability that does not exist (structural failure: footprint, roof, features, or a
+  silhouette/fit/size/round failure that 3 fix rounds did not clear). `stuck`: 3 rounds of other failures. Neither eats batch slots.
+* `--recheck` (owner): re-validates committed assets against today's gates and demotes failures to status.state=draft.
 * two-tier bake: TIER A (pristine + destroyed beauty, no export, 16 samples) while iterating; TIER B (all 5 states + 5-map bake + 3 LODs)
   only once the params hash is unchanged since a passing tier A (or with --full). A params-hash cache skips an unchanged asset entirely.
 * `--commit` refuses any asset that does not pass today, stamps params.status.validated with the params and analysis hashes, commits by pathspec.
@@ -30,7 +33,10 @@ PIPELINE = Path('A:/Games/mc2-flash4')
 CONDS = ['pristine', 'worn', 'abandoned', 'partial', 'destroyed']
 TIER_A_CONDS = ['pristine', 'destroyed']
 BAKE_TIMEOUT_S = 360            # per asset; the batch kills its own Blender pid and the asset fails with "bake timeout"
-COMMIT_MAX = 12                 # assets per commit (2 files each: stays under the 25-file lane rule)
+COMMIT_MAX = 8                  # assets per commit (3 files each: params, analysis, shape; stays under the 25-file lane rule)
+MAX_ROUNDS = 3                  # failing batch runs before an asset is parked as stuck / needs_builder
+STRUCTURAL = ('archetype', 'size', 'fit', 'silhouette', 'round')    # params may move these; 3 failing rounds -> needs_builder
+BUILDER_GAP = ('needs_builder', 'footprint', 'roof', 'shape')        # the shape-built gross form: params cannot move it -> needs_builder now
 FORMULA = ('pipe', 'bridge', 'vehicle', 'junk', 'quonset')     # tagged fields come from the builder, not from stock measurement
 HINTS = dict(counts='edit counts/features to the stock evidence (side views); a deliberate difference needs a waiver {check:counts, field, reason}',
              silhouette='edit dims (roof, eave_h, rise, peaks, batter, bays, legs, style...) so the shape matches the stock side views',
@@ -50,7 +56,12 @@ HINTS = dict(counts='edit counts/features to the stock evidence (side views); a 
              size='params.size must equal the stock bounds (2%)',
              content='the baked glb fails the content-pipeline IR validation: re-bake, or report to the owner',
              stock='re-run `run.py analyze <asset>`',
-             bake='re-run the batch for this asset after fixing the message above')
+             bake='re-run the batch for this asset after fixing the message above',
+             needs_builder='the builder lacks this capability: the asset is parked (needs_builder) for builder work; do not hand-build or waive',
+             footprint='structural: the plan outline comes from shape.json; not a params fix (needs_builder)',
+             roof='structural: the roof form comes from shape.json; not a params fix (needs_builder)',
+             shape='structural: rooftop/side features come from shape.json; not a params fix (needs_builder)',
+             pytest='the kit pytest is red for this asset: fix it before committing')
 
 
 def jobs_n():
@@ -122,6 +133,7 @@ def pick(args):
         return [a.strip().lower() for a in args.assets.split(',') if a.strip()]
     st = load_status()
     rows = list(csv.DictReader(INVENTORY.open(encoding='utf-8-sig')))
+    retry = getattr(args, 'retry_failed', False)
     redo, unreviewed, fresh = [], [], []
     for r in rows:
         name = r['id']
@@ -129,19 +141,41 @@ def pick(args):
             continue
         cat = r['category'].split(';')[0]
         arch = archetypes.classify(r)['archetype']
-        if not (args.category in (cat, arch) and arch in archetypes.ARCHETYPES):
+        if arch not in archetypes.ARCHETYPES or (args.category and args.category not in (cat, arch)):
             continue
         state = st.get(name, {}).get('state')
-        if committed(name) or state in ('passed', 'committed'):
+        if committed(name) or state in ('passed', 'committed', 'needs_builder'):
             continue
+        if state == 'stuck' and not retry:
+            continue                    # parked: only --retry-failed re-opens it
         has_params = (analyze.ASSETS / f'{name}.params.json').is_file()
-        if state in ('failed', 'unfinished', 'tierA_ok'):
+        if state in ('failed', 'unfinished', 'tierA_ok', 'stuck'):
             redo.append(name)
         else:
             (unreviewed if has_params else fresh).append(name)
-    if getattr(args, 'retry_failed', False):
+    if retry:
         return redo[:args.next]
+    if not args.category:
+        print('[batch] pass --category <building|prop|...>, --assets a,b or --retry-failed')
+        return []
     return (redo + unreviewed + fresh)[:args.next]
+
+
+def park(name, res):
+    """Failing asset -> failed / stuck / needs_builder, by failure kind and the number of failing rounds."""
+    st = load_status().get(name, {})
+    rounds = int(st.get('rounds', 0)) + 1
+    kinds = {f.split(':')[0] for f in res['failures']}
+    gap = [f for f in res['failures'] if f.split(':')[0] in BUILDER_GAP]
+    if gap:
+        state, why = 'needs_builder', gap[0]
+    elif rounds >= MAX_ROUNDS:
+        state = 'needs_builder' if kinds & set(STRUCTURAL) else 'stuck'
+        why = next((f for f in res['failures'] if f.split(':')[0] in STRUCTURAL), res['failures'][0])
+    else:
+        state, why = 'failed', res['failures'][0]
+    set_status([name], state, failures=len(res['failures']), rounds=rounds, why=why[:300])
+    return state
 
 
 # ------------------------------------------------------------------ prepare
@@ -291,6 +325,8 @@ def batch(args):
     tag = args.tag
     if getattr(args, 'commit', False):
         return commit(args)
+    if getattr(args, 'recheck', False):
+        return recheck(args)
     expert = os.environ.get('MC2_KIT_EXPERT') == '1'     # --force-bake / --reanalyze are owner tools, hidden from runners
     if (args.force_bake or args.reanalyze) and not expert:
         print('[batch] --force-bake/--reanalyze are owner tools (set MC2_KIT_EXPERT=1); ignored')
@@ -328,7 +364,7 @@ def batch(args):
         if ok or (args.force_bake and not s['pre']['failures'][0].startswith('archetype')):
             ready.append(n)
         else:
-            set_status([n], 'failed', failures=len(s['pre']['failures']))
+            s['state'] = park(n, s['pre'])
     # 2. stock views, numpy (no Blender)
     t0 = time.time()
     try:
@@ -386,7 +422,8 @@ def batch(args):
         s['ok'] = res['ok']
         if not res['ok']:
             failed.append(n)
-            set_status([n], 'failed', failures=len(res['failures']))
+            if n in ready:              # pre-gate failures were parked above
+                park(n, res)
         elif s['tier'] == 'A':
             iterating.append(n)
             set_status([n], 'tierA_ok', psha=s['psha'])
@@ -415,7 +452,10 @@ def batch(args):
     waivers = {n: (summary[n].get('post') or summary[n]['pre']).get('waivers', []) for n in names if (summary[n].get('post') or summary[n]['pre']).get('waivers')}
     zero_edit = [n for n in passed if not edited_since_draft(n)]
     total = round(time.time() - t_all, 1)
-    out = dict(tag=tag, assets=names, passed=passed, iterating=iterating, failed=failed, zero_edit_passed=zero_edit, waivers=waivers, wall_s=total, blender_wall_s=blender_wall,
+    parked = {n: load_status().get(n, {}).get('state') for n in failed if load_status().get(n, {}).get('state') in ('stuck', 'needs_builder')}
+    if parked:
+        print('[batch] PARKED (out of the batch picks):\n' + '\n'.join(f'   {n}: {s_} ({load_status()[n].get("why", "")})' for n, s_ in parked.items()))
+    out = dict(tag=tag, assets=names, passed=passed, iterating=iterating, failed=failed, parked=parked, zero_edit_passed=zero_edit, waivers=waivers, wall_s=total, blender_wall_s=blender_wall,
                stock_views_s=stage_views,
                per_asset={n: dict(archetype=summary[n].get('archetype'), tier=summary[n].get('tier'), prep_s=round(sum(summary[n]['stage'].values()), 1), blender_s=summary[n].get('blender_s'),
                                   ok=summary[n]['ok'], failures=(summary[n].get('post') or summary[n]['pre'])['failures']) for n in names},
@@ -437,6 +477,38 @@ def batch(args):
 
 
 # ------------------------------------------------------------------ the commit gate
+def kit_pytest(name):
+    """The kit pytest for this asset's parametrised cases (build, damage lockstep, budgets); -> failure strings (empty when green)."""
+    r = subprocess.run([sys.executable, '-B', '-m', 'pytest', str(ROOT / 'tools' / 'scifi_kit' / 'tests'), '-q', '-p', 'no:cacheprovider', '-k', name],
+                       capture_output=True, text=True, cwd=str(ROOT))
+    if r.returncode == 0:
+        return []
+    tail = [ln for ln in r.stdout.splitlines() if ln.startswith(('FAILED', 'ERROR'))][:6] or r.stdout.splitlines()[-3:]
+    return [f'pytest: kit pytest -k {name} is red (rc {r.returncode}): ' + ' | '.join(tail)]
+
+
+def recheck(args):
+    """Owner: committed assets (or --assets) against today's gates (pre-gate + model checks); failures are demoted to draft, parked by kind."""
+    import analyze
+    import validate
+    names = [a.strip().lower() for a in args.assets.split(',')] if args.assets else [n for n in sorted(q.name.split('.params.json')[0] for q in analyze.ASSETS.glob('*.params.json')) if committed(n)]
+    kept, demoted = [], {}
+    for n in names:
+        res = validate.validate(n)
+        if res['ok']:
+            kept.append(n)
+            continue
+        pp = analyze.ASSETS / f'{n}.params.json'
+        p = json.loads(pp.read_text())
+        p['status'] = dict(state='draft', demoted=dict(at=time.strftime('%Y-%m-%d'), failures=res['failures'][:6]))
+        pp.write_text(json.dumps(p, indent=1))
+        demoted[n] = park(n, res)
+        print(f'[recheck] DEMOTED {n} -> draft ({demoted[n]}):\n   ' + '\n   '.join(res['failures'][:6]))
+    print(f'[recheck] kept {kept}')
+    return dict(kept=kept, demoted=demoted)
+
+
+
 def commit(args):
     """Commit only assets that pass TODAY (pre-gate, baked, params unchanged since the passing bake); stamp the hashes."""
     import analyze
@@ -465,6 +537,7 @@ def commit(args):
                 continue
             res = validate.validate(n, pass_dir=OUT / tag)
             fl = res['failures'] + (content_ir(tag, n) if res['ok'] else [])
+            fl += [] if fl else kit_pytest(n)
             if fl:
                 refused[n] = fl
                 continue
@@ -476,7 +549,7 @@ def commit(args):
     for n, fl in refused.items():
         print(f'[commit] REFUSED {n}:\n   ' + '\n   '.join(fl))
     if ok:
-        paths = [f'tools/scifi_kit/art/assets/{n}.{k}.json' for n in ok for k in ('params', 'analysis')]
+        paths = [f'tools/scifi_kit/art/assets/{n}.{k}.json' for n in ok for k in ('params', 'analysis', 'shape')]
         subprocess.run(['git', '-C', str(ROOT), 'add', '--'] + paths, check=True)
         msg = f'feat(scifi-art): archetype batch {", ".join(ok)}'
         if os.environ.get('MC2_COMMIT_TRAILER'):

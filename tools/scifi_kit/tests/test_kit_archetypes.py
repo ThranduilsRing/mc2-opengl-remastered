@@ -22,7 +22,8 @@ import batch  # noqa: E402
 import contract  # noqa: E402
 import validate  # noqa: E402
 
-PROOF = ('barracks', 'civstoragea', 'dumpster', 'munitionscrates', 'tent', 'woodenfence')
+PROOF = ('barracks', 'civstoragea', 'tent', 'woodenfence', 'smallfueltank', '2civliving', 'industrialcomplex', 'greenhouse')
+SHAPE_FIX = ('smallfueltank', '2civliving', 'industrialcomplex', 'greenhouse')     # run-1 remakes with the wrong gross shape
 ASSETS = ART / 'assets'
 
 
@@ -66,6 +67,80 @@ def test_thresholds_are_hash_locked():
 @pytest.mark.parametrize('name', PROOF)
 def test_analysis_is_the_stock_derivation(name):
     assert contract.analysis_intact(name) == []
+    assert contract.shape_intact(name) == []
+
+
+def test_shape_edit_is_detected(tmp_path, monkeypatch):
+    src = json.loads((ASSETS / 'greenhouse.shape.json').read_text())
+    src['features'] = []
+    (tmp_path / 'greenhouse.shape.json').write_text(json.dumps(src))
+    monkeypatch.setattr(analyze, 'ASSETS', tmp_path)
+    assert contract.shape_intact('greenhouse')
+
+
+# ------------------------------------------------------------------ gross shape from the stock mesh (run-1 regressions)
+def test_stock_shapes_are_measured():
+    s = {n: json.loads((ASSETS / f'{n}.shape.json').read_text()) for n in SHAPE_FIX}
+    fp = s['smallfueltank']['footprint']
+    assert (fp['kind'], fp['facets']) == ('circle', 6)          # owner rule: the era's 6 facets are a round tank, rebuilt round
+    assert s['smallfueltank']['roof']['model'] == 'inset' and s['smallfueltank']['roof']['top'] < 8.5   # cone roof below the side cylinder
+    assert any(f['shape'] == 'round' and f['base'] == 0 and f['top'] > 10 for f in s['smallfueltank']['features'])   # the oval side cylinder
+    assert (s['2civliving']['footprint']['kind'], s['2civliving']['footprint']['n']) == ('rectilinear', 6)    # L plan
+    assert s['industrialcomplex']['roof']['model'] == 'extrude' and s['industrialcomplex']['roof']['form'] == 'stepped'
+    assert len([f for f in s['greenhouse']['features'] if f['kind'] == 'fan']) == 5     # five painted roof fans
+    assert s['greenhouse']['roof']['model'] == 'extrude' and s['greenhouse']['roof']['eave'] < .5   # A-frame to the ground
+
+
+def _old_shape(name):
+    """The gross shape run 1 shipped: a full-height can without its side cylinder, a full square box, a square hip-roofed block,
+    a greenhouse without fans."""
+    import copy
+    import shell
+    S = copy.deepcopy(shell.load(name))
+    w, d, h = S['size_m']
+    rect = [[-w / 2, -d / 2], [w / 2, -d / 2], [w / 2, d / 2], [-w / 2, d / 2]]
+    if name == 'smallfueltank':
+        return None                      # no measured shape: the bbox-sized round can of run 1
+    elif name == '2civliving':
+        S['footprint'] = dict(kind='rect', n=4, poly=rect, edges=[rect[i] + rect[(i + 1) % 4] for i in range(4)], cells=[[-w / 2, -d / 2, w / 2, d / 2]])
+    elif name == 'industrialcomplex':
+        S['roof'] = dict(S['roof'], model='inset', form='hip', profile=[[0.0, S['roof']['eave']], [.6, h * .95], [1.0, h * .95]], inradius=min(w, d) / 2)
+    elif name == 'greenhouse':
+        S['features'] = []
+    return S
+
+
+@pytest.mark.parametrize('name', SHAPE_FIX)
+def test_run1_gross_shapes_fail(name, monkeypatch):
+    import shell
+    real = shell.load
+    old = _old_shape(name)
+    monkeypatch.setattr(shell, 'load', lambda n: old if n == name else real(n))
+    k = validate.build_game(name, 'pristine')
+    fails, _ = validate.check_shape(name, k, validate.drafts.SIZES[name], params(name), S=real(name))
+    kinds_ = {f.split(':')[0] for f in fails}
+    assert kinds_ & {'footprint', 'roof', 'shape'}, fails
+    if name in ('smallfueltank', '2civliving'):         # the raised floors also catch these on the silhouette
+        sil = validate.silhouette(name, k, validate.drafts.SIZES[name], 6)
+        floors, mean_floor = validate.arch_floors(params(name), validate.thresholds())
+        assert any(r['iou'] < floors[v] for v, r in sil.items()) or sum(r['iou'] for r in sil.values()) / 5 < mean_floor
+
+
+def test_structural_waivers_are_rejected():
+    for chk, keys in (('silhouette', dict(view='top')), ('fit', dict(axis='z')), ('round', dict(part='x')), ('size', {}), ('archetype', {})):
+        k, f = gate('2civliving', lambda p, c=chk, kk=keys: p['waivers'].append(dict(check=c, reason='stock top view shows something else entirely', **kk)))
+        assert 'waiver' in k, (chk, f)
+    assert not contract.waived(dict(waivers=[dict(check='silhouette', view='top', reason='x' * 30)]), 'silhouette', view='top')
+
+
+def test_shape_capability_gap_is_needs_builder():
+    import shell
+    S = json.loads((ASSETS / 'smallfueltank.shape.json').read_text())
+    assert shell.unsupported(S) is None
+    S['roof'] = dict(S['roof'], model='extrude', axis='y', form='gable')
+    assert 'roof' in shell.unsupported(S)
+    S['footprint'] = dict(kind='irregular', n=0, edges=[])
+    assert 'footprint' in shell.unsupported(S)
 
 
 def test_analysis_edit_is_detected(tmp_path, monkeypatch):
@@ -175,9 +250,15 @@ def test_size_edit_fails():
 
 def test_fit_stretch_fails():
     def edit(p):
-        p['dims']['eave_h'] = p['size'][2] * .5          # authored far too low: the fit stretches z by ~2
-    res = run('barracks', edit)
-    assert 'fit' in kinds(res), res['failures']
+        p['dims']['eave_h'] = p['size'][2] * .15         # authored far too low: the fit would stretch z
+    res = run('tent', edit)
+    assert {'fit', 'silhouette', 'roof'} & set(kinds(res)), res['failures']
+
+
+def test_gross_shape_dims_are_not_params():
+    for key, val in (('roof', 'gable'), ('eave_h', 3.0), ('batter', {}), ('peaks', 3)):
+        k, f = gate('barracks', lambda p, key=key, val=val: p['dims'].update({key: val}))
+        assert 'schema' in k, (key, f)
 
 
 # ------------------------------------------------------------------ P0-6 archetype lock and tagged fields
@@ -228,16 +309,6 @@ def test_evidence_edit_fails():
 
 
 # ------------------------------------------------------------------ roof line (sawtooth) and LOD / round checks
-def test_sawtooth_roof_needs_its_peaks():
-    def edit(p):
-        p['dims'].update(roof='flat')
-        p['dims'].pop('peaks', None)
-        p['dims'].pop('rise', None)
-        p['dims'].pop('eave_h', None)
-    res = run('civstoragea', edit)
-    assert any('ridge' in f for f in res['failures']) or 'silhouette' in kinds(res), res['failures']
-
-
 def _cyl_soup(n, r=3.0, h=6.0):
     a = np.linspace(0, 2 * np.pi, n, endpoint=False)
     ring = np.stack([r * np.cos(a), r * np.sin(a)], 1)
@@ -264,6 +335,40 @@ def test_lod_ratio_check(tmp_path):
 
 
 # ------------------------------------------------------------------ P0-1 pick, P0-8 commit gate
+def test_parked_assets_leave_the_batch(tmp_path, monkeypatch):
+    monkeypatch.setattr(batch, 'STATUS', tmp_path / 'status.json')
+    args = SimpleNamespace(assets=None, category='building', next=3, retry_failed=False)
+    first = batch.pick(args)
+    res = dict(failures=['roof: the model top surface follows the stock on 30% of the plan'])
+    assert batch.park(first[0], res) == 'needs_builder'
+    assert first[0] not in batch.pick(args)
+    assert first[0] not in batch.pick(SimpleNamespace(assets=None, category=None, next=50, retry_failed=True))
+    res = dict(failures=['palette: slot main dE 30'])
+    assert [batch.park(first[1], res) for _ in range(batch.MAX_ROUNDS)][-1] == 'stuck'
+    assert first[1] not in batch.pick(args)
+    assert first[1] in batch.pick(SimpleNamespace(assets=None, category=None, next=50, retry_failed=True))   # --retry-failed, no category
+
+
+def test_size_budgets():
+    assert archetypes.class_budget(dict(archetype='box', size=[10, 10, 20])) == 15000          # grainstorage-class silo
+    assert archetypes.class_budget(dict(archetype='container', size=[12, 8, 5])) == 8000       # building-sized prop
+    assert archetypes.class_budget(dict(archetype='barrel', size=[1, 1, 1.2])) == 3000
+
+
+def test_commit_refuses_red_kit_pytest(tmp_path, monkeypatch):
+    monkeypatch.setattr(batch, 'STATUS', tmp_path / 'status.json')
+    p = params('woodenfence')
+    batch.set_status(['woodenfence'], 'passed', psha=contract.params_sha(p))
+    monkeypatch.setattr(batch, 'stamp_ok', lambda *a: True)
+    monkeypatch.setattr(validate, 'validate', lambda n, pass_dir=None: dict(asset=n, ok=True, failures=[], notes=[], waivers=[], metrics={}))
+    monkeypatch.setattr(batch, 'content_ir', lambda tag, n: [])
+    monkeypatch.setattr(batch, 'kit_pytest', lambda n: ['pytest: kit pytest -k woodenfence is red'])
+    before = (ASSETS / 'woodenfence.params.json').read_text()
+    with pytest.raises(SystemExit):
+        batch.commit(SimpleNamespace(assets='woodenfence', tag='arch-proof', commit=True))
+    assert (ASSETS / 'woodenfence.params.json').read_text() == before
+
+
 def test_pick_reselects_failed_assets(tmp_path, monkeypatch):
     monkeypatch.setattr(batch, 'STATUS', tmp_path / 'status.json')
     args = SimpleNamespace(assets=None, category='building', next=3, retry_failed=False)

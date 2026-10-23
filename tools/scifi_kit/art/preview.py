@@ -81,3 +81,30 @@ def sheet(name, out, px=300):
     path = out / f'{name}_preview.png'
     im.save(path)
     return path, {s: sum(sum(len(f) - 2 for f in p['f']) for p in k.pieces) for s, k in ks.items()}
+
+
+def compare(name, out, px=300):
+    """Stock (decoded mesh + its texture) vs remake (game carrier, flat shaded): the same five cameras, one row each."""
+    from PIL import ImageOps
+    out = Path(out)
+    out.mkdir(parents=True, exist_ok=True)
+    views = ('front', 'left', 'rear', 'right', 'top')
+    stock_dir = Path('E:/mc2-ref/scifi-kit/studies/stock-views')
+    geo.GAME_MESH = True
+    try:
+        k = drafts.build(name, 'pristine')
+    finally:
+        geo.GAME_MESH = False
+    im = Image.new('RGB', (px * 5 + 90, px * 2 + 30), (30, 30, 34))
+    dr = ImageDraw.Draw(im)
+    dr.text((6, 8), f'{name}: stock (top row) vs remake game carrier (bottom row); front / left / rear / right / top', fill=(220, 220, 220))
+    dr.text((6, 30 + px // 2), 'stock', fill=(220, 220, 220))
+    dr.text((6, 30 + px + px // 2), 'remake', fill=(220, 220, 220))
+    for i, v in enumerate(views):
+        f = stock_dir / f'{name}_stock_{v}.png'
+        if f.is_file():
+            im.paste(ImageOps.pad(Image.open(f).convert('RGB'), (px - 4, px - 4), color=(46, 50, 60)), (90 + i * px + 2, 30 + 2))
+        im.paste(render(k, v, px - 4), (90 + i * px + 2, 30 + px + 2))
+    path = out / f'{name}_stock_vs_remake.png'
+    im.save(path)
+    return path

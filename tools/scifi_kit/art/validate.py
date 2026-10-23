@@ -5,6 +5,10 @@ Checks (thresholds in assets/validate_thresholds.json, calibrated on the 32 appr
   fit         fit_stock scale per non-thin axis within 0.9-1.1 (the authored proportions must be right, the fit may not stretch them)
   features    painted doors/windows/bays of the stock texture vs the model's, per side, both directions
   silhouette  remake game-mesh silhouette vs the decoded stock mesh, same 5 views (front/left/rear/right/top), IoU
+  shape       the remake re-measured by shape.py against assets/<asset>.shape.json: footprint kind/sides, roof height-field agreement,
+              every stock rooftop/side/painted feature built in place, no invented masses, roof surface colour (solid archetypes)
+  Structural checks (archetype, size, fit, silhouette, round, footprint, roof, shape) are never waived: a builder that cannot reach
+  them parks the asset as needs_builder (batch.park).
   palette     area-weighted mean colour of the remake vs the stock texture's mean (Lab delta E); post-bake: baked atlas mean
   counts      contract (counts.json) vs a recount from the built model's feature tags
   budget      game-carrier triangles per state vs the class budget (post-bake: LOD0/1/2 files)
@@ -257,7 +261,7 @@ def check_fit(k, size, p):
     for i, ax in enumerate('xyz'):
         if size[i] < .5:
             continue
-        if not .9 <= sc[i] <= 1.1 and not contract.waived(p, 'fit', axis=ax):
+        if not .9 <= sc[i] <= 1.1:
             out.append(f'fit: {ax} scale {sc[i]:.2f} outside 0.9-1.1 (the authored {ax} proportions are wrong; fix dims, the fit may not stretch the model)')
     return out
 
@@ -319,8 +323,6 @@ def check_round(V, entries, lod, p, label='LOD0'):
     out = []
     need_n, max_s = ROUND_LOD[lod]
     for e in entries:
-        if contract.waived(p, 'round', part=e['part']):
-            continue
         z = (e['z0'] + e['z1']) / 2
         n, sag = ring_stats(V, e['center'], e['R'], z)
         if n < need_n or sag > max_s:
@@ -354,7 +356,12 @@ def validate(name, pass_dir=None, pre=False, with_masks=True, params=None):
         notes += cn
         met['contract'] = cm
     fails.extend(check_stock_reference(name))
-    k0 = build_game(name, 'pristine')
+    try:
+        k0 = build_game(name, 'pristine')
+    except ValueError as exc:            # the builder declares a missing capability for this stock shape
+        if str(exc).startswith('needs_builder:'):
+            return dict(asset=name, ok=False, failures=fails + ([str(exc)] if str(exc) not in fails else []), notes=notes, waivers=contract.waiver_list(p) if p else [], metrics=met)
+        raise
     # --- states
     ks = {}
     for c in STATES:
@@ -414,6 +421,11 @@ def validate(name, pass_dir=None, pre=False, with_masks=True, params=None):
             fails.append(f'palette: remake mean colour dE {de:.1f} from the stock texture mean (max {lim})')
     except Exception as exc:
         fails.append(f'palette: check failed ({type(exc).__name__}: {exc})')
+    # --- gross shape: the remake re-measured by the same analyzer as the stock (footprint, roof form, rooftop/side features)
+    if p is not None and p.get('archetype') in SHAPE_CHECKED:
+        sf, sm = check_shape(name, k0, size, p)
+        fails.extend(sf)
+        met['shape'] = sm
     # --- round parts, LOD0 (the game carrier)
     if p is not None and a is not None and a.get('round'):
         fails.extend(check_round(tri_soup(k0), a['round'], 0, p))
@@ -426,13 +438,10 @@ def validate(name, pass_dir=None, pre=False, with_masks=True, params=None):
         met['iou_mean'] = round(sum(live) / len(live), 3) if live else None
         if p is not None and len(live) < 2:
             fails.append('silhouette: fewer than 2 non-thin views, the IoU check would be vacuous')
-        wv = lambda v: p is not None and contract.waived(p, 'silhouette', view=v)  # noqa: E731
-        if live and met['iou_mean'] < mean_floor and not wv('mean'):
+        if live and met['iou_mean'] < mean_floor:
             fails.append(f'silhouette: mean IoU over the 5 views {met["iou_mean"]:.2f} < {mean_floor:.2f}')
         for view, r in sil.items():
-            if p is not None and p.get('archetype') in archetypes.OPENING_ARCHES and 'ridges' in r and r['ridges'][0] != r['ridges'][1] and not wv(view):
-                fails.append(f'silhouette: {view} roof line shows {r["ridges"][0]} ridge(s) in the stock but {r["ridges"][1]} in the model (e.g. a sawtooth roof needs dims.peaks)')
-            if r['thin'] or wv(view):
+            if r['thin']:
                 continue
             need = floors[view]
             if r['iou'] < need:
@@ -442,6 +451,107 @@ def validate(name, pass_dir=None, pre=False, with_masks=True, params=None):
     if pass_dir:
         fails.extend(check_baked(name, Path(pass_dir), bud, expect, th, met, p, a))
     return dict(asset=name, ok=not fails, failures=fails, notes=notes, waivers=contract.waiver_list(p) if p else [], metrics=met)
+
+
+SHAPE_CHECKED = ('box', 'tank', 'tower', 'tent', 'container', 'quonset')      # solids with a roof; thin props keep silhouette only
+ROOF_DE = 25.0
+ROOF_AGREE = .85
+
+
+def stock_soup(name):
+    st = analyze.load_stock(name)
+    V = st['V']
+    lo, hi = V.reshape(-1, 3).min(0), V.reshape(-1, 3).max(0)
+    return V - np.array([(lo[0] + hi[0]) / 2, (lo[1] + hi[1]) / 2, lo[2]])
+
+
+def stock_shape(name):
+    sp = analyze.ASSETS / f'{name}.shape.json'
+    return json.loads(sp.read_text()) if sp.is_file() else None
+
+
+def check_shape(name, k, size, p, S=None):
+    """Structural (never waived): footprint kind and corner/side count, roof model, ridge axis, form and ridge count, every stock
+    rooftop/side/painted feature present at its plan position (and height, for geometric ones), no invented rooftop masses,
+    roof surface colour near the stock top view. -> (failures, metrics)"""
+    import shape
+    S = S or stock_shape(name)
+    if S is None:
+        return [f'shape: {name}.shape.json is missing (run `run.py analyze {name}`)'], {}
+    V = tri_soup(k)
+    R = shape.shape_info(V, size, like=S)
+    out = []
+    sf, rf_ = S['footprint'], R['footprint']
+    fmt = lambda f: f'{f["kind"]}' + (f'/{f["n"]}' if f['kind'] in ('polygon', 'rectilinear') else '')  # noqa: E731
+    if fmt(sf) != fmt(rf_):
+        out.append(f'footprint: stock plan is {fmt(sf)} but the model measures {fmt(rf_)} (L/T/U, n-gon or circle must be built, not a box or a can)')
+    sr, rr = S['roof'], R['roof']
+    sig = lambda r: (r['model'], r.get('axis'), r['form'], r['ridges'] if r['model'] == 'extrude' else None)  # noqa: E731
+    # roof form = the height field: the share of plan cells where the model's top surface is within tolerance of the stock's
+    w, d, h = size
+    ms, Hs, _, _ = shape.heightfield(np.asarray(stock_soup(name)), size)
+    mr, Hr, _, _ = shape.heightfield(V, size)
+    tol = max(.35, .05 * h)
+    either = ms | mr
+    if sf.get('facets'):        # a faceted stock outline is rebuilt round (owner rule): compare the roof inside the facet band
+        from scipy import ndimage
+        n_, R_ = sf['facets'], sf['R']
+        band = R_ * (1 - math.cos(math.pi / n_)) + (sr['profile'][0][0] * sr.get('inradius', R_) if sr['model'] == 'inset' else 0.0)
+        cell_ = max(w, d) / shape.GRID
+        either = ndimage.binary_erosion(ms & mr, iterations=max(1, int(math.ceil(band / cell_))))
+    agree = float(np.mean(np.abs(Hs[either] - Hr[either]) < tol)) if either.any() else 0.0
+    if agree < ROOF_AGREE:
+        desc = lambda r: f'{r["model"]}/{r["form"]}' + (f' along {r.get("axis")}, {r["ridges"]} ridge(s)' if r['model'] == 'extrude' else '')  # noqa: E731
+        out.append(f'roof: the model top surface follows the stock on {agree:.0%} of the plan (need {ROOF_AGREE:.0%}); stock {desc(sr)}, model {desc(rr)}')
+    tags = {}
+    for pc in k.pieces:
+        g = pc.get('group') or ''
+        if g.startswith('feature:'):
+            tags.setdefault(int(g.split(':')[1]), []).extend(pc['v'])
+    used = set()
+    for i, f in enumerate(S.get('features', [])):
+        tol = max(1.0, .35 * max(f['size']))
+        if f['where'] == 'painted':
+            pts = tags.get(i, [])
+            c = (sum(v[0] for v in pts) / len(pts), sum(v[1] for v in pts) / len(pts)) if pts else None
+            if c is None or math.dist(c, f['at']) > tol:
+                out.append(f'shape: painted roof {f["kind"]} at ({f["at"][0]:.1f}, {f["at"][1]:.1f}) is not built (the stock texture paints it on the roof)')
+            continue
+        best = None
+        for j, g in enumerate(R['features']):
+            if j not in used and math.dist(g['at'], f['at']) <= tol and abs(g['top'] - f['top']) <= max(.6, .12 * h):
+                best = j
+                break
+        if best is None:
+            out.append(f'shape: {f["where"]} {f["kind"]} at ({f["at"][0]:.1f}, {f["at"][1]:.1f}) {f["size"][0]:.1f}x{f["size"][1]:.1f} m, top {f["top"]:.1f} m is missing from the model')
+        else:
+            used.add(best)
+    for j, g in enumerate(R['features']):
+        if j in used or g['top'] - g['base'] < max(.8, .1 * h) or min(g['size']) < 1.2:
+            continue            # trims, posts and pipes are detail; a mass is what changes the read
+        if not any(math.dist(g['at'], f['at']) <= max(1.0, .35 * max(f['size'])) for f in S.get('features', [])):
+            out.append(f'shape: the model has a {g["kind"]} at ({g["at"][0]:.1f}, {g["at"][1]:.1f}) rising {g["top"] - g["base"]:.1f} m that the stock does not (invented mass)')
+    met = dict(roof_agree=round(agree, 3), stock=dict(footprint=fmt(sf), roof=sig(sr), features=len(S.get('features', []))),
+               model=dict(footprint=fmt(rf_), roof=sig(rr), features=len(R['features'])))
+    if S.get('roof_colour'):
+        pal = geo.LANG['palettes'][k.palette]
+        acc, tot = np.zeros(3), 0.0
+        for pc in k.pieces:
+            if pc['role'] != 'roof':
+                continue
+            col = archetypes.slot_colour(pc['m'], pal)
+            if col is None:
+                continue
+            Vp = np.array(pc['v'], float)
+            area = sum(np.linalg.norm(np.cross(Vp[f_[q]] - Vp[f_[0]], Vp[f_[q + 1]] - Vp[f_[0]])) / 2 for f_ in pc['f'] for q in range(1, len(f_) - 1))
+            acc += np.array(col, float) * area
+            tot += area
+        if tot:
+            de = delta_e(acc / tot, S['roof_colour'])
+            met['roof_de'] = round(de, 1)
+            if de > ROOF_DE and not contract.waived(p, 'palette', slot='roofsurf'):
+                out.append(f'palette: roof surface colour dE {de:.1f} from the stock top view (max {ROOF_DE:.0f}); edit palette.roof (glazing, sheet colour), or waive {{check:palette, slot:roofsurf, reason}}')
+    return out, met
 
 
 def check_stock_reference(name):
@@ -466,11 +576,11 @@ def _model_features(k, w, d):
         if m:
             groups.setdefault((m.group(1), int(m.group(2))), []).append(pc)
     out = []
-    for (kind, _), pcs in groups.items():
+    for (kind, _), pcs in groups.items():  # noqa: B007
         pts = [v for p in pcs for v in p['v']]
         c = [sum(v[i] for v in pts) / len(pts) for i in range(3)]
         dist = {'front': abs(c[1] + d / 2), 'rear': abs(c[1] - d / 2), 'left': abs(c[0] + w / 2), 'right': abs(c[0] - w / 2)}
-        side = min(dist, key=dist.get)
+        side = k.meta.get('opening_side', {}).get(f'{kind}:{_}') or min(dist, key=dist.get)
         u = {'front': c[0], 'rear': -c[0], 'left': -c[1], 'right': c[1]}[side]
         zs = [v[2] for v in pts]
         out.append((kind, side, u, (min(zs) + max(zs)) / 2))

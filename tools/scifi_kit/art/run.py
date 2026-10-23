@@ -257,6 +257,7 @@ def main():
     ap.add_argument('--full', action='store_true', help='batch: full 5-state bake now (default: tier A first, full once the params hash is stable)')
     ap.add_argument('--retry-failed', action='store_true', help='batch: only failed/unfinished assets of the category')
     ap.add_argument('--commit', action='store_true', help='batch: commit the assets that pass today (stamps hashes; refuses failing ones)')
+    ap.add_argument('--recheck', action='store_true', help='batch (owner): re-validate committed assets, demote failures to draft')
     ap.add_argument('--no-blender', action='store_true')
     ap.add_argument('--only')
     ap.add_argument('--samples', type=int, default=48)

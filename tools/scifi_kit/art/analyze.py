@@ -525,6 +525,23 @@ def analyze(name):
     return res
 
 
+def shape_of(name):
+    """Gross shape of the stock mesh (shape.py): outline, roof model, wall batter, rooftop/side/painted features."""
+    import shape
+    st = load_stock(name)
+    V = st['V']
+    lo, hi = V.reshape(-1, 3).min(0), V.reshape(-1, 3).max(0)
+    Vc = V - np.array([(lo[0] + hi[0]) / 2, (lo[1] + hi[1]) / 2, lo[2]])
+    return json.loads(json.dumps(shape.shape_info(Vc, hi - lo, st)))
+
+
+def write_shape(name):
+    """assets/<name>.shape.json: evidence like analysis.json (re-derived by the pre-gate; never edited)."""
+    path = ASSETS / f'{name}.shape.json'
+    path.write_text(json.dumps(shape_of(name), indent=1))
+    return path
+
+
 def inventory_row(name):
     import csv
     for r in csv.DictReader(INVENTORY.open(encoding='utf-8-sig')):
@@ -541,6 +558,7 @@ def write(name):
     a['archetype_guess'] = archetypes.classify(row, a)
     path = ASSETS / f'{name}.analysis.json'
     path.write_text(json.dumps(a, indent=1))
+    write_shape(name)
     return path, a
 
 

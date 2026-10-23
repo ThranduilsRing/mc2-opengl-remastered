@@ -45,9 +45,9 @@
  ],
  "arch_floors": {
   "box": {
-   "view": 0.7,
-   "mean": 0.8,
-   "top": 0.7
+   "view": 0.82,
+   "mean": 0.87,
+   "top": 0.85
   },
   "quonset": {
    "view": 0.7,
@@ -60,9 +60,9 @@
    "top": 0.7
   },
   "tank": {
-   "view": 0.7,
-   "mean": 0.8,
-   "top": 0.7
+   "view": 0.82,
+   "mean": 0.87,
+   "top": 0.85
   },
   "container": {
    "view": 0.7,
@@ -85,5 +85,5 @@
    "top": 0.5
   }
  },
- "arch_floors_note": "solids: min over the approved closed solids x0.9 (buildings .70/.80, walls .85, turrets .50/.70); thin props (fence, wire, barricade, pylon, pipe, crate, barrel, vehicle, junk, bridge, gate) keep the loose global floors above"
+ "arch_floors_note": "solids: min over the approved closed solids x0.9 (buildings .70/.80, walls .85, turrets .50/.70); thin props (fence, wire, barricade, pylon, pipe, crate, barrel, vehicle, junk, bridge, gate) keep the loose global floors above; 2026-10-23 shape fix: box/tank raised to .82/.87 (top .85): the shape-built shells score >= .87 per view, the old round-can smallfueltank (.71 front) and full-square 2civliving (.71 top) now fail"
 }
