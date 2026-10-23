@@ -75,7 +75,7 @@ def main():
     # build); it is configured on first use.
     if tree != DEFAULT_TREE and not os.path.exists(f"{root}/{tree}/build.ninja"):
         configure(root, tree)
-    env = compile_cache_env(root) if tree_uses_cache(root, tree) else None  # opt-in sccache tree (configure_ninja.py --compile-cache)
+    env = compile_cache_env(root) if tree_uses_cache(root, tree) else None  # sccache tree (the default; configure_ninja.py --no-compile-cache opts out)
     if env:
         ensure_cache_server(root, env)
     rc = under_vcvars(subprocess.list2cmdline([NINJA, "-C", f"{root}/{tree}"] + argv), env)
