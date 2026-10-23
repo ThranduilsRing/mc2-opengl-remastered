@@ -39,3 +39,17 @@ def test_bootstrap_rejects_non_install_and_self(tmp_path):
     src = fake_install(tmp_path / "src")
     with pytest.raises(SystemExit):
         dp.bootstrap_install(str(src), str(src), "mc2.exe", "mc2.pdb")
+
+
+def test_concrete_detail_is_cooked_on_demand_only_when_absent(tmp_path, monkeypatch):
+    monkeypatch.setattr(dp, "CONCRETE_DETAIL_SRC", str(tmp_path))
+    calls = []
+    cooker = lambda cmd, **kw: (calls.append(cmd), type("R", (), {"returncode": 0, "stdout": "", "stderr": ""})())[1]
+    dp.ensure_concrete_detail(str(tmp_path), cooker)
+    assert len(calls) == 1 and calls[0][-1].endswith("terrain_layers")
+    for rel in dp.TERRAIN_LAYER_PAYLOAD:
+        if "concrete_detail" in rel:
+            (tmp_path / rel).parent.mkdir(parents=True, exist_ok=True)
+            (tmp_path / rel).write_bytes(b"x")
+    dp.ensure_concrete_detail(str(tmp_path), cooker)
+    assert len(calls) == 1
