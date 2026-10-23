@@ -92,6 +92,7 @@ layout(location = 10) out vec3 vMaterialSeed;
 flat layout(location = 11) out vec3 vMaterialAmbient;
 flat layout(location = 12) out vec3 vMaterialSun;
 flat layout(location = 13) out uint vMaterialFlags;
+layout(location = 14) out vec2 vTree; // ambient AO, tree material active
 
 // Per-type hot-colour magic: the emission colours of the three night tags (windows, outside building lights, building base lights), taken from the type's ini.
 // Three vec4 per type in the order pink, yellow, green; indexed by inst.typeID. Same table the GL prop shader reads.
@@ -157,7 +158,27 @@ void main() {
     // apply the INVERSE rotation and break parity). The Stuff->MC2 axis swap is NOT
     // applied to the normal (positions only), so this is the un-swapped Stuff-space
     // normal the GL GBuffer1 is written from. The FS then does normalize()*0.5+0.5.
-    vec3 worldNormalStuff = a_normal * mat3(inst.modelMatrix);
+    uint canopyBase = inst.typeID * 3u;
+    vec3 canopy = uFrame.hotTableReady != 0 && canopyBase + 2u < uint(uTypeHot.c.length())
+        ? vec3(uTypeHot.c[canopyBase].w, uTypeHot.c[canopyBase+1u].w, uTypeHot.c[canopyBase+2u].w) : vec3(0);
+    bool tree = uFrame.poolF.w > 0.0 && canopy.y > 0.0 && (inst.flags & 2u) == 0u;
+    vTree = vec2(1.0, tree ? 1.0 : 0.0);
+    vec3 localNormal = a_normal;
+    if (tree && (inst.flags & 4u) != 0u) {
+        vec3 crown = vec3(a_position.x / canopy.y, (a_position.y - canopy.x) / abs(canopy.z), a_position.z / canopy.y);
+        if (dot(crown,crown) > 1e-6) localNormal = normalize(mix(normalize(a_normal), normalize(crown), 0.7));
+        vTree.x = mix(0.65, 1.0, clamp(0.5 + sign(canopy.z) * (a_position.y - canopy.x) / (2.0 * abs(canopy.z)), 0.0, 1.0));
+    }
+    // Single-level stock-leaf sway; trunk and baked shadows remain fixed.
+    if (tree && (inst.flags & 4u) != 0u) {
+        float height = clamp(0.5 + sign(canopy.z) * (a_position.y - canopy.x) / (2.0 * abs(canopy.z)), 0.0, 1.0);
+        float phase = uFrame.terrainSunMC2.w * 1.3 + dot(world_mc2.xy, vec2(0.017,0.023));
+        world_mc2.xy += vec2(1.0,0.6) * sin(phase) * height * height * min(canopy.y * 0.025,1.5);
+        clip = uFrame.worldToClipGL * vec4(world_mc2,1.0);
+        clip.z += uFrame.objectDepthBias * clip.w;
+        gl_Position = clip; vWorldPos = world_mc2;
+    }
+    vec3 worldNormalStuff = localNormal * mat3(inst.modelMatrix);
     vNormalStuff = worldNormalStuff;
 
     // VK-FLIP-FIELD-REPORT-2 BLACK-FENCE FIX: albedo layer now comes from the

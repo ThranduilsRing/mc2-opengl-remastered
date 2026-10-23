@@ -116,6 +116,7 @@ struct GpuStaticPropType {
     // override RASTERIZES (flat/wrong-texture box) instead of vanishing.
     bool     isOverride;
     const ModelOverrideRecord* materialSource = nullptr;
+    float treeCanopy[3]{}; // local crown Y, radius, signed half height; zero for other props
 };
 
 // Forward declaration needed for flush() signature (v2.3).
@@ -157,7 +158,7 @@ public:
     // render-override (see GpuStaticPropType::isOverride). Default false keeps
     // the stock call sites byte-identical.
     void registerMultiShape(TG_TypeMultiShape* multiShape, bool isOverride = false,
-                            const ModelOverrideRecord* materialSource = nullptr);
+                            const ModelOverrideRecord* materialSource = nullptr, bool tree = false);
     const mc2prop::MaterialSources& materialSources() const { return materialSources_; }
 
     // Called at end of registration to upload the immutable VBO/IBO.

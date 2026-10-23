@@ -175,6 +175,7 @@ void fill_frame_ubo(TerrainIsland* s, const Mc2TerrainTier1Feed& feed,
     u.terrainLightDir[3] = 0.0f;
     std::memcpy(u.staticLightSpaceMatrix, feed.staticLightSpaceMatrix,
                 sizeof(u.staticLightSpaceMatrix));
+    mc2_vk_shadow_island_get_object_matrix(u.staticLightSpaceMatrix);
     u.lightingEnabled = feed.lightingEnabled ? 1 : 0;
     u.enableShadows   = (feed.lightingEnabled && feed.shadowsEnabled && s->shadowReady) ? 1 : 0;
     u.shadowSoftness  = feed.shadowSoftness;

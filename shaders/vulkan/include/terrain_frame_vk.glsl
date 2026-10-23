@@ -47,5 +47,7 @@ layout(set = TERRAIN_RESOURCE_SET, binding = 13, std430) readonly buffer Terrain
 };
 #define TLP_CEMENT_WORD(i) uC.cementWordsF[i]
 #include "../../include/terrain_light_pool.hglsl"
+#ifndef TERRAIN_OBJECT_RECEIVER
 #include "ground_shadow.glsl"
+#endif
 #endif

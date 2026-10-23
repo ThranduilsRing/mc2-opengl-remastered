@@ -155,8 +155,8 @@ void TreeAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 		const bool _treeIsOverride = (appearType->treeRenderShapeLodCount > 0);
 		const int _treeRegLods = _treeIsOverride ? static_cast<int>(appearType->treeRenderShapeLodCount) : MAX_LODS;
 		for (int i = 0; i < _treeRegLods; ++i)
-			GpuStaticPropBatcher::instance().registerMultiShape(appearType->getTreeRenderShape(i), _treeIsOverride);
-		GpuStaticPropBatcher::instance().registerMultiShape(appearType->treeDmgShape);
+			GpuStaticPropBatcher::instance().registerMultiShape(appearType->getTreeRenderShape(i), _treeIsOverride, nullptr, true);
+		GpuStaticPropBatcher::instance().registerMultiShape(appearType->treeDmgShape, false, nullptr, true);
 	}
 
 	pitch = yaw = 0.0f;
