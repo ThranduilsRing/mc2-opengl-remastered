@@ -9,4 +9,4 @@ First read and follow `A:/Games/mc2-ops/lane-rules.md` (single rules file; JOBS 
 
 - Work only in your own worktree and branch; deploy only to `E:/mc2-installs/<your-branch>` with an explicit target.
 - Smallest change that solves the stated problem; run only the proof-ladder rung for what you changed.
-- Commit locally by pathspec; never push. Finish with the short report plus the Time breakdown table.
+- Commit locally by pathspec; never push. Finish with the short report plus the Time and token budget table (lane-rules section 7).
