@@ -2215,7 +2215,7 @@
         },
         {
           "path": "tests/smoke/test_launcher_legacy_env.py",
-          "line": 35,
+          "line": 36,
           "evidence": "import",
           "reference": "configure_ninja",
           "text": "from configure_ninja import NINJA"
@@ -2797,7 +2797,7 @@
         },
         {
           "path": "tests/smoke/test_launcher_legacy_env.py",
-          "line": 18,
+          "line": 19,
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child  # noqa: E402  (windowless console children, scripts/console_child.py)"
