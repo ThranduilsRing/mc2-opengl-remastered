@@ -32,7 +32,19 @@ def test_preflight_refuses_under_15_gb(tmp_path, monkeypatch):
     stage_root.preflight(tmp_path / "not" / "yet")
 
 
-def test_prune_removes_only_stages_older_than_a_day(tmp_path):
+def test_prune_refuses_unmarked_root(tmp_path):
+    old = tmp_path / "old"
+    old.mkdir()
+    t = time.time() - 3 * 86400
+    os.utime(old, (t, t))
+    assert stage_root.prune_old(tmp_path) == 0 and old.exists()
+    (tmp_path / stage_root.STAGE_MARKER).write_text("")
+    assert stage_root.prune_old(tmp_path) == 1
+
+
+def test_prune_removes_only_stages_older_than_a_day(tmp_path_factory):
+    tmp_path = tmp_path_factory.mktemp("x") / "t-stage"
+    tmp_path.mkdir()
     old, new = tmp_path / "old", tmp_path / "new"
     old.mkdir()
     new.mkdir()

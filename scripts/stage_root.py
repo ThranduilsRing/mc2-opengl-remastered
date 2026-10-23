@@ -7,6 +7,7 @@ import time
 from pathlib import Path
 
 MIN_FREE_GB = 15
+STAGE_MARKER = ".stage-root"  # drop this file in a custom root to opt in to pruning
 STAGE_BASE = Path(os.environ.get("MC2_STAGE_BASE", "E:/mc2-installs"))
 
 
@@ -31,6 +32,8 @@ def prune_old(root, days=1):
     root = Path(root)
     if not root.is_dir():
         return 0
+    if not (root.name.endswith("-stage") or (root / STAGE_MARKER).is_file()):
+        return 0  # never prune an arbitrary user-supplied root
     cutoff = time.time() - days * 86400
     removed = 0
     for child in root.iterdir():

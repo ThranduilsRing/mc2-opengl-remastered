@@ -163,14 +163,19 @@ def ensure_concrete_detail(src_root, cooker=subprocess.run):
     if all(os.path.isfile(os.path.join(src_root, r)) for r in TERRAIN_LAYER_PAYLOAD if "concrete_detail" in r):
         return
     if not os.path.isdir(CONCRETE_DETAIL_SRC):
-        log(f"concrete detail KTX2s absent and no cook source at {CONCRETE_DETAIL_SRC} (skipped)")
+        log(f"[DEPLOY] WARN: concrete detail KTX2s absent and no cook source at {CONCRETE_DETAIL_SRC}: "
+            "concrete/road detail will be missing from this install")
         return
     os.makedirs(out, exist_ok=True)
     log("concrete detail KTX2s absent: cooking them (about 15 s)")
-    r = cooker([sys.executable, os.path.join(src_root, CONCRETE_DETAIL_COOK), "--src", CONCRETE_DETAIL_SRC, "--out", out],
-               capture_output=True, text=True, timeout=300, **console_child.child_kwargs(redirected=True))
+    try:
+        r = cooker([sys.executable, os.path.join(src_root, CONCRETE_DETAIL_COOK), "--src", CONCRETE_DETAIL_SRC, "--out", out],
+                   capture_output=True, text=True, timeout=300, **console_child.child_kwargs(redirected=True))
+    except subprocess.TimeoutExpired:
+        log("[DEPLOY] WARN: concrete detail cook timed out after 300 s (skipped)")
+        return
     if r.returncode:
-        log("concrete detail cook failed (skipped): " + (r.stdout + r.stderr).strip()[-300:])
+        log("[DEPLOY] WARN: concrete detail cook failed (skipped): " + (r.stdout + r.stderr).strip()[-300:])
 
 
 # EXAMPLE-MODS-1: worked example checkbox mods, source-tracked under
@@ -1449,6 +1454,8 @@ def check_install_complete(target, exe_name, build_dir, fix=True):
         return n.startswith(("api-ms-", "ext-ms-")) or any(os.path.exists(os.path.join(d, n)) for d in sysdirs)
 
     exe = next((c for c in (os.path.join(target, exe_name), os.path.join(build_dir, exe_name)) if os.path.isfile(c)), None)
+    if exe is None:
+        return [f"{exe_name} (not found in target or build dir)"]
     try:
         todo = (_pe_imports(exe) if exe else set()) | {d.lower() for d in FFMPEG_DLLS}
     except RuntimeError as e:
@@ -1571,15 +1578,23 @@ def bootstrap_install(src, target, exe_name, pdb_name):
     need = sum(os.path.getsize(p) for n in names for p in
                ([os.path.join(src, n)] if os.path.isfile(os.path.join(src, n)) else
                 (os.path.join(d, f) for d, _, fs in os.walk(os.path.join(src, n)) for f in fs)))
-    disk_space(os.path.dirname(target) or target, need, label="bootstrap")
+    rc, _ = disk_space(os.path.dirname(target) or target, need, label="bootstrap")
+    if rc == 3:
+        fail(f"bootstrap: not enough free space for {need / 2**30:.1f} GiB", 3)
     log(f"bootstrap: copying {len(names)} entries ({need / 2**30:.1f} GiB) {src} -> {target}")
-    os.makedirs(target, exist_ok=True)
+    partial = target + ".partial"
+    if os.path.isdir(partial):
+        shutil.rmtree(partial)
+    os.makedirs(partial)
     for n in names:
-        a, b = os.path.join(src, n), os.path.join(target, n)
+        a, b = os.path.join(src, n), os.path.join(partial, n)
         if os.path.isdir(a):
             shutil.copytree(a, b, ignore=shutil.ignore_patterns("*.log"))
         else:
             shutil.copy2(a, b)
+    if os.path.isdir(target):
+        os.rmdir(target)  # empty (checked above)
+    os.rename(partial, target)
 
 
 def main():
