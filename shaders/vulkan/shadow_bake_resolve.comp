@@ -29,9 +29,9 @@ void combine(ivec2 t, int n) {
     for (int k = -kBlurRadius; k <= kBlurRadius; ++k)
         acc += gaussW(k) * imageLoad(u_blur, ivec2(t.x, clamp(t.y + k, 0, n - 1))).xy;
     float dist = acc.y > 1e-4 ? acc.x / acc.y : 0.0;
-    // The pre-T15 ramp (SHADOW-FADE-RAMP0: strength x (distance / end)^2), continuous from contact.
+    // Linear in blocker distance, continuous from contact: a building's short shadow fades toward its tip like a tree's long one (squared left it at ~3%).
     float ramp = clamp((dist - uB.fade.x) / max(uB.fade.y - uB.fade.x, 1.0), 0.0, 1.0);
-    float opacity = 1.0 - uB.fade.z * ramp * ramp;
+    float opacity = 1.0 - uB.fade.z * ramp;
     float props = mix(1.0, imageLoad(u_props, t).x, opacity);
     float terrain = imageLoad(u_terrain, t).x;
     imageStore(u_combined, t, vec4(min(props, terrain)));

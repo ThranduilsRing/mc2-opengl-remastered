@@ -54,7 +54,9 @@ void main() {
     if (found == total) { imageStore(u_props, t, vec4(0.0, meanD, 1.0, 0.0)); return; }
 
     // At least 0.75 mask texel wide, so the mask never holds an edge sharper than it can sample without stair-steps.
-    float w = max(meanD * tanT, 0.75 * uB.region.z);
+    // A short blocker (a building's roof, ~100 wu up its ray) widens up to 3x so its shadow edge softens like a tree's long one; blockers past 200 wu are unchanged.
+    float shortLift = 1.0 + 2.0 * (1.0 - clamp(meanD / 200.0, 0.0, 1.0));
+    float w = max(meanD * tanT * shortLift, 0.75 * uB.region.z);
     float wt = w / uB.windowInfo.z;
     int taps = clamp(int(ceil(wt * wt * 0.6)), uP.mode.y == 0 ? 6 : 12, uP.mode.y == 0 ? 32 : 64);
     float rot = jitter * 6.2831853;
