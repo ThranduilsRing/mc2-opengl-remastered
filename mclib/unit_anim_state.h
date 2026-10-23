@@ -26,9 +26,13 @@ struct ImportedAnimState {
         }
         a(pendingStreak, turnStreak, havePrev,
             prevPx, prevPy, prevPz, prevHeading, clipTimeSec, durationSec, lastFrame);
+        if (a.sectionVersion < 3) return;   // R2AN v2 records end here; the selector memory keeps its defaults
         int modeInt = static_cast<int>(mode);
         a(phase.prevGesture, phase.jumpStarted, phase.landing, modeInt, locomotion);
-        if (a.reading()) mode = modeInt == 1 ? mc2clip::Mode::Once : mc2clip::Mode::Loop;
+        if (a.reading()) {
+            if (modeInt != 0 && modeInt != 1) { a.reject("clip_mode"); return; }
+            mode = modeInt == 1 ? mc2clip::Mode::Once : mc2clip::Mode::Loop;
+        }
     }
 };
 // Advanced only by the fixed tick; copied into immutable render snapshots.
