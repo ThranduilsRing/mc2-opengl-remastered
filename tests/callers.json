@@ -705,7 +705,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/deploy_payload.py",
-          "line": 1824,
+          "line": 1858,
           "evidence": "command",
           "reference": "scripts/check-deploy-hygiene.py",
           "text": "r = subprocess.run([sys.executable, hygiene, target],"
@@ -3224,7 +3224,7 @@
         },
         {
           "path": "tools/scifi_kit/art/run.py",
-          "line": 38,
+          "line": 49,
           "evidence": "import",
           "reference": "console_child",
           "text": "from console_child import child_kwargs"
@@ -8191,7 +8191,14 @@
         },
         {
           "path": "tools/scifi_kit/art/content.py",
-          "line": 270,
+          "line": 265,
+          "evidence": "import",
+          "reference": "tools.content_pipeline",
+          "text": "from tools.content_pipeline import gltf_io,validate"
+        },
+        {
+          "path": "tools/scifi_kit/art/content.py",
+          "line": 295,
           "evidence": "import",
           "reference": "tools.content_pipeline",
           "text": "from tools.content_pipeline import package"
@@ -8497,6 +8504,13 @@
           "evidence": "import",
           "reference": "tools.content_pipeline.gltf_io",
           "text": "from tools.content_pipeline import gltf_io,ir,validate"
+        },
+        {
+          "path": "tools/scifi_kit/art/content.py",
+          "line": 265,
+          "evidence": "import",
+          "reference": "tools.content_pipeline.gltf_io",
+          "text": "from tools.content_pipeline import gltf_io,validate"
         }
       ]
     },
@@ -8628,7 +8642,7 @@
         },
         {
           "path": "tools/scifi_kit/art/content.py",
-          "line": 270,
+          "line": 295,
           "evidence": "import",
           "reference": "tools.content_pipeline.package",
           "text": "from tools.content_pipeline import package"
@@ -8704,6 +8718,13 @@
           "evidence": "import",
           "reference": "tools.content_pipeline.validate",
           "text": "from tools.content_pipeline import gltf_io,ir,validate"
+        },
+        {
+          "path": "tools/scifi_kit/art/content.py",
+          "line": 265,
+          "evidence": "import",
+          "reference": "tools.content_pipeline.validate",
+          "text": "from tools.content_pipeline import gltf_io,validate"
         }
       ]
     },
@@ -12139,6 +12160,296 @@
       ]
     },
     {
+      "path": "tools/scifi_kit/art/analyze.py",
+      "basename": "analyze.py",
+      "stem": "analyze",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tools/scifi_kit/art/batch.py",
+          "line": 133,
+          "evidence": "import",
+          "reference": "analyze",
+          "text": "import analyze"
+        },
+        {
+          "path": "tools/scifi_kit/art/batch.py",
+          "line": 144,
+          "evidence": "import",
+          "reference": "analyze",
+          "text": "import analyze"
+        },
+        {
+          "path": "tools/scifi_kit/art/batch.py",
+          "line": 202,
+          "evidence": "import",
+          "reference": "analyze",
+          "text": "import analyze"
+        },
+        {
+          "path": "tools/scifi_kit/art/batch.py",
+          "line": 234,
+          "evidence": "import",
+          "reference": "analyze",
+          "text": "import analyze"
+        },
+        {
+          "path": "tools/scifi_kit/art/batch.py",
+          "line": 511,
+          "evidence": "import",
+          "reference": "analyze",
+          "text": "import analyze"
+        },
+        {
+          "path": "tools/scifi_kit/art/batch.py",
+          "line": 533,
+          "evidence": "import",
+          "reference": "analyze",
+          "text": "import analyze"
+        },
+        {
+          "path": "tools/scifi_kit/art/contract.py",
+          "line": 21,
+          "evidence": "import",
+          "reference": "analyze",
+          "text": "import analyze"
+        },
+        {
+          "path": "tools/scifi_kit/art/npviews.py",
+          "line": 12,
+          "evidence": "import",
+          "reference": "analyze",
+          "text": "import analyze"
+        },
+        {
+          "path": "tools/scifi_kit/art/run.py",
+          "line": 163,
+          "evidence": "import",
+          "reference": "analyze",
+          "text": "import analyze"
+        },
+        {
+          "path": "tools/scifi_kit/art/run.py",
+          "line": 217,
+          "evidence": "import",
+          "reference": "analyze",
+          "text": "import analyze"
+        },
+        {
+          "path": "tools/scifi_kit/art/shape.py",
+          "line": 27,
+          "evidence": "import",
+          "reference": "analyze",
+          "text": "import analyze"
+        },
+        {
+          "path": "tools/scifi_kit/art/shape.py",
+          "line": 408,
+          "evidence": "import",
+          "reference": "analyze",
+          "text": "import analyze"
+        },
+        {
+          "path": "tools/scifi_kit/art/shape.py",
+          "line": 448,
+          "evidence": "import",
+          "reference": "analyze",
+          "text": "import analyze"
+        },
+        {
+          "path": "tools/scifi_kit/art/validate.py",
+          "line": 26,
+          "evidence": "import",
+          "reference": "analyze",
+          "text": "import analyze"
+        }
+      ]
+    },
+    {
+      "path": "tools/scifi_kit/art/arch_props.py",
+      "basename": "arch_props.py",
+      "stem": "arch_props",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tools/scifi_kit/art/archetypes.py",
+          "line": 221,
+          "evidence": "import",
+          "reference": "arch_props",
+          "text": "import arch_props"
+        },
+        {
+          "path": "tools/scifi_kit/art/archetypes.py",
+          "line": 241,
+          "evidence": "import",
+          "reference": "arch_props",
+          "text": "import arch_props"
+        },
+        {
+          "path": "tools/scifi_kit/art/archetypes.py",
+          "line": 323,
+          "evidence": "import",
+          "reference": "arch_props",
+          "text": "import arch_props"
+        },
+        {
+          "path": "tools/scifi_kit/art/batch.py",
+          "line": 221,
+          "evidence": "import",
+          "reference": "arch_props",
+          "text": "import arch_props"
+        },
+        {
+          "path": "tools/scifi_kit/art/contract.py",
+          "line": 199,
+          "evidence": "import",
+          "reference": "arch_props",
+          "text": "import arch_props"
+        },
+        {
+          "path": "tools/scifi_kit/art/validate.py",
+          "line": 191,
+          "evidence": "import",
+          "reference": "arch_props",
+          "text": "import arch_props"
+        },
+        {
+          "path": "tools/scifi_kit/art/validate.py",
+          "line": 598,
+          "evidence": "import",
+          "reference": "arch_props",
+          "text": "import arch_props"
+        },
+        {
+          "path": "tools/scifi_kit/tests/test_kit_archetypes.py",
+          "line": 20,
+          "evidence": "import",
+          "reference": "arch_props",
+          "text": "import arch_props  # noqa: E402"
+        }
+      ]
+    },
+    {
+      "path": "tools/scifi_kit/art/archetypes.py",
+      "basename": "archetypes.py",
+      "stem": "archetypes",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tools/scifi_kit/art/analyze.py",
+          "line": 557,
+          "evidence": "import",
+          "reference": "archetypes",
+          "text": "import archetypes"
+        },
+        {
+          "path": "tools/scifi_kit/art/arch_props.py",
+          "line": 11,
+          "evidence": "import",
+          "reference": "archetypes",
+          "text": "from archetypes import add_socket, kit, C"
+        },
+        {
+          "path": "tools/scifi_kit/art/batch.py",
+          "line": 145,
+          "evidence": "import",
+          "reference": "archetypes",
+          "text": "import archetypes"
+        },
+        {
+          "path": "tools/scifi_kit/art/batch.py",
+          "line": 203,
+          "evidence": "import",
+          "reference": "archetypes",
+          "text": "import archetypes"
+        },
+        {
+          "path": "tools/scifi_kit/art/batch.py",
+          "line": 235,
+          "evidence": "import",
+          "reference": "archetypes",
+          "text": "import archetypes"
+        },
+        {
+          "path": "tools/scifi_kit/art/batch.py",
+          "line": 549,
+          "evidence": "import",
+          "reference": "archetypes",
+          "text": "import archetypes"
+        },
+        {
+          "path": "tools/scifi_kit/art/contract.py",
+          "line": 22,
+          "evidence": "import",
+          "reference": "archetypes",
+          "text": "import archetypes"
+        },
+        {
+          "path": "tools/scifi_kit/art/drafts.py",
+          "line": 1382,
+          "evidence": "import",
+          "reference": "archetypes",
+          "text": "import archetypes  # noqa: E402: params-driven assets (assets/*.params.json) join the registries last"
+        },
+        {
+          "path": "tools/scifi_kit/art/preview.py",
+          "line": 12,
+          "evidence": "import",
+          "reference": "archetypes",
+          "text": "import archetypes"
+        },
+        {
+          "path": "tools/scifi_kit/art/run.py",
+          "line": 164,
+          "evidence": "import",
+          "reference": "archetypes",
+          "text": "import archetypes"
+        },
+        {
+          "path": "tools/scifi_kit/art/run.py",
+          "line": 218,
+          "evidence": "import",
+          "reference": "archetypes",
+          "text": "import archetypes"
+        },
+        {
+          "path": "tools/scifi_kit/art/shell.py",
+          "line": 179,
+          "evidence": "import",
+          "reference": "archetypes",
+          "text": "import archetypes as A"
+        },
+        {
+          "path": "tools/scifi_kit/art/shell.py",
+          "line": 330,
+          "evidence": "import",
+          "reference": "archetypes",
+          "text": "import archetypes as A"
+        },
+        {
+          "path": "tools/scifi_kit/art/shell.py",
+          "line": 439,
+          "evidence": "import",
+          "reference": "archetypes",
+          "text": "import archetypes as A"
+        },
+        {
+          "path": "tools/scifi_kit/art/validate.py",
+          "line": 27,
+          "evidence": "import",
+          "reference": "archetypes",
+          "text": "import archetypes"
+        },
+        {
+          "path": "tools/scifi_kit/tests/test_kit_archetypes.py",
+          "line": 19,
+          "evidence": "import",
+          "reference": "archetypes",
+          "text": "import archetypes  # noqa: E402"
+        }
+      ]
+    },
+    {
       "path": "tools/scifi_kit/art/assemble.py",
       "basename": "assemble.py",
       "stem": "assemble",
@@ -12146,10 +12457,17 @@
       "callers_by_stem": [
         {
           "path": "tools/scifi_kit/art/bake.py",
-          "line": 196,
+          "line": 198,
           "evidence": "import",
           "reference": "assemble",
           "text": "import geo,assemble,sys"
+        },
+        {
+          "path": "tools/scifi_kit/art/batch.py",
+          "line": 249,
+          "evidence": "import",
+          "reference": "assemble",
+          "text": "import assemble"
         },
         {
           "path": "tools/scifi_kit/art/blend.py",
@@ -12160,17 +12478,24 @@
         },
         {
           "path": "tools/scifi_kit/art/drafts.py",
-          "line": 560,
+          "line": 561,
           "evidence": "import",
           "reference": "assemble",
           "text": "from assemble import end_wall"
         },
         {
           "path": "tools/scifi_kit/art/run.py",
-          "line": 181,
+          "line": 293,
           "evidence": "import",
           "reference": "assemble",
           "text": "import assemble"
+        },
+        {
+          "path": "tools/scifi_kit/art/shell.py",
+          "line": 178,
+          "evidence": "import",
+          "reference": "assemble",
+          "text": "from assemble import infantry_door_parts, rollup"
         },
         {
           "path": "tools/scifi_kit/tests/test_art_kit.py",
@@ -12203,6 +12528,13 @@
       "callers_by_basename": [],
       "callers_by_stem": [
         {
+          "path": "tools/scifi_kit/art/archetypes.py",
+          "line": 297,
+          "evidence": "import",
+          "reference": "bake_budget",
+          "text": "import bake_budget"
+        },
+        {
           "path": "tools/scifi_kit/art/bake.py",
           "line": 18,
           "evidence": "import",
@@ -12210,8 +12542,15 @@
           "text": "from bake_budget import BUDGETS, budget  # noqa: F401"
         },
         {
+          "path": "tools/scifi_kit/art/validate.py",
+          "line": 28,
+          "evidence": "import",
+          "reference": "bake_budget",
+          "text": "import bake_budget"
+        },
+        {
           "path": "tools/scifi_kit/tests/test_art_kit.py",
-          "line": 106,
+          "line": 116,
           "evidence": "import",
           "reference": "bake_budget",
           "text": "import bake_budget"
@@ -12234,6 +12573,28 @@
       ]
     },
     {
+      "path": "tools/scifi_kit/art/batch.py",
+      "basename": "batch.py",
+      "stem": "batch",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tools/scifi_kit/art/run.py",
+          "line": 209,
+          "evidence": "import",
+          "reference": "batch",
+          "text": "import batch"
+        },
+        {
+          "path": "tools/scifi_kit/tests/test_kit_archetypes.py",
+          "line": 21,
+          "evidence": "import",
+          "reference": "batch",
+          "text": "import batch  # noqa: E402"
+        }
+      ]
+    },
+    {
       "path": "tools/scifi_kit/art/batch2.py",
       "basename": "batch2.py",
       "stem": "batch2",
@@ -12241,7 +12602,7 @@
       "callers_by_stem": [
         {
           "path": "tools/scifi_kit/art/drafts.py",
-          "line": 1343,
+          "line": 1365,
           "evidence": "import",
           "reference": "batch2",
           "text": "import batch2  # noqa: E402: reuses the construction helpers above"
@@ -12255,11 +12616,61 @@
       "callers_by_basename": [],
       "callers_by_stem": [
         {
+          "path": "tools/scifi_kit/art/archetypes.py",
+          "line": 211,
+          "evidence": "import",
+          "reference": "batch3",
+          "text": "import batch3"
+        },
+        {
+          "path": "tools/scifi_kit/art/archetypes.py",
+          "line": 216,
+          "evidence": "import",
+          "reference": "batch3",
+          "text": "import batch3"
+        },
+        {
+          "path": "tools/scifi_kit/art/archetypes.py",
+          "line": 304,
+          "evidence": "import",
+          "reference": "batch3",
+          "text": "import batch3"
+        },
+        {
+          "path": "tools/scifi_kit/art/archetypes.py",
+          "line": 326,
+          "evidence": "import",
+          "reference": "batch3",
+          "text": "import batch3"
+        },
+        {
           "path": "tools/scifi_kit/art/drafts.py",
-          "line": 1349,
+          "line": 1371,
           "evidence": "import",
           "reference": "batch3",
           "text": "import batch3  # noqa: E402: construction helpers and batch two are registered first"
+        }
+      ]
+    },
+    {
+      "path": "tools/scifi_kit/art/batch_son.py",
+      "basename": "batch_son.py",
+      "stem": "batch_son",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tools/scifi_kit/art/drafts.py",
+          "line": 1376,
+          "evidence": "import",
+          "reference": "batch_son",
+          "text": "import batch_son  # noqa: E402: Sonnet runner batches (building / turret / wall)"
+        },
+        {
+          "path": "tools/scifi_kit/art/lights.py",
+          "line": 54,
+          "evidence": "import",
+          "reference": "batch_son",
+          "text": "import batch_son"
         }
       ]
     },
@@ -12278,17 +12689,81 @@
       "callers_by_stem": [
         {
           "path": "tools/scifi_kit/art/bake.py",
-          "line": 172,
+          "line": 174,
           "evidence": "import",
           "reference": "content",
           "text": "from content import source_lights"
         },
         {
           "path": "tools/scifi_kit/art/bake.py",
-          "line": 390,
+          "line": 398,
           "evidence": "import",
           "reference": "content",
           "text": "from content import shared_quonset_variant"
+        },
+        {
+          "path": "tools/scifi_kit/art/batch.py",
+          "line": 305,
+          "evidence": "import",
+          "reference": "content",
+          "text": "import content"
+        }
+      ]
+    },
+    {
+      "path": "tools/scifi_kit/art/contract.py",
+      "basename": "contract.py",
+      "stem": "contract",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tools/scifi_kit/art/batch.py",
+          "line": 117,
+          "evidence": "import",
+          "reference": "contract",
+          "text": "import contract"
+        },
+        {
+          "path": "tools/scifi_kit/art/batch.py",
+          "line": 126,
+          "evidence": "import",
+          "reference": "contract",
+          "text": "import contract"
+        },
+        {
+          "path": "tools/scifi_kit/art/batch.py",
+          "line": 341,
+          "evidence": "import",
+          "reference": "contract",
+          "text": "import contract"
+        },
+        {
+          "path": "tools/scifi_kit/art/batch.py",
+          "line": 534,
+          "evidence": "import",
+          "reference": "contract",
+          "text": "import contract"
+        },
+        {
+          "path": "tools/scifi_kit/art/run.py",
+          "line": 198,
+          "evidence": "import_module",
+          "reference": "contract",
+          "text": "print('[calibrate] thresholds are hash-locked: paste contract.file_sha(THRESH) into contract.THRESH_SHA ->', __import__('contract').file_sha(validate.THRESH))"
+        },
+        {
+          "path": "tools/scifi_kit/art/validate.py",
+          "line": 29,
+          "evidence": "import",
+          "reference": "contract",
+          "text": "import contract"
+        },
+        {
+          "path": "tools/scifi_kit/tests/test_kit_archetypes.py",
+          "line": 22,
+          "evidence": "import",
+          "reference": "contract",
+          "text": "import contract  # noqa: E402"
         }
       ]
     },
@@ -12299,6 +12774,34 @@
       "callers_by_basename": [],
       "callers_by_stem": [
         {
+          "path": "tools/scifi_kit/art/analyze.py",
+          "line": 24,
+          "evidence": "import",
+          "reference": "counts",
+          "text": "import counts"
+        },
+        {
+          "path": "tools/scifi_kit/art/archetypes.py",
+          "line": 251,
+          "evidence": "import",
+          "reference": "counts",
+          "text": "import counts"
+        },
+        {
+          "path": "tools/scifi_kit/art/archetypes.py",
+          "line": 298,
+          "evidence": "import",
+          "reference": "counts",
+          "text": "import counts"
+        },
+        {
+          "path": "tools/scifi_kit/art/batch_son.py",
+          "line": 11,
+          "evidence": "import",
+          "reference": "counts",
+          "text": "import counts"
+        },
+        {
           "path": "tools/scifi_kit/art/content.py",
           "line": 16,
           "evidence": "import",
@@ -12307,7 +12810,7 @@
         },
         {
           "path": "tools/scifi_kit/art/drafts.py",
-          "line": 1307,
+          "line": 1327,
           "evidence": "import",
           "reference": "counts",
           "text": "import counts"
@@ -12320,8 +12823,15 @@
           "text": "import counts"
         },
         {
+          "path": "tools/scifi_kit/art/validate.py",
+          "line": 30,
+          "evidence": "import",
+          "reference": "counts",
+          "text": "import counts as counts_mod"
+        },
+        {
           "path": "tools/scifi_kit/tests/test_art_kit.py",
-          "line": 135,
+          "line": 150,
           "evidence": "import",
           "reference": "counts",
           "text": "import counts"
@@ -12335,22 +12845,43 @@
       "callers_by_basename": [],
       "callers_by_stem": [
         {
-          "path": "tools/scifi_kit/art/assemble.py",
-          "line": 465,
+          "path": "tools/scifi_kit/art/archetypes.py",
+          "line": 39,
           "evidence": "import",
           "reference": "drafts",
-          "text": "from drafts import DRAFTS  # noqa: E402"
+          "text": "import drafts"
         },
         {
-          "path": "tools/scifi_kit/art/assemble.py",
-          "line": 470,
+          "path": "tools/scifi_kit/art/archetypes.py",
+          "line": 299,
           "evidence": "import",
           "reference": "drafts",
           "text": "import drafts"
         },
         {
           "path": "tools/scifi_kit/art/assemble.py",
-          "line": 480,
+          "line": 468,
+          "evidence": "import",
+          "reference": "drafts",
+          "text": "from drafts import DRAFTS  # noqa: E402"
+        },
+        {
+          "path": "tools/scifi_kit/art/assemble.py",
+          "line": 473,
+          "evidence": "import",
+          "reference": "drafts",
+          "text": "import drafts"
+        },
+        {
+          "path": "tools/scifi_kit/art/assemble.py",
+          "line": 483,
+          "evidence": "import",
+          "reference": "drafts",
+          "text": "import drafts"
+        },
+        {
+          "path": "tools/scifi_kit/art/batch.py",
+          "line": 146,
           "evidence": "import",
           "reference": "drafts",
           "text": "import drafts"
@@ -12364,14 +12895,35 @@
         },
         {
           "path": "tools/scifi_kit/art/batch3.py",
-          "line": 213,
+          "line": 191,
+          "evidence": "import",
+          "reference": "drafts",
+          "text": "import drafts"
+        },
+        {
+          "path": "tools/scifi_kit/art/batch3.py",
+          "line": 297,
           "evidence": "import",
           "reference": "drafts",
           "text": "import drafts as kit  # noqa: E402: reuse the existing construction helpers"
         },
         {
+          "path": "tools/scifi_kit/art/batch_son.py",
+          "line": 715,
+          "evidence": "import",
+          "reference": "drafts",
+          "text": "import drafts as kit  # noqa: E402: helpers exist once drafts has defined them"
+        },
+        {
           "path": "tools/scifi_kit/art/content.py",
           "line": 17,
+          "evidence": "import",
+          "reference": "drafts",
+          "text": "import drafts"
+        },
+        {
+          "path": "tools/scifi_kit/art/preview.py",
+          "line": 13,
           "evidence": "import",
           "reference": "drafts",
           "text": "import drafts"
@@ -12385,14 +12937,35 @@
         },
         {
           "path": "tools/scifi_kit/art/run.py",
-          "line": 176,
+          "line": 203,
+          "evidence": "import_module",
+          "reference": "drafts",
+          "text": "for n in names or list(__import__('drafts').DRAFTS):"
+        },
+        {
+          "path": "tools/scifi_kit/art/run.py",
+          "line": 219,
+          "evidence": "import",
+          "reference": "drafts",
+          "text": "import drafts"
+        },
+        {
+          "path": "tools/scifi_kit/art/run.py",
+          "line": 288,
+          "evidence": "import",
+          "reference": "drafts",
+          "text": "import drafts"
+        },
+        {
+          "path": "tools/scifi_kit/art/validate.py",
+          "line": 31,
           "evidence": "import",
           "reference": "drafts",
           "text": "import drafts"
         },
         {
           "path": "tools/scifi_kit/tests/test_art_kit.py",
-          "line": 67,
+          "line": 77,
           "evidence": "import",
           "reference": "drafts",
           "text": "import drafts  # noqa: E402"
@@ -12405,6 +12978,34 @@
       "stem": "geo",
       "callers_by_basename": [],
       "callers_by_stem": [
+        {
+          "path": "tools/scifi_kit/art/arch_props.py",
+          "line": 10,
+          "evidence": "import",
+          "reference": "geo",
+          "text": "import geo"
+        },
+        {
+          "path": "tools/scifi_kit/art/arch_props.py",
+          "line": 12,
+          "evidence": "import",
+          "reference": "geo",
+          "text": "from geo import rect_poly, subtract_rect"
+        },
+        {
+          "path": "tools/scifi_kit/art/archetypes.py",
+          "line": 24,
+          "evidence": "import",
+          "reference": "geo",
+          "text": "import geo"
+        },
+        {
+          "path": "tools/scifi_kit/art/archetypes.py",
+          "line": 25,
+          "evidence": "import",
+          "reference": "geo",
+          "text": "from geo import rect_poly, subtract_rect"
+        },
         {
           "path": "tools/scifi_kit/art/assemble.py",
           "line": 15,
@@ -12421,7 +13022,7 @@
         },
         {
           "path": "tools/scifi_kit/art/bake.py",
-          "line": 196,
+          "line": 198,
           "evidence": "import",
           "reference": "geo",
           "text": "import geo,assemble,sys"
@@ -12439,6 +13040,20 @@
           "evidence": "import",
           "reference": "geo",
           "text": "import geo"
+        },
+        {
+          "path": "tools/scifi_kit/art/batch_son.py",
+          "line": 12,
+          "evidence": "import",
+          "reference": "geo",
+          "text": "import geo"
+        },
+        {
+          "path": "tools/scifi_kit/art/batch_son.py",
+          "line": 13,
+          "evidence": "import",
+          "reference": "geo",
+          "text": "from geo import rect_poly"
         },
         {
           "path": "tools/scifi_kit/art/blend.py",
@@ -12463,21 +13078,49 @@
         },
         {
           "path": "tools/scifi_kit/art/lights.py",
-          "line": 58,
+          "line": 75,
           "evidence": "import",
           "reference": "geo",
           "text": "from geo import centroid"
         },
         {
-          "path": "tools/scifi_kit/art/run.py",
-          "line": 80,
+          "path": "tools/scifi_kit/art/preview.py",
+          "line": 14,
           "evidence": "import",
           "reference": "geo",
           "text": "import geo"
         },
         {
           "path": "tools/scifi_kit/art/run.py",
-          "line": 162,
+          "line": 96,
+          "evidence": "import",
+          "reference": "geo",
+          "text": "import geo"
+        },
+        {
+          "path": "tools/scifi_kit/art/run.py",
+          "line": 274,
+          "evidence": "import",
+          "reference": "geo",
+          "text": "import geo"
+        },
+        {
+          "path": "tools/scifi_kit/art/shell.py",
+          "line": 16,
+          "evidence": "import",
+          "reference": "geo",
+          "text": "import geo"
+        },
+        {
+          "path": "tools/scifi_kit/art/shell.py",
+          "line": 17,
+          "evidence": "import",
+          "reference": "geo",
+          "text": "from geo import subtract_rect"
+        },
+        {
+          "path": "tools/scifi_kit/art/validate.py",
+          "line": 32,
           "evidence": "import",
           "reference": "geo",
           "text": "import geo"
@@ -12514,7 +13157,7 @@
       "callers_by_stem": [
         {
           "path": "tools/scifi_kit/art/bake.py",
-          "line": 142,
+          "line": 144,
           "evidence": "import",
           "reference": "lights",
           "text": "from lights import from_kit"
@@ -12527,8 +13170,22 @@
           "text": "from lights import from_kit"
         },
         {
+          "path": "tools/scifi_kit/art/validate.py",
+          "line": 591,
+          "evidence": "import",
+          "reference": "lights",
+          "text": "import lights"
+        },
+        {
+          "path": "tools/scifi_kit/art/validate.py",
+          "line": 603,
+          "evidence": "import",
+          "reference": "lights",
+          "text": "import lights"
+        },
+        {
           "path": "tools/scifi_kit/tests/test_art_kit.py",
-          "line": 136,
+          "line": 151,
           "evidence": "import",
           "reference": "lights",
           "text": "import lights"
@@ -12558,6 +13215,35 @@
       ]
     },
     {
+      "path": "tools/scifi_kit/art/npviews.py",
+      "basename": "npviews.py",
+      "stem": "npviews",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tools/scifi_kit/art/analyze.py",
+          "line": 473,
+          "evidence": "import",
+          "reference": "npviews",
+          "text": "import npviews"
+        },
+        {
+          "path": "tools/scifi_kit/art/batch.py",
+          "line": 294,
+          "evidence": "import",
+          "reference": "npviews",
+          "text": "import npviews"
+        },
+        {
+          "path": "tools/scifi_kit/art/shape.py",
+          "line": 409,
+          "evidence": "import",
+          "reference": "npviews",
+          "text": "import npviews"
+        }
+      ]
+    },
+    {
       "path": "tools/scifi_kit/art/palette_metrics.py",
       "basename": "palette_metrics.py",
       "stem": "palette_metrics",
@@ -12565,18 +13251,121 @@
       "callers_by_stem": []
     },
     {
+      "path": "tools/scifi_kit/art/preview.py",
+      "basename": "preview.py",
+      "stem": "preview",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tools/scifi_kit/art/run.py",
+          "line": 186,
+          "evidence": "import",
+          "reference": "preview",
+          "text": "import preview"
+        }
+      ]
+    },
+    {
       "path": "tools/scifi_kit/art/review_drafts.py",
       "basename": "review_drafts.py",
       "stem": "review_drafts",
       "callers_by_basename": [],
-      "callers_by_stem": []
+      "callers_by_stem": [
+        {
+          "path": "tools/scifi_kit/art/batch.py",
+          "line": 335,
+          "evidence": "import",
+          "reference": "review_drafts",
+          "text": "import review_drafts"
+        }
+      ]
     },
     {
       "path": "tools/scifi_kit/art/run.py",
       "basename": "run.py",
       "stem": "run",
       "callers_by_basename": [],
-      "callers_by_stem": []
+      "callers_by_stem": [
+        {
+          "path": "tools/scifi_kit/art/batch.py",
+          "line": 248,
+          "evidence": "import",
+          "reference": "run",
+          "text": "import run as runmod"
+        }
+      ]
+    },
+    {
+      "path": "tools/scifi_kit/art/shape.py",
+      "basename": "shape.py",
+      "stem": "shape",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tools/scifi_kit/art/analyze.py",
+          "line": 530,
+          "evidence": "import",
+          "reference": "shape",
+          "text": "import shape"
+        },
+        {
+          "path": "tools/scifi_kit/art/validate.py",
+          "line": 477,
+          "evidence": "import",
+          "reference": "shape",
+          "text": "import shape"
+        }
+      ]
+    },
+    {
+      "path": "tools/scifi_kit/art/shell.py",
+      "basename": "shell.py",
+      "stem": "shell",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tools/scifi_kit/art/arch_props.py",
+          "line": 260,
+          "evidence": "import",
+          "reference": "shell",
+          "text": "import shell as shellmod"
+        },
+        {
+          "path": "tools/scifi_kit/art/archetypes.py",
+          "line": 180,
+          "evidence": "import",
+          "reference": "shell",
+          "text": "import shell"
+        },
+        {
+          "path": "tools/scifi_kit/art/contract.py",
+          "line": 249,
+          "evidence": "import",
+          "reference": "shell",
+          "text": "import shell"
+        },
+        {
+          "path": "tools/scifi_kit/tests/test_kit_archetypes.py",
+          "line": 98,
+          "evidence": "import",
+          "reference": "shell",
+          "text": "import shell"
+        },
+        {
+          "path": "tools/scifi_kit/tests/test_kit_archetypes.py",
+          "line": 115,
+          "evidence": "import",
+          "reference": "shell",
+          "text": "import shell"
+        },
+        {
+          "path": "tools/scifi_kit/tests/test_kit_archetypes.py",
+          "line": 137,
+          "evidence": "import",
+          "reference": "shell",
+          "text": "import shell"
+        }
+      ]
     },
     {
       "path": "tools/scifi_kit/art/stock_views.py",
@@ -12594,11 +13383,69 @@
       ]
     },
     {
+      "path": "tools/scifi_kit/art/validate.py",
+      "basename": "validate.py",
+      "stem": "validate",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tools/scifi_kit/art/batch.py",
+          "line": 204,
+          "evidence": "import",
+          "reference": "validate",
+          "text": "import validate"
+        },
+        {
+          "path": "tools/scifi_kit/art/batch.py",
+          "line": 342,
+          "evidence": "import",
+          "reference": "validate",
+          "text": "import validate"
+        },
+        {
+          "path": "tools/scifi_kit/art/batch.py",
+          "line": 512,
+          "evidence": "import",
+          "reference": "validate",
+          "text": "import validate"
+        },
+        {
+          "path": "tools/scifi_kit/art/batch.py",
+          "line": 535,
+          "evidence": "import",
+          "reference": "validate",
+          "text": "import validate"
+        },
+        {
+          "path": "tools/scifi_kit/art/run.py",
+          "line": 191,
+          "evidence": "import",
+          "reference": "validate",
+          "text": "import validate"
+        }
+      ]
+    },
+    {
       "path": "tools/scifi_kit/art/wear_metrics.py",
       "basename": "wear_metrics.py",
       "stem": "wear_metrics",
       "callers_by_basename": [],
-      "callers_by_stem": []
+      "callers_by_stem": [
+        {
+          "path": "tools/scifi_kit/art/analyze.py",
+          "line": 365,
+          "evidence": "import",
+          "reference": "wear_metrics",
+          "text": "from wear_metrics import metrics  # grime metrics on UV-used texels, the same ones the bake is judged on"
+        },
+        {
+          "path": "tools/scifi_kit/art/validate.py",
+          "line": 160,
+          "evidence": "import",
+          "reference": "wear_metrics",
+          "text": "import wear_metrics"
+        }
+      ]
     },
     {
       "path": "tools/scifi_kit/blender_build.py",
@@ -12662,6 +13509,13 @@
       "path": "tools/scifi_kit/tests/test_art_kit.py",
       "basename": "test_art_kit.py",
       "stem": "test_art_kit",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "tools/scifi_kit/tests/test_kit_archetypes.py",
+      "basename": "test_kit_archetypes.py",
+      "stem": "test_kit_archetypes",
       "callers_by_basename": [],
       "callers_by_stem": []
     },
