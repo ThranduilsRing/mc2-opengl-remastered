@@ -33,7 +33,8 @@ bool MoverShadowState::init(VulkanContext& ctx, bool unionPath) {
     s.magFilter = s.minFilter = VK_FILTER_NEAREST; s.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
     s.addressModeU = s.addressModeV = s.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
     s.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
-    s.compareEnable = VK_TRUE; s.compareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
+    // Receivers read blocker depth and perform their own filtered comparisons.
+    s.compareEnable = VK_FALSE;
     if (!create(sampler_, device_, [&](auto* h) { return vkCreateSampler(device_, &s, nullptr, h); })) return false;
     VkImageCreateInfo i{VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO};
     i.imageType = VK_IMAGE_TYPE_2D; i.format = VK_FORMAT_D16_UNORM; i.extent = {1,1,1};
@@ -159,6 +160,7 @@ bool MoverShadowState::prepare(int mapSide, const float cameraRows[16], Vec3 sun
     frame_={};
     frame_.flags[0]=spheres_.empty()?0:1; frame_.flags[1]=shadowQuality().level==0?0:1; frame_.flags[2]=shadowQuality().level; frame_.flags[3]=1;
     frame_.sun[0]=sun.x; frame_.sun[1]=sun.y; frame_.sun[2]=sun.z;
+    frame_.sun[3]=std::tan(kSunAngularRadiusDeg * 0.01745329252f);
     int side=0; float halfMap=0; gos_GetTerrainChunkGridInfo(&side,&halfMap);
     frame_.mask[0]=-halfMap; frame_.mask[1]=halfMap;
     frame_.mask[2]=1.0f/((std::max)(side-1,1)*kWorldUnitsPerVertex); frame_.mask[3]=maskReady?1.0f:0.0f;

@@ -640,6 +640,7 @@ class TreeAppearance : public ObjectAppearance
 		// per-frame replay path uses; pinned 0 in Tasks 1-4 (distance selection
 		// arrives in Task 5) so behavior == single-LOD today.
 		StaticRegistration							staticReg[MAX_LODS];
+		bool shadowMoving = false;
 		long										activeLOD;
 
 		float										hazeFactor;
@@ -688,7 +689,13 @@ class TreeAppearance : public ObjectAppearance
 		virtual bool IsStaticNow() const override;
 		virtual void touch() override;
 		void selectActiveLOD();  // TREE-OVERRIDE-LOD-MVP: per-frame distance LOD pick (update+touch)
-		bool shadowIsMoving() const { return pitch>=-85.0f && pitch<=85.0f && (pitch<-0.01f || pitch>0.01f); }
+		// Fixed terrain tilt is a pose; the owner supplies actual falling motion.
+		bool shadowIsMoving() const { return shadowMoving; }
+		void setShadowMoving(bool moving)
+		{
+			if (shadowMoving != moving) invalidateStaticRegistration();
+			shadowMoving = moving;
+		}
 		virtual void invalidateStaticRegistration() override;
 		// Task 5 (Track B): mission-load bulk registration overrides.
 		virtual void registerStatic()              override;
