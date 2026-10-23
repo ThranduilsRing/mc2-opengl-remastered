@@ -11,15 +11,13 @@ vec3 propAuthoredColor(SurfaceMaterial s, bool alphaTest) {
     bool twoSided = (vMaterialFlags & 4u) != 0u;
     float ndl = twoSided ? abs(raw) : max(raw, 0.0);
     float wrap = twoSided ? 1.0 : mix(0.55, 1.0, 0.5 + 0.5 * raw);
-    vec3 ambient = vMaterialAmbient;
-    if (uFrame.lightingReady == 0)
-        ambient = mix(vec3(0.14,0.13,0.11), vec3(0.00,0.02,0.08), clamp(0.5+0.5*nStuff.y,0.0,1.0));
-    vec3 hemi = mix(vec3(0.10,0.09,0.07), vec3(0.20,0.22,0.28), 0.5+0.5*nStuff.y) * uFrame.ambientV1Strength;
+    // R2: the mission environment SH is the only ambient. ObjectLights ambient and the fixed
+    // prop hemispheres no longer stack on top of it.
     vec3 sh[9];
     for (int k=0; k<9; ++k) sh[k] = uFrame.iblSh[k].xyz;
     vec3 ibl = uFrame.iblShStrength > 0.0 ? evalShL2(normalize(nStuff), sh)*uFrame.iblShStrength : vec3(0);
     // AO affects ambient fill only; emission, direct sun and local pools survive.
-    vec3 lit = vMaterialSeed * wrap + (ambient*wrap + hemi + ibl)*s.ao + vMaterialSun*ndl;
+    vec3 lit = vMaterialSeed * wrap + ibl*s.ao + vMaterialSun*ndl;
     lit = clamp(clamp(lit,0.0,1.0) + vHighlight.rgb,0.0,1.0);
     if (alphaTest) lit = max(lit,vec3(0.5));
     vec3 color = s.baseColor * propDecodeColor(lit) * (1.0 - 0.65*s.metallic);

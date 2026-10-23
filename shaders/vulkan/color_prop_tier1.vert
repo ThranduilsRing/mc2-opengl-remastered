@@ -232,7 +232,7 @@ void main() {
     // Use the real scanned sun color when the feed is live (GL parity). Only the
     // fail-soft branch (no feed) falls back to the neutral kSunColor stand-in.
     vec3 sunTerm = (uFrame.lightingReady != 0) ? sunColorFed : kSunColor;
-    vMaterialAmbient = ambientTerm;
+    vMaterialAmbient = vec3(0.0);   // R2: ObjectLights ambient is not summed; the environment SH is the one ambient
     vMaterialSun = sunTerm;
     vSunDirStuff = sunDirFed;
     vSunColor = sunFound ? sunColorFed : vec3(0.0);
