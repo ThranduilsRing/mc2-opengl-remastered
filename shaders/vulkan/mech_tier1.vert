@@ -74,41 +74,43 @@ bool GetFalloff(float len, vec3 fd, out float falloff) {
 #define MC2_ENVIRONMENT_AMBIENT
 //PORT-BEGIN:calc_light
 vec3 calc_light(int idx, vec3 normal, vec3 wpos, vec3 base_light, int sunAxisMc2Fix) {
-    ObjectLights ld = uLights.light[idx];
+    // Keep only the count local: copying the matrix arrays creates private indexed storage.
+    ObjectLights ld;
+    ld.numLights = uLights.light[idx].numLights;
     if (ld.numLights.x == 0) return base_light;   // MC2_STATIC_PROP_LIGHTING branch
     vec3 final = base_light;
     vec3 ambient = vec3(0.0);
     int n = min(ld.numLights.x, MAX_LIGHTS_IN_WORLD);
     for (int i = 0; i < n; ++i) {
-        int lt = int(ld.light_dir[i].w);
-        vec3 lc = ld.light_color[i].xyz;
+        int lt = int(uLights.light[idx].light_dir[i].w);
+        vec3 lc = uLights.light[idx].light_color[i].xyz;
         if (lt == TG_LIGHT_AMBIENT) {
 #ifndef MC2_ENVIRONMENT_AMBIENT
             ambient += lc;
 #endif
         } else if (lt == TG_LIGHT_INFINITE) {
-            vec3 sd = (sunAxisMc2Fix != 0) ? mc2ToRender(ld.light_dir[i].xyz) : ld.light_dir[i].xyz;
+            vec3 sd = (sunAxisMc2Fix != 0) ? mc2ToRender(uLights.light[idx].light_dir[i].xyz) : uLights.light[idx].light_dir[i].xyz;
             float ndl = clamp(dot(normal, -sd), 0.0, 1.0);
             final += ndl * lc;
         } else if (lt == TG_LIGHT_INFINITEWITHFALLOFF) {
-            vec3 lp = ld.light_to_world[i][3].xyz;
+            vec3 lp = uLights.light[idx].light_to_world[i][3].xyz;
             float d = length(wpos - lp); float f;
-            if (GetFalloff(d, ld.light_falloff[i].xyz, f)) {
-                vec3 sd = (sunAxisMc2Fix != 0) ? mc2ToRender(ld.light_dir[i].xyz) : ld.light_dir[i].xyz;
+            if (GetFalloff(d, uLights.light[idx].light_falloff[i].xyz, f)) {
+                vec3 sd = (sunAxisMc2Fix != 0) ? mc2ToRender(uLights.light[idx].light_dir[i].xyz) : uLights.light[idx].light_dir[i].xyz;
                 float ndl = clamp(dot(normal, -sd), 0.0, 1.0);
                 final += ndl * lc * f;
             }
         } else if (lt == TG_LIGHT_POINT) {
-            vec3 lp = ld.light_to_world[i][3].xyz;
+            vec3 lp = uLights.light[idx].light_to_world[i][3].xyz;
             vec3 tl = lp - wpos; float d = length(tl); float f;
-            if (GetFalloff(d, ld.light_falloff[i].xyz, f) && d > Stuff_SMALL) {
+            if (GetFalloff(d, uLights.light[idx].light_falloff[i].xyz, f) && d > Stuff_SMALL) {
                 float ndl = clamp(dot(normal, tl / d), 0.0, 1.0);
                 final += ndl * lc * f;
             }
         } else if (lt == TG_LIGHT_SPOT) {
-            vec3 lp = ld.light_to_world[i][3].xyz;
+            vec3 lp = uLights.light[idx].light_to_world[i][3].xyz;
             vec3 tl = lp - wpos; float d = length(tl); float f;
-            if (GetFalloff(d, ld.light_falloff[i].xyz, f) && d > Stuff_SMALL) {
+            if (GetFalloff(d, uLights.light[idx].light_falloff[i].xyz, f) && d > Stuff_SMALL) {
                 float ndl = clamp(dot(normal, tl / d), 0.0, 1.0);
                 final += ndl * lc * f;
             }
@@ -198,12 +200,12 @@ void main() {
     vMechSunDirGL = vec3(0.0);
     vMechSunFound = 0;
     if (uFrame.lightingReady != 0) {
-        ObjectLights ld_spec = uLights.light[int(inst.lightDataIndex)];
-        int n_spec = min(ld_spec.numLights.x, MAX_LIGHTS_IN_WORLD);
+        int specIndex = int(inst.lightDataIndex);
+        int n_spec = min(uLights.light[specIndex].numLights.x, MAX_LIGHTS_IN_WORLD);
         for (int i = 0; i < n_spec; ++i) {
-            int lt = int(ld_spec.light_dir[i].w);
+            int lt = int(uLights.light[specIndex].light_dir[i].w);
             if (lt == TG_LIGHT_INFINITE || lt == TG_LIGHT_INFINITEWITHFALLOFF) {
-                vec3 sdStuff  = ld_spec.light_dir[i].xyz;
+                vec3 sdStuff  = uLights.light[specIndex].light_dir[i].xyz;
                 vMechSunDirGL = mc2ToRender(sdStuff);
                 vMechSunFound = 1;
                 break;

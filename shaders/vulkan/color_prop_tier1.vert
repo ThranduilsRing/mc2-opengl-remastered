@@ -218,13 +218,15 @@ void main() {
     vec3 sunDirFed   = vec3(0.0);
     bool sunFound    = false;
     if (uFrame.lightingReady != 0) {
-        ObjectLights ld = lightsData_.light[int(inst.lightDataIndex)];
+        int lightIndex = int(inst.lightDataIndex);
+        ObjectLights ld;
+        ld.numLights = lightsData_.light[lightIndex].numLights;
         int n = min(ld.numLights.x, MAX_LIGHTS_IN_WORLD);
         for (int i = 0; i < n; ++i) {
-            int lt = int(ld.light_dir[i].w);
+            int lt = int(lightsData_.light[lightIndex].light_dir[i].w);
             if (!sunFound && (lt == 1 || lt == 2)) {
-                sunColorFed = ld.light_color[i].xyz;
-                sunDirFed = ld.light_dir[i].xyz;
+                sunColorFed = lightsData_.light[lightIndex].light_color[i].xyz;
+                sunDirFed = lightsData_.light[lightIndex].light_dir[i].xyz;
                 sunFound = true;
             }
         }

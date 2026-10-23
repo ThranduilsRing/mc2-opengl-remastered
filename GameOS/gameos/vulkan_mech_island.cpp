@@ -80,6 +80,7 @@
 #include <limits>
 #include <cmath>
 #include "../../RenderCore/gpu_abi/GpuMechInstance.h"
+#include "../../RenderCore/axis_convert.h"
 #include <tracy/Tracy.hpp>   // VK-FLIP-FIELD-REPORT-1: coarse per-region frame zones
 
 namespace {
@@ -759,7 +760,9 @@ bool posed_light_bounds(const std::vector<BoneBounds>& local, const Mc2MechFrame
         for(unsigned corner=0;corner<8;++corner) {
             float p[3];for(unsigned a=0;a<3;++a)p[a]=(corner&(1u<<a))?b.hi[a]:b.lo[a];
             float w[3];for(unsigned a=0;a<3;++a)w[a]=m[a]*p[0]+m[4+a]*p[1]+m[8+a]*p[2]+m[12+a];
-            const float mc2[3]={-w[0],w[2],w[1]};
+            struct V3 { float x,y,z; };
+            const auto render=mc2ToRender(V3{w[0],w[1],w[2]});
+            const float mc2[3]={render.x,render.y,render.z};
             for(unsigned a=0;a<3;++a) {
                 if(!std::isfinite(mc2[a]))return false;
                 lo[a]=std::min(lo[a],mc2[a]);hi[a]=std::max(hi[a],mc2[a]);
@@ -779,6 +782,7 @@ void build_draw_lights(MechIsland* s,const Mc2MechFrameFeed& feed,int count,
     const auto* pool=static_cast<const Light*>(feed.poolLights48);
     lights.resize(kMaxPoolLights);if(count)std::copy_n(pool,count,lights.begin());
     draws.resize(feed.runCount);
+    uint64_t candidates=0,drawCount=0,invalid=0,overflow=0,empty=0;
     const bool cull=mc2::gate::get<"MC2_LIGHT_GRID">();
     for(uint32_t r=0;r<feed.runCount;++r) {
         const auto& run=feed.runs[r];
@@ -800,10 +804,18 @@ void build_draw_lights(MechIsland* s,const Mc2MechFrameFeed& feed,int count,
                 }
                 const auto selected=lights.size()-first;
                 if(selected<=64)pc={run.materialFlags,uint32_t(first),uint32_t(selected)};
-                else lights.resize(first); // exact, stable full-pool overflow fallback
-            }
+                else {lights.resize(first);++overflow;} // exact, stable full-pool overflow fallback
+            } else ++invalid;
+            candidates+=pc.poolCount;++drawCount;if(!pc.poolCount)++empty;
             draws[r].push_back(pc);
         }
+    }
+    static int lastCount=-1;
+    if(count>lastCount && count && drawCount) {
+        lastCount=count;
+        vlog("draw lights: pool=%d draws=%llu avg=%.2f empty=%llu invalid=%llu overflow=%llu bytes=%zu.",
+             count,(unsigned long long)drawCount,double(candidates)/drawCount,
+             (unsigned long long)empty,(unsigned long long)invalid,(unsigned long long)overflow,lights.size()*sizeof(Light));
     }
 }
 
