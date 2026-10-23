@@ -5,10 +5,11 @@
 #include "tgl.h"
 #include "content_socket.h"
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace mc2::content {
-inline constexpr uint32_t cookerVersion = 3;
+inline constexpr uint32_t cookerVersion = 4;
 struct Material {
     std::string textureName;
     bool alpha = false;
@@ -33,6 +34,6 @@ struct Asset {
 
 // Validate and publish a content-addressed CPU recipe. Input identity includes resolved
 // source bytes, the complete IR payload and the cooker version. No simulation state/RNG.
-bool cook(Asset& asset, const char* source);
-bool loadCached(Asset& asset, const char* source);
+bool cook(Asset& asset, std::string_view source);
+bool loadCached(Asset& asset, std::string_view source);
 }

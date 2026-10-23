@@ -74,8 +74,8 @@ class TG_TypeMultiShape
 	//-------------
 	//Data Members
 	protected:
-		long DecodeStockBinary(const char* fileName);
-		long DecodeStockASE(const char* fileName, bool forceMakeBinary, Microsoft::Xna::Arm::IProviderEngine* armProvider);
+		long DecodeStockBinary(std::string_view fileName);
+		long DecodeStockASE(std::string_view fileName, bool forceMakeBinary, Microsoft::Xna::Arm::IProviderEngine* armProvider);
 		mc2::content::Asset ExtractContentIR();
 		int                 numTG_TypeShapes;		//Number of TG_Shapes
 		int                 numTextures;			//Total Textures for all shapes.
@@ -258,7 +258,7 @@ class TG_TypeMultiShape
 		}
 
 		long LoadBinaryCopy (const char *fileName);
-		long BuildContentIR(mc2::content::Asset&& asset, const char* source, float* groundDy = nullptr);
+		long BuildContentIR(mc2::content::Asset&& asset, std::string_view source, float* groundDy = nullptr);
         const std::vector<mc2::content::Socket>& ContentSockets() const { return contentSockets_; }
 		void SaveBinaryCopy (const char *fileName);
 

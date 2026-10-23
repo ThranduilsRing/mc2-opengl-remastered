@@ -23,6 +23,7 @@
 #include<stuff/stuff.hpp>
 #include<gameos.hpp>
 #include <cstdint>  // uint64_t (Tier-1 instrumentation, stability spec §2)
+#include <string_view>
 #include <cstring>  // strcmp (rebuildShapeRecParents)
 #include <memory>   // the per-frame pools own their storage
 #include <vector>   // an animation owns its key tracks
@@ -545,10 +546,10 @@ class TG_TypeNode
 			relativeNodeCenter -= parent;
 		}
 
-        void InitContentNode(const char* name, const char* parent, glm::vec3 center, glm::vec3 relative)
+        void InitContentNode(std::string_view name, std::string_view parent, glm::vec3 center, glm::vec3 relative)
         {
-            strncpy(nodeId, name, TG_NODE_ID - 1); nodeId[TG_NODE_ID - 1] = '\0';
-            strncpy(parentId, parent, TG_NODE_ID - 1); parentId[TG_NODE_ID - 1] = '\0';
+            std::memset(nodeId, 0, sizeof(nodeId)); name.copy(nodeId, TG_NODE_ID - 1);
+            std::memset(parentId, 0, sizeof(parentId)); parent.copy(parentId, TG_NODE_ID - 1);
             nodeCenter = center;
             relativeNodeCenter = relative;
         }

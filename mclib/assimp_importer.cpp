@@ -251,14 +251,14 @@ inline bool skelMeshDropped(const char* n) {
 //   - no renderable mesh (numMeshes == 0)
 // Helper-object-style nodes (handle_*, World*) are not flagged for now —
 // the importer only consumes scene->mMeshes anyway.
-long ValidateScene(const aiScene* scene, const char* path) {
+bool ValidateScene(const aiScene* scene, const char* path) {
 	if (!scene || !scene->mRootNode) {
 		PAUSE(("[importer] %s: Assimp returned null scene", path));
-		return -1;
+		return false;
 	}
 	if (scene->mNumMeshes == 0) {
 		PAUSE(("[importer] %s: no meshes", path));
-		return -1;
+		return false;
 	}
 
 	// Walk the scene graph; collect node names; flag length and duplicates.
@@ -282,14 +282,14 @@ long ValidateScene(const aiScene* scene, const char* path) {
 			if (!seen.insert(name).second) {
 				STOP(("[importer] %s: duplicate node name '%s' (breaks node-ID lookup)",
 				      path, name));
-				return -1;
+				return false;
 			}
 		}
 		for (unsigned i = 0; i < n->mNumChildren; i++)
 			stack.push_back(n->mChildren[i]);
 	}
 
-	return 0;
+	return true;
 }
 
 //-----------------------------------------------------------------------------
@@ -1415,15 +1415,15 @@ static bool ContentNumber(const aiMetadata* metadata, unsigned index, float& out
     return std::isfinite(out);
 }
 
-static bool ContentVector(const aiMetadata* metadata, const char* key, glm::vec3& out) {
+static bool ContentVector(const aiMetadata* metadata, std::string_view key, glm::vec3& out) {
     aiMetadata values;
     return metadata && metadata->Get(std::string(key), values) && values.mNumProperties == 3 &&
         ContentNumber(&values, 0, out.x) && ContentNumber(&values, 1, out.y) && ContentNumber(&values, 2, out.z);
 }
 
-static float ContentScalar(const aiMetadata* metadata, const char* key, float fallback) {
+static float ContentScalar(const aiMetadata* metadata, std::string_view key, float fallback) {
     for (unsigned i = 0; metadata && i < metadata->mNumProperties; ++i)
-        if (metadata->mKeys[i] == aiString(key)) { float value; return ContentNumber(metadata, i, value) ? value : fallback; }
+        if (metadata->mKeys[i] == aiString(std::string(key))) { float value; return ContentNumber(metadata, i, value) ? value : fallback; }
     return fallback;
 }
 
@@ -1479,7 +1479,7 @@ long ImportGeometryFromFile(const char* path, TG_TypeMultiShape* out, bool autoG
 		return -1;
 	}
 
-	if (ValidateScene(scene, path) != 0) {
+	if (!ValidateScene(scene, path)) {
 		return -1;
 	}
 
@@ -1595,8 +1595,8 @@ long ImportGeometryFromFile(const char* path, TG_TypeMultiShape* out, bool autoG
         ContentFloatKey(s_gltfYawDeg()) + ":" + std::to_string(authoredColors) + ":" + std::to_string(bakeNodeTransforms) +
         ":" + bake.forcedClip + ":" + std::to_string(bake.forcedFrame) + ":" + ContentFloatKey(bake.scale);
     std::sort(sources->dependencies.begin(), sources->dependencies.end());
-    for (const auto& dependency : sources->dependencies)
-        asset.parameters += ":" + std::to_string(dependency.second);
+    for (const auto& [dependencyPath, digest] : sources->dependencies)
+        asset.parameters += ":" + std::to_string(digest);
     if (!bake.active && mc2::content::loadCached(asset, path))
         return out->BuildContentIR(std::move(asset), path);
     CollectContentSockets(scene->mRootNode, asset);

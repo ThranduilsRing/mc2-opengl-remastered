@@ -102,7 +102,7 @@ void saveLocked(State& s) {
     std::error_code ec; std::filesystem::rename(tmp,s.cachePath,ec);
     if (!ec) {
         s.dirty=false; s.saved=std::chrono::steady_clock::now();
-        std::fprintf(stderr,"[VK_PIPELINE_CACHE v1] saved_bytes=%zu pipelines=%llu creation_ms=%.3f\n",bytes,s.creations,s.creationMs);
+        if (mc2::gate::get<"MC2_DIAG_VERBOSE">()) std::fprintf(stderr,"[VK_PIPELINE_CACHE v1] saved_bytes=%zu pipelines=%llu creation_ms=%.3f\n",bytes,s.creations,s.creationMs);
     }
 }
 }
@@ -141,7 +141,7 @@ void init(VkDevice device, VkPhysicalDevice physical) {
     }}
     VkPipelineCacheCreateInfo ci{VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO}; ci.initialDataSize=data.size(); ci.pInitialData=data.data();
     if(vkCreatePipelineCache(device,&ci,nullptr,&s.cache)!=VK_SUCCESS) { ci.initialDataSize=0; ci.pInitialData=nullptr; status="driver_rejected"; vkCreatePipelineCache(device,&ci,nullptr,&s.cache); }
-    std::fprintf(stderr,"[VK_PIPELINE_CACHE v1] status=%s initial_bytes=%zu %s\n",status,data.size(),s.driver);
+    if (mc2::gate::get<"MC2_DIAG_VERBOSE">()) std::fprintf(stderr,"[VK_PIPELINE_CACHE v1] status=%s initial_bytes=%zu %s\n",status,data.size(),s.driver);
     uint32_t n=0; vkEnumerateDeviceExtensionProperties(physical,nullptr,&n,nullptr);
     std::vector<VkExtensionProperties> extensions(n); vkEnumerateDeviceExtensionProperties(physical,nullptr,&n,extensions.data());
     bool amd=false;
@@ -165,7 +165,7 @@ void init(VkDevice device, VkPhysicalDevice physical) {
             }
         }
     }
-    std::fprintf(stderr,"[VK_BREADCRUMBS v1] sink=%s cpu_ring=256 %s\n",s.markerMap?"AMD_buffer_marker":s.checkpoints?"NV_checkpoints":"CPU",s.packages);
+    if (mc2::gate::get<"MC2_DIAG_VERBOSE">()) std::fprintf(stderr,"[VK_BREADCRUMBS v1] sink=%s cpu_ring=256 %s\n",s.markerMap?"AMD_buffer_marker":s.checkpoints?"NV_checkpoints":"CPU",s.packages);
 }
 void saveCache() { auto& s=state(); std::lock_guard lock(s.mutex); saveLocked(s); }
 VkPipelineCache cacheHandle() { return state().cache; }
@@ -207,7 +207,7 @@ bool admit(uint64_t bytes) {
 uint32_t shadowTier(uint32_t requested,uint64_t bpp,uint32_t copies) {
     uint32_t tier=requested; while(tier>512 && !admit(uint64_t(tier)*tier*bpp*copies)) tier/=2;
     if(!admit(uint64_t(tier)*tier*bpp*copies)) return 0;
-    if(tier!=requested) std::fprintf(stderr,"[VK_RESIDENCY v1] shadow_tier=%u requested=%u\n",tier,requested);
+    if(tier!=requested) if (mc2::gate::get<"MC2_DIAG_VERBOSE">()) std::fprintf(stderr,"[VK_RESIDENCY v1] shadow_tier=%u requested=%u\n",tier,requested);
     return tier;
 }
 std::string ledgerJson() {
@@ -446,7 +446,7 @@ VkResult graphics(VkDevice dev,VkPipelineCache,uint32_t n,const VkGraphicsPipeli
     if(result!=VK_SUCCESS) { for(uint32_t i=0;i<n;++i) if(out[i]) { vkDestroyPipeline(dev,out[i],allocator); out[i]=VK_NULL_HANDLE; } }
     const double ms=std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-begin).count(); s.creationMs+=ms; s.creations+=n; s.dirty=true;
     for(uint32_t i=0;i<n;++i) if(out[i]) { auto r=std::make_unique<Recipe>(); r->original=out[i]; r->capture(info[i]); breadcrumb("pipeline","graphics",r->hash); const uint64_t token=++nextPipelineToken; pipelineTokens()[out[i]]=token; recipes()[token]=std::move(r); }
-    std::fprintf(stderr,"[VK_PIPELINE_CREATE v1] kind=graphics count=%u ms=%.3f frame=%llu\n",n,ms,getOrCreateEngineVulkanContext().tracker().frameNo());
+    if (mc2::gate::get<"MC2_DIAG_VERBOSE">()) std::fprintf(stderr,"[VK_PIPELINE_CREATE v1] kind=graphics count=%u ms=%.3f frame=%llu\n",n,ms,getOrCreateEngineVulkanContext().tracker().frameNo());
     return result;
 }
 VkResult compute(VkDevice dev,VkPipelineCache,uint32_t n,const VkComputePipelineCreateInfo* info,const VkAllocationCallbacks* allocator,VkPipeline* out) {
@@ -458,7 +458,7 @@ VkResult compute(VkDevice dev,VkPipelineCache,uint32_t n,const VkComputePipeline
     if(result!=VK_SUCCESS) { for(uint32_t i=0;i<n;++i) if(out[i]) { vkDestroyPipeline(dev,out[i],allocator); out[i]=VK_NULL_HANDLE; } }
     const double ms=std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-begin).count(); s.creationMs+=ms; s.creations+=n; s.dirty=true;
     for(uint32_t i=0;i<n;++i) if(out[i]) { auto r=std::make_unique<Recipe>(); r->original=out[i]; r->isCompute=true; r->c=info[i]; r->stage(info[i].stage); if(info[i].pNext) r->reloadable=false; breadcrumb("pipeline","compute",r->hash); const uint64_t token=++nextPipelineToken; pipelineTokens()[out[i]]=token; recipes()[token]=std::move(r); }
-    std::fprintf(stderr,"[VK_PIPELINE_CREATE v1] kind=compute count=%u ms=%.3f frame=%llu\n",n,ms,getOrCreateEngineVulkanContext().tracker().frameNo()); return result;
+    if (mc2::gate::get<"MC2_DIAG_VERBOSE">()) std::fprintf(stderr,"[VK_PIPELINE_CREATE v1] kind=compute count=%u ms=%.3f frame=%llu\n",n,ms,getOrCreateEngineVulkanContext().tracker().frameNo()); return result;
 }
 void bind(VkCommandBuffer cb,VkPipelineBindPoint point,VkPipeline pipeline) {
     auto& s=state(); std::lock_guard lock(s.mutex); auto it=pipelineTokens().find(pipeline);
@@ -494,11 +494,11 @@ void frame() {
         s.firstFrameStarted=true; s.previousFrame=now;
         if(s.firstFrames.size()==120) {
             std::sort(s.firstFrames.begin(),s.firstFrames.end());
-            std::fprintf(stderr,"[VK_FIRST_FRAMES v1] count=120 p95_ms=%.3f max_ms=%.3f late_pipeline_creations=%llu\n",s.firstFrames[113],s.firstFrames.back(),s.creations-s.prewarmCreations); s.measureFrames=false;
+            if (mc2::gate::get<"MC2_DIAG_VERBOSE">()) std::fprintf(stderr,"[VK_FIRST_FRAMES v1] count=120 p95_ms=%.3f max_ms=%.3f late_pipeline_creations=%llu\n",s.firstFrames[113],s.firstFrames.back(),s.creations-s.prewarmCreations); s.measureFrames=false;
         }
     }
     const uint64_t f=getOrCreateEngineVulkanContext().tracker().frameNo();
-    if(f%120==0) { const auto json=ledgerJson(); std::fprintf(stderr,"[VK_RESIDENCY v1] %s\n",json.c_str()); }
+    if(f%120==0) { const auto json=ledgerJson(); if (mc2::gate::get<"MC2_DIAG_VERBOSE">()) std::fprintf(stderr,"[VK_RESIDENCY v1] %s\n",json.c_str()); }
     if(std::chrono::steady_clock::now()-s.saved>std::chrono::seconds(30)) saveCache();
 }
 void prewarm(int width,int height) {
@@ -518,7 +518,7 @@ void prewarm(int width,int height) {
     ready+=getOrCreateEnginePresentVk().prewarmPipelines() ? 1 : 0;
     saveCache();
     s.prewarmCreations=s.creations; s.firstFrames.clear(); s.measureFrames=true; s.firstFrameStarted=false;
-    std::fprintf(stderr,"[VK_PIPELINE_PREWARM v1] ready=%d families=9 pipelines=%llu ms=%.3f size=%dx%d\n",ready,s.creations-before,std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-begin).count(),width,height);
+    if (mc2::gate::get<"MC2_DIAG_VERBOSE">()) std::fprintf(stderr,"[VK_PIPELINE_PREWARM v1] ready=%d families=9 pipelines=%llu ms=%.3f size=%dx%d\n",ready,s.creations-before,std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-begin).count(),width,height);
 }
 void deviceLost() {
     auto& s=state();

@@ -4,6 +4,7 @@
 #include "msl_internal.h"
 #include "mc2fmt.h"
 #include "content_ir.h"
+#include <filesystem>
 
 
 //-------------------------------------------------------------------------------
@@ -52,8 +53,10 @@ mc2::content::Asset TG_TypeMultiShape::ExtractContentIR()
     for (long i = 0; i < numTG_TypeShapes; ++i) {
         auto* node = listOfTypeShapes[i];
         mc2::content::Node n;
-        n.name.assign(node->getNodeId(), strnlen(node->getNodeId(), TG_NODE_ID));
-        n.parent.assign(node->getParentId(), strnlen(node->getParentId(), TG_NODE_ID));
+        // Legacy TGL fields may have no terminator and contain arbitrary padding
+        // in their last byte. Match the runtime's 23-character identity limit.
+        n.name.assign(node->getNodeId(), strnlen(node->getNodeId(), TG_NODE_ID - 1));
+        n.parent.assign(node->getParentId(), strnlen(node->getParentId(), TG_NODE_ID - 1));
         n.center = node->GetNodeCenter(); n.relativeCenter = node->GetRelativeNodeCenter();
         n.helper = node->GetNodeType() != SHAPE_NODE;
         if (S_strnicmp(n.name.c_str(), "SpotLight_", 10) == 0 || S_strnicmp(n.name.c_str(), "LitWin", 6) == 0) {
@@ -78,8 +81,10 @@ mc2::content::Asset TG_TypeMultiShape::ExtractContentIR()
     return asset;
 }
 
-long TG_TypeMultiShape::BuildContentIR(mc2::content::Asset&& asset, const char* source, float* groundDy)
+long TG_TypeMultiShape::BuildContentIR(mc2::content::Asset&& asset, std::string_view sourcePath, float* groundDy)
 {
+    const std::string sourceStorage(sourcePath);
+    const char* source = sourceStorage.c_str();
     if (!mc2::content::cook(asset, source)) {
         mslAssetLoadEvent("parse_fail", "content", "invalid_ir", source);
         return -1;
@@ -105,7 +110,8 @@ long TG_TypeMultiShape::BuildContentIR(mc2::content::Asset&& asset, const char* 
              S_strnicmp(n.name.c_str(), "SpotLight", 9) == 0);
         if (!excluded) for (const auto& v : n.vertices) {
             const auto p = v.position + (asset.legacyBounds ? n.relativeCenter : glm::vec3(0));
-            minBox = glm::min(minBox, p); maxBox = glm::max(maxBox, p);
+            minBox = glm::min(minBox, p);
+            maxBox = glm::max(maxBox, p);
         }
         auto shape = std::make_unique<TG_TypeShape>();
         shape->init();
@@ -177,10 +183,9 @@ static bool preferStockBinary(const char* ase, const char* binary, bool forceASE
 
 long TG_TypeMultiShape::LoadTGMultiShapeFromASE(const char* fileName, bool forceMakeBinary, IProviderEngine* armProvider)
 {
-    char drive[MAX_PATH], dir[MAX_PATH], name[MAX_PATH], ext[MAX_PATH];
-    _splitpath(fileName, drive, dir, name, ext);
+    const auto name = std::filesystem::path(fileName).stem().string();
     FullPathFileName binary;
-    binary.init(tglPath, name, ".tgl");
+    binary.init(tglPath, name.c_str(), ".tgl");
     const char* source = preferStockBinary(fileName, binary, forceMakeBinary)
         ? static_cast<const char*>(binary) : fileName;
     mc2::content::Asset cached;
@@ -191,8 +196,10 @@ long TG_TypeMultiShape::LoadTGMultiShapeFromASE(const char* fileName, bool force
     return result == NO_ERR ? BuildContentIR(frontend.ExtractContentIR(), source) : result;
 }
 
-long TG_TypeMultiShape::DecodeStockBinary (const char *fileName)
+long TG_TypeMultiShape::DecodeStockBinary (std::string_view sourcePath)
 {
+    const std::string sourceStorage(sourcePath);
+    const char* fileName = sourceStorage.c_str();
 	File binFile;
 	long result = binFile.open(fileName);
 	if (result != NO_ERR)
@@ -501,8 +508,10 @@ void TG_MultiShape::destroy (void)
 //Function runs through each piece of ASE file and creates a separate
 //TG_Shape for each one.  First pass is count number of GEOMOBJECTS.
 //Second pass is load each one.
-long TG_TypeMultiShape::DecodeStockASE (const char *fileName, bool forceMakeBinary, IProviderEngine* armProvider)
+long TG_TypeMultiShape::DecodeStockASE (std::string_view sourcePath, bool forceMakeBinary, IProviderEngine* armProvider)
 {
+    const std::string sourceStorage(sourcePath);
+    const char* fileName = sourceStorage.c_str();
     // A loose ASE is the editable source, regardless of timestamps. Stock-only
     // installs retain the packed/loose TGL compatibility frontend.
     char drive[MAX_PATH], dir[MAX_PATH], name[MAX_PATH], ext[MAX_PATH];
@@ -513,7 +522,7 @@ long TG_TypeMultiShape::DecodeStockASE (const char *fileName, bool forceMakeBina
 
 	if (!makeBinary)
 	{
-		return (DecodeStockBinary(binaryFileName));
+		return (DecodeStockBinary(static_cast<const char*>(binaryFileName)));
 	}
 	else
 	{

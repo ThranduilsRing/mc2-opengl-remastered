@@ -20,13 +20,15 @@ template<class T> void append(std::vector<uint8_t>& bytes, const T& value) {
     const auto* p = reinterpret_cast<const uint8_t*>(&value);
     bytes.insert(bytes.end(), p, p + sizeof(T));
 }
-void text(std::vector<uint8_t>& bytes, const std::string& s) {
+void text(std::vector<uint8_t>& bytes, std::string_view s) {
     append(bytes, static_cast<uint32_t>(s.size()));
     bytes.insert(bytes.end(), s.begin(), s.end());
 }
 bool finite(const glm::vec3& v) { return std::isfinite(v.x) && std::isfinite(v.y) && std::isfinite(v.z); }
 
-uint64_t sourceKey(const Asset& asset, const char* source) {
+uint64_t sourceKey(const Asset& asset, std::string_view sourcePath) {
+    const std::string sourceStorage(sourcePath);
+    const char* source = sourceStorage.empty() ? nullptr : sourceStorage.c_str();
     File input;
     if (!source || input.open(source) != NO_ERR) return 0;
     std::vector<uint8_t> params;
@@ -62,11 +64,13 @@ struct Reader {
 };
 }
 
-bool loadCached(Asset& asset, const char* source) {
+bool loadCached(Asset& asset, std::string_view sourcePath) {
+    const std::string sourceStorage(sourcePath);
+    const char* source = sourceStorage.empty() ? nullptr : sourceStorage.c_str();
     // glTF may have external buffers: its decoded IR contributes to the key after
     // resolving them. The self-contained formats can bypass decoding on a cache hit.
     if (!source || std::string_view(source).ends_with(".gltf") || std::string_view(source).ends_with(".fbx")) return false;
-    const auto key = sourceKey(asset, source);
+    const auto key = sourceKey(asset, sourcePath);
     if (!key) return false;
     const auto bytes = mc2cache::readEntry(directory, kind, key);
     if (!bytes || bytes->size() < 8) return false;
@@ -110,7 +114,9 @@ bool loadCached(Asset& asset, const char* source) {
     return true;
 }
 
-bool cook(Asset& asset, const char* source) {
+bool cook(Asset& asset, std::string_view sourcePath) {
+    const std::string sourceStorage(sourcePath);
+    const char* source = sourceStorage.empty() ? nullptr : sourceStorage.c_str();
     if (asset.nodes.empty() || asset.nodes.size() > kMaxMultiShapeNodes || asset.materials.size() > kMaxShapeTextures)
         return false;
     std::vector<uint8_t> recipe;
@@ -154,7 +160,7 @@ bool cook(Asset& asset, const char* source) {
             append(recipe, t.uvdata); append(recipe, t.faceNormal);
         }
     }
-    uint64_t key = sourceKey(asset, source);
+    uint64_t key = sourceKey(asset, sourcePath);
     if (!key) key = hash(recipe);
     if (source && (std::string_view(source).ends_with(".gltf") || std::string_view(source).ends_with(".fbx")))
         key = hash(recipe, key);
