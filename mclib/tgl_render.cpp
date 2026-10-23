@@ -222,9 +222,14 @@ void TG_Shape::Render (float forceZ, bool isHudElement, BYTE alphaValue, bool is
 				{
 					if ((forceZ >= 0.0f) && (forceZ < 1.0f))
 					{
-						gVertex[0].z	= forceZ;
-						gVertex[1].z	= forceZ;
-						gVertex[2].z	= forceZ;
+						// forceZ is authored in forward-Z terms (0 = front, 1 = back: spinning
+						// building parts 0.00001, sky 0.99999). The camera clip depth is
+						// reverse-Z (near = 1, far = 0), so mirror it or "front" lands on the far plane
+						// and the part fails the GEQUAL depth test (the generator coil vanished).
+						const float rz = 1.0f - forceZ;
+						gVertex[0].z	= rz;
+						gVertex[1].z	= rz;
+						gVertex[2].z	= rz;
 					}
  				
 					if (isSpotlight)
