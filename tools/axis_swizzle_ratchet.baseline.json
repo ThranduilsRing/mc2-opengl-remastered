@@ -7,8 +7,8 @@
   "mclib/assimp_importer.cpp": 2,
   "tools/asset_viewer/TglMeshLoader.cpp": 2
  },
- "head": "8b7429ebd",
- "helper_calls": 199,
+ "head": "60c7d2518",
+ "helper_calls": 194,
  "shapes": {
   "assign-scalars": 4,
   "assign-triple": 0,
