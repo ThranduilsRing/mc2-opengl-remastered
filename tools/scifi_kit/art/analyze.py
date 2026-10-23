@@ -220,6 +220,43 @@ def round_kind(P):
     return None
 
 
+def _slice_radius(P, z):
+    """Mean half-extent (m) and centre of the plan cross-section of solid P at height z, or None."""
+    p = _slice_extent(P, z)
+    if len(p) < 6:
+        return None
+    ext = p.max(0) - p.min(0)
+    return float(ext.sum() / 4), (p.max(0) + p.min(0)) / 2
+
+
+def round_slices(V, parts):
+    """Round solids by GEOMETRY: a circle fit on the mid-height slice of each disconnected solid (radial std/R < 4% over
+    >= 12 samples). kind 'cylinder' keeps its radius over the height, 'dome' narrows toward the top. -> [dict(part, kind, R, center, z0, z1)]"""
+    out = []
+    for name, idx in _connected(V, parts):
+        P = V[idx]
+        pts = P.reshape(-1, 3)
+        lo, hi = pts.min(0), pts.max(0)
+        sz = hi - lo
+        if len(idx) < 12 or sz[2] < .3 or max(sz[0], sz[1]) < .5 or not .8 < sz[0] / max(sz[1], 1e-6) < 1.25:
+            continue
+        zmid = (lo[2] + hi[2]) / 2
+        sl = _slice_extent(P, zmid)
+        if len(sl) < 12:
+            continue
+        c = (sl.min(0) + sl.max(0)) / 2
+        r = np.hypot(sl[:, 0] - c[0], sl[:, 1] - c[1])
+        R = float(r.mean())
+        if R < .25 or float(r.std()) / R > .04:
+            continue
+        rs = [_slice_radius(P, lo[2] + f * sz[2]) for f in (.25, .5, .8)]
+        if any(q is None for q in rs):
+            continue
+        kind = 'cylinder' if max(q[0] for q in rs) < 1.12 * min(q[0] for q in rs) else 'dome'
+        out.append(dict(part=name, kind=kind, R=round(R, 3), center=[round(float(c[0]), 3), round(float(c[1]), 3)], z0=round(float(lo[2]), 3), z1=round(float(hi[2]), 3)))
+    return out
+
+
 def roof_guess(V, size):
     """Flat / gable / mono / arch / hip(none) from the upward-facing height field."""
     w, d, h = size
@@ -387,98 +424,6 @@ def _connected(V, parts):
     return comps
 
 
-def _blobs(lum, thr):
-    from scipy import ndimage
-    lab, n = ndimage.label(lum < thr)
-    out = []
-    for i, sl in enumerate(ndimage.find_objects(lab), 1):
-        area = int((lab[sl] == i).sum())
-        out.append((sl, area))
-    return out
-
-
-def face_features(st, size):
-    """Doors / windows / bays from dark, rectangular texture regions on each wall plane (metric 0.2 m grid)."""
-    V, UV, n, area = st['V'], st['UV'], *_tris_normal(st['V'])
-    d = st['raw']
-    tex = [_texture(p) for p in d['texture_paths']]
-    cen = (V[..., :2].min((0, 1)) + V[..., :2].max((0, 1))) / 2
-    vert = np.abs(n[:, 2]) < .35
-    feats = {'doors': [], 'windows': [], 'openings_bays': []}
-    keys = {}
-    for i in np.where(vert)[0]:
-        nn = n[i, :2] / max(np.linalg.norm(n[i, :2]), 1e-9)
-        if nn @ (V[i, :, :2].mean(0) - cen) < 0 and np.linalg.norm(V[i, :, :2].mean(0) - cen) > .5:
-            nn = -nn          # orient outward by position (winding is not reliable)
-        if abs(nn[0]) > abs(nn[1]):
-            side = 'right' if nn[0] > 0 else 'left'
-            off = float(V[i, :, 0].mean())
-        else:
-            side = 'rear' if nn[1] > 0 else 'front'
-            off = float(V[i, :, 1].mean())
-        keys.setdefault((side, round(off / .5)), []).append(i)
-    for (side, _), idx in keys.items():
-        idx = np.array(idx)
-        if area[idx].sum() < 3:
-            continue
-        mi = int(st['mat'][idx[0]])
-        im = tex[mi] if mi < len(tex) else None
-        if im is None or (mi < len(d['texture_alpha']) and d['texture_alpha'][mi]):
-            continue
-        ax = 0 if side in ('front', 'rear') else 1       # tangent axis
-        flip = -1.0 if side in ('rear', 'left') else 1.0
-        P = V[idx].reshape(-1, 3)
-        T = flip * P[:, ax]
-        Z = P[:, 2]
-        uv = UV[idx].reshape(-1, 2)
-        A = np.stack([T, Z, np.ones_like(T)], 1)
-        try:
-            cu, *_ = np.linalg.lstsq(A, uv[:, 0], rcond=None)
-            cv, *_ = np.linalg.lstsq(A, uv[:, 1], rcond=None)
-        except np.linalg.LinAlgError:
-            continue
-        t0, t1, z0, z1 = T.min(), T.max(), Z.min(), Z.max()
-        if t1 - t0 < 1.0 or z1 - z0 < 1.0:
-            continue
-        cell = .2
-        ts = np.arange(t0 + cell / 2, t1, cell)
-        zs = np.arange(z0 + cell / 2, z1, cell)
-        TT, ZZ = np.meshgrid(ts, zs)
-        u = (cu[0] * TT + cu[1] * ZZ + cu[2]) % 1
-        v = (cv[0] * TT + cv[1] * ZZ + cv[2]) % 1
-        h, w = im.shape[:2]
-        px = im[(v * h).astype(int) % h, (u * w).astype(int) % w, :3].astype(float) / 255
-        lum = px @ np.array([.2126, .7152, .0722])
-        med = np.median(lum)
-        if med < .08:
-            continue
-        for sl, ar in _blobs(lum, .55 * med):
-            hh, ww = (sl[0].stop - sl[0].start) * cell, (sl[1].stop - sl[1].start) * cell
-            fill = ar / max((sl[0].stop - sl[0].start) * (sl[1].stop - sl[1].start), 1)
-            zb = z0 + sl[0].start * cell
-            tc = t0 + (sl[1].start + sl[1].stop) / 2 * cell
-            if fill < .55 or hh < .6 or ww < .4:
-                continue
-            kind = None
-            if zb - z0 < .7 and 1.6 <= hh <= 5.5 and .8 <= ww <= 7:
-                kind = 'openings_bays' if (ww > 3.2 and hh > 3.0) else 'doors'
-            elif zb - z0 >= .7 and .4 <= ww <= 4.5 and .4 <= hh <= 3.2:
-                kind = 'windows'
-            if kind:
-                feats[kind].append(dict(side=side, at_m=[round(float(tc), 1), round(float(zb + hh / 2), 1)], size_m=[round(float(ww), 1), round(float(hh), 1)], conf=round(float(.45 + .4 * min(1, fill)), 2),
-                                        u_frac=round(float(tc / max((t1 - t0) / 2, 1e-6)), 2), source='stock texture (painted) region on this face'))
-    # the same opening seen on coplanar duplicate layers counts once
-    for k, lst in feats.items():
-        seen, keep = set(), []
-        for f in lst:
-            key = (f['side'], round(f['at_m'][0] / .8), round(f['at_m'][1] / .8))
-            if key not in seen:
-                seen.add(key)
-                keep.append(f)
-        feats[k] = keep
-    return feats
-
-
 def part_features(st, size):
     """Posts / barrels / tanks / crates / spans from separate solids and face breaks."""
     V = st['V']
@@ -525,7 +470,8 @@ def span_count(V, size):
 
 
 def counts_draft(st, size, roof):
-    feats = face_features(st, size)
+    import npviews
+    feats = npviews.painted_openings(st, size)      # painted doors/windows/bays from the textured side views
     feats.update(part_features(st, size))
     spans, sconf = span_count(st['V'], size)
     res = {}
@@ -570,6 +516,7 @@ def analyze(name):
     res['stock_model'] = dict(asset=name, intact_stem=sm['intact'], destroyed_stem=sm['destroyed'], mesh=str(STOCK / f"{sm['intact']}.json"),
                               parts=[(q['name'], q['role']) for q in parts], resolved_from=sm['source'])
     res['round_parts'] = [q['name'] for q in parts if q['round']]
+    res['round'] = round_slices(Vc, st['parts'])
     res['profile'] = dict(x_all=profile(Vc, h, 0), y_all=profile(Vc, h, 1), x_body=profile(Vc, h, 0, near_end) if near_end else profile(Vc, h, 0),
                           long_axis='y' if long_ax == 1 else 'x', note='half-extent (m) vs height fraction; x_body = the end of the long axis away from the +Y terminal pier')
     res['roof'] = roof_guess(Vc, size)

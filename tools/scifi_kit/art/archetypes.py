@@ -58,7 +58,8 @@ RULES = (
     (r'sandbag|fence|barricade|shanty', 'fence'),
     (r'wall(diag)?$', 'wall'),
     (r'^(tent|longtent|htent|camonetting)$', 'tent'),
-    (r'turret|popup|camo\d$|^spotlight$|guntower', 'turret'),
+    # TODO(turret part-identity gate): base/head must derive from the stock parts (dims, footprint box-vs-round, tri signature); until then turrets are manual
+    (r'turret|popup|camo\d$|^spotlight$|guntower', 'manual'),
     (r'truck|armoredcar|jeep|forklift|buggy|troop|ambulance', 'vehicle'),
     (r'barrel', 'barrel'),
     (r'munitions', 'container'),
@@ -71,7 +72,7 @@ RULES = (
     (r'quonset', 'quonset'),
     (r'^bridge', 'bridge'),
 )
-CATEGORY_DEFAULT = dict(building='box', prop='container', turret='turret', wall='wall', gate='gate', fence='fence', bridge='bridge')
+CATEGORY_DEFAULT = dict(building='box', prop='container', turret='manual', wall='wall', gate='gate', fence='fence', bridge='bridge')
 ARCHETYPES = ('box', 'quonset', 'tower', 'wall', 'gate', 'fence', 'tent', 'crate', 'barrel', 'tank', 'turret', 'vehicle',
               'container', 'pylon', 'junk', 'bridge', 'pipe')
 
@@ -182,7 +183,7 @@ def box_building(k, p):
     det = p.get('detail', {})
     roof = g.get('roof', 'flat')
     rise = g.get('rise', 0.0) if roof != 'flat' else 0.0
-    eave = g.get('eave_h') or (h - rise)
+    eave = g.get('eave_h') or (h - rise - (.45 if roof == 'flat' else 0.0))      # flat: the roof sheets and parapet stand .45 m above the eave line
     corr = g.get('skin', 'plate') == 'corr'
     skin_mat = 'corr.corr' if corr else 'paint.main'
     plinth = .45
@@ -205,6 +206,8 @@ def box_building(k, p):
     ridge_x = g.get('ridge_axis', 'y' if d >= w else 'x') == 'x'
     span, run = (d, w) if ridge_x else (w, d)
     nb = bx if ridge_x else by
+    npk = int(g.get('peaks', 1)) if roof == 'gable' else 1                # sawtooth/multi-gable: `peaks` gables side by side across the span
+    pk = [(-span / 2 + span / npk * (i + .5), span / npk / 2) for i in range(npk)]     # (centre, half span) of each gable in the ridge frame
     rl = [-run / 2 + t / 2 + (run - t) * j / nb for j in range(nb + 1)]
     with k.at((0, 0, 0), yaw=math.pi / 2 if ridge_x else 0.0):       # local frame: x across the ridge, y along it
         for q in rl:
@@ -214,9 +217,12 @@ def box_building(k, p):
             elif roof == 'mono':
                 kit.ibeam(k, a0, (b0[0], b0[1], eave + rise), d=.30, w=.16)
             else:
-                m = (0.0, q, eave + rise)
-                kit.ibeam(k, a0, m, d=.28, w=.15)
-                kit.ibeam(k, m, b0, d=.28, w=.15)
+                for pc_, ph_ in pk:
+                    a1 = (pc_ - ph_ + (t / 2 if pc_ == pk[0][0] else 0.0), q, eave)
+                    b1 = (pc_ + ph_ - (t / 2 if pc_ == pk[-1][0] else 0.0), q, eave)
+                    m = (pc_, q, eave + rise)
+                    kit.ibeam(k, a1, m, d=.28, w=.15)
+                    kit.ibeam(k, m, b1, d=.28, w=.15)
     # 3. secondary steel: wall girts behind the skin, roof purlins
     girt_z = [plinth + (eave - plinth) * f for f in ((1 / 3, 2 / 3) if eave > 4 else (.5,))]
     for z in girt_z:
@@ -253,7 +259,8 @@ def box_building(k, p):
                                 k.slab(q[0] + .22, q[2] - .22, q[1] + .22, q[3] - .22, -.035 - proud, -.01, 'paint.second', 'skin', front=C(.015), rides=True)
             # gable end triangle sits on the faces perpendicular to the ridge
             if roof == 'gable' and ((side in ('front', 'rear')) != ridge_x):
-                k.prism([(-L / 2, eave), (L / 2, eave), (0, eave + rise)], -.02, .03, skin_mat, 'skin', axis='y', removable=True)
+                for pc_, ph_ in pk:
+                    k.prism([(pc_ - ph_, eave), (pc_ + ph_, eave), (pc_, eave + rise)], -.02, .03, skin_mat, 'skin', axis='y', removable=True)
             # openings: frame, leaf, glazing, lamp
             for kind in ('door', 'bay', 'window'):
                 for idx, f in enumerate(feats[kind]):
@@ -262,9 +269,9 @@ def box_building(k, p):
                     with k.tagged(f'{kind}:{idx}'):
                         with k.at((f['at'], 0, 0)):
                             if kind == 'door':
-                                infantry_door_parts(k, f['w'], f['h'])
+                                infantry_door_parts(k, f['w'], f['h'], apron=False)
                             elif kind == 'bay':
-                                rollup(k, f['w'], f['h'])
+                                rollup(k, f['w'], f['h'], apron=False)
                             else:
                                 k.window(-f['w'] / 2, f['w'] / 2, f['z'], f['z'] + f['h'], 0.0, mullions=1 if f['w'] > 1.0 else 0)
             # corner trim + fastener rows along the girts
@@ -294,13 +301,15 @@ def box_building(k, p):
         ov = .35
         roofmat = 'corr.corr' if (corr or g.get('roof_mat') == 'corr') else 'paint.roof'
         with k.at((0, 0, 0), yaw=math.pi / 2 if ridge_x else 0.0):
-            for sgn in ((-1, 1) if roof == 'gable' else (1,)):
+            for pi_, (pc_, ph_) in enumerate(pk if roof == 'gable' else [(0.0, span / 2)]):
+              for sgn in ((-1, 1) if roof == 'gable' else (1,)):
                 for j in range(nb):
                     a0 = -run / 2 + run * j / nb - (lap if j else 0)
                     a1 = -run / 2 + run * (j + 1) / nb
                     if roof == 'gable':
-                        e = (sgn * (span / 2 + ov), eave - ov * rise / (span / 2))
-                        rd = (0.0, eave + rise)
+                        ovx = ov if ((sgn < 0 and pi_ == 0) or (sgn > 0 and pi_ == npk - 1)) else 0.0        # eaves overhang only at the building edge
+                        e = (pc_ + sgn * (ph_ + ovx), eave - ovx * rise / ph_)
+                        rd = (pc_, eave + rise)
                     else:
                         e = (-span / 2 - ov, eave - ov * rise / span)
                         rd = (span / 2 + ov, eave + rise + ov * rise / span)
@@ -314,9 +323,10 @@ def box_building(k, p):
                     if (sgn > 0) == (roof == 'gable'):
                         fr = fr[::-1]
                     bk = [(x + nrm[0] * tk, y, z + nrm[1] * tk) for x, y, z in fr]
-                    kit.hexa(k, fr, bk, roofmat, 'roof', removable=True, sheet=(sgn, j))
+                    kit.hexa(k, fr, bk, roofmat, 'roof', removable=True, sheet=(sgn, j, pi_))
             if roof == 'gable':
-                k.box((0, 0, eave + rise + .05), (.45, run + .2, .12), 'paint.trim', 'frame')
+                for pc_, _ in pk:
+                    k.box((pc_, 0, eave + rise + .05), (.45, run + .2, .12), 'paint.trim', 'frame')
         for q in range(int(det.get('vents', 1))):
             k.box((w * (.12 - .24 * q) * (0 if ridge_x else 1), d * (.15 - .3 * q) * (1 if not ridge_x else 0), eave + rise * .55 + .3), (.5, .5, .3), 'paint.trim', 'detail', ch=.04)
     # 6. sockets from the feature tags (door spot, window point)
@@ -404,11 +414,39 @@ def contract(p):
     return counts.known(**{f: [f'{KIND[f]} {i + 1}/{c[f]}' for i in range(int(c[f]))] for f in FIELD.values() if int(c.get(f, 0))})
 
 
-def budget_of(p):
-    if 'budget' in p:
-        return int(p['budget'])
+def class_budget(p):
     w, d, h = p['size']
     return 8000 if (p['archetype'] in ('box', 'quonset', 'tower', 'tank') and w * d <= 450 and h <= 14) else 15000 if p['archetype'] in ('box', 'tower', 'tank') and w * d > 450 else 3000
+
+
+def budget_of(p):
+    """The class budget; params.budget may only lower it."""
+    return min(int(p['budget']), class_budget(p)) if 'budget' in p else class_budget(p)
+
+
+# ------------------------------------------------------------------ params schema (unknown keys fail in contract.py)
+TOP_KEYS = ('asset', 'archetype', 'size', 'origin', 'palette', 'counts', 'features', 'dims', 'detail', 'damage', 'rubble', 'budget', 'notes',
+            'draft_confidence', 'stock_model', 'round_parts', 'round', 'status', 'evidence', 'waivers')
+DETAIL_KEYS = ('vents', 'service_panel')
+DAMAGE_ALLOWED = ('rubble', 'collapse', 'wall', 'fence', 'topple', 'crate', 'barrel')
+DIM_KEYS = dict(
+    box=('roof', 'rise', 'eave_h', 'skin', 'inset', 'bay_m', 'bays_x', 'bays_y', 'ridge_axis', 'batter', 'roof_mat', 'peaks', 'profile'),
+    quonset=('L', 'R', 'curb', 'bays', 'profile'),
+    wall=('family', 'variant', 'post', 'wh', 'spans', 'profile'),
+    gate=('family', 'variant', 'post', 'wh', 'spans', 'gap', 'leaf_h', 'leaf_t', 'spans_each', 'profile'),
+    fence=('style', 'legacy', 'profile'),
+    tent=('bays', 'door_h', 'door_w', 'eave_h', 'guys', 'profile'),
+    container=('lid', 'lid_h', 'ribs', 'profile'),
+    crate=('end_midrail', 'tarp', 'profile'),
+    barrel=('flame', 'profile'),
+    tank=('band', 'cap_h', 'leg_h', 'legs', 'profile'),
+    turret=('barrel_len', 'barrels', 'base_h', 'base_r', 'house', 'popup', 'profile'),
+    vehicle=('axles', 'cab_frac', 'cab_h', 'cargo', 'wheel_r', 'profile'),
+    pylon=('head_h', 'kind', 'lamp_mat', 'plate_mat', 'plate_w', 'pole_w', 'wedge', 'profile'),
+    tower=('base_h', 'cab_h', 'lattice', 'mast', 'top_frac', 'profile'),
+    junk=('pieces', 'profile'), bridge=('deck_z', 'spans', 'profile'), pipe=('layout', 'plinth_gap', 'radius', 'profile'))
+# archetypes whose openings (doors/windows/bays) are compared with the painted openings of the stock texture, side by side
+OPENING_ARCHES = ('box', 'tower', 'tent', 'container')
 
 
 def register(p):
@@ -550,7 +588,7 @@ def draft_params(row, a, arch=None):
         if kind != 'flat':
             g.update(eave_h=round(roof['eave_h'], 2), rise=round(max(.3, roof['ridge_h'] - roof['eave_h']), 2), ridge_axis=roof.get('ridge_axis', 'y'))
         p['features'] = _feats(a, 'doors', 'door') + _feats(a, 'openings_bays', 'bay') + _feats(a, 'windows', 'window')
-        p['detail'] = dict(vents=1 + (w * d > 300), service_panel=True)
+        p['detail'] = dict(vents=0 if kind == 'flat' else 1 + (w * d > 300), service_panel=True)      # a flat roof has no headroom for vents inside the stock bounds
         p['counts'].update(doors=len([f for f in p['features'] if f['kind'] == 'door']), openings_bays=len([f for f in p['features'] if f['kind'] == 'bay']),
                            windows=len([f for f in p['features'] if f['kind'] == 'window']))
     elif arch == 'quonset':
@@ -567,8 +605,8 @@ def draft_params(row, a, arch=None):
             if not g['post']:
                 spans = 4 if g['family'] == 's' else 3 if g['family'] == 'l' else 6
                 p['counts'].update(panels_sections=spans)
-        if arch == 'gate':
-            p['counts'].update(panels_sections=2)
+        if arch == 'gate':      # one leaf per stock door part (evidence), not a constant
+            p['counts'].update(panels_sections=max(1, sum('door' in q['name'].lower() for q in a['parts'])))
     elif arch == 'fence':
         style = 'razor' if 'razor' in nm else 'wood' if 'wood' in nm else 'sandbag' if 'sandbag' in nm else 'sheet' if 'shanty' in nm else 'chain'
         g.update(style=style)
@@ -576,10 +614,10 @@ def draft_params(row, a, arch=None):
         p['counts'].update(legs_supports=posts, panels_sections=posts - 1)
     elif arch == 'tent':
         g.update(eave_h=round(roof['eave_h'], 2) if roof.get('type') == 'gable' else round(h * .38, 2), bays=max(1, round(max(w, d) / 4.5)))
-        p['counts']['doors'] = max(1, min(2, n_('doors') + n_('windows')))
+        p['counts']['doors'] = n_('doors')
     elif arch == 'container':
         g.update(lid=round(roof.get('pitch_deg', 0.0)) if roof.get('type') == 'mono' else 0, ribs=max(3, round(max(w, d) / .5)))
-        p['counts'].update(crates=max(1, n_('crates')) if max(w, d) > 2.2 * min(w, d) else 1, doors=0)
+        p['counts'].update(crates=max(1, n_('crates')) if max(w, d) > 2.2 * min(w, d) else 1, doors=n_('doors'))
     elif arch == 'crate':
         p['counts']['crates'] = max(1, n_('crates')) if n_('crates') else 2
         g.update(tarp='tarp' in nm or 'canvas' in ident)
@@ -610,7 +648,7 @@ def draft_params(row, a, arch=None):
     elif arch == 'tower':
         g.update(lattice='lattice' in ident, mast='dish' in ident or 'antenna' in ident)
         p['features'] = _feats(a, 'doors', 'door') + _feats(a, 'windows', 'window')
-        p['counts'].update(doors=min(4, n_('doors')), windows=min(12, n_('windows')), antennas_dishes=1 if g['mast'] else 0)
+        p['counts'].update(doors=n_('doors'), windows=n_('windows'), antennas_dishes=1 if g['mast'] else 0)
     elif arch == 'junk':
         g.update(pieces=max(8, min(24, round(w * d / 6))))
     elif arch == 'bridge':
@@ -621,5 +659,25 @@ def draft_params(row, a, arch=None):
         g.update(layout=layout)
     p['stock_model'] = a.get('stock_model', {}).get('intact_stem', name)
     p['round_parts'] = a.get('round_parts', [])
+    p['round'] = a.get('round', [])
     p['draft_confidence'] = {f: c[f]['conf'] for f in FIELD.values() if p['counts'].get(f) or c[f]['n']}
+    p['status'] = dict(state='draft')                 # draft -> runner (validated, stamped by `batch --commit`) -> owner_approved
+    p['evidence'] = evidence_of(a, arch)              # machine-written; the validator re-derives it, so an edit here fails
+    p['waivers'] = []                                 # [{check, <keys>, reason}]: every waiver is listed in the batch report for the owner
     return p
+
+
+def analysis_sha(name):
+    import hashlib
+    return hashlib.sha256((ASSETS / f'{name}.analysis.json').read_bytes()).hexdigest()[:16]
+
+
+def evidence_of(a, arch):
+    """What the stock measurement says the model must contain. Derived from analysis.json only, never from params."""
+    ev = dict(analysis_sha=analysis_sha(a['asset']), archetype=arch, size_m=[round(x, 3) for x in a['bounds']['size_m']], counts={})
+    if arch in OPENING_ARCHES:
+        for f in ('doors', 'windows', 'openings_bays'):
+            ev['counts'][f] = int(a['counts'][f]['n'])
+    if arch == 'gate':
+        ev['counts']['panels_sections'] = max(1, sum('door' in q['name'].lower() for q in a['parts']))
+    return ev

@@ -567,7 +567,8 @@ def quonset_build(k):
         k.moss_sites.append(((s * (R + .35), -L / 2, .2), (s * (R + .35), L / 2, .2)))
     for j in range(bays + 1):
         y = -L / 2 + j * bay + (.12 if j == 0 else -.12 if j == bays else 0)
-        arc_member(k, R - .22, y, zc, d=.24, w=.14)
+        with k.tagged(f'rib:{j}'):          # arches_ribs = bays + 1
+            arc_member(k, R - .22, y, zc, d=.24, w=.14)
         for s in (-1, 1):
             k.box((s * (R - .22), y, zc + .03), (.34, .30, .06), 'metal', 'frame')
     purlin_th = [math.pi * i / 8 for i in range(1, 8)]

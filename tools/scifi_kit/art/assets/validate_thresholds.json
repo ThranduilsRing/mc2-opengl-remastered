@@ -1,0 +1,89 @@
+{
+ "iou_min": {
+  "front": 0.24,
+  "left": 0.16,
+  "rear": 0.24,
+  "right": 0.16,
+  "top": 0.64
+ },
+ "iou_mean_min": 0.46,
+ "palette_de_max": 46,
+ "baked_de_max": 46,
+ "calibrated_on": [
+  "ammodump",
+  "barrels",
+  "corrigatedmetalbarricade",
+  "crateswithtarp",
+  "d_heavywall",
+  "d_lightwall",
+  "d_mediumwall",
+  "genericmilitary",
+  "geodesicdome",
+  "l_heavywall",
+  "l_lightwall",
+  "l_mediumwall",
+  "largefueltank",
+  "liquidstorage",
+  "lookouttower",
+  "lrmturret",
+  "mediumautocannonturret",
+  "portable",
+  "quonset",
+  "quonsetclean",
+  "razorwirefence",
+  "redbeaconlight",
+  "rpbuilding",
+  "runwaylight",
+  "s_heavywall",
+  "s_lightwall",
+  "s_mediumwall",
+  "singlecivlivinga",
+  "streetlight",
+  "tripodbarricade",
+  "wirefence",
+  "woodencrates"
+ ],
+ "arch_floors": {
+  "box": {
+   "view": 0.7,
+   "mean": 0.8,
+   "top": 0.7
+  },
+  "quonset": {
+   "view": 0.7,
+   "mean": 0.8,
+   "top": 0.7
+  },
+  "tower": {
+   "view": 0.7,
+   "mean": 0.8,
+   "top": 0.7
+  },
+  "tank": {
+   "view": 0.7,
+   "mean": 0.8,
+   "top": 0.7
+  },
+  "container": {
+   "view": 0.7,
+   "mean": 0.8,
+   "top": 0.7
+  },
+  "tent": {
+   "view": 0.7,
+   "mean": 0.8,
+   "top": 0.7
+  },
+  "wall": {
+   "view": 0.85,
+   "mean": 0.85,
+   "top": 0.85
+  },
+  "turret": {
+   "view": 0.5,
+   "mean": 0.7,
+   "top": 0.5
+  }
+ },
+ "arch_floors_note": "solids: min over the approved closed solids x0.9 (buildings .70/.80, walls .85, turrets .50/.70); thin props (fence, wire, barricade, pylon, pipe, crate, barrel, vehicle, junk, bridge, gate) keep the loose global floors above"
+}

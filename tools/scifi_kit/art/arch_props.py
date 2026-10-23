@@ -131,7 +131,7 @@ def tent(k, p):
             if outward > 0:
                 poly = [(x, z) for x, z in poly]
             k.prism(poly, yy - .03, yy + .03, 'canvas.main', 'skin', axis='y', removable=True, tent=('end', e))
-        for sx in (-1, 1):
+        for sx in (-1, 1) if D(p, 'guys', False) else ():       # guy ropes are not in the stock bounds (COUNT RULE): off unless the stock shows them
             for y in (ys[0] - .3, ys[-1] + .3):
                 kit.wire(k, [(sx * (span / 2 + ov), y, eave - .1), (sx * (span / 2 + 2.0), y + (-.6 if y < 0 else .6), .05)], .014, 'metal', 'detail', sides=4)
                 k.box((sx * (span / 2 + 2.0), y + (-.6 if y < 0 else .6), .1), (.08, .08, .22), 'metal', 'detail')
@@ -156,7 +156,7 @@ def container(k, p):
         c0 = -(w if long_x else d) / 2 + ul * (i + .5)
         cx, cy = (c0, 0.0) if long_x else (0.0, c0)
         uw, ud = ((ul - gap), d) if long_x else (w, (ul - gap))
-        bh = h - (hl + .06 if lid else 0)
+        bh = h - (hl + .06 + (ud - .12) * math.sin(math.radians(lid)) if lid else 0)      # the open lid's far edge must still end at the stock height
         with k.tagged(f'crate:{i}'):
             with k.at((cx, cy, 0)):
                 for sy in (-1, 1):
@@ -362,12 +362,15 @@ def vehicle(k, p):
         ay = [-L / 2 + cab_l * .55 + i * ((L - cab_l * .55 - L * .08) / max(1, axles)) * (1 if axles > 1 else 0) for i in range(axles)] if axles > 1 else [-L * .2, L * .3]
         if axles == 1:
             ay = [0]
+        wheel = 0
         for y in ay:
             k.box((0, y, wr), (Wd * .9, .1, .1), 'metal', 'frame')
             for sx in (-1, 1):
                 nw_ = 12 if not geo.GAME_MESH else 8
-                k.prism([(wr * math.cos(a) + y, wr * math.sin(a) + wr) for a in [q * math.tau / nw_ for q in range(nw_)]],
-                        sx * Wd * .45 - .17, sx * Wd * .45 + .17, 'rubber', 'mass', axis='x')
+                with k.tagged(f'support:{wheel}'):       # one tag per wheel: legs_supports = wheels
+                    k.prism([(wr * math.cos(a) + y, wr * math.sin(a) + wr) for a in [q * math.tau / nw_ for q in range(nw_)]],
+                            sx * Wd * .45 - .17, sx * Wd * .45 + .17, 'rubber', 'mass', axis='x')
+                wheel += 1
         # cab: frame then panels
         cy0, cy1 = -L / 2, -L / 2 + cab_l
         for sx in (-1, 1):
@@ -559,6 +562,13 @@ def junk(k, p):
         x, y = rng.uniform(-w * .38, w * .38), rng.uniform(-d * .38, d * .38)
         z = h * .3 * max(0.0, 1 - (x / (w * .5)) ** 2 - (y / (d * .5)) ** 2)
         kind = i % 3
+        with k.tagged(f'panel:{i}'):       # one tag per scrap piece: panels_sections = pieces
+            _junk_piece(k, rng, kind, x, y, z, w, d, h)
+    k.hits.append(dict(p=(0, 0, h * .4), d=(0, 0, -1), r=max(w, d) * .3, depth=0, sag=0))
+
+
+def _junk_piece(k, rng, kind, x, y, z, w, d, h):
+    if True:
         if kind == 0:
             ln = rng.uniform(.25, .6) * max(w, d)
             yaw = rng.uniform(-math.pi, math.pi)
@@ -571,7 +581,6 @@ def junk(k, p):
         else:
             kit.rock(k, (x, y, z), rng.uniform(.6, 1.6), 'ferro', rng)
             k.pieces[-1]['removable'] = True
-    k.hits.append(dict(p=(0, 0, h * .4), d=(0, 0, -1), r=max(w, d) * .3, depth=0, sag=0))
 
 
 # ------------------------------------------------------------------ bridge
@@ -761,4 +770,5 @@ DAMAGE = dict(collapse=collapse, fence=fence_damage, crate=collapse, barrel=coll
 TAGGED = dict(box=('doors', 'windows', 'openings_bays'), tent=('doors',), container=('crates', 'doors'), crate=('crates',), barrel=('barrels',),
               tank=('tanks',), tower=('doors', 'windows', 'antennas_dishes'), pylon=('legs_supports', 'antennas_dishes'),
               fence=('legs_supports', 'panels_sections'), wall=('legs_supports', 'panels_sections'), gate=('panels_sections',),
-              pipe=(), bridge=(), turret=(), vehicle=(), junk=(), quonset=())
+              pipe=('legs_supports',), bridge=('legs_supports',), turret=('legs_supports',), vehicle=('legs_supports',), junk=('panels_sections',),
+              quonset=('arches_ribs',))

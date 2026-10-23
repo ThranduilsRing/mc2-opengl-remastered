@@ -16,7 +16,8 @@ Archetype pipeline (see archetypes.py; assets live in tools/scifi_kit/art/assets
   run.py preview <asset>                fast Blender-free 5-view + 5-state preview
   run.py validate <asset>[,..] [--pre | --pass TAG]   silhouette/palette/counts/budget/states/sockets
   run.py validate --calibrate           recompute assets/validate_thresholds.json on the 24 approved assets
-  run.py batch --assets a,b,c | --category X --next N [--pass arch-proof]   everything, then failures + commit list
+  run.py batch --assets a,b,c | --category X --next N [--pass arch-proof] [--full] [--retry-failed]   pre-gate, two-tier bake, failures
+  run.py batch --commit [--assets a,b]  commit what passes today (refuses failing assets, stamps hashes)
 """
 import argparse
 import json
@@ -35,7 +36,7 @@ THUMBS = Path('E:/mc2-archive-2026-10/asset-modernize/docs/assets/sheets/thumbs'
 CONDITIONS = ['pristine', 'worn', 'abandoned', 'partial', 'destroyed']
 
 
-def blender(job, log):
+def blender(job, log, timeout=None):
     import psutil
     path = OUT / 'jobs' / (job['tag'] + '.json')
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -55,7 +56,12 @@ def blender(job, log):
             psutil.Process(proc.pid).cpu_affinity(cores)
         except Exception as exc:  # affinity is best effort; threads are still 4
             print('[art] affinity not set:', exc)
-        rc = proc.wait()
+        try:
+            rc = proc.wait(timeout)
+        except subprocess.TimeoutExpired:
+            proc.kill()                 # our own pid only
+            proc.wait()
+            raise SystemExit(f'bake timeout after {timeout} s')
     if rc:
         print(log.read_text(encoding='utf-8', errors='replace')[-5000:])
         raise SystemExit(f'Blender failed ({rc}); log {log}')
@@ -187,7 +193,9 @@ def archetype_cli(a):
             res = validate.calibrate(pass_dir=OUT / 'mc2-r11')
             keep = {k: v for k, v in res.items() if k != 'rows'}
             keep['calibrated_on'] = sorted(res['rows'])
+            keep['arch_floors'] = json.loads(validate.THRESH.read_text()).get('arch_floors', {})
             validate.THRESH.write_text(json.dumps(keep, indent=1))
+            print('[calibrate] thresholds are hash-locked: paste contract.file_sha(THRESH) into contract.THRESH_SHA ->', __import__('contract').file_sha(validate.THRESH))
             (HERE / 'assets' / 'calibration_rows.json').write_text(json.dumps(res['rows'], indent=1))
             print(json.dumps(keep, indent=1))
             return
@@ -245,7 +253,10 @@ def main():
     ap.add_argument('--pre', action='store_true', help='validate: pure-Python checks only')
     ap.add_argument('--force', action='store_true')
     ap.add_argument('--reanalyze', action='store_true')
-    ap.add_argument('--force-bake', action='store_true')
+    ap.add_argument('--force-bake', action='store_true', help='owner tool (MC2_KIT_EXPERT=1)')
+    ap.add_argument('--full', action='store_true', help='batch: full 5-state bake now (default: tier A first, full once the params hash is stable)')
+    ap.add_argument('--retry-failed', action='store_true', help='batch: only failed/unfinished assets of the category')
+    ap.add_argument('--commit', action='store_true', help='batch: commit the assets that pass today (stamps hashes; refuses failing ones)')
     ap.add_argument('--no-blender', action='store_true')
     ap.add_argument('--only')
     ap.add_argument('--samples', type=int, default=48)
