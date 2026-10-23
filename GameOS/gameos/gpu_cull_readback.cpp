@@ -80,7 +80,7 @@ void readback_buildActorVisSnapshot(uint32_t maxActorHandle) {
     ++snapshots;
     const bool log=trace() && (snapshots==1 || snapshots%600==0);
     const auto stats=history.buildSnapshot(maxActorHandle,conservativeOr(),log);
-    if (stats.overflow) STOP(("[GPU_CULL] readback actor overflow: id=%u cap=%u",stats.overflow,RenderCore::VisibilityHistory::kMaxActorHandle));
+    if (stats.overflow) STOP(("[GPU_CULL] readback actor overflow: id=%u cap=%u",stats.overflow,maxActorHandle));
     dilatedTotal+=history.dilatedAdmits(); orTotal+=stats.orAdmits;
     if (log) {
         MC2_DIAGF("[GPU_CULL v1] event=lifecycle_snapshot slot=%u visible=%u invisible=%u conservative=%d or_admits=%u producer=vulkan\n",

@@ -195,3 +195,10 @@ tests/visual/macro_off/
 tests/visual/*.png
 tests/terrain/gaea/
 tests/terrain/workbench/
+
+# mapgen: full generated layouts are large and deterministic (regenerate with tools/mapgen/generate.py); the small
+# *.render.json sidecars, PNGs and ASCII previews stay tracked (2026-10-23 repo-bloat cleanup)
+docs/mapgen/raster/generated/*.json
+docs/mapgen/raster/generated/*.json.gz
+docs/mapgen/examples/generated/*.json
+!docs/mapgen/raster/generated/*.render.json

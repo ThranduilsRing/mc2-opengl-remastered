@@ -1,0 +1,128 @@
+MagicExpansion/mc2_m05 | 360x360 cells | 3 cells/char
+North up; cell crop [0,0)..[360,360); objects by team: {-1: 16}
+@ player start; O visible objective; B military; h town; I industry; H HQ/sensor; A airfield
+# wall/fence; + gate; T turret; C turret control; G generator; c gate control
+= road/bridge; : runway; . cement; ~ water; t trees; ^ slope>=35deg; % rock; , prop; ? unresolved
++------------------------------------------------------------------------------------------------------------------------+
+|                                                                                                                        |
+|                                    ^                                                                                   |
+|                                    ^^                                                                                  |
+|                                     ^^                tttt t                                                           |
+|                                      ^^                 tttt      t                                                    |
+|                                       ^^               ttttt      tt                                                   |
+|                     ttt t   t          ^^            ttt  ttt     t                tt    t                             |
+|                    tttttttttt           ^^          ttttttttt    tt                tt  ttttt                           |
+|                    ttttttttt             ^^        tt  t tttt                      tttttttttt                          |
+|                      ttttt t         t    ^^       tt ttttttt    ttt                ttttttt t                          |
+|                          tt     tttt t               t tt  tt    tt                tttttttttt                          |
+|                                  ttttt                 t          tt               tttttttttt                          |
+|                                                 ttt              ttt                tttttttt                           |
+|                 @                t               tt               t                    ttt t                           |
+|                                   t              tt t   t                                ttt                           |
+|       t   t                       t tt tt        tt ttt  t                                                             |
+|      ttttt                        tttttt        t t   tttt       tt                                                    |
+|       tt                         ttt ttt        t tt ttttt     ttttt                         t                         |
+|      t tttt t                         t           t    tt      t ttt                        tt t                       |
+|       tttttttt              tt                                 tttt       ttt                ttttt                     |
+|      ttttttttt            ttttt                            ttt   tt         t              t ttttt                     |
+|      ttt ttttt           tttt t                             tt     t      tttt              tttttt                     |
+|      tttttt tt        t    t tt               t          I t tt          ttttt                tttt                     |
+|        ttttt              ttttt             ttt            tttt         tttttt                 tt               t      |
+|                          tttttt              t             tttt          ttt tt                               ttttt t  |
+|                   ttt                         t                        ttttt                                 tttttttt  |
+|                  ttttt                       t                          ttt                           tt     tttt ttt  |
+|                   ttttt                       tt                          tt                         tttt    ttttt t   |
+|                    tttt t                    t t                                                     tt     tttttttt   |
+|            t t t   tttt t              t      ttt                                                   t tt    tttttttt   |
+|           tttttt     t               tttt    ttttt                                        tttt t    tt t   tttttttt    |
+|           tttttt                     tt tt    t tt                                         tttttt   tttt   ttt ttt     |
+|             tttt                       tt       tt     tt ttt                              tttttt   ttt      tttttt    |
+|            ttttt                     ttt       ttt     ttttt                               ttttt   t tt     tttttt     |
+|           tttttt                                t     tttttttt                           ttttttt      t         ttt    |
+|           ttttt t                               tt    tttttt t                            tttttt      t                |
+|            ttttt                                       t ttttt                               ttt                       |
+|           ttttttt              tt   t t                   tt                 ttt              tt                       |
+|             ttttt            tt tt tt t                                  t tttt               tt                       |
+|            tt t  t             t ttttttt                                ttt tt                                         |
+|                                   t tttttt        t                    ttt ttt           t                             |
+|                                  tt   t  t       ttt                    ttt t           ttt                            |
+|                                      t            t                                   ttttt                            |
+|                                                   ttt                                ttttt               ^^^^^^^^^^^^^^|
+|                                                    tt       t                      ttttt                               |
+|                            t   t tt                 t    tt t t                   tttt                                 |
+|                             tt tttttt                     tt tt           tt     ttt t                           tt    |
+|                             ttttt             tt           t t          t   ttt    t                            tttttt |
+|                             tt               tttt          tt            ttt tt                                  tttt  |
+|                                               tttt                        t  t        t          t              ttttt  |
+|                        t                       tttt                     tt  tt        tt       tttt      tt t  tt  tt  |
+|             t         ttt                       ttt                     t tttt      tttt      tttt       ttt ttttttt   |
+|         tt tt         ttt  ttt     tt ttt     ttt t                       t t       tttt    ttttttt     tttttt t tttt  |
+|         tttt          t t  tttttt  tttttt       t t                                  ttt    ttttt t                    |
+|         t t t         t    tttttt    t tt         t       .hh.                    tttt     tttttt                      |
+|         t t                ttttt    ttt t                I....                     ttt                     t           |
+|                            ttttt    tttttt              .....B..                                         t ttt t       |
+|                            ttttt     tt tt              .====...         t                    I           tttt  t t    |
+|               t       I      tttt     tt               I==.H=...          tt                             ttt tttttt    |
+|          t tttt             ttttt                      ..=..==I.       t t                               tttt ttttt    |
+|          tttttt             ttttt                       .====...      tttttt                         t  t t tttt tt    |
+|          t tt  t      ttt                               .....BB.      t t        t                  ttttttttttttt tt   |
+|           tttttt     tttttt                             .....B..       t       ttt             t    ttt  ttttttttt     |
+|             t        ttttt      t                t       .B.....              ttttt         t tttt  tt   ttttttttt     |
+|                       tt       tttt          t ttt        ...                tttt        t   tttttt  tt  tttttttttt    |
+|                 tt ttt          ttt       t tttt t                              ttt    tttt  tttttt   t  ttttttt tttt  |
+|                  tttt          ttttt     ttttt t                                tttt   tttt t  ttt               tt t  |
+|           t      ttttt         ttttt     ttt                            t       tt      tttttt  t                ttt   |
+|       ttt tt     t ttt          ttttt              tt      t          ttt      tt         tttt                  ttttt  |
+|          ttt      t tt         ttttt               ttt    ttt ttt     tttt                 ttttt                    t  |
+|        t ttt                    tttt            tttttt    tt   tt      tt                    tt                     t  |
+|       tttttt                                    ttttt      tt  ttt      t              t     t                         |
+|        t t t                                    t  t      tt      t    tt            tt                                |
+|                                           t t  ttt        t t    tt    t ttt         tttt                   tttt t t   |
+|                                           t t t tt        tt     tt      tt      t t ttt                    tttttttt   |
+|                                            t tttt               ttt     t  t    tttt tt t                    tt        |
+|                                            tt t                 ttt        t    ttt tttt                     t tt      |
+|^                                           tttt                                ttt tt                                  |
+|                                             tt                                   t                                     |
+|                                                            t                                                           |
+|     tt                                                   t tttt         tt                                             |
+|^   tttt                                                  ttttttt       t t                                             |
+|^   ttt                          tt                 t     ttt ttt       t tt                                            |
+|     tt       ^              tttttt                 t      tttt          tttt                                           |
+|^            ^             t tttttt               tttt     tttt           tt                                            |
+|            ^               ttt tt               ttttt      t                     t t                                   |
+|           ^              tttttttt       t        tttt                             ttt             t             t      |
+|^         ^^             tttttt       t  t      ttttt             t                ttttt          tt           tttt     |
+| ^       ^^               tt         ttt        tttt               t                ttttt        t tt      t tt ttt     |
+|  ^     ^                             ttt        tt               tt            tt      t         tttt     tt t tttt    |
+|   ^   ^     t  tt                    ttt                    tt   tttt          t                  t t     tttt t  t    |
+|^   ^^^^    t tttt                    tt                     ttt    tt           tt                tttt    t ttt        |
+|             ttt t                                     t     ttt    ttt          ttt                tttt     t          |
+|              tttt           t                         tt     ttt   ttt          tt                 tttttt              |
+|             ttt t         tttt            t t        tttt   tttt    t                              tttttt              |
+|                           tttt           ttt           tt  I  t    t t                             tttt                |
+|                         ttttttt        t tttt          t      t                                        t               |
+|                         ttttttt         ttt           t                       tt                                       |
+|                         ttttttt        ttttt    tt    ttt        t           tt t                                      |
+|                         ttttt            t      tttt   tt      ttt            ttt                                      |
+|                        tt t                     ttt        t    tt           tt                                        |
+|                                            ^   tttttt     tt   t                                                       |
+|                                           ^^    tttt      ttt                t                                         |
+|                                          ^^^     ttttt   t tt     tt        ttt                                        |
+|                                    t     ^^      tt       tt      tt       tttt                t                       |
+|                                ttttt    ^^                             tt  tttt              tttt                      |
+|                              t tttttt  ^^                    tt        ttt  ttttt          tttttt                      |
+|                              tttt ttt  ^                     t          ttt  tttt            ttttt         t           |
+|                tt t         tttt tt   ^                      tt         tttt      t        ttttttt      ttttt          |
+|               ttt t t        tt t                             t         tttt      t          tt ttt     t t t          |
+|                ttttt                            tt           tttt        ttttt   tt    ^     tttttt        ttt         |
+|              ttt ttt                            ttt            tt    tt  t        t t  ^      ttttt        ttt         |
+|               t tttt                      t    ttt      t t         tttt         tttt  ^         t         t tttt      |
+|              tt tttt                     ttt    tt      ttt        ttttt            t  ^                     tttt      |
+|              tt t tt                    ttt       t   tttttt       t t t           t t ^                     tttt      |
+|                                          ttt    tttt  tttt tt        t             t tt^                      ttt      |
+|                                           ttttt t       ttttt                          ^                       t t     |
+|                                            t tt         ttttt                          ^                         t     |
+|                                            tttt           tttt                         ^                               |
+|                                            t tttt        t  t t                        ^                               |
++------------------------------------------------------------------------------------------------------------------------+
+Coarse preview: highest-priority feature wins each character; object footprints are not drawn.
