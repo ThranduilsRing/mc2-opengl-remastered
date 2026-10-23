@@ -300,8 +300,9 @@ bool MissionInterfaceManager::uiCmdFixture(UiCmdCtx& c)
 					glm::vec3 pos; pos.x = x; pos.y = y; pos.z = 0.0f;
 					if (land) pos.z = land->getTerrainElevation(pos);
 					data.position = pos; data.rotation = 0;
-					data.controlType = (data.commanderID == static_cast<char>(homeCmdr) && !MPlayer)
-						? CONTROL_PLAYER : CONTROL_AI;
+					// Tactical orders run through the pilot's AI loop, including home units.
+					// CONTROL_PLAYER is the legacy keyboard/animation puppet mode.
+					data.controlType = CONTROL_AI;
 					const long h = mission ? mission->addMover(&data) : -1;
 					MoverPtr nm = (h > 0) ? static_cast<MoverPtr>(ObjectManager->get(h)) : nullptr;
 					if (!nm) { result = "blocked"; if (note.empty()) note = "addMover failed"; }
