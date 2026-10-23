@@ -2,13 +2,17 @@
 """Build/run doctest, the engine-linked order seam and Python contracts.
 
 --only/--asan restrict runs to standalone doctests; --unit-only skips Python.
+--only takes a migrated contract name (runs name/*) or any doctest case name/wildcard from tests/unit.
+The engine-linked authored-order seam (a whole second engine build) runs only with --seam.
 --unit is compatibility syntax. RelWithDebInfo retains release fatal-path checks.
 --compile-cache builds both trees (build-cc-tests, build-cc-order-seam) with Ninja through the shared sccache instead of the
 VS-generator trees; tools/build_all_targets.py passes it by default.
 """
 import argparse
+import fnmatch
 import os
 from pathlib import Path
+import re
 import subprocess
 import sys
 import tempfile
@@ -47,6 +51,33 @@ PY_HARNESSES = [
 ]
 _VS_CMAKE = ("C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/"
              "Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/bin/cmake.exe")
+
+
+def doctest_case_names():
+    """Test case names declared in tests/unit/test_*.cpp (a source scan; no build needed)."""
+    pattern = re.compile(r'\bTEST_CASE(?:_FIXTURE)?\s*\(\s*(?:\w+\s*,\s*)?"([^"]+)"')
+    names = set()
+    for path in (REPO_ROOT / "tests/unit").glob("test_*.cpp"):
+        names.update(pattern.findall(path.read_text(encoding="utf-8", errors="replace")))
+    return names
+
+
+def test_case_filter(only):
+    """--test-case value for --only: a registered contract name selects name/*, anything else is a doctest case name or wildcard."""
+    return ",".join(name + "/*" if name in REGISTERED_HARNESSES else name for name in only)
+
+
+def unknown_selection(only):
+    """Selections that match no registered contract and no doctest case in the sources."""
+    names = None
+    unknown = []
+    for item in only:
+        if item in REGISTERED_HARNESSES:
+            continue
+        names = doctest_case_names() if names is None else names
+        if not fnmatch.filter(names, item):
+            unknown.append(item)
+    return unknown
 
 
 def cmake_exe():
@@ -104,7 +135,7 @@ def build_and_run_unit_tests(config, run, asan=False, only=None, preset=None,
         return False, f"requested compiler binary missing in {bdir}"
     command = [str(exe), "--no-breaks"]
     if only:
-        command += ["--test-case=" + ",".join(name + "/*" for name in only)]
+        command += ["--test-case=" + test_case_filter(only)]
     env = dict(os.environ)
     if asan:
         # The allocation probe owns leak checks; ASan supplies bounds and lifetime evidence.
@@ -216,7 +247,10 @@ def build_and_run_order_seam(run, cache=False, jobs=None, seam_tree=None, seam_p
 def main(argv=None):
     ap = argparse.ArgumentParser(description="Build and optionally run doctest and Python contracts.")
     ap.add_argument("--run", action="store_true")
-    ap.add_argument("--only", action="append", help="select a migrated native contract (repeatable)")
+    ap.add_argument("--only", action="append",
+                    help="a migrated contract name (runs name/*) or a doctest case name/wildcard (repeatable)")
+    ap.add_argument("--seam", action="store_true",
+                    help="also build and run the engine-linked authored-order seam (a second engine build; off by default)")
     ap.add_argument("--config", default="RelWithDebInfo", choices=("RelWithDebInfo",))
     ap.add_argument("--unit", action="store_true", help="compatibility flag; native contracts now use doctest")
     ap.add_argument("--unit-only", action="store_true", help="omit Python contract suites")
@@ -243,16 +277,16 @@ def main(argv=None):
         ap.error("--asan runtime deployment is currently MSVC-only")
     os.environ.setdefault("_MSPDBSRV_ENDPOINT_", f"sol-s4b2-contracts-{os.getpid()}")
     if args.only:
-        unknown = set(args.only) - set(REGISTERED_HARNESSES)
+        unknown = unknown_selection(args.only)
         if unknown:
-            ap.error("unregistered harness: " + ", ".join(sorted(unknown)))
+            ap.error("no registered contract or doctest case matches: " + ", ".join(sorted(unknown)))
     ok, info = build_and_run_unit_tests(args.config, args.run, args.asan, args.only,
                                        preset=args.preset, keep_going=args.keep_going,
                                        log_dir=args.log_dir, jobs=args.jobs, cache=args.compile_cache, build_root=args.build_root)
     print(f"  [{'PASS' if ok else 'FAIL'}] mc2_tests: {info}")
     if not ok:
         return 1
-    if not (args.asan or args.only):
+    if args.seam and not (args.asan or args.only):
         if args.build_root and not args.seam_tree:
             args.seam_tree = str(Path(args.build_root) / ("build-cc-order-seam" if args.compile_cache else "build64-order-seam"))
         try:
