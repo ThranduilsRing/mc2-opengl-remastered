@@ -1,4 +1,5 @@
 #include "../GameOS/gameos/vk_render_infra.h"
+#include "../GameAdapters/SkyRenderAdapter.h"
 // Mission: the second half of the Mission::init load sequence -- warriors and brains, movers and parts,
 // terrain objects, commanders, the HUD and the geometry finalize. The first half and the orchestrator are in mission_init.cpp.
 #include "mission_internal.h"
@@ -1008,6 +1009,9 @@ void Mission::initFinalizeGeometry() {
 	// both completed above). No-op when MC2_VEGETATION_CARDS is unset.
 	GameAdapters::Vegetation::missionLoaded(land, GameMap);
 #ifdef MC2_VULKAN_ISLAND
+    // Camera activation selects this same source later. Select it before the
+    // load barrier so sky/water upload the mission HDRI rather than the boot sky.
+    GameAdapters::Sky::setSkyNumber(static_cast<int>(theSkyNumber));
     mc2PrewarmMissionPipelines();
 #endif
 }
