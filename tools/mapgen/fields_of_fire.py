@@ -44,6 +44,10 @@ class Assets:
         indirect = re.search(rb'IndirectFireWeaponComponentIndex\s*=\s*([-\d,\s]+)', gamesys, re.I)
         self.indirect = {int(v) for v in re.findall(rb'-?\d+', indirect[1]) if int(v) >= 0} if indirect else set()
         self.tree_limit = int(self.gamesys['general']['maxtreelosblock'])
+        visual = re.search(rb'VisualRangeTable\s*=\s*([\d,\s]+)', gamesys, re.I)
+        self.visual_ranges = [int(v)*25*5.01 for v in re.findall(rb'\d+', visual[1])] if visual else []
+        if len(self.visual_ranges) != 256:
+            raise ValueError('missing 256-entry visual-range table')
 
     @lru_cache(maxsize=None)
     def shape(self, appearance):
@@ -54,7 +58,7 @@ class Assets:
         try:
             points = tgl_points(self.install.read(f'data/tgl/{name}.tgl')[0], nodes)
         except FileNotFoundError:
-            points = ase_points(self.install.read(f'data/tgl/{name}.ase')[0])
+            points = ase_points(self.install.read(f'data/tgl/{name}.ase')[0], nodes)
         return points, nodes
 
     @lru_cache(maxsize=None)
@@ -77,7 +81,7 @@ class Assets:
                             'damage': float(row[7]), 'recycle_s': float(row[4])})
         return {'weapons': weapons, 'acquisition_wu': data['attackradius'],
                 'muzzle_wu': min(heights), 'yaw_deg_s': data['maxturretyawrate'],
-                'pilot_skill': data['pilotskill']}
+                'pilot_skill': data['pilotskill'], 'visual_ranges_wu': self.visual_ranges}
 
 
 @lru_cache(maxsize=1)
@@ -91,12 +95,19 @@ class MoveLOS:
     Local heights are 4-bit levels in 4*5.01 wu; vertex baking uses .2/4.
     Terrain uses MapData's alternating triangles rather than bilinear heights.
     """
-    def __init__(self, vertices, cells, tree_limit=6):
+    def __init__(self, vertices, cells, tree_limit=6, water_elevation=None):
         self.vertices = np.asarray(vertices, dtype=float)
         self.cells = np.asarray(cells, dtype='<u4')
         self.side = len(self.cells)
         self.fields = move_fields(self.cells)
         self.tree_limit = tree_limit
+        self.water_elevation = water_elevation
+
+    def visual_range(self, position, table):
+        base = max(float(self.vertices.min()), self.water_elevation if self.water_elevation is not None else float(self.vertices.min()))
+        interval = (float(self.vertices.max())-base)/256
+        level = int((position[2]-base)/interval) if interval > 1e-6 else 0
+        return table[min(255, max(0, level))]
 
     def cell(self, xy):
         xy = np.asarray(xy)
@@ -180,7 +191,7 @@ def bake(layout, assets=None):
     cells |= local << 18
     height = np.asarray(layout['terrain']['elevation_wu'])
     vertices = height[::3, ::3] if layout['terrain']['cell_step'] == 1 else height
-    return MoveLOS(vertices, cells, assets.tree_limit)
+    return MoveLOS(vertices, cells, assets.tree_limit, layout['terrain'].get('water_elevation_wu'))
 
 
 def active_ids(objects, lost=()):
@@ -214,7 +225,10 @@ def active_ids(objects, lost=()):
 
 
 def coverage(turrets, points, scene, assets, profile='vehicle', active=None, observers=()):
-    points = np.atleast_2d(points)
+    points = np.asarray(points, dtype=float).reshape(-1, 2)
+    if not turrets or not len(points):
+        empty = np.zeros((len(turrets), len(points)), bool)
+        return empty, empty.copy()
     height, extent = TARGETS[profile]
     direct, indirect = [], []
     for turret in turrets:
@@ -231,6 +245,12 @@ def coverage(turrets, points, scene, assets, profile='vehicle', active=None, obs
         visible = np.zeros(len(points), bool)
         if eligible.any() and live:
             visible[eligible] = scene.rays(source, points[eligible], height, extent)[0]
+            if 'visual_range_wu' in data:
+                visible &= distance <= data['visual_range_wu']
+            if 'visual_ranges_wu' in data:
+                # GameObject::lineOfSight filters 3-D pivot distance before the cell walk.
+                delta_z = scene.elevation(points)-turret['position_wu'][2]
+                visible &= np.hypot(distance, delta_z) <= scene.visual_range(turret['position_wu'], data['visual_ranges_wu'])
         spotted = np.zeros(len(points), bool)
         for observer in observers:
             if observer['team'] == turret['team'] and (active is None or observer['id'] in active):
@@ -254,6 +274,8 @@ def corridor_samples(route, step=C/4):
         normal = np.array([a[1]-b[1], b[0]-a[0]])/length
         width = route.get('width_wu', C)
         offsets = np.linspace(-width/2, width/2, max(3, math.ceil(width/(C/2))+1))
+        # MOVE cells are half-open; test the corridor's interior at its two edges.
+        offsets *= 1-1e-8
         for p in np.linspace(a, b, count, endpoint=False)+((b-a)/count/2):
             for offset in offsets:
                 points.append(p+normal*offset)
@@ -293,16 +315,20 @@ def reachable(scene, start, goal, width=C, forbidden=None, bounds=None):
 
 
 def evaluate(layout, scene=None, assets=None):
-    assets = assets or stock_assets()
     result = {'policy': POLICY, 'status': 'PASS', 'batteries': [], 'errors': [], 'incomplete': [], 'warnings': []}
     try:
+        if assets is None and (scene is None or any(o['class'] == 'turret' and 'fire' not in o for o in layout['objects'])):
+            assets = stock_assets()
         scene = scene or bake(layout, assets)
     except (ValueError, FileNotFoundError, KeyError) as error:
         return {**result, 'status': 'INCOMPLETE', 'incomplete': [str(error)]}
     objects = layout['objects']
-    active, errors = active_ids(objects)
+    observers = {o['id']: o for b in layout.get('batteries', []) for o in b.get('observers', [])}
+    active, errors = active_ids(objects+list(observers.values()))
     result['errors'].extend(errors)
     by_id = {o['id']: o for o in objects}
+    if len(by_id) != len(objects):
+        result['errors'].append('duplicate object IDs')
     by_cell = Counter(tuple(o['cell']) for o in objects)
     for obj in objects:
         if obj.get('parent_cell') is not None and by_cell[tuple(obj['parent_cell'])] != 1:
@@ -310,16 +336,25 @@ def evaluate(layout, scene=None, assets=None):
     plans = layout.get('batteries', [])
     if any(o['class'] == 'turret' for o in objects) and not plans:
         result['incomplete'].append('missing authored/inferred approaches')
+    assigned = Counter(t for p in plans for t in p['turrets'])
+    for obj in objects:
+        if obj['class'] == 'turret' and assigned[obj['id']] != 1:
+            result['incomplete'].append(obj['id']+': requires exactly one battery assignment')
     for plan in plans:
         turrets = [by_id[i] for i in plan['turrets'] if i in by_id]
         report = {'id': plan['id'], 'flaw': plan.get('flaw'), 'approaches': {}, 'blocked_arc': {}, 'states': {}}
         result['batteries'].append(report)
-        if len(turrets) != len(plan['turrets']) or not turrets:
+        if len(turrets) != len(plan['turrets']) or not turrets or any(t['class'] != 'turret' for t in turrets):
             result['errors'].append(plan['id']+': missing turret records'); continue
+        if len({t['team'] for t in turrets}) != 1:
+            result['errors'].append(plan['id']+': mixed-team battery')
         try:
             for turret in turrets:
                 if 'fire' not in turret:
                     assets.turret(turret['type_id'])
+                data = turret.get('fire') or assets.turret(turret['type_id'])
+                if not data['weapons'] or data['yaw_deg_s'] <= 0:
+                    raise ValueError(turret['id']+': missing weapons or invalid yaw rate')
         except (KeyError, ValueError, FileNotFoundError) as error:
             result['incomplete'].append(str(error)); continue
         policy = DIFFICULTIES[plan.get('difficulty', 'standard')]
@@ -339,6 +374,8 @@ def evaluate(layout, scene=None, assets=None):
             valid = ((rc >= 0) & (rc < scene.side)).all(axis=1)
             walkable = np.zeros(len(rc), bool)
             walkable[valid] = scene.fields['passable'][tuple(rc[valid].T)]
+            if route.get('mandatory', True) and not walkable.all():
+                result['errors'].append(route['id']+': mandatory corridor leaves passable full-width terrain')
             if not walkable.any():
                 result['incomplete'].append(route['id']+': no reachable corridor samples'); continue
             profiles = {}
@@ -377,6 +414,20 @@ def evaluate(layout, scene=None, assets=None):
                 if route.get('mandatory', True) and exposure and (plan.get('flaw') or {}).get('type') != 'tower_sightline':
                     result['errors'].append(plan['id']+': exposed tower on frontal approach')
         report['overlap_edges'] = sorted(overlap_edges)
+        remaining = {t['id'] for t in turrets}
+        report['support_components'] = []
+        while remaining:
+            component, pending = set(), [min(remaining)]
+            while pending:
+                ident = pending.pop()
+                if ident in component:
+                    continue
+                component.add(ident)
+                pending.extend(b if a == ident else a for a, b in overlap_edges if ident in (a, b))
+            remaining -= component
+            report['support_components'].append(sorted(component))
+        if len(report['support_components']) > 1:
+            result['errors'].append(plan['id']+': disconnected mutual-support graph')
         tower = by_id.get(plan.get('control'))
         if tower:
             angles = np.arange(0, 2*math.pi, math.pi/24)
@@ -426,7 +477,9 @@ def evaluate(layout, scene=None, assets=None):
         # Sample eligible assigned-sector bearings at 5 degrees and C/2 radial spacing.
         for turret in turrets:
             data = turret.get('fire') or assets.turret(turret['type_id'])
-            bearing = math.degrees(math.atan2(-plan['inward'][1], -plan['inward'][0]))
+            aim = np.mean([route['points'][0] for route in routes if route.get('mandatory', True)], axis=0)
+            direction = aim-np.asarray(turret['position_wu'][:2])
+            bearing = math.degrees(math.atan2(direction[1], direction[0]))
             angles = np.radians(np.arange(bearing-plan.get('sector_half_deg', 20), bearing+plan.get('sector_half_deg', 20)+.01, 5))
             radial = np.arange(C/2, min(data['acquisition_wu'], max(w['max_wu'] for w in data['weapons']))+1, C/2)
             points = np.asarray(turret['position_wu'][:2])+np.stack((np.cos(angles), np.sin(angles)), axis=1)[:, None, :]*radial[None, :, None]
@@ -435,6 +488,17 @@ def evaluate(layout, scene=None, assets=None):
             valid = ((rc >= 0) & (rc < scene.side)).all(axis=1)
             keep = np.zeros(len(rc), bool)
             keep[valid] = scene.fields['passable'][tuple(rc[valid].T)]
+            plausible = np.zeros(len(points), bool)
+            for route in routes:
+                for a, b in zip(route['points'], route['points'][1:]):
+                    a, b = np.asarray(a), np.asarray(b)
+                    delta = b-a
+                    if np.dot(delta, delta) == 0:
+                        continue
+                    fraction = (points-a) @ delta / np.dot(delta, delta)
+                    plausible |= ((fraction >= 0) & (fraction <= 1) &
+                        (np.linalg.norm(points-a-fraction[:, None]*delta, axis=1) <= route.get('width_wu', C)/2))
+            keep &= plausible
             points = points[keep]
             distance = np.linalg.norm(points-turret['position_wu'][:2], axis=1)
             eligible = np.zeros(len(points), bool)
@@ -450,21 +514,67 @@ def evaluate(layout, scene=None, assets=None):
                 result['errors'].append(turret['id']+': assigned sector blocked >35%')
         for state, lost in (('control_lost', [plan.get('control')]), ('generator_lost', [plan.get('generator')]),
                             ('observer_lost', [o['id'] for o in plan.get('observers', [])])):
-            surviving, _ = active_ids(objects+plan.get('observers', []), lost)
+            surviving, _ = active_ids(objects+list(observers.values()), lost)
             report['states'][state] = {'active_turrets': [t['id'] for t in turrets if t['id'] in surviving],
                                       'lost_observers': [o['id'] for o in plan.get('observers', []) if o['id'] not in surviving]}
+            report['states'][state]['approaches'] = {}
+            for route in routes:
+                points, weights, _ = corridor_samples(route)
+                if not len(points):
+                    continue
+                rc = scene.cell(points)
+                valid = ((rc >= 0) & (rc < scene.side)).all(axis=1)
+                keep = np.zeros(len(rc), bool)
+                keep[valid] = scene.fields['passable'][tuple(rc[valid].T)]
+                weights = weights*keep
+                if not weights.sum():
+                    continue
+                d, i = coverage(turrets, points, scene, assets, active=surviving, observers=plan.get('observers', ()))
+                report['states'][state]['approaches'][route['id']] = {
+                    'coverage': float(weights[(d | i).any(axis=0)].sum()/weights.sum()),
+                    'conditional_indirect_coverage': float(weights[i.any(axis=0)].sum()/weights.sum())}
         flaw = plan.get('flaw')
         if flaw:
+            if flaw.get('type') not in FLAWS:
+                result['errors'].append(plan['id']+': unknown flaw type')
+                continue
             start, goal = scene.cell(flaw['start']), scene.cell(flaw['target'])
             path = reachable(scene, start, goal, flaw.get('width_wu', C))
             report['flaw_reachable'] = bool(path)
             report['flaw_path'] = path
             if not path:
                 result['errors'].append(plan['id']+': declared flaw unreachable')
+            elif flaw['type'] in ('flank_route', 'lrm_pocket'):
+                d, i = coverage(turrets, scene.world(np.asarray(path)), scene, assets, active=active,
+                                observers=plan.get('observers', ()))
+                counts = (d | i).sum(axis=0)
+                report['flaw_path_coverage'] = float((counts > 0).mean())
+                report['flaw_target_firing_turrets'] = int(counts[-1])
+                if counts[-1] != 0:
+                    result['errors'].append(plan['id']+': declared flank/pocket target is covered')
+            elif flaw['type'] == 'exposed_generator':
+                generator = by_id.get(plan.get('generator'))
+                if generator is None:
+                    result['incomplete'].append(plan['id']+': flaw generator missing')
+                else:
+                    xy = flaw['target']
+                    source = [*xy, float(scene.elevation(xy))+TARGETS['mech'][0]]
+                    visible = scene.rays(source, [generator['position_wu'][:2]],
+                        generator.get('footprint', {}).get('height_wu', 50)/2, 45)[0][0]
+                    report['flaw_target_visible'] = bool(visible)
+                    if not visible:
+                        result['errors'].append(plan['id']+': declared generator flaw is occluded')
         else:
             report['flaw_reachable'] = None
+    fire = {}
+    for obj in objects:
+        if obj['class'] == 'turret':
+            try:
+                fire[obj['id']] = obj.get('fire') or assets.turret(obj['type_id'])
+            except (KeyError, ValueError, FileNotFoundError) as error:
+                result['incomplete'].append(str(error))
     result['inputs_sha256'] = hashlib.sha256(scene.cells.tobytes()+scene.vertices.tobytes()+
-        json.dumps([objects, plans], sort_keys=True).encode()).hexdigest()
+        json.dumps([objects, plans, fire, scene.tree_limit, scene.water_elevation, TARGETS, DIFFICULTIES], sort_keys=True).encode()).hexdigest()
     result['status'] = 'FAIL' if result['errors'] else 'INCOMPLETE' if result['incomplete'] else 'WARN' if result['warnings'] or any(
         v['fraction'] is not None and v['fraction'] > .20 for b in result['batteries'] for v in b['blocked_arc'].values()) else 'PASS'
     return result
@@ -527,7 +637,7 @@ def audit_stock(install, missions):
         raw = install.read('data/missions/'+name+'.pak')[0]
         cells = decode_move([packet(raw, i) for i in range(4, 8)])[3]
         vertices = np.frombuffer(packet(raw, 0), VERTEX)['height'].reshape(len(cells)//3, -1)
-        scene = MoveLOS(vertices, cells, assets.tree_limit)
+        scene = MoveLOS(vertices, cells, assets.tree_limit, layout['terrain'].get('water_elevation_wu'))
         turrets = [o for o in layout['objects'] if o['class'] == 'turret']
         by_id = {o['id']: o for o in layout['objects']}
         groups = {}
@@ -563,10 +673,53 @@ def audit_stock(install, missions):
                 'approaches': [{'id': 'inferred_road', 'mandatory': True, 'points': points, 'width_wu': C}]})
         report = evaluate(layout, scene, assets)
         report.update(turret_records=len(turrets), evaluated_turrets=sum(len(b['turrets']) for b in layout['batteries']),
+            source_install=str(install.root),
             route_provenance='inferred MOVE roads; vehicle/mech reference profiles; no observer plan',
             stock_disposition='read-only; preserve authored flaws, including mc2_20 LRM pocket')
         if turrets:
             report['incomplete'].append('stock routes and target/observer profiles require author confirmation')
-            report['status'] = 'INCOMPLETE'
+            if not report['errors']:
+                report['status'] = 'INCOMPLETE'
         reports[name] = report
     return reports
+
+
+def audit_source(root):
+    """Accept an install or the owner's extracted stock data directory, read-only."""
+    install = Install(root)
+    if (install.root/'objects/object2.pak').is_file():
+        for folder in ('missions', 'objects', 'art', 'textures', 'tgl'):
+            for path in sorted((install.root/folder).rglob('*')):
+                if path.is_file() and path.suffix.lower() in ('.fit', '.pak', '.csv', '.ini', '.tgl', '.ase'):
+                    install.files['data/'+path.relative_to(install.root).as_posix().lower()] = (path,)
+    return install
+
+
+def main(argv=None):
+    import argparse
+    from tools.mapgen.common import load_json, output_path, write_json
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('layout', type=Path, nargs='?')
+    parser.add_argument('--stock', action='store_true', help='read-only stock mission audit')
+    parser.add_argument('--install', type=Path, default=STOCK)
+    parser.add_argument('--missions', nargs='+', default=[f'mc2_{i:02}' for i in range(1, 25)])
+    parser.add_argument('--out', type=Path, required=True)
+    args = parser.parse_args(argv)
+    if args.stock == bool(args.layout):
+        parser.error('choose a layout or --stock')
+    source = audit_source(args.install)
+    report = audit_stock(source, args.missions) if args.stock else evaluate(
+        load_json(args.layout), assets=Assets(source))
+    write_json(output_path(args.out, [args.install]), report, pretty=True)
+    if args.stock:
+        for name, result in report.items():
+            print(f"{name}: {result['status']} turrets={result['turret_records']} "
+                  f"evaluated={result['evaluated_turrets']} errors={len(result['errors'])} "
+                  f"incomplete={len(result['incomplete'])}")
+        return 0  # An audit records findings; it does not approve stock maps.
+    print(f"{report['status']}: {len(report['errors'])} errors, {len(report['incomplete'])} incomplete")
+    return int(report['status'] in ('FAIL', 'INCOMPLETE'))
+
+
+if __name__ == '__main__':
+    raise SystemExit(main())

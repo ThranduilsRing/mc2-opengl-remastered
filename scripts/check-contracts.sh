@@ -1547,7 +1547,7 @@ run_check "scripts_tests"              "py -3 scripts/run_scripts_tests.py"
 # Excluded: test_cxx17_ratchet (own row above) and test_release_zip_install
 # (assembles release zips + launches a smoke; not an offline contract).
 run_check_tri "tools_tests"             "py -3 scripts/run_tools_tests.py"
-run_check "mapgen_fof"                  "py -3 -B -m pytest tests/mapgen/test_fields_of_fire.py -q -p no:cacheprovider"
+run_check "mapgen_fof"                  "py -3 -B -m pytest tests/mapgen/test_fields_of_fire.py tests/mapgen/test_footprints.py tests/mapgen/test_pixel_generate.py tests/mapgen/test_mission_writer.py -q -p no:cacheprovider"
 run_check "sim_include_firewall"        "py -3 -B scripts/tests/test_sim_include_firewall.py && py -3 scripts/check_sim_include_firewall.py"
 fi   # end of the real board (skipped under --selftest-render, above)
 if [ "$PARALLEL" -eq 1 ]; then _drain_queue; fi

@@ -41,7 +41,7 @@ def plan(layout, difficulty='standard', flaw=None, flaw_type='exposed_generator'
                 obj['battery_type'] = type_id
             return obj
         target(control, 7.5, sign*5)
-        target(generator, -.7 if enabled and flaw_type == 'exposed_generator' else 5.5, sign*4.5)
+        target(generator, 2.5 if enabled and flaw_type == 'exposed_generator' else 5.5, sign*4.5)
         screen = {**control, 'id': base['id']+'_tower_screen', 'class': 'building',
                   'role': 'military', 'parent_link': None, 'parent_cell': None, 'parent_id_raw': -1}
         # A native tall structure screens the control; no invented LOS rectangle.
@@ -49,7 +49,8 @@ def plan(layout, difficulty='standard', flaw=None, flaw_type='exposed_generator'
         if enabled and flaw_type == 'tower_sightline':
             target(control, 5.5, -sign*3.5)
         objects[:] = [o for o in objects if o not in old]
-        objects.append(screen)
+        if not (enabled and flaw_type == 'tower_sightline'):
+            objects.append(screen)
         turrets = []
         for i in range(count):
             request = {**old[0], 'id': base['id']+f'_turret_{i}', 'pilot_skill': DIFFICULTIES[difficulty][2]}
@@ -61,14 +62,20 @@ def plan(layout, difficulty='standard', flaw=None, flaw_type='exposed_generator'
                 type_id, depth = 170, -.7
             target(request, depth, across, type_id)
             objects.append(request); turrets.append(request['id'])
+        road_anchor = np.asarray(world_position(layout, {'cell': base['road_anchor']}))
+        road_depth = float(np.dot(road_anchor-entrance, inward)/C)
         approach = {'id': base['id']+'_front', 'mandatory': True, 'width_wu': C,
-                    'points': [position(-7.5, 0), position(-.5, 0)]}
+                    'points': [position(max(-7.5, road_depth), 0), position(-.5, 0)]}
         if enabled and flaw_type == 'lrm_pocket':
             approach['points'] = [position(-18, 0), position(-8, 0)]
-            target(control, 2, sign*3)
+        # Edge parcels approach from the map boundary, never from outside MOVE.
+        limit = layout['size']['rows']*C/2-C
+        approach['points'][0] = np.clip(approach['points'][0], -limit, limit).tolist()
+        start_depth = float(np.dot(np.asarray(approach['points'][0])-entrance, inward)/C)
+        entrance_depth = max(-3.5, (start_depth-.5)/2)
         battery = {'id': base['id'], 'difficulty': difficulty, 'turrets': turrets,
                    'control': control['id'], 'generator': generator['id'],
-                   'entrance': position(-3.5, 0), 'inward': inward.tolist(),
+                   'entrance': position(entrance_depth, 0), 'inward': inward.tolist(),
                    'interior': position(-.5, 0),
                    'sector_half_deg': 10, 'approaches': [approach], 'flaw': None}
         if enabled:
@@ -95,6 +102,15 @@ def finish(layout, scene, assets):
         flaw = battery.get('flaw')
         if not flaw:
             continue
+        if flaw['type'] == 'flank_route':
+            centre = scene.cell(flaw['target'])
+            choices = [np.array([r, c]) for r in range(max(0, centre[0]-6), min(scene.side, centre[0]+7))
+                       for c in range(max(0, centre[1]-6), min(scene.side, centre[1]+7))
+                       if scene.fields['passable'][r, c]]
+            for cell in sorted(choices, key=lambda p: (np.linalg.norm(p-centre), tuple(p))):
+                if reachable(scene, scene.cell(flaw['start']), cell):
+                    flaw['target'] = scene.world(cell).tolist()
+                    break
         if flaw['type'] == 'exposed_generator':
             obj = by_id[battery['generator']]
             centre = scene.cell(obj['position_wu'][:2])
@@ -113,7 +129,7 @@ def finish(layout, scene, assets):
 def candidates(request):
     """Bounded deterministic translations; no random parent-radius sampling."""
     x, y = request['battery_target']
-    for radius in ((0, C/4, C/2, C, 1.5*C) if request['class'] == 'turret' else
+    for radius in ((0, C/4, C/2, C, 1.5*C, 2*C, 3*C) if request['class'] == 'turret' else
                    (0, C/4, C/2, C, 1.5*C, 2*C, 3*C, 4*C, 5*C)):
         for angle in range(0, 360, 45):
             if radius == 0 and angle:
@@ -121,15 +137,27 @@ def candidates(request):
             yield (x+radius*math.cos(math.radians(angle)), y+radius*math.sin(math.radians(angle)))
 
 
-def in_firing_lane(layout, obj):
+def in_firing_lane(layout, obj, planned_pivots=None):
     if obj['class'] not in ('building', 'tree') or obj['id'].endswith('_tower_screen'):
         return False
     x = np.asarray(obj['position_wu'][:2])
     half = max(obj['footprint']['width_wu'], obj['footprint']['depth_wu'])/2
+    if planned_pivots is None:
+        planned_pivots = {o['id']: o.get('battery_target') for o in layout['objects'] if o['class'] == 'turret'}
     for battery in layout.get('batteries', []):
+        turret_points = [planned_pivots.get(i) for i in battery['turrets']]
+        endpoints = np.asarray([p for route in battery['approaches'] for p in route['points']]+
+                               [p for p in turret_points if p is not None])
+        margin = half+C+max(route.get('width_wu', C) for route in battery['approaches'])/2
+        if (x < endpoints.min(axis=0)-margin).any() or (x > endpoints.max(axis=0)+margin).any():
+            continue
         for route in battery['approaches']:
-            for a, b in zip(route['points'], route['points'][1:]):
+            lanes = list(zip(route['points'], route['points'][1:]))
+            lanes.extend((pivot, point) for pivot in turret_points if pivot is not None for point in route['points'])
+            for a, b in lanes:
                 a, b = np.array(a), np.array(b)
+                if np.dot(b-a, b-a) == 0:
+                    continue
                 t = np.clip(np.dot(x-a, b-a)/np.dot(b-a, b-a), 0, 1)
                 if np.linalg.norm(x-a-(b-a)*t) < half+route['width_wu']/2+C:
                     return True

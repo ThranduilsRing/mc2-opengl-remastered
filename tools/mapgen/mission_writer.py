@@ -298,7 +298,8 @@ def emit(layout, source, out, name=None):
             raise ValueError(f'missing stock pilot/brain: {dependency}')
     if layout.get('batteries'):
         from tools.mapgen.fields_of_fire import bake, Assets
-        cells = bake(layout, Assets(source)).cells.copy()
+        fire_assets = Assets(source)
+        cells = bake(layout, fire_assets).cells.copy()
     else:
         cells = np.where(blocked, 2, 0x402).astype('<u4')
     cells[mask_of(layout, 'roads')] |= 0x02000000
@@ -311,6 +312,15 @@ def emit(layout, source, out, name=None):
                 o['team'], o['parent_id_raw'], 0, 0) for o in layout['objects']]
     packets = [terrain_packet(layout, template_pak), encode_objects(records),
                struct.pack('<i',0), tacmap_packet(layout), *movement]
+    if layout.get('batteries'):
+        from tools.mapgen.fields_of_fire import MoveLOS, evaluate
+        from tools.mapgen.extract import VERTEX
+        vertices = np.frombuffer(packets[0], VERTEX)['height'].reshape(layout['size']['vertices'], -1)
+        layout['fields_of_fire'] = evaluate(layout, MoveLOS(vertices, cells, fire_assets.tree_limit,
+            layout['terrain'].get('water_elevation_wu')), fire_assets)
+        if layout['fields_of_fire']['status'] in ('FAIL', 'INCOMPLETE'):
+            raise ValueError('serialized fields of fire: '+ '; '.join(
+                layout['fields_of_fire']['errors']+layout['fields_of_fire']['incomplete']))
     stem = out/layout['name']
     fit = mission_fit(layout, template_fit)
     write_pak([PacketRecord(i,4,make_zlib_payload(p)) for i,p in enumerate(packets)], stem.with_suffix('.pak'))
@@ -375,6 +385,12 @@ def emit(layout, source, out, name=None):
                              'flat grass terrain; planned roads/cement are not texture-baked']) + [
                              'conservative model rectangles; no destruction-aware special areas',
                              'gates use passable apertures; native collision-template baker pending']}
+    if layout.get('batteries'):
+        report['fields_of_fire'] = layout['fields_of_fire']
+        report['turret_catalog'] = {'file': 'object2.pak', 'install_path': 'data/objects/object2.pak',
+            'sha256': hashlib.sha256((out/'object2.pak').read_bytes()).hexdigest(),
+            'pilot_skills': skills,
+            'scope': 'type-wide companion catalog; use only in the generated mission install'}
     if colormap:
         report['colormap'] = {'path': 'data/textures/'+colormap.name,
             'sha256': hashlib.sha256(colormap.read_bytes()).hexdigest(),

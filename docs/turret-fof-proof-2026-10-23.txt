@@ -1,0 +1,60 @@
+Turret layout / fields-of-fire tools: 2026-10-23
+
+Scope
+  Offline Python evaluator and auto-gen rules, resumed from 8b684dff9.
+  Responsibility sectors describe authored intent; engine traverse stays 360 degrees.
+  Easy uses 2 turrets / skill 35, standard 3-4 / 50, hard 5-6 / 70.
+  Standard adds medium guns; hard adds faster-firing energy guns to the close pair.
+  --flaw on|off overrides the default (on for easy/standard, off for hard).
+  --flaw-type supports exposed_generator, flank_route, lrm_pocket, tower_sightline.
+  These are explicit opportunities; frontal coverage checks still apply.
+
+Changes beyond the parked WIP
+  Enforce connected useful-overlap graphs and passable full-width corridors.
+  Keep map-edge approaches inside MOVE and start at actual road frontage.
+  Reserve gun-to-approach lanes during decoration; reject wall-cell muzzle pivots.
+  Include live observers and recompute coverage after observer/control/generator loss.
+  Verify reachable flank/pocket targets are uncovered and exposed generators visible.
+  Read absolute TGL muzzle centers (not parent-relative offsets), plus ASE helpers.
+  Apply altitude-table visual range; hash weapons, forest policy and target profiles.
+  Recheck exported float32 terrain/MOVE; identify the companion pilot-skill catalog.
+
+Proof commands (run from A:/Games/mc2-study2)
+  bash scripts/check-contracts.sh -j6 --rows 'mapgen_fof|mission_codec_golden'
+  py -3 -B -m pytest tests/mapgen/test_generate.py -q -p no:cacheprovider
+  py -3 -m tools.mapgen.fields_of_fire --stock --install A:/Games/mc2-opengl/mc2srcdata-fresh --out E:/mc2-archive-2026-10/proofs/turret-fof/stock-source-audit.json
+  py -3 -m tools.mapgen.playable_demo --size 180 --seed 7 --out E:/mc2-archive-2026-10/proofs/turret-fof/export-final
+  mapgen_fof: 33 tests + 9 subtests passed, including three difficulties/four flaws.
+  mission_codec_golden: 2 passed; packet/FIT extraction and catalog fixtures.
+  test_generate.py: 12 tests + 29 subtests passed (110 seconds, final revision).
+  Export proof: packet/FIT extraction, parent links, spawns and final fire check.
+
+Stock findings (read-only; original extracted stock source)
+  All 24 missions, 732 turret-class records; 594 received inferred-route evaluation.
+  mc2_01 is the zero-turret PASS baseline. Other missions have FAIL diagnostics AND
+  incomplete author/profile data: these are screening findings, not balance verdicts.
+  138 records lacked an evaluable weapon model or an inferred reachable approach.
+  Repeated diagnostics: 450 blocked sectors, 306 approach/profile coverage failures,
+  112 disconnected support graphs, 99 exposed-tower routes, 30 spacing violations.
+  Counts are diagnostic instances, not unique objects or independent certified defects.
+  Example review targets: mc2_08 disconnected defenses, mc2_17 height/observer-sensitive
+  coverage, and mc2_24 artillery/observer dependencies. Preserve authored counterplay.
+  JSON contains object IDs, metrics, counterexample cells and per-mission input hashes.
+  No stock missions, mods or product installs were modified.
+
+Limits / remaining plan work
+  The evaluator remains Python; the plan's shared C++ core and editor adapter/overlays
+  are not implemented. The cell walk mirrors engine code but has no runtime parity proof.
+  Stock approaches are inferred MOVE paths, not approved attack corridors. Observers,
+  target profiles and animated muzzle states require author/runtime confirmation.
+  Capture-perimeter double protection remains a WARN under this screening policy;
+  generated demo controls do not meet the plan's proposed strict protection threshold.
+  Traverse numbers exclude popup/recycle delay and nearest-target acquisition competition.
+  Exported object2.pak changes pilot skill by TYPE; use only in the generated mission's
+  own install, at data/objects/object2.pak. Its SHA and scope are in the mission report.
+
+Tool slowness
+  mission_codec_golden took about 255 seconds; mapgen_fof about 28 seconds.
+  A broader generation run took about 125 seconds. No engine build/game run was needed.
+  Biggest avoidable cost: repeated broad sweeps during placement debugging. Diagnose
+  one rejected layout first; reserve the full sweep for the final checkpoint.

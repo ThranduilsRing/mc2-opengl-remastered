@@ -120,6 +120,7 @@ def upgrade(layout, profile):
     vegetation_exclusion = mask_of(layout, 'vegetation_exclusion')
     allowed = ~mask_of(layout,"water") & (slope_grid(layout["terrain"]["elevation_wu"]) < FLAT_DEG)
     old_objects = layout["objects"]
+    planned_pivots = {o['id']: o.get('battery_target') for o in old_objects if o['class'] == 'turret'}
     final, by_id, occupied = [], {}, set()
     spatial = Spatial()
     wall_edges = []
@@ -152,8 +153,6 @@ def upgrade(layout, profile):
     def accept(obj, parcel=None, seam=False):
         if obj is None:
             return False
-        if in_firing_lane(layout, obj):
-            return False
         poly = polygon(obj,obj["footprint"],obj["position_wu"],rectangle=True)
         r0,c0,r1,c1 = covered_cells(layout,poly)
         if min(r0,c0)<0 or max(r1,c1)>size or not allowed[r0:r1,c0:c1].all():
@@ -174,6 +173,8 @@ def upgrade(layout, profile):
                                       tree_base_distance[tuple(obj["cell"])]<4):
             return False
         if obj['class'] == 'tree' and vegetation_exclusion[r0:r1,c0:c1].any():
+            return False
+        if in_firing_lane(layout, obj, planned_pivots):
             return False
         if not seam and roads[r0:r1,c0:c1].any():
             return False
@@ -271,6 +272,10 @@ def upgrade(layout, profile):
                 sample_points = sample_points[np.dot(sample_points-np.array(battery['entrance']), battery['inward']) < 0]
                 sample_sources = np.column_stack((sample_points, conceal.elevation(sample_points)+50))
             placed = False
+            turret_scene = None
+            if cls == 'turret' and request.get('battery_target'):
+                from tools.mapgen.fields_of_fire import bake, stock_assets
+                turret_scene = bake({**layout, 'objects': final})
             centres = list(battery_candidates(request)) if request.get('battery_target') else None
             for attempt in range(len(centres)*len(assets) if centres else 600):
                 asset = assets[attempt % len(assets)] if attempt >= 300 else rng.choice(assets)
@@ -291,6 +296,10 @@ def upgrade(layout, profile):
                     centre = (rng.uniform(c0+inset,c1-inset)*CELL_WU-size*CELL_WU/2,
                               size*CELL_WU/2-rng.uniform(r0+inset,r1-inset)*CELL_WU)
                 obj = make(request,asset,centre)
+                if obj and turret_scene is not None:
+                    local = turret_scene.fields['local_height'][tuple(obj['cell'])]*20.04
+                    if local >= stock_assets().turret(obj['type_id'])['muzzle_wu']:
+                        continue
                 if obj and conceal and conceal.rays(sample_sources,
                         np.tile(obj['position_wu'][:2], (len(sample_sources), 1)),
                         obj['footprint']['height_wu']/2, 35)[0].any():

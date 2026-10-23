@@ -35,6 +35,19 @@ class FootprintTests(unittest.TestCase):
         *MESH_VERTEX 0 999 999 999 }'''
         np.testing.assert_array_equal(ase_points(raw), [[-10,20,30],[40,-50,60]])
 
+    def test_muzzle_nodes_use_absolute_not_parent_relative_centres(self):
+        raw = struct.pack('<III', 0xBAFDECAF, 1, 0)
+        data = bytearray(node('Weapon1', [(0, 0, 0)], (1, 2, 3)))
+        # The absolute centre includes the parent's 20-wu vertical offset.
+        struct.pack_into('<3f', data, 44, 1, 22, 3)
+        nodes = {}
+        tgl_points(raw+data, nodes)
+        self.assertEqual(nodes['weapon1'], [-1, 3, 22])
+        nodes = {}
+        ase_points(b'''*GEOMOBJECT { *NODE_NAME "base" *MESH_VERTEX 0 0 0 0 }
+            *HELPEROBJECT { *NODE_NAME "Weapon1" *NODE_TM { *TM_POS -1 3 22 } }''', nodes)
+        self.assertEqual(nodes['weapon1'], [-1, 3, 22])
+
     def test_fallback_never_calls_unknown_dimensions_real(self):
         self.assertEqual(radius_footprint(12)["width_wu"], 24)
         self.assertEqual(radius_footprint(0)["method"], "unresolved")
