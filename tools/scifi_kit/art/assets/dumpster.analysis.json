@@ -1,0 +1,385 @@
+{
+ "schema": "mc2-kit-analysis/1",
+ "asset": "dumpster",
+ "source": "G:\\mc2-assets\\out\\scifi-kit\\round2\\stock\\dumpster.json",
+ "bounds": {
+  "size_m": [
+   3.03702,
+   1.99743,
+   2.5282
+  ],
+  "footprint_m2": 6.07,
+  "height_m": 2.528,
+  "tris": 24,
+  "origin_offset_m": [
+   0.001462,
+   -0.003238,
+   0.0081
+  ]
+ },
+ "parts": [
+  {
+   "name": "dumpster",
+   "tris": 24,
+   "role": "body",
+   "round": null,
+   "bbox_lo": [
+    -1.519,
+    -0.999,
+    0.0
+   ],
+   "bbox_hi": [
+    1.519,
+    0.999,
+    2.528
+   ],
+   "profile_x": [
+    [
+     0.0,
+     1.519
+    ],
+    [
+     0.74,
+     1.519
+    ],
+    [
+     0.8,
+     0.757
+    ],
+    [
+     1.0,
+     0.757
+    ]
+   ],
+   "profile_y": [
+    [
+     0.0,
+     0.999
+    ],
+    [
+     0.5,
+     0.999
+    ],
+    [
+     0.56,
+     0.883
+    ],
+    [
+     0.74,
+     0.079
+    ],
+    [
+     0.8,
+     0.0
+    ],
+    [
+     1.0,
+     0.0
+    ]
+   ]
+  }
+ ],
+ "stock_model": {
+  "asset": "dumpster",
+  "intact_stem": "dumpster",
+  "destroyed_stem": "dumpsterdam",
+  "mesh": "G:\\mc2-assets\\out\\scifi-kit\\round2\\stock\\dumpster.json",
+  "parts": [
+   [
+    "dumpster",
+    "body"
+   ]
+  ],
+  "resolved_from": "catalog.json models[role=intact,lod=0]"
+ },
+ "round_parts": [],
+ "round": [],
+ "profile": {
+  "x_all": [
+   [
+    0.0,
+    1.519
+   ],
+   [
+    0.74,
+    1.519
+   ],
+   [
+    0.8,
+    0.757
+   ],
+   [
+    1.0,
+    0.757
+   ]
+  ],
+  "y_all": [
+   [
+    0.0,
+    0.999
+   ],
+   [
+    0.5,
+    0.999
+   ],
+   [
+    0.56,
+    0.883
+   ],
+   [
+    0.74,
+    0.079
+   ],
+   [
+    0.8,
+    0.0
+   ],
+   [
+    1.0,
+    0.0
+   ]
+  ],
+  "x_body": [
+   [
+    0.0,
+    1.519
+   ],
+   [
+    0.74,
+    1.519
+   ],
+   [
+    0.8,
+    0.757
+   ],
+   [
+    1.0,
+    0.757
+   ]
+  ],
+  "long_axis": "x",
+  "note": "half-extent (m) vs height fraction; x_body = the end of the long axis away from the +Y terminal pier"
+ },
+ "roof": {
+  "type": "mono",
+  "ridge_axis": "x",
+  "eave_h": 1.93,
+  "ridge_h": 2.234,
+  "rise_m": 0.607,
+  "pitch_deg": 16.4,
+  "residual": 0.174,
+  "flat_residual": 0.303,
+  "confidence": 0.43
+ },
+ "palette": {
+  "dominant": [
+   {
+    "linear": [
+     0.0309,
+     0.0835,
+     0.1358
+    ],
+    "hex": "#315267",
+    "fraction": 0.23
+   },
+   {
+    "linear": [
+     0.0052,
+     0.0094,
+     0.0232
+    ],
+    "hex": "#10182a",
+    "fraction": 0.218
+   },
+   {
+    "linear": [
+     0.0275,
+     0.0426,
+     0.0439
+    ],
+    "hex": "#2e3a3b",
+    "fraction": 0.204
+   },
+   {
+    "linear": [
+     0.035,
+     0.1075,
+     0.1937
+    ],
+    "hex": "#355c7a",
+    "fraction": 0.181
+   },
+   {
+    "linear": [
+     0.0318,
+     0.0658,
+     0.0875
+    ],
+    "hex": "#324953",
+    "fraction": 0.166
+   }
+  ],
+  "roof_dominant": [
+   {
+    "linear": [
+     0.0956,
+     0.1976,
+     0.294
+    ],
+    "hex": "#577b94",
+    "fraction": 0.383
+   },
+   {
+    "linear": [
+     0.0775,
+     0.1269,
+     0.1533
+    ],
+    "hex": "#4f646d",
+    "fraction": 0.313
+   },
+   {
+    "linear": [
+     0.0111,
+     0.0161,
+     0.0263
+    ],
+    "hex": "#1b222d",
+    "fraction": 0.304
+   }
+  ],
+  "mean_linear": [
+   0.0397,
+   0.084,
+   0.1249
+  ],
+  "mean_hex": "#385263",
+  "wear": {
+   "n": 1035,
+   "value_mean": 0.361,
+   "value_std": 0.136,
+   "sat_mean": 0.474,
+   "sat_std": 0.193,
+   "rust_cov": 0.0,
+   "dark_stain": 0.2174
+  },
+  "texels": 1035,
+  "draft": {
+   "main": [
+    0.031,
+    0.083,
+    0.136
+   ],
+   "second": [
+    0.005,
+    0.009,
+    0.023
+   ],
+   "trim": [
+    0.005,
+    0.009,
+    0.023
+   ],
+   "roof": [
+    0.096,
+    0.198,
+    0.294
+   ],
+   "ferro": [
+    0.029,
+    0.079,
+    0.129
+   ],
+   "accent": [
+    0.035,
+    0.107,
+    0.194
+   ],
+   "metal": [
+    0.3,
+    0.3,
+    0.3
+   ],
+   "corr": [
+    0.031,
+    0.083,
+    0.136
+   ],
+   "glass": [
+    0.03,
+    0.05,
+    0.05
+   ]
+  }
+ },
+ "counts": {
+  "doors": {
+   "n": 0,
+   "conf": 0.5,
+   "where": []
+  },
+  "windows": {
+   "n": 0,
+   "conf": 0.5,
+   "where": []
+  },
+  "openings_bays": {
+   "n": 0,
+   "conf": 0.5,
+   "where": []
+  },
+  "panels_sections": {
+   "n": 2,
+   "conf": 0.3,
+   "where": []
+  },
+  "crates": {
+   "n": 1,
+   "conf": 0.4,
+   "where": [
+    {
+     "at_m": [
+      0.8,
+      -0.0
+     ],
+     "conf": 0.4
+    }
+   ]
+  },
+  "barrels": {
+   "n": 0,
+   "conf": 0.5,
+   "where": []
+  },
+  "tanks": {
+   "n": 0,
+   "conf": 0.5,
+   "where": []
+  },
+  "arches_ribs": {
+   "n": 0,
+   "conf": 0.5,
+   "where": []
+  },
+  "legs_supports": {
+   "n": 0,
+   "conf": 0.5,
+   "where": []
+  },
+  "antennas_dishes": {
+   "n": 0,
+   "conf": 0.3,
+   "where": []
+  },
+  "stairs_ladders": {
+   "n": 0,
+   "conf": 0.3,
+   "where": []
+  }
+ },
+ "archetype_guess": {
+  "archetype": "container",
+  "why": "name /^lockers$|dumpster/",
+  "supported": true
+ }
+}

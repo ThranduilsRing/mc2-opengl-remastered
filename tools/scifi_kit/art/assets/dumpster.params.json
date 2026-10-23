@@ -1,0 +1,102 @@
+{
+ "asset": "dumpster",
+ "archetype": "container",
+ "size": [
+  3.03702,
+  1.99743,
+  2.5282
+ ],
+ "origin": [
+  0.001462,
+  -0.003238,
+  0.0081
+ ],
+ "palette": {
+  "main": [
+   0.031,
+   0.083,
+   0.136
+  ],
+  "second": [
+   0.0275,
+   0.0426,
+   0.0439
+  ],
+  "trim": [
+   0.0275,
+   0.0426,
+   0.0439
+  ],
+  "roof": [
+   0.096,
+   0.198,
+   0.294
+  ],
+  "ferro": [
+   0.029,
+   0.079,
+   0.129
+  ],
+  "accent": [
+   0.035,
+   0.107,
+   0.194
+  ],
+  "metal": [
+   0.3,
+   0.3,
+   0.3
+  ],
+  "corr": [
+   0.031,
+   0.083,
+   0.136
+  ],
+  "glass": [
+   0.03,
+   0.05,
+   0.05
+  ]
+ },
+ "counts": {
+  "crates": 1,
+  "doors": 0
+ },
+ "features": [],
+ "dims": {
+  "lid": 20,
+  "ribs": 6
+ },
+ "detail": {},
+ "notes": "auto-drafted from stock analysis (name /^lockers$|dumpster/); counts/features are DRAFT (see analysis.json confidences)",
+ "stock_model": "dumpster",
+ "round_parts": [],
+ "round": [],
+ "draft_confidence": {
+  "panels_sections": 0.3,
+  "crates": 0.4
+ },
+ "status": {
+  "state": "runner",
+  "validated": {
+   "params_sha": "ff5391833f30ab32",
+   "analysis_sha": "408da147cd5ce2a4",
+   "at": "2026-10-23"
+  }
+ },
+ "evidence": {
+  "analysis_sha": "408da147cd5ce2a4",
+  "archetype": "container",
+  "size_m": [
+   3.037,
+   1.997,
+   2.528
+  ],
+  "counts": {
+   "doors": 0,
+   "windows": 0,
+   "openings_bays": 0
+  }
+ },
+ "waivers": []
+}

@@ -1,0 +1,516 @@
+{
+ "schema": "mc2-kit-analysis/1",
+ "asset": "barracks",
+ "source": "G:\\mc2-assets\\out\\scifi-kit\\round2\\stock\\barracks.json",
+ "bounds": {
+  "size_m": [
+   10.5269,
+   21.17745,
+   4.37787
+  ],
+  "footprint_m2": 222.93,
+  "height_m": 4.378,
+  "tris": 52,
+  "origin_offset_m": [
+   -0.013025,
+   -5.34225,
+   0.00205
+  ]
+ },
+ "parts": [
+  {
+   "name": "Barracks",
+   "tris": 44,
+   "role": "body",
+   "round": null,
+   "bbox_lo": [
+    -5.263,
+    -10.56,
+    0.0
+   ],
+   "bbox_hi": [
+    5.263,
+    10.589,
+    4.378
+   ],
+   "profile_x": [
+    [
+     0.0,
+     5.263
+    ],
+    [
+     0.14,
+     5.226
+    ],
+    [
+     1.0,
+     3.537
+    ]
+   ],
+   "profile_y": [
+    [
+     0.0,
+     10.574
+    ],
+    [
+     0.68,
+     10.574
+    ],
+    [
+     0.74,
+     9.006
+    ],
+    [
+     1.0,
+     8.545
+    ]
+   ]
+  },
+  {
+   "name": "LitWin_Barracks",
+   "tris": 8,
+   "role": "body",
+   "round": null,
+   "bbox_lo": [
+    -4.787,
+    -10.589,
+    1.304
+   ],
+   "bbox_hi": [
+    4.813,
+    10.575,
+    3.061
+   ],
+   "profile_x": [
+    [
+     0.0,
+     4.757
+    ],
+    [
+     1.0,
+     4.046
+    ]
+   ],
+   "profile_y": [
+    [
+     0.0,
+     7.921
+    ],
+    [
+     0.38,
+     10.582
+    ],
+    [
+     0.62,
+     10.582
+    ],
+    [
+     1.0,
+     7.921
+    ]
+   ]
+  }
+ ],
+ "stock_model": {
+  "asset": "barracks",
+  "intact_stem": "barracks",
+  "destroyed_stem": "barracksdamx",
+  "mesh": "G:\\mc2-assets\\out\\scifi-kit\\round2\\stock\\barracks.json",
+  "parts": [
+   [
+    "Barracks",
+    "body"
+   ],
+   [
+    "LitWin_Barracks",
+    "body"
+   ]
+  ],
+  "resolved_from": "catalog.json models[role=intact,lod=0]"
+ },
+ "round_parts": [],
+ "round": [],
+ "profile": {
+  "x_all": [
+   [
+    0.0,
+    5.263
+   ],
+   [
+    0.14,
+    5.226
+   ],
+   [
+    1.0,
+    3.537
+   ]
+  ],
+  "y_all": [
+   [
+    0.0,
+    10.574
+   ],
+   [
+    0.68,
+    10.574
+   ],
+   [
+    0.74,
+    9.006
+   ],
+   [
+    1.0,
+    8.545
+   ]
+  ],
+  "x_body": [
+   [
+    0.0,
+    5.263
+   ],
+   [
+    0.14,
+    5.226
+   ],
+   [
+    1.0,
+    3.537
+   ]
+  ],
+  "long_axis": "y",
+  "note": "half-extent (m) vs height fraction; x_body = the end of the long axis away from the +Y terminal pier"
+ },
+ "roof": {
+  "type": "arch",
+  "ridge_axis": "x",
+  "eave_h": 0.77,
+  "ridge_h": 4.378,
+  "rise_m": 3.608,
+  "pitch_deg": 0.0,
+  "residual": 0.56,
+  "flat_residual": 1.11,
+  "confidence": 0.5
+ },
+ "palette": {
+  "dominant": [
+   {
+    "linear": [
+     0.0898,
+     0.0948,
+     0.0891
+    ],
+    "hex": "#555754",
+    "fraction": 0.262
+   },
+   {
+    "linear": [
+     0.2561,
+     0.2356,
+     0.1737
+    ],
+    "hex": "#8a8574",
+    "fraction": 0.245
+   },
+   {
+    "linear": [
+     0.1584,
+     0.1574,
+     0.1236
+    ],
+    "hex": "#6f6e63",
+    "fraction": 0.204
+   },
+   {
+    "linear": [
+     0.3392,
+     0.3246,
+     0.2486
+    ],
+    "hex": "#9d9a89",
+    "fraction": 0.152
+   },
+   {
+    "linear": [
+     0.0446,
+     0.0435,
+     0.0404
+    ],
+    "hex": "#3c3b39",
+    "fraction": 0.125
+   },
+   {
+    "linear": [
+     0.5782,
+     0.564,
+     0.5436
+    ],
+    "hex": "#c8c6c3",
+    "fraction": 0.012
+   }
+  ],
+  "roof_dominant": [
+   {
+    "linear": [
+     0.0849,
+     0.089,
+     0.0905
+    ],
+    "hex": "#525455",
+    "fraction": 0.769
+   },
+   {
+    "linear": [
+     0.2814,
+     0.2665,
+     0.2091
+    ],
+    "hex": "#918d7e",
+    "fraction": 0.2
+   },
+   {
+    "linear": [
+     0.5559,
+     0.5391,
+     0.5198
+    ],
+    "hex": "#c5c2bf",
+    "fraction": 0.031
+   }
+  ],
+  "mean_linear": [
+   0.1793,
+   0.1735,
+   0.1394
+  ],
+  "mean_hex": "#757468",
+  "wear": {
+   "n": 14959,
+   "value_mean": 0.443,
+   "value_std": 0.137,
+   "sat_mean": 0.128,
+   "sat_std": 0.076,
+   "rust_cov": 0.0012,
+   "dark_stain": 0.0645
+  },
+  "texels": 14959,
+  "draft": {
+   "main": [
+    0.09,
+    0.095,
+    0.089
+   ],
+   "second": [
+    0.256,
+    0.236,
+    0.174
+   ],
+   "trim": [
+    0.045,
+    0.044,
+    0.04
+   ],
+   "roof": [
+    0.085,
+    0.089,
+    0.09
+   ],
+   "ferro": [
+    0.085,
+    0.09,
+    0.085
+   ],
+   "accent": [
+    0.256,
+    0.236,
+    0.174
+   ],
+   "metal": [
+    0.578,
+    0.564,
+    0.544
+   ],
+   "corr": [
+    0.09,
+    0.095,
+    0.089
+   ],
+   "glass": [
+    0.03,
+    0.05,
+    0.05
+   ]
+  }
+ },
+ "counts": {
+  "doors": {
+   "n": 1,
+   "conf": 0.8,
+   "where": [
+    {
+     "side": "front",
+     "at_m": [
+      -0.0,
+      1.5
+     ],
+     "size_m": [
+      2.0,
+      2.9
+     ],
+     "conf": 0.8,
+     "source": "stock texture: ground-standing colour panel in the textured side view"
+    }
+   ]
+  },
+  "windows": {
+   "n": 6,
+   "conf": 0.84,
+   "where": [
+    {
+     "side": "left",
+     "at_m": [
+      -0.0,
+      2.1
+     ],
+     "size_m": [
+      2.6,
+      0.7
+     ],
+     "conf": 0.82,
+     "source": "stock texture: dark rectangle in the textured side view"
+    },
+    {
+     "side": "left",
+     "at_m": [
+      -5.8,
+      2.1
+     ],
+     "size_m": [
+      2.6,
+      0.7
+     ],
+     "conf": 0.85,
+     "source": "stock texture: dark rectangle in the textured side view"
+    },
+    {
+     "side": "left",
+     "at_m": [
+      5.7,
+      2.1
+     ],
+     "size_m": [
+      2.6,
+      0.7
+     ],
+     "conf": 0.84,
+     "source": "stock texture: dark rectangle in the textured side view"
+    },
+    {
+     "side": "right",
+     "at_m": [
+      0.0,
+      2.1
+     ],
+     "size_m": [
+      2.6,
+      0.7
+     ],
+     "conf": 0.82,
+     "source": "stock texture: dark rectangle in the textured side view"
+    },
+    {
+     "side": "right",
+     "at_m": [
+      -5.7,
+      2.1
+     ],
+     "size_m": [
+      2.6,
+      0.7
+     ],
+     "conf": 0.84,
+     "source": "stock texture: dark rectangle in the textured side view"
+    },
+    {
+     "side": "right",
+     "at_m": [
+      5.8,
+      2.1
+     ],
+     "size_m": [
+      2.6,
+      0.7
+     ],
+     "conf": 0.85,
+     "source": "stock texture: dark rectangle in the textured side view"
+    }
+   ]
+  },
+  "openings_bays": {
+   "n": 0,
+   "conf": 0.5,
+   "where": []
+  },
+  "panels_sections": {
+   "n": 4,
+   "conf": 0.3,
+   "where": []
+  },
+  "crates": {
+   "n": 2,
+   "conf": 0.4,
+   "where": [
+    {
+     "at_m": [
+      -0.0,
+      9.4
+     ],
+     "conf": 0.4
+    },
+    {
+     "at_m": [
+      -0.0,
+      -9.4
+     ],
+     "conf": 0.4
+    }
+   ]
+  },
+  "barrels": {
+   "n": 0,
+   "conf": 0.5,
+   "where": []
+  },
+  "tanks": {
+   "n": 0,
+   "conf": 0.5,
+   "where": []
+  },
+  "arches_ribs": {
+   "n": 1,
+   "conf": 0.4,
+   "where": [
+    "barrel vault"
+   ]
+  },
+  "legs_supports": {
+   "n": 0,
+   "conf": 0.5,
+   "where": []
+  },
+  "antennas_dishes": {
+   "n": 0,
+   "conf": 0.3,
+   "where": []
+  },
+  "stairs_ladders": {
+   "n": 0,
+   "conf": 0.3,
+   "where": []
+  }
+ },
+ "archetype_guess": {
+  "archetype": "box",
+  "why": "category building",
+  "supported": true
+ }
+}

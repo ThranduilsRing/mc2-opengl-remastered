@@ -1,0 +1,381 @@
+{
+ "schema": "mc2-kit-analysis/1",
+ "asset": "munitionscrates",
+ "source": "G:\\mc2-assets\\out\\scifi-kit\\round2\\stock\\munitionscrates.json",
+ "bounds": {
+  "size_m": [
+   10.5547,
+   2.12125,
+   3.38187
+  ],
+  "footprint_m2": 22.39,
+  "height_m": 3.382,
+  "tris": 30,
+  "origin_offset_m": [
+   0.030625,
+   -0.00535,
+   0.0
+  ]
+ },
+ "parts": [
+  {
+   "name": "ammocrates",
+   "tris": 30,
+   "role": "body",
+   "round": null,
+   "bbox_lo": [
+    -5.277,
+    -1.061,
+    0.0
+   ],
+   "bbox_hi": [
+    5.277,
+    1.061,
+    3.382
+   ],
+   "profile_x": [
+    [
+     0.0,
+     5.277
+    ],
+    [
+     0.44,
+     5.277
+    ],
+    [
+     0.5,
+     1.746
+    ],
+    [
+     1.0,
+     1.745
+    ]
+   ],
+   "profile_y": [
+    [
+     0.0,
+     1.061
+    ],
+    [
+     1.0,
+     1.061
+    ]
+   ]
+  }
+ ],
+ "stock_model": {
+  "asset": "munitionscrates",
+  "intact_stem": "munitionscrates",
+  "destroyed_stem": "munitionscratesdam",
+  "mesh": "G:\\mc2-assets\\out\\scifi-kit\\round2\\stock\\munitionscrates.json",
+  "parts": [
+   [
+    "ammocrates",
+    "body"
+   ]
+  ],
+  "resolved_from": "catalog.json models[role=intact,lod=0]"
+ },
+ "round_parts": [],
+ "round": [],
+ "profile": {
+  "x_all": [
+   [
+    0.0,
+    5.277
+   ],
+   [
+    0.44,
+    5.277
+   ],
+   [
+    0.5,
+    1.746
+   ],
+   [
+    1.0,
+    1.745
+   ]
+  ],
+  "y_all": [
+   [
+    0.0,
+    1.061
+   ],
+   [
+    1.0,
+    1.061
+   ]
+  ],
+  "x_body": [
+   [
+    0.0,
+    5.277
+   ],
+   [
+    0.44,
+    5.277
+   ],
+   [
+    0.5,
+    1.746
+   ],
+   [
+    1.0,
+    1.745
+   ]
+  ],
+  "long_axis": "x",
+  "note": "half-extent (m) vs height fraction; x_body = the end of the long axis away from the +Y terminal pier"
+ },
+ "roof": {
+  "type": "gable",
+  "ridge_axis": "x",
+  "eave_h": 1.678,
+  "ridge_h": 3.382,
+  "rise_m": 1.704,
+  "pitch_deg": 22.9,
+  "residual": 0.531,
+  "flat_residual": 0.802,
+  "confidence": 0.34
+ },
+ "palette": {
+  "dominant": [
+   {
+    "linear": [
+     0.3629,
+     0.2663,
+     0.1504
+    ],
+    "hex": "#a28d6c",
+    "fraction": 0.318
+   },
+   {
+    "linear": [
+     0.0344,
+     0.0194,
+     0.007
+    ],
+    "hex": "#342614",
+    "fraction": 0.244
+   },
+   {
+    "linear": [
+     0.2182,
+     0.1445,
+     0.0511
+    ],
+    "hex": "#816a40",
+    "fraction": 0.174
+   },
+   {
+    "linear": [
+     0.1066,
+     0.0628,
+     0.0192
+    ],
+    "hex": "#5c4726",
+    "fraction": 0.127
+   },
+   {
+    "linear": [
+     0.5594,
+     0.2971,
+     0.2165
+    ],
+    "hex": "#c59480",
+    "fraction": 0.119
+   },
+   {
+    "linear": [
+     0.6126,
+     0.6067,
+     0.5864
+    ],
+    "hex": "#cdccc9",
+    "fraction": 0.018
+   }
+  ],
+  "roof_dominant": [
+   {
+    "linear": [
+     0.4054,
+     0.273,
+     0.1652
+    ],
+    "hex": "#ab8f71",
+    "fraction": 0.586
+   },
+   {
+    "linear": [
+     0.1696,
+     0.1146,
+     0.0622
+    ],
+    "hex": "#725f47",
+    "fraction": 0.394
+   },
+   {
+    "linear": [
+     0.5958,
+     0.6281,
+     0.6081
+    ],
+    "hex": "#cbd0cd",
+    "fraction": 0.021
+   }
+  ],
+  "mean_linear": [
+   0.2842,
+   0.193,
+   0.1152
+  ],
+  "mean_hex": "#917a5f",
+  "wear": {
+   "n": 4225,
+   "value_mean": 0.533,
+   "value_std": 0.186,
+   "sat_mean": 0.414,
+   "sat_std": 0.167,
+   "rust_cov": 0.0334,
+   "dark_stain": 0.2154
+  },
+  "texels": 4225,
+  "draft": {
+   "main": [
+    0.363,
+    0.266,
+    0.15
+   ],
+   "second": [
+    0.034,
+    0.019,
+    0.007
+   ],
+   "trim": [
+    0.034,
+    0.019,
+    0.007
+   ],
+   "roof": [
+    0.405,
+    0.273,
+    0.165
+   ],
+   "ferro": [
+    0.345,
+    0.253,
+    0.143
+   ],
+   "accent": [
+    0.218,
+    0.144,
+    0.051
+   ],
+   "metal": [
+    0.613,
+    0.607,
+    0.586
+   ],
+   "corr": [
+    0.363,
+    0.266,
+    0.15
+   ],
+   "glass": [
+    0.03,
+    0.05,
+    0.05
+   ]
+  }
+ },
+ "counts": {
+  "doors": {
+   "n": 2,
+   "conf": 0.8,
+   "where": [
+    {
+     "side": "left",
+     "at_m": [
+      0.0,
+      1.7
+     ],
+     "size_m": [
+      2.1,
+      3.3
+     ],
+     "conf": 0.8,
+     "source": "stock texture: ground-standing colour panel in the textured side view"
+    },
+    {
+     "side": "right",
+     "at_m": [
+      0.0,
+      1.7
+     ],
+     "size_m": [
+      2.1,
+      3.3
+     ],
+     "conf": 0.8,
+     "source": "stock texture: ground-standing colour panel in the textured side view"
+    }
+   ]
+  },
+  "windows": {
+   "n": 0,
+   "conf": 0.5,
+   "where": []
+  },
+  "openings_bays": {
+   "n": 0,
+   "conf": 0.5,
+   "where": []
+  },
+  "panels_sections": {
+   "n": 3,
+   "conf": 0.3,
+   "where": []
+  },
+  "crates": {
+   "n": 0,
+   "conf": 0.5,
+   "where": []
+  },
+  "barrels": {
+   "n": 0,
+   "conf": 0.5,
+   "where": []
+  },
+  "tanks": {
+   "n": 0,
+   "conf": 0.5,
+   "where": []
+  },
+  "arches_ribs": {
+   "n": 0,
+   "conf": 0.5,
+   "where": []
+  },
+  "legs_supports": {
+   "n": 0,
+   "conf": 0.5,
+   "where": []
+  },
+  "antennas_dishes": {
+   "n": 0,
+   "conf": 0.3,
+   "where": []
+  },
+  "stairs_ladders": {
+   "n": 0,
+   "conf": 0.3,
+   "where": []
+  }
+ },
+ "archetype_guess": {
+  "archetype": "container",
+  "why": "name /munitions/",
+  "supported": true
+ }
+}
