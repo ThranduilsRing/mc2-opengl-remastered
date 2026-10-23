@@ -5,7 +5,7 @@ from pathlib import Path
 import numpy as np
 
 from tools.mapgen.common import output_path, write_json
-from tools.mapgen.data import Install
+from tools.mission_codec import Install
 from tools.mapgen.generate import generate
 from tools.mapgen.mission_writer import STOCK, emit
 

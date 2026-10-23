@@ -16,7 +16,7 @@ import numpy as np
 if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from tools.mapgen.common import CELL_WU, INSTALL_ROOT, building_role, load_json, spans, write_json
-from tools.mapgen.data import Install, catalog, fit_sections, packet
+from tools.mission_codec import Install, catalog, fit_sections, packet
 from tools.mapgen.extract import DEFAULT_OUT, INSTALLS
 
 TABLE_PATH = Path(__file__).with_name("footprints.json")

@@ -253,6 +253,7 @@ public:
         std::string fit, std::vector<std::byte> pak, std::string mission, const Diagnostic& log,
         std::span<const std::uint32_t> markerObjects = {});
     const Syntax& syntax() const { return syntax_; }
+    std::optional<std::array<std::uint32_t, 2>> parentCell(EntityId id) const;
     const PacketArchive& archive() const { return pak_; }
     const std::vector<TerrainTile>& terrain() const { return terrain_; }
     std::size_t terrainSide() const { return terrainSide_; }

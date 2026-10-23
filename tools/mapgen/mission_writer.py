@@ -18,8 +18,8 @@ from PIL import Image, ImageDraw
 
 from tools.mapgen.common import (CELL_WU, load_json, mask_of, output_path, packed_cell,
                                  world_cell, write_json)
-from tools.mapgen.data import Install, catalog, fit_sections, packet, overlay_catalog
-from tools.mapgen.extract import OBJECT, VERTEX, extract_mission
+from tools.mission_codec import Install, catalog, encode_objects, fit_sections, packet, overlay_catalog
+from tools.mapgen.extract import VERTEX, extract_mission
 from tools.mapgen.move_writer import build_move, validate_move
 from tools.mapgen.placement import Spatial, covered_cells, overlaps, interlocking_crowns
 from tools.mapgen.raster import polygon, render
@@ -303,9 +303,9 @@ def emit(layout, source, out, name=None):
     cells[:, [0,-1]] |= 0x200
     movement = build_move(cells)
     move_summary = validate_move(movement, layout['size']['rows'])
-    records = [OBJECT.pack(o['type_id'], *o['position_wu'], o['rotation'], o.get('damage',0),
-                           o['team'], o['parent_id_raw'], 0, 0) for o in layout['objects']]
-    packets = [terrain_packet(layout, template_pak), struct.pack('<i',len(records))+b''.join(records),
+    records = [(o['type_id'], *o['position_wu'], o['rotation'], o.get('damage',0),
+                o['team'], o['parent_id_raw'], 0, 0) for o in layout['objects']]
+    packets = [terrain_packet(layout, template_pak), encode_objects(records),
                struct.pack('<i',0), tacmap_packet(layout), *movement]
     stem = out/layout['name']
     fit = mission_fit(layout, template_fit)

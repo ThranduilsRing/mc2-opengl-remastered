@@ -19,23 +19,7 @@ if __package__ in (None, ""):
 from tools.assets.common import (INSTALL_ROOT, INSTALLS, Install, bounds, fit_sections,
                                  model_refs, model_sections, output_path, parse_tgl, stock_install,
                                  texture_image, write_json)
-from tools.assets.mapgen_data import catalog as type_catalog, packet
-
-# Reused from tools/mapgen/extract.py at e322675cec833f1926caed91e08ecdc830e68f58.
-OBJECT = struct.Struct("<i4f5i")
-
-
-def object_records(raw):
-    if len(raw) < 4:
-        raise ValueError("missing object count")
-    count, = struct.unpack_from("<i", raw)
-    if count < 0 or len(raw) != 4 + count*OBJECT.size:
-        raise ValueError("mission object count/size mismatch")
-    records = list(OBJECT.iter_unpack(raw[4:]))
-    if any(not all(math.isfinite(v) for v in r[1:5]) for r in records):
-        raise ValueError("nonfinite mission object position")
-    return records
-
+from tools.mission_codec import OBJECT, object_records, catalog as type_catalog, packet
 
 DEFAULT_CATALOG = Path("docs/assets/catalog.json")
 

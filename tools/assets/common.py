@@ -16,7 +16,7 @@ from pathlib import Path
 import numpy as np
 from PIL import Image
 
-from tools.assets.mapgen_data import Install, fit_sections, key
+from tools.mission_codec import Install, fit_sections, key
 
 INSTALL_ROOT = Path("A:/Games/mc2-opengl")
 OUT_ROOT = Path("G:/mc2-assets/out")
