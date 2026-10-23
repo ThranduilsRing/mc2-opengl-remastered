@@ -14,7 +14,7 @@ and Buildings.csv because the dev install's loose versions include mods.
 
 The mapgen `Install`, FIT parser, PacketFile decoder and type catalog are reused
 from `claude/mapgen-ascii` commit `e322675cec833f1926caed91e08ecdc830e68f58`
-in `tools/assets/mapgen_data.py`. Local changes: import location, an archive-only
+in `tools/mission_codec/__init__.py`. Local changes: import location, an archive-only
 switch and loose TGL/texture indexing. The 40-byte mission object layout comes
 from that branch's `extract.py`. Carver5 falls back through Omnitech to stock.
 

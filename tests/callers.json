@@ -7041,35 +7041,6 @@
       "callers_by_stem": []
     },
     {
-      "path": "tools/assets/mapgen_data.py",
-      "basename": "mapgen_data.py",
-      "stem": "mapgen_data",
-      "callers_by_basename": [],
-      "callers_by_stem": [
-        {
-          "path": "tests/assets/test_catalog.py",
-          "line": 8,
-          "evidence": "import",
-          "reference": "tools.assets.mapgen_data",
-          "text": "from tools.assets.mapgen_data import fit_sections, packet"
-        },
-        {
-          "path": "tools/assets/catalog.py",
-          "line": 22,
-          "evidence": "import",
-          "reference": "tools.assets.mapgen_data",
-          "text": "from tools.assets.mapgen_data import catalog as type_catalog, packet"
-        },
-        {
-          "path": "tools/assets/common.py",
-          "line": 19,
-          "evidence": "import",
-          "reference": "tools.assets.mapgen_data",
-          "text": "from tools.assets.mapgen_data import Install, fit_sections, key"
-        }
-      ]
-    },
-    {
       "path": "tools/assets/render.py",
       "basename": "render.py",
       "stem": "render",
@@ -7084,7 +7055,7 @@
         },
         {
           "path": "tools/assets/catalog.py",
-          "line": 306,
+          "line": 290,
           "evidence": "import",
           "reference": "tools.assets.render",
           "text": "from tools.assets.render import sheets"
@@ -9392,49 +9363,6 @@
       "callers_by_stem": []
     },
     {
-      "path": "tools/mapgen/data.py",
-      "basename": "data.py",
-      "stem": "data",
-      "callers_by_basename": [],
-      "callers_by_stem": [
-        {
-          "path": "tests/mapgen/test_extract.py",
-          "line": 11,
-          "evidence": "import",
-          "reference": "tools.mapgen.data",
-          "text": "from tools.mapgen.data import Install, catalog, fit_sections, packet"
-        },
-        {
-          "path": "tools/mapgen/extract.py",
-          "line": 19,
-          "evidence": "import",
-          "reference": "tools.mapgen.data",
-          "text": "from tools.mapgen.data import Install, catalog, fit_sections, overlay_catalog, packet"
-        },
-        {
-          "path": "tools/mapgen/footprints.py",
-          "line": 19,
-          "evidence": "import",
-          "reference": "tools.mapgen.data",
-          "text": "from tools.mapgen.data import Install, catalog, fit_sections, packet"
-        },
-        {
-          "path": "tools/mapgen/mission_writer.py",
-          "line": 21,
-          "evidence": "import",
-          "reference": "tools.mapgen.data",
-          "text": "from tools.mapgen.data import Install, catalog, fit_sections, packet, overlay_catalog"
-        },
-        {
-          "path": "tools/mapgen/playable_demo.py",
-          "line": 8,
-          "evidence": "import",
-          "reference": "tools.mapgen.data",
-          "text": "from tools.mapgen.data import Install"
-        }
-      ]
-    },
-    {
       "path": "tools/mapgen/extract.py",
       "basename": "extract.py",
       "stem": "extract",
@@ -9466,7 +9394,7 @@
           "line": 22,
           "evidence": "import",
           "reference": "tools.mapgen.extract",
-          "text": "from tools.mapgen.extract import OBJECT, VERTEX, extract_mission"
+          "text": "from tools.mapgen.extract import VERTEX, extract_mission"
         }
       ]
     },
@@ -10020,6 +9948,13 @@
           "text": "from tools.mc2data import stock_missions as sm"
         },
         {
+          "path": "tests/mapgen/test_mission_codec.py",
+          "line": 10,
+          "evidence": "import",
+          "reference": "tools.mc2data.stock_missions",
+          "text": "from tools.mc2data.stock_missions import resolve_missions_dir"
+        },
+        {
           "path": "tools/mc2data/stock_corpus.py",
           "line": 161,
           "evidence": "import",
@@ -10370,13 +10305,6 @@
           "text": "from tools.mc2x_import.fst import fst_entries, decompress_entry  # noqa: E402"
         },
         {
-          "path": "tools/assets/mapgen_data.py",
-          "line": 14,
-          "evidence": "import",
-          "reference": "tools.mc2x_import.fst",
-          "text": "from tools.mc2x_import.fst import decompress_entry"
-        },
-        {
           "path": "tools/bt2018_mechs/build_pack.py",
           "line": 74,
           "evidence": "import",
@@ -10410,6 +10338,13 @@
           "evidence": "import",
           "reference": "fst",
           "text": "import fst  # noqa: E402"
+        },
+        {
+          "path": "tools/mission_codec/__init__.py",
+          "line": 16,
+          "evidence": "import",
+          "reference": "tools.mc2x_import.fst",
+          "text": "from tools.mc2x_import.fst import decompress_entry"
         },
         {
           "path": "tools/mod_smoke.py",
@@ -10586,6 +10521,91 @@
       "stem": "menu_oracle",
       "callers_by_basename": [],
       "callers_by_stem": []
+    },
+    {
+      "path": "tools/mission_codec/__init__.py",
+      "basename": "__init__.py",
+      "stem": "__init__",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tests/assets/test_catalog.py",
+          "line": 8,
+          "evidence": "import",
+          "reference": "tools.mission_codec",
+          "text": "from tools.mission_codec import fit_sections, packet"
+        },
+        {
+          "path": "tests/mapgen/test_extract.py",
+          "line": 11,
+          "evidence": "import",
+          "reference": "tools.mission_codec",
+          "text": "from tools.mission_codec import Install, catalog, fit_sections, packet"
+        },
+        {
+          "path": "tests/mapgen/test_mission_codec.py",
+          "line": 8,
+          "evidence": "import",
+          "reference": "tools.mission_codec",
+          "text": "from tools.mission_codec import (decode_move, encode_move, encode_objects,"
+        },
+        {
+          "path": "tools/assets/catalog.py",
+          "line": 22,
+          "evidence": "import",
+          "reference": "tools.mission_codec",
+          "text": "from tools.mission_codec import OBJECT, object_records, catalog as type_catalog, packet"
+        },
+        {
+          "path": "tools/assets/common.py",
+          "line": 19,
+          "evidence": "import",
+          "reference": "tools.mission_codec",
+          "text": "from tools.mission_codec import Install, fit_sections, key"
+        },
+        {
+          "path": "tools/mapgen/common.py",
+          "line": 13,
+          "evidence": "import",
+          "reference": "tools.mission_codec",
+          "text": "from tools.mission_codec import packed_cell"
+        },
+        {
+          "path": "tools/mapgen/extract.py",
+          "line": 19,
+          "evidence": "import",
+          "reference": "tools.mission_codec",
+          "text": "from tools.mission_codec import (OBJECT, Install, catalog, fit_sections, object_records,"
+        },
+        {
+          "path": "tools/mapgen/footprints.py",
+          "line": 19,
+          "evidence": "import",
+          "reference": "tools.mission_codec",
+          "text": "from tools.mission_codec import Install, catalog, fit_sections, packet"
+        },
+        {
+          "path": "tools/mapgen/mission_writer.py",
+          "line": 21,
+          "evidence": "import",
+          "reference": "tools.mission_codec",
+          "text": "from tools.mission_codec import Install, catalog, encode_objects, fit_sections, packet, overlay_catalog"
+        },
+        {
+          "path": "tools/mapgen/move_writer.py",
+          "line": 14,
+          "evidence": "import",
+          "reference": "tools.mission_codec",
+          "text": "from tools.mission_codec import PASSABLE, decode_move, encode_move"
+        },
+        {
+          "path": "tools/mapgen/playable_demo.py",
+          "line": 8,
+          "evidence": "import",
+          "reference": "tools.mission_codec",
+          "text": "from tools.mission_codec import Install"
+        }
+      ]
     },
     {
       "path": "tools/mission_order_ingress_witness.py",
@@ -10846,6 +10866,13 @@
       "stem": "pak_append",
       "callers_by_basename": [],
       "callers_by_stem": [
+        {
+          "path": "tests/mapgen/test_mission_codec.py",
+          "line": 11,
+          "evidence": "import",
+          "reference": "tools.pak_append",
+          "text": "from tools.pak_append import PacketRecord, make_zlib_payload, write_pak"
+        },
         {
           "path": "tools/mapgen/mission_writer.py",
           "line": 26,
