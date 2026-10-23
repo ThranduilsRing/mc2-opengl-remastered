@@ -11,6 +11,7 @@ Cycles finds one.
 """
 import argparse
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -31,7 +32,7 @@ def blender(job, log):
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(job, indent=1), encoding='utf-8')
     log.parent.mkdir(parents=True, exist_ok=True)
-    cmd = [str(find_blender_exe()), '--background', '--factory-startup', '--threads', '4', '--python-exit-code', '1',
+    cmd = [str(find_blender_exe()), '--background', '--factory-startup', '--threads', os.environ.get('MC2_BLENDER_THREADS', '4'), '--python-exit-code', '1',
            '--python', str(HERE / 'blend.py'), '--', str(path)]
     print('[art]', ' '.join(cmd), flush=True)
     sys.path.insert(0,str(ROOT/'scripts'))
