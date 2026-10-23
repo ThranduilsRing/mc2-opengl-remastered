@@ -2,9 +2,10 @@
 
 WHY: a player whose launcher_env.json says "MC2_CPU_PHONG_RETIRE": "0" must keep CSM off after the options moved into options.cfg; before the
 migration the key was ignored and the choice reset silently. The tests run the real launcher headless (`--sync-options`) on a temp copy.
-Skipped when the launcher is not built in build64-ninja.
+Skipped when the launcher is not built in the selected Ninja tree.
 """
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -17,15 +18,15 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
 import console_child  # noqa: E402  (windowless console children, scripts/console_child.py)
 
-LAUNCHER = ROOT / "build64-ninja" / "out" / "mc2_launcher" / "mc2-launcher.exe"
-needs_launcher = pytest.mark.skipif(not LAUNCHER.is_file(), reason="mc2-launcher.exe is not built in build64-ninja")
+NINJA_TREE = ROOT / (os.environ.get("MC2_NINJA_TREE") or "build64-ninja")
+LAUNCHER = NINJA_TREE / "out" / "mc2_launcher" / "mc2-launcher.exe"
+needs_launcher = pytest.mark.skipif(not LAUNCHER.is_file(), reason="mc2-launcher.exe is not built in the selected Ninja tree")
 
 # The launcher these tests run must be built from the source on disk: a test against an exe older than its sources grades the old code. The launcher's
 # object file has a dependency record in Ninja's log (every header it really includes), so the exe is compared with exactly those files and a merge that only
 # touches unrelated files cannot turn this red. Without the record the four files the tests exercise are compared by modification time.
 LAUNCHER_SOURCES = [ROOT / "tools" / "mc2_launcher" / "mc2_launcher.cpp", ROOT / "Gates" / "render_options.h",
                     ROOT / "Gates" / "render_options_cfg.h", ROOT / "Gates" / "render_options_legacy_env.h"]
-NINJA_TREE = ROOT / "build64-ninja"
 LAUNCHER_OBJ = "out/tools/mc2_launcher/CMakeFiles/mc2_launcher.dir/mc2_launcher.cpp.obj"
 
 

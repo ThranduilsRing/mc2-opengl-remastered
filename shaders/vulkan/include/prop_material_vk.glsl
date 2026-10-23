@@ -63,6 +63,14 @@ SurfaceMaterial propSurface(int id, vec3 albedo) {
     return s;
 }
 
+// Only a decoded ORM sidecar authorizes specular; class scalars and normal maps
+// alone do not. Explicit legacy materials remain diffuse even with an ORM map.
+bool propHasAuthoredOrm(int id) {
+    PropMaterialGpu row = uPropMaterials.materials[id];
+    return row.metadata.x != SURF_CLASS_LEGACY_PRELIT
+        && row.material.metallicRoughnessTex != 0xffffffffu;
+}
+
 // ORM alpha is authored coverage, separate from the stock albedo's cutout alpha.
 // Zero coverage keeps the legacy material response, including zero new specular.
 float propMaterialCoverage(int id) {

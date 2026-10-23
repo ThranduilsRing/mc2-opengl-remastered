@@ -1,8 +1,6 @@
-// OWNED BY THE LIGHTING LANE (R2/R5). Pre-L6 compatibility composition for authored
-// static-prop materials: SurfaceMaterial (prop_material_vk.glsl) + the vertex light terms
-// -> display colour. The ambient/hemisphere/SH fills here are the stacked terms R2 removes;
-// material inputs must not be added here and composition must not move into the inputs.
-vec3 propAuthoredColor(SurfaceMaterial s, bool alphaTest) {
+// Static-prop compatibility lighting: one environment ambient, directional light
+// and local pools. Specular requires a valid authored ORM sidecar.
+vec3 propAuthoredColor(SurfaceMaterial s, bool alphaTest, bool authoredOrm) {
     if ((vMaterialFlags & 2u) != 0u)
         return propEncodeColor(s.baseColor * s.emission) + vHighlight.rgb * vHighlight.a;
     vec3 nStuff = renderToMc2(s.normal);
@@ -17,12 +15,15 @@ vec3 propAuthoredColor(SurfaceMaterial s, bool alphaTest) {
     for (int k=0; k<9; ++k) sh[k] = uFrame.iblSh[k].xyz;
     vec3 ibl = uFrame.iblShStrength > 0.0 ? evalShL2(normalize(nStuff), sh)*uFrame.iblShStrength : vec3(0);
     // AO affects ambient fill only; emission, direct sun and local pools survive.
-    vec3 lit = vMaterialSeed * wrap + ibl*s.ao + vMaterialSun*ndl;
-    lit = clamp(clamp(lit,0.0,1.0) + vHighlight.rgb,0.0,1.0);
-    if (alphaTest) lit = max(lit,vec3(0.5));
-    vec3 color = s.baseColor * propDecodeColor(lit) * (1.0 - 0.65*s.metallic);
+    // SH is irradiance; legacy sun/seed/highlight inputs are authored sRGB.
+    // Sum in linear light and apply Lambert once, never decode the sum.
+    vec3 lit = s.emission * wrap
+        + (max(ibl,vec3(0))*s.ao + propDecodeColor(vMaterialSun)*ndl) / 3.14159265
+        + propDecodeColor(vHighlight.rgb);
+    if (alphaTest) lit = max(lit,vec3(0.21404114)); // legacy 0.5 encoded floor
+    vec3 color = s.baseColor * lit * (1.0 - 0.65*s.metallic);
     vec3 V = uFrame.cameraWorldPos.xyz - vWorldPos;
-    if (dot(V,V) > 1e-8 && dot(vSunColor,vSunColor) > 0.0) {
+    if (authoredOrm && dot(V,V) > 1e-8 && dot(vSunColor,vSunColor) > 0.0) {
         V = normalize(V);
         vec3 H = L + V;
         if (dot(H,H) > 1e-8) {

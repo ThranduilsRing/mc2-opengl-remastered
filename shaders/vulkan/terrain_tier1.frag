@@ -598,10 +598,6 @@ void main() {
         // Colormaps are prelit: authored burnins, or sources baked by the loader.
         // Only detail relative to the macro normal may modulate that illumination.
         // Cement retains its authored slab normal and receives the same visibility.
-        //   pert = vec3(baseN.xy/max(baseN.z,0.2)*nfhStrength + dN.xy*detailStrength, 1.0)
-        //   N    = normalize(pert)
-        // baseN = height-derived macro slope (always live via the bound height SSBO);
-        // dN    = weighted material detail normal (only when the array imported).
         vec3 N = vec3(0.0, 0.0, 1.0);                            // flat-up terrain normal (default)
         vec3 dbgBaseN = vec3(0.0, 0.0, 1.0); vec3 dbgDN = vec3(0.0);  // CSM-BLACKOUT-RECON-1 taps
         if (uT.detailEnabled != 0 && !pureConcrete) {
