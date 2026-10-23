@@ -335,5 +335,13 @@
   "tools/visual_verify/test_vk_replay.py": "Dynamically discovered pytest/script-style module through scripts/run_tools_tests.py:70-85 (tools_tests); no literal caller names the module.",
   "tools/vk_feed_diff.py": "Existing script at 97949f0f5 with no resolved executable caller; retained pending coordinator cull review. This exception does not certify live use.",
   "tools/witness_smoke.py": "Existing script at 97949f0f5 with no resolved executable caller; retained pending coordinator cull review. This exception does not certify live use.",
-  "tools/lighting_source_census.py": "Manual L0 lighting evidence inventory; invoked with explicit install roots and archive output directory (docs/lighting-L0.md)."
+  "tools/lighting_source_census.py": "Manual L0 lighting evidence inventory; invoked with explicit install roots and archive output directory (docs/lighting-L0.md).",
+  "tools/scifi_kit/kit.py": "Owner-run procedural art CLI documented in OWNER-DRIVING.md; review, library, export, install and capture commands.",
+  "tools/scifi_kit/blender_build.py": "Headless Blender entry point invoked dynamically by tools/scifi_kit/kit.py run_blender with --python; bpy is supplied by Blender.",
+  "tools/scifi_kit/tests/test_lots.py": "Pytest-discovered footprint regressions; py -3 -B -m pytest tools/scifi_kit/tests -q -p no:cacheprovider.",
+  "tools/scifi_kit/art/run.py": "Owner-run art CLI (py -3 tools/scifi_kit/art/run.py prims|sheet|build), no in-repo caller by design; documented in OWNER-DRIVING.md.",
+  "tools/scifi_kit/art/blend.py": "Headless Blender entry point passed to Blender with --python by tools/scifi_kit/art/run.py; bpy is supplied by Blender.",
+  "tools/scifi_kit/art/palette_metrics.py": "Owner-run palette metrics tool for the art review pass (docs/scifi-kit-art-review.md), no in-repo caller by design.",
+  "tools/scifi_kit/art/review_drafts.py": "Owner-run draft review contact-sheet tool (docs/scifi-kit-blend-drafts.md), no in-repo caller by design.",
+  "tools/scifi_kit/tests/test_art_kit.py": "Pytest-discovered module; py -3 -B -m pytest tools/scifi_kit/tests -q -p no:cacheprovider."
 }

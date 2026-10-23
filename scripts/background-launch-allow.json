@@ -26,6 +26,8 @@
     "tools/tracy_capture_compare.py": "engine launcher through nofocus.spawn/run (vetted by exe_guard); launch-site audit 2026-10-10"
   },
   "direct_spawn": {
+    "tools/scifi_kit/art/run.py": "Runs the discovered headless Blender (art render jobs: no game, no window) with captured output through console_child.child_kwargs(redirected=True); the game is never launched from this file.",
+    "tools/scifi_kit/kit.py": "Headless Blender via the existing blender_runner discovery and console_child; Python invokes only scripts/run_visual_capture.py with --no-kill. The game itself is launched only by that harness through nofocus.spawn.",
     "tools/cook/veg_card_cook.py": "Offline card cooker invokes only the supplied local KTX CLI (create/transcode), never the game; captured console output uses console_child.child_kwargs.",
     "scripts/vk_shader_reload.py": "Developer command runs the discovered glslangValidator shader compiler with captured output through console_child.child_kwargs; it publishes a request to an already-running game and never launches the game",
     "tools/command_replay.py": "runs scripts/run_smoke.py under sys.executable through console_child.child_kwargs; the smoke harness owns the engine launch, host lease and background window policy",
