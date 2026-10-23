@@ -278,7 +278,7 @@ void TextureResidency::finishLoading() {
     }
     // Keep the progress UI's descriptor snapshot intact. Normal frame-boundary
     // publication picks up the new table revision after its consumers retire.
-    const auto readyCount=std::count_if(residents_.begin(),residents_.end(),[](const auto& entry) { return bool(entry.second.image); });
+    const auto readyCount=std::count_if(residents_.begin(),residents_.end(),[](const auto& entry) { const auto& [handle,resident]=entry; return bool(resident.image); });
     std::fprintf(stderr,"[VK_LOAD_TEXTURES v1] ready=%zu batches=%u blocked=%zu ms=%.3f\n",
         size_t(readyCount),batches,pending_.size()+uploading_.size(),
         std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-start).count());

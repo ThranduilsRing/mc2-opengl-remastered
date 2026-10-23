@@ -23,6 +23,7 @@
 #include <fstream>
 #include <mutex>
 #include <sstream>
+#include <string_view>
 #include <unordered_map>
 #include <vector>
 #include <utility>
@@ -506,10 +507,10 @@ void prewarm(int width,int height) {
     if(width<=0 || height<=0 || !getOrCreateEngineVulkanContext().valid()) return;
     auto& s=state(); const auto begin=std::chrono::steady_clock::now(); const uint64_t before=s.creations;
     const double pipelineMsBefore=s.creationMs;
-    const auto warm = [&](const char* family, int (*prepare)(int,int)) {
+    const auto warm = [&](std::string_view family, int (*prepare)(int,int)) {
         const auto started=std::chrono::steady_clock::now();
         const int ready=prepare(width,height);
-        std::fprintf(stderr,"[VK_LOAD_RESOURCE v1] family=%s ready=%d ms=%.3f\n",family,ready,
+        std::fprintf(stderr,"[VK_LOAD_RESOURCE v1] family=%.*s ready=%d ms=%.3f\n",static_cast<int>(family.size()),family.data(),ready,
             std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-started).count());
         return ready;
     };

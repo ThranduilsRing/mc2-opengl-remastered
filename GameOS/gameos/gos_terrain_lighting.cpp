@@ -1,5 +1,6 @@
 // CPU terrain-lighting inputs and light-grid ownership for native Vulkan consumers.
 #include "gos_terrain_lighting.h"
+#include "light_pool_culling.h"
 #include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
 #include "utils/mc2log.h"       // LOGGING-FACADE-P2: MC2_EVENT for the structured [TAG vN] lines
 #include "Gates/gate.h"          // typed gate registry: gate::get<"MC2_X">()
@@ -223,6 +224,22 @@ static void BuildLightGrid(uint32_t numLights) {
                 const uint32_t c = static_cast<uint32_t>(y) * dim + static_cast<uint32_t>(x);
                 s_gridIndices[s_gridHeader[c * 2u] + s_gridCounts[c]++] = i;
             }
+    }
+
+    static const bool moverMax=mc2::gate::get<"MC2_LIGHT_POOL_MOVER_MAXBLEND">();
+    static const bool poolSoft=mc2::gate::get<"MC2_LIGHT_POOL_SOFT">();
+    static const float contactShadow=mc2::gate::get<"MC2_MOVER_CONTACT_SHADOW">();
+    if(moverMax && contactShadow==0.0f) {
+        gos_terrain_lighting::GridMoverDominance dominance(std::span{s_lightBuf}.first(numLights),poolSoft,moverScale);
+        std::vector<uint32_t> compact;compact.reserve(s_gridIndices.size());
+        for(uint32_t c=0;c<cells;++c) {
+            const uint32_t first=s_gridHeader[2*c],count=s_gridHeader[2*c+1];
+            const uint32_t begin=static_cast<uint32_t>(compact.size());
+            const float x0=minX+float(c%dim)*cellW,y0=minY+float(c/dim)*cellH;
+            dominance.appendCell(std::span{s_lightBuf}.first(numLights),std::span{s_gridIndices}.subspan(first,count),x0,y0,x0+cellW,y0+cellH,compact);
+            s_gridHeader[2*c]=begin;s_gridHeader[2*c+1]=static_cast<uint32_t>(compact.size())-begin;
+        }
+        s_gridIndices.swap(compact);total=static_cast<uint32_t>(s_gridIndices.size());
     }
 
     s_lightGridMin[0]     = minX;

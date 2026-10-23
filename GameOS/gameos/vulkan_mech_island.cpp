@@ -732,44 +732,46 @@ bool upload_geometry_once(MechIsland* s) {
 const std::vector<BoneBounds>& light_bounds(MechIsland* s, const Mc2MechDrawRun& run) {
     const RunKey key{run.firstIndex,run.indexCount,run.baseVertex};
     auto [it, fresh] = s->lightBounds.try_emplace(key);
-    if (!fresh) return it->second;
+    auto& [cacheKey,cachedBounds]=*it;
+    if (!fresh) return cachedBounds;
     Mc2MechGeomFeed geom{};
     if (!mc2_mech_island_get_geometry_feed(&geom) || !geom.vboCpu || !geom.iboCpu ||
-        geom.vertexStride != 48 || uint64_t(run.firstIndex)+run.indexCount > geom.iboBytes/4) return it->second;
+        geom.vertexStride != 48 || uint64_t(run.firstIndex)+run.indexCount > geom.iboBytes/4) return cachedBounds;
     std::map<uint32_t,BoneBounds> bounds;
     const auto* indices=static_cast<const uint32_t*>(geom.iboCpu);
     for (uint32_t j=0;j<run.indexCount;++j) {
         const int64_t vi=int64_t(indices[run.firstIndex+j])+run.baseVertex;
-        if (vi<0 || uint64_t(vi)>=geom.vboBytes/geom.vertexStride) return it->second;
+        if (vi<0 || uint64_t(vi)>=geom.vboBytes/geom.vertexStride) return cachedBounds;
         const auto* v=static_cast<const uint8_t*>(geom.vboCpu)+vi*geom.vertexStride;
         float pos[3]; std::memcpy(pos,v,sizeof(pos));
         // GpuMechVertex: boneIndices at 32, UNORM8 boneWeights at 36.
         unsigned sum=0; for(unsigned b=0;b<4;++b) sum+=v[36+b];
-        if(sum!=255) return it->second;
+        if(sum!=255) return cachedBounds;
         for(unsigned b=0;b<4;++b) if(v[36+b]) {
             const uint32_t bone=v[32+b];
             auto [bi,added]=bounds.try_emplace(bone,BoneBounds{bone,{pos[0],pos[1],pos[2]},{pos[0],pos[1],pos[2]}});
+            auto& [boneKey,bound]=*bi;
             for(unsigned a=0;a<3;++a) {
-                if(!std::isfinite(pos[a])) return it->second;
-                bi->second.lo[a]=std::min(bi->second.lo[a],pos[a]);
-                bi->second.hi[a]=std::max(bi->second.hi[a],pos[a]);
+                if(!std::isfinite(pos[a])) return cachedBounds;
+                bound.lo[a]=std::min(bound.lo[a],pos[a]);
+                bound.hi[a]=std::max(bound.hi[a],pos[a]);
             }
         }
     }
-    for(const auto& b:bounds) it->second.push_back(b.second);
-    return it->second;
+    for(const auto& [bone,bound]:bounds) cachedBounds.push_back(bound);
+    return cachedBounds;
 }
 
 bool posed_light_bounds(const std::vector<BoneBounds>& local, const Mc2MechFrameFeed& feed,
                         uint32_t instance, float* lo, float* hi) {
     if(local.empty() || instance>=feed.instanceCount || !feed.instances64 || !feed.bones64) return false;
     const auto& inst=static_cast<const GpuMechInstance*>(feed.instances64)[instance];
-    const auto* bones=static_cast<const float*>(feed.bones64);
+    const auto* bones=static_cast<const uint8_t*>(feed.bones64);
     for(unsigned a=0;a<3;++a) {lo[a]=std::numeric_limits<float>::infinity();hi[a]=-lo[a];}
     for(const auto& b:local) {
         const uint64_t idx=uint64_t(inst.baseBoneOffset)+b.bone;
         if(idx>=feed.boneCount) return false;
-        const float* m=bones+idx*16;
+        float m[16];std::memcpy(m,bones+idx*sizeof(m),sizeof(m));
         for(unsigned corner=0;corner<8;++corner) {
             float p[3];for(unsigned a=0;a<3;++a)p[a]=(corner&(1u<<a))?b.hi[a]:b.lo[a];
             float w[3];for(unsigned a=0;a<3;++a)w[a]=m[a]*p[0]+m[4+a]*p[1]+m[8+a]*p[2]+m[12+a];
@@ -778,7 +780,8 @@ bool posed_light_bounds(const std::vector<BoneBounds>& local, const Mc2MechFrame
             const float mc2[3]={render.x,render.y,render.z};
             for(unsigned a=0;a<3;++a) {
                 if(!std::isfinite(mc2[a]))return false;
-                lo[a]=std::min(lo[a],mc2[a]);hi[a]=std::max(hi[a],mc2[a]);
+                lo[a]=std::min(lo[a],mc2[a]);
+                hi[a]=std::max(hi[a],mc2[a]);
             }
         }
     }
@@ -823,7 +826,10 @@ void build_draw_lights(MechIsland* s,const Mc2MechFrameFeed& feed,int count,
             auto& actor=actors[instances[idx].baseBoneOffset];
             float lo[3],hi[3];
             if(!posed_light_bounds(local,feed,idx,lo,hi)) {actor.valid=false;continue;}
-            for(unsigned a=0;a<3;++a) {actor.lo[a]=std::min(actor.lo[a],lo[a]);actor.hi[a]=std::max(actor.hi[a],hi[a]);}
+            for(unsigned a=0;a<3;++a) {
+                actor.lo[a]=std::min(actor.lo[a],lo[a]);
+                actor.hi[a]=std::max(actor.hi[a],hi[a]);
+            }
         }
     }
     uint64_t candidates=0,invalid=0,overflow=0,empty=0;
@@ -832,7 +838,7 @@ void build_draw_lights(MechIsland* s,const Mc2MechFrameFeed& feed,int count,
         if(actor.valid) {
             const auto first=lights.size();
             std::array<bool,kMaxPoolLights> keep;
-            gos_terrain_lighting::CullObjectPool(pool,uint32_t(count),actor.lo,actor.hi,
+            gos_terrain_lighting::CullObjectPool(std::span<const Light>{pool,static_cast<size_t>(count)},actor.lo,actor.hi,
                 feed.poolMoverScale,feed.poolMoverDim,feed.poolSoft!=0,feed.poolMoverMax!=0,keep);
             for(int i=0;i<count;++i)if(keep[i])lights.push_back(pool[i]);
             const auto selected=lights.size()-first;
@@ -848,7 +854,10 @@ void build_draw_lights(MechIsland* s,const Mc2MechFrameFeed& feed,int count,
             MechRunPC pc{run.materialFlags,0,uint32_t(count)};
             if(idx<feed.instanceCount) {
                 const auto it=actors.find(instances[idx].baseBoneOffset);
-                if(it!=actors.end()) {pc=it->second.pc;pc.materialFlags=run.materialFlags;}
+                if(it!=actors.end()) {
+                    const auto& [palette,actor]=*it;
+                    pc=actor.pc;pc.materialFlags=run.materialFlags;
+                }
             }
             draws[r].push_back(pc);
         }
@@ -857,8 +866,8 @@ void build_draw_lights(MechIsland* s,const Mc2MechFrameFeed& feed,int count,
     if(count>lastCount && !actors.empty()) {
         lastCount=count;
         vlog("draw lights: pool=%d actors=%zu avg=%.2f empty=%llu invalid=%llu overflow=%llu bytes=%zu build_ms=%.3f.",
-             count,actors.size(),double(candidates)/actors.size(),
-             (unsigned long long)empty,(unsigned long long)invalid,(unsigned long long)overflow,lights.size()*sizeof(Light),
+             count,actors.size(),static_cast<double>(candidates)/actors.size(),
+             static_cast<unsigned long long>(empty),static_cast<unsigned long long>(invalid),static_cast<unsigned long long>(overflow),lights.size()*sizeof(Light),
              std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-started).count());
     }
 }
