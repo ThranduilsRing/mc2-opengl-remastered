@@ -225,7 +225,7 @@ def light_wall(k):
     for j in range(8):
         y0 = y_start + j * u
         yc = y0 + u / 2
-        k.box((0, yc, (.36 + zt) / 2), (W - .08, u - .05, zt - .36), 'ferro', 'mass', ch=C(.08), top=C(.06), rebar=True, unit=j)
+        k.box((0, yc, (.36 + zt) / 2), (W - .08, u - .10, zt - .36), 'ferro', 'mass', ch=C(.08), top=C(.06), rebar=True, unit=j)
         for s in (-1, 1):
             # Raised cast face field: two per span, eight along the wall.
             with k.at((s * (W / 2 - .04), yc, 0), yaw=(math.pi / 2 if s > 0 else -math.pi / 2)):
@@ -237,12 +237,19 @@ def light_wall(k):
     for j in range(5):
         # Steel shear battens at the span joints: flush strips, not extra posts.
         y = y_start + j * 2 * u
-        k.box((0, y, (.36 + zt) / 2), (W + .05, .11, zt - .36), 'paint.second', 'frame', ch=C(.015), joint=j)
+        k.box((0, y, (.36 + zt) / 2), (W + .05, .18, zt - .36), 'paint.second', 'frame', ch=C(.025), joint=j)
         for s in (-1, 1):
             bolts(k, (s * (W / 2 + .03), y, .8), (s * (W / 2 + .03), y, zt - .3), pitch=.6)
     for j in range(4):
         yc = y_start + (j + .5) * 2 * u
-        k.box((0, yc, H - .15), (W + .18, 2 * u - .04, .30), 'paint.main', 'skin', ch=C(.05), top=C(.06), span=j)
+        # The broad 45-degree coping profile belongs to both silhouettes.
+        loft(k, (-W / 2 - .06, yc - u + .07, W / 2 + .06, yc + u - .07), zt,
+             (-W / 2 + .24, yc - u + .37, W / 2 - .24, yc + u - .37), H,
+             'ferro.main', 'skin', ch0=.04, ch1=.04, span=j)
+    # Mild batter through the precast units and coping; the footing stays broad.
+    for p in k.pieces:
+        if p.get('part') != 'footing':
+            p['v'] = [(x * (1 - .08 * (z - .36) / (H - .36)), y, z) for x, y, z in p['v']]
     py = 15.45
     # Stock pier: dark battered block with a pale chamfered cap.
     loft(k, (-2.5, py - 2.0, 2.5, py + 2.0), 0, (-1.85, py - 1.5, 1.85, py + 1.5), 4.6, 'paint.second', 'mass', ch0=.30, ch1=.22, rebar=True, part='pier')

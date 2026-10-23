@@ -280,6 +280,8 @@ def material(key, palette_name, cond_name):
         col = b.mix(b.mul(bleed, .75), col, (0.16, 0.07, 0.025))
         chips = b.math('GREATER_THAN', b.mul(convex, b.remap(grunge, .3, .7, .4, 1.5)), 1.0 - cond['edge_wear'] * .7)
         col = b.mix(b.mul(chips, .6), col, tuple(min(1, c * 1.35) for c in c0))
+        patch = b.mul(b.remap(big, .55, .7), .10)
+        col = b.mix(patch, col, tuple(c * 1.12 for c in c0))
         nimg = b.node('ShaderNodeTexImage', projection='BOX', projection_blend=.25)
         nimg.image = image(concrete_source['normal_gl'], True)
         b.feed(nimg.inputs['Vector'], b.vscale(P, (.35, .35, .35)))
@@ -325,11 +327,16 @@ def material(key, palette_name, cond_name):
         col = (0.3, 0.3, 0.3)
 
     if weather:
+        if cls in ('ferro', 'paint', 'corr', 'wood', 'canvas', 'metal', 'grate'):
+            # Casting/panel batches vary subtly; exposed tops bleach above dirty bases.
+            tint = b.node('ShaderNodeAttribute', attribute_name='tint').outputs['Fac']
+            tone = b.mul(b.remap(tint, 0, 1, .94, 1.06), b.remap(z, 0, 5, .92, 1.03))
+            col = b.mix(1., col, tone, blend='MULTIPLY')
         dirt_amt = b.mul(cond['dirt'], b.add(b.mul(height_dirt, .9), b.mul(cavity, .8)), True)
         col = b.mix(dirt_amt, col, (0.075, 0.062, 0.045))
         g = b.mul(cond['grunge'] * .45, b.remap(grunge, .35, .75))
         col = b.mix(g, col, (0.06, 0.055, 0.045))
-        col = b.mix(b.mul(cond['streaks'] * .65, streak), col, (0.04, 0.037, 0.033))
+        col = b.mix(b.mul((cond['streaks'] + .04) * .65, streak), col, (0.04, 0.037, 0.033))
         if cond['moss'] > 0:
             top = b.remap(nz, .45, .8)
             low = b.remap(z, .5, .1)
@@ -380,7 +387,7 @@ ROLES = ['mass', 'skin', 'frame', 'roof', 'glass', 'detail']
 
 
 def mesh_from_pieces(name, pieces, palette, cond_name, collection, role):
-    verts, faces, mats, keys, uvs, seam = [], [], [], [], [], []
+    verts, faces, mats, keys, uvs, seam, tints = [], [], [], [], [], [], []
     for pc in pieces:
         off = len(verts)
         verts += pc['v']
@@ -388,6 +395,8 @@ def mesh_from_pieces(name, pieces, palette, cond_name, collection, role):
         # panel tops, so rust and dirt streaks start there and fade downward.
         top = max(v[2] for v in pc['v'])
         seam += [top - v[2] for v in pc['v']]
+        seed = pc.get('unit', str(tuple(round(c, 2) for c in geo.centroid(pc))))
+        tints += [random.Random(seed).random()] * len(pc['v'])
         for f in pc['f']:
             faces.append(tuple(off + i for i in f))
             uvs.append([pc.get('uv',[(0.,0.)]*len(pc['v']))[i] for i in f])
@@ -401,6 +410,8 @@ def mesh_from_pieces(name, pieces, palette, cond_name, collection, role):
     if len(me.vertices) == len(seam):
         attr = me.attributes.new('seamd', 'FLOAT', 'POINT')
         attr.data.foreach_set('value', seam)
+        attr = me.attributes.new('tint', 'FLOAT', 'POINT')
+        attr.data.foreach_set('value', tints)
     uv=me.uv_layers.new(name='UVMap')
     for poly,coords in zip(me.polygons,uvs):
         for loop,co in zip(poly.loop_indices,coords):uv.data[loop].uv=co
