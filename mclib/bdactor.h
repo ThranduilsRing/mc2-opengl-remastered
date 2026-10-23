@@ -644,7 +644,6 @@ class TreeAppearance : public ObjectAppearance
 
 		float										hazeFactor;
 		float										pitch;
-		bool shadowMoving = false;
 		float										yaw;
 		long										status;
 		
@@ -690,8 +689,10 @@ class TreeAppearance : public ObjectAppearance
 		virtual void touch() override;
 		void selectActiveLOD();  // TREE-OVERRIDE-LOD-MVP: per-frame distance LOD pick (update+touch)
 		// Fixed terrain tilt is a pose; the owner supplies actual falling motion.
+		bool shadowMoving = false;
 		bool shadowIsMoving() const { return shadowMoving; }
-		void setShadowMoving(bool moving) {
+		void setShadowMoving(bool moving)
+		{
 			if (shadowMoving != moving) invalidateStaticRegistration();
 			shadowMoving = moving;
 		}
