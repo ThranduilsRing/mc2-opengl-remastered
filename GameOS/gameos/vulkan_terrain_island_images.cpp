@@ -1,6 +1,7 @@
 // VK terrain island: height snapshot and audit, the colormap / cement / material-normal imports and the shadow image copies.
 // Declared in the class headers; shared names in vulkan_terrain_island_internal.h.
 #include "vulkan_terrain_island_internal.h"
+#include "gos_terrain_indirect.h"
 #include "vk_one_shot.h"
 #include "texture_decode.h"
 #include "terrain_field_store.h"
@@ -310,36 +311,75 @@ bool ensure_dummy_materials(TerrainIsland* s) {
 void import_materials(TerrainIsland* s) {
     const auto* fields = gos_TerrainFieldStore();
     if (!fields) return;
+    if (s->materialPending && mc2vk::getOrCreateEngineVulkanContext().textures().ready(s->materialPending.get())) {
+        s->materialTexture = std::move(s->materialPending);   // the old texture retires through the residency service, no GPU idle
+        write_descriptors(s);
+    }
     const auto& surface = fields->surfaceAsset();
     const auto& types = fields->terrainTypes();
     const auto& control = fields->controlMap();
-    if (fields->surfaceVersion() == s->materialSurfaceVersion && types.version == s->materialTypesVersion &&
-        control.version == s->materialControlVersion &&
-        gos_terrain_indirect_HardSurfaceVersion() == s->materialCoverageVersion) return;
+    const bool baseSame = fields->surfaceVersion() == s->materialSurfaceVersion && types.version == s->materialTypesVersion &&
+                          control.version == s->materialControlVersion && g_terrainMaterialProfile == s->materialProfile;
+    const uint64_t coverageVersion = gos_terrain_indirect_HardSurfaceVersion();
+    if (baseSame && coverageVersion == s->materialCoverageVersion) return;
     const uint32_t w = std::min(surface.width, 1024u);
     const uint32_t h = std::min(surface.height, 1024u);
-    auto weights = mc2terrain::cookSurfaceMaterials(surface, types.texels, uint32_t(types.width),
-                                                         control.texels, uint32_t(control.width), w, h, g_terrainMaterialProfile == 1);
-    const float span = s->colormapCookParams[2] > 0 ? 1.0f / s->colormapCookParams[2] : 0;
-    for (uint32_t y = 0; !weights.empty() && y < h; ++y) for (uint32_t x = 0; x < w; ++x) {
-        const float wx = s->colormapCookParams[0] + (float(x)+0.5f) / w * span;
-        const float wy = s->colormapCookParams[1] - (float(y)+0.5f) / h * span;
-        const float coverage = gos_terrain_indirect_HardSurfaceCoverage(wx, wy);
-        const size_t i = (size_t(y)*w+x)*4;
-        for (size_t k=0;k<3;++k) weights[i+k] = uint8_t(std::lround(weights[i+k] * (1.0f-coverage)));
-        weights[i+3] = std::max(weights[i+3], uint8_t(std::lround(coverage*255)));
+    if (!baseSame || s->materialW != w || s->materialH != h) {
+        s->materialBase = mc2terrain::cookSurfaceMaterials(surface, types.texels, uint32_t(types.width),
+                              control.texels, uint32_t(control.width), w, h, g_terrainMaterialProfile == 1);
+        s->materialW = w; s->materialH = h;
+        s->materialProfile = g_terrainMaterialProfile;
     }
-    mc2vk::getOrCreateEngineVulkanContext().waitIdle("terrain_material_reimport");
-    // Discard the previous mission even when the replacement cook fails.
-    s->materialTexture = {};
-    if (weights.empty() || !upload_sampled_image(s, s->materialTexture, VK_FORMAT_R8G8B8A8_UNORM, w, h,
-                                                weights.data(), weights.size())) ensure_dummy_materials(s);
+    const auto& base = s->materialBase;
+    const float span = s->colormapCookParams[2] > 0 ? 1.0f / s->colormapCookParams[2] : 0;
+    // Composite the hard-surface coverage over texels [x0,x1) x [y0,y1) of the cached base weights.
+    const auto composite = [&](uint32_t x0, uint32_t x1, uint32_t y0, uint32_t y1) {
+        for (uint32_t y = y0; y < y1; ++y) for (uint32_t x = x0; x < x1; ++x) {
+            const float wx = s->colormapCookParams[0] + (float(x)+0.5f) / w * span;
+            const float wy = s->colormapCookParams[1] - (float(y)+0.5f) / h * span;
+            const float coverage = gos_terrain_indirect_HardSurfaceCoverage(wx, wy);
+            const size_t i = (size_t(y)*w+x)*4;
+            for (size_t k=0;k<3;++k) s->materialFinal[i+k] = uint8_t(std::lround(base[i+k] * (1.0f-coverage)));
+            s->materialFinal[i+3] = std::max(base[i+3], uint8_t(std::lround(coverage*255)));
+        }
+    };
+    const auto dirty = gos_terrain_indirect::TakeHardSurfaceDirty();
+    const bool incremental = baseSame && !base.empty() && s->materialFinal.size() == base.size();   // coverage-only change
+    if (!base.empty() && !(incremental && !dirty.all)) {
+        s->materialFinal.resize(base.size());
+        composite(0, w, 0, h);
+    } else if (incremental) {
+        for (int r = 0; r < dirty.count; ++r) {
+            const auto& q = dirty.rects[r];   // world rect {x0, y0, x1, y1}; invert the texel -> world map above
+            const auto tx = [&](float wx) { return (wx - s->colormapCookParams[0]) / span * w - 0.5f; };
+            const auto ty = [&](float wy) { return (s->colormapCookParams[1] - wy) / span * h - 0.5f; };
+            const auto clampTo = [](float v, uint32_t hi) { return uint32_t(std::clamp(v, 0.0f, float(hi))); };
+            if (!(span > 0)) break;
+            composite(clampTo(std::floor(tx(q[0])), w), clampTo(std::ceil(tx(q[2])) + 1.0f, w),
+                      clampTo(std::floor(ty(q[3])), h), clampTo(std::ceil(ty(q[1])) + 1.0f, h));
+        }
+    }
+    // Coverage-only updates swap in once the new texture is resident; a new mission replaces it at once
+    // (the previous texture retires through the residency service; no GPU idle).
+    if (base.empty()) {
+        s->materialTexture = {}; s->materialPending = {};   // discard the previous mission even when the cook fails
+        ensure_dummy_materials(s);
+    } else if (incremental) {
+        auto texture = mc2vk::getOrCreateEngineVulkanContext().textures().acquirePixels(w, h, VK_FORMAT_R8G8B8A8_UNORM,
+                                                                                         s->materialFinal.data(), s->materialFinal.size(), false);
+        if (texture) s->materialPending = std::move(texture);
+    } else {
+        s->materialPending = {};
+        s->materialTexture = {};
+        if (!upload_sampled_image(s, s->materialTexture, VK_FORMAT_R8G8B8A8_UNORM, w, h,
+                                  s->materialFinal.data(), s->materialFinal.size())) ensure_dummy_materials(s);
+    }
     s->materialSurfaceVersion = fields->surfaceVersion();
     s->materialTypesVersion = types.version;
     s->materialControlVersion = control.version;
-    s->materialCoverageVersion = gos_terrain_indirect_HardSurfaceVersion();
+    s->materialCoverageVersion = coverageVersion;
     write_descriptors(s);
-    vlog("MATERIALS: baked %ux%u semantic weights (%zu bytes).", w, h, weights.size());
+    vlog("MATERIALS: %s %ux%u semantic weights (%zu bytes).", incremental ? "patched" : "baked", w, h, s->materialFinal.size());
 }
 
 // Copy-once import of the mission's shoreline mask sidecar from the terrain field store, again whenever its version changes.

@@ -1,4 +1,5 @@
 // Native mine bake and cement overlay producer. Texture data stays in the shared GOS cache.
+#include <vector>
 #include "gos_terrain_indirect_internal.h"
 #include "../../mclib/texture_assets.h"
 #include "mc2fmt.h"
@@ -650,6 +651,12 @@ struct HardSurfaceField {
 };
 HardSurfaceField g_hs;
 uint64_t g_hsVersion = 1;
+// Cement mutations that named their tile (a destroyed bridge) rebuild just that tile and tell the materials consumer which
+// rects to recomposite; everything else (and an overflowing list) is a full invalidation.
+constexpr size_t kMaxDirtyTiles = 64;
+std::vector<uint32_t> g_hsPending;   // marked, not yet rebuilt in g_hs (row * side + col)
+std::vector<uint32_t> g_hsDirty;     // rebuilt/changed since the consumer last took them
+bool g_hsDirtyAll = true;
 
 inline uint8_t hsTexel(long ix, long iy) {
     if (ix < 0 || iy < 0) return 0;
@@ -661,8 +668,95 @@ inline uint8_t hsTexel(long ix, long iy) {
     return g_hs.texels[(static_cast<size_t>(b) * kHsRes + static_cast<size_t>(iy % kHsRes)) * kHsRes + static_cast<size_t>(ix % kHsRes)];
 }
 
+// One tile of the hard-surface field (also the incremental rebuild unit after a cement mutation).
+void BuildHardSurfaceTile(long tr, long tc) {
+    const long mapSide = Terrain::realVerticesMapSide;
+    const long cacheW  = g_hs.side;
+    const auto* fields = gos_TerrainFieldStore();
+    const auto wordAt = [&](int row, int col) -> uint32_t {
+        if (!fields || row < 0 || col < 0 || row >= mapSide || col >= mapSide) return 0;
+        const size_t index = size_t(row) * size_t(mapSide) + size_t(col);
+        return index < fields->cementWords().size() ? fields->cementWords()[index] : 0;
+    };
+    const MapData::WorldQuadTerrainCacheEntry* e = Terrain::mapData->getTerrainFaceCacheEntry(tr, tc);
+    if (!e || !e->isValid() || (!e->isCement() && !wordAt(tr, tc))) return;
+    Overlays ovT = INVALID_OVERLAY; DWORD ovO = 0;
+    Terrain::mapData->getOverlay(tr, tc, ovT, ovO);
+    const bool softOverlay = ovT == ROUGH || ovT == DIRT_ROAD;
+    if (softOverlay) ++g_hs.tilesRoadSkipped;
+
+    const bool alphaTile = e->isAlpha() && e->overlayHandle != 0xffffffffu;
+    std::shared_ptr<const RenderCore::KtxImage> img;
+    if (alphaTile && e->overlayHandle < static_cast<DWORD>(mc2::textures::kTextureAssetLimit))
+        img = mc2::textures::image(e->overlayHandle);
+    const bool imgOk = img && img->vkFormat == 37 && img->width > 0 && img->height > 0 &&
+                       img->pixels.size() >= static_cast<size_t>(img->width) * static_cast<size_t>(img->height) * 4u;
+
+    const int32_t b = static_cast<int32_t>(g_hs.texels.size() / (static_cast<size_t>(kHsRes) * kHsRes));
+    g_hs.texels.resize(g_hs.texels.size() + static_cast<size_t>(kHsRes) * kHsRes, 0);
+    uint8_t* blk = &g_hs.texels[static_cast<size_t>(b) * kHsRes * kHsRes];
+    const std::mdspan<uint8_t, std::extents<size_t, kHsRes, kHsRes>> coverage(blk);
+    if (!alphaTile || !imgOk) {
+        // Pure cement (class 3), or an alpha tile whose source pixels are
+        // unavailable: full coverage (conservative -- no vegetation).
+        memset(blk, 255, static_cast<size_t>(kHsRes) * kHsRes);
+        if (alphaTile) ++g_hs.tilesNoImage; else ++g_hs.tilesPure;
+    } else {
+        ++g_hs.tilesAlpha;
+        // The bake maps u along +x (tileC) and v along +row (south) over
+        // [kOldMin, kOldMax]; sample the same way (box-filtered per texel).
+        const int W = img->width, H = img->height;
+        const float u0 = kOldMinU, u1 = kOldMaxU, v0 = kOldMinV, v1 = kOldMaxV;
+        for (int r = 0; r < kHsRes; ++r) {
+            for (int c = 0; c < kHsRes; ++c) {
+                const float ua = u0 + (u1 - u0) * (static_cast<float>(c)     / kHsRes);
+                const float ub = u0 + (u1 - u0) * (static_cast<float>(c + 1) / kHsRes);
+                const float va = v0 + (v1 - v0) * (static_cast<float>(r)     / kHsRes);
+                const float vb = v0 + (v1 - v0) * (static_cast<float>(r + 1) / kHsRes);
+                const int x0 = std::clamp(static_cast<int>(ua * W), 0, W - 1);
+                const int x1 = std::clamp(static_cast<int>(ub * W), x0, W - 1);
+                const int y0 = std::clamp(static_cast<int>(va * H), 0, H - 1);
+                const int y1 = std::clamp(static_cast<int>(vb * H), y0, H - 1);
+                unsigned sum = 0, n = 0;
+                for (int y = y0; y <= y1; ++y)
+                    for (int x = x0; x <= x1; ++x) {
+                        sum += img->pixels[(static_cast<size_t>(y) * W + x) * 4u + 3u];
+                        ++n;
+                    }
+                coverage[r, c] = static_cast<uint8_t>(n ? (sum + n / 2) / n : 0);
+            }
+        }
+    }
+    const bool overlayDrawn = alphaTile && !softOverlay && !CementWordSuppressesDecal(e, ovT, tr, tc);
+    const uint32_t word = wordAt(tr, tc);
+    for (int row = 0; row < kHsRes; ++row) {
+        for (int col = 0; col < kHsRes; ++col) {
+            const float u = (float(col) + 0.5f) / kHsRes;
+            const float v = (float(row) + 0.5f) / kHsRes;
+            float atlasAlpha = coverage[row, col] / 255.0f;
+            if ((word & 0x00800000u) && fields) {
+                const auto& atlas = fields->cementAtlas();
+                const int grid = g_cementAtlasGridSide;
+                if (grid > 0 && atlas.width > 0 && atlas.height > 0 && !atlas.texels.empty()) {
+                    const int layer = int(word & 0xffffu);
+                    const int x = std::min(int((float(layer % grid) + u) * atlas.width / grid), atlas.width - 1);
+                    const int y = std::min(int((float(layer / grid) + v) * atlas.height / grid), atlas.height - 1);
+                    atlasAlpha = atlas.texels[(size_t(y) * atlas.width + x) * 4 + 3] / 255.0f;
+                }
+            }
+            const float cement = mc2::vegetation::cementWordCoverage(int(tr), int(tc), u, v, atlasAlpha, wordAt);
+            coverage[row, col] = uint8_t(255 * mc2::vegetation::renderedHardSurfaceCoverage(
+                cement, coverage[row, col] / 255.0f, overlayDrawn) + 0.5f);
+        }
+    }
+    const bool solid = std::all_of(blk, blk + kHsRes * kHsRes, [](uint8_t value) { return value == 255; });
+    if (solid) g_hs.texels.resize(size_t(b) * kHsRes * kHsRes);
+    g_hs.blockOf[static_cast<size_t>(tr) * static_cast<size_t>(cacheW) + static_cast<size_t>(tc)] = solid ? -2 : b;
+}
+
 void BuildHardSurfaceField() {
     g_hs = HardSurfaceField{};
+    g_hsPending.clear();
     g_hs.built = true;
     if (!Terrain::mapData) return;
     const long mapSide = Terrain::realVerticesMapSide;
@@ -673,90 +767,8 @@ void BuildHardSurfaceField() {
     g_hs.wupv = Terrain::worldUnitsPerVertex;
     g_hs.blockOf.assign(static_cast<size_t>(cacheW) * static_cast<size_t>(cacheW), -1);
 
-    const auto* fields = gos_TerrainFieldStore();
-    const auto wordAt = [&](int row, int col) -> uint32_t {
-        if (!fields || row < 0 || col < 0 || row >= mapSide || col >= mapSide) return 0;
-        const size_t index = size_t(row) * size_t(mapSide) + size_t(col);
-        return index < fields->cementWords().size() ? fields->cementWords()[index] : 0;
-    };
-    for (long tr = 0; tr < cacheW; ++tr) {
-        for (long tc = 0; tc < cacheW; ++tc) {
-            const MapData::WorldQuadTerrainCacheEntry* e = Terrain::mapData->getTerrainFaceCacheEntry(tr, tc);
-            if (!e || !e->isValid() || (!e->isCement() && !wordAt(tr, tc))) continue;
-            Overlays ovT = INVALID_OVERLAY; DWORD ovO = 0;
-            Terrain::mapData->getOverlay(tr, tc, ovT, ovO);
-            const bool softOverlay = ovT == ROUGH || ovT == DIRT_ROAD;
-            if (softOverlay) ++g_hs.tilesRoadSkipped;
-
-            const bool alphaTile = e->isAlpha() && e->overlayHandle != 0xffffffffu;
-            std::shared_ptr<const RenderCore::KtxImage> img;
-            if (alphaTile && e->overlayHandle < static_cast<DWORD>(mc2::textures::kTextureAssetLimit))
-                img = mc2::textures::image(e->overlayHandle);
-            const bool imgOk = img && img->vkFormat == 37 && img->width > 0 && img->height > 0 &&
-                               img->pixels.size() >= static_cast<size_t>(img->width) * static_cast<size_t>(img->height) * 4u;
-
-            const int32_t b = static_cast<int32_t>(g_hs.texels.size() / (static_cast<size_t>(kHsRes) * kHsRes));
-            g_hs.texels.resize(g_hs.texels.size() + static_cast<size_t>(kHsRes) * kHsRes, 0);
-            uint8_t* blk = &g_hs.texels[static_cast<size_t>(b) * kHsRes * kHsRes];
-            const std::mdspan<uint8_t, std::extents<size_t, kHsRes, kHsRes>> coverage(blk);
-            if (!alphaTile || !imgOk) {
-                // Pure cement (class 3), or an alpha tile whose source pixels are
-                // unavailable: full coverage (conservative -- no vegetation).
-                memset(blk, 255, static_cast<size_t>(kHsRes) * kHsRes);
-                if (alphaTile) ++g_hs.tilesNoImage; else ++g_hs.tilesPure;
-            } else {
-                ++g_hs.tilesAlpha;
-                // The bake maps u along +x (tileC) and v along +row (south) over
-                // [kOldMin, kOldMax]; sample the same way (box-filtered per texel).
-                const int W = img->width, H = img->height;
-                const float u0 = kOldMinU, u1 = kOldMaxU, v0 = kOldMinV, v1 = kOldMaxV;
-                for (int r = 0; r < kHsRes; ++r) {
-                    for (int c = 0; c < kHsRes; ++c) {
-                        const float ua = u0 + (u1 - u0) * (static_cast<float>(c)     / kHsRes);
-                        const float ub = u0 + (u1 - u0) * (static_cast<float>(c + 1) / kHsRes);
-                        const float va = v0 + (v1 - v0) * (static_cast<float>(r)     / kHsRes);
-                        const float vb = v0 + (v1 - v0) * (static_cast<float>(r + 1) / kHsRes);
-                        const int x0 = std::clamp(static_cast<int>(ua * W), 0, W - 1);
-                        const int x1 = std::clamp(static_cast<int>(ub * W), x0, W - 1);
-                        const int y0 = std::clamp(static_cast<int>(va * H), 0, H - 1);
-                        const int y1 = std::clamp(static_cast<int>(vb * H), y0, H - 1);
-                        unsigned sum = 0, n = 0;
-                        for (int y = y0; y <= y1; ++y)
-                            for (int x = x0; x <= x1; ++x) {
-                                sum += img->pixels[(static_cast<size_t>(y) * W + x) * 4u + 3u];
-                                ++n;
-                            }
-                        coverage[r, c] = static_cast<uint8_t>(n ? (sum + n / 2) / n : 0);
-                    }
-                }
-            }
-            const bool overlayDrawn = alphaTile && !softOverlay && !CementWordSuppressesDecal(e, ovT, tr, tc);
-            const uint32_t word = wordAt(tr, tc);
-            for (int row = 0; row < kHsRes; ++row) {
-                for (int col = 0; col < kHsRes; ++col) {
-                    const float u = (float(col) + 0.5f) / kHsRes;
-                    const float v = (float(row) + 0.5f) / kHsRes;
-                    float atlasAlpha = coverage[row, col] / 255.0f;
-                    if ((word & 0x00800000u) && fields) {
-                        const auto& atlas = fields->cementAtlas();
-                        const int grid = g_cementAtlasGridSide;
-                        if (grid > 0 && atlas.width > 0 && atlas.height > 0 && !atlas.texels.empty()) {
-                            const int layer = int(word & 0xffffu);
-                            const int x = std::min(int((float(layer % grid) + u) * atlas.width / grid), atlas.width - 1);
-                            const int y = std::min(int((float(layer / grid) + v) * atlas.height / grid), atlas.height - 1);
-                            atlasAlpha = atlas.texels[(size_t(y) * atlas.width + x) * 4 + 3] / 255.0f;
-                        }
-                    }
-                    const float cement = mc2::vegetation::cementWordCoverage(int(tr), int(tc), u, v, atlasAlpha, wordAt);
-                    coverage[row, col] = uint8_t(255 * mc2::vegetation::renderedHardSurfaceCoverage(
-                        cement, coverage[row, col] / 255.0f, overlayDrawn) + 0.5f);
-                }
-            }
-            const bool solid = std::all_of(blk, blk + kHsRes * kHsRes, [](uint8_t value) { return value == 255; });
-            if (solid) g_hs.texels.resize(size_t(b) * kHsRes * kHsRes);
-            g_hs.blockOf[static_cast<size_t>(tr) * static_cast<size_t>(cacheW) + static_cast<size_t>(tc)] = solid ? -2 : b;
-        }
-    }
+    for (long tr = 0; tr < cacheW; ++tr)
+        for (long tc = 0; tc < cacheW; ++tc) BuildHardSurfaceTile(tr, tc);
     MC2_DIAGF("[VEG_HARDSURFACE v1] event=field_built tiles_alpha=%d tiles_pure=%d tiles_alpha_noimage=%d tiles_road_skipped=%d blocks=%zu\n",
               g_hs.tilesAlpha, g_hs.tilesPure, g_hs.tilesNoImage, g_hs.tilesRoadSkipped,
               g_hs.texels.size() / (static_cast<size_t>(kHsRes) * kHsRes));
@@ -765,8 +777,18 @@ void BuildHardSurfaceField() {
 // Pure bilinear of a texel fetcher; split out so the unit test can drive it.
 }  // namespace
 
+static void FlushHardSurfaceTiles() {
+    if (!g_hs.built) return;
+    for (const uint32_t t : g_hsPending) {
+        g_hs.blockOf[t] = -1;
+        BuildHardSurfaceTile(long(t / uint32_t(g_hs.side)), long(t % uint32_t(g_hs.side)));
+    }
+    g_hsPending.clear();
+}
+
 float HardSurfaceCoverage(float wx, float wy) {
     if (!g_hs.built) BuildHardSurfaceField();
+    FlushHardSurfaceTiles();
     if (g_hs.blockOf.empty()) return 0.0f;
     // Continuous texel coords; texel centres sit at +0.5.
     const float X = (wx / g_hs.wupv + static_cast<float>(g_hs.half)) * kHsRes - 0.5f;
@@ -779,7 +801,39 @@ float HardSurfaceCoverage(float wx, float wy) {
     return (a * (1.0f - fy) + b * fy) * (1.0f / 255.0f);
 }
 
-void InvalidateHardSurfaceField() { g_hs = HardSurfaceField{}; ++g_hsVersion; }
+void InvalidateHardSurfaceField() {
+    g_hs = HardSurfaceField{};
+    g_hsPending.clear(); g_hsDirty.clear(); g_hsDirtyAll = true;
+    ++g_hsVersion;
+}
+
+void MarkDecalDirtyTile(long row, long col) {
+    if (g_hsDirtyAll || !g_hs.built || row < 0 || col < 0 || row >= g_hs.side || col >= g_hs.side || g_hsDirty.size() >= kMaxDirtyTiles) {
+        MarkDecalDirty();
+        return;
+    }
+    const uint32_t t = uint32_t(row * g_hs.side + col);
+    g_hsPending.push_back(t); g_hsDirty.push_back(t);
+    ++g_hsVersion;
+    g_decalVBODirty = true;
+}
+
+// What changed in the hard-surface field since the materials consumer last looked: everything, or world rects
+// {x0, y0, x1, y1}, each a changed tile padded by one tile (the coverage lookup is bilinear). Consumes the list.
+HardSurfaceDirty TakeHardSurfaceDirty() {
+    HardSurfaceDirty d;
+    d.all = g_hsDirtyAll || g_hsDirty.size() > d.rects.size();
+    if (!d.all) {
+        for (const uint32_t t : g_hsDirty) {
+            const float col = float(t % uint32_t(g_hs.side)), row = float(t / uint32_t(g_hs.side)), half = float(g_hs.half);
+            d.rects[d.count++] = {(col - 1.0f - half) * g_hs.wupv, (half - (row + 2.0f)) * g_hs.wupv,
+                                  (col + 2.0f - half) * g_hs.wupv, (half - (row - 1.0f)) * g_hs.wupv};
+        }
+    }
+    g_hsDirtyAll = false;
+    g_hsDirty.clear();
+    return d;
+}
 uint64_t HardSurfaceVersion() { return g_hsVersion; }
 
 void HardSurfaceStats(int* alpha, int* pure, int* noImage) {
@@ -837,6 +891,9 @@ void gos_terrain_indirect_MarkDecalDirty() {
 // VEG-CEMENT-1 C-linkage forwarders (VegetationAdapter avoids gos_terrain_indirect.h).
 uint64_t gos_terrain_indirect_HardSurfaceVersion() {
     return gos_terrain_indirect::HardSurfaceVersion();
+}
+void gos_terrain_indirect_MarkDecalDirtyTile(long row, long col) {
+    gos_terrain_indirect::MarkDecalDirtyTile(row, col);
 }
 float gos_terrain_indirect_HardSurfaceCoverage(float wx, float wy) {
     return gos_terrain_indirect::HardSurfaceCoverage(wx, wy);

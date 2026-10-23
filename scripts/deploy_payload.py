@@ -152,6 +152,27 @@ TERRAIN_LAYER_PAYLOAD = [
     "data/terrain_layers/concrete_detail_road.ktx2",
 ]
 
+# The two concrete/road detail KTX2s are generated, not tracked (about 1.4 MB each): cooked on demand at deploy time when absent.
+CONCRETE_DETAIL_COOK = "tools/mc2texcook/cook_concrete_detail.py"
+CONCRETE_DETAIL_SRC = "G:/mc2-assets/pbr/concrete-road"
+
+
+def ensure_concrete_detail(src_root, cooker=subprocess.run):
+    """Cook data/terrain_layers/concrete_detail_{pad,road}.ktx2 when missing (soft: the engine fail-softs without them)."""
+    out = os.path.join(src_root, "data", "terrain_layers")
+    if all(os.path.isfile(os.path.join(src_root, r)) for r in TERRAIN_LAYER_PAYLOAD if "concrete_detail" in r):
+        return
+    if not os.path.isdir(CONCRETE_DETAIL_SRC):
+        log(f"concrete detail KTX2s absent and no cook source at {CONCRETE_DETAIL_SRC} (skipped)")
+        return
+    os.makedirs(out, exist_ok=True)
+    log("concrete detail KTX2s absent: cooking them (about 15 s)")
+    r = cooker([sys.executable, os.path.join(src_root, CONCRETE_DETAIL_COOK), "--src", CONCRETE_DETAIL_SRC, "--out", out],
+               capture_output=True, text=True, timeout=300, **console_child.child_kwargs(redirected=True))
+    if r.returncode:
+        log("concrete detail cook failed (skipped): " + (r.stdout + r.stderr).strip()[-300:])
+
+
 # EXAMPLE-MODS-1: worked example checkbox mods, source-tracked under
 # examples/mods/. Ship to <target>/mods/<id>/ so the launcher enumerates them
 # as add-on checkboxes (a mods/ folder needs mod.json AND a data/ overlay dir
@@ -1034,6 +1055,7 @@ def enumerate_payload(src_root, build_dir, exe_name, pdb_name,
     # copies whatever _albedo.ktx2 is on disk. Guard it here: read the KTX2
     # levelCount and HARD-FAIL if a present layer is mip-incomplete, so a stale
     # cook can never reach the payload silently. Re-cook, then re-deploy.
+    ensure_concrete_detail(src_root)
     for rel in TERRAIN_LAYER_PAYLOAD:
         p = os.path.join(src_root, rel)
         if not os.path.isfile(p):
@@ -1520,6 +1542,36 @@ def implicit_target_refusal(src_root, explicit_target):
     return None
 
 
+BOOTSTRAP_SKIP = {"cache", "crashes", "shaders", "debug_state", "_pngcap", "_rdoc", MANIFEST_NAME, LAUNCHER_NAME}
+
+
+def bootstrap_install(src, target, exe_name, pdb_name):
+    """One-time creation of a NEW lane install: copy the base files (data, assets, fst archives, DLLs, cfg) from an existing
+    install; the deploy that follows adds the exe, launcher, pdb, shaders and manifest. Real copies (never hardlinks: LINK-GUARD-1)."""
+    src, target = os.path.abspath(src), os.path.abspath(target)
+    if not (os.path.isdir(os.path.join(src, "data")) and os.path.isdir(os.path.join(src, "assets"))):
+        fail(f"--bootstrap-from {src}: not an install (needs data/ and assets/)")
+    if _same_path(src, target):
+        fail("--bootstrap-from names the target itself")
+    if os.path.isdir(target) and any(os.scandir(target)):
+        log(f"bootstrap: {target} already has files; not copying from {src}")
+        return
+    skip = BOOTSTRAP_SKIP | {exe_name, pdb_name}
+    names = [n for n in sorted(os.listdir(src)) if n not in skip and not n.lower().endswith((".log", ".pdb"))]
+    need = sum(os.path.getsize(p) for n in names for p in
+               ([os.path.join(src, n)] if os.path.isfile(os.path.join(src, n)) else
+                (os.path.join(d, f) for d, _, fs in os.walk(os.path.join(src, n)) for f in fs)))
+    disk_space(os.path.dirname(target) or target, need, label="bootstrap")
+    log(f"bootstrap: copying {len(names)} entries ({need / 2**30:.1f} GiB) {src} -> {target}")
+    os.makedirs(target, exist_ok=True)
+    for n in names:
+        a, b = os.path.join(src, n), os.path.join(target, n)
+        if os.path.isdir(a):
+            shutil.copytree(a, b, ignore=shutil.ignore_patterns("*.log"))
+        else:
+            shutil.copy2(a, b)
+
+
 def main():
     ap = argparse.ArgumentParser(
         description=__doc__.splitlines()[0],
@@ -1584,6 +1636,9 @@ def main():
                     help="DELIBERATELY deploy to a NON-canonical / new ~5GB install "
                          "(release cut, fresh install). Off by default -- deploys are "
                          "forced to the canonical DEPLOY_ALLOWLIST to stop per-lane bloat.")
+    ap.add_argument("--bootstrap-from", metavar="INSTALL",
+                    help="with --allow-new-target: when the target is missing or empty, first copy the base files (data, assets, "
+                         "archives, DLLs) from this existing install once; the deploy then adds the exe, shaders and manifest.")
     ap.add_argument("--preserve", action="append", default=[],
                     metavar="RELPATH",
                     help="payload file (repeatable) whose EXISTING target copy "
@@ -1641,6 +1696,11 @@ def main():
                  f"up per-lane/per-experiment deploy folders; pick a FREE canonical folder "
                  f"and md5-verify after.\n"
                  f"  If you REALLY need a new install (release cut), pass --allow-new-target.")
+
+    if args.bootstrap_from:
+        if not args.allow_new_target:
+            fail("--bootstrap-from creates a new install: pass --allow-new-target too")
+        bootstrap_install(args.bootstrap_from, target, exe_name, pdb_name)
 
     if not os.path.isdir(target):
         fail(f"target dir does not exist: {target} (refusing to create deploy "
