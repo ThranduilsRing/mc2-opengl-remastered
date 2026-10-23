@@ -11,7 +11,7 @@
 
 // Real profile loader/resolver; only the renderer setters are replaced.
 namespace {
-float exposure=1, softness=2.5f, water=0, brightness=1, additive=1, lit=0.7f, ambient=0.15f, specular=0.05f;
+float exposure=1, softness=2.5f, water=0, brightness=1, additive=1, lit=0.7f, specular=0.05f;
 std::array<float,4> grass{-0.02f,0.06f,0.22f,0.40f}, dirt{-0.02f,0.06f,0.22f,0.45f};
 VisualTuningSource source(std::string text) { return {"data/visual_tuning.json","fixture",std::move(text),true}; }
 struct TempProfile {
@@ -35,8 +35,6 @@ extern "C" float gos_vfx_getAdditiveBrightness() { return additive; }
 extern "C" void gos_vfx_setAdditiveBrightness(float v) { additive=v; }
 extern "C" float gos_vfx_getLitStrength() { return lit; }
 extern "C" void gos_vfx_setLitStrength(float v) { lit=v; }
-extern "C" float batcher_getMechAmbientStrength() { return ambient; }
-extern "C" void batcher_setMechAmbientStrength(float v) { ambient=v; }
 extern "C" float batcher_getMechSpecularStrength() { return specular; }
 extern "C" void batcher_setMechSpecularStrength(float v) { specular=v; }
 void gos_SetTerrainClassGrass(float a,float b,float c,float d) { grass={a,b,c,d}; }
@@ -73,17 +71,17 @@ TEST_CASE("MissionEnvironment/version migration preserves exact shipped tuning")
         CHECK(current.legacyTuning.at("staticPropIblStrength")==0.6f);
         CHECK(current.legacyTuning.at("mechSpecularStrength")==0.05f);
         CHECK(current.output.exposureMultiplier==1.0f);
-        CHECK(current.legacyTuning.at("mechAmbientStrength")== (std::string(mission)=="mc2_10" ? 0.26f : 0.24f));
+        CHECK_FALSE(current.legacyTuning.contains("mechAmbientStrength"));
     }
 }
 
 TEST_CASE("MissionEnvironment/default mission session precedence and missing mission reset") {
-    auto layer=source(R"({"defaults":{"exposure":1.2,"vfxBrightness":2},"missions":{"a":{"exposure":1.5,"mechAmbientStrength":0.8}}})");
+    auto layer=source(R"({"defaults":{"exposure":1.2,"vfxBrightness":2},"missions":{"a":{"exposure":1.5,"mechSpecularStrength":0.8}}})");
     const auto a=visualTuning_resolve("a",{layer},{{"exposure",2.0f}});
     CHECK(a.output.exposureMultiplier==2.0f);
     const auto b=visualTuning_resolve("b",{layer});
     CHECK(b.output.exposureMultiplier==1.2f);
-    CHECK(b.legacyTuning.at("mechAmbientStrength")==0.15f);
+    CHECK(b.legacyTuning.at("mechSpecularStrength")==0.05f);
     CHECK(visualTuning_resolve("c",{}).legacyTuning.at("vfxBrightness")==1.0f);
 }
 
@@ -109,18 +107,18 @@ TEST_CASE("MissionEnvironment/reject invalid versions colors types and ranges wi
         const auto env=visualTuning_resolve("b",{source(bad)});
         CHECK(env.output.exposureMultiplier==1.0f); CHECK_FALSE(env.diagnostics.empty());
     }
-    const auto env=visualTuning_resolve("b",{source(R"({"defaults":{"exposure":"2","vfxBrightness":-2,"staticPropIblStrength":1e300,"unknown":1,"mechAmbientStrength":0.4}})")},
+    const auto env=visualTuning_resolve("b",{source(R"({"defaults":{"exposure":"2","vfxBrightness":-2,"staticPropIblStrength":1e300,"unknown":1,"mechSpecularStrength":0.4}})")},
         {{"exposure",std::numeric_limits<float>::quiet_NaN()}});
     CHECK(env.output.exposureMultiplier==1.0f);
     CHECK(env.legacyTuning.at("vfxBrightness")==1.0f);
     CHECK(env.legacyTuning.at("staticPropIblStrength")==0.5f);
-    CHECK(env.legacyTuning.at("mechAmbientStrength")==0.4f);
+    CHECK(env.legacyTuning.at("mechSpecularStrength")==0.4f);
     CHECK(env.diagnostics.size()==5);
 }
 
 TEST_CASE("MissionEnvironment/hash is stable and zero exposure has no invalid logarithm") {
-    const auto a=visualTuning_resolve("a",{source(R"({"defaults":{"exposure":0,"mechAmbientStrength":0.3}})")});
-    const auto b=visualTuning_resolve("a",{source(R"({"defaults":{"mechAmbientStrength":0.3,"exposure":0}})")});
+    const auto a=visualTuning_resolve("a",{source(R"({"defaults":{"exposure":0,"mechSpecularStrength":0.3}})")});
+    const auto b=visualTuning_resolve("a",{source(R"({"defaults":{"mechSpecularStrength":0.3,"exposure":0}})")});
     CHECK(a.effectiveHash==b.effectiveHash);
     CHECK_FALSE(a.output.exposureEV.has_value());
     CHECK(a.output.exposureMultiplier==0);
@@ -128,11 +126,11 @@ TEST_CASE("MissionEnvironment/hash is stable and zero exposure has no invalid lo
 }
 
 TEST_CASE("MissionEnvironment/real loader resets renderer state on mission and missing file") {
-    TempProfile file(R"({"defaults":{"exposure":2,"mechAmbientStrength":0.8,"terrainClassGrassGmRLo":-0.5}})");
+    TempProfile file(R"({"defaults":{"exposure":2,"mechSpecularStrength":0.8,"terrainClassGrassGmRLo":-0.5}})");
     mc2::gate::ScopedOverride<"MC2_VISUAL_TUNING_FILE"> path(file.path.string().c_str());
-    mc2::gate::ScopedOverride<"MC2_MECH_AMBIENT_V1_STRENGTH"> ambientEnv(nullptr);
+    mc2::gate::ScopedOverride<"MC2_MECH_SPECULAR_STRENGTH"> specularEnv(nullptr);
     visualTuning_applyProfile("not-authored");
-    CHECK(exposure==2.0f); CHECK(ambient==0.8f); CHECK(grass[0]==-0.5f);
+    CHECK(exposure==2.0f); CHECK(specular==0.8f); CHECK(grass[0]==-0.5f);
     RenderCore::LegacyMissionLighting lighting; lighting.skyNumber=14; lighting.night=true;
     visualTuning_setMissionLighting(lighting);
     CHECK(visualTuning_environment().sky.shIdentity=="mission-ambient-night");
@@ -148,12 +146,12 @@ TEST_CASE("MissionEnvironment/real loader resets renderer state on mission and m
     }
     file.write(R"({"defaults":{"exposure":1.5}})");
     visualTuning_applyProfile("also-not-authored");
-    CHECK(exposure==1.5f); CHECK(ambient==0.15f); CHECK(grass[0]==-0.02f);
+    CHECK(exposure==1.5f); CHECK(specular==0.05f); CHECK(grass[0]==-0.02f);
     CHECK(visualTuning_environment().lighting.skyNumber==0);
     CHECK_FALSE(visualTuning_environment().lighting.night);
     std::filesystem::remove(file.path);
     visualTuning_applyProfile("not-authored");
-    CHECK(exposure==1.0f); CHECK(ambient==0.15f);
+    CHECK(exposure==1.0f); CHECK(specular==0.05f);
 }
 
 TEST_CASE("MissionEnvironment/save migrates without losing unrelated fields or missions") {

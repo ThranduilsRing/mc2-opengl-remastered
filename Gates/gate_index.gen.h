@@ -10,7 +10,7 @@
 
 namespace mc2::gate::detail {
 
-inline constexpr std::size_t kGateCount = 894;
+inline constexpr std::size_t kGateCount = 888;
 
 inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_3DVIEW_DIAG", Kind::Bool, Rule::Presence, {}},
@@ -392,8 +392,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_MATERIAL_GPU_SAMPLE", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_MATERIAL_KTX", Kind::Bool, Rule::Lead0P, {}},
     {"MC2_MDI_SUBMIT_TRACE", Kind::Bool, Rule::Presence, {}},
-    {"MC2_MECH_AMBIENT_V1", Kind::Bool, Rule::Lead0Kill, {}},
-    {"MC2_MECH_AMBIENT_V1_STRENGTH", Kind::Float, Rule::Prefix, {}},
     {"MC2_MECH_ANIM_ROTATION_ONLY", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_MECH_BATCHER_STATS", Kind::Bool, Rule::Presence, {}},
     {"MC2_MECH_GLASS_LUMA_THRESH", Kind::Float, Rule::Prefix, {}},
@@ -477,7 +475,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_OVERLAY_MAGENTA_TRACE", Kind::Bool, Rule::Presence, {}},
     {"MC2_OVERLAY_TEXTURE_TRACE", Kind::Bool, Rule::Presence, {}},
     {"MC2_OVERLAY_TILE_HIRES", Kind::String, Rule::Std, {}},
-    {"MC2_PAD_AREA_GLOW", Kind::Float, Rule::Prefix, {}},
     {"MC2_PAD_AREA_GLOW_SPILL", Kind::Float, Rule::Prefix, {}},
     {"MC2_PAD_EDGE_ROAD_FIX", Kind::Int, Rule::Prefix, {}},
     {"MC2_PARTICLE_FLUSH_STALL_TRACE", Kind::Bool, Rule::Presence, {}},
@@ -653,9 +650,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_TACTIC_WEIGHTS_B", Kind::Bool, Rule::AtoiNZ, {}},
     {"MC2_TARGETING_GUARD", Kind::Bool, Rule::Presence, {}},
     {"MC2_TERRAIN_ADMISSION_LEGACY", Kind::Bool, Rule::Presence, {}},
-    {"MC2_TERRAIN_AMBIENT_FLOOR", Kind::Float, Rule::Prefix, {}},
-    {"MC2_TERRAIN_AMBIENT_FLOOR_NIGHT", Kind::Float, Rule::Prefix, {}},
-    {"MC2_TERRAIN_AMBIENT_FLOOR_TRACE", Kind::Bool, Rule::Presence, {}},
     {"MC2_TERRAIN_CEMENT_DIAG_CONNECT", Kind::Bool, Rule::Lead0, {}},
     {"MC2_TERRAIN_CLIFF_DISPLACE", Kind::Bool, Rule::Lead0, {}},
     {"MC2_TERRAIN_CLIFF_DISPLACE_MAXTESS", Kind::Float, Rule::Prefix, {}},

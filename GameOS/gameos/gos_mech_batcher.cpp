@@ -158,15 +158,6 @@ float s_mechNormalsSmoothDeg = mc2::gate::get<"MC2_MECH_NORMALS_SMOOTH_DEG">(); 
 // Cleared at onMapLoad() alongside s_stagingVbo.
 std::vector<std::pair<size_t,size_t>> s_nodeVboRanges;
 
-// MECH-AMBIENT-1: hemisphere ambient FILL for mechs. DEFAULT-ON (user-approved
-// 2026-05-28 at strength 0.15) with kill-switch MC2_MECH_AMBIENT_V1=0. When off
-// the strength uploaded to the shader is 0.0 -> exact no-op (legacy look). Both
-// mutable so ImGui can dial them live (batcher_setMechAmbient*). The shader term
-// is a per-fragment hemisphere using the world normal; no PBR/material/team-mask
-// data involved. Works on legacy and ViewUniforms mech paths (no camera data).
-bool s_mechAmbientV1 = mc2::gate::get<"MC2_MECH_AMBIENT_V1">();
-float s_mechAmbientStrength = mc2::gate::get<"MC2_MECH_AMBIENT_V1_STRENGTH">();   // row: user-tuned default 0.15, clamps to [0, 2]
-
 // MECH-SPECULAR-V1: conservative Blinn specular sheen. DEFAULT-OFF (gate
 // MC2_MECH_SPECULAR_V1=1 to enable). Only effective when MC2_MECH_VIEWUNIFORMS=1
 // (the shader variant with MC2_USE_VIEW_UNIFORMS defined); on all other paths the
@@ -201,7 +192,7 @@ float g_importedMechNormalStrength = 1.0f; // NORMALS-1: imported-mech normal-ma
 // VK-PARITY-MECH-1: shared producer of the default mech shading knobs (see header).
 void gpuMechShadingParams(GpuMechShadingParams* o) {
     if (!o) return;
-    o->ambientStrength     = s_mechAmbientV1 ? s_mechAmbientStrength : 0.0f;
+    o->ambientStrength     = 0.0f; // retired compatibility slot
     o->specularStrength    = (s_mechSpecularV1 && s_mechViewUniforms)
                                  ? s_mechSpecularStrength : 0.0f;
     o->metalRoughness      = s_mechMetalRoughness;
