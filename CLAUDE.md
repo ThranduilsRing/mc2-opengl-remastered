@@ -6,7 +6,7 @@ MechCommander 2 engine port: modern GL renderer transitioning to Vulkan, PBR ter
 
 - **Lane rules (every agent, every model):** `A:/Games/mc2-ops/lane-rules.md` — read it first. Parallelism: `A:/Games/mc2-ops/JOBS`.
 - **Parallel lanes** live in separate `A:/Games/mc2-*` worktrees. Merges into `claude/nifty-mendeleev` happen only through merge windows (`tools/lane_merge.py --batch`), each followed by an adversarial review.
-- **Deploy:** lanes deploy ONLY to their own `E:/mc2-installs/<branch>` with an explicit target. mc2-main's default deploy target (v0.4) is for the merge gate only.
+- **Deploy:** lanes deploy ONLY to their own `E:/mc2-installs/<branch>` with an explicit target. The merge gate's deploy to v0.4 (mc2-main's default target, orchestrator only) is the ONLY exception to the lane rule "NEVER deploy to v0.4".
 - **Model/effort:** Sonnet coding = medium; merges with heavy conflicts, reviews and root-causing = high; Sol = medium; Opus case by case; avoid Haiku for build loops.
 - **Game runs** default to about 15 s; benches use `--acceptance` only in the orchestrator's quiet window.
 - **Basics over process.** A check red on nifty for more than a week gets fixed or deleted.
@@ -52,10 +52,10 @@ py -3 scripts/run_smoke.py --lite --keep-logs --deploy 0.4
 
 Run full tier1 (below) before milestones / landing, not on every iteration. Captures (`run_visual_capture.py`, `ab.py`) now exit as soon as the PNG+sidecar are complete; the duration is only a timeout.
 
-Full smoke (launches the game off-screen, ~3 min):
+Full smoke, merge window only (launches the game off-screen, ~3 min; the runner's 15 s default duration applies):
 
 ```bash
-MC2_DEBUG_STATE_DUMP=1 MC2_DIAG_TAGS=CONFIG,BUILD,DEVICE py -3 scripts/run_smoke.py --tier tier1 --duration 30 --keep-logs --deploy 0.4
+MC2_DEBUG_STATE_DUMP=1 MC2_DIAG_TAGS=CONFIG,BUILD,DEVICE py -3 scripts/run_smoke.py --tier tier1 --keep-logs --deploy 0.4
 ```
 
 The default env runs the Vulkan backend (default since 2026-10-17); there is no GL opt-out any more (`MC2_RENDER_BACKEND=gl` is ignored with a `[RENDER_BACKEND]` log line). `tier1` = mc2_01/03/10/17/24. Evidence is the `[DEPLOY_FINGERPRINT] OK: exe sha=… matches worktree HEAD` line plus 5/5 PASS. Don't set `MC2_DIAGNOSTIC_TRACE_FILE` (the runner owns it and refuses the run).
