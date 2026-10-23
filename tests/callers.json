@@ -2120,7 +2120,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1550,
+          "line": 1551,
           "evidence": "command",
           "reference": "scripts/check_sim_include_firewall.py",
           "text": "run_check \"sim_include_firewall\"        \"py -3 -B scripts/tests/test_sim_include_firewall.py && py -3 scripts/check_sim_include_firewall.py\""
@@ -5444,14 +5444,14 @@
         },
         {
           "path": "tests/smoke/test_marker_buckets.py",
-          "line": 125,
+          "line": 126,
           "evidence": "import",
           "reference": "scripts.smoke_lib.gates",
           "text": "from scripts.smoke_lib.gates import GateConfig, evaluate"
         },
         {
           "path": "tests/smoke/test_marker_buckets.py",
-          "line": 144,
+          "line": 145,
           "evidence": "import",
           "reference": "scripts.smoke_lib.gates",
           "text": "from scripts.smoke_lib.gates import GateConfig, evaluate"
@@ -6804,7 +6804,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1550,
+          "line": 1551,
           "evidence": "command",
           "reference": "scripts/tests/test_sim_include_firewall.py",
           "text": "run_check \"sim_include_firewall\"        \"py -3 -B scripts/tests/test_sim_include_firewall.py && py -3 scripts/check_sim_include_firewall.py\""
@@ -8766,6 +8766,21 @@
       "callers_by_stem": []
     },
     {
+      "path": "tools/crash_bundle_summary.py",
+      "basename": "crash_bundle_summary.py",
+      "stem": "crash_bundle_summary",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tools/test_crash_bundle_summary.py",
+          "line": 3,
+          "evidence": "import",
+          "reference": "crash_bundle_summary",
+          "text": "from crash_bundle_summary import REQUIRED, summarise"
+        }
+      ]
+    },
+    {
       "path": "tools/cxx17_ratchet/cxx17_ratchet.py",
       "basename": "cxx17_ratchet.py",
       "stem": "cxx17_ratchet",
@@ -9384,6 +9399,42 @@
       ]
     },
     {
+      "path": "tools/mapgen/batteries.py",
+      "basename": "batteries.py",
+      "stem": "batteries",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tests/mapgen/test_fields_of_fire.py",
+          "line": 98,
+          "evidence": "import",
+          "reference": "tools.mapgen.batteries",
+          "text": "from tools.mapgen.batteries import plan"
+        },
+        {
+          "path": "tools/mapgen/generate.py",
+          "line": 459,
+          "evidence": "import",
+          "reference": "tools.mapgen.batteries",
+          "text": "from tools.mapgen.batteries import plan as batteries"
+        },
+        {
+          "path": "tools/mapgen/placement.py",
+          "line": 90,
+          "evidence": "import",
+          "reference": "tools.mapgen.batteries",
+          "text": "from tools.mapgen.batteries import candidates as battery_candidates, in_firing_lane"
+        },
+        {
+          "path": "tools/mapgen/placement.py",
+          "line": 379,
+          "evidence": "import",
+          "reference": "tools.mapgen.batteries",
+          "text": "from tools.mapgen.batteries import finish"
+        }
+      ]
+    },
+    {
       "path": "tools/mapgen/common.py",
       "basename": "common.py",
       "stem": "common",
@@ -9460,6 +9511,13 @@
           "text": "from tools.mapgen.common import building_role, load_json, output_path"
         },
         {
+          "path": "tools/mapgen/batteries.py",
+          "line": 6,
+          "evidence": "import",
+          "reference": "tools.mapgen.common",
+          "text": "from tools.mapgen.common import CELL_WU as C"
+        },
+        {
           "path": "tools/mapgen/comparison.py",
           "line": 11,
           "evidence": "import",
@@ -9472,6 +9530,27 @@
           "evidence": "import",
           "reference": "tools.mapgen.common",
           "text": "from tools.mapgen.common import (CELL_WU, SCHEMA, STEEP_DEG, INSTALL_ROOT,"
+        },
+        {
+          "path": "tools/mapgen/fields_of_fire.py",
+          "line": 21,
+          "evidence": "import",
+          "reference": "tools.mapgen.common",
+          "text": "from tools.mapgen.common import CELL_WU as C, mask_of"
+        },
+        {
+          "path": "tools/mapgen/fields_of_fire.py",
+          "line": 465,
+          "evidence": "import",
+          "reference": "tools.mapgen.common",
+          "text": "from tools.mapgen.common import components"
+        },
+        {
+          "path": "tools/mapgen/fields_of_fire.py",
+          "line": 700,
+          "evidence": "import",
+          "reference": "tools.mapgen.common",
+          "text": "from tools.mapgen.common import load_json, output_path, write_json"
         },
         {
           "path": "tools/mapgen/footprints.py",
@@ -9510,7 +9589,7 @@
         },
         {
           "path": "tools/mapgen/placement.py",
-          "line": 299,
+          "line": 333,
           "evidence": "import",
           "reference": "tools.mapgen.common",
           "text": "from tools.mapgen.common import spans"
@@ -9566,7 +9645,7 @@
         },
         {
           "path": "tools/mapgen/validate.py",
-          "line": 186,
+          "line": 191,
           "evidence": "import",
           "reference": "tools.mapgen.common",
           "text": "from tools.mapgen.common import CELL_WU, building_role"
@@ -9601,6 +9680,13 @@
           "text": "from tools.mapgen.extract import VERTEX"
         },
         {
+          "path": "tools/mapgen/fields_of_fire.py",
+          "line": 630,
+          "evidence": "import",
+          "reference": "tools.mapgen.extract",
+          "text": "from tools.mapgen.extract import extract_mission, VERTEX"
+        },
+        {
           "path": "tools/mapgen/footprints.py",
           "line": 20,
           "evidence": "import",
@@ -9613,6 +9699,119 @@
           "evidence": "import",
           "reference": "tools.mapgen.extract",
           "text": "from tools.mapgen.extract import VERTEX, extract_mission"
+        },
+        {
+          "path": "tools/mapgen/mission_writer.py",
+          "line": 317,
+          "evidence": "import",
+          "reference": "tools.mapgen.extract",
+          "text": "from tools.mapgen.extract import VERTEX"
+        }
+      ]
+    },
+    {
+      "path": "tools/mapgen/fields_of_fire.py",
+      "basename": "fields_of_fire.py",
+      "stem": "fields_of_fire",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tests/mapgen/test_fields_of_fire.py",
+          "line": 7,
+          "evidence": "import",
+          "reference": "tools.mapgen.fields_of_fire",
+          "text": "from tools.mapgen.fields_of_fire import (C, MoveLOS, active_ids, corridor_samples,"
+        },
+        {
+          "path": "tests/mapgen/test_fields_of_fire.py",
+          "line": 26,
+          "evidence": "import",
+          "reference": "tools.mapgen.fields_of_fire",
+          "text": "from tools.mapgen.fields_of_fire import audit_source"
+        },
+        {
+          "path": "tests/mapgen/test_fields_of_fire.py",
+          "line": 100,
+          "evidence": "import",
+          "reference": "tools.mapgen.fields_of_fire",
+          "text": "from tools.mapgen.fields_of_fire import DIFFICULTIES"
+        },
+        {
+          "path": "tests/mapgen/test_fields_of_fire.py",
+          "line": 119,
+          "evidence": "import",
+          "reference": "tools.mapgen.fields_of_fire",
+          "text": "from tools.mapgen.fields_of_fire import DIFFICULTIES"
+        },
+        {
+          "path": "tests/mapgen/test_fields_of_fire.py",
+          "line": 131,
+          "evidence": "import",
+          "reference": "tools.mapgen.fields_of_fire",
+          "text": "from tools.mapgen.fields_of_fire import FLAWS"
+        },
+        {
+          "path": "tools/mapgen/batteries.py",
+          "line": 7,
+          "evidence": "import",
+          "reference": "tools.mapgen.fields_of_fire",
+          "text": "from tools.mapgen.fields_of_fire import DIFFICULTIES, FLAWS"
+        },
+        {
+          "path": "tools/mapgen/batteries.py",
+          "line": 99,
+          "evidence": "import",
+          "reference": "tools.mapgen.fields_of_fire",
+          "text": "from tools.mapgen.fields_of_fire import reachable"
+        },
+        {
+          "path": "tools/mapgen/generate.py",
+          "line": 514,
+          "evidence": "import",
+          "reference": "tools.mapgen.fields_of_fire",
+          "text": "from tools.mapgen.fields_of_fire import overlay"
+        },
+        {
+          "path": "tools/mapgen/mission_writer.py",
+          "line": 300,
+          "evidence": "import",
+          "reference": "tools.mapgen.fields_of_fire",
+          "text": "from tools.mapgen.fields_of_fire import bake, Assets"
+        },
+        {
+          "path": "tools/mapgen/mission_writer.py",
+          "line": 316,
+          "evidence": "import",
+          "reference": "tools.mapgen.fields_of_fire",
+          "text": "from tools.mapgen.fields_of_fire import MoveLOS, evaluate"
+        },
+        {
+          "path": "tools/mapgen/placement.py",
+          "line": 269,
+          "evidence": "import",
+          "reference": "tools.mapgen.fields_of_fire",
+          "text": "from tools.mapgen.fields_of_fire import bake, corridor_samples"
+        },
+        {
+          "path": "tools/mapgen/placement.py",
+          "line": 277,
+          "evidence": "import",
+          "reference": "tools.mapgen.fields_of_fire",
+          "text": "from tools.mapgen.fields_of_fire import bake, stock_assets"
+        },
+        {
+          "path": "tools/mapgen/placement.py",
+          "line": 378,
+          "evidence": "import",
+          "reference": "tools.mapgen.fields_of_fire",
+          "text": "from tools.mapgen.fields_of_fire import bake, evaluate, stock_assets"
+        },
+        {
+          "path": "tools/mapgen/validate.py",
+          "line": 181,
+          "evidence": "import",
+          "reference": "tools.mapgen.fields_of_fire",
+          "text": "from tools.mapgen.fields_of_fire import evaluate"
         }
       ]
     },
@@ -9644,6 +9843,13 @@
           "text": "from tools.mapgen.footprints import table"
         },
         {
+          "path": "tools/mapgen/fields_of_fire.py",
+          "line": 22,
+          "evidence": "import",
+          "reference": "tools.mapgen.footprints",
+          "text": "from tools.mapgen.footprints import tgl_points, ase_points"
+        },
+        {
           "path": "tools/mapgen/placement.py",
           "line": 13,
           "evidence": "import",
@@ -9659,7 +9865,7 @@
         },
         {
           "path": "tools/mapgen/validate.py",
-          "line": 187,
+          "line": 192,
           "evidence": "import",
           "reference": "tools.mapgen.footprints",
           "text": "from tools.mapgen.footprints import table"
@@ -9672,6 +9878,27 @@
       "stem": "generate",
       "callers_by_basename": [],
       "callers_by_stem": [
+        {
+          "path": "tests/mapgen/test_fields_of_fire.py",
+          "line": 99,
+          "evidence": "import",
+          "reference": "tools.mapgen.generate",
+          "text": "from tools.mapgen.generate import plan_cells"
+        },
+        {
+          "path": "tests/mapgen/test_fields_of_fire.py",
+          "line": 118,
+          "evidence": "import",
+          "reference": "tools.mapgen.generate",
+          "text": "from tools.mapgen.generate import generate"
+        },
+        {
+          "path": "tests/mapgen/test_fields_of_fire.py",
+          "line": 130,
+          "evidence": "import",
+          "reference": "tools.mapgen.generate",
+          "text": "from tools.mapgen.generate import generate"
+        },
         {
           "path": "tests/mapgen/test_generate.py",
           "line": 16,
@@ -9766,6 +9993,13 @@
           "text": "from tools.mapgen.mission_writer import collision_grid, place_units, snapped, terrain_packet"
         },
         {
+          "path": "tools/mapgen/fields_of_fire.py",
+          "line": 173,
+          "evidence": "import",
+          "reference": "tools.mapgen.mission_writer",
+          "text": "from tools.mapgen.mission_writer import collision_grid"
+        },
+        {
           "path": "tools/mapgen/playable_demo.py",
           "line": 10,
           "evidence": "import",
@@ -9825,7 +10059,7 @@
         },
         {
           "path": "tools/mapgen/generate.py",
-          "line": 460,
+          "line": 458,
           "evidence": "import",
           "reference": "tools.mapgen.placement",
           "text": "from tools.mapgen.placement import upgrade"
@@ -9839,7 +10073,7 @@
         },
         {
           "path": "tools/mapgen/validate.py",
-          "line": 188,
+          "line": 193,
           "evidence": "import",
           "reference": "tools.mapgen.placement",
           "text": "from tools.mapgen.placement import Spatial, bounds, cell_of, covered_cells, overlaps, interlocking_crowns"
@@ -9874,6 +10108,13 @@
           "text": "from tools.mapgen.raster import (COLOURS, TEAM_COLOURS, TERRAIN_COLOURS,"
         },
         {
+          "path": "tools/mapgen/batteries.py",
+          "line": 8,
+          "evidence": "import",
+          "reference": "tools.mapgen.raster",
+          "text": "from tools.mapgen.raster import world_position"
+        },
+        {
           "path": "tools/mapgen/comparison.py",
           "line": 12,
           "evidence": "import",
@@ -9882,7 +10123,7 @@
         },
         {
           "path": "tools/mapgen/generate.py",
-          "line": 502,
+          "line": 507,
           "evidence": "import",
           "reference": "tools.mapgen.raster",
           "text": "from tools.mapgen.raster import render as raster, crop_base"
@@ -9910,7 +10151,7 @@
         },
         {
           "path": "tools/mapgen/validate.py",
-          "line": 189,
+          "line": 194,
           "evidence": "import",
           "reference": "tools.mapgen.raster",
           "text": "from tools.mapgen.raster import polygon"
@@ -9961,14 +10202,14 @@
         },
         {
           "path": "tools/mapgen/generate.py",
-          "line": 465,
+          "line": 464,
           "evidence": "import",
           "reference": "tools.mapgen.suburban_forest",
           "text": "from tools.mapgen.suburban_forest import plan"
         },
         {
           "path": "tools/mapgen/generate.py",
-          "line": 506,
+          "line": 511,
           "evidence": "import",
           "reference": "tools.mapgen.suburban_forest",
           "text": "from tools.mapgen.suburban_forest import feature_mask"
@@ -9982,14 +10223,14 @@
         },
         {
           "path": "tools/mapgen/mission_writer.py",
-          "line": 318,
+          "line": 348,
           "evidence": "import",
           "reference": "tools.mapgen.suburban_forest",
           "text": "from tools.mapgen.suburban_forest import cook_colormap"
         },
         {
           "path": "tools/mapgen/mission_writer.py",
-          "line": 368,
+          "line": 404,
           "evidence": "import",
           "reference": "tools.mapgen.suburban_forest",
           "text": "from tools.mapgen.suburban_forest import feature_mask"
@@ -10761,6 +11002,13 @@
           "text": "from tools.mission_codec import Install, catalog, fit_sections, packet"
         },
         {
+          "path": "tests/mapgen/test_fields_of_fire.py",
+          "line": 5,
+          "evidence": "import",
+          "reference": "tools.mission_codec",
+          "text": "from tools.mission_codec import move_fields"
+        },
+        {
           "path": "tests/mapgen/test_mission_codec.py",
           "line": 13,
           "evidence": "import",
@@ -10794,6 +11042,20 @@
           "evidence": "import",
           "reference": "tools.mission_codec",
           "text": "from tools.mission_codec import (OBJECT, Install, catalog, fit_sections, object_records,"
+        },
+        {
+          "path": "tools/mapgen/fields_of_fire.py",
+          "line": 20,
+          "evidence": "import",
+          "reference": "tools.mission_codec",
+          "text": "from tools.mission_codec import Install, fit_sections, move_fields, packet"
+        },
+        {
+          "path": "tools/mapgen/fields_of_fire.py",
+          "line": 629,
+          "evidence": "import",
+          "reference": "tools.mission_codec",
+          "text": "from tools.mission_codec import catalog, overlay_catalog, decode_move"
         },
         {
           "path": "tools/mapgen/footprints.py",
@@ -13542,6 +13804,13 @@
       "path": "tools/test_container_callsites.py",
       "basename": "test_container_callsites.py",
       "stem": "test_container_callsites",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "tools/test_crash_bundle_summary.py",
+      "basename": "test_crash_bundle_summary.py",
+      "stem": "test_crash_bundle_summary",
       "callers_by_basename": [],
       "callers_by_stem": []
     },
