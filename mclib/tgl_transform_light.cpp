@@ -769,13 +769,19 @@ void TG_Shape::xformFaceQueue(bool isHudElement, BYTE alphaValue, bool isClamped
 		//--------------------------------------------------
 		// Any sorting we need to do occurs in here as well!
 		// So, find out what texture this face is using and mark that texture as needing 3 more vertices.
-		if (theShape->listOfTextures[theShape->listOfTypeTriangles[j].localTextureHandle].textureAlpha || (alphaValue != 0xff))
+		// Reserve under the SAME slot TG_Shape::Render fills: materialTextures() is the instance
+		// slot table (paint scheme / SetTextureHandle) when present, else the type table. Using the
+		// type table here reserved a different texture node than Render wrote to, so every
+		// instance-textured CPU-path shape (ground vehicles, animated building parts such as the
+		// generator coil) had its vertices silently dropped.
+		const TG_TinyTexture& slot = materialTextures()[theShape->listOfTypeTriangles[j].localTextureHandle];
+		if (slot.textureAlpha || (alphaValue != 0xff))
 		{
-			mc2::renderSubmissions().addTriangle(theShape->listOfTextures[theShape->listOfTypeTriangles[j].localTextureHandle].mcTextureNodeIndex,MC2_DRAWALPHA | addFlags);
+			mc2::renderSubmissions().addTriangle(slot.mcTextureNodeIndex,MC2_DRAWALPHA | addFlags);
 		}
 		else
 		{
-			mc2::renderSubmissions().addTriangle(theShape->listOfTextures[theShape->listOfTypeTriangles[j].localTextureHandle].mcTextureNodeIndex,MC2_DRAWSOLID | addFlags);
+			mc2::renderSubmissions().addTriangle(slot.mcTextureNodeIndex,MC2_DRAWSOLID | addFlags);
 		}
 
 	}
