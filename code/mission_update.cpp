@@ -391,7 +391,7 @@ void Mission::updateTickClock(bool advanceTime) {
 
 	if (advanceTime)
 	{
-		scenarioTime += static_cast<float>(mc2::sim::kTickSeconds);
+		scenarioTime += mc2::sim::kTickSecondsF;
 		// Counts the ticks that advanced the clock, so SIMID frame N means tick N under the harness clock.
 		if (SmokeMode::fixedTimestepEnabled())
 			SmokeMode::fixedTimestepOnSimFrame(static_cast<double>(scenarioTime));
@@ -562,7 +562,7 @@ void Mission::updateTraceHooks() {
 	// divergent sim frame directly -- the bridge above needs ~58k per-mover
 	// lines and a bespoke script to answer the same question.
 	//
-	// simFrame is derived exactly as the capture sidecar derives its
+	// simFrame is the 0-based tick (turn - 1) and equals the capture sidecar's
 	// `sim_frame` (gos_visual_capture.cpp write_sidecar) so a trace line and
 	// a manifest taken in the same run carry the SAME frame number. That
 	// derivation is only meaningful under the fixed clock; with the fixed
@@ -570,7 +570,7 @@ void Mission::updateTraceHooks() {
 	// which is correct, because determinism is not claimed at all then.
 	mc2SimIdentityTraceFrame(
 		static_cast<double>(scenarioTime),
-		turn);
+		turn - 1);   // 0-based, like the sidecar's sim_frame and the committed baselines
 
 	// META-FIX design A: mover-registry coherence audit (~1 Hz walk over
 	// home-commander movers + force-bar icons; read-only). No-op unless
@@ -1201,7 +1201,7 @@ bool Mission::updatePass(bool tickMode, bool runFrame, bool runSim, bool advance
 {
 	const float renderLength = frameLength;
     mc2::diagnostic::TickCost tickCost(s_misSplit && runSim);
-	auto simLength = [&] { tickCost.begin(); if (tickMode) frameLength = static_cast<float>(mc2::sim::kTickSeconds); };
+	auto simLength = [&] { tickCost.begin(); if (tickMode) frameLength = mc2::sim::kTickSecondsF; };
 	auto frameLen = [&] { tickCost.end(); frameLength = renderLength; };
 
 	// Every opened tick must complete, including the mission brain's 9999 return.

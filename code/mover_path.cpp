@@ -1125,6 +1125,8 @@ void Mover::updatePathLock (bool set)
 
 bool Mover::getPathRangeBlocked (long range, bool* reachedEnd) {
 
+	if (reachedEnd)
+		*reachedEnd = false;
 	if (moveLevel > 0)
 		return(false);
 	MovePathPtr path = pilot->getMovePath();
