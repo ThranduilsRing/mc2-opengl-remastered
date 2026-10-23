@@ -10387,8 +10387,12 @@
    "ver": 1,
    "stream": "stderr",
    "keys": [
-    "feature_refused",
-    "bytes"
+    "budget_bytes",
+    "physical_bytes",
+    "source",
+    "safety_bytes",
+    "quality",
+    "maxImageDimension2D"
    ],
    "count": 1
   },
@@ -10397,8 +10401,12 @@
    "ver": 1,
    "stream": "stderr",
    "keys": [
-    "shadow_tier",
-    "requested"
+    "refused",
+    "bytes",
+    "live",
+    "pending",
+    "budget",
+    "fallback"
    ],
    "count": 1
   },
@@ -10407,8 +10415,10 @@
    "ver": 1,
    "stream": "stderr",
    "keys": [
-    "texture_refused",
-    "bytes"
+    "refused",
+    "bytes",
+    "policy",
+    "fallback"
    ],
    "count": 1
   },
@@ -10417,10 +10427,96 @@
    "ver": 1,
    "stream": "stderr",
    "keys": [
-    "texture_tier",
-    "requested"
+    "refused",
+    "bytes",
+    "policy",
+    "fallback",
+    "reason"
    ],
    "count": 1
+  },
+  {
+   "tag": "VK_RESIDENCY",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "refused",
+    "extent",
+    "bytes",
+    "fallback"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_RESIDENCY",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "refused",
+    "extent",
+    "fallback"
+   ],
+   "count": 2
+  },
+  {
+   "tag": "VK_RESIDENCY",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "refused",
+    "extent",
+    "layers",
+    "reason",
+    "fallback"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_RESIDENCY",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "refused",
+    "images",
+    "admitted",
+    "fallback"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_RESIDENCY",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "refused",
+    "layers",
+    "limit",
+    "fallback"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_RESIDENCY",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "refused",
+    "quality",
+    "fallback",
+    "reason"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_RESIDENCY",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "refused",
+    "side",
+    "fallback"
+   ],
+   "count": 2
   },
   {
    "tag": "VK_SCENE_READBACK",
