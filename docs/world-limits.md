@@ -16,7 +16,8 @@
 | Editor / mission writer | `EditorData_save.cpp`, `MissionValidation.cpp`, `tools/mapgen/mission_writer.py` | Editor refuses MOVE sides above the shared cap before allocation. Mission writer intentionally supports only square 180..720, multiples of 60; all fit the reader. MOVE writer separately rejects excess dimensions/topology. |
 
 WQT2 is a bounded, little-endian v2 target supplement to each unchanged native
-warrior packet. The mission-stable watch table is restored by the object manager.
+warrior packet. New files carry `MC2SAVE.WQT2` so older engines reject them safely;
+this reader also accepts the legacy release stamp. The mission-stable watch table is restored by the object manager.
 Queue count, cursor, flags, markers, order parameters and active orders retain their
 legacy fields. Save copies now preserve the active/last order ID, last move goal
 and status, which ordinary tactical-order assignment resets. Target identities no longer depend on network roster unpacking or
