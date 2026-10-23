@@ -21,6 +21,7 @@ int main(int argc, char** argv) {
             CHECK(m->overrideClass == "staticprop");
             CHECK(m->appearanceName == "example_name");
             CHECK(m->scale == 1.0f);
+            CHECK(!m->lateCoverageFringe);
             CHECK(m->sourceRelPath == "source/props/example.glb");
         }
         CHECK(r.resolve("STATICPROP", "Example_Name") != nullptr);
@@ -49,6 +50,7 @@ int main(int argc, char** argv) {
         CHECK(r.loadFromFile(fx("pbr.json"), dir) == 13);
         const auto* good = r.resolve("staticProp", "valid");
         CHECK(good && good->materials.size() == 1);
+        CHECK(good && good->lateCoverageFringe);
         if (good && !good->materials.empty()) {
             CHECK(good->materials[0].materialClass == 4);
             CHECK(good->materials[0].uvScale[1] == 3);

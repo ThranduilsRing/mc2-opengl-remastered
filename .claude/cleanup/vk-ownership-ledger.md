@@ -77,7 +77,7 @@ Release tokens inside the destructors of the owner types: every one runs once, f
 
 | Island | Kind | Created | Released |
 |---|---|---:|---:|
-| color_prop | CommandBuffers | 2 | 1 |
+| color_prop | CommandBuffers | 3 | 1 |
 | color_prop | DescriptorSets | 1 | 0 |
 | legacy_shape | CommandBuffers | 1 | 0 |
 | legacy_shape | DescriptorSets | 1 | 0 |

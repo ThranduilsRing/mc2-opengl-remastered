@@ -16,6 +16,7 @@
 // it MUST include the batcher to translate GpuStaticPropInstance ->
 // StaticPropInstanceDesc.
 #include "gos_static_prop_batcher.h"
+#include "vulkan_color_prop_island.h"
 
 // Game side. Per spec section 12 + adversarial M2 carve-out, this is
 // the ONLY .cpp where game-side headers may be reached.
@@ -50,6 +51,11 @@ inline RenderCore::StaticPropInstanceDesc toMirror(
 
 namespace GameAdapters {
 namespace StaticProp {
+void flushLateCoverage() {
+#ifdef MC2_VULKAN_ISLAND
+    mc2_vk_color_prop_island_late_fringe();
+#endif
+}
 
 // Pre-mech-batcher static-prop reset. Called BEFORE GpuMechBatcher::onMapLoad().
 // Original position: Mission::init line 1752 (GpuStaticPropBatcher::onMapLoad).

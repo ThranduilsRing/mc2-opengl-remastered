@@ -1,6 +1,7 @@
 """Content pipeline: IR round-trip, cache key, cook contract, validator, package."""
 import base64
 import json
+import re
 import struct
 import sys
 from pathlib import Path
@@ -270,3 +271,33 @@ def test_inward_hull_faces_found_and_repaired():
     assert ir.inward_hull_faces(scene) == []
     assert np.allclose(prim.normals[[1, 2, 3]], [0, 0, -1])               # exclusive front vertices flipped
     assert np.allclose(prim.normals[4], [0, 0, 1])                        # back wall untouched
+
+
+def test_excluded_overlay_shares_albedo_but_keeps_legacy_material():
+    # A real failure: a lit window overlay's constant UV lies inside the roof mask, so an atlas
+    # mask cannot exclude it. The reviewed mesh moves to an appended legacy copy of its material.
+    mats = [ir.Material("roof", alpha_mode="MASK")]
+    quad = lambda: ir.Primitive(np.zeros((3, 3)), np.array([[0, 1, 2]]), 0)
+    scene = ir.Scene([ir.Node("root", -1, np.eye(4), 0)], [ir.Mesh("body", [quad()]), ir.Mesh("LitWin_Quonset2", [quad()])])
+    stock_ase.exclude_nodes(scene, mats, ["LitWin_Quonset2"])
+    assert scene.meshes[0].primitives[0].material == 0
+    assert scene.meshes[1].primitives[0].material == 1
+    assert len(mats) == 2 and mats[1].alpha_mode == mats[0].alpha_mode and not mats[1].authored()
+    for bad in (["unreviewed_typo"], ["body", "body"], [""], "body"):
+        with pytest.raises(ValueError):
+            stock_ase.exclude_nodes(scene, mats, bad)
+
+
+def test_uvless_stock_helpers_keep_zero_uv(tmp_path):
+    sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "tools" / "blender_pipeline" / "tests"))
+    from test_ase_submaterial import SINGLE_MAT_ASE
+    text = re.sub(r"\*MESH_TVERTLIST\s*\{[^}]*\}", "", SINGLE_MAT_ASE)
+    text = re.sub(r"\*MESH_TFACELIST\s*\{[^}]*\}", "", text)
+    file = tmp_path / "helper.ase"
+    file.write_text(text)
+    gltf, raw, _, _ = stock_ase._runtime_frame_glb(file)
+    for mesh in gltf["meshes"]:
+        acc = gltf["accessors"][mesh["primitives"][0]["attributes"]["TEXCOORD_0"]]
+        view = gltf["bufferViews"][acc["bufferView"]]
+        uv = [struct.unpack_from("<2f", raw, view["byteOffset"] + i * 8) for i in range(acc["count"])]
+        assert uv == [(0, 0)] * acc["count"]   # TG's explicit no-TFACE default, not the flipped roof-corner texel

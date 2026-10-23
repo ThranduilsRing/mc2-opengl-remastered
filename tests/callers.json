@@ -2214,6 +2214,13 @@
           "text": "import configure_ninja as cn  # noqa: E402"
         },
         {
+          "path": "tests/smoke/test_launcher_legacy_env.py",
+          "line": 35,
+          "evidence": "import",
+          "reference": "configure_ninja",
+          "text": "from configure_ninja import NINJA"
+        },
+        {
           "path": "tools/build_all_targets.py",
           "line": 37,
           "evidence": "import",
@@ -2787,6 +2794,13 @@
           "evidence": "import",
           "reference": "scripts.console_child",
           "text": "from scripts.console_child import child_kwargs"
+        },
+        {
+          "path": "tests/smoke/test_launcher_legacy_env.py",
+          "line": 18,
+          "evidence": "import",
+          "reference": "console_child",
+          "text": "import console_child  # noqa: E402  (windowless console children, scripts/console_child.py)"
         },
         {
           "path": "tests/smoke/test_preflight_cache.py",
@@ -6745,7 +6759,7 @@
         },
         {
           "path": "tools/blender_pipeline/fence_bundle.py",
-          "line": 180,
+          "line": 181,
           "evidence": "command",
           "reference": "tools/ase_to_glb.py",
           "text": "subprocess.run([sys.executable, str(HERE.parent / \"ase_to_glb.py\"),"
@@ -6761,7 +6775,7 @@
         },
         {
           "path": "tools/content_pipeline/frontends/stock_ase.py",
-          "line": 29,
+          "line": 30,
           "evidence": "import",
           "reference": "ase_to_glb",
           "text": "import ase_to_glb as ase  # noqa: E402"
@@ -7452,7 +7466,15 @@
       "basename": "test_ase_submaterial.py",
       "stem": "test_ase_submaterial",
       "callers_by_basename": [],
-      "callers_by_stem": []
+      "callers_by_stem": [
+        {
+          "path": "tools/content_pipeline/tests/test_content_pipeline.py",
+          "line": 293,
+          "evidence": "import",
+          "reference": "test_ase_submaterial",
+          "text": "from test_ase_submaterial import SINGLE_MAT_ASE"
+        }
+      ]
     },
     {
       "path": "tools/blender_pipeline/tests/test_asset_edit.py",
@@ -7759,7 +7781,7 @@
         },
         {
           "path": "tools/content_pipeline/cook.py",
-          "line": 30,
+          "line": 31,
           "evidence": "import",
           "reference": "tools.content_pipeline",
           "text": "from tools.content_pipeline import package  # noqa: E402"
@@ -7780,7 +7802,7 @@
         },
         {
           "path": "tools/content_pipeline/frontends/stock_ase.py",
-          "line": 25,
+          "line": 26,
           "evidence": "import",
           "reference": "tools.content_pipeline",
           "text": "from .. import gltf_io, ir"
@@ -7794,7 +7816,7 @@
         },
         {
           "path": "tools/content_pipeline/tests/test_content_pipeline.py",
-          "line": 13,
+          "line": 14,
           "evidence": "import",
           "reference": "tools.content_pipeline",
           "text": "from tools.content_pipeline import cache, gltf_io, ir, package, texcook, validate  # noqa: E402"
@@ -7844,7 +7866,7 @@
         },
         {
           "path": "tools/content_pipeline/tests/test_content_pipeline.py",
-          "line": 13,
+          "line": 14,
           "evidence": "import",
           "reference": "tools.content_pipeline.cache",
           "text": "from tools.content_pipeline import cache, gltf_io, ir, package, texcook, validate  # noqa: E402"
@@ -7880,7 +7902,7 @@
         },
         {
           "path": "tools/content_pipeline/cook.py",
-          "line": 31,
+          "line": 32,
           "evidence": "import",
           "reference": "tools.content_pipeline.frontends",
           "text": "from tools.content_pipeline.frontends import gltf_file, stock_ase  # noqa: E402"
@@ -7894,7 +7916,7 @@
         },
         {
           "path": "tools/content_pipeline/tests/test_content_pipeline.py",
-          "line": 14,
+          "line": 15,
           "evidence": "import",
           "reference": "tools.content_pipeline.frontends",
           "text": "from tools.content_pipeline.frontends import gltf_file, stock_ase  # noqa: E402"
@@ -7923,7 +7945,7 @@
         },
         {
           "path": "tools/content_pipeline/cook.py",
-          "line": 31,
+          "line": 32,
           "evidence": "import",
           "reference": "tools.content_pipeline.frontends.gltf_file",
           "text": "from tools.content_pipeline.frontends import gltf_file, stock_ase  # noqa: E402"
@@ -7937,7 +7959,7 @@
         },
         {
           "path": "tools/content_pipeline/tests/test_content_pipeline.py",
-          "line": 14,
+          "line": 15,
           "evidence": "import",
           "reference": "tools.content_pipeline.frontends.gltf_file",
           "text": "from tools.content_pipeline.frontends import gltf_file, stock_ase  # noqa: E402"
@@ -7952,14 +7974,14 @@
       "callers_by_stem": [
         {
           "path": "tools/content_pipeline/cook.py",
-          "line": 31,
+          "line": 32,
           "evidence": "import",
           "reference": "tools.content_pipeline.frontends.stock_ase",
           "text": "from tools.content_pipeline.frontends import gltf_file, stock_ase  # noqa: E402"
         },
         {
           "path": "tools/content_pipeline/tests/test_content_pipeline.py",
-          "line": 14,
+          "line": 15,
           "evidence": "import",
           "reference": "tools.content_pipeline.frontends.stock_ase",
           "text": "from tools.content_pipeline.frontends import gltf_file, stock_ase  # noqa: E402"
@@ -7988,7 +8010,7 @@
         },
         {
           "path": "tools/content_pipeline/frontends/stock_ase.py",
-          "line": 25,
+          "line": 26,
           "evidence": "import",
           "reference": "tools.content_pipeline.gltf_io",
           "text": "from .. import gltf_io, ir"
@@ -8002,7 +8024,7 @@
         },
         {
           "path": "tools/content_pipeline/tests/test_content_pipeline.py",
-          "line": 13,
+          "line": 14,
           "evidence": "import",
           "reference": "tools.content_pipeline.gltf_io",
           "text": "from tools.content_pipeline import cache, gltf_io, ir, package, texcook, validate  # noqa: E402"
@@ -8045,7 +8067,7 @@
         },
         {
           "path": "tools/content_pipeline/frontends/stock_ase.py",
-          "line": 25,
+          "line": 26,
           "evidence": "import",
           "reference": "tools.content_pipeline.ir",
           "text": "from .. import gltf_io, ir"
@@ -8073,7 +8095,7 @@
         },
         {
           "path": "tools/content_pipeline/tests/test_content_pipeline.py",
-          "line": 13,
+          "line": 14,
           "evidence": "import",
           "reference": "tools.content_pipeline.ir",
           "text": "from tools.content_pipeline import cache, gltf_io, ir, package, texcook, validate  # noqa: E402"
@@ -8109,14 +8131,14 @@
         },
         {
           "path": "tools/content_pipeline/cook.py",
-          "line": 30,
+          "line": 31,
           "evidence": "import",
           "reference": "tools.content_pipeline.package",
           "text": "from tools.content_pipeline import package  # noqa: E402"
         },
         {
           "path": "tools/content_pipeline/tests/test_content_pipeline.py",
-          "line": 13,
+          "line": 14,
           "evidence": "import",
           "reference": "tools.content_pipeline.package",
           "text": "from tools.content_pipeline import cache, gltf_io, ir, package, texcook, validate  # noqa: E402"
@@ -8152,7 +8174,7 @@
         },
         {
           "path": "tools/content_pipeline/tests/test_content_pipeline.py",
-          "line": 13,
+          "line": 14,
           "evidence": "import",
           "reference": "tools.content_pipeline.texcook",
           "text": "from tools.content_pipeline import cache, gltf_io, ir, package, texcook, validate  # noqa: E402"
@@ -8181,7 +8203,7 @@
         },
         {
           "path": "tools/content_pipeline/tests/test_content_pipeline.py",
-          "line": 13,
+          "line": 14,
           "evidence": "import",
           "reference": "tools.content_pipeline.validate",
           "text": "from tools.content_pipeline import cache, gltf_io, ir, package, texcook, validate  # noqa: E402"

@@ -10,7 +10,8 @@ Recipe:
    "conditions": {"mc2_01": {"hangar": "worn"}},           optional per-mission picks
    "assets": [ {"frontend": "stock_ase", ...} | {"frontend": "gltf", ...} ]}
 
-stock_ase asset: {"prop": "hangar", "kind": "building", "slots": [reviewed detail rows], "destroyed": true}
+stock_ase asset: {"prop": "hangar", "kind": "building", "slots": [reviewed detail rows], "destroyed": true,
+                  "excludeNodes": [exact reviewed mesh names that keep legacy lighting, e.g. "LitWin_Quonset2"]}
 gltf asset:      {"id", "replaces", "kind", "intact": GLB, "frame": "gltf"|"mc2_runtime", "wu_per_unit",
                   "classes": {material name: class | {class, metallic, roughness}},
                   "lods": [[GLB, distance]], "destroyed": GLB | {"stock_ase": "<ase stem>"},
@@ -37,7 +38,8 @@ def build_asset(spec, recipe, work):
     if front == "stock_ase":
         return stock_ase.to_ir(spec["prop"], srcdata=recipe["srcdata"], texture_roots=roots,
                                slots=spec.get("slots", []), kind=spec.get("kind", "building"),
-                               work_dir=work / spec["prop"], destroyed=spec.get("destroyed", True))
+                               work_dir=work / spec["prop"], destroyed=spec.get("destroyed", True),
+                               exclude=spec.get("excludeNodes", []))
     if front == "gltf":
         destroyed = spec.get("destroyed")
         if isinstance(destroyed, dict) and "stock_ase" in destroyed:

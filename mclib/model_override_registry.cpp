@@ -218,6 +218,8 @@ static std::vector<ModelOverrideRecord> parseManifest(const std::string& manifes
             rec.sourceRelPath  = source;
             rec.manifestDir    = dir;
             rec.scale          = scale;
+            rec.lateCoverageFringe = e.contains("lateCoverageFringe") &&
+                e["lateCoverageFringe"].is_boolean() && e["lateCoverageFringe"].get<bool>();
             parseMaterials(e, rec);
             rec.lods = parseLods(e, key);
             rec.destroyed = parseChain(e, "destroyed", key);
