@@ -55,6 +55,8 @@ screen-space shadow pass applies it later); **SH** = `rc_gbuffer1_shadowHandled*
 | **Static prop (GL)** — buildings, trees, generic | `8064c6930:shaders/static_prop.vert` / `static_prop.frag` | **no scalar floor.** Its floor is `ambientTerm` (sum of `TG_LIGHT_AMBIENT` rows, `:722-723`) + optional hemisphere `kAmbientV1Sky/Ground` (`:833-834`, strength default **0**) + optional SH-IBL (`:845`) | `clamp(lit + highlight, 0, 1)` (`:912`) | **3 types only**: AMBIENT + first INFINITE/INFINITEWITHFALLOFF. Point/spot deliberately omitted (`:713`). Sun **direction** is not the light's — it is `u_terrainSunMC2` (`:701-712,732`) | real: `u_isNight`/`u_nightFactor` drive the hot-colour emission delta (`:591-607`) | `mix(v_fog.rgb, c.rgb, u_fogValue)` (`static_prop.frag:611`) | **SSE** (+ `_noSelfShadow`, `_alphaTest` variants) | `GatherGpuObjectLightDataOnly()` / `mc2CacheOrBakeStaticGpuLight` (`GameOS/gameos/gos_static_prop_batcher_submit.cpp:261`, `mclib/bdactor_lightbake.cpp:186`) |
 | **Static prop (VK)** | `shaders/vulkan/color_prop_tier1.vert` | real `ambientTerm` scan + SH-IBL when `lightingReady` (`:277-291`); own hemisphere pair (plus, since 2026-10-14, a verbatim port of GL's `kAmbientV1Sky/Ground` fill under the StaticPropAmbient option: INTENTIONAL, parity row 22) `kAmbientSky = (0.00,0.02,0.08)` / `kAmbientGround = (0.14,0.13,0.11)` (`:245-246`) is the **fail-soft path only** (`:259-261`) | `clamp(..., 0, 1)` (`:315`) | AMBIENT + INFINITE + INFINITEWITHFALLOFF — **same matrix as GL props**, but reached via bare integers `lt == 1 \|\| lt == 2` (`:284`) | real `uFrame.isNight/nightFactor` and the per-type emission table (set 0 binding 7), as GL (`:104-192`) | UNKNOWN | UNKNOWN | ObjectLights row, `lightingReady` flag (`:32`, `:277`) |
 
+The live guard also pins the existing `moverShadow` floors in `screen_shadow_csm.frag`: 0.4 for props and 0.55 for mechs.
+
 The Vulkan terrain path uses mission environment ambient plus sun and shared shadows.
 The legacy ambient floor and pad-glow strength knobs were retired after their VK shader terms were removed.
 
@@ -241,6 +243,39 @@ known-bad light direction (divergence 5). Folding it back means either
 re-introducing the bug or adding a `u_useTerrainSun` branch to the shared kernel
 — which is a per-class override inside the shared path, i.e. the same divergence
 with more indirection and a wider blast radius.
+
+**Cost line — Move 1 (constants header):**
+- Files: 1 new header + 8 shaders touched (`mech.vert`, `vulkan/mech_tier1.vert`,
+  `gos_tex_vertex_lighted.vert`, `include/shadow.hglsl`, `shadow_screen.frag`,
+  and the three VK shadow re-ports). No C++, no engine code.
+- Visual-regression risk: **low.** Every site becomes textually different and
+  numerically identical. The real risk is not pixels, it is the VK toolchain:
+  `vulkan/mech_tier1.vert` cannot use the GL `#include` mechanism (that is *why*
+  it re-defines `calc_light`), so it either gets the constants by a different
+  route or stays out of scope — leaving 6 sites, not 8.
+- Re-verify: tier1 5/5; GL byte-identity capture on mc2_01 (day) and mc2_10
+  (night) — must be XOR=0 at every site, since a no-op that moves a pixel means
+  a transcription error. Roughly half a session.
+- **Honest value assessment: this is small, and it is the riskiest thing in
+  this document.** It removes a duplicated literal. It does not remove a
+  divergence — `check-lighting-divergence.py` already makes the duplication
+  safe by failing when the copies drift apart.
+
+  **The argument against my own recommendation**, which the reader should weigh
+  before spending anything: a shared `#define` creates a coupling that does not
+  exist today. Right now, an edit to `mech.vert`'s 0.35 moves mechs. After
+  Move 1, an edit to `MC2_OBJECT_AMBIENT_FLOOR` moves mechs *and* vehicles *and*
+  the VK mech path in one keystroke, and the person making it may only have been
+  looking at one of them. Duplication is how these three classes stayed
+  independently tunable through VEHICLE-AMBIENT-FLOOR-1, which needed the
+  vehicle floor to be a `max()` where the mech floor is an assignment — a
+  distinction a shared constant does not capture and would quietly invite
+  someone to erase.
+
+  The existing refusal to hoist (`gos_tex_vertex_lighted.vert:165-168`) was
+  written by someone who had just been burned by this. If the budget is tight,
+  **skip Move 1**: the check alone captures most of the benefit at none of the
+  coupling cost.
 
 The building-PBR shaders and their gate were retired in merge window 37.
 
