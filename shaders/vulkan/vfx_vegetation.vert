@@ -12,7 +12,7 @@ layout(set = 0, binding = 0, std140) uniform VfxVsParams {
 } U;
 
 #include "include/vegetation_structs.glsl"
-layout(std430, set = 2, binding = 0) readonly buffer VegInst { VegInstance inst[]; };
+layout(std430, set = 2, binding = 0) readonly buffer VegInst { PackedVegInstance inst[]; };
 layout(std430, set = 2, binding = 1) readonly buffer VegDense { uint dense[]; };
 layout(set = 2, binding = 2, std140) uniform VegDrawParams { VegParamsData D; };   // the frame's cull parameters
 
@@ -29,7 +29,7 @@ layout(location = 9) out vec3 v_shadowWorld;
 #include "include/vegetation_vk.glsl"
 
 void main() {
-    VegInstance i = inst[dense[gl_InstanceIndex]];
+    VegInstance i = unpackVegetation(inst[dense[gl_InstanceIndex]]);
     float dist3 = length(i.pos - D.cam.xyz);
     float fadeStart = D.misc.x;
     float windFade = 1.0 - smoothstep(fadeStart * 0.8, fadeStart, dist3);

@@ -1,11 +1,31 @@
-// Vegetation GPU cull, pass 3: move each region's survivors from the sparse scratch slots into the dense draw list.
+// Re-evaluate only surviving regions after the prefix sum. This keeps population
+// order without a population-sized scratch copy; the dense output has a fixed cap.
 #version 450
 #extension GL_GOOGLE_include_directive : require
 layout(local_size_x = 64) in;
 #include "include/vegetation_cull_common.glsl"
+shared uint s_scan[64];
 void main() {
     uint r = gl_WorkGroupID.y * P.flags.y + gl_WorkGroupID.x;
-    if (r >= P.counts.x) return;
-    uint n = counts[r], o = offsets[r], f = region[r].first;
-    for (uint i = gl_LocalInvocationIndex; i < n; i += 64u) dense[o + i] = scratch[f + i];
+    if (r >= P.counts.x || counts[r] == 0u || offsets[r] >= P.flags.w) return;
+    VegRegion R = region[r];
+    uint lid = gl_LocalInvocationIndex, base = offsets[r];
+    for (uint c = R.first; c < R.last; c += 64u) {
+        uint id = c + lid;
+        bool keep = id < R.last && survives(unpackVegetation(inst[id]), P.flags.x != 0u);
+        uint v = keep ? 1u : 0u;
+        s_scan[lid] = v;
+        barrier();
+        for (uint off = 1u; off < 64u; off <<= 1u) {
+            uint t = lid >= off ? s_scan[lid - off] : 0u;
+            barrier();
+            v += t;
+            s_scan[lid] = v;
+            barrier();
+        }
+        if (keep && base + v <= P.flags.w) dense[base + v - 1u] = id;
+        base += s_scan[63];
+        barrier();
+        if (base >= P.flags.w) break;
+    }
 }

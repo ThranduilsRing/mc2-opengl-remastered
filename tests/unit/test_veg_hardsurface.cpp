@@ -3,6 +3,7 @@
 #include "doctest.h"
 #include "GameAdapters/vegetation_hardsurface.h"
 #include "GameOS/gameos/vegetation_cutout.h"
+#include "GameAdapters/vegetation_budget.h"
 
 using namespace mc2::vegetation;
 
@@ -104,4 +105,20 @@ TEST_CASE("vegetation colour dilation keeps alpha and filled texels intact") {
     CHECK(rgba[22] == 40);
     CHECK(rgba[23] == 0);
     CHECK(mc2::vegetation::cutoutCoverage(rgba) == doctest::Approx(1.0f / 9.0f));
+}
+
+TEST_CASE("vegetation packed population retains map precision and foliage roles") {
+    using namespace mc2::vegetation;
+    for (uint32_t flags : {0u, 3u, 0x32u, kWeedFlagBit | 0x13u}) {
+        const auto p = packInstance(-131071.125f, 65535.75f, 231.375f, 6.27f, 5.625f, flags, 0.4375f);
+        CHECK(p.x == -131071.125f);
+        CHECK(p.y == 65535.75f);
+        const auto hs = glm::unpackHalf2x16(p.heightScale);
+        CHECK(hs.x == doctest::Approx(231.375f));
+        CHECK(hs.y == doctest::Approx(5.625f));
+        CHECK((p.appearance >> 24) == flags);
+        CHECK(glm::unpackHalf2x16(p.appearance & 65535u).x == 0.4375f);
+        CHECK(std::abs(float((p.appearance >> 16) & 255u) * (6.28318530718f / 256) - 6.27f) < 0.013f);
+    }
+    CHECK(kVisibleCapacity * 8ull == 4ull * 1024 * 1024);
 }
