@@ -95,6 +95,7 @@ def build(out, srcdata, work, blender=None):
             "type": "model", "replaces": f"staticProp:{app}",
             "source": f"fence/{glb_stem}.glb",
             "scale": 1.0, "renderOnly": True, "fallback": "stock",
+            "lateCoverageFringe": True,
         })
     first = next(iter(JOBS))
     for t in (work / "_work" / first / "tex").glob("*.tga"):

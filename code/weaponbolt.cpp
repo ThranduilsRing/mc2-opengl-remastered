@@ -11,6 +11,7 @@
 #include "weaponbolt_internal.h"
 #include "../mclib/texture_assets.h"
 #include "mc2fmt.h"
+#include "save_archive.h"
 #include <bit>
 #include <cstring>
 #include "diagnostic_trace.h"
@@ -292,7 +293,7 @@ void WeaponBoltType::initRetirePolicy(long afterHitReadResult)
 bool WeaponBoltType::handleCollision (GameObjectPtr collidee, GameObjectPtr collider)
 {
 	//-------------------------------------------------------
-	// Effect completion owns retirement; collision must not remove the bolt.
+	// The tick-owned deadline retires the bolt; collision must not remove it.
 	
 	return(FALSE);
 }
@@ -301,7 +302,7 @@ bool WeaponBoltType::handleCollision (GameObjectPtr collidee, GameObjectPtr coll
 bool WeaponBoltType::handleDestruction (GameObjectPtr collidee, GameObjectPtr collider)
 {
 	//-------------------------------------------------------
-	// Effect completion owns retirement; collision must not remove the bolt.
+	// The tick-owned deadline retires the bolt; collision must not remove it.
 	
 	return(FALSE);
 }
@@ -405,6 +406,7 @@ void WeaponBolt::submitDamage(GameObjectPtr target)
 void WeaponBolt::destroy (void)
 {
 	traceCombatRetire("teardown");
+	hitTarget = false;
 	if (targetPosition)
 	{
 		targetPosition.reset();
@@ -486,6 +488,8 @@ void WeaponBolt::init (bool create, ObjectTypePtr _type)
 {
 	traceCombatRetire("reinit");
 	retireDeadline = {};
+	presentationStarted = false;
+	presentationImpactStarted = false;
 	GameObject::init(create, _type);
 
 	setFlag(OBJECT_FLAG_JUSTCREATED, true);
@@ -496,137 +500,8 @@ void WeaponBolt::init (bool create, ObjectTypePtr _type)
 	
 
 	destroy();
-	//-----------------------------------------
-	if (effectId >= 0)
-	{
-		// A GPU-owned trail must not also emit CPU gosFX.
-		mc2::particles::GpuTrailKind init_gpu_kind = gpuTrailKindFromEffectId(effectId);
-		bool gpu_owns_trail = false;
-		if (gpuTrailKindProven(init_gpu_kind)) {
-			// Batcher owns the default-ON policy; raw environment reads can cause double trails.
-			gpu_owns_trail = mc2::particles::Batcher::is_enabled();
-		}
-		if (!gpu_owns_trail && strcmp(weaponEffects->GetEffectName(effectId),"NONE") != 0)
-		{
-			//--------------------------------------------
-			unsigned flags = gosFX::Effect::ExecuteFlag|gosFX::Effect::LoopFlag;
-
-			Check_Object(gosFX::EffectLibrary::Instance);
-			gosFX::Effect::Specification* gosEffectSpec = gosFX::EffectLibrary::Instance->Find(weaponEffects->GetEffectName(effectId));
-
-			if (gosEffectSpec)
-			{
-				gosEffect = gosFX::EffectLibrary::Instance->MakeEffect(gosEffectSpec->m_effectID, flags);
-				gosASSERT(gosEffect != nullptr);
-
-				MidLevelRenderer::MLRTexturePool::Instance->LoadImages();
-
-				//gosEffect->SetScalar(BASE_EFFECT_SCALAR);
-			}
-		}
-		
-		if ((strcmp(weaponEffects->GetEffectMuzzleFlashName(effectId),"NONE") != 0) && useNonWeaponEffects)
-		{
-			//--------------------------------------------
-			unsigned flags = gosFX::Effect::ExecuteFlag;
-	
-			Check_Object(gosFX::EffectLibrary::Instance);
-			gosFX::Effect::Specification* gosEffectSpec = gosFX::EffectLibrary::Instance->Find(weaponEffects->GetEffectMuzzleFlashName(effectId));
-			
-			if (gosEffectSpec)
-			{
-				muzzleEffect = gosFX::EffectLibrary::Instance->MakeEffect(gosEffectSpec->m_effectID, flags);
-				gosASSERT(muzzleEffect != nullptr);
-				
-				MidLevelRenderer::MLRTexturePool::Instance->LoadImages();
-			
-				//muzzleEffect->SetScalar(BASE_EFFECT_SCALAR);
-			}
-		}
-		
-		if (strcmp(weaponEffects->GetEffectHitName(effectId),"NONE") != 0)
-		{
-			//--------------------------------------------
-			unsigned flags = gosFX::Effect::ExecuteFlag;
-	
-			Check_Object(gosFX::EffectLibrary::Instance);
-			gosFX::Effect::Specification* gosEffectSpec = gosFX::EffectLibrary::Instance->Find(weaponEffects->GetEffectHitName(effectId));
-			
-			if (gosEffectSpec)
-			{
-				hitEffect = gosFX::EffectLibrary::Instance->MakeEffect(gosEffectSpec->m_effectID, flags);
-				gosASSERT(hitEffect != nullptr);
-			
-				MidLevelRenderer::MLRTexturePool::Instance->LoadImages();
-			
-				//hitEffect->SetScalar(BASE_EFFECT_SCALAR);
-			}
-		}
-		
-		if ((strcmp(weaponEffects->GetEffectMissName(effectId),"NONE") != 0) && useNonWeaponEffects)
-		{
-			//--------------------------------------------
-			unsigned flags = gosFX::Effect::ExecuteFlag;
-	
-			Check_Object(gosFX::EffectLibrary::Instance);
-			gosFX::Effect::Specification* gosEffectSpec = gosFX::EffectLibrary::Instance->Find(weaponEffects->GetEffectMissName(effectId));
-			
-			if (gosEffectSpec)
-			{
-				missEffect = gosFX::EffectLibrary::Instance->MakeEffect(gosEffectSpec->m_effectID, flags);
-				gosASSERT(missEffect != nullptr);
-			
-				MidLevelRenderer::MLRTexturePool::Instance->LoadImages();
-			
-				//hitEffect->SetScalar(BASE_EFFECT_SCALAR);
-			}
-		}
-		
-		//No water miss for machine guns
-		if (useNonWeaponEffects && (effectId != 11) && (strcmp(weaponEffects->GetEffectName(WATER_MISS_FX),"NONE") != 0))
-		{
-			//--------------------------------------------
-			unsigned flags = gosFX::Effect::ExecuteFlag;
-	
-			Check_Object(gosFX::EffectLibrary::Instance);
-			gosFX::Effect::Specification* gosEffectSpec = gosFX::EffectLibrary::Instance->Find(weaponEffects->GetEffectName(WATER_MISS_FX));
-			
-			if (gosEffectSpec)
-			{
-				waterMissEffect = gosFX::EffectLibrary::Instance->MakeEffect(gosEffectSpec->m_effectID, flags);
-				gosASSERT(waterMissEffect != nullptr);
-			
-				MidLevelRenderer::MLRTexturePool::Instance->LoadImages();
-			
-				//hitEffect->SetScalar(BASE_EFFECT_SCALAR);
-			}
-		}
-		else
-		{
-			waterMissEffect = nullptr;
-		}
-	}
-	
-	//----------------------------------------------
-	// Effect textures require alpha.
-	if ((static_cast<WeaponBoltTypePtr>(_type))->textureName && S_stricmp((static_cast<WeaponBoltTypePtr>(_type))->textureName.get(),"NONE") != 0)
-	{
-		char tPath[1024];
-		mc2::fmt::to_buf(tPath, "{}128" PATH_SEPARATOR "", mc2::fmt::safe(tglPath));
-
-		FullPathFileName textureName;
-		textureName.init(tPath,(static_cast<WeaponBoltTypePtr>(_type))->textureName.get(),".tga");
-	
-		if ((static_cast<WeaponBoltTypePtr>(_type))->mipTexture)
-			mcTextureHandle = mc2::textures::load(textureName,gos_Texture_Alpha,0);
-		else
-			mcTextureHandle = mc2::textures::load(textureName,gos_Texture_Alpha,gosHint_DisableMipmap);
-	}
-	else
-	{
-		mcTextureHandle = 0;
-		gosTextureHandle = 0xffffffff;
-	}
+	mcTextureHandle = 0;
+	gosTextureHandle = 0xffffffff;
 
 	gpu_trail_kind = gpuTrailKindFromEffectId(effectId);
     combatTrace.begin(_type->whatAmI(), effectId);
@@ -796,6 +671,7 @@ bool WeaponBolt::deliverAimedAreaHit (void)
 
 void WeaponBolt::finishNow (void)
 {
+	if (!getExists()) { destroy(); return; }
 	if (getExists())
 	{
 
@@ -863,4 +739,154 @@ void WeaponBolt::finishNow (void)
 		traceCombatRetire("forced_finish");
 		MC2_DESTROY(this, "bolt_impact");
 	}
+}
+
+void WeaponBolt::createPresentationResources()
+{
+	//-----------------------------------------
+	if (effectId >= 0)
+	{
+		// A GPU-owned trail must not also emit CPU gosFX.
+		mc2::particles::GpuTrailKind init_gpu_kind = gpuTrailKindFromEffectId(effectId);
+		bool gpu_owns_trail = false;
+		if (gpuTrailKindProven(init_gpu_kind)) {
+			// Batcher owns the default-ON policy; raw environment reads can cause double trails.
+			gpu_owns_trail = mc2::particles::Batcher::is_enabled();
+		}
+		if (!gpu_owns_trail && strcmp(weaponEffects->GetEffectName(effectId),"NONE") != 0)
+		{
+			//--------------------------------------------
+			unsigned flags = gosFX::Effect::ExecuteFlag|gosFX::Effect::LoopFlag;
+
+			Check_Object(gosFX::EffectLibrary::Instance);
+			gosFX::Effect::Specification* gosEffectSpec = gosFX::EffectLibrary::Instance->Find(weaponEffects->GetEffectName(effectId));
+
+			if (gosEffectSpec)
+			{
+				gosEffect = gosFX::EffectLibrary::Instance->MakeEffect(gosEffectSpec->m_effectID, flags);
+				gosASSERT(gosEffect != nullptr);
+
+				MidLevelRenderer::MLRTexturePool::Instance->LoadImages();
+
+				//gosEffect->SetScalar(BASE_EFFECT_SCALAR);
+			}
+		}
+
+		if ((strcmp(weaponEffects->GetEffectMuzzleFlashName(effectId),"NONE") != 0) && useNonWeaponEffects)
+		{
+			//--------------------------------------------
+			unsigned flags = gosFX::Effect::ExecuteFlag;
+
+			Check_Object(gosFX::EffectLibrary::Instance);
+			gosFX::Effect::Specification* gosEffectSpec = gosFX::EffectLibrary::Instance->Find(weaponEffects->GetEffectMuzzleFlashName(effectId));
+
+			if (gosEffectSpec)
+			{
+				muzzleEffect = gosFX::EffectLibrary::Instance->MakeEffect(gosEffectSpec->m_effectID, flags);
+				gosASSERT(muzzleEffect != nullptr);
+
+				MidLevelRenderer::MLRTexturePool::Instance->LoadImages();
+
+				//muzzleEffect->SetScalar(BASE_EFFECT_SCALAR);
+			}
+		}
+
+		if (strcmp(weaponEffects->GetEffectHitName(effectId),"NONE") != 0)
+		{
+			//--------------------------------------------
+			unsigned flags = gosFX::Effect::ExecuteFlag;
+
+			Check_Object(gosFX::EffectLibrary::Instance);
+			gosFX::Effect::Specification* gosEffectSpec = gosFX::EffectLibrary::Instance->Find(weaponEffects->GetEffectHitName(effectId));
+
+			if (gosEffectSpec)
+			{
+				hitEffect = gosFX::EffectLibrary::Instance->MakeEffect(gosEffectSpec->m_effectID, flags);
+				gosASSERT(hitEffect != nullptr);
+
+				MidLevelRenderer::MLRTexturePool::Instance->LoadImages();
+
+				//hitEffect->SetScalar(BASE_EFFECT_SCALAR);
+			}
+		}
+
+		if ((strcmp(weaponEffects->GetEffectMissName(effectId),"NONE") != 0) && useNonWeaponEffects)
+		{
+			//--------------------------------------------
+			unsigned flags = gosFX::Effect::ExecuteFlag;
+
+			Check_Object(gosFX::EffectLibrary::Instance);
+			gosFX::Effect::Specification* gosEffectSpec = gosFX::EffectLibrary::Instance->Find(weaponEffects->GetEffectMissName(effectId));
+
+			if (gosEffectSpec)
+			{
+				missEffect = gosFX::EffectLibrary::Instance->MakeEffect(gosEffectSpec->m_effectID, flags);
+				gosASSERT(missEffect != nullptr);
+
+				MidLevelRenderer::MLRTexturePool::Instance->LoadImages();
+
+				//hitEffect->SetScalar(BASE_EFFECT_SCALAR);
+			}
+		}
+
+		//No water miss for machine guns
+		if (useNonWeaponEffects && (effectId != 11) && (strcmp(weaponEffects->GetEffectName(WATER_MISS_FX),"NONE") != 0))
+		{
+			//--------------------------------------------
+			unsigned flags = gosFX::Effect::ExecuteFlag;
+
+			Check_Object(gosFX::EffectLibrary::Instance);
+			gosFX::Effect::Specification* gosEffectSpec = gosFX::EffectLibrary::Instance->Find(weaponEffects->GetEffectName(WATER_MISS_FX));
+
+			if (gosEffectSpec)
+			{
+				waterMissEffect = gosFX::EffectLibrary::Instance->MakeEffect(gosEffectSpec->m_effectID, flags);
+				gosASSERT(waterMissEffect != nullptr);
+
+				MidLevelRenderer::MLRTexturePool::Instance->LoadImages();
+
+				//hitEffect->SetScalar(BASE_EFFECT_SCALAR);
+			}
+		}
+		else
+		{
+			waterMissEffect = nullptr;
+		}
+	}
+
+	//----------------------------------------------
+	// Effect textures require alpha.
+	if ((static_cast<WeaponBoltTypePtr>(getObjectType()))->textureName && S_stricmp((static_cast<WeaponBoltTypePtr>(getObjectType()))->textureName.get(),"NONE") != 0)
+	{
+		char tPath[1024];
+		mc2::fmt::to_buf(tPath, "{}128" PATH_SEPARATOR "", mc2::fmt::safe(tglPath));
+
+		FullPathFileName textureName;
+		textureName.init(tPath,(static_cast<WeaponBoltTypePtr>(getObjectType()))->textureName.get(),".tga");
+
+		if ((static_cast<WeaponBoltTypePtr>(getObjectType()))->mipTexture)
+			mcTextureHandle = mc2::textures::load(textureName,gos_Texture_Alpha,0);
+		else
+			mcTextureHandle = mc2::textures::load(textureName,gos_Texture_Alpha,gosHint_DisableMipmap);
+	}
+	else
+	{
+		mcTextureHandle = 0;
+		gosTextureHandle = 0xffffffff;
+	}
+
+}
+
+std::uint64_t WeaponBolt::simulationHash()
+{
+	mc2::save::Archive state;
+	state(ownerWID, hotSpotNumber, targetWID, targetHotSpot, aimedTargetWID,
+	      distanceToTarget, halfDistanceToTarget, hitTarget, timeLeft, hitLeft, goalHeight,
+	      laserPosition.x, laserPosition.y, laserPosition.z,
+	      weaponShot.attackerWID, weaponShot.masterId, weaponShot.damage,
+	      weaponShot.hitLocation, weaponShot.entryAngle, retireDeadline.tick, retireDeadline.armed);
+	if (targetPosition) state(targetPosition->x, targetPosition->y, targetPosition->z);
+	std::uint64_t hash = 14695981039346656037ull;
+	for (auto byte : state.bytes()) hash = (hash ^ byte) * 1099511628211ull;
+	return hash;
 }

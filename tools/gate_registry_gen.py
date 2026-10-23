@@ -112,10 +112,8 @@ def render_rows(rows, trailing_comma, enum=None, comments=None):
         for c in (comments or {}).get(fid, []):
             lines.append("    %s\n" % c)
         lines.append("    {\n")
-        lines.append("        %s,\n" % _cpp(fid))
-        lines.append("        %s,\n" % (_cpp(env) if env else "nullptr"))
-        lines.append("        EnvVarKind::%s,\n" % kind)
-        lines.append("        %s,\n" % ("true" if don else "false"))
+        lines.append("        %s, %s, EnvVarKind::%s, %s,\n" % (
+            _cpp(fid), _cpp(env) if env else "nullptr", kind, "true" if don else "false"))
         lines.append("        %s%s\n" % (_cpp(doc), "," if trailing_comma else ""))
         lines.append("    },\n")
     return "".join(lines)

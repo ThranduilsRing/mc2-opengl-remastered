@@ -1,6 +1,7 @@
 """Content pipeline: IR round-trip, cache key, cook contract, validator, package."""
 import base64
 import json
+import re
 import struct
 import sys
 from pathlib import Path
@@ -118,6 +119,113 @@ def test_runtime_frame_is_axis0_inverse(tmp_path):
     raw = gltf_io.read_accessor(doc, [binary], doc["meshes"][0]["primitives"][0]["attributes"]["POSITION"])
     tg = asset.lod0().flattened()[0][1].positions
     assert np.allclose(raw, tg * [-1, -1, 1], atol=1e-5)
+
+
+@pytest.mark.parametrize("light_mesh", [None, 0])
+def test_kit_light_and_destroyed_lods_survive_cook(tmp_path, light_mesh):
+    from tools.content_pipeline.cook import build_asset
+    src, doc, *_ = make_gltf(tmp_path)
+    doc["nodes"][0]["children"].append(3)
+    doc["nodes"].append({"name": "LIGHT_door_01", "translation": [1, 2, 3], "extras": {
+        "mc2_light_schema": "mc2-building-light/1", "mc2_light_type": "spot",
+        "mc2_light_position_gltf_m": [1, 2, 3], "mc2_light_direction_gltf": [0, 0, -1],
+        "mc2_light_colour_linear": [1, 0.8, 0.5], "mc2_light_intensity_class": "door",
+        "mc2_light_range_m": 5, "mc2_light_outer_cone_degrees": 60,
+        "mc2_light_active": True, "mc2_light_lights_out_on_destroy": True}})
+    if light_mesh is not None:
+        doc["nodes"][-1]["mesh"] = light_mesh
+    src.write_text(json.dumps(doc))
+    dead = tmp_path / "dead.gltf"
+    doc["nodes"][0]["children"].remove(3)
+    doc["nodes"].pop()
+    dead.write_text(json.dumps(doc))
+    spec = {"frontend": "gltf", "id": "kit", "replaces": "staticProp:hangar", "intact": str(src),
+            "wu_per_unit": 4, "destroyed": {"intact": str(dead), "lods": [[str(dead), 100]]}}
+    asset = build_asset(spec, {}, tmp_path / "work")
+    again = ir.from_json(ir.to_json(asset)).check()
+    assert again.sockets[0].kind == "light"
+    assert again.sockets[0].properties["position_tg_wu"] == [4, 8, 12]
+    assert again.sockets[0].properties["range_wu"] == 20
+    out = package.build_package([again], tmp_path / "out", mod_id="kit", compress=False)
+    rec = json.loads((out / "data/model_overrides/models.json").read_text())["overrides"][0]
+    assert rec["lightSockets"][0]["direction_tg"] == [0, 0, -1]
+    assert "lightSockets" not in rec["destroyed"]
+    assert len(rec["destroyed"]["lods"]) == 1
+    runtime, _ = gltf_io.split_glb((out / "data/model_overrides" / rec["source"]).read_bytes())
+    light = next(n for n in runtime["nodes"] if n["name"] == "LIGHT_door_01")
+    assert light["extras"]["position_tg_wu"] == [4, 8, 12]
+
+
+def test_geometry_cache_tracks_source_and_cooker_across_work_dirs(tmp_path, monkeypatch):
+    src, doc, *_ = make_gltf(tmp_path)
+    def run(work, output):
+        asset = gltf_file.to_ir("panel", "staticProp:panel", src, work_dir=tmp_path / work)
+        out = package.build_package([asset], tmp_path / output, mod_id="panel", compress=False)
+        return json.loads((out / "content/report.json").read_text())["assets"][0]["geometry_cache"]
+    first = run("w1", "p1")["pristine_intact_lod0"]
+    second = run("w2", "p2")["pristine_intact_lod0"]
+    assert not first["hit"] and second["hit"] and first["key"] == second["key"]
+    # Same filename and unchanged mesh: an edited source byte still invalidates the cook.
+    doc["asset"]["copyright"] = "new source revision"
+    src.write_text(json.dumps(doc))
+    third = run("w3", "p3")["pristine_intact_lod0"]
+    assert not third["hit"] and third["key"] != first["key"]
+    monkeypatch.setattr(package, "COOKER_VERSION", "test-new-cooker")
+    fourth = run("w4", "p4")["pristine_intact_lod0"]
+    assert not fourth["hit"] and fourth["key"] != third["key"]
+
+
+def test_stock_meshdump_frontend_and_package(tmp_path):
+    from tools.content_pipeline.frontends import stock_meshdump
+    src = Path(__file__).resolve().parents[2] / "asset_cook/tests/fixtures/2civliving_meshdump.json"
+    Image.new("RGBA", (4, 4), (255, 255, 255, 255)).save(tmp_path / "A_2CivLiving.tga")
+    asset = stock_meshdump.to_ir(src, texture_roots=[tmp_path])
+    assert asset.lod0().triangle_count() == 56
+    lo, hi = asset.lod0().bounds()
+    assert np.allclose(lo, [-54.694801, 0, -54.5723], atol=1e-4)
+    assert np.allclose(hi, [15.8478, 15.4678, 15.31], atol=1e-4)
+    out = package.build_package([asset], tmp_path / "package", mod_id="stock-test", compress=False)
+    assert package.check_package(out) == []
+    assert asset.materials[0].base_color.passthrough
+
+
+def test_tree_pack_uses_common_cooker_and_aliases(tmp_path):
+    from tools.examples.build_modern_tree_pack import recipe
+    from tools.content_pipeline.cook import cook
+    src, *_ = make_gltf(tmp_path)
+    families = [{"name": "poplar", "class": "tree", "replaces": "tree:pine1", "subdir": ".",
+                 "lods": [{"filename": src.name, "distance_m": 0}, {"filename": src.name, "distance_m": 100}]}]
+    out = cook(recipe(tmp_path, families, scale=2), tmp_path / "trees", compress=False)
+    rows = json.loads((out / "data/model_overrides/models.json").read_text())["overrides"]
+    assert len(rows) == 5                       # pine + four palm aliases
+    assert rows[0]["lods"][0]["distance"] == 100
+    assert rows[0]["source"] == rows[1]["source"]
+    assert (out / "content/poplar.mc2ir.json").is_file()
+
+
+def test_bt2018_recipe_retains_skin_source_bytes(tmp_path):
+    from tools.content_pipeline.cook import cook
+    src, doc, *_ = make_gltf(tmp_path)
+    # References-only skin: the frontend must retain skeleton/clip identity without
+    # statically flattening it. Native skin math remains in the existing consumer.
+    doc["skins"] = [{"joints": [0]}]
+    doc["nodes"][1]["skin"] = 0
+    doc["animations"] = [{"name": "Idle", "channels": [], "samplers": []}]
+    src.write_text(json.dumps(doc))
+    spec = {"mod_id": "mech-test", "assets": [{"frontend": "bt2018", "intact": str(src)}]}
+    # Self-contained GLB is the mech runtime contract.
+    binary = base64.b64decode(doc["buffers"][0]["uri"].split(",")[1])
+    doc["buffers"][0].pop("uri")
+    body = json.dumps(doc).encode(); body += b" " * (-len(body) % 4)
+    binary += b"\0" * (-len(binary) % 4)
+    glb = tmp_path / "mech.glb"
+    glb.write_bytes(struct.pack("<III", gltf_io.GLB_MAGIC, 2, 28+len(body)+len(binary)) +
+                    struct.pack("<II", len(body), gltf_io.CHUNK_JSON)+body +
+                    struct.pack("<II", len(binary), gltf_io.CHUNK_BIN)+binary)
+    spec["assets"][0]["intact"] = str(glb)
+    out = cook(spec, tmp_path / "mechs", compress=False)
+    assert (out / "data/tgl/mech.glb").read_bytes() == glb.read_bytes()
+    assert ir.load(out / "content/mech.mc2ir.json").skeleton.clips == ["Idle"]
 
 
 # --------------------------------------------------------------------------- cache key
@@ -270,3 +378,33 @@ def test_inward_hull_faces_found_and_repaired():
     assert ir.inward_hull_faces(scene) == []
     assert np.allclose(prim.normals[[1, 2, 3]], [0, 0, -1])               # exclusive front vertices flipped
     assert np.allclose(prim.normals[4], [0, 0, 1])                        # back wall untouched
+
+
+def test_excluded_overlay_shares_albedo_but_keeps_legacy_material():
+    # A real failure: a lit window overlay's constant UV lies inside the roof mask, so an atlas
+    # mask cannot exclude it. The reviewed mesh moves to an appended legacy copy of its material.
+    mats = [ir.Material("roof", alpha_mode="MASK")]
+    quad = lambda: ir.Primitive(np.zeros((3, 3)), np.array([[0, 1, 2]]), 0)
+    scene = ir.Scene([ir.Node("root", -1, np.eye(4), 0)], [ir.Mesh("body", [quad()]), ir.Mesh("LitWin_Quonset2", [quad()])])
+    stock_ase.exclude_nodes(scene, mats, ["LitWin_Quonset2"])
+    assert scene.meshes[0].primitives[0].material == 0
+    assert scene.meshes[1].primitives[0].material == 1
+    assert len(mats) == 2 and mats[1].alpha_mode == mats[0].alpha_mode and not mats[1].authored()
+    for bad in (["unreviewed_typo"], ["body", "body"], [""], "body"):
+        with pytest.raises(ValueError):
+            stock_ase.exclude_nodes(scene, mats, bad)
+
+
+def test_uvless_stock_helpers_keep_zero_uv(tmp_path):
+    sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "tools" / "blender_pipeline" / "tests"))
+    from test_ase_submaterial import SINGLE_MAT_ASE
+    text = re.sub(r"\*MESH_TVERTLIST\s*\{[^}]*\}", "", SINGLE_MAT_ASE)
+    text = re.sub(r"\*MESH_TFACELIST\s*\{[^}]*\}", "", text)
+    file = tmp_path / "helper.ase"
+    file.write_text(text)
+    gltf, raw, _, _ = stock_ase._runtime_frame_glb(file)
+    for mesh in gltf["meshes"]:
+        acc = gltf["accessors"][mesh["primitives"][0]["attributes"]["TEXCOORD_0"]]
+        view = gltf["bufferViews"][acc["bufferView"]]
+        uv = [struct.unpack_from("<2f", raw, view["byteOffset"] + i * 8) for i in range(acc["count"])]
+        assert uv == [(0, 0)] * acc["count"]   # TG's explicit no-TFACE default, not the flipped roof-corner texel

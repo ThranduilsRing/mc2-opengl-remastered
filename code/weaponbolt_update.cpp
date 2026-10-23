@@ -8,7 +8,7 @@
 #include "mc2fmt.h"
 #include "../RenderCore/axis_convert.h"
 #include "Gates/gate.h"
-
+#include "impact_presentation.h"
 
 //---------------------------------------------------------------------------
 // PPC de-curve + direct-fire speed (env-gated, default-off). "Direct-fire" =
@@ -17,6 +17,14 @@
 // is LED by the target's velocity over the bolt's flight time, so a pre-rolled
 // hit on a moving target still lands. LRM (arcEffect) + beams keep tracking.
 // MC2_PROJECTILE_SPEED_MULT scales direct-fire travel speed (default 1.0).
+// Presentation only: the impact decal library reads this event; the simulation never reads it back and draws no RNG for it.
+static void emitImpact(const WeaponBoltType* t, const WeaponShotInfo& shot, const glm::vec3& from, const glm::vec3& at,
+                       unsigned long targetWID)
+{
+	impact_presentation::onWeaponImpact(shot.masterId, t->isBeam, t->areaEffectDmg > 0.0f && t->areaEffectRad > 0.0f,
+	                                    shot.damage, from, at, targetWID);
+}
+
 static bool directFireStraightEnabled (void)
 {
 	static const bool s = mc2::gate::get<"MC2_DIRECT_FIRE_STRAIGHT">();
@@ -117,52 +125,7 @@ long WeaponBolt::update (void)
 		}
 		else
 			timeLeft = 0.0f;
-			
-		if (gosEffect && gosEffect->IsExecuted())
-		{
-			glm::mat4 	shapeOrigin;
-			glm::mat4	localToWorld;
-			glm::mat4	localResult;
-			
-			mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
-			mc2::math::buildTranslation(shapeOrigin, actualPosition);
-			
-			rotation = -world_angle_between(position, *targetPosition);
 
-			glm::quat effectRot;
-			effectRot = mc2::math::quatFromEuler(mc2::math::Euler(0.0f,rotation * DEGREES_TO_RADS,0.0f));
-			localToWorld = mc2::math::multiply(gosFX::Effect_Against_Motion, effectRot);
-			localResult = localToWorld * shapeOrigin;
-			
-			gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&localResult,nullptr);
-			gosEffect->Start(&info);
-		}
-		
-		if (muzzleEffect && muzzleEffect->IsExecuted())
-		{
-			glm::vec3			mPosition;
-			glm::mat4 	shapeOrigin;
-			glm::mat4	localToWorld;
-			glm::mat4	localResult;
-			
-			mc2ToRender(mPosition, position);
-			
- 			mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
-			mc2::math::buildTranslation(shapeOrigin, mPosition);
-			
-			glm::quat effectRot;
-			if (myOwner)
-				effectRot = mc2::math::quatFromEuler(mc2::math::Euler(0.0f, myOwner->getRotation() * DEGREES_TO_RADS,0.0f));
-			else
-				effectRot = mc2::math::quatFromEuler(mc2::math::Euler(0.0f, 0.0f ,0.0f));
-
-			localToWorld = mc2::math::multiply(gosFX::Effect_Into_Motion, effectRot);
-			localResult = localToWorld * shapeOrigin;
-			
- 			gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&localResult,nullptr);
-			muzzleEffect->Start(&info);
-		}
-		
 		glm::vec3 laserVelocity;
 		laserVelocity = targetPos - ownerPosition;
 		float distance = laserVelocity.x * laserVelocity.x + laserVelocity.y * laserVelocity.y;
@@ -173,33 +136,13 @@ long WeaponBolt::update (void)
 		goalHeight *= 10.0f;
 	}
 
-
 	GameObjectPtr myOwner = ObjectManager->getByWatchID(ownerWID);
 	if (myOwner)
 		position = myOwner->getPositionFromHS(hotSpotNumber);
 	
-	bool inView = TRUE;
-
 	if ((static_cast<WeaponBoltTypePtr>(getObjectType()))->isBeam)
 	{
 		timeLeft -= frameLength;
-		if (timeLeft >= 0.0f)
-		{
-			gosTextureHandle = mc2::textures::sourceId(mcTextureHandle);
-			mc2::renderSubmissions().addTriangle(mcTextureHandle,MC2_ISEFFECTS|MC2_DRAWONEIN);
-			mc2::renderSubmissions().addTriangle(mcTextureHandle,MC2_ISEFFECTS|MC2_DRAWONEIN);
-			mc2::renderSubmissions().addTriangle(mcTextureHandle,MC2_ISEFFECTS|MC2_DRAWONEIN);
-			mc2::renderSubmissions().addTriangle(mcTextureHandle,MC2_ISEFFECTS|MC2_DRAWONEIN);
-		}
-
-		startUV += (static_cast<WeaponBoltTypePtr>(getObjectType()))->uvAnimRate * frameLength;
-	}
-	else if (!gosEffect && !(static_cast<WeaponBoltTypePtr>(getObjectType()))->isBeam)
-	{
-		mc2::renderSubmissions().addTriangle(0xffffffff,MC2_DRAWALPHA);
-		mc2::renderSubmissions().addTriangle(0xffffffff,MC2_DRAWALPHA);
-		mc2::renderSubmissions().addTriangle(0xffffffff,MC2_DRAWALPHA);
-		mc2::renderSubmissions().addTriangle(0xffffffff,MC2_DRAWALPHA);
 	}
 		
 	glm::vec3 ownerPosition = laserPosition;
@@ -279,11 +222,7 @@ long WeaponBolt::update (void)
 				if (target) traceCombat("impact", "hit");
 				hitLeft = (static_cast<WeaponBoltTypePtr>(getObjectType()))->afterHitTime;
 
-				// Only the impact effect remains visible after arrival.
-				if (gosEffect) {
-					gosEffect->Kill();
-					gosEffect.reset();
-				}
+				// Arrival is authoritative; visual impact starts from the completed snapshot.
 
 				if (target)
 				{
@@ -298,33 +237,7 @@ long WeaponBolt::update (void)
 
 					}
 
-					if (hitEffect && hitEffect->IsExecuted())
-					{
-						glm::vec3			tPosition;
-						glm::mat4 	shapeOrigin;
-						glm::mat4	localToWorld;
-						
-						mc2ToRender(tPosition, hotSpot);
-						
-						mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
-						mc2::math::buildTranslation(shapeOrigin, tPosition);
-						
-						gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,nullptr);
-						hitEffect->Start(&info);
-					}
-					
-					if (missEffect)
-					{
-						missEffect->Kill();
-						missEffect.reset();
-					}
-					
-					if (waterMissEffect)
-					{
-						waterMissEffect->Kill();
-						waterMissEffect.reset();
-					}
-					
+					emitImpact(boltType, weaponShot, ownerPosition, hotSpot, targetWID);   // projectile arrival
 					laserPosition = hotSpot;
 				}
 				else
@@ -335,60 +248,14 @@ long WeaponBolt::update (void)
 					if (GameMap->getDeepWater(cellR, cellC) || GameMap->getShallowWater(cellR, cellC))
 					{
 						traceCombat("impact", "water_miss");
-						if (waterMissEffect && waterMissEffect->IsExecuted())
-						{
-							glm::vec3			tPosition;
-							glm::mat4 	shapeOrigin;
-							glm::mat4	localToWorld;
-							
-							tPosition.x = -hotSpot.x;
-							tPosition.y = Terrain::waterElevation;
-							tPosition.z = hotSpot.y;
-							
-							mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
-							mc2::math::buildTranslation(shapeOrigin, tPosition);
-							
-							gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,nullptr);
-							waterMissEffect->Start(&info);
-						}
-							
-						if (missEffect)
-						{
-							missEffect->Kill();
-							missEffect.reset();
-						}
+
 					}
 					else
 					{
 						traceCombat("impact", "miss");
-						if (missEffect && missEffect->IsExecuted())
-						{
-							glm::vec3			tPosition;
-							glm::mat4 	shapeOrigin;
-							glm::mat4	localToWorld;
-							
-							mc2ToRender(tPosition, hotSpot);
-							
-							mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
-							mc2::math::buildTranslation(shapeOrigin, tPosition);
-							
-							gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,nullptr);
-							missEffect->Start(&info);
-						}
-						
-						if (waterMissEffect)
-						{
-							waterMissEffect->Kill();
-							waterMissEffect.reset();
-						}
+						emitImpact(boltType, weaponShot, ownerPosition, hotSpot, 0);   // projectile ground miss
 					}
-					
-					if (hitEffect)
-					{
-						hitEffect->Kill();
-						hitEffect.reset();
-					}
-					
+
 					laserPosition = hotSpot;
 				}
 				
@@ -424,24 +291,7 @@ long WeaponBolt::update (void)
 						((static_cast<WeaponBoltTypePtr>(getObjectType()))->areaEffectDmg > 0.0f) &&
 						((static_cast<WeaponBoltTypePtr>(getObjectType()))->areaEffectRad > 0.0f))
 					{
-						if (hitEffect)
-						{
-							hitEffect->Kill();
-							hitEffect.reset();
-						}
-						
-						if (missEffect)
-						{
-							missEffect->Kill();
-							missEffect.reset();
-						}
-						
-						if (waterMissEffect)
-						{
-							waterMissEffect->Kill();
-							waterMissEffect.reset();
-						}
-						
+
 						// The explosion owns area damage for both hits and misses.
 						ObjectManager->createExplosion((static_cast<WeaponBoltTypePtr>(getObjectType()))->hitEffectObjNum,
 														nullptr,*targetPosition,
@@ -455,17 +305,7 @@ long WeaponBolt::update (void)
 				}
 				else if (targetPosition)
 				{
-					long randomCrater = 0;
-					if (weaponShot.damage > 9)
-						randomCrater = 3;
-					else if (weaponShot.damage > 6)
-						randomCrater = 2;
-					else if (weaponShot.damage > 3)
-						randomCrater = 1;
-						
-					if (missEffect)		//We missed and hit land.  Otherwise, we hit water, do NOT add crater
-						craterManager->addCrater(CRATER_1+randomCrater,*targetPosition,mc2_appearance_rng::randomNumber(180));
-		
+
 					{
 						int cellRow, cellCol;
 		
@@ -481,23 +321,6 @@ long WeaponBolt::update (void)
 						((static_cast<WeaponBoltTypePtr>(getObjectType()))->areaEffectDmg > 0.0f) &&
 						((static_cast<WeaponBoltTypePtr>(getObjectType()))->areaEffectRad > 0.0f))
 					{
-						if (hitEffect)
-						{
-							hitEffect->Kill();
-							hitEffect.reset();
-						}
-
-						if (missEffect)
-						{
-							missEffect->Kill();
-							missEffect.reset();
-						}
-
-						if (waterMissEffect)
-						{
-							waterMissEffect->Kill();
-							waterMissEffect.reset();
-						}
 
 						// Located aimed damage leaves the explosion cosmetic to avoid duplicate damage.
 						float areaDmg = (static_cast<WeaponBoltTypePtr>(getObjectType()))->areaEffectDmg;
@@ -522,10 +345,6 @@ long WeaponBolt::update (void)
 				if (target) traceCombat("impact", "hit");
 
 					// The beam head must not remain visible through the impact tail.
-					if (gosEffect) {
-						gosEffect->Kill();
-						gosEffect.reset();
-					}
 
 				if (target)
 				{
@@ -538,32 +357,7 @@ long WeaponBolt::update (void)
 							hotSpot = target->appearance->getHitNodeRight();
 					}
 
-					if (hitEffect && hitEffect->IsExecuted())
-					{
-						glm::vec3			tPosition;
-						glm::mat4 	shapeOrigin;
-						glm::mat4	localToWorld;
-						
-						mc2ToRender(tPosition, hotSpot);
-						
-						mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
-						mc2::math::buildTranslation(shapeOrigin, tPosition);
-						
-						gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,nullptr);
-						hitEffect->Start(&info);
-					}
-					
-					if (missEffect)
-					{
-						missEffect->Kill();
-						missEffect.reset();
-					}
-					
-					if (waterMissEffect)
-					{
-						waterMissEffect->Kill();
-						waterMissEffect.reset();
-					}
+					emitImpact(boltType, weaponShot, position, hotSpot, targetWID);   // beam end on the target
 				}
 				else
 				{
@@ -573,59 +367,14 @@ long WeaponBolt::update (void)
 					if (GameMap->getDeepWater(cellR, cellC) || GameMap->getShallowWater(cellR, cellC))
 					{
 						traceCombat("impact", "water_miss");
-						if (waterMissEffect && waterMissEffect->IsExecuted())
-						{
-							glm::vec3			tPosition;
-							glm::mat4 	shapeOrigin;
-							glm::mat4	localToWorld;
-							
-							tPosition.x = -hotSpot.x;
-							tPosition.y = Terrain::waterElevation;
-							tPosition.z = hotSpot.y;
-							
-							mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
-							mc2::math::buildTranslation(shapeOrigin, tPosition);
-							
-							gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,nullptr);
-							waterMissEffect->Start(&info);
-						}
-						
-						if (missEffect)
-						{
-							missEffect->Kill();
-							missEffect.reset();
-						}
+
 					}
 					else
 					{
 						traceCombat("impact", "miss");
-						if (missEffect && missEffect->IsExecuted())
-						{
-							glm::vec3			tPosition;
-							glm::mat4 	shapeOrigin;
-							glm::mat4	localToWorld;
-							
-							mc2ToRender(tPosition, hotSpot);
-							
-							mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
-							mc2::math::buildTranslation(shapeOrigin, tPosition);
-							
-							gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,nullptr);
-							missEffect->Start(&info);
-						}
-						
-						if (waterMissEffect)
-						{
-							waterMissEffect->Kill();
-							waterMissEffect.reset();
-						}
+						emitImpact(boltType, weaponShot, position, hotSpot, 0);   // beam end on the ground
 					}
-					
-					if (hitEffect)
-					{
-						hitEffect->Kill();
-						hitEffect.reset();
-					}
+
 				}
 				
 				if (target)
@@ -659,24 +408,7 @@ long WeaponBolt::update (void)
 						((static_cast<WeaponBoltTypePtr>(getObjectType()))->areaEffectDmg > 0.0f) &&
 						((static_cast<WeaponBoltTypePtr>(getObjectType()))->areaEffectRad > 0.0f))
 					{
-						if (hitEffect)
-						{
-							hitEffect->Kill();
-							hitEffect.reset();
-						}
-						
-						if (missEffect)
-						{
-							missEffect->Kill();
-							missEffect.reset();
-						}
-						
-						if (waterMissEffect)
-						{
-							waterMissEffect->Kill();
-							waterMissEffect.reset();
-						}
-						
+
 						// The explosion owns area damage for both hits and misses.
 						ObjectManager->createExplosion((static_cast<WeaponBoltTypePtr>(getObjectType()))->hitEffectObjNum,
 														nullptr,*targetPosition,
@@ -690,17 +422,7 @@ long WeaponBolt::update (void)
 				}
 				else if (targetPosition) 
 				{
-					long randomCrater = 0;
-					if (weaponShot.damage > 9)
-						randomCrater = 3;
-					else if (weaponShot.damage > 6)
-						randomCrater = 2;
-					else if (weaponShot.damage > 3)
-						randomCrater = 1;
-						
- 					if (missEffect)
-						craterManager->addCrater(CRATER_1+randomCrater,*targetPosition,mc2_appearance_rng::randomNumber(180));
-		
+
 					{
 						int cellRow, cellCol;
 		
@@ -716,24 +438,7 @@ long WeaponBolt::update (void)
 						((static_cast<WeaponBoltTypePtr>(getObjectType()))->areaEffectDmg > 0.0f) &&
 						((static_cast<WeaponBoltTypePtr>(getObjectType()))->areaEffectRad > 0.0f))
 					{
-						if (hitEffect)
-						{
-							hitEffect->Kill();
-							hitEffect.reset();
-						}
-						
-						if (missEffect)
-						{
-							missEffect->Kill();
-							missEffect.reset();
-						}
-						
-						if (waterMissEffect)
-						{
-							waterMissEffect->Kill();
-							waterMissEffect.reset();
-						}
-						
+
 						// The explosion owns area damage for both hits and misses.
 						ObjectManager->createExplosion((static_cast<WeaponBoltTypePtr>(getObjectType()))->hitEffectObjNum,
 														nullptr,*targetPosition,
@@ -775,6 +480,51 @@ long WeaponBolt::update (void)
 			laserDirection = glm::normalize(laserDirection);
 	}
 
+	if (hitTarget) hitLeft -= frameLength;
+	// Gameplay retirement never reads particle completion or visibility.
+	return !(hitTarget && retireDeadline.armed &&
+	         mission->getCombatClock().ticks >= retireDeadline.tick);
+}
+
+void WeaponBolt::updatePresentation()
+{
+	if (!targetPosition || getFlag(OBJECT_FLAG_JUSTCREATED)) return;
+	auto* myOwner = ObjectManager->getByWatchID(ownerWID);
+	auto* target = ObjectManager->getByWatchID(targetWID);
+	glm::vec3 laserDirection = *targetPosition - (hitTarget ? position : laserPosition);
+	if (glm::length(laserDirection) > 0.0f) laserDirection = glm::normalize(laserDirection);
+	bool inView = true;
+	const auto start = [&](gosFX::EffectPtr& effect, const glm::vec3& at) {
+		if (!effect) return;
+		glm::vec3 world; mc2ToRender(world, at);
+		glm::mat4 origin(1.0f); mc2::math::buildTranslation(origin, world);
+		gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime, &origin, nullptr);
+		effect->Start(&info);
+	};
+	if (!presentationStarted) {
+		presentationStarted = true;
+		createPresentationResources();
+		start(gosEffect, laserPosition);
+		start(muzzleEffect, position);
+	}
+	if (hitTarget && !presentationImpactStarted) {
+		presentationImpactStarted = true;
+		if (gosEffect) { gosEffect->Kill(); gosEffect.reset(); }
+		int row, col; land->worldToCell(*targetPosition, row, col);
+		const bool water = GameMap->getDeepWater(row, col) || GameMap->getShallowWater(row, col);
+		if (target) {
+			missEffect.reset(); waterMissEffect.reset(); start(hitEffect, laserPosition);
+		} else if (water) {
+			hitEffect.reset(); missEffect.reset();
+			auto at = *targetPosition; at.z = Terrain::waterElevation; start(waterMissEffect, at);
+		} else {
+			hitEffect.reset(); waterMissEffect.reset(); start(missEffect, *targetPosition);
+		}
+	}
+	if (static_cast<WeaponBoltTypePtr>(getObjectType())->isBeam) {
+		startUV += static_cast<WeaponBoltTypePtr>(getObjectType())->uvAnimRate * frameLength;
+		gosTextureHandle = mc2::textures::sourceId(mcTextureHandle);
+	}
    	if (gosEffect && gosEffect->IsExecuted())
    	{
 		glm::vec3 actualPosition;
@@ -796,7 +546,7 @@ long WeaponBolt::update (void)
 		mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
 		mc2::math::buildTranslation(shapeOrigin, actualPosition);
 		
-		rotation = -world_angle_between(laserPosition, *targetPosition);
+		const float rotation = -world_angle_between(laserPosition, *targetPosition);
 		
 		glm::quat effectRot;
 		effectRot = mc2::math::quatFromEuler(mc2::math::Euler(0.0f,rotation * DEGREES_TO_RADS,0.0f));
@@ -952,8 +702,7 @@ long WeaponBolt::update (void)
 		
  	if (hitTarget)
 	{
-		hitLeft -= frameLength;
-		
+
 		if (gosEffect && (hitLeft < 0.0f))
 		{
 			gosEffect->Kill();
@@ -1212,5 +961,5 @@ long WeaponBolt::update (void)
 		}
 	}
 
-	return (inView);
+	if (!inView && !getExists()) destroy();
 }

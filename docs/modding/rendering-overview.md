@@ -12,7 +12,7 @@ Each frame runs the following passes:
 | 1 | Camera/light uniforms | `GameCamera::render()` (`code/gamecam.cpp`) | MVP, `gos_SetWorldToClipGL()` |
 | 2 | Skybox | `GameAdapters::Sky::renderHdri()` | HDRI (MC2_HDRI_SKY=1) or black |
 | 3 | Terrain solid | `land->render()` | Tessellated quads, PCF shadow |
-| 4 | Craters | `craterManager->render()` | Decal batch |
+| 4 | Ground decals | `gos_PushDecal` (ground contact blobs) | Decal batch |
 | 5 | Objects (queue) | `ObjectManager->render()` | Mechs, static props, FX shape nodes — queued here, drawn at flush |
 | 6 | Water surface (CPU path) | `land->renderWater()` | Default path; `projectZ()`-displaced |
 | 7 | Shadow queue | `ObjectManager->renderShadows()` | Shadow geometry queued for pre-pass |

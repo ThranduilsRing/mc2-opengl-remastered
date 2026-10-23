@@ -196,6 +196,6 @@ def test_every_environment_option_has_exactly_one_legacy_name():
     table = (ROOT / "Gates" / "render_options_legacy_env.h").read_text()
     mapped = re.findall(r'\{"(MC2_[A-Z0-9_]+)",\s*"(\w+)"\}', table)
     options = re.findall(r'detail::\w+Opt\s*\(\s*"(\w+)"', (ROOT / "Gates" / "render_options.h").read_text())
-    options_cfg_from_the_start = {"PostCAS", "PostCASSharpness", "TonemapMode", "ShadowQuality", "SpatialAA"}
+    options_cfg_from_the_start = {"PostCAS", "PostCASSharpness", "TonemapMode", "ShadowQuality", "SpatialAA", "ImpactDecals"}
     assert sorted(o for _, o in mapped) == sorted(set(options) - options_cfg_from_the_start)
     assert len({e for e, _ in mapped}) == len(mapped)

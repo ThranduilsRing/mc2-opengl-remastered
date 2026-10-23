@@ -309,6 +309,10 @@ class WeaponBolt : public GameObject
 		virtual void destroy (void);
 		
 		virtual long update (void);
+		void updatePresentation();
+		void createPresentationResources();
+		std::uint64_t simulationHash();
+		bool hasPresentation() const { return targetPosition != nullptr; }
 		virtual void render (void);
 		
 		virtual void init (bool create, ObjectTypePtr _type);
@@ -323,11 +327,8 @@ class WeaponBolt : public GameObject
 			if (!set) traceCombatRetire("set_exists_false");
 			GameObject::setExists(set);
 
-			//If we are setting this effect to not existing, clean up its RAM!!
-			if (!set)
-			{
-				destroy();
-			}
+			// The retired slot retains its cosmetic tail until presentation ends
+			// or the deterministic pool reuses it. It cannot deal more damage.
 		}
 
 		bool isVisible (void);
@@ -419,6 +420,8 @@ class WeaponBolt : public GameObject
         // Slot generations distinguish pool reuse without changing combat or save records.
         mc2::CombatTrace combatTrace;
         mc2::combat::RetireDeadline retireDeadline;
+		bool presentationStarted = false;
+		bool presentationImpactStarted = false;
         void armRetireDeadline();
         void traceRetireDeadline(std::string_view reason, std::string_view metadata);
         void traceCombat(std::string_view event, std::string_view reason = "",

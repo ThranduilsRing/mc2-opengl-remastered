@@ -458,9 +458,13 @@ bool load_bookmarks(const char* path, std::string& missionOut,
         const char* k = strchr(p, ':');
         if (k) { k = strchr(k, '"'); if (k) { ++k; const char* e = strchr(k, '"');
                  if (e) b.name.assign(k, e); } }
-        // Scope to this object: up to the next "name" or end.
-        const char* next = strstr(p + 6, "\"name\"");
-        std::string obj(p, next ? static_cast<size_t>((next - p)) : strlen(p));
+        // Bookmark objects are flat (scalars and arrays). Include keys before
+        // "name": sorted JSON puts "alt" first, otherwise zoom silently falls
+        // back to 1200 or reads the following bookmark's altitude.
+        const char* begin = p;
+        while (begin > txt.c_str() && *begin != '{') --begin;
+        const char* end = strchr(p, '}');
+        std::string obj(begin, end ? static_cast<size_t>(end - begin + 1) : strlen(begin));
         const char* pos = strstr(obj.c_str(), "\"pos\"");
         if (pos) {
             const char* after = nullptr;

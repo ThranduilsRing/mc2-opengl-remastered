@@ -722,9 +722,10 @@ long Building::update (void)
 		// Radius so that nobody has to enter it!
 		if (type->getExtentRadius() < 0.0) 
 		{
-				Stuff::Vector4D diagonalSize;
-			diagonalSize.Subtract(appearance->upperLeft,appearance->lowerRight);
-			float actualSize = diagonalSize.GetLength();
+			// Collision fallback uses stock LOD0 content bounds, independent of projection.
+			auto* appearanceType = static_cast<BldgAppearanceType*>(appearance->getAppearanceType());
+			auto* shape = appearanceType->getBldgCollisionShape(0);
+			float actualSize = shape ? glm::length(shape->maxBox - shape->minBox) : 0.0f;
 			actualSize /= worldUnitsPerMeter;
 			actualSize *= 1.25;
 			
@@ -792,8 +793,11 @@ long Building::update (void)
 			}
 	
 			
-			appearance->setObjectParameters(position,(static_cast<ObjectAppearance*>(appearance))->rotation, drawFlags,getTeamId(),Team::getRelation(getTeamId(), Team::home->getId()));
-			bool inView = appearance->recalcBounds();
+			appearance->setObjectParameters(position,rotation, drawFlags,getTeamId(),Team::getRelation(getTeamId(), Team::home->getId()));
+			// Grounding and animation are authoritative even when the building is off-screen.
+			const bool inView = false;
+			position.z = TerrainRuntime::groundElevation(position);
+			setPosition(position);
 	
 			//------------------------------------------------
 			if (getObjectType()->getObjTypeNum() == GENERIC_DESTRUCTIBLE_RESOURCE_BUILDING_OBJNUM) 
@@ -814,14 +818,11 @@ long Building::update (void)
 			// touch() path (was running a full BldgAppearance::update — spotlight
 			// SetPosition loop + hierarchy transform — every frame). updateAnimations()
 			// + recalcBounds already ran above.
-			if (appearance->IsStaticNow() && !getFlag(OBJECT_FLAG_FALLING))
-				appearance->touch();
-			else
-				appearance->update();
+			appearance->update();
 
-			if (inView)
 			{
-				windowsVisible = turn;
+				// Activity is a presentation request; camera visibility cannot
+				// decide whether the authoritative snapshot carries it.
 	
 				// TERRAIN-RUNTIME-CONSUMER-GROUNDING-1: grounding routed through the
 				// spine chokepoint (gate MC2_TERRAIN_RUNTIME_GROUNDING, byte-identical).

@@ -164,13 +164,22 @@ INPUT_PYAUTOGUI = ("pyautogui.keyDown", "pyautogui.keyUp", "pyautogui.press", "p
                    "pyautogui.write", "pyautogui.typewrite")
 
 
+def _unique_allow_keys(pairs):
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError(f"duplicate allowlist key: {key}")
+        result[key] = value
+    return result
+
+
 def load_allow(root: Path = ROOT):
     """The allowlists, or None when this tree has none (the selftest's temporary trees)."""
     import json
     p = ALLOW_PATH if root == ROOT else root / "scripts" / "background-launch-allow.json"
     if not p.is_file():
         return None
-    doc = json.loads(p.read_text(encoding="utf-8"))
+    doc = json.loads(p.read_text(encoding="utf-8"), object_pairs_hook=_unique_allow_keys)
     return {k: dict(doc.get(k, {})) for k in ALLOW_SECTIONS}
 
 #: The vars that keep an agent run off the user's screen. Any launch path that

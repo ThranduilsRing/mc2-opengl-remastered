@@ -8,6 +8,7 @@
 #include <array>
 #include <filesystem>
 #include "terrain_surface_cook.h"
+#include "Gates/render_options.h"
 #include "../../3rdparty/glm/glm/gtc/packing.hpp"
 
 // The field store names the atlas format with its own constants (its header stays free of the decoder); they are the same VkFormat numbers.
@@ -393,6 +394,7 @@ bool ensure_dummy_matnormal(TerrainIsland* s) {
 // change key). Absent optional slots get the flat normal, as in GL's array. The VK detail port samples no anti-tile mips.
 // Fail-soft: a slot that is not RGBA8 at slot 0's size is rejected with a log line and the dummy stays bound.
 void import_matnormal(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
+    if(mc2::options::current().shadowQuality==0) return; // Potato keeps the flat-normal placeholder.
     const uint64_t version = feed.matNormalVersion;
     if (version == 0) return;                        // array not built yet -> macro-slope only
     if (version == s->matNormalVersionImported && s->matNormalReady) return; // already imported

@@ -82,7 +82,11 @@ def test_selection_accepts_type_id_and_rejects_ambiguity(entry):
 
 def test_animated_buildings_require_review(entry):
     from tools.assets.replace import package
-    catalog = json.loads(Path("docs/assets/catalog.json").read_text())
+    from tools.assets.catalog import load_catalog
+    try:
+        catalog = load_catalog()   # generated and untracked: built on demand when the installs exist
+    except FileNotFoundError as error:
+        pytest.skip(str(error))
     for name in ("repairbay", "rpbuilding", "sensortower"):
         assert not target_spec(select(catalog, name))["package_supported"]
     for sections in ({"Animation:0": {}}, {"TGLData": {"AnimationNodeId": "dish"}},

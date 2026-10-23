@@ -492,7 +492,7 @@ def repo_symbol(
     class/struct/enum keyword, function signature, #define).
 
     Useful for:
-      "where is MC2_BUILDING_PBR read?"
+      "where is MC2_ENVIRONMENT_AMBIENT read?"
       "where is TG_SetRenderShapePbrOverride called?"
       "which files reference RenderObjectDesc::gameObjectId?"
 

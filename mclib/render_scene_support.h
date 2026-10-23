@@ -63,6 +63,7 @@
 #include "../GameOS/gameos/vulkan_color_prop_island.h"   // VK-P11 STATIC-PROP COLOR: producer call
 #include "../GameOS/gameos/vulkan_mech_island.h"          // VK-P14 MECH TIER-1: producer call
 #include "../GameOS/gameos/vulkan_legacy_shape_island.h"  // VK-PARITY-F1: legacy MLR solid loop VK owner
+#include "../GameOS/gameos/vulkan_impact_decals.h"         // weapon impact box decals
 #include "../GameOS/gameos/vulkan_terrain_island.h"        // VK-PARITY-OVERLAY-1: overlay/decal VK owner
 #endif
 #include "../GameOS/gameos/render_frame_plan.h"  // RENDER-FRAME-PLAN-SCAFFOLD-1
@@ -78,7 +79,6 @@
 #include "../RenderCore/top_level_pass_executor.h"  // APPLY-STATE-MECHOPAQUE-1: findTopLevelStateDesc
 #include "../GameOS/gameos/gpu_cull_compute.h"  // C1b: compute_dispatch() moved here from mission.cpp
 #include "../GameOS/gameos/gpu_cull_substrate.h"
-#include "dynamic_decal_ring.h"  // MC2_DYNAMIC_DECALS gather before gos_DrawDecals
 #include "Gates/gate.h"
 
 // Borrowed engine scene state shared by the native preparation code.

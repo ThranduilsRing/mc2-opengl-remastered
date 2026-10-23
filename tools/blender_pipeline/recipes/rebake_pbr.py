@@ -3,8 +3,7 @@ rebake_pbr.py — headless Blender recipe: UV repack + PBR texture rebake.
 
 BLENDER-ASSET-PIPELINE-1 (EXPERIMENTAL). Joins the asset into one mesh, packs
 a fresh UV atlas, and Cycles-bakes albedo / normal / ORM at the target
-resolution. PNGs land in --tex-dir for the .mcasset sidecar path
-(MC2_BUILDING_PBR); the output GLB gets the baked baseColor + normal +
+resolution. PNGs land in --tex-dir; the output GLB gets baked baseColor + normal +
 metallicRoughness wired into a single Principled material.
 
 CAUTION (capability-survey #6 / docs/asset-pipeline.md §6): in-game static-prop

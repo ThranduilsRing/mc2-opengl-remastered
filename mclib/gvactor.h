@@ -188,11 +188,11 @@ class GVAppearance : public ObjectAppearance
 									
 		long										objectNameId;
 	
-		float										turretRotation;
-		float										pitch;
-		float										roll;
+
+
+
 		float										actualTurretRotation;
-		float										velocityMagnitude;
+
 		bool										inDebugMoveMode;
 		long										sensorLevel;
 		float										hazeFactor;
@@ -213,19 +213,19 @@ class GVAppearance : public ObjectAppearance
 		// in node-position functions. -1 = no owner; set in init().
 		long										actorHandle_ = -1;
 
-		long										gvAnimationState;
-		float										currentFrame;
-		float										gvFrameRate;
-		bool										isReversed;
-		bool										isLooping;
-		bool										setFirstFrame;
-		bool										canTransition;
+
+
+
+
+
+
+
 		bool										isInfantry;
 		
 		long										currentLOD;
 		
- 		std::vector<long>										nodeUsed;				//Used to stagger the weapon nodes for firing.
-		std::vector<float>										nodeRecycle;			//Used for ripple fire to find out if the node has fired recently.
+
+
 		
 		DWORD										localTextureHandle;
 		
@@ -281,6 +281,9 @@ class GVAppearance : public ObjectAppearance
 
 		virtual long update (bool animate = true);
 		void updateGeometry (void);
+        void updateSimPose();
+        glm::quat poseRotation() const;
+        void refreshSimPose() override { updateSimPose(); }
 		
 		virtual long render (long depthFixup = 0);
 
@@ -354,14 +357,14 @@ class GVAppearance : public ObjectAppearance
 		
 		virtual bool getInTransition (void)
 		{
-			return (canTransition == false);
+			return (unitAnim().canTransition == false);
 		}
 
 		virtual void setGesture (unsigned long gestureId);
 		
 		virtual long getCurrentGestureId (void)
 		{
-			return gvAnimationState;
+			return unitAnim().gvAnimationState;
 		}
 
 		//--------------------------------------------

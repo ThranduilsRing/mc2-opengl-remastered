@@ -1,3 +1,4 @@
+#include "sim_rng_state.h"
 //---------------------------------------------------------------------------
 // SIM-IDENTITY-HASH-1 -- engine-side collector for the world-state hash.
 //
@@ -39,11 +40,15 @@
 //---------------------------------------------------------------------------
 
 #include <algorithm>
+#include "command_replay.h"
+#include "save_archive.h"
 #include "objmgr.h"
 #include "mover.h"
 #include "warrior.h"
 #include "bldng.h"
 #include "turret.h"
+#include "combat_sim_hash.h"
+#include "vtol_simulation.h"
 #include "weather.h"
 #include "../mclib/abl.h"
 #include "../mclib/mathfunc.h"
@@ -306,7 +311,8 @@ extern "C" int mc2SimIdentityWriteJson(char* buf, int cap,
 // One line per SIM frame into the run log. Opt-in (MC2_SIM_IDENTITY_TRACE).
 // Called from the fixed-step sim advance; see code/mission.cpp.
 extern "C" void mc2SimIdentityTraceFrame(double scenarioTimeNow, long simFrame) {
-	if (!simIdentityEnabled() || !simIdentityTrace() || !ObjectManager)
+	if ((!simIdentityEnabled() || !simIdentityTrace()) && !mc2::replay::active()) return;
+    if (!ObjectManager)
 		return;
 
 	std::vector<MoverRecord>& recs = scratch();
@@ -337,12 +343,43 @@ extern "C" void mc2SimIdentityTraceFrame(double scenarioTimeNow, long simFrame) 
 	mc2_sim_identity::toHex16(mc2_sim_identity::digestObjects(objs), ho);
 	mc2_sim_identity::toHex16(mc2_sim_identity::digestAbl(abl), ha);
 
+    if (mc2::replay::active()) {
+        mc2::save::Archive animation;
+        mc2::save::Archive objects;
+        auto sceneryHash = mc2_sim_identity::digestObjects(objs);
+        auto combatHash = combatSimulationHash(*ObjectManager);
+        auto vtolHash = vtolSimulationHash();
+        objects(sceneryHash, combatHash, vtolHash);
+        for (long i = 1; i <= ObjectManager->getMaxObjects(); ++i) {
+            auto* mover = ObjectManager->get(i);
+            if (!mover || !mover->getExists()) continue;
+            if (!mover->getAppearance() || !mover->getAppearance()->simulationOwned()) continue;
+            auto& a = *mover->getAppearance()->simulationAnimation();
+            auto id = mover->getPartId();
+            animation(i, id, a);
+            auto& pose = *mover->getAppearance()->simPose;
+            animation(pose.root.x, pose.root.y, pose.root.z, pose.heading);
+            for (auto& node : pose.nodes) animation(node.x, node.y, node.z);
+            for (auto& node : pose.shapeNodes) animation(node.x, node.y, node.z);
+            animation(pose.hitLeft.x, pose.hitLeft.y, pose.hitLeft.z, pose.hitRight.x, pose.hitRight.y, pose.hitRight.z);
+            animation(pose.cockpit.x, pose.cockpit.y, pose.cockpit.z);
+        }
+        std::uint64_t animHash = 14695981039346656037ull;
+        for (auto byte : animation.bytes()) animHash = (animHash ^ byte) * 1099511628211ull;
+        std::uint64_t objectHash = 14695981039346656037ull;
+        for (auto byte : objects.bytes()) objectHash = (objectHash ^ byte) * 1099511628211ull;
+        const std::uint64_t rngHash = (static_cast<std::uint64_t>(mc2_anim_rng::state()) << 32) ^
+            mc2_anim_rng::drawCount() ^ (static_cast<std::uint64_t>(SimRandomDraws()) * 1099511628211ull) ^ mc2GetSimRngState();
+        mc2::replay::hashes(static_cast<std::uint64_t>(turn), {strict,
+            objectHash, mc2_sim_identity::digestAbl(abl), animHash, rngHash});
+    }
+
 	// Fixed-arity, fixed-width: two runs' logs diff cleanly and the first
 	// differing line IS the first divergent sim frame.
-	mc2::fmt::print_out("[SIMID v1] simframe={:d} t={:.3f} n={:d} graded={} visual={} strict={} nobj={:d} objects={} nabl={:d} abl={} rng={:d}/{:d}/{:d}\n",
+	mc2::fmt::print_out("[SIMID v1] simframe={:d} t={:.3f} n={:d} graded={} visual={} strict={} nobj={:d} objects={} nabl={:d} abl={} rng={:d}/{:d}/{:d} animrng={:d}\n",
 	       mc2::fmt::as_i32(simFrame), scenarioTimeNow, mc2::fmt::as_i32(static_cast<int>(recs.size())), mc2::fmt::safe(hg), mc2::fmt::safe(hv), mc2::fmt::safe(hs),
 	       mc2::fmt::as_i32(static_cast<int>(objs.size())), mc2::fmt::safe(ho), mc2::fmt::as_i32(static_cast<int>(abl.size())), mc2::fmt::safe(ha),
-	       mc2::fmt::as_u32(static_cast<uint32_t>(SimRandomDraws())), mc2::fmt::as_u32(mc2_appearance_rng::drawCount()), mc2::fmt::as_u32(weather ? weather->drawCount() : 0u));
+	       mc2::fmt::as_u32(static_cast<uint32_t>(SimRandomDraws())), mc2::fmt::as_u32(mc2_appearance_rng::drawCount()), mc2::fmt::as_u32(weather ? weather->drawCount() : 0u), mc2::fmt::as_u32(mc2_anim_rng::drawCount()));
 
 #if MC2_SIM_TRACE
 	mc2_sim_trace::setTime(scenarioTimeNow);

@@ -48,7 +48,7 @@ class MoverOrderApplication final : public OrderAdmissionValidator, public Order
 public:
     explicit MoverOrderApplication(Access access) : access_(access) {}
     bool permitted(const OrderSource& source, const OrderEnvelope& e) const override {
-        if (source.kind != SourceKind::MissionContent && source.kind != SourceKind::UI) return false;
+        if (source.kind != SourceKind::MissionContent && source.kind != SourceKind::UI && source.kind != SourceKind::Replay) return false;
         if (source.kind == SourceKind::MissionContent && e.payload.origin != OrderOrigin::Commander) return false;
         if (source.kind == SourceKind::UI && e.payload.origin != OrderOrigin::Player) return false;
         for (std::uint32_t i = 0; i < e.recipients.size(); ++i)
@@ -56,6 +56,8 @@ public:
         return true;
     }
     std::uint32_t validateCommand(const OrderEnvelope& e) const override {
+        if constexpr (requires { access_.validatePlayer(e); })
+            if (e.payload.origin == OrderOrigin::Player) return access_.validatePlayer(e);
         if (e.queueMode != QueueMode::Replace) return reason(MoverOrderRejection::UnsupportedMode);
         const auto& p = e.payload;
         if (p.origin != OrderOrigin::Player && p.origin != OrderOrigin::Commander)
@@ -86,13 +88,16 @@ public:
         if (!commander || mover->getCommanderId() < 0 ||
             commander->value != static_cast<std::uint32_t>(mover->getCommanderId()))
             return reason(MoverOrderRejection::Permission);
-        if (e.payload.move && (mover->isDisabled() || !mover->canMove()))
+        if (e.payload.move && e.payload.kind != OrderKind::AttackObject && e.payload.kind != OrderKind::AttackPoint &&
+            (mover->isDisabled() || !mover->canMove()))
             return reason(MoverOrderRejection::CannotMove);
         return 0;
     }
     ApplicationOutcome applyRecipient(const OrderEnvelope& e, ObjectRef ref, std::uint32_t ordinal) override {
         if (auto r = validateCommand(e)) return {RecipientStatus::Rejected, r};
         if (auto r = validateRecipient(e, ref, ordinal)) return {RecipientStatus::Rejected, r};
+        if constexpr (requires { access_.applyPlayer(e, ref); })
+            if (e.payload.origin == OrderOrigin::Player) return access_.applyPlayer(e, ref);
         LegacyOrder legacy;
         // Admitted kind/origin tags match the legacy enums.
         legacy.code = static_cast<decltype(legacy.code)>(e.payload.kind);
@@ -478,6 +483,8 @@ class Mission
 		void completeOrderSimulationTick();
 		MoverPtr resolveOrderRecipient(mc2::sim::ObjectRef ref);
 		std::uint64_t orderSession() const { return orderIngress.session(); }
+		bool orderTickExecuting() const { return orderIngress.queue().executingTick().has_value(); }
+		long submitPlayerOrder(Mover* mover, const TacticalOrder& order, bool queued);
 		std::optional<mc2::sim::ObjectRef> orderRecipient(long partId) const;
 		std::expected<mc2::sim::MissionReceipt, mc2::sim::OrderError> submitMissionOrder(
 			std::uint64_t session, mc2::sim::OrderEnvelope envelope);
@@ -562,10 +569,16 @@ class Mission
 	// Mission::update phases (mission_update.cpp); callers use update().
 		void updateDevHotkeys();
 		void updateFrameClock();
+		void updateTickClock(bool advanceTime);
+		double pollRealFrameSeconds(float harnessFrameSeconds);
+		void resumeTickAudio();
+		void updatePathManager();
+		void updatePresentationOnly(bool moversOnly, float alpha);
+		bool updatePass(bool tickMode, bool runFrame, bool runSim, bool advanceTime, long& earlyResult);
 		void updateFrontEnd();
 		void updateTerrainGeometry();
 		void updateObjectManager();
-		void updateCratersAndDamp();
+		void updateDisplacementDamp();
 		void updateSimSystems();
 		void updateTraceHooks();
 		void updateTermination();

@@ -214,7 +214,7 @@ bool Mech3DAppearance::recalcBounds (void)
 				// Leave the old one in place until we are inView again!
 				// Should fix flickering on screen edge?  It does.  Must let jump flicker or he never comes down.
 				setVisibilityGatesFromLegacy(wasInView);
-				if (inView || (currentGestureId == 20))
+				if (inView || (unitAnim().currentGestureId == 20))
 					baseRootNodeDifference = (getNodeIdPosition(rootNodeIndex).z - position.z) - baseRootNodeHeight;
 
 				if (inView && isHelicopter)
@@ -357,10 +357,10 @@ bool Mech3DAppearance::recalcBounds (void)
 							getPaintScheme(r, g, b);
 							resetPaintScheme(r,g,b);
 
-							if (rightArmOff)
+							if (unitAnim().rightArmOff)
 								mechShape->StopUsing("joint_ruarm");
 
-							if (leftArmOff)
+							if (unitAnim().leftArmOff)
 								mechShape->StopUsing("joint_luarm");
 						}
 
@@ -380,14 +380,14 @@ bool Mech3DAppearance::recalcBounds (void)
 							getPaintScheme(r, g, b);
 							resetPaintScheme(r,g,b);
 
-							if (rightArmOff)
+							if (unitAnim().rightArmOff)
 								mechShape->StopUsing("joint_ruarm");
 
-							if (leftArmOff)
+							if (unitAnim().leftArmOff)
 								mechShape->StopUsing("joint_luarm");
 						}
 
-						mechType->setAnimation(mechShape,currentGestureId);
+						mechType->setAnimation(mechShape,unitAnim().currentGestureId);
 					}
 				}
 				else
@@ -904,7 +904,7 @@ long Mech3DAppearance::render (long depthFixup)
 					}
 				}
 				
-				if ((currentGestureId == GestureJump) && inJump && jumpJetEffect && jumpJetEffect->IsExecuted())
+				if ((unitAnim().currentGestureId == GestureJump) && unitAnim().inJump && jumpJetEffect && jumpJetEffect->IsExecuted())
 				{
 					long jumpNodeId = mechType->numSmokeNodes + mechType->numWeaponNodes;
 					glm::vec3 jumpNodePos = getNodePosition(jumpNodeId);
@@ -1005,7 +1005,7 @@ long Mech3DAppearance::render (long depthFixup)
 					}
 				}
 				
-				if (waterWake && isWaking && (currentGestureId != 20))	//Do NOT draw wake if we are jumping.  keep calcing it, though!
+				if (waterWake && isWaking && (unitAnim().currentGestureId != 20))	//Do NOT draw wake if we are jumping.  keep calcing it, though!
 				{
 					glm::mat4 	shapeOrigin;
 					glm::mat4	localToWorld;
@@ -1022,7 +1022,7 @@ long Mech3DAppearance::render (long depthFixup)
 					glm::quat effectRot;
 					effectRot = mc2::math::quatFromEuler(mc2::math::Euler(90.0f * DEGREES_TO_RADS,rotation * DEGREES_TO_RADS,0.0f));
 
-					if (!inReverse)
+					if (!unitAnim().inReverse)
 						localToWorld = mc2::math::multiply(gosFX::Effect_Against_Motion, effectRot);
 					else
 						localToWorld = mc2::math::multiply(gosFX::Effect_Into_Motion, effectRot);
@@ -1068,7 +1068,7 @@ long Mech3DAppearance::render (long depthFixup)
 		}
 	}
 
-	if (rightArmOff && rightArm && rightArmInView)
+	if (unitAnim().rightArmOff && rightArm && rightArmInView)
 	{
 		Camera::HazeFactor = rightArmHazeFactor;
 
@@ -1108,7 +1108,7 @@ long Mech3DAppearance::render (long depthFixup)
 		}
 	}
  	
- 	if (leftArmOff && leftArm && leftArmInView)
+ 	if (unitAnim().leftArmOff && leftArm && leftArmInView)
 	{
 		Camera::HazeFactor = leftArmHazeFactor;
 

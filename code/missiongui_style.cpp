@@ -1,10 +1,95 @@
 // MissionInterfaceManager: the VTOL, old-style and area-of-effect control styles, waypoint paths and the click-driven update overload.
 // Declared in the class headers; shared names in missiongui_shared_internal.h.
 #include "missiongui_shared_internal.h"
+#include "unit_animation_tick.h"
+#include "vtol_simulation.h"
+#include "save_archive.h"
+#include "appearance_rng.h"
+#include "command_replay.h"
 
+
+namespace { std::uint64_t s_vtolHash = 14695981039346656037ull; }
+std::uint64_t vtolSimulationHash() { return s_vtolHash; }
+void setVtolSimulationGesture(BldgAppearance& appearance, unsigned long gesture)
+{
+    appearance.setGesture(gesture);
+    auto& state = *appearance.simulationAnimation();
+    if (appearance.appearType->isRandom(gesture))
+        state.currentFrame = mc2_anim_rng::randomNumber(appearance.appearType->getNumFrames(gesture) - 1);
+}
 
 void MissionInterfaceManager::updateVTol()
 {
+    if (simPresentationPass) {
+        for (long vtolNum = 0; vtolNum < MAX_TEAMS; ++vtolNum) {
+            if (!paintingVtol[vtolNum] || !vTol[vtolNum]) continue;
+            const auto& state = *vTol[vtolNum]->simulationAnimation();
+            const bool startBeam = state.ejectionSerial != vTol[vtolNum]->appliedEffects_.ejectionSerial;
+            vTol[vtolNum]->presentAnimation(state);
+            vTol[vtolNum]->recalcBounds();
+            vTol[vtolNum]->update(false);
+            if (startBeam) {
+					if (recoveryBeam[vtolNum])
+					{
+						glm::mat4 	shapeOrigin;
+						glm::mat4	localToWorld;
+						glm::mat4	localResult;
+
+						glm::vec3 dustPos = vTol[vtolNum]->position;
+						glm::vec3 wakePos;
+						mc2ToRender(wakePos, dustPos);
+
+						mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
+						mc2::math::buildTranslation(shapeOrigin, wakePos);
+
+						gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,nullptr);
+
+						recoveryBeam[vtolNum]->SetLoopOff();
+						recoveryBeam[vtolNum]->SetExecuteOn();
+						recoveryBeam[vtolNum]->Start(&info);
+					}
+            }
+			if (dustCloud[vtolNum] && dustCloud[vtolNum]->IsExecuted())
+			{
+				glm::mat4 	shapeOrigin;
+				glm::mat4	localToWorld;
+				glm::mat4	localResult;
+
+				glm::vec3 dustPos = vTol[vtolNum]->position;
+				glm::vec3 wakePos;
+				mc2ToRender(wakePos, dustPos);
+
+				mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
+				mc2::math::buildTranslation(shapeOrigin, wakePos);
+
+				mc2::math::Obb boundingBox;
+				gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,&boundingBox);
+
+				dustCloud[vtolNum]->Execute(&info);
+			}
+
+			if (recoveryBeam[vtolNum] && recoveryBeam[vtolNum]->IsExecuted())
+			{
+				glm::mat4 	shapeOrigin;
+				glm::mat4	localToWorld;
+				glm::mat4	localResult;
+
+				glm::vec3 dustPos = vTol[vtolNum]->position;
+				glm::vec3 wakePos;
+				mc2ToRender(wakePos, dustPos);
+
+				mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
+				mc2::math::buildTranslation(shapeOrigin, wakePos);
+
+				mc2::math::Obb boundingBox;
+				gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,&boundingBox);
+
+				recoveryBeam[vtolNum]->Execute(&info);
+			}
+
+        }
+        return;
+    }
 	long commanderID = Commander::home->getId();
 	paintingMyVtol = paintingVtol[commanderID];
 	
@@ -12,9 +97,12 @@ void MissionInterfaceManager::updateVTol()
 	{
 		if ( paintingVtol[vtolNum] && (!bPaused || MPlayer))
 		{
+			auto& clock = *vTol[vtolNum]->simulationAnimation();
+			if (clock.lastAnimAdvanceFrame == static_cast<uint32_t>(turn)) continue;
+			clock.lastAnimAdvanceFrame = static_cast<uint32_t>(turn);
 			if (vehicleID[vtolNum] != 147)		//We are the standard vtol.
 			{
-				if (!vehicleDropped[vtolNum] && (vTol[vtolNum]->currentFrame >= 145))
+				if (!vehicleDropped[vtolNum] && (vTol[vtolNum]->unitAnim().currentFrame >= 145))
 				{
 					vehicleDropped[vtolNum] = true;
 					soundSystem->playDigitalSample(VTOL_DROP,vPos[vtolNum]);
@@ -31,7 +119,7 @@ void MissionInterfaceManager::updateVTol()
 					else
 						addVehicle( vPos[vtolNum] );
 				}
-				else if (vTol[vtolNum]->currentFrame >= 300)
+				else if (vTol[vtolNum]->unitAnim().currentFrame >= 300)
 				{
 					paintingVtol[vtolNum] = 0;
 					vTol[vtolNum].reset();
@@ -81,7 +169,7 @@ void MissionInterfaceManager::updateVTol()
 			{
 				if ((vTol[vtolNum]->getCurrentGestureId() == 1) && !vTol[vtolNum]->getInTransition())
 				{
-					vTol[vtolNum]->setGesture(0);
+					setVtolSimulationGesture(*vTol[vtolNum], 0);
 
 					//Needs to STAY false, probably in MPlayer too because
 					// If the mech we are about to recover gets destroyed, we need to abort!!
@@ -91,25 +179,7 @@ void MissionInterfaceManager::updateVTol()
 
 					vTolTime[vtolNum] = scenarioTime;
 					
-					if (recoveryBeam[vtolNum])
-					{
-						glm::mat4 	shapeOrigin;
-						glm::mat4	localToWorld;
-						glm::mat4	localResult;
-									
-						glm::vec3 dustPos = vTol[vtolNum]->position;
-						glm::vec3 wakePos;
-						mc2ToRender(wakePos, dustPos);
-							
-						mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
-						mc2::math::buildTranslation(shapeOrigin, wakePos);
-									
-						gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,nullptr);
-					
-						recoveryBeam[vtolNum]->SetLoopOff();
-						recoveryBeam[vtolNum]->SetExecuteOn();
-						recoveryBeam[vtolNum]->Start(&info);
-					}
+					++vTol[vtolNum]->simulationAnimation()->ejectionSerial;
 
 					//Actually the Karnov Deploy Sound Effect!
 					soundSystem->playDigitalSample(RADAR_HUM,vTol[vtolNum]->position,false);
@@ -161,9 +231,9 @@ void MissionInterfaceManager::updateVTol()
 						}
 					}
 				}
-				else if ((vTol[vtolNum]->getCurrentGestureId() == 0) && (mechRecovered[vtolNum] || mechToRecover[vtolNum]->isDestroyed()) && (!vTol[vtolNum]->getInTransition()))
+				else if ((vTol[vtolNum]->getCurrentGestureId() == 0) && (mechRecovered[vtolNum] || (mechToRecover[vtolNum] && mechToRecover[vtolNum]->isDestroyed())) && (!vTol[vtolNum]->getInTransition()))
 				{
-					vTol[vtolNum]->setGesture(2);	//Fly Away!!
+					setVtolSimulationGesture(*vTol[vtolNum], 2);	//Fly Away!!
 				}
 				else if ((vTol[vtolNum]->getCurrentGestureId() == 2) && (!vTol[vtolNum]->getInTransition()))
 				{
@@ -201,64 +271,26 @@ void MissionInterfaceManager::updateVTol()
 				}
 			}
 	
-			if (dustCloud[vtolNum] && dustCloud[vtolNum]->IsExecuted())
-			{
-				glm::mat4 	shapeOrigin;
-				glm::mat4	localToWorld;
-				glm::mat4	localResult;
-						
-				glm::vec3 dustPos = vTol[vtolNum]->position;
-				glm::vec3 wakePos;
-				mc2ToRender(wakePos, dustPos);
-				
-				mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
-				mc2::math::buildTranslation(shapeOrigin, wakePos);
-						
-				mc2::math::Obb boundingBox;
-				gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,&boundingBox);
-				
-				dustCloud[vtolNum]->Execute(&info);
-			}
-			
-			if (recoveryBeam[vtolNum] && recoveryBeam[vtolNum]->IsExecuted())
-			{
-				glm::mat4 	shapeOrigin;
-				glm::mat4	localToWorld;
-				glm::mat4	localResult;
-						
-				glm::vec3 dustPos = vTol[vtolNum]->position;
-				glm::vec3 wakePos;
-				mc2ToRender(wakePos, dustPos);
-				
-				mc2::math::buildRotation(shapeOrigin, mc2::math::Euler(0.0f,0.0f,0.0f));
-				mc2::math::buildTranslation(shapeOrigin, wakePos);
-						
-				mc2::math::Obb boundingBox;
-				gosFX::Effect::ExecuteInfo info((Stuff::Time)scenarioTime,&shapeOrigin,&boundingBox);
-				
-				recoveryBeam[vtolNum]->Execute(&info);
-			}
-				
-			if (vTol[vtolNum])	//Might have been deleted above!!
-			{
-				vTol[vtolNum]->recalcBounds();
-				vTol[vtolNum]->update();			//Must update even if not on screen!
-			}
-		}
-		else if (paintingVtol[vtolNum] && bPaused)
-		{
-			if (vTol[vtolNum])	//Might have been deleted above!!
-			{
-				long cFrame = vTol[vtolNum]->currentFrame;
-				
-				vTol[vtolNum]->recalcBounds();
-				vTol[vtolNum]->update();			//Must update even if not on screen!
-				
-				//If we are paused, do not animate.
-				vTol[vtolNum]->currentFrame = cFrame;
-			}
-		}
-	}
+
+            if (vTol[vtolNum]) {
+                auto& state = *vTol[vtolNum]->simulationAnimation();
+                mc2::sim::advanceLinearAnimation(state, state.bdFrameRate,
+                    vTol[vtolNum]->appearType->getNumFrames(state.bdAnimationState), frameLength);
+            }
+        }
+    }
+    if (!mc2::replay::active()) return;
+    mc2::save::Archive state;
+    for (long i = 0; i < MAX_TEAMS; ++i) {
+        bool active = paintingVtol[i] && vTol[i] != nullptr;
+        state(active);
+        if (!active) continue;
+        auto recovered = mechToRecover[i] ? mechToRecover[i]->getWatchID() : 0;
+        state(i, vehicleID[i], vehicleDropped[i], mechRecovered[i], vTolTime[i],
+              vPos[i].x, vPos[i].y, vPos[i].z, recovered, *vTol[i]->simulationAnimation());
+    }
+    s_vtolHash = 14695981039346656037ull;
+    for (auto byte : state.bytes()) s_vtolHash = (s_vtolHash ^ byte) * 1099511628211ull;
 }
 
 void MissionInterfaceManager::drawWayPointPaths()

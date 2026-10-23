@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 'Smoke every supported mod against the current mc2.exe: py -3 tools/mod_smoke.py --battery'
 #
-# Stages disposable installs under G:/mc2-battery/mod_smoke/<stamp>/ (never writes
+# Stages disposable installs under G:/mc2-installs/mod_smoke-battery/<stamp>/ (never writes
 # into a game install) and hands each one to scripts/run_smoke.py.
 #
 #     py -3 tools/mod_smoke.py --battery [--mod NAME[,NAME]] [--mission STEM]
@@ -45,7 +45,7 @@ import console_child  # noqa: E402  (windowless console children)
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_INSTALL_ROOT = Path('A:/Games/mc2-opengl')
-DEFAULT_BATTERY_ROOT = Path('G:/mc2-battery/mod_smoke')
+DEFAULT_BATTERY_ROOT = Path('G:/mc2-installs/mod_smoke-battery')
 DEFAULT_BASE_INSTALL = Path('A:/Games/mc2-opengl/mc2-win64-v0.4')
 GOLDEN_INSTALL = 'mc2-win64-v0.4c'
 
@@ -107,6 +107,8 @@ def resolve_build(explicit: str | None, build_dir: str) -> tuple[Path, Path]:
     root = build
     while root.name.lower() not in ('build64', 'build64-ninja') and root.parent != root:
         root = root.parent
+    if root.parent == root:
+        root = ROOT / build_dir  # installed exe or E: tree reached through a junction
     return build, root
 
 
@@ -530,7 +532,7 @@ def health_cell(h: dict) -> str:
 
 def artifact_log_text(started: float, stem: str) -> str:
     """Engine log run_smoke saved for this mission (tests/smoke/artifacts/<stamp>/<stem>.log)."""
-    root = ROOT / 'tests' / 'smoke' / 'artifacts'
+    root = Path(os.environ.get('MC2_SMOKE_ARTIFACT_ROOT', ROOT / 'tests' / 'smoke' / 'artifacts'))
     if not root.is_dir():
         return ''
     best = None

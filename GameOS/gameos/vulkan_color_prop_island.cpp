@@ -251,6 +251,15 @@ struct ColorPropIsland : mc2vk::IslandState {
 
     VkDescriptorSet   set[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE};   // per parity slot (VK-PROP-FENCE-DEFER-1); set[i] binds ubo/inst/light[i]
     VkCommandBuffer   cbuf[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE};   // allocated from `cpool`, freed with it
+    VkCommandBuffer lateCbuf[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE};
+    mc2vk::OwnedFence lateFence[2];
+    struct LateDraw {
+        int32_t pc[8];
+        uint32_t indexCount, instanceCount, firstIndex, firstInstance;
+        int32_t baseVertex;
+    };
+    std::vector<LateDraw> lateDraws;
+    uint32_t lateParity = 0, lateDynCount = 0, lateOffsets[4]{};
 
     // Owned objects are declared in creation order and released in reverse by the destructor, while the device is alive (the engine context releases the
     // parked island ahead of the device). An image is declared before its view so the view is released first.
@@ -1142,6 +1151,11 @@ bool init_island(ColorPropIsland* s, int w, int h) {
         if (vkAllocateCommandBuffers(s->device, &cai, s->cbuf) != VK_SUCCESS) {
             vlog("vkAllocateCommandBuffers failed."); return false;
         }
+        if (vkAllocateCommandBuffers(s->device, &cai, s->lateCbuf) != VK_SUCCESS) return false;
+        VkFenceCreateInfo fci{VK_STRUCTURE_TYPE_FENCE_CREATE_INFO};
+        fci.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+        for (auto& fence : s->lateFence)
+            if (!mc2vk::create(fence, s->device, [&](VkFence* h) { return vkCreateFence(s->device, &fci, nullptr, h); })) return false;
     }
 
     // VK-P11 STATIC-PROP MATERIAL: bind a valid dummy albedo array + layer SSBO now
@@ -1224,6 +1238,7 @@ extern "C" void mc2_vk_color_prop_island_invalidate_geometry() {
     s->ibo.reset();
     s->geomUploaded = false;
     s->packets.clear();
+    s->lateDraws.clear();
     s->typeRuns.clear();
     // The albedo arrays and the hot-colour table belong to the map too: the next map's feed imports its own (the island itself outlives the map).
     // The previous map's two albedo arrays stay allocated until that import replaces them: the per-parity descriptor sets still name their views, and a set
@@ -1267,6 +1282,7 @@ extern "C" int mc2_vk_color_prop_island_prewarm(int w,int h) {
 }
 
 extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
+    if (auto* previous = parkedIsland()) previous->lateDraws.clear();
     ZoneScopedN("VK-props-island");   // VK-FLIP-FIELD-REPORT-1 coarse region zone
     if (w <= 0 || h <= 0) return 0;
 
@@ -1425,6 +1441,12 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
       fsC = vkImageResourceBeginFrame(colorRes); }
     us_fence_wait = usSince(tFence0);
     const uint32_t par = fsC.parity & 1u;
+    // The core fence precedes late coverage. Retire that submission too before
+    // reusing its descriptor slot, frame inputs or command buffer.
+    const VkFence lateFence = s->lateFence[par].get();
+    if (vkWaitForFences(s->device, 1, &lateFence, VK_TRUE, 5ull*1000*1000*1000) != VK_SUCCESS) {
+        setFallback("late_fringe_fence_timeout"); s->disabled = true; return 0;
+    }
     const std::array<VkImageView,2> views{s->albedoTexture.view(),s->albedoOnTexture.view()};
     if (s->descriptorsDirty[par] || s->boundTextures[par]!=views) {
         write_descriptors(s,int(par)); s->boundTextures[par]=views;
@@ -1572,6 +1594,8 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
     dynOffsets[nDyn++] = static_cast<uint32_t>(mainSpan.offset + instOff);
     if (s->tier1 && s->wantLighting) dynOffsets[nDyn++] = static_cast<uint32_t>(lightSpan ? lightSpan.offset : mainSpan.offset);
     if (s->tier1) dynOffsets[nDyn++] = static_cast<uint32_t>(mainSpan.offset + poolOff);
+    s->lateParity = par; s->lateDynCount = nDyn;
+    std::copy_n(dynOffsets, nDyn, s->lateOffsets);
     g_health.stageInstUs = usSince(tStage0);
     // VK-FLIP-FIELD-REPORT-1: the instance+UBO staging above is the per-frame prop
     // upload cost (a coarse zone for it would nest cleanly; kept as the usSince metric
@@ -1683,6 +1707,16 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
                     };
                     // Only packets the FS can alpha-test have a fringe (the alpha-ON layer or the per-packet bit).
                     if (fringePass == 1 && pc.layerOn < 0 && pc.alphaTest == 0) continue;
+                    if (fringePass == 1 && pc.alphaTest == 2) {
+                        ColorPropIsland::LateDraw draw{};
+                        static_assert(sizeof(draw.pc) == sizeof(pc));
+                        std::memcpy(draw.pc, &pc, sizeof(pc));
+                        draw.indexCount = pkt.indexCount; draw.instanceCount = instCount;
+                        draw.firstIndex = pkt.firstIndex; draw.baseVertex = static_cast<int32_t>(pkt.baseVertex);
+                        draw.firstInstance = i;
+                        s->lateDraws.push_back(draw);
+                        continue;
+                    }
                     if (s_pktDump && fringePass == 0)
                         std::fprintf(s_pktDump, "%u,%u,%d,%d,%.4f,%.4f,%u,%u,%d,%u,%u\n",
                                      tid, pk, pc.layerOff, pc.layerOn, pc.uvScaleX, pc.uvScaleY,
@@ -1774,6 +1808,42 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
 
     return 0;
 }
+extern "C" void mc2_vk_color_prop_island_late_fringe() {
+    auto* s = parkedIsland();
+    if (!s || s->disabled || s->lateDraws.empty()) return;
+    auto draws = std::move(s->lateDraws);
+    s->lateDraws.clear();
+    const uint32_t par = s->lateParity;
+    VkCommandBuffer cb = s->lateCbuf[par];
+    vkResetCommandBuffer(cb, 0);
+    VkCommandBufferBeginInfo bi{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
+    bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+    if (vkBeginCommandBuffer(cb, &bi) != VK_SUCCESS) { s->disabled = true; return; }
+    VkRenderPassBeginInfo rbi{VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO};
+    rbi.renderPass = s->t1_rpass.get(); rbi.framebuffer = s->t1_fb.get();
+    rbi.renderArea = {{0,0},{static_cast<uint32_t>(s->w),static_cast<uint32_t>(s->h)}};
+    vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
+    VkViewport vp{0,0,static_cast<float>(s->w),static_cast<float>(s->h),0,1};
+    VkRect2D scissor = rbi.renderArea;
+    vkCmdSetViewport(cb,0,1,&vp); vkCmdSetScissor(cb,0,1,&scissor);
+    vkCmdBindPipeline(cb,VK_PIPELINE_BIND_POINT_GRAPHICS,s->t1_fringePipe.get());
+    vkCmdBindDescriptorSets(cb,VK_PIPELINE_BIND_POINT_GRAPHICS,s->playout.get(),0,1,&s->set[par],s->lateDynCount,s->lateOffsets);
+    VkDeviceSize offset = 0; const VkBuffer vertexBuffer = s->vbo.get();
+    vkCmdBindVertexBuffers(cb,0,1,&vertexBuffer,&offset);
+    vkCmdBindIndexBuffer(cb,s->ibo.get(),0,VK_INDEX_TYPE_UINT32);
+    for (const auto& draw : draws) {
+        vkCmdPushConstants(cb,s->playout.get(),VK_SHADER_STAGE_VERTEX_BIT|VK_SHADER_STAGE_FRAGMENT_BIT,0,sizeof(draw.pc),draw.pc);
+        vkCmdDrawIndexed(cb,draw.indexCount,draw.instanceCount,draw.firstIndex,draw.baseVertex,draw.firstInstance);
+    }
+    vkCmdEndRenderPass(cb);
+    if (vkEndCommandBuffer(cb) != VK_SUCCESS) { s->disabled = true; return; }
+    const VkFence fence = s->lateFence[par].get();
+    vkResetFences(s->device,1,&fence);
+    VkSubmitInfo si{VK_STRUCTURE_TYPE_SUBMIT_INFO};
+    si.commandBufferCount = 1; si.pCommandBuffers = &cb;
+    if (mc2vk::submitGraphics(si,fence) != VK_SUCCESS) s->disabled = true;
+}
+
 extern "C" void mc2_render_backend_color_prop_region_health(
     int* vulkanAvailable, int* buildEnabled, const char** deviceName,
     unsigned long* validationErrors, unsigned long* attempted, unsigned long* usedVulkan,

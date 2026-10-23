@@ -273,9 +273,10 @@ void TacticalOrder::validate(Archive& a) const {
     }
     const bool attacking = kind == OrderKind::AttackObject || kind == OrderKind::AttackPoint;
     if (support || (moveKind(kind) && !move) ||
-        (!moveKind(kind) && kind != OrderKind::Wait && move) || attacking != attack.has_value() ||
+        (!moveKind(kind) && !attacking && kind != OrderKind::Wait && move) || attacking != attack.has_value() ||
         (kind != OrderKind::Guard && targetKind(kind) != target.has_value())) a.reject("order_payload_shape");
-    else if (moveKind(kind) && !target && move->wayPath.points.empty()) a.reject("order_goal_missing");
+    else if (moveKind(kind) && kind != OrderKind::Withdraw && kind != OrderKind::Scramble &&
+        !target && move->wayPath.points.empty()) a.reject("order_goal_missing");
 }
 void OrderExecution::validate(Archive& a) const {
     if (notBeforeTick < issuedTick || (lastUpdateTick != 0 && lastUpdateTick < issuedTick))
@@ -349,6 +350,13 @@ std::expected<void, OrderError> TacticalOrderQueue::registerSource(OrderSource s
         return std::unexpected(OrderError::Duplicate);
     if (sources_.size() == maxOrderSources) return std::unexpected(OrderError::Capacity);
     sources_.insert(position, std::move(source));
+    return {};
+}
+std::expected<void, OrderError> TacticalOrderQueue::useReplaySource(std::uint32_t sourceId) {
+    auto source = std::ranges::lower_bound(sources_, sourceId, {}, &OrderSource::sourceId);
+    if (source == sources_.end() || source->sourceId != sourceId)
+        return registerSource({sourceId, SourceKind::Replay});
+    source->kind = SourceKind::Replay;
     return {};
 }
 std::expected<OrderReceipt, OrderError> TacticalOrderQueue::submitNext(OrderEnvelope envelope,

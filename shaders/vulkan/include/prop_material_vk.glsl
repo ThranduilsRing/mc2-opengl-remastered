@@ -57,7 +57,9 @@ SurfaceMaterial propSurface(int id, vec3 albedo) {
     s.ao = mix(1.0, orm.r, row.aoStrength);
     s.roughness = clamp(orm.g * row.material.roughnessFactor, 0.3, 1.0);
     s.metallic = clamp(orm.b * row.material.metallicFactor, 0.0, 1.0);
-    s.emission = propDecodeColor(vMaterialSeed);
+    // Ordinary baked vertex light is a lighting input, not material emission.
+    // Window nodes expose their emitted radiance directly for the future L6 consumer.
+    s.emission = (vMaterialFlags & 2u) != 0u ? s.baseColor * propDecodeColor(vMaterialSeed) : vec3(0);
     s.alphaMode = row.metadata.y;
     s.materialClass = row.metadata.x;
     return s;
