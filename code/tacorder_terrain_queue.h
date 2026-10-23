@@ -18,7 +18,8 @@ struct SavedQueueTargets {
 	static constexpr uint32_t tag = 0x32545157; // WQT2
 	std::vector<uint32_t> targets;
 	std::vector<GlobalPathStep> globalPath;
-	uint32_t curGlobalStep = 0;
+	// Signed: a failed replan on a COMPLEX route leaves the cursor at -1 (one before the first step) until the retry advances it.
+	int32_t curGlobalStep = 0;
 	std::vector<int16_t> lastGoalPath;
 	void serialize(mc2::save::Archive& archive) {
 		uint32_t signature = tag, version = 2;
@@ -34,7 +35,8 @@ struct SavedQueueTargets {
 		});
 		archive(curGlobalStep);
 		archive.sequence(lastGoalPath, MAX_GLOBAL_PATH);
-		if (curGlobalStep > MAX_GLOBAL_PATH || (!globalPath.empty() && curGlobalStep > globalPath.size()))
+		if (curGlobalStep < -1 || curGlobalStep > static_cast<int32_t>(MAX_GLOBAL_PATH) ||
+		    (!globalPath.empty() && curGlobalStep > static_cast<int32_t>(globalPath.size())))
 			archive.reject("global_path_cursor");
 	}
 };

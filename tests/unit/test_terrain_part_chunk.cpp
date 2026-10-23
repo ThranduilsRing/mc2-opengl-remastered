@@ -313,3 +313,19 @@ TEST_CASE("a pre-change R2 animation record (v2, no selector memory) loads with 
 	badRead(rejected);
 	CHECK_FALSE(badRead.good());
 }
+
+TEST_CASE("a cursor of -1 (replan failed on a complex route) saves and loads; below -1 is rejected") {
+	SavedQueueTargets saved;
+	saved.globalPath.resize(2);
+	saved.curGlobalStep = -1;
+	mc2::save::Archive write;
+	write(saved);
+	REQUIRE(write.good());
+	SavedQueueTargets loaded;
+	REQUIRE(mc2::save::decodeRecord(write.bytes(), loaded));
+	CHECK(loaded.curGlobalStep == -1);
+	saved.curGlobalStep = -2;
+	mc2::save::Archive bad;
+	bad(saved);
+	CHECK_FALSE(bad.good());
+}
