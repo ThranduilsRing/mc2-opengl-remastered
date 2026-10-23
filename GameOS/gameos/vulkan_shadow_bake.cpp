@@ -203,6 +203,7 @@ bool ShadowBake::init(VkDevice device, VmaAllocator allocator, VkPhysicalDevice 
 }
 
 void ShadowBake::releaseTransients() {
+    ZoneScopedN("ShadowBake.ReleaseTransients");
     windowFb_.reset(); windowView_.reset(); windowImage_.reset();
     for (int i = 0; i < 4; ++i) { scratchView_[i].reset(); scratch_[i].reset(); }
     staging_.reset(); tileParams_.reset(); passParams_.reset(); casterUbo_.reset(); instances_.reset(); heightBuf_.reset();
@@ -301,6 +302,7 @@ std::optional<ShadowBake::BakeKeys> ShadowBake::inputsReady(const ShadowBakeInpu
 }
 
 bool ShadowBake::ensureProducts(int maskTexels) {
+    ZoneScopedN("ShadowBake.Products");
     if (maskImage_ && maskTexels_ == maskTexels) return true;
     // A new size happens at a map boundary, after the island's idle; within a map the mask is rebaked in place.
     uint32_t mips = 1;
@@ -337,6 +339,7 @@ bool ShadowBake::ensureProducts(int maskTexels) {
 }
 
 bool ShadowBake::ensureTransients() {
+    ZoneScopedN("ShadowBake.Transients");
     if (!windowImage_) {
         if (!makeImage(windowImage_, windowView_, allocator_, device_, kWindowFmt, mc2shadow::shadowQuality().windowSide, 1,
                        VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_DEPTH_BIT, "shadow.bake.window") ||
@@ -369,6 +372,7 @@ bool ShadowBake::ensureTransients() {
 
 // Each type's local box, from the CPU copy of the shared geometry the island uploaded.
 bool ShadowBake::computeTypeBounds(const ShadowBakeInputs& in) {
+    ZoneScopedN("ShadowBake.TypeBounds");
     const void* vboCpu = nullptr;
     const void* iboCpu = nullptr;
     uint64_t vboBytes = 0, iboBytes = 0;
@@ -781,6 +785,7 @@ bool ShadowBake::recordBake(VkCommandBuffer cb, const ShadowBakeInputs& in) {
     // Timestamps: five per tile, then mips (2) and the object map (2).
     queryCount_ = 0;
     if (timed_) {
+        ZoneScopedN("ShadowBake.Queries");
         queryCount_ = tileCount * kQueriesPerTile + 4;
         VkQueryPoolCreateInfo qci{VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO};
         qci.queryType = VK_QUERY_TYPE_TIMESTAMP;
@@ -1308,6 +1313,7 @@ void ShadowBake::compareChains(const std::vector<uint8_t>& a, const std::vector<
 
 // The object map: the whole height field as the old static map drew it, then every caster, with the engine's static light matrix.
 bool ShadowBake::recordObjectMap(VkCommandBuffer cb, const ShadowBakeInputs& in, uint32_t queryBase) {
+    ZoneScopedN("ShadowBake.ObjectMap");
     const mc2terrain::TerrainFieldStore* store = gos_TerrainFieldStore();
     if (!store) return false;
     if (terrainIndexCount_ == 0 || objectHeightVersion_ != store->heightVersion()) {
