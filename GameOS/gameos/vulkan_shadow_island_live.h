@@ -84,7 +84,7 @@ uint32_t mc2_static_prop_vertex_stride(void);
 // typeID]). Also carries the terrain sun (MC2 world, toward-sun) for the shared
 // computePBR directional term.
 //
-// `bucketed`  = 1 when MC2_STATICPROP_BC7 split the group into per-bucket sibling
+// `bucketed`  = 1 when the BC7 path split the group into per-bucket sibling
 //               arrays (bucket-relative layers): the single-array import is invalid
 //               then, so the island fails soft to the flat teal (materials DEFERRED
 //               for BC7). `arrayKeyOff` == 0 or !finalized -> return 0 (fail soft).

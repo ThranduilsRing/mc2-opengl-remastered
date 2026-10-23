@@ -53,8 +53,7 @@ def gate_vector(arm: str, experiment: str) -> dict[str, str]:
     enabled = "1" if arm == "gpu" else "0"
     harvest = enabled if experiment == "harvested" else "0"
     return {"MC2_GPU_PARTICLES": enabled, "MC2_VFX_ORACLE_RENDER": harvest,
-            "MC2_VFX_ORACLE_TUBE": harvest, "MC2_VFX_ORACLE_SHAPE": harvest,
-            "MC2_VFX_GPU_SIM_CARDCLOUD": "0", "MC2_VFX_GPU_SIM_COMPARE": "0"}
+            "MC2_VFX_ORACLE_TUBE": harvest, "MC2_VFX_ORACLE_SHAPE": harvest}
 
 
 def validate_fingerprint(log_text: str, head: str) -> tuple[list[str], bool]:

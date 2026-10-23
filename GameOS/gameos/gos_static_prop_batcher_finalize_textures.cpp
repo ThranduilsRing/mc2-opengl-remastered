@@ -181,12 +181,11 @@ bool GpuStaticPropBatcher::buildTextureArrays(StaticPropFinalizeFrame& f) {
         }
 
         // ====================================================================
-        // COMPRESSION-BC7-STATICPROP-2 — bucketed build (gate ON only).
+        // COMPRESSION-BC7-STATICPROP-2 — bucketed build.
         // Partition this group's uniques by (w,h). Each bucket is uniform-dim
         // by construction → eligible for an independent BC7 or RGBA8 array.
         // layerForPacket becomes BUCKET-RELATIVE (layer within the bucket
         // array, same semantics the shader already consumes). uvScale = 1.0.
-        // The gate-OFF group-build below is left UNTOUCHED and never runs here.
         // ====================================================================
 
         // 5.10.d — find max dimensions across the group's uniques.

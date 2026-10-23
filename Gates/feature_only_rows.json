@@ -32,6 +32,6 @@
   "kind": "Feature",
   "order": -1,
   "defaultOn": true,
-  "doc": "Use authored ORM sidecars; absent maps retain neutral material factors."
+  "doc": "Reserved: no effect. Static-prop ORM is fed by the separate authored-material feed; the batcher always uses neutral factors."
  }
 ]

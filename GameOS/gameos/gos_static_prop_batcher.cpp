@@ -77,7 +77,7 @@ extern const bool s_legacyInstancePools = mc2::gate::get<"MC2_LEGACY_INSTANCE_PO
 bool gos_StaticPropLegacyInstancePools() { return s_legacyInstancePools; }
 
 // DrawPacket v5: per-draw-call substitutive dispatch.
-// Gate: MC2_DRAW_PACKET_COALESCE_V5=1
+// Always on (gate retired).
 // Extension: ARB_base_instance (GL 4.2 core, available on all tier1 GPUs).
 // GLboolean: GL_TRUE on any GL 4.2+ context. Evaluated lazily via GLEW at first use.
 // Safe: GLEW is initialized before any batcher code runs (gos_Init() order).
