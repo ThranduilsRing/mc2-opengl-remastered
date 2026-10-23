@@ -54,7 +54,7 @@
    "LG05": 97,
    "LG06": 362,
    "LG07": 0,
-   "LG08": 155,
+   "LG08": 157,
    "LG09": 4,
    "LG10": 11,
    "LG11": 75,
@@ -146,11 +146,11 @@
    "LG05": 200,
    "LG06": 445,
    "LG07": 2,
-   "LG08": 17,
+   "LG08": 13,
    "LG09": 0,
    "LG10": 4,
    "LG11": 102,
-   "LG12a": 87,
+   "LG12a": 86,
    "LG12b": 154,
    "LG13": 22,
    "LG14": 93,
@@ -192,7 +192,7 @@
    "LG05": 113,
    "LG06": 536,
    "LG07": 0,
-   "LG08": 46,
+   "LG08": 47,
    "LG09": 2,
    "LG10": 20,
    "LG11": 53,
@@ -310,6 +310,9 @@
   },
   "GameOS/gameos/asset_scale.h": {
    "LG06": 2
+  },
+  "GameOS/gameos/cook_cache.cpp": {
+   "LG08": 2
   },
   "GameOS/gameos/debug_line_project.h": {
    "LG05": 1
@@ -1997,8 +2000,7 @@
   },
   "code/objmgr_update.cpp": {
    "LG06": 1,
-   "LG08": 6,
-   "LG12a": 1
+   "LG08": 2
   },
   "code/objtype.cpp": {
    "LG03": 14,
@@ -2323,7 +2325,7 @@
   "mclib/assimp_importer.cpp": {
    "LG05": 10,
    "LG06": 7,
-   "LG08": 15,
+   "LG08": 16,
    "LG11": 1,
    "LG12a": 2
   },
@@ -3516,7 +3518,7 @@
    "LG20": 3
   }
  },
- "head": "69f55d2d6",
+ "head": "c942515a8",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
