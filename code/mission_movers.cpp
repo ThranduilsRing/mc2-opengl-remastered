@@ -186,11 +186,21 @@ long Mission::addMover (MoverInitData* moverSpec) {
 	// FitIniFile into pilot->init() below.
 	MC2_VERIFY(result == NO_ERR, "Mission::addMover: pilot .fit open failed (%ld): %s",
 		result, moverSpec ? moverSpec->pilotFileName : "(null)");
+	// A failed pilot load leaves zero skills: weapon effectiveness becomes 0/0.
+	// Reject the spawn before allocating a mover or registering it with the mission.
+	if (result != NO_ERR) {
+		MechWarrior::freeWarrior(pilot);
+		return 0;
+	}
 	result = pilot->init(&pilotFile);
 	// MC2_VERIFY reclassified from gosASSERT (slice MISSION-DATA-DEREF-HARDEN-1)
 	MC2_VERIFY(result == NO_ERR, "Mission::addMover: pilot init failed (%ld)", result);
 
 	pilotFile.close();
+	if (result != NO_ERR) {
+		MechWarrior::freeWarrior(pilot);
+		return 0;
+	}
 
 	if (moverSpec->overrideLoadedPilot)
 	{
@@ -441,6 +451,8 @@ long Mission::addMover (MoverInitData* moveSpec, LogisticsMech* mechData)
 	memcpy(mData.specialtySkills,moveSpec->specialtySkills,sizeof(bool) * NUM_SPECIALTY_SKILLS);
 
 	long moverHandle = addMover(&mData);
+	if (moverHandle <= 0)
+		return moverHandle;
 
 	MoverPtr mMech = static_cast<MoverPtr>(ObjectManager->get(moverHandle));
 	// BATTLEMECH-RESET-KIND-GUARD-1: the customization below (variantName strcpy +
@@ -476,7 +488,31 @@ long Mission::addMover (MoverInitData* moveSpec, LogisticsMech* mechData)
 	}
 	
 	
-	(static_cast<BattleMechPtr>(mMech))->resetComponents(totalComponents,componentList);
+	// BT2018-FIRST-CLASS P7: a package chassis deploys each weapon on the BT mount the mech lab
+	// assigned it. Keys go over in weapon order, which is the order resetComponents installs
+	// weapons in (component-list order).
+	BattleMechPtr bMech = static_cast<BattleMechPtr>(mMech);
+	bMech->setPendingPackageMounts({});
+	if ( totalComponents && bMech->isPackageChassis() )
+	{
+		std::vector<unsigned int> keys(static_cast<size_t>(totalComponents), 0u);
+		long keyCount = totalComponents;
+		if ( mechData->getPackageMounts(keyCount, keys.data()) == 0 )
+		{
+			std::vector<unsigned int> weaponKeys;
+			for ( long i = 0; i < keyCount; i++ )
+			{
+				const long form = MasterComponent::masterList[componentList[i]].getForm();
+				if ( form == COMPONENT_FORM_WEAPON || form == COMPONENT_FORM_WEAPON_ENERGY ||
+					 form == COMPONENT_FORM_WEAPON_BALLISTIC || form == COMPONENT_FORM_WEAPON_MISSILE )
+					weaponKeys.push_back(keys[i]);
+			}
+			bMech->setPendingPackageMounts(weaponKeys);
+		}
+	}
+
+	bMech->resetComponents(totalComponents,componentList);
+	bMech->setPendingPackageMounts({});
 	
 	return moverHandle;
 }

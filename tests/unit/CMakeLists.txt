@@ -55,6 +55,7 @@ add_executable(mc2_tests
     test_deferred_destroy.cpp  # the Vulkan deferred-destroy queue: not before the ticket, after it, negative control (offline)
     test_frame_ring.cpp  # the Vulkan frame ring offset arithmetic: slots, alignment, growth sizing (offline)
     test_readback.cpp  # the Vulkan readback ring: ticket, tag and generation checks, wrong-tag negative control (offline)
+    test_light_pool_culling.cpp
     test_texture_service.cpp  # P4a texture/material identity: key dedupe, mod precedence, paint variants, stale handles, material sets (offline)
     test_visibility_history.cpp # native actor visibility: paired IDs, lagged tiers, OR, stale fail-open
     test_texture_sources.cpp    # session source admission, strong refs, mission scopes, no renderer
@@ -76,6 +77,8 @@ add_executable(mc2_tests
     test_vulkan_contract.cpp  # VULKAN-CONTRACT-COVERAGE-1: descriptor-class coverage/consistency (offline)
     test_veg_hardsurface.cpp  # VEG-CEMENT-1: cement coverage -> vegetation falloff curve, crack weeds, class-3 union (offline)
     test_hardpoint.cpp        # HARDPOINT-ID-SCHEMA-1: HardpointId join key + weapon-tag/damage-location link (offline)
+    test_package_chassis.cpp  # BT2018-FIRST-CLASS P3/P7: package chassis regions/mounts/payload + type-number allocation (offline)
+    test_mech_clip_state.cpp  # BT2018-FIRST-CLASS P9: imported-mech clip state machine + stride matching (offline)
     test_getweaponnode_adapter.cpp  # GETWEAPONNODE-HARDPOINT-ADAPTER-1: chooseWeaponNode() authoritative-with-fallback (offline)
     test_weapon_definition.cpp  # WEAPONDEF-SCHEMA-1: WeaponFacet (was WeaponDefinition) facets + WeaponId string-id identity + weaponFitsHardpoint join (offline)
     test_equipment_definition.cpp  # EQUIPMENT-DEFINITION-SCHEMA-1: EquipmentDefinition top type (kind/tags/legacyMasterId-alias/facet slots) + WeaponFacet fold-in + equipmentFitsHardpoint (offline)
@@ -498,6 +501,8 @@ target_sources(mc2_tests PRIVATE
     test_audio_backend.cpp
     ${MC2_WORKTREE_ROOT}/GameOS/gameos/gameos_sound.cpp
 )
+set_source_files_properties(${MC2_WORKTREE_ROOT}/GameOS/gameos/gameos_sound.cpp PROPERTIES
+    INCLUDE_DIRECTORIES "${MC2_WORKTREE_ROOT}/3rdparty/tracy")
 target_link_libraries(mc2_tests PRIVATE SDL2_mixer::SDL2_mixer)
 if(WIN32)
     add_custom_command(TARGET mc2_tests POST_BUILD

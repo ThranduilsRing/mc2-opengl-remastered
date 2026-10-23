@@ -36,11 +36,13 @@ inline uint32_t hashMissionName(const char* name) {
 }
 
 // ABL seedRandom(seed) value. seed == -1 asks for a fresh seed: under MC2_DETERMINISTIC_RNG that is the deterministic sim
-// seed (startup or mission), never the wall clock; with the gate off it is the clock value (the stock behaviour).
-inline uint32_t resolveSeedRandom(int requested, bool detRng, uint32_t simSeed, uint32_t clockSeed) {
+// seed plus a per-mission call index, never the wall clock; with the gate off it is the stock clock value.
+inline uint32_t resolveSeedRandom(int requested, bool detRng, uint32_t simSeed, uint32_t clockSeed, uint32_t callIndex = 0) {
     if (requested != -1)
         return static_cast<uint32_t>(requested);
-    return detRng ? simSeed : clockSeed;
+    if (!detRng) return clockSeed;
+    // Odd multiplication gives each call a distinct 32-bit seed until the index wraps.
+    return simSeed ^ (callIndex * 0x9E3779B9u);
 }
 
 } // namespace mc2_det_rng

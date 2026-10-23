@@ -3,9 +3,9 @@
 # Where each gate is read, what the smoke runner forwards and what tier1_env_vars.md says are not here: ask
 # tools/repo_intel (env_var, gate_status), which scan the sources.
 generator_version: "3.0.0"
-gate_count: 811
-registry_entry_count: 165
-verified_count: 767
+gate_count: 802
+registry_entry_count: 162
+verified_count: 762
 flags:
   - name: MC2_ABL_ARG_GUARD
     kind: Bool
@@ -155,12 +155,6 @@ flags:
     doc: "BT2018 mech import 1A: route mech geometry through the Assimp GLTF/FBX importer instead of the legacy MSL loader."
     verified: true
     registry: {feature_id: MC2_FEATURE_ASSIMP_MECH_IMPORT, kind: Feature, order: -1, default_on: false}
-  - name: MC2_ASSIMP_PAUSE_GATE
-    kind: Bool
-    default: true
-    rule: Lead0Kill
-    owner: mech
-    doc: ""
   - name: MC2_BLDG_DIAG_TRACE
     kind: Bool
     default: false
@@ -1435,27 +1429,6 @@ flags:
     smoke_passthrough: true
     verified: true
     registry: {feature_id: MC2_TRACE_FREEZE_MOVERS_AT, kind: Trace, order: -1, default_on: false}
-  - name: MC2_FXAA_EDGE_THRESHOLD
-    kind: Float
-    default: 0
-    rule: Prefix
-    owner: post
-    doc: ""
-    smoke_passthrough: true
-  - name: MC2_FXAA_EDGE_THRESHOLD_MIN
-    kind: Float
-    default: 0
-    rule: Prefix
-    owner: post
-    doc: ""
-    smoke_passthrough: true
-  - name: MC2_FXAA_SUBPIX
-    kind: Float
-    default: 0
-    rule: Prefix
-    owner: post
-    doc: ""
-    smoke_passthrough: true
   - name: MC2_FX_COST_SPLIT
     kind: Bool
     default: false
@@ -1579,6 +1552,14 @@ flags:
     rule: Presence
     owner: props
     doc: "[GPUPROPS v1] setup-path instrumentation (internal; path tag lives at file scope)."
+    smoke_passthrough: true
+    verified: true
+  - name: MC2_GPU_BUDGET_MB
+    kind: Int
+    default: 0
+    rule: Prefix
+    owner: gameos
+    doc: "Diagnostic residency ceiling in MiB; zero uses device/preset policy. Cannot raise the device budget."
     smoke_passthrough: true
     verified: true
   - name: MC2_GPU_CULL
@@ -2036,15 +2017,6 @@ flags:
     rule: Lead1
     owner: unclassified
     doc: ""
-  - name: MC2_ICON_FAILLOUD
-    kind: Bool
-    default: false
-    rule: Lead0
-    owner: mech
-    doc: "META-FIX design B PART 3 (code/mechicon.cpp iconTileChecked at the three CPU icon-tile blits): default OFF. =1 substitutes a solid MAGENTA tile when an icon..."
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_FEATURE_ICON_FAILLOUD, kind: Feature, order: -1, default_on: false}
   - name: MC2_IFACE_COST_SPLIT
     kind: Bool
     default: false
@@ -2706,21 +2678,6 @@ flags:
     doc: ""
     smoke_passthrough: true
     verified: true
-  - name: MC2_MECH_AMBIENT_V1
-    kind: Bool
-    default: true
-    rule: Lead0Kill
-    owner: mech
-    doc: ""
-    verified: true
-  - name: MC2_MECH_AMBIENT_V1_STRENGTH
-    kind: Float
-    default: 0.150000006
-    rule: Prefix
-    owner: mech
-    doc: ""
-    range: {lo: 0, hi: 2, style: clamp}
-    verified: true
   - name: MC2_MECH_ANIM_ROTATION_ONLY
     kind: Bool
     default: true
@@ -3326,15 +3283,6 @@ flags:
     smoke_passthrough: true
     verified: true
     registry: {feature_id: MC2_OVERLAY_TILE_HIRES, kind: Feature, order: -1, default_on: false}
-  - name: MC2_PAD_AREA_GLOW
-    kind: Float
-    default: 0.119999997
-    rule: Prefix
-    owner: terrain
-    doc: ""
-    range: {lo: 0, hi: 4, style: clamp}
-    smoke_passthrough: true
-    verified: true
   - name: MC2_PAD_AREA_GLOW_SPILL
     kind: Float
     default: 48
@@ -4502,26 +4450,6 @@ flags:
     owner: terrain
     doc: ""
     verified: true
-  - name: MC2_TERRAIN_AMBIENT_FLOOR
-    kind: Float
-    default: 0.349999994
-    rule: Prefix
-    owner: terrain
-    doc: "TERRAIN-AMBIENT-FLOOR-2: terrain-only, albedo-scaled ambient floor in terrain_lod_chunk.frag."
-    range: {lo: 0, hi: 2, style: clamp}
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_FEATURE_TERRAIN_AMBIENT_FLOOR, kind: Feature, order: -1, default_on: true}
-  - name: MC2_TERRAIN_AMBIENT_FLOOR_NIGHT
-    kind: Float
-    default: 0
-    rule: Prefix
-    owner: terrain
-    doc: "TERRAIN-AMBIENT-FLOOR-NIGHT-1: 0..1 FLOOR under TERRAIN-AMBIENT-FLOOR-2's daylight gate; the uploaded gate becomes max(dayGate, floor)."
-    range: {lo: 0, hi: 1, style: clamp}
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_FEATURE_TERRAIN_AMBIENT_FLOOR_NIGHT, kind: Feature, order: -1, default_on: false}
   - name: MC2_TERRAIN_CEMENT_DIAG_CONNECT
     kind: Bool
     default: false

@@ -12,6 +12,8 @@
 #define	WARRIOR_H
 
 #include "object_shared_constants.h"
+#include <array>
+#include <optional>
 
 #ifndef MCLIB_H
 #include"mclib.h"
@@ -93,7 +95,7 @@ class BldgAppearance;
 
 //***************************************************************************
 
-inline constexpr int MAX_WARRIORS = 120;
+inline constexpr int MAX_WARRIORS = MAX_MOVERS + 1; // Slot zero is reserved; authored pilots are 1-based.
 
 inline constexpr unsigned int MOVEGOAL_NONE = 0xFFFFFFFF;
 inline constexpr int MOVEGOAL_LOCATION = 0x00000000;
@@ -123,8 +125,9 @@ inline constexpr int MOVEPATH_ERR_LR_DOOR_BLOCKED = -12;
 inline constexpr int MOVEPATH_ERR_ESCAPING_TILE = -13;
 inline constexpr int MOVEPATH_ERR_TACORDER_CLEARED = -14;
 
-inline constexpr int MAX_QUEUED_TACORDERS = 2000;
 inline constexpr int MAX_QUEUED_TACORDERS_PER_WARRIOR = 16;
+inline constexpr int MAX_QUEUED_TACORDERS = MAX_WARRIORS * MAX_QUEUED_TACORDERS_PER_WARRIOR;
+static_assert(MAX_QUEUED_TACORDERS_PER_WARRIOR <= 127);
 
 enum OrderType {
 	ORDER_CURRENT,
@@ -914,6 +917,7 @@ class MechWarrior {
 		bool					tacOrderQueueLooping;
 		char					numTacOrdersQueued;	// Currently, only player orders may be queued...
 		QueuedTacOrderPtr		tacOrderQueue;
+		std::array<std::optional<GameObjectWatchID>, MAX_QUEUED_TACORDERS_PER_WARRIOR> queueTargets{};
 		// B7o.4: runtime owners of the queued waypoint markers, index-parallel to the queue slice (a marker exists only for slot < numTacOrdersQueued).
 		// The wire record QueuedTacOrder::marker is dead storage (always null); never copy these, never save them.
 		mc2::QueueMarkerArray<BldgAppearance, MAX_QUEUED_TACORDERS_PER_WARRIOR> queueMarkers;
@@ -995,7 +999,7 @@ class MechWarrior {
 
 		void init (bool create);
 
-		void init (MechWarriorData& data);   // by reference: a by-value copy leaves the struct padding as stack leftovers, which a later save writes
+		void init (MechWarriorData& data, bool wideTargets = false);   // by reference: a by-value copy leaves the struct padding as stack leftovers, which a later save writes
 
 		MechWarrior (void) {
 			init(true);
@@ -2165,7 +2169,7 @@ class MechWarrior {
 		static bool anyPlayerInCombat (void);
 
 		void copyToData (MechWarriorData &data);
-		void copyFromData (MechWarriorData &data);
+		void copyFromData (MechWarriorData &data, bool wideTargets = false);
 
 		void save (PacketFilePtr file, long packetNum); 
 		void load (PacketFilePtr file, long packetNum); 

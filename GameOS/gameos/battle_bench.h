@@ -20,7 +20,7 @@ inline bool arm(std::string_view path) {
     if (!output) return false;
     std::setvbuf(output, nullptr, _IOFBF, 1024 * 1024);
     std::atexit([] { if (output) { std::fclose(output); output = nullptr; } });
-    std::fprintf(output, "{\"type\":\"clock\",\"model\":\"mission_update_per_render_frame\",\"frame\":%llu}\n", static_cast<unsigned long long>(frame));
+    std::fprintf(output, "{\"type\":\"clock\",\"model\":\"fixed_30hz_sim_tick\",\"frame\":%llu}\n", static_cast<unsigned long long>(frame));
     beginTick = [] { return static_cast<uint64_t>(Clock::now().time_since_epoch().count()); };
     endTick = [](uint64_t sample) {
         const double ms = std::chrono::duration<double, std::milli>(Clock::now().time_since_epoch() - Clock::duration(sample)).count();

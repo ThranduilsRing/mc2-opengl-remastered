@@ -22,12 +22,13 @@ from pathlib import Path
 
 sys.path.append(str(Path(__file__).resolve().parent.parent / "scripts"))
 import console_child  # noqa: E402  (windowless console children)
+import stage_root as stages  # noqa: E402  (default staging roots on E:, free-space preflight)
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
 RUN_SMOKE = ROOT / "scripts" / "run_smoke.py"
 
-DEFAULT_STAGE = Path("G:/mc2-battery/sound")
+DEFAULT_STAGE = stages.default_root("sound_smoke")
 INSTALL_ROOT = Path("A:/Games/mc2-opengl")
 FORBIDDEN_INSTALLS = ("mc2-win64-v0.4c",)
 FORBIDDEN_DEPLOYS = ("0.4c",)
@@ -160,6 +161,7 @@ def main() -> int:
         return 2
     except ValueError:
         pass
+    stages.preflight(stage)
     stage.mkdir(parents=True, exist_ok=True)
 
     if a.log:

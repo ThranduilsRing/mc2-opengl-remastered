@@ -10,7 +10,7 @@
 
 namespace mc2::gate::detail {
 
-inline constexpr std::size_t kGateCount = 811;
+inline constexpr std::size_t kGateCount = 802;
 
 inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_ABL_ARG_GUARD", Kind::Bool, Rule::Lead1, {}},
@@ -32,7 +32,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_ASSET_SCALE_TRACE", Kind::Bool, Rule::Lead1, {}},
     {"MC2_ASSIMP_IMPORT", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_ASSIMP_MECH_IMPORT", Kind::Bool, Rule::Presence, {}},
-    {"MC2_ASSIMP_PAUSE_GATE", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_BLDG_DIAG_TRACE", Kind::Bool, Rule::Presence, {}},
     {"MC2_BLDG_REG_TRACE", Kind::Bool, Rule::Presence, {}},
     {"MC2_BLDG_TYPE_ANIM_STATIC_ELIGIBLE", Kind::Bool, Rule::Lead0Kill, {}},
@@ -198,9 +197,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_FRAME_PASS_STATS", Kind::Bool, Rule::Exact1, {}},
     {"MC2_FRAME_PASS_STATS_EVERY", Kind::Int, Rule::Prefix, {}},
     {"MC2_FREEZE_MOVERS_AT", Kind::Int, Rule::Prefix, {}},
-    {"MC2_FXAA_EDGE_THRESHOLD", Kind::Float, Rule::Prefix, {}},
-    {"MC2_FXAA_EDGE_THRESHOLD_MIN", Kind::Float, Rule::Prefix, {}},
-    {"MC2_FXAA_SUBPIX", Kind::Float, Rule::Prefix, {}},
     {"MC2_FX_COST_SPLIT", Kind::Bool, Rule::Exact1, {}},
     {"MC2_FX_COUNT_LOG", Kind::Bool, Rule::Presence, {}},
     {"MC2_FX_FORCE_SPAWN", Kind::Enum, Rule::Std, "|0|1|2|3|4|5|6|7|8|9|loop|impact"},
@@ -217,6 +213,7 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_GOSFX_GROUP_LOG", Kind::Bool, Rule::Lead1, {}},
     {"MC2_GPUBUF_COUNTER", Kind::Bool, Rule::Presence, {}},
     {"MC2_GPUPROPS_TRACE", Kind::Bool, Rule::Presence, {}},
+    {"MC2_GPU_BUDGET_MB", Kind::Int, Rule::Prefix, {}},
     {"MC2_GPU_CULL", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_GPU_CULL_AABB_PARITY", Kind::Bool, Rule::Lead0P, {}},
     {"MC2_GPU_CULL_CONSERVATIVE_OR", Kind::Bool, Rule::Lead0Kill, {}},
@@ -277,7 +274,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_HZB_FORCE_HORIZON_Y", Kind::Float, Rule::Prefix, {}},
     {"MC2_HZB_VIEW_FILE", Kind::String, Rule::Std, {}},
     {"MC2_IBL_ASSET_STRICT", Kind::Bool, Rule::Lead1, {}},
-    {"MC2_ICON_FAILLOUD", Kind::Bool, Rule::Lead0, {}},
     {"MC2_IFACE_COST_SPLIT", Kind::Bool, Rule::Presence, {}},
     {"MC2_IMGUI", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_IMGUI_DEMO", Kind::Bool, Rule::Lead1, {}},
@@ -361,8 +357,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_MATERIAL_GPU", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_MATERIAL_GPU_SAMPLE", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_MDI_SUBMIT_TRACE", Kind::Bool, Rule::Presence, {}},
-    {"MC2_MECH_AMBIENT_V1", Kind::Bool, Rule::Lead0Kill, {}},
-    {"MC2_MECH_AMBIENT_V1_STRENGTH", Kind::Float, Rule::Prefix, {}},
     {"MC2_MECH_ANIM_ROTATION_ONLY", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_MECH_BATCHER_STATS", Kind::Bool, Rule::Presence, {}},
     {"MC2_MECH_GLASS_LUMA_THRESH", Kind::Float, Rule::Prefix, {}},
@@ -444,7 +438,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_OVERLAY_CEMENT_ADOPT", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_OVERLAY_MAGENTA_TRACE", Kind::Bool, Rule::Presence, {}},
     {"MC2_OVERLAY_TILE_HIRES", Kind::String, Rule::Std, {}},
-    {"MC2_PAD_AREA_GLOW", Kind::Float, Rule::Prefix, {}},
     {"MC2_PAD_AREA_GLOW_SPILL", Kind::Float, Rule::Prefix, {}},
     {"MC2_PAD_EDGE_ROAD_FIX", Kind::Int, Rule::Prefix, {}},
     {"MC2_PARTICLE_FLUSH_STALL_TRACE", Kind::Bool, Rule::Presence, {}},
@@ -598,8 +591,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_TACTIC_WEIGHTS_B", Kind::Bool, Rule::AtoiNZ, {}},
     {"MC2_TARGETING_GUARD", Kind::Bool, Rule::Presence, {}},
     {"MC2_TERRAIN_ADMISSION_LEGACY", Kind::Bool, Rule::Presence, {}},
-    {"MC2_TERRAIN_AMBIENT_FLOOR", Kind::Float, Rule::Prefix, {}},
-    {"MC2_TERRAIN_AMBIENT_FLOOR_NIGHT", Kind::Float, Rule::Prefix, {}},
     {"MC2_TERRAIN_CEMENT_DIAG_CONNECT", Kind::Bool, Rule::Lead0, {}},
     {"MC2_TERRAIN_CLIFF_DISPLACE_MAXTESS", Kind::Float, Rule::Prefix, {}},
     {"MC2_TERRAIN_CLIFF_SHADOW_FLOOR", Kind::Bool, Rule::Lead0, {}},

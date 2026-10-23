@@ -4,7 +4,7 @@
 WHAT: battery wrapper around scripts/run_tool_capture.py (the existing launch-and-screenshot harness). It optionally builds
   the opt-in targets (mc2fx_preview, mc2weapon_gui) through scripts/ninja_build.py, then runs the three captures --
   asset_viewer, mc2fx_preview, mc2weapon_gui -- and fails if any of them fails. Captures and logs are staged under
-  G:/mc2-battery/tools/.
+  E:/mc2-installs/tools_smoke-stage/.
 WHY: the three tools had no single command and nothing checked that the optional targets were actually built; a missing exe
   made run_tool_capture exit 2 with no aggregator around it.
 USAGE (battery command line):
@@ -22,6 +22,7 @@ from pathlib import Path
 
 sys.path.append(str(Path(__file__).resolve().parent.parent / "scripts"))
 import console_child  # noqa: E402  (windowless console children)
+import stage_root as stages  # noqa: E402  (default staging roots on E:, free-space preflight)
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
@@ -29,7 +30,7 @@ CAPTURE = ROOT / "scripts" / "run_tool_capture.py"
 NINJA_BUILD = ROOT / "scripts" / "ninja_build.py"
 
 DEFAULT_TREE = "build64-ninja"
-DEFAULT_STAGE = Path("G:/mc2-battery/tools")
+DEFAULT_STAGE = stages.default_root("tools_smoke")
 DEFAULT_INSTALL = Path("A:/Games/mc2-opengl/mc2-win64-v0.4")
 INSTALL_ROOT = Path("A:/Games/mc2-opengl")
 FORBIDDEN_INSTALLS = ("mc2-win64-v0.4c",)
@@ -45,6 +46,7 @@ def _stage_dir(raw: str) -> Path:
     try:
         stage.relative_to(INSTALL_ROOT.resolve())
     except ValueError:
+        stages.preflight(stage)
         return stage
     raise ValueError(f"refusing to stage under the game install ({stage}); use {DEFAULT_STAGE}")
 

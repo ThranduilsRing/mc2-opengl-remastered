@@ -595,10 +595,14 @@ extern "C" int mc2_vk_vfx_island_prewarm(int w,int h) {
     auto& ctx=mc2vk::getOrCreateEngineVulkanContext();
     if(!ctx.valid() || w<=0 || h<=0) return 0;
     auto& slot=ctx.islandSlot(mc2vk::IslandSlot::Vfx);
-    if(slot) return 1;
-    auto fresh=std::make_unique<VfxIsland>();
-    if(!init_island(fresh.get(),w,h)) { ctx.waitIdle("vfx_prewarm_failure"); return 0; }
-    slot=std::move(fresh);
+    if(!slot) {
+        auto fresh=std::make_unique<VfxIsland>();
+        if(!init_island(fresh.get(),w,h)) { ctx.waitIdle("vfx_prewarm_failure"); return 0; }
+        slot=std::move(fresh);
+    }
+    if (vegetationAtlas) get_page(static_cast<VfxIsland*>(slot.get()),kVfxVegetationAtlas,0);
+    if (mc2veg::State::exists() && mc2veg::State::instance().ready() &&
+        !mc2veg::State::instance().prewarm(ctx)) return 0;
     return 1;
 }
 
@@ -769,7 +773,7 @@ bool mc2_vk_vfx_vegetation_run(const mc2veg::CullParams& params, const float* wo
         rbi.renderPass = s->rpass.get(); rbi.framebuffer = s->fb.get();
         rbi.renderArea = {{0, 0}, {static_cast<uint32_t>(w), static_cast<uint32_t>(h)}};
         rbi.clearValueCount = 3; rbi.pClearValues = clears;
-        MC2_VK_GPU_SCOPE(gpuScope, cb, "VKIsl.Vfx.Vegetation");
+        MC2_VK_GPU_SCOPE(gpuScope, cb, "VKIsl.Vegetation");
         vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
         mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->vegetationPipe.get());
         vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->vegLayout.get(), 0, 1, &s->set[par], 2, dynOffsets);

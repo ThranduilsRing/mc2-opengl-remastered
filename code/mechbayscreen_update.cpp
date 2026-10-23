@@ -106,15 +106,20 @@ void MechBayScreen::update()
 	// its component palette loads/renders for capture + file-resolve tracing.
 	{
 		static const bool s_bootMechLab = mc2::gate::get<"MC2_BOOT_TO_MECHLAB">();
+		static const bool s_autoPurchase = mc2::gate::get<"MC2_SOAK_AUTO_PURCHASE">();
 		static int s_mechLabDelay = 0;
 		static bool s_mechLabFired = false;
-		if ( s_bootMechLab && !s_mechLabFired && pCurMech )
+		LogisticsMech* captureMech = s_autoPurchase
+			? LogisticsData::instance->getMechToModify() : pCurMech;
+		if ( s_bootMechLab && !s_mechLabFired && captureMech && status == RUNNING )
 		{
 			if ( ++s_mechLabDelay > 30 )
 			{
 				s_mechLabFired = true;
 				status = DOWN;
-				LogisticsData::instance->setMechToModify( pCurMech );
+				// Auto-purchase already opened an editable copy of the bought variant.
+				if ( LogisticsData::instance->getMechToModify() != captureMech )
+					LogisticsData::instance->setMechToModify( captureMech );
 				return;
 			}
 		}

@@ -28,13 +28,19 @@ from pathlib import Path
 
 if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from tools.content_pipeline import package  # noqa: E402
-from tools.content_pipeline.frontends import gltf_file, stock_ase  # noqa: E402
+from tools.content_pipeline import ir, package  # noqa: E402
+from tools.content_pipeline.frontends import bt2018, gltf_file, stock_ase, stock_meshdump  # noqa: E402
 
 
 def build_asset(spec, recipe, work):
     roots = [Path(r) for r in recipe.get("texture_roots", [])]
     front = spec.get("frontend")
+    if front == "bt2018":
+        return bt2018.to_ir(spec["intact"], spec.get("package"), classes=spec.get("classes"),
+                            work_dir=work / spec.get("id", "mech"))
+    if front == "stock_meshdump":
+        return stock_meshdump.to_ir(spec["source"], asset_id=spec.get("id"), replaces=spec.get("replaces"),
+                                    kind=spec.get("kind", "prop"), texture_roots=roots)
     if front == "stock_ase":
         return stock_ase.to_ir(spec["prop"], srcdata=recipe["srcdata"], texture_roots=roots,
                                slots=spec.get("slots", []), kind=spec.get("kind", "building"),
@@ -42,18 +48,22 @@ def build_asset(spec, recipe, work):
                                exclude=spec.get("excludeNodes", []))
     if front == "gltf":
         destroyed = spec.get("destroyed")
+        dependencies = []
         if isinstance(destroyed, dict) and "stock_ase" in destroyed:
-            scene, mats, _ = stock_ase.scene_from_ase(Path(recipe["srcdata"]) / f"{destroyed['stock_ase']}.ase",
-                                                      roots, work / spec["id"])
+            source = Path(recipe["srcdata"]) / f"{destroyed['stock_ase']}.ase"
+            dependencies.append(ir.Source.of("geometry_destroyed", source))
+            scene, mats, _ = stock_ase.scene_from_ase(source, roots, work / spec["id"])
             destroyed = (scene, mats)
-        meta = {k: spec[k] for k in ("frame", "wu_per_unit", "yaw_degrees", "license", "source_url", "provider")
+        meta = {k: spec[k] for k in ("frame", "wu_per_unit", "yaw_degrees", "license", "source_url", "provider", "unclassified")
                 if k in spec}
         meta["texture_roots"] = [str(r) for r in [Path(spec["intact"]).parent, *roots, *map(Path, spec.get("texture_roots", []))]]
-        return gltf_file.to_ir(spec["id"], spec["replaces"], spec["intact"], kind=spec.get("kind", "building"),
+        asset = gltf_file.to_ir(spec["id"], spec["replaces"], spec["intact"], kind=spec.get("kind", "building"),
                                lods=[tuple(x) for x in spec.get("lods", [])], destroyed=destroyed,
                                conditions=spec.get("conditions"), classes=spec.get("classes"),
                                meta=meta, work_dir=work / spec["id"], base_color=spec.get("base_color"),
                                texel_scale=spec.get("texel_scale", 1), repair_inward_hull=spec.get("repair_inward_hull", False))
+        asset.provenance.extend(dependencies)
+        return asset
     raise ValueError(f"unknown frontend {front!r} (stock_ase | gltf)")
 
 
@@ -63,7 +73,7 @@ def cook(recipe, out=None, overwrite=False, compress=True):
         assets = [build_asset(spec, recipe, Path(tmp)) for spec in recipe["assets"]]
         result = package.build_package(assets, out, mod_id=recipe["mod_id"], name=recipe.get("name"),
                                        description=recipe.get("description", ""), compress=compress,
-                                       overwrite=overwrite)
+                                       overwrite=overwrite, aliases=recipe.get("aliases"))
     if recipe.get("conditions"):
         path = result / "data" / "model_overrides" / "conditions.json"
         path.write_text(json.dumps({"version": 1, "missions": recipe["conditions"]}, indent=2) + "\n", encoding="utf-8")

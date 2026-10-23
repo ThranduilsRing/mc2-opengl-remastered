@@ -891,6 +891,7 @@ run_check "visibility_log_schema"  "sh scripts/check-visibility-log-schema.sh"
 run_check "include_firewall"       "sh scripts/check-include-firewall.sh"
 run_check "no_raw_gl_from_game"    "sh scripts/check-no-raw-gl-from-game.sh"
 run_check "vk_submit_funnel"       "sh scripts/check-vk-submit-funnel.sh"
+run_check "vk_pipeline_infra"      "sh scripts/check-vk-submit-funnel.sh --pipelines"
 run_check "sim_no_audio_reads"     "sh scripts/check-sim-no-audio-reads.sh"
 run_check "vfx_no_objectid"        "sh scripts/check-vfx-no-objectid.sh"
 run_check "veg_gpu_cull"             "py -3 scripts/check-veg-gpu-cull.py"   # vegetation culls on the GPU: no CPU per-instance path, C++/GLSL parameter block in lockstep
@@ -1523,6 +1524,7 @@ run_check "manifest_schema"            "py -3 scripts/check-manifest-schema.py -
 # one.
 # One pytest process per module, 2 at a time, through the per-module result cache (scripts/module_test_cache.py):
 # a module that fully passed with unchanged recorded inputs is not re-run. --no-cache / CONTRACTS_NO_CACHE=1 turns it off.
+run_check "mission_codec_golden"       "MC2_CODEC_REQUIRED=1 py -3 -B -m pytest tests/mapgen/test_mission_codec.py -q -p no:cacheprovider"
 run_check "scripts_tests"              "py -3 scripts/run_scripts_tests.py"
 
 # ---------------------------------------------------------------------------

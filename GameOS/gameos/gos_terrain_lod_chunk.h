@@ -267,17 +267,8 @@ void gos_TerrainLodChunk_Init();
 // Free the height SSBO. Call at shutdown (from gosRenderer::destroy).
 void gos_TerrainLodChunk_Destroy();
 
-// PAD-AREA-GLOW-1: pad-area night lift shared values (chunk terrain + overlay
-// uploader lockstep). Strength = MC2_PAD_AREA_GLOW (default 0.12; 0 = kill),
-// spill = MC2_PAD_AREA_GLOW_SPILL wu (default 48, clamp [4,127]).
-float gos_TerrainPadGlowStrength();
+// Legacy pad spill radius; occupied buildings own the light color.
 float gos_TerrainPadGlowSpillWu();
-// VK-PARITY-TERRAIN-1: shared TERRAIN-AMBIENT-FLOOR-2 producers (GL uniform + VK island).
-float gos_TerrainAmbientFloor();
-bool  gos_TerrainAmbientFloorEnvSet();
-float gos_TerrainAmbientNightFloor();
-bool  gos_TerrainAmbientNightFloorEnvSet();
-float gos_TerrainAmbientDayGate();
 // VK-PARITY-TERRAIN-2: shared NIGHT-LIGHT-POOLS / PAD-AREA-GLOW-1 producers (GL uniforms + VK island).
 int   gos_TerrainLightPoolCount();
 void  gos_TerrainPadGlowRGB(float out[3]);

@@ -1,9 +1,11 @@
 {
  "mission": "mc2_16",
  "frames": 1000,
- "chain": "4f74f9fbdbb43dde",
- "visible_chain": "ab6e640077e96629",
- "sha": "2bbc6b135010",
+ "chain_schema": 2,
+ "chain": "b530c241b6e28db1",
+ "full": "2df4031b01151979",
+ "visible_chain": "efd2ac06ff51a092",
+ "sha": "9a6721f5fc94",
  "seed": "0x1B7EBC0D",
  "data_fingerprint": {
   "digest": "9ffe5ce425438ded",
@@ -44,8 +46,7 @@
   "MC2_SOAK_AUTOWIN": "1",
   "MC2_SOAK_WIN_AFTER_SEC": "40",
   "MC2_FPS_CAP": "5",
-  "MC2_SIM_SPEED": "4",
-  "MC2_HOST_LEASE_EXCLUSIVE": "1"
+  "MC2_SIM_SPEED": "4"
  },
- "about": "1000-frame baseline with active order-liveness fixture (previous baseline omitted autowin and issued no fixture orders). Run tools/sim_determinism.py check mc2_16 --duration 60; four fixed steps per drawn frame and a 5 FPS render cap bound host load. The summary at 36 sim seconds precedes autowin at 40 sim seconds."
+ "about": "chain digest of the first N [SIMID v1] lines; tools/sim_determinism.py check <mission>"
 }

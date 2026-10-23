@@ -286,3 +286,16 @@ def test_compare_takes_no_capture_lease(monkeypatch):
     monkeypatch.setattr(sys, "argv", ["tracy_capture_compare.py", "compare", "a.tracy", "b.tracy"])
     assert capture.main() == 0
     assert events == ["compare"]
+
+
+def test_zone_summary_prints_top_zones_and_writes_csv_only_when_asked(monkeypatch, tmp_path, capsys):
+    exe = tmp_path / "tracy-csvexport.exe"
+    exe.write_text("")
+    monkeypatch.setattr(capture, "tracy_dir", lambda: tmp_path)
+    table = "name,src_file,src_line,total_ns,total_perc,counts,mean_ns\nsmall,a,1,1000000,1,5,200000\nbig,a,2,9000000,9,3,3000000\n"
+    monkeypatch.setattr(capture.subprocess, "run", lambda *a, **k: SimpleNamespace(returncode=0, stdout=table, stderr=""))
+    capture.zone_summary(tmp_path / "t.tracy", top=1)
+    out = capsys.readouterr().out
+    assert "big" in out and "small" not in out and not list(tmp_path.glob("*.csv"))
+    capture.zone_summary(tmp_path / "t.tracy", top=1, csv_out=tmp_path / "t.zones.csv")
+    assert (tmp_path / "t.zones.csv").read_text(encoding="utf-8") == table

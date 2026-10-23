@@ -2129,6 +2129,21 @@
    "count": 1
   },
   {
+   "tag": "CONTENT_COOK",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "source",
+    "key",
+    "cache",
+    "nodes",
+    "materials",
+    "sockets",
+    "version"
+   ],
+   "count": 1
+  },
+  {
    "tag": "CPU_PROJ",
    "ver": 1,
    "stream": "stderr",
@@ -4191,6 +4206,45 @@
    "count": 1
   },
   {
+   "tag": "ICON_RECT",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "key",
+    "x",
+    "y",
+    "w",
+    "h"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "ICON_REGISTRY",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "ICON_REGISTRY",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "key"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "ICON_REGISTRY",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "icons",
+    "atlas"
+   ],
+   "count": 1
+  },
+  {
    "tag": "IFACE_PERF",
    "ver": 1,
    "stream": "stdout",
@@ -4730,6 +4784,15 @@
    "ver": -1,
    "stream": "log",
    "keys": [
+    "available"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "LOGISTICS",
+   "ver": -1,
+   "stream": "log",
+   "keys": [
     "loaded"
    ],
    "count": 1
@@ -5081,6 +5144,15 @@
    "count": 1
   },
   {
+   "tag": "MECH_IMPORT",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "speed"
+   ],
+   "count": 1
+  },
+  {
    "tag": "MECH_IMPORT_GPU",
    "ver": -1,
    "stream": "stderr",
@@ -5310,7 +5382,7 @@
    "ver": -1,
    "stream": "stderr",
    "keys": [],
-   "count": 17
+   "count": 9
   },
   {
    "tag": "MODOVERRIDE",
@@ -5320,16 +5392,7 @@
     "condition",
     "destroyed"
    ],
-   "count": 1
-  },
-  {
-   "tag": "MODOVERRIDE",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "lodCount"
-   ],
-   "count": 1
+   "count": 2
   },
   {
    "tag": "MODOVERRIDE",
@@ -5680,13 +5743,6 @@
     "calcMovePath_calls",
     "offmap_noops"
    ],
-   "count": 1
-  },
-  {
-   "tag": "MSL",
-   "ver": -1,
-   "stream": "stdout",
-   "keys": [],
    "count": 1
   },
   {
@@ -6133,6 +6189,26 @@
    "keys": [
     "tileEdge",
     "dir"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "PACKAGE_CHASSIS",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [],
+   "count": 2
+  },
+  {
+   "tag": "PACKAGE_CHASSIS",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "stem",
+    "objType",
+    "regions",
+    "hardpoints",
+    "payload"
    ],
    "count": 1
   },
@@ -7335,7 +7411,7 @@
     "reason",
     "file"
    ],
-   "count": 2
+   "count": 3
   },
   {
    "tag": "SAVE",
@@ -7361,6 +7437,34 @@
     "type"
    ],
    "count": 1
+  },
+  {
+   "tag": "SAVE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "reason",
+    "version",
+    "file"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SAVE",
+   "ver": 1,
+   "stream": "stdout",
+   "keys": [
+    "event",
+    "pilot",
+    "slot",
+    "target",
+    "cursor",
+    "looping",
+    "locked",
+    "active"
+   ],
+   "count": 2
   },
   {
    "tag": "SAVELOAD",
@@ -10042,6 +10146,38 @@
    "count": 1
   },
   {
+   "tag": "VK_LOAD_RESOURCE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "family",
+    "ready",
+    "ms"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_LOAD_RESOURCE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "pipeline_creation_ms"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_LOAD_TEXTURES",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "ready",
+    "batches",
+    "blocked",
+    "ms"
+   ],
+   "count": 1
+  },
+  {
    "tag": "VK_MECH_FEED",
    "ver": -1,
    "stream": "stderr",
@@ -10282,15 +10418,19 @@
    "ver": 1,
    "stream": "stderr",
    "keys": [],
-   "count": 1
+   "count": 2
   },
   {
    "tag": "VK_RESIDENCY",
    "ver": 1,
    "stream": "stderr",
    "keys": [
-    "feature_refused",
-    "bytes"
+    "budget_bytes",
+    "physical_bytes",
+    "source",
+    "safety_bytes",
+    "quality",
+    "maxImageDimension2D"
    ],
    "count": 1
   },
@@ -10299,8 +10439,12 @@
    "ver": 1,
    "stream": "stderr",
    "keys": [
-    "shadow_tier",
-    "requested"
+    "refused",
+    "bytes",
+    "live",
+    "pending",
+    "budget",
+    "fallback"
    ],
    "count": 1
   },
@@ -10309,8 +10453,10 @@
    "ver": 1,
    "stream": "stderr",
    "keys": [
-    "texture_refused",
-    "bytes"
+    "refused",
+    "bytes",
+    "policy",
+    "fallback"
    ],
    "count": 1
   },
@@ -10319,8 +10465,105 @@
    "ver": 1,
    "stream": "stderr",
    "keys": [
-    "texture_tier",
-    "requested"
+    "refused",
+    "bytes",
+    "policy",
+    "fallback",
+    "reason"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_RESIDENCY",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "refused",
+    "extent",
+    "bytes",
+    "fallback"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_RESIDENCY",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "refused",
+    "extent",
+    "fallback"
+   ],
+   "count": 2
+  },
+  {
+   "tag": "VK_RESIDENCY",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "refused",
+    "extent",
+    "layers",
+    "reason",
+    "fallback"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_RESIDENCY",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "refused",
+    "images",
+    "admitted",
+    "fallback"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_RESIDENCY",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "refused",
+    "layers",
+    "limit",
+    "fallback"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_RESIDENCY",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "refused",
+    "quality",
+    "fallback",
+    "reason"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_RESIDENCY",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "refused",
+    "side",
+    "fallback"
+   ],
+   "count": 2
+  },
+  {
+   "tag": "VK_RESIDENCY",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "thinned",
+    "stride",
+    "instances"
    ],
    "count": 1
   },

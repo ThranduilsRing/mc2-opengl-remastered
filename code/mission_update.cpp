@@ -391,7 +391,7 @@ void Mission::updateTickClock(bool advanceTime) {
 
 	if (advanceTime)
 	{
-		scenarioTime += static_cast<float>(mc2::sim::kTickSeconds);
+		scenarioTime += mc2::sim::kTickSecondsF;
 		// Counts the ticks that advanced the clock, so SIMID frame N means tick N under the harness clock.
 		if (SmokeMode::fixedTimestepEnabled())
 			SmokeMode::fixedTimestepOnSimFrame(static_cast<double>(scenarioTime));
@@ -456,6 +456,7 @@ void Mission::updatePresentationOnly(bool moversOnly, float alpha) {
 	if (!moversOnly)
 		gpu_cull::substrate_frameBegin();
     if (mc2::gate::get<"MC2_PRESENTATION_DISABLED">()) return;
+	ZoneScopedN("GameLogic.Mission.Presentation");
 	MisScope _ms(MS_PRESENT);
 	const float renderLength = frameLength;
 	mc2::sim::PresentationScope presentationScope;
@@ -497,9 +498,10 @@ void Mission::advanceCombatClock(float seconds)
 // Begin the GPU cull frame and update the objects, or only their appearances while frozen.
 void Mission::updateObjectManager() {
 	if (mc2SimTickFrozen(missionInterface) && !MPlayer) return;
+	{ ZoneScopedN("GameLogic.Mission.TickPrep");
 	ObjectManager->snapshotMoverPoses();
 	beginOrderSimulationTick();
-	advanceCombatClock(frameLength);
+	advanceCombatClock(frameLength); }
 	MisScope _ms(MS_OBJMGR);
 	ObjectManager->update(true, true, true);
 }
@@ -562,7 +564,7 @@ void Mission::updateTraceHooks() {
 	// divergent sim frame directly -- the bridge above needs ~58k per-mover
 	// lines and a bespoke script to answer the same question.
 	//
-	// simFrame is derived exactly as the capture sidecar derives its
+	// simFrame is the 0-based tick (turn - 1) and equals the capture sidecar's
 	// `sim_frame` (gos_visual_capture.cpp write_sidecar) so a trace line and
 	// a manifest taken in the same run carry the SAME frame number. That
 	// derivation is only meaningful under the fixed clock; with the fixed
@@ -570,7 +572,7 @@ void Mission::updateTraceHooks() {
 	// which is correct, because determinism is not claimed at all then.
 	mc2SimIdentityTraceFrame(
 		static_cast<double>(scenarioTime),
-		turn);
+		turn - 1);   // 0-based, like the sidecar's sim_frame and the committed baselines
 
 	// META-FIX design A: mover-registry coherence audit (~1 Hz walk over
 	// home-commander movers + force-bar icons; read-only). No-op unless
@@ -1043,6 +1045,33 @@ void Mission::updateOrderLiveness() {
 					olGoal.x = olPos.x + stepWU;
 				olPilot->orderMoveToPoint(false, true, ORDER_ORIGIN_COMMANDER,
 					olGoal, -1, TACORDER_PARAM_RUN);
+				// Keep a terrain-target queue pending while the move is active so the
+				// save/load fixture exercises the process-local compact-id boundary.
+				GameObjectPtr queueTarget = nullptr;
+				for (long oi = 1; oi <= ObjectManager->getMaxObjects(); ++oi) {
+					auto* candidate = ObjectManager->get(oi);
+					if (candidate && !candidate->isMover() && candidate->getPartId() >= MIN_TERRAIN_PART_ID &&
+						(!queueTarget || candidate->getPartId() > queueTarget->getPartId())) queueTarget = candidate;
+				}
+				if (queueTarget) {
+					olPilot->clearTacOrderQueue();
+					TacticalOrder queued;
+					queued.init(ORDER_ORIGIN_PLAYER, TACTICAL_ORDER_ATTACK_OBJECT);
+					queued.targetWID = queueTarget->getWatchID();
+					queued.pack(nullptr, nullptr);
+					olPilot->addQueuedTacOrder(queued);
+					queued.init(ORDER_ORIGIN_PLAYER, TACTICAL_ORDER_ATTACK_POINT);
+					queued.attackParams.targetPoint = olGoal;
+					queued.pack(nullptr, nullptr);
+					olPilot->addQueuedTacOrder(queued);
+					queued.init(ORDER_ORIGIN_PLAYER, TACTICAL_ORDER_GUARD);
+					queued.targetWID = pM->getWatchID();
+					queued.pack(nullptr, nullptr);
+					olPilot->addQueuedTacOrder(queued);
+					olPilot->setTacOrderQueueLooping(true);
+					olPilot->getNextQueuedTacOrder(&queued); // Save a nonzero loop cursor.
+					olPilot->lockTacOrderQueue();
+				}
 				s_olEntries[s_olIssuedMove].wid = pM->getWatchID();
 				s_olEntries[s_olIssuedMove].startPos = olPos;
 				s_olEntries[s_olIssuedMove].goalPos = olGoal;
@@ -1201,7 +1230,7 @@ bool Mission::updatePass(bool tickMode, bool runFrame, bool runSim, bool advance
 {
 	const float renderLength = frameLength;
     mc2::diagnostic::TickCost tickCost(s_misSplit && runSim);
-	auto simLength = [&] { tickCost.begin(); if (tickMode) frameLength = static_cast<float>(mc2::sim::kTickSeconds); };
+	auto simLength = [&] { tickCost.begin(); if (tickMode) frameLength = mc2::sim::kTickSecondsF; };
 	auto frameLen = [&] { tickCost.end(); frameLength = renderLength; };
 
 	// Every opened tick must complete, including the mission brain's 9999 return.
@@ -1292,7 +1321,7 @@ bool Mission::updatePass(bool tickMode, bool runFrame, bool runSim, bool advance
 			}
 		}
 
-		ObjectManager->extractRenderSnapshots();
+		{ ZoneScopedN("GameLogic.Mission.RenderSnapshots"); ObjectManager->extractRenderSnapshots(); }
 		updateTraceHooks();
 		updateTermination();
 	}

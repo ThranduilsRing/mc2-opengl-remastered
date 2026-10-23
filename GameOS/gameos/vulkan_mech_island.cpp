@@ -58,6 +58,8 @@
 #include "visual_tuning_profile.h"
 #include "vk_shared_gbuffer_gate.h"      // VK-P14 GATE-CONSOLIDATION-1 umbrella resolver
 #include "vk_shared_light_feed.h"        // VK-LIGHTFEED-DEDUP-1: shared per-frame LightsData SSBO
+#include "gos_terrain_lighting.h"
+#include "light_pool_culling.h"
 #include "vk_gpu_timestamps.h"           // VK-DRAW-PERF-1: MC2_VK_GPU_TIMESTAMPS GPU segment timers
 #define MC2_VULKAN_SHARED_SCENE_COLOR_IMPL_ISLAND
 #include "vulkan_shared_scene_color.h"   // shared scene color/normal images
@@ -74,6 +76,12 @@
 #include <vector>
 #include <string>
 #include <chrono>
+#include <map>
+#include <tuple>
+#include <limits>
+#include <cmath>
+#include "../../RenderCore/gpu_abi/GpuMechInstance.h"
+#include "../../RenderCore/axis_convert.h"
 #include <tracy/Tracy.hpp>   // VK-FLIP-FIELD-REPORT-1: coarse per-region frame zones
 
 namespace {
@@ -151,6 +159,13 @@ const uint32_t kMaxPoolLights = 256;
 
 const VkFormat kColorFmt = VK_FORMAT_R16G16B16A16_SFLOAT;
 
+struct MechRunPC { uint32_t materialFlags, poolFirst, poolCount; };
+static_assert(sizeof(MechRunPC) == 12);
+struct BoneBounds {
+    uint32_t bone;
+    std::array<float,3> lo, hi;
+};
+using RunKey = std::tuple<uint32_t,uint32_t,int32_t>;
 struct MechIsland : mc2vk::IslandState {
     bool disabled = false;
     bool inited   = false;
@@ -176,6 +191,7 @@ struct MechIsland : mc2vk::IslandState {
     // Copy-once mech geometry (VK-owned copies of the shared mech VBO/IBO).
     uint32_t vertexStride = 48;
     bool     geomUploaded = false;
+    std::map<RunKey, std::vector<BoneBounds>> lightBounds;
     uint32_t geomGen = 0;   // generation of the feed the buffers were filled from
 
     // Per-frame data (UBO, instance + bone snapshots, LightsData, night pool) lives in the engine frame ring; every scheme set binds it with dynamic
@@ -220,9 +236,9 @@ struct MechIsland : mc2vk::IslandState {
     mc2vk::OwnedDescriptorSetLayout dsl;
     mc2vk::OwnedDescriptorPool pool;
     mc2vk::OwnedSampler albedoSamp;
-    mc2vk::OwnedShaderModule vert, frag;
+    mc2vk::OwnedShaderModule vert, frag, depthVert, depthFrag;
     mc2vk::OwnedPipelineLayout playout;
-    mc2vk::OwnedPipeline pipe;
+    mc2vk::OwnedPipeline pipe, depthPipe;
     mc2vk::OwnedBuffer vbo, ibo;
 
     ~MechIsland() override { gpuTimer.destroy(); }
@@ -561,11 +577,13 @@ bool init_island(MechIsland* s, int w, int h) {
     {
         s->vert = mc2vk::OwnedShaderModule(s->device, load_spv(s->device, spv_dir() + "mech_tier1.vert.spv"));
         s->frag = mc2vk::OwnedShaderModule(s->device, load_spv(s->device, spv_dir() + "mech_tier1.frag.spv"));
-        if (!s->vert || !s->frag) { setFallback("spv_load_failed"); return false; }
+        s->depthVert = mc2vk::OwnedShaderModule(s->device, load_spv(s->device, spv_dir()+"mech_depth.vert.spv"));
+        s->depthFrag = mc2vk::OwnedShaderModule(s->device, load_spv(s->device, spv_dir()+"mech_depth.frag.spv"));
+        if (!s->vert || !s->frag || !s->depthVert || !s->depthFrag) { setFallback("spv_load_failed"); return false; }
 
         // VK-PARITY-MECH-1: per-run materialFlags (ALPHA_TEST discard, mech.frag:177).
         VkPushConstantRange pcr{};
-        pcr.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT; pcr.offset = 0; pcr.size = 4;
+        pcr.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT; pcr.offset = 0; pcr.size = sizeof(MechRunPC);
         VkPipelineLayoutCreateInfo plci{};
         plci.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
         const VkDescriptorSetLayout dslHandle = s->dsl.get();
@@ -644,6 +662,16 @@ bool init_island(MechIsland* s, int w, int h) {
         gp.pMultisampleState = &ms; gp.pDepthStencilState = &ds; gp.pColorBlendState = &cb;
         gp.pDynamicState = &dsci;
         gp.layout = s->playout.get(); gp.renderPass = s->rpass.get(); gp.subpass = 0;
+        stages[0].module=s->depthVert.get();stages[1].module=s->depthFrag.get();
+        for(auto& attachment:cba)attachment.colorWriteMask=0;
+        if (!mc2vk::create(s->depthPipe,s->device,[&](VkPipeline* h) { return mc2vk::infra::graphics(s->device,VK_NULL_HANDLE,1,&gp,nullptr,h); })) {
+            setFallback("depth_pipeline_failed");return false;
+        }
+        mc2vk::nameObject(s->device,s->depthPipe.get(),"mech.depth");
+        stages[0].module=s->vert.get();stages[1].module=s->frag.get();
+        for(auto& attachment:cba)attachment.colorWriteMask=VK_COLOR_COMPONENT_R_BIT|VK_COLOR_COMPONENT_G_BIT|VK_COLOR_COMPONENT_B_BIT|VK_COLOR_COMPONENT_A_BIT;
+        ds.depthWriteEnable=VK_FALSE;
+        ds.depthCompareOp=VK_COMPARE_OP_EQUAL;
         if (!mc2vk::create(s->pipe, s->device, [&](VkPipeline* h) { return mc2vk::infra::graphics(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, h); })) {
             setFallback("pipeline_failed"); return false;
         }
@@ -689,12 +717,159 @@ bool upload_geometry_once(MechIsland* s) {
         s->ibo.reset();
         return false;
     }
+    s->lightBounds.clear();
     s->geomGen = feed.geomGen;
     g_health.geomVerts = static_cast<unsigned long>((feed.vboBytes / (feed.vertexStride ? feed.vertexStride : 1)));
     s->geomUploaded = true;
     vlog("mech geometry uploaded once: vbo=%llu B ibo=%llu B stride=%u source=cpu-native.",
          static_cast<unsigned long long>(feed.vboBytes), static_cast<unsigned long long>(feed.iboBytes), feed.vertexStride);
     return true;
+}
+
+// Cache local bounds per influenced bone, independent of pose. Skin weights are
+// nonnegative and sum to one; their transformed union bounds the skinned mesh.
+// Invalid/unsupported input returns an empty cache entry and uses the full pool.
+const std::vector<BoneBounds>& light_bounds(MechIsland* s, const Mc2MechDrawRun& run) {
+    const RunKey key{run.firstIndex,run.indexCount,run.baseVertex};
+    auto [it, fresh] = s->lightBounds.try_emplace(key);
+    auto& [cacheKey,cachedBounds]=*it;
+    if (!fresh) return cachedBounds;
+    Mc2MechGeomFeed geom{};
+    if (!mc2_mech_island_get_geometry_feed(&geom) || !geom.vboCpu || !geom.iboCpu ||
+        geom.vertexStride != 48 || uint64_t(run.firstIndex)+run.indexCount > geom.iboBytes/4) return cachedBounds;
+    std::map<uint32_t,BoneBounds> bounds;
+    const auto* indices=static_cast<const uint32_t*>(geom.iboCpu);
+    for (uint32_t j=0;j<run.indexCount;++j) {
+        const int64_t vi=int64_t(indices[run.firstIndex+j])+run.baseVertex;
+        if (vi<0 || uint64_t(vi)>=geom.vboBytes/geom.vertexStride) return cachedBounds;
+        const auto* v=static_cast<const uint8_t*>(geom.vboCpu)+vi*geom.vertexStride;
+        float pos[3]; std::memcpy(pos,v,sizeof(pos));
+        // GpuMechVertex: boneIndices at 32, UNORM8 boneWeights at 36.
+        unsigned sum=0; for(unsigned b=0;b<4;++b) sum+=v[36+b];
+        if(sum!=255) return cachedBounds;
+        for(unsigned b=0;b<4;++b) if(v[36+b]) {
+            const uint32_t bone=v[32+b];
+            auto [bi,added]=bounds.try_emplace(bone,BoneBounds{bone,{pos[0],pos[1],pos[2]},{pos[0],pos[1],pos[2]}});
+            auto& [boneKey,bound]=*bi;
+            for(unsigned a=0;a<3;++a) {
+                if(!std::isfinite(pos[a])) return cachedBounds;
+                bound.lo[a]=std::min(bound.lo[a],pos[a]);
+                bound.hi[a]=std::max(bound.hi[a],pos[a]);
+            }
+        }
+    }
+    for(const auto& [bone,bound]:bounds) cachedBounds.push_back(bound);
+    return cachedBounds;
+}
+
+bool posed_light_bounds(const std::vector<BoneBounds>& local, const Mc2MechFrameFeed& feed,
+                        uint32_t instance, float* lo, float* hi) {
+    if(local.empty() || instance>=feed.instanceCount || !feed.instances64 || !feed.bones64) return false;
+    const auto& inst=static_cast<const GpuMechInstance*>(feed.instances64)[instance];
+    const auto* bones=static_cast<const uint8_t*>(feed.bones64);
+    for(unsigned a=0;a<3;++a) {lo[a]=std::numeric_limits<float>::infinity();hi[a]=-lo[a];}
+    for(const auto& b:local) {
+        const uint64_t idx=uint64_t(inst.baseBoneOffset)+b.bone;
+        if(idx>=feed.boneCount) return false;
+        float m[16];std::memcpy(m,bones+idx*sizeof(m),sizeof(m));
+        for(unsigned corner=0;corner<8;++corner) {
+            float p[3];for(unsigned a=0;a<3;++a)p[a]=(corner&(1u<<a))?b.hi[a]:b.lo[a];
+            float w[3];for(unsigned a=0;a<3;++a)w[a]=m[a]*p[0]+m[4+a]*p[1]+m[8+a]*p[2]+m[12+a];
+            struct V3 { float x,y,z; };
+            const auto render=mc2ToRender(V3{w[0],w[1],w[2]});
+            const float mc2[3]={render.x,render.y,render.z};
+            for(unsigned a=0;a<3;++a) {
+                if(!std::isfinite(mc2[a]))return false;
+                lo[a]=std::min(lo[a],mc2[a]);
+                hi[a]=std::max(hi[a],mc2[a]);
+            }
+        }
+    }
+    for(unsigned a=0;a<3;++a) {
+        const float margin=0.01f+std::max(std::abs(lo[a]),std::abs(hi[a]))*0.000002f;
+        lo[a]-=margin;hi[a]+=margin;
+    }
+    return true;
+}
+
+// Contiguous per-draw lights keep fragment addresses uniform across a wave.
+// The 128-light actor budget is an allocation cap, never an energy cap: overflow
+// draws use the original full 256-light pool in source order.
+void build_draw_lights(MechIsland* s,const Mc2MechFrameFeed& feed,int count,
+                       std::vector<gos_terrain_lighting::GpuTerrainLight>& lights,
+                       std::vector<std::vector<MechRunPC>>& draws) {
+    const auto started=std::chrono::steady_clock::now();
+    using Light=gos_terrain_lighting::GpuTerrainLight;
+    const auto* pool=static_cast<const Light*>(feed.poolLights48);
+    const auto* instances=static_cast<const GpuMechInstance*>(feed.instances64);
+    lights.resize(kMaxPoolLights);if(count)std::copy_n(pool,count,lights.begin());
+    draws.resize(feed.runCount);
+    const bool cull=count && mc2::gate::get<"MC2_LIGHT_GRID">();
+    if(!cull) {
+        for(uint32_t r=0;r<feed.runCount;++r)draws[r].push_back({feed.runs[r].materialFlags,0,uint32_t(count)});
+        return;
+    }
+    struct Actor {
+        float lo[3]={INFINITY,INFINITY,INFINITY},hi[3]={-INFINITY,-INFINITY,-INFINITY};
+        bool valid=true;
+        MechRunPC pc{};
+    };
+    // All part instances of an actor share its palette base. Union their posed
+    // bounds, then cull once per actor rather than repeating sqrt/selection for
+    // every material packet. The union remains conservative for every part.
+    std::map<uint32_t,Actor> actors;
+    for(uint32_t r=0;r<feed.runCount;++r) {
+        const auto& run=feed.runs[r];if(!run.indexCount)continue;
+        const auto& local=light_bounds(s,run);
+        for(uint32_t n=0;n<run.instanceCount;++n) {
+            const uint32_t idx=run.instanceBase+n;if(idx>=feed.instanceCount)continue;
+            auto& actor=actors[instances[idx].baseBoneOffset];
+            float lo[3],hi[3];
+            if(!posed_light_bounds(local,feed,idx,lo,hi)) {actor.valid=false;continue;}
+            for(unsigned a=0;a<3;++a) {
+                actor.lo[a]=std::min(actor.lo[a],lo[a]);
+                actor.hi[a]=std::max(actor.hi[a],hi[a]);
+            }
+        }
+    }
+    uint64_t candidates=0,invalid=0,overflow=0,empty=0;
+    for(auto& [base,actor]:actors) {
+        actor.pc={0,0,uint32_t(count)};
+        if(actor.valid) {
+            const auto first=lights.size();
+            std::array<bool,kMaxPoolLights> keep;
+            gos_terrain_lighting::CullObjectPool(std::span<const Light>{pool,static_cast<size_t>(count)},actor.lo,actor.hi,
+                feed.poolMoverScale,feed.poolMoverDim,feed.poolSoft!=0,feed.poolMoverMax!=0,keep);
+            for(int i=0;i<count;++i)if(keep[i])lights.push_back(pool[i]);
+            const auto selected=lights.size()-first;
+            if(selected<=128)actor.pc={0,uint32_t(first),uint32_t(selected)};
+            else {lights.resize(first);++overflow;} // exact full-pool fallback
+        } else ++invalid;
+        candidates+=actor.pc.poolCount;if(!actor.pc.poolCount)++empty;
+    }
+    for(uint32_t r=0;r<feed.runCount;++r) {
+        const auto& run=feed.runs[r];
+        for(uint32_t n=0;n<run.instanceCount;++n) {
+            const uint32_t idx=run.instanceBase+n;
+            MechRunPC pc{run.materialFlags,0,uint32_t(count)};
+            if(idx<feed.instanceCount) {
+                const auto it=actors.find(instances[idx].baseBoneOffset);
+                if(it!=actors.end()) {
+                    const auto& [palette,actor]=*it;
+                    pc=actor.pc;pc.materialFlags=run.materialFlags;
+                }
+            }
+            draws[r].push_back(pc);
+        }
+    }
+    static int lastCount=-1;
+    if(count>lastCount && !actors.empty()) {
+        lastCount=count;
+        vlog("draw lights: pool=%d actors=%zu avg=%.2f empty=%llu invalid=%llu overflow=%llu bytes=%zu build_ms=%.3f.",
+             count,actors.size(),static_cast<double>(candidates)/actors.size(),
+             static_cast<unsigned long long>(empty),static_cast<unsigned long long>(invalid),static_cast<unsigned long long>(overflow),lights.size()*sizeof(Light),
+             std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-started).count());
+    }
 }
 
 } // namespace
@@ -711,11 +886,15 @@ extern "C" int mc2_vk_mech_island_prewarm(int w,int h) {
     auto& ctx=mc2vk::getOrCreateEngineVulkanContext();
     if(!ctx.valid() || w<=0 || h<=0) return 0;
     auto& slot=ctx.islandSlot(mc2vk::IslandSlot::Mech);
-    if(slot) return 1;
-    auto fresh=std::make_unique<MechIsland>();
-    if(!init_island(fresh.get(),w,h)) { ctx.waitIdle("mech_prewarm_failure"); return 0; }
-    slot=std::move(fresh);
-    return 1;
+    if(!slot) {
+        auto fresh=std::make_unique<MechIsland>();
+        if(!init_island(fresh.get(),w,h)) { ctx.waitIdle("mech_prewarm_failure"); return 0; }
+        slot=std::move(fresh);
+    }
+    auto* s=static_cast<MechIsland*>(slot.get());
+    // Empty mech geometry is valid on maps without mechs; the generation guard retries later.
+    upload_geometry_once(s);
+    return ensure_dummy_scheme(s) ? 1 : 0;
 }
 
 extern "C" int mc2_vk_mech_island_run(int w, int h) {
@@ -798,10 +977,15 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
     const bool nativeLight = feed.lightDataCpu && feed.lightDataCpuBytes >= 3600ull;
     int poolN = (feed.poolLights48 && feed.numPoolLights > 0) ? feed.numPoolLights : 0;
     if (poolN > (int)kMaxPoolLights) poolN = static_cast<int>(kMaxPoolLights);
+    std::vector<gos_terrain_lighting::GpuTerrainLight> drawLights;
+    std::vector<std::vector<MechRunPC>> drawPCs;
+    build_draw_lights(s,feed,poolN,drawLights,drawPCs);
+    const size_t poolBytes=drawLights.size()*sizeof(drawLights[0]);
+    const void* poolUpload=drawLights.data();
     const VkDeviceSize instOff = mc2vk::alignUp(sizeof(MechFrameUBO), ringAlign);
     const VkDeviceSize boneOff = mc2vk::alignUp(instOff + (instBytes ? instBytes : 64ull), ringAlign);
     const VkDeviceSize poolOff = mc2vk::alignUp(boneOff + boneBytes, ringAlign);
-    const mc2vk::FrameAlloc mainSpan = rctx.frameAlloc(poolOff + static_cast<VkDeviceSize>((poolN > 0 ? poolN : 1)) * 48ull);
+    const mc2vk::FrameAlloc mainSpan = rctx.frameAlloc(poolOff + poolBytes);
     if (!mainSpan) { setFallback("frame_ring_alloc_failed"); s->disabled = true; return 0; }
     uint8_t* const mainPtr = static_cast<uint8_t*>(mainSpan.ptr);
 
@@ -871,7 +1055,7 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
       u.shadeB[0] = feed.glassLumaThresh;  u.shadeB[1] = feed.glassMaxChanThresh;
       u.shadeB[2] = feed.importedGamma;    u.shadeB[3] = feed.importedAlbedoScale;
       u.shadeC[0] = feed.aoStrength;       u.shadeC[1] = feed.normalStrength;
-      if (poolN > 0) std::memcpy(mainPtr + poolOff, feed.poolLights48, static_cast<size_t>(poolN) * 48u);
+      std::memcpy(mainPtr + poolOff, poolUpload, poolBytes);
       u.poolF[0] = feed.poolMoverDim; u.poolF[1] = feed.poolMoverScale; u.poolF[2] = feed.poolObjScale;
       u.poolI[0] = poolN;             u.poolI[1] = feed.poolSoft;
       u.poolI[2] = feed.poolMoverMax; u.poolI[3] = feed.poolCompress;
@@ -923,7 +1107,6 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
     vkCmdSetViewport(cb, 0, 1, &vp);
     vkCmdSetScissor(cb, 0, 1, &scissor);
 
-    mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->pipe.get());
     VkDeviceSize vboOff = 0;
     const VkBuffer vertexBuffer = s->vbo.get();
     vkCmdBindVertexBuffers(cb, 0, 1, &vertexBuffer, &vboOff);
@@ -931,6 +1114,24 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
 
     // VK-DRAW-PERF-1: stamp draws-start (gap 0->1 = setup + binds).
     s->gpuTimer.write(cb, 1);
+
+    // Establish final visible depth with cheap skinning + the identical cutout test.
+    // The color pipeline is read-only EQUAL with early fragment tests: hidden
+    // triangles never execute the local-light loop, and discard cannot write depth.
+    mc2vk::infra::bind(cb,VK_PIPELINE_BIND_POINT_GRAPHICS,s->depthPipe.get());
+    VkDescriptorSet depthSet=VK_NULL_HANDLE;
+    for(uint32_t r=0;r<feed.runCount;++r) {
+        const auto& run=feed.runs[r];if(!run.indexCount || !run.instanceCount)continue;
+        const auto set=runSets[r];
+        if(set!=depthSet) {
+            vkCmdBindDescriptorSets(cb,VK_PIPELINE_BIND_POINT_GRAPHICS,s->playout.get(),0,1,&set,5,dynOffsets);
+            depthSet=set;
+        }
+        const MechRunPC pc{run.materialFlags,0,0};
+        vkCmdPushConstants(cb,s->playout.get(),VK_SHADER_STAGE_FRAGMENT_BIT,0,sizeof(pc),&pc);
+        vkCmdDrawIndexed(cb,run.indexCount,run.instanceCount,run.firstIndex,run.baseVertex,run.instanceBase);
+    }
+    mc2vk::infra::bind(cb,VK_PIPELINE_BIND_POINT_GRAPHICS,s->pipe.get());
 
     // One indexed instanced draw per run. firstInstance = run.instanceBase so the VS's
     // gl_InstanceIndex indexes the instance SSBO snapshot exactly as the GL VS's
@@ -947,11 +1148,14 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
             boundSet = set;
         }
         // VK-PARITY-MECH-1: per-run ALPHA_TEST flag (mech.frag u_materialFlags).
-        const uint32_t mflags = run.materialFlags;
-        vkCmdPushConstants(cb, s->playout.get(), VK_SHADER_STAGE_FRAGMENT_BIT, 0, 4, &mflags);
-        vkCmdDrawIndexed(cb, run.indexCount, run.instanceCount, run.firstIndex,
-                         run.baseVertex, run.instanceBase);
-        ++runs;
+        const auto& pcs=drawPCs[r];
+        const bool split=poolN>0 && mc2::gate::get<"MC2_LIGHT_GRID">();
+        for(uint32_t n=0;n<pcs.size();++n) {
+            vkCmdPushConstants(cb,s->playout.get(),VK_SHADER_STAGE_FRAGMENT_BIT,0,sizeof(MechRunPC),&pcs[n]);
+            vkCmdDrawIndexed(cb,run.indexCount,split?1:run.instanceCount,run.firstIndex,
+                             run.baseVertex,run.instanceBase+n);
+            ++runs;
+        }
     }
     g_health.runs = runs;
 

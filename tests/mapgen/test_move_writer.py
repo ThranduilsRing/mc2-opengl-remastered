@@ -31,6 +31,16 @@ class MoveWriterTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'divisible'):
             build_move(np.full((61, 61), 0x400, dtype='<u4'))
 
+    def test_reader_dimension_limit(self):
+        with self.assertRaisesRegex(ValueError, '3072'):
+            global_packets(np.zeros((3090, 3090), dtype=bool))
+
+    def test_reader_area_limit(self):
+        mask = np.zeros((360, 360), dtype=bool)
+        mask[::2, ::2] = True  # 32,400 isolated areas, beyond the reader's 30,000.
+        with self.assertRaisesRegex(ValueError, 'areas'):
+            global_packets(mask)
+
     def test_stock_link_cost_fixtures(self):
         # A central sector with single-cell west/east doors at known endpoints.
         # Read the serialized links directly; do not rely on validate_move.

@@ -182,7 +182,7 @@ def _image_ref(doc, buffers, base_dir, texinfo, role, extract_dir, passthrough=F
     return TextureRef.of(out, role, passthrough)
 
 
-def read_materials(doc, buffers, base_dir, extract_dir=None, class_of=None, texture_roots=(), unclassified="error"):
+def read_materials(doc, buffers, base_dir, extract_dir=None, class_of=None, texture_roots=(), unclassified="error", source_refs=None):
     """IR materials from glTF materials (+ the implicit default material when used).
 
     class_of(name, extras) may override the class; otherwise extras.mc2_material_class
@@ -202,7 +202,18 @@ def read_materials(doc, buffers, base_dir, extract_dir=None, class_of=None, text
         occ = _image_ref(doc, buffers, base_dir, m.get("occlusionTexture"), "orm", extract_dir, texture_roots=texture_roots)
         orm = mr or occ
         if mr and occ and mr.sha256 != occ.sha256:
-            orm = None   # separate maps: the cooker packs them (frontend passes both via extras)
+            # glTF permits independent AO and MR images on UV0. Pack their authored
+            # channels rather than silently dropping both maps (Blender kit exports).
+            from PIL import Image
+            mr_pixels = np.array(Image.open(mr.path).convert("RGBA"))
+            ao = Image.open(occ.path).convert("RGBA").resize((mr_pixels.shape[1], mr_pixels.shape[0]), Image.Resampling.LANCZOS)
+            mr_pixels[..., 0] = np.asarray(ao)[..., 0]
+            if extract_dir is None:
+                raise ValueError("separate AO/MR maps need an extract directory")
+            packed = Path(extract_dir) / f"orm-{mr.sha256[:16]}-{occ.sha256[:16]}.png"
+            packed.parent.mkdir(parents=True, exist_ok=True)
+            Image.fromarray(mr_pixels, "RGBA").save(packed)
+            orm = TextureRef.of(packed, "orm")
         if cls is None:
             if (normal or orm) and unclassified == "error":
                 raise ValueError(f"{name}: authored maps need an explicit material class (extras.mc2_material_class)")
@@ -223,6 +234,8 @@ def read_materials(doc, buffers, base_dir, extract_dir=None, class_of=None, text
             emissive=_image_ref(doc, buffers, base_dir, m.get("emissiveTexture"), "emissive", extract_dir, texture_roots=texture_roots),
             emissive_factor=tuple(m.get("emissiveFactor", (0, 0, 0))),
             reviewed=bool(extras.get("mc2_reviewed", cls != "legacy_prelit")))
+        if source_refs is not None:
+            source_refs.extend(ref for ref in (normal, mr, occ, mat.base_color, mat.emissive) if ref is not None)
         if mat.base_color is None and mat.base_color_factor[:3] != (1, 1, 1):
             mat.base_color_policy = "authored"
         out.append(mat)
@@ -242,7 +255,8 @@ def read_gltf(path, *, frame="gltf", wu_per_unit=1.0, yaw_degrees=0.0, extract_d
         raise ValueError(f"unsupported required extensions: {sorted(required)}")
     if (doc.get("skins") or doc.get("animations")) and not allow_skin:
         raise ValueError("skinned/animated source: static assets need a static export (mechs use allow_skin)")
-    materials, default_slot = read_materials(doc, buffers, base_dir, extract_dir, class_of, texture_roots, unclassified)
+    source_refs = []
+    materials, default_slot = read_materials(doc, buffers, base_dir, extract_dir, class_of, texture_roots, unclassified, source_refs)
     scene = Scene()
     mesh_cache = {}
 
@@ -309,7 +323,7 @@ def read_gltf(path, *, frame="gltf", wu_per_unit=1.0, yaw_degrees=0.0, extract_d
             raise ValueError("cyclic node graph")
         src = doc["nodes"][i]
         node = Node(src.get("name") or f"node_{i}", parent, node_matrix(src),
-                    mesh_index(src["mesh"]) if "mesh" in src else None)
+                    mesh_index(src["mesh"]) if "mesh" in src else None, src.get("extras", {}))
         scene.nodes.append(node)
         me = len(scene.nodes) - 1
         for c in src.get("children", []):
@@ -319,7 +333,11 @@ def read_gltf(path, *, frame="gltf", wu_per_unit=1.0, yaw_degrees=0.0, extract_d
     info = {"skins": len(doc.get("skins", [])), "joints": [doc["nodes"][j].get("name", str(j))
                                                           for s in doc.get("skins", []) for j in s["joints"]],
             "clips": [a.get("name", f"clip_{k}") for k, a in enumerate(doc.get("animations", []))],
-            "extensionsUsed": sorted(set(doc.get("extensionsUsed", [])) - SUPPORTED_EXTENSIONS)}
+            "extensionsUsed": sorted(set(doc.get("extensionsUsed", [])) - SUPPORTED_EXTENSIONS),
+            "dependencies": [{"role": "geometry_buffer", "path": str(base_dir / unquote(b["uri"])),
+                              "sha256": sha256_bytes(data)} for b, data in zip(doc.get("buffers", []), buffers)
+                             if "uri" in b and not b["uri"].startswith("data:")] +
+                            [{"role": ref.role, "path": ref.path, "sha256": ref.sha256} for ref in source_refs]}
     return scene, materials, info
 
 
@@ -393,18 +411,35 @@ def write_runtime_glb(scene: Scene, materials: list[Material], texture_names: di
             out["pbrMetallicRoughness"]["baseColorTexture"] = {"index": len(textures) - 1}
         doc["materials"].append(out)
     used = {}
+    extras = {n.name: n.extras for n in scene.nodes if n.extras}
+    pivots = {n.name: n.extras["mc2_pivot_tg_wu"] for n in scene.nodes if "mc2_pivot_tg_wu" in n.extras}
+    # Attachment-only nodes carry authored light contracts and must survive baking.
+    for node, world in zip(scene.nodes, scene.world_matrices()):
+        if node.mesh is not None or not node.extras:
+            continue
+        matrix = to_runtime @ world
+        doc["nodes"].append({"name": node.name, "matrix": matrix.T.reshape(-1).tolist(), "extras": node.extras})
+        doc["scenes"][0]["nodes"].append(len(doc["nodes"]) - 1)
+        used[node.name] = 1
     for node_name, prim in scene.flattened():
+        pivot = pivots.get(node_name)
+        properties = extras.get(node_name, {})
         # The engine importer keys shapes by node name: every runtime node name is unique.
         k = used.get(node_name, 0)
         used[node_name] = k + 1
         node_name = node_name if k == 0 else f"{node_name}_{k}"
         prim = transform_primitive(prim, to_runtime)
+        if pivot is not None:
+            prim.positions -= np.asarray(pivot) * [-1, -1, 1]
         normals = prim.normals if prim.normals is not None else smooth_normals(prim.positions, prim.indices)
         attrs = {"POSITION": b.add(prim.positions.astype("<f4"), "VEC3", 5126, 34962, minmax=True),
                  "NORMAL": b.add(normals.astype("<f4"), "VEC3", 5126, 34962)}
         if prim.uv0 is not None:
             uv = np.stack([prim.uv0[:, 0], 1.0 - prim.uv0[:, 1]], axis=1)
             attrs["TEXCOORD_0"] = b.add(uv.astype("<f4"), "VEC2", 5126, 34962)
+        elif prim.material in texture_names and materials[prim.material].base_color is None:
+            # A uniform material factor is cooked as a 1x1 image; it needs no authored UVs.
+            attrs["TEXCOORD_0"] = b.add(np.zeros((len(prim.positions), 2), "<f4"), "VEC2", 5126, 34962)
         if prim.tangents is not None:
             attrs["TANGENT"] = b.add(prim.tangents.astype("<f4"), "VEC4", 5126, 34962)
         if prim.color0 is not None:
@@ -414,7 +449,13 @@ def write_runtime_glb(scene: Scene, materials: list[Material], texture_names: di
         idx = b.add(prim.indices.astype("<u4" if big else "<u2").reshape(-1), "SCALAR", 5125 if big else 5123, 34963)
         doc["meshes"].append({"name": node_name, "primitives": [
             {"attributes": attrs, "indices": idx, "material": int(prim.material), "mode": 4}]})
-        doc["nodes"].append({"name": node_name, "mesh": len(doc["meshes"]) - 1})
+        node = {"name": node_name, "mesh": len(doc["meshes"]) - 1}
+        if properties and k == 0:
+            node["extras"] = dict(properties)
+        if pivot is not None:
+            node["translation"] = (np.asarray(pivot) * [-1, -1, 1]).tolist()
+            node.setdefault("extras", {})["mc2_pivot_tg_wu"] = pivot
+        doc["nodes"].append(node)
         doc["scenes"][0]["nodes"].append(len(doc["nodes"]) - 1)
     if not doc["meshes"]:
         raise ValueError("scene has no geometry to write")

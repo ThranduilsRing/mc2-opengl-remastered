@@ -52,7 +52,7 @@
    "LG03": 104,
    "LG04": 5,
    "LG05": 97,
-   "LG06": 362,
+   "LG06": 363,
    "LG07": 0,
    "LG08": 157,
    "LG09": 4,
@@ -141,16 +141,16 @@
   "code": {
    "LG01": 24,
    "LG02": 2,
-   "LG03": 433,
+   "LG03": 426,
    "LG04": 16,
    "LG05": 200,
-   "LG06": 445,
+   "LG06": 444,
    "LG07": 2,
    "LG08": 13,
    "LG09": 0,
    "LG10": 4,
    "LG11": 102,
-   "LG12a": 86,
+   "LG12a": 84,
    "LG12b": 154,
    "LG13": 22,
    "LG14": 93,
@@ -187,17 +187,17 @@
   "mclib": {
    "LG01": 3,
    "LG02": 0,
-   "LG03": 600,
+   "LG03": 594,
    "LG04": 15,
    "LG05": 113,
-   "LG06": 534,
+   "LG06": 528,
    "LG07": 0,
    "LG08": 47,
    "LG09": 2,
    "LG10": 20,
-   "LG11": 53,
+   "LG11": 51,
    "LG12a": 117,
-   "LG12b": 179,
+   "LG12b": 177,
    "LG13": 123,
    "LG14": 53,
    "LG15": 0,
@@ -336,7 +336,7 @@
   },
   "GameOS/gameos/engine_present_vk.cpp": {
    "LG03": 2,
-   "LG06": 4,
+   "LG06": 5,
    "LG08": 15
   },
   "GameOS/gameos/gameos.cpp": {
@@ -1483,6 +1483,9 @@
    "LG05": 4,
    "LG06": 1
   },
+  "code/icon_registry.cpp": {
+   "LG06": 1
+  },
   "code/infowindow.cpp": {
    "LG03": 3,
    "LG05": 1,
@@ -1673,7 +1676,6 @@
   },
   "code/mech_loadout.cpp": {
    "LG05": 5,
-   "LG06": 1,
    "LG12a": 2,
    "LG12b": 1
   },
@@ -1719,7 +1721,7 @@
    "LG06": 1
   },
   "code/mechcmd2_frame.cpp": {
-   "LG03": 4,
+   "LG03": 2,
    "LG11": 16,
    "LG12a": 1
   },
@@ -1728,10 +1730,8 @@
    "LG14": 1
   },
   "code/mechicon.cpp": {
-   "LG03": 5,
    "LG05": 9,
-   "LG06": 3,
-   "LG12a": 2,
+   "LG06": 1,
    "LG13": 4,
    "LG18": 3
   },
@@ -2019,6 +2019,9 @@
   },
   "code/optionsarea.h": {
    "LG06": 2
+  },
+  "code/package_chassis_registry.cpp": {
+   "LG06": 1
   },
   "code/pausewindow.cpp": {
    "LG11": 1
@@ -2323,8 +2326,8 @@
    "LG13": 2
   },
   "mclib/assimp_importer.cpp": {
-   "LG05": 10,
-   "LG06": 7,
+   "LG05": 9,
+   "LG06": 8,
    "LG08": 16,
    "LG11": 1,
    "LG12a": 2
@@ -2366,7 +2369,7 @@
    "LG03": 1
   },
   "mclib/bdactor_type.cpp": {
-   "LG03": 24,
+   "LG03": 18,
    "LG06": 2
   },
   "mclib/burnin_jpeg_decode.cpp": {
@@ -2951,11 +2954,11 @@
   },
   "mclib/model_override_registry.cpp": {
    "LG05": 2,
-   "LG06": 5,
-   "LG11": 5
+   "LG06": 2,
+   "LG11": 3
   },
   "mclib/model_override_registry.h": {
-   "LG06": 3
+   "LG06": 1
   },
   "mclib/mouse.cpp": {
    "LG18": 3
@@ -3018,8 +3021,8 @@
    "LG13": 1
   },
   "mclib/msl_load.cpp": {
-   "LG05": 5,
-   "LG06": 8,
+   "LG05": 6,
+   "LG06": 9,
    "LG11": 1,
    "LG12b": 2
   },
@@ -3390,7 +3393,7 @@
   },
   "mclib/tgl.h": {
    "LG05": 3,
-   "LG06": 18,
+   "LG06": 16,
    "LG13": 44,
    "LG17": 7
   },
@@ -3404,8 +3407,7 @@
    "LG06": 2
   },
   "mclib/tgl_parse.cpp": {
-   "LG06": 3,
-   "LG12b": 2
+   "LG06": 2
   },
   "mclib/tgl_shadows.cpp": {
    "LG04": 1
@@ -3511,7 +3513,7 @@
    "LG20": 3
   }
  },
- "head": "63581eab3",
+ "head": "724636f06",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

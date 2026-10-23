@@ -23,6 +23,7 @@
 #include<stuff/stuff.hpp>
 #include<gameos.hpp>
 #include <cstdint>  // uint64_t (Tier-1 instrumentation, stability spec §2)
+#include <string_view>
 #include <cstring>  // strcmp (rebuildShapeRecParents)
 #include <memory>   // the per-frame pools own their storage
 #include <vector>   // an animation owns its key tracks
@@ -544,6 +545,15 @@ class TG_TypeNode
 			relativeNodeCenter = nodeCenter;
 			relativeNodeCenter -= parent;
 		}
+
+        void InitContentNode(std::string_view name, std::string_view parent, glm::vec3 center, glm::vec3 relative)
+        {
+            std::memset(nodeId, 0, sizeof(nodeId)); name.copy(nodeId, TG_NODE_ID - 1);
+            std::memset(parentId, 0, sizeof(parentId)); parent.copy(parentId, TG_NODE_ID - 1);
+            nodeCenter = center;
+            relativeNodeCenter = relative;
+        }
+
 		
 		virtual void movePosRelativeCenterNode (void)
 		{
@@ -586,10 +596,7 @@ class TG_TypeNode
 		//
 		// NOTE: Only takes the first GEOMOBJECT from the ASE file.  Multi-object
 		// Files will require user intervention to parse!!
-		virtual int LoadTGShapeFromASE (const char *fileName)
-		{
-			return 0;
-		}
+
 
 		//Function returns 0 if OK.  -1 if textureNum is out of range of numTextures.
 		//This function takes the gosTextureHandle passed in and assigns it to the
@@ -815,7 +822,6 @@ class TG_TypeShape : public TG_TypeNode
 		//
 		// NOTE: Only takes the first GEOMOBJECT from the ASE file.  Multi-object
 		// Files will require user intervention to parse!!
-		virtual int LoadTGShapeFromASE (const char *fileName);
 
 		//Function returns 0 if OK.  -1 if textureNum is out of range of numTextures.
 		//This function takes the gosTextureHandle passed in and assigns it to the

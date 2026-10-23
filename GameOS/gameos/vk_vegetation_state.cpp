@@ -9,6 +9,8 @@
 #include "vulkan_context.h"
 
 #include "mc2fmt.h"
+#include "RenderCore/GpuResidencyPolicy.h"
+#include "Gates/render_options.h"
 
 #include <algorithm>
 #include <cstdio>
@@ -43,12 +45,25 @@ void State::clear(mc2vk::VulkanContext& ctx) {
     lastSurvivors_ = 0;
 }
 
+uint32_t State::strideFor(uint64_t instances, uint64_t regions) {
+    return RenderCore::vegetationStride(instances, regions, kSlots, RenderCore::gpuResidencyPolicy(mc2::options::current().shadowQuality).vegetation, mc2vk::infra::headroom());
+}
+
 bool State::upload(mc2vk::VulkanContext& ctx, std::span<const GpuInstance> instances, std::span<const GpuRegion> regions) {
     clear(ctx);
     if (instances.empty() || regions.empty()) return true;   // an empty population is a valid population
     VkPhysicalDeviceProperties properties{};
     vkGetPhysicalDeviceProperties(ctx.physicalDevice(), &properties);
     const VkDeviceSize maxRange = properties.limits.maxStorageBufferRange;
+    const auto policy=RenderCore::gpuResidencyPolicy(mc2::options::current().shadowQuality);
+    // Resident bytes (what stays allocated) against the preset ceiling; resident + the transient staging copy against live headroom.
+    const uint64_t resident=RenderCore::vegetationBytes(instances.size(),regions.size(),kSlots);
+    const uint64_t bytes=resident+uint64_t(instances.size_bytes())+regions.size_bytes();
+    if(resident>policy.vegetation || !mc2vk::infra::admit(bytes) || properties.limits.maxComputeWorkGroupInvocations<128 ||
+        properties.limits.maxComputeWorkGroupSize[0]<128 || properties.limits.maxComputeSharedMemorySize<128*sizeof(uint32_t)) {
+        std::fprintf(stderr,"[VK_RESIDENCY v1] refused=vegetation bytes=%llu policy=%llu fallback=off reason=preset_budget_or_device_limits\n",bytes,policy.vegetation);
+        return true;
+    }
     // Validate every whole-buffer descriptor before allocation or narrowing.
     if (instances.size_bytes() > maxRange || regions.size_bytes() > maxRange) {
         mc2::fmt::print_err("[VEG_GPU] population upload failed: storage descriptor range exceeded\n");

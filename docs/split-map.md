@@ -233,6 +233,7 @@ Split commit: `aa9130de3`.
 | Piece | What it holds |
 |---|---|
 | `logisticsvariant.cpp` | keeps LogisticsChassis and the LogisticsVariant construction, init and addComponent |
+| `logisticsvariant_package.cpp` | BT2018-FIRST-CLASS P7: LogisticsVariant rules for package chassis. Every rule itself is the pure mc2pkg::checkAdd / assignMounts in code/package_chassis.h; this file only adapts |
 | `logisticsvariant_stats.cpp` | LogisticsVariant: the variant stat getters, component placement checks and lookups, save, and the LogisticsVehicle setup. |
 | `logisticsvariant_internal.h` | shared include bundle, extern globals and declarations of the pieces |
 
@@ -574,7 +575,7 @@ Split commit: `e880b7520`.
 |---|---|
 | `tgl.cpp` | keeps the globals, pools and pool-statistics code |
 | `tgl_load_guard.cpp` | mclib/tgl_load_guard.cpp - META-FIX design B PART 1. |
-| `tgl_parse.cpp` | TG shapes: ASE file parsing and shape loading (TG_TypeShape::ParseASEFile, LoadTGShapeFromASE), textures, imported meshes, camera/fog/light setup. |
+| `tgl_parse.cpp` | TG shapes: ASE file parsing and shape loading (TG_TypeShape::ParseASEFile), textures, imported meshes, camera/fog/light setup. |
 | `tgl_render.cpp` | TG shapes: TG_Shape::Render, per-poly selection and the render-shape PBR override. |
 | `tgl_shadows.cpp` | TG shapes: shadow transform and shadow rendering. |
 | `tgl_transform.cpp` | TG shapes: TG_Shape::MultiTransformShape and its positions-only variant, light gathering and billboard handling. |

@@ -145,3 +145,45 @@ def test_missing_vegetation_card_refuses_deploy(tmp_path, monkeypatch, capsys):
         assert "game data payload missing" in capsys.readouterr().err
         return
     raise AssertionError("deploy accepted missing vegetation atlas input")
+
+
+def test_deploy_prunes_only_unchanged_manifest_files(tmp_path, monkeypatch):
+    monkeypatch.setattr(dp, "ensure_terrain_materials", lambda target: {})
+    target = tmp_path / "install"
+    target.mkdir()
+    owned = {}
+    for rel in ("retired.spv", "modified.ini", "preserved.ini", "mods/user/keep.fit", "data/savegame/save.fit"):
+        path = target / rel
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(b"original")
+        owned[rel] = (dp.sha256_file(path), path.stat().st_size)
+    dp.write_manifest(str(target), owned, "fixture")
+    (target / "modified.ini").write_bytes(b"user change")
+    (target / "save.fit").write_bytes(b"user save")
+    dp.deploy([], str(target), False, preserve=("preserved.ini",), full_verify=True)
+    assert not (target / "retired.spv").exists()
+    assert (target / "modified.ini").read_bytes() == b"user change"
+    assert (target / "preserved.ini").exists()
+    assert (target / "save.fit").read_bytes() == b"user save"
+    assert (target / "mods/user/keep.fit").exists()
+    assert (target / "data/savegame/save.fit").exists()
+
+
+def test_deploy_rejects_retired_path_outside_target(tmp_path, monkeypatch):
+    import pytest
+    monkeypatch.setattr(dp, "ensure_terrain_materials", lambda target: {})
+    target = tmp_path / "install"
+    target.mkdir()
+    outside = tmp_path / "outside"
+    outside.write_bytes(b"keep")
+    dp.write_manifest(str(target), {"../outside": (dp.sha256_file(outside), 4)}, "fixture")
+    with pytest.raises(SystemExit):
+        dp.deploy([], str(target), False)
+    assert outside.read_bytes() == b"keep"
+
+
+def test_aa_payload_ships_notices_only(tmp_path):
+    items = dp.enumerate_payload(str(ROOT), str(_ninja_tree(tmp_path)), "mc2.exe", "mc2.pdb")
+    aa = [r for _, r, _ in items if r.startswith(("3rdparty/smaa/", "3rdparty/cmaa2/"))]
+    assert aa
+    assert all(Path(r).name.lower().startswith(("license", "notice", "upstream")) for r in aa)

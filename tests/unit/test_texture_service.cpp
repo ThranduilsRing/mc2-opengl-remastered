@@ -432,6 +432,11 @@ TEST_CASE("TextureService: owned decode worker and oversized staging admission")
         return image;
     });
     REQUIRE(result.get());
+    worker.waitIdle();
+    const auto published=worker.take();
+    REQUIRE(published.size()==1);
+    REQUIRE(bool(published.front().image));
+    CHECK((published.front().image->pixels==std::vector<uint8_t>{1,2,3,255}));
     TextureStagingBudget budget{16};
     REQUIRE(budget.reserve(32)); // one large atlas can make progress
     CHECK_FALSE(budget.reserve(1));
@@ -443,14 +448,14 @@ TEST_CASE("TextureService: reload keeps identity and rejects an older decoded re
     TextureService service;
     TextureDecodeWorker worker;
     const auto handle=service.acquire(keyOf("base","reload",1),7);
-    std::promise<void> allow,drained;
-    auto gate=allow.get_future().share(); auto done=drained.get_future();
+    std::promise<void> allow;
+    auto gate=allow.get_future().share();
     worker.request(handle,[gate] { gate.wait(); return std::make_shared<const KtxImage>(); },service.contentVersion(handle));
-    worker.request(TextureHandle::make(99,1),[&drained] { drained.set_value(); return std::shared_ptr<const KtxImage>{}; });
+    worker.request(TextureHandle::make(99,1),[] { return std::shared_ptr<const KtxImage>{}; });
     REQUIRE(service.rebind(handle,7));
-    allow.set_value(); done.get(); // the single worker published the first result before starting the second
+    allow.set_value(); worker.waitIdle();
     auto results=worker.take();
-    REQUIRE_FALSE(results.empty()); CHECK(results.front().handle==handle);
+    REQUIRE(results.size()==2); CHECK(results.front().handle==handle);
     CHECK(service.isLive(handle));
     CHECK(results.front().contentVersion!=service.contentVersion(handle));
 }

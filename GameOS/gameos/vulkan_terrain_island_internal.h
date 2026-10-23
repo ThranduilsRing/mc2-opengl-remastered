@@ -188,10 +188,13 @@ struct TerrainIsland : mc2vk::IslandState {
     mc2vk::ResidentTextureRef shoreMaskTexture;
     uint64_t      shoreMaskVersionImported = 0;   // field-store mask version last imported (0 = none)
     bool          shoreMaskReady = false;         // the bound mask is the mission's, not the dummy
-    // SHORE-FIELD-1: binding 15, the water shore field the coastal colormap follows.
-    mc2vk::ResidentTextureRef shoreFieldTexture;
-    uint64_t      shoreFieldVersionImported = 0;
-    bool          shoreFieldReady = false;
+    // Baked material weights reuse the former, unconsumed shore-image slot.
+    mc2vk::ResidentTextureRef materialTexture;
+    mc2vk::ResidentTextureRef materialPending;         // a coverage-only update, swapped in once resident (the old one stays bound until then)
+    std::vector<uint8_t> materialBase, materialFinal;  // coverage-free weights (cached per surface/types/control/profile) and base + hard-surface coverage
+    uint32_t materialW = 0, materialH = 0;
+    int materialProfile = -1;
+    uint64_t materialSurfaceVersion = 0, materialTypesVersion = 0, materialControlVersion = 0, materialCoverageVersion = 0;
     mc2vk::OwnedBuffer      cementBuf;
     VkDeviceSize  cementCapBytes = 0;
     uint64_t      cementVersionCopied = UINT64_MAX; // last snapshotted cement-word version
@@ -216,6 +219,12 @@ struct TerrainIsland : mc2vk::IslandState {
     uint64_t      matNormalVersionRejected = 0;      // rejected source version, logged once
     uint32_t      matNormalLayers = 0;               // layer count of the imported array
     bool          matNormalReady = false;            // set once the real array is live
+    // CONCRETE-ROAD-PBR-DETAIL: binding 18, 2-layer RGBA8 array (0 pad concrete, 1 road asphalt): normal xy, roughness, AO.
+    mc2vk::ResidentTextureRef concreteDetailTexture;
+    mc2vk::OwnedSampler     concreteDetailSamp;
+    bool          concreteDetailReady = false;
+    bool          concreteDetailTried = false;
+    mc2vk::ResidentTextureRef concreteDetailPending;   // uploading; swapped in (and bound) only once the residency service reports it ready
 
     // Per-patch dynamic UBO (one 512B slot per LOD0 patch this frame; 512 is a multiple
     // of the 256B minUniformBufferOffsetAlignment — grew from 256 for the dynshadow mat4).
@@ -313,8 +322,8 @@ bool ensure_dummy_cement(TerrainIsland* s);
 void import_cement(TerrainIsland* s, const Mc2TerrainTier1Feed& feed);
 bool ensure_dummy_shore_mask(TerrainIsland* s);
 void import_shore_mask(TerrainIsland* s, const Mc2TerrainTier1Feed& feed);
-bool ensure_dummy_shore_field(TerrainIsland* s);
-void import_shore_field(TerrainIsland* s, const Mc2TerrainTier1Feed& feed);
+bool ensure_dummy_materials(TerrainIsland* s);
+void import_materials(TerrainIsland* s);
 bool snapshot_cement(TerrainIsland* s, const Mc2TerrainTier1Feed& feed);
 
 
@@ -324,6 +333,8 @@ bool bind_static_shadow(TerrainIsland* s, const Mc2TerrainTier1Feed& feed);
 
 bool ensure_dummy_matnormal(TerrainIsland* s);
 void import_matnormal(TerrainIsland* s, const Mc2TerrainTier1Feed& feed);
+bool ensure_dummy_concrete_detail(TerrainIsland* s);
+void import_concrete_detail(TerrainIsland* s);
 
 }  // namespace vk_terrain_detail
 using namespace vk_terrain_detail;

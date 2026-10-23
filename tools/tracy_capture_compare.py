@@ -330,13 +330,36 @@ def capture_trace(install: Path, arm: str, mission: str, seconds: int, out: Path
         return rc
 
 
+def zone_summary(trace: Path, top: int = 10, csv_out: Path | None = None) -> None:
+    """Print the top-N zones by total time; write the full csvexport table to csv_out only when asked (--csv)."""
+    exe = tracy_dir() / "tracy-csvexport.exe"
+    if not exe.is_file():
+        print(f"WARN: {exe} not found; no zone summary", file=sys.stderr)
+        return
+    # background-launch: allow Tracy csvexport console tool, not the game; windowless via hidden_kwargs
+    p = subprocess.run([str(exe), str(trace)], capture_output=True, text=True, timeout=300, **nofocus.hidden_kwargs())
+    if p.returncode != 0:
+        print(f"WARN: csvexport failed on {trace}: {p.stderr.strip()}", file=sys.stderr)
+        return
+    if csv_out is not None:
+        csv_out.write_text(p.stdout, encoding="utf-8")
+        print(f"csv: {csv_out}")
+    rows = sorted(csv.DictReader(io.StringIO(p.stdout)), key=lambda r: -int(r["total_ns"]))[:top]
+    for r in rows:
+        print(f"  {int(r['total_ns']) / 1e6:10.2f} ms  x{r['counts']:>8}  {r['name']}")
+
+
 def cmd_capture(args: argparse.Namespace) -> int:
-    return capture_trace(
+    rc = capture_trace(
         Path(args.install), args.arm, args.mission, args.seconds,
         Path(args.output), extra_env=args.env, pose=args.pose,
         fixed_timestep=not args.free_timestep, fps_cap=args.fps_cap,
         show_window=args.show_window,
     )
+    if rc == 0:
+        out = Path(args.output)
+        zone_summary(out, csv_out=out.with_suffix(".zones.csv") if args.csv else None)
+    return rc
 
 
 # ---------------------------------------------------------------- compare ----
@@ -916,7 +939,8 @@ def main() -> int:
     c.add_argument("--install", required=True, help="MC2 install dir containing mc2.exe")
     c.add_argument("--arm", choices=list(ARMS), default="vk")
     c.add_argument("--mission", default="mc2_01")
-    c.add_argument("--seconds", type=int, default=30, help="Tracy recording window")
+    c.add_argument("--seconds", type=int, default=15, help="Tracy recording window (default 15)")
+    c.add_argument("--csv", action="store_true", help="also write the full per-zone csvexport table next to the trace (default: top-10 summary only)")
     c.add_argument("-o", "--output", required=True, help="output .tracy path")
     c.add_argument("--pose", default=None, metavar="X,Y,ROT,PROJ,ALT[@FRAME]",
                    help="MC2_CAMERA_PARK pose to pin the camera (optional)")

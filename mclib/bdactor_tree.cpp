@@ -139,8 +139,10 @@ void TreeAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 		
 		if (!appearType->getDesignerTypeBounds())
 		{
-			appearType->typeUpperLeft = treeShape->GetMinBox();
-			appearType->typeLowerRight = treeShape->GetMaxBox();
+			if (auto* collision = appearType->getTreeCollisionShape(0)) {
+				appearType->typeUpperLeft = collision->minBox;
+				appearType->typeLowerRight = collision->maxBox;
+			}
 		}
 
 		// GPU static-prop batcher: register the RENDER shape (override-or-stock)
@@ -152,11 +154,7 @@ void TreeAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 		// getTreeRenderShape clamps unpopulated indices back to LOD0). Stock
 		// types keep the full MAX_LODS loop: getTreeRenderShape(i) returns the
 		// distinct stock treeShape[i] per LOD, all of which must register.
-		const bool _treeIsOverride = (appearType->treeRenderShapeLodCount > 0);
-		const int _treeRegLods = _treeIsOverride ? static_cast<int>(appearType->treeRenderShapeLodCount) : MAX_LODS;
-		for (int i = 0; i < _treeRegLods; ++i)
-			GpuStaticPropBatcher::instance().registerMultiShape(appearType->getTreeRenderShape(i), _treeIsOverride);
-		GpuStaticPropBatcher::instance().registerMultiShape(appearType->treeDmgShape);
+		appearType->registerRenderShapes();
 	}
 
 	pitch = yaw = 0.0f;
@@ -166,9 +164,11 @@ void TreeAppearance::setObjStatus (long oStatus)
 {
 	if (status != oStatus)
 	{
+        invalidateStaticRegistration();
+        activeLOD = 0;
 		if ((oStatus == OBJECT_STATUS_DESTROYED) || (oStatus == OBJECT_STATUS_DISABLED))
 		{
-			if (appearType->treeDmgShape)
+			if (appearType->getTreeDamageRenderShape())
 			{
 				if (treeShape)
 				{
@@ -177,7 +177,7 @@ void TreeAppearance::setObjStatus (long oStatus)
 					treeShape = nullptr;
 				}
 				
-				treeShape = appearType->treeDmgShape->CreateFrom();
+				treeShape = appearType->getTreeDamageRenderShape()->CreateFrom();
 				beenInView = false; 
 			}
 			

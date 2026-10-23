@@ -29,4 +29,9 @@ SurfaceColor evaluateSurfaceMacro(const SurfaceCookInput& input, float u, float 
 float evaluateSurfaceBreakup(float worldX, float worldY);
 std::optional<SurfaceGradients> cookSurfaceGradients(std::span<const float> heights, uint32_t side);
 std::optional<SurfaceAsset> cookSurface(const SurfaceCookInput& input);
+// RGBA8 = grass, dirt, snow, concrete; rock is the remaining weight. Terrain
+// material indices and authored control weights override the legacy color import.
+std::vector<uint8_t> cookSurfaceMaterials(const SurfaceAsset& surface,
+    std::span<const float> materials, uint32_t side, std::span<const uint8_t> control, uint32_t controlSide,
+    uint32_t width, uint32_t height, bool sandProfile = false);
 } // namespace mc2terrain

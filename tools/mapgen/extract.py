@@ -16,7 +16,8 @@ if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from tools.mapgen.common import (CELL_WU, SCHEMA, STEEP_DEG, INSTALL_ROOT,
                                 output_path, slope_grid, spans, world_cell, write_json)
-from tools.mapgen.data import Install, catalog, fit_sections, overlay_catalog, packet
+from tools.mission_codec import (OBJECT, Install, catalog, fit_sections, object_records,
+                                 overlay_catalog, packet, parent_cell)
 
 INSTALLS = {"stock": "mc2-win64-v0.4", "MC2X-CVE-G": "MC2X-CVE-G",
             "MC2X-REAP3": "MC2X-REAP3", "Exodus": "MC2-Exodus",
@@ -26,7 +27,6 @@ DEFAULT_OUT = Path(__file__).resolve().parent / "corpus"
 VERTEX = np.dtype([("normal", "<f4", (3,)), ("height", "<f4"),
                    ("texture", "<u4"), ("light", "<u4"), ("type", "<u4"),
                    ("selected", "u1"), ("water", "u1"), ("shadow", "u1"), ("highlight", "u1")])
-OBJECT = struct.Struct("<i4f5i")
 
 
 def extract_mission(install, name, types, catalog_sources, overlays, overlay_source, label):
@@ -51,17 +51,10 @@ def extract_mission(install, name, types, catalog_sources, overlays, overlay_sou
     cement = (vertices["type"] == 10) | ((vertices["type"] >= 13) & (vertices["type"] <= 20))
     wet = (vertices["water"] & 1) != 0
     objects_raw = packet(raw, 1)
-    if len(objects_raw) < 4:
-        raise ValueError("missing object count")
-    count = struct.unpack_from("<i", objects_raw)[0]
-    if count < 0 or len(objects_raw) != 4 + count * OBJECT.size:
-        raise ValueError(f"packet 1 count/size mismatch ({count}, {len(objects_raw)})")
     objects = []
     unresolved = set()
-    for i, record in enumerate(OBJECT.iter_unpack(objects_raw[4:])):
+    for i, record in enumerate(object_records(objects_raw)):
         number, x, y, z, rotation, damage, team, parent, pad0, pad1 = record
-        if not all(math.isfinite(v) for v in (x, y, z, rotation)):
-            raise ValueError(f"nonfinite object position: {i}")
         info = types.get(number)
         if info is None:
             unresolved.add(number)
@@ -70,7 +63,7 @@ def extract_mission(install, name, types, catalog_sources, overlays, overlay_sou
         objects.append({**info, "id": f"object_{i}", "type_id": number, "cell": cell,
                         "position_wu": [round(x, 4), round(y, 4), round(z, 4)],
                         "rotation": round(rotation, 4), "team": team, "damage": damage,
-                        "parent_cell": None if parent == -1 else [parent >> 16, parent & 0xFFFF],
+                        "parent_cell": parent_cell(parent),
                         "parent_id_raw": parent, "parent_link": None})
     by_cell = {}
     for obj in objects:

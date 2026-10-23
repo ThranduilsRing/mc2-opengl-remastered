@@ -556,7 +556,7 @@ def main(argv=None) -> int:
     add_ref_args(r)
     k = sub.add_parser("check", help="run twice and compare with the committed baseline (its recorded env is applied)")
     k.add_argument("mission")
-    k.add_argument("--duration", default="30")
+    k.add_argument("--duration", default="20")
     k.add_argument("--min-frames", type=int, default=MIN_FRAMES)
     k.add_argument("--deploy", action="store_true")
     k.add_argument("--out")

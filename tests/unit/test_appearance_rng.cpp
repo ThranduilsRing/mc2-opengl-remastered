@@ -141,3 +141,32 @@ TEST_CASE("appearance_rng: the sequence is not the simulation's for the same see
 		differs = (ar::randomNumber(32768) != (long)mc2_det_rng::next15(sim));
 	CHECK(differs);
 }
+
+TEST_CASE("imported-mech jump/land clip memory survives a save and load mid-jump") {
+    mc2::sim::UnitAnimState before;
+    mc2clip::Phase live;
+    // Airborne, then the jump gesture ends: the land clip is owed.
+    mc2clip::select(mc2clip::kGestureJump, 0, 0, 0, false, false, "atlas_moveJumpUpStart", live);
+    mc2clip::select(4, 0, 0, 0, false, false, "atlas_moveJumpAirIdle", live);
+    REQUIRE(live.landing);
+    before.imported.phase = live;
+    before.imported.mode = mc2clip::Mode::Once;
+    before.imported.locomotion = true;
+    mc2::save::Archive write;
+    write(before);
+    REQUIRE(write.good());
+    mc2::sim::UnitAnimState after;
+    mc2::save::Archive read(write.bytes());
+    read(after);
+    REQUIRE(read.finish());
+    CHECK(after.imported.phase.landing);
+    CHECK(after.imported.phase.prevGesture == live.prevGesture);
+    CHECK(after.imported.mode == mc2clip::Mode::Once);
+    CHECK(after.imported.locomotion);
+    // The restored selector picks the same next clip as the uninterrupted one.
+    auto resumed = after.imported.phase;
+    const auto a = mc2clip::select(4, 0, 0, 0, false, true, "atlas_moveJumpDownLand", live);
+    const auto b = mc2clip::select(4, 0, 0, 0, false, true, "atlas_moveJumpDownLand", resumed);
+    CHECK(std::string(a.clip) == b.clip);
+    CHECK(a.mode == b.mode);
+}

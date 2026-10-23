@@ -17,6 +17,7 @@ import threading
 import time
 
 import manifest_schema as ms
+import stage_root as stages
 import run_visual_capture as capture
 from smoke_lib import deploy_lease, fingerprint, host_lease, render_options_pin, runner
 
@@ -25,7 +26,7 @@ SCENARIO = ROOT / "tests/visual/bookmarks/battle_bench_v1.json"
 DEFAULT_EXE = Path("G:/mc2-installs/mc2-win64-mapgen/mc2.exe")
 PASSES = {
     "terrain": ("VKIsl.Terrain",),
-    "shadows": ("VKIsl.Shadow.",), "vegetation": ("VKIsl.Vegetation", "VKIsl.Veg"),
+    "shadows": ("VKIsl.Shadow.",), "vegetation": ("VKIsl.Vfx.Vegetation",),
     "props": ("VKIsl.Props",), "mechs": ("VKIsl.Mech",), "water": ("VKIsl.Water",),
     "post": ("VKIsl.Post.", "VKIsl.Present.Composite"), "vfx": ("VKIsl.Vfx",),
 }
@@ -152,7 +153,7 @@ def summarize(directory, log, scenario):
             "tick_spikes_over_1ms": [r for r in ticks if r["ms"] > 1],
             "catch_up_bursts": [r for r in cpu if r["ticks"] > 1],
             "max_ticks_per_frame": max((r["ticks"] for r in cpu), default=0),
-            "tick_model": "mission_update_per_render_frame; not a global fixed 30Hz scheduler",
+            "tick_model": "fixed_30hz_sim_tick; sim_tick is one sim pass (R2), a render frame runs zero or more passes",
             "memory": {"vram_peak_mib": max((r["gpu"]["proc_dedicated_mb"] for r in memory), default=-1),
                        "vk_allocated_peak_mib": max((r["gpu"]["vk_allocated_mb"] for r in memory), default=-1),
                        "working_set_peak_bytes": max((r["working_set_peak_bytes"] for r in memory), default=0),
@@ -281,6 +282,11 @@ def diff(before, after):
             print(f"| {scene} / {metric} | {a:.3f} | {b:.3f} | {(b/a-1)*100:+.1f}% |")
 
 
+def resolve_lengths(runs, duration, acceptance):
+    """Iteration bench by default (1 run, 20 s); the 2 x 30 s acceptance shape only under --acceptance."""
+    return runs or (2 if acceptance else 1), duration or (30 if acceptance else 20)
+
+
 def hold_install(install):
     while True:
         try:
@@ -303,14 +309,20 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--exe", type=Path, default=DEFAULT_EXE)
     parser.add_argument("--out", type=Path)
-    parser.add_argument("--runs", type=int, default=2)
-    parser.add_argument("--duration", type=int, default=30)
+    parser.add_argument("--runs", type=int, default=None, help="default 1 (2 with --acceptance)")
+    parser.add_argument("--duration", type=int, default=None, help="default 20 (30 with --acceptance)")
+    parser.add_argument("--acceptance", action="store_true",
+                        help="orchestrator acceptance bench in a quiet window: hold the exclusive host lease around each launch "
+                             "(without it launches use a normal slot and the numbers are provisional)")
+    parser.add_argument("--resolution", choices=("all", "1080p"), default="all")
     parser.add_argument("--diff", nargs=2, type=Path, metavar=("BEFORE", "AFTER"))
     args = parser.parse_args()
     if args.diff:
         diff(*(json.loads(p.read_text(encoding="utf-8")) for p in args.diff)); return 0
+    args.runs, args.duration = resolve_lengths(args.runs, args.duration, args.acceptance)
     if args.runs < 1 or not 20 <= args.duration <= 30:
         parser.error("--runs >=1 and --duration 20..30 required")
+    started = time.monotonic()
     scenario = json.loads(SCENARIO.read_text(encoding="utf-8"))
     hold_install(args.exe.parent.resolve())
     identity = ms.identity_block(generator="battle_bench", exe_path=args.exe, repo_root=ROOT, deploy_target=args.exe.parent)
@@ -318,7 +330,8 @@ def main():
     if provenance.get("dirty") or not provenance.get("available") or not provenance.get("source_head_matches_binary"):
         raise ValueError("commit, build and deploy a clean binary first")
     sha = identity["git"]["commit"]
-    out = (args.out or Path("G:/mc2-proof/battle-bench") / sha).resolve()
+    out = (args.out or stages.default_root("run_battle_bench") / sha).resolve()
+    stages.preflight(out)
     out.mkdir(parents=True, exist_ok=True)
     if (out / "battle-bench.json").exists():
         raise ValueError("output already contains a run; choose --out to preserve the baseline")
@@ -329,26 +342,36 @@ def main():
     report = {"schema": "battle-bench/1", "sha": sha, "identity": identity, "scenario": scenario, "build_config": "RelWithDebInfo",
               "scenario_sha256": sha_file(SCENARIO), "content": None, "profile": "stock/default-on native Vulkan",
               "render_options": render_options_pin.record(args.exe.parent, {})["values"], "duration_s": args.duration,
+              "acceptance": args.acceptance,
               "load_policy": "first-process (cold) and repeat-process (warm); OS cache not evicted", "runs": []}
-    # Acquire before the smoke timer starts; lease contention must never become a gameplay timeout.
-    while True:
-        try:
-            host_lease.acquire("integrated battle benchmark", exclusive=True)
-            break
-        except host_lease.HostLeaseBusy:
-            print("[battle-bench] lease still occupied; retrying", flush=True)
-            time.sleep(1)
-    if sha_file(args.exe) != identity["exe"]["sha256"]:
-        raise ValueError("install binary changed while waiting; redeploy the recorded build")
+    held_s = [0.0]
+    def measured(run):
+        """Exclusive host lease for one launch only; hashing, summaries and waits between launches use no slot."""
+        while True:
+            try:
+                with (host_lease.exclusive_window("integrated battle benchmark") if args.acceptance else host_lease.shared_window()):
+                    if sha_file(args.exe) != identity["exe"]["sha256"]:
+                        raise ValueError("install binary changed while waiting; redeploy the recorded build")
+                    t0 = time.monotonic()
+                    try:
+                        return run()
+                    finally:
+                        held_s[0] += time.monotonic() - t0
+            except host_lease.HostLeaseBusy:
+                print("[battle-bench] lease still occupied; retrying", flush=True)
+                time.sleep(1)
     images = []
     for i in range(1, args.runs + 1):
         run = {"index": i, "perf": {}, "captures": []}
         for phase in ("day", "night"):
-            for name, size in (("4k", (3840, 2160)), ("1080p", (1920, 1080))):
+            sizes = (("4k", (3840, 2160)), ("1080p", (1920, 1080)))
+            for name, size in sizes:
+                if args.resolution != "all" and name != args.resolution:
+                    continue
                 key = f"{phase}-{name}"
                 print(f"[battle-bench] run {i}/{args.runs} {key}", flush=True)
-                run["perf"][key] = perf_run(args.exe.resolve(), out / f"run{i}" / key, scenario, phase, size, args.duration, sha)
-            paths = capture_run(args.exe.resolve(), out / f"run{i}" / f"capture-{phase}", scenario, phase, sha)
+                run["perf"][key] = measured(lambda: perf_run(args.exe.resolve(), out / f"run{i}" / key, scenario, phase, size, args.duration, sha))
+            paths = measured(lambda: capture_run(args.exe.resolve(), out / f"run{i}" / f"capture-{phase}", scenario, phase, sha))
             run["captures"] += paths
             if i == args.runs:
                 images += paths
@@ -375,6 +398,7 @@ def main():
     montage(images, out / "montage.png")
     write_report(report, out)
     print("\n".join(table(report)))
+    print(f"[battle-bench] {'exclusive' if args.acceptance else 'shared-slot (provisional)'} launches took {held_s[0]:.0f} s of {time.monotonic() - started:.0f} s wall")
     print(f"[battle-bench] evidence: {out}")
     return 0
 

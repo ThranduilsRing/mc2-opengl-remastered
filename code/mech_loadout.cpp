@@ -3,6 +3,7 @@
 #include "mech_internal.h"
 #include "Gates/gate.h"
 #include "mc2fmt.h"
+#include "package_chassis.h"
 
 
 constexpr float ARMOR_POINTS_PER_NEWARMOR = 32.0f;
@@ -53,7 +54,7 @@ static int resolveOptionalEquipmentIdColumn(CSVFile* mechFile, long row)
 	// WHICH row, WHICH field, and the fallback taken. getFilename() is the loadout
 	// CSV being parsed (mods override it whole-file, so the winning path IS the
 	// modder's file).
-	auto idAliasContext = [&](const char* msg, const char* expected) -> std::string {
+	auto idAliasContext = [&](std::string_view msg, std::string_view expected) -> std::string {
 		char fieldBuf[48];
 		(*std::format_to_n(fieldBuf, (sizeof(fieldBuf)) - 1, "EquipmentId (csv col {:d}, row {:d})",
 		              mc2::fmt::as_i32(static_cast<int>(kEquipmentIdCsvColumn)), mc2::fmt::as_i32(row)).out = '\0');
@@ -81,6 +82,19 @@ static int resolveOptionalEquipmentIdColumn(CSVFile* mechFile, long row)
 		return -1;
 	}
 	return resolved;                  // 0..254: override the legacy masterID
+}
+
+// BT2018-FIRST-CLASS P7: the out-of-band hardpoint token a package chassis CSV carries per
+// weapon row (tools/bt2018_mechs/compile.py HARDPOINT_CSV_COLUMN). 0 for stock chassis.
+inline constexpr int kPackageHardpointCsvColumn = 41;
+static unsigned int packageHardpointFromCsv(const BattleMech* mech, CSVFile* mechFile, long row)
+{
+	if (!mech->isPackageChassis())
+		return 0u;
+	char token[64] = {0};
+	if (mechFile->readString(row, kPackageHardpointCsvColumn, token, sizeof(token) - 1) != NO_ERR || !token[0])
+		return 0u;
+	return mc2pkg::hardpointKey(token);
 }
 
 long BattleMech::init (DWORD variantNum)
@@ -355,6 +369,9 @@ long BattleMech::init (DWORD variantNum)
 					// resolves to a real model socket; else the legacy least-used
 					// round-robin. Stock items carry hardpointId==0 -> always fallback ->
 					// byte-identical mount (parity). Returns the same node-index domain.
+					// BT2018-FIRST-CLASS P7: a package chassis CSV names each weapon's BT mount in an
+					// out-of-band column; stock CSVs have none (hardpointId stays 0).
+					inventory[realItemNum].hardpointId = packageHardpointFromCsv(this, &mechFile, (26 + (97 * variantNum)) + curItem);
 					inventory[realItemNum].facing = static_cast<unsigned char>(resolveWeaponMountNode(inventory[realItemNum], sourceWeaponType));
 					inventory[realItemNum].readyTime = 0.0;
 					inventory[realItemNum].bodyLocation = 255;
@@ -890,6 +907,7 @@ void BattleMech::resetComponents (long totalComponents, long *componentList)
 	numJumpJets = 0;
 	long numElectronics = 0;
 	long numWeaponsAmmo = 0;
+	long pendingWeaponCursor = 0;
 	
 	for (long newItems = 0;newItems < totalComponents;newItems++)
 	{
@@ -1070,6 +1088,10 @@ void BattleMech::resetComponents (long totalComponents, long *componentList)
 					// resolves to a real model socket; else the legacy least-used
 					// round-robin. Stock items carry hardpointId==0 -> always fallback ->
 					// byte-identical mount (parity). Returns the same node-index domain.
+					// BT2018-FIRST-CLASS P7: the mech-lab mount of this weapon (component-list order).
+					inventory[realItemNum].hardpointId = (pendingWeaponCursor < numPendingPackageMounts)
+						? pendingPackageMounts[pendingWeaponCursor] : 0u;
+					++pendingWeaponCursor;
 					inventory[realItemNum].facing = static_cast<unsigned char>(resolveWeaponMountNode(inventory[realItemNum], sourceWeaponType));
 					inventory[realItemNum].readyTime = 0.0;
 					inventory[realItemNum].bodyLocation = 255;

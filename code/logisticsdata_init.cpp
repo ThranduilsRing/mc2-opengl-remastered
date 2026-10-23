@@ -4,6 +4,7 @@
 #include <memory>
 #include "logisticsdata_internal.h"
 #include "mc2fmt.h"
+#include "package_chassis.h"
 #include "../GameOS/gameos/utils/mc2log.h"
 
 #include <chrono>
@@ -438,6 +439,19 @@ void LogisticsData::initVariants()
 
 		i++;
 
+	}
+
+	// BT2018-FIRST-CLASS P3: package chassis (mods with the package_chassis capability) append
+	// after every buildings.csv row, so stock chassis keep their ids and order. Their fitID is
+	// the runtime object-type number the registry allocated after the last Object2.pak packet.
+	packageChassisEnsureRegistry(pakFile.getNumPackets(), mc2pkg::kPackageTypeLimit);
+	for (const mc2pkg::PackageChassis& pc : packageChassisAll())
+	{
+		if (pc.objTypeNum < 0)
+			continue;
+		std::string csvPath = std::string(objectPath) + pc.stem + ".csv";
+		for (char& ch : csvPath) ch = static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
+		mechJobs.push_back({ csvPath, pc.objTypeNum, pc.scale, chassisID++ });
 	}
 
 	// The mech CSVs are parsed on this thread, one after another. WHY: a FastFile archive reads through one shared FILE*

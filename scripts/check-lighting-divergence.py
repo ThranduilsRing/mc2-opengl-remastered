@@ -142,7 +142,7 @@ RE_VEC3_FILL = re.compile(
 # NdotL / shadow term so it cannot drag in unrelated mix() calls.
 RE_INLINE_MIX = re.compile(
     r"mix\(\s*([0-9]*\.?[0-9]+)\s*,\s*([0-9]*\.?[0-9]+)\s*,\s*(?:clamp\()?\s*"
-    r"(NdotL|ndl|ndotl|nDotL|NdL|shadow)\b")
+    r"(NdotL|ndl|ndotl|nDotL|NdL|shadow|moverShadow)\b")
 RE_INLINE_ADD = re.compile(
     r"\(\s*([0-9]*\.?[0-9]+)\s*\+\s*([0-9]*\.?[0-9]+)\s*\*\s*"
     r"(NdotL|ndl|ndotl|nDotL|NdL|ao|AO)\b")
@@ -177,7 +177,6 @@ RE_SPL_DEFINE = re.compile(r"if\s*\(\s*ld\.numLights\.x\s*==\s*0\s*\)\s*return\s
 # (file, env var) -> the default literal returned when the var is unset. Read
 # FROM THE READER, never from the registry or the docs.
 CPP_FLOOR_GATES = (
-    ("GameOS/gameos/gos_terrain_lod_chunk_upload.cpp", "MC2_TERRAIN_AMBIENT_FLOOR"),
     ("mclib/camera.cpp", "MC2_NIGHT_AMBIENT_FLOOR"),
 )
 # A getenv("MC2_X") read or a typed gate::get<"MC2_X">() read: either names the gate the file still reads.
@@ -253,6 +252,8 @@ BASELINE = {'ambient_floor_scalar': [('shaders/vulkan/water_geom.frag', 'SKY_AMB
                         ('shaders/include/shadow.hglsl', 'mix:shadow', '0.4->1.0'),
                         ('shaders/vulkan/include/ground_shadow.glsl', 'mix:shadow', '0.4->1.0'),
                         ('shaders/vulkan/include/ground_shadow.glsl', 'mix:shadow', '0.4->1.0'),
+                        ('shaders/vulkan/screen_shadow_csm.frag', 'mix:moverShadow', '0.4->1.0'),
+                        ('shaders/vulkan/screen_shadow_csm.frag', 'mix:moverShadow', '0.55->1.0'),
                         ('shaders/vulkan/screen_shadow_csm.frag', 'mix:shadow', '0.4->1.0')],
  'light_type_dispatch': (('shaders/include/lighting.hglsl',
                           ('AMBIENT',
@@ -273,10 +274,7 @@ BASELINE = {'ambient_floor_scalar': [('shaders/vulkan/water_geom.frag', 'SKY_AMB
  'calc_light_definition': ['shaders/include/lighting.hglsl', 'shaders/vulkan/mech_tier1.vert'],
  'calc_light_callers': ['shaders/include/lighting.hglsl', 'shaders/vulkan/mech_tier1.vert'],
  'native_zero_light_returns_base': ['shaders/vulkan/mech_tier1.vert'],
- 'cpp_floor_gate_readers': [('GameOS/gameos/gos_terrain_lod_chunk_upload.cpp',
-                             'MC2_TERRAIN_AMBIENT_FLOOR',
-                             'present'),
-                            ('mclib/camera.cpp', 'MC2_NIGHT_AMBIENT_FLOOR', 'present')]}
+ 'cpp_floor_gate_readers': [('mclib/camera.cpp', 'MC2_NIGHT_AMBIENT_FLOOR', 'present')]}
 
 # ---------------------------------------------------------------------------
 # ANTI-BLINDNESS WITNESSES. Each is a claim about the LIVE tree that is only

@@ -53,6 +53,11 @@ def main():
                     help="MC2_SOAK_WIN_AFTER_SEC -- auto-win the first mission this fast so the bay is reached quickly")
     ap.add_argument("--out", default="",
                     help="output TGA path (default <deploy>/harness_<screen>.tga)")
+    ap.add_argument("--mod-deps", default="",
+                    help="mount these add-on mods over the stock campaign (MC2_MOD_DEPS), e.g. bt2018_mechs")
+    ap.add_argument("--buy-and-modify", action="store_true",
+                    help="buy + deploy one mech at the bay (a mounted package chassis first) and open the mech lab on it "
+                         "(MC2_SOAK_AUTO_PURCHASE + MC2_BOOT_TO_MECHLAB); use with screen 'bay'")
     args = ap.parse_args()
 
     deploy = Path(args.deploy).resolve()
@@ -102,6 +107,11 @@ def main():
         # logistics/front-end path and smoke mode skips movies and screens.
         "MC2_NO_CURSOR_GRAB": "1",
     })
+    if args.mod_deps:
+        env["MC2_MOD_DEPS"] = args.mod_deps
+    if args.buy_and_modify:
+        env["MC2_SOAK_AUTO_PURCHASE"] = "1"
+        env["MC2_BOOT_TO_MECHLAB"] = "1"
 
     if args.preview_log:
         env["MC2_LOG_PREVIEW"] = "1"

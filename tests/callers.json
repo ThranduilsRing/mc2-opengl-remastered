@@ -45,21 +45,21 @@
         },
         {
           "path": "tools/build_contract_harnesses.py",
-          "line": 131,
+          "line": 162,
           "evidence": "import",
           "reference": "bootstrap_worktree_build",
           "text": "from bootstrap_worktree_build import cache_args"
         },
         {
           "path": "tools/reload_leak.py",
-          "line": 51,
+          "line": 52,
           "evidence": "import",
           "reference": "bootstrap_worktree_build",
           "text": "from bootstrap_worktree_build import cache_args  # noqa: E402"
         },
         {
           "path": "tools/sim_trace_diff.py",
-          "line": 134,
+          "line": 135,
           "evidence": "import",
           "reference": "bootstrap_worktree_build",
           "text": "import bootstrap_worktree_build as bootstrap"
@@ -72,6 +72,13 @@
       "stem": "bt2018_retarget_clips",
       "callers_by_basename": [],
       "callers_by_stem": [
+        {
+          "path": "scripts/tests/test_bt2018_mechs.py",
+          "line": 303,
+          "evidence": "import",
+          "reference": "bt2018_retarget_clips",
+          "text": "from bt2018_retarget_clips import retarget_file"
+        },
         {
           "path": "tools/bt2018_import/convert_all_bt2018.py",
           "line": 39,
@@ -166,6 +173,13 @@
           "evidence": "import",
           "reference": "cc_launcher",
           "text": "import cc_launcher as cl"
+        },
+        {
+          "path": "scripts/tests/test_cc_launcher_negative_control.py",
+          "line": 13,
+          "evidence": "import",
+          "reference": "cc_launcher",
+          "text": "import cc_launcher as cl"
         }
       ]
     },
@@ -191,7 +205,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1447,
+          "line": 1448,
           "evidence": "command",
           "reference": "scripts/check-agents-md.sh",
           "text": "run_check \"agents_md\"                  \"sh scripts/check-agents-md.sh\""
@@ -206,7 +220,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 976,
+          "line": 977,
           "evidence": "command",
           "reference": "scripts/check-apply-pass-bumped.py",
           "text": "run_check \"apply_pass_bumped\"      \"py -3 scripts/check-apply-pass-bumped.py --quiet\""
@@ -221,7 +235,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1448,
+          "line": 1449,
           "evidence": "command",
           "reference": "scripts/check-asset-manifest-fixtures.py",
           "text": "run_check \"asset_manifest_fixtures\"    \"py -3 scripts/check-asset-manifest-fixtures.py\""
@@ -236,7 +250,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1481,
+          "line": 1482,
           "evidence": "command",
           "reference": "scripts/check-asset-manifests.py",
           "text": "run_check \"asset_manifests\"            \"py -3 scripts/check-asset-manifests.py --quiet\""
@@ -251,7 +265,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1449,
+          "line": 1450,
           "evidence": "command",
           "reference": "scripts/check-asset-pipeline-doc.sh",
           "text": "run_check \"asset_pipeline_doc\"         \"sh scripts/check-asset-pipeline-doc.sh\""
@@ -266,7 +280,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1482,
+          "line": 1483,
           "evidence": "command",
           "reference": "scripts/check-asset-scale-callers.sh",
           "text": "run_check \"asset_scale_callers\"        \"sh scripts/check-asset-scale-callers.sh\""
@@ -281,7 +295,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1029,
+          "line": 1030,
           "evidence": "command",
           "reference": "scripts/check-background-launch.py",
           "text": "run_check \"background_launch\"      \"py -3 scripts/check-background-launch.py --quiet\""
@@ -303,7 +317,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1306,
+          "line": 1307,
           "evidence": "command",
           "reference": "scripts/check-beauty-sidecars.py",
           "text": "run_check \"beauty_sidecars\"          \"py -3 scripts/check-beauty-sidecars.py --no-lanes --quiet\""
@@ -325,7 +339,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 899,
+          "line": 900,
           "evidence": "command",
           "reference": "scripts/check-binding-slots.py",
           "text": "run_check \"binding_slots\"          \"py -3 scripts/check-binding-slots.py --quiet\""
@@ -340,7 +354,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1114,
+          "line": 1115,
           "evidence": "command",
           "reference": "scripts/check-brain-fit-schema.py",
           "text": "run_check \"brain_fit_schema\"       \"py -3 scripts/check-brain-fit-schema.py --quiet\""
@@ -355,7 +369,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 979,
+          "line": 980,
           "evidence": "command",
           "reference": "scripts/check-buffer-lifetime-ownership.py",
           "text": "run_check \"buffer_lifetime\"        \"py -3 scripts/check-buffer-lifetime-ownership.py --quiet\""
@@ -377,7 +391,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1059,
+          "line": 1060,
           "evidence": "command",
           "reference": "scripts/check-capture-determinism.py",
           "text": "run_check \"capture_determinism\"    \"py -3 scripts/check-capture-determinism.py --quiet\""
@@ -399,7 +413,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1088,
+          "line": 1089,
           "evidence": "command",
           "reference": "scripts/check-capture-env-declared.py",
           "text": "run_check \"capture_env_declared\"   \"py -3 scripts/check-capture-env-declared.py\""
@@ -421,7 +435,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1393,
+          "line": 1394,
           "evidence": "command",
           "reference": "scripts/check-capture-provenance.py",
           "text": "run_check_tri \"capture_provenance\"      \"py -3 scripts/check-capture-provenance.py --quiet\""
@@ -465,7 +479,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1450,
+          "line": 1451,
           "evidence": "command",
           "reference": "scripts/check-claude-md-pointer.sh",
           "text": "run_check \"claude_md_pointer\"          \"sh scripts/check-claude-md-pointer.sh\""
@@ -480,7 +494,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 972,
+          "line": 973,
           "evidence": "command",
           "reference": "scripts/check-colormask-ownership.py",
           "text": "run_check \"colormask_ownership\"    \"py -3 scripts/check-colormask-ownership.py --quiet && py -3 -B -m pytest scripts/tests/test_check_native_post_contracts.py -k color_mask -q -p no:cacheprovider\""
@@ -509,7 +523,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1245,
+          "line": 1246,
           "evidence": "command",
           "reference": "scripts/check-counter-honesty.py",
           "text": "run_check \"counter_honesty\"          \"py -3 scripts/check-counter-honesty.py --quiet\""
@@ -568,7 +582,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1049,
+          "line": 1050,
           "evidence": "command",
           "reference": "scripts/check-default-build-quiet.py",
           "text": "run_check \"default_build_quiet\"    \"py -3 scripts/check-default-build-quiet.py\""
@@ -583,14 +597,14 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1143,
+          "line": 1144,
           "evidence": "command",
           "reference": "scripts/check-delivery.py",
           "text": "run_check \"delivery_manifest\"      \"py -3 scripts/check-delivery.py --contract --quiet\""
         },
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1187,
+          "line": 1188,
           "evidence": "command",
           "reference": "scripts/check-delivery.py",
           "text": "run_check \"delivery_installs\"      \"py -3 scripts/check-delivery.py --quiet\""
@@ -626,7 +640,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/run_smoke.py",
-          "line": 1027,
+          "line": 1031,
           "evidence": "command",
           "reference": "scripts/check-deploy-coherence.py",
           "text": "_coh = subprocess.run("
@@ -676,7 +690,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1118,
+          "line": 1119,
           "evidence": "command",
           "reference": "scripts/check-deploy-data-parity.py",
           "text": "run_check \"deploy_data_parity\"     \"py -3 scripts/check-deploy-data-parity.py --quiet\""
@@ -691,7 +705,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/deploy_payload.py",
-          "line": 1634,
+          "line": 1809,
           "evidence": "command",
           "reference": "scripts/check-deploy-hygiene.py",
           "text": "r = subprocess.run([sys.executable, hygiene, target],"
@@ -706,7 +720,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1112,
+          "line": 1113,
           "evidence": "command",
           "reference": "scripts/check-deploy-lane-parity.py",
           "text": "run_check \"deploy_lane_parity\"     \"py -3 scripts/check-deploy-lane-parity.py --allow-unresolved\""
@@ -728,7 +742,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/run_smoke.py",
-          "line": 961,
+          "line": 965,
           "evidence": "command",
           "reference": "scripts/check-deploy-target.py",
           "text": "_g = subprocess.run(_gcmd, capture_output=True, text=True, timeout=60, **nofocus.hidden_kwargs())"
@@ -743,7 +757,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 897,
+          "line": 898,
           "evidence": "command",
           "reference": "scripts/check-destroy-invariant.sh",
           "text": "run_check \"destroy_invariant\"      \"sh scripts/check-destroy-invariant.sh\""
@@ -787,7 +801,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1196,
+          "line": 1197,
           "evidence": "command",
           "reference": "scripts/check-doc-links.py",
           "text": "run_check \"doc_links\"             \"py -3 scripts/check-doc-links.py --quiet\""
@@ -809,7 +823,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 975,
+          "line": 976,
           "evidence": "command",
           "reference": "scripts/check-drawbuffer-ownership.py",
           "text": "run_check \"drawbuffer_ownership\"   \"py -3 scripts/check-drawbuffer-ownership.py --quiet\""
@@ -824,7 +838,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1190,
+          "line": 1191,
           "evidence": "command",
           "reference": "scripts/check-editor-pass-contract-parity.py",
           "text": "run_check \"editor_pass_parity\"     \"py -3 scripts/check-editor-pass-contract-parity.py --quiet\""
@@ -839,7 +853,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1104,
+          "line": 1105,
           "evidence": "command",
           "reference": "scripts/check-env-drive-guard.py",
           "text": "run_check \"env_drive_guard\"        \"py -3 scripts/check-env-drive-guard.py --quiet\""
@@ -883,7 +897,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1191,
+          "line": 1192,
           "evidence": "command",
           "reference": "scripts/check-gated-layout-macros.py",
           "text": "run_check \"gated_layout_macros\"    \"py -3 scripts/check-gated-layout-macros.py --quiet\""
@@ -913,7 +927,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 924,
+          "line": 925,
           "evidence": "command",
           "reference": "scripts/check-golden-coverage.py",
           "text": "run_check \"golden_coverage\"          \"py -3 scripts/check-golden-coverage.py --quiet\""
@@ -972,7 +986,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1040,
+          "line": 1041,
           "evidence": "command",
           "reference": "scripts/check-input-capture-visibility.py",
           "text": "run_check \"input_capture_visibility\"          \"py -3 scripts/check-input-capture-visibility.py --quiet\""
@@ -994,7 +1008,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1451,
+          "line": 1452,
           "evidence": "command",
           "reference": "scripts/check-json-isolation.sh",
           "text": "run_check \"json_isolation\"             \"sh scripts/check-json-isolation.sh\""
@@ -1009,7 +1023,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1214,
+          "line": 1215,
           "evidence": "command",
           "reference": "scripts/check-launcher-ascii.py",
           "text": "run_check \"launcher_ascii\"         \"py -3 scripts/check-launcher-ascii.py --quiet\""
@@ -1031,7 +1045,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 902,
+          "line": 903,
           "evidence": "command",
           "reference": "scripts/check-light-loop-numlights-bound.py",
           "text": "run_check \"light_loop_numlights\"   \"py -3 scripts/check-light-loop-numlights-bound.py --quiet\""
@@ -1046,7 +1060,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 908,
+          "line": 909,
           "evidence": "command",
           "reference": "scripts/check-light-row-freshness.py",
           "text": "run_check \"light_row_freshness\"          \"py -3 scripts/check-light-row-freshness.py --quiet\""
@@ -1068,7 +1082,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 917,
+          "line": 918,
           "evidence": "command",
           "reference": "scripts/check-lighting-divergence.py",
           "text": "run_check \"lighting_divergence\"    \"py -3 scripts/check-lighting-divergence.py\""
@@ -1090,7 +1104,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1489,
+          "line": 1490,
           "evidence": "command",
           "reference": "scripts/check-manifest-schema.py",
           "text": "run_check \"manifest_schema\"            \"py -3 scripts/check-manifest-schema.py --strict\""
@@ -1127,7 +1141,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 978,
+          "line": 979,
           "evidence": "command",
           "reference": "scripts/check-mdi-submission-ownership.py",
           "text": "run_check \"mdi_submission\"         \"py -3 scripts/check-mdi-submission-ownership.py --quiet && py -3 -B -m pytest scripts/tests/test_check_native_post_contracts.py -k mdi -q -p no:cacheprovider\""
@@ -1142,7 +1156,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1452,
+          "line": 1453,
           "evidence": "command",
           "reference": "scripts/check-memory-size.py",
           "text": "run_check \"memory_size\"                \"py -3 scripts/check-memory-size.py\""
@@ -1157,7 +1171,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1453,
+          "line": 1454,
           "evidence": "command",
           "reference": "scripts/check-mlr-leaves-gated.sh",
           "text": "run_check \"mlr_leaves_gated\"           \"sh scripts/check-mlr-leaves-gated.sh\""
@@ -1172,7 +1186,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1226,
+          "line": 1227,
           "evidence": "command",
           "reference": "scripts/check-mover-registry-coherence.sh",
           "text": "run_check \"mover_registry_coherence\" \"sh scripts/check-mover-registry-coherence.sh\""
@@ -1194,7 +1208,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 971,
+          "line": 972,
           "evidence": "command",
           "reference": "scripts/check-multiply-blend.py",
           "text": "run_check \"multiply_blend\"         \"py -3 scripts/check-multiply-blend.py --quiet && py -3 -B -m pytest scripts/tests/test_check_native_post_contracts.py -k multiply -q -p no:cacheprovider\""
@@ -1209,7 +1223,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1189,
+          "line": 1190,
           "evidence": "command",
           "reference": "scripts/check-native-render-hosts.py",
           "text": "run_check \"native_render_hosts\"    \"py -3 scripts/check-native-render-hosts.py --quiet && py -3 -B -m pytest scripts/tests/test_native_render_hosts.py scripts/tests/test_bootstrap_worktree_build.py -q -p no:cacheprovider\""
@@ -1231,7 +1245,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 974,
+          "line": 975,
           "evidence": "command",
           "reference": "scripts/check-native-scene-targets.py",
           "text": "run_check \"native_scene_targets\"   \"py -3 scripts/check-native-scene-targets.py --quiet && py -3 -B -m pytest scripts/tests/test_native_scene_targets.py scripts/tests/test_native_executor_health.py -q -p no:cacheprovider\""
@@ -1253,7 +1267,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 985,
+          "line": 986,
           "evidence": "command",
           "reference": "scripts/check-no-gl-compiler.py",
           "text": "run_check \"no_gl_compiler\"         \"py -3 scripts/check-no-gl-compiler.py --quiet && py -3 -B -m pytest scripts/tests/test_no_gl_compiler.py -q -p no:cacheprovider\""
@@ -1290,7 +1304,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1454,
+          "line": 1455,
           "evidence": "command",
           "reference": "scripts/check-object-mvp-currency.py",
           "text": "run_check \"object_mvp_currency\"        \"py -3 scripts/check-object-mvp-currency.py\""
@@ -1312,7 +1326,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1465,
+          "line": 1466,
           "evidence": "command",
           "reference": "scripts/check-oracle-registry.py",
           "text": "run_check \"oracle_registry\"            \"py -3 scripts/check-oracle-registry.py --allow-missing-artifacts\""
@@ -1327,7 +1341,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1219,
+          "line": 1220,
           "evidence": "command",
           "reference": "scripts/check-order-gate-coverage.py",
           "text": "run_check \"order_gate_coverage\"    \"py -3 scripts/check-order-gate-coverage.py --quiet\""
@@ -1349,7 +1363,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1455,
+          "line": 1456,
           "evidence": "command",
           "reference": "scripts/check-particles-no-cpu-projection.sh",
           "text": "run_check \"particles_no_cpu_projection\" \"sh scripts/check-particles-no-cpu-projection.sh\""
@@ -1364,7 +1378,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 973,
+          "line": 974,
           "evidence": "command",
           "reference": "scripts/check-pass-attachment-contract.py",
           "text": "run_check \"pass_attachment\"        \"py -3 scripts/check-pass-attachment-contract.py --quiet\""
@@ -1379,7 +1393,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1188,
+          "line": 1189,
           "evidence": "command",
           "reference": "scripts/check-pass-coverage.py",
           "text": "run_check \"pass_coverage\"          \"py -3 scripts/check-pass-coverage.py --quiet\""
@@ -1394,7 +1408,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1204,
+          "line": 1205,
           "evidence": "command",
           "reference": "scripts/check-path-normalization.sh",
           "text": "run_check \"path_normalization\"     \"sh scripts/check-path-normalization.sh\""
@@ -1416,7 +1430,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 953,
+          "line": 954,
           "evidence": "command",
           "reference": "scripts/check-pipeline-desc.py",
           "text": "run_check \"pipeline_desc\"          \"py -3 scripts/check-pipeline-desc.py --quiet\""
@@ -1431,7 +1445,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 969,
+          "line": 970,
           "evidence": "command",
           "reference": "scripts/check-pipeline-key.py",
           "text": "run_check \"pipeline_key\"           \"py -3 scripts/check-pipeline-key.py --quiet\""
@@ -1446,7 +1460,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1012,
+          "line": 1013,
           "evidence": "command",
           "reference": "scripts/check-render-contract-alpha-classes.py",
           "text": "run_check \"render_contract_alpha_classes\"          \"py -3 scripts/check-render-contract-alpha-classes.py\""
@@ -1468,7 +1482,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 898,
+          "line": 899,
           "evidence": "command",
           "reference": "scripts/check-render-contract-gbuffer1.sh",
           "text": "run_check \"render_contract_gbuf1\"  \"sh scripts/check-render-contract-gbuffer1.sh\""
@@ -1483,7 +1497,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 980,
+          "line": 981,
           "evidence": "command",
           "reference": "scripts/check-render-resource-ids.py",
           "text": "run_check \"render_resource_ids\"    \"py -3 scripts/check-render-resource-ids.py\""
@@ -1498,7 +1512,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1209,
+          "line": 1210,
           "evidence": "command",
           "reference": "scripts/check-res-aspect-contract.py",
           "text": "run_check \"res_aspect_contract\"    \"py -3 scripts/check-res-aspect-contract.py --quiet\""
@@ -1520,7 +1534,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1414,
+          "line": 1415,
           "evidence": "command",
           "reference": "scripts/check-review-anchor-stability.py",
           "text": "run_check \"review_anchor_stability\"          \"py -3 scripts/check-review-anchor-stability.py --quiet\""
@@ -1557,7 +1571,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 918,
+          "line": 919,
           "evidence": "command",
           "reference": "scripts/check-sampler-bindings.py",
           "text": "run_check \"sampler_bindings\"       \"py -3 scripts/check-sampler-bindings.py --quiet\""
@@ -1572,7 +1586,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 968,
+          "line": 969,
           "evidence": "command",
           "reference": "scripts/check-shader-injectors.py",
           "text": "run_check \"shader_injectors\"       \"py -3 scripts/check-shader-injectors.py --quiet\""
@@ -1587,7 +1601,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 992,
+          "line": 993,
           "evidence": "command",
           "reference": "scripts/check-shader-package.py",
           "text": "run_check \"shader_package\"         \"py -3 scripts/check-shader-package.py --quiet\""
@@ -1602,14 +1616,14 @@
       "callers_by_basename": [
         {
           "path": "CMakeLists.txt",
-          "line": 932,
+          "line": 936,
           "evidence": "cmake command",
           "reference": "${CMAKE_SOURCE_DIR}/scripts/check-shader-schema.sh",
           "text": "COMMAND ${BASH_EXECUTABLE} ${CMAKE_SOURCE_DIR}/scripts/check-shader-schema.sh"
         },
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1021,
+          "line": 1022,
           "evidence": "command",
           "reference": "scripts/check-shader-schema.sh",
           "text": "run_check \"shader_schema\"          \"bash scripts/check-shader-schema.sh --quiet\""
@@ -1639,7 +1653,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 894,
+          "line": 895,
           "evidence": "command",
           "reference": "scripts/check-sim-no-audio-reads.sh",
           "text": "run_check \"sim_no_audio_reads\"     \"sh scripts/check-sim-no-audio-reads.sh\""
@@ -1669,7 +1683,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1075,
+          "line": 1076,
           "evidence": "command",
           "reference": "scripts/check-smoke-fingerprint-honesty.py",
           "text": "run_check \"smoke_fingerprint_honesty\" \"py -3 scripts/check-smoke-fingerprint-honesty.py --quiet\""
@@ -1691,7 +1705,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1483,
+          "line": 1484,
           "evidence": "command",
           "reference": "scripts/check-smoke-matrices.py",
           "text": "run_check \"smoke_matrices\"             \"py -3 scripts/check-smoke-matrices.py --quiet\""
@@ -1706,7 +1720,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 986,
+          "line": 987,
           "evidence": "command",
           "reference": "scripts/check-spirv-artifacts.py",
           "text": "run_check \"spirv_artifacts\"        \"py -3 scripts/check-spirv-artifacts.py --quiet\""
@@ -1721,7 +1735,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 990,
+          "line": 991,
           "evidence": "command",
           "reference": "scripts/check-spirv-reflection-contract.py",
           "text": "run_check \"spirv_reflection\"       \"py -3 scripts/check-spirv-reflection-contract.py --quiet\""
@@ -1736,7 +1750,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1201,
+          "line": 1202,
           "evidence": "command",
           "reference": "scripts/check-split-path-contracts.py",
           "text": "run_check \"split_path_contracts\"   \"py -3 scripts/check-split-path-contracts.py --quiet\""
@@ -1758,7 +1772,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1031,
+          "line": 1032,
           "evidence": "command",
           "reference": "scripts/check-staged-hygiene.py",
           "text": "run_check \"staged_hygiene\"         \"py -3 scripts/check-staged-hygiene.py --range --quiet\""
@@ -1787,7 +1801,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 977,
+          "line": 978,
           "evidence": "command",
           "reference": "scripts/check-static-prop-family.py",
           "text": "run_check \"static_prop_family\"     \"py -3 scripts/check-static-prop-family.py --quiet\""
@@ -1802,7 +1816,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1329,
+          "line": 1330,
           "evidence": "command",
           "reference": "scripts/check-stock-mission-data.py",
           "text": "run_check \"stock_mission_data\"          \"py -3 scripts/check-stock-mission-data.py --no-data --quiet\""
@@ -1824,7 +1838,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1195,
+          "line": 1196,
           "evidence": "command",
           "reference": "scripts/check-terrain-daylight-constants.py",
           "text": "run_check \"terrain_daylight_consts\"  \"py -3 scripts/check-terrain-daylight-constants.py --quiet\""
@@ -1846,7 +1860,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1231,
+          "line": 1232,
           "evidence": "command",
           "reference": "scripts/check-tgl-load-callers.sh",
           "text": "run_check \"tgl_load_callers\"   \"sh scripts/check-tgl-load-callers.sh\""
@@ -1868,7 +1882,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1456,
+          "line": 1457,
           "evidence": "command",
           "reference": "scripts/check-toolchain-bom.py",
           "text": "run_check \"toolchain_bom\"              \"py -3 scripts/check-toolchain-bom.py\""
@@ -1883,7 +1897,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1457,
+          "line": 1458,
           "evidence": "command",
           "reference": "scripts/check-unified-projection-retirement.sh",
           "text": "run_check \"unified_projection_retirement\" \"sh scripts/check-unified-projection-retirement.sh\""
@@ -1898,7 +1912,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 896,
+          "line": 897,
           "evidence": "command",
           "reference": "scripts/check-veg-gpu-cull.py",
           "text": "run_check \"veg_gpu_cull\"             \"py -3 scripts/check-veg-gpu-cull.py\"   # vegetation culls on the GPU: no CPU per-instance path, C++/GLSL parameter block in lockstep"
@@ -1913,7 +1927,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 970,
+          "line": 971,
           "evidence": "command",
           "reference": "scripts/check-vfx-blend-distinction.py",
           "text": "run_check \"vfx_blend_distinction\"  \"py -3 scripts/check-vfx-blend-distinction.py --quiet && py -3 -B -m pytest scripts/tests/test_check_vfx_blend_distinction.py -q -p no:cacheprovider\""
@@ -1935,7 +1949,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 895,
+          "line": 896,
           "evidence": "command",
           "reference": "scripts/check-vfx-no-objectid.sh",
           "text": "run_check \"vfx_no_objectid\"        \"sh scripts/check-vfx-no-objectid.sh\""
@@ -1965,7 +1979,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1041,
+          "line": 1042,
           "evidence": "command",
           "reference": "scripts/check-visual-bookmark-honesty.py",
           "text": "run_check \"bookmark_honesty\"       \"py -3 scripts/check-visual-bookmark-honesty.py\""
@@ -1980,7 +1994,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 991,
+          "line": 992,
           "evidence": "command",
           "reference": "scripts/check-vk-pipeline-layout.py",
           "text": "run_check \"vk_pipeline_layout\"    \"py -3 scripts/check-vk-pipeline-layout.py --quiet && py -3 -B -m pytest scripts/tests/test_check_vk_pipeline_layout.py -q -p no:cacheprovider\""
@@ -1999,6 +2013,13 @@
           "evidence": "command",
           "reference": "scripts/check-vk-submit-funnel.sh",
           "text": "run_check \"vk_submit_funnel\"       \"sh scripts/check-vk-submit-funnel.sh\""
+        },
+        {
+          "path": "scripts/check-contracts.sh",
+          "line": 894,
+          "evidence": "command",
+          "reference": "scripts/check-vk-submit-funnel.sh",
+          "text": "run_check \"vk_pipeline_infra\"      \"sh scripts/check-vk-submit-funnel.sh --pipelines\""
         }
       ],
       "callers_by_stem": []
@@ -2010,7 +2031,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 981,
+          "line": 982,
           "evidence": "command",
           "reference": "scripts/check-vulkan-bindings.py",
           "text": "run_check \"vulkan_bindings\"        \"py -3 scripts/check-vulkan-bindings.py --quiet\""
@@ -2039,7 +2060,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1116,
+          "line": 1117,
           "evidence": "command",
           "reference": "scripts/check_brain_fixture_deploy_sync.py",
           "text": "run_check \"brain_fixture_deploy\"   \"py -3 scripts/check_brain_fixture_deploy_sync.py --quiet\""
@@ -2054,7 +2075,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1115,
+          "line": 1116,
           "evidence": "command",
           "reference": "scripts/check_brain_fixture_manifest.py",
           "text": "run_check \"brain_fixture_manifest\" \"py -3 scripts/check_brain_fixture_manifest.py --quiet\""
@@ -2069,7 +2090,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1117,
+          "line": 1118,
           "evidence": "command",
           "reference": "scripts/check_brain_relaxed_guard_doc.py",
           "text": "run_check \"brain_relaxed_guard\"    \"py -3 scripts/check_brain_relaxed_guard_doc.py --quiet\""
@@ -2084,7 +2105,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/run_smoke.py",
-          "line": 1045,
+          "line": 1049,
           "evidence": "command",
           "reference": "scripts/check_shader_bom.py",
           "text": "_bom = subprocess.run("
@@ -2099,7 +2120,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1548,
+          "line": 1550,
           "evidence": "command",
           "reference": "scripts/check_sim_include_firewall.py",
           "text": "run_check \"sim_include_firewall\"        \"py -3 -B scripts/tests/test_sim_include_firewall.py && py -3 scripts/check_sim_include_firewall.py\""
@@ -2201,10 +2222,24 @@
         },
         {
           "path": "scripts/ninja_build.py",
-          "line": 19,
+          "line": 25,
           "evidence": "import",
           "reference": "configure_ninja",
           "text": "from configure_ninja import (DEFAULT_TARGETS, DEFAULT_TREE, NINJA, compile_cache_env, configure, ensure_cache_server, tree_uses_cache,"
+        },
+        {
+          "path": "scripts/tests/test_cc_launcher_negative_control.py",
+          "line": 15,
+          "evidence": "import",
+          "reference": "configure_ninja",
+          "text": "import configure_ninja as cn"
+        },
+        {
+          "path": "scripts/tests/test_rule_defaults.py",
+          "line": 74,
+          "evidence": "import",
+          "reference": "configure_ninja",
+          "text": "import configure_ninja"
         },
         {
           "path": "tests/analyze/analyze_dangling.py",
@@ -2215,7 +2250,7 @@
         },
         {
           "path": "tests/smoke/test_launcher_legacy_env.py",
-          "line": 35,
+          "line": 36,
           "evidence": "import",
           "reference": "configure_ninja",
           "text": "from configure_ninja import NINJA"
@@ -2229,7 +2264,7 @@
         },
         {
           "path": "tools/build_contract_harnesses.py",
-          "line": 20,
+          "line": 24,
           "evidence": "import",
           "reference": "configure_ninja",
           "text": "import configure_ninja as cn"
@@ -2250,7 +2285,7 @@
         },
         {
           "path": "tools/reload_leak.py",
-          "line": 50,
+          "line": 51,
           "evidence": "import",
           "reference": "configure_ninja",
           "text": "from configure_ninja import NINJA, find_cmake, under_vcvars  # noqa: E402"
@@ -2342,7 +2377,7 @@
         },
         {
           "path": "scripts/cc_launcher.py",
-          "line": 21,
+          "line": 22,
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child  # same directory: python puts the script dir on sys.path even under -S -E"
@@ -2495,6 +2530,13 @@
           "text": "import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)"
         },
         {
+          "path": "scripts/ninja_build.py",
+          "line": 24,
+          "evidence": "import",
+          "reference": "console_child",
+          "text": "import console_child  # noqa: E402"
+        },
+        {
           "path": "scripts/provenance_gate.py",
           "line": 161,
           "evidence": "import",
@@ -2538,14 +2580,14 @@
         },
         {
           "path": "scripts/smoke_lib/host_lease.py",
-          "line": 444,
+          "line": 467,
           "evidence": "import",
           "reference": "scripts.console_child",
           "text": "from scripts import console_child         # type: ignore"
         },
         {
           "path": "scripts/smoke_lib/host_lease.py",
-          "line": 447,
+          "line": 470,
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child                       # type: ignore"
@@ -2584,6 +2626,13 @@
           "evidence": "import",
           "reference": "scripts.console_child",
           "text": "from scripts import console_child"
+        },
+        {
+          "path": "scripts/tests/test_cc_launcher_negative_control.py",
+          "line": 14,
+          "evidence": "import",
+          "reference": "console_child",
+          "text": "import console_child"
         },
         {
           "path": "scripts/tests/test_check_ab_kit.py",
@@ -2796,6 +2845,13 @@
           "text": "from scripts import console_child"
         },
         {
+          "path": "tests/mapgen/test_mission_codec.py",
+          "line": 11,
+          "evidence": "import",
+          "reference": "scripts.console_child",
+          "text": "from scripts import console_child"
+        },
+        {
           "path": "tests/smoke/objectives_e6e/generate_assets.py",
           "line": 15,
           "evidence": "import",
@@ -2804,7 +2860,7 @@
         },
         {
           "path": "tests/smoke/test_launcher_legacy_env.py",
-          "line": 18,
+          "line": 19,
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child  # noqa: E402  (windowless console children, scripts/console_child.py)"
@@ -2847,41 +2903,6 @@
         {
           "path": "tools/asset_cook/tests/run_tests.py",
           "line": 23,
-          "evidence": "import",
-          "reference": "console_child",
-          "text": "import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)"
-        },
-        {
-          "path": "tools/asset_cook/tests/test_g1_stage.py",
-          "line": 24,
-          "evidence": "import",
-          "reference": "console_child",
-          "text": "import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)"
-        },
-        {
-          "path": "tools/asset_cook/tests/test_g2_textures.py",
-          "line": 22,
-          "evidence": "import",
-          "reference": "console_child",
-          "text": "import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)"
-        },
-        {
-          "path": "tools/asset_cook/tests/test_g3b_assemble.py",
-          "line": 22,
-          "evidence": "import",
-          "reference": "console_child",
-          "text": "import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)"
-        },
-        {
-          "path": "tools/asset_cook/tests/test_g_pathb_2civliving.py",
-          "line": 29,
-          "evidence": "import",
-          "reference": "console_child",
-          "text": "import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)"
-        },
-        {
-          "path": "tools/asset_cook/trackg_cook.py",
-          "line": 40,
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)"
@@ -2958,7 +2979,7 @@
         },
         {
           "path": "tools/build_contract_harnesses.py",
-          "line": 19,
+          "line": 23,
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child"
@@ -3048,13 +3069,6 @@
           "text": "import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)"
         },
         {
-          "path": "tools/examples/build_modern_tree_pack.py",
-          "line": 25,
-          "evidence": "import",
-          "reference": "console_child",
-          "text": "import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)"
-        },
-        {
           "path": "tools/file_size_ratchet.py",
           "line": 47,
           "evidence": "import",
@@ -3091,7 +3105,7 @@
         },
         {
           "path": "tools/lane_merge.py",
-          "line": 44,
+          "line": 51,
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child  # noqa: E402  (windowless console children without a conhost each)"
@@ -3200,6 +3214,20 @@
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child  # noqa: E402"
+        },
+        {
+          "path": "tools/scifi_kit/art/run.py",
+          "line": 38,
+          "evidence": "import",
+          "reference": "console_child",
+          "text": "from console_child import child_kwargs"
+        },
+        {
+          "path": "tools/scifi_kit/kit.py",
+          "line": 20,
+          "evidence": "import",
+          "reference": "console_child",
+          "text": "import console_child"
         },
         {
           "path": "tools/shader_offline_build/build_variants.py",
@@ -3540,7 +3568,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/run_smoke.py",
-          "line": 903,
+          "line": 907,
           "evidence": "command",
           "reference": "scripts/deploy_payload.py",
           "text": "_v = subprocess.run(cmd, capture_output=True, text=True, timeout=300, **nofocus.hidden_kwargs())"
@@ -3556,7 +3584,7 @@
         },
         {
           "path": "scripts/run_smoke.py",
-          "line": 1318,
+          "line": 1322,
           "evidence": "import",
           "reference": "scripts.deploy_payload",
           "text": "from scripts import deploy_payload as _dp"
@@ -3576,8 +3604,22 @@
           "text": "import deploy_payload as dp"
         },
         {
+          "path": "scripts/tests/test_deploy_bootstrap.py",
+          "line": 12,
+          "evidence": "import",
+          "reference": "scripts.deploy_payload",
+          "text": "from scripts import deploy_payload as dp  # noqa: E402"
+        },
+        {
           "path": "scripts/tests/test_deploy_build_layout.py",
           "line": 27,
+          "evidence": "import",
+          "reference": "scripts.deploy_payload",
+          "text": "from scripts import deploy_payload as dp  # noqa: E402"
+        },
+        {
+          "path": "scripts/tests/test_deploy_completeness.py",
+          "line": 12,
           "evidence": "import",
           "reference": "scripts.deploy_payload",
           "text": "from scripts import deploy_payload as dp  # noqa: E402"
@@ -3625,6 +3667,13 @@
           "text": "import deploy_payload  # noqa: E402"
         },
         {
+          "path": "scripts/tests/test_rule_defaults.py",
+          "line": 82,
+          "evidence": "import",
+          "reference": "deploy_payload",
+          "text": "import deploy_payload as dp"
+        },
+        {
           "path": "tools/deploy_asset_contract_harness/deploy_asset_contract_harness.py",
           "line": 34,
           "evidence": "import",
@@ -3640,7 +3689,7 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 166,
+          "line": 169,
           "evidence": "import_module",
           "reference": "deploy_payload",
           "text": "return importlib.import_module('deploy_payload')"
@@ -4007,14 +4056,29 @@
       "stem": "ninja_build",
       "callers_by_basename": [
         {
+          "path": "tests/mapgen/test_mission_codec.py",
+          "line": 45,
+          "evidence": "command",
+          "reference": "scripts/ninja_build.py",
+          "text": "subprocess.run([sys.executable, str(ROOT / 'scripts/ninja_build.py'), 'editor_objective_reader_tests'], check=True,"
+        },
+        {
           "path": "tools/tools_smoke.py",
-          "line": 84,
+          "line": 86,
           "evidence": "command",
           "reference": "scripts/ninja_build.py",
           "text": "proc = subprocess.run(cmd, capture_output=True, text=True, cwd=str(ROOT), env=env,"
         }
       ],
-      "callers_by_stem": []
+      "callers_by_stem": [
+        {
+          "path": "scripts/tests/test_build_compiler_presets.py",
+          "line": 356,
+          "evidence": "import",
+          "reference": "ninja_build",
+          "text": "import ninja_build as nb"
+        }
+      ]
     },
     {
       "path": "scripts/parent_watchdog.py",
@@ -4159,6 +4223,13 @@
           "evidence": "import",
           "reference": "run_battle_bench",
           "text": "import run_battle_bench as bench"
+        },
+        {
+          "path": "scripts/tests/test_rule_defaults.py",
+          "line": 60,
+          "evidence": "import",
+          "reference": "run_battle_bench",
+          "text": "import run_battle_bench as bench"
         }
       ]
     },
@@ -4297,7 +4368,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1526,
+          "line": 1528,
           "evidence": "command",
           "reference": "scripts/run_scripts_tests.py",
           "text": "run_check \"scripts_tests\"              \"py -3 scripts/run_scripts_tests.py\""
@@ -4368,27 +4439,34 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 593,
+          "line": 596,
           "evidence": "command",
           "reference": "scripts/run_smoke.py",
           "text": "proc = subprocess.run(cmd, cwd=str(ROOT), capture_output=True,"
         },
         {
           "path": "tools/sim_trace_diff.py",
-          "line": 220,
+          "line": 221,
           "evidence": "command",
           "reference": "scripts/run_smoke.py",
           "text": "proc = subprocess.run(cmd, cwd=str(ROOT), env=env, capture_output=True,"
         },
         {
           "path": "tools/sound_smoke.py",
-          "line": 111,
+          "line": 112,
           "evidence": "command",
           "reference": "scripts/run_smoke.py",
           "text": "proc = subprocess.run(cmd, capture_output=True, text=True, env=env, cwd=str(ROOT),"
         }
       ],
       "callers_by_stem": [
+        {
+          "path": "scripts/tests/test_battle_bench.py",
+          "line": 133,
+          "evidence": "import",
+          "reference": "run_smoke",
+          "text": "import run_smoke"
+        },
         {
           "path": "scripts/tests/test_fingerprint_cli.py",
           "line": 7,
@@ -4402,6 +4480,13 @@
           "evidence": "import",
           "reference": "scripts.run_smoke",
           "text": "from scripts import run_smoke"
+        },
+        {
+          "path": "scripts/tests/test_rule_defaults.py",
+          "line": 45,
+          "evidence": "import",
+          "reference": "run_smoke",
+          "text": "import run_smoke"
         },
         {
           "path": "tests/smoke/test_order_liveness_floor.py",
@@ -4447,7 +4532,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1547,
+          "line": 1549,
           "evidence": "command",
           "reference": "scripts/run_tools_tests.py",
           "text": "run_check_tri \"tools_tests\"             \"py -3 scripts/run_tools_tests.py\""
@@ -4474,6 +4559,13 @@
           "evidence": "command",
           "reference": "scripts/run_visual_capture.py",
           "text": "subprocess.run(cmd, check=False, **console_child.child_kwargs())"
+        },
+        {
+          "path": "tools/scifi_kit/kit.py",
+          "line": 208,
+          "evidence": "command",
+          "reference": "scripts/run_visual_capture.py",
+          "text": "result=subprocess.run(cmd,**console_child.child_kwargs())"
         }
       ],
       "callers_by_stem": [
@@ -4486,10 +4578,17 @@
         },
         {
           "path": "scripts/run_battle_bench.py",
-          "line": 20,
+          "line": 21,
           "evidence": "import",
           "reference": "run_visual_capture",
           "text": "import run_visual_capture as capture"
+        },
+        {
+          "path": "scripts/tests/test_rule_defaults.py",
+          "line": 50,
+          "evidence": "import",
+          "reference": "run_visual_capture",
+          "text": "import run_visual_capture as rvc"
         },
         {
           "path": "tools/visual_verify/capture.py",
@@ -4572,14 +4671,14 @@
         },
         {
           "path": "scripts/deploy_payload.py",
-          "line": 718,
+          "line": 741,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from scripts.smoke_lib import deploy_lease"
         },
         {
           "path": "scripts/deploy_payload.py",
-          "line": 758,
+          "line": 781,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from scripts.smoke_lib import bounded_wait"
@@ -4628,35 +4727,35 @@
         },
         {
           "path": "scripts/run_smoke.py",
-          "line": 764,
+          "line": 768,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from scripts.smoke_lib import deploy_lease as _deploy_lease"
         },
         {
           "path": "scripts/run_smoke.py",
-          "line": 792,
+          "line": 796,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from scripts.smoke_lib import host_lease as _host_lease"
         },
         {
           "path": "scripts/run_smoke.py",
-          "line": 805,
+          "line": 809,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from scripts.smoke_lib import host_load as _host_load"
         },
         {
           "path": "scripts/run_smoke.py",
-          "line": 990,
+          "line": 994,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from scripts.smoke_lib import preflight_cache as _pfcache"
         },
         {
           "path": "scripts/run_smoke.py",
-          "line": 1176,
+          "line": 1180,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from scripts.smoke_lib import child_registry as _children"
@@ -4987,7 +5086,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/deploy_payload.py",
-          "line": 758,
+          "line": 781,
           "evidence": "import",
           "reference": "scripts.smoke_lib.bounded_wait",
           "text": "from scripts.smoke_lib import bounded_wait"
@@ -5045,7 +5144,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/run_smoke.py",
-          "line": 1176,
+          "line": 1180,
           "evidence": "import",
           "reference": "scripts.smoke_lib.child_registry",
           "text": "from scripts.smoke_lib import child_registry as _children"
@@ -5153,14 +5252,14 @@
       "callers_by_stem": [
         {
           "path": "scripts/deploy_payload.py",
-          "line": 718,
+          "line": 741,
           "evidence": "import",
           "reference": "scripts.smoke_lib.deploy_lease",
           "text": "from scripts.smoke_lib import deploy_lease"
         },
         {
           "path": "scripts/run_smoke.py",
-          "line": 764,
+          "line": 768,
           "evidence": "import",
           "reference": "scripts.smoke_lib.deploy_lease",
           "text": "from scripts.smoke_lib import deploy_lease as _deploy_lease"
@@ -5337,6 +5436,13 @@
           "text": "from scripts.smoke_lib.gates import GateConfig, evaluate"
         },
         {
+          "path": "tests/smoke/test_marker_buckets.py",
+          "line": 141,
+          "evidence": "import",
+          "reference": "scripts.smoke_lib.gates",
+          "text": "from scripts.smoke_lib.gates import GateConfig, evaluate"
+        },
+        {
           "path": "tests/smoke/test_render_options_pin.py",
           "line": 147,
           "evidence": "import",
@@ -5381,7 +5487,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/run_smoke.py",
-          "line": 792,
+          "line": 796,
           "evidence": "import",
           "reference": "scripts.smoke_lib.host_lease",
           "text": "from scripts.smoke_lib import host_lease as _host_lease"
@@ -5452,7 +5558,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/run_smoke.py",
-          "line": 805,
+          "line": 809,
           "evidence": "import",
           "reference": "scripts.smoke_lib.host_load",
           "text": "from scripts.smoke_lib import host_load as _host_load"
@@ -5743,7 +5849,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/run_smoke.py",
-          "line": 990,
+          "line": 994,
           "evidence": "import",
           "reference": "scripts.smoke_lib.preflight_cache",
           "text": "from scripts.smoke_lib import preflight_cache as _pfcache"
@@ -6081,6 +6187,70 @@
       ]
     },
     {
+      "path": "scripts/stage_root.py",
+      "basename": "stage_root.py",
+      "stem": "stage_root",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "scripts/run_battle_bench.py",
+          "line": 20,
+          "evidence": "import",
+          "reference": "stage_root",
+          "text": "import stage_root as stages"
+        },
+        {
+          "path": "scripts/tests/test_stage_root.py",
+          "line": 13,
+          "evidence": "import",
+          "reference": "stage_root",
+          "text": "import stage_root"
+        },
+        {
+          "path": "tools/battery.py",
+          "line": 37,
+          "evidence": "import",
+          "reference": "stage_root",
+          "text": "import stage_root as stages  # noqa: E402  (default staging roots on E:, free-space preflight)"
+        },
+        {
+          "path": "tools/mod_smoke.py",
+          "line": 45,
+          "evidence": "import",
+          "reference": "stage_root",
+          "text": "import stage_root as stages  # noqa: E402  (default staging roots on E:, free-space preflight)"
+        },
+        {
+          "path": "tools/reload_leak.py",
+          "line": 49,
+          "evidence": "import",
+          "reference": "stage_root",
+          "text": "import stage_root as stages  # noqa: E402  (default staging roots on E:, free-space preflight)"
+        },
+        {
+          "path": "tools/sim_trace_diff.py",
+          "line": 32,
+          "evidence": "import",
+          "reference": "stage_root",
+          "text": "import stage_root as stages  # noqa: E402  (default staging roots on E:, free-space preflight)"
+        },
+        {
+          "path": "tools/sound_smoke.py",
+          "line": 25,
+          "evidence": "import",
+          "reference": "stage_root",
+          "text": "import stage_root as stages  # noqa: E402  (default staging roots on E:, free-space preflight)"
+        },
+        {
+          "path": "tools/tools_smoke.py",
+          "line": 25,
+          "evidence": "import",
+          "reference": "stage_root",
+          "text": "import stage_root as stages  # noqa: E402  (default staging roots on E:, free-space preflight)"
+        }
+      ]
+    },
+    {
       "path": "scripts/sweep_campaign.py",
       "basename": "sweep_campaign.py",
       "stem": "sweep_campaign",
@@ -6173,6 +6343,13 @@
       "callers_by_stem": []
     },
     {
+      "path": "scripts/tests/test_bt2018_mechs.py",
+      "basename": "test_bt2018_mechs.py",
+      "stem": "test_bt2018_mechs",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
       "path": "scripts/tests/test_buffer_lifetime_ownership.py",
       "basename": "test_buffer_lifetime_ownership.py",
       "stem": "test_buffer_lifetime_ownership",
@@ -6183,6 +6360,13 @@
       "path": "scripts/tests/test_build_compiler_presets.py",
       "basename": "test_build_compiler_presets.py",
       "stem": "test_build_compiler_presets",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "scripts/tests/test_cc_launcher_negative_control.py",
+      "basename": "test_cc_launcher_negative_control.py",
+      "stem": "test_cc_launcher_negative_control",
       "callers_by_basename": [],
       "callers_by_stem": []
     },
@@ -6299,6 +6483,13 @@
       "callers_by_stem": []
     },
     {
+      "path": "scripts/tests/test_deploy_bootstrap.py",
+      "basename": "test_deploy_bootstrap.py",
+      "stem": "test_deploy_bootstrap",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
       "path": "scripts/tests/test_deploy_build_layout.py",
       "basename": "test_deploy_build_layout.py",
       "stem": "test_deploy_build_layout",
@@ -6309,6 +6500,13 @@
       "path": "scripts/tests/test_deploy_coherence.py",
       "basename": "test_deploy_coherence.py",
       "stem": "test_deploy_coherence",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "scripts/tests/test_deploy_completeness.py",
+      "basename": "test_deploy_completeness.py",
+      "stem": "test_deploy_completeness",
       "callers_by_basename": [],
       "callers_by_stem": []
     },
@@ -6558,6 +6756,13 @@
       "callers_by_stem": []
     },
     {
+      "path": "scripts/tests/test_rule_defaults.py",
+      "basename": "test_rule_defaults.py",
+      "stem": "test_rule_defaults",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
       "path": "scripts/tests/test_runner_env_drop.py",
       "basename": "test_runner_env_drop.py",
       "stem": "test_runner_env_drop",
@@ -6578,7 +6783,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1548,
+          "line": 1550,
           "evidence": "command",
           "reference": "scripts/tests/test_sim_include_firewall.py",
           "text": "run_check \"sim_include_firewall\"        \"py -3 -B scripts/tests/test_sim_include_firewall.py && py -3 scripts/check_sim_include_firewall.py\""
@@ -6590,6 +6795,13 @@
       "path": "scripts/tests/test_slang_build.py",
       "basename": "test_slang_build.py",
       "stem": "test_slang_build",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "scripts/tests/test_stage_root.py",
+      "basename": "test_stage_root.py",
+      "stem": "test_stage_root",
       "callers_by_basename": [],
       "callers_by_stem": []
     },
@@ -6708,7 +6920,7 @@
         },
         {
           "path": "tools/lane_merge.py",
-          "line": 46,
+          "line": 53,
           "evidence": "import",
           "reference": "_git_util",
           "text": "import _git_util  # noqa: E402  (shared git helpers)"
@@ -6811,17 +7023,10 @@
       "callers_by_stem": [
         {
           "path": "tools/asset_cook/cook_all_stock.py",
-          "line": 28,
+          "line": 9,
           "evidence": "import",
-          "reference": "asset_cook_classify",
-          "text": "import asset_cook_classify as acc   # noqa: E402"
-        },
-        {
-          "path": "tools/asset_cook/cook_all_stock.py",
-          "line": 29,
-          "evidence": "import",
-          "reference": "asset_cook_classify",
-          "text": "from asset_cook_classify import CookClass, classify_appearance, can_emit_override  # noqa: E402"
+          "reference": "tools.asset_cook.asset_cook_classify",
+          "text": "from tools.asset_cook.asset_cook_classify import classify_appearance, can_emit_override"
         },
         {
           "path": "tools/asset_cook/tests/test_classify.py",
@@ -6847,13 +7052,6 @@
       "callers_by_stem": []
     },
     {
-      "path": "tools/asset_cook/promote_cooked.py",
-      "basename": "promote_cooked.py",
-      "stem": "promote_cooked",
-      "callers_by_basename": [],
-      "callers_by_stem": []
-    },
-    {
       "path": "tools/asset_cook/tests/run_tests.py",
       "basename": "run_tests.py",
       "stem": "run_tests",
@@ -6866,86 +7064,6 @@
       "stem": "test_classify",
       "callers_by_basename": [],
       "callers_by_stem": []
-    },
-    {
-      "path": "tools/asset_cook/tests/test_g1_stage.py",
-      "basename": "test_g1_stage.py",
-      "stem": "test_g1_stage",
-      "callers_by_basename": [],
-      "callers_by_stem": []
-    },
-    {
-      "path": "tools/asset_cook/tests/test_g2_textures.py",
-      "basename": "test_g2_textures.py",
-      "stem": "test_g2_textures",
-      "callers_by_basename": [],
-      "callers_by_stem": []
-    },
-    {
-      "path": "tools/asset_cook/tests/test_g3b_assemble.py",
-      "basename": "test_g3b_assemble.py",
-      "stem": "test_g3b_assemble",
-      "callers_by_basename": [],
-      "callers_by_stem": []
-    },
-    {
-      "path": "tools/asset_cook/tests/test_g_pathb_2civliving.py",
-      "basename": "test_g_pathb_2civliving.py",
-      "stem": "test_g_pathb_2civliving",
-      "callers_by_basename": [],
-      "callers_by_stem": []
-    },
-    {
-      "path": "tools/asset_cook/tglmeshdump_to_glb.py",
-      "basename": "tglmeshdump_to_glb.py",
-      "stem": "tglmeshdump_to_glb",
-      "callers_by_basename": [],
-      "callers_by_stem": [
-        {
-          "path": "tools/asset_cook/cook_all_stock.py",
-          "line": 27,
-          "evidence": "import",
-          "reference": "tglmeshdump_to_glb",
-          "text": "import tglmeshdump_to_glb as t2g    # noqa: E402"
-        }
-      ]
-    },
-    {
-      "path": "tools/asset_cook/trackg_cook.py",
-      "basename": "trackg_cook.py",
-      "stem": "trackg_cook",
-      "callers_by_basename": [
-        {
-          "path": "tools/asset_cook/tests/test_g1_stage.py",
-          "line": 50,
-          "evidence": "command",
-          "reference": "tools/asset_cook/trackg_cook.py",
-          "text": "proc = subprocess.run("
-        },
-        {
-          "path": "tools/asset_cook/tests/test_g2_textures.py",
-          "line": 65,
-          "evidence": "command",
-          "reference": "tools/asset_cook/trackg_cook.py",
-          "text": "proc = subprocess.run("
-        }
-      ],
-      "callers_by_stem": [
-        {
-          "path": "tools/asset_cook/cook_all_stock.py",
-          "line": 26,
-          "evidence": "import",
-          "reference": "trackg_cook",
-          "text": "import trackg_cook as tc            # noqa: E402"
-        },
-        {
-          "path": "tools/asset_cook/promote_cooked.py",
-          "line": 29,
-          "evidence": "import",
-          "reference": "trackg_cook",
-          "text": "import trackg_cook as tc  # noqa: E402"
-        }
-      ]
     },
     {
       "path": "tools/asset_cook/validate_asset_manifest.py",
@@ -7113,35 +7231,6 @@
       "callers_by_stem": []
     },
     {
-      "path": "tools/assets/mapgen_data.py",
-      "basename": "mapgen_data.py",
-      "stem": "mapgen_data",
-      "callers_by_basename": [],
-      "callers_by_stem": [
-        {
-          "path": "tests/assets/test_catalog.py",
-          "line": 8,
-          "evidence": "import",
-          "reference": "tools.assets.mapgen_data",
-          "text": "from tools.assets.mapgen_data import fit_sections, packet"
-        },
-        {
-          "path": "tools/assets/catalog.py",
-          "line": 22,
-          "evidence": "import",
-          "reference": "tools.assets.mapgen_data",
-          "text": "from tools.assets.mapgen_data import catalog as type_catalog, packet"
-        },
-        {
-          "path": "tools/assets/common.py",
-          "line": 19,
-          "evidence": "import",
-          "reference": "tools.assets.mapgen_data",
-          "text": "from tools.assets.mapgen_data import Install, fit_sections, key"
-        }
-      ]
-    },
-    {
       "path": "tools/assets/render.py",
       "basename": "render.py",
       "stem": "render",
@@ -7156,7 +7245,7 @@
         },
         {
           "path": "tools/assets/catalog.py",
-          "line": 306,
+          "line": 290,
           "evidence": "import",
           "reference": "tools.assets.render",
           "text": "from tools.assets.render import sheets"
@@ -7227,7 +7316,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 937,
+          "line": 938,
           "evidence": "command",
           "reference": "tools/axis_swizzle_ratchet.py",
           "text": "run_check \"axis_swizzle_ratchet\"     \"py -3 tools/axis_swizzle_ratchet.py --check\""
@@ -7403,7 +7492,7 @@
         },
         {
           "path": "tools/blender_pipeline/recipes/rebake_pbr.py",
-          "line": 36,
+          "line": 35,
           "evidence": "import",
           "reference": "_recipe_util",
           "text": "from _recipe_util import (  # noqa: E402"
@@ -7504,7 +7593,7 @@
       "callers_by_stem": [
         {
           "path": "tools/content_pipeline/tests/test_content_pipeline.py",
-          "line": 293,
+          "line": 400,
           "evidence": "import",
           "reference": "test_ase_submaterial",
           "text": "from test_ase_submaterial import SINGLE_MAT_ASE"
@@ -7565,7 +7654,15 @@
       "basename": "convert_all_bt2018.py",
       "stem": "convert_all_bt2018",
       "callers_by_basename": [],
-      "callers_by_stem": []
+      "callers_by_stem": [
+        {
+          "path": "scripts/tests/test_bt2018_mechs.py",
+          "line": 306,
+          "evidence": "import_module",
+          "reference": "convert_all_bt2018",
+          "text": "conv = importlib.import_module(\"convert_all_bt2018\")"
+        }
+      ]
     },
     {
       "path": "tools/bt2018_import/cook_ao_from_package.py",
@@ -7601,6 +7698,186 @@
       "stem": "gen_mech_package",
       "callers_by_basename": [],
       "callers_by_stem": []
+    },
+    {
+      "path": "tools/bt2018_mechs/__init__.py",
+      "basename": "__init__.py",
+      "stem": "__init__",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "scripts/tests/test_bt2018_mechs.py",
+          "line": 23,
+          "evidence": "import",
+          "reference": "tools.bt2018_mechs",
+          "text": "from tools.bt2018_mechs import btjson, compile as C  # noqa: E402"
+        },
+        {
+          "path": "scripts/tests/test_bt2018_mechs.py",
+          "line": 333,
+          "evidence": "import",
+          "reference": "tools.bt2018_mechs",
+          "text": "from tools.bt2018_mechs import render_icons as R"
+        },
+        {
+          "path": "scripts/tests/test_bt2018_mechs.py",
+          "line": 357,
+          "evidence": "import",
+          "reference": "tools.bt2018_mechs",
+          "text": "from tools.bt2018_mechs import sockets as SK"
+        },
+        {
+          "path": "tools/bt2018_mechs/build_pack.py",
+          "line": 31,
+          "evidence": "import",
+          "reference": "tools.bt2018_mechs",
+          "text": "from tools.bt2018_mechs import compile as C  # noqa: E402"
+        },
+        {
+          "path": "tools/bt2018_mechs/build_pack.py",
+          "line": 33,
+          "evidence": "import",
+          "reference": "tools.bt2018_mechs",
+          "text": "from . import compile as C"
+        },
+        {
+          "path": "tools/bt2018_mechs/build_pack.py",
+          "line": 162,
+          "evidence": "import",
+          "reference": "tools.bt2018_mechs",
+          "text": "from tools.bt2018_mechs import sockets as SK"
+        },
+        {
+          "path": "tools/bt2018_mechs/build_pack.py",
+          "line": 203,
+          "evidence": "import",
+          "reference": "tools.bt2018_mechs",
+          "text": "from tools.bt2018_mechs import render_icons"
+        },
+        {
+          "path": "tools/bt2018_mechs/compile.py",
+          "line": 29,
+          "evidence": "import",
+          "reference": "tools.bt2018_mechs",
+          "text": "from . import btjson"
+        },
+        {
+          "path": "tools/bt2018_mechs/sockets.py",
+          "line": 20,
+          "evidence": "import",
+          "reference": "tools.bt2018_mechs",
+          "text": "from . import render_icons as R"
+        }
+      ]
+    },
+    {
+      "path": "tools/bt2018_mechs/btjson.py",
+      "basename": "btjson.py",
+      "stem": "btjson",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "scripts/tests/test_bt2018_mechs.py",
+          "line": 23,
+          "evidence": "import",
+          "reference": "tools.bt2018_mechs.btjson",
+          "text": "from tools.bt2018_mechs import btjson, compile as C  # noqa: E402"
+        },
+        {
+          "path": "tools/bt2018_mechs/compile.py",
+          "line": 29,
+          "evidence": "import",
+          "reference": "tools.bt2018_mechs.btjson",
+          "text": "from . import btjson"
+        }
+      ]
+    },
+    {
+      "path": "tools/bt2018_mechs/build_pack.py",
+      "basename": "build_pack.py",
+      "stem": "build_pack",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "tools/bt2018_mechs/compile.py",
+      "basename": "compile.py",
+      "stem": "compile",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "scripts/tests/test_bt2018_mechs.py",
+          "line": 23,
+          "evidence": "import",
+          "reference": "tools.bt2018_mechs.compile",
+          "text": "from tools.bt2018_mechs import btjson, compile as C  # noqa: E402"
+        },
+        {
+          "path": "tools/bt2018_mechs/build_pack.py",
+          "line": 31,
+          "evidence": "import",
+          "reference": "tools.bt2018_mechs.compile",
+          "text": "from tools.bt2018_mechs import compile as C  # noqa: E402"
+        },
+        {
+          "path": "tools/bt2018_mechs/build_pack.py",
+          "line": 33,
+          "evidence": "import",
+          "reference": "tools.bt2018_mechs.compile",
+          "text": "from . import compile as C"
+        }
+      ]
+    },
+    {
+      "path": "tools/bt2018_mechs/render_icons.py",
+      "basename": "render_icons.py",
+      "stem": "render_icons",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "scripts/tests/test_bt2018_mechs.py",
+          "line": 333,
+          "evidence": "import",
+          "reference": "tools.bt2018_mechs.render_icons",
+          "text": "from tools.bt2018_mechs import render_icons as R"
+        },
+        {
+          "path": "tools/bt2018_mechs/build_pack.py",
+          "line": 203,
+          "evidence": "import",
+          "reference": "tools.bt2018_mechs.render_icons",
+          "text": "from tools.bt2018_mechs import render_icons"
+        },
+        {
+          "path": "tools/bt2018_mechs/sockets.py",
+          "line": 20,
+          "evidence": "import",
+          "reference": "tools.bt2018_mechs.render_icons",
+          "text": "from . import render_icons as R"
+        }
+      ]
+    },
+    {
+      "path": "tools/bt2018_mechs/sockets.py",
+      "basename": "sockets.py",
+      "stem": "sockets",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "scripts/tests/test_bt2018_mechs.py",
+          "line": 357,
+          "evidence": "import",
+          "reference": "tools.bt2018_mechs.sockets",
+          "text": "from tools.bt2018_mechs import sockets as SK"
+        },
+        {
+          "path": "tools/bt2018_mechs/build_pack.py",
+          "line": 162,
+          "evidence": "import",
+          "reference": "tools.bt2018_mechs.sockets",
+          "text": "from tools.bt2018_mechs import sockets as SK"
+        }
+      ]
     },
     {
       "path": "tools/build_all_targets.py",
@@ -7653,7 +7930,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1341,
+          "line": 1342,
           "evidence": "command",
           "reference": "tools/callers.py",
           "text": "run_check \"script_callers\"              \"py -3 tools/callers.py --check\""
@@ -7705,7 +7982,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 998,
+          "line": 999,
           "evidence": "command",
           "reference": "tools/check_ubo_layout.py",
           "text": "run_check \"vk_ubo_layout\"          \"py -3 tools/check_ubo_layout.py\""
@@ -7720,7 +7997,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1000,
+          "line": 1001,
           "evidence": "command",
           "reference": "tools/check_vk_shaders.py",
           "text": "run_check \"vk_shaders_compile\"     \"py -3 tools/check_vk_shaders.py\""
@@ -7819,18 +8096,18 @@
           "line": 31,
           "evidence": "import",
           "reference": "tools.content_pipeline",
-          "text": "from tools.content_pipeline import package  # noqa: E402"
+          "text": "from tools.content_pipeline import ir, package  # noqa: E402"
         },
         {
           "path": "tools/content_pipeline/frontends/bt2018.py",
-          "line": 22,
+          "line": 23,
           "evidence": "import",
           "reference": "tools.content_pipeline",
           "text": "from .. import ir"
         },
         {
           "path": "tools/content_pipeline/frontends/gltf_file.py",
-          "line": 16,
+          "line": 18,
           "evidence": "import",
           "reference": "tools.content_pipeline",
           "text": "from .. import gltf_io, ir"
@@ -7843,11 +8120,18 @@
           "text": "from .. import gltf_io, ir"
         },
         {
-          "path": "tools/content_pipeline/package.py",
-          "line": 25,
+          "path": "tools/content_pipeline/frontends/stock_meshdump.py",
+          "line": 7,
           "evidence": "import",
           "reference": "tools.content_pipeline",
-          "text": "from . import gltf_io, ir, texcook, validate"
+          "text": "from .. import ir"
+        },
+        {
+          "path": "tools/content_pipeline/package.py",
+          "line": 26,
+          "evidence": "import",
+          "reference": "tools.content_pipeline",
+          "text": "from . import cache, gltf_io, ir, texcook, validate"
         },
         {
           "path": "tools/content_pipeline/tests/test_content_pipeline.py",
@@ -7876,6 +8160,20 @@
           "evidence": "import",
           "reference": "tools.content_pipeline",
           "text": "from . import gltf_io"
+        },
+        {
+          "path": "tools/scifi_kit/art/content.py",
+          "line": 173,
+          "evidence": "import",
+          "reference": "tools.content_pipeline",
+          "text": "from tools.content_pipeline import gltf_io,ir,validate"
+        },
+        {
+          "path": "tools/scifi_kit/art/content.py",
+          "line": 270,
+          "evidence": "import",
+          "reference": "tools.content_pipeline",
+          "text": "from tools.content_pipeline import package"
         }
       ]
     },
@@ -7900,6 +8198,13 @@
           "text": "from tools.content_pipeline import cache"
         },
         {
+          "path": "tools/content_pipeline/package.py",
+          "line": 26,
+          "evidence": "import",
+          "reference": "tools.content_pipeline.cache",
+          "text": "from . import cache, gltf_io, ir, texcook, validate"
+        },
+        {
           "path": "tools/content_pipeline/tests/test_content_pipeline.py",
           "line": 14,
           "evidence": "import",
@@ -7920,7 +8225,43 @@
       "basename": "cook.py",
       "stem": "cook",
       "callers_by_basename": [],
-      "callers_by_stem": []
+      "callers_by_stem": [
+        {
+          "path": "tools/asset_cook/cook_all_stock.py",
+          "line": 8,
+          "evidence": "import",
+          "reference": "tools.content_pipeline.cook",
+          "text": "from tools.content_pipeline.cook import cook"
+        },
+        {
+          "path": "tools/content_pipeline/tests/test_content_pipeline.py",
+          "line": 126,
+          "evidence": "import",
+          "reference": "tools.content_pipeline.cook",
+          "text": "from tools.content_pipeline.cook import build_asset"
+        },
+        {
+          "path": "tools/content_pipeline/tests/test_content_pipeline.py",
+          "line": 194,
+          "evidence": "import",
+          "reference": "tools.content_pipeline.cook",
+          "text": "from tools.content_pipeline.cook import cook"
+        },
+        {
+          "path": "tools/content_pipeline/tests/test_content_pipeline.py",
+          "line": 207,
+          "evidence": "import",
+          "reference": "tools.content_pipeline.cook",
+          "text": "from tools.content_pipeline.cook import cook"
+        },
+        {
+          "path": "tools/examples/build_modern_tree_pack.py",
+          "line": 7,
+          "evidence": "import",
+          "reference": "tools.content_pipeline.cook",
+          "text": "from tools.content_pipeline.cook import cook"
+        }
+      ]
     },
     {
       "path": "tools/content_pipeline/frontends/__init__.py",
@@ -7940,11 +8281,11 @@
           "line": 32,
           "evidence": "import",
           "reference": "tools.content_pipeline.frontends",
-          "text": "from tools.content_pipeline.frontends import gltf_file, stock_ase  # noqa: E402"
+          "text": "from tools.content_pipeline.frontends import bt2018, gltf_file, stock_ase, stock_meshdump  # noqa: E402"
         },
         {
           "path": "tools/content_pipeline/frontends/bt2018.py",
-          "line": 23,
+          "line": 24,
           "evidence": "import",
           "reference": "tools.content_pipeline.frontends",
           "text": "from . import gltf_file"
@@ -7955,6 +8296,20 @@
           "evidence": "import",
           "reference": "tools.content_pipeline.frontends",
           "text": "from tools.content_pipeline.frontends import gltf_file, stock_ase  # noqa: E402"
+        },
+        {
+          "path": "tools/content_pipeline/tests/test_content_pipeline.py",
+          "line": 179,
+          "evidence": "import",
+          "reference": "tools.content_pipeline.frontends",
+          "text": "from tools.content_pipeline.frontends import stock_meshdump"
+        },
+        {
+          "path": "tools/scifi_kit/art/content.py",
+          "line": 174,
+          "evidence": "import",
+          "reference": "tools.content_pipeline.frontends",
+          "text": "from tools.content_pipeline.frontends import gltf_file"
         }
       ]
     },
@@ -7963,7 +8318,15 @@
       "basename": "bt2018.py",
       "stem": "bt2018",
       "callers_by_basename": [],
-      "callers_by_stem": []
+      "callers_by_stem": [
+        {
+          "path": "tools/content_pipeline/cook.py",
+          "line": 32,
+          "evidence": "import",
+          "reference": "tools.content_pipeline.frontends.bt2018",
+          "text": "from tools.content_pipeline.frontends import bt2018, gltf_file, stock_ase, stock_meshdump  # noqa: E402"
+        }
+      ]
     },
     {
       "path": "tools/content_pipeline/frontends/gltf_file.py",
@@ -7983,11 +8346,11 @@
           "line": 32,
           "evidence": "import",
           "reference": "tools.content_pipeline.frontends.gltf_file",
-          "text": "from tools.content_pipeline.frontends import gltf_file, stock_ase  # noqa: E402"
+          "text": "from tools.content_pipeline.frontends import bt2018, gltf_file, stock_ase, stock_meshdump  # noqa: E402"
         },
         {
           "path": "tools/content_pipeline/frontends/bt2018.py",
-          "line": 23,
+          "line": 24,
           "evidence": "import",
           "reference": "tools.content_pipeline.frontends.gltf_file",
           "text": "from . import gltf_file"
@@ -7998,6 +8361,13 @@
           "evidence": "import",
           "reference": "tools.content_pipeline.frontends.gltf_file",
           "text": "from tools.content_pipeline.frontends import gltf_file, stock_ase  # noqa: E402"
+        },
+        {
+          "path": "tools/scifi_kit/art/content.py",
+          "line": 174,
+          "evidence": "import",
+          "reference": "tools.content_pipeline.frontends.gltf_file",
+          "text": "from tools.content_pipeline.frontends import gltf_file"
         }
       ]
     },
@@ -8012,7 +8382,14 @@
           "line": 32,
           "evidence": "import",
           "reference": "tools.content_pipeline.frontends.stock_ase",
-          "text": "from tools.content_pipeline.frontends import gltf_file, stock_ase  # noqa: E402"
+          "text": "from tools.content_pipeline.frontends import bt2018, gltf_file, stock_ase, stock_meshdump  # noqa: E402"
+        },
+        {
+          "path": "tools/content_pipeline/frontends/stock_meshdump.py",
+          "line": 8,
+          "evidence": "import",
+          "reference": "tools.content_pipeline.frontends.stock_ase",
+          "text": "from .stock_ase import resolve_texture"
         },
         {
           "path": "tools/content_pipeline/tests/test_content_pipeline.py",
@@ -8020,6 +8397,28 @@
           "evidence": "import",
           "reference": "tools.content_pipeline.frontends.stock_ase",
           "text": "from tools.content_pipeline.frontends import gltf_file, stock_ase  # noqa: E402"
+        }
+      ]
+    },
+    {
+      "path": "tools/content_pipeline/frontends/stock_meshdump.py",
+      "basename": "stock_meshdump.py",
+      "stem": "stock_meshdump",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tools/content_pipeline/cook.py",
+          "line": 32,
+          "evidence": "import",
+          "reference": "tools.content_pipeline.frontends.stock_meshdump",
+          "text": "from tools.content_pipeline.frontends import bt2018, gltf_file, stock_ase, stock_meshdump  # noqa: E402"
+        },
+        {
+          "path": "tools/content_pipeline/tests/test_content_pipeline.py",
+          "line": 179,
+          "evidence": "import",
+          "reference": "tools.content_pipeline.frontends.stock_meshdump",
+          "text": "from tools.content_pipeline.frontends import stock_meshdump"
         }
       ]
     },
@@ -8038,7 +8437,7 @@
         },
         {
           "path": "tools/content_pipeline/frontends/gltf_file.py",
-          "line": 16,
+          "line": 18,
           "evidence": "import",
           "reference": "tools.content_pipeline.gltf_io",
           "text": "from .. import gltf_io, ir"
@@ -8052,10 +8451,10 @@
         },
         {
           "path": "tools/content_pipeline/package.py",
-          "line": 25,
+          "line": 26,
           "evidence": "import",
           "reference": "tools.content_pipeline.gltf_io",
-          "text": "from . import gltf_io, ir, texcook, validate"
+          "text": "from . import cache, gltf_io, ir, texcook, validate"
         },
         {
           "path": "tools/content_pipeline/tests/test_content_pipeline.py",
@@ -8070,6 +8469,13 @@
           "evidence": "import",
           "reference": "tools.content_pipeline.gltf_io",
           "text": "from . import gltf_io"
+        },
+        {
+          "path": "tools/scifi_kit/art/content.py",
+          "line": 173,
+          "evidence": "import",
+          "reference": "tools.content_pipeline.gltf_io",
+          "text": "from tools.content_pipeline import gltf_io,ir,validate"
         }
       ]
     },
@@ -8087,15 +8493,22 @@
           "text": "from tools.content_pipeline import ir, package as cp_package"
         },
         {
+          "path": "tools/content_pipeline/cook.py",
+          "line": 31,
+          "evidence": "import",
+          "reference": "tools.content_pipeline.ir",
+          "text": "from tools.content_pipeline import ir, package  # noqa: E402"
+        },
+        {
           "path": "tools/content_pipeline/frontends/bt2018.py",
-          "line": 22,
+          "line": 23,
           "evidence": "import",
           "reference": "tools.content_pipeline.ir",
           "text": "from .. import ir"
         },
         {
           "path": "tools/content_pipeline/frontends/gltf_file.py",
-          "line": 16,
+          "line": 18,
           "evidence": "import",
           "reference": "tools.content_pipeline.ir",
           "text": "from .. import gltf_io, ir"
@@ -8106,6 +8519,13 @@
           "evidence": "import",
           "reference": "tools.content_pipeline.ir",
           "text": "from .. import gltf_io, ir"
+        },
+        {
+          "path": "tools/content_pipeline/frontends/stock_meshdump.py",
+          "line": 7,
+          "evidence": "import",
+          "reference": "tools.content_pipeline.ir",
+          "text": "from .. import ir"
         },
         {
           "path": "tools/content_pipeline/gltf_io.py",
@@ -8123,10 +8543,10 @@
         },
         {
           "path": "tools/content_pipeline/package.py",
-          "line": 25,
+          "line": 26,
           "evidence": "import",
           "reference": "tools.content_pipeline.ir",
-          "text": "from . import gltf_io, ir, texcook, validate"
+          "text": "from . import cache, gltf_io, ir, texcook, validate"
         },
         {
           "path": "tools/content_pipeline/tests/test_content_pipeline.py",
@@ -8148,6 +8568,13 @@
           "evidence": "import",
           "reference": "tools.content_pipeline.ir",
           "text": "from .ir import ALPHA_MODES, MATERIAL_CLASSES"
+        },
+        {
+          "path": "tools/scifi_kit/art/content.py",
+          "line": 173,
+          "evidence": "import",
+          "reference": "tools.content_pipeline.ir",
+          "text": "from tools.content_pipeline import gltf_io,ir,validate"
         }
       ]
     },
@@ -8169,7 +8596,7 @@
           "line": 31,
           "evidence": "import",
           "reference": "tools.content_pipeline.package",
-          "text": "from tools.content_pipeline import package  # noqa: E402"
+          "text": "from tools.content_pipeline import ir, package  # noqa: E402"
         },
         {
           "path": "tools/content_pipeline/tests/test_content_pipeline.py",
@@ -8177,6 +8604,13 @@
           "evidence": "import",
           "reference": "tools.content_pipeline.package",
           "text": "from tools.content_pipeline import cache, gltf_io, ir, package, texcook, validate  # noqa: E402"
+        },
+        {
+          "path": "tools/scifi_kit/art/content.py",
+          "line": 270,
+          "evidence": "import",
+          "reference": "tools.content_pipeline.package",
+          "text": "from tools.content_pipeline import package"
         }
       ]
     },
@@ -8202,10 +8636,10 @@
       "callers_by_stem": [
         {
           "path": "tools/content_pipeline/package.py",
-          "line": 25,
+          "line": 26,
           "evidence": "import",
           "reference": "tools.content_pipeline.texcook",
-          "text": "from . import gltf_io, ir, texcook, validate"
+          "text": "from . import cache, gltf_io, ir, texcook, validate"
         },
         {
           "path": "tools/content_pipeline/tests/test_content_pipeline.py",
@@ -8231,10 +8665,10 @@
         },
         {
           "path": "tools/content_pipeline/package.py",
-          "line": 25,
+          "line": 26,
           "evidence": "import",
           "reference": "tools.content_pipeline.validate",
-          "text": "from . import gltf_io, ir, texcook, validate"
+          "text": "from . import cache, gltf_io, ir, texcook, validate"
         },
         {
           "path": "tools/content_pipeline/tests/test_content_pipeline.py",
@@ -8242,6 +8676,13 @@
           "evidence": "import",
           "reference": "tools.content_pipeline.validate",
           "text": "from tools.content_pipeline import cache, gltf_io, ir, package, texcook, validate  # noqa: E402"
+        },
+        {
+          "path": "tools/scifi_kit/art/content.py",
+          "line": 173,
+          "evidence": "import",
+          "reference": "tools.content_pipeline.validate",
+          "text": "from tools.content_pipeline import gltf_io,ir,validate"
         }
       ]
     },
@@ -8310,7 +8751,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 927,
+          "line": 928,
           "evidence": "command",
           "reference": "tools/cxx17_ratchet/cxx17_ratchet.py",
           "text": "run_check \"cxx17_ratchet\"            \"py -3 tools/cxx17_ratchet/cxx17_ratchet.py --check\""
@@ -8463,7 +8904,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 932,
+          "line": 933,
           "evidence": "command",
           "reference": "tools/dup_lines_ratchet.py",
           "text": "run_check \"dup_lines_ratchet\"        \"py -3 tools/dup_lines_ratchet.py --check\""
@@ -8492,11 +8933,11 @@
       "callers_by_basename": [],
       "callers_by_stem": [
         {
-          "path": "tests/examples/test_build_modern_tree_pack.py",
-          "line": 7,
+          "path": "tools/content_pipeline/tests/test_content_pipeline.py",
+          "line": 193,
           "evidence": "import",
-          "reference": "build_modern_tree_pack",
-          "text": "from build_modern_tree_pack import ("
+          "reference": "tools.examples.build_modern_tree_pack",
+          "text": "from tools.examples.build_modern_tree_pack import recipe"
         }
       ]
     },
@@ -8508,20 +8949,13 @@
       "callers_by_stem": []
     },
     {
-      "path": "tools/examples/normalize_broadleaf_glb.py",
-      "basename": "normalize_broadleaf_glb.py",
-      "stem": "normalize_broadleaf_glb",
-      "callers_by_basename": [],
-      "callers_by_stem": []
-    },
-    {
       "path": "tools/file_size_ratchet.py",
       "basename": "file_size_ratchet.py",
       "stem": "file_size_ratchet",
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 946,
+          "line": 947,
           "evidence": "command",
           "reference": "tools/file_size_ratchet.py",
           "text": "run_check \"file_size_ratchet\"        \"py -3 tools/file_size_ratchet.py --check\""
@@ -8647,7 +9081,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 999,
+          "line": 1000,
           "evidence": "command",
           "reference": "tools/glsl_port_diff.py",
           "text": "run_check \"glsl_port_diff\"         \"py -3 tools/glsl_port_diff.py --all\""
@@ -8662,7 +9096,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 989,
+          "line": 990,
           "evidence": "command",
           "reference": "tools/gpu_abi_gen.py",
           "text": "run_check \"gpu_abi\"                \"py -3 tools/gpu_abi_gen.py --check && py -3 -B -m pytest scripts/tests/test_gpu_abi_gen.py -q -p no:cacheprovider\""
@@ -8721,7 +9155,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 941,
+          "line": 942,
           "evidence": "command",
           "reference": "tools/journal_comment_ratchet.py",
           "text": "run_check \"journal_comment_ratchet\"  \"py -3 tools/journal_comment_ratchet.py --check\""
@@ -8767,7 +9201,7 @@
         },
         {
           "path": "tools/test_lane_merge.py",
-          "line": 297,
+          "line": 306,
           "evidence": "import",
           "reference": "lane_merge",
           "text": "import lane_merge as lm  # noqa: E402"
@@ -8794,7 +9228,15 @@
           "text": "tools/list_free_ordinals.py tools/mc2x_import/fst.py \\"
         }
       ],
-      "callers_by_stem": []
+      "callers_by_stem": [
+        {
+          "path": "tools/bt2018_mechs/build_pack.py",
+          "line": 57,
+          "evidence": "import",
+          "reference": "list_free_ordinals",
+          "text": "import list_free_ordinals as lfo  # noqa: E402"
+        }
+      ]
     },
     {
       "path": "tools/log_identity.py",
@@ -9111,49 +9553,6 @@
       "callers_by_stem": []
     },
     {
-      "path": "tools/mapgen/data.py",
-      "basename": "data.py",
-      "stem": "data",
-      "callers_by_basename": [],
-      "callers_by_stem": [
-        {
-          "path": "tests/mapgen/test_extract.py",
-          "line": 11,
-          "evidence": "import",
-          "reference": "tools.mapgen.data",
-          "text": "from tools.mapgen.data import Install, catalog, fit_sections, packet"
-        },
-        {
-          "path": "tools/mapgen/extract.py",
-          "line": 19,
-          "evidence": "import",
-          "reference": "tools.mapgen.data",
-          "text": "from tools.mapgen.data import Install, catalog, fit_sections, overlay_catalog, packet"
-        },
-        {
-          "path": "tools/mapgen/footprints.py",
-          "line": 19,
-          "evidence": "import",
-          "reference": "tools.mapgen.data",
-          "text": "from tools.mapgen.data import Install, catalog, fit_sections, packet"
-        },
-        {
-          "path": "tools/mapgen/mission_writer.py",
-          "line": 21,
-          "evidence": "import",
-          "reference": "tools.mapgen.data",
-          "text": "from tools.mapgen.data import Install, catalog, fit_sections, packet, overlay_catalog"
-        },
-        {
-          "path": "tools/mapgen/playable_demo.py",
-          "line": 8,
-          "evidence": "import",
-          "reference": "tools.mapgen.data",
-          "text": "from tools.mapgen.data import Install"
-        }
-      ]
-    },
-    {
       "path": "tools/mapgen/extract.py",
       "basename": "extract.py",
       "stem": "extract",
@@ -9185,7 +9584,7 @@
           "line": 22,
           "evidence": "import",
           "reference": "tools.mapgen.extract",
-          "text": "from tools.mapgen.extract import OBJECT, VERTEX, extract_mission"
+          "text": "from tools.mapgen.extract import VERTEX, extract_mission"
         }
       ]
     },
@@ -9661,6 +10060,13 @@
           "text": "import stock_corpus as sc  # noqa: E402"
         },
         {
+          "path": "scripts/tests/test_bt2018_mechs.py",
+          "line": 24,
+          "evidence": "import",
+          "reference": "tools.mc2data.stock_corpus",
+          "text": "from tools.mc2data.stock_corpus import resolve, StockDataError  # noqa: E402"
+        },
+        {
           "path": "tools/blender_pipeline/srcdata.py",
           "line": 53,
           "evidence": "import",
@@ -9723,6 +10129,20 @@
           "evidence": "import",
           "reference": "stock_missions",
           "text": "import stock_missions as sm  # noqa: E402"
+        },
+        {
+          "path": "scripts/tests/test_bt2018_mechs.py",
+          "line": 376,
+          "evidence": "import",
+          "reference": "tools.mc2data.stock_missions",
+          "text": "from tools.mc2data import stock_missions as sm"
+        },
+        {
+          "path": "tests/mapgen/test_mission_codec.py",
+          "line": 15,
+          "evidence": "import",
+          "reference": "tools.mc2data.stock_missions",
+          "text": "from tools.mc2data.stock_missions import resolve_missions_dir"
         },
         {
           "path": "tools/mc2data/stock_corpus.py",
@@ -9911,11 +10331,25 @@
       "callers_by_stem": []
     },
     {
+      "path": "tools/mc2texcook/cook_concrete_detail.py",
+      "basename": "cook_concrete_detail.py",
+      "stem": "cook_concrete_detail",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
       "path": "tools/mc2texcook/cook_pbr_maps.py",
       "basename": "cook_pbr_maps.py",
       "stem": "cook_pbr_maps",
       "callers_by_basename": [],
       "callers_by_stem": [
+        {
+          "path": "tools/mc2texcook/cook_concrete_detail.py",
+          "line": 22,
+          "evidence": "import",
+          "reference": "cook_pbr_maps",
+          "text": "import cook_pbr_maps as pbr  # noqa: E402"
+        },
         {
           "path": "tools/mc2texcook/cook_terrain_layers.py",
           "line": 48,
@@ -10061,11 +10495,11 @@
           "text": "from tools.mc2x_import.fst import fst_entries, decompress_entry  # noqa: E402"
         },
         {
-          "path": "tools/assets/mapgen_data.py",
-          "line": 14,
+          "path": "tools/bt2018_mechs/build_pack.py",
+          "line": 74,
           "evidence": "import",
-          "reference": "tools.mc2x_import.fst",
-          "text": "from tools.mc2x_import.fst import decompress_entry"
+          "reference": "fst",
+          "text": "import fst  # noqa: E402"
         },
         {
           "path": "tools/list_free_ordinals.py",
@@ -10096,15 +10530,22 @@
           "text": "import fst  # noqa: E402"
         },
         {
+          "path": "tools/mission_codec/__init__.py",
+          "line": 16,
+          "evidence": "import",
+          "reference": "tools.mc2x_import.fst",
+          "text": "from tools.mc2x_import.fst import decompress_entry"
+        },
+        {
           "path": "tools/mod_smoke.py",
-          "line": 417,
+          "line": 420,
           "evidence": "import_module",
           "reference": "fst",
           "text": "fst_lib = importlib.import_module('fst')"
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 453,
+          "line": 456,
           "evidence": "import_module",
           "reference": "fst",
           "text": "fst_lib = importlib.import_module('fst')"
@@ -10115,6 +10556,13 @@
           "evidence": "import",
           "reference": "fst",
           "text": "import fst as fstmod  # noqa: E402  (proven FST reader/LZW port)"
+        },
+        {
+          "path": "tools/scifi_kit/art/inventory.py",
+          "line": 24,
+          "evidence": "import",
+          "reference": "tools.mc2x_import.fst",
+          "text": "from tools.mc2x_import.fst import decompress_entry  # noqa: E402"
         },
         {
           "path": "tools/terrain_beautify/cook_shore_field.py",
@@ -10265,6 +10713,91 @@
       "callers_by_stem": []
     },
     {
+      "path": "tools/mission_codec/__init__.py",
+      "basename": "__init__.py",
+      "stem": "__init__",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tests/assets/test_catalog.py",
+          "line": 8,
+          "evidence": "import",
+          "reference": "tools.mission_codec",
+          "text": "from tools.mission_codec import fit_sections, packet"
+        },
+        {
+          "path": "tests/mapgen/test_extract.py",
+          "line": 11,
+          "evidence": "import",
+          "reference": "tools.mission_codec",
+          "text": "from tools.mission_codec import Install, catalog, fit_sections, packet"
+        },
+        {
+          "path": "tests/mapgen/test_mission_codec.py",
+          "line": 13,
+          "evidence": "import",
+          "reference": "tools.mission_codec",
+          "text": "from tools.mission_codec import (decode_move, encode_move, encode_objects,"
+        },
+        {
+          "path": "tools/assets/catalog.py",
+          "line": 22,
+          "evidence": "import",
+          "reference": "tools.mission_codec",
+          "text": "from tools.mission_codec import OBJECT, object_records, catalog as type_catalog, packet"
+        },
+        {
+          "path": "tools/assets/common.py",
+          "line": 19,
+          "evidence": "import",
+          "reference": "tools.mission_codec",
+          "text": "from tools.mission_codec import Install, fit_sections, key"
+        },
+        {
+          "path": "tools/mapgen/common.py",
+          "line": 13,
+          "evidence": "import",
+          "reference": "tools.mission_codec",
+          "text": "from tools.mission_codec import packed_cell"
+        },
+        {
+          "path": "tools/mapgen/extract.py",
+          "line": 19,
+          "evidence": "import",
+          "reference": "tools.mission_codec",
+          "text": "from tools.mission_codec import (OBJECT, Install, catalog, fit_sections, object_records,"
+        },
+        {
+          "path": "tools/mapgen/footprints.py",
+          "line": 19,
+          "evidence": "import",
+          "reference": "tools.mission_codec",
+          "text": "from tools.mission_codec import Install, catalog, fit_sections, packet"
+        },
+        {
+          "path": "tools/mapgen/mission_writer.py",
+          "line": 21,
+          "evidence": "import",
+          "reference": "tools.mission_codec",
+          "text": "from tools.mission_codec import Install, catalog, encode_objects, fit_sections, packet, overlay_catalog"
+        },
+        {
+          "path": "tools/mapgen/move_writer.py",
+          "line": 14,
+          "evidence": "import",
+          "reference": "tools.mission_codec",
+          "text": "from tools.mission_codec import PASSABLE, decode_move, encode_move"
+        },
+        {
+          "path": "tools/mapgen/playable_demo.py",
+          "line": 8,
+          "evidence": "import",
+          "reference": "tools.mission_codec",
+          "text": "from tools.mission_codec import Install"
+        }
+      ]
+    },
+    {
       "path": "tools/mission_order_ingress_witness.py",
       "basename": "mission_order_ingress_witness.py",
       "stem": "mission_order_ingress_witness",
@@ -10294,21 +10827,21 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 208,
+          "line": 211,
           "evidence": "import",
           "reference": "fst_listing",
           "text": "import fst_listing"
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 333,
+          "line": 336,
           "evidence": "import",
           "reference": "fst_listing",
           "text": "import fst_listing"
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 435,
+          "line": 438,
           "evidence": "import",
           "reference": "fst_listing",
           "text": "import fst_listing"
@@ -10502,7 +11035,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1338,
+          "line": 1339,
           "evidence": "command",
           "reference": "tools/own_inventory.py",
           "text": "run_check \"own_inventory\"               \"py -3 tools/own_inventory.py --check\""
@@ -10523,6 +11056,13 @@
       "stem": "pak_append",
       "callers_by_basename": [],
       "callers_by_stem": [
+        {
+          "path": "tests/mapgen/test_mission_codec.py",
+          "line": 16,
+          "evidence": "import",
+          "reference": "tools.pak_append",
+          "text": "from tools.pak_append import PacketRecord, make_zlib_payload, write_pak"
+        },
         {
           "path": "tools/mapgen/mission_writer.py",
           "line": 26,
@@ -10690,7 +11230,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1339,
+          "line": 1340,
           "evidence": "command",
           "reference": "tools/pointer_order_scan.py",
           "text": "run_check \"pointer_order_scan\"          \"py -3 tools/pointer_order_scan.py --check\""
@@ -11190,7 +11730,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1335,
+          "line": 1336,
           "evidence": "command",
           "reference": "tools/save_inspect.py",
           "text": "run_check \"save_inspect\"                \"py -3 tools/save_inspect.py selftest\""
@@ -11227,7 +11767,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1342,
+          "line": 1343,
           "evidence": "command",
           "reference": "tools/savegame_backup.py",
           "text": "run_check \"savegame_backup\"             \"py -3 tools/savegame_backup.py selftest\""
@@ -11243,7 +11783,7 @@
         },
         {
           "path": "tools/reload_leak.py",
-          "line": 49,
+          "line": 50,
           "evidence": "import",
           "reference": "savegame_backup",
           "text": "import savegame_backup  # noqa: E402  (back the owner's quicksave up around the fixture)"
@@ -11278,7 +11818,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1334,
+          "line": 1335,
           "evidence": "command",
           "reference": "tools/saveload_roundtrip.py",
           "text": "run_check \"saveload_roundtrip\"          \"py -3 tools/saveload_roundtrip.py selftest\""
@@ -11307,6 +11847,540 @@
           "text": "import saveload_roundtrip as rt"
         }
       ]
+    },
+    {
+      "path": "tools/scifi_kit/art/assemble.py",
+      "basename": "assemble.py",
+      "stem": "assemble",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tools/scifi_kit/art/bake.py",
+          "line": 196,
+          "evidence": "import",
+          "reference": "assemble",
+          "text": "import geo,assemble,sys"
+        },
+        {
+          "path": "tools/scifi_kit/art/blend.py",
+          "line": 937,
+          "evidence": "import",
+          "reference": "assemble",
+          "text": "import assemble"
+        },
+        {
+          "path": "tools/scifi_kit/art/drafts.py",
+          "line": 560,
+          "evidence": "import",
+          "reference": "assemble",
+          "text": "from assemble import end_wall"
+        },
+        {
+          "path": "tools/scifi_kit/art/run.py",
+          "line": 181,
+          "evidence": "import",
+          "reference": "assemble",
+          "text": "import assemble"
+        },
+        {
+          "path": "tools/scifi_kit/tests/test_art_kit.py",
+          "line": 8,
+          "evidence": "import",
+          "reference": "assemble",
+          "text": "import assemble  # noqa: E402"
+        }
+      ]
+    },
+    {
+      "path": "tools/scifi_kit/art/bake.py",
+      "basename": "bake.py",
+      "stem": "bake",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tools/scifi_kit/art/blend.py",
+          "line": 968,
+          "evidence": "import",
+          "reference": "bake",
+          "text": "import bake"
+        }
+      ]
+    },
+    {
+      "path": "tools/scifi_kit/art/bake_budget.py",
+      "basename": "bake_budget.py",
+      "stem": "bake_budget",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tools/scifi_kit/art/bake.py",
+          "line": 18,
+          "evidence": "import",
+          "reference": "bake_budget",
+          "text": "from bake_budget import BUDGETS, budget  # noqa: F401"
+        },
+        {
+          "path": "tools/scifi_kit/tests/test_art_kit.py",
+          "line": 106,
+          "evidence": "import",
+          "reference": "bake_budget",
+          "text": "import bake_budget"
+        }
+      ]
+    },
+    {
+      "path": "tools/scifi_kit/art/baked_review.py",
+      "basename": "baked_review.py",
+      "stem": "baked_review",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tools/scifi_kit/art/blend.py",
+          "line": 1017,
+          "evidence": "import",
+          "reference": "baked_review",
+          "text": "import baked_review"
+        }
+      ]
+    },
+    {
+      "path": "tools/scifi_kit/art/batch2.py",
+      "basename": "batch2.py",
+      "stem": "batch2",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tools/scifi_kit/art/drafts.py",
+          "line": 1343,
+          "evidence": "import",
+          "reference": "batch2",
+          "text": "import batch2  # noqa: E402: reuses the construction helpers above"
+        }
+      ]
+    },
+    {
+      "path": "tools/scifi_kit/art/batch3.py",
+      "basename": "batch3.py",
+      "stem": "batch3",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tools/scifi_kit/art/drafts.py",
+          "line": 1349,
+          "evidence": "import",
+          "reference": "batch3",
+          "text": "import batch3  # noqa: E402: construction helpers and batch two are registered first"
+        }
+      ]
+    },
+    {
+      "path": "tools/scifi_kit/art/blend.py",
+      "basename": "blend.py",
+      "stem": "blend",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "tools/scifi_kit/art/content.py",
+      "basename": "content.py",
+      "stem": "content",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tools/scifi_kit/art/bake.py",
+          "line": 172,
+          "evidence": "import",
+          "reference": "content",
+          "text": "from content import source_lights"
+        },
+        {
+          "path": "tools/scifi_kit/art/bake.py",
+          "line": 390,
+          "evidence": "import",
+          "reference": "content",
+          "text": "from content import shared_quonset_variant"
+        }
+      ]
+    },
+    {
+      "path": "tools/scifi_kit/art/counts.py",
+      "basename": "counts.py",
+      "stem": "counts",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tools/scifi_kit/art/content.py",
+          "line": 16,
+          "evidence": "import",
+          "reference": "counts",
+          "text": "import counts"
+        },
+        {
+          "path": "tools/scifi_kit/art/drafts.py",
+          "line": 1307,
+          "evidence": "import",
+          "reference": "counts",
+          "text": "import counts"
+        },
+        {
+          "path": "tools/scifi_kit/art/inventory.py",
+          "line": 404,
+          "evidence": "import",
+          "reference": "counts",
+          "text": "import counts"
+        },
+        {
+          "path": "tools/scifi_kit/tests/test_art_kit.py",
+          "line": 135,
+          "evidence": "import",
+          "reference": "counts",
+          "text": "import counts"
+        }
+      ]
+    },
+    {
+      "path": "tools/scifi_kit/art/drafts.py",
+      "basename": "drafts.py",
+      "stem": "drafts",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tools/scifi_kit/art/assemble.py",
+          "line": 465,
+          "evidence": "import",
+          "reference": "drafts",
+          "text": "from drafts import DRAFTS  # noqa: E402"
+        },
+        {
+          "path": "tools/scifi_kit/art/assemble.py",
+          "line": 470,
+          "evidence": "import",
+          "reference": "drafts",
+          "text": "import drafts"
+        },
+        {
+          "path": "tools/scifi_kit/art/assemble.py",
+          "line": 480,
+          "evidence": "import",
+          "reference": "drafts",
+          "text": "import drafts"
+        },
+        {
+          "path": "tools/scifi_kit/art/batch2.py",
+          "line": 318,
+          "evidence": "import",
+          "reference": "drafts",
+          "text": "import drafts as kit  # noqa: E402: definitions must exist before draft registration"
+        },
+        {
+          "path": "tools/scifi_kit/art/batch3.py",
+          "line": 213,
+          "evidence": "import",
+          "reference": "drafts",
+          "text": "import drafts as kit  # noqa: E402: reuse the existing construction helpers"
+        },
+        {
+          "path": "tools/scifi_kit/art/content.py",
+          "line": 17,
+          "evidence": "import",
+          "reference": "drafts",
+          "text": "import drafts"
+        },
+        {
+          "path": "tools/scifi_kit/art/review_drafts.py",
+          "line": 10,
+          "evidence": "import",
+          "reference": "drafts",
+          "text": "import drafts"
+        },
+        {
+          "path": "tools/scifi_kit/art/run.py",
+          "line": 176,
+          "evidence": "import",
+          "reference": "drafts",
+          "text": "import drafts"
+        },
+        {
+          "path": "tools/scifi_kit/tests/test_art_kit.py",
+          "line": 67,
+          "evidence": "import",
+          "reference": "drafts",
+          "text": "import drafts  # noqa: E402"
+        }
+      ]
+    },
+    {
+      "path": "tools/scifi_kit/art/geo.py",
+      "basename": "geo.py",
+      "stem": "geo",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tools/scifi_kit/art/assemble.py",
+          "line": 15,
+          "evidence": "import",
+          "reference": "geo",
+          "text": "import geo  # noqa: E402"
+        },
+        {
+          "path": "tools/scifi_kit/art/assemble.py",
+          "line": 16,
+          "evidence": "import",
+          "reference": "geo",
+          "text": "from geo import G, P, Kit, rect_poly, reg_poly, wall_segment  # noqa: E402"
+        },
+        {
+          "path": "tools/scifi_kit/art/bake.py",
+          "line": 196,
+          "evidence": "import",
+          "reference": "geo",
+          "text": "import geo,assemble,sys"
+        },
+        {
+          "path": "tools/scifi_kit/art/batch2.py",
+          "line": 5,
+          "evidence": "import",
+          "reference": "geo",
+          "text": "import geo"
+        },
+        {
+          "path": "tools/scifi_kit/art/batch3.py",
+          "line": 5,
+          "evidence": "import",
+          "reference": "geo",
+          "text": "import geo"
+        },
+        {
+          "path": "tools/scifi_kit/art/blend.py",
+          "line": 18,
+          "evidence": "import",
+          "reference": "geo",
+          "text": "import geo  # noqa: E402"
+        },
+        {
+          "path": "tools/scifi_kit/art/drafts.py",
+          "line": 15,
+          "evidence": "import",
+          "reference": "geo",
+          "text": "import geo"
+        },
+        {
+          "path": "tools/scifi_kit/art/drafts.py",
+          "line": 16,
+          "evidence": "import",
+          "reference": "geo",
+          "text": "from geo import Kit, rect_poly"
+        },
+        {
+          "path": "tools/scifi_kit/art/lights.py",
+          "line": 58,
+          "evidence": "import",
+          "reference": "geo",
+          "text": "from geo import centroid"
+        },
+        {
+          "path": "tools/scifi_kit/art/run.py",
+          "line": 80,
+          "evidence": "import",
+          "reference": "geo",
+          "text": "import geo"
+        },
+        {
+          "path": "tools/scifi_kit/art/run.py",
+          "line": 162,
+          "evidence": "import",
+          "reference": "geo",
+          "text": "import geo"
+        },
+        {
+          "path": "tools/scifi_kit/tests/test_art_kit.py",
+          "line": 9,
+          "evidence": "import",
+          "reference": "geo",
+          "text": "import geo  # noqa: E402"
+        }
+      ]
+    },
+    {
+      "path": "tools/scifi_kit/art/inventory.py",
+      "basename": "inventory.py",
+      "stem": "inventory",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tools/scifi_kit/art/review_drafts.py",
+          "line": 11,
+          "evidence": "import",
+          "reference": "inventory",
+          "text": "import inventory as inv"
+        }
+      ]
+    },
+    {
+      "path": "tools/scifi_kit/art/lights.py",
+      "basename": "lights.py",
+      "stem": "lights",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tools/scifi_kit/art/bake.py",
+          "line": 142,
+          "evidence": "import",
+          "reference": "lights",
+          "text": "from lights import from_kit"
+        },
+        {
+          "path": "tools/scifi_kit/art/content.py",
+          "line": 18,
+          "evidence": "import",
+          "reference": "lights",
+          "text": "from lights import from_kit"
+        },
+        {
+          "path": "tools/scifi_kit/tests/test_art_kit.py",
+          "line": 136,
+          "evidence": "import",
+          "reference": "lights",
+          "text": "import lights"
+        }
+      ]
+    },
+    {
+      "path": "tools/scifi_kit/art/material_sources.py",
+      "basename": "material_sources.py",
+      "stem": "material_sources",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tools/scifi_kit/art/blend.py",
+          "line": 259,
+          "evidence": "import",
+          "reference": "material_sources",
+          "text": "from material_sources import lookup"
+        },
+        {
+          "path": "tools/scifi_kit/art/blend.py",
+          "line": 378,
+          "evidence": "import",
+          "reference": "material_sources",
+          "text": "from material_sources import lookup"
+        }
+      ]
+    },
+    {
+      "path": "tools/scifi_kit/art/palette_metrics.py",
+      "basename": "palette_metrics.py",
+      "stem": "palette_metrics",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "tools/scifi_kit/art/review_drafts.py",
+      "basename": "review_drafts.py",
+      "stem": "review_drafts",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "tools/scifi_kit/art/run.py",
+      "basename": "run.py",
+      "stem": "run",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "tools/scifi_kit/art/stock_views.py",
+      "basename": "stock_views.py",
+      "stem": "stock_views",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tools/scifi_kit/art/blend.py",
+          "line": 1014,
+          "evidence": "import",
+          "reference": "stock_views",
+          "text": "import stock_views"
+        }
+      ]
+    },
+    {
+      "path": "tools/scifi_kit/art/wear_metrics.py",
+      "basename": "wear_metrics.py",
+      "stem": "wear_metrics",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "tools/scifi_kit/blender_build.py",
+      "basename": "blender_build.py",
+      "stem": "blender_build",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "tools/scifi_kit/core.py",
+      "basename": "core.py",
+      "stem": "core",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tools/scifi_kit/blender_build.py",
+          "line": 13,
+          "evidence": "import",
+          "reference": "core",
+          "text": "from core import read_json, write_json, inside"
+        },
+        {
+          "path": "tools/scifi_kit/kit.py",
+          "line": 18,
+          "evidence": "import",
+          "reference": "core",
+          "text": "from core import DEFAULT_OUT, make_job, read_json, write_json, inside"
+        },
+        {
+          "path": "tools/scifi_kit/tests/test_lots.py",
+          "line": 8,
+          "evidence": "import",
+          "reference": "core",
+          "text": "from core import inside, plan_wings"
+        }
+      ]
+    },
+    {
+      "path": "tools/scifi_kit/kit.py",
+      "basename": "kit.py",
+      "stem": "kit",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "tools/scifi_kit/parts.py",
+      "basename": "parts.py",
+      "stem": "parts",
+      "callers_by_basename": [],
+      "callers_by_stem": [
+        {
+          "path": "tools/scifi_kit/blender_build.py",
+          "line": 14,
+          "evidence": "import",
+          "reference": "parts",
+          "text": "from parts import MeshKit, assemble"
+        }
+      ]
+    },
+    {
+      "path": "tools/scifi_kit/tests/test_art_kit.py",
+      "basename": "test_art_kit.py",
+      "stem": "test_art_kit",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "tools/scifi_kit/tests/test_lots.py",
+      "basename": "test_lots.py",
+      "stem": "test_lots",
+      "callers_by_basename": [],
+      "callers_by_stem": []
     },
     {
       "path": "tools/shader_offline_build/build_variants.py",
@@ -11388,7 +12462,7 @@
       "callers_by_basename": [
         {
           "path": "CMakeLists.txt",
-          "line": 910,
+          "line": 914,
           "evidence": "cmake command",
           "reference": "${CMAKE_SOURCE_DIR}/tools/shader_reflect/reflect.py",
           "text": "COMMAND ${Python3_EXECUTABLE}"
@@ -11433,7 +12507,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1332,
+          "line": 1333,
           "evidence": "command",
           "reference": "tools/sim_determinism.py",
           "text": "run_check \"sim_determinism\"             \"py -3 tools/sim_determinism.py selftest && py -3 -B -m pytest scripts/tests/test_sim_determinism_strict.py scripts/tests/test_world_order_diff.py -q -p no:cacheprovider\""
@@ -11448,6 +12522,13 @@
           "text": "import sim_determinism as sd  # noqa: E402"
         },
         {
+          "path": "scripts/tests/test_rule_defaults.py",
+          "line": 55,
+          "evidence": "import",
+          "reference": "sim_determinism",
+          "text": "import sim_determinism"
+        },
+        {
           "path": "scripts/tests/test_sim_determinism_strict.py",
           "line": 10,
           "evidence": "import",
@@ -11456,7 +12537,7 @@
         },
         {
           "path": "tools/battery.py",
-          "line": 91,
+          "line": 92,
           "evidence": "import",
           "reference": "sim_determinism",
           "text": "from sim_determinism import smoke_target as _target"
@@ -11571,7 +12652,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 948,
+          "line": 949,
           "evidence": "command",
           "reference": "tools/split/split_map.py",
           "text": "run_check \"split_map\"                 \"py -3 tools/split/split_map.py --check\""
@@ -13373,6 +14454,13 @@
       ],
       "callers_by_stem": [
         {
+          "path": "scripts/tests/test_rule_defaults.py",
+          "line": 68,
+          "evidence": "import",
+          "reference": "tracy_capture_compare",
+          "text": "import tracy_capture_compare as t"
+        },
+        {
           "path": "scripts/tests/test_tracy_capture_compare.py",
           "line": 12,
           "evidence": "import",
@@ -13823,7 +14911,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1340,
+          "line": 1341,
           "evidence": "command",
           "reference": "tools/verified.py",
           "text": "run_check \"verified_ledger\"             \"py -3 tools/verified.py check\""
@@ -14297,7 +15385,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/check-contracts.sh",
-          "line": 1052,
+          "line": 1053,
           "evidence": "command",
           "reference": "tools/vk_ownership_ledger.py",
           "text": "run_check \"vk_ownership_ledger\"    \"py -3 tools/vk_ownership_ledger.py --check\""

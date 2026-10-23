@@ -542,6 +542,8 @@ class TreeAppearanceType : public AppearanceType
 		long						treeRenderShapeLodCount;
 
 		TG_TypeMultiShapePtr		treeDmgShape;
+        std::unique_ptr<TG_TypeMultiShape> treeDmgRenderShape;
+        const ModelOverrideRecord* propMaterialSource = nullptr;
 		
 		TG_AnimateShapePtr			treeAnimData[MAX_BD_ANIMATIONS];
 		bool						isForestClump;
@@ -565,6 +567,8 @@ class TreeAppearanceType : public AppearanceType
 				treeRenderShape[i] = nullptr;
 			treeRenderShapeLodCount = 0;
 			treeDmgShape = nullptr;
+            treeDmgRenderShape.reset();
+            propMaterialSource = nullptr;
 		}
 	
 		TreeAppearanceType (void)
@@ -602,6 +606,8 @@ class TreeAppearanceType : public AppearanceType
 			// no override populated for this or any lower index → stock
 			return treeShape[lod];
 		}
+        TG_TypeMultiShape* getTreeDamageRenderShape() { return treeDmgRenderShape ? treeDmgRenderShape.get() : treeDmgShape; }
+        void registerRenderShapes();
 		TG_TypeMultiShape* getTreeCollisionShape (long lod) { return treeShape[lod]; }
 };
 

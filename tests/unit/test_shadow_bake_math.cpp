@@ -4,12 +4,30 @@
 #include "doctest.h"
 #include "gameos/shadow_bake_math.h"
 #include "gameos/shadow_dirty_tiles.h"
+#include "RenderCore/GpuResidencyPolicy.h"
 
 #include <algorithm>
 
 #include <cmath>
 
 using namespace mc2shadow;
+
+TEST_CASE("GPU residency: physical headroom, preset ceiling and overlap admission") {
+    using namespace RenderCore;
+    CHECK(gpuBudget(512*gpuMiB,512*gpuMiB)==512*gpuMiB-512*gpuMiB/10);
+    CHECK(gpuBudget(256*gpuMiB,512*gpuMiB)==224*gpuMiB);
+    CHECK(gpuBudget(16*gpuMiB,512*gpuMiB)==0);
+    CHECK(gpuBudget(24*1024*gpuMiB,512*gpuMiB)==512*gpuMiB);
+    CHECK(gpuResidencyPolicy(0).total==512*gpuMiB);
+    CHECK(gpuResidencyPolicy(0).vegetation==0);
+    CHECK(gpuResidencyPolicy(1).total==1024*gpuMiB);
+    CHECK(gpuResidencyPolicy(2).total==2048*gpuMiB);
+    CHECK(gpuFits(512,400,80,32));
+    CHECK_FALSE(gpuFits(512,400,80,33));
+    CHECK_FALSE(gpuFits(512,513,0,1));
+    CHECK_FALSE(gpuFits(512,400,UINT64_MAX,1));
+    CHECK_FALSE(gpuFits(512,400,0,UINT64_MAX));
+}
 
 namespace {
 Vec3 sunAt(float altDeg, float azDeg) {
@@ -174,6 +192,10 @@ TEST_CASE("Shadow preset dimensions bound potato resident memory") {
     const auto p=qualityForLevel(0), m=qualityForLevel(1), h=qualityForLevel(2);
     CHECK(p.mapSide==2048); CHECK(p.windowSide==2048); CHECK(p.maskCap==4096);
     CHECK(m.maskTarget==2.0f); CHECK(m.maskCap==8192); CHECK(h.maskTarget==1.5f);
+    CHECK(qualityForLimit(2,8192).level==1);
+    CHECK(qualityForLimit(2,8192).maskCap==8192);
+    CHECK(qualityForLimit(2,2048).maskCap==2048);
+    CHECK(qualityForLimit(2,2048).mapSide==2048);
     const uint64_t resident=uint64_t(p.maskCap)*p.maskCap*2/3+uint64_t(p.mapSide)*p.mapSide*4;
     CHECK(resident<=32*1024*1024);
     const auto basis=lightBasis({1,0,1});
@@ -197,4 +219,33 @@ TEST_CASE("shadow bake: heights are bounded by mask resolution and preserve a pl
     const auto grid = maskHeightGrid(visual, 17, 4);
     REQUIRE(grid.size() == 25);
     for (int y = 0; y < 5; ++y) for (int x = 0; x < 5; ++x) CHECK(grid[y * 5 + x] == float(4 * x + 8 * y));
+}
+
+TEST_CASE("GPU residency: vegetation thins by stride instead of refusing") {
+    using namespace RenderCore;
+    // mc2_03 at the default quality: 2.5M instances, ~30k regions. 128 MiB resident, 80 MiB of staging, a 2 GiB device budget.
+    const auto q2 = gpuResidencyPolicy(2);
+    CHECK(vegetationBytes(2512462, 30000, 2) < 140 * gpuMiB);
+    CHECK(vegetationStride(2512462, 30000, 2, q2.vegetation, 2000 * gpuMiB) == 1);
+    // quality 1 (32 MiB ceiling) thins rather than refuses; the thinned population fits.
+    const auto q1 = gpuResidencyPolicy(1);
+    const uint32_t s1 = vegetationStride(2512462, 30000, 2, q1.vegetation, 2000 * gpuMiB);
+    CHECK(s1 > 1);
+    const uint64_t n = (2512462 + s1 - 1) / s1;
+    const uint64_t r1 = n < 30000 ? n : 30000;
+    CHECK(vegetationBytes(n, r1, 2) <= q1.vegetation);
+    // a tight live headroom thins too (staging counts); potato (ceiling 0) never fits.
+    CHECK(vegetationStride(2512462, 30000, 2, q2.vegetation, 100 * gpuMiB) > 1);
+    CHECK(vegetationStride(2512462, 30000, 2, gpuResidencyPolicy(0).vegetation, 2000 * gpuMiB) == 0);
+}
+
+TEST_CASE("q2 texture upload headroom admits one 16384x8192 BC6H HDRI (image plus staging) exactly at the 2x rule") {
+    using namespace RenderCore;
+    const auto q2 = gpuResidencyPolicy(2);
+    const uint64_t hdriMip0 = 16384ull * 8192ull;   // BC6H: 1 byte per texel
+    CHECK(hdriMip0 == 128 * gpuMiB);
+    CHECK(q2.textureEdge >= 16384);
+    // vk_texture_residency.cpp refuses expected*2 > textureUpload. The HDRI sits exactly on that limit (equality passes), so lowering the
+    // q2 budget or adding a mip must be a deliberate change to this test.
+    CHECK(hdriMip0 * 2 <= q2.textureUpload);
 }

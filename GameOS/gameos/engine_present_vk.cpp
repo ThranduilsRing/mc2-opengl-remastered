@@ -1,18 +1,4 @@
 #include "../../RenderCore/TextureService.h"
-// engine_present_vk.cpp
-//
-// VK-P13-SELECTOR-PLAN / T3 -- whole-frame GL->VK present intercept implementation.
-//
-// Borrows the T2 shared VulkanContext device (NO second device / NO second
-// volkLoadDevice). Owns only the hidden window + surface + swapchain + per-frame
-// sync + the exportable interop image (GL writes it via copy-1, VK blits it into
-// the swapchain via copy-2). Swapchain/present logic keeps one
-// render-finished semaphore per swapchain image. Fail-soft at every step.
-//
-// Requires BOTH MC2_VULKAN (context/present) and MC2_VULKAN_ISLAND (interop
-// primitives). build64_island defines both; the guards below make the TU inert
-// otherwise so the GL shipping build never sees a Vulkan symbol.
-
 #include <algorithm>
 #include "engine_present_vk.h"
 #include "visual_tuning_profile.h"
@@ -36,13 +22,10 @@
 
 #include "vulkan_context.h"
 #include "vk_gpu_profile.h"   // VK-GPU-ZONES: MC2_VK_GPU_SCOPE
-#include "vk_texture_residency.h"
 #include "mc2_diag_verbose.h"
 #include "vk_image_resource.h"
 #include "vulkan_spatial_aa.h"
 #include "Gates/render_options.h"
-// VK-RUNG8-ITEM8: the present tail no longer uses gl_interop_view (GL view /
-// copy-1 / GL->VK handoff all deleted).
 #define MC2_VULKAN_SHARED_SCENE_COLOR_IMPL_ISLAND
 #include "vulkan_shared_scene_color.h"
 #include "vk_shared_gbuffer_gate.h"
@@ -91,9 +74,6 @@ const char* presentModeName(VkPresentModeKHR m) {
 
 }  // namespace
 
-// ---------------------------------------------------------------------------
-// Impl: all VK/GL state (kept out of the header so it stays VK-header-free).
-// ---------------------------------------------------------------------------
 struct EnginePresentVk::Impl {
     VulkanContext*   ctx   = nullptr;
     VkInstance       inst  = VK_NULL_HANDLE;
@@ -450,16 +430,26 @@ bool buildSwapchain(EnginePresentVk::Impl& s, uint32_t w, uint32_t h,
     sci.presentMode      = s.presentMode;
     sci.clipped          = VK_TRUE;
     sci.oldSwapchain     = oldSwapchain;
+    // WSI allocations are opaque. Charge a conservative image bound, including tiling/alignment.
+    const uint32_t chargedImages=caps.maxImageCount ? std::min(caps.maxImageCount,imgCount+2) : imgCount+2;
+    const uint64_t imageBytes=((uint64_t(extent.width)*extent.height*8+65535)/65536)*65536;
+    mc2vk::infra::Admission admission(imageBytes*chargedImages,"targets.swapchain");
+    if(!admission) { reason="swapchain residency refused; skip present"; return false; }
     const VkResult createResult = mc2vk::createChecked(s.swapchain, s.dev, [&](auto* h) { return vkCreateSwapchainKHR(s.dev, &sci, nullptr, h); });
     if (createResult != VK_SUCCESS) {
         reason = "vkCreateSwapchainKHR failed (VkResult=" + std::to_string(static_cast<int>(createResult)) + ")";
         return false;
     }
+    admission.commit(reinterpret_cast<uint64_t>(s.swapchain.get()),"targets.swapchain",true);
     s.scFormat = chosen.format;
     s.scExtent = extent;
 
     uint32_t n = 0;
     vkGetSwapchainImagesKHR(s.dev, s.swapchain.get(), &n, nullptr);
+    if(n>chargedImages) {
+        std::fprintf(stderr,"[VK_RESIDENCY v1] refused=swapchain images=%u admitted=%u fallback=skip_present\n",n,chargedImages);
+        reason="swapchain exceeds admitted image count"; s.swapchain.reset(); return false;
+    }
     s.scImages.resize(n);
     vkGetSwapchainImagesKHR(s.dev, s.swapchain.get(), &n, s.scImages.data());
     s.renderSems.resize(n);
@@ -933,9 +923,11 @@ bool createHostBuffer(EnginePresentVk::Impl& s, VkDeviceSize bytes, VkBufferUsag
     VkMemoryAllocateInfo ai{VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO};
     ai.allocationSize = req.size;
     ai.memoryTypeIndex = memType;
+    mc2vk::infra::Admission admission(req.size,name);
+    if(!admission) return false;
     if (!mc2vk::create(outMem, s.dev, [&](auto* h) { return vkAllocateMemory(s.dev, &ai, nullptr, h); }))
         return false;
-    mc2vk::infra::allocation(reinterpret_cast<uint64_t>(outMem.get()), req.size, name, true);
+    admission.commit(reinterpret_cast<uint64_t>(outMem.get()), name, true);
     return vkBindBufferMemory(s.dev, outBuf.get(), outMem.get(), 0) == VK_SUCCESS;
 }
 
@@ -1331,9 +1323,15 @@ bool ensureImguiVulkan(EnginePresentVk::Impl& s) {
     info.PhysicalDevice = s.phys;
     info.Device = s.dev;
     info.PipelineCache = mc2vk::infra::cacheHandle();
-    info.MemoryAllocated = [](auto memory, auto bytes, auto name) {
-        mc2vk::infra::allocation(reinterpret_cast<uint64_t>(memory), bytes, name, true);
-        mc2vk::infra::breadcrumb("resource", name, reinterpret_cast<uint64_t>(memory));
+    info.AllocateMemory = [](VkDevice device, const VkMemoryAllocateInfo* ai, const VkAllocationCallbacks* allocator, VkDeviceMemory* memory, const char* name) {
+        mc2vk::infra::Admission admission(ai->allocationSize,name);
+        if(!admission) return VK_ERROR_OUT_OF_DEVICE_MEMORY;
+        const auto result=vkAllocateMemory(device,ai,allocator,memory);
+        if(result==VK_SUCCESS) {
+            admission.commit(reinterpret_cast<uint64_t>(*memory),name,true);
+            mc2vk::infra::breadcrumb("resource",name,reinterpret_cast<uint64_t>(*memory));
+        }
+        return result;
     };
     info.MemoryFreed = [](auto memory) { mc2vk::infra::release(reinterpret_cast<uint64_t>(memory)); };
     info.QueueFamily = s.gfxFamily;
@@ -2180,7 +2178,8 @@ bool EnginePresentVk::prewarmPipelines() {
     if (!created_ || !impl_) return false;
     Impl& s=*impl_;
     return ensureCompositeObjects(s) && ensureHudColorObjects(s) && ensureHudTexObjects(s) &&
-        (!ImGui::GetCurrentContext() || ensureImguiVulkan(s));
+        (!ImGui::GetCurrentContext() || ensureImguiVulkan(s)) &&
+        s.spatialAA.prepare(*s.ctx, s.sharedImg, mc2::options::current().spatialAA);
 }
 
 bool EnginePresentVk::prepareImguiVulkanFrame() {

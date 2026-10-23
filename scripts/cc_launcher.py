@@ -15,6 +15,7 @@ everything else (diagnostics, return code) through untouched. A path with no cou
 rebuilds every time, which is slow but never stale.
 """
 import os
+import re
 import subprocess
 import sys
 
@@ -39,6 +40,10 @@ def roots_from_env(own):
     return roots
 
 
+# A checkout that is no longer a live worktree (removed, moved, archived) still leaves its root in old cache entries.
+FOREIGN_ROOT = re.compile(r"^[A-Za-z]:/(?:Games/mc2-[^/]+|mc2-[^/]+/(?:builds|worktrees)/[^/]+)(?=/)", re.I)  # matched on a slash-normalised path
+
+
 def include_dirs(args):
     dirs = []
     it = iter(args)
@@ -59,6 +64,9 @@ def remap(path, own, roots, incs):
     if os.path.exists(path) and norm(path).startswith(norm(own)):
         return path
     n = norm(path)
+    dead = FOREIGN_ROOT.match(path.replace(os.sep, "/"))
+    if dead and not n.startswith(norm(own) + os.sep):
+        roots = roots + [dead.group(0)]
     for r in roots:
         rn = norm(r) + os.sep
         if n.startswith(rn):
@@ -85,7 +93,7 @@ def main():
     incs = include_dirs(cmd)
     proc = subprocess.run([sccache] + cmd, stdout=subprocess.PIPE, **console_child.child_kwargs(redirected=True))
     out = proc.stdout
-    if PREFIX in out and roots:
+    if PREFIX in out:
         lines = out.split(b"\n")
         for i, ln in enumerate(lines):
             if ln.startswith(PREFIX):

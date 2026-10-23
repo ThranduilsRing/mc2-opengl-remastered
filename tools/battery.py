@@ -13,7 +13,7 @@ in one place instead of a hand-typed list of commands.
   py -3 tools/battery.py --list
 
 Steps (run-book order): preflight, resave, campaign, sound, determinism, mods, tools, perf, reload, simtrace, triage.
-Staging: disposable copies go under G:/mc2-battery/<step>/ (created). Nothing is written inside a game install except by the
+Staging: disposable copies go under E:/mc2-installs/battery-stage/<step>/ (created). Nothing is written inside a game install except by the
 runners' own --deploy paths, and mc2-win64-v0.4c is refused outright.
 --owner-present: the visible Tracy window and the sound listen need the owner at the desk; without the flag those two items
 are recorded NEEDS_REVIEW rather than substituting minimized FPS numbers or a dummy audio driver.
@@ -34,8 +34,9 @@ HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
 sys.path.insert(0, str(ROOT / "scripts"))
 import console_child  # noqa: E402  (stdio-inheriting children keep their output; scripts/console_child.py)
+import stage_root as stages  # noqa: E402  (default staging roots on E:, free-space preflight)
 
-DEFAULT_STAGE = "G:/mc2-battery"
+DEFAULT_STAGE = str(stages.default_root("battery"))
 DEFAULT_INSTALL = "A:/Games/mc2-opengl/mc2-win64-v0.4"
 FORBIDDEN_INSTALL = "mc2-win64-v0.4c"
 RESAVE_MISSIONS = ("mc2_01", "mc2_03", "mc2_10", "mc2_16", "mc2_24")
@@ -98,6 +99,9 @@ class Ctx:
         self.dry = args.dry_run
         self.install = args.install
         self.stage = Path(args.stage_root)
+        if not self.dry:
+            stages.preflight(self.stage)
+            stages.prune_old(self.stage)
         self.results = []
 
     def stage_dir(self, name):
