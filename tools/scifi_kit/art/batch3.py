@@ -36,7 +36,7 @@ def wall(k):
         edges = [start, -9.29 if heavy else -8.45, 4.77 if heavy else 4.94, end]
     footing = .18 if light else .32
     k.box((0, (start+end)/2, footing/2),
-          (thickness+.25, end-start, footing), 'ferro', 'mass', ch=kit.C(.08))
+          (2*kit.wall_hw(k.name, 0)+.1, end-start, footing), 'ferro', 'mass', ch=kit.C(.08))
     for j in range(spans):
         first = len(k.pieces)
         a, b = edges[j]+.035, edges[j+1]-.035
@@ -53,7 +53,7 @@ def wall(k):
                 courses = [footing, 6.50, 10.37, 17.32, wh-.22]
             for row, (lo, hi) in enumerate(zip(courses, courses[1:])):
                 kit.loft(k, (-thickness/2,a,thickness/2,b), lo+.025,
-                         (-thickness*.47,a,thickness*.47,b), hi-.025,
+                         (-thickness/2,a,thickness/2,b), hi-.025,
                          'ferro', 'mass', ch0=.08, ch1=.06, course=row, rebar=True)
                 for side in (-1, 1):
                     k.box((side*thickness*.48,(a+b)/2,(lo+hi)/2),
@@ -102,15 +102,18 @@ def wall(k):
                          (thickness/2-.10,y1,z1+.18), (-thickness/2+.10,y1,z1+.18)],
                      'ferro.main', 'frame')
         # Subtle batter, shared by the high and game silhouettes.
+        # Stock battered wall SEGMENT: half-width follows the decoded stock profile
+        # (wide at the base, sloping inward); the coping rides on the top width.
         for p in k.pieces[first:]:
-            p['v'] = [(x*(1-.08*z/wh),y,z) for x,y,z in p['v']]
+            p['v'] = [(x*kit.wall_hw(k.name, z/wh)/(thickness/2),y,z) for x,y,z in p['v']]
             p['wall_span'] = j
         for side in (-1, 1):
             for z in (footing+.2,wh-.28):
-                kit.bolts(k,(side*thickness/2,a+.2,z),(side*thickness/2,b-.2,z),pitch=.9)
+                hx = kit.wall_hw(k.name, z/wh)
+                kit.bolts(k,(side*hx,a+.2,z),(side*hx,b-.2,z),pitch=.9)
         for p in k.pieces[first:]:
             p['wall_span'] = j
-        k.moss_sites.append(((-thickness/2-.12,a,footing),(-thickness/2-.12,b,footing)))
+        k.moss_sites.append(((-kit.wall_hw(k.name,0)-.12,a,footing),(-kit.wall_hw(k.name,0)-.12,b,footing)))
     # One stock terminal pier. Cast stages and inset fields follow its taper.
     first = len(k.pieces)
     stages = 2 if light else 3
