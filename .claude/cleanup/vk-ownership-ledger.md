@@ -26,28 +26,30 @@ code and the proof of a finished conversion, not a leak detector.
 | terrain | 6 | 0 | 0 | +0 | 0 | - |
 | vfx | 2 | 0 | 0 | +0 | 0 | - |
 | water | 4 | 0 | 0 | +0 | 0 | - |
-| present | 2 | 0 | 0 | +0 | 0 | - |
+| present | 2 | 1 | 0 | +1 | 1 | Memory 1/0 |
 | image_resource | 2 | 0 | 0 | +0 | 0 | - |
 | shared_scene | 6 | 0 | 0 | +0 | 0 | - |
 | light_feed | 2 | 0 | 0 | +0 | 0 | - |
 | context | 2 | 1 | 1 | +0 | 2 | - |
 | textures | 2 | 0 | 0 | +0 | 0 | - |
-| render_infra | 2 | 10 | 11 | -1 | 21 | Pipeline 4/6, PipelineCache 2/1 |
+| render_infra | 2 | 10 | 10 | +0 | 20 | Pipeline 4/5, PipelineCache 2/1 |
 
-Total over all islands: created 11, released 12, imbalance -1.
+Total over all islands: created 12, released 11, imbalance +1.
 
 ## Files
 
 | File | Created | Released | Imbalance |
 |---|---:|---:|---:|
+| `engine_present_vk.cpp` | 1 | 0 | +1 |
 | `vulkan_context.cpp` | 1 | 1 | +0 |
-| `vk_render_infra.cpp` | 10 | 11 | -1 |
+| `vk_render_infra.cpp` | 10 | 10 | +0 |
 
 ## Conversion order
 
-Converted (the shared context is the root owner of the instance, device and allocator and is not an island): color_prop, image_resource, legacy_shape, light_feed, mech, post_fog, post_hzb, post_screenfx, post_ssao, present, shadow, shared_scene, sky, terrain, textures, vfx, water. Remaining, smallest hand-written footprint first (the batch list of the ownership rewrite):
+Converted (the shared context is the root owner of the instance, device and allocator and is not an island): color_prop, image_resource, legacy_shape, light_feed, mech, post_fog, post_hzb, post_screenfx, post_ssao, shadow, shared_scene, sky, terrain, textures, vfx, water. Remaining, smallest hand-written footprint first (the batch list of the ownership rewrite):
 
-1. render_infra (21 manual tokens)
+1. present (1 manual tokens)
+2. render_infra (20 manual tokens)
 
 ## Owner types (`vk_owned.h/.cpp`)
 
@@ -55,7 +57,7 @@ Release tokens inside the destructors of the owner types: every one runs once, f
 
 | Kind | Release tokens |
 |---|---:|
-| Buffer | 2 |
+| Buffer | 3 |
 | CommandPool | 1 |
 | DescriptorPool | 1 |
 | DescriptorSetLayout | 1 |
@@ -77,7 +79,7 @@ Release tokens inside the destructors of the owner types: every one runs once, f
 
 | Island | Kind | Created | Released |
 |---|---|---:|---:|
-| color_prop | CommandBuffers | 2 | 1 |
+| color_prop | CommandBuffers | 3 | 1 |
 | color_prop | DescriptorSets | 1 | 0 |
 | legacy_shape | CommandBuffers | 1 | 0 |
 | legacy_shape | DescriptorSets | 1 | 0 |

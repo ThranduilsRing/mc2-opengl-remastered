@@ -1,6 +1,8 @@
 #ifndef __OBJECT_LIGHT_POOL_HGLSL__
 #define __OBJECT_LIGHT_POOL_HGLSL__
 
+#include "light_pool_attenuation.hglsl"
+
 // VK-PARITY-MECH-1: object-side night light-pool walk (POOL-CONSUMERS-1), shared
 // VERBATIM by the GL object shaders (via light_pools.hglsl::calcLightPools ->
 // static_prop.frag / mech.frag / gos_tex_vertex_lighted.frag) and the VK tier-1
@@ -23,29 +25,42 @@ vec3 olp_objectPoolLight(vec3 worldPosMC2, int numPoolLights, int poolSoft,
                          float moverDim, float moverScale, int moverMax,
                          int poolCompress, float objScale)
 {
-    if (numPoolLights <= 0) return vec3(0.0);
+    if (numPoolLights <= 0 || objScale <= 0.0) return vec3(0.0);
     vec3 pool      = vec3(0.0);
     vec3 poolMover = vec3(0.0);
-    for (int i = 0; i < numPoolLights; ++i) {
+    int lo = 0, hi = numPoolLights;
+    bool indexed = false;
+#ifdef MC2_OBJECT_POOL_LIST
+    lo = int(uRun.poolFirst);
+    hi = lo + int(uRun.poolCount);
+    if (lo == hi) return vec3(0.0);
+#endif
+#ifdef MC2_OBJECT_POOL_GRID
+    if (poolGridInfo.x > 0u) {
+        ivec2 cell = ivec2(floor((worldPosMC2.xy - poolGridMinInv.xy) * poolGridMinInv.zw));
+        int dim = int(poolGridInfo.x);
+        if (any(lessThan(cell, ivec2(0))) || any(greaterThanEqual(cell, ivec2(dim)))) return vec3(0.0);
+        int word = 2 * (cell.y * dim + cell.x);
+        lo = int(poolGridWords[word]);
+        hi = lo + int(poolGridWords[word + 1]);
+        if (lo == hi) return vec3(0.0);
+        indexed = true;
+    }
+#endif
+    for (int k = lo; k < hi; ++k) {
+        int i = k;
+#ifdef MC2_OBJECT_POOL_GRID
+        if (indexed) i = int(poolGridWords[poolGridInfo.y + uint(k)]);
+        // A mod can enlarge the terrain pool beyond the existing object cap.
+        if (i >= numPoolLights) continue;
+#endif
         if (poolLights[i].lightType == 0u) continue;
         vec3  vtl = worldPosMC2 - poolLights[i].position;
-        float len = sqrt(dot(vtl, vtl));
         bool  mover = poolLights[i]._plPad1 > 0.5;
-        float farD  = poolLights[i].farDistance;
         float nearD = poolLights[i].closeDistance;
-        float ooD   = poolLights[i].oneOverDistance;
-        if (mover && moverScale < 0.999) {
-            float s = max(moverScale, 0.05);
-            farD *= s; nearD *= s; ooD /= s;
-        }
-        if (len >= farD) continue;
-        float falloff = (len <= nearD)
-                      ? 1.0
-                      : (farD - len) * ooD;
-        if (poolSoft != 0) {
-            float t = clamp(falloff, 0.0, 1.0);
-            falloff = t * t * (3.0 - 2.0 * t);
-        }
+        float len, falloff;
+        if (!lpa_falloff(vtl, mover, moverScale, poolSoft, nearD,
+                         poolLights[i].farDistance, poolLights[i].oneOverDistance, len, falloff)) continue;
         vec3 plCol = poolLights[i].color * poolLights[i].intensity;
         if (mover) {
             plCol *= moverDim;

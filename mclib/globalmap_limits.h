@@ -4,6 +4,8 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdint>
+#include <limits>
 #include <vector>
 
 namespace mc2::globalmap
@@ -20,6 +22,11 @@ inline constexpr long kMaxDoors = 32766;
 inline constexpr long kMaxDoorsPerArea = 255;
 inline constexpr long kDoorScratchLinks = 2;
 inline constexpr long kMaxLinksPerDoorSide = kMaxDoorsPerArea + kDoorScratchLinks;
+static_assert(kMaxCellsPerSide <= std::numeric_limits<std::int16_t>::max());
+static_assert(kMaxAreas <= std::numeric_limits<std::int16_t>::max());
+static_assert(kMaxDoors + kDoorScratchLinks - 1 <= std::numeric_limits<std::int16_t>::max());
+static_assert(kMaxCellsPerSide * int64_t{kMaxCellsPerSide} + 4096 <= std::numeric_limits<std::int32_t>::max());
+static_assert((kMaxDoors + kDoorScratchLinks) * int64_t{2} * kMaxLinksPerDoorSide <= std::numeric_limits<std::int32_t>::max());
 // A mod packet may be larger than the shipped struct (extended schemas); it is accepted up to this many times the expected size,
 // plus a fixed floor so a tiny struct still has room for one extra field.
 inline constexpr std::size_t kMaxPacketSlack = 16;

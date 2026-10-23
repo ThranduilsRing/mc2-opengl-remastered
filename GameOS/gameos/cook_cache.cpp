@@ -64,7 +64,13 @@ bool writeEntry(std::string_view dir, const CacheKind& kind, uint64_t key, std::
         else if (fs::file_time_type::clock::now() - t > std::chrono::hours(1)) fs::remove(e.path(), e2);
     }
     if (entries.size() > kind.maxFiles) {
-        std::ranges::sort(entries, std::greater<>{}, [](const auto& e) { return std::get<0>(e); });
+        // A successful write is newest by operation order, even when filesystem
+        // timestamps tie or the wall clock moves backward.
+        std::ranges::sort(entries, [&path](const auto& a, const auto& b) {
+            const bool aNew = a.second == path, bNew = b.second == path;
+            if (aNew || bNew) return aNew && !bNew;
+            return a.first == b.first ? a.second > b.second : a.first > b.first;
+        });
         for (size_t i = kind.maxFiles; i < entries.size(); ++i)
             if (const auto& victim = std::get<1>(entries[i]); victim != path) fs::remove(victim, ec);
     }

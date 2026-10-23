@@ -1,3 +1,7 @@
+#include "save_archive.h"
+#include "save_exactness.h"
+#include "appearance_rng.h"
+#include "sim_rng_state.h"
 // GameObjectManager: terrain-object counting, loading and geometry finalise, and the object CopyTo / CopyFrom / Save / Load.
 // Declared in the class headers; shared names in objmgr_internal.h.
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
@@ -5,6 +9,7 @@
 #include <span>
 #include "objmgr_internal.h"
 #include "saved_objects_check.h"
+#include "mission_codec.h"
 #include "mc2fmt.h"
 #include "../GameOS/gameos/static_caster_set.h"
 
@@ -41,10 +46,13 @@ void GameObjectManager::countTerrainObjects (PacketFile* terrainFile, long first
 		terrainFile->readPacket( packet, pBuffer.get() );
 	gosASSERT( bytesRead == size );
 	
-	File terrainObjectFile;
-	terrainObjectFile.open( reinterpret_cast<char*>(pBuffer.get()), size );
-	
-	totalObjCount = terrainObjectFile.readInt();
+	const auto records = std::as_bytes(std::span(pBuffer.get(), static_cast<std::size_t>(size)));
+	const auto count = mc2::mission::objectCount(records);
+	if (!count) {
+		STOP(("Invalid mission object packet count/size"));
+		return;
+	}
+	totalObjCount = *count;
 
 	if (totalObjCount)
 	{
@@ -59,20 +67,13 @@ void GameObjectManager::countTerrainObjects (PacketFile* terrainFile, long first
 	ObjDataLoader *data = objData;
 	for ( int i = 0; i < totalObjCount; ++i )
 	{
-		data->objTypeNum = terrainObjectFile.readInt();
-		data->vector.x = terrainObjectFile.readFloat();
-		data->vector.y = terrainObjectFile.readFloat();
-		data->vector.z = terrainObjectFile.readFloat();
-
-		data->rotation = terrainObjectFile.readFloat();		
-		data->damage = terrainObjectFile.readInt();
-
-		data->teamId = terrainObjectFile.readInt();
-		data->parentId = terrainObjectFile.readInt();
-		
-		// padding
-		terrainObjectFile.readInt();
-		terrainObjectFile.readInt();
+		const auto record = mc2::mission::objectRecord(records, i);
+		data->objTypeNum = record.type;
+		data->vector = glm::vec3(record.position[0], record.position[1], record.position[2]);
+		data->rotation = record.rotation;
+		data->damage = record.damage;
+		data->teamId = record.team;
+		data->parentId = record.parentId;
 
 		// convert to block and vertex
 		int tileCol;
@@ -100,10 +101,6 @@ void GameObjectManager::countTerrainObjects (PacketFile* terrainFile, long first
 		Terrain::objBlockInfo[i].firstHandle = curHandle;
 		curHandle += Terrain::objBlockInfo[i].numObjects;						
 	}
-
-	terrainObjectFile.close();
-	pBuffer.reset();
-
 }
 
 void GameObjectManager::countObject( ObjDataLoader *data)
@@ -222,7 +219,7 @@ void GameObjectManager::loadTerrainObjects (PacketFile* terrainFile,
 	{ ZoneScopedN("GameObjectManager::loadTerrainObjects turretLinks");
 	for (int i = 0; i < numTurrets; i++) 
 	{
-		if ((turrets[i]->parentId != 0xffffffff) && (turrets[i]->parentId != 0)) 
+		if (mc2::mission::parentCell(turrets[i]->parentId).has_value())
 		{
 			BuildingPtr controlBuilding = static_cast<BuildingPtr>(ObjectManager->findByCellPosition((turrets[i]->parentId>>16),(turrets[i]->parentId & 0x0000ffff)));
 			if (controlBuilding && !controlBuilding->getFlag(OBJECT_FLAG_CONTROLBUILDING)) 
@@ -247,7 +244,7 @@ void GameObjectManager::loadTerrainObjects (PacketFile* terrainFile,
 	{ ZoneScopedN("GameObjectManager::loadTerrainObjects gateLinks");
 	for (int i = 0; i < numGates; i++) 
 	{
-		if ((gates[i]->parentId != 0xffffffff) && (gates[i]->parentId != 0))
+		if (mc2::mission::parentCell(gates[i]->parentId).has_value())
 		{
 			BuildingPtr controlBuilding = static_cast<BuildingPtr>(ObjectManager->findByCellPosition((gates[i]->parentId>>16),(gates[i]->parentId & 0x0000ffff)));
 			if (controlBuilding && !controlBuilding->getFlag(OBJECT_FLAG_CONTROLBUILDING)) 
@@ -1199,7 +1196,7 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum)
 	// Finally, let's build the control building lists...
 	for (i = 0; i < numTurrets; i++) 
 	{
-		if ((turrets[i]->parentId != 0xffffffff) && (turrets[i]->parentId != 0)) 
+		if (mc2::mission::parentCell(turrets[i]->parentId).has_value())
 		{
 			BuildingPtr controlBuilding = static_cast<BuildingPtr>(ObjectManager->findByCellPosition((turrets[i]->parentId>>16),(turrets[i]->parentId & 0x0000ffff)));
 			if (controlBuilding && !controlBuilding->getFlag(OBJECT_FLAG_CONTROLBUILDING)) 
@@ -1222,7 +1219,7 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum)
 
 	for (i = 0; i < numGates; i++) 
 	{
-		if ((gates[i]->parentId != 0xffffffff) && (gates[i]->parentId != 0))
+		if (mc2::mission::parentCell(gates[i]->parentId).has_value())
 		{
 			BuildingPtr controlBuilding = static_cast<BuildingPtr>(ObjectManager->findByCellPosition((gates[i]->parentId>>16),(gates[i]->parentId & 0x0000ffff)));
 			if (controlBuilding && !controlBuilding->getFlag(OBJECT_FLAG_CONTROLBUILDING)) 
@@ -1346,4 +1343,80 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum)
 	watchSave = nullptr;
 
 	return packetNum;
+}
+
+std::vector<uint8_t> GameObjectManager::saveAnimationState() {
+    mc2::save::Archive archive;
+    uint32_t state = mc2GetSimRngState(), draws = SimRandomDraws();
+    uint32_t animState = mc2_anim_rng::state(), animDraws = mc2_anim_rng::drawCount();
+    uint32_t count = 0;
+    for (long i = 1; i <= getMaxObjects(); ++i)
+        if (objList[i] && objList[i]->getExists() && objList[i]->getAppearance() &&
+            objList[i]->getAppearance()->simulationOwned()) ++count;
+    archive(state, draws, animState, animDraws, count);
+    for (long i = 1; i <= getMaxObjects(); ++i) {
+        auto* object = objList[i];
+        if (!object || !object->getExists() || !object->getAppearance() ||
+            !object->getAppearance()->simulationOwned()) continue;
+        int32_t handle = static_cast<int32_t>(i);
+        archive(handle, *object->getAppearance()->simulationAnimation());
+    }
+    // Pool order: the sim updates turrets, buildings, ... in pool order and a load fills each pool in handle order, so objects
+    // that draw from the sim RNG in the same tick (idle turrets) would draw in a different order after a load.
+    auto poolOrder = [&](auto pool) {
+        std::vector<int32_t> handles;
+        if (pool.data() && pool.size() <= mc2::save::maxSequenceLength) {
+            handles.reserve(pool.size());
+            for (auto* object : pool) handles.push_back(object ? static_cast<int32_t>(object->getHandle()) : -1);
+        }
+        archive(handles);
+    };
+    poolOrder(std::span(turrets, static_cast<size_t>(numTurrets))); poolOrder(std::span(buildings, static_cast<size_t>(numBuildings)));
+    poolOrder(std::span(gates, static_cast<size_t>(numGates))); poolOrder(std::span(artillery, static_cast<size_t>(numArtillery)));
+    poolOrder(std::span(carnage, static_cast<size_t>(numCarnage))); poolOrder(std::span(weapons, static_cast<size_t>(numWeapons)));
+    if (!archive.good()) Fatal(0, "Unable to serialize authoritative animation state");
+    return archive.bytes();
+}
+bool GameObjectManager::restoreAnimationState(const std::vector<uint8_t>& bytes, uint32_t sectionVersion) {
+    mc2::save::Archive archive(bytes);
+    archive.sectionVersion = sectionVersion;
+    uint32_t state = 0, draws = 0, animState = 0, animDraws = 0, count = 0;
+    archive(state, draws, animState, animDraws, count);
+    if (!archive.good() || count > static_cast<uint32_t>(getMaxObjects())) return false;
+    std::vector<std::pair<int32_t, mc2::sim::UnitAnimState>> states;
+    int32_t previousHandle = 0;
+    for (uint32_t i = 0; i < count; ++i) {
+        int32_t handle = 0;
+        mc2::sim::UnitAnimState animation;
+        archive(handle, animation);
+        if (!archive.good() || handle < 1 || handle > getMaxObjects() ||
+              !objList[handle] || !objList[handle]->getAppearance() ||
+              !objList[handle]->getAppearance()->simulationOwned()) return false;
+        const auto& expected = *objList[handle]->getAppearance()->simulationAnimation();
+        if (handle <= previousHandle ||
+            animation.nodeUsed.size() != expected.nodeUsed.size() ||
+            animation.nodeRecycle.size() != expected.nodeRecycle.size()) return false;
+        states.emplace_back(handle, std::move(animation));
+        previousHandle = handle;
+    }
+    // Pool orders follow the animation states; saves written before them end here and keep the pools in handle order.
+    std::vector<int32_t> order[6];
+    if (archive.remaining() > 0)
+        for (auto& handles : order) archive(handles);
+    if (!archive.finish()) return false;
+    mc2::save::applyPoolOrder(std::span(turrets, static_cast<size_t>(numTurrets)), order[0], objList, getMaxObjects());
+    mc2::save::applyPoolOrder(std::span(buildings, static_cast<size_t>(numBuildings)), order[1], objList, getMaxObjects());
+    mc2::save::applyPoolOrder(std::span(gates, static_cast<size_t>(numGates)), order[2], objList, getMaxObjects());
+    mc2::save::applyPoolOrder(std::span(artillery, static_cast<size_t>(numArtillery)), order[3], objList, getMaxObjects());
+    mc2::save::applyPoolOrder(std::span(carnage, static_cast<size_t>(numCarnage)), order[4], objList, getMaxObjects());
+    mc2::save::applyPoolOrder(std::span(weapons, static_cast<size_t>(numWeapons)), order[5], objList, getMaxObjects());
+    for (auto& [handle, animation] : states) {
+        auto* appearance = objList[handle]->getAppearance();
+        *appearance->simulationAnimation() = std::move(animation);
+        appearance->simPose->ready = false;
+        appearance->refreshSimPose();
+    }
+    mc2RestoreSimRngState(state); RestoreSimRandomDraws(draws);
+    mc2_anim_rng::restore(animState, animDraws);
+    return true;
 }

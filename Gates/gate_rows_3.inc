@@ -156,24 +156,6 @@ L(AtoiNZ, "MC2_TACTIC_WEIGHTS", Bool, false, "code", "", "TACTIC-WEIGHTS-A: load
 L(AtoiNZ, "MC2_TACTIC_WEIGHTS_B", Bool, false, "code", "", "", verified),
 L(Presence, "MC2_TARGETING_GUARD", Bool, false, "code", "", "", passthrough | verified),
 L(Presence, "MC2_TERRAIN_ADMISSION_LEGACY", Bool, false, "terrain", "", "", verified),
-// ── TERRAIN-AMBIENT-FLOOR-2 ────────────────────────────────────────────
-// DEFAULT-ON visual change. `defaultOn` below is `true` ON PURPOSE and must
-// stay true: the predecessor slice registered the identical gate as
-// defaultOn=false while its C++ default was an ACTIVE 0.35, so every gate
-// audit, every dead-gate scan and every release note would have reported a
-// shipped visual change as OFF. Classified Feature, not Trace, for the same
-// reason -- Trace means "diagnostic output only; no correctness effect",
-// which this is not.
-// history: docs/gate-history.md#MC2_TERRAIN_AMBIENT_FLOOR
-P("MC2_TERRAIN_AMBIENT_FLOOR", Float, 0.35, "terrain", "", "TERRAIN-AMBIENT-FLOOR-2: terrain-only, albedo-scaled ambient floor in terrain_lod_chunk.frag.", passthrough | registry(Feature, "MC2_FEATURE_TERRAIN_AMBIENT_FLOOR", -1, true) | clampRange(0.0, 2.0) | verified),
-// ── TERRAIN-AMBIENT-FLOOR-NIGHT-1 ──────────────────────────────────────
-// DEFAULT-OFF companion to the row above. Registered as a Feature (not a
-// Trace) because it changes pixels when armed. kAuxEnvVars is not indexed by
-// RendererFeature, so this row's position is free.
-// history: docs/gate-history.md#MC2_TERRAIN_AMBIENT_FLOOR_NIGHT
-P("MC2_TERRAIN_AMBIENT_FLOOR_NIGHT", Float, 0.0, "terrain", "", "TERRAIN-AMBIENT-FLOOR-NIGHT-1: 0..1 FLOOR under TERRAIN-AMBIENT-FLOOR-2's daylight gate; the uploaded gate becomes max(dayGate, floor).", passthrough | registry(Feature, "MC2_FEATURE_TERRAIN_AMBIENT_FLOOR_NIGHT", -1, false) | clampRange(0.0, 1.0) | verified),
-// history: docs/gate-history.md#MC2_TERRAIN_AMBIENT_FLOOR_TRACE
-L(Presence, "MC2_TERRAIN_AMBIENT_FLOOR_TRACE", Bool, false, "terrain", "", "TERRAIN-AMBIENT-FLOOR-2 trace: prints ONE line at the first terrain-chunk uniform upload giving the resolved floor strength, the daylight gate ACTUALLY...", passthrough | registry(Trace, "MC2_TRACE_TERRAIN_AMBIENT_FLOOR", -1, false)),
 L(Lead0, "MC2_TERRAIN_CEMENT_DIAG_CONNECT", Bool, false, "terrain", "", "", verified),
 // history: docs/gate-history.md#MC2_TERRAIN_CLIFF_DISPLACE
 L(Lead0, "MC2_TERRAIN_CLIFF_DISPLACE", Bool, false, "terrain", "", "SLICE 3: near-field cliff tessellation on the LOD-chunk terrain path.", passthrough | registry(Feature, "MC2_FEATURE_TERRAIN_CLIFF_DISPLACE", -1, false)),

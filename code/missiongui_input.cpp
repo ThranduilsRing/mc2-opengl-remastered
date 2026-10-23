@@ -9,7 +9,7 @@ void MissionInterfaceManager::Save (FitIniFilePtr file)
 	//If VTOL or Karnov are active AND HAVEN'T FINISHED THEIR OPERATION, save them, what vehicle they are going to drop or what mech they were fixing.
 	long vtolNum = Commander::home->getId();
 
-	if (vTol[vtolNum] && paintingVtol[vtolNum] && (!vehicleDropped[vtolNum] && !mechRecovered[vtolNum]))
+	if (vTol[vtolNum] && paintingVtol[vtolNum])
 	{
 		file->writeBlock("VTOLData");
 
@@ -24,8 +24,20 @@ void MissionInterfaceManager::Save (FitIniFilePtr file)
 		else
 			file->writeIdLong("SalvageMechWID", 0);
 
-		file->writeIdLong("VTOLFrame",vTol[vtolNum]->currentFrame);
-		file->writeIdLong("VTOLGesture",vTol[vtolNum]->getCurrentGestureId());
+		const auto& state = *vTol[vtolNum]->simulationAnimation();
+		file->writeIdLong("VTOLFrame",state.currentFrame);
+		file->writeIdLong("VTOLGesture",state.bdAnimationState);
+		file->writeBlock("R2VTOLAnimation");
+		file->writeIdLong("Version", 1);
+		file->writeIdFloat("Frame", state.currentFrame);
+		file->writeIdBoolean("SetFirstFrame", state.setFirstFrame);
+		file->writeIdBoolean("CanTransition", state.canTransition);
+		file->writeIdLong("BeamSerial", static_cast<long>(state.ejectionSerial));
+		file->writeIdLong("LastTick", static_cast<long>(state.lastAnimAdvanceFrame));
+		file->writeIdFloat("RecoveryStart", vTolTime[vtolNum]);
+		file->writeIdBoolean("VehicleDropped", vehicleDropped[vtolNum]);
+		file->writeIdBoolean("MechRecovered", mechRecovered[vtolNum]);
+		file->writeIdLong("ReinforcementWID", reinforcement ? reinforcement->getWatchID() : 0);
 	}
 }
 
@@ -59,11 +71,13 @@ void MissionInterfaceManager::Load (FitIniFilePtr file)
 		file->readIdLong("SalvageMechWID", mechWID);
 		mechToRecover[vtolNum] = static_cast<MoverPtr>(ObjectManager->getByWatchID(mechWID));
 
-		file->readIdFloat("VTOLFrame",vTol[vtolNum]->currentFrame);
+		float savedFrame = 0;
+		file->readIdFloat("VTOLFrame",savedFrame);
 
 		long gestureId = 0;
 		file->readIdLong("VTOLGesture",gestureId);
 		vTol[vtolNum]->setGesture(gestureId);
+		vTol[vtolNum]->simulationAnimation()->currentFrame = savedFrame;
 
 		vehicleFile = controlGui.getVehicleNameFromID(vehicleID[vtolNum]);
 
@@ -167,7 +181,7 @@ void MissionInterfaceManager::Load (FitIniFilePtr file)
 		float rotation = 0.f;  // this needs to be pointing 180 degrees from drop point
 
 		vTol[commanderID]->setObjectParameters( newPos, 0, false, Team::home->id, 0);
-		vTol[commanderID]->update();
+		// Geometry is rebuilt during presentation; loading does not advance the clock.
 		vTol[commanderID]->setInView( true );
 		vTol[commanderID]->setVisibility( 1, 1 );
 		vTol[commanderID]->rotation = rotation;
@@ -197,6 +211,25 @@ void MissionInterfaceManager::Load (FitIniFilePtr file)
 
 		vehicleDropped[commanderID] = false;
 		mechRecovered[commanderID] = false;
+		if (file->seekBlock("R2VTOLAnimation") == NO_ERR) {
+			long version = 0, serial = 0, reinforcementWID = 0;
+			file->readIdLong("Version", version);
+			if (version != 1) Fatal(0, "Unsupported R2 VTOL animation section");
+			auto& state = *vTol[commanderID]->simulationAnimation();
+			file->readIdFloat("Frame", state.currentFrame);
+			file->readIdBoolean("SetFirstFrame", state.setFirstFrame);
+			file->readIdBoolean("CanTransition", state.canTransition);
+			file->readIdLong("BeamSerial", serial);
+			state.ejectionSerial = static_cast<uint32_t>(serial);
+			long lastTick = 0;
+			file->readIdLong("LastTick", lastTick);
+			state.lastAnimAdvanceFrame = static_cast<uint32_t>(lastTick);
+			file->readIdFloat("RecoveryStart", vTolTime[commanderID]);
+			file->readIdBoolean("VehicleDropped", vehicleDropped[commanderID]);
+			file->readIdBoolean("MechRecovered", mechRecovered[commanderID]);
+			file->readIdLong("ReinforcementWID", reinforcementWID);
+			reinforcement = static_cast<MoverPtr>(ObjectManager->getByWatchID(reinforcementWID));
+		}
 
 		controlGui.disableAllVehicleButtons();
 	}

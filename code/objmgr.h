@@ -545,6 +545,14 @@ class GameObjectManager {
 		void updateOtherFx();
 	public:
 		void updateAppearancesOnly( bool terrain, bool mover, bool other);
+		// R1 render interpolation: mover poses at the start of the latest tick, and the 0..1 weight between them and the
+		// current poses that updateAppearancesOnly draws mechs and vehicles at (1 = the sim pose).
+		void snapshotMoverPoses();
+        void extractRenderSnapshots();
+        void updatePresentationCull();
+        std::vector<uint8_t> saveAnimationState();
+        bool restoreAnimationState(const std::vector<uint8_t>& bytes, uint32_t sectionVersion = 3);
+		void setPresentationAlpha( float alpha );
 
 		GameObjectPtr get (GameObjectHandle handle);
 

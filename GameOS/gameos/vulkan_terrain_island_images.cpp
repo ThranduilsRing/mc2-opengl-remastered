@@ -1,13 +1,16 @@
 // VK terrain island: height snapshot and audit, the colormap / cement / material-normal imports and the shadow image copies.
 // Declared in the class headers; shared names in vulkan_terrain_island_internal.h.
 #include "vulkan_terrain_island_internal.h"
+#include "gos_terrain_indirect.h"
 #include "vk_one_shot.h"
 #include "texture_decode.h"
 #include "terrain_field_store.h"
 #include "gameos.hpp"
 #include <array>
 #include <filesystem>
+#include "../../RenderCore/KtxLoader.h"
 #include "terrain_surface_cook.h"
+#include "Gates/render_options.h"
 #include "../../3rdparty/glm/glm/gtc/packing.hpp"
 
 // The field store names the atlas format with its own constants (its header stays free of the decoder); they are the same VkFormat numbers.
@@ -15,6 +18,11 @@ static_assert(mc2terrain::ColormapAtlas::kRgba8 == mc2tex::kVkFormatRgba8Unorm &
               && mc2terrain::ColormapAtlas::kBc7Srgb == mc2tex::kVkFormatBc7Srgb, "colormap atlas formats drifted from the decoder's VkFormat values");
 
 #ifdef MC2_VULKAN_ISLAND
+
+// Shared rendered-surface query: analytic cement, road alpha and vegetation exclusion.
+extern float gos_terrain_indirect_HardSurfaceCoverage(float wx, float wy);
+extern uint64_t gos_terrain_indirect_HardSurfaceVersion();
+extern int g_terrainMaterialProfile; // existing mission import profile; never sent to the shader
 
 
 namespace vk_terrain_detail {
@@ -173,6 +181,7 @@ void import_colormap(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
                 // sRGB sources store the sRGB-encoded rgb (the sampler decodes to the same linear values the cook
                 // computed, with sRGB's dark-end precision); alpha is the cooked breakup in [0,1]. Half the VRAM
                 // of the former R16G16B16A16_SFLOAT upload (64 MB vs 128 MB at 4096^2).
+                const auto packStart = std::chrono::steady_clock::now();
                 const auto toByte = [](float v) { return uint8_t(std::lround(std::clamp(v, 0.0f, 1.0f) * 255.0f)); };
                 const auto encode = [&](float v) {
                     v = std::clamp(v, 0.0f, 1.0f);
@@ -184,6 +193,8 @@ void import_colormap(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
                     packedColors[i] = uint32_t(encode(c[0])) | uint32_t(encode(c[1])) << 8 | uint32_t(encode(c[2])) << 16 |
                                       uint32_t(toByte(c[3])) << 24;
                 }
+                const double packMs = std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-packStart).count();
+                const auto uploadStart = std::chrono::steady_clock::now();
                 if (upload_colormap_image(s, input.srgb ? VK_FORMAT_R8G8B8A8_SRGB : VK_FORMAT_R8G8B8A8_UNORM, surface.width, surface.height,
                         packedColors.data(), packedColors.size() * sizeof(uint32_t))) {
                     s->colormapVersionImported = feed.colormapVersion;
@@ -192,8 +203,9 @@ void import_colormap(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
                     s->colormapReady = true;
                     s->colormapBreakup = true;
                     write_descriptors(s);
-                    vlog("COLORMAP-BASE: cooked macro color %ux%u source=%llu coast=%d origin=%s resolve_ms=%.1f.", surface.width, surface.height,
-                         static_cast<unsigned long long>(source), int(input.followCoast), cookOrigin, resolveMs);
+                    const double uploadMs = std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-uploadStart).count();
+                    vlog("COLORMAP-BASE: cooked macro color %ux%u source=%llu coast=%d origin=%s resolve_ms=%.1f pack_ms=%.1f enqueue_ms=%.1f.", surface.width, surface.height,
+                         static_cast<unsigned long long>(source), int(input.followCoast), cookOrigin, resolveMs, packMs, uploadMs);
                     return;
                 }
             }
@@ -288,46 +300,86 @@ bool ensure_dummy_shore_mask(TerrainIsland* s) {
     return true;
 }
 
-// SHORE-FIELD-1: binding 15 is always valid; the 1x1 dummy is unused while uT.shoreFieldOn is 0. The FS reads it with
-// texelFetch only (Catmull-Rom), so the sampler's filter never applies to the R32F texels.
-bool ensure_dummy_shore_field(TerrainIsland* s) {
+// Material weights share the macro atlas UV convention and clamp sampler.
+bool ensure_dummy_materials(TerrainIsland* s) {
     if (!create_colormap_sampler(s)) return false;
-    if (s->shoreFieldTexture) return true;
-    const float px[1] = {0.0f};
-    if (!upload_sampled_image(s, s->shoreFieldTexture, VK_FORMAT_R32_SFLOAT, 1, 1, px, sizeof(px))) return false;
-    s->shoreFieldReady = false;
-    return true;
+    if (s->materialTexture) return true;
+    const uint8_t rock[4] = {};
+    return upload_sampled_image(s, s->materialTexture, VK_FORMAT_R8G8B8A8_UNORM, 1, 1, rock, sizeof(rock));
 }
 
-// Copy-once import of the water shore field from the terrain field store, again whenever its version changes.
-void import_shore_field(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
-    if (!feed.shoreFieldTexels || feed.shoreFieldW <= 1 || feed.shoreFieldH <= 1 || feed.shoreFieldVersion == 0) {
-        if (!s->shoreFieldReady && s->shoreFieldVersionImported == 0) return;
-        s->shoreFieldVersionImported = 0;
-        s->shoreFieldReady = false;
-        if (s->shoreFieldTexture) {
-            mc2vk::getOrCreateEngineVulkanContext().waitIdle("terrain_shore_field_clear");
-            s->shoreFieldTexture = {};
-        }
-        ensure_dummy_shore_field(s);
+void import_materials(TerrainIsland* s) {
+    const auto* fields = gos_TerrainFieldStore();
+    if (!fields) return;
+    if (s->materialPending && mc2vk::getOrCreateEngineVulkanContext().textures().ready(s->materialPending.get())) {
+        s->materialTexture = std::move(s->materialPending);   // the old texture retires through the residency service, no GPU idle
         write_descriptors(s);
-        return;
     }
-    if (feed.shoreFieldVersion == s->shoreFieldVersionImported) return;
-    mc2vk::getOrCreateEngineVulkanContext().waitIdle("terrain_shore_field_reimport");
-    s->shoreFieldVersionImported = feed.shoreFieldVersion;
-    const auto w = static_cast<uint32_t>(feed.shoreFieldW), h = static_cast<uint32_t>(feed.shoreFieldH);
-    if (upload_sampled_image(s, s->shoreFieldTexture, VK_FORMAT_R32_SFLOAT, w, h,
-                             feed.shoreFieldTexels, static_cast<VkDeviceSize>(w) * h * 4u)) {
-        s->shoreFieldReady = true;
-        vlog("SHORE-FIELD: imported the shore field %ux%u for the coastal colormap (version %llu).", w, h,
-             static_cast<unsigned long long>(feed.shoreFieldVersion));
+    const auto& surface = fields->surfaceAsset();
+    const auto& types = fields->terrainTypes();
+    const auto& control = fields->controlMap();
+    const bool baseSame = fields->surfaceVersion() == s->materialSurfaceVersion && types.version == s->materialTypesVersion &&
+                          control.version == s->materialControlVersion && g_terrainMaterialProfile == s->materialProfile;
+    const uint64_t coverageVersion = gos_terrain_indirect_HardSurfaceVersion();
+    if (baseSame && coverageVersion == s->materialCoverageVersion) return;
+    const uint32_t w = std::min(surface.width, 1024u);
+    const uint32_t h = std::min(surface.height, 1024u);
+    if (!baseSame || s->materialW != w || s->materialH != h) {
+        s->materialBase = mc2terrain::cookSurfaceMaterials(surface, types.texels, uint32_t(types.width),
+                              control.texels, uint32_t(control.width), w, h, g_terrainMaterialProfile == 1);
+        s->materialW = w; s->materialH = h;
+        s->materialProfile = g_terrainMaterialProfile;
+    }
+    const auto& base = s->materialBase;
+    const float span = s->colormapCookParams[2] > 0 ? 1.0f / s->colormapCookParams[2] : 0;
+    // Composite the hard-surface coverage over texels [x0,x1) x [y0,y1) of the cached base weights.
+    const auto composite = [&](uint32_t x0, uint32_t x1, uint32_t y0, uint32_t y1) {
+        for (uint32_t y = y0; y < y1; ++y) for (uint32_t x = x0; x < x1; ++x) {
+            const float wx = s->colormapCookParams[0] + (float(x)+0.5f) / w * span;
+            const float wy = s->colormapCookParams[1] - (float(y)+0.5f) / h * span;
+            const float coverage = gos_terrain_indirect_HardSurfaceCoverage(wx, wy);
+            const size_t i = (size_t(y)*w+x)*4;
+            for (size_t k=0;k<3;++k) s->materialFinal[i+k] = uint8_t(std::lround(base[i+k] * (1.0f-coverage)));
+            s->materialFinal[i+3] = std::max(base[i+3], uint8_t(std::lround(coverage*255)));
+        }
+    };
+    const auto dirty = gos_terrain_indirect::TakeHardSurfaceDirty();
+    const bool incremental = baseSame && !base.empty() && s->materialFinal.size() == base.size();   // coverage-only change
+    if (!base.empty() && !(incremental && !dirty.all)) {
+        s->materialFinal.resize(base.size());
+        composite(0, w, 0, h);
+    } else if (incremental) {
+        for (int r = 0; r < dirty.count; ++r) {
+            const auto& q = dirty.rects[r];   // world rect {x0, y0, x1, y1}; invert the texel -> world map above
+            const auto tx = [&](float wx) { return (wx - s->colormapCookParams[0]) / span * w - 0.5f; };
+            const auto ty = [&](float wy) { return (s->colormapCookParams[1] - wy) / span * h - 0.5f; };
+            const auto clampTo = [](float v, uint32_t hi) { return uint32_t(std::clamp(v, 0.0f, float(hi))); };
+            if (!(span > 0)) break;
+            composite(clampTo(std::floor(tx(q[0])), w), clampTo(std::ceil(tx(q[2])) + 1.0f, w),
+                      clampTo(std::floor(ty(q[3])), h), clampTo(std::ceil(ty(q[1])) + 1.0f, h));
+        }
+    }
+    // Coverage-only updates swap in once the new texture is resident; a new mission replaces it at once
+    // (the previous texture retires through the residency service; no GPU idle).
+    if (base.empty()) {
+        s->materialTexture = {}; s->materialPending = {};   // discard the previous mission even when the cook fails
+        ensure_dummy_materials(s);
+    } else if (incremental) {
+        auto texture = mc2vk::getOrCreateEngineVulkanContext().textures().acquirePixels(w, h, VK_FORMAT_R8G8B8A8_UNORM,
+                                                                                         s->materialFinal.data(), s->materialFinal.size(), false);
+        if (texture) s->materialPending = std::move(texture);
     } else {
-        s->shoreFieldReady = false;
-        vlog("SHORE-FIELD: shore field %ux%u upload failed; coastal colormap unchanged.", w, h);
-        ensure_dummy_shore_field(s);
+        s->materialPending = {};
+        s->materialTexture = {};
+        if (!upload_sampled_image(s, s->materialTexture, VK_FORMAT_R8G8B8A8_UNORM, w, h,
+                                  s->materialFinal.data(), s->materialFinal.size())) ensure_dummy_materials(s);
     }
+    s->materialSurfaceVersion = fields->surfaceVersion();
+    s->materialTypesVersion = types.version;
+    s->materialControlVersion = control.version;
+    s->materialCoverageVersion = coverageVersion;
     write_descriptors(s);
+    vlog("MATERIALS: %s %ux%u semantic weights (%zu bytes).", incremental ? "patched" : "baked", w, h, s->materialFinal.size());
 }
 
 // Copy-once import of the mission's shoreline mask sidecar from the terrain field store, again whenever its version changes.
@@ -393,6 +445,7 @@ bool ensure_dummy_matnormal(TerrainIsland* s) {
 // change key). Absent optional slots get the flat normal, as in GL's array. The VK detail port samples no anti-tile mips.
 // Fail-soft: a slot that is not RGBA8 at slot 0's size is rejected with a log line and the dummy stays bound.
 void import_matnormal(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
+    if(mc2::options::current().shadowQuality==0) return; // Potato keeps the flat-normal placeholder.
     const uint64_t version = feed.matNormalVersion;
     if (version == 0) return;                        // array not built yet -> macro-slope only
     if (version == s->matNormalVersionImported && s->matNormalReady) return; // already imported
@@ -567,6 +620,60 @@ bool bind_static_shadow(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
 // as fatal, so the first frame of a ShadowCSM=FALSE mission (shadow island not yet up) latched the whole terrain island off and the VK scene was never
 // cleared again (objects smeared over a frame with no terrain).
 
+
+
+// CONCRETE-ROAD-PBR-DETAIL: the concrete / road material DETAIL array (binding 18). Layer 0 = poured-concrete pad detail, layer 1 =
+// asphalt road/runway detail. Each texel is (normal.x, normal.y, roughness, AO) from CC0 PBR sets; the albedo of those sets is never
+// loaded, MC2's own colour stays the colour source. Cooked by tools/mc2texcook/cook_concrete_detail.py (BC7 KTX2), decoded to RGBA8
+// here and mip-chained by the residency service. Absent files leave the flat dummy bound and uT.concreteDetail = 0 (base game look).
+bool ensure_dummy_concrete_detail(TerrainIsland* s) {
+    if (!s->concreteDetailSamp) {
+        VkSamplerCreateInfo sci{};
+        sci.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+        sci.magFilter = VK_FILTER_LINEAR; sci.minFilter = VK_FILTER_LINEAR;
+        sci.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+        sci.addressModeU = sci.addressModeV = sci.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+        sci.maxLod = VK_LOD_CLAMP_NONE;
+        if (!mc2vk::create(s->concreteDetailSamp, s->device, [&](auto* h) { return vkCreateSampler(s->device, &sci, nullptr, h); })) return false;
+    }
+    if (s->concreteDetailTexture) return true;
+    const uint8_t px[8] = {128, 128, 200, 255, 128, 128, 200, 255};   // flat normal, mid roughness, no occlusion, x2 layers
+    return upload_sampled_image_array(s, s->concreteDetailTexture, VK_FORMAT_R8G8B8A8_UNORM, 1, 1, 2, px, sizeof(px));
+}
+
+void import_concrete_detail(TerrainIsland* s) {
+    if (s->concreteDetailPending) {                      // the upload is asynchronous: until it lands the residency service hands out a placeholder view
+        auto& tx = mc2vk::getOrCreateEngineVulkanContext().textures();
+        if (!tx.ready(s->concreteDetailPending.get())) return;
+        s->concreteDetailTexture = std::move(s->concreteDetailPending);
+        s->concreteDetailReady = true;
+        write_descriptors(s);
+        vlog("CONCRETE-DETAIL: the pad + road detail array is resident and bound.");
+        return;
+    }
+    if (s->concreteDetailTried) return;
+    s->concreteDetailTried = true;                       // one attempt per run; a missing sidecar is the base game look
+    static const char* const kFiles[2] = {"data/terrain_layers/concrete_detail_pad.ktx2", "data/terrain_layers/concrete_detail_road.ktx2"};
+    std::vector<uint8_t> px;
+    int w = 0, h = 0;
+    for (const char* f : kFiles) {
+        RenderCore::KtxImage img;
+        std::vector<uint8_t> rgba;
+        int lw = 0, lh = 0;
+        if (!RenderCore::ktxLoadRgba8(f, img) || !img.isCompressed || !RenderCore::ktxDecodeBc7ToRgba8(img, 0, rgba, &lw, &lh) ||
+            lw <= 0 || lh <= 0 || (w != 0 && (lw != w || lh != h))) {
+            vlog("CONCRETE-DETAIL: %s missing or unusable; concrete/road keep the base look.", f);
+            return;
+        }
+        w = lw; h = lh;
+        px.insert(px.end(), rgba.begin(), rgba.end());
+    }
+    auto tex = mc2vk::getOrCreateEngineVulkanContext().textures().acquirePixels(uint32_t(w), uint32_t(h), VK_FORMAT_R8G8B8A8_UNORM, px.data(), px.size(), true, 2, true);
+    if (tex) {
+        s->concreteDetailPending = std::move(tex);
+        vlog("CONCRETE-DETAIL: imported pad + road detail array %dx%d x2 layers.", w, h);
+    }
+}
 
 } // namespace
 

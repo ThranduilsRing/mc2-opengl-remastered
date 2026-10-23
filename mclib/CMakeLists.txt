@@ -15,12 +15,14 @@ set(SOURCES ${SOURCES}
     mouse.cpp
     msl.cpp
     msl_load.cpp
+    content_ir.cpp
     msl_shape.cpp
     msl_transform.cpp
     msl_anim.cpp
     paths.cpp
     routines.cpp
     appearance_rng.cpp
+    unit_animation_tick.cpp
     sim_trace.cpp
     alloc_probe.cpp
     tgainfo.cpp
@@ -84,6 +86,7 @@ set(SOURCES ${SOURCES}
     ablxstd_stack.cpp
     ablxstd_std.cpp
     ablxstmt.cpp
+    footprints.cpp
     camera.cpp
     camera_project.cpp
     camera_update.cpp
@@ -99,8 +102,6 @@ set(SOURCES ${SOURCES}
     projectz_overlay.cpp
     render_contract.cpp
     cpu_proj_cost_split.cpp
-    crater.cpp
-    dynamic_decal_ring.cpp
     mapdata.cpp
     quad.cpp
     quad_setup.cpp

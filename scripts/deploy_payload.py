@@ -148,7 +148,30 @@ TERRAIN_LAYER_PAYLOAD = [
     "data/terrain_layers/concrete_albedo.ktx2",
     "data/terrain_layers/snow_albedo.ktx2",
     "data/terrain_layers/cliff_albedo.ktx2",
+    "data/terrain_layers/concrete_detail_pad.ktx2",    # CONCRETE-ROAD-PBR-DETAIL (cook_concrete_detail.py)
+    "data/terrain_layers/concrete_detail_road.ktx2",
 ]
+
+# The two concrete/road detail KTX2s are generated, not tracked (about 1.4 MB each): cooked on demand at deploy time when absent.
+CONCRETE_DETAIL_COOK = "tools/mc2texcook/cook_concrete_detail.py"
+CONCRETE_DETAIL_SRC = "G:/mc2-assets/pbr/concrete-road"
+
+
+def ensure_concrete_detail(src_root, cooker=subprocess.run):
+    """Cook data/terrain_layers/concrete_detail_{pad,road}.ktx2 when missing (soft: the engine fail-softs without them)."""
+    out = os.path.join(src_root, "data", "terrain_layers")
+    if all(os.path.isfile(os.path.join(src_root, r)) for r in TERRAIN_LAYER_PAYLOAD if "concrete_detail" in r):
+        return
+    if not os.path.isdir(CONCRETE_DETAIL_SRC):
+        log(f"concrete detail KTX2s absent and no cook source at {CONCRETE_DETAIL_SRC} (skipped)")
+        return
+    os.makedirs(out, exist_ok=True)
+    log("concrete detail KTX2s absent: cooking them (about 15 s)")
+    r = cooker([sys.executable, os.path.join(src_root, CONCRETE_DETAIL_COOK), "--src", CONCRETE_DETAIL_SRC, "--out", out],
+               capture_output=True, text=True, timeout=300, **console_child.child_kwargs(redirected=True))
+    if r.returncode:
+        log("concrete detail cook failed (skipped): " + (r.stdout + r.stderr).strip()[-300:])
+
 
 # EXAMPLE-MODS-1: worked example checkbox mods, source-tracked under
 # examples/mods/. Ship to <target>/mods/<id>/ so the launcher enumerates them
@@ -972,10 +995,14 @@ def enumerate_payload(src_root, build_dir, exe_name, pdb_name,
             rel = os.path.relpath(p, src_root).replace(os.sep, "/")
             items.append((p, rel, "shader"))
 
-    # Spatial AA reference sources and notices travel with their compiled shaders.
+    # Lookup textures are embedded in the exe; deploy notices, not reference sources.
     for tree in ("3rdparty/smaa", "3rdparty/cmaa2"):
+        if require_build and not os.path.isdir(os.path.join(src_root, tree)):
+            fail(f"spatial AA payload tree missing in source: {tree}")
         for directory, _dirs, files in os.walk(os.path.join(src_root, tree)):
             for fn in sorted(files):
+                if not fn.lower().startswith(("license", "notice", "upstream")):
+                    continue
                 path = os.path.join(directory, fn)
                 rel = os.path.relpath(path, src_root).replace(os.sep, "/")
                 items.append((path, rel, "support"))
@@ -1028,6 +1055,7 @@ def enumerate_payload(src_root, build_dir, exe_name, pdb_name,
     # copies whatever _albedo.ktx2 is on disk. Guard it here: read the KTX2
     # levelCount and HARD-FAIL if a present layer is mip-incomplete, so a stale
     # cook can never reach the payload silently. Re-cook, then re-deploy.
+    ensure_concrete_detail(src_root)
     for rel in TERRAIN_LAYER_PAYLOAD:
         p = os.path.join(src_root, rel)
         if not os.path.isfile(p):
@@ -1233,6 +1261,26 @@ def deploy(items, target_dir, allow_stale_pdb, preserve=(), cache=None,
     else:
         log("PDB check OK: deployed PDB matches source hash")
 
+    # Retire only unchanged files owned by the previous deploy. Resolve paths before
+    # unlinking so a malformed manifest or a directory junction cannot escape the target.
+    root = Path(target_dir).resolve()
+    for rel, (digest, _size, _mtime) in read_manifest(target_dir).items():
+        if rel in src_hashes or rel in preserve:
+            continue
+        retired = root / rel
+        resolved = retired.resolve()
+        if not resolved.is_relative_to(root) or resolved == root:
+            fail(f"retired payload path escapes target: {rel}")
+        parts = tuple(part.casefold() for part in Path(rel).parts)
+        if parts[0] in {"mods", "savegame"} or parts[:2] == ("data", "savegame"):
+            continue
+        if retired.is_file():
+            if sha256_file(retired) != digest:
+                log(f"preserved modified retired payload: {rel}")
+                continue
+            retired.unlink()
+            log(f"pruned retired payload: {rel}")
+
     return src_hashes
 
 
@@ -1370,6 +1418,66 @@ def staleness_report(target_dir):
     return rep
 
 
+REQUIRED_DIRS = ("assets", "data", "shaders")
+
+
+def _pe_imports(path):
+    """Imported + delay-loaded DLL names (lowercase) of a PE file. Raises RuntimeError when pefile is missing (py -3 -m pip
+    install pefile) or the file is not a readable PE: an empty answer would let the completeness check pass having parsed nothing."""
+    try:
+        import pefile
+    except ImportError as e:
+        raise RuntimeError("the install completeness check needs pefile (py -3 -m pip install pefile)") from e
+    try:
+        pe = pefile.PE(path, fast_load=True)
+        pe.parse_data_directories(directories=[pefile.DIRECTORY_ENTRY["IMAGE_DIRECTORY_ENTRY_IMPORT"],
+                                               pefile.DIRECTORY_ENTRY["IMAGE_DIRECTORY_ENTRY_DELAY_IMPORT"]])
+        names = {e.dll.decode().lower() for e in getattr(pe, "DIRECTORY_ENTRY_IMPORT", [])}
+        names |= {e.dll.decode().lower() for e in getattr(pe, "DIRECTORY_ENTRY_DELAY_IMPORT", [])}
+        pe.close()
+        return names
+    except Exception as e:  # noqa: BLE001
+        raise RuntimeError(f"cannot read PE imports of {path}: {e}") from e
+
+
+def check_install_complete(target, exe_name, build_dir, fix=True):
+    """Every non-system DLL the exe (transitively) imports must sit next to it, and assets/ data/ shaders/ must exist and be non-empty.
+    Missing DLLs are copied from build_dir (fix=True); returns a sorted list of what is still missing (DLL names and 'dir/')."""
+    sysdirs = [os.path.join(os.environ.get("SystemRoot", "C:/Windows"), d) for d in ("System32", "SysWOW64")]
+
+    def is_system(n):
+        return n.startswith(("api-ms-", "ext-ms-")) or any(os.path.exists(os.path.join(d, n)) for d in sysdirs)
+
+    exe = next((c for c in (os.path.join(target, exe_name), os.path.join(build_dir, exe_name)) if os.path.isfile(c)), None)
+    try:
+        todo = (_pe_imports(exe) if exe else set()) | {d.lower() for d in FFMPEG_DLLS}
+    except RuntimeError as e:
+        return [str(e)]
+    seen, missing = set(), []
+    while todo:
+        n = todo.pop()
+        if n in seen or is_system(n):
+            continue
+        seen.add(n)
+        dst, src = os.path.join(target, n), os.path.join(build_dir, n)
+        if not os.path.isfile(dst):
+            if fix and os.path.isfile(src):
+                shutil.copy2(src, dst)
+                log(f"completeness: copied missing {n} from build dir")
+            else:
+                missing.append(n)
+                continue
+        try:
+            todo |= _pe_imports(dst)
+        except RuntimeError as e:
+            missing.append(str(e))
+    for d in REQUIRED_DIRS:
+        dpath = os.path.join(target, d)
+        if not (os.path.isdir(dpath) and any(os.scandir(dpath))):
+            missing.append(d + "/")
+    return sorted(missing)
+
+
 def verify_only(target_dir, strict):
     rep = staleness_report(target_dir)
     if not rep["has_manifest"]:
@@ -1432,6 +1540,48 @@ DEPLOY_ALLOWLIST = {
 }
 
 
+def implicit_target_refusal(src_root, explicit_target):
+    """A lane worktree (A:/Games/mc2-<lane>, not mc2-main) must name its own install; None when the deploy may proceed."""
+    if explicit_target:
+        return None
+    root = os.path.normpath(os.path.abspath(src_root)).replace("\\", "/")
+    parent, name = os.path.split(root)
+    if parent.lower() == "a:/games" and name.lower().startswith("mc2-") and name.lower() != "mc2-main":
+        return (f"no deploy target named, and {name} is a lane worktree: the implicit default install is mc2-main's. "
+                f"Name your own install, e.g. E:/mc2-installs/<lane> with --allow-new-target.")
+    return None
+
+
+BOOTSTRAP_SKIP = {"cache", "crashes", "shaders", "debug_state", "_pngcap", "_rdoc", MANIFEST_NAME, LAUNCHER_NAME}
+
+
+def bootstrap_install(src, target, exe_name, pdb_name):
+    """One-time creation of a NEW lane install: copy the base files (data, assets, fst archives, DLLs, cfg) from an existing
+    install; the deploy that follows adds the exe, launcher, pdb, shaders and manifest. Real copies (never hardlinks: LINK-GUARD-1)."""
+    src, target = os.path.abspath(src), os.path.abspath(target)
+    if not (os.path.isdir(os.path.join(src, "data")) and os.path.isdir(os.path.join(src, "assets"))):
+        fail(f"--bootstrap-from {src}: not an install (needs data/ and assets/)")
+    if _same_path(src, target):
+        fail("--bootstrap-from names the target itself")
+    if os.path.isdir(target) and any(os.scandir(target)):
+        log(f"bootstrap: {target} already has files; not copying from {src}")
+        return
+    skip = BOOTSTRAP_SKIP | {exe_name, pdb_name}
+    names = [n for n in sorted(os.listdir(src)) if n not in skip and not n.lower().endswith((".log", ".pdb"))]
+    need = sum(os.path.getsize(p) for n in names for p in
+               ([os.path.join(src, n)] if os.path.isfile(os.path.join(src, n)) else
+                (os.path.join(d, f) for d, _, fs in os.walk(os.path.join(src, n)) for f in fs)))
+    disk_space(os.path.dirname(target) or target, need, label="bootstrap")
+    log(f"bootstrap: copying {len(names)} entries ({need / 2**30:.1f} GiB) {src} -> {target}")
+    os.makedirs(target, exist_ok=True)
+    for n in names:
+        a, b = os.path.join(src, n), os.path.join(target, n)
+        if os.path.isdir(a):
+            shutil.copytree(a, b, ignore=shutil.ignore_patterns("*.log"))
+        else:
+            shutil.copy2(a, b)
+
+
 def main():
     ap = argparse.ArgumentParser(
         description=__doc__.splitlines()[0],
@@ -1485,6 +1635,8 @@ def main():
                     "Use as the final step of any OTHER deploy path "
                     "(deploy-editor.sh, manual recipe) so the CSV manifest "
                     "that --verify-only checks does not go stale.")
+    ap.add_argument("--check-only", action="store_true",
+                    help="only check the target has every runtime DLL the exe imports plus assets/ data/ shaders/; no copy; exit 7 if not")
     ap.add_argument("--strict", action="store_true",
                     help="with --verify-only: drift = nonzero exit")
     ap.add_argument("--require-clean", action="store_true",
@@ -1494,6 +1646,9 @@ def main():
                     help="DELIBERATELY deploy to a NON-canonical / new ~5GB install "
                          "(release cut, fresh install). Off by default -- deploys are "
                          "forced to the canonical DEPLOY_ALLOWLIST to stop per-lane bloat.")
+    ap.add_argument("--bootstrap-from", metavar="INSTALL",
+                    help="with --allow-new-target: when the target is missing or empty, first copy the base files (data, assets, "
+                         "archives, DLLs) from this existing install once; the deploy then adds the exe, shaders and manifest.")
     ap.add_argument("--preserve", action="append", default=[],
                     metavar="RELPATH",
                     help="payload file (repeatable) whose EXISTING target copy "
@@ -1517,12 +1672,22 @@ def main():
         sys.exit(verify_only(target, args.strict))
 
     src_root = os.path.abspath(args.source_root)
+    refusal = implicit_target_refusal(src_root, args.target_dir)
+    if refusal:
+        fail(refusal)
     default_subdir = (preset["build_subdir"] if preset
                       else os.path.join("build64", "RelWithDebInfo"))
     if args.ninja:
         default_subdir = (preset["ninja_subdir"] if preset else "build64-ninja")
     build_dir = args.build_dir or os.path.join(src_root, default_subdir)
     pdb_name = os.path.splitext(exe_name)[0] + ".pdb"
+
+    if args.check_only:
+        gaps = check_install_complete(target, exe_name, build_dir, fix=False)
+        if gaps:
+            fail("INSTALL INCOMPLETE: " + ", ".join(gaps), 7)
+        log("install complete")
+        return
 
     if args.write_manifest_only:
         write_manifest_only(src_root, build_dir, exe_name, pdb_name, target,
@@ -1541,6 +1706,11 @@ def main():
                  f"up per-lane/per-experiment deploy folders; pick a FREE canonical folder "
                  f"and md5-verify after.\n"
                  f"  If you REALLY need a new install (release cut), pass --allow-new-target.")
+
+    if args.bootstrap_from:
+        if not args.allow_new_target:
+            fail("--bootstrap-from creates a new install: pass --allow-new-target too")
+        bootstrap_install(args.bootstrap_from, target, exe_name, pdb_name)
 
     if not os.path.isdir(target):
         fail(f"target dir does not exist: {target} (refusing to create deploy "
@@ -1620,6 +1790,11 @@ def run_deploy(args, src_root, build_dir, target, exe_name, pdb_name):
     cache = {} if args.full_verify else read_manifest(target)
     hashes = deploy(items, target, args.allow_stale_pdb, preserve=args.preserve,
                     cache=cache, full_verify=args.full_verify)
+    # Completeness BEFORE the manifest: a failure must not leave a manifest that says the deploy is complete.
+    gaps = check_install_complete(target, exe_name, build_dir)
+    if gaps:
+        fail("INSTALL INCOMPLETE (game would die with 0xC0000135 / missing assets): " + ", ".join(gaps) +
+             f"; copy them from a full install (e.g. {GOLDEN_MATERIAL_ROOT})", 7)
     write_manifest(target, hashes, src_commit)
     log("deploy COMPLETE — payload verified, manifest written")
 

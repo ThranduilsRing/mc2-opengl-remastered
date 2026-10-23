@@ -175,6 +175,9 @@ if(MC2_VULKAN)
         # Screen-shadow NOT ported (no zero-copy CSM-array producer until rung 2).
         # Gate MC2_VK_POST_SCREENFX default-OFF -> GL passes byte-identical.
         list(APPEND SOURCES vulkan_post_screenfx_native.cpp)
+        # Weapon impact box decals (docs/impact-damage-design.md): instanced boxes over the shared depth/normal,
+        # multiply + emissive into the shared scene colour mid-frame.
+        list(APPEND SOURCES vulkan_impact_decals.cpp)
         # VK-POST-HZB-NATIVE-1 (rung 8.4): native HZB pyramid on the shared
         # engine context.
         list(APPEND SOURCES vulkan_post_hzb_native.cpp)
@@ -390,7 +393,7 @@ if(MC2_VULKAN)
     # VK-FIELD-VFX-1: bake vfx_particle.{vert,frag} (procedural billboard VS reading the
     # GpuParticle SSBO + untextured colored soft-blob FS). SPIR-V loaded at runtime by
     # vulkan_vfx_island.cpp via load_spv(spv_dir()+"vfx_particle.*.spv").
-    set(MC2_VK_SHADER_BASENAMES edge_fog fog_oob hzb_reduce hzb_cull shadow_debug_overlay water_geom shadow_prop shadow_prop_alpha shadow_mech shadow_terrain_static color_prop_tier1 terrain_tier1 terrain_tier1_skirt mech_tier1 legacy_shape_tier1 terrain_overlay_tier1 terrain_decal_tier1 hdri_sky cloud_shadow shoreline screen_shadow_csm postprocess postprocess_visual hud_color hud_tex vfx_particle)
+    set(MC2_VK_SHADER_BASENAMES edge_fog fog_oob hzb_reduce hzb_cull shadow_debug_overlay water_geom shadow_prop shadow_prop_alpha shadow_mech shadow_terrain_static color_prop_tier1 terrain_tier1 terrain_tier1_skirt mech_tier1 mech_depth legacy_shape_tier1 terrain_overlay_tier1 terrain_decal_tier1 hdri_sky cloud_shadow shoreline screen_shadow_csm impact_decal postprocess postprocess_visual hud_color hud_tex vfx_particle)
     set(MC2_VK_SPV_OUTPUTS "")
     list(APPEND MC2_VK_SHADER_BASENAMES aa_smaa_edges aa_smaa_weights aa_smaa_blend aa_fxaa)
     list(APPEND MC2_VK_SHADER_BASENAMES vegetation_cull vegetation_scan vegetation_compact vfx_vegetation)

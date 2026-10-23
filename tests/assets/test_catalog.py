@@ -5,7 +5,7 @@ import pytest
 
 from tools.assets.catalog import OBJECT, object_records, priority
 from tools.assets.common import bounds, model_refs, model_sections, parse_tgl
-from tools.assets.mapgen_data import fit_sections, packet
+from tools.mission_codec import fit_sections, packet
 
 
 def tgl_fixture():

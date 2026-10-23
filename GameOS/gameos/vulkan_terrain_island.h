@@ -225,6 +225,8 @@ struct Mc2TerrainTier1Feed {
 // from run() to pull the frame's LOD0 patch list + shared params. Returns 1 on a
 // valid feed, 0 otherwise (island then fails soft -> GL drew everything).
 int mc2_terrain_tier1_get_frame_feed(Mc2TerrainTier1Feed* out);
+// Immutable mission inputs are available before the first visible patch list.
+int mc2_terrain_tier1_get_load_feed(Mc2TerrainTier1Feed* out);
 
 // Observation only, under the existing MC2_VK_FEED_DUMP capture switch.
 // Activity is copied after geometry; the consumer records the exact staged UBOs.
@@ -308,7 +310,7 @@ void mc2_render_backend_terrain_region_health(
 // mc2::textures::ready()::renderLists flushes after the terrain / objects:
 //   kind 0  terrain overlays (mission-static cement/pad/runway/road art bake from
 //           gos_terrain_indirect::DrawDecalStatic, + the legacy per-frame batch)
-//   kind 1  decals (craters, footprints, contact blobs, dynamic decals)
+//   kind 1  decals (footprints, contact blobs)
 // When mc2_vk_overlay_enabled() the GL producers (gosRenderer::drawTerrainOverlays /
 // drawDecals / drawDecalStaticBatch) queue their WorldOverlayVert data here INSTEAD of
 // drawing into the (VK-discarded) GL scene FBO; renderLists then calls mc2_vk_overlay_run

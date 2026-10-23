@@ -157,6 +157,8 @@ ISLANDS = {
     "shaders/vulkan/fog_oob.frag": "Native Vulkan fog; the GL twin was retired in s63.",
     "shaders/vulkan/edge_fog.vert":   "VK fullscreen-triangle VS for edge_fog; GL pass has no dedicated .vert sibling",
     "shaders/vulkan/fog_oob.vert":    "VK fullscreen-triangle VS for fog_oob; GL pass has no dedicated .vert sibling",
+    "shaders/vulkan/impact_decal.vert": "Native Vulkan weapon impact box decals (docs/impact-damage-design.md); no GL twin, GL is being deleted.",
+    "shaders/vulkan/impact_decal.frag": "Native Vulkan weapon impact box decals (docs/impact-damage-design.md); no GL twin, GL is being deleted.",
     # --- Native VK tier-1 islands. One shared reason.
     "shaders/vulkan/cloud_shadow.vert":
         "native VK tier-1 island (VULKAN-BACKEND-L6/P-ladder): structural rewrite of the GL pass (Vulkan bindings/push-constants/SPIR-V), NOT a text-lockstep sibling. Parity is enforced at runtime pixel level per RendererFeatureRegistry convention (VK arc GL/VK visual capture pairs, VFX-9 2026-07-16 + tier1 smoke), not by RULE4 hash lockstep. Declared island-only at MERGE-WAVE-2 checker reconcile 2026-07-22.",
@@ -198,6 +200,10 @@ ISLANDS = {
         "native VK tier-1 island (VK-PARITY-F3): the HDRI equirect sky had no VK owner (VK cleared color0 to a flat 0.55/0.62/0.72). Structural port of shaders/hdri_skybox.{vert,frag} (frameFix==0 matrix path) as a fullscreen reverse-Z-far triangle in the shared-GBuffer LOAD pass, NOT a text-lockstep sibling. Parity is enforced at runtime pixel level (GL/VK capture pairs tests/visual/captures/parF3-*: sky band MAD 0.0 on mc2_01), not by RULE4 hash lockstep.",
     "shaders/vulkan/hdri_sky.frag":
         "native VK tier-1 island (VK-PARITY-F3): the HDRI equirect sky had no VK owner (VK cleared color0 to a flat 0.55/0.62/0.72). Structural port of shaders/hdri_skybox.{vert,frag} (frameFix==0 matrix path) as a fullscreen reverse-Z-far triangle in the shared-GBuffer LOAD pass, NOT a text-lockstep sibling. Parity is enforced at runtime pixel level (GL/VK capture pairs tests/visual/captures/parF3-*: sky band MAD 0.0 on mc2_01), not by RULE4 hash lockstep.",
+    "shaders/vulkan/mech_depth.vert":
+        "Native Vulkan mech visibility prepass, using the color pass skinning and invariant position; no separate GL depth shader. Viewed day/night pixel parity: E:/mc2-archive-2026-10/proofs/perf-gpu/ab-depth (mc2_01_saved_205644 and mc2_10_saved_204523, MAD 0.00); validation errors 0.",
+    "shaders/vulkan/mech_depth.frag":
+        "Native Vulkan mech visibility prepass with the same albedo alpha cutoff as the color pass; no separate GL depth shader. Viewed day/night pixel parity: E:/mc2-archive-2026-10/proofs/perf-gpu/ab-depth (mc2_01_saved_205644 and mc2_10_saved_204523, MAD 0.00); validation errors 0.",
     "shaders/vulkan/mech_tier1.vert":
         "native VK tier-1 island (VULKAN-BACKEND-L6/P-ladder): structural rewrite of the GL pass (Vulkan bindings/push-constants/SPIR-V), NOT a text-lockstep sibling. Parity is enforced at runtime pixel level per RendererFeatureRegistry convention (VK arc GL/VK visual capture pairs, VFX-9 2026-07-16 + tier1 smoke), not by RULE4 hash lockstep. Declared island-only at MERGE-WAVE-2 checker reconcile 2026-07-22.",
     "shaders/vulkan/mech_tier1.frag":

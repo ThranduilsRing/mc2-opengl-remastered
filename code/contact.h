@@ -54,10 +54,10 @@ class ContactInfo {
 
 		unsigned char				contactStatus[MAX_TEAMS];
 		//unsigned char				allContactStatus[MAX_TEAMS];
-		unsigned char				contactCount[MAX_TEAMS];	//How many mechs/vehicles have me on sensors?
+		unsigned short				contactCount[MAX_TEAMS];	//How many mechs/vehicles have me on sensors?
 		unsigned char				sensors[MAX_SENSORS];		//index into sensor's contact list
 		unsigned short				teams[MAX_TEAMS];			//index into team's contact list
-		unsigned char				teamSpotter[MAX_TEAMS];
+		uint32_t				teamSpotter[MAX_TEAMS];
 
 	public:
 
@@ -149,7 +149,7 @@ class SensorSystem {
 		float					nextScanUpdate;
 		float					lastScanUpdate;
 
-		unsigned short			contacts[MAX_CONTACTS_PER_SENSOR];
+		uint32_t			contacts[MAX_CONTACTS_PER_SENSOR];
 		long					numContacts;
 		long					numExclusives;
 		long					totalContacts;
@@ -253,7 +253,7 @@ class SensorSystem {
 //---------------------------------------------------------------------------
 
 
-#define	MAX_SENSORS_PER_TEAM MAX_MOVERS
+#define	MAX_SENSORS_PER_TEAM MAX_SENSORS
 
 class TeamSensorSystem {
 
@@ -429,7 +429,7 @@ class SensorSystemManager {
 // Lifetime: created by Mission::initTriggerAndDropZone (mission_init.cpp) or Mission::loadTeamsAndObjects (saveload_load.cpp),
 // reset by Mission::destroy. Teardown order in Mission::destroy:
 //   1. ObjectManager->destroy()  -- every mover/building has let go of its SensorSystem slot (they hold pool pointers only)
-//   2. weaponEffects, craterManager
+//   2. weaponEffects
 //   3. SensorManager.reset()     -- ~SensorSystemManager frees the pool and the TeamSensorSystems; it reads Team::numTeams,
 //                                   so it must run BEFORE resetTeamsAndCommanders() zeroes it
 //   4. resetTeamsAndCommanders(), triggerAreaMgr, closeABL(), missionHeap->destroy() (the heap the pool lived on)

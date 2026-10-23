@@ -1,5 +1,5 @@
 add_executable(editor_objective_reader_tests EXCLUDE_FROM_ALL
-    tests/test_main.cpp tests/test_objective_reader.cpp
+    tests/test_main.cpp tests/test_objective_reader.cpp tests/test_mission_codec.cpp
     "${CMAKE_SOURCE_DIR}/tests/unit/heap_shim.cpp"
     "${CMAKE_SOURCE_DIR}/code/objective_text.cpp"
     "${CMAKE_SOURCE_DIR}/code/objective_flags.cpp"

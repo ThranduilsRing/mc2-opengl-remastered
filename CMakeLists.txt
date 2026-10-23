@@ -458,10 +458,13 @@ set(SOURCES
     "code/unitprofile.cpp"
     "code/unitprofile_fit.cpp"
     "code/equipment_registry_engine.cpp"
+    "code/package_chassis_registry.cpp"
+    "code/logisticsvariant_package.cpp"
     "code/ui_profile_registry.cpp"
     "code/action_executor_registry.cpp"
     "code/fire_executor_registry.cpp"
     "code/weapon_presentation_proof.cpp"
+    "code/impact_presentation.cpp"
     "code/tacordr.cpp"
     "code/team.cpp"
     "code/team_los.cpp"
@@ -497,6 +500,7 @@ set(SOURCES
     "code/ablmc2_state.cpp"
     "code/gamecam.cpp"
     "code/mission.cpp"
+    "code/sim_tick_cost.cpp"
     "code/mission_update.cpp"
     "code/mission_update_audit.cpp"
     "code/mission_movers.cpp"
@@ -506,6 +510,7 @@ set(SOURCES
     "code/mission_parts_archive.cpp"
     "code/mission2.cpp"
     "code/sim_identity.cpp"
+    "code/sim_world_trace.cpp"
     "code/objective.cpp"
     "code/objective_flags.cpp"
     "code/objective_text.cpp"
@@ -529,6 +534,8 @@ set(SOURCES
     "code/infowindow.cpp"
     "code/keyboardref.cpp"
     "code/mechicon.cpp"
+    "code/mechicon_package_hud.cpp"
+    "code/icon_registry.cpp"
     "code/missiongui.cpp"
     "code/missiongui_diag.cpp"
     "code/missiongui_update.cpp"
@@ -943,7 +950,8 @@ if(MC2_BUILD_TESTS)
   add_subdirectory(tests/static_natural_skip)
 endif()
 
-target_sources(mc2 PRIVATE code/sim_rng.cpp code/tactical_order_queue.cpp code/save_archive.cpp)
+target_sources(mc2 PRIVATE code/command_replay.cpp
+    code/combat_sim_hash.cpp code/sim_rng.cpp code/tactical_order_queue.cpp code/save_archive.cpp)
 # The sim API must not inherit wall-clock access from the engine PCH.
 set_source_files_properties(
     "code/sim_rng.cpp"

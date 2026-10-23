@@ -3,9 +3,9 @@
 # Where each gate is read, what the smoke runner forwards and what tier1_env_vars.md says are not here: ask
 # tools/repo_intel (env_var, gate_status), which scan the sources.
 generator_version: "3.0.0"
-gate_count: 898
+gate_count: 892
 registry_entry_count: 181
-verified_count: 786
+verified_count: 785
 flags:
   - name: MC2_3DVIEW_DIAG
     kind: Bool
@@ -167,13 +167,6 @@ flags:
     doc: "BT2018 mech import 1A: route mech geometry through the Assimp GLTF/FBX importer instead of the legacy MSL loader."
     verified: true
     registry: {feature_id: MC2_FEATURE_ASSIMP_MECH_IMPORT, kind: Feature, order: -1, default_on: false}
-  - name: MC2_ASSIMP_PAUSE_GATE
-    kind: Bool
-    default: true
-    rule: Lead0Kill
-    owner: mech
-    doc: ""
-    verified: true
   - name: MC2_BATCHER_FLUSH_TIMING
     kind: Bool
     default: false
@@ -769,6 +762,33 @@ flags:
     doc: "COLORMAP-BC7-KTX2-1: prefer .burnin.ktx2 BC7 sidecar in BuildColormapAtlas (gos_terrain_indirect.cpp)."
     verified: true
     registry: {feature_id: MC2_FEATURE_COLORMAP_KTX2, kind: Feature, order: 22, default_on: true}
+  - name: MC2_COMMAND_REPLAY_PLAY
+    kind: String
+    default: ""
+    rule: Std
+    owner: code
+    doc: "Play a command replay through the existing Replay queue source."
+    smoke_passthrough: true
+    verified: true
+    registry: {feature_id: MC2_COMMAND_REPLAY_PLAY, kind: Trace, order: -1, default_on: false}
+  - name: MC2_COMMAND_REPLAY_RECORD
+    kind: String
+    default: ""
+    rule: Std
+    owner: code
+    doc: "Record accepted tactical commands and per-tick subsystem hashes."
+    smoke_passthrough: true
+    verified: true
+    registry: {feature_id: MC2_COMMAND_REPLAY_RECORD, kind: Trace, order: -1, default_on: false}
+  - name: MC2_COMMAND_REPLAY_TICKS
+    kind: Int
+    default: 180
+    rule: Prefix
+    owner: gameos
+    doc: "Number of fixed ticks in a command replay recording."
+    range: {lo: 1, hi: 108000, style: reject}
+    smoke_passthrough: true
+    verified: true
   - name: MC2_CONE_LEAF_DUMP
     kind: Bool
     default: false
@@ -1094,14 +1114,6 @@ flags:
     owner: gameos
     doc: ""
     verified: true
-  - name: MC2_DYNAMIC_DECALS
-    kind: Bool
-    default: false
-    rule: Lead0P
-    owner: code
-    doc: "Dynamic decal ring (mclib/dynamic_decal_ring.cpp): spawn()/gatherToDecalBatch() are no-ops when off."
-    verified: true
-    registry: {feature_id: MC2_FEATURE_DYNAMIC_DECALS, kind: Feature, order: -1, default_on: false}
   - name: MC2_EDGE_FOG
     kind: Bool
     default: true
@@ -1535,34 +1547,6 @@ flags:
     smoke_passthrough: true
     verified: true
     registry: {feature_id: MC2_TRACE_FREEZE_MOVERS_AT, kind: Trace, order: -1, default_on: false}
-  - name: MC2_FXAA
-    kind: Bool
-    default: false
-    rule: Lead0
-    owner: post
-    doc: ""
-    smoke_passthrough: true
-  - name: MC2_FXAA_EDGE_THRESHOLD
-    kind: Float
-    default: 0
-    rule: Prefix
-    owner: post
-    doc: ""
-    smoke_passthrough: true
-  - name: MC2_FXAA_EDGE_THRESHOLD_MIN
-    kind: Float
-    default: 0
-    rule: Prefix
-    owner: post
-    doc: ""
-    smoke_passthrough: true
-  - name: MC2_FXAA_SUBPIX
-    kind: Float
-    default: 0
-    rule: Prefix
-    owner: post
-    doc: ""
-    smoke_passthrough: true
   - name: MC2_FX_COST_SPLIT
     kind: Bool
     default: false
@@ -1594,8 +1578,8 @@ flags:
     default: ""
     rule: Std
     owner: code
-    doc: "FX-FORCE-SPAWN v1 fixture: default-OFF."
-    tokens: "|0|1|2|3|4|5|6|7|8|9|loop"
+    doc: "FX-FORCE-SPAWN v1 fixture: default-OFF. =impact: impact-decal volley."
+    tokens: "|0|1|2|3|4|5|6|7|8|9|loop|impact"
     smoke_passthrough: true
     verified: true
     registry: {feature_id: MC2_FX_FORCE_SPAWN, kind: Feature, order: -1, default_on: false}
@@ -1723,6 +1707,14 @@ flags:
     rule: Presence
     owner: props
     doc: "[GPUPROPS v1] setup-path instrumentation (internal; path tag lives at file scope)."
+    smoke_passthrough: true
+    verified: true
+  - name: MC2_GPU_BUDGET_MB
+    kind: Int
+    default: 0
+    rule: Prefix
+    owner: gameos
+    doc: "Diagnostic residency ceiling in MiB; zero uses device/preset policy. Cannot raise the device budget."
     smoke_passthrough: true
     verified: true
   - name: MC2_GPU_CULL
@@ -2231,15 +2223,6 @@ flags:
     rule: Lead1
     owner: unclassified
     doc: ""
-  - name: MC2_ICON_FAILLOUD
-    kind: Bool
-    default: false
-    rule: Lead0
-    owner: mech
-    doc: "META-FIX design B PART 3 (code/mechicon.cpp iconTileChecked at the three CPU icon-tile blits): default OFF. =1 substitutes a solid MAGENTA tile when an icon..."
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_FEATURE_ICON_FAILLOUD, kind: Feature, order: -1, default_on: false}
   - name: MC2_IFACE_COST_SPLIT
     kind: Bool
     default: false
@@ -2953,21 +2936,6 @@ flags:
     doc: ""
     smoke_passthrough: true
     verified: true
-  - name: MC2_MECH_AMBIENT_V1
-    kind: Bool
-    default: true
-    rule: Lead0Kill
-    owner: mech
-    doc: ""
-    verified: true
-  - name: MC2_MECH_AMBIENT_V1_STRENGTH
-    kind: Float
-    default: 0.150000006
-    rule: Prefix
-    owner: mech
-    doc: ""
-    range: {lo: 0, hi: 2, style: clamp}
-    verified: true
   - name: MC2_MECH_ANIM_ROTATION_ONLY
     kind: Bool
     default: true
@@ -3587,15 +3555,6 @@ flags:
     smoke_passthrough: true
     verified: true
     registry: {feature_id: MC2_OVERLAY_TILE_HIRES, kind: Feature, order: -1, default_on: false}
-  - name: MC2_PAD_AREA_GLOW
-    kind: Float
-    default: 0.119999997
-    rule: Prefix
-    owner: terrain
-    doc: ""
-    range: {lo: 0, hi: 4, style: clamp}
-    smoke_passthrough: true
-    verified: true
   - name: MC2_PAD_AREA_GLOW_SPILL
     kind: Float
     default: 48
@@ -3778,6 +3737,15 @@ flags:
     rule: Lead0P
     owner: post
     doc: ""
+  - name: MC2_PRESENTATION_DISABLED
+    kind: Bool
+    default: false
+    rule: Std
+    owner: code
+    doc: "Replay proof: suppress presentation extraction updates while simulation continues."
+    smoke_passthrough: true
+    verified: true
+    registry: {feature_id: MC2_PRESENTATION_DISABLED, kind: Trace, order: -1, default_on: false}
   - name: MC2_PRESWAP_FINISH
     kind: Bool
     default: false
@@ -4109,6 +4077,15 @@ flags:
     owner: code
     doc: ""
     verified: true
+  - name: MC2_REPLAY_CONTENT
+    kind: String
+    default: ""
+    rule: Std
+    owner: code
+    doc: "Mission/mod content digest supplied and checked by tools/command_replay.py."
+    smoke_passthrough: true
+    verified: true
+    registry: {feature_id: MC2_REPLAY_CONTENT, kind: Trace, order: -1, default_on: false}
   - name: MC2_RESOLVE_TRACE_FILE
     kind: String
     default: ""
@@ -4907,34 +4884,6 @@ flags:
     owner: terrain
     doc: ""
     verified: true
-  - name: MC2_TERRAIN_AMBIENT_FLOOR
-    kind: Float
-    default: 0.349999994
-    rule: Prefix
-    owner: terrain
-    doc: "TERRAIN-AMBIENT-FLOOR-2: terrain-only, albedo-scaled ambient floor in terrain_lod_chunk.frag."
-    range: {lo: 0, hi: 2, style: clamp}
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_FEATURE_TERRAIN_AMBIENT_FLOOR, kind: Feature, order: -1, default_on: true}
-  - name: MC2_TERRAIN_AMBIENT_FLOOR_NIGHT
-    kind: Float
-    default: 0
-    rule: Prefix
-    owner: terrain
-    doc: "TERRAIN-AMBIENT-FLOOR-NIGHT-1: 0..1 FLOOR under TERRAIN-AMBIENT-FLOOR-2's daylight gate; the uploaded gate becomes max(dayGate, floor)."
-    range: {lo: 0, hi: 1, style: clamp}
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_FEATURE_TERRAIN_AMBIENT_FLOOR_NIGHT, kind: Feature, order: -1, default_on: false}
-  - name: MC2_TERRAIN_AMBIENT_FLOOR_TRACE
-    kind: Bool
-    default: false
-    rule: Presence
-    owner: terrain
-    doc: "TERRAIN-AMBIENT-FLOOR-2 trace: prints ONE line at the first terrain-chunk uniform upload giving the resolved floor strength, the daylight gate ACTUALLY..."
-    smoke_passthrough: true
-    registry: {feature_id: MC2_TRACE_TERRAIN_AMBIENT_FLOOR, kind: Trace, order: -1, default_on: false}
   - name: MC2_TERRAIN_CEMENT_DIAG_CONNECT
     kind: Bool
     default: false
@@ -6844,6 +6793,15 @@ flags:
     owner: gameos
     doc: ""
     verified: true
+  - name: MC2_WORLD_ORDER_TRACE
+    kind: Bool
+    default: false
+    rule: Std
+    owner: code
+    doc: "W2: emit ordered world views, terrain activity, lifecycle events and update calls per mission tick. Diagnostic only."
+    smoke_passthrough: true
+    verified: true
+    registry: {feature_id: MC2_WORLD_ORDER_TRACE, kind: Trace, order: -1, default_on: false}
   - name: MC2_XFORM_PARITY_FATAL
     kind: Bool
     default: false

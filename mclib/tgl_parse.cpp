@@ -1,4 +1,4 @@
-// TG shapes: ASE file parsing and shape loading (TG_TypeShape::ParseASEFile, LoadTGShapeFromASE), textures, imported meshes, camera/fog/light setup.
+// TG shapes: ASE file parsing and shape loading (TG_TypeShape::ParseASEFile), textures, imported meshes, camera/fog/light setup.
 // Declared in the class headers; shared names in tgl_internal.h.
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "texture_assets.h"
@@ -587,106 +587,6 @@ long TG_TypeShape::ParseASEFile (BYTE *aseBuffer, const char *fileName)
 }	
 
 //-------------------------------------------------------------------------------
-//Function returns 0 if OK.  -1 if file not found or file not ASE Format.		
-//This function loads the ASE file into the TG_Triangle and TG_Vertex lists.
-//It allocates memory (vector stores owned by the shape).
-//
-// NOTE: Only takes the first GEOMOBJECT from the ASE file.  Multi-object
-// Files will require user intervention to parse!!
-int TG_TypeShape::LoadTGShapeFromASE (const char *fileName)
-{
-	//-----------------------------------------------------
-	// Fully loads and parses an ASE File.  These files are
-	// output by 3D Studio MAX's ASCII Scene Exporter.
-
-	long aseFileSize = gos_FileSize(fileName);
-	gosASSERT(aseFileSize > 0);
-
-	// One zero byte past the file: the header and texture searches below run string functions over the contents.
-	std::vector<BYTE> aseStore(static_cast<size_t>(aseFileSize) + 1, 0);
-	BYTE *aseContents = aseStore.data();
-
-	HGOSFILE aseFile;
-	gos_OpenFile(&aseFile,fileName,READONLY);
-
-#ifdef _DEBUG
-	long dataRead = 
-#endif
-		gos_ReadFile(aseFile,aseContents,aseFileSize);
-	gosASSERT(dataRead == aseFileSize);
-
-	gos_CloseFile(aseFile);
-
-	gosASSERT(S_strnicmp(ASE_HEADER,reinterpret_cast<char *>(aseContents),strlen(ASE_HEADER)) == 0);
-
-	char textureId[256];
-	char *textureData;
-
-	char numberData[256];
-	sprintf(textureId,ASE_MATERIAL_COUNT);
-	textureData = strstr(reinterpret_cast<char *>(aseContents),textureId);
-	if (!textureData)
-		return(-1);
-
-	textureData += strlen(ASE_MATERIAL_COUNT)+1;
-	GetNumberData(textureData,numberData);
-	long numMaterials = atol(numberData);
-
-	numTextures = 0;
-	unsigned char *aseBuffer = aseContents;
-	for (long nmt=0;nmt<numMaterials;nmt++)
-	{
-		sprintf(textureId,ASE_MATERIAL_CLASS);
-		textureData = strstr(reinterpret_cast<char *>(aseBuffer),textureId);
-		if (!textureData)
-			return(-1);
-
-		textureData += strlen(ASE_MATERIAL_CLASS)+1;
-		GetWordData(textureData,numberData);
-
-		if (strstr(numberData,"Standard"))
-		{
-			numTextures++;
-		}
-		else if (strstr(numberData,"Multi"))
-		{
-			//----------------------------------------------------
-			//NOT SUPPORTED YET!  Multiple Textures per building!
-			// Support NOW!  Must have trees!
-			textureData = strstr(textureData,ASE_SUBMATERIAL_COUNT);
-			gosASSERT(textureData != nullptr);
-
-			textureData += strlen(ASE_SUBMATERIAL_COUNT);
-			GetNumberData(textureData,numberData);
-
-			numTextures += atol(numberData);
-		}
-
-		aseBuffer = reinterpret_cast<unsigned char *>(textureData);
-	}
-
-	tinyTextureStore.assign(numTextures, TG_TinyTexture{});
-	listOfTextures = tinyTextureStore.data();
-
-	for (long i=0;i<numTextures;i++)
-	{
-		//-------------------------------------------------------------------------------
-		// Get and store texture Name.  Will need multiple for Multi-Sub if implemented
-		// NEVER GET ACTUAL TEXTURES HERE.  ALWAYS HAPPENS IN MULTI!!!!!!!!!!
-		// Just set 'em!
-		listOfTextures[i].mcTextureNodeIndex = 0xffffffff;
-		listOfTextures[i].gosTextureHandle = 0xffffffff;
-		listOfTextures[i].textureAlpha = false;
-	}
-
-	//---------------------------------------------------
-	// Calling from top will load just first GEOMOBJECT!
-	long parseResult = ParseASEFile(aseContents,fileName);
-
-	return(parseResult);
-}	
-
-//-------------------------------------------------------------------------------
 //Need this so that Multi-Shapes can let each shape know texture info.
 void TG_TypeShape::CreateListOfTextures (TG_TexturePtr list, DWORD numTxms)
 {
@@ -761,15 +661,7 @@ void TG_TypeShape::InitFromImportedMesh(const char* nodeIdIn, const char* parent
 		mc2::fmt::print_out("[MECH_SKEL] nodeId truncated: '{}' -> '{}'\n", mc2::fmt::safe(nodeIdIn), mc2::fmt::safe(trunc));
 		fflush(stdout);
 	}
-	strncpy(nodeId, nodeIdIn ? nodeIdIn : "", TG_NODE_ID - 1);
-	nodeId[TG_NODE_ID - 1] = '\0';
-	strncpy(parentId, parentIdIn ? parentIdIn : "None", TG_NODE_ID - 1);
-	parentId[TG_NODE_ID - 1] = '\0';
-
-	// Node transform pivot in MC2 coordinate space (importer applies the
-	// 3DS-Max → MC2 axis flip before calling us).
-	nodeCenter = center;
-	relativeNodeCenter = center;
+	InitContentNode(nodeIdIn ? nodeIdIn : "", parentIdIn ? parentIdIn : "None", center, center);
 
 	// Take ownership of the caller's geometry; the lists stay views of the stores.
 	typeVertexStore    = std::move(vertices);
@@ -778,4 +670,5 @@ void TG_TypeShape::InitFromImportedMesh(const char* nodeIdIn, const char* parent
 	numTypeTriangles   = static_cast<DWORD>(typeTriangleStore.size());
 	listOfTypeVertices  = typeVertexStore.data();
 	listOfTypeTriangles = typeTriangleStore.data();
+
 }

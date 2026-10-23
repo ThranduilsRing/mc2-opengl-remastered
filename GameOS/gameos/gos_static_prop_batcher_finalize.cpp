@@ -91,8 +91,9 @@ void GpuStaticPropBatcher::publishGeometry() {
     for (size_t pi = 0; pi < s_packets.size(); ++pi) {
         const auto& pkt = s_packets[pi];
         const auto* type = pkt.owningTypeID < s_types.size() ? &s_types[pkt.owningTypeID] : nullptr;
-        // Authored override cutouts must occlude later vegetation (2); stock partial coverage keeps
-        // PROP-COVERAGE-1 (1). An authored slot's explicit alpha mode decides (see packetAlphaClass).
+        // Coverage semantics are explicit, never inferred from override provenance (see packetAlphaClass):
+        // authored Mask slots and lateCoverageFringe records composite after vegetation (2); stock keeps
+        // PROP-COVERAGE-1 (1).
         if (packetHasAlpha(pkt, type ? type->source : nullptr))
             s_packetAlphaBaked[pi] = mc2prop::packetAlphaClass(type && type->isOverride,
                                                                type ? type->materialSource : nullptr, pkt.textureSlot);

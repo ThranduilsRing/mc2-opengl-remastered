@@ -16,7 +16,7 @@ def isolate_fake_diagnostics(monkeypatch):
 def test_run_fake_pass(tmp_path):
     cfg = RunConfig(
         exe=[sys.executable, str(FIX / "fake_mc2_pass.py")],
-        profile="stock", stem="mc2_01", duration=1,
+        profile="stock", stem="mc2_05", duration=1,
         heartbeat_timeout_load_s=60, heartbeat_timeout_play_s=3,
         grace_s=5, env_extra={},
     )
@@ -30,7 +30,7 @@ def test_run_fake_timeout(tmp_path):
     # runner's walltime cap is what trips. duration=1 grace=0 ⇒ cap=1s total.
     cfg = RunConfig(
         exe=[sys.executable, str(FIX / "fake_mc2_hang.py")],
-        profile="stock", stem="mc2_01", duration=1,
+        profile="stock", stem="mc2_05", duration=1,
         heartbeat_timeout_load_s=60, heartbeat_timeout_play_s=3,
         grace_s=0, env_extra={},
     )
@@ -52,7 +52,7 @@ def test_run_fake_timeout(tmp_path):
 def _run_fault(fault, *, load_to=60, play_to=3):
     cfg = RunConfig(
         exe=[sys.executable, str(FIX / "fake_mc2_fault.py"), "--fault", fault],
-        profile="stock", stem="mc2_01", duration=1,
+        profile="stock", stem="mc2_05", duration=1,
         heartbeat_timeout_load_s=load_to, heartbeat_timeout_play_s=play_to,
         grace_s=5, env_extra={},
     )

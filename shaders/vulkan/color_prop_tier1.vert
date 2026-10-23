@@ -36,9 +36,10 @@ layout(set = 0, binding = 4, std430) readonly buffer LightsData {
 } lightsData_;
 
 // SH-L2 evaluator -- verbatim port of static_prop.vert::evalShL2 (Ramamoorthi-Hanrahan
-// diffuse-irradiance reconstruction). Coefficients arrive pre-convolved (see
-// RenderCore/IblShCoeffs.h header comment); do not re-apply the cosine kernel here.
+// diffuse-irradiance reconstruction). Raw radiance coefficients are convolved
+// here; the diffuse response below applies Lambert's 1/pi once.
 #include "include/prop_sh_l2.glsl"
+#include "../include/surface_material.hglsl"
 
 // VK-FLIP-FIELD-REPORT-2 BLACK-FENCE FIX: per-PACKET (not per-type) albedo layer,
 // pushed fresh before each vkCmdDrawIndexed. GL's coalesce path samples texArrayLayer
@@ -78,7 +79,7 @@ layout(set = 0, binding = 5, std430) readonly buffer TypeAlbedoLayerOn {
 layout(location = 0) out vec2 vUv;
 layout(location = 1) out vec3 vNormalStuff;   // Stuff-space normal (un-swapped) for GBuffer1
 flat layout(location = 2) out int  vLayer;    // alpha-OFF albedo array layer (-1 = none)
-layout(location = 3) out vec3 vArgb;          // VERTEX-BAKED lit color (GL default model)
+layout(location = 3) out vec3 vArgb;          // encoded vertex multiplier for the legacy art adapter
 flat layout(location = 4) out int  vLayerOn;  // alpha-ON albedo array layer (-1 = none)
 flat layout(location = 5) out vec2 vUvScale;  // FENCE-UVSCALE-1: this packet's uvScaleX/Y
 // Inputs of the StaticPropPbr specular: the surface position (GL world) and the instance's sun light as stored in its ObjectLights row (Stuff frame, colour zero = none).
@@ -192,7 +193,7 @@ void main() {
     vUvScale = vec2(uPacket.packetUvScaleX, uPacket.packetUvScaleY);
 
     // Legacy vertex emission plus environment SH and the actor's directional light.
-    // Keep vertex evaluation and the washout clamp until the prop material packet.
+    // Ambient fill is evaluated once; preserve HDR lighting for fragment shading.
     // BASE-LIGHT SEED. The raw per-vertex bytes are NOT light: the hot-colour magic tags must be resolved first (the green-glow field report was the raw
     // 0xff00ff00 tag dumped into the colour). hotColorBaseLight resolves them against the eye's night state and the type's own emission colours, so the
     // windows, building base lights and runway / beacon fixtures light up at night exactly as authored and stay dark by day.
@@ -218,7 +219,7 @@ void main() {
     vMaterialSun = vec3(0);
     vMaterialFlags = inst.flags;
     if ((inst.flags & kFlagIsWindow) != 0u) {
-        vArgb = clamp(seed + inst.aRGBHighlight.rgb, 0.0, 1.0);
+        vArgb = surfaceEncodeSrgb(surfaceDecodeSrgb(seed) + surfaceDecodeSrgb(inst.aRGBHighlight.rgb));
         return;
     }
 
@@ -233,19 +234,21 @@ void main() {
     float ndlRaw = dot(nMC2, L);
     float ndl    = alphaTestPacket ? abs(ndlRaw) : max(ndlRaw, 0.0);
 
-    // One environment SH source; baked vertex color and the washout clamp remain.
+    // One environment SH source plus the authored vertex emission.
     const vec3 kSunColor = vec3(0.95, 0.93, 0.86);
     vec3 sunColorFed = vec3(0.0);
     vec3 sunDirFed   = vec3(0.0);
     bool sunFound    = false;
     if (uFrame.lightingReady != 0) {
-        ObjectLights ld = lightsData_.light[int(inst.lightDataIndex)];
+        int lightIndex = int(inst.lightDataIndex);
+        ObjectLights ld;
+        ld.numLights = lightsData_.light[lightIndex].numLights;
         int n = min(ld.numLights.x, MAX_LIGHTS_IN_WORLD);
         for (int i = 0; i < n; ++i) {
-            int lt = int(ld.light_dir[i].w);
+            int lt = int(lightsData_.light[lightIndex].light_dir[i].w);
             if (!sunFound && (lt == 1 || lt == 2)) {
-                sunColorFed = ld.light_color[i].xyz;
-                sunDirFed = ld.light_dir[i].xyz;
+                sunColorFed = lightsData_.light[lightIndex].light_color[i].xyz;
+                sunDirFed = lightsData_.light[lightIndex].light_dir[i].xyz;
                 sunFound = true;
             }
         }
@@ -267,16 +270,8 @@ void main() {
         iblTerm = evalShL2(normalize(worldNormalStuff), shCoeffs) * uFrame.iblShStrength;
     }
 
-    // ADJUDICATION-1 WASHOUT FIX (round 2): GL's static_prop.vert:524 clamps its
-    // final `lit` to [0,1] before handing it to the fragment (`lit = clamp(lit +
-    // aRGBHighlight, 0.0, 1.0)`). This island had NO clamp at all -- vArgb was
-    // passed raw (often >1.0: measured iblSh0 DC term alone, 1.71 * kSH_c4 * 0.5
-    // strength, already exceeds 1.0 before adding the 0.3 ambient fill) straight
-    // into the frag's `albedo * vArgb` multiply. An unclamped >1 vArgb multiplies
-    // the albedo brighter than GL's clamped-at-white equivalent on every bright
-    // material (hangar roofs measured GL 123.8 vs VK 171.1, +47/255) -- this is
-    // the dominant remaining washout term after the sun-color fix (91051001 /
-    // ADJUDICATION-1 sun fix landed +47.3->+43.5; the missing clamp is the rest).
+    // ADJUDICATION-1: one ambient source replaces the stacked fills. Preserve
+    // HDR material colour and highlights until the output transform.
     // Directional wrap on the orientation-free part (baked seed + ambient): factor 1.0 facing the sun, (1 - strength) facing away; the sun term itself is never
     // scaled. Alpha-test cards (foliage, fences) are two-sided and carry no solid-surface normal, so they stay at 1.0. The IBL fill is added unscaled, as in GL.
     float propDirFactor = 1.0;
@@ -284,6 +279,10 @@ void main() {
         float wrap = 0.5 + 0.5 * dot(nMC2, L);
         propDirFactor = mix(1.0 - kPropBaseLightDirStrength, 1.0, wrap);
     }
-    vArgb = clamp(seed * propDirFactor + iblTerm + sunTerm * ndl, 0.0, 1.0);
-    vArgb = clamp(vArgb + inst.aRGBHighlight.rgb, 0.0, 1.0);
+    // SH evaluates irradiance, not reflected radiance. Apply the Lambert BRDF
+    // once, and decode authored light bytes before summing with linear SH.
+    vec3 linearLight = surfaceDecodeSrgb(seed) * propDirFactor
+        + (max(iblTerm, vec3(0.0)) + surfaceDecodeSrgb(sunTerm) * ndl) / 3.14159265
+        + surfaceDecodeSrgb(inst.aRGBHighlight.rgb);
+    vArgb = surfaceEncodeSrgb(linearLight); // retain the legacy encoded albedo multiplier
 }

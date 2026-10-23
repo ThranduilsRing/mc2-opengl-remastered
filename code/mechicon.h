@@ -89,6 +89,7 @@ public:
 		// Return false when the icon atlas isn't resident. No render-state
 		// side effects.
 		bool getUnitIconTexUV( uint64_t& glTex, float& u0, float& v0, float& u1, float& v1 ) const;
+		unsigned long getUnitIconTexture() const;
 		virtual bool getUnitIconBackTexUV( uint64_t& glTex, float& u0, float& v0, float& u1, float& v1 ) const;
 		bool getPilotIconTexUV( uint64_t& glTex, float& u0, float& v0, float& u1, float& v1 ) const;
 		virtual bool			init( Mover* pMover ){ return false; }
@@ -121,9 +122,8 @@ protected:
 
 		static DWORD            damageColors[4][3];
 
-		static DWORD            s_textureHandle[5];
 		static bool				s_slotUsed[240];
-		static TGAFileHeader*	s_textureMemory;
+
 
 		static float			unitIconX;
 		static float		 	unitIconY;
@@ -191,8 +191,7 @@ class MechIcon : public ForceGroupIcon
 		virtual bool			init( Mover* pMover );
 		virtual void			update();
 
-		static TGAFileHeader* s_MechTextures;
-		static AssetScale::AssetKey s_MechTexturesKey;
+
 
 		void doDraw( char* newDamage, char* oldDamage, unsigned long handle, unsigned long where);
 		virtual void setDrawBack( bool bSet);
@@ -206,7 +205,6 @@ class MechIcon : public ForceGroupIcon
 		char	damage[8];
 		char	backDamage[8];
 		bool init( long whichIndex );
-		bool initTextures();
 
 		
 };
@@ -221,12 +219,11 @@ public:
 	virtual void renderUnitIconBack( float left, float top, float right, float bottom ){}
 	// INFO-IMGUI-SLICE-2: vehicles have no back paperdoll (renderUnitIconBack is
 	// a no-op above), so the ImGui accessor reports none too.
-	virtual bool getUnitIconBackTexUV( unsigned int&, float&, float&, float&, float& ) const { return false; }
+	virtual bool getUnitIconBackTexUV( uint64_t&, float&, float&, float&, float& ) const { return false; }
 	virtual void	update();
 	virtual bool			init( Mover* pMover );
 
-	static TGAFileHeader* s_VehicleTextures;
-	static AssetScale::AssetKey s_VehicleTexturesKey;
+
 
 private:
 

@@ -9,6 +9,8 @@ LogisticsVariant.cpp			: Implementation of the LogisticsVariant component.
 #include "logisticsvariant_internal.h"
 #include "mc2fmt.h"
 #include "mc2str.h"
+#include "package_chassis.h"
+#include <filesystem>
 
 
 
@@ -47,6 +49,9 @@ int LogisticsChassis::init( CSVFile* file, int chassisID )
 	char buffer[256];
 	
 	fileName = mc2::str::ascii_lower(mc2::str::from_c(file->getFilename()));
+
+	// BT2018-FIRST-CLASS P7: package chassis carry their region/mount/mass record.
+	package = packageChassisByStem( std::filesystem::path( fileName ).stem().string() );
 
 	long result = file->readLong( 11, 5, baseCost );
 	gosASSERT( result == NO_ERR );

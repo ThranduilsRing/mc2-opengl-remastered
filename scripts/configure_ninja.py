@@ -15,7 +15,7 @@ USAGE:
   py -3 scripts/configure_ninja.py                 # configure build64-ninja/
   py -3 scripts/configure_ninja.py --build         # ... then build mc2 + mc2_launcher
   py -3 scripts/configure_ninja.py --build-dir build-analysis   # configure-only variant
-  py -3 scripts/configure_ninja.py --compile-cache  # opt-in shared sccache (also MC2_COMPILE_CACHE=1); see compile_cache_env()
+  py -3 scripts/configure_ninja.py             # shared sccache is the DEFAULT; --no-compile-cache (or MC2_COMPILE_CACHE=0) opts out; see compile_cache_env()
 Then build with: py -3 scripts/ninja_build.py
 """
 import argparse
@@ -97,12 +97,15 @@ def tree_uses_cache(root, tree):
 def under_vcvars(cmdline, env_extra=None):
     """Run a command line inside the MSVC x64 environment (cl/link on PATH)."""
     env = dict(os.environ, **env_extra) if env_extra else None
-    return subprocess.run(f'call "{VCVARS}" >nul && {cmdline}', shell=True, env=env).returncode
+    return subprocess.run(f'call "{VCVARS}" >nul 2>&1 && {cmdline}', shell=True, env=env).returncode
 
 
-def configure(root, tree=DEFAULT_TREE, compile_cache=False, cache_pch=False):
+def configure(root, tree=DEFAULT_TREE, compile_cache=True, cache_pch=False):
     root = root.replace("\\", "/")
-    compile_cache = compile_cache or os.environ.get("MC2_COMPILE_CACHE") == "1"
+    wanted = compile_cache and os.environ.get("MC2_COMPILE_CACHE") != "0"  # default ON; opt out with --no-compile-cache / MC2_COMPILE_CACHE=0
+    compile_cache = wanted and os.path.exists(SCCACHE_EXE)
+    if wanted and not compile_cache:
+        print(f"[configure_ninja] WARNING: compile cache OFF, sccache.exe not found at {SCCACHE_EXE} (set MC2_SCCACHE); this tree builds uncached and slower")
     args = [find_cmake(), "-S", root, "-B", f"{root}/{tree}", "-G", "Ninja",
             f"-DCMAKE_MAKE_PROGRAM={NINJA}", "-DCMAKE_BUILD_TYPE=RelWithDebInfo",
             "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON",
@@ -138,12 +141,12 @@ def main():
                     help="tree dir name under the repo root (default: %(default)s)")
     ap.add_argument("--build", action="store_true",
                     help="also build mc2 + mc2_launcher after configuring")
-    ap.add_argument("--compile-cache", action="store_true",
-                    help="opt in: build through sccache (shared E:/mc2-compile-cache), /Zi -> /Z7, PCH off")
-    ap.add_argument("--cache-pch", action="store_true", help="with --compile-cache: keep the precompiled header on")
+    ap.add_argument("--no-compile-cache", action="store_true",
+                    help="opt out of the default: build through sccache (shared E:/mc2-compile-cache, Defender-excluded; SCCACHE_DIR overrides), /Zi -> /Z7, PCH off")
+    ap.add_argument("--cache-pch", action="store_true", help="keep the precompiled header on (the cached tree defaults to PCH off)")
     a = ap.parse_args()
     root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    tree = configure(root, a.build_dir, a.compile_cache, a.cache_pch)
+    tree = configure(root, a.build_dir, not a.no_compile_cache, a.cache_pch)
     print(f"[configure_ninja] configured -> {tree}")
     if a.build:
         build(tree)

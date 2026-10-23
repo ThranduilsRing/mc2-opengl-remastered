@@ -1,4 +1,5 @@
 #include "../GameOS/gameos/vk_render_infra.h"
+#include "../GameAdapters/SkyRenderAdapter.h"
 // Mission: the second half of the Mission::init load sequence -- warriors and brains, movers and parts,
 // terrain objects, commanders, the HUD and the geometry finalize. The first half and the orchestrator are in mission_init.cpp.
 #include "mission_internal.h"
@@ -979,6 +980,20 @@ void Mission::initLabTimingAndClose() {
 
 // Finalise the static-prop and mech geometry and the GPU cull buffers.
 void Mission::initFinalizeGeometry() {
+	// Seed gameplay attachments before the first LOS/weapon query. Camera
+	// extraction must never supply a mover's initial node palette.
+	for (long i = 1; i <= ObjectManager->getMaxObjects(); ++i) {
+		auto* object = ObjectManager->get(i);
+		if (!object || !object->getExists()) continue;
+		auto* appearance = object->getAppearance();
+		if (!appearance || !appearance->simulationOwned()) continue;
+		const int team = object->getTeamId();
+		const int relation = team >= 0 && Team::home ? Team::getRelation(team, Team::home->getId()) : 0;
+		appearance->setObjectParameters(object->getPosition(), object->getRotation(), object->drawFlags, team, relation);
+		appearance->refreshSimPose();
+	}
+	ObjectManager->snapshotMoverPoses();
+	ObjectManager->extractRenderSnapshots();
 	// All actors have been spawned and have called registerType() into the
 	// GPU static-prop batcher. Upload the shared VBO/IBO/VAO now so that
 	// submit()/flush() can reference immutable geometry for the rest of the
@@ -1008,6 +1023,9 @@ void Mission::initFinalizeGeometry() {
 	// both completed above). No-op when MC2_VEGETATION_CARDS is unset.
 	GameAdapters::Vegetation::missionLoaded(land, GameMap);
 #ifdef MC2_VULKAN_ISLAND
+    // Camera activation selects this same source later. Select it before the
+    // load barrier so sky/water upload the mission HDRI rather than the boot sky.
+    GameAdapters::Sky::setSkyNumber(static_cast<int>(theSkyNumber));
     mc2PrewarmMissionPipelines();
 #endif
 }

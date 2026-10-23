@@ -6,6 +6,8 @@
 #include "gameos/shadow_mask_asset.h"
 
 #include <cstdio>
+#include <chrono>
+#include <iterator>
 #include <cstdlib>
 #include <filesystem>
 #include <string>
@@ -111,6 +113,20 @@ TEST_CASE("cook cache: each kind keeps its own newest entries") {
     CHECK(shadows == kShadowMaskKind.maxFiles);
     CHECK(others == 2);
     CHECK(loadCachedShadowMask(dir, 106));   // the entry just written always survives its own sweep
+}
+
+TEST_CASE("cook cache: newest write stays within budget after a clock rollback") {
+    const std::string dir = tempDir("clock-rollback");
+    const mc2cache::CacheKind kind{"other-", ".bin", 2, 0};
+    const std::vector<uint8_t> bytes(16, 7);
+    const auto future = std::filesystem::file_time_type::clock::now() + std::chrono::hours(1);
+    for (uint64_t key : {1, 2}) {
+        REQUIRE(mc2cache::writeEntry(dir, kind, key, bytes));
+        std::filesystem::last_write_time(mc2cache::entryPath(dir, kind, key), future);
+    }
+    REQUIRE(mc2cache::writeEntry(dir, kind, 3, bytes));
+    CHECK(std::distance(std::filesystem::directory_iterator(dir), std::filesystem::directory_iterator{}) == 2);
+    CHECK(mc2cache::readEntry(dir, kind, 3));
 }
 
 TEST_CASE("shadow mask: cache key changes with alpha texels and compiled shader bytes") {

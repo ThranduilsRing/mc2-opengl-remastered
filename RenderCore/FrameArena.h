@@ -23,7 +23,7 @@ struct FrameArenaStats {
 };
 
 // Span<T>: non-owning view over a contiguous array of T.
-// count is uint32_t; frame-arena allocations are bounded to 1 MiB per slot.
+// count is uint32_t; the caller supplies the per-slot byte budget.
 template <typename T>
 struct Span {
     T*       data  = nullptr;

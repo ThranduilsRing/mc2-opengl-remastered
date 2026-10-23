@@ -16,6 +16,7 @@
 #ifndef MSL_H
 #define MSL_H
 #include "../RenderCore/MaterialRegistry.h"
+#include "content_socket.h"
 //-------------------------------------------------------------------------------
 // Include Files
 
@@ -51,6 +52,7 @@ namespace Microsoft
 
 class TG_MultiShape;
 class TG_AnimateShape;
+namespace mc2::content { struct Asset; }
 //-------------------------------------------------------------------------------
 // The meat and Potatoes part.
 // TG_TypeMultiShape
@@ -72,6 +74,9 @@ class TG_TypeMultiShape
 	//-------------
 	//Data Members
 	protected:
+		long DecodeStockBinary(std::string_view fileName);
+		long DecodeStockASE(std::string_view fileName, bool forceMakeBinary, Microsoft::Xna::Arm::IProviderEngine* armProvider);
+		mc2::content::Asset ExtractContentIR();
 		int                 numTG_TypeShapes;		//Number of TG_Shapes
 		int                 numTextures;			//Total Textures for all shapes.
 		TG_TypeNodePtr		*listOfTypeShapes;		//Memory holding all TG_TypeNodes and TypeShapes
@@ -82,6 +87,7 @@ class TG_TypeMultiShape
 		std::vector<std::unique_ptr<TG_TypeNode>>	typeNodeStore;
 		std::vector<TG_TypeNodePtr>	typeNodeView;
 		std::vector<TG_Texture>		textureStore;
+        std::vector<mc2::content::Socket> contentSockets_;
         std::vector<uint8_t> materialDefaultsDefined_; // first source establishes defaults; instances never overwrite them
 
 		// The one (re)allocation point of the node arrays (binary load, imported mesh, ASE): count empty owners and a null view.
@@ -115,6 +121,7 @@ class TG_TypeMultiShape
 	public:
 		void init (void)
 		{
+            contentSockets_.clear();
 			numTG_TypeShapes = 0;
             materialDefaultsDefined_.clear();
 			listOfTypeShapes = nullptr;
@@ -251,6 +258,8 @@ class TG_TypeMultiShape
 		}
 
 		long LoadBinaryCopy (const char *fileName);
+		long BuildContentIR(mc2::content::Asset&& asset, std::string_view source, float* groundDy = nullptr);
+        const std::vector<mc2::content::Socket>& ContentSockets() const { return contentSockets_; }
 		void SaveBinaryCopy (const char *fileName);
 
 		// Track D — narrow construction API for format-agnostic importers

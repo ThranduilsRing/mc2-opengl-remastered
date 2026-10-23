@@ -1,3 +1,6 @@
+#include "save_archive.h"
+#include "simulation_save_section.h"
+#include "footprints.h"
 // Mission: the second half of the Mission::load sequence -- the managers, terrain, movement data and mission script,
 // the warriors, parts, teams and objects, the commanders, the HUD and the geometry finalize. The first half and the
 // orchestrator are in saveload.cpp.
@@ -13,7 +16,7 @@
 #include <new>
 
 
-// Create the trigger-area, crater and object managers.
+// Create the trigger-area and object managers.
 void Mission::loadAblAndManagers(MissionLoadFrame& f) {
 	auto& result = f.result; auto& missionFile = f.missionFile;
 #ifndef USE_ABL_LOAD
@@ -52,13 +55,8 @@ void Mission::loadAblAndManagers(MissionLoadFrame& f) {
 	if (Mover::triggerAreaMgr == nullptr)
 		STOP(("Mission.Load: unable to init triggerAreaMgr "));
 
-	craterManager = static_cast<CraterManagerPtr>(std::malloc(sizeof(CraterManager)));
-	gosASSERT(craterManager != nullptr);
-	::new (craterManager) CraterManager;
-		
-	result = craterManager->init(1000,20479,"feet");
-	gosASSERT(result == NO_ERR);
-	
+	Footprints::init();
+
 	ObjectManager = new GameObjectManager;
 	if (!ObjectManager)
 		Fatal(0, " Mission.init: unable to create ObjectManager ");
@@ -598,11 +596,40 @@ void Mission::loadLogistics(MissionLoadFrame& f) {
 	LogisticsData::instance->setCurrentMissionNum(currentMissionNum);
 	currentPacket++;
 	//-------------------------------------------------------------------------------------------
+    // Legacy files reserve unused packet slots after END. An empty slot is
+    // absent, rather than an invalid new section.
+    if (currentPacket + 1 < loadFile.getNumPackets() &&
+        loadFile.seekPacket(currentPacket + 1) == NO_ERR && loadFile.getPacketSize() > 0) {
+        const auto size = loadFile.getPacketSize();
+        if (size <= 0 || size > static_cast<int>(mc2::save::maxFileBytes)) Fatal(0, "Invalid R2 save section size");
+        mc2::save::Bytes bytes(static_cast<size_t>(size));
+        loadFile.readPacket(currentPacket + 1, bytes.data());
+        mc2::save::Archive extension(bytes);
+        uint32_t tag = 0, version = 0;
+        std::vector<uint8_t> animation;
+        extension(tag, version);
+        if (tag == 0x4E413252u) {
+            if (version != 2 && version != 3) {
+                mc2::fmt::print_err("[SAVE v1] event=reject reason=r2_version version={} file={}\n", version, mc2::fmt::safe(f.loadFileName));
+            } else {
+                extension.sectionVersion = version;
+                mc2::sim::serializeAnimationBlob(extension, animation);
+                auto queue = orderIngress.queue();
+                queue.serialize(extension);
+                // restoreAnimationState validates before it mutates, so a rejected section leaves default animation state.
+                if (!extension.finish() || !ObjectManager->restoreAnimationState(animation, version))
+                    mc2::fmt::print_err("[SAVE v1] event=reject reason=r2_section file={}\n", mc2::fmt::safe(f.loadFileName));
+                else orderIngress.queue() = std::move(queue);
+            }
+        }
+    }
 	loadFile.close();
 }
 
 // Activate the camera and finalise the static-prop and mech geometry and the GPU cull buffers.
 void Mission::loadActivateAndFinalize() {
+	ObjectManager->snapshotMoverPoses();
+	ObjectManager->extractRenderSnapshots();
 	eye->activate();
 	eye->update();
 	loadProgress = 100.f;

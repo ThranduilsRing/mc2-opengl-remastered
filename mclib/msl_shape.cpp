@@ -222,15 +222,8 @@ long TG_MultiShape::SetLightList (TG_LightPtr *lightList, DWORD nLights)
 //-------------------------------------------------------------------------------
 glm::vec3 TG_MultiShape::GetTransformedNodePosition (glm::vec3 *pos, glm::quat *rot, const char *nodeId)
 {
-	glm::mat4 	shapeOrigin;
-	glm::mat4 	localShapeOrigin;
-//	Stuff::LinearMatrix4D 	invShapeOrigin;
-	
-	mc2::math::buildRotation(shapeOrigin, *rot);
-	mc2::math::buildTranslation(shapeOrigin, *pos);
-//	invShapeOrigin.Invert(shapeOrigin);
-	
-	mc2::math::Euler angles = mc2::math::eulerFromQuat(*rot);
+	// Hierarchy transforms already contain the world pose. The legacy pos/rot
+	// parameters do not participate in this query.
 
 	long i=0;
 
@@ -259,15 +252,7 @@ glm::vec3 TG_MultiShape::GetTransformedNodePosition (glm::vec3 *pos, glm::quat *
 //-------------------------------------------------------------------------------
 glm::vec3 TG_MultiShape::GetTransformedNodePosition (glm::vec3 *pos, glm::quat *rot, long nodeId)
 {
-	glm::mat4 	shapeOrigin;
-	glm::mat4 	localShapeOrigin;
-//	Stuff::LinearMatrix4D 	invShapeOrigin;
-	
-	mc2::math::buildRotation(shapeOrigin, *rot);
-	mc2::math::buildTranslation(shapeOrigin, *pos);
-//	invShapeOrigin.Invert(shapeOrigin);
-	
-	mc2::math::Euler angles = mc2::math::eulerFromQuat(*rot);
+	// Read the published hierarchy directly; pos/rot are legacy parameters.
 
 	glm::vec3 result;
 	result.x = result.y = result.z = 0.0f;

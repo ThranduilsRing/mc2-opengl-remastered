@@ -263,8 +263,17 @@ def build_capture_env(bookmarks_path: Path, out_dir: Path, trigger_frame: int, s
     return env, env_record
 
 
+DEFAULT_DURATION_S = 15
+
+
+def default_duration(n_bookmarks: int, trigger_frame: int, settle: int) -> int:
+    """About 15 s of in-mission time (owner rule); longer only when the sweep's frames cannot fit at 15 fps. The run still ends
+    as soon as the PNGs and sidecars are complete, so this is a timeout."""
+    return max(DEFAULT_DURATION_S, 5 + -(-(trigger_frame + settle * n_bookmarks) // 15))
+
+
 def run_one(exe: Path, mission: str, bookmarks_path: Path, out_dir: Path,
-            trigger_frame: int, settle: int, duration: int,
+            trigger_frame: int, settle: int, duration: int | None,
             deterministic_clock: bool, show_window: bool = False,
             declared_env: dict | None = None) -> dict:
     """Launch one capture sweep; return a result dict (never raises on engine
@@ -318,6 +327,8 @@ def run_one(exe: Path, mission: str, bookmarks_path: Path, out_dir: Path,
     for rj in options_rec["rejected"]:
         print(f"[viscap] WARN render option rejected by the engine's grammar: {rj}", file=sys.stderr)
 
+    if duration is None:
+        duration = default_duration(len(marks), trigger_frame, settle)
     proc_args = [str(exe), "--profile", "stock", "--mission", mission_token,
                  "--duration", str(duration)]
     print(f"[viscap] mission={mission_token} bookmarks={len(marks)} "
@@ -644,7 +655,8 @@ def main() -> int:
                     help="output dir (default tests/visual/captures/<mission>)")
     ap.add_argument("--trigger-frame", type=int, default=120)
     ap.add_argument("--settle", type=int, default=30)
-    ap.add_argument("--duration", type=int, default=150)
+    ap.add_argument("--duration", type=int, default=None,
+                    help="timeout in in-mission seconds (default: about 15, see default_duration); the run ends when the captures land")
     ap.add_argument("--no-fixed-clock", action="store_true",
                     help="DISABLE MC2_SMOKE_FIXED_TIMESTEP (captures will NOT be "
                          "byte-stable across runs; use only for eyeball checks)")

@@ -1,6 +1,8 @@
+#include "footprints.h"
 // Mission: Mission::init, the mission load sequence.
 // Declared in the class headers; shared names in mission_internal.h.
 #include "mission_internal.h"
+#include "command_replay.h"
 #include "mission_init_frame.h"
 #include <new>
 
@@ -78,12 +80,14 @@ void Mission::initPrologue(MissionInitFrame& f) {
 			seed = static_cast<uint32_t>(strtoul(seedText.c_str(), nullptr, 0));
 		SetSimMissionSeed(seed);   // ABL seedRandom(-1) under MC2_DETERMINISTIC_RNG reseeds from this, never the clock
 		mc2_appearance_rng::reseed(seed);
+		mc2_anim_rng::reseed(seed);
 		ResetSimRandomDraws();
 		if (mc2::gate::get<"MC2_DETERMINISTIC_RNG">()) {
 			Stuff::Random::Reseed(seed);   // gosFX effect table: same mission seed, before the sim stream restarts
 			gos_srand(seed);
 			mc2::fmt::print_err("[DET_RNG] mission={} reseed=0x{:08X} (MC2_DETERMINISTIC_RNG=1)\n", mc2::fmt::safe(missionName ? missionName : "(null)"), mc2::fmt::as_u32(seed));
 		}
+        mc2::replay::begin(missionName, seed);
 	}
 
 	neverEndingStory = false;
@@ -677,7 +681,7 @@ void Mission::initTriggerAndDropZone(MissionInitFrame& f) {
 #endif
 }
 
-// Read the mission settings, create the crater and object managers.
+// Read the mission settings, create the object manager.
 void Mission::initMissionSettings(MissionInitFrame& f) {
 	auto& result = f.result;
 	result = missionFile->seekBlock("MissionSettings");
@@ -704,13 +708,8 @@ void Mission::initMissionSettings(MissionInitFrame& f) {
 		result = missionFile->readIdULong("NumRandomRPbuildings", MPlayer->numRandomResourceBuildings);
 	}
 
-	craterManager = static_cast<CraterManagerPtr>(std::malloc(sizeof(CraterManager)));
-	gosASSERT(craterManager != nullptr);
-	::new (craterManager) CraterManager;
-		
-	result = craterManager->init(1000,20479,"feet");
-	gosASSERT(result == NO_ERR);
-	
+	Footprints::init();
+
 	ObjectManager = new GameObjectManager;
 	if (!ObjectManager)
 		Fatal(0, " Mission.init: unable to create ObjectManager ");
@@ -950,6 +949,11 @@ void Mission::initMissionScript(MissionInitFrame& f) {
 // shared locals live in MissionInitFrame. The Tracy zone and the missionFileName char-array reset stay here.
 void Mission::init (const char *missionName, long loadType, long dropZoneID, glm::vec3* dropZoneList, char commandersToLoad[8][3], long numMoversPerCommander)
 {
+	struct SimulationPhase {
+		bool previous = simPresentationPass;
+		SimulationPhase() { simPresentationPass = false; }
+		~SimulationPhase() { simPresentationPass = previous; }
+	} simulationPhase;
 	extern int g_lightProbeSetupPath; g_lightProbeSetupPath = 1; // [GPUPROPS v1]
 	ZoneScopedN("Mission::init");
 	MissionInitFrame f;

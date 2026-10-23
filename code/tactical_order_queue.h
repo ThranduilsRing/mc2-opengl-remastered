@@ -1,6 +1,7 @@
 #pragma once
 
 #include "save_archive.h"
+#include "../mclib/dmovemgr.h"
 
 #include <expected>
 #include <string_view>
@@ -10,7 +11,7 @@ using save::Archive;
 using Tick = std::uint64_t;
 
 inline constexpr std::uint32_t maxOrderSources = 256, maxPendingOrders = 4096;
-inline constexpr std::uint32_t maxOrderReceipts = 8192, maxOrderRecipients = 128;
+inline constexpr std::uint32_t maxOrderReceipts = 8192, maxOrderRecipients = MAX_MOVERS;
 inline constexpr std::uint32_t maxOrderWaypoints = 128, maxReinforcementRoster = 128;
 
 namespace orderCodec {
@@ -355,6 +356,7 @@ class TacticalOrderQueue {
 public:
     explicit TacticalOrderQueue(Tick completed = 0) : completed_(completed) {}
     std::expected<void, OrderError> registerSource(OrderSource source);
+    std::expected<void, OrderError> useReplaySource(std::uint32_t sourceId);
     std::expected<OrderReceipt, OrderError> submit(OrderEnvelope envelope, const OrderAdmissionValidator& validator);
     std::expected<OrderReceipt, OrderError> submitNext(OrderEnvelope envelope, const OrderAdmissionValidator& validator);
     std::expected<std::span<const OrderEnvelope>, OrderError> beginTick(Tick tick);

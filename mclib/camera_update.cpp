@@ -1,3 +1,4 @@
+#include "footprints.h"
 // Camera: the camera goal updates, Camera::update and render.
 // Declared in the class headers; shared names in camera_internal.h.
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
@@ -399,7 +400,7 @@ long Camera::update (void)
     updateLights();
 
 	{
-		// F3 CPU projection cost-baseline: matrix_build site (b) —
+		// F3 CPU projection cost-baseline: matrix_build site (b) â€”
 		// per-frame TG_Shape::SetCameraMatrices composes s_worldToClip.
 		::mc2_cpu_proj_cost::Scope _f3_setcam_scope(
 		    ::mc2_cpu_proj_cost::BUCKET_MATRIX_BUILD);
@@ -421,7 +422,7 @@ long Camera::update (void)
 	//   position < 1.0 unit/frame: world units (terrain.x/y in MC2 worldspace);
 	//     a stationary camera still drifts sub-pixel from float math but
 	//     should not exceed ~1 unit between frames at any sane FPS.
-	// Both thresholds must hold for "stationary" — translation OR rotation
+	// Both thresholds must hold for "stationary" â€” translation OR rotation
 	// counts as motion, since either invalidates lagged-visibility data.
 	{
 		ZoneScopedN("Camera.MotionTracking");
@@ -461,12 +462,12 @@ long Camera::update (void)
 			s_prevPosition = position;
 
 			// [CAMERA-SMOOTHING-1] evidence tooling (both default OFF):
-			//   MC2_CAM_SMOOTH_TEST=1  — synthetic scroll driver: frames
+			//   MC2_CAM_SMOOTH_TEST=1  â€” synthetic scroll driver: frames
 			//     120..240 feed moveRight at 2000 wu/s + one rotateLeft
 			//     11.25-deg snap at frame 150 (mimics the keyboard/edge
 			//     scroll + rotation input path), then input stops. Proves
 			//     ramp-in/tail-out in the delta log without a human.
-			//   MC2_CAMERA_SMOOTH_TRACE=1 — appends per-frame pose deltas to
+			//   MC2_CAMERA_SMOOTH_TRACE=1 â€” appends per-frame pose deltas to
 			//     cam_smooth_trace.csv in the working dir while motion > 0.
 			{
 				static int s_camTest = -1;
@@ -574,7 +575,7 @@ void Camera::render (void)
 	{
 		land->render();								//render the Terrain
 
-		craterManager->render();					//render the craters and footprints
+		Footprints::render();
 
 		//Only the GameCamera knows about this.  Heidi, override this function in EditorCamera
 		//and have your objectManager draw.

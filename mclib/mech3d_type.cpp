@@ -98,8 +98,20 @@ void Mech3DAppearanceType::init (const char * fileName)
 	// NEVER put the Flea on the broken path again — it falls back to the stock
 	// ASE/FST shape. Set MC2_ASSIMP_MECH_IMPORT=1 to opt back in once a mech's GLB
 	// is verified good. (Building/prop GLB import is unaffected — separate path.)
+	// BT2018-FIRST-CLASS P3: a package that declares the "imported_mechs" capability in its
+	// mod.json turns the import on for the appearance INIs IT ships (never for base-data or
+	// other mods' INIs, so the stray flea/madcat [Import] blocks stay ignored). An explicit
+	// MC2_ASSIMP_MECH_IMPORT=0 is the kill switch for package imports too.
 	static const bool s_assimpMechImport = mc2::gate::get<"MC2_ASSIMP_MECH_IMPORT">();
-	if (s_assimpMechImport &&
+	static const bool s_assimpMechImportKilled =
+		mc2::gate::state<"MC2_ASSIMP_MECH_IMPORT">() == mc2::gate::Tri::Off;
+	const bool importAllowed = s_assimpMechImport ||
+		(!s_assimpMechImportKilled &&
+		 ModOwnerHasCapability(static_cast<const char*>(mechIniName), "imported_mechs"));
+	// Gesture clips (.agl/.ase) come from the INI's own name unless [Import] AnimHost= names a
+	// host whose gesture timing the imported model borrows until it owns clip timing (P9).
+	char animBase[256] = "";
+	if (importAllowed &&
 	    mechFile.seekBlock("Import") == NO_ERR &&
 	    mechFile.readIdString("Source", importSourceBase, 255) == NO_ERR &&
 	    importSourceBase[0])
@@ -108,7 +120,10 @@ void Mech3DAppearanceType::init (const char * fileName)
 		// for the right format itself. "madcat.glb" -> "madcat".
 		char* dot = strrchr(importSourceBase, '.');
 		if (dot) *dot = '\0';
+		if (mechFile.readIdString("AnimHost", animBase, 255) != NO_ERR)
+			animBase[0] = '\0';
 	}
+	const char* gestureClipBase = animBase[0] ? animBase : fileName;
 
 	result = mechFile.seekBlock("TGLData");
 	if (result != NO_ERR)
@@ -292,7 +307,7 @@ void Mech3DAppearanceType::init (const char * fileName)
 		for (int i=0;i<MAX_ANIMATION_FILES;i++)
 		{
 			char animName[512];
-			auto animNameEnd = std::format_to_n(animName, sizeof(animName) - 1, "{}{}", fileName, MechAnimationNames[i]).out;
+			auto animNameEnd = std::format_to_n(animName, sizeof(animName) - 1, "{}{}", gestureClipBase, MechAnimationNames[i]).out;
 			*animNameEnd = '\0';
 
 			FullPathFileName animPath;
@@ -659,8 +674,8 @@ void Mech3DAppearance::resetWeaponNodes (void)
 	//THis should never be called after the game inits!!
 	for (long i=0;i<mechType->numWeaponNodes;i++)
 	{
-		nodeUsed[i] = 0;
-		nodeRecycle[i] = BASE_NODE_RECYCLE_TIME;
+		unitAnim().nodeUsed[i] = 0;
+		unitAnim().nodeRecycle[i] = BASE_NODE_RECYCLE_TIME;
 	}
 }
 
@@ -670,8 +685,8 @@ void Mech3DAppearance::setWeaponNodeUsed (long weaponNode)
 	weaponNode -= mechType->numSmokeNodes;
    	if ((weaponNode >= 0) && (weaponNode < mechType->numWeaponNodes))
 	{
-		nodeUsed[weaponNode]++;
-		nodeRecycle[weaponNode] = BASE_NODE_RECYCLE_TIME;
+		unitAnim().nodeUsed[weaponNode]++;
+		unitAnim().nodeRecycle[weaponNode] = BASE_NODE_RECYCLE_TIME;
 	}
 }
 
@@ -679,11 +694,13 @@ void Mech3DAppearance::setWeaponNodeRecycle(long nodeId, float time)
 {
 	nodeId -= mechType->numSmokeNodes;
    	if ((nodeId >= 0) && (nodeId < mechType->numWeaponNodes))
-		nodeRecycle[nodeId] = time;
+		unitAnim().nodeRecycle[nodeId] = time;
 }
 
 glm::vec3 Mech3DAppearance::getWeaponNodePosition (long nodeId)
 {
+    if (!simPresentationPass && simPose->ready) return nodeId >= 0 && static_cast<size_t>(nodeId) < simPose->nodes.size() ? simPose->nodes[nodeId] : simPose->root;
+
 	glm::vec3 result = position;
 	if ((nodeId < mechType->numSmokeNodes) || (nodeId >= (mechType->numSmokeNodes+mechType->numWeaponNodes)))
 		return result;
@@ -721,7 +738,7 @@ glm::vec3 Mech3DAppearance::getWeaponNodePosition (long nodeId)
    	mc2ToRender(xlatPosition, position);
 
    	glm::quat torsoRot;
-   	torsoRot = mc2::math::quatFromEuler(mc2::math::Euler(0.0f,(torsoRotation * DEGREES_TO_RADS),0.0f));
+   	torsoRot = mc2::math::quatFromEuler(mc2::math::Euler(0.0f,(unitAnim().torsoRotation * DEGREES_TO_RADS),0.0f));
 	if (rotationalNodeIndex == -1)
 	   	rotationalNodeIndex = mechShape->SetNodeRotation("joint_torso",&torsoRot);
 
@@ -739,7 +756,25 @@ glm::vec3 Mech3DAppearance::getWeaponNodePosition (long nodeId)
 
 glm::vec3 Mech3DAppearance::getNodeNamePosition (const char *nodeName)
 {
+    if (!simPresentationPass && simPose->ready) {
+        if (S_stricmp(nodeName, "cockpit") == 0) return simPose->cockpit;
+        if (S_stricmp(nodeName, "hit_left") == 0) return simPose->hitLeft;
+        if (S_stricmp(nodeName, "hit_right") == 0) return simPose->hitRight;
+        for (long i = 0; i < mechType->getTotalNodes(); ++i)
+            if (S_stricmp(nodeName, mechType->nodeData[i].nodeId) == 0)
+                return simPose->nodes[i];
+        const auto node = simulationShape_ ? simulationShape_->GetNodeNameId(nodeName) : -1;
+        return node >= 0 && static_cast<size_t>(node) < simPose->shapeNodes.size()
+            ? simPose->shapeNodes[node] : simPose->root;
+    }
 	glm::vec3 result = position;
+    if (mechShape && mechShape->GetNumShapes() > 0) {
+        const void* type = mechType ? static_cast<const void*>(mechType->mechShape[currentLOD]) : nullptr;
+        float world[3];
+        if (mc2mechanim::GetImportedNodeWorld(mechShape, type, nodeName,
+                glm::value_ptr(mechShape->GetShapeRec(0)->shapeToWorld), world))
+            return glm::vec3(world[0], world[1], world[2]);
+    }
 
 	// No visibility test: update() poses every mech each sim step, so the node is current on and off screen.
 
@@ -751,7 +786,7 @@ glm::vec3 Mech3DAppearance::getNodeNamePosition (const char *nodeName)
    	mc2ToRender(xlatPosition, position);
    
    	glm::quat torsoRot;
-   	torsoRot = mc2::math::quatFromEuler(mc2::math::Euler(0.0f,(torsoRotation * DEGREES_TO_RADS),0.0f));
+   	torsoRot = mc2::math::quatFromEuler(mc2::math::Euler(0.0f,(unitAnim().torsoRotation * DEGREES_TO_RADS),0.0f));
 	if (rotationalNodeIndex == -1)
 	   	rotationalNodeIndex = mechShape->SetNodeRotation("joint_torso",&torsoRot);
 
@@ -769,6 +804,8 @@ glm::vec3 Mech3DAppearance::getNodeNamePosition (const char *nodeName)
 
 glm::vec3 Mech3DAppearance::getNodeIdPosition (long nodeId)
 {
+    if (!simPresentationPass && simPose->ready) return nodeId >= 0 && static_cast<size_t>(nodeId) < simPose->shapeNodes.size() ? simPose->shapeNodes[nodeId] : simPose->root;
+
 	glm::vec3 result = position;
 
 	// No visibility test: update() poses every mech each sim step, so the node is current on and off screen.
@@ -781,7 +818,7 @@ glm::vec3 Mech3DAppearance::getNodeIdPosition (long nodeId)
    	mc2ToRender(xlatPosition, position);
    
    	glm::quat torsoRot;
-   	torsoRot = mc2::math::quatFromEuler(mc2::math::Euler(0.0f,(torsoRotation * DEGREES_TO_RADS),0.0f));
+   	torsoRot = mc2::math::quatFromEuler(mc2::math::Euler(0.0f,(unitAnim().torsoRotation * DEGREES_TO_RADS),0.0f));
 	if (rotationalNodeIndex == -1)
 	   	rotationalNodeIndex = mechShape->SetNodeRotation("joint_torso",&torsoRot);
 
@@ -799,6 +836,8 @@ glm::vec3 Mech3DAppearance::getNodeIdPosition (long nodeId)
 
 glm::vec3 Mech3DAppearance::getNodePosition (long nodeId)
 {
+    if (!simPresentationPass && simPose->ready) return nodeId >= 0 && static_cast<size_t>(nodeId) < simPose->nodes.size() ? simPose->nodes[nodeId] : simPose->root;
+
 	glm::vec3 result = position;
 	if ((nodeId < 0) || (nodeId >= mechType->getTotalNodes()))
 		return result;
@@ -813,7 +852,7 @@ glm::vec3 Mech3DAppearance::getNodePosition (long nodeId)
    	mc2ToRender(xlatPosition, position);
    
    	glm::quat torsoRot;
-   	torsoRot = mc2::math::quatFromEuler(mc2::math::Euler(0.0f,(torsoRotation * DEGREES_TO_RADS),0.0f));
+   	torsoRot = mc2::math::quatFromEuler(mc2::math::Euler(0.0f,(unitAnim().torsoRotation * DEGREES_TO_RADS),0.0f));
 	if (rotationalNodeIndex == -1)
 	   	rotationalNodeIndex = mechShape->SetNodeRotation("joint_torso",&torsoRot);
 
@@ -864,15 +903,15 @@ long Mech3DAppearance::getWeaponNode (long weaponType)
 					(mechType->nodeData[numSmokeNodes+i].weaponType == MECH3D_WEAPONTYPE_ANY) || 
 					(mechType->nodeData[numSmokeNodes+i].weaponType == MECH3D_WEAPONTYPE_NONENERGY))
 				{
-					if (rightArmOff && mechType->nodeData[i+numSmokeNodes].isRArmNode)
+					if (unitAnim().rightArmOff && mechType->nodeData[i+numSmokeNodes].isRArmNode)
 						continue;
 						
-					if (leftArmOff && mechType->nodeData[i+numSmokeNodes].isLArmNode)
+					if (unitAnim().leftArmOff && mechType->nodeData[i+numSmokeNodes].isLArmNode)
 						continue;
 						
-					if (nodeUsed[i] < leastUsed)
+					if (unitAnim().nodeUsed[i] < leastUsed)
 					{
-						leastUsed = nodeUsed[i];
+						leastUsed = unitAnim().nodeUsed[i];
 						bestNode = i + numSmokeNodes;
 					}
 				}
@@ -884,15 +923,15 @@ long Mech3DAppearance::getWeaponNode (long weaponType)
 					(mechType->nodeData[numSmokeNodes+i].weaponType == MECH3D_WEAPONTYPE_DIRECT) ||
 					(mechType->nodeData[numSmokeNodes+i].weaponType == MECH3D_WEAPONTYPE_NONENERGY))
 				{
-					if (rightArmOff && mechType->nodeData[i+numSmokeNodes].isRArmNode)
+					if (unitAnim().rightArmOff && mechType->nodeData[i+numSmokeNodes].isRArmNode)
 						continue;
 						
-					if (leftArmOff && mechType->nodeData[i+numSmokeNodes].isLArmNode)
+					if (unitAnim().leftArmOff && mechType->nodeData[i+numSmokeNodes].isLArmNode)
 						continue;
 						
- 					if (nodeUsed[i] < leastUsed)
+ 					if (unitAnim().nodeUsed[i] < leastUsed)
 					{
-						leastUsed = nodeUsed[i];
+						leastUsed = unitAnim().nodeUsed[i];
 						bestNode = i + numSmokeNodes;
 					}
 				}
@@ -903,30 +942,30 @@ long Mech3DAppearance::getWeaponNode (long weaponType)
 					(mechType->nodeData[numSmokeNodes+i].weaponType == MECH3D_WEAPONTYPE_DIRECT) ||
 					(mechType->nodeData[numSmokeNodes+i].weaponType == MECH3D_WEAPONTYPE_ANY))
 				{
-					if (rightArmOff && mechType->nodeData[i+numSmokeNodes].isRArmNode)
+					if (unitAnim().rightArmOff && mechType->nodeData[i+numSmokeNodes].isRArmNode)
 						continue;
 						
-					if (leftArmOff && mechType->nodeData[i+numSmokeNodes].isLArmNode)
+					if (unitAnim().leftArmOff && mechType->nodeData[i+numSmokeNodes].isLArmNode)
 						continue;
 						
- 					if (nodeUsed[i] < leastUsed)
+ 					if (unitAnim().nodeUsed[i] < leastUsed)
 					{
-						leastUsed = nodeUsed[i];
+						leastUsed = unitAnim().nodeUsed[i];
 						bestNode = i + numSmokeNodes;
 					}
 				}
 			break;
 			
 			case MECH3D_WEAPONTYPE_ANY:
-				if (rightArmOff && mechType->nodeData[i+numSmokeNodes].isRArmNode)
+				if (unitAnim().rightArmOff && mechType->nodeData[i+numSmokeNodes].isRArmNode)
 					continue;
 					
-				if (leftArmOff && mechType->nodeData[i+numSmokeNodes].isLArmNode)
+				if (unitAnim().leftArmOff && mechType->nodeData[i+numSmokeNodes].isLArmNode)
 					continue;
 					
- 				if (nodeUsed[i] < leastUsed)
+ 				if (unitAnim().nodeUsed[i] < leastUsed)
 				{
-					leastUsed = nodeUsed[i];
+					leastUsed = unitAnim().nodeUsed[i];
 					bestNode = i + numSmokeNodes;
 				}
 			break;
@@ -979,9 +1018,9 @@ long Mech3DAppearance::remapLostArmWeaponNode (long node, long weaponType)
 	for (long i = 0; i < count; i++)
 	{
 		const auto& nd = mechType->nodeData[numSmokeNodes + i];
-		nodes[i] = { nd.weaponType, nd.isRArmNode, nd.isLArmNode, nodeUsed[i] };
+		nodes[i] = { nd.weaponType, nd.isRArmNode, nd.isLArmNode, unitAnim().nodeUsed[i] };
 	}
-	return mc2_arm_remap::remapLostArmNode(nodes, own, weaponType, rightArmOff, leftArmOff) + numSmokeNodes;
+	return mc2_arm_remap::remapLostArmNode(nodes, own, weaponType, unitAnim().rightArmOff, unitAnim().leftArmOff) + numSmokeNodes;
 }
 
 float Mech3DAppearance::getWeaponNodeRecycle (long node)
@@ -989,7 +1028,7 @@ float Mech3DAppearance::getWeaponNodeRecycle (long node)
 	node -= mechType->numSmokeNodes;
 	
 	if ((node >=0) && (node < mechType->numWeaponNodes))
-		return nodeRecycle[node];
+		return unitAnim().nodeRecycle[node];
 		
 	return 9999.0f;		//NOT a weapon node, never recycled!!
 }

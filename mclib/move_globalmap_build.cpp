@@ -1,6 +1,7 @@
 // Pathfinding: GlobalMap construction: area flood fill, special areas, door collection and the packet read/write.
 // Declared in the class headers; shared names in move_internal.h.
 #include <array>
+#include <unordered_set>
 #include <vector>
 #include "move_internal.h"
 #include "../GameOS/gameos/utils/mc2log.h"
@@ -999,7 +1000,16 @@ void GlobalMap::calcSpecialTypes (void) {
 			}
 }
 
+// Seen (row, col, length, direction) door keys of the build in progress: addDoor's duplicate test was a scan of every door so far.
+static std::unordered_set<uint64_t> s_doorKeys;
+
+static uint64_t doorKey (long row, long col, long length, long dir) {
+	return (static_cast<uint64_t>(row) << 40) | (static_cast<uint64_t>(col) << 20) | (static_cast<uint64_t>(length) << 4) | static_cast<uint64_t>(dir);
+}
+
 void GlobalMap::beginDoorProcessing (void) {
+
+	s_doorKeys.clear();
 
 	doorBuildList = mc2::globalmap::ownZeroed(doorBuildStore, static_cast<size_t>(MAX_GLOBALMAP_DOORS));
 	for (long i = 0; i < MAX_GLOBALMAP_DOORS; i++) {
@@ -1016,13 +1026,7 @@ void GlobalMap::beginDoorProcessing (void) {
 void GlobalMap::addDoor (long area1, long area2, long row, long col, long length, long dir) {
 
 
-	bool newDoor = true;
-	for (long curDoorIndex = 0; curDoorIndex < numDoors; curDoorIndex++) {
-		GlobalMapDoorPtr curDoor = &doorBuildList[curDoorIndex];
-		if ((curDoor->row == row) && (curDoor->col == col))
-			if ((curDoor->length == length) && (curDoor->direction[0] == dir))
-				newDoor = false;
-	}
+	[[maybe_unused]] const auto [doorSlot, newDoor] = s_doorKeys.insert(doorKey(row, col, length, dir));
 
 	if (newDoor) {
 		doorBuildList[numDoors].row = row;

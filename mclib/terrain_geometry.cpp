@@ -357,6 +357,9 @@ void Terrain::geometry (void)
 		// solid window was cleared this frame by BeginFrameSolidWindow() (in the
 		// slimReduce block above, which still runs but iterates zero vertices).
 		const bool solidOn = gos_terrain_indirect::SolidWindowEnabled();
+		// Without a ready recipe table RecipeForVertexNum is null for every vertex, so the per-vertex probe adds nothing and
+		// a block's vertex rows are plain contiguous fills (a big map has ~850 active blocks = ~340k probes per frame).
+		const bool probeRecipes = solidOn && gos_terrain_indirect::IsDenseRecipeReady();
 		long pBlocks = 0, pVerts = 0, pWin = 0;
 		for (long b = 0; b < nB; ++b)
 		{
@@ -365,6 +368,18 @@ void Terrain::geometry (void)
 			++pBlocks;
 			const long bx = b % blocksMapSide, by = b / blocksMapSide;
 			const long rowStart = by * verticesBlockSide, colStart = bx * verticesBlockSide;
+			if (!probeRecipes)
+			{
+				const long colEnd = std::min(colStart + verticesBlockSide, static_cast<long>(realVerticesMapSide));
+				for (long row = rowStart; row < rowStart + verticesBlockSide && row < realVerticesMapSide; ++row)
+				{
+					const long vn0 = row * realVerticesMapSide + colStart;
+					if (colEnd <= colStart || vn0 < 0 || vn0 + (colEnd - colStart) > nV) continue;
+					std::fill_n(&objVertexActive[vn0], colEnd - colStart, true);
+					pVerts += colEnd - colStart;
+				}
+				continue;
+			}
 			for (long row = rowStart; row < rowStart + verticesBlockSide && row < realVerticesMapSide; ++row)
 			for (long col = colStart; col < colStart + verticesBlockSide && col < realVerticesMapSide; ++col)
 			{

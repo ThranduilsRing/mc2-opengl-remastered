@@ -160,10 +160,9 @@ extern "C" void mc2_terrain_feed_dump_consumed(const Mc2TerrainTier1Feed* f, uin
     if (written && closed) mc2vkfeeddump::latch("terrain") = true;
 }
 
-extern "C" int mc2_terrain_tier1_get_frame_feed(Mc2TerrainTier1Feed* out)
+extern "C" int mc2_terrain_tier1_get_load_feed(Mc2TerrainTier1Feed* out)
 {
     if (!out) return 0;
-    if (!s_vkTerrainFeedValid || s_vkTerrainPatches.empty()) return 0;
     const mc2terrain::TerrainFieldStore* fields = gos_TerrainFieldStore();
     if (!fields || s_mapSide <= 0 || fields->mapSide() != s_mapSide) return 0;
     out->patches    = s_vkTerrainPatches.data();
@@ -267,10 +266,9 @@ extern "C" int mc2_terrain_tier1_get_frame_feed(Mc2TerrainTier1Feed* out)
         out->detailStrength = 1.0f;   // detailNormalStrength.x (terrain_detail_strength_)
     }
 
-    // VK-PARITY-TERRAIN-1: ambient floor + mission flat light from the SAME producers
-    // the GL uniform upload uses (gos_TerrainAmbientFloor/DayGate, gos_GetTerrainMissionFlatLight).
-    out->ambientFloor   = gos_TerrainAmbientFloor();
-    out->ambientDayGate = gos_TerrainAmbientDayGate();
+    // Retired ambient-floor slots stay neutral to preserve the shared UBO layout.
+    out->ambientFloor   = 0.0f;
+    out->ambientDayGate = 0.0f;
     // VK-PARITY-F3: legacy material tint producers (same values as the GL upload below).
     {
         float tr[3]={0.36f,0.37f,0.40f}; gos_GetTerrainTintRock(&tr[0],&tr[1],&tr[2]);
@@ -401,5 +399,11 @@ extern "C" int mc2_terrain_tier1_get_frame_feed(Mc2TerrainTier1Feed* out)
     }
 
     return 1;
+}
+
+extern "C" int mc2_terrain_tier1_get_frame_feed(Mc2TerrainTier1Feed* out)
+{
+    if (!s_vkTerrainFeedValid || s_vkTerrainPatches.empty()) return 0;
+    return mc2_terrain_tier1_get_load_feed(out);
 }
 #endif

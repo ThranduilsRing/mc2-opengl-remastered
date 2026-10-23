@@ -630,102 +630,37 @@ void TreeAppearanceType::init (const char * fileName)
 			ModelOverrideRegistry::instance().resolve("tree", treeBaseName);
 		if (ov)
 		{
-#ifdef ENABLE_ASSIMP_IMPORTER
-			// TREE-OVERRIDE-LOD-MVP Task 1: the existing import fills LOD0 only.
-			// Higher LODs stay NULL until Task 3 populates them; LOD0-only ⇒
-			// getTreeRenderShape(any) → LOD0 → identical to pre-LOD behavior.
-			treeRenderShape[0] = new TG_TypeMultiShape;
-			char overridePath[1024];
-			mc2::fmt::to_buf(overridePath, "{}/{}", ov->manifestDir.c_str(), ov->sourceRelPath.c_str());
-			// Guard the importer: Assimp may throw (DeadlyImportError). A throw
-			// here would leak the freshly-new'd render shape and unwind into
-			// non-exception-safe engine code, so collapse any throw to stock.
-			try
-			{
-				long r = ImportGeometryFromFile(overridePath, treeRenderShape[0]);
-				if (r != 0 || treeRenderShape[0]->GetNumShapes() == 0)
-				{
-					delete treeRenderShape[0]; treeRenderShape[0] = nullptr;   // stock fallback
-					treeRenderShapeLodCount = 0;
-					mc2::fmt::print_err("[MODOVERRIDE] tree '{}': import failed ({}), using stock render\n", mc2::fmt::safe(treeBaseName), mc2::fmt::safe(overridePath));
-					fflush(stderr);
-				}
-				else
-				{
-					// Mirror the stock tree flag setup (treeShape[i]->SetAlphaTest(true)
-					// / SetFilter(true) at the stock LOD-load sites above, ~3464/3490)
-					// so the override renders with identical alpha-test/filter state.
-					// Intentional duplication — keep in sync with the stock sites.
-					treeRenderShape[0]->SetAlphaTest(true);
-					treeRenderShape[0]->SetFilter(true);
-					// MODEL-OVERRIDE texture binding: resolve the importer-assigned
-					// texture names to GOS handles on the TYPE render shape so the
-					// GPU batcher draws with the override's OWN textures.
-					LoadOverrideRenderShapeTextures(treeRenderShape[0]);
-					treeRenderShapeLodCount = 1;
-					mc2::fmt::print_err("[MODOVERRIDE] tree '{}': render override applied ({})\n", mc2::fmt::safe(treeBaseName), mc2::fmt::safe(overridePath));
-					fflush(stderr);
+            const std::string conditionName = ModelOverrideRegistry::instance().selectedCondition(missionName, treeBaseName);
+            const auto* condition = ov->condition(conditionName);
+            const auto& source = condition ? condition->intact.sourceRelPath : ov->sourceRelPath;
+            const auto& lods = condition ? condition->intact.lods : ov->lods;
+            const auto& damage = condition && condition->destroyed.present() ? condition->destroyed : ov->destroyed;
+            auto import = [&](std::string_view path, std::string_view state) {
+                auto shape = std::make_unique<TG_TypeMultiShape>();
+                if (!importOverrideRenderShape(*ov, path, treeBaseName, state, shape.get())) return std::unique_ptr<TG_TypeMultiShape>{};
+                shape->SetAlphaTest(true);
+                shape->SetFilter(true);
+                return shape;
+            };
+            auto intact = import(source, "intact");
+            if (intact) {
+                treeRenderShape[0] = intact.release();
+                treeRenderShapeLodCount = 1;
+                propMaterialSource = ov;
+                for (const auto& lod : lods) {
+                    if (lod.lod <= 0 || lod.lod >= MAX_LODS || treeRenderShape[lod.lod]) continue;
+                    auto shape = import(lod.sourceRelPath, "lod");
+                    if (shape) {
+                        treeRenderShape[lod.lod] = shape.release();
+                        lodDistance[lod.lod] = lod.distance;
+                        treeRenderShapeLodCount = std::max(treeRenderShapeLodCount, static_cast<long>(lod.lod + 1));
+                    }
+                }
+                if (damage.present()) treeDmgRenderShape = import(damage.sourceRelPath, "destroyed");
+                mc2::fmt::print_err("[MODOVERRIDE] tree '{}': render override applied (condition={} destroyed={})\n",
+                    treeBaseName, conditionName.empty() ? "pristine" : conditionName.c_str(), treeDmgRenderShape ? "override" : "stock");
+            }
 
-					// TREE-OVERRIDE-LOD-MVP Task 3: load each manifest lods[] entry
-					// into treeRenderShape[lod]. Each LOD gets its OWN import,
-					// vertex-tight mesh-local bounds (ImportGeometryFromFile sets
-					// that), and its textures resolved (decimated LODs share the
-					// LOD0 texture set — same material names). A failed/odd-index
-					// LOD is dropped (stock-clamp via getTreeRenderShape) without
-					// disturbing LOD0. treeRenderShapeLodCount becomes the highest
-					// populated index + 1 so the per-LOD register loop (M-C) and
-					// the K×M light gate (Task 3 GATE) see both LODs.
-					for (const ModelOverrideLod& lentry : ov->lods)
-					{
-						const int li = lentry.lod;
-						if (li <= 0 || li >= MAX_LODS) {
-							mc2::fmt::print_err("[MODOVERRIDE] tree '{}': lod {:d} out of range, skipped\n", mc2::fmt::safe(treeBaseName), mc2::fmt::as_i32(li));
-							fflush(stderr);
-							continue;
-						}
-						if (treeRenderShape[li]) {
-							mc2::fmt::print_err("[MODOVERRIDE] tree '{}': duplicate lod {:d}, skipped\n", mc2::fmt::safe(treeBaseName), mc2::fmt::as_i32(li));
-							fflush(stderr);
-							continue;
-						}
-						char lodPath[1024];
-						mc2::fmt::to_buf(lodPath, "{}/{}", ov->manifestDir.c_str(), lentry.sourceRelPath.c_str());
-						treeRenderShape[li] = new TG_TypeMultiShape;
-						try {
-							long lr = ImportGeometryFromFile(lodPath, treeRenderShape[li]);
-							if (lr != 0 || treeRenderShape[li]->GetNumShapes() == 0) {
-								delete treeRenderShape[li]; treeRenderShape[li] = nullptr;
-								mc2::fmt::print_err("[MODOVERRIDE] tree '{}': lod {:d} import failed ({}), dropped\n", mc2::fmt::safe(treeBaseName), mc2::fmt::as_i32(li), mc2::fmt::safe(lodPath));
-								fflush(stderr);
-								continue;
-							}
-							treeRenderShape[li]->SetAlphaTest(true);
-							treeRenderShape[li]->SetFilter(true);
-							LoadOverrideRenderShapeTextures(treeRenderShape[li]);
-							if (li + 1 > treeRenderShapeLodCount)
-								treeRenderShapeLodCount = li + 1;
-							mc2::fmt::print_err("[MODOVERRIDE] tree '{}': lod {:d} applied ({}) lodCount={:d}\n", mc2::fmt::safe(treeBaseName), mc2::fmt::as_i32(li), mc2::fmt::safe(lodPath), mc2::fmt::as_i32(treeRenderShapeLodCount));
-							fflush(stderr);
-						}
-						catch (...) {
-							delete treeRenderShape[li]; treeRenderShape[li] = nullptr;
-							mc2::fmt::print_err("[MODOVERRIDE] tree '{}': lod {:d} import threw ({}), dropped\n", mc2::fmt::safe(treeBaseName), mc2::fmt::as_i32(li), mc2::fmt::safe(lodPath));
-							fflush(stderr);
-						}
-					}
-				}
-			}
-			catch (...)
-			{
-				delete treeRenderShape[0]; treeRenderShape[0] = nullptr;   // stock fallback
-				treeRenderShapeLodCount = 0;
-				mc2::fmt::print_err("[MODOVERRIDE] tree '{}': import threw ({}), using stock render\n", mc2::fmt::safe(treeBaseName), mc2::fmt::safe(overridePath));
-				fflush(stderr);
-			}
-#else
-			mc2::fmt::print_err("[MODOVERRIDE] tree '{}': override resolved but importer disabled, using stock render\n", mc2::fmt::safe(treeBaseName));
-			fflush(stderr);
-#endif
 		}
 	}
 
@@ -757,8 +692,20 @@ void TreeAppearanceType::init (const char * fileName)
 
 }
 
+void TreeAppearanceType::registerRenderShapes()
+{
+    const bool overridden = treeRenderShapeLodCount > 0;
+    const long count = overridden ? treeRenderShapeLodCount : MAX_LODS;
+    for (long lod = 0; lod < count; ++lod)
+        GpuStaticPropBatcher::instance().registerMultiShape(getTreeRenderShape(lod), overridden, overridden ? propMaterialSource : nullptr);
+    GpuStaticPropBatcher::instance().registerMultiShape(getTreeDamageRenderShape(), treeDmgRenderShape != nullptr,
+        treeDmgRenderShape ? propMaterialSource : nullptr);
+}
+
 void TreeAppearanceType::destroy (void)
 {
+    treeDmgRenderShape.reset();
+    propMaterialSource = nullptr;
 	AppearanceType::destroy();
 
 	for (long i=0;i<MAX_LODS;i++)

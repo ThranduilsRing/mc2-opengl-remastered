@@ -102,6 +102,20 @@ struct LightGridCpu {
 };
 bool GetLightGridCpu(LightGridCpu& out);
 
+// Object fragment binding: fixed light prefix, grid parameters, then {offset,count}
+// cells and indices. The 256-light cap preserves source order; excess producer
+// lights retain the existing cap warning. Dense grid cells never discard lights.
+inline constexpr uint32_t kObjectPoolLights = 256;
+struct alignas(16) ObjectPoolHeader {
+    GpuTerrainLight lights[kObjectPoolLights];
+    float minInvXY[4];
+    uint32_t gridInfo[4]; // dim, header words, index words, reserved
+};
+static_assert(offsetof(ObjectPoolHeader, minInvXY) == 12288);
+static_assert(offsetof(ObjectPoolHeader, gridInfo) == 12304);
+static_assert(sizeof(ObjectPoolHeader) == 12320);
+const void* GetObjectLightPoolUpload(size_t& bytes);
+
 struct ObjectLightPoolParams {
     int   count;
     int   soft;

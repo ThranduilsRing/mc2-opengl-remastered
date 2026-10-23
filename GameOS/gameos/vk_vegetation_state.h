@@ -65,6 +65,8 @@ public:
 
     // Replaces the population: device-local copies of the instances and regions, and fresh per-parity output buffers sized to it. Waits for the device
     // (load-time work, never per frame). False leaves no population.
+    // Keep-every-Nth thinning stride (1 = whole population) that fits the quality preset and the live GPU headroom; 0 = no vegetation fits.
+    static uint32_t strideFor(uint64_t instances, uint64_t regions);
     bool upload(mc2vk::VulkanContext& ctx, std::span<const GpuInstance> instances, std::span<const GpuRegion> regions);
     void clear(mc2vk::VulkanContext& ctx);
 
@@ -84,6 +86,8 @@ public:
     // The draw side. Set 2 of the vegetation graphics pipeline layout: 0 = instances, 1 = dense survivor list, 2 = the frame's cull parameters (dynamic).
     // The layout exists before any population does; the island builds its pipeline layout from it.
     bool ensureDrawLayout(mc2vk::VulkanContext& ctx);
+    // Load-time creation of cull/scan/compact pipelines and population bindings.
+    bool prewarm(mc2vk::VulkanContext& ctx) { return ensurePipelines(ctx); }
     VkDescriptorSetLayout drawLayout() const { return drawDsl_.get(); }
     VkDescriptorSet drawSet(uint32_t par) const { return par < kSlots ? drawSets_[par] : VK_NULL_HANDLE; }
     // Dynamic offset of the cull parameters inside the ring span passed to the last record() of this parity.

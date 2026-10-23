@@ -9,6 +9,8 @@
 #include "vulkan_context.h"
 
 #include "mc2fmt.h"
+#include "RenderCore/GpuResidencyPolicy.h"
+#include "Gates/render_options.h"
 
 #include <algorithm>
 #include <cstdio>
@@ -43,6 +45,10 @@ void State::clear(mc2vk::VulkanContext& ctx) {
     lastSurvivors_ = 0;
 }
 
+uint32_t State::strideFor(uint64_t instances, uint64_t regions) {
+    return RenderCore::vegetationStride(instances, regions, kSlots, RenderCore::gpuResidencyPolicy(mc2::options::current().shadowQuality).vegetation, mc2vk::infra::headroom());
+}
+
 bool State::upload(mc2vk::VulkanContext& ctx, std::span<const GpuInstance> instances, std::span<const GpuRegion> regions) {
     clear(ctx);
     if (instances.empty() || regions.empty()) return true;   // an empty population is a valid population
@@ -51,12 +57,20 @@ bool State::upload(mc2vk::VulkanContext& ctx, std::span<const GpuInstance> insta
     const VkDeviceSize maxRange = properties.limits.maxStorageBufferRange;
     const VkDeviceSize instBytes = instances.size_bytes(), regBytes = regions.size_bytes();
     const uint32_t visibleCapacity = uint32_t(std::min(instances.size(), size_t(mc2::vegetation::kVisibleCapacity)));
-    // Both parity sets, the regions and the cooked eight-layer atlas. Admission
-    // also covers the load-time staging overlap before narrowing the counts.
+    const auto policy = RenderCore::gpuResidencyPolicy(mc2::options::current().shadowQuality);
+    // Both parity sets, the regions and the cooked eight-layer atlas, against the preset ceiling; the load-time staging
+    // overlap is added for the live-headroom admission.
     const uint64_t residentBytes = instBytes + regBytes + uint64_t(visibleCapacity) * 8 + uint64_t(regions.size()) * 16 + 3 * 1024 * 1024 + 160;
-    if (instBytes > maxRange || regBytes > maxRange || residentBytes > mc2::vegetation::kResidentBudget ||
-        !mc2vk::infra::admit(instBytes + regBytes + residentBytes)) {
-        mc2::fmt::print_err("[VEG_GPU] population upload failed: storage or residency budget exceeded\n");
+    const uint64_t bytes = residentBytes + instBytes + regBytes;
+    if (residentBytes > policy.vegetation || !mc2vk::infra::admit(bytes) || properties.limits.maxComputeWorkGroupInvocations < 128 ||
+        properties.limits.maxComputeWorkGroupSize[0] < 128 || properties.limits.maxComputeSharedMemorySize < 128 * sizeof(uint32_t)) {
+        std::fprintf(stderr, "[VK_RESIDENCY v1] refused=vegetation bytes=%llu policy=%llu fallback=off reason=preset_budget_or_device_limits
+", (unsigned long long)bytes, (unsigned long long)policy.vegetation);
+        return true;
+    }
+    if (instBytes > maxRange || regBytes > maxRange || residentBytes > mc2::vegetation::kResidentBudget) {
+        mc2::fmt::print_err("[VEG_GPU] population upload failed: storage or residency budget exceeded
+");
         return false;
     }
     const uint32_t instanceCount = static_cast<uint32_t>(instances.size()), regionCount = static_cast<uint32_t>(regions.size());

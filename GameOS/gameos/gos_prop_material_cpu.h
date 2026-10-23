@@ -138,21 +138,24 @@ inline bool addMaterial(MaterialSources& dst, const ModelOverrideRecord& owner,
     return true;
 }
 
-// The per-packet alpha class (0 opaque, 1 stock coverage, 2 depth-writing cutout) for a packet whose
-// texture has alpha. An authored slot's explicit alpha mode wins. A package that declares materials
-// owns its unmapped slots too: those are legacy (stock-derived) slots and keep the stock coverage
-// policy. An override with no material package at all is a cutout (procedural fences); stock is coverage.
+// The per-packet alpha class (0 opaque, 1 normal core/fringe coverage, 2 late fringe: the depth-writing core plus a
+// fringe composited after vegetation) for a packet whose texture has alpha. Coverage semantics are explicit, never
+// inferred from override provenance: an authored slot's explicit alpha mode decides (Mask = thin geometry that must
+// survive later vegetation, Opaque = no test, Stock = stock coverage), a package's unmapped slots keep the stock coverage
+// policy, and a record's explicit lateCoverageFringe opt-in (procedural fences, which carry no material package)
+// selects the late fringe for every non-opaque packet. Class 2 shares class 1's LOD-aware coverage: a fixed hard cutoff
+// loses minified wire entirely.
 inline uint32_t packetAlphaClass(bool isOverride, const ModelOverrideRecord* source, uint32_t textureSlot) {
+    const uint32_t late = isOverride && source && source->lateCoverageFringe ? 2u : 1u;
     if (isOverride && source && !source->materials.empty()) {
         for (const auto& m : source->materials)
             if (m.slot == textureSlot)
                 switch (static_cast<RenderCore::SurfaceAlpha>(m.alphaMode)) {
                     case RenderCore::SurfaceAlpha::Opaque: return 0u;
                     case RenderCore::SurfaceAlpha::Mask:   return 2u;
-                    default:                               return 1u;
+                    default:                               return late;
                 }
-        return 1u;
     }
-    return isOverride ? 2u : 1u;
+    return late;
 }
 }

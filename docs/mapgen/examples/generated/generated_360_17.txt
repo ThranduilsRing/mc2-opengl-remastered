@@ -1,0 +1,134 @@
+generated/generated_360_17 | 360x360 cells | 3 cells/char
+North up; cell crop [0,0)..[360,360); objects by team: {-1: 36, 1: 163}
+@ player start; O visible objective; B military; h town; I industry; H HQ/sensor; A airfield
+# wall/fence; + gate; T turret; C turret control; G generator; c gate control
+= road/bridge; : runway; . cement; ~ water; t trees; ^ slope>=35deg; % rock; , prop; ? unresolved
++------------------------------------------------------------------------------------------------------------------------+
+|                                                                          =====                           ttt^          |
+|                                                                          ==                              ttt^          |
+|                                                                          =                             ttttt^          |
+|                                                                          =                              t tt^          |
+|                                                                          =                            t    t^          |
+|                                                                          =                                  ^          |
+|                                                                          =                                  ^          |
+|                                                                          =                                  ^          |
+|                                                                          =                                  ^          |
+|                                                                          =                                  ^          |
+|                                                                          =                                  ^          |
+|                                                                          =                                  ^          |
+|                  t                                                  t    =                                  ^          |
+|                     t                                               t tt =                                  ^          |
+|                    t                                                tt t =                                  ^          |
+|                  t  t                          t                  tttttt =                                  ^          |
+|                  ttttt                       t   t                 t ttt==                                  ^          |
+|                ttttttt t                           t              tttttt==                                  ^          |
+|                t tttt                          tttt                t ttt==   t                              ^          |
+|                  tttttt                        tttttt                 t ==                                  ^          |
+|                    tt                       ttttttttt                   ==                                  ^          |
+|                 tt t       ^~~~~~~~~~^       tttttttt                   ==                                  ^          |
+|                   t t    ^~~~~~~~~~~~~~~       ttt                      ==                                  ^          |
+|                   t     ~~~~~~~~~~~~~~~~~^     t  t                    ===                                  ^          |
+|   t                    ~~~~~~~~~~~~~~~~~~~^    t                       ==                                   ^          |
+|t tt  tt               ^~~~~~~~~~~~~~~~~~~~~                            ==                                   ^          |
+|ttttttt                ~~~~~~~~~~~~~~~~~~~~~^                           ==                                   ^          |
+| tttttt               ^~~~~~~~~~~~~~~~~~~~~~~                           ==                                   ^          |
+|tttttttt              ^~~~~~~~~~~~~~~~~~~~~~~                           ==                                   ^          |
+| tttttt   t           ^~~~~~~~~~~~~~~~~~~~~~~                          ==                                    ^          |
+| tt tttt  t           ^~~~~~~~~~~~~~~~~~~~~~~                          ==                                    ^          |
+|   t   t tttt          ~~~~~~~~~~~~~~~~~~~~~^                          ==                                    ^          |
+|      tt tttt          ^~~~~~~~~~~~~~~~~~~~~                           ==                       tt t  t      ^          |
+|     ttttttt  t         ~~~~~~~~~~~~~~~~~~~^                           ==                        t   t       ^          |
+|       ttttttt           ~~~~~~~~~~~~~~~~~^                           ===                      t  ttttttt    ^          |
+|       tttt t             ^~~~~~~~~~~~~~~                             ===============         ttttttttttt    ^          |
+|     t tttttt               ^~~~~~~~~~^                               ===============        tt ttttttttt    ^          |
+|      tt tt                                                           ==                       ttttttttt t   ^          |
+|      ttt                                                            ===                       tttttttt      ^          |
+|                                                                     == ttt t                 tt ttttttt     ^          |
+|                                                                     == tttttt                ttt            ^          |
+|                                                                     ==   ttt                   t t          ^          |
+|                                                                     == tttttttt                             ^          |
+|                                   t  tt                            == ttt tt t                              ^          |
+|                                      tttt                          == ttttttt                               ^          |
+|                                  tttttt t                          ==   ttt                                 ^          |
+|                                    ttttttt                         ==  t tttt t                             ^          |
+|                                  ttttt t  t                       ==   t tttt t                             ^^^^^^^^^^^|
+|                                   t tttttt                        == tt ttt tt                              ^^^^^^^^^^^|
+|                                    tttttttt                       ==  tttttt t t                                       |
+|                                     t tt                          ==   tttttttt tt                                     |
+|                                    t  tt                          ==   tttt  ttt  t                                    |
+|                                                                   =    t ttttttttttt                                   |
+|                                                                  ==          tt ttt                                    |
+|                                                                  ==      t   tttttt t                                  |
+|                                                                  ==        tt tt ttt                                   |
+|                                                                  ==        t      t                                    |
+|                                                             TOT  ==                                                 tt |
+|                                                 hhh         C=   ==                                            t  tttt |
+|                                                h            B=B  =                                              t   t t|
+|                                              h hh h          =T  =                                              t  tttt|
+|                                              h h h           =   =                                             tttttttt|
+|                                              h =h         ========                                          t  ttt tttt|
+|                                                =          ==    ==                                         tttttttttttt|
+|                                               h=          ==    ==                                           t ttttt tt|
+|                                              hh=          ==    =======================================================|
+|                                                = h        ==    =======================================================|
+|           ==================================================    ==                                                 t   |
+|           ==================================================    ==                                                     |
+|          ===        t                   =                 ==    ==                                            t tt t t |
+|         ===           t      t t ttt  TT= T               ==    ==                                              tt ttt |
+|        ===       t ttttt     tt ttt    G=                 ==    ==                                            t tttt t |
+|       ===         t  t t  t   tttt      O                 ==    ==                                          t ttttttttt|
+|      ===            tt t t  t tttttt                      ==    ==                                          t t tttttt |
+|     ===            ttttttt   tttt ttt T   T               ==    ==                                           tttttttt  |
+|t   ====             tttt   t  t tt                        ==    ==                                          ttttttttt  |
+|   ===                tttt      tttt                       ==    ==                                           t ttt  t t|
+|=====@             ttt tt t t    t                         ==    ==                                              tttt   |
+|====             t  tttttt        t                        ==     =                                                     |
+| tt tt             ttttt t t                               ==     =                                            t        |
+|t ttt               ttttttt                                ==     =   T  T  T                                       t   |
+|ttttt              tttt  tt                                ==     =     G                                               |
+|tttttt              ttttt                                  ==     =     CO                                              |
+|tt  tt t           t    t                                  ==     =      =                                              |
+|t tt                t                                      ==     =   T  =  T                                           |
+|t  t                                                       ==     ==     =                                              |
+|  t                                                     BO ==     =====================                                 |
+|                                                       BH====                                                           |
+|                                                        B B==                                 t                         |
+|                                                           ==                                       tt                  |
+|                                                           ==                                  tttt                     |
+|                                                           ==                                 ttttttt                   |
+|                                                           ==                                  ttttt                    |
+|                                                           ==                                 ttttttt                   |
+|                                                           ==                                t   tttttt                 |
+|                                                           ==                                   tttt                    |
+|                                                           ==                                    ttt                    |
+|                                                           ==###########                      t t                       |
+|                                                           ==#.........#                                                |
+|                                                           ==#T...T..T.#                                                |
+|                                                           ==#.........#                                                |
+|         t                                                 ==#...G.....#                                                |
+|                                                           ==+c==C=..H.#                                                |
+|                                                           ==#.H.O.....#                                                |
+|         ttt                                               ==#.........#                                                |
+|       t  tt          t                                    ==#.........#                                                |
+|         tttt t         t  t                               ==#T......T.#                                                |
+|        ttttt       t ttt tt t                             ==###########                                                |
+|         tttttt      tttt  tt                              ==                                                           |
+|        ttttt t      t ttttt                               ==                                                           |
+|      t tttttt    ttttttttt t       h h h                  ==                                                           |
+|        tt t t      ttttttt           hhh                  ==                                  t  t                     |
+|         tt         ttttttt t           h                  ==                                 t t  t                    |
+|                    t tttttt         h h                   ==                               ttttttttt                   |
+|                     t tt t          h =                   ==                              tttt                         |
+|                       tt t           h=                   ==                                ttttttt                    |
+|                      t              h hh                  ==                                  t ttt                    |
+|                       t t             =                  ==                                 tt ttt                     |
+|                                       =                  ==                                  tttt                      |
+|                                   =========================                                                            |
++------------------------------------------------------------------------------------------------------------------------+
+Visible objectives (O; symbols may share a character):
+  [309, 195]: Capture or clear walled_compound base_0
+  [171, 187]: Capture or clear outpost base_1
+  [258, 172]: Capture or clear outpost base_3
+  [217, 124]: Capture or clear turret_battery base_5
+  [248, 220]: Capture or clear turret_battery base_6
+Coarse preview: highest-priority feature wins each character; object footprints are not drawn.

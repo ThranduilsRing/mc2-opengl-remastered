@@ -33,6 +33,23 @@ OrderEnvelope order(std::uint32_t source = 1, std::uint64_t sequence = 0, Tick t
     e.payload.kind = OrderKind::Stop;
     return e;
 }
+
+TEST_CASE("order recipients cover every admitted mover and reject one more") {
+    auto envelope = order();
+    envelope.recipients.clear();
+    for (uint32_t slot = 1; slot <= MAX_MOVERS; ++slot)
+        envelope.recipients.push_back({slot, 1});
+    mc2::save::Archive write;
+    write(envelope);
+    REQUIRE(write.good());
+    mc2::sim::OrderEnvelope restored;
+    REQUIRE(mc2::save::decodeRecord(write.bytes(), restored));
+    CHECK(restored == envelope);
+    envelope.recipients.push_back({MAX_MOVERS + 1, 1});
+    mc2::save::Archive overflow;
+    overflow(envelope);
+    CHECK_FALSE(overflow.good());
+}
 Bytes wire(TacticalOrderQueue& queue) {
     mc2::save::Archive a;
     a(queue);
@@ -245,6 +262,7 @@ TEST_CASE("typed movement attack support and execution records round trip and re
     move.move->keepMoving = true; move.move->fromArea = -1; payloads.push_back(move);
     auto attack = order().payload; attack.kind = OrderKind::AttackObject;
     attack.attack.emplace(); attack.attack->range = FireRange::Optimal;
+    attack.move.emplace(); attack.move->faceObject = true; attack.move->keepMoving = true;
     attack.attack->tactic = Tactic::HullDown; attack.target = ObjectRef{4,9}; payloads.push_back(attack);
     auto support = order().payload; support.kind = OrderKind::Airstrike;
     support.support = AirstrikeCommand{CommanderId{7},{1,2,3},StrikeKind::Large}; payloads.push_back(support);

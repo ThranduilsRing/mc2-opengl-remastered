@@ -366,18 +366,6 @@ void drawTerrainTuningSection() {
             ImGui::TextDisabled("(slider has no effect until MC2_TERRAIN_CLIFF_SHADOW_FLOOR is set)");
     }
 
-    // MC2_DYNAMIC_DECALS: live ring-buffer status (gate-off shows 0/64 inactive).
-    {
-        bool ddOn = mc2::gate::get<"MC2_DYNAMIC_DECALS">();
-        int live = DynDecal::liveCount();
-        if (ddOn) {
-            ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f),
-                "DynDecals: %d/%d active (MC2_DYNAMIC_DECALS=1)", live, DynDecal::kCapacity);
-        } else {
-            ImGui::TextDisabled("DynDecals: off (set MC2_DYNAMIC_DECALS=1 to enable impact rings)");
-        }
-    }
-
     // ── Material color classifier ──────────────────────────────────────────────
     // Tune the HSV thresholds that map colormap pixels
     // to rock / grass / dirt. Saved to visual_tuning.json via "Set as Mission Defaults".

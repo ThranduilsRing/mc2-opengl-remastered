@@ -47,13 +47,13 @@ _MOVER = re.compile(r"\[SIMID v1 mover\] simframe=(\d+) id=(\d+) ([^\r\n\[]*)")
 
 
 def parse(text_lines):
-    """-> (frames [(simframe, t, digest text)], movers {simframe: {id: record}})"""
+    """-> (frames [(simframe, t, digest text)], movers {index into frames: {id: record}}); simframe repeats after a load, so it cannot key the movers"""
     frames, movers = [], {}
     for ln in text_lines:
         for m in _LINE.finditer(ln):
-            frames.append((int(m.group(1)), float(m.group(2)), m.group(3).strip()))
+            frames.append((int(m.group(1)), float(m.group(2)), sd.simulation_fields(m.group(3).strip())))
         for m in _MOVER.finditer(ln):
-            movers.setdefault(int(m.group(1)), {})[int(m.group(2))] = m.group(3).strip()
+            movers.setdefault(len(frames) - 1, {})[int(m.group(2))] = m.group(3).strip()
     return frames, movers
 
 
@@ -82,7 +82,7 @@ def analyze(text_lines, frames_needed: int = 300):
         report.append(f"digests identical over {horizon} frames" + ("" if ok else f" (need {frames_needed})"))
         return ok, report
     report.append(f"DIGESTS DIVERGE {first} frame(s) after the load (identical before that)")
-    a, b = movers.get(frames[i0 + first][0], {}), movers.get(frames[j + first][0], {})
+    a, b = movers.get(i0 + first, {}), movers.get(j + first, {})
     diff = [i for i in a if a[i] != b.get(i)]
     if diff:
         report.append(f"{len(diff)} of {len(a)} movers differ at that frame; first three:")
@@ -235,10 +235,12 @@ def add_speed_arg(p) -> None:
 
 
 def run(mission: str, frames: int, deploy: bool, out: str | None, install: str = sd.INSTALL_DIR,
-        save_dir: str | None = None, ref_exe: str | None = None, ref_commit: str | None = None, sim_speed: int = 1):
+        save_dir: str | None = None, ref_exe: str | None = None, ref_commit: str | None = None, sim_speed: int = 1,
+        save_at: int = int(SAVE_AT), load_at: int = int(LOAD_AT)):
     if deploy:
         sd.build_and_deploy(install)
     env = dict(os.environ, **ENV)
+    env.update(MC2_BOOT_QUICKSAVE_AT=str(save_at), MC2_BOOT_QUICKLOAD_AT=str(load_at))
     if mission != "mc2_16":
         env.pop("MC2_FIXTURE_ORDER_LIVENESS", None)  # this fixture/summary belongs to mc2_16 only
     with savegame_backup.guarded(save_dir):
@@ -568,6 +570,8 @@ def main(argv=None) -> int:
     r = sub.add_parser("run")
     r.add_argument("--mission", default="mc2_16")
     r.add_argument("--frames", type=int, default=300, help="post-load frames that must match")
+    r.add_argument("--save-at", type=int, default=int(SAVE_AT), help="render frame of the quicksave")
+    r.add_argument("--load-at", type=int, default=int(LOAD_AT), help="render frame of the quickload")
     r.add_argument("--deploy", action="store_true")
     r.add_argument("--out")
     r.add_argument("--install", type=sd.resolve_install, default=sd.INSTALL_DIR, metavar="NAME_OR_PATH")
@@ -587,7 +591,8 @@ def main(argv=None) -> int:
         with open(args.log, encoding="utf-8", errors="replace") as fh:
             ok, rep = analyze(fh.read().splitlines(), args.frames)
     else:
-        ok, rep = run(args.mission, args.frames, args.deploy, args.out, args.install, args.save_dir, args.ref_exe, args.ref_commit, args.sim_speed)
+        ok, rep = run(args.mission, args.frames, args.deploy, args.out, args.install, args.save_dir, args.ref_exe, args.ref_commit, args.sim_speed,
+                      args.save_at, args.load_at)
     print(("saveload_roundtrip: PASS" if ok else "saveload_roundtrip: FAIL") + "\n" + "\n".join(rep))
     return 0 if ok else 1
 

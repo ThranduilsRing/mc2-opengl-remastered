@@ -1,3 +1,4 @@
+#include "unit_animation_tick.h"
 // BldgAppearance / TreeAppearance: BldgAppearance::update and the activity/flash helpers.
 // Declared in the class headers; shared names in bdactor_internal.h.
 #include "bdactor_internal.h"
@@ -18,25 +19,37 @@ static unsigned long s_spotDiagBldgCalls      = 0;   // update() call counter
 
 long BldgAppearance::update (bool animate)
 {
+	if (simPresentationPass) presentEffects();
+
 	::mc2_object_recon::Scope _recon_bldg_(
 		&::mc2_object_recon::g_per_frame.bldg_update_ns,
 		&::mc2_object_recon::g_per_frame.bldg_update_calls);
 	glm::vec3 xlatPosition;
 	glm::quat rot;
 
+
+    if (!simPresentationPass || !simulationOwned()) {
+	if (simulationOwned()) {
+		if (unitAnim().lastAnimAdvanceFrame == static_cast<uint32_t>(turn)) { updateSimPose(); return TRUE; }
+		unitAnim().lastAnimAdvanceFrame = static_cast<uint32_t>(turn);
+	}
 	// Recycle the weapon Nodes
-	if (!nodeRecycle.empty())
+	if (!unitAnim().nodeRecycle.empty())
 	{
 		for (long i=0;i<appearType->numWeaponNodes;i++)
 		{
-			if (nodeRecycle[i] > 0.0f)
+			if (unitAnim().nodeRecycle[i] > 0.0f)
 			{
-				nodeRecycle[i] -= frameLength;
-				if (nodeRecycle[i] < 0.0f)
-					nodeRecycle[i] = 0.0f;
+				unitAnim().nodeRecycle[i] -= frameLength;
+				if (unitAnim().nodeRecycle[i] < 0.0f)
+					unitAnim().nodeRecycle[i] = 0.0f;
 			}
 		}
 	}
+	if (animate) mc2::sim::advanceLinearAnimation(unitAnim(), unitAnim().bdFrameRate, appearType->getNumFrames(unitAnim().bdAnimationState), frameLength);
+
+        if (simulationOwned()) { updateSimPose(); return TRUE; }
+    }
 
    	if (appearType->terrainLightRGB != 0xffffffff && (eye->nightFactor > 0.0f) && !forceLightsOut)
    	{
@@ -494,63 +507,16 @@ long BldgAppearance::update (bool animate)
 			bldgShape->SetFogRGB(0xffffffff);
 	
 		glm::quat turretRot;
-		turretRot = mc2::math::quatFromEuler(mc2::math::Euler((turretPitch * DEGREES_TO_RADS),(turretYaw * DEGREES_TO_RADS),0.0f));
+		turretRot = mc2::math::quatFromEuler(mc2::math::Euler((unitAnim().pitch * DEGREES_TO_RADS),(unitAnim().turretRotation * DEGREES_TO_RADS),0.0f));
 		if (rotationalNodeId == -1)
 	   		rotationalNodeId = bldgShape->SetNodeRotation(appearType->rotationalNodeId,&turretRot);
    
 	   	bldgShape->SetNodeRotation(rotationalNodeId,&turretRot);
 	}
 
-	float oldFrame = currentFrame;
-	if (animate && bdFrameRate != 0.0f)
-	{
-		// Make sure animation runs no faster than bdFrameRate fps.
-		float frameInc = bdFrameRate * frameLength;
-		
-		// Increment Frames -- Everything else!
-		if (frameInc != 0.0f)
-		{
-			if (!setFirstFrame)		//DO NOT ANIMATE ON FIRST FRAME!  Wait a bit!
-			{
-				if (mc2::animationsFrozen())
-				{
-					// MC2_SMOKE_FREEZE_ANIM: the frame stays where it is
-				}
-				else if (isReversed)
-					currentFrame -= frameInc;
-				else
-					currentFrame += frameInc;
-			}
-			else
-			{
-				setFirstFrame = false;
-			}
-	
-			//Check Positive overflow of Animation
-			if (currentFrame >= appearType->getNumFrames(bdAnimationState))
-			{
-				if (isLooping)
-					currentFrame -= appearType->getNumFrames(bdAnimationState);
-				else
-					currentFrame = appearType->getNumFrames(bdAnimationState) - 1;
-					
-				canTransition = true;		//Whenever we have completed one cycle or at last frame, OK to move on!
-			}
-			
-			//Check negative overflow of gesture
-			if (currentFrame < 0)
-			{
-				if (isLooping)
-					currentFrame += appearType->getNumFrames(bdAnimationState); 
-				else
-					currentFrame = 0.0f; 
-					
-				canTransition = true;		//Whenever we have completed one cycle or at last frame, OK to move on!
-			}
-		}
-		
-		bldgShape->SetFrameNum(currentFrame);
-	}
+	float oldFrame = unitAnim().currentFrame;
+	if (unitAnim().bdAnimationState >= 0) appearType->setAnimation(bldgShape, unitAnim().bdAnimationState);
+	bldgShape->SetFrameNum(unitAnim().currentFrame);
 
 	// Under the GPU static-prop path we need listOfColors / shapeToWorld
 	// fresh every frame regardless of inView so the batcher can safely
@@ -810,6 +776,8 @@ long BldgAppearance::update (bool animate)
 
 void BldgAppearance::startActivity (long effectId, bool loop)
 {
+	if (!simPresentationPass) { unitAnim().activityEffect = effectId; unitAnim().activityLoop = loop; return; }
+
 	//Check if we are already playing one.  If not, be active!
 	
 	//First, check if its even loaded.
@@ -922,6 +890,8 @@ void BldgAppearance::startActivity (long effectId, bool loop)
 
 void BldgAppearance::stopActivity (void)
 {
+	if (!simPresentationPass) { unitAnim().activityEffect = -2; return; }
+
 	if (isActivitying)		//Stop the effect if we are running it!!
 	{
 		if(activity) //sebi

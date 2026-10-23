@@ -25,3 +25,14 @@ bool rollDice(long percent);
 uint32_t drawCount();
 
 } // namespace mc2_appearance_rng
+
+// Gameplay animation decisions have their own stream. Presentation draws must
+// never change a death gesture, gate transition, or locomotion clock.
+namespace mc2_anim_rng {
+void reseed(uint32_t seed);
+long randomNumber(long range);
+bool rollDice(long percent);
+uint32_t drawCount();
+uint32_t state();
+void restore(uint32_t state, uint32_t draws);
+}

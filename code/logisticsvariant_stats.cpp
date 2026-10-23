@@ -4,6 +4,7 @@
 #include "mc2fmt.h"
 #include "mc2str.h"
 #include "objective_text.h"
+#include "package_chassis.h"
 
 
 // Next discrete move-speed class up the 5/10/15/19/23/27/31/35 ladder.
@@ -33,6 +34,10 @@ int LogisticsVariant::getWeight() const
 	//Yup.  20% of base weight Plus 7 tons is used by armor and misc components which we do not explicitly track.
 
 	float baseWeight = (chassis->maxWeight * .20) + 7.0;
+	// BT2018-FIRST-CLASS P7: a package chassis carries an explicit empty mass (BT structure,
+	// engine, armour) so the bay weight and the payload rule in canAddComponent agree.
+	if ( chassis->getPackage() )
+		baseWeight = chassis->getPackage()->emptyMass;
 
 	for ( int i = 0; i < componentCount; ++i )
 	{
@@ -173,7 +178,7 @@ int LogisticsVariant::canAddComponent( LogisticsComponent* pComponent, long& x, 
 					|| ( y != -1 && y != -2 ) )
 			return COMPONENT_SLOT_FULL;
 
-		return 0;
+		return packageCheck( pComponent, -2, -2 );
 	}
 	else if ( x == -2 && y == -2 ) // trying to put something illegal in jump jet slot
 		return COMPONENT_SLOT_FULL;
@@ -186,6 +191,14 @@ int LogisticsVariant::canAddComponent( LogisticsComponent* pComponent, long& x, 
 				return ADD_COMPONENT_FAILED;
 	}
 		 
+
+	// BT2018-FIRST-CLASS P7: a package chassis auto-places into a region with a free mount
+	// (the legacy scan below would take the first free cell, even one in the wrong location).
+	if ( chassis->getPackage() && x == -1 && y == -1 && !packageAutoPlace( pComponent, x, y ) )
+	{
+		const int why = packageCheck( pComponent, -1, -1 );
+		return why ? why : ADD_COMPONENT_FAILED;
+	}
 
 	if ( x!= -1 && y != -1 )
 	{
@@ -265,6 +278,10 @@ int LogisticsVariant::canAddComponent( LogisticsComponent* pComponent, long& x, 
 		else if ( hasECM() )
 			return ONLY_ONE_ECM_ALLOWED;
 	}
+
+	// BT2018-FIRST-CLASS P7: whole-region placement, a free BT mount, the mass budget.
+	if ( chassis->getPackage() )
+		return packageCheck( pComponent, x, y );
 
 	
 

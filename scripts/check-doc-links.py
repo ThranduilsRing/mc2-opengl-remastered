@@ -95,13 +95,12 @@ def is_archived(relpath):
 
 
 def collect_md_files():
-    """Check repository docs, excluding local histories and scratch files."""
-    result = subprocess.run(["git", "-C", REPO_ROOT, "ls-files", "-z"],
-                            text=True, check=True,
-                            **console_child.child_kwargs(redirected=True, stdout=subprocess.PIPE))
-    return sorted(path for path in result.stdout.split("\0")
-                  if path.endswith(".md") and ("/" not in path or path.startswith("docs/"))
-                  and os.path.isfile(os.path.join(REPO_ROOT, path)))
+    """Check tracked root/docs Markdown, excluding local agent history and scratch."""
+    result = subprocess.run(["git", "-C", REPO_ROOT, "ls-files", "-z"], text=True, check=True,
+                            **console_child.child_kwargs(redirected=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
+    return sorted(p for p in result.stdout.split("\0") if p.endswith(".md")
+                  and ("/" not in p or p.startswith("docs/"))
+                  and os.path.isfile(os.path.join(REPO_ROOT, p)))
 
 
 def resolve(target, containing_dir):

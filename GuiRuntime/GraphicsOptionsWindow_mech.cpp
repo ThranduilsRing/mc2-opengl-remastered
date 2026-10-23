@@ -129,20 +129,6 @@ void drawMechSection() {
     ImGui::Spacing();
     ImGui::SeparatorText("Mech Lighting");
 
-    bool ambOn = batcher_getMechAmbientEnabled() != 0;
-    if (ImGui::Checkbox("Ambient##mech", &ambOn))
-        batcher_setMechAmbientEnabled(ambOn ? 1 : 0);
-    if (ImGui::IsItemHovered())
-        ImGui::SetTooltip("Hemisphere ambient fill on mech hull (legacy path).\n"
-                          "No effect when StandardLit GGX is ON (replaced by IBL+back-fill).\n"
-                          "Kill-switch: MC2_MECH_AMBIENT_V1=0.");
-    ImGui::SameLine();
-    float as = batcher_getMechAmbientStrength();
-    if (ImGui::SliderFloat("Strength##mechamb", &as, 0.0f, 2.0f, "%.2f"))
-        batcher_setMechAmbientStrength(as);
-    ImGui::SameLine();
-    if (ImGui::SmallButton("Reset##mechamb")) batcher_setMechAmbientStrength(0.15f);
-
     bool specOn = batcher_getMechSpecularEnabled() != 0;
     if (ImGui::Checkbox("Specular##mech", &specOn))
         batcher_setMechSpecularEnabled(specOn ? 1 : 0);

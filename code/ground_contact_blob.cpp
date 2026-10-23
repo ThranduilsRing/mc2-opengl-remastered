@@ -59,7 +59,7 @@ bool isEnabled()
 // Half-size of the contact disc, world units (terrain cell == 42.67 units;
 // this is a tight patch under the feet, not a full-cell splat -- recon
 // landmine 2: keep the blob radius tight to foot-center to minimize overlap
-// with footprint/crater decals sharing the same un-depth-sorted batch).
+// with footprint/scorch decals sharing the same un-depth-sorted batch).
 constexpr float kBlobRadius = 6.0f;
 
 // Alpha clamp range -- recon landmine 3: never let the blob crush to pure
@@ -67,7 +67,7 @@ constexpr float kBlobRadius = 6.0f;
 constexpr float kAlphaMin = 0.12f;
 constexpr float kAlphaMax = 0.38f;
 
-// Pack BGRA uint from floats [0,1] (matches dynamic_decal_ring.cpp convention:
+// Pack BGRA uint from floats [0,1] (decal batch convention:
 // bits [31:24]=A [23:16]=R [15:8]=G [7:0]=B, little-endian BGRA).
 unsigned int packBGRA(float r, float g, float b, float a)
 {

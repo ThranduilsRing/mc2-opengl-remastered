@@ -104,13 +104,8 @@ layout(location = 1) out vec4 oGBuffer1;  // MRT1 normal + shadow class
 // to the blended fringe at close to its true alpha instead.
 const float kCoverMin = 0.02;   // below this a fringe is invisible; skip the blend
 float propCoverage(float a, float lod) {
-    // Authored override alpha tests are depth-writing cutouts. Sending their
-    // minified wire coverage to the no-depth fringe lets later vegetation
-    // overwrite the fence. Stock packets keep the coverage policy below.
-    if (uPacket.packetAlphaTest == 2) {
-        if (uPacket.coverageFringePass != 0 || a < 0.5) discard;
-        return 1.0;
-    }
+    // Mode 2 uses this same LOD-aware coverage; only its fringe scheduling
+    // differs (after vegetation). A fixed cutoff loses minified wire entirely.
     float cut = mix(0.5, 0.9, clamp(lod * 0.5, 0.0, 1.0));
     if (uPacket.coverageFringePass == 0) {
         if (a < cut) discard;
@@ -128,6 +123,23 @@ float propCoverage(float a, float lod) {
 #include "include/terrain_frame_vk.glsl"
 #include "include/ground_lighting.glsl"
 layout(set = 0, binding = 14) uniform sampler2DShadow uTreeObjectMap;
+struct PoolLight {
+    vec3  position;
+    uint  lightType;
+    vec3  color;
+    float closeDistance;
+    float farDistance;
+    float oneOverDistance;
+    float _plPad1;
+    float intensity;
+};
+layout(set = 0, binding = 8, std430) readonly buffer PropPoolLightsVK {
+    PoolLight poolLights[256];
+    vec4 poolGridMinInv;
+    uvec4 poolGridInfo;
+    uint poolGridWords[];
+};
+#define MC2_OBJECT_POOL_GRID 1
 #include "../include/object_light_pool.hglsl"
 
 // GL static_prop.frag's pool term: albedo-modulated additive pool light at the MC2-frame world position.
@@ -231,7 +243,8 @@ void main() {
         float materialCoverage = propMaterialCoverage(uPacket.materialId);
         if (materialCoverage > 0.0) {
             materialAO = mix(1.0, surface.ao, materialCoverage);
-            if (!treeMaterial) rgb = mix(rgb, propAuthoredColor(surface, alphaTestClass), materialCoverage);
+            if (!treeMaterial) rgb = mix(rgb, propAuthoredColor(surface, alphaTestClass,
+                          propHasAuthoredOrm(uPacket.materialId)), materialCoverage);
             outputNormalStuff = mix(vNormalStuff, renderToMc2(surface.normal), materialCoverage);
         }
     }

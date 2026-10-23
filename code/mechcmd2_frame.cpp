@@ -1,3 +1,4 @@
+#include "icon_registry.h"
 #include "vk_scene_renderer.h"
 #include "render_submissions.h"
 // Game main: the per-frame renderer update, engine termination and DoGameLogic.
@@ -286,17 +287,8 @@ void __stdcall TerminateGameEngine()
 			ForceGroupIcon::jumpJetIcon = nullptr;
 		}
 
-		if (MechIcon::s_MechTextures)
-		{
-			delete [] MechIcon::s_MechTextures;
-			MechIcon::s_MechTextures = nullptr;
-		}
+        unit_icons::shutdown();
 
-		if (ForceGroupIcon::s_textureMemory)
-		{
-			delete [] ForceGroupIcon::s_textureMemory; 
-			ForceGroupIcon::s_textureMemory = nullptr; 
-		}
 	}
 	else
 	{
@@ -353,37 +345,13 @@ void __stdcall DoGameLogic()
 		if (frameLength > 0.25f)
 			frameLength = 0.25f;
 
-		// CAPTURE-DETERMINISM-1: frameLength drives ALL mover / object / GOSFX
-		// motion integration, but until now it was derived from the REAL
-		// measured frameRate even under MC2_SMOKE_FIXED_TIMESTEP. S9D pinned
-		// scenarioTime (mission.cpp) and S9E pinned the shader clocks, so both
-		// runs reached a given render frame with an identical scenarioTime and
-		// an identical `deterministic:true` sidecar -- while every mover had
-		// integrated a DIFFERENT per-frame dt on the way there. Two launches
-		// therefore captured the same pose, same frame, same clock, and
-		// visibly different unit positions (measured: up to 27% of pixels on
-		// mc2_10 poses containing movers; exactly 0.000% on poses containing
-		// none). Pin frameLength to the same fixed step as scenarioTime so the
-		// sim integrates identically frame-for-frame. Deliberately placed
-		// BEFORE the sim-speed multiply and left unmultiplied below, matching
-		// mission.cpp's fixed-timestep branch which likewise keeps 1x.
+		// frameLength here is the RENDER frame's length: UI, camera and the presentation passes use it. The sim does not.
+		// Mission::update banks it (times the game speed) into the fixed 30 Hz tick clock and sets frameLength to the tick
+		// length around each tick (code/sim_tick_clock.h). Under the harness clock the render frame is virtual:
+		// 1/30 s unless MC2_FPS_CAP names another rate, so the committed SIMID baselines (one frame = one tick) hold and
+		// a different rate proves the sim does not follow it.
 		if (SmokeMode::fixedTimestepEnabled())
-		{
-			// Fixed-step sim; the sim-speed multiply in the else-branch is
-			// deliberately NOT applied (mission.cpp parity: determinism = 1x).
-			frameLength = SmokeMode::fixedTimestepMs() / 1000.0f;   // 1/30
-		}
-		else
-		{
-		// SIM-CLOCK-SPEED-1 / SIM-SPEED-BUTTON-1: sim-speed multiplier applied
-		// at the frameLength site so mover / object / GOSFX motion (all
-		// frameLength-driven) tracks the same multiplier as scenarioTime
-		// (mission.cpp). Seeded from MC2_SIM_SPEED (default 1.0, clamped
-		// [0.25,4.0]); runtime-settable via the HUD speed tab / dev-shell —
-		// single source in mission.cpp (simSpeedGetMultiplier, mission.h).
-		// OFF path (unset env, never set) is a no-op multiply by 1.0.
-		frameLength *= simSpeedGetMultiplier();
-		}
+			frameLength = SmokeMode::fixedFrameSeconds();
 
 		//Calc out the average frame rate so we can decide if we should use the
 		// movie Video or Just the Audio Track!
@@ -411,7 +379,7 @@ void __stdcall DoGameLogic()
 	
 			soundSystem->update();
 			
-			timerManager->update();
+			// timerManager->update() moved into Mission's sim ticks: ABL timers are sim time.
 	
 			if (logistics)
 			{

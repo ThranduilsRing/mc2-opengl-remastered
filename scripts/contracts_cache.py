@@ -197,7 +197,8 @@ def versions():
     if _versions is None:
         g = subprocess.run(["git", "--version"], capture_output=True, text=True,
                            **console_child.child_kwargs(redirected=True)).stdout.strip()
-        _versions = f"{CACHE_VERSION}|py{sys.version.split()[0]}|{g}"
+        tree = os.environ.get("MC2_NINJA_TREE") or "build64-ninja"
+        _versions = f"{CACHE_VERSION}|py{sys.version.split()[0]}|{g}|ninja_tree={tree}"
     return _versions
 
 

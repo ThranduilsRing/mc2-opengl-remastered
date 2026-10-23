@@ -985,3 +985,16 @@ TEST_CASE("AuthoredOrderProduction/classification uses the requested buffer and 
         }
     }
 }
+
+TEST_CASE("MovementCollision/non-ground blockage defines the path end output") {
+    MovementWorld world;
+    for (long level : {1, 2}) {
+        world.mech->setMoveLevel(level);
+        for (bool initial : {false, true}) {
+            bool reachedEnd = initial;
+            CHECK_FALSE(world.mech->getPathRangeBlocked(1, &reachedEnd));
+            CHECK_FALSE(reachedEnd);
+        }
+        CHECK_FALSE(world.mech->getPathRangeBlocked(1, nullptr));
+    }
+}

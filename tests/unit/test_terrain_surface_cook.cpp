@@ -7,6 +7,41 @@
 #include <cmath>
 #include <limits>
 
+TEST_CASE("surface materials: muted sand follows semantic dirt, not hue") {
+    mc2terrain::SurfaceAsset surface;
+    surface.width = surface.height = 2; surface.sourceHash = 1;
+    surface.macroColor.assign(4, {0.16f, 0.15f, 0.13f, 0.5f});
+    const std::vector<float> dirt(4, 2);
+    const auto weights = mc2terrain::cookSurfaceMaterials(surface, dirt, 2, {}, 0, 2, 2, true);
+    REQUIRE(weights.size() == 16);
+    for (size_t i = 0; i < weights.size(); i += 4) {
+        CHECK(weights[i] == 0); CHECK(weights[i+1] == 255);
+        CHECK(weights[i+2] == 0); CHECK(weights[i+3] == 0);
+    }
+    const uint8_t authored[] = {0, 0, 0, 255};
+    const auto concrete = mc2terrain::cookSurfaceMaterials(surface, dirt, 2, authored, 1, 2, 2);
+    REQUIRE(concrete.size() == 16);
+    CHECK(concrete[1] == 0); CHECK(concrete[3] == 255);
+    CHECK(mc2terrain::cookSurfaceMaterials(surface, dirt, 3, {}, 0, 2, 2).empty());
+    // A material edit must affect a new cook even when the macro-color cache is unchanged.
+    const std::vector<float> grass(4, 1);
+    const auto edited = mc2terrain::cookSurfaceMaterials(surface, grass, 2, {}, 0, 2, 2);
+    CHECK(edited[0] == 255); CHECK(edited[1] == 0);
+}
+
+TEST_CASE("surface materials: snow and unknown mod ground retain import fallback") {
+    mc2terrain::SurfaceAsset surface;
+    surface.width = surface.height = 1; surface.sourceHash = 1;
+    surface.macroColor = {{0.8f, 0.8f, 0.8f, 0.5f}};
+    const auto snow = mc2terrain::cookSurfaceMaterials(surface, {}, 0, {}, 0, 1, 1);
+    REQUIRE(snow.size() == 4);
+    CHECK(snow[2] == 255);
+    surface.macroColor = {{0.1f, 0.35f, 0.1f, 0.5f}};
+    const auto grass = mc2terrain::cookSurfaceMaterials(surface, {}, 0, {}, 0, 1, 1);
+    CHECK(grass[0] > 200);
+    CHECK(unsigned(grass[0]) + grass[1] + grass[2] + grass[3] <= 255);
+}
+
 namespace {
 using mc2terrain::SurfaceCookInput;
 using Color = std::array<double, 3>;

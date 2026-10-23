@@ -115,13 +115,22 @@ def test_clean_merge(env):
     lane_branch(repo, {"lane.txt": "x\n"}, "lane: add thing")
     write(repo, "main.txt", "m\n")
     commit_all(repo, "main work")
-    rc, out, err = merge(env)
+    rc, out, err = merge(env, "--trailer", "Co-Authored-By: Test Model <t@example.com>")
     assert rc == 0, err
-    assert out.startswith("MERGED ") and "files=1 ratchets=OK verify=SKIPPED overlap=0" in out and "(+" not in out
+    assert out.startswith("MERGED ") and "files=1 ratchets=OK verify=SKIPPED(tooling-only) overlap=0" in out and "(+" not in out
     assert len(parents(repo)) == 2
     assert git(repo, "log", "-1", "--format=%s") == "merge lane: lane: add thing"
-    assert "Co-Authored-By: Claude Fable 5.1" in git(repo, "log", "-1", "--format=%B")
+    assert "Co-Authored-By: Test Model" in git(repo, "log", "-1", "--format=%B")
     assert (repo / "lane.txt").exists() and (repo / "main.txt").exists()
+
+
+def test_no_trailer_by_default(env):
+    repo, _ = env
+    lane_branch(repo, {"lane.txt": "x\n"})
+    write(repo, "main.txt", "m\n")
+    commit_all(repo, "main work")
+    assert merge(env)[0] == 0
+    assert "Co-Authored-By" not in git(repo, "log", "-1", "--format=%B")
 
 
 def test_message_override(env):
@@ -222,13 +231,13 @@ def test_followup_commits_only_the_named_baselines(env):
     commit_all(repo, "main work")
     set_mode(env, "file_size_ratchet.py", "tighten")
     set_mode(env, "cxx17_ratchet/cxx17_ratchet.py", "tighten")
-    rc, out, err = merge(env)
+    rc, out, err = merge(env, "--trailer", "Co-Authored-By: Test Model <t@example.com>")
     assert rc == 0, err
     assert "(+" in out and "ratchets=OK" in out
     files = git(repo, "show", "--name-only", "--format=", "HEAD").split()
     assert sorted(files) == sorted([FSIZE, CXX])
     assert git(repo, "log", "-1", "--format=%s") == "merge follow-up: ratchet baselines tightened at merged HEAD"
-    assert "Co-Authored-By: Claude Fable 5.1" in git(repo, "log", "-1", "--format=%B")
+    assert "Co-Authored-By: Test Model" in git(repo, "log", "-1", "--format=%B")
     assert len(parents(repo, "HEAD")) == 1 and len(parents(repo, "HEAD~1")) == 2
     assert "tools/decoy.json" in git(repo, "status", "--porcelain")  # decoy never committed
 
@@ -482,3 +491,129 @@ def test_invalid_resolution_does_not_start_merge(env, spec):
     rc, _, _ = merge(env, "--resolution", spec)
     assert rc == 5
     assert git(repo, "rev-parse", "HEAD") == head
+
+
+def _branch(repo, name, rel, content, subject):
+    git(repo, "checkout", "-q", "-b", name, "main")
+    write(repo, rel, content)
+    commit_all(repo, subject)
+    git(repo, "checkout", "-q", "main")
+
+
+def test_batch_merges_each_tip_with_baselines_after_each_and_verifies_once(env, monkeypatch):
+    repo, tools = env
+    for n in "abc":
+        _branch(repo, "lane_" + n, f"{n}_lane.cpp", n + "\n", f"lane {n}")
+    write(repo, "main.txt", "m\n")
+    commit_all(repo, "main work")
+    set_mode(env, "file_size_ratchet.py", "tighten")
+    lm = _load_module()
+    verifies = []
+    monkeypatch.setattr(lm, "verify_merged", lambda root, mode, runner=None: (verifies.append(mode), ("OK", []))[1])
+    rc = lm.main(["--batch", "lane_a", "lane_b", "lane_c", "--root", str(repo), "--tools-dir", str(tools)])
+    assert rc == 0
+    assert verifies == ["build"]
+    log = git(repo, "log", "--format=%s", "-8").splitlines()
+    follow = "merge follow-up: ratchet baselines tightened at merged HEAD"
+    assert log.index(follow) < log.index("merge lane: lane a") and log.index("merge lane: lane b") < log.index(follow)   # right after tip a, before tip b
+    assert [s for s in log if s.startswith("merge lane:")] == ["merge lane: lane c", "merge lane: lane b", "merge lane: lane a"]
+    assert all((repo / f"{n}_lane.cpp").exists() for n in "abc")
+
+
+def test_batch_dry_run_plans_later_tips_against_the_earlier_ones(env, capsys):
+    repo, tools = env
+    _branch(repo, "lane_a", "a.txt", "from a\n", "lane a")
+    _branch(repo, "lane_b", "a.txt", "from b\n", "lane b")      # conflicts with lane_a only once a is merged
+    head = git(repo, "rev-parse", "HEAD")
+    lm = _load_module()
+    assert lm.main(["--batch", "lane_a", "lane_b", "--dry-run", "--root", str(repo), "--tools-dir", str(tools)]) == 5
+    out = capsys.readouterr().out
+    assert out.count("PLAN lane=") == 2 and "blocking=1" in out and "a.txt" in out
+    assert git(repo, "rev-parse", "HEAD") == head and git(repo, "status", "--porcelain") == ""
+
+
+def test_batch_needs_exactly_one_form(env):
+    repo, tools = env
+    lm = _load_module()
+    with pytest.raises(SystemExit):
+        lm.main(["lane", "--batch", "x", "--root", str(repo)])
+    with pytest.raises(SystemExit):
+        lm.main(["--batch", "x", "y", "--resolution", "p=-", "--root", str(repo)])
+
+
+def _run_batch(env_, *argv):
+    repo, tools = env_
+    lm = _load_module()
+    verifies = []
+    lm.verify_merged = lambda root, m, runner=None: (verifies.append(m), ("OK", []))[1]
+    rc = lm.main(["--batch", *argv, "--root", str(repo), "--tools-dir", str(tools)])
+    return rc, verifies
+
+
+def test_batch_message_is_a_template(env):
+    repo, _ = env
+    for n in "ab":
+        _branch(repo, "lane_" + n, f"{n}_lane.txt", n + "\n", f"lane {n}")
+    write(repo, "main.txt", "m\n")
+    commit_all(repo, "main work")
+    rc, _ = _run_batch(env, "lane_a", "lane_b", "--message", "w{n}: {subject}")
+    assert rc == 0
+    assert [s for s in git(repo, "log", "--format=%s", "-6").splitlines() if s.startswith("w")] == ["w2: lane b", "w1: lane a"]
+
+
+def test_batch_dry_run_plans_past_a_conflicted_tip(env, capsys):
+    repo, tools = env
+    _branch(repo, "lane_a", "a.txt", "from a\n", "lane a")
+    _branch(repo, "lane_b", "a.txt", "from b\n", "lane b")      # blocks once a is merged
+    _branch(repo, "lane_c", "c.txt", "c\n", "lane c")
+    lm = _load_module()
+    assert lm.main(["--batch", "lane_a", "lane_b", "lane_c", "--dry-run", "--root", str(repo), "--tools-dir", str(tools)]) == 5
+    out = capsys.readouterr().out
+    assert out.count("PLAN lane=") == 3 and "approximate" in out
+
+
+def test_batch_refuses_to_start_when_a_later_tip_cannot_merge(env, capsys):
+    repo, tools = env
+    _branch(repo, "lane_a", "a.txt", "from a\n", "lane a")
+    _branch(repo, "lane_b", "a.txt", "from b\n", "lane b")
+    head = git(repo, "rev-parse", "HEAD")
+    lm = _load_module()
+    assert lm.main(["--batch", "lane_a", "lane_b", "--root", str(repo), "--tools-dir", str(tools)]) == 5
+    assert "BATCH REFUSED" in capsys.readouterr().err
+    assert git(repo, "rev-parse", "HEAD") == head and git(repo, "status", "--porcelain") == ""
+
+
+def test_batch_ratchet_failure_stops_and_names_the_rest(env, capsys):
+    repo, _ = env
+    for n in "abc":
+        _branch(repo, "lane_" + n, f"{n}_lane.txt", n + "\n", f"lane {n}")
+    write(repo, "main.txt", "m\n")
+    commit_all(repo, "main work")
+    set_mode(env, "cxx17_ratchet/cxx17_ratchet.py", "fail")
+    rc, verifies = _run_batch(env, "lane_a", "lane_b", "lane_c")
+    out = capsys.readouterr().out
+    assert rc == 6 and verifies == []     # a tooling-only partial tree has nothing to build
+    assert "BATCH STOPPED at lane_a merged=1 remaining=lane_b lane_c" in out
+    last = out.strip().splitlines()[-1]
+    assert last.startswith("MERGED ") and "ratchets=FAIL" in last and "SKIPPED(tooling-only)" in last
+    assert (repo / "a_lane.txt").exists() and not (repo / "b_lane.txt").exists()
+
+
+def test_batch_with_compiled_changes_verifies_the_partial_tree(env, capsys):
+    repo, _ = env
+    _branch(repo, "lane_a", "src/a.cpp", "int a;\n", "lane a")
+    _branch(repo, "lane_b", "b_lane.txt", "b\n", "lane b")
+    write(repo, "main.txt", "m\n")
+    commit_all(repo, "main work")
+    set_mode(env, "cxx17_ratchet/cxx17_ratchet.py", "fail")
+    rc, verifies = _run_batch(env, "lane_a", "lane_b")
+    assert rc == 6 and verifies == ["build"]
+    assert "remaining=lane_b" in capsys.readouterr().out
+
+
+def test_compiled_input_classifier():
+    lm = _load_module()
+    for rel in ("a/b.cpp", "x.h", "shaders/a.frag", "CMakeLists.txt", "cmake/x.cmake", "Gates/rows.inc", "RenderCore/a.hglsl"):
+        assert lm.COMPILED_INPUTS.search(rel), rel
+    for rel in ("tools/a.py", "docs/a.md", "scripts/check-contracts.sh", "data/x.json"):
+        assert not lm.COMPILED_INPUTS.search(rel), rel

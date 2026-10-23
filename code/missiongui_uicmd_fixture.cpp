@@ -6,6 +6,8 @@
 #include "Gates/gate.h"
 #include "mc2fmt.h"
 #include "../RenderCore/TextureService.h"
+#include "../GameOS/gameos/battle_bench.h"
+#include "package_chassis.h"
 
 //--------------------------------------------------------------------------
 // FREEZE-MOVERS-1 (GAMEPLAY-DRIVER-3): deterministic mover freeze.
@@ -124,6 +126,29 @@ bool MissionInterfaceManager::uiCmdFixture(UiCmdCtx& c)
 	const char*& result = c.result;
 	std::string& note = c.note;
 	std::string& extra = c.extra;
+	if (line.rfind("bench_output ", 0) == 0) {
+		result = mc2::gate::get<"MC2_TEST_SPAWN">() && mc2::battlebench::arm(line.c_str() + 13) ? "ok" : "blocked";
+		return true;
+	}
+	if (line == "bench_attack") {
+		if (mc2::gate::get<"MC2_TEST_SPAWN">()) { mc2::battlebench::attack = true; result = "ok"; }
+		else result = "blocked";
+		return true;
+	}
+	if (line.rfind("bench_view ", 0) == 0) {
+		float x = 0, y = 0, yaw = 0, altitude = 0, pitch = 0;
+		if (!mc2::gate::get<"MC2_TEST_SPAWN">() || !eye ||
+			sscanf(line.c_str() + 11, "%f %f %f %f %f", &x, &y, &yaw, &altitude, &pitch) != 5) result = "blocked";
+		else {
+			glm::vec3 pos(x, y, 0); if (land) pos.z = land->getTerrainElevation(pos);
+			eye->setPosition(pos, false); eye->setRotation(glm::vec3(pitch, yaw, altitude));
+			eye->freezeScriptedCameraForCapture(); result = "ok";
+			if (mc2::battlebench::output) std::fprintf(mc2::battlebench::output,
+				"{\"type\":\"view\",\"frame\":%llu,\"sim_s\":%.6f,\"pos\":[%.3f,%.3f],\"yaw\":%.3f,\"alt\":%.3f,\"pitch\":%.3f}\n",
+				static_cast<unsigned long long>(mc2::battlebench::frame), double(scenarioTime), x, y, yaw, altitude, pitch);
+		}
+		return true;
+	}
 
     if (line.rfind("texture_retire ",0)==0) {
         unsigned long long id=0;
@@ -219,23 +244,26 @@ bool MissionInterfaceManager::uiCmdFixture(UiCmdCtx& c)
     }
 	if (line.compare(0, 6, "spawn ") == 0 || line.compare(0, 9, "teleport ") == 0) {
 		// GAMEPLAY-DRIVER-1 test-only fixtures (gated MC2_TEST_SPAWN=1).
-		//   spawn <clone|vehicle|infantry|objNum> <x> <y> [team] [variant]
+		//   spawn <clone|vehicle|infantry|objNum> <x> <y> [team] [variant] [pilotProfile]
 		//   teleport <partId> <x> <y>
 		const bool armed = mc2::gate::get<"MC2_TEST_SPAWN">();
 		if (!armed) {
 			result = "blocked"; note = "needs MC2_TEST_SPAWN=1";
 		}
 		else if (line.compare(0, 6, "spawn ") == 0) {
-			char kind[40] = {0}; float x = 0, y = 0; int team = -1, variant = 0;
-			const int nf = sscanf(line.c_str() + 6, "%39s %f %f %d %d",
-				kind, &x, &y, &team, &variant);
+			char kind[40] = {0}, pilotProfile[50] = {0}; float x = 0, y = 0; int team = -1, variant = 0;
+			const int nf = sscanf(line.c_str() + 6, "%39s %f %f %d %d %49s",
+				kind, &x, &y, &team, &variant, pilotProfile);
 			if (nf < 3) {
-				note = "spawn <clone|vehicle|infantry|objNum> <x> <y> [team] [variant]";
+				note = "spawn <clone|vehicle|infantry|objNum> <x> <y> [team] [variant] [pilotProfile]";
 			} else {
 				const long homeCmdr = Commander::home ? Commander::home->getId() : 0;
 				const long homeTeam = Team::home ? Team::home->getId() : 0;
 				MoverInitData data; memset(&data, 0, sizeof(data));
-				strcpy(data.pilotFileName, "pmw00080");
+				// Flash is shipped in mission.fst. The prototype's pmw00080 was absent,
+				// leaving zero pilot skills and NaN status on every spawned chassis.
+				strcpy(data.pilotFileName, "pmp_flash");
+				if (nf >= 6) mc2::fmt::to_buf(data.pilotFileName, "{}", pilotProfile);
 				strcpy(data.brainFileName, "pbrain");
 				data.controlDataType = 0;
 				data.rosterIndex = 255;
@@ -282,17 +310,24 @@ bool MissionInterfaceManager::uiCmdFixture(UiCmdCtx& c)
 						data.variant = (wantCls == BATTLEMECH)
 							? static_cast<DWORD>((static_cast<BattleMechPtr>(tmpl))->variantID) : 0;
 					}
+				} else if (strchr(kind, ':')) {
+					// BT2018-FIRST-CLASS P3: a package chassis by qualified id (bt2018:marauder).
+					// Its object-type number is a runtime allocation, so drivers name the id.
+					const mc2pkg::PackageChassis* pc = packageChassisById(kind);
+					if (!pc || pc->objTypeNum < 0) { ok = false; result = "blocked"; note = "no registered package chassis with that id"; }
+					else data.objNumber = pc->objTypeNum;
 				} else {
 					char* end = nullptr; const long on = strtol(kind, &end, 10);
-					if (!end || *end != '\0') { ok = false; note = "kind: clone|vehicle|infantry|<objNum>"; }
+					if (!end || *end != '\0') { ok = false; note = "kind: clone|vehicle|infantry|<objNum>|<ns:chassis>"; }
 					else data.objNumber = on;
 				}
 				if (ok) {
 					glm::vec3 pos; pos.x = x; pos.y = y; pos.z = 0.0f;
 					if (land) pos.z = land->getTerrainElevation(pos);
 					data.position = pos; data.rotation = 0;
-					data.controlType = (data.commanderID == static_cast<char>(homeCmdr) && !MPlayer)
-						? CONTROL_PLAYER : CONTROL_AI;
+					// Tactical orders run through the pilot's AI loop, including home units.
+					// CONTROL_PLAYER is the legacy keyboard/animation puppet mode.
+					data.controlType = CONTROL_AI;
 					const long h = mission ? mission->addMover(&data) : -1;
 					MoverPtr nm = (h > 0) ? static_cast<MoverPtr>(ObjectManager->get(h)) : nullptr;
 					if (!nm) { result = "blocked"; if (note.empty()) note = "addMover failed"; }
@@ -318,8 +353,8 @@ bool MissionInterfaceManager::uiCmdFixture(UiCmdCtx& c)
 						// scenario_runner only substring-matches acks, the
 						// report said ok=True. Surfacing hp here means a
 						// driver can assert on it. A non-positive OR NaN hp on
-						// a fresh spawn is the known defect -- use
-						// `unit <id>` for detail.
+						// a fresh spawn is invalid -- use `unit <id>` for detail.
+						// The watch id joins the ack to COMBAT fire events.
 						//
 						// Written as !(hp > 0) and NOT as (hp <= 0): a
 						// spawned BattleMech's getStatusRating() can come
@@ -329,7 +364,7 @@ bool MissionInterfaceManager::uiCmdFixture(UiCmdCtx& c)
 						// the warning exists to catch slip through acking a
 						// clean "ok".
 						const float spawnHp = nm->getStatusRating();
-						mc2::fmt::to_buf(b, "spawned id={:d} obj={:d} team={:d} hp={:.3f}{}", mc2::fmt::as_i32(nm->getPartId()), mc2::fmt::as_i32(static_cast<int>(data.objNumber)), mc2::fmt::as_i32(static_cast<int>(data.teamID)), spawnHp, mc2::fmt::safe(!(spawnHp > 0.0f)
+						mc2::fmt::to_buf(b, "spawned id={:d} obj={:d} team={:d} hp={:.3f} wid={:d}{}", mc2::fmt::as_i32(nm->getPartId()), mc2::fmt::as_i32(static_cast<int>(data.objNumber)), mc2::fmt::as_i32(static_cast<int>(data.teamID)), spawnHp, mc2::fmt::as_u32(nm->getWatchID(false)), mc2::fmt::safe(!(spawnHp > 0.0f)
 								? " WARNING:bad hp, spawned unit may be inert" : ""));
 						note = b;
 					}
