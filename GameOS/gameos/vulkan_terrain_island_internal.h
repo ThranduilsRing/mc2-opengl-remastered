@@ -136,6 +136,9 @@ struct TerrainIsland : mc2vk::IslandState {
     uint64_t groundFrameNo = ~uint64_t(0);
     mc2vk::OwnedPipelineLayout  playout;
     mc2vk::OwnedPipeline        pipe;
+    mc2vk::OwnedPipeline        cliffFreePipe;
+    std::vector<uint8_t> cliffFreeBlocks; // 0 unknown, 1 cliff-free, 2 cliff-capable
+    uint64_t cliffFreeVersion = UINT64_MAX;
     mc2vk::OwnedShaderModule    vert;
     mc2vk::OwnedShaderModule    frag;
 
@@ -146,6 +149,7 @@ struct TerrainIsland : mc2vk::IslandState {
     // IDENTICAL (double-sided, reverse-Z GEQUAL, opaque), matching GL's skirt draw
     // which reuses the same terrain program + GL state, just a different VAO/attribs.
     mc2vk::OwnedPipeline        skirtPipe;
+    mc2vk::OwnedPipeline        cliffFreeSkirtPipe;
     mc2vk::OwnedShaderModule    skirtVert;
     mc2vk::OwnedShaderModule    skirtFrag;
 

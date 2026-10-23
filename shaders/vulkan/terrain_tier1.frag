@@ -54,6 +54,8 @@ layout(set = 0, binding = 15) uniform sampler2D u_materialWeights;
 layout(set = 0, binding = 6) uniform sampler2DArray u_matNormalArray;
 // TERRAIN-SHORELINE-V3: optional mask sidecar (G wet, B foam, A valid); read only while uT.shorelineHasMask != 0.
 layout(set = 0, binding = 14) uniform sampler2D u_shorelineMask;
+// Proven cliff-free patches compile out the unused triplanar/POM register footprint.
+layout(constant_id = 0) const bool terrainCliffEnabled = true;
 
 // Material layer indices (mirror shaders/include/terrain_mat_layers.hglsl).
 #define MAT_LAYER_ROCK     0
@@ -593,7 +595,7 @@ void main() {
             vec3 macroPert = vec3(baseN.xy / max(baseN.z, 0.2) * uT.nfhStrength, 1.0);
             vec3 pert = macroPert + vec3(dN.xy * uT.detailStrength, 0.0);
             N = normalize(pert);
-            if (uT.detailReady >= 2) mv_cliffMaterial(baseN, N, baseColor);   // steep cells: triplanar normal + cliff POM + groove relief
+            if (terrainCliffEnabled && uT.detailReady >= 2) mv_cliffMaterial(baseN, N, baseColor);
             dbgBaseN = baseN; dbgDN = dN;                        // CSM-BLACKOUT-RECON-1 taps
         }
         // Evaluate the ratio after material sampling so its inputs do not stay

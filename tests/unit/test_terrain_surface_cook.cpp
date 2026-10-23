@@ -7,6 +7,19 @@
 #include <cmath>
 #include <limits>
 
+TEST_CASE("terrain cliff specialization: conservative gradients and edit invalidation") {
+    std::vector<float> heights(21 * 21, 0);
+    CHECK(mc2terrain::terrainPatchCliffFree(heights, 21, 0, 0, 20, 20));
+    for (int y = 0; y < 21; ++y) for (int x = 0; x < 21; ++x) heights[x + y * 21] = float(x * 64);
+    CHECK(mc2terrain::terrainPatchCliffFree(heights, 21, 0, 0, 20, 20));
+    heights[1 + 21] += 256;
+    CHECK_FALSE(mc2terrain::terrainPatchCliffFree(heights, 21, 0, 0, 20, 20));
+    CHECK(mc2terrain::terrainPatchCliffFree(heights, 21, 10, 10, 10, 10));
+    heights[11 + 11 * 21] = std::numeric_limits<float>::quiet_NaN();
+    CHECK_FALSE(mc2terrain::terrainPatchCliffFree(heights, 21, 10, 10, 10, 10));
+    CHECK_FALSE(mc2terrain::terrainPatchCliffFree({}, 21, 0, 0, 20, 20));
+}
+
 TEST_CASE("terrain projected error: plane, interior ridge and partial edge") {
     std::vector<float> heights(21 * 21);
     for (int y = 0; y < 21; ++y) for (int x = 0; x < 21; ++x) heights[x + y * 21] = float(x + 2 * y);

@@ -27,6 +27,8 @@ uint64_t surfaceCookSourceHash(const SurfaceCookInput& input);
 // UVs have the original atlas convention (north at v=0); caller validates input once per cook.
 SurfaceColor evaluateSurfaceMacro(const SurfaceCookInput& input, float u, float v);
 float evaluateSurfaceBreakup(float worldX, float worldY);
+bool terrainPatchCliffFree(std::span<const float> heights, uint32_t side,
+    uint32_t originX, uint32_t originY, uint32_t quadsX, uint32_t quadsY);
 // Maximum vertical deviation from the native fixed TL-BR fine mesh, per stride.
 // Non-divisible footprints stay fine so a coarse capture cannot truncate coverage.
 std::array<float, 6> terrainPatchHeightErrors(std::span<const float> heights, uint32_t side,
