@@ -17,6 +17,7 @@ import threading
 import time
 
 import manifest_schema as ms
+import stage_root as stages
 import run_visual_capture as capture
 from smoke_lib import deploy_lease, fingerprint, host_lease, render_options_pin, runner
 
@@ -329,7 +330,8 @@ def main():
     if provenance.get("dirty") or not provenance.get("available") or not provenance.get("source_head_matches_binary"):
         raise ValueError("commit, build and deploy a clean binary first")
     sha = identity["git"]["commit"]
-    out = (args.out or Path("G:/mc2-proof/battle-bench") / sha).resolve()
+    out = (args.out or stages.default_root("run_battle_bench") / sha).resolve()
+    stages.preflight(out)
     out.mkdir(parents=True, exist_ok=True)
     if (out / "battle-bench.json").exists():
         raise ValueError("output already contains a run; choose --out to preserve the baseline")
