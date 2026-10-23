@@ -1,6 +1,8 @@
 #include "doctest.h"
 #include "mission.h"
 #include "weaponbolt.h"
+#include "carnage.h"
+#include "weaponfx.h"
 #include "heap.h"
 #include "team.h"
 #include "mission_load_frame.h"
@@ -125,6 +127,36 @@ void loadType(WeaponBoltType& type, std::string_view afterHit, bool beam = false
     REQUIRE(source.open(path.string().c_str(), READ) == NO_ERR);
     REQUIRE(type.init(&source, static_cast<unsigned long>(text.size())) == NO_ERR);
 }
+}
+
+TEST_CASE("CombatRetirementProduction/rejected explosion types leave the carnage pool untouched") {
+    World world;
+    auto& objects = *world.objects;
+    objects.objTypeManager = world.ownedTypes = new ObjectTypeManager;
+    auto& types = *objects.objTypeManager;
+    types.numObjectTypes = 2;
+    types.table = static_cast<ObjectTypePtr*>(std::calloc(2, sizeof(ObjectTypePtr)));
+    objects.carnageStore = {new Carnage, new Carnage};
+    objects.carnage = objects.carnageStore.data();
+    objects.numCarnage = 2;
+    objects.currentCarnageIndex = 0;
+    struct Effects : WeaponEffects {
+        WeaponEffects* previous = weaponEffects;
+        EffectData entry{};
+        Effects() { effects = &entry; numEffects = 1; std::strcpy(entry.effectName, "NONE"); weaponEffects = this; }
+        ~Effects() { weaponEffects = previous; effects = nullptr; }
+    } effects;
+    glm::vec3 position{1, 2, 3};
+    effects.entry.effectObjNum = 0; // FX-only content maps to the reserved null type.
+    CHECK(objects.createExplosion(0, nullptr, position, 10, 20) == nullptr);
+    CHECK(objects.currentCarnageIndex == 0);
+    CHECK(objects.carnage[1]->carnageType == CARNAGE_NONE);
+    WeaponBoltType wrongKind;
+    types.table[1] = &wrongKind;
+    effects.entry.effectObjNum = 1;
+    CHECK(objects.createExplosion(0, nullptr, position, 10, 20) == nullptr);
+    CHECK(objects.currentCarnageIndex == 0);
+    CHECK(objects.carnage[1]->carnageType == CARNAGE_NONE);
 }
 
 TEST_CASE("CombatRetirementProduction/object update advances clock and real freeze hook suspends it") {
