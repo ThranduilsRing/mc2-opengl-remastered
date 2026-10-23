@@ -86,21 +86,14 @@ vec2 mv_hash22(vec2 p) {
     return fract((p3.xx + p3.yz) * p3.zy);
 }
 vec4 mv_sampleAntiTileArr(int layer, vec2 uv, float scale, vec2 dx, vec2 dy) {
+    vec2 off1 = mv_hash22(floor(uv / scale)) * scale;
+    vec2 off2 = mv_hash22(floor(uv / scale) + vec2(7.0, 13.0)) * scale;
+    vec4 s0 = textureGrad(u_matNormalArray, vec3(uv,        float(layer)), dx, dy);
+    vec4 s1 = textureGrad(u_matNormalArray, vec3(uv + off1, float(layer)), dx, dy);
+    vec4 s2 = textureGrad(u_matNormalArray, vec3(uv + off2, float(layer)), dx, dy);
     vec2 f = fract(uv / scale);
     float w1 = smoothstep(0.2, 0.5, f.x) * smoothstep(0.2, 0.5, f.y);
     float w2 = smoothstep(0.2, 0.5, 1.0 - f.x) * smoothstep(0.2, 0.5, 1.0 - f.y);
-    vec4 s0 = textureGrad(u_matNormalArray, vec3(uv, float(layer)), dx, dy);
-    vec4 s1 = vec4(0.0), s2 = vec4(0.0);
-    // Exactly zero weights cannot contribute. Explicit derivatives remain valid
-    // across the material and anti-tile branches, including helper invocations.
-    if (w1 != 0.0) {
-        vec2 off1 = mv_hash22(floor(uv / scale)) * scale;
-        s1 = textureGrad(u_matNormalArray, vec3(uv + off1, float(layer)), dx, dy);
-    }
-    if (w2 != 0.0) {
-        vec2 off2 = mv_hash22(floor(uv / scale) + vec2(7.0, 13.0)) * scale;
-        s2 = textureGrad(u_matNormalArray, vec3(uv + off2, float(layer)), dx, dy);
-    }
     return (s0 + s1 * w1 + s2 * w2) / (1.0 + w1 + w2);
 }
 
