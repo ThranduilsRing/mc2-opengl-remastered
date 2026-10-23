@@ -164,7 +164,6 @@ P("MC2_TERRAIN_AMBIENT_FLOOR", Float, 0.35, "terrain", "", "TERRAIN-AMBIENT-FLOO
 // history: docs/gate-history.md#MC2_TERRAIN_AMBIENT_FLOOR_NIGHT
 P("MC2_TERRAIN_AMBIENT_FLOOR_NIGHT", Float, 0.0, "terrain", "", "TERRAIN-AMBIENT-FLOOR-NIGHT-1: 0..1 FLOOR under TERRAIN-AMBIENT-FLOOR-2's daylight gate; the uploaded gate becomes max(dayGate, floor).", passthrough | registry(Feature, "MC2_FEATURE_TERRAIN_AMBIENT_FLOOR_NIGHT", -1, false) | clampRange(0.0, 1.0) | verified),
 // history: docs/gate-history.md#MC2_TERRAIN_AMBIENT_FLOOR_TRACE
-L(Lead0, "MC2_TERRAIN_CEMENT_DIAG_CONNECT", Bool, false, "terrain", "", "", verified),
 // history: docs/gate-history.md#MC2_TERRAIN_CLIFF_DISPLACE
 // history: docs/gate-history.md#MC2_TERRAIN_CLIFF_DISPLACE_MAXTESS
 P("MC2_TERRAIN_CLIFF_DISPLACE_MAXTESS", Float, 4.0, "terrain", "", "SLICE 3 knob: max tessellation factor (float; C++ default 4.0, clamped to GL_MAX_TESS_GEN_LEVEL at program build).", passthrough | registry(Trace, "MC2_TUNE_TERRAIN_CLIFF_MAXTESS", -1, false)),
@@ -217,7 +216,6 @@ L(Lead0Kill, "MC2_TERRAIN_LOD_CHUNK", Bool, true, "terrain", "", "LOD-chunk terr
 P("MC2_TERRAIN_LOD_CHUNK_CEMENT_MAXLOD", Int, 0, "terrain", "", "", verified),
 P("MC2_TERRAIN_LOD_CHUNK_DIAG", Int, 0, "terrain", "", "", passthrough | verified),
 P("MC2_TERRAIN_LOD_CHUNK_DIST_SCALE", Float, 1.0, "terrain", "", "", rangeAbove(static_cast<double>(0.05f), 3.4028234663852886e38) | verified),
-L(Presence, "MC2_TERRAIN_LOD_CHUNK_FORCE_COLOR", Bool, false, "terrain", "", "Resolved-once cached mirrors of the per-frame terrain-uniform env gates.", verified),
 P("MC2_TERRAIN_LOD_CHUNK_FORCE_LOD", Int, -1, "terrain", "", "", verified),
 L(Presence, "MC2_TERRAIN_LOD_CHUNK_NO_APRON", Bool, false, "terrain", "", "", verified),
 L(Presence, "MC2_TERRAIN_LOD_CHUNK_NO_CULL", Bool, false, "terrain", "", "Diagnostic: one-shot dump of planes + first superchunk AABB + camera pos.", verified),

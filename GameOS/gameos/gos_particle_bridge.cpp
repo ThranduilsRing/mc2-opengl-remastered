@@ -75,21 +75,6 @@ void vfxSoftInitIfNeeded() {
     s_soft_initialized   = true;
 }
 
-// VFX-SCENECOLOR-GRAB-1: feedback-safe scene-COLOR copy (FRAME_RESOURCE_SUBSTRATE).
-// Gate MC2_VFX_SCENECOLOR_GRAB (default OFF -> byte-identical: no copy performed,
-// sceneColorCopyTex_ never allocated). When ON, the flush snapshots the resolved
-// scene color (pre-VFX) into pp->sceneColorCopyTex_ via one glCopyImageSubData so
-// a FUTURE distortion/refraction/soft-color slice can sample it without an FBO
-// feedback loop. THIS SLICE HAS NO CONSUMER — nothing samples the copy, so even
-// gate-ON is no visual change. No emission/lifetime/timing effect.
-bool  s_scenecolor_initialized = false;
-bool  s_scenecolor_enabled     = false;
-void vfxSceneColorGrabInitIfNeeded() {
-    if (s_scenecolor_initialized) return;
-    s_scenecolor_enabled = mc2::gate::get<"MC2_VFX_SCENECOLOR_GRAB">();
-    s_scenecolor_initialized = true;
-}
-
 // VFX-LIT-PARTICLES-MVP-1: scene-lit alpha smoke/dust. The options.cfg key
 // VfxLitParticles (default off -> byte-identical). Strength = the 0.7 default / per-mission
 // "vfxLitStrength" profile key / ImGui slider (clamped 0..1). When OFF the
@@ -103,41 +88,6 @@ void vfxLitInitIfNeeded() {
     if (s_lit_initialized) return;
     s_lit_enabled = mc2::options::current().vfxLitParticles;
     s_lit_initialized = true;
-}
-
-// VFX-BLACKBODY-1: blackbody (temperature->color) emissive tint for additive
-// groups. Gate MC2_VFX_BLACKBODY (default OFF -> byte-identical). When OFF the
-// bridge uploads u_vfxBlackbody=0 so the FS tint branch is skipped entirely.
-// When ON, only additive/emissive groups get u_vfxBlackbody=1 in the draw loop;
-// alpha groups are never tinted. No emission/lifetime/timing effect, no new
-// per-particle data — temperature is derived in-shader from emissive brightness.
-bool  s_blackbody_initialized = false;
-bool  s_blackbody_enabled     = false;
-void vfxBlackbodyInitIfNeeded() {
-    if (s_blackbody_initialized) return;
-    s_blackbody_enabled = mc2::gate::get<"MC2_VFX_BLACKBODY">();
-    s_blackbody_initialized = true;
-}
-
-// VFX-DISTORTION-1: heat-haze refraction for the distortion alpha group. Gate
-// MC2_VFX_DISTORTION (default OFF -> byte-identical; the FS u_vfxDistort branch is
-// dead). REQUIRES the scene-color grab (VFX-SCENECOLOR-GRAB-1): if the grab is
-// absent the bridge forces u_vfxDistort=0 so nothing samples a GL-0 texture.
-// FIXTURE: MC2_VFX_DISTORT_FIXTURE (default OFF) tags every alpha group
-// (blendMode==0) as a distortion group so the effect is observable on stock
-// smoke/dust without any content effect->distortion mapping (out of scope). When
-// the fixture is OFF, the gate is inert today (no content tags a distortion group
-// yet) -> still byte-identical even with MC2_VFX_DISTORTION=1.
-bool  s_distort_initialized = false;
-bool  s_distort_enabled     = false;   // MC2_VFX_DISTORTION
-bool  s_distort_fixture     = false;   // MC2_VFX_DISTORT_FIXTURE
-float s_distortAmp          = 0.04f;   // screen-UV wobble amplitude (small)
-void vfxDistortInitIfNeeded() {
-    if (s_distort_initialized) return;
-    s_distort_enabled = mc2::gate::get<"MC2_VFX_DISTORTION">();
-    s_distort_fixture = mc2::gate::get<"MC2_VFX_DISTORT_FIXTURE">();
-    s_distortAmp = mc2::gate::get<"MC2_VFX_DISTORT_AMP">();   // row: default 0.04, accepts (0, 0.5)
-    s_distort_initialized = true;
 }
 
 }  // namespace

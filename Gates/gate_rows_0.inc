@@ -123,7 +123,6 @@ L(Presence, "MC2_CHEAT_INFINITE_MONEY", Bool, false, "mech", "", "Interactive ch
 L(Presence, "MC2_CHEAT_SALVAGE_ALL", Bool, false, "mech", "", "", verified),
 L(Lead0, "MC2_CLOUD_SHADOW", Bool, false, "post", "", "", passthrough | verified),
 G("MC2_COALESCE_FORCE_DISARM", Enum, "", "props", "", "Step 12B.1 - exact, case-sensitive string match on the four valid values; anything else (including unset) leaves None.", tokens("|alloc_failed|mixed_alpha|no_extension|size_mismatch") | verified),
-L(Presence, "MC2_COALESCE_GPU_VS_CPU_COUNT_TRACE", Bool, false, "props", "", "Env probe for GPU-vs-CPU count diagnostic (Step 4.11).", verified),
 L(Lead0, "MC2_COLLISION_FACTS", Bool, false, "code", "", "", verified),
 // history: docs/gate-history.md#MC2_COLORMAP_CPU_RETIRE
 L(Lead0Kill, "MC2_COLORMAP_CPU_RETIRE", Bool, true, "terrain", "", "COLORMAP-CPU-RETIRE-1: free cpuColorMap + cpuDispAlpha in BuildColormapAtlas immediately after GPU atlas upload.", registry(Feature, "MC2_FEATURE_COLORMAP_CPU_RETIRE", 20, true) | verified),
@@ -186,11 +185,8 @@ L(Lead0, "MC2_DIAG_VERBOSE", Bool, false, "gameos", "", "QUIET-DEFAULT-BUILD-1: 
 L(Exact1, "MC2_DIRECT_FIRE_STRAIGHT", Bool, false, "code", "", "Direct-fire de-curve: PPC/autocannon/gauss bolts fly STRAIGHT instead of re-tracking the moving target every frame (the janky homing curve).", passthrough | registry(Feature, "MC2_DIRECT_FIRE_STRAIGHT", -1, false) | verified),
 L(Lead1, "MC2_DISABLE_GOSFX", Bool, false, "code", "", "", passthrough | verified),
 L(Lead1, "MC2_DPI_UNAWARE", Bool, false, "gameos", "", "", verified),
-L(Lead1, "MC2_DRAW_PACKET_COALESCE_V5", Bool, false, "props", "", "", passthrough | verified),
-L(Lead1, "MC2_DRAW_PACKET_COALESCE_V5_TRACE", Bool, false, "props", "", "", passthrough | verified),
 L(Lead1, "MC2_DRAW_PACKET_COMPARE", Bool, false, "gameos", "", "", passthrough | verified),
 L(Lead1, "MC2_DRAW_PACKET_COMPARE_VERBOSE", Bool, false, "gameos", "", "", passthrough | verified),
-L(Lead1, "MC2_DRAW_PACKET_STATIC_PROP_V6_TRACE", Bool, false, "props", "", "", passthrough | verified),
 L(Lead1, "MC2_DRAW_PACKET_V3", Bool, false, "gameos", "", "", passthrough | verified),
 L(Lead1, "MC2_DRAW_PACKET_WARN", Bool, false, "gameos", "", "", verified),
 L(Lead0Kill, "MC2_EDGE_FOG", Bool, true, "post", "", "", verified),
@@ -219,15 +215,10 @@ L(Lead0, "MC2_EQUIPMENT_ADD", Bool, false, "code", "", "", verified),
 G("MC2_EQUIPMENT_DEFINITION_SOURCE", Enum, "legacy", "code", "", "", passthrough | tokens("legacy|generated") | verified),
 // FarBackdropLit (FAR-BACKDROP-LIT-IMPL-1)
 // history: docs/gate-history.md#MC2_FAR_BACKDROP_LIT
-L(Lead0, "MC2_FAR_BACKDROP_LIT", Bool, false, "props", "", "FAR-BACKDROP-LIT-IMPL-1: night-shade substitution for far/impostor static-prop LODs (static_prop.vert).", passthrough | registry(Feature, "MC2_FAR_BACKDROP_LIT", 23, false) | verified),
 // history: docs/gate-history.md#MC2_FAR_BACKDROP_LIT_FAR
-P("MC2_FAR_BACKDROP_LIT_FAR", Float, 960.0, "props", "", "FAR-BACKDROP-LIT-IMPL-1: view-depth (clip.w, world units) where the night-shade fade completes (full substitution).", passthrough | registry(Trace, "MC2_TUNE_FAR_BACKDROP_LIT_FAR", -1, false) | verified),
 // history: docs/gate-history.md#MC2_FAR_BACKDROP_LIT_NEAR
-P("MC2_FAR_BACKDROP_LIT_NEAR", Float, 700.0, "props", "", "FAR-BACKDROP-LIT-IMPL-1: view-depth (clip.w, world units) where the night-shade fade begins.", passthrough | registry(Trace, "MC2_TUNE_FAR_BACKDROP_LIT_NEAR", -1, false) | verified),
 // history: docs/gate-history.md#MC2_FAR_BACKDROP_LIT_STRENGTH
-P("MC2_FAR_BACKDROP_LIT_STRENGTH", Float, 1.0, "props", "", "FAR-BACKDROP-LIT-IMPL-1: maximum substitution amount scaling the distance fade (1.0 = full replace of the stale seed with night ambient; >1 exaggerates for...", passthrough | registry(Trace, "MC2_TUNE_FAR_BACKDROP_LIT_STRENGTH", -1, false) | verified),
 // history: docs/gate-history.md#MC2_FAR_BACKDROP_LIT_TINT
-G("MC2_FAR_BACKDROP_LIT_TINT", String, "", "props", "", "FAR-BACKDROP-LIT-IMPL-1: debug/exaggeration additive tint 'r,g,b' added to the substituted night shade so the affected far/impostor pixels are visually...", passthrough | registry(Trace, "MC2_DIAG_FAR_BACKDROP_LIT_TINT", -1, false) | verified),
 L(Lead0P, "MC2_FASTPATH_DROP_LOG", Bool, false, "terrain", "", "", passthrough | verified),
 L(Presence, "MC2_FF_TRACE", Bool, false, "unclassified", "", "", verified),
 // history: docs/gate-history.md#MC2_FIRE_DECISION_TRACE

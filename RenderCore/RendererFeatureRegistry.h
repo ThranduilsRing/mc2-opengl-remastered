@@ -143,39 +143,33 @@ enum class RendererFeature : int {
     // TRACKV-CI-GATE-RESTORE-1: setupTextures legacy path kill-switch.
     // Default-OFF = new/optimized setupTextures path active; ON = legacy path forced.
     SetupTexturesLegacyForce = 22,  // MC2_SETUPTEXTURES_LEGACY_FORCE
-    // FAR-BACKDROP-LIT: night-shade substitution for far/impostor static-prop
-    // LODs (static_prop.vert). Far LODs skip the per-vertex night bake so their
-    // base_light is a frozen day/black value -> fullbright/black at night; when
-    // ON the shader fades the stale seed toward the mission night object-light
-    // ambient across the LOD impostor distance. Default-OFF -> byte-identical.
-    FarBackdropLit           = 23,  // MC2_FAR_BACKDROP_LIT
     // VEHICLE-NIGHT-LIT-1: coordinate-frame fix for the legacy lit shader path
     // (gos_tex_vertex_lighted.vert) — the program that draws ground vehicles.
     // It fed calc_light Stuff-frame position + normal while the ObjectLights
     // rows (and the mech.vert / static_prop.vert consumers) are MC2-frame, so
     // every positional light type failed its falloff distance test and vehicles
     // received no pool / cone light at night. Default-OFF -> byte-identical.
-    LegacyLitMc2Frame        = 24,  // MC2_LEGACY_LIT_MC2_FRAME
-    LightPosColumnFix        = 25,  // MC2_LIGHT_POS_COLUMN_FIX
+    LegacyLitMc2Frame        = 23,  // MC2_LEGACY_LIT_MC2_FRAME
+    LightPosColumnFix        = 24,  // MC2_LIGHT_POS_COLUMN_FIX
     // VEHICLE-LIGHTING-PATH-1: populate the ground-vehicle light row before the
     // legacy draw. GVAppearance called neither CacheGpuLightData nor
     // submitMultiShape, so its lightData_ stayed all-zero and calc_light
     // returned vec3(1,1,1) -> vehicles rendered at raw albedo, fully unlit.
     // Default-ON; =0 restores the shipped unlit behavior.
-    VehicleLitPath           = 26,  // MC2_VEHICLE_LIT_PATH
+    VehicleLitPath           = 25,  // MC2_VEHICLE_LIT_PATH
     // OVERLAY-CEMENT-ADOPT-1 (CONCRETE-DELIVER-1): on a cement tile the
     // overlay/decal layer adopts terrain_lod_chunk.frag's concrete albedo +
     // lighting model, closing the two-shader seam that made concrete a
     // patchwork -- including the in-shader distance fog the overlay applies
     // and the chunk frag does not. Default-ON; =0 restores stock.
-    OverlayCementAdopt       = 27,  // MC2_OVERLAY_CEMENT_ADOPT
+    OverlayCementAdopt       = 26,  // MC2_OVERLAY_CEMENT_ADOPT
     // VEHICLE-AMBIENT-FLOOR-1: finishes VEHICLE-LIGHTING-PATH-1 by giving the
     // legacy lit vehicle path mech.vert's kAmbientFloor = 0.35 seed and its
     // clamp(0,1). Without them a gathered vehicle computes base_light+A+S*ndl
     // against a mech's clamp(0.35+A+S*ndl,0,1), so the truck still reads darker
     // than the mech beside it. Default-ON; =0 restores no-floor/no-clamp.
-    VehicleAmbientFloor      = 28,  // MC2_VEHICLE_AMBIENT_FLOOR
-    COUNT                    = 29,
+    VehicleAmbientFloor      = 27,  // MC2_VEHICLE_AMBIENT_FLOOR
+    COUNT                    = 28,
 };
 
 // ---------------------------------------------------------------------------
@@ -302,32 +296,27 @@ static constexpr EnvVarDesc kFeatureTable[] = {
         "MC2_FEATURE_SETUPTEXTURES_LEGACY_FORCE", "MC2_SETUPTEXTURES_LEGACY_FORCE", EnvVarKind::Feature, false,
         "TRACKV-CI-GATE-RESTORE-1: setupTextures legacy path kill-switch."
     },
-    // [23] FarBackdropLit
-    {
-        "MC2_FAR_BACKDROP_LIT", "MC2_FAR_BACKDROP_LIT", EnvVarKind::Feature, false,
-        "FAR-BACKDROP-LIT-IMPL-1: night-shade substitution for far/impostor static-prop LODs (static_prop.vert)."
-    },
-    // [24] LegacyLitMc2Frame
+    // [23] LegacyLitMc2Frame
     {
         "MC2_LEGACY_LIT_MC2_FRAME", "MC2_LEGACY_LIT_MC2_FRAME", EnvVarKind::Feature, true,
         "[DEFAULT-ON as of VEHICLE-LIGHTING-PATH-1; MC2_LEGACY_LIT_MC2_FRAME=0 reverts."
     },
-    // [25] LightPosColumnFix
+    // [24] LightPosColumnFix
     {
         "MC2_LIGHT_POS_COLUMN_FIX", "MC2_LIGHT_POS_COLUMN_FIX", EnvVarKind::Feature, true,
         "[DEFAULT-ON as of VEHICLE-LIGHTING-PATH-1; MC2_LIGHT_POS_COLUMN_FIX=0 reverts."
     },
-    // [26] VehicleLitPath
+    // [25] VehicleLitPath
     {
         "MC2_VEHICLE_LIT_PATH", "MC2_VEHICLE_LIT_PATH", EnvVarKind::Feature, true,
         "VEHICLE-LIGHTING-PATH-1: put GROUND VEHICLES on the same lighting path as every other object class."
     },
-    // [27] OverlayCementAdopt
+    // [26] OverlayCementAdopt
     {
         "MC2_FEATURE_OVERLAY_CEMENT_ADOPT", "MC2_OVERLAY_CEMENT_ADOPT", EnvVarKind::Feature, true,
         "OVERLAY-CEMENT-ADOPT-1: closes the two-shader concrete seam CEMENT-PATCHY-CAUSE-1 attributed but explicitly left open as a design call ('either the overlay..."
     },
-    // [28] VehicleAmbientFloor
+    // [27] VehicleAmbientFloor
     {
         "MC2_VEHICLE_AMBIENT_FLOOR", "MC2_VEHICLE_AMBIENT_FLOOR", EnvVarKind::Feature, true,
         "VEHICLE-AMBIENT-FLOOR-1: DEFAULT-ON."
@@ -490,22 +479,6 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
     {
         "MC2_DIRECT_FIRE_STRAIGHT", "MC2_DIRECT_FIRE_STRAIGHT", EnvVarKind::Feature, false,
         "Direct-fire de-curve: PPC/autocannon/gauss bolts fly STRAIGHT instead of re-tracking the moving target every frame (the janky homing curve).",
-    },
-    {
-        "MC2_TUNE_FAR_BACKDROP_LIT_FAR", "MC2_FAR_BACKDROP_LIT_FAR", EnvVarKind::Trace, false,
-        "FAR-BACKDROP-LIT-IMPL-1: view-depth (clip.w, world units) where the night-shade fade completes (full substitution).",
-    },
-    {
-        "MC2_TUNE_FAR_BACKDROP_LIT_NEAR", "MC2_FAR_BACKDROP_LIT_NEAR", EnvVarKind::Trace, false,
-        "FAR-BACKDROP-LIT-IMPL-1: view-depth (clip.w, world units) where the night-shade fade begins.",
-    },
-    {
-        "MC2_TUNE_FAR_BACKDROP_LIT_STRENGTH", "MC2_FAR_BACKDROP_LIT_STRENGTH", EnvVarKind::Trace, false,
-        "FAR-BACKDROP-LIT-IMPL-1: maximum substitution amount scaling the distance fade (1.0 = full replace of the stale seed with night ambient; >1 exaggerates for...",
-    },
-    {
-        "MC2_DIAG_FAR_BACKDROP_LIT_TINT", "MC2_FAR_BACKDROP_LIT_TINT", EnvVarKind::Trace, false,
-        "FAR-BACKDROP-LIT-IMPL-1: debug/exaggeration additive tint 'r,g,b' added to the substituted night shade so the affected far/impostor pixels are visually...",
     },
     {
         "MC2_TRACE_FIRE_DECISION", "MC2_FIRE_DECISION_TRACE", EnvVarKind::Trace, false,

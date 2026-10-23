@@ -95,34 +95,6 @@ bool staticPropAmbientV1Enabled() {
     return on;
 }
 
-// FAR-BACKDROP-LIT: gate + tunables for the night-shade substitution applied to
-// far/impostor static-prop LODs (see static_prop.vert). Default-OFF; "=1" / any
-// non-"0", non-empty value enables. When OFF the per-frame upload pushes
-// u_farBackdropLit=0 so the shader's `if (u_farBackdropLit != 0)` branch is
-// skipped entirely -> seed==base_light -> byte-identical to the pre-change
-// render (stronger than a multiply-by-zero: the substitution code never runs).
-// Distance band defaults bracket the LOD impostor distance (800
-// world units; bdactor.cpp selectActiveLOD) so the fade completes as
-// the impostor takes over, hiding the LOD pop. All tunable at runtime via env.
-extern const bool s_farBackdropLitEnabled = mc2::gate::get<"MC2_FAR_BACKDROP_LIT">();
-extern const float s_farBackdropNear = mc2::gate::get<"MC2_FAR_BACKDROP_LIT_NEAR">();
-extern const float s_farBackdropFar = mc2::gate::get<"MC2_FAR_BACKDROP_LIT_FAR">();
-extern const float s_farBackdropStrength = mc2::gate::get<"MC2_FAR_BACKDROP_LIT_STRENGTH">();
-// Optional debug/exaggeration additive tint, "r,g,b" in [0..N] (default 0,0,0).
-// Used for verify-by-exaggeration (e.g. "1,0,0" paints substituted far geometry
-// red to prove the path fires on the ridge / impostor pixels).
-float s_farBackdropTint[3] = {0.0f, 0.0f, 0.0f};
-static const bool s_farBackdropTintParsed = []() {
-    const std::string v = mc2::gate::str<"MC2_FAR_BACKDROP_LIT_TINT">();   // "" when unset or empty
-    if (!v.empty()) {
-        float r = 0.0f, g = 0.0f, b = 0.0f;
-        if (sscanf(v.c_str(), "%f,%f,%f", &r, &g, &b) >= 1) {
-            s_farBackdropTint[0] = r; s_farBackdropTint[1] = g; s_farBackdropTint[2] = b;
-        }
-    }
-    return true;
-}();
-
 // V-IBL-STATIC-1: SH-L2 image-based ambient lane.
 //   - the options.cfg key StaticPropIblSh is the authoritative switch
 //     (resolved once at first use; matches the V-AMBIENT-STATIC-1 pattern).

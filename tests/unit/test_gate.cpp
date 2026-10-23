@@ -1121,14 +1121,11 @@ TEST_CASE("G5 static-prop clamp rows reproduce the lambdas they replaced") {
     auto in = [&](const char* name, const char* text) {
         return static_cast<std::int32_t>(static_cast<std::uint32_t>(gate::detail::parseRow(g1b::rowNamed(name), text)));
     };
-    CHECK(fl("MC2_FAR_BACKDROP_LIT_NEAR", nullptr) == 700.0f);
-    CHECK(fl("MC2_FAR_BACKDROP_LIT_FAR", nullptr) == 960.0f);
     CHECK(fl("MC2_OBJECT_POLY_OFFSET_FACTOR", nullptr) == -1.0f);
     // texture tier and the billboard mode keep their snapping / first-character logic at the site
     CHECK(in("MC2_STATICPROP_TEX_TIER", nullptr) == 512);
     CHECK(in("MC2_STATICPROP_TEX_TIER", "300") == 300);
     CHECK(g1b::rowNamed("MC2_LIGHT_BILLBOARD_FACING").kind == Kind::String);
-    CHECK(g1b::rowNamed("MC2_FAR_BACKDROP_LIT_TINT").kind == Kind::String);
 }
 
 // ---------------------------------------------------------------------------
@@ -1204,7 +1201,7 @@ TEST_CASE("boolState answers by the row's own rule for a gate named at run time"
 
 }  // TEST_SUITE
 
-TEST_CASE("MC2_VFX_DISTORT_AMP accepts (0, 0.5) like the `a > 0 && a < 0.5f` reader it replaced") {
+TEST_CASE("an exclusive float range rejects both endpoints") {
     using namespace gate::rows;
     const gate::Row row = P("MC2_UNITTEST_DAMP", Float, 0.04, "test", "", "doc", rangeAbove(0.0, 0.4999999701976776));
     auto val = [&](const char* t) { return asFloat(gate::detail::parseRow(row, t)); };

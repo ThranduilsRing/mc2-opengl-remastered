@@ -159,9 +159,7 @@ struct TerrainShorelineKnobs {
 TerrainShorelineKnobs gos_TerrainShorelineKnobs();
 
 // State and helpers shared between the pieces. Each is defined once, in the piece that owns it.
-extern const bool kTglcForceColor;
 extern const int kTglcDiag;
-extern const bool  kTglcCementDiagConnect;
 extern const bool kTglcCementAtlasSeamFix;
 extern const bool kTglcLightPoolSoft;
 extern const float kTglcLightPoolMoverDim;
@@ -169,8 +167,6 @@ extern const float kTglcLightPoolMoverRadius;
 extern const bool kTglcLightPoolMoverMax;
 extern const bool kTglcLightPoolCompress;
 extern const float kTglcMoverContactShadow;
-extern const bool  kTglcSlopeBias;
-extern const float kTglcSlopeBiasStr;
 extern const float kTglcMacroVariation;
 extern const bool kTglcEdgeFeather;
 extern const float kTglcEdgeFeatherStr;

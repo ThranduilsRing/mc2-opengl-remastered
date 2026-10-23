@@ -14,10 +14,8 @@
 // throughout this file. The per-frame block reads these
 // instead of hitting getenv. Uniform VALUES uploaded are unchanged.
 // Resolved-once cached mirrors of the per-frame terrain-uniform env gates.
-extern const bool kTglcForceColor = mc2::gate::get<"MC2_TERRAIN_LOD_CHUNK_FORCE_COLOR">();
 
 extern const int kTglcDiag = mc2::gate::get<"MC2_TERRAIN_LOD_CHUNK_DIAG">();
-extern const bool  kTglcCementDiagConnect = mc2::gate::get<"MC2_TERRAIN_CEMENT_DIAG_CONNECT">();
 // CEMENT-ATLAS-SEAM-1: default ON (killswitch MC2_CEMENT_ATLAS_SEAM_FIX=0).
 extern const bool kTglcCementAtlasSeamFix = mc2::gate::get<"MC2_CEMENT_ATLAS_SEAM_FIX">();
 // NIGHT-LIGHT-POOLS-2: soft falloff tail (default ON; =0 exact legacy
@@ -40,8 +38,6 @@ extern const bool kTglcLightPoolCompress = mc2::gate::get<"MC2_LIGHT_POOL_COMPRE
 // the ground beneath the body. Default 0.0 => uniform 0 => byte-identical
 // (mix() collapses, no darkening). Recommended ~0.7. MC2_MOVER_CONTACT_SHADOW.
 extern const float kTglcMoverContactShadow = mc2::gate::get<"MC2_MOVER_CONTACT_SHADOW">();
-extern const bool  kTglcSlopeBias         = mc2::gate::get<"MC2_TERRAIN_SLOPE_BIAS">();
-extern const float kTglcSlopeBiasStr      = mc2::gate::get<"MC2_TERRAIN_SLOPE_BIAS_STRENGTH">();   // row: default 1, > 0
 extern const float kTglcMacroVariation    = []() {
     if (!mc2::gate::get<"MC2_TERRAIN_MACRO_VARIATION">()) return 0.0f;
     return mc2::gate::get<"MC2_TERRAIN_MACRO_VARIATION_STRENGTH">();

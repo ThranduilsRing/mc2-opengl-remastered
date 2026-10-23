@@ -3,9 +3,9 @@
 # Where each gate is read, what the smoke runner forwards and what tier1_env_vars.md says are not here: ask
 # tools/repo_intel (env_var, gate_status), which scan the sources.
 generator_version: "3.0.0"
-gate_count: 832
-registry_entry_count: 170
-verified_count: 788
+gate_count: 814
+registry_entry_count: 165
+verified_count: 770
 flags:
   - name: MC2_ABL_ARG_GUARD
     kind: Bool
@@ -706,13 +706,6 @@ flags:
     doc: "Step 12B.1 - exact, case-sensitive string match on the four valid values; anything else (including unset) leaves None."
     tokens: "|alloc_failed|mixed_alpha|no_extension|size_mismatch"
     verified: true
-  - name: MC2_COALESCE_GPU_VS_CPU_COUNT_TRACE
-    kind: Bool
-    default: false
-    rule: Presence
-    owner: props
-    doc: "Env probe for GPU-vs-CPU count diagnostic (Step 4.11)."
-    verified: true
   - name: MC2_COLLISION_FACTS
     kind: Bool
     default: false
@@ -1029,22 +1022,6 @@ flags:
     owner: gameos
     doc: ""
     verified: true
-  - name: MC2_DRAW_PACKET_COALESCE_V5
-    kind: Bool
-    default: false
-    rule: Lead1
-    owner: props
-    doc: ""
-    smoke_passthrough: true
-    verified: true
-  - name: MC2_DRAW_PACKET_COALESCE_V5_TRACE
-    kind: Bool
-    default: false
-    rule: Lead1
-    owner: props
-    doc: ""
-    smoke_passthrough: true
-    verified: true
   - name: MC2_DRAW_PACKET_COMPARE
     kind: Bool
     default: false
@@ -1058,14 +1035,6 @@ flags:
     default: false
     rule: Lead1
     owner: gameos
-    doc: ""
-    smoke_passthrough: true
-    verified: true
-  - name: MC2_DRAW_PACKET_STATIC_PROP_V6_TRACE
-    kind: Bool
-    default: false
-    rule: Lead1
-    owner: props
     doc: ""
     smoke_passthrough: true
     verified: true
@@ -1255,51 +1224,6 @@ flags:
     tokens: "legacy|generated"
     smoke_passthrough: true
     verified: true
-  - name: MC2_FAR_BACKDROP_LIT
-    kind: Bool
-    default: false
-    rule: Lead0
-    owner: props
-    doc: "FAR-BACKDROP-LIT-IMPL-1: night-shade substitution for far/impostor static-prop LODs (static_prop.vert)."
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_FAR_BACKDROP_LIT, kind: Feature, order: 23, default_on: false}
-  - name: MC2_FAR_BACKDROP_LIT_FAR
-    kind: Float
-    default: 960
-    rule: Prefix
-    owner: props
-    doc: "FAR-BACKDROP-LIT-IMPL-1: view-depth (clip.w, world units) where the night-shade fade completes (full substitution)."
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_TUNE_FAR_BACKDROP_LIT_FAR, kind: Trace, order: -1, default_on: false}
-  - name: MC2_FAR_BACKDROP_LIT_NEAR
-    kind: Float
-    default: 700
-    rule: Prefix
-    owner: props
-    doc: "FAR-BACKDROP-LIT-IMPL-1: view-depth (clip.w, world units) where the night-shade fade begins."
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_TUNE_FAR_BACKDROP_LIT_NEAR, kind: Trace, order: -1, default_on: false}
-  - name: MC2_FAR_BACKDROP_LIT_STRENGTH
-    kind: Float
-    default: 1
-    rule: Prefix
-    owner: props
-    doc: "FAR-BACKDROP-LIT-IMPL-1: maximum substitution amount scaling the distance fade (1.0 = full replace of the stale seed with night ambient; >1 exaggerates for..."
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_TUNE_FAR_BACKDROP_LIT_STRENGTH, kind: Trace, order: -1, default_on: false}
-  - name: MC2_FAR_BACKDROP_LIT_TINT
-    kind: String
-    default: ""
-    rule: Std
-    owner: props
-    doc: "FAR-BACKDROP-LIT-IMPL-1: debug/exaggeration additive tint 'r,g,b' added to the substituted night shade so the affected far/impostor pixels are visually..."
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_DIAG_FAR_BACKDROP_LIT_TINT, kind: Trace, order: -1, default_on: false}
   - name: MC2_FASTPATH_DROP_LOG
     kind: Bool
     default: false
@@ -2211,7 +2135,7 @@ flags:
     owner: code
     doc: "[DEFAULT-ON as of VEHICLE-LIGHTING-PATH-1; MC2_LEGACY_LIT_MC2_FRAME=0 reverts."
     smoke_passthrough: true
-    registry: {feature_id: MC2_LEGACY_LIT_MC2_FRAME, kind: Feature, order: 24, default_on: true}
+    registry: {feature_id: MC2_LEGACY_LIT_MC2_FRAME, kind: Feature, order: 23, default_on: true}
   - name: MC2_LEGACY_LOAD_BANNER
     kind: Bool
     default: false
@@ -2523,7 +2447,7 @@ flags:
     doc: "[DEFAULT-ON as of VEHICLE-LIGHTING-PATH-1; MC2_LIGHT_POS_COLUMN_FIX=0 reverts."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_LIGHT_POS_COLUMN_FIX, kind: Feature, order: 25, default_on: true}
+    registry: {feature_id: MC2_LIGHT_POS_COLUMN_FIX, kind: Feature, order: 24, default_on: true}
   - name: MC2_LIGHT_REALISM
     kind: Bool
     default: true
@@ -3402,7 +3326,7 @@ flags:
     doc: "OVERLAY-CEMENT-ADOPT-1: closes the two-shader concrete seam CEMENT-PATCHY-CAUSE-1 attributed but explicitly left open as a design call ('either the overlay..."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_FEATURE_OVERLAY_CEMENT_ADOPT, kind: Feature, order: 27, default_on: true}
+    registry: {feature_id: MC2_FEATURE_OVERLAY_CEMENT_ADOPT, kind: Feature, order: 26, default_on: true}
   - name: MC2_OVERLAY_MAGENTA_TRACE
     kind: Bool
     default: false
@@ -4632,13 +4556,6 @@ flags:
     smoke_passthrough: true
     verified: true
     registry: {feature_id: MC2_FEATURE_TERRAIN_AMBIENT_FLOOR_NIGHT, kind: Feature, order: -1, default_on: false}
-  - name: MC2_TERRAIN_CEMENT_DIAG_CONNECT
-    kind: Bool
-    default: false
-    rule: Lead0
-    owner: terrain
-    doc: ""
-    verified: true
   - name: MC2_TERRAIN_CLIFF_DISPLACE_MAXTESS
     kind: Float
     default: 4
@@ -4858,13 +4775,6 @@ flags:
     owner: terrain
     doc: ""
     range: {lo: 0.05000000074505806, hi: 3.4028234663852886e+38, style: reject, lo_exclusive: true}
-    verified: true
-  - name: MC2_TERRAIN_LOD_CHUNK_FORCE_COLOR
-    kind: Bool
-    default: false
-    rule: Presence
-    owner: terrain
-    doc: "Resolved-once cached mirrors of the per-frame terrain-uniform env gates."
     verified: true
   - name: MC2_TERRAIN_LOD_CHUNK_FORCE_LOD
     kind: Int
@@ -5132,21 +5042,6 @@ flags:
   - name: MC2_TERRAIN_SHORELINE_WET_RUN
     kind: Float
     default: 16
-    rule: Prefix
-    owner: terrain
-    doc: ""
-    range: {lo: 0, hi: 3.4028234663852886e+38, style: reject, lo_exclusive: true}
-    verified: true
-  - name: MC2_TERRAIN_SLOPE_BIAS
-    kind: Bool
-    default: false
-    rule: Lead0
-    owner: terrain
-    doc: ""
-    verified: true
-  - name: MC2_TERRAIN_SLOPE_BIAS_STRENGTH
-    kind: Float
-    default: 1
     rule: Prefix
     owner: terrain
     doc: ""
@@ -5551,7 +5446,7 @@ flags:
     owner: code
     doc: "VEHICLE-AMBIENT-FLOOR-1: DEFAULT-ON."
     smoke_passthrough: true
-    registry: {feature_id: MC2_VEHICLE_AMBIENT_FLOOR, kind: Feature, order: 28, default_on: true}
+    registry: {feature_id: MC2_VEHICLE_AMBIENT_FLOOR, kind: Feature, order: 27, default_on: true}
   - name: MC2_VEHICLE_LIT_PATH
     kind: Bool
     default: true
@@ -5560,7 +5455,7 @@ flags:
     doc: "VEHICLE-LIGHTING-PATH-1: put GROUND VEHICLES on the same lighting path as every other object class."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_VEHICLE_LIT_PATH, kind: Feature, order: 26, default_on: true}
+    registry: {feature_id: MC2_VEHICLE_LIT_PATH, kind: Feature, order: 25, default_on: true}
   - name: MC2_VERIFY_MODE
     kind: String
     default: ""
@@ -5593,13 +5488,6 @@ flags:
     doc: "VFX-AGE-SAMPLE-1: sample GPU-particle spec curves (color/alpha/size/UV) at the routed effect's real CPU-advanced normalized age (gosFX Effect::m_age..."
     verified: true
     registry: {feature_id: MC2_FEATURE_VFX_AGE_SAMPLE, kind: Feature, order: 14, default_on: false}
-  - name: MC2_VFX_BLACKBODY
-    kind: Bool
-    default: false
-    rule: Lead1
-    owner: gameos
-    doc: ""
-    verified: true
   - name: MC2_VFX_DEBUG_MODE
     kind: Int
     default: 0
@@ -5610,28 +5498,6 @@ flags:
     smoke_passthrough: true
     verified: true
     registry: {feature_id: MC2_DIAG_VFX_DEBUG_MODE, kind: Trace, order: -1, default_on: false}
-  - name: MC2_VFX_DISTORTION
-    kind: Bool
-    default: false
-    rule: Lead1
-    owner: gameos
-    doc: ""
-    verified: true
-  - name: MC2_VFX_DISTORT_AMP
-    kind: Float
-    default: 0.0399999991
-    rule: Prefix
-    owner: gameos
-    doc: "Screen-UV wobble amplitude of the distortion pass; outside (0, 0.5) reads the default."
-    range: {lo: 0, hi: 0.4999999701976776, style: reject, lo_exclusive: true}
-    verified: true
-  - name: MC2_VFX_DISTORT_FIXTURE
-    kind: Bool
-    default: false
-    rule: Lead1
-    owner: gameos
-    doc: ""
-    verified: true
   - name: MC2_VFX_GPU_SIM_CARDCLOUD
     kind: Bool
     default: false
@@ -5677,13 +5543,6 @@ flags:
     owner: gameos
     doc: "GOSFX-TUBE-RIBBON-1: wrap the deferred ribbon draw in a GL_SAMPLES_PASSED occlusion query; logs [VFX_ORACLE_TUBE coverage] ribbons/samples/fbo/sceneDrawBufs..."
     registry: {feature_id: MC2_VFX_ORACLE_TUBE_COVERAGE, kind: Trace, order: -1, default_on: false}
-  - name: MC2_VFX_SCENECOLOR_GRAB
-    kind: Bool
-    default: false
-    rule: Lead1
-    owner: gameos
-    doc: ""
-    verified: true
   - name: MC2_VIEWMODE_FRAMEWORK
     kind: Bool
     default: false

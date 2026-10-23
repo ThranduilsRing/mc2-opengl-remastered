@@ -717,7 +717,6 @@ void batcher_buildCandidateLog() {
 
 
 // Env probe for GPU-vs-CPU count diagnostic (Step 4.11).
-static const bool s_coalesceGpuVsCpuTrace = mc2::gate::get<"MC2_COALESCE_GPU_VS_CPU_COUNT_TRACE">();
 
 void batcher_prepareBaseInstanceTable() {
     // Legacy mode: coalesce ring mirrors legacy ring (s_coalesceFrameSlot = s_frameSlot
