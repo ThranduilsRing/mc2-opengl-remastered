@@ -10,7 +10,7 @@
 
 namespace mc2::gate::detail {
 
-inline constexpr std::size_t kGateCount = 898;
+inline constexpr std::size_t kGateCount = 894;
 
 inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_3DVIEW_DIAG", Kind::Bool, Rule::Presence, {}},
@@ -212,10 +212,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_FRAME_PASS_STATS", Kind::Bool, Rule::Exact1, {}},
     {"MC2_FRAME_PASS_STATS_EVERY", Kind::Int, Rule::Prefix, {}},
     {"MC2_FREEZE_MOVERS_AT", Kind::Int, Rule::Prefix, {}},
-    {"MC2_FXAA", Kind::Bool, Rule::Lead0, {}},
-    {"MC2_FXAA_EDGE_THRESHOLD", Kind::Float, Rule::Prefix, {}},
-    {"MC2_FXAA_EDGE_THRESHOLD_MIN", Kind::Float, Rule::Prefix, {}},
-    {"MC2_FXAA_SUBPIX", Kind::Float, Rule::Prefix, {}},
     {"MC2_FX_COST_SPLIT", Kind::Bool, Rule::Exact1, {}},
     {"MC2_FX_COUNT_LOG", Kind::Bool, Rule::Presence, {}},
     {"MC2_FX_DEFS", Kind::Bool, Rule::Presence, {}},

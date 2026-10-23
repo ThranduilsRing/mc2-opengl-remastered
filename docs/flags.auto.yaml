@@ -3,7 +3,7 @@
 # Where each gate is read, what the smoke runner forwards and what tier1_env_vars.md says are not here: ask
 # tools/repo_intel (env_var, gate_status), which scan the sources.
 generator_version: "3.0.0"
-gate_count: 898
+gate_count: 894
 registry_entry_count: 181
 verified_count: 786
 flags:
@@ -1535,34 +1535,6 @@ flags:
     smoke_passthrough: true
     verified: true
     registry: {feature_id: MC2_TRACE_FREEZE_MOVERS_AT, kind: Trace, order: -1, default_on: false}
-  - name: MC2_FXAA
-    kind: Bool
-    default: false
-    rule: Lead0
-    owner: post
-    doc: ""
-    smoke_passthrough: true
-  - name: MC2_FXAA_EDGE_THRESHOLD
-    kind: Float
-    default: 0
-    rule: Prefix
-    owner: post
-    doc: ""
-    smoke_passthrough: true
-  - name: MC2_FXAA_EDGE_THRESHOLD_MIN
-    kind: Float
-    default: 0
-    rule: Prefix
-    owner: post
-    doc: ""
-    smoke_passthrough: true
-  - name: MC2_FXAA_SUBPIX
-    kind: Float
-    default: 0
-    rule: Prefix
-    owner: post
-    doc: ""
-    smoke_passthrough: true
   - name: MC2_FX_COST_SPLIT
     kind: Bool
     default: false
