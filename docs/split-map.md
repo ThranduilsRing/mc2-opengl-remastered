@@ -574,7 +574,7 @@ Split commit: `e880b7520`.
 |---|---|
 | `tgl.cpp` | keeps the globals, pools and pool-statistics code |
 | `tgl_load_guard.cpp` | mclib/tgl_load_guard.cpp - META-FIX design B PART 1. |
-| `tgl_parse.cpp` | TG shapes: ASE file parsing and shape loading (TG_TypeShape::ParseASEFile, LoadTGShapeFromASE), textures, imported meshes, camera/fog/light setup. |
+| `tgl_parse.cpp` | TG shapes: ASE file parsing and shape loading (TG_TypeShape::ParseASEFile), textures, imported meshes, camera/fog/light setup. |
 | `tgl_render.cpp` | TG shapes: TG_Shape::Render, per-poly selection and the render-shape PBR override. |
 | `tgl_shadows.cpp` | TG shapes: shadow transform and shadow rendering. |
 | `tgl_transform.cpp` | TG shapes: TG_Shape::MultiTransformShape and its positions-only variant, light gathering and billboard handling. |

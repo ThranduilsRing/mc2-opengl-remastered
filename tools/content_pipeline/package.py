@@ -26,7 +26,7 @@ import numpy as np
 from . import cache, gltf_io, ir, texcook, validate
 
 PACKAGE_VERSION = "mc2-content-package/1"
-COOKER_VERSION = "mc2-content-cooker/3"  # transforms, damage chains and attachment payloads
+COOKER_VERSION = "mc2-content-cooker/4"  # transforms, damage chains and attachment payloads
 GEOMETRY_CACHE = cache.CacheKind("model-", ".glb")
 SKIN_CACHE = cache.CacheKind("skin-", ".glb")
 DETAIL_EDGE = 512        # every authored detail map in a mission shares this extent (engine array)
@@ -166,7 +166,7 @@ def cook_asset(asset: ir.Asset, out: Path, *, compress=True, max_triangles=None,
         return None
     isolate_engine_nodes(asset)
     hull = {}
-    if asset.kind == "building":
+    if asset.kind == "building" and asset.frontend.get("repair_inward_hull"):
         for cond, state, lods in asset.variants():
             for i, lod in enumerate(lods):
                 faces = ir.inward_hull_faces(lod.scene)
@@ -277,7 +277,7 @@ def build_package(assets: list[ir.Asset], out, *, mod_id, name=None, description
         if not overwrite:
             raise FileExistsError(f"refusing to overwrite package {out}")
         shutil.rmtree(out)
-    report = {"version": PACKAGE_VERSION, "contract": texcook.CONTRACT_VERSION, "mod": mod_id}
+    report = {"version": PACKAGE_VERSION, "cooker": COOKER_VERSION, "contract": texcook.CONTRACT_VERSION, "mod": mod_id}
     records = [cook_asset(a, out, compress=compress, max_triangles=max_triangles, report=report) for a in assets]
     records = [r for r in records if r is not None]
     by_key = {r["replaces"].lower(): r for r in records}

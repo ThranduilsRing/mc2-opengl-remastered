@@ -125,11 +125,12 @@ def to_ir(asset_id, replaces, intact, *, kind="building", lods=(), destroyed=Non
     # An authoring tool may name a display texture (e.g. AO pre-multiplied for a diffuse-only path) in
     # the GLB; the recipe points the slot at the pure base colour instead. AO belongs in ORM.R.
     for name, path in (base_color or {}).items():
-        slot = next((m for m in materials if m.name == name), None)
-        if slot is None:
+        matching = [m for m in materials if m.name == name]
+        if not matching:
             raise ValueError(f"{asset_id}: base_color override names unknown material {name!r}")
-        slot.base_color = ir.TextureRef.of(path, "base_color")
-        slot.base_color_policy = "authored"
+        for slot in matching:
+            slot.base_color = ir.TextureRef.of(path, "base_color")
+            slot.base_color_policy = "authored"
     for m in materials:
         for ref in (m.base_color, m.normal, m.orm, m.emissive):
             if ref is not None:
@@ -137,6 +138,24 @@ def to_ir(asset_id, replaces, intact, *, kind="building", lods=(), destroyed=Non
     skeleton = None
     if info["skins"]:
         skeleton = ir.SkeletonRef(ir.Source.of("skeleton", intact), info["joints"], info["clips"])
+    if not allow_skin:
+        # LOD/state exports commonly repeat an atlas and class slot. Deduplicate by
+        # authored inputs, never by colour or material name. Rigid skins retain part slots.
+        unique, remap, known = [], {}, {}
+        for index, material in enumerate(materials):
+            values = {k: ([v.sha256, v.role, v.passthrough] if isinstance(v, ir.TextureRef) else v)
+                      for k, v in material.__dict__.items() if k not in ("name", "review_note")}
+            key = json.dumps(values, sort_keys=True)
+            if key not in known:
+                known[key] = len(unique)
+                unique.append(material)
+            remap[index] = known[key]
+        scenes = [l.scene for chain in [states, *cond.values()] for lods in chain.values() for l in lods]
+        for sc in [*scenes, *shadow_scenes.values()]:
+            for mesh in sc.meshes:
+                for prim in mesh.primitives:
+                    prim.material = remap[prim.material]
+        materials = unique
     sockets = list(sockets)
     for node in scene.nodes:
         if node.extras.get("mc2_light_schema") == "mc2-building-light/1":

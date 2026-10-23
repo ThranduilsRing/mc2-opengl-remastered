@@ -544,6 +544,15 @@ class TG_TypeNode
 			relativeNodeCenter = nodeCenter;
 			relativeNodeCenter -= parent;
 		}
+
+        void InitContentNode(const char* name, const char* parent, glm::vec3 center, glm::vec3 relative)
+        {
+            strncpy(nodeId, name, TG_NODE_ID - 1); nodeId[TG_NODE_ID - 1] = '\0';
+            strncpy(parentId, parent, TG_NODE_ID - 1); parentId[TG_NODE_ID - 1] = '\0';
+            nodeCenter = center;
+            relativeNodeCenter = relative;
+        }
+
 		
 		virtual void movePosRelativeCenterNode (void)
 		{
@@ -586,10 +595,7 @@ class TG_TypeNode
 		//
 		// NOTE: Only takes the first GEOMOBJECT from the ASE file.  Multi-object
 		// Files will require user intervention to parse!!
-		virtual int LoadTGShapeFromASE (const char *fileName)
-		{
-			return 0;
-		}
+
 
 		//Function returns 0 if OK.  -1 if textureNum is out of range of numTextures.
 		//This function takes the gosTextureHandle passed in and assigns it to the
@@ -815,7 +821,6 @@ class TG_TypeShape : public TG_TypeNode
 		//
 		// NOTE: Only takes the first GEOMOBJECT from the ASE file.  Multi-object
 		// Files will require user intervention to parse!!
-		virtual int LoadTGShapeFromASE (const char *fileName);
 
 		//Function returns 0 if OK.  -1 if textureNum is out of range of numTextures.
 		//This function takes the gosTextureHandle passed in and assigns it to the

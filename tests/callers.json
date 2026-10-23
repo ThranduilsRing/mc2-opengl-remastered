@@ -7569,7 +7569,7 @@
           "line": 30,
           "evidence": "import",
           "reference": "tools.content_pipeline",
-          "text": "from tools.content_pipeline import package  # noqa: E402"
+          "text": "from tools.content_pipeline import ir, package  # noqa: E402"
         },
         {
           "path": "tools/content_pipeline/frontends/bt2018.py",
@@ -7694,21 +7694,21 @@
         },
         {
           "path": "tools/content_pipeline/tests/test_content_pipeline.py",
-          "line": 124,
+          "line": 125,
           "evidence": "import",
           "reference": "tools.content_pipeline.cook",
           "text": "from tools.content_pipeline.cook import build_asset"
         },
         {
           "path": "tools/content_pipeline/tests/test_content_pipeline.py",
-          "line": 190,
+          "line": 193,
           "evidence": "import",
           "reference": "tools.content_pipeline.cook",
           "text": "from tools.content_pipeline.cook import cook"
         },
         {
           "path": "tools/content_pipeline/tests/test_content_pipeline.py",
-          "line": 203,
+          "line": 206,
           "evidence": "import",
           "reference": "tools.content_pipeline.cook",
           "text": "from tools.content_pipeline.cook import cook"
@@ -7758,7 +7758,7 @@
         },
         {
           "path": "tools/content_pipeline/tests/test_content_pipeline.py",
-          "line": 175,
+          "line": 178,
           "evidence": "import",
           "reference": "tools.content_pipeline.frontends",
           "text": "from tools.content_pipeline.frontends import stock_meshdump"
@@ -7860,7 +7860,7 @@
         },
         {
           "path": "tools/content_pipeline/tests/test_content_pipeline.py",
-          "line": 175,
+          "line": 178,
           "evidence": "import",
           "reference": "tools.content_pipeline.frontends.stock_meshdump",
           "text": "from tools.content_pipeline.frontends import stock_meshdump"
@@ -7929,6 +7929,13 @@
           "evidence": "import",
           "reference": "tools.content_pipeline.ir",
           "text": "from tools.content_pipeline import ir, package as cp_package"
+        },
+        {
+          "path": "tools/content_pipeline/cook.py",
+          "line": 30,
+          "evidence": "import",
+          "reference": "tools.content_pipeline.ir",
+          "text": "from tools.content_pipeline import ir, package  # noqa: E402"
         },
         {
           "path": "tools/content_pipeline/frontends/bt2018.py",
@@ -8020,7 +8027,7 @@
           "line": 30,
           "evidence": "import",
           "reference": "tools.content_pipeline.package",
-          "text": "from tools.content_pipeline import package  # noqa: E402"
+          "text": "from tools.content_pipeline import ir, package  # noqa: E402"
         },
         {
           "path": "tools/content_pipeline/tests/test_content_pipeline.py",
@@ -8344,7 +8351,7 @@
       "callers_by_stem": [
         {
           "path": "tools/content_pipeline/tests/test_content_pipeline.py",
-          "line": 189,
+          "line": 192,
           "evidence": "import",
           "reference": "tools.examples.build_modern_tree_pack",
           "text": "from tools.examples.build_modern_tree_pack import recipe"

@@ -197,6 +197,9 @@ def _runtime_frame_glb(ase_path):
     shifts = [translation(i) for i in range(len(nodes))]
     seen = set()
     for i, node in enumerate(nodes):
+        if node.get("name", "").lower().startswith(("spotlight_", "litwin")):
+            x, y, z = shifts[i]
+            node.setdefault("extras", {})["mc2_pivot_tg_wu"] = [x, z, -y]
         for prim in gltf["meshes"][node["mesh"]]["primitives"] if "mesh" in node else []:
             for semantic in ("POSITION", "NORMAL", "TEXCOORD_0"):
                 index = prim["attributes"][semantic]
@@ -348,8 +351,15 @@ def to_ir(prop, *, srcdata, texture_roots, slots=(), kind="building", work_dir=N
             metallic=row.get("metallic", ir.CLASS_DEFAULTS[cls][0] if cls in ir.METALLIC_CLASSES else 0.0),
             reviewed=True, review_note=row.get("reviewNote", ""))
     provenance += list(provenance_extra)
-    sockets = [ir.Socket(n.name, "light", n.name, np.eye(4), {"schema": "mc2-legacy-light/1"})
-               for n in scene.nodes if n.name.lower().startswith(("spotlight_", "litwin"))]
+    sockets = []
+    for node, world in zip(scene.nodes, scene.world_matrices()):
+        if not node.name.lower().startswith(("spotlight_", "litwin")):
+            continue
+        pivot = np.asarray(node.extras.get("mc2_pivot_tg_wu", world[:3, 3]), float)
+        matrix = np.eye(4)
+        matrix[:3, 3] = (np.linalg.inv(world) @ np.array([*pivot, 1]))[:3]
+        sockets.append(ir.Socket(node.name, "light", node.name, matrix,
+                                 {"schema": "mc2-legacy-light/1", "position_tg_wu": pivot.tolist()}))
     return ir.Asset(id=prop.lower(), kind=kind, replaces=f"{'tree' if kind == 'tree' else 'staticProp'}:{lod0.lower()}", materials=materials,
                     states=states, provenance=provenance,
                     sockets=sockets,

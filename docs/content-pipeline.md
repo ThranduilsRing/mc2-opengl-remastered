@@ -56,8 +56,8 @@ Runtime GLBs bake every node transform (the engine's static import also applies 
 and instancing now), carry identity nodes with unique names and are validated (`validate.py`:
 Khronos-style structure + MC2 runtime profile). Stock-policy base colour is referenced by name,
 never copied. Engine-special nodes (`SpotLight_`, `LitWin`, `_PAB`, `LOS_`) keep a legacy slot.
-Building cooks report outer-hull faces that point inward (culled from outside = see-through
-wall); `repair_inward_hull` flips them on authored intact chains. Collision, passability and LOS
+Recipes requesting `repair_inward_hull` report and flip inward outer-hull faces on authored intact chains
+(culled from outside = see-through wall). Collision, passability and LOS
 always come from the stock shapes, whatever renders.
 
 ## Texture cook contract (`texcook.py`, `mc2-texcook/1`)

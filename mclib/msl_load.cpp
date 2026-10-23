@@ -3,6 +3,7 @@
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
 #include "msl_internal.h"
 #include "mc2fmt.h"
+#include "content_ir.h"
 
 
 //-------------------------------------------------------------------------------
@@ -42,7 +43,155 @@ static void mslAssetLoadEvent(const char* event, const char* loader,
 		mc2::fmt::safe(event), mc2::fmt::safe(loader), mc2::fmt::safe(reason), mc2::fmt::safe((path && path[0]) ? path : "?"));
 }
 
-long TG_TypeMultiShape::LoadBinaryCopy (const char *fileName)
+mc2::content::Asset TG_TypeMultiShape::ExtractContentIR()
+{
+    mc2::content::Asset asset;
+    asset.legacyBounds = true;
+    for (const auto& t : textureStore)
+        asset.materials.push_back({std::string(t.textureName, strnlen(t.textureName, sizeof(t.textureName))), t.textureAlpha});
+    for (long i = 0; i < numTG_TypeShapes; ++i) {
+        auto* node = listOfTypeShapes[i];
+        mc2::content::Node n;
+        n.name.assign(node->getNodeId(), strnlen(node->getNodeId(), TG_NODE_ID));
+        n.parent.assign(node->getParentId(), strnlen(node->getParentId(), TG_NODE_ID));
+        n.center = node->GetNodeCenter(); n.relativeCenter = node->GetRelativeNodeCenter();
+        n.helper = node->GetNodeType() != SHAPE_NODE;
+        if (S_strnicmp(n.name.c_str(), "SpotLight_", 10) == 0 || S_strnicmp(n.name.c_str(), "LitWin", 6) == 0) {
+            mc2::content::Socket socket;
+            socket.name = socket.parent = n.name;
+            socket.type = S_strnicmp(n.name.c_str(), "SpotLight_", 10) == 0 ? "spot" : "point";
+            socket.intensityClass = "legacy";
+            socket.position = n.center;
+            asset.sockets.push_back(std::move(socket));
+        }
+        if (!n.helper) {
+            auto* shape = static_cast<TG_TypeShape*>(node);
+            n.vertices = std::move(shape->typeVertexStore);
+            n.triangles = std::move(shape->typeTriangleStore);
+            // MC2X legacy binaries sometimes carry bad indices. Retain the historical
+            // vertex-zero compatibility repair before common validation/publication.
+            for (auto& t : n.triangles) for (auto& v : t.Vertices)
+                if (v >= n.vertices.size()) v = 0;
+        }
+        asset.nodes.push_back(std::move(n));
+    }
+    return asset;
+}
+
+long TG_TypeMultiShape::BuildContentIR(mc2::content::Asset&& asset, const char* source, float* groundDy)
+{
+    if (!mc2::content::cook(asset, source)) {
+        mslAssetLoadEvent("parse_fail", "content", "invalid_ir", source);
+        return -1;
+    }
+    // Nothing reaches the runtime until the whole selected state/LOD has passed validation.
+    destroy();
+    init();
+    contentSockets_ = std::move(asset.sockets);
+    numTG_TypeShapes = static_cast<int>(asset.nodes.size());
+    bindTypeNodes(numTG_TypeShapes);
+    minBox = glm::vec3(100000.0f); maxBox = glm::vec3(-100000.0f);
+    for (size_t i = 0; i < asset.nodes.size(); ++i) {
+        auto& n = asset.nodes[i];
+        if (n.helper) {
+            auto node = std::make_unique<TG_TypeNode>();
+            node->init();
+            node->InitContentNode(n.name.c_str(), n.parent.c_str(), n.center, n.relativeCenter);
+            adoptTypeNode(static_cast<long>(i), std::move(node));
+            continue;
+        }
+        const bool excluded = asset.legacyBounds &&
+            (S_strnicmp(n.name.c_str(), "_PAB", 4) == 0 || S_strnicmp(n.name.c_str(), "LOS_", 4) == 0 ||
+             S_strnicmp(n.name.c_str(), "SpotLight", 9) == 0);
+        if (!excluded) for (const auto& v : n.vertices) {
+            const auto p = v.position + (asset.legacyBounds ? n.relativeCenter : glm::vec3(0));
+            minBox = glm::min(minBox, p); maxBox = glm::max(maxBox, p);
+        }
+        auto shape = std::make_unique<TG_TypeShape>();
+        shape->init();
+        shape->InitFromImportedMesh(n.name.c_str(), n.parent.c_str(), n.center, std::move(n.vertices), std::move(n.triangles));
+        // Preserve the stock compatibility draw; imported rigid skins keep their
+        // existing CPU/GPU animation consumers and never acquire a frozen legacy VBO.
+
+	if (asset.legacyBounds && shape->numTypeVertices && shape->numTypeTriangles && shape->numTypeTriangles <= 65535u / 3u) {
+		gosVERTEX_FORMAT_RECORD declaration[] = {
+			{0, 3, false, sizeof(TG_HWTypeVertex), 0, gosVERTEX_ATTRIB_TYPE::FLOAT},
+			{1, 3, false, sizeof(TG_HWTypeVertex), offsetof(TG_HWTypeVertex, normal), gosVERTEX_ATTRIB_TYPE::FLOAT},
+			{2, 4, true, sizeof(TG_HWTypeVertex), offsetof(TG_HWTypeVertex, aRGBLight), gosVERTEX_ATTRIB_TYPE::UNSIGNED_BYTE},
+			{3, 2, false, sizeof(TG_HWTypeVertex), offsetof(TG_HWTypeVertex, u), gosVERTEX_ATTRIB_TYPE::FLOAT}};
+		shape->vdecl_ = gos_CreateVertexDeclaration(declaration, 4);
+		std::vector<TG_HWTypeVertex> vb(shape->numTypeTriangles * 3u);
+		std::vector<uint16_t> ib(shape->numTypeTriangles * 3u);
+		for (DWORD i = 0; i < shape->numTypeTriangles; ++i) {
+			const auto& t = shape->listOfTypeTriangles[i];
+			const float uv[6] = {t.uvdata.u0, t.uvdata.v0, t.uvdata.u1, t.uvdata.v1, t.uvdata.u2, t.uvdata.v2};
+			for (DWORD c = 0; c < 3; ++c) {
+				const auto& v = shape->listOfTypeVertices[t.Vertices[c]];
+				vb[3*i+c] = {v.position, v.normal, v.aRGBLight, uv[2*c], uv[2*c+1]};
+				ib[3*i+c] = static_cast<uint16_t>(3*i+c);
+			}
+		}
+		shape->ib_ = gos_CreateBuffer(gosBUFFER_TYPE::INDEX, gosBUFFER_USAGE::STATIC_DRAW, sizeof(uint16_t), static_cast<uint32_t>(ib.size()), ib.data());
+		shape->vb_ = gos_CreateBuffer(gosBUFFER_TYPE::VERTEX, gosBUFFER_USAGE::STATIC_DRAW, sizeof(TG_HWTypeVertex), static_cast<uint32_t>(vb.size()), vb.data());
+	}
+        shape->InitContentNode(n.name.c_str(), n.parent.c_str(), n.center, n.relativeCenter);
+        adoptTypeNode(static_cast<long>(i), std::move(shape));
+    }
+    if (minBox.x > maxBox.x) minBox = maxBox = glm::vec3(0);
+    extentRadius = std::max(glm::length(minBox), glm::length(maxBox));
+    if (!asset.legacyBounds) extentRadius = std::max(0.5f * glm::length(maxBox - minBox), 1.0f);
+    float dy = asset.ground == 2 ? -minBox.y : (asset.ground == 1 ? -maxBox.y : 0.0f);
+    if (groundDy) *groundDy = dy;
+    if (dy != 0) {
+        for (auto* n : typeNodeView) if (n->GetNodeType() == SHAPE_NODE)
+            static_cast<TG_TypeShape*>(n)->TranslateTypeVerticesY(dy);
+        minBox.y += dy; maxBox.y += dy;
+    }
+    std::vector<const char*> names;
+    auto alphas = std::make_unique<bool[]>(asset.materials.size());
+    for (size_t i = 0; i < asset.materials.size(); ++i) {
+        names.push_back(asset.materials[i].textureName.c_str());
+        alphas[i] = asset.materials[i].alpha;
+    }
+    SetImportedTextures(static_cast<DWORD>(names.size()), names.data(), alphas.get());
+    return NO_ERR;
+}
+
+long TG_TypeMultiShape::LoadBinaryCopy(const char* fileName)
+{
+    mc2::content::Asset cached;
+    cached.legacyBounds = true;
+    if (mc2::content::loadCached(cached, fileName)) return BuildContentIR(std::move(cached), fileName);
+    TG_TypeMultiShape frontend;
+    const long result = frontend.DecodeStockBinary(fileName);
+    return result == NO_ERR ? BuildContentIR(frontend.ExtractContentIR(), fileName) : result;
+}
+
+static bool preferStockBinary(const char* ase, const char* binary, bool forceASE)
+{
+    if (forceASE || !fileExists(binary)) return false;
+    if (!fileExists(ase, FILE_ON_DISK)) return true;
+    // Format preference must never let a base ASE shadow a higher-priority mod TGL.
+    return LookupModPriority(binary) < LookupModPriority(ase);
+}
+
+long TG_TypeMultiShape::LoadTGMultiShapeFromASE(const char* fileName, bool forceMakeBinary, IProviderEngine* armProvider)
+{
+    char drive[MAX_PATH], dir[MAX_PATH], name[MAX_PATH], ext[MAX_PATH];
+    _splitpath(fileName, drive, dir, name, ext);
+    FullPathFileName binary;
+    binary.init(tglPath, name, ".tgl");
+    const char* source = preferStockBinary(fileName, binary, forceMakeBinary)
+        ? static_cast<const char*>(binary) : fileName;
+    mc2::content::Asset cached;
+    cached.legacyBounds = true;
+    if (mc2::content::loadCached(cached, source)) return BuildContentIR(std::move(cached), source);
+    TG_TypeMultiShape frontend;
+    const long result = frontend.DecodeStockASE(fileName, forceMakeBinary, armProvider);
+    return result == NO_ERR ? BuildContentIR(frontend.ExtractContentIR(), source) : result;
+}
+
+long TG_TypeMultiShape::DecodeStockBinary (const char *fileName)
 {
 	File binFile;
 	long result = binFile.open(fileName);
@@ -146,59 +295,7 @@ long TG_TypeMultiShape::LoadBinaryCopy (const char *fileName)
 			return -1;
 		}
 
-		//Setup Heirarchy again because pointers are not valid!
-		for (int i=0;i<numTG_TypeShapes;i++)
-		{
-			// Guard against NULL slots (unknown nodeType above or allocation failure).
-			if (!listOfTypeShapes[i])
-				continue;
 
-			//----------------------------------------------------------------------------
-			// Do NOT need to reset nodeCenters as they are correct for each node copied!
-
-			//--------------------------------------------------------
-			//ONLY use nodes which are not spotlight or _PAB or LOS_
-			if ((S_strnicmp(listOfTypeShapes[i]->getNodeId(),"_PAB",4) != 0) &&
-				(S_strnicmp(listOfTypeShapes[i]->getNodeId(),"LOS_",4) != 0) &&
-				(S_strnicmp(listOfTypeShapes[i]->getNodeId(),"SpotLight",9) != 0))
-			{
-				//------------------------------------------------------------------
-				// Scan list of vertices and create minBox, maxBox and extentRadius
-				for (long j=0;j<listOfTypeShapes[i]->GetNumTypeVertices();j++)
-				{
-					glm::vec3 relNodeCenter;
-					relNodeCenter = listOfTypeShapes[i]->GetRelativeNodeCenter();
-					
-					TG_TypeShapePtr typeShape = static_cast<TG_TypeShapePtr>(listOfTypeShapes[i]);
-					
-					if (minBox.x > typeShape->listOfTypeVertices[j].position.x + relNodeCenter.x)
-						minBox.x = typeShape->listOfTypeVertices[j].position.x + relNodeCenter.x;
-												 
-					if (maxBox.x < typeShape->listOfTypeVertices[j].position.x + relNodeCenter.x)
-						maxBox.x = typeShape->listOfTypeVertices[j].position.x + relNodeCenter.x;
-												 
-					if (minBox.y > typeShape->listOfTypeVertices[j].position.y + relNodeCenter.y)
-						minBox.y = typeShape->listOfTypeVertices[j].position.y + relNodeCenter.y;
-												 
-					if (maxBox.y < typeShape->listOfTypeVertices[j].position.y + relNodeCenter.y)
-						maxBox.y = typeShape->listOfTypeVertices[j].position.y + relNodeCenter.y;
-												 
-					if (minBox.z > typeShape->listOfTypeVertices[j].position.z + relNodeCenter.z)
-						minBox.z = typeShape->listOfTypeVertices[j].position.z + relNodeCenter.z;
-												 
-					if (maxBox.z < typeShape->listOfTypeVertices[j].position.z + relNodeCenter.z)
-						maxBox.z = typeShape->listOfTypeVertices[j].position.z + relNodeCenter.z;
-				}
-			}
-		}
-	
-		float minBoxLength = glm::length(minBox);
-		float maxBoxLength = glm::length(maxBox);
-		if (minBoxLength > extentRadius)
-			extentRadius = minBoxLength;
-
-		if (maxBoxLength > extentRadius)
-			extentRadius = maxBoxLength;
 	}
 	else
 	{
@@ -367,6 +464,7 @@ void TG_TypeMultiShape::SaveBinaryCopy (const char *fileName)
 //-------------------------------------------------------------------------------
 void TG_TypeMultiShape::destroy (void)
 {
+    contentSockets_.clear();
 	// The owners release the nodes (~TG_TypeNode is virtual, B7o.1: the derived destructor runs destroy() once); the view goes with them.
 	std::vector<std::unique_ptr<TG_TypeNode>>().swap(typeNodeStore);
 	std::vector<TG_TypeNodePtr>().swap(typeNodeView);
@@ -403,97 +501,19 @@ void TG_MultiShape::destroy (void)
 //Function runs through each piece of ASE file and creates a separate
 //TG_Shape for each one.  First pass is count number of GEOMOBJECTS.
 //Second pass is load each one.
-long TG_TypeMultiShape::LoadTGMultiShapeFromASE (const char *fileName, bool forceMakeBinary, IProviderEngine* armProvider)
+long TG_TypeMultiShape::DecodeStockASE (const char *fileName, bool forceMakeBinary, IProviderEngine* armProvider)
 {
-	//-----------------------------------------------------
-	// Fully loads and parses an ASE File.  These files are
-	// output by 3D Studio MAX's ASCII Scene Exporter.
-
-	//------------------------------------------------------
-	// New!  Checks for Binary file to load instead.
-	//
-	// If Binary is older or equal to ASE, re-parses ASE and
-	// saves binary.
-	//
-	// If Binary does not exist, does the above, too!
-	// 
-	// If Binary exists and is newer, just loads that.
-	// MUCH FASTER!
-	//
-	bool makeBinary = false;
-
-	char drive[MAX_PATH];
-	char dir[MAX_PATH];
-	char name[MAX_PATH];
-	char ext[MAX_PATH];
-	_splitpath(fileName,drive,dir,name,ext);
-
-#ifdef _DEBUG
-	shapeName = static_cast<char *>(malloc(strlen(name) + 1));
-	strcpy(shapeName,name);
-#endif
-	
-	FullPathFileName binaryFileName;
-	binaryFileName.init(tglPath,name,".tgl");
-	
-	//Load Table is as follows:
-	//	ASE		TGL		FST			Result:
-	//	0		0		0			STOP
-	//	0		0		1			OK to load if Shape version good, STOp Otherwise
-	//	0		1		0			Same as above
-	//	0		1		1			Same as above
-	//	1		0		0			Set MakeBinary true.
-	//	1		0		1			Set MakeBinary true.
-	//	1		1		0			If TGL older then ase, set Make Bindary true.
-	//	1		1		1			Same as above.
-
-	if( !forceMakeBinary)
-	{
-		if (!fileExists(fileName, FILE_ON_DISK) && !fileExists(binaryFileName))		//Line 0
-		{
-	#ifdef _DEBUG
-	//		if (!silentMode)
-	//			PAUSE(("Unable to locate shape data for %s.  No ASE or TGL File",fileName));
-	#endif
-			makeBinary = true;
-		}
-		else if (!fileExists(fileName, FILE_ON_DISK) && fileExists(binaryFileName))	//Line 1-3
-		{
-			File binFile;
-			
-			long result = binFile.open(binaryFileName);
-			if (result != NO_ERR)
-			{
-				if (!silentMode)
-					STOP(("Unable to locate shape data for %s.	TGL File BAD Format",fileName));
-			}
-			else
-			{
-				int versionId = binFile.readInt();
-				if (versionId != CURRENT_SHAPE_VERSION)
-				{
-					if (!silentMode)
-						STOP(("Unable to locate shape data for %s.	TGL File BAD Format",fileName));
-				}
-			}
-		}
-		else if (fileExists(fileName, FILE_ON_DISK) && (!fileExists(binaryFileName) || (fileExists(binaryFileName, FILE_ON_FST))))	//Line 4-5
-		{
-			makeBinary = true;
-		}
-		else if (fileExists(fileName, FILE_ON_DISK) && ((fileExists(binaryFileName) == 1) && file1OlderThan2(binaryFileName,fileName)))	//Line 6-7
-		{
-			makeBinary = true;
-		}
-	}
-	else
-	{
-		makeBinary = true;
-	}
+    // A loose ASE is the editable source, regardless of timestamps. Stock-only
+    // installs retain the packed/loose TGL compatibility frontend.
+    char drive[MAX_PATH], dir[MAX_PATH], name[MAX_PATH], ext[MAX_PATH];
+    _splitpath(fileName, drive, dir, name, ext);
+    FullPathFileName binaryFileName;
+    binaryFileName.init(tglPath, name, ".tgl");
+    const bool makeBinary = !preferStockBinary(fileName, binaryFileName, forceMakeBinary);
 
 	if (!makeBinary)
 	{
-		return (LoadBinaryCopy(binaryFileName));
+		return (DecodeStockBinary(binaryFileName));
 	}
 	else
 	{
@@ -892,49 +912,8 @@ long TG_TypeMultiShape::LoadTGMultiShapeFromASE (const char *fileName, bool forc
 				if (parentNode)
 					listOfTypeShapes[i]->MoveNodeCenterRelative(parentNode->GetNodeCenter());
 					
-				//--------------------------------------------------------
-				//ONLY use nodes which are not spotlight or _PAB or LOS_
-				if ((S_strnicmp(listOfTypeShapes[i]->getNodeId(),"_PAB",4) != 0) &&
-					(S_strnicmp(listOfTypeShapes[i]->getNodeId(),"LOS_",4) != 0) && 
-					(S_strnicmp(listOfTypeShapes[i]->getNodeId(),"SpotLight",9) != 0))
-				{
-				
-					//------------------------------------------------------------------
-					// Scan list of vertices and create minBox, maxBox and extentRadius
-					for (int j=0;j<listOfTypeShapes[i]->GetNumTypeVertices();j++)
-					{
-						glm::vec3 relNodeCenter;
-						relNodeCenter = listOfTypeShapes[i]->GetRelativeNodeCenter();
-						
-						TG_TypeShapePtr typeShape = static_cast<TG_TypeShapePtr>(listOfTypeShapes[i]);
-						if (minBox.x > typeShape->listOfTypeVertices[j].position.x + relNodeCenter.x)
-							minBox.x = typeShape->listOfTypeVertices[j].position.x + relNodeCenter.x;
-													 
-						if (maxBox.x < typeShape->listOfTypeVertices[j].position.x + relNodeCenter.x)
-							maxBox.x = typeShape->listOfTypeVertices[j].position.x + relNodeCenter.x;
-													 
-						if (minBox.y > typeShape->listOfTypeVertices[j].position.y + relNodeCenter.y)
-							minBox.y = typeShape->listOfTypeVertices[j].position.y + relNodeCenter.y;
-													 
-						if (maxBox.y < typeShape->listOfTypeVertices[j].position.y + relNodeCenter.y)
-							maxBox.y = typeShape->listOfTypeVertices[j].position.y + relNodeCenter.y;
-													 
-						if (minBox.z > typeShape->listOfTypeVertices[j].position.z + relNodeCenter.z)
-							minBox.z = typeShape->listOfTypeVertices[j].position.z + relNodeCenter.z;
-													 
-						if (maxBox.z < typeShape->listOfTypeVertices[j].position.z + relNodeCenter.z)
-							maxBox.z = typeShape->listOfTypeVertices[j].position.z + relNodeCenter.z;
-					}
-				}
 			}
 		
-			float minBoxLength = glm::length(minBox);
-			float maxBoxLength = glm::length(maxBox);
-			if (minBoxLength > extentRadius)
-				extentRadius = minBoxLength;
-				
-			if (maxBoxLength > extentRadius)
-				extentRadius = maxBoxLength;
 		}
 
 		if (armAssetPtr != nullptr)
@@ -945,7 +924,6 @@ long TG_TypeMultiShape::LoadTGMultiShapeFromASE (const char *fileName, bool forc
 		free(aseContents);
 		aseContents = nullptr;
 	
-		SaveBinaryCopy(binaryFileName);
 	}
 
 	return(0);

@@ -120,7 +120,8 @@ def test_runtime_frame_is_axis0_inverse(tmp_path):
     assert np.allclose(raw, tg * [-1, -1, 1], atol=1e-5)
 
 
-def test_kit_light_and_destroyed_lods_survive_cook(tmp_path):
+@pytest.mark.parametrize("light_mesh", [None, 0])
+def test_kit_light_and_destroyed_lods_survive_cook(tmp_path, light_mesh):
     from tools.content_pipeline.cook import build_asset
     src, doc, *_ = make_gltf(tmp_path)
     doc["nodes"][0]["children"].append(3)
@@ -130,6 +131,8 @@ def test_kit_light_and_destroyed_lods_survive_cook(tmp_path):
         "mc2_light_colour_linear": [1, 0.8, 0.5], "mc2_light_intensity_class": "door",
         "mc2_light_range_m": 5, "mc2_light_outer_cone_degrees": 60,
         "mc2_light_active": True, "mc2_light_lights_out_on_destroy": True}})
+    if light_mesh is not None:
+        doc["nodes"][-1]["mesh"] = light_mesh
     src.write_text(json.dumps(doc))
     dead = tmp_path / "dead.gltf"
     doc["nodes"][0]["children"].remove(3)
