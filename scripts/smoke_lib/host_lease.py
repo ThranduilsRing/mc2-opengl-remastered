@@ -372,6 +372,16 @@ def acquire(label: str, *, wait: bool = True, timeout_s: Optional[float] = None,
 
 
 @contextmanager
+def shared_window():
+    """A launch under a normal slot: nothing is held outside the body, and a slot an engine launch took inside it is released at the end."""
+    release()
+    try:
+        yield
+    finally:
+        release()
+
+
+@contextmanager
 def exclusive_window(label: str, **kwargs):
     """Hold every slot only for the body (one measured window), then give them back so other lanes' normal runs interleave.
 

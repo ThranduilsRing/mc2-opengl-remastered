@@ -281,6 +281,11 @@ def diff(before, after):
             print(f"| {scene} / {metric} | {a:.3f} | {b:.3f} | {(b/a-1)*100:+.1f}% |")
 
 
+def resolve_lengths(runs, duration, acceptance):
+    """Iteration bench by default (1 run, 20 s); the 2 x 30 s acceptance shape only under --acceptance."""
+    return runs or (2 if acceptance else 1), duration or (30 if acceptance else 20)
+
+
 def hold_install(install):
     while True:
         try:
@@ -303,12 +308,16 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--exe", type=Path, default=DEFAULT_EXE)
     parser.add_argument("--out", type=Path)
-    parser.add_argument("--runs", type=int, default=2)
-    parser.add_argument("--duration", type=int, default=30)
+    parser.add_argument("--runs", type=int, default=None, help="default 1 (2 with --acceptance)")
+    parser.add_argument("--duration", type=int, default=None, help="default 20 (30 with --acceptance)")
+    parser.add_argument("--acceptance", action="store_true",
+                        help="orchestrator acceptance bench in a quiet window: hold the exclusive host lease around each launch "
+                             "(without it launches use a normal slot and the numbers are provisional)")
     parser.add_argument("--diff", nargs=2, type=Path, metavar=("BEFORE", "AFTER"))
     args = parser.parse_args()
     if args.diff:
         diff(*(json.loads(p.read_text(encoding="utf-8")) for p in args.diff)); return 0
+    args.runs, args.duration = resolve_lengths(args.runs, args.duration, args.acceptance)
     if args.runs < 1 or not 20 <= args.duration <= 30:
         parser.error("--runs >=1 and --duration 20..30 required")
     started = time.monotonic()
@@ -330,13 +339,14 @@ def main():
     report = {"schema": "battle-bench/1", "sha": sha, "identity": identity, "scenario": scenario, "build_config": "RelWithDebInfo",
               "scenario_sha256": sha_file(SCENARIO), "content": None, "profile": "stock/default-on native Vulkan",
               "render_options": render_options_pin.record(args.exe.parent, {})["values"], "duration_s": args.duration,
+              "acceptance": args.acceptance,
               "load_policy": "first-process (cold) and repeat-process (warm); OS cache not evicted", "runs": []}
     held_s = [0.0]
     def measured(run):
         """Exclusive host lease for one launch only; hashing, summaries and waits between launches use no slot."""
         while True:
             try:
-                with host_lease.exclusive_window("integrated battle benchmark"):
+                with (host_lease.exclusive_window("integrated battle benchmark") if args.acceptance else host_lease.shared_window()):
                     if sha_file(args.exe) != identity["exe"]["sha256"]:
                         raise ValueError("install binary changed while waiting; redeploy the recorded build")
                     t0 = time.monotonic()
@@ -382,7 +392,7 @@ def main():
     montage(images, out / "montage.png")
     write_report(report, out)
     print("\n".join(table(report)))
-    print(f"[battle-bench] exclusive lease held {held_s[0]:.0f} s of {time.monotonic() - started:.0f} s wall")
+    print(f"[battle-bench] {'exclusive' if args.acceptance else 'shared-slot (provisional)'} launches took {held_s[0]:.0f} s of {time.monotonic() - started:.0f} s wall")
     print(f"[battle-bench] evidence: {out}")
     return 0
 

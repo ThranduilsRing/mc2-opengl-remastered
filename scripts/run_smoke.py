@@ -553,6 +553,10 @@ def select_missions(entries, missions):
     return selected, unknown
 
 
+# Owner rule (game runs are about 15 s of in-mission time): a run with no --duration and no tier-declared duration gets this.
+DEFAULT_DURATION_S = 15
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--tier", choices=["tier1", "tier2", "tier3", "resolution"])
@@ -1394,7 +1398,7 @@ def main():
                 break
             continue
 
-        duration = args.duration or e.duration or 120
+        duration = args.duration or e.duration or DEFAULT_DURATION_S
         tier = args.tier or "adhoc"
         # The `resolution` tier runs one stem once per size, so its rows, logs and baseline keys carry the size.
         label = f"{e.stem}@{e.resolution}" if e.resolution else e.stem
@@ -1951,7 +1955,7 @@ def main():
             tier=args.tier or "adhoc",
             profile=args.profile,
             missions=[r.stem for r in rows],
-            durations={r.stem: (args.duration or 120) for r in rows},
+            durations={r.stem: (args.duration or DEFAULT_DURATION_S) for r in rows},
             result="PASS" if passed else "FAIL",
             source="smoke",
         )
