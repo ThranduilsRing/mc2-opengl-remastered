@@ -228,7 +228,7 @@
    "LG17": 0,
    "LG18": 0,
    "LG19": 0,
-   "LG20": 33
+   "LG20": 31
   },
   "tools": {
    "LG01": 0,
@@ -3492,7 +3492,7 @@
    "LG20": 2
   },
   "tests/unit/test_vfx_frozen_driver.cpp": {
-   "LG20": 7
+   "LG20": 5
   },
   "tools/common/tool_vk_gpu.cpp": {
    "LG20": 1
@@ -3511,7 +3511,7 @@
    "LG20": 3
   }
  },
- "head": "8e8a7b2ee",
+ "head": "e34204999",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
