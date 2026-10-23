@@ -4645,28 +4645,6 @@
    "count": 1
   },
   {
-   "tag": "LIGHT_ROW_PURE",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "checked",
-    "mismatched"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "LIGHT_ROW_PURE",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "sample",
-    "class",
-    "legacyLights",
-    "pureLights"
-   ],
-   "count": 1
-  },
-  {
    "tag": "LINKUP",
    "ver": -1,
    "stream": "stdout",
@@ -6367,20 +6345,6 @@
     "rc",
     "warriorPath",
     "brain"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "PAVED_OVERLAY_CLASS",
-   "ver": 1,
-   "stream": "stdout",
-   "keys": [
-    "event",
-    "mission",
-    "mode",
-    "flat_baked",
-    "albedo_baked",
-    "global_layer"
    ],
    "count": 1
   },

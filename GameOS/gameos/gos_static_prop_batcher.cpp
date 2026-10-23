@@ -79,8 +79,6 @@ bool gos_StaticPropLegacyInstancePools() { return s_legacyInstancePools; }
 // DrawPacket v5: per-draw-call substitutive dispatch.
 // Gate: MC2_DRAW_PACKET_COALESCE_V5=1
 // Extension: ARB_base_instance (GL 4.2 core, available on all tier1 GPUs).
-extern const bool s_v5Enabled = mc2::gate::get<"MC2_DRAW_PACKET_COALESCE_V5">();
-extern const bool s_v5TraceEnabled = mc2::gate::get<"MC2_DRAW_PACKET_COALESCE_V5_TRACE">();
 // GLboolean: GL_TRUE on any GL 4.2+ context. Evaluated lazily via GLEW at first use.
 // Safe: GLEW is initialized before any batcher code runs (gos_Init() order).
 bool s_baseInstanceSupported = false;  // set on first gate-ON flush
@@ -89,7 +87,6 @@ bool s_v5Disarmed   = false;  // true if gate-arm check failed for session
 
 // DrawPacket v7: canonical packet+meta array dispatch. The legacy multidraw only runs when v6 disarms
 // (a context without ARB_base_instance, a missing drawID uniform).
-extern const bool s_v6TraceEnabled = mc2::gate::get<"MC2_DRAW_PACKET_STATIC_PROP_V6_TRACE">();
 bool s_v6Armed    = false;
 bool s_v6Disarmed = false;
 

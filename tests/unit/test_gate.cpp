@@ -338,9 +338,8 @@ TEST_CASE("table is sorted, unique and every name round-trips through lookupName
     const gate::Row* rows = gate::tableData();
     const std::size_t n = gate::tableSize();
     REQUIRE(n == gate::detail::kGateCount);
-    // Preserve the pre-cutover population floor, counting the explicitly
-    // retired cohort whose absence is checked above.
-    REQUIRE(n + kRetiredGates.size() >= 920);
+    // Population floor after the gate amnesty (retired names live in Gates/retired_names.json).
+    REQUIRE(n >= 790);
     for (std::size_t i = 0; i < n; ++i) {
         if (i > 0) CHECK((rows[i - 1].name < rows[i].name));
         const auto info = gate::lookupName(rows[i].name);
@@ -704,8 +703,8 @@ TEST_CASE("pilot Float rows reproduce the old atof readers on every probe") {
     }
 }
 
-TEST_CASE("MC2_PATCH_STREAM_FORCE_INIT_FAIL is a presence gate that defaults off") {
-    const gate::Row& row = g1b::rowNamed("MC2_PATCH_STREAM_FORCE_INIT_FAIL");
+TEST_CASE("a presence gate defaults off and accepts any set text") {
+    const gate::Row row = gate::rows::L(Rule::Presence, "MC2_UNITTEST_PRESENCE", Kind::Bool, false, "test", "", "");
     CHECK(row.rule == Rule::Presence);
     CHECK_FALSE(row.defBool);
     CHECK_FALSE(rowValue(row, nullptr));
@@ -1094,16 +1093,16 @@ TEST_CASE("G6 string and presence rows") {
 }
 
 TEST_CASE("raw<> echoes the environment text, nullptr when unset, without caching") {
-    EnvVar env("MC2_TERRAIN_SLOPE_BIAS");
+    EnvVar env("MC2_WATER_SKYTINT");
     env.set(nullptr);
-    CHECK(gate::raw<"MC2_TERRAIN_SLOPE_BIAS">() == nullptr);
+    CHECK(gate::raw<"MC2_WATER_SKYTINT">() == nullptr);
     env.set("");
-    gate::invalidate("MC2_TERRAIN_SLOPE_BIAS");
-    CHECK(gate::get<"MC2_TERRAIN_SLOPE_BIAS">() == false);
+    gate::invalidate("MC2_WATER_SKYTINT");
+    CHECK(gate::get<"MC2_WATER_SKYTINT">() == false);
     env.set("yes");
-    CHECK(std::string(gate::raw<"MC2_TERRAIN_SLOPE_BIAS">()) == "yes");   // fresh even though get<> cached
+    CHECK(std::string(gate::raw<"MC2_WATER_SKYTINT">()) == "yes");   // fresh even though get<> cached
     env.set(nullptr);
-    gate::invalidate("MC2_TERRAIN_SLOPE_BIAS");
+    gate::invalidate("MC2_WATER_SKYTINT");
 }
 
 // ---------------------------------------------------------------------------
@@ -1132,14 +1131,11 @@ TEST_CASE("G5 static-prop clamp rows reproduce the lambdas they replaced") {
     auto in = [&](const char* name, const char* text) {
         return static_cast<std::int32_t>(static_cast<std::uint32_t>(gate::detail::parseRow(g1b::rowNamed(name), text)));
     };
-    CHECK(fl("MC2_FAR_BACKDROP_LIT_NEAR", nullptr) == 700.0f);
-    CHECK(fl("MC2_FAR_BACKDROP_LIT_FAR", nullptr) == 960.0f);
     CHECK(fl("MC2_OBJECT_POLY_OFFSET_FACTOR", nullptr) == -1.0f);
     // texture tier and the billboard mode keep their snapping / first-character logic at the site
     CHECK(in("MC2_STATICPROP_TEX_TIER", nullptr) == 512);
     CHECK(in("MC2_STATICPROP_TEX_TIER", "300") == 300);
     CHECK(g1b::rowNamed("MC2_LIGHT_BILLBOARD_FACING").kind == Kind::String);
-    CHECK(g1b::rowNamed("MC2_FAR_BACKDROP_LIT_TINT").kind == Kind::String);
 }
 
 // ---------------------------------------------------------------------------
@@ -1182,11 +1178,11 @@ TEST_CASE("G5 gameosmain rows and the runtime-name reader") {
     CHECK(g1b::rowNamed("MC2_SCREENSHOT_PATH").kind == Kind::String);
     CHECK(g1b::rowNamed("MC2_LOAD_RACE_PROBE_FRAMES").kind == Kind::String);
 
-    EnvVar env("MC2_TERRAIN_SLOPE_BIAS");   // envText reads any name at run time, uncached
+    EnvVar env("MC2_WATER_SKYTINT");   // envText reads any name at run time, uncached
     env.set(nullptr);
-    CHECK(gate::envText("MC2_TERRAIN_SLOPE_BIAS") == nullptr);
+    CHECK(gate::envText("MC2_WATER_SKYTINT") == nullptr);
     env.set("1");
-    CHECK(std::string(gate::envText("MC2_TERRAIN_SLOPE_BIAS")) == "1");
+    CHECK(std::string(gate::envText("MC2_WATER_SKYTINT")) == "1");
     env.set(nullptr);
 }
 
@@ -1215,7 +1211,7 @@ TEST_CASE("boolState answers by the row's own rule for a gate named at run time"
 
 }  // TEST_SUITE
 
-TEST_CASE("MC2_VFX_DISTORT_AMP accepts (0, 0.5) like the `a > 0 && a < 0.5f` reader it replaced") {
+TEST_CASE("an exclusive float range rejects both endpoints") {
     using namespace gate::rows;
     const gate::Row row = P("MC2_UNITTEST_DAMP", Float, 0.04, "test", "", "doc", rangeAbove(0.0, 0.4999999701976776));
     auto val = [&](const char* t) { return asFloat(gate::detail::parseRow(row, t)); };

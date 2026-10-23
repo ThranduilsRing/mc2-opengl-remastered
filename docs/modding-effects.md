@@ -127,7 +127,6 @@ This is the exact recipe used by `mods/my-explosions/` in this repo — clone it
 
 6. **Preview it** (see [Preview loop](#preview-loop) below):
    ```
-   set MC2_FX_DEFS=1
    set MC2_ACTIVE_MOD=my-explosions
    set MC2_FX_FORCE_SPAWN=1
    set MC2_LOG=1
@@ -189,7 +188,7 @@ mode — today's baseline already works, just less targeted):
 
 1. Edit `.fxdef.json` (and/or its texture) in your mod.
 2. `fxlint.py mods/<yourMod>/` — fix anything red before launching.
-3. Launch with `MC2_FX_DEFS=1 MC2_ACTIVE_MOD=<yourMod> MC2_FX_FORCE_SPAWN=1 MC2_LOG=1`, a static-cam
+3. Launch with `MC2_ACTIVE_MOD=<yourMod> MC2_FX_FORCE_SPAWN=1 MC2_LOG=1`, a static-cam
    bookmark (`tests/visual/bookmarks/mc2_01_werewolf.json`) or `-mission mc2_24`.
 4. The effect fires at a fixed point a few seconds in — screenshot or eyeball it.
 5. Check stdout for `[FXDEF] applied overlay to '<name>' ...` — confirms your def was read and

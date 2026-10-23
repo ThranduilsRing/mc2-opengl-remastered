@@ -221,58 +221,6 @@ static bool OverlayCementAdoptEnabled() {
     return s;
 }
 
-// MC2_PAVED_OVERLAY_CLASS — 0 = OFF (default, byte-identical to stock)
-//   1 = LIGHTING mode. Paved-overlay tiles get the same lighting exemption
-//       cement gets (flat-lit), but KEEP their own baked colormap albedo. This
-//       is the lever that cures "the runway changes tone along its own length"
-//       (that variation IS the per-tile normal/shadow lighting the neighbouring
-//       flat-lit cement does not receive) without swapping source textures.
-//   2 = ALBEDO mode. Additionally routes the tile into the solid cement atlas
-//       so it samples the same texture the apron does. Full convergence of tone
-//       but replaces the baked road art; retained as an A/B arm because the two
-//       prior albedo-swapping attempts (MC2_CEMENT_TONE_MATCH,
-//       MC2_RUNWAY_TONE_MATCH) were user-rejected as "WAY worse".
-static int PavedOverlayClassMode() {
-    // PAVED-OVERLAY-CLASS-DEFAULT-ON-1 (CONCRETE-DELIVER-1) promoted this to
-    // default 1. CONCRETE-DELIVER-2 REVERTS THAT to default 0, because the
-    // justification it shipped was a claim a later lane had already measured
-    // and retracted IN WRITING:
-    //
-    //   .claude/CEMENT-EDGE-CURVE-1-STATUS.md sec.4, measured at the user's
-    //   own night poses: mode 1 produces max delta 20-29/255 and 9.2-21.7%
-    //   HARD-STEP pixels -- "It ADDS hard-edged outlines rather than removing
-    //   them." Same doc: "the ROAD-OVERLAY-LIGHT-1 attribution -- that the
-    //   user's 'weird coloured edge' IS the classification boundary and that
-    //   closing the classification gap cures it -- is wrong in the direction
-    //   it claims... This should not propagate into another status doc."
-    //   It then propagated into the CONCRETE-DELIVER-1 commit message and
-    //   into this comment block verbatim.
-    //
-    // The mechanism refutes the promotion independently. Mode 1 is
-    // LIGHTING-ONLY by construction (terrain_lod_chunk.frag:1897 sets
-    // normalLight = 1.0 and the code there states "Albedo is deliberately
-    // untouched... a residual albedo gap is expected and measured"). An
-    // unclassified paved tile keeps its DARK baked colormap, so
-    // CEMENT-EDGE-CURVE-1 sec.3 measured its ceiling at L~24 against concrete
-    // at L~60-87: flat lighting alone can never make mc2_10's runway "the
-    // color they are on top of concrete like in mc2_01", which is the user
-    // requirement the promotion was justified by. The gap is albedo-side.
-    //
-    // The originating lane also set its own precondition, unmet:
-    // .claude/PAVED-OVERLAY-CLASS-1-STATUS.md "Recommended next steps" 1-2 --
-    // a user click-through on mc2_10 saved_204937 is "the single decision
-    // that gates everything else", and pose coverage must be extended
-    // "before any default-ON proposal". Neither happened.
-    //
-    // Default 0 = not one word written = byte-identical stock. The user can
-    // evaluate it in one step with MC2_PAVED_OVERLAY_CLASS=1; nothing else
-    // in the concrete-seam fix depends on it (OVERLAY-CEMENT-ADOPT-1 acts
-    // only on tiles that already carry a valid cement word, which this pass
-    // explicitly skips).
-    static const int s = mc2::gate::get<"MC2_PAVED_OVERLAY_CLASS">();
-    return s;
-}
-
 // Hard-paved overlay ids. DIRT_ROAD, ROUGH, TWO_LANE_DIRT_ROAD and the
 // dirt-to-dirt crossings are deliberately EXCLUDED -- they are dirt surfaces and
 // must keep normal terrain lighting; only surfaces the user calls "concrete" and
@@ -822,55 +770,6 @@ void PopulateRecipeCementWords() {
             mc2::fmt::print_out("[OVERLAY_CEMENT_ADOPT v1] event=authored_art_marked mission={} tiles={:d} paved_subset={:d} overlay_id_subset={:d} art_saved_vs_paved={:d} art_saved_vs_overlay_id={:d}\n", mc2::fmt::safe((::missionName[0] ? ::missionName : "unknown")), mc2::fmt::as_i32(authoredArtMarked), mc2::fmt::as_i32(pavedSubset), mc2::fmt::as_i32(overlayIdSubset), mc2::fmt::as_i32(authoredArtMarked - pavedSubset), mc2::fmt::as_i32(authoredArtMarked - overlayIdSubset));
             fflush(stdout);
         }
-    }
-
-    if (PavedOverlayClassMode() != 0 && Terrain::mapData) {
-        const int  mode = PavedOverlayClassMode();
-        // Mode 2 only: a map-wide solid cement layer to adopt. A 1-ring donor
-        // search (as the transition fallback below uses) cannot work here --
-        // on mc2_10 the runway is 100% unclassified, so its interior tiles have
-        // no classified neighbour at any radius reachable in one pass.
-        uint16_t globalCementLayer = 0xFFFFu;
-        if (mode == 2 && g_cementLayerMapReady) {
-            for (int slot = 0; slot < MC_MAX_TERRAIN_TXMS; ++slot) {
-                if (g_cementLayerIndexBySlot[slot] != 0xFFFFu) {
-                    globalCementLayer = g_cementLayerIndexBySlot[slot];
-                    break;
-                }
-            }
-        }
-        long pavedFlatBaked = 0, pavedAlbedoBaked = 0;
-        for (size_t vn = 0; vn < N; ++vn) {
-            const long mx = static_cast<long>(vn) % mapSide;
-            const long my = static_cast<long>(vn) / mapSide;
-            if (mx >= mapSide - 1 || my >= mapSide - 1) continue;
-            if (vn >= chunkCementWords.size()) continue;
-            // Already cement-classified: the legacy path owns this tile, and its
-            // outline/mask state must not be disturbed.
-            if ((chunkCementWords[vn] & kCementLayerValidBit) != 0u) continue;
-
-            Overlays ovT = INVALID_OVERLAY; DWORD ovO = 0;
-            Terrain::mapData->getOverlay(my, mx, ovT, ovO);
-            if (ovT == INVALID_OVERLAY || !IsPavedOverlayType(ovT)) continue;
-
-            uint32_t word = chunkCementWords[vn];
-            if (mode == 2 && globalCementLayer != 0xFFFFu) {
-                // Full cement classification: solid word (no transition bit) so
-                // the tile samples the same atlas cell the apron does.
-                word = kCementLayerValidBit | (static_cast<uint32_t>(globalCementLayer) & 0xFFFFu);
-                ++pavedAlbedoBaked;
-            } else {
-                // Lighting-exemption only: keep the tile's own baked colormap
-                // albedo, take cement's flat light. Bit 31 stays clear so this
-                // word is invisible to every other reader.
-                word |= kCementPavedFlatBit;
-                ++pavedFlatBaked;
-            }
-            chunkCementWords[vn] = word;
-            memcpy(&g_denseRecipes[vn]._wp3, &word, 4);
-        }
-        mc2::fmt::print_out("[PAVED_OVERLAY_CLASS v1] event=applied mission={} mode={:d} flat_baked={:d} albedo_baked={:d} global_layer={:d}\n", mc2::fmt::safe((::missionName[0] ? ::missionName : "unknown")), mc2::fmt::as_i32(mode), mc2::fmt::as_i32(pavedFlatBaked), mc2::fmt::as_i32(pavedAlbedoBaked), mc2::fmt::as_i32((globalCementLayer == 0xFFFFu) ? -1 : static_cast<int>(globalCementLayer)));
-        fflush(stdout);
     }
 
     // Push to the chunk renderer (no-op if its SSBO/Init has not run yet).
