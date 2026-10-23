@@ -47,13 +47,13 @@ _MOVER = re.compile(r"\[SIMID v1 mover\] simframe=(\d+) id=(\d+) ([^\r\n\[]*)")
 
 
 def parse(text_lines):
-    """-> (frames [(simframe, t, digest text)], movers {simframe: {id: record}})"""
+    """-> (frames [(simframe, t, digest text)], movers {index into frames: {id: record}}); simframe repeats after a load, so it cannot key the movers"""
     frames, movers = [], {}
     for ln in text_lines:
         for m in _LINE.finditer(ln):
             frames.append((int(m.group(1)), float(m.group(2)), sd.simulation_fields(m.group(3).strip())))
         for m in _MOVER.finditer(ln):
-            movers.setdefault(int(m.group(1)), {})[int(m.group(2))] = m.group(3).strip()
+            movers.setdefault(len(frames) - 1, {})[int(m.group(2))] = m.group(3).strip()
     return frames, movers
 
 
@@ -82,7 +82,7 @@ def analyze(text_lines, frames_needed: int = 300):
         report.append(f"digests identical over {horizon} frames" + ("" if ok else f" (need {frames_needed})"))
         return ok, report
     report.append(f"DIGESTS DIVERGE {first} frame(s) after the load (identical before that)")
-    a, b = movers.get(frames[i0 + first][0], {}), movers.get(frames[j + first][0], {})
+    a, b = movers.get(i0 + first, {}), movers.get(j + first, {})
     diff = [i for i in a if a[i] != b.get(i)]
     if diff:
         report.append(f"{len(diff)} of {len(a)} movers differ at that frame; first three:")
@@ -101,6 +101,11 @@ def selftest() -> int:
         return [f"[SIMID v1] simframe={i} t={t0 + i / 30:.3f} n=2 graded={tag}{i} visual=v strict=s" for i in range(n)]
 
     fails = []
+    nl = chr(10)
+    noise = "[runner] [ORDER-LIVENESS] HARD FAIL: 1 order-liveness check(s) failed" + nl + "| mc2_16  | PASS   |"
+    if (runner_failed(1, noise) or runner_failed(0, "x") or not runner_failed(1, noise + nl + "[runner] [DEPLOY_FINGERPRINT] HARD FAIL: x")
+            or not runner_failed(1, "crash") or not runner_failed(1, "| mc2_16  | FAIL   |" + nl + noise)):
+        fails.append("only the order-liveness hard fail may be ignored")
     pre = mk(100)                           # frames 0..99, t up to 3.3
     good = pre + mk(60, t0=60 / 30.0)       # load back to frame 60's time; same digests names -> they differ by index, so build exact copy
     good = pre + [f"[SIMID v1] simframe={100 + i} t={(60 + i) / 30:.3f} n=2 graded=a{60 + i} visual=v strict=s" for i in range(40)]
@@ -234,6 +239,16 @@ def add_speed_arg(p) -> None:
                    help="N fixed sim steps per drawn frame (run_smoke --sim-speed); same saves, about 1/N of the host time past loading")
 
 
+def runner_failed(returncode: int, output: str) -> bool:
+    """Did the smoke runner fail for a reason that matters here? The order-liveness fixture only issues moves (it keeps units walking at the
+    save point); its summary needs an autowin window this tool does not want, so the runner's ORDER-LIVENESS hard fail (rc 1) is expected."""
+    if not returncode:
+        return False
+    other = [ln for ln in output.splitlines() if ("HARD FAIL" in ln and "ORDER-LIVENESS" not in ln) or re.match(r"[|]\s*\S+\s*[|]\s*(FAIL|CRASH|TIMEOUT)", ln)
+             or ln.startswith("### ")]
+    return bool(other) or "ORDER-LIVENESS" not in output
+
+
 def run(mission: str, frames: int, deploy: bool, out: str | None, install: str = sd.INSTALL_DIR,
         save_dir: str | None = None, ref_exe: str | None = None, ref_commit: str | None = None, sim_speed: int = 1,
         save_at: int = int(SAVE_AT), load_at: int = int(LOAD_AT)):
@@ -256,7 +271,7 @@ def run(mission: str, frames: int, deploy: bool, out: str | None, install: str =
     with open(log, encoding="utf-8", errors="replace") as fh:
         ok, report = analyze(fh.read().splitlines(), frames)
     # A clock rewind alone cannot excuse a failed smoke gate; retain its evidence even on failure.
-    if r.returncode:
+    if runner_failed(r.returncode, r.stdout):
         return False, [f"the smoke run failed (rc={r.returncode})", *r.stdout.splitlines()[-8:], *report]
     return ok, report
 

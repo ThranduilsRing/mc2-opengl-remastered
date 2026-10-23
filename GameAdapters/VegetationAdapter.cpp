@@ -120,9 +120,9 @@ struct FramePalette { uint8_t f[8]; int dominant; int n; };
         case MC_TUNDRA_TYPE:
         case MC_FORESTFLOOR_TYPE:
         case MC_GRASS_TYPE:
-        default:
-            // Default kFull for any unknown code (future terrain types should be green).
             return VegDensity::kFull;
+        default:
+            return VegDensity::kSparse; // Unknown/mod materials stay conservative.
     }
 }
 
@@ -155,7 +155,7 @@ void GameAdapters::Vegetation::missionLoaded(Terrain* land, MissionMap* gameMap)
     GosVegetation::init();  // no-op if already initialized
 
     const int density = mc2::gate::get<"MC2_VEGETATION_DENSITY">();
-    const int maxInst = int(GosVegetation::populationCapacity(uint32_t(mc2::gate::get<"MC2_VEGETATION_MAX">())));
+    const int maxInst = int(GosVegetation::populationCapacity(uint32_t(mc2::gate::get<"MC2_VEGETATION_MAX">()), Terrain::worldUnitsMapSide));
     if (maxInst == 0) return;
 
     // Terrain map is square.  mapTopLeft3d is the top-left (max-Y, min-X)

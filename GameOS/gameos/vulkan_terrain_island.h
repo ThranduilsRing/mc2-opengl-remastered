@@ -225,6 +225,8 @@ struct Mc2TerrainTier1Feed {
 // from run() to pull the frame's LOD0 patch list + shared params. Returns 1 on a
 // valid feed, 0 otherwise (island then fails soft -> GL drew everything).
 int mc2_terrain_tier1_get_frame_feed(Mc2TerrainTier1Feed* out);
+// Immutable mission inputs are available before the first visible patch list.
+int mc2_terrain_tier1_get_load_feed(Mc2TerrainTier1Feed* out);
 
 // Observation only, under the existing MC2_VK_FEED_DUMP capture switch.
 // Activity is copied after geometry; the consumer records the exact staged UBOs.

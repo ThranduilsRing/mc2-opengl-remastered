@@ -1,0 +1,9 @@
+{
+  "schema_v": 1,
+  "mission": "mc2_01",
+  "_note": "Procedural kit review cameras, constructed from the actual stock mission packet-1 type-559 hangar placement: object 0 at [3221.3330078125,-277.3333435058594,400.941162109375], rotation 135. Not user-authored camera bookmarks. Source G:/mc2-installs/mc2-win64-mapgen/mission.fst::data/missions/mc2_01.pak. Two poses avoid the harness single-pose issue.",
+  "bookmarks": [
+    {"name": "scifi_hangar_close", "pos": [3221.3330078125, -277.3333435058594, 400.941162109375], "rot": 135, "proj": 38, "alt": 1150, "covers": ["scifi_hangar_override"]},
+    {"name": "scifi_hangar_rts", "pos": [3221.3330078125, -277.3333435058594, 400.941162109375], "rot": 315, "proj": 55, "alt": 2100, "covers": ["scifi_hangar_override"]}
+  ]
+}

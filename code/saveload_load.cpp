@@ -609,12 +609,23 @@ void Mission::loadLogistics(MissionLoadFrame& f) {
         std::vector<uint8_t> animation;
         extension(tag, version);
         if (tag == 0x4E413252u) {
-            if (version != 2) Fatal(0, "Unsupported R2 animation section");
-            mc2::sim::serializeAnimationBlob(extension, animation);
-            auto queue = orderIngress.queue();
-            queue.serialize(extension);
-            if (!extension.finish() || !ObjectManager->restoreAnimationState(animation)) Fatal(0, "Invalid R2 animation section");
-            orderIngress.queue() = std::move(queue);
+            if (version > 3) Fatal(0, "Save file has a newer R2 section than this build understands");
+            if (version != 2 && version != 3) {
+                mc2::fmt::print_err("[SAVE v1] event=reject reason=r2_version version={} file={}\n", version, mc2::fmt::safe(f.loadFileName));
+            } else {
+                extension.sectionVersion = version;
+                mc2::sim::serializeAnimationBlob(extension, animation);
+                auto queue = orderIngress.queue();
+                queue.serialize(extension);
+                // restoreAnimationState validates before it mutates, so a rejected section leaves default animation state.
+                // Dev saves written between de4413807 and f8b4174c3 carry the v3 record layout under version 2; restore validates
+                // before it mutates, so a failed v2 parse retries as v3.
+                if (!extension.finish() ||
+                    !(ObjectManager->restoreAnimationState(animation, version) ||
+                      (version == 2 && ObjectManager->restoreAnimationState(animation, 3))))
+                    mc2::fmt::print_err("[SAVE v1] event=reject reason=r2_section file={}\n", mc2::fmt::safe(f.loadFileName));
+                else orderIngress.queue() = std::move(queue);
+            }
         }
     }
 	loadFile.close();

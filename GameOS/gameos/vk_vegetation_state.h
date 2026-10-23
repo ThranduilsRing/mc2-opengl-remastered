@@ -19,20 +19,14 @@
 
 #include <cstdint>
 #include <span>
+#include "../../GameAdapters/vegetation_budget.h"
 
 namespace mc2vk { class VulkanContext; }
 
 namespace mc2veg {
 
-// LOCKSTEP with VegInstance / VegRegion in shaders/vulkan/include/vegetation_cull_common.glsl (std430, 32 B each).
-struct GpuInstance {
-    float x, y, z, yaw;
-    float scale;
-    uint32_t atlasFrame;
-    float seed;
-    uint32_t pad;
-};
-static_assert(sizeof(GpuInstance) == 32);
+// LOCKSTEP with PackedVegInstance / VegRegion in vegetation_structs.glsl.
+using GpuInstance = mc2::vegetation::PackedInstance;
 struct GpuRegion {
     float x, y, z, radius;
     uint32_t first, last, pad0, pad1;   // [first, last) in the population order
@@ -71,6 +65,8 @@ public:
 
     // Replaces the population: device-local copies of the instances and regions, and fresh per-parity output buffers sized to it. Waits for the device
     // (load-time work, never per frame). False leaves no population.
+    // Keep-every-Nth thinning stride (1 = whole population) that fits the quality preset and the live GPU headroom; 0 = no vegetation fits.
+    static uint32_t strideFor(uint64_t instances, uint64_t regions);
     bool upload(mc2vk::VulkanContext& ctx, std::span<const GpuInstance> instances, std::span<const GpuRegion> regions);
     void clear(mc2vk::VulkanContext& ctx);
 
@@ -90,6 +86,8 @@ public:
     // The draw side. Set 2 of the vegetation graphics pipeline layout: 0 = instances, 1 = dense survivor list, 2 = the frame's cull parameters (dynamic).
     // The layout exists before any population does; the island builds its pipeline layout from it.
     bool ensureDrawLayout(mc2vk::VulkanContext& ctx);
+    // Load-time creation of cull/scan/compact pipelines and population bindings.
+    bool prewarm(mc2vk::VulkanContext& ctx) { return ensurePipelines(ctx); }
     VkDescriptorSetLayout drawLayout() const { return drawDsl_.get(); }
     VkDescriptorSet drawSet(uint32_t par) const { return par < kSlots ? drawSets_[par] : VK_NULL_HANDLE; }
     // Dynamic offset of the cull parameters inside the ring span passed to the last record() of this parity.
@@ -99,7 +97,6 @@ public:
 
     VkBuffer instances() const { return instances_.get(); }
     VkBuffer regions() const { return regions_.get(); }
-    VkBuffer scratch(uint32_t par) const { return slot_[par].scratch.get(); }
     VkBuffer counts(uint32_t par) const { return slot_[par].counts.get(); }
     VkBuffer offsets(uint32_t par) const { return slot_[par].offsets.get(); }
     VkBuffer dense(uint32_t par) const { return slot_[par].dense.get(); }
@@ -107,7 +104,7 @@ public:
 
 private:
     struct Slot {
-        mc2vk::OwnedBuffer scratch, counts, offsets, dense, args, stats;
+        mc2vk::OwnedBuffer counts, offsets, dense, args, stats;
         bool statsPending = false;
     };
     bool ensurePipelines(mc2vk::VulkanContext& ctx);

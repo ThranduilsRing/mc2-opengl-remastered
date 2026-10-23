@@ -1100,6 +1100,7 @@ void Mech3DAppearance::updateSimPose (bool advanceClock)
 		_mm.gestureId = static_cast<int>(unitAnim().currentGestureId);
 		_mm.px = position.x; _mm.py = position.y; _mm.pz = position.z;
 		_mm.legHeadingDeg = rotation;
+		_mm.destroyed = (status == OBJECT_STATUS_DESTROYED);
 		// PER-ACTOR: actorKey = this instance shape; typeKey = the chassis type shape
 		// (== the batcher's rec.importedGpuType / desc.mechShape keying).
 		const void* _typeKey = (mechType ? static_cast<const void*>(mechType->mechShape[currentLOD]) : nullptr);

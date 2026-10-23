@@ -71,3 +71,20 @@ def test_unknown_selection_is_rejected_before_build(monkeypatch):
         builder.main(["--only", "icon_atlas_harness", "--only", "lost_harness"])
     assert error.value.code == 2
     assert not commands
+
+
+def test_seam_is_opt_in(monkeypatch, production_seam):
+    record_runs(monkeypatch, [0, 0, 0])
+    assert builder.main(["--run", "--unit-only"]) == 0
+    production_seam.assert_not_called()
+    record_runs(monkeypatch, [0, 0, 0])
+    assert builder.main(["--run", "--unit-only", "--seam"]) == 0
+    production_seam.assert_called_once()
+
+
+def test_only_accepts_a_single_doctest_case_and_wildcards(monkeypatch):
+    commands = record_runs(monkeypatch, [0, 0, 0])
+    case = "job_system_harness/fatal_if_aborts_and_traces"
+    assert builder.main(["--run", "--only", case]) == 0
+    assert commands[2][0][-1] == "--test-case=" + case
+    assert builder.unknown_selection(["job_system_harness/*", case, "icon_atlas_harness", "nope/*"]) == ["nope/*"]

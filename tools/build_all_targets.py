@@ -20,7 +20,7 @@ NOT covered: native Linux builds, and the Viewer (its block in the root CMakeLis
   py -3 tools/build_all_targets.py --no-compile-cache   # the original uncached trees (VS-generator standalone projects, PCH on)
 
 COMPILE CACHE (default on, off with --no-compile-cache or when --preset is given): every stage compiles through the shared sccache
-(scripts/configure_ninja.py cache_cmake_args: E:/mc2-installs/_sccache, /Zi -> /Z7, PCH off). The standalone projects and the doctest
+(scripts/configure_ninja.py cache_cmake_args: E:/mc2-compile-cache, /Zi -> /Z7, PCH off). The standalone projects and the doctest
 corpus use Ninja trees (build-cc-*) in that mode, because the VS generator cannot run a compiler launcher.
 """
 from __future__ import annotations
@@ -186,7 +186,7 @@ def main(argv=None) -> int:
         if build_standalone(src, tree, target, args.jobs, args.preset, args.keep_going, args.log_dir, use_cache(args), args.build_root):
             failed.append(src)
         lap(src)
-    cmd = [sys.executable, os.path.join(HERE, "build_contract_harnesses.py"), "--unit"]
+    cmd = [sys.executable, os.path.join(HERE, "build_contract_harnesses.py"), "--unit", "--seam"]
     if args.preset:
         cmd += ["--preset", args.preset, "-j", args.jobs]
     if args.keep_going:

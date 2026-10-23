@@ -86,7 +86,7 @@ except Exception:
 # deploy-lease system auto-select the least-recently-used deploy folder. This
 # avoids drift toward a stale fixed default and keeps load balanced across
 # 0.4 / 0.4c / 0.4d-rc1 / 0.5.0 / 0.5-testing.
-ARTIFACT_ROOT = ROOT / "tests" / "smoke" / "artifacts"
+ARTIFACT_ROOT = Path(os.environ.get("MC2_SMOKE_ARTIFACT_ROOT", ROOT / "tests" / "smoke" / "artifacts"))
 MANIFEST_PATH = ROOT / "tests" / "smoke" / "smoke_missions.txt"
 BASELINE_PATH = ROOT / "tests" / "smoke" / "baselines.json"
 DEFAULT_MENU_SCRIPT = ROOT / "tests" / "smoke" / "menu_canary_first_mission.txt"
@@ -551,6 +551,10 @@ def select_missions(entries, missions):
         seen.add(e.stem)
     unknown = sorted(wanted - seen)
     return selected, unknown
+
+
+# Owner rule (game runs are about 15 s of in-mission time): a run with no --duration and no tier-declared duration gets this.
+DEFAULT_DURATION_S = 15
 
 
 def main():
@@ -1394,7 +1398,7 @@ def main():
                 break
             continue
 
-        duration = args.duration or e.duration or 120
+        duration = args.duration or e.duration or DEFAULT_DURATION_S
         tier = args.tier or "adhoc"
         # The `resolution` tier runs one stem once per size, so its rows, logs and baseline keys carry the size.
         label = f"{e.stem}@{e.resolution}" if e.resolution else e.stem
@@ -1951,7 +1955,7 @@ def main():
             tier=args.tier or "adhoc",
             profile=args.profile,
             missions=[r.stem for r in rows],
-            durations={r.stem: (args.duration or 120) for r in rows},
+            durations={r.stem: (args.duration or DEFAULT_DURATION_S) for r in rows},
             result="PASS" if passed else "FAIL",
             source="smoke",
         )

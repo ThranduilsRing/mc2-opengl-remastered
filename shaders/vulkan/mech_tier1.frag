@@ -27,6 +27,8 @@
 //       rc_gbuffer1_screenShadowEligible(N_gbuf) = vec4(N*0.5+0.5, 0.0), N_gbuf = Nshade.
 #version 450
 #extension GL_GOOGLE_include_directive : require
+// Depth was established by the matching alpha-tested prepass; this pass never writes it.
+layout(early_fragment_tests) in;
 
 // Per-frame UBO: generated from RenderCore/gpu_abi/GpuMechFrameUBO.h.
 #include "include/mech_frame_ubo_vk.glsl"
@@ -49,12 +51,14 @@ struct PoolLight {
 layout(set = 0, binding = 5, std430) readonly buffer MechPoolLightsVK {
     PoolLight poolLights[];
 };
-#include "../include/object_light_pool.hglsl"
-#include "../include/mech_shading.hglsl"
-
 layout(push_constant) uniform MechRunPC {
     uint materialFlags;    // bit0 = ALPHA_TEST (mech.frag ALPHA_TEST_BIT)
+    uint poolFirst;
+    uint poolCount;
 } uRun;
+#define MC2_OBJECT_POOL_LIST 1
+#include "../include/object_light_pool.hglsl"
+#include "../include/mech_shading.hglsl"
 
 layout(location = 0) in vec2 vUv;
 layout(location = 1) in vec3 vNormalGL;

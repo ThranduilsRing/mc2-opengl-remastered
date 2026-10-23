@@ -565,6 +565,7 @@ struct EquipmentAddRowFields {
     long        helpStringId   = 0;
     int         iconX          = 1;
     int         iconY          = 1;
+    std::string ammoToken;                     // compbas missile-type column (LRM/SRM/ST); empty -> '1'/'0'
 };
 
 // Build the ONE synthesized compbas-format CSV line that BOTH consumers parse:
@@ -617,7 +618,11 @@ inline std::string buildEquipmentAddCsvLine(const EquipmentAddRowFields& f) {
     line += ",";
     for (int i = 0; i < 8; ++i) { line += f.crit[i] ? "Yes" : "No"; line += ","; }
     // ammoType token: '1' = finite ammo when an ammo row is linked, else '0'.
-    line += (f.ammoMasterId > 0) ? "1" : "0"; line += ",";
+    if (!f.ammoToken.empty())
+        line += f.ammoToken;
+    else
+        line += (f.ammoMasterId > 0) ? "1" : "0";
+    line += ",";
     line += "0,";                                  // flags (streak derived from ammoTok)
     addI(f.specialEffect);
     addI(f.ammoMasterId);

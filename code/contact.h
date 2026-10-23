@@ -54,10 +54,10 @@ class ContactInfo {
 
 		unsigned char				contactStatus[MAX_TEAMS];
 		//unsigned char				allContactStatus[MAX_TEAMS];
-		unsigned char				contactCount[MAX_TEAMS];	//How many mechs/vehicles have me on sensors?
+		unsigned short				contactCount[MAX_TEAMS];	//How many mechs/vehicles have me on sensors?
 		unsigned char				sensors[MAX_SENSORS];		//index into sensor's contact list
 		unsigned short				teams[MAX_TEAMS];			//index into team's contact list
-		unsigned char				teamSpotter[MAX_TEAMS];
+		uint32_t				teamSpotter[MAX_TEAMS];
 
 	public:
 
@@ -149,7 +149,7 @@ class SensorSystem {
 		float					nextScanUpdate;
 		float					lastScanUpdate;
 
-		unsigned short			contacts[MAX_CONTACTS_PER_SENSOR];
+		uint32_t			contacts[MAX_CONTACTS_PER_SENSOR];
 		long					numContacts;
 		long					numExclusives;
 		long					totalContacts;
@@ -253,7 +253,7 @@ class SensorSystem {
 //---------------------------------------------------------------------------
 
 
-#define	MAX_SENSORS_PER_TEAM MAX_MOVERS
+#define	MAX_SENSORS_PER_TEAM MAX_SENSORS
 
 class TeamSensorSystem {
 
@@ -376,7 +376,11 @@ class SensorSystemManager {
 		}
 		
 		void destroy (void);
-		
+
+		// The scan round-robin and the flag a script reads (getSensorsActive) are simulation state: a save keeps them.
+		long getScanCursor (void) const { return teamToUpdate; }
+		void restoreScan (long cursor, bool inLOS) { teamToUpdate = cursor; enemyInLOS = inLOS; }
+
 		void init (void) {
 			freeSensors = 0;
 			sensorPool = nullptr;

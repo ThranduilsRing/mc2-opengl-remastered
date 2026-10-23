@@ -1,4 +1,5 @@
 #include "save_archive.h"
+#include "save_exactness.h"
 #include "appearance_rng.h"
 #include "sim_rng_state.h"
 // GameObjectManager: terrain-object counting, loading and geometry finalise, and the object CopyTo / CopyFrom / Save / Load.
@@ -1360,11 +1361,29 @@ std::vector<uint8_t> GameObjectManager::saveAnimationState() {
         int32_t handle = static_cast<int32_t>(i);
         archive(handle, *object->getAppearance()->simulationAnimation());
     }
+    // Pool order: the sim updates turrets, buildings, ... in pool order and a load fills each pool in handle order, so objects
+    // that draw from the sim RNG in the same tick (idle turrets) would draw in a different order after a load.
+    auto poolOrder = [&](auto pool) {
+        std::vector<int32_t> handles;
+        if (pool.data() && pool.size() <= mc2::save::maxSequenceLength) {
+            handles.reserve(pool.size());
+            for (auto* object : pool) handles.push_back(object ? static_cast<int32_t>(object->getHandle()) : -1);
+        }
+        archive(handles);
+    };
+    poolOrder(std::span(turrets, static_cast<size_t>(numTurrets))); poolOrder(std::span(buildings, static_cast<size_t>(numBuildings)));
+    poolOrder(std::span(gates, static_cast<size_t>(numGates))); poolOrder(std::span(artillery, static_cast<size_t>(numArtillery)));
+    poolOrder(std::span(carnage, static_cast<size_t>(numCarnage))); poolOrder(std::span(weapons, static_cast<size_t>(numWeapons)));
+    // Sensor scan state: one team scans per tick and getSensorsActive reads the flag the scans leave; mission scripts branch on it.
+    int32_t scanCursor = SensorManager ? static_cast<int32_t>(SensorManager->getScanCursor()) : 0;
+    bool enemyInLOS = SensorSystemManager::enemyInLOS;
+    archive(scanCursor, enemyInLOS);
     if (!archive.good()) Fatal(0, "Unable to serialize authoritative animation state");
     return archive.bytes();
 }
-bool GameObjectManager::restoreAnimationState(const std::vector<uint8_t>& bytes) {
+bool GameObjectManager::restoreAnimationState(const std::vector<uint8_t>& bytes, uint32_t sectionVersion) {
     mc2::save::Archive archive(bytes);
+    archive.sectionVersion = sectionVersion;
     uint32_t state = 0, draws = 0, animState = 0, animDraws = 0, count = 0;
     archive(state, draws, animState, animDraws, count);
     if (!archive.good() || count > static_cast<uint32_t>(getMaxObjects())) return false;
@@ -1384,7 +1403,26 @@ bool GameObjectManager::restoreAnimationState(const std::vector<uint8_t>& bytes)
         states.emplace_back(handle, std::move(animation));
         previousHandle = handle;
     }
+    // Pool orders follow the animation states; saves written before them end here and keep the pools in handle order.
+    std::vector<int32_t> order[6];
+    if (archive.remaining() > 0)
+        for (auto& handles : order) archive(handles);
+    // Saves written before the sensor scan state end after the pool orders (or before them) and keep the defaults.
+    int32_t scanCursor = 0;
+    bool enemyInLOS = SensorSystemManager::enemyInLOS, hasScan = false;
+    if (archive.remaining() > 0) {
+        archive(scanCursor, enemyInLOS);
+        hasScan = true;
+        if (archive.good() && (!SensorManager || scanCursor < 0 || scanCursor >= Team::numTeams)) archive.reject("sensor_scan_cursor");
+    }
     if (!archive.finish()) return false;
+    if (hasScan) SensorManager->restoreScan(scanCursor, enemyInLOS);
+    mc2::save::applyPoolOrder(std::span(turrets, static_cast<size_t>(numTurrets)), order[0], objList, getMaxObjects());
+    mc2::save::applyPoolOrder(std::span(buildings, static_cast<size_t>(numBuildings)), order[1], objList, getMaxObjects());
+    mc2::save::applyPoolOrder(std::span(gates, static_cast<size_t>(numGates)), order[2], objList, getMaxObjects());
+    mc2::save::applyPoolOrder(std::span(artillery, static_cast<size_t>(numArtillery)), order[3], objList, getMaxObjects());
+    mc2::save::applyPoolOrder(std::span(carnage, static_cast<size_t>(numCarnage)), order[4], objList, getMaxObjects());
+    mc2::save::applyPoolOrder(std::span(weapons, static_cast<size_t>(numWeapons)), order[5], objList, getMaxObjects());
     for (auto& [handle, animation] : states) {
         auto* appearance = objList[handle]->getAppearance();
         *appearance->simulationAnimation() = std::move(animation);

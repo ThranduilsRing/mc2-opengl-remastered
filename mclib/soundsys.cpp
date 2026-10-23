@@ -1,4 +1,5 @@
 #include "Gates/preferences_legacy.h"
+#include "gameos_music_cache.h"
 //---------------------------------------------------------------------------
 // soundsys.cpp - This file is the sound system code
 //
@@ -109,6 +110,7 @@ void SoundSystem::destroy (void)
     for (MusicSlot& slot : musicSlots) gosAudio_DestroyResource(&slot.handle);
     for (HGOSAUDIO* handle : {&stream3Handle, &bettyHandle, &supportHandle})
         gosAudio_DestroyResource(handle);
+	gosAudio_ClearMusicCache();
 	sounds.clear();
 	digitalMusic.clear();
 	bettySoundBite.clear();
@@ -123,6 +125,7 @@ void SoundSystem::destroy (void)
 //---------------------------------------------------------------------------
 long SoundSystem::init (const char *soundFileName)
 {
+	gosAudio_ClearMusicCache();
 	if (useSound)
 	{
 		FullPathFileName soundName;
@@ -262,6 +265,13 @@ long SoundSystem::init (const char *soundFileName)
 			result = soundFile.readIdFloat(digitalMSVId,digitalMusic[i].volume);
 			if (result != NO_ERR)
 				digitalMusic[i].volume = 1.0f;
+
+			// Script music requests must not synchronously decode ADPCM inside the mission brain.
+			if (useMusic && strncmp(musicName, "NONE", 4) != 0) {
+				FullPathFileName path;
+				path.init(soundPath, musicName, ".wav");
+				gosAudio_PreloadMusic(static_cast<const char*>(path));
+			}
 		}
 
 		soundFile.close();

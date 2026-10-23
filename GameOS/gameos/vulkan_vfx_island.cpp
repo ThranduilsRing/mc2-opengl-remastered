@@ -50,6 +50,7 @@
 #include "ui_texture.h"
 #include "vk_texture_residency.h"
 #include "vk_vegetation_state.h"
+#include "gos_vegetation.h"
 #include "vk_vegetation_ground.h"
 
 #include <tracy/Tracy.hpp>   // VK-ISLAND-TRACY-1: per-frame CPU attribution zones
@@ -451,8 +452,8 @@ bool init_island(VfxIsland* s, int w, int h) {
     {
         s->vert = mc2vk::OwnedShaderModule(s->device, load_spv(s->device, spv_dir() + "vfx_particle.vert.spv"));
         s->frag = mc2vk::OwnedShaderModule(s->device, load_spv(s->device, spv_dir() + "vfx_particle.frag.spv"));
-        s->vegFrag = mc2vk::OwnedShaderModule(s->device, load_spv(s->device, spv_dir() + "vfx_vegetation.frag.spv"));
-        if (!s->vert || !s->frag || !s->vegFrag) { setFallback("spv_load_failed"); return false; }
+        if (GosVegetation::isEnabled()) s->vegFrag = mc2vk::OwnedShaderModule(s->device, load_spv(s->device, spv_dir() + "vfx_vegetation.frag.spv"));
+        if (!s->vert || !s->frag || (GosVegetation::isEnabled() && !s->vegFrag)) { setFallback("spv_load_failed"); return false; }
         // Sprite pages: set 1 = one combined sampler (LINEAR, no mips -- the FS samples level 0 like the GL path).
         VkSamplerCreateInfo sci{};
         sci.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
@@ -468,7 +469,7 @@ bool init_island(VfxIsland* s, int w, int h) {
         vkGetPhysicalDeviceProperties(s->phys, &vegetationProps);
         sci.anisotropyEnable = mc2vk::profile::featureEnabled(ctx.profile(), "samplerAnisotropy") ? VK_TRUE : VK_FALSE;
         sci.maxAnisotropy = std::min(8.0f, vegetationProps.limits.maxSamplerAnisotropy);
-        if (!mc2vk::create(s->vegetationSampler, s->device, [&](VkSampler* o) { return vkCreateSampler(s->device, &sci, nullptr, o); })) return false;
+        if (GosVegetation::isEnabled() && !mc2vk::create(s->vegetationSampler, s->device, [&](VkSampler* o) { return vkCreateSampler(s->device, &sci, nullptr, o); })) return false;
 
         VkDescriptorSetLayoutBinding sb{};
         sb.binding = 0; sb.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
@@ -491,7 +492,7 @@ bool init_island(VfxIsland* s, int w, int h) {
         const VkPushConstantRange pcr{ VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(VfxGroupPush) };
         plci.pushConstantRangeCount = 1; plci.pPushConstantRanges = &pcr;
         if (!mc2vk::create(s->playout, s->device, [&](VkPipelineLayout* o) { return vkCreatePipelineLayout(s->device, &plci, nullptr, o); })) { vlog("vkCreatePipelineLayout failed."); return false; }
-        {
+        if (GosVegetation::isEnabled()) {
             // Vegetation: its own vertex shader and a third descriptor set (the GPU-resident population and survivor list).
             mc2veg::State& veg = mc2veg::State::instance();
             if (!veg.ensureDrawLayout(ctx)) { setFallback("vegetation_draw_layout_failed"); return false; }
@@ -504,11 +505,11 @@ bool init_island(VfxIsland* s, int w, int h) {
             vlci.setLayoutCount = 4; vlci.pSetLayouts = vegHandles;
             if (!mc2vk::create(s->vegLayout, s->device, [&](VkPipelineLayout* o) { return vkCreatePipelineLayout(s->device, &vlci, nullptr, o); })) { vlog("vkCreatePipelineLayout(vegetation) failed."); return false; }
         }
-        s->vegetationPipe = make_pipeline(s, w, h, false, false, true);
+        if (GosVegetation::isEnabled()) s->vegetationPipe = make_pipeline(s, w, h, false, false, true);
         s->alphaPipe = make_pipeline(s, w, h, /*additive=*/false);
         s->addPipe   = make_pipeline(s, w, h, /*additive=*/true);
         s->oneOnePipe = make_pipeline(s, w, h, /*additive=*/true, /*oneOne=*/true);
-        if (!s->alphaPipe || !s->addPipe || !s->oneOnePipe || !s->vegetationPipe) { setFallback("pipeline_create_failed"); return false; }
+        if (!s->alphaPipe || !s->addPipe || !s->oneOnePipe || (GosVegetation::isEnabled() && !s->vegetationPipe)) { setFallback("pipeline_create_failed"); return false; }
     }
 
     // Command pool + two command buffers (one per parity slot; the slot is reused once its last submit completed, a timeline ticket, no island fence).
@@ -595,10 +596,14 @@ extern "C" int mc2_vk_vfx_island_prewarm(int w,int h) {
     auto& ctx=mc2vk::getOrCreateEngineVulkanContext();
     if(!ctx.valid() || w<=0 || h<=0) return 0;
     auto& slot=ctx.islandSlot(mc2vk::IslandSlot::Vfx);
-    if(slot) return 1;
-    auto fresh=std::make_unique<VfxIsland>();
-    if(!init_island(fresh.get(),w,h)) { ctx.waitIdle("vfx_prewarm_failure"); return 0; }
-    slot=std::move(fresh);
+    if(!slot) {
+        auto fresh=std::make_unique<VfxIsland>();
+        if(!init_island(fresh.get(),w,h)) { ctx.waitIdle("vfx_prewarm_failure"); return 0; }
+        slot=std::move(fresh);
+    }
+    if (vegetationAtlas) get_page(static_cast<VfxIsland*>(slot.get()),kVfxVegetationAtlas,0);
+    if (mc2veg::State::exists() && mc2veg::State::instance().ready() &&
+        !mc2veg::State::instance().prewarm(ctx)) return 0;
     return 1;
 }
 
@@ -769,7 +774,7 @@ bool mc2_vk_vfx_vegetation_run(const mc2veg::CullParams& params, const float* wo
         rbi.renderPass = s->rpass.get(); rbi.framebuffer = s->fb.get();
         rbi.renderArea = {{0, 0}, {static_cast<uint32_t>(w), static_cast<uint32_t>(h)}};
         rbi.clearValueCount = 3; rbi.pClearValues = clears;
-        MC2_VK_GPU_SCOPE(gpuScope, cb, "VKIsl.Vfx.Vegetation");
+        MC2_VK_GPU_SCOPE(gpuScope, cb, "VKIsl.Vegetation");
         vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
         mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->vegetationPipe.get());
         vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->vegLayout.get(), 0, 1, &s->set[par], 2, dynOffsets);

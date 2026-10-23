@@ -98,8 +98,20 @@ void Mech3DAppearanceType::init (const char * fileName)
 	// NEVER put the Flea on the broken path again — it falls back to the stock
 	// ASE/FST shape. Set MC2_ASSIMP_MECH_IMPORT=1 to opt back in once a mech's GLB
 	// is verified good. (Building/prop GLB import is unaffected — separate path.)
+	// BT2018-FIRST-CLASS P3: a package that declares the "imported_mechs" capability in its
+	// mod.json turns the import on for the appearance INIs IT ships (never for base-data or
+	// other mods' INIs, so the stray flea/madcat [Import] blocks stay ignored). An explicit
+	// MC2_ASSIMP_MECH_IMPORT=0 is the kill switch for package imports too.
 	static const bool s_assimpMechImport = mc2::gate::get<"MC2_ASSIMP_MECH_IMPORT">();
-	if (s_assimpMechImport &&
+	static const bool s_assimpMechImportKilled =
+		mc2::gate::state<"MC2_ASSIMP_MECH_IMPORT">() == mc2::gate::Tri::Off;
+	const bool importAllowed = s_assimpMechImport ||
+		(!s_assimpMechImportKilled &&
+		 ModOwnerHasCapability(static_cast<const char*>(mechIniName), "imported_mechs"));
+	// Gesture clips (.agl/.ase) come from the INI's own name unless [Import] AnimHost= names a
+	// host whose gesture timing the imported model borrows until it owns clip timing (P9).
+	char animBase[256] = "";
+	if (importAllowed &&
 	    mechFile.seekBlock("Import") == NO_ERR &&
 	    mechFile.readIdString("Source", importSourceBase, 255) == NO_ERR &&
 	    importSourceBase[0])
@@ -108,7 +120,10 @@ void Mech3DAppearanceType::init (const char * fileName)
 		// for the right format itself. "madcat.glb" -> "madcat".
 		char* dot = strrchr(importSourceBase, '.');
 		if (dot) *dot = '\0';
+		if (mechFile.readIdString("AnimHost", animBase, 255) != NO_ERR)
+			animBase[0] = '\0';
 	}
+	const char* gestureClipBase = animBase[0] ? animBase : fileName;
 
 	result = mechFile.seekBlock("TGLData");
 	if (result != NO_ERR)
@@ -292,7 +307,7 @@ void Mech3DAppearanceType::init (const char * fileName)
 		for (int i=0;i<MAX_ANIMATION_FILES;i++)
 		{
 			char animName[512];
-			auto animNameEnd = std::format_to_n(animName, sizeof(animName) - 1, "{}{}", fileName, MechAnimationNames[i]).out;
+			auto animNameEnd = std::format_to_n(animName, sizeof(animName) - 1, "{}{}", gestureClipBase, MechAnimationNames[i]).out;
 			*animNameEnd = '\0';
 
 			FullPathFileName animPath;

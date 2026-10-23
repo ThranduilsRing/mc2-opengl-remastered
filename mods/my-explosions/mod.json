@@ -5,5 +5,5 @@
   "version": "1.0.0",
   "type": "assets",
   "dependencies": [],
-  "description": "Worked example for FX-DEFS-SIDECAR-1 (docs/modding-effects.md): retunes the stock Fireball explosion via a single data/effects/defs/Fireball.fxdef.json overlay -- no C++, no mc2.fx rebuild, no whole-blob copy. Requires MC2_FX_DEFS=1 and MC2_ACTIVE_MOD=my-explosions."
+  "description": "Worked example for FX-DEFS-SIDECAR-1 (docs/modding-effects.md): retunes the stock Fireball explosion via a single data/effects/defs/Fireball.fxdef.json overlay -- no C++, no mc2.fx rebuild, no whole-blob copy. Enable with MC2_ACTIVE_MOD=my-explosions."
 }

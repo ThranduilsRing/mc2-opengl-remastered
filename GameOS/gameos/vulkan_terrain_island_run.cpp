@@ -106,6 +106,22 @@ extern "C" int mc2_vk_terrain_island_prepare(int w, int h) {
     return ensure_island_ready(w, h) ? 1 : 0;
 }
 
+extern "C" int mc2_vk_terrain_island_prewarm(int w, int h) {
+    if (!ensure_island_ready(w, h)) return 0;
+    Mc2TerrainTier1Feed feed{};
+    if (!mc2_terrain_tier1_get_load_feed(&feed)) return 0;
+    auto* s = parkedIsland();
+    if (!snapshot_height(s, feed)) return 0;
+    import_colormap(s, feed);
+    import_cement(s, feed);
+    snapshot_cement(s, feed);
+    import_shore_mask(s, feed);
+    import_materials(s);
+    import_concrete_detail(s);
+    if (feed.visualHeightCpu) snapshot_visual_height(s, feed);
+    return 1;
+}
+
 // VK-PARITY-TERRAIN-2: stage this frame's light pool + grid into slot [par] (same
 // per-frame cadence as GL's PackAndDispatch/BuildAndUploadLightGrid uploads). Any
 // staging failure degrades to "no pools" (numPoolLights=0), never a hole.
@@ -175,6 +191,7 @@ void fill_frame_ubo(TerrainIsland* s, const Mc2TerrainTier1Feed& feed,
     u.terrainLightDir[3] = 0.0f;
     std::memcpy(u.staticLightSpaceMatrix, feed.staticLightSpaceMatrix,
                 sizeof(u.staticLightSpaceMatrix));
+    mc2_vk_shadow_island_get_object_matrix(u.staticLightSpaceMatrix);
     u.lightingEnabled = feed.lightingEnabled ? 1 : 0;
     u.enableShadows   = (feed.lightingEnabled && feed.shadowsEnabled && s->shadowReady) ? 1 : 0;
     u.shadowSoftness  = feed.shadowSoftness;
@@ -185,6 +202,8 @@ void fill_frame_ubo(TerrainIsland* s, const Mc2TerrainTier1Feed& feed,
     // 0: not imported, 1: imported, 2: imported and carrying the cliff layer (layer 5), which the cliff material samples.
     u.detailReady    = !s->matNormalReady ? 0 : (s->matNormalLayers > 5u ? 2 : 1);
     u.nfhStrength    = feed.nfhStrength;
+    u.concreteDetail = (s->concreteDetailReady && feed.lightingEnabled && feed.detailEnabled) ? 1 : 0;   // detail toggle off = base game look
+    u.concreteDetailStrength = 0.15f;   // normal gain over the cooked 2K sets; tuned in a viewed RTS-zoom montage
     u.detailTiling   = feed.detailTiling;
     u.detailStrength = feed.detailStrength;
     // VK-TERRAIN-LODFADE: camera pos + gate, precondition-chained on detail
@@ -260,7 +279,7 @@ void fill_frame_ubo(TerrainIsland* s, const Mc2TerrainTier1Feed& feed,
     u.shorelineBoundsX = feed.shorelineBounds[0]; u.shorelineBoundsY = feed.shorelineBounds[1];
     u.shorelineBoundsW = feed.shorelineBounds[2]; u.shorelineBoundsH = feed.shorelineBounds[3];
     // SHORE-FIELD-1: coastal colormap follows the water's smooth shore field.
-    u.shoreFieldOn = s->shoreFieldReady && feed.shoreFieldTexels ? 1 : 0;
+    u.shoreFieldOn = 0; // coast-color repair is baked on the CPU
     u.shoreFieldIsSdf = feed.shoreFieldIsSdf;
     u.shoreFieldBoundsX = feed.shoreFieldBounds[0]; u.shoreFieldBoundsY = feed.shoreFieldBounds[1];
     u.shoreFieldBoundsW = feed.shoreFieldBounds[2]; u.shoreFieldBoundsH = feed.shoreFieldBounds[3];
@@ -313,7 +332,8 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     import_cement(s, feed);
     snapshot_cement(s, feed);
     import_shore_mask(s, feed);
-    import_shore_field(s, feed);   // SHORE-FIELD-1
+    import_materials(s);
+    import_concrete_detail(s);
 
     // VK-TERRAIN-VISUALDISPLACE-FAR-1: version-gated mission-load snapshot of the 4x
     // visual-height bake (no-op unless the sub-gate armed the feed fields AND the bake
@@ -357,7 +377,7 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     us_fence_wait = usSince(tFence0);
     const uint32_t par = fsC.parity & 1u;
     if (!mc2vk::bindMoverShadowDescriptors(s->device,s->set[par])) { setFallback("mover_receiver_unavailable"); s->disabled=true; return 0; }
-    const std::array<VkImageView,7> views{s->colormapTexture.view(),s->cementTexture.view(),s->shoreMaskTexture.view(),s->matNormalTexture.view(),s->shoreFieldTexture.view(),s->macroGradientTexture.view(),s->staticVisibilityDummy.view()};
+    const std::array<VkImageView,7> views{s->colormapTexture.view(),s->cementTexture.view(),s->shoreMaskTexture.view(),s->matNormalTexture.view(),s->materialTexture.view(),s->macroGradientTexture.view(),s->staticVisibilityDummy.view()};
     if (s->descriptorsDirty[par] || s->boundTextures[par]!=views) {
         write_descriptors(s,int(par)); s->boundTextures[par]=views;
     }
@@ -379,7 +399,7 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     if (mc2_terrain_feed_observation_enabled()) {
         const uint64_t imported[] = {s->heightVersionCopied, s->cementVersionCopied, s->visualHeightVersionCopied,
             s->colormapVersionImported, s->cementVersionImported, s->shoreMaskVersionImported,
-            s->shoreFieldVersionImported, s->matNormalVersionImported};
+            s->materialSurfaceVersion, s->matNormalVersionImported};
         mc2_terrain_feed_dump_consumed(&feed, g_mc2RenderFrame, w, h, {static_cast<const uint8_t*>(uboSpan.ptr),
             static_cast<size_t>(patchCount) * sizeof(TerrainFrameUBO)}, vkPoolLights, vkGridDim, imported);
     }

@@ -139,8 +139,10 @@ void TreeAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 		
 		if (!appearType->getDesignerTypeBounds())
 		{
-			appearType->typeUpperLeft = treeShape->GetMinBox();
-			appearType->typeLowerRight = treeShape->GetMaxBox();
+			if (auto* collision = appearType->getTreeCollisionShape(0)) {
+				appearType->typeUpperLeft = collision->minBox;
+				appearType->typeLowerRight = collision->maxBox;
+			}
 		}
 
 		// GPU static-prop batcher: register the RENDER shape (override-or-stock)
@@ -152,11 +154,7 @@ void TreeAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 		// getTreeRenderShape clamps unpopulated indices back to LOD0). Stock
 		// types keep the full MAX_LODS loop: getTreeRenderShape(i) returns the
 		// distinct stock treeShape[i] per LOD, all of which must register.
-		const bool _treeIsOverride = (appearType->treeRenderShapeLodCount > 0);
-		const int _treeRegLods = _treeIsOverride ? static_cast<int>(appearType->treeRenderShapeLodCount) : MAX_LODS;
-		for (int i = 0; i < _treeRegLods; ++i)
-			GpuStaticPropBatcher::instance().registerMultiShape(appearType->getTreeRenderShape(i), _treeIsOverride);
-		GpuStaticPropBatcher::instance().registerMultiShape(appearType->treeDmgShape);
+		appearType->registerRenderShapes();
 	}
 
 	pitch = yaw = 0.0f;
@@ -166,9 +164,11 @@ void TreeAppearance::setObjStatus (long oStatus)
 {
 	if (status != oStatus)
 	{
+        invalidateStaticRegistration();
+        activeLOD = 0;
 		if ((oStatus == OBJECT_STATUS_DESTROYED) || (oStatus == OBJECT_STATUS_DISABLED))
 		{
-			if (appearType->treeDmgShape)
+			if (appearType->getTreeDamageRenderShape())
 			{
 				if (treeShape)
 				{
@@ -177,7 +177,7 @@ void TreeAppearance::setObjStatus (long oStatus)
 					treeShape = nullptr;
 				}
 				
-				treeShape = appearType->treeDmgShape->CreateFrom();
+				treeShape = appearType->getTreeDamageRenderShape()->CreateFrom();
 				beenInView = false; 
 			}
 			
@@ -464,21 +464,6 @@ long TreeAppearance::update (bool animate)
 		TG_LightPtr light = eye->getWorldLight(0);
 		light->active = false;
 
-		// LIGHT-ROW-PURE-1: declare BOTH tree mutations — the ambient-slot
-		// recolour and the sun deactivation immediately above. This is
-		// the policy PROP-BAKE-ORDER-VS-TIME-1 turns on: with the sun filtered
-		// out of the row, the AMBIENT becomes row slot 0 and
-		// decomposeFirstActiveLightColor overwrites it instead of the sun.
-		// Declaring it makes that a property of ONE query rather than of a
-		// global window other classes can bake inside. The mutations above
-		// STAY -- mclib/tgl.cpp's CPU vertex kernel reads them inside this
-		// window and a row memcmp cannot see that; see mclib/txmmgr.cpp.
-		mc2PublishObjectLightPolicy(/*kClassTree*/2,
-		                            /*sunRecolour*/false, 0u,
-		                            /*sunDisabled*/true,
-		                            /*ambientRecolour*/true, static_cast<uint32_t>(lightRGB),
-		                            position.x, position.y, position.z,
-		                            /*terrainSample*/1.0f);
 
 		treeShape->SetLightList(eye->getWorldLights(),eye->getNumLights());
 		// Slice 2 (object-offload) — Stage 2.B: eligibility hoist.

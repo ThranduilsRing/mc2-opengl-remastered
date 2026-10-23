@@ -158,16 +158,6 @@
       "note": "The TileIsRoadArt runway superset guard. Adds NO gate of its own; it runs inside `if (OverlayCementAdoptEnabled() && Terrain::mapData)` (gos_terrain_indirect.cpp:1826), so MC2_OVERLAY_CEMENT_ADOPT is genuinely its gate and is recorded as such rather than left null -- a null would have graded the default axis an unconditional YES and claimed delivery on an install where the adopt gate is off. exe_needle is a printf format literal unique to this commit, so the binary tier can answer even though the fix adds no uniform."
     },
     {
-      "id": "CONCRETE-DELIVER-2-RETRACTION",
-      "commit": "2ade84a8",
-      "gate": "MC2_PAVED_OVERLAY_CLASS",
-      "expect_default": "0",
-      "exe_needle": null,
-      "code_evidence": [],
-      "data": [],
-      "note": "A RETRACTION, not a feature: CONCRETE-DELIVER-2 reverts a default-ON that the promoting lane's own status doc had already retracted in writing. A numeric gate, so check-gate-default-agreement.py skips it as 'value-read (not a boolean gate)' -- nothing else in the tree compares its per-install default against the tip. Grading concrete on an install that predates this commit grades WITHDRAWN code."
-    },
-    {
       "id": "WATER-SHORE-MASK-1",
       "commit": "3c864eac",
       "gate": "MC2_WATER_SHORE_MASK",

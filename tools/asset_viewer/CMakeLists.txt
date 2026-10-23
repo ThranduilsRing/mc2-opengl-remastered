@@ -38,6 +38,8 @@ add_library(mc2_tglloader STATIC
     # --- mclib TUs (geometry loader closure) ---
     "${CMAKE_SOURCE_DIR}/mclib/msl.cpp"
     "${CMAKE_SOURCE_DIR}/mclib/msl_load.cpp"
+    "${CMAKE_SOURCE_DIR}/mclib/content_ir.cpp"
+    "${CMAKE_SOURCE_DIR}/GameOS/gameos/cook_cache.cpp"
     "${CMAKE_SOURCE_DIR}/mclib/msl_shape.cpp"
     "${CMAKE_SOURCE_DIR}/mclib/msl_transform.cpp"
     "${CMAKE_SOURCE_DIR}/mclib/msl_anim.cpp"

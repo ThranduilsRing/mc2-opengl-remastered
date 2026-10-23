@@ -2,6 +2,7 @@
 // Declared in the class headers; shared names in mech_internal.h.
 #include "mech_internal.h"
 #include "mc2fmt.h"
+#include "package_chassis.h"
 #include <algorithm>
 #include <utility>
 
@@ -243,9 +244,17 @@ long BattleMech::resolveWeaponMountNode (const InventoryItem& item, long sourceW
 	// effect is preserved exactly (parity), whichever node we ultimately mount to.
 	const long roundRobinNode = appearance->getWeaponNode(sourceWeaponType);
 
-	// Fast path / stock parity: gate OFF or no declared hardpoint -> fallback.
-	if (!mc2UnitProfileDataEnabled() || item.hardpointId == 0)
+	// Fast path / stock parity: gate OFF or no declared hardpoint -> fallback. A package
+	// chassis always routes declared mounts (its sockets are the only correct origins).
+	if ((!mc2UnitProfileDataEnabled() && !isPackageChassis()) || item.hardpointId == 0)
 		return roundRobinNode;
+
+	// BT2018-FIRST-CLASS P7: a package chassis names the mount's socket directly.
+	if (const mc2pkg::PackageChassis* pc = packageChassisByTypeNum(typeHandle)) {
+		const mc2pkg::Hardpoint* mount = pc->hardpointByKey(item.hardpointId);
+		const long node = mount ? static_cast<Mech3DAppearance*>(appearance)->resolveWeaponNodeBySocketName(mount->socket.c_str()) : -1;
+		return chooseWeaponNode(/*hasHardpoint*/ true, static_cast<int>(node), static_cast<int>(roundRobinNode));
+	}
 
 	// Declared hardpoint: resolve id -> profile -> socket name -> node index.
 	HardpointProfile hp;
@@ -255,6 +264,18 @@ long BattleMech::resolveWeaponMountNode (const InventoryItem& item, long sourceW
 		                 ->resolveWeaponNodeBySocketName(hp.socket.c_str());
 
 	return chooseWeaponNode(/*hasHardpoint*/ true, socketNode, roundRobinNode);
+}
+
+bool BattleMech::isPackageChassis (void) const
+{
+	return packageChassisByTypeNum(typeHandle) != nullptr;
+}
+
+void BattleMech::setPendingPackageMounts (std::span<const unsigned int> keys)
+{
+	numPendingPackageMounts = 0;
+	for (const unsigned int key : keys.first(std::min<size_t>(keys.size(), MAX_MOVER_INVENTORY_ITEMS)))
+		pendingPackageMounts[numPendingPackageMounts++] = key;
 }
 
 long BattleMech::init (FitIniFile* mechFile) {

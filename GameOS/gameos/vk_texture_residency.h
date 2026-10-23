@@ -50,6 +50,8 @@ public:
     ResidentTextureRef requestKtx(const RenderCore::TextureKey& key, std::vector<uint8_t> bytes,
                                   RenderCore::TextureDimensions dimensions);
     void pump();
+    // Load-only barrier: decode, upload and publish before entering gameplay.
+    void finishLoading();
     void invalidate(RenderCore::TextureHandle handle);
     void requestDecoded(RenderCore::TextureHandle handle, std::function<std::shared_ptr<const RenderCore::KtxImage>()> decode);
     bool ready(RenderCore::TextureHandle handle) const;
@@ -68,7 +70,7 @@ public:
     void sealFrame();
 private:
     struct Image { OwnedImage image; OwnedImageView view; void markDeferred() { image.markDeferred(); } };
-    struct Resident { std::shared_ptr<Image> image; uint32_t descriptor = 0; bool useMips = true; uint32_t layers = 1; bool arrayView = false; bool highPriority = false; uint32_t contentVersion=0; };
+    struct Resident { std::shared_ptr<Image> image; uint32_t descriptor = 0; bool useMips = true; uint32_t layers = 1; bool arrayView = false; bool highPriority = false; uint32_t contentVersion=0; bool vegetation=false; };
     struct Pending { RenderCore::TextureHandle handle; std::shared_ptr<const RenderCore::KtxImage> image; uint32_t contentVersion=0; };
     struct Upload {
         RenderCore::TextureHandle handle;
@@ -86,7 +88,7 @@ private:
         uint64_t revision = ~uint64_t(0);
         std::vector<RenderCore::TextureDescriptorTable::Slot> snapshot;
     };
-    std::shared_ptr<Image> upload(const RenderCore::KtxImage& image, bool useMips = true, Upload* async = nullptr, uint32_t layers = 1, bool arrayView = false);
+    std::shared_ptr<Image> upload(const RenderCore::KtxImage& image, bool useMips = true, Upload* async = nullptr, uint32_t layers = 1, bool arrayView = false, bool vegetation = false);
     VulkanContext& ctx_;
     RenderCore::TextureService& service_;
     uint32_t capacity_ = 0;

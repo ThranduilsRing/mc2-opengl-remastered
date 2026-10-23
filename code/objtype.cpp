@@ -64,6 +64,8 @@
 #include"weaponfx.h"
 #endif
 
+#include "package_chassis.h"
+
 //---------------------------------------------------------------------------
 
 PacketFilePtr			ObjectTypeManager::objectFile = nullptr;
@@ -309,7 +311,23 @@ ObjectTypePtr ObjectTypeManager::load (ObjectTypeNumber objTypeNum, bool noCache
 	bool isMiscTerrObj = false;
 	long objectTypeNum = -1;
 	ObjectTypePtr objType = nullptr;
-	if ((objTypeNum == bridgeTypeHandle) ||
+	// BT2018-FIRST-CLASS P3: package chassis own object-type numbers after the last
+	// Object2.pak packet; their type definition is the package's chassisdef.fit.
+	packageChassisEnsureRegistry(objectFile->getNumPackets(), bridgeTypeHandle);
+	const mc2pkg::PackageChassis* packageType = packageChassisByTypeNum(objTypeNum);
+	if (packageType) {
+		File fitFile;
+		if (fitFile.open(packageType->fitPath.c_str()) != NO_ERR)
+			Fatal(objTypeNum, " ObjectTypeManager.load: package chassis definition did not open ");
+		auto packageMechType = std::make_unique<BattleMechType>();
+		packageMechType->setObjTypeNum(objTypeNum);
+		if (packageMechType->init(&fitFile, fitFile.fileSize()) != NO_ERR)
+			Fatal(objTypeNum, " ObjectTypeManager.load: unable to init package Mech type ");
+		fitFile.close();
+		objType = packageMechType.release();   // typeStore below takes ownership
+		objectTypeNum = BATTLEMECH_TYPE;
+	}
+	else if ((objTypeNum == bridgeTypeHandle) ||
 		(objTypeNum == forestTypeHandle) ||
 		(objTypeNum == wallHeavyTypeHandle) ||
 		(objTypeNum == wallMediumTypeHandle) ||
@@ -357,6 +375,8 @@ ObjectTypePtr ObjectTypeManager::load (ObjectTypeNumber objTypeNum, bool noCache
 			Fatal(CANT_LOAD_INVALID_OBJECT, " ObjectTypeManager.load: can't create object ");
 			break;
 		case BATTLEMECH_TYPE: {
+			if (packageType)
+				break;               // built from the package definition above
 			objType = new BattleMechType;
 			objType->setObjTypeNum(objTypeNum);
 			if (objType->init(objectFile,objectFile->getPacketSize()) != NO_ERR)

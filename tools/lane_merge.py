@@ -9,7 +9,10 @@ staged files into the merge commit.
 
 Usage:
   py -3 tools/lane_merge.py <sha-or-branch> [--message "..."] [--dry-run]
-  --message   merge commit subject (default: "merge lane: <subject of the lane tip>")
+  py -3 tools/lane_merge.py --batch A B C [--dry-run]   several tips in a row: ratchets regenerated and committed after EACH merge,
+                                                        the build + doctest verify (step e) once at the end
+  --message   merge commit subject (default: "merge lane: <subject of the lane tip>"); with --batch a template with {subject} and {n}
+  --trailer   commit trailer line (default $MC2_COMMIT_TRAILER (or $MC2_MERGE_TRAILER), else none)
   --dry-run   print the plan (base, file counts, overlap, predicted conflicts); change nothing
   --resolution PATH=FILE  apply a reviewed conflict result (FILE - means deletion; repeatable)
   --root DIR  repo to operate on (default: this checkout)
@@ -28,6 +31,10 @@ regenerable set (merge aborted, the lane's untracked files removed; a "file in u
 build-alltargets/.tidy.lock to clear and retries once); 6 a ratchet failed (merge commit stays).
 7 the merged tree does not build or its doctest fails (the merge commit stays; fix forward).
 Final line: MERGED <sha> (+<follow-up sha>) files=<n> ratchets=OK/FAIL verify=OK/FAIL/SKIPPED overlap=0
+A --batch run first plans every tip (a tip that would abort refuses the whole batch, exit 5, nothing merged); a ratchet failure mid-batch prints
+BATCH STOPPED at <ref> merged=<n> remaining=<refs>, verifies the partial tree and exits 6. The verify is skipped (verify=SKIPPED(tooling-only))
+when nothing compiled changed (C/C++/shader/CMake/Gates).
+A --batch run prints one such line per merged tip (verify=DEFERRED) and a final one for the last tip carrying the single verify verdict (files = total, batch=<n>).
 """
 from __future__ import annotations
 
@@ -45,7 +52,8 @@ import console_child  # noqa: E402  (windowless console children without a conho
 sys.path.insert(0, HERE)
 import _git_util  # noqa: E402  (shared git helpers)
 
-TRAILER = "Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
+#: Commit trailer line(s): --trailer or $MC2_COMMIT_TRAILER (or $MC2_MERGE_TRAILER); none by default (the merging model names itself).
+TRAILER = os.environ.get("MC2_COMMIT_TRAILER") or os.environ.get("MC2_MERGE_TRAILER", "")
 FOLLOWUP_SUBJECT = "merge follow-up: ratchet baselines tightened at merged HEAD"
 
 # Files that are pure functions of the tree: on conflict the lane's copy is taken and the
@@ -112,8 +120,9 @@ def merge_in_progress(root: str) -> bool:
     return _git_util.merge_in_progress(root)
 
 
-def plan(root: str, ref: str) -> dict:
-    """Facts that decide whether the merge may proceed. Raises Stop on a refusal."""
+def plan(root: str, ref: str, head_ref: str = "HEAD") -> dict:
+    """Facts that decide whether the merge may proceed (head_ref: the commit to merge into; a dry-run batch passes a virtual one).
+    Raises Stop on a refusal."""
     sha = git_out(root, "rev-parse", "--verify", "--quiet", ref + "^{commit}")
     if merge_in_progress(root):
         raise Stop(3, "a merge is already in progress; finish or abort it first")
@@ -124,9 +133,9 @@ def plan(root: str, ref: str) -> dict:
     staged = lines(git_out(root, "diff", "--cached", "--name-only"))
     if staged:
         raise Stop(4, "index has staged changes that the merge commit would sweep in:\n  " + "\n  ".join(staged))
-    head = git_out(root, "rev-parse", "HEAD")
-    contained = git(root, "merge-base", "--is-ancestor", sha, "HEAD").returncode == 0
-    base = git_out(root, "merge-base", "HEAD", sha) if not contained else sha
+    head = git_out(root, "rev-parse", head_ref)
+    contained = git(root, "merge-base", "--is-ancestor", sha, head).returncode == 0
+    base = git_out(root, "merge-base", head, sha) if not contained else sha
     lane_files = lines(git_out(root, "diff", "--name-only", base, sha))
     nifty_files = lines(git_out(root, "diff", "--name-only", base, head))
     dirty = {p for _, p in entries}
@@ -135,15 +144,44 @@ def plan(root: str, ref: str) -> dict:
             "nifty_files": nifty_files, "overlap": overlap}
 
 
-def predicted_conflicts(root: str, sha: str) -> list[str] | None:
+def predicted_conflicts(root: str, sha: str, head_ref: str = "HEAD") -> list[str] | None:
     """Conflicted paths a real merge would hit (None when git cannot predict)."""
-    r = git(root, "merge-tree", "--write-tree", "--name-only", "--no-messages", "HEAD", sha)
-    if r.returncode == 0:
-        return []
-    if r.returncode == 1:
+    return virtual_merge(root, sha, head_ref)[1]
+
+
+def virtual_merge(root: str, sha: str, head_ref: str = "HEAD") -> tuple[str | None, list[str] | None]:
+    """(result tree, conflicted paths) of merging sha into head_ref without touching the worktree; (None, None) when git cannot say."""
+    r = git(root, "merge-tree", "--write-tree", "--name-only", "--no-messages", head_ref, sha)
+    if r.returncode in (0, 1):
         out = lines(r.stdout)
-        return out[1:] if out else []  # first line is the result tree
-    return None
+        return (out[0] if out else None), ([] if r.returncode == 0 else out[1:])  # first line is the result tree
+    return None, None
+
+
+def virtual_head(root: str, head_ref: str, sha: str, tree: str | None) -> str | None:
+    """An unreferenced commit standing for head_ref + sha merged, so a dry-run batch can plan the next tip against it."""
+    if not tree:
+        return None
+    r = git(root, "commit-tree", tree, "-p", head_ref, "-p", sha, "-m", "dry-run batch")
+    return r.stdout.strip() if r.returncode == 0 else None
+
+
+def trailer_args() -> list[str]:
+    return ["-m", TRAILER] if TRAILER else []
+
+
+def render_message(template: str, subject: str, n: int) -> str:
+    """A batch --message template: {subject} is the tip's subject, {n} its 1-based position."""
+    return template.replace("{subject}", subject).replace("{n}", str(n))
+
+
+#: Files whose change needs a rebuild; a batch that touches none of them skips the build + doctest verify.
+COMPILED_INPUTS = re.compile(r"\.(cpp|h|hpp|inc|c|glsl|hglsl|frag|vert|comp|slang|rc|def|ini|in|manifest)$|CMakeLists|\.cmake$|(^|/)cmake/|(^|/)Gates/|(^|/)shaders/|(^|/)scripts/(gen|generate|configure)[^/]*\.py$")
+
+
+def compiled_inputs_changed(root: str, pre: str) -> bool:
+    r = git(root, "diff", "--name-only", pre, "HEAD")
+    return r.returncode != 0 or any(COMPILED_INPUTS.search(p) for p in lines(r.stdout))
 
 
 def tip_subject(root: str, sha: str) -> str:
@@ -217,7 +255,7 @@ def do_merge(root: str, sha: str, message: str, lane_files=(), lock_path: str | 
     the build tree, wait up to lock_wait_s for its lock to clear and retry once."""
     lock_path = lock_path or os.path.join(root, TIDY_LOCK)
     for attempt in (1, 2):
-        r = git(root, "merge", "--no-ff", "-m", message, "-m", TRAILER, sha)
+        r = git(root, "merge", "--no-ff", "-m", message, *trailer_args(), sha)
         if r.returncode == 0:
             return
         if merge_in_progress(root):
@@ -266,7 +304,7 @@ def do_merge(root: str, sha: str, message: str, lane_files=(), lock_path: str | 
         if c.returncode != 0 or a.returncode != 0:
             abort_and_clean(root, lane_files)
             raise Stop(5, f"could not take the lane's {p}; merge aborted: {(c.stdout + a.stdout).strip()}")
-    c = git(root, "commit", "-m", message, "-m", TRAILER)
+    c = git(root, "commit", "-m", message, *trailer_args())
     if c.returncode != 0:
         abort_and_clean(root, lane_files)
         raise Stop(5, "merge commit failed; merge aborted: " + c.stdout.strip())
@@ -368,6 +406,23 @@ VERIFY_STEPS = {
 }
 
 
+#: Seconds-cheap ownership/callers checks, run before the ~18 min build + doctest so a duplicate-ownership red shows at once.
+QUICK_ROWS = [("script_callers", ["tools/callers.py", "--check"]),
+              ("test_ownership", ["-m", "pytest", "scripts/tests/test_contract_coverage.py", "-q", "-p", "no:cacheprovider"])]
+
+
+def quick_rows(root: str, runner=run) -> list[tuple[str, int, str]]:
+    """Run QUICK_ROWS (cwd = root) on the merged tree. -> the failing [(label, rc, tail)] (empty = green)."""
+    failed = []
+    for label, args in QUICK_ROWS:
+        if not all(os.path.exists(os.path.join(root, a)) for a in args if a.endswith(".py")):
+            continue  # a root without the script (the throwaway repos of the tests) has nothing to check
+        r = runner(root, [sys.executable] + args)
+        if r.returncode != 0:
+            failed.append((label, r.returncode, "\n".join(r.stdout.splitlines()[-8:])))
+    return failed
+
+
 def verify_env(root: str) -> dict:
     """The environment of the verify steps: their own Ninja tree and doctest tree, so a verify never collides with a lane's build in
     build64-ninja/ or build64-tests/ (a coordinator merge of a tools-only tip once failed that way)."""
@@ -403,15 +458,18 @@ def commit_tightened(root: str, pre_dirty: set[str]) -> str | None:
     if not changed:
         return None
     try:
-        return _git_util.commit_paths(root, changed, FOLLOWUP_SUBJECT, TRAILER)
+        return _git_util.commit_paths(root, changed, FOLLOWUP_SUBJECT, TRAILER or None)
     except _git_util.GitError as e:
         raise Stop(5, "follow-up commit failed: " + str(e))
 
 
 def build_parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("ref", help="lane tip: sha or branch")
-    ap.add_argument("--message")
+    ap.add_argument("ref", nargs="?", help="lane tip: sha or branch")
+    ap.add_argument("--batch", nargs="+", metavar="TIP",
+                    help="merge these tips in order; baseline follow-ups after each, build + doctest verify once at the end")
+    ap.add_argument("--message", help="merge commit subject; with --batch a template: {subject} = the tip's subject, {n} = its position")
+    ap.add_argument("--trailer", help="commit trailer line (default $MC2_COMMIT_TRAILER (or $MC2_MERGE_TRAILER), else none)")
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--root", default=os.path.abspath(os.path.join(HERE, "..")))
     ap.add_argument("--tools-dir")
@@ -423,73 +481,147 @@ def build_parser() -> argparse.ArgumentParser:
     return ap
 
 
+def print_plan(root: str, p: dict, args, message: str, resolutions: dict, head_ref: str) -> tuple[bool, str | None]:
+    """Print the dry-run plan of one tip. -> (would_abort, virtual head after this tip or None when it cannot continue)."""
+    print(f"PLAN lane={p['sha'][:9]} head={p['head'][:9]} base={p['base'][:9]} "
+          f"lane_files={len(p['lane_files'])} nifty_files={len(p['nifty_files'])} "
+          f"overlap={len(p['overlap'])}")
+    if p["contained"]:
+        print("PLAN lane tip is already contained in HEAD: nothing to merge")
+        return False, head_ref
+    if p["overlap"]:
+        raise Stop(4, "lane files are also dirty in the worktree:\n  " + "\n  ".join(p["overlap"]))
+    tree, conf = virtual_merge(root, p["sha"], head_ref)
+    would_abort = False
+    if conf is None:
+        print("PLAN conflicts: unknown (git merge-tree unavailable)")
+    else:
+        regen = [c for c in conf if c in REGENERABLE or c in BUG_TABLES]
+        other = [c for c in conf if c not in REGENERABLE and c not in BUG_TABLES and c not in resolutions]
+        print(f"PLAN conflicts={len(conf)} regenerable={len(regen)} blocking={len(other)}"
+              + ("" if not other else " (merge would abort): " + ", ".join(other)))
+        would_abort = bool(other)
+    print(f'PLAN merge --no-ff -m "{message}"')
+    vh = virtual_head(root, head_ref, p["sha"], tree)
+    return would_abort, vh or (head_ref if conf is None else None)
+
+
+def plan_batch(root: str, args, refs: list[str], resolutions_for) -> bool:
+    """Print the plan of every tip, each against the virtual result of the earlier ones (a conflicted tip's tree is used as is, so
+    later tips are planned approximately). -> True when some tip would abort."""
+    would_abort, head_ref, blocked = False, "HEAD", False
+    for i, ref in enumerate(refs, 1):
+        p = plan(root, ref, head_ref)
+        resolutions = resolutions_for(p)
+        subject = tip_subject(root, p["sha"])
+        message = render_message(args.message, subject, i) if args.message else f"merge lane: {subject}"
+        if blocked:
+            print("PLAN (approximate: planned against the conflicted tree of an earlier tip)")
+        abort, head_ref = print_plan(root, p, args, message, resolutions, head_ref)
+        would_abort = would_abort or abort
+        blocked = blocked or abort
+        if head_ref is None:
+            print("PLAN the remaining tips cannot be planned: git produced no tree for this one")
+            break
+    return would_abort
+
+
+def merge_tip(root: str, tools_dir: str, p: dict, message: str, resolutions: dict) -> tuple[str, str | None, list]:
+    """Merge one planned tip, regenerate the ratchets, commit the tightened baselines. -> (merge sha, follow-up sha, failed ratchets)."""
+    pre_dirty = {path for _, path in status_entries(root)}
+    do_merge(root, p["sha"], message, lane_files=p["lane_files"], resolutions=resolutions)
+    merge_sha = git_out(root, "rev-parse", "--short=9", "HEAD")
+    results = run_ratchets(root, tools_dir)
+    follow = commit_tightened(root, pre_dirty)
+    return merge_sha, follow, [(label, rc, tail) for label, rc, tail in results if rc != 0]
+
+
 def main(argv: list[str] | None = None) -> int:
     for stream in (sys.stdout, sys.stderr):
         stream.reconfigure(errors="replace")
-    args = build_parser().parse_args(argv)
+    ap = build_parser()
+    args = ap.parse_args(argv)
+    if bool(args.ref) == bool(args.batch):
+        ap.error("give one lane tip, or --batch with several")
+    refs = args.batch or [args.ref]
+    batch = bool(args.batch)
+    if batch and args.resolution:
+        ap.error("--resolution is per tip; it cannot be combined with --batch")
+    global TRAILER
+    if args.trailer is not None:
+        TRAILER = args.trailer
     root = args.root
     tools_dir = args.tools_dir or os.path.join(root, "tools")
     try:
-        p = plan(root, args.ref)
-        resolutions = load_resolutions(args.resolution)
-        if resolutions:
-            predicted = predicted_conflicts(root, p["sha"])
-            if predicted is None or set(resolutions) - set(predicted):
-                raise Stop(5, "resolution paths must be predicted conflicts at this HEAD")
-        message = args.message or f"merge lane: {tip_subject(root, p['sha'])}"
+        def resolutions_for(p, head_ref="HEAD"):
+            resolutions = load_resolutions(args.resolution)
+            if resolutions:
+                predicted = predicted_conflicts(root, p["sha"], head_ref)
+                if predicted is None or set(resolutions) - set(predicted):
+                    raise Stop(5, "resolution paths must be predicted conflicts at this HEAD")
+            return resolutions
+
         if args.dry_run:
-            would_abort = False
-            print(f"PLAN lane={p['sha'][:9]} head={p['head'][:9]} base={p['base'][:9]} "
-                  f"lane_files={len(p['lane_files'])} nifty_files={len(p['nifty_files'])} "
-                  f"overlap={len(p['overlap'])}")
-            if p["contained"]:
-                print("PLAN lane tip is already contained in HEAD: nothing to merge")
-            elif p["overlap"]:
-                raise Stop(4, "lane files are also dirty in the worktree:\n  " + "\n  ".join(p["overlap"]))
-            else:
-                conf = predicted_conflicts(root, p["sha"])
-                if conf is None:
-                    print("PLAN conflicts: unknown (git merge-tree unavailable)")
-                else:
-                    regen = [c for c in conf if c in REGENERABLE or c in BUG_TABLES]
-                    other = [c for c in conf if c not in REGENERABLE and c not in BUG_TABLES and c not in resolutions]
-                    print(f"PLAN conflicts={len(conf)} regenerable={len(regen)} blocking={len(other)}"
-                          + ("" if not other else " (merge would abort): " + ", ".join(other)))
-                print(f'PLAN merge --no-ff -m "{message}"')
-                if [c for c in (conf or []) if c not in REGENERABLE and c not in BUG_TABLES and c not in resolutions]:
-                    would_abort = True
+            would_abort = plan_batch(root, args, refs, resolutions_for)
             print("PLAN then: " + ", ".join(label for label, _, _ in RATCHETS)
-                  + "; follow-up commit of tightened baselines only")
+                  + "; follow-up commit of tightened baselines only" + (" (after each tip; verify once at the end)" if batch else ""))
             print("[dry-run] nothing changed")
             if would_abort:
                 print("lane_merge: the merge would abort on the blocking conflicts above", file=sys.stderr)
             return 5 if would_abort else 0
-        if p["contained"]:
-            print(f"MERGED {p['head'][:9]} lane tip already contained files=0 ratchets=SKIPPED overlap=0")
+        if batch and plan_batch(root, args, refs, resolutions_for):
+            raise Stop(5, "BATCH REFUSED: a tip would abort on the blocking conflict(s) above; nothing was merged")
+        pre = git_out(root, "rev-parse", "HEAD")
+        merged = []        # (merge sha, follow-up sha, files) per merged tip
+        stopped = None     # (ref, failed ratchets) when a ratchet failed mid-batch
+        for idx, ref in enumerate(refs, 1):
+            p = plan(root, ref)
+            resolutions = resolutions_for(p)
+            if p["contained"]:
+                print(f"MERGED {p['head'][:9]} lane tip already contained files=0 ratchets=SKIPPED overlap=0")
+                continue
+            if p["overlap"]:
+                raise Stop(4, "lane files are also dirty in the worktree; no merge attempted:\n  "
+                           + "\n  ".join(p["overlap"]))
+            subject = tip_subject(root, p["sha"])
+            message = (render_message(args.message, subject, idx) if batch else args.message) if args.message else f"merge lane: {subject}"
+            merge_sha, follow, failed = merge_tip(root, tools_dir, p, message, resolutions)
+            merged.append((merge_sha, follow, len(p["lane_files"])))
+            tag = f"MERGED {merge_sha}" + (f" (+{follow})" if follow else "") + f" files={len(p['lane_files'])}"
+            if failed:
+                for label, rc, tail in failed:
+                    print(f"lane_merge: ratchet {label} exited {rc}; last lines:\n{tail}", file=sys.stderr)
+                if not batch:
+                    print(f"{tag} ratchets=FAIL verify=SKIPPED overlap=0")
+                    return 6
+                stopped = (ref, refs[idx:])
+                print(f"BATCH STOPPED at {ref} merged={len(merged)} remaining={' '.join(stopped[1]) or '(none)'}")
+                break
+            if batch and ref != refs[-1]:
+                print(f"{tag} ratchets=OK verify=DEFERRED overlap=0")
+        if not merged:
             return 0
-        if p["overlap"]:
-            raise Stop(4, "lane files are also dirty in the worktree; no merge attempted:\n  "
-                       + "\n  ".join(p["overlap"]))
-        pre_dirty = {path for _, path in status_entries(root)}
-        do_merge(root, p["sha"], message, lane_files=p["lane_files"], resolutions=resolutions)
-        merge_sha = git_out(root, "rev-parse", "--short=9", "HEAD")
-        results = run_ratchets(root, tools_dir)
-        follow = commit_tightened(root, pre_dirty)
-        failed = [(label, rc, tail) for label, rc, tail in results if rc != 0]
-        verdict, vresults = ("SKIPPED", []) if failed else verify_merged(root, "none" if args.no_verify else args.verify)
-        line = (f"MERGED {merge_sha}" + (f" (+{follow})" if follow else "")
-                + f" files={len(p['lane_files'])} ratchets={'FAIL' if failed else 'OK'} verify={verdict} overlap=0")
-        print(line)
-        if failed:
-            for label, rc, tail in failed:
-                print(f"lane_merge: ratchet {label} exited {rc}; last lines:\n{tail}", file=sys.stderr)
-            return 6
+        mode = "none" if args.no_verify else args.verify
+        if batch and merged and not stopped:
+            qfailed = quick_rows(root)
+            if qfailed:
+                for label, rc, tail in qfailed:
+                    print(f"lane_merge: quick row {label} exited {rc}; last lines:\n{tail}", file=sys.stderr)
+                print(f"BATCH STOPPED at quick rows ({', '.join(q[0] for q in qfailed)}) merged={len(merged)} remaining=(none)")
+                return 6
+        if mode != "none" and not compiled_inputs_changed(root, pre):
+            verdict, vresults = "SKIPPED(tooling-only)", []
+        else:
+            verdict, vresults = verify_merged(root, mode)
+        merge_sha, follow, _ = merged[-1]
+        print(f"MERGED {merge_sha}" + (f" (+{follow})" if follow else "") + f" files={sum(m[2] for m in merged)} "
+              f"ratchets={'FAIL' if stopped else 'OK'} verify={verdict} overlap=0" + (f" batch={len(merged)}" if batch else ""))
         if verdict == "FAIL":
             for label, rc, tail in vresults:
                 if rc:
                     print(f"lane_merge: verify step {label} exited {rc}; last lines:\n{tail}", file=sys.stderr)
             return 7
-        return 0
+        return 6 if stopped else 0
     except Stop as e:
         print(f"lane_merge: {e}", file=sys.stderr)
         return e.code

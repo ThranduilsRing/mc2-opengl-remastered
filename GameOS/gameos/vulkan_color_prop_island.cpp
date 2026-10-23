@@ -20,6 +20,7 @@
 #endif
 
 #include <span>
+#include <optional>
 #include <volk.h>
 #include "Gates/gate_cold.h"   // gate::get<>() and str<>()
 #include "vk_render_pass_timer.h"
@@ -32,6 +33,7 @@
 #include "../../RenderCore/gpu_abi/GpuStaticPropInstance.h"  // single-source 112B instance record
 #include "../../RenderCore/gpu_abi/GpuObjectLights.h"  // single-source per-object light record
 #include "../../RenderCore/gpu_abi/GpuColorFrameUBO.h"  // single-source per-frame UBO
+#include "gos_terrain_lighting.h"
 #include "../../RenderCore/PropMaterialGpu.h"
 #include "vk_image_resource.h"
 #include "vk_island_util.h"
@@ -43,6 +45,10 @@
 #include "vulkan_color_prop_island.h"
 #include "texture_decode.h"
 #include "vk_texture_residency.h"
+#include "vk_vegetation_ground.h"
+#include "vulkan_mover_shadow.h"
+#include "Gates/render_options.h"
+#include "../include/gameos.hpp"
 #include "vk_shared_gbuffer_gate.h"      // VK-P14 GATE-CONSOLIDATION-1 umbrella resolver
 #include "vk_shared_light_feed.h"        // VK-LIGHTFEED-DEDUP-1: shared per-frame LightsData SSBO
 #define MC2_VULKAN_SHARED_SCENE_COLOR_IMPL_ISLAND
@@ -237,6 +243,7 @@ struct ColorPropIsland : mc2vk::IslandState {
     VkDeviceSize  hotCapBytes = 0;
     uint32_t      mapGeneration = 0;        // bumped at every map change; consumers of the albedo arrays rebind on a change
     uint64_t alphaContentHash = 0;
+    std::span<const float> hotCpu; // borrowed map table, also identifies profiled tree groups
     bool          hotReady = false;         // the hot-colour table was uploaded for the current map (cleared at a map change)
     float         terrainSunMC2[3] = {0.0f, 0.0f, 1.0f};
 
@@ -278,7 +285,8 @@ struct ColorPropIsland : mc2vk::IslandState {
     mc2vk::OwnedBuffer  layerOnBuf;       // per-type int layer SSBO (class 1)
     mc2vk::OwnedBuffer  hotBuf;           // per-type hot-colour night emission colours (3 vec4 per type)
     mc2vk::ResidentTextureRef normalTexture, ormTexture;
-    mc2vk::OwnedSampler detailSampler;
+    mc2vk::OwnedSampler detailSampler, treeShadowSampler;
+    mc2veg::GroundLighting groundLighting;
     mc2vk::OwnedBuffer materialBuf;
     mc2vk::OwnedShaderModule t1_vert, t1_frag;
     mc2vk::OwnedPipelineLayout playout;
@@ -728,6 +736,7 @@ bool cp_upload_hot_table(ColorPropIsland* s, std::span<const float> colours) {
     if (!colours.empty()) std::memcpy(p, colours.data(), static_cast<size_t>(bytes));
     else std::memset(p, 0, static_cast<size_t>(bytes));
     s->hotBuf.unmap();
+    s->hotCpu = colours;
     if (rebound && s->inited) write_descriptors(s);
     return true;
 }
@@ -913,7 +922,7 @@ bool init_island(ColorPropIsland* s, int w, int h) {
         // Base bindings 0(UBO),1(inst SSBO); optional +4(LightsData SSBO, VS). Material
         // (tier1 + MC2_VK_PROP_MATERIAL): +2(alpha-OFF layer SSBO VS), 3(alpha-OFF albedo
         // FS), 5(alpha-ON layer SSBO VS), 6(alpha-ON albedo FS).
-        VkDescriptorSetLayoutBinding b[13]{};
+        VkDescriptorSetLayoutBinding b[16]{};
         uint32_t nb = 0;
         b[nb].binding = 0; b[nb].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
         b[nb].descriptorCount = 1; b[nb].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT; ++nb;
@@ -952,6 +961,12 @@ bool init_island(ColorPropIsland* s, int w, int h) {
         b[nb].binding = 12; b[nb].descriptorCount = 1;
         b[nb].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
         b[nb].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT; ++nb;
+        b[nb].binding = 14; b[nb].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        b[nb].descriptorCount = 1; b[nb].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT; ++nb;
+        b[nb].binding = 24; b[nb].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        b[nb].descriptorCount = 1; b[nb].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT; ++nb;
+        b[nb].binding = 25; b[nb].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        b[nb].descriptorCount = 1; b[nb].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT; ++nb;
         VkDescriptorSetLayoutCreateInfo lci{};
         lci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
         lci.bindingCount = nb; lci.pBindings = b;
@@ -960,12 +975,13 @@ bool init_island(ColorPropIsland* s, int w, int h) {
         }
         // VK-PROP-FENCE-DEFER-1: TWO sets (one per parity slot), so pool sizes double.
         // Dynamic: 0 UBO; 1 + 4 (lights) + 8 (pools) SSBO. Static SSBOs: layer tables (2, 5) and the hot-colour table (7).
-        VkDescriptorPoolSize sizes[4]{};
+        VkDescriptorPoolSize sizes[5]{};
         uint32_t nsz = 0;
         sizes[nsz++] = {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 2};
         sizes[nsz++] = {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 2u * (1u + (lightBinding ? 1u : 0u) + (s->tier1 ? 1u : 0u))};
         sizes[nsz++] = {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 2u * ((materialBindings ? 2u : 0u) + (s->tier1 ? 1u : 0u) + 2u)};
-        sizes[nsz++] = {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, (materialBindings ? 4u : 0u) + 4u};
+        sizes[nsz++] = {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, (materialBindings ? 4u : 0u) + 8u};
+        sizes[nsz++] = {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 2};
         VkDescriptorPoolCreateInfo pci{};
         pci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
         pci.maxSets = 2; pci.poolSizeCount = nsz; pci.pPoolSizes = sizes;
@@ -1015,8 +1031,14 @@ bool init_island(ColorPropIsland* s, int w, int h) {
 
         VkPipelineLayoutCreateInfo plci{};
         plci.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-        const VkDescriptorSetLayout dslHandle = s->dsl.get();
-        plci.setLayoutCount = 1; plci.pSetLayouts = &dslHandle;
+        if (!s->groundLighting.init(s->device)) return false;
+        VkSamplerCreateInfo treeSampler{VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO};
+        treeSampler.magFilter = treeSampler.minFilter = VK_FILTER_NEAREST;
+        treeSampler.addressModeU = treeSampler.addressModeV = treeSampler.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        treeSampler.compareEnable = VK_TRUE; treeSampler.compareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
+        if (!mc2vk::create(s->treeShadowSampler, s->device, [&](VkSampler* out) { return vkCreateSampler(s->device, &treeSampler, nullptr, out); })) return false;
+        const VkDescriptorSetLayout propLayouts[]{s->dsl.get(), s->groundLighting.layout()};
+        plci.setLayoutCount = 2; plci.pSetLayouts = propLayouts;
         plci.pushConstantRangeCount = 1; plci.pPushConstantRanges = &pcr;
         if (!mc2vk::create(s->playout, s->device, [&](VkPipelineLayout* h) { return vkCreatePipelineLayout(s->device, &plci, nullptr, h); })) {
             vlog("TIER-1 vkCreatePipelineLayout failed."); return false;
@@ -1246,6 +1268,7 @@ extern "C" void mc2_vk_color_prop_island_invalidate_geometry() {
     s->materialReady = false;
     s->materialReadyOn = false;
     s->hotReady = false;
+    s->hotCpu = {};
     s->authoredReady = false;
     s->authoredAttempted = false;
     s->packetMaterialIds.clear();
@@ -1270,62 +1293,13 @@ extern "C" int mc2_vk_color_prop_island_enabled() {
     return 1;
 }
 
-extern "C" int mc2_vk_color_prop_island_prewarm(int w,int h) {
-    auto& ctx=mc2vk::getOrCreateEngineVulkanContext();
-    if(!ctx.valid() || w<=0 || h<=0) return 0;
-    auto& slot=ctx.islandSlot(mc2vk::IslandSlot::ColorProp);
-    if(slot) return 1;
-    auto fresh=std::make_unique<ColorPropIsland>();
-    if(!init_island(fresh.get(),w,h)) { ctx.waitIdle("color_prop_prewarm_failure"); return 0; }
-    slot=std::move(fresh);
-    return 1;
-}
-
-extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
-    if (auto* previous = parkedIsland()) previous->lateDraws.clear();
-    ZoneScopedN("VK-props-island");   // VK-FLIP-FIELD-REPORT-1 coarse region zone
-    if (w <= 0 || h <= 0) return 0;
-
-    using clk = std::chrono::steady_clock;
-    auto usSince = [](clk::time_point t0){ return std::chrono::duration<double, std::micro>(clk::now() - t0).count(); };
-    const clk::time_point tTotal0 = clk::now();
-    const bool perf = propPerfGateRequested();
-    double us_fence_wait = 0.0;   // deferred retire (beginFrame wait) OR inline wait under the killswitch
-
-    // Pull the per-frame color instance feed (visible buckets + world->clip + bias).
-    Mc2ColorPropFeed feed{};
-    if (!mc2_color_prop_island_get_frame_feed(&feed)) { setFallback("no_color_feed"); return 0; }
-    if (!feed.instances112 || feed.count == 0) { setFallback("no_color_instances"); return 0; }
-    // MC2_VK_SHADOW_MATRIX_DIAG: the object matrix the props are projected with next to the live camera matrix, so a light-space leak into the colour pass shows.
-
-
-    // Lazy init / rebuild on size change.
-    mc2vk::VulkanContext& slotCtx = mc2vk::getOrCreateEngineVulkanContext();
-    if (const ColorPropIsland* parked = parkedIsland(); parked && (parked->w != w || parked->h != h)) slotCtx.retireIsland(mc2vk::IslandSlot::ColorProp);
-    if (!islandSlot()) {
-        auto fresh = std::make_unique<ColorPropIsland>();
-        if (!init_island(fresh.get(), w, h)) {
-            vlog("init failed (%s) — GL fallback.", g_health.fallbackReason);
-            slotCtx.waitIdle("color_prop_init_failure");   // objects made before the failure may have been submitted
-            return 0;
-        }
-        islandSlot() = std::move(fresh);
-    }
-    ColorPropIsland* s = parkedIsland();
-    // VK-OWNERSHIP-GAP-FIX (item-4 correctness): direct-chain sets useInterop=false
-    // (init:781) but the old guard '|| !s->useInterop' then bailed here, so under the
-    // strict umbrella the island returned 0 and GL silently drew props into the
-    // VK-owned GBuffer (used_vulkan=0). Enter the native render path when direct-chain
-    // OR the hybrid interop arm is armed -- mirrors mech/terrain (a0cba0c4/1f4a1a5a)
-    // whose guard is 'disabled || !inited' with directChain unconditional-native.
-    if (s->disabled || !s->inited) return 0;  // VK-RUNG8-ITEM5: direct-chain-native only
-
-    if (!upload_geometry_once(s)) { setFallback("geometry_not_ready"); return 0; }
+static bool prepare_mission_resources(ColorPropIsland* s) {
+    if (!upload_geometry_once(s)) { setFallback("geometry_not_ready"); return false; }
 
     // VK-P11 STATIC-PROP MATERIAL: copy-once import the alpha-OFF albedo 2D_ARRAY +
     // per-type layer table once geometry is finalized. Fail-soft: any miss (feed not
     // ready, BC7-bucketed, import failure) leaves materialReady=false -> FS keeps teal.
-    if (s->wantMaterial && s->tier1 && (!s->materialReady || !s->materialReadyOn)) {
+    if (s->wantMaterial && s->tier1) {
         Mc2ColorPropMaterialFeed mf{};
         if (mc2_color_prop_island_get_material_feed(&mf) && mf.arrayKeyOff != 0 && !mf.bucketed) {
             if (!s->authoredAttempted) {
@@ -1336,6 +1310,7 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
             s->terrainSunMC2[0] = mf.terrainSunMC2[0];
             s->terrainSunMC2[1] = mf.terrainSunMC2[1];
             s->terrainSunMC2[2] = mf.terrainSunMC2[2];
+            if (s->materialReady && s->materialReadyOn) return true;
             bool changed = false;
             // The night emission colours of the type table, once per map (like the material arrays).
             if (!s->hotReady && mf.typeHotColors && mf.typeCount > 0) {
@@ -1410,6 +1385,62 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
         }
     }
 
+    return true;
+}
+
+extern "C" int mc2_vk_color_prop_island_prewarm(int w,int h) {
+    auto& ctx=mc2vk::getOrCreateEngineVulkanContext();
+    if(!ctx.valid() || w<=0 || h<=0) return 0;
+    auto& slot=ctx.islandSlot(mc2vk::IslandSlot::ColorProp);
+    if(!slot) {
+        auto fresh=std::make_unique<ColorPropIsland>();
+        if(!init_island(fresh.get(),w,h)) { ctx.waitIdle("color_prop_prewarm_failure"); return 0; }
+        slot=std::move(fresh);
+    }
+    return prepare_mission_resources(static_cast<ColorPropIsland*>(slot.get())) ? 1 : 0;
+}
+
+extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
+    if (auto* previous = parkedIsland()) previous->lateDraws.clear();
+    ZoneScopedN("VK-props-island");   // VK-FLIP-FIELD-REPORT-1 coarse region zone
+    if (w <= 0 || h <= 0) return 0;
+
+    using clk = std::chrono::steady_clock;
+    auto usSince = [](clk::time_point t0){ return std::chrono::duration<double, std::micro>(clk::now() - t0).count(); };
+    const clk::time_point tTotal0 = clk::now();
+    const bool perf = propPerfGateRequested();
+    double us_fence_wait = 0.0;   // deferred retire (beginFrame wait) OR inline wait under the killswitch
+
+    // Pull the per-frame color instance feed (visible buckets + world->clip + bias).
+    Mc2ColorPropFeed feed{};
+    if (!mc2_color_prop_island_get_frame_feed(&feed)) { setFallback("no_color_feed"); return 0; }
+    if (!feed.instances112 || feed.count == 0) { setFallback("no_color_instances"); return 0; }
+    // MC2_VK_SHADOW_MATRIX_DIAG: the object matrix the props are projected with next to the live camera matrix, so a light-space leak into the colour pass shows.
+
+
+    // Lazy init / rebuild on size change.
+    mc2vk::VulkanContext& slotCtx = mc2vk::getOrCreateEngineVulkanContext();
+    if (const ColorPropIsland* parked = parkedIsland(); parked && (parked->w != w || parked->h != h)) slotCtx.retireIsland(mc2vk::IslandSlot::ColorProp);
+    if (!islandSlot()) {
+        auto fresh = std::make_unique<ColorPropIsland>();
+        if (!init_island(fresh.get(), w, h)) {
+            vlog("init failed (%s) — GL fallback.", g_health.fallbackReason);
+            slotCtx.waitIdle("color_prop_init_failure");   // objects made before the failure may have been submitted
+            return 0;
+        }
+        islandSlot() = std::move(fresh);
+    }
+    ColorPropIsland* s = parkedIsland();
+    // VK-OWNERSHIP-GAP-FIX (item-4 correctness): direct-chain sets useInterop=false
+    // (init:781) but the old guard '|| !s->useInterop' then bailed here, so under the
+    // strict umbrella the island returned 0 and GL silently drew props into the
+    // VK-owned GBuffer (used_vulkan=0). Enter the native render path when direct-chain
+    // OR the hybrid interop arm is armed -- mirrors mech/terrain (a0cba0c4/1f4a1a5a)
+    // whose guard is 'disabled || !inited' with directChain unconditional-native.
+    if (s->disabled || !s->inited) return 0;  // VK-RUNG8-ITEM5: direct-chain-native only
+
+    if (!prepare_mission_resources(s)) return 0;
+
     // VK-PROP-FENCE-DEFER-1 (water-pilot template): begin the shared-slot frame BEFORE
     // any per-parity staging (the LightsData copy below is per-frame CPU staging). The
     // slot-fence wait inside beginFrame IS the deferred retire of the submit that last
@@ -1428,9 +1459,11 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
     const VkDeviceSize instBytes = static_cast<VkDeviceSize>(instanceCount) * sizeof(GpuStaticPropInstance);
     int poolN = (haveLightFeed && lightFeed.poolLights48 && lightFeed.numPoolLights > 0) ? lightFeed.numPoolLights : 0;
     if (poolN > kMaxPoolLights) poolN = kMaxPoolLights;
+    size_t poolBytes = 0;
+    const void* poolUpload = gos_terrain_lighting::GetObjectLightPoolUpload(poolBytes);
     const VkDeviceSize instOff = mc2vk::alignUp(sizeof(ColorFrameUBO), ringAlign);
     const VkDeviceSize poolOff = mc2vk::alignUp(instOff + (instBytes ? instBytes : sizeof(GpuStaticPropInstance)), ringAlign);
-    const mc2vk::FrameAlloc mainSpan = rctx.frameAlloc(poolOff + static_cast<VkDeviceSize>((poolN > 0 ? poolN : 1)) * 48ull);
+    const mc2vk::FrameAlloc mainSpan = rctx.frameAlloc(poolOff + poolBytes);
     if (!mainSpan) { setFallback("frame_ring_alloc_failed"); s->disabled = true; return 0; }
     uint8_t* const mainPtr = static_cast<uint8_t*>(mainSpan.ptr);
 
@@ -1446,6 +1479,21 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
     const VkFence lateFence = s->lateFence[par].get();
     if (vkWaitForFences(s->device, 1, &lateFence, VK_TRUE, 5ull*1000*1000*1000) != VK_SUCCESS) {
         setFallback("late_fringe_fence_timeout"); s->disabled = true; return 0;
+    }
+    const auto ground = mc2_vk_ground_lighting_frame();
+    if (!ground || !mc2vk::bindMoverShadowDescriptors(s->device, s->set[par])) return 0;
+    s->groundLighting.copy(s->device, par, *ground);
+    const auto objectView = reinterpret_cast<VkImageView>(mc2_vk_shadow_island_get_object_view());
+    if (objectView) {
+        VkDescriptorImageInfo image{s->treeShadowSampler.get(), objectView, VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL};
+        VkWriteDescriptorSet write{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
+        write.dstSet=s->set[par]; write.dstBinding=14; write.descriptorCount=1;
+        write.descriptorType=VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; write.pImageInfo=&image;
+        vkUpdateDescriptorSets(s->device,1,&write,0,nullptr);
+    } else {
+        VkCopyDescriptorSet copy{VK_STRUCTURE_TYPE_COPY_DESCRIPTOR_SET};
+        copy.srcSet=copy.dstSet=s->set[par]; copy.srcBinding=24; copy.dstBinding=14; copy.descriptorCount=1;
+        vkUpdateDescriptorSets(s->device,0,nullptr,1,&copy);
     }
     const std::array<VkImageView,2> views{s->albedoTexture.view(),s->albedoOnTexture.view()};
     if (s->descriptorsDirty[par] || s->boundTextures[par]!=views) {
@@ -1531,7 +1579,7 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
         u.terrainSunMC2[0] = s->terrainSunMC2[0];
         u.terrainSunMC2[1] = s->terrainSunMC2[1];
         u.terrainSunMC2[2] = s->terrainSunMC2[2];
-        u.terrainSunMC2[3] = 0.0f;
+        u.terrainSunMC2[3] = static_cast<float>(gos_GetElapsedTime()); // render-only leaf sway
         // VK-PROP-AMBIENT-IBL-1: IBL-SH coeffs (std140 vec3[9] tail, .w pad each) +
         // strength + lightingReady. lightingReady gates the vert shader's real
         // ObjectLights ambientTerm sum; iblShStrength==0.0 short-circuits evalShL2
@@ -1559,8 +1607,8 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
         for (int k = 0; k < 4; ++k) u.cameraWorldPos[k] = haveLightFeed ? lightFeed.cameraWorldPos[k] : 0.0f;
         // Night light pools: this frame's pool copy (GL caps the set at 256), flushed because the sequential-write placement need not be
         // host-coherent; a failed upload turns the term off.
-        if (poolN > 0) std::memcpy(mainPtr + poolOff, lightFeed.poolLights48, static_cast<size_t>(poolN) * 48u);
-        u.poolF[0] = lightFeed.poolMoverDim; u.poolF[1] = lightFeed.poolMoverScale; u.poolF[2] = lightFeed.poolObjScale; u.poolF[3] = 0.0f;
+        std::memcpy(mainPtr + poolOff, poolUpload, poolBytes);
+        u.poolF[0] = lightFeed.poolMoverDim; u.poolF[1] = lightFeed.poolMoverScale; u.poolF[2] = lightFeed.poolObjScale; u.poolF[3] = mc2::options::current().shadowQuality == 0 ? 0.0f : objectView ? 2.0f : 1.0f;
         u.poolI[0] = poolN;                  u.poolI[1] = lightFeed.poolSoft;
         u.poolI[2] = lightFeed.poolMoverMax; u.poolI[3] = lightFeed.poolCompress;
         // ADJUDICATION-1 WASHOUT engagement probe: one-shot dump of the exact UBO
@@ -1645,6 +1693,8 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
 
         mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->t1_pipe.get());
         vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 0, 1, &s->set[par], nDyn, dynOffsets);
+        const VkDescriptorSet groundSet = s->groundLighting.set(par);
+        vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 1, 1, &groundSet, 4, ground->offsets.data());
         VkDeviceSize vboOff = 0;
         const VkBuffer vertexBuffer = s->vbo.get();
         vkCmdBindVertexBuffers(cb, 0, 1, &vertexBuffer, &vboOff);
@@ -1684,6 +1734,10 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
             while (j < instanceCount && insts[j].typeID == tid) ++j;
             const uint32_t instCount = j - i;
             if (tid < s->typeRuns.size()) {
+                std::optional<mc2vk::gpuprof::Scope> treeTiming;
+                const size_t canopyRadius = static_cast<size_t>(tid) * 12u + 7u;
+                if (mc2vk::gpuprof::active() && canopyRadius < s->hotCpu.size() && s->hotCpu[canopyRadius] > 0.0f)
+                    treeTiming.emplace(cb, "VKIsl.Props.Trees", __FILE__, static_cast<uint32_t>(__LINE__));
                 const TypeRun& tr = s->typeRuns[tid];
                 for (uint32_t p = 0; p < tr.packetCount; ++p) {
                     const uint32_t pk = tr.firstPacket + p;
@@ -1826,7 +1880,7 @@ extern "C" void mc2_vk_color_prop_island_late_fringe() {
     VkViewport vp{0,0,static_cast<float>(s->w),static_cast<float>(s->h),0,1};
     VkRect2D scissor = rbi.renderArea;
     vkCmdSetViewport(cb,0,1,&vp); vkCmdSetScissor(cb,0,1,&scissor);
-    vkCmdBindPipeline(cb,VK_PIPELINE_BIND_POINT_GRAPHICS,s->t1_fringePipe.get());
+    mc2vk::infra::bind(cb,VK_PIPELINE_BIND_POINT_GRAPHICS,s->t1_fringePipe.get());
     vkCmdBindDescriptorSets(cb,VK_PIPELINE_BIND_POINT_GRAPHICS,s->playout.get(),0,1,&s->set[par],s->lateDynCount,s->lateOffsets);
     VkDeviceSize offset = 0; const VkBuffer vertexBuffer = s->vbo.get();
     vkCmdBindVertexBuffers(cb,0,1,&vertexBuffer,&offset);

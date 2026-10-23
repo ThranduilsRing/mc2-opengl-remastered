@@ -12,11 +12,12 @@
 
 TEST_CASE("mission-codec/native stock and Python round-trip")
 {
-    const auto* root = std::getenv("MC2_CODEC_GOLDEN");
-    if (!root) { MESSAGE("Set MC2_CODEC_GOLDEN to run the stock mission comparison"); return; }
+    std::ifstream caseFile("codec_case.txt");
+    std::string root, install;
+    if (!std::getline(caseFile, root) || !std::getline(caseFile, install)) { MESSAGE("codec_case.txt (golden dir, install dir) is written by tests/mapgen/test_mission_codec.py"); return; }
     using nlohmann::json;
     using namespace editor::document;
-    const auto* install = std::getenv("MC2_CODEC_INSTALL"); REQUIRE(install);
+    REQUIRE(!install.empty());
     const auto resolver = FileResolver::mount({install}); REQUIRE(resolver);
     const auto markers = ObjectCatalog::load(*resolver, {}).navMarkerObjects();
     for (const auto* name : {"mc2_01", "mc2_03", "mc2_17", "mc2_24"}) {

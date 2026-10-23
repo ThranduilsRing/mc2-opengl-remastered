@@ -36,6 +36,7 @@
 #include "../include/noise.hglsl"   // VK-PARITY-F3: fbm() for the GL colour break-up (terrain_lod_chunk.frag:1839)
 #include "include/terrain_frame_vk.glsl"   // TerrainFrameUBO + set-0 resources + CSM shadow helpers
 #include "include/ground_lighting.glsl"
+#include "include/concrete_detail_vk.glsl"
 #include "../include/axis.hglsl"   // mc2ToRender: the POM view vector is built in the MC2 world frame
 #include "../include/edge_haze.hglsl"   // edgeHazeAmount + EDGE_HAZE_SKY, shared with GL
 
@@ -45,6 +46,7 @@ layout(location = 0) out vec4 fragColor;   // MRT0 color
 layout(location = 1) out vec4 GBuffer1;    // MRT1 normal + shadow class
 
 layout(set = 0, binding = 16) uniform sampler2D u_macroGradient;
+layout(set = 0, binding = 15) uniform sampler2D u_materialWeights;
 // VK-TERRAIN-DETAIL: the material tangent-space detail-normal array (VK copy-once
 // import of GL terrain_normal_array_tex_, a 9-layer RGBA8 GL_TEXTURE_2D_ARRAY,
 // GL_REPEAT). Layers per include/terrain_mat_layers.hglsl. Dummy 1x1 until imported
@@ -66,8 +68,6 @@ layout(set = 0, binding = 14) uniform sampler2D u_shorelineMask;
 const vec4  MATV_NORMAL_BOOST = vec4(0.9, 0.5, 1.1, 2.5);  // rock,grass,dirt,conc
 const vec4  MATV_TILING       = vec4(3.0, 2.0, 1.0, 6.0);  // rock,grass,dirt,conc
 const float MATV_TILING_SNOW  = 1.0;
-const vec4  MATV_CLASS_GRASS  = vec4(-0.02, 0.06, 0.22, 0.40); // gMinusR lo/hi, gBright lo/hi
-const vec4  MATV_CLASS_DIRT   = vec4(-0.02, 0.06, 0.22, 0.45); // rMinusG lo/hi, rBright lo/hi
 const float MATV_WU_PER_TILE  = 768.0;  // MAT_WORLD_UNITS_PER_TILE (terrain_lod_chunk.frag:240)
 
 // Central difference commutes with bilinear interpolation; normalize after filtering.
@@ -76,39 +76,6 @@ vec3 mv_smoothTerrainNormal(vec2 worldXY) {
     vec2 cell = vec2(worldXY.x + uT.halfMap, uT.halfMap - worldXY.y) / 128.0;
     vec2 gradient = textureLod(u_macroGradient, (cell + 1.5) / float(uT.mapSide + 2), 0.0).rg;
     return normalize(vec3(gradient, 1.0));
-}
-
-// --- GL colormap material classifier (terrain_lod_chunk.frag chunkColorWeights +
-// chunkWeights, :244-338). g_terrainMaterialProfile is default 0 (legacy) here. -----
-vec3 mv_rgb2hsv(vec3 c) {
-    vec4 K = vec4(0.0, -1.0/3.0, 2.0/3.0, -1.0);
-    vec4 p = mix(vec4(c.bg, K.wz), vec4(c.gb, K.xy), step(c.b, c.g));
-    vec4 q = mix(vec4(p.xyw, c.r), vec4(c.r, p.yzx), step(p.x, c.r));
-    float d = q.x - min(q.w, q.y);
-    return vec3(abs(q.z + (q.w - q.y) / (6.0 * d + 1.0e-10)), d / (q.x + 1.0e-10), q.x);
-}
-vec4 mv_colorWeights(vec3 color) {
-    vec4 w = vec4(0.0);
-    float gMinusR = color.g - color.r;
-    w.y = smoothstep(MATV_CLASS_GRASS.x, MATV_CLASS_GRASS.y, gMinusR)
-        * smoothstep(MATV_CLASS_GRASS.z, MATV_CLASS_GRASS.w, color.g);
-    float rMinusG = color.r - color.g;
-    w.z = smoothstep(MATV_CLASS_DIRT.x, MATV_CLASS_DIRT.y, rMinusG)
-        * smoothstep(MATV_CLASS_DIRT.z, MATV_CLASS_DIRT.w, color.r);
-    w.x = 1.0 - max(w.y, w.z);   // everything else -> rock
-    float isWater = smoothstep(0.0, 0.08, min(color.g, color.b) - color.r);
-    w.x += isWater; w.y *= (1.0 - isWater); w.z *= (1.0 - isWater);
-    float total = w.x + w.y + w.z + w.w;
-    return (total < 0.01) ? vec4(1.0, 0.0, 0.0, 0.0) : w / total;
-}
-void mv_weights(vec3 colAvg, out vec4 w, out float snowWeight) {
-    w = mv_colorWeights(colAvg);
-    vec3 hsv = mv_rgb2hsv(colAvg);
-    float snowRaw = smoothstep(0.15, 0.03, hsv.y) * smoothstep(0.42, 0.62, hsv.z);
-    snowWeight = smoothstep(0.25, 0.55, snowRaw);
-    w *= (1.0 - snowWeight);
-    float tot = w.x + w.y + w.z + w.w;
-    if (tot > 0.01) w /= tot; else w = vec4(1.0, 0.0, 0.0, 0.0);
 }
 
 // Gradients come from uniform main() control flow, before cement/material
@@ -327,31 +294,31 @@ vec3 mv_detailNormal(vec4 w, float snowWeight, vec2 worldXY, float lodNear, floa
 
     vec3 dN = vec3(0.0);
     // rock: boost/3 (GL parity — rock detail was too dense/strong). GL :392-397.
-    if (w.x != 0.0 && fwRock != 0.0 && lodNear != 0.0) {
+    if (w.x > 0.01 && fwRock != 0.0 && lodNear != 0.0) {
         vec4 s = (atsRock > 0.01 && fwRock > 0.5)
                ? mv_sampleAntiTileArr(MAT_LAYER_ROCK, uvRock, atsRock, uvDx * (MATV_TILING.x / 3.0), uvDy * (MATV_TILING.x / 3.0))
                : textureGrad(u_matNormalArray, vec3(uvRock, float(MAT_LAYER_ROCK)), uvDx * (MATV_TILING.x / 3.0), uvDy * (MATV_TILING.x / 3.0));
         dN += w.x * (MATV_NORMAL_BOOST.x / 3.0) * fwRock * (s.rgb * 2.0 - 1.0);
     }
-    if (w.y != 0.0 && fwGrass != 0.0 && lodNear != 0.0) {
+    if (w.y > 0.01 && fwGrass != 0.0 && lodNear != 0.0) {
         vec4 s = (atsGrass > 0.01 && fwGrass > 0.5)
                ? mv_sampleAntiTileArr(MAT_LAYER_GRASS, uvGrass, atsGrass, uvDx * MATV_TILING.y, uvDy * MATV_TILING.y)
                : textureGrad(u_matNormalArray, vec3(uvGrass, float(MAT_LAYER_GRASS)), uvDx * MATV_TILING.y, uvDy * MATV_TILING.y);
         dN += w.y * MATV_NORMAL_BOOST.y * fwGrass * (s.rgb * 2.0 - 1.0);
     }
-    if (w.z != 0.0 && fwDirt != 0.0 && lodNear != 0.0) {
+    if (w.z > 0.01 && fwDirt != 0.0 && lodNear != 0.0) {
         vec4 s = (atsDirt > 0.01 && fwDirt > 0.5)
                ? mv_sampleAntiTileArr(MAT_LAYER_DIRT, uvDirt, atsDirt, uvDx * MATV_TILING.z, uvDy * MATV_TILING.z)
                : textureGrad(u_matNormalArray, vec3(uvDirt, float(MAT_LAYER_DIRT)), uvDx * MATV_TILING.z, uvDy * MATV_TILING.z);
         dN += w.z * MATV_NORMAL_BOOST.z * fwDirt * (s.rgb * 2.0 - 1.0);
     }
-    if (w.w != 0.0 && fwConcrete != 0.0 && lodNear != 0.0) {
+    if (w.w > 0.01 && fwConcrete != 0.0 && lodNear != 0.0) {
         vec4 s = (atsConc > 0.01 && fwConcrete > 0.5)
                ? mv_sampleAntiTileArr(MAT_LAYER_CONCRETE, uvConcrete, atsConc, uvDx * MATV_TILING.w, uvDy * MATV_TILING.w)
                : textureGrad(u_matNormalArray, vec3(uvConcrete, float(MAT_LAYER_CONCRETE)), uvDx * MATV_TILING.w, uvDy * MATV_TILING.w);
         dN += w.w * MATV_NORMAL_BOOST.w * fwConcrete * (s.rgb * 2.0 - 1.0);
     }
-    if (snowWeight != 0.0 && fwSnow != 0.0 && lodNear != 0.0) {
+    if (snowWeight > 0.01 && fwSnow != 0.0 && lodNear != 0.0) {
         dN += snowWeight * 0.9 * fwSnow *
               (textureGrad(u_matNormalArray, vec3(uvSnow, float(MAT_LAYER_SNOW)),
                            uvDx * MATV_TILING_SNOW, uvDy * MATV_TILING_SNOW).rgb * 2.0 - 1.0);
@@ -374,8 +341,10 @@ void main() {
     // Valid even for quads straddling cement, zero weights or the LOD fade.
     vec2 detailUv = v_worldPos.xy * (uT.detailTiling / MATV_WU_PER_TILE);
     vec2 detailUvDx = dFdx(detailUv), detailUvDy = dFdy(detailUv);
+    float cdRoad = 0.0;   // CONCRETE-ROAD-PBR-DETAIL: the cement atlas texel is asphalt (roads, runway)
     vec3 base;
     float cookedBreakup = 0.5;
+    vec4 materials = vec4(0.0);
     // VK-TERRAIN-LIGHTING: track whether this fragment resolved to a solid cement slab.
     // GL treats pure concrete as a flat-lit slab (no NdotL relief) and drops the STATIC
     // self-shadow on it (terrain_lod_chunk.frag:894 + :902-907). We mirror that: on a
@@ -390,6 +359,7 @@ void main() {
         vec4 macro = textureLod(u_colormap, uv, 0.0);
         base = macro.rgb;
         cookedBreakup = macro.a;
+        materials = textureLod(u_materialWeights, uv, 0.0);
     } else {
         // Fail-soft olive placeholder (colormap not importable/ready this frame).
         float hMod = clamp(v_worldPos.z / 512.0 + 0.5, 0.35, 1.0);
@@ -439,7 +409,7 @@ void main() {
             if (uT.cementAtlasSeamFix != 0)
                 cSampleUV = clamp(cTileUV, vec2(cInsetLod), vec2(1.0 - cInsetLod));   // CEMENT-MIP-EDGE-1
             vec2 cAtlasUV = (vec2(float(cCol), float(cRow)) + cSampleUV) / float(cGridSide);
-            vec4 cementTexel = textureLod(u_cementAtlas, cAtlasUV, cLod);
+            vec4 cementTexel = textureLod(u_cementAtlas, cAtlasUV, cLod); cdRoad = 1.0 - smoothstep(0.20, 0.30, dot(cementTexel.rgb, vec3(0.299, 0.587, 0.114)));
             vec3 cementColor = cementTexel.rgb * vec3(uT.missionFlatR, uT.missionFlatG, uT.missionFlatB);  // CEMENT-NIGHT-LIGHT-1
             // CEMENT-ALPHA-LAND-1 (terrain_lod_chunk.frag:1009-1015): OWN_ALPHA transition.
             // Word bit23 => the atlas cell carries its own coverage in alpha; composite OVER base.
@@ -555,11 +525,14 @@ void main() {
     //   restore authored cement tone, cliff desaturate+darken toward rock on steep MACRO slope,
     //   world-space break-up noise (0.78..1.18), snow brightness dampen.
     // Overlay-sidecar coverage is 0 in VK (sidecar not fed), matching GL when OVERLAY_V2 is off.
+    // One baked blend feeds tint, detail and shoreline affinity.
+    float materialSnow = materials.z;
+    vec4 materialW = vec4(max(1.0 - materials.x - materials.y - materials.w, 0.0), materials.x, materials.y, materials.w);
+    vec3 baseNormal = mv_smoothTerrainNormal(v_worldPos.xy);
     vec3 baseColor = base;
     float F3pc = pureConcrete ? 1.0 : 0.0;
     {
-        vec4 f3W; float f3Snow;
-        mv_weights(base, f3W, f3Snow);
+        vec4 f3W = materialW; float f3Snow = materialSnow;
         f3W = mix(f3W, vec4(0.0, 0.0, 0.0, 1.0), F3pc);
         f3Snow *= (1.0 - F3pc);
         vec3 materialTint = vec3(uT.tintRockR, uT.tintRockG, uT.tintRockB) * f3W.x
@@ -574,7 +547,7 @@ void main() {
         // Cement: restore the authored colormap tone (concreteColorBlend = sqrt(pureConcrete)).
         baseColor = mix(baseColor, base, sqrt(clamp(F3pc, 0.0, 1.0)));
         // Cliff: desaturate + darken toward rock on steep MACRO slope (un-perturbed).
-        float macroNzF3 = mv_smoothTerrainNormal(v_worldPos.xy).z;
+        float macroNzF3 = baseNormal.z;
         float cliffBlend = smoothstep(0.85, 0.55, abs(macroNzF3));
         if (cliffBlend > 0.01) {
             float luma = dot(baseColor, vec3(0.299, 0.587, 0.114));
@@ -595,45 +568,51 @@ void main() {
 
     vec3 lit = base;
     if (uT.lightingEnabled != 0) {
-        // VK-TERRAIN-DETAIL: perturb the terrain normal like GL (terrain_lod_chunk.frag
-        // :740-808). Gate uT.detailEnabled==0 -> N stays flat-up -> byte-identical to the
-        // lighting-only frame. On cement (pureConcrete) GL suppresses the detail perturb
-        // (dN *= 1-pureConcrete) and lights the slab flat, so we keep N flat-up there too.
-        //   pert = vec3(baseN.xy/max(baseN.z,0.2)*nfhStrength + dN.xy*detailStrength, 1.0)
-        //   N    = normalize(pert)
-        // baseN = height-derived macro slope (always live via the bound height SSBO);
-        // dN    = weighted material detail normal (only when the array imported).
+        // Colormaps are prelit: authored burnins, or sources baked by the loader.
+        // Only detail relative to the macro normal may modulate that illumination.
+        // Cement retains its authored slab normal and receives the same visibility.
         vec3 N = vec3(0.0, 0.0, 1.0);                            // flat-up terrain normal (default)
         vec3 dbgBaseN = vec3(0.0, 0.0, 1.0); vec3 dbgDN = vec3(0.0);  // CSM-BLACKOUT-RECON-1 taps
         if (uT.detailEnabled != 0 && !pureConcrete) {
-            vec3 baseN = mv_smoothTerrainNormal(v_worldPos.xy);
+            vec3 baseN = baseNormal;
             vec3 dN    = vec3(0.0);
             if (uT.detailReady != 0 && uT.detailStrength != 0.0) {
-                vec4  matW; float snowW;
-                mv_weights(base, matW, snowW);                   // classify from colormap base
+                vec4 matW = materialW; float snowW = materialSnow;
                 // VK-TERRAIN-LODFADE: fades detail-normal/POM to 0 across the LOD0/band
                 // boundary (GL gos_terrain.frag :326-328). Gate off -> lodNear==1.0.
                 float lodNear = mv_computeLodNear(v_worldPos.xy, v_worldPos.z);
                 dN = mv_detailNormal(matW, snowW, v_worldPos.xy, lodNear, baseN.z, detailUvDx, detailUvDy);
             }
-            vec3 pert = vec3(baseN.xy / max(baseN.z, 0.2) * uT.nfhStrength
-                             + dN.xy * uT.detailStrength, 1.0);
+            vec3 macroPert = vec3(baseN.xy / max(baseN.z, 0.2) * uT.nfhStrength, 1.0);
+            vec3 pert = macroPert + vec3(dN.xy * uT.detailStrength, 0.0);
             N = normalize(pert);
             if (uT.detailReady >= 2) mv_cliffMaterial(baseN, N, baseColor);   // steep cells: triplanar normal + cliff POM + groove relief
             dbgBaseN = baseN; dbgDN = dN;                        // CSM-BLACKOUT-RECON-1 taps
         }
+        // Evaluate the ratio after material sampling so its inputs do not stay
+        // live across the detail/cliff texture walks. dbgBaseN already retains
+        // the macro normal; flat receivers keep its default (0,0,1).
         vec3 lightDir = uT.terrainLightDir.xyz;
+        vec3 macroN = normalize(vec3(dbgBaseN.xy / max(dbgBaseN.z, 0.2) * uT.nfhStrength, 1.0));
+        float macroNdotL = max(dot(macroN, lightDir), 0.2);
+        // Equal normals give exactly one, including when detail is disabled.
+        // Bound the grazing/back-facing ratio rather than re-lighting macro relief.
+        float normalLight = clamp(max(dot(N, lightDir), 0.2) / macroNdotL, 0.5, 1.5);
 
-        float normalLight = computeNdotLBand(N, lightDir);
-        if (pureConcrete) normalLight = 1.0;                     // cement: flat-lit slab
+        // CONCRETE-ROAD-PBR-DETAIL: detail only (AO, relative sun shading, sheen), MC2 colour stays. Solid slabs only: those
+        // fragments skip the material detail-normal fetches, so the two concrete fetches replace them (no net fetch increase).
+        vec3 cdSpec = vec3(0.0);
+        vec2 cdWpDx = dFdx(v_worldPos.xy), cdWpDy = dFdy(v_worldPos.xy);   // uniform flow, late: nothing extra stays live through the detail-normal block
+        if (uT.concreteDetail != 0 && pureConcrete) cdApply(cdRoad > 0.5 ? CD_LAYER_ROAD : CD_LAYER_PAD, v_worldPos.xy, cdWpDx, cdWpDy, lightDir, 1.0, baseColor, normalLight, cdSpec);
 
         // Static ground mask and current-frame movers share the same visibility
         // floor. Cement receives both, exactly like the surrounding terrain.
-        vec3 shadowN=mv_smoothTerrainNormal(v_worldPos.xy);
+        vec3 shadowN=baseNormal;
         float staticS=uT.enableShadows!=0?terrainStaticShadow(v_worldPos):1.0;
         float dynS=terrainDynamicShadow(v_worldPos,shadowN);
         float shadow = min(staticS, dynS);
         lit = shadeGround(baseColor, N, normalLight, shadow, pureConcrete ? 1.0 : 0.0, v_worldPos);
+        lit = max(lit + cdSpec * shadow, vec3(0.0));
 
         // TERRAIN-EDGE-FEATHER-1 (GL terrain_lod_chunk.frag, after the mover contact): the last tile band of the map fades to the sky haze
         // colour so the straight map perimeter does not cut a hard edge. halfMap 0 means the map size is not known yet.
@@ -647,44 +626,48 @@ void main() {
         // first 1.5 wu above the water, the optional mask modulator, a 12-20 deg slope guard and a beach affinity term.
         if (uT.shorelineOn != 0) {
             float aboveWater = v_worldPos.z - uT.shorelineWaterElev;
-            vec3  macroN     = mv_smoothTerrainNormal(v_worldPos.xy);
+            vec3  macroN     = baseNormal;
             float nzc        = clamp(abs(macroN.z), 0.0, 0.9995);
             float sinSlope   = max(sqrt(max(1.0 - nzc * nzc, 1e-6)), 0.03);
             float horizDist  = max(aboveWater, 0.0) * (nzc / sinSlope);
-            float horizDistJ = max(horizDist + fbm(v_worldPos.xy * 0.055, 2) * uT.shorelineEdgeJitter, 0.0);
-            float slWet  = 1.0 - smoothstep(0.0, max(uT.shorelineWetRun, 1e-4), horizDistJ);
-            float slFoam = 1.0 - smoothstep(0.0, max(uT.shorelineFoamRun, 1e-4), horizDistJ);
-            float aboveFade = smoothstep(0.0, 1.5, horizDist);
-            slWet  *= aboveFade;
-            slFoam *= aboveFade;
-            if (uT.shorelineHasMask != 0) {
-                vec2 slUV = vec2((v_worldPos.x - uT.shorelineBoundsX) / max(uT.shorelineBoundsW, 1e-5),
-                                 (uT.shorelineBoundsY - v_worldPos.y) / max(uT.shorelineBoundsH, 1e-5));
-                if (slUV.x >= 0.0 && slUV.x <= 1.0 && slUV.y >= 0.0 && slUV.y <= 1.0) {
-                    vec4 sl = texture(u_shorelineMask, slUV);
-                    slWet  *= mix(1.0, clamp(sl.g, 0.0, 1.0), sl.a);
-                    slFoam *= mix(1.0, clamp(sl.b, 0.0, 1.0), sl.a);
+            // Both bands are zero outside (0, reach): aboveFade is 0 at the waterline and the smoothsteps are 0 past the runs, and
+            // |fbm(.., 2)| <= 0.75, so the jittered run cannot re-enter. Skipping there is exact and saves the noise on most pixels.
+            float shoreReach = max(uT.shorelineWetRun, uT.shorelineFoamRun) + abs(uT.shorelineEdgeJitter);
+            if (horizDist > 0.0 && horizDist < shoreReach) {
+                float horizDistJ = max(horizDist + fbm(v_worldPos.xy * 0.055, 2) * uT.shorelineEdgeJitter, 0.0);
+                float slWet  = 1.0 - smoothstep(0.0, max(uT.shorelineWetRun, 1e-4), horizDistJ);
+                float slFoam = 1.0 - smoothstep(0.0, max(uT.shorelineFoamRun, 1e-4), horizDistJ);
+                float aboveFade = smoothstep(0.0, 1.5, horizDist);
+                slWet  *= aboveFade;
+                slFoam *= aboveFade;
+                if (uT.shorelineHasMask != 0) {
+                    vec2 slUV = vec2((v_worldPos.x - uT.shorelineBoundsX) / max(uT.shorelineBoundsW, 1e-5),
+                                     (uT.shorelineBoundsY - v_worldPos.y) / max(uT.shorelineBoundsH, 1e-5));
+                    if (slUV.x >= 0.0 && slUV.x <= 1.0 && slUV.y >= 0.0 && slUV.y <= 1.0) {
+                        vec4 sl = texture(u_shorelineMask, slUV);
+                        slWet  *= mix(1.0, clamp(sl.g, 0.0, 1.0), sl.a);
+                        slFoam *= mix(1.0, clamp(sl.b, 0.0, 1.0), sl.a);
+                    }
                 }
-            }
-            float slopeAtten = clamp((N.z - 0.940) / (0.978 - 0.940), 0.0, 1.0);   // full at 12 deg, zero at 20 deg
-            vec4 slW; float slSnow;
-            mv_weights(base, slW, slSnow);
-            slW = mix(slW, vec4(0.0, 0.0, 0.0, 1.0), F3pc);
-            slSnow *= (1.0 - F3pc);
-            float litLuma       = dot(lit, vec3(0.299, 0.587, 0.114));
-            float shoreAffinity = smoothstep(0.08, 0.26, litLuma) * clamp(1.0 - slW.x - slSnow, 0.0, 1.0);
-            if (slWet > 0.001 && !cementHit && slopeAtten > 0.0 && shoreAffinity > 0.001) {
-                float wetAmt = clamp(slWet, 0.0, 1.0) * (1.0 - F3pc) * slopeAtten * shoreAffinity * uT.shorelineStrength;
-                lit = mix(lit, vec3(1.16, 1.06, 0.78) * (litLuma * 0.90), clamp(wetAmt, 0.0, 1.0) * 0.85);
-            }
-            if (slFoam > 0.001 && slopeAtten > 0.0 && shoreAffinity > 0.001) {
-                float foamScroll = fbm(v_worldPos.xy * 0.09 + uT.shorelineTime * 0.15, 3) * 0.5 + 0.5;
-                float foamPulse  = fbm(v_worldPos.xy * 0.20 - uT.shorelineTime * 0.22 + 19.0, 2) * 0.5 + 0.5;
-                float foamNoise  = clamp(mix(foamScroll, foamPulse, 0.5), 0.0, 1.0);
-                float slF        = clamp(slFoam, 0.0, 1.0);
-                float coverage   = smoothstep(1.0 - slF * 0.85, 1.0, foamNoise + (1.0 - slF) * 0.15);
-                float foamAmt    = coverage * slopeAtten * uT.shorelineFoamStrength * shoreAffinity;
-                lit = mix(lit, vec3(0.92), clamp(foamAmt, 0.0, 1.0) * (1.0 - F3pc));
+                float slopeAtten = clamp((N.z - 0.940) / (0.978 - 0.940), 0.0, 1.0);   // full at 12 deg, zero at 20 deg
+                vec4 slW = materialW; float slSnow = materialSnow;
+                slW = mix(slW, vec4(0.0, 0.0, 0.0, 1.0), F3pc);
+                slSnow *= (1.0 - F3pc);
+                float litLuma       = dot(lit, vec3(0.299, 0.587, 0.114));
+                float shoreAffinity = smoothstep(0.08, 0.26, litLuma) * clamp(1.0 - slW.x - slSnow, 0.0, 1.0);
+                if (slWet > 0.001 && !cementHit && slopeAtten > 0.0 && shoreAffinity > 0.001) {
+                    float wetAmt = clamp(slWet, 0.0, 1.0) * (1.0 - F3pc) * slopeAtten * shoreAffinity * uT.shorelineStrength;
+                    lit = mix(lit, vec3(1.16, 1.06, 0.78) * (litLuma * 0.90), clamp(wetAmt, 0.0, 1.0) * 0.85);
+                }
+                if (slFoam > 0.001 && slopeAtten > 0.0 && shoreAffinity > 0.001) {
+                    float foamScroll = fbm(v_worldPos.xy * 0.09 + uT.shorelineTime * 0.15, 3) * 0.5 + 0.5;
+                    float foamPulse  = fbm(v_worldPos.xy * 0.20 - uT.shorelineTime * 0.22 + 19.0, 2) * 0.5 + 0.5;
+                    float foamNoise  = clamp(mix(foamScroll, foamPulse, 0.5), 0.0, 1.0);
+                    float slF        = clamp(slFoam, 0.0, 1.0);
+                    float coverage   = smoothstep(1.0 - slF * 0.85, 1.0, foamNoise + (1.0 - slF) * 0.15);
+                    float foamAmt    = coverage * slopeAtten * uT.shorelineFoamStrength * shoreAffinity;
+                    lit = mix(lit, vec3(0.92), clamp(foamAmt, 0.0, 1.0) * (1.0 - F3pc));
+                }
             }
         }
 
@@ -699,9 +682,8 @@ void main() {
         else if (uT.csmDebugMode == 6) { fragColor = vec4(baseColor, 1.0); GBuffer1 = vec4(0.5,0.5,1.0,1.0); return; }   // VK-PARITY-F3: albedo (GL MC2_LIGHTING_DEBUG_VIEW=40)
         else if (uT.csmDebugMode == 7) { fragColor = vec4(vec3(clamp(dot(N, lightDir), 0.02, 1.0)), 1.0); GBuffer1 = vec4(0.5,0.5,1.0,1.0); return; }   // sun N.L diffuse (GL MC2_LIGHTING_DEBUG_VIEW=sun)
         else if (uT.csmDebugMode == 8) { fragColor = vec4(N * 0.5 + 0.5, 1.0); GBuffer1 = vec4(0.5,0.5,1.0,1.0); return; }   // surface normal (GL ...=normal)
-        else if (uT.csmDebugMode == 6) { fragColor = vec4(dbgBaseN * 0.5 + 0.5, 1.0); GBuffer1 = vec4(0.5,0.5,1.0,1.0); return; }
-        else if (uT.csmDebugMode == 7) { fragColor = vec4(dbgDN * 0.5 + 0.5, 1.0); GBuffer1 = vec4(0.5,0.5,1.0,1.0); return; }
-        else if (uT.csmDebugMode == 8) { fragColor = vec4(N * 0.5 + 0.5, 1.0); GBuffer1 = vec4(0.5,0.5,1.0,1.0); return; }
+        else if (uT.csmDebugMode == 9) { fragColor = vec4(dbgBaseN * 0.5 + 0.5, 1.0); GBuffer1 = vec4(0.5,0.5,1.0,1.0); return; }
+        else if (uT.csmDebugMode == 10) { fragColor = vec4(dbgDN * 0.5 + 0.5, 1.0); GBuffer1 = vec4(0.5,0.5,1.0,1.0); return; }
     }
 
     fragColor = vec4(lit, 1.0);   // opaque in-place (a=1, NOT premult)

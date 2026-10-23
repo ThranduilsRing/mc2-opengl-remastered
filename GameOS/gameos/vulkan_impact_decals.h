@@ -12,6 +12,7 @@
 extern "C" {
 void gos_SetImpactDecalFrame(const void* records, uint32_t count, uint32_t hotCount);
 int  mc2_vk_impact_decals_run(int w, int h);
+int  mc2_vk_impact_decals_prewarm(int w, int h);   // build the pipelines and atlas at load (vk_render_infra prewarm)
 void mc2_vk_impact_decals_destroy();
 
 struct Mc2ImpactDecalHealth {

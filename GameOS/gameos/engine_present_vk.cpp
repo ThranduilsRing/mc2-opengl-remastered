@@ -430,16 +430,26 @@ bool buildSwapchain(EnginePresentVk::Impl& s, uint32_t w, uint32_t h,
     sci.presentMode      = s.presentMode;
     sci.clipped          = VK_TRUE;
     sci.oldSwapchain     = oldSwapchain;
+    // WSI allocations are opaque. Charge a conservative image bound, including tiling/alignment.
+    const uint32_t chargedImages=caps.maxImageCount ? std::min(caps.maxImageCount,imgCount+2) : imgCount+2;
+    const uint64_t imageBytes=((uint64_t(extent.width)*extent.height*8+65535)/65536)*65536;
+    mc2vk::infra::Admission admission(imageBytes*chargedImages,"targets.swapchain");
+    if(!admission) { reason="swapchain residency refused; skip present"; return false; }
     const VkResult createResult = mc2vk::createChecked(s.swapchain, s.dev, [&](auto* h) { return vkCreateSwapchainKHR(s.dev, &sci, nullptr, h); });
     if (createResult != VK_SUCCESS) {
         reason = "vkCreateSwapchainKHR failed (VkResult=" + std::to_string(static_cast<int>(createResult)) + ")";
         return false;
     }
+    admission.commit(reinterpret_cast<uint64_t>(s.swapchain.get()),"targets.swapchain",true);
     s.scFormat = chosen.format;
     s.scExtent = extent;
 
     uint32_t n = 0;
     vkGetSwapchainImagesKHR(s.dev, s.swapchain.get(), &n, nullptr);
+    if(n>chargedImages) {
+        std::fprintf(stderr,"[VK_RESIDENCY v1] refused=swapchain images=%u admitted=%u fallback=skip_present\n",n,chargedImages);
+        reason="swapchain exceeds admitted image count"; s.swapchain.reset(); return false;
+    }
     s.scImages.resize(n);
     vkGetSwapchainImagesKHR(s.dev, s.swapchain.get(), &n, s.scImages.data());
     s.renderSems.resize(n);
@@ -913,9 +923,11 @@ bool createHostBuffer(EnginePresentVk::Impl& s, VkDeviceSize bytes, VkBufferUsag
     VkMemoryAllocateInfo ai{VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO};
     ai.allocationSize = req.size;
     ai.memoryTypeIndex = memType;
+    mc2vk::infra::Admission admission(req.size,name);
+    if(!admission) return false;
     if (!mc2vk::create(outMem, s.dev, [&](auto* h) { return vkAllocateMemory(s.dev, &ai, nullptr, h); }))
         return false;
-    mc2vk::infra::allocation(reinterpret_cast<uint64_t>(outMem.get()), req.size, name, true);
+    admission.commit(reinterpret_cast<uint64_t>(outMem.get()), name, true);
     return vkBindBufferMemory(s.dev, outBuf.get(), outMem.get(), 0) == VK_SUCCESS;
 }
 
@@ -1311,9 +1323,15 @@ bool ensureImguiVulkan(EnginePresentVk::Impl& s) {
     info.PhysicalDevice = s.phys;
     info.Device = s.dev;
     info.PipelineCache = mc2vk::infra::cacheHandle();
-    info.MemoryAllocated = [](auto memory, auto bytes, auto name) {
-        mc2vk::infra::allocation(reinterpret_cast<uint64_t>(memory), bytes, name, true);
-        mc2vk::infra::breadcrumb("resource", name, reinterpret_cast<uint64_t>(memory));
+    info.AllocateMemory = [](VkDevice device, const VkMemoryAllocateInfo* ai, const VkAllocationCallbacks* allocator, VkDeviceMemory* memory, const char* name) {
+        mc2vk::infra::Admission admission(ai->allocationSize,name);
+        if(!admission) return VK_ERROR_OUT_OF_DEVICE_MEMORY;
+        const auto result=vkAllocateMemory(device,ai,allocator,memory);
+        if(result==VK_SUCCESS) {
+            admission.commit(reinterpret_cast<uint64_t>(*memory),name,true);
+            mc2vk::infra::breadcrumb("resource",name,reinterpret_cast<uint64_t>(*memory));
+        }
+        return result;
     };
     info.MemoryFreed = [](auto memory) { mc2vk::infra::release(reinterpret_cast<uint64_t>(memory)); };
     info.QueueFamily = s.gfxFamily;

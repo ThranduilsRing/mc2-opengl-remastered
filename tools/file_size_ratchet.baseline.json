@@ -13,8 +13,8 @@
   "gui"
  ],
  "files_over_1500": {
-  "GameOS/gameos/engine_present_vk.cpp": 2804,
-  "GameOS/gameos/vulkan_color_prop_island.cpp": 1893,
+  "GameOS/gameos/engine_present_vk.cpp": 2822,
+  "GameOS/gameos/vulkan_color_prop_island.cpp": 1904,
   "GameOS/include/gameos.hpp": 3661,
   "code/artlry.cpp": 1701,
   "code/bldng.cpp": 1692,
@@ -23,10 +23,9 @@
   "code/gameobj.cpp": 2242,
   "code/infowindow.cpp": 1730,
   "code/logisticsdialog.cpp": 2149,
-  "code/mechicon.cpp": 1981,
   "code/mechlabscreen.cpp": 1952,
   "code/mechlopedia.cpp": 1623,
-  "code/missionbegin.cpp": 2154,
+  "code/missionbegin.cpp": 2182,
   "code/mover.h": 1906,
   "code/mpparameterscreen.cpp": 2408,
   "code/multplyr.h": 1845,
@@ -42,7 +41,7 @@
   "gui/alistbox.cpp": 1513,
   "mclib/ablenv.cpp": 1585,
   "mclib/ablrtn.cpp": 1799,
-  "mclib/assimp_importer.cpp": 1642,
+  "mclib/assimp_importer.cpp": 1841,
   "mclib/camera.h": 1828,
   "mclib/file.cpp": 1736,
   "mclib/gosfx/fcurve.cpp": 1923,
@@ -52,9 +51,9 @@
   "mclib/mlr/mlrtriangleclipping.hpp": 2112,
   "mclib/move.h": 1895,
   "mclib/terrtxm.cpp": 1816,
-  "mclib/tgl.h": 1803
+  "mclib/tgl.h": 1809
  },
- "head": "60c7d2518",
+ "head": "d3cffaa12",
  "per_dir": {
   "GameAdapters": {
    "files": 13,
@@ -63,7 +62,7 @@
    "max_lines": 458
   },
   "GameOS": {
-   "files": 371,
+   "files": 373,
    "files_over_1500": 3,
    "files_over_3000": 1,
    "max_lines": 3661
@@ -75,7 +74,7 @@
    "max_lines": 1133
   },
   "RenderCore": {
-   "files": 63,
+   "files": 64,
    "files_over_1500": 0,
    "files_over_3000": 0,
    "max_lines": 1490
@@ -87,13 +86,13 @@
    "max_lines": 1027
   },
   "code": {
-   "files": 428,
-   "files_over_1500": 22,
+   "files": 434,
+   "files_over_1500": 21,
    "files_over_3000": 0,
    "max_lines": 2771
   },
   "editor": {
-   "files": 285,
+   "files": 286,
    "files_over_1500": 1,
    "files_over_3000": 0,
    "max_lines": 1996
@@ -105,16 +104,16 @@
    "max_lines": 1513
   },
   "mclib": {
-   "files": 573,
+   "files": 579,
    "files_over_1500": 13,
    "files_over_3000": 0,
    "max_lines": 2518
   },
   "shaders": {
-   "files": 113,
+   "files": 117,
    "files_over_1500": 0,
    "files_over_3000": 0,
-   "max_lines": 711
+   "max_lines": 693
   }
  },
  "thresholds": [
@@ -128,7 +127,7 @@
   },
   {
    "file": "GameOS/gameos/engine_present_vk.cpp",
-   "lines": 2804
+   "lines": 2822
   },
   {
    "file": "code/brain_special_dispatch.cpp",
@@ -164,7 +163,7 @@
   },
   {
    "file": "code/missionbegin.cpp",
-   "lines": 2154
+   "lines": 2182
   },
   {
    "file": "code/logisticsdialog.cpp",
@@ -183,10 +182,6 @@
    "lines": 1996
   },
   {
-   "file": "code/mechicon.cpp",
-   "lines": 1981
-  },
-  {
    "file": "code/mechlabscreen.cpp",
    "lines": 1952
   },
@@ -199,12 +194,12 @@
    "lines": 1906
   },
   {
-   "file": "mclib/move.h",
-   "lines": 1895
+   "file": "GameOS/gameos/vulkan_color_prop_island.cpp",
+   "lines": 1904
   },
   {
-   "file": "GameOS/gameos/vulkan_color_prop_island.cpp",
-   "lines": 1893
+   "file": "mclib/move.h",
+   "lines": 1895
   },
   {
    "file": "code/multplyr.h",
@@ -213,6 +208,10 @@
   {
    "file": "code/pilotreviewarea.cpp",
    "lines": 1843
+  },
+  {
+   "file": "mclib/assimp_importer.cpp",
+   "lines": 1841
   },
   {
    "file": "code/optionsarea.cpp",
@@ -228,7 +227,7 @@
   },
   {
    "file": "mclib/tgl.h",
-   "lines": 1803
+   "lines": 1809
   },
   {
    "file": "mclib/ablrtn.cpp",
@@ -244,8 +243,8 @@
   }
  ],
  "total": {
-  "files": 1894,
-  "files_over_1500": 40,
+  "files": 1914,
+  "files_over_1500": 39,
   "files_over_3000": 1,
   "max_lines": 3661
  },

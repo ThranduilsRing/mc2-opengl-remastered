@@ -486,3 +486,10 @@ def test_slot_affinity_reaches_child_process(lease, monkeypatch, width, exclusiv
     finally:
         proc.kill()
         proc.communicate(timeout=10)
+
+
+def test_exclusive_window_holds_all_slots_only_inside(lease):
+    host_lease.acquire("load", scan=lambda: [], log=lambda m: None)
+    with host_lease.exclusive_window("measured", scan=lambda: [], log=lambda m: None):
+        assert all(host_lease._ours(host_lease._read(host_lease.slot_path(i))) for i in range(6))
+    assert not any(host_lease.slot_path(i).exists() for i in range(6)) and not host_lease.holds()

@@ -27,7 +27,7 @@
 //
 // Merge point: engine applies overlays AFTER SpecLibrary::Load() completes
 // (code/mechcmd2.cpp, right after gosFX::EffectLibrary::Instance->Load()).
-// Gate: MC2_FX_DEFS (default OFF). When OFF or no defs present, ApplyAll()
+// Without authored definitions, ApplyAll()
 // is a no-op and the loaded blob is byte-identical to stock.
 #pragma once
 #include <string>
@@ -91,11 +91,7 @@ public:
 
     // Lazy singleton: loads base data/effects/defs/ then merges the active
     // mod's data/effects/defs/ (MC2_ACTIVE_MOD) on first use. Cheap no-op
-    // when neither directory exists. Gate MC2_FX_DEFS is checked by the
-    // CALLER (code/mechcmd2.cpp) before invoking applyAll() — instance()
-    // itself always parses (parsing is free; only the apply is gated) so
-    // fxlint-style diagnostics stay available under MC2_LOG regardless of
-    // the feature gate.
+    // when neither directory exists.
     static EffectDefRegistry& instance();
 
 private:

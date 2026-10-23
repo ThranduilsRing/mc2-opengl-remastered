@@ -1023,31 +1023,6 @@ RenderSubmissions& renderSubmissions();
 
 void GatherLightsParameters(TG_HWLightsData* lights);
 
-//----------------------------------------------------------------------
-// LIGHT-ROW-PURE-1 (ARCH-LIGHTING slice 1) — declare the per-class light-row
-// policy instead of leaving it implicit in the order of mutations.
-//
-// An appearance class calls this immediately beside the legacy
-// eye->setLightColor()/->active mutation it is about to perform, naming the
-// SAME effect declaratively, and calls mc2ClearObjectLightPolicy() once its
-// gather is done. `classPolicy` is an object_light_row::ClassPolicy value
-// (mclib/object_light_row.h); it is passed as uint32_t so this header stays
-// free of that include.
-//
-// Publishing is INERT on its own: it mutates no light, changes no row and
-// moves no pixel. It is consumed only by the pure producer behind
-// MC2_LIGHT_ROW_PURE, which reproduces the mutation exactly, and by
-// MC2_LIGHT_ROW_PURE_VERIFY, which continuously checks that what a class
-// DECLARES still matches what it DOES.
-//----------------------------------------------------------------------
-void mc2PublishObjectLightPolicy(uint32_t classPolicy,
-                                 bool sunRecolour, uint32_t sunARGB,
-                                 bool sunDisabled,
-                                 bool ambientRecolour, uint32_t ambientARGB,
-                                 float posX, float posY, float posZ,
-                                 float terrainSample);
-void mc2ClearObjectLightPolicy(void);
-
 // RENDERER-INPUT-READBACK-1: the probe wrapper around the function above is
 // declared in mclib/tgl.h, not here -- its signature needs TG_LightPtr, whose
 // underlying TG_Light is an anonymous-struct typedef (tgl.h:300) and so cannot

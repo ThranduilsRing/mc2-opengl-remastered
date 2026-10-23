@@ -2,10 +2,25 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
+#include "../mclib/math/glm_config.h"
+#include "../3rdparty/glm/glm/packing.hpp"
 
 namespace mc2::vegetation {
-// Both population records and worst-case (one instance) regions are 32 bytes.
-// Their per-parity index buffers use fewer bytes and fit the same budget.
+// XY retain full map precision; height/scale and seed use half floats. Yaw is
+// an 8-bit turn, and the atlas/role/weed byte is retained verbatim.
+struct PackedInstance {
+    float x, y;
+    uint32_t heightScale, appearance;
+};
+static_assert(sizeof(PackedInstance) == 16);
+inline PackedInstance packInstance(float x, float y, float z, float yaw, float scale, uint32_t atlas, float seed) {
+    const uint32_t turn = uint32_t(std::lround(yaw * (256.0f / 6.28318530718f))) & 255u;
+    const uint32_t seedHalf = glm::packHalf2x16(glm::vec2(seed, 0)) & 65535u;
+    return {x, y, glm::packHalf2x16(glm::vec2(z, scale)), seedHalf | (turn << 16u) | ((atlas & 255u) << 24u)};
+}
+constexpr uint32_t kVisibleCapacity = 512u * 1024u;
+constexpr uint64_t kResidentBudget = 80ull * 1024 * 1024;
+// Regions remain 32 B; even a one-instance region must fit the device range.
 inline uint32_t storagePopulationCapacity(uint32_t requested, uint64_t maxStorageRange) {
     return uint32_t(std::min(uint64_t(requested), maxStorageRange / 32u));
 }

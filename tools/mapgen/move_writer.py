@@ -50,8 +50,8 @@ def distances(area_map, start, area):
 
 def global_packets(passable):
     h, w = passable.shape
-    if h != w or h % 30:
-        raise ValueError('MOVE requires square dimensions divisible by 30')
+    if h != w or h % 30 or not 0 < h <= 3072:
+        raise ValueError('MOVE requires square dimensions <= 3072 divisible by 30')
     amap = np.full((h, w), -1, dtype='<i2')
     sectors = []
     for sr in range(h//30):
@@ -61,7 +61,7 @@ def global_packets(passable):
                     if not passable[r, c] or amap[r, c] != -1:
                         continue
                     area = len(sectors)
-                    if area >= 32767:
+                    if area >= 30000:
                         raise ValueError('too many MOVE areas')
                     sectors.append((sr, sc))
                     amap[r, c] = area

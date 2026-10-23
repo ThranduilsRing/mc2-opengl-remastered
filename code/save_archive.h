@@ -36,6 +36,8 @@ public:
     explicit Archive(Diagnostic diagnostic = {});
     explicit Archive(std::span<const std::uint8_t> input, Diagnostic diagnostic = {});
     bool reading() const { return reading_; }
+    // R2 animation section layout version this archive reads or writes (2: no selector memory, 3: current).
+    std::uint32_t sectionVersion = 3;
     bool good() const { return error_.empty(); }
     std::string_view error() const { return error_; }
     std::size_t remaining() const { return input_.size() - cursor_; }

@@ -27,6 +27,11 @@ public:
     std::deque<Result> take() {
         std::lock_guard lock(mutex_); std::deque<Result> out; out.swap(results_); return out;
     }
+    // Load barriers need both the queued and currently decoding request published.
+    void waitIdle() {
+        std::unique_lock lock(mutex_);
+        idle_.wait(lock, [&] { return requests_.empty() && !active_; });
+    }
 private:
     struct Request { TextureHandle handle; std::function<std::shared_ptr<const KtxImage>()> decode; uint32_t contentVersion=0; };
     void run(std::stop_token stop) {
@@ -37,13 +42,17 @@ private:
                 ready_.wait(lock, [&] { return stop.stop_requested() || !requests_.empty(); });
                 if (stop.stop_requested()) return;
                 request=std::move(requests_.front()); requests_.pop_front();
+                active_=true;
             }
             Result result{request.handle,request.decode(),request.contentVersion};
-            { std::lock_guard lock(mutex_); results_.push_back(std::move(result)); }
+            { std::lock_guard lock(mutex_); results_.push_back(std::move(result)); active_=false; }
+            idle_.notify_all();
         }
     }
     std::mutex mutex_;
     std::condition_variable ready_;
+    std::condition_variable idle_;
+    bool active_=false;
     std::deque<Request> requests_;
     std::deque<Result> results_;
     std::jthread worker_; // joins before the queues and mutex die

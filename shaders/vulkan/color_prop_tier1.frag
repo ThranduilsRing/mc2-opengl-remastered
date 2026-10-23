@@ -80,6 +80,7 @@ layout(location = 10) in vec3 vMaterialSeed;
 flat layout(location = 11) in vec3 vMaterialAmbient;
 flat layout(location = 12) in vec3 vMaterialSun;
 flat layout(location = 13) in uint vMaterialFlags;
+layout(location = 14) in vec2 vTree;
 
 // The vertex stage's push block; the FS reads only packetAlphaTest.
 #include "include/prop_packet_vk.glsl"
@@ -116,19 +117,12 @@ float propCoverage(float a, float lod) {
 #include "../include/axis.hglsl"
 
 // Night light pools: CPU copy of the GL binding-28 pool array (GpuTerrainLight, 48B), the same set GL static_prop.frag reads.
-struct PoolLight {
-    vec3  position;
-    uint  lightType;
-    vec3  color;
-    float closeDistance;
-    float farDistance;
-    float oneOverDistance;
-    float _plPad1;
-    float intensity;
-};
-layout(set = 0, binding = 8, std430) readonly buffer PropPoolLightsVK {
-    PoolLight poolLights[];
-};
+#define PREC highp
+#define TERRAIN_RESOURCE_SET 1
+#define TERRAIN_OBJECT_RECEIVER 1
+#include "include/terrain_frame_vk.glsl"
+#include "include/ground_lighting.glsl"
+layout(set = 0, binding = 14) uniform sampler2DShadow uTreeObjectMap;
 #include "../include/object_light_pool.hglsl"
 
 // GL static_prop.frag's pool term: albedo-modulated additive pool light at the MC2-frame world position.
@@ -144,10 +138,24 @@ vec3 propPoolLight(vec3 albedo) {
 #include "include/prop_material_vk.glsl"
 #include "include/prop_lighting_compat_vk.glsl"
 
+float treeVisibility(vec3 N) {
+    float visibility = moverVisibility(vWorldPos, N);
+    if (uFrame.poolF.w > 1.0 && uT.enableShadows != 0) {
+        vec4 p = uT.staticLightSpaceMatrix * vec4(vWorldPos + N * 0.25, 1.0);
+        vec3 q = p.xyz / p.w; q.xy = q.xy * 0.5 + 0.5;
+        if (q == clamp(q,0.0,1.0)) {
+            vec4 taps = textureGather(uTreeObjectMap, q.xy, q.z - 3.0/65535.0);
+            vec2 f = fract(q.xy * vec2(textureSize(uTreeObjectMap,0)) - 0.5);
+            visibility = min(visibility, mix(mix(taps.w,taps.z,f.x),mix(taps.x,taps.y,f.x),f.y));
+        }
+    }
+    return visibility;
+}
 void main() {
     vec3 rgb;
     vec3 materialAlbedo = vec3(0);
     bool haveAlbedo = false;
+    float materialAO = 1.0;
     vec3 outputNormalStuff = vNormalStuff;
     // VK-GBUFFER1-CENSUS-1: which GBuffer1 shadow CLASS this fragment belongs to.
     // Set true by the alpha-ON branch below -- see the oGBuffer1 write at the end
@@ -212,13 +220,33 @@ void main() {
     }
     // PROP-COVERAGE-1: an opaque (non-alpha-tested) fragment belongs to the core pass only.
     if (uPacket.coverageFringePass != 0 && !alphaTestClass) discard;
+    bool treeMaterial = haveAlbedo && vTree.y > 0.5;
     if (haveAlbedo && uPacket.materialId >= 0 && uPacket.materialId < uPropMaterials.materials.length()) {
         SurfaceMaterial surface = propSurface(uPacket.materialId, materialAlbedo);
         float materialCoverage = propMaterialCoverage(uPacket.materialId);
         if (materialCoverage > 0.0) {
-            rgb = mix(rgb, propAuthoredColor(surface, alphaTestClass), materialCoverage);
+            materialAO = mix(1.0, surface.ao, materialCoverage);
+            if (!treeMaterial) rgb = mix(rgb, propAuthoredColor(surface, alphaTestClass,
+                          propHasAuthoredOrm(uPacket.materialId)), materialCoverage);
             outputNormalStuff = mix(vNormalStuff, renderToMc2(surface.normal), materialCoverage);
         }
+    }
+    if (treeMaterial) {
+        vec3 N = normalize(mc2ToRender(outputNormalStuff));
+        vec3 L = uT.terrainLightDir.xyz / max(length(uT.terrainLightDir.xyz),1e-6);
+        vec2 uv = vec2((vWorldPos.x-uT.atlasTopLeftX)*uT.atlasOneOverWorldUnits,
+                       (uT.atlasTopLeftY-vWorldPos.y)*uT.atlasOneOverWorldUnits);
+        vec3 macro = textureLod(u_colormap,uv,0.0).rgb;
+        vec3 tint = macro / max(dot(macro,vec3(0.299,0.587,0.114)),0.01);
+        vec3 albedo = propDecodeColor(materialAlbedo * mix(vec3(1),tint,0.25));
+        vec3 sh[9]; for (int k=0;k<9;++k) sh[k]=uFrame.iblSh[k].xyz;
+        vec3 ambient = uFrame.iblShStrength > 0.0 ? evalShL2(normalize(outputNormalStuff),sh)*uFrame.iblShStrength : vec3(0);
+        float wrap = max((dot(N,L)+0.5)/1.5,0.0);
+        float transmission = alphaTestClass ? 0.08*max(dot(-N,L),0.0) : 0.0;
+        vec3 direct = propDecodeColor(vMaterialSun) * (wrap+transmission);
+        // SH already contains linear irradiance. Preserve the stock albedo exposure ceiling.
+        rgb = propEncodeColor(min(albedo,composeGroundLighting(albedo,max(ambient,vec3(0))*vTree.x*materialAO,direct,treeVisibility(N),vec3(0))));
+        rgb += propPoolLight(propEncodeColor(albedo)) + vHighlight.rgb*vHighlight.a;
     }
     oColor = vec4(rgb, cover);
 
@@ -254,5 +282,5 @@ void main() {
     // inline only rc_pixelHandlesOwnShadow / rc_isStaticPropNoSelfShadow and have no
     // RECEIVE opt-in at all. Closing the granularity gap needs a per-packet alpha bit
     // on the feed; it is not required for class correctness and is NOT done here.
-    oGBuffer1 = vec4(normalize(outputNormalStuff) * 0.5 + 0.5, alphaTestClass ? 0.1875 : 0.25);
+    oGBuffer1 = vec4(normalize(treeMaterial ? mc2ToRender(outputNormalStuff) : outputNormalStuff) * 0.5 + 0.5, treeMaterial ? 1.0 : alphaTestClass ? 0.1875 : 0.25);
 }

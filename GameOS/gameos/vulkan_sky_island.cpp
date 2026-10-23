@@ -159,7 +159,9 @@ bool ensure_hdri(Island* s, uint64_t generation) {
         dims.assign(1, {1, 1});
     }
 
-    {
+    // The image and its staging copy are admitted by OwnedImage/OwnedBuffer (residency ledger). A refused real HDRI degrades to the 1x1
+    // black dummy, the same as an absent one, instead of failing the island.
+    auto createImage = [&]() -> bool {
         VkImageCreateInfo ii{};
         ii.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
         ii.imageType = VK_IMAGE_TYPE_2D; ii.format = fmt;
@@ -174,19 +176,32 @@ bool ensure_hdri(Island* s, uint64_t generation) {
         vi.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
         vi.image = s->hdriImg.get(); vi.viewType = VK_IMAGE_VIEW_TYPE_2D; vi.format = fmt;
         vi.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, mips, 0, 1};
-        if (!mc2vk::create(s->hdriView, s->device, [&](VkImageView* h) { return vkCreateImageView(s->device, &vi, nullptr, h); })) return false;
-    }
-
-    std::vector<VkDeviceSize> offs(levels.size());
-    VkDeviceSize total = 0;
-    for (size_t i = 0; i < levels.size(); ++i) { offs[i] = total; total += static_cast<VkDeviceSize>(((levels[i].size() + 15) & ~size_t(15))); }
+        return mc2vk::create(s->hdriView, s->device, [&](VkImageView* h) { return vkCreateImageView(s->device, &vi, nullptr, h); });
+    };
+    auto degradeToDummy = [&]() {
+        s->hdriView.reset(); s->hdriImg.reset();
+        haveReal = false; fmt = VK_FORMAT_R16G16B16A16_SFLOAT; w = 1; h = 1; mips = 1;
+        levels.assign(1, std::vector<unsigned char>(8, 0));
+        dims.assign(1, {1, 1});
+    };
+    std::vector<VkDeviceSize> offs;
     mc2vk::OwnedBuffer staging;   // released on return; submit_once has waited for the copy by then
-    {
+    auto createStaging = [&]() -> bool {
+        offs.assign(levels.size(), 0);
+        VkDeviceSize total = 0;
+        for (size_t i = 0; i < levels.size(); ++i) { offs[i] = total; total += static_cast<VkDeviceSize>(((levels[i].size() + 15) & ~size_t(15))); }
         VkBufferCreateInfo bci{};
         bci.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO; bci.size = total ? total : 16; bci.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
         VmaAllocationCreateInfo aci{};
         aci.usage = VMA_MEMORY_USAGE_AUTO; aci.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
-        if (!staging.create(s->allocator, s->device, bci, aci, "sky.staging")) return false;
+        return staging.create(s->allocator, s->device, bci, aci, "sky.staging");
+    };
+    bool admitted = createImage() && createStaging();
+    if (!admitted) {
+        if (!haveReal) return false;
+        vlog("HDRI (image or staging copy) refused by residency or allocation -- black sky.");
+        degradeToDummy();
+        if (!createImage() || !createStaging()) { s->hdriView.reset(); s->hdriImg.reset(); return false; }
     }
     {
         void* p = staging.map();
@@ -377,11 +392,12 @@ extern "C" int mc2_vk_sky_island_prewarm(int w,int h) {
     auto& ctx=mc2vk::getOrCreateEngineVulkanContext();
     if(!ctx.valid() || w<=0 || h<=0) return 0;
     auto& slot=ctx.islandSlot(mc2vk::IslandSlot::Sky);
-    if(slot) return 1;
-    auto fresh=std::make_unique<Island>();
-    if(!init_island(fresh.get(),w,h)) { ctx.waitIdle("sky_prewarm_failure"); return 0; }
-    slot=std::move(fresh);
-    return 1;
+    if(!slot) {
+        auto fresh=std::make_unique<Island>();
+        if(!init_island(fresh.get(),w,h)) { ctx.waitIdle("sky_prewarm_failure"); return 0; }
+        slot=std::move(fresh);
+    }
+    return ensure_hdri(static_cast<Island*>(slot.get()), mc2vk::hdriCpuGeneration()) ? 1 : 0;
 }
 
 extern "C" int mc2_vk_sky_island_run(int w, int h) {

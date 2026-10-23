@@ -6,12 +6,18 @@
 // same mission and input give the same per-tick results at 30, 60 or 240 fps and at 0.25x or 4x.
 
 #include <algorithm>
+#include <bit>
 #include <cmath>
 
 namespace mc2::sim {
 
 //: Sim seconds one tick advances (scenarioTime, frameLength, every animation and timer step in the tick).
 inline constexpr double kTickSeconds = 1.0 / 30.0;
+//: The same tick as a float, bit-identical to the legacy harness step SmokeMode::fixedTimestepMs()/1000.0f (0x3D088888, one ulp
+//: below float(1.0/30.0)): float timers subtract it per tick, so a different ulp expires round timers a tick early.
+//: Every float use of the tick (scenarioTime +=, frameLength) must use this one constant.
+inline constexpr float kTickSecondsF = 1000.0f / 30.0f / 1000.0f;
+static_assert(std::bit_cast<unsigned>(kTickSecondsF) == 0x3D088888u, "legacy tick bit pattern");
 //: A real frame longer than this is a hitch (load, drag, breakpoint); the excess is dropped rather than replayed.
 inline constexpr double kMaxRealFrameSeconds = 0.25;
 //: Ticks per frame at 1x; the cap scales with game speed so fast-forward is never clamped below its own rate.

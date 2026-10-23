@@ -12,7 +12,9 @@ console_child = kbt.console_child
 
 
 def _sleeper(cwd):
-    return subprocess.Popen([sys.executable, "-c", "import time; time.sleep(120)"], cwd=str(cwd),
+    # The test owns teardown. A busy host's process scan can exceed two minutes;
+    # natural child expiry would falsely report that dry-run killed it.
+    return subprocess.Popen([sys.executable, "-c", "import threading; threading.Event().wait()"], cwd=str(cwd),
                             **console_child.child_kwargs(redirected=True))
 
 

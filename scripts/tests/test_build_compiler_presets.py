@@ -71,7 +71,7 @@ def test_default_msvc_commands_unchanged(monkeypatch):
         assert cfg[0][cfg[0].index("-B") + 1].endswith(tree)
         assert "-A" in cfg[0] and not cfg[3]["vcvars"]
         assert "-k" not in build[0]
-    assert children == [[sys.executable, str(ROOT / "tools" / "build_contract_harnesses.py"), "--unit"]]
+    assert children == [[sys.executable, str(ROOT / "tools" / "build_contract_harnesses.py"), "--unit", "--seam"]]
 
 
 def test_default_run_goes_through_the_compile_cache(monkeypatch):
@@ -147,7 +147,7 @@ def test_default_corpus_commands_and_output_unchanged(monkeypatch, capsys, asan)
     monkeypatch.setattr(bch.time, "monotonic", lambda: 0)
     driver = Mock()
     monkeypatch.setattr(bd, "run", driver)
-    assert bch.main(["--asan"] if asan else ["--unit"]) == 0
+    assert bch.main(["--asan"] if asan else ["--unit", "--seam"]) == 0
     tree = ROOT / ("build64-tests-asan" if asan else "build64-tests")
     assert [c[0] for c in calls] == [
         ["cmake", "-S", str(ROOT / "tests/unit"), "-B", str(tree), "-A", "x64", "-DMC2_ASAN=" + ("ON" if asan else "OFF")],
@@ -162,8 +162,8 @@ def test_default_corpus_commands_and_output_unchanged(monkeypatch, capsys, asan)
 
 
 @pytest.mark.parametrize("argv,python_runs", [
-    (["--run", "--unit"], True),
-    (["--run", "--unit-only"], False),
+    (["--run", "--unit", "--seam"], True),
+    (["--run", "--unit-only", "--seam"], False),
     (["--run", "--asan"], False),
     (["--run", "--only", "camera_frustum_harness"], False),
 ])
@@ -173,7 +173,7 @@ def test_python_suite_selection_remains_compatible(monkeypatch, argv, python_run
     monkeypatch.setattr(bch, "run_python_harnesses", python)
     assert bch.main(argv) == (1 if python_runs else 0)
     assert python.call_count == int(python_runs)
-    assert production_seam.call_count == int("--asan" not in argv and "--only" not in argv)
+    assert production_seam.call_count == int("--seam" in argv)
 
 
 def test_root_preset_trees_match_cli_and_keep_full_product_scope():
@@ -349,3 +349,24 @@ def test_external_doctest_output_uses_source_checkout(monkeypatch, tmp_path):
     configure = calls[0][0]
     assert Path(configure[configure.index("-B") + 1]) == tmp_path / "build-cc-tests"
     assert Path(configure[configure.index("-S") + 1]) == ROOT / "tests/unit"
+
+
+def test_warm_detaches_the_build_and_refuses_a_dirty_base_switch(monkeypatch, tmp_path, capsys):
+    sys.path.insert(0, str(ROOT / "scripts"))
+    import ninja_build as nb
+    (tmp_path / "tree").mkdir()
+    (tmp_path / "tree" / "build.ninja").write_text("")
+    git = []
+    def fake_run(cmd, **kw):
+        git.append(cmd)
+        return SimpleNamespace(returncode=0, stdout=" M code/x.cpp" if "status" in cmd and len(git) == 1 else "", stderr="")
+    monkeypatch.setattr(nb.subprocess, "run", fake_run)
+    with pytest.raises(SystemExit, match="tracked changes"):
+        nb.warm(str(tmp_path), ["--base", "main"], "tree")
+    popen = Mock(return_value=SimpleNamespace(pid=42))
+    monkeypatch.setattr(nb.subprocess, "Popen", popen)
+    nb.warm(str(tmp_path), ["--base", "main", "-j3"], "tree")
+    assert ["git", "-C", str(tmp_path), "switch", "--detach", "main"] in git
+    cmd = popen.call_args[0][0]
+    assert cmd[-2:] == ["-j3", "--warm-run"] and "--base" not in cmd
+    assert "warm: pid 42" in capsys.readouterr().out

@@ -114,3 +114,21 @@ def test_runtime_build_substitution_is_rejected(sha, dirty):
     log = f"[BUILD_FINGERPRINT v1] sha={sha} dirty={dirty} branch=test built=2026-10-22 src=A:/test"
     with pytest.raises(ValueError, match="runtime build mismatch"):
         bench.verify_runtime(log, "a" * 40)
+
+
+def test_bench_defaults_are_the_iteration_shape_until_acceptance():
+    assert bench.resolve_lengths(None, None, False) == (1, 20)
+    assert bench.resolve_lengths(None, None, True) == (2, 30)
+    assert bench.resolve_lengths(3, 25, False) == (3, 25)
+
+
+def test_visual_capture_default_duration_is_about_15s_and_grows_only_for_big_sweeps():
+    capture = bench.capture
+    assert capture.default_duration(1, 120, 30) == 15
+    assert capture.default_duration(6, 120, 30) == 25
+    assert capture.default_duration(1, 120, 30) <= 15 < capture.default_duration(12, 120, 30)
+
+
+def test_run_smoke_falls_back_to_15s():
+    import run_smoke
+    assert run_smoke.DEFAULT_DURATION_S == 15

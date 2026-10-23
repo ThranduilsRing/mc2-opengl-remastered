@@ -14,7 +14,8 @@
 //---------------------------------------------------------------------------
 
 #define	MAX_TEAMS						8
-inline constexpr int MAX_MOVERS_PER_TEAM = 120;
+#include "dmovemgr.h"
+inline constexpr int MAX_MOVERS_PER_TEAM = MAX_MOVERS;
 #define	MAX_CONTACTS_PER_TEAM			MAX_MOVERS
 inline constexpr int NUM_CONTACT_UPDATES_PER_PASS = 3;
 

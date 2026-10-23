@@ -870,8 +870,8 @@ long Building::update (void)
 					// Mirrors MarkMineDirty wiring at the setMine sites; the
 					// C-linkage forwarder avoids pulling gos_terrain_indirect.h
 					// into bldng.cpp. Idempotent (dirty-flag debounced).
-					extern void gos_terrain_indirect_MarkDecalDirty();
-					gos_terrain_indirect_MarkDecalDirty();
+					extern void gos_terrain_indirect_MarkDecalDirtyTile(long row, long col);
+					gos_terrain_indirect_MarkDecalDirtyTile(my, mx);
 				}
 			}
 

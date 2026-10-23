@@ -33,6 +33,23 @@ OrderEnvelope order(std::uint32_t source = 1, std::uint64_t sequence = 0, Tick t
     e.payload.kind = OrderKind::Stop;
     return e;
 }
+
+TEST_CASE("order recipients cover every admitted mover and reject one more") {
+    auto envelope = order();
+    envelope.recipients.clear();
+    for (uint32_t slot = 1; slot <= MAX_MOVERS; ++slot)
+        envelope.recipients.push_back({slot, 1});
+    mc2::save::Archive write;
+    write(envelope);
+    REQUIRE(write.good());
+    mc2::sim::OrderEnvelope restored;
+    REQUIRE(mc2::save::decodeRecord(write.bytes(), restored));
+    CHECK(restored == envelope);
+    envelope.recipients.push_back({MAX_MOVERS + 1, 1});
+    mc2::save::Archive overflow;
+    overflow(envelope);
+    CHECK_FALSE(overflow.good());
+}
 Bytes wire(TacticalOrderQueue& queue) {
     mc2::save::Archive a;
     a(queue);
