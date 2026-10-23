@@ -65,10 +65,10 @@ struct ModelOverrideRecord {
 class ModelOverrideRegistry {
 public:
     // Clears registry then loads from manifestPath. Returns count.
-    int loadFromFile(const std::string& manifestPath, std::string_view manifestDir);
+    int loadFromFile(std::string_view manifestPath, std::string_view manifestDir);
     // Additive: loads manifestPath without clearing. Later files WIN on dup key.
     // Returns count of entries merged in (not total).
-    int mergeFromFile(const std::string& manifestPath, std::string_view manifestDir);
+    int mergeFromFile(std::string_view manifestPath, std::string_view manifestDir);
     // conditions.json: {"version":1,"missions":{"<mission>":{"*":"worn","<appearance>":"abandoned"}}}.
     // Later files win per (mission, appearance). Returns selections merged.
     int mergeConditionsFromFile(std::string_view path);
