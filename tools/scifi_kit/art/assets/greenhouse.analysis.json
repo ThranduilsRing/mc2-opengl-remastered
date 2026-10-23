@@ -1,0 +1,348 @@
+{
+ "schema": "mc2-kit-analysis/1",
+ "asset": "greenhouse",
+ "source": "G:\\mc2-assets\\out\\scifi-kit\\round2\\stock\\greenhouse.json",
+ "bounds": {
+  "size_m": [
+   17.25397,
+   23.0492,
+   4.85038
+  ],
+  "footprint_m2": 397.69,
+  "height_m": 4.85,
+  "tris": 16,
+  "origin_offset_m": [
+   5.418438,
+   -0.0,
+   0.0
+  ]
+ },
+ "parts": [
+  {
+   "name": "GreenHouse",
+   "tris": 16,
+   "role": "body",
+   "round": null,
+   "bbox_lo": [
+    -8.627,
+    -11.525,
+    0.0
+   ],
+   "bbox_hi": [
+    8.627,
+    11.525,
+    4.85
+   ],
+   "profile_x": [
+    [
+     0.0,
+     8.494
+    ],
+    [
+     1.0,
+     2.093
+    ]
+   ],
+   "profile_y": [
+    [
+     0.0,
+     11.525
+    ],
+    [
+     1.0,
+     11.525
+    ]
+   ]
+  }
+ ],
+ "stock_model": {
+  "asset": "greenhouse",
+  "intact_stem": "greenhouse",
+  "destroyed_stem": "greenhousedam",
+  "mesh": "G:\\mc2-assets\\out\\scifi-kit\\round2\\stock\\greenhouse.json",
+  "parts": [
+   [
+    "GreenHouse",
+    "body"
+   ]
+  ],
+  "resolved_from": "catalog.json models[role=intact,lod=0]"
+ },
+ "round_parts": [],
+ "round": [],
+ "profile": {
+  "x_all": [
+   [
+    0.0,
+    8.494
+   ],
+   [
+    1.0,
+    2.093
+   ]
+  ],
+  "y_all": [
+   [
+    0.0,
+    11.525
+   ],
+   [
+    1.0,
+    11.525
+   ]
+  ],
+  "x_body": [
+   [
+    0.0,
+    0.0
+   ],
+   [
+    0.14,
+    0.0
+   ],
+   [
+    0.2,
+    7.293
+   ],
+   [
+    0.74,
+    3.693
+   ],
+   [
+    0.8,
+    0.0
+   ],
+   [
+    1.0,
+    0.0
+   ]
+  ],
+  "long_axis": "y",
+  "note": "half-extent (m) vs height fraction; x_body = the end of the long axis away from the +Y terminal pier"
+ },
+ "roof": {
+  "type": "arch",
+  "ridge_axis": "x",
+  "eave_h": 0.131,
+  "ridge_h": 4.85,
+  "rise_m": 4.72,
+  "pitch_deg": 0.0,
+  "residual": 0.278,
+  "flat_residual": 1.596,
+  "confidence": 0.83
+ },
+ "palette": {
+  "dominant": [
+   {
+    "linear": [
+     0.0357,
+     0.0338,
+     0.032
+    ],
+    "hex": "#353432",
+    "fraction": 0.317
+   },
+   {
+    "linear": [
+     0.2217,
+     0.2124,
+     0.2112
+    ],
+    "hex": "#827f7f",
+    "fraction": 0.182
+   },
+   {
+    "linear": [
+     0.15,
+     0.1367,
+     0.1333
+    ],
+    "hex": "#6c6766",
+    "fraction": 0.181
+   },
+   {
+    "linear": [
+     0.0919,
+     0.0854,
+     0.081
+    ],
+    "hex": "#555250",
+    "fraction": 0.165
+   },
+   {
+    "linear": [
+     0.3293,
+     0.3247,
+     0.3243
+    ],
+    "hex": "#9b9a9a",
+    "fraction": 0.087
+   },
+   {
+    "linear": [
+     0.4637,
+     0.4579,
+     0.4479
+    ],
+    "hex": "#b5b4b2",
+    "fraction": 0.068
+   }
+  ],
+  "roof_dominant": [
+   {
+    "linear": [
+     0.0758,
+     0.0809,
+     0.0614
+    ],
+    "hex": "#4e5046",
+    "fraction": 0.494
+   },
+   {
+    "linear": [
+     0.1877,
+     0.1989,
+     0.17
+    ],
+    "hex": "#787b73",
+    "fraction": 0.358
+   },
+   {
+    "linear": [
+     0.3646,
+     0.3678,
+     0.3619
+    ],
+    "hex": "#a3a3a2",
+    "fraction": 0.149
+   }
+  ],
+  "mean_linear": [
+   0.1581,
+   0.1651,
+   0.1445
+  ],
+  "mean_hex": "#6f716a",
+  "wear": {
+   "n": 13869,
+   "value_mean": 0.42,
+   "value_std": 0.142,
+   "sat_mean": 0.109,
+   "sat_std": 0.106,
+   "rust_cov": 0.0,
+   "dark_stain": 0.141
+  },
+  "texels": 13869,
+  "draft": {
+   "main": [
+    0.036,
+    0.034,
+    0.032
+   ],
+   "second": [
+    0.222,
+    0.212,
+    0.211
+   ],
+   "trim": [
+    0.036,
+    0.034,
+    0.032
+   ],
+   "roof": [
+    0.076,
+    0.081,
+    0.061
+   ],
+   "ferro": [
+    0.034,
+    0.032,
+    0.03
+   ],
+   "accent": [
+    0.092,
+    0.085,
+    0.081
+   ],
+   "metal": [
+    0.464,
+    0.458,
+    0.448
+   ],
+   "corr": [
+    0.036,
+    0.034,
+    0.032
+   ],
+   "glass": [
+    0.03,
+    0.05,
+    0.05
+   ]
+  }
+ },
+ "counts": {
+  "doors": {
+   "n": 0,
+   "conf": 0.5,
+   "where": []
+  },
+  "windows": {
+   "n": 0,
+   "conf": 0.5,
+   "where": []
+  },
+  "openings_bays": {
+   "n": 0,
+   "conf": 0.5,
+   "where": []
+  },
+  "panels_sections": {
+   "n": 0,
+   "conf": 0.2,
+   "where": []
+  },
+  "crates": {
+   "n": 0,
+   "conf": 0.5,
+   "where": []
+  },
+  "barrels": {
+   "n": 0,
+   "conf": 0.5,
+   "where": []
+  },
+  "tanks": {
+   "n": 0,
+   "conf": 0.5,
+   "where": []
+  },
+  "arches_ribs": {
+   "n": 1,
+   "conf": 0.4,
+   "where": [
+    "barrel vault"
+   ]
+  },
+  "legs_supports": {
+   "n": 0,
+   "conf": 0.5,
+   "where": []
+  },
+  "antennas_dishes": {
+   "n": 0,
+   "conf": 0.3,
+   "where": []
+  },
+  "stairs_ladders": {
+   "n": 0,
+   "conf": 0.3,
+   "where": []
+  }
+ },
+ "archetype_guess": {
+  "archetype": "box",
+  "why": "category building",
+  "supported": true
+ }
+}
