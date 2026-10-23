@@ -103,8 +103,6 @@ uint32_t mc2LightSlotBakedHighWater();
 uint64_t mc2LightSlotDedupHits();
 uint64_t mc2LightSlotActorKeyHits();
 uint32_t mc2LightSlotTableCount();
-void mc2PublishObjectLightPolicy(uint32_t classPolicy, bool sunRecolour, uint32_t sunARGB, bool sunDisabled, bool ambientRecolour, uint32_t ambientARGB, float posX, float posY, float posZ, float terrainSample);
-void mc2ClearObjectLightPolicy(void);
 void GatherLightsParameters(TG_HWLightsData* lights);
 void ProbeGatherLightsForList(TG_LightPtr* lights, unsigned long nLights, TG_HWLightsData* out);
 

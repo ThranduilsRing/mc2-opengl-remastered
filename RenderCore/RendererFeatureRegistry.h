@@ -175,17 +175,7 @@ enum class RendererFeature : int {
     // against a mech's clamp(0.35+A+S*ndl,0,1), so the truck still reads darker
     // than the mech beside it. Default-ON; =0 restores no-floor/no-clamp.
     VehicleAmbientFloor      = 28,  // MC2_VEHICLE_AMBIENT_FLOOR
-    // LIGHT-ROW-PURE-1 (ARCH-LIGHTING slice 1): object light-ROW PRODUCTION
-    // delegated to the pure object_light_row::BuildObjectLightRow, driven by an
-    // explicit query + declared per-class policy instead of the shared-light-
-    // list mutate/gather/restore dance. Row production only -- no shading
-    // change. Default-OFF (killswitch inverted): =1 opts in; in-engine
-    // byte-identity is unproven while launches are blocked.
-    // Its companion diagnostic MC2_LIGHT_ROW_PURE_VERIFY is a Trace var and
-    // lives in kAuxEnvVars, which is deliberately NOT indexed by
-    // RendererFeature.
-    LightRowPure             = 29,  // MC2_LIGHT_ROW_PURE
-    COUNT                    = 30,
+    COUNT                    = 29,
 };
 
 // ---------------------------------------------------------------------------
@@ -341,11 +331,6 @@ static constexpr EnvVarDesc kFeatureTable[] = {
     {
         "MC2_VEHICLE_AMBIENT_FLOOR", "MC2_VEHICLE_AMBIENT_FLOOR", EnvVarKind::Feature, true,
         "VEHICLE-AMBIENT-FLOOR-1: DEFAULT-ON."
-    },
-    // [29] LightRowPure
-    {
-        "MC2_LIGHT_ROW_PURE", "MC2_LIGHT_ROW_PURE", EnvVarKind::Feature, false,
-        "[DEFAULT-OFF, KILLSWITCH INVERTED: MC2_LIGHT_ROW_PURE=1 opts IN to the pure producer; unset/0 is the legacy in-place packing loop in GatherLightsParameters..."
     },
 };
 
@@ -617,10 +602,6 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
     {
         "MC2_FEATURE_LIGHT_REALISM", "MC2_LIGHT_REALISM", EnvVarKind::Feature, true,
         "LIGHT-REALISM-1: night light-pool + cone-glow realism reshape.",
-    },
-    {
-        "MC2_LIGHT_ROW_PURE_VERIFY", "MC2_LIGHT_ROW_PURE_VERIFY", EnvVarKind::Trace, false,
-        "[DEFAULT-OFF.",
     },
     {
         "MC2_TRACE_LINKUP", "MC2_LINKUP_TRACE", EnvVarKind::Trace, false,

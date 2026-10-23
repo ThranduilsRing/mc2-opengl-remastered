@@ -525,16 +525,6 @@ long BldgAppearance::update (bool animate)
 	{
 		bldgShape->SetUseShadow(false);
 
-		// LIGHT-ROW-PURE-1: declare the policy the mutation applied
-		// (sun-slot recolour with the latched terrain-light sample). Inert
-		// unless MC2_LIGHT_ROW_PURE / _VERIFY is on; reproduces that mutation
-		// exactly, and lets the verify gate prove the declaration still matches.
-		mc2PublishObjectLightPolicy(/*kClassBuilding*/1,
-		                            /*sunRecolour*/true, static_cast<uint32_t>(lightRGB),
-		                            /*sunDisabled*/false,
-		                            /*ambientRecolour*/false, 0u,
-		                            position.x, position.y, position.z,
-		                            /*terrainSample*/1.0f);
 
 		bldgShape->SetLightList(eye->getWorldLights(),eye->getNumLights());
 		// Slice 2 (object-offload) — Stage 2.B: eligibility hoist.

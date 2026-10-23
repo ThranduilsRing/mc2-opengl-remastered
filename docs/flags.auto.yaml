@@ -3,9 +3,9 @@
 # Where each gate is read, what the smoke runner forwards and what tier1_env_vars.md says are not here: ask
 # tools/repo_intel (env_var, gate_status), which scan the sources.
 generator_version: "3.0.0"
-gate_count: 834
-registry_entry_count: 172
-verified_count: 790
+gate_count: 832
+registry_entry_count: 170
+verified_count: 788
 flags:
   - name: MC2_ABL_ARG_GUARD
     kind: Bool
@@ -2595,24 +2595,6 @@ flags:
     doc: "MC2_LIGHT_ROW_CENSUS (default OFF) - LIGHT-POS-COMBAT-1."
     smoke_passthrough: true
     verified: true
-  - name: MC2_LIGHT_ROW_PURE
-    kind: Bool
-    default: false
-    rule: Exact1
-    owner: code
-    doc: "[DEFAULT-OFF, KILLSWITCH INVERTED: MC2_LIGHT_ROW_PURE=1 opts IN to the pure producer; unset/0 is the legacy in-place packing loop in GatherLightsParameters..."
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_LIGHT_ROW_PURE, kind: Feature, order: 29, default_on: false}
-  - name: MC2_LIGHT_ROW_PURE_VERIFY
-    kind: Bool
-    default: false
-    rule: Exact1
-    owner: code
-    doc: "[DEFAULT-OFF."
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_LIGHT_ROW_PURE_VERIFY, kind: Trace, order: -1, default_on: false}
   - name: MC2_LINKUP_TRACE
     kind: Bool
     default: false
