@@ -2956,6 +2956,13 @@
           "text": "import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)"
         },
         {
+          "path": "tools/command_replay.py",
+          "line": 16,
+          "evidence": "import",
+          "reference": "console_child",
+          "text": "import console_child"
+        },
+        {
           "path": "tools/comment_guard.py",
           "line": 71,
           "evidence": "import",
@@ -4272,6 +4279,13 @@
           "evidence": "command",
           "reference": "scripts/run_smoke.py",
           "text": "subprocess.run([sys.executable, str(ROOT / 'scripts/run_smoke.py'), '--exe', str(stage / 'mc2.exe'), '--mission', 'a_0_1',"
+        },
+        {
+          "path": "tools/command_replay.py",
+          "line": 60,
+          "evidence": "command",
+          "reference": "scripts/run_smoke.py",
+          "text": "result = subprocess.run(command, cwd=ROOT, env=env, capture_output=True, text=True,"
         },
         {
           "path": "tools/mission_order_ingress_witness.py",
@@ -7488,6 +7502,13 @@
       "path": "tools/classify_materials.py",
       "basename": "classify_materials.py",
       "stem": "classify_materials",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "tools/command_replay.py",
+      "basename": "command_replay.py",
+      "stem": "command_replay",
       "callers_by_basename": [],
       "callers_by_stem": []
     },
