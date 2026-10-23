@@ -217,6 +217,11 @@ void GpuStaticPropBatcher::registerType(TG_TypeShape* typeShape, TG_TypeMultiSha
     const uint32_t baseVertex = static_cast<uint32_t>(s_stagingVbo.size() / kVertexStride);
     const uint32_t newTypeID  = static_cast<uint32_t>(s_types.size());
 
+    // Every vertex carries the 0xffffffff "other light, add as authored" tag: a self-lit card.
+    bool selfLitTwoSided = typeShape->numTypeVertices > 0;
+    for (uint32_t v = 0; selfLitTwoSided && v < typeShape->numTypeVertices; ++v)
+        selfLitTwoSided = (typeShape->listOfTypeVertices[v].aRGBLight == 0xffffffffu);
+
     // Group triangles with the same localTextureHandle into contiguous packets,
     // preserving authored listOfTypeTriangles order. Each packet emits 3
     // vertices per triangle into s_stagingVbo and 3 consecutive indices into
@@ -240,7 +245,13 @@ void GpuStaticPropBatcher::registerType(TG_TypeShape* typeShape, TG_TypeMultiSha
             const float cornerU[3] = { tri.uvdata.u0, tri.uvdata.u1, tri.uvdata.u2 };
             const float cornerV[3] = { tri.uvdata.v0, tri.uvdata.v1, tri.uvdata.v2 };
 
-            for (int c = 0; c < 3; ++c) {
+            // Self-lit cards (the power generator's spinning Coil) are drawn double-sided in stock; the
+            // prop pipeline culls back faces, so the card vanished for half of every revolution. Emit the
+            // triangle a second time with reversed winding and flipped normal.
+            for (int side = 0; side < (selfLitTwoSided ? 2 : 1); ++side)
+            for (int k = 0; k < 3; ++k) {
+                const int c = side ? 2 - k : k;
+                const float nSign = side ? -1.0f : 1.0f;
                 const uint32_t localVertIdx = tri.Vertices[c];
                 // localVertIdx is an index into listOfTypeVertices for the
                 // source TG_TypeVertex; we still pass it through to the shader
@@ -251,9 +262,12 @@ void GpuStaticPropBatcher::registerType(TG_TypeShape* typeShape, TG_TypeMultiSha
                 std::memcpy(vert +  0, &src.position.x, 4);
                 std::memcpy(vert +  4, &src.position.y, 4);
                 std::memcpy(vert +  8, &src.position.z, 4);
-                std::memcpy(vert + 12, &src.normal.x,   4);
-                std::memcpy(vert + 16, &src.normal.y,   4);
-                std::memcpy(vert + 20, &src.normal.z,   4);
+                {
+                    const float nx = src.normal.x * nSign, ny = src.normal.y * nSign, nz = src.normal.z * nSign;
+                    std::memcpy(vert + 12, &nx, 4);
+                    std::memcpy(vert + 16, &ny, 4);
+                    std::memcpy(vert + 20, &nz, 4);
+                }
                 std::memcpy(vert + 24, &cornerU[c],     4);
                 std::memcpy(vert + 28, &cornerV[c],     4);
                 std::memcpy(vert + 32, &localVertIdx,   4);
@@ -277,7 +291,7 @@ void GpuStaticPropBatcher::registerType(TG_TypeShape* typeShape, TG_TypeMultiSha
 
         GpuStaticPropPacket pkt{};
         pkt.firstIndex    = packetFirstIndex;
-        pkt.indexCount    = (runEnd - runStart) * 3;
+        pkt.indexCount    = (runEnd - runStart) * 3 * (selfLitTwoSided ? 2u : 1u);
         pkt.baseVertex    = static_cast<int32_t>(baseVertex);
         // Store the texture slot index, not the handle. MC2 updates the
         // handle each frame via SetTextureHandle; resolving it at draw
