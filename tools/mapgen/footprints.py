@@ -38,7 +38,7 @@ def hull(points):
     return [list(p) for p in chains[0]+chains[1]]
 
 
-def tgl_points(raw):
+def tgl_points(raw, node_positions=None):
     """32-bit disk structs from tgl_types.cpp, bounds rules from msl_load.cpp.
 
     TGL is X,Y-up,Z-depth. renderToMc2 maps local -X,Z to world X,Y.
@@ -76,6 +76,8 @@ def tgl_points(raw):
         centres = struct.unpack("<6f", take(24))
         name = take(25).split(b"\0")[0].lower()
         take(25)
+        if node_positions is not None:
+            node_positions[name.decode('latin1')] = [-centres[3], centres[5], centres[4]]
         if len(verts) and not name.startswith((b"_pab", b"los_", b"spotlight")):
             verts += np.asarray(centres[3:])
             result.extend((verts[:, [0, 2, 1]]*[-1,1,1]).tolist())

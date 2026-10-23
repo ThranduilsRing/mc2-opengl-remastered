@@ -124,7 +124,7 @@ def validate(layout, profile=None):
         members = by_base[base["id"]]
         for obj in members:
             r,c = obj["cell"]
-            if not (r0 <= r < r1 and c0 <= c < c1):
+            if not (r0 <= r < r1 and c0 <= c < c1) and not obj.get('battery_target'):
                 errors.append(f"{obj['id']}: outside its parcel")
         if base["walled"]:
             floor = np.s_[r0+2:r1-2,c0+2:c1-2]
@@ -177,6 +177,11 @@ def validate(layout, profile=None):
                     errors.append(f"{field}={value:.3f} outside corpus range")
     if precise:
         errors.extend(validate_footprints(layout, profile))
+    if layout.get('batteries') and precise:
+        from tools.mapgen.fields_of_fire import evaluate
+        report = evaluate(layout)
+        if report['status'] in ('FAIL', 'INCOMPLETE'):
+            errors.extend('fields of fire: '+s for s in report['errors']+report['incomplete'])
     return errors
 
 
@@ -241,7 +246,10 @@ def validate_footprints(layout, profile=None):
         if profile and parent and obj["class"] in ("turret","turret_control","gate"):
             stats = profile["groups"]["stock"]["links"].get(f"{obj['class']} -> {parent['class']}")
             d = math.dist(pos[:2],parent["position_wu"][:2])/CELL_WU
-            if stats and not stats["min"] <= d <= stats["max"]:
+            if obj.get('battery_target') and obj['class'] in ('turret', 'turret_control'):
+                if not 2 <= d <= 40:
+                    errors.append(f"{obj['id']}: world parent distance outside battery plan")
+            elif stats and not stats["min"] <= d <= stats["max"]:
                 errors.append(f"{obj['id']}: world parent distance outside measured range")
     for base in layout["bases"]:
         if base["walled"] and sum(e["base_id"]==base["id"] for e in edges)!=4:
@@ -261,7 +269,7 @@ def validate_footprints(layout, profile=None):
                 stats = profile["groups"]["stock"]["adjacency"].get(f"{role} -> {role}",{})
                 peers = [o for o in members if o is not obj and
                          (building_role(o) if o["class"]=="building" else o["class"])==role]
-                if peers and stats.get("n",0)>=20:
+                if peers and stats.get("n",0)>=20 and not obj.get('battery_target'):
                     nearest = min(math.dist(obj["position_wu"][:2],o["position_wu"][:2]) for o in peers)/CELL_WU
                     if not stats["min"] <= nearest <= stats["max"]:
                         errors.append(f"{obj['id']}: {role} neighbour spacing outside corpus range")

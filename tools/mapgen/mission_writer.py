@@ -296,7 +296,11 @@ def emit(layout, source, out, name=None):
     for dependency in ('pmwhacksaw.fit', 'pmwregular.fit', 'pbrain.abl', 'sbguard.abl'):
         if not source.has('data/missions/warriors/'+dependency):
             raise ValueError(f'missing stock pilot/brain: {dependency}')
-    cells = np.where(blocked, 2, 0x402).astype('<u4')
+    if layout.get('batteries'):
+        from tools.mapgen.fields_of_fire import bake, Assets
+        cells = bake(layout, Assets(source)).cells.copy()
+    else:
+        cells = np.where(blocked, 2, 0x402).astype('<u4')
     cells[mask_of(layout, 'roads')] |= 0x02000000
     cells[mask_of(layout, 'water')] |= 0x08000000
     cells[[0,-1], :] |= 0x200
@@ -313,6 +317,22 @@ def emit(layout, source, out, name=None):
     stem.with_suffix('.fit').write_bytes(fit)
     script = f'module {layout["name"]} : integer;\ncode\n    return(0);\nendmodule.\n'
     stem.with_suffix('.abl').write_text(script, encoding='ascii')
+    if layout.get('batteries'):
+        # Pilot skill is type data, absent from the 40-byte mission record.
+        # Emit an explicit companion catalog for this generated mission install.
+        object2 = source.read('data/objects/object2.pak')[0]
+        count = struct.unpack_from('<I', object2, 4)[0]//4-2
+        skills = {o['type_id']: o['pilot_skill'] for o in layout['objects'] if 'pilot_skill' in o}
+        catalog_packets = []
+        for i in range(count):
+            data = packet(object2, i)
+            if i in skills:
+                data, n = re.subn(rb'(l\s+PilotSkill\s*=\s*)\d+',
+                                 lambda m: m[1]+str(skills[i]).encode(), data, flags=re.I)
+                if n != 1:
+                    raise ValueError(f'cannot set pilot skill for type {i}')
+            catalog_packets.append(PacketRecord(i, 4, make_zlib_payload(data)))
+        write_pak(catalog_packets, out/'object2.pak')
     colormap = None
     if layout['source'].get('biome') == 'suburban_forest':
         from tools.mapgen.suburban_forest import cook_colormap
