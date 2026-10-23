@@ -16,6 +16,7 @@
 // matrix and boneT * vec4(pos,1) is row-vector math. Do NOT "fix" the transpose.
 #version 450
 #extension GL_GOOGLE_include_directive : require
+invariant gl_Position;
 
 layout(location = 0) in vec3  a_position;
 layout(location = 1) in vec3  a_normal;

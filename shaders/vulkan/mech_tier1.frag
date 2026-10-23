@@ -27,6 +27,8 @@
 //       rc_gbuffer1_screenShadowEligible(N_gbuf) = vec4(N*0.5+0.5, 0.0), N_gbuf = Nshade.
 #version 450
 #extension GL_GOOGLE_include_directive : require
+// Depth was established by the matching alpha-tested prepass; this pass never writes it.
+layout(early_fragment_tests) in;
 
 // Per-frame UBO: generated from RenderCore/gpu_abi/GpuMechFrameUBO.h.
 #include "include/mech_frame_ubo_vk.glsl"

@@ -235,9 +235,9 @@ struct MechIsland : mc2vk::IslandState {
     mc2vk::OwnedDescriptorSetLayout dsl;
     mc2vk::OwnedDescriptorPool pool;
     mc2vk::OwnedSampler albedoSamp;
-    mc2vk::OwnedShaderModule vert, frag;
+    mc2vk::OwnedShaderModule vert, frag, depthVert, depthFrag;
     mc2vk::OwnedPipelineLayout playout;
-    mc2vk::OwnedPipeline pipe;
+    mc2vk::OwnedPipeline pipe, depthPipe;
     mc2vk::OwnedBuffer vbo, ibo;
 
     ~MechIsland() override { gpuTimer.destroy(); }
@@ -576,7 +576,9 @@ bool init_island(MechIsland* s, int w, int h) {
     {
         s->vert = mc2vk::OwnedShaderModule(s->device, load_spv(s->device, spv_dir() + "mech_tier1.vert.spv"));
         s->frag = mc2vk::OwnedShaderModule(s->device, load_spv(s->device, spv_dir() + "mech_tier1.frag.spv"));
-        if (!s->vert || !s->frag) { setFallback("spv_load_failed"); return false; }
+        s->depthVert = mc2vk::OwnedShaderModule(s->device, load_spv(s->device, spv_dir()+"mech_depth.vert.spv"));
+        s->depthFrag = mc2vk::OwnedShaderModule(s->device, load_spv(s->device, spv_dir()+"mech_depth.frag.spv"));
+        if (!s->vert || !s->frag || !s->depthVert || !s->depthFrag) { setFallback("spv_load_failed"); return false; }
 
         // VK-PARITY-MECH-1: per-run materialFlags (ALPHA_TEST discard, mech.frag:177).
         VkPushConstantRange pcr{};
@@ -659,6 +661,16 @@ bool init_island(MechIsland* s, int w, int h) {
         gp.pMultisampleState = &ms; gp.pDepthStencilState = &ds; gp.pColorBlendState = &cb;
         gp.pDynamicState = &dsci;
         gp.layout = s->playout.get(); gp.renderPass = s->rpass.get(); gp.subpass = 0;
+        stages[0].module=s->depthVert.get();stages[1].module=s->depthFrag.get();
+        for(auto& attachment:cba)attachment.colorWriteMask=0;
+        if (!mc2vk::create(s->depthPipe,s->device,[&](VkPipeline* h) { return mc2vk::infra::graphics(s->device,VK_NULL_HANDLE,1,&gp,nullptr,h); })) {
+            setFallback("depth_pipeline_failed");return false;
+        }
+        mc2vk::nameObject(s->device,s->depthPipe.get(),"mech.depth");
+        stages[0].module=s->vert.get();stages[1].module=s->frag.get();
+        for(auto& attachment:cba)attachment.colorWriteMask=VK_COLOR_COMPONENT_R_BIT|VK_COLOR_COMPONENT_G_BIT|VK_COLOR_COMPONENT_B_BIT|VK_COLOR_COMPONENT_A_BIT;
+        ds.depthWriteEnable=VK_FALSE;
+        ds.depthCompareOp=VK_COMPARE_OP_EQUAL;
         if (!mc2vk::create(s->pipe, s->device, [&](VkPipeline* h) { return mc2vk::infra::graphics(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, h); })) {
             setFallback("pipeline_failed"); return false;
         }
@@ -1050,7 +1062,6 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
     vkCmdSetViewport(cb, 0, 1, &vp);
     vkCmdSetScissor(cb, 0, 1, &scissor);
 
-    mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->pipe.get());
     VkDeviceSize vboOff = 0;
     const VkBuffer vertexBuffer = s->vbo.get();
     vkCmdBindVertexBuffers(cb, 0, 1, &vertexBuffer, &vboOff);
@@ -1058,6 +1069,24 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
 
     // VK-DRAW-PERF-1: stamp draws-start (gap 0->1 = setup + binds).
     s->gpuTimer.write(cb, 1);
+
+    // Establish final visible depth with cheap skinning + the identical cutout test.
+    // The color pipeline is read-only EQUAL with early fragment tests: hidden
+    // triangles never execute the local-light loop, and discard cannot write depth.
+    mc2vk::infra::bind(cb,VK_PIPELINE_BIND_POINT_GRAPHICS,s->depthPipe.get());
+    VkDescriptorSet depthSet=VK_NULL_HANDLE;
+    for(uint32_t r=0;r<feed.runCount;++r) {
+        const auto& run=feed.runs[r];if(!run.indexCount || !run.instanceCount)continue;
+        const auto set=runSets[r];
+        if(set!=depthSet) {
+            vkCmdBindDescriptorSets(cb,VK_PIPELINE_BIND_POINT_GRAPHICS,s->playout.get(),0,1,&set,5,dynOffsets);
+            depthSet=set;
+        }
+        const MechRunPC pc{run.materialFlags,0,0};
+        vkCmdPushConstants(cb,s->playout.get(),VK_SHADER_STAGE_FRAGMENT_BIT,0,sizeof(pc),&pc);
+        vkCmdDrawIndexed(cb,run.indexCount,run.instanceCount,run.firstIndex,run.baseVertex,run.instanceBase);
+    }
+    mc2vk::infra::bind(cb,VK_PIPELINE_BIND_POINT_GRAPHICS,s->pipe.get());
 
     // One indexed instanced draw per run. firstInstance = run.instanceBase so the VS's
     // gl_InstanceIndex indexes the instance SSBO snapshot exactly as the GL VS's
