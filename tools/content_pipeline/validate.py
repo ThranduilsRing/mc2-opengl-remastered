@@ -179,7 +179,7 @@ def validate_runtime_glb(path, *, max_triangles=None, texture_root=None):
     if doc.get("skins") or doc.get("animations"):
         _err(issues, "RUNTIME_SKIN", "static runtime GLB carries skins/animations")
     for i, n in enumerate(doc.get("nodes", [])):
-        if any(k in n for k in ("matrix", "translation", "rotation", "scale")) or n.get("children"):
+        if ("mesh" in n and any(k in n for k in ("matrix", "translation", "rotation", "scale"))) or n.get("children"):
             _err(issues, "RUNTIME_NODE", f"node {i} is not an identity leaf (transforms must be baked)")
     names = [n.get("name", "") for n in doc.get("nodes", [])]
     dups = sorted({n for n in names if n and names.count(n) > 1})

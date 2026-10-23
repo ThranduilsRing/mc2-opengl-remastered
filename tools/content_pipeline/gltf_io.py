@@ -309,7 +309,7 @@ def read_gltf(path, *, frame="gltf", wu_per_unit=1.0, yaw_degrees=0.0, extract_d
             raise ValueError("cyclic node graph")
         src = doc["nodes"][i]
         node = Node(src.get("name") or f"node_{i}", parent, node_matrix(src),
-                    mesh_index(src["mesh"]) if "mesh" in src else None)
+                    mesh_index(src["mesh"]) if "mesh" in src else None, src.get("extras", {}))
         scene.nodes.append(node)
         me = len(scene.nodes) - 1
         for c in src.get("children", []):
@@ -393,6 +393,14 @@ def write_runtime_glb(scene: Scene, materials: list[Material], texture_names: di
             out["pbrMetallicRoughness"]["baseColorTexture"] = {"index": len(textures) - 1}
         doc["materials"].append(out)
     used = {}
+    # Attachment-only nodes carry authored light contracts and must survive baking.
+    for node, world in zip(scene.nodes, scene.world_matrices()):
+        if node.mesh is not None or not node.extras:
+            continue
+        matrix = to_runtime @ world
+        doc["nodes"].append({"name": node.name, "matrix": matrix.T.reshape(-1).tolist(), "extras": node.extras})
+        doc["scenes"][0]["nodes"].append(len(doc["nodes"]) - 1)
+        used[node.name] = 1
     for node_name, prim in scene.flattened():
         # The engine importer keys shapes by node name: every runtime node name is unique.
         k = used.get(node_name, 0)

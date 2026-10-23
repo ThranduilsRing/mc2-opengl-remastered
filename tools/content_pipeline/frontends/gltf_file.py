@@ -13,6 +13,8 @@ import json
 import tempfile
 from pathlib import Path
 
+import numpy as np
+
 from .. import gltf_io, ir
 
 SIDE_KEYS = ("frame", "wu_per_unit", "yaw_degrees", "license", "source_url", "provider")
@@ -53,6 +55,19 @@ def read_scene(path, meta, extract_dir, classes=None, allow_skin=False):
         path, class_of=class_of, frame=meta.get("frame", "gltf"), wu_per_unit=float(meta.get("wu_per_unit", 1.0)),
         yaw_degrees=float(meta.get("yaw_degrees", 0.0)), extract_dir=extract_dir, allow_skin=allow_skin,
         texture_roots=tuple(meta.get("texture_roots", ())), unclassified=meta.get("unclassified", "error"))
+    frame = gltf_io.frame_matrix(meta.get("frame", "gltf"), float(meta.get("wu_per_unit", 1)),
+                                 float(meta.get("yaw_degrees", 0)))
+    for node in scene.nodes:
+        props = node.extras
+        if props.get("mc2_light_schema") != "mc2-building-light/1":
+            continue
+        position = frame @ np.array([*props["mc2_light_position_gltf_m"], 1.0])
+        direction = frame[:3, :3] @ np.asarray(props["mc2_light_direction_gltf"], float)
+        length = np.linalg.norm(direction)
+        radius = float(props["mc2_light_range_m"]) * float(np.linalg.norm(frame[:3, 0]))
+        if not np.isfinite(position).all() or not np.isfinite(length) or length < 1e-8 or not 0 < radius < 1e6:
+            raise ValueError(f"invalid light socket {node.name}")
+        props.update(position_tg_wu=position[:3].tolist(), direction_tg=(direction / length).tolist(), range_wu=radius)
     return scene, _apply_classes(materials, classes or {}), info
 
 
@@ -89,8 +104,14 @@ def to_ir(asset_id, replaces, intact, *, kind="building", lods=(), destroyed=Non
 
     for path, distance in lods:
         states["intact"].append(ir.Lod(load(path, "geometry_lod"), float(distance)))
+    def damage_chain(entry, role):
+        spec = entry if isinstance(entry, dict) else {"intact": entry}
+        result = [ir.Lod(load(spec["intact"], role))]
+        result += [ir.Lod(load(p, role + "_lod"), float(d)) for p, d in spec.get("lods", [])]
+        return result
+
     if destroyed is not None:
-        states["destroyed"] = [ir.Lod(load(destroyed, "geometry_destroyed"))]
+        states["destroyed"] = damage_chain(destroyed, "geometry_destroyed")
     shadow_scenes = {st: load(p, f"shadow_{st}") for st, p in (shadows or {}).items()}
     cond = {}
     for name, spec in (conditions or {}).items():
@@ -98,7 +119,7 @@ def to_ir(asset_id, replaces, intact, *, kind="building", lods=(), destroyed=Non
         for path, distance in spec.get("lods", []):
             cond[name]["intact"].append(ir.Lod(load(path, f"geometry_{name}_lod"), float(distance)))
         if spec.get("destroyed") is not None:
-            cond[name]["destroyed"] = [ir.Lod(load(spec["destroyed"], f"geometry_{name}_destroyed"))]
+            cond[name]["destroyed"] = damage_chain(spec["destroyed"], f"geometry_{name}_destroyed")
     # An authoring tool may name a display texture (e.g. AO pre-multiplied for a diffuse-only path) in
     # the GLB; the recipe points the slot at the pure base colour instead. AO belongs in ORM.R.
     for name, path in (base_color or {}).items():
@@ -114,6 +135,11 @@ def to_ir(asset_id, replaces, intact, *, kind="building", lods=(), destroyed=Non
     skeleton = None
     if info["skins"]:
         skeleton = ir.SkeletonRef(ir.Source.of("skeleton", intact), info["joints"], info["clips"])
+    sockets = list(sockets)
+    for node in scene.nodes:
+        if node.extras.get("mc2_light_schema") == "mc2-building-light/1":
+            props = node.extras
+            sockets.append(ir.Socket(node.name, "light", node.name, np.eye(4), dict(props)))
     return ir.Asset(id=asset_id, kind=kind, replaces=replaces, materials=materials, states=states,
                     shadows=shadow_scenes, conditions=cond, skeleton=skeleton, provenance=provenance,
                     frontend={"name": "gltf_file", "source": str(intact), "meta": meta, "texel_scale": texel_scale,

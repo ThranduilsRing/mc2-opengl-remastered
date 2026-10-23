@@ -22,9 +22,11 @@ from pathlib import Path
 
 import numpy as np
 
-from . import gltf_io, ir, texcook, validate
+from . import cache, gltf_io, ir, texcook, validate
 
 PACKAGE_VERSION = "mc2-content-package/1"
+COOKER_VERSION = "mc2-content-cooker/2"  # transforms, damage chains and attachment payloads
+GEOMETRY_CACHE = cache.CacheKind("model-", ".glb")
 DETAIL_EDGE = 512        # every authored detail map in a mission shares this extent (engine array)
 SAFE = re.compile(r"[a-z0-9][a-z0-9_-]{0,62}")
 
@@ -145,9 +147,27 @@ def cook_asset(asset: ir.Asset, out: Path, *, compress=True, max_triangles=None,
                    texcook.cook_ktx2(img, "base_color", alpha_cutoff=cutoff, compress=compress))
             entry["files"].setdefault("base_color", []).append(f"data/tgl/{tier}/{name}")
 
+    # Work-directory image paths are deliberately absent from content identity. Resolved
+    # source digests, geometry, material policy and cooker version determine cache entries.
+    def identity(value):
+        if isinstance(value, dict):
+            return {k: identity(v) for k, v in value.items() if k not in ("path", "frontend")}
+        if isinstance(value, list):
+            return [identity(v) for v in value]
+        return value
+
+    content = ir.sha256_bytes(json.dumps(identity(ir.to_json(asset)), sort_keys=True).encode())
+
     def glb(scene, stem, state):
         path = folder / f"{stem}.glb"
-        _write(path, gltf_io.write_runtime_glb(scene, asset.materials, names))
+        key = cache.cache_key(COOKER_VERSION, {"chain": stem, "names": names}, [content])
+        data = cache.read_entry(cache.DEFAULT_DIR, GEOMETRY_CACHE, key)
+        hit = data is not None
+        if data is None:
+            data = gltf_io.write_runtime_glb(scene, asset.materials, names)
+            cache.write_entry(cache.DEFAULT_DIR, GEOMETRY_CACHE, key, data)
+        entry.setdefault("geometry_cache", {})[stem] = {"key": f"{key:016x}", "hit": hit}
+        _write(path, data)
         issues = validate.validate_runtime_glb(path, max_triangles=max_triangles)
         entry["validation"][stem] = [list(i) for i in issues]
         if validate.errors(issues):
@@ -156,6 +176,10 @@ def cook_asset(asset: ir.Asset, out: Path, *, compress=True, max_triangles=None,
 
     def chain(cond, state, lods):
         rec = {"source": glb(lods[0].scene, f"{cond}_{state}_lod0", state)}
+        lights = [dict(n.extras, name=n.name) for n in lods[0].scene.nodes
+                  if n.extras.get("mc2_light_schema") == "mc2-building-light/1"]
+        if lights:
+            rec["lightSockets"] = lights
         if len(lods) > 1:
             rec["lods"] = [{"lod": i, "source": glb(l.scene, f"{cond}_{state}_lod{i}", state),
                             "distance": float(l.distance)} for i, l in enumerate(lods) if i > 0]

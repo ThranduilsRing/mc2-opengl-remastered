@@ -120,6 +120,57 @@ def test_runtime_frame_is_axis0_inverse(tmp_path):
     assert np.allclose(raw, tg * [-1, -1, 1], atol=1e-5)
 
 
+def test_kit_light_and_destroyed_lods_survive_cook(tmp_path):
+    from tools.content_pipeline.cook import build_asset
+    src, doc, *_ = make_gltf(tmp_path)
+    doc["nodes"][0]["children"].append(3)
+    doc["nodes"].append({"name": "LIGHT_door_01", "translation": [1, 2, 3], "extras": {
+        "mc2_light_schema": "mc2-building-light/1", "mc2_light_type": "spot",
+        "mc2_light_position_gltf_m": [1, 2, 3], "mc2_light_direction_gltf": [0, 0, -1],
+        "mc2_light_colour_linear": [1, 0.8, 0.5], "mc2_light_intensity_class": "door",
+        "mc2_light_range_m": 5, "mc2_light_outer_cone_degrees": 60,
+        "mc2_light_active": True, "mc2_light_lights_out_on_destroy": True}})
+    src.write_text(json.dumps(doc))
+    dead = tmp_path / "dead.gltf"
+    doc["nodes"][0]["children"].remove(3)
+    doc["nodes"].pop()
+    dead.write_text(json.dumps(doc))
+    spec = {"frontend": "gltf", "id": "kit", "replaces": "staticProp:hangar", "intact": str(src),
+            "wu_per_unit": 4, "destroyed": {"intact": str(dead), "lods": [[str(dead), 100]]}}
+    asset = build_asset(spec, {}, tmp_path / "work")
+    again = ir.from_json(ir.to_json(asset)).check()
+    assert again.sockets[0].kind == "light"
+    assert again.sockets[0].properties["position_tg_wu"] == [4, 8, 12]
+    assert again.sockets[0].properties["range_wu"] == 20
+    out = package.build_package([again], tmp_path / "out", mod_id="kit", compress=False)
+    rec = json.loads((out / "data/model_overrides/models.json").read_text())["overrides"][0]
+    assert rec["lightSockets"][0]["direction_tg"] == [0, 0, -1]
+    assert "lightSockets" not in rec["destroyed"]
+    assert len(rec["destroyed"]["lods"]) == 1
+    runtime, _ = gltf_io.split_glb((out / "data/model_overrides" / rec["source"]).read_bytes())
+    light = next(n for n in runtime["nodes"] if n["name"] == "LIGHT_door_01")
+    assert light["extras"]["position_tg_wu"] == [4, 8, 12]
+
+
+def test_geometry_cache_tracks_source_and_cooker_across_work_dirs(tmp_path, monkeypatch):
+    src, doc, *_ = make_gltf(tmp_path)
+    def run(work, output):
+        asset = gltf_file.to_ir("panel", "staticProp:panel", src, work_dir=tmp_path / work)
+        out = package.build_package([asset], tmp_path / output, mod_id="panel", compress=False)
+        return json.loads((out / "content/report.json").read_text())["assets"][0]["geometry_cache"]
+    first = run("w1", "p1")["pristine_intact_lod0"]
+    second = run("w2", "p2")["pristine_intact_lod0"]
+    assert not first["hit"] and second["hit"] and first["key"] == second["key"]
+    # Same filename and unchanged mesh: an edited source byte still invalidates the cook.
+    doc["asset"]["copyright"] = "new source revision"
+    src.write_text(json.dumps(doc))
+    third = run("w3", "p3")["pristine_intact_lod0"]
+    assert not third["hit"] and third["key"] != first["key"]
+    monkeypatch.setattr(package, "COOKER_VERSION", "test-new-cooker")
+    fourth = run("w4", "p4")["pristine_intact_lod0"]
+    assert not fourth["hit"] and fourth["key"] != third["key"]
+
+
 # --------------------------------------------------------------------------- cache key
 
 def test_cache_key_is_content_not_name(tmp_path):
