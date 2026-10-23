@@ -86,7 +86,11 @@ void GpuStaticPropBatcher::publishGeometry() {
     s_packetAlphaBaked.assign(s_packets.size(), 0u);
     for (size_t pi = 0; pi < s_packets.size(); ++pi) {
         const auto& pkt = s_packets[pi];
-        s_packetAlphaBaked[pi] = packetHasAlpha(pkt, pkt.owningTypeID < s_types.size() ? s_types[pkt.owningTypeID].source : nullptr) ? 1u : 0u;
+        const auto* type = pkt.owningTypeID < s_types.size() ? &s_types[pkt.owningTypeID] : nullptr;
+        // Authored override cutouts must occlude later vegetation. Stock partial
+        // coverage retains PROP-COVERAGE-1; opaque override packets stay opaque.
+        if (packetHasAlpha(pkt, type ? type->source : nullptr))
+            s_packetAlphaBaked[pi] = type && type->isOverride ? 2u : 1u;
     }
 
     s_geometryFinalized = true;
@@ -683,7 +687,8 @@ bool GpuStaticPropBatcher::packetAlphaTest(uint32_t packet) const {
 }
 
 extern "C" int mc2_static_prop_packet_alpha_test(uint32_t packet) {
-    return GpuStaticPropBatcher::instance().packetAlphaTest(packet) ? 1 : 0;
+    if (!s_geometryFinalized || packet >= s_packetAlphaBaked.size()) return 0;
+    return s_packetAlphaBaked[packet];
 }
 
 extern "C" int mc2_static_prop_geometry_cpu(const void** vbo, uint64_t* vboBytes, const void** ibo, uint64_t* iboBytes) {

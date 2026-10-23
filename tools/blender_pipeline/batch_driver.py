@@ -38,7 +38,7 @@ TOOL_DIR = Path(__file__).resolve().parent
 RECIPE_DIR = TOOL_DIR / "recipes"
 ASE_TO_GLB = TOOL_DIR.parent / "ase_to_glb.py"
 
-KNOWN_RECIPES = ("upscale_mesh", "decimate_lods", "rebake_pbr")
+KNOWN_RECIPES = ("upscale_mesh", "decimate_lods", "rebake_pbr", "fence_gen")
 OUT_KINDS = ("tgl_ini", "models_json", "glb_only")
 ASSET_CLASSES = ("mech", "prop", "building", "vehicle", "tree")
 SCHEMA_VERSION = "1.0"
@@ -349,6 +349,14 @@ def recipe_args_for(job, ctx):
             job["out"].get("source_name") or name
         args["ratios"] = ",".join(str(r) for r in params["ratios"])
         for k in ("weld", "min-tris"):
+            pk = k.replace("-", "_")
+            if pk in params:
+                args[k] = params[pk]
+    elif recipe == "fence_gen":
+        args["in"] = str(work / "src.glb")
+        args["out"] = str(work / "transformed.glb")
+        args["tex-dir"] = str(work / "tex")
+        for k in ("variant", "lattice", "metal", "tex-res"):
             pk = k.replace("-", "_")
             if pk in params:
                 args[k] = params[pk]
