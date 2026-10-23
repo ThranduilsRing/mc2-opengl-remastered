@@ -131,17 +131,24 @@ void MissionInterfaceManager::update (void)
 		extern uint32_t g_mc2FrameCounter;
 		static const long s_qsAt = static_cast<long>(mc2::gate::get<"MC2_BOOT_QUICKSAVE_AT">());
 		static const long s_qlAt = static_cast<long>(mc2::gate::get<"MC2_BOOT_QUICKLOAD_AT">());
+		static long s_qsIssuedAt = -1;
 		if (s_qsAt > 0) {
 			static bool s_qsDone = false;
 			if (!s_qsDone && static_cast<long>(g_mc2FrameCounter) >= s_qsAt &&
 				eye && !eye->inMovieMode) {
 				s_qsDone = true;
+				s_qsIssuedAt = static_cast<long>(g_mc2FrameCounter);
 				saveInMissionSave = true;
 			}
 		}
 		if (s_qlAt > 0) {
 			static bool s_qlDone = false;
-			if (!s_qlDone && static_cast<long>(g_mc2FrameCounter) >= s_qlAt &&
+			// An intro camera can delay both thresholds. Keep the requested gap
+			// after the actual save, so load never races it or reads an older file.
+			const long loadAt = s_qsAt > 0 && s_qsIssuedAt >= 0
+				? std::max(s_qlAt, s_qsIssuedAt + std::max(1L, s_qlAt - s_qsAt)) : s_qlAt;
+			if (!s_qlDone && (s_qsAt <= 0 || s_qsIssuedAt >= 0) &&
+				static_cast<long>(g_mc2FrameCounter) >= loadAt &&
 				eye && !eye->inMovieMode) {
 				s_qlDone = true;
 				loadInMissionSave = true;
