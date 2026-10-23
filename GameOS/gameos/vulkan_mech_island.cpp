@@ -59,6 +59,7 @@
 #include "vk_shared_gbuffer_gate.h"      // VK-P14 GATE-CONSOLIDATION-1 umbrella resolver
 #include "vk_shared_light_feed.h"        // VK-LIGHTFEED-DEDUP-1: shared per-frame LightsData SSBO
 #include "gos_terrain_lighting.h"
+#include "light_pool_culling.h"
 #include "vk_gpu_timestamps.h"           // VK-DRAW-PERF-1: MC2_VK_GPU_TIMESTAMPS GPU segment timers
 #define MC2_VULKAN_SHARED_SCENE_COLOR_IMPL_ISLAND
 #include "vulkan_shared_scene_color.h"   // shared scene color/normal images
@@ -781,6 +782,10 @@ bool posed_light_bounds(const std::vector<BoneBounds>& local, const Mc2MechFrame
             }
         }
     }
+    for(unsigned a=0;a<3;++a) {
+        const float margin=0.01f+std::max(std::abs(lo[a]),std::abs(hi[a]))*0.000002f;
+        lo[a]-=margin;hi[a]+=margin;
+    }
     return true;
 }
 
@@ -806,14 +811,10 @@ void build_draw_lights(MechIsland* s,const Mc2MechFrameFeed& feed,int count,
             float lo[3],hi[3];
             if(posed_light_bounds(local,feed,run.instanceBase+n,lo,hi)) {
                 const auto first=lights.size();
-                for(int i=0;i<count;++i) {
-                    const auto& l=pool[i];if(!l.lightType)continue;
-                    float radius=l.farDistance;
-                    if(l._pad1>0.5f && feed.poolMoverScale<0.999f)radius*=std::max(feed.poolMoverScale,0.05f);
-                    float d2=0;
-                    for(unsigned a=0;a<3;++a) {const float d=std::max({lo[a]-l.position[a],0.0f,l.position[a]-hi[a]});d2+=d*d;}
-                    if(radius>0 && d2<=radius*radius*1.00001f)lights.push_back(l);
-                }
+                std::array<bool,kMaxPoolLights> keep;
+                gos_terrain_lighting::CullObjectPool(pool,uint32_t(count),lo,hi,
+                    feed.poolMoverScale,feed.poolMoverDim,feed.poolSoft!=0,feed.poolMoverMax!=0,keep);
+                for(int i=0;i<count;++i)if(keep[i])lights.push_back(pool[i]);
                 const auto selected=lights.size()-first;
                 if(selected<=64)pc={run.materialFlags,uint32_t(first),uint32_t(selected)};
                 else {lights.resize(first);++overflow;} // exact, stable full-pool overflow fallback
