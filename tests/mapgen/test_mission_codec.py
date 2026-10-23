@@ -1,7 +1,10 @@
 """Shared offline codecs and their stock comparison with real native readers."""
 import json
 import os
+import re
 import subprocess
+import sys
+from pathlib import Path
 
 import pytest
 
@@ -18,8 +21,37 @@ def test_parent_sentinels_and_packed_cell():
     assert parent_cell(0x8123ABCD) == [0x8123, 0xABCD]
 
 
-@pytest.mark.skipif(not os.environ.get('MC2_CODEC_READER'), reason='set MC2_CODEC_READER for native stock proof')
+ROOT = Path(__file__).resolve().parents[2]
+READER_CANDIDATES = ('build64-ninja/out/editor/editor_objective_reader_tests.exe',
+                     'build64/out/editor/RelWithDebInfo/editor_objective_reader_tests.exe')
+DEFAULT_INSTALL = 'A:/Games/mc2-opengl/mc2-win64-v0.4'
+
+
+def _required():
+    return os.environ.get('MC2_CODEC_REQUIRED') == '1'
+
+
+def _skip_or_fail(msg):
+    """MC2_CODEC_REQUIRED=1 (the mission_codec_golden contract row) turns every would-be skip into a failure."""
+    pytest.fail(msg) if _required() else pytest.skip(msg)
+
+
+def _reader():
+    """The built native reader: $MC2_CODEC_READER, else a known build output; the contract row builds it when missing."""
+    found = os.environ.get('MC2_CODEC_READER') or next((str(ROOT / c) for c in READER_CANDIDATES if (ROOT / c).exists()), None)
+    if not found and _required():
+        subprocess.run([sys.executable, str(ROOT / 'scripts/ninja_build.py'), 'editor_objective_reader_tests'], check=True)
+        found = next((str(ROOT / c) for c in READER_CANDIDATES if (ROOT / c).exists()), None)
+    if not found:
+        _skip_or_fail('editor_objective_reader_tests.exe not built (py -3 scripts/ninja_build.py editor_objective_reader_tests)')
+    return found
+
+
 def test_stock_native_roundtrip(tmp_path):
+    reader = _reader()
+    install = os.environ.get('MC2_CODEC_INSTALL') or (DEFAULT_INSTALL if Path(DEFAULT_INSTALL).is_dir() else '')
+    if not install:
+        _skip_or_fail('no install dir for the native reader (set MC2_CODEC_INSTALL)')
     names = ('mc2_01', 'mc2_03', 'mc2_17', 'mc2_24')
     stock = resolve_missions_dir(os.environ.get('MC2_CODEC_STOCK'), missions=names, allow_fst_extract=False).dir
     for name in names:
@@ -39,8 +71,10 @@ def test_stock_native_roundtrip(tmp_path):
         (tmp_path / f'{name}.json').write_text(json.dumps(expected, separators=(',', ':')), encoding='utf8')
         write_pak([PacketRecord(i, 4, make_zlib_payload(p)) for i, p in enumerate(rebuilt)],
                   tmp_path / f'{name}_roundtrip.pak')
-    (tmp_path / 'codec_case.txt').write_text('\n'.join([str(tmp_path), os.environ.get('MC2_CODEC_INSTALL', ''), '']), encoding='utf8')
-    result = subprocess.run([os.environ['MC2_CODEC_READER'], '--test-case=mission-codec/*', '--no-breaks'],
+    (tmp_path / 'codec_case.txt').write_text('\n'.join([str(tmp_path), install, '']), encoding='utf8')
+    result = subprocess.run([reader, '--test-case=mission-codec/*', '--no-breaks'],
                             cwd=tmp_path, capture_output=True, text=True)
     (tmp_path / 'native.log').write_text(result.stdout + result.stderr, encoding='utf8')
     assert result.returncode == 0, (result.stdout + result.stderr)[-12000:]
+    # The C++ case returns early (and doctest counts a pass) when it does not see codec_case.txt: require real assertions.
+    assert re.search(r'assertions:\s+[1-9]\d*\s+\|', result.stdout), 'native codec case ran no assertions: ' + result.stdout[-4000:]
