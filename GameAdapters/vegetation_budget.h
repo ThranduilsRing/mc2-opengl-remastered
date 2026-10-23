@@ -4,6 +4,7 @@
 #include <cstdint>
 #include "../mclib/math/glm_config.h"
 #include "../3rdparty/glm/glm/packing.hpp"
+#include "../RenderCore/GpuResidencyPolicy.h"
 
 namespace mc2::vegetation {
 // XY retain full map precision; height/scale and seed use half floats. Yaw is
@@ -18,8 +19,8 @@ inline PackedInstance packInstance(float x, float y, float z, float yaw, float s
     const uint32_t seedHalf = glm::packHalf2x16(glm::vec2(seed, 0)) & 65535u;
     return {x, y, glm::packHalf2x16(glm::vec2(z, scale)), seedHalf | (turn << 16u) | ((atlas & 255u) << 24u)};
 }
-constexpr uint32_t kVisibleCapacity = 512u * 1024u;
-constexpr uint64_t kResidentBudget = 80ull * 1024 * 1024;
+constexpr uint32_t kVisibleCapacity = RenderCore::vegetationVisibleCapacity;   // one model: RenderCore/GpuResidencyPolicy.h
+constexpr uint64_t kResidentBudget = RenderCore::vegetationResidentCeiling;
 // Regions remain 32 B; even a one-instance region must fit the device range.
 inline uint32_t storagePopulationCapacity(uint32_t requested, uint64_t maxStorageRange) {
     return uint32_t(std::min(uint64_t(requested), maxStorageRange / 32u));

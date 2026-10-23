@@ -9354,6 +9354,26 @@
     "frame_upload_bytes",
     "last_survivors"
    ],
+   "count": 3
+  },
+  {
+   "tag": "VEG_GPU",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "survivors",
+    "cap"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VEG_GPU",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "wanted",
+    "cap"
+   ],
    "count": 1
   },
   {
@@ -9365,7 +9385,7 @@
     "draw_calls",
     "flush_reason"
    ],
-   "count": 1
+   "count": 3
   },
   {
    "tag": "VERIFY",
@@ -10404,7 +10424,7 @@
    "ver": 1,
    "stream": "stderr",
    "keys": [],
-   "count": 2
+   "count": 4
   },
   {
    "tag": "VK_RESIDENCY",
@@ -10551,7 +10571,7 @@
     "stride",
     "instances"
    ],
-   "count": 1
+   "count": 3
   },
   {
    "tag": "VK_SCENE_READBACK",
@@ -11142,6 +11162,7 @@
   "TGL_POOL",
   "TIMING",
   "TOOLVK",
+  "VEG_GPU",
   "VEG_SUMMARY",
   "VERIFY",
   "VFX_",

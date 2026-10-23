@@ -223,20 +223,25 @@ TEST_CASE("shadow bake: heights are bounded by mask resolution and preserve a pl
 
 TEST_CASE("GPU residency: vegetation thins by stride instead of refusing") {
     using namespace RenderCore;
-    // mc2_03 at the default quality: 2.5M instances, ~30k regions. 128 MiB resident, 80 MiB of staging, a 2 GiB device budget.
+    // mc2_03 at the default quality: 2.5M instances, ~30k regions in the packed model (16 B instances): about 48 MiB resident.
     const auto q2 = gpuResidencyPolicy(2);
-    CHECK(vegetationBytes(2512462, 30000, 2) < 140 * gpuMiB);
-    CHECK(vegetationStride(2512462, 30000, 2, q2.vegetation, 2000 * gpuMiB) == 1);
+    CHECK(q2.vegetation == vegetationResidentCeiling);   // the upload's own 80 MiB ceiling is the policy
+    CHECK(vegetationBytes(2512462, 30000) < 60 * gpuMiB);
+    CHECK(vegetationStride(2512462, 30000, q2.vegetation, 2000 * gpuMiB) == 1);
+    // a dense mod past the 80 MiB ceiling thins by stride instead of losing every instance
+    const uint32_t sDense = vegetationStride(9000000, 40000, q2.vegetation, 2000 * gpuMiB);
+    CHECK(sDense > 1);
+    CHECK(vegetationBytes((9000000 + sDense - 1) / sDense, 40000) <= q2.vegetation);
     // quality 1 (32 MiB ceiling) thins rather than refuses; the thinned population fits.
     const auto q1 = gpuResidencyPolicy(1);
-    const uint32_t s1 = vegetationStride(2512462, 30000, 2, q1.vegetation, 2000 * gpuMiB);
+    const uint32_t s1 = vegetationStride(2512462, 30000, q1.vegetation, 2000 * gpuMiB);
     CHECK(s1 > 1);
     const uint64_t n = (2512462 + s1 - 1) / s1;
     const uint64_t r1 = n < 30000 ? n : 30000;
-    CHECK(vegetationBytes(n, r1, 2) <= q1.vegetation);
+    CHECK(vegetationBytes(n, r1) <= q1.vegetation);
     // a tight live headroom thins too (staging counts); potato (ceiling 0) never fits.
-    CHECK(vegetationStride(2512462, 30000, 2, q2.vegetation, 100 * gpuMiB) > 1);
-    CHECK(vegetationStride(2512462, 30000, 2, gpuResidencyPolicy(0).vegetation, 2000 * gpuMiB) == 0);
+    CHECK(vegetationStride(2512462, 30000, q2.vegetation, 60 * gpuMiB) > 1);
+    CHECK(vegetationStride(2512462, 30000, gpuResidencyPolicy(0).vegetation, 2000 * gpuMiB) == 0);
 }
 
 TEST_CASE("q2 ledger admits the 16384x8192 BC6H HDRI mip chain plus its staging copy; the edge is the case the sky island degrades on") {
