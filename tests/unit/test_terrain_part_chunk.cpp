@@ -146,3 +146,35 @@ TEST_CASE("v2 queued target codec rejects overflow truncation and unknown versio
 	bytes[4] = 3;
 	CHECK_FALSE(mc2::save::decodeRecord(bytes, loaded));
 }
+
+TEST_CASE("v2 order paths retain 256 steps and a cursor beyond the legacy byte count") {
+	SavedQueueTargets saved;
+	saved.globalPath.resize(MAX_GLOBAL_PATH);
+	saved.lastGoalPath.assign(MAX_GLOBAL_PATH, 29999);
+	saved.curGlobalStep = 200;
+	for (auto& step : saved.globalPath) {
+		step.startDoor = -1;
+		step.thruArea = 29999;
+		step.goalDoor = 32765;
+		step.start = glm::vec3(-60000.0f, 50000.0f, 0.0f);
+		step.goal = glm::vec3(60000.0f, -50000.0f, 0.0f);
+		step.goalCell[0] = step.goalCell[1] = 3071;
+		step.costToGoal = 1000000;
+	}
+	mc2::save::Archive write;
+	write(saved);
+	REQUIRE(write.good());
+	SavedQueueTargets loaded;
+	REQUIRE(mc2::save::decodeRecord(write.bytes(), loaded));
+	CHECK(loaded.globalPath.size() == MAX_GLOBAL_PATH);
+	CHECK(loaded.curGlobalStep == 200);
+	CHECK(loaded.lastGoalPath == saved.lastGoalPath);
+	CHECK(loaded.globalPath.back().thruArea == 29999);
+	CHECK(loaded.globalPath.back().goalDoor == 32765);
+	CHECK(loaded.globalPath.back().goalCell[1] == 3071);
+	CHECK(loaded.globalPath.back().goal == saved.globalPath.back().goal);
+	saved.globalPath.resize(MAX_GLOBAL_PATH + 1);
+	mc2::save::Archive overflow;
+	overflow(saved);
+	CHECK_FALSE(overflow.good());
+}

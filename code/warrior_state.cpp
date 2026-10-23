@@ -627,6 +627,7 @@ void MechWarrior::copyToData (MechWarriorData &data)
 	data.willHelp = willHelp;
 	
 	data.moveOrders.copy(moveOrders);
+	data.moveOrders.speedThrottle = moveOrders.speedThrottle;
 	data.attackOrders = attackOrders;
 	data.situationOrders = situationOrders;
 	data.lastTargetWID = lastTargetWID;
@@ -768,6 +769,7 @@ void MechWarrior::copyFromData (MechWarriorData &data, bool wideTargets)
 	willHelp = data.willHelp;
 	
 	data.moveOrders.copyTo(moveOrders);
+	moveOrders.speedThrottle = data.moveOrders.speedThrottle;
 
 	attackOrders = data.attackOrders;
 	situationOrders = data.situationOrders;
@@ -830,6 +832,22 @@ void MechWarrior::save (PacketFilePtr file, long packetNum)
 	MC2_SAVE_STRUCT(MechWarriorData, warriorData);
 	copyToData(warriorData);
 	SavedQueueTargets targets;
+	if (moveOrders.numGlobalSteps < 0 || moveOrders.numGlobalSteps > MAX_GLOBAL_PATH ||
+		lastGoalPathSize < 0 || lastGoalPathSize > MAX_GLOBAL_PATH) Fatal(0, "Invalid live order path");
+	targets.globalPath.assign(moveOrders.globalPath, moveOrders.globalPath + moveOrders.numGlobalSteps);
+	targets.curGlobalStep = moveOrders.curGlobalStep;
+	targets.lastGoalPath.assign(lastGoalPath, lastGoalPath + lastGoalPathSize);
+	if (moveOrders.numGlobalSteps > MAX_SAVED_GLOBAL_PATH) {
+		// The old prefix has no room for this route. The suffix owns its counts;
+		// retain local progress and flags instead of the legacy replan fallback.
+		warriorData.moveOrders.newGoal = moveOrders.newGoal;
+		warriorData.moveOrders.nextUpdate = moveOrders.nextUpdate;
+		warriorData.moveOrders.pathType = moveOrders.pathType;
+		for (int i = 0; i < 2; ++i) {
+			warriorData.moveOrders.path[i] = *moveOrders.path[i];
+			mc2CanonicalizeMovePathRecord(warriorData.moveOrders.path[i]);
+		}
+	}
 	for (int i = 0; i < numTacOrdersQueued; ++i) {
 		TacticalOrder order;
 		peekQueuedTacOrder(i, &order);
@@ -877,7 +895,7 @@ void MechWarrior::load (PacketFilePtr file, long packetNum)
 	MechWarriorData warriorData{};
 	file->seekPacket(packetNum);
 	const auto size = file->getPacketSize();
-	if (size < sizeof(warriorData) || size > sizeof(warriorData) + 128) Fatal(0, "Invalid warrior packet size");
+	if (size < sizeof(warriorData) || size > sizeof(warriorData) + 16 * 1024) Fatal(0, "Invalid warrior packet size");
 	mc2::save::Bytes bytes(size);
 	file->readPacket(packetNum, bytes.data());
 	memcpy(&warriorData, bytes.data(), sizeof(warriorData));
@@ -889,6 +907,13 @@ void MechWarrior::load (PacketFilePtr file, long packetNum)
 	if (wide && (!mc2::save::decodeRecord(std::span(bytes).subspan(sizeof(warriorData)), targets) ||
 		targets.targets.size() != warriorData.numTacOrdersQueued)) Fatal(0, "Invalid saved queue targets");
 	init(warriorData, wide);
+	if (wide) {
+		moveOrders.numGlobalSteps = static_cast<short>(targets.globalPath.size());
+		moveOrders.curGlobalStep = static_cast<short>(targets.curGlobalStep);
+		std::copy(targets.globalPath.begin(), targets.globalPath.end(), moveOrders.globalPath);
+		lastGoalPathSize = static_cast<short>(targets.lastGoalPath.size());
+		std::copy(targets.lastGoalPath.begin(), targets.lastGoalPath.end(), lastGoalPath);
+	}
 	for (size_t i = 0; i < targets.targets.size(); ++i) queueTargets[i] = targets.targets[i];
 	if (wide && mc2::gate::get<"MC2_FIXTURE_ORDER_LIVENESS">()) {
 		for (int i = 0; i < numTacOrdersQueued; ++i) {

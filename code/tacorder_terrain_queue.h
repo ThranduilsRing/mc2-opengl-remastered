@@ -17,6 +17,9 @@ inline void copySavedTacticalOrder(TacticalOrder& to, const TacticalOrder& from)
 struct SavedQueueTargets {
 	static constexpr uint32_t tag = 0x32545157; // WQT2
 	std::vector<uint32_t> targets;
+	std::vector<GlobalPathStep> globalPath;
+	uint32_t curGlobalStep = 0;
+	std::vector<int16_t> lastGoalPath;
 	void serialize(mc2::save::Archive& archive) {
 		uint32_t signature = tag, version = 2;
 		archive(signature, version);
@@ -24,6 +27,15 @@ struct SavedQueueTargets {
 		archive.sequence(targets, 16);
 		for (auto target : targets)
 			if (target > 0x7fffffffU) archive.reject("queue_target_identity");
+		archive.sequence(globalPath, MAX_GLOBAL_PATH, [](auto& a, auto& step) {
+			a(step.startDoor, step.thruArea, step.goalDoor,
+			  step.start.x, step.start.y, step.start.z, step.goal.x, step.goal.y, step.goal.z,
+			  step.goalCell[0], step.goalCell[1], step.costToGoal);
+		});
+		archive(curGlobalStep);
+		archive.sequence(lastGoalPath, MAX_GLOBAL_PATH);
+		if (curGlobalStep > MAX_GLOBAL_PATH || (!globalPath.empty() && curGlobalStep > globalPath.size()))
+			archive.reject("global_path_cursor");
 	}
 };
 
