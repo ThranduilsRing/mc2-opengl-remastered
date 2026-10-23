@@ -8,7 +8,6 @@
 #include "mc2fmt.h"
 #include <algorithm>
 #include <numeric>
-#include "terrain_surface_cook.h"
 
 #ifdef MC2_VULKAN_ISLAND
 
@@ -488,37 +487,17 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
         return da < db || (da == db && a < b);
     });
 
-    const int blockSide = (feed.mapSide - 1 + 19) / 20;
-    if (s->cliffFreeVersion != feed.heightVersion) {
-        s->cliffFreeBlocks.assign(size_t(blockSide) * blockSide, 0);
-        s->cliffFreeVersion = feed.heightVersion;
-    }
-    const auto cliffFree = [&](const Mc2TerrainTier1Patch& p) {
-        if (!feed.heightCpu || p.blockOriginX < 0 || p.blockOriginY < 0
-            || p.blockOriginX % 20 || p.blockOriginY % 20) return false;
-        const size_t index = size_t(p.blockOriginY / 20) * blockSide + p.blockOriginX / 20;
-        if (index >= s->cliffFreeBlocks.size()) return false;
-        auto& state = s->cliffFreeBlocks[index];
-        if (!state) state = mc2terrain::terrainPatchCliffFree(
-            {feed.heightCpu, size_t(feed.heightBytes / sizeof(float))}, feed.mapSide,
-            p.blockOriginX, p.blockOriginY, (std::min)(20, feed.mapSide - 1 - p.blockOriginX),
-            (std::min)(20, feed.mapSide - 1 - p.blockOriginY)) ? 1 : 2;
-        return state == 1;
-    };
-    unsigned long cliffFreeDrawn = 0;
     unsigned long drawn = 0;
     unsigned long skirtDrawn = 0;  // VK-TERRAIN-SKIRT (rung 4): skirt edge-strip draw count
     for (uint32_t i : drawOrder) {
         const Mc2TerrainTier1Patch& pr = feed.patches[i];
         const PatchMesh* pm = getOrBuildPatch(s, pr.quadCountX, pr.quadCountY, pr.lodStep);
         if (!pm || pm->indexCount == 0) continue;
-        const bool flat = cliffFree(pr);
-        cliffFreeDrawn += flat;
         const TerrainPatchConstants patch{pr.blockOriginX, pr.blockOriginY, pr.quadCountX, pr.quadCountY,
             static_cast<int32_t>(pr.edgeStitch),
             (pr.visualMode == 2 && s->visualHeightReady && feed.visualSide > 1) ? 2 : 0, pr.skirtDepth};
         vkCmdPushConstants(cb, s->playout.get(), VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(patch), &patch);
-        mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, flat ? s->cliffFreePipe.get() : s->pipe.get());
+        mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->pipe.get());
         VkDeviceSize vboOff = 0;
         { const VkBuffer vb = pm->vbo.get(); vkCmdBindVertexBuffers(cb, 0, 1, &vb, &vboOff); }
         vkCmdBindIndexBuffer(cb, pm->ibo.get(), 0, VK_INDEX_TYPE_UINT16);
@@ -532,7 +511,7 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
         if (pr.skirtDepth > 0.0f && pr.skirtEdgeMask != 0u) {
             const SkirtMesh* sm = getOrBuildSkirtMesh(s, pr.quadCountX, pr.quadCountY, pr.lodStep);
             if (sm) {
-                mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, flat ? s->cliffFreeSkirtPipe.get() : s->skirtPipe.get());
+                mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->skirtPipe.get());
                 VkDeviceSize svboOff = 0;
                 { const VkBuffer vb = sm->vbo.get(); vkCmdBindVertexBuffers(cb, 0, 1, &vb, &svboOff); }
                 vkCmdBindIndexBuffer(cb, sm->ibo.get(), 0, VK_INDEX_TYPE_UINT16);
@@ -601,9 +580,9 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     g_health.totalUs = usSince(tTotal0);
     static bool s_firstOk = false;
     if (!s_firstOk) {
-        vlog("first TIER-1 in-place terrain GBuffer co-write: lod0Patches=%u drawn=%lu skirtDrawn=%lu cliffFree=%lu "
+        vlog("first TIER-1 in-place terrain GBuffer co-write: lod0Patches=%u drawn=%lu skirtDrawn=%lu "
              "(color(MRT0)+normal(MRT1 a=1.0)+depth co-written; no composite).",
-             patchCount, drawn, skirtDrawn, cliffFreeDrawn);
+             patchCount, drawn, skirtDrawn);
         s_firstOk = true;
     }
     if (perf) {

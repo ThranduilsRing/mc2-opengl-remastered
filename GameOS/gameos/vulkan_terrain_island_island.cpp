@@ -678,14 +678,6 @@ bool init_island(TerrainIsland* s, int w, int h) {
             vlog("vkCreateGraphicsPipelines failed."); setFallback("pipeline_failed"); return false;
         }
         mc2vk::nameObject(s->device, s->pipe.get(), "terrain.pipe");
-        const VkBool32 cliffEnabled = VK_FALSE;
-        const VkSpecializationMapEntry cliffEntry{0, 0, sizeof(cliffEnabled)};
-        const VkSpecializationInfo cliffSpec{1, &cliffEntry, sizeof(cliffEnabled), &cliffEnabled};
-        stages[1].pSpecializationInfo = &cliffSpec;
-        if (!mc2vk::create(s->cliffFreePipe, s->device, [&](auto* h) { return mc2vk::infra::graphics(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, h); })) {
-            setFallback("cliff_free_pipeline_failed"); return false;
-        }
-        mc2vk::nameObject(s->device, s->cliffFreePipe.get(), "terrain.cliffFreePipe");
 
         // VK-TERRAIN-SKIRT (rung 4): second pipeline, same layout/renderpass/raster/
         // depth/blend state as above -- only the shader modules + vertex-input state
@@ -725,11 +717,6 @@ bool init_island(TerrainIsland* s, int w, int h) {
             vlog("vkCreateGraphicsPipelines (skirt) failed."); setFallback("pipeline_failed"); return false;
         }
         mc2vk::nameObject(s->device, s->skirtPipe.get(), "terrain.skirtPipe");
-        sstages[1].pSpecializationInfo = &cliffSpec;
-        if (!mc2vk::create(s->cliffFreeSkirtPipe, s->device, [&](auto* h) { return mc2vk::infra::graphics(s->device, VK_NULL_HANDLE, 1, &sgp, nullptr, h); })) {
-            setFallback("cliff_free_skirt_pipeline_failed"); return false;
-        }
-        mc2vk::nameObject(s->device, s->cliffFreeSkirtPipe.get(), "terrain.cliffFreeSkirtPipe");
     }
 
     s->inited = true;

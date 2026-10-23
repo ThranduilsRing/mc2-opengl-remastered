@@ -12,22 +12,6 @@
 #endif
 
 namespace mc2terrain {
-bool terrainPatchCliffFree(std::span<const float> heights, uint32_t side,
-    uint32_t originX, uint32_t originY, uint32_t quadsX, uint32_t quadsY) {
-    if (!side || heights.size() != size_t(side) * side || originX >= side || originY >= side
-        || quadsX >= side - originX || quadsY >= side - originY) return false;
-    const auto h = [&](int x, int y) {
-        return heights[size_t(std::clamp(y, 0, int(side) - 1)) * side + std::clamp(x, 0, int(side) - 1)];
-    };
-    for (uint32_t y = originY; y <= originY + quadsY; ++y) for (uint32_t x = originX; x <= originX + quadsX; ++x) {
-        const float gx = (h(int(x) + 1, y) - h(int(x) - 1, y)) / 256.0f;
-        const float gy = (h(x, int(y) + 1) - h(x, int(y) - 1)) / 256.0f;
-        // The squared norm is convex under the cooked field's bilinear filter.
-        // <=0.38 guarantees macro Nz>0.85, where the cliff blend is exactly zero.
-        if (!(gx * gx + gy * gy <= 0.38f)) return false;
-    }
-    return true;
-}
 std::array<float, 6> terrainPatchHeightErrors(std::span<const float> heights, uint32_t side,
     uint32_t originX, uint32_t originY, uint32_t quadsX, uint32_t quadsY) {
     std::array<float, 6> errors;
