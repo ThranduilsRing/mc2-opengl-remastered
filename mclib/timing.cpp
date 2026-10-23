@@ -21,6 +21,7 @@ float	frameLength = 0.05f;
 float	scenarioTime = 0.0;
 DWORD	LastTimeGetTime = 0;
 bool dynamicFrameTiming = TRUE;
+bool simPresentationPass = false;
 
 const char *monthName[12] = 
 {

@@ -26,7 +26,7 @@ L(Presence, "MC2_FX_COUNT_LOG", Bool, false, "mech", "", "MC2_FX_COUNT_LOG=1: en
 L(Presence, "MC2_FX_DEFS", Bool, false, "mech", "", "FX-DEFS-SIDECAR-1: per-effect JSON sidecar overlay for the gosFX spec catalog (mc2::particles::SpecLibrary).", passthrough | registry(Feature, "MC2_FX_DEFS", -1, false) | verified),
 // FX-FORCE-SPAWN fixture (mech-fire tube)
 // history: docs/gate-history.md#MC2_FX_FORCE_SPAWN
-G("MC2_FX_FORCE_SPAWN", Enum, "", "code", "", "FX-FORCE-SPAWN v1 fixture: default-OFF.", passthrough | registry(Feature, "MC2_FX_FORCE_SPAWN", -1, false) | tokens("|0|1|2|3|4|5|6|7|8|9|loop") | verified),
+G("MC2_FX_FORCE_SPAWN", Enum, "", "code", "", "FX-FORCE-SPAWN v1 fixture: default-OFF. =impact: impact-decal volley.", passthrough | registry(Feature, "MC2_FX_FORCE_SPAWN", -1, false) | tokens("|0|1|2|3|4|5|6|7|8|9|loop|impact") | verified),
 L(Lead1, "MC2_FX_TRACE", Bool, false, "code", "", "", passthrough | verified),
 
 G("MC2_GAMEOS_UI_DEFS", Bool, true, "editor", "", "The data/defs GameOS UI path is the replacement path, not an opt-in demo.", verified),
@@ -51,6 +51,7 @@ L(Presence, "MC2_GPUBUF_RING", Bool, false, "gameos", "", "GPU-BUFFER-WRAPPER-TI
 // history: docs/gate-history.md#MC2_GPUBUF_RING_FORCE_WRAP
 L(Presence, "MC2_GPUBUF_RING_FORCE_WRAP", Bool, false, "gameos", "", "GPU-BUFFER-WRAPPER-TIER0-HUD-1 NEGATIVE TEST: deterministically advance the HUD ring twice (beginFrame without an intervening endFrame) so the...", registry(Trace, "MC2_GPUBUF_RING_FORCE_WRAP", -1, false)),
 L(Presence, "MC2_GPUPROPS_TRACE", Bool, false, "props", "", "[GPUPROPS v1] setup-path instrumentation (internal; path tag lives at file scope).", passthrough | verified),
+P("MC2_GPU_BUDGET_MB", Int, 0, "gameos", "", "Diagnostic residency ceiling in MiB; zero uses device/preset policy. Cannot raise the device budget.", passthrough | verified),
 L(Lead0Kill, "MC2_GPU_CULL", Bool, true, "unclassified", "", "", passthrough | verified),
 L(Lead0P, "MC2_GPU_CULL_AABB_PARITY", Bool, false, "gameos", "", "", passthrough | verified),
 L(Presence, "MC2_GPU_CULL_COMPUTE_TRACE", Bool, false, "gameos", "", "Trace macro (env-gated, default off)", passthrough),
@@ -131,8 +132,6 @@ P("MC2_HZB_FORCE_HORIZON_X", Float, 0.9, "code", "", "Corner position as a fract
 P("MC2_HZB_FORCE_HORIZON_Y", Float, -0.9, "code", "", "", verified),
 G("MC2_HZB_VIEW_FILE", String, "", "code", "", "HZB validation knob (debug only): force a low across-map HORIZON view so static props occlude each other.", verified),  // default not derivable from the tree
 L(Lead1, "MC2_IBL_ASSET_STRICT", Bool, false, "unclassified", "", ""),
-// history: docs/gate-history.md#MC2_ICON_FAILLOUD
-L(Lead0, "MC2_ICON_FAILLOUD", Bool, false, "mech", "", "META-FIX design B PART 3 (code/mechicon.cpp iconTileChecked at the three CPU icon-tile blits): default OFF. =1 substitutes a solid MAGENTA tile when an icon...", passthrough | registry(Feature, "MC2_FEATURE_ICON_FAILLOUD", -1, false) | verified),
 // history: docs/gate-history.md#MC2_IFACE_COST_SPLIT
 L(Presence, "MC2_IFACE_COST_SPLIT", Bool, false, "code", "", "MISSION-INTERFACE-PERF-1: chrono cost-split of MissionInterfaceManager::update() (the GameLogic.Mission.Interface Tracy zone) incl.", passthrough | registry(Trace, "MC2_TRACE_IFACE_COST_SPLIT", -1, false) | verified),
 // history: docs/gate-history.md#MC2_IMGUI
@@ -233,7 +232,7 @@ L(Exact1, "MC2_LIGHT_ROW_CENSUS", Bool, false, "code", "", "MC2_LIGHT_ROW_CENSUS
 // its enum value (57).
 // history: docs/gate-history.md#MC2_LIGHT_ROW_PURE
 L(Exact1, "MC2_LIGHT_ROW_PURE", Bool, false, "code", "", "[DEFAULT-OFF, KILLSWITCH INVERTED: MC2_LIGHT_ROW_PURE=1 opts IN to the pure producer; unset/0 is the legacy in-place packing loop in GatherLightsParameters...", passthrough | registry(Feature, "MC2_LIGHT_ROW_PURE", 30, false) | verified),
-// ── LIGHT-ROW-PURE-1 ───────────────────────────────────────────────────
+// â”€â”€ LIGHT-ROW-PURE-1 â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // The in-engine half of the byte-identity proof for MC2_LIGHT_ROW_PURE.
 // Lives here rather than in kFeatureTable because it is a Trace var and
 // gates no render path -- it only observes.

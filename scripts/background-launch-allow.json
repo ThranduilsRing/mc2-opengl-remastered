@@ -28,6 +28,7 @@
   "direct_spawn": {
     "tools/cook/veg_card_cook.py": "Offline card cooker invokes only the supplied local KTX CLI (create/transcode), never the game; captured console output uses console_child.child_kwargs.",
     "scripts/vk_shader_reload.py": "Developer command runs the discovered glslangValidator shader compiler with captured output through console_child.child_kwargs; it publishes a request to an already-running game and never launches the game",
+    "tools/command_replay.py": "runs scripts/run_smoke.py under sys.executable through console_child.child_kwargs; the smoke harness owns the engine launch, host lease and background window policy",
     "tools/battery.py": "battery-lane tool: argv built from vetted runners and build tools (the game starts only inside run_smoke/deploy runners); every subprocess call goes through console_child.child_kwargs(redirected=True); merge window 27",
     "tools/mod_smoke.py": "battery-lane tool: argv built from vetted runners and build tools (the game starts only inside run_smoke/deploy runners); every subprocess call goes through console_child.child_kwargs(redirected=True); merge window 27",
     "tools/reload_leak.py": "battery-lane tool: argv built from vetted runners and build tools (the game starts only inside run_smoke/deploy runners); every subprocess call goes through console_child.child_kwargs(redirected=True); merge window 27",
@@ -71,7 +72,6 @@
     "scripts/tests/test_dup_lines_ratchet.py": "program is a variable (git, ninja, glslang, ktx, blender, cook tools, python); launch-site audit 2026-10-10: console tool, not the game",
     "scripts/tests/test_file_size_ratchet.py": "program is a variable (git, ninja, glslang, ktx, blender, cook tools, python); launch-site audit 2026-10-10: console tool, not the game",
     "scripts/tests/test_phase_tools.py": "program is a variable (git, ninja, glslang, ktx, blender, cook tools, python); launch-site audit 2026-10-10: console tool, not the game",
-    "tools/asset_cook/trackg_cook.py": "program is a variable (git, ninja, glslang, ktx, blender, cook tools, python); launch-site audit 2026-10-10: console tool, not the game",
     "tools/assets/candidates.py": "program is a variable (installed Blender for the documented FBX->GLB adapter); console tool, not the game",
     "tools/axis_swizzle_ratchet.py": "program is a variable (git, ninja, glslang, ktx, blender, cook tools, python); launch-site audit 2026-10-10: console tool, not the game",
     "tools/blender_pipeline/asset_edit.py": "program is a variable (git, ninja, glslang, ktx, blender, cook tools, python); launch-site audit 2026-10-10: console tool, not the game",
@@ -91,7 +91,6 @@
     "tools/cxx17_ratchet/cxx17_ratchet.py": "program is a variable (git, ninja, glslang, ktx, blender, cook tools, python); launch-site audit 2026-10-10: console tool, not the game",
     "tools/cxx17_ratchet/test_cxx17_ratchet.py": "program is a variable (git, ninja, glslang, ktx, blender, cook tools, python); launch-site audit 2026-10-10: console tool, not the game",
     "tools/dup_lines_ratchet.py": "program is a variable (git, ninja, glslang, ktx, blender, cook tools, python); launch-site audit 2026-10-10: console tool, not the game",
-    "tools/examples/build_modern_tree_pack.py": "program is a variable (git, ninja, glslang, ktx, blender, cook tools, python); launch-site audit 2026-10-10: console tool, not the game",
     "tools/file_size_ratchet.py": "program is a variable (git, ninja, glslang, ktx, blender, cook tools, python); launch-site audit 2026-10-10: console tool, not the game",
     "tools/gate_table_gen.py": "program is a variable (git, ninja, glslang, ktx, blender, cook tools, python); launch-site audit 2026-10-10: console tool, not the game",
     "tools/lane_merge.py": "runs the ratchet scripts with a variable argv; console merge tool, not the game",

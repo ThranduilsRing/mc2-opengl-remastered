@@ -21,7 +21,8 @@ def main(argv=None):
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--catalog", type=Path, default=Path("docs/assets/catalog.json"))
     args = p.parse_args(argv)
-    data = json.loads(args.catalog.read_text(encoding="utf-8"))
+    from tools.assets.catalog import load_catalog
+    data = load_catalog(args.catalog)
     stock = stock_install()
     out = Path("docs/assets/examples")
     results = []

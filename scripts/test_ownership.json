@@ -3,6 +3,7 @@
   "aggregate_owner": "scripts_tests",
   "tests": [
     {"module": "scripts/tests/test_veg_card_cook.py", "owners": ["scripts_tests"]},
+    {"module": "scripts/tests/test_battle_bench.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_axis_swizzle_ratchet.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_board_selftests.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_bootstrap_worktree_build.py", "owners": ["native_render_hosts"]},
@@ -63,11 +64,13 @@
     {"module": "scripts/tests/test_raw_gl_firewall.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_ref_passthrough.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_runner_env_drop.py", "owners": ["scripts_tests"]},
+    {"module": "scripts/tests/test_sim_determinism_strict.py", "owners": ["sim_determinism"]},
     {"module": "scripts/tests/test_sim_include_firewall.py", "owners": ["sim_include_firewall"]},
     {"module": "scripts/tests/test_slang_build.py", "owners": ["slang_build"]},
     {"module": "scripts/tests/test_terrain_feed_compare.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_terrain_perf_report.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_tracy_capture_compare.py", "owners": ["scripts_tests"]},
-    {"module": "scripts/tests/test_vk_offline_proofs.py", "owners": ["scripts_tests"]}
+    {"module": "scripts/tests/test_vk_offline_proofs.py", "owners": ["scripts_tests"]},
+    {"module": "scripts/tests/test_world_order_diff.py", "owners": ["sim_determinism"]}
   ]
 }

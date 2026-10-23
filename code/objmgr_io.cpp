@@ -1,3 +1,6 @@
+#include "save_archive.h"
+#include "appearance_rng.h"
+#include "sim_rng_state.h"
 // GameObjectManager: terrain-object counting, loading and geometry finalise, and the object CopyTo / CopyFrom / Save / Load.
 // Declared in the class headers; shared names in objmgr_internal.h.
 #include <cmath>  // before any other include: which sqrt/pow overload a call binds must not depend on include order
@@ -1346,4 +1349,56 @@ long GameObjectManager::Load (PacketFilePtr file, long packetNum)
 	watchSave = nullptr;
 
 	return packetNum;
+}
+
+std::vector<uint8_t> GameObjectManager::saveAnimationState() {
+    mc2::save::Archive archive;
+    uint32_t state = mc2GetSimRngState(), draws = SimRandomDraws();
+    uint32_t animState = mc2_anim_rng::state(), animDraws = mc2_anim_rng::drawCount();
+    uint32_t count = 0;
+    for (long i = 1; i <= getMaxObjects(); ++i)
+        if (objList[i] && objList[i]->getExists() && objList[i]->getAppearance() &&
+            objList[i]->getAppearance()->simulationOwned()) ++count;
+    archive(state, draws, animState, animDraws, count);
+    for (long i = 1; i <= getMaxObjects(); ++i) {
+        auto* object = objList[i];
+        if (!object || !object->getExists() || !object->getAppearance() ||
+            !object->getAppearance()->simulationOwned()) continue;
+        int32_t handle = static_cast<int32_t>(i);
+        archive(handle, *object->getAppearance()->simulationAnimation());
+    }
+    if (!archive.good()) Fatal(0, "Unable to serialize authoritative animation state");
+    return archive.bytes();
+}
+bool GameObjectManager::restoreAnimationState(const std::vector<uint8_t>& bytes) {
+    mc2::save::Archive archive(bytes);
+    uint32_t state = 0, draws = 0, animState = 0, animDraws = 0, count = 0;
+    archive(state, draws, animState, animDraws, count);
+    if (!archive.good() || count > static_cast<uint32_t>(getMaxObjects())) return false;
+    std::vector<std::pair<int32_t, mc2::sim::UnitAnimState>> states;
+    int32_t previousHandle = 0;
+    for (uint32_t i = 0; i < count; ++i) {
+        int32_t handle = 0;
+        mc2::sim::UnitAnimState animation;
+        archive(handle, animation);
+        if (!archive.good() || handle < 1 || handle > getMaxObjects() ||
+              !objList[handle] || !objList[handle]->getAppearance() ||
+              !objList[handle]->getAppearance()->simulationOwned()) return false;
+        const auto& expected = *objList[handle]->getAppearance()->simulationAnimation();
+        if (handle <= previousHandle ||
+            animation.nodeUsed.size() != expected.nodeUsed.size() ||
+            animation.nodeRecycle.size() != expected.nodeRecycle.size()) return false;
+        states.emplace_back(handle, std::move(animation));
+        previousHandle = handle;
+    }
+    if (!archive.finish()) return false;
+    for (auto& [handle, animation] : states) {
+        auto* appearance = objList[handle]->getAppearance();
+        *appearance->simulationAnimation() = std::move(animation);
+        appearance->simPose->ready = false;
+        appearance->refreshSimPose();
+    }
+    mc2RestoreSimRngState(state); RestoreSimRandomDraws(draws);
+    mc2_anim_rng::restore(animState, animDraws);
+    return true;
 }

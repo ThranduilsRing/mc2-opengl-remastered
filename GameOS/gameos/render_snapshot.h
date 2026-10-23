@@ -4,10 +4,10 @@
 // state populated by ExtractRenderSnapshot() from engine layers.
 //
 // Extraction v1 (2026-05-24): static-prop snapshot populated alongside
-// v0 mech and light records. Arena 1 MiB per slot (2 MiB ping-pong total).
+// v0 mech and light records. Arena capacity follows native prop-row size.
 // v1.1 (2026-05-25): texArrayLayer/materialIdx wired; material cache counters added.
 // FRAMEARENA-L2-1: RenderFrameArena replaced by RenderCore::FrameArena (typed,
-//   stats-tracked, alignment-safe). Ping-pong unchanged: two module-static 1 MiB
+//   stats-tracked, alignment-safe). Ping-pong unchanged: two module-static
 //   buffers in render_snapshot.cpp alternate each frame. Spans valid for one frame.
 
 #pragma once
@@ -237,7 +237,7 @@ struct RenderSnapshot {
     // by ExtractRenderSnapshot(). Not part of ok gate.
     TerrainPassFacts terrainPass;
 
-    // L2 frame-lifetime arena. Backed by one of two module-static 1 MiB buffers
+    // L2 frame-lifetime arena. Backed by one of two module-static buffers
     // in render_snapshot.cpp (ping-pong). FrameArena is non-owning: base_ points
     // into the module-static buffer; valid until the next ExtractRenderSnapshot().
     RenderCore::FrameArena frameArena;

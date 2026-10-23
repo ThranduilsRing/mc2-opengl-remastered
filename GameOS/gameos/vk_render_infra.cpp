@@ -9,6 +9,7 @@
 #include "Gates/render_options.h"
 #include "Gates/gate_cold.h"
 #include "gos_postprocess.h"
+#include "RenderCore/GpuResidencyPolicy.h"
 #include <windows.h>
 #undef min
 #undef max
@@ -50,6 +51,7 @@ constexpr uint64_t maxCache=64*MiB;
 struct CacheHeader { uint64_t magic=0x314548434143324dull; uint64_t bytes=0, hash=0; uint32_t vendor=0, device=0, driver=0; unsigned char uuid[VK_UUID_SIZE]{}; };
 struct Allocation { uint64_t bytes; size_t category; bool raw; bool deferred=false; };
 constexpr const char* categories[]={"textures","shadows","terrain","vegetation","geometry","staging","targets"};
+constexpr const char* fallbacks[]={"placeholder","off","skip_terrain","off","skip_draw","skip_upload","skip_pass"};
 struct Shader { std::string path; std::vector<uint32_t> code; uint64_t hash=0; };
 struct State {
     VkDevice dev=VK_NULL_HANDLE; VkPhysicalDevice phys=VK_NULL_HANDLE; VkPipelineCache cache=VK_NULL_HANDLE;
@@ -60,7 +62,8 @@ struct State {
     std::unordered_map<VkShaderModule,Shader> shaders;
     std::unordered_map<std::string,Shader> overrides;
     std::array<uint64_t,7> current{}, peaks{};
-    uint64_t live=0,peak=0,raw=0,budget=2048*MiB,denied=0;
+    uint64_t live=0,peak=0,raw=0,budget=0,denied=0,pending=0,physicalBudget=0;
+    uint32_t imageEdge=0;
     uint64_t deferredBytes=0;
     uint64_t prewarmCreations=0; std::vector<double> firstFrames; bool measureFrames=false, firstFrameStarted=false;
     std::chrono::steady_clock::time_point previousFrame;
@@ -81,7 +84,7 @@ State* statePtr=nullptr;
 // The crash filter can run after normal renderer teardown; this process-lifetime storage deliberately survives it.
 State& state() { static auto* s=[] { auto* p=std::make_unique<State>().release(); statePtr=p; return p; }(); return *s; }
 size_t category(std::string_view name) {
-    if (name.find("staging")!=name.npos || name.find("stage")!=name.npos || name.find("frameRing")!=name.npos || name.find("readback")!=name.npos) return 5;
+    if (name.find("staging")!=name.npos || name.find("stage")!=name.npos || name.find("framering")!=name.npos || name.find("readback")!=name.npos) return 5;
     if (name.find("shadow")!=name.npos) return 1;
     if (name.find("terrain")!=name.npos) return 2;
     if (name.find("vegetation")!=name.npos || name.find("veg.")!=name.npos) return 3;
@@ -102,7 +105,7 @@ void saveLocked(State& s) {
     std::error_code ec; std::filesystem::rename(tmp,s.cachePath,ec);
     if (!ec) {
         s.dirty=false; s.saved=std::chrono::steady_clock::now();
-        std::fprintf(stderr,"[VK_PIPELINE_CACHE v1] saved_bytes=%zu pipelines=%llu creation_ms=%.3f\n",bytes,s.creations,s.creationMs);
+        if (mc2::gate::get<"MC2_DIAG_VERBOSE">()) std::fprintf(stderr,"[VK_PIPELINE_CACHE v1] saved_bytes=%zu pipelines=%llu creation_ms=%.3f\n",bytes,s.creations,s.creationMs);
     }
 }
 }
@@ -116,13 +119,28 @@ void init(VkDevice device, VkPhysicalDevice physical) {
     std::snprintf(s.driver,sizeof(s.driver),"device=%s vendor=%x device_id=%x driver_version=%u driver=%s info=%s",p.deviceName,p.vendorID,p.deviceID,p.driverVersion,driver.driverName,driver.driverInfo);
     breadcrumb("driver",s.driver);
     std::snprintf(s.packages,sizeof(s.packages),"active_mod=%s dependencies=%s",mc2::gate::str<"MC2_ACTIVE_MOD">().c_str(),mc2::gate::str<"MC2_MOD_DEPS">().c_str());
-    // Profile floor is usable on a 512 MiB adapter; OS pressure can lower admission further.
-    VkPhysicalDeviceMemoryProperties mp{}; vkGetPhysicalDeviceMemoryProperties(physical,&mp); uint64_t local=0;
-    for (uint32_t i=0;i<mp.memoryHeapCount;++i) if(mp.memoryHeaps[i].flags&VK_MEMORY_HEAP_DEVICE_LOCAL_BIT) local+=mp.memoryHeaps[i].size;
-    s.budget=std::clamp<uint64_t>(local/2,512*MiB,2048*MiB);
-    // The graphics presets already publish ShadowQuality: Potato=0, Medium=1, High=2.
-    if(mc2::options::current().shadowQuality==0) s.budget=512*MiB;
-    else if(mc2::options::current().shadowQuality==1) s.budget=std::min(s.budget,1024*MiB);
+    s.imageEdge=p.limits.maxImageDimension2D;
+    uint32_t n=0; vkEnumerateDeviceExtensionProperties(physical,nullptr,&n,nullptr);
+    std::vector<VkExtensionProperties> extensions(n); vkEnumerateDeviceExtensionProperties(physical,nullptr,&n,extensions.data());
+    const bool memoryBudget=std::any_of(extensions.begin(),extensions.end(),[](const auto& e) {
+        return !std::strcmp(e.extensionName,VK_EXT_MEMORY_BUDGET_EXTENSION_NAME);
+    });
+    VkPhysicalDeviceMemoryBudgetPropertiesEXT mb{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_BUDGET_PROPERTIES_EXT};
+    VkPhysicalDeviceMemoryProperties2 memory{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PROPERTIES_2};
+    if(memoryBudget) memory.pNext=&mb;
+    vkGetPhysicalDeviceMemoryProperties2(physical,&memory);
+    const auto& mp=memory.memoryProperties; uint64_t available=0;
+    for(uint32_t i=0;i<mp.memoryHeapCount;++i) if(mp.memoryHeaps[i].flags&VK_MEMORY_HEAP_DEVICE_LOCAL_BIT) {
+        const auto heap=memoryBudget ? std::min(mp.memoryHeaps[i].size,mb.heapBudget[i]) : mp.memoryHeaps[i].size;
+        available+=heap>mb.heapUsage[i] ? heap-mb.heapUsage[i] : 0;
+    }
+    s.physicalBudget=RenderCore::gpuBudget(available,UINT64_MAX);
+    s.budget=std::min(s.physicalBudget,RenderCore::gpuResidencyPolicy(mc2::options::current().shadowQuality).total);
+    // Diagnostic clamp only: it cannot raise either the physical or preset budget.
+    const int mbOverride=mc2::gate::get<"MC2_GPU_BUDGET_MB">();
+    if(mbOverride>0) s.budget=std::min(s.budget,uint64_t(mbOverride)*MiB);
+    std::fprintf(stderr,"[VK_RESIDENCY v1] budget_bytes=%llu physical_bytes=%llu source=%s safety_bytes=%llu quality=%d maxImageDimension2D=%u\n",
+        s.budget,s.physicalBudget,memoryBudget?"VK_EXT_memory_budget":"heap_sizes",available-s.physicalBudget,mc2::options::current().shadowQuality,s.imageEdge);
     std::error_code ec; std::filesystem::create_directories("cache/vulkan",ec);
     char key[160]{}; size_t at=std::snprintf(key,sizeof(key),"%08x-%08x-%08x-",p.vendorID,p.deviceID,p.driverVersion);
     for(auto b:p.pipelineCacheUUID) at+=std::snprintf(key+at,sizeof(key)-at,"%02x",b);
@@ -141,9 +159,7 @@ void init(VkDevice device, VkPhysicalDevice physical) {
     }}
     VkPipelineCacheCreateInfo ci{VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO}; ci.initialDataSize=data.size(); ci.pInitialData=data.data();
     if(vkCreatePipelineCache(device,&ci,nullptr,&s.cache)!=VK_SUCCESS) { ci.initialDataSize=0; ci.pInitialData=nullptr; status="driver_rejected"; vkCreatePipelineCache(device,&ci,nullptr,&s.cache); }
-    std::fprintf(stderr,"[VK_PIPELINE_CACHE v1] status=%s initial_bytes=%zu %s\n",status,data.size(),s.driver);
-    uint32_t n=0; vkEnumerateDeviceExtensionProperties(physical,nullptr,&n,nullptr);
-    std::vector<VkExtensionProperties> extensions(n); vkEnumerateDeviceExtensionProperties(physical,nullptr,&n,extensions.data());
+    if (mc2::gate::get<"MC2_DIAG_VERBOSE">()) std::fprintf(stderr,"[VK_PIPELINE_CACHE v1] status=%s initial_bytes=%zu %s\n",status,data.size(),s.driver);
     bool amd=false;
     for(auto& e:extensions) {
         if(!std::strcmp(e.extensionName,VK_NV_DEVICE_DIAGNOSTIC_CHECKPOINTS_EXTENSION_NAME)) s.checkpoints=vkCmdSetCheckpointNV!=nullptr;
@@ -155,28 +171,30 @@ void init(VkDevice device, VkPhysicalDevice physical) {
             VkMemoryRequirements req{}; vkGetBufferMemoryRequirements(device,s.marker,&req);
             for(uint32_t i=0;i<mp.memoryTypeCount;++i) if((req.memoryTypeBits&(1u<<i)) && (mp.memoryTypes[i].propertyFlags&(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT|VK_MEMORY_PROPERTY_HOST_COHERENT_BIT))==(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT|VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)) {
                 VkMemoryAllocateInfo ai{VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO}; ai.allocationSize=req.size; ai.memoryTypeIndex=i;
-                if(vkAllocateMemory(device,&ai,nullptr,&s.markerMemory)==VK_SUCCESS && vkBindBufferMemory(device,s.marker,s.markerMemory,0)==VK_SUCCESS) {
+                Admission admission(req.size,"staging.gpuCrashMarkers");
+                if(admission && vkAllocateMemory(device,&ai,nullptr,&s.markerMemory)==VK_SUCCESS) {
+                    admission.commit(reinterpret_cast<uint64_t>(s.markerMemory),"staging.gpuCrashMarkers",true);
+                    if(vkBindBufferMemory(device,s.marker,s.markerMemory,0)!=VK_SUCCESS) break;
                     void* mapped=nullptr; if(vkMapMemory(device,s.markerMemory,0,VK_WHOLE_SIZE,0,&mapped)==VK_SUCCESS) {
                         std::memset(mapped,0,size_t(bi.size)); s.markerMap=static_cast<volatile uint32_t*>(mapped);
-                        allocation(reinterpret_cast<uint64_t>(s.markerMemory),req.size,"staging.gpuCrashMarkers",true);
                     }
                 }
                 break;
             }
         }
     }
-    std::fprintf(stderr,"[VK_BREADCRUMBS v1] sink=%s cpu_ring=256 %s\n",s.markerMap?"AMD_buffer_marker":s.checkpoints?"NV_checkpoints":"CPU",s.packages);
+    if (mc2::gate::get<"MC2_DIAG_VERBOSE">()) std::fprintf(stderr,"[VK_BREADCRUMBS v1] sink=%s cpu_ring=256 %s\n",s.markerMap?"AMD_buffer_marker":s.checkpoints?"NV_checkpoints":"CPU",s.packages);
 }
 void saveCache() { auto& s=state(); std::lock_guard lock(s.mutex); saveLocked(s); }
 VkPipelineCache cacheHandle() { return state().cache; }
 void shutdown() { auto& s=state(); saveCache(); if(s.cache) vkDestroyPipelineCache(s.dev,s.cache,nullptr); s.cache=VK_NULL_HANDLE;
-    if(s.markerMap) { vkUnmapMemory(s.dev,s.markerMemory); s.markerMap=nullptr; release(reinterpret_cast<uint64_t>(s.markerMemory)); }
+    if(s.markerMap) { vkUnmapMemory(s.dev,s.markerMemory); s.markerMap=nullptr; }
     if(s.marker) { vkDestroyBuffer(s.dev,s.marker,nullptr); s.marker=VK_NULL_HANDLE; }
-    if(s.markerMemory) { vkFreeMemory(s.dev,s.markerMemory,nullptr); s.markerMemory=VK_NULL_HANDLE; }
+    if(s.markerMemory) { release(reinterpret_cast<uint64_t>(s.markerMemory)); vkFreeMemory(s.dev,s.markerMemory,nullptr); s.markerMemory=VK_NULL_HANDLE; }
     s.dev=VK_NULL_HANDLE;
 }
-void allocation(uint64_t key,uint64_t bytes,std::string_view name,bool raw) {
-    auto& s=state(); std::lock_guard lock(s.mutex); auto c=category(name);
+static void recordAllocation(State& s,uint64_t key,uint64_t bytes,std::string_view name,bool raw) {
+    auto c=category(name);
     const auto [entry,inserted]=s.allocations.emplace(key,Allocation{bytes,c,raw});
     if(!inserted) return;
     s.live+=bytes; s.raw+=raw?bytes:0; s.current[c]+=bytes;
@@ -198,22 +216,51 @@ void defer(uint64_t key) {
     if(!a.deferred) { a.deferred=true; s.deferredBytes+=a.bytes; }
 }
 bool admit(uint64_t bytes) {
-    auto& s=state(); uint64_t os=0,usage=0,allocated=0; getOrCreateEngineVulkanContext().deviceLocalMemory(os,usage,allocated);
-    std::lock_guard lock(s.mutex); const uint64_t limit=os?std::min(os,s.budget):s.budget;
-    const bool ok=s.live<=limit && bytes<=limit-s.live && (!os || (usage<=os && bytes<=os-usage));
-    if(!ok) ++s.denied;
-    return ok;
+    auto& s=state(); std::lock_guard lock(s.mutex);
+    return RenderCore::gpuFits(s.budget,s.live,s.pending,bytes);
+}
+Admission::Admission(uint64_t bytes,std::string_view name) {
+    auto& s=state(); std::lock_guard lock(s.mutex);
+    if(bytes && RenderCore::gpuFits(s.budget,s.live,s.pending,bytes)) { s.pending+=bytes; bytes_=bytes; }
+    else {
+        ++s.denied;
+        std::fprintf(stderr,"[VK_RESIDENCY v1] refused=%.*s bytes=%llu live=%llu pending=%llu budget=%llu fallback=%s\n",
+            int(name.size()),name.data(),bytes,s.live,s.pending,s.budget,fallbacks[category(name)]);
+    }
+}
+Admission::~Admission() {
+    if(bytes_) { auto& s=state(); std::lock_guard lock(s.mutex); s.pending-=bytes_; }
+}
+void Admission::commit(uint64_t key,std::string_view name,bool raw) {
+    auto& s=state(); std::lock_guard lock(s.mutex);
+    s.pending-=bytes_;
+    recordAllocation(s,key,bytes_,name,raw); bytes_=0;
+}
+uint32_t imageLimit() { return state().imageEdge; }
+bool imageSupported(const VkImageCreateInfo& info,std::string_view name) {
+    VkImageFormatProperties p{};
+    auto& s=state();
+    const auto result=vkGetPhysicalDeviceImageFormatProperties(s.phys,info.format,info.imageType,info.tiling,info.usage,info.flags,&p);
+    if(result==VK_SUCCESS && info.extent.width<=p.maxExtent.width && info.extent.height<=p.maxExtent.height &&
+        info.extent.depth<=p.maxExtent.depth && info.arrayLayers<=p.maxArrayLayers && info.mipLevels<=p.maxMipLevels && (info.samples&p.sampleCounts)) return true;
+    { std::lock_guard lock(s.mutex); ++s.denied; }
+    std::fprintf(stderr,"[VK_RESIDENCY v1] refused=%.*s extent=%ux%u layers=%u reason=device_limits fallback=%s\n",
+        int(name.size()),name.data(),info.extent.width,info.extent.height,info.arrayLayers,fallbacks[category(name)]);
+    return false;
 }
 uint32_t shadowTier(uint32_t requested,uint64_t bpp,uint32_t copies) {
-    uint32_t tier=requested; while(tier>512 && !admit(uint64_t(tier)*tier*bpp*copies)) tier/=2;
-    if(!admit(uint64_t(tier)*tier*bpp*copies)) return 0;
-    if(tier!=requested) std::fprintf(stderr,"[VK_RESIDENCY v1] shadow_tier=%u requested=%u\n",tier,requested);
+    uint32_t tier=requested; while(tier>512 && (tier>imageLimit() || !admit(uint64_t(tier)*tier*bpp*copies))) tier/=2;
+    if(!admit(uint64_t(tier)*tier*bpp*copies)) {
+        std::fprintf(stderr,"[VK_RESIDENCY v1] refused=shadow_map side=%u fallback=off\n",requested);
+        return 0;
+    }
+    if(tier!=requested) std::fprintf(stderr,"[VK_RESIDENCY v1] refused=shadow_map side=%u fallback=side_%u\n",requested,tier);
     return tier;
 }
 std::string ledgerJson() {
     auto& s=state(); uint64_t os=0,usage=0,allocated=0; getOrCreateEngineVulkanContext().deviceLocalMemory(os,usage,allocated);
     const auto& deferred=getOrCreateEngineVulkanContext().deferred(); std::lock_guard lock(s.mutex);
-    std::ostringstream out; out<<"{\"budget_bytes\":"<<s.budget<<",\"live_bytes\":"<<s.live<<",\"peak_bytes\":"<<s.peak<<",\"vma_budget_bytes\":"<<os<<",\"vma_usage_bytes\":"<<usage<<",\"vma_allocated_bytes\":"<<allocated<<",\"dedicated_bytes\":"<<s.raw<<",\"deferred_bytes\":"<<s.deferredBytes<<",\"deferred_entries\":"<<deferred.size()<<",\"deferred_is_subset\":true,\"transition_overlap_included\":true,\"denials\":"<<s.denied<<",\"categories\":{";
+    std::ostringstream out; out<<"{\"budget_bytes\":"<<s.budget<<",\"physical_budget_bytes\":"<<s.physicalBudget<<",\"pending_bytes\":"<<s.pending<<",\"within_budget\":"<<(s.peak<=s.budget?"true":"false")<<",\"live_bytes\":"<<s.live<<",\"peak_bytes\":"<<s.peak<<",\"vma_budget_bytes\":"<<os<<",\"vma_usage_bytes\":"<<usage<<",\"vma_allocated_bytes\":"<<allocated<<",\"dedicated_bytes\":"<<s.raw<<",\"deferred_bytes\":"<<s.deferredBytes<<",\"deferred_entries\":"<<deferred.size()<<",\"deferred_is_subset\":true,\"transition_overlap_included\":true,\"denials\":"<<s.denied<<",\"categories\":{";
     for(size_t i=0;i<7;++i) out<<(i?",":"")<<'"'<<categories[i]<<"\":{\"live\":"<<s.current[i]<<",\"peak\":"<<s.peaks[i]<<'}';
     out<<"}}"; const std::string json=out.str(); std::snprintf(s.ledger,sizeof(s.ledger),"%s",json.c_str()); return json;
 }
@@ -462,7 +509,7 @@ VkResult graphics(VkDevice dev,VkPipelineCache,uint32_t n,const VkGraphicsPipeli
     if(result!=VK_SUCCESS) { for(uint32_t i=0;i<n;++i) if(out[i]) { vkDestroyPipeline(dev,out[i],allocator); out[i]=VK_NULL_HANDLE; } }
     const double ms=std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-begin).count(); s.creationMs+=ms; s.creations+=n; s.dirty=true;
     for(uint32_t i=0;i<n;++i) if(out[i]) { auto r=std::make_unique<Recipe>(); r->original=out[i]; r->capture(info[i]); breadcrumb("pipeline","graphics",r->hash); const uint64_t token=++nextPipelineToken; pipelineTokens()[out[i]]=token; recipes()[token]=std::move(r); }
-    std::fprintf(stderr,"[VK_PIPELINE_CREATE v1] kind=graphics count=%u ms=%.3f frame=%llu\n",n,ms,getOrCreateEngineVulkanContext().tracker().frameNo());
+    if (mc2::gate::get<"MC2_DIAG_VERBOSE">()) std::fprintf(stderr,"[VK_PIPELINE_CREATE v1] kind=graphics count=%u ms=%.3f frame=%llu\n",n,ms,getOrCreateEngineVulkanContext().tracker().frameNo());
     return result;
 }
 VkResult compute(VkDevice dev,VkPipelineCache,uint32_t n,const VkComputePipelineCreateInfo* info,const VkAllocationCallbacks* allocator,VkPipeline* out) {
@@ -474,7 +521,7 @@ VkResult compute(VkDevice dev,VkPipelineCache,uint32_t n,const VkComputePipeline
     if(result!=VK_SUCCESS) { for(uint32_t i=0;i<n;++i) if(out[i]) { vkDestroyPipeline(dev,out[i],allocator); out[i]=VK_NULL_HANDLE; } }
     const double ms=std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-begin).count(); s.creationMs+=ms; s.creations+=n; s.dirty=true;
     for(uint32_t i=0;i<n;++i) if(out[i]) { auto r=std::make_unique<Recipe>(); r->original=out[i]; r->isCompute=true; r->c=info[i]; r->stage(info[i].stage); if(info[i].pNext) r->reloadable=false; breadcrumb("pipeline","compute",r->hash); const uint64_t token=++nextPipelineToken; pipelineTokens()[out[i]]=token; recipes()[token]=std::move(r); }
-    std::fprintf(stderr,"[VK_PIPELINE_CREATE v1] kind=compute count=%u ms=%.3f frame=%llu\n",n,ms,getOrCreateEngineVulkanContext().tracker().frameNo()); return result;
+    if (mc2::gate::get<"MC2_DIAG_VERBOSE">()) std::fprintf(stderr,"[VK_PIPELINE_CREATE v1] kind=compute count=%u ms=%.3f frame=%llu\n",n,ms,getOrCreateEngineVulkanContext().tracker().frameNo()); return result;
 }
 void bind(VkCommandBuffer cb,VkPipelineBindPoint point,VkPipeline pipeline) {
     auto& s=state(); std::lock_guard lock(s.mutex); auto it=pipelineTokens().find(pipeline);
@@ -510,11 +557,11 @@ void frame() {
         s.firstFrameStarted=true; s.previousFrame=now;
         if(s.firstFrames.size()==120) {
             std::sort(s.firstFrames.begin(),s.firstFrames.end());
-            std::fprintf(stderr,"[VK_FIRST_FRAMES v1] count=120 p95_ms=%.3f max_ms=%.3f late_pipeline_creations=%llu\n",s.firstFrames[113],s.firstFrames.back(),s.creations-s.prewarmCreations); s.measureFrames=false;
+            if (mc2::gate::get<"MC2_DIAG_VERBOSE">()) std::fprintf(stderr,"[VK_FIRST_FRAMES v1] count=120 p95_ms=%.3f max_ms=%.3f late_pipeline_creations=%llu\n",s.firstFrames[113],s.firstFrames.back(),s.creations-s.prewarmCreations); s.measureFrames=false;
         }
     }
     const uint64_t f=getOrCreateEngineVulkanContext().tracker().frameNo();
-    if(f%120==0) { const auto json=ledgerJson(); std::fprintf(stderr,"[VK_RESIDENCY v1] %s\n",json.c_str()); }
+    if(f%120==0) { const auto json=ledgerJson(); if (mc2::gate::get<"MC2_DIAG_VERBOSE">()) std::fprintf(stderr,"[VK_RESIDENCY v1] %s\n",json.c_str()); }
     if(std::chrono::steady_clock::now()-s.saved>std::chrono::seconds(30)) saveCache();
 }
 void prewarm(int width,int height) {
@@ -534,7 +581,7 @@ void prewarm(int width,int height) {
     ready+=getOrCreateEnginePresentVk().prewarmPipelines() ? 1 : 0;
     saveCache();
     s.prewarmCreations=s.creations; s.firstFrames.clear(); s.measureFrames=true; s.firstFrameStarted=false;
-    std::fprintf(stderr,"[VK_PIPELINE_PREWARM v1] ready=%d families=9 pipelines=%llu ms=%.3f size=%dx%d\n",ready,s.creations-before,std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-begin).count(),width,height);
+    if (mc2::gate::get<"MC2_DIAG_VERBOSE">()) std::fprintf(stderr,"[VK_PIPELINE_PREWARM v1] ready=%d families=9 pipelines=%llu ms=%.3f size=%dx%d\n",ready,s.creations-before,std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-begin).count(),width,height);
 }
 void deviceLost() {
     auto& s=state();

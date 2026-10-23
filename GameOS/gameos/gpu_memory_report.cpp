@@ -1,5 +1,6 @@
 // GameOS/gameos/gpu_memory_report.cpp -- see gpu_memory_report.h.
 #include "gpu_memory_report.h"
+#include "battle_bench.h"
 
 #include "gos_profiler.h"          // TracyPlot
 #include "gos_smoke.h"
@@ -18,6 +19,7 @@
 
 #ifdef _WIN32
 #include <windows.h>
+#include <psapi.h>
 #include <dxgi1_4.h>
 #endif
 
@@ -164,6 +166,19 @@ void log(std::string_view phase) {
 
 void tick(unsigned long frame) {
     if (frame % kPlotEveryFrames != 0) return;
+    if (mc2::battlebench::output) {
+        const auto snapshot = take();
+        unsigned long long peakWorkingSet = 0;
+#ifdef _WIN32
+        PROCESS_MEMORY_COUNTERS counters{};
+        using GetMemory = BOOL (WINAPI*)(HANDLE, PPROCESS_MEMORY_COUNTERS, DWORD);
+        const auto getMemory = reinterpret_cast<GetMemory>(GetProcAddress(GetModuleHandleA("kernel32.dll"), "K32GetProcessMemoryInfo"));
+        if (getMemory && getMemory(GetCurrentProcess(), &counters, sizeof(counters))) peakWorkingSet = counters.PeakWorkingSetSize;
+#endif
+        std::fprintf(mc2::battlebench::output, "{\"type\":\"memory\",\"frame\":%llu,\"working_set_peak_bytes\":%llu,\"gpu\":%s}\n",
+            static_cast<unsigned long long>(mc2::battlebench::frame), peakWorkingSet, toJson(snapshot).c_str());
+        std::fflush(mc2::battlebench::output);
+    }
 #ifdef _WIN32
     IDXGIAdapter3* a = dxgiAdapter();
     DXGI_QUERY_VIDEO_MEMORY_INFO info{};

@@ -429,6 +429,21 @@
    "count": 1
   },
   {
+   "tag": "BENCH_DEVICE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "device",
+    "vendor",
+    "device_id",
+    "driver_name",
+    "driver_info",
+    "driver_version",
+    "api_version"
+   ],
+   "count": 1
+  },
+  {
    "tag": "BLDG_DIAG",
    "ver": 1,
    "stream": "stderr",
@@ -2110,6 +2125,21 @@
     "team",
     "numSensors",
     "max"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "CONTENT_COOK",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "source",
+    "key",
+    "cache",
+    "nodes",
+    "materials",
+    "sockets",
+    "version"
    ],
    "count": 1
   },
@@ -4176,6 +4206,45 @@
    "count": 1
   },
   {
+   "tag": "ICON_RECT",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "key",
+    "x",
+    "y",
+    "w",
+    "h"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "ICON_REGISTRY",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "ICON_REGISTRY",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "key"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "ICON_REGISTRY",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "icons",
+    "atlas"
+   ],
+   "count": 1
+  },
+  {
    "tag": "IFACE_PERF",
    "ver": 1,
    "stream": "stdout",
@@ -4203,6 +4272,38 @@
    "keys": [
     "family",
     "file"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "IMPACT_DECAL",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "sample",
+    "tick",
+    "weapon",
+    "material",
+    "anchor",
+    "id",
+    "pos",
+    "tile",
+    "radius",
+    "slot"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "IMPACT_FIXTURE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "sample",
+    "building",
+    "wid",
+    "pos",
+    "extent",
+    "material"
    ],
    "count": 1
   },
@@ -5285,7 +5386,7 @@
    "ver": -1,
    "stream": "stderr",
    "keys": [],
-   "count": 17
+   "count": 9
   },
   {
    "tag": "MODOVERRIDE",
@@ -5295,16 +5396,7 @@
     "condition",
     "destroyed"
    ],
-   "count": 1
-  },
-  {
-   "tag": "MODOVERRIDE",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "lodCount"
-   ],
-   "count": 1
+   "count": 2
   },
   {
    "tag": "MODOVERRIDE",
@@ -5661,13 +5753,6 @@
    "tag": "MSL",
    "ver": -1,
    "stream": "stdout",
-   "keys": [],
-   "count": 1
-  },
-  {
-   "tag": "MSL",
-   "ver": -1,
-   "stream": "stdout",
    "keys": [
     "nodeType"
    ],
@@ -5929,6 +6014,16 @@
    "stream": "stderr",
    "keys": [
     "completion_error"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "ORDER_INGRESS",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "part",
+    "reason"
    ],
    "count": 1
   },
@@ -7117,6 +7212,40 @@
    "count": 9
   },
   {
+   "tag": "REPLAY_COMPLETE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "tick",
+    "commands",
+    "checkpoints"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "REPLAY_DIVERGED",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "tick",
+    "subsystem",
+    "expected",
+    "actual"
+   ],
+   "count": 2
+  },
+  {
+   "tag": "REPLAY_RECORDED",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "tick",
+    "commands",
+    "checkpoints"
+   ],
+   "count": 1
+  },
+  {
    "tag": "RESOLUTION",
    "ver": -1,
    "stream": "stdout",
@@ -7914,17 +8043,21 @@
     "objects",
     "nabl",
     "abl",
-    "rng"
+    "rng",
+    "animrng"
    ],
    "count": 1
   },
   {
-   "tag": "SIM_SPEED",
+   "tag": "SIM_TICK_COST",
    "ver": 1,
    "stream": "stdout",
    "keys": [
-    "steps_per_frame",
-    "frame"
+    "ticks",
+    "avg_ms",
+    "p95_ms",
+    "p99_ms",
+    "max_ms"
    ],
    "count": 1
   },
@@ -8463,47 +8596,6 @@
    "count": 1
   },
   {
-   "tag": "STATIC_NATURAL_SKIP",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "frame",
-    "eligible",
-    "natural",
-    "skipped",
-    "falling",
-    "justCreated",
-    "miss_notStaticNow",
-    "miss_static_unregistered",
-    "miss_static_shape",
-    "miss_static_fullBake",
-    "miss_static_other",
-    "miss_unreg_treeAppr",
-    "miss_unreg_bldgAppr",
-    "miss_unreg_otherAppr",
-    "miss_unreg_objTree",
-    "miss_unreg_objTerrain",
-    "miss_unreg_objBuilding",
-    "miss_unreg_objOther",
-    "miss_special",
-    "miss_alarm",
-    "miss_lookout",
-    "miss_sensor",
-    "miss_power",
-    "miss_control",
-    "miss_mechBay",
-    "miss_falling",
-    "miss_justCreated",
-    "nonNatural",
-    "unknown",
-    "updated",
-    "bldg_candidates",
-    "bldg_skipped",
-    "bldg_miss_notStaticNow"
-   ],
-   "count": 1
-  },
-  {
    "tag": "STATIC_PROP",
    "ver": -1,
    "stream": "stdout",
@@ -8539,17 +8631,6 @@
    "stream": "stderr",
    "keys": [
     "typeID"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "STATIC_REG_HEALTH",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "unreg_rank",
-    "type",
-    "count"
    ],
    "count": 1
   },
@@ -9972,6 +10053,35 @@
    "count": 1
   },
   {
+   "tag": "VK_IMPACT_DECALS",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 2
+  },
+  {
+   "tag": "VK_IMPACT_DECALS",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "frames",
+    "decals",
+    "hot",
+    "declined"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_IMPACT_DECALS",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "reason",
+    "sample"
+   ],
+   "count": 1
+  },
+  {
    "tag": "VK_LIGHTFEED_DEDUP",
    "ver": 1,
    "stream": "stderr",
@@ -10846,6 +10956,7 @@
   "MOVER_COHERENCE",
   "ORDER_LIVENESS_SUMMARY",
   "PERF",
+  "REPLAY_DIVERGED",
   "RESOLUTION",
   "RGBA",
   "SHADER",
@@ -10871,7 +10982,8 @@
   "VK_GPU_PASSES",
   "VK_PROFILE",
   "VK_VALIDATION",
-  "VRAM"
+  "VRAM",
+  "WORLD_ORDER"
  ],
  "plain_tags": [
   "VEG_SUMMARY",

@@ -12,8 +12,7 @@ MechListBox.cpp			: Implementation of the MechListBox component.
 #include "Gates/gate.h"
 #include <cstdlib>
 #include"mechlistbox.h"
-#include"icon_atlas_cell.h"
-#include "mc2_audit.h"   // META-FIX design B PART 3a: icon_oob marker
+#include "icon_registry.h"
 #include"logisticsmech.h"
 #include"paths.h"
 #include"inifile.h"
@@ -499,67 +498,8 @@ void MechListBox::initIcon( LogisticsMech* pMech, aObject& mechIcon )
 {
 	mechIcon = (MechListBoxItem::s_templateItem->mechIcon);
 
-	// Icon atlas: 25x30px cells, 10 cols.  Atlas width is always 256 so U uses
-	// setFileWidth(256).  Atlas height varies: base=256 (slots 0-79 addressable),
-	// mco-compat=512 (slots 0-169).  asystem does NOT auto-set fileHeight (that
-	// would shift V on unrelated GUI panels), so initIcon sets it EXPLICITLY here
-	// from the atlas's actual texture height -- ONLY for the mech-icon atlas.  For
-	// a square 256x256 atlas this resolves to fileHeight=256 == fileWidth, so
-	// setUVs is byte-identical to the old fileWidth-only path.  For 256x512 the V
-	// divisor becomes 512, addressing slots >=80.
-	// See MC2_LOG_MECH_ICON env var for per-mech UV diagnostics.
-	long index = pMech->getIconIndex();
-
-	float width = mechIcon.width();
-	float height = mechIcon.height();
-
-	// Atlas geometry DERIVED from the loaded texture (both axes), not hardcoded.
-	// 256-wide retail atlas -> 10 cols (mechs, idx 0-79); 512-wide MC2X
-	// mc2x_mechicons -> 20 cols, addressing vehicle/infantry icons at high
-	// indices (Ambulance=118, APC=142, Infantry=28). Falls back to 10/256 when
-	// the size is unavailable, preserving the old square-atlas behavior.
-	DWORD atlasW = 0, atlasH = 0;
-	float fileW = 256.f, fileH = 256.f;
-	if ( mc2::textures::ready() &&
-	     mc2::textures::logicalSize( mechIcon.getTextureHandle(), atlasW, atlasH ) )
-	{
-		if ( atlasW > 0 ) fileW = static_cast<float>(atlasW);
-		if ( atlasH > 0 ) fileH = static_cast<float>(atlasH);
-	}
-	// Cell/UV math shared with logisticsmechicon.cpp via code/icon_atlas_cell.h
-	// (ICON-ATLAS-CELL-EXTRACT-1). FLOOR column count + epsilon + 10-col fallback;
-	// see that header for the MCO 1024/40 phantom-column rationale.
-	// META-FIX design B PART 3a: checked variant — legacy cell returned
-	// UNCHANGED on OOB (wrap is load-bearing), one icon_oob line emitted.
-	bool iconOob = false;
-	const icon_atlas::Cell cell = icon_atlas::cellForIndexChecked( index, width, height, fileW, fileH, &iconOob );
-	if ( iconOob && mc2AuditOnce( "ICON_OOB", 0x2000000ull + static_cast<unsigned long long>(static_cast<unsigned long>(index)) ) )
-		mc2AuditLinef( "[ASSET_LOAD v1] event=icon_oob site=mechlistbox index={:d} cell={:.0f}x{:.0f} atlas={:.0f}x{:.0f}",
-			mc2::fmt::as_i32(index), width, height, fileW, fileH );
-	const long cols = cell.cols;
-	const long xIndex = cell.col;
-	const long yIndex = cell.row;
-	const float u = cell.u;
-	const float v = cell.v;
-	const float u2 = cell.u2;
-	const float v2 = cell.v2;
-
-	mechIcon.setFileWidth( fileW );
-	mechIcon.setFileHeight( fileH );
-	mechIcon.setUVs( u, v, u2, v2 );
-
-	if ( mc2::gate::get<"MC2_LOG_MECH_ICON">() )
-	{
-		// getChassisName() returns a long string-table id, not a char* -- using it
-		// with %s dereferences the id value and crashes (READ at the id). Log the
-		// variant name for the %s field instead.
-		mc2::fmt::print_out("[mechicon-list] mech={} iconIndex={:d} cols={:d} row={:d} col={:d} widgetW={:.0f} widgetH={:.0f} u=[{:.1f},{:.1f}] v=[{:.1f},{:.1f}] fileWidth={:.0f} fileHeight={:.0f} uvX=[{:.3f},{:.3f}] uvY=[{:.3f},{:.3f}]\n",
-		       pMech->getName(), mc2::fmt::as_i32(index), mc2::fmt::as_i32(cols), mc2::fmt::as_i32(yIndex), mc2::fmt::as_i32(xIndex),
-		       width, height,
-		       u, u2, v, v2,
-		       fileW, fileH, u/fileW, u2/fileW, v/fileH, v2/fileH);
-		fflush(stdout);
-	}
+    unit_icons::apply(mechIcon, MechListBoxItem::s_templateItem->mechIcon,
+                      pMech->getIconIndex(), pMech->getFileName().c_str());
 
 }
 

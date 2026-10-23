@@ -11,6 +11,7 @@
 #endif
 
 #include "bdactor_internal.h"
+#include "gameobj.h"
 #include "appearance_rng.h"
 #include "../RenderCore/axis_convert.h"
 #include "mc2fmt.h"
@@ -97,13 +98,18 @@ void BldgAppearance::setWeaponNodeUsed (long weaponNode)
 	weaponNode -= appearType->numWeaponNodes;
    	if ((weaponNode >= 0) && (weaponNode < appearType->numWeaponNodes))
 	{
-		nodeUsed[weaponNode]++;
-		nodeRecycle[weaponNode] = BASE_NODE_RECYCLE_TIME;
+		unitAnim().nodeUsed[weaponNode]++;
+		unitAnim().nodeRecycle[weaponNode] = BASE_NODE_RECYCLE_TIME;
 	}
 }
 
 glm::vec3 BldgAppearance::getWeaponNodePosition (long nodeId)
 {
+    if (!simPresentationPass) {
+        if (!simPose->ready) updateSimPose();
+        return nodeId >= 0 && static_cast<size_t>(nodeId) < simPose->nodes.size() ? simPose->nodes[nodeId] : simPose->root;
+    }
+
 	glm::vec3 result = position;
 	if ((nodeId < 0) || (nodeId >= appearType->numWeaponNodes))
 		return result;
@@ -121,7 +127,7 @@ glm::vec3 BldgAppearance::getWeaponNodePosition (long nodeId)
    	xlatPosition.z = position.y;
    
    	glm::quat torsoRot;
-   	torsoRot = mc2::math::quatFromEuler(mc2::math::Euler(0.0f,(turretYaw * DEGREES_TO_RADS),0.0f));
+	torsoRot = mc2::math::quatFromEuler(mc2::math::Euler(0.0f,(unitAnim().turretRotation * DEGREES_TO_RADS),0.0f));
 	if (rotationalNodeId == -1)
 	{
 		if (S_stricmp(appearType->rotationalNodeId,"NONE") != 0)
@@ -145,6 +151,11 @@ glm::vec3 BldgAppearance::getWeaponNodePosition (long nodeId)
 
 glm::vec3 BldgAppearance::getHitNode (void)
 {
+    if (!simPresentationPass) {
+        if (!simPose->ready) updateSimPose();
+        return simPose->hitLeft;
+    }
+
 	if (hitNodeId == -1)
 		hitNodeId = bldgShape->GetNodeNameId("hitnode");
 
@@ -159,9 +170,9 @@ long BldgAppearance::getWeaponNode (long weaponType)
 	long bestNode = -1;
 	for (long i=0;i<appearType->numWeaponNodes;i++)
 	{
-		if (nodeUsed[i] < leastUsed)
+		if (unitAnim().nodeUsed[i] < leastUsed)
 		{
-			leastUsed = nodeUsed[i];
+			leastUsed = unitAnim().nodeUsed[i];
 			bestNode = i;
 		}
 	}
@@ -175,14 +186,18 @@ long BldgAppearance::getWeaponNode (long weaponType)
 float BldgAppearance::getWeaponNodeRecycle (long node)
 {
 	if ((node >= 0) && (node < appearType->numWeaponNodes))
-		return nodeRecycle[node];
+		return unitAnim().nodeRecycle[node];
 		
 	return 0.0f;
 }
 
 void BldgAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 {
-	Appearance::init(tree,obj);
+	simulationShape_.reset();
+	simulationType_ = nullptr;
+	simPose->ready = false;
+	// Artillery markers are cosmetic children, rather than gameplay animation owners.
+	Appearance::init(tree, obj && obj->getObjectClass() != ARTILLERY ? obj : nullptr);
 	appearType = static_cast<BldgAppearanceType *>(tree);
 
 	shapeMin.x = shapeMin.y = -25;
@@ -190,13 +205,13 @@ void BldgAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 
     status = OBJECT_STATUS_NORMAL; // sebi: init so will not be garbage
 
-	bdAnimationState =-1;
-	currentFrame = 0.0f;
-	bdFrameRate = 0.0f;
-	isReversed = false;
-	isLooping = false;
-	setFirstFrame = false;
-	canTransition = true;
+	unitAnim().bdAnimationState =-1;
+	unitAnim().currentFrame = 0.0f;
+	unitAnim().bdFrameRate = 0.0f;
+	unitAnim().isReversed = false;
+	unitAnim().isLooping = false;
+	unitAnim().setFirstFrame = false;
+	unitAnim().canTransition = true;
 
 	// Slice 2 (object-offload) substrate: never set true in Stage 2.A.
 	needsFullBakeNextFrame = false;
@@ -235,7 +250,7 @@ void BldgAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 
 	currentLOD = 0;
  	
-	turretYaw = turretPitch = 0.0f;
+	unitAnim().turretRotation = unitAnim().pitch = 0.0f;
 	
 	destructFX = nullptr;
 	activity = nullptr;
@@ -354,8 +369,8 @@ void BldgAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 		
 		if (appearType->numWeaponNodes > 0)
 		{
-			nodeUsed.assign(static_cast<size_t>(appearType->numWeaponNodes), 0);
-			nodeRecycle.assign(static_cast<size_t>(appearType->numWeaponNodes), 0.0f);
+			unitAnim().nodeUsed.assign(static_cast<size_t>(appearType->numWeaponNodes), 0);
+			unitAnim().nodeRecycle.assign(static_cast<size_t>(appearType->numWeaponNodes), 0.0f);
 		}
 
 		// Register this building's TG_TypeShape variants with the GPU static
@@ -437,8 +452,8 @@ void BldgAppearance::setObjStatus (long oStatus)
 				}
 				
 				bldgShape = dmgRender->CreateFrom();
-				if (bdAnimationState != -1)
-					appearType->setAnimation(bldgShape,bdAnimationState);
+				if (unitAnim().bdAnimationState != -1)
+					appearType->setAnimation(bldgShape,unitAnim().bdAnimationState);
 				
 				beenInView = false; 
 				currentLOD = 0;
@@ -461,8 +476,8 @@ void BldgAppearance::setObjStatus (long oStatus)
 				// MODEL-OVERRIDE dual-shape: restore the per-instance RENDER
 				// shape via the render accessor (override if present, else stock).
 				bldgShape = appearType->getBldgRenderShape(0)->CreateFrom();
-				if (bdAnimationState != -1)
-					appearType->setAnimation(bldgShape,bdAnimationState);
+				if (unitAnim().bdAnimationState != -1)
+					appearType->setAnimation(bldgShape,unitAnim().bdAnimationState);
 
 				beenInView = false;
 			}
@@ -515,6 +530,12 @@ void BldgAppearance::setObjStatus (long oStatus)
 
 glm::vec3 BldgAppearance::getNodeNamePosition (const char *nodeName)
 {
+    if (!simPresentationPass) {
+        if (!simPose->ready) updateSimPose();
+        const auto id = simulationShape_ ? simulationShape_->GetNodeNameId(nodeName) : -1;
+        return id >= 0 && static_cast<size_t>(id) < simPose->shapeNodes.size() ? simPose->shapeNodes[id] : simPose->root;
+    }
+
 	glm::vec3 result = position;
 	
    	// Create Matrix to conform to.
@@ -537,6 +558,11 @@ glm::vec3 BldgAppearance::getNodeNamePosition (const char *nodeName)
 
 glm::vec3 BldgAppearance::getNodeIdPosition (long nodeId)
 {
+    if (!simPresentationPass) {
+        if (!simPose->ready) updateSimPose();
+        return nodeId >= 0 && static_cast<size_t>(nodeId) < simPose->shapeNodes.size() ? simPose->shapeNodes[nodeId] : simPose->root;
+    }
+
 	glm::vec3 result = position;
 	
    	// Create Matrix to conform to.
@@ -572,7 +598,7 @@ void BldgAppearance::setGesture (unsigned long gestureId)
 	if ((status == OBJECT_STATUS_DESTROYED) || (status == OBJECT_STATUS_DISABLED))
 		return;
 		
-	if (gestureId == bdAnimationState)
+	if (gestureId == unitAnim().bdAnimationState)
 		return;
 
 	const bool naturalStaticExempt =
@@ -587,7 +613,7 @@ void BldgAppearance::setGesture (unsigned long gestureId)
 	// false, and the next update() runs the full bake naturally.
 	// State-to-state (bdAnimationState != -1 → new state): already dynamic,
 	// not registered, no action needed.
-	if (bdAnimationState == -1 && staticReg.registered) {
+	if (unitAnim().bdAnimationState == -1 && staticReg.registered) {
 		// Some natural props are authored as BUILDING appearances and receive a
 		// dummy gesture=0 startup state even though there is no real animation
 		// payload. Keep their static registration intact so pure render-static
@@ -604,46 +630,48 @@ void BldgAppearance::setGesture (unsigned long gestureId)
 	// setGesture() itself guards gestureId >= MAX_BD_ANIMATIONS (blocking the
 	// unsigned cast of -1). If a future refactor adds an idle-reset, this block
 	// will need re-evaluation.
-	if (bdAnimationState != -1) {
+	if (unitAnim().bdAnimationState != -1) {
 		++s_animStateToStateGesture;
 	}
 
 	// If state is OK, set animation data, set first frame, set loop and
 	// reverse flag, and start it going until you hear otherwise.
 	appearType->setAnimation(bldgShape,gestureId);
-	bdAnimationState = gestureId;
-	currentFrame = 0.0f;
+	unitAnim().bdAnimationState = gestureId;
+	unitAnim().currentFrame = 0.0f;
 	if (appearType->bdStartF[gestureId])
-		currentFrame = appearType->bdStartF[gestureId];
+		unitAnim().currentFrame = appearType->bdStartF[gestureId];
 		
-	isReversed = false;
+	unitAnim().isReversed = false;
 	
-	if (appearType->isReversed(bdAnimationState))
+	if (appearType->isReversed(unitAnim().bdAnimationState))
 	{
-		currentFrame = appearType->getNumFrames(bdAnimationState)-1;
-		isReversed = true;
+		unitAnim().currentFrame = appearType->getNumFrames(unitAnim().bdAnimationState)-1;
+		unitAnim().isReversed = true;
 	}
 	
-	if (appearType->isRandom(bdAnimationState))
+	if (appearType->isRandom(unitAnim().bdAnimationState))
 	{
-		currentFrame = mc2_appearance_rng::randomNumber(appearType->getNumFrames(bdAnimationState)-1);
+		const long count = appearType->getNumFrames(unitAnim().bdAnimationState)-1;
+		unitAnim().currentFrame = simPresentationPass || !simulationOwned() ?
+			mc2_appearance_rng::randomNumber(count) : mc2_anim_rng::randomNumber(count);
 	}
 	
-	isLooping = appearType->isLooped(bdAnimationState);
+	unitAnim().isLooping = appearType->isLooped(unitAnim().bdAnimationState);
 	
-	bdFrameRate = appearType->getFrameRate(bdAnimationState);
+	unitAnim().bdFrameRate = appearType->getFrameRate(unitAnim().bdAnimationState);
 	
-	setFirstFrame = true;
-	if (bdFrameRate > Stuff::SMALL)
-		canTransition = false;
+	unitAnim().setFirstFrame = true;
+	if (unitAnim().bdFrameRate > Stuff::SMALL)
+		unitAnim().canTransition = false;
 	else
-		canTransition = true;		//We can change immediately to another animation because we have no animation for this state!
+		unitAnim().canTransition = true;		//We can change immediately to another animation because we have no animation for this state!
 }
 
 void BldgAppearance::setMoverParameters (float turretRot, float lArmRot, float rArmRot, bool isAirborne)
 {
-	turretYaw = turretRot;
-	turretPitch = lArmRot;
+	unitAnim().turretRotation = turretRot;
+	unitAnim().pitch = lArmRot;
 }
 
 void BldgAppearance::setObjectParameters (const glm::vec3 &pos, float Rot, long sel, long team, long homeRelations)
@@ -767,6 +795,12 @@ void BldgAppearance::recalcBoundsAndStamp() {
 
 bool BldgAppearance::playDestruction (void)
 {
+	if (!simPresentationPass) {
+		const bool available = appearType->destructEffect[0] &&
+			gosFX::EffectLibrary::Instance->Find(appearType->destructEffect);
+		if (available) ++unitAnim().destructionSerial;
+		return available;
+	}
 	//Check if there is a Destruct FX
 	if (appearType->destructEffect[0])
 	{
@@ -822,3 +856,39 @@ bool BldgAppearance::playDestruction (void)
 uint32_t g_bldgAnimGate_typeIdleNowStatic()    { return s_animTypeIdleNowStatic.load(std::memory_order_relaxed); }
 uint32_t g_bldgAnimGate_animStartInvalidated() { return s_animStartInvalidated; }
 uint32_t g_bldgAnimGate_animStateToState()     { return s_animStateToStateGesture; }
+
+void BldgAppearance::updateSimPose()
+{
+    if (!appearType) return;
+    auto* source = status == OBJECT_STATUS_DESTROYED && appearType->bldgDmgShape ?
+        appearType->bldgDmgShape : appearType->getBldgCollisionShape(0);
+    if (!source) return;
+    if (simPose->ready && simulationType_ == source && appearType->numWeaponNodes == 0 &&
+        unitAnim().bdFrameRate == 0.0f && simPose->root == position && simPose->heading == rotation) return;
+    if (simulationType_ != source || !simulationShape_) {
+        simulationShape_.reset(source->CreateFrom());
+        simulationType_ = source;
+    }
+    auto* shape = simulationShape_.get();
+    if (status != OBJECT_STATUS_DESTROYED && unitAnim().bdAnimationState >= 0 && unitAnim().bdAnimationState < MAX_BD_ANIMATIONS)
+        appearType->setAnimation(shape, unitAnim().bdAnimationState);
+    shape->SetFrameNum(unitAnim().currentFrame);
+    auto aim = mc2::math::quatFromEuler(mc2::math::Euler(unitAnim().pitch * DEGREES_TO_RADS, unitAnim().turretRotation * DEGREES_TO_RADS, 0.0f));
+    shape->SetNodeRotation(appearType->rotationalNodeId, &aim);
+    auto root = mc2::math::quatFromEuler(mc2::math::Euler(0.0f, rotation * DEGREES_TO_RADS, 0.0f));
+    glm::vec3 translation; mc2ToRender(translation, position);
+    shape->TransformMultiShape_BuildRecipe(&translation, &root);
+    simPose->root = position; simPose->heading = rotation;
+    simPose->nodes.resize(appearType->numWeaponNodes);
+    for (long i = 0; i < appearType->numWeaponNodes; ++i) {
+        auto node = shape->GetTransformedNodePosition(&translation, &root, appearType->nodeData[i].nodeId);
+        simPose->nodes[i] = node == glm::vec3(0.0f) ? position : node;
+    }
+    simPose->shapeNodes.resize(shape->GetNumShapes());
+    for (long i = 0; i < shape->GetNumShapes(); ++i)
+        simPose->shapeNodes[i] = shape->GetTransformedNodePosition(&translation, &root, i);
+    const auto hit = shape->GetNodeNameId("hitnode");
+    simPose->hitLeft = hit >= 0 && static_cast<size_t>(hit) < simPose->shapeNodes.size() ? simPose->shapeNodes[hit] : position;
+    simPose->hitRight = simPose->hitLeft;
+    simPose->ready = true;
+}

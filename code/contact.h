@@ -429,7 +429,7 @@ class SensorSystemManager {
 // Lifetime: created by Mission::initTriggerAndDropZone (mission_init.cpp) or Mission::loadTeamsAndObjects (saveload_load.cpp),
 // reset by Mission::destroy. Teardown order in Mission::destroy:
 //   1. ObjectManager->destroy()  -- every mover/building has let go of its SensorSystem slot (they hold pool pointers only)
-//   2. weaponEffects, craterManager
+//   2. weaponEffects
 //   3. SensorManager.reset()     -- ~SensorSystemManager frees the pool and the TeamSensorSystems; it reads Team::numTeams,
 //                                   so it must run BEFORE resetTeamsAndCommanders() zeroes it
 //   4. resetTeamsAndCommanders(), triggerAreaMgr, closeABL(), missionHeap->destroy() (the heap the pool lived on)

@@ -159,6 +159,11 @@ content cooker: `py -3 tools/content_pipeline/cook.py tools/content_pipeline/rec
 (stock_ase frontend; the former `material_map.py` mapping rows are its `slots`). See
 docs/content-pipeline.md for the IR, the material schema and the texture cook contract.
 
+The generated fence bundle explicitly sets `lateCoverageFringe:true` on its
+override records. It uses the normal mip-aware, depth-writing core and blends
+the remaining coverage after vegetation. Other overrides default to the normal
+core/fringe schedule; being an override does not select a hard alpha cutoff.
+
 ## Follow-ons (from .claude/BLENDER-CAPABILITY-SURVEY-1.md)
 
 - **#1 tree impostors / far-LOD cards** — biggest payoff; reuse this driver +

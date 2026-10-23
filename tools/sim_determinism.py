@@ -3,8 +3,8 @@
 
 WHAT: reads the `[SIMID v1] simframe=N t=T n=C graded=.. visual=.. strict=..` line the engine prints for every sim frame
 (MC2_SIM_IDENTITY_TRACE) and compares two runs of one mission frame by frame over the frames both reached. It names the first divergent
-sim frame and prints both lines. `run` launches the mission twice through scripts/run_smoke.py under MC2_SMOKE_FIXED_TIMESTEP=1
-and MC2_SIM_IDENTITY_TRACE=1 (MC2_DETERMINISTIC_RNG is default ON, so the runs prove the default). `--baseline`
+sim frame and prints both lines. `run` launches the mission twice through scripts/run_smoke.py under MC2_SMOKE_FIXED_TIMESTEP=1,
+MC2_DETERMINISTIC_RNG=1 and MC2_SIM_IDENTITY_TRACE=1 (the three gates that remove wall-clock and RNG-seed variation). `--baseline`
 additionally compares the chain digest of the first N frames with a committed one (tests/smoke/sim_determinism/<mission>.json), which is
 the "SIMID unchanged" proof for a refactor (ownership, enum, math steps) across commits. A baseline pins the install data fingerprint, the
 mission seed and the extra env it was recorded under, so a check against other data or another seed fails instead of lying.
@@ -42,7 +42,31 @@ from repo_intel import lane_model  # noqa: E402
 
 PREFIX = "[SIMID v1] simframe="
 _STRICT = re.compile(r" strict=\w+")
-# MC2_DETERMINISTIC_RNG is default ON now: the runs deliberately do not set it, so they prove the default.
+_RNG_COUNTS = re.compile(r" rng=(\d+)/\d+/\d+(?=\s|$)")
+#: Only the appearance and weather draw counts are non-sim (D3 splits the appearance stream); the SIMULATION draw count stays in
+#: every comparison and graded hash, so one extra discarded sim draw (which shifts all later gameplay randomness) fails.
+_RNG_NONSIM = r" rng=\1"
+_COUNTS = ("n", "nobj", "nabl")
+
+
+def observation_error(lines) -> str:
+    """Reject incomplete observations, including a dropped tick in both runs."""
+    previous = None
+    for i, line in enumerate(lines):
+        fields = dict(re.findall(r"(\w+)=([^ ]+)", line))
+        for key in ("simframe", *_COUNTS):
+            if not fields.get(key, "").isdigit():
+                return f"missing or invalid observation count {key} at index {i}"
+        if not _RNG_COUNTS.search(line):
+            return f"missing or invalid rng=sim/app/wx counts at index {i}"
+        for key in ("graded", "visual", "strict", "objects", "abl"):
+            if not re.fullmatch(r"[0-9a-fA-F]+", fields.get(key, "")):
+                return f"missing or invalid {key} digest at index {i}"
+        tick = int(fields["simframe"])
+        if previous is not None and tick != previous + 1:
+            return f"missing or repeated observation at index {i}: simframe {previous} -> {tick}"
+        previous = tick
+    return ""
 GATES = {"MC2_SMOKE_FIXED_TIMESTEP": "1", "MC2_SIM_IDENTITY_TRACE": "1"}
 #: A comparison over fewer frames proves nothing (the mission may not have left the loading screen).
 MIN_FRAMES = 300
@@ -136,8 +160,18 @@ def load_simid(path: str) -> list:
                 for m in re.finditer(re.escape(PREFIX) + r"[^\r\n\[]*", ln)]
 
 
+def simulation_fields(line: str) -> str:
+    """Keep authoritative fields and sim/anim RNG draws; ignore cosmetic RNG draws."""
+    return _RNG_COUNTS.sub(_RNG_NONSIM, line.rstrip())
+
+
 def chain(lines, frames: int | None = None) -> str:
-    """Short digest of the first `frames` lines; the same function as scripts/smoke_lib/logparse.py (simid_chain)."""
+    """Graded acceptance chain: all fields, including strict, except RNG draw counts."""
+    return full_chain([simulation_fields(ln) for ln in lines], frames)
+
+
+def full_chain(lines, frames: int | None = None) -> str:
+    """Legacy full-line chain (also scripts/smoke_lib/logparse.py's simid_chain)."""
     h = hashlib.sha256()
     for ln in (lines if frames is None else lines[:frames]):
         h.update(ln.rstrip().encode("utf-8", "replace"))
@@ -145,8 +179,7 @@ def chain(lines, frames: int | None = None) -> str:
 
 
 def visible_chain(lines, frames: int | None = None) -> str:
-    """Like chain(), over the graded and visual digests only: the strict digest hashes raw float bits, so a change in how a float expression is
-    compiled moves it without moving anything the player can see (measured: the <cmath> includes of step 3.5 (c))."""
+    """Legacy diagnostic chain excluding strict; never sufficient for acceptance."""
     h = hashlib.sha256()
     for ln in (lines if frames is None else lines[:frames]):
         h.update(_STRICT.sub("", ln.rstrip()).encode("utf-8", "replace"))
@@ -158,12 +191,19 @@ def compare(a, b, min_frames: int = MIN_FRAMES):
     common = min(len(a), len(b))
     if common < min_frames:
         return False, f"only {common} common sim frame(s) (need {min_frames}): the mission did not run long enough to prove anything"
+    for lines in (a, b):
+        error = observation_error(lines)
+        if error:
+            return False, error
     for i in range(common):
-        if a[i] != b[i]:
+        if simulation_fields(a[i]) != simulation_fields(b[i]):
             prev = a[i - 1] if i else "(first frame)"
             return False, (f"DIVERGED at sim frame index {i}\n  run a: {a[i]}\n  run b: {b[i]}\n  last agreed: {prev}\n"
                            "  rerun with MC2_SIM_IDENTITY_TRACE_DETAIL=1 for the per-mover lines of that frame")
-    return True, f"identical over {common} sim frames (chain {chain(a, common)}; runs had {len(a)} and {len(b)})"
+    return True, (f"identical over {common} sim frames (chain {chain(a, common)}; "
+                  f"full a={full_chain(a, common)} b={full_chain(b, common)}; "
+                  f"rng a={a[common-1].split(' rng=')[-1]} b={b[common-1].split(' rng=')[-1]}; "
+                  f"runs had {len(a)} and {len(b)})")
 
 
 def check_baseline(lines, baseline_path: str, seed: str = "", fingerprint: dict | None = None):
@@ -180,14 +220,15 @@ def check_baseline(lines, baseline_path: str, seed: str = "", fingerprint: dict 
     n = int(base["frames"])
     if len(lines) < n:
         return False, f"the run has {len(lines)} sim frames, the baseline needs {n}"
-    vis = visible_chain(lines, n)
-    if vis != base.get("visible_chain"):
-        return False, (f"the graded/visual chain over the first {n} frames is {vis}, baseline {base.get('visible_chain')} "
-                       f"({base.get('mission')} at {base.get('sha')}): the simulation a player sees changed")
-    got = chain(lines, n)
+    error = observation_error(lines[:n])
+    if error:
+        return False, error
+    # Old committed baselines contain only irreversible full-line hashes. Keep
+    # validating them exactly; never infer a count-free digest from a hash.
+    got = chain(lines, n) if base.get("chain_schema") == 2 else full_chain(lines, n)
     if got != base["chain"]:
-        return True, (f"first {n} frames match the baseline in graded and visual digests; the strict (raw float bits) chain differs "
-                      f"({got}, baseline {base['chain']}): a float expression compiles differently, nothing visible moved")
+        return False, (f"strict acceptance chain over first {n} frames differs: {got}, baseline {base['chain']} "
+                       f"({base.get('mission')} at {base.get('sha')})")
     return True, f"first {n} frames match the baseline chain {got} in every digest"
 
 
@@ -373,7 +414,7 @@ def selftest() -> int:
         out = []
         for i in range(n):
             g = "%016x" % (i * 7919 + (1 if i == bad else 0))
-            out.append(f"{PREFIX}{i} t={i / 30:.3f} n=38 graded={g} visual={g} strict={g}")
+            out.append(f"{PREFIX}{i} t={i / 30:.3f} n=38 graded={g} visual={g} strict={g} nobj=2 objects={g} nabl=1 abl={g} rng=1/2/3")
         return out
 
     fails = []
@@ -401,15 +442,16 @@ def selftest() -> int:
         expect(len(load_simid(p)) == 5, "load_simid keeps only the SIMID lines")
         b = os.path.join(td, "b.json")
         with open(b, "w") as fh:
-            json.dump({"frames": 5, "chain": chain(mk(5)), "visible_chain": visible_chain(mk(5)), "mission": "m", "sha": "s"}, fh)
+            json.dump({"frames": 5, "chain": full_chain(mk(5)), "visible_chain": visible_chain(mk(5)), "mission": "m", "sha": "s"}, fh)
         expect(check_baseline(mk(9), b)[0], "a run that starts with the baseline frames matches it")
         expect(not check_baseline(mk(9, bad=2), b)[0], "a run that differs inside the baseline frames does not")
         expect(not check_baseline(mk(4), b)[0], "a run shorter than the baseline does not")
         strict_moved = [_STRICT.sub(" strict=ffff", ln) if i == 2 else ln for i, ln in enumerate(mk(9))]
         ok, msg = check_baseline(strict_moved, b)
-        expect(ok and "strict" in msg, "a change in the strict digest alone passes with a note")
+        expect(not ok and "strict" in msg, "a change in the strict digest alone fails")
+        expect(not compare([ln.replace(" n=38", "") for ln in mk(400)], mk(400))[0], "missing observation count fails")
         with open(b, "w") as fh:
-            json.dump({"frames": 5, "chain": chain(mk(5)), "visible_chain": visible_chain(mk(5)), "mission": "m", "sha": "s", "seed": "0x1",
+            json.dump({"frames": 5, "chain": full_chain(mk(5)), "visible_chain": visible_chain(mk(5)), "mission": "m", "sha": "s", "seed": "0x1",
                        "data_fingerprint": {"digest": "d1", "inputs": []}}, fh)
         expect(check_baseline(mk(9), b, "0x1", {"digest": "d1"})[0], "matching seed and data fingerprint pass")
         expect(not check_baseline(mk(9), b, "0x2", {"digest": "d1"})[0], "another seed fails before any frame is compared")
@@ -562,13 +604,19 @@ def main(argv=None) -> int:
         if fp["problems"]:
             sys.exit("the install is not the declared stock-plus-overlay data set; no baseline written:\n  " + "\n  ".join(fp["problems"]))
         out = args.out or baseline_path(args.mission)
+        error = observation_error(lines[:args.frames])
+        if error:
+            sys.exit(error)   # before anything is opened: a rejected log must leave an existing baseline untouched
         os.makedirs(os.path.dirname(out), exist_ok=True)
-        with open(out, "w", encoding="utf-8", newline="\n") as fh:
-            json.dump({"mission": args.mission, "frames": args.frames, "chain": chain(lines, args.frames), "visible_chain": visible_chain(lines, args.frames),
+        tmp = out + ".tmp"
+        with open(tmp, "w", encoding="utf-8", newline="\n") as fh:
+            json.dump({"mission": args.mission, "frames": args.frames, "chain_schema": 2,
+                       "chain": chain(lines, args.frames), "full": full_chain(lines, args.frames), "visible_chain": visible_chain(lines, args.frames),
                        "sha": _build_sha(args.log) or _git_sha(), "seed": _seed(args.log), "data_fingerprint": fp,
                        "gates": GATES, "env": dict(kv.split("=", 1) for kv in args.env),
                        "about": "chain digest of the first N [SIMID v1] lines; tools/sim_determinism.py check <mission>"}, fh, indent=1)
             fh.write("\n")
+        os.replace(tmp, out)
         print(f"sim_determinism: wrote {os.path.relpath(out, ROOT)}")
         return 0
     if args.cmd == "compare":

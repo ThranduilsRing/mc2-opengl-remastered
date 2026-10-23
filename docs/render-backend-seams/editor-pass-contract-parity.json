@@ -79,7 +79,7 @@
     },
     {
       "passId": "TerrainDecal",
-      "owner": "craterManager / quad.cpp",
+      "owner": "gos_PushDecal / quad.cpp",
       "game": "rendered",
       "editor": "rendered",
       "classification": "shared",

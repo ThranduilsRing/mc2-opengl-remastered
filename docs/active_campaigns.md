@@ -78,7 +78,7 @@ producer (`decal-terrain-impact-mvp` @ `585d29c9` cherry-picked + 2 hunks reappl
 the screen-space box-decal PROJECTION consumer (`box-decal-1` @ `86e634c0` cherry-picked
 clean). Box-decal now reads `dynamic_decal_ring` live slots (one projected decal per
 impact) instead of the v1 hardcoded screen-center test box. Parallel to baked craters,
-not canonical. Detail: `docs/DECAL-INTEGRATE-1.md`.
+not canonical. Detail: (doc deleted 2026-10-22; see git history).
 
 ```
 DECAL_INTEGRATE:
@@ -90,7 +90,7 @@ DECAL_INTEGRATE:
   consumer: box_decal projection (now ring-fed, not hardcoded)
   normal_reject: DISABLED_DEFAULT (up-axis frame TODO)
   surface_class_masking: DEFERRED
-  visual_status: see docs/DECAL-INTEGRATE-1.md (non-deterministic / fixture-driven)
+  visual_status: see git history for DECAL-INTEGRATE-1 (non-deterministic / fixture-driven)
 ```
 
 ## 2026-06-22 — MECH-UBLB-ATTACHMENT-FIX-1 (BT2018 clip pose) — SHIPPED nifty (`570cfab4`)

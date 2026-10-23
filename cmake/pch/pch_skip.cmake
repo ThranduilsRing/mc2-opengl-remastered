@@ -44,7 +44,6 @@ set(MC2_PCH_SKIP_mclib
     "mclib/camera_matrix.cpp"
     "mclib/camera_update.cpp"
     "mclib/cmponent.cpp"
-    "mclib/crater.cpp"
     "mclib/effect_resources.cpp"
     "mclib/genactor.cpp"
     "mclib/gvactor.cpp"

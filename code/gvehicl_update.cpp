@@ -17,6 +17,9 @@ static constexpr float GV_VEHICLE_PILOT_RUN_SECONDS = 4.0f;
 
 long GroundVehicle::update (void)
 {
+    unitAnimation = appearance->simulationAnimation();
+    simulationPose = appearance->simPose;
+
 	if (withdrawing && (pilot->getStatus() == WARRIOR_STATUS_WITHDRAWN)) 
 	{
 		setTangible(false);
@@ -124,10 +127,10 @@ long GroundVehicle::update (void)
 
 			appearance->setObjectParameters(position, rotation, TacticalOverview::maskWorldBars(drawFlags), teamId,relationship);
 			appearance->setMoverParameters(turretRotation,dRot.x,dRot.z,!pathLocks);
-			inView = appearance->recalcBounds();
+			inView = false;
 			appearance->setObjStatus(getStatus());
 	
-			if (inView)
+			if (appearance)
 			{
 				appearance->update();
 				windowsVisible = turn;
@@ -171,7 +174,7 @@ long GroundVehicle::update (void)
 
 				appearance->setObjectParameters(position, rotation, TacticalOverview::maskWorldBars(drawFlags), teamId,relationship);
 				appearance->setMoverParameters(turretRotation,dRot.x,dRot.z,!pathLocks);
-				inView = appearance->recalcBounds();
+				inView = false;
 				appearance->setObjStatus(getStatus());
 		
 				if (inView)
@@ -206,8 +209,6 @@ long GroundVehicle::update (void)
 						ObjectManager->createExplosion(INFANTRY_BOOM_EFFECT,nullptr,position, 0.0f,0.0f);
 					}
 				}
-					
-				craterManager->addCrater(CRATER_4,position,mc2_appearance_rng::randomNumber(180));
 			}
 
 			exploding = true;
@@ -509,7 +510,7 @@ long GroundVehicle::update (void)
 
 			appearance->setObjectParameters(position, rotation, TacticalOverview::maskWorldBars(drawFlags), teamId,relationship);
 			appearance->setMoverParameters(turretRotation,0.0f,0.0f,!pathLocks);
-			inView = appearance->recalcBounds();
+			inView = false;
 			appearance->setObjStatus(getStatus());
 	
 			int watercellR, watercellC;

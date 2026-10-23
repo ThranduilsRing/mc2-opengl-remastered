@@ -543,6 +543,43 @@ TEST_CASE("AuthoredOrderProduction/BattleMech patrol reverses at endpoints (warr
     }
 }
 
+TEST_CASE("CommandReplay/runtime player movers use the queue and reject reused identities") {
+    SeamWorldResources resources;
+    struct RuntimeObjects : GameObjectManager {
+        GameObject* entries[2]{};
+        RuntimeObjects() { objList = entries; maxMechs = 1; collisionSystem = nullptr; moverLineOfSightTable = nullptr; }
+        ~RuntimeObjects() { objList = nullptr; maxMechs = 0; }
+    } objects;
+    Pilot pilot;
+    struct RuntimeActor : Actor { void replaceWatch() { watchID = 2; } } actor;
+    actor.attach(pilot); actor.setHandle(1);
+    objects.entries[1] = &actor;
+    ObjectManager = &objects;
+    struct RuntimeMission : Mission { using Mission::orderRecipients; using Mission::orderIngress; } owner;
+    auto* previousMission = mission;
+    mission = &owner;
+    struct RestoreMission {
+        Mission* previous;
+        ~RestoreMission() { mission = previous; ObjectManager = nullptr; }
+    } restore{previousMission};
+    ::TacticalOrder stop;
+    stop.init(ORDER_ORIGIN_PLAYER, TACTICAL_ORDER_STOP);
+    REQUIRE(owner.orderRecipients.empty());
+    REQUIRE(actor.handleTacticalOrder(stop) == 0);
+    CHECK(pilot.getTacOrder(ORDERSTATE_PLAYER)->code == TACTICAL_ORDER_NONE);
+    owner.beginOrderSimulationTick();
+    CHECK(pilot.getTacOrder(ORDERSTATE_PLAYER)->code == TACTICAL_ORDER_STOP);
+    owner.completeOrderSimulationTick();
+    pilot.getTacOrder(ORDERSTATE_PLAYER)->code = TACTICAL_ORDER_NONE;
+    REQUIRE(actor.handleTacticalOrder(stop) == 0);
+    actor.replaceWatch();
+    owner.beginOrderSimulationTick();
+    CHECK(pilot.getTacOrder(ORDERSTATE_PLAYER)->code == TACTICAL_ORDER_NONE);
+    REQUIRE(owner.orderIngress.queue().receipts().size() == 1);
+    CHECK(owner.orderIngress.queue().receipts().front().applicationStatus == mc2::sim::ApplicationStatus::Rejected);
+    owner.completeOrderSimulationTick();
+}
+
 TEST_CASE("AuthoredOrderProduction/BattleMech traverse consumes extra mode sentinel (warrior_move.cpp:732)") {
     SeamWorldResources resources;
     RouteActors actors;

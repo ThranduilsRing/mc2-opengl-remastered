@@ -73,8 +73,8 @@ void Mech3DAppearance::setObjectParameters (const glm::vec3 &pos, float Rot, lon
 	if ((rotation != Rot) || (!mc2::math::closeEnough(pos, position)))
 		movedThisFrame = true;
  
-	if ((currentGestureId == 23) || (currentGestureId == 24) || (currentGestureId == 21) || (currentGestureId == 22) ||
-		(currentGestureId == 14) || (currentGestureId == 15))
+	if ((unitAnim().currentGestureId == 23) || (unitAnim().currentGestureId == 24) || (unitAnim().currentGestureId == 21) || (unitAnim().currentGestureId == 22) ||
+		(unitAnim().currentGestureId == 14) || (unitAnim().currentGestureId == 15))
 	{
 	}
 	else
@@ -99,21 +99,21 @@ void Mech3DAppearance::setMoverParameters (float turretRot, float lArmRot, float
 {
 	isHelicopter = isAirborne;
 
-	if ((currentGestureId == 23) || (currentGestureId == 24) || (currentGestureId == 21) || (currentGestureId == 22) ||
-		(currentGestureId == 14) || (currentGestureId == 15))
+	if ((unitAnim().currentGestureId == 23) || (unitAnim().currentGestureId == 24) || (unitAnim().currentGestureId == 21) || (unitAnim().currentGestureId == 22) ||
+		(unitAnim().currentGestureId == 14) || (unitAnim().currentGestureId == 15))
 	{
 	}
 	else
 	{
-		torsoRotation = turretRot;
+		unitAnim().torsoRotation = turretRot;
 		leftArmRotation = lArmRot;
 		rightArmRotation = rArmRot;
 
-		if (torsoRotation > 180)
-			torsoRotation -= 360;
+		if (unitAnim().torsoRotation > 180)
+			unitAnim().torsoRotation -= 360;
 
-		if (torsoRotation < -180)
-			torsoRotation += 360;
+		if (unitAnim().torsoRotation < -180)
+			unitAnim().torsoRotation += 360;
 	}
 }	
 
@@ -145,6 +145,9 @@ bool oneMechPlease = false;
 
 void Mech3DAppearance::destroy (void)
 {
+    mc2mechanim::UnregisterImportedActor(simulationShape_.get());
+    simulationShape_.reset();
+
 	// (E) T1.8: paired cleanup for SpotLight_-child illumination from T1.6.
 	// Walks CACHED state only (spotlightLights_/spotlightSlotIds_); does NOT
 	// call getNodeIdPosition or any mechShape method — same destroy-ordering
@@ -242,47 +245,47 @@ void Mech3DAppearance::destroy (void)
 
 	if (InEditor)
 	{
-		std::vector<long>().swap(nodeUsed);
-		std::vector<float>().swap(nodeRecycle);
+		std::vector<long>().swap(unitAnim().nodeUsed);
+		std::vector<float>().swap(unitAnim().nodeRecycle);
 	}
 }
 
 void Mech3DAppearance::copyTo (MechAppearanceData *data)
 {
 	data->frameNum = frameNum;
-	data->mechFrameRate = mechFrameRate;
+	data->mechFrameRate = unitAnim().mechFrameRate;
 
-	data->leftArmOff = leftArmOff;
-	data->rightArmOff = rightArmOff;
-	data->fallen = fallen;
-	data->forceStop = forceStop;
-	data->atTransitionToNextGesture = atTransitionToNextGesture;
-	data->inReverse = inReverse;
-	data->inJump = inJump;
-	data->jumpSetup = jumpSetup;
+	data->leftArmOff = unitAnim().leftArmOff;
+	data->rightArmOff = unitAnim().rightArmOff;
+	data->fallen = unitAnim().fallen;
+	data->forceStop = unitAnim().forceStop;
+	data->atTransitionToNextGesture = unitAnim().atTransitionToNextGesture;
+	data->inReverse = unitAnim().inReverse;
+	data->inJump = unitAnim().inJump;
+	data->jumpSetup = unitAnim().jumpSetup;
 	data->jumpFXSetup = jumpFXSetup;
-	data->jumpAirborne = jumpAirborne;
-	data->oncePerFrame = oncePerFrame;
-	data->lockRotation = lockRotation;
+	data->jumpAirborne = unitAnim().jumpAirborne;
+	data->oncePerFrame = unitAnim().oncePerFrame;
+	data->lockRotation = unitAnim().lockRotation;
 
-	data->velocity = velocity;
+	data->velocity = unitAnim().velocity;
 	data->status = status;
 
-	data->currentStateGoal = currentStateGoal;
-	data->currentGestureId = currentGestureId;
-	data->transitionState = transitionState;
-	data->oldStateGoal = oldStateGoal;
-	data->hitGestureId = hitGestureId;
+	data->currentStateGoal = unitAnim().currentStateGoal;
+	data->currentGestureId = unitAnim().currentGestureId;
+	data->transitionState = unitAnim().transitionState;
+	data->oldStateGoal = unitAnim().oldStateGoal;
+	data->hitGestureId = unitAnim().hitGestureId;
 
-	data->currentFrame = currentFrame;
+	data->currentFrame = unitAnim().currentFrame;
 	data->currentLOD = currentLOD;
 
 	if (mechType->numWeaponNodes > 10)
 		STOP(("Mech Has too many weapon nodes to save %d",mechType->numWeaponNodes));
 
 	// The saved slot is 10 BYTES of a 10-element table (a save-format limit, docs/known_issues.md); a table shorter than the slot must not be over-read.
-	memcpy(data->nodeUsed,nodeUsed.data(),std::min<size_t>(10,nodeUsed.size()*sizeof(long)));		 
-	memcpy(data->nodeRecycle,nodeRecycle.data(),std::min<size_t>(10,nodeRecycle.size()*sizeof(float)));
+	memcpy(data->nodeUsed,unitAnim().nodeUsed.data(),std::min<size_t>(10,unitAnim().nodeUsed.size()*sizeof(long)));		 
+	memcpy(data->nodeRecycle,unitAnim().nodeRecycle.data(),std::min<size_t>(10,unitAnim().nodeRecycle.size()*sizeof(float)));
 
 	data->isSmoking = isSmoking;
 	data->isWaking = isWaking;
@@ -291,45 +294,45 @@ void Mech3DAppearance::copyTo (MechAppearanceData *data)
 	data->isHelicopter = isHelicopter;
 
 	data->baseRootNodeHeight = baseRootNodeHeight;
-	data->jumpDestination = jumpDestination;
-	data->jumpVelocity = jumpVelocity;
+	data->jumpDestination = unitAnim().jumpDestination;
+	data->jumpVelocity = unitAnim().jumpVelocity;
 }
 
 void Mech3DAppearance::copyFrom (MechAppearanceData *data)
 {
 	frameNum = data->frameNum;
-	mechFrameRate = data->mechFrameRate;
+	unitAnim().mechFrameRate = data->mechFrameRate;
 
-	leftArmOff = data->leftArmOff;
-	rightArmOff = data->rightArmOff;
-	fallen = data->fallen;
-	forceStop = data->forceStop;
-	atTransitionToNextGesture = data->atTransitionToNextGesture;
-	inReverse = data->inReverse;
-	inJump = data->inJump;
-	jumpSetup = data->jumpSetup;
+	unitAnim().leftArmOff = data->leftArmOff;
+	unitAnim().rightArmOff = data->rightArmOff;
+	unitAnim().fallen = data->fallen;
+	unitAnim().forceStop = data->forceStop;
+	unitAnim().atTransitionToNextGesture = data->atTransitionToNextGesture;
+	unitAnim().inReverse = data->inReverse;
+	unitAnim().inJump = data->inJump;
+	unitAnim().jumpSetup = data->jumpSetup;
 	jumpFXSetup = data->jumpFXSetup;
-	jumpAirborne = data->jumpAirborne;
-	oncePerFrame = data->oncePerFrame;
-	lockRotation = data->lockRotation;
+	unitAnim().jumpAirborne = data->jumpAirborne;
+	unitAnim().oncePerFrame = data->oncePerFrame;
+	unitAnim().lockRotation = data->lockRotation;
 
-	velocity = data->velocity;
+	unitAnim().velocity = data->velocity;
 
 	//Let mech reset status when it reloads so that the destroyed shapes come up.
 //	status = data->status;
 
-	currentStateGoal = data->currentStateGoal;
-	currentGestureId = data->currentGestureId;
-	transitionState = data->transitionState;
-	oldStateGoal = data->oldStateGoal;
-	hitGestureId = data->hitGestureId;
+	unitAnim().currentStateGoal = data->currentStateGoal;
+	unitAnim().currentGestureId = data->currentGestureId;
+	unitAnim().transitionState = data->transitionState;
+	unitAnim().oldStateGoal = data->oldStateGoal;
+	unitAnim().hitGestureId = data->hitGestureId;
 
-	currentFrame = data->currentFrame;
+	unitAnim().currentFrame = data->currentFrame;
 	currentLOD = data->currentLOD;
 
 	// Mirror of copyTo: only 10 bytes were saved, and a table shorter than that must not be over-written.
-	memcpy(nodeUsed.data(),data->nodeUsed,std::min<size_t>(10,nodeUsed.size()*sizeof(long)));		 
-	memcpy(nodeRecycle.data(),data->nodeRecycle,std::min<size_t>(10,nodeRecycle.size()*sizeof(float)));
+	memcpy(unitAnim().nodeUsed.data(),data->nodeUsed,std::min<size_t>(10,unitAnim().nodeUsed.size()*sizeof(long)));		 
+	memcpy(unitAnim().nodeRecycle.data(),data->nodeRecycle,std::min<size_t>(10,unitAnim().nodeRecycle.size()*sizeof(float)));
 
 	isSmoking = -1;
 	if (data->isSmoking >= 0)
@@ -373,8 +376,8 @@ void Mech3DAppearance::copyFrom (MechAppearanceData *data)
 
 	isHelicopter = data->isHelicopter;
 	baseRootNodeHeight = data->baseRootNodeHeight;
-	jumpDestination = 	data->jumpDestination;
-	jumpVelocity = 		data->jumpVelocity;
+	unitAnim().jumpDestination = 	data->jumpDestination;
+	unitAnim().jumpVelocity = 		data->jumpVelocity;
 
 	// [MECHRESTORE v1] restore boundary. status is deliberately NOT
 	// copied — emit the post-restore value + type/LOD so a
@@ -401,6 +404,8 @@ void Mech3DAppearance::flashBuilding (float dur, float fDuration, DWORD color)
 
 glm::vec3 Mech3DAppearance::getHitNodeLeft (void)
 {
+    if (!simPresentationPass && simPose->ready) return simPose->hitLeft;
+
 	if (hitLeftNodeIndex == -1)
 		hitLeftNodeIndex = mechShape->GetNodeNameId("hit_left");
 
@@ -416,7 +421,7 @@ glm::vec3 Mech3DAppearance::getHitNodeLeft (void)
    	mc2ToRender(xlatPosition, position);
 
    	glm::quat torsoRot;
-   	torsoRot = mc2::math::quatFromEuler(mc2::math::Euler(0.0f,(torsoRotation * DEGREES_TO_RADS),0.0f));
+   	torsoRot = mc2::math::quatFromEuler(mc2::math::Euler(0.0f,(unitAnim().torsoRotation * DEGREES_TO_RADS),0.0f));
 	if (rotationalNodeIndex == -1)
 	   	rotationalNodeIndex = mechShape->SetNodeRotation("joint_torso",&torsoRot);
 
@@ -445,6 +450,8 @@ glm::vec3 Mech3DAppearance::getHitNodeLeft (void)
 
 glm::vec3 Mech3DAppearance::getHitNodeRight (void)
 {
+    if (!simPresentationPass && simPose->ready) return simPose->hitRight;
+
 	if (hitRightNodeIndex == -1)
 		hitRightNodeIndex = mechShape->GetNodeNameId("hit_right");
 
@@ -460,7 +467,7 @@ glm::vec3 Mech3DAppearance::getHitNodeRight (void)
    	mc2ToRender(xlatPosition, position);
    
    	glm::quat torsoRot;
-   	torsoRot = mc2::math::quatFromEuler(mc2::math::Euler(0.0f,(torsoRotation * DEGREES_TO_RADS),0.0f));
+   	torsoRot = mc2::math::quatFromEuler(mc2::math::Euler(0.0f,(unitAnim().torsoRotation * DEGREES_TO_RADS),0.0f));
 	if (rotationalNodeIndex == -1)
 	   	rotationalNodeIndex = mechShape->SetNodeRotation("joint_torso",&torsoRot);
 

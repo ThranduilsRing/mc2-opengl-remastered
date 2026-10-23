@@ -22,9 +22,10 @@ def test_selftest_passes():
 def test_logparse_and_the_tool_agree_on_the_chain():
     sys.path.insert(0, os.path.join(HERE, ".."))
     from scripts.smoke_lib.logparse import parse_log
-    lines = [f"{sd.PREFIX}{i} t=0.0 n=1 graded=a visual=b strict=c" for i in range(50)]
+    lines = [f"{sd.PREFIX}{i} t=0.0 n=1 graded=a visual=b strict=c rng=1/2/3" for i in range(50)]
     s = parse_log("\n".join(["noise"] + lines + ["[HEARTBEAT] frames=1"]) + "\n")
-    assert s.simid_frames == 50 and s.simid_chain == sd.chain(lines)
+    assert s.simid_frames == 50 and s.simid_chain == sd.full_chain(lines)
+    assert s.simid_chain != sd.chain(lines)
 
 
 def test_a_log_without_simid_has_no_chain():
@@ -57,7 +58,7 @@ def test_cli_selects_install_for_runner_and_fingerprint(monkeypatch, command, in
     monkeypatch.setattr(sd, "run_mission", lambda *args, **kwargs: launched.append(kwargs["install"]) or ["a", "b"])
     monkeypatch.setattr(sd, "pairs_until_fail", lambda *args, **kwargs: launched.append(kwargs["install"]) or 0)
     monkeypatch.setattr(sd, "build_and_deploy", lambda path: deployed.append(path))
-    monkeypatch.setattr(sd, "load_simid", lambda log: [sd.PREFIX + "1 graded=a visual=b strict=c"])
+    monkeypatch.setattr(sd, "load_simid", lambda log: [sd.PREFIX + "1 n=1 graded=a visual=b strict=c nobj=1 objects=d nabl=1 abl=e rng=1/2/3"])
     monkeypatch.setattr(sd, "baseline_path", lambda mission: __file__)
     monkeypatch.setattr(sd, "_load_env", lambda path: {})
     monkeypatch.setattr(sd, "_seed", lambda log: "seed")
@@ -102,7 +103,7 @@ def test_runner_passes_selected_install_to_both_mocked_launches(monkeypatch, ins
 def test_selected_install_reaches_pair_loop(monkeypatch):
     launched = []
     monkeypatch.setattr(sd, "run_mission", lambda *args, **kwargs: launched.append(kwargs["install"]) or ["a", "b"])
-    monkeypatch.setattr(sd, "load_simid", lambda log: [sd.PREFIX + "1 graded=a visual=b strict=c"])
+    monkeypatch.setattr(sd, "load_simid", lambda log: [sd.PREFIX + "1 n=1 graded=a visual=b strict=c nobj=1 objects=d nabl=1 abl=e rng=1/2/3"])
     monkeypatch.setattr(sd, "host_load", lambda: {"cpu": 0, "procs": {}})
     out = Path(tempfile.gettempdir()) / f"simdet-pairs-{uuid.uuid4().hex}"
     out.mkdir()

@@ -321,6 +321,7 @@ class Mech3DAppearance: public ObjectAppearance
 		Mech3DAppearanceTypePtr		mechType;
 		
 		TG_MultiShapePtr			mechShape;
+        std::unique_ptr<TG_MultiShape> simulationShape_;
 		TG_MultiShapePtr			mechShadowShape;
 		TG_MultiShapePtr			sensorSquareShape;
 		TG_MultiShapePtr			sensorTriangleShape;
@@ -338,42 +339,42 @@ class Mech3DAppearance: public ObjectAppearance
 		bool						rightArmInView;
 
 		float						frameNum;
-		float						mechFrameRate;
+
 		
-		float						torsoRotation;
+
 		float						leftArmRotation;
 		float						rightArmRotation;
 
-		bool						leftArmOff;
-		bool						rightArmOff;
-		bool						fallen;
-		bool						forceStop;
-		bool						atTransitionToNextGesture;
-		bool						inReverse;
-		bool						inJump;
-		bool						jumpSetup;
+
+
+
+
+
+
+
+
 		bool						jumpFXSetup;
-		bool						jumpAirborne;
-		bool						oncePerFrame;
-		bool						lockRotation;
+
+
+
 
 		bool						inDebugMoveMode;
 		bool						singleStepMode;
 		bool						nextStep;
 		bool						prevStep;
 
-		float						velocity;
+
 		long						status;
 		long						sensorLevel;
 
-		long						currentStateGoal;
-		long						currentGestureId;
-		long						transitionState;
-		long						oldStateGoal;
-		long						hitGestureId;			//What gesture should I go back to when hit?
 
-		float						currentFrame;			//One for each part.
-		uint32_t					lastAnimAdvanceFrame;	//ANIM-CADENCE-FIX: g_mc2FrameCounter of last gait advance (idempotency guard)
+
+
+
+
+
+
+
 		long						currentLOD;
 
 		TG_LightPtr					pointLight;
@@ -391,15 +392,15 @@ class Mech3DAppearance: public ObjectAppearance
 		std::vector<DWORD>			spotlightSlotIds_;   // worldLights[] indices
 		bool						spotlightsRegistered_;
 		
-		float						idleTime;				//Elapsed time since I've done something.
+
 															//If it gets larger then X, play the idle animation.
 															
-		glm::vec3				jumpDestination;
-		glm::vec3				jumpVelocity;			//Real velocity vector now.  Just plug into mech velocity.
+
+
 		float						hazeFactor;
 		
-		std::vector<long>						nodeUsed;				//Used to stagger the weapon nodes for firing.
-		std::vector<float>						nodeRecycle;			//Used for ripple fire to find out if the node has fired recently.
+
+
 		
 		glm::vec3				footPos[2];				//Used to store previous frame foot positions.
 															//For foot poofs and footprints.
@@ -434,7 +435,7 @@ class Mech3DAppearance: public ObjectAppearance
 		bool						rightFootDone1;
 		bool						leftFootDone1;
 		
-		bool						inCombatMode;
+
 		
 		long						isSmoking;
 		bool						isWaking;
@@ -562,7 +563,8 @@ class Mech3DAppearance: public ObjectAppearance
 
 		// Poses the node hierarchy (gesture frame, torso twist) for a mech updateGeometry skipped as off screen. WHY: the
 		// weapon, LOS and named-node positions the simulation reads come from that pose, so it must not depend on the camera.
-		void updateSimPose (void);
+		void updateSimPose (bool advanceClock = true);
+        void refreshSimPose() override { updateSimPose(false); }
 
 		virtual void setPaintScheme (void);
 
@@ -574,7 +576,7 @@ class Mech3DAppearance: public ObjectAppearance
 
  		virtual bool isInJump (void)
 		{
-			return inJump;
+			return unitAnim().inJump;
 		}
 
 		void flashBuilding (float dur, float fDuration, DWORD color);
@@ -582,19 +584,19 @@ class Mech3DAppearance: public ObjectAppearance
 
 		virtual bool isJumpSetup (void)
 		{
-			return jumpSetup;
+			return unitAnim().jumpSetup;
 		}
 
 		virtual bool isJumpAirborne (void)
 		{
-			return jumpAirborne;
+			return unitAnim().jumpAirborne;
 		}
 
 		virtual bool setJumpParameters (glm::vec3 &end);
 
 		virtual bool haveFallen (void)
 		{
-			return fallen;
+			return unitAnim().fallen;
 		}
 		
 		virtual bool isMouseOver (float px, float py);
@@ -603,17 +605,17 @@ class Mech3DAppearance: public ObjectAppearance
 		
 		virtual void setBrake (bool brake)
 		{
-			forceStop = brake;
+			unitAnim().forceStop = brake;
 		}
 
 		bool checkStop (void)
 		{
-			return forceStop;
+			return unitAnim().forceStop;
 		}
 
 		virtual long getCurrentGestureId (void)
 		{
-			return currentGestureId;
+			return unitAnim().currentGestureId;
 		}
 
 		virtual void setGesture (unsigned long gestureId)
@@ -626,15 +628,15 @@ class Mech3DAppearance: public ObjectAppearance
 			// at startup.  Any other attempt to use this will probably not work!!
 			//
 			// These two lines force the select box to match the helicopter's position in the sky
-			currentGestureId = 2;
+			unitAnim().currentGestureId = 2;
 			inView = true;
 			update();
 
-			currentGestureId = gestureId;
-			oldStateGoal = 0;				//This is ONLY valid for park!!!!
-			currentStateGoal = -1;			//Not going anywhere
-			transitionState = 0;			//No Transition necessary.
-			currentFrame = mechType->getNumFrames (currentGestureId)-1;
+			unitAnim().currentGestureId = gestureId;
+			unitAnim().oldStateGoal = 0;				//This is ONLY valid for park!!!!
+			unitAnim().currentStateGoal = -1;			//Not going anywhere
+			unitAnim().transitionState = 0;			//No Transition necessary.
+			unitAnim().currentFrame = mechType->getNumFrames (unitAnim().currentGestureId)-1;
 		}
 
 		virtual long setGestureGoal (long stateGoal)
@@ -645,30 +647,30 @@ class Mech3DAppearance: public ObjectAppearance
 			//
 			// NO gesture queueing.  Current request is current goal.
 			//
-			if (oncePerFrame)
+			if (unitAnim().oncePerFrame)
 				return 0;
 
-			if (oldStateGoal == stateGoal)
+			if (unitAnim().oldStateGoal == stateGoal)
 				return(0);
 		
-			if (currentStateGoal == stateGoal)
+			if (unitAnim().currentStateGoal == stateGoal)
 				return(0);
 
 			if ((stateGoal < MECH_STATE_PARKED) || (stateGoal > MECH_STATE_LIMPING_RIGHT))
 				return(0);
 
-			if (currentStateGoal != -1)
+			if (unitAnim().currentStateGoal != -1)
 				return 0;
 
-			 if ((currentGestureId == GestureHitFront) ||
-				 (currentGestureId == GestureHitBack) || 
-				 (currentGestureId == GestureHitLeft) || 
-				 (currentGestureId == GestureHitRight))
+			 if ((unitAnim().currentGestureId == GestureHitFront) ||
+				 (unitAnim().currentGestureId == GestureHitBack) || 
+				 (unitAnim().currentGestureId == GestureHitLeft) || 
+				 (unitAnim().currentGestureId == GestureHitRight))
 			 {
 				 return 0;
 			 }
  					  
-			if ((stateGoal == MECH_STATE_JUMPING) && !jumpSetup)
+			if ((stateGoal == MECH_STATE_JUMPING) && !unitAnim().jumpSetup)
 				return 0;
 				
 			//---------------------------------------------------------------
@@ -677,12 +679,12 @@ class Mech3DAppearance: public ObjectAppearance
 			// variables if this is TRUE and go on.  Otherwise, IGNORE THIS
 			// COMMAND.  MECH will continually ask to change if necessary.
 
-			transitionState = 0;				//Start at beginning gestureId of this goal.
+			unitAnim().transitionState = 0;				//Start at beginning gestureId of this goal.
 
-			currentStateGoal = stateGoal;
-			atTransitionToNextGesture = true;
+			unitAnim().currentStateGoal = stateGoal;
+			unitAnim().atTransitionToNextGesture = true;
 
-			oncePerFrame = true;
+			unitAnim().oncePerFrame = true;
 			return -1;
 		}
 		
@@ -711,7 +713,7 @@ class Mech3DAppearance: public ObjectAppearance
 				otherResult = getNumFramesInGesture(gestureId);
 				if (otherResult > Stuff::SMALL)
 				{
-					vel *= currentFrame / otherResult;
+					vel *= unitAnim().currentFrame / otherResult;
 					vel += result;
 				}
 
@@ -721,22 +723,22 @@ class Mech3DAppearance: public ObjectAppearance
 
 		virtual glm::vec3 getVelocity (void)
 		{
-			return jumpVelocity;
+			return unitAnim().jumpVelocity;
 		}
 		
 		virtual float getVelocityMagnitude (void)
 		{
-			if (jumpAirborne)
-				return velocity;
+			if (unitAnim().jumpAirborne)
+				return unitAnim().velocity;
 			else
-				return getVelocityOfGesture (currentGestureId);
+				return getVelocityOfGesture (unitAnim().currentGestureId);
 		}
 
 		virtual void setCombatMode (bool combatMode)
 		{
 			//------------------------------------------------------------
 			// However we move the arms from gun to normal mode goes here.
-			inCombatMode = combatMode;
+			unitAnim().inCombatMode = combatMode;
 		}
 
 		virtual void setObjectParameters (const glm::vec3 &pos, float legRot, long selected, long alignment, long homeRelations);
@@ -889,12 +891,12 @@ class Mech3DAppearance: public ObjectAppearance
 
 		virtual bool getRightArmOff (void)
 		{
-			return rightArmOff;
+			return unitAnim().rightArmOff;
 		}
 
 		virtual bool getLeftArmOff (void)
 		{
-			return leftArmOff;
+			return unitAnim().leftArmOff;
 		}
 
 		virtual glm::vec3 getHitNodeLeft (void);

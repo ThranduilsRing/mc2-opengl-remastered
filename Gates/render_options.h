@@ -46,6 +46,10 @@ struct RenderOptions {
     bool vfxSoftParticles = false;  // depth-fade at scene intersections
     bool vfxLitParticles  = false;  // scene-lit smoke and dust
 
+    // Weapon impact decals (docs/impact-damage-design.md): 0 off (the base-game look), 1 low (96 decals, no unit scars),
+    // 2 full (256 decals).
+    int impactDecals = 2;
+
     bool operator==(const RenderOptions&) const = default;
 };
 
@@ -83,6 +87,7 @@ inline constexpr Option kOptions[] = {
     detail::boolOpt ("SunElevationFix",               &RenderOptions::sunElevationFix),
     detail::boolOpt ("VfxSoftParticles",              &RenderOptions::vfxSoftParticles),
     detail::boolOpt ("VfxLitParticles",               &RenderOptions::vfxLitParticles),
+    detail::longOpt ("ImpactDecals",                  &RenderOptions::impactDecals, 0, 2),
 };
 
 inline constexpr std::size_t kOptionCount = sizeof(kOptions) / sizeof(kOptions[0]);

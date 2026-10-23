@@ -144,6 +144,7 @@ L(Lead0P, "MC2_POSTPROCESS_COMPUTE_BLUR", Bool, false, "post", "", ""),
 L(Lead0P, "MC2_POSTPROCESS_COMPUTE_BLUR_PLANT", Bool, false, "post", "", ""),
 L(Lead0P, "MC2_POSTPROCESS_COMPUTE_BLUR_VERIFY", Bool, false, "post", "", ""),
 // POST-FX-CAS-1: AMD FidelityFX Contrast Adaptive Sharpening (GL composite).
+G("MC2_PRESENTATION_DISABLED", Bool, false, "code", "", "Replay proof: suppress presentation extraction updates while simulation continues.", passthrough | registry(Trace, "MC2_PRESENTATION_DISABLED", -1, false) | verified),
 L(Presence, "MC2_PRESWAP_FINISH", Bool, false, "gameos", "", "", passthrough),
 P("MC2_PREVIEW_FBO_SCALE", Int, 0, "gameos", "", "", verified),  // default not derivable from the tree
 L(Presence, "MC2_PREVIEW_NOCULL", Bool, false, "code", "", "EXPERIMENT (PREVIEW-FBO-FIXED-800x600-1 debug): the mech draws zero pixels anywhere in the FBO despite shouldRender=1."),
@@ -197,6 +198,7 @@ P("MC2_RENDER_WATER_FASTPATH_DEBUG", Int, 0, "gameos", "", ""),
 L(Presence, "MC2_RENDER_WATER_PARITY_CHECK", Bool, false, "terrain", "", "", passthrough | verified),
 L(Lead0, "MC2_RENDER_WORLD_SELFTEST", Bool, false, "code", "", "", verified),
 // history: docs/gate-history.md#MC2_RESOLVE_TRACE_FILE
+G("MC2_REPLAY_CONTENT", String, "", "code", "", "Mission/mod content digest supplied and checked by tools/command_replay.py.", passthrough | registry(Trace, "MC2_REPLAY_CONTENT", -1, false) | verified),
 G("MC2_RESOLVE_TRACE_FILE", String, "", "code", "", "META-FIX design E tier 3 (mclib/file.cpp): output path for the MC2_LOG_FILE_RESOLVE=2 JSONL resolve trace, opened for append at InitModSearchPaths (relative...", passthrough | registry(Trace, "MC2_TRACE_RESOLVE_TRACE_FILE", -1, false) | verified),
 // META-FIX-BATCH-2 (recurrence-proofing, designs D + F — 2026-07-16)
 // history: docs/gate-history.md#MC2_RES_ASSERT

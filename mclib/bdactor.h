@@ -218,6 +218,10 @@ class BldgAppearance : public ObjectAppearance
 
 		BldgAppearanceType*							appearType;
 		TG_MultiShapePtr							bldgShape;
+		std::unique_ptr<TG_MultiShape> simulationShape_;
+		TG_TypeMultiShape* simulationType_ = nullptr;
+		void updateSimPose();
+		void refreshSimPose() override { updateSimPose(); }
 
 		// Slice 2 (object-offload): set true by the GPU-object batcher's
 		// late-registration branch when a leaf type is encountered for the
@@ -269,16 +273,14 @@ class BldgAppearance : public ObjectAppearance
 		};
 		PickScreenRectCache							pickCache_;
 
-		long										bdAnimationState;
-		float										currentFrame;
-		float										bdFrameRate;
-		bool										isReversed;
-		bool										isLooping;
-		bool										setFirstFrame;
-		bool										canTransition;
+
+
+
+
+
+
+
 		
-		float										turretYaw;
-		float										turretPitch;
 		
 		float										hazeFactor;
 		
@@ -302,8 +304,8 @@ class BldgAppearance : public ObjectAppearance
 		
 		long										currentLOD;
 		
- 		std::vector<long>										nodeUsed;				//Used to stagger the weapon nodes for firing.
-		std::vector<float>										nodeRecycle;			//Used for ripple fire to find out if the node has fired recently.
+
+
 		
 		TG_LightPtr									pointLight;
 		DWORD										lightId;
@@ -391,7 +393,7 @@ class BldgAppearance : public ObjectAppearance
 
 		virtual bool getInTransition (void)
 		{
-			return (canTransition == false);
+			return (unitAnim().canTransition == false);
 		}
 
 		void setFadeTable (MemoryPtr fTable)
@@ -403,7 +405,7 @@ class BldgAppearance : public ObjectAppearance
 		
 		virtual long getCurrentGestureId (void)
 		{
-			return bdAnimationState;
+			return unitAnim().bdAnimationState;
 		}
 
 		virtual unsigned long getAppearanceClass (void)
@@ -540,6 +542,8 @@ class TreeAppearanceType : public AppearanceType
 		long						treeRenderShapeLodCount;
 
 		TG_TypeMultiShapePtr		treeDmgShape;
+        std::unique_ptr<TG_TypeMultiShape> treeDmgRenderShape;
+        const ModelOverrideRecord* propMaterialSource = nullptr;
 		
 		TG_AnimateShapePtr			treeAnimData[MAX_BD_ANIMATIONS];
 		bool						isForestClump;
@@ -563,6 +567,8 @@ class TreeAppearanceType : public AppearanceType
 				treeRenderShape[i] = nullptr;
 			treeRenderShapeLodCount = 0;
 			treeDmgShape = nullptr;
+            treeDmgRenderShape.reset();
+            propMaterialSource = nullptr;
 		}
 	
 		TreeAppearanceType (void)
@@ -600,6 +606,8 @@ class TreeAppearanceType : public AppearanceType
 			// no override populated for this or any lower index → stock
 			return treeShape[lod];
 		}
+        TG_TypeMultiShape* getTreeDamageRenderShape() { return treeDmgRenderShape ? treeDmgRenderShape.get() : treeDmgShape; }
+        void registerRenderShapes();
 		TG_TypeMultiShape* getTreeCollisionShape (long lod) { return treeShape[lod]; }
 };
 

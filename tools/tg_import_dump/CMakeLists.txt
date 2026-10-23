@@ -49,6 +49,8 @@ add_executable(tg_import_dump
     # --- TG types + geometry loader closure (same as tgl spike) ---
     ${MC2_ROOT}/mclib/msl.cpp
     ${MC2_ROOT}/mclib/msl_load.cpp
+    ${MC2_ROOT}/mclib/content_ir.cpp
+    ${MC2_ROOT}/GameOS/gameos/cook_cache.cpp
     ${MC2_ROOT}/mclib/msl_shape.cpp
     ${MC2_ROOT}/mclib/msl_transform.cpp
     ${MC2_ROOT}/mclib/msl_anim.cpp

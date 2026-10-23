@@ -165,11 +165,7 @@ void TreeAppearance::registerStatic() {
 	// TREE-OVERRIDE-LOD-MVP M-C: for override types iterate ONLY populated LODs
 	// (each distinct override LOD shape uploaded once); stock types keep the
 	// full MAX_LODS loop (distinct stock treeShape[i] per LOD).
-	const bool _treeRegIsOverride = (appearType->treeRenderShapeLodCount > 0);
-	const int  _treeRegLods = _treeRegIsOverride
-		? static_cast<int>(appearType->treeRenderShapeLodCount) : MAX_LODS;
-	for (int i = 0; i < _treeRegLods; ++i)
-		GpuStaticPropBatcher::instance().registerMultiShape(appearType->getTreeRenderShape(i), _treeRegIsOverride);
+	appearType->registerRenderShapes();
 
 	if (mc2::gate::get<"MC2_MODOVERRIDE_TRACE">() && appearType->treeRenderShape[0]) {
 		TG_TypeMultiShape* rs = appearType->treeRenderShape[0];
@@ -209,7 +205,9 @@ void TreeAppearance::registerStatic() {
 	// still leaves staticReg[0].registered=false (first-render fallback covers
 	// it, exactly as the single-LOD abort did before).
 	bool anyRegistered = false;
-	const int lodCount = _treeRegIsOverride ? static_cast<int>(appearType->treeRenderShapeLodCount) : 1;
+	const bool damaged = status == OBJECT_STATUS_DESTROYED || status == OBJECT_STATUS_DISABLED;
+	const bool _treeRegIsOverride = damaged ? appearType->treeDmgRenderShape != nullptr : appearType->treeRenderShapeLodCount > 0;
+	const int lodCount = !damaged && _treeRegIsOverride ? static_cast<int>(appearType->treeRenderShapeLodCount) : 1;
 	for (int lod = 0; lod < lodCount && lod < MAX_LODS; ++lod) {
 		// Render-instance for THIS LOD: reuse treeShape for LOD0; temp for >0.
 		TG_MultiShape* lodShape = (lod == 0)
@@ -270,7 +268,7 @@ void TreeAppearance::registerStatic() {
 			{
 				extern bool InEditor;   // mech3d.cpp
 				if (InEditor && appearType) {
-					TG_TypeMultiShape* typeRS = appearType->getTreeRenderShape(lod);
+					TG_TypeMultiShape* typeRS = damaged ? appearType->getTreeDamageRenderShape() : appearType->getTreeRenderShape(lod);
 					if (typeRS && i < typeRS->GetNumShapes()) {
 						TG_TypeNodePtr typeLeaf = typeRS->GetTypeNode(i);
 						uint32_t canonId = 0, idxc = 0, fi = 0, ic = 0; int32_t bv = 0;

@@ -133,6 +133,7 @@ static LONG WINAPI mc2_unhandled_exception_filter(EXCEPTION_POINTERS* ep)
 #include "tgl.h"   // drainTglPoolStats / drainTglPoolStatsOnShutdown (Tier-1 instr)
 #include "gos_object_recon_tracy.h"  // [OBJECT_RECON v1] slice-2 recon zero (env-gated)
 #include "projectz_trace.h"  // projectz_trace_init/frame_tick/shutdown (PROJECTZ v1)
+#include "battle_bench.h"
 #include "projectz_overlay.h" // RAlt+P debug overlay (commit 4)
 #include "render_backend_select.h"  // VK-P13-SELECTOR-1 / T1: MC2_RENDER_BACKEND
 #ifdef MC2_VULKAN
@@ -1036,6 +1037,8 @@ int main(int argc, char** argv)
 #endif
     while( !g_exit ) {
         ZoneScopedN("Frame");
+        mc2::battlebench::beginFrame();
+        const auto benchFrameStart = mc2::battlebench::output ? mc2::battlebench::Clock::now() : mc2::battlebench::Clock::time_point{};
 
 		uint64_t start_tick = timing::gettickcount();
         mc2_hitch::BeginFrame(s_hitchFrame);
@@ -1098,6 +1101,7 @@ int main(int argc, char** argv)
 #ifdef MC2_VULKAN_ISLAND
     mc2vk::gpuprof::frameEnd();   // VK-GPU-ZONES: after the present submit so the frame's scopes are all recorded; Tracy collect + per-pass timestamp read
 #endif
+    if (benchFrameStart != mc2::battlebench::Clock::time_point{}) mc2::battlebench::endFrame(mc2::battlebench::milliseconds(benchFrameStart));
     frameFrameCap(s_vsync_active, s_fps_cap_mission, s_fps_cap_menu, start_tick);
 
         FrameMark;

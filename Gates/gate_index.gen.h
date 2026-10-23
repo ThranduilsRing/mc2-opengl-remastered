@@ -10,7 +10,7 @@
 
 namespace mc2::gate::detail {
 
-inline constexpr std::size_t kGateCount = 888;
+inline constexpr std::size_t kGateCount = 893;
 
 inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_3DVIEW_DIAG", Kind::Bool, Rule::Presence, {}},
@@ -112,6 +112,9 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_COLORMAP_CPU_RETIRE", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_COLORMAP_DISPLACE_PROBE", Kind::Bool, Rule::Presence, {}},
     {"MC2_COLORMAP_KTX2", Kind::Bool, Rule::Lead0Kill, {}},
+    {"MC2_COMMAND_REPLAY_PLAY", Kind::String, Rule::Std, {}},
+    {"MC2_COMMAND_REPLAY_RECORD", Kind::String, Rule::Std, {}},
+    {"MC2_COMMAND_REPLAY_TICKS", Kind::Int, Rule::Prefix, {}},
     {"MC2_CONE_LEAF_DUMP", Kind::Bool, Rule::Presence, {}},
     {"MC2_CONE_POOL_POLICY", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_CONE_POOL_REACH", Kind::Float, Rule::Prefix, {}},
@@ -154,7 +157,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_DRAW_PACKET_STATIC_PROP_V6_TRACE", Kind::Bool, Rule::Lead1, {}},
     {"MC2_DRAW_PACKET_V3", Kind::Bool, Rule::Lead1, {}},
     {"MC2_DRAW_PACKET_WARN", Kind::Bool, Rule::Lead1, {}},
-    {"MC2_DYNAMIC_DECALS", Kind::Bool, Rule::Lead0P, {}},
     {"MC2_EDGE_FOG", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_EDGE_FOG_HEIGHT", Kind::Float, Rule::Prefix, {}},
     {"MC2_EDGE_FOG_MAX", Kind::Float, Rule::Prefix, {}},
@@ -215,7 +217,7 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_FX_COST_SPLIT", Kind::Bool, Rule::Exact1, {}},
     {"MC2_FX_COUNT_LOG", Kind::Bool, Rule::Presence, {}},
     {"MC2_FX_DEFS", Kind::Bool, Rule::Presence, {}},
-    {"MC2_FX_FORCE_SPAWN", Kind::Enum, Rule::Std, "|0|1|2|3|4|5|6|7|8|9|loop"},
+    {"MC2_FX_FORCE_SPAWN", Kind::Enum, Rule::Std, "|0|1|2|3|4|5|6|7|8|9|loop|impact"},
     {"MC2_FX_TRACE", Kind::Bool, Rule::Lead1, {}},
     {"MC2_GAMEOS_UI_DEFS", Kind::Bool, Rule::Std, {}},
     {"MC2_GAMEPLAY_PICK_SELFTEST", Kind::Bool, Rule::Exact1, {}},
@@ -233,6 +235,7 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_GPUBUF_RING", Kind::Bool, Rule::Presence, {}},
     {"MC2_GPUBUF_RING_FORCE_WRAP", Kind::Bool, Rule::Presence, {}},
     {"MC2_GPUPROPS_TRACE", Kind::Bool, Rule::Presence, {}},
+    {"MC2_GPU_BUDGET_MB", Kind::Int, Rule::Prefix, {}},
     {"MC2_GPU_CULL", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_GPU_CULL_AABB_PARITY", Kind::Bool, Rule::Lead0P, {}},
     {"MC2_GPU_CULL_COMPUTE_TRACE", Kind::Bool, Rule::Presence, {}},
@@ -301,7 +304,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_HZB_FORCE_HORIZON_Y", Kind::Float, Rule::Prefix, {}},
     {"MC2_HZB_VIEW_FILE", Kind::String, Rule::Std, {}},
     {"MC2_IBL_ASSET_STRICT", Kind::Bool, Rule::Lead1, {}},
-    {"MC2_ICON_FAILLOUD", Kind::Bool, Rule::Lead0, {}},
     {"MC2_IFACE_COST_SPLIT", Kind::Bool, Rule::Presence, {}},
     {"MC2_IMGUI", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_IMGUI_DEMO", Kind::Bool, Rule::Lead1, {}},
@@ -500,6 +502,7 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_POSTPROCESS_COMPUTE_BLUR", Kind::Bool, Rule::Lead0P, {}},
     {"MC2_POSTPROCESS_COMPUTE_BLUR_PLANT", Kind::Bool, Rule::Lead0P, {}},
     {"MC2_POSTPROCESS_COMPUTE_BLUR_VERIFY", Kind::Bool, Rule::Lead0P, {}},
+    {"MC2_PRESENTATION_DISABLED", Kind::Bool, Rule::Std, {}},
     {"MC2_PRESWAP_FINISH", Kind::Bool, Rule::Presence, {}},
     {"MC2_PREVIEW_FBO_SCALE", Kind::Int, Rule::Prefix, {}},
     {"MC2_PREVIEW_NOCULL", Kind::Bool, Rule::Presence, {}},
@@ -544,6 +547,7 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_RENDER_WATER_FASTPATH_DEBUG", Kind::Int, Rule::Prefix, {}},
     {"MC2_RENDER_WATER_PARITY_CHECK", Kind::Bool, Rule::Presence, {}},
     {"MC2_RENDER_WORLD_SELFTEST", Kind::Bool, Rule::Lead0, {}},
+    {"MC2_REPLAY_CONTENT", Kind::String, Rule::Std, {}},
     {"MC2_RESOLVE_TRACE_FILE", Kind::String, Rule::Std, {}},
     {"MC2_RES_ASSERT", Kind::String, Rule::Std, {}},
     {"MC2_RES_DIAG", Kind::Bool, Rule::Presence, {}},
@@ -900,6 +904,7 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_WINDOWED", Kind::Bool, Rule::Lead0, {}},
     {"MC2_WINDOW_OFFSCREEN", Kind::Bool, Rule::Lead0, {}},
     {"MC2_WINDOW_RESIZABLE", Kind::Bool, Rule::Lead0Kill, {}},
+    {"MC2_WORLD_ORDER_TRACE", Kind::Bool, Rule::Std, {}},
     {"MC2_XFORM_PARITY_FATAL", Kind::Bool, Rule::Lead1, {}},
 };
 

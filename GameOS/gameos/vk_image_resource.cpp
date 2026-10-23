@@ -82,6 +82,7 @@ bool vkImageResourceCreate(VkImageResource* r, VkDevice device, VkPhysicalDevice
     ci.usage = usage;
     ci.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
     ci.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    if(!mc2vk::infra::imageSupported(ci,name)) return fail("device image limits");
     if (!mc2vk::create(r->image, device, [&](VkImage* out) { return vkCreateImage(device, &ci, nullptr, out); })) return fail("vkCreateImage");
     g_liveImages.fetch_add(1, std::memory_order_relaxed);
 
@@ -100,11 +101,10 @@ bool vkImageResourceCreate(VkImageResource* r, VkDevice device, VkPhysicalDevice
     mai.pNext = &ded;
     mai.allocationSize = mr.size;
     mai.memoryTypeIndex = memIdx;
-    const bool budgeted = name.find("shadow")!=name.npos || name.find("post")!=name.npos || name.find("scene")!=name.npos || name.find("targets")!=name.npos;
-    if(budgeted && !mc2vk::infra::admit(mr.size)) return fail("feature residency admission");
+    mc2vk::infra::Admission admission(mr.size,name);
+    if(!admission) return fail("feature residency admission");
     if (!mc2vk::create(r->memory, device, [&](VkDeviceMemory* out) { return vkAllocateMemory(device, &mai, nullptr, out); })) return fail("vkAllocateMemory");
-    mc2vk::infra::allocation(reinterpret_cast<uint64_t>(r->memory.get()), mr.size,
-        name, true);
+    admission.commit(reinterpret_cast<uint64_t>(r->memory.get()), name, true);
     if (vkBindImageMemory(device, r->image.get(), r->memory.get(), 0) != VK_SUCCESS) return fail("vkBindImageMemory");
 
     // ---- image view ----

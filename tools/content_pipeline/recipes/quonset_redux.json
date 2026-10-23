@@ -13,6 +13,9 @@
       "prop": "quonset2",
       "kind": "building",
       "destroyed": true,
+      "excludeNodes": [
+        "LitWin_Quonset2"
+      ],
       "slots": [
         {
           "slot": 0,
@@ -26,11 +29,11 @@
           "roughnessMap": "C:\\Users\\Joe\\Downloads\\GameAsset\\Materials\\CorrugatedSteel009_1K-PNG\\CorrugatedSteel009_1K-PNG_Roughness.png",
           "metallic": 0,
           "roughness": 1,
-          "normalStrength": 0.5,
-          "aoStrength": 0.4,
+          "normalStrength": 0.35,
+          "aoStrength": 0.2,
           "uvScale": [
             1,
-            2
+            1
           ],
           "maskRects": [
             [
@@ -40,10 +43,10 @@
               0.235
             ]
           ],
-          "reviewNote": "Owner selected rusty quonset. Stock atlas viewed: only upper corrugated roof strip receives detail; doors, windows, pallets and end wall excluded. All rust is dielectric, no colour-inferred metal.",
+          "reviewNote": "Owner selected rusty quonset. Stock atlas viewed: only upper corrugated roof strip receives detail; doors, windows, pallets and end wall excluded. All rust is dielectric, no colour-inferred metal. Restrained visual trial, not accepted for default use: gameplay improvement remains inconclusive.",
           "ao": "C:\\Users\\Joe\\Downloads\\GameAsset\\Materials\\CorrugatedSteel009_1K-PNG\\CorrugatedSteel009_1K-PNG_AmbientOcclusion.png",
           "roughnessRange": [
-            0.8,
+            0.95,
             1
           ]
         }

@@ -77,17 +77,17 @@ void Mech3DAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 	rightShoulderPos.x = rightShoulderPos.y = rightShoulderPos.z = -99999.9f;
 	leftShoulderPos.x = leftShoulderPos.y = leftShoulderPos.z = -99999.9f;
 
-	idleTime = mc2_appearance_rng::randomNumber(idleMAX);
+	unitAnim().idleTime = obj ? mc2_anim_rng::randomNumber(idleMAX) : mc2_appearance_rng::randomNumber(idleMAX);
 	
 	hazeFactor = 0.0f;
 
-	rotation = torsoRotation = leftArmRotation = rightArmRotation = 0;
+	rotation = unitAnim().torsoRotation = leftArmRotation = rightArmRotation = 0;
 
-	leftArmOff = rightArmOff = fallen = false;
+	unitAnim().leftArmOff = unitAnim().rightArmOff = unitAnim().fallen = false;
 
 	position.x = position.y = position.z = 0.0f;
 
-	velocity = 0.0f;
+	unitAnim().velocity = 0.0f;
 
 	teamId = paintScheme = -1;
 	homeTeamRelationship = 0;
@@ -96,7 +96,7 @@ void Mech3DAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 
 	status = 0;
 
-	lockRotation = oncePerFrame = false;
+	unitAnim().lockRotation = unitAnim().oncePerFrame = false;
 
 	sensorLevel = 0;
 	sensorSpin = 0.0f;
@@ -104,7 +104,7 @@ void Mech3DAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 	OBBRadius = 0.0f;
 	currentLOD = 0;
 	
-	jumpVelocity = glm::vec3(0.0f);
+	unitAnim().jumpVelocity = glm::vec3(0.0f);
 	jumpFXSetup = false;
 	
 
@@ -288,8 +288,8 @@ void Mech3DAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 		
 		if (mechType->numWeaponNodes > 0)
 		{
-			nodeUsed.assign(static_cast<size_t>(mechType->numWeaponNodes), 0);
-			nodeRecycle.assign(static_cast<size_t>(mechType->numWeaponNodes), 0.0f);
+			unitAnim().nodeUsed.assign(static_cast<size_t>(mechType->numWeaponNodes), 0);
+			unitAnim().nodeRecycle.assign(static_cast<size_t>(mechType->numWeaponNodes), 0.0f);
 		}
 		
 		for (int i=0;i<mechType->numWeaponNodes;i++)
@@ -415,29 +415,29 @@ void Mech3DAppearance::init (AppearanceTypePtr tree, GameObjectPtr obj)
 		}
 	}
 
-	mechFrameRate = 30.0f;
+	unitAnim().mechFrameRate = 30.0f;
 		
- 	forceStop = atTransitionToNextGesture = inReverse =	inJump = false;
+ 	unitAnim().forceStop = unitAnim().atTransitionToNextGesture = unitAnim().inReverse =	unitAnim().inJump = false;
 
 	inDebugMoveMode = singleStepMode = nextStep = prevStep = false;
 
-	currentStateGoal = -1;		//Always start ready to change gestures
-	currentGestureId = 2;		//Always start in Stand Mode
-    inCombatMode = false;       // sebi: init, so will not contain garbage
+	unitAnim().currentStateGoal = -1;		//Always start ready to change gestures
+	unitAnim().currentGestureId = 2;		//Always start in Stand Mode
+    unitAnim().inCombatMode = false;       // sebi: init, so will not contain garbage
 
-	transitionState = 0;
-	oldStateGoal = 1;			//Always start in Stand Mode
+	unitAnim().transitionState = 0;
+	unitAnim().oldStateGoal = 1;			//Always start in Stand Mode
 
-	currentFrame = 0.0f;
-	lastAnimAdvanceFrame = 0xFFFFFFFFu;	//ANIM-CADENCE-FIX: no advance yet
+	unitAnim().currentFrame = 0.0f;
+	unitAnim().lastAnimAdvanceFrame = 0xFFFFFFFFu;	//ANIM-CADENCE-FIX: no advance yet
 
 	pointLight = nullptr;
 	lightId = 0xffffffff;
 	
-	hitGestureId = -1;
+	unitAnim().hitGestureId = -1;
 	
-	jumpSetup = false;
-	jumpAirborne = inJump = false;
+	unitAnim().jumpSetup = false;
+	unitAnim().jumpAirborne = unitAnim().inJump = false;
 	
 	footPos[0].x = footPos[0].y = footPos[0].z = 1000.0f;
 	footPos[1].x = footPos[1].y = footPos[1].z = 1000.0f;
@@ -583,89 +583,89 @@ void Mech3DAppearance::initFX (void)
 // NO OTHER GESTURE IS VALID!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 void Mech3DAppearance::hitFront (void)
 {
-	if ((currentGestureId == GestureStand) ||
-		(currentGestureId == GestureWalk) || 
-		(currentGestureId == GestureReverse) || 
-		(currentGestureId == GestureRun) || 
-		(currentGestureId == GestureLimpLeft) || 
-		(currentGestureId == GestureLimpRight))
+	if ((unitAnim().currentGestureId == GestureStand) ||
+		(unitAnim().currentGestureId == GestureWalk) || 
+		(unitAnim().currentGestureId == GestureReverse) || 
+		(unitAnim().currentGestureId == GestureRun) || 
+		(unitAnim().currentGestureId == GestureLimpLeft) || 
+		(unitAnim().currentGestureId == GestureLimpRight))
 	{
-		hitGestureId = currentGestureId;
-		currentGestureId = GestureHitFront;
+		unitAnim().hitGestureId = unitAnim().currentGestureId;
+		unitAnim().currentGestureId = GestureHitFront;
 		
-		long firstFrame = mechType->gestures[currentGestureId].frameStart;
+		long firstFrame = mechType->gestures[unitAnim().currentGestureId].frameStart;
 
-		atTransitionToNextGesture = false;
+		unitAnim().atTransitionToNextGesture = false;
 		
-		inReverse = false;
+		unitAnim().inReverse = false;
 							  
-		currentFrame = firstFrame;
+		unitAnim().currentFrame = firstFrame;
 	}
 }
 
 void Mech3DAppearance::hitBack (void)
 {
-	if ((currentGestureId == GestureStand) ||
-		(currentGestureId == GestureWalk) || 
-		(currentGestureId == GestureReverse) || 
-		(currentGestureId == GestureRun) || 
-		(currentGestureId == GestureLimpLeft) || 
-		(currentGestureId == GestureLimpRight))
+	if ((unitAnim().currentGestureId == GestureStand) ||
+		(unitAnim().currentGestureId == GestureWalk) || 
+		(unitAnim().currentGestureId == GestureReverse) || 
+		(unitAnim().currentGestureId == GestureRun) || 
+		(unitAnim().currentGestureId == GestureLimpLeft) || 
+		(unitAnim().currentGestureId == GestureLimpRight))
 	{
-		hitGestureId = currentGestureId;
-		currentGestureId = GestureHitBack;
+		unitAnim().hitGestureId = unitAnim().currentGestureId;
+		unitAnim().currentGestureId = GestureHitBack;
 		
-		long firstFrame = mechType->gestures[currentGestureId].frameStart;
+		long firstFrame = mechType->gestures[unitAnim().currentGestureId].frameStart;
 
-		atTransitionToNextGesture = false;
+		unitAnim().atTransitionToNextGesture = false;
 
-		inReverse = false;
+		unitAnim().inReverse = false;
 			
-		currentFrame = firstFrame;
+		unitAnim().currentFrame = firstFrame;
 	}
 }
 
 void Mech3DAppearance::hitLeft (void)
 {
-	if ((currentGestureId == GestureStand) ||
-		(currentGestureId == GestureWalk) || 
-		(currentGestureId == GestureReverse) || 
-		(currentGestureId == GestureRun) || 
-		(currentGestureId == GestureLimpLeft) || 
-		(currentGestureId == GestureLimpRight))
+	if ((unitAnim().currentGestureId == GestureStand) ||
+		(unitAnim().currentGestureId == GestureWalk) || 
+		(unitAnim().currentGestureId == GestureReverse) || 
+		(unitAnim().currentGestureId == GestureRun) || 
+		(unitAnim().currentGestureId == GestureLimpLeft) || 
+		(unitAnim().currentGestureId == GestureLimpRight))
 	{
-		hitGestureId = currentGestureId;
-		currentGestureId = GestureHitLeft;
+		unitAnim().hitGestureId = unitAnim().currentGestureId;
+		unitAnim().currentGestureId = GestureHitLeft;
 		
-		long firstFrame = mechType->gestures[currentGestureId].frameStart;
+		long firstFrame = mechType->gestures[unitAnim().currentGestureId].frameStart;
 
-		atTransitionToNextGesture = false;
+		unitAnim().atTransitionToNextGesture = false;
 			
-		inReverse = false;
+		unitAnim().inReverse = false;
 			
-		currentFrame = firstFrame;
+		unitAnim().currentFrame = firstFrame;
 	}
 }
 
 void Mech3DAppearance::hitRight (void)
 {
-	if ((currentGestureId == GestureStand) ||
-		(currentGestureId == GestureWalk) || 
-		(currentGestureId == GestureReverse) || 
-		(currentGestureId == GestureRun) || 
-		(currentGestureId == GestureLimpLeft) || 
-		(currentGestureId == GestureLimpRight))
+	if ((unitAnim().currentGestureId == GestureStand) ||
+		(unitAnim().currentGestureId == GestureWalk) || 
+		(unitAnim().currentGestureId == GestureReverse) || 
+		(unitAnim().currentGestureId == GestureRun) || 
+		(unitAnim().currentGestureId == GestureLimpLeft) || 
+		(unitAnim().currentGestureId == GestureLimpRight))
 	{
-		hitGestureId = currentGestureId;
-		currentGestureId = GestureHitRight;
+		unitAnim().hitGestureId = unitAnim().currentGestureId;
+		unitAnim().currentGestureId = GestureHitRight;
 		
-		long firstFrame = mechType->gestures[currentGestureId].frameStart;
+		long firstFrame = mechType->gestures[unitAnim().currentGestureId].frameStart;
 
-		atTransitionToNextGesture = false;
+		unitAnim().atTransitionToNextGesture = false;
 		
-		inReverse = false;
+		unitAnim().inReverse = false;
 		
-		currentFrame = firstFrame;
+		unitAnim().currentFrame = firstFrame;
 	}
 }
 

@@ -52,6 +52,7 @@ void memfill(void *Dest,int Len)
 //---------------------------------------------------------------------------
 // Random Number Functions
 static unsigned long s_simDraws = 0;
+void RestoreSimRandomDraws(unsigned long draws) { s_simDraws = draws; }
 
 unsigned long SimRandomDraws (void)
 {
