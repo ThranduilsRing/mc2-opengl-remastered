@@ -116,6 +116,32 @@ ORIGINS={
  'portable':(-0.03495001792907715, 5.373312592506409, -0.05612500011920929),
 }
 
+# Batch three: full textured stock models reviewed from five sides, mc2-r9.
+CONTRACTS['s_mediumwall'] = known(**{'panels_sections': ['long face span 1/4, cast course 1/4', 'long face span 1/4, cast course 2/4', 'long face span 1/4, cast course 3/4', 'long face span 1/4, cast course 4/4', 'long face span 2/4, cast course 1/4', 'long face span 2/4, cast course 2/4', 'long face span 2/4, cast course 3/4', 'long face span 2/4, cast course 4/4', 'long face span 3/4, cast course 1/4', 'long face span 3/4, cast course 2/4', 'long face span 3/4, cast course 3/4', 'long face span 3/4, cast course 4/4', 'long face span 4/4, cast course 1/4', 'long face span 4/4, cast course 2/4', 'long face span 4/4, cast course 3/4', 'long face span 4/4, cast course 4/4'], 'legs_supports': ['one +Y tapered terminal pier, three cast tiers']})
+NOTES['s_mediumwall'] = 'Four spans, each with four horizontal cast courses on both sides; one dark tapered terminal pier. Heavy retains its taller upper course, medium its short third course. No door or luminous panel: the pale top inset is cast trim.'
+ORIGINS['s_mediumwall'] = (0.00950002670288086, 3.460174560546875, -0.0016250000335276127)
+CONTRACTS['s_heavywall'] = known(**{'panels_sections': ['long face span 1/4, cast course 1/4', 'long face span 1/4, cast course 2/4', 'long face span 1/4, cast course 3/4', 'long face span 1/4, cast course 4/4', 'long face span 2/4, cast course 1/4', 'long face span 2/4, cast course 2/4', 'long face span 2/4, cast course 3/4', 'long face span 2/4, cast course 4/4', 'long face span 3/4, cast course 1/4', 'long face span 3/4, cast course 2/4', 'long face span 3/4, cast course 3/4', 'long face span 3/4, cast course 4/4', 'long face span 4/4, cast course 1/4', 'long face span 4/4, cast course 2/4', 'long face span 4/4, cast course 3/4', 'long face span 4/4, cast course 4/4'], 'legs_supports': ['one +Y tapered terminal pier, three cast tiers']})
+NOTES['s_heavywall'] = 'Four spans, each with four horizontal cast courses on both sides; one dark tapered terminal pier. Heavy retains its taller upper course, medium its short third course. No door or luminous panel: the pale top inset is cast trim.'
+ORIGINS['s_heavywall'] = (-0.07684999704360962, 3.460174560546875, -0.004474999848753214)
+CONTRACTS['l_lightwall'] = known(**{'panels_sections': ['single diagonal -Y span', 'opposite diagonal middle span', 'single diagonal +Y span'], 'legs_supports': ['one +Y tapered terminal pier, two cast tiers']})
+NOTES['l_lightwall'] = 'Three braced sage spans, single diagonals alternating direction; straight pale coping; two cast tiers on the terminal pier.'
+ORIGINS['l_lightwall'] = (-0.0040874481201171875, 4.072487831115723, -0.0002500000118743628)
+CONTRACTS['l_mediumwall'] = known(**{'panels_sections': ['outer -Y chevron span', 'wide central X span', 'outer +Y chevron span'], 'legs_supports': ['one +Y tapered terminal pier, three cast tiers']})
+NOTES['l_mediumwall'] = 'Three upper sage spans: central X with a square hub and outward chevrons on the two outer spans (eight arms per face, never three Xs). Wide central span has lowered coping with sloping shoulders. Three cast tiers on terminal pier.'
+ORIGINS['l_mediumwall'] = (-0.0040749311447143555, 3.648787498474121, -0.057075001299381256)
+CONTRACTS['d_mediumwall'] = known(**{'panels_sections': ['sand face unit 1/6', 'sand face unit 2/6', 'sand face unit 3/6', 'sand face unit 4/6', 'sand face unit 5/6', 'sand face unit 6/6'], 'legs_supports': ['one +Y tapered terminal pier, three cast tiers']})
+NOTES['d_mediumwall'] = 'Six narrow vertical sand panels on each side, pale framed tapered terminal pier with three tiers, straight coping and low footing; no diagonal braces or openings.'
+ORIGINS['d_mediumwall'] = (0.005300045013427734, 3.6071996688842773, -0.0004250000056345016)
+CONTRACTS['wirefence'] = known(**{'panels_sections': ['left chain-link panel', 'right chain-link panel'], 'legs_supports': ['-Y post', 'center post', '+Y post']})
+NOTES['wirefence'] = 'Two texture tiles: eighteen diamond pitches across, eight vertically; three posts and a single top rail. No razor crown, braces or concrete feet. Stock width is only 0.0903 m.'
+ORIGINS['wirefence'] = (0.005750001408159733, -5.311499792151153, 0.0)
+CONTRACTS['l_heavywall'] = known(**{'panels_sections': ['outer -Y chevron span', 'wide central X span', 'outer +Y chevron span', 'lower recessed span 1/3', 'lower recessed span 2/3', 'lower recessed span 3/3'], 'legs_supports': ['one +Y tapered terminal pier, three cast tiers']})
+NOTES['l_heavywall'] = 'Three upper sage spans: central X with a square hub and outward chevrons on the two outer spans (eight arms per face, never three Xs). Wide central span has lowered coping with sloping shoulders. Three cast tiers on terminal pier. Three recessed lower face fields below the horizontal belt.'
+ORIGINS['l_heavywall'] = (-0.004075050354003906, 3.1433377265930176, -0.057075001299381256)
+CONTRACTS['d_lightwall'] = known(**{'panels_sections': ['sand face unit 1/6', 'sand face unit 2/6', 'sand face unit 3/6', 'sand face unit 4/6', 'sand face unit 5/6', 'sand face unit 6/6'], 'legs_supports': ['one +Y tapered terminal pier, two cast tiers']})
+NOTES['d_lightwall'] = 'Six narrow vertical sand panels on each side, pale framed tapered terminal pier with two tiers, straight coping and low footing; no diagonal braces or openings.'
+ORIGINS['d_lightwall'] = (0.04042502120137215, 3.9145750999450684, -0.0031999999191612005)
+
 
 @lru_cache(maxsize=1)
 def catalog():
@@ -130,7 +156,7 @@ def origin(name):
 def code_hash():
     here=Path(__file__).parent
     h=hashlib.sha256()
-    for name in ('drafts.py','batch2.py','geo.py','bake.py','blend.py','content.py','lights.py','lang.json','counts.py'):
+    for name in ('drafts.py','batch2.py','batch3.py','geo.py','bake.py','blend.py','content.py','lights.py','lang.json','counts.py'):
         h.update((here/name).read_bytes())
     return h.hexdigest()
 

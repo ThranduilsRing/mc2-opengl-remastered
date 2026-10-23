@@ -128,3 +128,30 @@ def test_batch_two_authored_proportions_match_stock(name):
 def test_destroyed_metal_barricade_is_flat():
     k = drafts.build('corrigatedmetalbarricade', 'destroyed')
     assert max(v[2] for p in k.pieces for v in p['v']) < .4
+
+
+@pytest.mark.parametrize('name', list(drafts.batch3.DRAFTS))
+def test_batch_three_stock_counts_and_proportions(name):
+    import counts
+    import lights
+    k = drafts.build(name, 'pristine')
+    assert all(.9 <= s <= 1.1 for s in k.meta['fit_scale_xyz'])
+    assert not lights.from_kit(k, 'pristine'), 'stock perimeter has no emitters'
+    if name == 'wirefence':
+        assert len([p for p in k.pieces if p['role'] == 'frame']) == 4  # three posts, top rail
+        assert counts.CONTRACTS[name]['legs_supports']['count'] == 3
+        fallen = drafts.build(name, 'destroyed')
+        assert max(v[2] for p in fallen.pieces for v in p['v']) < .35
+    else:
+        spans = 4 if name.startswith('s_') else 3 if name.startswith('l_') else 6
+        assert {p['wall_span'] for p in k.pieces if 'wall_span' in p} == set(range(spans))
+        if name.startswith('s_'):
+            assert len([p for p in k.pieces if 'course' in p]) == 16
+        if name.startswith('l_'):
+            # Stock: three single diagonals, or central X plus two chevrons, per face.
+            assert len([p for p in k.pieces if p.get('stock_brace')]) == (6 if 'light' in name else 16)
+        partial = drafts.build(name, 'partial')
+        assert not any(p.get('wall_span') == 1 for p in partial.pieces)
+        ruined = drafts.build(name, 'destroyed')
+        assert max(v[2] for p in ruined.pieces for v in p['v']) < drafts.SIZES[name][2]*.4
+        assert any(p.get('pier') for p in ruined.pieces)

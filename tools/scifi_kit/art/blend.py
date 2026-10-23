@@ -1,7 +1,7 @@
 """Blender stage for the art-directed kit: materials with mask-driven conditions,
 physical destroyed operator, review renders and clean glTF export.
 
-Run only through run.py (--threads 6, Cycles threads 6).
+Run only through run.py (--threads 4, Cycles threads 4).
 """
 import json
 import math
@@ -27,7 +27,7 @@ def reset():
     scene = bpy.context.scene
     scene.render.engine = 'CYCLES'
     scene.render.threads_mode = 'FIXED'
-    scene.render.threads = 6
+    scene.render.threads = 4
     scene.cycles.use_denoising = True
     scene.view_settings.view_transform = 'AgX'
     try:

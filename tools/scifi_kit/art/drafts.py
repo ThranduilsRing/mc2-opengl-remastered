@@ -1317,3 +1317,8 @@ SIZES.update(batch2.SIZES)
 DRAFTS.update(batch2.DRAFTS)
 DAMAGE.update(batch2.DAMAGE)
 BUILDINGS.update(('singlecivlivinga', 'portable'))
+
+import batch3  # noqa: E402: construction helpers and batch two are registered first
+SIZES.update(batch3.SIZES)
+DRAFTS.update(batch3.DRAFTS)
+DAMAGE.update(batch3.DAMAGE)

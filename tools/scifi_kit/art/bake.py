@@ -1,6 +1,6 @@
 """Authored high-to-low PBR atlas bake; canonical SurfaceMaterial classes.
 
-Called inside the single, six-thread Blender worker. No reference data is read.
+Called inside the single, four-thread Blender worker. No reference data is read.
 Base colour is unlit colour only. AO is kept exclusively in ORM.R.
 """
 import json
@@ -35,13 +35,14 @@ def reduce_on_surface(ob,target):
     tree=BVHTree.FromObject(ob,bpy.context.evaluated_depsgraph_get())
     mod=ob.modifiers.new('Bounded game reduction','DECIMATE')
     mod.ratio=min(1,target/max(1,triangles(ob)));mod.delimit={'MATERIAL'}
+    mod.use_collapse_triangulate=True
     bpy.ops.object.modifier_apply(modifier=mod.name)
     for v in ob.data.vertices:
         hit=tree.find_nearest(v.co)
         if hit and hit[3]>.035:v.co=hit[0]
 
 
-def panel_lod(ob, ratio):
+def panel_lod(ob, ratio, exterior=False):
     """Keep cladding faces whole; spend distant LODs on skin before trim.
 
     A global collapse starves disconnected thin sheets and turns an intact
@@ -49,6 +50,18 @@ def panel_lod(ob, ratio):
     before reducing bevel strips and small trim. UVs stay on the LOD0 surface.
     """
     target = int(triangles(ob)*ratio)//2*2
+    if exterior:
+        from mathutils.bvhtree import BVHTree
+        # Cast cores carry the silhouette; raised face fields are baked trim.
+        primary = {i for i,m in enumerate(ob.data.materials)
+                   if m.name.rsplit('_',1)[-1] in ('ferro','paint.second')
+                   or (ob.name.startswith('s_') and m.name.endswith('_ferro.second'))}
+        normal_to_world = ob.matrix_world.to_3x3().inverted().transposed()
+        # Coping hides buried slab tops; keep that budget for the exposed ends.
+        hull = BVHTree.FromPolygons([v.co for v in ob.data.vertices],
+            [list(f.vertices) for f in ob.data.polygons if f.material_index in primary
+             or (ob.data.materials[f.material_index].name.endswith('_ferro.main')
+                 and (normal_to_world @ f.normal).z>.5)])
     name = ob.name
     import bmesh
     bm=bmesh.new();bm.from_mesh(ob.data)
@@ -63,6 +76,22 @@ def panel_lod(ob, ratio):
     parts = list(bpy.context.selected_objects)
     top = max(v.co.z for p in parts for v in p.data.vertices)
     def priority(p):
+        area = sum(f.area for f in p.data.polygons)
+        if exterior:
+            # Spend the wall budget on exposed cladding, before hidden box backs
+            # and horizontal faces between stacked cast courses. Sample inside
+            # triangles, away from the centre where a cross brace may overlap.
+            exposed = False
+            for f in list(p.data.polygons)[:3]:
+                a,b,c = (p.data.vertices[i].co for i in f.vertices[:3])
+                point = a*.2+b*.3+c*.5
+                if (normal_to_world @ f.normal).z>-.5 and hull.ray_cast(point+f.normal*.003,f.normal)[0] is None:
+                    exposed = True
+                    break
+            core = any(f.material_index in primary or
+                       (p.data.materials[f.material_index].name.endswith('_ferro.main')
+                        and (normal_to_world @ f.normal).z>.5) for f in p.data.polygons)
+            return area*((10000 if core else 10) if exposed else .001)
         used = {f.material_index for f in p.data.polygons}
         skin = any(any(key in p.data.materials[i].name for key in ('wood.main','paint.roof','paint.main','paint.second','glass','ferro','gravel'))
                    for i in used)
@@ -86,7 +115,12 @@ def panel_lod(ob, ratio):
         if triangles(p)>quotas[p.name]:
             mod=p.modifiers.new('Whole-panel distance LOD','DECIMATE')
             mod.ratio=quotas[p.name]/triangles(p)
+            mod.use_collapse_triangulate=True
             bpy.ops.object.modifier_apply(modifier=mod.name)
+    # Collapse may stop before its quota on a constrained planar boundary.
+    # Retire the lowest-priority trim faces before export, using actual triangles.
+    while sum(triangles(p) for p in parts)>target and len(parts)>1:
+        bpy.data.objects.remove(parts.pop(),do_unlink=True)
     select(parts[0],parts[1:]);bpy.ops.object.join()
     result=bpy.context.object;result.name=name
     assert triangles(result)<=target
@@ -234,15 +268,15 @@ def bake(objs,k,condition,out,res=2048):
     # Triangulate before baking to freeze the tangent basis used by the exporter.
     if not shared:
         # Enforce the class budget AFTER bevels, BEFORE UVs and the actual bake.
-        # The headroom covers Blender's final triangulation of collapsed faces.
+        # Freeze triangles before reduction; collapse keeps them triangular.
+        mod=low.modifiers.new('Stable atlas tangent basis','TRIANGULATE')
+        bpy.ops.object.modifier_apply(modifier=mod.name)
         target=budget(k.meta['stock'])
         for attempt in range(4):
             if triangles(low)<=target:break
             reduce_on_surface(low,int(target*.97))
         if triangles(low)>target:
             raise ValueError(f'{name}: {triangles(low)} exceeds budget {target}')
-        mod=low.modifiers.new('Stable atlas tangent basis','TRIANGULATE')
-        bpy.ops.object.modifier_apply(modifier=mod.name)
         bpy.ops.object.mode_set(mode='EDIT');bpy.ops.mesh.select_all(action='SELECT')
         bpy.ops.uv.smart_project(angle_limit=1.48353 if condition=='partial' else 1.15192,
                                 island_margin=.0025 if condition=='partial' else .008,
@@ -331,11 +365,12 @@ def bake(objs,k,condition,out,res=2048):
         if i:
             ob=low.copy();ob.data=low.data.copy();bpy.context.collection.objects.link(ob)
             ob.name=name+f'_LOD{i}';select(ob)
-            if k.meta['stock'] in ('woodencrates','singlecivlivinga','portable'):
-                ob=panel_lod(ob,ratio)
+            if k.meta['stock'] in ('woodencrates','singlecivlivinga','portable','wirefence') or 'wall_layout' in k.meta:
+                ob=panel_lod(ob,ratio,exterior='wall_layout' in k.meta)
             else:
                 mod=ob.modifiers.new('Distance LOD','DECIMATE');mod.ratio=ratio
                 mod.delimit={'MATERIAL'}
+                mod.use_collapse_triangulate=True
                 bpy.ops.object.modifier_apply(modifier=mod.name)
             # Bound quadric movement to the actual LOD0 surface. Fine disconnected
             # strips cannot grow into long spikes at distance.
@@ -348,6 +383,8 @@ def bake(objs,k,condition,out,res=2048):
             bpy.ops.object.modifier_apply(modifier=tri.name)
         path=out/(name+f'_lod{i}.glb');export(ob,path,lights,k,condition)
         stored_tris=triangles(ob)
+        assert stored_tris <= int(triangles(low)*ratio), (name,i,stored_tris)
+        assert all(len(p.vertices)==3 for p in ob.data.polygons), (name,i,'non-triangle')
         if shared:
             from content import shared_quonset_variant
             stored_tris=shared_quonset_variant(out/f'quonsetclean_{condition}_lod{i}.glb',path,condition)
