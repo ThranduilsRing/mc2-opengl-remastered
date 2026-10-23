@@ -4,6 +4,7 @@
 #include <bit>
 #include <cmath>
 #include <cstring>
+#include <mdspan>
 #include <thread>
 #if defined(_M_X64) || defined(__SSE2__)
 #include <emmintrin.h>
@@ -361,11 +362,12 @@ std::vector<uint8_t> cookSurfaceMaterials(const SurfaceAsset& surface,
             const float px = u * (side - 1), py = v * (side - 1);
             const uint32_t ix = uint32_t(px), iy = uint32_t(py);
             float semanticGrass = 0, semanticDirt = 0;
+            const std::mdspan<const float, std::dextents<size_t, 2>> grid(materials.data(), side, side);
             for (uint32_t dy = 0; dy < 2; ++dy) for (uint32_t dx = 0; dx < 2; ++dx) {
                 const float w = (dx ? px - ix : 1.0f - (px - ix)) * (dy ? py - iy : 1.0f - (py - iy));
                 const size_t row = std::min(iy + dy, side - 1);
                 const size_t col = std::min(ix + dx, side - 1);
-                const float m = materials[row * side + col];
+                const float m = grid[row, col];
                 semanticGrass += m == 1 ? w : 0;
                 semanticDirt += sandProfile && m == 2 ? w : 0;
             }
