@@ -47,13 +47,13 @@ _MOVER = re.compile(r"\[SIMID v1 mover\] simframe=(\d+) id=(\d+) ([^\r\n\[]*)")
 
 
 def parse(text_lines):
-    """-> (frames [(simframe, t, digest text)], movers {simframe: {id: record}})"""
+    """-> (frames [(simframe, t, digest text)], movers {index into frames: {id: record}}); simframe repeats after a load, so it cannot key the movers"""
     frames, movers = [], {}
     for ln in text_lines:
         for m in _LINE.finditer(ln):
             frames.append((int(m.group(1)), float(m.group(2)), sd.simulation_fields(m.group(3).strip())))
         for m in _MOVER.finditer(ln):
-            movers.setdefault(int(m.group(1)), {})[int(m.group(2))] = m.group(3).strip()
+            movers.setdefault(len(frames) - 1, {})[int(m.group(2))] = m.group(3).strip()
     return frames, movers
 
 
@@ -82,7 +82,7 @@ def analyze(text_lines, frames_needed: int = 300):
         report.append(f"digests identical over {horizon} frames" + ("" if ok else f" (need {frames_needed})"))
         return ok, report
     report.append(f"DIGESTS DIVERGE {first} frame(s) after the load (identical before that)")
-    a, b = movers.get(frames[i0 + first][0], {}), movers.get(frames[j + first][0], {})
+    a, b = movers.get(i0 + first, {}), movers.get(j + first, {})
     diff = [i for i in a if a[i] != b.get(i)]
     if diff:
         report.append(f"{len(diff)} of {len(a)} movers differ at that frame; first three:")

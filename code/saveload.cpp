@@ -18,6 +18,15 @@
 #include "mc2_dialog.h"
 #include "../GameAdapters/MechRenderAdapter.h"
 extern float MaxExtractUnitDistance;
+// The mission clocks accumulate float ticks; the legacy "{:f}" text keeps six decimals, which is coarser than one ulp below
+// about 8 s, so an early save loaded back a clock one ulp off and every float timer derived from it drifted. Nine significant
+// digits round-trip a float exactly and atof reads them back as before (legacy saves load unchanged).
+static void writeIdFloatExact (FitIniFilePtr file, const char* name, float value)
+{
+	char line[255];
+	mc2::fmt::to_buf(line, "f {} = {:.9g}\r\n", name, value);
+	file->write(reinterpret_cast<MemoryPtr>(line), strlen(line));
+}
 //----------------------------------------------------------------------------------------------------
 // Save.
 void Part::Save (FitIniFilePtr file, long partNum)
@@ -144,9 +153,9 @@ void Mission::save (const char *saveFileName)
 	tempFile.writeIdLong("MissionId"							, missionId);
 	tempFile.writeIdLong("ABLScriptHandle"						, missionBrain ? missionBrain->getRealId() : -1);
 	tempFile.writeIdBoolean("Active"							, active);
-	tempFile.writeIdFloat("ActualTime"							, actualTime);
-	tempFile.writeIdFloat("RunningTime"							, runningTime);
-	tempFile.writeIdFloat("ScenarioTime"						, scenarioTime);
+	writeIdFloatExact(&tempFile, "ActualTime", actualTime);
+	writeIdFloatExact(&tempFile, "RunningTime", runningTime);
+	writeIdFloatExact(&tempFile, "ScenarioTime", scenarioTime);
 	tempFile.writeIdFloat("DropZoneX"							, dropZone.x);
 	tempFile.writeIdFloat("DropZoneY"							, dropZone.y);
 	tempFile.writeIdFloat("DropZoneZ"							, dropZone.z);
