@@ -4,6 +4,7 @@
 
 #include "terrain_field_store.h"
 
+#include <algorithm>
 #include <vector>
 
 TEST_CASE("terrain fields: a height patch lands row by row and changes the version") {
@@ -146,4 +147,49 @@ TEST_CASE("terrain fields: source sidecars own their bytes and survive caller re
     CHECK(store.controlMap().texels.empty());
     CHECK(store.overlay().texels.empty());
     CHECK(store.terrainTypes().texels.empty());
+}
+
+namespace {
+// A square BC7 layer of `side` with a full mip chain whose every byte is `fill`.
+RenderCore::KtxImage bc7Layer(int side, uint8_t fill) {
+    RenderCore::KtxImage l;
+    l.width = l.height = side; l.vkFormat = 145; l.isCompressed = true; l.blockSizeBytes = 16;
+    for (int s = side; ; s = std::max(1, s / 2)) {
+        l.mipByteOffsets.push_back(l.pixels.size());
+        const size_t blocks = size_t((s + 3) / 4);
+        l.pixels.insert(l.pixels.end(), blocks * blocks * 16, fill);
+        ++l.mipCount;
+        if (s == 1) break;
+    }
+    return l;
+}
+}  // namespace
+
+TEST_CASE("terrain fields: cooked detail-normal layers compose level-major and reject partial chains") {
+    mc2terrain::TerrainFieldStore store;
+    const RenderCore::KtxImage layers[] = {bc7Layer(8, 1), bc7Layer(8, 2), bc7Layer(8, 3)};
+    REQUIRE(store.setMaterialNormals(layers));
+    const auto& array = store.materialNormals();
+    REQUIRE(static_cast<bool>(array.image));
+    CHECK(array.layers == 3);
+    CHECK(array.image->mipCount == 4);   // 8, 4, 2, 1
+    // Level 0 is 2x2 blocks per layer (64 bytes), then levels 1-3 are one block per layer.
+    REQUIRE(array.image->mipByteOffsets == std::vector<uint64_t>{0, 192, 240, 288});
+    CHECK(array.image->pixels.size() == 336);
+    CHECK(array.image->pixels[0] == 1); CHECK(array.image->pixels[64] == 2); CHECK(array.image->pixels[128] == 3);
+    CHECK(array.image->pixels[192] == 1); CHECK(array.image->pixels[208] == 2); CHECK(array.image->pixels[224] == 3);
+    const uint64_t v = array.version;
+
+    // One layer without its mip chain (or a different size, or RGBA8) clears the array: the TGA import takes over.
+    RenderCore::KtxImage noMips = bc7Layer(8, 4);
+    noMips.mipCount = 1; noMips.mipByteOffsets.resize(1); noMips.pixels.resize(64);
+    const RenderCore::KtxImage partial[] = {bc7Layer(8, 1), noMips};
+    CHECK_FALSE(store.setMaterialNormals(partial));
+    CHECK_FALSE(static_cast<bool>(store.materialNormals().image));
+    const RenderCore::KtxImage mixed[] = {bc7Layer(8, 1), bc7Layer(16, 1)};
+    CHECK_FALSE(store.setMaterialNormals(mixed));
+    REQUIRE(store.setMaterialNormals(layers));
+    CHECK(store.materialNormals().version != v);
+    CHECK_FALSE(store.setMaterialNormals({}));
+    CHECK_FALSE(static_cast<bool>(store.materialNormals().image));
 }

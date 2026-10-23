@@ -8,8 +8,10 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <memory>
 #include <span>
 #include <vector>
+#include "../../RenderCore/KtxLoader.h"
 #include "terrain_surface_asset.h"
 
 namespace mc2terrain {
@@ -30,6 +32,14 @@ struct ColormapAtlas {
     int width = 0;
     int height = 0;
     uint32_t vkFormat = 0;
+    uint64_t version = 0;
+};
+
+// Cooked detail-normal layers: one BC7 linear image holding every layer, level-major (level 0 of all layers, then level 1, ...),
+// with its full mip chain. Absent (null image) when any used layer has no cooked sidecar; the renderer then imports the TGA slots.
+struct MaterialNormalArray {
+    std::shared_ptr<const RenderCore::KtxImage> image;
+    uint32_t layers = 0;
     uint64_t version = 0;
 };
 
@@ -95,6 +105,10 @@ public:
     bool setColormapAtlas(std::span<const uint8_t> bytes, int width, int height, uint32_t vkFormat);
     const ColormapAtlas& colormapAtlas() const { return colormapAtlas_; }
 
+    // Every layer must be BC7 UNORM, square, the same size and mip-complete; otherwise the previous array is cleared.
+    bool setMaterialNormals(std::span<const RenderCore::KtxImage> layers);
+    const MaterialNormalArray& materialNormals() const { return materialNormals_; }
+
     bool setSurfaceAsset(SurfaceAsset asset, uint64_t expectedSource);
     bool loadSurfaceAsset(std::span<const uint8_t> bytes, uint64_t expectedSource);
     void clearSurfaceAsset();
@@ -119,6 +133,7 @@ private:
     WaterShoreHeightKind waterShoreHeightKind_ = WaterShoreHeightKind::RawHeight;
     FieldImage<uint8_t> cementAtlas_;
     ColormapAtlas colormapAtlas_;
+    MaterialNormalArray materialNormals_;
     SurfaceAsset surfaceAsset_;
     uint64_t surfaceVersion_ = 0;
 };

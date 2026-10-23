@@ -5,12 +5,41 @@
 #include <cmath>
 #include <cstring>
 #include <mdspan>
+#include <limits>
 #include <thread>
 #if defined(_M_X64) || defined(__SSE2__)
 #include <emmintrin.h>
 #endif
 
 namespace mc2terrain {
+std::array<float, 6> terrainPatchHeightErrors(std::span<const float> heights, uint32_t side,
+    uint32_t originX, uint32_t originY, uint32_t quadsX, uint32_t quadsY) {
+    std::array<float, 6> errors;
+    errors.fill(std::numeric_limits<float>::infinity());
+    errors[0] = 0;
+    if (!side || heights.size() != size_t(side) * side || originX >= side || originY >= side
+        || !quadsX || !quadsY || quadsX >= side - originX || quadsY >= side - originY) return errors;
+    constexpr uint32_t strides[] = {1, 2, 4, 5, 10, 20};
+    const auto h = [&](uint32_t x, uint32_t y) { return heights[originX + x + size_t(originY + y) * side]; };
+    for (size_t level = 1; level < errors.size(); ++level) {
+        const auto step = strides[level];
+        if (quadsX % step || quadsY % step) continue;
+        float error = 0;
+        for (uint32_t y = 0; y <= quadsY; ++y) for (uint32_t x = 0; x <= quadsX; ++x) {
+            const uint32_t x0 = std::min(x / step * step, quadsX - step);
+            const uint32_t y0 = std::min(y / step * step, quadsY - step);
+            const float u = float(x - x0) / step, v = float(y - y0) / step;
+            const float tl = h(x0, y0), br = h(x0 + step, y0 + step);
+            const float coarse = u >= v ? tl + u * (h(x0 + step, y0) - tl) + v * (br - h(x0 + step, y0))
+                : tl + v * (h(x0, y0 + step) - tl) + u * (br - h(x0, y0 + step));
+            error = std::max(error, std::abs(h(x, y) - coarse));
+        }
+        // Both meshes use the same diagonal slope; their overlay vertices are grid
+        // vertices, where the extrema of their piecewise linear difference occur.
+        errors[level] = error;
+    }
+    return errors;
+}
 namespace {
 bool sizeOk(uint32_t w, uint32_t h) {
     return w > 0 && h > 0 && w <= SurfaceAsset::kMaxSide && h <= SurfaceAsset::kMaxSide;

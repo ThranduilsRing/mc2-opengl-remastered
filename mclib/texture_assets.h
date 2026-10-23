@@ -10,6 +10,8 @@ inline constexpr DWORD kTextureAssetLimit = 0x40000000u;
 DWORD assetCapacity();
 void startSources();
 bool ready();
+// The <source>.ktx2 sidecar, unless the source comes from a higher-priority provider (a mod TGA beats a base KTX).
+bool loadCookedSidecar(const char* source, RenderCore::KtxImage& out);
 void flushSources(bool all);
 void adoptOwned(DWORD asset) noexcept;
 void disown(DWORD asset) noexcept;
