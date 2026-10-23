@@ -163,7 +163,10 @@ struct TerrainFrameUBO {
     float   shoreFieldBoundsY;     // top-left Y (= max Y)
     float   shoreFieldBoundsW;     // grid span X
     float   shoreFieldBoundsH;     // grid span Y
-    int32_t _pad[42];  // @cpp_only slot tail padding to the 1024B stride
+    // CONCRETE-ROAD-PBR-DETAIL: binding 18 detail array (normal xy, roughness, AO) ready + strength scale; 0 = base game look.
+    int32_t concreteDetail;
+    float   concreteDetailStrength;
+    int32_t _pad[40];  // @cpp_only slot tail padding to the 1024B stride
 };
 
 #include "GpuTerrainFrameUBO.layout.gen.h"

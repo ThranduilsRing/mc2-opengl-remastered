@@ -329,4 +329,69 @@ std::optional<SurfaceAsset> resolveSurfaceAsset(const SurfaceCookInput& input, s
     if (cooked && !cacheDir.empty() && storeCachedSurfaceAsset(cacheDir, *cooked) && origin) *origin = "cooked+stored";
     return cooked;
 }
+
+std::vector<uint8_t> cookSurfaceMaterials(const SurfaceAsset& surface,
+    std::span<const float> materials, uint32_t side, std::span<const uint8_t> control, uint32_t controlSide,
+    uint32_t width, uint32_t height, bool sandProfile) {
+    if (!validSurfaceAsset(surface, surface.sourceHash) || !sizeOk(width, height) ||
+        (!materials.empty() && (side < 2 || materials.size() != uint64_t(side) * side)) ||
+        (!control.empty() && (controlSide < 1 || control.size() != uint64_t(controlSide) * controlSide * 4))) return {};
+    const auto smooth = [](float lo, float hi, float v) {
+        const float t = std::clamp((v - lo) / (hi - lo), 0.0f, 1.0f);
+        return t * t * (3.0f - 2.0f * t);
+    };
+    std::vector<uint8_t> result(size_t(width) * height * 4);
+    for (uint32_t y = 0; y < height; ++y) for (uint32_t x = 0; x < width; ++x) {
+        const float u = (float(x) + 0.5f) / width, v = (float(y) + 0.5f) / height;
+        const auto& c = surface.macroColor[size_t(std::min(uint32_t(v * surface.height), surface.height - 1)) * surface.width +
+                                           std::min(uint32_t(u * surface.width), surface.width - 1)];
+        const float bright = std::max({c[0], c[1], c[2]});
+        const float saturation = (bright - std::min({c[0], c[1], c[2]})) / std::max(bright, 1e-10f);
+        float snow = smooth(0.25f, 0.55f, smooth(0.15f, 0.03f, saturation) * smooth(0.42f, 0.62f, bright));
+        // Color is an import fallback for older maps, never fragment work.
+        float grass = smooth(-0.02f, 0.06f, c[1] - c[0]) * smooth(0.22f, 0.40f, c[1]);
+        float dirt = smooth(-0.02f, 0.06f, c[0] - c[1]) * smooth(0.22f, 0.45f, c[0]);
+        float rock = 1.0f - std::max(grass, dirt);
+        const float water = smooth(0.0f, 0.08f, std::min(c[1], c[2]) - c[0]);
+        rock += water; grass *= 1.0f - water; dirt *= 1.0f - water;
+        const float total = rock + grass + dirt;
+        grass /= total; dirt /= total;
+        if (!materials.empty()) {
+            const float px = u * (side - 1), py = v * (side - 1);
+            const uint32_t ix = uint32_t(px), iy = uint32_t(py);
+            float semanticGrass = 0, semanticDirt = 0;
+            for (uint32_t dy = 0; dy < 2; ++dy) for (uint32_t dx = 0; dx < 2; ++dx) {
+                const float w = (dx ? px - ix : 1.0f - (px - ix)) * (dy ? py - iy : 1.0f - (py - iy));
+                const float m = materials[size_t(std::min(iy + dy, side - 1)) * side + std::min(ix + dx, side - 1)];
+                semanticGrass += m == 1 ? w : 0;
+                semanticDirt += sandProfile && m == 2 ? w : 0;
+            }
+            const float semantic = semanticGrass + semanticDirt;
+            grass = grass * (1.0f - semantic) + semanticGrass;
+            dirt = dirt * (1.0f - semantic) + semanticDirt;
+            snow *= 1.0f - semantic;
+        }
+        float concrete = 0;
+        if (!control.empty()) {
+            const size_t i = (size_t(std::min(uint32_t(v * controlSide), controlSide - 1)) * controlSide +
+                                     std::min(uint32_t(u * controlSide), controlSide - 1)) * 4;
+            const float sum = float(control[i]) + control[i+1] + control[i+2] + control[i+3];
+            if (sum > 0) {
+                grass = control[i+1] / sum; dirt = control[i+2] / sum; concrete = control[i+3] / sum;
+                snow = 0;
+            }
+        }
+        // Snow is additive over the (1 - snow) remainder, as the runtime classifier did.
+        grass *= 1.0f - snow; dirt *= 1.0f - snow;
+        const size_t i = (size_t(y) * width + x) * 4;
+        const float w[] = {grass, dirt, snow, concrete};
+        // Quantization must not turn a convex material blend into negative rock.
+        unsigned remaining = 255;
+        for (size_t k = 0; k < 4; ++k) {
+            const unsigned q = std::min(k == 2 ? 255u : remaining, unsigned(std::lround(std::clamp(w[k], 0.0f, 1.0f) * 255)));
+            result[i+k] = uint8_t(q); if (k != 2) remaining -= q;
+        }
+    }
+    return result;
+}
 } // namespace mc2terrain

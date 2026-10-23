@@ -220,7 +220,8 @@ void main() {
         SurfaceMaterial surface = propSurface(uPacket.materialId, materialAlbedo);
         float materialCoverage = propMaterialCoverage(uPacket.materialId);
         if (materialCoverage > 0.0) {
-            rgb = mix(rgb, propAuthoredColor(surface, alphaTestClass), materialCoverage);
+            rgb = mix(rgb, propAuthoredColor(surface, alphaTestClass,
+                          propHasAuthoredOrm(uPacket.materialId)), materialCoverage);
             outputNormalStuff = mix(vNormalStuff, renderToMc2(surface.normal), materialCoverage);
         }
     }
