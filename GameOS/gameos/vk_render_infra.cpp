@@ -350,25 +350,45 @@ uint64_t nextPipelineToken=0;
 struct RetiredPipeline { VkDevice device; VkPipeline handle; ~RetiredPipeline() { if(handle) vkDestroyPipeline(device,handle,nullptr); }
     RetiredPipeline(VkDevice d,VkPipeline p):device(d),handle(p){} RetiredPipeline(RetiredPipeline&& o) noexcept:device(o.device),handle(std::exchange(o.handle,VK_NULL_HANDLE)){} };
 void reload() {
-#ifndef FINAL
+    static auto lastPoll = std::chrono::steady_clock::time_point{};
+    const auto now = std::chrono::steady_clock::now();
+    if (now - lastPoll < std::chrono::seconds(1)) return;
+    lastPoll = now;
     std::ifstream request("shader_reload.request"); if(!request) return;
     std::string action,path,candidate,oldHash,newHash; std::getline(request,action); std::getline(request,path); std::getline(request,candidate); std::getline(request,oldHash); std::getline(request,newHash); request.close();
     std::error_code fileError; std::filesystem::remove("shader_reload.request",fileError);
     auto fail=[&](std::string_view reason) { std::fprintf(stderr,"[VK_SHADER_RELOAD v1] failure_keeps_old reason=%.*s shader=%s\n",int(reason.size()),reason.data(),path.c_str()); std::fflush(stderr); };
     if(action!="validated-v1") { fail(candidate.empty()?path.c_str():candidate.c_str()); return; }
+    const auto shaderDir = std::filesystem::weakly_canonical("shaders", fileError);
+    if(fileError) { fail("shader_directory"); return; }
+    const auto originalPath = std::filesystem::weakly_canonical(path, fileError);
+    if(fileError) { fail("invalid_original_path"); return; }
+    for(const auto& name : {path, candidate}) {
+        const auto resolved = std::filesystem::weakly_canonical(name, fileError);
+        const auto relative = resolved.lexically_relative(shaderDir);
+        if(fileError || relative.empty() || *relative.begin() == ".." || resolved.extension() != ".spv" ||
+           (name == candidate && resolved == originalPath)) {
+            fail("path_outside_shaders"); return;
+        }
+    }
     // The compile/reflection command supplies a content-bound request. Reject a stale request, even if the file name matches.
     uint64_t expectedOld=0,expectedNew=0;
     try { expectedOld=std::stoull(oldHash,nullptr,16); expectedNew=std::stoull(newHash,nullptr,16); } catch(...) { fail("malformed_request"); return; }
+    std::ifstream original(path,std::ios::binary|std::ios::ate);
+    if(!original || original.tellg()<20 || original.tellg()>16*MiB) { fail("invalid_original"); return; }
+    std::vector<char> originalCode(static_cast<size_t>(original.tellg())); original.seekg(0);
+    original.read(originalCode.data(),originalCode.size());
+    if(!original || hashBytes(originalCode.data(),originalCode.size())!=expectedOld) { fail("stale_original"); return; }
     std::ifstream in(candidate,std::ios::binary|std::ios::ate); if(!in || in.tellg()<20 || in.tellg()>16*MiB || in.tellg()%4!=0) { fail("invalid_candidate"); return; }
     std::vector<uint32_t> code(size_t(in.tellg())/4); in.seekg(0); in.read(reinterpret_cast<char*>(code.data()),code.size()*4);
     if(!in || code[0]!=0x07230203 || hashBytes(code.data(),code.size()*4)!=expectedNew) { fail("candidate_hash"); return; }
-    in.close(); // Windows CRT file handles must close before atomic replacement.
+    in.close(); // Windows CRT file handles must close before candidate cleanup.
     auto& s=state(); std::lock_guard lock(s.mutex);
     struct Pending { Recipe* recipe; VkPipeline pipeline; std::vector<Shader> shaders; };
     std::vector<Pending> pending; bool ok=true; size_t affected=0;
     for(auto& [handle,r]:recipes()) {
         if(r->retired) continue;
-        bool match=false; for(auto& shader:r->shaders) if(shader.path==path) { match=true; if(shader.hash!=expectedOld) ok=false; }
+        bool match=false; for(auto& shader:r->shaders) if(shader.path==path) { match=true; }
         if(!match) continue; ++affected;
         if(!r->reloadable || !ok) { ok=false; break; }
         auto updated=r->shaders; std::vector<VkShaderModule> modules; r->wire();
@@ -385,11 +405,8 @@ void reload() {
         if(!ok) break;
     }
     if(!ok || !affected) { for(auto& p:pending) vkDestroyPipeline(s.dev,p.pipeline,nullptr); fail(!affected?"no_live_pipeline":"stale_ABI_or_pipeline_creation"); return; }
-    std::filesystem::rename(candidate,path,fileError);
-    if(fileError) {
-        for(auto& p:pending) vkDestroyPipeline(s.dev,p.pipeline,nullptr);
-        fail("shader_file_publish"); return;
-    }
+    // Publish in memory; the deployed SPIR-V and its manifest stay reproducible.
+    std::filesystem::remove(candidate,fileError);
     s.overrides[path]=Shader{path,code,expectedNew};
     breadcrumb("shader",path,expectedNew);
     // All stages of every affected pipeline succeeded. Publish together at the render-thread frame boundary.
@@ -403,7 +420,6 @@ void reload() {
     }
     s.dirty=true;
     std::fprintf(stderr,"[VK_SHADER_RELOAD v1] success pipelines=%zu shader=%s old=%016llx new=%016llx retirement=graphics_timeline\n",pending.size(),path.c_str(),expectedOld,expectedNew); std::fflush(stderr);
-#endif
 }
 // Some owners keep their original shader modules for later pipeline variants. Those variants must use the latest reload too.
 struct LatestStages {
