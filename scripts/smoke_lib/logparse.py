@@ -103,6 +103,10 @@ PRESENCE_RULES: tuple = (
     # means the in-mission video path is gone and the cinematic can disappear silently.
     PresenceRule("mc2_10", re.compile(r"\[VIDEO v1\] event=play_requested"), "video_floor_missing",
                  "no [VIDEO v1] event=play_requested line: the in-mission video request path is gone"),
+    # Vegetation must draw at default quality on the large tier1 maps (merge 38b: the residency preset refused it, fallback=off, and every gate stayed green).
+    *(PresenceRule(stem, re.compile(r"native_vegetation_draws=[1-9]"), "vegetation_floor_missing",
+                   "native_vegetation_draws=0: GPU vegetation did not draw (residency refusal or declined cull)")
+      for stem in ("mc2_01", "mc2_03", "mc2_10")),
 )
 
 MARKER_BUCKETS: tuple = (

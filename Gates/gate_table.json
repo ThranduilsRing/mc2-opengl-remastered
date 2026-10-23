@@ -1,6 +1,6 @@
 {
  "version": 1,
- "count": 893,
+ "count": 892,
  "gates": [
   {"name": "MC2_3DVIEW_DIAG", "kind": "Bool", "rule": "Presence", "default": false, "owner": "gameos", "retireBy": "", "doc": "", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": false, "verified": false, "registry": null, "logTopic": ""},
   {"name": "MC2_ABL_ARG_GUARD", "kind": "Bool", "rule": "Lead1", "default": false, "owner": "code", "retireBy": "", "doc": "ABL crash-safety gates (ABL-OPCODE-BOUNDS-HARDEN) MC2_ABL_ARG_GUARD=1 - enables dispatch-bounds soft path + out-ptr null guards MC2_ABL_RUNTIME_SOFTFAIL=1 -...", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": true, "verified": true, "registry": null, "logTopic": ""},
@@ -23,7 +23,6 @@
   {"name": "MC2_ASSET_SCALE_TRACE", "kind": "Bool", "rule": "Lead1", "default": false, "owner": "gameos", "retireBy": "", "doc": "", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": false, "verified": true, "registry": null, "logTopic": ""},
   {"name": "MC2_ASSIMP_IMPORT", "kind": "Bool", "rule": "Lead0Kill", "default": true, "owner": "code", "retireBy": "", "doc": "", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": false, "verified": true, "registry": null, "logTopic": ""},
   {"name": "MC2_ASSIMP_MECH_IMPORT", "kind": "Bool", "rule": "Presence", "default": false, "owner": "mech", "retireBy": "", "doc": "BT2018 mech import 1A: route mech geometry through the Assimp GLTF/FBX importer instead of the legacy MSL loader.", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": false, "verified": true, "registry": {"featureId": "MC2_FEATURE_ASSIMP_MECH_IMPORT", "kind": "Feature", "order": -1, "defaultOn": false}, "logTopic": ""},
-  {"name": "MC2_ASSIMP_PAUSE_GATE", "kind": "Bool", "rule": "Lead0Kill", "default": true, "owner": "mech", "retireBy": "", "doc": "", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": false, "verified": false, "registry": null, "logTopic": ""},
   {"name": "MC2_BATCHER_FLUSH_TIMING", "kind": "Bool", "rule": "Presence", "default": false, "owner": "props", "retireBy": "", "doc": "", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": false, "verified": false, "registry": null, "logTopic": ""},
   {"name": "MC2_BLDG_DIAG_TRACE", "kind": "Bool", "rule": "Presence", "default": false, "owner": "props", "retireBy": "", "doc": "", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": false, "verified": true, "registry": null, "logTopic": ""},
   {"name": "MC2_BLDG_REG_TRACE", "kind": "Bool", "rule": "Presence", "default": false, "owner": "props", "retireBy": "", "doc": "", "tokens": "", "range": null, "reread": false, "divergent": false, "smokePassthrough": false, "verified": true, "registry": null, "logTopic": ""},

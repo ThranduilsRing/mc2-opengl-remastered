@@ -52,6 +52,7 @@ template<class Owner> void retiring(Owner& owner) {
     else if constexpr(requires { owner.begin(); owner.end(); }) { for(auto& item:owner) retiring(item); }
 }
 bool admit(uint64_t bytes);
+uint64_t headroom();   // budget - live - pending, clamped at 0
 bool imageSupported(const VkImageCreateInfo&, std::string_view name);
 uint32_t imageLimit();
 uint32_t shadowTier(uint32_t requested, uint64_t bytesPerTexel, uint32_t copies = 1);

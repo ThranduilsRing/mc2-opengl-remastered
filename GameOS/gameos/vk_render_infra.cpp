@@ -222,6 +222,11 @@ bool admit(uint64_t bytes) {
     auto& s=state(); std::lock_guard lock(s.mutex);
     return RenderCore::gpuFits(s.budget,s.live,s.pending,bytes);
 }
+uint64_t headroom() {
+    auto& s=state(); std::lock_guard lock(s.mutex);
+    const uint64_t used=s.live+s.pending;
+    return s.budget>used ? s.budget-used : 0;
+}
 Admission::Admission(uint64_t bytes,std::string_view name) {
     auto& s=state(); std::lock_guard lock(s.mutex);
     if(bytes && RenderCore::gpuFits(s.budget,s.live,s.pending,bytes)) { s.pending+=bytes; bytes_=bytes; }

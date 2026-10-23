@@ -220,3 +220,21 @@ TEST_CASE("shadow bake: heights are bounded by mask resolution and preserve a pl
     REQUIRE(grid.size() == 25);
     for (int y = 0; y < 5; ++y) for (int x = 0; x < 5; ++x) CHECK(grid[y * 5 + x] == float(4 * x + 8 * y));
 }
+
+TEST_CASE("GPU residency: vegetation thins by stride instead of refusing") {
+    using namespace RenderCore;
+    // mc2_03 at the default quality: 2.5M instances, ~30k regions. 128 MiB resident, 80 MiB of staging, a 2 GiB device budget.
+    const auto q2 = gpuResidencyPolicy(2);
+    CHECK(vegetationBytes(2512462, 30000, 2) < 140 * gpuMiB);
+    CHECK(vegetationStride(2512462, 30000, 2, q2.vegetation, 2000 * gpuMiB) == 1);
+    // quality 1 (32 MiB ceiling) thins rather than refuses; the thinned population fits.
+    const auto q1 = gpuResidencyPolicy(1);
+    const uint32_t s1 = vegetationStride(2512462, 30000, 2, q1.vegetation, 2000 * gpuMiB);
+    CHECK(s1 > 1);
+    const uint64_t n = (2512462 + s1 - 1) / s1;
+    const uint64_t r1 = n < 30000 ? n : 30000;
+    CHECK(vegetationBytes(n, r1, 2) <= q1.vegetation);
+    // a tight live headroom thins too (staging counts); potato (ceiling 0) never fits.
+    CHECK(vegetationStride(2512462, 30000, 2, q2.vegetation, 100 * gpuMiB) > 1);
+    CHECK(vegetationStride(2512462, 30000, 2, gpuResidencyPolicy(0).vegetation, 2000 * gpuMiB) == 0);
+}

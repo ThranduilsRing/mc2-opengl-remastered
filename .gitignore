@@ -211,3 +211,9 @@ tests/smoke/editor/playtest-*/
 /mvh_scratch_*
 /scratch_out.txt
 .aider*
+
+# lane scratch
+.claude/m1*
+.claude/vk-nointerop-*
+.scratch/
+*.bak-bilinear

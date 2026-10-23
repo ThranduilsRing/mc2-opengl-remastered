@@ -45,6 +45,10 @@ void State::clear(mc2vk::VulkanContext& ctx) {
     lastSurvivors_ = 0;
 }
 
+uint32_t State::strideFor(uint64_t instances, uint64_t regions) {
+    return RenderCore::vegetationStride(instances, regions, kSlots, RenderCore::gpuResidencyPolicy(mc2::options::current().shadowQuality).vegetation, mc2vk::infra::headroom());
+}
+
 bool State::upload(mc2vk::VulkanContext& ctx, std::span<const GpuInstance> instances, std::span<const GpuRegion> regions) {
     clear(ctx);
     if (instances.empty() || regions.empty()) return true;   // an empty population is a valid population
@@ -52,9 +56,10 @@ bool State::upload(mc2vk::VulkanContext& ctx, std::span<const GpuInstance> insta
     vkGetPhysicalDeviceProperties(ctx.physicalDevice(), &properties);
     const VkDeviceSize maxRange = properties.limits.maxStorageBufferRange;
     const auto policy=RenderCore::gpuResidencyPolicy(mc2::options::current().shadowQuality);
-    const uint64_t bytes=2*(uint64_t(instances.size_bytes())+regions.size_bytes())+
-        uint64_t(kSlots)*(8*(uint64_t(instances.size())+regions.size())+80+6*65536);
-    if(bytes>policy.vegetation || !mc2vk::infra::admit(bytes) || properties.limits.maxComputeWorkGroupInvocations<128 ||
+    // Resident bytes (what stays allocated) against the preset ceiling; resident + the transient staging copy against live headroom.
+    const uint64_t resident=RenderCore::vegetationBytes(instances.size(),regions.size(),kSlots);
+    const uint64_t bytes=resident+uint64_t(instances.size_bytes())+regions.size_bytes();
+    if(resident>policy.vegetation || !mc2vk::infra::admit(bytes) || properties.limits.maxComputeWorkGroupInvocations<128 ||
         properties.limits.maxComputeWorkGroupSize[0]<128 || properties.limits.maxComputeSharedMemorySize<128*sizeof(uint32_t)) {
         std::fprintf(stderr,"[VK_RESIDENCY v1] refused=vegetation bytes=%llu policy=%llu fallback=off reason=preset_budget_or_device_limits\n",bytes,policy.vegetation);
         return true;

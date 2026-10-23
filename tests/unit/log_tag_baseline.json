@@ -10412,7 +10412,7 @@
    "ver": 1,
    "stream": "stderr",
    "keys": [],
-   "count": 1
+   "count": 2
   },
   {
    "tag": "VK_RESIDENCY",
@@ -10549,6 +10549,17 @@
     "fallback"
    ],
    "count": 2
+  },
+  {
+   "tag": "VK_RESIDENCY",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "thinned",
+    "stride",
+    "instances"
+   ],
+   "count": 1
   },
   {
    "tag": "VK_SCENE_READBACK",

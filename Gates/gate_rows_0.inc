@@ -29,7 +29,6 @@ L(Lead1, "MC2_ASSET_SCALE_TRACE", Bool, false, "gameos", "", "", verified),
 L(Lead0Kill, "MC2_ASSIMP_IMPORT", Bool, true, "code", "", "", verified),
 // history: docs/gate-history.md#MC2_ASSIMP_MECH_IMPORT
 L(Presence, "MC2_ASSIMP_MECH_IMPORT", Bool, false, "mech", "", "BT2018 mech import 1A: route mech geometry through the Assimp GLTF/FBX importer instead of the legacy MSL loader.", registry(Feature, "MC2_FEATURE_ASSIMP_MECH_IMPORT", -1, false) | verified),
-L(Lead0Kill, "MC2_ASSIMP_PAUSE_GATE", Bool, true, "mech", "", ""),
 // TRACKV-CI-GATE-RESTORE-1 diagnostic trace vars
 L(Presence, "MC2_BATCHER_FLUSH_TIMING", Bool, false, "props", "", ""),
 L(Presence, "MC2_BLDG_DIAG_TRACE", Bool, false, "props", "", "", verified),
