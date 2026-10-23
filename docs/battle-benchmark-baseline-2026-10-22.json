@@ -1,0 +1,1580 @@
+{
+  "schema": "battle-bench/1",
+  "sha": "b56b340944fb60feeb91584f043dafcb3e805f42",
+  "build_config": "RelWithDebInfo",
+  "scenario_sha256": "067d39e45a6d969bc4f9dd4086c86b76cb67fcf61156eca0c7c0e1665490644d",
+  "profile": "stock/default-on native Vulkan",
+  "render_options": {
+    "PostCAS": false,
+    "PostCASSharpness": 0.5,
+    "TonemapMode": 0,
+    "ShadowQuality": 2,
+    "ShorelineLegacySuppress": true,
+    "CpuPhongRetire": true,
+    "StaticPropAmbient": true,
+    "StaticPropIblSh": true,
+    "StaticPropIblSunRotate": false,
+    "StaticPropIblSunRotateFloor": 0.45,
+    "StaticPropPbr": true,
+    "SunAxisFix": false,
+    "SunElevationFix": false,
+    "VfxSoftParticles": false,
+    "VfxLitParticles": false
+  },
+  "duration_s": 30,
+  "load_policy": "first-process (cold) and repeat-process (warm); OS cache not evicted",
+  "variance": {
+    "day-4k": {
+      "gpu_frame": 2.735258748955422,
+      "cpu_frame": 3.736400968055097,
+      "sim_tick": 13.349811191211808
+    },
+    "day-1080p": {
+      "gpu_frame": 3.721797652591678,
+      "cpu_frame": 25.762945799142162,
+      "sim_tick": 41.22178672793622
+    },
+    "night-4k": {
+      "gpu_frame": 1.0565230452917242,
+      "cpu_frame": 3.295347238640044,
+      "sim_tick": 8.231927053271571
+    },
+    "night-1080p": {
+      "gpu_frame": 10.282451959889496,
+      "cpu_frame": 15.249686772865584,
+      "sim_tick": 20.051653695657816
+    }
+  },
+  "budget_violations": [
+    {
+      "scene": "night-1080p",
+      "metric": "cpu_frame",
+      "p95_ms": 32.963300000000004,
+      "budget_ms": 1.0,
+      "over_ms": 31.963300000000004
+    },
+    {
+      "scene": "day-1080p",
+      "metric": "cpu_frame",
+      "p95_ms": 21.880650000000003,
+      "budget_ms": 1.0,
+      "over_ms": 20.880650000000003
+    },
+    {
+      "scene": "night-4k",
+      "metric": "gpu_frame",
+      "p95_ms": 13.331465,
+      "budget_ms": 5.0,
+      "over_ms": 8.331465
+    },
+    {
+      "scene": "night-4k",
+      "metric": "terrain",
+      "p95_ms": 4.33386,
+      "budget_ms": 0.5,
+      "over_ms": 3.8338599999999996
+    },
+    {
+      "scene": "day-4k",
+      "metric": "gpu_frame",
+      "p95_ms": 6.623505,
+      "budget_ms": 5.0,
+      "over_ms": 1.6235049999999998
+    },
+    {
+      "scene": "night-1080p",
+      "metric": "terrain",
+      "p95_ms": 1.22896,
+      "budget_ms": 0.15,
+      "over_ms": 1.0789600000000001
+    },
+    {
+      "scene": "day-4k",
+      "metric": "terrain",
+      "p95_ms": 1.16772,
+      "budget_ms": 0.5,
+      "over_ms": 0.6677200000000001
+    },
+    {
+      "scene": "day-1080p",
+      "metric": "terrain",
+      "p95_ms": 0.32658,
+      "budget_ms": 0.15,
+      "over_ms": 0.17658
+    }
+  ],
+  "measurement_status": {
+    "gpu": "BASELINE",
+    "cpu_frame": "PROVISIONAL",
+    "sim_tick": "PROVISIONAL"
+  },
+  "measurement_quality": {
+    "status": "GPU baseline accepted; CPU frame/tick PROVISIONAL per orchestrator; quiet overnight rerun pending",
+    "observed_contention": "Other lanes built on cores 4-7 inside game mask 0xfff0. CPU frame p95 spread reaches 25.76%; sim tick p95 spread reaches 41.22%. No quiet window was available. Orchestrator directed retention of this first baseline with CPU results PROVISIONAL.",
+    "game_cpu_affinity": "0xfff0 (cores 4-15; core 0 excluded)",
+    "priority": "BelowNormal"
+  },
+  "visual_review": {
+    "viewed": "G:\\mc2-proof\\battle-bench\\b56b340944fb60feeb91584f043dafcb3e805f42\\montage.png",
+    "result": "Battle visible: many player mechs, firing, a disabled burning mech with debris, shadows; forest/concrete view now frames a grove and buildings. Night crowded lights overexpose the fight. Completed destructions are measured during 30-second perf runs.",
+    "capture_repeatability": [
+      {
+        "phase": "day",
+        "bookmark": "tactical",
+        "sim_digest_equal": true,
+        "png_equal": false,
+        "mean_absolute_rgb_255": 0.050821759259259254
+      },
+      {
+        "phase": "day",
+        "bookmark": "max_zoom_out",
+        "sim_digest_equal": true,
+        "png_equal": false,
+        "mean_absolute_rgb_255": 2.170138888888889e-05
+      },
+      {
+        "phase": "day",
+        "bookmark": "low_close",
+        "sim_digest_equal": true,
+        "png_equal": false,
+        "mean_absolute_rgb_255": 0.0363134966563786
+      },
+      {
+        "phase": "day",
+        "bookmark": "forest_concrete",
+        "sim_digest_equal": true,
+        "png_equal": false,
+        "mean_absolute_rgb_255": 0.012720228909465022
+      },
+      {
+        "phase": "night",
+        "bookmark": "tactical",
+        "sim_digest_equal": true,
+        "png_equal": false,
+        "mean_absolute_rgb_255": 0.0837866512345679
+      },
+      {
+        "phase": "night",
+        "bookmark": "max_zoom_out",
+        "sim_digest_equal": true,
+        "png_equal": true,
+        "mean_absolute_rgb_255": 0.0
+      },
+      {
+        "phase": "night",
+        "bookmark": "low_close",
+        "sim_digest_equal": true,
+        "png_equal": false,
+        "mean_absolute_rgb_255": 0.0641137795781893
+      },
+      {
+        "phase": "night",
+        "bookmark": "forest_concrete",
+        "sim_digest_equal": true,
+        "png_equal": false,
+        "mean_absolute_rgb_255": 0.013609342849794238
+      }
+    ]
+  },
+  "base_sha": "ebce7f547cdb64c588ab1bd312d465723da3592c",
+  "proof_directory": "G:\\mc2-proof\\battle-bench\\b56b340944fb60feeb91584f043dafcb3e805f42",
+  "content": {
+    "sha256": "09158990c621eb0f9428377cc27d06e4613572cc69b221a83aac4d7f00071d05",
+    "shaders_sha256": "b3a4458c526bf5a24ff46d2d18aee03b9d580e922d1065490df74355ffc834ab",
+    "active_mod": null,
+    "mod_policy": "stock; inactive mod bytes excluded"
+  },
+  "identity": {
+    "git": {
+      "commit": "b56b340944fb60feeb91584f043dafcb3e805f42",
+      "commit_short": "b56b340944fb",
+      "branch": "claude/battle-bench",
+      "dirty": false,
+      "describe": "vulkan-swapchain-present-2026-07-01-5446-gb56b34094",
+      "worktree": "A:\\Games\\mc2-study1",
+      "describes": "source_worktree_head_at_capture",
+      "describes_binary": false,
+      "dirty_describes": "'dirty' here = uncommitted TRACKED modifications in the SOURCE WORKTREE at capture time. It says nothing about whether the measured binary was built from a clean tree; that is identity.binary_provenance.dirty.",
+      "note": "SOURCE WORKTREE HEAD at the moment this artifact was written. It does NOT describe the binary that was measured -- the tool's worktree and the worktree that compiled the exe are frequently different lanes. For the commit that was actually exercised, read identity.binary_provenance."
+    },
+    "exe": {
+      "path": "G:\\mc2-installs\\mc2-win64-mapgen\\mc2.exe",
+      "sha256": "c98c6ae26d1ddf7a012796b080ed884174e823e359c39b38c2330ca615141eea",
+      "mtime_iso": "2026-10-22T22:48:22Z",
+      "size_bytes": 15239680,
+      "embedded_fingerprint": {
+        "present": true,
+        "sha": "b56b340944fb",
+        "sha12": "b56b340944fb",
+        "dirty": false,
+        "branch": "claude/battle-bench",
+        "built": "2026-10-22T17:44:17",
+        "src": "A:/Games/mc2-study1",
+        "method": "mc2fp1-literal/v1",
+        "exe_sha256_at_scan": "c98c6ae26d1ddf7a012796b080ed884174e823e359c39b38c2330ca615141eea"
+      }
+    },
+    "binary_provenance": {
+      "commit": "b56b340944fb",
+      "commit_source": "exe-embedded-build-fingerprint",
+      "available": true,
+      "dirty": false,
+      "dirty_describes": "uncommitted TRACKED modifications in the worktree the BINARY was compiled from, at compile time",
+      "branch": "claude/battle-bench",
+      "built_utc": "2026-10-22T17:44:17",
+      "built_from_worktree": "A:/Games/mc2-study1",
+      "method": "mc2fp1-literal/v1",
+      "verdict": "reconciled",
+      "source_head_matches_binary": true,
+      "source_head_commit": "b56b340944fb60feeb91584f043dafcb3e805f42",
+      "note": "Read out of the binary's own compiled-in build fingerprint (.rdata string literals stamped by cmake/GenerateBuildFingerprint.cmake). This is the only commit in this manifest that describes the code that ran."
+    }
+  },
+  "driver": [
+    "[BENCH_DEVICE v1] device=\"AMD Radeon RX 7900 XTX\" vendor=4098 device_id=29772 driver_name=\"AMD proprietary driver\" driver_info=\"26.9.2 (LLPC)\" driver_version=8389014 api_version=4211043"
+  ],
+  "verification": {
+    "contracts": "123 passed, 0 failed",
+    "contracts_log": "G:/mc2-proof/battle-bench-contracts-viewed.log",
+    "unit_doctests": "3398 passed after window 36",
+    "unit_log": "G:/mc2-proof/battle-bench-integrated-doctest.log",
+    "montage_viewed": true,
+    "completed_repetitions": 2
+  },
+  "runs": [
+    {
+      "index": 1,
+      "perf": {
+        "day-4k": {
+          "gpu_frame": {
+            "n": 1563,
+            "mean_ms": 7.093388182981446,
+            "max_ms": 3409.45476,
+            "p50_ms": 4.66522,
+            "p95_ms": 6.71409,
+            "p99_ms": 7.73117
+          },
+          "gpu_passes": {
+            "terrain": {
+              "scopes": [
+                "VKIsl.Terrain"
+              ],
+              "timing": {
+                "n": 1563,
+                "mean_ms": 0.9281413435700576,
+                "max_ms": 1.59676,
+                "p50_ms": 0.84376,
+                "p95_ms": 1.15324,
+                "p99_ms": 1.2216
+              }
+            },
+            "shadows": {
+              "scopes": [
+                "VKIsl.Shadow.BakeDirty",
+                "VKIsl.Shadow.BakeObjectMap",
+                "VKIsl.Shadow.Dyn"
+              ],
+              "timing": {
+                "n": 1563,
+                "mean_ms": 0.17865770953294946,
+                "max_ms": 1.6856,
+                "p50_ms": 0.04208,
+                "p95_ms": 0.37408,
+                "p99_ms": 0.48484
+              }
+            },
+            "vegetation": {
+              "scopes": [
+                "VKIsl.Vegetation"
+              ],
+              "timing": {
+                "n": 1563,
+                "mean_ms": 0.022372258477287268,
+                "max_ms": 0.26808,
+                "p50_ms": 0.0166,
+                "p95_ms": 0.04536,
+                "p99_ms": 0.0462
+              }
+            },
+            "props": {
+              "scopes": [
+                "VKIsl.Props"
+              ],
+              "timing": {
+                "n": 1563,
+                "mean_ms": 0.15120368522072936,
+                "max_ms": 1.25584,
+                "p50_ms": 0.16852,
+                "p95_ms": 0.20056,
+                "p99_ms": 0.21532
+              }
+            },
+            "mechs": {
+              "scopes": [
+                "VKIsl.Mech"
+              ],
+              "timing": {
+                "n": 1563,
+                "mean_ms": 0.13807549584133078,
+                "max_ms": 1.08928,
+                "p50_ms": 0.0484,
+                "p95_ms": 0.413,
+                "p99_ms": 0.50752
+              }
+            },
+            "water": {
+              "scopes": [
+                "VKIsl.Water"
+              ],
+              "timing": {
+                "n": 1563,
+                "mean_ms": 0.007889724888035828,
+                "max_ms": 0.0968,
+                "p50_ms": 0.00812,
+                "p95_ms": 0.00856,
+                "p99_ms": 0.00896
+              }
+            },
+            "post": {
+              "scopes": [
+                "VKIsl.Post.Fog",
+                "VKIsl.Post.HzbBuild",
+                "VKIsl.Post.HzbCull",
+                "VKIsl.Post.ShadowResolve",
+                "VKIsl.Present.Composite"
+              ],
+              "timing": {
+                "n": 1563,
+                "mean_ms": 0.6438152015355086,
+                "max_ms": 4.1854,
+                "p50_ms": 0.6360399999999999,
+                "p95_ms": 0.6576,
+                "p99_ms": 0.9707199999999999
+              }
+            },
+            "vfx": {
+              "scopes": [
+                "VKIsl.Vfx"
+              ],
+              "timing": {
+                "n": 1563,
+                "mean_ms": 0.03843818298144594,
+                "max_ms": 0.61936,
+                "p50_ms": 0.03388,
+                "p95_ms": 0.0732,
+                "p99_ms": 0.07792
+              }
+            }
+          },
+          "cpu_frame": {
+            "n": 1565,
+            "mean_ms": 19.12125948881789,
+            "max_ms": 3429.4058,
+            "p50_ms": 16.6715,
+            "p95_ms": 21.531,
+            "p99_ms": 24.6492
+          },
+          "sim_tick": {
+            "n": 1565,
+            "mean_ms": 4.534286837060703,
+            "max_ms": 55.191,
+            "p50_ms": 4.6244,
+            "p95_ms": 6.7964,
+            "p99_ms": 8.257
+          },
+          "memory": {
+            "vram_peak_mib": 1451,
+            "vk_allocated_peak_mib": 717,
+            "working_set_peak_bytes": 2315431936,
+            "sampling": "every 120 frames; process working set is OS lifetime peak"
+          },
+          "load_ms": 6375.0,
+          "max_ticks_per_frame": 1,
+          "tick_model": "mission_update_per_render_frame; not a global fixed 30Hz scheduler",
+          "raw": "G:\\mc2-proof\\battle-bench\\b56b340944fb60feeb91584f043dafcb3e805f42\\run1\\day-4k\\frames.jsonl",
+          "world": {
+            "movers_peak": 118,
+            "units_alive_peak": 118,
+            "mechs_peak": 94,
+            "new_destructions": 3
+          },
+          "tick_spikes_over_1ms": {
+            "count": 1565,
+            "max_ms": 55.191,
+            "individual_samples": "G:\\mc2-proof\\battle-bench\\b56b340944fb60feeb91584f043dafcb3e805f42\\run1\\day-4k\\frames.jsonl"
+          },
+          "catch_up_bursts": {
+            "count": 0,
+            "individual_samples": "G:\\mc2-proof\\battle-bench\\b56b340944fb60feeb91584f043dafcb3e805f42\\run1\\day-4k\\frames.jsonl"
+          }
+        },
+        "day-1080p": {
+          "gpu_frame": {
+            "n": 1732,
+            "mean_ms": 5.928303937644342,
+            "max_ms": 3289.57281,
+            "p50_ms": 3.67542,
+            "p95_ms": 5.80956,
+            "p99_ms": 6.59519
+          },
+          "gpu_passes": {
+            "terrain": {
+              "scopes": [
+                "VKIsl.Terrain"
+              ],
+              "timing": {
+                "n": 1732,
+                "mean_ms": 0.25855240184757505,
+                "max_ms": 0.84296,
+                "p50_ms": 0.23344,
+                "p95_ms": 0.32508,
+                "p99_ms": 0.33812
+              }
+            },
+            "shadows": {
+              "scopes": [
+                "VKIsl.Shadow.BakeDirty",
+                "VKIsl.Shadow.BakeObjectMap",
+                "VKIsl.Shadow.Dyn"
+              ],
+              "timing": {
+                "n": 1732,
+                "mean_ms": 0.1770414780600462,
+                "max_ms": 4.2017999999999995,
+                "p50_ms": 0.038,
+                "p95_ms": 0.377,
+                "p99_ms": 0.7889200000000001
+              }
+            },
+            "vegetation": {
+              "scopes": [
+                "VKIsl.Vegetation"
+              ],
+              "timing": {
+                "n": 1732,
+                "mean_ms": 0.009771662817551962,
+                "max_ms": 0.3294,
+                "p50_ms": 0.0124,
+                "p95_ms": 0.01608,
+                "p99_ms": 0.01784
+              }
+            },
+            "props": {
+              "scopes": [
+                "VKIsl.Props"
+              ],
+              "timing": {
+                "n": 1732,
+                "mean_ms": 0.10142357967667437,
+                "max_ms": 1.11596,
+                "p50_ms": 0.09736,
+                "p95_ms": 0.15128,
+                "p99_ms": 0.16368
+              }
+            },
+            "mechs": {
+              "scopes": [
+                "VKIsl.Mech"
+              ],
+              "timing": {
+                "n": 1732,
+                "mean_ms": 0.06097556581986143,
+                "max_ms": 1.14424,
+                "p50_ms": 0.04564,
+                "p95_ms": 0.13512,
+                "p99_ms": 0.15028
+              }
+            },
+            "water": {
+              "scopes": [
+                "VKIsl.Water"
+              ],
+              "timing": {
+                "n": 1732,
+                "mean_ms": 0.007965173210161663,
+                "max_ms": 0.10328,
+                "p50_ms": 0.00836,
+                "p95_ms": 0.0086,
+                "p99_ms": 0.0088
+              }
+            },
+            "post": {
+              "scopes": [
+                "VKIsl.Post.Fog",
+                "VKIsl.Post.HzbBuild",
+                "VKIsl.Post.HzbCull",
+                "VKIsl.Post.ShadowResolve",
+                "VKIsl.Present.Composite"
+              ],
+              "timing": {
+                "n": 1732,
+                "mean_ms": 0.31021512702078524,
+                "max_ms": 1.28488,
+                "p50_ms": 0.30424,
+                "p95_ms": 0.32048,
+                "p99_ms": 0.33716
+              }
+            },
+            "vfx": {
+              "scopes": [
+                "VKIsl.Vfx"
+              ],
+              "timing": {
+                "n": 1732,
+                "mean_ms": 0.02882836027713626,
+                "max_ms": 0.77808,
+                "p50_ms": 0.02532,
+                "p95_ms": 0.04256,
+                "p99_ms": 0.0494
+              }
+            }
+          },
+          "cpu_frame": {
+            "n": 1734,
+            "mean_ms": 17.268553806228375,
+            "max_ms": 3308.5018,
+            "p50_ms": 15.2098,
+            "p95_ms": 19.0621,
+            "p99_ms": 21.0345
+          },
+          "sim_tick": {
+            "n": 1734,
+            "mean_ms": 4.313634083044983,
+            "max_ms": 47.8889,
+            "p50_ms": 4.4399,
+            "p95_ms": 6.1677,
+            "p99_ms": 7.7089
+          },
+          "memory": {
+            "vram_peak_mib": 1137,
+            "vk_allocated_peak_mib": 685,
+            "working_set_peak_bytes": 2316083200,
+            "sampling": "every 120 frames; process working set is OS lifetime peak"
+          },
+          "load_ms": 6255.1,
+          "max_ticks_per_frame": 1,
+          "tick_model": "mission_update_per_render_frame; not a global fixed 30Hz scheduler",
+          "raw": "G:\\mc2-proof\\battle-bench\\b56b340944fb60feeb91584f043dafcb3e805f42\\run1\\day-1080p\\frames.jsonl",
+          "world": {
+            "movers_peak": 118,
+            "units_alive_peak": 118,
+            "mechs_peak": 94,
+            "new_destructions": 4
+          },
+          "tick_spikes_over_1ms": {
+            "count": 1734,
+            "max_ms": 47.8889,
+            "individual_samples": "G:\\mc2-proof\\battle-bench\\b56b340944fb60feeb91584f043dafcb3e805f42\\run1\\day-1080p\\frames.jsonl"
+          },
+          "catch_up_bursts": {
+            "count": 0,
+            "individual_samples": "G:\\mc2-proof\\battle-bench\\b56b340944fb60feeb91584f043dafcb3e805f42\\run1\\day-1080p\\frames.jsonl"
+          }
+        },
+        "night-4k": {
+          "gpu_frame": {
+            "n": 985,
+            "mean_ms": 11.61453261928934,
+            "max_ms": 3270.40985,
+            "p50_ms": 7.82021,
+            "p95_ms": 13.26104,
+            "p99_ms": 13.74497
+          },
+          "gpu_passes": {
+            "terrain": {
+              "scopes": [
+                "VKIsl.Terrain"
+              ],
+              "timing": {
+                "n": 985,
+                "mean_ms": 2.402119147208122,
+                "max_ms": 5.22952,
+                "p50_ms": 1.80032,
+                "p95_ms": 4.3592,
+                "p99_ms": 4.41196
+              }
+            },
+            "shadows": {
+              "scopes": [
+                "VKIsl.Shadow.BakeDirty",
+                "VKIsl.Shadow.BakeObjectMap",
+                "VKIsl.Shadow.Dyn"
+              ],
+              "timing": {
+                "n": 985,
+                "mean_ms": 0.387432730964467,
+                "max_ms": 2.67652,
+                "p50_ms": 0.37007999999999996,
+                "p95_ms": 0.4512,
+                "p99_ms": 1.3553199999999999
+              }
+            },
+            "vegetation": {
+              "scopes": [
+                "VKIsl.Vegetation"
+              ],
+              "timing": {
+                "n": 985,
+                "mean_ms": 0.023162680203045686,
+                "max_ms": 0.73252,
+                "p50_ms": 0.0188,
+                "p95_ms": 0.04336,
+                "p99_ms": 0.04596
+              }
+            },
+            "props": {
+              "scopes": [
+                "VKIsl.Props"
+              ],
+              "timing": {
+                "n": 985,
+                "mean_ms": 0.5541845685279188,
+                "max_ms": 1.98892,
+                "p50_ms": 0.46484,
+                "p95_ms": 0.87672,
+                "p99_ms": 1.58316
+              }
+            },
+            "mechs": {
+              "scopes": [
+                "VKIsl.Mech"
+              ],
+              "timing": {
+                "n": 985,
+                "mean_ms": 1.1581602030456852,
+                "max_ms": 4.5644,
+                "p50_ms": 0.25948,
+                "p95_ms": 4.26684,
+                "p99_ms": 4.41928
+              }
+            },
+            "water": {
+              "scopes": [
+                "VKIsl.Water"
+              ],
+              "timing": {
+                "n": 985,
+                "mean_ms": 0.007693969543147208,
+                "max_ms": 0.28544,
+                "p50_ms": 0.00808,
+                "p95_ms": 0.00856,
+                "p99_ms": 0.00876
+              }
+            },
+            "post": {
+              "scopes": [
+                "VKIsl.Post.Fog",
+                "VKIsl.Post.HzbBuild",
+                "VKIsl.Post.HzbCull",
+                "VKIsl.Post.ShadowResolve",
+                "VKIsl.Present.Composite"
+              ],
+              "timing": {
+                "n": 985,
+                "mean_ms": 0.6179240609137056,
+                "max_ms": 3.7088799999999997,
+                "p50_ms": 0.62112,
+                "p95_ms": 0.6449199999999999,
+                "p99_ms": 1.07628
+              }
+            },
+            "vfx": {
+              "scopes": [
+                "VKIsl.Vfx"
+              ],
+              "timing": {
+                "n": 985,
+                "mean_ms": 0.038082192893401014,
+                "max_ms": 0.77352,
+                "p50_ms": 0.0332,
+                "p95_ms": 0.06772,
+                "p99_ms": 0.07812
+              }
+            }
+          },
+          "cpu_frame": {
+            "n": 987,
+            "mean_ms": 30.356989564336374,
+            "max_ms": 3297.7985,
+            "p50_ms": 26.5622,
+            "p95_ms": 35.9851,
+            "p99_ms": 50.3698
+          },
+          "sim_tick": {
+            "n": 987,
+            "mean_ms": 10.460502938196555,
+            "max_ms": 50.6532,
+            "p50_ms": 9.3572,
+            "p95_ms": 16.0309,
+            "p99_ms": 18.4109
+          },
+          "memory": {
+            "vram_peak_mib": 1451,
+            "vk_allocated_peak_mib": 717,
+            "working_set_peak_bytes": 2316177408,
+            "sampling": "every 120 frames; process working set is OS lifetime peak"
+          },
+          "load_ms": 6219.7,
+          "max_ticks_per_frame": 1,
+          "tick_model": "mission_update_per_render_frame; not a global fixed 30Hz scheduler",
+          "raw": "G:\\mc2-proof\\battle-bench\\b56b340944fb60feeb91584f043dafcb3e805f42\\run1\\night-4k\\frames.jsonl",
+          "world": {
+            "movers_peak": 118,
+            "units_alive_peak": 118,
+            "mechs_peak": 94,
+            "new_destructions": 4
+          },
+          "tick_spikes_over_1ms": {
+            "count": 987,
+            "max_ms": 50.6532,
+            "individual_samples": "G:\\mc2-proof\\battle-bench\\b56b340944fb60feeb91584f043dafcb3e805f42\\run1\\night-4k\\frames.jsonl"
+          },
+          "catch_up_bursts": {
+            "count": 0,
+            "individual_samples": "G:\\mc2-proof\\battle-bench\\b56b340944fb60feeb91584f043dafcb3e805f42\\run1\\night-4k\\frames.jsonl"
+          }
+        },
+        "night-1080p": {
+          "gpu_frame": {
+            "n": 1030,
+            "mean_ms": 8.937893805825242,
+            "max_ms": 3391.73103,
+            "p50_ms": 5.73622,
+            "p95_ms": 7.72389,
+            "p99_ms": 8.56534
+          },
+          "gpu_passes": {
+            "terrain": {
+              "scopes": [
+                "VKIsl.Terrain"
+              ],
+              "timing": {
+                "n": 1030,
+                "mean_ms": 0.7017368932038834,
+                "max_ms": 2.22096,
+                "p50_ms": 0.54996,
+                "p95_ms": 1.23048,
+                "p99_ms": 1.26348
+              }
+            },
+            "shadows": {
+              "scopes": [
+                "VKIsl.Shadow.BakeDirty",
+                "VKIsl.Shadow.BakeObjectMap",
+                "VKIsl.Shadow.Dyn"
+              ],
+              "timing": {
+                "n": 1030,
+                "mean_ms": 0.383884427184466,
+                "max_ms": 3.39396,
+                "p50_ms": 0.37104,
+                "p95_ms": 0.44820000000000004,
+                "p99_ms": 1.04168
+              }
+            },
+            "vegetation": {
+              "scopes": [
+                "VKIsl.Vegetation"
+              ],
+              "timing": {
+                "n": 1030,
+                "mean_ms": 0.010208699029126213,
+                "max_ms": 0.19996,
+                "p50_ms": 0.01284,
+                "p95_ms": 0.01396,
+                "p99_ms": 0.01728
+              }
+            },
+            "props": {
+              "scopes": [
+                "VKIsl.Props"
+              ],
+              "timing": {
+                "n": 1030,
+                "mean_ms": 0.2607066796116505,
+                "max_ms": 1.56772,
+                "p50_ms": 0.18008,
+                "p95_ms": 0.43188,
+                "p99_ms": 0.99832
+              }
+            },
+            "mechs": {
+              "scopes": [
+                "VKIsl.Mech"
+              ],
+              "timing": {
+                "n": 1030,
+                "mean_ms": 0.46279623300970874,
+                "max_ms": 1.51996,
+                "p50_ms": 0.18628,
+                "p95_ms": 1.46728,
+                "p99_ms": 1.50768
+              }
+            },
+            "water": {
+              "scopes": [
+                "VKIsl.Water"
+              ],
+              "timing": {
+                "n": 1030,
+                "mean_ms": 0.008046291262135923,
+                "max_ms": 0.10408,
+                "p50_ms": 0.00836,
+                "p95_ms": 0.00864,
+                "p99_ms": 0.00892
+              }
+            },
+            "post": {
+              "scopes": [
+                "VKIsl.Post.Fog",
+                "VKIsl.Post.HzbBuild",
+                "VKIsl.Post.HzbCull",
+                "VKIsl.Post.ShadowResolve",
+                "VKIsl.Present.Composite"
+              ],
+              "timing": {
+                "n": 1030,
+                "mean_ms": 0.31560438834951454,
+                "max_ms": 1.52732,
+                "p50_ms": 0.30696,
+                "p95_ms": 0.32416,
+                "p99_ms": 0.63852
+              }
+            },
+            "vfx": {
+              "scopes": [
+                "VKIsl.Vfx"
+              ],
+              "timing": {
+                "n": 1030,
+                "mean_ms": 0.025667495145631068,
+                "max_ms": 0.46836,
+                "p50_ms": 0.02432,
+                "p95_ms": 0.04116,
+                "p99_ms": 0.04592
+              }
+            }
+          },
+          "cpu_frame": {
+            "n": 1032,
+            "mean_ms": 29.02616957364341,
+            "max_ms": 3421.2728,
+            "p50_ms": 24.6526,
+            "p95_ms": 35.4767,
+            "p99_ms": 41.5698
+          },
+          "sim_tick": {
+            "n": 1032,
+            "mean_ms": 11.61156511627907,
+            "max_ms": 53.3097,
+            "p50_ms": 10.5689,
+            "p95_ms": 19.1067,
+            "p99_ms": 22.5718
+          },
+          "memory": {
+            "vram_peak_mib": 1137,
+            "vk_allocated_peak_mib": 685,
+            "working_set_peak_bytes": 2316328960,
+            "sampling": "every 120 frames; process working set is OS lifetime peak"
+          },
+          "load_ms": 6565.1,
+          "max_ticks_per_frame": 1,
+          "tick_model": "mission_update_per_render_frame; not a global fixed 30Hz scheduler",
+          "raw": "G:\\mc2-proof\\battle-bench\\b56b340944fb60feeb91584f043dafcb3e805f42\\run1\\night-1080p\\frames.jsonl",
+          "world": {
+            "movers_peak": 118,
+            "units_alive_peak": 118,
+            "mechs_peak": 94,
+            "new_destructions": 5
+          },
+          "tick_spikes_over_1ms": {
+            "count": 1032,
+            "max_ms": 53.3097,
+            "individual_samples": "G:\\mc2-proof\\battle-bench\\b56b340944fb60feeb91584f043dafcb3e805f42\\run1\\night-1080p\\frames.jsonl"
+          },
+          "catch_up_bursts": {
+            "count": 0,
+            "individual_samples": "G:\\mc2-proof\\battle-bench\\b56b340944fb60feeb91584f043dafcb3e805f42\\run1\\night-1080p\\frames.jsonl"
+          }
+        }
+      },
+      "captures": [
+        "G:\\mc2-proof\\battle-bench\\b56b340944fb60feeb91584f043dafcb3e805f42\\run1\\capture-day\\mc2_24_tactical.png",
+        "G:\\mc2-proof\\battle-bench\\b56b340944fb60feeb91584f043dafcb3e805f42\\run1\\capture-day\\mc2_24_max_zoom_out.png",
+        "G:\\mc2-proof\\battle-bench\\b56b340944fb60feeb91584f043dafcb3e805f42\\run1\\capture-day\\mc2_24_low_close.png",
+        "G:\\mc2-proof\\battle-bench\\b56b340944fb60feeb91584f043dafcb3e805f42\\run1\\capture-day\\mc2_24_forest_concrete.png",
+        "G:\\mc2-proof\\battle-bench\\b56b340944fb60feeb91584f043dafcb3e805f42\\run1\\capture-night\\mc2_24_tactical.png",
+        "G:\\mc2-proof\\battle-bench\\b56b340944fb60feeb91584f043dafcb3e805f42\\run1\\capture-night\\mc2_24_max_zoom_out.png",
+        "G:\\mc2-proof\\battle-bench\\b56b340944fb60feeb91584f043dafcb3e805f42\\run1\\capture-night\\mc2_24_low_close.png",
+        "G:\\mc2-proof\\battle-bench\\b56b340944fb60feeb91584f043dafcb3e805f42\\run1\\capture-night\\mc2_24_forest_concrete.png"
+      ]
+    },
+    {
+      "index": 2,
+      "perf": {
+        "day-4k": {
+          "gpu_frame": {
+            "n": 1488,
+            "mean_ms": 7.283544899193548,
+            "max_ms": 3360.5096,
+            "p50_ms": 4.82795,
+            "p95_ms": 6.53292,
+            "p99_ms": 7.39422
+          },
+          "gpu_passes": {
+            "terrain": {
+              "scopes": [
+                "VKIsl.Terrain"
+              ],
+              "timing": {
+                "n": 1488,
+                "mean_ms": 0.9283733602150538,
+                "max_ms": 2.10924,
+                "p50_ms": 0.84604,
+                "p95_ms": 1.1822,
+                "p99_ms": 1.22764
+              }
+            },
+            "shadows": {
+              "scopes": [
+                "VKIsl.Shadow.BakeDirty",
+                "VKIsl.Shadow.BakeObjectMap",
+                "VKIsl.Shadow.Dyn"
+              ],
+              "timing": {
+                "n": 1488,
+                "mean_ms": 0.18674,
+                "max_ms": 1.45404,
+                "p50_ms": 0.0592,
+                "p95_ms": 0.37239999999999995,
+                "p99_ms": 0.4228
+              }
+            },
+            "vegetation": {
+              "scopes": [
+                "VKIsl.Vegetation"
+              ],
+              "timing": {
+                "n": 1488,
+                "mean_ms": 0.023101048387096774,
+                "max_ms": 1.02276,
+                "p50_ms": 0.01632,
+                "p95_ms": 0.04576,
+                "p99_ms": 0.05044
+              }
+            },
+            "props": {
+              "scopes": [
+                "VKIsl.Props"
+              ],
+              "timing": {
+                "n": 1488,
+                "mean_ms": 0.15215134408602152,
+                "max_ms": 1.24624,
+                "p50_ms": 0.16128,
+                "p95_ms": 0.20068,
+                "p99_ms": 0.27244
+              }
+            },
+            "mechs": {
+              "scopes": [
+                "VKIsl.Mech"
+              ],
+              "timing": {
+                "n": 1488,
+                "mean_ms": 0.1392233870967742,
+                "max_ms": 0.64332,
+                "p50_ms": 0.05028,
+                "p95_ms": 0.41816,
+                "p99_ms": 0.54828
+              }
+            },
+            "water": {
+              "scopes": [
+                "VKIsl.Water"
+              ],
+              "timing": {
+                "n": 1488,
+                "mean_ms": 0.007910430107526881,
+                "max_ms": 0.17516,
+                "p50_ms": 0.00812,
+                "p95_ms": 0.00852,
+                "p99_ms": 0.00932
+              }
+            },
+            "post": {
+              "scopes": [
+                "VKIsl.Post.Fog",
+                "VKIsl.Post.HzbBuild",
+                "VKIsl.Post.HzbCull",
+                "VKIsl.Post.ShadowResolve",
+                "VKIsl.Present.Composite"
+              ],
+              "timing": {
+                "n": 1488,
+                "mean_ms": 0.6400584946236559,
+                "max_ms": 1.86684,
+                "p50_ms": 0.6358,
+                "p95_ms": 0.66052,
+                "p99_ms": 0.88652
+              }
+            },
+            "vfx": {
+              "scopes": [
+                "VKIsl.Vfx"
+              ],
+              "timing": {
+                "n": 1488,
+                "mean_ms": 0.037756397849462366,
+                "max_ms": 1.04988,
+                "p50_ms": 0.03348,
+                "p95_ms": 0.07496,
+                "p99_ms": 0.07892
+              }
+            }
+          },
+          "cpu_frame": {
+            "n": 1490,
+            "mean_ms": 20.09638489932886,
+            "max_ms": 3380.5722,
+            "p50_ms": 17.3286,
+            "p95_ms": 22.3508,
+            "p99_ms": 26.3827
+          },
+          "sim_tick": {
+            "n": 1490,
+            "mean_ms": 5.071746510067114,
+            "max_ms": 51.2901,
+            "p50_ms": 5.0234,
+            "p95_ms": 7.7686,
+            "p99_ms": 9.3268
+          },
+          "memory": {
+            "vram_peak_mib": 1451,
+            "vk_allocated_peak_mib": 717,
+            "working_set_peak_bytes": 2314825728,
+            "sampling": "every 120 frames; process working set is OS lifetime peak"
+          },
+          "load_ms": 6837.9,
+          "max_ticks_per_frame": 1,
+          "tick_model": "mission_update_per_render_frame; not a global fixed 30Hz scheduler",
+          "raw": "G:\\mc2-proof\\battle-bench\\b56b340944fb60feeb91584f043dafcb3e805f42\\run2\\day-4k\\frames.jsonl",
+          "world": {
+            "movers_peak": 118,
+            "units_alive_peak": 118,
+            "mechs_peak": 94,
+            "new_destructions": 5
+          },
+          "tick_spikes_over_1ms": {
+            "count": 1490,
+            "max_ms": 51.2901,
+            "individual_samples": "G:\\mc2-proof\\battle-bench\\b56b340944fb60feeb91584f043dafcb3e805f42\\run2\\day-4k\\frames.jsonl"
+          },
+          "catch_up_bursts": {
+            "count": 0,
+            "individual_samples": "G:\\mc2-proof\\battle-bench\\b56b340944fb60feeb91584f043dafcb3e805f42\\run2\\day-4k\\frames.jsonl"
+          }
+        },
+        "day-1080p": {
+          "gpu_frame": {
+            "n": 1380,
+            "mean_ms": 6.837298623188405,
+            "max_ms": 3563.33797,
+            "p50_ms": 4.02825,
+            "p95_ms": 6.02988,
+            "p99_ms": 6.9478
+          },
+          "gpu_passes": {
+            "terrain": {
+              "scopes": [
+                "VKIsl.Terrain"
+              ],
+              "timing": {
+                "n": 1380,
+                "mean_ms": 0.2569460579710145,
+                "max_ms": 0.46404,
+                "p50_ms": 0.23328,
+                "p95_ms": 0.32808,
+                "p99_ms": 0.34492
+              }
+            },
+            "shadows": {
+              "scopes": [
+                "VKIsl.Shadow.BakeDirty",
+                "VKIsl.Shadow.BakeObjectMap",
+                "VKIsl.Shadow.Dyn"
+              ],
+              "timing": {
+                "n": 1380,
+                "mean_ms": 0.2012220579710145,
+                "max_ms": 1.49028,
+                "p50_ms": 0.21508,
+                "p95_ms": 0.38164,
+                "p99_ms": 0.90628
+              }
+            },
+            "vegetation": {
+              "scopes": [
+                "VKIsl.Vegetation"
+              ],
+              "timing": {
+                "n": 1380,
+                "mean_ms": 0.009812666666666667,
+                "max_ms": 0.34716,
+                "p50_ms": 0.01228,
+                "p95_ms": 0.01628,
+                "p99_ms": 0.01732
+              }
+            },
+            "props": {
+              "scopes": [
+                "VKIsl.Props"
+              ],
+              "timing": {
+                "n": 1380,
+                "mean_ms": 0.10397084057971015,
+                "max_ms": 1.40436,
+                "p50_ms": 0.09728,
+                "p95_ms": 0.15072,
+                "p99_ms": 0.16256
+              }
+            },
+            "mechs": {
+              "scopes": [
+                "VKIsl.Mech"
+              ],
+              "timing": {
+                "n": 1380,
+                "mean_ms": 0.057172260869565214,
+                "max_ms": 0.16216,
+                "p50_ms": 0.0444,
+                "p95_ms": 0.12084,
+                "p99_ms": 0.14748
+              }
+            },
+            "water": {
+              "scopes": [
+                "VKIsl.Water"
+              ],
+              "timing": {
+                "n": 1380,
+                "mean_ms": 0.007970202898550724,
+                "max_ms": 0.09276,
+                "p50_ms": 0.00836,
+                "p95_ms": 0.0086,
+                "p99_ms": 0.00904
+              }
+            },
+            "post": {
+              "scopes": [
+                "VKIsl.Post.Fog",
+                "VKIsl.Post.HzbBuild",
+                "VKIsl.Post.HzbCull",
+                "VKIsl.Post.ShadowResolve",
+                "VKIsl.Present.Composite"
+              ],
+              "timing": {
+                "n": 1380,
+                "mean_ms": 0.31337411594202896,
+                "max_ms": 1.34176,
+                "p50_ms": 0.3064,
+                "p95_ms": 0.32592,
+                "p99_ms": 0.42884
+              }
+            },
+            "vfx": {
+              "scopes": [
+                "VKIsl.Vfx"
+              ],
+              "timing": {
+                "n": 1380,
+                "mean_ms": 0.021333014492753623,
+                "max_ms": 0.35668,
+                "p50_ms": 0.02048,
+                "p95_ms": 0.0454,
+                "p99_ms": 0.04912
+              }
+            }
+          },
+          "cpu_frame": {
+            "n": 1382,
+            "mean_ms": 21.66721013024602,
+            "max_ms": 3586.8725,
+            "p50_ms": 18.3339,
+            "p95_ms": 24.6992,
+            "p99_ms": 29.7951
+          },
+          "sim_tick": {
+            "n": 1382,
+            "mean_ms": 5.911153111432706,
+            "max_ms": 53.0597,
+            "p50_ms": 5.68,
+            "p95_ms": 9.3702,
+            "p99_ms": 11.3274
+          },
+          "memory": {
+            "vram_peak_mib": 1137,
+            "vk_allocated_peak_mib": 685,
+            "working_set_peak_bytes": 2315776000,
+            "sampling": "every 120 frames; process working set is OS lifetime peak"
+          },
+          "load_ms": 6621.2,
+          "max_ticks_per_frame": 1,
+          "tick_model": "mission_update_per_render_frame; not a global fixed 30Hz scheduler",
+          "raw": "G:\\mc2-proof\\battle-bench\\b56b340944fb60feeb91584f043dafcb3e805f42\\run2\\day-1080p\\frames.jsonl",
+          "world": {
+            "movers_peak": 118,
+            "units_alive_peak": 118,
+            "mechs_peak": 94,
+            "new_destructions": 4
+          },
+          "tick_spikes_over_1ms": {
+            "count": 1382,
+            "max_ms": 53.0597,
+            "individual_samples": "G:\\mc2-proof\\battle-bench\\b56b340944fb60feeb91584f043dafcb3e805f42\\run2\\day-1080p\\frames.jsonl"
+          },
+          "catch_up_bursts": {
+            "count": 0,
+            "individual_samples": "G:\\mc2-proof\\battle-bench\\b56b340944fb60feeb91584f043dafcb3e805f42\\run2\\day-1080p\\frames.jsonl"
+          }
+        },
+        "night-4k": {
+          "gpu_frame": {
+            "n": 980,
+            "mean_ms": 11.656392051020408,
+            "max_ms": 3414.51823,
+            "p50_ms": 7.78973,
+            "p95_ms": 13.40189,
+            "p99_ms": 14.11527
+          },
+          "gpu_passes": {
+            "terrain": {
+              "scopes": [
+                "VKIsl.Terrain"
+              ],
+              "timing": {
+                "n": 980,
+                "mean_ms": 2.343295020408163,
+                "max_ms": 4.70944,
+                "p50_ms": 1.8038,
+                "p95_ms": 4.30852,
+                "p99_ms": 4.44924
+              }
+            },
+            "shadows": {
+              "scopes": [
+                "VKIsl.Shadow.BakeDirty",
+                "VKIsl.Shadow.BakeObjectMap",
+                "VKIsl.Shadow.Dyn"
+              ],
+              "timing": {
+                "n": 980,
+                "mean_ms": 0.38380922448979593,
+                "max_ms": 3.88456,
+                "p50_ms": 0.36876000000000003,
+                "p95_ms": 0.44876000000000005,
+                "p99_ms": 1.3664
+              }
+            },
+            "vegetation": {
+              "scopes": [
+                "VKIsl.Vegetation"
+              ],
+              "timing": {
+                "n": 980,
+                "mean_ms": 0.022549551020408162,
+                "max_ms": 0.59648,
+                "p50_ms": 0.02576,
+                "p95_ms": 0.04236,
+                "p99_ms": 0.0452
+              }
+            },
+            "props": {
+              "scopes": [
+                "VKIsl.Props"
+              ],
+              "timing": {
+                "n": 980,
+                "mean_ms": 0.5388847755102041,
+                "max_ms": 2.00564,
+                "p50_ms": 0.46416,
+                "p95_ms": 0.88376,
+                "p99_ms": 1.52204
+              }
+            },
+            "mechs": {
+              "scopes": [
+                "VKIsl.Mech"
+              ],
+              "timing": {
+                "n": 980,
+                "mean_ms": 1.086282448979592,
+                "max_ms": 4.32632,
+                "p50_ms": 0.26092,
+                "p95_ms": 4.11872,
+                "p99_ms": 4.27512
+              }
+            },
+            "water": {
+              "scopes": [
+                "VKIsl.Water"
+              ],
+              "timing": {
+                "n": 980,
+                "mean_ms": 0.0073520408163265305,
+                "max_ms": 0.03092,
+                "p50_ms": 0.00804,
+                "p95_ms": 0.00852,
+                "p99_ms": 0.00876
+              }
+            },
+            "post": {
+              "scopes": [
+                "VKIsl.Post.Fog",
+                "VKIsl.Post.HzbBuild",
+                "VKIsl.Post.HzbCull",
+                "VKIsl.Post.ShadowResolve",
+                "VKIsl.Present.Composite"
+              ],
+              "timing": {
+                "n": 980,
+                "mean_ms": 0.6126668571428572,
+                "max_ms": 2.50376,
+                "p50_ms": 0.62088,
+                "p95_ms": 0.64176,
+                "p99_ms": 1.0245600000000001
+              }
+            },
+            "vfx": {
+              "scopes": [
+                "VKIsl.Vfx"
+              ],
+              "timing": {
+                "n": 980,
+                "mean_ms": 0.037441755102040813,
+                "max_ms": 0.61688,
+                "p50_ms": 0.0336,
+                "p95_ms": 0.06672,
+                "p99_ms": 0.07288
+              }
+            }
+          },
+          "cpu_frame": {
+            "n": 982,
+            "mean_ms": 30.500047861507127,
+            "max_ms": 3440.8214,
+            "p50_ms": 26.205,
+            "p95_ms": 37.1908,
+            "p99_ms": 41.4564
+          },
+          "sim_tick": {
+            "n": 982,
+            "mean_ms": 10.532512932790224,
+            "max_ms": 55.2435,
+            "p50_ms": 9.0949,
+            "p95_ms": 17.4072,
+            "p99_ms": 19.2015
+          },
+          "memory": {
+            "vram_peak_mib": 1451,
+            "vk_allocated_peak_mib": 717,
+            "working_set_peak_bytes": 2316197888,
+            "sampling": "every 120 frames; process working set is OS lifetime peak"
+          },
+          "load_ms": 6846.4,
+          "max_ticks_per_frame": 1,
+          "tick_model": "mission_update_per_render_frame; not a global fixed 30Hz scheduler",
+          "raw": "G:\\mc2-proof\\battle-bench\\b56b340944fb60feeb91584f043dafcb3e805f42\\run2\\night-4k\\frames.jsonl",
+          "world": {
+            "movers_peak": 118,
+            "units_alive_peak": 118,
+            "mechs_peak": 94,
+            "new_destructions": 3
+          },
+          "tick_spikes_over_1ms": {
+            "count": 982,
+            "max_ms": 55.2435,
+            "individual_samples": "G:\\mc2-proof\\battle-bench\\b56b340944fb60feeb91584f043dafcb3e805f42\\run2\\night-4k\\frames.jsonl"
+          },
+          "catch_up_bursts": {
+            "count": 0,
+            "individual_samples": "G:\\mc2-proof\\battle-bench\\b56b340944fb60feeb91584f043dafcb3e805f42\\run2\\night-4k\\frames.jsonl"
+          }
+        },
+        "night-1080p": {
+          "gpu_frame": {
+            "n": 1183,
+            "mean_ms": 7.82397764158918,
+            "max_ms": 3190.25192,
+            "p50_ms": 5.28291,
+            "p95_ms": 6.96852,
+            "p99_ms": 7.2941
+          },
+          "gpu_passes": {
+            "terrain": {
+              "scopes": [
+                "VKIsl.Terrain"
+              ],
+              "timing": {
+                "n": 1183,
+                "mean_ms": 0.7078269822485207,
+                "max_ms": 1.5918,
+                "p50_ms": 0.55228,
+                "p95_ms": 1.22744,
+                "p99_ms": 1.24508
+              }
+            },
+            "shadows": {
+              "scopes": [
+                "VKIsl.Shadow.BakeDirty",
+                "VKIsl.Shadow.BakeObjectMap",
+                "VKIsl.Shadow.Dyn"
+              ],
+              "timing": {
+                "n": 1183,
+                "mean_ms": 0.3840807776838546,
+                "max_ms": 1.6064,
+                "p50_ms": 0.37120000000000003,
+                "p95_ms": 0.45788,
+                "p99_ms": 0.95936
+              }
+            },
+            "vegetation": {
+              "scopes": [
+                "VKIsl.Vegetation"
+              ],
+              "timing": {
+                "n": 1183,
+                "mean_ms": 0.0103156382079459,
+                "max_ms": 0.01876,
+                "p50_ms": 0.013,
+                "p95_ms": 0.01704,
+                "p99_ms": 0.01804
+              }
+            },
+            "props": {
+              "scopes": [
+                "VKIsl.Props"
+              ],
+              "timing": {
+                "n": 1183,
+                "mean_ms": 0.26589254437869825,
+                "max_ms": 1.55068,
+                "p50_ms": 0.17852,
+                "p95_ms": 0.4308,
+                "p99_ms": 1.2546
+              }
+            },
+            "mechs": {
+              "scopes": [
+                "VKIsl.Mech"
+              ],
+              "timing": {
+                "n": 1183,
+                "mean_ms": 0.47387212172442944,
+                "max_ms": 2.57916,
+                "p50_ms": 0.18704,
+                "p95_ms": 1.51296,
+                "p99_ms": 1.52668
+              }
+            },
+            "water": {
+              "scopes": [
+                "VKIsl.Water"
+              ],
+              "timing": {
+                "n": 1183,
+                "mean_ms": 0.007999526627218935,
+                "max_ms": 0.00948,
+                "p50_ms": 0.00836,
+                "p95_ms": 0.0086,
+                "p99_ms": 0.00872
+              }
+            },
+            "post": {
+              "scopes": [
+                "VKIsl.Post.Fog",
+                "VKIsl.Post.HzbBuild",
+                "VKIsl.Post.HzbCull",
+                "VKIsl.Post.ShadowResolve",
+                "VKIsl.Present.Composite"
+              ],
+              "timing": {
+                "n": 1183,
+                "mean_ms": 0.31021991546914623,
+                "max_ms": 1.44664,
+                "p50_ms": 0.30536,
+                "p95_ms": 0.325,
+                "p99_ms": 0.32896000000000003
+              }
+            },
+            "vfx": {
+              "scopes": [
+                "VKIsl.Vfx"
+              ],
+              "timing": {
+                "n": 1183,
+                "mean_ms": 0.026953508030431107,
+                "max_ms": 0.05216,
+                "p50_ms": 0.02852,
+                "p95_ms": 0.04512,
+                "p99_ms": 0.05008
+              }
+            }
+          },
+          "cpu_frame": {
+            "n": 1185,
+            "mean_ms": 25.278091561181434,
+            "max_ms": 3217.8434,
+            "p50_ms": 21.4663,
+            "p95_ms": 30.4499,
+            "p99_ms": 33.1638
+          },
+          "sim_tick": {
+            "n": 1185,
+            "mean_ms": 9.776927426160338,
+            "max_ms": 51.4064,
+            "p50_ms": 8.2812,
+            "p95_ms": 15.6246,
+            "p99_ms": 16.9864
+          },
+          "memory": {
+            "vram_peak_mib": 1137,
+            "vk_allocated_peak_mib": 685,
+            "working_set_peak_bytes": 2316603392,
+            "sampling": "every 120 frames; process working set is OS lifetime peak"
+          },
+          "load_ms": 6255.0,
+          "max_ticks_per_frame": 1,
+          "tick_model": "mission_update_per_render_frame; not a global fixed 30Hz scheduler",
+          "raw": "G:\\mc2-proof\\battle-bench\\b56b340944fb60feeb91584f043dafcb3e805f42\\run2\\night-1080p\\frames.jsonl",
+          "world": {
+            "movers_peak": 118,
+            "units_alive_peak": 118,
+            "mechs_peak": 94,
+            "new_destructions": 5
+          },
+          "tick_spikes_over_1ms": {
+            "count": 1185,
+            "max_ms": 51.4064,
+            "individual_samples": "G:\\mc2-proof\\battle-bench\\b56b340944fb60feeb91584f043dafcb3e805f42\\run2\\night-1080p\\frames.jsonl"
+          },
+          "catch_up_bursts": {
+            "count": 0,
+            "individual_samples": "G:\\mc2-proof\\battle-bench\\b56b340944fb60feeb91584f043dafcb3e805f42\\run2\\night-1080p\\frames.jsonl"
+          }
+        }
+      },
+      "captures": [
+        "G:\\mc2-proof\\battle-bench\\b56b340944fb60feeb91584f043dafcb3e805f42\\run2\\capture-day\\mc2_24_tactical.png",
+        "G:\\mc2-proof\\battle-bench\\b56b340944fb60feeb91584f043dafcb3e805f42\\run2\\capture-day\\mc2_24_max_zoom_out.png",
+        "G:\\mc2-proof\\battle-bench\\b56b340944fb60feeb91584f043dafcb3e805f42\\run2\\capture-day\\mc2_24_low_close.png",
+        "G:\\mc2-proof\\battle-bench\\b56b340944fb60feeb91584f043dafcb3e805f42\\run2\\capture-day\\mc2_24_forest_concrete.png",
+        "G:\\mc2-proof\\battle-bench\\b56b340944fb60feeb91584f043dafcb3e805f42\\run2\\capture-night\\mc2_24_tactical.png",
+        "G:\\mc2-proof\\battle-bench\\b56b340944fb60feeb91584f043dafcb3e805f42\\run2\\capture-night\\mc2_24_max_zoom_out.png",
+        "G:\\mc2-proof\\battle-bench\\b56b340944fb60feeb91584f043dafcb3e805f42\\run2\\capture-night\\mc2_24_low_close.png",
+        "G:\\mc2-proof\\battle-bench\\b56b340944fb60feeb91584f043dafcb3e805f42\\run2\\capture-night\\mc2_24_forest_concrete.png"
+      ]
+    }
+  ]
+}

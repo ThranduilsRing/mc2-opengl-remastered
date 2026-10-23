@@ -1146,6 +1146,7 @@ void Mission::updateSoakPilotPromote() {
 // Per-frame mission update. The timing scopes, the active guard, the Tracy zone, the mission brain call (its 9999
 // result ends the update) and the LAB_ONLY timing sum stay here; each other phase is a member helper declared in
 // mission.h, run in the original order.
+#include "battle_bench_fixture.h"
 long Mission::update (void)
 {
 	ZoneScopedN("Mission::update");
@@ -1156,6 +1157,8 @@ long Mission::update (void)
 	MisScope _msTotal(MS_TOTAL);  // whole Mission::update; TOTAL - sum(subcalls) = unbracketed
 	if (active)
 	{
+		mc2::battlebench::Tick benchTick;
+		mc2BattleBenchObserve();
 		// Every opened tick must complete, including the mission brain's 9999 return.
 		mc2::sim::SimulationOrderCompletion<Mission> orderTickCompletion{*this};
 		turn++;
