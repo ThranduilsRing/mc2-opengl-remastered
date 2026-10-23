@@ -105,9 +105,19 @@ void GlobalMap::calcGlobalDoors (void) {
 
 void GlobalMap::calcAreaDoors (void) {
 
+	// One pass over the doors fills every area's run (door index ascending, as the per-area scans did): the per-area
+	// scans were O(areas x doors), ~0.5 s per GlobalMap on a 3060-cell map.
 	numDoorInfos = 0;
+	std::vector<long> areaDoorCount(static_cast<size_t>(numAreas), 0);
+	for (long d = 0; d < numDoors; d++) {
+		areaDoorCount[doors[d].area[0]]++;
+		if (doors[d].area[1] != doors[d].area[0])
+			areaDoorCount[doors[d].area[1]]++;
+	}
 	for (long area = 0; area < numAreas; area++) {
-		areas[area].numDoors = numAreaDoors(area);
+		if (areaDoorCount[area] > 255)
+			Fatal(areaDoorCount[area], " Too many area doors ");
+		areas[area].numDoors = areaDoorCount[area];
 		numDoorInfos += areas[area].numDoors;
 	}
 	// One pool for all areas, each area viewing its own run: the layout the packet-load path builds.
@@ -116,12 +126,21 @@ void GlobalMap::calcAreaDoors (void) {
 	for (long area = 0; area < numAreas; area++) {
 		if (areas[area].numDoors) {
 			areas_doors[area] = &doorInfos[nextDoorInfo];
-			getAreaDoors(area, areas_doors[area]);
 			nextDoorInfo += areas[area].numDoors;
 			}
 		else
 			areas_doors[area] = nullptr;
 	}
+	std::fill(areaDoorCount.begin(), areaDoorCount.end(), 0);
+	for (long d = 0; d < numDoors; d++)
+		for (long side = 0; side < 2; side++) {
+			const long area = doors[d].area[side];
+			if (side == 1 && area == doors[d].area[0])
+				continue;
+			DoorInfoPtr info = &areas_doors[area][areaDoorCount[area]++];
+			info->doorIndex = d;
+			info->doorSide = (doors[d].area[1] == area);
+		}
 }
 
 // Build-time link-cost memo. A sector whose 60x60 cells are all plain open ground (nothing off-map, wet, gated, blocked, forested
@@ -509,9 +528,11 @@ long GlobalMap::build (MissionMapCellInfo* mapData) {
 	init(GameMap->height, GameMap->width);
 	blank = wasBlank;
 
+	{ ZoneScopedN("GlobalMap::build setBuildNotSet");
 	for (long r = 0; r < height; r++)
 		for (long c = 0; c < width; c++)
 			GameMap->setBuildNotSet(r, c, true);
+	}
 
 	numAreas = 0;
 	numSpecialAreas = 0;
@@ -521,17 +542,17 @@ long GlobalMap::build (MissionMapCellInfo* mapData) {
 		calcSpecialAreas(mapData);
 	}
 
-	calcAreas();
+	{ ZoneScopedN("GlobalMap::build calcAreas"); calcAreas(); }
 
-	calcCellsCovered();
+	{ ZoneScopedN("GlobalMap::build calcCellsCovered"); calcCellsCovered(); }
 
-	calcGlobalDoors();
+	{ ZoneScopedN("GlobalMap::build calcGlobalDoors"); calcGlobalDoors(); }
 
-	calcSpecialTypes();
+	{ ZoneScopedN("GlobalMap::build calcSpecialTypes"); calcSpecialTypes(); }
 
-	calcAreaDoors();
+	{ ZoneScopedN("GlobalMap::build calcAreaDoors"); calcAreaDoors(); }
 
-	calcDoorLinks();
+	{ ZoneScopedN("GlobalMap::build calcDoorLinks"); calcDoorLinks(); }
 
 	#ifdef _DEBUG
 	#endif
