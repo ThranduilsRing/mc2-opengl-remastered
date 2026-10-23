@@ -186,7 +186,7 @@ def main(argv=None) -> int:
         if build_standalone(src, tree, target, args.jobs, args.preset, args.keep_going, args.log_dir, use_cache(args), args.build_root):
             failed.append(src)
         lap(src)
-    cmd = [sys.executable, os.path.join(HERE, "build_contract_harnesses.py"), "--unit"]
+    cmd = [sys.executable, os.path.join(HERE, "build_contract_harnesses.py"), "--unit", "--seam"]
     if args.preset:
         cmd += ["--preset", args.preset, "-j", args.jobs]
     if args.keep_going:

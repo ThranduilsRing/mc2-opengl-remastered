@@ -81,3 +81,15 @@ def test_rejected_log_leaves_existing_baseline(tmp_path, monkeypatch):
         sim.main()
     assert out.read_text(encoding="utf-8") == "KEEP"
     assert not (tmp_path / "base.json.tmp").exists()
+
+
+@pytest.mark.parametrize("argv,expected", [(["run", "mc2_03"], "20"), (["check", "mc2_03"], "20"), (["check", "mc2_03", "--duration", "40"], "40")])
+def test_determinism_runs_default_to_20s(monkeypatch, argv, expected):
+    seen = []
+    def fake(mission, duration, *a, **kw):
+        seen.append(duration)
+        raise RuntimeError("stop")
+    monkeypatch.setattr(sim, "run_mission", fake)
+    with pytest.raises(RuntimeError):
+        sim.main(argv)
+    assert seen == [expected]

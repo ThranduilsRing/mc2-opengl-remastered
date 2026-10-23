@@ -1456,6 +1456,18 @@ DEPLOY_ALLOWLIST = {
 }
 
 
+def implicit_target_refusal(src_root, explicit_target):
+    """A lane worktree (A:/Games/mc2-<lane>, not mc2-main) must name its own install; None when the deploy may proceed."""
+    if explicit_target:
+        return None
+    root = os.path.normpath(os.path.abspath(src_root)).replace("\\", "/")
+    parent, name = os.path.split(root)
+    if parent.lower() == "a:/games" and name.lower().startswith("mc2-") and name.lower() != "mc2-main":
+        return (f"no deploy target named, and {name} is a lane worktree: the implicit default install is mc2-main's. "
+                f"Name your own install, e.g. E:/mc2-installs/<lane> with --allow-new-target.")
+    return None
+
+
 def main():
     ap = argparse.ArgumentParser(
         description=__doc__.splitlines()[0],
@@ -1541,6 +1553,9 @@ def main():
         sys.exit(verify_only(target, args.strict))
 
     src_root = os.path.abspath(args.source_root)
+    refusal = implicit_target_refusal(src_root, args.target_dir)
+    if refusal:
+        fail(refusal)
     default_subdir = (preset["build_subdir"] if preset
                       else os.path.join("build64", "RelWithDebInfo"))
     if args.ninja:

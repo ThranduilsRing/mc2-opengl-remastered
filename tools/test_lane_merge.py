@@ -482,3 +482,51 @@ def test_invalid_resolution_does_not_start_merge(env, spec):
     rc, _, _ = merge(env, "--resolution", spec)
     assert rc == 5
     assert git(repo, "rev-parse", "HEAD") == head
+
+
+def _branch(repo, name, rel, content, subject):
+    git(repo, "checkout", "-q", "-b", name, "main")
+    write(repo, rel, content)
+    commit_all(repo, subject)
+    git(repo, "checkout", "-q", "main")
+
+
+def test_batch_merges_each_tip_with_baselines_after_each_and_verifies_once(env, monkeypatch):
+    repo, tools = env
+    for n in "abc":
+        _branch(repo, "lane_" + n, f"{n}_lane.txt", n + "\n", f"lane {n}")
+    write(repo, "main.txt", "m\n")
+    commit_all(repo, "main work")
+    set_mode(env, "file_size_ratchet.py", "tighten")
+    lm = _load_module()
+    verifies = []
+    monkeypatch.setattr(lm, "verify_merged", lambda root, mode, runner=None: (verifies.append(mode), ("OK", []))[1])
+    rc = lm.main(["--batch", "lane_a", "lane_b", "lane_c", "--root", str(repo), "--tools-dir", str(tools)])
+    assert rc == 0
+    assert verifies == ["build"]
+    log = git(repo, "log", "--format=%s", "-8").splitlines()
+    follow = "merge follow-up: ratchet baselines tightened at merged HEAD"
+    assert log.index(follow) < log.index("merge lane: lane a") and log.index("merge lane: lane b") < log.index(follow)   # right after tip a, before tip b
+    assert [s for s in log if s.startswith("merge lane:")] == ["merge lane: lane c", "merge lane: lane b", "merge lane: lane a"]
+    assert all((repo / f"{n}_lane.txt").exists() for n in "abc")
+
+
+def test_batch_dry_run_plans_later_tips_against_the_earlier_ones(env, capsys):
+    repo, tools = env
+    _branch(repo, "lane_a", "a.txt", "from a\n", "lane a")
+    _branch(repo, "lane_b", "a.txt", "from b\n", "lane b")      # conflicts with lane_a only once a is merged
+    head = git(repo, "rev-parse", "HEAD")
+    lm = _load_module()
+    assert lm.main(["--batch", "lane_a", "lane_b", "--dry-run", "--root", str(repo), "--tools-dir", str(tools)]) == 5
+    out = capsys.readouterr().out
+    assert out.count("PLAN lane=") == 2 and "blocking=1" in out and "a.txt" in out
+    assert git(repo, "rev-parse", "HEAD") == head and git(repo, "status", "--porcelain") == ""
+
+
+def test_batch_needs_exactly_one_form(env):
+    repo, tools = env
+    lm = _load_module()
+    with pytest.raises(SystemExit):
+        lm.main(["lane", "--batch", "x", "--root", str(repo)])
+    with pytest.raises(SystemExit):
+        lm.main(["--batch", "x", "y", "--message", "m", "--root", str(repo)])
