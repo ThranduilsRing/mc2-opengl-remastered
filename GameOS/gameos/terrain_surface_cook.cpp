@@ -346,7 +346,8 @@ std::vector<uint8_t> cookSurfaceMaterials(const SurfaceAsset& surface,
         const auto& c = surface.macroColor[size_t(std::min(uint32_t(v * surface.height), surface.height - 1)) * surface.width +
                                            std::min(uint32_t(u * surface.width), surface.width - 1)];
         const float bright = std::max({c[0], c[1], c[2]});
-        const float saturation = (bright - std::min({c[0], c[1], c[2]})) / std::max(bright, 1e-10f);
+        const float darkest = std::min({c[0], c[1], c[2]});
+        const float saturation = (bright - darkest) / std::max(bright, 1e-10f);
         float snow = smooth(0.25f, 0.55f, smooth(0.15f, 0.03f, saturation) * smooth(0.42f, 0.62f, bright));
         // Color is an import fallback for older maps, never fragment work.
         float grass = smooth(-0.02f, 0.06f, c[1] - c[0]) * smooth(0.22f, 0.40f, c[1]);
@@ -362,7 +363,9 @@ std::vector<uint8_t> cookSurfaceMaterials(const SurfaceAsset& surface,
             float semanticGrass = 0, semanticDirt = 0;
             for (uint32_t dy = 0; dy < 2; ++dy) for (uint32_t dx = 0; dx < 2; ++dx) {
                 const float w = (dx ? px - ix : 1.0f - (px - ix)) * (dy ? py - iy : 1.0f - (py - iy));
-                const float m = materials[size_t(std::min(iy + dy, side - 1)) * side + std::min(ix + dx, side - 1)];
+                const size_t row = std::min(iy + dy, side - 1);
+                const size_t col = std::min(ix + dx, side - 1);
+                const float m = materials[row * side + col];
                 semanticGrass += m == 1 ? w : 0;
                 semanticDirt += sandProfile && m == 2 ? w : 0;
             }

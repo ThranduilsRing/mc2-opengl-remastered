@@ -316,7 +316,8 @@ void import_materials(TerrainIsland* s) {
     if (fields->surfaceVersion() == s->materialSurfaceVersion && types.version == s->materialTypesVersion &&
         control.version == s->materialControlVersion &&
         gos_terrain_indirect_HardSurfaceVersion() == s->materialCoverageVersion) return;
-    const uint32_t w = std::min(surface.width, 1024u), h = std::min(surface.height, 1024u);
+    const uint32_t w = std::min(surface.width, 1024u);
+    const uint32_t h = std::min(surface.height, 1024u);
     auto weights = mc2terrain::cookSurfaceMaterials(surface, types.texels, uint32_t(types.width),
                                                          control.texels, uint32_t(control.width), w, h, g_terrainMaterialProfile == 1);
     const float span = s->colormapCookParams[2] > 0 ? 1.0f / s->colormapCookParams[2] : 0;

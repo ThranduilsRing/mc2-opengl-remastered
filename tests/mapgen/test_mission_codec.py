@@ -39,8 +39,8 @@ def test_stock_native_roundtrip(tmp_path):
         (tmp_path / f'{name}.json').write_text(json.dumps(expected, separators=(',', ':')), encoding='utf8')
         write_pak([PacketRecord(i, 4, make_zlib_payload(p)) for i, p in enumerate(rebuilt)],
                   tmp_path / f'{name}_roundtrip.pak')
-    env = dict(os.environ, MC2_CODEC_GOLDEN=str(tmp_path))
+    (tmp_path / 'codec_case.txt').write_text('\n'.join([str(tmp_path), os.environ.get('MC2_CODEC_INSTALL', ''), '']), encoding='utf8')
     result = subprocess.run([os.environ['MC2_CODEC_READER'], '--test-case=mission-codec/*', '--no-breaks'],
-                            env=env, capture_output=True, text=True)
+                            cwd=tmp_path, capture_output=True, text=True)
     (tmp_path / 'native.log').write_text(result.stdout + result.stderr, encoding='utf8')
     assert result.returncode == 0, (result.stdout + result.stderr)[-12000:]
