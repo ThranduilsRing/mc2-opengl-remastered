@@ -37,6 +37,16 @@ def overlaps(a, b, clearance=0):
     return True
 
 
+def interlocking_crowns(a, b):
+    """Authored forest crowns may interlock; trunks retain half-crown spacing."""
+    recipes = ('forest_core', 'forest_edge', 'hedgerow', 'tree_line')
+    if any(o.get('class') != 'tree' or o.get('vegetation_recipe') not in recipes for o in (a, b)):
+        return False
+    spacing = sum(min(o['footprint']['width_wu'], o['footprint']['depth_wu']) for o in (a, b))*.25
+    # Packet pivots quantize to 1/256 wu before float32 serialization.
+    return math.dist(a['position_wu'][:2], b['position_wu'][:2]) >= spacing-.01
+
+
 class Spatial:
     """Bucketed broad phase so large forests avoid quadratic collision work."""
     def __init__(self):
@@ -126,11 +136,16 @@ def upgrade(layout, profile):
         angle = math.radians(obj["rotation"])
         co,si = math.cos(angle),math.sin(angle)
         x,y = centre[0]-dx*co+dy*si,centre[1]-dx*si-dy*co
+        if request['class'] == 'tree' and request.get('vegetation_recipe'):
+            # Judge dense trunk spacing using the exact serialized pivots.
+            x,y = (float(np.float32(round(v*256)/256)) for v in (x,y))
+        else:
+            x,y = round(x,4),round(y,4)
         r,c = cell_of(layout,(x,y))
         if not (0 <= r < size and 0 <= c < size):
             return None
         obj["cell"] = [r,c]
-        obj["position_wu"] = [round(x,4),round(y,4),layout["terrain"]["elevation_wu"][r][c]]
+        obj["position_wu"] = [x,y,layout["terrain"]["elevation_wu"][r][c]]
         return obj
 
     def accept(obj, parcel=None, seam=False):
@@ -155,7 +170,8 @@ def upgrade(layout, profile):
             return False
         if not seam and roads[r0:r1,c0:c1].any():
             return False
-        if not seam and any(overlaps(poly,other,clearance=4) for _,other in spatial.candidates(poly)):
+        if not seam and any(overlaps(poly,other,clearance=4) and not interlocking_crowns(obj,peer)
+                            for peer,other in spatial.candidates(poly)):
             return False
         role = obj.get("role") if obj["class"] == "building" else obj["class"]
         spacing = profile["groups"]["stock"]["adjacency"].get(f"{role} -> {role}",{})
@@ -294,9 +310,17 @@ def upgrade(layout, profile):
         if request["class"] != "tree":
             continue
         target = world_position(layout,request)
+        trees = pool('tree')
+        if request.get('vegetation_recipe'):
+            # Large leafy native crowns form a mass. Sparse birch/pine and
+            # leafless variants cannot carry the temperate canopy silhouette.
+            trees = [a for a in trees if a['type_name'] in (
+                ('Oak1', 'Maple1') if request['vegetation_recipe'] in ('hedgerow', 'tree_line') else
+                ('Oak2', 'Oak3', 'Maple2', 'Maple3', 'Willow2', 'Willow3'))]
         for _ in range(12):
-            centre = (target[0]+rng.uniform(-18,18),target[1]+rng.uniform(-18,18))
-            obj = make(request,model("tree"),centre,rng.uniform(0,360))
+            jitter = 7 if request.get('vegetation_recipe') else 18
+            centre = (target[0]+rng.uniform(-jitter,jitter),target[1]+rng.uniform(-jitter,jitter))
+            obj = make(request,rng.choice(trees),centre,rng.uniform(0,360))
             if accept(obj):
                 break
     for obj in final:

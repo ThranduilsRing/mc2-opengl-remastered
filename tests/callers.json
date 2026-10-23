@@ -8265,7 +8265,7 @@
         },
         {
           "path": "tools/mapgen/placement.py",
-          "line": 283,
+          "line": 299,
           "evidence": "import",
           "reference": "tools.mapgen.common",
           "text": "from tools.mapgen.common import spans"
@@ -8307,7 +8307,7 @@
         },
         {
           "path": "tools/mapgen/suburban_forest.py",
-          "line": 16,
+          "line": 17,
           "evidence": "import",
           "reference": "tools.mapgen.common",
           "text": "from tools.mapgen.common import (CELL_WU, distance_field, mask_of, output_path,"
@@ -8514,7 +8514,7 @@
         },
         {
           "path": "tools/mapgen/suburban_forest.py",
-          "line": 31,
+          "line": 34,
           "evidence": "import",
           "reference": "tools.mapgen.generate",
           "text": "from tools.mapgen.generate import nearest, plan_cells, route"
@@ -8615,6 +8615,13 @@
           "text": "from tools.mapgen.placement import Spatial, cell_of, overlaps"
         },
         {
+          "path": "tests/mapgen/test_suburban_forest.py",
+          "line": 16,
+          "evidence": "import",
+          "reference": "tools.mapgen.placement",
+          "text": "from tools.mapgen.placement import interlocking_crowns"
+        },
+        {
           "path": "tools/mapgen/generate.py",
           "line": 460,
           "evidence": "import",
@@ -8626,14 +8633,14 @@
           "line": 24,
           "evidence": "import",
           "reference": "tools.mapgen.placement",
-          "text": "from tools.mapgen.placement import Spatial, covered_cells, overlaps"
+          "text": "from tools.mapgen.placement import Spatial, covered_cells, overlaps, interlocking_crowns"
         },
         {
           "path": "tools/mapgen/validate.py",
           "line": 188,
           "evidence": "import",
           "reference": "tools.mapgen.placement",
-          "text": "from tools.mapgen.placement import Spatial, bounds, cell_of, covered_cells, overlaps"
+          "text": "from tools.mapgen.placement import Spatial, bounds, cell_of, covered_cells, overlaps, interlocking_crowns"
         }
       ]
     },

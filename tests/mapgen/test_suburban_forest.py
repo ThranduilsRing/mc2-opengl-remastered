@@ -13,6 +13,7 @@ from tools.mapgen.generate import generate
 from tools.mapgen.mission_writer import collision_grid, place_units, snapped, terrain_packet
 from tools.mapgen.validate import validate, validate_footprints
 from tools.mapgen.suburban_forest import cook_colormap
+from tools.mapgen.placement import interlocking_crowns
 
 
 class SuburbanForestTest(unittest.TestCase):
@@ -47,6 +48,21 @@ class SuburbanForestTest(unittest.TestCase):
         layout['layers']['vegetation_exclusion'].append([r, c, c+1])
         self.assertTrue(any('shared vegetation exclusion' in e for e in validate_footprints(layout)))
 
+    def test_canopy_overlap_keeps_trunks_and_clearings_separate(self):
+        trees = [o for o in self.layout['objects'] if o['class'] == 'tree']
+        self.assertLessEqual(len(trees), self.layout['regions']['vegetation_budget'])
+        a = trees[0]
+        b = copy.deepcopy(a)
+        self.assertFalse(interlocking_crowns(a, b))
+        b['position_wu'][0] += a['footprint']['width_wu']*.6
+        self.assertTrue(interlocking_crowns(a, b))
+        b['class'] = 'building'
+        self.assertFalse(interlocking_crowns(a, b))
+        exclusions = mask_of(self.layout, 'vegetation_exclusion')
+        self.assertTrue(exclusions[mask_of(self.layout, 'clearings')].all())
+        materials = {p['material'] for p in self.layout['regions']['parcels']}
+        self.assertEqual(materials, {'farm_furrows', 'grass', 'crop', 'meadow'})
+
     def test_water_packets_and_causeway_pathing(self):
         layout = snapped(self.layout)
         wet = mask_of(layout, 'water')
@@ -79,6 +95,6 @@ class SuburbanForestTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as folder:
             path = cook_colormap(self.layout, Path(folder)/'mission.tga', lighting)
             with Image.open(path) as raw, Image.open(path.with_suffix('.burnin.tga')) as baked:
-                self.assertEqual(raw.size, (1024, 1024))
+                self.assertEqual(raw.size, (2048, 2048))
                 np.testing.assert_array_equal(np.asarray(baked),
                     (np.asarray(raw)* (128/255)).astype(np.uint8))

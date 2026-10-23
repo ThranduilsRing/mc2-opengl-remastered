@@ -21,7 +21,7 @@ from tools.mapgen.common import (CELL_WU, load_json, mask_of, output_path, packe
 from tools.mapgen.data import Install, catalog, fit_sections, packet, overlay_catalog
 from tools.mapgen.extract import OBJECT, VERTEX, extract_mission
 from tools.mapgen.move_writer import build_move, validate_move
-from tools.mapgen.placement import Spatial, covered_cells, overlaps
+from tools.mapgen.placement import Spatial, covered_cells, overlaps, interlocking_crowns
 from tools.mapgen.raster import polygon, render
 from tools.pak_append import PacketRecord, make_zlib_payload, write_pak
 
@@ -79,7 +79,7 @@ def snapped(layout):
             # Native wall segments intentionally share end caps/corners.
             if obj['class'] in ('wall', 'gate') and other['class'] in ('wall', 'gate'):
                 continue
-            if overlaps(poly, opoly):
+            if overlaps(poly, opoly) and not interlocking_crowns(obj, other):
                 raise ValueError(f"snapped collision: {obj['id']} / {other['id']}")
         spatial.add(obj, poly)
         by_id[obj['id']] = obj

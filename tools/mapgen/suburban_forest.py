@@ -9,6 +9,7 @@ import copy
 import hashlib
 import json
 import random
+from pathlib import Path
 
 import numpy as np
 from PIL import Image, ImageDraw
@@ -18,10 +19,12 @@ from tools.mapgen.common import (CELL_WU, distance_field, mask_of, output_path,
 
 FIELD_COLOURS = ((133, 146, 83), (157, 150, 96), (102, 132, 72),
                  (126, 115, 76), (157, 165, 109), (104, 144, 96))
+MATERIALS = Path(__file__).with_name('materials')
+VEGETATION_BUDGET = 60000
 FEATURE_COLOURS = (("forest_edge", (65, 106, 62)), ("forest_core", (35, 76, 47)),
                    ("clearings", (132, 157, 104)), ("field_borders", (45, 87, 48)),
                    ("settlements", (150, 141, 119)), ("river_banks", (153, 143, 101)),
-                   ("ditch", (80, 105, 77)), ("verge", (115, 139, 87)),
+                   ("ditch", (53, 70, 43)), ("verge", (105, 140, 65)),
                    ("shoulder", (162, 151, 120)), ("roads", (102, 103, 98)),
                    ("cement", (145, 147, 140)), ("water", (48, 99, 135)))
 
@@ -142,6 +145,8 @@ def plan(size, seed, profile):
         borders[r0:r1, c0:c1] |= rim & selected
         parcels.append({'id': ident, 'bounds': [r0, c0, r1, c1], 'recipe': 'field_hedgerow',
                         'tint': tint, 'uv_direction_deg': rng.choice((0, 90)),
+                        'material': 'farm_furrows' if tint in (1, 3) else ('grass', 'crop', 'meadow')[tint % 3],
+                        'tile_metres': 32 if tint in (1, 3) else 24,
                         'terrain_type': (9, 3, 4, 2, 9, 8)[tint]})
     zones = np.zeros_like(roads)
     for obj in layout['objectives']:
@@ -149,10 +154,12 @@ def plan(size, seed, profile):
         zones[max(0,r-6):r+7, max(0,c-6):c+7] = True
     r, c = layout['player_start']
     zones[max(0,r-6):r+7, max(0,c-6):c+7] = True
-    exclusion = (rd < 4) | (sd < 4) | (distance_field(wet) < 4) | zones
+    exclusion = (rd < 4) | (sd < 4) | (distance_field(wet) < 4) | zones | clearing
+    tree_lines = (rd == 6) & (sd >= 5) & ~wet & ~bank & ~clearing
     layers = {'water': wet, 'river_banks': bank, 'crossings': crossing & ~wet,
               'settlements': settlements, 'forest_core': core, 'forest_edge': edge,
               'clearings': clearing, 'field_borders': borders,
+              'tree_lines': tree_lines,
               'shoulder': (rd == 1) & ~wet & ~settlements,
               'verge': (rd == 2) & ~wet & ~settlements,
               'ditch': (rd == 3) & ~wet & ~settlements,
@@ -174,7 +181,7 @@ def plan(size, seed, profile):
         water_elevation_wu=984.)
     layout['source']['heightfield_sha256'] = hashlib.sha256(
         heights.astype('<f8').tobytes()+wet.tobytes()).hexdigest()
-    layout['regions'] = {'recipe_version': 1, 'biome': 'suburban_forest',
+    layout['regions'] = {'recipe_version': 2, 'biome': 'suburban_forest',
         'parcel_ids': ids.tolist(), 'parcels': parcels,
         'river_centreline': [list(p) for p in river_path],
         'crossing_recipe': 'dry causeway; bridge geometry reserved for native baker',
@@ -182,15 +189,26 @@ def plan(size, seed, profile):
                         'verge_cells': 1, 'ditch_cells': 1, 'vegetation_clearance_cells': 4}}
     # Decoration RNG is independent of site generation and never touches sim RNG.
     layout['objects'] = [o for o in layout['objects'] if o['class'] != 'tree']
-    candidates = (core | edge | borders) & ~exclusion
-    for r in range(1, size-1, 2):
-        for c in range(1, size-1, 2):
-            if not candidates[r, c] or rng.random() > (.90 if core[r,c] else .48 if edge[r,c] else .72):
+    candidates = (core | edge | borders | tree_lines) & ~exclusion
+    vegetation = []
+    for r in range(1, size-1):
+        for c in range(1, size-1):
+            if not candidates[r, c] or rng.random() > (.98 if core[r,c] else .50 if edge[r,c] else .98):
                 continue
-            layout['objects'].append({'id': f'vegetation_{r}_{c}', 'class': 'tree', 'cell': [r, c],
+            vegetation.append({'id': f'vegetation_{r}_{c}', 'class': 'tree', 'cell': [r, c],
                 'team': -1, 'rotation': 0, 'damage': 0, 'parent_link': None,
                 'parent_cell': None, 'parent_id_raw': -1,
-                'vegetation_recipe': 'forest_core' if core[r,c] else 'forest_edge' if edge[r,c] else 'hedgerow'})
+                'vegetation_recipe': 'hedgerow' if borders[r,c] else 'tree_line' if tree_lines[r,c] else
+                                     'forest_core' if core[r,c] else 'forest_edge'})
+    # Preserve continuous border/road runs first; distribute any core thinning
+    # across the whole map instead of truncating one side of a large forest.
+    lines = [o for o in vegetation if o['vegetation_recipe'] in ('hedgerow', 'tree_line')]
+    woods = [o for o in vegetation if o['vegetation_recipe'] not in ('hedgerow', 'tree_line')]
+    if len(lines) > VEGETATION_BUDGET:
+        lines = rng.sample(lines, VEGETATION_BUDGET)
+    woods = rng.sample(woods, min(len(woods), VEGETATION_BUDGET-len(lines)))
+    layout['objects'].extend(lines+woods)
+    layout['regions']['vegetation_budget'] = VEGETATION_BUDGET
     return layout
 
 
@@ -232,27 +250,58 @@ def cook_colormap(layout, out, lighting):
     Generated missions therefore ship their illumination like stock burnin maps.
     Object shadows remain owned by the runtime shadow renderer.
     """
-    side = 1024
-    rgb = np.asarray(Image.fromarray(colours(layout)).resize((side, side), Image.Resampling.NEAREST)).copy()
     source_side = layout['size']['rows']
+    side = min(4096, 2**int(np.ceil(np.log2(source_side*8))))
+    rgb = np.asarray(Image.fromarray(colours(layout)).resize((side, side), Image.Resampling.NEAREST)).astype(np.float32)
     index = np.minimum((np.arange(side)*source_side/side).astype(int), source_side-1)
     ids = np.asarray(layout['regions']['parcel_ids'])[index[:,None], index[None,:]]
-    # Bounded 25 m cultivation rows retain each parcel's own UV orientation.
-    coordinate_wu = np.arange(side)*source_side*CELL_WU/side
-    stripes = .98+.02*np.cos(coordinate_wu/(25*5.01)*np.pi*2)
+    metres = np.arange(side, dtype=np.float32)*source_side*CELL_WU/(side*5.01)
+    yy, xx = metres[:,None], metres[None,:]
+    # Fine grass/soil texture and broad irregular growth stay subordinate to
+    # the exact parcel mask. No blur across parcel or corridor boundaries.
+    grain = .95+.035*np.sin(xx*2.7+yy*1.9)+.025*np.sin(xx*.39-yy*.63)
+    rgb *= grain[:,:,None]
+    pitch, yaw = np.radians([lighting['lightdirpitch'], lighting['lightdiryaw']+45])
+    sun = np.array([np.cos(pitch)*np.cos(yaw), np.cos(pitch)*np.sin(yaw), np.sin(pitch)], np.float32)
+    detail_sun = np.full((side,side), sun[2], np.float32)
+    diffuse = np.asarray(Image.open(MATERIALS/'farm_furrows_diff.jpg'), dtype=np.float32)
+    normals = np.asarray(Image.open(MATERIALS/'farm_furrows_nor_gl.jpg'), dtype=np.float32)/127.5-1
+    normals /= np.maximum(np.linalg.norm(normals, axis=-1, keepdims=True), .001)
+    ao = np.asarray(Image.open(MATERIALS/'farm_furrows_arm.jpg'), dtype=np.float32)[:,:,0]/255
     for parcel in layout['regions']['parcels']:
-        axis = stripes[:,None] if parcel['uv_direction_deg'] == 0 else stripes[None,:]
-        selected = ids == parcel['id']
-        rgb[selected] = (rgb*axis[:,:,None])[selected].astype(np.uint8)
+        r0,c0,r1,c1 = parcel['bounds']
+        r0,c0 = int(np.ceil(r0*side/source_side)),int(np.ceil(c0*side/source_side))
+        r1,c1 = int(np.ceil(r1*side/source_side)),int(np.ceil(c1*side/source_side))
+        selected = ids[r0:r1,c0:c1] == parcel['id']
+        horizontal = parcel['uv_direction_deg'] == 0
+        u,v = np.broadcast_arrays(xx[:,c0:c1],yy[r0:r1,:])
+        if not horizontal:
+            u,v = v,-u
+        if parcel['material'] == 'farm_furrows':
+            ti = (np.floor(v/parcel['tile_metres']*512).astype(int)+parcel['id']*37)%512
+            tj = (np.floor(u/parcel['tile_metres']*512).astype(int)+parcel['id']*61)%512
+            colour = diffuse[ti,tj]*1.35
+            # GL normals rotate with the parcel's UV frame. ARM blue is
+            # metallic, never height; only its AO channel enters this cook.
+            n = normals[ti,tj]
+            nx,ny = (n[:,:,0],-n[:,:,1]) if horizontal else (-n[:,:,1],-n[:,:,0])
+            light = np.maximum(nx*sun[0]+ny*sun[1]+n[:,:,2]*sun[2],0)
+            light *= .85+.15*ao[ti,tj]
+            detail_sun[r0:r1,c0:c1][selected] = light[selected]
+        else:
+            rows = .93+.07*np.cos(v/(3.5 if parcel['material']=='crop' else 8)*np.pi*2)
+            variation = .96+.04*np.sin(u*.081+np.sin(v*.047)*2)
+            colour = rgb[r0:r1,c0:c1]*(rows*variation)[:,:,None]
+        rgb[r0:r1,c0:c1][selected] = colour[selected]
+    rgb = np.clip(rgb,0,255).astype(np.uint8)
     path = output_path(out)
     path.parent.mkdir(parents=True, exist_ok=True)
     Image.fromarray(rgb).save(path, format='TGA', compression=None)
     dr, dc = np.gradient(np.asarray(layout['terrain']['elevation_wu']), CELL_WU)
     normal = np.stack((-dc, dr, np.ones_like(dr)), axis=-1)
     normal /= np.linalg.norm(normal, axis=-1, keepdims=True)
-    pitch, yaw = np.radians([lighting['lightdirpitch'], lighting['lightdiryaw']+45])
-    sun = np.array([np.cos(pitch)*np.cos(yaw), np.cos(pitch)*np.sin(yaw), np.sin(pitch)])
     intensity = np.maximum(normal @ sun, 0)[index[:,None], index[None,:]]
+    intensity = np.clip(intensity+detail_sun-sun[2], 0, 1)
     direct = np.array([lighting['light'+channel] for channel in ('red','green','blue')])
     ambient = np.array([lighting['ambient'+channel] for channel in ('red','green','blue')])
     illumination = np.clip(ambient+intensity[:,:,None]*direct, 0, 255)/255

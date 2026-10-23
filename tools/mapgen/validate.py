@@ -185,7 +185,7 @@ def validate_footprints(layout, profile=None):
     import math
     from tools.mapgen.common import CELL_WU, building_role
     from tools.mapgen.footprints import table
-    from tools.mapgen.placement import Spatial, bounds, cell_of, covered_cells, overlaps
+    from tools.mapgen.placement import Spatial, bounds, cell_of, covered_cells, overlaps, interlocking_crowns
     from tools.mapgen.raster import polygon
     errors = []
     native = table()["types"]
@@ -220,6 +220,8 @@ def validate_footprints(layout, profile=None):
             errors.append(f"{obj['id']}: footprint crosses shared vegetation exclusion")
         for other,op in spatial.candidates(poly):
             if not overlaps(poly,op,clearance=3.99):
+                continue
+            if interlocking_crowns(obj, other):
                 continue
             both_wall = obj["class"]==other["class"]=="wall" and obj.get("base_id")==other.get("base_id")
             wall_gate = {obj["class"],other["class"]} <= {"wall","gate"} and obj.get("base_id")==other.get("base_id")

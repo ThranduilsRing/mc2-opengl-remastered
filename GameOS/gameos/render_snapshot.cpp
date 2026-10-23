@@ -8,7 +8,7 @@
 // v1: static-prop block (identity + transform, observational)
 // v1.1: texArrayLayer/materialIdx wired from per-typeID primary material cache.
 //
-// Arena: module-static ping-pong — two 1 MiB buffers in BSS, wrapped by
+// Arena: module-static ping-pong buffers in BSS, wrapped by
 // RenderCore::FrameArena instances. No per-frame heap allocation.
 
 #include "render_snapshot.h"
@@ -27,7 +27,7 @@
 #include "mc2fmt.h"
 
 // ---------------------------------------------------------------------------
-// Module-static ping-pong arenas (2 × 1 MiB in BSS, never freed).
+// Module-static ping-pong arenas (never freed).
 // s_arenaIndex flips each call: the incoming frame resets the idle arena and
 // writes into it; the previous frame's data sits untouched in the other slot.
 // FrameArena instances are non-owning wrappers; actual buffers are s_arenaBuffers.
@@ -56,7 +56,10 @@ struct CachedSnapshotCounters {
              packetRangeFail;
 };
 static CachedSnapshotCounters s_cachedCounters = {};
-static constexpr size_t kArenaBytes = 1024u * 1024u;
+// Cover 65,536 native prop rows (mapgen budgets vegetation at 60,000),
+// plus 1 MiB for draw-slot packets, mechs and alignment. The old 1 MiB
+// total overflowed at ~9,500 props. Derive row storage from the actual ABI.
+static constexpr size_t kArenaBytes = 65536u * sizeof(ExtractedStaticProp) + 1024u * 1024u;
 alignas(16) static uint8_t s_arenaBuffers[2][kArenaBytes];
 static RenderCore::FrameSlotArenas s_slotArenas;   // slot = frame % 2; the frame's first user resets the slot's arena
 static bool                        s_arenasInited = false;
