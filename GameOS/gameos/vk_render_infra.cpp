@@ -142,7 +142,7 @@ void init(VkDevice device, VkPhysicalDevice physical) {
     // Diagnostic clamp only: it cannot raise either the physical or preset budget.
     const int mbOverride=mc2::gate::get<"MC2_GPU_BUDGET_MB">();
     if(mbOverride>0) s.budget=std::min(s.budget,uint64_t(mbOverride)*MiB);
-    std::fprintf(stderr,"[VK_RESIDENCY v1] budget_bytes=%llu physical_bytes=%llu source=%s safety_bytes=%llu quality=%d maxImageDimension2D=%u\n",
+    if (mc2::gate::get<"MC2_DIAG_VERBOSE">()) std::fprintf(stderr,"[VK_RESIDENCY v1] budget_bytes=%llu physical_bytes=%llu source=%s safety_bytes=%llu quality=%d maxImageDimension2D=%u\n",
         s.budget,s.physicalBudget,memoryBudget?"VK_EXT_memory_budget":"heap_sizes",available-s.physicalBudget,mc2::options::current().shadowQuality,s.imageEdge);
     std::error_code ec; std::filesystem::create_directories("cache/vulkan",ec);
     char key[160]{}; size_t at=std::snprintf(key,sizeof(key),"%08x-%08x-%08x-",p.vendorID,p.deviceID,p.driverVersion);
@@ -579,7 +579,7 @@ void prewarm(int width,int height) {
     const auto warm = [&](std::string_view family, int (*prepare)(int,int)) {
         const auto started=std::chrono::steady_clock::now();
         const int ready=prepare(width,height);
-        std::fprintf(stderr,"[VK_LOAD_RESOURCE v1] family=%.*s ready=%d ms=%.3f\n",static_cast<int>(family.size()),family.data(),ready,
+        if (mc2::gate::get<"MC2_DIAG_VERBOSE">()) std::fprintf(stderr,"[VK_LOAD_RESOURCE v1] family=%.*s ready=%d ms=%.3f\n",static_cast<int>(family.size()),family.data(),ready,
             std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-started).count());
         return ready;
     };
@@ -598,7 +598,7 @@ void prewarm(int width,int height) {
     ready+=getOrCreateEnginePresentVk().prewarmPipelines() ? 1 : 0;
     getOrCreateEngineVulkanContext().textures().finishLoading();
     saveCache();
-    std::fprintf(stderr,"[VK_LOAD_RESOURCE v1] pipeline_creation_ms=%.3f\n",s.creationMs-pipelineMsBefore);
+    if (mc2::gate::get<"MC2_DIAG_VERBOSE">()) std::fprintf(stderr,"[VK_LOAD_RESOURCE v1] pipeline_creation_ms=%.3f\n",s.creationMs-pipelineMsBefore);
     s.prewarmCreations=s.creations; s.firstFrames.clear(); s.measureFrames=true; s.firstFrameStarted=false;
     if (mc2::gate::get<"MC2_DIAG_VERBOSE">()) std::fprintf(stderr,"[VK_PIPELINE_PREWARM v1] ready=%d families=9 pipelines=%llu ms=%.3f size=%dx%d\n",ready,s.creations-before,std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-begin).count(),width,height);
 }
