@@ -190,6 +190,10 @@ struct TerrainIsland : mc2vk::IslandState {
     bool          shoreMaskReady = false;         // the bound mask is the mission's, not the dummy
     // Baked material weights reuse the former, unconsumed shore-image slot.
     mc2vk::ResidentTextureRef materialTexture;
+    mc2vk::ResidentTextureRef materialPending;         // a coverage-only update, swapped in once resident (the old one stays bound until then)
+    std::vector<uint8_t> materialBase, materialFinal;  // coverage-free weights (cached per surface/types/control/profile) and base + hard-surface coverage
+    uint32_t materialW = 0, materialH = 0;
+    int materialProfile = -1;
     uint64_t materialSurfaceVersion = 0, materialTypesVersion = 0, materialControlVersion = 0, materialCoverageVersion = 0;
     mc2vk::OwnedBuffer      cementBuf;
     VkDeviceSize  cementCapBytes = 0;

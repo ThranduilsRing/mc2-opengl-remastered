@@ -314,6 +314,8 @@ int          GetDecalVertCount();
 // world XY, rasterised from the same face-cache walk as the decal bake (overlay
 // alpha for alpha-cement tiles, 1.0 for pure-cement tiles). Lazy, once per mission.
 void  InvalidateHardSurfaceField();
+void  MarkDecalDirtyTile(long row, long col);   // MarkDecalDirty() that names the changed tile (incremental hard-surface update)
+int   TakeHardSurfaceDirtyRects(float* rects, int cap);
 float HardSurfaceCoverage(float wx, float wy);
 void  HardSurfaceStats(int* alpha, int* pure, int* noImage);
 bool  DrawDecalStatic();
