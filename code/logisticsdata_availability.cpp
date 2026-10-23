@@ -4,6 +4,8 @@
 #include "logisticsdata_internal.h"
 #include "mc2fmt.h"
 #include "mc2str.h"
+#include "package_chassis.h"
+#include <filesystem>
 
 #include <format>
 #include <string>
@@ -198,6 +200,36 @@ long LogisticsData::updateAvailability()
 				}
 			}
 		}
+	}
+
+	// BT2018-FIRST-CLASS P4: a package chassis declares its own availability (chassisdef.fit
+	// [Chassis] Purchasable) instead of every campaign's purchase file naming it. The same
+	// component rule as the [Mechs] block applies: a variant whose equipment is not yet
+	// available in this campaign stays out of the shop.
+	for ( auto vIter = variants.begin(); vIter != variants.end(); ++vIter )
+	{
+		const std::string stem = std::filesystem::path( (*vIter)->getFileName() ).stem().string();
+		const mc2pkg::PackageChassis* pc = packageChassisByStem( stem );
+		if ( !pc || !pc->purchasable || (*vIter)->isAvailable() )
+			continue;
+		componentCount = 255;
+		bool bRight = true;
+		(*vIter)->getComponents( componentCount, componentArray );
+		for ( int i = 0; i < componentCount; i++ )
+		{
+			if ( componentArray[i] < 0 || componentArray[i] >= 255 || !available[componentArray[i]] )
+			{
+				bRight = false;
+				break;
+			}
+		}
+		if ( bRight )
+		{
+			(*vIter)->setAvailable( true );
+			if ( !((*vIter)->getID() >> 16) )
+				newMechAvailableCount++;
+		}
+		do { if (mc2::gate::get<"MC2_LOG_LOGISTICS">()) MC2_LOG(Ui, Info, "[LOGISTICS] updateAvailability: package {} variant '{}' available={:d}", pc->chassisId, (*vIter)->getName(), mc2::fmt::as_i32(bRight ? 1 : 0)); } while (0);
 	}
 
 	if ( newMechAvailableCount != oldMechAvailableCount )

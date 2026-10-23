@@ -119,9 +119,10 @@ unsigned long SimRandomDraws (void);
 void ResetSimRandomDraws (void);
 
 // Seed the simulation stream is pinned to under MC2_DETERMINISTIC_RNG: the startup seed, then the mission seed (Mission::init).
-// ABL seedRandom(-1) reseeds from it instead of the wall clock.
+// ABL seedRandom(-1) mixes it with a per-mission call index instead of the wall clock.
 void SetSimMissionSeed (unsigned long seed);
 unsigned long SimMissionSeed (void);
+unsigned long NextSimSeedRandomCall (void);
 
 inline long float2long (float val)
 {

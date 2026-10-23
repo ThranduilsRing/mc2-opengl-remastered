@@ -13,6 +13,7 @@
 // Findings: docs/superpowers/explorations/2026-05-02-track-d-mvp-adversarial-findings.md
 #include "assimp_importer.h"
 #include "unit_anim_state.h"
+#include "content_ir.h"
 #include "mech_texname_derive.h"  // GLB-TEXNAME-DERIVE-EXTRACT-1 pure name rules
 #include "Gates/gate.h"
 #include "Gates/gate_cold.h"
@@ -24,6 +25,8 @@
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
 #include <assimp/material.h>
+#include <assimp/IOSystem.hpp>
+#include <assimp/IOStream.hpp>
 
 #include <memory>
 #include <tuple>
@@ -36,13 +39,74 @@
 #include <cstring>
 #include <cmath>
 #include <cstdio>
+#include <algorithm>
+
+namespace {
+// Source resolution belongs to the frontend: Assimp must see the same mod/FST bytes
+// as stock loading and cache identity, including external glTF buffers.
+class ContentStream final : public Assimp::IOStream {
+public:
+    std::vector<uint8_t> bytes;
+    size_t position = 0;
+    size_t Read(void* buffer, size_t size, size_t count) override {
+        if (!size) return 0;
+        count = std::min(count, (bytes.size() - position) / size);
+        std::memcpy(buffer, bytes.data() + position, count * size);
+        position += count * size;
+        return count;
+    }
+    size_t Write(const void*, size_t, size_t) override { return 0; }
+    aiReturn Seek(size_t offset, aiOrigin origin) override {
+        const int64_t base = origin == aiOrigin_CUR ? static_cast<int64_t>(position) :
+            (origin == aiOrigin_END ? static_cast<int64_t>(bytes.size()) : 0);
+        const int64_t delta = static_cast<int64_t>(offset);
+        if (delta < -base || delta > static_cast<int64_t>(bytes.size()) - base) return aiReturn_FAILURE;
+        position = static_cast<size_t>(base + delta); return aiReturn_SUCCESS;
+    }
+    size_t Tell() const override { return position; }
+    size_t FileSize() const override { return bytes.size(); }
+    void Flush() override {}
+};
+
+class ContentIO final : public Assimp::IOSystem {
+public:
+    std::vector<std::pair<std::string, uint64_t>> dependencies;
+    bool Exists(const char* path) const override { return fileExists(path) != 0; }
+    char getOsSeparator() const override { return '/'; }
+    Assimp::IOStream* Open(const char* path, const char* mode) override {
+        if (!mode || mode[0] != 'r') return nullptr;
+        File source;
+        if (source.open(path) != NO_ERR || source.fileSize() > (256u << 20)) return nullptr;
+        auto stream = std::make_unique<ContentStream>();
+        stream->bytes.resize(source.fileSize());
+        if (!stream->bytes.empty() && source.read(stream->bytes.data(), static_cast<long>(stream->bytes.size())) !=
+            static_cast<long>(stream->bytes.size())) return nullptr;
+        uint64_t digest = 14695981039346656037ull;
+        for (const auto byte : stream->bytes) { digest ^= byte; digest *= 1099511628211ull; }
+        const std::pair<std::string, uint64_t> identity{path, digest};
+        if (std::find(dependencies.begin(), dependencies.end(), identity) == dependencies.end()) dependencies.push_back(identity);
+        return stream.release();  // Assimp takes ownership until Close.
+    }
+    void Close(Assimp::IOStream* stream) override { std::unique_ptr<Assimp::IOStream> owner(stream); }
+};
+
+static std::string ContentFloatKey(float value) {
+    uint32_t bits = 0;
+    std::memcpy(&bits, &value, sizeof(bits));
+    return std::to_string(bits);
+}
+}
 #include <optional>
+#include <ranges>
 #include <algorithm>
 
 #include "msl.h"
 #include "tgl.h"
 #include "mech_skel_import.h"  // BT2018-SKEL-ENGINE-1A: shared FK/skeleton math
 #include "mech_anim_runtime.h" // BT2018-SKEL-ENGINE-1B-RUNTIME: per-frame re-bake API
+#include "file.h"              // ModCapabilityMounted (package capability)
+#include "mech_clip_state.h"   // P9: gesture -> clip state machine + stride matching
+#include "mech_grounding.h"
 
 // BT2018-SKEL-ENGINE-1A — bind-pose bake trace (default OFF). MC2_MECH_SKEL_TRACE=1.
 static const bool s_mechSkelTrace = mc2::gate::get<"MC2_MECH_SKEL_TRACE">();
@@ -192,14 +256,16 @@ inline bool skelMeshDropped(const char* n) {
 //   - no renderable mesh (numMeshes == 0)
 // Helper-object-style nodes (handle_*, World*) are not flagged for now —
 // the importer only consumes scene->mMeshes anyway.
-long ValidateScene(const aiScene* scene, const char* path) {
+bool ValidateScene(const aiScene* scene, std::string_view pathView) {
+	const std::string pathStore(pathView);
+	const char* path = pathStore.c_str();   // printf-style diagnostics below
 	if (!scene || !scene->mRootNode) {
 		PAUSE(("[importer] %s: Assimp returned null scene", path));
-		return -1;
+		return false;
 	}
 	if (scene->mNumMeshes == 0) {
 		PAUSE(("[importer] %s: no meshes", path));
-		return -1;
+		return false;
 	}
 
 	// Walk the scene graph; collect node names; flag length and duplicates.
@@ -223,14 +289,14 @@ long ValidateScene(const aiScene* scene, const char* path) {
 			if (!seen.insert(name).second) {
 				STOP(("[importer] %s: duplicate node name '%s' (breaks node-ID lookup)",
 				      path, name));
-				return -1;
+				return false;
 			}
 		}
 		for (unsigned i = 0; i < n->mNumChildren; i++)
 			stack.push_back(n->mChildren[i]);
 	}
 
-	return 0;
+	return true;
 }
 
 //-----------------------------------------------------------------------------
@@ -345,29 +411,9 @@ std::optional<std::string> DeriveMC2TextureName(const aiScene* scene, const aiMa
 // Note: MVP skips ASE's Nx-base + Nx-shadow-X texture-list doubling. The
 // shadow-X variant is engaged when a separate shadow shape file is present
 // (existing engine path); the GLB-embedded shadow node is M2.
-void BuildTextureList(const aiScene* scene, TG_TypeMultiShape* out) {
-	const DWORD count = scene->mNumMaterials;
-	if (count == 0) {
-		out->SetImportedTextures(0, nullptr, nullptr);
-		return;
-	}
-
-	std::vector<std::string> names(count);
-	std::vector<const char*> nameCStrs(count);
-
-	for (DWORD i = 0; i < count; i++) {
-		const aiMaterial* mat = scene->mMaterials[i];
-		if (auto derived = DeriveMC2TextureName(scene, mat)) {
-			names[i] = *derived;
-		} else {
-			names[i] = "NULLTXM";
-		}
-		nameCStrs[i] = names[i].c_str();
-	}
-
-	// alphas=NULL → all false; engine's legacy texture manager toggles textureAlpha
-	// later via SetTextureAlpha when the actual TGA loads.
-	out->SetImportedTextures(count, nameCStrs.data(), nullptr);
+void BuildTextureList(const aiScene* scene, mc2::content::Asset& out) {
+    for (unsigned i = 0; i < scene->mNumMaterials; ++i)
+        out.materials.push_back({DeriveMC2TextureName(scene, scene->mMaterials[i]).value_or("NULLTXM"), false});
 }
 
 //-----------------------------------------------------------------------------
@@ -376,7 +422,7 @@ void BuildTextureList(const aiScene* scene, TG_TypeMultiShape* out) {
 //
 // Returns 0 on success, -1 on failure.
 long ImportShapeFromMesh(const aiScene* scene, unsigned meshIdx,
-                         TG_TypeShape* outShape, TG_TypeMultiShape* outMulti,
+                         mc2::content::Node& outShape, TG_TypeMultiShape* outMulti,
                          SkelBake* bake = nullptr, bool authoredColors = false,
                          const aiNode* instanceNode = nullptr, const aiMatrix4x4* instanceWorld = nullptr) {
 	const aiMesh* mesh = scene->mMeshes[meshIdx];
@@ -440,6 +486,12 @@ long ImportShapeFromMesh(const aiScene* scene, unsigned meshIdx,
 		meshNode->mTransformation.Decompose(scale, rot, pos);
 		center = toMC2Pos(pos);
 	}
+	const bool keepPivot = instanceWorld &&
+		(S_strnicmp(nodeNm, "SpotLight_", 10) == 0 || S_strnicmp(nodeNm, "LitWin", 6) == 0);
+	if (keepPivot) {
+		center = toMC2Pos(aiVector3D(instanceWorld->a4, instanceWorld->b4, instanceWorld->c4));
+		parentNm = "None";
+	}
 	// Baked instance: positions by the world matrix, normals by its inverse transpose; a mirroring
 	// transform reverses winding so faces stay front-facing.
 	aiMatrix3x3 normalXform;
@@ -470,6 +522,7 @@ long ImportShapeFromMesh(const aiScene* scene, unsigned meshIdx,
 			verts[v].normal = toMC2Vec(nWorld);
 		} else if (instanceWorld) {
 			verts[v].position = toMC2Pos((*instanceWorld) * mesh->mVertices[v]);
+			if (keepPivot) verts[v].position -= center;
 			aiVector3D n = normalXform * mesh->mNormals[v];
 			n.Normalize();
 			verts[v].normal = toMC2Vec(n);
@@ -498,25 +551,6 @@ long ImportShapeFromMesh(const aiScene* scene, unsigned meshIdx,
             }
         }
 
-		// MODEL-OVERRIDE / Track C: vertex-tight bounding box, mesh-local.
-		// Accumulate over the SAME positions stored into the vertex buffer (no
-		// nodeCenter applied): import sets a zero node pivot, so the renderer
-		// draws these verts mesh-local. Baking center in would offset the box
-		// from the rendered geometry for any non-zero node translation; the ASE
-		// ref (msl.cpp ~300-323) keeps render-space and box-space in agreement.
-		// Empty-mesh sentinel + extentRadius floor handled in ComputeBoundingBox.
-		if (outMulti) {
-			// Mesh-local box: matches the zero node-center render (no center pivot applied).
-			const float wx = verts[v].position.x;
-			const float wy = verts[v].position.y;
-			const float wz = verts[v].position.z;
-			if (wx < outMulti->minBox.x) outMulti->minBox.x = wx;
-			if (wy < outMulti->minBox.y) outMulti->minBox.y = wy;
-			if (wz < outMulti->minBox.z) outMulti->minBox.z = wz;
-			if (wx > outMulti->maxBox.x) outMulti->maxBox.x = wx;
-			if (wy > outMulti->maxBox.y) outMulti->maxBox.y = wy;
-			if (wz > outMulti->maxBox.z) outMulti->maxBox.z = wz;
-		}
 	}
 
 	// UV channel 0 is the standard diffuse channel. Mechs with UV1+ are out
@@ -570,7 +604,9 @@ long ImportShapeFromMesh(const aiScene* scene, unsigned meshIdx,
 	}
 
 	// Hand ownership of the vectors to the shape (no copy).
-	outShape->InitFromImportedMesh(nodeNm, parentNm, center, std::move(verts), std::move(tris));
+	outShape.name = nodeNm; outShape.parent = parentNm;
+	outShape.center = outShape.relativeCenter = center;
+	outShape.vertices = std::move(verts); outShape.triangles = std::move(tris);
 	return 0;
 }
 
@@ -584,7 +620,7 @@ long ImportShapeFromMesh(const aiScene* scene, unsigned meshIdx,
 // vertex/triangle buffer (per-triangle material index preserved), matching the
 // fk_bake static export exactly. Caller has already done AllocateImportedShapes(1)
 // + BuildTextureList + ResetBoundingBox.
-long PopulateMergedSkinnedShape(const aiScene* scene, TG_TypeMultiShape* out, SkelBake& bake) {
+long PopulateMergedSkinnedShape(const aiScene* scene, mc2::content::Asset& out, SkelBake& bake) {
 	std::vector<unsigned> parts;
 	DWORD totalV = 0, totalT = 0;
 	for (unsigned m = 0; m < scene->mNumMeshes; ++m) {
@@ -596,9 +632,7 @@ long PopulateMergedSkinnedShape(const aiScene* scene, TG_TypeMultiShape* out, Sk
 	}
 	if (parts.empty() || totalV == 0) { PAUSE(("[importer] skinned merge: no intact parts")); return -1; }
 
-	TG_TypeNodePtr slot = out->GetTypeNode(0);
-	if (!slot || slot->GetNodeType() != SHAPE_NODE) return -1;
-	TG_TypeShape* shape = static_cast<TG_TypeShape*>(slot);
+	auto& shape = out.nodes.front();
 
 	std::vector<TG_TypeVertex> verts(totalV);
 	std::vector<TG_TypeTriangle> tris(totalT);
@@ -642,12 +676,6 @@ long PopulateMergedSkinnedShape(const aiScene* scene, TG_TypeMultiShape* out, Sk
 			vt.position  = mechToMC2Pos(p);   // fixed mech axis (== MC2_GLTF_AXIS=2)
 			vt.normal    = mechToMC2Vec(n);
 			vt.aRGBLight = 0xffffffff;
-			if (vt.position.x < out->minBox.x) out->minBox.x = vt.position.x;
-			if (vt.position.y < out->minBox.y) out->minBox.y = vt.position.y;
-			if (vt.position.z < out->minBox.z) out->minBox.z = vt.position.z;
-			if (vt.position.x > out->maxBox.x) out->maxBox.x = vt.position.x;
-			if (vt.position.y > out->maxBox.y) out->maxBox.y = vt.position.y;
-			if (vt.position.z > out->maxBox.z) out->maxBox.z = vt.position.z;
 		}
 		for (unsigned f = 0; f < me->mNumFaces; ++f) {
 			const aiFace& fc = me->mFaces[f];
@@ -678,7 +706,9 @@ long PopulateMergedSkinnedShape(const aiScene* scene, TG_TypeMultiShape* out, Sk
 	}
 
 	glm::vec3 zero; zero.x = zero.y = zero.z = 0.0f;
-	shape->InitFromImportedMesh("imported_mech", "None", zero, std::move(verts), std::move(tris));
+	shape.name = "imported_mech"; shape.parent = "None";
+	shape.center = shape.relativeCenter = zero;
+	shape.vertices = std::move(verts); shape.triangles = std::move(tris);
 	return 0;
 }
 
@@ -734,6 +764,10 @@ namespace {
 struct ActorAnimState : mc2::sim::ImportedAnimState {
     std::vector<float> modelDelta;          // jointCount*16 row-major (placement-free)
     float gpuLift = 0.0f;                    // world-up foot-ground lift (per-frame)
+    mc2clip::Phase phase;                    // P9: jump/land memory
+    mc2clip::Mode  mode = mc2clip::Mode::Loop;  // P9: Once clips hold their last frame
+    bool  locomotion = false;                // P9: stride-matched playback
+    float playRate = 1.0f;                   // P9: last stride rate (diagnostics)
     std::vector<mc2skel::GpuBone> lastGlobals;  // 1A: last-frame clip bone GLOBALS (FK),
                                                 // parallel to ImportedAnimEntry::names —
                                                 // read by GetImportedNodeWorld for firepoints.
@@ -747,7 +781,9 @@ struct ImportedAnimEntry {
     std::vector<std::string> names;        // skeleton, parallel to clip globals
     std::string         pinnedClip;        // MC2_MECH_IMPORT_FORCE_CLIP (empty = 1C dynamic)
     std::string         initialClip;       // clip seeded into each new actor state
+    std::map<std::string, float> strideSpeed;  // P9: locomotion clip -> planted-foot speed (world units/s)
     std::map<std::string, std::string> nodeManifest;  // 1A: MC2 node name -> source joint
+    std::map<std::string, aiVector3D> socketOffsets;  // P10: socket name -> point in its joint's local frame
                                             // (from bt2018_mech_package.json "nodes").
     std::string aoTexName;                  // AO-1: materials.ao.tga (deriveName stem +
                                             // .tga); empty = no AO. Loaded -> unit 6.
@@ -764,6 +800,7 @@ struct ImportedAnimEntry {
     aiMatrix4x4                AS1;              // A1·S (Z-up clip-side axis · scale)
     std::vector<aiVector3D>    boneLowest;       // per-bone lowest rest VBO vertex (model space)
     float                      restLift = 0.0f;  // static ground lift from REST pose (steady torso)
+    mc2ground::Rig              grounding;
     // Per-frame state: GPU = one ActorAnimState per actor instance; CPU = one shared.
     std::map<const void*, ActorAnimState> actors;  // keyed by actor instance (mechShape*)
     ActorAnimState             cpuState;
@@ -772,16 +809,26 @@ std::vector<ImportedAnimEntry> g_importedAnims;
 // Prune actor states untouched for this many frames (dead/despawned actors).
 const unsigned ACTOR_STATE_STALE_FRAMES = 600u;
 
-bool mechImportAnimateEnabled() {
-    // Opt-in, default OFF (static FORCE_CLIP bake stays the safe path).
-    static int v = mc2::gate::get<"MC2_MECH_IMPORT_ANIMATE">();
-    return v != 0;
+// BT2018-FIRST-CLASS P3: a mounted package with the "imported_mechs" capability ships its
+// imported mechs animated on the GPU path (per-actor palettes); the env gates stay as
+// opt-in for loose imports and an explicit =0 kills the package default.
+static bool importedMechPackageMounted() {
+    static const bool v = ModCapabilityMounted("imported_mechs");
+    return v;
 }
 
-// 1B-GPU: route the imported mech through the GPU skinned-mech path (default OFF).
+bool mechImportAnimateEnabled() {
+    // Opt-in, default OFF (static FORCE_CLIP bake stays the safe path) unless a package asks.
+    static const bool v = mc2::gate::get<"MC2_MECH_IMPORT_ANIMATE">() ||
+        (importedMechPackageMounted() && mc2::gate::state<"MC2_MECH_IMPORT_ANIMATE">() != mc2::gate::Tri::Off);
+    return v;
+}
+
+// 1B-GPU: route the imported mech through the GPU skinned-mech path (default OFF unless a package asks).
 bool mechImportGpuEnabled() {
-    static int v = mc2::gate::get<"MC2_MECH_IMPORT_GPU">();
-    return v != 0;
+    static const bool v = mc2::gate::get<"MC2_MECH_IMPORT_GPU">() ||
+        (importedMechPackageMounted() && mc2::gate::state<"MC2_MECH_IMPORT_GPU">() != mc2::gate::Tri::Off);
+    return v;
 }
 // GPU palette clip-side axis case. Default 2 (== mechToMC2Pos, the VBO axis): with
 // the actor shapeToWorld_root composed by the batcher, axis 2 stands the mech upright
@@ -860,53 +907,64 @@ std::optional<float> clipDurationSec(const aiScene* scene, std::string_view clip
     return std::nullopt;
 }
 
-// 1C — map the mech's per-frame movement to a BT2018 clip name. Gesture (already
-// debounced by the stock transition state machine) drives the main states; a
-// rotation-rate test adds turn-in-place (there is no stock GestureTurn). Clip
-// names follow the atlas/marauder set; a missing clip falls back to idle in the
-// tick. Gesture ids: 2=Stand 4=Walk 7=Run 9=Reverse 13=Idle 20=Jump (mech3d.h).
-const char* selectClipForMotion(int gesture, float speed, float turnRate, int turnStreak) {
-    // BT2018-SKEL-ANIM-COVERAGE-1: combat / reaction gestures (mech3d.h ids) take
-    // precedence over locomotion. Hit-reacts (16-19) flow through currentGestureId on
-    // moderate hits; fall/knockdown (14/15) → prone-hold (23/24) → getup (21/22) flow
-    // through the transitionArray (incl. forced on death). Limp (11/12) has no BT clip
-    // → walk fallback. Knockdown is the only BT down/react family clip.
-    switch (gesture) {
-        case 16: return "atlas_hitReactLgtFwd";    // HitFront
-        case 17: return "atlas_hitReactLgtBwd";    // HitBack
-        case 18: return "atlas_hitReactLgtLeft";   // HitLeft
-        case 19: return "atlas_hitReactLgtRight";  // HitRight
-        case 14: case 15:                          // FallBackward / FallForward
-        case 21: case 22:                          // Rollover / GetUp
-        case 23: case 24:                          // Fallen prone (held at end by caller)
-            return "atlas_hitReactKnockdownInpl";
-        case 11: case 12:                          // Limp L/R (no BT limp clip)
-            return "atlas_moveCoreWalkFwd";
-        default: break;
+// 1C/P9: per-frame clip choice lives in mclib/mech_clip_state.h (mc2clip::select): gesture
+// state + measured speed -> clip, one-shot vs loop, stride-matched locomotion.
+
+// P9: planted-foot speed of each locomotion clip, measured once at import. A clip plays in
+// place, so while a foot is planted it slides backwards under the root at exactly the ground
+// speed the clip was authored for. Playback rate = actual speed / this value, and the planted
+// foot then stays put (mc2clip::strideRate). Units: the GPU model space (AS1 includes the
+// import scale), up = y. Needs e.AS1, so it runs on the GPU path only.
+void measureClipStrides(ImportedAnimEntry& e) {
+    static const char* const kClips[] = {
+        "atlas_moveCoreWalkFwd", "atlas_moveCoreRunFwd", "atlas_moveCoreSprintFwd", "atlas_moveCoreWalkBwd",
+        "atlas_moveCoreWalkLimpFwdLeft", "atlas_moveCoreWalkLimpFwdRight" };
+    int feet[2] = { -1, -1 };
+    for (size_t i = 0; i < e.names.size(); ++i) {
+        if (e.names[i] == "j_LFoot") feet[0] = static_cast<int>(i);
+        if (e.names[i] == "j_RFoot") feet[1] = static_cast<int>(i);
     }
-    // Locomotion + turn-in-place.
-    const float MOVE_EPS = 1.0f;    // world units/sec ≈ moving
-    const bool standing = (gesture != 4 && gesture != 7 && gesture != 9 && gesture != 20);
-    if (standing && speed < MOVE_EPS && turnStreak >= 3)
-        return (turnRate > 0.0f) ? "atlas_moveCoreTurnLeftIdle" : "atlas_moveCoreTurnRightIdle";
-    switch (gesture) {
-        case 7:  return "atlas_moveCoreRunFwd";
-        case 9:  return "atlas_moveCoreWalkBwd";
-        case 4:  return "atlas_moveCoreWalkFwd";
-        case 20: return "atlas_moveJumpUpIdle";
-        default: return (speed > MOVE_EPS) ? "atlas_moveCoreWalkFwd" : "atlas_moveCoreIdle";
+    if (feet[0] < 0 || feet[1] < 0) return;
+    for (const char* clip : kClips) {
+        auto dur = clipDurationSec(e.scene, clip);
+        if (!dur || *dur < 0.1f) continue;
+        const int frames = static_cast<int>(*dur * 30.0f);
+        std::vector<aiVector3D> pos[2];
+        std::vector<mc2skel::GpuBone> g;
+        for (int f = 0; f <= frames; ++f) {
+            double tt = 0, dd = 0;
+            if (!mc2skel::EvaluateClipGpuBones(e.scene, clip, static_cast<float>(f), e.names, g, &tt, &dd)) break;
+            for (int k = 0; k < 2; ++k) {
+                const aiMatrix4x4 M = e.AS1 * rowMajorToAi(g[feet[k]].m);
+                pos[k].push_back(aiVector3D(M.a4, M.b4, M.c4));
+            }
+        }
+        // One gait cycle moves each foot through its full fore-aft range twice (stance back,
+        // swing forward); the planted half covers that range at ground speed, so speed =
+        // 2 * range / duration along the foot's dominant horizontal axis. (A per-frame
+        // "lowest frames" test picked swing frames on in-place BT clips and over-read ~4x.)
+        float sum = 0.0f; int n = 0;
+        for (int k = 0; k < 2; ++k) {
+            if (pos[k].size() < 3) continue;
+            const auto [xlo, xhi] = std::ranges::minmax(pos[k] | std::views::transform([](const aiVector3D& p) { return p.x; }));
+            const auto [zlo, zhi] = std::ranges::minmax(pos[k] | std::views::transform([](const aiVector3D& p) { return p.z; }));
+            sum += 2.0f * std::max(xhi - xlo, zhi - zlo) / *dur;
+            ++n;
+        }
+        if (n > 0 && sum / n > 0.5f) {
+            e.strideSpeed[clip] = sum / n;
+            mc2::fmt::print_err("[MECH_IMPORT] stride '{}' planted-foot speed={:.2f} u/s (cycle {:.2f}s)\n", clip, sum / n, *dur);
+        }
     }
 }
-// Prone/fallen gestures hold the clip's last frame (a downed/destroyed mech must not
-// loop the knockdown). Other clips loop.
-inline bool gestureHoldsAtEnd(int gesture) { return gesture == 23 || gesture == 24; }
 
 // BT2018-MECH-NODE-MANIFEST-1A: load the per-mech package's "nodes" map
 // (MC2 semantic name -> source joint) from the GLB's sidecar
 // <stem>.package.json. Minimal flat-map scan (no JSON dependency; the generator
 // controls the format). Leaves the map empty (→ legacy node lookup) if absent.
 void LoadMechPackage(const char* glbPath, std::map<std::string, std::string>& out,
-                     std::string& aoOut, std::string& normalOut) {
+                     std::string& aoOut, std::string& normalOut,
+                     std::map<std::string, aiVector3D>* socketOut = nullptr) {
     if (!glbPath) return;
     std::string p(glbPath);
     size_t dot = p.rfind(".glb");
@@ -936,6 +994,23 @@ void LoadMechPackage(const char* glbPath, std::map<std::string, std::string>& ou
                 out[buf.substr(k0 + 1, k1 - k0 - 1)] = buf.substr(v0 + 1, v1 - v0 - 1);
                 i = v1 + 1;
             }
+        }
+    }
+    // P10: "socketOffsets" flat map, socket -> "x y z" in the joint's local frame
+    // (tools/bt2018_mechs/sockets.py). Muzzles sit on the geometry, not at joint centres.
+    if (socketOut) {
+        size_t so = buf.find("\"socketOffsets\"");
+        size_t b2 = (so == std::string::npos) ? so : buf.find('{', so);
+        size_t e2 = (b2 == std::string::npos) ? b2 : buf.find('}', b2);
+        for (size_t i = (b2 == std::string::npos ? 0 : b2 + 1); b2 != std::string::npos && i < e2; ) {
+            size_t k0 = buf.find('"', i); if (k0 == std::string::npos || k0 >= e2) break;
+            size_t k1 = buf.find('"', k0 + 1); if (k1 == std::string::npos || k1 >= e2) break;
+            size_t v0 = buf.find('"', k1 + 1); if (v0 == std::string::npos || v0 >= e2) break;
+            size_t v1 = buf.find('"', v0 + 1); if (v1 == std::string::npos || v1 > e2) break;
+            float x = 0, y = 0, z = 0;
+            if (sscanf(buf.substr(v0 + 1, v1 - v0 - 1).c_str(), "%f %f %f", &x, &y, &z) == 3)
+                (*socketOut)[buf.substr(k0 + 1, k1 - k0 - 1)] = aiVector3D(x, y, z);
+            i = v1 + 1;
         }
     }
     // AO-1: materials.ao.tga (runtime texture name; .ktx2 sidecar resolves it).
@@ -976,6 +1051,7 @@ void RegisterImportedAnim(const char* path, TG_TypeMultiShape* out, const SkelBa
     TG_TypeNodePtr slot = out->GetTypeNode(0);
     if (!slot || slot->GetNodeType() != SHAPE_NODE) return;
     auto imp = std::make_unique<Assimp::Importer>();
+    imp->SetIOHandler(std::make_unique<ContentIO>().release());
     const aiScene* scene = imp->ReadFile(path,
         aiProcess_Triangulate | aiProcess_GenSmoothNormals |
         aiProcess_JoinIdenticalVertices | aiProcess_ValidateDataStructure | aiProcess_SortByPType);
@@ -985,7 +1061,7 @@ void RegisterImportedAnim(const char* path, TG_TypeMultiShape* out, const SkelBa
     e.shape = static_cast<TG_TypeShape*>(slot);
     e.multi = out;
     e.names = bake.names;
-    LoadMechPackage(path, e.nodeManifest, e.aoTexName, e.normalTexName);  // 1A nodes + AO + NORMALS tex names
+    LoadMechPackage(path, e.nodeManifest, e.aoTexName, e.normalTexName, &e.socketOffsets);  // 1A nodes + AO + NORMALS tex names
     e.pinnedClip = bake.forcedClip;   // empty -> 1C dynamic selection
     // Initial clip: the pinned clip if any, else idle. Fall back to whatever the
     // scene's first clip is when even idle is absent, so the tick always animates.
@@ -999,6 +1075,49 @@ void RegisterImportedAnim(const char* path, TG_TypeMultiShape* out, const SkelBa
     e.groundDy = groundDy;
     e.initialDuration = (d && *d > 1e-4f) ? *d : 1.0f;
     e.parts = parts;
+
+    // BT's prefab enables GrounderIK + LimbIK. Reconstruct sole support from the
+    // actual intact meshes, including articulated toes, rather than a height dial.
+    auto matrix = [](const mc2skel::GpuBone& bone) {
+        glm::mat4 m;
+        for (int r = 0; r < 4; ++r)
+            for (int c = 0; c < 4; ++c) m[c][r] = bone.m[r * 4 + c];
+        return m;
+    };
+    e.grounding.floor = 1e30f;
+    for (int side = 0; side < 2; ++side) {
+        auto& leg = e.grounding.legs[side];
+        const std::string prefix = side == 0 ? "j_L" : "j_R";
+        auto index = [&](std::string_view suffix) {
+            const auto it = bake.nameIdx.find(prefix + std::string(suffix));
+            int found = -1;
+            if (it != bake.nameIdx.end()) {
+                const auto& [boneName, boneIndex] = *it;
+                found = boneIndex;
+            }
+            return found;
+        };
+        leg.thigh = index("Thigh"); leg.calf = index("Calf"); leg.foot = index("Foot");
+        if (leg.thigh < 0 || leg.calf < 0 || leg.foot < 0) continue;
+        leg.restFoot = matrix(bake.rest[leg.foot]);
+        for (size_t b = 0; b < bake.parents.size(); ++b) {
+            int ancestor = static_cast<int>(b);
+            while (ancestor >= 0 && ancestor != leg.foot) ancestor = bake.parents[ancestor];
+            if (ancestor == leg.foot && static_cast<int>(b) != leg.foot)
+                leg.children.push_back(static_cast<int>(b));
+        }
+        for (const auto& part : parts) {
+            const int b = part.boneIndex;
+            if (b != leg.foot && std::find(leg.children.begin(), leg.children.end(), b) == leg.children.end()) continue;
+            const aiMesh* mesh = scene->mMeshes[part.meshIndex];
+            for (unsigned v = 0; v < mesh->mNumVertices; ++v) {
+                const aiVector3D local = part.off * mesh->mVertices[v];
+                leg.sole.push_back({b, {local.x, local.y, local.z}});
+                e.grounding.floor = std::min(e.grounding.floor,
+                    applyRowMajor16(bake.rest[b].m, local).y);
+            }
+        }
+    }
 
     // 1B-GPU: precompute the model-delta inputs. VBO = A2·S·R_i·p̃ (A2 = mechToMC2Pos,
     // Y-up, axis case 2). Per-frame model delta D_i = (A1·S·C_i)·(A2·S·R_i)^-1 maps the
@@ -1051,6 +1170,7 @@ void RegisterImportedAnim(const char* path, TG_TypeMultiShape* out, const SkelBa
             }
             e.restLift = (lowestY < 1e29f) ? -lowestY : 0.0f;
         }
+        measureClipStrides(e);
         MECH_SKEL_TRACE("file='%s' 1B-GPU registered joints=%zu verts=%d axis=%d (bbox y[%.2f..%.2f])",
                         path, bake.rest.size(), nv, mechImportGpuAxis(),
                         out->minBox.y, out->maxBox.y);
@@ -1242,7 +1362,12 @@ bool mc2mechanim::GetImportedNodeWorld(const void* actorKey, const void* typeKey
         // (.z = world elevation). Lift is applied in the pre-permute frame on the
         // liftAxis component, matching the batcher (F[3+4*liftAxis] += lift).
         aiMatrix4x4 M = e.AS1 * rowMajorToAi(s->lastGlobals[idx].m);
-        const float mx = M.a4, my = M.b4, mz = M.c4;
+        float mx = M.a4, my = M.b4, mz = M.c4;
+        // P10: a socket with an authored local point fires from actor x posed joint x point.
+        if (e.socketOffsets.contains(mc2Name)) {
+            const aiVector3D p = M * e.socketOffsets.at(mc2Name);
+            mx = p.x; my = p.y; mz = p.z;
+        }
         const float* w = rootToWorld12;
         float gx = w[0]*mx + w[1]*my + w[2]*mz  + w[3];
         float gy = w[4]*mx + w[5]*my + w[6]*mz  + w[7];
@@ -1284,23 +1409,39 @@ bool sampleActorClip(const ImportedAnimEntry& e, ActorAnimState& s, float dt,
         const bool standing = (motion.gestureId != 4 && motion.gestureId != 7 &&
                                motion.gestureId != 9 && motion.gestureId != 20);
         s.turnStreak = (standing && speed < 1.0f && fabsf(turnRate) > 12.0f) ? (s.turnStreak + 1) : 0;
-        const char* want = selectClipForMotion(motion.gestureId, speed, turnRate, s.turnStreak);
-        if (s.activeClip == want) {
-            s.pendingStreak = 0;
-        } else {
-            if (s.pendingClip == want) ++s.pendingStreak;
-            else { s.pendingClip = want; s.pendingStreak = 1; }
-            if (s.pendingStreak >= 4) {
-                if (auto nd = clipDurationSec(e.scene, want)) {
-                    s.activeClip = want;
-                    s.durationSec = *nd > 1e-4f ? *nd : 1.0f;
-                }
-                s.pendingStreak = 0;
+        // P9: event clips (hits, falls, get-up, death, jump phases) switch at once and play
+        // from their first frame; locomotion keeps the 4-frame debounce and its phase.
+        const bool finished = (s.mode == mc2clip::Mode::Once) && s.clipTimeSec >= s.durationSec - 1e-4f;
+        const mc2clip::Choice want = mc2clip::select(motion.gestureId, speed, turnRate, s.turnStreak,
+                                                     motion.destroyed, finished, s.activeClip.c_str(), s.phase);
+        auto adopt = [&](const mc2clip::Choice& c, bool restart) {
+            if (auto nd = clipDurationSec(e.scene, c.clip)) {
+                s.activeClip = c.clip;
+                s.durationSec = *nd > 1e-4f ? *nd : 1.0f;
+                s.mode = c.mode;
+                s.locomotion = c.locomotion;
+                if (restart) s.clipTimeSec = 0.0f;
             }
+            s.pendingStreak = 0;
+        };
+        if (s.activeClip == want.clip) {
+            s.pendingStreak = 0;
+            s.locomotion = want.locomotion;
+        } else if (want.immediate) {
+            adopt(want, true);
+        } else {
+            if (s.pendingClip == want.clip) ++s.pendingStreak;
+            else { s.pendingClip = want.clip; s.pendingStreak = 1; }
+            if (s.pendingStreak >= 4) adopt(want, s.mode == mc2clip::Mode::Once);
+        }
+        s.playRate = 1.0f;
+        if (s.locomotion) {
+            if (e.strideSpeed.contains(s.activeClip))
+                s.playRate = mc2clip::strideRate(speed, e.strideSpeed.at(s.activeClip));
         }
     }
-    const bool holdAtEnd = e.pinnedClip.empty() && gestureHoldsAtEnd(motion.gestureId);
-    if (advanceClock) s.clipTimeSec += dt;
+    const bool holdAtEnd = e.pinnedClip.empty() && s.mode == mc2clip::Mode::Once;
+    if (advanceClock) s.clipTimeSec += dt * (e.pinnedClip.empty() ? s.playRate : 1.0f);
     if (s.durationSec > 0.0f) {
         if (holdAtEnd) { if (s.clipTimeSec > s.durationSec) s.clipTimeSec = s.durationSec; }
         else while (s.clipTimeSec >= s.durationSec) s.clipTimeSec -= s.durationSec;
@@ -1356,6 +1497,28 @@ void mc2mechanim::TickImportedMechs(float dt, unsigned frameStamp, const MechMot
         s.lastFrame = frameStamp;
         std::vector<mc2skel::GpuBone> globals;
         if (sampleActorClip(e, s, dt, motion, globals, advanceClock)) {
+            if (s.activeClip.starts_with("atlas_moveCore")) {
+                std::vector<glm::mat4> pose(globals.size());
+                for (size_t b = 0; b < globals.size(); ++b)
+                    for (int r = 0; r < 4; ++r)
+                        for (int c = 0; c < 4; ++c) pose[b][c][r] = globals[b].m[r * 4 + c];
+                mc2ground::solve(e.grounding, pose);
+                if (s_mechSkelTrace && frameStamp % 6 == 0) {
+                    float soles[2] = {1e30f, 1e30f};
+                    for (int side = 0; side < 2; ++side)
+                        for (const auto& p : e.grounding.legs[side].sole)
+                            soles[side] = std::min(soles[side], (pose[p.bone] * glm::vec4(p.local, 1)).y);
+                    const auto torso = std::find(e.names.begin(), e.names.end(), "j_Spine2");
+                    const size_t b = static_cast<size_t>(torso - e.names.begin());
+                    const float pitch = b < pose.size() ? std::atan2(pose[b][1].z, pose[b][1].y) * 57.29578f : 0;
+                    MECH_SKEL_TRACE("ground frame=%u clip=%s time=%.4f soles=(%.4f,%.4f) pitch=%.3f",
+                        frameStamp, s.activeClip.c_str(), s.clipTimeSec, (soles[0] - e.grounding.floor) * e.scale,
+                        (soles[1] - e.grounding.floor) * e.scale, pitch);
+                }
+                for (size_t b = 0; b < globals.size(); ++b)
+                    for (int r = 0; r < 4; ++r)
+                        for (int c = 0; c < 4; ++c) globals[b].m[r * 4 + c] = pose[b][c][r];
+            }
             s.lastGlobals = std::move(globals);   // 1A: firepoint/hit-node source
         }
         if (authoritative) *authoritative = static_cast<const mc2::sim::ImportedAnimState&>(s);
@@ -1385,12 +1548,68 @@ static void CollectMeshInstances(const aiNode* node, const aiMatrix4x4& parent,
 		CollectMeshInstances(node->mChildren[c], world, out);
 }
 
+static bool ContentNumber(const aiMetadata* metadata, unsigned index, float& out) {
+    if (!metadata || index >= metadata->mNumProperties) return false;
+    double d = 0; float f = 0; int32_t i = 0; uint64_t u = 0;
+    if (metadata->Get(index, d)) out = static_cast<float>(d);
+    else if (metadata->Get(index, f)) out = f;
+    else if (metadata->Get(index, i)) out = static_cast<float>(i);
+    else if (metadata->Get(index, u)) out = static_cast<float>(u);
+    else return false;
+    return std::isfinite(out);
+}
+
+static bool ContentVector(const aiMetadata* metadata, std::string_view key, glm::vec3& out) {
+    aiMetadata values;
+    return metadata && metadata->Get(std::string(key), values) && values.mNumProperties == 3 &&
+        ContentNumber(&values, 0, out.x) && ContentNumber(&values, 1, out.y) && ContentNumber(&values, 2, out.z);
+}
+
+static float ContentScalar(const aiMetadata* metadata, std::string_view key, float fallback) {
+    for (unsigned i = 0; metadata && i < metadata->mNumProperties; ++i)
+        if (metadata->mKeys[i] == aiString(std::string(key))) { float value; return ContentNumber(metadata, i, value) ? value : fallback; }
+    return fallback;
+}
+
+static void CollectContentSockets(const aiNode* node, mc2::content::Asset& asset) {
+    const auto* md = node->mMetaData;
+    aiString schema;
+    if (S_strnicmp(node->mName.C_Str(), "SpotLight_", 10) == 0 || S_strnicmp(node->mName.C_Str(), "LitWin", 6) == 0) {
+        mc2::content::Socket legacy;
+        if (ContentVector(md, "mc2_pivot_tg_wu", legacy.position)) {
+            legacy.name = legacy.parent = node->mName.C_Str();
+            legacy.type = S_strnicmp(legacy.name.c_str(), "SpotLight_", 10) == 0 ? "spot" : "point";
+            legacy.intensityClass = "legacy";
+            asset.sockets.push_back(std::move(legacy));
+        }
+    }
+    if (md && md->Get(std::string("mc2_light_schema"), schema) && schema == aiString("mc2-building-light/1")) {
+        mc2::content::Socket socket;
+        socket.name = node->mName.C_Str(); socket.parent = socket.name;
+        aiString type, intensity;
+        if (md->Get(std::string("mc2_light_type"), type)) socket.type = type.C_Str();
+        if (md->Get(std::string("mc2_light_intensity_class"), intensity)) socket.intensityClass = intensity.C_Str();
+        md->Get(std::string("mc2_light_active"), socket.active);
+        md->Get(std::string("mc2_light_lights_out_on_destroy"), socket.lightsOutOnDestroy);
+        if (ContentVector(md, "position_tg_wu", socket.position) && ContentVector(md, "direction_tg", socket.direction)) {
+            ContentVector(md, "mc2_light_colour_linear", socket.colour);
+            socket.range = ContentScalar(md, "range_wu", 0);
+            socket.outerConeDegrees = ContentScalar(md, "mc2_light_outer_cone_degrees", 0);
+            asset.sockets.push_back(std::move(socket));
+        }
+    }
+    for (unsigned c = 0; c < node->mNumChildren; ++c) CollectContentSockets(node->mChildren[c], asset);
+}
+
 long ImportGeometryFromFile(const char* path, TG_TypeMultiShape* out, bool autoGround, bool authoredColors,
                             bool bakeNodeTransforms) {
 	if (!path || !out) return -1;
 
 
 	Assimp::Importer imp;
+	auto io = std::make_unique<ContentIO>();
+	auto* sources = io.get();
+	imp.SetIOHandler(io.release());
 	const aiScene* scene = imp.ReadFile(path,
 		aiProcess_Triangulate           |
 		aiProcess_GenSmoothNormals      |
@@ -1404,7 +1623,7 @@ long ImportGeometryFromFile(const char* path, TG_TypeMultiShape* out, bool autoG
 		return -1;
 	}
 
-	if (ValidateScene(scene, path) != 0) {
+	if (!ValidateScene(scene, path)) {
 		return -1;
 	}
 
@@ -1514,11 +1733,22 @@ long ImportGeometryFromFile(const char* path, TG_TypeMultiShape* out, bool autoG
 		}
 	}
 
+	mc2::content::Asset asset;
+	asset.ground = autoGround ? mc2::gate::get<"MC2_GLTF_GROUND">() : 0;
+    asset.parameters = std::to_string(s_gltfAxis()) + ":" + ContentFloatKey(s_gltfYoff()) + ":" +
+        ContentFloatKey(s_gltfYawDeg()) + ":" + std::to_string(authoredColors) + ":" + std::to_string(bakeNodeTransforms) +
+        ":" + bake.forcedClip + ":" + std::to_string(bake.forcedFrame) + ":" + ContentFloatKey(bake.scale);
+    std::sort(sources->dependencies.begin(), sources->dependencies.end());
+    for (const auto& [dependencyPath, digest] : sources->dependencies)
+        asset.parameters += ":" + std::to_string(digest);
+    if (!bake.active && mc2::content::loadCached(asset, path))
+        return out->BuildContentIR(std::move(asset), path);
+    CollectContentSockets(scene->mRootNode, asset);
 	if (bake.active) {
 		// SKINNED MECH: merge every intact baked part into ONE shape (the proven
 		// static-GLB structure). Per-mesh shapes would leave dropped parts as empty
 		// NULL-vertex shapes that crash the mech GPU/recipe path.
-		out->AllocateImportedShapes(1);
+		asset.nodes.resize(1);
 		// Mech skin = texture SLOT 0 (resetPaintScheme binds slot 0). The skinned
 		// GLB lists blip atlases at material 0/1, so build a single-slot list with
 		// the BASE atlas (the intact body's material) at slot 0; all merged tris
@@ -1546,28 +1776,22 @@ long ImportGeometryFromFile(const char* path, TG_TypeMultiShape* out, bool autoG
 			if (isVariantMat(matName.C_Str())) { baseTex = *nm; gotVariant = true; break; }
 			if (!gotVariant && baseTex == "NULLTXM") baseTex = *nm;
 		}
-		const char* texNames[1] = { baseTex.c_str() };
-		out->SetImportedTextures(1, texNames, nullptr);
+		asset.materials.push_back({baseTex, false});
 		MECH_SKEL_TRACE("file='%s' mech skin slot0 tex='%s'", path, baseTex.c_str());
-		ResetBoundingBox(out);
 		// 1B-RUNTIME: when animating, capture each part's layout so the merge can be
 		// registered for per-frame re-bake (requires a valid forced clip).
 		if (animateImport) bake.recParts = &animParts;
-		long r = PopulateMergedSkinnedShape(scene, out, bake);
+		long r = PopulateMergedSkinnedShape(scene, asset, bake);
 		if (r != 0) return r;
 	} else if (bakeNodeTransforms) {
 	// Static override: one TG_TypeShape per (node, mesh) instance with its world transform baked.
 	std::vector<std::tuple<unsigned, const aiNode*, aiMatrix4x4>> instances;
 	CollectMeshInstances(scene->mRootNode, aiMatrix4x4(), instances);
-	out->AllocateImportedShapes(static_cast<int>(instances.size()));
-	BuildTextureList(scene, out);
-	ResetBoundingBox(out);
+	asset.nodes.resize(instances.size());
+	BuildTextureList(scene, asset);
 	for (size_t i = 0; i < instances.size(); ++i) {
-		TG_TypeNodePtr slot = out->GetTypeNode(static_cast<long>(i));
-		if (!slot || slot->GetNodeType() != SHAPE_NODE)
-			continue;
 		const auto& [meshIdx, node, world] = instances[i];
-		long r = ImportShapeFromMesh(scene, meshIdx, static_cast<TG_TypeShape*>(slot), out, nullptr,
+		long r = ImportShapeFromMesh(scene, meshIdx, asset.nodes[i], nullptr, nullptr,
 		                             authoredColors, node, &world);
 		if (r != 0) {
 			return r;
@@ -1576,23 +1800,19 @@ long ImportGeometryFromFile(const char* path, TG_TypeMultiShape* out, bool autoG
 	} else {
 	// Allocate the multi-shape's listOfTypeShapes[] and per-slot TG_TypeShape
 	// instances. One Assimp mesh → one TG_TypeShape (MVP; LODs not embedded).
-	out->AllocateImportedShapes(static_cast<int>(scene->mNumMeshes));
+	asset.nodes.resize(scene->mNumMeshes);
 
 	// Build the multi-shape's TG_Texture[] before populating shapes — the
 	// per-shape TG_TinyTexture wiring (CreateListOfTextures) reads from the
 	// multi-shape table.
-	BuildTextureList(scene, out);
+	BuildTextureList(scene, asset);
 
 	// Vertex-tight box: reset to empty extremes, then each ImportShapeFromMesh
 	// expands min/max over its vertices; ComputeBoundingBox finalizes below.
-	ResetBoundingBox(out);
 
 	// Populate each shape from its mesh.
 	for (unsigned i = 0; i < scene->mNumMeshes; i++) {
-		TG_TypeNodePtr slot = out->GetTypeNode(static_cast<long>(i));
-		if (!slot || slot->GetNodeType() != SHAPE_NODE)
-			continue;
-		long r = ImportShapeFromMesh(scene, i, static_cast<TG_TypeShape*>(slot), out,
+		long r = ImportShapeFromMesh(scene, i, asset.nodes[i], nullptr,
 		                             bake.active ? &bake : nullptr, authoredColors);
 		if (r != 0) {
 			return r;
@@ -1607,26 +1827,7 @@ long ImportGeometryFromFile(const char* path, TG_TypeMultiShape* out, bool autoG
 		                bake.partsSingleBone, bake.partsOffsetBaked, bake.droppedParts);
 	}
 
-	ComputeBoundingBox(out);
-
-	// AUTO-GROUND: imported override meshes are often centered on their pivot, so
-	// the placement (pivot at terrain elevation) puts terrain through the MIDPOINT.
-	// GL-up = -stuff.y (canopy at the most-negative y), so the BASE is at the
-	// largest stuff.y; translate that to 0 so the base sits on the ground.
-	// MC2_GLTF_GROUND=2 grounds the opposite end; =0 disables.
-	{
-		static const int s_ground = mc2::gate::get<"MC2_GLTF_GROUND">();
-		if (s_ground && autoGround) {
-			const float dy = (s_ground==2) ? -out->minBox.y : -out->maxBox.y;
-			for (unsigned si=0; si<static_cast<unsigned>(out->GetNumShapes()); ++si) {
-				TG_TypeNodePtr nd = out->GetTypeNode(static_cast<long>(si));
-				if (nd && nd->GetNodeType()==SHAPE_NODE)
-					static_cast<TG_TypeShape*>(nd)->TranslateTypeVerticesY(dy);
-			}
-			out->minBox.y += dy; out->maxBox.y += dy;
-			groundDyApplied = dy;  // 1B-RUNTIME: re-bake must preserve this offset
-		}
-	}
+	if (out->BuildContentIR(std::move(asset), path, &groundDyApplied) != NO_ERR) return -1;
 
 	// 1B-RUNTIME: register the merged skinned mech for per-frame re-bake. After
 	// auto-ground so the stored offset matches the static pose. Reuses the forced

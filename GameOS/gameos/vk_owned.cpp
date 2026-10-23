@@ -17,12 +17,17 @@ bool OwnedBuffer::create(VmaAllocator allocator, VkDevice device, const VkBuffer
     reset();
     VkBuffer buffer = VK_NULL_HANDLE;
     VmaAllocation allocation = nullptr;
+    VkBuffer probe=VK_NULL_HANDLE;
+    if(vkCreateBuffer(device,&info,nullptr,&probe)!=VK_SUCCESS) return false;
+    VkMemoryRequirements requirements{}; vkGetBufferMemoryRequirements(device,probe,&requirements);
+    vkDestroyBuffer(device,probe,nullptr);
+    infra::Admission admission(requirements.size,name);
+    if(!admission) return false;
     if (vmaCreateBuffer(allocator, &info, &alloc, &buffer, &allocation, nullptr) != VK_SUCCESS) return false;
     buffer_ = buffer;
     allocation_ = allocation;
     allocator_ = allocator;
-    VmaAllocationInfo ai{}; vmaGetAllocationInfo(allocator, allocation, &ai);
-    infra::allocation(reinterpret_cast<uint64_t>(allocation), ai.size, name);
+    admission.commit(reinterpret_cast<uint64_t>(allocation), name);
     nameObjectAt(device, buffer_, name, i0, i1);
     return true;
 }
@@ -115,23 +120,18 @@ bool OwnedImage::create(VmaAllocator allocator, VkDevice device, const VkImageCr
     reset();
     VkImage image = VK_NULL_HANDLE;
     VmaAllocation allocation = nullptr;
-    if (name.find("shadow") != name.npos || name.find("post") != name.npos || name.find("scene") != name.npos || name.find("targets") != name.npos) {
-        // Admit shadow and render-target images using the exact requirement, including driver alignment.
-        VkImage probe=VK_NULL_HANDLE;
-        if(vkCreateImage(device,&info,nullptr,&probe)!=VK_SUCCESS) return false;
-        VkMemoryRequirements requirements{}; vkGetImageMemoryRequirements(device,probe,&requirements);
-        vkDestroyImage(device,probe,nullptr);
-        if(!infra::admit(requirements.size)) {
-            std::fprintf(stderr,"[VK_RESIDENCY v1] feature_refused=%.*s bytes=%llu\n",int(name.size()),name.data(),requirements.size);
-            return false;
-        }
-    }
+    if(!infra::imageSupported(info,name)) return false;
+    VkImage probe=VK_NULL_HANDLE;
+    if(vkCreateImage(device,&info,nullptr,&probe)!=VK_SUCCESS) return false;
+    VkMemoryRequirements requirements{}; vkGetImageMemoryRequirements(device,probe,&requirements);
+    vkDestroyImage(device,probe,nullptr);
+    infra::Admission admission(requirements.size,name);
+    if(!admission) return false;
     if (vmaCreateImage(allocator, &info, &alloc, &image, &allocation, nullptr) != VK_SUCCESS) return false;
     image_ = image;
     allocation_ = allocation;
     allocator_ = allocator;
-    VmaAllocationInfo ai{}; vmaGetAllocationInfo(allocator, allocation, &ai);
-    infra::allocation(reinterpret_cast<uint64_t>(allocation), ai.size, name);
+    admission.commit(reinterpret_cast<uint64_t>(allocation), name);
     nameObjectAt(device, image_, name, i0, i1);
     return true;
 }

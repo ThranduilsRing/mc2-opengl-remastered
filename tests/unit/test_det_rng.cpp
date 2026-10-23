@@ -67,3 +67,16 @@ TEST_CASE("det_rng: explicit seedRandom(n) is used as-is regardless of the gate"
     CHECK(resolveSeedRandom(42, true, 0x1234u, 0xDEADu) == 42u);
     CHECK(resolveSeedRandom(42, false, 0x1234u, 0xDEADu) == 42u);
 }
+
+TEST_CASE("det_rng: repeated fresh reseeds are distinct and replayable per mission") {
+    const uint32_t seed = hashMissionName("mc2_10");
+    uint32_t previous = seed;
+    for (uint32_t call = 1; call <= 100; ++call) {
+        const auto fresh = resolveSeedRandom(-1, true, seed, 1, call);
+        CHECK(fresh != previous);
+        CHECK(fresh == resolveSeedRandom(-1, true, seed, 999999, call));
+        CHECK(resolveSeedRandom(42, true, seed, 0, call) == 42);
+        CHECK(resolveSeedRandom(-1, false, seed, 123, call) == 123);
+        previous = fresh;
+    }
+}

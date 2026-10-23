@@ -39,6 +39,7 @@ inline constexpr int INVALID_VARIANT = 1027;
 inline constexpr int VARIANT_IN_USE = 1028;
 inline constexpr int NO_MORE_ARMOR = 1029;
 inline constexpr int INSUFFICIENT_HEAT = 1030;
+inline constexpr int NO_COMPATIBLE_MOUNT = 1031;   // package chassis: no free BT mount of that type in the location
 
 
 

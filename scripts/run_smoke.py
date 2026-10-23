@@ -86,7 +86,7 @@ except Exception:
 # deploy-lease system auto-select the least-recently-used deploy folder. This
 # avoids drift toward a stale fixed default and keeps load balanced across
 # 0.4 / 0.4c / 0.4d-rc1 / 0.5.0 / 0.5-testing.
-ARTIFACT_ROOT = ROOT / "tests" / "smoke" / "artifacts"
+ARTIFACT_ROOT = Path(os.environ.get("MC2_SMOKE_ARTIFACT_ROOT", ROOT / "tests" / "smoke" / "artifacts"))
 MANIFEST_PATH = ROOT / "tests" / "smoke" / "smoke_missions.txt"
 BASELINE_PATH = ROOT / "tests" / "smoke" / "baselines.json"
 DEFAULT_MENU_SCRIPT = ROOT / "tests" / "smoke" / "menu_canary_first_mission.txt"

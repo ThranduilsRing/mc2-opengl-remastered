@@ -1,4 +1,21 @@
 #pragma once
+#include <cstdint>
+#include <string_view>
+// Layout does not depend on MC2_VULKAN: no Vulkan type is a member, so every target sees the same class.
+namespace mc2vk::infra {
+// Holds admission across driver allocation; a failed allocation returns its reservation.
+class Admission {
+public:
+    Admission(uint64_t bytes, std::string_view name);
+    ~Admission();
+    Admission(const Admission&) = delete;
+    Admission& operator=(const Admission&) = delete;
+    explicit operator bool() const { return bytes_ != 0; }
+    void commit(uint64_t key, std::string_view name, bool raw = false);
+private:
+    uint64_t bytes_ = 0;
+};
+}
 #ifdef MC2_VULKAN_ISLAND
 // Game-side load hook; no Vulkan types cross into the simulation target.
 void mc2PrewarmMissionPipelines();
@@ -27,7 +44,6 @@ uint64_t adoptPipeline(VkDevice, VkPipeline);
 VkPipeline currentPipeline(uint64_t token);
 void destroyOwnedPipeline(uint64_t token);
 void deferPipeline(uint64_t token);
-void allocation(uint64_t key, uint64_t bytes, std::string_view name, bool raw = false);
 void release(uint64_t key);
 void defer(uint64_t key);
 template<class Owner> void retiring(Owner& owner) {
@@ -36,6 +52,8 @@ template<class Owner> void retiring(Owner& owner) {
     else if constexpr(requires { owner.begin(); owner.end(); }) { for(auto& item:owner) retiring(item); }
 }
 bool admit(uint64_t bytes);
+bool imageSupported(const VkImageCreateInfo&, std::string_view name);
+uint32_t imageLimit();
 uint32_t shadowTier(uint32_t requested, uint64_t bytesPerTexel, uint32_t copies = 1);
 std::string ledgerJson();
 void panel();

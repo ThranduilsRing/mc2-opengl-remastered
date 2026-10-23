@@ -147,6 +147,7 @@ class Node:
     parent: int = -1
     matrix: np.ndarray = field(default_factory=lambda: np.eye(4))
     mesh: int | None = None                # a mesh shared by several nodes is an instance
+    extras: dict = field(default_factory=dict)
 
 
 @dataclass
@@ -209,7 +210,7 @@ class SkeletonRef:
     clip_events: dict[str, list] = field(default_factory=dict)
 
 
-SOCKET_KINDS = ("muzzle", "foot", "jumpjet", "eject", "smoke", "attach")
+SOCKET_KINDS = ("muzzle", "foot", "jumpjet", "eject", "smoke", "attach", "light")
 
 
 @dataclass
@@ -219,6 +220,7 @@ class Socket:
     kind: str
     parent: str                            # joint or node name in the intact LOD0 / skeleton
     matrix: np.ndarray = field(default_factory=lambda: np.eye(4))
+    properties: dict = field(default_factory=dict)
 
 
 @dataclass
@@ -473,7 +475,7 @@ def _untex(d):
 def to_json(asset: Asset) -> dict:
     def scene(s):
         return {"nodes": [{"name": n.name, "parent": n.parent, "matrix": np.asarray(n.matrix).reshape(-1).tolist(),
-                           "mesh": n.mesh} for n in s.nodes],
+                           "mesh": n.mesh, "extras": n.extras} for n in s.nodes],
                 "meshes": [{"name": m.name, "primitives": [
                     {"material": p.material, "positions": _arr(p.positions), "indices": _arr(p.indices),
                      "normals": _arr(p.normals), "tangents": _arr(p.tangents), "uv0": _arr(p.uv0),
@@ -496,7 +498,7 @@ def to_json(asset: Asset) -> dict:
                 "source": asset.skeleton.source.__dict__, "joints": asset.skeleton.joints, "clips": asset.skeleton.clips,
                 "clip_events": asset.skeleton.clip_events},
             "sockets": [{"name": s.name, "kind": s.kind, "parent": s.parent,
-                         "matrix": np.asarray(s.matrix).reshape(-1).tolist()} for s in asset.sockets],
+                         "matrix": np.asarray(s.matrix).reshape(-1).tolist(), "properties": s.properties} for s in asset.sockets],
             "parts": [p.__dict__ for p in asset.parts],
             "provenance": [s.__dict__ for s in asset.provenance], "frontend": asset.frontend}
 
@@ -507,7 +509,8 @@ def from_json(d: dict) -> Asset:
 
     def scene(s):
         return Scene(
-            nodes=[Node(n["name"], n["parent"], np.array(n["matrix"], dtype=float).reshape(4, 4), n["mesh"]) for n in s["nodes"]],
+            nodes=[Node(n["name"], n["parent"], np.array(n["matrix"], dtype=float).reshape(4, 4), n["mesh"],
+                        n.get("extras", {})) for n in s["nodes"]],
             meshes=[Mesh(m["name"], [Primitive(_unarr(p["positions"]), _unarr(p["indices"]), p["material"],
                                                _unarr(p["normals"]), _unarr(p["tangents"]), _unarr(p["uv0"]),
                                                _unarr(p["color0"])) for p in m["primitives"]]) for m in s["meshes"]])
@@ -529,7 +532,8 @@ def from_json(d: dict) -> Asset:
                  skeleton=None if sk is None else SkeletonRef(Source(**sk["source"]), sk["joints"], sk["clips"],
                                                               sk.get("clip_events", {})),
                  provenance=[Source(**s) for s in d["provenance"]], frontend=d.get("frontend", {}),
-                 sockets=[Socket(s["name"], s["kind"], s["parent"], np.array(s["matrix"], dtype=float).reshape(4, 4))
+                 sockets=[Socket(s["name"], s["kind"], s["parent"], np.array(s["matrix"], dtype=float).reshape(4, 4),
+                                 s.get("properties", {}))
                           for s in d.get("sockets", [])],
                  parts=[Part(**p) for p in d.get("parts", [])])
 

@@ -77,8 +77,6 @@ extern int g_mechPreviewRenderDepth;
 extern int s_mechNormalsMode;
 extern float s_mechNormalsSmoothDeg;
 extern std::vector<std::pair<size_t,size_t>> s_nodeVboRanges;
-extern bool s_mechAmbientV1;
-extern float s_mechAmbientStrength;
 extern bool s_mechSpecularV1;
 extern float s_mechSpecularStrength;
 extern float s_mechMetalRoughness;

@@ -601,10 +601,6 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "IN-MISSION-HUD-IMGUI-SCOPE-1 slice C witness: register a 4th 'test' tab (no legacy button; ImGui chrome via HudImGui::hudShrinkPoint + hudToDisplay, trivial...",
     },
     {
-        "MC2_FEATURE_ICON_FAILLOUD", "MC2_ICON_FAILLOUD", EnvVarKind::Feature, false,
-        "META-FIX design B PART 3 (code/mechicon.cpp iconTileChecked at the three CPU icon-tile blits): default OFF. =1 substitutes a solid MAGENTA tile when an icon...",
-    },
-    {
         "MC2_TRACE_IFACE_COST_SPLIT", "MC2_IFACE_COST_SPLIT", EnvVarKind::Trace, false,
         "MISSION-INTERFACE-PERF-1: chrono cost-split of MissionInterfaceManager::update() (the GameLogic.Mission.Interface Tracy zone) incl.",
     },
@@ -783,18 +779,6 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
     {
         "MC2_FEATURE_TACTICAL_ARC_OVERLAY", "MC2_TACTICAL_ARC_OVERLAY", EnvVarKind::Feature, false,
         "TACTICAL-ARC-OVERLAY-MVP-1: world-space range ring + facing line on each SELECTED mover, drawn in-scene by the debug renderer just before its flush...",
-    },
-    {
-        "MC2_FEATURE_TERRAIN_AMBIENT_FLOOR", "MC2_TERRAIN_AMBIENT_FLOOR", EnvVarKind::Feature, true,
-        "TERRAIN-AMBIENT-FLOOR-2: terrain-only, albedo-scaled ambient floor in terrain_lod_chunk.frag.",
-    },
-    {
-        "MC2_FEATURE_TERRAIN_AMBIENT_FLOOR_NIGHT", "MC2_TERRAIN_AMBIENT_FLOOR_NIGHT", EnvVarKind::Feature, false,
-        "TERRAIN-AMBIENT-FLOOR-NIGHT-1: 0..1 FLOOR under TERRAIN-AMBIENT-FLOOR-2's daylight gate; the uploaded gate becomes max(dayGate, floor).",
-    },
-    {
-        "MC2_TRACE_TERRAIN_AMBIENT_FLOOR", "MC2_TERRAIN_AMBIENT_FLOOR_TRACE", EnvVarKind::Trace, false,
-        "TERRAIN-AMBIENT-FLOOR-2 trace: prints ONE line at the first terrain-chunk uniform upload giving the resolved floor strength, the daylight gate ACTUALLY...",
     },
     {
         "MC2_FEATURE_TERRAIN_CLIFF_DISPLACE", "MC2_TERRAIN_CLIFF_DISPLACE", EnvVarKind::Feature, false,

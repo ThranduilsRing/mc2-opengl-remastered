@@ -1009,9 +1009,9 @@ void MissionBegin::updateSoakAutoPurchase() {
 			{
 				LogisticsData* ld = LogisticsData::instance;
 				auto fg = ld->getForceGroup();
-				if ( std::ssize(fg) > 0 )
+				if ( std::ssize(fg) > 0 && !mc2::gate::get<"MC2_BOOT_TO_MECHLAB">() )
 				{
-					// Already have a lance (e.g. campaigns that pre-stage mechs).
+					// A staged lance can launch; a buy-and-modify capture still needs its purchase.
 					s_autoPurchasedThisBay = true;
 				}
 				else
@@ -1217,6 +1217,30 @@ void MissionBegin::updateSoakAutoPurchase() {
 							if ( w < lightestW ) { lightestW = w; lightest = v; }
 							if ( w <= cap && w > pickW ) { pickW = w; pick = v; }
 						}
+						// BT2018-FIRST-CLASS P4: when a mounted package offers a purchasable
+						// chassis, the soak buys that (heaviest within the cap, ignoring the cap
+						// if none fits) so automated runs exercise the package's buy -> deploy
+						// path. No package mounted -> the stock pick above, unchanged.
+						{
+							LogisticsVariant* pkgPick = nullptr;
+							int pkgW = -1;
+							for ( int i = 0; i < mechCount; ++i )
+							{
+								LogisticsVariant* v = pool[ mechIdx[i] ];
+								if ( !v->getChassis() || !v->getChassis()->getPackage() )
+									continue;
+								const int w = static_cast<int>(v->getMaxWeight());
+								const bool fits = w <= cap;
+								const bool bestFits = pkgPick && static_cast<int>(pkgPick->getMaxWeight()) <= cap;
+								if ( !pkgPick || ( fits && !bestFits ) || ( fits == bestFits && w > pkgW ) )
+								{
+									pkgPick = v;
+									pkgW = w;
+								}
+							}
+							if ( pkgPick )
+								pick = pkgPick;
+						}
 						if ( !pick )
 							pick = lightest;
 						if ( !pick && n > 0 )
@@ -1231,14 +1255,18 @@ void MissionBegin::updateSoakAutoPurchase() {
 									bought = (*it);
 							if ( bought )
 							{
-								ld->addMechToForceGroup( bought, 1 );
+								int slot = 1;
+								while ( slot <= 12 && std::any_of(fg.begin(), fg.end(), [slot](LogisticsMech* mech) {
+									return mech && mech->getForceGroup() == slot;
+								}) ) ++slot;
+								ld->addMechToForceGroup( bought, slot );
 								LogisticsPilot* pilot = ld->getFirstAvailablePilot();
 								if ( pilot )
 									bought->setPilot( pilot );
 								ld->setMechToModify( bought );
-								printf("[SOAK] auto-purchase mech=%s tons=%d pilot=%d deployed=slot1 maxDrop=%d pool=%d\n",
+								printf("[SOAK] auto-purchase mech=%s tons=%d pilot=%d deployed=slot%d maxDrop=%d pool=%d\n",
 									pick->getName().c_str(), static_cast<int>(pick->getMaxWeight()),
-									pilot ? 1 : 0, maxDrop, n);
+									pilot ? 1 : 0, slot, maxDrop, n);
 							}
 							else
 							{
@@ -1485,11 +1513,11 @@ void MissionBegin::updateSoakScreenWalk(LogisticsScreen* pCurScreen, bool& soakF
 				// single-screen capture harnesses hold any target screen.
 				int stopX = 2, stopY = 1;
 				mc2BootScreenXY( stopX, stopY );
-				// MC2_BOOT_TO_MECHLAB auto-clicks Modify Mech from the bay,
-				// landing on mech_lab_loadout [2][2] -- park THERE.
+				// Hold at the bay while auto-purchase and Modify Mech settle,
+				// then hold in mech_lab_loadout [2][2]. NEXT must not race Modify.
 				if ( mc2::gate::get<"MC2_BOOT_TO_MECHLAB">() )
 				{
-					stopX = 2; stopY = 2;
+					stopX = 2; stopY = (curScreenY == 1) ? 1 : 2;
 				}
 				if ( s_soakStopAtBay && curScreenX == stopX && curScreenY == stopY )
 				{

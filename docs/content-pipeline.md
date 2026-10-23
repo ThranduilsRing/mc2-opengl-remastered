@@ -14,7 +14,8 @@ static-prop material path in the engine. Entry point:
 | Stock ASE + reviewed CC0 detail rows (was `blender_pipeline/material_map.py`) | `frontends/stock_ase.py` |
 | Any glTF/GLB: Blender recipes (fence_gen), sci-fi building kit, FBX via Blender, catalog candidates | `frontends/gltf_file.py` |
 | Catalog selection / fitting (`tools/assets/replace.py package`) | fits, then `gltf_file` |
-| BattleTech 2018 GLB + `bt2018_mech_package.json` | `frontends/bt2018.py` (IR only; runtime stays `[Import] Source=`) |
+| Stock TGL viewer meshdump | `frontends/stock_meshdump.py` |
+| BattleTech 2018 GLB + `bt2018_mech_package.json` | `frontends/bt2018.py`; cooker preserves skin source/clip bytes and cooks atlas tiers; runtime stays `[Import] Source=` |
 
 The `stock_ase` asset may list `excludeNodes`: exact reviewed mesh names (for example `LitWin_Quonset2`) that keep
 legacy lighting. A lit window can reuse a roof texel, so an atlas mask cannot exclude it; the named meshes move to an
@@ -64,8 +65,8 @@ Runtime GLBs bake every node transform (the engine's static import also applies 
 and instancing now), carry identity nodes with unique names and are validated (`validate.py`:
 Khronos-style structure + MC2 runtime profile). Stock-policy base colour is referenced by name,
 never copied. Engine-special nodes (`SpotLight_`, `LitWin`, `_PAB`, `LOS_`) keep a legacy slot.
-Building cooks report outer-hull faces that point inward (culled from outside = see-through
-wall); `repair_inward_hull` flips them on authored intact chains. Collision, passability and LOS
+Recipes requesting `repair_inward_hull` report and flip inward outer-hull faces on authored intact chains
+(culled from outside = see-through wall). Collision, passability and LOS
 always come from the stock shapes, whatever renders.
 
 ## Texture cook contract (`texcook.py`, `mc2-texcook/1`)
@@ -95,3 +96,37 @@ rename, per-kind LRU - the same rules as the engine's `cook_cache` (shadow/terra
   `mech_material_vk.glsl` with an ORM/emissive row exactly like props.
 - **Terrain cookers** (`cook_concrete_detail.py`, `cook_terrain_layers.py`): call
   `texcook.cook_ktx2` for their KTX2 output to share colour-space, mip and cache rules.
+
+## Runtime loader inventory (import-unify)
+
+`mclib/content_ir.h` is the native view of one selected condition/state/LOD of
+`mc2-content-ir/1`. It retains TG corner UVs and vertex order for compatibility
+with stock animation and rigid skins. It owns CPU data, with no runtime handles.
+`TG_TypeMultiShape::BuildContentIR` validates/caches it, builds runtime nodes,
+applies the source's bounds/ground policy, and binds texture names. Rendering
+never changes the stock collision/passability shape or simulation RNG.
+
+| Consumer/source | Frontend and common consumer |
+|---|---|
+| Stock buildings, trees, mechs, vehicles, generic actors, damage, arms, shadows | `msl_load.cpp`: `DecodeStockASE` / `DecodeStockBinary` -> native IR -> `BuildContentIR` |
+| Kit and `models.json` overrides, all conditions/destroyed/LODs | `bdactor_type.cpp` -> Assimp frontend -> native IR -> same cooker |
+| `[Import] Source=` on building/tree/mech/vehicle/generic appearances | `LoadFromFile` -> Assimp frontend -> same cooker; failed imports retain stock fallback |
+| BT2018 rigid skins | Assimp retains the existing bind/animation math and registers animation after common runtime publication |
+| Missing-required-shape placeholder | `tgl_load_guard.cpp`: synthetic geometry, no imported source |
+| Asset viewer stock preview | Same stock frontend/cooker; its glTF preview is an authoring viewer, not a second game asset cooker |
+| Modern tree pack / stock batch | Recipe adapters to `cook.py`; Track G staging/texture/assembly/promotion and GLB surgery deleted |
+| Grass/fern population | Procedural shader strips and card textures; no imported model/shape loader |
+
+Loose ASE is authoritative even when its timestamp is older than an existing
+TGL. Stock-only installs retain packed TGL decoding. Native cache entries live
+under `cache/content-model`, using the shared atomic/LRU `cook_cache`; identity
+includes resolved VFS source bytes, import parameters and cooker version.
+Self-contained sources can skip decoding on a hit; glTF/FBX resolve their external
+geometry before computing identity. Offline geometry/texture caches additionally
+include source dependency hashes, material policy and cooker versions.
+
+Destroyed chains may use `{"intact": "rubble_lod0.glb", "lods": [["rubble_lod1.glb", 350]]}`.
+`LIGHT_*` extras survive IR and runtime GLBs; the native shape's `ContentSockets()`
+exposes TG/WU position, direction, colour, range, cone, activity and destruction
+policy to lighting. Stock `SpotLight_`/`LitWin` attachment pivots survive static
+baking. Source conditions/damage with no emitters stay empty; no lamps are invented.

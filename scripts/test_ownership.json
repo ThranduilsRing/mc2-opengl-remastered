@@ -8,6 +8,7 @@
     {"module": "scripts/tests/test_board_selftests.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_bootstrap_worktree_build.py", "owners": ["native_render_hosts"]},
     {"module": "scripts/tests/test_bounded_wait.py", "owners": ["scripts_tests"]},
+    {"module": "scripts/tests/test_bt2018_mechs.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_buffer_lifetime_ownership.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_build_compiler_presets.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_check_ab_kit.py", "owners": ["scripts_tests"]},

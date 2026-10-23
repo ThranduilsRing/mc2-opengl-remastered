@@ -8,8 +8,7 @@
 #include"logisticsmechicon.h"
 #include "../mclib/texture_assets.h"
 #include"mechicon.h"
-#include"icon_atlas_cell.h"
-#include "mc2_audit.h"   // META-FIX design B PART 3a: icon_oob marker
+#include "icon_registry.h"
 #include"logisticsmech.h"
 #include"logisticspilot.h"
 #include "../resource.h"
@@ -130,54 +129,7 @@ void LogisticsMechIcon::setMech( LogisticsMech* pNewMech )
 
 	if ( pMech )
 	{
-		// need to set the uv's of the mech icon
-		// Icon atlas (mcui_gn_mechicons.tga) uses 25x30px cells at setFileWidth(256).
-		// See MC2_LOG_MECH_ICON env var for per-mech UV diagnostics.
-		long index = pMech->getIconIndex();
-
-		float width = icon.width();
-		float height = icon.height();
-
-		// Atlas geometry is DERIVED from the loaded texture, not hardcoded.
-		// Retail mech atlas = 256 wide (10 cols of 25px, mechs only, idx 0-79).
-		// MC2X mc2x_mechicons = 512 wide (20 cols), holding vehicle/infantry
-		// icons at high indices (Ambulance=118, APC=142, Infantry=28). The old
-		// hardcoded "% 10 / setFileWidth(256)" scrambled those high indices.
-		DWORD atlasW = 0, atlasH = 0;
-		float fileW = 256.f, fileH = 256.f;
-		if ( mc2::textures::ready() &&
-		     mc2::textures::logicalSize( icon.getTextureHandle(), atlasW, atlasH ) )
-		{
-			if ( atlasW > 0 ) fileW = static_cast<float>(atlasW);
-			if ( atlasH > 0 ) fileH = static_cast<float>(atlasH);
-		}
-		// Cell/UV math shared with mechlistbox.cpp via code/icon_atlas_cell.h
-		// (ICON-ATLAS-CELL-EXTRACT-1). FLOOR column count + epsilon + 10-col
-		// fallback; see that header for the MCO 1024/40 phantom-column rationale.
-		// META-FIX design B PART 3a: checked variant — legacy cell returned
-		// UNCHANGED on OOB (wrap is load-bearing), one icon_oob line emitted.
-		bool iconOob = false;
-		const icon_atlas::Cell cell = icon_atlas::cellForIndexChecked( index, width, height, fileW, fileH, &iconOob );
-		if ( iconOob && mc2AuditOnce( "ICON_OOB", 0x1000000ull + static_cast<unsigned long long>(static_cast<unsigned long>(index)) ) )
-			mc2AuditLinef( "[ASSET_LOAD v1] event=icon_oob site=logisticsmechicon index={:d} cell={:.0f}x{:.0f} atlas={:.0f}x{:.0f}",
-				mc2::fmt::as_i32(index), width, height, fileW, fileH );
-		const long cols = cell.cols;
-		const long xIndex = cell.col;
-		const long yIndex = cell.row;
-		const float u = cell.u;
-		const float v = cell.v;
-		const float u2 = cell.u2;
-		const float v2 = cell.v2;
-
-		icon.setFileWidth( fileW );
-		icon.setFileHeight( fileH );
-		icon.setUVs( u, v, u2, v2 );
-
-		if ( mc2::gate::get<"MC2_LOG_MECH_ICON">() )
-		{
-			mc2::fmt::print_out("[mechicon-logi] mech=ID:{:d} iconIndex={:d} cols={:d} row={:d} col={:d} widgetW={:.0f} widgetH={:.0f} u=[{:.1f},{:.1f}] v=[{:.1f},{:.1f}] fileWidth={:.0f} fileHeight={:.0f} uvX=[{:.3f},{:.3f}] uvY=[{:.3f},{:.3f}]\n", mc2::fmt::as_i32(pMech->getChassisName()), mc2::fmt::as_i32(index), mc2::fmt::as_i32(cols), mc2::fmt::as_i32(yIndex), mc2::fmt::as_i32(xIndex), width, height, u, u2, v, v2, fileW, fileH, u/fileW, u2/fileW, v/fileH, v2/fileH);
-			fflush(stdout);
-		}
+        unit_icons::apply(icon, s_pTemplateIcon->icon, pMech->getIconIndex(), pMech->getFileName().c_str());
 
 		chassisName.setText( pMech->getChassisName() );
 

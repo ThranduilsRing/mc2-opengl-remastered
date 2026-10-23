@@ -215,17 +215,6 @@ extern "C" float batcher_getMechNormalsSmoothDeg() {
     return s_mechNormalsSmoothDeg;
 }
 
-// MECH-AMBIENT-1: runtime API for the gated hemisphere ambient fill. No VBO
-// rebuild needed — strength is a per-flush uniform, so changes take effect the
-// next frame. enabled=false uploads 0.0 (no-op).
-extern "C" void batcher_setMechAmbientEnabled(int on) { s_mechAmbientV1 = (on != 0); }
-extern "C" int  batcher_getMechAmbientEnabled()       { return s_mechAmbientV1 ? 1 : 0; }
-extern "C" void batcher_setMechAmbientStrength(float s) {
-    s = std::clamp(s, 0.0f, 2.0f);
-    s_mechAmbientStrength = s;
-}
-extern "C" float batcher_getMechAmbientStrength() { return s_mechAmbientStrength; }
-
 // MECH-SPECULAR-V1: runtime API for the gated Blinn specular sheen. All per-flush
 // uniforms — no VBO rebuild. Changes take effect the next frame. When the
 // viewuniforms variant is not active (s_mechViewUniforms==false) the C++ flush

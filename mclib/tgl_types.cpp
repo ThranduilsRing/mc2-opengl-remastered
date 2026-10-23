@@ -368,16 +368,6 @@ std::unique_ptr<TG_Shape> TG_TypeShape::CreateFrom (void)
 
 bool TG_TypeShape::LoadBinaryCopy (File &binFile)
 {
-	gosVERTEX_FORMAT_RECORD vdecl[] =
-	{ 
-		{0, 3, false, sizeof(TG_HWTypeVertex), 0, gosVERTEX_ATTRIB_TYPE::FLOAT },
-		{1, 3, false, sizeof(TG_HWTypeVertex), offsetof(TG_HWTypeVertex, normal) , gosVERTEX_ATTRIB_TYPE::FLOAT },
-		{2, 4, true, sizeof(TG_HWTypeVertex), offsetof(TG_HWTypeVertex, aRGBLight) , gosVERTEX_ATTRIB_TYPE::UNSIGNED_BYTE},
-		{3, 2, false, sizeof(TG_HWTypeVertex), offsetof(TG_HWTypeVertex, u) , gosVERTEX_ATTRIB_TYPE::FLOAT },
-	};
-
-	vdecl_ = gos_CreateVertexDeclaration(vdecl, sizeof(vdecl) / sizeof(gosVERTEX_FORMAT_RECORD));
-
 	//listOfTypeVertices
 	numTypeVertices = binFile.readInt();
 	if (numTypeVertices > kMaxShapeVertices)
@@ -438,62 +428,6 @@ bool TG_TypeShape::LoadBinaryCopy (File &binFile)
 	{
 		listOfTextures = nullptr;
 	}
-
-	if (numTypeVertices)
-	{
-		// no real index buffer for now...
-		uint32_t num_vertices = numTypeTriangles * 3;
-		uint32_t num_indices = numTypeTriangles * 3;
-
-		auto ibOwner = std::make_unique_for_overwrite<uint16_t[]>(num_indices);
-		uint16_t* ib = ibOwner.get();
-		auto vbOwner = std::make_unique_for_overwrite<TG_HWTypeVertex[]>(num_vertices);
-		TG_HWTypeVertex* vb = vbOwner.get();
-
-		// sebi 2026-04-22: bounds-check triangle vertex indices. Wolfman
-		// MC2X mech .tgl binaries sometimes have out-of-range Vertices[j]
-		// (likely from a slightly different struct layout in his MakeASE);
-		// previously we'd index `listOfTypeVertices[<out_of_range>]` and
-		// crash with a mid-heap read violation. Now we fall back to vertex 0
-		// and keep loading — the mesh will look wrong but the mech won't
-		// crash the mechbay on open.
-		static unsigned int s_mslBoundsWarnings = 0;
-		for (uint32_t i = 0; i < numTypeTriangles; i++)
-		{
-			TG_TypeTriangle triType = listOfTypeTriangles[i];
-
-			for (uint32_t j = 0; j < 3; ++j)
-			{
-				int vidx = triType.Vertices[j];
-				if (vidx < 0 || vidx >= numTypeVertices) {
-					if (s_mslBoundsWarnings++ < 8) {
-						mc2::fmt::print_out("[MSL] triangle {:d} vertex {:d} index {:d} out of range [0,{:d})\n", mc2::fmt::as_u32(i), mc2::fmt::as_u32(j), mc2::fmt::as_i32(vidx), mc2::fmt::as_i32(static_cast<int>(numTypeVertices))); fflush(stdout);
-					}
-					vidx = 0;
-				}
-
-				vb[3 * i + j].aRGBLight = listOfTypeVertices[vidx].aRGBLight;
-				vb[3 * i + j].normal = listOfTypeVertices[vidx].normal;
-				vb[3 * i + j].position = listOfTypeVertices[vidx].position;
-
-				ib[3 * i + j] = 3 * i + j;
-			}
-
-			vb[3*i + 0].u = triType.uvdata.u0;
-			vb[3*i + 0].v = triType.uvdata.v0;
-			vb[3*i + 1].u = triType.uvdata.u1;
-			vb[3*i + 1].v = triType.uvdata.v1;
-			vb[3*i + 2].u = triType.uvdata.u2;
-			vb[3*i + 2].v = triType.uvdata.v2;
-		}
-
-		ib_ = gos_CreateBuffer(gosBUFFER_TYPE::INDEX, gosBUFFER_USAGE::STATIC_DRAW, sizeof(uint16_t), num_indices, ib);
-		vb_ = gos_CreateBuffer(gosBUFFER_TYPE::VERTEX, gosBUFFER_USAGE::STATIC_DRAW, sizeof(TG_HWTypeVertex), num_vertices, vb);
-
-		ibOwner.reset();
-		vbOwner.reset();
-	}
-
 
 	//Other Data
 	nodeCenter.x = binFile.readFloat();

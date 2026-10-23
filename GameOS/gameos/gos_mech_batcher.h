@@ -192,7 +192,7 @@ public:
 // and the VK mech island frame feed both read it, so GL and VK cannot disagree.
 // Values are the EFFECTIVE ones (gate-off terms already folded to 0).
 struct GpuMechShadingParams {
-    float ambientStrength;     // MECH-AMBIENT-1 (0 when MC2_MECH_AMBIENT_V1=0)
+    float ambientStrength;     // retired compatibility slot, always zero
     float specularStrength;    // MECH-SPECULAR-V1 (0 when gate off / no ViewUniforms)
     float metalRoughness;
     float glassRoughness;

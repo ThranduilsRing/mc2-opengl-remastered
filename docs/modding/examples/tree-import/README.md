@@ -1,3 +1,5 @@
+> Current workflow (2026-10-22): `tools/examples/build_modern_tree_pack.py` feeds the common IR/cooker. Mounted mod manifests merge, node transforms and pivots survive, and authored materials/conditions/destroyed states use the shared runtime loader. The placeholder walkthrough below records the older example.
+
 <!-- doc-status: current | reviewed:2026-10-11 -->
 # Example Mod — Tree Import (render-only model override)
 
@@ -173,7 +175,7 @@ py -3 make_placeholder_glb.py oak1_leafcard.glb
 
 Output actually produced by this run: `16 verts, 8 tris, glTF bounds [-5.0, -14.0, -5.0]..[5.0, 0.0, 5.0]` (MC2 Y ends up `0..14.0` after the axis map, before the tree's `autoGround` correction runs at import time).
 
-`mod/data/model_overrides/cooked/oak1_leafcard/manifest.json` is a full `mc2-asset-manifest-v1` cook-manifest (the same format `tools/asset_cook/trackg_cook.py` would emit for a real cooked asset) documenting this placeholder's geometry/material/provenance — hand-written here since this example doesn't run the real cook pipeline, but shaped to validate against the same schema. `materials.json`/`staged.json`/`models.generated.json` alongside it are the intermediate authoring artifacts a real cook run produces (mirrors the `building-import` example's layout).
+`mod/data/model_overrides/cooked/oak1_leafcard/manifest.json` is a full `mc2-asset-manifest-v1` cook-manifest (archived metadata; new cooks use the IR/package contract in `docs/content-pipeline.md`) documenting this placeholder's geometry/material/provenance — hand-written here since this example doesn't run the real cook pipeline, but shaped to validate against the same schema. `materials.json`/`staged.json`/`models.generated.json` alongside it are the intermediate authoring artifacts a real cook run produces (mirrors the `building-import` example's layout).
 
 ## 6. Validator run (actually executed against this payload)
 

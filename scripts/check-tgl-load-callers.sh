@@ -20,8 +20,8 @@
 #      scripts/check-asset-scale-callers.sh). tools/ and tests/ not scanned.
 #   P2 presence pins — the PART 0-4 mechanisms exist: parse_fail chokepoint
 #      (msl.cpp), required_missing + the placeholder populate (tgl_load_guard),
-#      appr_type_fail backstop (apprtype.cpp), cellForIndexChecked header +
-#      both UV callers, iconTileChecked x3 blits (mechicon.cpp),
+#      appr_type_fail backstop (apprtype.cpp), icon registry +
+#      both UV callers, registry blit x3 (mechicon.cpp),
 #      APPEAR-AUDIT sentinels + MC2_APPEAR_AUDIT latch (mission.cpp).
 #   P3 OFF-MAP STAGING CARVE-OUT (INVIS-VEHICLES-FIX-1) — the APPEAR-AUDIT
 #      sentinel region must NOT contain positional OR visibility terms
@@ -89,14 +89,14 @@ p2_presence() {
         || echo "  P2: tgl_load_guard placeholder populate missing"
     grep -q 'event=appr_type_fail' "$apprtype" \
         || echo "  P2: apprtype.cpp appr_type_fail backstop missing"
-    grep -q 'cellForIndexChecked' "$icon_hdr" \
-        || echo "  P2: icon_atlas_cell.h cellForIndexChecked missing"
-    grep -q 'cellForIndexChecked' "$logi" \
-        || echo "  P2: logisticsmechicon.cpp not using cellForIndexChecked"
-    grep -q 'cellForIndexChecked' "$mechlist" \
-        || echo "  P2: mechlistbox.cpp not using cellForIndexChecked"
-    n="$(grep -c 'iconTileChecked("' "$mechicon" || true)"
-    [ "$n" -ge 3 ] || echo "  P2: mechicon.cpp iconTileChecked call sites $n < 3 (three blits must stay guarded)"
+    grep -q 'class Registry' "$icon_hdr" \
+        || echo "  P2: icon_registry.h Registry missing"
+    grep -q 'unit_icons::apply' "$logi" \
+        || echo "  P2: logisticsmechicon.cpp not using unit_icons::apply"
+    grep -q 'unit_icons::apply' "$mechlist" \
+        || echo "  P2: mechlistbox.cpp not using unit_icons::apply"
+    n="$(grep -c 'unit_icons::blit(' "$mechicon" || true)"
+    [ "$n" -ge 3 ] || echo "  P2: mechicon.cpp registry blit call sites $n < 3 (three blits must stay guarded)"
     grep -q 'APPEAR-AUDIT-BEGIN' "$mission" && grep -q 'APPEAR-AUDIT-END' "$mission" \
         || echo "  P2: mission.cpp APPEAR-AUDIT sentinels missing"
     grep -q 'MC2_APPEAR_AUDIT' "$mission" \
@@ -137,7 +137,7 @@ run_check() {
     [ -n "$v" ] && { echo "[tgl-load-callers] P1 FAIL:"; printf '%s\n' "$v"; fail=1; }
 
     v="$(p2_presence "$ROOT/mclib/msl_load.cpp" "$ROOT/mclib/tgl_load_guard.cpp" \
-        "$ROOT/mclib/apprtype.cpp" "$ROOT/code/icon_atlas_cell.h" \
+        "$ROOT/mclib/apprtype.cpp" "$ROOT/code/icon_registry.h" \
         "$ROOT/code/logisticsmechicon.cpp" "$ROOT/code/mechlistbox.cpp" \
         "$ROOT/code/mechicon.cpp" "$ROOT/code/mission.cpp")"
     [ -n "$v" ] && { echo "[tgl-load-callers] P2 FAIL:"; printf '%s\n' "$v"; fail=1; }
@@ -200,7 +200,7 @@ EOF
     # P2 revert-simulation: appr_type_fail backstop deleted.
     grep -v 'appr_type_fail' "$ROOT/mclib/apprtype.cpp" > "$tmp/apprtype_nobackstop.cpp"
     v="$(p2_presence "$ROOT/mclib/msl_load.cpp" "$ROOT/mclib/tgl_load_guard.cpp" \
-        "$tmp/apprtype_nobackstop.cpp" "$ROOT/code/icon_atlas_cell.h" \
+        "$tmp/apprtype_nobackstop.cpp" "$ROOT/code/icon_registry.h" \
         "$ROOT/code/logisticsmechicon.cpp" "$ROOT/code/mechlistbox.cpp" \
         "$ROOT/code/mechicon.cpp" "$ROOT/code/mission.cpp")"
     if ! printf '%s\n' "$v" | grep -q 'appr_type_fail'; then

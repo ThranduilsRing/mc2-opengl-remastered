@@ -16,6 +16,7 @@
 // Decals" in Wolfire's and Bungie's talks), on MC2's own depth reconstruction (the screen-shadow passes).
 
 #include "vulkan_impact_decals.h"
+#include "vk_render_infra.h"
 
 #include "../../RenderCore/ImpactDecals.h"
 #include "../../RenderCore/ImpactDecalAtlas.h"
@@ -292,7 +293,7 @@ bool build(State* s, int w, int h) {
             gp.stageCount = 2; gp.pStages = st; gp.pVertexInputState = &vin; gp.pInputAssemblyState = &ia;
             gp.pViewportState = &vps; gp.pRasterizationState = &rs; gp.pMultisampleState = &ms; gp.pColorBlendState = &cb;
             gp.layout = s->playout.get(); gp.renderPass = s->rpass.get(); gp.subpass = 0;
-            if (!mc2vk::create(out, dev, [&](VkPipeline* o) { return vkCreateGraphicsPipelines(dev, VK_NULL_HANDLE, 1, &gp, nullptr, o); })) return false;
+            if (!mc2vk::create(out, dev, [&](VkPipeline* o) { return mc2vk::infra::graphics(dev, VK_NULL_HANDLE, 1, &gp, nullptr, o); })) return false;
             mc2vk::nameObject(dev, out.get(), name);
             return true;
         };
@@ -335,6 +336,22 @@ void fillFrame(FrameUbo& u, const gosPostProcess& pp, int w, int h) {
 
 extern "C" void mc2_vk_impact_decals_destroy() {
     if (g_state) { destroy(g_state.get()); g_state.reset(); }
+}
+
+// Compiles both impact pipelines (multiply, additive) and uploads the procedural atlas at load, so the first weapon hit
+// records a draw instead of building them. A shared GBuffer that is not ready yet leaves the state to the first real frame.
+extern "C" int mc2_vk_impact_decals_prewarm(int w, int h) {
+    if (w <= 0 || h <= 0 || !mc2vk::engineVulkanContextValid()) return 0;
+    if (!g_state) g_state = std::make_unique<State>();
+    State* s = g_state.get();
+    if (s->disabled) return 0;
+    if (s->inited && s->w == w && s->h == h) return 1;
+    if (s->inited) destroy(s);
+    const Mc2ImpactDecalHealth before = g_health;
+    if (build(s, w, h)) return 1;
+    destroy(s);   // not ready (or failed): the first hit retries and owns the decline accounting
+    g_health = before;
+    return 0;
 }
 
 extern "C" int mc2_vk_impact_decals_run(int w, int h) {
@@ -408,12 +425,12 @@ extern "C" int mc2_vk_impact_decals_run(int w, int h) {
         vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
         vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 0, 1, &s->set[slot], 0, nullptr);
         PushMode pm{};
-        vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->mulPipe.get());
+        mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->mulPipe.get());
         vkCmdPushConstants(cb, s->playout.get(), VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(pm), &pm);
         vkCmdDraw(cb, 36, count, 0, 0);
         if (g_frameHot) {
             pm.mode = 1;
-            vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->addPipe.get());
+            mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->addPipe.get());
             vkCmdPushConstants(cb, s->playout.get(), VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(pm), &pm);
             vkCmdDraw(cb, 36, g_frameHot, 0, 0);
         }
@@ -439,6 +456,7 @@ extern "C" int mc2_vk_impact_decals_run(int w, int h) {
 #else   // !MC2_VULKAN_ISLAND
 
 extern "C" int mc2_vk_impact_decals_run(int, int) { return 0; }
+extern "C" int mc2_vk_impact_decals_prewarm(int, int) { return 0; }
 extern "C" void mc2_vk_impact_decals_destroy() {}
 
 #endif

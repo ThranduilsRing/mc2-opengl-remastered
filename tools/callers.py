@@ -430,10 +430,19 @@ def check_inventory(inventory, allowlist=None):
     return errors
 
 
+def _unique_allow_keys(pairs):
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError(f"duplicate allowlist key: {key}")
+        result[key] = value
+    return result
+
+
 def _read_allowlist(path):
     if not path.exists():
         return {}
-    value = json.loads(path.read_text(encoding="utf-8"))
+    value = json.loads(path.read_text(encoding="utf-8"), object_pairs_hook=_unique_allow_keys)
     if not isinstance(value, dict) or any(not isinstance(k, str) or not isinstance(v, str) or not v.strip() for k, v in value.items()):
         raise ValueError("caller allowlist must map paths to nonempty reasons")
     return value

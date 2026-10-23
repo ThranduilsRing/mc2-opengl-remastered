@@ -15,6 +15,7 @@ set(SOURCES ${SOURCES}
     mouse.cpp
     msl.cpp
     msl_load.cpp
+    content_ir.cpp
     msl_shape.cpp
     msl_transform.cpp
     msl_anim.cpp

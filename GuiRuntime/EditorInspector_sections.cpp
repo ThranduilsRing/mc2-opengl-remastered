@@ -636,26 +636,6 @@ void drawMechNormals() {
 // Draw the experimental mech lighting controls.
 void drawMechLighting() {
     if (ImGui::CollapsingHeader("Mech Lighting (experimental)##ml")) {
-        bool ambOn = batcher_getMechAmbientEnabled() != 0;
-        if (ImGui::Checkbox("Ambient Fill (hemisphere)##ml", &ambOn))
-            batcher_setMechAmbientEnabled(ambOn ? 1 : 0);
-        if (ImGui::IsItemHovered())
-            ImGui::SetTooltip("Conservative hemisphere ambient fill keyed on the\n"
-                              "world normal — lifts shadowed surfaces for readability.\n"
-                              "No PBR/material/team-mask. OFF = byte-identical default.\n"
-                              "Looks best with Mech Normals = Smoothed.");
-        {
-            float amt = batcher_getMechAmbientStrength();
-            if (!ambOn) ImGui::BeginDisabled();
-            if (ImGui::SliderFloat("Ambient Strength##ml", &amt, 0.0f, 2.0f, "%.2f"))
-                batcher_setMechAmbientStrength(amt);
-            if (!ambOn) ImGui::EndDisabled();
-            if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("Hemisphere fill strength (0..2). Default 0.5.\n"
-                                  "Multiplies the mech's own albedo, so it tints\n"
-                                  "with the paint. 0 = no fill.");
-        }
-
         // Blinn specular sheen + glass/cockpit heuristic.
         // Per-flush uniforms — no VBO rebuild. Requires MC2_MECH_VIEWUNIFORMS=1
         // (camera position data); no effect on the default shader variant.
