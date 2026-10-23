@@ -818,20 +818,21 @@ void MarkDecalDirtyTile(long row, long col) {
     g_decalVBODirty = true;
 }
 
-// -1: everything changed (recomposite all). Otherwise n world rects {x0, y0, x1, y1}, each the changed tile padded by one
-// tile (the coverage lookup is bilinear). Consumes the list.
-int TakeHardSurfaceDirtyRects(float* rects, int cap) {
-    if (g_hsDirtyAll) { g_hsDirtyAll = false; g_hsDirty.clear(); return -1; }
-    int n = 0;
-    for (const uint32_t t : g_hsDirty) {
-        if (n >= cap) { g_hsDirty.clear(); return -1; }
-        const float col = float(t % uint32_t(g_hs.side)), row = float(t / uint32_t(g_hs.side)), half = float(g_hs.half);
-        float* r = rects + 4 * n++;
-        r[0] = (col - 1.0f - half) * g_hs.wupv; r[2] = (col + 2.0f - half) * g_hs.wupv;
-        r[1] = (half - (row + 2.0f)) * g_hs.wupv; r[3] = (half - (row - 1.0f)) * g_hs.wupv;
+// What changed in the hard-surface field since the materials consumer last looked: everything, or world rects
+// {x0, y0, x1, y1}, each a changed tile padded by one tile (the coverage lookup is bilinear). Consumes the list.
+HardSurfaceDirty TakeHardSurfaceDirty() {
+    HardSurfaceDirty d;
+    d.all = g_hsDirtyAll || g_hsDirty.size() > d.rects.size();
+    if (!d.all) {
+        for (const uint32_t t : g_hsDirty) {
+            const float col = float(t % uint32_t(g_hs.side)), row = float(t / uint32_t(g_hs.side)), half = float(g_hs.half);
+            d.rects[d.count++] = {(col - 1.0f - half) * g_hs.wupv, (half - (row + 2.0f)) * g_hs.wupv,
+                                  (col + 2.0f - half) * g_hs.wupv, (half - (row - 1.0f)) * g_hs.wupv};
+        }
     }
+    g_hsDirtyAll = false;
     g_hsDirty.clear();
-    return n;
+    return d;
 }
 uint64_t HardSurfaceVersion() { return g_hsVersion; }
 
@@ -893,9 +894,6 @@ uint64_t gos_terrain_indirect_HardSurfaceVersion() {
 }
 void gos_terrain_indirect_MarkDecalDirtyTile(long row, long col) {
     gos_terrain_indirect::MarkDecalDirtyTile(row, col);
-}
-int gos_terrain_indirect_TakeHardSurfaceDirtyRects(float* rects, int cap) {
-    return gos_terrain_indirect::TakeHardSurfaceDirtyRects(rects, cap);
 }
 float gos_terrain_indirect_HardSurfaceCoverage(float wx, float wy) {
     return gos_terrain_indirect::HardSurfaceCoverage(wx, wy);

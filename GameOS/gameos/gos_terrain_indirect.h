@@ -40,6 +40,7 @@
 
 #pragma once
 
+#include <array>
 #include <cstdint>
 
 // Forward-declare so callers of RecipeForVertexNum don't need to include
@@ -315,7 +316,12 @@ int          GetDecalVertCount();
 // alpha for alpha-cement tiles, 1.0 for pure-cement tiles). Lazy, once per mission.
 void  InvalidateHardSurfaceField();
 void  MarkDecalDirtyTile(long row, long col);   // MarkDecalDirty() that names the changed tile (incremental hard-surface update)
-int   TakeHardSurfaceDirtyRects(float* rects, int cap);
+struct HardSurfaceDirty {
+    bool all = false;                          // recomposite everything
+    int count = 0;                             // else: this many world rects {x0, y0, x1, y1}
+    std::array<std::array<float, 4>, 64> rects{};
+};
+HardSurfaceDirty TakeHardSurfaceDirty();
 float HardSurfaceCoverage(float wx, float wy);
 void  HardSurfaceStats(int* alpha, int* pure, int* noImage);
 bool  DrawDecalStatic();

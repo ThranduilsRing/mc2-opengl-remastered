@@ -1,6 +1,7 @@
 // VK terrain island: height snapshot and audit, the colormap / cement / material-normal imports and the shadow image copies.
 // Declared in the class headers; shared names in vulkan_terrain_island_internal.h.
 #include "vulkan_terrain_island_internal.h"
+#include "gos_terrain_indirect.h"
 #include "vk_one_shot.h"
 #include "texture_decode.h"
 #include "terrain_field_store.h"
@@ -21,7 +22,6 @@ static_assert(mc2terrain::ColormapAtlas::kRgba8 == mc2tex::kVkFormatRgba8Unorm &
 // Shared rendered-surface query: analytic cement, road alpha and vegetation exclusion.
 extern float gos_terrain_indirect_HardSurfaceCoverage(float wx, float wy);
 extern uint64_t gos_terrain_indirect_HardSurfaceVersion();
-extern int gos_terrain_indirect_TakeHardSurfaceDirtyRects(float* rects, int cap);
 extern int g_terrainMaterialProfile; // existing mission import profile; never sent to the shader
 
 
@@ -343,15 +343,14 @@ void import_materials(TerrainIsland* s) {
             s->materialFinal[i+3] = std::max(base[i+3], uint8_t(std::lround(coverage*255)));
         }
     };
-    float rects[64 * 4];
-    int dirty = gos_terrain_indirect_TakeHardSurfaceDirtyRects(rects, 64);
+    const auto dirty = gos_terrain_indirect::TakeHardSurfaceDirty();
     const bool incremental = baseSame && !base.empty() && s->materialFinal.size() == base.size();   // coverage-only change
-    if (!base.empty() && !(incremental && dirty >= 0)) {
+    if (!base.empty() && !(incremental && !dirty.all)) {
         s->materialFinal.resize(base.size());
         composite(0, w, 0, h);
     } else if (incremental) {
-        for (int r = 0; r < dirty; ++r) {
-            const float* q = rects + 4 * r;   // world rect {x0, y0, x1, y1}; invert the texel -> world map above
+        for (int r = 0; r < dirty.count; ++r) {
+            const auto& q = dirty.rects[r];   // world rect {x0, y0, x1, y1}; invert the texel -> world map above
             const auto tx = [&](float wx) { return (wx - s->colormapCookParams[0]) / span * w - 0.5f; };
             const auto ty = [&](float wy) { return (s->colormapCookParams[1] - wy) / span * h - 0.5f; };
             const auto clampTo = [](float v, uint32_t hi) { return uint32_t(std::clamp(v, 0.0f, float(hi))); };
