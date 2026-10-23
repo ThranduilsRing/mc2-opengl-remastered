@@ -68,6 +68,7 @@
   "scripts/tests/test_contracts_cache.py": "Pytest-discovered module through the scripts_tests board row (scripts/check-contracts.sh runs the directory).",
   "scripts/tests/test_delivery_code_evidence.py": "Pytest-discovered module through the scripts_tests board row.",
   "scripts/tests/test_delivery_gate_defaults.py": "Pytest-discovered module through the scripts_tests board row.",
+  "scripts/tests/test_merge_speedups.py": "Pytest-discovered module through scripts/run_scripts_tests.py (scripts_tests); lane_merge quick rows, ninja_build pdb guard.",
   "scripts/tests/test_deploy_bootstrap.py": "Pytest-discovered module through scripts/run_scripts_tests.py (scripts_tests); deploy --bootstrap-from.",
   "scripts/tests/test_deploy_build_layout.py": "Pytest-discovered module through scripts/check-contracts.sh:1516 (scripts_tests); the executable command names the directory.",
   "scripts/tests/test_deploy_coherence.py": "Pytest-discovered module through scripts/check-contracts.sh:1516 (scripts_tests); the executable command names the directory.",

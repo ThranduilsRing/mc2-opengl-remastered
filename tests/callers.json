@@ -705,7 +705,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/deploy_payload.py",
-          "line": 1809,
+          "line": 1824,
           "evidence": "command",
           "reference": "scripts/check-deploy-hygiene.py",
           "text": "r = subprocess.run([sys.executable, hygiene, target],"
@@ -2747,6 +2747,13 @@
           "text": "import console_child  # noqa: E402"
         },
         {
+          "path": "scripts/tests/test_merge_speedups.py",
+          "line": 11,
+          "evidence": "import",
+          "reference": "console_child",
+          "text": "import console_child  # noqa: E402"
+        },
+        {
           "path": "scripts/tests/test_module_test_cache.py",
           "line": 8,
           "evidence": "import",
@@ -4077,6 +4084,13 @@
           "evidence": "import",
           "reference": "ninja_build",
           "text": "import ninja_build as nb"
+        },
+        {
+          "path": "scripts/tests/test_merge_speedups.py",
+          "line": 12,
+          "evidence": "import",
+          "reference": "ninja_build",
+          "text": "import ninja_build  # noqa: E402"
         }
       ]
     },
@@ -4671,14 +4685,14 @@
         },
         {
           "path": "scripts/deploy_payload.py",
-          "line": 741,
+          "line": 746,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from scripts.smoke_lib import deploy_lease"
         },
         {
           "path": "scripts/deploy_payload.py",
-          "line": 781,
+          "line": 786,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from scripts.smoke_lib import bounded_wait"
@@ -5086,7 +5100,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/deploy_payload.py",
-          "line": 781,
+          "line": 786,
           "evidence": "import",
           "reference": "scripts.smoke_lib.bounded_wait",
           "text": "from scripts.smoke_lib import bounded_wait"
@@ -5252,7 +5266,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/deploy_payload.py",
-          "line": 741,
+          "line": 746,
           "evidence": "import",
           "reference": "scripts.smoke_lib.deploy_lease",
           "text": "from scripts.smoke_lib import deploy_lease"
@@ -5430,14 +5444,14 @@
         },
         {
           "path": "tests/smoke/test_marker_buckets.py",
-          "line": 122,
+          "line": 125,
           "evidence": "import",
           "reference": "scripts.smoke_lib.gates",
           "text": "from scripts.smoke_lib.gates import GateConfig, evaluate"
         },
         {
           "path": "tests/smoke/test_marker_buckets.py",
-          "line": 141,
+          "line": 144,
           "evidence": "import",
           "reference": "scripts.smoke_lib.gates",
           "text": "from scripts.smoke_lib.gates import GateConfig, evaluate"
@@ -6661,6 +6675,13 @@
       "path": "scripts/tests/test_manifest_schema_check.py",
       "basename": "test_manifest_schema_check.py",
       "stem": "test_manifest_schema_check",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
+      "path": "scripts/tests/test_merge_speedups.py",
+      "basename": "test_merge_speedups.py",
+      "stem": "test_merge_speedups",
       "callers_by_basename": [],
       "callers_by_stem": []
     },
@@ -9198,6 +9219,13 @@
           "evidence": "import",
           "reference": "tools.lane_merge",
           "text": "from tools.lane_merge import git_bash   # a bare \"bash\" from a Python child is the WSL launcher, not Git Bash"
+        },
+        {
+          "path": "scripts/tests/test_merge_speedups.py",
+          "line": 10,
+          "evidence": "import",
+          "reference": "tools.lane_merge",
+          "text": "from tools import lane_merge as lm  # noqa: E402"
         },
         {
           "path": "tools/test_lane_merge.py",

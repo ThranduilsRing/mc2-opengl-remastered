@@ -8,6 +8,7 @@ sys.path.insert(0, ROOT)
 sys.path.insert(0, os.path.join(ROOT, "scripts"))
 
 from tools import lane_merge as lm  # noqa: E402
+import console_child  # noqa: E402
 import ninja_build  # noqa: E402
 
 
@@ -59,6 +60,6 @@ def test_trailer_defaults_from_commit_trailer_env():
     import subprocess
     code = "import sys; sys.path.insert(0, %r); from tools import lane_merge as lm; print(repr(lm.TRAILER))" % ROOT
     env = {k: v for k, v in os.environ.items() if not k.startswith("MC2_")}
-    assert subprocess.run([sys.executable, "-c", code], env=env, capture_output=True, text=True).stdout.strip() == "''"
+    assert subprocess.run([sys.executable, "-c", code], env=env, capture_output=True, text=True, **console_child.child_kwargs(redirected=True)).stdout.strip() == "''"
     env["MC2_COMMIT_TRAILER"] = "Co-Authored-By: X <x@y>"
-    assert "Co-Authored-By: X" in subprocess.run([sys.executable, "-c", code], env=env, capture_output=True, text=True).stdout
+    assert "Co-Authored-By: X" in subprocess.run([sys.executable, "-c", code], env=env, capture_output=True, text=True, **console_child.child_kwargs(redirected=True)).stdout
