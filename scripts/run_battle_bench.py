@@ -305,12 +305,13 @@ def main():
     parser.add_argument("--out", type=Path)
     parser.add_argument("--runs", type=int, default=2)
     parser.add_argument("--duration", type=int, default=30)
+    parser.add_argument("--resolution", choices=("all", "1080p"), default="all")
     parser.add_argument("--diff", nargs=2, type=Path, metavar=("BEFORE", "AFTER"))
     args = parser.parse_args()
     if args.diff:
         diff(*(json.loads(p.read_text(encoding="utf-8")) for p in args.diff)); return 0
-    if args.runs < 1 or not 20 <= args.duration <= 30:
-        parser.error("--runs >=1 and --duration 20..30 required")
+    if args.runs < 1 or not 20 <= args.duration <= 120:
+        parser.error("--runs >=1 and --duration 20..120 required")
     scenario = json.loads(SCENARIO.read_text(encoding="utf-8"))
     hold_install(args.exe.parent.resolve())
     identity = ms.identity_block(generator="battle_bench", exe_path=args.exe, repo_root=ROOT, deploy_target=args.exe.parent)
@@ -344,7 +345,10 @@ def main():
     for i in range(1, args.runs + 1):
         run = {"index": i, "perf": {}, "captures": []}
         for phase in ("day", "night"):
-            for name, size in (("4k", (3840, 2160)), ("1080p", (1920, 1080))):
+            sizes = (("4k", (3840, 2160)), ("1080p", (1920, 1080)))
+            for name, size in sizes:
+                if args.resolution != "all" and name != args.resolution:
+                    continue
                 key = f"{phase}-{name}"
                 print(f"[battle-bench] run {i}/{args.runs} {key}", flush=True)
                 run["perf"][key] = perf_run(args.exe.resolve(), out / f"run{i}" / key, scenario, phase, size, args.duration, sha)
