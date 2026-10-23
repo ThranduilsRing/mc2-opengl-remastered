@@ -12,6 +12,10 @@
 
 
 long Mover::handleTacticalOrder (TacticalOrder tacOrder, long priority, bool queuePlayerOrder) {
+	// UI intent enters the same tick queue as mission content and replay. The
+	// application below is re-entered only while that queue is executing.
+	if (mission && !MPlayer && tacOrder.origin == ORDER_ORIGIN_PLAYER && !mission->orderTickExecuting())
+		return mission->submitPlayerOrder(this, tacOrder, queuePlayerOrder);
 
 	// TARGETING-CURRENTNESS-GUARD-1 (chokepoint, non-fatal recon — FRAME-CURRENTNESS-GUARDS-1).
 	// EVERY player attack order from every GUI handler funnels through here (the GUI-side

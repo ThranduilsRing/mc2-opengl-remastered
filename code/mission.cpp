@@ -61,6 +61,8 @@ struct MissionOrderAccess {
     Mission& owner;
     MoverPtr resolve(mc2::sim::ObjectRef ref) const { return owner.resolveOrderRecipient(ref); }
     float simulationTime() const { return scenarioTime; }
+    std::uint32_t validatePlayer(const mc2::sim::OrderEnvelope& e) const;
+    mc2::sim::ApplicationOutcome applyPlayer(const mc2::sim::OrderEnvelope& e, mc2::sim::ObjectRef ref) const;
     void installed(const mc2::sim::OrderEnvelope& e, mc2::sim::ObjectRef ref) const {
         owner.recordAuthoredInstallation(e, ref);
     }
@@ -69,6 +71,75 @@ using MissionOrderApplication = mc2::sim::MoverOrderApplication<::TacticalOrder,
 static_assert(TACTICAL_ORDER_NONE == 0 && TACTICAL_ORDER_STOP == 11 && TACTICAL_ORDER_MOVETO_POINT == 2);
 static_assert(TACTICAL_ORDER_TRAVERSE_PATH == 6 && TACTICAL_ORDER_PATROL_PATH == 7);
 static_assert(ORDER_ORIGIN_PLAYER == 0 && ORDER_ORIGIN_COMMANDER == 1);
+
+// Target identities retain the authored/runtime part ID plus the watch incarnation;
+// recipient identities remain the mission's existing roster bindings.
+GameObject* playerOrderTarget(mc2::sim::ObjectRef ref) {
+    auto* target = ObjectManager->findByPartId(ref.slot);
+    return target && target->getExists() && !target->isDestroyed() &&
+        target->getWatchID(false) == ref.generation ? target : nullptr;
+}
+std::uint32_t MissionOrderAccess::validatePlayer(const mc2::sim::OrderEnvelope& e) const {
+    using namespace mc2::sim;
+    if (e.queueMode != QueueMode::Replace && e.queueMode != QueueMode::Append)
+        return static_cast<std::uint32_t>(MoverOrderRejection::UnsupportedMode);
+    if (e.payload.kind < OrderKind::Wait || e.payload.kind > OrderKind::Recover ||
+        e.payload.orderId > 0x7fffffffULL || e.payload.formationOrdinal > MAX_MOVERS + 1u ||
+        (e.payload.move && e.payload.move->wayPath.points.size() > static_cast<std::size_t>(MAX_WAYPTS)) ||
+        (e.payload.target && !playerOrderTarget(*e.payload.target)))
+        return static_cast<std::uint32_t>(MoverOrderRejection::UnsupportedPayload);
+    return 0;
+}
+mc2::sim::ApplicationOutcome MissionOrderAccess::applyPlayer(
+    const mc2::sim::OrderEnvelope& e, mc2::sim::ObjectRef ref) const {
+    using namespace mc2::sim;
+    auto* mover = resolve(ref);
+    ::TacticalOrder legacy;
+    legacy.init(ORDER_ORIGIN_PLAYER, static_cast<TacticalOrderCode>(e.payload.kind), e.payload.unitOrder);
+    legacy.id = static_cast<long>(e.payload.orderId);
+    legacy.subOrder = e.payload.subOrder;
+    legacy.groupFlags = e.payload.groupFlags;
+    if (e.payload.move) {
+        const auto& m = *e.payload.move;
+        legacy.moveParams.wayPath.numPoints = static_cast<long>(m.wayPath.points.size());
+        legacy.moveParams.wayPath.curPoint = static_cast<long>(m.wayPath.curPoint);
+        for (std::size_t i = 0; i < m.wayPath.points.size(); ++i) {
+            const auto& p = m.wayPath.points[i];
+            legacy.moveParams.wayPath.points[i * 3] = p.x;
+            legacy.moveParams.wayPath.points[i * 3 + 1] = p.y;
+            legacy.moveParams.wayPath.points[i * 3 + 2] = p.z;
+            legacy.moveParams.wayPath.mode[i] = static_cast<unsigned char>(m.wayPath.mode[i]);
+        }
+        legacy.moveParams.faceObject = m.faceObject; legacy.moveParams.wait = m.wait;
+        legacy.moveParams.mode = static_cast<SpecialMoveMode>(m.mode);
+        legacy.moveParams.escapeTile = m.escapeTile; legacy.moveParams.jump = m.jump;
+        legacy.moveParams.fromArea = m.fromArea; legacy.moveParams.keepMoving = m.keepMoving;
+    }
+    if (e.payload.attack) {
+        const auto& a = *e.payload.attack;
+        legacy.attackParams.type = static_cast<::AttackType>(a.type);
+        legacy.attackParams.method = static_cast<::AttackMethod>(a.method);
+        legacy.attackParams.range = static_cast<::FireRangeType>(a.range);
+        legacy.attackParams.tactic = static_cast<::TacticType>(a.tactic);
+        legacy.attackParams.aimLocation = a.aimLocation;
+        legacy.attackParams.pursue = a.pursue; legacy.attackParams.obliterate = a.obliterate;
+        legacy.attackParams.targetPoint = glm::vec3(a.targetPoint.x, a.targetPoint.y, a.targetPoint.z);
+    }
+    if (e.payload.target) {
+        auto* target = playerOrderTarget(*e.payload.target);
+        if (!target) return {RecipientStatus::Rejected, static_cast<std::uint32_t>(MoverOrderRejection::MissingRecipient)};
+        legacy.targetWID = target->getWatchID(false);
+        legacy.targetObjectClass = target->getObjectClass();
+    }
+    const bool queued = e.queueMode == QueueMode::Append;
+    if (queued) mover->getPilot()->setExecutingQueue(legacy.moveParams.mode == MOVE_MODE_MINELAYING);
+    const auto selection = mover->selectionIndex;
+    mover->selectionIndex = static_cast<std::int32_t>(e.payload.formationOrdinal) - 1;
+    const auto result = mover->handleTacticalOrder(legacy, 0, queued);
+    mover->selectionIndex = selection;
+    return result == 0 ? ApplicationOutcome{} : ApplicationOutcome{RecipientStatus::Rejected,
+        static_cast<std::uint32_t>(MoverOrderRejection::HandlerFailure)};
+}
 static_assert(ORDERSTATE_GENERAL == 0 && ORDERSTATE_PLAYER == 1);
 
 bool submitOrderFixture(const char*, std::string& data, std::string& error) {
@@ -336,6 +407,59 @@ std::expected<mc2::sim::MissionReceipt, mc2::sim::OrderError> Mission::submitMis
     if (!result) return std::unexpected(result.error());
     return mc2::sim::MissionReceipt{session, result->receiptId};
 }
+long Mission::submitPlayerOrder(Mover* mover, const ::TacticalOrder& legacy, bool queued) {
+    using namespace mc2::sim;
+    auto& queue = orderIngress.queue();
+    auto source = std::ranges::find(queue.sources(), 2u, &OrderSource::sourceId);
+    if (source == queue.sources().end()) {
+        if (!queue.registerSource({2, SourceKind::UI})) return 1;
+        source = std::ranges::find(queue.sources(), 2u, &OrderSource::sourceId);
+    }
+    const auto binding = std::ranges::find(orderRecipients, mover, &OrderRecipientBinding::mover);
+    if (binding == orderRecipients.end() || !resolveOrderRecipient(binding->ref)) return 1;
+    OrderEnvelope e;
+    e.sourceId = 2; e.sequence = source->nextSequence;
+    e.issuer = CommanderId{static_cast<std::uint32_t>(mover->getCommanderId())};
+    e.recipients = {binding->ref};
+    e.queueMode = queued ? QueueMode::Append : QueueMode::Replace;
+    auto& p = e.payload;
+    p.origin = OrderOrigin::Player; p.kind = static_cast<OrderKind>(legacy.code);
+    p.orderId = static_cast<std::uint32_t>(legacy.id);
+    p.formationOrdinal = static_cast<std::uint32_t>(mover->selectionIndex + 1);
+    p.unitOrder = legacy.unitOrder; p.subOrder = legacy.subOrder; p.groupFlags = legacy.groupFlags;
+    const bool attacking = p.kind == OrderKind::AttackObject || p.kind == OrderKind::AttackPoint;
+    const bool moving = (p.kind >= OrderKind::MoveToPoint && p.kind <= OrderKind::Guard) ||
+        p.kind == OrderKind::Withdraw || p.kind == OrderKind::Scramble;
+    if (moving || attacking || p.kind == OrderKind::Wait) {
+        auto& m = p.move.emplace();
+        const auto& old = legacy.moveParams;
+        if (old.wayPath.numPoints < 0 || old.wayPath.numPoints > MAX_WAYPTS) return 1;
+        m.wayPath.curPoint = static_cast<std::uint32_t>(old.wayPath.curPoint);
+        for (long i = 0; i < old.wayPath.numPoints; ++i) {
+            m.wayPath.points.push_back({old.wayPath.points[i * 3], old.wayPath.points[i * 3 + 1], old.wayPath.points[i * 3 + 2]});
+            m.wayPath.mode.push_back(static_cast<TravelMode>(old.wayPath.mode[i]));
+        }
+        m.faceObject = old.faceObject; m.wait = old.wait; m.mode = static_cast<MoveMode>(old.mode);
+        m.escapeTile = old.escapeTile; m.jump = old.jump; m.fromArea = old.fromArea; m.keepMoving = old.keepMoving;
+    }
+    if (attacking) {
+        const auto& old = legacy.attackParams;
+        auto& a = p.attack.emplace();
+        a.type = static_cast<mc2::sim::AttackType>(old.type); a.method = static_cast<mc2::sim::AttackMethod>(old.method);
+        a.range = static_cast<FireRange>(old.range); a.tactic = static_cast<Tactic>(old.tactic);
+        a.aimLocation = old.aimLocation; a.pursue = old.pursue; a.obliterate = old.obliterate;
+        a.targetPoint = {old.targetPoint.x, old.targetPoint.y, old.targetPoint.z};
+    }
+    if (legacy.targetWID) {
+        auto* target = ObjectManager->getByWatchID(legacy.targetWID);
+        if (!target || target->getPartId() <= 0) return 1;
+        p.target = ObjectRef{static_cast<std::uint32_t>(target->getPartId()), target->getWatchID(false)};
+    }
+    const auto admitted = submitMissionOrder(orderSession(), std::move(e));
+    if (!admitted) mc2::fmt::print_err("[ORDER_INGRESS v1] player_rejected part={} reason={}\n",
+        mover->getPartId(), static_cast<int>(admitted.error()));
+    return admitted ? 0 : 1;
+}
 // Wall-clock seconds since the last call (0 on the first frame of a mission), or the harness clock's virtual frame. Kept out of
 // mission_update.cpp, which is sim code and may not read the wall clock.
 double Mission::pollRealFrameSeconds(float harnessFrameSeconds) {
@@ -391,7 +515,7 @@ void Mission::completeOrderSimulationTick() {
         if (receipt.applicationStatus == mc2::sim::ApplicationStatus::Pending || receipt.acknowledged) continue;
         const auto sources = queue.sources();
         const auto source = std::ranges::find(sources, receipt.sourceId, &mc2::sim::OrderSource::sourceId);
-        if (source == sources.end() || source->kind != mc2::sim::SourceKind::MissionContent) continue;
+        if (source == sources.end()) continue;
         if (orderFixtureReceipt && receipt.receiptId <= orderFixtureReceipt->receiptId &&
             receipt.receiptId > orderFixtureReceipt->receiptId - orderFixtureSubmitted) {
             orderFixtureApplied &= receipt.applicationStatus == mc2::sim::ApplicationStatus::Applied;

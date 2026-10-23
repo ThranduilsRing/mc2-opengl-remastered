@@ -107,7 +107,7 @@ def main() -> int:
         env = {"MC2_COMMAND_REPLAY_RECORD": str(args.replay), "MC2_COMMAND_REPLAY_TICKS": str(args.ticks),
                "MC2_FPS_CAP": "30"}
         script = args.out / "commands.txt"
-        script.write_bytes(args.commands.read_bytes() if args.commands else b"select all\norder free_fire\n")
+        script.write_bytes(args.commands.read_bytes() if args.commands else b"select all\norder stop\n")
         env["MC2_UI_COMMAND_FILE"] = str(script)
         reports.append(run(args, "record", env, "[REPLAY_RECORDED v1]"))
     metadata = inspect(args.replay)

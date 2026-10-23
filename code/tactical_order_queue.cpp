@@ -273,9 +273,10 @@ void TacticalOrder::validate(Archive& a) const {
     }
     const bool attacking = kind == OrderKind::AttackObject || kind == OrderKind::AttackPoint;
     if (support || (moveKind(kind) && !move) ||
-        (!moveKind(kind) && kind != OrderKind::Wait && move) || attacking != attack.has_value() ||
+        (!moveKind(kind) && !attacking && kind != OrderKind::Wait && move) || attacking != attack.has_value() ||
         (kind != OrderKind::Guard && targetKind(kind) != target.has_value())) a.reject("order_payload_shape");
-    else if (moveKind(kind) && !target && move->wayPath.points.empty()) a.reject("order_goal_missing");
+    else if (moveKind(kind) && kind != OrderKind::Withdraw && kind != OrderKind::Scramble &&
+        !target && move->wayPath.points.empty()) a.reject("order_goal_missing");
 }
 void OrderExecution::validate(Archive& a) const {
     if (notBeforeTick < issuedTick || (lastUpdateTick != 0 && lastUpdateTick < issuedTick))

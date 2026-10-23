@@ -6004,6 +6004,16 @@
    "ver": 1,
    "stream": "stderr",
    "keys": [
+    "part",
+    "reason"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "ORDER_INGRESS",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
     "source",
     "sequence",
     "reason"
