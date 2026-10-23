@@ -65,7 +65,9 @@
 # granularity. Inert for every consumer that exists -- both constants sit inside
 # rc_isStaticPropNoSelfShadow (0.1, 0.5] and inside the shoreline water band
 # (0.15, 0.35). Argued in full at the write site.
-shaders/vulkan/color_prop_tier1.frag::oGBuffer1 = vec4(normalize(vNormalStuff) * 0.5 + 0.5, alphaTestClass ? 0.1875 : 0.25);
+# Authored materials select a mapped Stuff-space normal; absent IDs retain vNormalStuff.
+# Rechecked render_contract.hglsl: solid noSelfShadow=0.25, alphaTest noSelfShadow=0.1875; class selection unchanged.
+shaders/vulkan/color_prop_tier1.frag::oGBuffer1 = vec4(normalize(outputNormalStuff) * 0.5 + 0.5, alphaTestClass ? 0.1875 : 0.25);
 
 # MECHS. a = 0.0 == rc_gbuffer1_screenShadowEligible() (render_contract.hglsl:27-29).
 # Matches the GL producer mech.frag:428 `rc_gbuffer1_screenShadowEligible(N_gbuf)`.
@@ -132,4 +134,3 @@ shaders/vulkan/legacy_shape_tier1.frag::oGBuffer1 = vec4(0.5, 0.5, 1.0, 0.0);
 # GBuffer1 = rc_gbuffer1_shadowHandled_flatUp(): up normal, alpha 1.0.
 # The vegetation pipeline alone enables all four attachment-1 write bits;
 # billboard, tube and mesh pipelines keep attachment 1 masked off.
-shaders/vulkan/vfx_particle.frag::o_normal = vec4(0.5,0.5,1.0,1.0);

@@ -1,4 +1,6 @@
 #include "GraphicsOptionsWindow_internal.h"
+#include "Gates/render_options.h"
+#include "../GameOS/gameos/vk_render_infra.h"
 
 namespace GraphicsOptionsWindow {
 
@@ -34,36 +36,16 @@ void draw() {
             if (ImGui::SmallButton("Reset##expo")) pp->exposure_ = 1.0f;
             ImGui::Unindent();
 
-            // post anti-aliasing tunables. pp->fxaa* members are
-            // read every frame by endScene(), so edits take effect immediately.
-            // Env (MC2_FXAA / _SUBPIX / _EDGE_THRESHOLD / _EDGE_THRESHOLD_MIN)
-            // seeds startup; these sliders override live.
-            ImGui::SeparatorText("FXAA (post anti-aliasing)");
-            ImGui::Checkbox("Enable##fxaa", &pp->fxaaEnabled_);
-            if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("MC2_FXAA. Edge-smoothing on the composited scene (before UI).\n"
-                                  "Fixes terrain / map-edge jaggies on straight lines. Does NOT\n"
-                                  "fully kill camera-motion edge crawl — use render-scale/SSAA for that.");
-            ImGui::BeginDisabled(!pp->fxaaEnabled_);
-            ImGui::SliderFloat("Subpixel##fxaa",    &pp->fxaaSubpix_,           0.0f,   1.0f,   "%.3f");
-            if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("Subpixel aliasing removal. Higher = softer thin features.\n"
-                                  "Sharper preset = 0.25, Stronger = 0.50.");
-            ImGui::SliderFloat("Edge thresh##fxaa", &pp->fxaaEdgeThreshold_,    0.063f, 0.333f, "%.3f");
-            if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("Min local contrast to antialias. Lower = catches more edges.\n"
-                                  "Sharper preset = 0.166, Stronger = 0.125.");
-            ImGui::SliderFloat("Edge min##fxaa",    &pp->fxaaEdgeThresholdMin_, 0.0312f, 0.0833f, "%.4f");
-            if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("Dark-region contrast floor.\nSharper preset = 0.0833, Stronger = 0.0625.");
-            if (ImGui::SmallButton("Sharper##fxaa")) {
-                pp->fxaaSubpix_ = 0.25f; pp->fxaaEdgeThreshold_ = 0.166f; pp->fxaaEdgeThresholdMin_ = 0.0833f;
+            ImGui::SeparatorText("Spatial anti-aliasing");
+            const char* aaNames[] = {"Off", "SMAA 1x", "FXAA", "CMAA2"};
+            int aa = mc2::options::current().spatialAA;
+            static bool aaSaveFailed = false;
+            if (ImGui::Combo("Anti-aliasing", &aa, aaNames, IM_ARRAYSIZE(aaNames))) {
+                aaSaveFailed = !mc2::options::saveSpatialAA || !mc2::options::saveSpatialAA(aa);
             }
-            ImGui::SameLine();
-            if (ImGui::SmallButton("Stronger##fxaa")) {
-                pp->fxaaSubpix_ = 0.50f; pp->fxaaEdgeThreshold_ = 0.125f; pp->fxaaEdgeThresholdMin_ = 0.0625f;
-            }
-            ImGui::EndDisabled();
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("Spatial AA after output processing. HUD and UI stay crisp.\nSMAA 1x is the default; FXAA uses less memory.");
+            if (aaSaveFailed) ImGui::TextUnformatted("Could not save anti-aliasing setting.");
 
             // view-mode selector.
             // Gated on MC2_VIEWMODE_FRAMEWORK (resolved once at init); when OFF
@@ -243,6 +225,9 @@ void draw() {
         }
     }
 
+#ifdef MC2_VULKAN_ISLAND
+    mc2vk::infra::panel();
+#endif
     ImGui::Separator();
     ImGui::TextDisabled("RAlt hotkeys still active.  Ctrl+Shift+G to close.");
 

@@ -354,7 +354,7 @@ bool init_island(Island* s, int w, int h) {
         gp.pViewportState = &vps; gp.pRasterizationState = &rs; gp.pMultisampleState = &ms;
         gp.pDepthStencilState = &ds; gp.pColorBlendState = &cb; gp.pDynamicState = &dsci;
         gp.layout = s->playout.get(); gp.renderPass = s->rpass.get(); gp.subpass = 0;
-        if (!mc2vk::create(s->pipe, s->device, [&](VkPipeline* h) { return vkCreateGraphicsPipelines(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, h); })) { setFallback("pipeline_failed"); return false; }
+        if (!mc2vk::create(s->pipe, s->device, [&](VkPipeline* h) { return mc2vk::infra::graphics(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, h); })) { setFallback("pipeline_failed"); return false; }
         mc2vk::nameObject(s->device, s->pipe.get(), "sky.pipe");
     }
     s->inited = true; setFallback("");
@@ -371,6 +371,17 @@ extern "C" void mc2_vk_sky_submit(const float* invProj16, const float* invViewRo
     std::memcpy(g_pending.invProj, invProj16, sizeof(g_pending.invProj));
     std::memcpy(g_pending.rot, invViewRot9, sizeof(g_pending.rot));
     g_pending.yaw = skyYaw; g_pending.hdriGeneration = hdriGeneration; g_pending.valid = true;
+}
+
+extern "C" int mc2_vk_sky_island_prewarm(int w,int h) {
+    auto& ctx=mc2vk::getOrCreateEngineVulkanContext();
+    if(!ctx.valid() || w<=0 || h<=0) return 0;
+    auto& slot=ctx.islandSlot(mc2vk::IslandSlot::Sky);
+    if(slot) return 1;
+    auto fresh=std::make_unique<Island>();
+    if(!init_island(fresh.get(),w,h)) { ctx.waitIdle("sky_prewarm_failure"); return 0; }
+    slot=std::move(fresh);
+    return 1;
 }
 
 extern "C" int mc2_vk_sky_island_run(int w, int h) {
@@ -419,7 +430,7 @@ extern "C" int mc2_vk_sky_island_run(int w, int h) {
     VkRect2D scissor{{0, 0}, {static_cast<uint32_t>(w), static_cast<uint32_t>(h)}};
     vkCmdSetViewport(cb, 0, 1, &vp);
     vkCmdSetScissor(cb, 0, 1, &scissor);
-    vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->pipe.get());
+    mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->pipe.get());
     vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 0, 1, &s->set, 0, nullptr);
     SkyPC pc{};
     std::memcpy(pc.invProj, p.invProj, sizeof(pc.invProj));

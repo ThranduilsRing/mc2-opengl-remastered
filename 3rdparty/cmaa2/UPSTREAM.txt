@@ -1,0 +1,13 @@
+https://github.com/GameTechDev/CMAA2
+Source: master, retrieved 2026-10-22
+SHA256 of original upstream bytes (before whitespace normalization/local changes):
+be3cb07dcb1bb6b191d4fa72910d9ccfcdd7d035d2be92c97a7e84a476406c54  license.txt
+ca88dd447c1055436d2e35e0d9bb4d9bdb29dd2487da6c01d4a913b292294c8c  Projects/CMAA2/CMAA2/CMAA2.hlsl
+
+Local changes: annotate the rgba8 storage image format for DXC; fold variable Load offset into coordinates for Vulkan DXC; explicit source/edge bounds; bound candidate coordinates and deferred-item appends; guard odd-height packed edge writes. Arithmetic and spatial candidate/resolve passes otherwise unchanged. Integration: medium, SRGB sampled input, manual SRGB output, no MSAA or history.
+
+Vendored text has trailing whitespace and line endings normalized.
+
+Embedded MiniEngine pixel-packing code: Microsoft/DirectX-Graphics-Samples, MIT.
+License: https://raw.githubusercontent.com/microsoft/DirectX-Graphics-Samples/master/LICENSE
+Vendored LICENSE-MiniEngine-MIT.txt SHA256: 9b45236978bb5cd5de992021769e1eeaa79f0116d3b02cf8ba065a1ed603d5fa

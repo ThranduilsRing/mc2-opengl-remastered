@@ -1,5 +1,7 @@
+#include "vk_render_infra.h"
 #include "shadow_quality.h"
 #include "debug_state_dump.h"
+#include "visual_tuning_profile.h"
 
 #include "gameos.hpp"           // SHADOW-OBSERVABILITY-1: mc2ShadowCsm* accessors
 #include "gos_postprocess.h"
@@ -403,6 +405,7 @@ std::string buildSnapshotJson(const RenderSnapshot& snap,
     s << "    \"skyNumber\": " << g_dbgSkyNumber << ",\n";
     s << "    \"loadScreen\": \"" << jsonEscape(g_dbgLoadScreen) << "\"\n";
     s << "  },\n";
+    s << "  \"missionEnvironment\": " << visualTuning_environmentJson() << ",\n";
     s << "  \"build\": {\n";
     s << "    \"commit\": \"unknown\",\n";
     s << "    \"config\": \"" << buildConfigString() << "\"\n";
@@ -474,6 +477,9 @@ std::string buildSnapshotJson(const RenderSnapshot& snap,
         s << "    \"enabled\": "; b(s, enabled); s << "\n";
         s << "  },\n";
     }
+#ifdef MC2_VULKAN_ISLAND
+    s << "  \"vulkan_residency\": " << mc2vk::infra::ledgerJson() << ",\n";
+#endif
     s << "  \"registeredViews\": [\n";
     {
         const uint32_t vc = RenderCore::getViewCount();

@@ -1,0 +1,199 @@
+{
+  "engine_commit": "a7600589427e",
+  "archive_root": "E:\\mc2-archive-2026-10\\proofs\\lighting-L0",
+  "install": "E:/mc2-lane4",
+  "build_config": "RelWithDebInfo",
+  "review": "Viewed L0-frozen-montage.jpg and native hangar/mech images. See review.md for coverage and measurement limitations.",
+  "files": [
+    {
+      "path": "archive-texture-members.csv",
+      "bytes": 277803,
+      "sha256": "d6c5134328bebf428d085179a5cbe73dd4b1052581f1145f1a6c79e37eb7e40b"
+    },
+    {
+      "path": "archive-texture-summary.json",
+      "bytes": 69,
+      "sha256": "8c1e8191f3ed499015bab424693d2c779d8290c6b71924d13e4d7ddd19f9eabd"
+    },
+    {
+      "path": "bookmarks/mc2_01.json",
+      "bytes": 1057,
+      "sha256": "c2acbf9203aa22a54d72b24874d2ec3a11e70940f90faaee770c5f812380fa29"
+    },
+    {
+      "path": "bookmarks/mc2_01_sequence.json",
+      "bytes": 1642,
+      "sha256": "c4feae0aad1fd721f963a2c97e4e6e204cbdb3b457856bac481d87dd37a6fd59"
+    },
+    {
+      "path": "bookmarks/mc2_10.json",
+      "bytes": 1584,
+      "sha256": "8bf4720274afb711dbe59bad894d6b3b006ac3436e89d6908cbf44c4fd34365d"
+    },
+    {
+      "path": "bookmarks/mc2_10_sequence.json",
+      "bytes": 1694,
+      "sha256": "63f779042916c1f55256193150b248bc4f6c440248016148f799e8d873fb016c"
+    },
+    {
+      "path": "callers-repaired.txt",
+      "bytes": 80,
+      "sha256": "97b6d9d78e73514713a5c8553ad70d9b4436da5d863dae2f6a56f02dff5c9644"
+    },
+    {
+      "path": "frozen/day/mc2_01_capture.log",
+      "bytes": 33237,
+      "sha256": "cff5c82e4a69db1af6fe092db5af561780314ca1749b420a3769044b0dc0c874"
+    },
+    {
+      "path": "frozen/day/mc2_01_capture_manifest.json",
+      "bytes": 57989,
+      "sha256": "5cb754fd917cbb93de241adc19e82e8203d56c7612009cb72ce29ea883e9450e"
+    },
+    {
+      "path": "frozen/day/mc2_01_hangar_close.json",
+      "bytes": 7536,
+      "sha256": "5dc03d1caa7dca16c6e5de45fb992b118141194c1b8cd26e23ff366cfd6c3076"
+    },
+    {
+      "path": "frozen/day/mc2_01_hangar_close.png",
+      "bytes": 6222418,
+      "sha256": "25419cdcde1ce85da33c8acc8a62b6c323d8a5d655a3cb0a205ed4d9f965b376"
+    },
+    {
+      "path": "frozen/day/mc2_01_near_land_low.json",
+      "bytes": 7535,
+      "sha256": "cda03917fdbdab09e54f63374479fa5a086c56276b6c8fc88b62f3fdfd33c8dd"
+    },
+    {
+      "path": "frozen/day/mc2_01_near_land_low.png",
+      "bytes": 6222418,
+      "sha256": "ac8d5a2f87ea00d2766413442cf2338f5081d09f8cae5dd5fbf270ad5c4b825c"
+    },
+    {
+      "path": "frozen/day/mc2_01_saved_205644.json",
+      "bytes": 7537,
+      "sha256": "878cc08c4e9f772259398f847c82e6f6f7b7326f3c3e6462cdcc850c005d5430"
+    },
+    {
+      "path": "frozen/day/mc2_01_saved_205644.png",
+      "bytes": 6222418,
+      "sha256": "22011fdbefdf9f411347de88c13a6d0c17494c8e07a1033732431639962b3975"
+    },
+    {
+      "path": "frozen/day/render-state.json",
+      "bytes": 10065,
+      "sha256": "92f24c5681ee1910feea51a9b6cdaf0d7c6b037eec6bad866071bbb1c972749b"
+    },
+    {
+      "path": "frozen/night/mc2_10_capture.log",
+      "bytes": 36397,
+      "sha256": "ecaa611d5009629d3c9b31c7ca4d007af7e9969d3c6943539c02de5037bdd0f1"
+    },
+    {
+      "path": "frozen/night/mc2_10_capture_manifest.json",
+      "bytes": 141063,
+      "sha256": "cf65cbafb4a7ca55a71f7410f67731aec7df1ae86e3e48a1da359d547f7d5790"
+    },
+    {
+      "path": "frozen/night/mc2_10_compound_lightaway.json",
+      "bytes": 11409,
+      "sha256": "c608b78ab38aa93e9fce4249aaed573946b52266da2541b7c5658b888f560177"
+    },
+    {
+      "path": "frozen/night/mc2_10_compound_lightaway.png",
+      "bytes": 6222418,
+      "sha256": "2d5626377c14433a8ee9a2931864ba1fe47ef9569a52597e28e94f24eb22b590"
+    },
+    {
+      "path": "frozen/night/mc2_10_compound_lightfacing.json",
+      "bytes": 11410,
+      "sha256": "d16a3122e76ff7f755c45422266ae907f0671af0b71f88320c69f143813f3508"
+    },
+    {
+      "path": "frozen/night/mc2_10_compound_lightfacing.png",
+      "bytes": 6222418,
+      "sha256": "ea90941cec34493a518d04f8c3d30c93aca88f1a61b4427f865a9050a79dd67c"
+    },
+    {
+      "path": "frozen/night/mc2_10_saved_204523.json",
+      "bytes": 11403,
+      "sha256": "033e8ec5a909afff6e898dcc05ac06bb00a6715d2e8b733f5d9c47a0bd54fa92"
+    },
+    {
+      "path": "frozen/night/mc2_10_saved_204523.png",
+      "bytes": 6222418,
+      "sha256": "3d6cfe33c903a907d63299c86e60137917474803ab0d98a7c7072cabcdec79a2"
+    },
+    {
+      "path": "frozen/night/mc2_10_saved_mechnight.json",
+      "bytes": 11408,
+      "sha256": "9c72a3bd5527a6d608ff2ca1ebb2ba9de42c64e5ecc90e7e3dbc300e2b046470"
+    },
+    {
+      "path": "frozen/night/mc2_10_saved_mechnight.png",
+      "bytes": 6222418,
+      "sha256": "a8a314aefad5d6287f330167bd812b8483b58912b8ffa6257302f0435c5f9558"
+    },
+    {
+      "path": "frozen/night/mc2_10_shore_west_wide.json",
+      "bytes": 11406,
+      "sha256": "77f0e69d15683cf5f2262d39d52a90f69f09fbeb6ab6226e5982f7376b26ff1d"
+    },
+    {
+      "path": "frozen/night/mc2_10_shore_west_wide.png",
+      "bytes": 6222418,
+      "sha256": "c7eaa502c1a519f39af53c2eddf5ec26ff23d61d49e86498af1dba51b95173cb"
+    },
+    {
+      "path": "frozen/night/render-state.json",
+      "bytes": 8993,
+      "sha256": "524fa0f24a65fa85f008fe7944148a88ca37ada451e24fb81f731c9e32b1a87e"
+    },
+    {
+      "path": "gpu-vram-ledger.json",
+      "bytes": 101259,
+      "sha256": "201dd722f27fdc0c1fe53c9dddb431ba1ad9ad313b162b5d08dd81e73eacd06b"
+    },
+    {
+      "path": "L0-frozen-montage.jpg",
+      "bytes": 759500,
+      "sha256": "62016a8c82b084a325be48225f48e77a140aa96a341204087dfaec2acf2ae3a3"
+    },
+    {
+      "path": "mission-lighting-sources.json",
+      "bytes": 1982,
+      "sha256": "2f15c684c8e57061cbb82cdbfb919fab37ff8300f9aaab60c54b447fdf555421"
+    },
+    {
+      "path": "preexisting-contract-parent.txt",
+      "bytes": 7536,
+      "sha256": "9682353efd95f40db403d30a29cf9c3ecb891973d90dddc227fe2213ef7ab12c"
+    },
+    {
+      "path": "review.md",
+      "bytes": 3007,
+      "sha256": "1b9686e5243d6a31a359fb7a5bb83949f347a3b2fc58d177b9fb5623c7f7f657"
+    },
+    {
+      "path": "texture-sources.csv",
+      "bytes": 3496101,
+      "sha256": "e49a1bcf6b3b21bb9c900ed196c777bf3cda9b81e004cdae03d90ec5567dcb68"
+    },
+    {
+      "path": "texture-summary.json",
+      "bytes": 1721,
+      "sha256": "025f2bf734f7da5b079f25e28197b70d780b4d619f2883c00c2f701c3b904195"
+    },
+    {
+      "path": "unit-baseline.txt",
+      "bytes": 211548,
+      "sha256": "c72b1f0fd6d8f55bc6288808df7c9c61b90610d1cb6820e0f79ac82d09a9d77f"
+    },
+    {
+      "path": "visual_tuning-baseline.json",
+      "bytes": 1031,
+      "sha256": "efd70571ba873acb8e435a98a0850366013063ad7f3b6a04ae06319f13b52421"
+    }
+  ]
+}

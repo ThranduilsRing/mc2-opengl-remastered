@@ -1,16 +1,18 @@
-// MISSION-VISUAL-TUNING-1: optional per-mission renderer tuning profiles.
-// See docs/visual-tuning-profiles.md.
-
+// L1 compatibility environment: preserve legacy renderer values and color interpretation.
 #include "visual_tuning_profile.h"
+#include "../../GameAdapters/MissionEnvironmentAdapter.h"
 #include "Gates/gate.h"
-#include "Gates/gate_cold.h"   // str<>()
-#include "ibl_sh_runtime.h"  // g_iblShStrength (extern float)
-
+#include "Gates/gate_cold.h"
+#include "ibl_sh_runtime.h"
+#include "../../RenderCore/IblHdriRegistry.h"
+#include "../../RenderCore/IblShRegistry.h"
+#include <algorithm>
+#include <cmath>
 #include <cstdio>
-#include <cstdlib>
 #include <cstring>
-#include <string>
-#include <map>
+#include <fstream>
+#include <filesystem>
+#include <nlohmann/json.hpp>
 #include "mc2fmt.h"
 
 // Renderer function forward declarations.
@@ -39,105 +41,218 @@ extern void gos_GetTerrainClassGrass(float* gMinusRLo, float* gMinusRHi, float* 
 extern void gos_SetTerrainClassDirt(float rMinusGLo, float rMinusGHi, float rBrightLo, float rBrightHi);
 extern void gos_GetTerrainClassDirt(float* rMinusGLo, float* rMinusGHi, float* rBrightLo, float* rBrightHi);
 
+
 namespace {
+using Json = nlohmann::json;
+using Environment = RenderCore::MissionEnvironment;
+Environment s_environment;
+VisualTuningSource s_editableSource;
+std::string s_profilePath = "data/visual_tuning.json";
+bool s_hasFile = false;
+int s_appliedKeys = 0;
 
-// Minimal JSON parser for flat float-value objects, two levels deep.
-// Handles {"key": 1.0, ...} and {"mission": {"key": 1.0, ...}, ...}.
-struct TinyJson {
-    const char* p;
-    const char* e;
+std::map<std::string, float> engineDefaults() {
+    return {{"gradeR",1}, {"gradeG",1}, {"gradeB",1},
+        {"gradeShadowsR",1}, {"gradeShadowsG",1}, {"gradeShadowsB",1},
+        {"gradeHighlightsR",1}, {"gradeHighlightsG",1}, {"gradeHighlightsB",1},
+        {"topWarmthR",1}, {"topWarmthG",1}, {"topWarmthB",1},
+        {"vignette",0}, {"topWarmthStrength",0},
+        {"unitAmbientScale",1.2f}, {"buildingSpillIntensityScale",1.0f},
+        {"exposure",1}, {"shadowSoftness",2.5f}, {"staticPropIblStrength",0.5f},
+        {"waterSkyTintStrength",0}, {"vfxBrightness",1}, {"vfxAdditiveBrightness",1},
+        {"vfxLitStrength",0.7f}, {"mechAmbientStrength",0.15f}, {"mechSpecularStrength",0.05f},
+        {"terrainClassGrassGmRLo",-0.02f}, {"terrainClassGrassGmRHi",0.06f},
+        {"terrainClassGrassBrLo",0.22f}, {"terrainClassGrassBrHi",0.40f},
+        {"terrainClassDirtRmGLo",-0.02f}, {"terrainClassDirtRmGHi",0.06f},
+        {"terrainClassDirtBrLo",0.22f}, {"terrainClassDirtBrHi",0.45f}};
+}
 
-    void ws() { while (p < e && static_cast<unsigned char>(*p) <= 32) p++; }
-
-    bool eat(char c) { ws(); if (p < e && *p == c) { p++; return true; } return false; }
-
-    std::string str() {
-        ws();
-        if (p >= e || *p != '"') return {};
-        p++;
-        const char* s = p;
-        while (p < e && *p != '"' && *p != '\\') p++;
-        std::string r(s, static_cast<size_t>((p - s)));
-        if (p < e) p++;  // skip closing "
-        return r;
+bool validValue(std::string_view key, double value) {
+    if (!std::isfinite(value)) return false;
+    float hi = 64;
+    float lo = 0;
+    if (key == "vignette" || key == "topWarmthStrength") hi = 1;
+    else if (key.starts_with("grade") || key.starts_with("topWarmth")) hi = 2;
+    else if (key == "unitAmbientScale" || key == "buildingSpillIntensityScale") hi = 2;
+    else if (key == "staticPropIblStrength") hi = 3;
+    else if (key == "mechAmbientStrength") hi = 2;
+    else if (key == "mechSpecularStrength") hi = 4;
+    else if (key == "vfxBrightness" || key == "vfxAdditiveBrightness") hi = 8;
+    else if (key == "vfxLitStrength") hi = 1;
+    else if (key.find("terrainClass") == 0) {
+        hi = 1;
+        if (key.find("GmR") != std::string::npos || key.find("RmG") != std::string::npos) lo = -1;
     }
+    return value >= lo && value <= hi;
+}
 
-    float num() {
-        ws(); char* ep = nullptr;
-        float v = static_cast<float>(strtod(p, &ep));
-        if (ep != p) p = ep;
-        return v;
+Json environmentDocument(const Environment& env) {
+    const auto& l = env.lighting;
+    Json output{{"exposureMultiplier",env.output.exposureMultiplier}, {"transform",env.output.transform}};
+    output["exposureEV"] = env.output.exposureEV ? Json(*env.output.exposureEV) : Json(nullptr);
+    output["grade"] = env.output.grade;
+    output["shadows"] = env.output.shadows;
+    output["highlights"] = env.output.highlights;
+    output["topWarmth"] = env.output.topWarmth;
+    output["vignette"] = env.output.vignette;
+    output["topWarmthStrength"] = env.output.topWarmthStrength;
+    return {{"schemaVersion",Environment::kSchemaVersion}, {"sourceSchemaVersion",env.sourceSchemaVersion},
+        {"mission",env.mission}, {"colorContract",env.colorContract}, {"directionalSource",env.directionalSource},
+        {"lighting",{{"cameraDirection",l.cameraDirection}, {"effectiveDirection",l.effectiveDirection},
+            {"directionalColor",l.directionalColor}, {"ambientColor",l.ambientColor}, {"flatLight",l.flatLight},
+            {"authoredPitch",l.authoredPitch}, {"night",l.night}, {"nightFactor",l.nightFactor},
+            {"daylightLevel",l.daylightLevel}, {"skyNumber",l.skyNumber}}},
+        {"sky",{{"asset",env.sky.asset}, {"provider",env.sky.provider}, {"shIdentity",env.sky.shIdentity},
+            {"shConvention",env.sky.shConvention}, {"orientation",env.sky.orientation}, {"diffuseSh",env.sky.diffuseSh},
+            {"hemisphereSky",env.sky.hemisphereSky}, {"hemisphereGround",env.sky.hemisphereGround}}},
+        {"unitAmbientScale",env.unitAmbientScale},
+        {"buildingSpillIntensityScale",env.buildingSpillIntensityScale},
+        {"output",output}, {"atmosphere",env.atmosphere}, {"localLights",env.localLights},
+        {"clouds",env.clouds}, {"cacheStatus",env.cacheStatus}, {"legacyTuning",env.legacyTuning},
+        {"providers",env.providers}};
+}
+
+void finish(Environment& env) {
+    const auto rgb = [&](std::string_view prefix) {
+        const std::string key(prefix);
+        return std::array<float,3>{env.legacyTuning.at(key+"R"),
+            env.legacyTuning.at(key+"G"),env.legacyTuning.at(key+"B")};
+    };
+    env.unitAmbientScale = env.legacyTuning.at("unitAmbientScale");
+    env.buildingSpillIntensityScale = env.legacyTuning.at("buildingSpillIntensityScale");
+    env.output.grade = rgb("grade");
+    env.output.shadows = rgb("gradeShadows");
+    env.output.highlights = rgb("gradeHighlights");
+    env.output.topWarmth = rgb("topWarmth");
+    env.output.vignette = env.legacyTuning.at("vignette");
+    env.output.topWarmthStrength = env.legacyTuning.at("topWarmthStrength");
+    env.output.exposureMultiplier = env.legacyTuning.at("exposure");
+    env.output.exposureEV = env.output.exposureMultiplier > 0
+        ? std::optional<float>(std::log2(env.output.exposureMultiplier)) : std::nullopt;
+    env.sky.asset = RenderCore::lookupHdriForSkyNumber(env.lighting.skyNumber).exrPath;
+    const auto& sh = RenderCore::lookupShSet(env.mission.c_str());
+    env.sky.shIdentity = sh.name;
+    for (size_t i=0; i<9; ++i)
+        std::copy_n(sh.coeffs[i],3,env.sky.diffuseSh[i].begin());
+    // Weak mission-colored sky at night, never the daylight HDRI coefficients.
+    const float night = env.lighting.night ? 1.0f : std::clamp(env.lighting.nightFactor,0.0f,1.0f);
+    for (size_t c=0; c<3; ++c) {
+        const float ambient = env.lighting.ambientColor[c];
+        env.sky.hemisphereSky[c] = ambient * (1.0f - 0.75f*night);
+        env.sky.hemisphereGround[c] = env.sky.hemisphereSky[c]*0.5f;
+        for (size_t i=0; i<9; ++i) {
+            const float nightSh = i==0 ? ambient*0.25f*0.75f/0.886227f
+                : i==1 ? ambient*0.25f*0.25f/(2.0f*0.511664f) : 0.0f;
+            env.sky.diffuseSh[i][c] = env.sky.diffuseSh[i][c]*(1.0f-night) + nightSh*night;
+        }
     }
+    if (night > 0) env.sky.shIdentity = "mission-ambient-night";
+    // FNV-1a over canonical JSON, never struct padding or addresses. No bake cache yet.
+    uint64_t hash = 14695981039346656037ull;
+    auto values = environmentDocument(env);
+    values.erase("sourceSchemaVersion");
+    values.erase("providers");
+    for (unsigned char c : values.dump()) { hash ^= c; hash *= 1099511628211ull; }
+    env.effectiveHash = hash;
+}
 
-    void skipVal() {
-        ws(); if (p >= e) return;
-        if (*p == '{' || *p == '[') {
-            char op = *p, cl = (op == '{') ? '}' : ']';
-            int d = 0;
-            do {
-                if (p >= e) break;
-                if (*p == '"') { str(); continue; }
-                char c = *p++;
-                if (c == op) d++;
-                else if (c == cl && --d == 0) return;
-            } while (true);
-        } else if (*p == '"') {
-            str();
+std::optional<Json> parseSource(const VisualTuningSource& source, std::vector<std::string>& diagnostics) {
+    if (source.text.empty()) {
+        diagnostics.push_back(source.error.empty() ? "missing profile: " + source.path : source.error);
+        return std::nullopt;
+    }
+    auto doc = Json::parse(source.text, nullptr, false);
+    if (!doc.is_object()) {
+        diagnostics.push_back("invalid JSON profile: " + source.path);
+        return std::nullopt;
+    }
+    const auto version = doc.find("schemaVersion");
+    if (version != doc.end() && (!version->is_number_integer() ||
+        (*version != 1 && *version != Environment::kSchemaVersion))) {
+        diagnostics.push_back("unsupported schemaVersion: " + source.path);
+        return std::nullopt;
+    }
+    if (doc.contains("colorContract") && doc["colorContract"] != "legacy-authored-v1") {
+        diagnostics.push_back("unsupported colorContract: " + source.path);
+        return std::nullopt;
+    }
+    return doc;
+}
+
+void overlay(Environment& env, const Json& values, std::string_view providerView) {
+    const std::string provider(providerView);
+    if (!values.is_object()) { env.diagnostics.push_back("expected object: " + provider); return; }
+    for (auto it=values.begin(); it!=values.end(); ++it) {
+        if (it.key() == "terrainLightingV1Strength" || it.key() == "terrainLightingV2Floor") continue;
+        if (!env.legacyTuning.contains(it.key())) {
+            env.diagnostics.push_back("unknown key: " + provider + ":" + it.key());
+        } else if (!it->is_number() || !validValue(it.key(), it->get<double>())) {
+            env.diagnostics.push_back("invalid value: " + provider + ":" + it.key());
         } else {
-            char* ep = nullptr; strtod(p, &ep);
-            if (ep != p) { p = ep; }
-            else while (p < e && *p != ',' && *p != '}' && *p != ']' && static_cast<unsigned char>(*p) > 32) p++;
+            env.legacyTuning[it.key()] = it->get<float>();
         }
     }
+}
 
-    // Parse {"key": float, ...} — nested objects are skipped.
-    void floatObj(std::map<std::string,float>& out) {
-        if (!eat('{')) return;
-        for (;;) {
-            ws(); if (p >= e || *p == '}') { if (p < e) p++; break; }
-            auto k = str(); if (!eat(':')) break;
-            ws();
-            if (p < e && (*p == '{' || *p == '[')) skipVal();
-            else if (!k.empty()) out[k] = num();
-            else skipVal();
-            eat(',');
+VisualTuningSource readProfileSource(std::string_view path) {
+    return GameAdapters::Environment::readProfileSource(path);
+}
+
+} // namespace
+
+RenderCore::MissionEnvironment visualTuning_resolve(std::string_view mission,
+    const std::vector<VisualTuningSource>& sources, const std::map<std::string,float>& sessionOverrides) {
+    Environment env;
+    env.mission = mission;
+    env.legacyTuning = engineDefaults();
+    env.providers = {"engine-defaults", "mission.fit:legacy-camera"};
+    for (const auto& source : sources) {
+        auto parsed = parseSource(source,env.diagnostics);
+        if (!parsed) continue;
+        const auto& doc = *parsed;
+        env.sourceSchemaVersion = doc.value("schemaVersion",1u);
+        const auto provider = source.provider + ":" + source.path;
+        env.providers.push_back(provider);
+        if (doc.contains("defaults")) overlay(env,doc["defaults"],provider+":defaults");
+        if (doc.contains("missions")) {
+            const auto& missions = doc["missions"];
+            if (!missions.is_object()) env.diagnostics.push_back("expected missions object: " + provider);
+            else if (missions.contains(env.mission)) overlay(env,missions[env.mission],provider+":"+env.mission);
         }
     }
-
-    // Parse {"mission": {floatObj}, ...}
-    void missionMap(std::map<std::string, std::map<std::string,float>>& out) {
-        if (!eat('{')) return;
-        for (;;) {
-            ws(); if (p >= e || *p == '}') { if (p < e) p++; break; }
-            auto k = str(); if (!eat(':')) break;
-            if (!k.empty()) {
-                std::map<std::string,float> obj;
-                floatObj(obj);
-                out[k] = std::move(obj);
-            } else skipVal();
-            eat(',');
+    if (!sessionOverrides.empty()) {
+        overlay(env,Json(sessionOverrides),"explicit-session");
+        env.providers.push_back("explicit-session");
+    }
+    for (const auto& prefix : {"terrainClassGrassGmR", "terrainClassGrassBr", "terrainClassDirtRmG", "terrainClassDirtBr"}) {
+        const std::string lo = std::string(prefix)+"Lo", hi = std::string(prefix)+"Hi";
+        if (env.legacyTuning[lo] >= env.legacyTuning[hi]) {
+            const auto defaults = engineDefaults();
+            env.legacyTuning[lo] = defaults.at(lo); env.legacyTuning[hi] = defaults.at(hi);
+            env.diagnostics.push_back("invalid threshold order: " + std::string(prefix));
         }
     }
+    finish(env);
+    return env;
+}
 
-    // Parse root: {"defaults": {...}, "missions": {...}, unknown: skip}
-    void root(std::map<std::string,float>& defs,
-              std::map<std::string, std::map<std::string,float>>& missions) {
-        if (!eat('{')) return;
-        for (;;) {
-            ws(); if (p >= e || *p == '}') break;
-            auto k = str(); if (!eat(':')) break;
-            if      (k == "defaults")  floatObj(defs);
-            else if (k == "missions")  missionMap(missions);
-            else                       skipVal();
-            eat(',');
-        }
-    }
-};
+const Environment& visualTuning_environment() { return s_environment; }
 
-static bool s_hasFile     = false;
-static int  s_appliedKeys = 0;
-static char s_profilePath[256]  = "data/visual_tuning.json";
-static char s_activeMission[80] = "";
+void visualTuning_setMissionLighting(const RenderCore::LegacyMissionLighting& lighting) {
+    if (s_environment.lighting == lighting) return;
+    s_environment.lighting = lighting;
+    if (!s_environment.legacyTuning.empty()) finish(s_environment);
+}
+
+std::string visualTuning_environmentJson() {
+    auto doc = environmentDocument(s_environment);
+    doc["effectiveHash"] = s_environment.effectiveHash;
+    doc["hashAlgorithm"] = "fnv1a64-canonical-json";
+    doc["diagnostics"] = s_environment.diagnostics;
+    return doc.dump();
+}
+
+namespace {
 
 static void applyKey(const char* key, float val, int& count) {
     if (strcmp(key, "exposure") == 0) {
@@ -153,7 +268,7 @@ static void applyKey(const char* key, float val, int& count) {
         g_iblShStrength = val < 0.0f ? 0.0f : (val > 3.0f ? 3.0f : val);
         count++;
     } else if (strcmp(key, "waterSkyTintStrength") == 0) {
-        if (!mc2::gate::get<"MC2_WATER_SKYTINT">()) {
+        {
             gos_SetWaterSkyTintStrength(val);
             count++;
         }
@@ -172,12 +287,12 @@ static void applyKey(const char* key, float val, int& count) {
         // MISSION-LIGHTING-PROFILE-FIELDS-1: env value-var wins over profile,
         // matching the IBL/water/VFX env-guard convention. Gate
         // MC2_MECH_AMBIENT_V1 still controls whether the term is applied at all.
-        if (!mc2::gate::isNonEmpty<"MC2_MECH_AMBIENT_V1_STRENGTH">()) {
+        {
             batcher_setMechAmbientStrength(val);
             count++;
         }
     } else if (strcmp(key, "mechSpecularStrength") == 0) {
-        if (!mc2::gate::isNonEmpty<"MC2_MECH_SPECULAR_STRENGTH">()) {
+        {
             batcher_setMechSpecularStrength(val);
             count++;
         }
@@ -223,89 +338,52 @@ static void applyKey(const char* key, float val, int& count) {
     }
 }
 
-static void writeJsonFloatObj(FILE* f, const std::map<std::string,float>& obj, int depth) {
-    const char* inner = (depth == 1) ? "    " : "      ";
-    const char* close = (depth == 1) ? "  "   : "    ";
-    mc2::fmt::print(f, "{{\n");
-    bool first = true;
-    for (auto& [key, value] : obj) {
-        if (!first) mc2::fmt::print(f, ",\n");
-        first = false;
-        mc2::fmt::print(f, "{}\"{}\": {:g}", mc2::fmt::safe(inner), key.c_str(), value);
-    }
-    mc2::fmt::print(f, "\n{}}}", mc2::fmt::safe(close));
-}
-
-static void writeJson(FILE* f,
-                      const std::map<std::string,float>& defs,
-                      const std::map<std::string, std::map<std::string,float>>& missions) {
-    mc2::fmt::print(f, "{{\n  \"defaults\": ");
-    writeJsonFloatObj(f, defs, 1);
-    mc2::fmt::print(f, ",\n  \"missions\": {{\n");
-    bool firstM = true;
-    for (auto& [mission, values] : missions) {
-        if (!firstM) mc2::fmt::print(f, ",\n");
-        firstM = false;
-        mc2::fmt::print(f, "    \"{}\": ", mission.c_str());
-        writeJsonFloatObj(f, values, 2);
-    }
-    mc2::fmt::print(f, "\n  }}\n}}\n");
-}
 
 } // namespace
 
 void visualTuning_applyProfile(const char* missionName) {
-    s_hasFile    = false;
-    s_appliedKeys = 0;
-    s_activeMission[0] = '\0';
-    if (missionName && missionName[0])
-        strncpy(s_activeMission, missionName, sizeof(s_activeMission) - 1);
-
-    const std::string pathEnv = mc2::gate::str<"MC2_VISUAL_TUNING_FILE">();   // "" when unset or empty
-    const char* path = !pathEnv.empty() ? pathEnv.c_str() : "data/visual_tuning.json";
-    strncpy(s_profilePath, path, sizeof(s_profilePath) - 1);
-
-    FILE* f = fopen(path, "r");
-    if (!f) return;  // missing file = silent no-op
-
-    fseek(f, 0, SEEK_END);
-    long sz = ftell(f);
-    rewind(f);
-    if (sz <= 0 || sz > 512 * 1024) { fclose(f); return; }
-
-    std::string buf(static_cast<size_t>(sz), '\0');
-    fread(&buf[0], 1, static_cast<size_t>(sz), f);
-    fclose(f);
-    s_hasFile = true;
-
-    std::map<std::string,float> defs;
-    std::map<std::string, std::map<std::string,float>> missions;
-    TinyJson jp{ buf.c_str(), buf.c_str() + buf.size() };
-    jp.root(defs, missions);
-
-    int count = 0;
-    for (auto& [key, value] : defs) applyKey(key.c_str(), value, count);
-
-    if (missionName && missionName[0]) {
-        auto it = missions.find(missionName);
-        if (it != missions.end())
-            for (auto& [key, value] : it->second) applyKey(key.c_str(), value, count);
+    const auto base = readProfileSource("data/visual_tuning.json");
+    std::vector<VisualTuningSource> sources{base};
+    s_editableSource = base;
+    const auto sessionPath = mc2::gate::str<"MC2_VISUAL_TUNING_FILE">();
+    if (!sessionPath.empty()) {
+        s_editableSource = readProfileSource(sessionPath);
+        if (s_editableSource.provider == "base-loose") s_editableSource.editable = true;
+        sources.push_back(s_editableSource);
     }
-
+    s_profilePath = s_editableSource.path;
+    std::map<std::string,float> session;
+    if (mc2::gate::get<"MC2_WATER_SKYTINT">()) session["waterSkyTintStrength"] = 0.15f;
+    if (mc2::gate::isNonEmpty<"MC2_MECH_AMBIENT_V1_STRENGTH">())
+        session["mechAmbientStrength"] = mc2::gate::get<"MC2_MECH_AMBIENT_V1_STRENGTH">();
+    if (mc2::gate::isNonEmpty<"MC2_MECH_SPECULAR_STRENGTH">())
+        session["mechSpecularStrength"] = mc2::gate::get<"MC2_MECH_SPECULAR_STRENGTH">();
+    s_environment = visualTuning_resolve(missionName ? missionName : "",sources,session);
+    s_hasFile = s_environment.providers.size() > (session.empty() ? 2u : 3u);
+    int count = 0;
+    for (const auto& [key,value] : s_environment.legacyTuning) applyKey(key.c_str(),value,count);
     s_appliedKeys = count;
-    mc2::fmt::print_err("[VisualTuning] mission='{}' applied {:d} keys from '{}'\n", mc2::fmt::safe(missionName ? missionName : "(none)"), mc2::fmt::as_i32(count), mc2::fmt::safe(path));
+    for (const auto& diagnostic : s_environment.diagnostics)
+        mc2::fmt::print_err("[VisualTuning] {}\n",diagnostic);
+    mc2::fmt::print_err("[MissionEnvironment] mission='{}' schema=2 sourceSchema={} hash={} color={} providers={} keys={}\n",
+        s_environment.mission,s_environment.sourceSchemaVersion,s_environment.effectiveHash,
+        s_environment.colorContract,Json(s_environment.providers).dump(),count);
 }
 
-const char* visualTuning_getProfilePath()     { return s_profilePath; }
-const char* visualTuning_getActiveMission()   { return s_activeMission; }
-bool        visualTuning_hasProfileFile()     { return s_hasFile; }
-int         visualTuning_getAppliedKeyCount() { return s_appliedKeys; }
+const char* visualTuning_getProfilePath() { return s_profilePath.c_str(); }
+const char* visualTuning_getActiveMission() { return s_environment.mission.c_str(); }
+bool visualTuning_hasProfileFile() { return s_hasFile; }
+int visualTuning_getAppliedKeyCount() { return s_appliedKeys; }
 
 bool visualTuning_saveCurrentToMission() {
-    if (!s_activeMission[0]) return false;
+    if (s_environment.mission.empty()) return false;
+    if (!s_editableSource.editable) {
+        mc2::fmt::print_err("[VisualTuning] '{}' is not an active editable override; preserve its provider\n",s_profilePath);
+        return false;
+    }
 
     // Snapshot all current tunable values.
-    std::map<std::string,float> current;
+    std::map<std::string,float> current = s_environment.legacyTuning;
     current["exposure"]                  = gos_GetExposure();
     current["staticPropIblStrength"]     = g_iblShStrength;
     current["waterSkyTintStrength"]      = gos_GetWaterSkyTintStrength();
@@ -336,35 +414,43 @@ bool visualTuning_saveCurrentToMission() {
         current["terrainClassDirtBrHi"]  = d;
     }
 
-    // Read existing file to preserve other missions and defaults.
-    std::map<std::string,float> defs;
-    std::map<std::string, std::map<std::string,float>> missions;
-    FILE* f = fopen(s_profilePath, "r");
-    if (f) {
-        fseek(f, 0, SEEK_END);
-        long sz = ftell(f); rewind(f);
-        if (sz > 0 && sz <= 512 * 1024) {
-            std::string buf(static_cast<size_t>(sz), '\0');
-            fread(&buf[0], 1, static_cast<size_t>(sz), f);
-            TinyJson jp{ buf.c_str(), buf.c_str() + buf.size() };
-            jp.root(defs, missions);
-        }
-        fclose(f);
+
+    // Re-read the editable provider so external changes to unrelated missions survive.
+    auto source = readProfileSource(s_profilePath);
+    if (!source.error.empty()) return false;
+    Json doc = Json::object();
+    if (!source.text.empty()) {
+        std::vector<std::string> diagnostics;
+        auto parsed = parseSource(source,diagnostics);
+        if (!parsed) return false;
+        doc = std::move(*parsed);
     }
-
-    missions[s_activeMission] = current;
-
-    FILE* out = fopen(s_profilePath, "w");
-    if (!out) {
-        mc2::fmt::print_err("[VisualTuning] cannot write '{}'\n", mc2::fmt::safe(s_profilePath));
+    if (doc.contains("missions") && !doc["missions"].is_object()) return false;
+    if (!doc.contains("missions")) doc["missions"] = Json::object();
+    auto& entry = doc["missions"][s_environment.mission];
+    if (!entry.is_null() && !entry.is_object()) return false;
+    if (entry.is_null()) entry = Json::object();
+    for (const auto& [key,value] : current) {
+        if (!validValue(key,value)) return false;
+        entry[key] = value;
+    }
+    doc["schemaVersion"] = Environment::kSchemaVersion;
+    doc["colorContract"] = "legacy-authored-v1";
+    const auto bytes = doc.dump(2) + "\n";
+    const auto temporary = s_profilePath + ".tmp";
+    std::ofstream output(temporary,std::ios::binary | std::ios::trunc);
+    if (!output || !output.write(bytes.data(),static_cast<std::streamsize>(bytes.size()))) {
+        mc2::fmt::print_err("[VisualTuning] cannot write '{}'\n",s_profilePath);
         return false;
     }
-    writeJson(out, defs, missions);
-    fclose(out);
-
-    // Keep state consistent: next Reset to Profile will re-apply what we just saved.
-    s_hasFile    = true;
-    s_appliedKeys = static_cast<int>(current.size());
-    mc2::fmt::print_err("[VisualTuning] saved {:d} keys for mission '{}' to '{}'\n", mc2::fmt::as_i32(static_cast<int>(current.size())), mc2::fmt::safe(s_activeMission), mc2::fmt::safe(s_profilePath));
+    output.close();
+    std::error_code error;
+    if (output) std::filesystem::rename(temporary,s_profilePath,error);
+    if (!output || error) {
+        std::filesystem::remove(temporary,error);
+        return false;
+    }
+    s_hasFile = true;
     return true;
 }
+

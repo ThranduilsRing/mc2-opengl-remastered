@@ -68,6 +68,7 @@ extern "C" void mc2_vfx_pass_end();
 #include "../GameOS/gameos/gos_vfx_mesh_bridge.h"  // B2 P1: camera basis bridge
 #include "../GameOS/gameos/debug_renderer.h"
 #include "../GuiRuntime/EditorInspector.h"  // IMG-INSPECT-3 flushDebugHighlight
+#include "../GameAdapters/MissionEnvironmentAdapter.h"
 #include "../GameAdapters/SkyRenderAdapter.h"  // HDRI-SKY-1: firewall-clean sky rendering
 #include "../GameOS/gameos/view_registry.h"
 #include "../GameOS/gameos/gos_static_prop_killswitch.h"  // F1-3C: gos_GetTerrainMVPMat4 compare probe
@@ -385,48 +386,33 @@ void GameCamera::renderTerrainSceneState() {
 	// which matches raw MC2 coords (Z = elevation).
 	gos_SetTerrainLightDir(lightDirection.x, lightDirection.y, lightDirection.z);
 
-	// CEMENT-NIGHT-LIGHT-1: mission flat-pad light colour. This is the
-	// legacy per-vertex light value flat cement pads received
-	// (getLight*(flatIntensity) with flatIntensity = the flat-up
-	// N.L = lightDirection.z) — the same value burnInShadows bakes
-	// into the colormap. Cement-atlas/overlay shaders multiply it
-	// into their RAW (unburned) texels so pads go night-dark like
-	// the surrounding terrain. Day missions: ~(1,1,1) = no-op.
-	// Killswitch MC2_CEMENT_MISSION_LIGHT=0 (handled in the setter).
+	// L1 compatibility adapter records the exact legacy inputs. Physical units,
+	// common receiver composition and a shared GPU ABI are later packets.
+	RenderCore::LegacyMissionLighting inputs;
+	inputs.cameraDirection = {lightDirection.x, lightDirection.y, lightDirection.z};
+	gos_GetTerrainLightDir(&inputs.effectiveDirection[0], &inputs.effectiveDirection[1], &inputs.effectiveDirection[2]);
+	const DWORD directional = getLightColor(0), ambient = getLightColor(1);
+	inputs.directionalColor = {float((directional >> 16) & 255u)/255.0f,
+		float((directional >> 8) & 255u)/255.0f, float(directional & 255u)/255.0f};
+	inputs.ambientColor = {float((ambient >> 16) & 255u)/255.0f,
+		float((ambient >> 8) & 255u)/255.0f, float(ambient & 255u)/255.0f};
+	float flatIntensity = lightDirection.z;
+	if (flatIntensity < 0.0f) flatIntensity = 0.0f;
+	if (flatIntensity > 1.0f) flatIntensity = 1.0f;
+	inputs.flatLight = {getLightRed(flatIntensity)/255.0f,
+		getLightGreen(flatIntensity)/255.0f, getLightBlue(flatIntensity)/255.0f};
+	inputs.authoredPitch = eye->getDayLightPitch();
+	inputs.night = eye->getIsNight();
+	inputs.nightFactor = eye->getNightFactor();
+	inputs.daylightLevel = terrain_daylight::level(inputs.authoredPitch,inputs.night,inputs.nightFactor);
+	inputs.skyNumber = gos_GetSkyNumber();
+	const auto& resolved = GameAdapters::Environment::publishLighting(inputs);
+	gos_SetTerrainMissionFlatLight(resolved.flatLight[0],resolved.flatLight[1],resolved.flatLight[2]);
 	{
-		float flatIntensity = lightDirection.z;
-		if (flatIntensity < 0.0f) flatIntensity = 0.0f;
-		if (flatIntensity > 1.0f) flatIntensity = 1.0f;
-		gos_SetTerrainMissionFlatLight(
-			getLightRed(flatIntensity)   / 255.0f,
-			getLightGreen(flatIntensity) / 255.0f,
-			getLightBlue(flatIntensity)  / 255.0f);
-	}
-
-	// EDGE-LIGHT-EMISSION-1: feed the eye's night state to GameOS so the
-	// GPU static-prop shader can evaluate the stock hot-colour night
-	// branches (lit windows / outside building lights / BASE LIGHTS --
-	// the last of which is what every runway edge light and beacon is
-	// authored as). The legacy CPU path reads eye->getIsNight() directly;
-	// the GPU path had these stubbed to false/0, which is why the
-	// runway lights never came on. See gameos_graphics.cpp.
-	{
-		extern void gos_SetNightState(bool, float);
-		gos_SetNightState(eye->getIsNight(), eye->getNightFactor());
-	}
-
-	// TERRAIN-AMBIENT-FLOOR-2: daylight level for the terrain ambient
-	// floor. Same push point, same cadence as the night state above, but
-	// keyed on the AUTHORED sun pitch min the runtime night state --
-	// eye->getIsNight()/getNightFactor() alone report full day on the
-	// below-horizon missions (mc2_05/mc2_21 author pitch 270) because
-	// camera.cpp:2033 folds them to a moon overhead first. All of the
-	// decision is in terrain_daylight.h so it can be executed by
-	// tools/terrain_daylight_harness without launching anything.
-	{
+		extern void gos_SetNightState(bool,float);
+		gos_SetNightState(resolved.night,resolved.nightFactor);
 		extern void gos_SetTerrainDaylightLevel(float);
-		gos_SetTerrainDaylightLevel(terrain_daylight::level(
-			eye->getDayLightPitch(), eye->getIsNight(), eye->getNightFactor()));
+		gos_SetTerrainDaylightLevel(resolved.daylightLevel);
 	}
 
 	// SCENE-LIGHTING-STATE-1: mirror + parity trace (gated, self-throttled, no-op default).
@@ -902,14 +888,12 @@ void GameCamera::render (void)
 				gos_GetTerrainLightDir(&lx, &ly, &lz);
 				const float terrainLightDir_4f[4] = { lx, ly, lz, 0.0f };
 				const float missionTime = static_cast<float>(gos_GetElapsedTime());
-				// Camera position in terrain-chunk space for distance fade + wind LOD.
-				// Use orbit target (game world: x=east, y=north) — same frame as instance encode.
-				// getCameraOrigin() returns Stuff/MLR (west,elev,north) — wrong axes for this.
-				glm::vec3 camTgt = getPosition();
+				// The physical eye is Stuff (west,elevation,north), not the orbit target.
+				const glm::vec3 vegEye = getCameraOrigin();
 				const float vegHalfMap = Terrain::worldUnitsMapSide * 0.5f;
-				const float vegCamCX = camTgt.x - Terrain::mapTopLeft3d.x - vegHalfMap;
-				const float vegCamCY = camTgt.y - Terrain::mapTopLeft3d.y + vegHalfMap;
-				const float vegCamCZ = camTgt.z;
+				const float vegCamCX = -vegEye.x - Terrain::mapTopLeft3d.x - vegHalfMap;
+				const float vegCamCY = vegEye.z - Terrain::mapTopLeft3d.y + vegHalfMap;
+				const float vegCamCZ = vegEye.y;
 				GameAdapters::Vegetation::flush(terrainLightDir_4f, missionTime,
 				                                vegCamCX, vegCamCY, vegCamCZ);
 			}

@@ -11,6 +11,23 @@
 #include <memory>
 #include <vector>
 
+TEST_CASE("TG_Light/source color and intensity stay separate") {
+    TG_Light light;
+    light.init(TG_LIGHT_TERRAIN);
+    light.SetaRGB(0xffe8c870);
+    light.SetIntensity(0.25f);
+    CHECK(light.GetSourceRGB()==0xffe8c870);
+    CHECK(light.intensity==0.25f);
+    CHECK(light.GetaRGB()==0xff3a321c);
+    light.SetIntensity(0.0f);
+    CHECK(light.intensity==0);
+    CHECK(light.GetaRGB()==0xff000000);
+    CHECK(light.GetSourceRGB()==0xffe8c870);
+    light.SetaRGB(0xff804020);
+    CHECK(light.intensity==1);
+    CHECK(light.GetaRGB()==light.GetSourceRGB());
+}
+
 // ~TG_Shape calls the out-of-line destroy() (tgl.cpp, GL dependent); here it counts, so the real-node tests below see every
 // TG_Shape the records destroy (the fake-node tests release their dummies before any record goes, so it never runs for them).
 namespace { int g_shapeDestroys = 0; }

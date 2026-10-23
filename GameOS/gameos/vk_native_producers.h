@@ -83,6 +83,7 @@ public:
     // with headroom); the thin capacity is sized from it: max(kMaxThin, bound), at most recipeCount and kMaxThinCeiling. 0 = unknown (kMaxThin).
     // False (logged) on any failure; nothing is half-built then.
     bool init(const VulkanContext& ctx, uint32_t numVertices, uint32_t recipeCount, VkBuffer recipes, uint32_t waterEligibleBound = 0);
+    bool prewarmPipelines(const VulkanContext& ctx);
     bool ready() const noexcept { return ready_; }
 
     VkBuffer thin(uint32_t par) const noexcept { return thin_[par & 1].get(); }

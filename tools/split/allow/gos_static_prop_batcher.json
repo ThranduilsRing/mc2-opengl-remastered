@@ -25,7 +25,6 @@
   "tools/asset_viewer/LocalPbrMaterialBackend.cpp",
   "tools/asset_viewer/asset_viewer_game_stubs.cpp",
   "tools/asset_viewer/engine_stubs.cpp",
-  "tools/blender_pipeline/tex_hd.py",
   "tools/class_light_band_harness/class_light_band_harness.cpp",
   "tools/mc2_launcher/mc2_launcher.cpp",
   "tools/mc2texcook/mc2texcook.py",

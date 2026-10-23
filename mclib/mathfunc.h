@@ -118,6 +118,11 @@ unsigned long SimRandomDraws (void);
 
 void ResetSimRandomDraws (void);
 
+// Seed the simulation stream is pinned to under MC2_DETERMINISTIC_RNG: the startup seed, then the mission seed (Mission::init).
+// ABL seedRandom(-1) reseeds from it instead of the wall clock.
+void SetSimMissionSeed (unsigned long seed);
+unsigned long SimMissionSeed (void);
+
 inline long float2long (float val)
 {
 	//_ftol TRUNCS not rounds.  Processor wants to round.  Surely there is some flag to not have this happen?

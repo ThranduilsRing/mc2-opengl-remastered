@@ -1854,93 +1854,6 @@
    "count": 1
   },
   {
-   "tag": "BUILDING_PBR",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "sidecar"
-   ],
-   "count": 2
-  },
-  {
-   "tag": "BUILDING_PBR",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "sidecar",
-    "normal",
-    "orm"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "BUILDING_PBR_TRACE",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "shape",
-    "ib",
-    "vb"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "BUILDING_PBR_TRACE",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "shape",
-    "lv",
-    "lc",
-    "lsv",
-    "lt",
-    "lvf",
-    "lvs",
-    "last",
-    "turn"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "BUILDING_PBR_TRACE",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "shape",
-    "spot",
-    "window",
-    "alpha",
-    "alphaValue",
-    "localTex"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "BUILDING_PBR_TRACE",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "shape",
-    "texNode",
-    "localTex",
-    "visible"
-   ],
-   "count": 1
-  },
-  {
-   "tag": "BUILDING_PBR_TRACE",
-   "ver": -1,
-   "stream": "stderr",
-   "keys": [
-    "shape",
-    "verts",
-    "visible",
-    "last",
-    "turn"
-   ],
-   "count": 1
-  },
-  {
    "tag": "BUILD_FINGERPRINT",
    "ver": 1,
    "stream": "stdout",
@@ -5387,7 +5300,17 @@
    "ver": -1,
    "stream": "stderr",
    "keys": [],
-   "count": 18
+   "count": 17
+  },
+  {
+   "tag": "MODOVERRIDE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "condition",
+    "destroyed"
+   ],
+   "count": 1
   },
   {
    "tag": "MODOVERRIDE",
@@ -5395,6 +5318,16 @@
    "stream": "stderr",
    "keys": [
     "lodCount"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "MODOVERRIDE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "slot",
+    "id"
    ],
    "count": 1
   },
@@ -8313,6 +8246,28 @@
    "count": 1
   },
   {
+   "tag": "SPATIAL_AA",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "mode",
+    "extent",
+    "spatial",
+    "before_hud"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SPATIAL_AA",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "shader_error",
+    "mode"
+   ],
+   "count": 1
+  },
+  {
    "tag": "SPAWN_PROBE",
    "ver": -1,
    "stream": "stderr",
@@ -9253,7 +9208,55 @@
     "rej_none_fringe",
     "rej_overlay",
     "rej_slope",
-    "passed"
+    "passed",
+    "hs_weeds",
+    "hs_cover_kept",
+    "hs_tiles_alpha",
+    "hs_tiles_pure",
+    "hs_tiles_noimg",
+    "hs_build_ms"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VEG_GPU",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 4
+  },
+  {
+   "tag": "VEG_GPU",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "instances",
+    "regions"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VEG_GPU",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "instances",
+    "regions",
+    "avg_per_region",
+    "uploaded_bytes",
+    "resident_output_bytes"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VEG_GPU",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "population_uploads",
+    "population_bytes",
+    "frame_upload_bytes",
+    "last_survivors"
    ],
    "count": 1
   },
@@ -9749,6 +9752,25 @@
    "count": 1
   },
   {
+   "tag": "VK_BREADCRUMBS",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "sink",
+    "cpu_ring"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_BREADCRUMBS",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "snapshot"
+   ],
+   "count": 1
+  },
+  {
    "tag": "VK_ENGINE_CONTEXT",
    "ver": -1,
    "stream": "stderr",
@@ -9774,6 +9796,18 @@
    "ver": -1,
    "stream": "stderr",
    "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "VK_FIRST_FRAMES",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "count",
+    "p95_ms",
+    "max_ms",
+    "late_pipeline_creations"
+   ],
    "count": 1
   },
   {
@@ -10064,6 +10098,52 @@
    "count": 1
   },
   {
+   "tag": "VK_PIPELINE_CACHE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "saved_bytes",
+    "pipelines",
+    "creation_ms"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_PIPELINE_CACHE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "status",
+    "initial_bytes"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_PIPELINE_CREATE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "kind",
+    "count",
+    "ms",
+    "frame"
+   ],
+   "count": 2
+  },
+  {
+   "tag": "VK_PIPELINE_PREWARM",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "ready",
+    "families",
+    "pipelines",
+    "ms",
+    "size"
+   ],
+   "count": 1
+  },
+  {
    "tag": "VK_PRESENT",
    "ver": -1,
    "stream": "stderr",
@@ -10163,6 +10243,53 @@
    "count": 1
   },
   {
+   "tag": "VK_RESIDENCY",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "VK_RESIDENCY",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "feature_refused",
+    "bytes"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_RESIDENCY",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "shadow_tier",
+    "requested"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_RESIDENCY",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "texture_refused",
+    "bytes"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_RESIDENCY",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "texture_tier",
+    "requested"
+   ],
+   "count": 1
+  },
+  {
    "tag": "VK_SCENE_READBACK",
    "ver": -1,
    "stream": "stderr",
@@ -10180,6 +10307,29 @@
     "channels",
     "bounds",
     "result"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_SHADER_RELOAD",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "pipelines",
+    "shader",
+    "old",
+    "new",
+    "retirement"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_SHADER_RELOAD",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "reason",
+    "shader"
    ],
    "count": 1
   },

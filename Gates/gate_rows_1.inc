@@ -18,10 +18,10 @@ L(Exact1, "MC2_FRAME_PASS_STATS", Bool, false, "gameos", "", "", passthrough | v
 P("MC2_FRAME_PASS_STATS_EVERY", Int, 0, "gameos", "", "", passthrough | verified),
 // history: docs/gate-history.md#MC2_FREEZE_MOVERS_AT
 P("MC2_FREEZE_MOVERS_AT", Int, -1, "code", "", "FREEZE-MOVERS-1: =<frame> freezes every mover the first frame g_mc2FrameCounter >= <frame>, WITHOUT needing the command channel (the 'freeze_movers on...", passthrough | registry(Trace, "MC2_TRACE_FREEZE_MOVERS_AT", -1, false) | verified),
-L(Lead0, "MC2_FXAA", Bool, false, "post", "", "", passthrough | verified),
-P("MC2_FXAA_EDGE_THRESHOLD", Float, 0.0, "post", "", "", passthrough | verified),  // default not derivable from the tree
-P("MC2_FXAA_EDGE_THRESHOLD_MIN", Float, 0.0, "post", "", "", passthrough | verified),  // default not derivable from the tree
-P("MC2_FXAA_SUBPIX", Float, 0.0, "post", "", "", passthrough | verified),  // default not derivable from the tree
+L(Lead0, "MC2_FXAA", Bool, false, "post", "", "", passthrough),
+P("MC2_FXAA_EDGE_THRESHOLD", Float, 0.0, "post", "", "", passthrough),  // default not derivable from the tree
+P("MC2_FXAA_EDGE_THRESHOLD_MIN", Float, 0.0, "post", "", "", passthrough),  // default not derivable from the tree
+P("MC2_FXAA_SUBPIX", Float, 0.0, "post", "", "", passthrough),  // default not derivable from the tree
 // history: docs/gate-history.md#MC2_FX_COST_SPLIT
 L(Exact1, "MC2_FX_COST_SPLIT", Bool, false, "code", "", "FX cost-split instrumentation (default-off).", passthrough | registry(Feature, "MC2_FX_COST_SPLIT", -1, false) | verified),
 L(Presence, "MC2_FX_COUNT_LOG", Bool, false, "mech", "", "MC2_FX_COUNT_LOG=1: env-gated per-effect-site GOSFX draw counter for the Mech3DAppearance::render() effect sites.", passthrough | verified),

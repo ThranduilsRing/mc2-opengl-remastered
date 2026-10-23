@@ -622,8 +622,8 @@ void PackAndDispatch() {
                 case TG_LIGHT_TERRAIN: gl.lightType = 3u; break;  // TG_LIGHT_TERRAIN_GPU
                 default:               gl.lightType = 0u; break;
             }
-            // Extract RGB from packed aRGB (0xAARRGGBB) → normalize to 0..1
-            const DWORD argb = tl->GetaRGB();
+            // Preserve source color; each receiver applies the separate intensity once.
+            const DWORD argb = tl->GetSourceRGB();
             gl.color[0]        = static_cast<float>((argb >> 16) & 0xFFu) / 255.0f;  // R
             gl.color[1]        = static_cast<float>((argb >>  8) & 0xFFu) / 255.0f;  // G
             gl.color[2]        = static_cast<float>( argb        & 0xFFu) / 255.0f;  // B
@@ -676,7 +676,7 @@ void PackAndDispatch() {
             // NIGHT-LIGHT-POOLS-2a: mover flag in the pad (pool frag dims
             // mover-attached lights; compute consumer never reads pads).
             gl._pad1           = lightIsMover(tl) ? 1.0f : 0.0f;
-            gl._pad2           = 0.0f;
+            gl.intensity       = tl->intensity;
             ++numLights;
         }
 

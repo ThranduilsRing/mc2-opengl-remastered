@@ -67,7 +67,7 @@ public:
     uint32_t capacity() const { return capacity_; }
     void sealFrame();
 private:
-    struct Image { OwnedImage image; OwnedImageView view; };
+    struct Image { OwnedImage image; OwnedImageView view; void markDeferred() { image.markDeferred(); } };
     struct Resident { std::shared_ptr<Image> image; uint32_t descriptor = 0; bool useMips = true; uint32_t layers = 1; bool arrayView = false; bool highPriority = false; uint32_t contentVersion=0; };
     struct Pending { RenderCore::TextureHandle handle; std::shared_ptr<const RenderCore::KtxImage> image; uint32_t contentVersion=0; };
     struct Upload {

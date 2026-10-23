@@ -38,24 +38,7 @@ layout(set = 0, binding = 4, std430) readonly buffer LightsData {
 // SH-L2 evaluator -- verbatim port of static_prop.vert::evalShL2 (Ramamoorthi-Hanrahan
 // diffuse-irradiance reconstruction). Coefficients arrive pre-convolved (see
 // RenderCore/IblShCoeffs.h header comment); do not re-apply the cosine kernel here.
-vec3 evalShL2(vec3 n, vec3 sh[9]) {
-    const float kSH_c1 = 0.429043;
-    const float kSH_c2 = 0.511664;
-    const float kSH_c3 = 0.743125;
-    const float kSH_c4 = 0.886227;
-    const float kSH_c5 = 0.247708;
-    return
-          kSH_c1 * sh[8] * (n.x * n.x - n.z * n.z)
-        + kSH_c3 * sh[6] * (n.y * n.y)
-        + kSH_c4 * sh[0]
-        - kSH_c5 * sh[6]
-        + 2.0 * kSH_c1 * sh[4] * (n.x * n.y)
-        + 2.0 * kSH_c1 * sh[5] * (n.y * n.z)
-        + 2.0 * kSH_c1 * sh[7] * (n.x * n.z)
-        + 2.0 * kSH_c2 * sh[3] * n.x
-        + 2.0 * kSH_c2 * sh[1] * n.y
-        + 2.0 * kSH_c2 * sh[2] * n.z;
-}
+#include "include/prop_sh_l2.glsl"
 
 // VK-FLIP-FIELD-REPORT-2 BLACK-FENCE FIX: per-PACKET (not per-type) albedo layer,
 // pushed fresh before each vkCmdDrawIndexed. GL's coalesce path samples texArrayLayer
@@ -72,15 +55,7 @@ vec3 evalShL2(vec3 n, vec3 sh[9]) {
 // forwarded to the FS via vUvScale (flat) so the FS applies the identical crop
 // right where GL does, instead of assuming 1.0 (full layer -> narrower/gapped
 // panels wherever a packet's unique texture is smaller than the group max).
-layout(push_constant) uniform PacketLayerPC {
-    int   packetLayerOff;
-    int   packetLayerOn;
-    float packetUvScaleX;
-    float packetUvScaleY;
-    int   packetAlphaTest;   // GL's live per-packet ALPHA_TEST bit (the FS reads it)
-    int   coverageFringePass;   // PROP-COVERAGE-1 (FS only)
-    int   hzbEnabled;
-} uPacket;
+#include "include/prop_packet_vk.glsl"
 
 #include "../include/gpu_abi_static_prop_instance.gen.hglsl"
 #include "../include/axis.hglsl"
@@ -113,6 +88,10 @@ flat layout(location = 8) out vec3 vSunColor;
 // Per-instance objective / selection highlight (static_prop.vert step 6 + static_prop.frag): added to the vertex light and,
 // alpha-weighted, to the fragment colour; zero when the game highlights nothing.
 flat layout(location = 9) out vec4 vHighlight;
+layout(location = 10) out vec3 vMaterialSeed;
+flat layout(location = 11) out vec3 vMaterialAmbient;
+flat layout(location = 12) out vec3 vMaterialSun;
+flat layout(location = 13) out uint vMaterialFlags;
 
 // Per-type hot-colour magic: the emission colours of the three night tags (windows, outside building lights, building base lights), taken from the type's ini.
 // Three vec4 per type in the order pink, yellow, green; indexed by inst.typeID. Same table the GL prop shader reads.
@@ -191,27 +170,8 @@ void main() {
     // defaults to 1.0 from the CPU side when unavailable, so no gating needed).
     vUvScale = vec2(uPacket.packetUvScaleX, uPacket.packetUvScaleY);
 
-    // -------------------------------------------------------------------------
-    // VK-P11 VERTEX-BAKED LIGHTING (replaces the earlier computePBR path).
-    // The GL DEFAULT prop lit color is NOT PBR (static_prop.frag's GGX block is
-    // gated by u_pbrV1Strength, default 0.0). The GL default (static_prop.vert:438)
-    // is the vertex-baked term:
-    //     lit = base_light (per-vertex hot-color magic seed)
-    //         + ambientTerm (ObjectLights row)
-    //         + sunColor * NdotL   (NdotL vs u_terrainSunMC2, MC2 world)
-    // and static_prop.frag:346 does FragColor = tex_color * vec4(lit, a).
-    //
-    // PARITY GAP (documented, not byte-parity): the per-type magic-color SSBO and
-    // the ObjectLights UBO (ambientTerm + per-actor sunColor) are NOT fed to the
-    // island. We reproduce the SHAPE of the model with the inputs we DO have:
-    //   * base_light seed: the per-vertex a_aRGBLight attribute, decoded exactly as
-    //     static_prop.vert:298-301 (B|G<<8|R<<16|A<<24) -> the same hot-color bytes
-    //     the GL VS feeds get_base_light(). For non-magic verts this is a small/zero
-    //     seed; it carries the window/hot-color emissive tint for free.
-    //   * ambientTerm: a constant neutral fill (ObjectLights ambient not fed).
-    //   * sunColor: white (per-actor sun color not fed); NdotL vs the terrain sun.
-    // This is the ACTUAL default lighting MODEL (albedo * baked light), NOT PBR.
-    //
+    // Legacy vertex emission plus environment SH and the actor's directional light.
+    // Keep vertex evaluation and the washout clamp until the prop material packet.
     // BASE-LIGHT SEED. The raw per-vertex bytes are NOT light: the hot-colour magic tags must be resolved first (the green-glow field report was the raw
     // 0xff00ff00 tag dumped into the colour). hotColorBaseLight resolves them against the eye's night state and the type's own emission colours, so the
     // windows, building base lights and runway / beacon fixtures light up at night exactly as authored and stay dark by day.
@@ -232,6 +192,10 @@ void main() {
                                   hotOk ? uTypeHot.c[hotBase + 2u].rgb : vec3(0.0));
     // A window node carries only its hot-colour light: no ambient, sun or IBL (they would wash out the night glow and the by-day grey).
     vHighlight = inst.aRGBHighlight;
+    vMaterialSeed = seed;
+    vMaterialAmbient = vec3(0);
+    vMaterialSun = vec3(0);
+    vMaterialFlags = inst.flags;
     if ((inst.flags & kFlagIsWindow) != 0u) {
         vArgb = clamp(seed + inst.aRGBHighlight.rgb, 0.0, 1.0);
         return;
@@ -248,59 +212,8 @@ void main() {
     float ndlRaw = dot(nMC2, L);
     float ndl    = alphaTestPacket ? abs(ndlRaw) : max(ndlRaw, 0.0);
 
-    // AMBIENT: the GL LOD-chunk-parity prop look (launcher defaults) folds THREE
-    // ambient-ish terms into v_argb that the island cannot feed byte-exact (ObjectLights
-    // ambient row, V-AMBIENT-STATIC-1 hemisphere, V-IBL-STATIC-1 SH-L2). We reproduce
-    // the SHAPE with the one input we DO have — the surface normal — via the SAME
-    // hemisphere-ambient form GL's V-AMBIENT-STATIC-1 uses (static_prop.vert):
-    //   hemi_t = 0.5 + 0.5*n.y (Stuff-space Y-up); ambient = mix(ground, sky, hemi_t).
-    // This is normal-dependent (rooftops brighter than shadowed walls) instead of the
-    // prior FLAT constant (0.32,0.34,0.38) that over-lit downward/side faces and
-    // washed out big flat-roofed shapes (hangar/quonset) — the second field-report
-    // signature. Magnitudes are the GL V-AMBIENT-STATIC-1 tints scaled up to also
-    // stand in for the (unfed) ObjectLights ambient + IBL-SH fills, so shadowed sides
-    // are lit but not flat-bright.
-    // Magnitudes: the GL V-AMBIENT-STATIC-1 hemisphere tints, scaled modestly to also
-    // stand in for the (unfed) ObjectLights ambient + IBL-SH@0.5 fills. Kept MODERATE:
-    // an earlier higher bump (0.42/0.24) over-lit the whole-frame footprint on large
-    // roofs/hedges (mid pose 49->55/ch) and washed shaded faces, so these sit just above
-    // GL's raw V-AMBIENT to cover the fill gap without a flat wash. Normal-dependent
-    // (rooftops brighter than shadowed walls) — matches the GL hangar-roof tint.
-    // VK-FLIP-FIELD-REPORT-2 WASHOUT FIX: round-1 (9b63ab6d) tuning was still too hot on
-    // near-flat-up faces (measured +45/255 mean over GL on the mc2_01 hangar roof at the
-    // airport_bldgs_mid oracle pose, byte-for-byte pixel compare vs GL). Reduced the sky
-    // (near-up-facing) tint by the measured delta; ground tint left as-is (shadowed/
-    // downward faces were not over-lit in the same measurement).
-    const vec3 kAmbientSky    = vec3(0.00, 0.02, 0.08);   // upward faces (sky bounce)
-    const vec3 kAmbientGround = vec3(0.14, 0.13, 0.11);   // downward faces (ground bounce)
-    float hemi_t = 0.5 + 0.5 * worldNormalStuff.y;        // Stuff-space .y = up
-    vec3  kAmbientFallback = mix(kAmbientGround, kAmbientSky, clamp(hemi_t, 0.0, 1.0));
-    const vec3 kSunColor = vec3(0.95, 0.93, 0.86);   // per-actor sun color not fed
-
-    // VK-PROP-AMBIENT-IBL-1: real feed closes two of the three documented gaps above.
-    //   * ambientTerm: sum of TG_LIGHT_AMBIENT rows at this instance's ObjectLights
-    //     entry (identical scan to static_prop.vert:414-429), now that LightsData is
-    //     copied per-frame (uFrame.lightingReady).
-    //   * IBL-SH: real SH-L2 coefficients (uFrame.iblSh) evaluated with the SAME
-    //     evalShL2 kernel GL uses, gated by uFrame.iblShStrength (0.0 = short-circuit,
-    //     byte-identical contribution when the feature/env is off — mirrors GL's
-    //     `if (u_iblShStrength > 0.0)` guard).
-    // The hemisphere tint (kAmbientFallback, tuned at the WASHOUT FIX) remains as the
-    // fail-soft path when LightsData hasn't been copied yet (first frame / feed miss)
-    // so props never regress to flat/black ambient.
-    // ADJUDICATION-1 WASHOUT FIX (2026-07-06): the real-feed branch below was the
-    // UNtuned path — canonical config hits it (lightingReady=1), while the prior
-    // "washout fix" only tuned the kAmbientFallback branch. Measured GL/VK hangar
-    // delta was +47/255 (VK 171 vs GL 123). Two causes, both fixed here to match
-    // static_prop.vert:414-438 exactly:
-    //   1) sunColor was HARDCODED kSunColor (0.95,0.93,0.86); GL scans the real
-    //      per-actor sun light_color from ObjectLights (first INFINITE row) and
-    //      uses vec3(0) when none is found. Hardcoding added a bright sun GL never
-    //      applied (~+25/255 of the delta, present even with IBL off).
-    //   2) IBL: unchanged kernel/axis; the residual IBL over-contribution rides on
-    //      top of the phantom sun, so removing (1) also collapses the IBL-on delta.
-    // TG_LIGHT types (match calc_light / static_prop.vert): 1=INFINITE, 2=INFINITEWITHFALLOFF.
-    vec3 ambientTerm = vec3(0.0);
+    // One environment SH source; baked vertex color and the washout clamp remain.
+    const vec3 kSunColor = vec3(0.95, 0.93, 0.86);
     vec3 sunColorFed = vec3(0.0);
     vec3 sunDirFed   = vec3(0.0);
     bool sunFound    = false;
@@ -309,20 +222,18 @@ void main() {
         int n = min(ld.numLights.x, MAX_LIGHTS_IN_WORLD);
         for (int i = 0; i < n; ++i) {
             int lt = int(ld.light_dir[i].w);
-            if (lt == TG_LIGHT_AMBIENT) {
-                ambientTerm += ld.light_color[i].xyz;
-            } else if (!sunFound && (lt == 1 || lt == 2)) {
+            if (!sunFound && (lt == 1 || lt == 2)) {
                 sunColorFed = ld.light_color[i].xyz;
                 sunDirFed = ld.light_dir[i].xyz;
                 sunFound = true;
             }
         }
-    } else {
-        ambientTerm = kAmbientFallback;
     }
     // Use the real scanned sun color when the feed is live (GL parity). Only the
     // fail-soft branch (no feed) falls back to the neutral kSunColor stand-in.
     vec3 sunTerm = (uFrame.lightingReady != 0) ? sunColorFed : kSunColor;
+    vMaterialAmbient = vec3(0.0);   // R2: ObjectLights ambient is not summed; the environment SH is the one ambient
+    vMaterialSun = sunTerm;
     vSunDirStuff = sunDirFed;
     vSunColor = sunFound ? sunColorFed : vec3(0.0);
 
@@ -352,11 +263,6 @@ void main() {
         float wrap = 0.5 + 0.5 * dot(nMC2, L);
         propDirFactor = mix(1.0 - kPropBaseLightDirStrength, 1.0, wrap);
     }
-    // Hemisphere ambient fill of the StaticPropAmbient option (sky above, ground below; Stuff-space Y is up), added after the directional wrap so it lifts the back
-    // faces the wrap darkened, as in GL.
-    const vec3 kAmbientV1Sky    = vec3(0.20, 0.22, 0.28);
-    const vec3 kAmbientV1Ground = vec3(0.10, 0.09, 0.07);
-    vec3 ambientV1 = mix(kAmbientV1Ground, kAmbientV1Sky, 0.5 + 0.5 * worldNormalStuff.y) * uFrame.ambientV1Strength;
-    vArgb = clamp((seed + ambientTerm) * propDirFactor + ambientV1 + iblTerm + sunTerm * ndl, 0.0, 1.0);
+    vArgb = clamp(seed * propDirFactor + iblTerm + sunTerm * ndl, 0.0, 1.0);
     vArgb = clamp(vArgb + inst.aRGBHighlight.rgb, 0.0, 1.0);
 }

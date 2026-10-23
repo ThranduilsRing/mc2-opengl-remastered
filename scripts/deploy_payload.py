@@ -96,22 +96,12 @@ EDITOR_SUPPORT_TREES = ["tools/terrain_gen"]
 #   tools/examples/          -- asset inspection helpers (list_mission_assets etc.)
 GAME_COOK_TOOLS = ["tools/cook_bc6h_hdri.py", "tools/examples"]
 
-# P1-G building PBR runtime payload. These files are source-tracked so HangarGLB
-# and its CorrugatedSteel006A normal/ORM maps deploy through the verified payload
-# path instead of by hand-copying release directories.
-BUILDING_PBR_PAYLOAD = [
-    "data/tgl/HangarGLB.glb",
-    "data/tgl/HangarGLB.mcasset.json",
-    # CONTRACT-HARNESS-REPAIR-1: marble cliff shipped in 5ded0f19 with repo
-    # assets + ini wiring but was never added here, so it never reached an
-    # install tree (data/tgl is enumerated file-by-file, not copied wholesale).
+# Repo-shipped imported structure (TERRAIN-CLIFF-MESH-DRESSING-P0): data/tgl is enumerated
+# file-by-file, not copied wholesale, so these reach an install only through this list.
+# Building/prop replacements ship as mounted content packages (tools/content_pipeline), not here.
+IMPORTED_STRUCTURE_PAYLOAD = [
     "data/tgl/marblecliff.ini",
     "data/tgl/MarbleCliffGLB.glb",
-    "data/tgl/quonset.ini",
-    "data/tgl/QuonsetGLB.glb",
-    "data/tgl/QuonsetGLB.mcasset.json",
-    "data/materials/pbr/corrugatedsteel006a_normal.ktx2",
-    "data/materials/pbr/corrugatedsteel006a_orm.ktx2",
 ]
 
 # Renderer config JSON read directly off "data/<name>.json" relative paths by
@@ -132,6 +122,14 @@ GAME_DATA_PAYLOAD = [
     "data/vegetation/cards/fern_02.png",
     "data/vegetation/cards/fern_03.png",
     "data/vegetation/cards/fern_04.png",
+    "data/vegetation/cooked/grass_01.ktx2",
+    "data/vegetation/cooked/grass_02.ktx2",
+    "data/vegetation/cooked/grass_03.ktx2",
+    "data/vegetation/cooked/grass_04.ktx2",
+    "data/vegetation/cooked/fern_01.ktx2",
+    "data/vegetation/cooked/fern_02.ktx2",
+    "data/vegetation/cooked/fern_03.ktx2",
+    "data/vegetation/cooked/fern_04.ktx2",
 
 
 ]
@@ -974,10 +972,18 @@ def enumerate_payload(src_root, build_dir, exe_name, pdb_name,
             rel = os.path.relpath(p, src_root).replace(os.sep, "/")
             items.append((p, rel, "shader"))
 
-    for rel in BUILDING_PBR_PAYLOAD:
+    # Spatial AA reference sources and notices travel with their compiled shaders.
+    for tree in ("3rdparty/smaa", "3rdparty/cmaa2"):
+        for directory, _dirs, files in os.walk(os.path.join(src_root, tree)):
+            for fn in sorted(files):
+                path = os.path.join(directory, fn)
+                rel = os.path.relpath(path, src_root).replace(os.sep, "/")
+                items.append((path, rel, "support"))
+
+    for rel in IMPORTED_STRUCTURE_PAYLOAD:
         p = os.path.join(src_root, rel)
         if require_build and not os.path.isfile(p):
-            fail(f"building PBR payload missing in source: {p}")
+            fail(f"imported structure payload missing in source: {p}")
         items.append((p, rel, "support"))
 
     for rel in GAME_DATA_PAYLOAD:

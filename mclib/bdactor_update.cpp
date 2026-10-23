@@ -4,6 +4,7 @@
 #include "../RenderCore/axis_convert.h"
 #include "mc2fmt.h"
 #include "anim_freeze.h"
+#include "../GameOS/gameos/visual_tuning_profile.h"
 
 // T1.15 SpotLight_ illumination diagnostic — registration probe (bldg class).
 // Env-gated per Debug Instrumentation Rule. First-hit is always-on (one stderr
@@ -62,7 +63,8 @@ long BldgAppearance::update (bool animate)
 			mc2::math::buildRotation(lightToWorldMatrix, mc2::math::Euler(0.0f,0.0f,0.0f));
 			pointLight->SetLightToWorld(&lightToWorldMatrix);
 			pointLight->SetPosition(&position);
-			pointLight->SetIntensity(appearType->terrainLightIntensity * eye->getNightFactor());
+			pointLight->SetIntensity(appearType->terrainLightIntensity * eye->getNightFactor() *
+                visualTuning_environment().buildingSpillIntensityScale);
 		}
    	}
 	else
@@ -353,6 +355,7 @@ long BldgAppearance::update (bool animate)
 			// still real and must keep rendering. Collapsing the two would make
 			// tower searchlights vanish when aimed at a wall.
 			const bool ownerLit = (eye && eye->isNight && visible && !forceLightsOut);
+			spotlightLights_[k]->SetIntensity(0.5f * visualTuning_environment().buildingSpillIntensityScale);
 			spotlightLights_[k]->active = ownerLit && !coneMissedGround;
 			// LIGHT-CULL-RADIUS-1: owner intent for the camera composition.
 			// Building light positions are static, so persistence while the
@@ -595,10 +598,8 @@ long BldgAppearance::update (bool animate)
 			// BUILDING-PBR: the gated PBR path currently renders through the same
 			// CPU MLR queue, so it needs that full bake too. Keep this in lockstep
 			// with the render-side GPU submit bypass.
-			const bool buildingPbrCpuRenderActive = appearType && appearType->buildingPbrEnabled;
 			gpuEligible = g_useGpuObjects &&
 			              (g_mechPreviewRenderDepth == 0) &&
-			              !buildingPbrCpuRenderActive &&
 			              !needsFullBakeNextFrame &&
 			              GpuStaticPropBatcher::instance().isMultiShapeEligibleForGpuObjects(bldgShape);
 		}
@@ -639,9 +640,7 @@ long BldgAppearance::update (bool animate)
 			// runs to seed the light index. MC2_LEGACY_INSTANCE_POOLS=1 reverts.
 			// PREVIEW-FIX: force the full bake in the SimpleCamera preview so the
 			// CPU MLR draw has complete listOfVertices (hierarchy-only leaves it stale).
-			const bool buildingPbrCpuRenderActive = appearType && appearType->buildingPbrEnabled;
-			if (!buildingPbrCpuRenderActive &&
-			    !gos_StaticPropLegacyInstancePools() &&
+			if (!gos_StaticPropLegacyInstancePools() &&
 			    (g_mechPreviewRenderDepth == 0) &&
 			    GpuStaticPropBatcher::instance().isMultiShapeEligibleForGpuObjects(bldgShape))
 			{

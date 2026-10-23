@@ -604,6 +604,17 @@ const char* LookupModOwner(const char* dataPath) {
     return it->second.modId.c_str();
 }
 
+ModFileSource ResolveModFileSource(std::string_view dataPath) {
+    ModFileSource source{std::nullopt,g_activeModId.empty()};
+    const std::string logical(dataPath);
+    if (!ShouldSearchMods(logical.c_str())) return source;
+    const auto it = g_modIndex.find(NormalizeKey(logical.c_str()));
+    if (it == g_modIndex.end() || _access(it->second.path.c_str(),4) != 0) return source;
+    source.path = it->second.path;
+    source.editable = it->second.modId == g_activeModId;
+    return source;
+}
+
 // No-ops — mod is selected at launcher time, not at campaign-select time.
 // Kept for call-site compatibility in logisticsdata.cpp / logisticsdialog.cpp / mission.cpp.
 void ActivateCampaignMod(const char* /*campaignFitName*/) {}

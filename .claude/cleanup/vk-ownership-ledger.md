@@ -32,19 +32,22 @@ code and the proof of a finished conversion, not a leak detector.
 | light_feed | 2 | 0 | 0 | +0 | 0 | - |
 | context | 2 | 1 | 1 | +0 | 2 | - |
 | textures | 2 | 0 | 0 | +0 | 0 | - |
+| render_infra | 2 | 10 | 11 | -1 | 21 | Pipeline 4/6, PipelineCache 2/1 |
 
-Total over all islands: created 1, released 1, imbalance +0.
+Total over all islands: created 11, released 12, imbalance -1.
 
 ## Files
 
 | File | Created | Released | Imbalance |
 |---|---:|---:|---:|
 | `vulkan_context.cpp` | 1 | 1 | +0 |
+| `vk_render_infra.cpp` | 10 | 11 | -1 |
 
 ## Conversion order
 
 Converted (the shared context is the root owner of the instance, device and allocator and is not an island): color_prop, image_resource, legacy_shape, light_feed, mech, post_fog, post_hzb, post_screenfx, post_ssao, present, shadow, shared_scene, sky, terrain, textures, vfx, water. Remaining, smallest hand-written footprint first (the batch list of the ownership rewrite):
 
+1. render_infra (21 manual tokens)
 
 ## Owner types (`vk_owned.h/.cpp`)
 
@@ -58,10 +61,9 @@ Release tokens inside the destructors of the owner types: every one runs once, f
 | DescriptorSetLayout | 1 |
 | Fence | 1 |
 | Framebuffer | 1 |
-| Image | 2 |
+| Image | 3 |
 | ImageView | 1 |
 | Memory | 1 |
-| Pipeline | 1 |
 | PipelineLayout | 1 |
 | QueryPool | 1 |
 | RenderPass | 1 |

@@ -1270,7 +1270,7 @@ TEST_CASE("render option keys are unique and findable") {
     CHECK(mo::find("NotAnOption") == nullptr);
     CHECK(mo::find("cpuphongretire") == mo::find("CpuPhongRetire"));   // keys are case-insensitive like options.cfg
     CHECK(mo::find("PostCAS") != mo::find("PostCASSharpness"));
-    CHECK(mo::kOptionCount == 15);
+    CHECK(mo::kOptionCount == 16);
 }
 
 TEST_CASE("render option values outside their bounds, NaN and garbage are rejected and change nothing") {
@@ -1476,7 +1476,7 @@ TEST_CASE("the render options serialize as one JSON object of all option values 
     namespace mo = mc2::options;
     mo::RenderOptions o{};
     const std::string d = mo::toJson(o);
-    CHECK(d.rfind("{\"PostCAS\": false, \"PostCASSharpness\": 0.5, \"TonemapMode\": 0, \"ShadowQuality\": 2", 0) == 0);
+    CHECK(d.rfind("{\"PostCAS\": false, \"PostCASSharpness\": 0.5, \"TonemapMode\": 0, \"SpatialAA\": 1, \"ShadowQuality\": 2", 0) == 0);
     CHECK(d.find("\"StaticPropIblSunRotateFloor\": 0.45") != std::string::npos);
     CHECK(d.find("\"StaticPropPbr\": false") != std::string::npos);
     CHECK(d.back() == '}');
@@ -1506,7 +1506,7 @@ vkp::DeviceCaps fullCaps() {
     c.timelineSemaphore = c.bufferDeviceAddress = c.descriptorIndexing = c.runtimeDescriptorArray = true;
     c.shaderSampledImageArrayNonUniformIndexing = c.descriptorBindingPartiallyBound = true;
     c.dynamicRendering = c.synchronization2 = true;
-    c.independentBlend = true;
+    c.independentBlend = c.samplerAnisotropy = true;
     c.maxImageDimension2D = 16384;
     c.maxBoundDescriptorSets = 32;
     c.maxPushConstantsSize = 256;
@@ -1687,15 +1687,26 @@ TEST_CASE("vk profile: the memory-budget extension is optional: reported when mi
     CHECK(vkp::evaluate(fullCaps(), true).missingWanted.empty());
 }
 
+TEST_CASE("vk profile: vegetation anisotropy is optional and never raises the hardware floor") {
+    auto caps = fullCaps();
+    caps.samplerAnisotropy = false;
+    const auto missing = vkp::evaluate(caps, true);
+    CHECK(missing.accepted);
+    CHECK(missing.missingRequired.empty());
+    CHECK(hasId(missing.missingWanted, "sampler_anisotropy"));
+    CHECK_FALSE(vkp::featureEnabled(missing, "samplerAnisotropy"));
+    CHECK(vkp::featureEnabled(vkp::evaluate(fullCaps(), true), "samplerAnisotropy"));
+}
+
 TEST_CASE("vk profile: the line names the device, both versions, what is missing and what is enabled") {
     const vkp::DeviceCaps c = fullCaps();
     const vkp::Evaluation e = vkp::evaluate(c, true);
     const std::string line = vkp::formatLine("AMD Radeon RX 7900 XTX", c, e);
     CHECK(line == "[VK_PROFILE v1] verdict=ok device=\"AMD Radeon RX 7900 XTX\" api=1.4.0 instance_api=1.3.0 floor=1.2 required_missing=- wanted_missing=- "
                   "items=api_1_2:core,swapchain:ext,limits:limit,timeline_semaphore:core,buffer_device_address:core,descriptor_indexing:core,"
-                  "dynamic_rendering:core,synchronization2:core,independent_blend:core,memory_budget:ext enabled=timelineSemaphore,bufferDeviceAddress,"
+                  "dynamic_rendering:core,synchronization2:core,independent_blend:core,memory_budget:ext,sampler_anisotropy:core enabled=timelineSemaphore,bufferDeviceAddress,"
                   "descriptorIndexing,runtimeDescriptorArray,shaderSampledImageArrayNonUniformIndexing,descriptorBindingPartiallyBound,dynamicRendering,"
-                  "synchronization2,independentBlend "
+                  "synchronization2,independentBlend,samplerAnisotropy "
                   "extensions=VK_KHR_swapchain,VK_EXT_memory_budget");
     CHECK(vkp::floorText() == "1.2");                                   // the line states the floor of the table it was evaluated against
     const vkp::Evaluation lacking = vkp::evaluate(device12Caps(false), true);
@@ -1854,4 +1865,20 @@ TEST_CASE("MC2_RENDER_BACKEND text: gl/GL is the removed backend, a typo is flag
 	CHECK(mc2::backendRequestFromText("GL") == BackendRequest::RemovedGl);
 	for (const char* typo : {"opengl", "Vulkan", "Gl", "gl "})
 		CHECK(mc2::backendRequestFromText(typo) == BackendRequest::Unrecognized);
+}
+
+TEST_CASE("spatial AA defaults on and all four modes round-trip through options.cfg") {
+    namespace mo = mc2::options;
+    CHECK(mo::RenderOptions{}.spatialAA == 1);
+    const auto& option = *mo::find("SpatialAA");
+    for (int mode = 0; mode <= 3; ++mode) {
+        const std::string cfg = mo::cfg::set("[MechCommander2]\nFITend\n", option, std::to_string(mode));
+        mo::RenderOptions loaded;
+        CHECK(mo::cfg::loadFromText(loaded, cfg) == 1);
+        CHECK(loaded.spatialAA == mode);
+    }
+    mo::RenderOptions loaded;
+    CHECK(mo::setFromText(loaded, option, "4") == mo::Verdict::OutOfRange);
+    CHECK(mo::setFromText(loaded, option, "-1") == mo::Verdict::OutOfRange);
+    CHECK(loaded.spatialAA == 1);
 }

@@ -46,8 +46,11 @@
 #include "vulkan_mover_shadow.h"
 #include "vulkan_shadow_island_live.h"
 #include "texture_decode.h"
+#include "../../RenderCore/KtxLoader.h"
 #include "ui_texture.h"
 #include "vk_texture_residency.h"
+#include "vk_vegetation_state.h"
+#include "vk_vegetation_ground.h"
 
 #include <tracy/Tracy.hpp>   // VK-ISLAND-TRACY-1: per-frame CPU attribution zones
 
@@ -59,6 +62,7 @@
 #include <cstdint>
 #include <cstddef>   // offsetof (M2 layout asserts)
 #include <memory>
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -79,7 +83,7 @@ struct VfxIslandHealth {
     unsigned long nativeMeshDraws = 0, nativeTubeDraws = 0, nativeVegetationDraws = 0;
 };
 VfxIslandHealth g_health;
-GosTexels vegetationAtlas;
+std::shared_ptr<const mc2tex::TextureArrayCpu> vegetationAtlas;
 
 void setFallback(const char* reason) {
     std::strncpy(g_health.fallbackReason, reason ? reason : "",
@@ -149,17 +153,22 @@ struct VfxIsland : mc2vk::IslandState {
     // submit completed.
     VkDescriptorSet  set[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE};
     VkBuffer         ringBound[2][2] = {};
-    mc2vk::OwnedShaderModule vert, frag;
+    mc2vk::OwnedShaderModule vert, frag, vegFrag;
     mc2vk::OwnedSampler samp;
     mc2vk::OwnedSampler vegetationSampler;
+    mc2vk::ResidentTextureRef vegetationTexture;
+    std::shared_ptr<const mc2tex::TextureArrayCpu> loadedVegetation;
     mc2vk::OwnedDescriptorSetLayout spriteDsl;
     mc2vk::OwnedDescriptorPool spritePool;
     std::unordered_map<uint64_t, SpritePage> pages; // keyed on full service identity, never a mutable gos name
+    mc2veg::GroundLighting groundLighting;
     mc2vk::OwnedPipelineLayout playout;
     mc2vk::OwnedPipeline alphaPipe;
     mc2vk::OwnedPipeline addPipe;
     mc2vk::OwnedPipeline vegetationPipe;
-    mc2vk::OwnedPipeline oneOnePipe;   // GL OneOne: (ONE, ONE), alpha ignored
+    mc2vk::OwnedShaderModule vegVert;        // vfx_vegetation.vert: reads the GPU cull's survivor list
+    mc2vk::OwnedPipelineLayout vegLayout;    // set 0 ring, set 1 atlas page, set 2 the vegetation state's draw set
+    mc2vk::OwnedPipeline oneOnePipe;  // GL OneOne: (ONE, ONE), alpha ignored
     mc2vk::OwnedCommandPool cpool;
     VkCommandBuffer  cbuf[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE};   // one per parity slot
     uint64_t         ticket[2] = {0, 0};                           // timeline value of the slot's last submit (0 = never submitted)
@@ -183,34 +192,57 @@ void write_ring_bindings(VfxIsland* s, uint32_t par, VkBuffer buf, VkDeviceSize 
     }
 }
 
+uint64_t white_texture_id(mc2vk::VulkanContext& ctx) {
+    static const auto white = std::make_shared<const std::vector<uint8_t>>(4, 255u);
+    return ctx.textures().legacyUiId(0, 1, 1, VK_FORMAT_R8G8B8A8_UNORM, white);
+}
+
 // Resolve after this parity's ticket retires. New/changed pages keep the other flight untouched.
-const SpritePage* get_page(VfxIsland* s,uint32_t handle,uint32_t par) {
-    if (handle==0xffffffffu) return nullptr;
+std::optional<VkDescriptorSet> get_page(VfxIsland* s,uint32_t handle,uint32_t par) {
+    if (handle==0xffffffffu) return std::nullopt;
     auto& ctx=mc2vk::getOrCreateEngineVulkanContext();
     uint64_t id=0;
     if (handle==kVfxVegetationAtlas) {
-        if (vegetationAtlas.status!=GosTexels::Status::Ready || !vegetationAtlas.bytes) return nullptr;
-        id=ctx.textures().legacyUiId(handle,vegetationAtlas.width,vegetationAtlas.height,
-            mc2vk::texelFormat(vegetationAtlas.vkFormat),vegetationAtlas.bytes);
+        if (!vegetationAtlas) return std::nullopt;
+        if (s->loadedVegetation != vegetationAtlas) {
+            RenderCore::KtxImage image;
+            image.width = int(vegetationAtlas->width); image.height = int(vegetationAtlas->height);
+            image.vkFormat = vegetationAtlas->vkFormat; image.mipCount = int(vegetationAtlas->levels.size());
+            image.isCompressed = image.vkFormat == mc2tex::kVkFormatBc7Unorm;
+            image.blockSizeBytes = image.isCompressed ? 16 : 0;
+            for (const auto& level : vegetationAtlas->levels) {
+                image.mipByteOffsets.push_back(image.pixels.size());
+                image.pixels.insert(image.pixels.end(), level.begin(), level.end());
+            }
+            RenderCore::TextureKey key;
+            key.source = RenderCore::makeTextureSourceId("vegetation:P2", "cards",
+                RenderCore::textureContentHash(image.pixels.data(), image.pixels.size()));
+            key.format = image.vkFormat; key.hints = gosHint_MipmapFilter0;
+            const uint32_t width = vegetationAtlas->width, height = vegetationAtlas->height;
+            s->vegetationTexture = ctx.textures().acquire(key, image, {width, height, width, height}, 8, true);
+            if (!s->vegetationTexture) return std::nullopt;
+            s->loadedVegetation = vegetationAtlas;
+            vlog("vegetation_cards layers=8 mips=%d depth_write=1 cutoff=0.5", image.mipCount);
+        }
+        id = RenderCore::uiTextureId(s->vegetationTexture.get());
     } else if (handle==0) {
-        static const auto white=std::make_shared<const std::vector<uint8_t>>(4,255u);
-        id=ctx.textures().legacyUiId(0,1,1,VK_FORMAT_R8G8B8A8_UNORM,white);
+        id=white_texture_id(ctx);
     } else id=gos_GetUiTextureId(handle);
-    if (!id) return nullptr;
+    if (!id) return std::nullopt;
     const uint64_t frame=ctx.tracker().frameNo();
     auto it=s->pages.find(id);
     if (it==s->pages.end()) {
         SpritePage page;
         if (s->pages.size()>=kMaxSpritePages) {
             auto victim=std::min_element(s->pages.begin(),s->pages.end(),[](const auto& a,const auto& b){return a.second.lastUsedFrame<b.second.lastUsedFrame;});
-            if (victim==s->pages.end() || victim->second.lastUsedFrame==frame) return nullptr;
+            if (victim==s->pages.end() || victim->second.lastUsedFrame==frame) return std::nullopt;
             page=victim->second; page.bound[0]=page.bound[1]=VK_NULL_HANDLE;
             s->pages.erase(victim);
         } else {
             const VkDescriptorSetLayout layouts[2]={s->spriteDsl.get(),s->spriteDsl.get()};
             VkDescriptorSetAllocateInfo alloc{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO};
             alloc.descriptorPool=s->spritePool.get();alloc.descriptorSetCount=2;alloc.pSetLayouts=layouts;
-            if (vkAllocateDescriptorSets(s->device,&alloc,page.set)!=VK_SUCCESS) return nullptr;
+            if (vkAllocateDescriptorSets(s->device,&alloc,page.set)!=VK_SUCCESS) return std::nullopt;
         }
         it=s->pages.emplace(id,page).first;
         vlog("sprite page identity: source=%u texture=%llu (%zu/%u).",handle,static_cast<unsigned long long>(id),s->pages.size(),kMaxSpritePages);
@@ -225,7 +257,7 @@ const SpritePage* get_page(VfxIsland* s,uint32_t handle,uint32_t par) {
         write.descriptorType=VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;write.pImageInfo=&image;
         vkUpdateDescriptorSets(s->device,1,&write,0,nullptr);page.bound[par]=view;
     }
-    page.lastUsedFrame=frame;return &page;
+    page.lastUsedFrame=frame;return page.set[par];
 }
 
 // VfxDrawGroup::additive values (LOCKSTEP with ADDITIVE_* in shaders/vulkan/vfx_particle.vert).
@@ -248,7 +280,7 @@ mc2vk::OwnedPipeline make_pipeline(VfxIsland* s, int w, int h, bool additive, bo
     VkPipelineDepthStencilStateCreateInfo ds{};
     ds.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
     ds.depthTestEnable = VK_TRUE;
-    ds.depthWriteEnable = VK_FALSE;
+    ds.depthWriteEnable = vegetation ? VK_TRUE : VK_FALSE;
     ds.depthCompareOp = vegetation ? VK_COMPARE_OP_GREATER : VK_COMPARE_OP_GREATER_OR_EQUAL;
     // color0: straight-alpha (FS emits straight rgb,a; src-alpha factor premults in HW).
     //   alpha    = SRC_ALPHA / ONE_MINUS_SRC_ALPHA  (GL alpha groups)
@@ -275,19 +307,19 @@ mc2vk::OwnedPipeline make_pipeline(VfxIsland* s, int w, int h, bool additive, bo
     vps.viewportCount = 1; vps.pViewports = &vp; vps.scissorCount = 1; vps.pScissors = &scissor;
     VkPipelineShaderStageCreateInfo stages[2]{};
     stages[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    stages[0].stage = VK_SHADER_STAGE_VERTEX_BIT; stages[0].module = s->vert.get(); stages[0].pName = "main";
+    stages[0].stage = VK_SHADER_STAGE_VERTEX_BIT; stages[0].module = vegetation ? s->vegVert.get() : s->vert.get(); stages[0].pName = "main";
     stages[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    stages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT; stages[1].module = s->frag.get(); stages[1].pName = "main";
+    stages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT; stages[1].module = vegetation ? s->vegFrag.get() : s->frag.get(); stages[1].pName = "main";
     VkGraphicsPipelineCreateInfo gp{};
     gp.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
     gp.stageCount = 2; gp.pStages = stages;
     gp.pVertexInputState = &vin; gp.pInputAssemblyState = &ia;
     gp.pViewportState = &vps; gp.pRasterizationState = &rs;
     gp.pMultisampleState = &ms; gp.pDepthStencilState = &ds; gp.pColorBlendState = &cb;
-    gp.layout = s->playout.get(); gp.renderPass = s->rpass.get(); gp.subpass = 0;
+    gp.layout = vegetation ? s->vegLayout.get() : s->playout.get(); gp.renderPass = s->rpass.get(); gp.subpass = 0;
     mc2vk::OwnedPipeline pipe;
-    if (!mc2vk::create(pipe, s->device, [&](VkPipeline* out) { return vkCreateGraphicsPipelines(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, out); })) {
-        vlog("vkCreateGraphicsPipelines(%s) failed.", additive ? "additive" : "alpha");
+    if (!mc2vk::create(pipe, s->device, [&](VkPipeline* out) { return mc2vk::infra::graphics(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, out); })) {
+        vlog("mc2vk::infra::graphics(%s) failed.", additive ? "additive" : "alpha");
         return {};
     }
     mc2vk::nameObject(s->device, pipe.get(), additive ? "vfx.pipe.additive" : "vfx.pipe.alpha");
@@ -361,12 +393,13 @@ bool init_island(VfxIsland* s, int w, int h) {
         deps[0].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
         deps[0].dstStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
         deps[0].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT |
-                                VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
+                                VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
         deps[1].srcSubpass = 0; deps[1].dstSubpass = VK_SUBPASS_EXTERNAL;
-        deps[1].srcStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-        deps[1].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-        deps[1].dstStageMask  = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
-        deps[1].dstAccessMask = 0;
+        deps[1].srcStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+        deps[1].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+        deps[1].dstStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+        deps[1].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT |
+                                VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
         VkRenderPassCreateInfo rpci{};
         rpci.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
         rpci.attachmentCount = 3; rpci.pAttachments = att;
@@ -418,7 +451,8 @@ bool init_island(VfxIsland* s, int w, int h) {
     {
         s->vert = mc2vk::OwnedShaderModule(s->device, load_spv(s->device, spv_dir() + "vfx_particle.vert.spv"));
         s->frag = mc2vk::OwnedShaderModule(s->device, load_spv(s->device, spv_dir() + "vfx_particle.frag.spv"));
-        if (!s->vert || !s->frag) { setFallback("spv_load_failed"); return false; }
+        s->vegFrag = mc2vk::OwnedShaderModule(s->device, load_spv(s->device, spv_dir() + "vfx_vegetation.frag.spv"));
+        if (!s->vert || !s->frag || !s->vegFrag) { setFallback("spv_load_failed"); return false; }
         // Sprite pages: set 1 = one combined sampler (LINEAR, no mips -- the FS samples level 0 like the GL path).
         VkSamplerCreateInfo sci{};
         sci.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
@@ -427,7 +461,13 @@ bool init_island(VfxIsland* s, int w, int h) {
         sci.addressModeU = sci.addressModeV = sci.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
         if (!mc2vk::create(s->samp, s->device, [&](VkSampler* o) { return vkCreateSampler(s->device, &sci, nullptr, o); })) { vlog("vkCreateSampler failed."); return false; }
         sci.magFilter = sci.minFilter = VK_FILTER_LINEAR;
-        sci.addressModeU = sci.addressModeV = sci.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+        sci.addressModeU = sci.addressModeV = sci.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        sci.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+        sci.maxLod = VK_LOD_CLAMP_NONE;
+        VkPhysicalDeviceProperties vegetationProps{};
+        vkGetPhysicalDeviceProperties(s->phys, &vegetationProps);
+        sci.anisotropyEnable = mc2vk::profile::featureEnabled(ctx.profile(), "samplerAnisotropy") ? VK_TRUE : VK_FALSE;
+        sci.maxAnisotropy = std::min(8.0f, vegetationProps.limits.maxSamplerAnisotropy);
         if (!mc2vk::create(s->vegetationSampler, s->device, [&](VkSampler* o) { return vkCreateSampler(s->device, &sci, nullptr, o); })) return false;
 
         VkDescriptorSetLayoutBinding sb{};
@@ -451,6 +491,19 @@ bool init_island(VfxIsland* s, int w, int h) {
         const VkPushConstantRange pcr{ VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(VfxGroupPush) };
         plci.pushConstantRangeCount = 1; plci.pPushConstantRanges = &pcr;
         if (!mc2vk::create(s->playout, s->device, [&](VkPipelineLayout* o) { return vkCreatePipelineLayout(s->device, &plci, nullptr, o); })) { vlog("vkCreatePipelineLayout failed."); return false; }
+        {
+            // Vegetation: its own vertex shader and a third descriptor set (the GPU-resident population and survivor list).
+            mc2veg::State& veg = mc2veg::State::instance();
+            if (!veg.ensureDrawLayout(ctx)) { setFallback("vegetation_draw_layout_failed"); return false; }
+            s->vegVert = mc2vk::OwnedShaderModule(s->device, load_spv(s->device, spv_dir() + "vfx_vegetation.vert.spv"));
+            if (!s->vegVert) { setFallback("spv_load_failed"); return false; }
+            if (!s->groundLighting.init(s->device)) return false;
+            const VkDescriptorSetLayout vegHandles[4] = { s->dsl.get(), s->spriteDsl.get(), veg.drawLayout(), s->groundLighting.layout() };
+            VkPipelineLayoutCreateInfo vlci{};
+            vlci.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+            vlci.setLayoutCount = 4; vlci.pSetLayouts = vegHandles;
+            if (!mc2vk::create(s->vegLayout, s->device, [&](VkPipelineLayout* o) { return vkCreatePipelineLayout(s->device, &vlci, nullptr, o); })) { vlog("vkCreatePipelineLayout(vegetation) failed."); return false; }
+        }
         s->vegetationPipe = make_pipeline(s, w, h, false, false, true);
         s->alphaPipe = make_pipeline(s, w, h, /*additive=*/false);
         s->addPipe   = make_pipeline(s, w, h, /*additive=*/true);
@@ -478,12 +531,76 @@ bool init_island(VfxIsland* s, int w, int h) {
     return true;
 }
 
+// The island lives in the engine context's slot: the context releases it ahead of the device whatever path ends the process. Returns the ready island,
+// or nullptr when it is not available this frame (init failed, or an earlier failure disabled it).
+VfxIsland* acquire_island(int w, int h) {
+    mc2vk::VulkanContext& slotCtx = mc2vk::getOrCreateEngineVulkanContext();
+    std::unique_ptr<mc2vk::IslandState>& slot = slotCtx.islandSlot(mc2vk::IslandSlot::Vfx);
+    if (slot) {
+        const VfxIsland* parked = static_cast<const VfxIsland*>(slot.get());
+        if (parked->w != w || parked->h != h) slotCtx.retireIsland(mc2vk::IslandSlot::Vfx);
+    }
+    if (!slot) {
+        auto fresh = std::make_unique<VfxIsland>();
+        if (!init_island(fresh.get(), w, h)) {
+            vlog("init failed (%s) -- VFX declined this frame.", g_health.fallbackReason);
+            slotCtx.waitIdle("vfx_init_failure");   // objects made before the failure may have been submitted
+            return nullptr;
+        }
+        slot = std::move(fresh);
+    }
+    VfxIsland* s = static_cast<VfxIsland*>(slot.get());
+    return (s->disabled || !s->inited) ? nullptr : s;
+}
+
+// The frame constants every VFX draw reads (set 0 binding 0). A missing camera basis defaults to the identity axes.
+void fill_frame_params(void* dst, const float* worldToClipGL, const float* camRight, const float* camUp) {
+    VfxVsParams up{};
+    std::memcpy(up.worldToClipGL, worldToClipGL, sizeof(up.worldToClipGL));
+    if (camRight) { up.camRight[0]=camRight[0]; up.camRight[1]=camRight[1]; up.camRight[2]=camRight[2]; }
+    if (camUp)    { up.camUp[0]=camUp[0];       up.camUp[1]=camUp[1];       up.camUp[2]=camUp[2]; }
+    else          { up.camUp[1]=1.0f; }
+    if (!camRight) up.camRight[0]=1.0f;
+    std::memcpy(dst, &up, sizeof(up));
+}
+
+// Both draw paths borrow current shadow resources only after this parity retires.
+bool prepare_shadow_descriptors(VfxIsland* s, uint32_t par) {
+    if (!mc2vk::bindMoverShadowDescriptors(s->device,s->set[par])) return false;
+    // The white page is a valid fallback while the bake is pending. This set
+    // has retired its prior submission, so changing borrowed views is safe.
+    auto& ctx = mc2vk::getOrCreateEngineVulkanContext();
+    const uint64_t whiteId = white_texture_id(ctx);
+    if (!whiteId) return false;
+    const VkImageView white = ctx.textures().view(RenderCore::uiTextureHandle(whiteId));
+    if (!white) return false;
+    const VkImageView mask = mc2_vk_shadow_island_bake_ready()
+        ? reinterpret_cast<VkImageView>(mc2_vk_shadow_island_get_bake_mask_view()) : white;
+    const VkDescriptorImageInfo image{s->samp.get(),mask,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
+    VkWriteDescriptorSet write{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
+    write.dstSet=s->set[par]; write.dstBinding=17; write.descriptorCount=1;
+    write.descriptorType=VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; write.pImageInfo=&image;
+    vkUpdateDescriptorSets(s->device,1,&write,0,nullptr);
+    return true;
+}
+
 }  // namespace
 
 // ===========================================================================
 // PUBLIC ENTRY POINTS
 // ===========================================================================
 extern "C" int mc2_vk_vfx_island_enabled() { return 1; }
+
+extern "C" int mc2_vk_vfx_island_prewarm(int w,int h) {
+    auto& ctx=mc2vk::getOrCreateEngineVulkanContext();
+    if(!ctx.valid() || w<=0 || h<=0) return 0;
+    auto& slot=ctx.islandSlot(mc2vk::IslandSlot::Vfx);
+    if(slot) return 1;
+    auto fresh=std::make_unique<VfxIsland>();
+    if(!init_island(fresh.get(),w,h)) { ctx.waitIdle("vfx_prewarm_failure"); return 0; }
+    slot=std::move(fresh);
+    return 1;
+}
 
 extern "C" int mc2_vk_vfx_island_run(
     const void* particles, uint32_t particleCount,
@@ -494,24 +611,9 @@ extern "C" int mc2_vk_vfx_island_run(
     if (w <= 0 || h <= 0 || worldToClipGL == nullptr) return 0;
     ZoneScopedN("VKIsl.Vfx.Run");   // VK-ISLAND-TRACY-1 per-call total (CPU)
 
-    // The island lives in the engine context's slot: the context releases it ahead of the device whatever path ends the process.
     mc2vk::VulkanContext& slotCtx = mc2vk::getOrCreateEngineVulkanContext();
-    std::unique_ptr<mc2vk::IslandState>& slot = slotCtx.islandSlot(mc2vk::IslandSlot::Vfx);
-    if (slot) {
-        const VfxIsland* parked = static_cast<const VfxIsland*>(slot.get());
-        if (parked->w != w || parked->h != h) slotCtx.retireIsland(mc2vk::IslandSlot::Vfx);
-    }
-    if (!slot) {
-        auto fresh = std::make_unique<VfxIsland>();
-        if (!init_island(fresh.get(), w, h)) {
-            vlog("init failed (%s) â€” VFX declined this frame.", g_health.fallbackReason);
-            slotCtx.waitIdle("vfx_init_failure");   // objects made before the failure may have been submitted
-            return 0;
-        }
-        slot = std::move(fresh);
-    }
-    VfxIsland* s = static_cast<VfxIsland*>(slot.get());
-    if (s->disabled || !s->inited) return 0;
+    VfxIsland* s = acquire_island(w, h);
+    if (!s) return 0;
 
     // Per-frame data goes into the engine frame ring: frame constants (UBO) then the whole particle array (64B/record), one span. The parity slot's last
     // submit must have completed before its command buffer and set are reused: a timeline ticket, not an island fence.
@@ -526,32 +628,13 @@ extern "C" int mc2_vk_vfx_island_run(
         ZoneScopedN("VKIsl.Vfx.Feed");   // VK-ISLAND-TRACY-1: particle staging
         std::memcpy(static_cast<uint8_t*>(span.ptr) + partOff, particles, static_cast<size_t>(needBytes));
     }
-    {
-        VfxVsParams up{};
-        std::memcpy(up.worldToClipGL, worldToClipGL, sizeof(up.worldToClipGL));
-        if (camRight) { up.camRight[0]=camRight[0]; up.camRight[1]=camRight[1]; up.camRight[2]=camRight[2]; }
-        if (camUp)    { up.camUp[0]=camUp[0];       up.camUp[1]=camUp[1];       up.camUp[2]=camUp[2]; }
-        else          { up.camUp[1]=1.0f; }
-        if (!camRight) up.camRight[0]=1.0f;
-        std::memcpy(span.ptr, &up, sizeof(up));
-    }
-    if (!mc2vk::bindMoverShadowDescriptors(s->device,s->set[par])) return 0;
-    // The white page is a valid fallback while the bake is pending. This set
-    // has retired its prior submission, so changing borrowed views is safe.
-    const auto* white = get_page(s,0,par);
-    if (!white || !white->bound[par]) return 0;
-    VkImageView mask = mc2_vk_shadow_island_bake_ready()
-        ? reinterpret_cast<VkImageView>(mc2_vk_shadow_island_get_bake_mask_view()) : white->bound[par];
-    const VkDescriptorImageInfo image{s->samp.get(),mask,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
-    VkWriteDescriptorSet write{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
-    write.dstSet=s->set[par]; write.dstBinding=17; write.descriptorCount=1;
-    write.descriptorType=VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; write.pImageInfo=&image;
-    vkUpdateDescriptorSets(s->device,1,&write,0,nullptr);
+    fill_frame_params(span.ptr, worldToClipGL, camRight, camUp);
+    if (!prepare_shadow_descriptors(s, par)) return 0;
     write_ring_bindings(s, par, span.buffer, span.range);
     const uint32_t dynOffsets[2] = {static_cast<uint32_t>(span.offset), static_cast<uint32_t>(span.offset + partOff)};
 
     // Resolve service pages after parity retirement; uploads stay asynchronous.
-    std::vector<const SpritePage*> groupPage(drawCount, nullptr);
+    std::vector<std::optional<VkDescriptorSet>> groupPage(drawCount);
     for (uint32_t gi = 0; gi < drawCount; ++gi) {
         if (draws[gi].count != 0 && (draws[gi].texture != 0 || draws[gi].atlasColumns == kVfxGeometryAtlas))
             groupPage[gi] = get_page(s, draws[gi].texture, par);
@@ -587,18 +670,13 @@ extern "C" int mc2_vk_vfx_island_run(
         if (d.count == 0) continue;
         if (static_cast<uint64_t>(d.start) + d.count > particleCount) continue;   // clamp bad ranges
         if (!groupPage[gi]) continue;   // no resident texture: skipped, as the GL path does
-        VkPipeline want = d.atlasColumns == kVfxVegetationAtlas ? s->vegetationPipe.get() : d.additive == VFX_ADD_ONE_ONE ? s->oneOnePipe.get() : d.additive == VFX_ADD_SRC_ALPHA ? s->addPipe.get() : s->alphaPipe.get();
-        if (want != bound) { vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, want); bound = want; }
-        vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 1, 1, &groupPage[gi]->set[par], 0, nullptr);
+        if (d.atlasColumns == kVfxVegetationAtlas) continue;   // vegetation draws through mc2_vk_vfx_vegetation_run
+        VkPipeline want = d.additive == VFX_ADD_ONE_ONE ? s->oneOnePipe.get() : d.additive == VFX_ADD_SRC_ALPHA ? s->addPipe.get() : s->alphaPipe.get();
+        if (want != bound) { mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, want); bound = want; }
+        vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 1, 1, &*groupPage[gi], 0, nullptr);
         const VfxGroupPush push{ {d.u0, d.v0}, {d.us, d.vs}, d.atlasColumns, d.additive == VFX_ADD_ONE_ONE ? 1u : 0u };
         vkCmdPushConstants(cb, s->playout.get(), VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(push), &push);
-        if (d.atlasColumns == kVfxVegetationAtlas) {
-            MC2_VK_GPU_SCOPE(vegetationScope, cb, "VKIsl.Vegetation");
-            vkCmdDraw(cb, 8u, d.count, 0u, d.start);
-            vkCmdDraw(cb, 8u, d.count, 8u, d.start);
-            groupsDrawn+=2;
-            vegetationDraws+=2;
-        } else {
+        {
             const uint32_t expansion = d.atlasColumns == kVfxGeometryAtlas ? 1u : 6u;
             vkCmdDraw(cb, d.count * expansion, 1, d.start * expansion, 0);
             ++groupsDrawn;
@@ -645,7 +723,87 @@ extern "C" int mc2_vk_vfx_island_run(
     return 1;
 }
 
-void mc2_vk_vfx_vegetation_atlas(const GosTexels& atlas) { vegetationAtlas = atlas; }
+// Vegetation: GPU cull (cull -> scan -> compact) and the two indirect strips, in this island's own command buffer and parity slot. Nothing per instance
+// crosses the CPU; the frame ring carries only the cull parameters and the block-visibility field.
+bool mc2_vk_vfx_vegetation_run(const mc2veg::CullParams& params, const float* worldToClipGL, std::span<const uint32_t> visibility, int w, int h) {
+    if (w <= 0 || h <= 0 || worldToClipGL == nullptr) return false;
+    if (!mc2veg::State::exists()) return false;
+    mc2veg::State& vegState = mc2veg::State::instance();
+    mc2veg::State* veg = &vegState;
+    if (!veg->ready()) return false;
+    const auto ground = mc2_vk_ground_lighting_frame();
+    if (!ground) return false;
+    ZoneScopedN("VKIsl.Vfx.Vegetation");
+    mc2vk::VulkanContext& slotCtx = mc2vk::getOrCreateEngineVulkanContext();
+    VfxIsland* s = acquire_island(w, h);
+    if (!s) return false;
+    const uint32_t par = s->nextSlot;
+    s->nextSlot ^= 1u;
+    if (!slotCtx.wait(mc2vk::GpuTicket{s->ticket[par], 0}, 5ull * 1000 * 1000 * 1000, "vfx_slot")) { setFallback("slot_timeout"); s->disabled = true; return false; }
+    const VkDeviceSize align = slotCtx.frameAlignment();
+    if (!prepare_shadow_descriptors(s, par)) return false;
+    s->groundLighting.copy(s->device, par, *ground);
+    const VkDeviceSize cullOff = mc2vk::alignUp(sizeof(VfxVsParams), align);
+    const VkDeviceSize visOff = mc2vk::alignUp(cullOff + sizeof(mc2veg::CullParams), align);
+    const mc2vk::FrameAlloc span = slotCtx.frameAlloc(visOff + std::max<VkDeviceSize>(visibility.size_bytes(), 16));
+    if (!span) { setFallback("frame_ring_alloc_failed"); s->disabled = true; return false; }
+    fill_frame_params(span.ptr, worldToClipGL, nullptr, nullptr);
+    write_ring_bindings(s, par, span.buffer, span.range);
+    const uint32_t dynOffsets[2] = {static_cast<uint32_t>(span.offset), static_cast<uint32_t>(span.offset + cullOff)};
+    const auto page = get_page(s, kVfxVegetationAtlas, par);
+    if (!page || s->disabled) return false;
+
+    VkCommandBuffer cb = s->cbuf[par];
+    vkResetCommandBuffer(cb, 0);
+    VkCommandBufferBeginInfo bi{};
+    bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+    if (vkBeginCommandBuffer(cb, &bi) != VK_SUCCESS) { setFallback("record_failed"); s->disabled = true; return false; }
+    vk_render_pass_timer::Begin(cb, gos_render_pass_timer::Pass_AlphaVfx);
+    vk_render_pass_timer::CancelUnlessSubmitted timerGuard(gos_render_pass_timer::Pass_AlphaVfx);
+    const bool culled = veg->record(slotCtx, cb, par, span, cullOff, visOff, params, visibility);
+    if (culled) {
+        VkClearValue clears[3]{};
+        VkRenderPassBeginInfo rbi{};
+        rbi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+        rbi.renderPass = s->rpass.get(); rbi.framebuffer = s->fb.get();
+        rbi.renderArea = {{0, 0}, {static_cast<uint32_t>(w), static_cast<uint32_t>(h)}};
+        rbi.clearValueCount = 3; rbi.pClearValues = clears;
+        MC2_VK_GPU_SCOPE(gpuScope, cb, "VKIsl.Vegetation");
+        vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
+        mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->vegetationPipe.get());
+        vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->vegLayout.get(), 0, 1, &s->set[par], 2, dynOffsets);
+        vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->vegLayout.get(), 1, 1, &*page, 0, nullptr);
+        const uint32_t drawDyn = veg->paramsDynamicOffset(par);
+        const VkDescriptorSet drawSet = veg->drawSet(par);
+        vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->vegLayout.get(), 2, 1, &drawSet, 1, &drawDyn);
+        const VkDescriptorSet groundSet = s->groundLighting.set(par);
+        vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->vegLayout.get(), 3, 1, &groundSet, 4, ground->offsets.data());
+        veg->drawIndirect(cb, par);
+        vkCmdEndRenderPass(cb);
+        gpuScope.end();
+    }
+    vk_render_pass_timer::End(cb, gos_render_pass_timer::Pass_AlphaVfx);
+    if (vkEndCommandBuffer(cb) != VK_SUCCESS) { setFallback("record_failed"); s->disabled = true; return false; }
+    if (!culled) return false;
+
+    VkSubmitInfo si{};
+    si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    si.commandBufferCount = 1; si.pCommandBuffers = &cb;
+    { ZoneScopedN("VKIsl.Vfx.Submit");
+      uint64_t value = 0;
+      if (slotCtx.submit(si, VK_NULL_HANDLE, &value) != VK_SUCCESS) { setFallback("submit_failed"); s->disabled = true; return false; }
+      s->ticket[par] = value; }
+    timerGuard.submitted();
+    if (!g_health.nativeVegetationDraws) vlog("native_geometry kind=vegetation gpu_cull=1 regions=%u instances=%u", veg->regionCount(), veg->instanceCount());
+    g_health.nativeVegetationDraws += 2;
+    ++g_health.usedVulkan;
+    return true;
+}
+
+void mc2_vk_vfx_vegetation_atlas(const mc2tex::TextureArrayCpu& atlas) {
+    vegetationAtlas = atlas.levels.empty() ? nullptr : std::make_shared<mc2tex::TextureArrayCpu>(atlas);
+}
 
 extern "C" void mc2_vk_vfx_island_destroy() {
     vlog("native_mesh_draws=%lu native_tube_draws=%lu native_vegetation_draws=%lu",

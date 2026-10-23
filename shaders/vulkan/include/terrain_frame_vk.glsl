@@ -14,11 +14,11 @@
 #include "terrain_frame_ubo_vk.glsl"
 #include "mover_shadow.glsl"
 
-layout(set = 0, binding = 2) uniform sampler2D u_colormap;
+layout(set = TERRAIN_RESOURCE_SET, binding = 2) uniform sampler2D u_colormap;
 // CEMENT/ROAD: the VK-owned copy-once import of the GL cement atlas (REPEAT sampler) +
 // the map-load snapshot of the GL per-vertex cement-word SSBO (GL binding 25).
-layout(set = 0, binding = 3) uniform sampler2D u_cementAtlas;
-layout(set = 0, binding = 4, std430) readonly buffer TerrainCementBuf {
+layout(set = TERRAIN_RESOURCE_SET, binding = 3) uniform sampler2D u_cementAtlas;
+layout(set = TERRAIN_RESOURCE_SET, binding = 4, std430) readonly buffer TerrainCementBuf {
     uint cementWordsF[];
 } uC;
 
@@ -34,15 +34,15 @@ struct PoolLight {
     float farDistance;
     float oneOverDistance;
     float _plPad1;         // >0.5 = mover-attached (producer flag)
-    float _plPad2;
+    float intensity;
 };
-layout(set = 0, binding = 11, std430) readonly buffer TerrainLightPoolVK {
+layout(set = TERRAIN_RESOURCE_SET, binding = 11, std430) readonly buffer TerrainLightPoolVK {
     PoolLight poolLights[];
 };
-layout(set = 0, binding = 12, std430) readonly buffer TerrainLightGridHeaderVK {
+layout(set = TERRAIN_RESOURCE_SET, binding = 12, std430) readonly buffer TerrainLightGridHeaderVK {
     uvec2 lightGridCells[];   // {firstIndex, count} per cell, row-major y*dim + x
 };
-layout(set = 0, binding = 13, std430) readonly buffer TerrainLightGridIndicesVK {
+layout(set = TERRAIN_RESOURCE_SET, binding = 13, std430) readonly buffer TerrainLightGridIndicesVK {
     uint  lightGridIndices[];
 };
 #define TLP_CEMENT_WORD(i) uC.cementWordsF[i]

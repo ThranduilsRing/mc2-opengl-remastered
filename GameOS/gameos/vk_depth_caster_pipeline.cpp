@@ -76,7 +76,7 @@ bool createDepthCasterPipeline(OwnedPipeline& out, VkDevice device, VkRenderPass
     info.layout = layout;
     info.renderPass = pass;
     info.subpass = 0;
-    return create(out, device, [&](auto* handle) { return vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &info, nullptr, handle); });
+    return create(out, device, [&](auto* handle) { return mc2vk::infra::graphics(device, VK_NULL_HANDLE, 1, &info, nullptr, handle); });
 }
 
 }  // namespace mc2vk

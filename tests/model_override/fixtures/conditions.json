@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "missions": {
+    "mc2_01": {
+      "*": "worn",
+      "hangar": "abandoned"
+    },
+    "mc2_10": {
+      "hangar": "pristine"
+    },
+    "mc2_17": {
+      "hangar": "derelict"
+    }
+  }
+}

@@ -75,7 +75,7 @@ def build_blender_cmd(blender_exe, script_path, args):
     Recipe args are passed after `--` as --key=value pairs; bool True becomes a
     bare flag, None/False keys are omitted.
     """
-    cmd = [str(blender_exe), "--background", "--factory-startup",
+    cmd = [str(blender_exe), "--background", "--factory-startup", "--disable-autoexec",
            "--python", str(Path(script_path).resolve()), "--"]
     for k, v in args.items():
         if v is None or v is False:

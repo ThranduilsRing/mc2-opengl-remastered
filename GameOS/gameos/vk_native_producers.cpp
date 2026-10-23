@@ -50,18 +50,12 @@ bool NativeProducers::makeDevice(OwnedBuffer& buf, VkDeviceSize size, VkBufferUs
     return true;
 }
 
-bool NativeProducers::init(const VulkanContext& ctx, uint32_t numVertices, uint32_t recipeCount, VkBuffer recipes, uint32_t waterEligibleBound) {
-    ready_ = false;
+bool NativeProducers::prewarmPipelines(const VulkanContext& ctx) {
     ctx_ = &ctx;
     device_ = ctx.device();
     allocator_ = ctx.allocator();
-    numVertices_ = numVertices;
-    recipeCount_ = recipeCount;
-    recipes_ = recipes;
-    // Capacity follows the map: the cull emits only water-eligible quads, so the bound (not the recipe total) is what must fit.
-    maxThin_ = std::min<uint32_t>(recipeCount, std::clamp<uint32_t>(waterEligibleBound, kMaxThin, kMaxThinCeiling));
-    if (device_ == VK_NULL_HANDLE || !allocator_ || numVertices == 0 || recipeCount == 0 || recipes == VK_NULL_HANDLE) return false;
-
+    if (!device_ || !allocator_) return false;
+    if (lightP_ && cullP_ && argsP_ && lightSets_.set(kSlots-1) && cullSets_.set(kSlots-1) && argsSets_.set(kSlots-1)) return true;
     const std::string dir = vk_island_util::spvDir();
     const VkDescriptorType S = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, U = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     const VkDescriptorType SD = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, UD = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;   // frame-ring bindings
@@ -70,6 +64,17 @@ bool NativeProducers::init(const VulkanContext& ctx, uint32_t numVertices, uint3
     if (!argsP_.create(device_, dir + "water_draw_args.comp.spv", {{0, S}, {1, S}, {2, U}}, "producers.waterArgs")) return false;
     if (!lightSets_.create(device_, lightP_, kSlots, "producers.lightSets") || !cullSets_.create(device_, cullP_, kSlots, "producers.cullSets") ||
         !argsSets_.create(device_, argsP_, kSlots, "producers.argsSets")) return false;
+    return true;
+}
+
+bool NativeProducers::init(const VulkanContext& ctx, uint32_t numVertices, uint32_t recipeCount, VkBuffer recipes, uint32_t waterEligibleBound) {
+    ready_ = false;
+    numVertices_ = numVertices;
+    recipeCount_ = recipeCount;
+    recipes_ = recipes;
+    // Capacity follows the map: the cull emits only water-eligible quads, so the bound (not the recipe total) is what must fit.
+    maxThin_ = std::min<uint32_t>(recipeCount, std::clamp<uint32_t>(waterEligibleBound, kMaxThin, kMaxThinCeiling));
+    if (numVertices == 0 || recipeCount == 0 || recipes == VK_NULL_HANDLE || !prewarmPipelines(ctx)) return false;
 
     const VkBufferUsageFlags dst = VK_BUFFER_USAGE_TRANSFER_DST_BIT, src = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
     if (!makeDevice(lightOut_, static_cast<VkDeviceSize>(numVertices) * 8u, kStorage | dst | src, "producers.lightOut")) return false;
@@ -151,9 +156,9 @@ void refLight(const gos_terrain_lighting::GpuTerrainVertexInput& v, const gos_te
             if (len <= L.closeDistance) fo = 1.0f;
             else if (len >= L.farDistance) continue;
             else fo = (L.farDistance - len) * L.oneOverDistance;
-            sr = std::min(sr + static_cast<uint32_t>(L.color[0] * 255.0f * fo), 255u);
-            sg = std::min(sg + static_cast<uint32_t>(L.color[1] * 255.0f * fo), 255u);
-            sb = std::min(sb + static_cast<uint32_t>(L.color[2] * 255.0f * fo), 255u);
+            sr = std::min(sr + static_cast<uint32_t>(L.color[0] * L.intensity * 255.0f * fo), 255u);
+            sg = std::min(sg + static_cast<uint32_t>(L.color[1] * L.intensity * 255.0f * fo), 255u);
+            sb = std::min(sb + static_cast<uint32_t>(L.color[2] * L.intensity * 255.0f * fo), 255u);
         }
     }
     outLight = (0xFFu << 24) | (lr << 16) | (lg << 8) | lb;
@@ -213,7 +218,8 @@ uint32_t NativeProducers::selfTestLighting() {
         L.lightType = (i % 4) + 0u;   // includes type 0 (ignored)
         L.color[0] = rnd(); L.color[1] = rnd(); L.color[2] = rnd();
         L.closeDistance = rnd() * 30.0f; L.farDistance = L.closeDistance + 50.0f + rnd() * 500.0f; L.oneOverDistance = 1.0f / (L.farDistance - L.closeDistance);
-        L._pad1 = L._pad2 = 0.0f;
+        L._pad1 = 0.0f;
+        L.intensity = static_cast<float>(i % 5) * 0.25f;
     }
     VkTerrainLightingParams P{};
     P.counts[0] = static_cast<int32_t>(numVertices_); P.counts[1] = NL; P.counts[2] = kFirst; P.counts[3] = N;

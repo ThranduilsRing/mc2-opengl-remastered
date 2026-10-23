@@ -93,6 +93,7 @@
 
 // Graphics Options dialog controls (1500-1599).
 #define IDC_GRAPHICS           1500  // "Graphics..." button on main window
+inline constexpr int IDC_GFX_AA = 1590;
 #define IDC_GFX_OK             1501
 #define IDC_GFX_CANCEL         1502
 #define IDC_GFX_TEXPACK_BASE   1503  // texture-pack radios: +0=None +1..N=packs (up to TEXPACK_DLG_SLOTS)
@@ -302,6 +303,7 @@ static void UpdateForSelection();
 //   MC2_FPS_CAP         = "<N>" or unset
 //   MC2_VSYNC           = "1" or unset
 
+static int  s_gfxAA           = 1;   // SMAA 1x
 static int  s_gfxTexQual      = 2;   // default High (512px)
 static int  s_gfxShadQual     = 2;   // default High (8192)
 static bool s_gfxFrameCapOn   = false;
@@ -341,6 +343,7 @@ static const char* k_gfxPresetLabels[] = { "Low", "Medium", "High", "Ultra" };
 static HWND s_hGraphicsDlg = NULL;
 
 static void GfxSetDefaults() {
+    s_gfxAA           = 1;
     s_gfxTexQual      = 2;
     s_gfxShadQual     = 2;
     s_gfxFrameCapOn   = true;
@@ -837,6 +840,7 @@ static void LoadCfgRows() {
     mc2::options::RenderOptions options;
     mc2::options::cfg::loadFromText(options,text);
     s_gfxShadQual=options.shadowQuality;
+    s_gfxAA=options.spatialAA;
     for (int i = 0; i < k_envVarCount; i++) {
         if (!k_envVars[i].cfg) continue;
         const auto v = mc2::options::cfg::get(text, k_envVars[i].key);
@@ -864,6 +868,7 @@ static void SaveCfgRows() {
     if (before.empty()) return;
     std::string text = before;
     text=mc2::options::cfg::set(text,*mc2::options::find("ShadowQuality"),std::to_string(s_gfxShadQual));
+    text=mc2::options::cfg::set(text,*mc2::options::find("SpatialAA"),std::to_string(s_gfxAA));
 
     for (int i = 0; i < k_envVarCount; i++) {
         if (!k_envVars[i].cfg) continue;
@@ -1253,6 +1258,8 @@ static void GfxDialogReadControls(HWND hwnd) {
             s_gfxShadQual = i; break;
         }
     }
+    HWND hAA = GetDlgItem(hwnd, IDC_GFX_AA);
+    if (hAA) s_gfxAA = static_cast<int>(SendMessageA(hAA, CB_GETCURSEL, 0, 0));
     // Frame cap
     HWND hCk = GetDlgItem(hwnd, IDC_GFX_FRAMECAP_CHK);
     HWND hEd = GetDlgItem(hwnd, IDC_GFX_FRAMECAP_EDIT);
@@ -1380,6 +1387,15 @@ static LRESULT CALLBACK GraphicsDlgProc(HWND hwnd, UINT msg, WPARAM wParam, LPAR
         }
         y += 6;
 
+        HWND hAA = CreateWindowA("COMBOBOX", "", WS_CHILD | WS_VISIBLE | WS_TABSTOP | CBS_DROPDOWNLIST,
+            GFX_MARGIN + 8, y, GFX_DLG_W - 2*GFX_MARGIN - 8, 160,
+            hwnd, reinterpret_cast<HMENU>(static_cast<INT_PTR>(IDC_GFX_AA)), s_hInst, nullptr);
+        const char* aaLabels[] = {"Anti-aliasing: Off", "Anti-aliasing: SMAA 1x", "Anti-aliasing: FXAA", "Anti-aliasing: CMAA2"};
+        for (auto name : aaLabels) SendMessageA(hAA, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(name));
+        SendMessageA(hAA, WM_SETFONT, reinterpret_cast<WPARAM>(hFont), TRUE);
+        SendMessageA(hAA, CB_SETCURSEL, s_gfxAA, 0);
+        y += GFX_ROW_STEP + 6;
+
         // --- VRAM Estimator ---
         HWND hVramLbl = CreateWindowA("STATIC", "VRAM Estimate",
             WS_CHILD | WS_VISIBLE | SS_LEFT | WS_GROUP,
@@ -1491,6 +1507,7 @@ static LRESULT CALLBACK GraphicsDlgProc(HWND hwnd, UINT msg, WPARAM wParam, LPAR
         int pidx = (int)id - IDC_GFX_PRESET_BASE;
         if (pidx >= 0 && pidx < 4 && notif == BN_CLICKED) {
             const GfxPreset& p = k_gfxPresets[pidx];
+            SendDlgItemMessageA(hwnd, IDC_GFX_AA, CB_SETCURSEL, pidx == 0 ? 2 : 1, 0);
             for (int i = 0; i < 4; i++) {
                 HWND h = GetDlgItem(hwnd, IDC_GFX_TEXQUAL_BASE + i);
                 if (h) SendMessageA(h, BM_SETCHECK, (i == p.texQual) ? BST_CHECKED : BST_UNCHECKED, 0);
@@ -1518,6 +1535,7 @@ static LRESULT CALLBACK GraphicsDlgProc(HWND hwnd, UINT msg, WPARAM wParam, LPAR
         if (id == IDC_GFX_OK) {
             GfxDialogReadControls(hwnd);
             SaveGfxJson();
+            SaveCfgRows();
             DestroyWindow(hwnd);
             s_hGraphicsDlg = NULL;
         } else if (id == IDC_GFX_CANCEL) {
@@ -1580,6 +1598,7 @@ static void ShowGraphicsDialog(HWND owner) {
     contentH += GFX_SEC_STEP + 4 * GFX_ROW_STEP + 6;
     // Shadow Quality
     contentH += GFX_SEC_STEP + 3 * GFX_ROW_STEP + 6;
+    contentH += GFX_ROW_STEP + 6; // Spatial AA selector
     // VRAM Estimator
     contentH += GFX_SEC_STEP + GFX_VRAM_H + 6;
     // Frame Rate

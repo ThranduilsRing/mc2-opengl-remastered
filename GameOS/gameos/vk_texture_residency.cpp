@@ -149,6 +149,23 @@ std::shared_ptr<TextureResidency::Image> TextureResidency::upload(const RenderCo
         copies.push_back(copy); expected+=bytes;
     }
     if (expected!=image.pixels.size()) return {};
+    // Admit upload overlap as well as the resident image. Drop authored top mips before refusing;
+    // arrays retain their layer count and all copies use the reduced base extent.
+    if (!infra::admit(uint64_t(expected)*2 + 128*1024)) {
+        if (image.mipCount>1) {
+            RenderCore::KtxImage reduced=image;
+            const size_t skip=image.mipByteOffsets[1];
+            reduced.width=std::max(1u,w/2);
+            reduced.height=std::max(1u,h/2); --reduced.mipCount;
+            reduced.pixels.erase(reduced.pixels.begin(),reduced.pixels.begin()+skip);
+            reduced.mipByteOffsets.erase(reduced.mipByteOffsets.begin());
+            for(auto& offset:reduced.mipByteOffsets) offset-=skip;
+            std::fprintf(stderr,"[VK_RESIDENCY v1] texture_tier=%ux%u requested=%ux%u\n",reduced.width,reduced.height,w,h);
+            return upload(reduced,useMips,async,layers,arrayView);
+        }
+        std::fprintf(stderr,"[VK_RESIDENCY v1] texture_refused=%ux%u bytes=%zu\n",w,h,expected);
+        return {};
+    }
     OwnedBuffer staging;
     if (!staging.createFilled(ctx_.allocator(),ctx_.device(),image.pixels.data(),image.pixels.size(),VK_BUFFER_USAGE_TRANSFER_SRC_BIT,"texture.service.staging")) return {};
     auto resource=std::make_shared<Image>();

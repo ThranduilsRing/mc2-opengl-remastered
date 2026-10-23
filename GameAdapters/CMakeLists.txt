@@ -8,6 +8,7 @@ add_library(gameadapters STATIC
     MechRenderAdapter.cpp
     SkyRenderAdapter.cpp
     VegetationAdapter.cpp
+    MissionEnvironmentAdapter.cpp
 )
 
 target_link_libraries(gameadapters PUBLIC rendercore renderworld)

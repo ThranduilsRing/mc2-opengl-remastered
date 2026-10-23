@@ -4,7 +4,7 @@
 #pragma once
 
 static_assert(std::is_trivially_copyable<MechFrameUBO>::value, "MechFrameUBO must be trivially copyable");
-static_assert(sizeof(MechFrameUBO) == 208, "MechFrameUBO size must match std140 GLSL struct");
+static_assert(sizeof(MechFrameUBO) == 224, "MechFrameUBO size must match std140 GLSL struct");
 static_assert(offsetof(MechFrameUBO, worldToClipGL) == 0, "worldToClipGL offset");
 static_assert(offsetof(MechFrameUBO, objectDepthBias) == 64, "objectDepthBias offset");
 static_assert(offsetof(MechFrameUBO, materialReady) == 68, "materialReady offset");
@@ -18,3 +18,4 @@ static_assert(offsetof(MechFrameUBO, shadeC) == 144, "shadeC offset");
 static_assert(offsetof(MechFrameUBO, poolF) == 160, "poolF offset");
 static_assert(offsetof(MechFrameUBO, poolI) == 176, "poolI offset");
 static_assert(offsetof(MechFrameUBO, miscI) == 192, "miscI offset");
+static_assert(offsetof(MechFrameUBO, environmentAmbient) == 208, "environmentAmbient offset");

@@ -1,12 +1,9 @@
 #!/usr/bin/env python3
 """
-mc2asset.py — BLENDER-PIPELINE-UNIFY-1 thin dispatcher over the four
+mc2asset.py — BLENDER-PIPELINE-UNIFY-1 thin dispatcher over the
 blender_pipeline CLIs, all sharing srcdata.py resolution.
 
-    py -3 tools/blender_pipeline/mc2asset.py hd quonset
-    py -3 tools/blender_pipeline/mc2asset.py sweep --filter "tree*" --limit 5
     py -3 tools/blender_pipeline/mc2asset.py edit status quonset
-    py -3 tools/blender_pipeline/mc2asset.py tex quonset --dry-run
     py -3 tools/blender_pipeline/mc2asset.py list quon
 
 No logic here beyond argv forwarding — each subcommand's own main() does the
@@ -17,27 +14,18 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import asset_hd  # noqa: E402
 import asset_edit  # noqa: E402
-import sweep  # noqa: E402
-import tex_hd  # noqa: E402
 import srcdata  # noqa: E402
 
 USAGE = """usage: mc2asset.py SUBCOMMAND [ARGS...]
 
 subcommands:
-  hd ARGS...       forward to asset_hd.py (per-asset mesh upscale)
-  sweep ARGS...    forward to sweep.py (bulk category sweep)
   edit ARGS...     forward to asset_edit.py (open/status/export edit loop)
-  tex ARGS...      forward to tex_hd.py (per-asset texture upscale)
   list SUBSTRING   list stock asset names matching SUBSTRING (default: all)
 """
 
 DISPATCH = {
-    "hd": asset_hd.main,
-    "sweep": sweep.main,
     "edit": asset_edit.main,
-    "tex": tex_hd.main,
 }
 
 

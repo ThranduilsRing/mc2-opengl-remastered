@@ -1,3 +1,4 @@
+#include "vk_render_infra.h"
 // gos_crashbundle.cpp
 // See gos_crashbundle.h. Implementation notes:
 //   * Ring buffer uses a pre-allocated static 64 KiB byte region with a
@@ -625,6 +626,10 @@ static LONG WINAPI crashbundle_filter(EXCEPTION_POINTERS* ep)
 
         // 3) Write last_trace.txt
         write_ring_snapshot();
+#ifdef MC2_VULKAN_ISLAND
+        __try { mc2vk::infra::crashSnapshot(g_crash_folderA); }
+        __except(EXCEPTION_EXECUTE_HANDLER) { /* A damaged mapping must not prevent the CPU bundle. */ }
+#endif
 
         // 4) Write profile.json
         write_profile_json();

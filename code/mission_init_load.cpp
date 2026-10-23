@@ -1,3 +1,4 @@
+#include "../GameOS/gameos/vk_render_infra.h"
 // Mission: the second half of the Mission::init load sequence -- warriors and brains, movers and parts,
 // terrain objects, commanders, the HUD and the geometry finalize. The first half and the orchestrator are in mission_init.cpp.
 #include "mission_internal.h"
@@ -1006,5 +1007,8 @@ void Mission::initFinalizeGeometry() {
 	// land and GameMap are both stable by this point (terrain init + MOVE_readData
 	// both completed above). No-op when MC2_VEGETATION_CARDS is unset.
 	GameAdapters::Vegetation::missionLoaded(land, GameMap);
+#ifdef MC2_VULKAN_ISLAND
+    mc2PrewarmMissionPipelines();
+#endif
 }
 

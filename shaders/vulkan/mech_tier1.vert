@@ -71,6 +71,7 @@ bool GetFalloff(float len, vec3 fd, out float falloff) {
 
 // mech.vert calls calc_light with MC2_STATIC_PROP_LIGHTING defined -> the
 // numLights==0 early-return preserves base_light (not vec3(1)). Match that.
+#define MC2_ENVIRONMENT_AMBIENT
 //PORT-BEGIN:calc_light
 vec3 calc_light(int idx, vec3 normal, vec3 wpos, vec3 base_light, int sunAxisMc2Fix) {
     ObjectLights ld = uLights.light[idx];
@@ -82,7 +83,9 @@ vec3 calc_light(int idx, vec3 normal, vec3 wpos, vec3 base_light, int sunAxisMc2
         int lt = int(ld.light_dir[i].w);
         vec3 lc = ld.light_color[i].xyz;
         if (lt == TG_LIGHT_AMBIENT) {
+#ifndef MC2_ENVIRONMENT_AMBIENT
             ambient += lc;
+#endif
         } else if (lt == TG_LIGHT_INFINITE) {
             vec3 sd = (sunAxisMc2Fix != 0) ? mc2ToRender(ld.light_dir[i].xyz) : ld.light_dir[i].xyz;
             float ndl = clamp(dot(normal, -sd), 0.0, 1.0);
@@ -152,19 +155,20 @@ void main() {
     gl_Position = clip;
 
     // Per-vertex lighting — mech.vert:204-235 (u_lightingMode=1, lightsOut branch).
-    const float kAmbientFloor = 0.35;
+    vec3 environmentAmbient = uFrame.environmentAmbient.rgb
+        * mix(0.5, 1.0, clamp(worldNormal.z * 0.5 + 0.5, 0.0, 1.0));
     const uint  kRenderFlagLightsOut = 0x2u;
     bool lightsOut = (inst.renderFlags & kRenderFlagLightsOut) != 0u;
     vec3 baseLight;
     if (lightsOut) {
-        baseLight = vec3(kAmbientFloor);
+        baseLight = environmentAmbient;
     } else if (uFrame.lightingReady != 0) {
-        vec3 base = vec3(kAmbientFloor);
+        vec3 base = environmentAmbient;
         vec3 litRGB = calc_light(int(inst.lightDataIndex), worldNormal, worldMC2, base, uFrame.sunAxisMc2Fix);
         baseLight = clamp(litRGB + inst.aRGBHighlight.rgb * inst.aRGBHighlight.a, 0.0, 1.0);
     } else {
         // LightsData not yet copied — mirror mech.vert's Slice-A passthrough (flat white).
-        baseLight = clamp(vec3(1.0) + inst.aRGBHighlight.rgb * inst.aRGBHighlight.a, 0.0, 1.0);
+        baseLight = clamp(environmentAmbient + inst.aRGBHighlight.rgb * inst.aRGBHighlight.a, 0.0, 1.0);
     }
 
     vUv       = a_uv;

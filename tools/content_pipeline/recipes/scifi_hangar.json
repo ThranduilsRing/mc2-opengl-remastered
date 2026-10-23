@@ -1,0 +1,25 @@
+{
+  "mod_id": "cp-scifi-hangar",
+  "name": "Sci-fi building kit hangar through the content pipeline",
+  "description": "claude/scifi-building-kit mech_hangar_17 (procedural geometry, Cycles-baked base colour/normal/ORM) cooked through the IR; stock destroyed geometry.",
+  "out": "G:/mc2-assets/out/content-pipeline/cp-scifi-hangar",
+  "srcdata": "A:/Games/mc2-srcdata/tgl",
+  "texture_roots": ["G:/mc2-installs/mc2-win64-w1w2/data/tgl/128"],
+  "assets": [
+    {
+      "frontend": "gltf",
+      "id": "hangar",
+      "replaces": "staticProp:hangar",
+      "kind": "building",
+      "intact": "G:/mc2-assets/out/scifi-kit/mech_hangar_17/mech_hangar_17_lod0.glb",
+      "frame": "mc2_runtime",
+      "license": "original procedural geometry; ambientCG / Poly Haven CC0 detail",
+      "source_url": "local:tools/scifi_kit (claude/scifi-building-kit)",
+      "base_color": {"scifi_mech_hangar_17": "G:/mc2-assets/out/scifi-kit/mech_hangar_17/mech_hangar_17_basecolor.png"},
+      "classes": {"scifi_mech_hangar_17": {"class": "painted_metal", "roughness": 1.0, "metallic": 0.0}},
+      "texel_scale": 4,
+      "repair_inward_hull": true,
+      "destroyed": {"stock_ase": "hangardam"}
+    }
+  ]
+}

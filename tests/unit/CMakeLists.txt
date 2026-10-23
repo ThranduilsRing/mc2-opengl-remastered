@@ -29,6 +29,9 @@ get_filename_component(MC2_WORKTREE_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../.." ABS
 
 add_executable(mc2_tests
     test_main.cpp           # owns DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
+    test_mission_environment.cpp
+    ${MC2_WORKTREE_ROOT}/GameOS/gameos/visual_tuning_profile.cpp
+    ${MC2_WORKTREE_ROOT}/GameAdapters/MissionEnvironmentAdapter.cpp
     test_hashing.cpp
     test_projection.cpp     # currently scope-stopped; placeholder skipped case
     test_argb_pack.cpp
@@ -71,6 +74,7 @@ add_executable(mc2_tests
     test_save_pointer_pins.cpp  # SAVE-PTR-PIN-1: Gate closestObject and QueuedTacOrder marker are written as null (source pins)
     test_sim_identity.cpp   # SIM-IDENTITY-HASH-1: world-hash order/quantum kernel
     test_vulkan_contract.cpp  # VULKAN-CONTRACT-COVERAGE-1: descriptor-class coverage/consistency (offline)
+    test_veg_hardsurface.cpp  # VEG-CEMENT-1: cement coverage -> vegetation falloff curve, crack weeds, class-3 union (offline)
     test_hardpoint.cpp        # HARDPOINT-ID-SCHEMA-1: HardpointId join key + weapon-tag/damage-location link (offline)
     test_getweaponnode_adapter.cpp  # GETWEAPONNODE-HARDPOINT-ADAPTER-1: chooseWeaponNode() authoritative-with-fallback (offline)
     test_weapon_definition.cpp  # WEAPONDEF-SCHEMA-1: WeaponFacet (was WeaponDefinition) facets + WeaponId string-id identity + weaponFitsHardpoint join (offline)

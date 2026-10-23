@@ -1,0 +1,23 @@
+{
+  "defines": [],
+  "outputs": [],
+  "shader": "shaders/terrain_lod_chunk.tesc",
+  "ssbos": [],
+  "stage": "tesc",
+  "ubos": [
+    {
+      "binding": 0,
+      "members": [
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "u_cliffTessLevel",
+          "offset": 0,
+          "type": "float"
+        }
+      ],
+      "name": "gl_DefaultUniformBlock"
+    }
+  ],
+  "variant": "default"
+}

@@ -46,7 +46,7 @@ vec3 olp_objectPoolLight(vec3 worldPosMC2, int numPoolLights, int poolSoft,
             float t = clamp(falloff, 0.0, 1.0);
             falloff = t * t * (3.0 - 2.0 * t);
         }
-        vec3 plCol = poolLights[i].color;
+        vec3 plCol = poolLights[i].color * poolLights[i].intensity;
         if (mover) {
             plCol *= moverDim;
             if (moverMax != 0) {

@@ -1,0 +1,12 @@
+{
+  "schema_v": 1,
+  "mission": "mc2_01",
+  "_note": "Procedural wirefence override A/B: diag perimeter run (typeNum 441, pitch 42.667 per axis) near (3008,-1131), straight run (typeNum 440) near (2667,-1429). Day.",
+  "bookmarks": [
+    { "name": "fence_diag_close", "pos": [3008.0, -1131.0, 0.0], "rot": 45.0,   "proj": 18.0, "alt": 350.0,  "covers": ["static_prop", "fence"] },
+    { "name": "fence_diag_side",  "pos": [3008.0, -1131.0, 0.0], "rot": 135.0,  "proj": 18.0, "alt": 350.0,  "covers": ["static_prop", "fence"] },
+    { "name": "fence_diag_mid",   "pos": [2900.0, -1220.0, 0.0], "rot": 45.0,   "proj": 26.0, "alt": 800.0,  "covers": ["static_prop", "fence"] },
+    { "name": "fence_far",        "pos": [2900.0, -1000.0, 0.0], "rot": 45.0,   "proj": 40.0, "alt": 1800.0, "covers": ["static_prop", "fence", "far_lod"] },
+    { "name": "fence_straight",   "pos": [2667.0, -1429.0, 0.0], "rot": 45.0,   "proj": 18.0, "alt": 350.0,  "covers": ["static_prop", "fence"] }
+  ]
+}

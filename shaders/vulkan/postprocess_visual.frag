@@ -9,76 +9,34 @@ layout(set = 0, binding = 0) uniform sampler2D sceneTex;
 layout(set = 0, binding = 1) uniform usampler2D objectIdTex;
 
 layout(push_constant) uniform Params {
-    vec4 p0; // exposure, invW, invH, fxaaEnabled
-    vec4 p1; // fxaaSubpix, fxaaEdgeThreshold, fxaaEdgeThresholdMin, casEnabled
+    vec4 p0; // exposure, invW, invH, reserved
+    vec4 p1; // reserved.xyz, casEnabled
     vec4 p2; // viewMode, lowLightGain, lowLightTint.r, lowLightTint.g
     vec4 p3; // lowLightTint.b, engineIdxBase, casSharpness, tonemapMode
+    vec4 p4; // grade.rgb, vignette strength
+    vec4 p5; // shadows.rgb, top warmth strength
+    vec4 p6; // highlights.rgb, reserved
+    vec4 p7; // top warmth.rgb, reserved
 } u;
 
-float fxaaLuma(vec3 c) { return sqrt(dot(c, vec3(0.299, 0.587, 0.114))); }
-
-vec3 fxaaFilter(vec2 uv, vec2 rcp) {
-    vec3  rgbM  = texture(sceneTex, uv).rgb;
-    float lumaM = fxaaLuma(rgbM);
-    float lumaN = fxaaLuma(texture(sceneTex, uv + vec2(0.0, -rcp.y)).rgb);
-    float lumaS = fxaaLuma(texture(sceneTex, uv + vec2(0.0,  rcp.y)).rgb);
-    float lumaE = fxaaLuma(texture(sceneTex, uv + vec2( rcp.x, 0.0)).rgb);
-    float lumaW = fxaaLuma(texture(sceneTex, uv + vec2(-rcp.x, 0.0)).rgb);
-
-    float rangeMin = min(lumaM, min(min(lumaN, lumaS), min(lumaE, lumaW)));
-    float rangeMax = max(lumaM, max(max(lumaN, lumaS), max(lumaE, lumaW)));
-    float range    = rangeMax - rangeMin;
-
-    if (range < max(u.p1.z, rangeMax * u.p1.y))
-        return rgbM;
-
-    float lumaNW = fxaaLuma(texture(sceneTex, uv + vec2(-rcp.x, -rcp.y)).rgb);
-    float lumaNE = fxaaLuma(texture(sceneTex, uv + vec2( rcp.x, -rcp.y)).rgb);
-    float lumaSW = fxaaLuma(texture(sceneTex, uv + vec2(-rcp.x,  rcp.y)).rgb);
-    float lumaSE = fxaaLuma(texture(sceneTex, uv + vec2( rcp.x,  rcp.y)).rgb);
-
-    vec2 dir;
-    dir.x = -((lumaNW + lumaNE) - (lumaSW + lumaSE));
-    dir.y =  ((lumaNW + lumaSW) - (lumaNE + lumaSE));
-
-    float dirReduce = max((lumaNW + lumaNE + lumaSW + lumaSE) * 0.25 * (1.0 - u.p1.x), 1.0 / 128.0);
-    float rcpDirMin = 1.0 / (min(abs(dir.x), abs(dir.y)) + dirReduce);
-    const float SPAN_MAX = 8.0;
-    dir = clamp(dir * rcpDirMin, vec2(-SPAN_MAX), vec2(SPAN_MAX)) * rcp;
-
-    vec3 rgbA = 0.5 * (
-        texture(sceneTex, uv + dir * (1.0 / 3.0 - 0.5)).rgb +
-        texture(sceneTex, uv + dir * (2.0 / 3.0 - 0.5)).rgb);
-    vec3 rgbB = rgbA * 0.5 + 0.25 * (
-        texture(sceneTex, uv + dir * -0.5).rgb +
-        texture(sceneTex, uv + dir *  0.5).rgb);
-
-    float lumaB = fxaaLuma(rgbB);
-    return (lumaB < rangeMin || lumaB > rangeMax) ? rgbA : rgbB;
-}
-
-// Scene sample with exposure and FXAA, then the unconditional sunset grade (warm push, luminance warm/cool split, vignette, top glow). The
-// grade depends on the position, so the sharpening filter below grades every tap it reads.
+// Profile output is neutral by default. CAS grades each tap consistently.
 vec3 gradeColor(vec2 uv) {
-    vec2 invSize = vec2(u.p0.y, u.p0.z);
-    vec3 color = ((u.p0.w != 0.0)
-        ? fxaaFilter(uv, invSize)
-        : texture(sceneTex, uv).rgb) * u.p0.x;
+    vec3 color = texture(sceneTex, uv).rgb * u.p0.x;
 
-    color *= vec3(1.05, 1.01, 0.94);
+    color *= u.p4.rgb;
     float lum = dot(color, vec3(0.299, 0.587, 0.114));
-    vec3 warm = vec3(1.05, 1.00, 0.93);
-    vec3 cool = vec3(0.95, 0.98, 1.04);
+    vec3 warm = u.p6.rgb;
+    vec3 cool = u.p5.rgb;
     vec3 grade = mix(cool, warm, smoothstep(0.10, 0.75, lum));
     color *= grade;
 
     vec2 vdir = uv - vec2(0.5);
     float vdist = length(vdir * vec2(1.0, 0.6));
-    float vignette = smoothstep(0.85, 0.25, vdist);
-    color *= mix(0.82, 1.0, vignette);
+    float vignette = 1.0 - smoothstep(0.25, 0.85, vdist);
+    color *= mix(1.0 - u.p4.w, 1.0, vignette);
 
     float sunBias = pow(smoothstep(0.0, 1.0, 1.0 - uv.y), 1.5);
-    return mix(color, color * vec3(1.10, 1.03, 0.92), sunBias * 0.25);
+    return mix(color, color * u.p7.rgb, sunBias * u.p5.w);
 }
 
 // Options.cfg PostCAS: contrast adaptive sharpening (AMD FidelityFX CAS) on the graded colour. Adaptive weight from the local min/max of the

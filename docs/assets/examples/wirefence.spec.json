@@ -1,0 +1,1375 @@
+{
+  "schema": "mc2-target-spec-1",
+  "id": "wirefence",
+  "state": "intact",
+  "category": "fence",
+  "selection_key": "staticProp:wirefence",
+  "stock_tgl": "data/tgl/wirefence.tgl",
+  "stock_sha256": "b6291ed3f3928065a2503b0b684709c752c923742db78cbf3e62546a0c05b095",
+  "bounds": {
+    "min": [
+      -0.15759999677538872,
+      0.0,
+      -0.4255000092089176
+    ],
+    "max": [
+      0.20360000804066658,
+      15.969900131225586,
+      42.91749834641814
+    ],
+    "size": [
+      0.3612000048160553,
+      15.969900131225586,
+      43.34299835562706
+    ],
+    "footprint_wu": [
+      0.3612000048160553,
+      43.34299835562706
+    ],
+    "height_wu": 15.969900131225586,
+    "extent_radius_wu": 45.79291241534433
+  },
+  "footprint_wu": [
+    0.3612000048160553,
+    43.34299835562706
+  ],
+  "height_wu": 15.969900131225586,
+  "pivot_wu": [
+    0,
+    0,
+    0
+  ],
+  "base_center_wu": [
+    0.02300000563263893,
+    0.0,
+    21.245999168604612
+  ],
+  "orientation": {
+    "target_space": "TG X lateral, +Y up, -Z nominal forward; world units",
+    "runtime_axis": 0,
+    "runtime_mapping": "TG=(-glTF.x,-glTF.y,+glTF.z)",
+    "cook": "bake all scene transforms, then inverse runtime axis0 into POSITION/NORMAL; identity nodes; scale=1",
+    "auto_ground_static_prop": false,
+    "semantic_front": "stock axes only; door/front direction needs visual review; declare candidate forward_axis"
+  },
+  "collision": {
+    "authority": "stock object2 type fields and stock shape; renderOnly=true preserves gameplay",
+    "type_fields": [
+      {
+        "type_id": 440,
+        "fields": {
+          "objecttype": {
+            "destroyedobject": 0,
+            "extentradius": 0.0
+          },
+          "terrainobjectdata": {
+            "extentradius": 20.0
+          }
+        }
+      }
+    ],
+    "visual_extent_radius_wu": 45.79291241534433,
+    "ui_bounds_pixels_not_world_units": {
+      "upperleftx": -20,
+      "upperlefty": -20,
+      "lowerrightx": 20,
+      "lowerrighty": 20
+    }
+  },
+  "lods": [
+    {
+      "role": "intact",
+      "lod": 0,
+      "distance_ini_wu": 0.0,
+      "tgl": "data/tgl/wirefence.tgl",
+      "triangles": 4,
+      "missing": false
+    },
+    {
+      "role": "intact",
+      "lod": 1,
+      "distance_ini_wu": 1000.0,
+      "tgl": "data/tgl/wirefencel1.tgl",
+      "triangles": 4,
+      "missing": false
+    }
+  ],
+  "lod_runtime": "staticProp override has one render shape; declared stock distances multiplied by 5; pack optional LODs as review assets, not promises of activation",
+  "destroyed_requirement": {
+    "required": true,
+    "models": [
+      "data/tgl/wirefencedam.tgl"
+    ],
+    "runtime_geometry_override_supported": false,
+    "policy": "damage stays stock in current BldgAppearance; an intact package requires explicit stock-damage fallback, or rework textures for both states; destroyed candidates can be cooked for review only"
+  },
+  "shadow": {
+    "eligible": true,
+    "stock_shadow_models": [
+      "data/tgl/wirefencex.tgl",
+      "data/tgl/wirefencedamx.tgl"
+    ],
+    "contract": "retain caster geometry; alpha texture does not disqualify fences/gates. TG gate excludes spotlights/windows/HUD/clamped/alphaTestOn/translucent shapes. Depth-only path may produce solid fence shadows; preview is not a shadow oracle"
+  },
+  "instances": 9300,
+  "peak_mission_instances": 506,
+  "budgets": {
+    "stock_triangles": 4,
+    "max_triangles_lod0": 494,
+    "policy": "250k triangles / peak mission count, clamped 64..12000 and never below stock; conservative potential-instance proxy, not measured visibility",
+    "max_texture_edge": 512,
+    "max_texture_bytes_rgba_with_mips": 16777216,
+    "texture_policy": "textures shared by instances; total unique RGBA mip-chain estimate capped at 16 MiB"
+  },
+  "validation": {
+    "relative_bounds_tolerance": 0.1,
+    "absolute_bounds_tolerance_wu": 0.5,
+    "max_stretch_ratio": 1.25
+  },
+  "package_supported": true,
+  "runtime_limit": "intact static props only; animated gate/turret nodes need authored rig review; vehicles/mechs use their existing importer; vegetation uses tree cooker",
+  "missions": [
+    {
+      "corpus": "stock",
+      "mission": "e3demo",
+      "instances": 50,
+      "terrain_instances": 50,
+      "modified_geometry_instances": 0,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\mc2-win64-v0.4\\mission.fst::data/missions/e3demo.pak"
+    },
+    {
+      "corpus": "stock",
+      "mission": "mc2_01",
+      "instances": 4,
+      "terrain_instances": 4,
+      "modified_geometry_instances": 0,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\mc2-win64-v0.4\\mission.fst::data/missions/mc2_01.pak"
+    },
+    {
+      "corpus": "stock",
+      "mission": "mc2_02",
+      "instances": 47,
+      "terrain_instances": 47,
+      "modified_geometry_instances": 0,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\mc2-win64-v0.4\\mission.fst::data/missions/mc2_02.pak"
+    },
+    {
+      "corpus": "stock",
+      "mission": "mc2_03",
+      "instances": 11,
+      "terrain_instances": 11,
+      "modified_geometry_instances": 0,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\mc2-win64-v0.4\\mission.fst::data/missions/mc2_03.pak"
+    },
+    {
+      "corpus": "stock",
+      "mission": "mc2_04",
+      "instances": 5,
+      "terrain_instances": 5,
+      "modified_geometry_instances": 0,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\mc2-win64-v0.4\\mission.fst::data/missions/mc2_04.pak"
+    },
+    {
+      "corpus": "stock",
+      "mission": "mc2_05",
+      "instances": 99,
+      "terrain_instances": 99,
+      "modified_geometry_instances": 0,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\mc2-win64-v0.4\\mission.fst::data/missions/mc2_05.pak"
+    },
+    {
+      "corpus": "stock",
+      "mission": "mc2_06",
+      "instances": 28,
+      "terrain_instances": 28,
+      "modified_geometry_instances": 0,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\mc2-win64-v0.4\\mission.fst::data/missions/mc2_06.pak"
+    },
+    {
+      "corpus": "stock",
+      "mission": "mc2_08",
+      "instances": 426,
+      "terrain_instances": 426,
+      "modified_geometry_instances": 0,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\mc2-win64-v0.4\\mission.fst::data/missions/mc2_08.pak"
+    },
+    {
+      "corpus": "stock",
+      "mission": "mc2_09",
+      "instances": 20,
+      "terrain_instances": 20,
+      "modified_geometry_instances": 0,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\mc2-win64-v0.4\\mission.fst::data/missions/mc2_09.pak"
+    },
+    {
+      "corpus": "stock",
+      "mission": "mc2_10",
+      "instances": 29,
+      "terrain_instances": 29,
+      "modified_geometry_instances": 0,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\mc2-win64-v0.4\\mission.fst::data/missions/mc2_10.pak"
+    },
+    {
+      "corpus": "stock",
+      "mission": "mc2_11",
+      "instances": 506,
+      "terrain_instances": 506,
+      "modified_geometry_instances": 0,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\mc2-win64-v0.4\\mission.fst::data/missions/mc2_11.pak"
+    },
+    {
+      "corpus": "stock",
+      "mission": "mc2_12",
+      "instances": 10,
+      "terrain_instances": 10,
+      "modified_geometry_instances": 0,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\mc2-win64-v0.4\\mission.fst::data/missions/mc2_12.pak"
+    },
+    {
+      "corpus": "stock",
+      "mission": "mc2_15",
+      "instances": 18,
+      "terrain_instances": 18,
+      "modified_geometry_instances": 0,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\mc2-win64-v0.4\\mission.fst::data/missions/mc2_15.pak"
+    },
+    {
+      "corpus": "stock",
+      "mission": "mc2_16",
+      "instances": 32,
+      "terrain_instances": 32,
+      "modified_geometry_instances": 0,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\mc2-win64-v0.4\\mission.fst::data/missions/mc2_16.pak"
+    },
+    {
+      "corpus": "stock",
+      "mission": "mc2_17",
+      "instances": 52,
+      "terrain_instances": 52,
+      "modified_geometry_instances": 0,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\mc2-win64-v0.4\\mission.fst::data/missions/mc2_17.pak"
+    },
+    {
+      "corpus": "stock",
+      "mission": "mc2_18",
+      "instances": 52,
+      "terrain_instances": 52,
+      "modified_geometry_instances": 0,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\mc2-win64-v0.4\\mission.fst::data/missions/mc2_18.pak"
+    },
+    {
+      "corpus": "stock",
+      "mission": "mc2_21",
+      "instances": 33,
+      "terrain_instances": 33,
+      "modified_geometry_instances": 0,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\mc2-win64-v0.4\\mission.fst::data/missions/mc2_21.pak"
+    },
+    {
+      "corpus": "stock",
+      "mission": "mc2_22",
+      "instances": 24,
+      "terrain_instances": 24,
+      "modified_geometry_instances": 0,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\mc2-win64-v0.4\\mission.fst::data/missions/mc2_22.pak"
+    },
+    {
+      "corpus": "stock",
+      "mission": "mc2_23",
+      "instances": 25,
+      "terrain_instances": 25,
+      "modified_geometry_instances": 0,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\mc2-win64-v0.4\\mission.fst::data/missions/mc2_23.pak"
+    },
+    {
+      "corpus": "stock",
+      "mission": "mc2_24",
+      "instances": 46,
+      "terrain_instances": 46,
+      "modified_geometry_instances": 0,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\mc2-win64-v0.4\\mission.fst::data/missions/mc2_24.pak"
+    },
+    {
+      "corpus": "MC2X-CVE-G",
+      "mission": "cityassault",
+      "instances": 26,
+      "terrain_instances": 26,
+      "modified_geometry_instances": 26,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MC2X-CVE-G\\mission.fst::data/missions/cityassault.pak"
+    },
+    {
+      "corpus": "MC2X-CVE-G",
+      "mission": "mc2_01",
+      "instances": 4,
+      "terrain_instances": 4,
+      "modified_geometry_instances": 4,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MC2X-CVE-G\\mission.fst::data/missions/mc2_01.pak"
+    },
+    {
+      "corpus": "MC2X-CVE-G",
+      "mission": "mc2_02",
+      "instances": 47,
+      "terrain_instances": 47,
+      "modified_geometry_instances": 47,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MC2X-CVE-G\\mission.fst::data/missions/mc2_02.pak"
+    },
+    {
+      "corpus": "MC2X-CVE-G",
+      "mission": "mc2_03",
+      "instances": 11,
+      "terrain_instances": 11,
+      "modified_geometry_instances": 11,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MC2X-CVE-G\\mission.fst::data/missions/mc2_03.pak"
+    },
+    {
+      "corpus": "MC2X-CVE-G",
+      "mission": "mc2_04",
+      "instances": 5,
+      "terrain_instances": 5,
+      "modified_geometry_instances": 5,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MC2X-CVE-G\\mission.fst::data/missions/mc2_04.pak"
+    },
+    {
+      "corpus": "MC2X-CVE-G",
+      "mission": "mc2_05",
+      "instances": 99,
+      "terrain_instances": 99,
+      "modified_geometry_instances": 99,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MC2X-CVE-G\\mission.fst::data/missions/mc2_05.pak"
+    },
+    {
+      "corpus": "MC2X-CVE-G",
+      "mission": "mc2_06",
+      "instances": 28,
+      "terrain_instances": 28,
+      "modified_geometry_instances": 28,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MC2X-CVE-G\\mission.fst::data/missions/mc2_06.pak"
+    },
+    {
+      "corpus": "MC2X-CVE-G",
+      "mission": "mc2_08",
+      "instances": 426,
+      "terrain_instances": 426,
+      "modified_geometry_instances": 426,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MC2X-CVE-G\\mission.fst::data/missions/mc2_08.pak"
+    },
+    {
+      "corpus": "MC2X-CVE-G",
+      "mission": "mc2_09",
+      "instances": 20,
+      "terrain_instances": 20,
+      "modified_geometry_instances": 20,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MC2X-CVE-G\\mission.fst::data/missions/mc2_09.pak"
+    },
+    {
+      "corpus": "MC2X-CVE-G",
+      "mission": "mc2_10",
+      "instances": 29,
+      "terrain_instances": 29,
+      "modified_geometry_instances": 29,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MC2X-CVE-G\\mission.fst::data/missions/mc2_10.pak"
+    },
+    {
+      "corpus": "MC2X-CVE-G",
+      "mission": "mc2_11",
+      "instances": 506,
+      "terrain_instances": 506,
+      "modified_geometry_instances": 506,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MC2X-CVE-G\\mission.fst::data/missions/mc2_11.pak"
+    },
+    {
+      "corpus": "MC2X-CVE-G",
+      "mission": "mc2_12",
+      "instances": 10,
+      "terrain_instances": 10,
+      "modified_geometry_instances": 10,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MC2X-CVE-G\\mission.fst::data/missions/mc2_12.pak"
+    },
+    {
+      "corpus": "MC2X-CVE-G",
+      "mission": "mc2_15",
+      "instances": 18,
+      "terrain_instances": 18,
+      "modified_geometry_instances": 18,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MC2X-CVE-G\\mission.fst::data/missions/mc2_15.pak"
+    },
+    {
+      "corpus": "MC2X-CVE-G",
+      "mission": "mc2_16",
+      "instances": 32,
+      "terrain_instances": 32,
+      "modified_geometry_instances": 32,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MC2X-CVE-G\\mission.fst::data/missions/mc2_16.pak"
+    },
+    {
+      "corpus": "MC2X-CVE-G",
+      "mission": "mc2_17",
+      "instances": 52,
+      "terrain_instances": 52,
+      "modified_geometry_instances": 52,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MC2X-CVE-G\\mission.fst::data/missions/mc2_17.pak"
+    },
+    {
+      "corpus": "MC2X-CVE-G",
+      "mission": "mc2_18",
+      "instances": 52,
+      "terrain_instances": 52,
+      "modified_geometry_instances": 52,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MC2X-CVE-G\\mission.fst::data/missions/mc2_18.pak"
+    },
+    {
+      "corpus": "MC2X-CVE-G",
+      "mission": "mc2_21",
+      "instances": 33,
+      "terrain_instances": 33,
+      "modified_geometry_instances": 33,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MC2X-CVE-G\\mission.fst::data/missions/mc2_21.pak"
+    },
+    {
+      "corpus": "MC2X-CVE-G",
+      "mission": "mc2_22",
+      "instances": 24,
+      "terrain_instances": 24,
+      "modified_geometry_instances": 24,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MC2X-CVE-G\\mission.fst::data/missions/mc2_22.pak"
+    },
+    {
+      "corpus": "MC2X-CVE-G",
+      "mission": "mc2_23",
+      "instances": 25,
+      "terrain_instances": 25,
+      "modified_geometry_instances": 25,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MC2X-CVE-G\\mission.fst::data/missions/mc2_23.pak"
+    },
+    {
+      "corpus": "MC2X-CVE-G",
+      "mission": "mc2_24",
+      "instances": 46,
+      "terrain_instances": 46,
+      "modified_geometry_instances": 46,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MC2X-CVE-G\\mission.fst::data/missions/mc2_24.pak"
+    },
+    {
+      "corpus": "MC2X-CVE-G",
+      "mission": "metropolitan",
+      "instances": 16,
+      "terrain_instances": 16,
+      "modified_geometry_instances": 16,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MC2X-CVE-G\\mission.fst::data/missions/metropolitan.pak"
+    },
+    {
+      "corpus": "MC2X-REAP3",
+      "mission": "cityassault",
+      "instances": 26,
+      "terrain_instances": 26,
+      "modified_geometry_instances": 26,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MC2X-REAP3\\mission.fst::data/missions/cityassault.pak"
+    },
+    {
+      "corpus": "MC2X-REAP3",
+      "mission": "metropolitan",
+      "instances": 16,
+      "terrain_instances": 16,
+      "modified_geometry_instances": 16,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MC2X-REAP3\\mission.fst::data/missions/metropolitan.pak"
+    },
+    {
+      "corpus": "Exodus",
+      "mission": "a_1_3",
+      "instances": 84,
+      "terrain_instances": 84,
+      "modified_geometry_instances": 0,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MC2-Exodus\\data\\missions\\a_1_3.pak"
+    },
+    {
+      "corpus": "Exodus",
+      "mission": "a_1_6",
+      "instances": 32,
+      "terrain_instances": 32,
+      "modified_geometry_instances": 0,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MC2-Exodus\\data\\missions\\a_1_6.pak"
+    },
+    {
+      "corpus": "Exodus",
+      "mission": "e3demo",
+      "instances": 50,
+      "terrain_instances": 50,
+      "modified_geometry_instances": 0,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MC2-Exodus\\mission.fst::data/missions/e3demo.pak"
+    },
+    {
+      "corpus": "Exodus",
+      "mission": "e_2_0a",
+      "instances": 18,
+      "terrain_instances": 18,
+      "modified_geometry_instances": 0,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MC2-Exodus\\data\\missions\\e_2_0a.pak"
+    },
+    {
+      "corpus": "Exodus",
+      "mission": "e_2_1",
+      "instances": 24,
+      "terrain_instances": 24,
+      "modified_geometry_instances": 0,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MC2-Exodus\\data\\missions\\e_2_1.pak"
+    },
+    {
+      "corpus": "Exodus",
+      "mission": "e_3_0a",
+      "instances": 15,
+      "terrain_instances": 15,
+      "modified_geometry_instances": 0,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MC2-Exodus\\data\\missions\\e_3_0a.pak"
+    },
+    {
+      "corpus": "Exodus",
+      "mission": "e_3_1",
+      "instances": 101,
+      "terrain_instances": 101,
+      "modified_geometry_instances": 0,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MC2-Exodus\\data\\missions\\e_3_1.pak"
+    },
+    {
+      "corpus": "Exodus",
+      "mission": "e_4_1",
+      "instances": 82,
+      "terrain_instances": 82,
+      "modified_geometry_instances": 0,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MC2-Exodus\\data\\missions\\e_4_1.pak"
+    },
+    {
+      "corpus": "Exodus",
+      "mission": "e_4_3",
+      "instances": 34,
+      "terrain_instances": 34,
+      "modified_geometry_instances": 0,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MC2-Exodus\\data\\missions\\e_4_3.pak"
+    },
+    {
+      "corpus": "Exodus",
+      "mission": "e_4_4",
+      "instances": 72,
+      "terrain_instances": 72,
+      "modified_geometry_instances": 0,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MC2-Exodus\\data\\missions\\e_4_4.pak"
+    },
+    {
+      "corpus": "Exodus",
+      "mission": "e_4_6",
+      "instances": 11,
+      "terrain_instances": 11,
+      "modified_geometry_instances": 0,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MC2-Exodus\\data\\missions\\e_4_6.pak"
+    },
+    {
+      "corpus": "Exodus",
+      "mission": "mc2_01",
+      "instances": 4,
+      "terrain_instances": 4,
+      "modified_geometry_instances": 0,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MC2-Exodus\\mission.fst::data/missions/mc2_01.pak"
+    },
+    {
+      "corpus": "Exodus",
+      "mission": "mc2_02",
+      "instances": 47,
+      "terrain_instances": 47,
+      "modified_geometry_instances": 0,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MC2-Exodus\\mission.fst::data/missions/mc2_02.pak"
+    },
+    {
+      "corpus": "Exodus",
+      "mission": "mc2_03",
+      "instances": 11,
+      "terrain_instances": 11,
+      "modified_geometry_instances": 0,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MC2-Exodus\\mission.fst::data/missions/mc2_03.pak"
+    },
+    {
+      "corpus": "Exodus",
+      "mission": "mc2_04",
+      "instances": 5,
+      "terrain_instances": 5,
+      "modified_geometry_instances": 0,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MC2-Exodus\\mission.fst::data/missions/mc2_04.pak"
+    },
+    {
+      "corpus": "Exodus",
+      "mission": "mc2_05",
+      "instances": 99,
+      "terrain_instances": 99,
+      "modified_geometry_instances": 0,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MC2-Exodus\\mission.fst::data/missions/mc2_05.pak"
+    },
+    {
+      "corpus": "Exodus",
+      "mission": "mc2_06",
+      "instances": 28,
+      "terrain_instances": 28,
+      "modified_geometry_instances": 0,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MC2-Exodus\\mission.fst::data/missions/mc2_06.pak"
+    },
+    {
+      "corpus": "Exodus",
+      "mission": "mc2_08",
+      "instances": 426,
+      "terrain_instances": 426,
+      "modified_geometry_instances": 0,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MC2-Exodus\\mission.fst::data/missions/mc2_08.pak"
+    },
+    {
+      "corpus": "Exodus",
+      "mission": "mc2_09",
+      "instances": 20,
+      "terrain_instances": 20,
+      "modified_geometry_instances": 0,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MC2-Exodus\\mission.fst::data/missions/mc2_09.pak"
+    },
+    {
+      "corpus": "Exodus",
+      "mission": "mc2_10",
+      "instances": 29,
+      "terrain_instances": 29,
+      "modified_geometry_instances": 0,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MC2-Exodus\\mission.fst::data/missions/mc2_10.pak"
+    },
+    {
+      "corpus": "Exodus",
+      "mission": "mc2_11",
+      "instances": 506,
+      "terrain_instances": 506,
+      "modified_geometry_instances": 0,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MC2-Exodus\\mission.fst::data/missions/mc2_11.pak"
+    },
+    {
+      "corpus": "Exodus",
+      "mission": "mc2_12",
+      "instances": 10,
+      "terrain_instances": 10,
+      "modified_geometry_instances": 0,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MC2-Exodus\\mission.fst::data/missions/mc2_12.pak"
+    },
+    {
+      "corpus": "Exodus",
+      "mission": "mc2_15",
+      "instances": 18,
+      "terrain_instances": 18,
+      "modified_geometry_instances": 0,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MC2-Exodus\\mission.fst::data/missions/mc2_15.pak"
+    },
+    {
+      "corpus": "Exodus",
+      "mission": "mc2_16",
+      "instances": 32,
+      "terrain_instances": 32,
+      "modified_geometry_instances": 0,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MC2-Exodus\\mission.fst::data/missions/mc2_16.pak"
+    },
+    {
+      "corpus": "Exodus",
+      "mission": "mc2_17",
+      "instances": 52,
+      "terrain_instances": 52,
+      "modified_geometry_instances": 0,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MC2-Exodus\\mission.fst::data/missions/mc2_17.pak"
+    },
+    {
+      "corpus": "Exodus",
+      "mission": "mc2_18",
+      "instances": 52,
+      "terrain_instances": 52,
+      "modified_geometry_instances": 0,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MC2-Exodus\\mission.fst::data/missions/mc2_18.pak"
+    },
+    {
+      "corpus": "Exodus",
+      "mission": "mc2_21",
+      "instances": 33,
+      "terrain_instances": 33,
+      "modified_geometry_instances": 0,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MC2-Exodus\\mission.fst::data/missions/mc2_21.pak"
+    },
+    {
+      "corpus": "Exodus",
+      "mission": "mc2_22",
+      "instances": 24,
+      "terrain_instances": 24,
+      "modified_geometry_instances": 0,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MC2-Exodus\\mission.fst::data/missions/mc2_22.pak"
+    },
+    {
+      "corpus": "Exodus",
+      "mission": "mc2_23",
+      "instances": 25,
+      "terrain_instances": 25,
+      "modified_geometry_instances": 0,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MC2-Exodus\\mission.fst::data/missions/mc2_23.pak"
+    },
+    {
+      "corpus": "Exodus",
+      "mission": "mc2_24",
+      "instances": 46,
+      "terrain_instances": 46,
+      "modified_geometry_instances": 0,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MC2-Exodus\\mission.fst::data/missions/mc2_24.pak"
+    },
+    {
+      "corpus": "Exodus",
+      "mission": "x_2_5",
+      "instances": 56,
+      "terrain_instances": 56,
+      "modified_geometry_instances": 0,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MC2-Exodus\\data\\missions\\x_2_5.pak"
+    },
+    {
+      "corpus": "Exodus",
+      "mission": "x_5_1a",
+      "instances": 22,
+      "terrain_instances": 22,
+      "modified_geometry_instances": 0,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MC2-Exodus\\data\\missions\\x_5_1a.pak"
+    },
+    {
+      "corpus": "MagicExpansion",
+      "mission": "e3demo",
+      "instances": 50,
+      "terrain_instances": 50,
+      "modified_geometry_instances": 0,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MC2-MagicExpansion\\mission.fst::data/missions/e3demo.pak"
+    },
+    {
+      "corpus": "MagicExpansion",
+      "mission": "mc2_01",
+      "instances": 4,
+      "terrain_instances": 4,
+      "modified_geometry_instances": 0,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MC2-MagicExpansion\\mission.fst::data/missions/mc2_01.pak"
+    },
+    {
+      "corpus": "MagicExpansion",
+      "mission": "mc2_02",
+      "instances": 47,
+      "terrain_instances": 47,
+      "modified_geometry_instances": 0,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MC2-MagicExpansion\\mission.fst::data/missions/mc2_02.pak"
+    },
+    {
+      "corpus": "MagicExpansion",
+      "mission": "mc2_03",
+      "instances": 11,
+      "terrain_instances": 11,
+      "modified_geometry_instances": 0,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MC2-MagicExpansion\\mission.fst::data/missions/mc2_03.pak"
+    },
+    {
+      "corpus": "MagicExpansion",
+      "mission": "mc2_04",
+      "instances": 5,
+      "terrain_instances": 5,
+      "modified_geometry_instances": 0,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MC2-MagicExpansion\\mission.fst::data/missions/mc2_04.pak"
+    },
+    {
+      "corpus": "MagicExpansion",
+      "mission": "mc2_05",
+      "instances": 99,
+      "terrain_instances": 99,
+      "modified_geometry_instances": 0,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MC2-MagicExpansion\\mission.fst::data/missions/mc2_05.pak"
+    },
+    {
+      "corpus": "MagicExpansion",
+      "mission": "mc2_06",
+      "instances": 28,
+      "terrain_instances": 28,
+      "modified_geometry_instances": 0,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MC2-MagicExpansion\\mission.fst::data/missions/mc2_06.pak"
+    },
+    {
+      "corpus": "MagicExpansion",
+      "mission": "mc2_08",
+      "instances": 426,
+      "terrain_instances": 426,
+      "modified_geometry_instances": 0,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MC2-MagicExpansion\\mission.fst::data/missions/mc2_08.pak"
+    },
+    {
+      "corpus": "MagicExpansion",
+      "mission": "mc2_09",
+      "instances": 20,
+      "terrain_instances": 20,
+      "modified_geometry_instances": 0,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MC2-MagicExpansion\\mission.fst::data/missions/mc2_09.pak"
+    },
+    {
+      "corpus": "MagicExpansion",
+      "mission": "mc2_10",
+      "instances": 29,
+      "terrain_instances": 29,
+      "modified_geometry_instances": 0,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MC2-MagicExpansion\\mission.fst::data/missions/mc2_10.pak"
+    },
+    {
+      "corpus": "MagicExpansion",
+      "mission": "mc2_11",
+      "instances": 506,
+      "terrain_instances": 506,
+      "modified_geometry_instances": 0,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MC2-MagicExpansion\\mission.fst::data/missions/mc2_11.pak"
+    },
+    {
+      "corpus": "MagicExpansion",
+      "mission": "mc2_12",
+      "instances": 10,
+      "terrain_instances": 10,
+      "modified_geometry_instances": 0,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MC2-MagicExpansion\\mission.fst::data/missions/mc2_12.pak"
+    },
+    {
+      "corpus": "MagicExpansion",
+      "mission": "mc2_15",
+      "instances": 18,
+      "terrain_instances": 18,
+      "modified_geometry_instances": 0,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MC2-MagicExpansion\\mission.fst::data/missions/mc2_15.pak"
+    },
+    {
+      "corpus": "MagicExpansion",
+      "mission": "mc2_16",
+      "instances": 32,
+      "terrain_instances": 32,
+      "modified_geometry_instances": 0,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MC2-MagicExpansion\\mission.fst::data/missions/mc2_16.pak"
+    },
+    {
+      "corpus": "MagicExpansion",
+      "mission": "mc2_17",
+      "instances": 52,
+      "terrain_instances": 52,
+      "modified_geometry_instances": 0,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MC2-MagicExpansion\\mission.fst::data/missions/mc2_17.pak"
+    },
+    {
+      "corpus": "MagicExpansion",
+      "mission": "mc2_18",
+      "instances": 52,
+      "terrain_instances": 52,
+      "modified_geometry_instances": 0,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MC2-MagicExpansion\\mission.fst::data/missions/mc2_18.pak"
+    },
+    {
+      "corpus": "MagicExpansion",
+      "mission": "mc2_21",
+      "instances": 33,
+      "terrain_instances": 33,
+      "modified_geometry_instances": 0,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MC2-MagicExpansion\\mission.fst::data/missions/mc2_21.pak"
+    },
+    {
+      "corpus": "MagicExpansion",
+      "mission": "mc2_22",
+      "instances": 24,
+      "terrain_instances": 24,
+      "modified_geometry_instances": 0,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MC2-MagicExpansion\\mission.fst::data/missions/mc2_22.pak"
+    },
+    {
+      "corpus": "MagicExpansion",
+      "mission": "mc2_23",
+      "instances": 25,
+      "terrain_instances": 25,
+      "modified_geometry_instances": 0,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MC2-MagicExpansion\\mission.fst::data/missions/mc2_23.pak"
+    },
+    {
+      "corpus": "MagicExpansion",
+      "mission": "mc2_24",
+      "instances": 46,
+      "terrain_instances": 46,
+      "modified_geometry_instances": 0,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MC2-MagicExpansion\\mission.fst::data/missions/mc2_24.pak"
+    },
+    {
+      "corpus": "MechCommanderOmnitech",
+      "mission": "a_1_3",
+      "instances": 84,
+      "terrain_instances": 84,
+      "modified_geometry_instances": 84,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MechCommanderOmnitech\\data\\missions\\a_1_3.pak"
+    },
+    {
+      "corpus": "MechCommanderOmnitech",
+      "mission": "e3demo",
+      "instances": 50,
+      "terrain_instances": 50,
+      "modified_geometry_instances": 50,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MechCommanderOmnitech\\data\\missions\\e3demo.pak"
+    },
+    {
+      "corpus": "MechCommanderOmnitech",
+      "mission": "e_2_0a",
+      "instances": 18,
+      "terrain_instances": 18,
+      "modified_geometry_instances": 18,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MechCommanderOmnitech\\data\\missions\\e_2_0a.pak"
+    },
+    {
+      "corpus": "MechCommanderOmnitech",
+      "mission": "e_2_1",
+      "instances": 24,
+      "terrain_instances": 24,
+      "modified_geometry_instances": 24,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MechCommanderOmnitech\\data\\missions\\e_2_1.pak"
+    },
+    {
+      "corpus": "MechCommanderOmnitech",
+      "mission": "e_3_0a",
+      "instances": 15,
+      "terrain_instances": 15,
+      "modified_geometry_instances": 15,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MechCommanderOmnitech\\data\\missions\\e_3_0a.pak"
+    },
+    {
+      "corpus": "MechCommanderOmnitech",
+      "mission": "e_3_1",
+      "instances": 101,
+      "terrain_instances": 101,
+      "modified_geometry_instances": 101,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MechCommanderOmnitech\\data\\missions\\e_3_1.pak"
+    },
+    {
+      "corpus": "MechCommanderOmnitech",
+      "mission": "e_4_1",
+      "instances": 82,
+      "terrain_instances": 82,
+      "modified_geometry_instances": 82,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MechCommanderOmnitech\\data\\missions\\e_4_1.pak"
+    },
+    {
+      "corpus": "MechCommanderOmnitech",
+      "mission": "e_4_3",
+      "instances": 34,
+      "terrain_instances": 34,
+      "modified_geometry_instances": 34,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MechCommanderOmnitech\\data\\missions\\e_4_3.pak"
+    },
+    {
+      "corpus": "MechCommanderOmnitech",
+      "mission": "e_4_4",
+      "instances": 72,
+      "terrain_instances": 72,
+      "modified_geometry_instances": 72,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MechCommanderOmnitech\\data\\missions\\e_4_4.pak"
+    },
+    {
+      "corpus": "MechCommanderOmnitech",
+      "mission": "e_4_6",
+      "instances": 11,
+      "terrain_instances": 11,
+      "modified_geometry_instances": 11,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MechCommanderOmnitech\\data\\missions\\e_4_6.pak"
+    },
+    {
+      "corpus": "MechCommanderOmnitech",
+      "mission": "mw2_10_1_luthien",
+      "instances": 46,
+      "terrain_instances": 46,
+      "modified_geometry_instances": 46,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MechCommanderOmnitech\\data\\missions\\mw2_10_1_luthien.pak"
+    },
+    {
+      "corpus": "MechCommanderOmnitech",
+      "mission": "mw2_10_2_luthien",
+      "instances": 41,
+      "terrain_instances": 41,
+      "modified_geometry_instances": 41,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MechCommanderOmnitech\\data\\missions\\mw2_10_2_luthien.pak"
+    },
+    {
+      "corpus": "MechCommanderOmnitech",
+      "mission": "mw2_1_1",
+      "instances": 39,
+      "terrain_instances": 39,
+      "modified_geometry_instances": 39,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MechCommanderOmnitech\\data\\missions\\mw2_1_1.pak"
+    },
+    {
+      "corpus": "MechCommanderOmnitech",
+      "mission": "mw2_1_2",
+      "instances": 39,
+      "terrain_instances": 39,
+      "modified_geometry_instances": 39,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MechCommanderOmnitech\\data\\missions\\mw2_1_2.pak"
+    },
+    {
+      "corpus": "MechCommanderOmnitech",
+      "mission": "mw2_2_1",
+      "instances": 20,
+      "terrain_instances": 20,
+      "modified_geometry_instances": 20,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MechCommanderOmnitech\\data\\missions\\mw2_2_1.pak"
+    },
+    {
+      "corpus": "MechCommanderOmnitech",
+      "mission": "mw2_2_3",
+      "instances": 93,
+      "terrain_instances": 93,
+      "modified_geometry_instances": 93,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MechCommanderOmnitech\\data\\missions\\mw2_2_3.pak"
+    },
+    {
+      "corpus": "MechCommanderOmnitech",
+      "mission": "mw2_2_4",
+      "instances": 52,
+      "terrain_instances": 52,
+      "modified_geometry_instances": 52,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MechCommanderOmnitech\\data\\missions\\mw2_2_4.pak"
+    },
+    {
+      "corpus": "MechCommanderOmnitech",
+      "mission": "mw2_4_1",
+      "instances": 28,
+      "terrain_instances": 28,
+      "modified_geometry_instances": 28,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MechCommanderOmnitech\\data\\missions\\mw2_4_1.pak"
+    },
+    {
+      "corpus": "MechCommanderOmnitech",
+      "mission": "mw2_6_1",
+      "instances": 65,
+      "terrain_instances": 65,
+      "modified_geometry_instances": 65,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MechCommanderOmnitech\\data\\missions\\mw2_6_1.pak"
+    },
+    {
+      "corpus": "MechCommanderOmnitech",
+      "mission": "mw2_n_2",
+      "instances": 31,
+      "terrain_instances": 31,
+      "modified_geometry_instances": 31,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MechCommanderOmnitech\\data\\missions\\mw2_n_2.pak"
+    },
+    {
+      "corpus": "MechCommanderOmnitech",
+      "mission": "mw2_n_4",
+      "instances": 50,
+      "terrain_instances": 50,
+      "modified_geometry_instances": 50,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MechCommanderOmnitech\\data\\missions\\mw2_n_4.pak"
+    },
+    {
+      "corpus": "MechCommanderOmnitech",
+      "mission": "mw2_n_8",
+      "instances": 112,
+      "terrain_instances": 112,
+      "modified_geometry_instances": 112,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MechCommanderOmnitech\\data\\missions\\mw2_n_8.pak"
+    },
+    {
+      "corpus": "MechCommanderOmnitech",
+      "mission": "x_2_5",
+      "instances": 56,
+      "terrain_instances": 56,
+      "modified_geometry_instances": 56,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MechCommanderOmnitech\\data\\missions\\x_2_5.pak"
+    },
+    {
+      "corpus": "MechCommanderOmnitech",
+      "mission": "x_5_1a",
+      "instances": 22,
+      "terrain_instances": 22,
+      "modified_geometry_instances": 22,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MechCommanderOmnitech\\data\\missions\\x_5_1a.pak"
+    },
+    {
+      "corpus": "MCO-Carver5",
+      "mission": "mc2_01",
+      "instances": 4,
+      "terrain_instances": 4,
+      "modified_geometry_instances": 4,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MCO-Carver5\\data\\missions\\mc2_01.pak"
+    },
+    {
+      "corpus": "MCO-Carver5",
+      "mission": "mc2_02",
+      "instances": 47,
+      "terrain_instances": 47,
+      "modified_geometry_instances": 47,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MCO-Carver5\\data\\missions\\mc2_02.pak"
+    },
+    {
+      "corpus": "MCO-Carver5",
+      "mission": "mc2_03",
+      "instances": 11,
+      "terrain_instances": 11,
+      "modified_geometry_instances": 11,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MCO-Carver5\\data\\missions\\mc2_03.pak"
+    },
+    {
+      "corpus": "MCO-Carver5",
+      "mission": "mc2_04",
+      "instances": 5,
+      "terrain_instances": 5,
+      "modified_geometry_instances": 5,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MCO-Carver5\\data\\missions\\mc2_04.pak"
+    },
+    {
+      "corpus": "MCO-Carver5",
+      "mission": "mc2_05",
+      "instances": 98,
+      "terrain_instances": 98,
+      "modified_geometry_instances": 98,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MCO-Carver5\\data\\missions\\mc2_05.pak"
+    },
+    {
+      "corpus": "MCO-Carver5",
+      "mission": "mc2_06",
+      "instances": 28,
+      "terrain_instances": 28,
+      "modified_geometry_instances": 28,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MCO-Carver5\\data\\missions\\mc2_06.pak"
+    },
+    {
+      "corpus": "MCO-Carver5",
+      "mission": "mc2_08",
+      "instances": 426,
+      "terrain_instances": 426,
+      "modified_geometry_instances": 426,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MCO-Carver5\\data\\missions\\mc2_08.pak"
+    },
+    {
+      "corpus": "MCO-Carver5",
+      "mission": "mc2_09",
+      "instances": 20,
+      "terrain_instances": 20,
+      "modified_geometry_instances": 20,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MCO-Carver5\\data\\missions\\mc2_09.pak"
+    },
+    {
+      "corpus": "MCO-Carver5",
+      "mission": "mc2_10",
+      "instances": 29,
+      "terrain_instances": 29,
+      "modified_geometry_instances": 29,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MCO-Carver5\\data\\missions\\mc2_10.pak"
+    },
+    {
+      "corpus": "MCO-Carver5",
+      "mission": "mc2_11",
+      "instances": 502,
+      "terrain_instances": 502,
+      "modified_geometry_instances": 502,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MCO-Carver5\\data\\missions\\mc2_11.pak"
+    },
+    {
+      "corpus": "MCO-Carver5",
+      "mission": "mc2_12",
+      "instances": 10,
+      "terrain_instances": 10,
+      "modified_geometry_instances": 10,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MCO-Carver5\\data\\missions\\mc2_12.pak"
+    },
+    {
+      "corpus": "MCO-Carver5",
+      "mission": "mc2_15",
+      "instances": 18,
+      "terrain_instances": 18,
+      "modified_geometry_instances": 18,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MCO-Carver5\\data\\missions\\mc2_15.pak"
+    },
+    {
+      "corpus": "MCO-Carver5",
+      "mission": "mc2_16",
+      "instances": 32,
+      "terrain_instances": 32,
+      "modified_geometry_instances": 32,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MCO-Carver5\\data\\missions\\mc2_16.pak"
+    },
+    {
+      "corpus": "MCO-Carver5",
+      "mission": "mc2_17",
+      "instances": 52,
+      "terrain_instances": 52,
+      "modified_geometry_instances": 52,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MCO-Carver5\\data\\missions\\mc2_17.pak"
+    },
+    {
+      "corpus": "MCO-Carver5",
+      "mission": "mc2_18",
+      "instances": 52,
+      "terrain_instances": 52,
+      "modified_geometry_instances": 52,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MCO-Carver5\\data\\missions\\mc2_18.pak"
+    },
+    {
+      "corpus": "MCO-Carver5",
+      "mission": "mc2_21",
+      "instances": 33,
+      "terrain_instances": 33,
+      "modified_geometry_instances": 33,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MCO-Carver5\\data\\missions\\mc2_21.pak"
+    },
+    {
+      "corpus": "MCO-Carver5",
+      "mission": "mc2_22",
+      "instances": 24,
+      "terrain_instances": 24,
+      "modified_geometry_instances": 24,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MCO-Carver5\\data\\missions\\mc2_22.pak"
+    },
+    {
+      "corpus": "MCO-Carver5",
+      "mission": "mc2_23",
+      "instances": 25,
+      "terrain_instances": 25,
+      "modified_geometry_instances": 25,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MCO-Carver5\\data\\missions\\mc2_23.pak"
+    },
+    {
+      "corpus": "MCO-Carver5",
+      "mission": "mc2_24",
+      "instances": 46,
+      "terrain_instances": 46,
+      "modified_geometry_instances": 46,
+      "part_instances": 0,
+      "source": "A:\\Games\\mc2-opengl\\MCO-Carver5\\data\\missions\\mc2_24.pak"
+    }
+  ]
+}

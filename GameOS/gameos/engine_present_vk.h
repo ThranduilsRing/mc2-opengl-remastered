@@ -179,6 +179,7 @@ public:
     // Rung 8.6 native ImGui renderer seam. These stay VK-header-free so
     // GuiRuntime can hand draw data to the present owner without learning Vulkan.
     bool prepareImguiVulkanFrame();
+    bool prewarmPipelines();
     bool renderImguiVulkanDrawData(ImDrawData* drawData);
     bool imguiVulkanReady() const;
     void shutdownImguiVulkanRenderer();
@@ -200,10 +201,6 @@ public:
     // false unless the direct-present shared FBO is live. The caller supplies the
     // composite viewport; narrower FORCE-43 viewports are drawn over a VK black clear.
     bool renderNativeCompositeVisual(float exposure,
-                                     bool fxaaEnabled,
-                                     float fxaaSubpix,
-                                     float fxaaEdgeThreshold,
-                                     float fxaaEdgeThresholdMin,
                                      int viewMode,
                                      int engineIdxBase,
                                      float lowLightGain,

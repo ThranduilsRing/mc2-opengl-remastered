@@ -27,7 +27,7 @@ struct GpuTerrainLight {
     float  farDistance;
     float  oneOverDistance;
     float  _pad1;
-    float  _pad2;
+    float  intensity;
 };
 
 struct GpuTerrainLightingOutput {
@@ -137,9 +137,9 @@ void main(uint3 tid : SV_DispatchThreadID)
                 float falloff = 1.0;
                 if (getFalloff(i, len, falloff))
                 {
-                    float red   = lights[i].color.r * 255.0 * falloff;
-                    float green = lights[i].color.g * 255.0 * falloff;
-                    float blue  = lights[i].color.b * 255.0 * falloff;
+                    float red   = lights[i].color.r * lights[i].intensity * 255.0 * falloff;
+                    float green = lights[i].color.g * lights[i].intensity * 255.0 * falloff;
+                    float blue  = lights[i].color.b * lights[i].intensity * 255.0 * falloff;
                     specR = min(specR + uint(red),   255u);
                     specG = min(specG + uint(green), 255u);
                     specB = min(specB + uint(blue),  255u);

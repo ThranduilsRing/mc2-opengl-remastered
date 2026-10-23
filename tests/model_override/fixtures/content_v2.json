@@ -1,0 +1,124 @@
+{
+  "overrides": [
+    {
+      "type": "model",
+      "renderOnly": true,
+      "fallback": "stock",
+      "scale": 1.0,
+      "replaces": "staticProp:hangar",
+      "source": "hangar/pristine_intact_lod0.glb",
+      "destroyed": {
+        "source": "hangar/pristine_destroyed_lod0.glb"
+      },
+      "conditions": {
+        "worn": {
+          "source": "hangar/worn_intact_lod0.glb",
+          "destroyed": {
+            "source": "hangar/worn_destroyed_lod0.glb"
+          }
+        },
+        "abandoned": {
+          "source": "hangar/abandoned_intact_lod0.glb"
+        },
+        "ruined": {
+          "source": "hangar/x.glb"
+        }
+      },
+      "materials": {
+        "version": 2,
+        "slots": [
+          {
+            "slot": 0,
+            "reviewed": true,
+            "class": "painted_metal",
+            "alphaMode": "STOCK",
+            "normal": "hangar/detail/0_normal.ktx2",
+            "orm": "hangar/detail/0_orm.ktx2"
+          },
+          {
+            "slot": 1,
+            "reviewed": true,
+            "class": "bare_metal"
+          },
+          {
+            "slot": 2,
+            "reviewed": true,
+            "class": "grating",
+            "alphaMode": "MASK",
+            "alphaCutoff": 0.4,
+            "metallic": 0.7,
+            "roughness": 0.6
+          }
+        ]
+      }
+    },
+    {
+      "type": "model",
+      "renderOnly": true,
+      "fallback": "stock",
+      "scale": 1.0,
+      "replaces": "staticProp:concrete_metal",
+      "source": "a.glb",
+      "materials": {
+        "version": 2,
+        "slots": [
+          {
+            "slot": 0,
+            "reviewed": true,
+            "class": "concrete",
+            "metallic": 0.5
+          }
+        ]
+      }
+    },
+    {
+      "type": "model",
+      "renderOnly": true,
+      "fallback": "stock",
+      "scale": 1.0,
+      "replaces": "staticProp:ktx_in_v1",
+      "source": "a.glb",
+      "materials": {
+        "version": 1,
+        "slots": [
+          {
+            "slot": 0,
+            "reviewed": true,
+            "class": "rust",
+            "orm": "detail/orm.ktx2"
+          }
+        ]
+      }
+    },
+    {
+      "type": "model",
+      "renderOnly": true,
+      "fallback": "stock",
+      "scale": 1.0,
+      "replaces": "staticProp:bad_destroyed",
+      "source": "a.glb",
+      "destroyed": {
+        "source": "../escape.glb"
+      }
+    },
+    {
+      "type": "model",
+      "renderOnly": true,
+      "fallback": "stock",
+      "scale": 1.0,
+      "replaces": "staticProp:blend",
+      "source": "a.glb",
+      "materials": {
+        "version": 2,
+        "slots": [
+          {
+            "slot": 0,
+            "reviewed": true,
+            "class": "glass",
+            "alphaMode": "BLEND"
+          }
+        ]
+      }
+    }
+  ]
+}

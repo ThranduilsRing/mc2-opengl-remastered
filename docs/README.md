@@ -13,6 +13,7 @@
 - [docs/modding-effects.md](modding-effects.md)
 - [docs/modding-animations.md](modding-animations.md)
 - [docs/asset-pipeline.md](asset-pipeline.md)
+- [docs/content-pipeline.md](content-pipeline.md) - importing/replacing models: IR, cook contract, material schema, packages
 - [docs/GLOSSARY.md](GLOSSARY.md)
 - [MODDER-REPORT-techscript-brainspecial.md](MODDER-REPORT-techscript-brainspecial.md) - MC2R engine support for your TechScript / mission_specials system
 - [gosfx-modder-dropin-path.md](gosfx-modder-dropin-path.md) - gosFX Modder Drop-In: New Effect - Tie to Weapon

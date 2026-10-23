@@ -59,7 +59,7 @@ bool ComputePipeline::create(VkDevice device, std::string_view spvPath, const st
     cpci.stage.module = module_.get();
     cpci.stage.pName = "main";
     cpci.layout = layout_.get();
-    if (!mc2vk::create(pipe_, device, [&](VkPipeline* h) { return vkCreateComputePipelines(device, VK_NULL_HANDLE, 1, &cpci, nullptr, h); })) {
+    if (!mc2vk::create(pipe_, device, [&](VkPipeline* h) { return mc2vk::infra::compute(device, VK_NULL_HANDLE, 1, &cpci, nullptr, h); })) {
         clog("%.*s: vkCreateComputePipelines failed.", static_cast<int>(name.size()), name.data());
         return false;
     }
@@ -68,7 +68,7 @@ bool ComputePipeline::create(VkDevice device, std::string_view spvPath, const st
 }
 
 void ComputePipeline::bind(VkCommandBuffer cb, VkDescriptorSet set, std::span<const uint32_t> dynamicOffsets) const {
-    vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_COMPUTE, pipe_.get());
+    mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_COMPUTE, pipe_.get());
     vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_COMPUTE, layout_.get(), 0, 1, &set, static_cast<uint32_t>(dynamicOffsets.size()), dynamicOffsets.data());
 }
 

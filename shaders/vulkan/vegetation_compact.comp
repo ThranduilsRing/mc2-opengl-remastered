@@ -1,0 +1,11 @@
+// Vegetation GPU cull, pass 3: move each region's survivors from the sparse scratch slots into the dense draw list.
+#version 450
+#extension GL_GOOGLE_include_directive : require
+layout(local_size_x = 64) in;
+#include "include/vegetation_cull_common.glsl"
+void main() {
+    uint r = gl_WorkGroupID.y * P.flags.y + gl_WorkGroupID.x;
+    if (r >= P.counts.x) return;
+    uint n = counts[r], o = offsets[r], f = region[r].first;
+    for (uint i = gl_LocalInvocationIndex; i < n; i += 64u) dense[o + i] = scratch[f + i];
+}

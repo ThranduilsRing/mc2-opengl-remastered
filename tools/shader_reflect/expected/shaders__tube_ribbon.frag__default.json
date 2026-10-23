@@ -1,0 +1,29 @@
+{
+  "defines": [],
+  "outputs": [
+    {
+      "location": 0,
+      "name": "fragColor",
+      "type": "vec4"
+    }
+  ],
+  "shader": "shaders/tube_ribbon.frag",
+  "ssbos": [],
+  "stage": "frag",
+  "ubos": [
+    {
+      "binding": 1,
+      "members": [
+        {
+          "array_stride": null,
+          "matrix_stride": null,
+          "name": "uAdditive",
+          "offset": 0,
+          "type": "uint"
+        }
+      ],
+      "name": "gl_DefaultUniformBlock"
+    }
+  ],
+  "variant": "default"
+}

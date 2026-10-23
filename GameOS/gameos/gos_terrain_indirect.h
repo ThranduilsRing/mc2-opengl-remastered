@@ -310,6 +310,12 @@ void  MarkDecalDirty();
 void  RebuildDecalStaticVBOIfDirty();
 void  BuildDecalStaticVBO();
 int          GetDecalVertCount();
+// VEG-CEMENT-1: sub-cell hard-surface (cement/pad/road) coverage in [0,1] at a
+// world XY, rasterised from the same face-cache walk as the decal bake (overlay
+// alpha for alpha-cement tiles, 1.0 for pure-cement tiles). Lazy, once per mission.
+void  InvalidateHardSurfaceField();
+float HardSurfaceCoverage(float wx, float wy);
+void  HardSurfaceStats(int* alpha, int* pure, int* noImage);
 bool  DrawDecalStatic();
 
 // Slice A counters.

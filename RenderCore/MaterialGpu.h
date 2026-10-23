@@ -29,7 +29,8 @@
 //     VFX / future : undefined until each consumer defines its own texture identity.
 //
 //   normalTex / metallicRoughnessTex / emissiveTex
-//     Not yet wired for any consumer. kMaterialTexAbsent in all live entries.
+//     Native authored props: array layers in the PropMaterialGpu wrapper table;
+//     the legacy table below still uses kMaterialTexAbsent in its live entries.
 //     Future semantics will match albedoTex once a unified texture model exists.
 //
 //   kMaterialTexAbsent (0xFFFFFFFF) : slot absent; shader uses default.

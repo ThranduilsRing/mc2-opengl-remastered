@@ -44,7 +44,7 @@ struct PoolLight {
     float farDistance;
     float oneOverDistance;
     float _plPad1;
-    float _plPad2;
+    float intensity;
 };
 layout(set = 0, binding = 5, std430) readonly buffer MechPoolLightsVK {
     PoolLight poolLights[];
@@ -67,6 +67,8 @@ layout(location = 7) flat in int  vMechSunFound;
 layout(location = 8) in vec3 vTangentGL;
 layout(location = 9) flat in uint vImportedMech;
 
+#include "include/mech_material_vk.glsl"
+
 layout(location = 0) out vec4 oColor;     // MRT0
 layout(location = 1) out vec4 oGBuffer1;  // MRT1
 
@@ -80,17 +82,14 @@ void main() {
         if (vImportedMech != 0u)
             tex_color.rgb = msh_importedAlbedo(tex_color.rgb, uFrame.shadeB.z, uFrame.shadeB.w);
 
+        // Material inputs (SurfaceMaterial); the composition below is the lighting lane's.
+        SurfaceMaterial surface = mechSurface(tex_color.rgb, Nshade, vImportedMech, (uRun.materialFlags & 1u) != 0u);
         rgb = tex_color.rgb * vLitColor;
         rgb += vHighlight.rgb * vHighlight.a;
-        if ((vImportedMech & 2u) != 0u) {
-            float ao = textureLod(uMechAo, vUv, 0.0).r;
-            rgb *= msh_aoFactor(ao, uFrame.shadeC.x);
-        }
-        if ((vImportedMech & 4u) != 0u && dot(vTangentGL, vTangentGL) > 1e-8)
-            Nshade = msh_normalMapped(Nshade, vTangentGL,
-                                      textureLod(uMechNrm, vUv, 0.0).xyz, uFrame.shadeC.y);
+        if ((vImportedMech & 2u) != 0u)
+            rgb *= surface.ao;
+        Nshade = surface.normal;
 
-        rgb += msh_hemiAmbient(tex_color.rgb, Nshade, uFrame.shadeA.x);
 
         if (uFrame.shadeA.y > 0.0 && vMechSunFound != 0) {
             bool isGlass = msh_isGlass(tex_color.rgb, uFrame.shadeB.x, uFrame.shadeB.y);
