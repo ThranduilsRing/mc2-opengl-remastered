@@ -6,8 +6,8 @@
   "specializationParams": [],
   "artifact": "mech.vert.default.dbbae7d3.spv",
   "spv_dir": "shaders/spv",
-  "source_sha256": "7488bff246b5045b6ea895a12cd6dbde724a2aeed2eda94a698a8515fc6bc6a0",
-  "spirv_sha256": "9719cd18640be5534a3ad2abb2d0d5799566bcbabc30571aba71a1970721cc97",
+  "source_sha256": "545aac52c2b4ae9bde2d04e881e09b5b6658588eeb9a91fe854e13357ba27486",
+  "spirv_sha256": "60977923a31626cb1a287fdb69eee765290c029d1e3d6649aa15390f26179d6b",
   "bindings": {
     "ubos": [
       {

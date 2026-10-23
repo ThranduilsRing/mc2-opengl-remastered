@@ -1,6 +1,8 @@
 #ifndef __OBJECT_LIGHT_POOL_HGLSL__
 #define __OBJECT_LIGHT_POOL_HGLSL__
 
+#include "light_pool_attenuation.hglsl"
+
 // VK-PARITY-MECH-1: object-side night light-pool walk (POOL-CONSUMERS-1), shared
 // VERBATIM by the GL object shaders (via light_pools.hglsl::calcLightPools ->
 // static_prop.frag / mech.frag / gos_tex_vertex_lighted.frag) and the VK tier-1
@@ -55,23 +57,10 @@ vec3 olp_objectPoolLight(vec3 worldPosMC2, int numPoolLights, int poolSoft,
         if (poolLights[i].lightType == 0u) continue;
         vec3  vtl = worldPosMC2 - poolLights[i].position;
         bool  mover = poolLights[i]._plPad1 > 0.5;
-        float farD  = poolLights[i].farDistance;
         float nearD = poolLights[i].closeDistance;
-        float ooD   = poolLights[i].oneOverDistance;
-        if (mover && moverScale < 0.999) {
-            float s = max(moverScale, 0.05);
-            farD *= s; nearD *= s; ooD /= s;
-        }
-        float distance2 = dot(vtl, vtl);
-        if (farD <= 0.0 || distance2 >= farD * farD) continue;
-        float len = sqrt(distance2);
-        float falloff = (len <= nearD)
-                      ? 1.0
-                      : (farD - len) * ooD;
-        if (poolSoft != 0) {
-            float t = clamp(falloff, 0.0, 1.0);
-            falloff = t * t * (3.0 - 2.0 * t);
-        }
+        float len, falloff;
+        if (!lpa_falloff(vtl, mover, moverScale, poolSoft, nearD,
+                         poolLights[i].farDistance, poolLights[i].oneOverDistance, len, falloff)) continue;
         vec3 plCol = poolLights[i].color * poolLights[i].intensity;
         if (mover) {
             plCol *= moverDim;
