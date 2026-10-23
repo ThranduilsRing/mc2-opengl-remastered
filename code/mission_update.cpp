@@ -1058,7 +1058,16 @@ void Mission::updateOrderLiveness() {
 					queued.targetWID = queueTarget->getWatchID();
 					queued.pack(nullptr, nullptr);
 					olPilot->addQueuedTacOrder(queued);
+					queued.init(ORDER_ORIGIN_PLAYER, TACTICAL_ORDER_ATTACK_POINT);
+					queued.attackParams.targetPoint = olGoal;
+					queued.pack(nullptr, nullptr);
+					olPilot->addQueuedTacOrder(queued);
+					queued.init(ORDER_ORIGIN_PLAYER, TACTICAL_ORDER_GUARD);
+					queued.targetWID = pM->getWatchID();
+					queued.pack(nullptr, nullptr);
+					olPilot->addQueuedTacOrder(queued);
 					olPilot->setTacOrderQueueLooping(true);
+					olPilot->getNextQueuedTacOrder(&queued); // Save a nonzero loop cursor.
 					olPilot->lockTacOrderQueue();
 				}
 				s_olEntries[s_olIssuedMove].wid = pM->getWatchID();

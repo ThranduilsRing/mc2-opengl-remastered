@@ -895,6 +895,8 @@ void MechWarrior::load (PacketFilePtr file, long packetNum)
 			TacticalOrder order;
 			peekQueuedTacOrder(i, &order);
 			if (order.targetWID != targets.targets[i]) Fatal(0, "Queued target restore mismatch");
+			if (order.code == TACTICAL_ORDER_ATTACK_POINT && order.attackParams.targetPoint != tacOrderQueue[i].point)
+				Fatal(0, "Queued attack point restore mismatch");
 			mc2::fmt::print_out("[SAVE v1] event=queue_load pilot={} slot={} target={} cursor={} looping={} locked={} active={}\n",
 				index, i, order.targetWID, tacOrderQueueIndex, tacOrderQueueLooping, tacOrderQueueLocked, static_cast<int>(curTacOrder.code));
 		}
@@ -935,7 +937,9 @@ long MechWarrior::Load (PacketFilePtr file, long packetNum)
 		// Take it back to the real number here!!
 		numWarriors--;
 	}
-
+	// setup() allocated the current pool, including slots absent from old saves.
+	// Later reinforcements and saves must include those slots too.
+	numWarriors = MAX_WARRIORS;
 
 	return packetNum;
 }

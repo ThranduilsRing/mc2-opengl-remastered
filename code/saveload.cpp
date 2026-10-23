@@ -104,7 +104,10 @@ void Mission::save (const char *saveFileName)
 
 	loadProgress = 1.0f;
 
-	saveFile.reserve(20000);
+	// MOVE's count-only writer includes the map's door packets. A fixed 20000
+	// slots cannot hold a big map plus its objects and pilot records.
+	saveFile.reserve(std::max(20000L, MOVE_saveData(nullptr, 0) + ObjectManager->getMaxObjects() +
+		MAX_WARRIORS + MAX_TEAMS + MAX_COMMANDERS + 32));
 	DWORD currentPacket = 0;
 
 	saveFile.writePacket(currentPacket,reinterpret_cast<MemoryPtr>(versionStamp),strlen(versionStamp)+1,STORAGE_TYPE_RAW);

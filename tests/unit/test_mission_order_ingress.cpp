@@ -235,4 +235,3 @@ TEST_CASE("contacts retain every observer and wide object identities") {
 	for (int i = 0; i < MAX_SENSORS; ++i) info.decContactCount(0);
 	CHECK(info.getContactCount(0) == 0);
 }
-

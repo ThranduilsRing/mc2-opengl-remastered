@@ -36,7 +36,8 @@ long MechWarrior::addQueuedTacOrder (TacticalOrder tacOrder) {
 	else if ( tacOrder.moveParams.wayPath.mode[0] == TRAVEL_MODE_JUMP )
 		queueMarkers[numTacOrdersQueued] = getWayPointMarker( tacOrder.getWayPoint(0), "JumpWayPoint" );
 
-	tacOrderQueue[numTacOrdersQueued].point = tacOrder.getWayPoint(0);
+	tacOrderQueue[numTacOrdersQueued].point = tacOrder.code == TACTICAL_ORDER_ATTACK_POINT
+		? tacOrder.attackParams.targetPoint : tacOrder.getWayPoint(0);
 	tacOrderQueue[numTacOrdersQueued].id = tacOrder.id;
 	tacOrderQueue[numTacOrdersQueued].tactic = tacOrder.attackParams.tactic;
 	tacOrderQueue[numTacOrdersQueued].packedData[0] = tacOrder.data[0];
@@ -81,7 +82,8 @@ long MechWarrior::removeQueuedTacOrder (TacticalOrderPtr tacOrder) {
 	tacOrder->unpack();
 	if (target) tacOrder->targetWID = *target;
 	tacOrder->attackParams.tactic = tactic;
-	tacOrder->setWayPoint(0, point);
+	if (tacOrder->code == TACTICAL_ORDER_ATTACK_POINT) tacOrder->attackParams.targetPoint = point;
+	else tacOrder->setWayPoint(0, point);
 
 	return(0);
 }
@@ -101,7 +103,8 @@ long MechWarrior::getNextQueuedTacOrder (TacticalOrderPtr tacOrder) {
 	tacOrder->data[1] = tacOrderQueue[tacOrderQueueIndex].packedData[1];
 	tacOrder->unpack();
 	if (queueTargets[tacOrderQueueIndex]) tacOrder->targetWID = *queueTargets[tacOrderQueueIndex];
-	tacOrder->setWayPoint(0, tacOrderQueue[tacOrderQueueIndex].point);
+	if (tacOrder->code == TACTICAL_ORDER_ATTACK_POINT) tacOrder->attackParams.targetPoint = tacOrderQueue[tacOrderQueueIndex].point;
+	else tacOrder->setWayPoint(0, tacOrderQueue[tacOrderQueueIndex].point);
 	tacOrder->attackParams.tactic = static_cast<TacticType>(tacOrderQueue[tacOrderQueueIndex].tactic);
 
 	tacOrderQueueIndex++;
@@ -131,7 +134,8 @@ long MechWarrior::peekQueuedTacOrder (long index, TacticalOrderPtr tacOrder) {
 
 	tacOrder->unpack();
 	if (queueTargets[index]) tacOrder->targetWID = *queueTargets[index];
-	tacOrder->setWayPoint(0, point);
+	if (tacOrder->code == TACTICAL_ORDER_ATTACK_POINT) tacOrder->attackParams.targetPoint = point;
+	else tacOrder->setWayPoint(0, point);
 	tacOrder->attackParams.tactic = tactic;
 	tacOrder->setId(tacOrderId);
 
