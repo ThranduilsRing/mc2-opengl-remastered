@@ -190,12 +190,12 @@
    "LG03": 600,
    "LG04": 15,
    "LG05": 113,
-   "LG06": 536,
+   "LG06": 531,
    "LG07": 0,
    "LG08": 46,
    "LG09": 2,
    "LG10": 20,
-   "LG11": 53,
+   "LG11": 51,
    "LG12a": 117,
    "LG12b": 179,
    "LG13": 123,
@@ -2956,11 +2956,11 @@
   },
   "mclib/model_override_registry.cpp": {
    "LG05": 2,
-   "LG06": 5,
-   "LG11": 5
+   "LG06": 2,
+   "LG11": 3
   },
   "mclib/model_override_registry.h": {
-   "LG06": 3
+   "LG06": 1
   },
   "mclib/mouse.cpp": {
    "LG18": 3
@@ -3516,7 +3516,7 @@
    "LG20": 3
   }
  },
- "head": "b2cb704c3",
+ "head": "8b7429ebd",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

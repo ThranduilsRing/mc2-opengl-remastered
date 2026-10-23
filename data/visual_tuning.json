@@ -15,33 +15,26 @@
   "missions": {
     "mc2_01": {
       "shadowSoftness": 1.1,
-      "staticPropIblStrength": 0.6,
-      "mechAmbientStrength": 0.24
+      "staticPropIblStrength": 0.6
     },
     "mc2_03": {
       "shadowSoftness": 1.0,
-      "staticPropIblStrength": 0.55,
-      "mechAmbientStrength": 0.22
+      "staticPropIblStrength": 0.55
     },
     "mc2_10": {
       "shadowSoftness": 1.2,
-      "staticPropIblStrength": 0.6,
-      "mechAmbientStrength": 0.26
+      "staticPropIblStrength": 0.6
     },
     "mc2_17": {
-      "mechAmbientStrength": 0.28,
       "shadowSoftness": 1.4
     },
     "mc2_24": {
       "shadowSoftness": 1.15,
-      "staticPropIblStrength": 0.6,
-      "mechAmbientStrength": 0.25
+      "staticPropIblStrength": 0.6
     },
     "gaea_peaks_01": {
       "shadowSoftness": 1.25,
-      "staticPropIblStrength": 0.65,
-      "mechAmbientStrength": 0.26,
-      "exposure": 1.05
+      "staticPropIblStrength": 0.65
     }
   }
 }

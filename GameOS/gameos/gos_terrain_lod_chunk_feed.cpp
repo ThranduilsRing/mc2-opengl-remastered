@@ -267,10 +267,9 @@ extern "C" int mc2_terrain_tier1_get_frame_feed(Mc2TerrainTier1Feed* out)
         out->detailStrength = 1.0f;   // detailNormalStrength.x (terrain_detail_strength_)
     }
 
-    // VK-PARITY-TERRAIN-1: ambient floor + mission flat light from the SAME producers
-    // the GL uniform upload uses (gos_TerrainAmbientFloor/DayGate, gos_GetTerrainMissionFlatLight).
-    out->ambientFloor   = gos_TerrainAmbientFloor();
-    out->ambientDayGate = gos_TerrainAmbientDayGate();
+    // Retired ambient-floor slots stay neutral to preserve the shared UBO layout.
+    out->ambientFloor   = 0.0f;
+    out->ambientDayGate = 0.0f;
     // VK-PARITY-F3: legacy material tint producers (same values as the GL upload below).
     {
         float tr[3]={0.36f,0.37f,0.40f}; gos_GetTerrainTintRock(&tr[0],&tr[1],&tr[2]);

@@ -1169,27 +1169,6 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "TACTICAL-ARC-OVERLAY-MVP-1: world-space range ring + facing line on each SELECTED mover, drawn in-scene by the debug renderer just before its flush...",
     },
     {
-        "MC2_FEATURE_TERRAIN_AMBIENT_FLOOR",
-        "MC2_TERRAIN_AMBIENT_FLOOR",
-        EnvVarKind::Feature,
-        true,
-        "TERRAIN-AMBIENT-FLOOR-2: terrain-only, albedo-scaled ambient floor in terrain_lod_chunk.frag.",
-    },
-    {
-        "MC2_FEATURE_TERRAIN_AMBIENT_FLOOR_NIGHT",
-        "MC2_TERRAIN_AMBIENT_FLOOR_NIGHT",
-        EnvVarKind::Feature,
-        false,
-        "TERRAIN-AMBIENT-FLOOR-NIGHT-1: 0..1 FLOOR under TERRAIN-AMBIENT-FLOOR-2's daylight gate; the uploaded gate becomes max(dayGate, floor).",
-    },
-    {
-        "MC2_TRACE_TERRAIN_AMBIENT_FLOOR",
-        "MC2_TERRAIN_AMBIENT_FLOOR_TRACE",
-        EnvVarKind::Trace,
-        false,
-        "TERRAIN-AMBIENT-FLOOR-2 trace: prints ONE line at the first terrain-chunk uniform upload giving the resolved floor strength, the daylight gate ACTUALLY...",
-    },
-    {
         "MC2_FEATURE_TERRAIN_CLIFF_DISPLACE",
         "MC2_TERRAIN_CLIFF_DISPLACE",
         EnvVarKind::Feature,

@@ -315,11 +315,22 @@ TEST_CASE("Tri is an enum class with no bool conversion") {
 }
 
 namespace {
-constexpr std::array kRetiredShadowGates{"MC2_DEBUG_SHADOW_FRUSTUM","MC2_DEBUG_SHADOW_ZRANGE","MC2_SHADOW_ALT_SCALE","MC2_SHADOW_BAKE","MC2_SHADOW_BOUNDED_NEAR_RADIUS","MC2_SHADOW_CASTER_CULL_CACHE","MC2_SHADOW_CASTER_CULL_MARGIN","MC2_SHADOW_CASTER_LIGHTBOX_CULL","MC2_SHADOW_CSM_COUNT","MC2_SHADOW_CSM_LAMBDA","MC2_SHADOW_CSM_R0","MC2_SHADOW_CSM_R1","MC2_SHADOW_CSM_SOFTNESS","MC2_SHADOW_DIST_FADE","MC2_SHADOW_DIST_FADE_MAX","MC2_SHADOW_DYNAMIC_PROP_CASTERS","MC2_SHADOW_DYNAMIC_PROP_DIRTY_ONLY","MC2_SHADOW_FADE_CONT","MC2_SHADOW_FADE_RAMP0","MC2_SHADOW_FOCUS_CENTER","MC2_SHADOW_FULLMAP_SEPARATE","MC2_SHADOW_FULLMAP_SIZE","MC2_SHADOW_GUARD_CLAMPED_SUN","MC2_SHADOW_MAP_SIZE","MC2_SHADOW_OBJ_NORMAL_BIAS","MC2_SHADOW_STATIC_BANDFIX","MC2_SHADOW_STATIC_BANDFIX_V2","MC2_TERRAIN_SHADOW_GUARD_CLAMPED_SUN","MC2_VK_TERRAIN_CSM_DEBUG"};
+constexpr std::array kRetiredGates{
+    "MC2_FXAA",
+    "MC2_FXAA_EDGE_THRESHOLD",
+    "MC2_FXAA_EDGE_THRESHOLD_MIN",
+    "MC2_FXAA_SUBPIX",
+    "MC2_TERRAIN_AMBIENT_FLOOR",
+    "MC2_TERRAIN_AMBIENT_FLOOR_NIGHT",
+    "MC2_TERRAIN_AMBIENT_FLOOR_TRACE",
+    "MC2_PAD_AREA_GLOW",
+    "MC2_MECH_AMBIENT_V1",
+    "MC2_MECH_AMBIENT_V1_STRENGTH",
+    "MC2_DEBUG_SHADOW_FRUSTUM","MC2_DEBUG_SHADOW_ZRANGE","MC2_SHADOW_ALT_SCALE","MC2_SHADOW_BAKE","MC2_SHADOW_BOUNDED_NEAR_RADIUS","MC2_SHADOW_CASTER_CULL_CACHE","MC2_SHADOW_CASTER_CULL_MARGIN","MC2_SHADOW_CASTER_LIGHTBOX_CULL","MC2_SHADOW_CSM_COUNT","MC2_SHADOW_CSM_LAMBDA","MC2_SHADOW_CSM_R0","MC2_SHADOW_CSM_R1","MC2_SHADOW_CSM_SOFTNESS","MC2_SHADOW_DIST_FADE","MC2_SHADOW_DIST_FADE_MAX","MC2_SHADOW_DYNAMIC_PROP_CASTERS","MC2_SHADOW_DYNAMIC_PROP_DIRTY_ONLY","MC2_SHADOW_FADE_CONT","MC2_SHADOW_FADE_RAMP0","MC2_SHADOW_FOCUS_CENTER","MC2_SHADOW_FULLMAP_SEPARATE","MC2_SHADOW_FULLMAP_SIZE","MC2_SHADOW_GUARD_CLAMPED_SUN","MC2_SHADOW_MAP_SIZE","MC2_SHADOW_OBJ_NORMAL_BIAS","MC2_SHADOW_STATIC_BANDFIX","MC2_SHADOW_STATIC_BANDFIX_V2","MC2_TERRAIN_SHADOW_GUARD_CLAMPED_SUN","MC2_VK_TERRAIN_CSM_DEBUG"};
 }
 
-TEST_CASE("Retired cascade and latch gates cannot be re-enabled") {
-    for (const char* name : kRetiredShadowGates)
+TEST_CASE("Retired gates cannot be re-enabled") {
+    for (const char* name : kRetiredGates)
         CHECK_FALSE(gate::lookupName(name).has_value());
 }
 
@@ -328,8 +339,8 @@ TEST_CASE("table is sorted, unique and every name round-trips through lookupName
     const std::size_t n = gate::tableSize();
     REQUIRE(n == gate::detail::kGateCount);
     // Preserve the pre-cutover population floor, counting the explicitly
-    // retired shadow cohort whose absence is checked below.
-    REQUIRE(n + kRetiredShadowGates.size() >= 920);
+    // retired cohort whose absence is checked above.
+    REQUIRE(n + kRetiredGates.size() >= 920);
     for (std::size_t i = 0; i < n; ++i) {
         if (i > 0) CHECK((rows[i - 1].name < rows[i].name));
         const auto info = gate::lookupName(rows[i].name);
@@ -841,20 +852,20 @@ TEST_CASE("G3 float rows carry the bounds of the readers they replace") {
 }
 
 TEST_CASE("isNonEmpty is the old v && v[0] test, whatever the row kind") {
-    EnvVar env("MC2_TERRAIN_AMBIENT_FLOOR");
-    gate::invalidate("MC2_TERRAIN_AMBIENT_FLOOR");
-    CHECK_FALSE(gate::isNonEmpty<"MC2_TERRAIN_AMBIENT_FLOOR">());
-    CHECK_FALSE(gate::isSet<"MC2_TERRAIN_AMBIENT_FLOOR">());
-    CHECK(gate::get<"MC2_TERRAIN_AMBIENT_FLOOR">() == 0.35f);     // unset reads the default
+    EnvVar env("MC2_MECH_SPECULAR_STRENGTH");
+    gate::invalidate("MC2_MECH_SPECULAR_STRENGTH");
+    CHECK_FALSE(gate::isNonEmpty<"MC2_MECH_SPECULAR_STRENGTH">());
+    CHECK_FALSE(gate::isSet<"MC2_MECH_SPECULAR_STRENGTH">());
+    CHECK(gate::get<"MC2_MECH_SPECULAR_STRENGTH">() == 0.05f);     // unset reads the default
     env.set("0.5");
-    gate::invalidate("MC2_TERRAIN_AMBIENT_FLOOR");
-    CHECK(gate::isNonEmpty<"MC2_TERRAIN_AMBIENT_FLOOR">());
-    CHECK(gate::get<"MC2_TERRAIN_AMBIENT_FLOOR">() == 0.5f);
+    gate::invalidate("MC2_MECH_SPECULAR_STRENGTH");
+    CHECK(gate::isNonEmpty<"MC2_MECH_SPECULAR_STRENGTH">());
+    CHECK(gate::get<"MC2_MECH_SPECULAR_STRENGTH">() == 0.5f);
     env.set("9");
-    gate::invalidate("MC2_TERRAIN_AMBIENT_FLOOR");
-    CHECK(gate::get<"MC2_TERRAIN_AMBIENT_FLOOR">() == 2.0f);      // clampRange(0, 2)
+    gate::invalidate("MC2_MECH_SPECULAR_STRENGTH");
+    CHECK(gate::get<"MC2_MECH_SPECULAR_STRENGTH">() == 4.0f);      // clampRange(0, 4)
     env.set(nullptr);
-    gate::invalidate("MC2_TERRAIN_AMBIENT_FLOOR");
+    gate::invalidate("MC2_MECH_SPECULAR_STRENGTH");
 }
 
 TEST_CASE("MC2_WATER_SHORE_MODE tokens 0..3 resolve, anything else is the first (empty) token") {
@@ -1083,16 +1094,16 @@ TEST_CASE("G6 string and presence rows") {
 }
 
 TEST_CASE("raw<> echoes the environment text, nullptr when unset, without caching") {
-    EnvVar env("MC2_FXAA");
+    EnvVar env("MC2_TERRAIN_SLOPE_BIAS");
     env.set(nullptr);
-    CHECK(gate::raw<"MC2_FXAA">() == nullptr);
+    CHECK(gate::raw<"MC2_TERRAIN_SLOPE_BIAS">() == nullptr);
     env.set("");
-    gate::invalidate("MC2_FXAA");
-    CHECK(gate::get<"MC2_FXAA">() == false);
+    gate::invalidate("MC2_TERRAIN_SLOPE_BIAS");
+    CHECK(gate::get<"MC2_TERRAIN_SLOPE_BIAS">() == false);
     env.set("yes");
-    CHECK(std::string(gate::raw<"MC2_FXAA">()) == "yes");   // fresh even though get<> cached
+    CHECK(std::string(gate::raw<"MC2_TERRAIN_SLOPE_BIAS">()) == "yes");   // fresh even though get<> cached
     env.set(nullptr);
-    gate::invalidate("MC2_FXAA");
+    gate::invalidate("MC2_TERRAIN_SLOPE_BIAS");
 }
 
 // ---------------------------------------------------------------------------
@@ -1171,11 +1182,11 @@ TEST_CASE("G5 gameosmain rows and the runtime-name reader") {
     CHECK(g1b::rowNamed("MC2_SCREENSHOT_PATH").kind == Kind::String);
     CHECK(g1b::rowNamed("MC2_LOAD_RACE_PROBE_FRAMES").kind == Kind::String);
 
-    EnvVar env("MC2_FXAA");   // envText reads any name at run time, uncached
+    EnvVar env("MC2_TERRAIN_SLOPE_BIAS");   // envText reads any name at run time, uncached
     env.set(nullptr);
-    CHECK(gate::envText("MC2_FXAA") == nullptr);
+    CHECK(gate::envText("MC2_TERRAIN_SLOPE_BIAS") == nullptr);
     env.set("1");
-    CHECK(std::string(gate::envText("MC2_FXAA")) == "1");
+    CHECK(std::string(gate::envText("MC2_TERRAIN_SLOPE_BIAS")) == "1");
     env.set(nullptr);
 }
 

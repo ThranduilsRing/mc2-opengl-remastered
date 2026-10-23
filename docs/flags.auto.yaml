@@ -3,9 +3,9 @@
 # Where each gate is read, what the smoke runner forwards and what tier1_env_vars.md says are not here: ask
 # tools/repo_intel (env_var, gate_status), which scan the sources.
 generator_version: "3.0.0"
-gate_count: 898
-registry_entry_count: 181
-verified_count: 786
+gate_count: 888
+registry_entry_count: 178
+verified_count: 781
 flags:
   - name: MC2_3DVIEW_DIAG
     kind: Bool
@@ -1535,34 +1535,6 @@ flags:
     smoke_passthrough: true
     verified: true
     registry: {feature_id: MC2_TRACE_FREEZE_MOVERS_AT, kind: Trace, order: -1, default_on: false}
-  - name: MC2_FXAA
-    kind: Bool
-    default: false
-    rule: Lead0
-    owner: post
-    doc: ""
-    smoke_passthrough: true
-  - name: MC2_FXAA_EDGE_THRESHOLD
-    kind: Float
-    default: 0
-    rule: Prefix
-    owner: post
-    doc: ""
-    smoke_passthrough: true
-  - name: MC2_FXAA_EDGE_THRESHOLD_MIN
-    kind: Float
-    default: 0
-    rule: Prefix
-    owner: post
-    doc: ""
-    smoke_passthrough: true
-  - name: MC2_FXAA_SUBPIX
-    kind: Float
-    default: 0
-    rule: Prefix
-    owner: post
-    doc: ""
-    smoke_passthrough: true
   - name: MC2_FX_COST_SPLIT
     kind: Bool
     default: false
@@ -2953,21 +2925,6 @@ flags:
     doc: ""
     smoke_passthrough: true
     verified: true
-  - name: MC2_MECH_AMBIENT_V1
-    kind: Bool
-    default: true
-    rule: Lead0Kill
-    owner: mech
-    doc: ""
-    verified: true
-  - name: MC2_MECH_AMBIENT_V1_STRENGTH
-    kind: Float
-    default: 0.150000006
-    rule: Prefix
-    owner: mech
-    doc: ""
-    range: {lo: 0, hi: 2, style: clamp}
-    verified: true
   - name: MC2_MECH_ANIM_ROTATION_ONLY
     kind: Bool
     default: true
@@ -3587,15 +3544,6 @@ flags:
     smoke_passthrough: true
     verified: true
     registry: {feature_id: MC2_OVERLAY_TILE_HIRES, kind: Feature, order: -1, default_on: false}
-  - name: MC2_PAD_AREA_GLOW
-    kind: Float
-    default: 0.119999997
-    rule: Prefix
-    owner: terrain
-    doc: ""
-    range: {lo: 0, hi: 4, style: clamp}
-    smoke_passthrough: true
-    verified: true
   - name: MC2_PAD_AREA_GLOW_SPILL
     kind: Float
     default: 48
@@ -4907,34 +4855,6 @@ flags:
     owner: terrain
     doc: ""
     verified: true
-  - name: MC2_TERRAIN_AMBIENT_FLOOR
-    kind: Float
-    default: 0.349999994
-    rule: Prefix
-    owner: terrain
-    doc: "TERRAIN-AMBIENT-FLOOR-2: terrain-only, albedo-scaled ambient floor in terrain_lod_chunk.frag."
-    range: {lo: 0, hi: 2, style: clamp}
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_FEATURE_TERRAIN_AMBIENT_FLOOR, kind: Feature, order: -1, default_on: true}
-  - name: MC2_TERRAIN_AMBIENT_FLOOR_NIGHT
-    kind: Float
-    default: 0
-    rule: Prefix
-    owner: terrain
-    doc: "TERRAIN-AMBIENT-FLOOR-NIGHT-1: 0..1 FLOOR under TERRAIN-AMBIENT-FLOOR-2's daylight gate; the uploaded gate becomes max(dayGate, floor)."
-    range: {lo: 0, hi: 1, style: clamp}
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_FEATURE_TERRAIN_AMBIENT_FLOOR_NIGHT, kind: Feature, order: -1, default_on: false}
-  - name: MC2_TERRAIN_AMBIENT_FLOOR_TRACE
-    kind: Bool
-    default: false
-    rule: Presence
-    owner: terrain
-    doc: "TERRAIN-AMBIENT-FLOOR-2 trace: prints ONE line at the first terrain-chunk uniform upload giving the resolved floor strength, the daylight gate ACTUALLY..."
-    smoke_passthrough: true
-    registry: {feature_id: MC2_TRACE_TERRAIN_AMBIENT_FLOOR, kind: Trace, order: -1, default_on: false}
   - name: MC2_TERRAIN_CEMENT_DIAG_CONNECT
     kind: Bool
     default: false

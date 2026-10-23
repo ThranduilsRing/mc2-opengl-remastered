@@ -1,18 +1,4 @@
 #include "../../RenderCore/TextureService.h"
-// engine_present_vk.cpp
-//
-// VK-P13-SELECTOR-PLAN / T3 -- whole-frame GL->VK present intercept implementation.
-//
-// Borrows the T2 shared VulkanContext device (NO second device / NO second
-// volkLoadDevice). Owns only the hidden window + surface + swapchain + per-frame
-// sync + the exportable interop image (GL writes it via copy-1, VK blits it into
-// the swapchain via copy-2). Swapchain/present logic keeps one
-// render-finished semaphore per swapchain image. Fail-soft at every step.
-//
-// Requires BOTH MC2_VULKAN (context/present) and MC2_VULKAN_ISLAND (interop
-// primitives). build64_island defines both; the guards below make the TU inert
-// otherwise so the GL shipping build never sees a Vulkan symbol.
-
 #include <algorithm>
 #include "engine_present_vk.h"
 #include "visual_tuning_profile.h"
@@ -36,13 +22,10 @@
 
 #include "vulkan_context.h"
 #include "vk_gpu_profile.h"   // VK-GPU-ZONES: MC2_VK_GPU_SCOPE
-#include "vk_texture_residency.h"
 #include "mc2_diag_verbose.h"
 #include "vk_image_resource.h"
 #include "vulkan_spatial_aa.h"
 #include "Gates/render_options.h"
-// VK-RUNG8-ITEM8: the present tail no longer uses gl_interop_view (GL view /
-// copy-1 / GL->VK handoff all deleted).
 #define MC2_VULKAN_SHARED_SCENE_COLOR_IMPL_ISLAND
 #include "vulkan_shared_scene_color.h"
 #include "vk_shared_gbuffer_gate.h"
@@ -91,9 +74,6 @@ const char* presentModeName(VkPresentModeKHR m) {
 
 }  // namespace
 
-// ---------------------------------------------------------------------------
-// Impl: all VK/GL state (kept out of the header so it stays VK-header-free).
-// ---------------------------------------------------------------------------
 struct EnginePresentVk::Impl {
     VulkanContext*   ctx   = nullptr;
     VkInstance       inst  = VK_NULL_HANDLE;
@@ -2180,7 +2160,8 @@ bool EnginePresentVk::prewarmPipelines() {
     if (!created_ || !impl_) return false;
     Impl& s=*impl_;
     return ensureCompositeObjects(s) && ensureHudColorObjects(s) && ensureHudTexObjects(s) &&
-        (!ImGui::GetCurrentContext() || ensureImguiVulkan(s));
+        (!ImGui::GetCurrentContext() || ensureImguiVulkan(s)) &&
+        s.spatialAA.prepare(*s.ctx, s.sharedImg, mc2::options::current().spatialAA);
 }
 
 bool EnginePresentVk::prepareImguiVulkanFrame() {
