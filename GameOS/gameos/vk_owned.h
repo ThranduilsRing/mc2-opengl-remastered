@@ -43,7 +43,7 @@ struct Semaphore { void operator()(VkDevice d, VkSemaphore h) const { vkDestroyS
 struct RawImage { void operator()(VkDevice d, VkImage h) const { vkDestroyImage(d, h, nullptr); } };
 struct DeviceMemory { void operator()(VkDevice d, VkDeviceMemory h) const { infra::release(reinterpret_cast<uint64_t>(h)); vkFreeMemory(d, h, nullptr); } };
 struct RawBuffer { void operator()(VkDevice d, VkBuffer h) const { vkDestroyBuffer(d, h, nullptr); } };
-struct Swapchain { void operator()(VkDevice d, VkSwapchainKHR h) const { vkDestroySwapchainKHR(d, h, nullptr); } };
+struct Swapchain { void operator()(VkDevice d, VkSwapchainKHR h) const { infra::release(reinterpret_cast<uint64_t>(h)); vkDestroySwapchainKHR(d, h, nullptr); } };
 struct Surface { void operator()(VkInstance i, VkSurfaceKHR h) const { vkDestroySurfaceKHR(i, h, nullptr); } };
 }  // namespace release
 
