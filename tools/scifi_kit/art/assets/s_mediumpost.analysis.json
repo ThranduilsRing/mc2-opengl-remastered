@@ -1,0 +1,350 @@
+{
+ "schema": "mc2-kit-analysis/1",
+ "asset": "s_mediumpost",
+ "source": "G:\\mc2-assets\\out\\scifi-kit\\round2\\stock\\s_mediumpost.json",
+ "bounds": {
+  "size_m": [
+   7.5,
+   7.5,
+   13.98557
+  ],
+  "footprint_m2": 56.25,
+  "height_m": 13.986,
+  "tris": 18,
+  "origin_offset_m": [
+   0.0095,
+   -10.66675,
+   0.0
+  ]
+ },
+ "parts": [
+  {
+   "name": "S_MediumWall",
+   "tris": 18,
+   "role": "body",
+   "round": null,
+   "bbox_lo": [
+    -3.75,
+    -3.75,
+    0.0
+   ],
+   "bbox_hi": [
+    3.75,
+    3.75,
+    13.986
+   ],
+   "profile_x": [
+    [
+     0.0,
+     3.716
+    ],
+    [
+     0.74,
+     2.501
+    ],
+    [
+     1.0,
+     2.352
+    ]
+   ],
+   "profile_y": [
+    [
+     0.0,
+     3.716
+    ],
+    [
+     0.74,
+     2.499
+    ],
+    [
+     1.0,
+     2.352
+    ]
+   ]
+  }
+ ],
+ "stock_model": {
+  "asset": "s_mediumpost",
+  "intact_stem": "s_mediumpost",
+  "destroyed_stem": "s_mediumpostdam",
+  "mesh": "G:\\mc2-assets\\out\\scifi-kit\\round2\\stock\\s_mediumpost.json",
+  "parts": [
+   [
+    "S_MediumWall",
+    "body"
+   ]
+  ],
+  "resolved_from": "catalog.json models[role=intact,lod=0]"
+ },
+ "round_parts": [],
+ "round": [],
+ "profile": {
+  "x_all": [
+   [
+    0.0,
+    3.716
+   ],
+   [
+    0.74,
+    2.501
+   ],
+   [
+    1.0,
+    2.352
+   ]
+  ],
+  "y_all": [
+   [
+    0.0,
+    3.716
+   ],
+   [
+    0.74,
+    2.499
+   ],
+   [
+    1.0,
+    2.352
+   ]
+  ],
+  "x_body": [
+   [
+    0.0,
+    3.716
+   ],
+   [
+    0.74,
+    2.501
+   ],
+   [
+    1.0,
+    2.352
+   ]
+  ],
+  "long_axis": "y",
+  "note": "half-extent (m) vs height fraction; x_body = the end of the long axis away from the +Y terminal pier"
+ },
+ "roof": {
+  "type": "flat",
+  "ridge_axis": "x",
+  "eave_h": 13.986,
+  "ridge_h": 13.986,
+  "rise_m": 0.0,
+  "pitch_deg": 0.0,
+  "residual": 0.0,
+  "flat_residual": 0.0,
+  "confidence": 0.7
+ },
+ "palette": {
+  "dominant": [
+   {
+    "linear": [
+     0.1261,
+     0.1206,
+     0.1198
+    ],
+    "hex": "#636161",
+    "fraction": 0.245
+   },
+   {
+    "linear": [
+     0.0896,
+     0.0816,
+     0.0769
+    ],
+    "hex": "#54514e",
+    "fraction": 0.226
+   },
+   {
+    "linear": [
+     0.1843,
+     0.18,
+     0.1777
+    ],
+    "hex": "#777675",
+    "fraction": 0.22
+   },
+   {
+    "linear": [
+     0.0507,
+     0.0362,
+     0.0264
+    ],
+    "hex": "#40352d",
+    "fraction": 0.155
+   },
+   {
+    "linear": [
+     0.2393,
+     0.2369,
+     0.2365
+    ],
+    "hex": "#868685",
+    "fraction": 0.116
+   },
+   {
+    "linear": [
+     0.4611,
+     0.4567,
+     0.4568
+    ],
+    "hex": "#b5b4b4",
+    "fraction": 0.038
+   }
+  ],
+  "roof_dominant": [
+   {
+    "linear": [
+     0.19,
+     0.1875,
+     0.1805
+    ],
+    "hex": "#797876",
+    "fraction": 0.493
+   },
+   {
+    "linear": [
+     0.0746,
+     0.0736,
+     0.0707
+    ],
+    "hex": "#4d4d4b",
+    "fraction": 0.313
+   },
+   {
+    "linear": [
+     0.3146,
+     0.3143,
+     0.3148
+    ],
+    "hex": "#989898",
+    "fraction": 0.193
+   }
+  ],
+  "mean_linear": [
+   0.1459,
+   0.1391,
+   0.1359
+  ],
+  "mean_hex": "#6b6867",
+  "wear": {
+   "n": 4917,
+   "value_mean": 0.4,
+   "value_std": 0.111,
+   "sat_mean": 0.081,
+   "sat_std": 0.156,
+   "rust_cov": 0.0262,
+   "dark_stain": 0.0574
+  },
+  "texels": 4917,
+  "draft": {
+   "main": [
+    0.126,
+    0.121,
+    0.12
+   ],
+   "second": [
+    0.09,
+    0.082,
+    0.077
+   ],
+   "trim": [
+    0.051,
+    0.036,
+    0.026
+   ],
+   "roof": [
+    0.19,
+    0.188,
+    0.18
+   ],
+   "ferro": [
+    0.12,
+    0.115,
+    0.114
+   ],
+   "accent": [
+    0.051,
+    0.036,
+    0.026
+   ],
+   "metal": [
+    0.461,
+    0.457,
+    0.457
+   ],
+   "corr": [
+    0.126,
+    0.121,
+    0.12
+   ],
+   "glass": [
+    0.03,
+    0.05,
+    0.05
+   ]
+  }
+ },
+ "counts": {
+  "doors": {
+   "n": 0,
+   "conf": 0.5,
+   "where": []
+  },
+  "windows": {
+   "n": 0,
+   "conf": 0.5,
+   "where": []
+  },
+  "openings_bays": {
+   "n": 0,
+   "conf": 0.5,
+   "where": []
+  },
+  "panels_sections": {
+   "n": 3,
+   "conf": 0.3,
+   "where": []
+  },
+  "crates": {
+   "n": 0,
+   "conf": 0.5,
+   "where": []
+  },
+  "barrels": {
+   "n": 0,
+   "conf": 0.5,
+   "where": []
+  },
+  "tanks": {
+   "n": 0,
+   "conf": 0.5,
+   "where": []
+  },
+  "arches_ribs": {
+   "n": 0,
+   "conf": 0.5,
+   "where": []
+  },
+  "legs_supports": {
+   "n": 0,
+   "conf": 0.5,
+   "where": []
+  },
+  "antennas_dishes": {
+   "n": 0,
+   "conf": 0.3,
+   "where": []
+  },
+  "stairs_ladders": {
+   "n": 0,
+   "conf": 0.3,
+   "where": []
+  }
+ },
+ "archetype_guess": {
+  "archetype": "wall",
+  "why": "name /(light|medium|heavy)post(diag)?$/",
+  "supported": true
+ }
+}

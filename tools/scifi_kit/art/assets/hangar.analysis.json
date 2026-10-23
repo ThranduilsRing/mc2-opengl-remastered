@@ -1,0 +1,1143 @@
+{
+ "schema": "mc2-kit-analysis/1",
+ "asset": "hangar",
+ "source": "G:\\mc2-assets\\out\\scifi-kit\\round2\\stock\\hangar.json",
+ "bounds": {
+  "size_m": [
+   47.75,
+   48.0,
+   19.48002
+  ],
+  "footprint_m2": 2292.0,
+  "height_m": 19.48,
+  "tris": 98,
+  "origin_offset_m": [
+   -0.125,
+   -0.0,
+   0.0
+  ]
+ },
+ "parts": [
+  {
+   "name": "all",
+   "tris": 98,
+   "role": "body",
+   "round": null,
+   "bbox_lo": [
+    -23.875,
+    -24.0,
+    0.0
+   ],
+   "bbox_hi": [
+    23.875,
+    24.0,
+    19.48
+   ],
+   "profile_x": [
+    [
+     0.0,
+     23.875
+    ],
+    [
+     1.0,
+     23.875
+    ]
+   ],
+   "profile_y": [
+    [
+     0.0,
+     24.0
+    ],
+    [
+     0.62,
+     24.0
+    ],
+    [
+     0.86,
+     15.454
+    ],
+    [
+     1.0,
+     6.558
+    ]
+   ]
+  }
+ ],
+ "stock_model": {
+  "asset": "hangar",
+  "intact_stem": "hangar",
+  "destroyed_stem": "hangardam",
+  "mesh": "G:\\mc2-assets\\out\\scifi-kit\\round2\\stock\\hangar.json",
+  "parts": [
+   [
+    "all",
+    "body"
+   ]
+  ],
+  "resolved_from": "catalog.json models[role=intact,lod=0]"
+ },
+ "round_parts": [],
+ "round": [],
+ "profile": {
+  "x_all": [
+   [
+    0.0,
+    23.875
+   ],
+   [
+    1.0,
+    23.875
+   ]
+  ],
+  "y_all": [
+   [
+    0.0,
+    24.0
+   ],
+   [
+    0.62,
+    24.0
+   ],
+   [
+    0.86,
+    15.454
+   ],
+   [
+    1.0,
+    6.558
+   ]
+  ],
+  "x_body": [
+   [
+    0.0,
+    23.875
+   ],
+   [
+    1.0,
+    23.875
+   ]
+  ],
+  "long_axis": "y",
+  "note": "half-extent (m) vs height fraction; x_body = the end of the long axis away from the +Y terminal pier"
+ },
+ "roof": {
+  "type": "arch",
+  "ridge_axis": "y",
+  "eave_h": 12.73,
+  "ridge_h": 19.48,
+  "rise_m": 6.75,
+  "pitch_deg": 0.0,
+  "residual": 0.1,
+  "flat_residual": 2.157,
+  "confidence": 0.95
+ },
+ "palette": {
+  "dominant": [
+   {
+    "linear": [
+     0.1977,
+     0.1826,
+     0.1436
+    ],
+    "hex": "#7b766a",
+    "fraction": 0.237
+   },
+   {
+    "linear": [
+     0.2696,
+     0.2522,
+     0.1935
+    ],
+    "hex": "#8e8a7a",
+    "fraction": 0.235
+   },
+   {
+    "linear": [
+     0.1265,
+     0.113,
+     0.087
+    ],
+    "hex": "#645e53",
+    "fraction": 0.203
+   },
+   {
+    "linear": [
+     0.3394,
+     0.3225,
+     0.2543
+    ],
+    "hex": "#9d9a8a",
+    "fraction": 0.178
+   },
+   {
+    "linear": [
+     0.0286,
+     0.0271,
+     0.0248
+    ],
+    "hex": "#2f2e2c",
+    "fraction": 0.116
+   },
+   {
+    "linear": [
+     0.5095,
+     0.4894,
+     0.4075
+    ],
+    "hex": "#bdbaab",
+    "fraction": 0.031
+   }
+  ],
+  "roof_dominant": [
+   {
+    "linear": [
+     0.2999,
+     0.2823,
+     0.2238
+    ],
+    "hex": "#959182",
+    "fraction": 0.385
+   },
+   {
+    "linear": [
+     0.0786,
+     0.0658,
+     0.0549
+    ],
+    "hex": "#4f4942",
+    "fraction": 0.324
+   },
+   {
+    "linear": [
+     0.1833,
+     0.1605,
+     0.131
+    ],
+    "hex": "#776f65",
+    "fraction": 0.291
+   }
+  ],
+  "mean_linear": [
+   0.2092,
+   0.1944,
+   0.1536
+  ],
+  "mean_hex": "#7e7a6d",
+  "wear": {
+   "n": 11545,
+   "value_mean": 0.467,
+   "value_std": 0.15,
+   "sat_mean": 0.132,
+   "sat_std": 0.072,
+   "rust_cov": 0.0,
+   "dark_stain": 0.1157
+  },
+  "texels": 11545,
+  "draft": {
+   "main": [
+    0.198,
+    0.183,
+    0.144
+   ],
+   "second": [
+    0.27,
+    0.252,
+    0.193
+   ],
+   "trim": [
+    0.029,
+    0.027,
+    0.025
+   ],
+   "roof": [
+    0.3,
+    0.282,
+    0.224
+   ],
+   "ferro": [
+    0.188,
+    0.173,
+    0.136
+   ],
+   "accent": [
+    0.27,
+    0.252,
+    0.193
+   ],
+   "metal": [
+    0.509,
+    0.489,
+    0.408
+   ],
+   "corr": [
+    0.198,
+    0.183,
+    0.144
+   ],
+   "glass": [
+    0.03,
+    0.05,
+    0.05
+   ]
+  }
+ },
+ "counts": {
+  "doors": {
+   "n": 0,
+   "conf": 0.5,
+   "where": []
+  },
+  "windows": {
+   "n": 60,
+   "conf": 0.79,
+   "where": [
+    {
+     "side": "front",
+     "at_m": [
+      -21.7,
+      19.0
+     ],
+     "size_m": [
+      0.5,
+      0.4
+     ],
+     "conf": 0.72,
+     "source": "stock texture: dark rectangle in the textured side view"
+    },
+    {
+     "side": "front",
+     "at_m": [
+      -12.2,
+      19.0
+     ],
+     "size_m": [
+      0.5,
+      0.4
+     ],
+     "conf": 0.72,
+     "source": "stock texture: dark rectangle in the textured side view"
+    },
+    {
+     "side": "front",
+     "at_m": [
+      -2.6,
+      19.0
+     ],
+     "size_m": [
+      0.5,
+      0.4
+     ],
+     "conf": 0.72,
+     "source": "stock texture: dark rectangle in the textured side view"
+    },
+    {
+     "side": "front",
+     "at_m": [
+      7.0,
+      19.0
+     ],
+     "size_m": [
+      0.5,
+      0.4
+     ],
+     "conf": 0.72,
+     "source": "stock texture: dark rectangle in the textured side view"
+    },
+    {
+     "side": "front",
+     "at_m": [
+      -22.9,
+      12.1
+     ],
+     "size_m": [
+      0.9,
+      0.7
+     ],
+     "conf": 0.75,
+     "source": "stock texture: dark rectangle in the textured side view"
+    },
+    {
+     "side": "front",
+     "at_m": [
+      -12.2,
+      11.0
+     ],
+     "size_m": [
+      0.5,
+      0.5
+     ],
+     "conf": 0.75,
+     "source": "stock texture: dark rectangle in the textured side view"
+    },
+    {
+     "side": "front",
+     "at_m": [
+      -3.2,
+      8.1
+     ],
+     "size_m": [
+      0.5,
+      0.5
+     ],
+     "conf": 0.75,
+     "source": "stock texture: dark rectangle in the textured side view"
+    },
+    {
+     "side": "front",
+     "at_m": [
+      6.4,
+      8.1
+     ],
+     "size_m": [
+      0.5,
+      0.5
+     ],
+     "conf": 0.75,
+     "source": "stock texture: dark rectangle in the textured side view"
+    },
+    {
+     "side": "front",
+     "at_m": [
+      22.1,
+      7.9
+     ],
+     "size_m": [
+      1.0,
+      1.0
+     ],
+     "conf": 0.72,
+     "source": "stock texture: dark rectangle in the textured side view"
+    },
+    {
+     "side": "front",
+     "at_m": [
+      -2.7,
+      7.6
+     ],
+     "size_m": [
+      0.5,
+      0.5
+     ],
+     "conf": 0.75,
+     "source": "stock texture: dark rectangle in the textured side view"
+    },
+    {
+     "side": "front",
+     "at_m": [
+      6.9,
+      7.6
+     ],
+     "size_m": [
+      0.5,
+      0.5
+     ],
+     "conf": 0.75,
+     "source": "stock texture: dark rectangle in the textured side view"
+    },
+    {
+     "side": "front",
+     "at_m": [
+      -18.8,
+      3.2
+     ],
+     "size_m": [
+      5.3,
+      2.0
+     ],
+     "conf": 0.85,
+     "source": "stock texture: dark rectangle in the textured side view"
+    },
+    {
+     "side": "front",
+     "at_m": [
+      -14.3,
+      3.2
+     ],
+     "size_m": [
+      2.8,
+      2.0
+     ],
+     "conf": 0.85,
+     "source": "stock texture: dark rectangle in the textured side view"
+    },
+    {
+     "side": "front",
+     "at_m": [
+      -9.5,
+      3.2
+     ],
+     "size_m": [
+      5.8,
+      2.0
+     ],
+     "conf": 0.85,
+     "source": "stock texture: dark rectangle in the textured side view"
+    },
+    {
+     "side": "front",
+     "at_m": [
+      -20.8,
+      1.6
+     ],
+     "size_m": [
+      0.5,
+      0.5
+     ],
+     "conf": 0.75,
+     "source": "stock texture: dark rectangle in the textured side view"
+    },
+    {
+     "side": "front",
+     "at_m": [
+      -16.9,
+      1.6
+     ],
+     "size_m": [
+      0.5,
+      0.5
+     ],
+     "conf": 0.75,
+     "source": "stock texture: dark rectangle in the textured side view"
+    },
+    {
+     "side": "front",
+     "at_m": [
+      -15.5,
+      1.6
+     ],
+     "size_m": [
+      1.4,
+      0.5
+     ],
+     "conf": 0.81,
+     "source": "stock texture: dark rectangle in the textured side view"
+    },
+    {
+     "side": "front",
+     "at_m": [
+      -4.2,
+      1.0
+     ],
+     "size_m": [
+      0.5,
+      0.5
+     ],
+     "conf": 0.75,
+     "source": "stock texture: dark rectangle in the textured side view"
+    },
+    {
+     "side": "front",
+     "at_m": [
+      5.4,
+      1.0
+     ],
+     "size_m": [
+      0.5,
+      0.5
+     ],
+     "conf": 0.75,
+     "source": "stock texture: dark rectangle in the textured side view"
+    },
+    {
+     "side": "left",
+     "at_m": [
+      4.6,
+      13.1
+     ],
+     "size_m": [
+      0.5,
+      0.5
+     ],
+     "conf": 0.75,
+     "source": "stock texture: dark rectangle in the textured side view"
+    },
+    {
+     "side": "rear",
+     "at_m": [
+      -16.5,
+      19.0
+     ],
+     "size_m": [
+      0.5,
+      0.4
+     ],
+     "conf": 0.72,
+     "source": "stock texture: dark rectangle in the textured side view"
+    },
+    {
+     "side": "rear",
+     "at_m": [
+      -6.9,
+      19.0
+     ],
+     "size_m": [
+      0.5,
+      0.4
+     ],
+     "conf": 0.72,
+     "source": "stock texture: dark rectangle in the textured side view"
+    },
+    {
+     "side": "rear",
+     "at_m": [
+      2.7,
+      19.0
+     ],
+     "size_m": [
+      0.5,
+      0.4
+     ],
+     "conf": 0.72,
+     "source": "stock texture: dark rectangle in the textured side view"
+    },
+    {
+     "side": "rear",
+     "at_m": [
+      12.3,
+      19.0
+     ],
+     "size_m": [
+      0.5,
+      0.4
+     ],
+     "conf": 0.72,
+     "source": "stock texture: dark rectangle in the textured side view"
+    },
+    {
+     "side": "rear",
+     "at_m": [
+      21.7,
+      19.0
+     ],
+     "size_m": [
+      0.5,
+      0.4
+     ],
+     "conf": 0.72,
+     "source": "stock texture: dark rectangle in the textured side view"
+    },
+    {
+     "side": "rear",
+     "at_m": [
+      -21.2,
+      17.6
+     ],
+     "size_m": [
+      3.4,
+      1.0
+     ],
+     "conf": 0.84,
+     "source": "stock texture: dark rectangle in the textured side view"
+    },
+    {
+     "side": "rear",
+     "at_m": [
+      -17.4,
+      17.6
+     ],
+     "size_m": [
+      3.3,
+      1.0
+     ],
+     "conf": 0.84,
+     "source": "stock texture: dark rectangle in the textured side view"
+    },
+    {
+     "side": "rear",
+     "at_m": [
+      -11.7,
+      17.6
+     ],
+     "size_m": [
+      3.3,
+      1.0
+     ],
+     "conf": 0.84,
+     "source": "stock texture: dark rectangle in the textured side view"
+    },
+    {
+     "side": "rear",
+     "at_m": [
+      -7.9,
+      17.6
+     ],
+     "size_m": [
+      3.4,
+      1.0
+     ],
+     "conf": 0.84,
+     "source": "stock texture: dark rectangle in the textured side view"
+    },
+    {
+     "side": "rear",
+     "at_m": [
+      -2.2,
+      17.6
+     ],
+     "size_m": [
+      3.4,
+      1.0
+     ],
+     "conf": 0.84,
+     "source": "stock texture: dark rectangle in the textured side view"
+    },
+    {
+     "side": "rear",
+     "at_m": [
+      1.7,
+      17.6
+     ],
+     "size_m": [
+      3.4,
+      1.0
+     ],
+     "conf": 0.84,
+     "source": "stock texture: dark rectangle in the textured side view"
+    },
+    {
+     "side": "rear",
+     "at_m": [
+      7.4,
+      17.6
+     ],
+     "size_m": [
+      3.4,
+      1.0
+     ],
+     "conf": 0.84,
+     "source": "stock texture: dark rectangle in the textured side view"
+    },
+    {
+     "side": "rear",
+     "at_m": [
+      11.3,
+      17.6
+     ],
+     "size_m": [
+      3.4,
+      1.0
+     ],
+     "conf": 0.84,
+     "source": "stock texture: dark rectangle in the textured side view"
+    },
+    {
+     "side": "rear",
+     "at_m": [
+      16.9,
+      17.6
+     ],
+     "size_m": [
+      3.4,
+      1.0
+     ],
+     "conf": 0.84,
+     "source": "stock texture: dark rectangle in the textured side view"
+    },
+    {
+     "side": "rear",
+     "at_m": [
+      20.8,
+      17.6
+     ],
+     "size_m": [
+      3.3,
+      1.0
+     ],
+     "conf": 0.84,
+     "source": "stock texture: dark rectangle in the textured side view"
+    },
+    {
+     "side": "rear",
+     "at_m": [
+      -21.2,
+      16.0
+     ],
+     "size_m": [
+      3.4,
+      2.0
+     ],
+     "conf": 0.85,
+     "source": "stock texture: dark rectangle in the textured side view"
+    },
+    {
+     "side": "rear",
+     "at_m": [
+      -17.4,
+      16.0
+     ],
+     "size_m": [
+      3.3,
+      2.0
+     ],
+     "conf": 0.85,
+     "source": "stock texture: dark rectangle in the textured side view"
+    },
+    {
+     "side": "rear",
+     "at_m": [
+      -11.7,
+      16.0
+     ],
+     "size_m": [
+      3.3,
+      2.0
+     ],
+     "conf": 0.85,
+     "source": "stock texture: dark rectangle in the textured side view"
+    },
+    {
+     "side": "rear",
+     "at_m": [
+      -7.9,
+      16.0
+     ],
+     "size_m": [
+      3.4,
+      2.0
+     ],
+     "conf": 0.85,
+     "source": "stock texture: dark rectangle in the textured side view"
+    },
+    {
+     "side": "rear",
+     "at_m": [
+      -2.2,
+      16.0
+     ],
+     "size_m": [
+      3.4,
+      2.0
+     ],
+     "conf": 0.85,
+     "source": "stock texture: dark rectangle in the textured side view"
+    },
+    {
+     "side": "rear",
+     "at_m": [
+      1.7,
+      16.0
+     ],
+     "size_m": [
+      3.4,
+      2.0
+     ],
+     "conf": 0.85,
+     "source": "stock texture: dark rectangle in the textured side view"
+    },
+    {
+     "side": "rear",
+     "at_m": [
+      7.4,
+      16.0
+     ],
+     "size_m": [
+      3.4,
+      2.0
+     ],
+     "conf": 0.85,
+     "source": "stock texture: dark rectangle in the textured side view"
+    },
+    {
+     "side": "rear",
+     "at_m": [
+      11.3,
+      16.0
+     ],
+     "size_m": [
+      3.4,
+      2.0
+     ],
+     "conf": 0.85,
+     "source": "stock texture: dark rectangle in the textured side view"
+    },
+    {
+     "side": "rear",
+     "at_m": [
+      16.9,
+      16.0
+     ],
+     "size_m": [
+      3.4,
+      2.0
+     ],
+     "conf": 0.85,
+     "source": "stock texture: dark rectangle in the textured side view"
+    },
+    {
+     "side": "rear",
+     "at_m": [
+      20.8,
+      16.0
+     ],
+     "size_m": [
+      3.3,
+      2.0
+     ],
+     "conf": 0.85,
+     "source": "stock texture: dark rectangle in the textured side view"
+    },
+    {
+     "side": "rear",
+     "at_m": [
+      0.1,
+      3.2
+     ],
+     "size_m": [
+      5.8,
+      2.0
+     ],
+     "conf": 0.85,
+     "source": "stock texture: dark rectangle in the textured side view"
+    },
+    {
+     "side": "rear",
+     "at_m": [
+      12.9,
+      3.2
+     ],
+     "size_m": [
+      5.6,
+      2.0
+     ],
+     "conf": 0.85,
+     "source": "stock texture: dark rectangle in the textured side view"
+    },
+    {
+     "side": "rear",
+     "at_m": [
+      18.8,
+      3.2
+     ],
+     "size_m": [
+      5.3,
+      2.0
+     ],
+     "conf": 0.85,
+     "source": "stock texture: dark rectangle in the textured side view"
+    },
+    {
+     "side": "right",
+     "at_m": [
+      -16.0,
+      15.3
+     ],
+     "size_m": [
+      2.0,
+      1.9
+     ],
+     "conf": 0.71,
+     "source": "stock texture: dark rectangle in the textured side view"
+    },
+    {
+     "side": "right",
+     "at_m": [
+      14.2,
+      15.8
+     ],
+     "size_m": [
+      1.0,
+      0.9
+     ],
+     "conf": 0.73,
+     "source": "stock texture: dark rectangle in the textured side view"
+    },
+    {
+     "side": "right",
+     "at_m": [
+      15.3,
+      15.6
+     ],
+     "size_m": [
+      0.5,
+      0.5
+     ],
+     "conf": 0.75,
+     "source": "stock texture: dark rectangle in the textured side view"
+    },
+    {
+     "side": "right",
+     "at_m": [
+      13.9,
+      14.6
+     ],
+     "size_m": [
+      0.5,
+      0.5
+     ],
+     "conf": 0.75,
+     "source": "stock texture: dark rectangle in the textured side view"
+    },
+    {
+     "side": "right",
+     "at_m": [
+      -21.7,
+      12.6
+     ],
+     "size_m": [
+      0.9,
+      0.5
+     ],
+     "conf": 0.79,
+     "source": "stock texture: dark rectangle in the textured side view"
+    },
+    {
+     "side": "right",
+     "at_m": [
+      -22.6,
+      12.1
+     ],
+     "size_m": [
+      1.0,
+      0.5
+     ],
+     "conf": 0.8,
+     "source": "stock texture: dark rectangle in the textured side view"
+    },
+    {
+     "side": "right",
+     "at_m": [
+      -11.7,
+      11.3
+     ],
+     "size_m": [
+      0.5,
+      0.5
+     ],
+     "conf": 0.75,
+     "source": "stock texture: dark rectangle in the textured side view"
+    },
+    {
+     "side": "right",
+     "at_m": [
+      14.2,
+      5.2
+     ],
+     "size_m": [
+      1.0,
+      1.0
+     ],
+     "conf": 0.72,
+     "source": "stock texture: dark rectangle in the textured side view"
+    },
+    {
+     "side": "right",
+     "at_m": [
+      0.3,
+      2.9
+     ],
+     "size_m": [
+      5.8,
+      2.0
+     ],
+     "conf": 0.85,
+     "source": "stock texture: dark rectangle in the textured side view"
+    },
+    {
+     "side": "right",
+     "at_m": [
+      6.5,
+      2.9
+     ],
+     "size_m": [
+      5.8,
+      2.0
+     ],
+     "conf": 0.85,
+     "source": "stock texture: dark rectangle in the textured side view"
+    },
+    {
+     "side": "right",
+     "at_m": [
+      19.2,
+      2.9
+     ],
+     "size_m": [
+      5.3,
+      2.0
+     ],
+     "conf": 0.85,
+     "source": "stock texture: dark rectangle in the textured side view"
+    },
+    {
+     "side": "right",
+     "at_m": [
+      13.5,
+      1.2
+     ],
+     "size_m": [
+      0.5,
+      0.5
+     ],
+     "conf": 0.75,
+     "source": "stock texture: dark rectangle in the textured side view"
+    }
+   ]
+  },
+  "openings_bays": {
+   "n": 1,
+   "conf": 0.83,
+   "where": [
+    {
+     "side": "rear",
+     "at_m": [
+      -17.9,
+      1.9
+     ],
+     "size_m": [
+      5.4,
+      3.3
+     ],
+     "conf": 0.83,
+     "source": "stock texture: ground-standing colour panel in the textured side view"
+    }
+   ]
+  },
+  "panels_sections": {
+   "n": 5,
+   "conf": 0.3,
+   "where": []
+  },
+  "crates": {
+   "n": 0,
+   "conf": 0.5,
+   "where": []
+  },
+  "barrels": {
+   "n": 0,
+   "conf": 0.5,
+   "where": []
+  },
+  "tanks": {
+   "n": 0,
+   "conf": 0.5,
+   "where": []
+  },
+  "arches_ribs": {
+   "n": 1,
+   "conf": 0.4,
+   "where": [
+    "barrel vault"
+   ]
+  },
+  "legs_supports": {
+   "n": 0,
+   "conf": 0.5,
+   "where": []
+  },
+  "antennas_dishes": {
+   "n": 0,
+   "conf": 0.3,
+   "where": []
+  },
+  "stairs_ladders": {
+   "n": 0,
+   "conf": 0.3,
+   "where": []
+  }
+ },
+ "archetype_guess": {
+  "archetype": "box",
+  "why": "category building",
+  "supported": true
+ }
+}
