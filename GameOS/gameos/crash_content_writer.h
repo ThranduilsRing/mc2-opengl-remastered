@@ -91,7 +91,7 @@ public:
         const uint64_t fileSize = (uint64_t(info.nFileSizeHigh) << 32) | info.nFileSizeLow;
         const auto key = std::string(physical) + ':' + std::to_string(fileSize) + ':' +
                          std::to_string(info.ftLastWriteTime.dwHighDateTime) + ':' + std::to_string(info.ftLastWriteTime.dwLowDateTime);
-        { std::lock_guard lock(mutex_); if (!seen_.insert(key).second) return; }
+        { std::lock_guard lock(mutex_); if (auto [it, fresh] = seen_.insert(key); !fresh) return; }
         // Identity is size + mtime + the first 64 KiB, read on a separate handle (the loader's file offset and CRT buffering stay untouched), outside the lock.
         HANDLE file = CreateFileA(physical, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE,
                                   nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
