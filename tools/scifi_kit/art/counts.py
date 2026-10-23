@@ -65,6 +65,38 @@ NOTES={
  'barrels':'Stock mesh has three top-cap regions; stock crop also shows three lids. OWNER CONFIRMED: match stock, three barrels.',
 }
 NOTES['quonset']=NOTES['quonsetclean']+' Shares exactly the clean geometry; material set only.'
+CONTRACTS.update({
+ 'streetlight':known(legs_supports=['one square pole'],panels_sections=['one inclined lamp head']),
+ 'woodencrates':known(crates=['left case','right case']),
+ 'runwaylight':known(panels_sections=['one triangular tapered yellow marker']),
+ 'redbeaconlight':known(panels_sections=['one triangular tapered red marker']),
+ 'tripodbarricade':known(legs_supports=[f'tripod {i+1}/5 along Y' for i in range(5)],
+     panels_sections=[f'hazard X {i+1}/5 along Y' for i in range(5)]),
+ 'corrigatedmetalbarricade':known(legs_supports=['left A-frame','middle A-frame','right A-frame'],
+     panels_sections=['short left sheet','long right sheet']),
+ 'portable':known(doors=['left centered door'],
+     windows=['front band','rear band','left forward window','left rear window',
+              'right forward window','right middle window','right rear window'],
+     panels_sections=['front unit','rear unit','left three-bay wall','right three-bay wall'],
+     stairs_ladders=['one left porch with four treads']),
+ 'singlecivlivinga':known(doors=['left rear entry'],
+     windows=['front three-pane band','rear three-pane band','left forward roof window',
+              'left rear roof window','right forward roof window','right rear roof window'],
+     panels_sections=['polygonal arched shell']+
+         [f'{side} lower wall panel {i+1}/8' for side in ('front','rear') for i in range(8)]+
+         ['left rear entry block','right rear base extension'],
+     arches_ribs=['one polygonal barrel roof']),
+})
+NOTES.update({
+ 'streetlight':'Five stock sides: one square pole with two dark collars; one inclined rectangular head. No extra arm or base plinth.',
+ 'woodencrates':'Five stock sides: two side-by-side cases; every face has one mid rail, long faces also have one middle post, no diagonal. The uncovered short ends expose their mid rails. Same case construction as covered crates, without cloth or straps.',
+ 'runwaylight':'Five stock sides: one low triangular frustum, yellow luminous faces over one dark triangular foot. No invented pole or lamp cage.',
+ 'redbeaconlight':'Same triangular stock frustum and foot as runwaylight; red face palette only.',
+ 'tripodbarricade':'Five stock sides: five separate tripods along Y; each has one diagonal timber brace and two crossed yellow-black members. No continuous horizontal rail.',
+ 'corrigatedmetalbarricade':'Five stock sides: two inclined corrugated sheet sections joined at about one third of width, supported by three A-frames. Keep the stock low ramp outline.',
+ 'portable':'Five stock sides: one door on left long face; two window units flanking it, three opposite, one on each end (seven total). Door glass belongs to the door. Three low roof fixtures. Lot includes one left porch and four treads; room is 7.4 m wide within the 9.8 m lot.',
+ 'singlecivlivinga':'Five stock sides: one arched house, one left rear door, one horizontal three-pane band per end, two roof window units per side (six units total). Door glass is not another window. Eight lower wall panels per end (nine edge/joint battens). One rear chimney, left rear entry block and right rear base extension; polygonal roof stays stock-shaped.',
+})
 ORIGINS={
  'razorwirefence':(0,-5.335487589240074,0),
  's_lightwall':(.00950002670288086,4.07346248626709,-.0037249999586492777),
@@ -74,6 +106,14 @@ ORIGINS={
  'lookouttower':(.09718751907348633,.3088374137878418,0),
  'barrels':(.12242499180138111,-.05808753985911608,0),
  'quonset':(0,-5.329537391662598,-.005750000011175871),
+ 'streetlight':(-0.004774993984028697, -0.19372499742894433, 0.014174999669194221),
+ 'woodencrates':(0.006024923175573349, -0.005249999929219484, 0.0019499994814395905),
+ 'runwaylight':(-0.08568750345148146, 0.0012499999720603228, 0.0013749999925494194),
+ 'tripodbarricade':(0.038849979639053345, 0.005325288744643331, 0.0),
+ 'redbeaconlight':(-0.08568750345148146, 0.0012499999720603228, 0.0015999999595806003),
+ 'corrigatedmetalbarricade':(0.03281241375952959, 0.36480002058669925, 0.0),
+ 'singlecivlivinga':(-0.019162416458129883, 0.031599998474121094, -4.999999873689376e-05),
+ 'portable':(-0.03495001792907715, 5.373312592506409, -0.05612500011920929),
 }
 
 
@@ -90,7 +130,7 @@ def origin(name):
 def code_hash():
     here=Path(__file__).parent
     h=hashlib.sha256()
-    for name in ('drafts.py','geo.py','bake.py','blend.py','content.py','lights.py','lang.json','counts.py'):
+    for name in ('drafts.py','batch2.py','geo.py','bake.py','blend.py','content.py','lights.py','lang.json','counts.py'):
         h.update((here/name).read_bytes())
     return h.hexdigest()
 

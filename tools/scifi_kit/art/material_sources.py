@@ -23,6 +23,7 @@ def acg(folder, name):
 
 
 SOURCES = {
+    'ferro': ph('Concrete/concrete_panels_2k', 'concrete_panels'),
     'corr': acg('CorrugatedSteel009_1K-PNG', 'CorrugatedSteel009'),
     'corr.corr': ph('Metal/worn_corrugated_iron_2k', 'worn_corrugated_iron'),
     'paint': acg('PaintedMetal003_1K-PNG', 'PaintedMetal003'),

@@ -1,6 +1,6 @@
 """Authored high-to-low PBR atlas bake; canonical SurfaceMaterial classes.
 
-Called inside the single, two-thread Blender worker. No reference data is read.
+Called inside the single, six-thread Blender worker. No reference data is read.
 Base colour is unlit colour only. AO is kept exclusively in ORM.R.
 """
 import json
@@ -39,6 +39,58 @@ def reduce_on_surface(ob,target):
     for v in ob.data.vertices:
         hit=tree.find_nearest(v.co)
         if hit and hit[3]>.035:v.co=hit[0]
+
+
+def panel_lod(ob, ratio):
+    """Keep cladding faces whole; spend distant LODs on skin before trim.
+
+    A global collapse starves disconnected thin sheets and turns an intact
+    building into holes. Split at physical bends, then retain whole planar faces
+    before reducing bevel strips and small trim. UVs stay on the LOD0 surface.
+    """
+    target = int(triangles(ob)*ratio)//2*2
+    name = ob.name
+    import bmesh
+    bm=bmesh.new();bm.from_mesh(ob.data)
+    bends=[e for e in bm.edges if len(e.link_faces)==2 and e.calc_face_angle()>1e-4]
+    bmesh.ops.split_edges(bm,edges=bends)
+    bm.to_mesh(ob.data);bm.free()
+    select(ob)
+    bpy.ops.object.mode_set(mode='EDIT')
+    bpy.ops.mesh.select_all(action='SELECT')
+    bpy.ops.mesh.separate(type='LOOSE')
+    bpy.ops.object.mode_set(mode='OBJECT')
+    parts = list(bpy.context.selected_objects)
+    top = max(v.co.z for p in parts for v in p.data.vertices)
+    def priority(p):
+        used = {f.material_index for f in p.data.polygons}
+        skin = any(any(key in p.data.materials[i].name for key in ('wood.main','paint.roof','paint.main','paint.second','glass','ferro','gravel'))
+                   for i in used)
+        high = max(v.co.z for v in p.data.vertices) > top*.75
+        return sum(f.area for f in p.data.polygons)*(100 if skin or high else 1)
+    parts.sort(key=priority, reverse=True)
+    floors = {p.name:min(12,triangles(p)) for p in parts}
+    while sum(floors[p.name] for p in parts)>target and len(parts)>1:
+        bpy.data.objects.remove(parts.pop(),do_unlink=True)
+    spare = target-sum(floors[p.name] for p in parts)
+    area = sum(sum(f.area for f in p.data.polygons) for p in parts)
+    quotas = {p.name:min(triangles(p),floors[p.name]+int(spare*sum(f.area for f in p.data.polygons)/area)//2*2)
+              for p in parts}
+    remaining = target-sum(quotas.values())
+    while remaining>=2:
+        p = next((p for p in parts if quotas[p.name]+2<=triangles(p)),None)
+        if p is None:break
+        quotas[p.name]+=2;remaining-=2
+    for p in parts:
+        select(p)
+        if triangles(p)>quotas[p.name]:
+            mod=p.modifiers.new('Whole-panel distance LOD','DECIMATE')
+            mod.ratio=quotas[p.name]/triangles(p)
+            bpy.ops.object.modifier_apply(modifier=mod.name)
+    select(parts[0],parts[1:]);bpy.ops.object.join()
+    result=bpy.context.object;result.name=name
+    assert triangles(result)<=target
+    return result
 
 
 def image(name,res,srgb=False,normal=False):
@@ -253,6 +305,9 @@ def bake(objs,k,condition,out,res=2048):
             bs.inputs['Emission Color'].default_value=(1,.04,.02,1) if red else (1,.78,.30,1)
             bs.inputs['Emission Strength'].default_value=2.
         node.image=maps['basecolor'];nt.links.new(node.outputs['Color'],bs.inputs['Base Color'])
+        if '.marker' in mat.name and condition in ('pristine','worn'):
+            nt.links.new(node.outputs['Color'],bs.inputs['Emission Color'])
+            bs.inputs['Emission Strength'].default_value=.65
         normal=nt.nodes.new('ShaderNodeTexImage');normal.image=maps['normal']
         nm=nt.nodes.new('ShaderNodeNormalMap');nt.links.new(normal.outputs[0],nm.inputs['Color']);nt.links.new(nm.outputs[0],bs.inputs['Normal'])
         tex=nt.nodes.new('ShaderNodeTexImage');tex.image=orm
@@ -276,9 +331,12 @@ def bake(objs,k,condition,out,res=2048):
         if i:
             ob=low.copy();ob.data=low.data.copy();bpy.context.collection.objects.link(ob)
             ob.name=name+f'_LOD{i}';select(ob)
-            mod=ob.modifiers.new('Distance LOD','DECIMATE');mod.ratio=ratio
-            mod.delimit={'MATERIAL'}
-            bpy.ops.object.modifier_apply(modifier=mod.name)
+            if k.meta['stock'] in ('woodencrates','singlecivlivinga','portable'):
+                ob=panel_lod(ob,ratio)
+            else:
+                mod=ob.modifiers.new('Distance LOD','DECIMATE');mod.ratio=ratio
+                mod.delimit={'MATERIAL'}
+                bpy.ops.object.modifier_apply(modifier=mod.name)
             # Bound quadric movement to the actual LOD0 surface. Fine disconnected
             # strips cannot grow into long spikes at distance.
             from mathutils.bvhtree import BVHTree

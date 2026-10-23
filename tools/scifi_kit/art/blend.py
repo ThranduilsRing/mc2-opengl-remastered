@@ -1,7 +1,7 @@
 """Blender stage for the art-directed kit: materials with mask-driven conditions,
 physical destroyed operator, review renders and clean glTF export.
 
-Run only through run.py (it pins --threads 2, Cycles threads 2, CPU affinity off core 0).
+Run only through run.py (--threads 6, Cycles threads 6).
 """
 import json
 import math
@@ -27,7 +27,7 @@ def reset():
     scene = bpy.context.scene
     scene.render.engine = 'CYCLES'
     scene.render.threads_mode = 'FIXED'
-    scene.render.threads = 2
+    scene.render.threads = 6
     scene.cycles.use_denoising = True
     scene.view_settings.view_transform = 'AgX'
     try:
@@ -256,7 +256,9 @@ def material(key, palette_name, cond_name):
     elif cls == 'ferro':
         c0 = pal.get(slot, pal['ferro'])
         img = b.node('ShaderNodeTexImage', projection='BOX', projection_blend=.25)
-        img.image = image(TEX / 'concrete_wall_003/concrete_wall_003_diff_2k.jpg')
+        from material_sources import lookup
+        concrete_source = lookup('ferro')
+        img.image = image(concrete_source['colour'])
         b.feed(img.inputs['Vector'], b.vscale(P, (.35, .35, .35)))
         bw = b.node('ShaderNodeRGBToBW')
         b.feed(bw.inputs[0], img.outputs['Color'])
@@ -279,7 +281,7 @@ def material(key, palette_name, cond_name):
         chips = b.math('GREATER_THAN', b.mul(convex, b.remap(grunge, .3, .7, .4, 1.5)), 1.0 - cond['edge_wear'] * .7)
         col = b.mix(b.mul(chips, .6), col, tuple(min(1, c * 1.35) for c in c0))
         nimg = b.node('ShaderNodeTexImage', projection='BOX', projection_blend=.25)
-        nimg.image = image(TEX / 'concrete_wall_003/concrete_wall_003_nor_gl_2k.jpg', True)
+        nimg.image = image(concrete_source['normal_gl'], True)
         b.feed(nimg.inputs['Vector'], b.vscale(P, (.35, .35, .35)))
         bump_h = b.add(bw.outputs[0], b.mul(crack, -1.5))
     elif cls == 'glass':
@@ -301,6 +303,11 @@ def material(key, palette_name, cond_name):
         col = (0.6, 0.55, 0.4) if cls == 'lamp' else (0.5, 0.03, 0.02)
         if cond_name in ('pristine', 'worn'):
             emission = ((1.0, .82, .55) if cls == 'lamp' else (1.0, .05, .03), 6.0)
+            if slot == 'marker':
+                low = (.60,.50,.008) if cls == 'lamp' else (.60,.012,.006)
+                top = (.70,.68,.55) if cls == 'lamp' else (.70,.60,.60)
+                col = b.mix(b.remap(z,.07,.711),low,top)
+                emission = (col,.65)
         else:
             col = (0.05, 0.05, 0.045)
     elif cls == 'veg':

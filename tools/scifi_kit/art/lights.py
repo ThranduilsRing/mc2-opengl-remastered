@@ -9,7 +9,28 @@ def light_specs(name, size, condition):
                            type=kind,colour_linear=colour,intensity_class=intensity,
                            range_m=5 if intensity=='door' else 8,outer_cone_degrees=65,
                            active=True,lights_out_on_destroy=True))
-    if name=='rpbuilding':
+    if name=='streetlight':
+        add('head_01',(0,-.06,h-.26),(0,-.45,-1))
+        result[-1]['range_m']=10
+    elif name in ('runwaylight','redbeaconlight'):
+        add('marker_01',(0,0,h*.65),(0,0,1),'point',
+            colour=(1,.04,.02) if name=='redbeaconlight' else (1,.85,.12))
+        result[-1]['range_m']=1.5
+    elif name=='portable':
+        for end in (-1,1):
+            add(f'window_end_{end}',(1.17,end*9.1,3.27),(0,end,0),'point',intensity='window')
+        for side,ys in ((-1,(-6,6)),(1,(-6,0,6))):
+            for i,y in enumerate(ys):
+                add(f'window_side_{side}_{i}',(-2.54 if side<0 else 4.88,y,3.05),
+                    (side,0,0),'point',intensity='window')
+        add('door_glass',(-2.54,0,3.0),(-1,0,0),'point',intensity='window')
+    elif name=='singlecivlivinga':
+        for end in (-1,1):
+            add(f'window_end_{end}',(0,end*4.24,3.65),(0,end,0),'point',intensity='window')
+        for side in (-1,1):
+            for i,y in enumerate((-2.3,2.2)):
+                add(f'window_roof_{side}_{i}',(side*3.1,y,4.84),(side*.84,0,.54),'point',intensity='window')
+    elif name=='rpbuilding':
         add('door_front_01',(0,-d*.32,h*.70),(0,-1,-.6))
         add('door_rear_01',(0,d*.32,h*.70),(0,1,-.6))
     elif name in ('quonsetclean','quonset'):

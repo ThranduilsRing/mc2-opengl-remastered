@@ -1,4 +1,4 @@
-"""Eight stock selections built in construction order (Opus art bar, round 3).
+"""Stock selections built in construction order (Opus art bar).
 
 RULE 1: frame first, then skin. Metal buildings: slab/footing -> columns, ribs,
 rafters -> girts and purlins -> separate sheets lapped over that frame -> trim at
@@ -698,7 +698,7 @@ CR = dict(L=5.1, W=3.6, H=4.1, xs=(-2.68, 2.68))
 TARP = dict(R=.06, o=.05, hem_ends=1.85, hem_sides=2.4)
 
 
-def crate(k, cx, idx, broken=False):
+def crate(k, cx, idx, broken=False, end_midrail=False):
     """Skids -> corner posts and rails -> diagonal braces -> boards behind the frame."""
     L, W, H = CR['L'], CR['W'], CR['H']
     a, b = L / 2, W / 2
@@ -713,7 +713,7 @@ def crate(k, cx, idx, broken=False):
         for z in (z0 + .08, mid, H - .08):
             for sy in (-1, 1):
                 k.box((cx, sy * (b - .07), z), (L - .32, .14, .16), 'wood.second', 'frame', ch=C(.02))
-            if z != mid:
+            if z != mid or end_midrail:
                 for sx in (-1, 1):
                     k.box((cx + sx * (a - .07), 0, z), (.14, W - .32, .16), 'wood.second', 'frame', ch=C(.02))
         for sy in (-1, 1):
@@ -1105,6 +1105,8 @@ def full_rubble(k, name):
     """Bent frame + fallen skin on a solid mound + chunks + one identity remnant.
     Generated procedurally (no dependence on the intact piece list) so the game
     carrier rebuild is the same wreck."""
+    if name in ('singlecivlivinga', 'portable'):
+        return batch2.rubble(k, name)
     rng = random.Random(k.seed * 31 + 7)
     w, d, h = SIZES[name]
     spec = RUBBLE[name]
@@ -1301,3 +1303,10 @@ def build(name, condition, seed=17):
                   construction_order=True)
     k.meta['stock_origin_offset_m'] = counts.origin(name)
     return k
+
+
+import batch2  # noqa: E402: reuses the construction helpers above
+SIZES.update(batch2.SIZES)
+DRAFTS.update(batch2.DRAFTS)
+DAMAGE.update(batch2.DAMAGE)
+BUILDINGS.update(('singlecivlivinga', 'portable'))

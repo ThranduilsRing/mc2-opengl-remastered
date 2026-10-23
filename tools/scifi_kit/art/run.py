@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Art-directed kit CLI: render primitive contact sheets and building assemblies.
 
-CPU rules: exactly one Blender at a time, --threads 2, Cycles threads 2, below-normal
-priority, and CPU affinity that never includes core 0. Rendering uses the GPU when
+CPU rules: one Blender job at a time, --threads 6, Cycles threads 6, below-normal
+priority. Rendering uses the GPU when
 Cycles finds one.
 
   py -3 tools/scifi_kit/art/run.py prims --pass p1 [--only wall_panel,tank] [--samples 48]
@@ -31,7 +31,7 @@ def blender(job, log):
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(job, indent=1), encoding='utf-8')
     log.parent.mkdir(parents=True, exist_ok=True)
-    cmd = [str(find_blender_exe()), '--background', '--factory-startup', '--threads', '2', '--python-exit-code', '1',
+    cmd = [str(find_blender_exe()), '--background', '--factory-startup', '--threads', '6', '--python-exit-code', '1',
            '--python', str(HERE / 'blend.py'), '--', str(path)]
     print('[art]', ' '.join(cmd), flush=True)
     sys.path.insert(0,str(ROOT/'scripts'))
@@ -42,8 +42,8 @@ def blender(job, log):
         proc = subprocess.Popen(cmd, stdout=fh, stderr=subprocess.STDOUT, **kwargs)
         try:
             cores = list(range(psutil.cpu_count()))
-            psutil.Process(proc.pid).cpu_affinity(cores[2:4])
-        except Exception as exc:  # affinity is best effort; threads are still 2
+            psutil.Process(proc.pid).cpu_affinity(cores)
+        except Exception as exc:  # affinity is best effort; threads are still 6
             print('[art] affinity not set:', exc)
         rc = proc.wait()
     if rc:
@@ -147,7 +147,7 @@ def main():
     import psutil
     parent = psutil.Process()
     # The child inherits this affinity at spawn, before its own explicit pin.
-    parent.cpu_affinity(list(range(psutil.cpu_count()))[2:4])
+    parent.cpu_affinity(list(range(psutil.cpu_count())))
     parent.nice(psutil.BELOW_NORMAL_PRIORITY_CLASS)
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument('command', choices=['prims', 'sheet', 'build', 'beforeafter', 'stockviews'])

@@ -116,3 +116,15 @@ def test_rubble_is_volumetric():
         top = max(v[2] for p in k.pieces for v in p['v'])
         assert top > .14 * drafts.SIZES[name][2], name
         assert any(p['role'] == 'frame' for p in k.pieces), 'rubble keeps a bent frame'
+
+
+@pytest.mark.parametrize('name', list(drafts.batch2.DRAFTS))
+def test_batch_two_authored_proportions_match_stock(name):
+    drafts.FIT_CACHE.clear()
+    k = drafts.build(name, 'pristine')
+    assert all(.9 <= scale <= 1.1 for scale in k.meta['fit_scale_xyz'])
+
+
+def test_destroyed_metal_barricade_is_flat():
+    k = drafts.build('corrigatedmetalbarricade', 'destroyed')
+    assert max(v[2] for p in k.pieces for v in p['v']) < .4

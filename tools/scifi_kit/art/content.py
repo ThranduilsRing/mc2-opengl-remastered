@@ -204,7 +204,7 @@ def prepare(source,pipeline,out):
             lights.setdefault(name,{})[cond]=specs
         model=next(m for m in counts.catalog()[name]['models'] if m['role']=='intact' and m.get('lod')==0)
         spec=dict(frontend='gltf',id=name,replaces='staticProp:'+Path(model['tgl']).stem,
-                  kind='building' if name in ('rpbuilding','quonset','quonsetclean','lookouttower') else 'prop',
+                  kind='building' if name in drafts.BUILDINGS else 'prop',
                   intact=files['pristine'][0].as_posix(),destroyed=files['destroyed'][0].as_posix(),
                   lods=[[p.as_posix(),distance] for p,distance in zip(files['pristine'][1:],(350,700))],
                   frame='gltf',wu_per_unit=4,texel_scale=4,repair_inward_hull=True,
