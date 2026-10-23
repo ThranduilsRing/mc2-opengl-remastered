@@ -12,10 +12,9 @@ if [ "${1:-}" = "--pipelines" ]; then
 from pathlib import Path
 import re
 import sys
-sys.path.insert(0, "scripts")
-from checklib import strip_comments
+sys.path.insert(0, "tools")
+from vk_ownership_ledger import blank
 calls = re.compile(r'\b(?:vkCreate\w*Pipelines|vkCmdBindPipeline)\s*\(')
-strings = re.compile(r'"(?:\\.|[^"\\])*"')
 errors = []
 for path in Path("GameOS/gameos").rglob("*"):
     if path.suffix not in {".cpp", ".h"} or path.name == "vk_render_infra.cpp":
@@ -23,8 +22,8 @@ for path in Path("GameOS/gameos").rglob("*"):
     text = path.read_text(encoding="utf-8")
     if not calls.search(text):
         continue
-    for number, line in enumerate(strip_comments(text).splitlines(), 1):
-        if calls.search(strings.sub("", line)):
+    for number, line in enumerate(blank(text).splitlines(), 1):
+        if calls.search(line):
             errors.append(f"{path}:{number}: raw Vulkan pipeline call: {line.strip()}")
 print("\n".join(errors) if errors else "vk_pipeline_infra: PASS")
 sys.exit(bool(errors))
