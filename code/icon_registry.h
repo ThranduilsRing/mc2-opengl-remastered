@@ -121,6 +121,6 @@ void apply(aObject& widget, const aObject& source, long index, std::string chass
 void blit(std::string sheet, long index, bool back, uint32_t* dest, int stride, int width, int height,
           std::string chassis = {});
 const Icon& damageRect(long slot);
-unsigned long damageTexture();
+unsigned long damageTexture(long slot);
 void shutdown();
 }

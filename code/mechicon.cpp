@@ -309,7 +309,7 @@ void MechIcon::setDrawBack(bool bSet)
     }
     if (backDamageIndex == -1) return;
     const auto& rect = unit_icons::damageRect(backDamageIndex);
-    const auto handle = unit_icons::damageTexture();
+    const auto handle = unit_icons::damageTexture(backDamageIndex);
     TEXTUREPTR page = lockIconPage(handle);
     if (!page.pTexture) return;
     DWORD* dest = page.pTexture + rect.y * page.Width + rect.x;
@@ -385,7 +385,7 @@ bool MechIcon::init( long whichIndex )
 {
     setIconVariables();
     const auto& rect = unit_icons::damageRect(damageIconIndex);
-    const auto handle = unit_icons::damageTexture();
+    const auto handle = unit_icons::damageTexture(damageIconIndex);
     TEXTUREPTR page = lockIconPage(handle);
     if (!page.pTexture) return false;
     DWORD* const dest = page.pTexture + rect.y * page.Width + rect.x;
@@ -634,7 +634,7 @@ void MechIcon::doDraw( char* newDamage, char* oldDamage, unsigned long handle, u
 		if ( newDamage[i] != oldDamage[i] )
 		{			
             const auto& rect = unit_icons::damageRect(index);
-            const auto textureHandle = unit_icons::damageTexture();
+            const auto textureHandle = unit_icons::damageTexture(index);
             TEXTUREPTR textureData = lockIconPage(textureHandle);
             if (!textureData.pTexture) continue;
             DWORD* pLine = textureData.pTexture + rect.y * textureData.Width + rect.x;
@@ -876,7 +876,7 @@ void ForceGroupIcon::renderUnitIcon( float left, float top, float right, float b
     uint64_t textureId = 0;
     if (!getUnitIconTexUV(textureId, u, v, u1, v1)) return;
     const float uDelta = u1 - u, vDelta = v1 - v;
-    gos_SetRenderState(gos_State_Texture, unit_icons::damageTexture());
+    gos_SetRenderState(gos_State_Texture, unit_icons::damageTexture(damageIconIndex));
 	gos_SetRenderState( gos_State_AlphaMode, gos_Alpha_AlphaInvAlpha);
 	gos_SetRenderState( gos_State_Filter, gos_FilterNone);
 	gos_SetRenderState( gos_State_AlphaTest, true);
@@ -905,7 +905,7 @@ void ForceGroupIcon::renderUnitIconBack( float left, float top, float right, flo
     uint64_t textureId = 0;
     if (!getUnitIconBackTexUV(textureId, u, v, u1, v1)) return;
     const float uDelta = u1 - u, vDelta = v1 - v;
-    gos_SetRenderState(gos_State_Texture, unit_icons::damageTexture());
+    gos_SetRenderState(gos_State_Texture, unit_icons::damageTexture(backDamageIndex));
 	gos_SetRenderState( gos_State_AlphaMode, gos_Alpha_AlphaInvAlpha);
 	gos_SetRenderState( gos_State_Filter, gos_FilterNone);
 	gos_SetRenderState( gos_State_AlphaTest, true);
@@ -945,7 +945,7 @@ static bool damageTexUV(long slot, float width, float height, uint64_t& texture,
 {
     if (slot < 0) return false;
     const auto& rect = unit_icons::damageRect(slot);
-    const auto handle = unit_icons::damageTexture();
+    const auto handle = unit_icons::damageTexture(slot);
     GosTexels texels = gos_GetTextureTexels(handle);
     if (!texels.width || !texels.height) return false;
     u0 = (rect.x + .1f) / texels.width; v0 = (rect.y + .1f) / texels.height;
@@ -957,6 +957,11 @@ static bool damageTexUV(long slot, float width, float height, uint64_t& texture,
 bool ForceGroupIcon::getUnitIconTexUV(uint64_t& texture, float& u0, float& v0, float& u1, float& v1) const
 {
     return damageTexUV(damageIconIndex, unitIconX, unitIconY, texture, u0, v0, u1, v1);
+}
+
+unsigned long ForceGroupIcon::getUnitIconTexture() const
+{
+    return unit_icons::damageTexture(damageIconIndex);
 }
 
 bool ForceGroupIcon::getUnitIconBackTexUV(uint64_t& texture, float& u0, float& v0, float& u1, float& v1) const
@@ -1004,7 +1009,7 @@ bool VehicleIcon::init( Mover* pMover )
     pilotIcon.setTextureIndex(26);
     if (!pMover) return false;
     const auto& rect = unit_icons::damageRect(damageIconIndex);
-    const auto textureHandle = unit_icons::damageTexture();
+    const auto textureHandle = unit_icons::damageTexture(damageIconIndex);
     TEXTUREPTR textureData = lockIconPage(textureHandle);
     if (!textureData.pTexture) return false;
     unit_icons::blit(hudSheet(true), pMover->getIconPictureIndex(), false,
@@ -1089,7 +1094,7 @@ void VehicleIcon::update()
 		if ( newDamage[i] != damage[i] )
 		{	
             const auto& rect = unit_icons::damageRect(damageIconIndex);
-            const auto textureHandle = unit_icons::damageTexture();
+            const auto textureHandle = unit_icons::damageTexture(damageIconIndex);
             TEXTUREPTR textureData = lockIconPage(textureHandle);
             if (!textureData.pTexture) continue;
             DWORD* pLine = textureData.pTexture + rect.y * textureData.Width + rect.x;
