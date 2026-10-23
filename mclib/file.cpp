@@ -62,6 +62,7 @@
 #include "mod_conflict.h"  // MOD-LOAD-ORDER-CONFLICT-REPORT-1: pure conflict classifier
 #include <algorithm>
 
+#include "../GameOS/gameos/crash_content.h"
 #include "file_mod.inc"
 
 //-----------------
@@ -433,6 +434,7 @@ long File::open (const char* fName, FileMode _mode, long numChild, bool doNotLow
 			if (fileImage)
 			{
 				fastFile->readFast(fastFileHandle,fileImage,fileSize());
+				crashbundle_content_image(m_fileName.c_str(), fileImage, fileSize());
 
 				physicalLength = getLength();
 				//------------------------------------
@@ -449,6 +451,7 @@ long File::open (const char* fName, FileMode _mode, long numChild, bool doNotLow
 		else
 		{
 			setup();
+			crashbundle_content_fd(handle, m_fileName.c_str(), "loose");
 	
 			//------------------------------------------------------------
 			// NEW FUNCTIONALITY!!!

@@ -2193,6 +2193,15 @@
    "count": 1
   },
   {
+   "tag": "CRASHBUNDLE",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "bundle"
+   ],
+   "count": 1
+  },
+  {
    "tag": "CURSOR",
    "ver": -1,
    "stream": "log",

@@ -9,6 +9,10 @@
 #include <mutex>
 #include <optional>
 
+// Installed by GameOS at startup; standalone tools keep the logger independent.
+static std::atomic<void (*)(const char*)> crashSink{nullptr};
+extern "C" void mc2_log_set_crash_sink(void (*sink)(const char*)) { crashSink.store(sink); }
+
 #ifdef _WIN32
 extern "C" __declspec(dllimport) void __stdcall OutputDebugStringA(const char*);
 #endif
@@ -219,6 +223,7 @@ void write(Cat c, Level l, Stream s, std::string_view text, const std::source_lo
         }
         line.append(text);
         line.push_back('\n');
+        if (auto sink = crashSink.load(std::memory_order_relaxed)) sink(line.c_str());
         writeRaw(s, line);
     } catch (...) {}
 }

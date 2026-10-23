@@ -7,6 +7,7 @@
 #include "vk_texture_residency.h"
 #include "imgui.h"
 #include "gos_crashbundle.h"
+#include "crash_content.h"
 #include "Gates/render_options.h"
 #include "Gates/gate_cold.h"
 #include "gos_postprocess.h"
@@ -621,6 +622,7 @@ void deviceLost() {
     }
     std::error_code ec; std::filesystem::create_directories("debug_state",ec); crashSnapshot("debug_state");
     std::fprintf(stderr,"[VK_BREADCRUMBS v1] device_lost snapshot=debug_state/gpu_breadcrumbs.txt\n");
+    crashbundle_device_lost();
 }
 }
 void mc2PrewarmMissionPipelines() {

@@ -62,4 +62,8 @@ void ExitGameOS (void) {}
 // Crash-bundle instrumentation ring (engine: GameOS/gameos/gos_crashbundle.cpp,
 // drags SEH/minidump machinery). FastFile::readFast appends trace lines.
 extern "C" void crashbundle_append (const char *) {}
+extern "C" void crashbundle_content_fd(int, const char*, const char*) {}
+extern "C" void crashbundle_content_image(const char*, const void*, size_t) {}
+extern "C" void crashbundle_mod(const char*, int) {}
+extern "C" void crashbundle_save_point(const char*, const char*) {}
 extern "C" void crashbundle_init (void) {}

@@ -229,6 +229,10 @@ bool eligibleForGpuObjects(class TG_Shape*) { return false; }
 // Crash-bundle instrumentation sink (GameOS gos_crashbundle.cpp). extern "C"
 // per gos_crashbundle.h. No-op.
 extern "C" void crashbundle_append(const char* /*line*/) {}
+extern "C" void crashbundle_content_fd(int, const char*, const char*) {}
+extern "C" void crashbundle_content_image(const char*, const void*, size_t) {}
+extern "C" void crashbundle_mod(const char*, int) {}
+extern "C" void crashbundle_save_point(const char*, const char*) {}
 
 // ===========================================================================
 // (12) CODE/ (GAME) SYMBOLS — the headline finding. All render/transform-only.
