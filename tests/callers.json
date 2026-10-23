@@ -45,7 +45,7 @@
         },
         {
           "path": "tools/build_contract_harnesses.py",
-          "line": 131,
+          "line": 162,
           "evidence": "import",
           "reference": "bootstrap_worktree_build",
           "text": "from bootstrap_worktree_build import cache_args"
@@ -633,7 +633,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/run_smoke.py",
-          "line": 1027,
+          "line": 1031,
           "evidence": "command",
           "reference": "scripts/check-deploy-coherence.py",
           "text": "_coh = subprocess.run("
@@ -698,7 +698,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/deploy_payload.py",
-          "line": 1658,
+          "line": 1673,
           "evidence": "command",
           "reference": "scripts/check-deploy-hygiene.py",
           "text": "r = subprocess.run([sys.executable, hygiene, target],"
@@ -735,7 +735,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/run_smoke.py",
-          "line": 961,
+          "line": 965,
           "evidence": "command",
           "reference": "scripts/check-deploy-target.py",
           "text": "_g = subprocess.run(_gcmd, capture_output=True, text=True, timeout=60, **nofocus.hidden_kwargs())"
@@ -2098,7 +2098,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/run_smoke.py",
-          "line": 1045,
+          "line": 1049,
           "evidence": "command",
           "reference": "scripts/check_shader_bom.py",
           "text": "_bom = subprocess.run("
@@ -2215,7 +2215,7 @@
         },
         {
           "path": "scripts/ninja_build.py",
-          "line": 19,
+          "line": 25,
           "evidence": "import",
           "reference": "configure_ninja",
           "text": "from configure_ninja import (DEFAULT_TARGETS, DEFAULT_TREE, NINJA, compile_cache_env, configure, ensure_cache_server, tree_uses_cache,"
@@ -2243,7 +2243,7 @@
         },
         {
           "path": "tools/build_contract_harnesses.py",
-          "line": 20,
+          "line": 24,
           "evidence": "import",
           "reference": "configure_ninja",
           "text": "import configure_ninja as cn"
@@ -2509,6 +2509,13 @@
           "text": "import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)"
         },
         {
+          "path": "scripts/ninja_build.py",
+          "line": 24,
+          "evidence": "import",
+          "reference": "console_child",
+          "text": "import console_child  # noqa: E402"
+        },
+        {
           "path": "scripts/provenance_gate.py",
           "line": 161,
           "evidence": "import",
@@ -2552,14 +2559,14 @@
         },
         {
           "path": "scripts/smoke_lib/host_lease.py",
-          "line": 444,
+          "line": 467,
           "evidence": "import",
           "reference": "scripts.console_child",
           "text": "from scripts import console_child         # type: ignore"
         },
         {
           "path": "scripts/smoke_lib/host_lease.py",
-          "line": 447,
+          "line": 470,
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child                       # type: ignore"
@@ -2937,7 +2944,7 @@
         },
         {
           "path": "tools/build_contract_harnesses.py",
-          "line": 19,
+          "line": 23,
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child"
@@ -3063,7 +3070,7 @@
         },
         {
           "path": "tools/lane_merge.py",
-          "line": 44,
+          "line": 47,
           "evidence": "import",
           "reference": "console_child",
           "text": "import console_child  # noqa: E402  (windowless console children without a conhost each)"
@@ -3526,7 +3533,7 @@
       "callers_by_basename": [
         {
           "path": "scripts/run_smoke.py",
-          "line": 903,
+          "line": 907,
           "evidence": "command",
           "reference": "scripts/deploy_payload.py",
           "text": "_v = subprocess.run(cmd, capture_output=True, text=True, timeout=300, **nofocus.hidden_kwargs())"
@@ -3542,7 +3549,7 @@
         },
         {
           "path": "scripts/run_smoke.py",
-          "line": 1318,
+          "line": 1322,
           "evidence": "import",
           "reference": "scripts.deploy_payload",
           "text": "from scripts import deploy_payload as _dp"
@@ -4000,7 +4007,15 @@
           "text": "proc = subprocess.run(cmd, capture_output=True, text=True, cwd=str(ROOT), env=env,"
         }
       ],
-      "callers_by_stem": []
+      "callers_by_stem": [
+        {
+          "path": "scripts/tests/test_build_compiler_presets.py",
+          "line": 356,
+          "evidence": "import",
+          "reference": "ninja_build",
+          "text": "import ninja_build as nb"
+        }
+      ]
     },
     {
       "path": "scripts/parent_watchdog.py",
@@ -4376,6 +4391,13 @@
       ],
       "callers_by_stem": [
         {
+          "path": "scripts/tests/test_battle_bench.py",
+          "line": 133,
+          "evidence": "import",
+          "reference": "run_smoke",
+          "text": "import run_smoke"
+        },
+        {
           "path": "scripts/tests/test_fingerprint_cli.py",
           "line": 7,
           "evidence": "import",
@@ -4621,35 +4643,35 @@
         },
         {
           "path": "scripts/run_smoke.py",
-          "line": 764,
+          "line": 768,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from scripts.smoke_lib import deploy_lease as _deploy_lease"
         },
         {
           "path": "scripts/run_smoke.py",
-          "line": 792,
+          "line": 796,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from scripts.smoke_lib import host_lease as _host_lease"
         },
         {
           "path": "scripts/run_smoke.py",
-          "line": 805,
+          "line": 809,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from scripts.smoke_lib import host_load as _host_load"
         },
         {
           "path": "scripts/run_smoke.py",
-          "line": 990,
+          "line": 994,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from scripts.smoke_lib import preflight_cache as _pfcache"
         },
         {
           "path": "scripts/run_smoke.py",
-          "line": 1176,
+          "line": 1180,
           "evidence": "import",
           "reference": "scripts.smoke_lib",
           "text": "from scripts.smoke_lib import child_registry as _children"
@@ -5038,7 +5060,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/run_smoke.py",
-          "line": 1176,
+          "line": 1180,
           "evidence": "import",
           "reference": "scripts.smoke_lib.child_registry",
           "text": "from scripts.smoke_lib import child_registry as _children"
@@ -5153,7 +5175,7 @@
         },
         {
           "path": "scripts/run_smoke.py",
-          "line": 764,
+          "line": 768,
           "evidence": "import",
           "reference": "scripts.smoke_lib.deploy_lease",
           "text": "from scripts.smoke_lib import deploy_lease as _deploy_lease"
@@ -5374,7 +5396,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/run_smoke.py",
-          "line": 792,
+          "line": 796,
           "evidence": "import",
           "reference": "scripts.smoke_lib.host_lease",
           "text": "from scripts.smoke_lib import host_lease as _host_lease"
@@ -5445,7 +5467,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/run_smoke.py",
-          "line": 805,
+          "line": 809,
           "evidence": "import",
           "reference": "scripts.smoke_lib.host_load",
           "text": "from scripts.smoke_lib import host_load as _host_load"
@@ -5736,7 +5758,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/run_smoke.py",
-          "line": 990,
+          "line": 994,
           "evidence": "import",
           "reference": "scripts.smoke_lib.preflight_cache",
           "text": "from scripts.smoke_lib import preflight_cache as _pfcache"
@@ -6708,7 +6730,7 @@
         },
         {
           "path": "tools/lane_merge.py",
-          "line": 46,
+          "line": 49,
           "evidence": "import",
           "reference": "_git_util",
           "text": "import _git_util  # noqa: E402  (shared git helpers)"

@@ -21,6 +21,7 @@ import sys
 import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import console_child  # noqa: E402
 from configure_ninja import (DEFAULT_TARGETS, DEFAULT_TREE, NINJA, compile_cache_env, configure, ensure_cache_server, tree_uses_cache,
                              under_vcvars)  # noqa: E402
 
@@ -33,10 +34,12 @@ def warm(root, argv, tree):
         base = argv[i + 1]
         del argv[i:i + 2]
     if base:
-        dirty = subprocess.run(["git", "-C", root, "status", "--porcelain", "--untracked-files=no"], capture_output=True, text=True).stdout.strip()
+        dirty = subprocess.run(["git", "-C", root, "status", "--porcelain", "--untracked-files=no"], capture_output=True, text=True,
+                               **console_child.child_kwargs(redirected=True)).stdout.strip()
         if dirty:
             sys.exit("warm: tracked changes present, refusing to switch the base:\n" + dirty)
-        switched = subprocess.run(["git", "-C", root, "switch", "--detach", base], capture_output=True, text=True)
+        switched = subprocess.run(["git", "-C", root, "switch", "--detach", base], capture_output=True, text=True,
+                                  **console_child.child_kwargs(redirected=True))
         if switched.returncode:
             sys.exit("warm: git switch --detach failed: " + switched.stderr.strip())
     if not os.path.exists(f"{root}/{tree}/build.ninja"):
@@ -45,6 +48,7 @@ def warm(root, argv, tree):
     env = dict(os.environ, _MSPDBSRV_ENDPOINT_=f"warm-{os.getpid()}")
     flags = 0x00000008 | 0x00000200 | 0x00004000          # DETACHED_PROCESS | NEW_PROCESS_GROUP | BELOW_NORMAL_PRIORITY_CLASS
     with open(log, "w") as out:
+        # background-launch: allow detached console build (ninja), not the game; DETACHED_PROCESS is in `flags`
         child = subprocess.Popen([sys.executable, os.path.abspath(__file__), *argv, "--warm-run"], cwd=root, env=env, stdin=subprocess.DEVNULL,
                                  stdout=out, stderr=subprocess.STDOUT, creationflags=flags if os.name == "nt" else 0)
     print(f"warm: pid {child.pid} building {tree} at {base or 'HEAD'}; log {log}")
