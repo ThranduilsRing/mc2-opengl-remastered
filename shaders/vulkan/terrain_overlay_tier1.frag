@@ -110,6 +110,7 @@ void main() {
         cdSpec = cdSp;
     }
     c.rgb = max(c.rgb * shadow + cdSpec * shadow, vec3(0.0));
+    c.rgb *= uT.sceneLightScale;   // LOCAL-LIGHTS-4: same night scale as the ground under it (shadeGround)
 
     // In-shader distance fog (skipped on cement tiles: the shared screen-space fog does it once).
     float camDist2D = distance(WorldPos.xy, uT.cameraPosMC2.xy);

@@ -197,6 +197,10 @@ void mc2_vk_shadow_island_run_movers(const float cameraRows[16], const float sun
 void mc2_vk_shadow_island_submit_frame();
 // Current-frame D16 mover image; the debug array view aliases that image.
 int mc2_vk_shadow_island_movers_ready();
+// LOCAL-LIGHTS-2: local-light shadow atlas (local_light_shadow.h). capable = the island renders assigned tiles this session;
+// the view is the live D16 atlas in DEPTH_STENCIL_READ_ONLY, null until its first-use transitions were recorded.
+int mc2_vk_local_shadows_capable();
+void* mc2_vk_shadow_island_get_local_atlas_view();
 void* mc2_vk_shadow_island_get_mover_debug_view();
 // Full-map D16 static object image and its matching submitted projection.
 void* mc2_vk_shadow_island_get_object_view();

@@ -1,6 +1,10 @@
 // CPU terrain-lighting inputs and light-grid ownership for native Vulkan consumers.
 #include "gos_terrain_lighting.h"
 #include "light_pool_culling.h"
+#include "local_light_shadow.h"   // LOCAL-LIGHTS-2: shadow tile selection
+#ifdef MC2_VULKAN_ISLAND
+#include "vulkan_shadow_island_live.h"   // mc2_vk_local_shadows_capable
+#endif
 #include "mc2_diag_verbose.h"  // QUIET-DEFAULT-BUILD-1
 #include "utils/mc2log.h"       // LOGGING-FACADE-P2: MC2_EVENT for the structured [TAG vN] lines
 #include "Gates/gate.h"          // typed gate registry: gate::get<"MC2_X">()
@@ -640,7 +644,12 @@ void PackAndDispatch() {
         if (dumpThisFrame) {
             if (TG_LightPtr* wl = eye->getWorldLights())
                 for (long s = 0; s < MAX_LIGHTS_IN_WORLD; ++s)
-                    if (wl[s]) ptrToSlot[wl[s]] = s;
+                    if (wl[s]) {
+                        // A light listed in two slots = a stale slot (freed owner, reused address).
+                        if (const auto it = ptrToSlot.find(wl[s]); it != ptrToSlot.end())
+                            MC2_EVENT(Terrain, "LIGHT_POOL_DUMP", 1, "dup_ptr slot_a={} slot_b={}", it->second, s);
+                        ptrToSlot[wl[s]] = s;
+                    }
             MC2_EVENT(Terrain, "LIGHT_POOL_DUMP", 1,
                 "frame_tick={} isNight={} nTerrainLights={}",
                 static_cast<unsigned long>(s_poolDumpFrame), eye->isNight ? 1 : 0,
@@ -691,6 +700,13 @@ void PackAndDispatch() {
                 case TG_LIGHT_TERRAIN: gl.lightType = 3u; break;  // TG_LIGHT_TERRAIN_GPU
                 default:               gl.lightType = 0u; break;
             }
+            // LOCAL-LIGHTS-1: a coned light carries its aim + cone in the high bits
+            // (light_pool_attenuation.hglsl lpa_spotCone); its radii are physical,
+            // so the LIGHT-REALISM-1 pool reshape below does not apply to it.
+            const bool coned = gl.lightType != 0u && tl->spotCosOuter > 0.0f;
+            if (coned)
+                gl.lightType = PackPoolLightType(gl.lightType, tl->spotDir.x, tl->spotDir.y,
+                                                 tl->spotDir.z, tl->spotCosOuter, 0u);
             // Preserve source color; each receiver applies the separate intensity once.
             const DWORD argb = tl->GetSourceRGB();
             gl.color[0]        = static_cast<float>((argb >> 16) & 0xFFu) / 255.0f;  // R
@@ -729,7 +745,7 @@ void PackAndDispatch() {
             // GetFalloff) and MUST be recomputed in lockstep or the ramp
             // detaches from the radii. Gate default-OFF -> untouched -> byte-
             // identical.
-            if (s_lightRealism)
+            if (s_lightRealism && !coned)
             {
                 const float spill = s_lightRealismPoolSpill;   // farDistance scale
                 const float core  = s_lightRealismPoolCore;    // closeDistance scale
@@ -744,7 +760,10 @@ void PackAndDispatch() {
             }
             // NIGHT-LIGHT-POOLS-2a: mover flag in the pad (pool frag dims
             // mover-attached lights; compute consumer never reads pads).
-            gl._pad1           = lightIsMover(tl) ? 1.0f : 0.0f;
+            // LOCAL-LIGHTS-2: a coned light is a building lamp, never a mover -- the
+            // slot tags can be stale (mc2_10: the S_TurretControl lamps' slots read
+            // as Mech), which dimmed them 4x, shrank them and denied them a shadow tile.
+            gl._pad1           = (!coned && lightIsMover(tl)) ? 1.0f : 0.0f;
             gl.intensity       = tl->intensity;
             ++numLights;
         }
@@ -780,6 +799,18 @@ void PackAndDispatch() {
     // is a no-op that publishes dim=0 (= linear loop) when gated off or the pool
     // is too small to be worth binning.
     BuildLightGrid(numLights);
+    // LOCAL-LIGHTS-2: the coned lights nearest the camera target get a shadow tile (bits 4-7 of
+    // lightType); the VK shadow island renders exactly these tiles this frame. Potato / shadows
+    // off / no island: no tiles, unshadowed lights.
+    {
+#ifdef MC2_VULKAN_ISLAND
+        const bool shadowTiles = eye && mc2_vk_local_shadows_capable() != 0;
+#else
+        const bool shadowTiles = false;
+#endif
+        const float camX = eye ? eye->getPosition().x : 0.0f, camY = eye ? eye->getPosition().y : 0.0f;
+        mc2localshadow::selectTiles(s_lightBuf.data(), numLights, camX, camY, shadowTiles);
+    }
     // NIGHT-LIGHT-POOLS-1: publish this frame's packed count for the forward
     // consumer (LOD-chunk terrain per-fragment light loop).
     s_lastNumLights = numLights;

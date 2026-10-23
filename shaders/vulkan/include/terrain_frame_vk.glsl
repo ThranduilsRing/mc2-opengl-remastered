@@ -45,6 +45,9 @@ layout(set = TERRAIN_RESOURCE_SET, binding = 12, std430) readonly buffer Terrain
 layout(set = TERRAIN_RESOURCE_SET, binding = 13, std430) readonly buffer TerrainLightGridIndicesVK {
     uint  lightGridIndices[];
 };
+// LOCAL-LIGHTS-2: local-light shadow atlas (shadow island; D16 depth, plain sampler + gather).
+layout(set = TERRAIN_RESOURCE_SET, binding = 19) uniform sampler2D u_localShadowAtlas;
+#define MC2_LOCAL_SHADOW_ATLAS 1
 #define TLP_CEMENT_WORD(i) uC.cementWordsF[i]
 #include "../../include/terrain_light_pool.hglsl"
 #ifndef TERRAIN_OBJECT_RECEIVER

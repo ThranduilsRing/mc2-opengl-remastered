@@ -224,6 +224,10 @@ struct _TG_Light
 	glm::vec3			position;			//Explicit position to aid terrain code with point sources.
 	glm::vec3			spotDir;			//Direction of the actual Spotlight to help with shadows, etc.
 	float					maxSpotLength;		//Maximum length spotlight can be from target.
+	// LOCAL-LIGHTS-1: cosine of the beam's outer half-angle for the per-fragment light
+	// pool; 0 = omni. When set, `position` is the lamp and `spotDir` the unit aim (MC2
+	// world frame); the pool packs both into the record (gos_terrain_lighting.cpp).
+	float					spotCosOuter;
 
 	void init (DWORD lType)
 	{
@@ -239,6 +243,7 @@ struct _TG_Light
 		position.x = position.y = position.z = -999999.0f;
 		spotDir.x = spotDir.y = spotDir.z = 0.0f;
 		maxSpotLength = 0.0f;
+		spotCosOuter = 0.0f;
 		active = false;
 		ownerEnabled = 1;	//LIGHT-CULL-RADIUS-1: enabled until an owner says otherwise
 	}

@@ -129,6 +129,70 @@ float Camera::cameraZoom[MAX_VIEWS] =
 frameOfRef		Camera::cameraFrame;
 
 //---------------------------------------------------------------------------
+// LOCAL-LIGHTS-4: per-mission night lighting. On night and evening missions the
+// authored sun/moon and ambient were bright enough that the base read as lit grey
+// and the local lamps (building searchlights, generators, mech headlights) could not
+// carry the scene. The mission's sun and ambient are scaled down by how night-like
+// its sun is (lightAltitude between NIGHT_START_PITCH and NIGHT_LIGHT_PITCH; exactly
+// 1.0 on day missions, so day maps are byte-unchanged). A mission may name its own
+// target; the rest of the night missions use the default.
+extern char missionName[];
+namespace {
+// light/ambient scale the mission's sun and ambient colours (object lighting, burn-ins);
+// ground scales the PRELIT terrain/vegetation colour (the colormap carries the authored
+// night already, so it needs its own, gentler factor). Local light pools are added
+// after `ground`, so the lamps keep their full strength.
+struct MissionLightProfile { const char* mission; float light; float ambient; float ground; };
+constexpr MissionLightProfile kDefaultNightProfile{nullptr, 0.65f, 0.6f, 0.8f};
+constexpr MissionLightProfile kMissionLightProfiles[] = {
+	{"mc2_10", 0.45f, 0.40f, 0.55f},   // airbase raid just after sunset: fairly dark, lamps carry it
+};
+float g_sceneLightScale = 1.0f;
+
+const MissionLightProfile& missionLightProfile()
+{
+	const char* name = missionName;
+	for (const char* p = missionName; *p; ++p)
+		if (*p == '/' || *p == '\\') name = p + 1;
+	for (const auto& profile : kMissionLightProfiles) {
+		const size_t n = std::strlen(profile.mission);
+		if (S_strnicmp(name, profile.mission, n) == 0 && (name[n] == 0 || name[n] == '.'))
+			return profile;
+	}
+	return kDefaultNightProfile;
+}
+
+unsigned char scaleChannel(unsigned char v, float s)
+{
+	return static_cast<unsigned char>(std::clamp(std::lround(v * s), 0L, 255L));
+}
+
+void applyMissionLightProfile(Camera& c)
+{
+	const float altitude = c.lightPitch > 90.0f ? 180.0f - c.lightPitch : c.lightPitch;
+	const float night = std::clamp((NIGHT_START_PITCH - altitude) / (NIGHT_START_PITCH - NIGHT_LIGHT_PITCH), 0.0f, 1.0f);
+	g_sceneLightScale = 1.0f;
+	if (night <= 0.0f) return;
+	const MissionLightProfile& p = missionLightProfile();
+	g_sceneLightScale = 1.0f + (p.ground - 1.0f) * night;
+	const float ls = 1.0f + (p.light - 1.0f) * night;
+	const float as = 1.0f + (p.ambient - 1.0f) * night;
+	for (unsigned char* v : {&c.lightRed, &c.lightGreen, &c.lightBlue, &c.dayLightRed, &c.dayLightGreen, &c.dayLightBlue,
+	                         &c.nightLightRed, &c.nightLightGreen, &c.nightLightBlue, &c.sunsetLightRed, &c.sunsetLightGreen, &c.sunsetLightBlue})
+		*v = scaleChannel(*v, ls);
+	for (unsigned char* v : {&c.ambientRed, &c.ambientGreen, &c.ambientBlue, &c.dayAmbientRed, &c.dayAmbientGreen, &c.dayAmbientBlue,
+	                         &c.nightAmbientRed, &c.nightAmbientGreen, &c.nightAmbientBlue,
+	                         &c.terrainShadowRed, &c.terrainShadowGreen, &c.terrainShadowBlue})
+		*v = scaleChannel(*v, as);
+	std::fprintf(stderr, "[MISSION_LIGHT v1] mission=%s night=%.2f light_scale=%.2f ambient_scale=%.2f ground_scale=%.2f light=(%u,%u,%u) ambient=(%u,%u,%u)\n",
+		missionName, night, ls, as, g_sceneLightScale, c.lightRed, c.lightGreen, c.lightBlue, c.ambientRed, c.ambientGreen, c.ambientBlue);
+}
+} // namespace
+
+// The mission's scale of the prelit ground (terrain / overlay / vegetation UBO sceneLightScale).
+float mc2SceneLightScale() { return g_sceneLightScale; }
+
+//---------------------------------------------------------------------------
 // Camera Class
 //---------------------------------------------------------------------------
 
@@ -316,7 +380,8 @@ long Camera::init (FitIniFilePtr cameraFile )
 		lightDirection.z = sin(lightPitch * DEGREES_TO_RADS);
 	}
 
-	
+	applyMissionLightProfile(*this);
+
 	result = cameraFile->readIdFloat("NewScale",newScaleFactor);
 	gosASSERT(result == NO_ERR);
 

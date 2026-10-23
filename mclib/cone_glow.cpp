@@ -450,6 +450,151 @@ bool GetNodeAim(TG_MultiShape* shape, long nodeId,
     return true;
 }
 
+// LOCAL-LIGHTS-1: the stock building cone leaves (e.g. S_TurretControl's
+// Spotlight_TurretCon) hold SEVERAL pyramids, each a down-light: one bright apex
+// vertex (the lamp; vertex light tag 0xfdfad4) high on the building, joined by
+// triangles to a dark base on the ground. The leaf centroid seen from the node
+// origin (GetNodeAim) is unrelated to any of those beams -- it pointed the
+// S_TurretControl light AWAY from the lit wedge. Each bright apex is one beam.
+static bool isApexTag(DWORD tag)
+{
+    const DWORD r = (tag >> 16) & 0xffu, g = (tag >> 8) & 0xffu, b = tag & 0xffu;
+    return std::max(r, std::max(g, b)) >= 0x40u;
+}
+
+int GetNodeBeams(TG_MultiShape* shape, long nodeId, NodeBeam* out, int maxBeams)
+{
+    const TG_TypeShape* ts = nullptr;
+    const TG_ShapeRec* rec = resolveSpotNode(shape, nodeId, &ts);
+    if (!rec || maxBeams <= 0) return 0;
+    const TG_TypeVertex* verts = ts->GetTypeVertices();
+    const TG_TypeTriangle* tris = ts->GetTypeTriangles();
+    const int nVerts = const_cast<TG_TypeShape*>(ts)->GetNumTypeVertices();
+    const long nTris = ts->GetNumTypeTriangles();
+    if (!verts || !tris || nVerts < 3 || nVerts > kMaxConeVerts || nTris <= 0) return 0;
+    if (!out) {   // count only (mesh data; no pose needed)
+        int n = 0;
+        for (int a = 0; a < nVerts; ++a) n += isApexTag(verts[a].aRGBLight) ? 1 : 0;
+        return std::min(n, maxBeams);
+    }
+    {   // Not transformed yet (same sentinel as QueueConeGlow): the beams have no world pose.
+        const float* m = glm::value_ptr(rec->shapeToWorld);
+        if (std::fabs(m[3]) + std::fabs(m[7]) + std::fabs(m[11]) < 0.01f) return -1;
+    }
+    const float scalar = rec->node->GetShapeScalarValue();
+    const float sc = scalar > 0.0f ? scalar : 1.0f;
+    const auto toWorld = [&](const glm::vec3& local) {
+        const glm::vec3 w = mc2::math::transformPoint(local * sc, rec->shapeToWorld);
+        return glm::vec3(-w.x, w.z, w.y);   // Stuff -> MC2 frame
+    };
+    int count = 0;
+    for (int a = 0; a < nVerts && count < maxBeams; ++a)
+    {
+        if (!isApexTag(verts[a].aRGBLight)) continue;
+        bool linked[kMaxConeVerts] = {};
+        for (long f = 0; f < nTris; ++f)
+        {
+            const DWORD* v = tris[f].Vertices;
+            if (v[0] != static_cast<DWORD>(a) && v[1] != static_cast<DWORD>(a) && v[2] != static_cast<DWORD>(a)) continue;
+            for (int k = 0; k < 3; ++k)
+                if (v[k] < static_cast<DWORD>(nVerts) && v[k] != static_cast<DWORD>(a) && !isApexTag(verts[v[k]].aRGBLight))
+                    linked[v[k]] = true;
+        }
+        const glm::vec3 apexW = toWorld(verts[a].position);
+        glm::vec3 baseW(0.0f);
+        int nb = 0;
+        glm::vec3 baseVerts[kMaxConeVerts];
+        for (int j = 0; j < nVerts; ++j)
+            if (linked[j]) { baseVerts[nb] = toWorld(verts[j].position); baseW += baseVerts[nb]; ++nb; }
+        if (nb == 0) continue;
+        baseW /= static_cast<float>(nb);
+        const glm::vec3 axis = baseW - apexW;
+        const float len = glm::length(axis);
+        if (len < 0.5f) continue;
+        NodeBeam& beam = out[count++];
+        beam.apex = apexW;
+        beam.aim = axis / len;
+        beam.length = len;
+        float minCos = 1.0f;
+        for (int j = 0; j < nb; ++j)
+        {
+            const glm::vec3 d = baseVerts[j] - apexW;
+            const float dl = glm::length(d);
+            if (dl > 1e-3f) minCos = std::min(minCos, glm::dot(d, beam.aim) / dl);
+        }
+        beam.cosHalf = minCos;
+    }
+    return count;
+}
+
+int GetMoverBeams(TG_MultiShape* shape, long nodeId, const glm::vec3& nodeWorld, NodeBeam* out, int maxBeams)
+{
+    const int n = GetNodeBeams(shape, nodeId, out, maxBeams);
+    if (n != 0 || !out) return n;
+    // Untagged mover cone (apex authored at the node pivot): one beam from the node.
+    glm::vec3 aim;
+    float len = 0.0f;
+    if (!GetNodeAim(shape, nodeId, aim, len)) return 0;
+    out[0] = NodeBeam{nodeWorld, aim, len, 0.94f};
+    return 1;
+}
+
+int SelfLitLeaf(TG_MultiShape* shape)
+{
+    if (!shape) return -1;
+    for (int i = 0; i < shape->GetNumShapes(); ++i)
+    {
+        const TG_ShapeRec* rec = shape->GetShapeRec(i);
+        if (!rec || !rec->node || !rec->node->IsShapeNode()) continue;
+        const TG_TypeShape* ts = static_cast<const TG_TypeShape*>(rec->node->GetMyType());
+        if (!ts) continue;
+        const TG_TypeVertex* v = ts->GetTypeVertices();
+        const int n = const_cast<TG_TypeShape*>(ts)->GetNumTypeVertices();
+        if (!v || n < 3) continue;
+        bool all = true;
+        for (int k = 0; k < n && all; ++k) all = v[k].aRGBLight == 0xffffffffu;
+        if (all) return i;
+    }
+    return -1;
+}
+
+bool SelfLitLeafPose(TG_MultiShape* shape, int leaf, glm::vec3& centerOut, glm::vec3& axisOut)
+{
+    const TG_ShapeRec* rec = (shape && leaf >= 0) ? shape->GetShapeRec(leaf) : nullptr;
+    if (!rec || !rec->node) return false;
+    const float* m = glm::value_ptr(rec->shapeToWorld);
+    if (std::fabs(m[3]) + std::fabs(m[7]) + std::fabs(m[11]) < 0.01f) return false;
+    const glm::vec3 o = mc2::math::transformPoint(glm::vec3(0.0f), rec->shapeToWorld);
+    centerOut = glm::vec3(-o.x, o.z, o.y);   // Stuff -> MC2
+    // The most horizontal local axis: it sweeps around as the leaf spins.
+    float bestZ = 2.0f;
+    axisOut = glm::vec3(1.0f, 0.0f, 0.0f);
+    for (int k = 0; k < 3; ++k)
+    {
+        glm::vec3 e(0.0f); e[k] = 1.0f;
+        const glm::vec3 p = mc2::math::transformPoint(e, rec->shapeToWorld);
+        glm::vec3 a(-(p.x - o.x), p.z - o.z, p.y - o.y);
+        const float l = glm::length(a);
+        if (l < 1e-4f) continue;
+        a /= l;
+        if (std::fabs(a.z) < bestZ) { bestZ = std::fabs(a.z); axisOut = a; }
+    }
+    return true;
+}
+
+void ConfigureBeamLight(TG_Light* light, const NodeBeam& b)
+{
+    // A lamp spreads wider than its drawn shaft; the soft angular roll-off
+    // (lpa_spotCone) keeps most of the light near the axis anyway.
+    const float halfDeg = glm::degrees(std::acos(std::clamp(b.cosHalf, 0.0f, 1.0f)));
+    const float outerDeg = std::clamp(halfDeg * 2.0f + 12.0f, 25.0f, 60.0f);
+    light->spotCosOuter = std::cos(glm::radians(outerDeg));
+    light->spotDir = b.aim;
+    light->SetFalloffDistances(0.0f, std::clamp(b.length * 3.5f, 150.0f, 400.0f));
+    glm::vec3 apex = b.apex;
+    light->SetPosition(&apex);
+}
+
 // ---- (B) cone glow ----------------------------------------------------------
 
 void QueueConeGlow(TG_MultiShape* shape, long nodeId,
@@ -622,7 +767,19 @@ void QueueConeGlow(TG_MultiShape* shape, long nodeId,
     // projecting near the centreline stay bright for the beam's full length
     // (bright core). Degenerate cases (no axis, axis pointing at the camera so
     // the screen axis collapses, zero spread) leave alpha untouched.
-    if (realism && haveAxis && nVerts > 0)
+    // LOCAL-LIGHTS-1: a leaf whose lamps are tagged (bright apex, black base) carries
+    // its own beam fade in the vertex-light tags -- use it; the leaf-centroid axis
+    // and its screen feather do not describe multi-beam leaves.
+    bool tagFade = false;
+    for (int j = 0; j < nVerts && !tagFade; ++j) tagFade = isApexTag(verts[j].aRGBLight);
+    if (tagFade)
+        for (int j = 0; j < nVerts; ++j)
+        {
+            const DWORD t = verts[j].aRGBLight;
+            const float lum = static_cast<float>(std::max((t >> 16) & 0xffu, std::max((t >> 8) & 0xffu, t & 0xffu))) / 255.0f;
+            xv[j].fade = lum;
+        }
+    if (realism && haveAxis && nVerts > 0 && !tagFade)
     {
         const float featherExp = realism_cone_feather();
         if (featherExp > 0.001f)
@@ -708,9 +865,21 @@ void QueueConeGlow(TG_MultiShape* shape, long nodeId,
             gos_VERTEX& gv = qt.v[c];
             gv.x = s.x; gv.y = s.y; gv.z = s.z; gv.rhw = s.rhw;
             gv.u = 0.0f; gv.v = 0.0f;
-            DWORD a = static_cast<DWORD>((alphaPeak * s.fade));
+            // kVolumeGain: the peak alpha knobs were tuned while the pass ignored
+            // alpha; premultiplied, 2.5x keeps the shaft a faint visible haze
+            // (~16% of the lamp colour at the emitter) instead of vanishing.
+            constexpr float kVolumeGain = 2.5f;
+            DWORD a = static_cast<DWORD>((alphaPeak * s.fade * kVolumeGain));
             if (a > 255) a = 255;
-            gv.argb = (a << 24) | rgb;
+            // The ISSPOTLGT pass blends ONE/ONE (VK legacy ADD pipeline, GL
+            // gos_Alpha_OneOne): vertex alpha is ignored, so the fade must be
+            // premultiplied into RGB, as QueueBeaconGlow already does. Writing
+            // the fade into alpha alone added the cone at full lamp colour —
+            // the opaque-looking yellow wedge.
+            const DWORD pr = (((rgb >> 16) & 0xffu) * a) / 255u;
+            const DWORD pg = (((rgb >>  8) & 0xffu) * a) / 255u;
+            const DWORD pb = (( rgb        & 0xffu) * a) / 255u;
+            gv.argb = (a << 24) | (pr << 16) | (pg << 8) | pb;
             gv.frgb = 0x00000000;   // fog disabled in the ISSPOTLGT pass
         }
         s_tris.push_back(qt);

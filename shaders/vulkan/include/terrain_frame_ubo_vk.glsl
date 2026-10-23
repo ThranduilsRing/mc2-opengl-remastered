@@ -30,7 +30,7 @@ layout(set = TERRAIN_RESOURCE_SET, binding = 0, std140) uniform TerrainFrameUBO 
     int   lightingEnabled;  // off 208
     int   enableShadows;  // off 212
     float shadowSoftness;  // off 216
-    int   _lightPad3;  // off 220
+    float sceneLightScale;  // off 220
     int   detailEnabled;  // off 224
     int   detailReady;  // off 228
     float nfhStrength;  // off 232

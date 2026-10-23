@@ -1326,7 +1326,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_vegetation_ground.h:20`
+- Header: `GameOS/gameos/vk_vegetation_ground.h:22`
 - Class: `GroundLighting`  (data-member)
 - Member: `const uint32_t b = bindings_[k];`
 - Consuming targets: gameos

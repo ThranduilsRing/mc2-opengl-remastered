@@ -53,6 +53,29 @@ static_assert(sizeof(GpuTerrainLight) == 48, "GpuTerrainLight must be 48 B std43
 static_assert(offsetof(GpuTerrainLight, intensity) == 44, "pool intensity must stay @44");
 static_assert(offsetof(GpuTerrainLight, color) == 16, "color vec3 must stay @16 — a field inserted before it breaks GLSL std430 lockstep");
 
+// LOCAL-LIGHTS-1: pack a coned light into GpuTerrainLight::lightType. Bit layout and
+// decode: shaders/include/light_pool_attenuation.hglsl (lpa_spotCone; lockstep).
+// aim = unit vector, MC2 world frame; cosOuter in (0,1); shadowTile1 = tile + 1 (0 = none).
+inline uint32_t PackPoolLightType(uint32_t type, float ax, float ay, float az,
+                                  float cosOuter, uint32_t shadowTile1) {
+    const float l1 = (ax < 0 ? -ax : ax) + (ay < 0 ? -ay : ay) + (az < 0 ? -az : az);
+    float u = l1 > 0.0f ? ax / l1 : 0.0f, v = l1 > 0.0f ? ay / l1 : 0.0f;
+    if (az < 0.0f) {
+        const float ou = u, ov = v;
+        u = (1.0f - (ov < 0 ? -ov : ov)) * (ou >= 0.0f ? 1.0f : -1.0f);
+        v = (1.0f - (ou < 0 ? -ou : ou)) * (ov >= 0.0f ? 1.0f : -1.0f);
+    }
+    const auto q = [](float x, float lo, float hi) {
+        float t = (x - lo) / (hi - lo) * 255.0f + 0.5f;
+        t = t < 0.0f ? 0.0f : (t > 255.0f ? 255.0f : t);
+        return static_cast<uint32_t>(t);
+    };
+    uint32_t c = q(cosOuter, 0.0f, 1.0f);
+    if (c == 0u) c = 1u;   // keep a coned light coned
+    return (type & 0xFu) | ((shadowTile1 & 0xFu) << 4) | (q(u, -1.0f, 1.0f) << 8)
+         | (q(v, -1.0f, 1.0f) << 16) | (c << 24);
+}
+
 struct alignas(4) GpuTerrainLightingOutput { //  8 B std430
     uint32_t lightRGB;       // packed BGRA per memory/mc2_argb_packing.md
     uint32_t fogRGB;

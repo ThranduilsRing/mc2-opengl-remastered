@@ -8,6 +8,9 @@ vec3 composeGroundLighting(vec3 baseColor, vec3 ambient, vec3 direct, float shad
 vec3 shadeGround(vec3 baseColor, vec3 N, float normalLight, float shadow,
                  float flatLitShare, vec3 worldPos) {
         vec3 lit = composeGroundLighting(baseColor, vec3(0), vec3(normalLight), shadow, vec3(0));
+        // LOCAL-LIGHTS-4: the mission's night scale of the prelit ground (1.0 by day);
+        // the local light pools below are added at full strength.
+        lit *= uT.sceneLightScale;
 
         // VK-PARITY-TERRAIN-2: NIGHT-LIGHT-POOLS-1..4 / LIGHT-CLUSTER-PERF-1 /
         // MOVER-CONTACT-SHADOW-1 — the SAME shared body GL runs (terrain_lod_chunk.frag
