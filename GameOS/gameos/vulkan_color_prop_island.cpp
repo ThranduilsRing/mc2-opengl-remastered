@@ -289,6 +289,7 @@ struct ColorPropIsland : mc2vk::IslandState {
     mc2veg::GroundLighting groundLighting;
     std::optional<Mc2GroundLightingFrame> lastGround;   // last terrain frame's offsets; see the run path
     bool groundMissing = false;
+    bool groundCopied[2] = {false, false};   // this parity's own ground-lighting set holds a copy from a live terrain frame
     mc2vk::OwnedBuffer materialBuf;
     mc2vk::OwnedShaderModule t1_vert, t1_frag;
     mc2vk::OwnedPipelineLayout playout;
@@ -1483,9 +1484,11 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
         s->groundMissing = true;
         vlog("no terrain ground-lighting frame this frame; %s.", s->lastGround ? "reusing the last ground lighting" : "props skipped until the first one");
     }
-    if (!s->lastGround || !mc2vk::bindMoverShadowDescriptors(s->device, s->set[par])) return 0;
+    // The copy reads the terrain island's descriptor set, so it runs only from a LIVE frame (a cached set handle can outlive a terrain teardown);
+    // a parity that never copied one has nothing valid to bind and skips the draw.
+    if (groundNow) { s->groundLighting.copy(s->device, par, *groundNow); s->groundCopied[par] = true; }
+    if (!s->lastGround || !s->groundCopied[par] || !mc2vk::bindMoverShadowDescriptors(s->device, s->set[par])) return 0;
     const Mc2GroundLightingFrame* ground = &*s->lastGround;
-    s->groundLighting.copy(s->device, par, *ground);
     const auto objectView = reinterpret_cast<VkImageView>(mc2_vk_shadow_island_get_object_view());
     if (objectView) {
         VkDescriptorImageInfo image{s->treeShadowSampler.get(), objectView, VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL};
