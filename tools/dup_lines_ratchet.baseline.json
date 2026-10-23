@@ -6,7 +6,7 @@
   "HostServices": 0,
   "RenderCore": 402,
   "RenderWorld": 0,
-  "code": 14140,
+  "code": 14012,
   "mclib": 28736,
   "shaders": 678
  },
@@ -136,7 +136,6 @@
   "code/logisticsdata_modify.cpp": 8,
   "code/logisticsdialog.cpp": 421,
   "code/logisticsmechdisplay.cpp": 20,
-  "code/logisticsmechicon.cpp": 8,
   "code/logisticsmissioninfo.cpp": 23,
   "code/logisticsmissioninfo.h": 9,
   "code/logisticsmissioninfo_progress.cpp": 47,
@@ -160,9 +159,9 @@
   "code/mechcmd2_cmdline.cpp": 22,
   "code/mechcmd2_debugwins.cpp": 24,
   "code/mechcmd2_frame.cpp": 12,
-  "code/mechicon.cpp": 234,
+  "code/mechicon.cpp": 122,
   "code/mechlabscreen.cpp": 66,
-  "code/mechlistbox.cpp": 46,
+  "code/mechlistbox.cpp": 38,
   "code/mechlopedia.cpp": 174,
   "code/mechpurchasescreen.cpp": 21,
   "code/mission.cpp": 108,
@@ -519,8 +518,8 @@
   "shaders/vulkan/terrain_tier1.vert": 78,
   "shaders/vulkan/terrain_tier1_skirt.vert": 78
  },
- "head": "60c7d2518",
+ "head": "9d6ff3edd",
  "n": 8,
- "total": 46275,
+ "total": 46147,
  "version": 1
 }

@@ -23,7 +23,6 @@
   "code/gameobj.cpp": 2242,
   "code/infowindow.cpp": 1730,
   "code/logisticsdialog.cpp": 2149,
-  "code/mechicon.cpp": 1981,
   "code/mechlabscreen.cpp": 1952,
   "code/mechlopedia.cpp": 1623,
   "code/missionbegin.cpp": 2154,
@@ -54,7 +53,7 @@
   "mclib/terrtxm.cpp": 1816,
   "mclib/tgl.h": 1803
  },
- "head": "60c7d2518",
+ "head": "9d6ff3edd",
  "per_dir": {
   "GameAdapters": {
    "files": 13,
@@ -87,8 +86,8 @@
    "max_lines": 1027
   },
   "code": {
-   "files": 428,
-   "files_over_1500": 22,
+   "files": 429,
+   "files_over_1500": 21,
    "files_over_3000": 0,
    "max_lines": 2771
   },
@@ -183,10 +182,6 @@
    "lines": 1996
   },
   {
-   "file": "code/mechicon.cpp",
-   "lines": 1981
-  },
-  {
    "file": "code/mechlabscreen.cpp",
    "lines": 1952
   },
@@ -241,11 +236,15 @@
   {
    "file": "code/infowindow.cpp",
    "lines": 1730
+  },
+  {
+   "file": "code/terrobj.cpp",
+   "lines": 1724
   }
  ],
  "total": {
-  "files": 1894,
-  "files_over_1500": 40,
+  "files": 1895,
+  "files_over_1500": 39,
   "files_over_3000": 1,
   "max_lines": 3661
  },
