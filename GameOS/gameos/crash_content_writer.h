@@ -4,6 +4,7 @@
 #include <io.h>
 #include <cstdint>
 #include <cstdio>
+#include <format>
 #include <mutex>
 #include <string>
 #include <string_view>
@@ -29,43 +30,44 @@ class ContentWriter {
     char path_[MAX_PATH]{};
     std::mutex mutex_;
     std::unordered_set<std::string> seen_;
-    void append(const std::string& line) {
+    void append(std::string_view line) {
         if (journal_ == INVALID_HANDLE_VALUE) return;
         DWORD wrote = 0;
-        const std::string record = line + '\n';
+        std::string record(line);
+        record += '\n';
         WriteFile(journal_, record.data(), DWORD(record.size()), &wrote, nullptr);
     }
 public:
     ~ContentWriter() { if (journal_ != INVALID_HANDLE_VALUE) CloseHandle(journal_); }
-    bool init(const char* path) {
-        strcpy_s(path_, path);
-        journal_ = CreateFileA(path, GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE,
+    bool init(std::string_view path) {
+        const std::string nul(path);
+        strcpy_s(path_, nul.c_str());
+        journal_ = CreateFileA(nul.c_str(), GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE,
                               nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
         if (journal_ == INVALID_HANDLE_VALUE) return false;
         append("{\"kind\":\"schema\",\"version\":1,\"hash_algorithm\":\"fnv1a64\",\"scope\":\"loaded File content; GPU shader identities in gpu_breadcrumbs.txt\"}");
         savePoint("none", "no save loaded or written this session");
         return true;
     }
-    void mod(const char* id, int priority) {
+    void mod(std::string_view id, int priority) {
         std::lock_guard lock(mutex_);
         append("{\"kind\":\"mod\",\"id\":" + quote(id) + ",\"priority\":" + std::to_string(priority) + "}");
     }
-    void savePoint(const char* op, const char* path) {
+    void savePoint(std::string_view op, std::string_view path) {
         std::lock_guard lock(mutex_);
-        append("{\"kind\":\"save_point\",\"operation\":" + quote(op) + ",\"path\":" + quote(path ? path : "") + "}");
+        append("{\"kind\":\"save_point\",\"operation\":" + quote(op) + ",\"path\":" + quote(path) + "}");
     }
-    void identity(const char* name, const char* source, uint64_t h, uint64_t size) {
-        char hex[17]; std::snprintf(hex, sizeof(hex), "%016llx", static_cast<unsigned long long>(h));
-        append("{\"kind\":\"content\",\"path\":" + quote(name) + ",\"source\":" + quote(source) +
-               ",\"hash\":\"" + hex + "\",\"bytes\":" + std::to_string(size) + "}");
+    void identity(std::string_view name, std::string_view source, uint64_t h, uint64_t size) {
+        append(std::format("{{\"kind\":\"content\",\"path\":{},\"source\":{},\"hash\":\"{:016x}\",\"bytes\":{}}}",
+                           quote(name), quote(source), h, size));
     }
-    void image(const char* name, const void* data, size_t size) {
+    void image(std::string_view name, const void* data, size_t size) {
         std::lock_guard lock(mutex_);
         const auto h = hash(data, size);
         const auto key = std::string(name) + ':' + std::to_string(h);
-        if (seen_.insert(key).second) identity(name, "fst-member", h, size);
+        if (auto [it, fresh] = seen_.insert(key); fresh) identity(name, "fst-member", h, size);
     }
-    void fd(int fd, const char* logical, const char* owner) {
+    void fd(int fd, std::string_view logical, std::string_view owner) {
         std::lock_guard lock(mutex_);
         char physical[MAX_PATH]{};
         const auto native = reinterpret_cast<HANDLE>(_get_osfhandle(fd));
@@ -95,9 +97,11 @@ public:
     }
     // Exception path: no mutex, allocation, CRT streams or traversal. A concurrent final
     // journal record can be incomplete; the summary reports it rather than inventing data.
-    bool snapshot(const char* folder) const {
+    bool snapshot(std::string_view folder) const {
         char dst[MAX_PATH];
-        if (sprintf_s(dst, "%s\\content.jsonl", folder) < 0) return false;
+        const auto r = std::format_to_n(dst, MAX_PATH - 1, "{}\\content.jsonl", folder);
+        if (r.size >= MAX_PATH) return false;
+        *r.out = '\0';
         return CopyFileA(path_, dst, FALSE) != FALSE;
     }
 };

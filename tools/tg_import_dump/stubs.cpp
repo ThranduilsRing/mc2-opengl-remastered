@@ -25,6 +25,7 @@
 
 #define _CRT_SECURE_NO_WARNINGS
 #include <cstdio>
+#include <string_view>
 #include "texture_assets.h"
 #include <cstdlib>
 #include <cstdarg>
@@ -229,10 +230,10 @@ bool eligibleForGpuObjects(class TG_Shape*) { return false; }
 // Crash-bundle instrumentation sink (GameOS gos_crashbundle.cpp). extern "C"
 // per gos_crashbundle.h. No-op.
 extern "C" void crashbundle_append(const char* /*line*/) {}
-extern "C" void crashbundle_content_fd(int, const char*, const char*) {}
-extern "C" void crashbundle_content_image(const char*, const void*, size_t) {}
-extern "C" void crashbundle_mod(const char*, int) {}
-extern "C" void crashbundle_save_point(const char*, const char*) {}
+void crashbundle_content_fd(int, std::string_view, std::string_view) {}
+void crashbundle_content_image(std::string_view, const void*, size_t) {}
+void crashbundle_mod(std::string_view, int) {}
+void crashbundle_save_point(std::string_view, std::string_view) {}
 
 // ===========================================================================
 // (12) CODE/ (GAME) SYMBOLS — the headline finding. All render/transform-only.

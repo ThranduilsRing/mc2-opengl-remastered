@@ -18,14 +18,17 @@
 #include "Gates/gate.h"
 #include "build_identity.h"  // Stable build identity declarations
 #include "mc2fmt.h"
+#include <filesystem>
+#include <string>
+#include <string_view>
 
 #ifndef _WIN32
 extern "C" void crashbundle_init(void) {}
 extern "C" void crashbundle_append(const char*) {}
-extern "C" void crashbundle_content_fd(int, const char*, const char*) {}
-extern "C" void crashbundle_content_image(const char*, const void*, size_t) {}
-extern "C" void crashbundle_mod(const char*, int) {}
-extern "C" void crashbundle_save_point(const char*, const char*) {}
+void crashbundle_content_fd(int, std::string_view, std::string_view) {}
+void crashbundle_content_image(std::string_view, const void*, size_t) {}
+void crashbundle_mod(std::string_view, int) {}
+void crashbundle_save_point(std::string_view, std::string_view) {}
 extern "C" void crashbundle_device_lost(void) {}
 extern "C" void crashbundle_trigger_test_crash(void) {
     volatile int* p = 0;
@@ -93,10 +96,10 @@ static struct {
 static char  g_crash_folderA[MAX_PATH];
 static WCHAR g_crash_folderW[MAX_PATH];
 static mc2::crash::ContentWriter g_content;
-extern "C" void crashbundle_content_fd(int fd, const char* name, const char* owner) { try { g_content.fd(fd, name, owner); } catch (...) {} }
-extern "C" void crashbundle_content_image(const char* name, const void* bytes, size_t size) { try { g_content.image(name, bytes, size); } catch (...) {} }
-extern "C" void crashbundle_mod(const char* id, int priority) { try { g_content.mod(id, priority); } catch (...) {} }
-extern "C" void crashbundle_save_point(const char* op, const char* path) { try { g_content.savePoint(op, path); } catch (...) {} }
+void crashbundle_content_fd(int fd, std::string_view name, std::string_view owner) { try { g_content.fd(fd, name, owner); } catch (...) {} }
+void crashbundle_content_image(std::string_view name, const void* bytes, size_t size) { try { g_content.image(name, bytes, size); } catch (...) {} }
+void crashbundle_mod(std::string_view id, int priority) { try { g_content.mod(id, priority); } catch (...) {} }
+void crashbundle_save_point(std::string_view op, std::string_view path) { try { g_content.savePoint(op, path); } catch (...) {} }
 extern "C" void mc2_log_set_crash_sink(void (*sink)(const char*));
 // Full path to crash.txt (for clipboard copy from dialog)
 static char  g_crash_txtA[MAX_PATH];
@@ -167,11 +170,11 @@ static void build_crash_folder(void)
     mc2::fmt::to_buf_n(crashes_root, _countof(crashes_root), "{}\\crashes", mc2::fmt::safe(g_cfg.exe_dir));
     CreateDirectoryA(crashes_root, nullptr); // OK if exists
 
-    _snprintf_s(g_crash_folderA, _countof(g_crash_folderA), _TRUNCATE,
-                "%s\\crash_%04u-%02u-%02u_%02u%02u%02u_%03u_%lu_%llu",
-                crashes_root,
-                st.wYear, st.wMonth, st.wDay,
-                st.wHour, st.wMinute, st.wSecond, st.wMilliseconds, GetCurrentProcessId(), GetTickCount64());
+    mc2::fmt::to_buf_n(g_crash_folderA, _countof(g_crash_folderA),
+                       "{}\\crash_{:04}-{:02}-{:02}_{:02}{:02}{:02}_{:03}_{}_{}",
+                       crashes_root,
+                       st.wYear, st.wMonth, st.wDay,
+                       st.wHour, st.wMinute, st.wSecond, st.wMilliseconds, GetCurrentProcessId(), GetTickCount64());
     CreateDirectoryA(g_crash_folderA, nullptr);
 
     MultiByteToWideChar(CP_ACP, 0, g_crash_folderA, -1,
@@ -659,9 +662,9 @@ static LONG WINAPI crashbundle_filter(EXCEPTION_POINTERS* ep)
             // watching harness/MCP detects the crash + bundle path immediately,
             // then exit WITHOUT the modal dialog (no WaitForExit-timeout wait).
             char mk[MAX_PATH + 64];
-            int mn = _snprintf(mk, sizeof(mk),
-                               "\n[CRASH] FAST-EXIT code=0x%08lX bundle=%s\n",
-                               ep->ExceptionRecord->ExceptionCode, g_crash_folderA);
+            int mn = mc2::fmt::to_buf(mk, "\n[CRASH] FAST-EXIT code=0x{:08X} bundle={}\n",
+                                      ep->ExceptionRecord->ExceptionCode, g_crash_folderA);
+            if (mn >= static_cast<int>(sizeof(mk))) mn = static_cast<int>(sizeof(mk)) - 1;
             if (mn > 0) { fwrite(mk, 1, static_cast<size_t>(mn), stderr); fflush(stderr); }
             TerminateProcess(GetCurrentProcess(),
                              ep->ExceptionRecord->ExceptionCode);
@@ -693,7 +696,7 @@ extern "C" void crashbundle_device_lost(void)
     if (InterlockedCompareExchange(&g_in_filter, 1, 0) != 0) return;
     build_crash_folder();
     char reason[2048];
-    const int bytes = sprintf_s(reason, "Reason: Vulkan device lost\nFingerprint: %s\n", MC2_BUILD_FP_LITERAL);
+    const int bytes = mc2::fmt::to_buf(reason, "Reason: Vulkan device lost\nFingerprint: {}\n", MC2_BUILD_FP_LITERAL);
     if (bytes > 0) write_file_all(g_crash_txtA, reason, DWORD(bytes));
     write_ring_snapshot();
     g_content.snapshot(g_crash_folderA);
@@ -702,7 +705,7 @@ extern "C" void crashbundle_device_lost(void)
 #ifdef MC2_VULKAN_ISLAND
     mc2vk::infra::crashSnapshot(g_crash_folderA);
 #endif
-    fprintf(stderr, "[CRASHBUNDLE] device_lost bundle=%s\n", g_crash_folderA);
+    mc2::fmt::print_err("[CRASHBUNDLE] device_lost bundle={}\n", g_crash_folderA);
     InterlockedExchange(&g_in_filter, 0);
 }
 
@@ -745,23 +748,16 @@ extern "C" void crashbundle_init(void)
     char exe_path[MAX_PATH];
     DWORD got = GetModuleFileNameA(nullptr, exe_path, MAX_PATH);
     if (got > 0 && got < MAX_PATH) {
-        // strip to directory
-        for (int i = static_cast<int>(got) - 1; i >= 0; --i) {
-            if (exe_path[i] == '\\' || exe_path[i] == '/') {
-                exe_path[i] = '\0';
-                break;
-            }
-        }
-        strcpy_s(g_cfg.exe_dir, _countof(g_cfg.exe_dir), exe_path);
+        const std::string exeDir = std::filesystem::path(exe_path).parent_path().string();
+        strcpy_s(g_cfg.exe_dir, _countof(g_cfg.exe_dir), exeDir.c_str());
     } else {
         strcpy_s(g_cfg.exe_dir, _countof(g_cfg.exe_dir), ".");
     }
 
-    char journal[MAX_PATH];
-    sprintf_s(journal, "%s\\debug_state", g_cfg.exe_dir);
-    CreateDirectoryA(journal, nullptr);
-    sprintf_s(journal, "%s\\debug_state\\crash_content.jsonl", g_cfg.exe_dir);
-    g_content.init(journal);
+    const auto journalDir = std::filesystem::path(g_cfg.exe_dir) / "debug_state";
+    std::error_code journalEc;
+    std::filesystem::create_directories(journalDir, journalEc);
+    g_content.init((journalDir / "crash_content.jsonl").string());
     g_content.mod("base", -1);
     mc2_log_set_crash_sink(crashbundle_append);
     SetUnhandledExceptionFilter(crashbundle_filter);
@@ -770,7 +766,7 @@ extern "C" void crashbundle_init(void)
 
 extern "C" void crashbundle_trigger_test_crash(void)
 {
-    fprintf(stderr, "[CRASHBUNDLE] RAlt+Shift+C test crash triggered\n");
+    mc2::fmt::print_err("[CRASHBUNDLE] RAlt+Shift+C test crash triggered\n");
     fflush(stderr);
     crashbundle_append("[CRASHBUNDLE] test crash triggered via RAlt+Shift+C");
     volatile int* p = static_cast<volatile int*>(nullptr);

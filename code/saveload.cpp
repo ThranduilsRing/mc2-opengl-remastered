@@ -73,7 +73,7 @@ void Part::Save (FitIniFilePtr file, long partNum)
 // so a bad slot/ordering is diagnosable after the fact.
 static void saveloadTrace(const char* op, const char* file, const char* missionFile)
 {
-    crashbundle_save_point(op, file);
+    crashbundle_save_point(op, file ? file : "");
     MC2_LOG(Io, Info, "[SAVELOAD] op={} file={} mission={}",
             op, file ? file : "(null)", missionFile ? missionFile : "(null)");
 }
