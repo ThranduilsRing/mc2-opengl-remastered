@@ -6,6 +6,7 @@
 #include "vk_island_util.h"
 #include "vk_gpu_profile.h"
 #include "vk_render_infra.h"
+#include "vk_resource_graph.h"
 #include "../../3rdparty/smaa/AreaTex.h"
 #include "../../3rdparty/smaa/SearchTex.h"
 #include <vk_mem_alloc.h>
@@ -56,7 +57,8 @@ struct SpatialAA::Impl {
     int mode = 0;
     bool uploaded = false;
     bool lookupPending = false;
-    Texture input, edges, weights, area, search, cmaaEdges, heads;
+    Texture input, area, search, cmaaEdges, heads;
+    std::vector<Texture> transientSlots;
     OwnedImageView inputSrgb;
     OwnedBuffer lookupUpload;
     std::array<OwnedBuffer, 5> work; // candidates, locations, items, control, indirect
@@ -72,6 +74,49 @@ struct SpatialAA::Impl {
     OwnedDescriptorSetLayout computeDsl;
     OwnedPipelineLayout computeLayout;
     VkDescriptorSet computeSet = VK_NULL_HANDLE;
+    graph::Plan graphPlan;
+    std::vector<graph::Binding> graphBindings;
+
+    Texture& graphTexture(unsigned id) { return transientSlots[graphPlan.lifetimes[id].slot]; }
+    Texture& inputTexture() { return mode == 1 ? graphTexture(1) : input; }
+
+    bool initGraph(const VkImageResource& output) {
+        using namespace graph;
+        const State color{VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                          VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, true};
+        const State sampledState{VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                                 VK_ACCESS_SHADER_READ_BIT, false};
+        const State copyRead{VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_READ_BIT, false};
+        const State copyWrite{VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_WRITE_BIT, true};
+        const auto key = [&](uint32_t usage, uint32_t flags) {
+            return std::array<uint32_t, 6>{w, h, VK_FORMAT_R8G8B8A8_UNORM, VK_SAMPLE_COUNT_1_BIT, usage, flags};
+        };
+        std::vector<Image> images{
+            {{}, true, color},
+            {key(VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT)},
+            {key(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, 0)},
+            {key(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, 0)},
+            {{}, true, sampledState}, {{}, true, sampledState}};
+        graphPlan = compile(images, {
+            {{{0, copyRead}, {1, copyWrite}}},
+            {{{1, sampledState}, {2, color}}},
+            {{{2, sampledState}, {4, sampledState}, {5, sampledState}, {3, color}}},
+            {{{1, sampledState}, {3, sampledState}, {0, color}}}});
+        if (!graphPlan.valid) return false;
+        transientSlots.resize(graphPlan.slots);
+        for (unsigned i = 1; i <= 3; ++i) {
+            auto& texture = graphTexture(i);
+            const auto& k = images[i].key;
+            if (!texture.image && !texture.create(*ctx, w, h, VkFormat(k[2]), k[4], k[5] != 0)) return false;
+        }
+        const VkImageSubresourceRange range{VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+        graphBindings = {{output.image.get(), range}, {graphTexture(1).image.get(), range},
+                         {graphTexture(2).image.get(), range}, {graphTexture(3).image.get(), range},
+                         {VK_NULL_HANDLE, range}, {VK_NULL_HANDLE, range}};
+        mc2::fmt::print_err("[VK_RESOURCE_GRAPH] chain=SMAA passes=4 transient_images=3 slots={} alias_savings={}\n",
+                            graphPlan.slots, 3u - graphPlan.slots);
+        return true;
+    }
 
     bool allocateSet(VkDescriptorSetLayout sl, VkDescriptorSet& set) {
         VkDescriptorSetAllocateInfo ai{VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO};
@@ -87,12 +132,13 @@ struct SpatialAA::Impl {
     }
     bool init(VulkanContext& context, const VkImageResource& output, int selected) {
         ctx = &context; dev = ctx->device(); w = output.w; h = output.h; mode = selected;
-        if (!input.create(*ctx, w, h, mode == 3 ? VK_FORMAT_R8G8B8A8_SRGB : VK_FORMAT_R8G8B8A8_UNORM,
+        if (mode == 1 && !initGraph(output)) return false;
+        if (mode != 1 && !input.create(*ctx, w, h, mode == 3 ? VK_FORMAT_R8G8B8A8_SRGB : VK_FORMAT_R8G8B8A8_UNORM,
                           VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, mode == 1)) return false;
         if (mode == 1) {
             // SMAA edges read encoded color; its neighborhood filter reads the same bytes in linear light.
             VkImageViewCreateInfo vi{VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO};
-            vi.image = input.image.get(); vi.viewType = VK_IMAGE_VIEW_TYPE_2D; vi.format = VK_FORMAT_R8G8B8A8_SRGB;
+            vi.image = inputTexture().image.get(); vi.viewType = VK_IMAGE_VIEW_TYPE_2D; vi.format = VK_FORMAT_R8G8B8A8_SRGB;
             vi.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
             if (!mc2vk::create(inputSrgb, dev, [&](auto* hnd) { return vkCreateImageView(dev, &vi, nullptr, hnd); })) return false;
         }
@@ -112,7 +158,8 @@ struct SpatialAA::Impl {
         VkAttachmentDescription ad{};
         ad.format = VK_FORMAT_R8G8B8A8_UNORM; ad.samples = VK_SAMPLE_COUNT_1_BIT;
         ad.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR; ad.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-        ad.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED; ad.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        ad.initialLayout = mode == 1 ? VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_UNDEFINED;
+        ad.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
         VkAttachmentReference ref{0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
         VkSubpassDescription sub{}; sub.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
         sub.colorAttachmentCount = 1; sub.pColorAttachments = &ref;
@@ -134,16 +181,15 @@ struct SpatialAA::Impl {
         if (!mc2vk::create(layout, dev, [&](auto* hnd) { return vkCreatePipelineLayout(dev, &li, nullptr, hnd); })) return false;
         const bool smaa = mode == 1;
         if (smaa) {
-            constexpr auto usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
-            if (!edges.create(*ctx, w, h, VK_FORMAT_R8G8B8A8_UNORM, usage) || !weights.create(*ctx, w, h, VK_FORMAT_R8G8B8A8_UNORM, usage) ||
-                !area.create(*ctx, AREATEX_WIDTH, AREATEX_HEIGHT, VK_FORMAT_R8G8_UNORM, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT) ||
+            if (!area.create(*ctx, AREATEX_WIDTH, AREATEX_HEIGHT, VK_FORMAT_R8G8_UNORM, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT) ||
                 !search.create(*ctx, SEARCHTEX_WIDTH, SEARCHTEX_HEIGHT, VK_FORMAT_R8_UNORM, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT)) return false;
             std::array<unsigned char, AREATEX_SIZE + SEARCHTEX_SIZE> bytes{};
             std::memcpy(bytes.data(), areaTexBytes, AREATEX_SIZE); std::memcpy(bytes.data() + AREATEX_SIZE, searchTexBytes, SEARCHTEX_SIZE);
             if (!lookupUpload.createFilled(ctx->allocator(), dev, bytes.data(), bytes.size(), VK_BUFFER_USAGE_TRANSFER_SRC_BIT, "spatialAA.lookups")) return false;
         }
         const char* names[] = {smaa ? "aa_smaa_edges.frag.spv" : "aa_fxaa.frag.spv", "aa_smaa_weights.frag.spv", "aa_smaa_blend.frag.spv"};
-        VkImageView targets[] = {smaa ? edges.view.get() : output.view.get(), weights.view.get(), output.view.get()};
+        VkImageView targets[] = {smaa ? graphTexture(2).view.get() : output.view.get(),
+                                smaa ? graphTexture(3).view.get() : VK_NULL_HANDLE, output.view.get()};
         // loadSpv registers every AA module with infra::shader for reload and breadcrumbs.
         OwnedShaderModule vs(dev, vk_island_util::loadSpv(dev, vk_island_util::spvDir() + "postprocess.vert.spv", nullptr));
         if (!vs) return false;
@@ -153,16 +199,17 @@ struct SpatialAA::Impl {
             if (!mc2vk::create(framebuffers[i], dev, [&](auto* hnd) { return vkCreateFramebuffer(dev, &fi, nullptr, hnd); })) return false;
             if (!allocateSet(dsl.get(), sets[i])) return false;
             // All bindings are initialized, even when a particular shader omits one.
-            for (uint32_t j = 0; j < 3; ++j) sampled(sets[i], j, input.view.get());
+            for (uint32_t j = 0; j < 3; ++j) sampled(sets[i], j, inputTexture().view.get());
             OwnedShaderModule fs(dev, vk_island_util::loadSpv(dev, vk_island_util::spvDir() + names[i], nullptr));
             if (!fs) return false;
             graphics[i] = makeGraphics(vs.get(), fs.get());
             if (!graphics[i]) return false;
         }
         if (smaa) {
-            sampled(sets[1], 0, edges.view.get()); sampled(sets[1], 1, area.view.get()); sampled(sets[1], 2, search.view.get());
+            sampled(sets[1], 0, graphTexture(2).view.get()); sampled(sets[1], 1, area.view.get()); sampled(sets[1], 2, search.view.get());
             sampled(sets[2], 0, inputSrgb.get());
-            sampled(sets[2], 1, weights.view.get());
+            sampled(sets[2], 1, graphTexture(3).view.get());
+            graphBindings[4].image = area.image.get(); graphBindings[5].image = search.image.get();
         }
         return true;
     }
@@ -248,13 +295,7 @@ struct SpatialAA::Impl {
         imageBarrier(cb, tex.image.get(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                      VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
     }
-    void recordGraphics(VkCommandBuffer cb) {
-        if (mode == 1 && !uploaded) {
-            uploadLookup(cb, area, AREATEX_WIDTH, AREATEX_HEIGHT, 0);
-            uploadLookup(cb, search, SEARCHTEX_WIDTH, SEARCHTEX_HEIGHT, AREATEX_SIZE);
-            lookupPending = true;
-        }
-        for (uint32_t i = 0; i < (mode == 1 ? 3u : 1u); ++i) {
+    void recordGraphics(VkCommandBuffer cb, uint32_t i = 0) {
             VkClearValue clear{};
             VkRenderPassBeginInfo ri{VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO}; ri.renderPass = renderPass.get(); ri.framebuffer = framebuffers[i].get();
             ri.renderArea.extent = {w, h}; ri.clearValueCount = 1; ri.pClearValues = &clear;
@@ -266,9 +307,22 @@ struct SpatialAA::Impl {
             float metrics[] = {1.0f / static_cast<float>(w), 1.0f / static_cast<float>(h), float(w), float(h)};
             vkCmdPushConstants(cb, layout.get(), VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(metrics), metrics);
             vkCmdDraw(cb, 3, 1, 0, 0); vkCmdEndRenderPass(cb);
-            if (mode == 1 && i < 2) imageBarrier(cb, i == 0 ? edges.image.get() : weights.image.get(),
-                VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+    }
+    void recordGraph(VkCommandBuffer cb, const VkImageResource& output) {
+        if (!uploaded) {
+            uploadLookup(cb, area, AREATEX_WIDTH, AREATEX_HEIGHT, 0);
+            uploadLookup(cb, search, SEARCHTEX_WIDTH, SEARCHTEX_HEIGHT, AREATEX_SIZE);
+            lookupPending = true;
+        }
+        for (unsigned p = 0; p < graphPlan.barriers.size(); ++p) {
+            graph::recordBarriers(cb, graphPlan, p, graphBindings);
+            if (p == 0) {
+                VkImageCopy copy{};
+                copy.srcSubresource = copy.dstSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
+                copy.extent = {w, h, 1};
+                vkCmdCopyImage(cb, output.image.get(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                               inputTexture().image.get(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copy);
+            } else recordGraphics(cb, p - 1);
         }
     }
     void recordCompute(VkCommandBuffer cb, const VkImageResource& output) {
@@ -335,6 +389,7 @@ void SpatialAA::record(VkCommandBuffer cb, const VkImageResource& output) {
     // Scratch images are shared across frame slots on one queue; retire prior reads before overwriting them.
     memoryBarrier(cb, VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT, VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT,
                   VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT);
+    if (s.mode == 1) { s.recordGraph(cb, output); return; }
     imageBarrier(cb, output.image.get(), VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
                  VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_ACCESS_TRANSFER_READ_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
     imageBarrier(cb, s.input.image.get(), VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 0, VK_ACCESS_TRANSFER_WRITE_BIT,
