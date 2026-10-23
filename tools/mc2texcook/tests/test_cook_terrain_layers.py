@@ -345,7 +345,7 @@ class TestSyntheticCookRoundTrip(unittest.TestCase):
 
 
 class TestEngineNormalCook(unittest.TestCase):
-    """matN_normal.tga -> matN_normal.ktx2: the texels must be the bytes the engine uploads from the TGA (B, G, R, A)."""
+    """matN_normal.tga -> matN_normal.ktx2: RGBA = (normal x, y, z, height), not the TGA's B, G, R byte order."""
 
     def setUp(self):
         self.tmpdir = tempfile.mkdtemp(prefix='engine_normals_')
@@ -357,11 +357,11 @@ class TestEngineNormalCook(unittest.TestCase):
         from PIL import Image
         Image.new(mode, (4, 4), pixel).save(os.path.join(self.tmpdir, name))
 
-    def test_texels_keep_tga_byte_order_and_opaque_24_bit(self):
+    def test_texels_are_rgba_not_tga_byte_order_and_opaque_24_bit(self):
         self._tga('mat0_normal.tga', 'RGBA', (10, 20, 30, 40))
         self._tga('mat5_normal.tga', 'RGB', (10, 20, 30))
-        self.assertEqual(tuple(ctl.engine_normal_texels(os.path.join(self.tmpdir, 'mat0_normal.tga'))[0, 0]), (30, 20, 10, 40))
-        self.assertEqual(tuple(ctl.engine_normal_texels(os.path.join(self.tmpdir, 'mat5_normal.tga'))[0, 0]), (30, 20, 10, 255))
+        self.assertEqual(tuple(ctl.engine_normal_texels(os.path.join(self.tmpdir, 'mat0_normal.tga'))[0, 0]), (10, 20, 30, 40))
+        self.assertEqual(tuple(ctl.engine_normal_texels(os.path.join(self.tmpdir, 'mat5_normal.tga'))[0, 0]), (10, 20, 30, 255))
 
     def test_up_to_date_outputs_are_kept_and_missing_sources_fail(self):
         for slot in range(6):

@@ -54,12 +54,11 @@ ENGINE_NORMAL_SLOTS = range(6)
 
 
 def engine_normal_texels(tga_path):
-    """The texels the engine uploads for a matN_normal.tga: the TGA's own byte order (B, G, R, A), top row first, A=255 for 24-bit."""
+    """The texels the terrain samples for a matN_normal.tga: RGBA = (normal x, y, z, height), top row first, A=255 for 24-bit."""
     import numpy as np
     from PIL import Image
     with Image.open(tga_path) as img:
-        rgba = np.asarray(img.convert('RGBA'))
-    return np.ascontiguousarray(rgba[:, :, [2, 1, 0, 3]])
+        return np.ascontiguousarray(np.asarray(img.convert('RGBA')))
 
 
 def cook_engine_normals(src_dir, out_dir=None, ktx_exe=pbr.DEFAULT_KTX_EXE, force=False):

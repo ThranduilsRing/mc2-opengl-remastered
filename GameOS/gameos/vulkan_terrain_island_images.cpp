@@ -498,7 +498,9 @@ void import_matnormal(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
     for (uint32_t i = 0; i < kSlots; ++i) {
         uint8_t* dst = px.data() + static_cast<size_t>(i) * layerBytes;
         if (slots[i].bytes) {
+            // The slot texels are the TGA's own bytes (B, G, R, A); the shader reads .rgb as the normal's x, y, z.
             std::memcpy(dst, slots[i].bytes->data(), layerBytes);
+            for (size_t t = 0; t < layerBytes; t += 4) std::swap(dst[t], dst[t + 2]);
         } else {
             for (size_t t = 0; t < layerBytes; t += 4) { dst[t] = 128; dst[t + 1] = 128; dst[t + 2] = 255; dst[t + 3] = 255; }
         }
