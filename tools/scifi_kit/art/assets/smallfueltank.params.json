@@ -1,0 +1,107 @@
+{
+ "asset": "smallfueltank",
+ "archetype": "tank",
+ "size": [
+  9.5868,
+  10.48962,
+  10.71968
+ ],
+ "origin": [
+  -0.2268,
+  0.008563,
+  0.0325
+ ],
+ "palette": {
+  "main": [
+   0.19,
+   0.17,
+   0.11
+  ],
+  "second": [
+   0.1,
+   0.085,
+   0.05
+  ],
+  "trim": [
+   0.045,
+   0.038,
+   0.02
+  ],
+  "roof": [
+   0.267,
+   0.239,
+   0.178
+  ],
+  "ferro": [
+   0.113,
+   0.095,
+   0.047
+  ],
+  "accent": [
+   0.295,
+   0.244,
+   0.112
+  ],
+  "metal": [
+   0.3,
+   0.3,
+   0.3
+  ],
+  "corr": [
+   0.19,
+   0.17,
+   0.11
+  ],
+  "glass": [
+   0.03,
+   0.05,
+   0.05
+  ]
+ },
+ "counts": {
+  "tanks": 1
+ },
+ "features": [],
+ "dims": {
+  "legs": 0,
+  "band": true,
+  "leg_h": 2.4,
+  "cap_h": 4
+ },
+ "detail": {},
+ "notes": "auto-drafted from stock analysis (name /fueltank|liquidstorage|pipetank|watertower/); counts/features are DRAFT (see analysis.json confidences)",
+ "stock_model": "smallfueltank",
+ "round_parts": [],
+ "round": [],
+ "draft_confidence": {
+  "windows": 0.72,
+  "panels_sections": 0.3,
+  "tanks": 0.5,
+  "arches_ribs": 0.4
+ },
+ "status": {
+  "state": "runner",
+  "validated": {
+   "params_sha": "a86198826641de7d",
+   "analysis_sha": "b4cfdb46a2709e5f",
+   "at": "2026-10-23"
+  }
+ },
+ "evidence": {
+  "analysis_sha": "b4cfdb46a2709e5f",
+  "archetype": "tank",
+  "size_m": [
+   9.587,
+   10.49,
+   10.72
+  ],
+  "counts": {}
+ },
+ "waivers": [
+  {
+   "check": "silhouette",
+   "view": "mean",
+   "reason": "stock top view is a hexagonal tank with a pyramid roof and a narrower skirt over a wider footing; the tank builder makes only round shells, so the mean IoU stays near 0.76"
+  }
+ ]
+}
