@@ -1,7 +1,7 @@
 {
  "counts": {
   "GameAdapters": 0,
-  "GameOS": 2273,
+  "GameOS": 2271,
   "GuiRuntime": 48,
   "HostServices": 0,
   "RenderCore": 402,
@@ -47,7 +47,7 @@
   "GameOS/gameos/utils/Image.cpp": 102,
   "GameOS/gameos/utils/vec.cpp": 22,
   "GameOS/gameos/vk_depth_caster_pipeline.cpp": 20,
-  "GameOS/gameos/vulkan_color_prop_island.cpp": 198,
+  "GameOS/gameos/vulkan_color_prop_island.cpp": 197,
   "GameOS/gameos/vulkan_color_prop_island.h": 8,
   "GameOS/gameos/vulkan_legacy_shape_island.cpp": 84,
   "GameOS/gameos/vulkan_mech_island.cpp": 162,
@@ -62,7 +62,7 @@
   "GameOS/gameos/vulkan_terrain_island.h": 13,
   "GameOS/gameos/vulkan_terrain_island_images.cpp": 11,
   "GameOS/gameos/vulkan_terrain_island_internal.h": 30,
-  "GameOS/gameos/vulkan_terrain_island_island.cpp": 127,
+  "GameOS/gameos/vulkan_terrain_island_island.cpp": 126,
   "GameOS/gameos/vulkan_terrain_island_overlay.cpp": 57,
   "GameOS/gameos/vulkan_terrain_island_run.cpp": 27,
   "GameOS/gameos/vulkan_vfx_island.cpp": 63,
@@ -519,8 +519,8 @@
   "shaders/vulkan/terrain_tier1.vert": 78,
   "shaders/vulkan/terrain_tier1_skirt.vert": 78
  },
- "head": "479a7ca8f",
+ "head": "e4b8a0e06",
  "n": 8,
- "total": 46277,
+ "total": 46275,
  "version": 1
 }
