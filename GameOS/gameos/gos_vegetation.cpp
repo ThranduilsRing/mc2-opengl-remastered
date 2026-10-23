@@ -14,6 +14,7 @@
 #include <string>
 #include "gos_postprocess.h"
 #include "Gates/gate.h"
+#include "Gates/render_options.h"
 #include "Gates/gate_cold.h"
 #include "mc2fmt.h"
 #include <algorithm>
@@ -131,7 +132,7 @@ mc2tex::TextureArrayCpu cardsFromAtlas(const mc2tex::DecodedTexture& decoded) {
 }
 
 }
-bool GosVegetation::isEnabled() { return mc2::gate::get<"MC2_VEGETATION_CARDS">(); }
+bool GosVegetation::isEnabled() { return mc2::options::current().shadowQuality != 0 && mc2::gate::get<"MC2_VEGETATION_CARDS">(); }
 uint32_t GosVegetation::instanceCount() { return populationCount; }
 void GosVegetation::setAtlasPath(const char* path) { atlasOverride = path; }
 void GosVegetation::init() {
@@ -217,7 +218,7 @@ void GosVegetation::uploadInstances(const Instance* data, uint32_t count) {
     std::vector<mc2veg::GpuInstance> gpuInstances(sorted.size());
     for (size_t k = 0; k < sorted.size(); ++k) {
         const auto& i = sorted[k];
-        gpuInstances[k] = {i.x, i.y, i.z, i.yaw, i.scale, i.atlasFrame, i.seed, 0u};
+        gpuInstances[k] = mc2::vegetation::packInstance(i.x, i.y, i.z, i.yaw, i.scale, i.atlasFrame, i.seed);
     }
     std::vector<mc2veg::GpuRegion> gpuRegions;
     for (size_t begin = 0; begin < sorted.size();) {

@@ -1030,7 +1030,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_texture_residency.h:59`
+- Header: `GameOS/gameos/vk_texture_residency.h:57`
 - Class: `TextureResidency`  (data-member)
 - Member: `bool mipmaps, uint32_t layers = 1, bool arrayView = false);`
 - Consuming targets: gameos
@@ -1038,7 +1038,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_texture_residency.h:76`
+- Header: `GameOS/gameos/vk_texture_residency.h:74`
 - Class: `Upload`  (data-member)
 - Member: `RenderCore::TextureHandle handle;`
 - Consuming targets: gameos
@@ -1046,7 +1046,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_texture_residency.h:77`
+- Header: `GameOS/gameos/vk_texture_residency.h:75`
 - Class: `Upload`  (data-member)
 - Member: `std::shared_ptr<Image> image;`
 - Consuming targets: gameos
@@ -1054,7 +1054,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_texture_residency.h:78`
+- Header: `GameOS/gameos/vk_texture_residency.h:76`
 - Class: `Upload`  (data-member)
 - Member: `OwnedBuffer staging;`
 - Consuming targets: gameos
@@ -1062,7 +1062,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_texture_residency.h:79`
+- Header: `GameOS/gameos/vk_texture_residency.h:77`
 - Class: `Upload`  (data-member)
 - Member: `OwnedCommandPool pool;`
 - Consuming targets: gameos
@@ -1070,7 +1070,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_texture_residency.h:80`
+- Header: `GameOS/gameos/vk_texture_residency.h:78`
 - Class: `Upload`  (data-member)
 - Member: `GpuTicket ticket;`
 - Consuming targets: gameos
@@ -1078,7 +1078,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_texture_residency.h:81`
+- Header: `GameOS/gameos/vk_texture_residency.h:79`
 - Class: `Upload`  (data-member)
 - Member: `size_t bytes = 0;`
 - Consuming targets: gameos
@@ -1086,7 +1086,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_texture_residency.h:82`
+- Header: `GameOS/gameos/vk_texture_residency.h:80`
 - Class: `Upload`  (data-member)
 - Member: `uint32_t contentVersion=0;`
 - Consuming targets: gameos
@@ -1094,7 +1094,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_texture_residency.h:85`
+- Header: `GameOS/gameos/vk_texture_residency.h:83`
 - Class: `Flight`  (data-member)
 - Member: `VkDescriptorSet set = VK_NULL_HANDLE;`
 - Consuming targets: gameos
@@ -1102,7 +1102,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_texture_residency.h:86`
+- Header: `GameOS/gameos/vk_texture_residency.h:84`
 - Class: `Flight`  (data-member)
 - Member: `GpuTicket ticket;`
 - Consuming targets: gameos
@@ -1110,7 +1110,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_texture_residency.h:89`
+- Header: `GameOS/gameos/vk_texture_residency.h:87`
 - Class: `Flight`  (data-member)
 - Member: `std::vector<RenderCore::TextureDescriptorTable::Slot> snapshot;`
 - Consuming targets: gameos
@@ -1118,7 +1118,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_texture_residency.h:92`
+- Header: `GameOS/gameos/vk_texture_residency.h:90`
 - Class: `TextureResidency`  (data-member)
 - Member: `VulkanContext& ctx_;`
 - Consuming targets: gameos
@@ -1126,7 +1126,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_texture_residency.h:93`
+- Header: `GameOS/gameos/vk_texture_residency.h:91`
 - Class: `TextureResidency`  (data-member)
 - Member: `RenderCore::TextureService& service_;`
 - Consuming targets: gameos
@@ -1134,7 +1134,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_texture_residency.h:94`
+- Header: `GameOS/gameos/vk_texture_residency.h:92`
 - Class: `TextureResidency`  (data-member)
 - Member: `uint32_t capacity_ = 0;`
 - Consuming targets: gameos
@@ -1142,7 +1142,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_texture_residency.h:95`
+- Header: `GameOS/gameos/vk_texture_residency.h:93`
 - Class: `TextureResidency`  (data-member)
 - Member: `OwnedSampler sampler_;`
 - Consuming targets: gameos
@@ -1150,7 +1150,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_texture_residency.h:96`
+- Header: `GameOS/gameos/vk_texture_residency.h:94`
 - Class: `TextureResidency`  (data-member)
 - Member: `OwnedDescriptorSetLayout layout_;`
 - Consuming targets: gameos
@@ -1158,7 +1158,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_texture_residency.h:97`
+- Header: `GameOS/gameos/vk_texture_residency.h:95`
 - Class: `TextureResidency`  (data-member)
 - Member: `OwnedDescriptorPool pool_;`
 - Consuming targets: gameos
@@ -1166,7 +1166,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_texture_residency.h:98`
+- Header: `GameOS/gameos/vk_texture_residency.h:96`
 - Class: `TextureResidency`  (data-member)
 - Member: `std::unique_ptr<RenderCore::TextureDescriptorTable> table_;`
 - Consuming targets: gameos
@@ -1174,7 +1174,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_texture_residency.h:99`
+- Header: `GameOS/gameos/vk_texture_residency.h:97`
 - Class: `TextureResidency`  (data-member)
 - Member: `std::shared_ptr<Image> placeholder_, arrayPlaceholder_;`
 - Consuming targets: gameos
@@ -1182,7 +1182,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_texture_residency.h:100`
+- Header: `GameOS/gameos/vk_texture_residency.h:98`
 - Class: `TextureResidency`  (data-member)
 - Member: `std::unordered_map<uint32_t, Resident> residents_;`
 - Consuming targets: gameos
@@ -1190,7 +1190,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_texture_residency.h:101`
+- Header: `GameOS/gameos/vk_texture_residency.h:99`
 - Class: `TextureResidency`  (data-member)
 - Member: `std::array<Flight, 2> flights_;`
 - Consuming targets: gameos
@@ -1198,7 +1198,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_texture_residency.h:103`
+- Header: `GameOS/gameos/vk_texture_residency.h:101`
 - Class: `TextureResidency`  (data-member)
 - Member: `std::unordered_map<uint64_t, LegacyUi> legacyUi_;`
 - Consuming targets: gameos
@@ -1206,7 +1206,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_texture_residency.h:104`
+- Header: `GameOS/gameos/vk_texture_residency.h:102`
 - Class: `TextureResidency`  (data-member)
 - Member: `uint64_t targetSerial_ = 0;`
 - Consuming targets: gameos
@@ -1214,7 +1214,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_texture_residency.h:105`
+- Header: `GameOS/gameos/vk_texture_residency.h:103`
 - Class: `TextureResidency`  (data-member)
 - Member: `RenderCore::TextureStagingBudget budget_;`
 - Consuming targets: gameos
@@ -1222,7 +1222,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_texture_residency.h:106`
+- Header: `GameOS/gameos/vk_texture_residency.h:104`
 - Class: `TextureResidency`  (data-member)
 - Member: `std::deque<Pending> pending_;`
 - Consuming targets: gameos
@@ -1230,7 +1230,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_texture_residency.h:107`
+- Header: `GameOS/gameos/vk_texture_residency.h:105`
 - Class: `TextureResidency`  (data-member)
 - Member: `std::deque<Upload> uploading_;`
 - Consuming targets: gameos
@@ -1238,7 +1238,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_texture_residency.h:108`
+- Header: `GameOS/gameos/vk_texture_residency.h:106`
 - Class: `TextureResidency`  (data-member)
 - Member: `std::mutex retiredMutex_;`
 - Consuming targets: gameos
@@ -1246,7 +1246,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_texture_residency.h:109`
+- Header: `GameOS/gameos/vk_texture_residency.h:107`
 - Class: `TextureResidency`  (data-member)
 - Member: `std::vector<RenderCore::TextureHandle> retired_;`
 - Consuming targets: gameos
@@ -1254,7 +1254,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_texture_residency.h:110`
+- Header: `GameOS/gameos/vk_texture_residency.h:108`
 - Class: `TextureResidency`  (data-member)
 - Member: `RenderCore::TextureDecodeWorker worker_;`
 - Consuming targets: gameos
@@ -1334,47 +1334,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_vegetation_state.h:29`
-- Class: `GpuInstance`  (data-member)
-- Member: `float x, y, z, yaw;`
-- Consuming targets: gameos
-- Reached by define: gameos[gameos(PUBLIC)]
-
-## PASS  (`MC2_VULKAN_ISLAND`)
-
-- Header: `GameOS/gameos/vk_vegetation_state.h:30`
-- Class: `GpuInstance`  (data-member)
-- Member: `float scale;`
-- Consuming targets: gameos
-- Reached by define: gameos[gameos(PUBLIC)]
-
-## PASS  (`MC2_VULKAN_ISLAND`)
-
 - Header: `GameOS/gameos/vk_vegetation_state.h:31`
-- Class: `GpuInstance`  (data-member)
-- Member: `uint32_t atlasFrame;`
-- Consuming targets: gameos
-- Reached by define: gameos[gameos(PUBLIC)]
-
-## PASS  (`MC2_VULKAN_ISLAND`)
-
-- Header: `GameOS/gameos/vk_vegetation_state.h:32`
-- Class: `GpuInstance`  (data-member)
-- Member: `float seed;`
-- Consuming targets: gameos
-- Reached by define: gameos[gameos(PUBLIC)]
-
-## PASS  (`MC2_VULKAN_ISLAND`)
-
-- Header: `GameOS/gameos/vk_vegetation_state.h:33`
-- Class: `GpuInstance`  (data-member)
-- Member: `uint32_t pad;`
-- Consuming targets: gameos
-- Reached by define: gameos[gameos(PUBLIC)]
-
-## PASS  (`MC2_VULKAN_ISLAND`)
-
-- Header: `GameOS/gameos/vk_vegetation_state.h:37`
 - Class: `GpuRegion`  (data-member)
 - Member: `float x, y, z, radius;`
 - Consuming targets: gameos
@@ -1382,7 +1342,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_vegetation_state.h:45`
+- Header: `GameOS/gameos/vk_vegetation_state.h:39`
 - Class: `CullParams`  (data-member)
 - Member: `float planeLen[4];`
 - Consuming targets: gameos
@@ -1390,7 +1350,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_vegetation_state.h:46`
+- Header: `GameOS/gameos/vk_vegetation_state.h:40`
 - Class: `CullParams`  (data-member)
 - Member: `float clipRow[4];`
 - Consuming targets: gameos
@@ -1398,7 +1358,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_vegetation_state.h:47`
+- Header: `GameOS/gameos/vk_vegetation_state.h:41`
 - Class: `CullParams`  (data-member)
 - Member: `float cam[4];`
 - Consuming targets: gameos
@@ -1406,7 +1366,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_vegetation_state.h:48`
+- Header: `GameOS/gameos/vk_vegetation_state.h:42`
 - Class: `CullParams`  (data-member)
 - Member: `float misc[4];`
 - Consuming targets: gameos
@@ -1414,7 +1374,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_vegetation_state.h:49`
+- Header: `GameOS/gameos/vk_vegetation_state.h:43`
 - Class: `CullParams`  (data-member)
 - Member: `float grid[4];`
 - Consuming targets: gameos
@@ -1422,7 +1382,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_vegetation_state.h:50`
+- Header: `GameOS/gameos/vk_vegetation_state.h:44`
 - Class: `CullParams`  (data-member)
 - Member: `uint32_t counts[4];`
 - Consuming targets: gameos
@@ -1430,7 +1390,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_vegetation_state.h:51`
+- Header: `GameOS/gameos/vk_vegetation_state.h:45`
 - Class: `CullParams`  (data-member)
 - Member: `uint32_t flags[4];`
 - Consuming targets: gameos
@@ -1438,7 +1398,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_vegetation_state.h:58`
+- Header: `GameOS/gameos/vk_vegetation_state.h:52`
 - Class: `PopulationStats`  (data-member)
 - Member: `uint64_t instances = 0, regions = 0;`
 - Consuming targets: gameos
@@ -1446,15 +1406,15 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_vegetation_state.h:114`
+- Header: `GameOS/gameos/vk_vegetation_state.h:103`
 - Class: `Slot`  (data-member)
-- Member: `mc2vk::OwnedBuffer scratch, counts, offsets, dense, args, stats;`
+- Member: `mc2vk::OwnedBuffer counts, offsets, dense, args, stats;`
 - Consuming targets: gameos
 - Reached by define: gameos[gameos(PUBLIC)]
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_vegetation_state.h:115`
+- Header: `GameOS/gameos/vk_vegetation_state.h:104`
 - Class: `Slot`  (data-member)
 - Member: `bool statsPending = false;`
 - Consuming targets: gameos
@@ -1462,7 +1422,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_vegetation_state.h:118`
+- Header: `GameOS/gameos/vk_vegetation_state.h:107`
 - Class: `State`  (data-member)
 - Member: `mc2vk::ComputePipeline cull_, scan_, compact_;`
 - Consuming targets: gameos
@@ -1470,7 +1430,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_vegetation_state.h:119`
+- Header: `GameOS/gameos/vk_vegetation_state.h:108`
 - Class: `State`  (data-member)
 - Member: `mc2vk::ComputeSets sets_;`
 - Consuming targets: gameos
@@ -1478,7 +1438,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_vegetation_state.h:120`
+- Header: `GameOS/gameos/vk_vegetation_state.h:109`
 - Class: `State`  (data-member)
 - Member: `bool pipelinesTried_ = false, pipelinesOk_ = false;`
 - Consuming targets: gameos
@@ -1486,7 +1446,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_vegetation_state.h:121`
+- Header: `GameOS/gameos/vk_vegetation_state.h:110`
 - Class: `State`  (data-member)
 - Member: `uint64_t generation_ = 1, boundGeneration_ = 0;`
 - Consuming targets: gameos
@@ -1494,7 +1454,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_vegetation_state.h:122`
+- Header: `GameOS/gameos/vk_vegetation_state.h:111`
 - Class: `State`  (data-member)
 - Member: `VkBuffer ringBound_[kSlots] = {};`
 - Consuming targets: gameos
@@ -1502,7 +1462,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_vegetation_state.h:123`
+- Header: `GameOS/gameos/vk_vegetation_state.h:112`
 - Class: `State`  (data-member)
 - Member: `uint64_t frameUploadBytes_ = 0;`
 - Consuming targets: gameos
@@ -1510,7 +1470,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_vegetation_state.h:124`
+- Header: `GameOS/gameos/vk_vegetation_state.h:113`
 - Class: `State`  (data-member)
 - Member: `uint32_t lastSurvivors_ = 0;`
 - Consuming targets: gameos
@@ -1518,7 +1478,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_vegetation_state.h:125`
+- Header: `GameOS/gameos/vk_vegetation_state.h:114`
 - Class: `State`  (data-member)
 - Member: `uint32_t paramsDynOffset_[kSlots] = {};`
 - Consuming targets: gameos
@@ -1526,7 +1486,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_vegetation_state.h:126`
+- Header: `GameOS/gameos/vk_vegetation_state.h:115`
 - Class: `State`  (data-member)
 - Member: `mc2vk::OwnedDescriptorSetLayout drawDsl_;`
 - Consuming targets: gameos
@@ -1534,7 +1494,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_vegetation_state.h:127`
+- Header: `GameOS/gameos/vk_vegetation_state.h:116`
 - Class: `State`  (data-member)
 - Member: `mc2vk::OwnedDescriptorPool drawPool_;`
 - Consuming targets: gameos
@@ -1542,7 +1502,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_vegetation_state.h:128`
+- Header: `GameOS/gameos/vk_vegetation_state.h:117`
 - Class: `State`  (data-member)
 - Member: `VkDescriptorSet drawSets_[kSlots] = {};`
 - Consuming targets: gameos
@@ -1550,7 +1510,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_vegetation_state.h:129`
+- Header: `GameOS/gameos/vk_vegetation_state.h:118`
 - Class: `State`  (data-member)
 - Member: `VkBuffer drawRingBound_[kSlots] = {};`
 - Consuming targets: gameos
@@ -1558,7 +1518,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_vegetation_state.h:130`
+- Header: `GameOS/gameos/vk_vegetation_state.h:119`
 - Class: `State`  (data-member)
 - Member: `bool drawTried_ = false;`
 - Consuming targets: gameos
@@ -1566,7 +1526,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_vegetation_state.h:131`
+- Header: `GameOS/gameos/vk_vegetation_state.h:120`
 - Class: `State`  (data-member)
 - Member: `mc2vk::OwnedBuffer instances_, regions_;`
 - Consuming targets: gameos
@@ -1574,7 +1534,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_vegetation_state.h:132`
+- Header: `GameOS/gameos/vk_vegetation_state.h:121`
 - Class: `State`  (data-member)
 - Member: `Slot slot_[kSlots];`
 - Consuming targets: gameos
@@ -1582,7 +1542,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_vegetation_state.h:133`
+- Header: `GameOS/gameos/vk_vegetation_state.h:122`
 - Class: `State`  (data-member)
 - Member: `uint32_t instanceCount_ = 0, regionCount_ = 0;`
 - Consuming targets: gameos
@@ -1590,7 +1550,7 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ## PASS  (`MC2_VULKAN_ISLAND`)
 
-- Header: `GameOS/gameos/vk_vegetation_state.h:134`
+- Header: `GameOS/gameos/vk_vegetation_state.h:123`
 - Class: `State`  (data-member)
 - Member: `PopulationStats stats_;`
 - Consuming targets: gameos
@@ -3030,4 +2990,4 @@ Rule: a compile define that toggles a class-LAYOUT-affecting member/vtable/base 
 
 ---
 
-Result: 378 guard(s) analyzed, 0 violation(s).
+Result: 373 guard(s) analyzed, 0 violation(s).

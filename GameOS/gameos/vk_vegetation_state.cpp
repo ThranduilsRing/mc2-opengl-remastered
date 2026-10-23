@@ -55,22 +55,23 @@ bool State::upload(mc2vk::VulkanContext& ctx, std::span<const GpuInstance> insta
     VkPhysicalDeviceProperties properties{};
     vkGetPhysicalDeviceProperties(ctx.physicalDevice(), &properties);
     const VkDeviceSize maxRange = properties.limits.maxStorageBufferRange;
-    const auto policy=RenderCore::gpuResidencyPolicy(mc2::options::current().shadowQuality);
-    // Resident bytes (what stays allocated) against the preset ceiling; resident + the transient staging copy against live headroom.
-    const uint64_t resident=RenderCore::vegetationBytes(instances.size(),regions.size(),kSlots);
-    const uint64_t bytes=resident+uint64_t(instances.size_bytes())+regions.size_bytes();
-    if(resident>policy.vegetation || !mc2vk::infra::admit(bytes) || properties.limits.maxComputeWorkGroupInvocations<128 ||
-        properties.limits.maxComputeWorkGroupSize[0]<128 || properties.limits.maxComputeSharedMemorySize<128*sizeof(uint32_t)) {
-        std::fprintf(stderr,"[VK_RESIDENCY v1] refused=vegetation bytes=%llu policy=%llu fallback=off reason=preset_budget_or_device_limits\n",bytes,policy.vegetation);
+    const VkDeviceSize instBytes = instances.size_bytes(), regBytes = regions.size_bytes();
+    const uint32_t visibleCapacity = uint32_t(std::min(instances.size(), size_t(mc2::vegetation::kVisibleCapacity)));
+    const auto policy = RenderCore::gpuResidencyPolicy(mc2::options::current().shadowQuality);
+    // Both parity sets, the regions and the cooked eight-layer atlas, against the preset ceiling; the load-time staging
+    // overlap is added for the live-headroom admission.
+    const uint64_t residentBytes = instBytes + regBytes + uint64_t(visibleCapacity) * 8 + uint64_t(regions.size()) * 16 + 3 * 1024 * 1024 + 160;
+    const uint64_t bytes = residentBytes + instBytes + regBytes;
+    if (residentBytes > policy.vegetation || !mc2vk::infra::admit(bytes) || properties.limits.maxComputeWorkGroupInvocations < 128 ||
+        properties.limits.maxComputeWorkGroupSize[0] < 128 || properties.limits.maxComputeSharedMemorySize < 128 * sizeof(uint32_t)) {
+        std::fprintf(stderr, "[VK_RESIDENCY v1] refused=vegetation bytes=%llu policy=%llu fallback=off reason=preset_budget_or_device_limits\n", (unsigned long long)bytes, (unsigned long long)policy.vegetation);
         return true;
     }
-    // Validate every whole-buffer descriptor before allocation or narrowing.
-    if (instances.size_bytes() > maxRange || regions.size_bytes() > maxRange) {
-        mc2::fmt::print_err("[VEG_GPU] population upload failed: storage descriptor range exceeded\n");
+    if (instBytes > maxRange || regBytes > maxRange || residentBytes > mc2::vegetation::kResidentBudget) {
+        mc2::fmt::print_err("[VEG_GPU] population upload failed: storage or residency budget exceeded\n");
         return false;
     }
     const uint32_t instanceCount = static_cast<uint32_t>(instances.size()), regionCount = static_cast<uint32_t>(regions.size());
-    const VkDeviceSize instBytes = instances.size_bytes(), regBytes = regions.size_bytes();
     const VkBufferUsageFlags kStore = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
     mc2vk::OwnedBuffer stageInst, stageReg;
     if (!stageInst.createFilled(ctx.allocator(), ctx.device(), instances.data(), instBytes, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, "veg.stage.instances") ||
@@ -83,10 +84,9 @@ bool State::upload(mc2vk::VulkanContext& ctx, std::span<const GpuInstance> insta
     }
     for (uint32_t i = 0; i < kSlots; ++i) {
         Slot& s = slot_[i];
-        if (!s.scratch.createDeviceLocal(ctx.allocator(), ctx.device(), VkDeviceSize(instanceCount) * 4, kStore, "veg.scratch", int(i)) ||
-            !s.counts.createDeviceLocal(ctx.allocator(), ctx.device(), VkDeviceSize(regionCount) * 4, kStore, "veg.counts", int(i)) ||
+        if (!s.counts.createDeviceLocal(ctx.allocator(), ctx.device(), VkDeviceSize(regionCount) * 4, kStore, "veg.counts", int(i)) ||
             !s.offsets.createDeviceLocal(ctx.allocator(), ctx.device(), VkDeviceSize(regionCount) * 4, kStore, "veg.offsets", int(i)) ||
-            !s.dense.createDeviceLocal(ctx.allocator(), ctx.device(), VkDeviceSize(instanceCount) * 4, kStore, "veg.dense", int(i)) ||
+            !s.dense.createDeviceLocal(ctx.allocator(), ctx.device(), VkDeviceSize(visibleCapacity) * 4, kStore, "veg.dense", int(i)) ||
             !s.stats.createHostWritable(ctx.allocator(), ctx.device(), 16, VK_BUFFER_USAGE_TRANSFER_DST_BIT, "veg.stats", int(i)) ||
             !s.args.createDeviceLocal(ctx.allocator(), ctx.device(), 64, kStore | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT, "veg.args", int(i))) {
             mc2::fmt::print_err("[VEG_GPU] population upload failed: output buffer allocation\n");
@@ -114,7 +114,7 @@ bool State::upload(mc2vk::VulkanContext& ctx, std::span<const GpuInstance> insta
     instanceCount_ = instanceCount;
     regionCount_ = regionCount;
     ++generation_;
-    const VkDeviceSize outBytes = VkDeviceSize(instanceCount) * 8 * kSlots + VkDeviceSize(regionCount) * 8 * kSlots;
+    const VkDeviceSize outBytes = VkDeviceSize(visibleCapacity) * 4 * kSlots + VkDeviceSize(regionCount) * 8 * kSlots;
     ++stats_.uploads;
     stats_.uploadBytes += instBytes + regBytes;
     stats_.instances = instanceCount;
@@ -130,7 +130,7 @@ bool State::ensurePipelines(mc2vk::VulkanContext& ctx) {
     if (!pipelinesTried_) {
         pipelinesTried_ = true;
         const auto S = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, SD = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, UD = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
-        const std::vector<mc2vk::ComputeBinding> bindings{{0, UD}, {1, SD}, {2, S}, {3, S}, {4, S}, {5, S}, {6, S}, {7, S}, {8, S}};
+        const std::vector<mc2vk::ComputeBinding> bindings{{0, UD}, {1, SD}, {2, S}, {3, S}, {5, S}, {6, S}, {7, S}, {8, S}};
         const std::string dir = vk_island_util::spvDir();
         pipelinesOk_ = cull_.create(ctx.device(), dir + "vegetation_cull.comp.spv", bindings, "veg.cull") &&
                        scan_.create(ctx.device(), dir + "vegetation_scan.comp.spv", bindings, "veg.scan") &&
@@ -146,7 +146,6 @@ bool State::ensurePipelines(mc2vk::VulkanContext& ctx) {
         for (uint32_t i = 0; i < kSlots; ++i) {
             sets_.write(ctx.device(), i, 2, S, instances_.get());
             sets_.write(ctx.device(), i, 3, S, regions_.get());
-            sets_.write(ctx.device(), i, 4, S, slot_[i].scratch.get());
             sets_.write(ctx.device(), i, 5, S, slot_[i].counts.get());
             sets_.write(ctx.device(), i, 6, S, slot_[i].offsets.get());
             sets_.write(ctx.device(), i, 7, S, slot_[i].dense.get());
@@ -175,6 +174,7 @@ bool State::record(mc2vk::VulkanContext& ctx, VkCommandBuffer cb, uint32_t par, 
     params.counts[1] = instanceCount_;
     params.counts[2] = static_cast<uint32_t>(visibility.size());
     params.flags[1] = gridX;
+    params.flags[3] = std::min(instanceCount_, mc2::vegetation::kVisibleCapacity);
     std::memcpy(static_cast<uint8_t*>(span.ptr) + paramsOff, &params, sizeof(params));
     if (!visibility.empty()) std::memcpy(static_cast<uint8_t*>(span.ptr) + visOff, visibility.data(), visibility.size_bytes());
     frameUploadBytes_ += sizeof(params) + visibility.size_bytes();

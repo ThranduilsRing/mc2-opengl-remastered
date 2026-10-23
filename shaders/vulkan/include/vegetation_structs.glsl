@@ -1,6 +1,12 @@
 // Population records and the per-frame cull parameters, shared by the compute stages and the vegetation vertex shader.
 // LOCKSTEP with mc2veg::GpuInstance / GpuRegion / CullParams in GameOS/gameos/vk_vegetation_state.h.
-struct VegInstance { vec3 pos; float yaw; float scale; uint atlasFrame; float seed; uint pad; };   // 32 B
+struct PackedVegInstance { vec2 xy; uint heightScale; uint appearance; }; // 16 B
+struct VegInstance { vec3 pos; float yaw; float scale; uint atlasFrame; float seed; };
+VegInstance unpackVegetation(PackedVegInstance p) {
+    vec2 hs = unpackHalf2x16(p.heightScale);
+    return VegInstance(vec3(p.xy, hs.x), float((p.appearance >> 16u) & 255u) * (6.28318530718 / 256.0),
+                       hs.y, p.appearance >> 24u, unpackHalf2x16(p.appearance & 65535u).x);
+}
 struct VegRegion { vec4 sphere; uint first; uint last; uint pad0; uint pad1; };                    // 32 B
 struct VegParamsData {
     vec4 plane[4];    // clip-space frustum planes a,b,c,d (left,right,bottom,top), as the CPU loop built them
@@ -10,7 +16,7 @@ struct VegParamsData {
     vec4 misc;        // fadeStart, pixelScale, max(lightDirZ,0), time
     vec4 grid;        // mapHalfWU, blockSideWU, 0, 0
     uvec4 counts;     // regionCount, instanceCount, blockVisibilityCount, chunkSide
-    uvec4 flags;      // force-visible, dispatch grid width, stock trim enabled, 0
+    uvec4 flags;      // force-visible, dispatch grid width, stock trim enabled, visible capacity
 };
 
 uint vegBlockIndex(VegInstance i, VegParamsData p) {

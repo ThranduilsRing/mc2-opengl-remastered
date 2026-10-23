@@ -20,6 +20,7 @@
 #endif
 
 #include <span>
+#include <optional>
 #include <volk.h>
 #include "Gates/gate_cold.h"   // gate::get<>() and str<>()
 #include "vk_render_pass_timer.h"
@@ -44,6 +45,10 @@
 #include "vulkan_color_prop_island.h"
 #include "texture_decode.h"
 #include "vk_texture_residency.h"
+#include "vk_vegetation_ground.h"
+#include "vulkan_mover_shadow.h"
+#include "Gates/render_options.h"
+#include "../include/gameos.hpp"
 #include "vk_shared_gbuffer_gate.h"      // VK-P14 GATE-CONSOLIDATION-1 umbrella resolver
 #include "vk_shared_light_feed.h"        // VK-LIGHTFEED-DEDUP-1: shared per-frame LightsData SSBO
 #define MC2_VULKAN_SHARED_SCENE_COLOR_IMPL_ISLAND
@@ -238,6 +243,7 @@ struct ColorPropIsland : mc2vk::IslandState {
     VkDeviceSize  hotCapBytes = 0;
     uint32_t      mapGeneration = 0;        // bumped at every map change; consumers of the albedo arrays rebind on a change
     uint64_t alphaContentHash = 0;
+    std::span<const float> hotCpu; // borrowed map table, also identifies profiled tree groups
     bool          hotReady = false;         // the hot-colour table was uploaded for the current map (cleared at a map change)
     float         terrainSunMC2[3] = {0.0f, 0.0f, 1.0f};
 
@@ -279,7 +285,8 @@ struct ColorPropIsland : mc2vk::IslandState {
     mc2vk::OwnedBuffer  layerOnBuf;       // per-type int layer SSBO (class 1)
     mc2vk::OwnedBuffer  hotBuf;           // per-type hot-colour night emission colours (3 vec4 per type)
     mc2vk::ResidentTextureRef normalTexture, ormTexture;
-    mc2vk::OwnedSampler detailSampler;
+    mc2vk::OwnedSampler detailSampler, treeShadowSampler;
+    mc2veg::GroundLighting groundLighting;
     mc2vk::OwnedBuffer materialBuf;
     mc2vk::OwnedShaderModule t1_vert, t1_frag;
     mc2vk::OwnedPipelineLayout playout;
@@ -729,6 +736,7 @@ bool cp_upload_hot_table(ColorPropIsland* s, std::span<const float> colours) {
     if (!colours.empty()) std::memcpy(p, colours.data(), static_cast<size_t>(bytes));
     else std::memset(p, 0, static_cast<size_t>(bytes));
     s->hotBuf.unmap();
+    s->hotCpu = colours;
     if (rebound && s->inited) write_descriptors(s);
     return true;
 }
@@ -914,7 +922,7 @@ bool init_island(ColorPropIsland* s, int w, int h) {
         // Base bindings 0(UBO),1(inst SSBO); optional +4(LightsData SSBO, VS). Material
         // (tier1 + MC2_VK_PROP_MATERIAL): +2(alpha-OFF layer SSBO VS), 3(alpha-OFF albedo
         // FS), 5(alpha-ON layer SSBO VS), 6(alpha-ON albedo FS).
-        VkDescriptorSetLayoutBinding b[13]{};
+        VkDescriptorSetLayoutBinding b[16]{};
         uint32_t nb = 0;
         b[nb].binding = 0; b[nb].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
         b[nb].descriptorCount = 1; b[nb].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT; ++nb;
@@ -953,6 +961,12 @@ bool init_island(ColorPropIsland* s, int w, int h) {
         b[nb].binding = 12; b[nb].descriptorCount = 1;
         b[nb].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
         b[nb].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT; ++nb;
+        b[nb].binding = 14; b[nb].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        b[nb].descriptorCount = 1; b[nb].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT; ++nb;
+        b[nb].binding = 24; b[nb].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        b[nb].descriptorCount = 1; b[nb].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT; ++nb;
+        b[nb].binding = 25; b[nb].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        b[nb].descriptorCount = 1; b[nb].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT; ++nb;
         VkDescriptorSetLayoutCreateInfo lci{};
         lci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
         lci.bindingCount = nb; lci.pBindings = b;
@@ -961,12 +975,13 @@ bool init_island(ColorPropIsland* s, int w, int h) {
         }
         // VK-PROP-FENCE-DEFER-1: TWO sets (one per parity slot), so pool sizes double.
         // Dynamic: 0 UBO; 1 + 4 (lights) + 8 (pools) SSBO. Static SSBOs: layer tables (2, 5) and the hot-colour table (7).
-        VkDescriptorPoolSize sizes[4]{};
+        VkDescriptorPoolSize sizes[5]{};
         uint32_t nsz = 0;
         sizes[nsz++] = {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 2};
         sizes[nsz++] = {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 2u * (1u + (lightBinding ? 1u : 0u) + (s->tier1 ? 1u : 0u))};
         sizes[nsz++] = {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 2u * ((materialBindings ? 2u : 0u) + (s->tier1 ? 1u : 0u) + 2u)};
-        sizes[nsz++] = {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, (materialBindings ? 4u : 0u) + 4u};
+        sizes[nsz++] = {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, (materialBindings ? 4u : 0u) + 8u};
+        sizes[nsz++] = {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 2};
         VkDescriptorPoolCreateInfo pci{};
         pci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
         pci.maxSets = 2; pci.poolSizeCount = nsz; pci.pPoolSizes = sizes;
@@ -1016,8 +1031,14 @@ bool init_island(ColorPropIsland* s, int w, int h) {
 
         VkPipelineLayoutCreateInfo plci{};
         plci.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-        const VkDescriptorSetLayout dslHandle = s->dsl.get();
-        plci.setLayoutCount = 1; plci.pSetLayouts = &dslHandle;
+        if (!s->groundLighting.init(s->device)) return false;
+        VkSamplerCreateInfo treeSampler{VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO};
+        treeSampler.magFilter = treeSampler.minFilter = VK_FILTER_NEAREST;
+        treeSampler.addressModeU = treeSampler.addressModeV = treeSampler.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        treeSampler.compareEnable = VK_TRUE; treeSampler.compareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
+        if (!mc2vk::create(s->treeShadowSampler, s->device, [&](VkSampler* out) { return vkCreateSampler(s->device, &treeSampler, nullptr, out); })) return false;
+        const VkDescriptorSetLayout propLayouts[]{s->dsl.get(), s->groundLighting.layout()};
+        plci.setLayoutCount = 2; plci.pSetLayouts = propLayouts;
         plci.pushConstantRangeCount = 1; plci.pPushConstantRanges = &pcr;
         if (!mc2vk::create(s->playout, s->device, [&](VkPipelineLayout* h) { return vkCreatePipelineLayout(s->device, &plci, nullptr, h); })) {
             vlog("TIER-1 vkCreatePipelineLayout failed."); return false;
@@ -1247,6 +1268,7 @@ extern "C" void mc2_vk_color_prop_island_invalidate_geometry() {
     s->materialReady = false;
     s->materialReadyOn = false;
     s->hotReady = false;
+    s->hotCpu = {};
     s->authoredReady = false;
     s->authoredAttempted = false;
     s->packetMaterialIds.clear();
@@ -1458,6 +1480,21 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
     if (vkWaitForFences(s->device, 1, &lateFence, VK_TRUE, 5ull*1000*1000*1000) != VK_SUCCESS) {
         setFallback("late_fringe_fence_timeout"); s->disabled = true; return 0;
     }
+    const auto ground = mc2_vk_ground_lighting_frame();
+    if (!ground || !mc2vk::bindMoverShadowDescriptors(s->device, s->set[par])) return 0;
+    s->groundLighting.copy(s->device, par, *ground);
+    const auto objectView = reinterpret_cast<VkImageView>(mc2_vk_shadow_island_get_object_view());
+    if (objectView) {
+        VkDescriptorImageInfo image{s->treeShadowSampler.get(), objectView, VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL};
+        VkWriteDescriptorSet write{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
+        write.dstSet=s->set[par]; write.dstBinding=14; write.descriptorCount=1;
+        write.descriptorType=VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; write.pImageInfo=&image;
+        vkUpdateDescriptorSets(s->device,1,&write,0,nullptr);
+    } else {
+        VkCopyDescriptorSet copy{VK_STRUCTURE_TYPE_COPY_DESCRIPTOR_SET};
+        copy.srcSet=copy.dstSet=s->set[par]; copy.srcBinding=24; copy.dstBinding=14; copy.descriptorCount=1;
+        vkUpdateDescriptorSets(s->device,0,nullptr,1,&copy);
+    }
     const std::array<VkImageView,2> views{s->albedoTexture.view(),s->albedoOnTexture.view()};
     if (s->descriptorsDirty[par] || s->boundTextures[par]!=views) {
         write_descriptors(s,int(par)); s->boundTextures[par]=views;
@@ -1542,7 +1579,7 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
         u.terrainSunMC2[0] = s->terrainSunMC2[0];
         u.terrainSunMC2[1] = s->terrainSunMC2[1];
         u.terrainSunMC2[2] = s->terrainSunMC2[2];
-        u.terrainSunMC2[3] = 0.0f;
+        u.terrainSunMC2[3] = static_cast<float>(gos_GetElapsedTime()); // render-only leaf sway
         // VK-PROP-AMBIENT-IBL-1: IBL-SH coeffs (std140 vec3[9] tail, .w pad each) +
         // strength + lightingReady. lightingReady gates the vert shader's real
         // ObjectLights ambientTerm sum; iblShStrength==0.0 short-circuits evalShL2
@@ -1571,7 +1608,7 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
         // Night light pools: this frame's pool copy (GL caps the set at 256), flushed because the sequential-write placement need not be
         // host-coherent; a failed upload turns the term off.
         std::memcpy(mainPtr + poolOff, poolUpload, poolBytes);
-        u.poolF[0] = lightFeed.poolMoverDim; u.poolF[1] = lightFeed.poolMoverScale; u.poolF[2] = lightFeed.poolObjScale; u.poolF[3] = 0.0f;
+        u.poolF[0] = lightFeed.poolMoverDim; u.poolF[1] = lightFeed.poolMoverScale; u.poolF[2] = lightFeed.poolObjScale; u.poolF[3] = mc2::options::current().shadowQuality == 0 ? 0.0f : objectView ? 2.0f : 1.0f;
         u.poolI[0] = poolN;                  u.poolI[1] = lightFeed.poolSoft;
         u.poolI[2] = lightFeed.poolMoverMax; u.poolI[3] = lightFeed.poolCompress;
         // ADJUDICATION-1 WASHOUT engagement probe: one-shot dump of the exact UBO
@@ -1656,6 +1693,8 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
 
         mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->t1_pipe.get());
         vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 0, 1, &s->set[par], nDyn, dynOffsets);
+        const VkDescriptorSet groundSet = s->groundLighting.set(par);
+        vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 1, 1, &groundSet, 4, ground->offsets.data());
         VkDeviceSize vboOff = 0;
         const VkBuffer vertexBuffer = s->vbo.get();
         vkCmdBindVertexBuffers(cb, 0, 1, &vertexBuffer, &vboOff);
@@ -1695,6 +1734,10 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
             while (j < instanceCount && insts[j].typeID == tid) ++j;
             const uint32_t instCount = j - i;
             if (tid < s->typeRuns.size()) {
+                std::optional<mc2vk::gpuprof::Scope> treeTiming;
+                const size_t canopyRadius = static_cast<size_t>(tid) * 12u + 7u;
+                if (mc2vk::gpuprof::active() && canopyRadius < s->hotCpu.size() && s->hotCpu[canopyRadius] > 0.0f)
+                    treeTiming.emplace(cb, "VKIsl.Props.Trees", __FILE__, static_cast<uint32_t>(__LINE__));
                 const TypeRun& tr = s->typeRuns[tid];
                 for (uint32_t p = 0; p < tr.packetCount; ++p) {
                     const uint32_t pk = tr.firstPacket + p;

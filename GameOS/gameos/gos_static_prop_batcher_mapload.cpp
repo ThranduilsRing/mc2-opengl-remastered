@@ -317,7 +317,7 @@ void GpuStaticPropBatcher::registerType(TG_TypeShape* typeShape, TG_TypeMultiSha
 }
 
 void GpuStaticPropBatcher::registerMultiShape(TG_TypeMultiShape* multiShape, bool isOverride,
-                                            const ModelOverrideRecord* materialSource) {
+                                            const ModelOverrideRecord* materialSource, bool tree) {
     if (!multiShape) return;
     const long n       = multiShape->GetNumShapes();
     const long numTxms = multiShape->GetNumTextures();
@@ -326,6 +326,15 @@ void GpuStaticPropBatcher::registerMultiShape(TG_TypeMultiShape* multiShape, boo
         if (node && node->GetNodeType() == SHAPE_NODE) {
             TG_TypeShape* typeShape = static_cast<TG_TypeShape*>(node);
             registerType(typeShape, multiShape);
+            if (auto tit = s_typeIndex.find(typeShape); tree && tit != s_typeIndex.end()) {
+                const auto lo = multiShape->minBox, hi = multiShape->maxBox;
+                const auto& [registeredType, typeIndex] = *tit;
+                auto& type = s_types[typeIndex];
+                const float up = hi.y * hi.y >= lo.y * lo.y ? 1.0f : -1.0f;
+                type.treeCanopy[0] = (lo.y + hi.y) * 0.5f + up * (hi.y - lo.y) * 0.15f - node->GetNodeCenter().y;
+                type.treeCanopy[1] = std::max({1.0f, (hi.x - lo.x) * 0.5f, (hi.z - lo.z) * 0.5f});
+                type.treeCanopy[2] = up * std::max(1.0f, (hi.y - lo.y) * 0.5f);
+            }
             // MODEL-OVERRIDE-GPU-BATCHER-SEAM: tag the just-registered (or
             // pre-existing idempotent) type as override-backed so the coalesce
             // layer-build routes its untextured packets to a valid default
