@@ -25,35 +25,23 @@ struct MaterialDetail {
 
 float cdHash(vec2 p) { p = fract(p * vec2(0.1031, 0.1030)); p += dot(p, p.yx + 33.33); return fract((p.x + p.y) * p.x); }
 vec2 cdHash2(vec2 p) { return vec2(cdHash(p), cdHash(p + 17.0)); }
-float cdVNoise(vec2 p) {   // value noise 0..1, four hashes
-    vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
-    return mix(mix(cdHash(i), cdHash(i + vec2(1.0, 0.0)), f.x), mix(cdHash(i + vec2(0.0, 1.0)), cdHash(i + vec2(1.0, 1.0)), f.x), f.y);
-}
 
-// Micro detail: two fine tilings (60 wu and a rotated 38 wu patch, so a pebble or crack is pebble-sized next to a mech), each with a
-// hashed per-cell UV offset so the repeat does not read at RTS zoom (no extra fetches). Macro variation is ALU-only value noise at
-// slab-to-patch scales (tens to hundreds of wu) plus a per-slab (128 wu) hash: small luminance / roughness / AO shifts, never colour.
+// Micro detail: ONE fetch of a fine tiling (48 wu, so a pebble or crack is pebble-sized next to a mech) with a hashed per-cell UV
+// offset so the repeat does not read at RTS zoom. Macro variation is ALU-only: a per-slab (128 wu) hash: small luminance / roughness shifts, never colour.
 // `dx`/`dy` are the screen derivatives of the world XY, taken in uniform control flow by the caller (this runs in divergent branches).
 MaterialDetail cdEval(int layer, vec2 wp, vec2 dx, vec2 dy) {
-    const mat2 R = mat2(0.8, -0.6, 0.6, 0.8);
-    const float kScaleA = 1.0 / 60.0;
-    const float kScaleB = 1.0 / 38.0;
-    vec2 uvA = wp * kScaleA + cdHash2(floor(wp / 700.0));
-    vec2 uvB = R * wp * kScaleB + 0.37 + cdHash2(floor(wp / 450.0) + 31.0);
-    vec4 a = textureGrad(u_concreteDetail, vec3(uvA, float(layer)), dx * kScaleA * 0.5, dy * kScaleA * 0.5);
-    vec4 b = textureGrad(u_concreteDetail, vec3(uvB, float(layer)), R * dx * kScaleB * 0.5, R * dy * kScaleB * 0.5);
+    const float kScale = 1.0 / 48.0;
+    vec2 uv = wp * kScale + cdHash2(floor(wp / 600.0));
+    float lod = log2(max(max(dot(dx, dx), dot(dy, dy)), 1e-8)) * 0.5 + log2(kScale * 0.5 * float(textureSize(u_concreteDetail, 0).x));
+    vec4 a = textureLod(u_concreteDetail, vec3(uv, float(layer)), max(lod, 0.0));
     // Image rows run top-down while world v runs north, so the GL-convention green channel is negated.
-    vec2 na = vec2(a.x * 2.0 - 1.0, -(a.y * 2.0 - 1.0));
-    vec2 nb = vec2(b.x * 2.0 - 1.0, -(b.y * 2.0 - 1.0));
-    nb = transpose(R) * nb;                                   // back from the rotated tiling into the world frame
-    vec2 nxy = (na + nb) * 0.7071 * uT.concreteDetailStrength;
-    float macro = (0.6 * cdVNoise(wp / 220.0) + 0.4 * cdVNoise(wp / 70.0 + 5.0)) * 2.0 - 1.0;   // -1..1
+    vec2 nxy = vec2(a.x * 2.0 - 1.0, -(a.y * 2.0 - 1.0)) * uT.concreteDetailStrength;
     float slab = cdHash(floor(wp / 128.0)) * 2.0 - 1.0;                                          // per-slab shift
     MaterialDetail d;
     d.n = normalize(vec3(nxy, 1.0));
-    d.roughness = clamp(0.5 * (a.z + b.z) + 0.12 * macro + 0.06 * slab, 0.05, 1.0);
-    d.ao = clamp(0.5 * (a.w + b.w) + 0.03 * macro, 0.0, 1.0);
-    d.lum = 1.0 + 0.07 * macro + 0.03 * slab;                                                    // mean 1, at most +-10 %
+    d.roughness = clamp(a.z + 0.06 * slab, 0.05, 1.0);
+    d.ao = a.w;
+    d.lum = 1.0 + 0.04 * slab;                                                                   // mean 1, at most +-4 %
     return d;
 }
 
