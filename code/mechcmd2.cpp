@@ -1031,15 +1031,8 @@ void __stdcall InitializeGameEngine()
 		InstallEffectStream(effectsData, static_cast<size_t>(effectsSize));
 		gosFX::EffectLibrary::Instance->Load(effectStream);
 
-		// FX-DEFS-SIDECAR-1: overlay data/effects/defs/<Name>.fxdef.json (+
-		// active mod's own defs/) onto the just-loaded SpecLibrary. Gate
-		// MC2_FX_DEFS (default OFF); parsing itself is always cheap/free so
-		// [FXDEF] diagnostics are available under MC2_LOG regardless, but the
-		// spec-mutating apply only runs when the gate is on. When OFF or no
-		// defs exist, the loaded blob is byte-identical to stock.
-		if (mc2::gate::get<"MC2_FX_DEFS">()) {
-			mc2fxdefs::EffectDefRegistry::instance().applyAll(mc2::particles::SpecLibrary::Instance());
-		}
+		// Authored effect overlays are optional; absent definitions leave the stock catalog intact.
+		mc2fxdefs::EffectDefRegistry::instance().applyAll(mc2::particles::SpecLibrary::Instance());
 
 		gosFX::LightManager::Instance = new gosFX::LightManager();
 	

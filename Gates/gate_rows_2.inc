@@ -16,7 +16,6 @@ L(Lead0Kill, "MC2_MATERIAL_GPU", Bool, true, "unclassified", "", "GPU material t
 // history: docs/gate-history.md#MC2_MATERIAL_GPU_SAMPLE
 L(Lead0Kill, "MC2_MATERIAL_GPU_SAMPLE", Bool, true, "props", "", "GPU material albedo sampling in static_prop.frag (default-ON as of v7, 2026-05-26).", passthrough | registry(Feature, "MC2_FEATURE_MATERIAL_GPU_SAMPLE", 10, true) | verified),
 // history: docs/gate-history.md#MC2_MATERIAL_KTX
-L(Lead0P, "MC2_MATERIAL_KTX", Bool, false, "props", "", "KTX2 sidecar loader for static-prop textures (RenderCore/KtxLoader).", registry(Feature, "MC2_FEATURE_MATERIAL_KTX", 11, false) | verified),
 L(Presence, "MC2_MDI_SUBMIT_TRACE", Bool, false, "gameos", "", "", passthrough | verified),
 L(Lead0Kill, "MC2_MECH_AMBIENT_V1", Bool, true, "mech", "", "", verified),
 P("MC2_MECH_AMBIENT_V1_STRENGTH", Float, 0.15, "mech", "", "", clampRange(0.0, 2.0) | verified),

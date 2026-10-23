@@ -10,7 +10,7 @@
 
 namespace mc2::gate::detail {
 
-inline constexpr std::size_t kGateCount = 814;
+inline constexpr std::size_t kGateCount = 810;
 
 inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_ABL_ARG_GUARD", Kind::Bool, Rule::Lead1, {}},
@@ -203,7 +203,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_FXAA_SUBPIX", Kind::Float, Rule::Prefix, {}},
     {"MC2_FX_COST_SPLIT", Kind::Bool, Rule::Exact1, {}},
     {"MC2_FX_COUNT_LOG", Kind::Bool, Rule::Presence, {}},
-    {"MC2_FX_DEFS", Kind::Bool, Rule::Presence, {}},
     {"MC2_FX_FORCE_SPAWN", Kind::Enum, Rule::Std, "|0|1|2|3|4|5|6|7|8|9|loop|impact"},
     {"MC2_FX_TRACE", Kind::Bool, Rule::Lead1, {}},
     {"MC2_GAMEOS_UI_DEFS", Kind::Bool, Rule::Std, {}},
@@ -361,7 +360,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_M2D_PZ_PARITY", Kind::Bool, Rule::Presence, {}},
     {"MC2_MATERIAL_GPU", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_MATERIAL_GPU_SAMPLE", Kind::Bool, Rule::Lead0Kill, {}},
-    {"MC2_MATERIAL_KTX", Kind::Bool, Rule::Lead0P, {}},
     {"MC2_MDI_SUBMIT_TRACE", Kind::Bool, Rule::Presence, {}},
     {"MC2_MECH_AMBIENT_V1", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_MECH_AMBIENT_V1_STRENGTH", Kind::Float, Rule::Prefix, {}},
@@ -565,8 +563,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_STABLE_LIGHT_SKIP", Kind::Bool, Rule::Std, {}},
     {"MC2_STABLE_LIGHT_SKIP_DIAG", Kind::Bool, Rule::Std, {}},
     {"MC2_STABLE_LIGHT_SKIP_TOUCH", Kind::Bool, Rule::Std, {}},
-    {"MC2_STATICPROP_BC7", Kind::Bool, Rule::Lead0P, {}},
-    {"MC2_STATICPROP_MATERIAL_PBR_SLOTS", Kind::Bool, Rule::Lead0, {}},
     {"MC2_STATICPROP_RECIPE_SPOTLIGHT_SKIP", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_STATICPROP_TEX_TIER", Kind::Int, Rule::Prefix, {}},
     {"MC2_STATIC_FORCE_ADMIT", Kind::Bool, Rule::Presence, {}},

@@ -3,9 +3,9 @@
 # Where each gate is read, what the smoke runner forwards and what tier1_env_vars.md says are not here: ask
 # tools/repo_intel (env_var, gate_status), which scan the sources.
 generator_version: "3.0.0"
-gate_count: 814
+gate_count: 810
 registry_entry_count: 165
-verified_count: 770
+verified_count: 766
 flags:
   - name: MC2_ABL_ARG_GUARD
     kind: Bool
@@ -1473,15 +1473,6 @@ flags:
     doc: "MC2_FX_COUNT_LOG=1: env-gated per-effect-site GOSFX draw counter for the Mech3DAppearance::render() effect sites."
     smoke_passthrough: true
     verified: true
-  - name: MC2_FX_DEFS
-    kind: Bool
-    default: false
-    rule: Presence
-    owner: mech
-    doc: "FX-DEFS-SIDECAR-1: per-effect JSON sidecar overlay for the gosFX spec catalog (mc2::particles::SpecLibrary)."
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_FX_DEFS, kind: Feature, order: -1, default_on: false}
   - name: MC2_FX_FORCE_SPAWN
     kind: Enum
     default: ""
@@ -2707,14 +2698,6 @@ flags:
     smoke_passthrough: true
     verified: true
     registry: {feature_id: MC2_FEATURE_MATERIAL_GPU_SAMPLE, kind: Feature, order: 10, default_on: true}
-  - name: MC2_MATERIAL_KTX
-    kind: Bool
-    default: false
-    rule: Lead0P
-    owner: props
-    doc: "KTX2 sidecar loader for static-prop textures (RenderCore/KtxLoader)."
-    verified: true
-    registry: {feature_id: MC2_FEATURE_MATERIAL_KTX, kind: Feature, order: 11, default_on: false}
   - name: MC2_MDI_SUBMIT_TRACE
     kind: Bool
     default: false
@@ -4263,23 +4246,6 @@ flags:
     doc: "Std Bool row: any text other than 0/false/off/no/1/true/on/yes (e.g. =2) still reads as on but is reported badvalue, which MC2_CONFIG_STRICT=1 turns fatal."
     smoke_passthrough: true
     verified: true
-  - name: MC2_STATICPROP_BC7
-    kind: Bool
-    default: false
-    rule: Lead0P
-    owner: props
-    doc: "COMPRESSION-BC7-STATICPROP-1: upload BC7-compressed KTX2 static-prop texture arrays through the existing static-prop KTX path (gos_static_prop_batcher.cpp)..."
-    verified: true
-    registry: {feature_id: MC2_FEATURE_STATICPROP_BC7, kind: Feature, order: 19, default_on: false}
-  - name: MC2_STATICPROP_MATERIAL_PBR_SLOTS
-    kind: Bool
-    default: false
-    rule: Lead0
-    owner: props
-    doc: "Static-prop PBR ORM (occlusion-roughness-metallic) texture-array slots + sidecar feed."
-    smoke_passthrough: true
-    verified: true
-    registry: {feature_id: MC2_FEATURE_STATICPROP_MATERIAL_PBR_SLOTS, kind: Feature, order: -1, default_on: false}
   - name: MC2_STATICPROP_RECIPE_SPOTLIGHT_SKIP
     kind: Bool
     default: true
@@ -6286,3 +6252,7 @@ flags:
     registry: {feature_id: MC2_XFORM_PARITY_FATAL, kind: Trace, order: -1, default_on: false}
 feature_only_rows:   # registry entries with no environment variable
   - {feature_id: MC2_FEATURE_REVERSE_Z, kind: Feature, order: 4, default_on: true}
+  - {feature_id: MC2_FX_DEFS, kind: Feature, order: -1, default_on: true}
+  - {feature_id: MC2_FEATURE_MATERIAL_KTX, kind: Feature, order: 11, default_on: true}
+  - {feature_id: MC2_FEATURE_STATICPROP_BC7, kind: Feature, order: 19, default_on: true}
+  - {feature_id: MC2_FEATURE_STATICPROP_MATERIAL_PBR_SLOTS, kind: Feature, order: -1, default_on: true}

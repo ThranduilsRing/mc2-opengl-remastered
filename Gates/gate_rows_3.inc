@@ -93,10 +93,8 @@ G("MC2_STABLE_LIGHT_SKIP", Bool, false, "props", "", "Std Bool row: any text oth
 G("MC2_STABLE_LIGHT_SKIP_DIAG", Bool, false, "props", "", "Std Bool row: any text other than 0/false/off/no/1/true/on/yes (e.g. =2) still reads as on but is reported badvalue, which MC2_CONFIG_STRICT=1 turns fatal.", verified | passthrough),
 G("MC2_STABLE_LIGHT_SKIP_TOUCH", Bool, false, "props", "", "Std Bool row: any text other than 0/false/off/no/1/true/on/yes (e.g. =2) still reads as on but is reported badvalue, which MC2_CONFIG_STRICT=1 turns fatal.", verified | passthrough),
 // history: docs/gate-history.md#MC2_STATICPROP_BC7
-L(Lead0P, "MC2_STATICPROP_BC7", Bool, false, "props", "", "COMPRESSION-BC7-STATICPROP-1: upload BC7-compressed KTX2 static-prop texture arrays through the existing static-prop KTX path (gos_static_prop_batcher.cpp)...", registry(Feature, "MC2_FEATURE_STATICPROP_BC7", 19, false) | verified),
 // Static-prop ORM (PBR) — load-only feature + trace
 // history: docs/gate-history.md#MC2_STATICPROP_MATERIAL_PBR_SLOTS
-L(Lead0, "MC2_STATICPROP_MATERIAL_PBR_SLOTS", Bool, false, "props", "", "Static-prop PBR ORM (occlusion-roughness-metallic) texture-array slots + sidecar feed.", passthrough | registry(Feature, "MC2_FEATURE_STATICPROP_MATERIAL_PBR_SLOTS", -1, false) | verified),
 L(Lead0Kill, "MC2_STATICPROP_RECIPE_SPOTLIGHT_SKIP", Bool, true, "props", "", "", passthrough | verified),
 P("MC2_STATICPROP_TEX_TIER", Int, 512, "props", "", "", verified),
 L(Presence, "MC2_STATIC_FORCE_ADMIT", Bool, false, "props", "", "2026-05-10 diag: MC2_STATIC_FORCE_ADMIT mirrors registry::flush behavior so the env-var A/B (cull-bypassed vs cull-active) covers BOTH substrate-record...", passthrough | verified),

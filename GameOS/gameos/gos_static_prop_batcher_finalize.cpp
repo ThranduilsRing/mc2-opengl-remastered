@@ -17,7 +17,7 @@ bool GpuStaticPropBatcher::packetHasAlpha(const GpuStaticPropPacket& pkt, const 
 // Log the texture tier, clear the per-packet side tables and load the programs.
 void GpuStaticPropBatcher::finalizePrologue() {
     // One-shot log: always emit so the log confirms which tier is active.
-    mc2::fmt::print_out("[StaticPropBatcher] tex tier: {:d}px (MC2_STATICPROP_TEX_TIER) ktx={}\n", mc2::fmt::as_i32(texTier()), mc2::fmt::safe(s_materialKtxEnabled ? "ON" : "OFF"));
+    mc2::fmt::print_out("[StaticPropBatcher] tex tier: {:d}px (MC2_STATICPROP_TEX_TIER) ktx=ON\n", mc2::fmt::as_i32(texTier()));
     std::fflush(stdout);
 
     GpuStaticPropRegistry::staticPropRegistryClearMaterialCache();
@@ -321,14 +321,8 @@ void GpuStaticPropBatcher::buildPerPacketDrawTables(StaticPropFinalizeFrame& f) 
                 const uint32_t globalPktIdx = s_sortedPacketOrder[i];
                 const int32_t  layer        = layerForPacket[globalPktIdx]; // >= 0 guaranteed
 
-                // COMPRESSION-BC7-STATICPROP-2: layer is BUCKET-relative when the
-                // gate is ON, so the same layer index can recur across buckets.
-                // Dedup material rows by (bucket,layer) to keep distinct textures
-                // distinct. albedoTex still stores `layer` (bucket-relative) so the
-                // texArrayLayer==albedoTex compare below stays valid. Gate-OFF
-                // (bucketIdx 0) → key == layer → byte-identical dedup.
-                const int32_t bucketIdx = s_staticPropBc7Enabled
-                    ? s_packetBucketIndex[globalPktIdx] : 0;
+                // Texture layers are bucket-relative, including RGBA fallback buckets.
+                const int32_t bucketIdx = s_packetBucketIndex[globalPktIdx];
                 const int64_t matKey =
                     (static_cast<int64_t>(bucketIdx) << 32) | static_cast<uint32_t>(layer);
 
@@ -356,7 +350,7 @@ void GpuStaticPropBatcher::buildPerPacketDrawTables(StaticPropFinalizeFrame& f) 
                     // Set the kMetallicRoughness flag ONLY when this (bucket,layer)
                     // had a REAL ORM map; otherwise leave it kMaterialTexAbsent so
                     // the shader uses the metallic/roughness factor defaults.
-                    if (s_ormSlotsEnabled && layer >= 0 &&
+                    if (layer >= 0 &&
                         bucketIdx >= 0 &&
                         static_cast<size_t>(bucketIdx) < s_ormLayerHasMap.size() &&
                         static_cast<size_t>(layer) < s_ormLayerHasMap[static_cast<size_t>(bucketIdx)].size() &&
