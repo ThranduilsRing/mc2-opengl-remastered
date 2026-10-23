@@ -1132,7 +1132,10 @@ void Mech3DAppearance::updateSimPose (bool advanceClock)
     simPose->hitRight = getHitNodeRight();
     simPose->cockpit = getNodeNamePosition("cockpit");
     simPose->shapeNodes.resize(mechShape->GetNumShapes());
-    for (long i = 0; i < mechShape->GetNumShapes(); ++i) simPose->shapeNodes[i] = getNodeIdPosition(i);
+    for (long i = 0; i < mechShape->GetNumShapes(); ++i) {
+        auto node = mechShape->GetTransformedNodePosition(&xlatPosition, &qRotation, i);
+        simPose->shapeNodes[i] = (node.x == 0 && node.y == 0 && node.z == 0) ? position : node;
+    }
     simPose->ready = true;
     rotationalNodeIndex = drawRotationNode;
     hitLeftNodeIndex = drawHitLeft; hitRightNodeIndex = drawHitRight;
