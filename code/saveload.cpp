@@ -23,7 +23,7 @@ static constexpr char orderSaveVersion[] = "MC2SAVE.WQT2";
 // The mission clocks accumulate float ticks; the legacy "{:f}" text keeps six decimals, which is coarser than one ulp below
 // about 8 s, so an early save loaded back a clock one ulp off and every float timer derived from it drifted. Nine significant
 // digits round-trip a float exactly and atof reads them back as before (legacy saves load unchanged).
-static void writeIdFloatExact (FitIniFilePtr file, const char* name, float value)
+static void writeIdFloatExact (FitIniFilePtr file, std::string_view name, float value)
 {
 	char line[255];
 	mc2::fmt::to_buf(line, "f {} = {:.9g}\r\n", name, value);

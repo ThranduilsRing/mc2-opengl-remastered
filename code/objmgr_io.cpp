@@ -1362,34 +1362,35 @@ std::vector<uint8_t> GameObjectManager::saveAnimationState() {
     }
     // Pool order: the sim updates turrets, buildings, ... in pool order and a load fills each pool in handle order, so objects
     // that draw from the sim RNG in the same tick (idle turrets) would draw in a different order after a load.
-    auto poolOrder = [&](auto* const* pool, long n) {
+    auto poolOrder = [&](auto pool) {
         std::vector<int32_t> handles;
-        if (pool && n > 0 && n <= static_cast<long>(mc2::save::maxSequenceLength)) {
-            handles.reserve(static_cast<size_t>(n));
-            for (long i = 0; i < n; ++i) handles.push_back(pool[i] ? static_cast<int32_t>(pool[i]->getHandle()) : -1);
+        if (pool.data() && pool.size() <= mc2::save::maxSequenceLength) {
+            handles.reserve(pool.size());
+            for (auto* object : pool) handles.push_back(object ? static_cast<int32_t>(object->getHandle()) : -1);
         }
         archive(handles);
     };
-    poolOrder(turrets, numTurrets); poolOrder(buildings, numBuildings); poolOrder(gates, numGates);
-    poolOrder(artillery, numArtillery); poolOrder(carnage, numCarnage); poolOrder(weapons, numWeapons);
+    poolOrder(std::span(turrets, static_cast<size_t>(numTurrets))); poolOrder(std::span(buildings, static_cast<size_t>(numBuildings)));
+    poolOrder(std::span(gates, static_cast<size_t>(numGates))); poolOrder(std::span(artillery, static_cast<size_t>(numArtillery)));
+    poolOrder(std::span(carnage, static_cast<size_t>(numCarnage))); poolOrder(std::span(weapons, static_cast<size_t>(numWeapons)));
     if (!archive.good()) Fatal(0, "Unable to serialize authoritative animation state");
     return archive.bytes();
 }
 // Reorders a typed pool to the saved order when the saved handles name exactly the objects it holds; otherwise leaves it alone.
 template<class Pool>
-static void applyPoolOrder(Pool* pool, long n, const std::vector<int32_t>& handles, GameObjectPtr* objList, long maxObjects) {
-    if (!pool || n <= 0 || static_cast<long>(handles.size()) != n) return;
-    std::vector<Pool> next(static_cast<size_t>(n));
-    for (long i = 0; i < n; ++i) {
-        const int32_t h = handles[static_cast<size_t>(i)];
+static void applyPoolOrder(std::span<Pool> pool, const std::vector<int32_t>& handles, GameObjectPtr* objList, long maxObjects) {
+    if (!pool.data() || pool.empty() || handles.size() != pool.size()) return;
+    std::vector<Pool> next(pool.size());
+    for (size_t i = 0; i < pool.size(); ++i) {
+        const int32_t h = handles[i];
         if (h < 1 || h > maxObjects || !objList[h]) return;
-        next[static_cast<size_t>(i)] = static_cast<Pool>(objList[h]);
+        next[i] = static_cast<Pool>(objList[h]);
     }
-    std::vector<Pool> sortedNext = next, current(pool, pool + n);
+    std::vector<Pool> sortedNext = next, current(pool.begin(), pool.end());
     std::sort(sortedNext.begin(), sortedNext.end());
     std::sort(current.begin(), current.end());
     if (sortedNext != current) return;
-    std::copy(next.begin(), next.end(), pool);
+    std::copy(next.begin(), next.end(), pool.begin());
 }
 bool GameObjectManager::restoreAnimationState(const std::vector<uint8_t>& bytes) {
     mc2::save::Archive archive(bytes);
@@ -1417,9 +1418,12 @@ bool GameObjectManager::restoreAnimationState(const std::vector<uint8_t>& bytes)
     if (archive.remaining() > 0)
         for (auto& handles : order) archive(handles);
     if (!archive.finish()) return false;
-    applyPoolOrder(turrets, numTurrets, order[0], objList, getMaxObjects()); applyPoolOrder(buildings, numBuildings, order[1], objList, getMaxObjects());
-    applyPoolOrder(gates, numGates, order[2], objList, getMaxObjects()); applyPoolOrder(artillery, numArtillery, order[3], objList, getMaxObjects());
-    applyPoolOrder(carnage, numCarnage, order[4], objList, getMaxObjects()); applyPoolOrder(weapons, numWeapons, order[5], objList, getMaxObjects());
+    applyPoolOrder(std::span(turrets, static_cast<size_t>(numTurrets)), order[0], objList, getMaxObjects());
+    applyPoolOrder(std::span(buildings, static_cast<size_t>(numBuildings)), order[1], objList, getMaxObjects());
+    applyPoolOrder(std::span(gates, static_cast<size_t>(numGates)), order[2], objList, getMaxObjects());
+    applyPoolOrder(std::span(artillery, static_cast<size_t>(numArtillery)), order[3], objList, getMaxObjects());
+    applyPoolOrder(std::span(carnage, static_cast<size_t>(numCarnage)), order[4], objList, getMaxObjects());
+    applyPoolOrder(std::span(weapons, static_cast<size_t>(numWeapons)), order[5], objList, getMaxObjects());
     for (auto& [handle, animation] : states) {
         auto* appearance = objList[handle]->getAppearance();
         *appearance->simulationAnimation() = std::move(animation);
