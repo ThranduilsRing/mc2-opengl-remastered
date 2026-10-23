@@ -9,16 +9,15 @@ namespace RenderCore {
 enum class VisibilityTier { Tier1_NMinusOne, Tier2_NMinusTwo, Tier3_Conservative };
 class VisibilityHistory {
 public:
-    static constexpr uint32_t kSlots=3, kMaxActorHandle=8192, kStaleLimit=10, kNone=UINT32_MAX;
+    static constexpr uint32_t kSlots=3, kStaleLimit=10, kNone=UINT32_MAX;
     struct Sample {
         std::vector<uint32_t> ids, bits;
         uint32_t count=0, visibleCount=0, dilatedAdmits=0, frame=0;
         bool valid=false;
     };
     struct SnapshotStats { uint32_t visible=0, invisible=0, orAdmits=0, overflow=0; };
-    explicit VisibilityHistory(uint32_t capacity=0) {
+    explicit VisibilityHistory(uint32_t capacity=0) : visible_(1,1) {
         for (auto& sample:samples_) { sample.ids.resize(capacity); sample.bits.resize(capacity); }
-        visible_.fill(1);
     }
     uint32_t writeSlot() const { return current_; }
     void advance() { current_=(current_+1)%kSlots; }
@@ -51,16 +50,18 @@ public:
         return VisibilityTier::Tier3_Conservative;
     }
     SnapshotStats buildSnapshot(uint32_t maxActorHandle, bool useOr, bool countStats=false) {
-        visible_.fill(1); SnapshotStats stats;
+        // Object handles include terrain objects; their range grows with the
+        // mission, independently of the number of submitted dynamic actors.
+        visible_.resize(maxActorHandle,1);
+        std::fill(visible_.begin(),visible_.end(),uint8_t{1}); SnapshotStats stats;
         if (lastGood_==kNone || !samples_[lastGood_].valid) return stats;
-        const uint32_t cap=(std::min)(maxActorHandle,kMaxActorHandle);
+        const uint32_t cap=maxActorHandle;
         auto apply=[&](const Sample& sample, bool primary) {
             if (!sample.valid) return;
             for (uint32_t i=0;i<sample.count;++i) {
                 const uint32_t id=sample.ids[i];
                 if (!id) continue;
-                if (id>=kMaxActorHandle) { if (!stats.overflow) stats.overflow=id; continue; }
-                if (id>=cap) continue;
+                if (id>=cap) { if (!stats.overflow) stats.overflow=id; continue; }
                 const uint8_t bit=sample.bits[i]!=0;
                 if (primary) visible_[id]=bit;
                 else if (bit && !visible_[id]) { visible_[id]=1; ++stats.orAdmits; }
@@ -72,11 +73,11 @@ public:
         return stats;
     }
     bool isVisible(uint32_t id) const {
-        return lastGood_==kNone || id==0 || id>=kMaxActorHandle || visible_[id]!=0;
+        return lastGood_==kNone || id==0 || id>=visible_.size() || visible_[id]!=0;
     }
 private:
     std::array<Sample,kSlots> samples_;
-    std::array<uint8_t,kMaxActorHandle> visible_;
+    std::vector<uint8_t> visible_;
     uint32_t current_=0, lastGood_=kNone, stale_=0;
 };
 }

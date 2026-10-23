@@ -433,8 +433,8 @@ void GameObjectManager::updateReadbackSnapshot() {
 	// readback_buildActorVisSnapshot is no-op-cheap when no good slot exists.
 	if (s_gpuCullLifecycle || gpu_cull::readback_isEnabled()) {
 		ZoneScopedN("GOM.readbackSnapshot");
-		// Max handle is bounded by maxObjects + slack; 4096 is safe for MC2 (~2000 max).
-		gpu_cull::readback_buildActorVisSnapshot(4096u);
+		// Handles index objList, including every generated terrain object.
+		gpu_cull::readback_buildActorVisSnapshot(static_cast<uint32_t>(getMaxObjects())+1u);
 	}
 }
 
