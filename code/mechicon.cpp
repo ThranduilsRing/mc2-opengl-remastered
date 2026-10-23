@@ -11,6 +11,7 @@ MechIcon.cpp			: Implementation of the MechIcon component.
 
 #include"mechicon.h"
 #include "icon_registry.h"
+#include <mdspan>
 #include "../GameOS/gameos/texture_decode.h"
 #include "mc2fmt.h"
 #include"mover.h"
@@ -308,10 +309,11 @@ void MechIcon::setDrawBack(bool bSet)
     DWORD* dest = page.pTexture + rect.y * page.Width + rect.x;
     unit_icons::blit(hudSheet(false), unit->getIconPictureIndex(), true,
                      reinterpret_cast<uint32_t*>(dest), page.Width, int(unitIconX), int(unitIconY));
+    std::mdspan<DWORD, std::dextents<size_t, 2>> pixels(page.pTexture, page.Height, page.Width);
     // Only the rear torso colours belong in the back paperdoll.
     for (int y = 0; y < unitIconY; ++y)
         for (int x = 0; x < unitIconX; ++x) {
-            DWORD& pixel = dest[y * page.Width + x];
+            DWORD& pixel = pixels[rect.y + y, rect.x + x];
             bool draw = pixel == 0xff505050 || pixel == 0xffff00ff || pixel == 0xff202020;
             for (int ci = 0; ci < 3; ++ci) {
                 const long first = (damageColors[0][ci] >> 16) + 4;
@@ -381,7 +383,7 @@ bool MechIcon::init( long whichIndex )
     if (!page.pTexture) return false;
     unit_icons::blit(hudSheet(false), whichIndex, false,
                      reinterpret_cast<uint32_t*>(page.pTexture + rect.y * page.Width + rect.x),
-                     page.Width, int(unitIconX), int(unitIconY), unit ? unit->getObjectType()->getAppearanceTypeName() : nullptr);
+                     page.Width, int(unitIconX), int(unitIconY), unit ? unit->getObjectType()->getAppearanceTypeName() : "");
     gos_UnLockTexture(handle);
 
 	for ( int i = 0; i < 5; ++i )

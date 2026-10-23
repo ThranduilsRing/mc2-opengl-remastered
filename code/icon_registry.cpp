@@ -11,6 +11,7 @@
 #include "Gates/gate.h"
 #include <filesystem>
 #include <set>
+#include <bit>
 
 namespace unit_icons {
 namespace {
@@ -20,7 +21,7 @@ std::set<std::string> warned;
 std::map<std::string, AssetScale::Vec2> sourceScale;
 
 struct Pixels { int w = 0, h = 0; DWORD logicalW = 0, logicalH = 0; std::vector<uint32_t> data; };
-Pixels load(const std::string& path, bool hud = false) {
+Pixels load(std::string path, bool hud = false) {
     Pixels out;
     if (!fileExists(path.c_str())) return out;
     if (hud) {
@@ -54,15 +55,16 @@ Pixels load(const std::string& path, bool hud = false) {
     return out;
 }
 
-void addSheet(const std::string& path, int cw, int ch, bool hud = false) {
-    if (!hud && sourceScale.contains(path)) return;
-    auto src = load(path, hud);
+void addSheet(std::string path, int cw, int ch, int stripRows = 0) {
+    if (!stripRows && sourceScale.contains(path)) return;
+    auto src = load(path, stripRows != 0);
     if (src.data.empty()) return;
-    if (hud) {
-        // A column-extended mod strip is not an upscale. Keep the old scale-aware sampling.
-        const auto f = AssetScale::blitFactorFor(AssetScale::key(path.c_str()), src.w, src.h, "icon_registry.blit");
+    if (stripRows) {
+        // Height declares the authored scale; width may add or remove icon columns.
+        const float scale = float(src.h) / (ch * stripRows);
+        const AssetScale::Vec2 f{scale, scale};
         int cols = int(src.w / (cw * f.x) + .01f);
-        int rows = std::min(2, int(src.h / (ch * f.y) + .01f));
+        int rows = stripRows;
         while (cols > 0 && int((cols - 1) * cw * f.x) + int((cw - 1) * f.x) >= src.w) --cols;
         while (rows > 0 && int((rows - 1) * ch * f.y) + int((ch - 1) * f.y) >= src.h) --rows;
         const int w = cols * cw, h = rows * ch;
@@ -82,9 +84,9 @@ void addSheet(const std::string& path, int cw, int ch, bool hud = false) {
     }
 }
 
-void layoutSheet(const char* layout, const char* block) {
+void layoutSheet(std::string layout, std::string block) {
     FitIniFile file;
-    if (file.open(layout) != NO_ERR || file.seekBlock(block) != NO_ERR) return;
+    if (file.open(layout.c_str()) != NO_ERR || file.seekBlock(block.c_str()) != NO_ERR) return;
     long w = 0, h = 0;
     char name[256]{};
     if (file.readIdLong("Width", w) != NO_ERR || file.readIdLong("Height", h) != NO_ERR ||
@@ -100,7 +102,7 @@ void collect(const char* key, void* data) {
         static_cast<std::set<std::string>*>(data)->insert(std::move(path));
 }
 
-void init(const std::string& first = {}, int cw = 25, int ch = 30) {
+void init(std::string first = {}, int cw = 25, int ch = 30) {
     if (texture) return;
     std::vector<uint32_t> missing(16 * 16);
     for (int y = 0; y < 16; ++y)
@@ -113,12 +115,12 @@ void init(const std::string& first = {}, int cw = 25, int ch = 30) {
     for (const auto* name : {"data/art/mcui_gn_mechicons.tga", "data/art/mc2x_mechicons.tga", "data/art/x_mc2x_mechicons.tga"})
         addSheet(name, first == name ? cw : 25, first == name ? ch : 30);
     if (!first.empty() && !sourceScale.contains(first)) addSheet(first, cw, ch);
-    addSheet("data/art/mcui_low4.tga", 25, 30, true);
-    addSheet("data/art/mcui_med4.tga", 32, 38, true);
-    addSheet("data/art/mcui_high7.tga", 40, 48, true);
-    addSheet("data/art/mcui_low5.tga", 25, 30, true);
-    addSheet("data/art/mcui_med5.tga", 32, 38, true);
-    addSheet("data/art/mcui_high8.tga", 40, 48, true);
+    addSheet("data/art/mcui_low4.tga", 25, 30, 2);
+    addSheet("data/art/mcui_med4.tga", 32, 38, 2);
+    addSheet("data/art/mcui_high7.tga", 40, 48, 2);
+    addSheet("data/art/mcui_low5.tga", 25, 30, 1);
+    addSheet("data/art/mcui_med5.tga", 32, 38, 1);
+    addSheet("data/art/mcui_high8.tga", 40, 48, 1);
 
     std::set<std::string> loose;
     std::error_code ec;
@@ -146,11 +148,12 @@ void init(const std::string& first = {}, int cw = 25, int ch = 30) {
     if (!registry.pack() || registry.edge > 8192) {
         mc2::fmt::print_err("[ICON_REGISTRY] atlas exceeds texture source capacity; using placeholder\n");
         std::erase_if(registry.icons, [](const auto& item) {
-            return item.first != "missing" && !item.first.starts_with("damage/");
+            const auto& [key, icon] = item;
+            return key != "missing" && !key.starts_with("damage/");
         });
         registry.pack();
     }
-    texture = mc2::textures::fromRawPixels(reinterpret_cast<DWORD*>(registry.atlas.data()), gos_Texture_Alpha, 0, registry.edge);
+    texture = mc2::textures::fromRawPixels(std::bit_cast<DWORD*>(registry.atlas.data()), gos_Texture_Alpha, 0, registry.edge);
     mc2::textures::adoptOwned(texture);
     mc2::fmt::print_out("[ICON_REGISTRY] icons={} atlas={}x{}\n", registry.icons.size(), registry.edge, registry.edge);
     if (mc2::gate::get<"MC2_LOG_MECH_ICON">() || mc2::gate::get<"MC2_LOG_MECHICON">()) {
@@ -170,19 +173,20 @@ void init(const std::string& first = {}, int cw = 25, int ch = 30) {
     }
 }
 
-const Icon& resolve(const std::string& key) {
+const Icon& resolve(std::string key) {
     if (const Icon* icon = registry.find(key)) return *icon;
-    if (warned.insert(key).second)
+    const auto [position, inserted] = warned.insert(key);
+    if (inserted)
         mc2::fmt::print_err("[ICON_REGISTRY] missing key={} (placeholder)\n", key);
     return *registry.find("missing");
 }
 }
 
-void apply(aObject& widget, const aObject& source, long index, const char* chassis) {
+void apply(aObject& widget, const aObject& source, long index, std::string chassis) {
     const char* name = mc2::textures::name(source.getTextureHandle());
     const std::string sheet = canonical(name ? name : "missing");
     init(sheet, int(source.width()), int(source.height()));
-    const std::string named = "mech/" + canonical(std::filesystem::path(chassis ? chassis : "").stem().string());
+    const std::string named = "mech/" + canonical(std::filesystem::path(chassis).stem().string());
     const bool individual = registry.find(named) != nullptr;
     const auto& icon = resolve(individual ? named : legacyKey(sheet, index));
     if (widget.getTextureHandle() != texture) widget.setTexture(mc2::textures::retain(texture));
@@ -193,13 +197,13 @@ void apply(aObject& widget, const aObject& source, long index, const char* chass
                   icon.x + icon.width + .1f * scale.x - .1f, icon.y + icon.height + .1f * scale.y - .1f);
 }
 
-void blit(const char* sheet, long index, bool back, uint32_t* dest, int stride, int width, int height, const char* chassis) {
+void blit(std::string sheet, long index, bool back, uint32_t* dest, int stride, int width, int height, std::string chassis) {
     init();
     const std::string key = legacyKey(canonical(sheet) + (back ? "/back" : ""), index);
     const Icon* found = registry.find(key);
     // MC2X transport indices also name bay pictures; MCO supplies loose chassis pictures.
     if (!found && !back) {
-        found = registry.find("mech/" + canonical(std::filesystem::path(chassis ? chassis : "").stem().string()));
+        found = registry.find("mech/" + canonical(std::filesystem::path(chassis).stem().string()));
         if (!found) found = registry.find(legacyKey("data/art/mc2x_mechicons.tga", index));
     }
     const auto& icon = found ? *found : resolve(key);

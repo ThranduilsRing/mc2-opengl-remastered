@@ -5,17 +5,16 @@
 #include <span>
 #include <string>
 #include <vector>
+#include <format>
+#include "../mclib/fst_hash.h"
 
 namespace unit_icons {
 
 inline std::string canonical(std::string key) {
-    for (char& c : key) {
-        if (c == '\\') c = '/';
-        if (c >= 'A' && c <= 'Z') c += 'a' - 'A';
-    }
+    fst_normalize_loose_key_inplace(key.data());
     return key;
 }
-inline std::string legacyKey(const std::string& sheet, long index) {
+inline std::string legacyKey(std::string sheet, long index) {
     return canonical(sheet) + ":" + std::to_string(index);
 }
 
@@ -40,7 +39,7 @@ public:
 
     // The compatibility table is generated from the SOURCE grid, never the packed atlas.
     // Floor division deliberately preserves MCO's 1024/40 = 25 columns.
-    void sheet(const std::string& key, std::span<const uint32_t> pixels,
+    void sheet(std::string key, std::span<const uint32_t> pixels,
                int w, int h, int cellW, int cellH, bool strip = false) {
         if (w <= 0 || h <= 0 || cellW <= 0 || cellH <= 0 || pixels.size() != size_t(w) * h) return;
         const int cols = w / cellW, rows = strip ? std::min(2, h / cellH) : h / cellH;
@@ -50,15 +49,17 @@ public:
                 for (int y = 0; y < cellH; ++y)
                     std::copy_n(pixels.data() + size_t(row * cellH + y) * w + col * cellW,
                                 cellW, tile.data() + size_t(y) * cellW);
-                add(legacyKey(strip && row ? key + "/back" : key,
+                add(legacyKey(strip && row ? std::format("{}/back", key) : key,
                               strip ? col : row * cols + col), cellW, cellH, tile);
             }
         }
     }
 
-    const Icon* find(const std::string& key) const {
+    const Icon* find(std::string key) const {
         auto it = icons.find(canonical(key));
-        return it == icons.end() ? nullptr : &it->second;
+        if (it == icons.end()) return nullptr;
+        const auto& [name, icon] = *it;
+        return &icon;
     }
 
     bool pack() {
@@ -103,9 +104,9 @@ public:
 
 class aObject;
 namespace unit_icons {
-void apply(aObject& widget, const aObject& source, long index, const char* chassis);
-void blit(const char* sheet, long index, bool back, uint32_t* dest, int stride, int width, int height,
-          const char* chassis = nullptr);
+void apply(aObject& widget, const aObject& source, long index, std::string chassis);
+void blit(std::string sheet, long index, bool back, uint32_t* dest, int stride, int width, int height,
+          std::string chassis = {});
 const Icon& damageRect(long slot);
 unsigned long damageTexture();
 void shutdown();
