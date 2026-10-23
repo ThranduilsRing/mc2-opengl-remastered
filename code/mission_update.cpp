@@ -496,6 +496,7 @@ void Mission::advanceCombatClock(float seconds)
 
 // Begin the GPU cull frame and update the objects, or only their appearances while frozen.
 void Mission::updateObjectManager() {
+	if (mc2SimTickFrozen(missionInterface) && !MPlayer) return;
 	ObjectManager->snapshotMoverPoses();
 	beginOrderSimulationTick();
 	advanceCombatClock(frameLength);
