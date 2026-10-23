@@ -484,10 +484,11 @@ void execStdSeedRandom (void) {
 	int seed  = ABLi_popInteger();
 
 	// DETERMINISTIC-RNG-1: under MC2_DETERMINISTIC_RNG seedRandom(-1) reseeds from the deterministic sim seed (startup or
-	// mission), never the wall clock. With the gate off it keeps the stock time(nullptr) seed.
+	// mission) mixed with a per-call index, never the wall clock. With the gate off it keeps the stock time(nullptr) seed.
 	const bool detRng = mc2::gate::get<"MC2_DETERMINISTIC_RNG">();
 	const uint32_t simSeed = static_cast<uint32_t>(SimMissionSeed());
-	ABLSeedRandomCallback(mc2_det_rng::resolveSeedRandom(seed, detRng, simSeed, static_cast<uint32_t>(time(nullptr))));
+	ABLSeedRandomCallback(mc2_det_rng::resolveSeedRandom(seed, detRng, simSeed, static_cast<uint32_t>(time(nullptr)),
+		detRng && seed == -1 ? NextSimSeedRandomCall() : 0));
 }
 
 //-----------------------------------------------------------------------------
