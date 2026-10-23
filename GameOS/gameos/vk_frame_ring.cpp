@@ -8,16 +8,23 @@
 
 #include "vulkan_context.h"
 #include "mc2_diag_verbose.h"
+#include "RenderCore/GpuResidencyPolicy.h"
+#include "Gates/render_options.h"
 
 namespace mc2vk {
 
 namespace {
-constexpr VkDeviceSize kInitialPerSlot = 16ull * 1024 * 1024;   // islands bind it with dynamic offsets: growth rewrites their sets, so it is sized not to
+VkDeviceSize initialPerSlot() { return (4ull*1024*1024)<<mc2::options::current().shadowQuality; }
 constexpr VkBufferUsageFlags kUsage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT |
                                       VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
 }  // namespace
 
 bool FrameRing::grow(VulkanContext& ctx, VkDeviceSize perSlot) {
+    const auto policy=RenderCore::gpuResidencyPolicy(mc2::options::current().shadowQuality);
+    if(perSlot*(FrameRingCore::kSlots+1)>policy.textureUpload) {
+        std::fprintf(stderr,"[VK_RESIDENCY v1] refused=framering bytes=%llu policy=%llu fallback=skip_draw\n",perSlot*(FrameRingCore::kSlots+1),policy.textureUpload);
+        return false;
+    }
     OwnedBuffer fresh;
     VkBufferCreateInfo bci{VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
     bci.size = perSlot * (FrameRingCore::kSlots + 1);   // one slot of tail: a dynamic descriptor range of perSlot bytes fits from any offset
@@ -41,14 +48,14 @@ bool FrameRing::grow(VulkanContext& ctx, VkDeviceSize perSlot) {
 }
 
 VkBuffer FrameRing::ensureBuffer(VulkanContext& ctx) {
-    if (!buffer_ && !grow(ctx, kInitialPerSlot)) return VK_NULL_HANDLE;
+    if (!buffer_ && !grow(ctx, initialPerSlot())) return VK_NULL_HANDLE;
     return buffer_.get();
 }
 
 FrameAlloc FrameRing::alloc(VulkanContext& ctx, VkDeviceSize size, VkDeviceSize align) {
     FrameAlloc out;
     if (size == 0) size = 1;
-    if (!buffer_ && !grow(ctx, kInitialPerSlot > size * 2 ? kInitialPerSlot : size * 2)) return out;
+    if (!buffer_ && !grow(ctx, initialPerSlot() > size * 2 ? initialPerSlot() : size * 2)) return out;
     uint64_t off = 0;
     if (!core_.alloc(size, align, &off)) {
         // Growth empties both slots of the new buffer; this frame continues in its own slot there.

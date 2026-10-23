@@ -10,7 +10,7 @@
 
 namespace mc2::gate::detail {
 
-inline constexpr std::size_t kGateCount = 892;
+inline constexpr std::size_t kGateCount = 893;
 
 inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_3DVIEW_DIAG", Kind::Bool, Rule::Presence, {}},
@@ -235,6 +235,7 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_GPUBUF_RING", Kind::Bool, Rule::Presence, {}},
     {"MC2_GPUBUF_RING_FORCE_WRAP", Kind::Bool, Rule::Presence, {}},
     {"MC2_GPUPROPS_TRACE", Kind::Bool, Rule::Presence, {}},
+    {"MC2_GPU_BUDGET_MB", Kind::Int, Rule::Prefix, {}},
     {"MC2_GPU_CULL", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_GPU_CULL_AABB_PARITY", Kind::Bool, Rule::Lead0P, {}},
     {"MC2_GPU_CULL_COMPUTE_TRACE", Kind::Bool, Rule::Presence, {}},

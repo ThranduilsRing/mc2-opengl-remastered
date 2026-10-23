@@ -4,12 +4,30 @@
 #include "doctest.h"
 #include "gameos/shadow_bake_math.h"
 #include "gameos/shadow_dirty_tiles.h"
+#include "RenderCore/GpuResidencyPolicy.h"
 
 #include <algorithm>
 
 #include <cmath>
 
 using namespace mc2shadow;
+
+TEST_CASE("GPU residency: physical headroom, preset ceiling and overlap admission") {
+    using namespace RenderCore;
+    CHECK(gpuBudget(512*gpuMiB,512*gpuMiB)==512*gpuMiB-512*gpuMiB/10);
+    CHECK(gpuBudget(256*gpuMiB,512*gpuMiB)==224*gpuMiB);
+    CHECK(gpuBudget(16*gpuMiB,512*gpuMiB)==0);
+    CHECK(gpuBudget(24*1024*gpuMiB,512*gpuMiB)==512*gpuMiB);
+    CHECK(gpuResidencyPolicy(0).total==512*gpuMiB);
+    CHECK(gpuResidencyPolicy(0).vegetation==0);
+    CHECK(gpuResidencyPolicy(1).total==1024*gpuMiB);
+    CHECK(gpuResidencyPolicy(2).total==2048*gpuMiB);
+    CHECK(gpuFits(512,400,80,32));
+    CHECK_FALSE(gpuFits(512,400,80,33));
+    CHECK_FALSE(gpuFits(512,513,0,1));
+    CHECK_FALSE(gpuFits(512,400,UINT64_MAX,1));
+    CHECK_FALSE(gpuFits(512,400,0,UINT64_MAX));
+}
 
 namespace {
 Vec3 sunAt(float altDeg, float azDeg) {
@@ -174,6 +192,10 @@ TEST_CASE("Shadow preset dimensions bound potato resident memory") {
     const auto p=qualityForLevel(0), m=qualityForLevel(1), h=qualityForLevel(2);
     CHECK(p.mapSide==2048); CHECK(p.windowSide==2048); CHECK(p.maskCap==4096);
     CHECK(m.maskTarget==2.0f); CHECK(m.maskCap==8192); CHECK(h.maskTarget==1.5f);
+    CHECK(qualityForLimit(2,8192).level==1);
+    CHECK(qualityForLimit(2,8192).maskCap==8192);
+    CHECK(qualityForLimit(2,2048).maskCap==2048);
+    CHECK(qualityForLimit(2,2048).mapSide==2048);
     const uint64_t resident=uint64_t(p.maskCap)*p.maskCap*2/3+uint64_t(p.mapSide)*p.mapSide*4;
     CHECK(resident<=32*1024*1024);
     const auto basis=lightBasis({1,0,1});

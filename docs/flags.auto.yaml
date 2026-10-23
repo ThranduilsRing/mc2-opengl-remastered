@@ -3,9 +3,9 @@
 # Where each gate is read, what the smoke runner forwards and what tier1_env_vars.md says are not here: ask
 # tools/repo_intel (env_var, gate_status), which scan the sources.
 generator_version: "3.0.0"
-gate_count: 892
+gate_count: 893
 registry_entry_count: 181
-verified_count: 784
+verified_count: 785
 flags:
   - name: MC2_3DVIEW_DIAG
     kind: Bool
@@ -1713,6 +1713,14 @@ flags:
     rule: Presence
     owner: props
     doc: "[GPUPROPS v1] setup-path instrumentation (internal; path tag lives at file scope)."
+    smoke_passthrough: true
+    verified: true
+  - name: MC2_GPU_BUDGET_MB
+    kind: Int
+    default: 0
+    rule: Prefix
+    owner: gameos
+    doc: "Diagnostic residency ceiling in MiB; zero uses device/preset policy. Cannot raise the device budget."
     smoke_passthrough: true
     verified: true
   - name: MC2_GPU_CULL
