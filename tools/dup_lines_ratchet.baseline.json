@@ -7,7 +7,7 @@
   "RenderCore": 402,
   "RenderWorld": 0,
   "code": 14012,
-  "mclib": 28736,
+  "mclib": 28626,
   "shaders": 678
  },
  "dirs": [
@@ -266,7 +266,7 @@
   "mclib/bdactor_terrain.cpp": 216,
   "mclib/bdactor_tree.cpp": 238,
   "mclib/bdactor_tree_static.cpp": 48,
-  "mclib/bdactor_type.cpp": 108,
+  "mclib/bdactor_type.cpp": 110,
   "mclib/bdactor_update.cpp": 176,
   "mclib/camera.h": 205,
   "mclib/camera_daylight.cpp": 60,
@@ -433,7 +433,7 @@
   "mclib/move_movemap_goals.cpp": 118,
   "mclib/move_movemap_path.cpp": 426,
   "mclib/msl_anim.cpp": 29,
-  "mclib/msl_load.cpp": 91,
+  "mclib/msl_load.cpp": 13,
   "mclib/msl_shape.cpp": 85,
   "mclib/msl_transform.cpp": 155,
   "mclib/mstates.h": 38,
@@ -484,7 +484,7 @@
   "mclib/terrtxm2_load.cpp": 97,
   "mclib/tgainfo.cpp": 88,
   "mclib/tgl.h": 166,
-  "mclib/tgl_parse.cpp": 137,
+  "mclib/tgl_parse.cpp": 103,
   "mclib/tgl_render.cpp": 57,
   "mclib/tgl_shadows.cpp": 101,
   "mclib/tgl_transform.cpp": 252,
@@ -518,8 +518,8 @@
   "shaders/vulkan/terrain_tier1.vert": 78,
   "shaders/vulkan/terrain_tier1_skirt.vert": 78
  },
- "head": "9d6ff3edd",
+ "head": "19d2adb12",
  "n": 8,
- "total": 46147,
+ "total": 46037,
  "version": 1
 }
