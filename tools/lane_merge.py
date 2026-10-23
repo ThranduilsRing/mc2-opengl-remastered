@@ -415,8 +415,11 @@ def quick_rows(root: str, runner=run) -> list[tuple[str, int, str]]:
     """Run QUICK_ROWS (cwd = root) on the merged tree. -> the failing [(label, rc, tail)] (empty = green)."""
     failed = []
     for label, args in QUICK_ROWS:
-        if not all(os.path.exists(os.path.join(root, a)) for a in args if a.endswith(".py")):
-            continue  # a root without the script (the throwaway repos of the tests) has nothing to check
+        missing = [a for a in args if a.endswith(".py") and not os.path.exists(os.path.join(root, a))]
+        if missing:
+            if os.path.abspath(root) == os.path.abspath(os.path.join(HERE, "..")):   # the real repo: a renamed script must not skip silently
+                failed.append((label, -1, "quick row script missing: " + ", ".join(missing)))
+            continue  # a throwaway root without the script has nothing to check
         r = runner(root, [sys.executable] + args)
         if r.returncode != 0:
             failed.append((label, r.returncode, "\n".join(r.stdout.splitlines()[-8:])))
