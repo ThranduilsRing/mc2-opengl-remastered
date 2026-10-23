@@ -178,26 +178,30 @@ bool ensure_hdri(Island* s, uint64_t generation) {
         vi.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, mips, 0, 1};
         return mc2vk::create(s->hdriView, s->device, [&](VkImageView* h) { return vkCreateImageView(s->device, &vi, nullptr, h); });
     };
-    if (!createImage()) {
-        if (!haveReal) return false;
-        vlog("HDRI refused by residency or allocation -- black sky.");
+    auto degradeToDummy = [&]() {
         s->hdriView.reset(); s->hdriImg.reset();
         haveReal = false; fmt = VK_FORMAT_R16G16B16A16_SFLOAT; w = 1; h = 1; mips = 1;
         levels.assign(1, std::vector<unsigned char>(8, 0));
         dims.assign(1, {1, 1});
-        if (!createImage()) return false;
-    }
-
-    std::vector<VkDeviceSize> offs(levels.size());
-    VkDeviceSize total = 0;
-    for (size_t i = 0; i < levels.size(); ++i) { offs[i] = total; total += static_cast<VkDeviceSize>(((levels[i].size() + 15) & ~size_t(15))); }
+    };
+    std::vector<VkDeviceSize> offs;
     mc2vk::OwnedBuffer staging;   // released on return; submit_once has waited for the copy by then
-    {
+    auto createStaging = [&]() -> bool {
+        offs.assign(levels.size(), 0);
+        VkDeviceSize total = 0;
+        for (size_t i = 0; i < levels.size(); ++i) { offs[i] = total; total += static_cast<VkDeviceSize>(((levels[i].size() + 15) & ~size_t(15))); }
         VkBufferCreateInfo bci{};
         bci.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO; bci.size = total ? total : 16; bci.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
         VmaAllocationCreateInfo aci{};
         aci.usage = VMA_MEMORY_USAGE_AUTO; aci.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
-        if (!staging.create(s->allocator, s->device, bci, aci, "sky.staging")) return false;
+        return staging.create(s->allocator, s->device, bci, aci, "sky.staging");
+    };
+    bool admitted = createImage() && createStaging();
+    if (!admitted) {
+        if (!haveReal) return false;
+        vlog("HDRI (image or staging copy) refused by residency or allocation -- black sky.");
+        degradeToDummy();
+        if (!createImage() || !createStaging()) { s->hdriView.reset(); s->hdriImg.reset(); return false; }
     }
     {
         void* p = staging.map();

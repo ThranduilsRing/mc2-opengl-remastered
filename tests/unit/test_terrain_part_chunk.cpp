@@ -313,3 +313,27 @@ TEST_CASE("a pre-change R2 animation record (v2, no selector memory) loads with 
 	badRead(rejected);
 	CHECK_FALSE(badRead.good());
 }
+
+TEST_CASE("a dev-window v2 record (v3 layout stamped version 2) fails the v2 parse and loads as v3") {
+	mc2::sim::UnitAnimState src;
+	src.imported.activeClip = "walk";
+	src.imported.phase.landing = true;
+	src.imported.mode = mc2clip::Mode::Once;
+	src.imported.locomotion = true;
+	mc2::save::Archive oldWindow;      // de4413807..f8b4174c3 wrote exactly the v3 field list
+	oldWindow(src);
+	REQUIRE(oldWindow.good());
+	mc2::sim::UnitAnimState asV2;
+	mc2::save::Archive v2(oldWindow.bytes());
+	v2.sectionVersion = 2;
+	v2(asV2);
+	CHECK_FALSE(v2.finish());          // trailing selector bytes: the loader sees a rejection and retries as v3
+	mc2::sim::UnitAnimState asV3;
+	mc2::save::Archive v3(oldWindow.bytes());
+	v3.sectionVersion = 3;
+	v3(asV3);
+	REQUIRE(v3.finish());
+	CHECK(asV3.imported.phase.landing);
+	CHECK(asV3.imported.mode == mc2clip::Mode::Once);
+	CHECK(asV3.imported.locomotion);
+}
