@@ -420,10 +420,10 @@ bool create_matnormal_sampler(TerrainIsland* s) {
     VkSamplerCreateInfo sci{};
     sci.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
     sci.magFilter = VK_FILTER_LINEAR; sci.minFilter = VK_FILTER_LINEAR;   // GL_LINEAR (mag)
-    sci.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
+    sci.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
     // GL_REPEAT wrap (gameos_graphics.cpp:2174-2175) — material detail normals tile.
     sci.addressModeU = sci.addressModeV = sci.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-    sci.maxLod = 0.25f;  // base level only (VK detail port samples level 0, no anti-tile mips)
+    sci.maxLod = VK_LOD_CLAMP_NONE;  // both imports are mip-complete; the explicit-gradient detail taps pick the level
     return mc2vk::create(s->matNormalSamp, s->device, [&](auto* h) { return vkCreateSampler(s->device, &sci, nullptr, h); });
 }
 
@@ -440,17 +440,40 @@ bool ensure_dummy_matnormal(TerrainIsland* s) {
     return true;
 }
 
-// Copy-once import of the terrain detail-normal array (level 0, one layer per slot), assembled from the slot textures' own texels
-// and dropped after the upload, so no CPU copy of the array outlives it; again whenever the GL array is rebuilt (its name is the
-// change key). Absent optional slots get the flat normal, as in GL's array. The VK detail port samples no anti-tile mips.
+// The terrain detail-normal array, layers 0-5 (the only ones terrain_tier1.frag samples). Preferred: the cooked BC7 layers with
+// their authored mip chains from the field store. Otherwise a copy-once import of the slot textures' own texels (RGBA8, mips built
+// at upload), again whenever the slot set is rebuilt. Absent optional slots get the flat normal, as in GL's array.
 // Fail-soft: a slot that is not RGBA8 at slot 0's size is rejected with a log line and the dummy stays bound.
 void import_matnormal(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
     if(mc2::options::current().shadowQuality==0) return; // Potato keeps the flat-normal placeholder.
+    const auto* fields = gos_TerrainFieldStore();
+    if (fields && fields->materialNormals().image) {
+        const auto& cooked = fields->materialNormals();
+        if (cooked.version == s->matNormalCookedVersion) return;
+        s->matNormalCookedVersion = cooked.version;
+        const uint32_t side = uint32_t(cooked.image->width);
+        RenderCore::TextureKey key;
+        key.source = RenderCore::makeTextureSourceId("terrain-detail-normals", "bc7-array", cooked.version);
+        key.format = cooked.image->vkFormat; key.hints = gosHint_MipmapFilter0;
+        if (auto tex = mc2vk::getOrCreateEngineVulkanContext().textures().acquire(key, *cooked.image, {side, side, side, side}, cooked.layers, true)) {
+            s->matNormalTexture = std::move(tex);
+            s->matNormalLayers = cooked.layers;
+            s->matNormalReady = true;
+            s->matNormalVersionImported = 0;   // a later map without the cooked layers imports its slot textures again
+            write_descriptors(s);
+            vlog("VK-TERRAIN-DETAIL: imported the cooked detail-normal array %ux%u x%u layers, %d mips (BC7).",
+                 side, side, cooked.layers, cooked.image->mipCount);
+            return;
+        }
+        vlog("VK-TERRAIN-DETAIL: the cooked detail-normal array was refused; importing the slot textures.");
+    } else {
+        s->matNormalCookedVersion = 0;
+    }
     const uint64_t version = feed.matNormalVersion;
     if (version == 0) return;                        // array not built yet -> macro-slope only
     if (version == s->matNormalVersionImported && s->matNormalReady) return; // already imported
     if (version == s->matNormalVersionRejected) return;
-    constexpr uint32_t kSlots = 9;
+    constexpr uint32_t kSlots = 6;
     GosTexels slots[kSlots];
     for (uint32_t i = 0; i < kSlots; ++i) {
         if (feed.matNormalHandles[i] == 0) continue;   // 0 = the invalid gos handle
@@ -480,8 +503,9 @@ void import_matnormal(TerrainIsland* s, const Mc2TerrainTier1Feed& feed) {
             for (size_t t = 0; t < layerBytes; t += 4) { dst[t] = 128; dst[t + 1] = 128; dst[t + 2] = 255; dst[t + 3] = 255; }
         }
     }
-    if (upload_sampled_image_array(s, s->matNormalTexture, VK_FORMAT_R8G8B8A8_UNORM, w, h, kSlots, px.data(),
-                                   static_cast<VkDeviceSize>(px.size()))) {
+    if (auto tex = mc2vk::getOrCreateEngineVulkanContext().textures().acquirePixels(w, h, VK_FORMAT_R8G8B8A8_UNORM, px.data(), px.size(),
+                                                                                   true, kSlots, true)) {
+        s->matNormalTexture = std::move(tex);
         s->matNormalVersionImported = version;
         s->matNormalLayers = kSlots;
         s->matNormalReady = true;

@@ -86,3 +86,22 @@ def test_concrete_cook_timeout_and_missing_source_are_loud(tmp_path, monkeypatch
         raise subprocess.TimeoutExpired(cmd, 300)
     dp.ensure_concrete_detail(str(tmp_path), slow)
     assert "timed out" in capsys.readouterr().out
+
+
+def test_engine_normal_sidecars_are_cooked_only_when_absent_or_stale(tmp_path):
+    import os
+    tex = tmp_path / "data" / "textures"
+    tex.mkdir(parents=True)
+    for i in range(6):
+        (tex / f"mat{i}_normal.tga").write_bytes(b"t")
+    calls = []
+    cooker = lambda cmd, **kw: (calls.append(cmd), type("R", (), {"returncode": 0, "stdout": "", "stderr": ""})())[1]
+    dp.ensure_engine_normal_cooks(str(tmp_path), cooker)
+    assert len(calls) == 1 and calls[0][-2:] == ["--engine-normals", str(tex)]
+    for i in range(6):
+        (tex / f"mat{i}_normal.ktx2").write_bytes(b"k")
+    dp.ensure_engine_normal_cooks(str(tmp_path), cooker)
+    assert len(calls) == 1
+    os.utime(tex / "mat3_normal.tga", (4e9, 4e9))          # a newer TGA makes its sidecar stale
+    dp.ensure_engine_normal_cooks(str(tmp_path), cooker)
+    assert len(calls) == 2

@@ -47,6 +47,48 @@ if str(_HERE) not in sys.path:
 
 import cook_pbr_maps as pbr  # noqa: E402
 
+# The engine detail-normal layers terrain_tier1.frag samples (MAT_LAYER_ROCK .. MAT_LAYER_MARBLE_CLIFF). Each
+# data/textures/matN_normal.tga gets a matN_normal.ktx2 sidecar next to it (BC7 linear, full mip chain), which the
+# terrain loader prefers under the usual sidecar precedence (a mod TGA beats a base KTX).
+ENGINE_NORMAL_SLOTS = range(6)
+
+
+def engine_normal_texels(tga_path):
+    """The texels the engine uploads for a matN_normal.tga: the TGA's own byte order (B, G, R, A), top row first, A=255 for 24-bit."""
+    import numpy as np
+    from PIL import Image
+    with Image.open(tga_path) as img:
+        rgba = np.asarray(img.convert('RGBA'))
+    return np.ascontiguousarray(rgba[:, :, [2, 1, 0, 3]])
+
+
+def cook_engine_normals(src_dir, out_dir=None, ktx_exe=pbr.DEFAULT_KTX_EXE, force=False):
+    """matN_normal.tga -> matN_normal.ktx2 for the sampled slots; an output newer than its source is kept.
+    Returns [(ktx2 path, ok)] per slot."""
+    from PIL import Image
+    out_dir = out_dir or src_dir
+    os.makedirs(out_dir, exist_ok=True)
+    results = []
+    with tempfile.TemporaryDirectory(dir=out_dir) as tmp:
+        for slot in ENGINE_NORMAL_SLOTS:
+            src = os.path.join(src_dir, f'mat{slot}_normal.tga')
+            dst = os.path.join(out_dir, f'mat{slot}_normal.ktx2')
+            if not os.path.isfile(src):
+                results.append((dst, False))
+                continue
+            if not force and os.path.isfile(dst) and os.path.getmtime(dst) >= os.path.getmtime(src):
+                results.append((dst, True))
+                continue
+            png = os.path.join(tmp, f'mat{slot}_normal.png')
+            Image.fromarray(engine_normal_texels(src), 'RGBA').save(png)
+            staged = os.path.join(tmp, f'mat{slot}_normal.ktx2')
+            ok = pbr.cook_png_to_bc7(ktx_exe, png, staged, vk_format='R8G8B8A8_UNORM', oetf='linear', tmpdir=tmp, mips=True)
+            if ok:
+                os.replace(staged, dst)
+            results.append((dst, ok))
+    return results
+
+
 DEFAULT_MANIFEST = _HERE / 'terrain_layer_manifest.json'
 DEFAULT_OUTPUT_SIZE = 2048
 DEFAULT_OUTPUT_DIR = 'data/terrain_layers'
@@ -218,7 +260,16 @@ def main():
     parser.add_argument('--dry-run', action='store_true', help='Print planned actions, cook nothing.')
     parser.add_argument('--ktx-exe', default=pbr.DEFAULT_KTX_EXE,
                         help=f'Path to ktx.exe (default: {pbr.DEFAULT_KTX_EXE})')
+    parser.add_argument('--engine-normals', metavar='TEXTURES_DIR', default=None,
+                        help='Cook the sampled matN_normal.tga layers in TEXTURES_DIR to BC7 mip-complete matN_normal.ktx2 '
+                             'sidecars (into --out-dir, default TEXTURES_DIR) and exit.')
     args = parser.parse_args()
+
+    if args.engine_normals:
+        results = cook_engine_normals(args.engine_normals, args.out_dir, args.ktx_exe, args.force)
+        for path, ok in results:
+            print(f'  {"OK" if ok else "FAILED"}  {path}')
+        sys.exit(0 if all(ok for _, ok in results) else 1)
 
     manifest = load_manifest(args.manifest)
     errors = validate_manifest(manifest)

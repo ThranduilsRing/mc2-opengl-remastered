@@ -217,6 +217,7 @@ struct TerrainIsland : mc2vk::IslandState {
     mc2vk::OwnedSampler     matNormalSamp;   // REPEAT/LINEAR (GL_REPEAT wrap)
     uint64_t      matNormalVersionImported = 0;      // last source version imported
     uint64_t      matNormalVersionRejected = 0;      // rejected source version, logged once
+    uint64_t      matNormalCookedVersion = 0;        // field-store version of the cooked BC7 layers last tried
     uint32_t      matNormalLayers = 0;               // layer count of the imported array
     bool          matNormalReady = false;            // set once the real array is live
     // CONCRETE-ROAD-PBR-DETAIL: binding 18, 2-layer RGBA8 array (0 pad concrete, 1 road asphalt): normal xy, roughness, AO.

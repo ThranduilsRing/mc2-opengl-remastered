@@ -118,6 +118,7 @@ extern "C" int mc2_vk_terrain_island_prewarm(int w, int h) {
     import_shore_mask(s, feed);
     import_materials(s);
     import_concrete_detail(s);
+    import_matnormal(s, feed);
     if (feed.visualHeightCpu) snapshot_visual_height(s, feed);
     return 1;
 }
@@ -334,6 +335,7 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     import_shore_mask(s, feed);
     import_materials(s);
     import_concrete_detail(s);
+    import_matnormal(s, feed);
 
     // VK-TERRAIN-VISUALDISPLACE-FAR-1: version-gated mission-load snapshot of the 4x
     // visual-height bake (no-op unless the sub-gate armed the feed fields AND the bake

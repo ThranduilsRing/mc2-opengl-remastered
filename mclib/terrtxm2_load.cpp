@@ -4,6 +4,7 @@
 #include "texture_assets.h"
 #include "mc2fmt.h"
 #include "tga_scratch.h"
+#include "../GameOS/gameos/terrain_field_store.h"
 
 using mc2::tga::loadTga;
 using mc2::tga::tgaPixelsPresent;
@@ -708,6 +709,21 @@ long TerrainColorMap::init (char *fileName)
 			}
 		} else {
 			mc2::fmt::print_out("[SPLATTING] FAILED to load all material textures\n");
+		}
+
+		// The layers the terrain samples (0-5) prefer their cooked BC7 mip-complete sidecars (matN_normal.ktx2, same provider
+		// precedence as every texture sidecar). One missing or unusable layer keeps the TGA import for all of them.
+		if (auto* fields = gos_TerrainFieldStore()) {
+			std::vector<RenderCore::KtxImage> cooked(6);
+			bool all = true;
+			for (int mat = 0; mat < 6 && all; mat++) {
+				FullPathFileName nmPath;
+				nmPath.init(texturePath, normalNames[mat], ".tga");
+				all = mc2::textures::loadCookedSidecar(static_cast<const char*>(nmPath), cooked[mat]);
+			}
+			const bool used = all && fields->setMaterialNormals(cooked);
+			if (!used) fields->setMaterialNormals({});
+			mc2::fmt::print_out("[SPLATTING] cooked detail normals: {}\n", used ? "BC7 sidecars" : "absent, TGA import");
 		}
 
 		// Retain CPU copy of matNormal2 alpha for terrain elevation displacement

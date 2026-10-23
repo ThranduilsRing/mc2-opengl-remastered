@@ -344,5 +344,52 @@ class TestSyntheticCookRoundTrip(unittest.TestCase):
         self.assertEqual(data[:12], KTX2_MAGIC)
 
 
+class TestEngineNormalCook(unittest.TestCase):
+    """matN_normal.tga -> matN_normal.ktx2: the texels must be the bytes the engine uploads from the TGA (B, G, R, A)."""
+
+    def setUp(self):
+        self.tmpdir = tempfile.mkdtemp(prefix='engine_normals_')
+
+    def tearDown(self):
+        shutil.rmtree(self.tmpdir, ignore_errors=True)
+
+    def _tga(self, name, mode, pixel):
+        from PIL import Image
+        Image.new(mode, (4, 4), pixel).save(os.path.join(self.tmpdir, name))
+
+    def test_texels_keep_tga_byte_order_and_opaque_24_bit(self):
+        self._tga('mat0_normal.tga', 'RGBA', (10, 20, 30, 40))
+        self._tga('mat5_normal.tga', 'RGB', (10, 20, 30))
+        self.assertEqual(tuple(ctl.engine_normal_texels(os.path.join(self.tmpdir, 'mat0_normal.tga'))[0, 0]), (30, 20, 10, 40))
+        self.assertEqual(tuple(ctl.engine_normal_texels(os.path.join(self.tmpdir, 'mat5_normal.tga'))[0, 0]), (30, 20, 10, 255))
+
+    def test_up_to_date_outputs_are_kept_and_missing_sources_fail(self):
+        for slot in range(6):
+            self._tga(f'mat{slot}_normal.tga', 'RGBA', (128, 128, 255, 255))
+            open(os.path.join(self.tmpdir, f'mat{slot}_normal.ktx2'), 'wb').close()
+        os.remove(os.path.join(self.tmpdir, 'mat5_normal.tga'))
+        calls = []
+        original = pbr.cook_png_to_bc7
+        pbr.cook_png_to_bc7 = lambda *a, **k: calls.append(a) or False
+        try:
+            results = ctl.cook_engine_normals(self.tmpdir, ktx_exe='unused')
+        finally:
+            pbr.cook_png_to_bc7 = original
+        self.assertEqual(calls, [])          # every existing sidecar is newer than its source
+        self.assertEqual([ok for _, ok in results], [True] * 5 + [False])
+
+    @unittest.skipUnless(os.path.exists(pbr.DEFAULT_KTX_EXE), 'ktx.exe not available in this environment')
+    def test_cook_writes_mip_complete_bc7(self):
+        for slot in range(6):
+            self._tga(f'mat{slot}_normal.tga', 'RGBA', (128, 128, 255, 255))
+        results = ctl.cook_engine_normals(self.tmpdir, ktx_exe=pbr.DEFAULT_KTX_EXE)
+        self.assertTrue(all(ok for _, ok in results))
+        with open(results[0][0], 'rb') as f:
+            header = f.read(48)
+        import struct
+        vk_format, _, width, height, _, layers, faces, levels = struct.unpack_from('<8I', header, 12)
+        self.assertEqual((vk_format, width, height, levels), (145, 4, 4, 3))   # BC7 UNORM, 4 -> 2 -> 1
+
+
 if __name__ == '__main__':
     unittest.main()

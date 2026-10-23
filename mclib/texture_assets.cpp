@@ -169,6 +169,9 @@ std::shared_ptr<const RenderCore::KtxImage> decodeUi(UiSource source) {
 } // namespace
 
 bool ready() { return sourcesIfReady() != nullptr; }
+bool loadCookedSidecar(const char* source, RenderCore::KtxImage& out) {
+    return source && txmLoadCooked(source, sidecarPath(source).c_str(), true, out);
+}
 
 TextureSources& sourceStore() { startSources(); return *sourcesIfReady(); }
 void startSources() {
