@@ -5,7 +5,8 @@ mech-import-plan-2026-10-22.md, packets P1/P11/P13/P14): the IR keeps what the r
 still merges away -- every part's own material slot, the skeleton and clip names, sockets
 (weapon mounts / muzzles, cockpit, feet), part/damage regions and LOD chains -- and records the
 source bytes. Geometry stays on the skinned importer path ([Import] Source=), so this frontend
-produces IR + validation for the package compiler; it does not cook a runtime model override.
+produces IR for the common cooker, which preserves skin/clip source bytes and cooks texture tiers
+without producing a static model override.
 
 Material policy: the package's albedo/normal/AO are authored BT data, but a part gets an
 authored class only from a reviewed per-chassis profile ({material name: class}); otherwise the
@@ -50,5 +51,6 @@ def to_ir(glb, package_json=None, *, classes=None, parts=(), work_dir=None):
     unreviewed = {k: v.get("tga") for k, v in pkg.get("materials", {}).items()}
     asset.frontend.update({"name": "bt2018", "chassis": chassis, "featureBits": pkg.get("featureBits", []),
                            "unreviewed_maps": unreviewed,
-                           "slots": [m.name for m in asset.materials]})
+                           "slots": [m.name for m in asset.materials], "runtime_source": str(glb),
+                           "runtime_package": str(package_json) if package_json else None})
     return asset.check()

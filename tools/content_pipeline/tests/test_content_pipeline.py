@@ -171,6 +171,59 @@ def test_geometry_cache_tracks_source_and_cooker_across_work_dirs(tmp_path, monk
     assert not fourth["hit"] and fourth["key"] != third["key"]
 
 
+def test_stock_meshdump_frontend_and_package(tmp_path):
+    from tools.content_pipeline.frontends import stock_meshdump
+    src = Path(__file__).resolve().parents[2] / "asset_cook/tests/fixtures/2civliving_meshdump.json"
+    Image.new("RGBA", (4, 4), (255, 255, 255, 255)).save(tmp_path / "A_2CivLiving.tga")
+    asset = stock_meshdump.to_ir(src, texture_roots=[tmp_path])
+    assert asset.lod0().triangle_count() == 56
+    lo, hi = asset.lod0().bounds()
+    assert np.allclose(lo, [-54.694801, 0, -54.5723], atol=1e-4)
+    assert np.allclose(hi, [15.8478, 15.4678, 15.31], atol=1e-4)
+    out = package.build_package([asset], tmp_path / "package", mod_id="stock-test", compress=False)
+    assert package.check_package(out) == []
+    assert asset.materials[0].base_color.passthrough
+
+
+def test_tree_pack_uses_common_cooker_and_aliases(tmp_path):
+    from tools.examples.build_modern_tree_pack import recipe
+    from tools.content_pipeline.cook import cook
+    src, *_ = make_gltf(tmp_path)
+    families = [{"name": "poplar", "class": "tree", "replaces": "tree:pine1", "subdir": ".",
+                 "lods": [{"filename": src.name, "distance_m": 0}, {"filename": src.name, "distance_m": 100}]}]
+    out = cook(recipe(tmp_path, families, scale=2), tmp_path / "trees", compress=False)
+    rows = json.loads((out / "data/model_overrides/models.json").read_text())["overrides"]
+    assert len(rows) == 5                       # pine + four palm aliases
+    assert rows[0]["lods"][0]["distance"] == 100
+    assert rows[0]["source"] == rows[1]["source"]
+    assert (out / "content/poplar.mc2ir.json").is_file()
+
+
+def test_bt2018_recipe_retains_skin_source_bytes(tmp_path):
+    from tools.content_pipeline.cook import cook
+    src, doc, *_ = make_gltf(tmp_path)
+    # References-only skin: the frontend must retain skeleton/clip identity without
+    # statically flattening it. Native skin math remains in the existing consumer.
+    doc["skins"] = [{"joints": [0]}]
+    doc["nodes"][1]["skin"] = 0
+    doc["animations"] = [{"name": "Idle", "channels": [], "samplers": []}]
+    src.write_text(json.dumps(doc))
+    spec = {"mod_id": "mech-test", "assets": [{"frontend": "bt2018", "intact": str(src)}]}
+    # Self-contained GLB is the mech runtime contract.
+    binary = base64.b64decode(doc["buffers"][0]["uri"].split(",")[1])
+    doc["buffers"][0].pop("uri")
+    body = json.dumps(doc).encode(); body += b" " * (-len(body) % 4)
+    binary += b"\0" * (-len(binary) % 4)
+    glb = tmp_path / "mech.glb"
+    glb.write_bytes(struct.pack("<III", gltf_io.GLB_MAGIC, 2, 28+len(body)+len(binary)) +
+                    struct.pack("<II", len(body), gltf_io.CHUNK_JSON)+body +
+                    struct.pack("<II", len(binary), gltf_io.CHUNK_BIN)+binary)
+    spec["assets"][0]["intact"] = str(glb)
+    out = cook(spec, tmp_path / "mechs", compress=False)
+    assert (out / "data/tgl/mech.glb").read_bytes() == glb.read_bytes()
+    assert ir.load(out / "content/mech.mc2ir.json").skeleton.clips == ["Idle"]
+
+
 # --------------------------------------------------------------------------- cache key
 
 def test_cache_key_is_content_not_name(tmp_path):

@@ -18,6 +18,7 @@ from __future__ import annotations
 import json
 import re
 import shutil
+import copy
 from pathlib import Path
 
 import numpy as np
@@ -25,8 +26,9 @@ import numpy as np
 from . import cache, gltf_io, ir, texcook, validate
 
 PACKAGE_VERSION = "mc2-content-package/1"
-COOKER_VERSION = "mc2-content-cooker/2"  # transforms, damage chains and attachment payloads
+COOKER_VERSION = "mc2-content-cooker/3"  # transforms, damage chains and attachment payloads
 GEOMETRY_CACHE = cache.CacheKind("model-", ".glb")
+SKIN_CACHE = cache.CacheKind("skin-", ".glb")
 DETAIL_EDGE = 512        # every authored detail map in a mission shares this extent (engine array)
 SAFE = re.compile(r"[a-z0-9][a-z0-9_-]{0,62}")
 
@@ -93,9 +95,75 @@ def isolate_engine_nodes(asset: ir.Asset):
     return twins
 
 
+def cook_base_colors(asset, out, entry, compress, runtime_names=None):
+    # Base colour: stock slots name stock textures; authored slots get real tiers.
+    aid = _safe(asset.id)
+    names = {}
+    for slot, m in enumerate(asset.materials):
+        if m.base_color is None and m.base_color_policy == "stock":
+            continue
+        if m.base_color is not None and (m.base_color_policy == "stock" or m.base_color.passthrough):
+            names[slot] = stock_texture_name(m)
+            continue
+        rgba = texcook.load_rgba(m.base_color.path) if m.base_color else np.full((1, 1, 4), 255, np.uint8)
+        if tuple(m.base_color_factor) != (1.0, 1.0, 1.0, 1.0):
+            f = np.asarray(m.base_color_factor, dtype=np.float64)
+            lin = texcook.srgb_to_linear(rgba[..., :3] / 255.0) * f[:3]
+            rgba = np.concatenate([texcook.linear_to_srgb(lin) * 255, rgba[..., 3:4] * f[3]], axis=2)
+            rgba = np.clip(np.rint(rgba), 0, 255).astype(np.uint8)
+        if m.alpha_mode == "OPAQUE":
+            rgba = rgba.copy()
+            rgba[..., 3] = 255
+        name = (runtime_names or {}).get(slot) or _texture_name(aid, slot, m)
+        names[slot] = name
+        cutoff = m.alpha_cutoff if m.alpha_mode == "MASK" else None
+        for tier, img in texcook.base_color_tiers(rgba, texel_scale=int(asset.frontend.get("texel_scale", 1))).items():
+            tdir = out / "data" / "tgl" / str(tier)
+            texcook.write_tga(tdir / name, img)
+            _write(tdir / Path(name).with_suffix(".ktx2"),
+                   texcook.cook_ktx2(img, "base_color", alpha_cutoff=cutoff, compress=compress,
+                       source_sha256=ir.sha256_bytes((bytes.fromhex(m.base_color.sha256) if m.base_color else b"") + img.tobytes())))
+            entry["files"].setdefault("base_color", []).append(f"data/tgl/{tier}/{name}")
+
+    return names
+
+
 def cook_asset(asset: ir.Asset, out: Path, *, compress=True, max_triangles=None, report=None):
     """Cook one asset into the package at out; returns its models.json record."""
     asset.check()
+    if asset.skeleton is not None:
+        # A rigid-skin package retains its source skeleton, vertex order and clips.
+        # Native loading lowers that selected state through the same IR cooker as stock/props;
+        # static transform baking here would change the pose contract owned by the mech lane.
+        aid = _safe(asset.id)
+        source = Path(asset.frontend["runtime_source"])
+        key = cache.cache_key(COOKER_VERSION, {"kind": "rigid_skin"}, [s.sha256 for s in asset.provenance])
+        data = cache.cached(cache.DEFAULT_DIR, SKIN_CACHE, key, source.read_bytes)
+        # Preserve the original image names so the unchanged rigid-skin importer
+        # resolves its atlas through the normal texture VFS. All tiers use the common cook.
+        doc, _, _ = gltf_io.load_document(source)
+        runtime_names = {}
+        for slot, material in enumerate(doc.get("materials", [])):
+            texture = material.get("pbrMetallicRoughness", {}).get("baseColorTexture")
+            if texture is None:
+                continue
+            image_index = doc["textures"][texture["index"]]["source"]
+            image = doc["images"][image_index]
+            raw = image.get("uri") or image.get("name") or f"*{image_index}"
+            stem = re.sub(r"[^a-z0-9_-]", "_", Path(raw.replace("\\", "/")).stem.lower())[:251]
+            alpha = material.get("alphaMode", "OPAQUE") != "OPAQUE"
+            runtime_names[slot] = ("a_" if alpha and not stem.startswith("a_") else "") + stem + ".tga"
+        cook_base_colors(asset, out, {"files": {}}, compress, runtime_names)
+        _write(out / "data/tgl" / f"{aid}.glb", data)
+        side = asset.frontend.get("runtime_package")
+        if side:
+            _write(out / "data/tgl" / f"{aid}.package.json", Path(side).read_bytes())
+        ir.save(asset, out / "content" / f"{aid}.mc2ir.json")
+        if report is not None:
+            report.setdefault("assets", []).append({"id": aid, "frontend": asset.frontend,
+                "ir_fingerprint": ir.fingerprint(asset), "cache_key": f"{key:016x}",
+                "runtime_import": aid, "skeleton": asset.skeleton.joints, "clips": asset.skeleton.clips})
+        return None
     isolate_engine_nodes(asset)
     hull = {}
     if asset.kind == "building":
@@ -120,32 +188,7 @@ def cook_asset(asset: ir.Asset, out: Path, *, compress=True, max_triangles=None,
         # Outer-skin triangles facing into the building are culled from outside (a see-through wall).
         entry["inward_hull_faces"] = hull
 
-    # Base colour: stock slots name stock textures; authored slots get real tiers.
-    names = {}
-    for slot, m in enumerate(asset.materials):
-        if m.base_color is None:
-            continue
-        if m.base_color_policy == "stock" or m.base_color.passthrough:
-            names[slot] = stock_texture_name(m)
-            continue
-        rgba = texcook.load_rgba(m.base_color.path)
-        if tuple(m.base_color_factor) != (1.0, 1.0, 1.0, 1.0):
-            f = np.asarray(m.base_color_factor, dtype=np.float64)
-            lin = texcook.srgb_to_linear(rgba[..., :3] / 255.0) * f[:3]
-            rgba = np.concatenate([texcook.linear_to_srgb(lin) * 255, rgba[..., 3:4] * f[3]], axis=2)
-            rgba = np.clip(np.rint(rgba), 0, 255).astype(np.uint8)
-        if m.alpha_mode == "OPAQUE":
-            rgba = rgba.copy()
-            rgba[..., 3] = 255
-        name = _texture_name(aid, slot, m)
-        names[slot] = name
-        cutoff = m.alpha_cutoff if m.alpha_mode == "MASK" else None
-        for tier, img in texcook.base_color_tiers(rgba, texel_scale=int(asset.frontend.get("texel_scale", 1))).items():
-            tdir = out / "data" / "tgl" / str(tier)
-            texcook.write_tga(tdir / name, img)
-            _write(tdir / Path(name).with_suffix(".ktx2"),
-                   texcook.cook_ktx2(img, "base_color", alpha_cutoff=cutoff, compress=compress))
-            entry["files"].setdefault("base_color", []).append(f"data/tgl/{tier}/{name}")
+    names = cook_base_colors(asset, out, entry, compress)
 
     # Work-directory image paths are deliberately absent from content identity. Resolved
     # source digests, geometry, material policy and cooker version determine cache entries.
@@ -227,7 +270,7 @@ def cook_asset(asset: ir.Asset, out: Path, *, compress=True, max_triangles=None,
 
 
 def build_package(assets: list[ir.Asset], out, *, mod_id, name=None, description="", compress=True,
-                  max_triangles=None, overwrite=False):
+                  max_triangles=None, overwrite=False, aliases=None):
     out = Path(out)
     _safe(mod_id)
     if out.exists():
@@ -236,6 +279,14 @@ def build_package(assets: list[ir.Asset], out, *, mod_id, name=None, description
         shutil.rmtree(out)
     report = {"version": PACKAGE_VERSION, "contract": texcook.CONTRACT_VERSION, "mod": mod_id}
     records = [cook_asset(a, out, compress=compress, max_triangles=max_triangles, report=report) for a in assets]
+    records = [r for r in records if r is not None]
+    by_key = {r["replaces"].lower(): r for r in records}
+    for replaces, target in (aliases or {}).items():
+        if target.lower() not in by_key:
+            raise ValueError(f"alias {replaces}: missing target {target}")
+        record = copy.deepcopy(by_key[target.lower()])
+        record["replaces"] = replaces
+        records.append(record)
     _write(out / "data" / "model_overrides" / "models.json",
            (json.dumps({"overrides": records}, indent=2) + "\n").encode("utf-8"))
     _write(out / "mod.json", (json.dumps({"id": mod_id, "name": name or mod_id, "version": "1.0.0",

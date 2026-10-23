@@ -202,7 +202,18 @@ def read_materials(doc, buffers, base_dir, extract_dir=None, class_of=None, text
         occ = _image_ref(doc, buffers, base_dir, m.get("occlusionTexture"), "orm", extract_dir, texture_roots=texture_roots)
         orm = mr or occ
         if mr and occ and mr.sha256 != occ.sha256:
-            orm = None   # separate maps: the cooker packs them (frontend passes both via extras)
+            # glTF permits independent AO and MR images on UV0. Pack their authored
+            # channels rather than silently dropping both maps (Blender kit exports).
+            from PIL import Image
+            mr_pixels = np.array(Image.open(mr.path).convert("RGBA"))
+            ao = Image.open(occ.path).convert("RGBA").resize((mr_pixels.shape[1], mr_pixels.shape[0]), Image.Resampling.LANCZOS)
+            mr_pixels[..., 0] = np.asarray(ao)[..., 0]
+            if extract_dir is None:
+                raise ValueError("separate AO/MR maps need an extract directory")
+            packed = Path(extract_dir) / f"orm-{mr.sha256[:16]}-{occ.sha256[:16]}.png"
+            packed.parent.mkdir(parents=True, exist_ok=True)
+            Image.fromarray(mr_pixels, "RGBA").save(packed)
+            orm = TextureRef.of(packed, "orm")
         if cls is None:
             if (normal or orm) and unclassified == "error":
                 raise ValueError(f"{name}: authored maps need an explicit material class (extras.mc2_material_class)")
@@ -319,7 +330,10 @@ def read_gltf(path, *, frame="gltf", wu_per_unit=1.0, yaw_degrees=0.0, extract_d
     info = {"skins": len(doc.get("skins", [])), "joints": [doc["nodes"][j].get("name", str(j))
                                                           for s in doc.get("skins", []) for j in s["joints"]],
             "clips": [a.get("name", f"clip_{k}") for k, a in enumerate(doc.get("animations", []))],
-            "extensionsUsed": sorted(set(doc.get("extensionsUsed", [])) - SUPPORTED_EXTENSIONS)}
+            "extensionsUsed": sorted(set(doc.get("extensionsUsed", [])) - SUPPORTED_EXTENSIONS),
+            "dependencies": [{"role": "geometry_buffer", "path": str(base_dir / unquote(b["uri"])),
+                              "sha256": sha256_bytes(data)} for b, data in zip(doc.get("buffers", []), buffers)
+                             if "uri" in b and not b["uri"].startswith("data:")]}
     return scene, materials, info
 
 
@@ -393,6 +407,7 @@ def write_runtime_glb(scene: Scene, materials: list[Material], texture_names: di
             out["pbrMetallicRoughness"]["baseColorTexture"] = {"index": len(textures) - 1}
         doc["materials"].append(out)
     used = {}
+    pivots = {n.name: n.extras["mc2_pivot_tg_wu"] for n in scene.nodes if "mc2_pivot_tg_wu" in n.extras}
     # Attachment-only nodes carry authored light contracts and must survive baking.
     for node, world in zip(scene.nodes, scene.world_matrices()):
         if node.mesh is not None or not node.extras:
@@ -402,11 +417,14 @@ def write_runtime_glb(scene: Scene, materials: list[Material], texture_names: di
         doc["scenes"][0]["nodes"].append(len(doc["nodes"]) - 1)
         used[node.name] = 1
     for node_name, prim in scene.flattened():
+        pivot = pivots.get(node_name)
         # The engine importer keys shapes by node name: every runtime node name is unique.
         k = used.get(node_name, 0)
         used[node_name] = k + 1
         node_name = node_name if k == 0 else f"{node_name}_{k}"
         prim = transform_primitive(prim, to_runtime)
+        if pivot is not None:
+            prim.positions -= np.asarray(pivot) * [-1, -1, 1]
         normals = prim.normals if prim.normals is not None else smooth_normals(prim.positions, prim.indices)
         attrs = {"POSITION": b.add(prim.positions.astype("<f4"), "VEC3", 5126, 34962, minmax=True),
                  "NORMAL": b.add(normals.astype("<f4"), "VEC3", 5126, 34962)}
@@ -422,7 +440,10 @@ def write_runtime_glb(scene: Scene, materials: list[Material], texture_names: di
         idx = b.add(prim.indices.astype("<u4" if big else "<u2").reshape(-1), "SCALAR", 5125 if big else 5123, 34963)
         doc["meshes"].append({"name": node_name, "primitives": [
             {"attributes": attrs, "indices": idx, "material": int(prim.material), "mode": 4}]})
-        doc["nodes"].append({"name": node_name, "mesh": len(doc["meshes"]) - 1})
+        node = {"name": node_name, "mesh": len(doc["meshes"]) - 1}
+        if pivot is not None:
+            node.update(translation=(np.asarray(pivot) * [-1, -1, 1]).tolist(), extras={"mc2_pivot_tg_wu": pivot})
+        doc["nodes"].append(node)
         doc["scenes"][0]["nodes"].append(len(doc["nodes"]) - 1)
     if not doc["meshes"]:
         raise ValueError("scene has no geometry to write")

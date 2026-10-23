@@ -90,6 +90,7 @@ def to_ir(asset_id, replaces, intact, *, kind="building", lods=(), destroyed=Non
     provenance = [ir.Source.of("geometry", intact, license=meta.get("license", "unrecorded"),
                                provider=meta.get("provider", ""), url=meta.get("source_url", ""))]
     scene, materials, info = read_scene(intact, meta, work / "images", classes, allow_skin)
+    provenance.extend(ir.Source(**s) for s in info["dependencies"])
     states = {"intact": [ir.Lod(scene)]}
 
     def load(entry, role):
@@ -98,7 +99,8 @@ def to_ir(asset_id, replaces, intact, *, kind="building", lods=(), destroyed=Non
             sc, mats = entry
         else:
             provenance.append(ir.Source.of(role, entry))
-            sc, mats, _ = read_scene(entry, {**meta, **sidecar(entry)}, work / "images", classes, allow_skin)
+            sc, mats, deps = read_scene(entry, {**meta, **sidecar(entry)}, work / "images", classes, allow_skin)
+            provenance.extend(ir.Source(**s) for s in deps["dependencies"])
         materials = merge_materials(materials, mats, sc)
         return sc
 

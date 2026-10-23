@@ -254,6 +254,16 @@ def scene_from_ase(ase_path, texture_roots, work_dir, slot_offset=0):
     tmp = work_dir / f"{Path(ase_path).stem}.stock.glb"
     ase.write_glb(gltf, binary, str(tmp))
     scene, _, _ = gltf_io.read_gltf(tmp, frame="mc2_runtime")
+    blocks = Path(ase_path).read_text(encoding="utf-8", errors="replace").split("*GEOMOBJECT")[1:]
+    for block in blocks:
+        name = re.search(r'\*NODE_NAME\s+"([^"\n]+)"', block)
+        pivot = re.search(r'\*TM_POS\s+([\d.eE+-]+)\s+([\d.eE+-]+)\s+([\d.eE+-]+)', block)
+        if not name or not pivot or not name[1].lower().startswith(("spotlight_", "litwin")):
+            continue
+        node = next((n for n in scene.nodes if n.name == name[1]), None)
+        if node:
+            x, y, z = map(float, pivot.groups())
+            node.extras["mc2_pivot_tg_wu"] = [-x, z, y]
     materials = []
     for i, bitmap in enumerate(bitmaps):
         ref = None
@@ -286,6 +296,16 @@ def to_ir(prop, *, srcdata, texture_roots, slots=(), kind="building", work_dir=N
     scene, materials, _ = scene_from_ase(src, texture_roots, work_dir)
     provenance.append(ir.Source.of("geometry", src))
     states = {"intact": [ir.Lod(scene)]}
+    for level in range(1, 16):
+        stem = ase.ini_str(ini, "TGLData", f"FileName{level}", "")
+        if not stem:
+            break
+        source = srcdata / f"{stem}.ase"
+        lod_scene, lod_materials, _ = scene_from_ase(source, texture_roots, work_dir, slot_offset=len(materials))
+        materials += lod_materials
+        distance = float(ase.ini_str(ini, "TGLData", f"Distance{level}", "0"))
+        states["intact"].append(ir.Lod(lod_scene, distance))
+        provenance.append(ir.Source.of("geometry_lod", source))
     dam = ase.ini_str(ini, "TGLDamage", "FileName", "")
     if destroyed and dam:
         dsrc = srcdata / f"{dam}.ase"
@@ -328,6 +348,10 @@ def to_ir(prop, *, srcdata, texture_roots, slots=(), kind="building", work_dir=N
             metallic=row.get("metallic", ir.CLASS_DEFAULTS[cls][0] if cls in ir.METALLIC_CLASSES else 0.0),
             reviewed=True, review_note=row.get("reviewNote", ""))
     provenance += list(provenance_extra)
-    return ir.Asset(id=prop.lower(), kind=kind, replaces=f"staticProp:{lod0.lower()}", materials=materials,
+    sockets = [ir.Socket(n.name, "light", n.name, np.eye(4), {"schema": "mc2-legacy-light/1"})
+               for n in scene.nodes if n.name.lower().startswith(("spotlight_", "litwin"))]
+    return ir.Asset(id=prop.lower(), kind=kind, replaces=f"{'tree' if kind == 'tree' else 'staticProp'}:{lod0.lower()}", materials=materials,
                     states=states, provenance=provenance,
-                    frontend={"name": "stock_ase", "prop": prop, "slots": [dict(r) for r in slots]}).check()
+                    sockets=sockets,
+                    frontend={"name": "stock_ase", "prop": prop, "slots": [dict(r) for r in slots],
+                              "collision": {"policy": "stock", "source": str(src), "sha256": ir.sha256_file(src)}}).check()
