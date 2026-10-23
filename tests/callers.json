@@ -7024,6 +7024,27 @@
           "evidence": "import",
           "reference": "tools.assets.catalog",
           "text": "from tools.assets.catalog import OBJECT, object_records, priority"
+        },
+        {
+          "path": "tests/assets/test_replace.py",
+          "line": 85,
+          "evidence": "import",
+          "reference": "tools.assets.catalog",
+          "text": "from tools.assets.catalog import load_catalog"
+        },
+        {
+          "path": "tools/assets/examples.py",
+          "line": 24,
+          "evidence": "import",
+          "reference": "tools.assets.catalog",
+          "text": "from tools.assets.catalog import load_catalog"
+        },
+        {
+          "path": "tools/assets/replace.py",
+          "line": 335,
+          "evidence": "import",
+          "reference": "tools.assets.catalog",
+          "text": "from tools.assets.catalog import load_catalog"
         }
       ]
     },
@@ -7056,7 +7077,7 @@
         },
         {
           "path": "tools/assets/catalog.py",
-          "line": 18,
+          "line": 19,
           "evidence": "import",
           "reference": "tools.assets.common",
           "text": "from tools.assets.common import (INSTALL_ROOT, INSTALLS, Install, bounds, fit_sections,"
@@ -7106,7 +7127,7 @@
         },
         {
           "path": "tools/assets/catalog.py",
-          "line": 21,
+          "line": 22,
           "evidence": "import",
           "reference": "tools.assets.mapgen_data",
           "text": "from tools.assets.mapgen_data import catalog as type_catalog, packet"
@@ -7128,14 +7149,14 @@
       "callers_by_stem": [
         {
           "path": "tests/assets/test_replace.py",
-          "line": 202,
+          "line": 206,
           "evidence": "import",
           "reference": "tools.assets.render",
           "text": "from tools.assets.render import render"
         },
         {
           "path": "tools/assets/catalog.py",
-          "line": 287,
+          "line": 306,
           "evidence": "import",
           "reference": "tools.assets.render",
           "text": "from tools.assets.render import sheets"
@@ -7171,21 +7192,21 @@
         },
         {
           "path": "tests/assets/test_replace.py",
-          "line": 220,
+          "line": 224,
           "evidence": "import",
           "reference": "tools.assets.replace",
           "text": "from tools.assets.replace import package"
         },
         {
           "path": "tests/assets/test_replace.py",
-          "line": 256,
+          "line": 260,
           "evidence": "import",
           "reference": "tools.assets.replace",
           "text": "from tools.assets.replace import package"
         },
         {
           "path": "tests/assets/test_replace.py",
-          "line": 267,
+          "line": 271,
           "evidence": "import",
           "reference": "tools.assets.replace",
           "text": "from tools.assets.replace import package"
@@ -7774,14 +7795,14 @@
       "callers_by_stem": [
         {
           "path": "tests/assets/test_replace.py",
-          "line": 221,
+          "line": 225,
           "evidence": "import",
           "reference": "tools.content_pipeline",
           "text": "from tools.content_pipeline import cache, gltf_io, validate"
         },
         {
           "path": "tests/assets/test_replace.py",
-          "line": 257,
+          "line": 261,
           "evidence": "import",
           "reference": "tools.content_pipeline",
           "text": "from tools.content_pipeline import cache"
@@ -7866,14 +7887,14 @@
       "callers_by_stem": [
         {
           "path": "tests/assets/test_replace.py",
-          "line": 221,
+          "line": 225,
           "evidence": "import",
           "reference": "tools.content_pipeline.cache",
           "text": "from tools.content_pipeline import cache, gltf_io, validate"
         },
         {
           "path": "tests/assets/test_replace.py",
-          "line": 257,
+          "line": 261,
           "evidence": "import",
           "reference": "tools.content_pipeline.cache",
           "text": "from tools.content_pipeline import cache"
@@ -8010,7 +8031,7 @@
       "callers_by_stem": [
         {
           "path": "tests/assets/test_replace.py",
-          "line": 221,
+          "line": 225,
           "evidence": "import",
           "reference": "tools.content_pipeline.gltf_io",
           "text": "from tools.content_pipeline import cache, gltf_io, validate"
@@ -8203,7 +8224,7 @@
       "callers_by_stem": [
         {
           "path": "tests/assets/test_replace.py",
-          "line": 221,
+          "line": 225,
           "evidence": "import",
           "reference": "tools.content_pipeline.validate",
           "text": "from tools.content_pipeline import cache, gltf_io, validate"

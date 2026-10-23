@@ -202,3 +202,12 @@ docs/mapgen/raster/generated/*.json
 docs/mapgen/raster/generated/*.json.gz
 docs/mapgen/examples/generated/*.json
 !docs/mapgen/raster/generated/*.render.json
+
+# 2026-10-23 repo-bloat cleanup: generated or local-only artifacts (the tools that read them regenerate or skip)
+docs/assets/catalog.json
+docs/assets/sheets/
+tests/smoke/editor/20*/
+tests/smoke/editor/playtest-*/
+/mvh_scratch_*
+/scratch_out.txt
+.aider*

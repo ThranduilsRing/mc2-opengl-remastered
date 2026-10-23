@@ -332,7 +332,8 @@ def main(argv=None):
         if args.command == "convert-fbx":
             from tools.assets.candidates import convert_fbx
             print(convert_fbx(args.source, args.destination, args.blender)); return 0
-        data = json.loads(args.catalog.read_text(encoding="utf-8"))
+        from tools.assets.catalog import load_catalog
+        data = load_catalog(args.catalog, args.root)
         entry = select(data, args.selection)
         spec = target_spec(entry, args.state)
         if args.command in ("spec", "search"):

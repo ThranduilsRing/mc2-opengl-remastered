@@ -55,7 +55,7 @@ Review [intact Hangar](examples/hangar-intact-rework.png),
 [destroyed Hangar](examples/hangar-destroyed-rework.png),
 [intact WireFence](examples/wirefence-intact-rework.png), and
 [destroyed WireFence](examples/wirefence-destroyed-rework.png).
-The full archive sheets are [here](sheets/index.md).
+The full archive sheets are generated (`catalog.py --sheets`) and not tracked; see docs/assets/README.md.
 
 Lanczos plus unsharp improves sampling but creates no new modeled detail; the
 comparison is modest. WireFence's texture is only 64×64 in the stock 128-tier
