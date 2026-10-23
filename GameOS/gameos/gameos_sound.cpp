@@ -1,4 +1,5 @@
 #include "gameos.hpp"
+#include "gos_profiler.h"
 #include <memory>
 #include <utility>
 #include <SDL2/SDL.h>
@@ -239,6 +240,7 @@ void __stdcall gosAudio_CreateResource( HGOSAUDIO* hgosaudio, enum gosAudio_Reso
     const int dst_freq = g_sound_engine->getFrequency();
 
     if(res_type == gosAudio_StreamedFile) {
+        ZoneScopedN("Audio.Stream.LoadFile");
 
         from_file = true;
 
