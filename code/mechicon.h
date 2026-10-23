@@ -89,6 +89,7 @@ public:
 		// Return false when the icon atlas isn't resident. No render-state
 		// side effects.
 		bool getUnitIconTexUV( uint64_t& glTex, float& u0, float& v0, float& u1, float& v1 ) const;
+		unsigned long getUnitIconTexture() const;
 		virtual bool getUnitIconBackTexUV( uint64_t& glTex, float& u0, float& v0, float& u1, float& v1 ) const;
 		bool getPilotIconTexUV( uint64_t& glTex, float& u0, float& v0, float& u1, float& v1 ) const;
 		virtual bool			init( Mover* pMover ){ return false; }

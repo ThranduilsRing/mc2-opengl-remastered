@@ -87,7 +87,7 @@ static void drawOverviewIconCell(ForceGroupIcon* icon,
     float u, v, u1, v1;
     if (!icon->getUnitIconTexUV(texture, u, v, u1, v1)) return;
     const float uD = u1 - u, vD = v1 - v;
-    gos_SetRenderState(gos_State_Texture, unit_icons::damageTexture());
+    gos_SetRenderState(gos_State_Texture, icon->getUnitIconTexture());
 	// Additive blend keys out the icon's black background (black adds nothing);
 	// the mech silhouette adds onto the scene. Vertex RGB scales the texel, so
 	// the caller fades by scaling argb's RGB channels.

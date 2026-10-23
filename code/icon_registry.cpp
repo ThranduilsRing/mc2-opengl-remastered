@@ -18,6 +18,11 @@ namespace {
 Registry registry;
 DWORD texture = 0;
 std::set<std::string> warned;
+// Per-instance damage overlays live on small pages so a damage lock never touches the big source atlas.
+constexpr int kDamageSlots = 240, kDamagePerPage = 16, kDamageEdge = 256, kDamageCols = 4;
+constexpr int kDamagePages = kDamageSlots / kDamagePerPage;
+std::vector<Icon> damageIcons;
+DWORD damagePages[kDamagePages]{};
 std::map<std::string, AssetScale::Vec2> sourceScale;
 
 struct Pixels { int w = 0, h = 0; DWORD logicalW = 0, logicalH = 0; std::vector<uint32_t> data; };
@@ -142,14 +147,21 @@ void init(std::string first = {}, int cw = 25, int ch = 30) {
             namedPriority[key] = priority;
         }
     }
-    // Per-instance damage masks occupy ordinary packed rects in the same atlas.
-    const std::vector<uint32_t> blank(40 * 48, 0);
-    for (int i = 0; i < 240; ++i) registry.add("damage/" + std::to_string(i), 40, 48, blank);
+    damageIcons.resize(kDamageSlots);
+    for (int i = 0; i < kDamageSlots; ++i) {
+        const int cell = i % kDamagePerPage;
+        damageIcons[i] = {40, 48, 1 + cell % kDamageCols * 42, 1 + cell / kDamageCols * 50, {}, {}};
+    }
+    std::vector<uint32_t> blankPage(size_t(kDamageEdge) * kDamageEdge, 0);
+    for (DWORD& page : damagePages) {
+        page = mc2::textures::fromRawPixels(std::bit_cast<DWORD*>(blankPage.data()), gos_Texture_Alpha, 0, kDamageEdge);
+        mc2::textures::adoptOwned(page);
+    }
     if (!registry.pack() || registry.edge > 8192) {
         mc2::fmt::print_err("[ICON_REGISTRY] atlas exceeds texture source capacity; using placeholder\n");
         std::erase_if(registry.icons, [](const auto& item) {
             const auto& [key, icon] = item;
-            return key != "missing" && !key.starts_with("damage/");
+            return key != "missing";
         });
         registry.pack();
     }
@@ -214,13 +226,22 @@ void blit(std::string sheet, long index, bool back, uint32_t* dest, int stride, 
 
 const Icon& damageRect(long slot) {
     init();
-    return resolve("damage/" + std::to_string(slot));
+    if (slot < 0 || slot >= kDamageSlots) return resolve("damage/" + std::to_string(slot));
+    return damageIcons[slot];
 }
 
-unsigned long damageTexture() { init(); return mc2::textures::sourceId(texture); }
+// The page that holds this slot's rect; rect x/y are page-local.
+unsigned long damageTexture(long slot) {
+    init();
+    return mc2::textures::sourceId(damagePages[std::clamp<long>(slot, 0, kDamageSlots - 1) / kDamagePerPage]);
+}
 
 void shutdown() {
     if (texture) mc2::textures::releaseOwned(texture);
-    texture = 0; registry = {}; sourceScale.clear(); warned.clear();
+    for (DWORD& page : damagePages) {
+        if (page) mc2::textures::releaseOwned(page);
+        page = 0;
+    }
+    texture = 0; registry = {}; damageIcons.clear(); sourceScale.clear(); warned.clear();
 }
 }
