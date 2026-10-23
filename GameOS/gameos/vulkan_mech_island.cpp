@@ -790,45 +790,76 @@ bool posed_light_bounds(const std::vector<BoneBounds>& local, const Mc2MechFrame
 }
 
 // Contiguous per-draw lights keep fragment addresses uniform across a wave.
-// The 64-light draw budget is an allocation cap, never an energy cap: overflow
+// The 128-light actor budget is an allocation cap, never an energy cap: overflow
 // draws use the original full 256-light pool in source order.
 void build_draw_lights(MechIsland* s,const Mc2MechFrameFeed& feed,int count,
                        std::vector<gos_terrain_lighting::GpuTerrainLight>& lights,
                        std::vector<std::vector<MechRunPC>>& draws) {
+    const auto started=std::chrono::steady_clock::now();
     using Light=gos_terrain_lighting::GpuTerrainLight;
     const auto* pool=static_cast<const Light*>(feed.poolLights48);
+    const auto* instances=static_cast<const GpuMechInstance*>(feed.instances64);
     lights.resize(kMaxPoolLights);if(count)std::copy_n(pool,count,lights.begin());
     draws.resize(feed.runCount);
-    uint64_t candidates=0,drawCount=0,invalid=0,overflow=0,empty=0;
-    const bool cull=mc2::gate::get<"MC2_LIGHT_GRID">();
+    const bool cull=count && mc2::gate::get<"MC2_LIGHT_GRID">();
+    if(!cull) {
+        for(uint32_t r=0;r<feed.runCount;++r)draws[r].push_back({feed.runs[r].materialFlags,0,uint32_t(count)});
+        return;
+    }
+    struct Actor {
+        float lo[3]={INFINITY,INFINITY,INFINITY},hi[3]={-INFINITY,-INFINITY,-INFINITY};
+        bool valid=true;
+        MechRunPC pc{};
+    };
+    // All part instances of an actor share its palette base. Union their posed
+    // bounds, then cull once per actor rather than repeating sqrt/selection for
+    // every material packet. The union remains conservative for every part.
+    std::map<uint32_t,Actor> actors;
     for(uint32_t r=0;r<feed.runCount;++r) {
-        const auto& run=feed.runs[r];
-        // Preserve instancing in daylight and for the diagnostic linear fallback.
-        if(!count || !cull) {draws[r].push_back({run.materialFlags,0,uint32_t(count)});continue;}
+        const auto& run=feed.runs[r];if(!run.indexCount)continue;
         const auto& local=light_bounds(s,run);
         for(uint32_t n=0;n<run.instanceCount;++n) {
-            MechRunPC pc{run.materialFlags,0,uint32_t(count)};
+            const uint32_t idx=run.instanceBase+n;if(idx>=feed.instanceCount)continue;
+            auto& actor=actors[instances[idx].baseBoneOffset];
             float lo[3],hi[3];
-            if(posed_light_bounds(local,feed,run.instanceBase+n,lo,hi)) {
-                const auto first=lights.size();
-                std::array<bool,kMaxPoolLights> keep;
-                gos_terrain_lighting::CullObjectPool(pool,uint32_t(count),lo,hi,
-                    feed.poolMoverScale,feed.poolMoverDim,feed.poolSoft!=0,feed.poolMoverMax!=0,keep);
-                for(int i=0;i<count;++i)if(keep[i])lights.push_back(pool[i]);
-                const auto selected=lights.size()-first;
-                if(selected<=64)pc={run.materialFlags,uint32_t(first),uint32_t(selected)};
-                else {lights.resize(first);++overflow;} // exact, stable full-pool overflow fallback
-            } else ++invalid;
-            candidates+=pc.poolCount;++drawCount;if(!pc.poolCount)++empty;
+            if(!posed_light_bounds(local,feed,idx,lo,hi)) {actor.valid=false;continue;}
+            for(unsigned a=0;a<3;++a) {actor.lo[a]=std::min(actor.lo[a],lo[a]);actor.hi[a]=std::max(actor.hi[a],hi[a]);}
+        }
+    }
+    uint64_t candidates=0,invalid=0,overflow=0,empty=0;
+    for(auto& [base,actor]:actors) {
+        actor.pc={0,0,uint32_t(count)};
+        if(actor.valid) {
+            const auto first=lights.size();
+            std::array<bool,kMaxPoolLights> keep;
+            gos_terrain_lighting::CullObjectPool(pool,uint32_t(count),actor.lo,actor.hi,
+                feed.poolMoverScale,feed.poolMoverDim,feed.poolSoft!=0,feed.poolMoverMax!=0,keep);
+            for(int i=0;i<count;++i)if(keep[i])lights.push_back(pool[i]);
+            const auto selected=lights.size()-first;
+            if(selected<=128)actor.pc={0,uint32_t(first),uint32_t(selected)};
+            else {lights.resize(first);++overflow;} // exact full-pool fallback
+        } else ++invalid;
+        candidates+=actor.pc.poolCount;if(!actor.pc.poolCount)++empty;
+    }
+    for(uint32_t r=0;r<feed.runCount;++r) {
+        const auto& run=feed.runs[r];
+        for(uint32_t n=0;n<run.instanceCount;++n) {
+            const uint32_t idx=run.instanceBase+n;
+            MechRunPC pc{run.materialFlags,0,uint32_t(count)};
+            if(idx<feed.instanceCount) {
+                const auto it=actors.find(instances[idx].baseBoneOffset);
+                if(it!=actors.end()) {pc=it->second.pc;pc.materialFlags=run.materialFlags;}
+            }
             draws[r].push_back(pc);
         }
     }
     static int lastCount=-1;
-    if(count>lastCount && count && drawCount) {
+    if(count>lastCount && !actors.empty()) {
         lastCount=count;
-        vlog("draw lights: pool=%d draws=%llu avg=%.2f empty=%llu invalid=%llu overflow=%llu bytes=%zu.",
-             count,(unsigned long long)drawCount,double(candidates)/drawCount,
-             (unsigned long long)empty,(unsigned long long)invalid,(unsigned long long)overflow,lights.size()*sizeof(Light));
+        vlog("draw lights: pool=%d actors=%zu avg=%.2f empty=%llu invalid=%llu overflow=%llu bytes=%zu build_ms=%.3f.",
+             count,actors.size(),double(candidates)/actors.size(),
+             (unsigned long long)empty,(unsigned long long)invalid,(unsigned long long)overflow,lights.size()*sizeof(Light),
+             std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-started).count());
     }
 }
 
