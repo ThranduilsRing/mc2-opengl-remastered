@@ -603,8 +603,6 @@ void main() {
         // baseN = height-derived macro slope (always live via the bound height SSBO);
         // dN    = weighted material detail normal (only when the array imported).
         vec3 N = vec3(0.0, 0.0, 1.0);                            // flat-up terrain normal (default)
-        vec3 lightDir = uT.terrainLightDir.xyz;
-        float macroNdotL = max(lightDir.z, 0.2);
         vec3 dbgBaseN = vec3(0.0, 0.0, 1.0); vec3 dbgDN = vec3(0.0);  // CSM-BLACKOUT-RECON-1 taps
         if (uT.detailEnabled != 0 && !pureConcrete) {
             vec3 baseN = mv_smoothTerrainNormal(v_worldPos.xy);
@@ -618,12 +616,17 @@ void main() {
                 dN = mv_detailNormal(matW, snowW, v_worldPos.xy, lodNear, baseN.z, detailUvDx, detailUvDy);
             }
             vec3 macroPert = vec3(baseN.xy / max(baseN.z, 0.2) * uT.nfhStrength, 1.0);
-            macroNdotL = max(dot(normalize(macroPert), lightDir), 0.2);
             vec3 pert = macroPert + vec3(dN.xy * uT.detailStrength, 0.0);
             N = normalize(pert);
             if (uT.detailReady >= 2) mv_cliffMaterial(baseN, N, baseColor);   // steep cells: triplanar normal + cliff POM + groove relief
             dbgBaseN = baseN; dbgDN = dN;                        // CSM-BLACKOUT-RECON-1 taps
         }
+        // Evaluate the ratio after material sampling so its inputs do not stay
+        // live across the detail/cliff texture walks. dbgBaseN already retains
+        // the macro normal; flat receivers keep its default (0,0,1).
+        vec3 lightDir = uT.terrainLightDir.xyz;
+        vec3 macroN = normalize(vec3(dbgBaseN.xy / max(dbgBaseN.z, 0.2) * uT.nfhStrength, 1.0));
+        float macroNdotL = max(dot(macroN, lightDir), 0.2);
         // Equal normals give exactly one, including when detail is disabled.
         // Bound the grazing/back-facing ratio rather than re-lighting macro relief.
         float normalLight = clamp(max(dot(N, lightDir), 0.2) / macroNdotL, 0.5, 1.5);
