@@ -1520,6 +1520,36 @@ def implicit_target_refusal(src_root, explicit_target):
     return None
 
 
+BOOTSTRAP_SKIP = {"cache", "crashes", "shaders", "debug_state", "_pngcap", "_rdoc", MANIFEST_NAME, LAUNCHER_NAME}
+
+
+def bootstrap_install(src, target, exe_name, pdb_name):
+    """One-time creation of a NEW lane install: copy the base files (data, assets, fst archives, DLLs, cfg) from an existing
+    install; the deploy that follows adds the exe, launcher, pdb, shaders and manifest. Real copies (never hardlinks: LINK-GUARD-1)."""
+    src, target = os.path.abspath(src), os.path.abspath(target)
+    if not (os.path.isdir(os.path.join(src, "data")) and os.path.isdir(os.path.join(src, "assets"))):
+        fail(f"--bootstrap-from {src}: not an install (needs data/ and assets/)")
+    if _same_path(src, target):
+        fail("--bootstrap-from names the target itself")
+    if os.path.isdir(target) and any(os.scandir(target)):
+        log(f"bootstrap: {target} already has files; not copying from {src}")
+        return
+    skip = BOOTSTRAP_SKIP | {exe_name, pdb_name}
+    names = [n for n in sorted(os.listdir(src)) if n not in skip and not n.lower().endswith((".log", ".pdb"))]
+    need = sum(os.path.getsize(p) for n in names for p in
+               ([os.path.join(src, n)] if os.path.isfile(os.path.join(src, n)) else
+                (os.path.join(d, f) for d, _, fs in os.walk(os.path.join(src, n)) for f in fs)))
+    disk_space(os.path.dirname(target) or target, need, label="bootstrap")
+    log(f"bootstrap: copying {len(names)} entries ({need / 2**30:.1f} GiB) {src} -> {target}")
+    os.makedirs(target, exist_ok=True)
+    for n in names:
+        a, b = os.path.join(src, n), os.path.join(target, n)
+        if os.path.isdir(a):
+            shutil.copytree(a, b, ignore=shutil.ignore_patterns("*.log"))
+        else:
+            shutil.copy2(a, b)
+
+
 def main():
     ap = argparse.ArgumentParser(
         description=__doc__.splitlines()[0],
@@ -1584,6 +1614,9 @@ def main():
                     help="DELIBERATELY deploy to a NON-canonical / new ~5GB install "
                          "(release cut, fresh install). Off by default -- deploys are "
                          "forced to the canonical DEPLOY_ALLOWLIST to stop per-lane bloat.")
+    ap.add_argument("--bootstrap-from", metavar="INSTALL",
+                    help="with --allow-new-target: when the target is missing or empty, first copy the base files (data, assets, "
+                         "archives, DLLs) from this existing install once; the deploy then adds the exe, shaders and manifest.")
     ap.add_argument("--preserve", action="append", default=[],
                     metavar="RELPATH",
                     help="payload file (repeatable) whose EXISTING target copy "
@@ -1641,6 +1674,11 @@ def main():
                  f"up per-lane/per-experiment deploy folders; pick a FREE canonical folder "
                  f"and md5-verify after.\n"
                  f"  If you REALLY need a new install (release cut), pass --allow-new-target.")
+
+    if args.bootstrap_from:
+        if not args.allow_new_target:
+            fail("--bootstrap-from creates a new install: pass --allow-new-target too")
+        bootstrap_install(args.bootstrap_from, target, exe_name, pdb_name)
 
     if not os.path.isdir(target):
         fail(f"target dir does not exist: {target} (refusing to create deploy "
