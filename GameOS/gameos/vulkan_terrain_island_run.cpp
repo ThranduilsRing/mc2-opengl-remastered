@@ -15,6 +15,7 @@
 // ===========================================================================
 
 extern uint32_t g_mc2RenderFrame;   // mclib/tgl.cpp
+float mc2SceneLightScale();   // mclib/camera.cpp: LOCAL-LIGHTS-4 mission night scale of the prelit ground
 static uint32_t g_sceneClearedRenderFrame = 0;   // render frame + 1 of the last shared-scene clear (0 = never)
 
 extern "C" int mc2_vk_terrain_island_enabled() {
@@ -230,6 +231,7 @@ void fill_frame_ubo(TerrainIsland* s, const Mc2TerrainTier1Feed& feed,
     u.quadCountX        = patch.quadCountX;
     u.quadCountY        = patch.quadCountY;
     // VK-PARITY-TERRAIN-1: values pulled from the shared GL-side producers.
+    u.sceneLightScale   = mc2SceneLightScale();   // LOCAL-LIGHTS-4 (mclib/camera.cpp mission profile)
     u.ambientFloor      = feed.ambientFloor;
     u.ambientDayGate    = feed.ambientDayGate;
     u.missionFlatR      = feed.missionFlatLight[0];
