@@ -12,26 +12,5 @@
   "order": -1,
   "defaultOn": true,
   "doc": "Authored effect sidecars overlay the stock catalog; absent definitions are a no-op."
- },
- {
-  "featureId": "MC2_FEATURE_MATERIAL_KTX",
-  "kind": "Feature",
-  "order": 11,
-  "defaultOn": true,
-  "doc": "Load authored KTX2 texture sidecars, falling back to stock textures when absent."
- },
- {
-  "featureId": "MC2_FEATURE_STATICPROP_BC7",
-  "kind": "Feature",
-  "order": 18,
-  "defaultOn": true,
-  "doc": "Use compatible BC7 sidecars; incompatible or absent sidecars retain RGBA fallback buckets."
- },
- {
-  "featureId": "MC2_FEATURE_STATICPROP_MATERIAL_PBR_SLOTS",
-  "kind": "Feature",
-  "order": -1,
-  "defaultOn": true,
-  "doc": "Use authored ORM sidecars; absent maps retain neutral material factors."
  }
 ]

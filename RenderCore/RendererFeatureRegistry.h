@@ -104,7 +104,7 @@ enum class RendererFeature : int {
     DebugRenderer       = 8,   // MC2_DEBUG_RENDERER
     MaterialGpu         = 9,   // MC2_MATERIAL_GPU
     MaterialGpuSample   = 10,  // MC2_MATERIAL_GPU_SAMPLE
-    MaterialKtx         = 11,  // authored sidecars, always enabled
+    MaterialKtx         = 11,  // MC2_MATERIAL_KTX
     // F1-3A ViewUniforms UBO upload (upload-only; F1-3B adds shader consumption).
     ViewUniforms             = 12,  // MC2_VIEW_UNIFORMS
     // MECH-EXTRACTION-0: mech snapshot extraction (observe-only).
@@ -125,7 +125,7 @@ enum class RendererFeature : int {
     HzbBuild                 = 17,  // MC2_HZB_BUILD
     // Compatible BC7 sidecars use compressed buckets; absent or incompatible
     // sidecars retain the RGBA fallback.
-    StaticPropBc7            = 18,  // compatible sidecars, always enabled
+    StaticPropBc7            = 18,  // MC2_STATICPROP_BC7
     // COLORMAP-CPU-RETIRE-1: free cpuColorMap + cpuDispAlpha immediately after
     // BuildColormapAtlas uploads to GPU. The indirect path (default-ON) has no
     // geometry displacement (thin vert, no TES), so the CPU elevation's null-guard
@@ -232,8 +232,8 @@ static constexpr EnvVarDesc kFeatureTable[] = {
     },
     // [11] MaterialKtx
     {
-        "MC2_FEATURE_MATERIAL_KTX", nullptr, EnvVarKind::Feature, true,
-        "Load authored KTX2 texture sidecars, falling back to stock textures when absent."
+        "MC2_FEATURE_MATERIAL_KTX", "MC2_MATERIAL_KTX", EnvVarKind::Feature, false,
+        "KTX2 sidecar loader for static-prop textures (RenderCore/KtxLoader)."
     },
     // [12] ViewUniforms
     {
@@ -267,8 +267,8 @@ static constexpr EnvVarDesc kFeatureTable[] = {
     },
     // [18] StaticPropBc7
     {
-        "MC2_FEATURE_STATICPROP_BC7", nullptr, EnvVarKind::Feature, true,
-        "Use compatible BC7 sidecars; incompatible or absent sidecars retain RGBA fallback buckets."
+        "MC2_FEATURE_STATICPROP_BC7", "MC2_STATICPROP_BC7", EnvVarKind::Feature, false,
+        "COMPRESSION-BC7-STATICPROP-1: upload BC7-compressed KTX2 static-prop texture arrays through the existing static-prop KTX path (gos_static_prop_batcher.cpp)..."
     },
     // [19] ColormapCpuRetire
     {
@@ -470,10 +470,6 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "Direct-fire de-curve: PPC/autocannon/gauss bolts fly STRAIGHT instead of re-tracking the moving target every frame (the janky homing curve).",
     },
     {
-        "MC2_FEATURE_STATICPROP_MATERIAL_PBR_SLOTS", nullptr, EnvVarKind::Feature, true,
-        "Use authored ORM sidecars; absent maps retain neutral material factors.",
-    },
-    {
         "MC2_TRACE_FIRE_DECISION", "MC2_FIRE_DECISION_TRACE", EnvVarKind::Trace, false,
         "ISSUE-17 fire-refusal instrumentation (default OFF = byte-identical; needs MC2_DIAG_TAGS=...,COMBAT).",
     },
@@ -668,6 +664,10 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
     {
         "MC2_SPOTLIGHT_DIRECTION_FIX", "MC2_SPOTLIGHT_DIRECTION_FIX", EnvVarKind::Trace, false,
         "SPOTLIGHT-DIRECTION-1: fixes two coordinate-space defects at the building/guard-tower spotlight registration site (mclib/bdactor.cpp).",
+    },
+    {
+        "MC2_FEATURE_STATICPROP_MATERIAL_PBR_SLOTS", "MC2_STATICPROP_MATERIAL_PBR_SLOTS", EnvVarKind::Feature, false,
+        "Static-prop PBR ORM (occlusion-roughness-metallic) texture-array slots + sidecar feed.",
     },
     {
         "MC2_FEATURE_STATIC_LIGHT_UPLOAD_SPLIT", "MC2_STATIC_LIGHT_UPLOAD_SPLIT", EnvVarKind::Feature, true,
