@@ -1031,7 +1031,10 @@ def lay_flat(k, piece, at, yaw, rng, crumple=.06):
     ca, sa = math.cos(yaw), math.sin(yaw)
     pts = [(x * ca - y * sa, x * sa + y * ca, z) for x, y, z in pts]
     # crumple: bend along x and add jitter, so sheets read as torn metal not cards
-    pts = [(x, y, z + crumple * (abs(x) + abs(y)) * .5 + rng.uniform(-crumple, crumple) * .3) for x, y, z in pts]
+    # One draw from the shared rng, so callers consume the same sequence whatever
+    # the piece's vertex count (high source and game carrier stay in lockstep).
+    jitter = random.Random(rng.random())
+    pts = [(x, y, z + crumple * (abs(x) + abs(y)) * .5 + jitter.uniform(-crumple, crumple) * .3) for x, y, z in pts]
     zmin = min(p[2] for p in pts)
     tilt = rng.uniform(-.25, .25)
     pts = [(x, y, z - zmin + x * tilt * .15) for x, y, z in pts]

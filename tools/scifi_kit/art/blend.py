@@ -226,8 +226,10 @@ def material(key, palette_name, cond_name):
         under = b.mix(b.remap(grunge, .4, .6), (0.15, 0.16, 0.13), (0.12, 0.05, 0.02))
         col = b.mix(peel, col, under)
         bump_h = b.mul(peel, -1.0)
-        # edge wear to bare steel
-        wear = b.math('GREATER_THAN', b.mul(convex, b.remap(grunge, .3, .7, .5, 1.6)), 1.0 - cond['edge_wear'] * .8)
+        # edge wear to bare steel. Corrugation crests are not exposed edges: damp the
+        # bevel mask on corrugated sheet so wear stays on sheet ends, laps and trims.
+        edge_src = b.mul(convex, .3) if cls == 'corr' else convex
+        wear = b.math('GREATER_THAN', b.mul(edge_src, b.remap(grunge, .3, .7, .5, 1.6)), 1.0 - cond['edge_wear'] * .8)
         col = b.mix(wear, col, (0.62, 0.60, 0.56))
         metallic = b.mixf(wear, metallic, .55)
         rough_s = b.mixf(wear, b.add(rough, b.mul(b.remap(grunge, .3, .7), .25)), .32)
@@ -940,7 +942,8 @@ def assembly_job(job):
                 # All sides are visible in the count proof, including the left
                 # tower door and rear quonset end omitted by the beauty camera.
                 for side,direction in [('front',(0,-1,.08)),('left',(-1,0,.08)),
-                                       ('rear',(0,1,.08)),('right',(1,0,.08))]:
+                                       ('rear',(0,1,.08)),('right',(1,0,.08)),
+                                       ('top',(0.0001,-0.0001,1))]:
                     frame_camera(cam,[low] if baked else list(objs.values()),
                                  direction=direction,margin=1.14,aspect=1.4)
                     render(out/f'{name}_count_{side}.png',(700,500),16)
@@ -965,6 +968,9 @@ if __name__ == '__main__':
         primitive_job(job)
     elif job['kind'] == 'assembly':
         assembly_job(job)
+    elif job['kind'] == 'stock_views':
+        import stock_views
+        stock_views.run(job, sys.modules[__name__])
     elif job['kind'] == 'baked_review':
         import baked_review
         baked_review.run(job,sys.modules[__name__])

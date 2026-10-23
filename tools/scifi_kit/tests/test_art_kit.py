@@ -61,3 +61,58 @@ def test_wall_modules_on_grid():
     sub = geo.G['sub_m']
     for w in (4.5, 9.0, 19.5):
         assert abs(w / sub - round(w / sub)) < 1e-9
+
+
+# ---------------------------------------------------------------- art bar (round 3)
+import drafts  # noqa: E402
+
+STATES = ['pristine', 'worn', 'abandoned', 'partial', 'destroyed']
+
+
+def _game(name, cond):
+    geo.GAME_MESH = True
+    try:
+        return drafts.build(name, cond)
+    finally:
+        geo.GAME_MESH = False
+
+
+def test_tarp_drapes_over_the_wood_everywhere():
+    for game in (False, True):
+        geo.GAME_MESH = game
+        try:
+            k = geo.Kit('t', 'canvas_timber')
+            drafts.tarp_crates(k)
+        finally:
+            geo.GAME_MESH = False
+        assert drafts.tarp_clearance(k) > .015, 'tarp vertex inside or touching a crate'
+        assert len({p['tarp'] for p in k.pieces if p.get('tarp') is not None}) == 2
+
+
+@pytest.mark.parametrize('name', list(drafts.DRAFTS))
+@pytest.mark.parametrize('cond', STATES)
+def test_high_and_game_damage_in_lockstep(name, cond):
+    drafts.FIT_CACHE.clear()
+    hi = drafts.build(name, cond)
+    lo = _game(name, cond)
+    _valid(hi)
+    _valid(lo)
+    assert sorted(p['uid'] for p in hi.pieces if 'uid' in p) == sorted(p['uid'] for p in lo.pieces if 'uid' in p)
+    assert min(v[2] for p in hi.pieces for v in p['v']) > -0.05  # moss pads sit 2 cm into the soil
+
+
+@pytest.mark.parametrize('name', list(drafts.DRAFTS))
+def test_game_carrier_leaves_bevel_headroom(name):
+    import bake_budget
+    for cond in STATES:
+        lo = _game(name, cond)
+        tris = sum(sum(len(f) - 2 for f in p['f']) for p in lo.pieces)
+        assert tris <= bake_budget.BUDGETS.get(name, 3000), (name, cond, tris)
+
+
+def test_rubble_is_volumetric():
+    for name in drafts.BUILDINGS:
+        k = drafts.build(name, 'destroyed')
+        top = max(v[2] for p in k.pieces for v in p['v'])
+        assert top > .14 * drafts.SIZES[name][2], name
+        assert any(p['role'] == 'frame' for p in k.pieces), 'rubble keeps a bent frame'

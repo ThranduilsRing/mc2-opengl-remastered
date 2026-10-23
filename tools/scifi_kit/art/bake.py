@@ -15,13 +15,7 @@ CLASSES = {'paint':'painted_metal','corr':'painted_metal','hazard':'painted_meta
            'metal':'bare_metal','grate':'grating','ferro':'concrete','glass':'glass',
            'wood':'wood','canvas':'fabric','rubber':'rubber','gravel':'dielectric',
            'char':'dielectric','veg':'dielectric','lamp':'emissive','lamp_red':'emissive'}
-BUDGETS = {'rpbuilding':15000,'quonsetclean':8000,'quonset':8000,
-           'lookouttower':8000,'razorwirefence':3000,'s_lightwall':3000,
-           'crateswithtarp':3000,'barrels':3000}
-
-
-def budget(name):
-    return BUDGETS.get(name,3000)
+from bake_budget import BUDGETS, budget  # noqa: F401
 
 
 def select(active, others=()):
@@ -130,7 +124,7 @@ def bake(objs,k,condition,out,res=2048):
         from mathutils import Matrix
         for ob in imported:ob.matrix_world=Matrix.Identity(4)
         lowobjs={str(i):ob for i,ob in enumerate(imported)}
-    elif condition=='partial':
+    elif condition=='partial' and not k.meta.get('authored_damage'):
         # Preserve the exact breached surface and grounded fragments, before
         # source bevels. A fresh intact wall would fill the damage aperture.
         lowobjs={}
@@ -138,11 +132,9 @@ def bake(objs,k,condition,out,res=2048):
             copy=bpy.data.objects.new('DamageCarrier_'+ob.name,ob.data.copy())
             bpy.context.collection.objects.link(copy);copy.matrix_world=ob.matrix_world.copy()
             lowobjs[str(i)]=copy
-    elif k.meta.get('collapse')=='full-rubble':
-        # Rubble already consists of local, economical authored fragments.
-        # Reuse their exact layout so every atlas ray hits its intended slab.
-        lowobjs=blend.build_objects(k,condition,bpy.context.collection)
     else:
+        # Authored states (intact, partial peel, full rubble) are deterministic per
+        # piece uid, so the economical game carrier is rebuilt from the same kit.
         geo.GAME_MESH=True
         try:lowkit=assemble.build(k.meta['stock'],condition,k.seed)
         finally:geo.GAME_MESH=False
@@ -150,7 +142,7 @@ def bake(objs,k,condition,out,res=2048):
     for ob in lowobjs.values():blend.recalc(ob)
     select(next(iter(lowobjs.values())),list(lowobjs.values())[1:]);bpy.ops.object.join()
     low=bpy.context.object;low.name=name+'_LOD0'
-    if condition=='partial' and not shared:
+    if condition=='partial' and not shared and not k.meta.get('authored_damage'):
         # Remove coplanar tessellation introduced around damage and sheet rows,
         # without moving a boundary or reducing the curved silhouette.
         planar=low.modifiers.new('Remove coplanar damage tessellation','DECIMATE')
@@ -170,10 +162,23 @@ def bake(objs,k,condition,out,res=2048):
     # Two-segment game bevels retain a rounded catch at intermediate zoom; the
     # three-segment source and shader grain supply the remaining atlas detail.
     select(low)
-    if condition!='partial' and not shared:
-        bevel=low.modifiers.new('Game edge catches','BEVEL');bevel.width=.018
-        bevel.segments=2;bevel.limit_method='ANGLE';bevel.angle_limit=.7
-        bpy.ops.object.modifier_apply(modifier=bevel.name)
+    bevel_used=None
+    if not shared:
+        # Adaptive game bevel: the richest edge catch that still fits the budget,
+        # chosen BEFORE any decimation so silhouettes are never collapsed to fit.
+        target=budget(k.meta['stock'])
+        for seg,width in ((2,.018),(1,.016)):
+            trial=low.copy();trial.data=low.data.copy();bpy.context.collection.objects.link(trial)
+            select(trial)
+            bevel=trial.modifiers.new('Game edge catches','BEVEL');bevel.width=width
+            bevel.segments=seg;bevel.limit_method='ANGLE';bevel.angle_limit=.7
+            bevel.use_clamp_overlap=True
+            bpy.ops.object.modifier_apply(modifier=bevel.name)
+            if triangles(trial)<=target*.97:
+                old=low.data;low.data=trial.data;bpy.data.objects.remove(trial,do_unlink=True)
+                bpy.data.meshes.remove(old);bevel_used=seg;break
+            bpy.data.objects.remove(trial,do_unlink=True)
+        select(low)
     # Triangulate before baking to freeze the tangent basis used by the exporter.
     if not shared:
         # Enforce the class budget AFTER bevels, BEFORE UVs and the actual bake.
@@ -291,7 +296,8 @@ def bake(objs,k,condition,out,res=2048):
         lods.append(dict(path=path.as_posix(),triangles=stored_tris,distance_wu=(0,350,700)[i]))
         if i:ob.hide_render=True;ob.hide_set(True)
     result=dict(asset=k.meta['stock'],condition=condition,atlas_resolution=res,
-                high_triangles=triangles(high),triangle_budget=budget(k.meta['stock']),lods=lods,
+                high_triangles=triangles(high),triangle_budget=budget(k.meta['stock']),
+                game_bevel_segments=bevel_used,lods=lods,
                 maps={key:(out/(name+'_'+key+'.png')).as_posix() for key in ('basecolor','normal','orm')},
                 lights=light_specs(k,condition),material_classes=sorted(set(m['mc2_material_class'] for m in targets)))
     (out/(name+'-bake.json')).write_text(json.dumps(result,indent=2))

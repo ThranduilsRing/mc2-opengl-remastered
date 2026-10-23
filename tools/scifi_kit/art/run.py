@@ -150,12 +150,13 @@ def main():
     parent.cpu_affinity(list(range(psutil.cpu_count()))[2:4])
     parent.nice(psutil.BELOW_NORMAL_PRIORITY_CLASS)
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument('command', choices=['prims', 'sheet', 'build', 'beforeafter'])
+    ap.add_argument('command', choices=['prims', 'sheet', 'build', 'beforeafter', 'stockviews'])
     ap.add_argument('--pass', dest='tag', required=True)
     ap.add_argument('--only')
     ap.add_argument('--samples', type=int, default=48)
     ap.add_argument('--conditions', default=','.join(CONDITIONS))
     ap.add_argument('--no-export', action='store_true')
+    ap.add_argument('--suffix', help='job/log/report suffix when two workers share one pass')
     a = ap.parse_args()
     sys.path.insert(0, str(HERE))
     import geo
@@ -170,6 +171,12 @@ def main():
         sheet(pass_dir, names, f'Sci-fi kit primitives / pass {a.tag} / stock | pristine | worn | abandoned | destroyed', f'contact-{a.tag}')
     elif a.command == 'beforeafter':
         before_after(pass_dir, names)
+    elif a.command == 'stockviews':
+        # Full stock model from all sides (never a single iso view) for counts/silhouette.
+        import drafts
+        job = {'kind': 'stock_views', 'tag': a.tag, 'out': 'E:/mc2-ref/scifi-kit/studies/stock-views',
+               'assemblies': a.only.split(',') if a.only else list(drafts.DRAFTS)}
+        blender(job, OUT / 'logs' / f'{a.tag}.log')
     elif a.command == 'build':
         import assemble
         assemble.run(a, OUT, blender)

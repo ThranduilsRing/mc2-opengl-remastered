@@ -71,9 +71,87 @@ def compose(tag):
     print(dest,OUT/'drafts-contact-sheet.png',flush=True)
 
 
+STOCK_VIEWS = OUT.parent / 'studies' / 'stock-views'
+SIDES = ('front', 'left', 'rear', 'right', 'top')
+
+
+def _cell(im, path, box, nearest=False):
+    from pathlib import Path as _P
+    if not _P(path).is_file():
+        return
+    src = Image.open(path).convert('RGB')
+    if nearest:
+        t = src.resize((box[2], box[2] * src.height // src.width), Image.Resampling.NEAREST)
+    else:
+        t = ImageOps.contain(src, (box[2], box[3]), Image.Resampling.LANCZOS)
+    im.paste(t, (box[0] + (box[2] - t.width) // 2, box[1] + (box[3] - t.height) // 2))
+
+
+def count_sheet(tag, out=None):
+    """Stock-side-N next to remake-side-N, all five sides (full stock model, never one iso)."""
+    out = out or OUT / f'count-sides-{tag}.png'
+    cw, ch, head, lab = 210, 150, 92, 170
+    W = lab + len(SIDES) * 2 * cw + 20
+    im = Image.new('RGB', (W, head + len(drafts.DRAFTS) * (ch + 10)), (24, 28, 33))
+    d = ImageDraw.Draw(im)
+    d.text((14, 8), f'COUNT / SILHOUETTE PROOF: decoded stock model (textured) vs remake LOD0, same camera per side  /  pass {tag}', font=inv.font(22), fill='white')
+    for j, side in enumerate(SIDES):
+        x = lab + j * 2 * cw
+        d.text((x + 8, 56), f'stock / {side}', font=inv.font(15), fill='#c9c39a')
+        d.text((x + cw + 8, 56), f'remake / {side}', font=inv.font(15), fill='#96c8a0')
+        d.line([(x - 3, 50), (x - 3, im.height)], fill=(70, 76, 80), width=2)
+    for i, name in enumerate(drafts.DRAFTS):
+        y = head + i * (ch + 10)
+        d.text((12, y + ch // 2 - 12), name, font=inv.font(18), fill='white')
+        for j, side in enumerate(SIDES):
+            x = lab + j * 2 * cw
+            _cell(im, STOCK_VIEWS / f'{name}_stock_{side}.png', (x + 2, y, cw - 4, ch))
+            _cell(im, ART / tag / f'{name}_count_{side}.png', (x + cw + 2, y, cw - 4, ch))
+    im.save(out)
+    print(out, flush=True)
+    return out
+
+
+def before_after(before, after, out=OUT / 'opus-before-after.png'):
+    """Stock sides | round-2 | art-bar pass. Stock front/left views sit next to the
+    matching before/after side views, then pristine, RTS proxy, partial, destroyed."""
+    cols = [('stock front', lambda n: STOCK_VIEWS / f'{n}_stock_front.png', None),
+            ('before front', lambda n: ART / before / f'{n}_count_front.png', None),
+            ('after front', lambda n: ART / after / f'{n}_count_front.png', None),
+            ('stock left', lambda n: STOCK_VIEWS / f'{n}_stock_left.png', None),
+            ('before left', lambda n: ART / before / f'{n}_count_left.png', None),
+            ('after left', lambda n: ART / after / f'{n}_count_left.png', None)]
+    for label, pat, nearest in (('pristine', '{n}_pristine_beauty.png', False), ('RTS 0.24 m/px', '{n}_pristine_rts.png', True),
+                                ('partial', '{n}_partial_beauty.png', False), ('destroyed', '{n}_destroyed_beauty.png', False)):
+        cols.append(('before ' + label, (lambda n, p=pat: ART / before / p.format(n=n)), nearest))
+        cols.append(('after ' + label, (lambda n, p=pat: ART / after / p.format(n=n)), nearest))
+    cw, ch, head, lab = 200, 150, 92, 160
+    W = lab + len(cols) * cw + 20
+    im = Image.new('RGB', (W, head + len(drafts.DRAFTS) * (ch + 10)), (24, 28, 33))
+    d = ImageDraw.Draw(im)
+    d.text((14, 8), f'BEFORE (round 2, {before})  vs  AFTER (art bar, {after})  /  stock sides from the full decoded model  /  construction order, stock silhouette and palette', font=inv.font(22), fill='white')
+    colour = {'stock': '#c9c39a', 'before': '#d29a8c', 'after': '#96c8a0'}
+    for j, (label, _, _) in enumerate(cols):
+        x = lab + j * cw
+        d.text((x + 6, 58), label, font=inv.font(14), fill=colour[label.split()[0]])
+        if label.startswith(('stock', 'before')) and (j == 0 or not cols[j - 1][0].startswith('stock')):
+            d.line([(x - 3, 50), (x - 3, im.height)], fill=(70, 76, 80), width=2)
+    for i, name in enumerate(drafts.DRAFTS):
+        y = head + i * (ch + 10)
+        d.text((12, y + ch // 2 - 12), name, font=inv.font(17), fill='white')
+        for j, (_, fn, nearest) in enumerate(cols):
+            _cell(im, fn(name), (lab + j * cw + 2, y, cw - 4, ch), nearest=bool(nearest))
+    im.save(out)
+    print(out, flush=True)
+
+
 if __name__=='__main__':
     import psutil
     proc=psutil.Process();proc.cpu_affinity(list(range(psutil.cpu_count()))[2:4])
     proc.nice(psutil.BELOW_NORMAL_PRIORITY_CLASS)
     ap=argparse.ArgumentParser();ap.add_argument('--pass',dest='tag',default='blend-d1')
-    compose(ap.parse_args().tag)
+    ap.add_argument('--before',help='also write mapping/opus-before-after.png against this pass')
+    a=ap.parse_args()
+    compose(a.tag)
+    count_sheet(a.tag)
+    if a.before:before_after(a.before,a.tag)

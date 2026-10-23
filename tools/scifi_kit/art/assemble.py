@@ -502,8 +502,11 @@ def run(a, out, blender):
     if 'quonset' in names and 'quonsetclean' not in names:
         if any(not (out/a.tag/f'pbr/quonsetclean_{c}_lod0.glb').is_file() for c in conds):
             names.insert(0,'quonsetclean')
-    job = {'kind': 'assembly', 'tag': a.tag, 'out': str(out / a.tag), 'assemblies': names, 'conditions': conds, 'samples': a.samples, 'export': not a.no_export}
-    blender(job, out / 'logs' / f'{a.tag}.log')
+    # --suffix lets two (max) Blender workers share one pass directory without
+    # clobbering each other's job file, log or report.
+    tag = a.tag + (f'-{a.suffix}' if getattr(a, 'suffix', None) else '')
+    job = {'kind': 'assembly', 'tag': tag, 'out': str(out / a.tag), 'assemblies': names, 'conditions': conds, 'samples': a.samples, 'export': not a.no_export}
+    blender(job, out / 'logs' / f'{tag}.log')
     for n in names:
         montage(out / a.tag, n, conds)
 
