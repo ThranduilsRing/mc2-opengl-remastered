@@ -69,7 +69,7 @@ checkable `(program, name, unit, target)`.
 **WARN conditions (informational, expected):**
 - `UNKNOWN binder` — GLSL sampler with no name-resolvable C++ assignment (terrain/
   mech/static-prop literal loc-cache binds, or a dormant gated path like
-  `building_pbr.*` under `MC2_BUILDING_PBR`).
+  `building_pbr.*` under `retired building-PBR path`).
 - `cross-pass reuse` — a unit carried by >1 sampler across programs (the multiplex).
 - `mode-alternate` — `dynamicShadowArray`/`dynamicShadowMap` share unit 3 on
   mutually-exclusive CSM-vs-single-map branches (`screenShadowProg_`); intentional.
@@ -113,7 +113,7 @@ drifting silently, the same self-demoting discipline as the hard-anchor table.
 ## Known follow-ups (recorded, not fixed by this slice)
 
 - **`building_pbr.frag` samplers** (`tex1`/`u_normalTex`/`u_ormTex`) have no
-  discoverable binder — gated path (`MC2_BUILDING_PBR`, default-OFF). Confirm the
+  discoverable binder — gated path (`retired building-PBR path`, default-OFF). Confirm the
   binder TU or mark the path dead. (UNKNOWN row.)
 - **`gos_terrain.frag:95` stale comment** — `u_transitionMaskArray` comment says
   "unit 4" but the chunk program binds unit 11 (`kChunkTexUnitTransitionMask`),

@@ -162,7 +162,7 @@ Run as a ledger, not a cleanup binge: `docs/render-backend-seams/opengl-correctn
 
 **In flight / next:**
 
-- **P1-G: building MaterialGpu SSBO wiring + building PBR** — STARTED (stale "NOT STARTED" corrected 2026-07-09): `MC2_BUILDING_PBR` gate live in `mclib/bdactor.cpp`, `shaders/building_pbr.frag/.vert` in tree, gate allowlisted in `check-env-registry.sh`; PBR GLB payloads landed `5e3626f7` (2026-06-19). Remaining scope unverified — re-recon before continuing.
+- **P1-G: building MaterialGpu SSBO wiring + building PBR** — STARTED (stale "NOT STARTED" corrected 2026-07-09): The experimental building-PBR gate, shaders and payload were retired in merge window 37.
 
 ---
 

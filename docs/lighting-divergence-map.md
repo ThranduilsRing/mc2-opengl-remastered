@@ -54,14 +54,16 @@ screen-space shadow pass applies it later); **SH** = `rc_gbuffer1_shadowHandled*
 | **Ground vehicle** | `8064c6930:shaders/gos_tex_vertex_lighted.vert` / `.frag` | `max(base_light, vec3(0.35))` — a true **floor**, not a replacement (`:169-172`), gated `MC2_VEHICLE_AMBIENT_FLOOR` **default-ON** (`mclib/txmmgr_render_phases.cpp:185-190`) | `clamp(lit, 0, 1)` under the same gate (`:202`) | full 6-type via shared kernel (`:191`/`:193`) | inherits `get_base_light` with night args **stubbed to `false,0.0`** (`:162`) | `apply_fog(c, WorldPos, CameraPos)` (`gos_tex_vertex_lighted.frag:78`) | **SSE** (`.frag:84`) | `gvShape->CacheGpuLightDataAllLeaves()` (`mclib/gvactor_render.cpp:128`) → `light_offset_.x` |
 | **Static prop (GL)** — buildings, trees, generic | `8064c6930:shaders/static_prop.vert` / `static_prop.frag` | **no scalar floor.** Its floor is `ambientTerm` (sum of `TG_LIGHT_AMBIENT` rows, `:722-723`) + optional hemisphere `kAmbientV1Sky/Ground` (`:833-834`, strength default **0**) + optional SH-IBL (`:845`) | `clamp(lit + highlight, 0, 1)` (`:912`) | **3 types only**: AMBIENT + first INFINITE/INFINITEWITHFALLOFF. Point/spot deliberately omitted (`:713`). Sun **direction** is not the light's — it is `u_terrainSunMC2` (`:701-712,732`) | real: `u_isNight`/`u_nightFactor` drive the hot-colour emission delta (`:591-607`) | `mix(v_fog.rgb, c.rgb, u_fogValue)` (`static_prop.frag:611`) | **SSE** (+ `_noSelfShadow`, `_alphaTest` variants) | `GatherGpuObjectLightDataOnly()` / `mc2CacheOrBakeStaticGpuLight` (`GameOS/gameos/gos_static_prop_batcher_submit.cpp:261`, `mclib/bdactor_lightbake.cpp:186`) |
 | **Static prop (VK)** | `shaders/vulkan/color_prop_tier1.vert` | real `ambientTerm` scan + SH-IBL when `lightingReady` (`:277-291`); own hemisphere pair (plus, since 2026-10-14, a verbatim port of GL's `kAmbientV1Sky/Ground` fill under the StaticPropAmbient option: INTENTIONAL, parity row 22) `kAmbientSky = (0.00,0.02,0.08)` / `kAmbientGround = (0.14,0.13,0.11)` (`:245-246`) is the **fail-soft path only** (`:259-261`) | `clamp(..., 0, 1)` (`:315`) | AMBIENT + INFINITE + INFINITEWITHFALLOFF — **same matrix as GL props**, but reached via bare integers `lt == 1 \|\| lt == 2` (`:284`) | real `uFrame.isNight/nightFactor` and the per-type emission table (set 0 binding 7), as GL (`:104-192`) | UNKNOWN | UNKNOWN | ObjectLights row, `lightingReady` flag (`:32`, `:277`) |
-| **Building PBR** (opt-in, `MC2_BUILDING_PBR=1`, default **OFF** — `mclib/bdactor.cpp:242-243`) | `8064c6930:shaders/building_pbr.vert` / `.frag` | `ambientFill = baseColor * (0.18 + 0.22 * ao)` (`.frag:89`) | none | shared kernel in VS (`.vert:64`) — but the **specular light direction is a hardcoded constant** `normalize(vec3(-0.35,0.65,0.55))` (`.frag:81`), unrelated to the mission sun | night args stubbed `false,0.0` (`.vert:59`) | `apply_fog` (`.frag:91`) | **SSE** (`.frag:94`) | `light_offset_.x`, same legacy route as vehicles |
+
+The Vulkan terrain path uses mission environment ambient plus sun and shared shadows.
+The legacy ambient floor and pad-glow strength knobs were retired after their VK shader terms were removed.
 
 ### 2b. World classes
 
 | Class | Shader | Ambient floor | Output clamp | Light types | Night | Fog | Shadow receive | Light data fed from |
 |---|---|---|---|---|---|---|---|---|
 | **Terrain (LOD chunk)** — default-ON (`mclib/terrain.cpp:144-156`) | `8064c6930:shaders/terrain_lod_chunk.vert` / `.frag` | `u_terrainAmbientFloor`, default **0.35**, bounded [0,2] (`GameOS/gameos/gos_terrain_lod_chunk.cpp:2883-2890`). **Albedo-scaled**: `baseColor * ambCol * floor * ambShadow * dayGate * (1-flatLitShare)` (`.frag:2210`) | none on the ambient term | terrain light pipeline (`gos_terrain_lighting.comp`), **not** ObjectLights | gated OFF at night by `u_terrainAmbientDayGate` from authored sun pitch (`.frag:2193-2198`) | compute-baked per-vertex `fogRGB` (`shaders/include/terrain_lighting_shared.hglsl:23`, `gos_terrain_lighting.comp:266`) | **in-shader** `calcShadow` (`.frag:1960`) + **SH** tag | `GpuTerrainLight[]` SSBO + `Camera::getLightRed/Green/Blue` (`mclib/camera.cpp:4392-4446`) |
-| **Terrain (VK tier1)** — INTENTIONAL parity port (VK-PARITY-TERRAIN-1/-2) | `shaders/vulkan/terrain_tier1.frag` (+ byte-copy `terrain_tier1_skirt.frag`) | shared `include/ground_lighting.glsl`, same albedo-scaled TERRAIN-AMBIENT-FLOOR-2 term as the GL row above (`ambGnd`/`ambSky`, `mix(0.55,1.0,shadow)`), floor and day gate read from the same C++ producer (`gos_TerrainAmbientFloor/DayGate`); flat-lit share = `pureConcrete` (stock `u_cementLit`=0) | none | night light pools + light grid + mover contact + pad-area glow via the SHARED include `shaders/include/terrain_light_pool.hglsl` (same body as GL), pool/grid arrays = CPU copies of GL bindings 28/29/30 (VK set0 11/12/13) (VK-PARITY-TERRAIN-2) | as GL | baked colormap | sun/static+dynamic shadow; VK-PARITY-SHADOW-1: GL-parity dist-fade/penumbra/ALT-SCALE/clamped-sun/BANDFIX_V2 via shared `shaders/include/shadow_fade_model.hglsl` + `lsvk_*` ports in `lighting_shadow_vk.glsl` (INTENTIONAL: parity; mech/prop screen-shadow pass has no fade in GL either) | feed -> `TerrainFrameUBO.ambientFloor/ambientDayGate`, `shadow*` knobs from `mc2ShadowFadeKnobs()` |
+| **Terrain (VK tier1)** | `shaders/vulkan/terrain_tier1.frag`, shared `include/ground_lighting.glsl` | mission environment ambient only; legacy floor retired | none | shared terrain light pools | mission environment | baked colormap | static/dynamic sun shadows | `TerrainFrameUBO`; retired floor slots are zero |
 | **Terrain (legacy)** — `MC2_TERRAIN_LOD_CHUNK=0`, vestigial | `8064c6930:shaders/gos_terrain.frag` | **no ambient term** | none | as above | UNKNOWN | as above | **in-shader** `calcShadow` (`:958`) | as above |
 | **Terrain overlay / decals** | `terrain_overlay.frag`, `decal.frag` | none (overlay and decal) | none | terrain sun dir only | UNKNOWN | UNKNOWN | **in-shader** `calcShadow` (`terrain_overlay.frag:388`, `decal.frag:82`) + **SH** | `terrainLightDir` uniform |
 | **Water** | `gos_terrain_water_mdi.frag` (former GL source, removed in s63) | `SKY_AMBIENT = 0.18`, applied **twice**: as a floor `max(vertexLight, 0.18)` and again additively `+ waterCol*0.18*0.5` (`:101,274-275`) | none | none — consumes the terrain vertex light | UNKNOWN | `mix(fog_color.rgb, col, FogValue)` (`:395`) | **SSE** | terrain vertex light packed in `Color.bgra` (`:273`) |
@@ -240,44 +242,7 @@ re-introducing the bug or adding a `u_useTerrainSun` branch to the shared kernel
 — which is a per-class override inside the shared path, i.e. the same divergence
 with more indirection and a wider blast radius.
 
-**Cost line — Move 1 (constants header):**
-- Files: 1 new header + 8 shaders touched (`mech.vert`, `vulkan/mech_tier1.vert`,
-  `gos_tex_vertex_lighted.vert`, `include/shadow.hglsl`, `shadow_screen.frag`,
-  and the three VK shadow re-ports). No C++, no engine code.
-- Visual-regression risk: **low.** Every site becomes textually different and
-  numerically identical. The real risk is not pixels, it is the VK toolchain:
-  `vulkan/mech_tier1.vert` cannot use the GL `#include` mechanism (that is *why*
-  it re-defines `calc_light`), so it either gets the constants by a different
-  route or stays out of scope — leaving 6 sites, not 8.
-- Re-verify: tier1 5/5; GL byte-identity capture on mc2_01 (day) and mc2_10
-  (night) — must be XOR=0 at every site, since a no-op that moves a pixel means
-  a transcription error. Roughly half a session.
-- **Honest value assessment: this is small, and it is the riskiest thing in
-  this document.** It removes a duplicated literal. It does not remove a
-  divergence — `check-lighting-divergence.py` already makes the duplication
-  safe by failing when the copies drift apart.
-
-  **The argument against my own recommendation**, which the reader should weigh
-  before spending anything: a shared `#define` creates a coupling that does not
-  exist today. Right now, an edit to `mech.vert`'s 0.35 moves mechs. After
-  Move 1, an edit to `MC2_OBJECT_AMBIENT_FLOOR` moves mechs *and* vehicles *and*
-  the VK mech path in one keystroke, and the person making it may only have been
-  looking at one of them. Duplication is how these three classes stayed
-  independently tunable through VEHICLE-AMBIENT-FLOOR-1, which needed the
-  vehicle floor to be a `max()` where the mech floor is an assignment — a
-  distinction a shared constant does not capture and would quietly invite
-  someone to erase.
-
-  The existing refusal to hoist (`gos_tex_vertex_lighted.vert:165-168`) was
-  written by someone who had just been burned by this. If the budget is tight,
-  **skip Move 1**: the check alone captures most of the benefit at none of the
-  coupling cost.
-
-**Cost line — Move 2 (`building_pbr.*`):**
-- Files: 2 (delete), or 1 (add a loud experimental gate).
-- Visual-regression risk: **zero on any default launch** — the path requires
-  `MC2_BUILDING_PBR=1` and nothing sets it.
-- Re-verify: confirm no fixture or smoke tier sets the gate; tier1 5/5.
+The building-PBR shaders and their gate were retired in merge window 37.
 
 ### 4.2 Batching: **no. Leave it. Neither can absorb the other.**
 
