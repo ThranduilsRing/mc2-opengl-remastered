@@ -4,6 +4,7 @@
 #include <vector>
 #include <string>
 #include "math/glm_config.h"
+#include "mech_clip_state.h"
 
 namespace mc2::sim {
 struct ImportedAnimState {
@@ -13,6 +14,10 @@ struct ImportedAnimState {
     float prevPx = 0, prevPy = 0, prevPz = 0, prevHeading = 0;
     float clipTimeSec = 0, durationSec = 1;
     uint32_t lastFrame = 0xffffffffu;
+    // Clip-selector memory (jump start/land owed, last gesture, playing mode): the selector runs in the fixed tick, so it is sim state.
+    mc2clip::Phase phase;
+    mc2clip::Mode mode = mc2clip::Mode::Loop;
+    bool locomotion = false;
     template<class Archive> void serialize(Archive& a) {
         std::vector<uint8_t> active(activeClip.begin(), activeClip.end()), pending(pendingClip.begin(), pendingClip.end());
         a.sequence(active, 256); a.sequence(pending, 256);
@@ -21,6 +26,9 @@ struct ImportedAnimState {
         }
         a(pendingStreak, turnStreak, havePrev,
             prevPx, prevPy, prevPz, prevHeading, clipTimeSec, durationSec, lastFrame);
+        int modeInt = static_cast<int>(mode);
+        a(phase.prevGesture, phase.jumpStarted, phase.landing, modeInt, locomotion);
+        if (a.reading()) mode = modeInt == 1 ? mc2clip::Mode::Once : mc2clip::Mode::Loop;
     }
 };
 // Advanced only by the fixed tick; copied into immutable render snapshots.

@@ -764,9 +764,7 @@ namespace {
 struct ActorAnimState : mc2::sim::ImportedAnimState {
     std::vector<float> modelDelta;          // jointCount*16 row-major (placement-free)
     float gpuLift = 0.0f;                    // world-up foot-ground lift (per-frame)
-    mc2clip::Phase phase;                    // P9: jump/land memory
-    mc2clip::Mode  mode = mc2clip::Mode::Loop;  // P9: Once clips hold their last frame
-    bool  locomotion = false;                // P9: stride-matched playback
+    // P9 jump/land memory (phase), Once-clip hold (mode) and stride-matched playback (locomotion) live in ImportedAnimState: they are serialized sim state.
     float playRate = 1.0f;                   // P9: last stride rate (diagnostics)
     std::vector<mc2skel::GpuBone> lastGlobals;  // 1A: last-frame clip bone GLOBALS (FK),
                                                 // parallel to ImportedAnimEntry::names —
