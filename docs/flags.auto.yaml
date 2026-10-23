@@ -3,7 +3,7 @@
 # Where each gate is read, what the smoke runner forwards and what tier1_env_vars.md says are not here: ask
 # tools/repo_intel (env_var, gate_status), which scan the sources.
 generator_version: "3.0.0"
-gate_count: 893
+gate_count: 892
 registry_entry_count: 181
 verified_count: 785
 flags:
@@ -167,12 +167,6 @@ flags:
     doc: "BT2018 mech import 1A: route mech geometry through the Assimp GLTF/FBX importer instead of the legacy MSL loader."
     verified: true
     registry: {feature_id: MC2_FEATURE_ASSIMP_MECH_IMPORT, kind: Feature, order: -1, default_on: false}
-  - name: MC2_ASSIMP_PAUSE_GATE
-    kind: Bool
-    default: true
-    rule: Lead0Kill
-    owner: mech
-    doc: ""
   - name: MC2_BATCHER_FLUSH_TIMING
     kind: Bool
     default: false
