@@ -19,26 +19,7 @@ vec3 shadeGround(vec3 baseColor, vec3 N, float normalLight, float shadow,
                                         uT.lightPoolMoverMax, uT.lightPoolCompress,
                                         uT.moverContactShadow, moverContact);
         }
-        // PAD-AREA-GLOW-1 (terrain_lod_chunk.frag:2075-2076). useCement gates the read of
-        // the cement-word SSBO (dummy 16B until the snapshot lands).
-        vec3 padGlow = vec3(uT.padGlowR, uT.padGlowG, uT.padGlowB);
-        if (dot(padGlow, padGlow) > 0.0 && uT.useCement != 0)
-            lit += padGlow * tlp_padGlowMask(worldPos.xy, uT.halfMap, uT.mapSide, uT.padGlowSpill);
-
-        // VK-PARITY-TERRAIN-1: TERRAIN-AMBIENT-FLOOR-2, verbatim from
-        // terrain_lod_chunk.frag:2267-2277. baseColor == base here (VK has no material
-        // tint); flatLitShare == pureConcrete at stock u_cementLit=0 (the GL expression
-        // cementLightBlend*(1-u_cementLit)). Floor/gate come from the same C++ producer.
-        if (uT.ambientFloor > 0.0 && uT.ambientDayGate > 0.0) {
-            float skyF   = N.z * 0.5 + 0.5;
-            vec3  ambSky = vec3(0.55, 0.62, 0.75);
-            vec3  ambGnd = vec3(0.34, 0.30, 0.24);
-            vec3  ambCol = mix(ambGnd, ambSky, skyF);
-            float ambShadow = mix(0.55, 1.0, shadow);
-            vec3  ambTerm   = baseColor * ambCol * uT.ambientFloor * ambShadow
-                            * uT.ambientDayGate * (1.0 - flatLitShare);
-            lit += ambTerm;
-        }
+        // The burnin already contains mission ambient; no second ambient floor.
 
         // MOVER-CONTACT-SHADOW-1 (terrain_lod_chunk.frag:2287-2288): contact-AO on the
         // fully composited lighting. moverContact==0 unless MC2_MOVER_CONTACT_SHADOW>0.

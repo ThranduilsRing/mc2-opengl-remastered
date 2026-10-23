@@ -18,7 +18,7 @@ struct GpuTerrainLight {
     float farDistance;    // offset 32
     float oneOverDistance;// offset 36
     float _pad1;          // offset 40
-    float _pad2;          // offset 44
+    float intensity;          // offset 44
 };
 struct GpuTerrainLightingOutput { uint lightRGB; uint fogRGB; };
 

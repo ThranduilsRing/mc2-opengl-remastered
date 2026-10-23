@@ -126,7 +126,7 @@ struct PoolLight {
     float farDistance;
     float oneOverDistance;
     float _plPad1;
-    float _plPad2;
+    float intensity;
 };
 layout(set = 0, binding = 8, std430) readonly buffer PropPoolLightsVK {
     PoolLight poolLights[];

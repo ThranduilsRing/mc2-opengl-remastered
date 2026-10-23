@@ -379,7 +379,7 @@ void main() {
     // VK-TERRAIN-LIGHTING: track whether this fragment resolved to a solid cement slab.
     // GL treats pure concrete as a flat-lit slab (no NdotL relief) and drops the STATIC
     // self-shadow on it (terrain_lod_chunk.frag:894 + :902-907). We mirror that: on a
-    // solid-cement hit -> flat-lit + no static shadow. (The GL dynamic building shadow on
+    // solid-cement hit -> flat-lit with ordinary static and dynamic shadows. (The GL dynamic building shadow on
     // concrete is a SEPARATE dynamic map, still deferred here.)
     bool pureConcrete = false;
     bool cementHit = false;   // a solid cement atlas texel won (the shoreline wet band skips it, as GL)
@@ -543,7 +543,7 @@ void main() {
     }
 
     // ★VK-TERRAIN-LIGHTING compose. Mirrors terrain_lod_chunk.frag:889-928 (the NdotL
-    // relief band + baked static sun shadow, cement flat-lit + shadow-dropped). Terrain
+    // relief band + baked static sun shadow, cement flat-lit). Terrain
     // normal is the flat-up (0,0,1) the GBuffer1 encodes and GL's calcShadow uses as
     // shadowN. Gate uT.lightingEnabled==0 -> lit==base (identity) -> byte-identical to
     // the pre-lighting frame. DEFERRED vs GL: detail-normal/POM/macro-variation relief,

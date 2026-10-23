@@ -47,9 +47,10 @@ struct alignas(16) GpuTerrainLight {         // 48 B std430 (Stage 2 extended)
     float    farDistance;    // 4 B @ offset 32   (TG_Light::farDistance)
     float    oneOverDistance;// 4 B @ offset 36   (TG_Light::oneOverDistance)
     float    _pad1;          // 4 B @ offset 40
-    float    _pad2;          // 4 B @ offset 44
+    float    intensity;      // 4 B @ offset 44; applied once by each pool consumer
 };
 static_assert(sizeof(GpuTerrainLight) == 48, "GpuTerrainLight must be 48 B std430");
+static_assert(offsetof(GpuTerrainLight, intensity) == 44, "pool intensity must stay @44");
 static_assert(offsetof(GpuTerrainLight, color) == 16, "color vec3 must stay @16 — a field inserted before it breaks GLSL std430 lockstep");
 
 struct alignas(4) GpuTerrainLightingOutput { //  8 B std430

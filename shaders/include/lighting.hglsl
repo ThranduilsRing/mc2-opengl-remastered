@@ -276,7 +276,9 @@ vec3 calc_light(in int lights_index, in vec3 normal, in vec3 vertex_world_pos, i
         vec3 lcolor = ld.light_color[i].xyz;
 
         if (light_type == TG_LIGHT_AMBIENT) {
+#ifndef MC2_ENVIRONMENT_AMBIENT
             ambient += lcolor;
+#endif
         }
         else if (light_type == TG_LIGHT_INFINITE) {
             // SUN-AXIS-FIX-1: see the header block. The swap is the SAME one

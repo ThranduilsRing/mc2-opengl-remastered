@@ -2,7 +2,7 @@
 #define __TERRAIN_LIGHT_POOL_HGLSL__
 
 // VK-PARITY-TERRAIN-2: the terrain night light-pool loop (NIGHT-LIGHT-POOLS-1..4,
-// LIGHT-CLUSTER-PERF-1 grid, MOVER-CONTACT-SHADOW-1) and the PAD-AREA-GLOW-1 mask,
+// LIGHT-CLUSTER-PERF-1 grid, MOVER-CONTACT-SHADOW-1) without a cement-wide glow,
 // shared VERBATIM by the GL LOD-chunk frag (shaders/terrain_lod_chunk.frag) and the
 // VK terrain tier-1 frags (shaders/vulkan/terrain_tier1{,_skirt}.frag). One body,
 // two backends: the math cannot drift.
@@ -13,7 +13,6 @@
 //   poolLights[]       (PoolLight)      GL binding 28 / VK set0 binding 11
 //   lightGridCells[]   (uvec2)          GL binding 29 / VK set0 binding 12
 //   lightGridIndices[] (uint)           GL binding 30 / VK set0 binding 13
-//   TLP_CEMENT_WORD(i)  macro -> uint   the per-tile cement word (GL cementWordsF[i])
 // All knobs arrive as parameters (GL passes its uniforms, VK its UBO fields), so the
 // include itself declares no uniforms and no bindings.
 //
@@ -79,7 +78,7 @@ vec3 tlp_terrainPoolLight(vec3 wp, int numPoolLights,
             float t = clamp(falloff, 0.0, 1.0);
             falloff = t * t * (3.0 - 2.0 * t);
         }
-        vec3 plCol = poolLights[i].color;
+        vec3 plCol = poolLights[i].color * poolLights[i].intensity;
         if (mover) {
             // Mover-attached light (producer pad flag): dim vs buildings.
             plCol *= moverDim;
@@ -113,31 +112,6 @@ vec3 tlp_terrainPoolLight(vec3 wp, int numPoolLights,
         return vec3(1.0) - exp(-1.6 * pool);
     else
         return min(pool, vec3(1.0));
-}
-
-// PAD-AREA-GLOW-1: soft dilated cement mask. 1 on any VALID cement tile,
-// feathered to 0 over padGlowSpill wu of world distance to the nearest cement
-// tile rect (3x3 tile neighborhood — spill is clamped < 128 wu = one tile, so
-// ring-1 is sufficient). Grid convention matches the cement branch:
-// gx grows +worldX, gy grows -worldY, 128 wu tiles.
-float tlp_padGlowMask(vec2 wp, float halfMap, int mapSide, float padGlowSpill) {
-    vec2 g = vec2((wp.x + halfMap) / 128.0, (halfMap - wp.y) / 128.0);
-    int cx = clamp(int(floor(g.x)), 0, mapSide - 1);
-    int cy = clamp(int(floor(g.y)), 0, mapSide - 1);
-    float m = 0.0;
-    for (int dy = -1; dy <= 1; ++dy) {
-        for (int dx = -1; dx <= 1; ++dx) {
-            int nx = cx + dx, ny = cy + dy;
-            if (nx < 0 || ny < 0 || nx >= mapSide || ny >= mapSide) continue;
-            if ((TLP_CEMENT_WORD(nx + ny * mapSide) & 0x80000000u) == 0u) continue;
-            vec2 rMin = vec2(float(nx), float(ny));
-            vec2 dv = max(max(rMin - g, g - (rMin + 1.0)), vec2(0.0));
-            float distWu = length(dv) * 128.0;
-            m = max(m, 1.0 - smoothstep(0.0, max(padGlowSpill, 1.0), distWu));
-            if (m >= 1.0) return 1.0;
-        }
-    }
-    return m;
 }
 
 #endif // __TERRAIN_LIGHT_POOL_HGLSL__

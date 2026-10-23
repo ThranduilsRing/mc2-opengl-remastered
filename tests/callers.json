@@ -8058,6 +8058,13 @@
       ]
     },
     {
+      "path": "tools/lighting_source_census.py",
+      "basename": "lighting_source_census.py",
+      "stem": "lighting_source_census",
+      "callers_by_basename": [],
+      "callers_by_stem": []
+    },
+    {
       "path": "tools/list_free_ordinals.py",
       "basename": "list_free_ordinals.py",
       "stem": "list_free_ordinals",

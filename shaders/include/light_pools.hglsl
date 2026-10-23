@@ -27,7 +27,7 @@ struct PoolLight {
     float farDistance;
     float oneOverDistance;
     float _plPad1;         // >0.5 = mover-attached (producer flag)
-    float _plPad2;
+    float intensity;
 };
 layout(binding = 28, std430) readonly buffer ObjectLightPool {
     PoolLight poolLights[];

@@ -44,7 +44,7 @@ struct PoolLight {
     float farDistance;
     float oneOverDistance;
     float _plPad1;
-    float _plPad2;
+    float intensity;
 };
 layout(set = 0, binding = 5, std430) readonly buffer MechPoolLightsVK {
     PoolLight poolLights[];
@@ -90,7 +90,6 @@ void main() {
             Nshade = msh_normalMapped(Nshade, vTangentGL,
                                       textureLod(uMechNrm, vUv, 0.0).xyz, uFrame.shadeC.y);
 
-        rgb += msh_hemiAmbient(tex_color.rgb, Nshade, uFrame.shadeA.x);
 
         if (uFrame.shadeA.y > 0.0 && vMechSunFound != 0) {
             bool isGlass = msh_isGlass(tex_color.rgb, uFrame.shadeB.x, uFrame.shadeB.y);

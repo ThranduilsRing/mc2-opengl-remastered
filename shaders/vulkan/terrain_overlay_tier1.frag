@@ -3,9 +3,9 @@
 // Port of shaders/terrain_overlay.frag (authored-art cement/pad/runway/road overlays and
 // the cement transition tiles): decal texture albedo, OVERLAY-CEMENT-ADOPT-1 cement-atlas
 // adoption on bare cement tiles, RUNWAY-CLOSE-1 flat-light arm, CEMENT-NIGHT-LIGHT-1
-// mission flat light, static x dynamic sun shadow (static dropped on cement tiles),
+// mission flat light, static x dynamic sun shadow,
 // in-shader distance fog (skipped on cement), NIGHT-LIGHT-POOLS additive light pools,
-// PAD-AREA-GLOW-1, map-edge haze. Co-writes MRT0 color + MRT1 = shadowHandled flat-up
+// map-edge haze. Co-writes MRT0 color + MRT1 = shadowHandled flat-up
 // (0.5,0.5,1,1) into the shared scene GBuffer, binary-alpha (discard a < 0.5), opaque.
 // Shares the terrain island's set 0 (UBO slot 0 + cement/pool/shadow bindings) via
 // include/terrain_frame_vk.glsl so the lighting inputs are the terrain's own.
@@ -117,11 +117,6 @@ void main() {
                                       uT.lightPoolMoverMax, uT.lightPoolCompress,
                                       0.0, moverContactUnused);
     }
-    // PAD-AREA-GLOW-1 (post-fog, same as the chunk terrain).
-    vec3 padGlow = vec3(uT.padGlowR, uT.padGlowG, uT.padGlowB);
-    if (uT.useCement != 0 && dot(padGlow, padGlow) > 0.0)
-        c.rgb += padGlow * tlp_padGlowMask(WorldPos.xy, uT.halfMap, uT.mapSide, uT.padGlowSpill);
-
     // Map-edge haze (same ramp as gos_terrain.frag).
     if (pc.mapHalfExtent > 0.0) {
         const vec3 edgeSkyCol = vec3(0.58, 0.65, 0.75);

@@ -4,6 +4,7 @@
 #include "../RenderCore/axis_convert.h"
 #include "mc2fmt.h"
 #include "anim_freeze.h"
+#include "../GameOS/gameos/visual_tuning_profile.h"
 
 // T1.15 SpotLight_ illumination diagnostic — registration probe (bldg class).
 // Env-gated per Debug Instrumentation Rule. First-hit is always-on (one stderr
@@ -62,7 +63,8 @@ long BldgAppearance::update (bool animate)
 			mc2::math::buildRotation(lightToWorldMatrix, mc2::math::Euler(0.0f,0.0f,0.0f));
 			pointLight->SetLightToWorld(&lightToWorldMatrix);
 			pointLight->SetPosition(&position);
-			pointLight->SetIntensity(appearType->terrainLightIntensity * eye->getNightFactor());
+			pointLight->SetIntensity(appearType->terrainLightIntensity * eye->getNightFactor() *
+                visualTuning_environment().buildingSpillIntensityScale);
 		}
    	}
 	else
@@ -353,6 +355,7 @@ long BldgAppearance::update (bool animate)
 			// still real and must keep rendering. Collapsing the two would make
 			// tower searchlights vanish when aimed at a wall.
 			const bool ownerLit = (eye && eye->isNight && visible && !forceLightsOut);
+			spotlightLights_[k]->SetIntensity(0.5f * visualTuning_environment().buildingSpillIntensityScale);
 			spotlightLights_[k]->active = ownerLit && !coneMissedGround;
 			// LIGHT-CULL-RADIUS-1: owner intent for the camera composition.
 			// Building light positions are static, so persistence while the

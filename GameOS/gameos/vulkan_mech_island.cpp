@@ -55,6 +55,7 @@
 #include "vk_texture_residency.h"
 #include "texture_decode.h"              // gos_GetTextureTexels: material texels without a GL readback
 #include "../../RenderCore/gpu_abi/GpuMechFrameUBO.h"  // single-source per-frame UBO
+#include "visual_tuning_profile.h"
 #include "vk_shared_gbuffer_gate.h"      // VK-P14 GATE-CONSOLIDATION-1 umbrella resolver
 #include "vk_shared_light_feed.h"        // VK-LIGHTFEED-DEDUP-1: shared per-frame LightsData SSBO
 #include "vk_gpu_timestamps.h"           // VK-DRAW-PERF-1: MC2_VK_GPU_TIMESTAMPS GPU segment timers
@@ -864,6 +865,9 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
       u.poolI[0] = poolN;             u.poolI[1] = feed.poolSoft;
       u.poolI[2] = feed.poolMoverMax; u.poolI[3] = feed.poolCompress;
       u.miscI[0] = feed.specDebugMask;
+      const auto& ambient = visualTuning_environment().sky.hemisphereSky;
+      for (size_t c=0; c<3; ++c)
+          u.environmentAmbient[c] = ambient[c] * visualTuning_environment().unitAmbientScale;
       std::memcpy(mainPtr, &u, sizeof(u)); }
     // Every scheme set of this parity follows the buffers the spans came from; the draw passes the offsets.
     sync_ring_bindings(s, par, mainSpan, lightSpan);

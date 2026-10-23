@@ -151,9 +151,9 @@ void refLight(const gos_terrain_lighting::GpuTerrainVertexInput& v, const gos_te
             if (len <= L.closeDistance) fo = 1.0f;
             else if (len >= L.farDistance) continue;
             else fo = (L.farDistance - len) * L.oneOverDistance;
-            sr = std::min(sr + static_cast<uint32_t>(L.color[0] * 255.0f * fo), 255u);
-            sg = std::min(sg + static_cast<uint32_t>(L.color[1] * 255.0f * fo), 255u);
-            sb = std::min(sb + static_cast<uint32_t>(L.color[2] * 255.0f * fo), 255u);
+            sr = std::min(sr + static_cast<uint32_t>(L.color[0] * L.intensity * 255.0f * fo), 255u);
+            sg = std::min(sg + static_cast<uint32_t>(L.color[1] * L.intensity * 255.0f * fo), 255u);
+            sb = std::min(sb + static_cast<uint32_t>(L.color[2] * L.intensity * 255.0f * fo), 255u);
         }
     }
     outLight = (0xFFu << 24) | (lr << 16) | (lg << 8) | lb;
@@ -213,7 +213,8 @@ uint32_t NativeProducers::selfTestLighting() {
         L.lightType = (i % 4) + 0u;   // includes type 0 (ignored)
         L.color[0] = rnd(); L.color[1] = rnd(); L.color[2] = rnd();
         L.closeDistance = rnd() * 30.0f; L.farDistance = L.closeDistance + 50.0f + rnd() * 500.0f; L.oneOverDistance = 1.0f / (L.farDistance - L.closeDistance);
-        L._pad1 = L._pad2 = 0.0f;
+        L._pad1 = 0.0f;
+        L.intensity = static_cast<float>(i % 5) * 0.25f;
     }
     VkTerrainLightingParams P{};
     P.counts[0] = static_cast<int32_t>(numVertices_); P.counts[1] = NL; P.counts[2] = kFirst; P.counts[3] = N;
