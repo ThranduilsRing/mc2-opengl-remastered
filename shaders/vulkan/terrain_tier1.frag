@@ -595,15 +595,16 @@ void main() {
 
     vec3 lit = base;
     if (uT.lightingEnabled != 0) {
-        // VK-TERRAIN-DETAIL: perturb the terrain normal like GL (terrain_lod_chunk.frag
-        // :740-808). Gate uT.detailEnabled==0 -> N stays flat-up -> byte-identical to the
-        // lighting-only frame. On cement (pureConcrete) GL suppresses the detail perturb
-        // (dN *= 1-pureConcrete) and lights the slab flat, so we keep N flat-up there too.
+        // Colormaps are prelit: authored burnins, or sources baked by the loader.
+        // Only detail relative to the macro normal may modulate that illumination.
+        // Cement retains its authored slab normal and receives the same visibility.
         //   pert = vec3(baseN.xy/max(baseN.z,0.2)*nfhStrength + dN.xy*detailStrength, 1.0)
         //   N    = normalize(pert)
         // baseN = height-derived macro slope (always live via the bound height SSBO);
         // dN    = weighted material detail normal (only when the array imported).
         vec3 N = vec3(0.0, 0.0, 1.0);                            // flat-up terrain normal (default)
+        vec3 lightDir = uT.terrainLightDir.xyz;
+        float macroNdotL = max(lightDir.z, 0.2);
         vec3 dbgBaseN = vec3(0.0, 0.0, 1.0); vec3 dbgDN = vec3(0.0);  // CSM-BLACKOUT-RECON-1 taps
         if (uT.detailEnabled != 0 && !pureConcrete) {
             vec3 baseN = mv_smoothTerrainNormal(v_worldPos.xy);
@@ -616,16 +617,16 @@ void main() {
                 float lodNear = mv_computeLodNear(v_worldPos.xy, v_worldPos.z);
                 dN = mv_detailNormal(matW, snowW, v_worldPos.xy, lodNear, baseN.z, detailUvDx, detailUvDy);
             }
-            vec3 pert = vec3(baseN.xy / max(baseN.z, 0.2) * uT.nfhStrength
-                             + dN.xy * uT.detailStrength, 1.0);
+            vec3 macroPert = vec3(baseN.xy / max(baseN.z, 0.2) * uT.nfhStrength, 1.0);
+            macroNdotL = max(dot(normalize(macroPert), lightDir), 0.2);
+            vec3 pert = macroPert + vec3(dN.xy * uT.detailStrength, 0.0);
             N = normalize(pert);
             if (uT.detailReady >= 2) mv_cliffMaterial(baseN, N, baseColor);   // steep cells: triplanar normal + cliff POM + groove relief
             dbgBaseN = baseN; dbgDN = dN;                        // CSM-BLACKOUT-RECON-1 taps
         }
-        vec3 lightDir = uT.terrainLightDir.xyz;
-
-        float normalLight = computeNdotLBand(N, lightDir);
-        if (pureConcrete) normalLight = 1.0;                     // cement: flat-lit slab
+        // Equal normals give exactly one, including when detail is disabled.
+        // Bound the grazing/back-facing ratio rather than re-lighting macro relief.
+        float normalLight = clamp(max(dot(N, lightDir), 0.2) / macroNdotL, 0.5, 1.5);
 
         // Static ground mask and current-frame movers share the same visibility
         // floor. Cement receives both, exactly like the surrounding terrain.
