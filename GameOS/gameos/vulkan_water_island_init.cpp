@@ -283,7 +283,7 @@ bool init_island(WaterIsland* s, int w, int h) {
         gp.pViewportState = &vps; gp.pRasterizationState = &rs;
         gp.pMultisampleState = &ms; gp.pDepthStencilState = &ds; gp.pColorBlendState = &cb;
         gp.layout = s->playout.get(); gp.renderPass = s->rpass.get(); gp.subpass = 0;
-        if (!mc2vk::create(s->pipe, s->device, [&](VkPipeline* h) { return vkCreateGraphicsPipelines(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, h); })) {
+        if (!mc2vk::create(s->pipe, s->device, [&](VkPipeline* h) { return mc2vk::infra::graphics(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, h); })) {
             vlog("vkCreateGraphicsPipelines failed."); return false;
         }
         mc2vk::nameObject(s->device, s->pipe.get(), "water.pipe");

@@ -262,7 +262,7 @@ bool ovl_init(TerrainIsland* s, OvlState* o, int w, int h) {
             gp.pMultisampleState = &ms; gp.pDepthStencilState = &ds; gp.pColorBlendState = &cb;
             gp.pDynamicState = &dsci;
             gp.layout = o->playout.get(); gp.renderPass = o->rpass.get(); gp.subpass = 0;
-            if (!mc2vk::create(o->pipe[k], s->device, [&](auto* h) { return vkCreateGraphicsPipelines(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, h); })) return false;
+            if (!mc2vk::create(o->pipe[k], s->device, [&](auto* h) { return mc2vk::infra::graphics(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, h); })) return false;
             mc2vk::nameObjectAt(s->device, o->pipe[k].get(), "terrain.overlayPipe", static_cast<int>(k));
         }
     }
@@ -293,6 +293,15 @@ extern "C" void mc2_vk_overlay_submit(uint32_t kind, const void* verts, uint32_t
                        static_cast<const uint8_t*>(verts) + static_cast<size_t>(vertCount) * kOvlVertStride);
     }
     g_ovlPending.push_back(std::move(p));
+}
+
+extern "C" int mc2_vk_overlay_prewarm(int w,int h) {
+    TerrainIsland* s=parkedIsland();
+    if(!s || !s->inited || !mc2_vk_overlay_enabled()) return 0;
+    if(s->ovl) return 1;
+    s->ovl=std::make_unique<OvlState>();
+    if(!ovl_init(s,s->ovl.get(),w,h)) { ovl_destroy(s); return 0; }
+    return 1;
 }
 
 extern "C" int mc2_vk_overlay_run(int w, int h) {
@@ -437,7 +446,7 @@ extern "C" int mc2_vk_overlay_run(int w, int h) {
         pc._pad[0] = sourceKind == 2 ? 2 : 0;
         vkCmdPushConstants(cb, o->playout.get(), VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(pc), &pc);
         const int isStat = (it.kind & 4u) ? 1 : 0;
-        if (kind != boundKind) { vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, o->pipe[kind].get()); boundKind = kind; }
+        if (kind != boundKind) { mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, o->pipe[kind].get()); boundKind = kind; }
         if (isStat != boundStatic) {
             VkBuffer vb = isStat ? o->stat.get() : vtxSpan.buffer;
             VkDeviceSize vbOff = isStat ? 0 : vtxSpan.offset;

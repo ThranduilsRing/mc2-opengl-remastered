@@ -141,6 +141,11 @@ bool sceneReadbackSelfTest() {
     auto& ctx = getOrCreateEngineVulkanContext();
     if (!ctx.valid()) return false;
     std::array<VkImageResource, 3> owned;
+    struct Cleanup {
+        std::array<VkImageResource,3>& images;
+        VkDevice device;
+        ~Cleanup() { for(auto& image:images) vkImageResourceDestroy(&image,device); }
+    } cleanup{owned,ctx.device()};
     Images images{&owned[0], &owned[1], &owned[2]};
     for (unsigned i = 0; i < 3; ++i)
         if (!vkImageResourceCreate(images[i], ctx.device(), ctx.physicalDevice(), 2, 3, formats[i],

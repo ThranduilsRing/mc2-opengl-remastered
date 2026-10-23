@@ -41,6 +41,7 @@ struct VkImageResource {
     // Cached device handle so vkImageResourceBeginFrame (which takes only the
     // resource) can reset the fence without threading VkDevice through every call.
     VkDevice          device = VK_NULL_HANDLE;
+    void markDeferred() { if(memory) mc2vk::infra::defer(reinterpret_cast<uint64_t>(memory.get())); }
 };
 
 // Native submission completion and slot parity, returned after waiting/resetting the fence.
@@ -51,7 +52,7 @@ struct VkFrameSync { VkFence fence; uint32_t parity; };
 // partial resource is torn down internally before returning false).
 bool vkImageResourceCreate(VkImageResource* r, VkDevice device, VkPhysicalDevice phys,
                            uint32_t w, uint32_t h, VkFormat format,
-                           VkImageUsageFlags usage);
+                           VkImageUsageFlags usage, std::string_view name = "targets.image");
 
 void vkImageResourceDestroy(VkImageResource* r, VkDevice device);
 

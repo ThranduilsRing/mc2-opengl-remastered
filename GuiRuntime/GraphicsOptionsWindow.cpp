@@ -1,5 +1,6 @@
 #include "GraphicsOptionsWindow_internal.h"
 #include "Gates/render_options.h"
+#include "../GameOS/gameos/vk_render_infra.h"
 
 namespace GraphicsOptionsWindow {
 
@@ -224,6 +225,9 @@ void draw() {
         }
     }
 
+#ifdef MC2_VULKAN_ISLAND
+    mc2vk::infra::panel();
+#endif
     ImGui::Separator();
     ImGui::TextDisabled("RAlt hotkeys still active.  Ctrl+Shift+G to close.");
 

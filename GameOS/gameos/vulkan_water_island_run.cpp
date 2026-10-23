@@ -19,6 +19,20 @@ void gos_GetTerrainChunkGridInfo(int* mapSide, float* halfMap);
 //   recipes/recipeCount — mission-static recipe array (64B each; uploaded once).
 //   vsP/fsP — the packed uniform params (LOCKSTEP with water_geom.{vert,frag}).
 // Returns 1 if the VK water pass rendered this frame; 0 = declined (no water this frame: the GL water draw is gone).
+extern "C" int mc2_vk_water_island_prewarm(int w,int h) {
+    auto& ctx=mc2vk::getOrCreateEngineVulkanContext();
+    if(!ctx.valid() || w<=0 || h<=0) return 0;
+    auto& slot=ctx.islandSlot(mc2vk::IslandSlot::Water);
+    if(!slot) {
+        auto fresh=std::make_unique<WaterIsland>();
+        if(!init_island(fresh.get(),w,h)) { ctx.waitIdle("water_prewarm_failure"); return 0; }
+        slot=std::move(fresh);
+    }
+    auto* s=parkedIsland();
+    if(!s->native) s->native=std::make_unique<mc2vk::NativeProducers>();
+    return s->native->prewarmPipelines(ctx) ? 1 : 0;
+}
+
 extern "C" int mc2_vk_water_island_run(
     int w, int h,
     const void* recipes, unsigned int recipeCount,
@@ -118,11 +132,11 @@ extern "C" int mc2_vk_water_island_run(
     }
 
     // STEP 3.4P: bring the native producers up once the recipes and the first lighting snapshot exist.
-    if (!s->native && !s->nativeFailed) {
+    if ((!s->native || !s->native->ready()) && !s->nativeFailed) {
         gos_terrain_lighting::VkProducerSnapshot snap0{};
         if (gos_terrain_lighting::GetVkProducerSnapshot(snap0) && snap0.numVertices > 0) {
             slotCtx.waitIdle("water_native_init");
-            auto np = std::make_unique<mc2vk::NativeProducers>();
+            auto np = s->native ? std::move(s->native) : std::make_unique<mc2vk::NativeProducers>();
             // Upper bound on the quads the cull can emit: the shader's water-eligibility predicate (water bit on any corner, or any
             // corner under waterElevation + shoreExt) counted over the CPU recipes once, plus headroom. Sizes the thin buffers from the map.
             uint32_t eligibleBound = 0;
@@ -255,7 +269,7 @@ extern "C" int mc2_vk_water_island_run(
         rbi.clearValueCount = 3; rbi.pClearValues = clears;
         MC2_VK_GPU_SCOPE(gpuScope, cb, "VKIsl.Water");
         vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
-        vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->pipe.get());
+        mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->pipe.get());
         const uint32_t uboOffsets[2] = {static_cast<uint32_t>(uboSpan.offset), static_cast<uint32_t>(uboSpan.offset + fsUboOff)};
         vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 0, 1, &s->set[par], 2, uboOffsets);
         vkCmdDrawIndirect(cb, s->native->drawArgs(par), 0, 1, 16);

@@ -179,6 +179,7 @@ public:
     // Rung 8.6 native ImGui renderer seam. These stay VK-header-free so
     // GuiRuntime can hand draw data to the present owner without learning Vulkan.
     bool prepareImguiVulkanFrame();
+    bool prewarmPipelines();
     bool renderImguiVulkanDrawData(ImDrawData* drawData);
     bool imguiVulkanReady() const;
     void shutdownImguiVulkanRenderer();

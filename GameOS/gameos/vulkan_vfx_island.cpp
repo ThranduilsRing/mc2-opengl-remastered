@@ -318,8 +318,8 @@ mc2vk::OwnedPipeline make_pipeline(VfxIsland* s, int w, int h, bool additive, bo
     gp.pMultisampleState = &ms; gp.pDepthStencilState = &ds; gp.pColorBlendState = &cb;
     gp.layout = vegetation ? s->vegLayout.get() : s->playout.get(); gp.renderPass = s->rpass.get(); gp.subpass = 0;
     mc2vk::OwnedPipeline pipe;
-    if (!mc2vk::create(pipe, s->device, [&](VkPipeline* out) { return vkCreateGraphicsPipelines(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, out); })) {
-        vlog("vkCreateGraphicsPipelines(%s) failed.", additive ? "additive" : "alpha");
+    if (!mc2vk::create(pipe, s->device, [&](VkPipeline* out) { return mc2vk::infra::graphics(s->device, VK_NULL_HANDLE, 1, &gp, nullptr, out); })) {
+        vlog("mc2vk::infra::graphics(%s) failed.", additive ? "additive" : "alpha");
         return {};
     }
     mc2vk::nameObject(s->device, pipe.get(), additive ? "vfx.pipe.additive" : "vfx.pipe.alpha");
@@ -591,6 +591,17 @@ bool prepare_shadow_descriptors(VfxIsland* s, uint32_t par) {
 // ===========================================================================
 extern "C" int mc2_vk_vfx_island_enabled() { return 1; }
 
+extern "C" int mc2_vk_vfx_island_prewarm(int w,int h) {
+    auto& ctx=mc2vk::getOrCreateEngineVulkanContext();
+    if(!ctx.valid() || w<=0 || h<=0) return 0;
+    auto& slot=ctx.islandSlot(mc2vk::IslandSlot::Vfx);
+    if(slot) return 1;
+    auto fresh=std::make_unique<VfxIsland>();
+    if(!init_island(fresh.get(),w,h)) { ctx.waitIdle("vfx_prewarm_failure"); return 0; }
+    slot=std::move(fresh);
+    return 1;
+}
+
 extern "C" int mc2_vk_vfx_island_run(
     const void* particles, uint32_t particleCount,
     const VfxParticleDraw* draws, uint32_t drawCount,
@@ -661,7 +672,7 @@ extern "C" int mc2_vk_vfx_island_run(
         if (!groupPage[gi]) continue;   // no resident texture: skipped, as the GL path does
         if (d.atlasColumns == kVfxVegetationAtlas) continue;   // vegetation draws through mc2_vk_vfx_vegetation_run
         VkPipeline want = d.additive == VFX_ADD_ONE_ONE ? s->oneOnePipe.get() : d.additive == VFX_ADD_SRC_ALPHA ? s->addPipe.get() : s->alphaPipe.get();
-        if (want != bound) { vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, want); bound = want; }
+        if (want != bound) { mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, want); bound = want; }
         vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 1, 1, &*groupPage[gi], 0, nullptr);
         const VfxGroupPush push{ {d.u0, d.v0}, {d.us, d.vs}, d.atlasColumns, d.additive == VFX_ADD_ONE_ONE ? 1u : 0u };
         vkCmdPushConstants(cb, s->playout.get(), VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(push), &push);
@@ -760,7 +771,7 @@ bool mc2_vk_vfx_vegetation_run(const mc2veg::CullParams& params, const float* wo
         rbi.clearValueCount = 3; rbi.pClearValues = clears;
         MC2_VK_GPU_SCOPE(gpuScope, cb, "VKIsl.Vfx.Vegetation");
         vkCmdBeginRenderPass(cb, &rbi, VK_SUBPASS_CONTENTS_INLINE);
-        vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->vegetationPipe.get());
+        mc2vk::infra::bind(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->vegetationPipe.get());
         vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->vegLayout.get(), 0, 1, &s->set[par], 2, dynOffsets);
         vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->vegLayout.get(), 1, 1, &*page, 0, nullptr);
         const uint32_t drawDyn = veg->paramsDynamicOffset(par);

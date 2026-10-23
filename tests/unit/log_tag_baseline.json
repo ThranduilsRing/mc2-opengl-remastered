@@ -9737,6 +9737,25 @@
    "count": 1
   },
   {
+   "tag": "VK_BREADCRUMBS",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "sink",
+    "cpu_ring"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_BREADCRUMBS",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "snapshot"
+   ],
+   "count": 1
+  },
+  {
    "tag": "VK_ENGINE_CONTEXT",
    "ver": -1,
    "stream": "stderr",
@@ -9762,6 +9781,18 @@
    "ver": -1,
    "stream": "stderr",
    "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "VK_FIRST_FRAMES",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "count",
+    "p95_ms",
+    "max_ms",
+    "late_pipeline_creations"
+   ],
    "count": 1
   },
   {
@@ -10052,6 +10083,52 @@
    "count": 1
   },
   {
+   "tag": "VK_PIPELINE_CACHE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "saved_bytes",
+    "pipelines",
+    "creation_ms"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_PIPELINE_CACHE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "status",
+    "initial_bytes"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_PIPELINE_CREATE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "kind",
+    "count",
+    "ms",
+    "frame"
+   ],
+   "count": 2
+  },
+  {
+   "tag": "VK_PIPELINE_PREWARM",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "ready",
+    "families",
+    "pipelines",
+    "ms",
+    "size"
+   ],
+   "count": 1
+  },
+  {
    "tag": "VK_PRESENT",
    "ver": -1,
    "stream": "stderr",
@@ -10151,6 +10228,53 @@
    "count": 1
   },
   {
+   "tag": "VK_RESIDENCY",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "VK_RESIDENCY",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "feature_refused",
+    "bytes"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_RESIDENCY",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "shadow_tier",
+    "requested"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_RESIDENCY",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "texture_refused",
+    "bytes"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_RESIDENCY",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "texture_tier",
+    "requested"
+   ],
+   "count": 1
+  },
+  {
    "tag": "VK_SCENE_READBACK",
    "ver": -1,
    "stream": "stderr",
@@ -10168,6 +10292,29 @@
     "channels",
     "bounds",
     "result"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_SHADER_RELOAD",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "pipelines",
+    "shader",
+    "old",
+    "new",
+    "retirement"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_SHADER_RELOAD",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "reason",
+    "shader"
    ],
    "count": 1
   },

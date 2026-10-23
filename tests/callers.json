@@ -2726,6 +2726,13 @@
           "text": "import console_child  # noqa: E402  (windowless console children without a conhost each; scripts/console_child.py)"
         },
         {
+          "path": "scripts/vk_shader_reload.py",
+          "line": 15,
+          "evidence": "import",
+          "reference": "console_child",
+          "text": "import console_child"
+        },
+        {
           "path": "scripts/write-deploy-manifest.py",
           "line": 28,
           "evidence": "import",
@@ -6578,6 +6585,13 @@
           "text": "import visual_diff  # noqa: E402"
         }
       ]
+    },
+    {
+      "path": "scripts/vk_shader_reload.py",
+      "basename": "vk_shader_reload.py",
+      "stem": "vk_shader_reload",
+      "callers_by_basename": [],
+      "callers_by_stem": []
     },
     {
       "path": "scripts/write-deploy-manifest.py",
@@ -10446,6 +10460,13 @@
           "text": "import slang_compile  # noqa: E402"
         },
         {
+          "path": "scripts/vk_shader_reload.py",
+          "line": 82,
+          "evidence": "import",
+          "reference": "slang_compile",
+          "text": "import slang_compile"
+        },
+        {
           "path": "tools/check_vk_shaders.py",
           "line": 31,
           "evidence": "import",
@@ -10481,7 +10502,15 @@
           "text": "COMMAND ${Python3_EXECUTABLE}"
         }
       ],
-      "callers_by_stem": []
+      "callers_by_stem": [
+        {
+          "path": "scripts/vk_shader_reload.py",
+          "line": 19,
+          "evidence": "import",
+          "reference": "reflect",
+          "text": "import reflect  # noqa: E402 -- reuse the repository's SPIRV-Cross reflection"
+        }
+      ]
     },
     {
       "path": "tools/shader_schema/validate.py",

@@ -255,6 +255,11 @@ public:
     const float* getViewProj() const { return viewProj_; }
     int getWidth()  const { return width_; }
     int getHeight() const { return height_; }
+#ifdef MC2_VULKAN_ISLAND
+    void prewarmVkFog();
+    void prewarmVkScreenFx();
+    void prewarmVkHzb();
+#endif
 
 private:
     void createSceneTargets(int w, int h);

@@ -1,5 +1,6 @@
 {
   "scripts/tests/test_veg_card_cook.py": "Pytest-discovered module through scripts/run_scripts_tests.py (scripts_tests); coverage, dilation, trim and deterministic mip tests.",
+  "scripts/vk_shader_reload.py": "Operator-run native Vulkan shader reload command, documented in its module help; compiles and validates an ABI-compatible shader for an already-running game.",
   "scripts/tests/test_check_doc_links.py": "Discovered dynamically by scripts/run_scripts_tests.py through scripts/test_ownership.json; exercises the tracked-document link contract.",
   "scripts/bake_colormap_ktx2.py": "Existing script at 97949f0f5 with no resolved executable caller; retained pending coordinator cull review. This exception does not certify live use.",
   "scripts/build_release.sh": "Existing script at 97949f0f5 with no resolved executable caller; retained pending coordinator cull review. This exception does not certify live use.",

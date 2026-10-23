@@ -388,6 +388,8 @@ bool VulkanContext::init(bool wantPresent) {
     // estimate). No external-memory extension is requested: no VK resource is exportable.
     std::vector<const char*> devExts;
     for (const std::string& e : profile_.deviceExtensions) devExts.push_back(e.c_str());
+    if (caps.hasExtension(VK_NV_DEVICE_DIAGNOSTIC_CHECKPOINTS_EXTENSION_NAME)) devExts.push_back(VK_NV_DEVICE_DIAGNOSTIC_CHECKPOINTS_EXTENSION_NAME);
+    if (caps.hasExtension(VK_AMD_BUFFER_MARKER_EXTENSION_NAME)) devExts.push_back(VK_AMD_BUFFER_MARKER_EXTENSION_NAME);
 
     // The feature bits the profile selected. Eight bits are required by the owner ruling of 2026-10-13 (timeline semaphores, buffer device address, the
     // descriptor-indexing group that is the bindless table's definition, dynamic rendering, synchronization2) and enabled although no island consumes them
@@ -442,6 +444,7 @@ bool VulkanContext::init(bool wantPresent) {
     // the global table -- no clobber.
     volkLoadDevice(device_);
     vkGetDeviceQueue(device_, gfxFamily_, 0, &gfxQueue_);
+    infra::init(device_, phys_);
 
     // ---- the graphics timeline (CompletionTracker's semaphore; the profile requires timeline semaphores) ----
     {
@@ -516,6 +519,7 @@ void VulkanContext::waitIdle(std::string_view why) const {
     const VkResult r = vkDeviceWaitIdle(device_);
     // A lost device ends the wait with an error; the release that follows is still safe, but the log must say the GPU did not drain.
     if (r != VK_SUCCESS) ctxlog("vkDeviceWaitIdle failed before %.*s: VkResult=%d.", static_cast<int>(why.size()), why.data(), static_cast<int>(r));
+    if (r == VK_ERROR_DEVICE_LOST) infra::deviceLost();
 }
 
 VkResult VulkanContext::submit(const VkSubmitInfo& si, VkFence fence, uint64_t* outValue) const {
@@ -572,6 +576,7 @@ VkResult VulkanContext::submitLocked(const VkSubmitInfo& si, VkFence fence, uint
     if (r != VK_SUCCESS) {
         // A refused submit signals nothing: give the value back so the counter and the timeline stay in step.
         tracker_.unnoteSubmit(QueueKind::Graphics, value);
+        if (r == VK_ERROR_DEVICE_LOST) infra::deviceLost();
         return r;
     }
     if (outValue) *outValue = value;
@@ -581,10 +586,12 @@ VkResult VulkanContext::submitLocked(const VkSubmitInfo& si, VkFence fence, uint
 void VulkanContext::poll() const {
     if (gfxTimeline_ == VK_NULL_HANDLE) return;
     uint64_t v = 0;
-    if (vkGetSemaphoreCounterValue(device_, gfxTimeline_, &v) == VK_SUCCESS) {
+    const VkResult result = vkGetSemaphoreCounterValue(device_, gfxTimeline_, &v);
+    if (result == VK_SUCCESS) {
         std::lock_guard<std::mutex> lock(submitMutex_);
         tracker_.setCompleted(QueueKind::Graphics, v);
     }
+    if (result == VK_ERROR_DEVICE_LOST) infra::deviceLost();
 }
 
 bool VulkanContext::isComplete(const GpuTicket& t) const {
@@ -611,6 +618,7 @@ void VulkanContext::beginFrame() {
     poll();
     tracker_.beginFrame();
     deferred_.collect(tracker_);
+    infra::frame();
 #ifdef MC2_VULKAN_ISLAND
     // The ring slot of this frame was last written by frame F-2: its work must be done before the slot restarts. The islands' own fences keep this
     // true today; the wait only costs anything if one of them let a frame run further ahead.
@@ -697,6 +705,7 @@ void VulkanContext::destroy() {
     }
 #endif
     if (allocator_) { vmaDestroyAllocator(allocator_); allocator_ = nullptr; }
+    infra::shutdown();
     if (device_ != VK_NULL_HANDLE) {
         if (gfxTimeline_ != VK_NULL_HANDLE) { vkDestroySemaphore(device_, gfxTimeline_, nullptr); gfxTimeline_ = VK_NULL_HANDLE; }
         vkDestroyDevice(device_, nullptr);
@@ -752,6 +761,7 @@ void VulkanContext::logHealth() const {
 bool debugNamesEnabled() { return g_debugNames; }
 
 void setObjectName(VkDevice device, VkObjectType type, uint64_t handle, std::string_view name) {
+    if (handle) infra::breadcrumb("resource", name, handle);
     if (!g_debugNames || device == VK_NULL_HANDLE || handle == 0 || !vkSetDebugUtilsObjectNameEXT) return;
     const std::string terminated(name);
     VkDebugUtilsObjectNameInfoEXT info{};
