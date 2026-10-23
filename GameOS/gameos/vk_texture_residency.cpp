@@ -172,7 +172,8 @@ std::shared_ptr<TextureResidency::Image> TextureResidency::upload(const RenderCo
         }
         if(!blocks && (w>1 || h>1)) {
             RenderCore::KtxImage reduced=image;
-            reduced.width=std::max(1u,w/2); reduced.height=std::max(1u,h/2);
+            reduced.width=std::max(1u,w/2);
+            reduced.height=std::max(1u,h/2);
             const size_t layerBytes=size_t(reduced.width)*reduced.height*stride;
             reduced.pixels.resize(layerBytes*layers);
             for(uint32_t layer=0;layer<layers;++layer) {

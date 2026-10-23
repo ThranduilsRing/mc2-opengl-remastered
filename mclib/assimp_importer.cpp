@@ -256,7 +256,9 @@ inline bool skelMeshDropped(const char* n) {
 //   - no renderable mesh (numMeshes == 0)
 // Helper-object-style nodes (handle_*, World*) are not flagged for now —
 // the importer only consumes scene->mMeshes anyway.
-bool ValidateScene(const aiScene* scene, const char* path) {
+bool ValidateScene(const aiScene* scene, std::string_view pathView) {
+	const std::string pathStore(pathView);
+	const char* path = pathStore.c_str();   // printf-style diagnostics below
 	if (!scene || !scene->mRootNode) {
 		PAUSE(("[importer] %s: Assimp returned null scene", path));
 		return false;
@@ -1086,9 +1088,14 @@ void RegisterImportedAnim(const char* path, TG_TypeMultiShape* out, const SkelBa
     for (int side = 0; side < 2; ++side) {
         auto& leg = e.grounding.legs[side];
         const std::string prefix = side == 0 ? "j_L" : "j_R";
-        auto index = [&](const char* suffix) {
-            auto it = bake.nameIdx.find(prefix + suffix);
-            return it == bake.nameIdx.end() ? -1 : it->second;
+        auto index = [&](std::string_view suffix) {
+            const auto it = bake.nameIdx.find(prefix + std::string(suffix));
+            int found = -1;
+            if (it != bake.nameIdx.end()) {
+                const auto& [boneName, boneIndex] = *it;
+                found = boneIndex;
+            }
+            return found;
         };
         leg.thigh = index("Thigh"); leg.calf = index("Calf"); leg.foot = index("Foot");
         if (leg.thigh < 0 || leg.calf < 0 || leg.foot < 0) continue;
