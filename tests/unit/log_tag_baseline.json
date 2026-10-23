@@ -10583,6 +10583,19 @@
    "count": 1
   },
   {
+   "tag": "VK_RESOURCE_GRAPH",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "chain",
+    "passes",
+    "transient_images",
+    "slots",
+    "alias_savings"
+   ],
+   "count": 1
+  },
+  {
    "tag": "VK_SCENE_READBACK",
    "ver": -1,
    "stream": "stderr",

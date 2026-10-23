@@ -11,9 +11,9 @@ from tools.mapgen.macro import plan, valley_route
 class MacroTests(unittest.TestCase):
     def test_small_examples_remain_identical(self):
         for size,seed,digest in (
-            (180,7,'8979e4c2a61c43e52bfc822f469ea29c1b851badc0f1ffdd7ca42445a0b97c77'),
-            (360,17,'d1582a18021bb9303021e5ae307c5b1ba11c6e36041cdb3213ea21bcccb73230'),
-            (720,23,'13261f7070759cf6e8107e04aaa2714e082466fefe1fd51d8fffecbf9bc2db0e')):
+            (180,7,'e1add3e5598706fad8c12a7f70c69aa5a7c0d3b00674095b9dd7c3d2a04ec6a7'),
+            (360,17,'b6a4685a283fc4cb470aba91f436880e766e10bb46099b66c82b25693b9d7a9c'),
+            (720,23,'620321fa76b5c06ed6d73759168a3a135a1e34acf39a6b1177bd633e828a1e7b')):   # re-frozen in merge window 44 after the turret battery planner changed the default output
             with self.subTest(size=size):
                 data = generate(size,seed)
                 self.assertNotIn('macro',data)

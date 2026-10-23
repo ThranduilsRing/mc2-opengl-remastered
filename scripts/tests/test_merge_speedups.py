@@ -32,7 +32,7 @@ def _throwaway_repo(tmp_path):
     import subprocess
 
     def git(*a):
-        subprocess.run(["git", "-C", str(tmp_path), "-c", "user.name=t", "-c", "user.email=t@t", *a], check=True, capture_output=True)
+        subprocess.run(["git", "-C", str(tmp_path), "-c", "user.name=t", "-c", "user.email=t@t", *a], check=True, capture_output=True, **console_child.child_kwargs(redirected=True))
     git("init", "-q", "-b", "main")
     (tmp_path / "a.txt").write_text("a")
     (tmp_path / "ok.py").write_text("import sys; sys.exit(0)")
