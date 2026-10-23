@@ -3,16 +3,10 @@
 # Where each gate is read, what the smoke runner forwards and what tier1_env_vars.md says are not here: ask
 # tools/repo_intel (env_var, gate_status), which scan the sources.
 generator_version: "3.0.0"
-gate_count: 903
-registry_entry_count: 185
+gate_count: 834
+registry_entry_count: 172
 verified_count: 790
 flags:
-  - name: MC2_3DVIEW_DIAG
-    kind: Bool
-    default: false
-    rule: Presence
-    owner: gameos
-    doc: ""
   - name: MC2_ABL_ARG_GUARD
     kind: Bool
     default: false
@@ -115,12 +109,6 @@ flags:
     owner: props
     doc: ""
     verified: true
-  - name: MC2_AMBIENT_ASSERT_FATAL
-    kind: Bool
-    default: false
-    rule: Presence
-    owner: code
-    doc: ""
   - name: MC2_ANIM_CADENCE_GUARD
     kind: Bool
     default: false
@@ -172,12 +160,6 @@ flags:
     default: true
     rule: Lead0Kill
     owner: mech
-    doc: ""
-  - name: MC2_BATCHER_FLUSH_TIMING
-    kind: Bool
-    default: false
-    rule: Presence
-    owner: props
     doc: ""
   - name: MC2_BLDG_DIAG_TRACE
     kind: Bool
@@ -604,12 +586,6 @@ flags:
     rule: Presence
     owner: terrain
     doc: ""
-  - name: MC2_BUCKET_HEADER_TRACE
-    kind: Bool
-    default: false
-    rule: Presence
-    owner: terrain
-    doc: "Step 2b: bucket-header SSBO demoted behind MC2_BUCKET_HEADER_TRACE."
   - name: MC2_BURNIN_NO_JPG
     kind: Bool
     default: false
@@ -751,7 +727,7 @@ flags:
     owner: terrain
     doc: "COLORMAP-CPU-RETIRE-1: free cpuColorMap + cpuDispAlpha in BuildColormapAtlas immediately after GPU atlas upload."
     verified: true
-    registry: {feature_id: MC2_FEATURE_COLORMAP_CPU_RETIRE, kind: Feature, order: 21, default_on: true}
+    registry: {feature_id: MC2_FEATURE_COLORMAP_CPU_RETIRE, kind: Feature, order: 20, default_on: true}
   - name: MC2_COLORMAP_DISPLACE_PROBE
     kind: Bool
     default: false
@@ -767,7 +743,7 @@ flags:
     owner: terrain
     doc: "COLORMAP-BC7-KTX2-1: prefer .burnin.ktx2 BC7 sidecar in BuildColormapAtlas (gos_terrain_indirect.cpp)."
     verified: true
-    registry: {feature_id: MC2_FEATURE_COLORMAP_KTX2, kind: Feature, order: 22, default_on: true}
+    registry: {feature_id: MC2_FEATURE_COLORMAP_KTX2, kind: Feature, order: 21, default_on: true}
   - name: MC2_COMMAND_REPLAY_PLAY
     kind: String
     default: ""
@@ -894,12 +870,6 @@ flags:
     owner: gameos
     doc: ""
     verified: true
-  - name: MC2_DEBUG_SHADOW_STATIC
-    kind: Bool
-    default: false
-    rule: Presence
-    owner: code
-    doc: ""
   - name: MC2_DEBUG_STATE_DUMP
     kind: Bool
     default: false
@@ -950,12 +920,6 @@ flags:
     doc: "DEBUG-VIEW-SWEEP-1: ='<startFrame>,<settleFrames>' frame-scheduled auto-sweep of the six MC2_DEBUG_VIEW views (missiongui.cpp update)."
     verified: true
     registry: {feature_id: MC2_DIAG_DEBUG_VIEW_SWEEP, kind: Trace, order: -1, default_on: false}
-  - name: MC2_DECAL_GLPROBE
-    kind: Bool
-    default: false
-    rule: Lead1
-    owner: terrain
-    doc: "[TEMP DECAL_GLPROBE] eager-drain probe - env MC2_DECAL_GLPROBE=1."
   - name: MC2_DECOR_SHADOW_TRACE
     kind: Bool
     default: false
@@ -1225,12 +1189,6 @@ flags:
     owner: editor
     doc: ""
     verified: true
-  - name: MC2_EDITOR_RTT
-    kind: Bool
-    default: false
-    rule: Exact1
-    owner: code
-    doc: ""
   - name: MC2_EDITOR_STATIC_PREWARM_OFF
     kind: Bool
     default: false
@@ -1305,7 +1263,7 @@ flags:
     doc: "FAR-BACKDROP-LIT-IMPL-1: night-shade substitution for far/impostor static-prop LODs (static_prop.vert)."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_FAR_BACKDROP_LIT, kind: Feature, order: 24, default_on: false}
+    registry: {feature_id: MC2_FAR_BACKDROP_LIT, kind: Feature, order: 23, default_on: false}
   - name: MC2_FAR_BACKDROP_LIT_FAR
     kind: Float
     default: 960
@@ -1553,13 +1511,6 @@ flags:
     smoke_passthrough: true
     verified: true
     registry: {feature_id: MC2_TRACE_FREEZE_MOVERS_AT, kind: Trace, order: -1, default_on: false}
-  - name: MC2_FXAA
-    kind: Bool
-    default: false
-    rule: Lead0
-    owner: post
-    doc: ""
-    smoke_passthrough: true
   - name: MC2_FXAA_EDGE_THRESHOLD
     kind: Float
     default: 0
@@ -1707,34 +1658,6 @@ flags:
     owner: gameos
     doc: "GPU-UPDATE-BUFFER-COUNTER-1: independent default-OFF gate."
     verified: true
-  - name: MC2_GPUBUF_LIGHT_GROWONCE
-    kind: Bool
-    default: false
-    rule: Presence
-    owner: gameos
-    doc: "LIGHT-GROW-ONCE-SUBDATA-1 (AMD-safe intermediate for the light SSBO orphan churn; NOT the full GpuStorageRing ring)."
-    registry: {feature_id: MC2_GPUBUF_LIGHT_GROWONCE, kind: Feature, order: -1, default_on: false}
-  - name: MC2_GPUBUF_RESIDENCY
-    kind: Bool
-    default: false
-    rule: Presence
-    owner: gameos
-    doc: "GPU-BUFFER-WRAPPER-TIER0-HUD-1: every ~300 frames list the live HUD ring buffers ([GPUBUF v1] residency tag/kind/frames/vbBytes/ibBytes/liveFences)."
-    registry: {feature_id: MC2_GPUBUF_RESIDENCY, kind: Trace, order: -1, default_on: false}
-  - name: MC2_GPUBUF_RING
-    kind: Bool
-    default: false
-    rule: Presence
-    owner: gameos
-    doc: "GPU-BUFFER-WRAPPER-TIER0-HUD-1: route the fixed-capacity gosMesh HUD/2D meshes (gameos_graphics.cpp draw/drawIndexed) through a 3-frame persistent-coherent..."
-    registry: {feature_id: MC2_GPUBUF_RING, kind: Feature, order: -1, default_on: false}
-  - name: MC2_GPUBUF_RING_FORCE_WRAP
-    kind: Bool
-    default: false
-    rule: Presence
-    owner: gameos
-    doc: "GPU-BUFFER-WRAPPER-TIER0-HUD-1 NEGATIVE TEST: deterministically advance the HUD ring twice (beginFrame without an intervening endFrame) so the..."
-    registry: {feature_id: MC2_GPUBUF_RING_FORCE_WRAP, kind: Trace, order: -1, default_on: false}
   - name: MC2_GPUPROPS_TRACE
     kind: Bool
     default: false
@@ -1759,13 +1682,6 @@ flags:
     doc: ""
     smoke_passthrough: true
     verified: true
-  - name: MC2_GPU_CULL_COMPUTE_TRACE
-    kind: Bool
-    default: false
-    rule: Presence
-    owner: gameos
-    doc: "Trace macro (env-gated, default off)"
-    smoke_passthrough: true
   - name: MC2_GPU_CULL_CONSERVATIVE_OR
     kind: Bool
     default: true
@@ -1773,12 +1689,6 @@ flags:
     owner: gameos
     doc: ""
     verified: true
-  - name: MC2_GPU_CULL_DUMP_SHADER
-    kind: Bool
-    default: false
-    rule: Presence
-    owner: gameos
-    doc: "Debug: dump concatenated source to file for inspection."
   - name: MC2_GPU_CULL_FORCE_FENCE_NOT_READY
     kind: Bool
     default: false
@@ -1811,13 +1721,6 @@ flags:
     doc: "MC2_GPU_CULL_LIFECYCLE_TRACE=1: verbose per-actor lifecycle boundary prints."
     smoke_passthrough: true
     verified: true
-  - name: MC2_GPU_CULL_OWNERSHIP_PARITY
-    kind: Bool
-    default: false
-    rule: Presence
-    owner: gameos
-    doc: "Ownership-parity oracle (Slice A, measurement-only, default off)."
-    smoke_passthrough: true
   - name: MC2_GPU_CULL_READBACK
     kind: Bool
     default: true
@@ -1879,13 +1782,6 @@ flags:
     doc: "MC2_GPU_CULL_SUBSTRATE_TRACE=1 - verbose per-frame lifecycle prints."
     smoke_passthrough: true
     verified: true
-  - name: MC2_GPU_DEBUG_NAMES
-    kind: Bool
-    default: false
-    rule: Presence
-    owner: gameos
-    doc: ""
-    smoke_passthrough: true
   - name: MC2_GPU_DRIVEN
     kind: Bool
     default: true
@@ -2027,12 +1923,6 @@ flags:
     rule: Prefix
     owner: props
     doc: ""
-  - name: MC2_GPU_SYNC_TRACE
-    kind: Bool
-    default: false
-    rule: Lead1
-    owner: gameos
-    doc: ""
   - name: MC2_GPU_TRAIL_DISABLE
     kind: Bool
     default: false
@@ -2076,18 +1966,6 @@ flags:
     owner: post
     doc: ""
     verified: true
-  - name: MC2_HDRI_SKY_FRAME_FIX
-    kind: Bool
-    default: false
-    rule: Lead0P
-    owner: post
-    doc: ""
-  - name: MC2_HDRI_SKY_UV_DEBUG
-    kind: Bool
-    default: false
-    rule: Lead0P
-    owner: post
-    doc: ""
   - name: MC2_HEARTBEAT
     kind: Bool
     default: false
@@ -2120,12 +1998,6 @@ flags:
     doc: ""
     smoke_passthrough: true
     verified: true
-  - name: MC2_HOSTSVC_DEFINITELY_UNSET_KEY_XYZ
-    kind: Bool
-    default: false
-    rule: Std
-    owner: unclassified
-    doc: ""
   - name: MC2_HOTKEY_TRACE
     kind: Bool
     default: false
@@ -2186,7 +2058,7 @@ flags:
     doc: "Render-only static-prop culling from same-frame Vulkan depth; exact ceil-ladder MIN footprints and per-object LOD. MC2_HZB_BUILD=0 keeps every instance."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_FEATURE_HZB_BUILD, kind: Feature, order: 19, default_on: true}
+    registry: {feature_id: MC2_FEATURE_HZB_BUILD, kind: Feature, order: 18, default_on: true}
   - name: MC2_HZB_FORCE_HORIZON
     kind: Bool
     default: false
@@ -2339,7 +2211,7 @@ flags:
     owner: code
     doc: "[DEFAULT-ON as of VEHICLE-LIGHTING-PATH-1; MC2_LEGACY_LIT_MC2_FRAME=0 reverts."
     smoke_passthrough: true
-    registry: {feature_id: MC2_LEGACY_LIT_MC2_FRAME, kind: Feature, order: 25, default_on: true}
+    registry: {feature_id: MC2_LEGACY_LIT_MC2_FRAME, kind: Feature, order: 24, default_on: true}
   - name: MC2_LEGACY_LOAD_BANNER
     kind: Bool
     default: false
@@ -2394,12 +2266,6 @@ flags:
     owner: props
     doc: "Std Bool row: any text other than 0/false/off/no/1/true/on/yes (e.g. =2) still reads as on but is reported badvalue, which MC2_CONFIG_STRICT=1 turns fatal."
     verified: true
-  - name: MC2_LIGHTING_LINEAR_AUDIT
-    kind: Bool
-    default: false
-    rule: Presence
-    owner: post
-    doc: "LINEAR-COLOR-AUDIT-1: one-shot runtime color-pipeline probe."
   - name: MC2_LIGHTING_SHADOW_PREDICATE_MODE
     kind: Enum
     default: ""
@@ -2415,12 +2281,6 @@ flags:
     owner: props
     doc: ""
     verified: true
-  - name: MC2_LIGHTSSBO_TRACE
-    kind: Bool
-    default: false
-    rule: Presence
-    owner: mech
-    doc: ""
   - name: MC2_LIGHT_BILLBOARD_FACING
     kind: String
     default: ""
@@ -2663,15 +2523,7 @@ flags:
     doc: "[DEFAULT-ON as of VEHICLE-LIGHTING-PATH-1; MC2_LIGHT_POS_COLUMN_FIX=0 reverts."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_LIGHT_POS_COLUMN_FIX, kind: Feature, order: 26, default_on: true}
-  - name: MC2_LIGHT_PREFIX_GPU_COPY
-    kind: Bool
-    default: false
-    rule: Lead0P
-    owner: gameos
-    doc: "LIGHT-PREFIX-GPU-COPY-1 (TXMMGR-PERF-EASYWINS-1): keep a VRAM stash of the immutable static light prefix [0..S) and glCopyBufferSubData it into the..."
-    smoke_passthrough: true
-    registry: {feature_id: MC2_LIGHT_PREFIX_GPU_COPY, kind: Feature, order: -1, default_on: false}
+    registry: {feature_id: MC2_LIGHT_POS_COLUMN_FIX, kind: Feature, order: 25, default_on: true}
   - name: MC2_LIGHT_REALISM
     kind: Bool
     default: true
@@ -2751,7 +2603,7 @@ flags:
     doc: "[DEFAULT-OFF, KILLSWITCH INVERTED: MC2_LIGHT_ROW_PURE=1 opts IN to the pure producer; unset/0 is the legacy in-place packing loop in GatherLightsParameters..."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_LIGHT_ROW_PURE, kind: Feature, order: 30, default_on: false}
+    registry: {feature_id: MC2_LIGHT_ROW_PURE, kind: Feature, order: 29, default_on: false}
   - name: MC2_LIGHT_ROW_PURE_VERIFY
     kind: Bool
     default: false
@@ -2761,12 +2613,6 @@ flags:
     smoke_passthrough: true
     verified: true
     registry: {feature_id: MC2_LIGHT_ROW_PURE_VERIFY, kind: Trace, order: -1, default_on: false}
-  - name: MC2_LIGHT_UPLOAD_STATS
-    kind: Bool
-    default: false
-    rule: Lead0
-    owner: gameos
-    doc: ""
   - name: MC2_LINKUP_TRACE
     kind: Bool
     default: false
@@ -3488,13 +3334,6 @@ flags:
     owner: code
     doc: ""
     verified: true
-  - name: MC2_OBJECT_POLY_OFFSET
-    kind: Bool
-    default: false
-    rule: Lead0P
-    owner: props
-    doc: ""
-    smoke_passthrough: true
   - name: MC2_OBJECT_POLY_OFFSET_FACTOR
     kind: Float
     default: -1
@@ -3581,7 +3420,7 @@ flags:
     doc: "OVERLAY-CEMENT-ADOPT-1: closes the two-shader concrete seam CEMENT-PATCHY-CAUSE-1 attributed but explicitly left open as a design call ('either the overlay..."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_FEATURE_OVERLAY_CEMENT_ADOPT, kind: Feature, order: 28, default_on: true}
+    registry: {feature_id: MC2_FEATURE_OVERLAY_CEMENT_ADOPT, kind: Feature, order: 27, default_on: true}
   - name: MC2_OVERLAY_MAGENTA_TRACE
     kind: Bool
     default: false
@@ -3589,13 +3428,6 @@ flags:
     owner: gameos
     doc: ""
     verified: true
-  - name: MC2_OVERLAY_TEXTURE_TRACE
-    kind: Bool
-    default: false
-    rule: Presence
-    owner: gameos
-    doc: ""
-    smoke_passthrough: true
   - name: MC2_OVERLAY_TILE_HIRES
     kind: String
     default: ""
@@ -3638,32 +3470,6 @@ flags:
     owner: gameos
     doc: ""
     verified: true
-  - name: MC2_PATCHSTREAM_DIRECT_TEXTURE_BIND
-    kind: Bool
-    default: false
-    rule: Presence
-    owner: terrain
-    doc: ""
-  - name: MC2_PATCHSTREAM_DIRECT_TEXTURE_BIND_CHECK
-    kind: Bool
-    default: false
-    rule: Presence
-    owner: terrain
-    doc: ""
-  - name: MC2_PATCHSTREAM_QUAD_RECORDS
-    kind: Bool
-    default: false
-    rule: Presence
-    owner: terrain
-    doc: ""
-    smoke_passthrough: true
-  - name: MC2_PATCHSTREAM_QUAD_RECORDS_DRAW
-    kind: Bool
-    default: false
-    rule: Presence
-    owner: terrain
-    doc: ""
-    smoke_passthrough: true
   - name: MC2_PATCHSTREAM_THIN_RECORDS
     kind: Bool
     default: false
@@ -3688,20 +3494,6 @@ flags:
     doc: ""
     smoke_passthrough: true
     verified: true
-  - name: MC2_PATCH_STREAM_FORCE_INIT_FAIL
-    kind: Bool
-    default: false
-    rule: Presence
-    owner: terrain
-    doc: "Step 4 bailout - env-gated forced init failure for testing the fallback path without driver stress."
-    smoke_passthrough: true
-  - name: MC2_PATCH_STREAM_TRACE
-    kind: Bool
-    default: false
-    rule: Presence
-    owner: terrain
-    doc: ""
-    smoke_passthrough: true
   - name: MC2_PATH_JUMP_FAIL_BACKOFF
     kind: Bool
     default: false
@@ -3751,19 +3543,6 @@ flags:
     doc: ""
     smoke_passthrough: true
     verified: true
-  - name: MC2_PIPELINE_BIND_TRACE
-    kind: Bool
-    default: false
-    rule: Lead0
-    owner: gameos
-    doc: ""
-    smoke_passthrough: true
-  - name: MC2_PIPELINE_COLORMASK
-    kind: Bool
-    default: false
-    rule: Lead0
-    owner: gameos
-    doc: ""
   - name: MC2_PLAYTEST_EXE
     kind: String
     default: ""
@@ -3784,18 +3563,6 @@ flags:
     rule: Lead0P
     owner: post
     doc: ""
-  - name: MC2_POSTPROCESS_COMPUTE_BLUR_PLANT
-    kind: Bool
-    default: false
-    rule: Lead0P
-    owner: post
-    doc: ""
-  - name: MC2_POSTPROCESS_COMPUTE_BLUR_VERIFY
-    kind: Bool
-    default: false
-    rule: Lead0P
-    owner: post
-    doc: ""
   - name: MC2_PRESENTATION_DISABLED
     kind: Bool
     default: false
@@ -3805,13 +3572,6 @@ flags:
     smoke_passthrough: true
     verified: true
     registry: {feature_id: MC2_PRESENTATION_DISABLED, kind: Trace, order: -1, default_on: false}
-  - name: MC2_PRESWAP_FINISH
-    kind: Bool
-    default: false
-    rule: Presence
-    owner: gameos
-    doc: ""
-    smoke_passthrough: true
   - name: MC2_PREVIEW_FBO_SCALE
     kind: Int
     default: 0
@@ -3819,12 +3579,6 @@ flags:
     owner: gameos
     doc: ""
     verified: true
-  - name: MC2_PREVIEW_NOCULL
-    kind: Bool
-    default: false
-    rule: Presence
-    owner: code
-    doc: "EXPERIMENT (PREVIEW-FBO-FIXED-800x600-1 debug): the mech draws zero pixels anywhere in the FBO despite shouldRender=1."
   - name: MC2_PREVIEW_SCENE_DRAIN
     kind: Bool
     default: false
@@ -4179,13 +3933,6 @@ flags:
     doc: ""
     smoke_passthrough: true
     verified: true
-  - name: MC2_RING_FORCE_FINISH
-    kind: Bool
-    default: false
-    rule: Presence
-    owner: terrain
-    doc: "?? Probe 7 (MC2_RING_FORCE_FINISH) - directed barrier-hypothesis test ?? Forces full GPU pipeline drain after the compute dispatches."
-    smoke_passthrough: true
   - name: MC2_RING_TRACE
     kind: Bool
     default: false
@@ -4261,7 +4008,7 @@ flags:
     owner: terrain
     doc: "TRACKV-CI-GATE-RESTORE-1: setupTextures legacy path kill-switch."
     verified: true
-    registry: {feature_id: MC2_FEATURE_SETUPTEXTURES_LEGACY_FORCE, kind: Feature, order: 23, default_on: false}
+    registry: {feature_id: MC2_FEATURE_SETUPTEXTURES_LEGACY_FORCE, kind: Feature, order: 22, default_on: false}
   - name: MC2_SHADER_HOT_RELOAD
     kind: Bool
     default: false
@@ -4276,27 +4023,6 @@ flags:
     owner: post
     doc: ""
     verified: true
-  - name: MC2_SHADER_SPIRV
-    kind: Bool
-    default: false
-    rule: Lead1
-    owner: gameos
-    doc: "SPIRV-CONSUMER-PILOT-BUILD-1: DEFAULT-OFF. =1 loads the offline-baked OpenGL SPIR-V (OFFLINE-SHADER-VARIANT-BUILD-1, shaders/spv/) for the postprocess..."
-    registry: {feature_id: MC2_SHADER_SPIRV, kind: Feature, order: -1, default_on: false}
-  - name: MC2_SHADER_SPIRV_FATAL
-    kind: Bool
-    default: false
-    rule: Lead1
-    owner: gameos
-    doc: "SPIRV-CONSUMER-PILOT-BUILD-1: DEFAULT-OFF debug gate."
-    registry: {feature_id: MC2_SHADER_SPIRV_FATAL, kind: Trace, order: -1, default_on: false}
-  - name: MC2_SHADOW_CULL_DEBUG
-    kind: Bool
-    default: false
-    rule: Presence
-    owner: code
-    doc: ""
-    smoke_passthrough: true
   - name: MC2_SHADOW_DEBUG_MODE
     kind: String
     default: ""
@@ -4322,14 +4048,6 @@ flags:
     smoke_passthrough: true
     verified: true
     registry: {feature_id: MC2_FEATURE_SHADOW_MAPS, kind: Feature, order: 5, default_on: true}
-  - name: MC2_SHADOW_FRUSTUM_DIAG
-    kind: Bool
-    default: false
-    rule: Presence
-    owner: post
-    doc: "SHADOW-FRUSTUM-AUDIT-1: read-only per-frame dynamic sun-shadow coverage probe in buildDynamicLightMatrix (sun dir, frustum XY, fit/xy radius, map clamp..."
-    smoke_passthrough: true
-    registry: {feature_id: MC2_TRACE_SHADOW_FRUSTUM, kind: Trace, order: -1, default_on: false}
   - name: MC2_SHADOW_MECH_SOFT
     kind: Float
     default: 1
@@ -4367,13 +4085,6 @@ flags:
     rule: Lead0Kill
     owner: post
     doc: ""
-  - name: MC2_SHADOW_STATE_TRACE
-    kind: Bool
-    default: false
-    rule: Lead0
-    owner: gameos
-    doc: ""
-    smoke_passthrough: true
   - name: MC2_SHADOW_TIER_STATS
     kind: Bool
     default: false
@@ -4653,7 +4364,7 @@ flags:
     owner: props
     doc: "COMPRESSION-BC7-STATICPROP-1: upload BC7-compressed KTX2 static-prop texture arrays through the existing static-prop KTX path (gos_static_prop_batcher.cpp)..."
     verified: true
-    registry: {feature_id: MC2_FEATURE_STATICPROP_BC7, kind: Feature, order: 20, default_on: false}
+    registry: {feature_id: MC2_FEATURE_STATICPROP_BC7, kind: Feature, order: 19, default_on: false}
   - name: MC2_STATICPROP_MATERIAL_PBR_SLOTS
     kind: Bool
     default: false
@@ -4678,12 +4389,6 @@ flags:
     owner: props
     doc: ""
     verified: true
-  - name: MC2_STATIC_C1B_DRAW
-    kind: Bool
-    default: false
-    rule: Presence
-    owner: props
-    doc: "C1b: when compute cull is enabled and the indirect command buffer is ready, write the per-type CPU instance counts into the indirect buffer before the draw..."
   - name: MC2_STATIC_FORCE_ADMIT
     kind: Bool
     default: false
@@ -4692,12 +4397,6 @@ flags:
     doc: "2026-05-10 diag: MC2_STATIC_FORCE_ADMIT mirrors registry::flush behavior so the env-var A/B (cull-bypassed vs cull-active) covers BOTH substrate-record..."
     smoke_passthrough: true
     verified: true
-  - name: MC2_STATIC_INST_DIAG
-    kind: Bool
-    default: false
-    rule: Presence
-    owner: props
-    doc: ""
   - name: MC2_STATIC_LEAF_DIAG
     kind: Bool
     default: false
@@ -4726,12 +4425,6 @@ flags:
     owner: props
     doc: ""
     verified: true
-  - name: MC2_STATIC_POP_SPLIT_CMD_DIAG
-    kind: Bool
-    default: false
-    rule: Presence
-    owner: props
-    doc: "Diag (env-gated): dump the static cmd summary so Task 3 can be validated before the draw exists."
   - name: MC2_STATIC_PROP_BAKE_SELFTEST
     kind: Bool
     default: false
@@ -4748,12 +4441,6 @@ flags:
     smoke_passthrough: true
     verified: true
     registry: {feature_id: MC2_STATIC_PROP_BUILDING_SHADOW_REBAKE_TEST_DESTROY_AT_FRAME, kind: Trace, order: -1, default_on: false}
-  - name: MC2_STATIC_PROP_DEPTH_PREPASS
-    kind: Bool
-    default: false
-    rule: Presence
-    owner: props
-    doc: ""
   - name: MC2_STATIC_PROP_GLOBAL_CAP
     kind: Int
     default: 131072
@@ -4963,14 +4650,6 @@ flags:
     smoke_passthrough: true
     verified: true
     registry: {feature_id: MC2_FEATURE_TERRAIN_AMBIENT_FLOOR_NIGHT, kind: Feature, order: -1, default_on: false}
-  - name: MC2_TERRAIN_AMBIENT_FLOOR_TRACE
-    kind: Bool
-    default: false
-    rule: Presence
-    owner: terrain
-    doc: "TERRAIN-AMBIENT-FLOOR-2 trace: prints ONE line at the first terrain-chunk uniform upload giving the resolved floor strength, the daylight gate ACTUALLY..."
-    smoke_passthrough: true
-    registry: {feature_id: MC2_TRACE_TERRAIN_AMBIENT_FLOOR, kind: Trace, order: -1, default_on: false}
   - name: MC2_TERRAIN_CEMENT_DIAG_CONNECT
     kind: Bool
     default: false
@@ -4978,14 +4657,6 @@ flags:
     owner: terrain
     doc: ""
     verified: true
-  - name: MC2_TERRAIN_CLIFF_DISPLACE
-    kind: Bool
-    default: false
-    rule: Lead0
-    owner: terrain
-    doc: "SLICE 3: near-field cliff tessellation on the LOD-chunk terrain path."
-    smoke_passthrough: true
-    registry: {feature_id: MC2_FEATURE_TERRAIN_CLIFF_DISPLACE, kind: Feature, order: -1, default_on: false}
   - name: MC2_TERRAIN_CLIFF_DISPLACE_MAXTESS
     kind: Float
     default: 4
@@ -5043,12 +4714,6 @@ flags:
     doc: ""
     smoke_passthrough: true
     verified: true
-  - name: MC2_TERRAIN_CULL_PROBE
-    kind: Bool
-    default: false
-    rule: Presence
-    owner: code
-    doc: ""
   - name: MC2_TERRAIN_CULL_WIDE
     kind: Bool
     default: false
@@ -5120,12 +4785,6 @@ flags:
     doc: ""
     smoke_passthrough: true
     verified: true
-  - name: MC2_TERRAIN_INDIRECT_CPU_FALLBACK
-    kind: Bool
-    default: false
-    rule: Presence
-    owner: terrain
-    doc: "VPL retirement step 1 (2026-05-14): CPU thin-record pack demoted behind MC2_TERRAIN_INDIRECT_CPU_FALLBACK."
   - name: MC2_TERRAIN_INDIRECT_MINE
     kind: Bool
     default: true
@@ -5180,13 +4839,6 @@ flags:
     doc: ""
     smoke_passthrough: true
     verified: true
-  - name: MC2_TERRAIN_LIGHTING_PARITY
-    kind: Bool
-    default: false
-    rule: Presence
-    owner: terrain
-    doc: ""
-    smoke_passthrough: true
   - name: MC2_TERRAIN_LOD_CHECKER_DIAG
     kind: Bool
     default: true
@@ -5274,12 +4926,6 @@ flags:
     owner: terrain
     doc: ""
     verified: true
-  - name: MC2_TERRAIN_LOD_DEPTH_ALWAYS
-    kind: Bool
-    default: false
-    rule: Presence
-    owner: terrain
-    doc: "Phase 10.3: chunk terrain is OPAQUE and must EXPLICITLY own depth/blend/ cull state."
   - name: MC2_TERRAIN_LOD_GEOMORPH
     kind: Bool
     default: true
@@ -5309,13 +4955,6 @@ flags:
     doc: ""
     range: {lo: 0, hi: 3.4028234663852886e+38, style: reject, lo_exclusive: true}
     verified: true
-  - name: MC2_TERRAIN_MASK_DISPATCH
-    kind: Bool
-    default: false
-    rule: Lead0
-    owner: terrain
-    doc: "Cached at Init() time; re-read here for the IsMaskDispatchEnabled() path which may be called before Init() (safe: returns false if not init'd)."
-    smoke_passthrough: true
   - name: MC2_TERRAIN_MASK_DISPATCH_SOLID
     kind: Bool
     default: true
@@ -5327,12 +4966,6 @@ flags:
     default: true
     rule: Lead0Kill
     owner: terrain
-    doc: ""
-  - name: MC2_TERRAIN_MASK_UPLOAD_STATS
-    kind: Bool
-    default: false
-    rule: Lead0
-    owner: gameos
     doc: ""
   - name: MC2_TERRAIN_MATERIAL_LIB
     kind: Bool
@@ -5752,12 +5385,6 @@ flags:
     owner: code
     doc: "[TXMMGR_BOUNDS v1] - TXMMGR-BOUNDS-HARDEN-1 exhaustion counters."
     verified: true
-  - name: MC2_TXM_LEAK_TRACE
-    kind: Bool
-    default: false
-    rule: Lead1
-    owner: code
-    doc: "[TXMMGR_TEXTURE_AUDIT v1] - texture-node-slot leak instrumentation."
   - name: MC2_TYPE_TABLE_CAND_LOG
     kind: Bool
     default: false
@@ -5942,7 +5569,7 @@ flags:
     owner: code
     doc: "VEHICLE-AMBIENT-FLOOR-1: DEFAULT-ON."
     smoke_passthrough: true
-    registry: {feature_id: MC2_VEHICLE_AMBIENT_FLOOR, kind: Feature, order: 29, default_on: true}
+    registry: {feature_id: MC2_VEHICLE_AMBIENT_FLOOR, kind: Feature, order: 28, default_on: true}
   - name: MC2_VEHICLE_LIT_PATH
     kind: Bool
     default: true
@@ -5951,7 +5578,7 @@ flags:
     doc: "VEHICLE-LIGHTING-PATH-1: put GROUND VEHICLES on the same lighting path as every other object class."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_VEHICLE_LIT_PATH, kind: Feature, order: 27, default_on: true}
+    registry: {feature_id: MC2_VEHICLE_LIT_PATH, kind: Feature, order: 26, default_on: true}
   - name: MC2_VERIFY_MODE
     kind: String
     default: ""
@@ -6030,13 +5657,6 @@ flags:
     owner: code
     doc: "VFX-GPU-SIM-CARDCLOUD-BUFFER-1 (Stage 2 of the originals-restoration arc; docs/vfx-gpu-sim-spec.md)."
     registry: {feature_id: MC2_FEATURE_VFX_GPU_SIM_CARDCLOUD, kind: Feature, order: 16, default_on: false}
-  - name: MC2_VFX_GPU_SIM_COMPARE
-    kind: Bool
-    default: false
-    rule: Lead1
-    owner: code
-    doc: "VFX-GPU-SIM-CARDCLOUD-BUFFER-1: emit the [VFX_GPU_SIM v1] integrity/compare logs (cpuActive vs submitted-live count, age/alpha ranges, world bounds, SSBO..."
-    registry: {feature_id: MC2_FEATURE_VFX_GPU_SIM_COMPARE, kind: Feature, order: 17, default_on: false}
   - name: MC2_VFX_ORACLE_RENDER
     kind: Bool
     default: false
@@ -6082,12 +5702,6 @@ flags:
     owner: gameos
     doc: ""
     verified: true
-  - name: MC2_VFX_TUBE_UPLOAD_STATS
-    kind: Bool
-    default: false
-    rule: Lead0
-    owner: gameos
-    doc: ""
   - name: MC2_VIEWMODE_FRAMEWORK
     kind: Bool
     default: false
@@ -6096,7 +5710,7 @@ flags:
     doc: "VIEWMODE-POSTPROCESS-PRESENTATION-1: enables the view-mode presentation framework that wires ViewMode::ObjectIdDebug (and future sensor modes) through the..."
     smoke_passthrough: true
     verified: true
-    registry: {feature_id: MC2_FEATURE_VIEWMODE_FRAMEWORK, kind: Feature, order: 18, default_on: false}
+    registry: {feature_id: MC2_FEATURE_VIEWMODE_FRAMEWORK, kind: Feature, order: 17, default_on: false}
   - name: MC2_VIEW_MODE
     kind: String
     default: ""
@@ -6307,14 +5921,6 @@ flags:
     doc: ""
     smoke_passthrough: true
     verified: true
-  - name: MC2_VK_NO_GL_INTEROP_RESOURCE_STRICT
-    kind: Bool
-    default: false
-    rule: Std
-    owner: vk
-    doc: "VK Metal-gate resource canary."
-    smoke_passthrough: true
-    registry: {feature_id: MC2_TRACE_VK_NO_GL_INTEROP_RESOURCE_STRICT, kind: Trace, order: -1, default_on: false}
   - name: MC2_VK_OBJECTID_DIRECT_CHAIN
     kind: Bool
     default: false
@@ -6474,14 +6080,6 @@ flags:
     smoke_passthrough: true
     verified: true
     registry: {feature_id: MC2_FEATURE_VK_SHARED_GBUFFER, kind: Feature, order: -1, default_on: true}
-  - name: MC2_VK_SHARED_SCENE_STRICT
-    kind: Bool
-    default: false
-    rule: Exact1
-    owner: post
-    doc: "VK shared-scene deletion-readiness canary."
-    smoke_passthrough: true
-    registry: {feature_id: MC2_TRACE_VK_SHARED_SCENE_STRICT, kind: Trace, order: -1, default_on: false}
   - name: MC2_VK_TERRAIN_COPY_STATS
     kind: Bool
     default: false
@@ -6490,12 +6088,6 @@ flags:
     doc: ""
     smoke_passthrough: true
     verified: true
-  - name: MC2_VK_TERRAIN_CSM_FULLMAP_EXPERIMENTAL
-    kind: Bool
-    default: false
-    rule: Lead1
-    owner: terrain
-    doc: ""
   - name: MC2_VK_TERRAIN_FENCE_DEFER
     kind: Bool
     default: true
@@ -6635,13 +6227,6 @@ flags:
     owner: gameos
     doc: ""
     verified: true
-  - name: MC2_WATER_DEPTHPROBE
-    kind: Bool
-    default: false
-    rule: Presence
-    owner: terrain
-    doc: "[WATER_DEPTHPROBE v1] RETAINED verification instrument (env-gated MC2_WATER_DEPTHPROBE, silent by default; demote-not-delete per the debug-instrumentation..."
-    smoke_passthrough: true
   - name: MC2_WATER_EDGE_FEATHER
     kind: Bool
     default: true
@@ -6657,12 +6242,6 @@ flags:
     doc: ""
     range: {lo: 0, hi: 3.4028234663852886e+38, style: reject, lo_exclusive: true}
     verified: true
-  - name: MC2_WATER_FULL_RECIPE_SPIKE
-    kind: Bool
-    default: false
-    rule: Presence
-    owner: terrain
-    doc: "WATER-FULL-RECIPE-GPU-TIMER-SPIKE-0 (MC2_WATER_FULL_RECIPE_SPIKE): measurement only."
   - name: MC2_WATER_GATE_DIAG
     kind: Bool
     default: false
@@ -6678,12 +6257,6 @@ flags:
     owner: terrain
     doc: ""
     verified: true
-  - name: MC2_WATER_GPU_FULL_RECIPE_CULL
-    kind: Bool
-    default: false
-    rule: Lead0P
-    owner: terrain
-    doc: "WATER-GPU-FULL-RECIPE-CULL-1A (MC2_WATER_GPU_FULL_RECIPE_CULL, default-OFF): runs the full-recipe cull path NON-AUTHORITATIVELY (candidate path still draws..."
   - name: MC2_WATER_HDRI_LOD
     kind: Float
     default: 0
@@ -6707,12 +6280,6 @@ flags:
     owner: terrain
     doc: ""
     verified: true
-  - name: MC2_WATER_NO_DEPTH_WRITE
-    kind: Bool
-    default: false
-    rule: Presence
-    owner: gameos
-    doc: ""
   - name: MC2_WATER_REFLECTION
     kind: Bool
     default: true
@@ -6728,20 +6295,6 @@ flags:
     doc: ""
     smoke_passthrough: true
     verified: true
-  - name: MC2_WATER_REFL_RT_PIXELPROOF
-    kind: Bool
-    default: false
-    rule: Lead0
-    owner: terrain
-    doc: ""
-    smoke_passthrough: true
-  - name: MC2_WATER_RENDERPROBE
-    kind: Bool
-    default: false
-    rule: Presence
-    owner: terrain
-    doc: "[WATER_RENDERPROBE v1] Fix B matrix-share release gate."
-    smoke_passthrough: true
   - name: MC2_WATER_S6_COST
     kind: Bool
     default: false
@@ -6835,13 +6388,6 @@ flags:
     doc: ""
     smoke_passthrough: true
     verified: true
-  - name: MC2_WATER_THINRING_TRACE
-    kind: Bool
-    default: false
-    rule: Lead1
-    owner: terrain
-    doc: ""
-    smoke_passthrough: true
   - name: MC2_WATER_UPLOAD_NARROW
     kind: Bool
     default: true

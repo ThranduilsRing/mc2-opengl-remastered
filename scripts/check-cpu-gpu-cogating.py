@@ -346,7 +346,7 @@ def _selftest_typed_readers() -> int:
     """classify_default_on on typed reads: the row's default, a per-site Rule override, `!`, and the root argument."""
     rc = 0
     kill = "MC2_WATER_UPLOAD_NARROW"   # Lead0Kill, unset -> on
-    pres = "MC2_3DVIEW_DIAG"           # Presence, unset -> off
+    pres = "MC2_WINDOWED"           # Presence, unset -> off
     cases = [
         ("row default (Lead0Kill)", 'x = mc2::gate::get<"%s">();' % kill, kill, True),
         ("row default (Presence)", 'x = mc2::gate::get<"%s">();' % pres, pres, False),

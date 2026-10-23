@@ -693,8 +693,8 @@ TEST_CASE("pilot Float rows reproduce the old atof readers on every probe") {
     }
 }
 
-TEST_CASE("MC2_PATCH_STREAM_FORCE_INIT_FAIL is a presence gate that defaults off") {
-    const gate::Row& row = g1b::rowNamed("MC2_PATCH_STREAM_FORCE_INIT_FAIL");
+TEST_CASE("a presence gate defaults off and accepts any set text") {
+    const gate::Row row = gate::rows::L(Rule::Presence, "MC2_UNITTEST_PRESENCE", Kind::Bool, false, "test", "", "");
     CHECK(row.rule == Rule::Presence);
     CHECK_FALSE(row.defBool);
     CHECK_FALSE(rowValue(row, nullptr));
@@ -1083,16 +1083,16 @@ TEST_CASE("G6 string and presence rows") {
 }
 
 TEST_CASE("raw<> echoes the environment text, nullptr when unset, without caching") {
-    EnvVar env("MC2_FXAA");
+    EnvVar env("MC2_WATER_SKYTINT");
     env.set(nullptr);
-    CHECK(gate::raw<"MC2_FXAA">() == nullptr);
+    CHECK(gate::raw<"MC2_WATER_SKYTINT">() == nullptr);
     env.set("");
-    gate::invalidate("MC2_FXAA");
-    CHECK(gate::get<"MC2_FXAA">() == false);
+    gate::invalidate("MC2_WATER_SKYTINT");
+    CHECK(gate::get<"MC2_WATER_SKYTINT">() == false);
     env.set("yes");
-    CHECK(std::string(gate::raw<"MC2_FXAA">()) == "yes");   // fresh even though get<> cached
+    CHECK(std::string(gate::raw<"MC2_WATER_SKYTINT">()) == "yes");   // fresh even though get<> cached
     env.set(nullptr);
-    gate::invalidate("MC2_FXAA");
+    gate::invalidate("MC2_WATER_SKYTINT");
 }
 
 // ---------------------------------------------------------------------------
@@ -1171,11 +1171,11 @@ TEST_CASE("G5 gameosmain rows and the runtime-name reader") {
     CHECK(g1b::rowNamed("MC2_SCREENSHOT_PATH").kind == Kind::String);
     CHECK(g1b::rowNamed("MC2_LOAD_RACE_PROBE_FRAMES").kind == Kind::String);
 
-    EnvVar env("MC2_FXAA");   // envText reads any name at run time, uncached
+    EnvVar env("MC2_WATER_SKYTINT");   // envText reads any name at run time, uncached
     env.set(nullptr);
-    CHECK(gate::envText("MC2_FXAA") == nullptr);
+    CHECK(gate::envText("MC2_WATER_SKYTINT") == nullptr);
     env.set("1");
-    CHECK(std::string(gate::envText("MC2_FXAA")) == "1");
+    CHECK(std::string(gate::envText("MC2_WATER_SKYTINT")) == "1");
     env.set(nullptr);
 }
 
