@@ -67,7 +67,7 @@
    "LG17": 70,
    "LG18": 17,
    "LG19": 1,
-   "LG20": 6
+   "LG20": 5
   },
   "GuiRuntime": {
    "LG01": 0,
@@ -512,7 +512,7 @@
   },
   "GameOS/gameos/gos_postprocess.cpp": {
    "LG06": 1,
-   "LG20": 4
+   "LG20": 3
   },
   "GameOS/gameos/gos_postprocess.h": {
    "LG06": 1
@@ -3523,7 +3523,7 @@
    "LG20": 3
   }
  },
- "head": "09d846b1a",
+ "head": "a0f875e06",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",

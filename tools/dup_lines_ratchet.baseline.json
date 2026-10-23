@@ -1,14 +1,14 @@
 {
  "counts": {
   "GameAdapters": 0,
-  "GameOS": 2404,
+  "GameOS": 2384,
   "GuiRuntime": 48,
   "HostServices": 0,
   "RenderCore": 402,
   "RenderWorld": 0,
   "code": 14487,
   "mclib": 28940,
-  "shaders": 708
+  "shaders": 696
  },
  "dirs": [
   "code",
@@ -24,8 +24,7 @@
  "files": {
   "GameOS/gameos/MC2Strings.cpp": 16,
   "GameOS/gameos/debug_state_dump.cpp": 52,
-  "GameOS/gameos/engine_present_vk.cpp": 159,
-  "GameOS/gameos/engine_present_vk.h": 10,
+  "GameOS/gameos/engine_present_vk.cpp": 149,
   "GameOS/gameos/gameos.cpp": 16,
   "GameOS/gameos/gameos_graphics_draw.cpp": 36,
   "GameOS/gameos/gameos_graphics_params.cpp": 20,
@@ -508,6 +507,7 @@
   "shaders/include/object_light_pool.hglsl": 20,
   "shaders/include/shadow.hglsl": 136,
   "shaders/include/terrain_light_pool.hglsl": 20,
+  "shaders/vulkan/aa_fxaa.frag": 30,
   "shaders/vulkan/cloud_shadow.frag": 21,
   "shaders/vulkan/color_prop_tier1.frag": 19,
   "shaders/vulkan/color_prop_tier1.vert": 9,
@@ -518,16 +518,16 @@
   "shaders/vulkan/include/terrain_frame_vk.glsl": 10,
   "shaders/vulkan/include/terrain_overlay_vs.glsl": 11,
   "shaders/vulkan/mech_tier1.frag": 10,
-  "shaders/vulkan/postprocess.frag": 45,
-  "shaders/vulkan/postprocess_visual.frag": 45,
+  "shaders/vulkan/postprocess.frag": 39,
+  "shaders/vulkan/postprocess_visual.frag": 9,
   "shaders/vulkan/shoreline.frag": 40,
   "shaders/vulkan/terrain_decal_tier1.frag": 24,
   "shaders/vulkan/terrain_overlay_tier1.frag": 24,
   "shaders/vulkan/terrain_tier1.vert": 78,
   "shaders/vulkan/terrain_tier1_skirt.vert": 78
  },
- "head": "7547f1aa8",
+ "head": "a0f875e06",
  "n": 8,
- "total": 46989,
+ "total": 46957,
  "version": 1
 }
