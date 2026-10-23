@@ -59,7 +59,14 @@ mc2::diagnostic::TickCost::~TickCost() {
 namespace {
 struct MissionOrderAccess {
     Mission& owner;
-    MoverPtr resolve(mc2::sim::ObjectRef ref) const { return owner.resolveOrderRecipient(ref); }
+    MoverPtr resolve(mc2::sim::ObjectRef ref) const {
+        if (!(ref.slot & 0x80000000u)) return owner.resolveOrderRecipient(ref);
+        // Runtime additions are not FIT Parts. Preserve their engine handle and
+        // watch incarnation instead of aliasing an original mission roster slot.
+        auto* object = ObjectManager->get(static_cast<long>(ref.slot & 0x7fffffffu));
+        return object && object->isMover() && object->getExists() &&
+            object->getWatchID(false) == ref.generation ? static_cast<MoverPtr>(object) : nullptr;
+    }
     float simulationTime() const { return scenarioTime; }
     std::uint32_t validatePlayer(const mc2::sim::OrderEnvelope& e) const;
     mc2::sim::ApplicationOutcome applyPlayer(const mc2::sim::OrderEnvelope& e, mc2::sim::ObjectRef ref) const;
@@ -416,11 +423,12 @@ long Mission::submitPlayerOrder(Mover* mover, const ::TacticalOrder& legacy, boo
         source = std::ranges::find(queue.sources(), 2u, &OrderSource::sourceId);
     }
     const auto binding = std::ranges::find(orderRecipients, mover, &OrderRecipientBinding::mover);
-    if (binding == orderRecipients.end() || !resolveOrderRecipient(binding->ref)) return 1;
+    const auto recipient = binding != orderRecipients.end() && resolveOrderRecipient(binding->ref)
+        ? binding->ref : ObjectRef{0x80000000u | static_cast<std::uint32_t>(mover->getHandle()), mover->getWatchID(false)};
     OrderEnvelope e;
     e.sourceId = 2; e.sequence = source->nextSequence;
     e.issuer = CommanderId{static_cast<std::uint32_t>(mover->getCommanderId())};
-    e.recipients = {binding->ref};
+    e.recipients = {recipient};
     e.queueMode = queued ? QueueMode::Append : QueueMode::Replace;
     auto& p = e.payload;
     p.origin = OrderOrigin::Player; p.kind = static_cast<OrderKind>(legacy.code);
