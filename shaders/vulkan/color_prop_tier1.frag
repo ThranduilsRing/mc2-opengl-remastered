@@ -123,23 +123,6 @@ float propCoverage(float a, float lod) {
 #include "include/terrain_frame_vk.glsl"
 #include "include/ground_lighting.glsl"
 layout(set = 0, binding = 14) uniform sampler2DShadow uTreeObjectMap;
-struct PoolLight {
-    vec3  position;
-    uint  lightType;
-    vec3  color;
-    float closeDistance;
-    float farDistance;
-    float oneOverDistance;
-    float _plPad1;
-    float intensity;
-};
-layout(set = 0, binding = 8, std430) readonly buffer PropPoolLightsVK {
-    PoolLight poolLights[256];
-    vec4 poolGridMinInv;
-    uvec4 poolGridInfo;
-    uint poolGridWords[];
-};
-#define MC2_OBJECT_POOL_GRID 1
 #include "../include/object_light_pool.hglsl"
 
 // GL static_prop.frag's pool term: albedo-modulated additive pool light at the MC2-frame world position.
