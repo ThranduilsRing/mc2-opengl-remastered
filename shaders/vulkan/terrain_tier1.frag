@@ -86,14 +86,21 @@ vec2 mv_hash22(vec2 p) {
     return fract((p3.xx + p3.yz) * p3.zy);
 }
 vec4 mv_sampleAntiTileArr(int layer, vec2 uv, float scale, vec2 dx, vec2 dy) {
-    vec2 off1 = mv_hash22(floor(uv / scale)) * scale;
-    vec2 off2 = mv_hash22(floor(uv / scale) + vec2(7.0, 13.0)) * scale;
-    vec4 s0 = textureGrad(u_matNormalArray, vec3(uv,        float(layer)), dx, dy);
-    vec4 s1 = textureGrad(u_matNormalArray, vec3(uv + off1, float(layer)), dx, dy);
-    vec4 s2 = textureGrad(u_matNormalArray, vec3(uv + off2, float(layer)), dx, dy);
     vec2 f = fract(uv / scale);
     float w1 = smoothstep(0.2, 0.5, f.x) * smoothstep(0.2, 0.5, f.y);
     float w2 = smoothstep(0.2, 0.5, 1.0 - f.x) * smoothstep(0.2, 0.5, 1.0 - f.y);
+    vec4 s0 = textureGrad(u_matNormalArray, vec3(uv, float(layer)), dx, dy);
+    vec4 s1 = vec4(0.0), s2 = vec4(0.0);
+    // Exactly zero weights cannot contribute. Explicit derivatives remain valid
+    // across the material and anti-tile branches, including helper invocations.
+    if (w1 != 0.0) {
+        vec2 off1 = mv_hash22(floor(uv / scale)) * scale;
+        s1 = textureGrad(u_matNormalArray, vec3(uv + off1, float(layer)), dx, dy);
+    }
+    if (w2 != 0.0) {
+        vec2 off2 = mv_hash22(floor(uv / scale) + vec2(7.0, 13.0)) * scale;
+        s2 = textureGrad(u_matNormalArray, vec3(uv + off2, float(layer)), dx, dy);
+    }
     return (s0 + s1 * w1 + s2 * w2) / (1.0 + w1 + w2);
 }
 
@@ -528,6 +535,7 @@ void main() {
     // One baked blend feeds tint, detail and shoreline affinity.
     float materialSnow = materials.z;
     vec4 materialW = vec4(max(1.0 - materials.x - materials.y - materials.w, 0.0), materials.x, materials.y, materials.w);
+    vec3 baseNormal = mv_smoothTerrainNormal(v_worldPos.xy);
     vec3 baseColor = base;
     float F3pc = pureConcrete ? 1.0 : 0.0;
     {
@@ -546,7 +554,7 @@ void main() {
         // Cement: restore the authored colormap tone (concreteColorBlend = sqrt(pureConcrete)).
         baseColor = mix(baseColor, base, sqrt(clamp(F3pc, 0.0, 1.0)));
         // Cliff: desaturate + darken toward rock on steep MACRO slope (un-perturbed).
-        float macroNzF3 = mv_smoothTerrainNormal(v_worldPos.xy).z;
+        float macroNzF3 = baseNormal.z;
         float cliffBlend = smoothstep(0.85, 0.55, abs(macroNzF3));
         if (cliffBlend > 0.01) {
             float luma = dot(baseColor, vec3(0.299, 0.587, 0.114));
@@ -573,7 +581,7 @@ void main() {
         vec3 N = vec3(0.0, 0.0, 1.0);                            // flat-up terrain normal (default)
         vec3 dbgBaseN = vec3(0.0, 0.0, 1.0); vec3 dbgDN = vec3(0.0);  // CSM-BLACKOUT-RECON-1 taps
         if (uT.detailEnabled != 0 && !pureConcrete) {
-            vec3 baseN = mv_smoothTerrainNormal(v_worldPos.xy);
+            vec3 baseN = baseNormal;
             vec3 dN    = vec3(0.0);
             if (uT.detailReady != 0 && uT.detailStrength != 0.0) {
                 vec4 matW = materialW; float snowW = materialSnow;
@@ -606,7 +614,7 @@ void main() {
 
         // Static ground mask and current-frame movers share the same visibility
         // floor. Cement receives both, exactly like the surrounding terrain.
-        vec3 shadowN=mv_smoothTerrainNormal(v_worldPos.xy);
+        vec3 shadowN=baseNormal;
         float staticS=uT.enableShadows!=0?terrainStaticShadow(v_worldPos):1.0;
         float dynS=terrainDynamicShadow(v_worldPos,shadowN);
         float shadow = min(staticS, dynS);
@@ -625,7 +633,7 @@ void main() {
         // first 1.5 wu above the water, the optional mask modulator, a 12-20 deg slope guard and a beach affinity term.
         if (uT.shorelineOn != 0) {
             float aboveWater = v_worldPos.z - uT.shorelineWaterElev;
-            vec3  macroN     = mv_smoothTerrainNormal(v_worldPos.xy);
+            vec3  macroN     = baseNormal;
             float nzc        = clamp(abs(macroN.z), 0.0, 0.9995);
             float sinSlope   = max(sqrt(max(1.0 - nzc * nzc, 1e-6)), 0.03);
             float horizDist  = max(aboveWater, 0.0) * (nzc / sinSlope);

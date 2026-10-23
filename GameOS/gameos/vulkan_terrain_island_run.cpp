@@ -6,6 +6,8 @@
 #include "vk_render_pass_timer.h"
 #include "vk_gpu_profile.h"   // VK-GPU-ZONES: MC2_VK_GPU_SCOPE
 #include "mc2fmt.h"
+#include <algorithm>
+#include <numeric>
 
 #ifdef MC2_VULKAN_ISLAND
 
@@ -470,9 +472,24 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
                                  static_cast<uint32_t>(lpSpans[1].offset), static_cast<uint32_t>(lpSpans[2].offset)};
     vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, s->playout.get(), 0, 1, &s->set[par], 4, dynOffs);
 
+    // Opaque patches write depth. Submit the nearest chunks first so the early
+    // depth test rejects hidden terrain before running the material shader.
+    std::vector<uint32_t> drawOrder(patchCount);
+    std::iota(drawOrder.begin(), drawOrder.end(), 0u);
+    const auto distanceSquared = [&](uint32_t i) {
+        const auto& p = feed.patches[i];
+        const float x = (p.blockOriginX + p.quadCountX * 0.5f) * 128.0f - feed.halfMap + feed.cameraPosMC2[0];
+        const float y = feed.halfMap - (p.blockOriginY + p.quadCountY * 0.5f) * 128.0f - feed.cameraPosMC2[2];
+        return x * x + y * y;
+    };
+    std::sort(drawOrder.begin(), drawOrder.end(), [&](uint32_t a, uint32_t b) {
+        const float da = distanceSquared(a), db = distanceSquared(b);
+        return da < db || (da == db && a < b);
+    });
+
     unsigned long drawn = 0;
     unsigned long skirtDrawn = 0;  // VK-TERRAIN-SKIRT (rung 4): skirt edge-strip draw count
-    for (uint32_t i = 0; i < patchCount; ++i) {
+    for (uint32_t i : drawOrder) {
         const Mc2TerrainTier1Patch& pr = feed.patches[i];
         const PatchMesh* pm = getOrBuildPatch(s, pr.quadCountX, pr.quadCountY, pr.lodStep);
         if (!pm || pm->indexCount == 0) continue;
