@@ -25,7 +25,7 @@ SCENARIO = ROOT / "tests/visual/bookmarks/battle_bench_v1.json"
 DEFAULT_EXE = Path("G:/mc2-installs/mc2-win64-mapgen/mc2.exe")
 PASSES = {
     "terrain": ("VKIsl.Terrain",),
-    "shadows": ("VKIsl.Shadow.",), "vegetation": ("VKIsl.Vegetation", "VKIsl.Veg"),
+    "shadows": ("VKIsl.Shadow.",), "vegetation": ("VKIsl.Vfx.Vegetation",),
     "props": ("VKIsl.Props",), "mechs": ("VKIsl.Mech",), "water": ("VKIsl.Water",),
     "post": ("VKIsl.Post.", "VKIsl.Present.Composite"), "vfx": ("VKIsl.Vfx",),
 }
@@ -152,7 +152,7 @@ def summarize(directory, log, scenario):
             "tick_spikes_over_1ms": [r for r in ticks if r["ms"] > 1],
             "catch_up_bursts": [r for r in cpu if r["ticks"] > 1],
             "max_ticks_per_frame": max((r["ticks"] for r in cpu), default=0),
-            "tick_model": "mission_update_per_render_frame; not a global fixed 30Hz scheduler",
+            "tick_model": "fixed_30hz_sim_tick; sim_tick is one sim pass (R2), a render frame runs zero or more passes",
             "memory": {"vram_peak_mib": max((r["gpu"]["proc_dedicated_mb"] for r in memory), default=-1),
                        "vk_allocated_peak_mib": max((r["gpu"]["vk_allocated_mb"] for r in memory), default=-1),
                        "working_set_peak_bytes": max((r["working_set_peak_bytes"] for r in memory), default=0),
