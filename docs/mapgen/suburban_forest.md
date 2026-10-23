@@ -25,10 +25,13 @@ Full rotated tree footprints must avoid the shared exclusion mask, including
 settlements, roads, water/banks and objective/player zones. Native building
 footprints and parent links retain their existing validators.
 
-Emission writes the usual PAK/FIT/ABL and a 1024-square **unlit** terrain TGA.
+Emission writes the usual PAK/FIT/ABL, a 1024-square editable albedo TGA,
+and its offline-lit `.burnin.tga` sidecar using the mission's camera lighting.
 Copy those three mission files to the lane install's `data/missions/` and the
-TGA from `missions/textures/` to `data/textures/`. The engine's ordinary terrain
-loader owns lighting/shadow burnin. Parcel fills, cultivation rows, borders and
+two TGAs from `missions/textures/` to `data/textures/`. The ordinary terrain
+loader reads the burnin sidecar; raw-TGA runtime baking crashes before the
+mission camera exists on this branch. Runtime rendering owns object shadows.
+Parcel fills, cultivation rows, borders and
 road corridors appear on the playable terrain, not only the preview/tacmap.
 PAK vertices contain the same material, height and water fields. Water blocks
 movement; roads reserve dry causeways. MOVE retains stock 10/15 link costs and

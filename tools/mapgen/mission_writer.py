@@ -316,7 +316,8 @@ def emit(layout, source, out, name=None):
     colormap = None
     if layout['source'].get('biome') == 'suburban_forest':
         from tools.mapgen.suburban_forest import cook_colormap
-        colormap = cook_colormap(layout, out/'textures'/(layout['name']+'.tga'))
+        colormap = cook_colormap(layout, out/'textures'/(layout['name']+'.tga'),
+                                 fit_sections(fit)['cameras'])
     # Read every packet using the repo's strict decoder, not just our encoder.
     raw = stem.with_suffix('.pak').read_bytes()
     for i,p in enumerate(packets):
@@ -357,7 +358,9 @@ def emit(layout, source, out, name=None):
     if colormap:
         report['colormap'] = {'path': 'data/textures/'+colormap.name,
             'sha256': hashlib.sha256(colormap.read_bytes()).hexdigest(),
-            'lighting': 'unlit albedo; ordinary engine burnin owns lighting and shadows'}
+            'lighting': 'editable albedo plus offline terrain illumination; runtime object shadows',
+            'burnin_path': 'data/textures/'+colormap.with_suffix('.burnin.tga').name,
+            'burnin_sha256': hashlib.sha256(colormap.with_suffix('.burnin.tga').read_bytes()).hexdigest()}
     write_json(stem.with_suffix('.mission.json'),report,pretty=True)
     write_json(stem.with_suffix('.layout.json'),layout)
     render(layout,stem.with_suffix('.plan.png'))

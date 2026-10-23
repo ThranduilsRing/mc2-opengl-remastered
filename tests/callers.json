@@ -8195,7 +8195,7 @@
         },
         {
           "path": "tests/mapgen/test_suburban_forest.py",
-          "line": 7,
+          "line": 10,
           "evidence": "import",
           "reference": "tools.mapgen.common",
           "text": "from tools.mapgen.common import load_json, mask_of"
@@ -8393,7 +8393,7 @@
         },
         {
           "path": "tests/mapgen/test_suburban_forest.py",
-          "line": 8,
+          "line": 11,
           "evidence": "import",
           "reference": "tools.mapgen.extract",
           "text": "from tools.mapgen.extract import VERTEX"
@@ -8500,7 +8500,7 @@
         },
         {
           "path": "tests/mapgen/test_suburban_forest.py",
-          "line": 9,
+          "line": 12,
           "evidence": "import",
           "reference": "tools.mapgen.generate",
           "text": "from tools.mapgen.generate import generate"
@@ -8558,7 +8558,7 @@
         },
         {
           "path": "tests/mapgen/test_suburban_forest.py",
-          "line": 10,
+          "line": 13,
           "evidence": "import",
           "reference": "tools.mapgen.mission_writer",
           "text": "from tools.mapgen.mission_writer import collision_grid, place_units, snapped, terrain_packet"
@@ -8744,6 +8744,13 @@
       "callers_by_basename": [],
       "callers_by_stem": [
         {
+          "path": "tests/mapgen/test_suburban_forest.py",
+          "line": 15,
+          "evidence": "import",
+          "reference": "tools.mapgen.suburban_forest",
+          "text": "from tools.mapgen.suburban_forest import cook_colormap"
+        },
+        {
           "path": "tools/mapgen/generate.py",
           "line": 465,
           "evidence": "import",
@@ -8773,7 +8780,7 @@
         },
         {
           "path": "tools/mapgen/mission_writer.py",
-          "line": 365,
+          "line": 368,
           "evidence": "import",
           "reference": "tools.mapgen.suburban_forest",
           "text": "from tools.mapgen.suburban_forest import feature_mask"
@@ -8809,7 +8816,7 @@
         },
         {
           "path": "tests/mapgen/test_suburban_forest.py",
-          "line": 11,
+          "line": 14,
           "evidence": "import",
           "reference": "tools.mapgen.validate",
           "text": "from tools.mapgen.validate import validate, validate_footprints"

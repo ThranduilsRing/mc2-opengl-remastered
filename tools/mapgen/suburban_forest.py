@@ -225,8 +225,13 @@ def feature_mask(layout, out):
     image.save(path)
 
 
-def cook_colormap(layout, out):
-    """Unlit stock TGA terrain product; native engine owns its shadow burnin."""
+def cook_colormap(layout, out, lighting):
+    """Keep editable albedo plus an offline-lit stock loader sidecar.
+
+    Raw-TGA runtime burnin needs a camera before mission camera initialization.
+    Generated missions therefore ship their illumination like stock burnin maps.
+    Object shadows remain owned by the runtime shadow renderer.
+    """
     side = 1024
     rgb = np.asarray(Image.fromarray(colours(layout)).resize((side, side), Image.Resampling.NEAREST)).copy()
     source_side = layout['size']['rows']
@@ -242,4 +247,15 @@ def cook_colormap(layout, out):
     path = output_path(out)
     path.parent.mkdir(parents=True, exist_ok=True)
     Image.fromarray(rgb).save(path, format='TGA', compression=None)
+    dr, dc = np.gradient(np.asarray(layout['terrain']['elevation_wu']), CELL_WU)
+    normal = np.stack((-dc, dr, np.ones_like(dr)), axis=-1)
+    normal /= np.linalg.norm(normal, axis=-1, keepdims=True)
+    pitch, yaw = np.radians([lighting['lightdirpitch'], lighting['lightdiryaw']+45])
+    sun = np.array([np.cos(pitch)*np.cos(yaw), np.cos(pitch)*np.sin(yaw), np.sin(pitch)])
+    intensity = np.maximum(normal @ sun, 0)[index[:,None], index[None,:]]
+    direct = np.array([lighting['light'+channel] for channel in ('red','green','blue')])
+    ambient = np.array([lighting['ambient'+channel] for channel in ('red','green','blue')])
+    illumination = np.clip(ambient+intensity[:,:,None]*direct, 0, 255)/255
+    baked = (rgb*illumination).astype(np.uint8)
+    Image.fromarray(baked).save(path.with_suffix('.burnin.tga'), format='TGA', compression=None)
     return path

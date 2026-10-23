@@ -1,14 +1,18 @@
 import copy
+import tempfile
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
 import numpy as np
+from PIL import Image
 
 from tools.mapgen.common import load_json, mask_of
 from tools.mapgen.extract import VERTEX
 from tools.mapgen.generate import generate
 from tools.mapgen.mission_writer import collision_grid, place_units, snapped, terrain_packet
 from tools.mapgen.validate import validate, validate_footprints
+from tools.mapgen.suburban_forest import cook_colormap
 
 
 class SuburbanForestTest(unittest.TestCase):
@@ -67,3 +71,14 @@ class SuburbanForestTest(unittest.TestCase):
 
     def test_seed_reproduces_authoring_and_native_placement(self):
         self.assertEqual(self.layout, generate(180, 7, biome='suburban_forest'))
+
+    def test_colormap_ships_lit_sidecar_for_ordinary_loader(self):
+        lighting = dict(lightdirpitch=50, lightdiryaw=11,
+                        lightred=0, lightgreen=0, lightblue=0,
+                        ambientred=128, ambientgreen=128, ambientblue=128)
+        with tempfile.TemporaryDirectory() as folder:
+            path = cook_colormap(self.layout, Path(folder)/'mission.tga', lighting)
+            with Image.open(path) as raw, Image.open(path.with_suffix('.burnin.tga')) as baked:
+                self.assertEqual(raw.size, (1024, 1024))
+                np.testing.assert_array_equal(np.asarray(baked),
+                    (np.asarray(raw)* (128/255)).astype(np.uint8))
