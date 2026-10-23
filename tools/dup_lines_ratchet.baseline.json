@@ -1,14 +1,14 @@
 {
  "counts": {
   "GameAdapters": 0,
-  "GameOS": 2271,
+  "GameOS": 2255,
   "GuiRuntime": 48,
   "HostServices": 0,
   "RenderCore": 402,
   "RenderWorld": 0,
   "code": 14012,
   "mclib": 28626,
-  "shaders": 678
+  "shaders": 642
  },
  "dirs": [
   "code",
@@ -49,8 +49,8 @@
   "GameOS/gameos/vk_depth_caster_pipeline.cpp": 20,
   "GameOS/gameos/vulkan_color_prop_island.cpp": 197,
   "GameOS/gameos/vulkan_color_prop_island.h": 8,
-  "GameOS/gameos/vulkan_legacy_shape_island.cpp": 84,
-  "GameOS/gameos/vulkan_mech_island.cpp": 162,
+  "GameOS/gameos/vulkan_legacy_shape_island.cpp": 76,
+  "GameOS/gameos/vulkan_mech_island.cpp": 154,
   "GameOS/gameos/vulkan_post_fog_native.cpp": 139,
   "GameOS/gameos/vulkan_post_hzb_native.cpp": 44,
   "GameOS/gameos/vulkan_post_screenfx_native.cpp": 170,
@@ -497,9 +497,9 @@
   "shaders/include/light_pools.hglsl": 10,
   "shaders/include/lighting.hglsl": 20,
   "shaders/include/noise.hglsl": 40,
-  "shaders/include/object_light_pool.hglsl": 20,
+  "shaders/include/object_light_pool.hglsl": 8,
   "shaders/include/shadow.hglsl": 136,
-  "shaders/include/terrain_light_pool.hglsl": 20,
+  "shaders/include/terrain_light_pool.hglsl": 8,
   "shaders/vulkan/aa_fxaa.frag": 30,
   "shaders/vulkan/cloud_shadow.frag": 21,
   "shaders/vulkan/color_prop_tier1.frag": 10,
@@ -513,13 +513,13 @@
   "shaders/vulkan/postprocess.frag": 39,
   "shaders/vulkan/postprocess_visual.frag": 9,
   "shaders/vulkan/shoreline.frag": 40,
-  "shaders/vulkan/terrain_decal_tier1.frag": 24,
-  "shaders/vulkan/terrain_overlay_tier1.frag": 24,
+  "shaders/vulkan/terrain_decal_tier1.frag": 18,
+  "shaders/vulkan/terrain_overlay_tier1.frag": 18,
   "shaders/vulkan/terrain_tier1.vert": 78,
   "shaders/vulkan/terrain_tier1_skirt.vert": 78
  },
- "head": "19d2adb12",
+ "head": "160f70593",
  "n": 8,
- "total": 46037,
+ "total": 45985,
  "version": 1
 }
