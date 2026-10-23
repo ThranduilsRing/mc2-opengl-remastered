@@ -253,6 +253,11 @@ long TG_MultiShape::TransformMultiShape (glm::vec3 *pos, glm::quat *rot)
             }
         }
 
+        // GPU recipes consume the hierarchy matrices, not CPU leaf lighting,
+        // projection or shadow scratch. Avoid the per-node world-light scan.
+        if (s_buildRecipeOnly)
+            continue;
+
         if (useFaceLighting || useVertexLighting)
         {
             //----------------------------------------------------
@@ -399,11 +404,6 @@ long TG_MultiShape::TransformMultiShape (glm::vec3 *pos, glm::quat *rot)
         MCTimeAnimationandMatrix += x;
         x=GetCycles();
 #endif
-
-        // Track B: recipe-build-only mode — shapeToWorld is now populated above.
-        // Skip pool-allocating per-vertex/per-face dispatch entirely.
-        if (s_buildRecipeOnly)
-            continue;
 
         // Slice 2 (object-offload) — Stage 2.B: dispatch on the file-static
         // flag set by TransformMultiShape_PositionsOnly. The positions-only

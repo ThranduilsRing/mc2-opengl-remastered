@@ -313,6 +313,7 @@ def main():
     parser.add_argument("--acceptance", action="store_true",
                         help="orchestrator acceptance bench in a quiet window: hold the exclusive host lease around each launch "
                              "(without it launches use a normal slot and the numbers are provisional)")
+    parser.add_argument("--resolution", choices=("all", "1080p"), default="all")
     parser.add_argument("--diff", nargs=2, type=Path, metavar=("BEFORE", "AFTER"))
     args = parser.parse_args()
     if args.diff:
@@ -361,7 +362,10 @@ def main():
     for i in range(1, args.runs + 1):
         run = {"index": i, "perf": {}, "captures": []}
         for phase in ("day", "night"):
-            for name, size in (("4k", (3840, 2160)), ("1080p", (1920, 1080))):
+            sizes = (("4k", (3840, 2160)), ("1080p", (1920, 1080)))
+            for name, size in sizes:
+                if args.resolution != "all" and name != args.resolution:
+                    continue
                 key = f"{phase}-{name}"
                 print(f"[battle-bench] run {i}/{args.runs} {key}", flush=True)
                 run["perf"][key] = measured(lambda: perf_run(args.exe.resolve(), out / f"run{i}" / key, scenario, phase, size, args.duration, sha))

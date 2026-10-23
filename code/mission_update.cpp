@@ -456,6 +456,7 @@ void Mission::updatePresentationOnly(bool moversOnly, float alpha) {
 	if (!moversOnly)
 		gpu_cull::substrate_frameBegin();
     if (mc2::gate::get<"MC2_PRESENTATION_DISABLED">()) return;
+	ZoneScopedN("GameLogic.Mission.Presentation");
 	MisScope _ms(MS_PRESENT);
 	const float renderLength = frameLength;
 	mc2::sim::PresentationScope presentationScope;
@@ -497,9 +498,10 @@ void Mission::advanceCombatClock(float seconds)
 // Begin the GPU cull frame and update the objects, or only their appearances while frozen.
 void Mission::updateObjectManager() {
 	if (mc2SimTickFrozen(missionInterface) && !MPlayer) return;
+	{ ZoneScopedN("GameLogic.Mission.TickPrep");
 	ObjectManager->snapshotMoverPoses();
 	beginOrderSimulationTick();
-	advanceCombatClock(frameLength);
+	advanceCombatClock(frameLength); }
 	MisScope _ms(MS_OBJMGR);
 	ObjectManager->update(true, true, true);
 }
@@ -1292,7 +1294,7 @@ bool Mission::updatePass(bool tickMode, bool runFrame, bool runSim, bool advance
 			}
 		}
 
-		ObjectManager->extractRenderSnapshots();
+		{ ZoneScopedN("GameLogic.Mission.RenderSnapshots"); ObjectManager->extractRenderSnapshots(); }
 		updateTraceHooks();
 		updateTermination();
 	}

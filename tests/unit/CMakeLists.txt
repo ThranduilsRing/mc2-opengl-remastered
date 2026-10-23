@@ -500,6 +500,8 @@ target_sources(mc2_tests PRIVATE
     test_audio_backend.cpp
     ${MC2_WORKTREE_ROOT}/GameOS/gameos/gameos_sound.cpp
 )
+set_source_files_properties(${MC2_WORKTREE_ROOT}/GameOS/gameos/gameos_sound.cpp PROPERTIES
+    INCLUDE_DIRECTORIES "${MC2_WORKTREE_ROOT}/3rdparty/tracy")
 target_link_libraries(mc2_tests PRIVATE SDL2_mixer::SDL2_mixer)
 if(WIN32)
     add_custom_command(TARGET mc2_tests POST_BUILD

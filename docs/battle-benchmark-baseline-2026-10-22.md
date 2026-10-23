@@ -43,3 +43,35 @@ Full JSON, Markdown, montage and raw evidence: `G:/mc2-proof/battle-bench/b56b34
 The failed foreign SciFi hangar override and its crash log were preserved under the earlier diagnostic proof directory; that manifest was removed from the active stock install before the recorded baseline. No scratch files were committed or deleted.
 
 Rerun the prepared install with `py -3 scripts/run_battle_bench.py`. Each new build writes under its full SHA. For another run on the same SHA, pass a fresh `--out G:/mc2-proof/battle-bench/<sha>/overnight-2026-10-23` directory. Compare using the command in [the runbook](battle-benchmark.md).
+
+## CPU follow-up: 2026-10-23
+
+Branch `claude/perf-cpu` starts at `8d0112c85` and merges the battle tooling with `b92e087a2` (`f7e97f21e`). Engine fixes are separate commits:
+
+- `9a46904f5`: hierarchy-only GPU recipes stop before unused CPU per-node light-vector and projection work. Hierarchy matrices and animation state are retained. In the intermediate night Tracy capture, `TG.MultiShape.PerShapeLoop` self time fell from 52.204 to 4.895 microseconds per invocation (11.146 to 1.009 ms per frame). This was the largest measured night CPU cost.
+- `4a7b95f8e`: configured music is decoded during sound initialization, with at most 256 MiB of retained PCM. Independent playback handles share PCM; cache release preserves active playback. Missing files and entries outside the budget use the existing loader. The scenario-clock script music timeline is unchanged.
+
+The early brain hitch was traced to synchronous WAV decoding inside a native ABL call: one `mc2_01` mission-brain execution took 228.125 ms, with a nested `Audio.Stream.LoadFile` taking 222.807 ms. The original stock captures also showed mission-brain peaks of 150.272 ms at about 22.6 simulation seconds in `mc2_01` and 246.482 ms at about 38.1 seconds in `mc2_24`. Unit-brain execution and path-manager averages were much smaller; AI scheduling, path order and RNG draws were not changed.
+
+These are **provisional shared-host wall-clock measurements**, one 90-second run per scene and build, 1080p Vulkan. The original lane baseline was sampled at 99.8% host CPU utilization; final in-run samples were 45.4% by day and 43.1% at night, with two MSBuild processes present. Aggregate differences cannot all be attributed to the fixes. Scenario SHA and all 28,577 runtime content hashes match across the three stages. Each final run had 118 movers and 94 mechs at peak, with 15 new destructions. The intermediate day run briefly reached 119 movers.
+
+| Build / scene | CPU frame p95/p99 ms | Sim tick p95/p99 ms | Worst tick ms | First 60 simulation seconds worst ms |
+|---|---:|---:|---:|---:|
+| Before `5690b0175`, day | 78.841/118.556 | 30.529/53.568 | 137.132 | 137.132 |
+| Before `5690b0175`, night | 109.738/191.415 | 51.131/79.912 | 201.385 | 201.385 |
+| Hierarchy fix `4117ed7e0`, day | 31.027/48.237 | 10.590/16.545 | 184.730 | 184.730 |
+| Hierarchy fix `4117ed7e0`, night | 79.054/265.759 | 21.590/52.749 | 422.162 | 422.162 |
+| Both fixes `4a7b95f8e`, day | 21.270/25.186 | 6.926/9.048 | 24.789 | 24.789 |
+| Both fixes `4a7b95f8e`, night | 24.895/29.326 | 9.807/11.807 | 18.916 | 18.916 |
+
+The first-60-second maxima are exact: surrounding world-state samples give equal lower and upper bounds. Final mean tick time was 3.914 ms by day and 5.928 ms at night. The battle's early-spike target of 33 ms passed in these runs; an 8 ms night p95 target remains unmet by 1.807 ms. Night peak working set increased from 2,288 MiB after the hierarchy fix to 2,478 MiB with music predecode. Sound initialization now pays the decoding cost.
+
+The benchmark retains its variable-timestep, one-mission-update-per-render-frame model. Determinism evidence uses a seeded fixed 30 Hz clock. All eight final day/night bookmark sidecars match the baseline's complete simulation identity objects, including strict digests and per-mover fields. The final day/night montage was viewed; the pre-existing crowded night overexposure remains. Tracy mission-update maxima retain the synthetic battle-fixture construction; the benchmark's tick timer starts after fixture creation. Cold render-frame waits also remain in the raw data.
+
+Long determinism, after merging `claude/det-diverge` (`c1ff16196`, which defines the previously uninitialized skipped-blockage output): the 109.8 s divergence above was that pre-existing uninitialized value, not these commits. On the merged tip, day and night battle runs are identical over 7,842 sim frames (261 s), and the same battle with the hierarchy-lighting commit reverted (`9a46904f5`) is identical to the build with it over 8,781 frames (292 s). Music predecode touches no simulation state and was not reverted for the control.
+
+Re-bench on the merged tip (1080p, `--runs 1/2 --duration 20|90`, processor queue 0 and 29-69% CPU at start; provisional): night sim tick p95 5.76 ms (90 s), 6.96 / 6.67 ms (20 s runs); day 5.38, 6.54, 6.70, 4.77 ms. The earlier 9.81 ms night figure was sampled at 99.8% host CPU. One 20 s night run overlapping another lane's build (queue length over 100, CPU 100%) read 43 ms and is excluded as contention. The 8 ms night target is met in quiet windows; the final acceptance bench belongs in a quiet window. Tracy attributes the remaining tick mostly to object update (about 2.3 ms with zone overhead), mech sim poses, path manager, sensors and collisions, with no single hotspot above 1 ms. Smoke-lite passes 2/2 on the lane install; an earlier lite run failed `video_floor_missing` only because the host was saturated (8 fps, 82 frames in the 10 s window), and mc2_10 passes a 30 s run (3,631 frames).
+
+Proof root: `E:/mc2-proof/perf-cpu/`. Build: `G:/mc2-build/perf-cpu`; install: `E:/mc2-installs/mc2-win64-perf-cpu`. Each of `before/bench`, `after-hierarchy/bench` and `after-music/bench` contains `battle-bench.json`, `cpu-summary.json`, `cpu-summary.md`, raw frames, engine logs and the eight-view montage. Baseline Tracy captures cover battle day/night and stock `mc2_01`, `mc2_10`, `mc2_24`, including the first 60 simulation seconds and steady state. Raw traces, top-15 inclusive/self JSON and full CSV exports are retained per case.
+
+Offline evidence so far: `contracts-music.log` (124/124), `unit-music.log` (3,429 passed, two skipped, including simulation/RNG replay tests), and `harness-music-production.log` (audio backend, 40 production seam cases, installed-content census and both negative controls; exit 0). Four Python contract harnesses also passed. Support commits: `c8cffe48d` (longer 1080p benchmark runs), `5690b0175` (launcher tests honor the selected Ninja tree), `551e5c5f4` (coarse audio load zone), `4117ed7e0` (generated inventory line references).
