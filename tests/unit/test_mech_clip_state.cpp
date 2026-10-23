@@ -6,9 +6,52 @@
 // whole jump was the airborne idle) and the stride-rate rule that removes foot sliding.
 #include "doctest.h"
 #include "mech_clip_state.h"
+#include "mech_grounding.h"
 #include <string>
 
 using namespace mc2clip;
+
+TEST_CASE("imported grounding: soles contact, reverse knees and torso motion survive") {
+    mc2ground::Rig rig;
+    std::vector<glm::mat4> pose(7, glm::mat4(1));
+    for (int side = 0; side < 2; ++side) {
+        auto& leg = rig.legs[side];
+        leg.thigh = side * 3; leg.calf = side * 3 + 1; leg.foot = side * 3 + 2;
+        const float x = side ? 0.3f : -0.3f;
+        pose[leg.thigh][3] = glm::vec4(x, 2, 0, 1);
+        pose[leg.calf][3] = glm::vec4(x, 1, -0.6f, 1);
+        pose[leg.foot] = mc2ground::columnRotation(glm::angleAxis(0.3f, glm::vec3(1, 0, 0)));
+        pose[leg.foot][3] = glm::vec4(x, side ? 0.4f : -0.2f, 0, 1);
+        for (float px : {-0.15f, 0.15f})
+            for (float pz : {-0.3f, 0.3f}) leg.sole.push_back({leg.foot, {px, -0.1f, pz}});
+    }
+    pose[6] = mc2ground::columnRotation(glm::angleAxis(0.14f, glm::vec3(1, 0, 0)));
+    const auto original = pose;
+    mc2ground::solve(rig, pose);
+    CHECK(pose[6] == original[6]); // authored torso lean, no whole-mech lift or pitch
+    for (const auto& leg : rig.legs) {
+        float minY = 100;
+        for (const auto& p : leg.sole)
+            minY = std::min(minY, (pose[p.bone] * glm::vec4(p.local, 1)).y);
+        CHECK(minY >= -1e-5f);
+        if (leg.foot == 2) CHECK(minY == doctest::Approx(0).epsilon(1e-5));
+        for (auto pair : {std::pair{leg.thigh, leg.calf}, std::pair{leg.calf, leg.foot}}) {
+            const float before = glm::length(glm::vec3(original[pair.first][3] - original[pair.second][3]));
+            const float after = glm::length(glm::vec3(pose[pair.first][3] - pose[pair.second][3]));
+            CHECK(after == doctest::Approx(before).epsilon(1e-5));
+            const auto localEnd = glm::inverse(original[pair.first]) * original[pair.second][3];
+            CHECK(glm::length(pose[pair.first] * localEnd - pose[pair.second][3]) < 1e-5f);
+        }
+        CHECK(pose[leg.calf][3].z < 0); // retain the source bend plane
+    }
+}
+
+TEST_CASE("imported grounding: a stock rig without imported soles stays byte-identical") {
+    std::vector<glm::mat4> pose{glm::mat4(2)};
+    const auto original = pose;
+    mc2ground::solve({}, pose);
+    CHECK(pose == original);
+}
 
 namespace {
 Choice pick(int gesture, Phase& ph, float speed = 0.0f, bool destroyed = false, bool finished = false,

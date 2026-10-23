@@ -44,6 +44,7 @@
 #include "mech_anim_runtime.h" // BT2018-SKEL-ENGINE-1B-RUNTIME: per-frame re-bake API
 #include "file.h"              // ModCapabilityMounted (package capability)
 #include "mech_clip_state.h"   // P9: gesture -> clip state machine + stride matching
+#include "mech_grounding.h"
 
 // BT2018-SKEL-ENGINE-1A — bind-pose bake trace (default OFF). MC2_MECH_SKEL_TRACE=1.
 static const bool s_mechSkelTrace = mc2::gate::get<"MC2_MECH_SKEL_TRACE">();
@@ -750,6 +751,7 @@ struct ImportedAnimEntry {
     aiMatrix4x4                AS1;              // A1·S (Z-up clip-side axis · scale)
     std::vector<aiVector3D>    boneLowest;       // per-bone lowest rest VBO vertex (model space)
     float                      restLift = 0.0f;  // static ground lift from REST pose (steady torso)
+    mc2ground::Rig              grounding;
     // Per-frame state: GPU = one ActorAnimState per actor instance; CPU = one shared.
     std::map<const void*, ActorAnimState> actors;  // keyed by actor instance (mechShape*)
     ActorAnimState             cpuState;
@@ -1023,6 +1025,44 @@ void RegisterImportedAnim(const char* path, TG_TypeMultiShape* out, const SkelBa
     e.groundDy = groundDy;
     e.initialDuration = (d && *d > 1e-4f) ? *d : 1.0f;
     e.parts = parts;
+
+    // BT's prefab enables GrounderIK + LimbIK. Reconstruct sole support from the
+    // actual intact meshes, including articulated toes, rather than a height dial.
+    auto matrix = [](const mc2skel::GpuBone& bone) {
+        glm::mat4 m;
+        for (int r = 0; r < 4; ++r)
+            for (int c = 0; c < 4; ++c) m[c][r] = bone.m[r * 4 + c];
+        return m;
+    };
+    e.grounding.floor = 1e30f;
+    for (int side = 0; side < 2; ++side) {
+        auto& leg = e.grounding.legs[side];
+        const std::string prefix = side == 0 ? "j_L" : "j_R";
+        auto index = [&](const char* suffix) {
+            auto it = bake.nameIdx.find(prefix + suffix);
+            return it == bake.nameIdx.end() ? -1 : it->second;
+        };
+        leg.thigh = index("Thigh"); leg.calf = index("Calf"); leg.foot = index("Foot");
+        if (leg.thigh < 0 || leg.calf < 0 || leg.foot < 0) continue;
+        leg.restFoot = matrix(bake.rest[leg.foot]);
+        for (size_t b = 0; b < bake.parents.size(); ++b) {
+            int ancestor = static_cast<int>(b);
+            while (ancestor >= 0 && ancestor != leg.foot) ancestor = bake.parents[ancestor];
+            if (ancestor == leg.foot && static_cast<int>(b) != leg.foot)
+                leg.children.push_back(static_cast<int>(b));
+        }
+        for (const auto& part : parts) {
+            const int b = part.boneIndex;
+            if (b != leg.foot && std::find(leg.children.begin(), leg.children.end(), b) == leg.children.end()) continue;
+            const aiMesh* mesh = scene->mMeshes[part.meshIndex];
+            for (unsigned v = 0; v < mesh->mNumVertices; ++v) {
+                const aiVector3D local = part.off * mesh->mVertices[v];
+                leg.sole.push_back({b, {local.x, local.y, local.z}});
+                e.grounding.floor = std::min(e.grounding.floor,
+                    applyRowMajor16(bake.rest[b].m, local).y);
+            }
+        }
+    }
 
     // 1B-GPU: precompute the model-delta inputs. VBO = A2·S·R_i·p̃ (A2 = mechToMC2Pos,
     // Y-up, axis case 2). Per-frame model delta D_i = (A1·S·C_i)·(A2·S·R_i)^-1 maps the
@@ -1352,6 +1392,28 @@ void mc2mechanim::TickImportedMechs(float dt, unsigned frameStamp, const MechMot
         s.lastFrame = frameStamp;
         std::vector<mc2skel::GpuBone> globals;
         if (sampleActorClip(e, s, dt, motion, globals, advanceClock)) {
+            if (s.activeClip.starts_with("atlas_moveCore")) {
+                std::vector<glm::mat4> pose(globals.size());
+                for (size_t b = 0; b < globals.size(); ++b)
+                    for (int r = 0; r < 4; ++r)
+                        for (int c = 0; c < 4; ++c) pose[b][c][r] = globals[b].m[r * 4 + c];
+                mc2ground::solve(e.grounding, pose);
+                if (s_mechSkelTrace && frameStamp % 6 == 0) {
+                    float soles[2] = {1e30f, 1e30f};
+                    for (int side = 0; side < 2; ++side)
+                        for (const auto& p : e.grounding.legs[side].sole)
+                            soles[side] = std::min(soles[side], (pose[p.bone] * glm::vec4(p.local, 1)).y);
+                    const auto torso = std::find(e.names.begin(), e.names.end(), "j_Spine2");
+                    const size_t b = static_cast<size_t>(torso - e.names.begin());
+                    const float pitch = b < pose.size() ? std::atan2(pose[b][1].z, pose[b][1].y) * 57.29578f : 0;
+                    MECH_SKEL_TRACE("ground frame=%u clip=%s time=%.4f soles=(%.4f,%.4f) pitch=%.3f",
+                        frameStamp, s.activeClip.c_str(), s.clipTimeSec, (soles[0] - e.grounding.floor) * e.scale,
+                        (soles[1] - e.grounding.floor) * e.scale, pitch);
+                }
+                for (size_t b = 0; b < globals.size(); ++b)
+                    for (int r = 0; r < 4; ++r)
+                        for (int c = 0; c < 4; ++c) globals[b].m[r * 4 + c] = pose[b][c][r];
+            }
             buildGpuModelDelta(e, s, globals);
             s.lastGlobals = std::move(globals);   // 1A: firepoint/hit-node source
         }

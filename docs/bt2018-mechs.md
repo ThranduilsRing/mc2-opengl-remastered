@@ -74,6 +74,14 @@ a jump is start -> airborne idle -> land. Locomotion clips play at
 `j_LFoot`/`j_RFoot` tracks (`[MECH_IMPORT] stride ...` log lines), which removes foot
 sliding at any speed inside the 0.35x-2x clamp.
 
+The BT prefab's enabled GrounderIK/LimbIK pass is also needed after clip retargeting:
+rotation-only playback otherwise drives the Marauder's soles below its bind-pose base.
+The imported GPU pose solves the two legs against their actual sole geometry, retaining
+the reverse knee bend, bone lengths and swing clearance. Pelvis/torso motion and the
+simulation position are untouched. The walk clip itself pitches the torso about 7-8
+degrees; the converted torso agrees with the source clip within 0.1 degree. This
+authored lean must not be cancelled with a whole-mech rotation or height offset.
+
 ## What mechs need from the content pipeline (claude/content-pipeline)
 
 The bt2018 lane does NOT build a cooker or a material path. Where it needed one early it
