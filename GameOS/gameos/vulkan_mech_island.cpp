@@ -58,6 +58,7 @@
 #include "visual_tuning_profile.h"
 #include "vk_shared_gbuffer_gate.h"      // VK-P14 GATE-CONSOLIDATION-1 umbrella resolver
 #include "vk_shared_light_feed.h"        // VK-LIGHTFEED-DEDUP-1: shared per-frame LightsData SSBO
+#include "gos_terrain_lighting.h"
 #include "vk_gpu_timestamps.h"           // VK-DRAW-PERF-1: MC2_VK_GPU_TIMESTAMPS GPU segment timers
 #define MC2_VULKAN_SHARED_SCENE_COLOR_IMPL_ISLAND
 #include "vulkan_shared_scene_color.h"   // shared scene color/normal images
@@ -798,10 +799,12 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
     const bool nativeLight = feed.lightDataCpu && feed.lightDataCpuBytes >= 3600ull;
     int poolN = (feed.poolLights48 && feed.numPoolLights > 0) ? feed.numPoolLights : 0;
     if (poolN > (int)kMaxPoolLights) poolN = static_cast<int>(kMaxPoolLights);
+    size_t poolBytes = 0;
+    const void* poolUpload = gos_terrain_lighting::GetObjectLightPoolUpload(poolBytes);
     const VkDeviceSize instOff = mc2vk::alignUp(sizeof(MechFrameUBO), ringAlign);
     const VkDeviceSize boneOff = mc2vk::alignUp(instOff + (instBytes ? instBytes : 64ull), ringAlign);
     const VkDeviceSize poolOff = mc2vk::alignUp(boneOff + boneBytes, ringAlign);
-    const mc2vk::FrameAlloc mainSpan = rctx.frameAlloc(poolOff + static_cast<VkDeviceSize>((poolN > 0 ? poolN : 1)) * 48ull);
+    const mc2vk::FrameAlloc mainSpan = rctx.frameAlloc(poolOff + poolBytes);
     if (!mainSpan) { setFallback("frame_ring_alloc_failed"); s->disabled = true; return 0; }
     uint8_t* const mainPtr = static_cast<uint8_t*>(mainSpan.ptr);
 
@@ -871,7 +874,7 @@ extern "C" int mc2_vk_mech_island_run(int w, int h) {
       u.shadeB[0] = feed.glassLumaThresh;  u.shadeB[1] = feed.glassMaxChanThresh;
       u.shadeB[2] = feed.importedGamma;    u.shadeB[3] = feed.importedAlbedoScale;
       u.shadeC[0] = feed.aoStrength;       u.shadeC[1] = feed.normalStrength;
-      if (poolN > 0) std::memcpy(mainPtr + poolOff, feed.poolLights48, static_cast<size_t>(poolN) * 48u);
+      std::memcpy(mainPtr + poolOff, poolUpload, poolBytes);
       u.poolF[0] = feed.poolMoverDim; u.poolF[1] = feed.poolMoverScale; u.poolF[2] = feed.poolObjScale;
       u.poolI[0] = poolN;             u.poolI[1] = feed.poolSoft;
       u.poolI[2] = feed.poolMoverMax; u.poolI[3] = feed.poolCompress;

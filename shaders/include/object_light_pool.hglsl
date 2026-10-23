@@ -23,13 +23,32 @@ vec3 olp_objectPoolLight(vec3 worldPosMC2, int numPoolLights, int poolSoft,
                          float moverDim, float moverScale, int moverMax,
                          int poolCompress, float objScale)
 {
-    if (numPoolLights <= 0) return vec3(0.0);
+    if (numPoolLights <= 0 || objScale <= 0.0) return vec3(0.0);
     vec3 pool      = vec3(0.0);
     vec3 poolMover = vec3(0.0);
-    for (int i = 0; i < numPoolLights; ++i) {
+    int lo = 0, hi = numPoolLights;
+    bool indexed = false;
+#ifdef MC2_OBJECT_POOL_GRID
+    if (poolGridInfo.x > 0u) {
+        ivec2 cell = ivec2(floor((worldPosMC2.xy - poolGridMinInv.xy) * poolGridMinInv.zw));
+        int dim = int(poolGridInfo.x);
+        if (any(lessThan(cell, ivec2(0))) || any(greaterThanEqual(cell, ivec2(dim)))) return vec3(0.0);
+        int word = 2 * (cell.y * dim + cell.x);
+        lo = int(poolGridWords[word]);
+        hi = lo + int(poolGridWords[word + 1]);
+        if (lo == hi) return vec3(0.0);
+        indexed = true;
+    }
+#endif
+    for (int k = lo; k < hi; ++k) {
+        int i = k;
+#ifdef MC2_OBJECT_POOL_GRID
+        if (indexed) i = int(poolGridWords[poolGridInfo.y + uint(k)]);
+        // A mod can enlarge the terrain pool beyond the existing object cap.
+        if (i >= numPoolLights) continue;
+#endif
         if (poolLights[i].lightType == 0u) continue;
         vec3  vtl = worldPosMC2 - poolLights[i].position;
-        float len = sqrt(dot(vtl, vtl));
         bool  mover = poolLights[i]._plPad1 > 0.5;
         float farD  = poolLights[i].farDistance;
         float nearD = poolLights[i].closeDistance;
@@ -38,7 +57,9 @@ vec3 olp_objectPoolLight(vec3 worldPosMC2, int numPoolLights, int poolSoft,
             float s = max(moverScale, 0.05);
             farD *= s; nearD *= s; ooD /= s;
         }
-        if (len >= farD) continue;
+        float distance2 = dot(vtl, vtl);
+        if (farD <= 0.0 || distance2 >= farD * farD) continue;
+        float len = sqrt(distance2);
         float falloff = (len <= nearD)
                       ? 1.0
                       : (farD - len) * ooD;

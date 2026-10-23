@@ -88,14 +88,9 @@ static uint32_t s_lastNumLights = 0;
 // 1-6 lights instead of 142). Fragments outside the bbox get count 0 and skip the
 // block entirely.
 //
-// WHY IT IS EXACT (not an approximation — no tolerance needed). A light
-// contributes to a fragment only when len < farDistance, i.e. only when the
-// fragment lies inside the light's ground circle of radius farDistance. Insertion
-// uses that same UNSCALED farDistance to stamp the circle's AABB into the grid, so
-// every cell containing any point the light can reach holds that light's index.
-// The shader's mover-radius shrink (u_lightPoolMoverScale <= 1) only ever REDUCES
-// the reach, so the stamped set stays a conservative superset. Same lights, same
-// pixels, bit-for-bit — the loop merely visits fewer zero-contribution lights.
+// The XY projection of each effective light sphere conservatively covers terrain
+// and raised objects. Lists retain producer order and have no per-cell truncation:
+// a dense cell pays for every accepted light instead of changing the image.
 //
 // Gate MC2_LIGHT_GRID (default ON, =0 killswitch -> linear full-pool loop).
 // MC2_LIGHT_GRID_DIM overrides the cell count per axis (default 64).
@@ -108,6 +103,8 @@ static constexpr uint32_t kLightGridMinLights = 8u;   // below this: linear loop
 static std::vector<uint32_t> s_gridHeader;   // 2 * dim * dim
 static std::vector<uint32_t> s_gridIndices;
 static std::vector<uint32_t> s_gridCounts;   // scratch: per-cell counter
+static std::vector<uint32_t> s_objectPoolUpload;
+static bool s_objectPoolDirty = true;
 static uint32_t s_lightGridDim     = 0;      // 0 => grid not active this frame
 static float    s_lightGridMin[2]  = {0.0f, 0.0f};
 static float    s_lightGridInvCell[2] = {0.0f, 0.0f};
@@ -136,14 +133,19 @@ static void BuildLightGrid(uint32_t numLights) {
     s_lightGridDim = 0;
     if (!LightGridEnabled() || numLights < kLightGridMinLights) return;
 
-    // --- bbox over every light's ground circle (unscaled farDistance) ---
+    // Both fragment consumers apply the same mover radius. Vertex lighting keeps
+    // the original pool; only the conservative fragment candidate bounds shrink.
+    static const float moverScale = mc2::gate::get<"MC2_LIGHT_POOL_MOVER_RADIUS">();
+    const auto radius = [](const gos_terrain_lighting::GpuTerrainLight& l) {
+        return l.farDistance * (l._pad1 > 0.5f && moverScale < 0.999f ? std::max(moverScale, 0.05f) : 1.0f);
+    };
     float minX =  3.0e38f, minY =  3.0e38f;
     float maxX = -3.0e38f, maxY = -3.0e38f;
     uint32_t live = 0;
     for (uint32_t i = 0; i < numLights; ++i) {
         const gos_terrain_lighting::GpuTerrainLight& L = s_lightBuf[i];
         if (L.lightType == 0u) continue;      // shader skips these too
-        const float r = L.farDistance;
+        const float r = radius(L);
         if (!(r > 0.0f)) continue;            // NaN-safe: excludes r<=0 and NaN
         ++live;
         if (L.position[0] - r < minX) minX = L.position[0] - r;
@@ -167,7 +169,7 @@ static void BuildLightGrid(uint32_t numLights) {
     // --- pass 1: count per cell ---
     s_gridCounts.assign(cells, 0u);
     auto cellRange = [&](const gos_terrain_lighting::GpuTerrainLight& L, int& x0, int& y0, int& x1, int& y1) {
-        const float r = L.farDistance;
+        const float r = radius(L);
         x0 = static_cast<int>(std::floor((L.position[0] - r - minX) * invW));
         y0 = static_cast<int>(std::floor((L.position[1] - r - minY) * invH));
         x1 = static_cast<int>(std::floor((L.position[0] + r - minX) * invW));
@@ -176,13 +178,26 @@ static void BuildLightGrid(uint32_t numLights) {
         if (x1 > static_cast<int>(dim) - 1) x1 = static_cast<int>(dim) - 1;
         if (y1 > static_cast<int>(dim) - 1) y1 = static_cast<int>(dim) - 1;
     };
+    // Circle/rectangle rejection removes the AABB corners without dropping any
+    // sphere that can reach a fragment in this cell (including raised objects).
+    const auto overlaps = [&](const gos_terrain_lighting::GpuTerrainLight& l, int x, int y) {
+        const float xlo = minX + static_cast<float>(x) * cellW;
+        const float ylo = minY + static_cast<float>(y) * cellH;
+        const float dx = l.position[0] - std::clamp(l.position[0], xlo, xlo + cellW);
+        const float dy = l.position[1] - std::clamp(l.position[1], ylo, ylo + cellH);
+        const float r = radius(l) * 1.00001f;
+        return dx * dx + dy * dy <= r * r;
+    };
     uint32_t total = 0;
     for (uint32_t i = 0; i < numLights; ++i) {
         const gos_terrain_lighting::GpuTerrainLight& L = s_lightBuf[i];
         if (L.lightType == 0u || !(L.farDistance > 0.0f)) continue;
         int x0, y0, x1, y1; cellRange(L, x0, y0, x1, y1);
         for (int y = y0; y <= y1; ++y)
-            for (int x = x0; x <= x1; ++x) { ++s_gridCounts[y * dim + x]; ++total; }
+            for (int x = x0; x <= x1; ++x) {
+                if (!overlaps(L, x, y)) continue;
+                ++s_gridCounts[y * dim + x]; ++total;
+            }
     }
     if (total == 0) return;
 
@@ -204,6 +219,7 @@ static void BuildLightGrid(uint32_t numLights) {
         int x0, y0, x1, y1; cellRange(L, x0, y0, x1, y1);
         for (int y = y0; y <= y1; ++y)
             for (int x = x0; x <= x1; ++x) {
+                if (!overlaps(L, x, y)) continue;
                 const uint32_t c = static_cast<uint32_t>(y) * dim + static_cast<uint32_t>(x);
                 s_gridIndices[s_gridHeader[c * 2u] + s_gridCounts[c]++] = i;
             }
@@ -274,6 +290,40 @@ bool GetLightGridCpu(LightGridCpu& out) {
     return true;
 }
 
+const void* GetObjectLightPoolUpload(size_t& bytes) {
+    if (s_objectPoolDirty || s_objectPoolUpload.empty()) {
+        ObjectPoolHeader header{};
+        const uint32_t count = std::min(s_lastNumLights, kObjectPoolLights);
+        static bool warnedOverflow = false;
+        if (s_lastNumLights > kObjectPoolLights && !warnedOverflow) {
+            warnedOverflow = true;
+            MC2_DIAGFE(stderr, "[OBJECT_POOL_CAP v1] wanted=%u cap=%u policy=source_order_prefix dropped=%u\n",
+                s_lastNumLights, kObjectPoolLights, s_lastNumLights - kObjectPoolLights);
+        }
+        if (count) std::memcpy(header.lights, s_lightBuf.data(), count * sizeof(GpuTerrainLight));
+        LightGridCpu grid{};
+        const bool indexed = GetLightGridCpu(grid);
+        size_t words = 0;
+        if (indexed) {
+            header.minInvXY[0] = grid.minXY[0]; header.minInvXY[1] = grid.minXY[1];
+            header.minInvXY[2] = grid.invCell[0]; header.minInvXY[3] = grid.invCell[1];
+            header.gridInfo[0] = grid.dim; header.gridInfo[1] = grid.headerWords;
+            header.gridInfo[2] = grid.indexWords;
+            words = static_cast<size_t>(grid.headerWords) + grid.indexWords;
+        }
+        s_objectPoolUpload.resize(sizeof(header) / 4 + words);
+        std::memcpy(s_objectPoolUpload.data(), &header, sizeof(header));
+        if (indexed) {
+            auto* tail = s_objectPoolUpload.data() + sizeof(header) / 4;
+            std::memcpy(tail, grid.header, grid.headerWords * sizeof(uint32_t));
+            std::memcpy(tail + grid.headerWords, grid.indices, grid.indexWords * sizeof(uint32_t));
+        }
+        s_objectPoolDirty = false;
+    }
+    bytes = s_objectPoolUpload.size() * sizeof(uint32_t);
+    return s_objectPoolUpload.data();
+}
+
 // Shared object-pool parameters for native mech and prop consumers.
 void GetObjectLightPoolParams(ObjectLightPoolParams* out) {
     if (!out) return;
@@ -304,7 +354,7 @@ void GetObjectLightPoolParams(ObjectLightPoolParams* out) {
     if (s_objects && s_objScale > 0.0f) {
         const uint32_t n    = GetLightPoolLightCount();
         if (s_initialized && n > 0) {
-            out->count = static_cast<int>(n > 256u ? 256u : n);
+            out->count = static_cast<int>(std::min(n, kObjectPoolLights));
             uint32_t cpuN = 0;
             out->pool = GetLightPoolCpu(&cpuN);
             if (!out->pool || cpuN < static_cast<uint32_t>(out->count))
@@ -365,6 +415,8 @@ void mission_shutdown() {
     if (!s_initialized) return;
 
     s_lightGridDim         = 0;
+    s_objectPoolDirty = true;
+    s_objectPoolUpload.clear();
 
     s_numVertices     = 0;
     s_maxLights       = 0;
@@ -714,6 +766,7 @@ void PackAndDispatch() {
     // NIGHT-LIGHT-POOLS-1: publish this frame's packed count for the forward
     // consumer (LOD-chunk terrain per-fragment light loop).
     s_lastNumLights = numLights;
+    s_objectPoolDirty = true;
 
     // Publish the current visible window and lighting scalars for the native Vulkan producer.
     {

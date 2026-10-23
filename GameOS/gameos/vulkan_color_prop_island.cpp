@@ -32,6 +32,7 @@
 #include "../../RenderCore/gpu_abi/GpuStaticPropInstance.h"  // single-source 112B instance record
 #include "../../RenderCore/gpu_abi/GpuObjectLights.h"  // single-source per-object light record
 #include "../../RenderCore/gpu_abi/GpuColorFrameUBO.h"  // single-source per-frame UBO
+#include "gos_terrain_lighting.h"
 #include "../../RenderCore/PropMaterialGpu.h"
 #include "vk_image_resource.h"
 #include "vk_island_util.h"
@@ -1412,9 +1413,11 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
     const VkDeviceSize instBytes = static_cast<VkDeviceSize>(instanceCount) * sizeof(GpuStaticPropInstance);
     int poolN = (haveLightFeed && lightFeed.poolLights48 && lightFeed.numPoolLights > 0) ? lightFeed.numPoolLights : 0;
     if (poolN > kMaxPoolLights) poolN = kMaxPoolLights;
+    size_t poolBytes = 0;
+    const void* poolUpload = gos_terrain_lighting::GetObjectLightPoolUpload(poolBytes);
     const VkDeviceSize instOff = mc2vk::alignUp(sizeof(ColorFrameUBO), ringAlign);
     const VkDeviceSize poolOff = mc2vk::alignUp(instOff + (instBytes ? instBytes : sizeof(GpuStaticPropInstance)), ringAlign);
-    const mc2vk::FrameAlloc mainSpan = rctx.frameAlloc(poolOff + static_cast<VkDeviceSize>((poolN > 0 ? poolN : 1)) * 48ull);
+    const mc2vk::FrameAlloc mainSpan = rctx.frameAlloc(poolOff + poolBytes);
     if (!mainSpan) { setFallback("frame_ring_alloc_failed"); s->disabled = true; return 0; }
     uint8_t* const mainPtr = static_cast<uint8_t*>(mainSpan.ptr);
 
@@ -1537,7 +1540,7 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
         for (int k = 0; k < 4; ++k) u.cameraWorldPos[k] = haveLightFeed ? lightFeed.cameraWorldPos[k] : 0.0f;
         // Night light pools: this frame's pool copy (GL caps the set at 256), flushed because the sequential-write placement need not be
         // host-coherent; a failed upload turns the term off.
-        if (poolN > 0) std::memcpy(mainPtr + poolOff, lightFeed.poolLights48, static_cast<size_t>(poolN) * 48u);
+        std::memcpy(mainPtr + poolOff, poolUpload, poolBytes);
         u.poolF[0] = lightFeed.poolMoverDim; u.poolF[1] = lightFeed.poolMoverScale; u.poolF[2] = lightFeed.poolObjScale; u.poolF[3] = 0.0f;
         u.poolI[0] = poolN;                  u.poolI[1] = lightFeed.poolSoft;
         u.poolI[2] = lightFeed.poolMoverMax; u.poolI[3] = lightFeed.poolCompress;

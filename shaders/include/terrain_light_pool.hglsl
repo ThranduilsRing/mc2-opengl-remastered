@@ -54,11 +54,12 @@ vec3 tlp_terrainPoolLight(vec3 wp, int numPoolLights,
         }
         lgIndexed = true;
     }
+    if (lgLo == lgHi) return vec3(0.0);
     for (int k = lgLo; k < lgHi; ++k) {
         int i = lgIndexed ? int(lightGridIndices[k]) : k;
+        if (i >= numPoolLights) continue;
         if (poolLights[i].lightType == 0u) continue;
         vec3  vtl = wp - poolLights[i].position;
-        float len = sqrt(dot(vtl, vtl));   // GetApproximateLength (non-ASM = sqrt)
         bool  mover = poolLights[i]._plPad1 > 0.5;
         float farD  = poolLights[i].farDistance;
         float nearD = poolLights[i].closeDistance;
@@ -68,7 +69,9 @@ vec3 tlp_terrainPoolLight(vec3 wp, int numPoolLights,
             float s = max(moverScale, 0.05);
             farD *= s; nearD *= s; ooD /= s;
         }
-        if (len >= farD) continue;
+        float distance2 = dot(vtl, vtl);
+        if (farD <= 0.0 || distance2 >= farD * farD) continue;
+        float len = sqrt(distance2);
         float falloff = (len <= nearD)
                       ? 1.0
                       : (farD - len) * ooD;
