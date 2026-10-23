@@ -97,7 +97,7 @@ def test_engine_normal_sidecars_are_cooked_only_when_absent_or_stale(tmp_path):
     calls = []
     cooker = lambda cmd, **kw: (calls.append(cmd), type("R", (), {"returncode": 0, "stdout": "", "stderr": ""})())[1]
     dp.ensure_engine_normal_cooks(str(tmp_path), cooker)
-    assert len(calls) == 1 and calls[0][-2:] == ["--engine-normals", str(tex)]
+    assert len(calls) == 1 and calls[0][-3:] == ["--engine-normals", str(tex), "--force"]   # no stamp yet: full recook
     for i in range(6):
         (tex / f"mat{i}_normal.ktx2").write_bytes(b"k")
     dp.ensure_engine_normal_cooks(str(tmp_path), cooker)
@@ -105,3 +105,6 @@ def test_engine_normal_sidecars_are_cooked_only_when_absent_or_stale(tmp_path):
     os.utime(tex / "mat3_normal.tga", (4e9, 4e9))          # a newer TGA makes its sidecar stale
     dp.ensure_engine_normal_cooks(str(tmp_path), cooker)
     assert len(calls) == 2
+    (tex / "engine_normals.cookver").write_text("1\n")    # an older cook meaning recooks everything
+    dp.ensure_engine_normal_cooks(str(tmp_path), cooker)
+    assert len(calls) == 3 and calls[2][-1] == "--force"

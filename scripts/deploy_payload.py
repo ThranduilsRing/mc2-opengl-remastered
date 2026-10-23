@@ -1127,23 +1127,34 @@ def enumerate_payload(src_root, build_dir, exe_name, pdb_name,
 # The detail-normal layers terrain_tier1.frag samples get BC7 mip-complete sidecars next to the deployed TGAs, cooked in the
 # target from the verified TGAs (generated, about 5.6 MB each, never in git). Soft: without them the engine imports the TGAs.
 ENGINE_NORMAL_COOK = Path(__file__).resolve().parents[1] / "tools" / "mc2texcook" / "cook_terrain_layers.py"
+# Bump when the cooked texels change meaning; the stamp in the target forces one recook. 2 = RGBA normal order (1 was TGA B, G, R).
+ENGINE_NORMAL_COOK_VERSION = "2"
 
 
 def ensure_engine_normal_cooks(target_dir, cooker=subprocess.run):
     tex = os.path.join(target_dir, "data", "textures")
-    stale = [i for i in range(6) if not os.path.isfile(os.path.join(tex, f"mat{i}_normal.ktx2")) or
+    stamp = os.path.join(tex, "engine_normals.cookver")
+    try:
+        with open(stamp, encoding="utf-8") as f:
+            current = f.read().strip() == ENGINE_NORMAL_COOK_VERSION
+    except OSError:
+        current = False
+    stale = [i for i in range(6) if not current or not os.path.isfile(os.path.join(tex, f"mat{i}_normal.ktx2")) or
              os.path.getmtime(os.path.join(tex, f"mat{i}_normal.ktx2")) < os.path.getmtime(os.path.join(tex, f"mat{i}_normal.tga"))]
     if not stale:
         return
     log(f"detail-normal sidecars absent or stale for layers {stale}: cooking them (about 40 s)")
     try:
-        r = cooker([sys.executable, str(ENGINE_NORMAL_COOK), "--engine-normals", tex], capture_output=True, text=True,
-                   timeout=900, **console_child.child_kwargs(redirected=True))
+        r = cooker([sys.executable, str(ENGINE_NORMAL_COOK), "--engine-normals", tex] + ([] if current else ["--force"]),
+                   capture_output=True, text=True, timeout=900, **console_child.child_kwargs(redirected=True))
     except subprocess.TimeoutExpired:
         log("[DEPLOY] WARN: detail-normal cook timed out after 900 s (skipped; the engine imports the TGAs)")
         return
     if r.returncode:
         log("[DEPLOY] WARN: detail-normal cook failed (skipped; the engine imports the TGAs): " + (r.stdout + r.stderr).strip()[-300:])
+        return
+    with open(stamp, "w", encoding="utf-8") as f:
+        f.write(ENGINE_NORMAL_COOK_VERSION + "\n")
 
 
 GOLDEN_MATERIAL_ROOT = Path("A:/Games/mc2-opengl/mc2-win64-v0.4c")
