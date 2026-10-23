@@ -71,6 +71,7 @@
     "scripts/smoke_lib/nofocus.py": "program is a variable (git, ninja, glslang, ktx, blender, cook tools, python); launch-site audit 2026-10-10: console tool, not the game",
     "scripts/test_release_zip_install.py": "python wrapper that starts the harness (run_smoke / run_visual_capture); the engine launch downstream goes through nofocus.spawn",
     "scripts/tests/test_axis_swizzle_ratchet.py": "program is a variable (git, ninja, glslang, ktx, blender, cook tools, python); launch-site audit 2026-10-10: console tool, not the game",
+    "scripts/tests/test_cc_launcher_negative_control.py": "runs ninja on a temp tree whose compiler is a fake python script, through console_child.child_kwargs; no game or window is launched",
     "scripts/tests/test_deploy_coherence.py": "program is a variable (git, ninja, glslang, ktx, blender, cook tools, python); launch-site audit 2026-10-10: console tool, not the game",
     "scripts/tests/test_dup_lines_ratchet.py": "program is a variable (git, ninja, glslang, ktx, blender, cook tools, python); launch-site audit 2026-10-10: console tool, not the game",
     "scripts/tests/test_file_size_ratchet.py": "program is a variable (git, ninja, glslang, ktx, blender, cook tools, python); launch-site audit 2026-10-10: console tool, not the game",

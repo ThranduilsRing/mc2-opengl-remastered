@@ -73,6 +73,9 @@ def test_tracy_capture_defaults_to_no_csv():
 def test_configure_ninja_compile_cache_on_by_default():
     import configure_ninja
     assert parsed_args(configure_ninja, []).no_compile_cache is False  # cache is ON unless --no-compile-cache
+    import inspect
+    # configure() is also called directly (ninja_build.warm, lane_merge verify): its own default must be ON too.
+    assert inspect.signature(configure_ninja.configure).parameters["compile_cache"].default is True
 
 
 def test_deploy_payload_refuses_implicit_target_from_lane_worktree():

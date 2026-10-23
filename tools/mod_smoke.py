@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 'Smoke every supported mod against the current mc2.exe: py -3 tools/mod_smoke.py --battery'
 #
-# Stages disposable installs under G:/mc2-installs/mod_smoke-battery/<stamp>/ (never writes
+# Stages disposable installs under E:/mc2-installs/mod_smoke-stage/<stamp>/ (never writes
 # into a game install) and hands each one to scripts/run_smoke.py.
 #
 #     py -3 tools/mod_smoke.py --battery [--mod NAME[,NAME]] [--mission STEM]
@@ -42,10 +42,11 @@ from pathlib import Path
 
 sys.path.append(str(Path(__file__).resolve().parent.parent / "scripts"))
 import console_child  # noqa: E402  (windowless console children)
+import stage_root as stages  # noqa: E402  (default staging roots on E:, free-space preflight)
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_INSTALL_ROOT = Path('A:/Games/mc2-opengl')
-DEFAULT_BATTERY_ROOT = Path('G:/mc2-installs/mod_smoke-battery')
+DEFAULT_BATTERY_ROOT = stages.default_root('mod_smoke')
 DEFAULT_BASE_INSTALL = Path('A:/Games/mc2-opengl/mc2-win64-v0.4')
 GOLDEN_INSTALL = 'mc2-win64-v0.4c'
 
@@ -676,6 +677,9 @@ def battery(args) -> int:
                 raise FileNotFoundError(f'mod install not found: {layer}')
         stem, how = pick_mission(layers, args.mission)
         plan.append((display, folder, layers, stem, how))
+    stages.preflight(stage_root)
+    if not args.keep_stages:
+        stages.prune_old(stage_root)
     run_root = stage_root / dt.datetime.now().strftime('%Y%m%d-%H%M%S')
     run_root.mkdir(parents=True, exist_ok=False)
     print('[mod_smoke] engine:', build)

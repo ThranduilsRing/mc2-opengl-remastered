@@ -12,6 +12,8 @@
     {"module": "scripts/tests/test_bt2018_mechs.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_buffer_lifetime_ownership.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_build_compiler_presets.py", "owners": ["scripts_tests"]},
+    {"module": "scripts/tests/test_cc_launcher_negative_control.py", "owners": ["scripts_tests"]},
+    {"module": "scripts/tests/test_stage_root.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_check_ab_kit.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_check_background_launch.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_check_cxx_standard_floor.py", "owners": ["cxx_standard_floor"]},

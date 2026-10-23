@@ -2,7 +2,7 @@
 """sim_trace_diff - build the two [DT] trace trees, run one mission in each, and diff the trace.
 
 WHAT: creates isolated worktrees at 68c013fb4 (the parent of 9a8a7aee0) and HEAD
-under G:/mc2-battery/simtrace-pre and G:/mc2-battery/simtrace-head, configures
+under E:/mc2-installs/sim_trace_diff-stage/simtrace-pre and .../simtrace-head, configures
 each with -DMC2_SIM_TRACE=ON, builds mc2, stages each exe against an identical
 disposable copy of mc2-win64-v0.4, runs the same mission twice with the fixed
 determinism environment, and compares the extracted ^[DT] lines byte for byte.
@@ -14,7 +14,7 @@ Battery command line:
 
 Exit codes: 0 = the [DT] streams are byte-identical; 1 = the streams differ (and
 the first differing line is printed); 2 = setup/build/staging/run failure.
-Nothing is launched at import time. All staging stays under G:/mc2-battery/;
+Nothing is launched at import time. All staging stays under E:/mc2-installs/sim_trace_diff-stage/;
 the source install is only read.
 """
 from __future__ import annotations
@@ -29,9 +29,10 @@ from pathlib import Path
 
 sys.path.append(str(Path(__file__).resolve().parent.parent / "scripts"))
 import console_child  # noqa: E402  (windowless console children)
+import stage_root as stages  # noqa: E402  (default staging roots on E:, free-space preflight)
 
 ROOT = Path(__file__).resolve().parents[1]
-BATTERY_ROOT = Path("G:/mc2-battery")
+BATTERY_ROOT = stages.default_root("sim_trace_diff")
 STAGE_ROOT = BATTERY_ROOT / "simtrace"
 PRE_TREE = BATTERY_ROOT / "simtrace-pre"
 HEAD_TREE = BATTERY_ROOT / "simtrace-head"
@@ -281,6 +282,7 @@ def main(argv: list[str] | None = None) -> int:
     pre_commit = _git("rev-parse", "--verify", f"{args.pre_commit}^{{commit}}")
     head_commit = _git("rev-parse", "HEAD")
 
+    stages.preflight(STAGE_ROOT)
     STAGE_ROOT.mkdir(parents=True, exist_ok=True)
     cmake = _resolve_cmake()
     env = _cmake_env()

@@ -7433,7 +7433,7 @@
     "reason",
     "file"
    ],
-   "count": 2
+   "count": 3
   },
   {
    "tag": "SAVE",
@@ -7457,6 +7457,18 @@
     "reason",
     "slot",
     "type"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "SAVE",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
+    "event",
+    "reason",
+    "version",
+    "file"
    ],
    "count": 1
   },

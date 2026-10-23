@@ -1,4 +1,5 @@
 #include "save_archive.h"
+#include "save_exactness.h"
 #include "simulation_save_section.h"
 #include "utils/mc2log.h"
 //******************************************************************************************
@@ -26,7 +27,7 @@ static constexpr char orderSaveVersion[] = "MC2SAVE.WQT2";
 static void writeIdFloatExact (FitIniFilePtr file, std::string_view name, float value)
 {
 	char line[255];
-	mc2::fmt::to_buf(line, "f {} = {:.9g}\r\n", name, value);
+	mc2::save::exactFloatLine(line, name, value);
 	file->write(reinterpret_cast<MemoryPtr>(line), strlen(line));
 }
 //----------------------------------------------------------------------------------------------------
@@ -282,7 +283,7 @@ void Mission::save (const char *saveFileName)
 
     // Optional versioned section follows the unchanged legacy END packet.
     mc2::save::Archive extension;
-    uint32_t tag = 0x4E413252u, version = 2;
+    uint32_t tag = 0x4E413252u, version = 3;
     auto animation = ObjectManager->saveAnimationState();
     extension(tag, version);
     mc2::sim::serializeAnimationBlob(extension, animation);

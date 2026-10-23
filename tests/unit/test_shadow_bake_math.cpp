@@ -238,3 +238,14 @@ TEST_CASE("GPU residency: vegetation thins by stride instead of refusing") {
     CHECK(vegetationStride(2512462, 30000, 2, q2.vegetation, 100 * gpuMiB) > 1);
     CHECK(vegetationStride(2512462, 30000, 2, gpuResidencyPolicy(0).vegetation, 2000 * gpuMiB) == 0);
 }
+
+TEST_CASE("q2 texture upload headroom admits one 16384x8192 BC6H HDRI (image plus staging) exactly at the 2x rule") {
+    using namespace RenderCore;
+    const auto q2 = gpuResidencyPolicy(2);
+    const uint64_t hdriMip0 = 16384ull * 8192ull;   // BC6H: 1 byte per texel
+    CHECK(hdriMip0 == 128 * gpuMiB);
+    CHECK(q2.textureEdge >= 16384);
+    // vk_texture_residency.cpp refuses expected*2 > textureUpload. The HDRI sits exactly on that limit (equality passes), so lowering the
+    // q2 budget or adding a mip must be a deliberate change to this test.
+    CHECK(hdriMip0 * 2 <= q2.textureUpload);
+}

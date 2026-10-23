@@ -1422,9 +1422,13 @@ REQUIRED_DIRS = ("assets", "data", "shaders")
 
 
 def _pe_imports(path):
-    """Imported + delay-loaded DLL names (lowercase) of a PE file; empty if pefile is missing or the file is unreadable."""
+    """Imported + delay-loaded DLL names (lowercase) of a PE file. Raises RuntimeError when pefile is missing (py -3 -m pip
+    install pefile) or the file is not a readable PE: an empty answer would let the completeness check pass having parsed nothing."""
     try:
         import pefile
+    except ImportError as e:
+        raise RuntimeError("the install completeness check needs pefile (py -3 -m pip install pefile)") from e
+    try:
         pe = pefile.PE(path, fast_load=True)
         pe.parse_data_directories(directories=[pefile.DIRECTORY_ENTRY["IMAGE_DIRECTORY_ENTRY_IMPORT"],
                                                pefile.DIRECTORY_ENTRY["IMAGE_DIRECTORY_ENTRY_DELAY_IMPORT"]])
@@ -1432,8 +1436,8 @@ def _pe_imports(path):
         names |= {e.dll.decode().lower() for e in getattr(pe, "DIRECTORY_ENTRY_DELAY_IMPORT", [])}
         pe.close()
         return names
-    except Exception:  # noqa: BLE001
-        return set()
+    except Exception as e:  # noqa: BLE001
+        raise RuntimeError(f"cannot read PE imports of {path}: {e}") from e
 
 
 def check_install_complete(target, exe_name, build_dir, fix=True):
@@ -1445,7 +1449,10 @@ def check_install_complete(target, exe_name, build_dir, fix=True):
         return n.startswith(("api-ms-", "ext-ms-")) or any(os.path.exists(os.path.join(d, n)) for d in sysdirs)
 
     exe = next((c for c in (os.path.join(target, exe_name), os.path.join(build_dir, exe_name)) if os.path.isfile(c)), None)
-    todo = (_pe_imports(exe) if exe else set()) | {d.lower() for d in FFMPEG_DLLS}
+    try:
+        todo = (_pe_imports(exe) if exe else set()) | {d.lower() for d in FFMPEG_DLLS}
+    except RuntimeError as e:
+        return [str(e)]
     seen, missing = set(), []
     while todo:
         n = todo.pop()
@@ -1460,7 +1467,10 @@ def check_install_complete(target, exe_name, build_dir, fix=True):
             else:
                 missing.append(n)
                 continue
-        todo |= _pe_imports(dst)
+        try:
+            todo |= _pe_imports(dst)
+        except RuntimeError as e:
+            missing.append(str(e))
     for d in REQUIRED_DIRS:
         dpath = os.path.join(target, d)
         if not (os.path.isdir(dpath) and any(os.scandir(dpath))):
@@ -1780,12 +1790,13 @@ def run_deploy(args, src_root, build_dir, target, exe_name, pdb_name):
     cache = {} if args.full_verify else read_manifest(target)
     hashes = deploy(items, target, args.allow_stale_pdb, preserve=args.preserve,
                     cache=cache, full_verify=args.full_verify)
-    write_manifest(target, hashes, src_commit)
-    log("deploy COMPLETE — payload verified, manifest written")
+    # Completeness BEFORE the manifest: a failure must not leave a manifest that says the deploy is complete.
     gaps = check_install_complete(target, exe_name, build_dir)
     if gaps:
         fail("INSTALL INCOMPLETE (game would die with 0xC0000135 / missing assets): " + ", ".join(gaps) +
              f"; copy them from a full install (e.g. {GOLDEN_MATERIAL_ROOT})", 7)
+    write_manifest(target, hashes, src_commit)
+    log("deploy COMPLETE — payload verified, manifest written")
 
     # Post-deploy hygiene scan (Truth-First arc P1 #5/#7): the payload manifest
     # is a COMPLETENESS gate and never walks data/missions/*.beauty/, so a

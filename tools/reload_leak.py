@@ -20,7 +20,7 @@ cycles give one quicksave and N-1 reload pairs.
 
 WHERE IT WRITES: the proof build goes to build64-battery/ (a gitignored sibling of
 build64/; --build-tree overrides). The staged install is a fresh copy under
-G:/mc2-battery/reload_leak/<stamp>/ -- data is copied, never hardlinked, because G: is
+E:/mc2-installs/reload_leak-stage/<stamp>/ -- data is copied, never hardlinked, because G: is
 a different volume and a staged copy must not share writable state with an install.
 The install named by --install is only read; this tool never deploys into it.
 
@@ -46,13 +46,14 @@ HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
 sys.path.insert(0, str(ROOT / "scripts"))
 import console_child  # noqa: E402  (windowless console children that still print)
+import stage_root as stages  # noqa: E402  (default staging roots on E:, free-space preflight)
 import savegame_backup  # noqa: E402  (back the owner's quicksave up around the fixture)
 from configure_ninja import NINJA, find_cmake, under_vcvars  # noqa: E402
 from bootstrap_worktree_build import cache_args  # noqa: E402
 
 PREFIX = "[reload_leak]"
-#: Disposable staging root (spec: G:/mc2-battery/<tool>/); created on first run.
-STAGE_ROOT = Path("G:/mc2-battery/reload_leak")
+#: Disposable staging root; created on first run.
+STAGE_ROOT = stages.default_root("reload_leak")
 DEFAULT_INSTALL = "A:/Games/mc2-opengl/mc2-win64-v0.4"
 DEFAULT_BUILD_TREE = ROOT / "build64-battery"
 EXE_NAME = "mc2.exe"
@@ -211,6 +212,9 @@ def stage_if_needed(args):
         return None, fail(f"--install has no {EXE_NAME}: {install}")
     stamp = dt.datetime.now().strftime("%Y%m%d_%H%M%S")
     stage = Path(args.stage) if args.stage else STAGE_ROOT / stamp
+    stages.preflight(stage)
+    if not args.stage:
+        stages.prune_old(STAGE_ROOT)
     logs = stage.parent / (stage.name + "_logs")
     if args.no_build:
         if not proof_exe.is_file():

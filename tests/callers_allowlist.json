@@ -346,6 +346,8 @@
   "tools/scifi_kit/art/review_drafts.py": "Owner-run draft review contact-sheet tool (docs/scifi-kit-blend-drafts.md), no in-repo caller by design.",
   "tools/scifi_kit/tests/test_art_kit.py": "Pytest-discovered module; py -3 -B -m pytest tools/scifi_kit/tests -q -p no:cacheprovider.",
   "tools/scifi_kit/art/wear_metrics.py": "Owner-run grime metrics tool (py -3 tools/scifi_kit/art/wear_metrics.py <pass_dir>) for the wear ladder, no in-repo caller by design.",
+  "scripts/tests/test_cc_launcher_negative_control.py": "Pytest-discovered module through scripts/run_scripts_tests.py (scripts_tests); compile-cache header-edit negative control.",
+  "scripts/tests/test_stage_root.py": "Pytest-discovered module through scripts/run_scripts_tests.py (scripts_tests); stage root defaults and free-space preflight.",
   "scripts/tests/test_deploy_completeness.py": "Pytest-discovered module through scripts/run_scripts_tests.py (scripts_tests); deploy completeness check.",
   "scripts/tests/test_rule_defaults.py": "Pytest-discovered module through scripts/run_scripts_tests.py (scripts_tests); lane-rule tool defaults."
 }
