@@ -81,3 +81,13 @@ def test_rejected_log_leaves_existing_baseline(tmp_path, monkeypatch):
         sim.main()
     assert out.read_text(encoding="utf-8") == "KEEP"
     assert not (tmp_path / "base.json.tmp").exists()
+
+
+@pytest.mark.parametrize("mission", ["mc2_03", "mc2_10", "mc2_16", "mc2_24"])
+def test_committed_baseline_is_a_schema2_chain(mission):
+    """The offline half of the baseline check: a legacy full-line baseline (no chain_schema) hashes animrng/appearance counts and
+    breaks on every format change; the live half is `tools/sim_determinism.py check <mission>` at merge gates."""
+    base = json.loads((Path(sim.BASELINE_DIR) / f"{mission}.json").read_text(encoding="utf-8"))
+    assert base.get("chain_schema") == 2
+    assert base["frames"] >= sim.MIN_FRAMES and len(base["chain"]) == 16
+    assert base["data_fingerprint"]["digest"] and base["seed"]
