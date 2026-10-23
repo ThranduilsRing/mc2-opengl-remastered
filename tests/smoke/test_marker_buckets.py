@@ -112,6 +112,9 @@ def test_premain_line_for_a_non_vk_gate_is_not_this_bucket():
     assert s.marker_counts.get("config_premain_vk", 0) == 0
 
 
+VEG_OK = "native_geometry kind=vegetation gpu_cull=1 regions=12297 instances=2557829\n"
+
+
 def test_changed_value_premain_line_alone_is_not_this_bucket():
     # warn=premain (value changed) is the registry's own warning; the bucket keys on the read itself
     s = parse_log("[CONFIG v1] warn=premain name=MC2_VK_MECH_TIER1 premain_value=0 env_now=1\n")
@@ -121,7 +124,7 @@ def test_changed_value_premain_line_alone_is_not_this_bucket():
 def test_the_in_mission_video_floor_is_an_absence_rule_for_mc2_10():
     from scripts.smoke_lib.gates import GateConfig, evaluate
     play = "[VIDEO v1] event=play_requested name=MC2_10A\n"
-    play += "native_vegetation_draws=4100\n"   # the vegetation floor also applies to mc2_10
+    play += VEG_OK   # the vegetation floor also applies to mc2_10
 
     def run(stem, text):
         s = parse_log(text)
@@ -132,9 +135,9 @@ def test_the_in_mission_video_floor_is_an_absence_rule_for_mc2_10():
         return evaluate(s, cfg, exit_code=0, walltime_s=31)
 
     assert run("mc2_10", play).passed
-    gone = run("mc2_10", "native_vegetation_draws=4100\n")
+    gone = run("mc2_10", VEG_OK)
     assert not gone.passed and "video_floor_missing" in gone.buckets
-    assert "video_floor_missing" not in run("mc2_17", "native_vegetation_draws=4100\n").buckets   # the video rule belongs to mc2_10 only
+    assert "video_floor_missing" not in run("mc2_17", VEG_OK).buckets   # the video rule belongs to mc2_10 only
 
 
 def test_the_vegetation_floor_is_an_absence_rule_for_the_large_tier1_maps():
@@ -148,13 +151,13 @@ def test_the_vegetation_floor_is_an_absence_rule_for_the_large_tier1_maps():
         cfg = GateConfig(heartbeat_timeout_load_s=60, heartbeat_timeout_play_s=3, duration_s=30, stem=stem)
         return evaluate(s, cfg, exit_code=0, walltime_s=31)
 
-    drawn = "[VK_VFX] native_mesh_draws=0 native_tube_draws=0 native_vegetation_draws=4150\n"
-    refused = "[VK_VFX] native_mesh_draws=0 native_tube_draws=0 native_vegetation_draws=0\n"
-    thinned = "[VK_VFX] native_mesh_draws=0 native_tube_draws=0 native_vegetation_draws=412\n"   # a stride-10 population or one stray frame
+    drawn = VEG_OK + "[VK_VFX] native_vegetation_draws=0\n"   # the draw counter no longer matters
+    refused = "[VK_VFX] native_mesh_draws=0 native_tube_draws=0 native_vegetation_draws=9000\n"   # frames drawn but no population line
+    thinned = "native_geometry kind=vegetation gpu_cull=1 regions=40 instances=412\n"
     assert run("mc2_03", drawn + "[VIDEO v1] event=play_requested\n").passed
     bad = run("mc2_03", refused)
     assert not bad.passed and "vegetation_floor_missing" in bad.buckets
-    # mc2_17 and mc2_24 are in the floor too (measured about 4100 draws each at 15 s); anything under 1000 fails.
+    # mc2_17 and mc2_24 are in the floor too ; fewer than 1000 instances, or no population line at all, fails.
     for stem in ("mc2_17", "mc2_24"):
         assert run(stem, drawn).passed
         assert "vegetation_floor_missing" in run(stem, refused).buckets

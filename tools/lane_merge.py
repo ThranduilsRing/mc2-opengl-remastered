@@ -12,7 +12,7 @@ Usage:
   py -3 tools/lane_merge.py --batch A B C [--dry-run]   several tips in a row: ratchets regenerated and committed after EACH merge,
                                                         the build + doctest verify (step e) once at the end
   --message   merge commit subject (default: "merge lane: <subject of the lane tip>"); with --batch a template with {subject} and {n}
-  --trailer   commit trailer line (default $MC2_MERGE_TRAILER, else none)
+  --trailer   commit trailer line (default $MC2_COMMIT_TRAILER (or $MC2_MERGE_TRAILER), else none)
   --dry-run   print the plan (base, file counts, overlap, predicted conflicts); change nothing
   --resolution PATH=FILE  apply a reviewed conflict result (FILE - means deletion; repeatable)
   --root DIR  repo to operate on (default: this checkout)
@@ -52,8 +52,8 @@ import console_child  # noqa: E402  (windowless console children without a conho
 sys.path.insert(0, HERE)
 import _git_util  # noqa: E402  (shared git helpers)
 
-#: Commit trailer line(s): --trailer or $MC2_MERGE_TRAILER; none by default (the merging model names itself).
-TRAILER = os.environ.get("MC2_MERGE_TRAILER", "")
+#: Commit trailer line(s): --trailer or $MC2_COMMIT_TRAILER (or $MC2_MERGE_TRAILER); none by default (the merging model names itself).
+TRAILER = os.environ.get("MC2_COMMIT_TRAILER") or os.environ.get("MC2_MERGE_TRAILER", "")
 FOLLOWUP_SUBJECT = "merge follow-up: ratchet baselines tightened at merged HEAD"
 
 # Files that are pure functions of the tree: on conflict the lane's copy is taken and the
@@ -176,7 +176,7 @@ def render_message(template: str, subject: str, n: int) -> str:
 
 
 #: Files whose change needs a rebuild; a batch that touches none of them skips the build + doctest verify.
-COMPILED_INPUTS = re.compile(r"\.(cpp|h|hpp|inc|c|glsl|hglsl|frag|vert|comp|slang)$|CMakeLists|\.cmake$|(^|/)Gates/|(^|/)shaders/")
+COMPILED_INPUTS = re.compile(r"\.(cpp|h|hpp|inc|c|glsl|hglsl|frag|vert|comp|slang|rc|def|ini|in|manifest)$|CMakeLists|\.cmake$|(^|/)cmake/|(^|/)Gates/|(^|/)shaders/|(^|/)scripts/(gen|generate|configure)[^/]*\.py$")
 
 
 def compiled_inputs_changed(root: str, pre: str) -> bool:
@@ -406,6 +406,23 @@ VERIFY_STEPS = {
 }
 
 
+#: Seconds-cheap ownership/callers checks, run before the ~18 min build + doctest so a duplicate-ownership red shows at once.
+QUICK_ROWS = [("script_callers", ["tools/callers.py", "--check"]),
+              ("test_ownership", ["-m", "pytest", "scripts/tests/test_contract_coverage.py", "-q", "-p", "no:cacheprovider"])]
+
+
+def quick_rows(root: str, runner=run) -> list[tuple[str, int, str]]:
+    """Run QUICK_ROWS (cwd = root) on the merged tree. -> the failing [(label, rc, tail)] (empty = green)."""
+    failed = []
+    for label, args in QUICK_ROWS:
+        if not all(os.path.exists(os.path.join(root, a)) for a in args if a.endswith(".py")):
+            continue  # a root without the script (the throwaway repos of the tests) has nothing to check
+        r = runner(root, [sys.executable] + args)
+        if r.returncode != 0:
+            failed.append((label, r.returncode, "\n".join(r.stdout.splitlines()[-8:])))
+    return failed
+
+
 def verify_env(root: str) -> dict:
     """The environment of the verify steps: their own Ninja tree and doctest tree, so a verify never collides with a lane's build in
     build64-ninja/ or build64-tests/ (a coordinator merge of a tools-only tip once failed that way)."""
@@ -452,7 +469,7 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--batch", nargs="+", metavar="TIP",
                     help="merge these tips in order; baseline follow-ups after each, build + doctest verify once at the end")
     ap.add_argument("--message", help="merge commit subject; with --batch a template: {subject} = the tip's subject, {n} = its position")
-    ap.add_argument("--trailer", help="commit trailer line (default $MC2_MERGE_TRAILER, else none)")
+    ap.add_argument("--trailer", help="commit trailer line (default $MC2_COMMIT_TRAILER (or $MC2_MERGE_TRAILER), else none)")
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--root", default=os.path.abspath(os.path.join(HERE, "..")))
     ap.add_argument("--tools-dir")
@@ -585,6 +602,13 @@ def main(argv: list[str] | None = None) -> int:
         if not merged:
             return 0
         mode = "none" if args.no_verify else args.verify
+        if batch and merged and not stopped:
+            qfailed = quick_rows(root)
+            if qfailed:
+                for label, rc, tail in qfailed:
+                    print(f"lane_merge: quick row {label} exited {rc}; last lines:\n{tail}", file=sys.stderr)
+                print(f"BATCH STOPPED at quick rows ({', '.join(q[0] for q in qfailed)}) merged={len(merged)} remaining=(none)")
+                return 6
         if mode != "none" and not compiled_inputs_changed(root, pre):
             verdict, vresults = "SKIPPED(tooling-only)", []
         else:

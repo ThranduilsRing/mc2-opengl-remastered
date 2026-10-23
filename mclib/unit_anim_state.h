@@ -26,7 +26,7 @@ struct ImportedAnimState {
         }
         a(pendingStreak, turnStreak, havePrev,
             prevPx, prevPy, prevPz, prevHeading, clipTimeSec, durationSec, lastFrame);
-        if (a.sectionVersion < 3) return;   // R2AN v2 records end here; the selector memory keeps its defaults
+        if (a.sectionVersion < 3) return;   // R2AN v2 records end here (dev saves from de4413807..f8b4174c3 carry the v3 layout under v2; the loader retries them as v3); the selector memory keeps its defaults
         int modeInt = static_cast<int>(mode);
         a(phase.prevGesture, phase.jumpStarted, phase.landing, modeInt, locomotion);
         if (a.reading()) {

@@ -67,3 +67,10 @@ def test_transitive_imports_are_walked(tmp_path, monkeypatch):
     monkeypatch.setattr(dp, "_pe_imports", lambda path: graph.get(Path(path).name, set()))
     gaps = dp.check_install_complete(str(target), EXE, str(build), fix=True)
     assert "b_dep.dll" in gaps and "a_dep.dll" not in gaps
+
+
+def test_no_exe_anywhere_is_a_gap(tmp_path):
+    (tmp_path / "t").mkdir()
+    (tmp_path / "b").mkdir()
+    gaps = dp.check_install_complete(str(tmp_path / "t"), EXE, str(tmp_path / "b"), fix=False)
+    assert any(EXE in g for g in gaps)

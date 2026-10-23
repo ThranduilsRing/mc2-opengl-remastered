@@ -5,17 +5,7 @@
 #extension GL_GOOGLE_include_directive : require
 layout(local_size_x = 64) in;
 #include "include/vegetation_cull_common.glsl"
-shared uint s_scan[64];
-bool survives(VegInstance i, bool force) {
-    uint role = (i.atlasFrame >> 4u) & 3u;
-    float scale = i.scale * (role == 3u ? 0.25 : role == 2u ? 0.6 : 1.0);
-    if (force) return true;
-    for (int k = 0; k < 4; ++k)
-        if (P.plane[k].x * i.pos.x + P.plane[k].y * i.pos.y + P.plane[k].z * i.pos.z + P.plane[k].w < -1.5 * scale * P.planeLen[k]) return false;
-    uint block = vegBlockIndex(i, P);
-    uint visibility = block < P.counts.z ? blockVis[block] : 2u;
-    return visibility != 0u && vegLodScale(i, P) > 0.0;
-}
+shared uint s_count;
 void main() {
     uint r = gl_WorkGroupID.y * P.flags.y + gl_WorkGroupID.x;
     if (r >= P.counts.x) return;
@@ -29,23 +19,12 @@ void main() {
         float range = P.cam.w + R.sphere.w;
         if (outside || distance(R.sphere.xyz, P.cam.xyz) > range) { if (lid == 0u) counts[r] = 0u; return; }
     }
-    uint n = R.last - R.first, base = 0u;
-    for (uint c = 0u; c < n; c += 64u) {
-        uint idx = c + lid, id = R.first + idx;
-        bool keep = idx < n && survives(inst[id], force);
-        uint v = keep ? 1u : 0u;
-        s_scan[lid] = v;
-        barrier();
-        for (uint off = 1u; off < 64u; off <<= 1u) {
-            uint t = lid >= off ? s_scan[lid - off] : 0u;
-            barrier();
-            v += t;
-            s_scan[lid] = v;
-            barrier();
-        }
-        if (keep) scratch[R.first + base + v - 1u] = id;
-        base += s_scan[63];
-        barrier();
-    }
-    if (lid == 0u) counts[r] = base;
+    uint localCount = 0u;
+    for (uint id = R.first + lid; id < R.last; id += 64u)
+        if (survives(unpackVegetation(inst[id]), force)) ++localCount;
+    if (lid == 0u) s_count = 0u;
+    barrier();
+    atomicAdd(s_count, localCount);
+    barrier();
+    if (lid == 0u) counts[r] = s_count;
 }

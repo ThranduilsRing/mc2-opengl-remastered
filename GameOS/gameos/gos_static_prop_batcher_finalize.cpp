@@ -58,6 +58,9 @@ void GpuStaticPropBatcher::publishGeometry() {
             unpack(pink,   perTypeBlob[i].hotPinkRGB);
             unpack(yellow, perTypeBlob[i].hotYellowRGB);
             unpack(green,  perTypeBlob[i].hotGreenRGB);
+            perTypeBlob[i].hotPinkRGB[3] = s_types[i].treeCanopy[0];
+            perTypeBlob[i].hotYellowRGB[3] = s_types[i].treeCanopy[1];
+            perTypeBlob[i].hotGreenRGB[3] = s_types[i].treeCanopy[2];
         }
         // The Vulkan prop island reads the same table from this CPU copy.
         s_typeHotColors.resize(s_types.size() * 12);

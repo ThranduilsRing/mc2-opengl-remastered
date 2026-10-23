@@ -2,9 +2,12 @@
 #define GROUND_LIGHTING_GLSL
 // One terrain/cover compose. Existing sun-band, pool, ambient and contact inputs;
 // no new light producer or terrain cover term. Preserve terrain operation order.
+vec3 composeGroundLighting(vec3 baseColor, vec3 ambient, vec3 direct, float shadow, vec3 localLight) {
+    return baseColor * ambient + baseColor * direct * shadow + localLight;
+}
 vec3 shadeGround(vec3 baseColor, vec3 N, float normalLight, float shadow,
                  float flatLitShare, vec3 worldPos) {
-        vec3 lit = baseColor * normalLight * shadow;
+        vec3 lit = composeGroundLighting(baseColor, vec3(0), vec3(normalLight), shadow, vec3(0));
 
         // VK-PARITY-TERRAIN-2: NIGHT-LIGHT-POOLS-1..4 / LIGHT-CLUSTER-PERF-1 /
         // MOVER-CONTACT-SHADOW-1 — the SAME shared body GL runs (terrain_lod_chunk.frag

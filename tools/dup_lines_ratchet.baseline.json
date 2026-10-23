@@ -8,7 +8,7 @@
   "RenderWorld": 0,
   "code": 14010,
   "mclib": 28626,
-  "shaders": 642
+  "shaders": 632
  },
  "dirs": [
   "code",
@@ -502,7 +502,6 @@
   "shaders/include/terrain_light_pool.hglsl": 8,
   "shaders/vulkan/aa_fxaa.frag": 30,
   "shaders/vulkan/cloud_shadow.frag": 21,
-  "shaders/vulkan/color_prop_tier1.frag": 10,
   "shaders/vulkan/edge_fog.frag": 10,
   "shaders/vulkan/hud_color.vert": 14,
   "shaders/vulkan/hud_tex.frag": 10,
@@ -518,8 +517,8 @@
   "shaders/vulkan/terrain_tier1.vert": 78,
   "shaders/vulkan/terrain_tier1_skirt.vert": 78
  },
- "head": "448f75076",
+ "head": "2a71dd3fe",
  "n": 8,
- "total": 45983,
+ "total": 45973,
  "version": 1
 }

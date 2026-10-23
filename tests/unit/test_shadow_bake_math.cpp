@@ -239,13 +239,17 @@ TEST_CASE("GPU residency: vegetation thins by stride instead of refusing") {
     CHECK(vegetationStride(2512462, 30000, 2, gpuResidencyPolicy(0).vegetation, 2000 * gpuMiB) == 0);
 }
 
-TEST_CASE("q2 texture upload headroom admits one 16384x8192 BC6H HDRI (image plus staging) exactly at the 2x rule") {
+TEST_CASE("q2 ledger admits the 16384x8192 BC6H HDRI mip chain plus its staging copy; the edge is the case the sky island degrades on") {
     using namespace RenderCore;
     const auto q2 = gpuResidencyPolicy(2);
-    const uint64_t hdriMip0 = 16384ull * 8192ull;   // BC6H: 1 byte per texel
-    CHECK(hdriMip0 == 128 * gpuMiB);
-    CHECK(q2.textureEdge >= 16384);
-    // vk_texture_residency.cpp refuses expected*2 > textureUpload. The HDRI sits exactly on that limit (equality passes), so lowering the
-    // q2 budget or adding a mip must be a deliberate change to this test.
-    CHECK(hdriMip0 * 2 <= q2.textureUpload);
+    const uint64_t mip0 = 16384ull * 8192ull;          // BC6H: 1 byte per texel
+    const uint64_t chain = mip0 + mip0 / 3;            // full mip chain, about 4/3 of mip 0
+    const uint64_t budget = gpuBudget(24 * 1024 * gpuMiB, q2.total);
+    // vulkan_sky_island.cpp admits the image, then the staging buffer, through the OwnedImage/OwnedBuffer ledger (gpuFits).
+    CHECK(gpuFits(budget, 0, 0, chain));
+    CHECK(gpuFits(budget, 0, chain, chain));
+    // Headroom for the image but not image + staging: the staging refusal must take the 1x1 dummy path, not fail the island.
+    const uint64_t live = budget - chain - chain / 2;
+    CHECK(gpuFits(budget, live, 0, chain));
+    CHECK_FALSE(gpuFits(budget, live, chain, chain));
 }
