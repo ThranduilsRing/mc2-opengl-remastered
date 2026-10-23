@@ -20,7 +20,7 @@ struct Image {
 };
 struct Use { unsigned image; State state; };
 struct Pass { std::vector<Use> uses; };
-struct Lifetime { int first = -1, last = -1, slot = -1; };
+struct Lifetime { int firstPass = -1, lastPass = -1, slot = -1; };
 struct Barrier { unsigned image; State before, after; };
 struct Plan {
     bool valid = false;
@@ -39,23 +39,23 @@ inline Plan compile(const std::vector<Image>& images, const std::vector<Pass>& p
             if (use.image >= images.size() || seen[use.image] || !use.state.stages) return plan;
             seen[use.image] = true;
             auto& life = plan.lifetimes[use.image];
-            if (life.first < 0) life.first = int(p);
-            life.last = int(p);
+            if (life.firstPass < 0) life.firstPass = int(p);
+            life.lastPass = int(p);
         }
     }
     // Allocate in first-use order, independent of resource declaration order.
     std::vector<unsigned> order;
     for (unsigned i = 0; i < images.size(); ++i)
-        if (!images[i].imported && plan.lifetimes[i].first >= 0) order.push_back(i);
+        if (!images[i].imported && plan.lifetimes[i].firstPass >= 0) order.push_back(i);
     std::stable_sort(order.begin(), order.end(), [&](unsigned a, unsigned b) {
-        return plan.lifetimes[a].first < plan.lifetimes[b].first;
+        return plan.lifetimes[a].firstPass < plan.lifetimes[b].firstPass;
     });
     std::vector<unsigned> owners;
     for (unsigned i : order) {
         auto& life = plan.lifetimes[i];
         for (unsigned s = 0; s < owners.size(); ++s) {
             unsigned previous = owners[s];
-            if (images[previous].key == images[i].key && plan.lifetimes[previous].last < life.first) {
+            if (images[previous].key == images[i].key && plan.lifetimes[previous].lastPass < life.firstPass) {
                 life.slot = int(s);
                 owners[s] = i;
                 break;
