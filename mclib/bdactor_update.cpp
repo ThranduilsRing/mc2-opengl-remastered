@@ -50,7 +50,6 @@ long BldgAppearance::update (bool animate)
 
         if (simulationOwned()) { updateSimPose(); return TRUE; }
     }
-
    	if (appearType->terrainLightRGB != 0xffffffff && (eye->nightFactor > 0.0f) && !forceLightsOut)
    	{
    		if (!pointLight)
@@ -61,7 +60,12 @@ long BldgAppearance::update (bool animate)
    	
    			pointLight->SetaRGB(appearType->terrainLightRGB);
    			pointLight->SetIntensity(appearType->terrainLightIntensity);
-   			pointLight->SetFalloffDistances(appearType->terrainLightInnerRadius, appearType->terrainLightOuterRadius);
+			// LOCAL-LIGHTS-1: the stock radii (inner defaults to 100 -- the inis misspell
+			// "TerrainLightInnerRadus" -- outer 200-250, then x2.2 pool spill) spread the
+			// lamp over a 450-550 unit disc at 0.05-0.1 additive: the power generator's
+			// light read as off. Same energy idea, concentrated: half the reach, no flat
+			// plateau, intensity raised below (BuildingLightIntensity).
+   			pointLight->SetFalloffDistances(0.0f, appearType->terrainLightOuterRadius * 0.5f);
    		}
 		
 		if (pointLight)
@@ -76,7 +80,8 @@ long BldgAppearance::update (bool animate)
 			mc2::math::buildRotation(lightToWorldMatrix, mc2::math::Euler(0.0f,0.0f,0.0f));
 			pointLight->SetLightToWorld(&lightToWorldMatrix);
 			pointLight->SetPosition(&position);
-			pointLight->SetIntensity(appearType->terrainLightIntensity * eye->getNightFactor() *
+			const float buildingLightIntensity = std::min(appearType->terrainLightIntensity * 3.0f, 0.35f);
+			pointLight->SetIntensity(buildingLightIntensity * eye->getNightFactor() *
                 visualTuning_environment().buildingSpillIntensityScale);
 		}
    	}
@@ -198,12 +203,33 @@ long BldgAppearance::update (bool animate)
 			// A beam that never meets ground within its own length lights
 			// nothing, so its pool is suppressed entirely (coneMissedGround).
 			bool coneMissedGround = false;
+			// LOCAL-LIGHTS-1: a beam that is not aimed at the sky becomes a real spot
+			// light AT THE LAMP, aimed down the authored cone with the cone's own
+			// half-angle; the per-fragment pool evaluates the cone on the ground,
+			// props, mechs and vegetation (light_pool_attenuation.hglsl). Sky
+			// beams keep the CONE-SPILL-POLICY-1 suppression below.
+			spotlightLights_[k]->spotCosOuter = 0.0f;
 			if (mc2_cone_glow::nodes_enabled())
 			{
 				glm::vec3 aimW;
 				float coneLen = 0.0f;
+				float coneCos = 1.0f;
 				const bool haveAim =
-					mc2_cone_glow::GetNodeAim(bldgShape, spotlightNodeIds_[k], aimW, coneLen);
+					mc2_cone_glow::GetNodeAim(bldgShape, spotlightNodeIds_[k], aimW, coneLen, &coneCos);
+				if (haveAim && aimW.z <= 0.15f)
+				{
+					// Authored cones are narrow visual shafts; a lamp's light spreads
+					// wider than its drawn shaft. Range: the beam must reach the
+					// ground from a ~17-unit mount at a grazing aim.
+					const float halfDeg = glm::degrees(std::acos(std::clamp(coneCos, 0.0f, 1.0f)));
+					const float outerDeg = std::clamp(halfDeg * 1.6f + 8.0f, 18.0f, 55.0f);
+					spotlightLights_[k]->spotCosOuter = std::cos(glm::radians(outerDeg));
+					spotlightLights_[k]->spotDir = aimW;
+					const float range = std::clamp(coneLen * 2.2f, 180.0f, 420.0f);
+					spotlightLights_[k]->SetFalloffDistances(0.0f, range);
+				}
+				else
+					spotlightLights_[k]->SetFalloffDistances(20.0f, 80.0f);
 				// CONE-SPILL-COUPLING-1 reach probe: does the BUILDING path
 				// actually get usable cone geometry? (GetNodeAim returns false
 				// for a lamp node with no cone mesh, in which case the pool
@@ -217,7 +243,7 @@ long BldgAppearance::update (bool animate)
 						std::fflush(stderr);
 					}
 				}
-				if (haveAim)
+				if (haveAim && spotlightLights_[k]->spotCosOuter <= 0.0f)
 				{
 					// The authored beam length IS the physical reach — the old
 					// hard 200.0f clamp truncated long beams so their pool fell
@@ -368,7 +394,9 @@ long BldgAppearance::update (bool animate)
 			// still real and must keep rendering. Collapsing the two would make
 			// tower searchlights vanish when aimed at a wall.
 			const bool ownerLit = (eye && eye->isNight && visible && !forceLightsOut);
-			spotlightLights_[k]->SetIntensity(0.5f * visualTuning_environment().buildingSpillIntensityScale);
+			// LOCAL-LIGHTS-1: a coned lamp concentrates its light in the beam.
+			const float lampIntensity = spotlightLights_[k]->spotCosOuter > 0.0f ? 0.55f : 0.5f;
+			spotlightLights_[k]->SetIntensity(lampIntensity * visualTuning_environment().buildingSpillIntensityScale);
 			spotlightLights_[k]->active = ownerLit && !coneMissedGround;
 			// LIGHT-CULL-RADIUS-1: owner intent for the camera composition.
 			// Building light positions are static, so persistence while the

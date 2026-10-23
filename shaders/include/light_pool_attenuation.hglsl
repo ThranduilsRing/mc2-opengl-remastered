@@ -20,4 +20,35 @@ bool lpa_falloff(vec3 delta, bool mover, float moverScale, int soft,
     }
     return true;
 }
+
+// LOCAL-LIGHTS-1: spot cone packed into the pool record's lightType by the producer
+// (gos_terrain_lighting.cpp PackPoolLightType; lockstep):
+//   bits 0-3   type (1 point, 2 spot, 3 terrain; 0 = skip)
+//   bits 4-7   shadow tile + 1 (0 = unshadowed)
+//   bits 8-15  octahedral aim u, bits 16-23 aim v (MC2 world frame)
+//   bits 24-31 cos(outer half-angle) * 255; 0 = omni (no cone)
+// Omni records keep the exact pre-cone value (type in the low bits only), so the
+// equality tests of the vertex-lighting compute still see them; coned records fail
+// those tests on purpose and light only through these per-fragment loops.
+vec3 lpa_octDecode(vec2 e)
+{
+    vec3 v = vec3(e, 1.0 - abs(e.x) - abs(e.y));
+    if (v.z < 0.0) v.xy = (1.0 - abs(v.yx)) * vec2(v.x >= 0.0 ? 1.0 : -1.0, v.y >= 0.0 ? 1.0 : -1.0);
+    return normalize(v);
+}
+vec3 lpa_spotAim(uint packed)
+{
+    return lpa_octDecode(vec2(float((packed >> 8) & 255u), float((packed >> 16) & 255u)) * (2.0 / 255.0) - 1.0);
+}
+// Cone factor for a fragment at light->fragment offset delta: 1 for omni lights.
+float lpa_spotCone(vec3 delta, uint packed)
+{
+    uint c = packed >> 24;
+    if (c == 0u) return 1.0;
+    float cosOuter = float(c) * (1.0 / 255.0);
+    float cosInner = mix(cosOuter, 1.0, 0.75);   // wide penumbra: a lamp beam, not a stage spot
+    float cd = dot(delta, lpa_spotAim(packed)) * inversesqrt(max(dot(delta, delta), 1e-6));
+    float t = clamp((cd - cosOuter) / max(cosInner - cosOuter, 1e-4), 0.0, 1.0);
+    return t * t * (3.0 - 2.0 * t);
+}
 #endif

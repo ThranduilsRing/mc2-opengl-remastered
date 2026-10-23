@@ -67,6 +67,8 @@ vec3 tlp_terrainPoolLight(vec3 wp, int numPoolLights,
         float len, falloff;
         if (!lpa_falloff(vtl, mover, moverScale, poolSoft, nearD,
                          poolLights[i].farDistance, poolLights[i].oneOverDistance, len, falloff)) continue;
+        falloff *= lpa_spotCone(vtl, poolLights[i].lightType);   // LOCAL-LIGHTS-1
+        if (falloff <= 0.0) continue;
         vec3 plCol = poolLights[i].color * poolLights[i].intensity;
         if (mover) {
             // Mover-attached light (producer pad flag): dim vs buildings.

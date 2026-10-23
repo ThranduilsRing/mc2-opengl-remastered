@@ -691,6 +691,13 @@ void PackAndDispatch() {
                 case TG_LIGHT_TERRAIN: gl.lightType = 3u; break;  // TG_LIGHT_TERRAIN_GPU
                 default:               gl.lightType = 0u; break;
             }
+            // LOCAL-LIGHTS-1: a coned light carries its aim + cone in the high bits
+            // (light_pool_attenuation.hglsl lpa_spotCone); its radii are physical,
+            // so the LIGHT-REALISM-1 pool reshape below does not apply to it.
+            const bool coned = gl.lightType != 0u && tl->spotCosOuter > 0.0f;
+            if (coned)
+                gl.lightType = PackPoolLightType(gl.lightType, tl->spotDir.x, tl->spotDir.y,
+                                                 tl->spotDir.z, tl->spotCosOuter, 0u);
             // Preserve source color; each receiver applies the separate intensity once.
             const DWORD argb = tl->GetSourceRGB();
             gl.color[0]        = static_cast<float>((argb >> 16) & 0xFFu) / 255.0f;  // R
@@ -729,7 +736,7 @@ void PackAndDispatch() {
             // GetFalloff) and MUST be recomputed in lockstep or the ramp
             // detaches from the radii. Gate default-OFF -> untouched -> byte-
             // identical.
-            if (s_lightRealism)
+            if (s_lightRealism && !coned)
             {
                 const float spill = s_lightRealismPoolSpill;   // farDistance scale
                 const float core  = s_lightRealismPoolCore;    // closeDistance scale

@@ -393,7 +393,7 @@ static bool aim_flip_enabled()
 // ---- (A) node aim -----------------------------------------------------------
 
 bool GetNodeAim(TG_MultiShape* shape, long nodeId,
-                glm::vec3& aimWorldOut, float& coneLenOut)
+                glm::vec3& aimWorldOut, float& coneLenOut, float* cosHalfOut)
 {
     const TG_TypeShape* ts = nullptr;
     const TG_ShapeRec* rec = resolveSpotNode(shape, nodeId, &ts);
@@ -432,6 +432,24 @@ bool GetNodeAim(TG_MultiShape* shape, long nodeId,
 
     const float scalar = rec->node->GetShapeScalarValue();
     coneLenOut = lenLocal * ((scalar > 0.0f) ? scalar : 1.0f);
+
+    // LOCAL-LIGHTS-1: the authored beam's outer half-angle = the widest vertex off the
+    // axis over the beam body (verts near the apex are the lamp housing, not the beam).
+    if (cosHalfOut)
+    {
+        const TG_TypeVertex* verts = ts->GetTypeVertices();
+        const int n = const_cast<TG_TypeShape*>(ts)->GetNumTypeVertices();
+        float minCos = 1.0f;
+        for (int i = 0; i < n; ++i)
+        {
+            const glm::vec3 p(verts[i].position.x, verts[i].position.y, verts[i].position.z);
+            const float proj = glm::dot(p, axisLocal);
+            const float plen = glm::length(p);
+            if (proj < 0.25f * lenLocal || plen < 1e-3f) continue;
+            minCos = std::min(minCos, proj / plen);
+        }
+        *cosHalfOut = minCos;
+    }
 
     // CONE-AIM-DIAG-1: throttled apex/aim dump (first 48 calls + 1/600 after).
     if (aim_diag_enabled())
@@ -708,9 +726,21 @@ void QueueConeGlow(TG_MultiShape* shape, long nodeId,
             gos_VERTEX& gv = qt.v[c];
             gv.x = s.x; gv.y = s.y; gv.z = s.z; gv.rhw = s.rhw;
             gv.u = 0.0f; gv.v = 0.0f;
-            DWORD a = static_cast<DWORD>((alphaPeak * s.fade));
+            // kVolumeGain: the peak alpha knobs were tuned while the pass ignored
+            // alpha; premultiplied, 2.5x keeps the shaft a faint visible haze
+            // (~16% of the lamp colour at the emitter) instead of vanishing.
+            constexpr float kVolumeGain = 2.5f;
+            DWORD a = static_cast<DWORD>((alphaPeak * s.fade * kVolumeGain));
             if (a > 255) a = 255;
-            gv.argb = (a << 24) | rgb;
+            // The ISSPOTLGT pass blends ONE/ONE (VK legacy ADD pipeline, GL
+            // gos_Alpha_OneOne): vertex alpha is ignored, so the fade must be
+            // premultiplied into RGB, as QueueBeaconGlow already does. Writing
+            // the fade into alpha alone added the cone at full lamp colour —
+            // the opaque-looking yellow wedge.
+            const DWORD pr = (((rgb >> 16) & 0xffu) * a) / 255u;
+            const DWORD pg = (((rgb >>  8) & 0xffu) * a) / 255u;
+            const DWORD pb = (( rgb        & 0xffu) * a) / 255u;
+            gv.argb = (a << 24) | (pr << 16) | (pg << 8) | pb;
             gv.frgb = 0x00000000;   // fog disabled in the ISSPOTLGT pass
         }
         s_tris.push_back(qt);
