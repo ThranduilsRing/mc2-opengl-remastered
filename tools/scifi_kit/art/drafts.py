@@ -214,13 +214,38 @@ def rock(k, c, size, mat, rng, flat=1.0):
         k.prism(poly, -h * .35, h * .65, mat, 'mass', top=h * .22)
 
 
+# Stock wall SEGMENT cross-section (half-width in metres vs height fraction of the
+# stock wall top), measured from round2/stock/<name>.json vertices_m at y < -6.
+# The segment is battered (wide at the base, sloping inward), not just the end pier.
+WALL_PROFILE = {
+    's_lightwall': ((0, 1.88), (3.96 / 4.37, 1.62), (1, .94)),
+    's_mediumwall': ((0, 2.51), (4.16 / 11.98, 2.17), (6.63 / 11.98, 1.24), (1, 1.24)),
+    's_heavywall': ((0, 2.50), (6.5 / 21.5, 2.16), (10.4 / 21.5, 1.23), (1, 1.23)),
+    'l_lightwall': ((0, 2.31), (1, .85)),
+    'l_mediumwall': ((0, 2.77), (10.53 / 12.0, 1.16), (1, 1.16)),
+    'd_mediumwall': ((0, 2.51), (1, 1.31)),
+    'l_heavywall': ((0, 2.77), (17.9 / 21.3, 1.62), (1, 1.62)),
+    'd_lightwall': ((0, 2.0), (1, 1.31)),
+}
+
+
+def wall_hw(name, t):
+    """Stock wall-segment half-width at height fraction t (0..1)."""
+    pts = WALL_PROFILE[name]
+    t = min(max(t, 0.0), 1.0)
+    for (t0, h0), (t1, h1) in zip(pts, pts[1:]):
+        if t <= t1:
+            return h0 + (h1 - h0) * (t - t0) / max(t1 - t0, 1e-9)
+    return pts[-1][1]
+
+
 # ------------------------------------------------------------ s_lightwall
 def light_wall(k):
     """Footing -> precast units -> steel battens at span joints -> coping -> hardware."""
     W, H = 1.75, 4.65
     y_start, y_end = -17.0, 13.45
     u = (y_end - y_start) / 8
-    k.box((0, (y_start + y_end) / 2, .18), (W + .7, y_end - y_start + .3, .36), 'ferro', 'mass', ch=C(.1), top=C(.08), part='footing')
+    k.box((0, (y_start + y_end) / 2, .18), (2 * wall_hw('s_lightwall', 0) + .1, y_end - y_start + .3, .36), 'ferro', 'mass', ch=C(.1), top=C(.08), part='footing')
     zt = H - .30
     for j in range(8):
         y0 = y_start + j * u
@@ -247,9 +272,12 @@ def light_wall(k):
              (-W / 2 + .24, yc - u + .37, W / 2 - .24, yc + u - .37), H,
              'ferro.main', 'skin', ch0=.04, ch1=.04, span=j)
     # Mild batter through the precast units and coping; the footing stays broad.
+    # Stock battered wall SEGMENT: half-width 1.88 m at the base, 1.62 m at the coping
+    # foot (stock profile). The coping keeps its own 45-degree taper above zt.
     for p in k.pieces:
-        if p.get('part') != 'footing':
-            p['v'] = [(x * (1 - .08 * (z - .36) / (H - .36)), y, z) for x, y, z in p['v']]
+        if p.get('part') not in ('footing', 'pier'):
+            p['v'] = [(x * wall_hw('s_lightwall', .906 * min(max(z - .36, 0), zt - .36) / (zt - .36)) / (W / 2), y, z)
+                      for x, y, z in p['v']]
     py = 15.45
     # Stock pier: dark battered block with a pale chamfered cap.
     loft(k, (-2.5, py - 2.0, 2.5, py + 2.0), 0, (-1.85, py - 1.5, 1.85, py + 1.5), 4.6, 'paint.second', 'mass', ch0=.30, ch1=.22, rebar=True, part='pier')
@@ -1317,3 +1345,8 @@ SIZES.update(batch2.SIZES)
 DRAFTS.update(batch2.DRAFTS)
 DAMAGE.update(batch2.DAMAGE)
 BUILDINGS.update(('singlecivlivinga', 'portable'))
+
+import batch3  # noqa: E402: construction helpers and batch two are registered first
+SIZES.update(batch3.SIZES)
+DRAFTS.update(batch3.DRAFTS)
+DAMAGE.update(batch3.DAMAGE)

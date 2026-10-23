@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Art-directed kit CLI: render primitive contact sheets and building assemblies.
 
-CPU rules: one Blender job at a time, --threads 6, Cycles threads 6, below-normal
+CPU rules: one Blender job at a time, --threads 4, Cycles threads 4, below-normal
 priority. Rendering uses the GPU when
 Cycles finds one.
 
@@ -31,7 +31,7 @@ def blender(job, log):
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(job, indent=1), encoding='utf-8')
     log.parent.mkdir(parents=True, exist_ok=True)
-    cmd = [str(find_blender_exe()), '--background', '--factory-startup', '--threads', '6', '--python-exit-code', '1',
+    cmd = [str(find_blender_exe()), '--background', '--factory-startup', '--threads', '4', '--python-exit-code', '1',
            '--python', str(HERE / 'blend.py'), '--', str(path)]
     print('[art]', ' '.join(cmd), flush=True)
     sys.path.insert(0,str(ROOT/'scripts'))
@@ -43,7 +43,7 @@ def blender(job, log):
         try:
             cores = list(range(psutil.cpu_count()))
             psutil.Process(proc.pid).cpu_affinity(cores)
-        except Exception as exc:  # affinity is best effort; threads are still 6
+        except Exception as exc:  # affinity is best effort; threads are still 4
             print('[art] affinity not set:', exc)
         rc = proc.wait()
     if rc:
