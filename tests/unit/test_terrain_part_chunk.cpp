@@ -353,3 +353,102 @@ TEST_CASE("a dev-window v2 record (v3 layout stamped version 2) fails the v2 par
 	CHECK(asV3.imported.mode == mc2clip::Mode::Once);
 	CHECK(asV3.imported.locomotion);
 }
+
+// ---- Merge 42 follow-up: animation tail (pool orders + sensor scan) and the v2 -> v3 retry over a multi-record section ----
+namespace {
+mc2::save::AnimationTail readTail(const std::vector<uint8_t>& bytes, bool& ok, int numTeams = 4, bool haveSensor = true) {
+	mc2::save::Archive a(bytes);
+	mc2::save::AnimationTail t;
+	mc2::save::readAnimationTail(a, t, numTeams, haveSensor);
+	ok = a.finish();
+	return t;
+}
+std::vector<uint8_t> orders(bool withScan, int32_t cursor = 1) {
+	mc2::save::Archive w;
+	std::vector<int32_t> a{3, 5}, none;
+	for (int i = 0; i < 6; ++i) w(i == 0 ? a : none);
+	if (withScan) { bool los = true; w(cursor, los); }
+	REQUIRE(w.good());
+	return w.bytes();
+}
+}
+
+TEST_CASE("animation tail: an absent tail keeps the defaults and loads") {
+	bool ok = false;
+	auto t = readTail({}, ok);
+	CHECK(ok);
+	CHECK_FALSE(t.hasScan);
+	CHECK(t.order[0].empty());
+	auto orderOnly = readTail(orders(false), ok);
+	CHECK(ok);
+	CHECK_FALSE(orderOnly.hasScan);
+	CHECK(orderOnly.order[0].size() == 2);
+}
+
+TEST_CASE("animation tail: a present tail reads the orders and scan state") {
+	bool ok = false;
+	auto t = readTail(orders(true, 2), ok);
+	CHECK(ok);
+	CHECK(t.hasScan);
+	CHECK(t.scanCursor == 2);
+	CHECK(t.enemyInLOS);
+	CHECK(t.order[0] == std::vector<int32_t>{3, 5});
+}
+
+TEST_CASE("animation tail: truncated bytes are rejected, not half-read") {
+	bool ok = true;
+	auto full = orders(true);
+	for (size_t cut : {size_t(1), size_t(2), size_t(4), size_t(5)}) {
+		ok = true;
+		readTail(std::vector<uint8_t>(full.begin(), full.end() - cut), ok);
+		CHECK_FALSE(ok);
+	}
+	auto small = orders(false);
+	small.resize(3);                       // a partial first pool order
+	readTail(small, ok);
+	CHECK_FALSE(ok);
+}
+
+TEST_CASE("animation tail: a bad scan cursor or a missing sensor manager rejects the section") {
+	bool ok = true;
+	readTail(orders(true, 4), ok, 4);      // cursor == numTeams
+	CHECK_FALSE(ok);
+	readTail(orders(true, -1), ok, 4);
+	CHECK_FALSE(ok);
+	readTail(orders(true, 1), ok, 4, false);
+	CHECK_FALSE(ok);
+	readTail(orders(true, 3), ok, 4);
+	CHECK(ok);
+}
+
+TEST_CASE("v3 section with several records: reading it as v2 is rejected so the loader retries as v3") {
+	auto sectionOk = [](const std::vector<uint8_t>& bytes, uint32_t version) {
+		mc2::save::Archive a(bytes);
+		a.sectionVersion = version;
+		uint32_t state = 0, draws = 0, animState = 0, animDraws = 0, count = 0;
+		a(state, draws, animState, animDraws, count);
+		int32_t previous = 0;
+		for (uint32_t i = 0; a.good() && i < count && i < 64; ++i) {
+			int32_t handle = 0;
+			mc2::sim::UnitAnimState anim;
+			a(handle, anim);
+			if (a.good() && handle <= previous) return false;
+			previous = handle;
+		}
+		return a.finish();
+	};
+	mc2::save::Archive w;
+	uint32_t zero = 0, count = 3;
+	w(zero, zero, zero, zero, count);
+	for (int32_t handle : {2, 5, 9}) {
+		mc2::sim::UnitAnimState anim;
+		anim.imported.activeClip = "atlas_moveJumpAirIdle";
+		anim.imported.phase.landing = true;
+		anim.imported.mode = mc2clip::Mode::Once;
+		anim.imported.locomotion = true;
+		w(handle, anim);
+	}
+	REQUIRE(w.good());
+	CHECK(sectionOk(w.bytes(), 3));
+	CHECK_FALSE(sectionOk(w.bytes(), 2));
+}
