@@ -169,12 +169,23 @@ void GosVegetation::shutdown() {
     if (mc2veg::State::exists()) mc2veg::State::instance().clear(mc2vk::getOrCreateEngineVulkanContext());
 #endif
 }
-uint32_t GosVegetation::populationCapacity(uint32_t requested) {
+uint32_t GosVegetation::populationCapacity(uint32_t requested, float mapSpan) {
 #ifdef MC2_VULKAN_ISLAND
     if (!mc2vk::engineVulkanContextValid()) return 0;
     VkPhysicalDeviceProperties properties{};
     vkGetPhysicalDeviceProperties(mc2vk::getOrCreateEngineVulkanContext().physicalDevice(), &properties);
-    return mc2::vegetation::storagePopulationCapacity(requested, properties.limits.maxStorageBufferRange);
+    uint32_t cap = mc2::vegetation::storagePopulationCapacity(requested, properties.limits.maxStorageBufferRange);
+    // Regions are 128-unit cells, so their count is bounded by the map area whatever the instance count.
+    const double side = double(mapSpan) / 128.0 + 2.0;
+    const uint64_t regionBound = uint64_t(side * side);
+    uint32_t lo = 0, hi = cap;   // largest n in [0, cap] that fits whole (stride 1); fit is monotone in n
+    while (lo < hi) {
+        const uint32_t mid = lo + (hi - lo + 1) / 2;
+        const uint64_t regions = uint64_t(mid) < regionBound ? uint64_t(mid) : regionBound;
+        if (mc2veg::State::strideFor(mid, regions) == 1) lo = mid; else hi = mid - 1;
+    }
+    if (lo < cap) mc2::fmt::print_err("[VK_RESIDENCY v1] vegetation placement capped {:d}->{:d}\n", mc2::fmt::as_u32(cap), mc2::fmt::as_u32(lo));
+    return lo;
 #else
     return 0;
 #endif

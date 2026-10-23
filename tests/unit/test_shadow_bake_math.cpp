@@ -232,7 +232,8 @@ TEST_CASE("GPU residency: vegetation thins by stride instead of refusing") {
     const uint32_t s1 = vegetationStride(2512462, 30000, 2, q1.vegetation, 2000 * gpuMiB);
     CHECK(s1 > 1);
     const uint64_t n = (2512462 + s1 - 1) / s1;
-    CHECK(vegetationBytes(n, (std::min)<uint64_t>(30000, n), 2) <= q1.vegetation);
+    const uint64_t r1 = n < 30000 ? n : 30000;
+    CHECK(vegetationBytes(n, r1, 2) <= q1.vegetation);
     // a tight live headroom thins too (staging counts); potato (ceiling 0) never fits.
     CHECK(vegetationStride(2512462, 30000, 2, q2.vegetation, 100 * gpuMiB) > 1);
     CHECK(vegetationStride(2512462, 30000, 2, gpuResidencyPolicy(0).vegetation, 2000 * gpuMiB) == 0);
