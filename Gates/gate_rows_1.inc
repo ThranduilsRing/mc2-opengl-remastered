@@ -135,8 +135,6 @@ P("MC2_HZB_FORCE_HORIZON_X", Float, 0.9, "code", "", "Corner position as a fract
 P("MC2_HZB_FORCE_HORIZON_Y", Float, -0.9, "code", "", "", verified),
 G("MC2_HZB_VIEW_FILE", String, "", "code", "", "HZB validation knob (debug only): force a low across-map HORIZON view so static props occlude each other.", verified),  // default not derivable from the tree
 L(Lead1, "MC2_IBL_ASSET_STRICT", Bool, false, "unclassified", "", ""),
-// history: docs/gate-history.md#MC2_ICON_FAILLOUD
-L(Lead0, "MC2_ICON_FAILLOUD", Bool, false, "mech", "", "META-FIX design B PART 3 (code/mechicon.cpp iconTileChecked at the three CPU icon-tile blits): default OFF. =1 substitutes a solid MAGENTA tile when an icon...", passthrough | registry(Feature, "MC2_FEATURE_ICON_FAILLOUD", -1, false) | verified),
 // history: docs/gate-history.md#MC2_IFACE_COST_SPLIT
 L(Presence, "MC2_IFACE_COST_SPLIT", Bool, false, "code", "", "MISSION-INTERFACE-PERF-1: chrono cost-split of MissionInterfaceManager::update() (the GameLogic.Mission.Interface Tracy zone) incl.", passthrough | registry(Trace, "MC2_TRACE_IFACE_COST_SPLIT", -1, false) | verified),
 // history: docs/gate-history.md#MC2_IMGUI

@@ -9,6 +9,7 @@ ForceGroupBar.cpp			: Implementation of the ForceGroupBar component.
 
 #include"forcegroupbar.h"
 #include"mechicon.h"
+#include "icon_registry.h"
 #include"objmgr.h"
 #include"team.h"
 #include"missiongui.h"
@@ -79,16 +80,14 @@ static unsigned long statusColor( const char* s )
 // LOCAL vertex buffer (never ForceGroupIcon::bmpLocation — touching that shared
 // HUD buffer makes the real force-bar icons draw in the wrong place). Replicates
 // the UV math from ForceGroupIcon::renderUnitIcon / renderUnitIconBack.
-static void drawOverviewIconCell( int xIndex, int yIndex, unsigned long texHandle,
-                                  float uIX, float uIY, float texW, float texH,
-                                  float l, float t, float r, float b, unsigned long argb )
+static void drawOverviewIconCell(ForceGroupIcon* icon,
+                                 float l, float t, float r, float b, unsigned long argb)
 {
-	const float u  = xIndex * uIX / texW + (0.1f / 256.f);
-	const float v  = yIndex * uIY / texH + (0.1f / 256.f);
-	const float uD = uIX / texW + (0.1f / 256.f);
-	const float vD = uIY / texH + (0.1f / 256.f);
-
-	gos_SetRenderState( gos_State_Texture, texHandle );
+    uint64_t texture = 0;
+    float u, v, u1, v1;
+    if (!icon->getUnitIconTexUV(texture, u, v, u1, v1)) return;
+    const float uD = u1 - u, vD = v1 - v;
+    gos_SetRenderState(gos_State_Texture, unit_icons::damageTexture());
 	// Additive blend keys out the icon's black background (black adds nothing);
 	// the mech silhouette adds onto the scene. Vertex RGB scales the texel, so
 	// the caller fades by scaling argb's RGB channels.
@@ -109,7 +108,7 @@ static void drawOverviewIconCell( int xIndex, int yIndex, unsigned long texHandl
 
 void ForceGroupBar::renderOverviewIcons( Camera* eye, float alpha )
 {
-	if ( !eye || alpha <= 0.0f || !ForceGroupIcon::s_textureMemory )
+	if ( !eye || alpha <= 0.0f )
 		return;
 
 	// Collect visible units: true projected point (tx,ty) + working chip center.
@@ -195,12 +194,6 @@ void ForceGroupBar::renderOverviewIcons( Camera* eye, float alpha )
 	}
 
 	// Icon chips (back frame + unit icon) replicated into local verts.
-	const float texW = static_cast<float>(ForceGroupIcon::s_textureMemory->width);
-	const float texH = static_cast<float>(ForceGroupIcon::s_textureMemory->height);
-	const float uIX  = ForceGroupIcon::unitIconX;
-	const float uIY  = ForceGroupIcon::unitIconY;
-	const int perLine     = static_cast<int>(( texW / uIX ));
-	const int iconsPerPage = static_cast<int>(( texH / uIY ));  // rows per page: texture HEIGHT / cell height
 	// Additive: RGB scales the texel, so encode the cross-fade in RGB (not alpha).
 	const unsigned long iconArgb = 0xff000000 | (aByte << 16) | (aByte << 8) | aByte;
 
@@ -215,12 +208,7 @@ void ForceGroupBar::renderOverviewIcons( Camera* eye, float alpha )
 		// the black would be invisible anyway, and skipping it keeps the overlay
 		// clean (just the mech silhouette over the terrain).
 
-		// Unit icon (may live on a later atlas page).
-		int di = chip[i].ic->damageIconIndex;
-		int yIndex = di / perLine, texIndex = 0;
-		if ( yIndex >= iconsPerPage ) { texIndex = yIndex / iconsPerPage; yIndex = yIndex % iconsPerPage; }
-		drawOverviewIconCell( di % perLine, yIndex, ForceGroupIcon::s_textureHandle[texIndex],
-		                      uIX, uIY, texW, texH, l, t, r, b, iconArgb );
+        drawOverviewIconCell(chip[i].ic, l, t, r, b, iconArgb);
 
 		// Short name label under the chip (de-overlapped already).
 		const char* nm = chip[i].ic->unit->getName();
@@ -244,7 +232,7 @@ void ForceGroupBar::renderOverviewIcons( Camera* eye, float alpha )
 int ForceGroupBar::renderOverviewSquadCards( Camera* eye, float alpha,
                                              OverviewCardHit* hitsOut, int maxHits )
 {
-	if ( !eye || alpha <= 0.0f || !ForceGroupIcon::s_textureMemory )
+	if ( !eye || alpha <= 0.0f )
 		return 0;
 
 	const int MAXG = 10;
@@ -337,10 +325,6 @@ int ForceGroupBar::renderOverviewSquadCards( Camera* eye, float alpha,
 
 	unsigned long aB = static_cast<unsigned long>(( alpha * 255.0f )); if ( aB > 255 ) aB = 255;
 	const unsigned long aBits = aB << 24;
-	const float texW = static_cast<float>(ForceGroupIcon::s_textureMemory->width);
-	const float texH = static_cast<float>(ForceGroupIcon::s_textureMemory->height);
-	const float uIX = ForceGroupIcon::unitIconX, uIY = ForceGroupIcon::unitIconY;
-	const int perLine = static_cast<int>(( texW / uIX )), iconsPerPage = static_cast<int>(( texH / uIY ));  // rows: texH/cellH
 	HGOSFONT3D font = ForceGroupIcon::gosFontHandle ? ForceGroupIcon::gosFontHandle->getTempHandle() : nullptr;
 	const unsigned long iconArgb = 0xff000000 | ( aB << 16 ) | ( aB << 8 ) | aB;
 
@@ -410,10 +394,7 @@ int ForceGroupBar::renderOverviewSquadCards( Camera* eye, float alpha,
 		for ( int m = 0; m < cards[i].nm; m++ )
 		{
 			ForceGroupIcon* ic = icons[cards[i].mem[m]];
-			int di = ic->damageIconIndex, yIndex = di / perLine, texIndex = 0;
-			if ( yIndex >= iconsPerPage ) { texIndex = yIndex / iconsPerPage; yIndex = yIndex % iconsPerPage; }
-			drawOverviewIconCell( di % perLine, yIndex, ForceGroupIcon::s_textureHandle[texIndex],
-			                      uIX, uIY, texW, texH, ix, iy, ix + cellW, iy + cellH, iconArgb );
+            drawOverviewIconCell(ic, ix, iy, ix + cellW, iy + cellH, iconArgb);
 			ix += cellW + 2;
 		}
 

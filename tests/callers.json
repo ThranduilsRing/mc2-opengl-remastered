@@ -1602,7 +1602,7 @@
       "callers_by_basename": [
         {
           "path": "CMakeLists.txt",
-          "line": 929,
+          "line": 930,
           "evidence": "cmake command",
           "reference": "${CMAKE_SOURCE_DIR}/scripts/check-shader-schema.sh",
           "text": "COMMAND ${BASH_EXECUTABLE} ${CMAKE_SOURCE_DIR}/scripts/check-shader-schema.sh"
@@ -3619,7 +3619,7 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 166,
+          "line": 168,
           "evidence": "import_module",
           "reference": "deploy_payload",
           "text": "return importlib.import_module('deploy_payload')"
@@ -4318,7 +4318,7 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 593,
+          "line": 595,
           "evidence": "command",
           "reference": "scripts/run_smoke.py",
           "text": "proc = subprocess.run(cmd, cwd=str(ROOT), capture_output=True,"
@@ -9212,14 +9212,14 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 417,
+          "line": 419,
           "evidence": "import_module",
           "reference": "fst",
           "text": "fst_lib = importlib.import_module('fst')"
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 453,
+          "line": 455,
           "evidence": "import_module",
           "reference": "fst",
           "text": "fst_lib = importlib.import_module('fst')"
@@ -9409,21 +9409,21 @@
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 208,
+          "line": 210,
           "evidence": "import",
           "reference": "fst_listing",
           "text": "import fst_listing"
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 333,
+          "line": 335,
           "evidence": "import",
           "reference": "fst_listing",
           "text": "import fst_listing"
         },
         {
           "path": "tools/mod_smoke.py",
-          "line": 435,
+          "line": 437,
           "evidence": "import",
           "reference": "fst_listing",
           "text": "import fst_listing"
@@ -10496,7 +10496,7 @@
       "callers_by_basename": [
         {
           "path": "CMakeLists.txt",
-          "line": 907,
+          "line": 908,
           "evidence": "cmake command",
           "reference": "${CMAKE_SOURCE_DIR}/tools/shader_reflect/reflect.py",
           "text": "COMMAND ${Python3_EXECUTABLE}"

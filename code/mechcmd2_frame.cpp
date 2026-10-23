@@ -1,3 +1,4 @@
+#include "icon_registry.h"
 #include "vk_scene_renderer.h"
 #include "render_submissions.h"
 // Game main: the per-frame renderer update, engine termination and DoGameLogic.
@@ -286,17 +287,8 @@ void __stdcall TerminateGameEngine()
 			ForceGroupIcon::jumpJetIcon = nullptr;
 		}
 
-		if (MechIcon::s_MechTextures)
-		{
-			delete [] MechIcon::s_MechTextures;
-			MechIcon::s_MechTextures = nullptr;
-		}
+        unit_icons::shutdown();
 
-		if (ForceGroupIcon::s_textureMemory)
-		{
-			delete [] ForceGroupIcon::s_textureMemory; 
-			ForceGroupIcon::s_textureMemory = nullptr; 
-		}
 	}
 	else
 	{

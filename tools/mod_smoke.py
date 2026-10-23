@@ -107,6 +107,8 @@ def resolve_build(explicit: str | None, build_dir: str) -> tuple[Path, Path]:
     root = build
     while root.name.lower() not in ('build64', 'build64-ninja') and root.parent != root:
         root = root.parent
+    if root.parent == root:
+        root = ROOT / build_dir  # installed exe or E: tree reached through a junction
     return build, root
 
 
@@ -530,7 +532,7 @@ def health_cell(h: dict) -> str:
 
 def artifact_log_text(started: float, stem: str) -> str:
     """Engine log run_smoke saved for this mission (tests/smoke/artifacts/<stamp>/<stem>.log)."""
-    root = ROOT / 'tests' / 'smoke' / 'artifacts'
+    root = Path(os.environ.get('MC2_SMOKE_ARTIFACT_ROOT', ROOT / 'tests' / 'smoke' / 'artifacts'))
     if not root.is_dir():
         return ''
     best = None

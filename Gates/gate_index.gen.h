@@ -10,7 +10,7 @@
 
 namespace mc2::gate::detail {
 
-inline constexpr std::size_t kGateCount = 898;
+inline constexpr std::size_t kGateCount = 897;
 
 inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_3DVIEW_DIAG", Kind::Bool, Rule::Presence, {}},
@@ -305,7 +305,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_HZB_FORCE_HORIZON_Y", Kind::Float, Rule::Prefix, {}},
     {"MC2_HZB_VIEW_FILE", Kind::String, Rule::Std, {}},
     {"MC2_IBL_ASSET_STRICT", Kind::Bool, Rule::Lead1, {}},
-    {"MC2_ICON_FAILLOUD", Kind::Bool, Rule::Lead0, {}},
     {"MC2_IFACE_COST_SPLIT", Kind::Bool, Rule::Presence, {}},
     {"MC2_IMGUI", Kind::Bool, Rule::Lead0Kill, {}},
     {"MC2_IMGUI_DEMO", Kind::Bool, Rule::Lead1, {}},

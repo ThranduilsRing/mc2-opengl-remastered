@@ -861,13 +861,6 @@ static constexpr EnvVarDesc kAuxEnvVars[] = {
         "IN-MISSION-HUD-IMGUI-SCOPE-1 slice C witness: register a 4th 'test' tab (no legacy button; ImGui chrome via HudImGui::hudShrinkPoint + hudToDisplay, trivial...",
     },
     {
-        "MC2_FEATURE_ICON_FAILLOUD",
-        "MC2_ICON_FAILLOUD",
-        EnvVarKind::Feature,
-        false,
-        "META-FIX design B PART 3 (code/mechicon.cpp iconTileChecked at the three CPU icon-tile blits): default OFF. =1 substitutes a solid MAGENTA tile when an icon...",
-    },
-    {
         "MC2_TRACE_IFACE_COST_SPLIT",
         "MC2_IFACE_COST_SPLIT",
         EnvVarKind::Trace,

@@ -4176,6 +4176,45 @@
    "count": 1
   },
   {
+   "tag": "ICON_RECT",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "key",
+    "x",
+    "y",
+    "w",
+    "h"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "ICON_REGISTRY",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [],
+   "count": 1
+  },
+  {
+   "tag": "ICON_REGISTRY",
+   "ver": -1,
+   "stream": "stderr",
+   "keys": [
+    "key"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "ICON_REGISTRY",
+   "ver": -1,
+   "stream": "stdout",
+   "keys": [
+    "icons",
+    "atlas"
+   ],
+   "count": 1
+  },
+  {
    "tag": "IFACE_PERF",
    "ver": 1,
    "stream": "stdout",

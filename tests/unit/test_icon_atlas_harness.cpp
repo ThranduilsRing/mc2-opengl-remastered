@@ -1,150 +1,78 @@
 #include "doctest.h"
-#include <chrono>
-#include <cstdint>
-#include <cstdio>
-#include <cstring>
-#include <functional>
-#include <string>
-#include <vector>
-#include "icon_atlas_cell.h"
+#include "icon_registry.h"
+#include <numeric>
+#include <set>
 
-namespace {
-namespace ia = icon_atlas;
+using namespace unit_icons;
 
-TEST_CASE("icon_atlas_harness/cols_retail_256") {
-    CHECK((ia::columnsForAtlas(256.f, 25.f) == 10));
-    return;
-}
-
-TEST_CASE("icon_atlas_harness/cols_mc2x_512") {
-    CHECK((ia::columnsForAtlas(512.f, 25.f) == 20));
-    return;
-}
-
-TEST_CASE("icon_atlas_harness/cols_mco_1024_floors_not_rounds") {
-    CHECK((ia::columnsForAtlas(1024.f, 40.f) == 25));
-    return;
-}
-
-TEST_CASE("icon_atlas_harness/cols_exact_division_epsilon") {
-    CHECK((ia::columnsForAtlas(256.f, 32.f) == 8));
-    CHECK((ia::columnsForAtlas(512.f, 64.f) == 8));
-    return;
-}
-
-TEST_CASE("icon_atlas_harness/cols_fallback_on_zero_cell") {
-    CHECK((ia::columnsForAtlas(1024.f, 0.f) == ia::kFallbackCols));
-    CHECK((ia::columnsForAtlas(1024.f, -5.f) == ia::kFallbackCols));
-    return;
-}
-
-TEST_CASE("icon_atlas_harness/cols_fallback_when_cell_wider_than_atlas") {
-
-    CHECK((ia::columnsForAtlas(30.f, 40.f) == ia::kFallbackCols));
-    return;
-}
-
-TEST_CASE("icon_atlas_harness/cell_index0") {
-    ia::Cell c = ia::cellForIndex(0, 25.f, 38.f, 256.f);
-    CHECK((c.col == 0 && c.row == 0));
-    CHECK((c.u == 0.f && c.v == 0.f));
-    CHECK((c.u2 == 25.f && c.v2 == 38.f));
-    return;
-}
-
-TEST_CASE("icon_atlas_harness/cell_high_index_wrap_512") {
-    ia::Cell c = ia::cellForIndex(142, 25.f, 38.f, 512.f);
-    CHECK((c.cols == 20));
-    CHECK((c.col == 142 % 20));
-    CHECK((c.row == 142 / 20));
-    CHECK((c.u == (float)(142 % 20) * 25.f));
-    CHECK((c.v == (float)(142 / 20) * 38.f));
-    return;
-}
-
-TEST_CASE("icon_atlas_harness/cell_row_boundary") {
-    ia::Cell last = ia::cellForIndex(9, 25.f, 38.f, 256.f);
-    CHECK((last.col == 9 && last.row == 0));
-    ia::Cell wrap = ia::cellForIndex(10, 25.f, 38.f, 256.f);
-    CHECK((wrap.col == 0 && wrap.row == 1));
-    CHECK((wrap.v == 38.f));
-    return;
-}
-
-TEST_CASE("icon_atlas_harness/cell_uv_monotonic") {
-    for (long idx : {0, 1, 25, 99, 142}) {
-        ia::Cell c = ia::cellForIndex(idx, 25.f, 38.f, 512.f);
-        CHECK((c.u2 > c.u));
-        CHECK((c.v2 > c.v));
+TEST_CASE("icon_atlas_harness/source_keys_survive_packing") {
+    Registry r;
+    std::vector<uint32_t> stock(256 * 256);
+    std::iota(stock.begin(), stock.end(), 0u);
+    r.sheet("DATA\\ART/stock.tga", stock, 256, 256, 25, 30);
+    REQUIRE(r.icons.size() == 80);
+    REQUIRE(r.pack());
+    for (int index = 0; index < 80; ++index) {
+        const Icon* icon = r.find(legacyKey("data/art/stock.tga", index));
+        REQUIRE(icon);
+        for (int y = 0; y < 30; ++y)
+            for (int x = 0; x < 25; ++x) {
+                const auto expected = stock[(index / 10 * 30 + y) * 256 + index % 10 * 25 + x];
+                CHECK(icon->pixels[y * 25 + x] == expected);
+                CHECK(r.atlas[(icon->y + y) * r.edge + icon->x + x] == expected);
+            }
     }
-    return;
+    CHECK_FALSE(r.find("data/art/stock.tga:80"));
+    CHECK_FALSE(r.find("data/art/stock.tga:-1"));
 }
 
-TEST_CASE("icon_atlas_harness/cell_odd_dimensions") {
-    ia::Cell c = ia::cellForIndex(50, 33.f, 41.f, 777.f);
-    CHECK((c.cols == 23));
-    CHECK((c.col == 50 % 23 && c.row == 50 / 23));
-    return;
+TEST_CASE("icon_atlas_harness/reap3_152_and_mco_floor_non_square") {
+    Registry r;
+    std::vector<uint32_t> reap(512 * 512);
+    std::iota(reap.begin(), reap.end(), 0u);
+    r.sheet("reap", reap, 512, 512, 25, 30);
+    const Icon* transport = r.find("reap:152");
+    REQUIRE(transport);
+    CHECK(transport->pixels.front() == reap[(152 / 20 * 30) * 512 + 152 % 20 * 25]);
+    std::vector<uint32_t> mco(1024 * 512);
+    std::iota(mco.begin(), mco.end(), 0u);
+    r.sheet("mco", mco, 1024, 512, 40, 40);
+    REQUIRE(r.find("mco:75"));
+    CHECK(r.find("mco:75")->pixels.front() == mco[120 * 1024]);
+    CHECK_FALSE(r.find("mco:300"));
+    std::vector<uint32_t> tall(256 * 512);
+    r.sheet("tall", tall, 256, 512, 25, 30);
+    CHECK(r.find("tall:152"));
+    CHECK(r.find("tall:169"));
+    CHECK_FALSE(r.find("tall:170"));
+    REQUIRE(r.pack());
 }
 
-TEST_CASE("icon_atlas_harness/checked_retail_256_bounds") {
-    bool oob = true;
-    ia::Cell c = ia::cellForIndexChecked(79, 25.f, 30.f, 256.f, 256.f, &oob);
-    CHECK((!oob && c.row == 7));
-    ia::Cell c2 = ia::cellForIndexChecked(80, 25.f, 30.f, 256.f, 256.f, &oob);
-    CHECK((oob && c2.row == 8));
-    ia::Cell legacy = ia::cellForIndex(80, 25.f, 30.f, 256.f);
-    CHECK((c2.col == legacy.col && c2.row == legacy.row &&
-                c2.u == legacy.u && c2.v == legacy.v));
-    return;
+TEST_CASE("icon_atlas_harness/all_strip_columns_front_and_back") {
+    Registry r;
+    std::vector<uint32_t> strip(85 * 40 * 96);
+    std::iota(strip.begin(), strip.end(), 0u);
+    r.sheet("hud", strip, 3400, 96, 40, 48, true);
+    CHECK(r.icons.size() == 170);
+    REQUIRE(r.find("hud/back:76"));
+    CHECK(r.find("hud/back:76")->pixels.front() == strip[48 * 3400 + 76 * 40]);
+    CHECK_FALSE(r.find("hud:85"));
 }
 
-TEST_CASE("icon_atlas_harness/checked_mc2x_512_bounds") {
-    bool oob = true;
-    ia::Cell c = ia::cellForIndexChecked(142, 25.f, 30.f, 512.f, 512.f, &oob);
-    CHECK((!oob && c.row == 7));
-    (void)ia::cellForIndexChecked(118, 25.f, 30.f, 512.f, 512.f, &oob);
-    CHECK((!oob));
-    (void)ia::cellForIndexChecked(339, 25.f, 30.f, 512.f, 512.f, &oob);
-    CHECK((!oob));
-    (void)ia::cellForIndexChecked(340, 25.f, 30.f, 512.f, 512.f, &oob);
-    CHECK((oob));
-    return;
-}
-
-TEST_CASE("icon_atlas_harness/checked_mco_1024_bounds") {
-    bool oob = true;
-    (void)ia::cellForIndexChecked(624, 40.f, 40.f, 1024.f, 1024.f, &oob);
-    CHECK((!oob));
-    (void)ia::cellForIndexChecked(625, 40.f, 40.f, 1024.f, 1024.f, &oob);
-    CHECK((oob));
-    return;
-}
-
-TEST_CASE("icon_atlas_harness/checked_unknown_geometry_never_flags") {
-    bool oob = true;
-    (void)ia::cellForIndexChecked(9999, 25.f, 30.f, 256.f, 0.f, &oob);
-    CHECK((!oob));
-    (void)ia::cellForIndexChecked(9999, 25.f, 0.f, 256.f, 256.f, &oob);
-    CHECK((!oob));
-    return;
-}
-
-TEST_CASE("icon_atlas_harness/checked_negative_and_exact_rows") {
-    bool oob = false;
-    (void)ia::cellForIndexChecked(-1, 25.f, 30.f, 256.f, 256.f, &oob);
-    CHECK((oob));
-
-    (void)ia::cellForIndexChecked(63, 32.f, 32.f, 256.f, 256.f, &oob);
-    CHECK((!oob));
-    (void)ia::cellForIndexChecked(64, 32.f, 32.f, 256.f, 256.f, &oob);
-    CHECK((oob));
-    return;
-}
-
-TEST_CASE("icon_atlas_harness/demo_intentional_fail" * doctest::should_fail()) {
-    CHECK((ia::columnsForAtlas(1024.f, 40.f) == 26));
-    return;
-}
-
+TEST_CASE("icon_atlas_harness/loose_images_and_sheets_do_not_collide") {
+    Registry r;
+    r.add("mech/Marauder", 64, 64, std::vector<uint32_t>(4096, 0xff123456));
+    r.add("stock:152", 25, 30, std::vector<uint32_t>(750, 0xff654321));
+    r.add("mod:152", 40, 48, std::vector<uint32_t>(1920, 0xffabcdef));
+    REQUIRE(r.pack());
+    std::set<std::pair<int, int>> occupied;
+    for (const auto& [key, icon] : r.icons)
+        for (int y = -1; y <= icon.height; ++y)
+            for (int x = -1; x <= icon.width; ++x) {
+                CHECK(occupied.insert({icon.x + x, icon.y + y}).second);
+                CHECK(r.atlas[(icon.y + y) * r.edge + icon.x + x] == icon.pixels.front());
+            }
+    CHECK(r.find("MECH/MARAUDER"));
+    CHECK_FALSE(r.add("bad", 0, 0, {}));
+    CHECK_FALSE(r.add("bad", 25, 30, {}));
 }
