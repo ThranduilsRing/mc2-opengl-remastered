@@ -9354,7 +9354,7 @@
     "frame_upload_bytes",
     "last_survivors"
    ],
-   "count": 3
+   "count": 1
   },
   {
    "tag": "VEG_GPU",
@@ -9385,7 +9385,7 @@
     "draw_calls",
     "flush_reason"
    ],
-   "count": 3
+   "count": 1
   },
   {
    "tag": "VERIFY",
@@ -10424,7 +10424,7 @@
    "ver": 1,
    "stream": "stderr",
    "keys": [],
-   "count": 4
+   "count": 2
   },
   {
    "tag": "VK_RESIDENCY",
@@ -10571,7 +10571,7 @@
     "stride",
     "instances"
    ],
-   "count": 3
+   "count": 1
   },
   {
    "tag": "VK_SCENE_READBACK",
