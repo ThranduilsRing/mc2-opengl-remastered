@@ -7,6 +7,29 @@
 # frame, and it signals no timeline value, so the ticket arithmetic is unaffected. This script pins the exception: exactly one raw font-upload submit in the backend,
 # two vkQueueWaitIdle (before replacing an old font texture, after the upload), and no engine caller recreating the font texture on its own (which would make it a per-frame stall).
 cd "$(dirname "$0")/.." || exit 2
+if [ "${1:-}" = "--pipelines" ]; then
+    exec py -3 - <<'PY'
+from pathlib import Path
+import re
+import sys
+sys.path.insert(0, "scripts")
+from checklib import strip_comments
+calls = re.compile(r'\b(?:vkCreate\w*Pipelines|vkCmdBindPipeline)\s*\(')
+strings = re.compile(r'"(?:\\.|[^"\\])*"')
+errors = []
+for path in Path("GameOS/gameos").rglob("*"):
+    if path.suffix not in {".cpp", ".h"} or path.name == "vk_render_infra.cpp":
+        continue
+    text = path.read_text(encoding="utf-8")
+    if not calls.search(text):
+        continue
+    for number, line in enumerate(strip_comments(text).splitlines(), 1):
+        if calls.search(strings.sub("", line)):
+            errors.append(f"{path}:{number}: raw Vulkan pipeline call: {line.strip()}")
+print("\n".join(errors) if errors else "vk_pipeline_infra: PASS")
+sys.exit(bool(errors))
+PY
+fi
 hits=$(git grep -n -E 'vkQueueSubmit2?(KHR)?\(' -- 'GameOS/*.cpp' 'GameOS/*.h' 'RenderCore/*.cpp' 'RenderCore/*.h' 'GuiRuntime/*.cpp' 'GuiRuntime/*.h' \
     | grep -v '^GameOS/gameos/vulkan_context\.cpp:' | grep -v -E '^[^:]+:[0-9]+:[[:space:]]*//')
 if [ -n "$hits" ]; then
