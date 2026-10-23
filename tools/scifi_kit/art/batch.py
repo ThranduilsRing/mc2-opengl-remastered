@@ -27,6 +27,9 @@ HINTS = dict(counts='edit params counts.* (and features[]) to what the stock rea
              budget='cut detail: fewer dims.bays_*/vents/panels, or raise nothing',
              states='partial/destroyed must differ: needs removable skin + hit zones (dims), or set damage',
              sockets='doors/windows/bays counts must have placements; check features[]',
+             render='fix palette slots (lift near-black palette entries); winding is auto-recomputed in Blender',
+             placement='edit params features[] (side, at=u along the face from its centre, z, w, h) to the painted stock regions',
+             stock='re-run `run.py analyze <asset>`',
              bake='re-run the batch for this asset after fixing the message above')
 
 
@@ -98,12 +101,15 @@ def run_blender(tag, names, suffix, samples, log):
     job = {'kind': 'assembly', 'tag': f'{tag}-{suffix}', 'out': str(OUT / tag), 'assemblies': names_, 'conditions': CONDS, 'samples': samples, 'export': True}
     runmod.blender(job, OUT / 'logs' / f'{tag}-{suffix}.log')
     for n in names_:
+        assemble.ASSEMBLIES.setdefault(n, (lambda k, n=n: assemble._draft_info(k, n)))
         assemble.montage(OUT / tag, n, CONDS)
 
 
 def run_stockviews(tag, names):
     import run as runmod
-    job = {'kind': 'stock_views', 'tag': f'{tag}-stock', 'out': str(STOCK_VIEWS), 'assemblies': names}
+    import analyze
+    job = {'kind': 'stock_views', 'tag': f'{tag}-stock', 'out': str(STOCK_VIEWS), 'assemblies': names,
+           'stock': {n: analyze.stock_models(n)['intact'] for n in names}}
     runmod.blender(job, OUT / 'logs' / f'{tag}-stock.log')
 
 

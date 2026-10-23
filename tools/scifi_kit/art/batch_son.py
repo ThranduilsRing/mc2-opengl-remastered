@@ -279,8 +279,14 @@ def geodesicdome(k):
 
 
 # ------------------------------------------------------------ liquidstorage
+def _seg():
+    """Round tanks are truly round: the stock decagon was a 1990s budget limit, not a design."""
+    return 28 if geo.GAME_MESH else 56
+
+
 def _decagon(r, phase=math.pi / 2):
-    return [(r * math.cos(phase + i * math.tau / 10), r * math.sin(phase + i * math.tau / 10)) for i in range(10)]
+    n = _seg()
+    return [(r * math.cos(phase + i * math.tau / n), r * math.sin(phase + i * math.tau / n)) for i in range(n)]
 
 
 def liquidstorage(k):
@@ -352,14 +358,14 @@ def largefueltank(k):
     hexa_ = lambda r: _poly(r, 6, math.pi / 2)
     taper(k, hexa_(11.69), 0, hexa_(8.53), 4.69, 'paint.ped', 'mass')
     k.prism(hexa_(8.7), 4.69, 5.0, 'paint.ped', 'frame')
-    taper(k, _poly(7.3, 10), 4.72, _poly(Rb, 10), 6.2, 'paint.trim', 'mass')
+    taper(k, _poly(7.3, _seg()), 4.72, _poly(Rb, _seg()), 6.2, 'paint.trim', 'mass')
     # stacked shell bands: lower collar, hazard band, belt panels, upper plated course
     bands = [(6.2, 7.8, 'paint.trim'), (7.8, 11.6, 'hazard'), (11.6, 14.8, 'paint.second'), (14.8, 20.18, 'paint.main')]
     for (za, zb, m) in bands:
-        k.prism(_poly(Rb, 10), za, zb, m, 'mass')
+        k.prism(_poly(Rb, _seg()), za, zb, m, 'mass')
     # separate plates over the drum: each band x 10 faces (frame first: ring girders + corner straps)
     for z in (7.8, 11.6, 14.8, 20.0):
-        k.prism(_poly(Rb + .08, 10), z - .15, z + .15, 'paint.trim', 'frame')
+        k.prism(_poly(Rb + .08, _seg()), z - .15, z + .15, 'paint.trim', 'frame')
     for i in range(10):
         a0 = i * math.tau / 10
         a1 = a0 + math.tau / 10
@@ -373,9 +379,9 @@ def largefueltank(k):
             kit.hexa(k, [(v[0] + nx * .08, v[1] + ny * .08, v[2]) for v in q], [(v[0] - nx * .12, v[1] - ny * .12, v[2]) for v in q],
                      m, 'skin', removable=True)
         kit.bolts(k, (Rb * math.cos(a0) * 1.01, Rb * math.sin(a0) * 1.01, 20.0), (Rb * math.cos(a0) * 1.01, Rb * math.sin(a0) * 1.01, 14.9), pitch=.9)
-    taper(k, _poly(Rb, 10), 20.18, _poly(7.3, 10), 21.66, 'paint.trim', 'roof')
-    taper(k, _poly(7.3, 10), 21.66, _poly(3.3, 10), 22.57, 'paint.main', 'roof')
-    k.prism(_poly(3.2, 10), 22.57, 22.87, 'hazard', 'roof')
+    taper(k, _poly(Rb, _seg()), 20.18, _poly(7.3, _seg()), 21.66, 'paint.trim', 'roof')
+    taper(k, _poly(7.3, _seg()), 21.66, _poly(3.3, _seg()), 22.57, 'paint.main', 'roof')
+    k.prism(_poly(3.2, _seg()), 22.57, 22.87, 'hazard', 'roof')
     # pedestal fascia: three recessed control panels on the front faces, round access hatch on the front hex face
     for j, ang in enumerate((math.radians(-150), math.radians(-90), math.radians(-30))):
         cx, cy = 7.9 * math.cos(ang), 7.9 * math.sin(ang)

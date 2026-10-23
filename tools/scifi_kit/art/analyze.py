@@ -19,8 +19,22 @@ SCHEMA = 'mc2-kit-analysis/1'
 
 
 # ------------------------------------------------------------------ stock io
+def stock_models(name):
+    """The asset's own mapped stock models from the catalog: intact LOD0 stem, destroyed stem, intact/destroyed stems list."""
+    import counts
+    try:
+        obj = counts.catalog()[name]
+    except Exception:
+        return dict(intact=name, destroyed=None, source='no catalog entry; file name = id')
+    stem = lambda m: Path(m['tgl']).stem.lower()  # noqa: E731
+    intact = [stem(m) for m in obj['models'] if m['role'] == 'intact' and m.get('lod') == 0]
+    dest = [stem(m) for m in obj['models'] if m['role'] == 'destroyed']
+    return dict(intact=intact[0] if intact else name, destroyed=dest[0] if dest else None, source='catalog.json models[role=intact,lod=0]')
+
+
 def load_stock(name):
-    d = json.loads((STOCK / f'{name}.json').read_text())
+    stem = stock_models(name)['intact']
+    d = json.loads((STOCK / f'{stem}.json').read_text())
     V = np.array(d['vertices_m'], float).reshape(-1, 3, 3)
     UV = np.array(d['uv'], float).reshape(-1, 3, 2)
     mat = np.array(d['materials'], int)
@@ -30,7 +44,7 @@ def load_stock(name):
         at += n['triangles']
     if at != len(V):
         parts = [('all', 0, len(V))]
-    return dict(raw=d, V=V, UV=UV, mat=mat, parts=parts, name=name)
+    return dict(raw=d, V=V, UV=UV, mat=mat, parts=parts, name=name, stem=stem)
 
 
 def origin_offset(d, size):
@@ -187,6 +201,25 @@ def profile(V, h, axis, region=None, levels=17):
     return [[round(t, 3), round(v, 3)] for t, v in knots]
 
 
+def round_kind(P):
+    """'cylinder' / 'sphere' when the part's vertices sit on one radius (stock facets are a 1990s budget, not a design)."""
+    pts = P.reshape(-1, 3)
+    if len(np.unique(np.round(pts, 3), axis=0)) < 8:
+        return None
+    lo, hi = pts.min(0), pts.max(0)
+    sz = hi - lo
+    c = (lo + hi) / 2
+    r = np.hypot(pts[:, 0] - c[0], pts[:, 1] - c[1])
+    if sz[0] > .3 and .8 < sz[0] / max(sz[1], 1e-6) < 1.25:
+        sel = r > .25 * r.max()
+        if sel.sum() >= 6 and np.std(r[sel]) / max(np.mean(r[sel]), 1e-6) < .06 and sz[2] > .2 * sz[0]:
+            return 'cylinder'
+        r3 = np.linalg.norm(pts - c, axis=1)
+        if np.std(r3) / max(np.mean(r3), 1e-6) < .08 and abs(sz[2] - sz[0]) < .3 * sz[0]:
+            return 'sphere'
+    return None
+
+
 def roof_guess(V, size):
     """Flat / gable / mono / arch / hip(none) from the upward-facing height field."""
     w, d, h = size
@@ -267,7 +300,8 @@ def _used_px(st, sel):
             dr.polygon([((u % 1) * w if 0 < u < 1 else (u % 1) * w, (v % 1) * h) for u, v in uv], fill=255)
         mk = np.array(m) > 0
         px = tex[mk]
-        px = px[px[:, 3] > 128]
+        if mi < len(d['texture_alpha']) and d['texture_alpha'][mi]:
+            px = px[px[:, 3] > 128]
         px = px[~((px[:, 0] > 240) & (px[:, 2] > 240) & (px[:, 1] < 20))]
         out.append(px[:, :3])
     return np.concatenate(out) if out else np.zeros((0, 3), np.uint8)
@@ -431,7 +465,8 @@ def face_features(st, size):
             elif zb - z0 >= .7 and .4 <= ww <= 4.5 and .4 <= hh <= 3.2:
                 kind = 'windows'
             if kind:
-                feats[kind].append(dict(side=side, at_m=[round(float(tc), 1), round(float(zb + hh / 2), 1)], size_m=[round(float(ww), 1), round(float(hh), 1)], conf=round(float(.45 + .4 * min(1, fill)), 2)))
+                feats[kind].append(dict(side=side, at_m=[round(float(tc), 1), round(float(zb + hh / 2), 1)], size_m=[round(float(ww), 1), round(float(hh), 1)], conf=round(float(.45 + .4 * min(1, fill)), 2),
+                                        u_frac=round(float(tc / max((t1 - t0) / 2, 1e-6)), 2), source='stock texture (painted) region on this face'))
     # the same opening seen on coplanar duplicate layers counts once
     for k, lst in feats.items():
         seen, keep = set(), []
@@ -527,9 +562,14 @@ def analyze(name):
         if not len(P):
             continue
         plo, phi = P.reshape(-1, 3).min(0), P.reshape(-1, 3).max(0)
-        parts.append(dict(name=pname, tris=b - a, bbox_lo=[round(float(x), 3) for x in plo], bbox_hi=[round(float(x), 3) for x in phi],
+        parts.append(dict(name=pname, tris=b - a, role='base' if 'base' in pname.lower() else 'head' if pname.lower() in ('turret', 'head', 'gun') else 'body',
+                          round=round_kind(P), bbox_lo=[round(float(x), 3) for x in plo], bbox_hi=[round(float(x), 3) for x in phi],
                           profile_x=profile(P, h, 0), profile_y=profile(P, h, 1)))
     res['parts'] = parts
+    sm = stock_models(name)
+    res['stock_model'] = dict(asset=name, intact_stem=sm['intact'], destroyed_stem=sm['destroyed'], mesh=str(STOCK / f"{sm['intact']}.json"),
+                              parts=[(q['name'], q['role']) for q in parts], resolved_from=sm['source'])
+    res['round_parts'] = [q['name'] for q in parts if q['round']]
     res['profile'] = dict(x_all=profile(Vc, h, 0), y_all=profile(Vc, h, 1), x_body=profile(Vc, h, 0, near_end) if near_end else profile(Vc, h, 0),
                           long_axis='y' if long_ax == 1 else 'x', note='half-extent (m) vs height fraction; x_body = the end of the long axis away from the +Y terminal pier')
     res['roof'] = roof_guess(Vc, size)

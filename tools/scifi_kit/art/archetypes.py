@@ -49,7 +49,7 @@ def C(x):
 
 # ------------------------------------------------------------------ classification (inventory -> archetype)
 RULES = (
-    (r'dropship|^shuttle|^slayerp|^shilonep|extractionmarker|^nav1$|geodesicdome', 'manual'),
+    (r'dropship|^shuttle|^slayerp|^shilonep|extractionmarker|^nav1$', 'manual'),
     (r'^crash|^lifeboat|^junk|^mechpiece', 'junk'),
     (r'(light|medium|heavy)post(diag)?$', 'wall'),
     (r'gate$|milcheckpoint', 'gate'),
@@ -591,6 +591,14 @@ def draft_params(row, a, arch=None):
         g.update(legs=4 if 'watertower' in nm else 0, band='yellow' in ident or 'band' in ident)
     elif arch == 'turret':
         g.update(popup=h > 1.4 * max(w, d), barrels=2 if re_any(nm, ('twin', 'auto')) else 1)
+        basep = next((q for q in a['parts'] if q.get('role') == 'base' and q['tris']), None)
+        headp = [q for q in a['parts'] if q.get('role') == 'head' and q['tris']]
+        if basep:      # the stock's own base and head parts, not a generic base
+            g.update(base_h=round(basep['bbox_hi'][2], 2), base_r=round(max(basep['bbox_hi'][0] - basep['bbox_lo'][0], basep['bbox_hi'][1] - basep['bbox_lo'][1]) / 2, 2))
+        if headp:
+            lo = [min(q['bbox_lo'][i] for q in headp) for i in range(3)]
+            hi = [max(q['bbox_hi'][i] for q in headp) for i in range(3)]
+            g.update(house=[round(hi[0] - lo[0], 2), round(hi[1] - lo[1], 2), round(hi[2] - lo[2], 2)])
         p['counts']['legs_supports'] = 1
     elif arch == 'vehicle':
         g.update(cargo='tank' if 'fuel' in nm else 'none' if re_any(nm, ('armored', 'jeep', 'forklift', 'buggy')) else 'ambulance' if 'ambulance' in nm else 'box',
@@ -611,5 +619,7 @@ def draft_params(row, a, arch=None):
     elif arch == 'pipe':
         layout = 'cross' if 'fourway' in nm else 'tee' if 'threeway' in nm else 'corner' if 'corner' in nm else 'end' if nm.endswith('end') else 'straight'
         g.update(layout=layout)
+    p['stock_model'] = a.get('stock_model', {}).get('intact_stem', name)
+    p['round_parts'] = a.get('round_parts', [])
     p['draft_confidence'] = {f: c[f]['conf'] for f in FIELD.values() if p['counts'].get(f) or c[f]['n']}
     return p

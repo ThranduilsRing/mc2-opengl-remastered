@@ -66,7 +66,7 @@ def cloth(k, a, b, c, d, nu, nv, sag, mat, role='skin', thick=.02, sagdir=(0, 0,
 
 def arc_plate(k, R, th0, th1, z0, z1, t, mat, cx=0.0, cy=0.0, role='skin', **fl):
     """Vertical cylindrical shell plate (outer radius R, thickness t) between angles th0..th1."""
-    n = max(1, int(round((th1 - th0) / (math.pi / (4 if geo.GAME_MESH else 12)))))
+    n = max(1, int(round((th1 - th0) / (math.pi / (8 if geo.GAME_MESH else 24)))))
     vv, ff = [], []
     for rr in (R, R - t):
         for z in (z0, z1):
@@ -263,11 +263,12 @@ def tank(k, p):
     cap_h = D(p, 'cap_h', min(h * .12, 2.5))
     R = min((w if along_y else d) / 2, ((d if along_y else w) / n) / 2) * .96
     shell = h - leg_h - cap_h
+    N = 28 if geo.GAME_MESH else 56          # truly round: no era faceting
     for i in range(n):
         c = -(d if along_y else w) / 2 + ((d if along_y else w) / n) * (i + .5)
         cx, cy = (0.0, c) if along_y else (c, 0.0)
         with k.tagged(f'tank:{i}'):
-            k.prism(geo.reg_poly(R + .25, 24, cx=cx, cy=cy), 0, .3, 'ferro', 'mass', top=C(.08), part='footing')
+            k.prism(geo.reg_poly(R + .25, N, cx=cx, cy=cy), 0, .3, 'ferro', 'mass', top=C(.08), part='footing')
             if legs:
                 for q in range(legs):
                     a = q * math.tau / legs + math.pi / legs
@@ -280,8 +281,8 @@ def tank(k, p):
                     kit.ibeam(k, (p0[0], p0[1], .4), (p1[0], p1[1], leg_h * .62), d=.12, w=.08)
                     kit.ibeam(k, (p1[0], p1[1], .4), (p0[0], p0[1], leg_h * .62), d=.12, w=.08)
             else:
-                k.prism(geo.reg_poly(R * .96, 24, cx=cx, cy=cy), .3, leg_h, 'ferro', 'mass', top=C(.05))
-            k.prism(geo.reg_poly(R + .06, 24, cx=cx, cy=cy), leg_h - .12, leg_h + .12, 'paint.trim', 'frame')
+                k.prism(geo.reg_poly(R * .96, N, cx=cx, cy=cy), .3, leg_h, 'ferro', 'mass', top=C(.05))
+            k.prism(geo.reg_poly(R + .06, N, cx=cx, cy=cy), leg_h - .12, leg_h + .12, 'paint.trim', 'frame')
             courses = max(2, round(shell / 2.6))
             ch = shell / courses
             for c_ in range(courses):
@@ -290,12 +291,12 @@ def tank(k, p):
                 for s_ in range(per):
                     th0 = s_ * math.tau / per + (c_ % 2) * math.pi / per
                     arc_plate(k, R, th0 - .01, th0 + math.tau / per + .01, z0 + .01, z0 + ch - .01, .05 + .012 * ((s_ + c_) % 2), 'paint.main', cx, cy, removable=True)
-                k.prism(geo.reg_poly(R + .05, 24, cx=cx, cy=cy), z0 + ch - .05, z0 + ch + .05, 'paint.trim', 'frame')
+                k.prism(geo.reg_poly(R + .05, N, cx=cx, cy=cy), z0 + ch - .05, z0 + ch + .05, 'paint.trim', 'frame')
             if D(p, 'band', True):
                 with k.at((cx, cy, 0)):
                     kit.wrapped_band(k, R + .02, leg_h + shell * .42, leg_h + shell * .62, 0.0, 1.6)
-            k.cyl((cx, cy, leg_h + shell + cap_h * .25), R * .98, cap_h * .5, 'paint.second', 'skin', sides=24, top=C(R * .15), removable=True)
-            k.cyl((cx, cy, leg_h + shell + cap_h * .75), R * .55, cap_h * .5, 'paint.second', 'skin', sides=20, top=C(R * .1), removable=True)
+            k.cyl((cx, cy, leg_h + shell + cap_h * .25), R * .98, cap_h * .5, 'paint.second', 'skin', sides=N, top=C(R * .15), removable=True)
+            k.cyl((cx, cy, leg_h + shell + cap_h * .75), R * .55, cap_h * .5, 'paint.second', 'skin', sides=N, top=C(R * .1), removable=True)
             # access: ladder up the shell and a catwalk ring (detail)
             for z in range(1, int(shell / .35)):
                 k.box((cx + R + .05, cy, leg_h + z * .35), (.05, .4, .05), 'metal', 'detail')
@@ -314,9 +315,10 @@ def turret(k, p):
     hw, hd, hh = D(p, 'house', (w * .62, d * .45, h * .3))
     nb = int(D(p, 'barrels', 1))
     bl = D(p, 'barrel_len', d * .42)
-    k.prism(geo.reg_poly(br * 1.1, 8), 0, .35, 'ferro', 'mass', top=C(.1), part='footing')
-    k.prism(geo.reg_poly(br, 8), .35, bh, 'ferro', 'mass', top=C(.08), bot=C(.06))
-    k.prism(geo.reg_poly(br * 1.05, 16), bh - .12, bh + .1, 'paint.trim', 'frame')
+    N = 24 if geo.GAME_MESH else 48
+    k.prism(geo.reg_poly(br * 1.1, N), 0, .35, 'ferro', 'mass', top=C(.1), part='footing')
+    k.prism(geo.reg_poly(br, N), .35, bh, 'ferro', 'mass', top=C(.08), bot=C(.06))
+    k.prism(geo.reg_poly(br * 1.05, N), bh - .12, bh + .1, 'paint.trim', 'frame')
     z0 = bh + .1
     with k.tagged('support:0'):
         k.box((0, 0, z0 + .1), (hw * .8, hd * .8, .2), 'metal', 'frame')

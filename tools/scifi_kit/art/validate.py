@@ -136,7 +136,7 @@ def stock_mean(name):
         if a.get('palette'):
             return np.array(a['palette']['mean_linear'])
     info = analyze.palette_info(analyze.load_stock(name))
-    return np.array(info['mean_linear'])
+    return np.array(info['mean_linear']) if info else None
 
 
 def baked_mean(pass_dir, name, cond='pristine'):
@@ -176,6 +176,50 @@ def verifiable_fields(name):
     return {'crates', 'barrels'} & set(f for f, v in counts_mod.CONTRACTS.get(name, {}).items() if v['count'])
 
 
+# ------------------------------------------------------------------ cheap pre-render checks (failures the runner only saw after rendering)
+SLOT_CLASSES = ('paint', 'corr', 'ferro', 'wood', 'canvas')
+
+
+def render_sanity(k):
+    """Inverted solids (wrong face winding), unknown palette slots (Blender KeyError) and near-black material slots
+    (detail plates that bake black). Returns failure strings."""
+    out = []
+    pal = geo.LANG['palettes'][k.palette]
+    bad_slot, black, inverted = set(), set(), 0
+    closed = 0
+    for pc in k.pieces:
+        cls, _, slot = pc['m'].partition('.')
+        if cls in SLOT_CLASSES and slot and slot not in pal and not (cls in ('corr', 'wood', 'canvas', 'ferro') and True):
+            bad_slot.add(pc['m'])
+        if cls == 'paint' and slot and slot not in pal:
+            bad_slot.add(pc['m'])
+        col = archetypes.slot_colour(pc['m'], pal)
+        if col is not None and cls not in ('rubber', 'glass', 'char', 'lamp', 'lamp_red') and sum(col) / 3 < .02:
+            black.add(pc['m'])
+        # winding: signed volume of a closed piece must be positive (outward faces)
+        edges = {}
+        for f in pc['f']:
+            for i in range(len(f)):
+                e = (f[i], f[(i + 1) % len(f)])
+                edges[e] = edges.get(e, 0) + 1
+        if edges and all(edges.get((b, a), 0) == c for (a, b), c in edges.items()):
+            closed += 1
+            V = pc['v']
+            vol = 0.0
+            for f in pc['f']:
+                for i in range(1, len(f) - 1):
+                    a, b, c = V[f[0]], V[f[i]], V[f[i + 1]]
+                    vol += (a[0] * (b[1] * c[2] - b[2] * c[1]) - a[1] * (b[0] * c[2] - b[2] * c[0]) + a[2] * (b[0] * c[1] - b[1] * c[0])) / 6
+            inverted += vol < -1e-9
+    if bad_slot:
+        out.append('render: palette slot(s) missing from the palette (Blender would raise): ' + ', '.join(sorted(bad_slot)))
+    if black:
+        out.append('render: material slot(s) resolve to near-black (would bake black): ' + ', '.join(sorted(black)))
+    if closed and inverted > .85 * closed:
+        out.append(f'render: {inverted} of {closed} closed pieces have inward faces (wrong winding)')
+    return out
+
+
 # ------------------------------------------------------------------ the validator
 def validate(name, pass_dir=None, pre=False, with_masks=True):
     """-> dict(asset, ok, failures[], notes[], metrics{}). `pass_dir` adds the post-bake checks."""
@@ -184,6 +228,7 @@ def validate(name, pass_dir=None, pre=False, with_masks=True):
     if name not in drafts.DRAFTS:
         return dict(asset=name, ok=False, failures=[f'{name}: not registered (no params.json / not a legacy draft)'], notes=[], metrics={})
     size = drafts.SIZES[name]
+    fails.extend(check_stock_reference(name))
     k0 = build_game(name, 'pristine')
     # --- states
     ks = {}
@@ -199,6 +244,7 @@ def validate(name, pass_dir=None, pre=False, with_masks=True):
     for c in ('partial', 'destroyed'):
         if c in ks and tri_count(ks[c]) == tri_count(k0) and all(a['v'] == b['v'] for a, b in zip(ks[c].pieces, k0.pieces)):
             fails.append(f'states: {c} is identical to pristine (no removable skin / hit zone?)')
+    fails.extend(render_sanity(k0))
     # --- budget
     bud = bake_budget.budget(name)
     met['tris'] = {c: tri_count(kk) for c, kk in ks.items()}
@@ -229,9 +275,13 @@ def validate(name, pass_dir=None, pre=False, with_masks=True):
     skipped = sorted(set(f for f, v in contract.items() if v['count']) - verifiable_fields(name))
     if skipped:
         notes.append('counts not verifiable (no tags): ' + ', '.join(skipped))
+    fails.extend(check_placement(name, k0, notes))
     # --- palette (declared)
     try:
-        de = delta_e(remake_mean_colour(k0), stock_mean(name))
+        sm_ = stock_mean(name)
+        if sm_ is None:
+            raise ValueError('stock texture unreadable')
+        de = delta_e(remake_mean_colour(k0), sm_)
         met['palette_de'] = round(de, 1)
         if de > th['palette_de_max']:
             fails.append(f'palette: remake mean colour dE {de:.1f} from the stock texture mean (max {th["palette_de_max"]})')
@@ -258,6 +308,75 @@ def validate(name, pass_dir=None, pre=False, with_masks=True):
     return dict(asset=name, ok=not fails, failures=fails, notes=notes, metrics=met)
 
 
+def check_stock_reference(name):
+    """The remake's stock reference must be the asset's OWN mapped intact mesh (catalog), not a look-alike."""
+    want = analyze.stock_models(name)['intact']
+    if not (analyze.STOCK / f'{want}.json').is_file():
+        return [f'stock reference: mapped mesh {want}.json is missing for {name}']
+    ap = analyze.ASSETS / f'{name}.analysis.json'
+    if ap.is_file():
+        got = json.loads(ap.read_text()).get('stock_model', {}).get('intact_stem')
+        if got != want:
+            return [f'stock reference: analysis used mesh {got!r} but {name} maps to {want!r}; re-run `run.py analyze {name}`']
+    return []
+
+
+def _model_features(k, w, d):
+    """Placement of every tagged feature in the model: (kind, side, u along the face, z centre)."""
+    groups = {}
+    for pc in k.pieces:
+        g = pc.get('group') or ''
+        m = re.match(r'^(door|window|bay):(\d+)$', g)
+        if m:
+            groups.setdefault((m.group(1), int(m.group(2))), []).append(pc)
+    out = []
+    for (kind, _), pcs in groups.items():
+        pts = [v for p in pcs for v in p['v']]
+        c = [sum(v[i] for v in pts) / len(pts) for i in range(3)]
+        dist = {'front': abs(c[1] + d / 2), 'rear': abs(c[1] - d / 2), 'left': abs(c[0] + w / 2), 'right': abs(c[0] - w / 2)}
+        side = min(dist, key=dist.get)
+        u = {'front': c[0], 'rear': -c[0], 'left': -c[1], 'right': c[1]}[side]
+        zs = [v[2] for v in pts]
+        out.append((kind, side, u, (min(zs) + max(zs)) / 2))
+    return out
+
+
+def check_placement(name, k, notes):
+    """Per side: left/right/centred position and row height of doors/bays/windows vs the confirmed placements in params
+    (and, as a note, vs the painted regions measured on the stock texture)."""
+    arch = drafts.ARCH_OF.get(name)
+    if arch not in ('box', 'tower'):
+        return []
+    pp = analyze.ASSETS / f'{name}.params.json'
+    if not pp.is_file():
+        return []
+    p = json.loads(pp.read_text())
+    w, d, h = drafts.SIZES[name]
+    model = _model_features(k, w, d)
+    out = []
+    for kind in ('door', 'bay', 'window'):
+        want = [f for f in p.get('features', []) if f['kind'] == kind]
+        for side in archetypes.SIDES:
+            wf = sorted((f['at'], f['z'] + f['h'] / 2) for f in want if f['side'] == side)
+            mf = sorted((u, z) for kd, sd, u, z in model if kd == kind and sd == side)
+            if len(wf) != len(mf) and wf:
+                out.append(f'placement: {kind}s on {side}: params list {len(wf)} at u={[round(a, 1) for a, _ in wf]} but the model has {len(mf)} at u={[round(a, 1) for a, _ in mf]}')
+                continue
+            length = d if side in ('left', 'right') else w
+            for (u0, z0), (u1, z1) in zip(wf, mf):
+                if abs(u0 - u1) > max(1.2, .1 * length) or abs(z0 - z1) > 0.9:
+                    out.append(f'placement: {kind} on {side} planned at u={u0:.1f},z={z0:.1f} but built at u={u1:.1f},z={z1:.1f}')
+    ap = analyze.ASSETS / f'{name}.analysis.json'
+    if ap.is_file():
+        a = json.loads(ap.read_text())
+        for field, kind in (('windows', 'window'), ('doors', 'door')):
+            seen = {f['side'] for f in a['counts'][field]['where'] if f.get('conf', 0) >= .6}
+            have = {sd for kd, sd, _, _ in model if kd == kind}
+            if seen - have:
+                notes.append(f'stock texture shows painted {kind}s on {sorted(seen - have)} that the model lacks (check features[])')
+    return out
+
+
 def lights_for(k):
     import lights
     return lights.from_kit(k, k.meta['condition'])
@@ -267,7 +386,7 @@ def expected_sockets(name, k):
     """Sockets the stock contract promises: one per door/bay/window the model is checked for, plus any the builder declared."""
     if drafts.ARCH_OF.get(name):
         import arch_props
-        tagged = set(arch_props.TAGGED.get(drafts.ARCH_OF[name], ()))
+        tagged = set(arch_props.TAGGED.get(drafts.ARCH_OF[name], ())) if drafts.ARCH_OF[name] in ('box', 'tower') else set()
         c = counts_mod.CONTRACTS.get(name, {})
         need = sum(c.get(f, {}).get('count') or 0 for f in ('doors', 'openings_bays', 'windows') if f in tagged)
         return max(need, len(k.meta.get('sockets', [])))
@@ -323,8 +442,9 @@ def calibrate(names=None, pass_dir=None):
     for n in names:
         k0 = build_game(n, 'pristine')
         sil = silhouette(n, k0, drafts.SIZES[n], DEFAULT['thin_px'])
+        sm_ = stock_mean(n)
         row = dict(iou={v: r['iou'] for v, r in sil.items() if not r['thin']}, thin=[v for v, r in sil.items() if r['thin']],
-                   palette_de=round(delta_e(remake_mean_colour(k0), stock_mean(n)), 1))
+                   palette_de=round(delta_e(remake_mean_colour(k0), sm_), 1) if sm_ is not None else 0.0)
         if pass_dir and (Path(pass_dir) / 'pbr' / f'{n}_pristine_basecolor.png').is_file():
             row['baked_de'] = round(delta_e(baked_mean(pass_dir, n), stock_mean(n)), 1)
         rows[n] = row
