@@ -170,7 +170,7 @@ TEST_CASE("terrain fields: cooked detail-normal layers compose level-major and r
     const RenderCore::KtxImage layers[] = {bc7Layer(8, 1), bc7Layer(8, 2), bc7Layer(8, 3)};
     REQUIRE(store.setMaterialNormals(layers));
     const auto& array = store.materialNormals();
-    REQUIRE(array.image);
+    REQUIRE(static_cast<bool>(array.image));
     CHECK(array.layers == 3);
     CHECK(array.image->mipCount == 4);   // 8, 4, 2, 1
     // Level 0 is 2x2 blocks per layer (64 bytes), then levels 1-3 are one block per layer.
@@ -185,11 +185,11 @@ TEST_CASE("terrain fields: cooked detail-normal layers compose level-major and r
     noMips.mipCount = 1; noMips.mipByteOffsets.resize(1); noMips.pixels.resize(64);
     const RenderCore::KtxImage partial[] = {bc7Layer(8, 1), noMips};
     CHECK_FALSE(store.setMaterialNormals(partial));
-    CHECK_FALSE(store.materialNormals().image);
+    CHECK_FALSE(static_cast<bool>(store.materialNormals().image));
     const RenderCore::KtxImage mixed[] = {bc7Layer(8, 1), bc7Layer(16, 1)};
     CHECK_FALSE(store.setMaterialNormals(mixed));
     REQUIRE(store.setMaterialNormals(layers));
     CHECK(store.materialNormals().version != v);
     CHECK_FALSE(store.setMaterialNormals({}));
-    CHECK_FALSE(store.materialNormals().image);
+    CHECK_FALSE(static_cast<bool>(store.materialNormals().image));
 }
