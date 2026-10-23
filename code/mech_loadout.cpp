@@ -54,7 +54,7 @@ static int resolveOptionalEquipmentIdColumn(CSVFile* mechFile, long row)
 	// WHICH row, WHICH field, and the fallback taken. getFilename() is the loadout
 	// CSV being parsed (mods override it whole-file, so the winning path IS the
 	// modder's file).
-	auto idAliasContext = [&](const char* msg, const char* expected) -> std::string {
+	auto idAliasContext = [&](std::string_view msg, std::string_view expected) -> std::string {
 		char fieldBuf[48];
 		(*std::format_to_n(fieldBuf, (sizeof(fieldBuf)) - 1, "EquipmentId (csv col {:d}, row {:d})",
 		              mc2::fmt::as_i32(static_cast<int>(kEquipmentIdCsvColumn)), mc2::fmt::as_i32(row)).out = '\0');

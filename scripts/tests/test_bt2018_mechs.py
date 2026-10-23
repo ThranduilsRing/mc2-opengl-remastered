@@ -21,9 +21,9 @@ sys.path.insert(0, str(REPO))
 sys.path.insert(0, str(REPO / "scripts"))
 
 from tools.bt2018_mechs import btjson, compile as C  # noqa: E402
+from tools.mc2data.stock_corpus import resolve, StockDataError  # noqa: E402
 
 DUMP = Path("A:/Games/mc2-opengl/BattleTech_2018_Dump/TextAsset")
-COMPBAS = Path("A:/Games/mc2-opengl/mc2srcdata-fresh/objects/compbas.csv")
 
 
 @pytest.fixture(scope="module")
@@ -87,11 +87,14 @@ def test_pack_racks_are_explicit_definitions_with_free_ordinals(tables):
     assert "l LegacyMasterId=60" in text and 'st MissileType="LRM"' in text and "b Enabled=TRUE" in text
 
 
-@pytest.mark.skipif(not COMPBAS.is_file(), reason="stock compbas.csv not present")
 def test_stock_snapshots_match_compbas(tables):
+    try:
+        compbas = resolve("objects", names=["compbas.csv"]).dir / "compbas.csv"
+    except StockDataError as exc:
+        pytest.skip(str(exc))
     wm, _ = tables
     rows = {}
-    for row in csv.reader(io.StringIO(COMPBAS.read_text(encoding="latin-1"))):
+    for row in csv.reader(io.StringIO(compbas.read_text(encoding="latin-1"))):
         try:
             rows[int(row[0])] = row
         except (ValueError, IndexError):

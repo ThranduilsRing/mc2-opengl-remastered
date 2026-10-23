@@ -21,6 +21,7 @@
 #include <string_view>
 #include <vector>
 #include <cstdint>
+#include <optional>
 
 namespace mc2pkg {
 
@@ -120,13 +121,13 @@ inline std::vector<int> assignMounts(const PackageChassis& c, const std::vector<
     std::vector<int> out(items.size(), -1);
     std::vector<bool> used(c.hardpoints.size(), false);
     bool ok = true;
-    auto take = [&](const std::string& loc, Mount m) -> int {
+    auto take = [&](std::string_view loc, Mount m) -> std::optional<int> {
         for (size_t k = 0; k < c.hardpoints.size(); ++k)
             if (!used[k] && c.hardpoints[k].mount == m && c.hardpoints[k].location == loc) {
                 used[k] = true;
                 return static_cast<int>(k);
             }
-        return -1;
+        return std::nullopt;
     };
     // Pass 1: non-AP weapons claim category mounts first so an AP-capable item never
     // steals the only Energy mount a laser needs.
@@ -138,10 +139,10 @@ inline std::vector<int> assignMounts(const PackageChassis& c, const std::vector<
             if ((pass == 0) == ap) continue;
             const Region* r = regionForFootprint(c, p.x, p.y, p.w, p.h);
             if (!r) { ok = false; continue; }
-            int k = ap ? take(r->location, Mount::AntiPersonnel) : -1;
-            if (k < 0) k = take(r->location, p.category);
-            if (k < 0) ok = false;
-            out[i] = k;
+            auto k = ap ? take(r->location, Mount::AntiPersonnel) : std::nullopt;
+            if (!k) k = take(r->location, p.category);
+            if (!k) ok = false;
+            out[i] = k.value_or(-1);
         }
     }
     if (allMounted) *allMounted = ok;
@@ -221,7 +222,7 @@ inline float massUsed(const std::vector<Placed>& items) {
 void packageChassisEnsureRegistry(long firstFreeTypeNum, long limitExclusive);
 const std::vector<mc2pkg::PackageChassis>& packageChassisAll();
 const mc2pkg::PackageChassis* packageChassisByTypeNum(long objTypeNum);
-const mc2pkg::PackageChassis* packageChassisByStem(const char* stem);
-const mc2pkg::PackageChassis* packageChassisById(const char* chassisId);
+const mc2pkg::PackageChassis* packageChassisByStem(std::string_view stem);
+const mc2pkg::PackageChassis* packageChassisById(std::string_view chassisId);
 
 #endif // PACKAGE_CHASSIS_H

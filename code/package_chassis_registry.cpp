@@ -14,6 +14,7 @@
 #include <cctype>
 #include <cstring>
 #include <sstream>
+#include <filesystem>
 
 namespace {
 
@@ -21,39 +22,38 @@ std::vector<mc2pkg::PackageChassis> g_chassis;
 bool g_built = false;
 
 void collectChassisDef(const char* absPath, void* user) {
-    const char* base = absPath;
-    for (const char* p = absPath; *p; ++p)
-        if (*p == '/' || *p == '\\') base = p + 1;
-    if (_stricmp(base, "chassisdef.fit") == 0)
+    const auto base = std::filesystem::path(absPath).filename().string();
+    if (_stricmp(base.c_str(), "chassisdef.fit") == 0)
         static_cast<std::vector<std::string>*>(user)->push_back(absPath);
 }
 
-std::string readStr(FitIniFile& f, const char* key) {
+std::string readStr(FitIniFile& f, std::string_view key) {
     char buf[256] = {0};
     if (f.readIdString(key, buf, sizeof(buf) - 1) != NO_ERR) return {};
     return buf;
 }
 
-long readLong(FitIniFile& f, const char* key, long fallback) {
+long readLong(FitIniFile& f, std::string_view key, long fallback) {
     long v = fallback;
     if (f.readIdLong(key, v) != NO_ERR) v = fallback;
     return v;
 }
 
-float readFloat(FitIniFile& f, const char* key, float fallback) {
+float readFloat(FitIniFile& f, std::string_view key, float fallback) {
     float v = fallback;
     if (f.readIdFloat(key, v) != NO_ERR) v = fallback;
     return v;
 }
 
-void finding(const std::string& path, const char* what) {
+void finding(std::string_view path, std::string_view what) {
     mc2::fmt::print_out("[PACKAGE_CHASSIS] {}: {} -- chassis skipped\n", path, what);
 }
 
-bool parse(const std::string& path, mc2pkg::PackageChassis& out) {
+std::optional<mc2pkg::PackageChassis> parse(std::string_view path) {
+    mc2pkg::PackageChassis out;
     FitIniFile f;
-    if (f.open(path.c_str()) != NO_ERR) { finding(path, "cannot open"); return false; }
-    if (f.seekBlock("Chassis") != NO_ERR) { finding(path, "no [Chassis] block"); return false; }
+    if (f.open(std::string(path).c_str()) != NO_ERR) { finding(path, "cannot open"); return std::nullopt; }
+    if (f.seekBlock("Chassis") != NO_ERR) { finding(path, "no [Chassis] block"); return std::nullopt; }
     out.fitPath = path;
     out.chassisId = mc2id::canonicalizeQualifiedId(readStr(f, "ChassisId"));
     out.stem = readStr(f, "Stem");
@@ -67,34 +67,34 @@ bool parse(const std::string& path, mc2pkg::PackageChassis& out) {
     if (f.readIdBoolean("Purchasable", purch) == NO_ERR) out.purchasable = purch;
     const long regionCount = readLong(f, "RegionCount", 0);
     const long hardpointCount = readLong(f, "HardpointCount", 0);
-    if (out.chassisId.empty() || !mc2id::isModAuthorable(out.chassisId)) { finding(path, "ChassisId must be a non-core qualified id"); return false; }
-    if (out.stem.empty()) { finding(path, "no Stem"); return false; }
-    if (out.payload <= 0.0f) { finding(path, "no Payload"); return false; }
+    if (out.chassisId.empty() || !mc2id::isModAuthorable(out.chassisId)) { finding(path, "ChassisId must be a non-core qualified id"); return std::nullopt; }
+    if (out.stem.empty()) { finding(path, "no Stem"); return std::nullopt; }
+    if (out.payload <= 0.0f) { finding(path, "no Payload"); return std::nullopt; }
 
     char block[32];
     for (long i = 0; i < regionCount; ++i) {
         mc2::fmt::to_buf(block, "Region{:d}", mc2::fmt::as_i32(i));
-        if (f.seekBlock(block) != NO_ERR) { finding(path, "missing [RegionN] block"); return false; }
+        if (f.seekBlock(block) != NO_ERR) { finding(path, "missing [RegionN] block"); return std::nullopt; }
         mc2pkg::Region r;
         r.location = readStr(f, "Location");
         r.x = readLong(f, "X", -1); r.y = readLong(f, "Y", -1);
         r.w = readLong(f, "W", 0);  r.h = readLong(f, "H", 0);
         if (r.location.empty() || r.x < 0 || r.y < 0 || r.w < 1 || r.h < 1 || r.x + r.w > 6 || r.y + r.h > 6) {
             finding(path, "region outside the 6x6 mech-lab grid");
-            return false;
+            return std::nullopt;
         }
         out.regions.push_back(std::move(r));
     }
     for (long i = 0; i < hardpointCount; ++i) {
         mc2::fmt::to_buf(block, "Hardpoint{:d}", mc2::fmt::as_i32(i));
-        if (f.seekBlock(block) != NO_ERR) { finding(path, "missing [HardpointN] block"); return false; }
+        if (f.seekBlock(block) != NO_ERR) { finding(path, "missing [HardpointN] block"); return std::nullopt; }
         mc2pkg::Hardpoint h;
         h.id = readStr(f, "Id");
         h.location = readStr(f, "Location");
         h.mount = mc2pkg::mountFromName(readStr(f, "Mount"));
         h.socket = readStr(f, "Socket");
         h.key = mc2pkg::hardpointKey(h.id);
-        if (h.id.empty() || h.mount == mc2pkg::Mount::None || h.socket.empty()) { finding(path, "hardpoint needs Id, Mount and Socket"); return false; }
+        if (h.id.empty() || h.mount == mc2pkg::Mount::None || h.socket.empty()) { finding(path, "hardpoint needs Id, Mount and Socket"); return std::nullopt; }
         out.hardpoints.push_back(std::move(h));
     }
     if (f.seekBlock("MountTags") == NO_ERR) {
@@ -103,7 +103,7 @@ bool parse(const std::string& path, mc2pkg::PackageChassis& out) {
         while (std::getline(ss, tok, ','))
             if (!tok.empty()) out.antiPersonnelOrdinals.push_back(std::atoi(tok.c_str()));
     }
-    return true;
+    return out;
 }
 
 } // namespace
@@ -118,17 +118,17 @@ void packageChassisEnsureRegistry(long firstFreeTypeNum, long limitExclusive) {
     std::vector<mc2pkg::PackageChassis> found;
     for (const std::string& p : paths) {
         // Only a package that declares the capability may register chassis.
-        std::string key = p;
-        std::replace(key.begin(), key.end(), '\\', '/');
+        std::string key = std::filesystem::path(p).generic_string();
         for (char& ch : key) ch = static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
         const size_t at = key.find("data/defs/chassis/");
         if (at == std::string::npos || !ModOwnerHasCapability(key.c_str() + at, "package_chassis")) {
             finding(p, "owning mod does not declare the package_chassis capability");
             continue;
         }
-        mc2pkg::PackageChassis c;
-        if (!parse(p, c)) continue;
-        if (const char* owner = LookupModOwner(key.c_str() + at)) c.modId = owner;
+        auto parsed = parse(p);
+        if (!parsed) continue;
+        auto& c = *parsed;
+        if (auto owner = LookupModOwner(key.c_str() + at)) c.modId = owner;
         bool duplicate = false;
         for (const auto& existing : found)
             if (existing.chassisId == c.chassisId || _stricmp(existing.stem.c_str(), c.stem.c_str()) == 0) duplicate = true;
@@ -157,15 +157,15 @@ const mc2pkg::PackageChassis* packageChassisByTypeNum(long objTypeNum) {
     return nullptr;
 }
 
-const mc2pkg::PackageChassis* packageChassisByStem(const char* stem) {
-    if (!stem) return nullptr;
+const mc2pkg::PackageChassis* packageChassisByStem(std::string_view stem) {
+    if (stem.empty()) return nullptr;
     for (const auto& c : g_chassis)
-        if (_stricmp(c.stem.c_str(), stem) == 0) return &c;
+        if (c.stem.size() == stem.size() && _strnicmp(c.stem.data(), stem.data(), stem.size()) == 0) return &c;
     return nullptr;
 }
 
-const mc2pkg::PackageChassis* packageChassisById(const char* chassisId) {
-    if (!chassisId) return nullptr;
+const mc2pkg::PackageChassis* packageChassisById(std::string_view chassisId) {
+    if (chassisId.empty()) return nullptr;
     const std::string want = mc2id::canonicalizeQualifiedId(chassisId);
     for (const auto& c : g_chassis)
         if (c.chassisId == want) return &c;

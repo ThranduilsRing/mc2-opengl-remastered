@@ -628,7 +628,7 @@ static bool capabilityEquals(std::string_view a, std::string_view b) {
 bool ModHasCapability(std::string_view modId, std::string_view capability) {
     for (const auto& [id, caps] : g_modCapabilities)
         if (id == modId)
-            return std::ranges::any_of(caps, [&](const std::string& c) { return capabilityEquals(c, capability); });
+            return std::ranges::any_of(caps, [&](std::string_view c) { return capabilityEquals(c, capability); });
     return false;
 }
 

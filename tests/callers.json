@@ -74,7 +74,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/tests/test_bt2018_mechs.py",
-          "line": 300,
+          "line": 303,
           "evidence": "import",
           "reference": "bt2018_retarget_clips",
           "text": "from bt2018_retarget_clips import retarget_file"
@@ -7301,7 +7301,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/tests/test_bt2018_mechs.py",
-          "line": 303,
+          "line": 306,
           "evidence": "import_module",
           "reference": "convert_all_bt2018",
           "text": "conv = importlib.import_module(\"convert_all_bt2018\")"
@@ -7358,14 +7358,14 @@
         },
         {
           "path": "scripts/tests/test_bt2018_mechs.py",
-          "line": 330,
+          "line": 333,
           "evidence": "import",
           "reference": "tools.bt2018_mechs",
           "text": "from tools.bt2018_mechs import render_icons as R"
         },
         {
           "path": "scripts/tests/test_bt2018_mechs.py",
-          "line": 354,
+          "line": 357,
           "evidence": "import",
           "reference": "tools.bt2018_mechs",
           "text": "from tools.bt2018_mechs import sockets as SK"
@@ -7480,7 +7480,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/tests/test_bt2018_mechs.py",
-          "line": 330,
+          "line": 333,
           "evidence": "import",
           "reference": "tools.bt2018_mechs.render_icons",
           "text": "from tools.bt2018_mechs import render_icons as R"
@@ -7509,7 +7509,7 @@
       "callers_by_stem": [
         {
           "path": "scripts/tests/test_bt2018_mechs.py",
-          "line": 354,
+          "line": 357,
           "evidence": "import",
           "reference": "tools.bt2018_mechs.sockets",
           "text": "from tools.bt2018_mechs import sockets as SK"
@@ -8330,6 +8330,13 @@
           "evidence": "import",
           "reference": "stock_corpus",
           "text": "import stock_corpus as sc  # noqa: E402"
+        },
+        {
+          "path": "scripts/tests/test_bt2018_mechs.py",
+          "line": 24,
+          "evidence": "import",
+          "reference": "tools.mc2data.stock_corpus",
+          "text": "from tools.mc2data.stock_corpus import resolve, StockDataError  # noqa: E402"
         },
         {
           "path": "tools/blender_pipeline/srcdata.py",

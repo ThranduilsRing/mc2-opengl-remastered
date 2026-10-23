@@ -11,7 +11,7 @@ the owner's files, with tools and recipes kept apart from the extracted assets.
 | Piece | Where |
 |---|---|
 | Recipe (BT ChassisDef/MechDef/MovementCapDef schema + MC2 layout) | `tools/bt2018_mechs/recipes/<family>.json` |
-| Weapon mapping table, balance profile | `tools/bt2018_mechs/data/weapon_map_v1.json`, `balance_profile_v1.json` |
+| Weapon mapping table, balance profile | `tools/bt2018_mechs/data/weapon_map_v1.json`, `tools/bt2018_mechs/data/balance_profile_v1.json` |
 | Compiler (recipe -> profile -> compatibility files) | `tools/bt2018_mechs/compile.py` |
 | Pack builder (writes `mods/bt2018_mechs/`) | `tools/bt2018_mechs/build_pack.py` |
 | Package chassis rules (pure) + registry (engine) | `code/package_chassis.h`, `code/package_chassis_registry.cpp` |
@@ -85,7 +85,7 @@ left a thin, marked adapter for the pipeline to replace:
   cache keys).
 - Base textures are copied as the earlier cook left them (alb TGA, AO/normal KTX2).
 
-Per mech asset the IR (`tools/content_pipeline/ir.py`) should carry, and the runtime should
+Per mech asset the planned content-pipeline IR should carry, and the runtime should
 consume:
 
 1. **Identity**: `replaces: "chassis:bt2018:<family>"` (qualified chassis id, not a host
