@@ -8,6 +8,8 @@ from pathlib import Path
 
 import pytest
 
+from scripts import console_child
+
 from tools.mission_codec import (decode_move, encode_move, encode_objects,
                                  fit_sections, move_fields, object_records, packet, parent_cell)
 from tools.mc2data.stock_missions import resolve_missions_dir
@@ -40,7 +42,8 @@ def _reader():
     """The built native reader: $MC2_CODEC_READER, else a known build output; the contract row builds it when missing."""
     found = os.environ.get('MC2_CODEC_READER') or next((str(ROOT / c) for c in READER_CANDIDATES if (ROOT / c).exists()), None)
     if not found and _required():
-        subprocess.run([sys.executable, str(ROOT / 'scripts/ninja_build.py'), 'editor_objective_reader_tests'], check=True)
+        subprocess.run([sys.executable, str(ROOT / 'scripts/ninja_build.py'), 'editor_objective_reader_tests'], check=True,
+                       **console_child.child_kwargs())
         found = next((str(ROOT / c) for c in READER_CANDIDATES if (ROOT / c).exists()), None)
     if not found:
         _skip_or_fail('editor_objective_reader_tests.exe not built (py -3 scripts/ninja_build.py editor_objective_reader_tests)')
@@ -73,7 +76,7 @@ def test_stock_native_roundtrip(tmp_path):
                   tmp_path / f'{name}_roundtrip.pak')
     (tmp_path / 'codec_case.txt').write_text('\n'.join([str(tmp_path), install, '']), encoding='utf8')
     result = subprocess.run([reader, '--test-case=mission-codec/*', '--no-breaks'],
-                            cwd=tmp_path, capture_output=True, text=True)
+                            cwd=tmp_path, capture_output=True, text=True, **console_child.child_kwargs(redirected=True))
     (tmp_path / 'native.log').write_text(result.stdout + result.stderr, encoding='utf8')
     assert result.returncode == 0, (result.stdout + result.stderr)[-12000:]
     # The C++ case returns early (and doctest counts a pass) when it does not see codec_case.txt: require real assertions.
