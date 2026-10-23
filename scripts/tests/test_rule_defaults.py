@@ -70,11 +70,9 @@ def test_tracy_capture_defaults_to_no_csv():
     assert ns.csv is False
 
 
-@pytest.mark.xfail(strict=True, reason="compile cache default-on lands with claude/lane-infra (3b8978eb0); flips red once merged: "
-                                       "then delete this marker")
 def test_configure_ninja_compile_cache_on_by_default():
     import configure_ninja
-    assert parsed_args(configure_ninja, []).compile_cache is True
+    assert parsed_args(configure_ninja, []).no_compile_cache is False  # cache is ON unless --no-compile-cache
 
 
 def test_deploy_payload_refuses_implicit_target_from_lane_worktree():
