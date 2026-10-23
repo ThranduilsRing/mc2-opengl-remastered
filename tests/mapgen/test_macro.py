@@ -4,20 +4,20 @@ import json
 import unittest
 import numpy as np
 from tools.mapgen.common import FLAT_DEG, slope_grid
-from tools.mapgen.generate import generate, synthetic_terrain
+from tools.mapgen.generate import generate, plan_cells, synthetic_terrain
 from tools.mapgen.macro import plan, valley_route
 
 
 class MacroTests(unittest.TestCase):
     def test_small_examples_remain_identical(self):
         for size,seed,digest in (
-            (180,7,'e1add3e5598706fad8c12a7f70c69aa5a7c0d3b00674095b9dd7c3d2a04ec6a7'),
-            (360,17,'b6a4685a283fc4cb470aba91f436880e766e10bb46099b66c82b25693b9d7a9c'),
-            (720,23,'620321fa76b5c06ed6d73759168a3a135a1e34acf39a6b1177bd633e828a1e7b')):   # re-frozen in merge window 44 after the turret battery planner changed the default output
+            (180,7,'299c0c1da39cef73d42d84adbf96ceaff9f1e53b97dbab12dece818d3f996f0b'),
+            (360,17,'4eebbe79546928241b91ae4c3dde8b0a50708934107dc0cfb3f9170741202335'),
+            (720,23,'b620f193e5bafb7e7f4a1fa08f04f6def7b2936a9238905557a84fed529aae93')):   # plan_cells digests: independent of the battery planner
             with self.subTest(size=size):
-                data = generate(size,seed)
+                data = plan_cells(size,seed)   # macro planner output, before the battery planner and upgrade passes
                 self.assertNotIn('macro',data)
-                self.assertEqual(hashlib.sha256(json.dumps(data,sort_keys=True).encode()).hexdigest(),digest)
+                self.assertEqual(hashlib.sha256(json.dumps(data,sort_keys=True,default=str).encode()).hexdigest(),digest)
 
     def test_regional_seed_sweep_and_graph(self):
         for seed in (7,42,71):

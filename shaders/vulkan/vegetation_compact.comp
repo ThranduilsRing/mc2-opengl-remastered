@@ -9,6 +9,19 @@
 layout(local_size_x = 64) in;
 #include "include/vegetation_cull_common.glsl"
 shared uint s_scan[64];
+// floor(a*b/n) for a < n, b <= n without 32-bit overflow: exact long division of the 64-bit product.
+uint mulDiv(uint a, uint b, uint n) {
+    uint hi, lo;
+    umulExtended(a, b, hi, lo);
+    if (hi == 0u) return lo / n;
+    uint rem = hi, q = 0u;
+    for (int i = 31; i >= 0; --i) {
+        uint carry = rem >> 31;
+        rem = (rem << 1) | ((lo >> uint(i)) & 1u);
+        if (carry != 0u || rem >= n) { rem -= n; q |= 1u << uint(i); }
+    }
+    return q;
+}
 void main() {
     uint r = gl_WorkGroupID.y * P.flags.y + gl_WorkGroupID.x;
     if (r >= P.counts.x || counts[r] == 0u) return;
@@ -33,8 +46,8 @@ void main() {
         }
         uint j = seen + v - 1u;   // this survivor's rank in the region
         if (keep && j < n) {
-            uint slot = (j * quota) / n;
-            if (((j + 1u) * quota) / n > slot) dense[start + slot] = id;
+            uint slot = mulDiv(j, quota, n);
+            if (mulDiv(j + 1u, quota, n) > slot) dense[start + slot] = id;
         }
         seen += s_scan[63];
         barrier();

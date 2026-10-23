@@ -747,18 +747,19 @@ extern "C" void crashbundle_init(void)
 
     char exe_path[MAX_PATH];
     DWORD got = GetModuleFileNameA(nullptr, exe_path, MAX_PATH);
+    // No exception may leave this extern "C" function, and a path near MAX_PATH must not reach the CRT invalid-parameter handler.
+    g_cfg.exe_dir[0] = '.'; g_cfg.exe_dir[1] = '\0';
     if (got > 0 && got < MAX_PATH) {
-        const std::string exeDir = std::filesystem::path(exe_path).parent_path().string();
-        strcpy_s(g_cfg.exe_dir, _countof(g_cfg.exe_dir), exeDir.c_str());
-    } else {
-        strcpy_s(g_cfg.exe_dir, _countof(g_cfg.exe_dir), ".");
+        char* slash = strrchr(exe_path, '\\');
+        if (slash) { *slash = '\0'; memcpy(g_cfg.exe_dir, exe_path, strlen(exe_path) + 1); }
     }
-
-    const auto journalDir = std::filesystem::path(g_cfg.exe_dir) / "debug_state";
-    std::error_code journalEc;
-    std::filesystem::create_directories(journalDir, journalEc);
-    g_content.init((journalDir / "crash_content.jsonl").string());
-    g_content.mod("base", -1);
+    try {
+        const auto journalDir = std::filesystem::path(g_cfg.exe_dir) / "debug_state";
+        std::error_code journalEc;
+        std::filesystem::create_directories(journalDir, journalEc);
+        if (g_content.init((journalDir / "crash_content.jsonl").string()))
+            g_content.mod("base", -1);
+    } catch (...) {}
     mc2_log_set_crash_sink(crashbundle_append);
     SetUnhandledExceptionFilter(crashbundle_filter);
     AddVectoredExceptionHandler(1, crashbundle_heap_corruption_handler);

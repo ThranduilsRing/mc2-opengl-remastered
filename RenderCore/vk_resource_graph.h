@@ -67,6 +67,7 @@ inline Plan compile(const std::vector<Image>& images, const std::vector<Pass>& p
     std::vector<State> states(images.size());
     std::vector<bool> initialized(images.size());
     std::vector<int> slotOwner(plan.slots, -1);
+    std::vector<State> visible(images.size());   // stages/access the last producer barrier made the contents visible to
     for (unsigned i = 0; i < images.size(); ++i) {
         states[i] = images[i].imported ? images[i].initial : State{};
         initialized[i] = images[i].imported && images[i].initial.layout != 0;
@@ -88,8 +89,15 @@ inline Plan compile(const std::vector<Image>& images, const std::vector<Pass>& p
             if (fresh || before.layout != use.state.layout || before.write || use.state.write) {
                 plan.barriers[p].push_back({use.image, before, use.state});
                 before = use.state;
+                visible[use.image] = use.state;
             } else {
-                // Read/read needs no barrier, but a later writer waits for ALL readers.
+                // Read/read: a reader with a stage/access the producer barrier did not cover needs its own barrier. A later writer waits for ALL readers.
+                auto& vis = visible[use.image];
+                if ((use.state.stages & ~vis.stages) || (use.state.access & ~vis.access)) {
+                    plan.barriers[p].push_back({use.image, before, use.state});
+                    vis.stages |= use.state.stages;
+                    vis.access |= use.state.access;
+                }
                 before.stages |= use.state.stages;
                 before.access |= use.state.access;
             }

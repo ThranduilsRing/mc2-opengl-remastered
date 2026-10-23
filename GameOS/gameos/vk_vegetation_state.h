@@ -115,7 +115,7 @@ private:
     VkBuffer ringBound_[kSlots] = {};
     uint64_t frameUploadBytes_ = 0;
     uint32_t lastSurvivors_ = 0;
-    uint32_t statsReads_ = 0;          // readbacks so far: the visible-survivor smoke line prints every 256th
+    uint32_t statsReads_ = 0;          // readbacks so far: the visible-survivor smoke line prints every 64th
     bool capLogged_ = false;           // the visible-cap overflow line prints once per population
     uint32_t paramsDynOffset_[kSlots] = {};
     mc2vk::OwnedDescriptorSetLayout drawDsl_;
