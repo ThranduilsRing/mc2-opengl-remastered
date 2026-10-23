@@ -2,11 +2,15 @@
 
 MechCommander 2 engine port: modern GL renderer transitioning to Vulkan, PBR terrain, shadows, ImGui UI, mod support.
 
-## Operating mode (reset 2026-10-05 — read this first)
+## Operating mode (invariants; every new rule replaces one)
 
-- **ONE lane.** All work happens here in `A:/Games/mc2-main`. No parallel worktrees, no parallel coding agents. Sessions may *launch* from `A:/Games/mc2-opengl-src` (root, stale) — never build or commit there.
-- **Basics over process.** Every new rule, check or doc must replace one. A check red on nifty for more than a week gets fixed or deleted.
-- **Features ship ON or not at all.** An `MC2_*` gate is a temporary kill-switch, not a parking spot. No new default-OFF feature gates. (Cleanup of the legacy default-OFF gates is in progress; count them from `docs/flags.auto.yaml`, not from this file.)
+- **Lane rules (every agent, every model):** `A:/Games/mc2-ops/lane-rules.md` — read it first. Parallelism: `A:/Games/mc2-ops/JOBS`.
+- **Parallel lanes** live in separate `A:/Games/mc2-*` worktrees. Merges into `claude/nifty-mendeleev` happen only through merge windows (`tools/lane_merge.py --batch`), each followed by an adversarial review.
+- **Deploy:** lanes deploy ONLY to their own `E:/mc2-installs/<branch>` with an explicit target. mc2-main's default deploy target (v0.4) is for the merge gate only.
+- **Model/effort:** Sonnet coding = medium; merges with heavy conflicts, reviews and root-causing = high; Sol = medium; Opus case by case; avoid Haiku for build loops.
+- **Game runs** default to about 15 s; benches use `--acceptance` only in the orchestrator's quiet window.
+- **Basics over process.** A check red on nifty for more than a week gets fixed or deleted.
+- **Features ship ON or not at all.** An `MC2_*` gate is a temporary kill-switch, not a parking spot. No new default-OFF feature gates (count legacy ones from `docs/flags.auto.yaml`).
 - **Vulkan is the destination backend.** GL becomes removable once VK is complete.
 - **Mods must keep working:** MC2X-CVE-G, MC2X-REAP3, Exodus, MagicExpansion, MechCommanderOmnitech, MCO-Carver5 (installs in `A:/Games/mc2-opengl/`).
 - **Commit locally only.** Never push, open PRs, or upload unless the user explicitly says so.
@@ -26,7 +30,7 @@ MechCommander 2 engine port: modern GL renderer transitioning to Vulkan, PBR ter
 py -3 scripts/ninja_build.py
 # lane prep after a base switch: detach at <ref> and build the tree in the background (no daemon; log in build64-ninja/warm.log)
 py -3 scripts/ninja_build.py --warm --base <ref> -j3
-# deploy (sha256-verified; exe fingerprint embeds git sha, so COMMIT FIRST)
+# deploy, mc2-main / merge gate ONLY (default v0.4); a lane passes its own E:/mc2-installs/<branch> + --allow-new-target. sha256-verified; COMMIT FIRST
 py -3 scripts/deploy_payload.py --target game --ninja
 # release / fallback = VS tree (fresh tree: py -3 scripts/bootstrap_worktree_build.py --build)
 "$CMAKE" --build build64 --config RelWithDebInfo --target mc2 mc2_launcher   # deploy without --ninja
@@ -40,7 +44,7 @@ py -3 tools/build_contract_harnesses.py --run --unit  # C++ harnesses + doctest 
 py -3 -B -m pytest scripts/tests/ -q -p no:cacheprovider
 ```
 
-Smoke, **default inner-loop check = smoke-lite** (mc2_10 night + mc2_01 day, 10 s each, all gates incl. shader_error + deploy fingerprint; reduced soak coverage):
+Smoke (mc2-main / merge-gate commands; a lane deploys to its own install, see Operating mode), **default inner-loop check = smoke-lite** (mc2_10 night + mc2_01 day, 10 s each, all gates incl. shader_error + deploy fingerprint; reduced soak coverage):
 
 ```bash
 py -3 scripts/run_smoke.py --lite --keep-logs --deploy 0.4
