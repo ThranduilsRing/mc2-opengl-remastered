@@ -1,7 +1,7 @@
 {
  "counts": {
   "GameAdapters": 0,
-  "GameOS": 2357,
+  "GameOS": 2273,
   "GuiRuntime": 48,
   "HostServices": 0,
   "RenderCore": 402,
@@ -44,10 +44,8 @@
   "GameOS/gameos/gos_terrain_indirect_diag.cpp": 52,
   "GameOS/gameos/gos_terrain_patch_stream.h": 18,
   "GameOS/gameos/gos_vfx_mesh_bridge.h": 16,
-  "GameOS/gameos/terrain_material_lib.cpp": 42,
   "GameOS/gameos/utils/Image.cpp": 102,
   "GameOS/gameos/utils/vec.cpp": 22,
-  "GameOS/gameos/visual_tuning_profile.cpp": 42,
   "GameOS/gameos/vk_depth_caster_pipeline.cpp": 20,
   "GameOS/gameos/vulkan_color_prop_island.cpp": 198,
   "GameOS/gameos/vulkan_color_prop_island.h": 8,
@@ -526,8 +524,8 @@
   "shaders/vulkan/terrain_tier1.vert": 78,
   "shaders/vulkan/terrain_tier1_skirt.vert": 78
  },
- "head": "84fc44539",
+ "head": "52e24bc4b",
  "n": 8,
- "total": 46930,
+ "total": 46846,
  "version": 1
 }

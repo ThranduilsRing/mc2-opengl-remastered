@@ -13,14 +13,14 @@
   "gui"
  ],
  "files_over_1500": {
-  "GameOS/gameos/engine_present_vk.cpp": 2800,
+  "GameOS/gameos/engine_present_vk.cpp": 2806,
   "GameOS/gameos/vulkan_color_prop_island.cpp": 1726,
   "GameOS/include/gameos.hpp": 3661,
   "RenderCore/RendererFeatureRegistry.h": 1561,
   "code/artlry.cpp": 1833,
   "code/bldng.cpp": 1691,
   "code/brain_special_dispatch.cpp": 2771,
-  "code/gamecam.cpp": 1602,
+  "code/gamecam.cpp": 1588,
   "code/gameobj.cpp": 2242,
   "code/infowindow.cpp": 1730,
   "code/logisticsdialog.cpp": 2149,
@@ -53,12 +53,12 @@
   "mclib/mlr/mlrtriangleclipping.hpp": 2112,
   "mclib/move.h": 1895,
   "mclib/terrtxm.cpp": 1816,
-  "mclib/tgl.h": 1799
+  "mclib/tgl.h": 1805
  },
- "head": "84fc44539",
+ "head": "52e24bc4b",
  "per_dir": {
   "GameAdapters": {
-   "files": 11,
+   "files": 13,
    "files_over_1500": 0,
    "files_over_3000": 0,
    "max_lines": 458
@@ -76,7 +76,7 @@
    "max_lines": 1153
   },
   "RenderCore": {
-   "files": 58,
+   "files": 59,
    "files_over_1500": 1,
    "files_over_3000": 0,
    "max_lines": 1561
@@ -129,7 +129,7 @@
   },
   {
    "file": "GameOS/gameos/engine_present_vk.cpp",
-   "lines": 2800
+   "lines": 2806
   },
   {
    "file": "code/brain_special_dispatch.cpp",
@@ -228,11 +228,11 @@
    "lines": 1816
   },
   {
-   "file": "mclib/ablrtn.cpp",
-   "lines": 1799
+   "file": "mclib/tgl.h",
+   "lines": 1805
   },
   {
-   "file": "mclib/tgl.h",
+   "file": "mclib/ablrtn.cpp",
    "lines": 1799
   },
   {
@@ -245,7 +245,7 @@
   }
  ],
  "total": {
-  "files": 1855,
+  "files": 1858,
   "files_over_1500": 41,
   "files_over_3000": 1,
   "max_lines": 3661

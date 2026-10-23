@@ -54,7 +54,7 @@
    "LG05": 97,
    "LG06": 362,
    "LG07": 0,
-   "LG08": 158,
+   "LG08": 157,
    "LG09": 4,
    "LG10": 11,
    "LG11": 75,
@@ -795,7 +795,6 @@
   },
   "GameOS/gameos/visual_tuning_profile.cpp": {
    "LG06": 2,
-   "LG08": 1,
    "LG11": 1
   },
   "GameOS/gameos/visual_tuning_profile.h": {
@@ -3522,7 +3521,7 @@
    "LG20": 3
   }
  },
- "head": "84fc44539",
+ "head": "52e24bc4b",
  "idioms": {
   "LG01": "NULL",
   "LG02": "typedef",
