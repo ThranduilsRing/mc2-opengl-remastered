@@ -186,7 +186,7 @@ bool State::record(mc2vk::VulkanContext& ctx, VkCommandBuffer cb, uint32_t par, 
         lastSurvivors_ = survivors[0];
         slot_[par].statsPending = false;
         // Smoke floor input: what the cull actually drew, periodically (a once-per-run population line cannot see a cull to zero).
-        if ((statsReads_++ & 255u) == 0u)
+        if ((statsReads_++ & 63u) == 0u)
             mc2::fmt::print_err("[VEG_GPU] visible survivors={:d} cap={:d}\n", mc2::fmt::as_u32(survivors[0]), mc2::fmt::as_u32(params.flags[3]));
         if (survivors[1] > params.flags[3] && !capLogged_) {
             capLogged_ = true;

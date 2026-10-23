@@ -107,8 +107,9 @@ PRESENCE_RULES: tuple = (
     # stayed green). Gated on the population, not the per-frame draw counter (which scales with fps and run length): the once-per-run
     # "native_geometry kind=vegetation ... instances=N" line. Current logs show N = 600k..2.5M on the tier1 maps; the floor is N >= 100k,
     # so a refused or 64x stride-thinned population fails. That line prints after the first submit whatever survives the cull, so the
-    # GPU cull must also draw: the periodic "[VEG_GPU] visible survivors=" line must reach 100 at least once (a cull or compact that
-    # drops everything fails even though the population looks healthy; survivors depend on the camera, 800+ on the mc2_24 battle camera).
+    # GPU cull must also draw: the MAX over the run's periodic "[VEG_GPU] visible survivors=" samples must reach 100 (any one sample >= 100
+    # satisfies the pattern, so a single low sample cannot fail a run; a cull or compact that drops everything fails even though the population
+    # looks healthy; samples are camera dependent, 94..682 at the smoke camera, 800+ on the mc2_24 battle camera).
     *(PresenceRule(stem, re.compile(r"native_geometry kind=vegetation\b.*\binstances=[1-9][0-9]{5,}\b"), "vegetation_floor_missing",
                    "no native_geometry kind=vegetation line with instances >= 100k: GPU vegetation never started or its population was thinned (residency refusal)")
       for stem in ("mc2_01", "mc2_03", "mc2_10", "mc2_17", "mc2_24")),

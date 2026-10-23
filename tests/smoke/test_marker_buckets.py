@@ -167,3 +167,11 @@ def test_the_vegetation_floor_is_an_absence_rule_for_the_large_tier1_maps():
         assert "vegetation_floor_missing" in run(stem, thinned).buckets
         assert "vegetation_visible_missing" in run(stem, culled).buckets
         assert "vegetation_floor_missing" not in run(stem, culled).buckets
+        # The floor is the per-run MAX of the periodic survivor samples (>= 100): one low sample, first or last, cannot fail a run.
+        pop = "native_geometry kind=vegetation gpu_cull=1 regions=12297 instances=2557829\n"
+        for samples in ((94, 682, 120), (682, 94), (94, 100), (0, 94, 99, 682)):
+            text = pop + "".join("[VEG_GPU] visible survivors=%d cap=524288\n" % n for n in samples)
+            assert "vegetation_visible_missing" not in run(stem, text).buckets, samples
+        for samples in ((94,), (0, 94, 99)):
+            text = pop + "".join("[VEG_GPU] visible survivors=%d cap=524288\n" % n for n in samples)
+            assert "vegetation_visible_missing" in run(stem, text).buckets, samples
