@@ -202,6 +202,20 @@ bool ShadowBake::init(VkDevice device, VmaAllocator allocator, VkPhysicalDevice 
     return true;
 }
 
+bool ShadowBake::prewarmProducts() {
+    if (!inited_) return false;
+    // Mission prewarm runs after the terrain is published. Allocate the large
+    // products at that load barrier rather than on the second gameplay frame.
+    if (const auto* store = gos_TerrainFieldStore(); store && store->mapSide() > 1) {
+        int side = 0;
+        float halfMap = 0.0f;
+        gos_GetTerrainChunkGridInfo(&side, &halfMap);
+        const auto layout = mc2shadow::maskLayout(side, halfMap, maskTarget(), maskCap());
+        if (side == store->mapSide() && layout.texels > 0 && !ensureProducts(layout.texels)) return false;
+    }
+    return true;
+}
+
 void ShadowBake::releaseTransients() {
     ZoneScopedN("ShadowBake.ReleaseTransients");
     windowFb_.reset(); windowView_.reset(); windowImage_.reset();
@@ -218,6 +232,7 @@ void ShadowBake::releaseTransients() {
 
 void ShadowBake::invalidate() {
     // A map boundary may wait for its disk worker; gameplay frames never wait for it.
+    if (cacheStore_.valid()) cacheStore_.get();
     coldPending_ = false; coldNextTile_ = 0;
     cacheLoad_ = {};
     cacheLoadKey_ = 0;

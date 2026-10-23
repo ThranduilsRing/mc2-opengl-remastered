@@ -77,6 +77,7 @@ public:
 
     // `alphaDsl` is the island's set-1 layout (the alpha-ON array). False, logged, when a shader or object cannot be made; the island then runs without.
     bool init(VkDevice device, VmaAllocator allocator, VkPhysicalDevice phys, VkDescriptorSetLayout alphaDsl, std::string_view spvDir);
+    bool prewarmProducts();
 
     // Called once per frame after the island opened the frame's recording. Retires a submitted bake (timings, transients) and records a new one into `cb`
     // when the inputs are ready and differ from the last bake's. True when it recorded (the caller counts a pass and submits).
@@ -278,6 +279,9 @@ private:
     OwnedImage tileR8_;   // one tile's levels 512..4, R8, before BC4
     OwnedImageView tileR8View_;
     OwnedBuffer blockStaging_, bc4Params_, transfer_;   // encoder output, per-level parameters, the read-back / upload of the whole chain
+    // Last member: destruction joins the fenced readback worker before Vulkan
+    // resources are released. invalidate() also joins at the map boundary.
+    std::future<void> cacheStore_;
 };
 
 }  // namespace mc2vk

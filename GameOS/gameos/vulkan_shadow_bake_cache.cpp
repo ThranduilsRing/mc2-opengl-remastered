@@ -4,6 +4,7 @@
 #include "vulkan_color_prop_island.h"
 #include <chrono>
 #include <thread>
+#include <tracy/Tracy.hpp>
 
 namespace mc2vk {
 using namespace shadow_bake_detail;
@@ -255,10 +256,43 @@ void ShadowBake::recordTopLevelsMipsOnly(VkCommandBuffer cb) {
 
 // A retired fresh bake: the read-back chain becomes a cooked asset on disk (the next load of the same inputs uploads it instead of baking).
 void ShadowBake::storeReadback() {
+    ZoneScopedN("ShadowBake.StoreReadback");
     if (!readbackPending_ || !transfer_) return;
     readbackPending_ = false;
     using clk = std::chrono::steady_clock;
     const clk::time_point t0 = clk::now();
+    if (diagInc_.empty()) {
+        // retire() has observed the submitting fence. Transfer ownership of
+        // the idle readback, so allocation and the whole-chain copy join disk
+        // I/O off the render thread. No renderer state crosses this boundary.
+        if (cacheStore_.valid()) {
+            if (cacheStore_.wait_for(std::chrono::seconds(0)) != std::future_status::ready) return;
+            cacheStore_.get();
+        }
+        cacheStore_ = std::async(std::launch::async,
+            [buffer = std::move(transfer_), dir = cacheDir_, texels = static_cast<uint32_t>(maskTexels_), mips = maskMips_, key = contentKey_]() mutable {
+                ZoneScopedN("ShadowBake.CacheWorker");
+                const auto start = clk::now();
+                mc2shadow::ShadowMaskAsset asset;
+                asset.texels = texels;
+                asset.mips = mips;
+                asset.key = key;
+                asset.blocks.resize(static_cast<size_t>(mc2shadow::bc4ChainBytes(texels, mips)));
+                const bool read = buffer.read(asset.blocks.data(), asset.blocks.size());
+                buffer.reset();
+                if (!read) { blog("cache readback map failed."); return; }
+                const auto copied = clk::now();
+                const bool ok = mc2shadow::storeCachedShadowMask(dir, asset);
+                mc2::fmt::print_err("[SHADOW_BAKE] cook cache store: {} key={:016x} mb={:.1f} copy_ms={:.2f} writer_ms={:.2f}\n",
+                    ok ? "ok" : "failed", mc2::fmt::as_u64(key), static_cast<double>(asset.blocks.size()) / 1048576.0,
+                    std::chrono::duration<double, std::milli>(copied - start).count(),
+                    std::chrono::duration<double, std::milli>(clk::now() - copied).count());
+            });
+        mc2::fmt::print_err("[SHADOW_BAKE] cache readback queued render_thread_ms={:.2f}\n",
+            std::chrono::duration<double, std::milli>(clk::now() - t0).count());
+        return;
+    }
+    // The explicit dirty-vs-fresh diagnostic still compares on its caller.
     mc2shadow::ShadowMaskAsset asset;
     asset.texels = static_cast<uint32_t>(maskTexels_);
     asset.mips = maskMips_;
