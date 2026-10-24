@@ -8,7 +8,7 @@
   "RenderWorld": 0,
   "code": 14010,
   "mclib": 28566,
-  "shaders": 602
+  "shaders": 592
  },
  "dirs": [
   "code",
@@ -506,7 +506,6 @@
   "shaders/vulkan/hud_tex.vert": 14,
   "shaders/vulkan/include/terrain_frame_vk.glsl": 10,
   "shaders/vulkan/include/terrain_overlay_vs.glsl": 11,
-  "shaders/vulkan/mech_tier1.frag": 10,
   "shaders/vulkan/postprocess.frag": 39,
   "shaders/vulkan/postprocess_visual.frag": 9,
   "shaders/vulkan/shoreline.frag": 40,
@@ -515,8 +514,8 @@
   "shaders/vulkan/terrain_tier1.vert": 71,
   "shaders/vulkan/terrain_tier1_skirt.vert": 71
  },
- "head": "51aee7078",
+ "head": "47dc56526",
  "n": 8,
- "total": 45883,
+ "total": 45873,
  "version": 1
 }
