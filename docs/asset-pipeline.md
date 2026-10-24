@@ -128,6 +128,10 @@ Notes:
       --deploy A:/Games/mc2-opengl/mc2-win64-v0.4/data/tgl --tiers 256,512,1024 [--test]
   ```
 
+The static-prop runtime no longer consumes tiered KTX2/BC7 sidecars; it builds
+RGBA arrays from source textures. The tier cook and deployed tiers below are
+historical tooling/assets retained for the asset viewer.
+
 **Tier convention:** numeric sibling folders (`64/128/256/512/1024`) under a texture
 set. The asset viewer's tier switcher (and any tiered loader) treats these as the
 resolution ladder; only tiers present on disk are offered.

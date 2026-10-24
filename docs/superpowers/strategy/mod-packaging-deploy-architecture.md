@@ -1,6 +1,10 @@
 <!-- doc-status: current | reviewed:2026-10-11 -->
 # MC2 Mod Packaging & Deployment Architecture
 
+**Runtime correction (2026-10-24):** static-prop arrays consume source RGBA
+textures, not `data/tgl/<tier>/*.ktx2`. Tiered static-prop KTX2 references below
+describe historical packaging; mods must retain their source textures.
+
 **Status:** Strategy / design doc (long-term), 2026-06-10.
 **Scope:** How mods are authored as local projects, packaged into distributable bundles, installed/uninstalled/rolled back into a deploy, and discovered by editor + mc2.exe.
 **Siblings:** `mc2-modding-toolchain-architecture.md` (tool ownership + bridges), `runtime-bridge-architecture.md` (editor↔game process model). This doc owns the **packaging/deploy lane** of that architecture.

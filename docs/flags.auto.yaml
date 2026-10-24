@@ -6165,5 +6165,5 @@ feature_only_rows:   # registry entries with no environment variable
   - {feature_id: MC2_FEATURE_REVERSE_Z, kind: Feature, order: 4, default_on: true}
   - {feature_id: MC2_FX_DEFS, kind: Feature, order: -1, default_on: true}
   - {feature_id: MC2_FEATURE_MATERIAL_KTX, kind: Feature, order: 11, default_on: true}
-  - {feature_id: MC2_FEATURE_STATICPROP_BC7, kind: Feature, order: 18, default_on: true}
+  - {feature_id: MC2_FEATURE_STATICPROP_BC7, kind: Retired, order: 18, default_on: false}
   - {feature_id: MC2_FEATURE_STATICPROP_MATERIAL_PBR_SLOTS, kind: Feature, order: -1, default_on: true}

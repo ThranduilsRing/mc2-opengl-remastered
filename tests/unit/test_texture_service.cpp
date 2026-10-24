@@ -563,3 +563,43 @@ TEST_CASE("TextureService: poisoned uploads cannot starve good requests and tran
     CHECK(poisonAttempts==3); CHECK(transientAttempts==2); CHECK(dropped==1);
     CHECK(f.table.index(handles[0])==0); CHECK(f.table.index(handles[1])!=0);
 }
+
+TEST_CASE("TextureService: dropped dynamic B preserves A and permits C to publish") {
+    PublicationFixture f;
+    f.table=TextureDescriptorTable(10);
+    struct Ref {
+        TextureHandle handle;
+        Ref() : handle(TextureHandle::invalid()) {}
+        explicit Ref(TextureHandle h) : handle(h) {}
+        Ref(Ref&& other) noexcept : handle(other.handle) { other.handle=TextureHandle::invalid(); }
+        Ref& operator=(Ref&& other) noexcept { handle=other.handle; other.handle=TextureHandle::invalid(); return *this; }
+        explicit operator bool() const { return handle.isValid(); }
+        TextureHandle get() const { return handle; }
+    };
+    struct Entry { Ref texture,pending; std::weak_ptr<KtxImage> source; } e;
+    const auto a=f.service.acquire(keyOf("unit","dynamic-a",1));
+    const auto b=f.service.acquire(keyOf("unit","dynamic-b",1));
+    const auto c=f.service.acquire(keyOf("unit","dynamic-c",1));
+    REQUIRE(f.queue(a)); f.complete(); f.pump(); e.texture=Ref(a);
+    auto pixels=std::make_shared<KtxImage>(); pixels->pixels.resize(4);
+    struct Pending { TextureHandle handle; std::shared_ptr<KtxImage> image; uint32_t contentVersion=0; unsigned attempts=0; };
+    std::deque<Pending> pending{{b,pixels}},batch;
+    f.residents[b.raw()]={}; e.pending=Ref(b); e.source=pixels;
+    auto settle=[&] {
+        mc2vk::settlePendingUiTexture(e,[&](auto h) { return f.service.isLive(h); },
+            [&](auto h) { return f.residents.contains(h.raw()); },
+            [&](auto h) { return bool(f.residents.at(h.raw()).image); });
+    };
+    for (int attempt=0;attempt<3;++attempt) {
+        mc2vk::pumpPendingTextureUploads(pending,f.uploads,batch,f.budget,
+            [](const Pending&) { return true; },[] { return false; },
+            [](const Pending&, PublicationFixture::Upload&) { return false; },
+            [&](const Pending& p) { f.residents.erase(p.handle.raw()); });
+        settle(); CHECK(e.texture.get()==a); CHECK(f.table.index(a)!=0);
+    }
+    CHECK_FALSE(bool(e.pending)); CHECK(e.source.expired()); CHECK(f.service.isLive(b));
+    REQUIRE(f.queue(c)); e.pending=Ref(c);
+    settle(); CHECK(e.texture.get()==a);
+    f.complete(); f.pump(); settle();
+    CHECK(e.texture.get()==c); CHECK_FALSE(bool(e.pending));
+}

@@ -21,13 +21,15 @@ class LightLists {
 public:
     static constexpr uint32_t kDim = 64;
     float minInv[4]{};
-    bool stage(VulkanContext& ctx, const void* pool, uint32_t count, float moverScale, FrameAlloc (&out)[3]) {
+    bool stage(VulkanContext& ctx, const void* pool, uint32_t count, float moverScale, FrameAlloc (&out)[3], const char*& failure) {
         const auto frame = ctx.tracker().frameNo();
         if (frame != frame_) {
-            if (!pipeline_ && (!pipeline_.create(ctx.device(), "shaders/vulkan/light_lists.comp.spv",
+            failure = "pipeline";
+            if (!pipeline_ && !pipeline_.create(ctx.device(), "shaders/vulkan/light_lists.comp.spv",
                 {{0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC}, {1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC},
-                 {2, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC}, {3, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC}}, "light_lists") ||
-                !sets_.create(ctx.device(), pipeline_, 2, "light_lists"))) return false;
+                 {2, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC}, {3, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC}}, "light_lists")) return false;
+            failure = "descriptors";
+            if (!sets_.set(0) && !sets_.create(ctx.device(), pipeline_, 2, "light_lists")) return false;
             const auto* lights = static_cast<const gos_terrain_lighting::GpuTerrainLight*>(pool);
             float lo[2]{(std::numeric_limits<float>::max)(), (std::numeric_limits<float>::max)()};
             float hi[2]{-lo[0], -lo[1]};
@@ -49,6 +51,7 @@ public:
             spans_[1] = ctx.frameAlloc(kDim * kDim * 8);
             spans_[2] = ctx.frameAlloc(VkDeviceSize(kDim) * kDim * count * 4);
             params_ = ctx.frameAlloc(32);
+            failure = "frame_ring_allocation";
             if (!spans_[0] || !spans_[1] || !spans_[2] || !params_) return false;
             std::memcpy(spans_[0].ptr, pool, size_t(count) * 48);
             std::memcpy(params_.ptr, minInv, 16);
@@ -57,6 +60,7 @@ public:
             frame_ = frame;
         }
         std::copy(spans_.begin(), spans_.end(), out);
+        failure = nullptr;
         return true;
     }
     void record(VulkanContext& ctx, VkCommandBuffer cb, uint32_t parity) {

@@ -407,7 +407,7 @@ extern "C" int mc2_vk_overlay_run(int w, int h) {
     mc2vk::FrameAlloc lpSpans[3];
     mc2vk::FrameAlloc vtxSpan;
     if (!uboSpan || !stage_light_pool(s, feed, vkPoolLights, vkGridDim, lpSpans) || (dynBytes != 0 && !(vtxSpan = rctx.frameAlloc(dynBytes, 16)))) {
-        o->disabled = true; return 0;
+        return 0;
     }
     {
         TerrainFrameUBO u{};

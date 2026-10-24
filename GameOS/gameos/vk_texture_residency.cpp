@@ -81,9 +81,8 @@ uint64_t TextureResidency::legacyUiId(uint32_t gosHandle, uint32_t width, uint32
                                      std::shared_ptr<const std::vector<uint8_t>> bytes, bool displaySpace, bool mipmaps) {
     if (!bytes) return 0;
     auto& e=legacyUi_[gosHandle | (uint64_t(displaySpace | (mipmaps<<1))<<32)];
-    if (e.pending && !service_.isLive(e.pending.get())) e.pending={};
-    if (e.texture && !service_.isLive(e.texture.get())) e.texture={};
-    if (e.pending && ready(e.pending.get())) e.texture=std::move(e.pending);
+    settlePendingUiTexture(e,[this](auto h) { return service_.isLive(h); },
+                           [this](auto h) { return contains(h); },[this](auto h) { return ready(h); });
     // Dynamic pages keep the last completed frame. Replacing a pending frame every tick could cancel every upload before publication.
     if (!e.pending && (e.source.lock()!=bytes || !e.texture)) {
         if (displaySpace && format==VK_FORMAT_BC7_SRGB_BLOCK) format=VK_FORMAT_BC7_UNORM_BLOCK;
@@ -283,7 +282,10 @@ void TextureResidency::pump() {
     },[this] { return table_->full(uploading_.size()); },[this](const Pending& p, Upload& next) {
         const auto& r=residents_.at(p.handle.raw());
         return bool(upload(*p.image,r.useMips,&next,r.layers,r.arrayView,r.vegetation));
-    },[](const Pending& p) {
+    },[this](const Pending& p) {
+        // A missing resident is terminal failure, distinct from a queued upload.
+        // Retained handles may reacquire, and dynamic pages may submit newer pixels.
+        residents_.erase(p.handle.raw());
         std::fprintf(stderr,"[VK_RESIDENCY v1] dropped=upload handle=%u attempts=%u fallback=placeholder\n",p.handle.raw(),p.attempts);
     });
     if (uploading_.size() > firstNew) {
