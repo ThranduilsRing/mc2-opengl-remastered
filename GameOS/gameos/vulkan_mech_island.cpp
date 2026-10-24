@@ -317,10 +317,14 @@ void sync_ring_bindings(MechIsland* s, uint32_t par, const mc2vk::FrameAlloc& ma
             if (e.set[par] != VK_NULL_HANDLE) mc2vk::writeDynamicBinding(s->device, e.set[par], w.binding, w.type, w.buf, w.range);
         s->ringBound[par][w.binding] = w.buf;
     }
-    // LOCAL-LIGHTS-2: point binding 8 at the shadow island's live local-light atlas once it exists.
+    // LOCAL-LIGHTS-2: point binding 8 at the shadow island's live local-light atlas once it exists, and back at the
+    // white dummy when it goes (shadow island rebuilt without one: Potato / no atlas), so no set keeps a destroyed view.
     const auto atlas = reinterpret_cast<VkImageView>(mc2_vk_shadow_island_get_local_atlas_view());
-    if (atlas != VK_NULL_HANDLE && s->localShadowBound[par] != atlas && s->albedoSamp) {
-        const VkDescriptorImageInfo info{s->albedoSamp.get(), atlas, VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL};
+    const VkImageView dummy = s->whiteTexture ? s->whiteTexture.view() : VK_NULL_HANDLE;
+    if (s->localShadowBound[par] != atlas && s->albedoSamp && (atlas != VK_NULL_HANDLE || dummy != VK_NULL_HANDLE)) {
+        const VkDescriptorImageInfo info = atlas != VK_NULL_HANDLE
+            ? VkDescriptorImageInfo{s->albedoSamp.get(), atlas, VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL}
+            : VkDescriptorImageInfo{s->albedoSamp.get(), dummy, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
         for (const auto& e : s->schemes) {
             if (e.set[par] == VK_NULL_HANDLE) continue;
             VkWriteDescriptorSet w{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
