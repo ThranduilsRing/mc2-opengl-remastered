@@ -560,6 +560,16 @@ def artifact_changes(root):
     return sorted(changed)
 
 
+def require_clean_generator_inputs(root):
+    """Artifacts must describe committed HEAD, including inputs outside ARTIFACTS."""
+    # Throwaway merge-test repos without generators do not regenerate anything.
+    if os.path.exists(os.path.join(root, GENERATORS[0][1])):
+        dirty = status_entries(root)
+        if dirty:
+            raise Stop(6, "regenerate-all requires a clean tree; commit or remove generator input edits first:\n  "
+                       + "\n  ".join(path for _, path in dirty))
+
+
 def regenerate_all(root, *, dry_run=False):
     """Regenerate the committed tree in isolation for dry runs; never bless preexisting edits."""
     if dry_run:
@@ -579,6 +589,7 @@ def regenerate_all(root, *, dry_run=False):
     overlaps = artifact_changes(root)
     if overlaps:
         raise Stop(6, "regenerate-all refuses preexisting artifact edits: " + ", ".join(sorted(overlaps)))
+    require_clean_generator_inputs(root)
     # Tiny fixture repos used by merge tests do not carry the engine generators.
     if not os.path.exists(os.path.join(root, GENERATORS[0][1])):
         if os.path.exists(os.path.join(root, "CLAUDE.md")):
@@ -673,6 +684,7 @@ def plan_batch(root: str, args, refs: list[str], resolutions_for) -> bool:
 
 def merge_tip(root: str, tools_dir: str, p: dict, message: str, resolutions: dict) -> tuple[str, str | None, list]:
     """Merge one planned tip, regenerate the ratchets, commit the tightened baselines. -> (merge sha, follow-up sha, failed ratchets)."""
+    require_clean_generator_inputs(root)
     pre_dirty = {path for _, path in status_entries(root)}
     do_merge(root, p["sha"], message, lane_files=p["lane_files"], resolutions=resolutions)
     merge_sha = git_out(root, "rev-parse", "--short=9", "HEAD")

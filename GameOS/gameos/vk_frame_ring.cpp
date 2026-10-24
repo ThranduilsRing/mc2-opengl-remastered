@@ -3,6 +3,7 @@
 #include "vk_frame_ring.h"
 
 #include <cstdio>
+#include <algorithm>
 
 #include <vk_mem_alloc.h>
 
@@ -22,7 +23,9 @@ constexpr VkBufferUsageFlags kUsage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUF
 bool FrameRing::grow(VulkanContext& ctx, VkDeviceSize perSlot) {
     const auto policy=RenderCore::gpuResidencyPolicy(mc2::options::current().shadowQuality);
     if(perSlot*(FrameRingCore::kSlots+1)>policy.textureUpload) {
-        std::fprintf(stderr,"[VK_RESIDENCY v1] refused=framering bytes=%llu policy=%llu fallback=skip_draw\n",perSlot*(FrameRingCore::kSlots+1),policy.textureUpload);
+        refusedCapacity_ = (std::max)(refusedCapacity_, perSlot);
+        if (++policyRefusals_ == 1)
+            std::fprintf(stderr,"[VK_RESIDENCY v1] refused=framering bytes=%llu policy=%llu fallback=skip_draw count=1 (repeats counted until recovery)\n",perSlot*(FrameRingCore::kSlots+1),policy.textureUpload);
         return false;
     }
     OwnedBuffer fresh;
@@ -43,6 +46,10 @@ bool FrameRing::grow(VulkanContext& ctx, VkDeviceSize perSlot) {
     mapped_ = static_cast<uint8_t*>(info.pMappedData);
     core_.setCapacity(perSlot);
     ++growths_;
+    if (policyRefusals_ && perSlot >= refusedCapacity_) {
+        std::fprintf(stderr, "[VK_RESIDENCY v1] framering recovered refused_count=%llu\n", static_cast<unsigned long long>(policyRefusals_));
+        policyRefusals_ = 0; refusedCapacity_ = 0;
+    }
     MC2_DIAGFE(stderr, "[VK_FRAMERING v1] capacity=%llu bytes per slot (growth %u).\n", static_cast<unsigned long long>(perSlot), growths_);
     return true;
 }

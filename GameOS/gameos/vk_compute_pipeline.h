@@ -29,7 +29,7 @@ struct ComputeBinding {
 class ComputePipeline {
 public:
     // Loads `spvPath` (entry point "main"), builds the set-0 layout from `bindings` and the pipeline. False (and logs through the island log sink) on failure.
-    bool create(VkDevice device, std::string_view spvPath, const std::vector<ComputeBinding>& bindings, std::string_view name);
+    bool create(VkDevice device, std::string_view spvPath, const std::vector<ComputeBinding>& bindings, std::string_view name, bool logFailures = true);
     explicit operator bool() const noexcept { return static_cast<bool>(pipe_); }
 
     VkPipeline            pipeline() const noexcept { return pipe_.get(); }
@@ -52,7 +52,7 @@ private:
 // N descriptor sets of one ComputePipeline's layout, all written through `write`.
 class ComputeSets {
 public:
-    bool create(VkDevice device, const ComputePipeline& pipe, uint32_t count, std::string_view name);
+    bool create(VkDevice device, const ComputePipeline& pipe, uint32_t count, std::string_view name, bool logFailures = true);
     VkDescriptorSet set(uint32_t i) const noexcept { return i < sets_.size() ? sets_[i] : VK_NULL_HANDLE; }
     // Points set `i` binding `binding` at the whole buffer (descriptor type taken from the pipeline's layout). The caller guarantees no in-flight
     // command buffer uses the set (the producers rewrite only after the slot's fence wait or a device idle).

@@ -662,9 +662,37 @@ def test_regeneration_failure_stops_before_later_generators(env, monkeypatch):
     lm = _load_module()
     repo, _ = env
     write(repo, "generate.py", "raise SystemExit('broken generator')\n")
+    commit_all(repo, "generator")
     monkeypatch.setattr(lm, "GENERATORS", [("fixture", "generate.py", []), ("never", "missing.py", [])])
     with pytest.raises(lm.Stop, match="broken generator"):
         lm.regenerate_all(str(repo))
+
+
+def test_dirty_source_cannot_contaminate_artifact_commit(env, monkeypatch):
+    lm = _load_module()
+    repo, tools = env
+    write(repo, "generate.py", "from pathlib import Path\nPath('artifact.json').write_bytes(Path('b.txt').read_bytes())\n")
+    write(repo, "artifact.json", "b\n")
+    commit_all(repo, "generator")
+    lane_branch(repo, {"a.txt": "lane\n"})
+    monkeypatch.setattr(lm, "ARTIFACTS", ["artifact.json"])
+    monkeypatch.setattr(lm, "GENERATORS", [("fixture", "generate.py", [])])
+    before = git(repo, "rev-parse", "HEAD")
+    write(repo, "b.txt", "uncommitted source must never enter artifacts\n")
+    for action in (lambda: lm.regenerate_all(str(repo)),
+                   lambda: lm.merge_tip(str(repo), str(tools), lm.plan(str(repo), "lane"), "merge lane", {})):
+        with pytest.raises(lm.Stop, match="requires a clean tree.*"):
+            action()
+        assert git(repo, "rev-parse", "HEAD") == before
+        assert (repo / "artifact.json").read_bytes() == b"b\n"
+        assert "uncommitted source" in (repo / "b.txt").read_text()
+    # Once the input is committed, only its generated artifact enters the follow-up.
+    git(repo, "add", "--", "b.txt")
+    git(repo, "commit", "-q", "-m", "commit generator input")
+    _, follow, failed = lm.merge_tip(str(repo), str(tools), lm.plan(str(repo), "lane"), "merge lane", {})
+    assert follow and not failed
+    assert git(repo, "diff-tree", "--no-commit-id", "--name-only", "-r", "HEAD") == "artifact.json"
+    assert "uncommitted source" in git(repo, "show", "HEAD:artifact.json")
 
 
 def test_regeneration_dry_run_leaves_original_untouched(env, monkeypatch):
