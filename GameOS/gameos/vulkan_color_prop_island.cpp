@@ -205,6 +205,12 @@ struct ColorPropIsland : mc2vk::IslandState {
     std::vector<int32_t>        packetLayerOff;
     std::vector<int32_t>        packetLayerOn;
     std::vector<int32_t>        packetMaterialIds;
+    std::vector<mc2vk::ResidentTextureRef> colorBuckets;
+    std::vector<int32_t> packetColorBucket, packetColorLayer;
+    bool bucketsReady = false;
+    std::vector<bool> bucketProofLogged;
+    std::vector<uint32_t> bucketFormats;
+    std::vector<VkImageView> boundBucketViews[2];
     bool authoredReady = false;
     bool authoredAttempted = false;
     // FENCE-UVSCALE-1: per-packet UV sub-region scale, same indexing as
@@ -262,7 +268,7 @@ struct ColorPropIsland : mc2vk::IslandState {
     VkCommandBuffer lateCbuf[2] = {VK_NULL_HANDLE, VK_NULL_HANDLE};
     mc2vk::OwnedFence lateFence[2];
     struct LateDraw {
-        int32_t pc[8];
+        int32_t pc[9];
         uint32_t indexCount, instanceCount, firstIndex, firstInstance;
         int32_t baseVertex;
     };
@@ -407,6 +413,16 @@ void write_descriptors(ColorPropIsland* s, int parity = -1) {
         w[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; w[n].dstSet = s->set[i];
         w[n].dstBinding = 7; w[n].descriptorCount = 1;
         w[n].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; w[n].pBufferInfo = &hotInfo; ++n;
+    }
+    if (s->albedoTexture && s->albedoSamp) {
+        std::array<VkDescriptorImageInfo,16> buckets;
+        buckets.fill({s->albedoSamp.get(),s->albedoTexture.view(),VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL});
+        for (size_t b=0;b<s->colorBuckets.size() && b<buckets.size();++b)
+            buckets[b].imageView=s->colorBuckets[b].view();
+        VkWriteDescriptorSet write{VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
+        write.dstSet=s->set[i]; write.dstBinding=13; write.descriptorCount=16;
+        write.descriptorType=VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; write.pImageInfo=buckets.data();
+        vkUpdateDescriptorSets(s->device,1,&write,0,nullptr);
     }
     if (n) vkUpdateDescriptorSets(s->device, n, w, 0, nullptr);
     if (m) vkUpdateDescriptorSets(s->device, m, wm, 0, nullptr);
@@ -925,7 +941,7 @@ bool init_island(ColorPropIsland* s, int w, int h) {
         // Base bindings 0(UBO),1(inst SSBO); optional +4(LightsData SSBO, VS). Material
         // (tier1 + MC2_VK_PROP_MATERIAL): +2(alpha-OFF layer SSBO VS), 3(alpha-OFF albedo
         // FS), 5(alpha-ON layer SSBO VS), 6(alpha-ON albedo FS).
-        VkDescriptorSetLayoutBinding b[16]{};
+        VkDescriptorSetLayoutBinding b[17]{};
         uint32_t nb = 0;
         b[nb].binding = 0; b[nb].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
         b[nb].descriptorCount = 1; b[nb].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT; ++nb;
@@ -962,6 +978,8 @@ bool init_island(ColorPropIsland* s, int w, int h) {
         b[nb].binding = 12; b[nb].descriptorCount = 1;
         b[nb].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
         b[nb].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT; ++nb;
+        b[nb].binding = 13; b[nb].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        b[nb].descriptorCount = 16; b[nb].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT; ++nb;
         b[nb].binding = 14; b[nb].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         b[nb].descriptorCount = 1; b[nb].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT; ++nb;
         b[nb].binding = 24; b[nb].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
@@ -981,7 +999,7 @@ bool init_island(ColorPropIsland* s, int w, int h) {
         sizes[nsz++] = {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 2};
         sizes[nsz++] = {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 2u * (1u + (lightBinding ? 1u : 0u))};
         sizes[nsz++] = {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 2u * ((materialBindings ? 2u : 0u) + (s->tier1 ? 1u : 0u) + 2u)};
-        sizes[nsz++] = {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, (materialBindings ? 4u : 0u) + 8u};
+        sizes[nsz++] = {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, (materialBindings ? 4u : 0u) + 8u + 32u};
         sizes[nsz++] = {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 2};
         VkDescriptorPoolCreateInfo pci{};
         pci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
@@ -1027,7 +1045,7 @@ bool init_island(ColorPropIsland* s, int w, int h) {
         // pack into half floats or move to the per-instance SSBO path.
         VkPushConstantRange pcr{};
         pcr.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
-        pcr.offset = 0; pcr.size = 32; // layer pair, UV scale, alpha, fringe, HZB, authored material ID
+        pcr.offset = 0; pcr.size = 36; // layer pair, UV scale, alpha, fringe, HZB, authored material ID
                                        // int32 coverageFringePass (PROP-COVERAGE-1)
 
         VkPipelineLayoutCreateInfo plci{};
@@ -1270,6 +1288,10 @@ extern "C" void mc2_vk_color_prop_island_invalidate_geometry() {
     s->materialReadyOn = false;
     s->hotReady = false;
     s->hotCpu = {};
+    s->bucketsReady = false;
+    s->bucketProofLogged.clear();
+    s->packetColorBucket.clear();
+    s->packetColorLayer.clear();
     s->authoredReady = false;
     s->authoredAttempted = false;
     s->packetMaterialIds.clear();
@@ -1311,6 +1333,25 @@ static bool prepare_mission_resources(ColorPropIsland* s) {
             s->terrainSunMC2[0] = mf.terrainSunMC2[0];
             s->terrainSunMC2[1] = mf.terrainSunMC2[1];
             s->terrainSunMC2[2] = mf.terrainSunMC2[2];
+            if (!s->bucketsReady && mf.colorBucketCount && mf.colorBucketCount <= 16 && mf.packetColorBucket && mf.packetColorLayer) {
+                std::vector<mc2vk::ResidentTextureRef> next;
+                for (uint32_t b=0;b<mf.colorBucketCount;++b) {
+                    mc2vk::ResidentTextureRef texture;
+                    uint32_t layers=0,key=0; bool ready=false;
+                    AlbedoTarget target{&texture,&s->albedoSamp,&layers,&key,&ready,"size-bucket"};
+                    if (!cp_import_albedo_array(s,target,b+1,&mf.colorBuckets[b])) break;
+                    next.push_back(std::move(texture));
+                }
+                if (next.size()==mf.colorBucketCount) {
+                    s->colorBuckets=std::move(next);
+                    s->packetColorBucket.assign(mf.packetColorBucket,mf.packetColorBucket+mf.packetCount);
+                    s->packetColorLayer.assign(mf.packetColorLayer,mf.packetColorLayer+mf.packetCount);
+                    s->bucketsReady=true;
+                    s->bucketProofLogged.assign(mf.colorBucketCount,false);
+                    s->bucketFormats.clear();
+                    for(uint32_t b=0;b<mf.colorBucketCount;++b) s->bucketFormats.push_back(mf.colorBuckets[b].vkFormat);
+                }
+            }
             if (s->materialReady && s->materialReadyOn) return true;
             bool changed = false;
             // The night emission colours of the type table, once per map (like the material arrays).
@@ -1328,7 +1369,8 @@ static bool prepare_mission_resources(ColorPropIsland* s) {
                     if (mf.typeAlphaClass[t] == 0 && mf.typeAlbedoLayer[t] >= 0)
                         layerTbl[t] = mf.typeAlbedoLayer[t];
                 }
-                if (cp_import_albedo_array(s, cp_target_off(s), mf.arrayKeyOff, mf.albedoOff)) {
+                if (s->bucketsReady || cp_import_albedo_array(s, cp_target_off(s), mf.arrayKeyOff, mf.albedoOff)) {
+                    s->materialReady = true;
                     cp_upload_layer_table(s, layerTbl.data(), mf.typeCount);
                     changed = true;
                     vlog("material feed active: alpha-OFF %u types textured (sun=%.2f,%.2f,%.2f).",
@@ -1507,8 +1549,11 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
         vkUpdateDescriptorSets(s->device,0,nullptr,1,&copy);
     }
     const std::array<VkImageView,2> views{s->albedoTexture.view(),s->albedoOnTexture.view()};
-    if (s->descriptorsDirty[par] || s->boundTextures[par]!=views) {
+    std::vector<VkImageView> bucketViews;
+    for (const auto& bucket : s->colorBuckets) bucketViews.push_back(bucket.view());
+    if (s->descriptorsDirty[par] || s->boundTextures[par]!=views || s->boundBucketViews[par]!=bucketViews) {
         write_descriptors(s,int(par)); s->boundTextures[par]=views;
+        s->boundBucketViews[par]=std::move(bucketViews);
     }
     void* hzbMask = nullptr;
     gosPostProcess* pp = getGosPostProcess();
@@ -1756,7 +1801,7 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
                     // FENCE-UVSCALE-1: push this packet's own uvScaleX/Y alongside
                     // its layer -- default 1.0 (no crop) matches pre-fix behavior
                     // for any packet the feed didn't cover.
-                    struct { int32_t layerOff, layerOn; float uvScaleX, uvScaleY; int32_t alphaTest, fringe, hzb, materialId; } pc = {
+                    struct { int32_t layerOff, layerOn; float uvScaleX, uvScaleY; int32_t alphaTest, fringe, hzb, materialId, colorDescriptor; } pc = {
                         (pk < s->packetLayerOff.size())  ? s->packetLayerOff[pk]  : -1,
                         (pk < s->packetLayerOn.size())   ? s->packetLayerOn[pk]   : -1,
                         (pk < s->packetUvScaleX.size())  ? s->packetUvScaleX[pk]  : 1.0f,
@@ -1765,7 +1810,22 @@ extern "C" int mc2_vk_color_prop_island_run(int w, int h) {
                         fringePass,
                         hzbCulled ? 1 : 0,
                         s->authoredReady && pk < s->packetMaterialIds.size() ? s->packetMaterialIds[pk] : -1,
+                        -1,
                     };
+                    if (s->bucketsReady && pk<s->packetColorBucket.size()) {
+                        const int32_t bucket=s->packetColorBucket[pk];
+                        if (bucket>=0 && size_t(bucket)<s->colorBuckets.size() &&
+                            rctx.textures().ready(s->colorBuckets[bucket].get())) {
+                            pc.colorDescriptor=bucket;
+                            if (pc.layerOn>=0) pc.layerOn=s->packetColorLayer[pk];
+                            else pc.layerOff=s->packetColorLayer[pk];
+                            pc.uvScaleX=pc.uvScaleY=1.0f;
+                            if (!s->bucketProofLogged[bucket]) {
+                                vlog("[STATICPROP_BC7] sampled bucket=%d format=%u descriptor=%d packet=%u instances=%u",bucket,s->bucketFormats[bucket],pc.colorDescriptor,pk,instCount);
+                                s->bucketProofLogged[bucket]=true;
+                            }
+                        }
+                    }
                     // Only packets the FS can alpha-test have a fringe (the alpha-ON layer or the per-packet bit).
                     if (fringePass == 1 && pc.layerOn < 0 && pc.alphaTest == 0) continue;
                     if (fringePass == 1 && pc.alphaTest == 2) {

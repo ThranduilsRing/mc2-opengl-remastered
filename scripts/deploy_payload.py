@@ -1131,6 +1131,20 @@ ENGINE_NORMAL_COOK = Path(__file__).resolve().parents[1] / "tools" / "mc2texcook
 ENGINE_NORMAL_COOK_VERSION = "2"
 
 
+def ensure_prop_cooks(target_dir, cooker=subprocess.run):
+    # Stock sources live below ObjectTextureSize=128. The prop quality selector
+    # addresses sibling tiers, never a tier nested inside that source directory.
+    source = os.path.join(target_dir, "data", "tgl", "128")
+    if not os.path.isdir(source):
+        return
+    tool = Path(__file__).resolve().parents[1] / "tools/mc2texcook/cook_prop_tiers.py"
+    result = cooker([sys.executable, str(tool), "--tgl", os.path.dirname(source)],
+                    capture_output=True, text=True, timeout=1800)
+    log(result.stdout.strip())
+    if result.returncode:
+        fail("prop BC7 cook failed: " + result.stderr[-1000:])
+
+
 def ensure_engine_normal_cooks(target_dir, cooker=subprocess.run):
     tex = os.path.join(target_dir, "data", "textures")
     stamp = os.path.join(tex, "engine_normals.cookver")
@@ -1218,6 +1232,7 @@ def deploy(items, target_dir, allow_stale_pdb, preserve=(), cache=None,
     """
     src_hashes = ensure_terrain_materials(target_dir)
     ensure_engine_normal_cooks(target_dir)
+    ensure_prop_cooks(target_dir)
     shader_mismatches = []
     pdb_problem = None
     preserve = {p.replace(os.sep, "/") for p in preserve}

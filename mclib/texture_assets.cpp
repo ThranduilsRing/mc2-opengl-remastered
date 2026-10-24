@@ -182,11 +182,12 @@ std::shared_ptr<const RenderCore::KtxImage> decodeUi(UiSource source) {
 } // namespace
 
 bool ready() { return sourcesIfReady() != nullptr; }
-std::optional<RenderCore::KtxImage> loadCookedSidecar(std::string_view source) {
+std::optional<RenderCore::KtxImage> loadCookedSidecar(std::string_view source, std::string_view sidecar) {
     if (source.empty()) return std::nullopt;
     const std::string name(source);
     RenderCore::KtxImage out;
-    if (!txmLoadCooked(name.c_str(), sidecarPath(name).c_str(), true, out)) return std::nullopt;
+    const std::string cooked = sidecar.empty() ? sidecarPath(name) : std::string(sidecar);
+    if (!txmLoadCooked(name.c_str(), cooked.c_str(), true, out)) return std::nullopt;
     return out;
 }
 
