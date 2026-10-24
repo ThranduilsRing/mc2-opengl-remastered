@@ -113,10 +113,6 @@ struct Mc2ColorPropMaterialFeed {
     uint32_t        arrayKeyOn;      // change key of the alpha-ON group array (0 = not built)
     // The CPU copies of the two group arrays (every level, the bytes GL uploaded); null when a group has none. The island imports
     // these; the keys above tell it the arrays were rebuilt.
-    const mc2tex::TextureArrayCpu* colorBuckets;
-    uint32_t colorBucketCount;
-    const int32_t* packetColorBucket;
-    const int32_t* packetColorLayer;
     const mc2tex::TextureArrayCpu* albedoOff;
     const mc2tex::TextureArrayCpu* albedoOn;
 

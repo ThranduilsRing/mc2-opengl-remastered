@@ -13,7 +13,7 @@ DWORD assetCapacity();
 void startSources();
 bool ready();
 // The <source>.ktx2 sidecar, unless the source comes from a higher-priority provider (a mod TGA beats a base KTX).
-std::optional<RenderCore::KtxImage> loadCookedSidecar(std::string_view source, std::string_view sidecar = {});
+std::optional<RenderCore::KtxImage> loadCookedSidecar(std::string_view source);
 void flushSources(bool all);
 void adoptOwned(DWORD asset) noexcept;
 void disown(DWORD asset) noexcept;

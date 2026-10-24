@@ -6,7 +6,6 @@
 #include "mc2fmt.h"
 
 #include <cstring>
-#include <bit>
 
 // Build the per-group texture arrays and publish the per-packet and per-type layer tables.
 bool GpuStaticPropBatcher::buildTextureArrays(StaticPropFinalizeFrame& f) {
@@ -15,9 +14,6 @@ bool GpuStaticPropBatcher::buildTextureArrays(StaticPropFinalizeFrame& f) {
     layerForType.assign(typeCount, -1);
     for (auto& a : albedoArrays_) a = {};
     albedoKey_ = {};
-    albedoBuckets_.clear();
-    packetBucket_.assign(s_packets.size(), -1);
-    packetBucketLayer_.assign(s_packets.size(), -1);
     // 2026-05-11 per-packet rework: layerForPacket[globalPacketIdx] gives the
     // group-relative texture-array layer for that packet. The previous
     // per-type layerForType is kept for backward-compat but now records the
@@ -140,6 +136,16 @@ bool GpuStaticPropBatcher::buildTextureArrays(StaticPropFinalizeFrame& f) {
                         std::fflush(stderr);
                     }
                 }
+                if (type.isOverride && !uniques.empty()) {
+                    layerForPacket[globalPktIdx] = 0;
+                    if (layerForType[typeID] < 0) layerForType[typeID] = 0; // VK-P11: first-valid wins
+                    packetsInGroup.emplace_back(globalPktIdx, 0);
+                    if (mc2::gate::get<"MC2_MODOVERRIDE_TRACE">()) {
+                        mc2::fmt::print_err("[SEAMPROBE] OVERRIDE_ROUTE type={:d} pkt={:d} -> layer=0 (default) group={}\n", mc2::fmt::as_u32(typeID), mc2::fmt::as_u32(pIdx), mc2::fmt::safe(group == 0u ? "off" : "on"));
+                        std::fflush(stderr);
+                    }
+                    continue;
+                }
                 continue;
             }
 
@@ -203,63 +209,89 @@ bool GpuStaticPropBatcher::buildTextureArrays(StaticPropFinalizeFrame& f) {
             return true;
         }
 
-        // Color arrays are dimension-local. Keep the legacy layout solely for
-        // shadow coverage consumers, whose layer tables remain group-relative.
-        std::map<std::pair<int,int>, std::vector<size_t>> sizes;
-        for (size_t k = 0; k < uniques.size(); ++k) sizes[{uniques[k].w, uniques[k].h}].push_back(k);
-        std::vector<int32_t> bucketForUnique(uniques.size(), -1), localLayer(uniques.size(), -1);
-        for (const auto& [dims, members] : sizes) {
-            const auto [width, height] = dims;
-            // Split compressed and source-pixel layers: one missing/mod sidecar
-            // must not force the other textures in this size class to RGBA8.
-            for (bool compressed : {true, false}) {
-                mc2tex::TextureArrayCpu array;
-                array.width = width; array.height = height;
-                array.vkFormat = compressed ? mc2tex::kVkFormatBc7Unorm : mc2tex::kVkFormatRgba8Unorm;
-                const int32_t bucket = static_cast<int32_t>(albedoBuckets_.size());
-                for (size_t k : members) {
-                    const auto& u = uniques[k];
-                    std::optional<RenderCore::KtxImage> image;
-                    if (u.nodeIdx != 0xFFFFFFFFu && mc2::textures::ready()) {
-                        const char* source = mc2::textures::name(u.nodeIdx);
-                        if (source && *source) image = mc2::textures::loadCookedSidecar(source, deriveTieredKtxPath(source, texTier()));
-                    }
-                    const bool bc7 = image && image->isCompressed &&
-                        (image->vkFormat == 145u || image->vkFormat == 146u) &&
-                        image->width == u.w && image->height == u.h &&
-                        image->mipCount == std::bit_width(static_cast<uint32_t>(std::max(u.w,u.h)));
-                    if (bc7 != compressed) continue;
-                    std::vector<std::vector<uint8_t>> levels;
-                    if (bc7) {
-                        // The legacy prop shader treats albedo bytes as UNORM.
-                        for (int m = 0; m < image->mipCount; ++m) {
-                            const size_t count = size_t((mc2tex::mipExtent(u.w,m)+3)/4) * ((mc2tex::mipExtent(u.h,m)+3)/4) * 16;
-                            const size_t off = image->mipByteOffsets.at(m);
-                            levels.emplace_back(image->pixels.begin()+off, image->pixels.begin()+off+count);
-                        }
-                    } else {
-                        levels.push_back(*u.rgba);
-                        const uint32_t count=std::bit_width(static_cast<uint32_t>(std::max(u.w,u.h)));
-                        for (uint32_t m=1;m<count;++m)
-                            levels.push_back(mc2tex::boxDownsampleRgba8(levels.back(),mc2tex::mipExtent(u.w,m-1),mc2tex::mipExtent(u.h,m-1)));
-                    }
-                    if (array.layers && levels.size() != array.levels.size()) continue;
-                    if (!array.layers) array.levels.resize(levels.size());
-                    bucketForUnique[k]=bucket; localLayer[k]=array.layers++;
-                    for (size_t m=0;m<levels.size();++m)
-                        array.levels[m].insert(array.levels[m].end(),levels[m].begin(),levels[m].end());
-                }
-                if (array.layers) {
-                    size_t bytes=0; for (const auto& level : array.levels) bytes+=level.size();
-                    mc2::fmt::print_err("[STATICPROP_BC7] bucket={} group={} dims={}x{} layers={} format={} bytes={}\n",
-                        bucket, group, array.width, array.height, array.layers, array.vkFormat, bytes);
-                    albedoBuckets_.push_back(std::move(array));
-                }
+        if (mc2::textures::ready()) {
+            std::vector<RenderCore::KtxImage> bc7Imgs(uniques.size());
+            bool bc7Ok      = true;
+            const char* failReason = nullptr;
+            uint32_t bc7VkFormat = 0;   // shared format across the array
+            int      bc7MipCount = 0;   // shared mip count across the array
+
+            // Uniform-dim check first (cheap, no file IO).
+            for (const auto& u : uniques) {
+                if (u.w != maxW || u.h != maxH) { bc7Ok = false; failReason = "mixed_dims"; break; }
             }
-        }
-        for (const auto& [packet, layer] : packetsInGroup) if (layer >= 0) {
-            packetBucket_[packet]=bucketForUnique[layer];
-            packetBucketLayer_[packet]=localLayer[layer];
+
+            for (size_t k = 0; bc7Ok && k < uniques.size(); ++k) {
+                const auto& u = uniques[k];
+                if (u.nodeIdx == 0xFFFFFFFFu) { bc7Ok = false; failReason = "load_fail"; break; }
+                const char* srcName = mc2::textures::name(u.nodeIdx);
+                if (!srcName || !*srcName) { bc7Ok = false; failReason = "load_fail"; break; }
+                const std::string ktxPath = deriveTieredKtxPath(srcName, texTier());
+                if (!RenderCore::ktxLoadRgba8(ktxPath.c_str(), bc7Imgs[k])) {
+                    bc7Ok = false; failReason = "load_fail"; break;
+                }
+                const RenderCore::KtxImage& img = bc7Imgs[k];
+                if (!img.isCompressed ||
+                    (img.vkFormat != 145u && img.vkFormat != 146u)) {
+                    bc7Ok = false; failReason = "not_all_bc7"; break;
+                }
+                if (img.width != u.w || img.height != u.h) {
+                    bc7Ok = false; failReason = "dim_mismatch"; break;
+                }
+                if (k == 0) { bc7VkFormat = img.vkFormat; bc7MipCount = img.mipCount; }
+                // Require a consistent mip count so glTexStorage3D's level count
+                // is valid for every layer.
+                if (img.mipCount != bc7MipCount) { bc7Ok = false; failReason = "dim_mismatch"; break; }
+            }
+
+            if (bc7Ok) {
+                const uint32_t sourceFormat = mc2tex::kVkFormatBc7Unorm;
+                const int levels = (bc7MipCount > 0) ? bc7MipCount : 1;
+
+                mc2tex::TextureArrayCpu& cpuArray = albedoArrays_[group];
+                cpuArray = {};
+                cpuArray.width = static_cast<uint32_t>(maxW);
+                cpuArray.height = static_cast<uint32_t>(maxH);
+                cpuArray.layers = static_cast<uint32_t>(uniques.size());
+                cpuArray.vkFormat = mc2tex::kVkFormatBc7Unorm;
+                cpuArray.levels.assign(static_cast<size_t>(levels), {});
+                size_t bc7TotalBytes = 0;
+                for (size_t k = 0; k < uniques.size(); ++k) {
+                    const RenderCore::KtxImage& img = bc7Imgs[k];
+                    for (int lvl = 0; lvl < levels; ++lvl) {
+                        const int lw = (maxW >> lvl) ? (maxW >> lvl) : 1;
+                        const int lh = (maxH >> lvl) ? (maxH >> lvl) : 1;
+                        const int imageSize =
+                            static_cast<int>(((lw + 3) / 4) * ((lh + 3) / 4) * 16);
+                        const uint8_t* blocks = img.pixels.data() + img.mipByteOffsets[static_cast<size_t>(lvl)];
+                        cpuArray.levels[static_cast<size_t>(lvl)].insert(cpuArray.levels[static_cast<size_t>(lvl)].end(), blocks, blocks + imageSize);
+                        bc7TotalBytes += static_cast<size_t>(imageSize);
+                    }
+                }
+
+                for (const auto& [globalPktIdx, grpLayer] : packetsInGroup) {
+                    if (grpLayer < 0) continue;
+                    uvScaleXByPacket[globalPktIdx] = 1.0f;
+                    uvScaleYByPacket[globalPktIdx] = 1.0f;
+                }
+
+                mc2::fmt::print_err("[STATICPROP_BC7] group={:d} layers={:d} dims={:d}x{:d} levels={:d} internalformat=0x{:x} bytes={:d}\n", mc2::fmt::as_u32((unsigned)group), mc2::fmt::as_size(uniques.size()), mc2::fmt::as_i32(maxW), mc2::fmt::as_i32(maxH), mc2::fmt::as_i32(levels), mc2::fmt::as_u32(sourceFormat), mc2::fmt::as_size(bc7TotalBytes));
+                mc2::fmt::print_err("[STATICPROP_BC7] summary group={:d} built BC7 array (srcVkFormat={:d}, {:d} layers)\n", mc2::fmt::as_u32((unsigned)group), mc2::fmt::as_u32(bc7VkFormat), mc2::fmt::as_size(uniques.size()));
+                std::fflush(stderr);
+
+                COALESCE_TRACE("group_built_bc7 group=%s uniques=%zu maxDims=%dx%d levels=%d",
+                               group == 0u ? "off" : "on",
+                               uniques.size(), maxW, maxH, levels);
+
+                albedoKey_[group] = ++s_albedoKeySerial;
+                s_coalescePinnedNodes.insert(s_coalescePinnedNodes.end(),
+                                              newlyPinnedThisBuild.begin(),
+                                              newlyPinnedThisBuild.end());
+                continue;
+            } else {
+                mc2::fmt::print_err("[STATICPROP_BC7] fallback group={:d} reason={}\n", mc2::fmt::as_u32(static_cast<unsigned>(group)), mc2::fmt::safe(failReason ? failReason : "unknown"));
+                std::fflush(stderr);
+            }
         }
 
         mc2tex::TextureArrayCpu& cpuArray = albedoArrays_[group];
@@ -275,10 +307,41 @@ bool GpuStaticPropBatcher::buildTextureArrays(StaticPropFinalizeFrame& f) {
                 std::memcpy(layer.data() + static_cast<size_t>(y) * layerW * 4u, src + static_cast<size_t>(y) * w * 4u, static_cast<size_t>(w) * 4u);
         };
         std::vector<uint8_t> pixelBuf;
+        std::vector<std::pair<size_t, RenderCore::KtxImage>> ktxMipLayers;
         for (size_t k = 0; k < uniques.size(); ++k) {
             const auto& u = uniques[k];
-            pixelBuf.assign(u.rgba->begin(), u.rgba->end());
-            blitRows(layerTexels[k], cpuArray.width, pixelBuf.data(), static_cast<uint32_t>(u.w), static_cast<uint32_t>(u.h));
+            bool ktxUsed = false;
+            if (u.nodeIdx != 0xFFFFFFFFu && mc2::textures::ready()) {
+                const char* srcName = mc2::textures::name(u.nodeIdx);
+                if (srcName && *srcName) {
+                    // Derive tiered .ktx2 path: data/tgl/<tier>/foo.ktx2
+                    const std::string ktxPath = deriveTieredKtxPath(srcName, texTier());
+                    RenderCore::KtxImage ktxImg;
+                    const bool ktxOk = RenderCore::ktxLoadRgba8(ktxPath.c_str(), ktxImg);
+                    // A BC7 sidecar in a group that took this RGBA8 path (e.g. mixed dims declined the BC7 array) holds blocks, not
+                    // texels: rejected here, so the texture's own pixels are used.
+                    const bool dimOk = ktxOk && !ktxImg.isCompressed &&
+                                       ktxImg.width == u.w && ktxImg.height == u.h &&
+                                       ktxImg.pixels.size() >= static_cast<size_t>(u.w) * static_cast<size_t>(u.h) * 4u;
+                    mc2::fmt::print_err("[KTX_SIDECAR] node={:d} srcName={} path={} load={:d} ktxDims={:d}x{:d} glDims={:d}x{:d} match={:d}\n",
+                        mc2::fmt::as_u32(static_cast<unsigned long>(u.nodeIdx)), mc2::fmt::safe(srcName), ktxPath.c_str(),
+                        mc2::fmt::as_i32(static_cast<int>(ktxOk)),
+                        mc2::fmt::as_i32(ktxOk ? ktxImg.width : 0), mc2::fmt::as_i32(ktxOk ? ktxImg.height : 0),
+                        mc2::fmt::as_i32(u.w), mc2::fmt::as_i32(u.h), mc2::fmt::as_i32(static_cast<int>(dimOk)));
+                    std::fflush(stderr);
+                    if (dimOk) {
+                        blitRows(layerTexels[k], cpuArray.width, ktxImg.pixels.data(), static_cast<uint32_t>(u.w), static_cast<uint32_t>(u.h));
+                        ktxUsed = true;
+                        if (ktxImg.mipCount > 1) ktxMipLayers.emplace_back(k, std::move(ktxImg));
+                        COALESCE_TRACE("ktx_sidecar_hit type=? node=%lu path=%s",
+                                       static_cast<unsigned long>(u.nodeIdx), ktxPath.c_str());
+                    }
+                }
+            }
+            if (!ktxUsed) {
+                pixelBuf.assign(u.rgba->begin(), u.rgba->end());
+                blitRows(layerTexels[k], cpuArray.width, pixelBuf.data(), static_cast<uint32_t>(u.w), static_cast<uint32_t>(u.h));
+            }
         }
 
         int maxLevel = 0;
@@ -292,15 +355,36 @@ bool GpuStaticPropBatcher::buildTextureArrays(StaticPropFinalizeFrame& f) {
         }
         const uint32_t levelCount = static_cast<uint32_t>(maxLevel) + 1u;
         cpuArray.levels.assign(levelCount, {});
+        int bakedLevels = 0;
         for (uint32_t lvl = 0; lvl < levelCount; ++lvl) {
             const uint32_t lw = mc2tex::mipExtent(cpuArray.width, lvl), lh = mc2tex::mipExtent(cpuArray.height, lvl);
             const size_t layerBytes = static_cast<size_t>(lw) * lh * 4u;
             std::vector<uint8_t>& level = cpuArray.levels[lvl];
             level.resize(layerBytes * layerTexels.size());
             for (size_t k = 0; k < layerTexels.size(); ++k) std::memcpy(level.data() + k * layerBytes, layerTexels[k].data(), layerBytes);
+            // A pre-baked level replaces its layer at that level only: the chain below it keeps deriving from level 0, as
+            // glGenerateMipmap did before the baked levels were uploaded over it.
+            if (lvl > 0)
+                for (const auto& [layerK, img] : ktxMipLayers) {
+                    if (static_cast<int>(lvl) >= img.mipCount || lvl >= img.mipByteOffsets.size()) continue;
+                    const uint32_t kw = mc2tex::mipExtent(static_cast<uint32_t>(img.width), lvl);
+                    const uint32_t kh = mc2tex::mipExtent(static_cast<uint32_t>(img.height), lvl);
+                    const size_t off = img.mipByteOffsets[lvl];
+                    if (kw > lw || kh > lh || off + static_cast<size_t>(kw) * kh * 4u > img.pixels.size()) {
+                        mc2::fmt::print_err("[KTX2_MIP] layer {:d} level {:d} rejected: {:d}x{:d} does not fit the {:d}x{:d} array level or its bytes\n",
+                            mc2::fmt::as_size(layerK), mc2::fmt::as_u32(lvl), mc2::fmt::as_u32(kw), mc2::fmt::as_u32(kh), mc2::fmt::as_u32(lw), mc2::fmt::as_u32(lh));
+                        continue;
+                    }
+                    std::vector<uint8_t> patched = layerTexels[layerK];
+                    blitRows(patched, lw, img.pixels.data() + off, kw, kh);
+                    std::memcpy(level.data() + layerK * layerBytes, patched.data(), layerBytes);
+                    ++bakedLevels;
+                }
             if (lvl + 1u < levelCount)
                 for (auto& layer : layerTexels) layer = mc2tex::boxDownsampleRgba8(layer, lw, lh);
         }
+        if (!ktxMipLayers.empty())
+            mc2::fmt::print_err("[KTX2_MIP] summary: {:d} KTX layers, {:d} pre-baked mips used\n", mc2::fmt::as_size(ktxMipLayers.size()), mc2::fmt::as_i32(bakedLevels));
 
         albedoKey_[group] = ++s_albedoKeySerial;
         // 2026-05-11 per-packet rework: uvScale is per-PACKET, derived from

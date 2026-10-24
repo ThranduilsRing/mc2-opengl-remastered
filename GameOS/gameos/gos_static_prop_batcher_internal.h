@@ -1,4 +1,3 @@
-#include "../../RenderCore/PropTexturePath.h"
 // Shared CPU geometry, material, lighting and diagnostic state for the native static-prop feed.
 //
 // The pieces are contiguous slices of the original file, in file order (core, state, program, mapload, finalize, submit, flush,
@@ -428,7 +427,17 @@ static std::string deriveOrmSidecar(const char* srcName) {
 // If no tier directory is found the plain sidecar path (flat .ktx2) is returned
 // so the existing fallback / miss path handles it gracefully.
 static std::string deriveTieredKtxPath(const char* srcName, int tier) {
-    return mc2prop::tieredKtxPath(srcName ? srcName : "", tier);
+    std::string s(srcName ? srcName : "");
+    const size_t sep = s.find_last_of("/\\");
+    const size_t dot = s.find_last_of('.');
+    if (dot != std::string::npos && (sep == std::string::npos || dot > sep))
+        s.erase(dot);
+    const size_t lastSep = s.find_last_of("/\\");
+    if (lastSep == std::string::npos) {
+        return std::to_string(tier) + "/" + s + ".ktx2";
+    }
+    return s.substr(0, lastSep + 1) + std::to_string(tier) + "/"
+           + s.substr(lastSep + 1) + ".ktx2";
 }
 
 // The [TREE_DIAG] stream is named for the 2026-05-05 "black billboard square"

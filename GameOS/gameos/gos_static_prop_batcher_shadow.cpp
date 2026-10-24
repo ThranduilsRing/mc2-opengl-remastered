@@ -219,10 +219,6 @@ extern "C" int mc2_color_prop_island_get_material_feed(Mc2ColorPropMaterialFeed*
     out->arrayKeyOn      = GpuStaticPropBatcher::instance().albedoKey(1);
     {
         const auto& batcher = GpuStaticPropBatcher::instance();
-        out->colorBuckets = batcher.albedoBuckets().data();
-        out->colorBucketCount = static_cast<uint32_t>(batcher.albedoBuckets().size());
-        out->packetColorBucket = batcher.packetBuckets().data();
-        out->packetColorLayer = batcher.packetBucketLayers().data();
         out->albedoOff = batcher.albedoArray(0).levels.empty() ? nullptr : &batcher.albedoArray(0);
         out->albedoOn  = batcher.albedoArray(1).levels.empty() ? nullptr : &batcher.albedoArray(1);
     }

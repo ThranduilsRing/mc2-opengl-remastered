@@ -124,7 +124,6 @@ void GpuStaticPropBatcher::onMapUnload() {
     s_coalescePinnedNodes.clear();
     for (auto& array : albedoArrays_) array = {};
     albedoKey_ = {};
-    albedoBuckets_.clear(); packetBucket_.clear(); packetBucketLayer_.clear();
     s_packetTexArrayLayer.clear(); s_packetUvScaleX.clear(); s_packetUvScaleY.clear();
     s_typeInstanceCountPrevFrame.clear();
     s_packetMaterialIdx.clear(); s_materialGpuTable.clear(); s_materialInventory.clear();

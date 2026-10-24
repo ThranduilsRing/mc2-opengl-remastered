@@ -177,14 +177,9 @@ private:
     bool reportMaterialCache(StaticPropFinalizeFrame& f);
     void armCoalesce(StaticPropFinalizeFrame& f);
     std::array<mc2tex::TextureArrayCpu, 2> albedoArrays_;
-    std::vector<mc2tex::TextureArrayCpu> albedoBuckets_;
-    std::vector<int32_t> packetBucket_, packetBucketLayer_;
     // Per group: 0 until the group array of this map is built, then a serial that is new for every build (the change key of the island's copy).
     std::array<uint32_t, 2> albedoKey_{};
 public:
-    const auto& albedoBuckets() const { return albedoBuckets_; }
-    const auto& packetBuckets() const { return packetBucket_; }
-    const auto& packetBucketLayers() const { return packetBucketLayer_; }
     uint32_t albedoKey(uint32_t group) const { return albedoKey_[group & 1u]; }
     const mc2tex::TextureArrayCpu& albedoArray(uint32_t group) const { return albedoArrays_[group & 1u]; }
     bool packetAlphaTest(uint32_t packet) const;

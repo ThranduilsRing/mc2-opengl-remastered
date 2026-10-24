@@ -55,7 +55,6 @@
 // Deleting these lines, or adding a second real write here, fails the check.
 // =============================================================================
 #version 450
-#extension GL_EXT_nonuniform_qualifier : require
 #extension GL_GOOGLE_include_directive : require
 
 // Per-frame UBO: generated from RenderCore/gpu_abi/GpuColorFrameUBO.h.
@@ -66,8 +65,6 @@ layout(set = 0, binding = 3) uniform sampler2DArray uAlbedo;
 // VK-P11 STATIC-PROP MATERIAL alpha-ON: alpha-MIXED prop array (copy-once import of
 // s_texArrayOn). Sampled with a 0.5 alpha-test discard, matching GL static_prop.frag.
 layout(set = 0, binding = 6) uniform sampler2DArray uAlbedoOn;
-layout(set = 0, binding = 13) uniform sampler2DArray uColorBuckets[16];
-
 
 layout(location = 0) in vec2 vUv;
 layout(location = 1) in vec3 vNormalStuff;
@@ -87,10 +84,6 @@ layout(location = 14) in vec2 vTree;
 
 // The vertex stage's push block; the FS reads only packetAlphaTest.
 #include "include/prop_packet_vk.glsl"
-vec4 propOff(vec3 uv) { return uPacket.colorDescriptor >= 0 ? texture(uColorBuckets[nonuniformEXT(uPacket.colorDescriptor)], uv) : texture(uAlbedo, uv); }
-vec4 propOn(vec3 uv, float lod) { return uPacket.colorDescriptor >= 0 ? textureLod(uColorBuckets[nonuniformEXT(uPacket.colorDescriptor)], uv, lod) : textureLod(uAlbedoOn, uv, lod); }
-vec2 propOnSize() { return uPacket.colorDescriptor >= 0 ? vec2(textureSize(uColorBuckets[nonuniformEXT(uPacket.colorDescriptor)],0).xy) : vec2(textureSize(uAlbedoOn,0).xy); }
-float propOffLod(vec2 uv) { return uPacket.colorDescriptor >= 0 ? textureQueryLod(uColorBuckets[nonuniformEXT(uPacket.colorDescriptor)],uv).y : textureQueryLod(uAlbedo,uv).y; }
 
 layout(location = 0) out vec4 oColor;     // MRT0 lit color
 layout(location = 1) out vec4 oGBuffer1;  // MRT1 normal + shadow class
@@ -182,12 +175,12 @@ void main() {
         // `fract(v_uv) * vec2(uvScaleX, uvScaleY)`.
         vec2  uvContinuousOn = vUv * vUvScale;
         vec2  uvSampledOn = fract(uvContinuousOn);
-        vec2  tsOn = propOnSize();
+        vec2  tsOn = vec2(textureSize(uAlbedoOn, 0).xy);
         vec2  duv1 = dFdx(uvContinuousOn) * tsOn;
         vec2  duv2 = dFdy(uvContinuousOn) * tsOn;
         float lodOn = 0.5 * log2(max(max(dot(duv1, duv1), dot(duv2, duv2)), 1e-12));
         lodOn = max(lodOn, 0.0);
-        vec4 texc = propOn(vec3(uvSampledOn, float(vLayerOn)), lodOn);
+        vec4 texc = textureLod(uAlbedoOn, vec3(uvSampledOn, float(vLayerOn)), lodOn);
         cover = propCoverage(texc.a, lodOn);   // PROP-COVERAGE-1 (replaces the Bayer screen-door dither)
         // ★VK-FLIP-FIELD-REPORT-1 BLACK-FENCE FIX: the alpha-ON group is the ALPHA_TEST
         // class (tree cards / fences / foliage). GL static_prop.frag:339 floors their lit
@@ -205,7 +198,7 @@ void main() {
         // uvScale defaults to 1.0 for the common single-texture types so this is a
         // no-op there).
         vec2 uvContinuous = vUv * vUvScale;
-        vec4 texOff = propOff(vec3(fract(uvContinuous), float(vLayer)));
+        vec4 texOff = texture(uAlbedo, vec3(fract(uvContinuous), float(vLayer)));
         vec3 albedo = texOff.rgb;
         materialAlbedo = albedo; haveAlbedo = true;
 
@@ -215,7 +208,7 @@ void main() {
         // A packet GL alpha-tests although its type sits in the alpha-OFF group (its texture's alpha flag is set after the arrays
         // were built, e.g. the hex lattice props): GL's dither discard, its alpha-test light floor and its alpha-test shadow class.
         if (uPacket.packetAlphaTest != 0) {
-            cover = propCoverage(texOff.a, propOffLod(uvContinuous));   // PROP-COVERAGE-1
+            cover = propCoverage(texOff.a, textureQueryLod(uAlbedo, uvContinuous).y);   // PROP-COVERAGE-1
             rgb = albedo * max(vArgb, vec3(0.5));
             alphaTestClass = true;
         }

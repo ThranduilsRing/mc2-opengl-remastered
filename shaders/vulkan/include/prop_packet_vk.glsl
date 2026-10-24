@@ -7,5 +7,4 @@ layout(push_constant) uniform PacketLayerPC {
     int   coverageFringePass;   // PROP-COVERAGE-1 (FS only)
     int   hzbEnabled;
     int   materialId;
-    int   colorDescriptor;
 } uPacket;
