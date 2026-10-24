@@ -1482,7 +1482,7 @@ TEST_CASE("the render options serialize as one JSON object of all option values 
     namespace mo = mc2::options;
     mo::RenderOptions o{};
     const std::string d = mo::toJson(o);
-    CHECK(d.rfind("{\"RemasteredBuildings\": true, \"PostCAS\": false,\"PostCASSharpness\": 0.5, \"TonemapMode\": 0, \"SpatialAA\": 1, \"ShadowQuality\": 2", 0) == 0);
+    CHECK(d.rfind("{\"RemasteredBuildings\": true, \"PostCAS\": false, \"PostCASSharpness\": 0.5, \"TonemapMode\": 0, \"SpatialAA\": 1, \"ShadowQuality\": 2", 0) == 0);
     CHECK(d.find("\"StaticPropIblSunRotateFloor\": 0.45") != std::string::npos);
     CHECK(d.find("\"StaticPropPbr\": false") != std::string::npos);
     CHECK(d.back() == '}');
