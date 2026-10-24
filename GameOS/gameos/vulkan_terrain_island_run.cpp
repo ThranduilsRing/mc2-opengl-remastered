@@ -132,8 +132,11 @@ extern "C" int mc2_vk_terrain_island_prewarm(int w, int h) {
 // (Factored out of mc2_vk_terrain_island_run for VK-PARITY-OVERLAY-1 reuse.)
 bool stage_light_pool(TerrainIsland* s, const Mc2TerrainTier1Feed& feed,
                              int32_t& vkPoolLights, int32_t& vkGridDim, mc2vk::FrameAlloc (&lp)[3]) {
-    (void)s;
     mc2vk::VulkanContext& ctx = mc2vk::getOrCreateEngineVulkanContext();
+    if (vkPoolLights > 0 && feed.poolLights && mc2::gate::get<"MC2_LIGHT_GRID">()) {
+        vkGridDim = mc2vk::LightLists::kDim;
+        return s->lightLists.stage(ctx, feed.poolLights, uint32_t(vkPoolLights), lp);
+    }
     {
         ZoneScopedN("VKIsl.Terrain.LightPoolStage");
         auto stage = [&](int k, const void* src, VkDeviceSize bytes) -> bool {
@@ -253,6 +256,10 @@ void fill_frame_ubo(TerrainIsland* s, const Mc2TerrainTier1Feed& feed,
     u.lightGridMinY       = feed.lightGridMin[1];
     u.lightGridInvCellX   = feed.lightGridInvCell[0];
     u.lightGridInvCellY   = feed.lightGridInvCell[1];
+    if (vkPoolLights > 0 && mc2::gate::get<"MC2_LIGHT_GRID">()) {
+        u.lightGridMinX = s->lightLists.minInv[0]; u.lightGridMinY = s->lightLists.minInv[1];
+        u.lightGridInvCellX = s->lightLists.minInv[2]; u.lightGridInvCellY = s->lightLists.minInv[3];
+    }
     u.lightPoolSoft       = feed.lightPoolSoft;
     u.lightPoolMoverDim   = feed.lightPoolMoverDim;
     u.lightPoolMoverScale = feed.lightPoolMoverScale;
@@ -442,6 +449,10 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
     if (vkBeginCommandBuffer(cb, &bi) != VK_SUCCESS) { setFallback("record_failed"); s->disabled = true; return 0; }
+    {
+        MC2_VK_GPU_SCOPE(listsScope, cb, "VKIsl.LightLists");
+        s->lightLists.record(rctx, cb, par);
+    }
     vk_render_pass_timer::Begin(cb, gos_render_pass_timer::Pass_TerrainChunk);
     vk_render_pass_timer::CancelUnlessSubmitted timerGuard(gos_render_pass_timer::Pass_TerrainChunk);
 

@@ -47,11 +47,24 @@ vec3 olp_objectPoolLight(vec3 worldPosMC2, int numPoolLights, int poolSoft,
         indexed = true;
     }
 #endif
+#ifdef MC2_OBJECT_TERRAIN_GRID
+    if (uT.lightGridDim > 0) {
+        ivec2 cell = ivec2(floor((worldPosMC2.xy - vec2(uT.lightGridMinX, uT.lightGridMinY)) *
+                               vec2(uT.lightGridInvCellX, uT.lightGridInvCellY)));
+        if (any(lessThan(cell, ivec2(0))) || any(greaterThanEqual(cell, ivec2(uT.lightGridDim)))) return vec3(0.0);
+        uvec2 range = lightGridCells[cell.y * uT.lightGridDim + cell.x];
+        lo = int(range.x); hi = int(range.x + range.y); indexed = true;
+    }
+#endif
     for (int k = lo; k < hi; ++k) {
         int i = k;
 #ifdef MC2_OBJECT_POOL_GRID
         if (indexed) i = int(poolGridWords[poolGridInfo.y + uint(k)]);
         // A mod can enlarge the terrain pool beyond the existing object cap.
+        if (i >= numPoolLights) continue;
+#endif
+#ifdef MC2_OBJECT_TERRAIN_GRID
+        if (indexed) i = int(lightGridIndices[k]);
         if (i >= numPoolLights) continue;
 #endif
         if (poolLights[i].lightType == 0u) continue;
