@@ -1603,8 +1603,18 @@ static void CollectContentSockets(const aiNode* node, mc2::content::Asset& asset
 long ImportGeometryFromFile(const char* path, TG_TypeMultiShape* out, bool autoGround, bool authoredColors,
                             bool bakeNodeTransforms) {
 	if (!path || !out) return -1;
-
-
+	// The shipped cooker's GLBs contain their vertex/index buffers. Keep arbitrary
+	// mod GLBs on dependency tracking (they may reference external buffers).
+	const bool staticGlb = bakeNodeTransforms && std::string_view(path).ends_with(".glb") &&
+		std::string_view(path).starts_with("mods/mc2-industrial-kit/data/model_overrides/");
+	const std::string staticParameters = std::to_string(s_gltfAxis()) + ":" + ContentFloatKey(s_gltfYoff()) + ":" +
+		ContentFloatKey(s_gltfYawDeg()) + ":" + std::to_string(authoredColors) + ":static-glb/1";
+	if (staticGlb) {
+		mc2::content::Asset cached;
+		cached.ground = autoGround ? mc2::gate::get<"MC2_GLTF_GROUND">() : 0;
+		cached.parameters = staticParameters;
+		if (mc2::content::loadCached(cached, path)) return out->BuildContentIR(std::move(cached), path);
+	}
 	Assimp::Importer imp;
 	auto io = std::make_unique<ContentIO>();
 	auto* sources = io.get();
@@ -1740,6 +1750,9 @@ long ImportGeometryFromFile(const char* path, TG_TypeMultiShape* out, bool autoG
     std::sort(sources->dependencies.begin(), sources->dependencies.end());
     for (const auto& [dependencyPath, digest] : sources->dependencies)
         asset.parameters += ":" + std::to_string(digest);
+    // Skinned imports keep their skeleton/clip path; they never populate the
+    // static cache namespace that can bypass scene decoding.
+    if (staticGlb && !bake.active) asset.parameters = staticParameters;
     if (!bake.active && mc2::content::loadCached(asset, path))
         return out->BuildContentIR(std::move(asset), path);
     CollectContentSockets(scene->mRootNode, asset);

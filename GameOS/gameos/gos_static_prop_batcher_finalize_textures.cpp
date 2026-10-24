@@ -91,10 +91,6 @@ bool GpuStaticPropBatcher::buildTextureArrays(StaticPropFinalizeFrame& f) {
                     type.lastSeenGosHandle = gosHandle;
                 }
 
-                const auto texels = gos_GetTextureTexels(gosHandle);
-                auto rgba = texels.bytes;
-                if (rgba && (texels.vkFormat == mc2tex::kVkFormatBc7Unorm || texels.vkFormat == mc2tex::kVkFormatBc7Srgb))
-                    rgba = std::make_shared<const std::vector<uint8_t>>(mc2tex::decodeBc7(*rgba, texels.width, texels.height));
                 const uint32_t sourceHandle = static_cast<uint32_t>(gosHandle);
 
                 auto it = sourceToLayer.find(sourceHandle);
@@ -109,6 +105,11 @@ bool GpuStaticPropBatcher::buildTextureArrays(StaticPropFinalizeFrame& f) {
                     packetsInGroup.emplace_back(globalPktIdx, it->second);
                     continue;
                 }
+
+                const auto texels = gos_GetTextureTexels(gosHandle);
+                auto rgba = texels.bytes;
+                if (rgba && (texels.vkFormat == mc2tex::kVkFormatBc7Unorm || texels.vkFormat == mc2tex::kVkFormatBc7Srgb))
+                    rgba = std::make_shared<const std::vector<uint8_t>>(mc2tex::decodeBc7(*rgba, texels.width, texels.height));
 
             int W = texels.status == GosTexels::Status::Ready && rgba &&
                 rgba->size() == size_t(texels.width) * texels.height * 4 ? static_cast<int>(texels.width) : 0;

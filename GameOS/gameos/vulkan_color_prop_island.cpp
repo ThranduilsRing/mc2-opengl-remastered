@@ -606,7 +606,7 @@ bool cp_ensure_dummy_albedo(ColorPropIsland* s, const AlbedoTarget& tgt) {
 bool cp_import_albedo_array(ColorPropIsland* s, const AlbedoTarget& tgt, uint32_t changeKey, const mc2tex::TextureArrayCpu* a) {
     if (changeKey == 0 || !a) return false;
     if (changeKey == *tgt.importedGlName && *tgt.ready) return false; // already
-    const bool bc7 = a->vkFormat == mc2tex::kVkFormatBc7Unorm || a->vkFormat == mc2tex::kVkFormatBc7Srgb;
+    const bool bc7 = a->vkFormat == 141u || a->vkFormat == mc2tex::kVkFormatBc7Unorm || a->vkFormat == mc2tex::kVkFormatBc7Srgb;
     if (a->width == 0 || a->height == 0 || a->layers == 0 || a->levels.empty() || (!bc7 && a->vkFormat != mc2tex::kVkFormatRgba8Unorm)) {
         vlog("%s albedo array rejected: %ux%u layers=%u levels=%zu format=%u.", tgt.tag, a->width, a->height, a->layers, a->levels.size(), a->vkFormat);
         return false;

@@ -121,6 +121,22 @@ def test_runtime_frame_is_axis0_inverse(tmp_path):
     assert np.allclose(raw, tg * [-1, -1, 1], atol=1e-5)
 
 
+def test_runtime_prunes_unreferenced_vertices_without_changing_corners(tmp_path):
+    src, *_ = make_gltf(tmp_path)
+    asset = gltf_file.to_ir("panel", "staticProp:panel", src, meta={"frame": "gltf"}, work_dir=tmp_path / "w")
+    prim = asset.lod0().meshes[0].primitives[0]
+    prim.indices = np.array([[3, 0, 2]])
+    expected = asset.lod0().flattened()[0][1]
+    doc, binary = gltf_io.split_glb(gltf_io.write_runtime_glb(asset.lod0(), asset.materials, {}))
+    output = doc["meshes"][0]["primitives"][0]
+    idx = gltf_io.read_accessor(doc, [binary], output["indices"]).reshape(-1)
+    for key, values in (("POSITION", expected.positions * [-1, -1, 1]),
+                        ("COLOR_0", expected.color0)):
+        actual = gltf_io.read_accessor(doc, [binary], output["attributes"][key])
+        assert len(actual) == 3
+        assert np.allclose(actual[idx], values[expected.indices.reshape(-1)], atol=1e-5)
+
+
 @pytest.mark.parametrize("light_mesh", [None, 0])
 def test_kit_light_and_destroyed_lods_survive_cook(tmp_path, light_mesh):
     from tools.content_pipeline.cook import build_asset

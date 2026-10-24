@@ -41,13 +41,15 @@ int main(int argc, char** argv) {
     }
     const char* path = argv[1];
     bool ground = true;
+    bool staticProp = false;
     for (int i = 2; i < argc; ++i)
         if (std::strcmp(argv[i], "--no-ground") == 0) ground = false;
+        else if (std::strcmp(argv[i], "--static-prop") == 0) staticProp = true;
 
     InstallTglHeap();
 
     TG_TypeMultiShape ms;
-    long rc = ImportGeometryFromFile(path, &ms, ground);
+    long rc = ImportGeometryFromFile(path, &ms, ground, staticProp, staticProp);
 
     std::printf("{\n");
     std::printf("  \"source\": \"%s\",\n", path);

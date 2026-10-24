@@ -429,6 +429,14 @@ def write_runtime_glb(scene: Scene, materials: list[Material], texture_names: di
         used[node_name] = k + 1
         node_name = node_name if k == 0 else f"{node_name}_{k}"
         prim = transform_primitive(prim, to_runtime)
+        # glTF material splits may share full-mesh accessors. Emit only vertices
+        # referenced by this primitive, preserving every corner attribute exactly.
+        referenced, remap = np.unique(prim.indices, return_inverse=True)
+        for field in ("positions", "normals", "tangents", "uv0", "color0"):
+            value = getattr(prim, field)
+            if value is not None:
+                setattr(prim, field, value[referenced])
+        prim.indices = remap.reshape(prim.indices.shape)
         if pivot is not None:
             prim.positions -= np.asarray(pivot) * [-1, -1, 1]
         normals = prim.normals if prim.normals is not None else smooth_normals(prim.positions, prim.indices)
