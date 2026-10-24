@@ -206,23 +206,26 @@ void main(void)
     }
     if (shore <= 0.0) discard;
 
-    PREC vec3  vertexLightRGB = Color.bgra.rgb;
-    PREC vec3  col = waterCol * max(vertexLightRGB, vec3(SKY_AMBIENT))
-                   + waterCol * SKY_AMBIENT * 0.5;
+    // Night: the scattered light, sky ambient floor, glint, sky tint and reflected sky take the mission's night
+    // dim (f3.z, 0 by day), so open water reads as dark as the ground around it instead of daylight teal.
+    PREC float nightSky = 1.0 - clamp(F.f3.z, 0.0, 1.0);
+    PREC vec3  vertexLightRGB = Color.bgra.rgb * nightSky;
+    PREC vec3  col = waterCol * max(vertexLightRGB, vec3(SKY_AMBIENT * nightSky))
+                   + waterCol * SKY_AMBIENT * 0.5 * nightSky;
     PREC float crest = max(nz, 0.0);
     col *= 1.0 + RIPPLE_GAIN * waveLOD * crest;
     PREC float glint = smoothstep(GLINT_THRESH, 0.80, nz);
-    col += glint * GLINT_GAIN * waveLOD * GLINT_TINT;
+    col += glint * GLINT_GAIN * waveLOD * GLINT_TINT * nightSky;
     //PORT-END:waterBaseColor
     // Static shadow on the light the surface scatters and glints (the reflected sky is untouched), with the receivers' 0.4 floor.
     if (F.f7.z > 0.5) {
         vec2 maskUv = vec2(WorldPos.x + F.f7.w, F.f7.w - WorldPos.y) / max(F.f7.y, 1.0);
         if (all(greaterThanEqual(maskUv, vec2(0.0))) && all(lessThanEqual(maskUv, vec2(1.0))))
-            col *= mix(0.4, 1.0, texture(u_staticMask, maskUv).r);
+            col *= mix(sunShadowFloor(0.4), 1.0, texture(u_staticMask, maskUv).r);
     }
     // WATER-VISUAL-FIRST-SLICE sky tint (strength 0 default -> mix returns col; GL line 328).
-    col *= mix(0.4,1.0,moverVisibility(WorldPos,vec3(0.0,0.0,1.0)));
-    col = mix(col, F.f9.xyz, clamp(F.f8.w, 0.0, 1.0));
+    col *= mix(sunShadowFloor(0.4),1.0,moverVisibility(WorldPos,vec3(0.0,0.0,1.0)));
+    col = mix(col, F.f9.xyz * nightSky, clamp(F.f8.w, 0.0, 1.0));
 
     // ---- RUNG-6.5 WATER-REFLECTION PORT (WATER-SKY-REFLECTION-1 + WATER-HDRI-REFL-1) ----
     // Verbatim port of the GL reflection block (gos_terrain_water_mdi.frag), minus:
@@ -255,7 +258,7 @@ void main(void)
         }
         // WATER-GRAZE-REFL-1: bias toward the authored sky/horizon tint at grazing angles.
         PREC float grazeW = pow(1.0 - max(vdir.z, 0.0), GRAZE_SKY_EXP);
-        skyReflCol = mix(skyReflCol, F.f9.xyz, GRAZE_SKY_PULL * grazeW);
+        skyReflCol = mix(skyReflCol, F.f9.xyz, GRAZE_SKY_PULL * grazeW) * nightSky;
         reflectCol = skyReflCol;   // default reflection = sky (fallback/base)
         //PORT-END:waterReflSetup
         // (terrain-RT contact sub-block skipped here — see header note above)

@@ -85,6 +85,7 @@
 #include <vector>
 
 extern void gos_GetTerrainLightDir(float* x, float* y, float* z);
+float mc2NightLightFactor();   // mclib/camera.cpp: 0 day/evening .. 1 full night
 
 namespace {
 
@@ -897,7 +898,8 @@ unsigned gosPostProcess::runVkPostScreenFxNative()
                         ? static_cast<float>(SmokeMode::fixedClockSeconds())
                         : static_cast<float>(SDL_GetTicks()) * 0.001f;
         p.cloudScale    = cloudScale_;
-        p.cloudStrength = cloudStrength_;
+        // Cloud shadows are sun shadows: they fade at night like the others (vulkan_mover_shadow.cpp).
+        p.cloudStrength = cloudStrength_ * (1.0f - 0.85f * mc2NightLightFactor());
         p.cloudOctaves  = cloudOctaves_;
         p.cloudEnable   = 1;   // gated in C++ above; 1 inside the pass (GL parity)
         void* m = nullptr;

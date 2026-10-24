@@ -243,7 +243,7 @@ void main() {
         vec3 ambient = uFrame.iblShStrength > 0.0 ? evalShL2(normalize(outputNormalStuff),sh)*uFrame.iblShStrength : vec3(0);
         float wrap = max((dot(N,L)+0.5)/1.5,0.0);
         float transmission = alphaTestClass ? 0.08*max(dot(-N,L),0.0) : 0.0;
-        vec3 direct = propDecodeColor(vMaterialSun) * (wrap+transmission);
+        vec3 direct = propDecodeColor(vMaterialSun) * (propNightSunWeight(wrap, N) + transmission * propNightDirectShare());
         // SH already contains linear irradiance. Preserve the stock albedo exposure ceiling.
         rgb = propEncodeColor(min(albedo,composeGroundLighting(albedo,max(ambient,vec3(0))*vTree.x*materialAO,direct,treeVisibility(N),vec3(0))));
         rgb += propPoolLight(propEncodeColor(albedo)) + vHighlight.rgb*vHighlight.a;

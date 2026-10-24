@@ -23,7 +23,7 @@ float objectStaticVisibility(vec3 worldPos) {
     vec4 taps=textureGather(shadowMap,q.xy,q.z-3.0/65535.0);
     vec2 f=fract(q.xy*vec2(textureSize(shadowMap,0))-0.5);
     float shadow = mix(mix(taps.w,taps.z,f.x),mix(taps.x,taps.y,f.x),f.y);
-    return mix(0.4, 1.0, shadow);
+    return mix(sunShadowFloor(0.4), 1.0, shadow);
 }
 bool rc_pixelHandlesOwnShadow(vec4 gbuf1) { return gbuf1.a>0.5; }
 bool rc_isStaticPropNoSelfShadow(vec4 gbuf1) { return gbuf1.a>0.1 && gbuf1.a<=0.5; }
@@ -44,7 +44,7 @@ void main() {
         if (!prop && u.mechSoft>0.0)
             v=mix(1.0,v,smoothstep(0.0,0.15+0.30*u.mechSoft,max(dot(N,moverFrame.sun.xyz),0.0)));
         float moverShadow = v;
-        shadow = min(shadow, prop ? mix(0.4, 1.0, moverShadow) : mix(0.55, 1.0, moverShadow));
+        shadow = min(shadow, mix(sunShadowFloor(prop ? 0.4 : 0.55), 1.0, moverShadow));
     }
     FragColor=vec4(vec3(shadow),1.0);
 }

@@ -14,9 +14,16 @@
 #include <cstring>
 
 extern void gos_GetTerrainChunkGridInfo(int* mapSide, float* halfMap);
+float mc2NightLightFactor();   // mclib/camera.cpp: 0 day .. 1 full night
 
 namespace mc2vk {
 using namespace mc2shadow;
+
+namespace {
+// Night fade of every directional sun shadow: none by day, a faint moon shadow (15% of the day
+// darkening) at full night; evening missions keep a soft low-sun shadow in between.
+float nightShadowFade() { return 0.85f * std::clamp(mc2NightLightFactor(), 0.0f, 1.0f); }
+}
 
 bool MoverShadowState::init(VulkanContext& ctx, bool unionPath) {
     device_ = ctx.device();
@@ -161,6 +168,7 @@ bool MoverShadowState::prepare(int mapSide, const float cameraRows[16], Vec3 sun
     frame_.flags[0]=spheres_.empty()?0:1; frame_.flags[1]=shadowQuality().level==0?0:1; frame_.flags[2]=shadowQuality().level; frame_.flags[3]=1;
     frame_.sun[0]=sun.x; frame_.sun[1]=sun.y; frame_.sun[2]=sun.z;
     frame_.sun[3]=std::tan(kSunAngularRadiusDeg * 0.01745329252f);
+    frame_.light[0]=nightShadowFade();
     int side=0; float halfMap=0; gos_GetTerrainChunkGridInfo(&side,&halfMap);
     frame_.mask[0]=-halfMap; frame_.mask[1]=halfMap;
     frame_.mask[2]=1.0f/((std::max)(side-1,1)*kWorldUnitsPerVertex); frame_.mask[3]=maskReady?1.0f:0.0f;
@@ -193,7 +201,18 @@ bool MoverShadowState::bind(VkDevice device, VkDescriptorSet set, VkImageView de
         mc2::fmt::print_err("[SHADOW_BAKE] mover_bind frame={} producer_frame={} ready={} active={}\n",
             getOrCreateEngineVulkanContext().frameContext().frame,activeFrame_,ready,frame_.flags[0]);
     const VkDescriptorImageInfo image{sampler_.get(),ready?depth:dummyView_.get(),ready?VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL:VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
-    const VkDescriptorBufferInfo buffer{ready?active_.buffer:inactive_.get(),ready?active_.offset:0,sizeof(MoverShadowFrame)};
+    VkDescriptorBufferInfo buffer{ready?active_.buffer:inactive_.get(),ready?active_.offset:0,sizeof(MoverShadowFrame)};
+    if (!ready) {
+        // No movers this frame, but the static sun shadow still takes the night fade.
+        auto& ctx=getOrCreateEngineVulkanContext();
+        if (auto slice=ctx.frameAlloc(sizeof(MoverShadowFrame))) {
+            MoverShadowFrame idle{};
+            idle.flags[3]=frame_.flags[3];
+            idle.light[0]=nightShadowFade();
+            std::memcpy(slice.ptr,&idle,sizeof(idle));
+            buffer={slice.buffer,slice.offset,sizeof(MoverShadowFrame)};
+        }
+    }
     VkWriteDescriptorSet writes[2]{};
     writes[0].sType=VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; writes[0].dstSet=set; writes[0].dstBinding=24;
     writes[0].descriptorType=VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; writes[0].descriptorCount=1; writes[0].pImageInfo=&image;

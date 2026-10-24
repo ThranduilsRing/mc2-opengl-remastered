@@ -1,5 +1,6 @@
 // Static-prop compatibility lighting: one environment ambient, directional light
 // and local pools. Specular requires a valid authored ORM sidecar.
+#include "prop_night_vk.glsl"
 vec3 propAuthoredColor(SurfaceMaterial s, bool alphaTest, bool authoredOrm) {
     if ((vMaterialFlags & 2u) != 0u)
         return propEncodeColor(s.emission) + vHighlight.rgb * vHighlight.a;   // window emission already carries the albedo
@@ -8,7 +9,7 @@ vec3 propAuthoredColor(SurfaceMaterial s, bool alphaTest, bool authoredOrm) {
     float raw = dot(s.normal, L);
     bool twoSided = (vMaterialFlags & 4u) != 0u;
     float ndl = twoSided ? abs(raw) : max(raw, 0.0);
-    float wrap = twoSided ? 1.0 : mix(0.55, 1.0, 0.5 + 0.5 * raw);
+    float wrap = twoSided ? 1.0 : mix(1.0 - 0.45 * propNightDirectShare(), 1.0, 0.5 + 0.5 * raw);
     // R2: the mission environment SH is the only ambient. ObjectLights ambient and the fixed
     // prop hemispheres no longer stack on top of it.
     vec3 sh[9];
@@ -18,7 +19,7 @@ vec3 propAuthoredColor(SurfaceMaterial s, bool alphaTest, bool authoredOrm) {
     // SH is irradiance; legacy sun/seed/highlight inputs are authored sRGB.
     // Sum in linear light and apply Lambert once, never decode the sum.
     vec3 lit = s.emission * wrap
-        + (max(ibl,vec3(0))*s.ao + propDecodeColor(vMaterialSun)*ndl) / 3.14159265
+        + (max(ibl,vec3(0))*s.ao + propDecodeColor(vMaterialSun)*propNightSunWeight(ndl, s.normal)) / 3.14159265
         + propDecodeColor(vHighlight.rgb);
     if (alphaTest) lit = max(lit,vec3(0.21404114)); // legacy 0.5 encoded floor
     vec3 color = s.baseColor * lit * (1.0 - 0.65*s.metallic);

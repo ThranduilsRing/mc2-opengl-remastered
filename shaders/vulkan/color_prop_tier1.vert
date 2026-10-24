@@ -105,6 +105,8 @@ layout(set = 0, binding = 7, std430) readonly buffer TypeHotColors {
 // Same value as static_prop.vert so the back faces of buildings read soft instead of flat bright.
 const float kPropBaseLightDirStrength = 0.45;
 
+#include "include/prop_night_vk.glsl"
+
 // Resolves the per-vertex hot-colour magic tags against the eye's night state, as lighting.hglsl get_base_light does for the GL prop path: the lit-window,
 // outside-light and building-base-light tags are self-illuminated at night and read dark grey (windows) or zero by day, the blink tags stay dark and any other
 // non-zero seed is added as authored. Without the night arms every window, base light and runway fixture stays off after dark.
@@ -125,7 +127,9 @@ vec3 hotColorBaseLight(uint startV, vec3 colouredSeed, bool lightsOut, vec3 pink
     } else if (startV == 0xffff0000u || startV == 0xff0000ffu) {
         // blink tags: dark
     } else if ((startV & 0x00ffffffu) != 0u) {
-        if (!lightsOut) outLight = colouredSeed;       // any other light colour is added as authored
+        // Any other light colour is authored vertex light (hangars, terminals carry a near-white bake): it is environment
+        // light, not a lamp, so the night dims it like the sun and ambient -- by day it is added as authored.
+        if (!lightsOut) outLight = colouredSeed * mix(1.0, kNightAuthoredLight, uFrame.nightDarkness);
     }
     return clamp(outLight, vec3(0.0), vec3(1.0));
 }
@@ -277,12 +281,12 @@ void main() {
     float propDirFactor = 1.0;
     if (!alphaTestPacket) {
         float wrap = 0.5 + 0.5 * dot(nMC2, L);
-        propDirFactor = mix(1.0 - kPropBaseLightDirStrength, 1.0, wrap);
+        propDirFactor = mix(1.0 - kPropBaseLightDirStrength * propNightDirectShare(), 1.0, wrap);
     }
     // SH evaluates irradiance, not reflected radiance. Apply the Lambert BRDF
     // once, and decode authored light bytes before summing with linear SH.
     vec3 linearLight = surfaceDecodeSrgb(seed) * propDirFactor
-        + (max(iblTerm, vec3(0.0)) + surfaceDecodeSrgb(sunTerm) * ndl) / 3.14159265
+        + (max(iblTerm, vec3(0.0)) + surfaceDecodeSrgb(sunTerm) * propNightSunWeight(ndl, nMC2)) / 3.14159265
         + surfaceDecodeSrgb(inst.aRGBHighlight.rgb);
     vArgb = surfaceEncodeSrgb(linearLight); // retain the legacy encoded albedo multiplier
 }
