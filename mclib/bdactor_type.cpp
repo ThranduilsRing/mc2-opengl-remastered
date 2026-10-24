@@ -9,6 +9,19 @@
 
 extern char missionName[];
 
+static bool bundledOverrideShadowed(const ModelOverrideRecord& ov, const char* iniName, const char* baseName)
+{
+	if (ov.manifestDir != "mods/mc2-industrial-kit/data/model_overrides") return false;
+	if (LookupModOwner(iniName)) return true;
+	for (const char* ext : {".tgl", ".ase", ".glb", ".gltf"})
+	{
+		FullPathFileName path;
+		path.init(tglPath, baseName, ext);
+		if (LookupModOwner(path)) return true;
+	}
+	return false;
+}
+
 // Imports one manifest-relative override GLB into shape and resolves its textures; false (logged)
 // on any failure, and the caller frees the shape and keeps stock. Static-prop overrides carry
 // their pivot already (no auto-ground) and have node transforms applied.
@@ -207,7 +220,8 @@ void BldgAppearanceType::init (const char * fileName)
 	{
 		if (mc2::gate::get<"MC2_MODOVERRIDE_TRACE">())
 			mc2::fmt::print_err("[MODOVERRIDE_TRACE] staticProp '{}'\n", mc2::fmt::safe(bldgBaseName));
-		if (const ModelOverrideRecord* ov = ModelOverrideRegistry::instance().resolve("staticProp", bldgBaseName))
+		if (const ModelOverrideRecord* ov = ModelOverrideRegistry::instance().resolve("staticProp", bldgBaseName);
+			ov && !bundledOverrideShadowed(*ov, iniName, bldgBaseName))
 		{
 			const std::string condName = ModelOverrideRegistry::instance().selectedCondition(missionName, bldgBaseName);
 			const ModelOverrideCondition* cond = ov->condition(condName);
