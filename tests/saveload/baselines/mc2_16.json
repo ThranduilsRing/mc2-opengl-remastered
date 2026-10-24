@@ -10,7 +10,7 @@
   "MC2_BOOT_QUICKLOAD_AT": "1100"
  },
  "exe": {
-  "sha": "6cca622599a9",
+  "sha": "503bca40d4d8",
   "dirty": 0
  },
  "comparison": {
@@ -108,7 +108,7 @@
  "judged": "first-save-only",
  "resave_present": true,
  "packets": 20000,
- "overall": "ad184ff177123e7b",
+ "overall": "011c978ab915e8e6",
  "resave_identical": false,
  "resave_matches_policy": false,
  "runs": [
@@ -123,8 +123,8 @@
    "text",
    2,
    1,
-   43411,
-   "18dbdb72f7a917d5"
+   43442,
+   "4bd8fe19f37c604b"
   ],
   [
    "data",
@@ -285,7 +285,7 @@
    5635,
    68,
    56501,
-   "3b406dac2428b2cd"
+   "bf011f2704004e81"
   ],
   [
    "StaticMechWarriorData",
@@ -425,7 +425,7 @@
    6577,
    5,
    4100,
-   "4c548db3cc6b7c7e"
+   "116bdcd89137ed36"
   ],
   [
    "TerrainObjectData",
@@ -446,7 +446,7 @@
    6694,
    1,
    820,
-   "1627d2fb64c17514"
+   "43d22e259ea8a491"
   ],
   [
    "BuildingData",
@@ -460,7 +460,7 @@
    6696,
    3,
    2460,
-   "f2ab617f10aeda2d"
+   "0d566a8c7ad57422"
   ],
   [
    "TerrainObjectData",
@@ -530,7 +530,7 @@
    7287,
    1,
    820,
-   "222e11a3b13b5a91"
+   "4cb4bfb587bd3eed"
   ],
   [
    "BuildingData",
@@ -628,7 +628,7 @@
    7689,
    4,
    3280,
-   "a5da76277bdd59a6"
+   "071af679be8b38ba"
   ],
   [
    "BuildingData",
@@ -698,7 +698,7 @@
    8095,
    1,
    820,
-   "92606051aa6f13c9"
+   "1c5358c9f053d61d"
   ],
   [
    "BuildingData",
@@ -740,7 +740,7 @@
    8771,
    2,
    1640,
-   "7567dbb522cb6c5f"
+   "fcdc2e2447034a2e"
   ],
   [
    "BuildingData",
@@ -754,7 +754,7 @@
    8774,
    1,
    820,
-   "950b6f3284588a3d"
+   "137231cc402c10b7"
   ],
   [
    "BuildingData",
@@ -887,7 +887,7 @@
    10699,
    3,
    868745,
-   "971100cbbad73d2e"
+   "5ba42fd404d6c680"
   ],
   [
    "empty",
