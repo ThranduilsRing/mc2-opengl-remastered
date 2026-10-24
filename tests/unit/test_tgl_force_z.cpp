@@ -4,12 +4,15 @@
 #include "tgl_force_z.h"
 
 TEST_CASE("forceZ matrix: post-divide depth is the mirrored forceZ for any input z and w") {
-    for (float fz : {0.00001f, 0.25f, 0.99999f}) {
+    const float forceZs[] = {0.00001f, 0.25f, 0.99999f};
+    const float zs[] = {-3.0f, 0.0f, 7.5f};
+    const float ws[] = {0.5f, 1.0f, 20.0f};
+    for (float fz : forceZs) {
         const glm::mat4 m = mc2_tgl::forceZMatrix(fz);
-        for (float z : {-3.0f, 0.0f, 7.5f}) {
-            for (float w : {0.5f, 1.0f, 20.0f}) {
-                const glm::vec4 out = m * glm::vec4(2.0f, 3.0f, z, w);
-                CHECK(out.w == doctest::Approx(w));
+        for (float zin : zs) {
+            for (float win : ws) {
+                const glm::vec4 out = m * glm::vec4(2.0f, 3.0f, zin, win);
+                CHECK(out.w == doctest::Approx(win));
                 CHECK(out.x == doctest::Approx(2.0f));
                 CHECK(out.z / out.w == doctest::Approx(mc2_tgl::forceZClipDepth(fz)).epsilon(1e-5));
             }
