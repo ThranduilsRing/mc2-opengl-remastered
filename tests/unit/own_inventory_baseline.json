@@ -4043,11 +4043,11 @@
    ]
   },
   "TG_TypeMultiShape": {
-   "delete": 25,
+   "delete": 24,
    "delete_array": 0,
    "files": {
     "mclib/bdactor_type.cpp": {
-     "delete": 8,
+     "delete": 7,
      "new": 7
     },
     "mclib/genactor.cpp": {
@@ -5483,7 +5483,7 @@
   "mclib/bdactor_terrain.cpp": 2,
   "mclib/bdactor_tree.cpp": 5,
   "mclib/bdactor_tree_static.cpp": 1,
-  "mclib/bdactor_type.cpp": 1,
+  "mclib/bdactor_type.cpp": 2,
   "mclib/effect_resources.cpp": 3,
   "mclib/fastfile.cpp": 1,
   "mclib/genactor.cpp": 1,
