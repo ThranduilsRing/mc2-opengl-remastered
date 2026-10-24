@@ -166,7 +166,15 @@ def test_headless_sync_of_a_minimal_file_writes_the_gui_graphics_defaults(tmp_pa
     d = install(tmp_path, {"MC2_CPU_PHONG_RETIRE": "0"})        # no MC2_STATICPROP_TEX_TIER / MC2_SHADOW_MAP_SIZE in the file
     sync(d)
     after = sync_file(d)
-    assert after["MC2_STATICPROP_TEX_TIER"] == "512" and cfg_value(d, "ShadowQuality") == "2" and "MC2_SHADOW_MAP_SIZE" not in after   # tier High / shadows High, not index 0
+    assert "MC2_STATICPROP_TEX_TIER" not in after and cfg_value(d, "ShadowQuality") == "2" and "MC2_SHADOW_MAP_SIZE" not in after   # retired texture tier / shadows High, not index 0
+
+
+@needs_launcher
+def test_retired_prop_texture_tier_is_dropped(tmp_path):
+    d = install(tmp_path, {"MC2_STATICPROP_TEX_TIER": "1024"})
+    sync(d)
+    assert "MC2_STATICPROP_TEX_TIER" not in sync_file(d)
+    assert "MC2_STATICPROP_TEX_TIER" in log_lines(d)[0]
 
 
 @needs_launcher

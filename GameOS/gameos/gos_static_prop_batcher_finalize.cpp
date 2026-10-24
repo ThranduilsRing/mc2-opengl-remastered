@@ -14,12 +14,8 @@ bool GpuStaticPropBatcher::packetHasAlpha(const GpuStaticPropPacket& pkt, const 
            (src && src->listOfTextures && pkt.textureSlot < src->numTextures && src->listOfTextures[pkt.textureSlot].textureAlpha);
 }
 
-// Log the texture tier, clear the per-packet side tables and load the programs.
+// Clear the per-packet side tables and load the programs.
 void GpuStaticPropBatcher::finalizePrologue() {
-    // One-shot log: always emit so the log confirms which tier is active.
-    mc2::fmt::print_out("[StaticPropBatcher] tex tier: {:d}px (MC2_STATICPROP_TEX_TIER) ktx=ON\n", mc2::fmt::as_i32(texTier()));
-    std::fflush(stdout);
-
     GpuStaticPropRegistry::staticPropRegistryClearMaterialCache();
     s_packetTexArrayLayer.clear();  // v2: will be repopulated from layerForPacket below
     s_packetUvScaleX.clear();       // SHADOW-PROP-ALPHA-ATLAS-1: repopulated below

@@ -10,7 +10,7 @@
 
 namespace mc2::gate::detail {
 
-inline constexpr std::size_t kGateCount = 800;
+inline constexpr std::size_t kGateCount = 799;
 
 inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_ABL_ARG_GUARD", Kind::Bool, Rule::Lead1, {}},
@@ -556,7 +556,6 @@ inline constexpr IndexEntry kIndex[kGateCount] = {
     {"MC2_STABLE_LIGHT_SKIP_DIAG", Kind::Bool, Rule::Std, {}},
     {"MC2_STABLE_LIGHT_SKIP_TOUCH", Kind::Bool, Rule::Std, {}},
     {"MC2_STATICPROP_RECIPE_SPOTLIGHT_SKIP", Kind::Bool, Rule::Lead0Kill, {}},
-    {"MC2_STATICPROP_TEX_TIER", Kind::Int, Rule::Prefix, {}},
     {"MC2_STATIC_FORCE_ADMIT", Kind::Bool, Rule::Presence, {}},
     {"MC2_STATIC_LEAF_DIAG", Kind::Bool, Rule::Presence, {}},
     {"MC2_STATIC_LIGHT_UPLOAD_SPLIT", Kind::Bool, Rule::Lead0Kill, {}},

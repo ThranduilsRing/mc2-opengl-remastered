@@ -407,17 +407,6 @@ const float* iblShCoeffsForUpload() {
 //   6 = metallicFactor as grayscale  (V-MATERIAL-PBR-1)
 // Values outside the implemented range render as hot-pink in the shader.
 int s_staticPropDebugMaterialMode = 0;
-// MC2_STATICPROP_TEX_TIER: 128 | 256 | 512 (default) | 1024
-// Selects which cooked tier directory (data/tgl/<tier>/<name>.ktx2) is loaded
-// when a KTX sidecar exists. Launcher sets this from the Graphics / Texture Quality
-// slider; engine reads it once at process start.
-int texTier() {   // first-use read, see staticPropAmbientV1Enabled()
-    static const int tier = []() -> int {
-        const int v = mc2::gate::get<"MC2_STATICPROP_TEX_TIER">();   // row default 512
-        return (v == 128 || v == 256 || v == 1024) ? v : 512;
-    }();
-    return tier;
-}
 // Tracks whether finalizeGeometry() produced a correctly-sized sidecar.
 // Reset to false at the start of every finalizeGeometry() call; set to true
 // only after the sidecar loop completes with size == emitted count.
