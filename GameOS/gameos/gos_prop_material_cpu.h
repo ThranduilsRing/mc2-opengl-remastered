@@ -26,7 +26,7 @@ struct MaterialSources {
     std::unordered_map<std::string, uint32_t> normalLayers, ormLayers;
 };
 
-inline constexpr size_t kMaxMaterials = 64;
+inline constexpr size_t kMaxMaterials = 512; // bounded table; a mission may contain the whole kit
 inline constexpr uint32_t kMaxDetailEdge = 2048;
 
 // Normal mips average vectors and renormalize; a cancelling footprint is flat.
