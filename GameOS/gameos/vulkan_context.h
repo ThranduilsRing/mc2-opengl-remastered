@@ -166,7 +166,7 @@ public:
     VkResult submit(const VkSubmitInfo& si, VkFence fence, uint64_t* outValue = nullptr) const;
 private:
     VkResult submitLocked(const VkSubmitInfo& si, VkFence fence, uint64_t* outValue) const;   // submitMutex_ held
-    void flushUploadsLocked() const;
+    GpuTicket flushUploadsLocked() const;
 public:
     CompletionTracker&       tracker()       { return tracker_; }
     const CompletionTracker& tracker() const { return tracker_; }
@@ -206,7 +206,7 @@ public:
     // Streaming uploads (see vk_upload.h): stage into the frame ring and queue the copy; it is submitted ahead of the next graphics submit, no CPU wait.
     UploadBatch& uploads() { return uploads_; }
     const UploadBatch& uploads() const { return uploads_; }
-    void flushUploads() const;   // the queued uploads, now (the next submit and endFrame do it anyway)
+    GpuTicket flushUploads() const;   // submitted batch's ticket; empty on failure or no queued uploads
     VkBuffer frameRingBuffer() { return frameRing_.ensureBuffer(*this); }
     VkDeviceSize frameAlignment() const { return frameAlign_; }
     VkDeviceSize frameRingRange() const { return frameRing_.bindRange(); }

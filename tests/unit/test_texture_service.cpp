@@ -375,6 +375,29 @@ TEST_CASE("TextureService: in-flight uploads reserve descriptor capacity") {
     CHECK(f.service.isLive(b)); CHECK(f.budget.used==0);
 }
 
+TEST_CASE("TextureService: batched uploads share a completion ticket") {
+    PublicationFixture f;
+    f.table = TextureDescriptorTable(3);
+    const auto a=f.service.acquire(keyOf("unit","batch-a",1));
+    const auto b=f.service.acquire(keyOf("unit","batch-b",2));
+    REQUIRE(f.queue(a));
+    REQUIRE(f.queue(b));
+    const auto ticket=f.uploads.back().ticket;
+    for (auto& upload : f.uploads) upload.ticket=ticket;
+    f.tracker.setCompleted(mc2vk::QueueKind::Graphics,ticket.gfx-1);
+    f.pump();
+    CHECK(f.table.index(a)==0);
+    CHECK(f.table.index(b)==0);
+    CHECK(f.budget.used==8);
+    CHECK(f.uploads.size()==2);
+    f.tracker.setCompleted(mc2vk::QueueKind::Graphics,ticket.gfx);
+    f.pump();
+    CHECK(f.table.index(a)!=0);
+    CHECK(f.table.index(b)!=0);
+    CHECK(f.budget.used==0);
+    CHECK(f.uploads.empty());
+}
+
 TEST_CASE("TextureService: failed publication retries on the same live handle") {
     PublicationFixture f;
     const auto waiting=f.service.acquire(keyOf("unit","waiting",1));

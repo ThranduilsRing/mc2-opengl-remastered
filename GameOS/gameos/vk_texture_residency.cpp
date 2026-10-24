@@ -211,12 +211,12 @@ std::shared_ptr<TextureResidency::Image> TextureResidency::upload(const RenderCo
         VmaAllocationCreateInfo aci{}; aci.usage=VMA_MEMORY_USAGE_AUTO;
         if (!resource->image.create(ctx_.allocator(),ctx_.device(),ci,aci,vegetation ? "veg.atlas" : "texture.service.array")) return {};
     } else if (!resource->image.createSampled2D(ctx_.allocator(),ctx_.device(),VkFormat(image.vkFormat),w,h,image.mipCount,0,"texture.service.image")) return {}; }
-    const auto record=[&](VkCommandBuffer cb){
+    const auto record=[buffer=staging.get(),target=resource->image.get(),levels=uint32_t(image.mipCount),layers,copies](VkCommandBuffer cb){
         VkImageMemoryBarrier b{VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER}; b.oldLayout=VK_IMAGE_LAYOUT_UNDEFINED; b.newLayout=VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-        b.srcQueueFamilyIndex=b.dstQueueFamilyIndex=VK_QUEUE_FAMILY_IGNORED; b.image=resource->image.get(); b.subresourceRange={VK_IMAGE_ASPECT_COLOR_BIT,0,uint32_t(image.mipCount),0,layers};
+        b.srcQueueFamilyIndex=b.dstQueueFamilyIndex=VK_QUEUE_FAMILY_IGNORED; b.image=target; b.subresourceRange={VK_IMAGE_ASPECT_COLOR_BIT,0,levels,0,layers};
         b.dstAccessMask=VK_ACCESS_TRANSFER_WRITE_BIT;
         vkCmdPipelineBarrier(cb,VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,VK_PIPELINE_STAGE_TRANSFER_BIT,0,0,nullptr,0,nullptr,1,&b);
-        vkCmdCopyBufferToImage(cb,staging.get(),resource->image.get(),VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,uint32_t(copies.size()),copies.data());
+        vkCmdCopyBufferToImage(cb,buffer,target,VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,uint32_t(copies.size()),copies.data());
         b.oldLayout=VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;b.newLayout=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;b.srcAccessMask=VK_ACCESS_TRANSFER_WRITE_BIT;b.dstAccessMask=VK_ACCESS_SHADER_READ_BIT;
         vkCmdPipelineBarrier(cb,VK_PIPELINE_STAGE_TRANSFER_BIT,VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,0,0,nullptr,0,nullptr,1,&b);
     };
@@ -227,14 +227,8 @@ std::shared_ptr<TextureResidency::Image> TextureResidency::upload(const RenderCo
     // no unsupported transfer family or ownership handoff is assumed.
     if (async) {
         ZoneScopedN("TextureResidency.SubmitUpload");
-        VkCommandBuffer cb=VK_NULL_HANDLE;
-        if (!beginTransientCommandBuffer(ctx_,async->pool,cb)) return {};
-        record(cb);
-        if (vkEndCommandBuffer(cb)!=VK_SUCCESS) return {};
-        VkSubmitInfo si{VK_STRUCTURE_TYPE_SUBMIT_INFO}; si.commandBufferCount=1; si.pCommandBuffers=&cb;
-        uint64_t value=0;
-        if (ctx_.submit(si,VK_NULL_HANDLE,&value)!=VK_SUCCESS) return {};
-        async->ticket={value,0}; async->staging=std::move(staging); async->image=resource;
+        ctx_.uploads().record(record);
+        async->staging=std::move(staging); async->image=resource;
     } else if (!submitOneShot(ctx_,record,"texture placeholder initialization")) return {};
     return resource;
 }
@@ -280,6 +274,7 @@ void TextureResidency::pump() {
     { ZoneScopedN("TextureResidency.Publish");
       RenderCore::publishTextureUploads(service_,*table_,uploading_,residents_,budget_,
                                        [this](GpuTicket ticket) { return ctx_.isComplete(ticket); }); }
+    const size_t firstNew = uploading_.size();
     while (!pending_.empty()) {
         auto& p=pending_.front();
         auto it=residents_.find(p.handle.raw());
@@ -290,6 +285,20 @@ void TextureResidency::pump() {
         if (this->upload(*p.image,it->second.useMips,&upload,it->second.layers,it->second.arrayView,it->second.vegetation)) uploading_.push_back(std::move(upload));
         else budget_.complete(bytes);
         pending_.pop_front();
+    }
+    if (uploading_.size() > firstNew) {
+        ZoneScopedN("TextureResidency.SubmitBatch");
+        // One command buffer and submit for the ready batch. Each image and
+        // staging owner stays queued until this shared completion ticket retires.
+        const GpuTicket ticket = ctx_.flushUploads();
+        if (ticket.gfx) {
+            for (size_t i=firstNew; i<uploading_.size(); ++i) uploading_[i].ticket=ticket;
+        } else {
+            while (uploading_.size() > firstNew) {
+                budget_.complete(uploading_.back().bytes);
+                uploading_.pop_back();
+            }
+        }
     }
 }
 bool TextureResidency::ready(RenderCore::TextureHandle handle) const {
