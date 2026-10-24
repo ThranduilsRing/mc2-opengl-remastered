@@ -382,10 +382,14 @@ CarnagePtr GameObjectManager::createExplosion (long effectId,
 	long explosionObjTypeHandle = weaponEffects->GetEffectObjNum(effectId);
 	if (explosionObjTypeHandle != INVALID_OBJECT) 
 	{
+		// FX-only entries may map to the reserved null type. Validate before
+		// recycling a slot, or presentation can see an unbound explosion.
+		ObjectTypePtr objectType = getObjectType(explosionObjTypeHandle);
+		if (!objectType || (objectType->getObjectClass() != EXPLOSION && objectType->getObjectClass() != FIRE))
+			return nullptr;
 		CarnagePtr explosion = getCarnage(CARNAGE_EXPLOSION);
 		if (explosion)
 		{
-			ObjectTypePtr objectType = getObjectType(explosionObjTypeHandle);
 			if (objectType && (objectType->getObjectClass() == EXPLOSION))
 			{
 				//Call in this order or badness.

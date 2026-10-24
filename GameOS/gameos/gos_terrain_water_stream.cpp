@@ -393,6 +393,16 @@ bool NativeInputSourceReady() {
 #endif
 }
 
+std::optional<NativeCapacity> GetNativeCapacity() {
+    if (!NativeInputSourceReady()) return std::nullopt;
+    const uint32_t side = static_cast<uint32_t>(Terrain::realVerticesMapSide);
+    const float threshold = Terrain::waterElevation + EffShoreExt(MapData::alphaDepth) + 64.0f;
+    uint32_t n = 0;
+    for (const auto& r : g_recipes)
+        if ((r.waterBits & 0x01010101u) != 0u || r.v0e < threshold || r.v1e < threshold || r.v2e < threshold || r.v3e < threshold) ++n;
+    return NativeCapacity{side * side, n + n / 8u + 4096u};
+}
+
 // STEP 3.4P: the native Vulkan cull/pack produces the thin records on the GPU (the GL compute dispatch, the CPU thin pack, the GL thin ring,
 // the GL indirect draw and the GL readback feed were deleted in s62). This captures, once per frame at the water pass, the scalars the native
 // producers read. False = no water this frame (MC2_GPU_DRIVEN_WATER=0 or MC2_WATER_GPU_FULL_RECIPE_AUTHORITATIVE=0 kill it, no recipes, no MVP).

@@ -24,6 +24,7 @@
 #endif
 
 #include "vulkan_context.h"
+#include <tracy/Tracy.hpp>
 #include "mc2_diag_verbose.h"
 #include "diagnostic_trace.h"
 #include "vk_device_profile.h"
@@ -532,23 +533,25 @@ VkResult VulkanContext::submit(const VkSubmitInfo& si, VkFence fence, uint64_t* 
 }
 
 #ifdef MC2_VULKAN_ISLAND
-void VulkanContext::flushUploadsLocked() const {
-    if (!uploads_.pending()) return;
+GpuTicket VulkanContext::flushUploadsLocked() const {
+    if (!uploads_.pending()) return {};
     OwnedCommandPool pool;
     VkCommandBuffer cb = VK_NULL_HANDLE;
-    if (!uploads_.build(*this, pool, cb)) return;
+    if (!uploads_.build(*this, pool, cb)) return {};
     VkSubmitInfo si{VK_STRUCTURE_TYPE_SUBMIT_INFO};
     si.commandBufferCount = 1;
     si.pCommandBuffers = &cb;
-    if (submitLocked(si, VK_NULL_HANDLE, nullptr) != VK_SUCCESS) ctxlog("the upload batch submit failed: the queued uploads are lost.");
+    uint64_t value = 0;
+    if (submitLocked(si, VK_NULL_HANDLE, &value) != VK_SUCCESS) ctxlog("the upload batch submit failed: the queued uploads are lost.");
     // The command buffer lives in its pool and the dedicated staging buffers belong to the batch: both go with the frame.
     deferred_.retire(tracker_, std::move(pool));
     deferred_.retire(tracker_, uploads_.takeDedicated());
+    return {value, 0};
 }
 
-void VulkanContext::flushUploads() const {
+GpuTicket VulkanContext::flushUploads() const {
     std::lock_guard<std::mutex> lock(submitMutex_);
-    flushUploadsLocked();
+    return flushUploadsLocked();
 }
 #endif
 
@@ -615,10 +618,10 @@ bool VulkanContext::wait(const GpuTicket& t, uint64_t timeoutNs, std::string_vie
 
 void VulkanContext::beginFrame() {
     if (tracker_.frameOpen()) return;
-    poll();
+    { ZoneScopedN("VKContext.Poll"); poll(); }
     tracker_.beginFrame();
-    deferred_.collect(tracker_);
-    infra::frame();
+    { ZoneScopedN("VKContext.Collect"); deferred_.collect(tracker_); }
+    { ZoneScopedN("VKContext.InfraFrame"); infra::frame(); }
 #ifdef MC2_VULKAN_ISLAND
     // The ring slot of this frame was last written by frame F-2: its work must be done before the slot restarts. The islands' own fences keep this
     // true today; the wait only costs anything if one of them let a frame run further ahead.
@@ -627,6 +630,7 @@ void VulkanContext::beginFrame() {
     // incomplete (device lost) the slot keeps its head, so the CPU never overwrites bytes the GPU may still read.
     bool slotFree = true;
     if (f > FrameRingCore::kSlots) {
+        ZoneScopedN("VKContext.RingWait");
         const GpuTicket t = tracker_.frameTicket(f - FrameRingCore::kSlots);
         if (!wait(t, 5ull * 1000 * 1000 * 1000, "frame_ring_slot")) {
             waitIdle("frame_ring_slot_timeout");
@@ -636,7 +640,10 @@ void VulkanContext::beginFrame() {
         }
     }
     frameRing_.beginFrame(f, slotFree);
-    if (textures_) { textures_->pump(); textures_->descriptors(); }
+    if (textures_) {
+        { ZoneScopedN("VKContext.TexturePump"); textures_->pump(); }
+        { ZoneScopedN("VKContext.TextureDescriptors"); textures_->descriptors(); }
+    }
 #endif
 }
 
@@ -649,6 +656,7 @@ void VulkanContext::drainDeferred(std::string_view why) {
 }
 
 void VulkanContext::endFrame() {
+    ZoneScopedN("VKContext.EndFrame");
 #ifdef MC2_VULKAN_ISLAND
     flushUploads();   // an upload queued this frame is submitted inside it, so the frame ticket covers its staging
 #endif

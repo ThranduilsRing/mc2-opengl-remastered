@@ -1283,7 +1283,7 @@ extern "C" int mc2_vk_shadow_island_prewarm(int,int) {
     auto* s=parkedIsland();
     upload_geometry_once(s);
     refresh_alpha_casters(s);
-    return 1;
+    return s->bake.prewarmProducts() ? 1 : 0;
 }
 
 bool mc2vk::bindMoverShadowDescriptors(VkDevice device, VkDescriptorSet set) {

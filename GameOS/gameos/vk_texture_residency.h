@@ -76,7 +76,6 @@ private:
         RenderCore::TextureHandle handle;
         std::shared_ptr<Image> image;
         OwnedBuffer staging;
-        OwnedCommandPool pool;
         GpuTicket ticket;
         size_t bytes = 0;
         uint32_t contentVersion=0;

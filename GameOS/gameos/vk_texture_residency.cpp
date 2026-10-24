@@ -1,5 +1,6 @@
 #ifdef MC2_VULKAN_ISLAND
 #include "vk_texture_residency.h"
+#include <tracy/Tracy.hpp>
 #include "RenderCore/GpuResidencyPolicy.h"
 #include "Gates/render_options.h"
 #include "Gates/gate_cold.h"
@@ -126,6 +127,8 @@ bool TextureResidency::init() {
 }
 
 std::shared_ptr<TextureResidency::Image> TextureResidency::upload(const RenderCore::KtxImage& image, bool useMips, Upload* async, uint32_t layers, bool arrayView, bool vegetation) {
+    ZoneScopedN("TextureResidency.Upload");
+    ZoneValue(image.pixels.size());
     const bool rgba=image.vkFormat==37 || image.vkFormat==43;
     const bool floating=image.vkFormat==97 || image.vkFormat==100 || image.vkFormat==VK_FORMAT_R32G32_SFLOAT;
     const size_t stride=(image.vkFormat==97 || image.vkFormat==VK_FORMAT_R32G32_SFLOAT) ? 8u : 4u;
@@ -198,21 +201,22 @@ std::shared_ptr<TextureResidency::Image> TextureResidency::upload(const RenderCo
         return {};
     }
     OwnedBuffer staging;
-    if (!staging.createFilled(ctx_.allocator(),ctx_.device(),image.pixels.data(),image.pixels.size(),VK_BUFFER_USAGE_TRANSFER_SRC_BIT,vegetation ? "veg.stage.atlas" : "texture.service.staging")) return {};
+    { ZoneScopedN("TextureResidency.Stage");
+      if (!staging.createFilled(ctx_.allocator(),ctx_.device(),image.pixels.data(),image.pixels.size(),VK_BUFFER_USAGE_TRANSFER_SRC_BIT,vegetation ? "veg.stage.atlas" : "texture.service.staging")) return {}; }
     auto resource=std::make_shared<Image>();
-    if (arrayView) {
+    { ZoneScopedN("TextureResidency.CreateImage"); if (arrayView) {
         VkImageCreateInfo ci{VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO}; ci.imageType=VK_IMAGE_TYPE_2D; ci.format=VkFormat(image.vkFormat);
         ci.extent={w,h,1}; ci.mipLevels=uint32_t(image.mipCount); ci.arrayLayers=layers; ci.samples=VK_SAMPLE_COUNT_1_BIT;
         ci.tiling=VK_IMAGE_TILING_OPTIMAL; ci.usage=VK_IMAGE_USAGE_SAMPLED_BIT|VK_IMAGE_USAGE_TRANSFER_DST_BIT;
         VmaAllocationCreateInfo aci{}; aci.usage=VMA_MEMORY_USAGE_AUTO;
         if (!resource->image.create(ctx_.allocator(),ctx_.device(),ci,aci,vegetation ? "veg.atlas" : "texture.service.array")) return {};
-    } else if (!resource->image.createSampled2D(ctx_.allocator(),ctx_.device(),VkFormat(image.vkFormat),w,h,image.mipCount,0,"texture.service.image")) return {};
-    const auto record=[&](VkCommandBuffer cb){
+    } else if (!resource->image.createSampled2D(ctx_.allocator(),ctx_.device(),VkFormat(image.vkFormat),w,h,image.mipCount,0,"texture.service.image")) return {}; }
+    const auto record=[buffer=staging.get(),target=resource->image.get(),levels=uint32_t(image.mipCount),layers,copies](VkCommandBuffer cb){
         VkImageMemoryBarrier b{VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER}; b.oldLayout=VK_IMAGE_LAYOUT_UNDEFINED; b.newLayout=VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-        b.srcQueueFamilyIndex=b.dstQueueFamilyIndex=VK_QUEUE_FAMILY_IGNORED; b.image=resource->image.get(); b.subresourceRange={VK_IMAGE_ASPECT_COLOR_BIT,0,uint32_t(image.mipCount),0,layers};
+        b.srcQueueFamilyIndex=b.dstQueueFamilyIndex=VK_QUEUE_FAMILY_IGNORED; b.image=target; b.subresourceRange={VK_IMAGE_ASPECT_COLOR_BIT,0,levels,0,layers};
         b.dstAccessMask=VK_ACCESS_TRANSFER_WRITE_BIT;
         vkCmdPipelineBarrier(cb,VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,VK_PIPELINE_STAGE_TRANSFER_BIT,0,0,nullptr,0,nullptr,1,&b);
-        vkCmdCopyBufferToImage(cb,staging.get(),resource->image.get(),VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,uint32_t(copies.size()),copies.data());
+        vkCmdCopyBufferToImage(cb,buffer,target,VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,uint32_t(copies.size()),copies.data());
         b.oldLayout=VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;b.newLayout=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;b.srcAccessMask=VK_ACCESS_TRANSFER_WRITE_BIT;b.dstAccessMask=VK_ACCESS_SHADER_READ_BIT;
         vkCmdPipelineBarrier(cb,VK_PIPELINE_STAGE_TRANSFER_BIT,VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,0,0,nullptr,0,nullptr,1,&b);
     };
@@ -222,14 +226,9 @@ std::shared_ptr<TextureResidency::Image> TextureResidency::upload(const RenderCo
     // This context creates only the graphics family. Copy and shader barriers therefore stay on the same queue;
     // no unsupported transfer family or ownership handoff is assumed.
     if (async) {
-        VkCommandBuffer cb=VK_NULL_HANDLE;
-        if (!beginTransientCommandBuffer(ctx_,async->pool,cb)) return {};
-        record(cb);
-        if (vkEndCommandBuffer(cb)!=VK_SUCCESS) return {};
-        VkSubmitInfo si{VK_STRUCTURE_TYPE_SUBMIT_INFO}; si.commandBufferCount=1; si.pCommandBuffers=&cb;
-        uint64_t value=0;
-        if (ctx_.submit(si,VK_NULL_HANDLE,&value)!=VK_SUCCESS) return {};
-        async->ticket={value,0}; async->staging=std::move(staging); async->image=resource;
+        ZoneScopedN("TextureResidency.SubmitUpload");
+        ctx_.uploads().record(record);
+        async->staging=std::move(staging); async->image=resource;
     } else if (!submitOneShot(ctx_,record,"texture placeholder initialization")) return {};
     return resource;
 }
@@ -256,24 +255,26 @@ ResidentTextureRef TextureResidency::requestKtx(const RenderCore::TextureKey& ke
     return ResidentTextureRef(*this,handle);
 }
 void TextureResidency::pump() {
-    service_.collectSourceRetirements();
+    { ZoneScopedN("TextureResidency.CollectSources"); service_.collectSourceRetirements(); }
     std::vector<RenderCore::TextureHandle> retired;
     { std::lock_guard lock(retiredMutex_); retired.swap(retired_); }
-    for (auto handle : retired) {
+    { ZoneScopedN("TextureResidency.RetireImages"); for (auto handle : retired) {
         table_->erase(handle);
         auto it=residents_.find(handle.raw());
         if (it!=residents_.end()) { if (it->second.image) ctx_.retire(std::move(it->second.image)); residents_.erase(it); }
-    }
-    for (auto& result : worker_.take()) {
+    } }
+    { ZoneScopedN("TextureResidency.TakeDecoded"); for (auto& result : worker_.take()) {
         auto it=residents_.find(result.handle.raw());
         if (!result.image || !service_.isLive(result.handle) || it==residents_.end() || result.contentVersion!=it->second.contentVersion) continue;
         Pending pending{result.handle,std::move(result.image),result.contentVersion};
         if (it->second.highPriority) pending_.push_front(std::move(pending));
         else pending_.push_back(std::move(pending));
-    }
+    } }
     // Queue order makes completion a prefix: idle resident images are never scanned.
-    RenderCore::publishTextureUploads(service_,*table_,uploading_,residents_,budget_,
-                                     [this](GpuTicket ticket) { return ctx_.isComplete(ticket); });
+    { ZoneScopedN("TextureResidency.Publish");
+      RenderCore::publishTextureUploads(service_,*table_,uploading_,residents_,budget_,
+                                       [this](GpuTicket ticket) { return ctx_.isComplete(ticket); }); }
+    const size_t firstNew = uploading_.size();
     while (!pending_.empty()) {
         auto& p=pending_.front();
         auto it=residents_.find(p.handle.raw());
@@ -284,6 +285,20 @@ void TextureResidency::pump() {
         if (this->upload(*p.image,it->second.useMips,&upload,it->second.layers,it->second.arrayView,it->second.vegetation)) uploading_.push_back(std::move(upload));
         else budget_.complete(bytes);
         pending_.pop_front();
+    }
+    if (uploading_.size() > firstNew) {
+        ZoneScopedN("TextureResidency.SubmitBatch");
+        // One command buffer and submit for the ready batch. Each image and
+        // staging owner stays queued until this shared completion ticket retires.
+        const GpuTicket ticket = ctx_.flushUploads();
+        if (ticket.gfx) {
+            for (size_t i=firstNew; i<uploading_.size(); ++i) uploading_[i].ticket=ticket;
+        } else {
+            while (uploading_.size() > firstNew) {
+                budget_.complete(uploading_.back().bytes);
+                uploading_.pop_back();
+            }
+        }
     }
 }
 bool TextureResidency::ready(RenderCore::TextureHandle handle) const {

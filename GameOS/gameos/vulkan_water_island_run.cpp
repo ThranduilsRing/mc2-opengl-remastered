@@ -3,6 +3,8 @@
 #include "vulkan_water_island_internal.h"
 #include "vk_render_pass_timer.h"
 #include "vk_gpu_profile.h"   // VK-GPU-ZONES: MC2_VK_GPU_SCOPE
+#include "vk_one_shot.h"
+#include <cmath>
 #include "mc2fmt.h"
 #include "vulkan_shadow_island_live.h"   // the bake mask
 #include "vulkan_mover_shadow.h"
@@ -11,6 +13,33 @@ void gos_GetTerrainChunkGridInfo(int* mapSide, float* halfMap);
 
 #ifdef MC2_VULKAN_ISLAND
 
+namespace {
+bool prepareNative(WaterIsland* s, mc2vk::VulkanContext& ctx) {
+    if (s->native && s->native->ready()) return true;
+    if (s->nativeFailed) return false;
+    const auto capacity = WaterStream::GetNativeCapacity();
+    if (!capacity) return false;
+    ZoneScopedN("VKIsl.Water.PrepareNative");
+    if (!s->recipeUploaded) {
+        if (!upload_recipes_device(s, WaterStream::GetRecipes(), WaterStream::GetRecipeCount())) return false;
+        s->recipeUploaded = true;
+        g_health.recipeCount = WaterStream::GetRecipeCount();
+    }
+    ctx.waitIdle("water_native_init");
+    auto np = s->native ? std::move(s->native) : std::make_unique<mc2vk::NativeProducers>();
+    if (!np->init(ctx, capacity->vertices, WaterStream::GetRecipeCount(), s->recipeBuf.get(), capacity->eligibleBound)) {
+        s->nativeFailed = true;
+        vlog("native producers unavailable - no water (the GL cull/pack readback feed is gone).");
+        return false;
+    }
+    s->native = std::move(np);
+    // The first drawn slot still waits for a lighting snapshot, so prewarm
+    // never exposes the newly allocated, unwritten lighting output.
+    s->thinNative[0] = s->thinNative[1] = false;
+    write_descriptors(s);
+    return true;
+}
+}
 
 // Per-frame entry. Inputs (all from the GL side, at water-render time):
 //   sceneColorTex/sceneDepthTex — GL scene MainColor + depth textures (w x h).
@@ -31,7 +60,26 @@ extern "C" int mc2_vk_water_island_prewarm(int w,int h) {
     auto* s=parkedIsland();
     if (!ensure_hdri(s, mc2vk::hdriCpuGeneration()) || !ensure_shore(s)) return 0;
     if(!s->native) s->native=std::make_unique<mc2vk::NativeProducers>();
-    return s->native->prewarmPipelines(ctx) ? 1 : 0;
+    if (!s->native->prewarmPipelines(ctx)) return 0;
+    if (!prepareNative(s, ctx)) return 0;
+    // Exercise cull/args now as well as creating their pipelines: the first
+    // gameplay dispatch must not pay driver first-use work or buffer clears.
+    // This off-screen cull is never drawn; the real feed overwrites both slots.
+    ZoneScopedN("VKIsl.Water.WarmDispatch");
+    const auto capacity = WaterStream::GetNativeCapacity();
+    if (!capacity) return 0;
+    gos_terrain_lighting::VkProducerSnapshot light{};
+    light.numVertices = capacity->vertices;
+    mc2vk::WaterCullFrame water{};
+    water.mapSide = static_cast<uint32_t>(std::sqrt(static_cast<double>(capacity->vertices)));
+    water.mvp[0] = water.mvp[5] = water.mvp[10] = water.mvp[15] = 1.0f;
+    water.mvp[12] = 1e9f;
+    bool recorded = true;
+    const bool submitted = mc2vk::submitOneShot(ctx, [&](VkCommandBuffer cb) {
+        for (uint32_t par = 0; par < 2; ++par)
+            recorded = s->native->record(cb, par, light, water, false) && recorded;
+    }, "water_load_dispatch");
+    return submitted && recorded ? 1 : 0;
 }
 
 extern "C" int mc2_vk_water_island_run(
@@ -132,37 +180,17 @@ extern "C" int mc2_vk_water_island_run(
         g_health.recipeCount = recipeCount;
     }
 
-    // STEP 3.4P: bring the native producers up once the recipes and the first lighting snapshot exist.
+    // Fallback for callers whose mission did not run the load prewarm.
     if ((!s->native || !s->native->ready()) && !s->nativeFailed) {
         gos_terrain_lighting::VkProducerSnapshot snap0{};
-        if (gos_terrain_lighting::GetVkProducerSnapshot(snap0) && snap0.numVertices > 0) {
-            slotCtx.waitIdle("water_native_init");
-            auto np = s->native ? std::move(s->native) : std::make_unique<mc2vk::NativeProducers>();
-            // Upper bound on the quads the cull can emit: the shader's water-eligibility predicate (water bit on any corner, or any
-            // corner under waterElevation + shoreExt) counted over the CPU recipes once, plus headroom. Sizes the thin buffers from the map.
-            uint32_t eligibleBound = 0;
-            {
-                const WaterStream::VkNativeInputs* in0 = static_cast<const WaterStream::VkNativeInputs*>(nativeInputsIn);
-                const WaterStream::WaterRecipe* rc = static_cast<const WaterStream::WaterRecipe*>(recipes);
-                const float thr = in0->waterElevation + in0->shoreExt + 64.0f;   // +64 wu: slack for a later alphaDepth / shore change
-                uint32_t n = 0;
-                for (uint32_t i = 0; i < recipeCount; ++i) {
-                    const WaterStream::WaterRecipe& r = rc[i];
-                    if ((r.waterBits & 0x01010101u) != 0u || r.v0e < thr || r.v1e < thr || r.v2e < thr || r.v3e < thr) ++n;
-                }
-                eligibleBound = n + n / 8u + 4096u;
-            }
-            if (np->init(slotCtx, snap0.numVertices, recipeCount, s->recipeBuf.get(), eligibleBound)) {
-                s->native = std::move(np);
-                s->thinNative[0] = s->thinNative[1] = true;
-                write_descriptors(s);   // binding 6 -> the GPU-produced thin buffers
-            } else {
-                s->nativeFailed = true;
-                vlog("native producers unavailable - no water (the GL cull/pack readback feed is gone).");
-            }
-        }
+        if (gos_terrain_lighting::GetVkProducerSnapshot(snap0) && snap0.numVertices > 0)
+            prepareNative(s, slotCtx);
     }
     nat = (s->native && s->native->ready()) ? static_cast<const WaterStream::VkNativeInputs*>(nativeInputsIn) : nullptr;
+    if (nat && !s->thinNative[0] && !s->thinNative[1]) {
+        gos_terrain_lighting::VkProducerSnapshot first{};
+        if (!gos_terrain_lighting::GetVkProducerSnapshot(first) || !first.numVertices) nat = nullptr;
+    }
     if (!nat) {   // nothing will submit: give the slot's fence back
         if (!vkImageResourceCancelFrame(s->sColorRes, fsC)) { setFallback("cancel_frame_fence_failed"); s->disabled = true; }
         return 0;

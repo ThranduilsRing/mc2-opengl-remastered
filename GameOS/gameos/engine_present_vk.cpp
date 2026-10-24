@@ -2270,7 +2270,7 @@ bool EnginePresentVk::presentFrame(uint32_t drawableW, uint32_t drawableH,
     if (impl_) impl_->compositePending = false;
     // Every exit advances the frame, including skipped presents: a slot is reused only after its ticket completes (beginFrame waits it), so
     // advancing never frees GPU-owned memory early, and not advancing would pin the ring on one slot.
-    if (ctx) ctx->frameBoundary();
+    if (ctx) { ZoneScopedN("VKIsl.Present.FrameBoundary"); ctx->frameBoundary(); }
     return ok;
 }
 
