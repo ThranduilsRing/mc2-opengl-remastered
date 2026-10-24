@@ -10494,6 +10494,18 @@
    "ver": 1,
    "stream": "stderr",
    "keys": [
+    "dropped",
+    "handle",
+    "attempts",
+    "fallback"
+   ],
+   "count": 1
+  },
+  {
+   "tag": "VK_RESIDENCY",
+   "ver": 1,
+   "stream": "stderr",
+   "keys": [
     "refused",
     "bytes",
     "live",
