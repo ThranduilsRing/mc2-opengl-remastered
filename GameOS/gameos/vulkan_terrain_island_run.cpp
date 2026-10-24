@@ -134,8 +134,18 @@ bool stage_light_pool(TerrainIsland* s, const Mc2TerrainTier1Feed& feed,
                              int32_t& vkPoolLights, int32_t& vkGridDim, mc2vk::FrameAlloc (&lp)[3]) {
     mc2vk::VulkanContext& ctx = mc2vk::getOrCreateEngineVulkanContext();
     if (vkPoolLights > 0 && feed.poolLights && mc2::gate::get<"MC2_LIGHT_GRID">()) {
-        vkGridDim = mc2vk::LightLists::kDim;
-        return s->lightLists.stage(ctx, feed.poolLights, uint32_t(vkPoolLights), feed.lightPoolMoverScale, lp);
+        const char* failure = nullptr;
+        if (s->lightLists.stage(ctx, feed.poolLights, uint32_t(vkPoolLights), feed.lightPoolMoverScale, lp, failure)) {
+            vkGridDim = mc2vk::LightLists::kDim;
+            return true;
+        }
+        // Local lighting is optional; retry the accelerator next frame while retaining terrain.
+        static const char* reportedFailure = nullptr;
+        if (reportedFailure != failure) {
+            reportedFailure = failure;
+            vlog("[VK_TERRAIN_ISLAND] light lists failed (%s); using linear lighting, will retry.", reportedFailure);
+        }
+        vkGridDim = 0;
     }
     {
         ZoneScopedN("VKIsl.Terrain.LightPoolStage");
@@ -386,7 +396,7 @@ extern "C" int mc2_vk_terrain_island_run(int w, int h) {
     int32_t vkPoolLights = feed.numPoolLights;
     int32_t vkGridDim    = feed.lightGridDim;
     mc2vk::FrameAlloc lpSpans[3];
-    if (!uboSpan || !stage_light_pool(s, feed, vkPoolLights, vkGridDim, lpSpans)) { setFallback("frame_ring_alloc_failed"); s->disabled = true; return 0; }
+    if (!uboSpan || !stage_light_pool(s, feed, vkPoolLights, vkGridDim, lpSpans)) { setFallback("frame_ring_alloc_failed"); return 0; }
 
     // VK-TERRAIN-FENCE-DEFER-1 (water-pilot template): begin the shared-slot frame
     // BEFORE the per-frame UBO staging. The slot-fence wait inside beginFrame IS the

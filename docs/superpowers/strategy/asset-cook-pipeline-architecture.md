@@ -1,6 +1,10 @@
 <!-- doc-status: current | reviewed:2026-10-11 -->
 # MC2 Asset Cook Pipeline Architecture
 
+**Runtime correction (2026-10-24):** static-prop arrays use source RGBA textures.
+The tiered BC7/static-prop sidecar path described below is historical and has
+been removed; terrain colormap KTX2 support remains separate.
+
 **Superseded (2026-10-22) for models and materials by [docs/content-pipeline.md](../../content-pipeline.md):** one IR, one cooker, one material schema. Track G (tools/asset_cook) manifests are not consumed by the engine.
 
 **Status:** Strategy / design doc (long-term), 2026-06-10.

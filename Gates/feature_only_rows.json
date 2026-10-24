@@ -22,10 +22,10 @@
  },
  {
   "featureId": "MC2_FEATURE_STATICPROP_BC7",
-  "kind": "Feature",
+  "kind": "Retired",
   "order": 18,
-  "defaultOn": true,
-  "doc": "Use compatible BC7 sidecars; incompatible or absent sidecars retain RGBA fallback buckets."
+  "defaultOn": false,
+  "doc": "Retired: static-prop arrays use RGBA uploads; tiered BC7 sidecars are no longer consumed."
  },
  {
   "featureId": "MC2_FEATURE_STATICPROP_MATERIAL_PBR_SLOTS",

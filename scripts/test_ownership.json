@@ -2,6 +2,7 @@
   "schema_version": 1,
   "aggregate_owner": "scripts_tests",
   "tests": [
+    {"module": "scripts/tests/test_review_launcher_sizing.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_veg_card_cook.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_rule_defaults.py", "owners": ["scripts_tests"]},
     {"module": "scripts/tests/test_battle_bench.py", "owners": ["scripts_tests"]},

@@ -125,7 +125,7 @@ enum class RendererFeature : int {
     HzbBuild                 = 17,  // MC2_HZB_BUILD
     // Compatible BC7 sidecars use compressed buckets; absent or incompatible
     // sidecars retain the RGBA fallback.
-    StaticPropBc7            = 18,  // compatible sidecars, always enabled
+    StaticPropBc7            = 18,  // retired; preserve the numeric identifier
     // COLORMAP-CPU-RETIRE-1: free cpuColorMap + cpuDispAlpha immediately after
     // BuildColormapAtlas uploads to GPU. The indirect path (default-ON) has no
     // geometry displacement (thin vert, no TES), so the CPU elevation's null-guard
@@ -267,8 +267,8 @@ static constexpr EnvVarDesc kFeatureTable[] = {
     },
     // [18] StaticPropBc7
     {
-        "MC2_FEATURE_STATICPROP_BC7", nullptr, EnvVarKind::Feature, true,
-        "Use compatible BC7 sidecars; incompatible or absent sidecars retain RGBA fallback buckets."
+        "MC2_FEATURE_STATICPROP_BC7", nullptr, EnvVarKind::Retired, false,
+        "Retired: static-prop arrays use RGBA uploads; tiered BC7 sidecars are no longer consumed."
     },
     // [19] ColormapCpuRetire
     {

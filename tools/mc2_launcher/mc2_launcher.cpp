@@ -1131,7 +1131,7 @@ static void ShowOptionsDialog(HWND owner) {
     int clientW = OPT_DLG_W;
     int clientH = contentH;
     DWORD style = WS_POPUP | WS_CAPTION | WS_SYSMENU;
-    RECT rc = { 0, clientW, clientH };
+    RECT rc = { 0, 0, clientW, clientH };
     AdjustWindowRect(&rc, style, FALSE);
     int ww = rc.right - rc.left;
     int wh = rc.bottom - rc.top;
@@ -1548,7 +1548,7 @@ static void ShowGraphicsDialog(HWND owner) {
     int clientW = GFX_DLG_W;
     int clientH = contentH;
     DWORD style = WS_POPUP | WS_CAPTION | WS_SYSMENU;
-    RECT rc = { 0, clientW, clientH };
+    RECT rc = { 0, 0, clientW, clientH };
     AdjustWindowRect(&rc, style, FALSE);
     int ww = rc.right - rc.left;
     int wh = rc.bottom - rc.top;
@@ -2513,7 +2513,7 @@ static void RegisterProgClass() {
 static void ShowProgressDialog(HWND owner) {
     RegisterProgClass();
     int w = 360, h = 130;
-    RECT rc = { 0, w, h };
+    RECT rc = { 0, 0, w, h };
     DWORD style = WS_POPUP | WS_CAPTION | WS_VISIBLE;
     AdjustWindowRect(&rc, style, FALSE);
     int ww = rc.right - rc.left, wh = rc.bottom - rc.top;
@@ -3162,7 +3162,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE, LPSTR lpCmd, int) {
     DWORD style = WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX;
     int clientW = LP_CLIENT_W;                           // 10+320+15+230+10 = 585
     int clientH = LP_BTN_Y + LP_BTN_H + LP_MARGIN;       // bottom button row + margin
-    RECT rc = { 0, clientW, clientH };
+    RECT rc = { 0, 0, clientW, clientH };
     AdjustWindowRect(&rc, style, FALSE);
     int wW = rc.right - rc.left;
     int wH = rc.bottom - rc.top;

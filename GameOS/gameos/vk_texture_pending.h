@@ -3,6 +3,17 @@
 #include <utility>
 
 namespace mc2vk {
+// Keep the last published UI image while an update is in flight. A terminally
+// dropped update must release its source identity too, so even identical pixels retry.
+template<class Entry, class Live, class Contains, class Ready>
+void settlePendingUiTexture(Entry& e, Live live, Contains contains, Ready ready) {
+    if (e.pending && (!live(e.pending.get()) || !contains(e.pending.get()))) {
+        e.pending={}; e.source.reset();
+    }
+    if (e.texture && !live(e.texture.get())) e.texture={};
+    if (e.pending && ready(e.pending.get())) e.texture=std::move(e.pending);
+}
+
 // A refused upload keeps its decoded pixels, but never monopolizes a pump or retries forever.
 template<class Pending, class Uploads, class Budget, class Live, class Full, class Upload, class Drop>
 void pumpPendingTextureUploads(Pending& pending, Uploads& uploads, Pending& batch, Budget& budget,

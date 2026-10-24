@@ -550,6 +550,14 @@ mc2_height_slice(overlay_road_inputs GameOS/gameos/gos_terrain_indirect_cement.c
 file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/overlay_road_inputs.inc" CONTENT "${overlay_road_inputs}")
 target_sources(mc2_tests PRIVATE test_overlay_prestage.cpp)
 set_source_files_properties(test_overlay_prestage.cpp PROPERTIES INCLUDE_DIRECTORIES "${CMAKE_CURRENT_BINARY_DIR}")
+mc2_height_slice(light_lists_stage GameOS/gameos/vk_light_lists.h
+    "    bool stage(" "    void record(")
+file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/light_lists_stage.inc" CONTENT "${light_lists_stage}")
+mc2_height_slice(terrain_light_stage GameOS/gameos/vulkan_terrain_island_run.cpp
+    "bool stage_light_pool(" "// Fill one TerrainFrameUBO")
+file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/terrain_light_stage.inc" CONTENT "${terrain_light_stage}")
+target_sources(mc2_tests PRIVATE test_light_list_recovery.cpp)
+set_source_files_properties(test_light_list_recovery.cpp PROPERTIES INCLUDE_DIRECTORIES "${CMAKE_CURRENT_BINARY_DIR}")
 if(TARGET glm::glm)
     mc2_height_slice(height_index mclib/mapdata.cpp
         "float MapData::terrainElevation( long indexY, long indexX )" "void MapData::setTerrain(")
