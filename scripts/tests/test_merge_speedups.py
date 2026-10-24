@@ -202,9 +202,15 @@ def test_gate_refuses_changed_head(monkeypatch):
     assert gate.execute(gate.plan(6), "head", runner=lambda *a, **k: (_ for _ in ()).throw(AssertionError("ran"))) == 1
 
 
-def test_gate_refuses_real_run_in_lane():
+def test_gate_refuses_real_run_in_lane(monkeypatch):
+    import pathlib
     import pytest
     import merge_gate as gate
+    # In mc2-main on nifty the guards pass and main([]) would run the REAL gate (contracts -> this
+    # pytest -> recursion). Pretend to be a lane worktree and never allow execution.
+    monkeypatch.setattr(gate, "ROOT", pathlib.Path("A:/Games/mc2-lane-not-main"))
+    monkeypatch.setattr(gate, "execute", lambda *a, **k: pytest.fail("gate executed in a lane"))
+    monkeypatch.setattr(gate, "git", lambda *a: "lane-head")
     with pytest.raises(SystemExit) as exc:
         gate.main([])
     assert exc.value.code == 2
